@@ -165,7 +165,7 @@ static void outliner_item_drag_handle(
 	te_dragged->drag_data->insert_handle = te_insert_handle;
 }
 
-static bool outliner_item_drag_drop_apply(Main *bmain, const Scene *scene, TreeElement *dragged_te)
+static bool outliner_item_drag_drop_apply(Main *bmain, Scene *scene, TreeElement *dragged_te)
 {
 	TreeElement *insert_handle = dragged_te->drag_data->insert_handle;
 	TreeElementInsertType insert_type = dragged_te->drag_data->insert_type;

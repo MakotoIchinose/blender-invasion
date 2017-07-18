@@ -168,6 +168,7 @@
 #include "BKE_curve.h"
 #include "BKE_constraint.h"
 #include "BKE_global.h" // for G
+#include "BKE_group.h"
 #include "BKE_idcode.h"
 #include "BKE_library.h" // for  set_listbasepointers
 #include "BKE_main.h"
@@ -1328,9 +1329,13 @@ static void write_particlesettings(WriteData *wd, ParticleSettings *part)
 			if (dw->ob != NULL) {
 				dw->index = 0;
 				if (part->dup_group) { /* can be NULL if lining fails or set to None */
-					for (GroupObject *go = part->dup_group->gobject.first;
-					     go && go->ob != dw->ob;
-					     go = go->next, dw->index++);
+					FOREACH_GROUP_OBJECT(part->dup_group, object)
+					{
+						if (object != dw->ob) {
+							dw->index++;
+						}
+					}
+					FOREACH_GROUP_OBJECT_END
 				}
 			}
 			writestruct(wd, DATA, ParticleDupliWeight, 1, dw);
@@ -2592,6 +2597,16 @@ static void write_layer_collections(WriteData *wd, ListBase *lb)
 	}
 }
 
+static void write_scene_layer(WriteData *wd, SceneLayer *sl)
+{
+	writestruct(wd, DATA, SceneLayer, 1, sl);
+	writelist(wd, DATA, Base, &sl->object_bases);
+	if (sl->properties) {
+		IDP_WriteProperty(sl->properties, wd);
+	}
+	write_layer_collections(wd, &sl->layer_collections);
+}
+
 static void write_scene(WriteData *wd, Scene *sce)
 {
 	/* write LibData */
@@ -2789,12 +2804,7 @@ static void write_scene(WriteData *wd, Scene *sce)
 	write_scene_collection(wd, sce->collection);
 
 	for (SceneLayer *sl = sce->render_layers.first; sl; sl = sl->next) {
-		writestruct(wd, DATA, SceneLayer, 1, sl);
-		writelist(wd, DATA, Base, &sl->object_bases);
-		if (sl->properties) {
-			IDP_WriteProperty(sl->properties, wd);
-		}
-		write_layer_collections(wd, &sl->layer_collections);
+		write_scene_layer(wd, sl);
 	}
 
 	if (sce->layer_properties) {
@@ -3216,6 +3226,8 @@ static void write_group(WriteData *wd, Group *group)
 		write_iddata(wd, &group->id);
 
 		write_previews(wd, group->preview);
+		write_scene_collection(wd, group->collection);
+		write_scene_layer(wd, group->scene_layer);
 
 		for (GroupObject *go = group->gobject.first; go; go = go->next) {
 			writestruct(wd, DATA, GroupObject, 1, go);

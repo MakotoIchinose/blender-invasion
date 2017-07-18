@@ -49,8 +49,9 @@ static PointerRNA rna_Group_objects_get(CollectionPropertyIterator *iter)
 {
 	ListBaseIterator *internal = &iter->internal.listbase;
 
-	/* we are actually iterating a GroupObject list, so override get */
-	return rna_pointer_inherit_refine(&iter->parent, &RNA_Object, ((GroupObject *)internal->link)->ob);
+	/* we are actually iterating a ObjectBase list, so override get */
+	Base *base = (Base *)internal->link;
+	return rna_pointer_inherit_refine(&iter->parent, &RNA_Object, base->object);
 }
 
 static void rna_Group_objects_link(Group *group, ReportList *reports, Object *object)
@@ -131,7 +132,7 @@ void RNA_def_group(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "objects", PROP_COLLECTION, PROP_NONE);
-	RNA_def_property_collection_sdna(prop, NULL, "gobject", NULL);
+	RNA_def_property_collection_sdna(prop, NULL, "scene_layer->object_bases", NULL);
 	RNA_def_property_struct_type(prop, "Object");
 	RNA_def_property_ui_text(prop, "Objects", "A collection of this groups objects");
 	RNA_def_property_collection_funcs(prop, NULL, NULL, NULL, "rna_Group_objects_get", NULL, NULL, NULL, NULL);

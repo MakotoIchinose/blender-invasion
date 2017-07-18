@@ -40,6 +40,7 @@
 #include "BKE_node.h"
 #include "BKE_workspace.h"
 
+#include "DNA_group_types.h"
 #include "DNA_ID.h"
 #include "DNA_layer_types.h"
 #include "DNA_object_types.h"
@@ -101,11 +102,7 @@ SceneLayer *BKE_scene_layer_context_active_PLACEHOLDER(const Scene *scene)
 	return BKE_scene_layer_from_scene_get(scene);
 }
 
-/**
- * Add a new renderlayer
- * by default, a renderlayer has the master collection
- */
-SceneLayer *BKE_scene_layer_add(Scene *scene, const char *name)
+static SceneLayer *scene_layer_add(const char *name, SceneCollection *master_scene_collection)
 {
 	if (!name) {
 		name = DATA_("Render Layer");
@@ -117,16 +114,39 @@ SceneLayer *BKE_scene_layer_add(Scene *scene, const char *name)
 
 	sl->properties = IDP_New(IDP_GROUP, &val, ROOT_PROP);
 	layer_engine_settings_init(sl->properties, false);
+	BLI_strncpy_utf8(sl->name, name, sizeof(sl->name));
+
+	/* Link the master collection by default. */
+	layer_collection_add(sl, NULL, master_scene_collection);
+	return sl;
+}
+
+/**
+ * Add a new renderlayer
+ * by default, a renderlayer has the master collection
+ */
+SceneLayer *BKE_scene_layer_add(Scene *scene, const char *name)
+{
+	SceneCollection *sc = BKE_collection_master(scene);
+	SceneLayer *sl = scene_layer_add(name, sc);
 
 	BLI_addtail(&scene->render_layers, sl);
 
 	/* unique name */
-	BLI_strncpy_utf8(sl->name, name, sizeof(sl->name));
 	BLI_uniquename(&scene->render_layers, sl, DATA_("SceneLayer"), '.', offsetof(SceneLayer, name), sizeof(sl->name));
 
-	SceneCollection *sc = BKE_collection_master(scene);
-	layer_collection_add(sl, NULL, sc);
+	return sl;
+}
 
+/**
+ * Add a SceneLayer for a Group
+ * It should be added only once
+ */
+SceneLayer *BKE_scene_layer_group_add(Group *group)
+{
+	BLI_assert(group->scene_layer == NULL);
+	SceneCollection *sc = BKE_collection_group_master(group);
+	SceneLayer *sl = scene_layer_add(group->id.name + 2, sc);
 	return sl;
 }
 
@@ -237,6 +257,96 @@ void BKE_scene_layer_base_select(struct SceneLayer *sl, Base *selbase)
 	sl->basact = selbase;
 	if ((selbase->flag & BASE_SELECTABLED) != 0) {
 		selbase->flag |= BASE_SELECTED;
+	}
+}
+
+/****************************************************************************/
+/* Copying functions for datablocks that use SceneLayer/SceneCollection */
+
+/* Find the equivalent SceneCollection in the new tree */
+static SceneCollection *scene_collection_from_new_tree(SceneCollection *sc_reference, SceneCollection *sc_dst, SceneCollection *sc_src)
+{
+	if (sc_src == sc_reference) {
+		return sc_dst;
+	}
+
+	for (SceneCollection *nsc_src = sc_src->scene_collections.first, *nsc_dst = sc_dst->scene_collections.first;
+	     nsc_src;
+	     nsc_src = nsc_src->next, nsc_dst = nsc_dst->next)
+	{
+		SceneCollection *found = scene_collection_from_new_tree(sc_reference, nsc_dst, nsc_src);
+		if (found != NULL) {
+			return found;
+		}
+	}
+	return NULL;
+}
+
+static void layer_collections_sync_flags(ListBase *layer_collections_dst, const ListBase *layer_collections_src)
+{
+	LayerCollection *layer_collection_dst = (LayerCollection *)layer_collections_dst->first;
+	const LayerCollection *layer_collection_src = (const LayerCollection *)layer_collections_src->first;
+	while (layer_collection_dst != NULL) {
+		layer_collection_dst->flag = layer_collection_src->flag;
+		layer_collections_sync_flags(&layer_collection_dst->layer_collections,
+		                             &layer_collection_src->layer_collections);
+		/* TODO(sergey/dfelinto): Overrides. */
+		layer_collection_dst = layer_collection_dst->next;
+		layer_collection_src = layer_collection_src->next;
+	}
+}
+
+/* recreate the LayerCollection tree */
+static void layer_collections_recreate(
+        SceneLayer *sl_dst, ListBase *lb_src, SceneCollection *mc_dst, SceneCollection *mc_src)
+{
+	for (LayerCollection *lc_src = lb_src->first; lc_src; lc_src = lc_src->next) {
+		SceneCollection *sc_dst = scene_collection_from_new_tree(lc_src->scene_collection, mc_dst, mc_src);
+		BLI_assert(sc_dst);
+
+		/* instead of synchronizing both trees we simply re-create it */
+		BKE_collection_link(sl_dst, sc_dst);
+	}
+}
+
+/**
+ * Only copy internal data of SceneLayer rom source to already allocated/initialized destination.
+ *
+ * \param mc_src Master Collection the source SceneLayer links in.
+ * \param mc_dst Master Collection the destination SceneLayer links in.
+ * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ */
+void BKE_scene_layer_copy_data(SceneLayer *sl_dst, SceneLayer *sl_src, SceneCollection* mc_dst, SceneCollection* mc_src,
+                               const int flag)
+{
+	IDPropertyTemplate val = {0};
+	sl_dst->stats = NULL;
+	sl_dst->properties_evaluated = NULL;
+	sl_dst->properties = IDP_New(IDP_GROUP, &val, ROOT_PROP);
+	IDP_MergeGroup_ex(sl_dst->properties, sl_src->properties, true, flag);
+
+	/* we start fresh with no overrides and no visibility flags set
+	 * instead of syncing both trees we simply unlink and relink the scene collection */
+	BLI_listbase_clear(&sl_dst->layer_collections);
+	BLI_listbase_clear(&sl_dst->object_bases);
+	BLI_listbase_clear(&sl_dst->drawdata);
+
+	layer_collections_recreate(sl_dst, &sl_src->layer_collections, mc_dst, mc_src);
+
+	/* Now we handle the syncing for visibility, selectability, ... */
+	layer_collections_sync_flags(&sl_dst->layer_collections, &sl_src->layer_collections);
+
+	Object *active_ob = OBACT_NEW(sl_src);
+	for (Base *base_src = sl_src->object_bases.first, *base_dst = sl_dst->object_bases.first;
+	     base_src;
+	     base_src = base_src->next, base_dst = base_dst->next)
+	{
+		base_dst->flag = base_src->flag;
+		base_dst->flag_legacy = base_src->flag_legacy;
+
+		if (base_dst->object == active_ob) {
+			sl_dst->basact = base_dst;
+		}
 	}
 }
 
@@ -384,7 +494,7 @@ LayerCollection *BKE_layer_collection_get_active_ensure(Scene *scene, SceneLayer
 	if (lc == NULL) {
 		BLI_assert(BLI_listbase_is_empty(&sl->layer_collections));
 		/* When there is no collection linked to this SceneLayer, create one. */
-		SceneCollection *sc = BKE_collection_add(scene, NULL, NULL);
+		SceneCollection *sc = BKE_collection_add(&scene->id, NULL, NULL);
 		lc = BKE_collection_link(sl, sc);
 		/* New collection has to be the active one. */
 		BLI_assert(lc == BKE_layer_collection_get_active(sl));
@@ -990,12 +1100,25 @@ static LayerCollection *find_layer_collection_by_scene_collection(LayerCollectio
 	return NULL;
 }
 
+static SceneLayer *scene_layer_first_from_id(const ID *id)
+{
+	switch (GS(id->name)) {
+		case ID_SCE:
+			return ((Scene *)id)->render_layers.first;
+		case ID_GR:
+			return ((Group *)id)->scene_layer;
+		default:
+			BLI_assert(!"ID doesn't support scene layers");
+			return NULL;
+	}
+}
+
 /**
  * Add a new LayerCollection for all the SceneLayers that have sc_parent
  */
-void BKE_layer_sync_new_scene_collection(Scene *scene, const SceneCollection *sc_parent, SceneCollection *sc)
+void BKE_layer_sync_new_scene_collection(ID *id, const SceneCollection *sc_parent, SceneCollection *sc)
 {
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			LayerCollection *lc_parent = find_layer_collection_by_scene_collection(lc, sc_parent);
 			if (lc_parent) {
@@ -1008,9 +1131,9 @@ void BKE_layer_sync_new_scene_collection(Scene *scene, const SceneCollection *sc
 /**
  * Add a corresponding ObjectBase to all the equivalent LayerCollection
  */
-void BKE_layer_sync_object_link(const Scene *scene, SceneCollection *sc, Object *ob)
+void BKE_layer_sync_object_link(const ID *id, SceneCollection *sc, Object *ob)
 {
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			LayerCollection *found = find_layer_collection_by_scene_collection(lc, sc);
 			if (found) {
@@ -1024,9 +1147,9 @@ void BKE_layer_sync_object_link(const Scene *scene, SceneCollection *sc, Object 
  * Remove the equivalent object base to all layers that have this collection
  * also remove all reference to ob in the filter_objects
  */
-void BKE_layer_sync_object_unlink(const Scene *scene, SceneCollection *sc, Object *ob)
+void BKE_layer_sync_object_unlink(const ID *id, SceneCollection *sc, Object *ob)
 {
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			LayerCollection *found = find_layer_collection_by_scene_collection(lc, sc);
 			if (found) {

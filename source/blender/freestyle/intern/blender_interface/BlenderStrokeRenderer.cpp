@@ -930,7 +930,7 @@ Object *BlenderStrokeRenderer::NewMesh() const
 	ob->lay = 1;
 
 	SceneCollection *sc_master = BKE_collection_master(freestyle_scene);
-	BKE_collection_object_add(freestyle_scene, sc_master, ob);
+	BKE_collection_object_add(&freestyle_scene->id, sc_master, ob);
 
 	BKE_scene_base_add(freestyle_scene, ob);
 	DEG_relations_tag_update(freestyle_bmain);

@@ -528,20 +528,21 @@ static void group_linkobs2scene_cb(
 	SceneLayer *sl = CTX_data_scene_layer(C);
 	SceneCollection *sc = CTX_data_scene_collection(C);
 	Group *group = (Group *)tselem->id;
-	GroupObject *gob;
 	Base *base;
 
-	for (gob = group->gobject.first; gob; gob = gob->next) {
-		base = BKE_scene_layer_base_find(sl, gob->ob);
+	FOREACH_GROUP_OBJECT(group, object)
+	{
+		base = BKE_scene_layer_base_find(sl, object);
 		if (!base) {
 			/* link to scene */
-			BKE_collection_object_add(scene, sc, gob->ob);
-			base = BKE_scene_layer_base_find(sl, gob->ob);
-			id_us_plus(&gob->ob->id);
+			BKE_collection_object_add(&scene->id, sc, object);
+			base = BKE_scene_layer_base_find(sl, object);
+			id_us_plus(&object->id);
 		}
 
 		base->flag |= BASE_SELECTED;
 	}
+	FOREACH_GROUP_OBJECT_END
 }
 
 static void group_instance_cb(
@@ -828,7 +829,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 	if (event == OL_COLLECTION_OP_OBJECTS_ADD) {
 		CTX_DATA_BEGIN (C, Object *, ob, selected_objects)
 		{
-			BKE_collection_object_add(scene, sc, ob);
+			BKE_collection_object_add(&scene->id, sc, ob);
 		}
 		CTX_DATA_END;
 
@@ -839,7 +840,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 
 		CTX_DATA_BEGIN (C, Object *, ob, selected_objects)
 		{
-			BKE_collection_object_remove(bmain, scene, sc, ob, true);
+			BKE_collection_object_remove(bmain, &scene->id, sc, ob, true);
 		}
 		CTX_DATA_END;
 
@@ -847,7 +848,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 		te->store_elem->flag &= ~TSE_SELECTED;
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_NEW) {
-		BKE_collection_add(scene, sc, NULL);
+		BKE_collection_add(&scene->id, sc, NULL); /* XXX what if it's a group? */
 		WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_UNLINK) {

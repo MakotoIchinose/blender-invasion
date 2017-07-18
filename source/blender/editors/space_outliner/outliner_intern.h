@@ -69,7 +69,7 @@ typedef enum TreeTraversalAction {
  * Callback type for reinserting elements at a different position, used to allow user customizable element order.
  * Passing scene right now, may be better to allow some custom data.
  */
-typedef void (*TreeElementReinsertFunc)(struct Main *bmain, const struct Scene *scene,
+typedef void (*TreeElementReinsertFunc)(struct Main *bmain, struct Scene *scene,
                                         struct TreeElement *insert_element,
                                         struct TreeElement *insert_handle, TreeElementInsertType action);
 /**

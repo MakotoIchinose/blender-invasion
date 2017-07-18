@@ -50,8 +50,8 @@
 #include "BKE_animsys.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_font.h"
-#include "BKE_group.h"
 #include "BKE_global.h"
+#include "BKE_group.h"
 #include "BKE_lattice.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
@@ -236,23 +236,23 @@ static void make_child_duplis(const DupliContext *ctx, void *userdata, MakeChild
 	Object *obedit = ctx->scene->obedit;
 
 	if (ctx->group) {
-		unsigned int lay = ctx->group->layer;
 		int groupid = 0;
-		GroupObject *go;
-		for (go = ctx->group->gobject.first; go; go = go->next, groupid++) {
-			Object *ob = go->ob;
-
-			if ((ob->lay & lay) && ob != obedit && is_child(ob, parent)) {
+		FOREACH_GROUP_BASE(ctx->group, base)
+		{
+			Object *ob = base->object;
+			if ((base->flag & BASE_VISIBLED) && ob != obedit && is_child(ob, parent)) {
 				DupliContext pctx;
 				copy_dupli_context(&pctx, ctx, ctx->object, NULL, groupid, false);
 
 				/* mballs have a different dupli handling */
-				if (ob->type != OB_MBALL)
+				if (ob->type != OB_MBALL) {
 					ob->flag |= OB_DONE;  /* doesnt render */
-
+				}
 				make_child_duplis_cb(&pctx, userdata, ob);
 			}
+			groupid++;
 		}
+		FOREACH_GROUP_BASE_END
 	}
 	else {
 		unsigned int lay = ctx->scene->lay;
@@ -281,13 +281,12 @@ static void make_child_duplis(const DupliContext *ctx, void *userdata, MakeChild
 /* OB_DUPLIGROUP */
 static void make_duplis_group(const DupliContext *ctx)
 {
-	bool for_render = (ctx->eval_ctx->mode == DAG_EVAL_RENDER);
 	Object *ob = ctx->object;
 	Group *group;
-	GroupObject *go;
+	Base *base;
 	float group_mat[4][4];
 	int id;
-	bool animated, hide;
+	bool animated;
 
 	if (ob->dup_group == NULL) return;
 	group = ob->dup_group;
@@ -309,34 +308,17 @@ static void make_duplis_group(const DupliContext *ctx)
 
 	animated = BKE_group_is_animated(group, ob);
 
-	for (go = group->gobject.first, id = 0; go; go = go->next, id++) {
-		/* note, if you check on layer here, render goes wrong... it still deforms verts and uses parent imat */
-		if (go->ob != ob) {
+	for (base = group->scene_layer->object_bases.first, id = 0; base; base = base->next, id++) {
+		if (base->object != ob && (base->flag & BASE_VISIBLED)) {
 			float mat[4][4];
 
-			/* Special case for instancing dupli-groups, see: T40051
-			 * this object may be instanced via dupli-verts/faces, in this case we don't want to render
-			 * (blender convention), but _do_ show in the viewport.
-			 *
-			 * Regular objects work fine but not if we're instancing dupli-groups,
-			 * because the rules for rendering aren't applied to objects they instance.
-			 * We could recursively pass down the 'hide' flag instead, but that seems unnecessary.
-			 */
-			if (for_render && go->ob->parent && go->ob->parent->transflag & (OB_DUPLIVERTS | OB_DUPLIFACES)) {
-				continue;
-			}
-
 			/* group dupli offset, should apply after everything else */
-			mul_m4_m4m4(mat, group_mat, go->ob->obmat);
+			mul_m4_m4m4(mat, group_mat, base->object->obmat);
 
-			/* check the group instance and object layers match, also that the object visible flags are ok. */
-			hide = (go->ob->lay & group->layer) == 0 ||
-			       (for_render ? go->ob->restrictflag & OB_RESTRICT_RENDER : go->ob->restrictflag & OB_RESTRICT_VIEW);
-
-			make_dupli(ctx, go->ob, mat, id, animated, hide);
+			make_dupli(ctx, base->object, mat, id, animated, false);
 
 			/* recursion */
-			make_recursive_duplis(ctx, go->ob, group_mat, id, animated);
+			make_recursive_duplis(ctx, base->object, group_mat, id, animated);
 		}
 	}
 }
@@ -858,7 +840,6 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 	bool for_render = ctx->eval_ctx->mode == DAG_EVAL_RENDER;
 	bool use_texcoords = ELEM(ctx->eval_ctx->mode, DAG_EVAL_RENDER, DAG_EVAL_PREVIEW);
 
-	GroupObject *go;
 	Object *ob = NULL, **oblist = NULL, obcopy, *obcopylist = NULL;
 	DupliObject *dob;
 	ParticleDupliWeight *dw;
@@ -912,10 +893,10 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 				return;
 		}
 		else { /*PART_DRAW_GR */
-			if (part->dup_group == NULL || BLI_listbase_is_empty(&part->dup_group->gobject))
+			if (part->dup_group == NULL || BLI_listbase_is_empty(&part->dup_group->scene_layer->object_bases))
 				return;
 
-			if (BLI_findptr(&part->dup_group->gobject, par, offsetof(GroupObject, ob))) {
+			if (BLI_findptr(&part->dup_group->scene_layer->object_bases, par, offsetof(Base, object))) {
 				return;
 			}
 		}
@@ -947,8 +928,11 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 					totgroup += dw->count;
 			}
 			else {
-				for (go = part->dup_group->gobject.first; go; go = go->next)
+				FOREACH_GROUP_OBJECT(part->dup_group, object)
+				{
 					totgroup++;
+				}
+				FOREACH_GROUP_OBJECT_END
 			}
 
 			/* we also copy the actual objects to restore afterwards, since
@@ -967,11 +951,18 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 				}
 			}
 			else {
-				go = part->dup_group->gobject.first;
-				for (a = 0; a < totgroup; a++, go = go->next) {
-					oblist[a] = go->ob;
-					obcopylist[a] = *go->ob;
+				a = 0;
+				FOREACH_GROUP_OBJECT(part->dup_group, object)
+				{
+					oblist[a] = object;
+					obcopylist[a] = *object;
+					a++;
+
+					if (a >= totgroup) {
+						continue;
+					}
 				}
+				FOREACH_GROUP_OBJECT_END
 			}
 		}
 		else {
@@ -1060,23 +1051,33 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 			}
 
 			if (part->ren_as == PART_DRAW_GR && psys->part->draw & PART_DRAW_WHOLE_GR) {
-				for (go = part->dup_group->gobject.first, b = 0; go; go = go->next, b++) {
-
+				b = 0;
+				FOREACH_GROUP_OBJECT(part->dup_group, object)
+				{
 					copy_m4_m4(tmat, oblist[b]->obmat);
+
 					/* apply particle scale */
 					mul_mat3_m4_fl(tmat, size * scale);
 					mul_v3_fl(tmat[3], size * scale);
+
 					/* group dupli offset, should apply after everything else */
-					if (!is_zero_v3(part->dup_group->dupli_ofs))
+					if (!is_zero_v3(part->dup_group->dupli_ofs)) {
 						sub_v3_v3(tmat[3], part->dup_group->dupli_ofs);
+					}
+
 					/* individual particle transform */
 					mul_m4_m4m4(mat, pamat, tmat);
 
-					dob = make_dupli(ctx, go->ob, mat, a, false, false);
+					dob = make_dupli(ctx, object, mat, a, false, false);
 					dob->particle_system = psys;
-					if (use_texcoords)
+
+					if (use_texcoords) {
 						psys_get_dupli_texture(psys, part, sim.psmd, pa, cpa, dob->uv, dob->orco);
+					}
+
+					b++;
 				}
+				FOREACH_GROUP_OBJECT_END
 			}
 			else {
 				/* to give ipos in object correct offset */

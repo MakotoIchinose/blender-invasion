@@ -755,7 +755,7 @@ Object *BKE_object_add(
 	ob = object_add_common(bmain, scene_layer, type, name);
 
 	layer_collection = BKE_layer_collection_get_active_ensure(scene, scene_layer);
-	BKE_collection_object_add(scene, layer_collection->scene_collection, ob);
+	BKE_collection_object_add(&scene->id, layer_collection->scene_collection, ob);
 
 	base = BKE_scene_layer_base_find(scene_layer, ob);
 	BKE_scene_layer_base_select(scene_layer, base);

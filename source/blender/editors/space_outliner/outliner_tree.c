@@ -88,6 +88,8 @@
 #endif
 
 /* prototypes */
+static void outliner_add_layer_collections_recursive(
+        SpaceOops *soops, ListBase *tree, ListBase *layer_collections, TreeElement *parent_ten);
 static void outliner_make_hierarchy(ListBase *lb);
 
 /* ********************************************************* */
@@ -392,7 +394,7 @@ static void outliner_add_scene_contents(SpaceOops *soops, ListBase *lb, Scene *s
 }
 
 static void outliner_object_reorder(
-        Main *UNUSED(bmain), const Scene *scene,
+        Main *UNUSED(bmain), Scene *scene,
         TreeElement *insert_element, TreeElement *insert_handle, TreeElementInsertType action)
 {
 	TreeStoreElem *tselem_insert = TREESTORE(insert_element);
@@ -1205,6 +1207,11 @@ static TreeElement *outliner_add_element(SpaceOops *soops, ListBase *lb, void *i
 			te->flag |= TE_LAZY_CLOSED;
 	}
 
+	if (GS(id->name) == ID_GR) {
+		Group *group = (Group *)id;
+		outliner_add_layer_collections_recursive(soops, &te->subtree, &group->scene_layer->layer_collections, NULL);
+	}
+
 	return te;
 }
 
@@ -1355,7 +1362,7 @@ static void outliner_add_orphaned_datablocks(Main *mainvar, SpaceOops *soops)
 }
 
 static void outliner_layer_collections_reorder(
-        Main *bmain, const Scene *scene,
+        Main *bmain, Scene *scene,
         TreeElement *insert_element, TreeElement *insert_handle, TreeElementInsertType action)
 {
 	LayerCollection *lc_insert = insert_element->directdata;
@@ -1410,7 +1417,7 @@ static void outliner_add_collections_act_layer(SpaceOops *soops, SceneLayer *lay
 }
 
 static void outliner_scene_collections_reorder(
-        Main *bmain, const Scene *scene,
+        Main *bmain, Scene *scene,
         TreeElement *insert_element, TreeElement *insert_handle, TreeElementInsertType action)
 {
 	SceneCollection *sc_insert = insert_element->directdata;
@@ -1857,19 +1864,9 @@ void outliner_build_tree(Main *mainvar, Scene *scene, SceneLayer *sl, SpaceOops 
 	}
 	else if (soops->outlinevis == SO_GROUPS) {
 		Group *group;
-		GroupObject *go;
-		
 		for (group = mainvar->group.first; group; group = group->id.next) {
-			if (group->gobject.first) {
-				te = outliner_add_element(soops, &soops->tree, group, NULL, 0, 0);
-				
-				for (go = group->gobject.first; go; go = go->next) {
-					outliner_add_element(soops, &te->subtree, go->ob, te, 0, 0);
-				}
-				outliner_make_hierarchy(&te->subtree);
-				/* clear id.newid, to prevent objects be inserted in wrong scenes (parent in other scene) */
-				for (go = group->gobject.first; go; go = go->next) go->ob->id.newid = NULL;
-			}
+			te = outliner_add_element(soops, &soops->tree, group, NULL, 0, 0);
+			outliner_make_hierarchy(&te->subtree);
 		}
 	}
 	else if (soops->outlinevis == SO_SAME_TYPE) {

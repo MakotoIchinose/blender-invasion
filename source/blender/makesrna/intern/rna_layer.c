@@ -139,8 +139,7 @@ static int rna_SceneCollection_move_into(ID *id, SceneCollection *sc_src, Main *
 static SceneCollection *rna_SceneCollection_new(
         ID *id, SceneCollection *sc_parent, Main *bmain, const char *name)
 {
-	Scene *scene = (Scene *)id;
-	SceneCollection *sc = BKE_collection_add(scene, sc_parent, name);
+	SceneCollection *sc = BKE_collection_add(id, sc_parent, name);
 
 	DEG_relations_tag_update(bmain);
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
@@ -203,7 +202,7 @@ void rna_SceneCollection_object_link(
 		return;
 	}
 
-	BKE_collection_object_add(scene, sc, ob);
+	BKE_collection_object_add(&scene->id, sc, ob);
 
 	/* TODO(sergey): Only update relations for the current scene. */
 	DEG_relations_tag_update(bmain);
@@ -226,7 +225,7 @@ static void rna_SceneCollection_object_unlink(
 		return;
 	}
 
-	BKE_collection_object_remove(bmain, scene, sc, ob, false);
+	BKE_collection_object_remove(bmain, &scene->id, sc, ob, false);
 
 	/* needed otherwise the depgraph will contain freed objects which can crash, see [#20958] */
 	DEG_relations_tag_update(bmain);

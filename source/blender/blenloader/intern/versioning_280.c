@@ -33,6 +33,7 @@
 #include "DNA_object_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_gpu_types.h"
+#include "DNA_group_types.h"
 #include "DNA_lamp_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_material_types.h"
@@ -45,6 +46,7 @@
 
 #include "BKE_collection.h"
 #include "BKE_customdata.h"
+#include "BKE_group.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -172,7 +174,7 @@ void do_versions_after_linking_280(Main *main)
 					char name[MAX_NAME];
 
 					BLI_snprintf(name, sizeof(collections[i]->name), "Collection %d", i + 1);
-					collections[i] = BKE_collection_add(scene, sc_master, name);
+					collections[i] = BKE_collection_add(&scene->id, sc_master, name);
 
 					is_visible[i] = (scene->lay & (1 << i));
 				}
@@ -182,7 +184,7 @@ void do_versions_after_linking_280(Main *main)
 
 					for (int i = 0; i < 20; i++) {
 						if ((base->lay & (1 << i)) != 0) {
-							BKE_collection_object_add(scene, collections[i], base->object);
+							BKE_collection_object_add(&scene->id, collections[i], base->object);
 						}
 					}
 
@@ -328,6 +330,25 @@ void do_versions_after_linking_280(Main *main)
 	/* New workspace design */
 	if (!MAIN_VERSION_ATLEAST(main, 280, 1)) {
 		do_version_workspaces_after_lib_link(main);
+	}
+
+	{
+		/* Since we don't have access to FileData we check the (always valid) master collection of the group. */
+		for (Group *group = main->group.first; group; group = group->id.next) {
+			if (group->collection == NULL) {
+				BKE_group_init(group);
+
+				SceneCollection *sc = GROUP_MASTER_COLLECTION(group);
+				for (GroupObject *go = group->gobject.first; go; go = go->next) {
+					BKE_collection_object_add(&group->id, sc, go->ob);
+				}
+			}
+
+			GroupObject *go;
+			while ((go = BLI_pophead(&group->gobject))) {
+				MEM_freeN(go);
+			}
+		}
 	}
 }
 

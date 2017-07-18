@@ -1216,7 +1216,7 @@ void ED_base_object_free_and_unlink(Main *bmain, Scene *scene, Object *ob)
 	}
 
 	object_delete_check_glsl_update(ob);
-	BKE_collections_object_remove(bmain, scene, ob, true);
+	BKE_collections_object_remove(bmain, &scene->id, ob, true);
 	DEG_id_type_tag(bmain, ID_OB);
 }
 

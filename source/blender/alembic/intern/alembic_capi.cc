@@ -839,7 +839,7 @@ static void import_endjob(void *user_data)
 		if (lc == NULL) {
 			BLI_assert(BLI_listbase_count_ex(&sl->layer_collections, 1) == 0);
 			/* when there is no collection linked to this SceneLayer, create one */
-			SceneCollection *sc = BKE_collection_add(data->scene, NULL, NULL);
+			SceneCollection *sc = BKE_collection_add(&data->scene->id, NULL, NULL);
 			lc = BKE_collection_link(sl, sc);
 		}
 
@@ -847,7 +847,7 @@ static void import_endjob(void *user_data)
 			Object *ob = (*iter)->object();
 			ob->lay = data->scene->lay;
 
-			BKE_collection_object_add(data->scene, lc->scene_collection, ob);
+			BKE_collection_object_add(&data->scene->id, lc->scene_collection, ob);
 
 			base = BKE_scene_layer_base_find(sl, ob);
 			BKE_scene_layer_base_select(sl, base);

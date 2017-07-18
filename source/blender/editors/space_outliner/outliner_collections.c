@@ -261,7 +261,7 @@ static int collection_new_exec(bContext *C, wmOperator *UNUSED(op))
 	Scene *scene = CTX_data_scene(C);
 	SceneLayer *sl = CTX_data_scene_layer(C);
 
-	SceneCollection *sc = BKE_collection_add(scene, NULL, NULL);
+	SceneCollection *sc = BKE_collection_add(&scene->id, NULL, NULL);
 	BKE_collection_link(sl, sc);
 
 	DEG_relations_tag_update(CTX_data_main(C));
