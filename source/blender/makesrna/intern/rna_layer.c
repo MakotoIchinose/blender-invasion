@@ -54,6 +54,12 @@ const EnumPropertyItem rna_enum_layer_collection_mode_settings_type_items[] = {
 	{0, NULL, 0, NULL, NULL}
 };
 
+const EnumPropertyItem rna_enum_collection_type_items[] = {
+	{COLLECTION_TYPE_NONE, "NONE", 0, "Normal", ""},
+	{COLLECTION_TYPE_GROUP, "GROUP", 0, "Group", ""},
+	{0, NULL, 0, NULL, NULL}
+};
+
 #ifdef RNA_RUNTIME
 
 #include "DNA_object_types.h"
@@ -68,6 +74,25 @@ const EnumPropertyItem rna_enum_layer_collection_mode_settings_type_items[] = {
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
+
+static StructRNA *rna_SceneCollection_refine(PointerRNA *ptr)
+{
+	SceneCollection *scene_collection = (SceneCollection *)ptr->data;
+	switch (scene_collection->type) {
+		case COLLECTION_TYPE_GROUP:
+			return &RNA_SceneCollectionGroup;
+		case COLLECTION_TYPE_NONE:
+			return &RNA_SceneCollection;
+		default:
+			BLI_assert(!"Collection type not fully implemented");
+			break;
+	}
+}
+
+static void rna_SceneCollectionGroup_group_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
+{
+	DEG_relations_tag_update(bmain);
+}
 
 static void rna_SceneCollection_name_set(PointerRNA *ptr, const char *value)
 {
@@ -139,7 +164,7 @@ static int rna_SceneCollection_move_into(ID *id, SceneCollection *sc_src, Main *
 static SceneCollection *rna_SceneCollection_new(
         ID *id, SceneCollection *sc_parent, Main *bmain, const char *name)
 {
-	SceneCollection *sc = BKE_collection_add(id, sc_parent, name);
+	SceneCollection *sc = BKE_collection_add(id, sc_parent, COLLECTION_TYPE_NONE, name);
 
 	DEG_relations_tag_update(bmain);
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
@@ -1014,6 +1039,21 @@ static void rna_def_collection_objects(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }
 
+static void rna_def_scene_collection_group(BlenderRNA *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	srna = RNA_def_struct(brna, "SceneCollectionGroup", "SceneCollection");
+	RNA_def_struct_sdna(srna, "SceneCollection");
+	RNA_def_struct_ui_text(srna, "Scene Collection Group", "");
+
+	prop = RNA_def_property(srna, "group", PROP_POINTER, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Group", "Group for this collection");
+	RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT,  "rna_SceneCollectionGroup_group_update");
+}
+
 static void rna_def_scene_collection(BlenderRNA *brna)
 {
 	StructRNA *srna;
@@ -1024,12 +1064,18 @@ static void rna_def_scene_collection(BlenderRNA *brna)
 
 	srna = RNA_def_struct(brna, "SceneCollection", NULL);
 	RNA_def_struct_ui_text(srna, "Scene Collection", "Collection");
+	RNA_def_struct_refine_func(srna, "rna_SceneCollection_refine");
 
 	prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
 	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SceneCollection_name_set");
 	RNA_def_property_ui_text(prop, "Name", "Collection name");
 	RNA_def_struct_name_property(srna, prop);
 	RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, NULL);
+
+	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, rna_enum_collection_type_items);
+	RNA_def_property_ui_text(prop, "Type", "Type of collection");
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
 	prop = RNA_def_property(srna, "filter", PROP_STRING, PROP_NONE);
 	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SceneCollection_filter_set");
@@ -1076,6 +1122,8 @@ static void rna_def_scene_collection(BlenderRNA *brna)
 	parm = RNA_def_pointer(func, "sc_dst", "SceneCollection", "Collection", "Collection to insert into");
 	parm = RNA_def_boolean(func, "result", false, "Result", "Whether the operation succeded");
 	RNA_def_function_return(func, parm);
+
+	rna_def_scene_collection_group(brna);
 }
 
 static void rna_def_layer_collection_override(BlenderRNA *brna)

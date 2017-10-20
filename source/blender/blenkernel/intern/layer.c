@@ -34,6 +34,7 @@
 
 #include "BKE_collection.h"
 #include "BKE_global.h"
+#include "BKE_group.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -494,7 +495,7 @@ LayerCollection *BKE_layer_collection_get_active_ensure(Scene *scene, SceneLayer
 	if (lc == NULL) {
 		BLI_assert(BLI_listbase_is_empty(&sl->layer_collections));
 		/* When there is no collection linked to this SceneLayer, create one. */
-		SceneCollection *sc = BKE_collection_add(&scene->id, NULL, NULL);
+		SceneCollection *sc = BKE_collection_add(&scene->id, NULL, COLLECTION_TYPE_NONE, NULL);
 		lc = BKE_collection_link(sl, sc);
 		/* New collection has to be the active one. */
 		BLI_assert(lc == BKE_layer_collection_get_active(sl));
@@ -2008,24 +2009,93 @@ static void idproperty_reset(IDProperty **props, IDProperty *props_ref)
 	}
 }
 
-void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(eval_ctx),
-                                         Scene *scene, SceneLayer *scene_layer)
+#ifndef DEG_COLLECTION_GROUP
+/**
+ * Initialize all the bases of all the groups.
+ *
+ * This is temporary, and not needed if we managed to get depsgraph to call
+ * BKE_layer_eval_layer_collection_pre for all the groups.
+ *
+ * \param lb: ListBase of LayerCollection elements.
+ * \param gs: GSet of previously evaluated groups.
+ */
+static void layer_eval_layer_collections_pre_doit(Scene *scene, ListBase *lb, GSet *gs)
 {
-	DEBUG_PRINT("%s on %s (%p)\n", __func__, scene_layer->name, scene_layer);
+	LayerCollection *layer_collection;
+	for (layer_collection = lb->first; layer_collection; layer_collection = layer_collection->next) {
+		SceneCollection *scene_collection = layer_collection->scene_collection;
+
+		switch (scene_collection->type) {
+			case COLLECTION_TYPE_GROUP:
+			{
+				Group *group = scene_collection->group;
+				if (group && !BLI_gset_haskey(gs, group)){
+					BLI_gset_add(gs, group);
+					FOREACH_GROUP_BASE(group, base)
+					{
+						base->flag &= ~(BASE_VISIBLED | BASE_SELECTABLED);
+						idproperty_reset(&base->collection_properties, scene->collection_properties);
+					}
+					FOREACH_GROUP_BASE_END
+				}
+				break;
+			}
+			case COLLECTION_TYPE_NONE:
+				/* Continue recursively. */
+				layer_eval_layer_collections_pre_doit(scene, &layer_collection->layer_collections, gs);
+				break;
+			default:
+				BLI_assert(!"Collection type not fully implemented.");
+				break;
+		}
+	}
+}
+
+/**
+ * Temporary function to initialize group collections
+ *
+ * This should be handled by depsgraph node/relations instead so BKE_layer_eval_layer_collection_pre
+ * is called once for each SceneLayer, and once for each Group of this SceneLayer
+ *
+ * Note: Two SceneLayers with the same Group Collection may have different evaluated results for the
+ * group elements. Even though the original data (group->scene_layer, ...) should remain unchanged.
+ */
+static void layer_eval_layer_collections_pre(Scene *scene, SceneLayer *scene_layer)
+{
+	GSet *gs = BLI_gset_ptr_new(__func__);
+	layer_eval_layer_collections_pre_doit(scene, &scene_layer->layer_collections, gs);
+	BLI_gset_free(gs, NULL);
+}
+#endif
+
+void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(eval_ctx),
+                                         ID *id, SceneLayer *scene_layer)
+{
+	DEBUG_PRINT("%s on %s (%p) for ID: %.2s\n", __func__, scene_layer->name, scene_layer, id->name);
+
+	Scene *scene = (GS(id->name) == ID_SCE ? (Scene *)id : NULL);
+	BLI_assert(scene || (GS(id->name) == ID_GR));
+
+#ifndef DEG_COLLECTION_GROUP
+	layer_eval_layer_collections_pre(scene, scene_layer);
+#endif
+
 	for (Base *base = scene_layer->object_bases.first; base != NULL; base = base->next) {
 		base->flag &= ~(BASE_VISIBLED | BASE_SELECTABLED);
-		idproperty_reset(&base->collection_properties, scene->collection_properties);
+		idproperty_reset(&base->collection_properties, scene ? scene->collection_properties : NULL);
 	}
 
-	/* Sync properties from scene to scene layer. */
-	idproperty_reset(&scene_layer->properties_evaluated, scene->layer_properties);
-	IDP_MergeGroup(scene_layer->properties_evaluated, scene_layer->properties, true);
+	if (scene) {
+		/* Sync properties from scene to scene layer. */
+		idproperty_reset(&scene_layer->properties_evaluated, scene->layer_properties);
+		IDP_MergeGroup(scene_layer->properties_evaluated, scene_layer->properties, true);
+	}
 
 	/* TODO(sergey): Is it always required? */
 	scene_layer->flag |= SCENE_LAYER_ENGINE_DIRTY;
 }
 
-void BKE_layer_eval_layer_collection(const struct EvaluationContext *UNUSED(eval_ctx),
+void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
                                      LayerCollection *layer_collection,
                                      LayerCollection *parent_layer_collection)
 {
@@ -2058,17 +2128,40 @@ void BKE_layer_eval_layer_collection(const struct EvaluationContext *UNUSED(eval
 		}
 	}
 
-	for (LinkData *link = layer_collection->object_bases.first; link != NULL; link = link->next) {
-		Base *base = link->data;
-
-		if (is_visible) {
-			IDP_MergeGroup(base->collection_properties, layer_collection->properties_evaluated, true);
-			base->flag |= BASE_VISIBLED;
+	SceneCollection *scene_collection = layer_collection->scene_collection;
+	switch (scene_collection->type) {
+		case COLLECTION_TYPE_GROUP:
+		{
+			if (scene_collection->group) {
+				LayerCollection *group_layer_collection;
+				for (group_layer_collection = scene_collection->group->scene_layer->layer_collections.first;
+				     group_layer_collection;
+				     group_layer_collection = group_layer_collection->next)
+				{
+					BKE_layer_eval_layer_collection(eval_ctx, group_layer_collection, layer_collection);
+				}
+			}
+			break;
 		}
+		case COLLECTION_TYPE_NONE:
+		{
+			for (LinkData *link = layer_collection->object_bases.first; link != NULL; link = link->next) {
+				Base *base = link->data;
 
-		if (is_selectable) {
-			base->flag |= BASE_SELECTABLED;
+				if (is_visible) {
+					IDP_MergeGroup(base->collection_properties, layer_collection->properties_evaluated, true);
+					base->flag |= BASE_VISIBLED;
+				}
+
+				if (is_selectable) {
+					base->flag |= BASE_SELECTABLED;
+				}
+			}
+			break;
 		}
+		default:
+			BLI_assert(!"Collection type not fully implemented.");
+			break;
 	}
 }
 

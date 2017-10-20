@@ -188,6 +188,7 @@ struct DepsgraphRelationBuilder
 
 	void build_scene(Main *bmain, Scene *scene);
 	void build_group(Main *bmain, Scene *scene, Object *object, Group *group);
+	void build_group(Main *bmain, Scene *scene, Group *group);
 	void build_object(Main *bmain, Scene *scene, Object *ob);
 	void build_object_parent(Object *ob);
 	void build_constraints(Scene *scene, ID *id,
@@ -241,13 +242,16 @@ struct DepsgraphRelationBuilder
 		OperationKey done_key;
 		OperationKey prev_key;
 	};
-	void build_layer_collection(Scene *scene,
+	void build_layer_collection(Main *bmain,
+	                            Scene *scene,
 	                            LayerCollection *layer_collection,
 	                            LayerCollectionState *state);
-	void build_layer_collections(Scene *scene,
+	void build_layer_collections(Main *bmain,
+	                             Scene *scene,
 	                             ListBase *layer_collections,
 	                             LayerCollectionState *state);
-	void build_scene_layer_collections(Scene *scene);
+	void build_scene_layer_collections(Main *bmain,
+	                                   Scene *scene);
 
 	void build_copy_on_write_relations();
 	void build_copy_on_write_relations(IDDepsNode *id_node);

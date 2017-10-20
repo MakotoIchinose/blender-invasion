@@ -102,6 +102,8 @@ typedef struct DEGObjectsIteratorData {
 	 * other users of the iterator.
 	 */
 	struct Object temp_dupli_object;
+	/* List of all groups in current scene layer. */
+	struct GSet *groups;
 } DEGObjectsIteratorData;
 
 void DEG_objects_iterator_begin(struct BLI_Iterator *iter, DEGObjectsIteratorData *data);

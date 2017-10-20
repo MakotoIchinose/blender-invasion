@@ -65,10 +65,11 @@ static SceneCollection *collection_master_from_id(const ID *id)
  * Add a collection to a collection ListBase and syncronize all render layers
  * The ListBase is NULL when the collection is to be added to the master collection
  */
-SceneCollection *BKE_collection_add(ID *id, SceneCollection *sc_parent, const char *name)
+SceneCollection *BKE_collection_add(ID *id, SceneCollection *sc_parent, const int type, const char *name)
 {
 	SceneCollection *sc_master = collection_master_from_id(id);
 	SceneCollection *sc = MEM_callocN(sizeof(SceneCollection), "New Collection");
+	sc->type = type;
 
 	if (!name) {
 		name = DATA_("New Collection");
@@ -413,6 +414,32 @@ bool BKE_collections_object_remove(Main *bmain, ID *id, Object *ob, const bool f
 	}
 	FOREACH_SCENE_COLLECTION_END
 	return removed;
+}
+
+#if 0
+static void collection_group_set_linking(ListBase *lb, const SceneCollection *sc)
+{
+	for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
+		if (lc->scene_collection == sc) {
+			//XXX link
+		}
+		else {
+			collection_group_set_linking(&lc->layer_collections, sc);
+		}
+	}
+}
+#endif
+
+/**
+ * Define a group for a group collection, and populate the collections accordingly
+ *
+ * \param group can be NULL
+ */
+void BKE_collection_group_set(Scene *UNUSED(scene), SceneCollection *sc, Group *group)
+{
+	BLI_assert(sc->type == COLLECTION_TYPE_GROUP);
+	/* Add */
+	sc->group = group;
 }
 
 /* ---------------------------------------------------------------------- */

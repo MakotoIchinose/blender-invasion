@@ -848,7 +848,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 		te->store_elem->flag &= ~TSE_SELECTED;
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_NEW) {
-		BKE_collection_add(&scene->id, sc, NULL); /* XXX what if it's a group? */
+		BKE_collection_add(&scene->id, sc, COLLECTION_TYPE_NONE, NULL); /* XXX what if it's a group? */
 		WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_UNLINK) {

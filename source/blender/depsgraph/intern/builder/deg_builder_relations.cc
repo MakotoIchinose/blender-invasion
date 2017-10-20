@@ -408,6 +408,20 @@ void DepsgraphRelationBuilder::build_group(Main *bmain,
 	group_id->tag |= LIB_TAG_DOIT;
 }
 
+void DepsgraphRelationBuilder::build_group(Main *bmain,
+                                           Scene *scene,
+                                           Group *group)
+{
+	if (group->id.tag & LIB_TAG_DOIT) {
+		return;
+	}
+	group->id.tag |= LIB_TAG_DOIT;
+
+	LINKLIST_FOREACH (Base *, base, &group->scene_layer->object_bases) {
+		build_object(bmain, scene, base->object);
+	}
+}
+
 void DepsgraphRelationBuilder::build_object(Main *bmain, Scene *scene, Object *ob)
 {
 	if (ob->id.tag & LIB_TAG_DOIT) {

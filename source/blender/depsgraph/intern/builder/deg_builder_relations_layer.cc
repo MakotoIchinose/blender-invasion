@@ -42,6 +42,7 @@ extern "C" {
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_group_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -68,7 +69,8 @@ extern "C" {
 
 namespace DEG {
 
-void DepsgraphRelationBuilder::build_layer_collection(Scene *scene,
+void DepsgraphRelationBuilder::build_layer_collection(Main *bmain,
+                                                      Scene *scene,
                                                       LayerCollection *layer_collection,
                                                       LayerCollectionState *state)
 {
@@ -82,23 +84,53 @@ void DepsgraphRelationBuilder::build_layer_collection(Scene *scene,
 	++state->index;
 	state->prev_key = layer_key;
 
+	SceneCollection *scene_collection = layer_collection->scene_collection;
+	switch (scene_collection->type) {
+		case COLLECTION_TYPE_GROUP:
+		{
+			Group *group = scene_collection->group;
+			if (group != NULL) {
+				build_group(bmain, scene, group);
+#ifdef DEG_COLLECTION_GROUP
+				OperationKey group_key(&group->id,
+									   DEG_NODE_TYPE_LAYER_COLLECTIONS,
+									   DEG_OPCODE_SCENE_LAYER_INIT,
+									   group->id.name,
+									   state->index);
+				add_relation(state->prev_key, layer_key, "Layer group collection");
+				++state->index;
+				state->prev_key = group_key;
+#endif
+			}
+			break;
+		}
+		case COLLECTION_TYPE_NONE:
+			break;
+		default:
+			BLI_assert(!"Collection type not fully implemented.");
+			break;
+	}
+
 	/* Recurs into nested layer collections. */
-	build_layer_collections(scene,
+	build_layer_collections(bmain,
+	                        scene,
 	                        &layer_collection->layer_collections,
 	                        state);
 }
 
-void DepsgraphRelationBuilder::build_layer_collections(Scene *scene,
+void DepsgraphRelationBuilder::build_layer_collections(Main *bmain,
+                                                       Scene *scene,
                                                        ListBase *layer_collections,
                                                        LayerCollectionState *state)
 {
 	LINKLIST_FOREACH (LayerCollection *, layer_collection, layer_collections) {
 		/* Recurs into the layer. */
-		build_layer_collection(scene, layer_collection, state);
+		build_layer_collection(bmain, scene, layer_collection, state);
 	}
 }
 
-void DepsgraphRelationBuilder::build_scene_layer_collections(Scene *scene)
+void DepsgraphRelationBuilder::build_scene_layer_collections(Main *bmain,
+                                                             Scene *scene)
 {
 	LayerCollectionState state;
 	state.index = 0;
@@ -116,7 +148,8 @@ void DepsgraphRelationBuilder::build_scene_layer_collections(Scene *scene)
 		state.done_key = done_key;
 		state.prev_key = init_key;
 
-		build_layer_collections(scene,
+		build_layer_collections(bmain,
+		                        scene,
 		                        &scene_layer->layer_collections,
 		                        &state);
 

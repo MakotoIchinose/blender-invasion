@@ -79,6 +79,7 @@ extern "C" {
 #include "BKE_group.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
+#include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_mask.h"
@@ -394,6 +395,14 @@ void DepsgraphNodeBuilder::build_group(Scene *scene, Group *group)
 	LINKLIST_FOREACH (Base *, base, &group->scene_layer->object_bases) {
 		build_object(scene, base->object);
 	}
+
+#ifdef DEG_COLLECTION_GROUP
+	ComponentDepsNode *comp = add_component_node(&group->id, DEG_NODE_TYPE_LAYER_COLLECTIONS);
+	add_operation_node(comp,
+	                   function_bind(BKE_layer_eval_layer_collection_pre, _1, &group->id, group->scene_layer),
+	                   DEG_OPCODE_SCENE_LAYER_INIT,
+	                   group->id.name);
+#endif
 }
 
 void DepsgraphNodeBuilder::build_object(Scene *scene, Object *ob)

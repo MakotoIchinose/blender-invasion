@@ -40,6 +40,7 @@ extern "C" {
 #include "BKE_main.h"
 } /* extern "C" */
 
+#include "DNA_group_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -120,6 +121,49 @@ ID *DEG_get_evaluated_id(struct Depsgraph *depsgraph, ID *id)
 
 #define BASE_FLUSH_FLAGS (BASE_FROM_SET | BASE_FROMDUPLI)
 
+/**
+ * \param groups: GSet of looped over groups.
+ * \param lb: ListBase of LayerCollection elements.
+ */
+static void populate_scene_layer_groups_doit(GSet *groups, ListBase *lb)
+{
+	LayerCollection *layer_collection;
+	for (layer_collection = (LayerCollection *) lb->first;
+	     layer_collection;
+	     layer_collection = layer_collection->next)
+	{
+		/* TODO: Disabled collections shouldn't even be evaluated by the Depsgraph (dfelinto/sergey). */
+		if (layer_collection->flag & COLLECTION_DISABLED) {
+			continue;
+		}
+
+		SceneCollection *scene_collection = layer_collection->scene_collection;
+		if (scene_collection->type == COLLECTION_TYPE_GROUP) {
+			Group *group = scene_collection->group;
+			if (group != NULL && !BLI_gset_haskey(groups, group)) {
+				BLI_gset_add(groups, group);
+			}
+		}
+		else {
+			/* Continue recursively. */
+			populate_scene_layer_groups_doit(groups, &layer_collection->layer_collections);
+		}
+	}
+
+}
+
+static void populate_scene_layer_groups(GSet **groups, SceneLayer *scene_layer)
+{
+	*groups = BLI_gset_ptr_new(__func__);
+
+	populate_scene_layer_groups_doit(*groups, &scene_layer->layer_collections);
+
+	if (BLI_gset_size(*groups) == 0) {
+		BLI_gset_free(*groups, NULL);
+		*groups = NULL;
+	}
+}
+
 void DEG_objects_iterator_begin(BLI_Iterator *iter, DEGObjectsIteratorData *data)
 {
 	Depsgraph *graph = data->graph;
@@ -141,6 +185,8 @@ void DEG_objects_iterator_begin(BLI_Iterator *iter, DEGObjectsIteratorData *data
 	data->dupli_list = NULL;
 	data->dupli_object_next = NULL;
 	data->dupli_object_current = NULL;
+
+	populate_scene_layer_groups(&data->groups, scene_layer);
 
 	DEG_objects_iterator_next(iter);
 }
@@ -236,6 +282,23 @@ void DEG_objects_iterator_next(BLI_Iterator *iter)
 		return;
 	}
 
+	/* Look for an object in the next group. */
+	if (data->groups != NULL) {
+		Group *group;
+		GHashIterState pop_state = {0};
+		if (BLI_gset_pop(data->groups, &pop_state, (void **)&group)) {
+			/* TODO(sergey): It's really confusing to store pointer to a local data. */
+			Base base = {(Base *)group->scene_layer->object_bases.first, NULL};
+			data->base = &base;
+			DEG_objects_iterator_next(iter);
+			return;
+		}
+		else {
+			BLI_gset_free(data->groups, NULL);
+			data->groups = NULL;
+		}
+	}
+
 	/* Look for an object in the next set. */
 	if ((data->flag & DEG_OBJECT_ITER_FLAG_SET) && data->scene->set) {
 		SceneLayer *scene_layer;
@@ -244,6 +307,7 @@ void DEG_objects_iterator_next(BLI_Iterator *iter)
 
 		/* For the sets we use the layer used for rendering. */
 		scene_layer = BKE_scene_layer_from_scene_get(data->scene);
+		populate_scene_layer_groups(&data->groups, scene_layer);
 
 		/* TODO(sergey): It's really confusing to store pointer to a local data. */
 		Base base = {(Base *)scene_layer->object_bases.first, NULL};
@@ -258,11 +322,12 @@ void DEG_objects_iterator_next(BLI_Iterator *iter)
 
 void DEG_objects_iterator_end(BLI_Iterator *iter)
 {
-#ifndef NDEBUG
 	DEGObjectsIteratorData *data = (DEGObjectsIteratorData *)iter->data;
+#ifndef NDEBUG
 	/* Force crash in case the iterator data is referenced and accessed down the line. (T51718) */
 	memset(&data->temp_dupli_object, 0xff, sizeof(data->temp_dupli_object));
-#else
-	(void) iter;
 #endif
+	if (data->groups) {
+		BLI_gset_free(data->groups, NULL);
+	}
 }

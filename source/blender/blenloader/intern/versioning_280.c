@@ -174,7 +174,7 @@ void do_versions_after_linking_280(Main *main)
 					char name[MAX_NAME];
 
 					BLI_snprintf(name, sizeof(collections[i]->name), "Collection %d", i + 1);
-					collections[i] = BKE_collection_add(&scene->id, sc_master, name);
+					collections[i] = BKE_collection_add(&scene->id, sc_master, COLLECTION_TYPE_NONE, name);
 
 					is_visible[i] = (scene->lay & (1 << i));
 				}

@@ -44,7 +44,8 @@ struct ID;
 struct Main;
 struct Scene;
 
-struct SceneCollection *BKE_collection_add(struct ID *id, struct SceneCollection *sc_parent, const char *name);
+struct SceneCollection *BKE_collection_add(
+        struct ID *id, struct SceneCollection *sc_parent, const int type, const char *name);
 bool BKE_collection_remove(struct Scene *scene, struct SceneCollection *sc);
 void BKE_collection_copy_data(struct SceneCollection *sc_dst, struct SceneCollection *sc_src, const int flag);
 struct SceneCollection *BKE_collection_master(const struct Scene *scene);
@@ -57,6 +58,8 @@ void BKE_collection_object_add_from(struct Scene *scene, struct Object *ob_src, 
 bool BKE_collection_object_remove(struct Main *bmain, struct ID *id, struct SceneCollection *sc, struct Object *object, const bool free_us);
 bool BKE_collections_object_remove(struct Main *bmain, struct ID *id, struct Object *object, const bool free_us);
 void BKE_collection_object_move(struct Scene *scene, struct SceneCollection *sc_dst, struct SceneCollection *sc_src, struct Object *ob);
+
+void BKE_collection_group_set(struct Scene *scene, struct SceneCollection *sc, struct Group *group);
 
 void BKE_collection_reinsert_after(const struct Scene *scene, struct SceneCollection *sc_reinsert, struct SceneCollection *sc_after);
 void BKE_collection_reinsert_into(struct SceneCollection *sc_reinsert, struct SceneCollection *sc_into);

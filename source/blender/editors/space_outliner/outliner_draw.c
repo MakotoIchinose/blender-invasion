@@ -254,6 +254,12 @@ static void enablebutton_collection_flag_cb(bContext *C, void *poin, void *poin2
 	LayerCollection *layer_collection = poin2;
 	SceneLayer *scene_layer = BKE_scene_layer_find_from_collection(scene, layer_collection);
 
+	/* TODO: This breaks when you see the collections of a group. (dfelinto) */
+	if (scene_layer == NULL) {
+		WM_reportf(RPT_INFO, "Enable/disable of group collections disabled for now");
+		return;
+	}
+
 	/* We need to toggle the flag since this is called after the flag is already set. */
 	layer_collection->flag ^= COLLECTION_DISABLED;
 

@@ -123,7 +123,7 @@ void DepsgraphRelationBuilder::build_scene(Main *bmain, Scene *scene)
 	}
 
 	/* Collections. */
-	build_scene_layer_collections(scene);
+	build_scene_layer_collections(bmain, scene);
 
 	/* TODO(sergey): Do this flush on CoW object? */
 	for (Depsgraph::OperationNodes::const_iterator it_op = m_graph->operations.begin();

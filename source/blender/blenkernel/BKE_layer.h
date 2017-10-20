@@ -153,7 +153,7 @@ void BKE_collection_engine_property_value_set_bool(struct IDProperty *props, con
 /* evaluation */
 
 void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *eval_ctx,
-                                         struct Scene *scene,
+                                         struct ID *id,
                                          struct SceneLayer *scene_layer);
 void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
                                      struct LayerCollection *layer_collection,

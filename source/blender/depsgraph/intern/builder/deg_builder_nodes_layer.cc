@@ -83,6 +83,20 @@ void DepsgraphNodeBuilder::build_layer_collection(Scene *scene,
 	state->parent = layer_collection;
 	build_layer_collections(scene, &layer_collection->layer_collections, state);
 	state->parent = parent;
+
+	SceneCollection *scene_collection = layer_collection->scene_collection;
+	switch (scene_collection->type) {
+		case COLLECTION_TYPE_GROUP:
+			if (scene_collection->group != NULL) {
+				build_group(scene, scene_collection->group);
+			}
+			break;
+		case COLLECTION_TYPE_NONE:
+			break;
+		default:
+			BLI_assert(!"Collection type not fully implemented!");
+			break;
+	}
 }
 
 void DepsgraphNodeBuilder::build_layer_collections(Scene *scene,
@@ -111,7 +125,7 @@ void DepsgraphNodeBuilder::build_scene_layer_collections(Scene *scene)
 		ComponentDepsNode *comp = add_component_node(&scene->id, DEG_NODE_TYPE_LAYER_COLLECTIONS);
 
 		add_operation_node(comp,
-		                   function_bind(BKE_layer_eval_layer_collection_pre, _1, scene_cow, scene_layer),
+		                   function_bind(BKE_layer_eval_layer_collection_pre, _1, &scene_cow->id, scene_layer),
 		                   DEG_OPCODE_SCENE_LAYER_INIT,
 		                   scene_layer->name);
 		add_operation_node(comp,
