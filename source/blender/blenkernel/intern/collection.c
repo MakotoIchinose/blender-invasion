@@ -34,6 +34,7 @@
 #include "BLI_string_utils.h"
 
 #include "BKE_collection.h"
+#include "BKE_group.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
@@ -47,6 +48,9 @@
 #include "DNA_scene_types.h"
 
 #include "MEM_guardedalloc.h"
+
+/* Prototypes. */
+static bool is_collection_in_tree(const struct SceneCollection *sc_reference, struct SceneCollection *sc_parent);
 
 static SceneCollection *collection_master_from_id(const ID *id)
 {
@@ -440,6 +444,108 @@ void BKE_collection_group_set(Scene *UNUSED(scene), SceneCollection *sc, Group *
 	BLI_assert(sc->type == COLLECTION_TYPE_GROUP);
 	/* Add */
 	sc->group = group;
+}
+
+/**
+ * @brief collection_group_convert_layer_collections
+ * \param lb: ListBase of LayerCollection elements.
+ */
+static void collection_group_convert_layer_collections(const Group *group, SceneLayer *sl,
+                                                       const SceneCollection *sc, ListBase *lb)
+{
+	for (LayerCollection *lc = lb->first; lc; lc = lc->next) {
+		if (lc->scene_collection == sc) {
+			BKE_layer_collection_convert(sl, lc, COLLECTION_TYPE_GROUP);
+		}
+		else {
+			collection_group_convert_layer_collections(group, sl, sc, &lc->layer_collections);
+		}
+	}
+}
+
+static void layer_collection_sync(LayerCollection *lc_dst, LayerCollection *lc_src)
+{
+	lc_dst->flag = lc_src->flag;
+	lc_dst->flag_evaluated = lc_src->flag_evaluated;
+
+	/* Pending: sync overrides. */
+	TODO_LAYER_OVERRIDE;
+
+	/* Continue recursively. */
+	LayerCollection *lc_dst_nested, *lc_src_nested;
+	lc_src_nested = lc_src->layer_collections.first;
+	for (lc_dst_nested = lc_dst->layer_collections.first;
+	     lc_dst_nested && lc_src_nested;
+	     lc_dst_nested = lc_dst_nested->next, lc_src_nested = lc_src_nested->next)
+	{
+		layer_collection_sync(lc_dst_nested, lc_src_nested);
+	}
+}
+
+/**
+ * Leave only the master collection in, remove everything else.
+ * @param group
+ */
+static void collection_group_cleanup(Group *group)
+{
+	/* Unlink all the LayerCollections. */
+	while (group->scene_layer->layer_collections.last != NULL) {
+		BKE_collection_unlink(group->scene_layer, group->scene_layer->layer_collections.last);
+	}
+
+	/* Remove all the SceneCollections but the master. */
+	collection_free(group->collection, false);
+}
+
+/**
+ * Convert a collection into a group
+ *
+ * Any SceneLayer that may have this the related SceneCollection linked is converted
+ * to a Group Collection.
+ */
+void BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *lc_src)
+{
+	SceneCollection *sc_dst, *sc_src = lc_src->scene_collection;
+	LayerCollection *lc_dst;
+
+	/* We can't convert group collections into groups. */
+	if (sc_src->type == COLLECTION_TYPE_GROUP) {
+		return;
+	}
+
+	/* The master collection can't be converted. */
+	if (sc_src == BKE_collection_master(scene)) {
+		return;
+	}
+
+	/* If a sub-collection of sc_dst is directly linked into a SceneLayer we can't convert. */
+	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+		for (LayerCollection *lc_child = sl->layer_collections.first; lc_child; lc_child = lc_child->next) {
+			if (is_collection_in_tree(lc_child->scene_collection, sc_src)) {
+				return;
+			}
+		}
+	}
+
+	/* Create new group with the same data as the original collection. */
+	Group *group = BKE_group_add(bmain, sc_src->name);
+	collection_group_cleanup(group);
+
+	sc_dst = BKE_collection_add(&group->id, NULL, COLLECTION_TYPE_GROUP_INTERNAL, sc_src->name);
+	BKE_collection_copy_data(sc_dst, sc_src, LIB_ID_CREATE_NO_USER_REFCOUNT);
+
+	lc_dst = BKE_collection_link(group->scene_layer, sc_dst);
+	layer_collection_sync(lc_dst, lc_src);
+
+	/* Convert existing collections into group collections. */
+	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+		collection_group_convert_layer_collections(group, sl, sc_src, &sl->layer_collections);
+	}
+
+	/* Convert original SceneCollection into a group collection. */
+	BKE_collection_group_set(scene, sc_src, group);
+	sc_src->type = COLLECTION_TYPE_GROUP;
+	collection_free(sc_src, true);
 }
 
 /* ---------------------------------------------------------------------- */

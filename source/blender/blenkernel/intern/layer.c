@@ -311,7 +311,7 @@ static void layer_collections_recreate(
 }
 
 /**
- * Only copy internal data of SceneLayer rom source to already allocated/initialized destination.
+ * Only copy internal data of SceneLayer from source to already allocated/initialized destination.
  *
  * \param mc_src Master Collection the source SceneLayer links in.
  * \param mc_dst Master Collection the destination SceneLayer links in.
@@ -411,6 +411,9 @@ static void layer_collection_objects_unpopulate(SceneLayer *sl, LayerCollection 
 /**
  * When freeing the entire SceneLayer at once we don't bother with unref
  * otherwise SceneLayer is passed to keep the syncing of the LayerCollection tree
+ *
+ * \note
+ * Keep it in sync with BKE_layer_collection_convert.
  */
 static void layer_collection_free(SceneLayer *sl, LayerCollection *lc)
 {
@@ -441,6 +444,29 @@ static void layer_collection_free(SceneLayer *sl, LayerCollection *lc)
 void BKE_layer_collection_free(SceneLayer *sl, LayerCollection *lc)
 {
 	layer_collection_free(sl, lc);
+}
+
+/**
+ * Convert a layer collection to a new type
+ *
+ * \param lc: LayerCollection to be converted.
+ * \param type: New type for the LayerCollection->scene_collection.
+ *
+ * \note
+ * Keep it in sync with BKE_layer_collection_free.
+ */
+void BKE_layer_collection_convert(SceneLayer *sl, LayerCollection *lc, const int type)
+{
+	/* Support group convertion only at the moment. */
+	BLI_assert(type == COLLECTION_TYPE_GROUP);
+
+	layer_collection_objects_unpopulate(sl, lc);
+	BLI_freelistN(&lc->overrides);
+
+	for (LayerCollection *nlc = lc->layer_collections.first; nlc; nlc = nlc->next) {
+		BKE_layer_collection_convert(sl, nlc, type);
+	}
+	BLI_freelistN(&lc->layer_collections);
 }
 
 /* LayerCollection */
@@ -2132,9 +2158,10 @@ void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
 	switch (scene_collection->type) {
 		case COLLECTION_TYPE_GROUP:
 		{
-			if (scene_collection->group) {
+			Group *group = scene_collection->group;
+			if (group) {
 				LayerCollection *group_layer_collection;
-				for (group_layer_collection = scene_collection->group->scene_layer->layer_collections.first;
+				for (group_layer_collection = group->scene_layer->layer_collections.first;
 				     group_layer_collection;
 				     group_layer_collection = group_layer_collection->next)
 				{
