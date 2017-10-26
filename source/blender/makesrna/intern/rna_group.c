@@ -125,17 +125,16 @@ void RNA_def_group(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, -10000.0, 10000.0, 10, RNA_TRANSLATION_PREC_DEFAULT);
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-	prop = RNA_def_property(srna, "layers", PROP_BOOLEAN, PROP_LAYER);
-	RNA_def_property_boolean_sdna(prop, NULL, "layer", 1);
-	RNA_def_property_array(prop, 20);
-	RNA_def_property_ui_text(prop, "Dupli Layers", "Layers visible when this group is instanced as a dupli");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-
 	prop = RNA_def_property(srna, "objects", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_collection_sdna(prop, NULL, "scene_layer->object_bases", NULL);
 	RNA_def_property_struct_type(prop, "Object");
 	RNA_def_property_ui_text(prop, "Objects", "A collection of this groups objects");
 	RNA_def_property_collection_funcs(prop, NULL, NULL, NULL, "rna_Group_objects_get", NULL, NULL, NULL, NULL);
+
+	prop = RNA_def_property(srna, "collections", PROP_COLLECTION, PROP_NONE);
+	RNA_def_property_collection_sdna(prop, NULL, "scene_layer->layer_collections", NULL);
+	RNA_def_property_struct_type(prop, "LayerCollection");
+	RNA_def_property_ui_text(prop, "Layer Collections", "");
 
 	rna_def_group_objects(brna, prop);
 
