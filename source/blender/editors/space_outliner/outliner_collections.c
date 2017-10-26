@@ -304,6 +304,7 @@ static int collection_new_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 	switch (collection_type) {
 		case COLLECTION_TYPE_GROUP:
 			return WM_enum_search_invoke(C, op, event);
+		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 		default:
 			return collection_new_exec(C, op);

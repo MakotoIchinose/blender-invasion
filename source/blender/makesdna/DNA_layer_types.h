@@ -128,6 +128,7 @@ enum {
 enum {
 	COLLECTION_TYPE_NONE =  0,
 	COLLECTION_TYPE_GROUP = 1,
+	COLLECTION_TYPE_GROUP_INTERNAL = 2,
 };
 
 /* *************************************************************** */

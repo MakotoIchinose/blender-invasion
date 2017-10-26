@@ -533,6 +533,11 @@ void BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *lc_
 
 	sc_dst = BKE_collection_add(&group->id, NULL, COLLECTION_TYPE_GROUP_INTERNAL, sc_src->name);
 	BKE_collection_copy_data(sc_dst, sc_src, LIB_ID_CREATE_NO_USER_REFCOUNT);
+	FOREACH_SCENE_COLLECTION(&group->id, sc_group)
+	{
+		sc_group->type = COLLECTION_TYPE_GROUP_INTERNAL;
+	}
+	FOREACH_SCENE_COLLECTION_END
 
 	lc_dst = BKE_collection_link(group->scene_layer, sc_dst);
 	layer_collection_sync(lc_dst, lc_src);
@@ -543,8 +548,8 @@ void BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *lc_
 	}
 
 	/* Convert original SceneCollection into a group collection. */
-	BKE_collection_group_set(scene, sc_src, group);
 	sc_src->type = COLLECTION_TYPE_GROUP;
+	BKE_collection_group_set(scene, sc_src, group);
 	collection_free(sc_src, true);
 }
 

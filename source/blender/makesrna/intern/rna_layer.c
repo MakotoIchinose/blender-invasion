@@ -57,6 +57,7 @@ const EnumPropertyItem rna_enum_layer_collection_mode_settings_type_items[] = {
 const EnumPropertyItem rna_enum_collection_type_items[] = {
 	{COLLECTION_TYPE_NONE, "NONE", 0, "Normal", ""},
 	{COLLECTION_TYPE_GROUP, "GROUP", 0, "Group", ""},
+	{COLLECTION_TYPE_GROUP_INTERNAL, "GROUP INTERNAL", 0, "Group Internal", ""},
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -81,6 +82,7 @@ static StructRNA *rna_SceneCollection_refine(PointerRNA *ptr)
 	switch (scene_collection->type) {
 		case COLLECTION_TYPE_GROUP:
 			return &RNA_SceneCollectionGroup;
+		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 			return &RNA_SceneCollection;
 		default:

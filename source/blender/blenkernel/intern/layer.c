@@ -2066,6 +2066,7 @@ static void layer_eval_layer_collections_pre_doit(Scene *scene, ListBase *lb, GS
 				}
 				break;
 			}
+			case COLLECTION_TYPE_GROUP_INTERNAL:
 			case COLLECTION_TYPE_NONE:
 				/* Continue recursively. */
 				layer_eval_layer_collections_pre_doit(scene, &layer_collection->layer_collections, gs);
@@ -2132,6 +2133,8 @@ void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
 	            (parent_layer_collection != NULL) ? parent_layer_collection->scene_collection->name : "NONE",
 	            (parent_layer_collection != NULL) ? parent_layer_collection->scene_collection : NULL);
 
+	BLI_assert(layer_collection != parent_layer_collection);
+
 	/* visibility */
 	layer_collection->flag_evaluated = layer_collection->flag;
 	bool is_visible = (layer_collection->flag & COLLECTION_VISIBLE) != 0;
@@ -2165,11 +2168,13 @@ void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
 				     group_layer_collection;
 				     group_layer_collection = group_layer_collection->next)
 				{
+					BLI_assert(group_layer_collection != layer_collection);
 					BKE_layer_eval_layer_collection(eval_ctx, group_layer_collection, layer_collection);
 				}
 			}
 			break;
 		}
+		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 		{
 			for (LinkData *link = layer_collection->object_bases.first; link != NULL; link = link->next) {
