@@ -503,26 +503,26 @@ static void collection_group_cleanup(Group *group)
  * Any SceneLayer that may have this the related SceneCollection linked is converted
  * to a Group Collection.
  */
-void BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *lc_src)
+Group *BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *lc_src)
 {
 	SceneCollection *sc_dst, *sc_src = lc_src->scene_collection;
 	LayerCollection *lc_dst;
 
 	/* We can't convert group collections into groups. */
 	if (sc_src->type == COLLECTION_TYPE_GROUP) {
-		return;
+		return NULL;
 	}
 
 	/* The master collection can't be converted. */
 	if (sc_src == BKE_collection_master(scene)) {
-		return;
+		return NULL;
 	}
 
 	/* If a sub-collection of sc_dst is directly linked into a SceneLayer we can't convert. */
 	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
 		for (LayerCollection *lc_child = sl->layer_collections.first; lc_child; lc_child = lc_child->next) {
 			if (is_collection_in_tree(lc_child->scene_collection, sc_src)) {
-				return;
+				return NULL;
 			}
 		}
 	}
@@ -551,6 +551,8 @@ void BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *lc_
 	sc_src->type = COLLECTION_TYPE_GROUP;
 	BKE_collection_group_set(scene, sc_src, group);
 	collection_free(sc_src, true);
+
+	return group;
 }
 
 /* ---------------------------------------------------------------------- */

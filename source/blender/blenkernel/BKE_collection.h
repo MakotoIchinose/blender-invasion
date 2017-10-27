@@ -61,7 +61,7 @@ bool BKE_collections_object_remove(struct Main *bmain, struct ID *id, struct Obj
 void BKE_collection_object_move(struct Scene *scene, struct SceneCollection *sc_dst, struct SceneCollection *sc_src, struct Object *ob);
 
 void BKE_collection_group_set(struct Scene *scene, struct SceneCollection *sc, struct Group *group);
-void BKE_collection_group_create(struct Main *bmain, struct Scene *scene, struct LayerCollection *lc);
+struct Group *BKE_collection_group_create(struct Main *bmain, struct Scene *scene, struct LayerCollection *lc);
 
 void BKE_collection_reinsert_after(const struct Scene *scene, struct SceneCollection *sc_reinsert, struct SceneCollection *sc_after);
 void BKE_collection_reinsert_into(struct SceneCollection *sc_reinsert, struct SceneCollection *sc_into);
