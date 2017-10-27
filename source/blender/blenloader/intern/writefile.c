@@ -3228,10 +3228,6 @@ static void write_group(WriteData *wd, Group *group)
 		write_previews(wd, group->preview);
 		write_scene_collection(wd, group->collection);
 		write_scene_layer(wd, group->scene_layer);
-
-		for (GroupObject *go = group->gobject.first; go; go = go->next) {
-			writestruct(wd, DATA, GroupObject, 1, go);
-		}
 	}
 }
 
