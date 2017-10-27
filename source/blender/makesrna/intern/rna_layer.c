@@ -90,6 +90,7 @@ static StructRNA *rna_SceneCollection_refine(PointerRNA *ptr)
 			BLI_assert(!"Collection type not fully implemented");
 			break;
 	}
+	return &RNA_SceneCollection;
 }
 
 static void rna_SceneCollectionGroup_group_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
