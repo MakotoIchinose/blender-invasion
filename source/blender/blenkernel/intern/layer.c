@@ -531,7 +531,6 @@ LayerCollection *BKE_layer_collection_get_active_ensure(Scene *scene, SceneLayer
 	LayerCollection *lc = BKE_layer_collection_get_active(sl);
 
 	if (lc == NULL) {
-		BLI_assert(BLI_listbase_is_empty(&sl->layer_collections));
 		/* When there is no collection linked to this SceneLayer, create one. */
 		SceneCollection *sc = BKE_collection_add(&scene->id, NULL, COLLECTION_TYPE_NONE, NULL);
 		lc = BKE_collection_link(sl, sc);
