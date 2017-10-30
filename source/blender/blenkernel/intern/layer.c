@@ -463,6 +463,18 @@ void BKE_layer_collection_convert(SceneLayer *sl, LayerCollection *lc, const int
 	layer_collection_objects_unpopulate(sl, lc);
 	BLI_freelistN(&lc->overrides);
 
+	if (lc->properties) {
+		IDP_FreeProperty(lc->properties);
+		MEM_freeN(lc->properties);
+		lc->properties = NULL;
+	}
+
+	if (lc->properties_evaluated) {
+		IDP_FreeProperty(lc->properties_evaluated);
+		MEM_freeN(lc->properties_evaluated);
+		lc->properties_evaluated = NULL;
+	}
+
 	for (LayerCollection *nlc = lc->layer_collections.first; nlc; nlc = nlc->next) {
 		BKE_layer_collection_convert(sl, nlc, type);
 	}
