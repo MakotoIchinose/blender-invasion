@@ -62,6 +62,7 @@ static void layer_collection_free(SceneLayer *sl, LayerCollection *lc);
 static void layer_collection_objects_populate(SceneLayer *sl, LayerCollection *lc, ListBase *objects);
 static LayerCollection *layer_collection_add(SceneLayer *sl, LayerCollection *parent, SceneCollection *sc);
 static LayerCollection *find_layer_collection_by_scene_collection(LayerCollection *lc, const SceneCollection *sc);
+static SceneLayer *scene_layer_first_from_id(const ID *id);
 static IDProperty *collection_engine_settings_create(struct EngineSettingsCB_Type *ces_type, const bool populate);
 static IDProperty *collection_engine_get(IDProperty *root, const int type, const char *engine_name);
 static void collection_engine_settings_init(IDProperty *root, const bool populate);
@@ -682,12 +683,12 @@ static void layer_collection_swap(
  * Move \a lc_src into \a lc_dst. Both have to be stored in \a sl.
  * If \a lc_src is directly linked to the SceneLayer it's unlinked
  */
-bool BKE_layer_collection_move_into(const Scene *scene, LayerCollection *lc_dst, LayerCollection *lc_src)
+bool BKE_layer_collection_move_into(const ID *id, LayerCollection *lc_dst, LayerCollection *lc_src)
 {
-	SceneLayer *sl = BKE_scene_layer_find_from_collection(&scene->id, lc_src);
+	SceneLayer *sl = BKE_scene_layer_find_from_collection(id, lc_src);
 	bool is_directly_linked = false;
 
-	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(&scene->id, lc_dst))) {
+	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(id, lc_dst))) {
 		return false;
 	}
 
@@ -723,7 +724,7 @@ bool BKE_layer_collection_move_into(const Scene *scene, LayerCollection *lc_dst,
 			layer_collection_swap(sl, &sl->layer_collections, NULL, lc_temp, lc_src);
 		}
 
-		if (!BKE_collection_move_into(scene, lc_dst->scene_collection, lc_src->scene_collection)) {
+		if (!BKE_collection_move_into(id, lc_dst->scene_collection, lc_src->scene_collection)) {
 			if (!is_directly_linked) {
 				/* Swap back and remove */
 				layer_collection_swap(sl, NULL, NULL, lc_temp, lc_src);
@@ -749,13 +750,13 @@ bool BKE_layer_collection_move_into(const Scene *scene, LayerCollection *lc_dst,
  * Move \a lc_src above \a lc_dst. Both have to be stored in \a sl.
  * If \a lc_src is directly linked to the SceneLayer it's unlinked
  */
-bool BKE_layer_collection_move_above(const Scene *scene, LayerCollection *lc_dst, LayerCollection *lc_src)
+bool BKE_layer_collection_move_above(const ID *id, LayerCollection *lc_dst, LayerCollection *lc_src)
 {
-	SceneLayer *sl = BKE_scene_layer_find_from_collection(&scene->id, lc_src);
+	SceneLayer *sl = BKE_scene_layer_find_from_collection(id, lc_src);
 	const bool is_directly_linked_src = BLI_findindex(&sl->layer_collections, lc_src) != -1;
 	const bool is_directly_linked_dst = BLI_findindex(&sl->layer_collections, lc_dst) != -1;
 
-	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(&scene->id, lc_dst))) {
+	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(id, lc_dst))) {
 		return false;
 	}
 
@@ -798,7 +799,7 @@ bool BKE_layer_collection_move_above(const Scene *scene, LayerCollection *lc_dst
 			layer_collection_swap(sl, &sl->layer_collections, NULL, lc_temp, lc_src);
 		}
 
-		if (!BKE_collection_move_above(scene, lc_dst->scene_collection, lc_src->scene_collection)) {
+		if (!BKE_collection_move_above(id, lc_dst->scene_collection, lc_src->scene_collection)) {
 			if (!is_directly_linked_src) {
 				/* Swap back and remove */
 				layer_collection_swap(sl, NULL, NULL, lc_temp, lc_src);
@@ -824,13 +825,13 @@ bool BKE_layer_collection_move_above(const Scene *scene, LayerCollection *lc_dst
  * Move \a lc_src below \a lc_dst. Both have to be stored in \a sl.
  * If \a lc_src is directly linked to the SceneLayer it's unlinked
  */
-bool BKE_layer_collection_move_below(const Scene *scene, LayerCollection *lc_dst, LayerCollection *lc_src)
+bool BKE_layer_collection_move_below(const ID *id, LayerCollection *lc_dst, LayerCollection *lc_src)
 {
-	SceneLayer *sl = BKE_scene_layer_find_from_collection(&scene->id, lc_src);
+	SceneLayer *sl = BKE_scene_layer_find_from_collection(id, lc_src);
 	const bool is_directly_linked_src = BLI_findindex(&sl->layer_collections, lc_src) != -1;
 	const bool is_directly_linked_dst = BLI_findindex(&sl->layer_collections, lc_dst) != -1;
 
-	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(&scene->id, lc_dst))) {
+	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(id, lc_dst))) {
 		return false;
 	}
 
@@ -873,7 +874,7 @@ bool BKE_layer_collection_move_below(const Scene *scene, LayerCollection *lc_dst
 			layer_collection_swap(sl, &sl->layer_collections, NULL, lc_temp, lc_src);
 		}
 
-		if (!BKE_collection_move_below(scene, lc_dst->scene_collection, lc_src->scene_collection)) {
+		if (!BKE_collection_move_below(id, lc_dst->scene_collection, lc_src->scene_collection)) {
 			if (!is_directly_linked_src) {
 				/* Swap back and remove */
 				layer_collection_swap(sl, NULL, NULL, lc_temp, lc_src);
@@ -936,9 +937,9 @@ static bool layer_collection_resync(SceneLayer *sl, LayerCollection *lc, const S
  * Update the scene layers so that any LayerCollection that points
  * to \a sc is re-synced again
  */
-void BKE_layer_collection_resync(const Scene *scene, const SceneCollection *sc)
+void BKE_layer_collection_resync(const ID *id, const SceneCollection *sc)
 {
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			layer_collection_resync(sl, lc, sc);
 		}

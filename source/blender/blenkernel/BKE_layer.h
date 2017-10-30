@@ -89,11 +89,11 @@ int BKE_layer_collection_count(struct SceneLayer *sl);
 struct LayerCollection *BKE_layer_collection_from_index(struct SceneLayer *sl, const int index);
 int BKE_layer_collection_findindex(struct SceneLayer *sl, const struct LayerCollection *lc);
 
-bool BKE_layer_collection_move_above(const struct Scene *scene, struct LayerCollection *lc_dst, struct LayerCollection *lc_src);
-bool BKE_layer_collection_move_below(const struct Scene *scene, struct LayerCollection *lc_dst, struct LayerCollection *lc_src);
-bool BKE_layer_collection_move_into(const struct Scene *scene, struct LayerCollection *lc_dst, struct LayerCollection *lc_src);
+bool BKE_layer_collection_move_above(const struct ID *id, struct LayerCollection *lc_dst, struct LayerCollection *lc_src);
+bool BKE_layer_collection_move_below(const struct ID *id, struct LayerCollection *lc_dst, struct LayerCollection *lc_src);
+bool BKE_layer_collection_move_into(const struct ID *id, struct LayerCollection *lc_dst, struct LayerCollection *lc_src);
 
-void BKE_layer_collection_resync(const struct Scene *scene, const struct SceneCollection *sc);
+void BKE_layer_collection_resync(const struct ID *id, const struct SceneCollection *sc);
 
 struct LayerCollection *BKE_collection_link(struct SceneLayer *sl, struct SceneCollection *sc);
 

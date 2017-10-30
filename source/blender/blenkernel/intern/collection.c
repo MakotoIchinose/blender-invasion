@@ -588,10 +588,10 @@ static bool is_collection_in_tree(const SceneCollection *sc_reference, SceneColl
 	return find_collection_parent(sc_reference, sc_parent) != NULL;
 }
 
-bool BKE_collection_move_above(const Scene *scene, SceneCollection *sc_dst, SceneCollection *sc_src)
+bool BKE_collection_move_above(const ID *id, SceneCollection *sc_dst, SceneCollection *sc_src)
 {
 	/* Find the SceneCollection the sc_src belongs to */
-	SceneCollection *sc_master = BKE_collection_master(scene);
+	SceneCollection *sc_master = master_collection_from_id(id);
 
 	/* Master Layer can't be moved around*/
 	if (ELEM(sc_master, sc_src, sc_dst)) {
@@ -621,16 +621,16 @@ bool BKE_collection_move_above(const Scene *scene, SceneCollection *sc_dst, Scen
 	BLI_insertlinkbefore(&sc_dst_parent->scene_collections, sc_dst, sc_src);
 
 	/* Update the tree */
-	BKE_layer_collection_resync(scene, sc_src_parent);
-	BKE_layer_collection_resync(scene, sc_dst_parent);
+	BKE_layer_collection_resync(id, sc_src_parent);
+	BKE_layer_collection_resync(id, sc_dst_parent);
 
 	return true;
 }
 
-bool BKE_collection_move_below(const Scene *scene, SceneCollection *sc_dst, SceneCollection *sc_src)
+bool BKE_collection_move_below(const ID *id, SceneCollection *sc_dst, SceneCollection *sc_src)
 {
 	/* Find the SceneCollection the sc_src belongs to */
-	SceneCollection *sc_master = BKE_collection_master(scene);
+	SceneCollection *sc_master = master_collection_from_id(id);
 
 	/* Master Layer can't be moved around*/
 	if (ELEM(sc_master, sc_src, sc_dst)) {
@@ -660,16 +660,16 @@ bool BKE_collection_move_below(const Scene *scene, SceneCollection *sc_dst, Scen
 	BLI_insertlinkafter(&sc_dst_parent->scene_collections, sc_dst, sc_src);
 
 	/* Update the tree */
-	BKE_layer_collection_resync(scene, sc_src_parent);
-	BKE_layer_collection_resync(scene, sc_dst_parent);
+	BKE_layer_collection_resync(id, sc_src_parent);
+	BKE_layer_collection_resync(id, sc_dst_parent);
 
 	return true;
 }
 
-bool BKE_collection_move_into(const Scene *scene, SceneCollection *sc_dst, SceneCollection *sc_src)
+bool BKE_collection_move_into(const ID *id, SceneCollection *sc_dst, SceneCollection *sc_src)
 {
 	/* Find the SceneCollection the sc_src belongs to */
-	SceneCollection *sc_master = BKE_collection_master(scene);
+	SceneCollection *sc_master = master_collection_from_id(id);
 	if (sc_src == sc_master) {
 		return false;
 	}
@@ -695,8 +695,8 @@ bool BKE_collection_move_into(const Scene *scene, SceneCollection *sc_dst, Scene
 	BLI_addtail(&sc_dst->scene_collections, sc_src);
 
 	/* Update the tree */
-	BKE_layer_collection_resync(scene, sc_src_parent);
-	BKE_layer_collection_resync(scene, sc_dst);
+	BKE_layer_collection_resync(id, sc_src_parent);
+	BKE_layer_collection_resync(id, sc_dst);
 
 	return true;
 }
