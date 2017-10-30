@@ -2070,17 +2070,25 @@ void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(
 	scene_layer->flag |= SCENE_LAYER_ENGINE_DIRTY;
 }
 
+static const char *collection_type_lookup[] =
+{
+    "None", /* COLLECTION_TYPE_NONE */
+    "Group", /* COLLECTION_TYPE_GROUP */
+    "Group Internal", /* COLLECTION_TYPE_GROUP_INTERNAL */
+};
+
 void BKE_layer_eval_layer_collection(const struct EvaluationContext *UNUSED(eval_ctx),
                                      LayerCollection *layer_collection,
                                      LayerCollection *parent_layer_collection)
 {
-	DEBUG_PRINT("%s on %s (%p), parent %s (%p)\n",
+	DEBUG_PRINT("%s on %s (%p) [%s], parent %s (%p) [%s]\n",
 	            __func__,
 	            layer_collection->scene_collection->name,
 	            layer_collection->scene_collection,
+	            collection_type_lookup[layer_collection->scene_collection->type],
 	            (parent_layer_collection != NULL) ? parent_layer_collection->scene_collection->name : "NONE",
-	            (parent_layer_collection != NULL) ? parent_layer_collection->scene_collection : NULL);
-
+	            (parent_layer_collection != NULL) ? parent_layer_collection->scene_collection : NULL,
+	            (parent_layer_collection != NULL) ? collection_type_lookup[parent_layer_collection->scene_collection->type] : "");
 	BLI_assert(layer_collection != parent_layer_collection);
 
 	/* visibility */
