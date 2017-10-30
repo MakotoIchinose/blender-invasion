@@ -57,7 +57,7 @@ const EnumPropertyItem rna_enum_layer_collection_mode_settings_type_items[] = {
 const EnumPropertyItem rna_enum_collection_type_items[] = {
 	{COLLECTION_TYPE_NONE, "NONE", 0, "Normal", ""},
 	{COLLECTION_TYPE_GROUP, "GROUP", 0, "Group", ""},
-	{COLLECTION_TYPE_GROUP_INTERNAL, "GROUP INTERNAL", 0, "Group Internal", ""},
+	{COLLECTION_TYPE_GROUP_INTERNAL, "GROUP_INTERNAL", 0, "Group Internal", ""},
 	{0, NULL, 0, NULL, NULL}
 };
 
