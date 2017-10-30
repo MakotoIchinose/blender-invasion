@@ -716,8 +716,16 @@ static void rna_LayerCollection_flag_update(bContext *C, PointerRNA *UNUSED(ptr)
 static void rna_LayerCollection_enable_set(
         ID *id, LayerCollection *layer_collection, Main *bmain, bContext *C, ReportList *reports, int value)
 {
-	Scene *scene = (Scene *)id;
-	SceneLayer *scene_layer = BKE_scene_layer_find_from_collection(scene, layer_collection);
+	SceneLayer *scene_layer;
+	if (GS(id->name) == ID_SCE) {
+		Scene *scene = (Scene *)id;
+		scene_layer = BKE_scene_layer_find_from_collection(scene, layer_collection);
+	}
+	else {
+		BLI_assert(GS(id->name) == ID_GR);
+		Group *group = (Group *)id;
+		scene_layer = group->scene_layer;
+	}
 
 	if (layer_collection->flag & COLLECTION_DISABLED) {
 		if (value == 1) {
@@ -739,6 +747,7 @@ static void rna_LayerCollection_enable_set(
 		}
 	}
 
+	Scene *scene = CTX_data_scene(C);
 	DEG_relations_tag_update(bmain);
 	/* TODO(sergey): Use proper flag for tagging here. */
 	DEG_id_tag_update(&scene->id, 0);
