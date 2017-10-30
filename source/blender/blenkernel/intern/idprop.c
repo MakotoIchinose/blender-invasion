@@ -609,6 +609,9 @@ void IDP_MergeGroup_ex(IDProperty *dest, const IDProperty *src, const bool do_ov
 {
 	IDProperty *prop;
 
+	BLI_assert(dest != NULL);
+	BLI_assert(src != NULL);
+
 	BLI_assert(dest->type == IDP_GROUP);
 	BLI_assert(src->type == IDP_GROUP);
 

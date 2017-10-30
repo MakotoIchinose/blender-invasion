@@ -14,7 +14,6 @@ from render_layer_common import *
 # ############################################################
 
 class UnitTesting(RenderLayerTesting):
-
     def test_group_create_basic(self):
         """
         See if the creation of new groups is working

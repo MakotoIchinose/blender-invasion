@@ -20,21 +20,27 @@ class UnitTesting(RenderLayerTesting):
         """
         import bpy
         scene = bpy.context.scene
-        layer_collection = bpy.context.layer_collection
 
-        # Cleanup Viewport render layer
-        # technically this shouldn't be needed but
-        # for now we need it because depsgraph build all the scenelayers
-        # at once.
+        # clean slate
+        self.cleanup_tree()
 
-        while len(scene.render_layers) > 1:
-            scene.render_layers.remove(scene.render_layers[1])
+        child = bpy.data.objects.new("Child", None)
+        master_collection = scene.master_collection
+        scene_collection = master_collection.collections.new('Collection')
+        scene_collection.objects.link(child)
 
-        # create group
-        group = layer_collection.create_group()
+        layer_collection_one = scene.render_layers[0].collections.link(scene_collection)
+        layer_collection_two = scene.render_layers[0].collections.link(scene_collection)
 
         # update depsgraph
         scene.update()
+
+        # create group
+        group = layer_collection_one.create_group()
+
+        # update depsgraph
+        scene.update()
+        scene.depsgraph.debug_graphviz("/tmp/a.dot")
 
 
 # ############################################################
