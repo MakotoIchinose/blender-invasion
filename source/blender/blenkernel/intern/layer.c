@@ -227,14 +227,25 @@ static bool find_scene_collection_in_scene_collections(ListBase *lb, const Layer
 /**
  * Find the SceneLayer a LayerCollection belongs to
  */
-SceneLayer *BKE_scene_layer_find_from_collection(const Scene *scene, LayerCollection *lc)
+SceneLayer *BKE_scene_layer_find_from_collection(const ID *id, LayerCollection *lc)
 {
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
-		if (find_scene_collection_in_scene_collections(&sl->layer_collections, lc)) {
-			return sl;
+	switch (GS(id->name)) {
+		case ID_GR:
+			return ((Group *)id)->scene_layer;
+		case ID_SCE:
+		{
+			Scene *scene = (Scene *)id;
+			for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+				if (find_scene_collection_in_scene_collections(&sl->layer_collections, lc)) {
+					return sl;
+				}
+			}
+			return NULL;
 		}
+		default:
+			BLI_assert(!"ID doesn't support scene layers");
+			return NULL;
 	}
-	return NULL;
 }
 
 /* Base */
@@ -673,10 +684,10 @@ static void layer_collection_swap(
  */
 bool BKE_layer_collection_move_into(const Scene *scene, LayerCollection *lc_dst, LayerCollection *lc_src)
 {
-	SceneLayer *sl = BKE_scene_layer_find_from_collection(scene, lc_src);
+	SceneLayer *sl = BKE_scene_layer_find_from_collection(&scene->id, lc_src);
 	bool is_directly_linked = false;
 
-	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(scene, lc_dst))) {
+	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(&scene->id, lc_dst))) {
 		return false;
 	}
 
@@ -740,11 +751,11 @@ bool BKE_layer_collection_move_into(const Scene *scene, LayerCollection *lc_dst,
  */
 bool BKE_layer_collection_move_above(const Scene *scene, LayerCollection *lc_dst, LayerCollection *lc_src)
 {
-	SceneLayer *sl = BKE_scene_layer_find_from_collection(scene, lc_src);
+	SceneLayer *sl = BKE_scene_layer_find_from_collection(&scene->id, lc_src);
 	const bool is_directly_linked_src = BLI_findindex(&sl->layer_collections, lc_src) != -1;
 	const bool is_directly_linked_dst = BLI_findindex(&sl->layer_collections, lc_dst) != -1;
 
-	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(scene, lc_dst))) {
+	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(&scene->id, lc_dst))) {
 		return false;
 	}
 
@@ -815,11 +826,11 @@ bool BKE_layer_collection_move_above(const Scene *scene, LayerCollection *lc_dst
  */
 bool BKE_layer_collection_move_below(const Scene *scene, LayerCollection *lc_dst, LayerCollection *lc_src)
 {
-	SceneLayer *sl = BKE_scene_layer_find_from_collection(scene, lc_src);
+	SceneLayer *sl = BKE_scene_layer_find_from_collection(&scene->id, lc_src);
 	const bool is_directly_linked_src = BLI_findindex(&sl->layer_collections, lc_src) != -1;
 	const bool is_directly_linked_dst = BLI_findindex(&sl->layer_collections, lc_dst) != -1;
 
-	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(scene, lc_dst))) {
+	if ((!sl) || (sl != BKE_scene_layer_find_from_collection(&scene->id, lc_dst))) {
 		return false;
 	}
 

@@ -719,7 +719,7 @@ static void rna_LayerCollection_enable_set(
 	SceneLayer *scene_layer;
 	if (GS(id->name) == ID_SCE) {
 		Scene *scene = (Scene *)id;
-		scene_layer = BKE_scene_layer_find_from_collection(scene, layer_collection);
+		scene_layer = BKE_scene_layer_find_from_collection(&scene->id, layer_collection);
 	}
 	else {
 		BLI_assert(GS(id->name) == ID_GR);
