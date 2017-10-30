@@ -186,9 +186,16 @@ struct DepsgraphRelationBuilder
 	                              const DepsNodeHandle *handle,
 	                              const char *description);
 
+	struct LayerCollectionState {
+		int index;
+		OperationKey init_key;
+		OperationKey done_key;
+		OperationKey prev_key;
+	};
+
 	void build_scene(Main *bmain, Scene *scene);
 	void build_group(Main *bmain, Scene *scene, Object *object, Group *group);
-	void build_group(Main *bmain, Scene *scene, Group *group);
+	void build_group(Main *bmain, Scene *scene, Group *group, LayerCollectionState *state);
 	void build_object(Main *bmain, Scene *scene, Object *ob);
 	void build_object_parent(Object *ob);
 	void build_constraints(Scene *scene, ID *id,
@@ -236,12 +243,6 @@ struct DepsgraphRelationBuilder
 	                              EffectorWeights *eff,
 	                              bool add_absorption, const char *name);
 
-	struct LayerCollectionState {
-		int index;
-		OperationKey init_key;
-		OperationKey done_key;
-		OperationKey prev_key;
-	};
 	void build_layer_collection(Main *bmain,
 	                            Scene *scene,
 	                            LayerCollection *layer_collection,

@@ -142,6 +142,7 @@ static const char *stringify_opcode(eDepsOperation_Code opcode)
 		/* Collections. */
 		STRINGIFY_OPCODE(SCENE_LAYER_INIT);
 		STRINGIFY_OPCODE(SCENE_LAYER_EVAL);
+		STRINGIFY_OPCODE(SCENE_LAYER_GROUP);
 		STRINGIFY_OPCODE(SCENE_LAYER_DONE);
 		/* Copy on write. */
 		STRINGIFY_OPCODE(COPY_ON_WRITE);

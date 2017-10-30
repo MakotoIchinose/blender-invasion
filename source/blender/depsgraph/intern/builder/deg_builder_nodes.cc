@@ -395,14 +395,28 @@ void DepsgraphNodeBuilder::build_group(Scene *scene, Group *group)
 	LINKLIST_FOREACH (Base *, base, &group->scene_layer->object_bases) {
 		build_object(scene, base->object);
 	}
+}
 
-#ifdef DEG_COLLECTION_GROUP
+void DepsgraphNodeBuilder::build_group(Scene *scene, Group *group, LayerCollectionState *state)
+{
+	/* XXX What happens if the group is instanced AND is in a layer collection?
+	 * We need to test something different than LIB_TAG_DOIT here (dfelinto). */
+	ID *group_id = &group->id;
+	if (group_id->tag & LIB_TAG_DOIT) {
+		return;
+	}
+	group_id->tag |= LIB_TAG_DOIT;
+
+	LINKLIST_FOREACH (Base *, base, &group->scene_layer->object_bases) {
+		build_object(scene, base->object);
+	}
+
 	ComponentDepsNode *comp = add_component_node(&group->id, DEG_NODE_TYPE_LAYER_COLLECTIONS);
 	add_operation_node(comp,
 	                   function_bind(BKE_layer_eval_layer_collection_pre, _1, &group->id, group->scene_layer),
-	                   DEG_OPCODE_SCENE_LAYER_INIT,
-	                   group->id.name);
-#endif
+	                   DEG_OPCODE_SCENE_LAYER_GROUP,
+	                   group->id.name + 2);
+	++state->index;
 }
 
 void DepsgraphNodeBuilder::build_object(Scene *scene, Object *ob)

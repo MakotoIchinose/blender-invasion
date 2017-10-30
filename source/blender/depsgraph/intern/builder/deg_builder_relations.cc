@@ -410,8 +410,11 @@ void DepsgraphRelationBuilder::build_group(Main *bmain,
 
 void DepsgraphRelationBuilder::build_group(Main *bmain,
                                            Scene *scene,
-                                           Group *group)
+                                           Group *group,
+                                           LayerCollectionState *state)
 {
+	/* XXX What happens if the group is instanced AND is in a layer collection?
+	 * We need to test something different than LIB_TAG_DOIT here (dfelinto). */
 	if (group->id.tag & LIB_TAG_DOIT) {
 		return;
 	}
@@ -420,6 +423,15 @@ void DepsgraphRelationBuilder::build_group(Main *bmain,
 	LINKLIST_FOREACH (Base *, base, &group->scene_layer->object_bases) {
 		build_object(bmain, scene, base->object);
 	}
+
+	OperationKey layer_key(&group->id,
+	                       DEG_NODE_TYPE_LAYER_COLLECTIONS,
+	                       DEG_OPCODE_SCENE_LAYER_GROUP,
+	                       group->id.name + 2);
+	add_relation(state->prev_key, layer_key, "Layer collection order");
+
+	++state->index;
+	state->prev_key = layer_key;
 }
 
 void DepsgraphRelationBuilder::build_object(Main *bmain, Scene *scene, Object *ob)

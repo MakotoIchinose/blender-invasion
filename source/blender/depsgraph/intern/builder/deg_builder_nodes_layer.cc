@@ -86,7 +86,7 @@ void DepsgraphNodeBuilder::build_layer_collection(Scene *scene,
 		{
 			Group *group = scene_collection->group;
 			if (group != NULL) {
-				build_group(scene, scene_collection->group);
+				build_group(scene, scene_collection->group, state);
 				/* Recurs into internal group layer collections. */
 				state->parent = layer_collection;
 				build_layer_collection(scene,
@@ -98,16 +98,15 @@ void DepsgraphNodeBuilder::build_layer_collection(Scene *scene,
 		}
 		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
+			/* Recurs into nested layer collections. */
+			state->parent = layer_collection;
+			build_layer_collections(scene, &layer_collection->layer_collections, state);
+			state->parent = parent;
 			break;
 		default:
 			BLI_assert(!"Collection type not fully implemented!");
 			break;
 	}
-
-	/* Recurs into nested layer collections. */
-	state->parent = layer_collection;
-	build_layer_collections(scene, &layer_collection->layer_collections, state);
-	state->parent = parent;
 }
 
 void DepsgraphNodeBuilder::build_layer_collections(Scene *scene,

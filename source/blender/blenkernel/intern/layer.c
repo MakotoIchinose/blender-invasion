@@ -2047,66 +2047,6 @@ static void idproperty_reset(IDProperty **props, IDProperty *props_ref)
 	}
 }
 
-#ifndef DEG_COLLECTION_GROUP
-/**
- * Initialize all the bases of all the groups.
- *
- * This is temporary, and not needed if we managed to get depsgraph to call
- * BKE_layer_eval_layer_collection_pre for all the groups.
- *
- * \param lb: ListBase of LayerCollection elements.
- * \param gs: GSet of previously evaluated groups.
- */
-static void layer_eval_layer_collections_pre_doit(Scene *scene, ListBase *lb, GSet *gs)
-{
-	LayerCollection *layer_collection;
-	for (layer_collection = lb->first; layer_collection; layer_collection = layer_collection->next) {
-		SceneCollection *scene_collection = layer_collection->scene_collection;
-
-		switch (scene_collection->type) {
-			case COLLECTION_TYPE_GROUP:
-			{
-				Group *group = scene_collection->group;
-				if (group && !BLI_gset_haskey(gs, group)){
-					BLI_gset_add(gs, group);
-					FOREACH_GROUP_BASE(group, base)
-					{
-						base->flag &= ~(BASE_VISIBLED | BASE_SELECTABLED);
-						idproperty_reset(&base->collection_properties, scene->collection_properties);
-					}
-					FOREACH_GROUP_BASE_END
-				}
-				break;
-			}
-			case COLLECTION_TYPE_GROUP_INTERNAL:
-			case COLLECTION_TYPE_NONE:
-				/* Continue recursively. */
-				layer_eval_layer_collections_pre_doit(scene, &layer_collection->layer_collections, gs);
-				break;
-			default:
-				BLI_assert(!"Collection type not fully implemented.");
-				break;
-		}
-	}
-}
-
-/**
- * Temporary function to initialize group collections
- *
- * This should be handled by depsgraph node/relations instead so BKE_layer_eval_layer_collection_pre
- * is called once for each SceneLayer, and once for each Group of this SceneLayer
- *
- * Note: Two SceneLayers with the same Group Collection may have different evaluated results for the
- * group elements. Even though the original data (group->scene_layer, ...) should remain unchanged.
- */
-static void layer_eval_layer_collections_pre(Scene *scene, SceneLayer *scene_layer)
-{
-	GSet *gs = BLI_gset_ptr_new(__func__);
-	layer_eval_layer_collections_pre_doit(scene, &scene_layer->layer_collections, gs);
-	BLI_gset_free(gs, NULL);
-}
-#endif
-
 void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(eval_ctx),
                                          ID *id, SceneLayer *scene_layer)
 {
@@ -2114,10 +2054,6 @@ void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(
 
 	Scene *scene = (GS(id->name) == ID_SCE ? (Scene *)id : NULL);
 	BLI_assert(scene || (GS(id->name) == ID_GR));
-
-#ifndef DEG_COLLECTION_GROUP
-	layer_eval_layer_collections_pre(scene, scene_layer);
-#endif
 
 	for (Base *base = scene_layer->object_bases.first; base != NULL; base = base->next) {
 		base->flag &= ~(BASE_VISIBLED | BASE_SELECTABLED);
@@ -2134,7 +2070,7 @@ void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(
 	scene_layer->flag |= SCENE_LAYER_ENGINE_DIRTY;
 }
 
-void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
+void BKE_layer_eval_layer_collection(const struct EvaluationContext *UNUSED(eval_ctx),
                                      LayerCollection *layer_collection,
                                      LayerCollection *parent_layer_collection)
 {

@@ -90,23 +90,12 @@ void DepsgraphRelationBuilder::build_layer_collection(Main *bmain,
 		{
 			Group *group = scene_collection->group;
 			if (group != NULL) {
-				build_group(bmain, scene, group);
+				build_group(bmain, scene, group, state);
 				/* Recurs into internal group layer collections. */
 				build_layer_collection(bmain,
 				                       scene,
 				                       (LayerCollection *)group->scene_layer->layer_collections.first,
 				                       state);
-
-#ifdef DEG_COLLECTION_GROUP
-				OperationKey group_key(&group->id,
-									   DEG_NODE_TYPE_LAYER_COLLECTIONS,
-									   DEG_OPCODE_SCENE_LAYER_INIT,
-									   group->id.name,
-									   state->index);
-				add_relation(state->prev_key, layer_key, "Layer group collection");
-				++state->index;
-				state->prev_key = group_key;
-#endif
 			}
 			break;
 		}

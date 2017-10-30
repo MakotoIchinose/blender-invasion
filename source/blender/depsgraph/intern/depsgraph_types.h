@@ -220,6 +220,7 @@ typedef enum eDepsOperation_Code {
 
 	/* Collections. ------------------------------------- */
 	DEG_OPCODE_SCENE_LAYER_INIT,
+	DEG_OPCODE_SCENE_LAYER_GROUP,
 	DEG_OPCODE_SCENE_LAYER_EVAL,
 	DEG_OPCODE_SCENE_LAYER_DONE,
 
