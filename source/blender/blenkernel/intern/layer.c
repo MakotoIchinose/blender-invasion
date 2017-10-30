@@ -2169,43 +2169,17 @@ void BKE_layer_eval_layer_collection(const struct EvaluationContext *eval_ctx,
 		}
 	}
 
-	SceneCollection *scene_collection = layer_collection->scene_collection;
-	switch (scene_collection->type) {
-		case COLLECTION_TYPE_GROUP:
-		{
-			Group *group = scene_collection->group;
-			if (group) {
-				LayerCollection *group_layer_collection;
-				for (group_layer_collection = group->scene_layer->layer_collections.first;
-				     group_layer_collection;
-				     group_layer_collection = group_layer_collection->next)
-				{
-					BLI_assert(group_layer_collection != layer_collection);
-					BKE_layer_eval_layer_collection(eval_ctx, group_layer_collection, layer_collection);
-				}
-			}
-			break;
-		}
-		case COLLECTION_TYPE_GROUP_INTERNAL:
-		case COLLECTION_TYPE_NONE:
-		{
-			for (LinkData *link = layer_collection->object_bases.first; link != NULL; link = link->next) {
-				Base *base = link->data;
+	for (LinkData *link = layer_collection->object_bases.first; link != NULL; link = link->next) {
+		Base *base = link->data;
 
-				if (is_visible) {
-					IDP_MergeGroup(base->collection_properties, layer_collection->properties_evaluated, true);
-					base->flag |= BASE_VISIBLED;
-				}
-
-				if (is_selectable) {
-					base->flag |= BASE_SELECTABLED;
-				}
-			}
-			break;
+		if (is_visible) {
+			IDP_MergeGroup(base->collection_properties, layer_collection->properties_evaluated, true);
+			base->flag |= BASE_VISIBLED;
 		}
-		default:
-			BLI_assert(!"Collection type not fully implemented.");
-			break;
+
+		if (is_selectable) {
+			base->flag |= BASE_SELECTABLED;
+		}
 	}
 }
 

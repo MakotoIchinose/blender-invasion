@@ -91,6 +91,12 @@ void DepsgraphRelationBuilder::build_layer_collection(Main *bmain,
 			Group *group = scene_collection->group;
 			if (group != NULL) {
 				build_group(bmain, scene, group);
+				/* Recurs into internal group layer collections. */
+				build_layer_collection(bmain,
+				                       scene,
+				                       (LayerCollection *)group->scene_layer->layer_collections.first,
+				                       state);
+
 #ifdef DEG_COLLECTION_GROUP
 				OperationKey group_key(&group->id,
 									   DEG_NODE_TYPE_LAYER_COLLECTIONS,
@@ -104,6 +110,7 @@ void DepsgraphRelationBuilder::build_layer_collection(Main *bmain,
 			}
 			break;
 		}
+		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 			break;
 		default:

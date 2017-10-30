@@ -42,6 +42,7 @@ extern "C" {
 
 #include "BKE_layer.h"
 
+#include "DNA_group_types.h"
 #include "DNA_scene_types.h"
 
 #include "DEG_depsgraph.h"
@@ -77,26 +78,36 @@ void DepsgraphNodeBuilder::build_layer_collection(Scene *scene,
 	                   layer_collection->scene_collection->name,
 	                   state->index);
 	++state->index;
-
-	/* Recurs into nested layer collections. */
 	LayerCollection *parent = state->parent;
-	state->parent = layer_collection;
-	build_layer_collections(scene, &layer_collection->layer_collections, state);
-	state->parent = parent;
 
 	SceneCollection *scene_collection = layer_collection->scene_collection;
 	switch (scene_collection->type) {
 		case COLLECTION_TYPE_GROUP:
-			if (scene_collection->group != NULL) {
+		{
+			Group *group = scene_collection->group;
+			if (group != NULL) {
 				build_group(scene, scene_collection->group);
+				/* Recurs into internal group layer collections. */
+				state->parent = layer_collection;
+				build_layer_collection(scene,
+				                       (LayerCollection *)group->scene_layer->layer_collections.first,
+				                       state);
+				state->parent = parent;
 			}
 			break;
+		}
+		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 			break;
 		default:
 			BLI_assert(!"Collection type not fully implemented!");
 			break;
 	}
+
+	/* Recurs into nested layer collections. */
+	state->parent = layer_collection;
+	build_layer_collections(scene, &layer_collection->layer_collections, state);
+	state->parent = parent;
 }
 
 void DepsgraphNodeBuilder::build_layer_collections(Scene *scene,
