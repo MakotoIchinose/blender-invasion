@@ -413,7 +413,7 @@ void DepsgraphNodeBuilder::build_group(Scene *scene, Group *group, LayerCollecti
 
 	ComponentDepsNode *comp = add_component_node(&group->id, DEG_NODE_TYPE_LAYER_COLLECTIONS);
 	add_operation_node(comp,
-	                   function_bind(BKE_layer_eval_layer_collection_pre, _1, &group->id, group->scene_layer),
+	                   function_bind(BKE_layer_eval_layer_collection_pre, _1, scene, group->scene_layer, false),
 	                   DEG_OPCODE_SCENE_LAYER_GROUP,
 	                   group->id.name + 2);
 	++state->index;

@@ -2059,19 +2059,16 @@ static void idproperty_reset(IDProperty **props, IDProperty *props_ref)
 }
 
 void BKE_layer_eval_layer_collection_pre(const struct EvaluationContext *UNUSED(eval_ctx),
-                                         ID *id, SceneLayer *scene_layer)
+                                         Scene *scene, SceneLayer *scene_layer, const bool sync_layer)
 {
-	DEBUG_PRINT("%s on %s (%p) for ID: %.2s\n", __func__, scene_layer->name, scene_layer, id->name);
-
-	Scene *scene = (GS(id->name) == ID_SCE ? (Scene *)id : NULL);
-	BLI_assert(scene || (GS(id->name) == ID_GR));
+	DEBUG_PRINT("%s on %s (%p)\n", __func__, scene_layer->name, scene_layer);
 
 	for (Base *base = scene_layer->object_bases.first; base != NULL; base = base->next) {
 		base->flag &= ~(BASE_VISIBLED | BASE_SELECTABLED);
-		idproperty_reset(&base->collection_properties, scene ? scene->collection_properties : NULL);
+		idproperty_reset(&base->collection_properties, scene->collection_properties);
 	}
 
-	if (scene) {
+	if (sync_layer) {
 		/* Sync properties from scene to scene layer. */
 		idproperty_reset(&scene_layer->properties_evaluated, scene->layer_properties);
 		IDP_MergeGroup(scene_layer->properties_evaluated, scene_layer->properties, true);

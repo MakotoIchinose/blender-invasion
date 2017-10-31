@@ -135,7 +135,7 @@ void DepsgraphNodeBuilder::build_scene_layer_collections(Scene *scene)
 		ComponentDepsNode *comp = add_component_node(&scene->id, DEG_NODE_TYPE_LAYER_COLLECTIONS);
 
 		add_operation_node(comp,
-		                   function_bind(BKE_layer_eval_layer_collection_pre, _1, &scene_cow->id, scene_layer),
+		                   function_bind(BKE_layer_eval_layer_collection_pre, _1, scene_cow, scene_layer, true),
 		                   DEG_OPCODE_SCENE_LAYER_INIT,
 		                   scene_layer->name);
 		add_operation_node(comp,
