@@ -423,9 +423,6 @@ static void layer_collection_objects_unpopulate(SceneLayer *sl, LayerCollection 
 /**
  * When freeing the entire SceneLayer at once we don't bother with unref
  * otherwise SceneLayer is passed to keep the syncing of the LayerCollection tree
- *
- * \note
- * Keep it in sync with BKE_layer_collection_convert.
  */
 static void layer_collection_free(SceneLayer *sl, LayerCollection *lc)
 {
@@ -463,34 +460,17 @@ void BKE_layer_collection_free(SceneLayer *sl, LayerCollection *lc)
  *
  * \param lc: LayerCollection to be converted.
  * \param type: New type for the LayerCollection->scene_collection.
- *
- * \note
- * Keep it in sync with BKE_layer_collection_free.
  */
 void BKE_layer_collection_convert(SceneLayer *sl, LayerCollection *lc, const int type)
 {
 	/* Support group convertion only at the moment. */
 	BLI_assert(type == COLLECTION_TYPE_GROUP);
+	layer_collection_free(sl, lc);
 
-	layer_collection_objects_unpopulate(sl, lc);
-	BLI_freelistN(&lc->overrides);
-
-	if (lc->properties) {
-		IDP_FreeProperty(lc->properties);
-		MEM_freeN(lc->properties);
-		lc->properties = NULL;
-	}
-
-	if (lc->properties_evaluated) {
-		IDP_FreeProperty(lc->properties_evaluated);
-		MEM_freeN(lc->properties_evaluated);
-		lc->properties_evaluated = NULL;
-	}
-
-	for (LayerCollection *nlc = lc->layer_collections.first; nlc; nlc = nlc->next) {
-		BKE_layer_collection_convert(sl, nlc, type);
-	}
-	BLI_freelistN(&lc->layer_collections);
+	/* Keep the properties around for collection evaluation. */
+	IDPropertyTemplate val = {0};
+	lc->properties = IDP_New(IDP_GROUP, &val, ROOT_PROP);
+	lc->properties_evaluated = NULL;
 }
 
 /* LayerCollection */
