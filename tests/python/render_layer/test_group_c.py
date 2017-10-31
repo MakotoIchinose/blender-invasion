@@ -16,7 +16,8 @@ from render_layer_common import *
 class UnitTesting(RenderLayerTesting):
     def test_group_create_basic(self):
         """
-        See if the creation of new groups is working
+        More advanced creation of group from a collection not directly linked
+        to the scene layer.
         """
         import bpy
         scene = bpy.context.scene
@@ -24,23 +25,26 @@ class UnitTesting(RenderLayerTesting):
         # clean slate
         self.cleanup_tree()
 
-        child = bpy.data.objects.new("Child", None)
+        children = [bpy.data.objects.new("Child", None) for i in range(3)]
         master_collection = scene.master_collection
-        scene_collection = master_collection.collections.new('Collection')
-        scene_collection.objects.link(child)
 
-        layer_collection_one = scene.render_layers[0].collections.link(scene_collection)
-        layer_collection_two = scene.render_layers[0].collections.link(scene_collection)
+        grandma_scene_collection = master_collection.collections.new('Grand-Mother')
+        mom_scene_collection = grandma_scene_collection.collections.new('Mother')
+
+        grandma_scene_collection.objects.link(children[0])
+        mom_scene_collection.objects.link(children[1])
+
+        grandma_layer_collection = scene.render_layers[0].collections.link(grandma_scene_collection)
+        mom_layer_collection = grandma_layer_collection.collections[mom_scene_collection.name]
 
         # update depsgraph
         scene.update()
 
         # create group
-        group = layer_collection_one.create_group()
+        group = mom_layer_collection.create_group()
 
         # update depsgraph
         scene.update()
-        scene.depsgraph.debug_graphviz("/tmp/a.dot")
 
 
 # ############################################################
