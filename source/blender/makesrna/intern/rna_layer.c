@@ -125,9 +125,7 @@ static PointerRNA rna_SceneCollection_objects_get(CollectionPropertyIterator *it
 
 static int rna_SceneCollection_move_above(ID *id, SceneCollection *sc_src, Main *bmain, SceneCollection *sc_dst)
 {
-	Scene *scene = (Scene *)id;
-
-	if (!BKE_collection_move_above(scene, sc_dst, sc_src)) {
+	if (!BKE_collection_move_above(id, sc_dst, sc_src)) {
 		return 0;
 	}
 
@@ -139,9 +137,7 @@ static int rna_SceneCollection_move_above(ID *id, SceneCollection *sc_src, Main 
 
 static int rna_SceneCollection_move_below(ID *id, SceneCollection *sc_src, Main *bmain, SceneCollection *sc_dst)
 {
-	Scene *scene = (Scene *)id;
-
-	if (!BKE_collection_move_below(scene, sc_dst, sc_src)) {
+	if (!BKE_collection_move_below(id, sc_dst, sc_src)) {
 		return 0;
 	}
 
@@ -153,9 +149,7 @@ static int rna_SceneCollection_move_below(ID *id, SceneCollection *sc_src, Main 
 
 static int rna_SceneCollection_move_into(ID *id, SceneCollection *sc_src, Main *bmain, SceneCollection *sc_dst)
 {
-	Scene *scene = (Scene *)id;
-
-	if (!BKE_collection_move_into(scene, sc_dst, sc_src)) {
+	if (!BKE_collection_move_into(id, sc_dst, sc_src)) {
 		return 0;
 	}
 
