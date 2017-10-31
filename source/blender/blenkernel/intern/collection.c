@@ -466,10 +466,9 @@ static void collection_group_convert_layer_collections(const Group *group, Scene
 static void layer_collection_sync(LayerCollection *lc_dst, LayerCollection *lc_src)
 {
 	lc_dst->flag = lc_src->flag;
-	lc_dst->flag_evaluated = lc_src->flag_evaluated;
 
 	/* Pending: sync overrides. */
-	TODO_LAYER_OVERRIDE;
+	IDP_MergeGroup(lc_dst->properties, lc_src->properties, true);
 
 	/* Continue recursively. */
 	LayerCollection *lc_dst_nested, *lc_src_nested;
