@@ -530,7 +530,7 @@ Group *BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *l
 	collection_group_cleanup(group);
 
 	sc_dst = BKE_collection_add(&group->id, NULL, COLLECTION_TYPE_GROUP_INTERNAL, sc_src->name);
-	BKE_collection_copy_data(sc_dst, sc_src, LIB_ID_CREATE_NO_USER_REFCOUNT);
+	BKE_collection_copy_data(sc_dst, sc_src, 0);
 	FOREACH_SCENE_COLLECTION(&group->id, sc_group)
 	{
 		sc_group->type = COLLECTION_TYPE_GROUP_INTERNAL;
