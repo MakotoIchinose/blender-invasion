@@ -1817,15 +1817,49 @@ void OUTLINER_OT_modifier_operation(wmOperatorType *ot)
 
 /* ******************** */
 
-static EnumPropertyItem prop_collection_op_types[] = {
-    {OL_COLLECTION_OP_OBJECTS_ADD, "OBJECTS_ADD", ICON_ZOOMIN, "Add Selected", "Add selected objects to collection"},
-    {OL_COLLECTION_OP_OBJECTS_REMOVE, "OBJECTS_REMOVE", ICON_X, "Remove Selected", "Remove selected objects from collection"},
-    {OL_COLLECTION_OP_COLLECTION_NEW, "COLLECTION_NEW", ICON_NEW, "New Collection", "Add a new nested collection"},
-    {OL_COLLECTION_OP_COLLECTION_UNLINK, "COLLECTION_UNLINK", ICON_UNLINKED, "Unlink", "Unlink collection"},
-    {OL_COLLECTION_OP_COLLECTION_DEL, "COLLECTION_DEL", ICON_X, "Delete Collection", "Delete the collection"},
-    {OL_COLLECTION_OP_GROUP_CREATE, "GROUP_CREATE", ICON_GROUP, "Create Group", "Turn the collection into a group collection"},
-    {0, NULL, 0, NULL, NULL}
+static EnumPropertyItem prop_collection_op_none_types[] = {
+	{OL_COLLECTION_OP_OBJECTS_ADD, "OBJECTS_ADD", ICON_ZOOMIN, "Add Selected", "Add selected objects to collection"},
+	{OL_COLLECTION_OP_OBJECTS_REMOVE, "OBJECTS_REMOVE", ICON_X, "Remove Selected", "Remove selected objects from collection"},
+	{OL_COLLECTION_OP_COLLECTION_NEW, "COLLECTION_NEW", ICON_NEW, "New Collection", "Add a new nested collection"},
+	{OL_COLLECTION_OP_COLLECTION_UNLINK, "COLLECTION_UNLINK", ICON_UNLINKED, "Unlink", "Unlink collection"},
+	{OL_COLLECTION_OP_COLLECTION_DEL, "COLLECTION_DEL", ICON_X, "Delete Collection", "Delete the collection"},
+	{OL_COLLECTION_OP_GROUP_CREATE, "GROUP_CREATE", ICON_GROUP, "Create Group", "Turn the collection into a group collection"},
+	{0, NULL, 0, NULL, NULL}
 };
+
+static EnumPropertyItem prop_collection_op_group_internal_types[] = {
+	{OL_COLLECTION_OP_COLLECTION_NEW, "COLLECTION_NEW", ICON_NEW, "New Collection", "Add a new nested collection"},
+	{0, NULL, 0, NULL, NULL}
+};
+
+static EnumPropertyItem prop_collection_op_group_types[] = {
+	{OL_COLLECTION_OP_COLLECTION_UNLINK, "COLLECTION_UNLINK", ICON_UNLINKED, "Unlink", "Unlink collection"},
+	{OL_COLLECTION_OP_COLLECTION_DEL, "COLLECTION_DEL", ICON_X, "Delete Collection", "Delete the collection"},
+	{0, NULL, 0, NULL, NULL}
+};
+
+static const EnumPropertyItem *outliner_collection_operation_type_itemf(
+        bContext *C, PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
+{
+	*r_free = false;
+	SpaceOops *soops = CTX_wm_space_outliner(C);
+
+	switch (soops->outlinevis) {
+		case SO_GROUPS:
+			return prop_collection_op_group_internal_types;
+		case SO_ACT_LAYER:
+		{
+			SceneCollection *scene_collection = CTX_data_scene_collection(C);
+			switch (scene_collection->type) {
+				case COLLECTION_TYPE_NONE:
+					return prop_collection_op_none_types;
+				case COLLECTION_TYPE_GROUP:
+					return prop_collection_op_group_types;
+			}
+		}
+	}
+	return NULL;
+}
 
 static int outliner_collection_operation_exec(bContext *C, wmOperator *op)
 {
@@ -1847,6 +1881,8 @@ static int outliner_collection_operation_exec(bContext *C, wmOperator *op)
 
 void OUTLINER_OT_collection_operation(wmOperatorType *ot)
 {
+	PropertyRNA *prop;
+
 	/* identifiers */
 	ot->name = "Outliner Collection Operation";
 	ot->idname = "OUTLINER_OT_collection_operation";
@@ -1859,7 +1895,10 @@ void OUTLINER_OT_collection_operation(wmOperatorType *ot)
 
 	ot->flag = 0;
 
-	ot->prop = RNA_def_enum(ot->srna, "type", prop_collection_op_types, 0, "Collection Operation", "");
+	prop = RNA_def_enum(ot->srna, "type", DummyRNA_NULL_items, 0, "Collection Operation", "");
+	RNA_def_enum_funcs(prop, outliner_collection_operation_type_itemf);
+	RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
+	ot->prop = prop;
 }
 
 /* ******************** */
