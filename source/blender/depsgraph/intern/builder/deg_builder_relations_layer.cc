@@ -89,7 +89,7 @@ void DepsgraphRelationBuilder::build_layer_collection(Main *bmain,
 		case COLLECTION_TYPE_GROUP:
 		{
 			Group *group = scene_collection->group;
-			if (group != NULL) {
+			if ((group != NULL) && !BLI_listbase_is_empty(&group->scene_layer->layer_collections)) {
 				build_group(bmain, scene, group, state);
 				/* Recurs into internal group layer collections. */
 				build_layer_collection(bmain,
