@@ -157,7 +157,7 @@ static void outliner_item_drag_handle(
 		/* nothing will happen anyway, no need to do poll check */
 	}
 	else if (!te_dragged->reinsert_poll ||
-	         !te_dragged->reinsert_poll(scene, te_dragged, &te_insert_handle, &insert_type))
+	         !te_dragged->reinsert_poll(&scene->id, te_dragged, &te_insert_handle, &insert_type))
 	{
 		te_insert_handle = NULL;
 	}
@@ -174,12 +174,12 @@ static bool outliner_item_drag_drop_apply(Main *bmain, Scene *scene, TreeElement
 		/* No need to do anything */
 	}
 	else if (dragged_te->reinsert) {
-		BLI_assert(!dragged_te->reinsert_poll || dragged_te->reinsert_poll(scene, dragged_te, &insert_handle,
+		BLI_assert(!dragged_te->reinsert_poll || dragged_te->reinsert_poll(&scene->id, dragged_te, &insert_handle,
 		                                                                   &insert_type));
 		/* call of assert above should not have changed insert_handle and insert_type at this point */
 		BLI_assert(dragged_te->drag_data->insert_handle == insert_handle &&
 		           dragged_te->drag_data->insert_type == insert_type);
-		dragged_te->reinsert(bmain, scene, dragged_te, insert_handle, insert_type);
+		dragged_te->reinsert(bmain, &scene->id, dragged_te, insert_handle, insert_type);
 		return true;
 	}
 
