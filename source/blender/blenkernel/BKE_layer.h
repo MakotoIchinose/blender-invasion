@@ -69,6 +69,7 @@ void BKE_scene_layer_free(struct SceneLayer *sl);
 
 void BKE_scene_layer_selected_objects_tag(struct SceneLayer *sl, const int tag);
 
+struct SceneLayer *BKE_scene_layer_first_from_id(const struct ID *id);
 struct SceneLayer *BKE_scene_layer_find_from_collection(const struct ID *id, struct LayerCollection *lc);
 struct Base *BKE_scene_layer_base_find(struct SceneLayer *sl, struct Object *ob);
 void BKE_scene_layer_base_deselect_all(struct SceneLayer *sl);

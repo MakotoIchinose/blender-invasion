@@ -62,7 +62,6 @@ static void layer_collection_free(SceneLayer *sl, LayerCollection *lc);
 static void layer_collection_objects_populate(SceneLayer *sl, LayerCollection *lc, ListBase *objects);
 static LayerCollection *layer_collection_add(SceneLayer *sl, LayerCollection *parent, SceneCollection *sc);
 static LayerCollection *find_layer_collection_by_scene_collection(LayerCollection *lc, const SceneCollection *sc);
-static SceneLayer *scene_layer_first_from_id(const ID *id);
 static IDProperty *collection_engine_settings_create(struct EngineSettingsCB_Type *ces_type, const bool populate);
 static IDProperty *collection_engine_get(IDProperty *root, const int type, const char *engine_name);
 static void collection_engine_settings_init(IDProperty *root, const bool populate);
@@ -211,6 +210,23 @@ void BKE_scene_layer_selected_objects_tag(SceneLayer *sl, const int tag)
 		}
 	}
 }
+
+/**
+ * Return the first SceneLayer for a given id
+ */
+SceneLayer *BKE_scene_layer_first_from_id(const ID *id)
+{
+	switch (GS(id->name)) {
+		case ID_SCE:
+			return ((Scene *)id)->render_layers.first;
+		case ID_GR:
+			return ((Group *)id)->scene_layer;
+		default:
+			BLI_assert(!"ID doesn't support scene layers");
+			return NULL;
+	}
+}
+
 
 static bool find_scene_collection_in_scene_collections(ListBase *lb, const LayerCollection *lc)
 {
@@ -919,7 +935,7 @@ static bool layer_collection_resync(SceneLayer *sl, LayerCollection *lc, const S
  */
 void BKE_layer_collection_resync(const ID *id, const SceneCollection *sc)
 {
-	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
+	for (SceneLayer *sl = BKE_scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			layer_collection_resync(sl, lc, sc);
 		}
@@ -1130,25 +1146,12 @@ static LayerCollection *find_layer_collection_by_scene_collection(LayerCollectio
 	return NULL;
 }
 
-static SceneLayer *scene_layer_first_from_id(const ID *id)
-{
-	switch (GS(id->name)) {
-		case ID_SCE:
-			return ((Scene *)id)->render_layers.first;
-		case ID_GR:
-			return ((Group *)id)->scene_layer;
-		default:
-			BLI_assert(!"ID doesn't support scene layers");
-			return NULL;
-	}
-}
-
 /**
  * Add a new LayerCollection for all the SceneLayers that have sc_parent
  */
 void BKE_layer_sync_new_scene_collection(ID *id, const SceneCollection *sc_parent, SceneCollection *sc)
 {
-	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
+	for (SceneLayer *sl = BKE_scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			LayerCollection *lc_parent = find_layer_collection_by_scene_collection(lc, sc_parent);
 			if (lc_parent) {
@@ -1163,7 +1166,7 @@ void BKE_layer_sync_new_scene_collection(ID *id, const SceneCollection *sc_paren
  */
 void BKE_layer_sync_object_link(const ID *id, SceneCollection *sc, Object *ob)
 {
-	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
+	for (SceneLayer *sl = BKE_scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			LayerCollection *found = find_layer_collection_by_scene_collection(lc, sc);
 			if (found) {
@@ -1179,7 +1182,7 @@ void BKE_layer_sync_object_link(const ID *id, SceneCollection *sc, Object *ob)
  */
 void BKE_layer_sync_object_unlink(const ID *id, SceneCollection *sc, Object *ob)
 {
-	for (SceneLayer *sl = scene_layer_first_from_id(id); sl; sl = sl->next) {
+	for (SceneLayer *sl = BKE_scene_layer_first_from_id(id); sl; sl = sl->next) {
 		for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
 			LayerCollection *found = find_layer_collection_by_scene_collection(lc, sc);
 			if (found) {

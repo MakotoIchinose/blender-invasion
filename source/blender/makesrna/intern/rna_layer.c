@@ -173,7 +173,6 @@ static SceneCollection *rna_SceneCollection_new(
 static void rna_SceneCollection_remove(
         ID *id, SceneCollection *sc_parent, Main *bmain, ReportList *reports, PointerRNA *sc_ptr)
 {
-	Scene *scene = (Scene *)id;
 	SceneCollection *sc = sc_ptr->data;
 
 	const int index = BLI_findindex(&sc_parent->scene_collections, sc);
@@ -183,7 +182,7 @@ static void rna_SceneCollection_remove(
 		return;
 	}
 
-	if (!BKE_collection_remove(scene, sc)) {
+	if (!BKE_collection_remove(id, sc)) {
 		BKE_reportf(reports, RPT_ERROR, "Collection '%s' could not be removed from collection '%s'",
 		            sc->name, sc_parent->name);
 		return;

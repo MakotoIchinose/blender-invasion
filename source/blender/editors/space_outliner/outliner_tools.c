@@ -873,7 +873,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 		}
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_DEL) {
-		if (BKE_collection_remove(scene, sc)) {
+		if (BKE_collection_remove(id, sc)) {
 			DEG_relations_tag_update(CTX_data_main(C));
 			WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 		}
@@ -1829,6 +1829,7 @@ static EnumPropertyItem prop_collection_op_none_types[] = {
 
 static EnumPropertyItem prop_collection_op_group_internal_types[] = {
 	{OL_COLLECTION_OP_COLLECTION_NEW, "COLLECTION_NEW", ICON_NEW, "New Collection", "Add a new nested collection"},
+	{OL_COLLECTION_OP_COLLECTION_DEL, "COLLECTION_DEL", ICON_X, "Delete Collection", "Delete the collection"},
 	{0, NULL, 0, NULL, NULL}
 };
 

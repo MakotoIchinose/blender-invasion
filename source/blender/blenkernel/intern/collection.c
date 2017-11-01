@@ -165,25 +165,25 @@ static void layer_collection_remove(SceneLayer *sl, ListBase *lb, const SceneCol
 /**
  * Remove a collection from the scene, and syncronize all render layers
  */
-bool BKE_collection_remove(Scene *scene, SceneCollection *sc)
+bool BKE_collection_remove(ID *id, SceneCollection *sc)
 {
-	SceneCollection *sc_master = BKE_collection_master(scene);
+	SceneCollection *sc_master = collection_master_from_id(id);
 
-	/* the master collection cannot be removed */
+	/* The master collection cannot be removed. */
 	if (sc == sc_master) {
 		return false;
 	}
 
-	/* unlink from the respective collection tree */
+	/* Unlink from the respective collection tree. */
 	if (!collection_remlink(sc_master, sc)) {
 		BLI_assert(false);
 	}
 
-	/* clear the collection items */
+	/* Clear the collection items. */
 	collection_free(sc, true);
 
 	/* check all layers that use this collection and clear them */
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
+	for (SceneLayer *sl = BKE_scene_layer_first_from_id(id); sl; sl = sl->next) {
 		layer_collection_remove(sl, &sl->layer_collections, sc);
 		sl->active_collection = 0;
 	}

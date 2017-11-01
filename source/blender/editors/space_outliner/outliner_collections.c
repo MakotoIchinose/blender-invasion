@@ -396,7 +396,7 @@ static TreeTraversalAction collection_delete_cb(TreeElement *te, void *customdat
 		 * when deleting multiple collections, so just do nothing */
 	}
 	else {
-		BKE_collection_remove(data->scene, scene_collection);
+		BKE_collection_remove(&data->scene->id, scene_collection);
 	}
 
 	return TRAVERSE_CONTINUE;

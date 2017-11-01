@@ -47,7 +47,7 @@ struct Scene;
 
 struct SceneCollection *BKE_collection_add(
         struct ID *id, struct SceneCollection *sc_parent, const int type, const char *name);
-bool BKE_collection_remove(struct Scene *scene, struct SceneCollection *sc);
+bool BKE_collection_remove(struct ID *id, struct SceneCollection *sc);
 void BKE_collection_copy_data(struct SceneCollection *sc_dst, struct SceneCollection *sc_src, const int flag);
 struct SceneCollection *BKE_collection_master(const struct Scene *scene);
 struct SceneCollection *BKE_collection_group_master(const struct Group *group);

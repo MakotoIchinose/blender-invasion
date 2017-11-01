@@ -274,7 +274,7 @@ void do_versions_after_linking_280(Main *main)
 				/* Cleanup */
 				for (int i = 0; i < 20; i++) {
 					if ((lay_used & (1 << i)) == 0) {
-						BKE_collection_remove(scene, collections[i]);
+						BKE_collection_remove(&scene->id, collections[i]);
 					}
 				}
 
