@@ -447,7 +447,6 @@ void BKE_collection_group_set(Scene *UNUSED(scene), SceneCollection *sc, Group *
 }
 
 /**
- * @brief collection_group_convert_layer_collections
  * \param lb: ListBase of LayerCollection elements.
  */
 static void collection_group_convert_layer_collections(const Group *group, SceneLayer *sl,
