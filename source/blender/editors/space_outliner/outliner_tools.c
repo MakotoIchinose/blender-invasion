@@ -825,6 +825,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 	bContext *C = (bContext *)Carg;
 	Scene *scene = CTX_data_scene(C);
 	LayerCollection *lc = te->directdata;
+	ID *id = te->store_elem->id;
 	SceneCollection *sc = lc->scene_collection;
 
 	if (event == OL_COLLECTION_OP_OBJECTS_ADD) {
@@ -849,7 +850,13 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 		te->store_elem->flag &= ~TSE_SELECTED;
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_NEW) {
-		BKE_collection_add(&scene->id, sc, COLLECTION_TYPE_NONE, NULL); /* XXX what if it's a group? */
+		if (GS(id->name) == ID_GR) {
+			BKE_collection_add(id, sc, COLLECTION_TYPE_GROUP_INTERNAL, NULL);
+		}
+		else {
+			BLI_assert(GS(id->name) == ID_SCE);
+			BKE_collection_add(id, sc, COLLECTION_TYPE_NONE, NULL);
+		}
 		WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 	}
 	else if (event == OL_COLLECTION_OP_COLLECTION_UNLINK) {
