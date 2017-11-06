@@ -5,8 +5,8 @@
 #include "intern/abc_exporter.h"
 
 extern "C" {
-#include "BKE_global.h"
 #include "BLI_utildefines.h"
+#include "BKE_library.h"
 #include "BLI_math.h"
 #include "DNA_scene_types.h"
 }
@@ -15,11 +15,11 @@ extern "C" {
 
 class TestableAbcExporter : public AbcExporter {
 public:
-	TestableAbcExporter(Main *bmain, Scene *scene, const char *filename, ExportSettings &settings)
-	    : AbcExporter(bmain, &eval_ctx, scene, filename, settings)
+	TestableAbcExporter(Main *bmain, EvaluationContext *eval_ctx,
+	                    Scene *scene, Depsgraph *depsgraph,
+	                    const char *filename, ExportSettings &settings)
+	    : AbcExporter(bmain, eval_ctx, scene, depsgraph, filename, settings)
 	{
-		/* TODO(sergey): Pass scene layer somehow? */
-		DEG_evaluation_context_init(&eval_ctx, DAG_EVAL_VIEWPORT);
 	}
 
 	void getShutterSamples(unsigned int nr_of_samples,
@@ -33,8 +33,6 @@ public:
 	                 std::set<double> &frames) {
 		AbcExporter::getFrameSet(nr_of_samples, frames);
 	}
-
-	EvaluationContext eval_ctx;
 };
 
 class AlembicExportTest : public testing::Test
@@ -42,8 +40,10 @@ class AlembicExportTest : public testing::Test
 protected:
 	ExportSettings settings;
 	Scene scene;
-	TestableAbcExporter *exporter;
 	EvaluationContext eval_ctx;
+	Depsgraph *depsgraph;
+	TestableAbcExporter *exporter;
+	Main *bmain;
 
 	virtual void SetUp()
 	{
@@ -54,18 +54,26 @@ protected:
 		scene.r.frs_sec = 50;
 		scene.r.frs_sec_base = 2;
 
+		bmain = BKE_main_new();
+
+		/* TODO(sergey): Pass scene layer somehow? */
+		DEG_evaluation_context_init(&eval_ctx, DAG_EVAL_VIEWPORT);
+		depsgraph = DEG_graph_new();
+
 		exporter = NULL;
 	}
 
 	virtual void TearDown()
 	{
+		BKE_main_free(bmain);
+		DEG_graph_free(depsgraph);
 		delete exporter;
 	}
 
 	// Call after setting up the settings.
 	void createExporter()
 	{
-		exporter = new TestableAbcExporter(G.main, &scene, "somefile.abc", settings);
+		exporter = new TestableAbcExporter(bmain, &eval_ctx, &scene, depsgraph, "somefile.abc", settings);
 	}
 };
 

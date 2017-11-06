@@ -111,6 +111,7 @@ struct DepsgraphNodeBuilder {
 	void begin_build(Main *bmain);
 
 	IDDepsNode *add_id_node(ID *id, bool do_tag = true);
+	IDDepsNode *find_id_node(ID *id);
 	TimeSourceDepsNode *add_time_source();
 
 	ComponentDepsNode *add_component_node(ID *id,
@@ -161,10 +162,17 @@ struct DepsgraphNodeBuilder {
 		LayerCollection *parent;
 	};
 
-	void build_scene(Main *bmain, Scene *scene);
-	void build_group(Scene *scene, Group *group);
-	void build_group(Scene *scene, Group *group, LayerCollectionState *state);
-	void build_object(Scene *scene, Object *ob);
+	void build_scene(Main *bmain,
+	                 Scene *scene,
+	                 eDepsNode_LinkedState_Type linked_state);
+	void build_group(Scene *scene,
+	                 Group *group);
+	void build_group(Scene *scene,
+	                 Group *group,
+	                 LayerCollectionState *state);
+	void build_object(Scene *scene,
+	                  Object *ob,
+	                  eDepsNode_LinkedState_Type linked_state);
 	void build_object_transform(Scene *scene, Object *ob);
 	void build_object_constraints(Scene *scene, Object *ob);
 	void build_pose_constraints(Scene *scene, Object *ob, bPoseChannel *pchan);

@@ -52,6 +52,7 @@ extern "C" {
 #include "BKE_collision.h"
 #include "BKE_effect.h"
 #include "BKE_modifier.h"
+#include "BKE_scene.h"
 } /* extern "C" */
 
 #include "DEG_depsgraph.h"
@@ -208,7 +209,7 @@ void DEG_graph_build_from_scene(Depsgraph *graph, Main *bmain, Scene *scene)
 	/* 1) Generate all the nodes in the graph first */
 	DEG::DepsgraphNodeBuilder node_builder(bmain, deg_graph);
 	node_builder.begin_build(bmain);
-	node_builder.build_scene(bmain, scene);
+	node_builder.build_scene(bmain, scene, DEG::DEG_ID_LINKED_DIRECTLY);
 
 	/* 2) Hook up relationships between operations - to determine evaluation
 	 *    order.
@@ -272,33 +273,14 @@ void DEG_graph_relations_update(Depsgraph *graph, Main *bmain, Scene *scene)
 void DEG_relations_tag_update(Main *bmain)
 {
 	DEG_DEBUG_PRINTF("%s: Tagging relations for update.\n", __func__);
-	for (Scene *scene = (Scene *)bmain->scene.first;
-	     scene != NULL;
-	     scene = (Scene *)scene->id.next)
-	{
-		if (scene->depsgraph_legacy != NULL) {
-			DEG_graph_tag_relations_update(scene->depsgraph_legacy);
+	LINKLIST_FOREACH(Scene *, scene, &bmain->scene) {
+		LINKLIST_FOREACH(SceneLayer *, scene_layer, &scene->render_layers) {
+			Depsgraph *depsgraph = (Depsgraph *)BKE_scene_get_depsgraph(scene, scene_layer);
+			if (depsgraph != NULL) {
+				DEG_graph_tag_relations_update(depsgraph);
+			}
 		}
 	}
-}
-
-/* Create new graph if didn't exist yet,
- * or update relations if graph was tagged for update.
- */
-void DEG_scene_relations_update(Main *bmain, Scene *scene)
-{
-	if (scene->depsgraph_legacy == NULL) {
-		/* Rebuild graph from scratch and exit. */
-		scene->depsgraph_legacy = DEG_graph_new();
-		DEG_graph_build_from_scene(scene->depsgraph_legacy, bmain, scene);
-		/* TODO(sergey): When we first create dependency graph we consider
-		 * it is first time became visible. This is true for viewports, but
-		 * will fail when render engines will start having their own graphs.
-		 */
-		DEG_graph_on_visible_update(bmain, scene->depsgraph_legacy);
-		return;
-	}
-	DEG_graph_relations_update(scene->depsgraph_legacy, bmain, scene);
 }
 
 void DEG_add_collision_relations(DepsNodeHandle *handle,

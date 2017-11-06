@@ -531,7 +531,7 @@ static void scene_render_name_get(const Scene *scene,
                                   const size_t max_size,
                                   char *render_name)
 {
-	if (ID_IS_LINKED_DATABLOCK(scene)) {
+	if (ID_IS_LINKED(scene)) {
 		BLI_snprintf(render_name, max_size, "%s %s",
 		             scene->id.lib->id.name, scene->id.name);
 	}
@@ -1152,7 +1152,7 @@ static void *do_part_thread(void *pa_v)
 		BLI_rw_mutex_unlock(&R.resultmutex);
 	}
 	
-	pa->status = PART_STATUS_READY;
+	pa->status = PART_STATUS_MERGED;
 	
 	return NULL;
 }
@@ -1258,7 +1258,7 @@ static int sort_and_queue_parts(Render *re, int minx, ThreadQueue *workqueue)
 	
 	/* find center of rendered parts, image center counts for 1 too */
 	for (pa = re->parts.first; pa; pa = pa->next) {
-		if (pa->status == PART_STATUS_READY) {
+		if (pa->status >= PART_STATUS_RENDERED) {
 			centx += BLI_rcti_cent_x(&pa->disprect);
 			centy += BLI_rcti_cent_y(&pa->disprect);
 			tot++;
@@ -1746,7 +1746,7 @@ static void do_render_blur_3d(Render *re)
 	
 	/* make sure motion blur changes get reset to current frame */
 	if ((re->r.scemode & (R_NO_FRAME_UPDATE|R_BUTS_PREVIEW|R_VIEWPORT_PREVIEW))==0) {
-		BKE_scene_update_for_newframe(re->eval_ctx, re->main, re->scene);
+		BKE_scene_graph_update_for_newframe(re->eval_ctx, re->depsgraph, re->main, re->scene);
 	}
 	
 	/* weak... the display callback wants an active renderlayer pointer... */
@@ -2633,7 +2633,7 @@ static void do_render_composite_fields_blur_3d(Render *re)
 				R.i.cfra = re->i.cfra;
 				
 				if (update_newframe)
-					BKE_scene_update_for_newframe(re->eval_ctx, re->main, re->scene);
+					BKE_scene_graph_update_for_newframe(re->eval_ctx, re->depsgraph, re->main, re->scene);
 				
 				if (re->r.scemode & R_FULL_SAMPLE)
 					do_merge_fullsample(re, ntree);
@@ -3144,6 +3144,7 @@ static void update_physics_cache(Render *re, Scene *scene, SceneLayer *scene_lay
 	baker.main = re->main;
 	baker.scene = scene;
 	baker.scene_layer = scene_layer;
+	baker.depsgraph = BKE_scene_get_depsgraph(scene, scene_layer);
 	baker.bake = 0;
 	baker.render = 1;
 	baker.anim_init = 1;
@@ -3698,7 +3699,7 @@ void RE_BlenderAnim(Render *re, Main *bmain, Scene *scene, Object *camera_overri
 
 			if (nfra != scene->r.cfra) {
 				/* Skip this frame, but update for physics and particles system. */
-				BKE_scene_update_for_newframe(re->eval_ctx, bmain, scene);
+				BKE_scene_graph_update_for_newframe(re->eval_ctx, re->depsgraph, bmain, scene);
 				continue;
 			}
 			else
