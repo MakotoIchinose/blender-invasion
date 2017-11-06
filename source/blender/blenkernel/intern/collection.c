@@ -420,48 +420,6 @@ bool BKE_collections_object_remove(Main *bmain, ID *id, Object *ob, const bool f
 	return removed;
 }
 
-#if 0
-static void collection_group_set_linking(ListBase *lb, const SceneCollection *sc)
-{
-	for (LayerCollection *lc = sl->layer_collections.first; lc; lc = lc->next) {
-		if (lc->scene_collection == sc) {
-			//XXX link
-		}
-		else {
-			collection_group_set_linking(&lc->layer_collections, sc);
-		}
-	}
-}
-#endif
-
-/**
- * Define a group for a group collection, and populate the collections accordingly
- *
- * \param group can be NULL
- */
-void BKE_collection_group_set(Scene *UNUSED(scene), SceneCollection *sc, Group *group)
-{
-	BLI_assert(sc->type == COLLECTION_TYPE_GROUP);
-	/* Add */
-	sc->group = group;
-}
-
-/**
- * \param lb: ListBase of LayerCollection elements.
- */
-static void collection_group_convert_layer_collections(const Group *group, SceneLayer *sl,
-                                                       const SceneCollection *sc, ListBase *lb)
-{
-	for (LayerCollection *lc = lb->first; lc; lc = lc->next) {
-		if (lc->scene_collection == sc) {
-			BKE_layer_collection_convert(sl, lc, COLLECTION_TYPE_GROUP);
-		}
-		else {
-			collection_group_convert_layer_collections(group, sl, sc, &lc->layer_collections);
-		}
-	}
-}
-
 static void layer_collection_sync(LayerCollection *lc_dst, LayerCollection *lc_src)
 {
 	lc_dst->flag = lc_src->flag;
@@ -496,7 +454,7 @@ static void collection_group_cleanup(Group *group)
 }
 
 /**
- * Convert a collection into a group
+ * Create a group from a collection
  *
  * Any SceneLayer that may have this the related SceneCollection linked is converted
  * to a Group Collection.
@@ -505,11 +463,6 @@ Group *BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *l
 {
 	SceneCollection *sc_dst, *sc_src = lc_src->scene_collection;
 	LayerCollection *lc_dst;
-
-	/* We can't convert group collections into groups. */
-	if (sc_src->type == COLLECTION_TYPE_GROUP) {
-		return NULL;
-	}
 
 	/* The master collection can't be converted. */
 	if (sc_src == BKE_collection_master(scene)) {
@@ -539,16 +492,6 @@ Group *BKE_collection_group_create(Main *bmain, Scene *scene, LayerCollection *l
 
 	lc_dst = BKE_collection_link(group->scene_layer, sc_dst);
 	layer_collection_sync(lc_dst, lc_src);
-
-	/* Convert existing collections into group collections. */
-	for (SceneLayer *sl = scene->render_layers.first; sl; sl = sl->next) {
-		collection_group_convert_layer_collections(group, sl, sc_src, &sl->layer_collections);
-	}
-
-	/* Convert original SceneCollection into a group collection. */
-	sc_src->type = COLLECTION_TYPE_GROUP;
-	BKE_collection_group_set(scene, sc_src, group);
-	collection_free(sc_src, true);
 
 	return group;
 }

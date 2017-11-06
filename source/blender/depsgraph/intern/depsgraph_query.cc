@@ -171,50 +171,6 @@ static bool deg_flush_base_flags_and_settings(
 	return true;
 }
 
-
-/**
- * \param groups: GSet of looped over groups.
- * \param lb: ListBase of LayerCollection elements.
- */
-static void populate_scene_layer_groups_doit(GSet *groups, ListBase *lb)
-{
-	LayerCollection *layer_collection;
-	for (layer_collection = (LayerCollection *) lb->first;
-	     layer_collection;
-	     layer_collection = layer_collection->next)
-	{
-		/* TODO: Disabled collections shouldn't even be evaluated by the Depsgraph (dfelinto/sergey). */
-		if (layer_collection->flag & COLLECTION_DISABLED) {
-			continue;
-		}
-
-		SceneCollection *scene_collection = layer_collection->scene_collection;
-		if (scene_collection->type == COLLECTION_TYPE_GROUP) {
-			Group *group = scene_collection->group;
-			if (group != NULL && !BLI_gset_haskey(groups, group)) {
-				BLI_gset_add(groups, group);
-			}
-		}
-		else {
-			/* Continue recursively. */
-			populate_scene_layer_groups_doit(groups, &layer_collection->layer_collections);
-		}
-	}
-
-}
-
-static void populate_scene_layer_groups(GSet **groups, SceneLayer *scene_layer)
-{
-	*groups = BLI_gset_ptr_new(__func__);
-
-	populate_scene_layer_groups_doit(*groups, &scene_layer->layer_collections);
-
-	if (BLI_gset_size(*groups) == 0) {
-		BLI_gset_free(*groups, NULL);
-		*groups = NULL;
-	}
-}
-
 static bool deg_objects_dupli_iterator_next(BLI_Iterator *iter)
 {
 	DEGObjectsIteratorData *data = (DEGObjectsIteratorData *)iter->data;
@@ -309,8 +265,6 @@ void DEG_objects_iterator_begin(BLI_Iterator *iter, DEGObjectsIteratorData *data
 	data->dupli_list = NULL;
 	data->dupli_object_next = NULL;
 	data->dupli_object_current = NULL;
-
-	populate_scene_layer_groups(&data->groups, DEG_get_evaluated_scene_layer(graph));
 
 	DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(graph);
 	BLI_ghashIterator_init(&data->gh_iter, deg_graph->id_hash);

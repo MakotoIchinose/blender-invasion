@@ -86,19 +86,6 @@ void DepsgraphRelationBuilder::build_layer_collection(Main *bmain,
 
 	SceneCollection *scene_collection = layer_collection->scene_collection;
 	switch (scene_collection->type) {
-		case COLLECTION_TYPE_GROUP:
-		{
-			Group *group = scene_collection->group;
-			if ((group != NULL) && !BLI_listbase_is_empty(&group->scene_layer->layer_collections)) {
-				build_group(bmain, scene, group, state);
-				/* Recurs into internal group layer collections. */
-				build_layer_collection(bmain,
-				                       scene,
-				                       (LayerCollection *)group->scene_layer->layer_collections.first,
-				                       state);
-			}
-			break;
-		}
 		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 			break;

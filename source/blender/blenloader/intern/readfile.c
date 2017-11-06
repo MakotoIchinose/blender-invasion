@@ -5780,8 +5780,6 @@ static void lib_link_scene_collection(FileData *fd, Library *lib, SceneCollectio
 		BLI_assert(link->data);
 	}
 
-	sc->group = newlibadr(fd, lib, sc->group);
-
 	for (SceneCollection *nsc = sc->scene_collections.first; nsc; nsc = nsc->next) {
 		lib_link_scene_collection(fd, lib, nsc);
 	}
@@ -9817,8 +9815,6 @@ static void expand_scene_collection(FileData *fd, Main *mainvar, SceneCollection
 	for (LinkData *link = sc->filter_objects.first; link; link = link->next) {
 		expand_doit(fd, mainvar, link->data);
 	}
-
-	expand_doit(fd, mainvar, sc->group);
 
 	for (SceneCollection *nsc= sc->scene_collections.first; nsc; nsc = nsc->next) {
 		expand_scene_collection(fd, mainvar, nsc);

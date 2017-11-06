@@ -1833,12 +1833,6 @@ static EnumPropertyItem prop_collection_op_group_internal_types[] = {
 	{0, NULL, 0, NULL, NULL}
 };
 
-static EnumPropertyItem prop_collection_op_group_types[] = {
-	{OL_COLLECTION_OP_COLLECTION_UNLINK, "COLLECTION_UNLINK", ICON_UNLINKED, "Unlink", "Unlink collection"},
-	{OL_COLLECTION_OP_COLLECTION_DEL, "COLLECTION_DEL", ICON_X, "Delete Collection", "Delete the collection"},
-	{0, NULL, 0, NULL, NULL}
-};
-
 static const EnumPropertyItem *outliner_collection_operation_type_itemf(
         bContext *C, PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
 {
@@ -1849,15 +1843,7 @@ static const EnumPropertyItem *outliner_collection_operation_type_itemf(
 		case SO_GROUPS:
 			return prop_collection_op_group_internal_types;
 		case SO_ACT_LAYER:
-		{
-			SceneCollection *scene_collection = CTX_data_scene_collection(C);
-			switch (scene_collection->type) {
-				case COLLECTION_TYPE_NONE:
-					return prop_collection_op_none_types;
-				case COLLECTION_TYPE_GROUP:
-					return prop_collection_op_group_types;
-			}
-		}
+			return prop_collection_op_none_types;
 	}
 	return NULL;
 }

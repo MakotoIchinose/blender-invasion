@@ -261,29 +261,15 @@ void OUTLINER_OT_collection_unlink(wmOperatorType *ot)
 /**********************************************************************************/
 /* Add new collection. */
 
-static int collection_new_exec(bContext *C, wmOperator *op)
+static int collection_new_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	SceneLayer *scene_layer = CTX_data_scene_layer(C);
 	SceneCollection *scene_collection;
-	Group *group;
 	const char *name = NULL;
 
-	const int collection_type = RNA_enum_get(op->ptr, "type");
-	if (collection_type == COLLECTION_TYPE_GROUP) {
-		group = BLI_findlink(&bmain->group, RNA_enum_get(op->ptr, "group"));
-		name = group->id.name + 2;
-	}
-
-	scene_collection = BKE_collection_add(&scene->id, NULL, collection_type, name);
-
-	if (collection_type == COLLECTION_TYPE_GROUP) {
-		BKE_collection_group_set(scene, scene_collection, group);
-		/* TODO(sergey): Use proper flag for tagging here. */
-		DEG_id_tag_update(&scene->id, 0);
-	}
-
+	scene_collection = BKE_collection_add(&scene->id, NULL, COLLECTION_TYPE_NONE, name);
 	BKE_collection_link(scene_layer, scene_collection);
 
 	DEG_relations_tag_update(bmain);
@@ -291,50 +277,18 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 	return OPERATOR_FINISHED;
 }
 
-static int collection_new_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-	/* A simple hidden functionality to help debugging
-	 * before we have a UI for that. */
-	PropertyRNA *prop = RNA_struct_find_property(op->ptr, "type");
-	if (event->shift && !RNA_property_is_set(op->ptr, prop)) {
-		RNA_property_enum_set(op->ptr, prop,  COLLECTION_TYPE_GROUP);
-	}
-
-	const int collection_type = RNA_enum_get(op->ptr, "type");
-	switch (collection_type) {
-		case COLLECTION_TYPE_GROUP:
-			return WM_enum_search_invoke(C, op, event);
-		case COLLECTION_TYPE_GROUP_INTERNAL:
-		case COLLECTION_TYPE_NONE:
-		default:
-			return collection_new_exec(C, op);
-	}
-}
-
 void OUTLINER_OT_collection_new(wmOperatorType *ot)
 {
-	PropertyRNA *prop;
-
 	/* identifiers */
 	ot->name = "New Collection";
 	ot->idname = "OUTLINER_OT_collection_new";
-	ot->description = "Add a new collection to the scene, and link it to the active layer (Shift + Click for group)";
+	ot->description = "Add a new collection to the scene";
 
 	/* api callbacks */
 	ot->exec = collection_new_exec;
-	ot->invoke = collection_new_invoke;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-	/* properties */
-	prop = RNA_def_enum(ot->srna, "type", rna_enum_collection_type_items,
-	                    COLLECTION_TYPE_NONE, "Type", "Type of collection to add");
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_enum(ot->srna, "group", DummyRNA_NULL_items, 0, "Group", "The group to use for the group collections");
-	RNA_def_enum_funcs(prop, RNA_group_itemf);
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	ot->prop = prop;
 }
 
 /**********************************************************************************/

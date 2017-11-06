@@ -80,7 +80,6 @@ void BKE_scene_layer_copy_data(struct SceneLayer *sl_dst, struct SceneLayer *sl_
                                const int flag);
 
 void BKE_layer_collection_free(struct SceneLayer *sl, struct LayerCollection *lc);
-void BKE_layer_collection_convert(struct SceneLayer *sl, struct LayerCollection *lc, const int type);
 
 struct LayerCollection *BKE_layer_collection_get_active(struct SceneLayer *sl);
 struct LayerCollection *BKE_layer_collection_get_active_ensure(struct Scene *scene, struct SceneLayer *sl);

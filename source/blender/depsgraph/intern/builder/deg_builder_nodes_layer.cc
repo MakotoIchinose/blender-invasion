@@ -82,20 +82,6 @@ void DepsgraphNodeBuilder::build_layer_collection(Scene *scene,
 
 	SceneCollection *scene_collection = layer_collection->scene_collection;
 	switch (scene_collection->type) {
-		case COLLECTION_TYPE_GROUP:
-		{
-			Group *group = scene_collection->group;
-			if ((group != NULL) && !BLI_listbase_is_empty(&group->scene_layer->layer_collections)) {
-				build_group(scene, scene_collection->group, state);
-				/* Recurs into internal group layer collections. */
-				state->parent = layer_collection;
-				build_layer_collection(scene,
-				                       (LayerCollection *)group->scene_layer->layer_collections.first,
-				                       state);
-				state->parent = parent;
-			}
-			break;
-		}
 		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 			/* Recurs into nested layer collections. */

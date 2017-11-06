@@ -471,24 +471,6 @@ void BKE_layer_collection_free(SceneLayer *sl, LayerCollection *lc)
 	layer_collection_free(sl, lc);
 }
 
-/**
- * Convert a layer collection to a new type
- *
- * \param lc: LayerCollection to be converted.
- * \param type: New type for the LayerCollection->scene_collection.
- */
-void BKE_layer_collection_convert(SceneLayer *sl, LayerCollection *lc, const int type)
-{
-	/* Support group convertion only at the moment. */
-	BLI_assert(type == COLLECTION_TYPE_GROUP);
-	layer_collection_free(sl, lc);
-
-	/* Keep the properties around for collection evaluation. */
-	IDPropertyTemplate val = {0};
-	lc->properties = IDP_New(IDP_GROUP, &val, ROOT_PROP);
-	lc->properties_evaluated = NULL;
-}
-
 /* LayerCollection */
 
 /**

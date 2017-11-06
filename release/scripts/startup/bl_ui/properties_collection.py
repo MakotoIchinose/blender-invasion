@@ -43,24 +43,6 @@ class COLLECTION_PT_context_collection(CollectionButtonsPanel, Panel):
             layout.prop(collection, "name", text="", icon='COLLAPSEMENU')
 
 
-class COLLECTION_PT_collection(CollectionButtonsPanel, Panel):
-    bl_label = "Collection"
-
-    @classmethod
-    def poll(cls, context):
-        collection = context.layer_collection
-        return collection and collection.collection.type == 'GROUP'
-
-    def draw(self, context):
-        layout = self.layout
-
-        layer_collection = context.layer_collection
-        scene_collection = layer_collection.collection
-
-        if scene_collection.type == 'GROUP':
-            layout.prop(scene_collection, "group")
-
-
 class COLLECTION_PT_clay_settings(CollectionButtonsPanel, Panel):
     bl_label = "Render Settings"
     COMPAT_ENGINES = {'BLENDER_CLAY'}
@@ -171,7 +153,6 @@ class COLLECTION_PT_paint_vertex_mode_settings(CollectionButtonsPanel, Panel):
 
 classes = (
     COLLECTION_PT_context_collection,
-    COLLECTION_PT_collection,
     COLLECTION_PT_clay_settings,
     COLLECTION_PT_object_mode_settings,
     COLLECTION_PT_edit_mode_settings,

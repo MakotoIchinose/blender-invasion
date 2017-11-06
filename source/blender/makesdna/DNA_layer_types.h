@@ -98,7 +98,6 @@ typedef struct SceneCollection {
 	ListBase objects;           /* (Object *)LinkData->data */
 	ListBase filter_objects;    /* (Object *)LinkData->data */
 	ListBase scene_collections; /* nested collections */
-	struct Group *group;
 } SceneCollection;
 
 /* Base->flag */
@@ -127,8 +126,7 @@ enum {
 /* SceneCollection->type */
 enum {
 	COLLECTION_TYPE_NONE =  0,
-	COLLECTION_TYPE_GROUP = 1,
-	COLLECTION_TYPE_GROUP_INTERNAL = 2,
+	COLLECTION_TYPE_GROUP_INTERNAL = 1,
 };
 
 /* *************************************************************** */

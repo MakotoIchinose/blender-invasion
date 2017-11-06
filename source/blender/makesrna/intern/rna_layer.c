@@ -56,7 +56,6 @@ const EnumPropertyItem rna_enum_layer_collection_mode_settings_type_items[] = {
 
 const EnumPropertyItem rna_enum_collection_type_items[] = {
 	{COLLECTION_TYPE_NONE, "NONE", 0, "Normal", ""},
-	{COLLECTION_TYPE_GROUP, "GROUP", 0, "Group", ""},
 	{COLLECTION_TYPE_GROUP_INTERNAL, "GROUP_INTERNAL", 0, "Group Internal", ""},
 	{0, NULL, 0, NULL, NULL}
 };
@@ -81,8 +80,6 @@ static StructRNA *rna_SceneCollection_refine(PointerRNA *ptr)
 {
 	SceneCollection *scene_collection = (SceneCollection *)ptr->data;
 	switch (scene_collection->type) {
-		case COLLECTION_TYPE_GROUP:
-			return &RNA_SceneCollectionGroup;
 		case COLLECTION_TYPE_GROUP_INTERNAL:
 		case COLLECTION_TYPE_NONE:
 			return &RNA_SceneCollection;
@@ -91,11 +88,6 @@ static StructRNA *rna_SceneCollection_refine(PointerRNA *ptr)
 			break;
 	}
 	return &RNA_SceneCollection;
-}
-
-static void rna_SceneCollectionGroup_group_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
-{
-	DEG_relations_tag_update(bmain);
 }
 
 static void rna_SceneCollection_name_set(PointerRNA *ptr, const char *value)
@@ -749,12 +741,6 @@ static Group *rna_LayerCollection_create_group(
 	Scene *scene = (Scene *)id;
 	SceneCollection *scene_collection = layer_collection->scene_collection;
 
-	/* We can't convert group collections into groups. */
-	if (scene_collection->type == COLLECTION_TYPE_GROUP) {
-		BKE_reportf(reports, RPT_ERROR, "Collection %s is already a group collection", scene_collection->name);
-		return NULL;
-	}
-
 	/* The master collection can't be converted. */
 	if (scene_collection == BKE_collection_master(scene)) {
 		BKE_report(reports, RPT_ERROR, "The master collection can't be converted to group");
@@ -1080,21 +1066,6 @@ static void rna_def_collection_objects(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }
 
-static void rna_def_scene_collection_group(BlenderRNA *brna)
-{
-	StructRNA *srna;
-	PropertyRNA *prop;
-
-	srna = RNA_def_struct(brna, "SceneCollectionGroup", "SceneCollection");
-	RNA_def_struct_sdna(srna, "SceneCollection");
-	RNA_def_struct_ui_text(srna, "Scene Collection Group", "");
-
-	prop = RNA_def_property(srna, "group", PROP_POINTER, PROP_NONE);
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Group", "Group for this collection");
-	RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT,  "rna_SceneCollectionGroup_group_update");
-}
-
 static void rna_def_scene_collection(BlenderRNA *brna)
 {
 	StructRNA *srna;
@@ -1163,8 +1134,6 @@ static void rna_def_scene_collection(BlenderRNA *brna)
 	parm = RNA_def_pointer(func, "sc_dst", "SceneCollection", "Collection", "Collection to insert into");
 	parm = RNA_def_boolean(func, "result", false, "Result", "Whether the operation succeded");
 	RNA_def_function_return(func, parm);
-
-	rna_def_scene_collection_group(brna);
 }
 
 static void rna_def_layer_collection_override(BlenderRNA *brna)
