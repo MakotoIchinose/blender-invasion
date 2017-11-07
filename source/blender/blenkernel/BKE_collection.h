@@ -51,6 +51,7 @@ bool BKE_collection_remove(struct ID *id, struct SceneCollection *sc);
 void BKE_collection_copy_data(struct SceneCollection *sc_dst, struct SceneCollection *sc_src, const int flag);
 struct SceneCollection *BKE_collection_master(const struct Scene *scene);
 struct SceneCollection *BKE_collection_group_master(const struct Group *group);
+struct SceneCollection *BKE_collection_master_from_id(const struct ID *id);
 void BKE_collection_rename(const struct Scene *scene, struct SceneCollection *sc, const char *name);
 void BKE_collection_master_free(struct Scene *scene, const bool do_id_user);
 void BKE_collection_master_group_free(struct Group *group);
@@ -58,7 +59,7 @@ bool BKE_collection_object_add(const struct ID *id, struct SceneCollection *sc, 
 void BKE_collection_object_add_from(struct Scene *scene, struct Object *ob_src, struct Object *ob_dst);
 bool BKE_collection_object_remove(struct Main *bmain, struct ID *id, struct SceneCollection *sc, struct Object *object, const bool free_us);
 bool BKE_collections_object_remove(struct Main *bmain, struct ID *id, struct Object *object, const bool free_us);
-void BKE_collection_object_move(struct Scene *scene, struct SceneCollection *sc_dst, struct SceneCollection *sc_src, struct Object *ob);
+void BKE_collection_object_move(struct ID *id, struct SceneCollection *sc_dst, struct SceneCollection *sc_src, struct Object *ob);
 
 void BKE_collection_group_set(struct Scene *scene, struct SceneCollection *sc, struct Group *group);
 struct Group *BKE_collection_group_create(struct Main *bmain, struct Scene *scene, struct LayerCollection *lc);

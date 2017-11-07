@@ -394,14 +394,14 @@ static void outliner_add_scene_contents(SpaceOops *soops, ListBase *lb, Scene *s
 }
 
 static void outliner_object_reorder(
-        Main *UNUSED(bmain), ID *id,
+        Main *UNUSED(bmain),
         TreeElement *insert_element, TreeElement *insert_handle, TreeElementInsertType action)
 {
-	Scene *scene = (Scene *)id;
 	TreeStoreElem *tselem_insert = TREESTORE(insert_element);
 	Object *ob = (Object *)tselem_insert->id;
 	SceneCollection *sc = outliner_scene_collection_from_tree_element(insert_handle);
 	SceneCollection *sc_ob_parent = NULL;
+	ID *id = insert_handle->store_elem->id;
 
 	BLI_assert(action == TE_INSERT_INTO);
 	UNUSED_VARS_NDEBUG(action);
@@ -416,13 +416,13 @@ static void outliner_object_reorder(
 		}
 	}
 	else {
-		sc_ob_parent = BKE_collection_master(scene);
+		sc_ob_parent = BKE_collection_master_from_id(id);
 	}
-	BKE_collection_object_move(scene, sc, sc_ob_parent, ob);
+	BKE_collection_object_move(id, sc, sc_ob_parent, ob);
 }
 
 static bool outliner_object_reorder_poll(
-        const ID *UNUSED(id), const TreeElement *insert_element,
+        const TreeElement *insert_element,
         TreeElement **io_insert_handle, TreeElementInsertType *io_action)
 {
 	TreeStoreElem *tselem_handle = TREESTORE(*io_insert_handle);
@@ -1363,7 +1363,7 @@ static void outliner_add_orphaned_datablocks(Main *mainvar, SpaceOops *soops)
 }
 
 static void outliner_layer_collections_reorder(
-        Main *bmain, ID *UNUSED(id),
+        Main *bmain,
         TreeElement *insert_element, TreeElement *insert_handle, TreeElementInsertType action)
 {
 	LayerCollection *lc_insert = insert_element->directdata;
@@ -1386,7 +1386,7 @@ static void outliner_layer_collections_reorder(
 	DEG_relations_tag_update(bmain);
 }
 static bool outliner_layer_collections_reorder_poll(
-        const ID *UNUSED(id), const TreeElement *insert_element,
+        const TreeElement *insert_element,
         TreeElement **io_insert_handle, TreeElementInsertType *UNUSED(io_action))
 {
 	const TreeStoreElem *tselem_handle = TREESTORE(*io_insert_handle);
@@ -1424,13 +1424,15 @@ static void outliner_add_collections_act_layer(SpaceOops *soops, Scene *scene, S
 }
 
 static void outliner_scene_collections_reorder(
-        Main *bmain, ID *id,
+        Main *bmain,
         TreeElement *insert_element, TreeElement *insert_handle, TreeElementInsertType action)
 {
 	SceneCollection *sc_insert = insert_element->directdata;
 	SceneCollection *sc_handle = insert_handle->directdata;
+	ID *id = insert_handle->store_elem->id;
+	BLI_assert(id == insert_element->store_elem->id);
 
-	BLI_assert((action == TE_INSERT_INTO) || (sc_handle != BKE_collection_master((Scene *)id)));
+	BLI_assert((action == TE_INSERT_INTO) || (sc_handle != BKE_collection_master_from_id(id)));
 	if (action == TE_INSERT_BEFORE) {
 		BKE_collection_move_above(id, sc_handle, sc_insert);
 	}
@@ -1447,16 +1449,22 @@ static void outliner_scene_collections_reorder(
 	DEG_relations_tag_update(bmain);
 }
 static bool outliner_scene_collections_reorder_poll(
-        const ID *id, const TreeElement *UNUSED(insert_element),
+        const TreeElement *insert_element,
         TreeElement **io_insert_handle, TreeElementInsertType *io_action)
 {
 	const TreeStoreElem *tselem_handle = TREESTORE(*io_insert_handle);
-	SceneCollection *sc_master = BKE_collection_master((Scene *)id);
-	SceneCollection *sc_handle = (*io_insert_handle)->directdata;
+	ID *id = tselem_handle->id;
+
+	if (id != insert_element->store_elem->id) {
+		return false;
+	}
 
 	if (!ELEM(tselem_handle->type, TSE_SCENE_COLLECTION)) {
 		return false;
 	}
+
+	SceneCollection *sc_master = BKE_collection_master_from_id(id);
+	SceneCollection *sc_handle = (*io_insert_handle)->directdata;
 
 	if (sc_handle == sc_master) {
 		/* exception: Can't insert before/after master selection, has to be one of its childs */

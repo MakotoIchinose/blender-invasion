@@ -251,6 +251,11 @@ static SceneCollection *master_collection_from_id(const ID *id)
 	}
 }
 
+SceneCollection *BKE_collection_master_from_id(const ID *id)
+{
+	return master_collection_from_id(id);
+}
+
 struct UniqueNameCheckData {
 	ListBase *lb;
 	SceneCollection *lookup_sc;
@@ -396,10 +401,10 @@ bool BKE_collection_object_remove(Main *bmain, ID *id, SceneCollection *sc, Obje
 /**
  * Move object from a collection into another
  */
-void BKE_collection_object_move(Scene *scene, SceneCollection *sc_dst, SceneCollection *sc_src, Object *ob)
+void BKE_collection_object_move(ID *id, SceneCollection *sc_dst, SceneCollection *sc_src, Object *ob)
 {
-	BKE_collection_object_add(&scene->id, sc_dst, ob);
-	BKE_collection_object_remove(NULL, &scene->id, sc_src, ob, false);
+	BKE_collection_object_add(id, sc_dst, ob);
+	BKE_collection_object_remove(NULL, id, sc_src, ob, false);
 }
 
 /**
