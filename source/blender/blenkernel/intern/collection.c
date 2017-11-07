@@ -313,6 +313,9 @@ static void collection_object_add(const ID *id, SceneCollection *sc, Object *ob)
 	}
 	else {
 		BLI_assert(GS(id->name) == ID_GR);
+		if ((ob->flag & OB_FROMGROUP) == 0) {
+			ob->flag |= OB_FROMGROUP;
+		}
 	}
 
 	BKE_layer_sync_object_link(id, sc, ob);

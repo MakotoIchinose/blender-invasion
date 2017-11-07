@@ -831,7 +831,7 @@ static void collection_cb(int event, TreeElement *te, TreeStoreElem *UNUSED(tsel
 	if (event == OL_COLLECTION_OP_OBJECTS_ADD) {
 		CTX_DATA_BEGIN (C, Object *, ob, selected_objects)
 		{
-			BKE_collection_object_add(&scene->id, sc, ob);
+			BKE_collection_object_add(id, sc, ob);
 		}
 		CTX_DATA_END;
 
@@ -1828,6 +1828,7 @@ static EnumPropertyItem prop_collection_op_none_types[] = {
 };
 
 static EnumPropertyItem prop_collection_op_group_internal_types[] = {
+	{OL_COLLECTION_OP_OBJECTS_ADD, "OBJECTS_ADD", ICON_ZOOMIN, "Add Selected", "Add selected objects to collection"},
 	{OL_COLLECTION_OP_COLLECTION_NEW, "COLLECTION_NEW", ICON_NEW, "New Collection", "Add a new nested collection"},
 	{OL_COLLECTION_OP_COLLECTION_DEL, "COLLECTION_DEL", ICON_X, "Delete Collection", "Delete the collection"},
 	{0, NULL, 0, NULL, NULL}
