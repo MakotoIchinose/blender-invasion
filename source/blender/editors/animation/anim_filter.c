@@ -382,7 +382,7 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
 		ac->markers = ED_context_get_markers(C);
 	}
 	ac->view_layer = CTX_data_view_layer(C);
-	ac->obact = (ac->view_layer->basact) ? ac->view_layer->basact->object : NULL;
+	ac->obact = CTX_data_active_object(C);
 	ac->sa = sa;
 	ac->ar = ar;
 	ac->sl = sl;

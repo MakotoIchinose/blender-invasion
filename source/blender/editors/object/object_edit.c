@@ -242,9 +242,10 @@ void ED_object_editmode_exit(bContext *C, int flag)
 	if (flag & EM_WAITCURSOR) waitcursor(1);
 
 	if (ED_object_editmode_load_ex(CTX_data_main(C), obedit, freedata) == false) {
+		const Object *ob_active = CTX_data_active_object(C);
 		/* in rare cases (background mode) its possible active object
 		 * is flagged for editmode, without 'obedit' being set [#35489] */
-		if (UNLIKELY(view_layer->basact && (view_layer->basact->object->mode & OB_MODE_EDIT))) {
+		if (UNLIKELY(ob_active && ob_active->mode & OB_MODE_EDIT)) {
 			view_layer->basact->object->mode &= ~OB_MODE_EDIT;
 		}
 		if (flag & EM_WAITCURSOR) waitcursor(0);
@@ -290,7 +291,6 @@ void ED_object_editmode_exit(bContext *C, int flag)
 void ED_object_editmode_enter(bContext *C, int flag)
 {
 	Scene *scene = CTX_data_scene(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Object *ob;
 	bool ok = false;
 
@@ -302,7 +302,7 @@ void ED_object_editmode_enter(bContext *C, int flag)
 		if (ob == NULL) return;
 	}
 	else {
-		ob = view_layer->basact->object;
+		ob = CTX_data_active_object(C);
 	}
 
 	if (ELEM(NULL, ob, ob->data)) return;

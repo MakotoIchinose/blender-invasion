@@ -429,6 +429,7 @@ Object *ED_object_add_type(
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Base *base;
 	Object *ob;
 
 	/* for as long scene has editmode... */
@@ -437,11 +438,12 @@ Object *ED_object_add_type(
 
 	/* deselects all, sets scene->basact */
 	ob = BKE_object_add(bmain, scene, view_layer, type, name);
+	base = CTX_data_active_base(C);
 	/* editor level activate, notifiers */
-	ED_object_base_activate(C, view_layer->basact);
+	ED_object_base_activate(C, base);
 
 	/* more editor stuff */
-	ED_object_base_init_transform(C, view_layer->basact, loc, rot);
+	ED_object_base_init_transform(C, base, loc, rot);
 
 	/* Ignore collisions by default for non-mesh objects */
 	if (type != OB_MESH) {

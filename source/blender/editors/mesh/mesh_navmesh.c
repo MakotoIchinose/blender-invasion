@@ -466,7 +466,7 @@ static Object *createRepresentation(bContext *C, struct recast_polyMesh *pmesh, 
 static int navmesh_create_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Base *active_base = CTX_data_active_base(C);
 	LinkNode *obs = NULL;
 	Base *navmeshBase = NULL;
 
@@ -474,7 +474,7 @@ static int navmesh_create_exec(bContext *C, wmOperator *op)
 	{
 		if (base->object->type == OB_MESH) {
 			if (base->object->body_type == OB_BODY_TYPE_NAVMESH) {
-				if (!navmeshBase || base == view_layer->basact) {
+				if (!navmeshBase || base == active_base) {
 					navmeshBase = base;
 				}
 			}

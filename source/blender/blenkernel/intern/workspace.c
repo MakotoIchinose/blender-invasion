@@ -405,6 +405,12 @@ Base *BKE_workspace_active_base_get(const WorkSpace *workspace)
 	return workspace->view_layer->basact;
 }
 
+Object *BKE_workspace_active_object_get(const WorkSpace *workspace)
+{
+	Base *active_base = BKE_workspace_active_base_get(workspace);
+	return active_base ? active_base->object : NULL;
+}
+
 ListBase *BKE_workspace_transform_orientations_get(WorkSpace *workspace)
 {
 	return &workspace->transform_orientations;

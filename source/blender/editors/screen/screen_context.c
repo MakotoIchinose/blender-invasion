@@ -91,7 +91,7 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 	WorkSpace *workspace = BKE_workspace_active_get(win->workspace_hook);
 	ViewLayer *view_layer = BKE_view_layer_from_workspace_get(scene, workspace);
 	Object *obedit = scene->obedit;
-	Object *obact = view_layer->basact ? view_layer->basact->object : NULL;
+	Object *obact = BKE_workspace_active_object_get(workspace);
 
 	if (CTX_data_dir(member)) {
 		CTX_data_dir_set(result, screen_context_dir);
@@ -346,8 +346,11 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 		}
 	}
 	else if (CTX_data_equals(member, "active_base")) {
-		if (view_layer->basact)
-			CTX_data_pointer_set(result, &scene->id, &RNA_ObjectBase, view_layer->basact);
+		Base *basact = BKE_workspace_active_base_get(workspace);
+
+		if (basact) {
+			CTX_data_pointer_set(result, &scene->id, &RNA_ObjectBase, basact);
+		}
 
 		return 1;
 	}

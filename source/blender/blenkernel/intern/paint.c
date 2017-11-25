@@ -189,15 +189,11 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
 Paint *BKE_paint_get_active_from_context(const bContext *C)
 {
 	Scene *sce = CTX_data_scene(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 	SpaceImage *sima;
 
-	if (sce && view_layer) {
+	if (sce) {
 		ToolSettings *ts = sce->toolsettings;
-		Object *obact = NULL;
-
-		if (view_layer->basact && view_layer->basact->object)
-			obact = view_layer->basact->object;
+		Object *obact = CTX_data_active_object(C);
 
 		if ((sima = CTX_wm_space_image(C)) != NULL) {
 			if (obact && obact->mode == OB_MODE_EDIT) {
@@ -240,15 +236,11 @@ Paint *BKE_paint_get_active_from_context(const bContext *C)
 ePaintMode BKE_paintmode_get_active_from_context(const bContext *C)
 {
 	Scene *sce = CTX_data_scene(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 	SpaceImage *sima;
 
-	if (sce && view_layer) {
+	if (sce) {
 		ToolSettings *ts = sce->toolsettings;
-		Object *obact = NULL;
-
-		if (view_layer->basact && view_layer->basact->object)
-			obact = view_layer->basact->object;
+		Object *obact = CTX_data_active_object(C);
 
 		if ((sima = CTX_wm_space_image(C)) != NULL) {
 			if (obact && obact->mode == OB_MODE_EDIT) {

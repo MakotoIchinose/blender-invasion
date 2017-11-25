@@ -437,7 +437,7 @@ static void txt_add_object(bContext *C, TextLine *firstline, int totline, const 
 	CTX_data_eval_ctx(C, &eval_ctx);
 
 	obedit = BKE_object_add(bmain, scene, view_layer, OB_FONT, NULL);
-	base = view_layer->basact;
+	base = CTX_data_active_base(C);
 
 	/* seems to assume view align ? TODO - look into this, could be an operator option */
 	ED_object_base_init_transform(C, base, NULL, rot);

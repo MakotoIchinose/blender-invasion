@@ -102,7 +102,8 @@ enum eObjectMode BKE_workspace_object_mode_get(const struct WorkSpace *workspace
 #ifdef USE_WORKSPACE_MODE
 void            BKE_workspace_object_mode_set(struct WorkSpace *workspace, const enum eObjectMode mode) SETTER_ATTRS;
 #endif
-struct Base *BKE_workspace_active_base_get(const struct WorkSpace *workspace);
+struct Base *BKE_workspace_active_base_get(const struct WorkSpace *workspace) GETTER_ATTRS;
+struct Object *BKE_workspace_active_object_get(const struct WorkSpace *workspace);
 struct ListBase *BKE_workspace_transform_orientations_get(struct WorkSpace *workspace) GETTER_ATTRS;
 struct ViewLayer *BKE_workspace_view_layer_get(const struct WorkSpace *workspace) GETTER_ATTRS;
 void               BKE_workspace_view_layer_set(struct WorkSpace *workspace, struct ViewLayer *layer) SETTER_ATTRS;
