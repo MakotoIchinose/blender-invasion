@@ -56,6 +56,7 @@
 #include "BKE_scene.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
+#include "BKE_workspace.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -448,7 +449,9 @@ static int hook_op_edit_poll(bContext *C)
 	return 0;
 }
 
-static Object *add_hook_object_new(Main *bmain, Scene *scene, ViewLayer *view_layer, Object *obedit)
+static Object *add_hook_object_new(
+        Main *bmain, Scene *scene, ViewLayer *view_layer,
+        WorkSpace *workspace, Object *obedit)
 {
 	Base *base, *basedit;
 	Object *ob;
@@ -462,7 +465,7 @@ static Object *add_hook_object_new(Main *bmain, Scene *scene, ViewLayer *view_la
 	
 	/* icky, BKE_object_add sets new base as active.
 	 * so set it back to the original edit object */
-	view_layer->basact = basedit;
+	BKE_workspace_active_base_set(workspace, basedit);
 
 	return ob;
 }

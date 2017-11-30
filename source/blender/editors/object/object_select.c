@@ -118,14 +118,13 @@ void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
  */
 void ED_object_base_activate(bContext *C, Base *base)
 {
-	ViewLayer *view_layer = CTX_data_view_layer(C);
-	view_layer->basact = base;
+	WorkSpace *workspace = CTX_wm_workspace(C);
+
+	BKE_workspace_active_base_set(workspace, base);
 
 	if (base) {
-#ifdef USE_WORKSPACE_MODE
-		WorkSpace *workspace = CTX_wm_workspace(C);
-		BKE_workspace_object_mode_set(workspace, base->object->mode);
-#endif
+		/* TODO */
+		ViewLayer *view_layer = CTX_data_view_layer(C);
 		WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, view_layer);
 	}
 	else {

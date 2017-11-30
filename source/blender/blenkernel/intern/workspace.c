@@ -404,6 +404,10 @@ Base *BKE_workspace_active_base_get(const WorkSpace *workspace)
 {
 	return workspace->view_layer->basact;
 }
+void BKE_workspace_active_base_set(WorkSpace *workspace, Base *base)
+{
+	workspace->view_layer->basact = base;
+}
 
 Object *BKE_workspace_active_object_get(const WorkSpace *workspace)
 {
