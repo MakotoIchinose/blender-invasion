@@ -76,10 +76,10 @@ struct SnapObjectParams {
 
 typedef struct SnapObjectContext SnapObjectContext;
 SnapObjectContext *ED_transform_snap_object_context_create(
-        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, struct RenderEngineType *engine,
+        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, struct RenderEngineType *engine_type,
         struct Object *active_object, int flag);
 SnapObjectContext *ED_transform_snap_object_context_create_view3d(
-        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, struct RenderEngineType *engine,
+        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, struct RenderEngineType *engine_type,
         struct Object *active_object, int flag,
         /* extra args for view3d */
         const struct ARegion *ar, const struct View3D *v3d);

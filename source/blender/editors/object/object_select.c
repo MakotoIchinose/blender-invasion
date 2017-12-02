@@ -120,7 +120,7 @@ void ED_object_base_activate(bContext *C, Base *base)
 {
 	WorkSpace *workspace = CTX_wm_workspace(C);
 
-	BKE_workspace_active_base_set(workspace, base);
+	BKE_workspace_active_base_set(workspace, CTX_data_scene(C), base);
 
 	if (base) {
 		/* TODO */

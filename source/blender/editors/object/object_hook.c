@@ -465,7 +465,7 @@ static Object *add_hook_object_new(
 	
 	/* icky, BKE_object_add sets new base as active.
 	 * so set it back to the original edit object */
-	BKE_workspace_active_base_set(workspace, basedit);
+	BKE_workspace_active_base_set(workspace, scene, basedit);
 
 	return ob;
 }

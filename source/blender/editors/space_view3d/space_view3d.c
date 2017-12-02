@@ -1311,7 +1311,7 @@ static int view3d_context(const bContext *C, const char *member, bContextDataRes
 	}
 	else if (CTX_data_equals(member, "active_base")) {
 		const WorkSpace *workspace = CTX_wm_workspace(C);
-		Base *active_base = BKE_workspace_active_base_get(workspace);
+		Base *active_base = BKE_workspace_active_base_get(workspace, CTX_data_scene(C));
 
 		if (active_base) {
 			Object *ob = active_base->object;
@@ -1326,7 +1326,7 @@ static int view3d_context(const bContext *C, const char *member, bContextDataRes
 	}
 	else if (CTX_data_equals(member, "active_object")) {
 		const WorkSpace *workspace = CTX_wm_workspace(C);
-		Base *active_base = BKE_workspace_active_base_get(workspace);
+		Base *active_base = BKE_workspace_active_base_get(workspace, CTX_data_scene(C));
 
 		if (active_base) {
 			Object *ob = active_base->object;
