@@ -491,7 +491,7 @@ static int add_hook_object(const bContext *C, Main *bmain, Scene *scene, ViewLay
 
 	if (mode == OBJECT_ADDHOOK_NEWOB && !ob) {
 		
-		ob = add_hook_object_new(bmain, scene, view_layer, obedit);
+		ob = add_hook_object_new(bmain, scene, view_layer, CTX_wm_workspace(C), obedit);
 		
 		/* transform cent to global coords for loc */
 		mul_v3_m4v3(ob->loc, obedit->obmat, cent);

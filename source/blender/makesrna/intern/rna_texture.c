@@ -248,9 +248,11 @@ void rna_TextureSlot_update(bContext *C, PointerRNA *ptr)
 		{
 			Scene *scene = CTX_data_scene(C);
 			MTex *mtex = ptr->data;
-			ViewLayer *view_layer = CTX_data_view_layer(C);
-			BKE_paint_invalidate_overlay_tex(scene, view_layer, mtex->tex);
+			Object *active_object = CTX_data_active_object(C);
+
+			BKE_paint_invalidate_overlay_tex(scene, active_object, mtex->tex);
 			WM_main_add_notifier(NC_BRUSH, id);
+
 			break;
 		}
 		case ID_LS:

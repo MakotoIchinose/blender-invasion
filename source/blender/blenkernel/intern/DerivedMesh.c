@@ -77,6 +77,8 @@ static DerivedMesh *navmesh_dm_createNavMeshForVisualization(DerivedMesh *dm);
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
+#include "DEG_depsgraph.h"
+
 #include "GPU_buffers.h"
 #include "GPU_shader.h"
 #include "GPU_immediate.h"
@@ -1149,7 +1151,7 @@ DerivedMesh *mesh_create_derived(Mesh *me, float (*vertCos)[3])
 }
 
 DerivedMesh *mesh_create_derived_for_modifier(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob,
         ModifierData *md, int build_shapekey_layers)
 {
 	Mesh *me = ob->data;
@@ -1755,7 +1757,7 @@ static void dm_ensure_display_normals(DerivedMesh *dm)
  * - apply deform modifiers and input vertexco
  */
 static void mesh_calc_modifiers(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, float (*inputVertexCos)[3],
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob, float (*inputVertexCos)[3],
         const bool useRenderParams, int useDeform,
         const bool need_mapping, CustomDataMask dataMask,
         const int index, const bool useCache, const bool build_shapekey_layers,
@@ -2310,7 +2312,7 @@ bool editbmesh_modifier_is_enabled(Scene *scene, ModifierData *md, DerivedMesh *
 }
 
 static void editbmesh_calc_modifiers(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob,
         BMEditMesh *em, CustomDataMask dataMask,
         /* return args */
         DerivedMesh **r_cage, DerivedMesh **r_final)
@@ -2640,7 +2642,7 @@ static bool calc_modifiers_skip_orco(const EvaluationContext *eval_ctx,
 #endif
 
 static void mesh_build_data(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask,
         const bool build_shapekey_layers, const bool need_mapping)
 {
 	BLI_assert(ob->type == OB_MESH);
@@ -2677,7 +2679,7 @@ static void mesh_build_data(
 }
 
 static void editbmesh_build_data(
-        const struct EvaluationContext *eval_ctx, Scene *scene,
+        const EvaluationContext *eval_ctx, Scene *scene,
         Object *obedit, BMEditMesh *em, CustomDataMask dataMask)
 {
 	BKE_object_free_derived_caches(obedit);
@@ -2704,18 +2706,15 @@ static void editbmesh_build_data(
 	BLI_assert(!(em->derivedFinal->dirty & DM_DIRTY_NORMALS));
 }
 
-static CustomDataMask object_get_datamask(const Scene *scene, Object *ob, bool *r_need_mapping)
+static CustomDataMask object_get_datamask(Object *ob, bool is_active, bool *r_need_mapping)
 {
-	/* TODO(sergey): Avoid this linear list lookup. */
-	ViewLayer *view_layer = BKE_view_layer_context_active_PLACEHOLDER(scene);
-	Object *actob = view_layer->basact ? view_layer->basact->object : NULL;
 	CustomDataMask mask = ob->customdata_mask;
 
 	if (r_need_mapping) {
 		*r_need_mapping = false;
 	}
 
-	if (ob == actob) {
+	if (is_active) {
 		bool editing = BKE_paint_select_face_test(ob);
 
 		/* weight paint and face select need original indices because of selection buffer drawing */
@@ -2745,11 +2744,11 @@ static CustomDataMask object_get_datamask(const Scene *scene, Object *ob, bool *
 }
 
 void makeDerivedMesh(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, BMEditMesh *em,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob, BMEditMesh *em,
         CustomDataMask dataMask, const bool build_shapekey_layers)
 {
 	bool need_mapping;
-	dataMask |= object_get_datamask(scene, ob, &need_mapping);
+	dataMask |= object_get_datamask(ob, ob == eval_ctx->active_object, &need_mapping);
 
 	if (em) {
 		editbmesh_build_data(eval_ctx, scene, ob, em, dataMask);
@@ -2762,13 +2761,13 @@ void makeDerivedMesh(
 /***/
 
 DerivedMesh *mesh_get_derived_final(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask)
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask)
 {
 	/* if there's no derived mesh or the last data mask used doesn't include
 	 * the data we need, rebuild the derived mesh
 	 */
 	bool need_mapping;
-	dataMask |= object_get_datamask(scene, ob, &need_mapping);
+	dataMask |= object_get_datamask(ob, ob == eval_ctx->active_object, &need_mapping);
 
 	if (!ob->derivedFinal ||
 	    ((dataMask & ob->lastDataMask) != dataMask) ||
@@ -2781,14 +2780,14 @@ DerivedMesh *mesh_get_derived_final(
 	return ob->derivedFinal;
 }
 
-DerivedMesh *mesh_get_derived_deform(const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask)
+DerivedMesh *mesh_get_derived_deform(const EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask)
 {
 	/* if there's no derived mesh or the last data mask used doesn't include
 	 * the data we need, rebuild the derived mesh
 	 */
 	bool need_mapping;
 
-	dataMask |= object_get_datamask(scene, ob, &need_mapping);
+	dataMask |= object_get_datamask(ob, ob == eval_ctx->active_object, &need_mapping);
 
 	if (!ob->derivedDeform ||
 	    ((dataMask & ob->lastDataMask) != dataMask) ||
@@ -2800,7 +2799,7 @@ DerivedMesh *mesh_get_derived_deform(const struct EvaluationContext *eval_ctx, S
 	return ob->derivedDeform;
 }
 
-DerivedMesh *mesh_create_derived_render(const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask)
+DerivedMesh *mesh_create_derived_render(const EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask)
 {
 	DerivedMesh *final;
 	
@@ -2811,7 +2810,7 @@ DerivedMesh *mesh_create_derived_render(const struct EvaluationContext *eval_ctx
 	return final;
 }
 
-DerivedMesh *mesh_create_derived_index_render(const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask, int index)
+DerivedMesh *mesh_create_derived_index_render(const EvaluationContext *eval_ctx, Scene *scene, Object *ob, CustomDataMask dataMask, int index)
 {
 	DerivedMesh *final;
 
@@ -2823,7 +2822,7 @@ DerivedMesh *mesh_create_derived_index_render(const struct EvaluationContext *ev
 }
 
 DerivedMesh *mesh_create_derived_view(
-        const struct EvaluationContext *eval_ctx, Scene *scene,
+        const EvaluationContext *eval_ctx, Scene *scene,
         Object *ob, CustomDataMask dataMask)
 {
 	DerivedMesh *final;
@@ -2844,7 +2843,7 @@ DerivedMesh *mesh_create_derived_view(
 }
 
 DerivedMesh *mesh_create_derived_no_deform(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob,
         float (*vertCos)[3], CustomDataMask dataMask)
 {
 	DerivedMesh *final;
@@ -2857,7 +2856,7 @@ DerivedMesh *mesh_create_derived_no_deform(
 }
 
 DerivedMesh *mesh_create_derived_no_virtual(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob,
         float (*vertCos)[3], CustomDataMask dataMask)
 {
 	DerivedMesh *final;
@@ -2870,7 +2869,7 @@ DerivedMesh *mesh_create_derived_no_virtual(
 }
 
 DerivedMesh *mesh_create_derived_physics(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *ob,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *ob,
         float (*vertCos)[3], CustomDataMask dataMask)
 {
 	DerivedMesh *final;
@@ -2883,7 +2882,7 @@ DerivedMesh *mesh_create_derived_physics(
 }
 
 DerivedMesh *mesh_create_derived_no_deform_render(
-        const struct EvaluationContext *eval_ctx, Scene *scene,
+        const EvaluationContext *eval_ctx, Scene *scene,
         Object *ob, float (*vertCos)[3],
         CustomDataMask dataMask)
 {
@@ -2899,7 +2898,7 @@ DerivedMesh *mesh_create_derived_no_deform_render(
 /***/
 
 DerivedMesh *editbmesh_get_derived_cage_and_final(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *obedit, BMEditMesh *em,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *obedit, BMEditMesh *em,
         CustomDataMask dataMask,
         /* return args */
         DerivedMesh **r_final)
@@ -2907,7 +2906,7 @@ DerivedMesh *editbmesh_get_derived_cage_and_final(
 	/* if there's no derived mesh or the last data mask used doesn't include
 	 * the data we need, rebuild the derived mesh
 	 */
-	dataMask |= object_get_datamask(scene, obedit, NULL);
+	dataMask |= object_get_datamask(obedit, obedit == eval_ctx->active_object, NULL);
 
 	if (!em->derivedCage ||
 	    (em->lastDataMask & dataMask) != dataMask)
@@ -2921,13 +2920,13 @@ DerivedMesh *editbmesh_get_derived_cage_and_final(
 }
 
 DerivedMesh *editbmesh_get_derived_cage(
-        const struct EvaluationContext *eval_ctx, Scene *scene, Object *obedit, BMEditMesh *em,
+        const EvaluationContext *eval_ctx, Scene *scene, Object *obedit, BMEditMesh *em,
         CustomDataMask dataMask)
 {
 	/* if there's no derived mesh or the last data mask used doesn't include
 	 * the data we need, rebuild the derived mesh
 	 */
-	dataMask |= object_get_datamask(scene, obedit, NULL);
+	dataMask |= object_get_datamask(obedit, obedit == eval_ctx->active_object, NULL);
 
 	if (!em->derivedCage ||
 	    (em->lastDataMask & dataMask) != dataMask)

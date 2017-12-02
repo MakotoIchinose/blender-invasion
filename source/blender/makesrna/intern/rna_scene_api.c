@@ -171,7 +171,7 @@ static void rna_SceneRender_get_frame_path(RenderData *rd, int frame, int previe
 }
 
 static void rna_Scene_ray_cast(
-        Scene *scene, ViewLayer *view_layer, const char *engine_id,
+        Scene *scene, ViewLayer *view_layer, const char *engine_id, Object *active_object,
         float origin[3], float direction[3], float ray_dist,
         int *r_success, float r_location[3], float r_normal[3], int *r_index,
         Object **r_ob, float r_obmat[16])
@@ -188,7 +188,7 @@ static void rna_Scene_ray_cast(
 	normalize_v3(direction);
 
 	SnapObjectContext *sctx = ED_transform_snap_object_context_create(
-	        G.main, scene, view_layer, engine, 0);
+	        G.main, scene, view_layer, engine, active_object, 0);
 
 	bool ret = ED_transform_snap_object_project_ray_ex(
 	        sctx,
@@ -387,6 +387,7 @@ void RNA_api_scene(StructRNA *srna)
 	parm = RNA_def_pointer(func, "view_layer", "ViewLayer", "", "Scene Layer");
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 	parm = RNA_def_string(func, "engine", NULL, MAX_NAME, "Engine", "Render engine, use scene one by default");
+	RNA_def_pointer(func, "active_object", "Object", "", "Active Object");
 	/* ray start and end */
 	parm = RNA_def_float_vector(func, "origin", 3, NULL, -FLT_MAX, FLT_MAX, "", "", -1e4, 1e4);
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);

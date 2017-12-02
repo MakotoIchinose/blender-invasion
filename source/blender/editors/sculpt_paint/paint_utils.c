@@ -567,9 +567,10 @@ static int brush_curve_preset_exec(bContext *C, wmOperator *op)
 
 	if (br) {
 		Scene *scene = CTX_data_scene(C);
-		ViewLayer *view_layer = CTX_data_view_layer(C);
+		Object *active_object = CTX_data_active_object(C);
+
 		BKE_brush_curve_preset(br, RNA_enum_get(op->ptr, "shape"));
-		BKE_paint_invalidate_cursor_overlay(scene, view_layer, br->curve);
+		BKE_paint_invalidate_cursor_overlay(scene, active_object, br->curve);
 	}
 
 	return OPERATOR_FINISHED;

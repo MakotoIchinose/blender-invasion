@@ -211,26 +211,28 @@ static void draw_view_icon(RegionView3D *rv3d, rcti *rect)
 
 /* *********************** backdraw for selection *************** */
 
-static void backdrawview3d(const struct EvaluationContext *eval_ctx, Scene *scene, ViewLayer *view_layer, wmWindow *win, ARegion *ar, View3D *v3d)
+static void backdrawview3d(
+        const struct EvaluationContext *eval_ctx, Scene *scene,
+        wmWindow *win, ARegion *ar, View3D *v3d)
 {
 	RegionView3D *rv3d = ar->regiondata;
-	struct Base *base = view_layer->basact;
+	Object *active_object = eval_ctx->active_object;
 	int multisample_enabled;
 
 	BLI_assert(ar->regiontype == RGN_TYPE_WINDOW);
 
-	if (base && (base->object->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT) ||
-	             BKE_paint_select_face_test(base->object)))
+	if (active_object && (active_object->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT) ||
+	             BKE_paint_select_face_test(active_object)))
 	{
 		/* do nothing */
 	}
 	/* texture paint mode sampling */
-	else if (base && (base->object->mode & OB_MODE_TEXTURE_PAINT) &&
+	else if (active_object && (active_object->mode & OB_MODE_TEXTURE_PAINT) &&
 	         (v3d->drawtype > OB_WIRE))
 	{
 		/* do nothing */
 	}
-	else if ((base && (base->object->mode & OB_MODE_PARTICLE_EDIT)) &&
+	else if ((active_object && (active_object->mode & OB_MODE_PARTICLE_EDIT)) &&
 	         V3D_IS_ZBUF(v3d))
 	{
 		/* do nothing */
@@ -311,8 +313,8 @@ static void backdrawview3d(const struct EvaluationContext *eval_ctx, Scene *scen
 	
 	G.f |= G_BACKBUFSEL;
 	
-	if (base && ((base->flag & BASE_VISIBLED) != 0))
-		draw_object_backbufsel(eval_ctx, scene, v3d, rv3d, base->object);
+	if (active_object && BKE_object_is_visible(active_object))
+		draw_object_backbufsel(eval_ctx, scene, v3d, rv3d, active_object);
 	
 	if (rv3d->gpuoffscreen)
 		GPU_offscreen_unbind(rv3d->gpuoffscreen, true);
@@ -356,7 +358,7 @@ static void view3d_opengl_read_Z_pixels(ARegion *ar, int x, int y, int w, int h,
 void ED_view3d_backbuf_validate(const struct EvaluationContext *eval_ctx, ViewContext *vc)
 {
 	if (vc->v3d->flag & V3D_INVALID_BACKBUF) {
-		backdrawview3d(eval_ctx, vc->scene, vc->view_layer, vc->win, vc->ar, vc->v3d);
+		backdrawview3d(eval_ctx, vc->scene, vc->win, vc->ar, vc->v3d);
 	}
 }
 
@@ -1182,7 +1184,7 @@ void ED_view3d_draw_depth_gpencil(
 	glEnable(GL_DEPTH_TEST);
 
 	if (v3d->flag2 & V3D_SHOW_GPENCIL) {
-		ED_gpencil_draw_view3d(NULL, scene, eval_ctx->view_layer, v3d, ar, true);
+		ED_gpencil_draw_view3d(NULL, scene, eval_ctx->active_object, v3d, ar, true);
 	}
 
 	v3d->zbuf = zbuf;
@@ -1625,7 +1627,7 @@ static void view3d_draw_objects(
 		
 		/* must be before xray draw which clears the depth buffer */
 		if (v3d->zbuf) glDisable(GL_DEPTH_TEST);
-		ED_gpencil_draw_view3d(wm, scene, view_layer, v3d, ar, true);
+		ED_gpencil_draw_view3d(wm, scene, eval_ctx->active_object, v3d, ar, true);
 		if (v3d->zbuf) glEnable(GL_DEPTH_TEST);
 	}
 
@@ -2038,7 +2040,7 @@ static void view3d_main_region_draw_info(const bContext *C, Scene *scene,
                                        ARegion *ar, View3D *v3d,
                                        const char *grid_unit, bool render_border)
 {
-	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *active_object = CTX_data_active_object(C);
 	wmWindowManager *wm = CTX_wm_manager(C);
 	RegionView3D *rv3d = ar->regiondata;
 	rcti rect;
@@ -2055,11 +2057,11 @@ static void view3d_main_region_draw_info(const bContext *C, Scene *scene,
 
 	if (v3d->flag2 & V3D_SHOW_GPENCIL) {
 		/* draw grease-pencil stuff - needed to get paint-buffer shown too (since it's 2D) */
-		ED_gpencil_draw_view3d(wm, scene, view_layer, v3d, ar, false);
+		ED_gpencil_draw_view3d(wm, scene, CTX_data_active_object(C), v3d, ar, false);
 	}
 
 	if ((v3d->flag2 & V3D_RENDER_OVERRIDE) == 0) {
-		VP_legacy_drawcursor(scene, view_layer, ar, v3d); /* 3D cursor */
+		VP_legacy_drawcursor(scene, active_object, ar, v3d); /* 3D cursor */
 
 		if (U.uiflag & USER_SHOW_ROTVIEWICON)
 			VP_legacy_draw_view_axis(rv3d, &rect);
@@ -2067,8 +2069,7 @@ static void view3d_main_region_draw_info(const bContext *C, Scene *scene,
 			draw_view_icon(rv3d, &rect);
 
 		if (U.uiflag & USER_DRAWVIEWINFO) {
-			Object *ob = OBACT(view_layer);
-			VP_legacy_draw_selected_name(scene, ob, &rect);
+			VP_legacy_draw_selected_name(scene, active_object, &rect);
 		}
 	}
 

@@ -29,6 +29,6 @@
 
 /* info_stats.c */
 void ED_info_stats_clear(struct ViewLayer *view_layer);
-const char *ED_info_stats_string(struct Scene *scene, struct ViewLayer *view_layer);
+const char *ED_info_stats_string(struct Scene *scene, struct ViewLayer *view_layer, struct Object *object);
 
 #endif /*  __ED_INFO_H__ */

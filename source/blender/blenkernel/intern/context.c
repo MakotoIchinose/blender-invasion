@@ -1270,7 +1270,8 @@ void CTX_data_eval_ctx(const bContext *C, EvaluationContext *eval_ctx)
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	RenderEngineType *engine = CTX_data_engine(C);
+	Object *active_object = CTX_data_active_object(C);
 	DEG_evaluation_context_init_from_scene(eval_ctx,
-	                                       scene, view_layer, engine,
+	                                       scene, view_layer, engine, active_object,
 	                                       DAG_EVAL_VIEWPORT);
 }

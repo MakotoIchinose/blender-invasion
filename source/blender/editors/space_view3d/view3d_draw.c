@@ -1314,21 +1314,19 @@ float ED_view3d_grid_scale(Scene *scene, View3D *v3d, const char **grid_unit)
 	return v3d->grid * ED_scene_grid_scale(scene, grid_unit);
 }
 
-static bool is_cursor_visible(Scene *scene, ViewLayer *view_layer)
+static bool is_cursor_visible(Scene *scene, Object *active_object)
 {
-	Object *ob = OBACT(view_layer);
-
 	/* don't draw cursor in paint modes, but with a few exceptions */
-	if (ob && ob->mode & OB_MODE_ALL_PAINT) {
+	if (active_object && active_object->mode & OB_MODE_ALL_PAINT) {
 		/* exception: object is in weight paint and has deforming armature in pose mode */
-		if (ob->mode & OB_MODE_WEIGHT_PAINT) {
-			if (BKE_object_pose_armature_get(ob) != NULL) {
+		if (active_object->mode & OB_MODE_WEIGHT_PAINT) {
+			if (BKE_object_pose_armature_get(active_object) != NULL) {
 				return true;
 			}
 		}
 		/* exception: object in texture paint mode, clone brush, use_clone_layer disabled */
-		else if (ob->mode & OB_MODE_TEXTURE_PAINT) {
-			const Paint *p = BKE_paint_get_active(scene, view_layer);
+		else if (active_object->mode & OB_MODE_TEXTURE_PAINT) {
+			const Paint *p = BKE_paint_get_active(scene, active_object);
 
 			if (p && p->brush && p->brush->imagepaint_tool == PAINT_TOOL_CLONE) {
 				if ((scene->toolsettings->imapaint.flag & IMAGEPAINT_PROJECT_LAYER_CLONE) == 0) {
@@ -2048,7 +2046,7 @@ void ED_view3d_draw_offscreen(
 
 			if (v3d->flag2 & V3D_SHOW_GPENCIL) {
 				/* draw grease-pencil stuff - needed to get paint-buffer shown too (since it's 2D) */
-				ED_gpencil_draw_view3d(NULL, scene, view_layer, v3d, ar, false);
+				ED_gpencil_draw_view3d(NULL, scene, eval_ctx->active_object, v3d, ar, false);
 			}
 
 			/* freeing the images again here could be done after the operator runs, leaving for now */
@@ -2320,9 +2318,9 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(
  *
  * \{ */
 
-void VP_legacy_drawcursor(Scene *scene, ViewLayer *view_layer, ARegion *ar, View3D *v3d)
+void VP_legacy_drawcursor(Scene *scene, Object *active_object, ARegion *ar, View3D *v3d)
 {
-	if (is_cursor_visible(scene, view_layer)) {
+	if (is_cursor_visible(scene, active_object)) {
 		drawcursor(scene, ar, v3d);
 	}
 }

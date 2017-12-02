@@ -160,20 +160,21 @@ static void iter_snap_objects(
         IterSnapObjsCallback sob_callback,
         void *data)
 {
-	Base *base_act = sctx->eval_ctx.view_layer->basact;
+	Object *active_object = sctx->eval_ctx.active_object;
+
 	/* Need an exception for particle edit because the base is flagged with BA_HAS_RECALC_DATA
 	 * which makes the loop skip it, even the derived mesh will never change
 	 *
 	 * To solve that problem, we do it first as an exception.
 	 * */
-	if (base_act && base_act->object && base_act->object->mode & OB_MODE_PARTICLE_EDIT) {
-		sob_callback(sctx, false, base_act->object, base_act->object->obmat, data);
+	if (active_object && active_object->mode & OB_MODE_PARTICLE_EDIT) {
+		sob_callback(sctx, false, active_object, active_object->obmat, data);
 	}
 
 	for (Base *base = sctx->eval_ctx.view_layer->object_bases.first; base != NULL; base = base->next) {
 		if ((BASE_VISIBLE(base)) && (base->flag_legacy & (BA_HAS_RECALC_OB | BA_HAS_RECALC_DATA)) == 0 &&
 		    !((snap_select == SNAP_NOT_SELECTED && ((base->flag & BASE_SELECTED) || (base->flag_legacy & BA_WAS_SEL))) ||
-		      (snap_select == SNAP_NOT_ACTIVE && base == base_act)))
+		      (snap_select == SNAP_NOT_ACTIVE && base->object == active_object)))
 		{
 			bool use_obedit;
 			Object *obj = base->object;
@@ -2096,7 +2097,8 @@ static bool snapObjectsRay(
  * \{ */
 
 SnapObjectContext *ED_transform_snap_object_context_create(
-        Main *bmain, Scene *scene, ViewLayer *view_layer, RenderEngineType *engine, int flag)
+        Main *bmain, Scene *scene, ViewLayer *view_layer, RenderEngineType *engine,
+        Object *active_object, int flag)
 {
 	SnapObjectContext *sctx = MEM_callocN(sizeof(*sctx), __func__);
 
@@ -2105,7 +2107,9 @@ SnapObjectContext *ED_transform_snap_object_context_create(
 	sctx->bmain = bmain;
 	sctx->scene = scene;
 
-	DEG_evaluation_context_init_from_scene(&sctx->eval_ctx, scene, view_layer, engine, DAG_EVAL_VIEWPORT);
+	DEG_evaluation_context_init_from_scene(
+	            &sctx->eval_ctx, scene, view_layer, engine,
+	            active_object, DAG_EVAL_VIEWPORT);
 
 	sctx->cache.object_map = BLI_ghash_ptr_new(__func__);
 	sctx->cache.mem_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
@@ -2114,11 +2118,14 @@ SnapObjectContext *ED_transform_snap_object_context_create(
 }
 
 SnapObjectContext *ED_transform_snap_object_context_create_view3d(
-        Main *bmain, Scene *scene, ViewLayer *view_layer, RenderEngineType *engine, int flag,
+        Main *bmain, Scene *scene, ViewLayer *view_layer, RenderEngineType *engine,
+        Object *active_object, int flag,
         /* extra args for view3d */
         const ARegion *ar, const View3D *v3d)
 {
-	SnapObjectContext *sctx = ED_transform_snap_object_context_create(bmain, scene, view_layer, engine, flag);
+	SnapObjectContext *sctx = ED_transform_snap_object_context_create(
+	                              bmain, scene, view_layer, engine,
+	                              active_object, flag);
 
 	sctx->use_v3d = true;
 	sctx->v3d_data.ar = ar;

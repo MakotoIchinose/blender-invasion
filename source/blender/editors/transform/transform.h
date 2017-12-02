@@ -477,6 +477,7 @@ typedef struct TransInfo {
 	struct ReportList *reports;  /* assign from the operator, or can be NULL */
 	int         mval[2];        /* current mouse position               */
 	float       zfac;           /* use for 3d view */
+	struct Object *active_object;
 	struct Object *obedit;
 	float          obedit_mat[3][3]; /* normalized editmode matrix (T_EDIT only) */
 	void		*draw_handle_apply;

@@ -345,10 +345,9 @@ static bool stats_is_object_dynamic_topology_sculpt(Object *ob)
 }
 
 /* Statistics displayed in info header. Called regularly on scene changes. */
-static void stats_update(Scene *scene, ViewLayer *view_layer)
+static void stats_update(Scene *scene, ViewLayer *view_layer, Object *ob)
 {
 	SceneStats stats = {0};
-	Object *ob = (view_layer->basact) ? view_layer->basact->object : NULL;
 	Base *base;
 	
 	if (scene->obedit) {
@@ -378,12 +377,11 @@ static void stats_update(Scene *scene, ViewLayer *view_layer)
 	*(view_layer->stats) = stats;
 }
 
-static void stats_string(Scene *scene, ViewLayer *view_layer)
+static void stats_string(Scene *scene, ViewLayer *view_layer, Object *ob)
 {
 #define MAX_INFO_MEM_LEN  64
 	SceneStats *stats = view_layer->stats;
 	SceneStatsFmt stats_fmt;
-	Object *ob = (view_layer->basact) ? view_layer->basact->object : NULL;
 	uintptr_t mem_in_use, mmap_in_use;
 	char memstr[MAX_INFO_MEM_LEN];
 	char gpumemstr[MAX_INFO_MEM_LEN] = "";
@@ -498,12 +496,12 @@ void ED_info_stats_clear(ViewLayer *view_layer)
 	}
 }
 
-const char *ED_info_stats_string(Scene *scene, ViewLayer *view_layer)
+const char *ED_info_stats_string(Scene *scene, ViewLayer *view_layer, Object *object)
 {
 	if (!view_layer->stats) {
-		stats_update(scene, view_layer);
+		stats_update(scene, view_layer, object);
 	}
-	stats_string(scene, view_layer);
+	stats_string(scene, view_layer, object);
 
 	return view_layer->stats->infostr;
 }

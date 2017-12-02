@@ -396,7 +396,6 @@ static void texture_changed(Main *bmain, Tex *tex)
 	Lamp *la;
 	World *wo;
 	Scene *scene;
-	ViewLayer *view_layer;
 	Object *ob;
 	bNode *node;
 	bool texture_draw = false;
@@ -405,9 +404,9 @@ static void texture_changed(Main *bmain, Tex *tex)
 	BKE_icon_changed(BKE_icon_id_ensure(&tex->id));
 
 	/* paint overlays */
-	for (scene = bmain->scene.first; scene; scene = scene->id.next) {
-		for (view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
-			BKE_paint_invalidate_overlay_tex(scene, view_layer, tex);
+	for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+		for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+			BKE_paint_invalidate_overlay_tex(scene, BKE_workspace_active_object_get(workspace), tex);
 		}
 	}
 

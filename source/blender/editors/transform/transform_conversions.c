@@ -2485,7 +2485,7 @@ static void createTransEditVerts(TransInfo *t)
 	int *island_vert_map = NULL;
 
 	DEG_evaluation_context_init_from_scene(&eval_ctx,
-	                                       t->scene, t->view_layer, t->engine,
+	                                       t->scene, t->view_layer, t->engine, t->active_object,
 	                                       DAG_EVAL_VIEWPORT);
 
 	/* Even for translation this is needed because of island-orientation, see: T51651. */
@@ -5561,7 +5561,7 @@ static void set_trans_object_base_flags(TransInfo *t)
 	/* handle pending update events, otherwise they got copied below */
 	EvaluationContext eval_ctx;
 	DEG_evaluation_context_init_from_scene(&eval_ctx,
-	                                       t->scene, t->view_layer, t->engine,
+	                                       t->scene, t->view_layer, t->engine, t->active_object,
 	                                       DAG_EVAL_VIEWPORT);
 	for (base = view_layer->object_bases.first; base; base = base->next) {
 		if (base->object->recalc & OB_RECALC_ALL) {
@@ -6500,8 +6500,7 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 	else if (t->options & CTX_PAINT_CURVE) {
 		/* pass */
 	}
-	else if ((t->view_layer->basact) &&
-	         (ob = t->view_layer->basact->object) &&
+	else if ((ob = t->active_object) &&
 	         (ob->mode & OB_MODE_PARTICLE_EDIT) &&
 	         PE_get_current(t->scene, t->view_layer, ob))
 	{

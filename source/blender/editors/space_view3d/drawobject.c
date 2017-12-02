@@ -4312,6 +4312,7 @@ static void draw_mesh_fancy(
 	eWireDrawMode draw_wire = OBDRAW_WIRE_OFF;
 	bool /* no_verts,*/ no_edges, no_faces;
 	DerivedMesh *dm = mesh_get_derived_final(eval_ctx, scene, ob, scene->customdata_mask);
+	const Object *active_object = eval_ctx->active_object;
 	const bool is_obact = (ob == OBACT(view_layer));
 	int draw_flags = (is_obact && BKE_paint_select_face_test(ob)) ? DRAW_FACE_SELECT : 0;
 
@@ -4378,7 +4379,10 @@ static void draw_mesh_fancy(
 
 			glFrontFace((ob->transflag & OB_NEG_SCALE) ? GL_CW : GL_CCW);
 
-			if ((v3d->flag2 & V3D_SHOW_SOLID_MATCAP) && ob->sculpt && (p = BKE_paint_get_active(scene, view_layer))) {
+			if ((v3d->flag2 & V3D_SHOW_SOLID_MATCAP) &&
+			    (ob->sculpt != NULL) &&
+			    (p = BKE_paint_get_active(scene, active_object)))
+			{
 				GPUVertexAttribs gattribs;
 				float planes[4][4];
 				float (*fpl)[4] = NULL;
@@ -4470,7 +4474,7 @@ static void draw_mesh_fancy(
 
 			glFrontFace((ob->transflag & OB_NEG_SCALE) ? GL_CW : GL_CCW);
 
-			if (ob->sculpt && (p = BKE_paint_get_active(scene, view_layer))) {
+			if (ob->sculpt && (p = BKE_paint_get_active(scene, active_object))) {
 				float planes[4][4];
 				float (*fpl)[4] = NULL;
 				const bool fast = (p->flags & PAINT_FAST_NAVIGATE) && (rv3d->rflag & RV3D_NAVIGATING);
@@ -4728,7 +4732,8 @@ static void draw_mesh_fancy_new(EvaluationContext *eval_ctx, Scene *scene, ViewL
 	eWireDrawMode draw_wire = OBDRAW_WIRE_OFF; /* could be bool draw_wire_overlay */
 	bool no_edges, no_faces;
 	DerivedMesh *dm = mesh_get_derived_final(eval_ctx, scene, ob, scene->customdata_mask);
-	const bool is_obact = (ob == OBACT(view_layer));
+	const Object *active_object = eval_ctx->active_object;
+	const bool is_obact = (ob == active_object);
 	int draw_flags = (is_obact && BKE_paint_select_face_test(ob)) ? DRAW_FACE_SELECT : 0;
 
 	if (!dm)
@@ -4849,7 +4854,7 @@ static void draw_mesh_fancy_new(EvaluationContext *eval_ctx, Scene *scene, ViewL
 		    !(G.f & G_PICKSEL || (draw_flags & DRAW_FACE_SELECT)) &&
 		    (draw_wire == OBDRAW_WIRE_OFF))
 		{
-			draw_mesh_object_outline_new(v3d, rv3d, ob, me, (ob == OBACT(view_layer)));
+			draw_mesh_object_outline_new(v3d, rv3d, ob, me, is_obact);
 		}
 
 		if (draw_glsl_material(scene, view_layer, ob, v3d, dt) && !(draw_flags & DRAW_MODIFIERS_PREVIEW)) {
@@ -4857,7 +4862,10 @@ static void draw_mesh_fancy_new(EvaluationContext *eval_ctx, Scene *scene, ViewL
 
 			glFrontFace((ob->transflag & OB_NEG_SCALE) ? GL_CW : GL_CCW);
 
-			if ((v3d->flag2 & V3D_SHOW_SOLID_MATCAP) && ob->sculpt && (p = BKE_paint_get_active(scene, view_layer))) {
+			if ((v3d->flag2 & V3D_SHOW_SOLID_MATCAP) &&
+			    (ob->sculpt != NULL) &&
+			    (p = BKE_paint_get_active(scene, active_object)))
+			{
 				GPUVertexAttribs gattribs;
 				float planes[4][4];
 				float (*fpl)[4] = NULL;
@@ -4916,7 +4924,7 @@ static void draw_mesh_fancy_new(EvaluationContext *eval_ctx, Scene *scene, ViewL
 				    (draw_wire == OBDRAW_WIRE_OFF) &&
 				    (ob->sculpt == NULL))
 				{
-					draw_mesh_object_outline_new(v3d, rv3d, ob, me, (ob == OBACT(view_layer)));
+					draw_mesh_object_outline_new(v3d, rv3d, ob, me, is_obact);
 				}
 
 				/* materials arent compatible with vertex colors */
@@ -4941,12 +4949,12 @@ static void draw_mesh_fancy_new(EvaluationContext *eval_ctx, Scene *scene, ViewL
 			    (ob->sculpt == NULL))
 			{
 				/* TODO: move this into a separate pass */
-				draw_mesh_object_outline_new(v3d, rv3d, ob, me, (ob == OBACT(view_layer)));
+				draw_mesh_object_outline_new(v3d, rv3d, ob, me, is_obact);
 			}
 
 			glFrontFace((ob->transflag & OB_NEG_SCALE) ? GL_CW : GL_CCW);
 
-			if (ob->sculpt && (p = BKE_paint_get_active(scene, view_layer))) {
+			if (ob->sculpt && (p = BKE_paint_get_active(scene, active_object))) {
 				float planes[4][4];
 				float (*fpl)[4] = NULL;
 				const bool fast = (p->flags & PAINT_FAST_NAVIGATE) && (rv3d->rflag & RV3D_NAVIGATING);
@@ -5941,7 +5949,7 @@ static void draw_new_particle_system(
 	if (pars == NULL) return;
 
 	/* don't draw normal paths in edit mode */
-	if (psys_in_edit_mode(eval_ctx->view_layer, psys) && (pset->flag & PE_DRAW_PART) == 0)
+	if (psys_in_edit_mode(psys, eval_ctx->active_object) && (pset->flag & PE_DRAW_PART) == 0)
 		return;
 
 	if (part->draw_as == PART_DRAW_REND)
@@ -8313,7 +8321,7 @@ static void draw_object_selected_outline(
 		}
 	}
 	else if (ob->type == OB_ARMATURE) {
-		if (!(ob->mode & OB_MODE_POSE && base == view_layer->basact)) {
+		if (!(ob->mode & OB_MODE_POSE && ob == eval_ctx->active_object)) {
 			glLineWidth(UI_GetThemeValuef(TH_OUTLINE_WIDTH) * 2.0f);
 			draw_armature(eval_ctx, scene, view_layer, v3d, ar, base, OB_WIRE, 0, ob_wire_col, true);
 		}
@@ -8423,7 +8431,7 @@ static void draw_rigid_body_pivot(bRigidBodyJointConstraint *data,
 	immUnbindProgram();
 }
 
-void draw_object_wire_color(Scene *scene, ViewLayer *view_layer, Base *base, unsigned char r_ob_wire_col[4])
+void draw_object_wire_color(Scene *scene, Base *base, bool is_active, unsigned char r_ob_wire_col[4])
 {
 	Object *ob = base->object;
 	int colindex = 0;
@@ -8453,7 +8461,7 @@ void draw_object_wire_color(Scene *scene, ViewLayer *view_layer, Base *base, uns
 					/* uses darker active color for non-active + selected */
 					theme_id = TH_GROUP_ACTIVE;
 
-					if (view_layer->basact != base) {
+					if (is_active) {
 						theme_shade = -32;
 					}
 				}
@@ -8463,7 +8471,7 @@ void draw_object_wire_color(Scene *scene, ViewLayer *view_layer, Base *base, uns
 			}
 			else {
 				if ((base->flag & BASE_SELECTED) || (base->flag_legacy & BA_WAS_SEL)) {
-					theme_id = view_layer->basact == base ? TH_ACTIVE : TH_SELECT;
+					theme_id = is_active ? TH_ACTIVE : TH_SELECT;
 				}
 				else {
 					if (ob->type == OB_LAMP) theme_id = TH_LAMP;
@@ -8578,7 +8586,7 @@ void draw_object(
 	unsigned char _ob_wire_col[4];            /* dont initialize this */
 	const unsigned char *ob_wire_col = NULL;  /* dont initialize this, use NULL crashes as a way to find invalid use */
 	bool zbufoff = false, is_paint = false, empty_object = false;
-	const bool is_obact = (ob == OBACT(view_layer));
+	const bool is_obact = (ob == eval_ctx->active_object);
 	const bool render_override = (v3d->flag2 & V3D_RENDER_OVERRIDE) != 0;
 	const bool is_picking = (G.f & G_PICKSEL) != 0;
 	const bool has_particles = (ob->particlesystem.first != NULL);
@@ -8695,7 +8703,7 @@ void draw_object(
 
 		ED_view3d_project_base(ar, base);
 
-		draw_object_wire_color(scene, view_layer, base, _ob_wire_col);
+		draw_object_wire_color(scene, base, is_obact, _ob_wire_col);
 		ob_wire_col = _ob_wire_col;
 
 		//glColor3ubv(ob_wire_col);

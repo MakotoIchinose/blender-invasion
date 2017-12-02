@@ -714,7 +714,6 @@ static void recalcData_spaceclip(TransInfo *t)
 /* helper for recalcData() - for object transforms, typically in the 3D view */
 static void recalcData_objects(TransInfo *t)
 {
-	Base *base = t->view_layer->basact;
 	EvaluationContext eval_ctx;
 
 	CTX_data_eval_ctx(t->context, &eval_ctx);
@@ -904,7 +903,9 @@ static void recalcData_objects(TransInfo *t)
 		else
 			BKE_pose_where_is(&eval_ctx, t->scene, ob);
 	}
-	else if (base && (base->object->mode & OB_MODE_PARTICLE_EDIT) && PE_get_current(t->scene, t->view_layer, base->object)) {
+	else if ((t->active_object->mode & OB_MODE_PARTICLE_EDIT) &&
+	         PE_get_current(t->scene, t->view_layer, t->active_object))
+	{
 		if (t->state != TRANS_CANCEL) {
 			applyProject(t);
 		}
@@ -1121,7 +1122,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	ARegion *ar = CTX_wm_region(C);
 	ScrArea *sa = CTX_wm_area(C);
 	Object *obedit = CTX_data_edit_object(C);
-	Object *ob = CTX_data_active_object(C);
+	Object *active_object = CTX_data_active_object(C);
 	bGPdata *gpd = CTX_data_gpencil_data(C);
 	RenderEngineType *engine = CTX_data_engine(C);
 	PropertyRNA *prop;
@@ -1131,6 +1132,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->engine = engine;
 	t->sa = sa;
 	t->ar = ar;
+	t->active_object = active_object;
 	t->obedit = obedit;
 	t->settings = ts;
 	t->reports = op ? op->reports : NULL;
@@ -1264,7 +1266,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			}
 		}
 
-		if (ob && ob->mode & OB_MODE_ALL_PAINT) {
+		if (active_object && active_object->mode & OB_MODE_ALL_PAINT) {
 			Paint *p = BKE_paint_get_active_from_context(C);
 			if (p && p->brush && (p->brush->flag & BRUSH_CURVE)) {
 				t->options |= CTX_PAINT_CURVE;
@@ -1813,7 +1815,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 		}
 	}
 	else if (t->options & CTX_PAINT_CURVE) {
-		Paint *p = BKE_paint_get_active(t->scene, t->view_layer);
+		Paint *p = BKE_paint_get_active(t->scene, t->active_object);
 		Brush *br = p->brush;
 		PaintCurve *pc = br->paint_curve;
 		copy_v3_v3(r_center, pc->points[pc->add_index - 1].bez.vec[1]);

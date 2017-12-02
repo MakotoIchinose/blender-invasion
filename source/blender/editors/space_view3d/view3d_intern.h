@@ -159,7 +159,7 @@ bool draw_glsl_material(Scene *scene, struct ViewLayer *view_layer, struct Objec
 void draw_object_instance(const struct EvaluationContext *eval_ctx, Scene *scene, struct ViewLayer *view_layer, View3D *v3d, RegionView3D *rv3d, struct Object *ob, const char dt, int outline, const float wire_col[4]);
 void draw_object_backbufsel(const struct EvaluationContext *eval_ctx, Scene *scene, View3D *v3d, RegionView3D *rv3d, struct Object *ob);
 
-void draw_object_wire_color(Scene *scene, struct ViewLayer *, Base *base, unsigned char r_ob_wire_col[4]);
+void draw_object_wire_color(Scene *scene, Base *base, bool is_active, unsigned char r_ob_wire_col[4]);
 void drawaxes(const float viewmat_local[4][4], float size, char drawtype, const unsigned char color[4]);
 void drawlamp(View3D *v3d, RegionView3D *rv3d, Base *base,
               const char dt, const short dflag, const unsigned char ob_wire_col[4],
@@ -362,7 +362,7 @@ extern bool view3d_camera_border_hack_test;
 #endif
 
 /* temporary for legacy viewport to work */
-void VP_legacy_drawcursor(Scene *scene, struct ViewLayer *view_layer, ARegion *ar, View3D *v3d);
+void VP_legacy_drawcursor(Scene *scene, struct Object *active_object, ARegion *ar, View3D *v3d);
 void VP_legacy_draw_view_axis(RegionView3D *rv3d, rcti *rect);
 void VP_legacy_draw_viewport_name(ARegion *ar, View3D *v3d, rcti *rect);
 void VP_legacy_draw_selected_name(Scene *scene, Object *ob, rcti *rect);
