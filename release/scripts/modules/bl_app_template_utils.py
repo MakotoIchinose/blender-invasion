@@ -175,7 +175,7 @@ def activate(template_id=None):
 
     # Disable all addons, afterwards caller must reset.
     import addon_utils
-    addon_utils.disable_all()
+    addon_utils.disable_all(addon_utils.addon_collection_from_context(_bpy.context))
 
     # ignore_not_found so modules that don't contain scripts don't raise errors
     mod = _enable(template_id, ignore_not_found=True) if template_id else None

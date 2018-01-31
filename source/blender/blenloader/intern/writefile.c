@@ -1184,13 +1184,22 @@ static void write_keymapitem(WriteData *wd, wmKeyMapItem *kmi)
 	}
 }
 
+static void write_addons(WriteData *wd, ListBase *addons)
+{
+	for (bAddon *bext = addons->first; bext; bext = bext->next) {
+		writestruct(wd, DATA, bAddon, 1, bext);
+		if (bext->prop) {
+			IDP_WriteProperty(bext->prop, wd);
+		}
+	}
+}
+
 static void write_userdef(WriteData *wd)
 {
 	bTheme *btheme;
 	wmKeyMap *keymap;
 	wmKeyMapItem *kmi;
 	wmKeyMapDiffItem *kmdi;
-	bAddon *bext;
 	bPathCompare *path_cmp;
 	uiStyle *style;
 
@@ -1218,12 +1227,7 @@ static void write_userdef(WriteData *wd)
 		}
 	}
 
-	for (bext = U.addons.first; bext; bext = bext->next) {
-		writestruct(wd, DATA, bAddon, 1, bext);
-		if (bext->prop) {
-			IDP_WriteProperty(bext->prop, wd);
-		}
-	}
+	write_addons(wd, &U.addons);
 
 	for (path_cmp = U.autoexec_paths.first; path_cmp; path_cmp = path_cmp->next) {
 		writestruct(wd, DATA, bPathCompare, 1, path_cmp);
@@ -3787,6 +3791,8 @@ static void write_workspace(WriteData *wd, WorkSpace *workspace)
 	writelist(wd, DATA, WorkSpaceDataRelation, &workspace->hook_layout_relations);
 	writelist(wd, DATA, WorkSpaceDataRelation, &workspace->scene_viewlayer_relations);
 	writelist(wd, DATA, TransformOrientation, transform_orientations);
+	write_addons(wd, &workspace->addons);
+
 }
 
 /* Keep it last of write_foodata functions. */

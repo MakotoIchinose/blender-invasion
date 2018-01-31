@@ -33,6 +33,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_workspace_types.h"
 
 #include "BLI_utildefines.h"
 #include "BLI_math_base.h"
@@ -393,17 +394,17 @@ static void rna_userdef_autosave_update(Main *bmain, Scene *scene, PointerRNA *p
 	rna_userdef_update(bmain, scene, ptr);
 }
 
-static bAddon *rna_userdef_addon_new(void)
+static bAddon *rna_userdef_addon_new(ID *id)
 {
-	ListBase *addons_list = &U.addons;
+	ListBase *addons_list = (id && GS(id->name) == ID_WS) ? &((WorkSpace *)id)->addons : &U.addons;
 	bAddon *bext = MEM_callocN(sizeof(bAddon), "bAddon");
 	BLI_addtail(addons_list, bext);
 	return bext;
 }
 
-static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *bext_ptr)
+static void rna_userdef_addon_remove(ID *id, ReportList *reports, PointerRNA *bext_ptr)
 {
-	ListBase *addons_list = &U.addons;
+	ListBase *addons_list = (id && GS(id->name) == ID_WS) ? &((WorkSpace *)id)->addons : &U.addons;
 	bAddon *bext = bext_ptr->data;
 	if (BLI_findindex(addons_list, bext) == -1) {
 		BKE_report(reports, RPT_ERROR, "Add-on is no longer valid");
@@ -4653,14 +4654,14 @@ static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cpro
 	RNA_def_struct_ui_text(srna, "User Add-ons", "Collection of add-ons");
 
 	func = RNA_def_function(srna, "new", "rna_userdef_addon_new");
-	RNA_def_function_flag(func, FUNC_NO_SELF);
+	RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_SELF_ID);
 	RNA_def_function_ui_description(func, "Add a new add-on");
 	/* return type */
 	parm = RNA_def_pointer(func, "addon", "Addon", "", "Add-on data");
 	RNA_def_function_return(func, parm);
 
 	func = RNA_def_function(srna, "remove", "rna_userdef_addon_remove");
-	RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
+	RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
 	RNA_def_function_ui_description(func, "Remove add-on");
 	parm = RNA_def_pointer(func, "addon", "Addon", "", "Add-on to remove");
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);

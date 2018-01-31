@@ -1830,7 +1830,9 @@ class WM_OT_addon_enable(Operator):
             err_str = traceback.format_exc()
             print(err_str)
 
-        mod = addon_utils.enable(self.module, default_set=True, handle_error=err_cb)
+        addon_collection = addon_utils.addon_collection_from_context(context)
+
+        mod = addon_utils.enable(addon_collection, self.module, default_set=True, handle_error=err_cb)
 
         if mod:
             info = addon_utils.module_bl_info(mod)
@@ -1874,7 +1876,13 @@ class WM_OT_addon_disable(Operator):
             err_str = traceback.format_exc()
             print(err_str)
 
-        addon_utils.disable(self.module, default_set=True, handle_error=err_cb)
+        addon_collection = addon_utils.addon_collection_from_context(context)
+        addon_utils.disable(
+            self.module,
+            addon_collection=addon_collection,
+            default_set=True,
+            handle_error=err_cb,
+        )
 
         if err_str:
             self.report({'ERROR'}, err_str)

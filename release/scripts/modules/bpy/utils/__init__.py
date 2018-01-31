@@ -155,6 +155,9 @@ def load_scripts(reload_scripts=False, refresh_scripts=False):
 
     loaded_modules = set()
 
+    # Load regular addons (ignoring workspace addons)
+    addon_collection = _user_preferences.addons
+
     if refresh_scripts:
         original_modules = _sys.modules.values()
 
@@ -163,7 +166,7 @@ def load_scripts(reload_scripts=False, refresh_scripts=False):
         # to reload. note that they will only actually reload of the
         # modification time changes. This `won't` work for packages so...
         # its not perfect.
-        for module_name in [ext.module for ext in _user_preferences.addons]:
+        for module_name in [ext.module for ext in addon_collection]:
             _addon_utils.disable(module_name)
 
         # *AFTER* unregistering all add-ons, otherwise all calls to
@@ -261,10 +264,10 @@ def load_scripts(reload_scripts=False, refresh_scripts=False):
     _initialize = getattr(_addon_utils, "_initialize", None)
     if _initialize is not None:
         # first time, use fast-path
-        _initialize()
+        _initialize(addon_collection=addon_collection)
         del _addon_utils._initialize
     else:
-        _addon_utils.reset_all(reload_scripts=reload_scripts)
+        _addon_utils.reset_all(addon_collection=addon_collection, reload_scripts=reload_scripts)
     del _initialize
 
     # run the active integration preset

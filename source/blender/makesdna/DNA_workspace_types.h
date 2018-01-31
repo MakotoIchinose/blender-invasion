@@ -88,6 +88,9 @@ typedef struct WorkSpace {
 
 	/* Custom transform orientations */
 	ListBase transform_orientations DNA_PRIVATE_WORKSPACE;
+	
+	/* Workspace add-ons */
+	ListBase addons; /* bAddon */
 
 	int pad;
 	int flags DNA_PRIVATE_WORKSPACE; /* enum eWorkSpaceFlags */
@@ -151,6 +154,7 @@ typedef struct WorkSpaceInstanceHook {
 
 typedef enum eWorkSpaceFlags {
 	WORKSPACE_USE_SCENE_SETTINGS = (1 << 0),
+	WORKSPACE_USE_ADDONS = (1 << 1),
 } eWorkSpaceFlags;
 
 #endif /* __DNA_WORKSPACE_TYPES_H__ */

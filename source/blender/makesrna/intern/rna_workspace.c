@@ -121,6 +121,12 @@ static void rna_def_workspace(BlenderRNA *brna)
 	                                  "rna_workspace_transform_orientations_item_get", NULL, NULL, NULL, NULL);
 	RNA_def_property_ui_text(prop, "Transform Orientations", "");
 
+	prop = RNA_def_property(srna, "addons", PROP_COLLECTION, PROP_NONE);
+	RNA_def_property_collection_sdna(prop, NULL, "addons", NULL);
+	RNA_def_property_struct_type(prop, "Addon");
+	RNA_def_property_ui_text(prop, "Add-on", "");
+	RNA_def_property_srna(prop, "Addons"); /* defined in rna_userdef */
+
 	/* View Render */
 	prop = RNA_def_property(srna, "view_render", PROP_POINTER, PROP_NONE);
 	RNA_def_property_flag(prop, PROP_NEVER_NULL);
@@ -133,6 +139,13 @@ static void rna_def_workspace(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", WORKSPACE_USE_SCENE_SETTINGS);
 	RNA_def_property_ui_text(prop, "Scene Settings",
 	                         "Use scene settings instead of workspace settings");
+	RNA_def_property_update(prop, NC_SCREEN | ND_LAYER, NULL);
+
+	prop = RNA_def_property(srna, "use_addons", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", WORKSPACE_USE_ADDONS);
+	RNA_def_property_ui_text(prop, "Add-ons",
+	                         "Use workspace add-ons instead of user-preference add-ons");
 	RNA_def_property_update(prop, NC_SCREEN | ND_LAYER, NULL);
 }
 

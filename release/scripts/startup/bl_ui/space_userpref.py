@@ -1376,13 +1376,17 @@ class USERPREF_PT_addons(Panel):
         layout = self.layout
 
         userpref = context.user_preferences
-        used_ext = {ext.module for ext in userpref.addons}
+        addon_collection = addon_utils.addon_collection_from_context(context)
+
+        used_ext = {ext.module for ext in addon_collection}
 
         userpref_addons_folder = os.path.join(userpref.filepaths.script_directory, "addons")
         scripts_addons_folder = bpy.utils.user_resource('SCRIPTS', "addons")
 
         # collect the categories that can be filtered on
-        addons = [(mod, addon_utils.module_bl_info(mod)) for mod in addon_utils.modules(refresh=False)]
+        addons = [
+            (mod, addon_utils.module_bl_info(mod))
+            for mod in addon_utils.modules(addon_collection=addon_collection, refresh=False)]
 
         split = layout.split(percentage=0.2)
         col = split.column()
@@ -1520,7 +1524,7 @@ class USERPREF_PT_addons(Panel):
 
                     # Show addon user preferences
                     if is_enabled:
-                        addon_preferences = userpref.addons[module_name].preferences
+                        addon_preferences = addon_collection[module_name].preferences
                         if addon_preferences is not None:
                             draw = getattr(addon_preferences, "draw", None)
                             if draw is not None:

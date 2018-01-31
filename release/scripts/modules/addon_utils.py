@@ -39,12 +39,12 @@ addons_fake_modules = {}
 
 
 # called only once at startup, avoids calling 'reset_all', correct but slower.
-def _initialize():
+def _initialize(*, addon_collection):
     path_list = paths()
     for path in path_list:
         _bpy.utils._sys_path_ensure(path)
-    for addon in _user_preferences.addons:
-        enable(addon.module)
+    for addon in addon_collection:
+        enable(addon_collection, addon.module)
 
 
 def paths():
@@ -56,6 +56,14 @@ def paths():
     addon_paths += _bpy.utils.script_paths("addons_contrib")
 
     return addon_paths
+
+
+def addon_collection_from_context(context):
+    workspace = context.workspace
+    if workspace is not None and workspace.use_addons:
+        return workspace.addons
+    else:
+        return context.user_preferences.addons
 
 
 def modules_refresh(module_cache=addons_fake_modules):
@@ -194,20 +202,22 @@ def modules_refresh(module_cache=addons_fake_modules):
     del modules_stale
 
 
-def modules(module_cache=addons_fake_modules, *, refresh=True):
+def modules(*, addon_collection, module_cache=addons_fake_modules, refresh=True):
     if refresh or ((module_cache is addons_fake_modules) and modules._is_first):
         modules_refresh(module_cache)
         modules._is_first = False
 
     mod_list = list(module_cache.values())
-    mod_list.sort(key=lambda mod: (mod.bl_info["category"],
-                                   mod.bl_info["name"],
-                                   ))
+    mod_list.sort(
+        key=lambda mod: (
+            mod.bl_info["category"],
+            mod.bl_info["name"],
+        ))
     return mod_list
 modules._is_first = True
 
 
-def check(module_name):
+def check(addon_collection, module_name):
     """
     Returns the loaded state of the addon.
 
@@ -217,7 +227,7 @@ def check(module_name):
     :rtype: tuple of booleans
     """
     import sys
-    loaded_default = module_name in _user_preferences.addons
+    loaded_default = module_name in addon_collection
 
     mod = sys.modules.get(module_name)
     loaded_state = ((mod is not None) and
@@ -239,24 +249,21 @@ def check(module_name):
 # utility functions
 
 
-def _addon_ensure(module_name):
-    addons = _user_preferences.addons
-    addon = addons.get(module_name)
+def _addon_ensure(addon_collection, module_name):
+    addon = addon_collection.get(module_name)
     if not addon:
-        addon = addons.new()
+        addon = addon_collection.new()
         addon.module = module_name
 
 
-def _addon_remove(module_name):
-    addons = _user_preferences.addons
-
-    while module_name in addons:
-        addon = addons.get(module_name)
+def _addon_remove(addon_collection, module_name):
+    while module_name in addon_collection:
+        addon = addon_collection.get(module_name)
         if addon:
-            addons.remove(addon)
+            addon_collection.remove(addon)
 
 
-def enable(module_name, *, default_set=False, persistent=False, handle_error=None):
+def enable(addon_collection, module_name, *, default_set=False, persistent=False, handle_error=None):
     """
     Enables an addon by name.
 
@@ -317,7 +324,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
     # add the addon first it may want to initialize its own preferences.
     # must remove on fail through.
     if default_set:
-        _addon_ensure(module_name)
+        _addon_ensure(addon_collection, module_name)
 
     # Split registering up into 3 steps so we can undo
     # if it fails par way through.
@@ -339,7 +346,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
                 handle_error(ex)
 
             if default_set:
-                _addon_remove(module_name)
+                _addon_remove(addon_collection, module_name)
             return None
 
         # 2) try register collected modules
@@ -354,7 +361,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             handle_error(ex)
             del sys.modules[module_name]
             if default_set:
-                _addon_remove(module_name)
+                _addon_remove(addon_collection, module_name)
             return None
 
     # * OK loaded successfully! *
@@ -367,7 +374,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
     return mod
 
 
-def disable(module_name, *, default_set=False, handle_error=None):
+def disable(module_name, *, addon_collection, default_set=False, handle_error=None):
     """
     Disables an addon by name.
 
@@ -406,13 +413,13 @@ def disable(module_name, *, default_set=False, handle_error=None):
 
     # could be in more than once, unlikely but better do this just in case.
     if default_set:
-        _addon_remove(module_name)
+        _addon_remove(addon_collection, module_name)
 
     if _bpy.app.debug_python:
         print("\taddon_utils.disable", module_name)
 
 
-def reset_all(*, reload_scripts=False):
+def reset_all(*, addon_collection, reload_scripts=False):
     """
     Sets the addon state based on the user preferences.
     """
@@ -427,7 +434,7 @@ def reset_all(*, reload_scripts=False):
     for path in paths_list:
         _bpy.utils._sys_path_ensure(path)
         for mod_name, mod_path in _bpy.path.module_names(path):
-            is_enabled, is_loaded = check(mod_name)
+            is_enabled, is_loaded = check(mod_name, addon_collection=addon_collection)
 
             # first check if reload is needed before changing state.
             if reload_scripts:
@@ -439,17 +446,17 @@ def reset_all(*, reload_scripts=False):
             if is_enabled == is_loaded:
                 pass
             elif is_enabled:
-                enable(mod_name)
+                enable(mod_name, addon_collection=addon_collection)
             elif is_loaded:
                 print("\taddon_utils.reset_all unloading", mod_name)
-                disable(mod_name)
+                disable(mod_name, addon_collection=addon_collection)
 
 
-def disable_all():
+def disable_all(*, addon_collection):
     import sys
     for mod_name, mod in sys.modules.items():
         if getattr(mod, "__addon_enabled__", False):
-            disable(mod_name)
+            disable(mod_name, addon_collection=addon_collection)
 
 
 def module_bl_info(mod, info_basis=None):

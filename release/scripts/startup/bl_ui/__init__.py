@@ -114,6 +114,7 @@ def register():
 
     def addon_filter_items(self, context):
         import addon_utils
+        addon_collection = addon_utils.addon_collection_from_context(context)
 
         items = [('All', "All", "All Add-ons"),
                  ('User', "User", "All Add-ons Installed by User"),
@@ -123,7 +124,10 @@ def register():
 
         items_unique = set()
 
-        for mod in addon_utils.modules(refresh=False):
+        for mod in addon_utils.modules(
+                addon_collection=addon_collection,
+                refresh=False,
+        ):
             info = addon_utils.module_bl_info(mod)
             items_unique.add(info["category"])
 
