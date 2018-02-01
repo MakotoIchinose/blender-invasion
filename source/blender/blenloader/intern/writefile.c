@@ -4117,7 +4117,7 @@ static bool write_file_handle(
 	mywrite_flush(wd);
 
 	if (write_flags & G_FILE_USERPREFS) {
-		write_userdef(wd);
+		write_userdef(wd, &U);
 	}
 
 	/* Write DNA last, because (to be implemented) test for which structs are written.
