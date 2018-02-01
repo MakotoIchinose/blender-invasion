@@ -1176,7 +1176,7 @@ static void write_renderinfo(WriteData *wd, Main *mainvar)
 	}
 }
 
-static void write_keymapitem(WriteData *wd, wmKeyMapItem *kmi)
+static void write_keymapitem(WriteData *wd, const wmKeyMapItem *kmi)
 {
 	writestruct(wd, DATA, wmKeyMapItem, 1, kmi);
 	if (kmi->properties) {
@@ -1184,9 +1184,9 @@ static void write_keymapitem(WriteData *wd, wmKeyMapItem *kmi)
 	}
 }
 
-static void write_addons(WriteData *wd, ListBase *addons)
+static void write_addons(WriteData *wd, ListBase *addon_list)
 {
-	for (bAddon *bext = addons->first; bext; bext = bext->next) {
+	for (bAddon *bext = addon_list->first; bext; bext = bext->next) {
 		writestruct(wd, DATA, bAddon, 1, bext);
 		if (bext->prop) {
 			IDP_WriteProperty(bext->prop, wd);
@@ -1194,25 +1194,18 @@ static void write_addons(WriteData *wd, ListBase *addons)
 	}
 }
 
-static void write_userdef(WriteData *wd)
+static void write_userdef(WriteData *wd, const UserDef *userdef)
 {
-	bTheme *btheme;
-	wmKeyMap *keymap;
-	wmKeyMapItem *kmi;
-	wmKeyMapDiffItem *kmdi;
-	bPathCompare *path_cmp;
-	uiStyle *style;
+	writestruct(wd, USER, UserDef, 1, userdef);
 
-	writestruct(wd, USER, UserDef, 1, &U);
-
-	for (btheme = U.themes.first; btheme; btheme = btheme->next) {
+	for (const bTheme *btheme = userdef->themes.first; btheme; btheme = btheme->next) {
 		writestruct(wd, DATA, bTheme, 1, btheme);
 	}
 
-	for (keymap = U.user_keymaps.first; keymap; keymap = keymap->next) {
+	for (const wmKeyMap *keymap = userdef->user_keymaps.first; keymap; keymap = keymap->next) {
 		writestruct(wd, DATA, wmKeyMap, 1, keymap);
 
-		for (kmdi = keymap->diff_items.first; kmdi; kmdi = kmdi->next) {
+		for (const wmKeyMapDiffItem *kmdi = keymap->diff_items.first; kmdi; kmdi = kmdi->next) {
 			writestruct(wd, DATA, wmKeyMapDiffItem, 1, kmdi);
 			if (kmdi->remove_item) {
 				write_keymapitem(wd, kmdi->remove_item);
@@ -1222,18 +1215,18 @@ static void write_userdef(WriteData *wd)
 			}
 		}
 
-		for (kmi = keymap->items.first; kmi; kmi = kmi->next) {
+		for (const wmKeyMapItem *kmi = keymap->items.first; kmi; kmi = kmi->next) {
 			write_keymapitem(wd, kmi);
 		}
 	}
 
 	write_addons(wd, &U.addons);
 
-	for (path_cmp = U.autoexec_paths.first; path_cmp; path_cmp = path_cmp->next) {
+	for (const bPathCompare *path_cmp = userdef->autoexec_paths.first; path_cmp; path_cmp = path_cmp->next) {
 		writestruct(wd, DATA, bPathCompare, 1, path_cmp);
 	}
 
-	for (style = U.uistyles.first; style; style = style->next) {
+	for (const uiStyle *style = userdef->uistyles.first; style; style = style->next) {
 		writestruct(wd, DATA, uiStyle, 1, style);
 	}
 }
@@ -3792,7 +3785,6 @@ static void write_workspace(WriteData *wd, WorkSpace *workspace)
 	writelist(wd, DATA, WorkSpaceDataRelation, &workspace->scene_viewlayer_relations);
 	writelist(wd, DATA, TransformOrientation, transform_orientations);
 	write_addons(wd, &workspace->addons);
-
 }
 
 /* Keep it last of write_foodata functions. */
