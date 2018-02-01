@@ -44,7 +44,7 @@ def _initialize(*, addon_collection):
     for path in path_list:
         _bpy.utils._sys_path_ensure(path)
     for addon in addon_collection:
-        enable(addon_collection, addon.module)
+        enable(addon.module, addon_collection=addon_collection)
 
 
 def paths():
@@ -85,8 +85,8 @@ def modules_refresh(module_cache=addons_fake_modules):
         ModuleType = type(ast)
         try:
             file_mod = open(mod_path, "r", encoding='UTF-8')
-        except OSError as e:
-            print("Error opening file %r: %s" % (mod_path, e))
+        except OSError as ex:
+            print("Error opening file %r: %s" % (mod_path, ex))
             return None
 
         with file_mod:
@@ -97,10 +97,10 @@ def modules_refresh(module_cache=addons_fake_modules):
                 while not l.startswith("bl_info"):
                     try:
                         l = line_iter.readline()
-                    except UnicodeDecodeError as e:
+                    except UnicodeDecodeError as ex:
                         if not error_encoding:
                             error_encoding = True
-                            print("Error reading file as UTF-8:", mod_path, e)
+                            print("Error reading file as UTF-8:", mod_path, ex)
                         return None
 
                     if len(l) == 0:
@@ -109,10 +109,10 @@ def modules_refresh(module_cache=addons_fake_modules):
                     lines.append(l)
                     try:
                         l = line_iter.readline()
-                    except UnicodeDecodeError as e:
+                    except UnicodeDecodeError as ex:
                         if not error_encoding:
                             error_encoding = True
-                            print("Error reading file as UTF-8:", mod_path, e)
+                            print("Error reading file as UTF-8:", mod_path, ex)
                         return None
 
                 data = "".join(lines)
@@ -190,9 +190,11 @@ def modules_refresh(module_cache=addons_fake_modules):
                     mod = None
 
             if mod is None:
-                mod = fake_module(mod_name,
-                                  mod_path,
-                                  force_support=force_support)
+                mod = fake_module(
+                    mod_name,
+                    mod_path,
+                    force_support=force_support,
+                )
                 if mod:
                     module_cache[mod_name] = mod
 
@@ -212,12 +214,13 @@ def modules(*, addon_collection, module_cache=addons_fake_modules, refresh=True)
         key=lambda mod: (
             mod.bl_info["category"],
             mod.bl_info["name"],
-        ))
+        )
+    )
     return mod_list
 modules._is_first = True
 
 
-def check(addon_collection, module_name):
+def check(module_name, *, addon_collection):
     """
     Returns the loaded state of the addon.
 
@@ -230,8 +233,10 @@ def check(addon_collection, module_name):
     loaded_default = module_name in addon_collection
 
     mod = sys.modules.get(module_name)
-    loaded_state = ((mod is not None) and
-                    getattr(mod, "__addon_enabled__", Ellipsis))
+    loaded_state = (
+        (mod is not None) and
+        getattr(mod, "__addon_enabled__", Ellipsis)
+    )
 
     if loaded_state is Ellipsis:
         print("Warning: addon-module %r found module "
@@ -249,21 +254,21 @@ def check(addon_collection, module_name):
 # utility functions
 
 
-def _addon_ensure(addon_collection, module_name):
+def _addon_ensure(module_name, *, addon_collection):
     addon = addon_collection.get(module_name)
     if not addon:
         addon = addon_collection.new()
         addon.module = module_name
 
 
-def _addon_remove(addon_collection, module_name):
+def _addon_remove(module_name, *, addon_collection):
     while module_name in addon_collection:
         addon = addon_collection.get(module_name)
         if addon:
             addon_collection.remove(addon)
 
 
-def enable(addon_collection, module_name, *, default_set=False, persistent=False, handle_error=None):
+def enable(module_name, *, addon_collection, default_set=False, persistent=False, handle_error=None):
     """
     Enables an addon by name.
 
@@ -324,7 +329,7 @@ def enable(addon_collection, module_name, *, default_set=False, persistent=False
     # add the addon first it may want to initialize its own preferences.
     # must remove on fail through.
     if default_set:
-        _addon_ensure(addon_collection, module_name)
+        _addon_ensure(module_name, addon_collection=addon_collection)
 
     # Split registering up into 3 steps so we can undo
     # if it fails par way through.
@@ -346,7 +351,7 @@ def enable(addon_collection, module_name, *, default_set=False, persistent=False
                 handle_error(ex)
 
             if default_set:
-                _addon_remove(addon_collection, module_name)
+                _addon_remove(module_name, addon_collection=addon_collection)
             return None
 
         # 2) try register collected modules
@@ -361,7 +366,7 @@ def enable(addon_collection, module_name, *, default_set=False, persistent=False
             handle_error(ex)
             del sys.modules[module_name]
             if default_set:
-                _addon_remove(addon_collection, module_name)
+                _addon_remove(module_name, addon_collection=addon_collection)
             return None
 
     # * OK loaded successfully! *
@@ -413,7 +418,7 @@ def disable(module_name, *, addon_collection, default_set=False, handle_error=No
 
     # could be in more than once, unlikely but better do this just in case.
     if default_set:
-        _addon_remove(addon_collection, module_name)
+        _addon_remove(module_name, addon_collection=addon_collection)
 
     if _bpy.app.debug_python:
         print("\taddon_utils.disable", module_name)
