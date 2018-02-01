@@ -60,6 +60,8 @@ void BKE_blender_userdef_data_duplicate(struct UserDef *userdef_dst, struct User
 
 void BKE_blender_userdef_data_free(struct UserDef *userdef, bool clear_fonts);
 
+void BKE_blender_addons_free_list(struct ListBase *addons_list);
+
 /* set this callback when a UI is running */
 void BKE_blender_callback_test_break_set(void (*func)(void));
 int  BKE_blender_test_break(void);

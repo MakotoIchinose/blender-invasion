@@ -198,9 +198,9 @@ static void userdef_free_keymaps(UserDef *userdef)
 	BLI_listbase_clear(&userdef->user_keymaps);
 }
 
-static void userdef_free_addons(UserDef *userdef)
+void BKE_blender_addons_free_list(ListBase *addons_list)
 {
-	for (bAddon *addon = userdef->addons.first, *addon_next; addon; addon = addon_next) {
+	for (bAddon *addon = addons_list->first, *addon_next; addon; addon = addon_next) {
 		addon_next = addon->next;
 		if (addon->prop) {
 			IDP_FreeProperty(addon->prop);
@@ -208,7 +208,7 @@ static void userdef_free_addons(UserDef *userdef)
 		}
 		MEM_freeN(addon);
 	}
-	BLI_listbase_clear(&userdef->addons);
+	BLI_listbase_clear(addons_list);
 }
 
 /**
@@ -222,7 +222,7 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
 #endif
 
 	userdef_free_keymaps(userdef);
-	userdef_free_addons(userdef);
+	BKE_blender_addons_free_list(&userdef->addons);
 
 	if (clear_fonts) {
 		for (uiFont *font = userdef->uifonts.first; font; font = font->next) {

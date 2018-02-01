@@ -33,6 +33,7 @@
 #include "BLI_string_utils.h"
 #include "BLI_listbase.h"
 
+#include "BKE_blender.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
@@ -168,6 +169,8 @@ void BKE_workspace_free(WorkSpace *workspace)
 
 	BLI_freelistN(&workspace->layouts);
 	BLI_freelistN(&workspace->transform_orientations);
+
+	BKE_blender_addons_free_list(&workspace->addons);
 
 	BKE_viewrender_free(&workspace->view_render);
 }

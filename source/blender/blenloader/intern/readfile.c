@@ -2898,12 +2898,21 @@ static void lib_link_workspaces(FileData *fd, Main *bmain)
 	}
 }
 
+static void direct_link_addon_list(FileData *fd, ListBase *addon_list)
+{
+	for (bAddon *addon = addon_list->first; addon; addon = addon->next) {
+		addon->prop = newdataadr(fd, addon->prop);
+		IDP_DirectLinkGroup_OrFree(&addon->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
+	}
+}
+
 static void direct_link_workspace(FileData *fd, WorkSpace *workspace, const Main *main)
 {
 	link_list(fd, BKE_workspace_layouts_get(workspace));
 	link_list(fd, &workspace->hook_layout_relations);
 	link_list(fd, &workspace->scene_viewlayer_relations);
 	link_list(fd, BKE_workspace_transform_orientations_get(workspace));
+	link_list(fd, &workspace->addons);
 
 	for (WorkSpaceDataRelation *relation = workspace->hook_layout_relations.first;
 	     relation;
@@ -2929,6 +2938,8 @@ static void direct_link_workspace(FileData *fd, WorkSpace *workspace, const Main
 			}
 		}
 	}
+
+	direct_link_addon_list(fd, &workspace->addons);
 }
 
 static void lib_link_workspace_instance_hook(FileData *fd, WorkSpaceInstanceHook *hook, ID *id)
@@ -8856,7 +8867,6 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 	wmKeyMap *keymap;
 	wmKeyMapItem *kmi;
 	wmKeyMapDiffItem *kmdi;
-	bAddon *addon;
 	
 	bfd->user = user= read_struct(fd, bhead, "user def");
 	
@@ -8900,10 +8910,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 			direct_link_keymapitem(fd, kmi);
 	}
 
-	for (addon = user->addons.first; addon; addon = addon->next) {
-		addon->prop = newdataadr(fd, addon->prop);
-		IDP_DirectLinkGroup_OrFree(&addon->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
-	}
+	direct_link_addon_list(fd, &user->addons);
 
 	// XXX
 	user->uifonts.first = user->uifonts.last= NULL;
