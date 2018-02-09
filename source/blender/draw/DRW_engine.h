@@ -125,4 +125,9 @@ void EDIT_ARMATURE_collection_settings_create(struct IDProperty *properties);
 void PAINT_WEIGHT_collection_settings_create(struct IDProperty *properties);
 void PAINT_VERTEX_collection_settings_create(struct IDProperty *properties);
 
+void DRW_ogl_ctx_create(void);
+void DRW_ogl_ctx_destroy(void);
+void DRW_ogl_ctx_enable(void);
+void DRW_ogl_ctx_disable(void);
+
 #endif /* __DRW_ENGINE_H__ */

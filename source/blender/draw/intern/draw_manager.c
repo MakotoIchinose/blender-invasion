@@ -30,6 +30,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
+#include "BLI_threads.h"
 
 #include "BIF_glutil.h"
 
@@ -82,6 +83,7 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+#include "wm_window.h"
 
 #include "draw_manager_text.h"
 #include "draw_manager_profiling.h"
@@ -373,6 +375,12 @@ static struct DRWMatrixOveride {
 } viewport_matrix_override = {{{{0}}}};
 
 ListBase DRW_engines = {NULL, NULL};
+
+/* Unique ghost context used by the draw manager. */
+static void *g_ogl_context = NULL;
+
+/* Mutex to lock the drw manager and avoid concurent context usage. */
+static ThreadRWMutex cache_rwlock = BLI_RWLOCK_INITIALIZER;
 
 #ifdef USE_GPU_SELECT
 static unsigned int g_DRW_select_id = (unsigned int)-1;
@@ -3443,6 +3451,7 @@ void DRW_draw_render_loop_ex(
         ARegion *ar, View3D *v3d, const eObjectMode object_mode,
         const bContext *evil_C)
 {
+
 	Scene *scene = DEG_get_evaluated_scene(depsgraph);
 	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
 	RegionView3D *rv3d = ar->regiondata;
@@ -3628,6 +3637,10 @@ void DRW_render_to_image(RenderEngine *re, struct Depsgraph *depsgraph)
 	RenderData *r = &scene->r;
 	Render *render = re->re;
 	const EvaluationContext *eval_ctx = RE_GetEvalCtx(render);
+	/* Changing Context */
+	BLI_rw_mutex_lock(&cache_rwlock, THREAD_LOCK_WRITE);
+	/* IMPORTANT: We dont support immediate mode in render mode! */
+	WM_context_activate(g_ogl_context);
 
 	/* Reset before using it. */
 	memset(&DST, 0x0, sizeof(DST));
@@ -3682,6 +3695,10 @@ void DRW_render_to_image(RenderEngine *re, struct Depsgraph *depsgraph)
 	glEnable(GL_SCISSOR_TEST);
 	GPU_framebuffer_restore();
 
+	/* Changing Context */
+	wm_window_reset_drawable();
+	BLI_rw_mutex_unlock(&cache_rwlock);
+
 #ifdef DEBUG
 	/* Avoid accidental reuse. */
 	memset(&DST, 0xFF, sizeof(DST));
@@ -3697,6 +3714,37 @@ void DRW_render_object_iter(
 		callback(vedata, ob, engine, depsgraph);
 	}
 	DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END
+}
+
+static struct DRWSelectBuffer {
+	struct GPUFrameBuffer *framebuffer;
+	struct GPUTexture *texture_depth;
+} g_select_buffer = {NULL};
+
+static void draw_select_framebuffer_setup(const rcti *rect)
+{
+	if (g_select_buffer.framebuffer == NULL) {
+		g_select_buffer.framebuffer = GPU_framebuffer_create();
+	}
+
+	/* If size mismatch recreate the texture. */
+	if ((g_select_buffer.texture_depth != NULL) &&
+		((GPU_texture_width(g_select_buffer.texture_depth) != BLI_rcti_size_x(rect)) ||
+		 (GPU_texture_height(g_select_buffer.texture_depth) != BLI_rcti_size_y(rect))))
+	{
+		GPU_texture_free(g_select_buffer.texture_depth);
+		g_select_buffer.texture_depth = NULL;
+	}
+
+	if (g_select_buffer.texture_depth == NULL) {
+		g_select_buffer.texture_depth = GPU_texture_create_depth(BLI_rcti_size_x(rect), BLI_rcti_size_y(rect), NULL);
+
+		GPU_framebuffer_texture_attach(g_select_buffer.framebuffer, g_select_buffer.texture_depth, 0, 0);
+
+		if (!GPU_framebuffer_check_valid(g_select_buffer.framebuffer, NULL)) {
+			printf("Error invalid selection framebuffer\n");
+		}
+	}
 }
 
 /**
@@ -3740,9 +3788,12 @@ void DRW_draw_select_loop(
 	struct GPUViewport *viewport = GPU_viewport_create();
 	GPU_viewport_size_set(viewport, (const int[2]){BLI_rcti_size_x(rect), BLI_rcti_size_y(rect)});
 
-	bool cache_is_dirty;
 	DST.viewport = viewport;
 	v3d->zbuf = true;
+
+	/* Setup framebuffer */
+	draw_select_framebuffer_setup(rect);
+	GPU_framebuffer_bind(g_select_buffer.framebuffer);
 
 	DST.options.is_select = true;
 
@@ -3756,7 +3807,6 @@ void DRW_draw_select_loop(
 	}
 
 	/* Setup viewport */
-	cache_is_dirty = true;
 
 	/* Instead of 'DRW_context_state_init(C, &DST.draw_ctx)', assign from args */
 	DST.draw_ctx = (DRWContextState){
@@ -3772,10 +3822,7 @@ void DRW_draw_select_loop(
 	/* Init engines */
 	drw_engines_init();
 
-	/* TODO : tag to refresh by the dependency graph */
-	/* ideally only refresh when objects are added/removed */
-	/* or render properties / materials change */
-	if (cache_is_dirty) {
+	{
 		drw_engines_cache_init();
 
 		if (use_obedit) {
@@ -4097,6 +4144,11 @@ extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
 extern struct GPUTexture *globals_ramp; /* draw_common.c */
 void DRW_engines_free(void)
 {
+	DRW_ogl_ctx_enable();
+
+	DRW_TEXTURE_FREE_SAFE(g_select_buffer.texture_depth);
+	DRW_FRAMEBUFFER_FREE_SAFE(g_select_buffer.framebuffer);
+
 	DRW_shape_cache_free();
 	DRW_stats_free();
 
@@ -4119,9 +4171,51 @@ void DRW_engines_free(void)
 	MEM_SAFE_FREE(RST.bound_texs);
 	MEM_SAFE_FREE(RST.bound_tex_slots);
 
+	DRW_ogl_ctx_disable();
+
 #ifdef WITH_CLAY_ENGINE
 	BLI_remlink(&R_engines, &DRW_engine_viewport_clay_type);
 #endif
+}
+
+/** \} */
+
+/** \name Init/Exit (DRW_opengl_ctx)
+ * \{ */
+
+void DRW_ogl_ctx_create(void)
+{
+	BLI_assert(g_ogl_context == NULL); /* Ensure it's called once */
+
+	/* This changes the active context. */
+	g_ogl_context = WM_context_create();
+	/* So we activate the window's one afterwards. */
+	wm_window_reset_drawable();
+}
+
+void DRW_ogl_ctx_destroy(void)
+{
+	if (g_ogl_context != NULL) {
+		WM_context_dispose(g_ogl_context);
+	}
+}
+
+void DRW_ogl_ctx_enable(void)
+{
+	if (g_ogl_context != NULL) {
+		BLI_rw_mutex_lock(&cache_rwlock, THREAD_LOCK_WRITE);
+		immDeactivate();
+		WM_context_activate(g_ogl_context);
+		immActivate();
+	}
+}
+
+void DRW_ogl_ctx_disable(void)
+{
+	if (g_ogl_context != NULL) {
+		wm_window_reset_drawable();
+		BLI_rw_mutex_unlock(&cache_rwlock);
+	}
 }
 
 /** \} */

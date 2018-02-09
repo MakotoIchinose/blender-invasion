@@ -2130,6 +2130,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(
 	}
 
 	const bool own_ofs = (ofs == NULL);
+	DRW_ogl_ctx_enable();
 
 	if (own_ofs) {
 		/* bind */
@@ -2265,6 +2266,8 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(
 	if (own_ofs) {
 		GPU_offscreen_free(ofs);
 	}
+
+	DRW_ogl_ctx_disable();
 
 	if (ibuf->rect_float && ibuf->rect)
 		IMB_rect_from_float(ibuf);

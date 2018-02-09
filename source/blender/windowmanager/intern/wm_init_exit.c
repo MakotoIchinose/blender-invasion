@@ -125,6 +125,8 @@
 
 #include "DEG_depsgraph.h"
 
+#include "DRW_engine.h"
+
 #ifdef WITH_OPENSUBDIV
 #  include "BKE_subsurf.h"
 #endif
@@ -207,6 +209,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 		/* sets 3D mouse deadzone */
 		WM_ndof_deadzone_set(U.ndof_deadzone);
 #endif
+		DRW_ogl_ctx_create();
 
 		GPU_init();
 
@@ -574,6 +577,8 @@ void WM_exit_ext(bContext *C, const bool do_python)
 		GPU_free_unused_buffers();
 
 		GPU_exit();
+
+		DRW_ogl_ctx_destroy(); /* Must be before ghost exit. */
 	}
 
 	BKE_undo_reset();
