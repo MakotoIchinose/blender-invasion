@@ -95,6 +95,8 @@
 
 /* the global to talk to ghost */
 static GHOST_SystemHandle g_system = NULL;
+/* Active window */
+static GHOST_WindowHandle g_active_window = NULL;
 
 typedef enum WinOverrideFlag {
 	WIN_OVERRIDE_GEOM     = (1 << 0),
@@ -492,6 +494,8 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm, const char *title, wm
 #endif
 	                              GHOST_kDrawingContextTypeOpenGL,
 	                              glSettings);
+
+	g_active_window = ghostwin;
 	
 	if (ghostwin) {
 		GHOST_RectangleHandle bounds;
@@ -1022,10 +1026,24 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
 
 		immDeactivate();
 		GHOST_ActivateWindowDrawingContext(win->ghostwin);
+		g_active_window = win->ghostwin;
 		immActivate();
 
 		/* this can change per window */
 		WM_window_set_dpi(win);
+	}
+}
+
+/* Reset active the current window opengl drawing context. */
+void wm_window_reset_drawable(void)
+{
+	if (BLI_thread_is_main()) {
+		immDeactivate();
+		GHOST_ActivateWindowDrawingContext(g_active_window);
+		immActivate();
+	}
+	else {
+		/* TODO unbind the context (set context to NULL) */
 	}
 }
 
@@ -2022,3 +2040,20 @@ void wm_window_IME_end(wmWindow *win)
 	win->ime_data = NULL;
 }
 #endif  /* WITH_INPUT_IME */
+
+/* ****** direct opengl context management ****** */
+
+void *WM_context_create(void)
+{
+	return GHOST_CreateOffscreenContext(g_system);
+}
+
+void WM_context_dispose(void *context)
+{
+	GHOST_DisposeOffscreenContext(g_system, (GHOST_ContextHandle)context);
+}
+
+void WM_context_activate(void *context)
+{
+	GHOST_ActivateOffscreenContext((GHOST_ContextHandle)context);
+}
