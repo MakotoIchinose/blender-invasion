@@ -33,6 +33,7 @@
 #ifndef __GHOST_CONTEXT_H__
 #define __GHOST_CONTEXT_H__
 
+#include "GHOST_IContext.h"
 #include "GHOST_Types.h"
 
 #include "glew-mx.h"
@@ -40,7 +41,7 @@
 #include <cstdlib> // for NULL
 
 
-class GHOST_Context
+class GHOST_Context : public GHOST_IContext
 {
 public:
 	/**

@@ -74,7 +74,6 @@ GHOST_ContextGLX::GHOST_ContextGLX(
       m_contextResetNotificationStrategy(contextResetNotificationStrategy),
       m_context(None)
 {
-	assert(m_window  != 0);
 	assert(m_display != NULL);
 }
 
@@ -288,8 +287,10 @@ const bool GLXEW_ARB_create_context_robustness =
 		// which means we cannot use glX extensions until after we create a context
 		initContextGLXEW();
 
-		initClearGL();
-		::glXSwapBuffers(m_display, m_window);
+		if (m_window) {
+			initClearGL();
+			::glXSwapBuffers(m_display, m_window);
+		}
 
 		/* re initialize to get the extensions properly */
 		initContextGLXEW();
