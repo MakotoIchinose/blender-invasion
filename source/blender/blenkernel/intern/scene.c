@@ -618,7 +618,7 @@ void BKE_scene_init(Scene *sce)
 	 */
 	sce->r.color_mgt_flag |= R_COLOR_MANAGEMENT;
 
-	sce->r.gauss = 1.0;
+	sce->r.gauss = 1.5f;
 	
 	/* deprecated but keep for upwards compat */
 	sce->r.postgamma = 1.0;
@@ -983,8 +983,7 @@ void BKE_scene_set_background(Main *bmain, Scene *scene)
 	BKE_scene_validate_setscene(bmain, scene);
 	
 	/* can happen when switching modes in other scenes */
-	if (scene->obedit && !(scene->obedit->mode & OB_MODE_EDIT))
-		scene->obedit = NULL;
+	scene->obedit = NULL;
 
 	/* deselect objects (for dataselect) */
 	for (ob = bmain->object.first; ob; ob = ob->id.next)

@@ -1630,6 +1630,7 @@ wmTimer *WM_event_add_timer_notifier(wmWindowManager *wm, wmWindow *win, unsigne
 	wt->timestep = timestep;
 	wt->win = win;
 	wt->customdata = SET_UINT_IN_POINTER(type);
+	wt->flags |= WM_TIMER_NO_FREE_CUSTOM_DATA;
 
 	BLI_addtail(&wm->timers, wt);
 
@@ -1651,8 +1652,9 @@ void WM_event_remove_timer(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *
 			wm->reports.reporttimer = NULL;
 		
 		BLI_remlink(&wm->timers, wt);
-		if (wt->customdata)
+		if (wt->customdata != NULL && (wt->flags & WM_TIMER_NO_FREE_CUSTOM_DATA) == 0) {
 			MEM_freeN(wt->customdata);
+		}
 		MEM_freeN(wt);
 		
 		/* there might be events in queue with this timer as customdata */
@@ -1964,6 +1966,18 @@ WorkSpace *WM_windows_workspace_get_from_screen(const wmWindowManager *wm, const
 		}
 	}
 	return NULL;
+}
+
+eObjectMode WM_windows_object_mode_get(const struct wmWindowManager *wm)
+{
+	eObjectMode object_mode = 0;
+	for (wmWindow *win = wm->windows.first; win; win = win->next) {
+		const WorkSpace *workspace = BKE_workspace_active_get(win->workspace_hook);
+		if (workspace != NULL) {
+			object_mode |= workspace->object_mode;
+		}
+	}
+	return object_mode;
 }
 
 Scene *WM_window_get_active_scene(const wmWindow *win)
