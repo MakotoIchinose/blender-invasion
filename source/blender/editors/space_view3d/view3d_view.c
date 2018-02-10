@@ -924,7 +924,7 @@ int view3d_opengl_select(
 
 #ifndef WITH_OPENGL_LEGACY
 	/* All of the queries need to be perform on the drawing context. */
-	DRW_ogl_ctx_enable();
+	DRW_opengl_context_enable();
 #endif
 
 	/* Re-use cache (rect must be smaller then the cached)
@@ -1001,7 +1001,7 @@ int view3d_opengl_select(
 finally:
 
 #ifndef WITH_OPENGL_LEGACY
-	DRW_ogl_ctx_disable();
+	DRW_opengl_context_disable();
 #endif
 
 	if (hits < 0) printf("Too many objects in select buffer\n");  /* XXX make error message */

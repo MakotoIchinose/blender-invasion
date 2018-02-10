@@ -195,7 +195,7 @@ extern GHOST_WindowHandle GHOST_CreateWindow(
  * \param systemhandle The handle to the system
  * \return A handle to the new context ( == NULL if creation failed).
  */
-extern GHOST_ContextHandle GHOST_CreateOffscreenContext(GHOST_SystemHandle systemhandle);
+extern GHOST_ContextHandle GHOST_CreateOpenGLContext(GHOST_SystemHandle systemhandle);
 
 /**
  * Dispose of a context.
@@ -203,7 +203,7 @@ extern GHOST_ContextHandle GHOST_CreateOffscreenContext(GHOST_SystemHandle syste
  * \param contexthandle Handle to the context to be disposed.
  * \return Indication of success.
  */
-extern GHOST_TSuccess GHOST_DisposeOffscreenContext(GHOST_SystemHandle systemhandle,
+extern GHOST_TSuccess GHOST_DisposeOpenGLContext(GHOST_SystemHandle systemhandle,
                                                     GHOST_ContextHandle contexthandle);
 
 /**
@@ -733,7 +733,7 @@ extern GHOST_TSuccess GHOST_InvalidateWindow(GHOST_WindowHandle windowhandle);
  * \param contexthandle The handle to the context
  * \return A success indicator.
  */
-extern GHOST_TSuccess GHOST_ActivateOffscreenContext(GHOST_ContextHandle contexthandle);
+extern GHOST_TSuccess GHOST_ActivateOpenGLContext(GHOST_ContextHandle contexthandle);
 
 /**
  * Returns the status of the tablet

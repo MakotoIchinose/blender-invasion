@@ -380,7 +380,7 @@ ListBase DRW_engines = {NULL, NULL};
 static void *g_ogl_context = NULL;
 
 /* Mutex to lock the drw manager and avoid concurent context usage. */
-static ThreadRWMutex cache_rwlock = BLI_RWLOCK_INITIALIZER;
+static ThreadMutex cache_rwlock = BLI_MUTEX_INITIALIZER;
 
 #ifdef USE_GPU_SELECT
 static unsigned int g_DRW_select_id = (unsigned int)-1;
@@ -1265,17 +1265,11 @@ static void shgroup_dynamic_instance(DRWShadingGroup *shgroup)
 
 	glGenBuffers(1, &interface->instance_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, interface->instance_vbo);
-	glBufferData(GL_ARRAY_BUFFER, buffer_size, data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, buffer_size, data, GL_DYNAMIC_DRAW);
 }
 
 static void shgroup_dynamic_batch_from_calls(DRWShadingGroup *shgroup)
 {
-	if ((shgroup->interface.instance_vbo || shgroup->batch_geom) &&
-	    (G.debug_value == 667))
-	{
-		return;
-	}
-
 	if (shgroup->type == DRW_SHG_INSTANCE) {
 		shgroup_dynamic_instance(shgroup);
 	}
@@ -3651,9 +3645,10 @@ void DRW_render_to_image(RenderEngine *re, struct Depsgraph *depsgraph)
 	Render *render = re->re;
 	const EvaluationContext *eval_ctx = RE_GetEvalCtx(render);
 	/* Changing Context */
-	BLI_rw_mutex_lock(&cache_rwlock, THREAD_LOCK_WRITE);
-	/* IMPORTANT: We dont support immediate mode in render mode! */
-	WM_context_activate(g_ogl_context);
+	DRW_opengl_context_enable();
+	/* IMPORTANT: We dont support immediate mode in render mode!
+	 * This shall remain in effect until immediate mode supports
+	 * multiple threads. */
 
 	/* Reset before using it. */
 	memset(&DST, 0x0, sizeof(DST));
@@ -3709,8 +3704,7 @@ void DRW_render_to_image(RenderEngine *re, struct Depsgraph *depsgraph)
 	GPU_framebuffer_restore();
 
 	/* Changing Context */
-	wm_window_reset_drawable();
-	BLI_rw_mutex_unlock(&cache_rwlock);
+	DRW_opengl_context_disable();
 
 #ifdef DEBUG
 	/* Avoid accidental reuse. */
@@ -4157,7 +4151,7 @@ extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
 extern struct GPUTexture *globals_ramp; /* draw_common.c */
 void DRW_engines_free(void)
 {
-	DRW_ogl_ctx_enable();
+	DRW_opengl_context_enable();
 
 	DRW_TEXTURE_FREE_SAFE(g_select_buffer.texture_depth);
 	DRW_FRAMEBUFFER_FREE_SAFE(g_select_buffer.framebuffer);
@@ -4184,7 +4178,7 @@ void DRW_engines_free(void)
 	MEM_SAFE_FREE(RST.bound_texs);
 	MEM_SAFE_FREE(RST.bound_tex_slots);
 
-	DRW_ogl_ctx_disable();
+	DRW_opengl_context_disable();
 
 #ifdef WITH_CLAY_ENGINE
 	BLI_remlink(&R_engines, &DRW_engine_viewport_clay_type);
@@ -4196,38 +4190,45 @@ void DRW_engines_free(void)
 /** \name Init/Exit (DRW_opengl_ctx)
  * \{ */
 
-void DRW_ogl_ctx_create(void)
+void DRW_opengl_context_create(void)
 {
 	BLI_assert(g_ogl_context == NULL); /* Ensure it's called once */
 
 	/* This changes the active context. */
-	g_ogl_context = WM_context_create();
+	g_ogl_context = WM_opengl_context_create();
 	/* So we activate the window's one afterwards. */
 	wm_window_reset_drawable();
 }
 
-void DRW_ogl_ctx_destroy(void)
+void DRW_opengl_context_destroy(void)
 {
 	if (g_ogl_context != NULL) {
-		WM_context_dispose(g_ogl_context);
+		WM_opengl_context_dispose(g_ogl_context);
 	}
 }
 
-void DRW_ogl_ctx_enable(void)
+void DRW_opengl_context_enable(void)
 {
 	if (g_ogl_context != NULL) {
-		BLI_rw_mutex_lock(&cache_rwlock, THREAD_LOCK_WRITE);
-		immDeactivate();
-		WM_context_activate(g_ogl_context);
-		immActivate();
+		/* IMPORTANT: We dont support immediate mode in render mode!
+		 * This shall remain in effect until immediate mode supports
+		 * multiple threads. */
+		BLI_mutex_lock(&cache_rwlock);
+		if (BLI_thread_is_main()) {
+			immDeactivate();
+		}
+		WM_opengl_context_activate(g_ogl_context);
+		if (BLI_thread_is_main()) {
+			immActivate();
+		}
 	}
 }
 
-void DRW_ogl_ctx_disable(void)
+void DRW_opengl_context_disable(void)
 {
 	if (g_ogl_context != NULL) {
 		wm_window_reset_drawable();
-		BLI_rw_mutex_unlock(&cache_rwlock);
+		BLI_mutex_unlock(&cache_rwlock);
 	}
 }
 

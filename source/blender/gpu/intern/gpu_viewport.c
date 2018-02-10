@@ -345,7 +345,7 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
 	int rect_w = BLI_rcti_size_x(rect) + 1;
 	int rect_h = BLI_rcti_size_y(rect) + 1;
 
-	DRW_ogl_ctx_enable();
+	DRW_opengl_context_enable();
 
 	if (dfbl->default_fb) {
 		if (rect_w != viewport->size[0] || rect_h != viewport->size[1] || U.ogl_multisamples != viewport->samples) {
@@ -524,7 +524,7 @@ void GPU_viewport_unbind(GPUViewport *viewport)
 		GPU_framebuffer_restore();
 	}
 
-	DRW_ogl_ctx_disable();
+	DRW_opengl_context_disable();
 
 	if (dfbl->default_fb) {
 		glEnable(GL_SCISSOR_TEST);

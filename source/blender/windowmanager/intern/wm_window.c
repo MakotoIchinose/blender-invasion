@@ -95,8 +95,6 @@
 
 /* the global to talk to ghost */
 static GHOST_SystemHandle g_system = NULL;
-/* Active window */
-static GHOST_WindowHandle g_active_window = NULL;
 
 typedef enum WinOverrideFlag {
 	WIN_OVERRIDE_GEOM     = (1 << 0),
@@ -495,8 +493,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm, const char *title, wm
 	                              GHOST_kDrawingContextTypeOpenGL,
 	                              glSettings);
 
-	g_active_window = ghostwin;
-	
 	if (ghostwin) {
 		GHOST_RectangleHandle bounds;
 		
@@ -1026,7 +1022,6 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
 
 		immDeactivate();
 		GHOST_ActivateWindowDrawingContext(win->ghostwin);
-		g_active_window = win->ghostwin;
 		immActivate();
 
 		/* this can change per window */
@@ -1037,9 +1032,12 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
 /* Reset active the current window opengl drawing context. */
 void wm_window_reset_drawable(void)
 {
-	if (BLI_thread_is_main()) {
+	wmWindowManager *wm = G.main->wm.first;
+	wmWindow *win = wm->windrawable;
+
+	if (BLI_thread_is_main() && win && win->ghostwin) {
 		immDeactivate();
-		GHOST_ActivateWindowDrawingContext(g_active_window);
+		GHOST_ActivateWindowDrawingContext(win->ghostwin);
 		immActivate();
 	}
 	else {
@@ -2057,17 +2055,17 @@ void wm_window_IME_end(wmWindow *win)
 
 /* ****** direct opengl context management ****** */
 
-void *WM_context_create(void)
+void *WM_opengl_context_create(void)
 {
-	return GHOST_CreateOffscreenContext(g_system);
+	return GHOST_CreateOpenGLContext(g_system);
 }
 
-void WM_context_dispose(void *context)
+void WM_opengl_context_dispose(void *context)
 {
-	GHOST_DisposeOffscreenContext(g_system, (GHOST_ContextHandle)context);
+	GHOST_DisposeOpenGLContext(g_system, (GHOST_ContextHandle)context);
 }
 
-void WM_context_activate(void *context)
+void WM_opengl_context_activate(void *context)
 {
-	GHOST_ActivateOffscreenContext((GHOST_ContextHandle)context);
+	GHOST_ActivateOpenGLContext((GHOST_ContextHandle)context);
 }
