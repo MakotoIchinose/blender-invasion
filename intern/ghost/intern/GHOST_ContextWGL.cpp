@@ -85,7 +85,6 @@ GHOST_ContextWGL::GHOST_ContextWGL(
       m_dummyVersion(NULL)
 #endif
 {
-	assert(m_hWnd);
 	assert(m_hDC);
 }
 
@@ -109,9 +108,11 @@ GHOST_ContextWGL::~GHOST_ContextWGL()
 	}
 
 #ifndef NDEBUG
-	free((void*)m_dummyRenderer);
-	free((void*)m_dummyVendor);
-	free((void*)m_dummyVersion);
+	if (m_dummyRenderer) {
+		free((void*)m_dummyRenderer);
+		free((void*)m_dummyVendor);
+		free((void*)m_dummyVersion);
+	}
 #endif
 }
 
