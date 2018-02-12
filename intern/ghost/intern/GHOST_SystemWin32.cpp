@@ -312,20 +312,7 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(
  */
 GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
 {
-	HDC hDC;
-
 	bool debug_context = false; /* TODO: inform as a parameter */
-
-	/* Get any hDC (it will only be used to keep the context current) */
-	std::vector<GHOST_IWindow *> ghost_windows = m_windowManager->getWindows();
-	if (!ghost_windows.empty()) {
-		GHOST_WindowWin32 * window = (GHOST_WindowWin32 *)ghost_windows[0];
-		hDC = GetDC(window->getHWND());
-//		debug_context = window->m_debug_context;
-	}
-	else {
-		hDC = GetDC(NULL); /* DC for the entire screen! */
-	}
 
 	GHOST_Context *context;
 
@@ -333,7 +320,7 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
 	for (int minor = 5; minor >= 0; --minor) {
 			context = new GHOST_ContextWGL(
 			    false, true, 0,
-			    NULL, hDC,
+			    NULL, NULL,
 			    WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
 			    4, minor,
 			    (debug_context ? WGL_CONTEXT_DEBUG_BIT_ARB : 0),
@@ -349,7 +336,7 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
 
 		context = new GHOST_ContextWGL(
 		    false, true, 0,
-		    NULL, hDC,
+		    NULL, NULL,
 		    WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
 		    3, 3,
 		    (debug_context ? WGL_CONTEXT_DEBUG_BIT_ARB : 0),
@@ -359,11 +346,14 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
 			return context;
 		}
 		else {
-			GHOST_PRINT(
+			MessageBox(
+			        NULL,
 			        "Blender requires a graphics driver with at least OpenGL 3.3 support.\n\n"
 			        "The program will now close.",
-			        "Blender - Unsupported Graphics Driver!");
+			        "Blender - Unsupported Graphics Driver!",
+			        MB_OK | MB_ICONERROR);
 			delete context;
+			exit();
 		}
 
 #elif defined(WITH_GL_PROFILE_COMPAT)
@@ -371,7 +361,7 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
 		// 2.1 ignores the profile bit & is incompatible with core profile
 		context = new GHOST_ContextWGL(
 		        false, true, 0,
-		        NULL, hDC,
+		        NULL, NULL,
 		        0, // no profile bit
 		        2, 1,
 		        (debug_context ? WGL_CONTEXT_DEBUG_BIT_ARB : 0),

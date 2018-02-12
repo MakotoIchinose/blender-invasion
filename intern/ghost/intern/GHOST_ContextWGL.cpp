@@ -69,6 +69,7 @@ GHOST_ContextWGL::GHOST_ContextWGL(
         int contextFlags,
         int contextResetNotificationStrategy)
     : GHOST_Context(stereoVisual, numOfAASamples),
+      m_dummyPbuffer(NULL),
       m_hWnd(hWnd),
       m_hDC(hDC),
       m_contextProfileMask(contextProfileMask),
@@ -85,7 +86,6 @@ GHOST_ContextWGL::GHOST_ContextWGL(
       m_dummyVersion(NULL)
 #endif
 {
-	assert(m_hDC);
 }
 
 
@@ -104,6 +104,12 @@ GHOST_ContextWGL::~GHOST_ContextWGL()
 				s_sharedHGLRC = NULL;
 
 			WIN32_CHK(::wglDeleteContext(m_hGLRC));
+		}
+		if (m_dummyPbuffer) {
+			if (m_hDC != NULL)
+				WIN32_CHK(::wglReleasePbufferDCARB(m_dummyPbuffer, m_hDC));
+
+			WIN32_CHK(::wglDestroyPbufferARB(m_dummyPbuffer));
 		}
 	}
 
@@ -318,6 +324,8 @@ static HWND clone_window(HWND hWnd, LPVOID lpParam)
 void GHOST_ContextWGL::initContextWGLEW(PIXELFORMATDESCRIPTOR &preferredPFD)
 {
 	HWND  dummyHWND  = NULL;
+	HPBUFFERARB dummyhBuffer = NULL;
+
 	HDC   dummyHDC   = NULL;
 	HGLRC dummyHGLRC = NULL;
 
@@ -334,23 +342,29 @@ void GHOST_ContextWGL::initContextWGLEW(PIXELFORMATDESCRIPTOR &preferredPFD)
 	prevHGLRC = ::wglGetCurrentContext();
 	WIN32_CHK(GetLastError() == NO_ERROR);
 
-	dummyHWND = clone_window(m_hWnd, NULL);
-
-	if (dummyHWND == NULL)
-		goto finalize;
-
-	dummyHDC = GetDC(dummyHWND);
-
-	if (!WIN32_CHK(dummyHDC != NULL))
-		goto finalize;
-
-	iPixelFormat = choose_pixel_format_legacy(dummyHDC, preferredPFD);
+	iPixelFormat = choose_pixel_format_legacy(m_hDC, preferredPFD);
 
 	if (iPixelFormat == 0)
 		goto finalize;
 
 	PIXELFORMATDESCRIPTOR chosenPFD;
-	if (!WIN32_CHK(::DescribePixelFormat(dummyHDC, iPixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &chosenPFD)))
+	if (!WIN32_CHK(::DescribePixelFormat(m_hDC, iPixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &chosenPFD)))
+		goto finalize;
+
+	if (m_hWnd) {
+		dummyHWND = clone_window(m_hWnd, NULL);
+
+		if (dummyHWND == NULL)
+			goto finalize;
+
+		dummyHDC = GetDC(dummyHWND);
+	}
+	else {
+		dummyhBuffer = wglCreatePbufferARB(m_hDC, iPixelFormat, 1, 1, 0);
+		dummyHDC = wglGetPbufferDCARB(dummyhBuffer);
+	}
+
+	if (!WIN32_CHK(dummyHDC != NULL))
 		goto finalize;
 
 	if (!WIN32_CHK(::SetPixelFormat(dummyHDC, iPixelFormat, &chosenPFD)))
@@ -392,6 +406,12 @@ finalize:
 			WIN32_CHK(::ReleaseDC(dummyHWND, dummyHDC));
 
 		WIN32_CHK(::DestroyWindow(dummyHWND));
+	}
+	else if (dummyhBuffer != NULL) {
+		if (dummyHDC != NULL)
+			WIN32_CHK(::wglReleasePbufferDCARB(dummyhBuffer, dummyHDC));
+
+		WIN32_CHK(::wglDestroyPbufferARB(dummyhBuffer));
 	}
 }
 
@@ -754,7 +774,9 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 	HDC prevHDC = ::wglGetCurrentDC();
 	WIN32_CHK(GetLastError() == NO_ERROR);
 
-	if (!WGLEW_ARB_create_context || ::GetPixelFormat(m_hDC) == 0) {
+	const bool create_hDC = m_hDC == NULL;
+
+	if (!WGLEW_ARB_create_context || create_hDC || ::GetPixelFormat(m_hDC) == 0) {
 		const bool needAlpha = m_alphaBackground;
 
 #ifdef GHOST_OPENGL_STENCIL
@@ -771,20 +793,32 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 		int iPixelFormat;
 		int lastPFD;
 
+		if (create_hDC) {
+			/* get a handle to a device context with graphics accelerator enabled */
+			m_hDC = wglGetCurrentDC();
+			if (m_hDC == NULL) {
+				m_hDC = GetDC(NULL);
+			}
+		}
+
 		PIXELFORMATDESCRIPTOR chosenPFD;
 
 		iPixelFormat = choose_pixel_format(m_stereoVisual, m_numOfAASamples, needAlpha, needStencil, sRGB);
 
 		if (iPixelFormat == 0) {
-			::wglMakeCurrent(prevHDC, prevHGLRC);
-			return GHOST_kFailure;
+			goto error;
+		}
+
+		if (create_hDC) {
+			/* create an off-screen pixel buffer (Pbuffer) */
+			m_dummyPbuffer = wglCreatePbufferARB(m_hDC, iPixelFormat, 1, 1, 0);
+			m_hDC = wglGetPbufferDCARB(m_dummyPbuffer);
 		}
 
 		lastPFD = ::DescribePixelFormat(m_hDC, iPixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &chosenPFD);
 
 		if (!WIN32_CHK(lastPFD != 0)) {
-			::wglMakeCurrent(prevHDC, prevHGLRC);
-			return GHOST_kFailure;
+			goto error;
 		}
 
 		if (needAlpha && chosenPFD.cAlphaBits == 0)
@@ -794,8 +828,7 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 			fprintf(stderr, "Warning! Unable to find a pixel format with a stencil buffer.\n");
 
 		if (!WIN32_CHK(::SetPixelFormat(m_hDC, iPixelFormat, &chosenPFD))) {
-			::wglMakeCurrent(prevHDC, prevHGLRC);
-			return GHOST_kFailure;
+			goto error;
 		}
 	}
 
@@ -878,8 +911,7 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 	}
 
 	if (!WIN32_CHK(m_hGLRC != NULL)) {
-		::wglMakeCurrent(prevHDC, prevHGLRC);
-		return GHOST_kFailure;
+		goto error;
 	}
 
 	if (s_sharedHGLRC == NULL)
@@ -888,13 +920,11 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 	s_sharedCount++;
 
 	if (!s_singleContextMode && s_sharedHGLRC != m_hGLRC && !WIN32_CHK(::wglShareLists(s_sharedHGLRC, m_hGLRC))) {
-		::wglMakeCurrent(prevHDC, prevHGLRC);
-		return GHOST_kFailure;
+		goto error;
 	}
 
 	if (!WIN32_CHK(::wglMakeCurrent(m_hDC, m_hGLRC))) {
-		::wglMakeCurrent(prevHDC, prevHGLRC);
-		return GHOST_kFailure;
+		goto error;
 	}
 
 	initContextGLEW();
@@ -915,6 +945,16 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 #endif
 
 	return GHOST_kSuccess;
+error:
+	if (m_dummyPbuffer) {
+		if (m_hDC != NULL)
+			WIN32_CHK(::wglReleasePbufferDCARB(m_dummyPbuffer, m_hDC));
+
+		WIN32_CHK(::wglDestroyPbufferARB(m_dummyPbuffer));
+	}
+	::wglMakeCurrent(prevHDC, prevHGLRC);
+	return GHOST_kFailure;
+
 }
 
 

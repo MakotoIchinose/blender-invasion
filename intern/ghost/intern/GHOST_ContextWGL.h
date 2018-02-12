@@ -137,6 +137,10 @@ private:
 
 	void initContextWGLEW(PIXELFORMATDESCRIPTOR &preferredPFD);
 
+	/* offscreen buffer with size of 1x1 pixel,
+	 * kept here to release the device constext when closing the program. */
+	HPBUFFERARB m_dummyPbuffer;
+
 	HWND m_hWnd;
 	HDC  m_hDC;
 
