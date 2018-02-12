@@ -45,7 +45,7 @@
  * \see GHOST_ISystem#createOffscreenContext
  *
  * \author  Clément Foucault
- * \date    Fev 9, 2012
+ * \date    Feb 9, 2018
  */
 class GHOST_IContext
 {

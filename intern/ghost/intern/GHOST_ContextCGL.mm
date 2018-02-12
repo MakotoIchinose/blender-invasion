@@ -62,8 +62,6 @@ GHOST_ContextCGL::GHOST_ContextCGL(
       m_openGLContext(nil),
       m_debug(contextFlags)
 {
-	assert(openGLView != nil);
-
 	// for now be very strict about OpenGL version requested
 	switch (contextMajorVersion) {
 		case 2:
@@ -88,7 +86,10 @@ GHOST_ContextCGL::~GHOST_ContextCGL()
 	if (m_openGLContext != nil) {
 		if (m_openGLContext == [NSOpenGLContext currentContext]) {
 			[NSOpenGLContext clearCurrentContext];
-			[m_openGLView clearGLContext];
+
+			if(m_openGLView) {
+				[m_openGLView clearGLContext];
+			}
 		}
 
 		if (m_openGLContext != s_sharedOpenGLContext || s_sharedCount == 1) {
@@ -258,7 +259,7 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 	std::vector<NSOpenGLPixelFormatAttribute> attribs;
 	attribs.reserve(40);
 
-	NSOpenGLContext *prev_openGLContext = [m_openGLView openGLContext];
+	NSOpenGLContext *prev_openGLContext = (m_openGLView) ? [m_openGLView openGLContext] : NULL;
 
 #ifdef GHOST_OPENGL_ALPHA
 	static const bool needAlpha   = true;
@@ -362,8 +363,10 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
 	initContextGLEW();
 
-	[m_openGLView setOpenGLContext:m_openGLContext];
-	[m_openGLContext setView:m_openGLView];
+	if (m_openGLView) {
+		[m_openGLView setOpenGLContext:m_openGLContext];
+		[m_openGLContext setView:m_openGLView];
+	}
 
 	if (s_sharedCount == 0)
 		s_sharedOpenGLContext = m_openGLContext;
@@ -380,7 +383,10 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
 error:
 
-	[m_openGLView setOpenGLContext:prev_openGLContext];
+	if (m_openGLView) {
+		[m_openGLView setOpenGLContext:prev_openGLContext];
+	}
+
 	[pixelFormat release];
 
 	[pool drain];
