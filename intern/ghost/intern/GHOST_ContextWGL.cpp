@@ -43,19 +43,6 @@
 HGLRC GHOST_ContextWGL::s_sharedHGLRC = NULL;
 int   GHOST_ContextWGL::s_sharedCount = 0;
 
-bool GHOST_ContextWGL::s_singleContextMode = false;
-
-
-/* Intel video-cards don't work fine with multiple contexts and
- * have to share the same context for all windows.
- * But if we just share context for all windows it could work incorrect
- * with multiple videocards configuration. Suppose, that Intel videocards
- * can't be in multiple-devices configuration. */
-static bool is_crappy_intel_card()
-{
-	return strstr((const char *)glGetString(GL_VENDOR), "Intel") != NULL;
-}
-
 
 GHOST_ContextWGL::GHOST_ContextWGL(
         bool stereoVisual,
@@ -392,8 +379,6 @@ void GHOST_ContextWGL::initContextWGLEW(PIXELFORMATDESCRIPTOR &preferredPFD)
 	m_dummyVendor   = _strdup(reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
 	m_dummyVersion  = _strdup(reinterpret_cast<const char *>(glGetString(GL_VERSION)));
 #endif
-
-	s_singleContextMode = is_crappy_intel_card();
 
 finalize:
 	WIN32_CHK(::wglMakeCurrent(prevHDC, prevHGLRC));
@@ -904,22 +889,19 @@ GHOST_TSuccess GHOST_ContextWGL::initializeDrawingContext()
 
 		iAttributes.push_back(0);
 
-		if (!s_singleContextMode || s_sharedHGLRC == NULL)
-			m_hGLRC = ::wglCreateContextAttribsARB(m_hDC, NULL, &(iAttributes[0]));
-		else
-			m_hGLRC = s_sharedHGLRC;
+		m_hGLRC = ::wglCreateContextAttribsARB(m_hDC, NULL, &(iAttributes[0]));
 	}
 
 	if (!WIN32_CHK(m_hGLRC != NULL)) {
 		goto error;
 	}
 
-	if (s_sharedHGLRC == NULL)
-		s_sharedHGLRC = m_hGLRC;
-
 	s_sharedCount++;
 
-	if (!s_singleContextMode && s_sharedHGLRC != m_hGLRC && !WIN32_CHK(::wglShareLists(s_sharedHGLRC, m_hGLRC))) {
+	if (s_sharedHGLRC == NULL) {
+		s_sharedHGLRC = m_hGLRC;
+	}
+	else if (!WIN32_CHK(::wglShareLists(s_sharedHGLRC, m_hGLRC))) {
 		goto error;
 	}
 
