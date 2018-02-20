@@ -34,6 +34,7 @@
 
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
+#include "DEG_depsgraph.h"
 
 struct bMovieHandle;
 struct bNodeTree;
@@ -121,7 +122,10 @@ typedef struct RenderLayer {
 
 	/* optional saved endresult on disk */
 	void *exrhandle;
-	
+
+	struct Depsgraph *depsgraph;
+	struct EvaluationContext eval_ctx;
+
 	ListBase passes;
 	
 } RenderLayer;

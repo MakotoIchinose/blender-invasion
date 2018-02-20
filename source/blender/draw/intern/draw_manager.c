@@ -3660,12 +3660,8 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 			 render_layer != NULL;
 			 render_layer = render_layer->next)
 		{
-			ViewLayer *view_layer = BLI_findstring(&scene->view_layers, render_layer->name, offsetof(ViewLayer, name));
-			DST.draw_ctx.view_layer = view_layer;
-
-			/* TODO(dfelinto/sergey) we should not get depsgraph from scene.
-			 * For rendering depsgraph is to be owned by Render. */
-			DST.draw_ctx.depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
+			DST.draw_ctx.view_layer = render_layer->eval_ctx.view_layer;
+			DST.draw_ctx.depsgraph = render_layer->depsgraph;
 
 			engine_type->draw_engine->render_to_image(data, engine, render_result, render_layer);
 			DST.buffer_finish_called = false;
