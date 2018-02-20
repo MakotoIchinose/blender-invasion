@@ -214,6 +214,9 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object 
 		DRW_TEXTURE_FREE_SAFE(txl->color_double_buffer);
 		DRW_FRAMEBUFFER_FREE_SAFE(fbl->double_buffer);
 	}
+
+	/* Copy previous persmat to UBO data */
+	copy_m4_m4(common_data->prev_persmat, stl->effects->prev_persmat);
 }
 
 void EEVEE_effects_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
@@ -406,7 +409,7 @@ void EEVEE_downsample_cube_buffer(EEVEE_Data *vedata, struct GPUFrameBuffer *fb_
 	DRW_stats_group_end();
 }
 
-void EEVEE_draw_effects(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
+void EEVEE_draw_effects(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 {
 	EEVEE_TextureList *txl = vedata->txl;
 	EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -449,7 +452,7 @@ void EEVEE_draw_effects(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 	}
 
 	/* Record pers matrix for the next frame. */
-	DRW_viewport_matrix_get(sldata->common_data.prev_persmat, DRW_MAT_PERS);
+	DRW_viewport_matrix_get(stl->effects->prev_persmat, DRW_MAT_PERS);
 
 	/* Update double buffer status if render mode. */
 	if (DRW_state_is_image_render()) {
