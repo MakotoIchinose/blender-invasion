@@ -3801,6 +3801,7 @@ void DRW_draw_select_loop(
 	/* Setup framebuffer */
 	draw_select_framebuffer_setup(rect);
 	GPU_framebuffer_bind(g_select_buffer.framebuffer);
+	DRW_framebuffer_clear(false, true, false, NULL, 1.0f);
 
 	DST.options.is_select = true;
 
@@ -3865,6 +3866,7 @@ void DRW_draw_select_loop(
 	/* Avoid accidental reuse. */
 	memset(&DST, 0xFF, sizeof(DST));
 #endif
+	GPU_framebuffer_restore();
 
 	/* Cleanup for selection state */
 	GPU_viewport_free(viewport);
@@ -3873,6 +3875,42 @@ void DRW_draw_select_loop(
 	/* restore */
 	rv3d->viewport = backup_viewport;
 #endif  /* USE_GPU_SELECT */
+}
+
+static void draw_depth_texture_to_screen(GPUTexture *texture)
+{
+	const float w = (float)GPU_texture_width(texture);
+	const float h = (float)GPU_texture_height(texture);
+
+	Gwn_VertFormat *format = immVertexFormat();
+	unsigned int texcoord = GWN_vertformat_attr_add(format, "texCoord", GWN_COMP_F32, 2, GWN_FETCH_FLOAT);
+	unsigned int pos = GWN_vertformat_attr_add(format, "pos", GWN_COMP_F32, 2, GWN_FETCH_FLOAT);
+
+	immBindBuiltinProgram(GPU_SHADER_3D_IMAGE_DEPTH_COPY);
+
+	GPU_texture_bind(texture, 0);
+
+	immUniform1i("image", 0); /* default GL_TEXTURE0 unit */
+
+	immBegin(GWN_PRIM_TRI_STRIP, 4);
+
+	immAttrib2f(texcoord, 0.0f, 0.0f);
+	immVertex2f(pos, 0.0f, 0.0f);
+
+	immAttrib2f(texcoord, 1.0f, 0.0f);
+	immVertex2f(pos, w, 0.0f);
+
+	immAttrib2f(texcoord, 0.0f, 1.0f);
+	immVertex2f(pos, 0.0f, h);
+
+	immAttrib2f(texcoord, 1.0f, 1.0f);
+	immVertex2f(pos, w, h);
+
+	immEnd();
+
+	GPU_texture_unbind(texture);
+
+	immUnbindProgram();
 }
 
 /**
@@ -3887,6 +3925,8 @@ void DRW_draw_depth_loop(
 	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
 	RegionView3D *rv3d = ar->regiondata;
 
+	DRW_opengl_context_enable();
+
 	/* backup (_never_ use rv3d->viewport) */
 	void *backup_viewport = rv3d->viewport;
 	rv3d->viewport = NULL;
@@ -3896,6 +3936,11 @@ void DRW_draw_depth_loop(
 
 	struct GPUViewport *viewport = GPU_viewport_create();
 	GPU_viewport_size_set(viewport, (const int[2]){ar->winx, ar->winy});
+
+	/* Setup framebuffer */
+	draw_select_framebuffer_setup(&ar->winrct);
+	GPU_framebuffer_bind(g_select_buffer.framebuffer);
+	DRW_framebuffer_clear(false, true, false, NULL, 1.0f);
 
 	bool cache_is_dirty;
 	DST.viewport = viewport;
@@ -3954,6 +3999,25 @@ void DRW_draw_depth_loop(
 	/* Avoid accidental reuse. */
 	memset(&DST, 0xFF, sizeof(DST));
 #endif
+
+	/* TODO: Reading depth for operators should be done here. */
+
+	GPU_framebuffer_restore();
+	DRW_opengl_context_disable();
+
+	/* XXX Drawing the resulting buffer to the BACK_BUFFER */
+	gpuPushMatrix();
+	gpuPushProjectionMatrix();
+	wmOrtho2_region_pixelspace(ar);
+	gpuLoadIdentity();
+
+	glEnable(GL_DEPTH_TEST); /* Cannot write to depth buffer without testing */
+	glDepthFunc(GL_ALWAYS);
+	draw_depth_texture_to_screen(g_select_buffer.texture_depth);
+	glDepthFunc(GL_LEQUAL);
+
+	gpuPopMatrix();
+	gpuPopProjectionMatrix();
 
 	/* Cleanup for selection state */
 	GPU_viewport_free(viewport);
