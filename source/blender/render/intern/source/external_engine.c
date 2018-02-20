@@ -740,7 +740,7 @@ int RE_engine_render(Render *re, int do_all)
 	}
 
 	if (type->render_to_image) {
-		type->render_to_image(engine, re->depsgraph);
+		type->render_to_image(engine, re->main, re->scene);
 	}
 
 	engine->tile_x = 0;

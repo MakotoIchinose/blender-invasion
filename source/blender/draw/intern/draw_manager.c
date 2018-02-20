@@ -35,6 +35,7 @@
 
 #include "BKE_curve.h"
 #include "BKE_global.h"
+#include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_pbvh.h"
@@ -3612,9 +3613,8 @@ void DRW_draw_render_loop_offscreen(
 	GPU_offscreen_bind(ofs, false);
 }
 
-void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
+void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 {
-	Scene *scene = DEG_get_evaluated_scene(depsgraph);
 	RenderEngineType *engine_type = engine->type;
 	DrawEngineType *draw_engine_type = engine_type->draw_engine;
 	RenderData *r = &scene->r;
@@ -3628,7 +3628,7 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 	DST.options.draw_background = scene->r.alphamode == R_ADDSKY;
 
 	DST.draw_ctx = (DRWContextState){
-	    NULL, NULL, NULL, scene, NULL, NULL, engine_type, depsgraph, eval_ctx->object_mode, NULL,
+	    NULL, NULL, NULL, scene, NULL, NULL, engine_type, NULL, eval_ctx->object_mode, NULL,
 	};
 	drw_context_state_init();
 
@@ -3660,6 +3660,12 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 			 render_layer != NULL;
 			 render_layer = render_layer->next)
 		{
+			BKE_scene_graph_update_tagged(&render_layer->eval_ctx,
+			                              render_layer->depsgraph,
+			                              bmain,
+			                              scene,
+			                              render_layer->eval_ctx.view_layer);
+
 			DST.draw_ctx.view_layer = render_layer->eval_ctx.view_layer;
 			DST.draw_ctx.depsgraph = render_layer->depsgraph;
 
