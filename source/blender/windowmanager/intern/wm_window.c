@@ -1035,9 +1035,11 @@ void wm_window_reset_drawable(void)
 	if (BLI_thread_is_main() && win && win->ghostwin) {
 		immDeactivate();
 		GHOST_ActivateWindowDrawingContext(win->ghostwin);
+		GWN_context_active_set(win->gwnctx);
 		immActivate();
 	}
 	else {
+		GWN_context_active_set(NULL);
 		/* TODO unbind the context (set context to NULL) */
 	}
 }

@@ -99,6 +99,8 @@
 #include "engines/basic/basic_engine.h"
 #include "engines/external/external_engine.h"
 
+#include "../../../intern/gawain/gawain/gwn_context.h"
+
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
@@ -373,6 +375,7 @@ ListBase DRW_engines = {NULL, NULL};
 
 /* Unique ghost context used by the draw manager. */
 static void *g_ogl_context = NULL;
+static Gwn_Context *g_gwn_context = NULL;
 
 /* Mutex to lock the drw manager and avoid concurent context usage. */
 static ThreadMutex cache_rwlock = BLI_MUTEX_INITIALIZER;
@@ -4017,6 +4020,12 @@ void DRW_draw_depth_loop(
 	/* TODO: Reading depth for operators should be done here. */
 
 	GPU_framebuffer_restore();
+
+	/* Cleanup for selection state */
+	GPU_viewport_free(viewport);
+	MEM_freeN(viewport);
+
+	/* Changin context */
 	DRW_opengl_context_disable();
 
 	/* XXX Drawing the resulting buffer to the BACK_BUFFER */
@@ -4032,10 +4041,6 @@ void DRW_draw_depth_loop(
 
 	gpuPopMatrix();
 	gpuPopProjectionMatrix();
-
-	/* Cleanup for selection state */
-	GPU_viewport_free(viewport);
-	MEM_freeN(viewport);
 
 	/* restore */
 	rv3d->viewport = backup_viewport;
@@ -4282,16 +4287,25 @@ void DRW_engines_free(void)
 void DRW_opengl_context_create(void)
 {
 	BLI_assert(g_ogl_context == NULL); /* Ensure it's called once */
+	BLI_assert(BLI_thread_is_main());
 
+	immDeactivate();
 	/* This changes the active context. */
 	g_ogl_context = WM_opengl_context_create();
+	/* Be sure to create gawain.context too. */
+	g_gwn_context = GWN_context_create();
+	immActivate();
 	/* So we activate the window's one afterwards. */
 	wm_window_reset_drawable();
 }
 
 void DRW_opengl_context_destroy(void)
 {
+	BLI_assert(BLI_thread_is_main());
 	if (g_ogl_context != NULL) {
+		WM_opengl_context_activate(g_ogl_context);
+		GWN_context_active_set(g_gwn_context);
+		GWN_context_discard(g_gwn_context);
 		WM_opengl_context_dispose(g_ogl_context);
 	}
 }
@@ -4307,6 +4321,7 @@ void DRW_opengl_context_enable(void)
 			immDeactivate();
 		}
 		WM_opengl_context_activate(g_ogl_context);
+		GWN_context_active_set(g_gwn_context);
 		if (BLI_thread_is_main()) {
 			immActivate();
 		}
