@@ -1502,11 +1502,13 @@ static RenderLayer *duplicate_render_layer(RenderLayer *rl)
 		BLI_addtail(&new_rl->passes, new_rpass);
 	}
 
-	if (rl->eval_ctx.depsgraph != NULL) {
-		Scene *scene = DEG_get_evaluated_scene(rl->eval_ctx.depsgraph);
-		new_rl->depsgraph = DEG_graph_new();
-		DEG_evaluation_context_init_from_view_layer_for_render(&new_rl->eval_ctx, new_rl->depsgraph, scene, new_rl->eval_ctx.view_layer);
-	}
+	Scene *scene = DEG_get_evaluated_scene(rl->eval_ctx.depsgraph);
+	new_rl->depsgraph = DEG_graph_new();
+	DEG_evaluation_context_init_from_view_layer_for_render(
+	            &new_rl->eval_ctx,
+	            new_rl->depsgraph,
+	            scene,
+	            new_rl->eval_ctx.view_layer);
 
 	return new_rl;
 }
