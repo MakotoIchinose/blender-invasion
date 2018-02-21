@@ -48,7 +48,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
-#include "BLI_lasso.h"
+#include "BLI_lasso_2d.h"
 #include "BLI_rect.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
@@ -1549,7 +1549,7 @@ static bool ed_object_select_pick(
 					}
 				}
 				else if (ED_do_pose_selectbuffer(
-				                 &eval_ctx, scene, view_layer,
+				                 &eval_ctx, view_layer,
 				                 basact, buffer, hits, extend, deselect, toggle, do_nearest))
 				{
 					/* then bone is found */

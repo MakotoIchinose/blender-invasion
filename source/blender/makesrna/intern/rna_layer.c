@@ -73,6 +73,7 @@ const EnumPropertyItem rna_enum_collection_type_items[] = {
 #include "BKE_node.h"
 #include "BKE_scene.h"
 #include "BKE_mesh.h"
+#include "BKE_object.h"
 #include "BKE_workspace.h"
 
 #include "DEG_depsgraph_build.h"
@@ -845,12 +846,7 @@ static void rna_LayerObjects_active_object_update(struct bContext *C, PointerRNA
 	if (scene != ptr->id.data) {
 		return;
 	}
-
-	WorkSpace *workspace = WM_window_get_active_workspace(win);
-	ViewLayer *view_layer = BKE_workspace_view_layer_get(workspace, scene);
-	if (scene->obedit) {
-		ED_object_editmode_exit(C, EM_FREEDATA);
-	}
+	ViewLayer *view_layer = (ViewLayer *)ptr->data;
 	ED_object_base_activate(C, view_layer->basact);
 }
 
@@ -938,7 +934,7 @@ static void rna_ObjectBase_select_update(Main *UNUSED(bmain), Scene *UNUSED(scen
 
 static char *rna_ViewRenderSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("viewport_render");
+	return BLI_sprintfN("view_render");
 }
 
 static void rna_ViewRenderSettings_engine_set(PointerRNA *ptr, int value)

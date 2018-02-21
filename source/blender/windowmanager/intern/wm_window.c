@@ -68,7 +68,6 @@
 #include "wm.h"
 #include "wm_draw.h"
 #include "wm_window.h"
-#include "wm_subwindow.h"
 #include "wm_event_system.h"
 
 #include "ED_scene.h"
@@ -175,7 +174,6 @@ static void wm_ghostwindow_destroy(wmWindow *win)
 	if (win->ghostwin) {
 		GHOST_DisposeWindow(g_system, win->ghostwin);
 		win->ghostwin = NULL;
-		win->multisamples = 0;
 	}
 }
 
@@ -216,7 +214,6 @@ void wm_window_free(bContext *C, wmWindowManager *wm, wmWindow *win)
 	if (win->eventstate) MEM_freeN(win->eventstate);
 	
 	wm_event_free_all(win);
-	wm_subwindows_free(win);
 
 	wm_draw_data_free(win);
 
@@ -461,16 +458,8 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm, const char *title, wm
 {
 	GHOST_WindowHandle ghostwin;
 	GHOST_GLSettings glSettings = {0};
-	static int multisamples = -1;
 	int scr_w, scr_h, posy;
 	
-	/* force setting multisamples only once, it requires restart - and you cannot 
-	 * mix it, either all windows have it, or none (tested in OSX opengl) */
-	if (multisamples == -1)
-		multisamples = U.ogl_multisamples;
-
-	glSettings.numOfAASamples = multisamples;
-
 	/* a new window is created when pageflip mode is required for a window */
 	if (win->stereo3d_format->display_mode == S3D_DISPLAY_PAGEFLIP)
 		glSettings.flags |= GHOST_glStereoVisual;
@@ -508,9 +497,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm, const char *title, wm
 		if (win->eventstate == NULL)
 			win->eventstate = MEM_callocN(sizeof(wmEvent), "window event state");
 
-		/* store multisamples window was created with, in case user prefs change */
-		win->multisamples = multisamples;
-		
 		/* store actual window size in blender window */
 		bounds = GHOST_GetClientBounds(win->ghostwin);
 

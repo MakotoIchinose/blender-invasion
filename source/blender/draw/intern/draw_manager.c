@@ -174,28 +174,30 @@ typedef enum {
 	DRW_UNIFORM_BLOCK
 } DRWUniformType;
 
-typedef enum {
-	DRW_ATTRIB_INT,
-	DRW_ATTRIB_FLOAT,
-} DRWAttribType;
-
 #define MAX_UNIFORM_DATA_SIZE 16
 
 struct DRWUniform {
 	struct DRWUniform *next;
+	const void *value;
 	int location;
 	char type; /* DRWUniformType */
 	char length; /* cannot be more than 16 */
 	char arraysize; /* cannot be more than 16 too */
-	const void *value;
 };
 
 struct DRWInterface {
 	DRWUniform *uniforms;   /* DRWUniform, single-linked list */
-	int attribs_count;
-	int attribs_stride;
-	int attribs_size[16];
-	int attribs_loc[16];
+	/* Dynamic batch */
+#ifdef USE_GPU_SELECT
+	struct DRWInstanceData *inst_selectid;
+	/* Override for single object instances. */
+	int override_selectid;
+#endif
+	Gwn_VertBuf *instance_vbo;
+	unsigned int instance_count;
+#ifndef NDEBUG
+	char attribs_count;
+#endif
 	/* matrices locations */
 	int model;
 	int modelinverse;
@@ -214,17 +216,6 @@ struct DRWInterface {
 	int orcotexfac;
 	int eye;
 	int clipplanes;
-	/* Dynamic batch */
-	Gwn_Batch *instance_batch; /* contains instances attributes */
-	GLuint instance_vbo; /* same as instance_batch but generated from DRWCalls */
-	struct DRWInstanceData *inst_data;
-#ifdef USE_GPU_SELECT
-	struct DRWInstanceData *inst_selectid;
-	/* Override for single object instances. */
-	int override_selectid;
-#endif
-	int instance_count;
-	Gwn_VertFormat vbo_format;
 };
 
 struct DRWPass {
@@ -281,6 +272,7 @@ struct DRWShadingGroup {
 
 	ID *instance_data;         /* Object->data to instance */
 	Gwn_Batch *instance_geom;  /* Geometry to instance */
+	Gwn_Batch *instancing_geom;/* Instances attributes */
 	Gwn_Batch *batch_geom;     /* Result of call batching */
 
 #ifdef USE_GPU_SELECT
@@ -296,6 +288,7 @@ enum {
 	DRW_SHG_LINE_BATCH,
 	DRW_SHG_TRIANGLE_BATCH,
 	DRW_SHG_INSTANCE,
+	DRW_SHG_INSTANCE_EXTERNAL,
 };
 
 /* Used by DRWCall.type */
@@ -354,6 +347,8 @@ static struct DRWGlobalState {
 	struct DRWTextStore **text_store_p;
 
 	ListBase enabled_engines; /* RenderEngineType */
+
+	bool buffer_finish_called; /* Avoid bad usage of DRW_render_instance_buffer_finish */
 
 	/* Profiling */
 	double cache_time;
@@ -647,7 +642,7 @@ void DRW_shader_free(GPUShader *shader)
 /** \name Interface (DRW_interface)
  * \{ */
 
-static void drw_interface_create(DRWInterface *interface, GPUShader *shader)
+static void drw_interface_init(DRWInterface *interface, GPUShader *shader)
 {
 	interface->model = GPU_shader_get_builtin_uniform(shader, GWN_UNIFORM_MODEL);
 	interface->modelinverse = GPU_shader_get_builtin_uniform(shader, GWN_UNIFORM_MODEL_INV);
@@ -667,20 +662,56 @@ static void drw_interface_create(DRWInterface *interface, GPUShader *shader)
 	interface->clipplanes = GPU_shader_get_builtin_uniform(shader, GWN_UNIFORM_CLIPPLANES);
 	interface->eye = GPU_shader_get_builtin_uniform(shader, GWN_UNIFORM_EYE);
 	interface->instance_count = 0;
+#ifndef NDEBUG
 	interface->attribs_count = 0;
-	interface->attribs_stride = 0;
-	interface->instance_vbo = 0;
-	interface->instance_batch = NULL;
-	interface->inst_data = NULL;
+#endif
 	interface->uniforms = NULL;
 #ifdef USE_GPU_SELECT
 	interface->inst_selectid = NULL;
 	interface->override_selectid = -1;
 #endif
-
-	memset(&interface->vbo_format, 0, sizeof(Gwn_VertFormat));
 }
 
+static void drw_interface_instance_init(
+        DRWShadingGroup *shgroup, GPUShader *shader, Gwn_VertFormat *format)
+{
+	DRWInterface *interface = &shgroup->interface;
+	drw_interface_init(interface, shader);
+
+#ifndef NDEBUG
+	interface->attribs_count = (format != NULL) ? format->attrib_ct : 0;
+#endif
+
+	Gwn_PrimType type;
+	Gwn_Batch **r_batch = NULL;
+	switch (shgroup->type) {
+		case DRW_SHG_INSTANCE:
+			r_batch = &shgroup->instancing_geom;
+			type = GWN_PRIM_POINTS;
+			break;
+		case DRW_SHG_POINT_BATCH:
+			r_batch = &shgroup->batch_geom;
+			type = GWN_PRIM_POINTS;
+			break;
+		case DRW_SHG_LINE_BATCH:
+			r_batch = &shgroup->batch_geom;
+			type = GWN_PRIM_LINES;
+			break;
+		case DRW_SHG_TRIANGLE_BATCH:
+			r_batch = &shgroup->batch_geom;
+			type = GWN_PRIM_TRIS;
+			break;
+		default:
+			BLI_assert(0);
+	}
+
+	if (format != NULL) {
+		DRW_instance_buffer_request(DST.idatalist, format, shgroup, r_batch, &interface->instance_vbo, type);
+	}
+	else {
+		*r_batch = NULL;
+	}
+}
 
 static void drw_interface_uniform(DRWShadingGroup *shgroup, const char *name,
                                   DRWUniformType type, const void *value, int length, int arraysize)
@@ -717,36 +748,17 @@ static void drw_interface_uniform(DRWShadingGroup *shgroup, const char *name,
 	shgroup->interface.uniforms = uni;
 }
 
-static void drw_interface_attrib(DRWShadingGroup *shgroup, const char *name, DRWAttribType UNUSED(type), int size, bool dummy)
+Gwn_VertFormat *DRW_shgroup_instance_format_array(const DRWInstanceAttribFormat attribs[], int arraysize)
 {
-	unsigned int attrib_id = shgroup->interface.attribs_count;
-	GLuint program = GPU_shader_get_program(shgroup->shader);
+	Gwn_VertFormat *format = MEM_callocN(sizeof(Gwn_VertFormat), "Gwn_VertFormat");
 
-	shgroup->interface.attribs_loc[attrib_id] = glGetAttribLocation(program, name);
-	shgroup->interface.attribs_size[attrib_id] = size;
-	shgroup->interface.attribs_stride += size;
-	shgroup->interface.attribs_count += 1;
-
-	if (shgroup->type != DRW_SHG_INSTANCE) {
-		BLI_assert(size <= 4); /* Matrices are not supported by Gawain. */
-		GWN_vertformat_attr_add(&shgroup->interface.vbo_format, name, GWN_COMP_F32, size, GWN_FETCH_FLOAT);
+	for (int i = 0; i < arraysize; ++i) {
+		GWN_vertformat_attr_add(format, attribs[i].name,
+		                        (attribs[i].type == DRW_ATTRIB_INT) ? GWN_COMP_I32 : GWN_COMP_F32,
+		                        attribs[i].components,
+		                        (attribs[i].type == DRW_ATTRIB_INT) ? GWN_FETCH_INT : GWN_FETCH_FLOAT);
 	}
-
-	BLI_assert(shgroup->interface.attribs_count < MAX_ATTRIB_COUNT);
-
-/* Adding attribute even if not found for now (to keep memory alignment).
- * Should ideally take vertex format automatically from batch eventually */
-#if 0
-	if (attrib->location == -1 && !dummy) {
-		if (G.debug & G_DEBUG)
-			fprintf(stderr, "Attribute '%s' not found!\n", name);
-		BLI_assert(0);
-		MEM_freeN(attrib);
-		return;
-	}
-#else
-	UNUSED_VARS(dummy);
-#endif
+	return format;
 }
 
 /** \} */
@@ -757,7 +769,7 @@ static void drw_interface_attrib(DRWShadingGroup *shgroup, const char *name, DRW
 /** \name Shading Group (DRW_shgroup)
  * \{ */
 
-DRWShadingGroup *DRW_shgroup_create(struct GPUShader *shader, DRWPass *pass)
+static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass *pass)
 {
 	DRWShadingGroup *shgroup = BLI_mempool_alloc(DST.vmempool->shgroups);
 
@@ -770,15 +782,13 @@ DRWShadingGroup *DRW_shgroup_create(struct GPUShader *shader, DRWPass *pass)
 	}
 	pass->shgroups_last = shgroup;
 	shgroup->next = NULL;
-
-	drw_interface_create(&shgroup->interface, shader);
-
 	shgroup->type = DRW_SHG_NORMAL;
 	shgroup->shader = shader;
 	shgroup->state_extra = 0;
 	shgroup->state_extra_disable = ~0x0;
 	shgroup->stencil_mask = 0;
 	shgroup->batch_geom = NULL;
+	shgroup->instancing_geom = NULL;
 	shgroup->instance_geom = NULL;
 	shgroup->instance_data = NULL;
 
@@ -792,22 +802,22 @@ DRWShadingGroup *DRW_shgroup_create(struct GPUShader *shader, DRWPass *pass)
 	return shgroup;
 }
 
-DRWShadingGroup *DRW_shgroup_material_create(struct GPUMaterial *material, DRWPass *pass)
+static DRWShadingGroup *drw_shgroup_material_create_ex(GPUPass *gpupass, DRWPass *pass)
 {
-	double time = 0.0; /* TODO make time variable */
-
-	/* TODO : Ideally we should not convert. But since the whole codegen
-	 * is relying on GPUPass we keep it as is for now. */
-	GPUPass *gpupass = GPU_material_get_pass(material);
-
 	if (!gpupass) {
 		/* Shader compilation error */
 		return NULL;
 	}
 
-	struct GPUShader *shader = GPU_pass_shader(gpupass);
+	DRWShadingGroup *grp = drw_shgroup_create_ex(GPU_pass_shader(gpupass), pass);
+	return grp;
+}
 
-	DRWShadingGroup *grp = DRW_shgroup_create(shader, pass);
+static DRWShadingGroup *drw_shgroup_material_inputs(
+         DRWShadingGroup *grp, struct GPUMaterial *material, GPUPass *gpupass)
+{
+	/* TODO : Ideally we should not convert. But since the whole codegen
+	 * is relying on GPUPass we keep it as is for now. */
 
 	/* Converting dynamic GPUInput to DRWUniform */
 	ListBase *inputs = &gpupass->inputs;
@@ -815,6 +825,7 @@ DRWShadingGroup *DRW_shgroup_material_create(struct GPUMaterial *material, DRWPa
 	for (GPUInput *input = inputs->first; input; input = input->next) {
 		/* Textures */
 		if (input->ima) {
+			double time = 0.0; /* TODO make time variable */
 			GPUTexture *tex = GPU_texture_from_blender(
 			        input->ima, input->iuser, input->textarget, input->image_isdata, time, 1);
 
@@ -855,15 +866,32 @@ DRWShadingGroup *DRW_shgroup_material_create(struct GPUMaterial *material, DRWPa
 	return grp;
 }
 
-DRWShadingGroup *DRW_shgroup_material_instance_create(
-        struct GPUMaterial *material, DRWPass *pass, Gwn_Batch *geom, Object *ob)
+DRWShadingGroup *DRW_shgroup_material_create(
+        struct GPUMaterial *material, DRWPass *pass)
 {
-	DRWShadingGroup *shgroup = DRW_shgroup_material_create(material, pass);
+	GPUPass *gpupass = GPU_material_get_pass(material);
+	DRWShadingGroup *shgroup = drw_shgroup_material_create_ex(gpupass, pass);
+
+	if (shgroup) {
+		drw_interface_init(&shgroup->interface, GPU_pass_shader(gpupass));
+		drw_shgroup_material_inputs(shgroup, material, gpupass);
+	}
+
+	return shgroup;
+}
+
+DRWShadingGroup *DRW_shgroup_material_instance_create(
+        struct GPUMaterial *material, DRWPass *pass, Gwn_Batch *geom, Object *ob, Gwn_VertFormat *format)
+{
+	GPUPass *gpupass = GPU_material_get_pass(material);
+	DRWShadingGroup *shgroup = drw_shgroup_material_create_ex(gpupass, pass);
 
 	if (shgroup) {
 		shgroup->type = DRW_SHG_INSTANCE;
 		shgroup->instance_geom = geom;
 		shgroup->instance_data = ob->data;
+		drw_interface_instance_init(shgroup, GPU_pass_shader(gpupass), format);
+		drw_shgroup_material_inputs(shgroup, material, gpupass);
 	}
 
 	return shgroup;
@@ -872,43 +900,64 @@ DRWShadingGroup *DRW_shgroup_material_instance_create(
 DRWShadingGroup *DRW_shgroup_material_empty_tri_batch_create(
         struct GPUMaterial *material, DRWPass *pass, int size)
 {
-	DRWShadingGroup *shgroup = DRW_shgroup_material_create(material, pass);
+#ifdef USE_GPU_SELECT
+	BLI_assert((G.f & G_PICKSEL) == 0);
+#endif
+	GPUPass *gpupass = GPU_material_get_pass(material);
+	DRWShadingGroup *shgroup = drw_shgroup_material_create_ex(gpupass, pass);
 
 	if (shgroup) {
 		shgroup->type = DRW_SHG_TRIANGLE_BATCH;
 		shgroup->interface.instance_count = size * 3;
-		drw_interface_attrib(shgroup, "dummy", DRW_ATTRIB_FLOAT, 1, true);
+		/* Calling drw_interface_init will cause it to GWN_batch_draw_procedural. */
+		drw_interface_init(&shgroup->interface, GPU_pass_shader(gpupass));
+		drw_shgroup_material_inputs(shgroup, material, gpupass);
 	}
 
 	return shgroup;
 }
 
-DRWShadingGroup *DRW_shgroup_instance_create(struct GPUShader *shader, DRWPass *pass, Gwn_Batch *geom)
+DRWShadingGroup *DRW_shgroup_create(struct GPUShader *shader, DRWPass *pass)
 {
-	DRWShadingGroup *shgroup = DRW_shgroup_create(shader, pass);
+	DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
+	drw_interface_init(&shgroup->interface, shader);
+	return shgroup;
+}
 
+DRWShadingGroup *DRW_shgroup_instance_create(
+        struct GPUShader *shader, DRWPass *pass, Gwn_Batch *geom, Gwn_VertFormat *format)
+{
+	DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
 	shgroup->type = DRW_SHG_INSTANCE;
 	shgroup->instance_geom = geom;
+
+	drw_interface_instance_init(shgroup, shader, format);
 
 	return shgroup;
 }
 
+static Gwn_VertFormat *g_pos_format = NULL;
+
 DRWShadingGroup *DRW_shgroup_point_batch_create(struct GPUShader *shader, DRWPass *pass)
 {
-	DRWShadingGroup *shgroup = DRW_shgroup_create(shader, pass);
+	DRW_shgroup_instance_format(g_pos_format, {{"pos", DRW_ATTRIB_FLOAT, 3}});
 
+	DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
 	shgroup->type = DRW_SHG_POINT_BATCH;
-	DRW_shgroup_attrib_float(shgroup, "pos", 3);
+
+	drw_interface_instance_init(shgroup, shader, g_pos_format);
 
 	return shgroup;
 }
 
 DRWShadingGroup *DRW_shgroup_line_batch_create(struct GPUShader *shader, DRWPass *pass)
 {
-	DRWShadingGroup *shgroup = DRW_shgroup_create(shader, pass);
+	DRW_shgroup_instance_format(g_pos_format, {{"pos", DRW_ATTRIB_FLOAT, 3}});
 
+	DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
 	shgroup->type = DRW_SHG_LINE_BATCH;
-	DRW_shgroup_attrib_float(shgroup, "pos", 3);
+
+	drw_interface_instance_init(shgroup, shader, g_pos_format);
 
 	return shgroup;
 }
@@ -918,24 +967,23 @@ DRWShadingGroup *DRW_shgroup_line_batch_create(struct GPUShader *shader, DRWPass
  * and dont need any VBO attrib */
 DRWShadingGroup *DRW_shgroup_empty_tri_batch_create(struct GPUShader *shader, DRWPass *pass, int size)
 {
-	DRWShadingGroup *shgroup = DRW_shgroup_create(shader, pass);
+#ifdef USE_GPU_SELECT
+	BLI_assert((G.f & G_PICKSEL) == 0);
+#endif
+	DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
+
+	/* Calling drw_interface_init will cause it to GWN_batch_draw_procedural. */
+	drw_interface_init(&shgroup->interface, shader);
 
 	shgroup->type = DRW_SHG_TRIANGLE_BATCH;
 	shgroup->interface.instance_count = size * 3;
-	drw_interface_attrib(shgroup, "dummy", DRW_ATTRIB_FLOAT, 1, true);
 
 	return shgroup;
 }
 
-void DRW_shgroup_free(struct DRWShadingGroup *shgroup)
+void DRW_shgroup_free(struct DRWShadingGroup *UNUSED(shgroup))
 {
-	if (shgroup->interface.instance_vbo &&
-	    (shgroup->interface.instance_batch == 0))
-	{
-		glDeleteBuffers(1, &shgroup->interface.instance_vbo);
-	}
-
-	GWN_BATCH_DISCARD_SAFE(shgroup->batch_geom);
+	return;
 }
 
 #define CALL_PREPEND(shgroup, call) { \
@@ -950,12 +998,14 @@ void DRW_shgroup_free(struct DRWShadingGroup *shgroup)
 	call->head.prev = NULL; \
 } ((void)0)
 
+/* Specify an external batch instead of adding each attrib one by one. */
 void DRW_shgroup_instance_batch(DRWShadingGroup *shgroup, struct Gwn_Batch *instances)
 {
 	BLI_assert(shgroup->type == DRW_SHG_INSTANCE);
-	BLI_assert(shgroup->interface.instance_batch == NULL);
+	BLI_assert(shgroup->instancing_geom == NULL);
 
-	shgroup->interface.instance_batch = instances;
+	shgroup->type = DRW_SHG_INSTANCE_EXTERNAL;
+	shgroup->instancing_geom = instances;
 
 #ifdef USE_GPU_SELECT
 	DRWCall *call = BLI_mempool_alloc(DST.vmempool->calls);
@@ -1069,24 +1119,18 @@ void DRW_shgroup_call_dynamic_add_array(DRWShadingGroup *shgroup, const void *at
 	BLI_assert(attr_len == interface->attribs_count);
 	UNUSED_VARS_NDEBUG(attr_len);
 
-	if (interface->attribs_stride > 0) {
-		if (interface->inst_data == NULL) {
-			interface->inst_data = DRW_instance_data_request(DST.idatalist, interface->attribs_stride, 16);
+	for (int i = 0; i < attr_len; ++i) {
+		if (interface->instance_count == interface->instance_vbo->vertex_ct) {
+			GWN_vertbuf_data_resize(interface->instance_vbo, interface->instance_count + 32);
 		}
-
-		float *data = DRW_instance_data_next(interface->inst_data);
-
-		for (int i = 0; i < interface->attribs_count; ++i) {
-			memcpy(data, attr[i], sizeof(float) * interface->attribs_size[i]);
-			data = data + interface->attribs_size[i];
-		}
+		GWN_vertbuf_attr_set(interface->instance_vbo, i, interface->instance_count, attr[i]);
 	}
 
 	interface->instance_count += 1;
 }
 
 /* Used for instancing with no attributes */
-void DRW_shgroup_set_instance_count(DRWShadingGroup *shgroup, int count)
+void DRW_shgroup_set_instance_count(DRWShadingGroup *shgroup, unsigned int count)
 {
 	DRWInterface *interface = &shgroup->interface;
 
@@ -1100,6 +1144,13 @@ void DRW_shgroup_set_instance_count(DRWShadingGroup *shgroup, int count)
 #endif
 
 	interface->instance_count = count;
+}
+
+unsigned int DRW_shgroup_get_instance_count(const DRWShadingGroup *shgroup)
+{
+	BLI_assert(shgroup->type != DRW_SHG_NORMAL && shgroup->type != DRW_SHG_INSTANCE_EXTERNAL);
+
+	return shgroup->interface.instance_count;
 }
 
 /**
@@ -1120,11 +1171,6 @@ void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, unsigned int mask)
 {
 	BLI_assert(mask <= 255);
 	shgroup->stencil_mask = mask;
-}
-
-void DRW_shgroup_attrib_float(DRWShadingGroup *shgroup, const char *name, int size)
-{
-	drw_interface_attrib(shgroup, name, DRW_ATTRIB_FLOAT, size, false);
 }
 
 void DRW_shgroup_uniform_texture(DRWShadingGroup *shgroup, const char *name, const GPUTexture *tex)
@@ -1200,82 +1246,6 @@ void DRW_shgroup_uniform_mat3(DRWShadingGroup *shgroup, const char *name, const 
 void DRW_shgroup_uniform_mat4(DRWShadingGroup *shgroup, const char *name, const float *value)
 {
 	drw_interface_uniform(shgroup, name, DRW_UNIFORM_MAT4, value, 16, 1);
-}
-
-/* Creates a VBO containing OGL primitives for all DRWCallDynamic */
-static void shgroup_dynamic_batch(DRWShadingGroup *shgroup)
-{
-	DRWInterface *interface = &shgroup->interface;
-	int nbr = interface->instance_count;
-
-	Gwn_PrimType type = (shgroup->type == DRW_SHG_POINT_BATCH) ? GWN_PRIM_POINTS :
-	                     (shgroup->type == DRW_SHG_TRIANGLE_BATCH) ? GWN_PRIM_TRIS : GWN_PRIM_LINES;
-
-	if (nbr == 0)
-		return;
-
-	/* Upload Data */
-	Gwn_VertBuf *vbo = GWN_vertbuf_create_with_format(&interface->vbo_format);
-	if (interface->inst_data) {
-		GWN_vertbuf_data_set(vbo, nbr, DRW_instance_data_get(interface->inst_data), false);
-	} else {
-		/* Use unitialized memory. This is for dummy vertex buffers. */
-		/* XXX TODO do not alloc at all. */
-		GWN_vertbuf_data_alloc(vbo, nbr);
-	}
-
-	/* TODO make the batch dynamic instead of freeing it every times */
-	if (shgroup->batch_geom)
-		GWN_batch_discard(shgroup->batch_geom);
-
-	shgroup->batch_geom = GWN_batch_create_ex(type, vbo, NULL, GWN_BATCH_OWNS_VBO);
-}
-
-static void shgroup_dynamic_instance(DRWShadingGroup *shgroup)
-{
-	DRWInterface *interface = &shgroup->interface;
-	int buffer_size = 0;
-	void *data = NULL;
-
-	if (interface->instance_batch != NULL) {
-		return;
-	}
-
-	/* TODO We still need this because gawain does not support Matrix attribs. */
-	if (interface->instance_count == 0) {
-		if (interface->instance_vbo) {
-			glDeleteBuffers(1, &interface->instance_vbo);
-			interface->instance_vbo = 0;
-		}
-		return;
-	}
-
-	/* Gather Data */
-	buffer_size = sizeof(float) * interface->attribs_stride * interface->instance_count;
-
-	/* TODO poke mike to add this to gawain */
-	if (interface->instance_vbo) {
-		glDeleteBuffers(1, &interface->instance_vbo);
-		interface->instance_vbo = 0;
-	}
-
-	if (interface->inst_data) {
-		data = DRW_instance_data_get(interface->inst_data);
-	}
-
-	glGenBuffers(1, &interface->instance_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, interface->instance_vbo);
-	glBufferData(GL_ARRAY_BUFFER, buffer_size, data, GL_DYNAMIC_DRAW);
-}
-
-static void shgroup_dynamic_batch_from_calls(DRWShadingGroup *shgroup)
-{
-	if (shgroup->type == DRW_SHG_INSTANCE) {
-		shgroup_dynamic_instance(shgroup);
-	}
-	else {
-		shgroup_dynamic_batch(shgroup);
-	}
 }
 
 /** \} */
@@ -1799,17 +1769,19 @@ static void draw_geometry_prepare(
 static void draw_geometry_execute_ex(
         DRWShadingGroup *shgroup, Gwn_Batch *geom, unsigned int start, unsigned int count)
 {
-	DRWInterface *interface = &shgroup->interface;
+	/* Special case: empty drawcall, placement is done via shader, don't bind anything. */
+	if (geom == NULL) {
+		BLI_assert(shgroup->type == DRW_SHG_TRIANGLE_BATCH); /* Add other type if needed. */
+		/* Shader is already bound. */
+		Gwn_Batch *batch = DRW_cache_fullscreen_quad_get();
+		GWN_batch_draw_procedural(batch, GWN_PRIM_TRIS, count);
+		return;
+	}
+
 	/* step 2 : bind vertex array & draw */
 	GWN_batch_program_set(geom, GPU_shader_get_program(shgroup->shader), GPU_shader_get_interface(shgroup->shader));
-	if (interface->instance_batch) {
-		/* Used for Particles. Cannot do partial drawing. */
-		GWN_batch_draw_stupid_instanced_with_batch(geom, interface->instance_batch);
-	}
-	else if (interface->instance_vbo) {
-		GWN_batch_draw_stupid_instanced(
-		        geom, interface->instance_vbo, start, count, interface->attribs_count,
-		        interface->attribs_stride, interface->attribs_size, interface->attribs_loc);
+	if (ELEM(shgroup->type, DRW_SHG_INSTANCE, DRW_SHG_INSTANCE_EXTERNAL)) {
+		GWN_batch_draw_stupid_instanced(geom, shgroup->instancing_geom, start, count);
 	}
 	else {
 		GWN_batch_draw_stupid(geom, start, count);
@@ -1876,6 +1848,7 @@ static void bind_texture(GPUTexture *tex)
 				GPU_texture_bind(tex, RST.bind_tex_inc);
 				RST.bound_texs[RST.bind_tex_inc] = tex;
 				RST.bound_tex_slots[RST.bind_tex_inc] = true;
+				// printf("Binds Texture %d %p\n", RST.bind_tex_inc, tex);
 				return;
 			}
 		}
@@ -1925,12 +1898,6 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 		if (DST.shader) GPU_shader_unbind();
 		GPU_shader_bind(shgroup->shader);
 		DST.shader = shgroup->shader;
-	}
-
-	const bool is_normal = ELEM(shgroup->type, DRW_SHG_NORMAL);
-
-	if (!is_normal) {
-		shgroup_dynamic_batch_from_calls(shgroup);
 	}
 
 	release_texture_slots();
@@ -2030,30 +1997,32 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 #endif
 
 	/* Rendering Calls */
-	if (!is_normal) {
+	if (!ELEM(shgroup->type, DRW_SHG_NORMAL)) {
 		/* Replacing multiple calls with only one */
 		float obmat[4][4];
 		unit_m4(obmat);
 
-		if (shgroup->type == DRW_SHG_INSTANCE &&
-		    (interface->instance_count > 0 || interface->instance_batch != NULL))
-		{
-			if (interface->instance_batch != NULL) {
-				GPU_SELECT_LOAD_IF_PICKSEL((DRWCall *)shgroup->calls_first);
-				draw_geometry(shgroup, shgroup->instance_geom, obmat, shgroup->instance_data, 0, 0);
+		if (ELEM(shgroup->type, DRW_SHG_INSTANCE, DRW_SHG_INSTANCE_EXTERNAL)) {
+			if (shgroup->type == DRW_SHG_INSTANCE_EXTERNAL) {
+				if (shgroup->instancing_geom != NULL) {
+					GPU_SELECT_LOAD_IF_PICKSEL((DRWCall *)shgroup->calls_first);
+					draw_geometry(shgroup, shgroup->instance_geom, obmat, shgroup->instance_data, 0, 0);
+				}
 			}
 			else {
-				unsigned int count, start;
-				GPU_SELECT_LOAD_IF_PICKSEL_LIST(shgroup, start, count)
-				{
-					draw_geometry(shgroup, shgroup->instance_geom, obmat, shgroup->instance_data, start, count);
+				if (shgroup->interface.instance_count > 0) {
+					unsigned int count, start;
+					GPU_SELECT_LOAD_IF_PICKSEL_LIST(shgroup, start, count)
+					{
+						draw_geometry(shgroup, shgroup->instance_geom, obmat, shgroup->instance_data, start, count);
+					}
+					GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count)
 				}
-				GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count)
 			}
 		}
 		else {
 			/* Some dynamic batch can have no geom (no call to aggregate) */
-			if (shgroup->batch_geom) {
+			if (shgroup->interface.instance_count > 0) {
 				unsigned int count, start;
 				GPU_SELECT_LOAD_IF_PICKSEL_LIST(shgroup, start, count)
 				{
@@ -2099,6 +2068,8 @@ static void drw_draw_pass_ex(DRWPass *pass, DRWShadingGroup *start_group, DRWSha
 {
 	/* Start fresh */
 	DST.shader = NULL;
+
+	BLI_assert(DST.buffer_finish_called && "DRW_render_instance_buffer_finish had not been called before drawing");
 
 	drw_state_set(pass->state);
 
@@ -2165,7 +2136,7 @@ void DRW_state_reset_ex(DRWState state)
 void DRW_state_reset(void)
 {
 	/* Reset blending function */
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 	DRW_state_reset_ex(DRW_STATE_DEFAULT);
 }
@@ -2212,13 +2183,10 @@ struct DRWTextStore *DRW_text_cache_ensure(void)
 
 bool DRW_object_is_renderable(Object *ob)
 {
-	Scene *scene = DST.draw_ctx.scene;
-	Object *obedit = scene->obedit;
-
 	BLI_assert(BKE_object_is_visible(ob, OB_VISIBILITY_CHECK_UNKNOWN_RENDER_MODE));
 
 	if (ob->type == OB_MESH) {
-		if (ob == obedit) {
+		if (ob == DST.draw_ctx.object_edit) {
 			IDProperty *props = BKE_layer_collection_engine_evaluated_get(ob, COLLECTION_MODE_EDIT, "");
 			bool do_show_occlude_wire = BKE_collection_engine_property_value_get_bool(props, "show_occlude_wire");
 			if (do_show_occlude_wire) {
@@ -2592,15 +2560,39 @@ static void drw_viewport_cache_resize(void)
 	GPU_viewport_cache_release(DST.viewport);
 
 	if (DST.vmempool != NULL) {
-		BLI_mempool_clear_ex(DST.vmempool->calls, BLI_mempool_count(DST.vmempool->calls));
-		BLI_mempool_clear_ex(DST.vmempool->calls_generate, BLI_mempool_count(DST.vmempool->calls_generate));
-		BLI_mempool_clear_ex(DST.vmempool->shgroups, BLI_mempool_count(DST.vmempool->shgroups));
-		BLI_mempool_clear_ex(DST.vmempool->uniforms, BLI_mempool_count(DST.vmempool->uniforms));
-		BLI_mempool_clear_ex(DST.vmempool->passes, BLI_mempool_count(DST.vmempool->passes));
+		BLI_mempool_clear_ex(DST.vmempool->calls, BLI_mempool_len(DST.vmempool->calls));
+		BLI_mempool_clear_ex(DST.vmempool->calls_generate, BLI_mempool_len(DST.vmempool->calls_generate));
+		BLI_mempool_clear_ex(DST.vmempool->shgroups, BLI_mempool_len(DST.vmempool->shgroups));
+		BLI_mempool_clear_ex(DST.vmempool->uniforms, BLI_mempool_len(DST.vmempool->uniforms));
+		BLI_mempool_clear_ex(DST.vmempool->passes, BLI_mempool_len(DST.vmempool->passes));
 	}
 
 	DRW_instance_data_list_free_unused(DST.idatalist);
 	DRW_instance_data_list_resize(DST.idatalist);
+}
+
+
+/* Not a viewport variable, we could split this out. */
+static void drw_context_state_init(void)
+{
+	/* Edit object. */
+	if (DST.draw_ctx.object_mode & OB_MODE_EDIT) {
+		DST.draw_ctx.object_edit = DST.draw_ctx.obact;
+	}
+	else {
+		DST.draw_ctx.object_edit = NULL;
+	}
+
+	/* Pose object. */
+	if (DST.draw_ctx.object_mode & OB_MODE_POSE) {
+		DST.draw_ctx.object_pose = DST.draw_ctx.obact;
+	}
+	else if (DST.draw_ctx.object_mode & OB_MODE_WEIGHT_PAINT) {
+		DST.draw_ctx.object_pose = BKE_object_pose_armature_get(DST.draw_ctx.obact);
+	}
+	else {
+		DST.draw_ctx.object_pose = NULL;
+	}
 }
 
 /* It also stores viewport variable to an immutable place: DST
@@ -2610,7 +2602,6 @@ static void drw_viewport_cache_resize(void)
 static void drw_viewport_var_init(void)
 {
 	RegionView3D *rv3d = DST.draw_ctx.rv3d;
-
 	/* Refresh DST.size */
 	if (DST.viewport) {
 		int size[2];
@@ -2666,8 +2657,8 @@ static void drw_viewport_var_init(void)
 	DST.backface = GL_CW;
 	glFrontFace(DST.frontface);
 
-	if (DST.draw_ctx.scene->obedit) {
-		ED_view3d_init_mats_rv3d(DST.draw_ctx.scene->obedit, rv3d);
+	if (DST.draw_ctx.object_edit) {
+		ED_view3d_init_mats_rv3d(DST.draw_ctx.object_edit, rv3d);
 	}
 
 	/* Alloc array of texture reference. */
@@ -2680,19 +2671,6 @@ static void drw_viewport_var_init(void)
 
 	memset(viewport_matrix_override.override, 0x0, sizeof(viewport_matrix_override.override));
 	memset(DST.common_instance_data, 0x0, sizeof(DST.common_instance_data));
-
-	/* Not a viewport variable, we could split this out. */
-	{
-		if (DST.draw_ctx.object_mode & OB_MODE_POSE) {
-			DST.draw_ctx.object_pose = DST.draw_ctx.obact;
-		}
-		else if (DST.draw_ctx.object_mode & OB_MODE_WEIGHT_PAINT) {
-			DST.draw_ctx.object_pose = BKE_object_pose_armature_get(DST.draw_ctx.obact);
-		}
-		else {
-			DST.draw_ctx.object_pose = NULL;
-		}
-	}
 }
 
 void DRW_viewport_matrix_get(float mat[4][4], DRWViewportMatrixType type)
@@ -3187,10 +3165,10 @@ static void drw_engines_enable_external(void)
 	use_drw_engine(DRW_engine_viewport_external_type.draw_engine);
 }
 
-static void drw_engines_enable(const Scene *scene, ViewLayer *view_layer, RenderEngineType *engine_type)
+static void drw_engines_enable(ViewLayer *view_layer, RenderEngineType *engine_type)
 {
 	Object *obact = OBACT(view_layer);
-	const int mode = CTX_data_mode_enum_ex(scene->obedit, obact, DST.draw_ctx.object_mode);
+	const int mode = CTX_data_mode_enum_ex(DST.draw_ctx.object_edit, obact, DST.draw_ctx.object_mode);
 
 	drw_engines_enable_from_engine(engine_type);
 
@@ -3368,7 +3346,7 @@ void DRW_notify_view_update(const DRWUpdateContext *update_ctx)
 		NULL,
 	};
 
-	drw_engines_enable(scene, view_layer, engine_type);
+	drw_engines_enable(view_layer, engine_type);
 
 	for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
 		DrawEngineType *draw_engine = link->data;
@@ -3413,7 +3391,7 @@ void DRW_notify_id_update(const DRWUpdateContext *update_ctx, ID *id)
 	DST.draw_ctx = (DRWContextState){
 		ar, rv3d, v3d, scene, view_layer, OBACT(view_layer), engine_type, depsgraph, OB_MODE_OBJECT, NULL,
 	};
-	drw_engines_enable(scene, view_layer, engine_type);
+	drw_engines_enable(view_layer, engine_type);
 	for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
 		DrawEngineType *draw_engine = link->data;
 		ViewportEngineData *data = DRW_viewport_engine_data_ensure(draw_engine);
@@ -3477,11 +3455,11 @@ void DRW_draw_render_loop_ex(
 	    /* reuse if caller sets */
 	    DST.draw_ctx.evil_C,
 	};
-
+	drw_context_state_init();
 	drw_viewport_var_init();
 
 	/* Get list of enabled engines */
-	drw_engines_enable(scene, view_layer, engine_type);
+	drw_engines_enable(view_layer, engine_type);
 
 	/* Update ubos */
 	DRW_globals_update();
@@ -3501,6 +3479,8 @@ void DRW_draw_render_loop_ex(
 		DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END
 
 		drw_engines_cache_finish();
+
+		DRW_render_instance_buffer_finish();
 		PROFILE_END_ACCUM(DST.cache_time, stime);
 	}
 
@@ -3659,6 +3639,7 @@ void DRW_render_to_image(RenderEngine *re, struct Depsgraph *depsgraph)
 	DST.draw_ctx = (DRWContextState){
 	    NULL, NULL, NULL, scene, view_layer, OBACT(view_layer), engine_type, depsgraph, eval_ctx->object_mode, NULL,
 	};
+	drw_context_state_init();
 
 	DST.viewport = GPU_viewport_create();
 	const int size[2] = {(r->size * r->xsch) / 100, (r->size * r->ysch) / 100};
@@ -3686,6 +3667,8 @@ void DRW_render_to_image(RenderEngine *re, struct Depsgraph *depsgraph)
 	else {
 		engine_type->draw_engine->render_to_image(data, re, depsgraph);
 	}
+
+	DST.buffer_finish_called = false;
 
 	/* TODO grease pencil */
 
@@ -3737,7 +3720,7 @@ static void draw_select_framebuffer_setup(const rcti *rect)
 	/* If size mismatch recreate the texture. */
 	if ((g_select_buffer.texture_depth != NULL) &&
 		((GPU_texture_width(g_select_buffer.texture_depth) != BLI_rcti_size_x(rect)) ||
-		 (GPU_texture_height(g_select_buffer.texture_depth) != BLI_rcti_size_y(rect))))
+		(GPU_texture_height(g_select_buffer.texture_depth) != BLI_rcti_size_y(rect))))
 	{
 		GPU_texture_free(g_select_buffer.texture_depth);
 		g_select_buffer.texture_depth = NULL;
@@ -3754,6 +3737,14 @@ static void draw_select_framebuffer_setup(const rcti *rect)
 	}
 }
 
+/* Must run after all instance datas have been added. */
+void DRW_render_instance_buffer_finish(void)
+{
+	BLI_assert(!DST.buffer_finish_called && "DRW_render_instance_buffer_finish called twice!");
+	DST.buffer_finish_called = true;
+	DRW_instance_buffer_finish(DST.idatalist);
+}
+
 /**
  * object mode select-loop, see: ED_view3d_draw_select_loop (legacy drawing).
  */
@@ -3765,6 +3756,7 @@ void DRW_draw_select_loop(
 	Scene *scene = DEG_get_evaluated_scene(depsgraph);
 	RenderEngineType *engine_type = RE_engines_find(scene->view_render.engine_id);
 	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+	Object *obact = OBACT(view_layer);
 #ifndef USE_GPU_SELECT
 	UNUSED_VARS(vc, scene, view_layer, v3d, ar, rect);
 #else
@@ -3779,14 +3771,12 @@ void DRW_draw_select_loop(
 
 	bool use_obedit = false;
 	int obedit_mode = 0;
-	if (scene->obedit && scene->obedit->type == OB_MBALL) {
-		use_obedit = true;
-		obedit_mode = CTX_MODE_EDIT_METABALL;
-	}
-	else if ((scene->obedit && scene->obedit->type == OB_ARMATURE)) {
-		/* if not drawing sketch, draw bones */
-		// if (!BDR_drawSketchNames(vc))
-		{
+	if (object_mode & OB_MODE_EDIT) {
+		if (obact->type == OB_MBALL) {
+			use_obedit = true;
+			obedit_mode = CTX_MODE_EDIT_METABALL;
+		}
+		else if (obact->type == OB_ARMATURE) {
 			use_obedit = true;
 			obedit_mode = CTX_MODE_EDIT_ARMATURE;
 		}
@@ -3818,10 +3808,10 @@ void DRW_draw_select_loop(
 
 	/* Instead of 'DRW_context_state_init(C, &DST.draw_ctx)', assign from args */
 	DST.draw_ctx = (DRWContextState){
-		ar, rv3d, v3d, scene, view_layer, OBACT(view_layer), engine_type, depsgraph, object_mode,
+		ar, rv3d, v3d, scene, view_layer, obact, engine_type, depsgraph, object_mode,
 		(bContext *)NULL,
 	};
-
+	drw_context_state_init();
 	drw_viewport_var_init();
 
 	/* Update ubos */
@@ -3834,7 +3824,7 @@ void DRW_draw_select_loop(
 		drw_engines_cache_init();
 
 		if (use_obedit) {
-			drw_engines_cache_populate(scene->obedit);
+			drw_engines_cache_populate(obact);
 		}
 		else {
 			DEG_OBJECT_ITER(depsgraph, ob, DRW_iterator_mode_get(),
@@ -3851,6 +3841,8 @@ void DRW_draw_select_loop(
 		}
 
 		drw_engines_cache_finish();
+
+		DRW_render_instance_buffer_finish();
 	}
 
 	/* Start Drawing */
@@ -3962,7 +3954,7 @@ void DRW_draw_depth_loop(
 		ar, rv3d, v3d, scene, view_layer, OBACT(view_layer), engine_type, depsgraph, object_mode,
 		(bContext *)NULL,
 	};
-
+	drw_context_state_init();
 	drw_viewport_var_init();
 
 	/* Update ubos */
@@ -3984,6 +3976,8 @@ void DRW_draw_depth_loop(
 		DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END
 
 		drw_engines_cache_finish();
+
+		DRW_render_instance_buffer_finish();
 	}
 
 	/* Start Drawing */
@@ -4079,6 +4073,14 @@ bool DRW_state_is_scene_render(void)
 	BLI_assert(DST.options.is_scene_render ?
 	           DST.options.is_image_render : true);
 	return DST.options.is_scene_render;
+}
+
+/**
+* Whether we are rendering simple opengl render
+*/
+bool DRW_state_is_opengl_render(void)
+{
+	return DST.options.is_image_render && !DST.options.is_scene_render;
 }
 
 /**
@@ -4222,6 +4224,7 @@ void DRW_engines_free(void)
 
 	DRW_shape_cache_free();
 	DRW_stats_free();
+	DRW_globals_free();
 
 	DrawEngineType *next;
 	for (DrawEngineType *type = DRW_engines.first; type; type = next) {
@@ -4238,6 +4241,8 @@ void DRW_engines_free(void)
 
 	if (globals_ramp)
 		GPU_texture_free(globals_ramp);
+
+	MEM_SAFE_FREE(g_pos_format);
 
 	MEM_SAFE_FREE(RST.bound_texs);
 	MEM_SAFE_FREE(RST.bound_tex_slots);

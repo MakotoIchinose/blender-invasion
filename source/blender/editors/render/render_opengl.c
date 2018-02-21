@@ -657,7 +657,7 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
 
 	/* corrects render size with actual size, not every card supports non-power-of-two dimensions */
 	DRW_opengl_context_enable(); /* Offscreen creation needs to be done in DRW context. */
-	ofs = GPU_offscreen_create(sizex, sizey, full_samples ? 0 : samples, true, err_out);
+	ofs = GPU_offscreen_create(sizex, sizey, full_samples ? 0 : samples, true, true, err_out);
 	DRW_opengl_context_disable();
 
 	if (!ofs) {

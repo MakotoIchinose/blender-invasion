@@ -57,6 +57,7 @@ struct PropertyRNA;
 struct EnumPropertyItem;
 struct EvaluationContext;
 struct WorkSpace;
+struct wmWindowManager;
 
 #include "DNA_object_enums.h"
 
@@ -126,11 +127,33 @@ void ED_object_toggle_modes(struct bContext *C, eObjectMode mode);
 #define EM_WAITCURSOR   4
 #define EM_DO_UNDO      8
 #define EM_IGNORE_LAYER 16
+void ED_object_editmode_exit_ex(
+        struct bContext *C, struct WorkSpace *workspace, struct Scene *scene, struct Object *obedit, int flag);
 void ED_object_editmode_exit(struct bContext *C, int flag);
 void ED_object_editmode_enter(struct bContext *C, int flag);
 bool ED_object_editmode_load(struct Object *obedit);
 
 bool ED_object_editmode_calc_active_center(struct Object *obedit, const bool select_only, float r_center[3]);
+
+
+void ED_object_vpaintmode_enter_ex(
+        const struct EvaluationContext *eval_ctx, struct wmWindowManager *wm,
+        struct WorkSpace *workspace, struct Scene *scene, struct Object *ob);
+void ED_object_vpaintmode_enter(struct bContext *C);
+void ED_object_wpaintmode_enter_ex(
+        const struct EvaluationContext *eval_ctx, struct wmWindowManager *wm,
+        struct WorkSpace *workspace, struct Scene *scene, struct Object *ob);
+void ED_object_wpaintmode_enter(struct bContext *C);
+
+void ED_object_vpaintmode_exit_ex(struct WorkSpace *workspace, struct Object *ob);
+void ED_object_vpaintmode_exit(struct bContext *C);
+void ED_object_wpaintmode_exit_ex(struct WorkSpace *workspace, struct Object *ob);
+void ED_object_wpaintmode_exit(struct bContext *C);
+
+void ED_object_sculptmode_exit_ex(
+        const struct EvaluationContext *eval_ctx,
+        struct WorkSpace *workspace, struct Scene *scene, struct Object *ob);
+void ED_object_sculptmode_exit(struct bContext *C);
 
 void ED_object_location_from_view(struct bContext *C, float loc[3]);
 void ED_object_rotation_from_view(struct bContext *C, float rot[3], const char align_axis);

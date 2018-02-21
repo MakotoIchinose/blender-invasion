@@ -58,7 +58,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_edgehash.h"
 #include "BLI_rand.h"
-#include "BLI_jitter.h"
+#include "BLI_jitter_2d.h"
 #include "BLI_math.h"
 #include "BLI_blenlib.h"
 #include "BLI_kdtree.h"
@@ -499,6 +499,8 @@ void psys_thread_context_free(ParticleThreadContext *ctx)
 		MEM_freeN(ctx->vg_rough2);
 	if (ctx->vg_roughe)
 		MEM_freeN(ctx->vg_roughe);
+	if (ctx->vg_twist)
+		MEM_freeN(ctx->vg_twist);
 
 	if (ctx->sim.psys->lattice_deform_data) {
 		end_latt_deform(ctx->sim.psys->lattice_deform_data);
@@ -520,6 +522,9 @@ void psys_thread_context_free(ParticleThreadContext *ctx)
 	}
 	if (ctx->roughcurve != NULL) {
 		curvemapping_free(ctx->roughcurve);
+	}
+	if (ctx->twistcurve != NULL) {
+		curvemapping_free(ctx->twistcurve);
 	}
 }
 
@@ -2898,7 +2903,9 @@ static void psys_update_path_cache(ParticleSimulationData *sim, float cfra, cons
 {
 	ParticleSystem *psys = sim->psys;
 	ParticleSettings *part = psys->part;
+#if 0
 	ParticleEditSettings *pset = &sim->scene->toolsettings->particle;
+#endif
 	int distr=0, alloc=0, skip=0;
 
 	if ((psys->part->childtype && psys->totchild != psys_get_tot_child(sim->scene, psys)) || psys->recalc&PSYS_RECALC_RESET)
@@ -2936,12 +2943,15 @@ static void psys_update_path_cache(ParticleSimulationData *sim, float cfra, cons
 			skip = 1; /* draw visualization */
 		else if (psys->pointcache->flag & PTCACHE_BAKING)
 			skip = 1; /* no need to cache paths while baking dynamics */
+
+#if 0 /* TODO(mai): something is very wrong with these conditionals, they dont make sense and the cache isnt updating */
 		else if (psys_in_edit_mode(sim->eval_ctx, sim->eval_ctx->view_layer, psys)) {
 			if ((pset->flag & PE_DRAW_PART)==0)
 				skip = 1;
 			else if (part->childtype==0 && (psys->flag & PSYS_HAIR_DYNAMICS && psys->pointcache->flag & PTCACHE_BAKED)==0)
 				skip = 1; /* in edit mode paths are needed for child particles and dynamic hair */
 		}
+#endif
 	}
 
 
