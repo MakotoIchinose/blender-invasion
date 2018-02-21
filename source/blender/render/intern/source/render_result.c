@@ -434,6 +434,9 @@ RenderResult *render_result_new(Render *re, rcti *partrct, int crop, int savebuf
 		rl->rectx = rectx;
 		rl->recty = recty;
 
+		rl->depsgraph = DEG_graph_new();
+		DEG_evaluation_context_init_from_view_layer_for_render(&rl->eval_ctx, rl->depsgraph, re->scene, re->view_layers.first);
+
 		/* duplicate code... */
 		if (rr->do_exr_tile) {
 			rl->display_buffer = MEM_mapallocN(rectx * recty * sizeof(unsigned int), "Combined display space rgba");

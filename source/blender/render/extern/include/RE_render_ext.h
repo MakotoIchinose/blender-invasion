@@ -38,6 +38,7 @@
 
 /* called by meshtools */
 struct DerivedMesh;
+struct EvaluationContext;
 struct ImagePool;
 struct MTex;
 struct Scene;

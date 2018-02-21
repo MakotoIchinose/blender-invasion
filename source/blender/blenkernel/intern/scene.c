@@ -1445,6 +1445,7 @@ void BKE_scene_graph_update_tagged(EvaluationContext *eval_ctx,
 }
 
 /* applies changes right away, does all sets too */
+/* TODO (dfelinto/sergey) make a function that updates all render context/depsgraphs at once. */
 void BKE_scene_graph_update_for_newframe(EvaluationContext *eval_ctx,
                                          Depsgraph *depsgraph,
                                          Main *bmain,
@@ -1453,7 +1454,7 @@ void BKE_scene_graph_update_for_newframe(EvaluationContext *eval_ctx,
 {
 	/* TODO(sergey): Temporary solution for until pipeline.c is ported. */
 	if (view_layer == NULL) {
-		view_layer = DEG_get_evaluated_view_layer(depsgraph);
+		view_layer = DEG_get_evaluated_view_layer(eval_ctx->depsgraph);
 		BLI_assert(view_layer != NULL);
 	}
 	/* TODO(sergey): Some functions here are changing global state,
@@ -1467,7 +1468,7 @@ void BKE_scene_graph_update_for_newframe(EvaluationContext *eval_ctx,
 	 */
 	BKE_image_update_frame(bmain, scene->r.cfra);
 	BKE_sound_set_cfra(scene->r.cfra);
-	DEG_graph_relations_update(depsgraph, bmain, scene, view_layer);
+	DEG_graph_relations_update(eval_ctx->depsgraph, bmain, scene, view_layer);
 	/* Update animated cache files for modifiers.
 	 *
 	 * TODO(sergey): Make this a depsgraph node?

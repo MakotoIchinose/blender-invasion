@@ -526,9 +526,8 @@ RenderData *RE_engine_get_render_data(Render *re)
 }
 
 /* Bake */
-void RE_bake_engine_set_engine_parameters(Render *re, Main *bmain, Depsgraph *graph, Scene *scene)
+void RE_bake_engine_set_engine_parameters(Render *re, Main *bmain, Scene *scene)
 {
-	re->depsgraph = graph;
 	re->scene = scene;
 	re->main = bmain;
 	render_copy_renderdata(&re->r, &scene->r);
@@ -579,7 +578,7 @@ bool RE_bake_engine(
 
 	/* update is only called so we create the engine.session */
 	if (type->update)
-		type->update(engine, re->main, re->depsgraph, re->scene);
+		type->update(engine, re->main, re->scene);
 
 	if (type->bake) {
 		type->bake(
@@ -629,7 +628,12 @@ void RE_engine_frame_set(RenderEngine *engine, int frame, float subframe)
 	BPy_BEGIN_ALLOW_THREADS;
 #endif
 
-	BKE_scene_graph_update_for_newframe(re->eval_ctx, re->depsgraph, re->main, scene, NULL);
+	for (RenderLayer *render_layer = re->result->layers.first;
+	     render_layer != NULL;
+	     render_layer = render_layer->next)
+	{
+		BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, re->main, scene, NULL);
+	}
 
 #ifdef WITH_PYTHON
 	BPy_END_ALLOW_THREADS;
@@ -664,7 +668,12 @@ int RE_engine_render(Render *re, int do_all)
 	/* update animation here so any render layer animation is applied before
 	 * creating the render result */
 	if ((re->r.scemode & (R_NO_FRAME_UPDATE | R_BUTS_PREVIEW)) == 0) {
-		BKE_scene_graph_update_for_newframe(re->eval_ctx, re->depsgraph, re->main, re->scene, NULL);
+		for (RenderLayer *render_layer = re->result->layers.first;
+		     render_layer != NULL;
+		     render_layer = render_layer->next)
+		{
+			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, re->main, re->scene, NULL);
+		}
 		render_update_anim_renderdata(re, &re->scene->r, &re->scene->view_layers);
 	}
 
@@ -731,7 +740,7 @@ int RE_engine_render(Render *re, int do_all)
 		render_result_exr_file_begin(re);
 
 	if (type->update) {
-		type->update(engine, re->main, re->depsgraph, re->scene);
+		type->update(engine, re->main, re->scene);
 	}
 
 	/* Clear UI drawing locks. */
@@ -802,9 +811,4 @@ void RE_engine_register_pass(struct RenderEngine *engine, struct Scene *scene, s
 			ntreeCompositRegisterPass(sce->nodetree, scene, view_layer, name, type);
 		}
 	}
-}
-
-ViewLayer *RE_engine_get_view_layer(Render *re)
-{
-	return re->eval_ctx->view_layer;
 }

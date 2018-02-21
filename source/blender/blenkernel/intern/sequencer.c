@@ -3364,7 +3364,6 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context, Sequence *seq
 			 * TODO(sergey): Need some proper solution with ported
 			 * BKE_scene_set_background() or DEG_on_visible_change() ?
 			 */
-			RE_SetDepsgraph(re, depsgraph);
 			DEG_graph_id_tag_update(context->bmain, depsgraph, &scene->id, 0);
 
 			BKE_scene_graph_update_for_newframe(context->eval_ctx, depsgraph, context->bmain, scene, view_layer);

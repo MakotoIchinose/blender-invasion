@@ -147,7 +147,7 @@ static void engine_unbind_display_space_shader(RenderEngine *UNUSED(engine))
 	IMB_colormanagement_finish_glsl_draw();
 }
 
-static void engine_update(RenderEngine *engine, Main *bmain, Depsgraph *graph, Scene *scene)
+static void engine_update(RenderEngine *engine, Main *bmain, Scene *scene)
 {
 	extern FunctionRNA rna_RenderEngine_update_func;
 	PointerRNA ptr;
@@ -159,7 +159,6 @@ static void engine_update(RenderEngine *engine, Main *bmain, Depsgraph *graph, S
 
 	RNA_parameter_list_create(&list, &ptr, func);
 	RNA_parameter_set_lookup(&list, "data", &bmain);
-	RNA_parameter_set_lookup(&list, "depsgraph", &graph);
 	RNA_parameter_set_lookup(&list, "scene", &scene);
 	engine->type->ext.call(NULL, &ptr, func, &list);
 
@@ -397,16 +396,6 @@ static PointerRNA rna_RenderEngine_render_get(PointerRNA *ptr)
 	else {
 		return rna_pointer_inherit_refine(ptr, &RNA_RenderSettings, NULL);
 	}
-}
-
-static PointerRNA rna_RenderEngine_view_layer_get(PointerRNA *ptr)
-{
-	RenderEngine *engine = (RenderEngine *)ptr->data;
-	if (engine->re != NULL) {
-		ViewLayer *view_layer = RE_engine_get_view_layer(engine->re);
-		return rna_pointer_inherit_refine(ptr, &RNA_ViewLayer, view_layer);
-	}
-	return rna_pointer_inherit_refine(ptr, &RNA_ViewLayer, NULL);
 }
 
 static PointerRNA rna_RenderEngine_camera_override_get(PointerRNA *ptr)
@@ -770,11 +759,6 @@ static void rna_def_render_engine(BlenderRNA *brna)
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	prop = RNA_def_enum(func, "type", render_pass_type_items, SOCK_FLOAT, "Type", "");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-
-	prop = RNA_def_property(srna, "view_layer", PROP_POINTER, PROP_NONE);
-	RNA_def_property_struct_type(prop, "ViewLayer");
-	RNA_def_property_pointer_funcs(prop, "rna_RenderEngine_view_layer_get", NULL, NULL, NULL);
-	RNA_def_property_ui_text(prop, "Scene layer", "");
 
 	/* registration */
 
