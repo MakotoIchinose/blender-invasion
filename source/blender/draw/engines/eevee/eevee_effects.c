@@ -214,9 +214,6 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object 
 		DRW_TEXTURE_FREE_SAFE(txl->color_double_buffer);
 		DRW_FRAMEBUFFER_FREE_SAFE(fbl->double_buffer);
 	}
-
-	/* Copy previous persmat to UBO data */
-	copy_m4_m4(common_data->prev_persmat, stl->effects->prev_persmat);
 }
 
 void EEVEE_effects_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
