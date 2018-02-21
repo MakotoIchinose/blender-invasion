@@ -102,6 +102,10 @@
 #include "DEG_depsgraph_query.h"
 
 /* -------------------------------------------------------------------- */
+/* Prototypes. */
+static void drw_eval_ctx_to_draw_ctx(EvaluationContext *eval_ctx);
+
+/* -------------------------------------------------------------------- */
 /** \name Local Features
  * \{ */
 
@@ -3619,7 +3623,6 @@ void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 	DrawEngineType *draw_engine_type = engine_type->draw_engine;
 	RenderData *r = &scene->r;
 	Render *render = engine->re;
-	const EvaluationContext *eval_ctx = RE_GetEvalCtx(render);
 
 	/* Reset before using it. */
 	memset(&DST, 0x0, sizeof(DST));
@@ -3628,7 +3631,7 @@ void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 	DST.options.draw_background = scene->r.alphamode == R_ADDSKY;
 
 	DST.draw_ctx = (DRWContextState){
-	    NULL, NULL, NULL, scene, NULL, NULL, engine_type, NULL, eval_ctx->object_mode, NULL,
+	    NULL, NULL, NULL, scene, NULL, NULL, engine_type, NULL, OB_MODE_OBJECT, NULL,
 	};
 	drw_context_state_init();
 
@@ -3666,8 +3669,7 @@ void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 			                              scene,
 			                              render_layer->eval_ctx.view_layer);
 
-			DST.draw_ctx.view_layer = render_layer->eval_ctx.view_layer;
-			DST.draw_ctx.depsgraph = render_layer->depsgraph;
+			drw_eval_ctx_to_draw_ctx(&render_layer->eval_ctx);
 
 			engine_type->draw_engine->render_to_image(data, engine, render_result, render_layer);
 			DST.buffer_finish_called = false;
@@ -4047,6 +4049,12 @@ bool DRW_state_draw_background(void)
 const DRWContextState *DRW_context_state_get(void)
 {
 	return &DST.draw_ctx;
+}
+
+static void drw_eval_ctx_to_draw_ctx(EvaluationContext *eval_ctx)
+{
+	DST.draw_ctx.view_layer = eval_ctx->view_layer;
+	DST.draw_ctx.depsgraph = eval_ctx->depsgraph;
 }
 
 /** \} */
