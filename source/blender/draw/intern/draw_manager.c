@@ -3805,6 +3805,9 @@ void DRW_draw_select_loop(
 		}
 	}
 
+	gpuPushAttrib(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
+	glDisable(GL_SCISSOR_TEST);
+
 	struct GPUViewport *viewport = GPU_viewport_create();
 	GPU_viewport_size_set(viewport, (const int[2]){BLI_rcti_size_x(rect), BLI_rcti_size_y(rect)});
 
@@ -3887,6 +3890,10 @@ void DRW_draw_select_loop(
 	GPU_viewport_free(viewport);
 	MEM_freeN(viewport);
 
+	/* Restore Drawing area. */
+	gpuPopAttrib();
+	glEnable(GL_SCISSOR_TEST);
+
 	/* restore */
 	rv3d->viewport = backup_viewport;
 #endif  /* USE_GPU_SELECT */
@@ -3948,6 +3955,9 @@ void DRW_draw_depth_loop(
 
 	/* Reset before using it. */
 	memset(&DST, 0x0, sizeof(DST));
+
+	gpuPushAttrib(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
+	glDisable(GL_SCISSOR_TEST);
 
 	struct GPUViewport *viewport = GPU_viewport_create();
 	GPU_viewport_size_set(viewport, (const int[2]){ar->winx, ar->winy});
@@ -4024,6 +4034,10 @@ void DRW_draw_depth_loop(
 	/* Cleanup for selection state */
 	GPU_viewport_free(viewport);
 	MEM_freeN(viewport);
+
+	/* Restore Drawing area. */
+	gpuPopAttrib();
+	glEnable(GL_SCISSOR_TEST);
 
 	/* Changin context */
 	DRW_opengl_context_disable();
