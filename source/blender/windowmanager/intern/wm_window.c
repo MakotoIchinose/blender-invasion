@@ -1042,6 +1042,10 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
 void wm_window_reset_drawable(void)
 {
 	wmWindowManager *wm = G.main->wm.first;
+
+	if (wm == NULL)
+		return;
+
 	wmWindow *win = wm->windrawable;
 
 	if (BLI_thread_is_main() && win && win->ghostwin) {

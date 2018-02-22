@@ -467,6 +467,7 @@ cleanup:
 		if (!ok) {
 			GPU_viewport_free(viewport);
 			MEM_freeN(viewport);
+			DRW_opengl_context_disable();
 			return;
 		}
 
@@ -587,6 +588,7 @@ static void gpu_viewport_passes_free(PassList *psl, int psl_len)
 	}
 }
 
+/* Must be executed inside Drawmanager Opengl Context. */
 void GPU_viewport_free(GPUViewport *viewport)
 {
 	gpu_viewport_engines_data_free(viewport);
