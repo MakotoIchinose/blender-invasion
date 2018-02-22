@@ -106,6 +106,7 @@ void GWN_batch_program_unset(Gwn_Batch*);
 void GWN_batch_program_use_begin(Gwn_Batch*); // call before Batch_Uniform (temp hack?)
 void GWN_batch_program_use_end(Gwn_Batch*);
 
+void GWN_batch_uniform_1ui(Gwn_Batch*, const char* name, int value);
 void GWN_batch_uniform_1i(Gwn_Batch*, const char* name, int value);
 void GWN_batch_uniform_1b(Gwn_Batch*, const char* name, bool value);
 void GWN_batch_uniform_1f(Gwn_Batch*, const char* name, float value);
