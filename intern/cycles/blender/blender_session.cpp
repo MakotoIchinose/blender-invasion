@@ -141,7 +141,13 @@ void BlenderSession::create_session()
 
 	session->scene = scene;
 
-#ifdef TODO_NEED_THIS_REFACTORED_TO_HANDLE_LAYERS_SEPARATELY
+#if 0
+	/* There is no single depsgraph to use for the entire render.
+	 * So we need to handle this differently.
+	 *
+	 * We could loop over the final render result render layers in pipeline and keep Cycles unaware of multiple layers,
+	 * or perhaps move syncing further down in the pipeline.
+	 */
 	/* create sync */
 	sync = new BlenderSync(b_engine, b_data, b_depsgraph, b_scene, scene, !background, session->progress);
 	BL::Object b_camera_override(b_engine.camera_override());
@@ -212,7 +218,10 @@ void BlenderSession::reset_session(BL::BlendData& b_data_, BL::Scene& b_scene_)
 	 */
 	session->stats.mem_peak = session->stats.mem_used;
 
-#ifdef TODO_NEED_THIS_REFACTORED_TO_HANDLE_LAYERS_SEPARATELY
+#if 0
+	/* There is no single depsgraph to use for the entire render.
+	 * See note on create_session().
+	 */
 	/* sync object should be re-created */
 	sync = new BlenderSync(b_engine, b_data, b_depsgraph, b_scene, scene, !background, session->progress);
 
@@ -1301,7 +1310,11 @@ bool BlenderSession::builtin_image_float_pixels(const string &builtin_name,
 		fprintf(stderr, "Cycles error: unexpected smoke volume resolution, skipping\n");
 	}
 	else {
-#ifdef TODO_NEED_VIEW_LAYER_FOR_POINT_DENSITY
+#if 0
+		/* We originally were passing view_layer here but in reality we need a whole EvaluationContext
+		 * in the RE_point_density_minmax() function.
+		 * Note: There is not a single EvaluationContext for the entire render. They are per RenderLayer now.
+		 */
 		/* TODO(sergey): Check we're indeed in shader node tree. */
 		PointerRNA ptr;
 		RNA_pointer_create(NULL, &RNA_Node, builtin_data, &ptr);
