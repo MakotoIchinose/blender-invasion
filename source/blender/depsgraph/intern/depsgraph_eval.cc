@@ -104,11 +104,11 @@ void DEG_evaluation_context_init_from_view_layer_for_render(
 	BLI_assert(view_layer_original != NULL);
 
 	DEG_evaluation_context_init(eval_ctx, DAG_EVAL_RENDER);
+	eval_ctx->ctime = BKE_scene_frame_get(scene);
+	eval_ctx->object_mode = OB_MODE_OBJECT;
 	eval_ctx->depsgraph = depsgraph;
 	eval_ctx->view_layer = view_layer_original;
 	eval_ctx->engine_type = NULL;
-	eval_ctx->ctime = BKE_scene_frame_get(scene);
-	eval_ctx->object_mode = OB_MODE_OBJECT;
 }
 
 /* Free evaluation context. */
