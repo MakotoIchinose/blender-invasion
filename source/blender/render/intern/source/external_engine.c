@@ -42,6 +42,8 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_object_types.h"
+
 #include "BKE_camera.h"
 #include "BKE_global.h"
 #include "BKE_colortools.h"
@@ -50,6 +52,7 @@
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
 
@@ -632,7 +635,11 @@ void RE_engine_frame_set(RenderEngine *engine, int frame, float subframe)
 	     render_layer != NULL;
 	     render_layer = render_layer->next)
 	{
-		BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, re->main, scene, NULL);
+		BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
+		                                    render_layer->depsgraph,
+		                                    re->main,
+		                                    re->scene,
+		                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
 	}
 
 #ifdef WITH_PYTHON
@@ -672,7 +679,11 @@ int RE_engine_render(Render *re, int do_all)
 		     render_layer != NULL;
 		     render_layer = render_layer->next)
 		{
-			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, re->main, re->scene, NULL);
+			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
+			                                    render_layer->depsgraph,
+			                                    re->main,
+			                                    re->scene,
+			                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
 		}
 		render_update_anim_renderdata(re, &re->scene->r, &re->scene->view_layers);
 	}

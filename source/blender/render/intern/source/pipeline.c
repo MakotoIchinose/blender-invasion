@@ -1752,7 +1752,11 @@ static void do_render_blur_3d(Render *re)
 		     render_layer != NULL;
 		     render_layer = render_layer->next)
 		{
-			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, re->main, re->scene, NULL);
+			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
+			                                    render_layer->depsgraph,
+			                                    re->main,
+			                                    re->scene,
+			                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
 		}
 	}
 	
@@ -2703,12 +2707,11 @@ static void do_render_composite_fields_blur_3d(Render *re)
 					     render_layer != NULL;
 					     render_layer = render_layer->next)
 					{
-						BKE_scene_graph_update_for_newframe(
-						            &render_layer->eval_ctx,
-						            render_layer->depsgraph,
-						            re->main,
-						            re->scene,
-						            NULL);
+						BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
+						                                    render_layer->depsgraph,
+						                                    re->main,
+						                                    re->scene,
+						                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
 					}
 				}
 				
@@ -3801,7 +3804,11 @@ void RE_BlenderAnim(Render *re, Main *bmain, Scene *scene, Object *camera_overri
 				     render_layer != NULL;
 				     render_layer = render_layer->next)
 				{
-					BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, bmain, scene, NULL);
+					BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
+					                                    render_layer->depsgraph,
+					                                    bmain,
+					                                    scene,
+					                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
 				}
 				continue;
 			}
