@@ -736,6 +736,13 @@ extern GHOST_TSuccess GHOST_InvalidateWindow(GHOST_WindowHandle windowhandle);
 extern GHOST_TSuccess GHOST_ActivateOpenGLContext(GHOST_ContextHandle contexthandle);
 
 /**
+ * Release the drawing context bound to this thread.
+ * \param contexthandle The handle to the context
+ * \return A success indicator.
+ */
+extern GHOST_TSuccess GHOST_ReleaseOpenGLContext(GHOST_ContextHandle contexthandle);
+
+/**
  * Returns the status of the tablet
  * \param windowhandle The handle to the window
  * \return Status of tablet

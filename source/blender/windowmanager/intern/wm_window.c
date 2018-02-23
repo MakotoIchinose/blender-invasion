@@ -1044,6 +1044,7 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
 /* Reset active the current window opengl drawing context. */
 void wm_window_reset_drawable(void)
 {
+	BLI_assert(BLI_thread_is_main());
 	wmWindowManager *wm = G.main->wm.first;
 
 	if (wm == NULL)
@@ -1051,16 +1052,12 @@ void wm_window_reset_drawable(void)
 
 	wmWindow *win = wm->windrawable;
 
-	if (BLI_thread_is_main() && win && win->ghostwin) {
+	if (win && win->ghostwin) {
 		gpu_batch_presets_reset();
 		immDeactivate();
 		GHOST_ActivateWindowDrawingContext(win->ghostwin);
 		GWN_context_active_set(win->gwnctx);
 		immActivate();
-	}
-	else {
-		GWN_context_active_set(NULL);
-		/* TODO unbind the context (set context to NULL) */
 	}
 }
 
@@ -2086,4 +2083,9 @@ void WM_opengl_context_dispose(void *context)
 void WM_opengl_context_activate(void *context)
 {
 	GHOST_ActivateOpenGLContext((GHOST_ContextHandle)context);
+}
+
+void WM_opengl_context_release(void *context)
+{
+	GHOST_ReleaseOpenGLContext((GHOST_ContextHandle)context);
 }

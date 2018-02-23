@@ -118,6 +118,16 @@ GHOST_TSuccess GHOST_ContextGLX::activateDrawingContext()
 	}
 }
 
+GHOST_TSuccess GHOST_ContextGLX::releaseDrawingContext()
+{
+	if (m_display) {
+		return ::glXMakeCurrent(m_display, None, NULL) ? GHOST_kSuccess : GHOST_kFailure;
+	}
+	else {
+		return GHOST_kFailure;
+	}
+}
+
 void GHOST_ContextGLX::initContextGLXEW()
 {
 	initContextGLEW();

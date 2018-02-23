@@ -122,6 +122,7 @@ bool WM_window_is_temp_screen(const struct wmWindow *win) ATTR_WARN_UNUSED_RESUL
 void *WM_opengl_context_create(void);
 void WM_opengl_context_dispose(void *context);
 void WM_opengl_context_activate(void *context);
+void WM_opengl_context_release(void *context);
 
 /* defines for 'type' WM_window_open_temp */
 enum {

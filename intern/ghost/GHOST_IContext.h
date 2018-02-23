@@ -63,6 +63,12 @@ public:
 	 */
 	virtual GHOST_TSuccess activateDrawingContext() = 0;
 
+	/**
+	 * Release the drawing context of the calling thread.
+	 * \return  A boolean success indicator.
+	 */
+	virtual GHOST_TSuccess releaseDrawingContext() = 0;
+
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("GHOST:GHOST_IContext")
 #endif

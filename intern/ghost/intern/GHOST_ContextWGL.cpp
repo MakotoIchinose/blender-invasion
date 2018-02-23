@@ -154,6 +154,16 @@ GHOST_TSuccess GHOST_ContextWGL::activateDrawingContext()
 }
 
 
+GHOST_TSuccess GHOST_ContextWGL::releaseDrawingContext()
+{
+	if (WIN32_CHK(::wglMakeCurrent(NULL, NULL))) {
+		return GHOST_kSuccess;
+	}
+	else {
+		return GHOST_kFailure;
+	}
+}
+
 /* Ron Fosner's code for weighting pixel formats and forcing software.
  * See http://www.opengl.org/resources/faq/technical/weight.cpp
  */

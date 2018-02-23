@@ -168,6 +168,18 @@ GHOST_TSuccess GHOST_ContextCGL::activateDrawingContext()
 	}
 }
 
+GHOST_TSuccess GHOST_ContextCGL::releaseDrawingContext()
+{
+	if (m_openGLContext != nil) {
+		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+		[m_openGLContext clearCurrentContext];
+		[pool drain];
+		return GHOST_kSuccess;
+	}
+	else {
+		return GHOST_kFailure;
+	}
+}
 
 GHOST_TSuccess GHOST_ContextCGL::updateDrawingContext()
 {

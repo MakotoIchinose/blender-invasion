@@ -73,6 +73,12 @@ public:
 	virtual GHOST_TSuccess activateDrawingContext() = 0;
 
 	/**
+	 * Release the drawing context of the calling thread.
+	 * \return  A boolean success indicator.
+	 */
+	virtual GHOST_TSuccess releaseDrawingContext()= 0;
+
+	/**
 	 * Call immediately after new to initialize.  If this fails then immediately delete the object.
 	 * \return Indication as to whether initialization has succeeded.
 	 */

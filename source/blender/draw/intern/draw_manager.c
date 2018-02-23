@@ -4351,7 +4351,13 @@ void DRW_opengl_context_enable(void)
 void DRW_opengl_context_disable(void)
 {
 	if (g_ogl_context != NULL) {
-		wm_window_reset_drawable();
+		if (BLI_thread_is_main()) {
+			wm_window_reset_drawable();
+		}
+		else {
+			WM_opengl_context_release(g_ogl_context);
+			GWN_context_active_set(NULL);
+		}
 		BLI_mutex_unlock(&cache_rwlock);
 	}
 }
