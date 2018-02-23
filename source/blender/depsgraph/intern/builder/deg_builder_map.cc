@@ -15,31 +15,50 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * The Original Code is Copyright (C) 2018 Blender Foundation.
+ * All rights reserved.
+ *
+ * Original Author: Sergey Sharybin
+ * Contributor(s): None Yet
+ *
  * ***** END GPL LICENSE BLOCK *****
  */
 
-#ifndef __BLI_POLYFILL_2D_BEAUTIFY_H__
-#define __BLI_POLYFILL_2D_BEAUTIFY_H__
+/** \file blender/depsgraph/intern/builder/deg_builder_map.cc
+ *  \ingroup depsgraph
+ */
 
-struct Heap;
-struct MemArena;
+#include "intern/builder/deg_builder_map.h"
 
-void BLI_polyfill_beautify(
-        const float (*coords)[2],
-        const unsigned int coords_tot,
-        unsigned int (*tris)[3],
+#include "BLI_utildefines.h"
+#include "BLI_ghash.h"
 
-        /* structs for reuse */
-        struct MemArena *arena, struct Heap *eheap);
+namespace DEG {
 
-float BLI_polyfill_beautify_quad_rotate_calc_ex(
-        const float v1[2], const float v2[2], const float v3[2], const float v4[2],
-        const bool lock_degenerate);
-#define BLI_polyfill_beautify_quad_rotate_calc(v1, v2, v3, v4) \
-	BLI_polyfill_beautify_quad_rotate_calc_ex(v1, v2, v3, v4, false)
+BuilderMap::BuilderMap() {
+	set = BLI_gset_ptr_new("deg builder gset");
+}
 
 
-/* avoid realloc's when creating new structures for polyfill ngons */
-#define BLI_POLYFILL_ALLOC_NGON_RESERVE 64
+BuilderMap::~BuilderMap() {
+	BLI_gset_free(set, NULL);
+}
 
-#endif  /* __BLI_POLYFILL_2D_BEAUTIFY_H__ */
+bool BuilderMap::checkIsBuilt(ID *id) {
+	return BLI_gset_haskey(set, id);
+}
+
+void BuilderMap::tagBuild(ID *id) {
+	BLI_gset_insert(set, id);
+}
+
+bool BuilderMap::checkIsBuiltAndTag(ID *id) {
+	void **key_p;
+	if (!BLI_gset_ensure_p_ex(set, id, &key_p)) {
+		*key_p = id;
+		return false;
+	}
+	return true;
+}
+
+}  // namespace DEG
