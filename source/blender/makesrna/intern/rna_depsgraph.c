@@ -34,10 +34,11 @@
 
 #include "rna_internal.h"
 
+#include "DNA_object_types.h"
+
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "DNA_object_types.h"
 
 #define STATS_MAX_SIZE 16384
 
