@@ -52,9 +52,6 @@
 #include "BKE_camera.h"
 #include "BKE_scene.h"
 
-#include "DNA_object_types.h"
-#include "DEG_depsgraph_query.h"
-
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_colormanagement.h"
@@ -106,9 +103,6 @@ void render_result_free(RenderResult *res)
 			MEM_freeN(rpass);
 		}
 		BLI_remlink(&res->layers, rl);
-
-		DEG_graph_free(rl->depsgraph);
-
 		MEM_freeN(rl);
 	}
 
@@ -328,10 +322,7 @@ RenderResult *render_result_new(Render *re, rcti *partrct, int crop, int savebuf
 		rl->pass_xor = view_layer->pass_xor;
 		rl->rectx = rectx;
 		rl->recty = recty;
-
-		rl->depsgraph = DEG_graph_new();
-		DEG_evaluation_context_init_from_view_layer_for_render(&rl->eval_ctx, rl->depsgraph, re->scene, view_layer);
-
+		
 		if (rr->do_exr_tile) {
 			rl->display_buffer = MEM_mapallocN((size_t)rectx * recty * sizeof(unsigned int),
 			                                   "Combined display space rgba");
@@ -433,9 +424,6 @@ RenderResult *render_result_new(Render *re, rcti *partrct, int crop, int savebuf
 		
 		rl->rectx = rectx;
 		rl->recty = recty;
-
-		rl->depsgraph = DEG_graph_new();
-		DEG_evaluation_context_init_from_view_layer_for_render(&rl->eval_ctx, rl->depsgraph, re->scene, re->view_layers.first);
 
 		/* duplicate code... */
 		if (rr->do_exr_tile) {
@@ -1504,15 +1492,6 @@ static RenderLayer *duplicate_render_layer(RenderLayer *rl)
 		RenderPass  *new_rpass = duplicate_render_pass(rpass);
 		BLI_addtail(&new_rl->passes, new_rpass);
 	}
-
-	Scene *scene = DEG_get_evaluated_scene(rl->eval_ctx.depsgraph);
-	new_rl->depsgraph = DEG_graph_new();
-	DEG_evaluation_context_init_from_view_layer_for_render(
-	            &new_rl->eval_ctx,
-	            new_rl->depsgraph,
-	            scene,
-	            new_rl->eval_ctx.view_layer);
-
 	return new_rl;
 }
 

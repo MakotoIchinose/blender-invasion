@@ -123,7 +123,6 @@ typedef struct RenderLayer {
 	/* optional saved endresult on disk */
 	void *exrhandle;
 
-	struct Depsgraph *depsgraph;
 	struct EvaluationContext eval_ctx;
 
 	ListBase passes;

@@ -35,7 +35,6 @@
 
 #include "BKE_curve.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_pbvh.h"
@@ -100,10 +99,6 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
-
-/* -------------------------------------------------------------------- */
-/* Prototypes. */
-static void drw_eval_ctx_to_draw_ctx(EvaluationContext *eval_ctx);
 
 /* -------------------------------------------------------------------- */
 /** \name Local Features
@@ -3623,8 +3618,10 @@ void DRW_draw_render_loop_offscreen(
 	GPU_offscreen_bind(ofs, false);
 }
 
-void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
+void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph, RenderLayer *render_layer)
 {
+	Scene *scene = DEG_get_evaluated_scene(depsgraph);
+	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
 	RenderEngineType *engine_type = engine->type;
 	DrawEngineType *draw_engine_type = engine_type->draw_engine;
 	RenderData *r = &scene->r;
@@ -3637,7 +3634,7 @@ void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 	DST.options.draw_background = scene->r.alphamode == R_ADDSKY;
 
 	DST.draw_ctx = (DRWContextState){
-	    NULL, NULL, NULL, scene, NULL, NULL, engine_type, NULL, OB_MODE_OBJECT, NULL,
+	    NULL, NULL, NULL, scene, view_layer, NULL, engine_type, depsgraph, OB_MODE_OBJECT, NULL,
 	};
 	drw_context_state_init();
 
@@ -3654,9 +3651,7 @@ void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 	glDisable(GL_SCISSOR_TEST);
 	glViewport(0, 0, size[0], size[1]);
 
-	/* Main rendering loop. */
-
-	const float *render_size = DRW_viewport_size_get();
+	/* Main rendering. */
 	rctf view_rect;
 	rcti render_rect;
 	RE_GetViewPlane(render, &view_rect, &render_rect);
@@ -3664,34 +3659,11 @@ void DRW_render_to_image(RenderEngine *engine, Main *bmain, Scene *scene)
 		BLI_rcti_init(&render_rect, 0, size[0], 0, size[1]);
 	}
 
-	/* Init render result. */
-	RenderResult *render_result = RE_engine_begin_result(engine, 0, 0, (int)render_size[0], (int)render_size[1], NULL, NULL);
+	engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
+	DST.buffer_finish_called = false;
 
-	for (RenderView *render_view = render_result->views.first;
-	     render_view != NULL;
-	     render_view = render_view->next)
-	{
-		RE_SetActiveRenderView(render, render_view->name);
-		for (RenderLayer *render_layer = render_result->layers.first;
-			 render_layer != NULL;
-			 render_layer = render_layer->next)
-		{
-			BKE_scene_graph_update_tagged(&render_layer->eval_ctx,
-			                              render_layer->depsgraph,
-			                              bmain,
-			                              scene,
-			                              render_layer->eval_ctx.view_layer);
-
-			drw_eval_ctx_to_draw_ctx(&render_layer->eval_ctx);
-
-			engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
-			DST.buffer_finish_called = false;
-			/* Force cache to reset. */
-			drw_viewport_cache_resize();
-		}
-	}
-
-	RE_engine_end_result(engine, render_result, false, false, false);
+	/* Force cache to reset. */
+	drw_viewport_cache_resize();
 
 	/* TODO grease pencil */
 
@@ -4062,12 +4034,6 @@ bool DRW_state_draw_background(void)
 const DRWContextState *DRW_context_state_get(void)
 {
 	return &DST.draw_ctx;
-}
-
-static void drw_eval_ctx_to_draw_ctx(EvaluationContext *eval_ctx)
-{
-	DST.draw_ctx.view_layer = eval_ctx->view_layer;
-	DST.draw_ctx.depsgraph = eval_ctx->depsgraph;
 }
 
 /** \} */

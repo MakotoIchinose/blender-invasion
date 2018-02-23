@@ -276,7 +276,7 @@ RenderLayer *render_get_active_layer(Render *re, RenderResult *rr)
 		return rr->layers.first;
 }
 
-static int render_scene_needs_vector(Render *re)
+static int UNUSED_FUNCTION(render_scene_needs_vector)(Render *re)
 {
 	ViewLayer *view_layer;
 	for (view_layer = re->view_layers.first; view_layer; view_layer = view_layer->next)
@@ -854,13 +854,9 @@ void RE_InitState(Render *re, Render *source, RenderData *rd,
 	}
 
 	eEvaluationMode mode = (re->r.scemode & R_VIEWPORT_PREVIEW) ? DAG_EVAL_PREVIEW : DAG_EVAL_RENDER;
-	for (RenderLayer *render_layer = re->result->layers.first;
-	     render_layer != NULL;
-	     render_layer = render_layer->next)
-	{
-		render_layer->eval_ctx.mode = mode;
-	}
-	
+	/* If we had a consistent EvaluationContext now would be the time to update it. */
+	(void)mode;
+
 	/* ensure renderdatabase can use part settings correct */
 	RE_parts_clamp(re);
 
@@ -1346,7 +1342,7 @@ static void *do_render_thread(void *thread_v)
 	return NULL;
 }
 
-static void main_render_result_end(Render *re)
+static void UNUSED_FUNCTION(main_render_result_end)(Render *re)
 {
 	if (re->result->do_exr_tile) {
 		BLI_rw_mutex_lock(&re->resultmutex, THREAD_LOCK_WRITE);
@@ -1552,86 +1548,10 @@ void RE_TileProcessor(Render *re)
 
 static void do_render_3d(Render *re)
 {
-	RenderView *rv;
-
 	re->current_scene_update(re->suh, re->scene);
 
-	/* try external */
-	if (RE_engine_render(re, 0))
-		return;
-
-	/* internal */
-	RE_parts_clamp(re);
-	
-	/* add motion blur and fields offset to frames */
-	const int cfra_backup = re->scene->r.cfra;
-	const float subframe_backup = re->scene->r.subframe;
-
-	BKE_scene_frame_set(
-	        re->scene, (double)re->scene->r.cfra + (double)re->scene->r.subframe +
-	        (double)re->mblur_offs + (double)re->field_offs);
-
-	/* init main render result */
-	main_render_result_new(re);
-	if (re->result == NULL) {
-		BKE_report(re->reports, RPT_ERROR, "Failed allocate render result, out of memory");
-		G.is_break = true;
-		return;
-	}
-
-#ifdef WITH_FREESTYLE
-	if (re->r.mode & R_EDGE_FRS) {
-		init_freestyle(re);
-	}
-#endif
-
-	/* we need a new database for each view */
-	for (rv = re->result->views.first; rv; rv = rv->next) {
-		RE_SetActiveRenderView(re, rv->name);
-
-		for (RenderLayer *render_layer = re->result->layers.first;
-		     render_layer != NULL;
-		     render_layer = render_layer->next)
-		{
-			/* lock drawing in UI during data phase */
-			if (re->draw_lock)
-				re->draw_lock(re->dlh, 1);
-
-			/* make render verts/faces/halos/lamps */
-			if (render_scene_needs_vector(re))
-				RE_Database_FromScene_Vectors(&render_layer->eval_ctx, re, re->main, re->scene, re->lay);
-			else {
-				RE_Database_FromScene(re, re->main, re->scene, re->lay, 1);
-				RE_Database_Preprocess(&render_layer->eval_ctx, re);
-			}
-
-			/* clear UI drawing locks */
-			if (re->draw_lock)
-				re->draw_lock(re->dlh, 0);
-
-			threaded_tile_processor(re);
-
-#ifdef WITH_FREESTYLE
-			/* Freestyle */
-			if (re->r.mode & R_EDGE_FRS)
-				if (!re->test_break(re->tbh))
-					add_freestyle(re, 1);
-#endif
-
-			/* do left-over 3d post effects (flares) */
-			if (re->flag & R_HALO)
-				if (!re->test_break(re->tbh))
-					add_halo_flare(re);
-
-			/* free all render verts etc */
-			RE_Database_Free(re);
-		}
-	}
-
-	main_render_result_end(re);
-
-	re->scene->r.cfra = cfra_backup;
-	re->scene->r.subframe = subframe_backup;
+	/* All the rendering pipeline goes through "external" render engines. */
+	RE_engine_render(re, 0);
 }
 
 /* called by blur loop, accumulate RGBA key alpha */
@@ -1748,16 +1668,7 @@ static void do_render_blur_3d(Render *re)
 	
 	/* make sure motion blur changes get reset to current frame */
 	if ((re->r.scemode & (R_NO_FRAME_UPDATE|R_BUTS_PREVIEW|R_VIEWPORT_PREVIEW))==0) {
-		for (RenderLayer *render_layer = rres->layers.first;
-		     render_layer != NULL;
-		     render_layer = render_layer->next)
-		{
-			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
-			                                    render_layer->depsgraph,
-			                                    re->main,
-			                                    re->scene,
-			                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
-		}
+		/* */
 	}
 	
 	/* weak... the display callback wants an active renderlayer pointer... */
@@ -2703,16 +2614,7 @@ static void do_render_composite_fields_blur_3d(Render *re)
 				R.i.cfra = re->i.cfra;
 				
 				if (update_newframe) {
-					for (RenderLayer *render_layer = re->result->layers.first;
-					     render_layer != NULL;
-					     render_layer = render_layer->next)
-					{
-						BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
-						                                    render_layer->depsgraph,
-						                                    re->main,
-						                                    re->scene,
-						                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
-					}
+					/* If we have consistent depsgraph now would be a time to update them. */
 				}
 				
 				if (re->r.scemode & R_FULL_SAMPLE)
@@ -3697,17 +3599,6 @@ void RE_BlenderAnim(Render *re, Main *bmain, Scene *scene, Object *camera_overri
 	if (!render_initialize_from_main(re, &rd, bmain, scene, &scene->view_render, NULL, camera_override, lay_override, 0, 1))
 		return;
 
-	for (RenderLayer *render_layer = re->result->layers.first;
-	     render_layer != NULL;
-	     render_layer = render_layer->next)
-	{
-		DEG_graph_relations_update(render_layer->depsgraph,
-		                           bmain,
-		                           scene,
-		                           DEG_get_evaluated_view_layer(render_layer->depsgraph));
-		DEG_graph_on_visible_update(bmain, render_layer->depsgraph);
-	}
-
 	/* MULTIVIEW_TODO:
 	 * in case a new video format is added that implements get_next_frame multiview has to be addressed
 	 * or the error throwing for R_IMF_IMTYPE_FRAMESERVER has to be extended for those cases as well
@@ -3799,17 +3690,7 @@ void RE_BlenderAnim(Render *re, Main *bmain, Scene *scene, Object *camera_overri
 			                            NULL, camera_override, lay_override, 1, 0);
 
 			if (nfra != scene->r.cfra) {
-				/* Skip this frame, but update for physics and particles system. */
-				for (RenderLayer *render_layer = re->result->layers.first;
-				     render_layer != NULL;
-				     render_layer = render_layer->next)
-				{
-					BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
-					                                    render_layer->depsgraph,
-					                                    bmain,
-					                                    scene,
-					                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
-				}
+				/* Skip this frame, but could update for physics and particles system. */
 				continue;
 			}
 			else

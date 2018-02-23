@@ -631,17 +631,6 @@ void RE_engine_frame_set(RenderEngine *engine, int frame, float subframe)
 	BPy_BEGIN_ALLOW_THREADS;
 #endif
 
-	for (RenderLayer *render_layer = re->result->layers.first;
-	     render_layer != NULL;
-	     render_layer = render_layer->next)
-	{
-		BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
-		                                    render_layer->depsgraph,
-		                                    re->main,
-		                                    re->scene,
-		                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
-	}
-
 #ifdef WITH_PYTHON
 	BPy_END_ALLOW_THREADS;
 #endif
@@ -675,16 +664,6 @@ int RE_engine_render(Render *re, int do_all)
 	/* update animation here so any render layer animation is applied before
 	 * creating the render result */
 	if ((re->r.scemode & (R_NO_FRAME_UPDATE | R_BUTS_PREVIEW)) == 0) {
-		for (RenderLayer *render_layer = re->result->layers.first;
-		     render_layer != NULL;
-		     render_layer = render_layer->next)
-		{
-			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx,
-			                                    render_layer->depsgraph,
-			                                    re->main,
-			                                    re->scene,
-			                                    DEG_get_evaluated_view_layer(render_layer->depsgraph));
-		}
 		render_update_anim_renderdata(re, &re->scene->r, &re->scene->view_layers);
 	}
 
@@ -760,7 +739,39 @@ int RE_engine_render(Render *re, int do_all)
 	}
 
 	if (type->render_to_image) {
-		type->render_to_image(engine, re->main, re->scene);
+		/* make render result */
+		const int size[2] = {(re->r.size * re->r.xsch) / 100, (re->r.size * re->r.ysch) / 100};
+		RenderResult *render_result = RE_engine_begin_result(engine, 0, 0, (int)size[0], (int)size[1], RR_ALL_LAYERS, RR_ALL_VIEWS);
+
+		for (RenderLayer *render_layer = render_result->layers.first;
+			 render_layer != NULL;
+			 render_layer = render_layer->next)
+		{
+			EvaluationContext *eval_ctx = DEG_evaluation_context_new(DAG_EVAL_RENDER);
+			Depsgraph *depsgraph = DEG_graph_new();
+			ViewLayer *view_layer = (ViewLayer *)BLI_findstring(&re->scene->view_layers, render_layer->name, offsetof(ViewLayer, name));
+
+			DEG_evaluation_context_init_from_view_layer_for_render(
+			            eval_ctx,
+			            depsgraph,
+			            re->scene,
+			            view_layer);
+
+			BKE_scene_graph_update_tagged(eval_ctx, depsgraph, re->main, re->scene, view_layer);
+
+			for (RenderView *render_view = render_result->views.first;
+			     render_view != NULL;
+			     render_view = render_view->next)
+			{
+				RE_SetActiveRenderView(re, render_view->name);
+				type->render_to_image(engine, depsgraph, render_layer);
+			}
+
+			DEG_graph_free(depsgraph);
+			DEG_evaluation_context_free(eval_ctx);
+		}
+
+		RE_engine_end_result(engine, render_result, false, false, false);
 	}
 
 	engine->tile_x = 0;

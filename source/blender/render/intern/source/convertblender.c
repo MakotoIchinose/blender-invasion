@@ -5216,12 +5216,6 @@ void RE_Database_FromScene(Render *re, Main *bmain, Scene *scene, unsigned int l
 	
 	/* applies changes fully */
 	if ((re->r.scemode & (R_NO_FRAME_UPDATE|R_BUTS_PREVIEW|R_VIEWPORT_PREVIEW))==0) {
-		for (RenderLayer *render_layer = re->result->layers.first;
-		     render_layer != NULL;
-		     render_layer = render_layer->next)
-		{
-			BKE_scene_graph_update_for_newframe(&render_layer->eval_ctx, render_layer->depsgraph, re->main, re->scene, NULL);
-		}
 		render_update_anim_renderdata(re, &re->scene->r, &re->scene->view_layers);
 	}
 	
@@ -5258,12 +5252,12 @@ void RE_Database_FromScene(Render *re, Main *bmain, Scene *scene, unsigned int l
 	set_node_shader_lamp_loop(shade_material_loop);
 
 	/* MAKE RENDER DATA */
-	for (RenderLayer *render_layer = re->result->layers.first;
-	     render_layer != NULL;
-	     render_layer = render_layer->next)
-	{
-		database_init_objects(&render_layer->eval_ctx, re, lay, 0, 0, NULL, 0);
-	}
+	EvaluationContext *eval_ctx = NULL;
+	BLI_assert(eval_ctx);
+	/* This will break things, and it should because honestly this function is deprecated and no one uses it.
+	 * maybe freestyle? But even so, this need to change. Even freestyle need to get data from depsgraph
+	 * so we can't create the database only once. */
+	database_init_objects(eval_ctx, re, lay, 0, 0, NULL, 0);
 	
 	if (!re->test_break(re->tbh)) {
 		set_material_lightgroups(re);
