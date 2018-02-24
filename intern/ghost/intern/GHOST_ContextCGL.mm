@@ -73,7 +73,7 @@ GHOST_ContextCGL::GHOST_ContextCGL(
 			break;
 		case 3:
 			// Apple didn't implement 3.0 or 3.1
-			assert(contextMinorVersion == 2);
+			assert(contextMinorVersion == 3);
 			assert(contextProfileMask == GL_CONTEXT_CORE_PROFILE_BIT);
 			m_coreProfile = true;
 			break;
