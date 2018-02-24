@@ -119,6 +119,7 @@ GHOST_SystemX11(
     : GHOST_System(),
       m_start_time(0)
 {
+	XInitThreads();
 	m_display = XOpenDisplay(NULL);
 	
 	if (!m_display) {
