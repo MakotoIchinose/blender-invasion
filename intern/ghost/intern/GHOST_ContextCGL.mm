@@ -35,6 +35,8 @@
 
 #include <Cocoa/Cocoa.h>
 
+#define GHOST_MULTITHREADED_OPENGL
+
 #ifdef GHOST_MULTITHREADED_OPENGL
 #include <OpenGL/OpenGL.h>
 #endif
