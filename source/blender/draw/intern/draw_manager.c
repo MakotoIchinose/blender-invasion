@@ -4317,6 +4317,8 @@ void DRW_opengl_context_create(void)
 	/* Be sure to create gawain.context too. */
 	g_gwn_context = GWN_context_create();
 	immActivate();
+	/* Set default Blender OpenGL state */
+	GPU_state_init();
 	/* So we activate the window's one afterwards. */
 	wm_window_reset_drawable();
 }
