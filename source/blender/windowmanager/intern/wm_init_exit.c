@@ -212,6 +212,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 		DRW_opengl_context_create();
 
 		GPU_init();
+		GPU_state_init();
 
 		GPU_set_mipmap(!(U.gameflags & USER_DISABLE_MIPMAP));
 		GPU_set_linear_mipmap(true);

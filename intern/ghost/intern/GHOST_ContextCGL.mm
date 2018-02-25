@@ -35,7 +35,7 @@
 
 #include <Cocoa/Cocoa.h>
 
-#define GHOST_MULTITHREADED_OPENGL
+//#define GHOST_MULTITHREADED_OPENGL
 
 #ifdef GHOST_MULTITHREADED_OPENGL
 #include <OpenGL/OpenGL.h>
@@ -174,7 +174,7 @@ GHOST_TSuccess GHOST_ContextCGL::releaseDrawingContext()
 {
 	if (m_openGLContext != nil) {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-		[m_openGLContext clearCurrentContext];
+		[NSOpenGLContext clearCurrentContext];
 		[pool drain];
 		return GHOST_kSuccess;
 	}
@@ -361,8 +361,7 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
 #ifdef GHOST_MULTITHREADED_OPENGL
 	//Switch openGL to multhreaded mode
-	CGLContextObj cglCtx = (CGLContextObj)[tmpOpenGLContext CGLContextObj];
-	if (CGLEnable(cglCtx, kCGLCEMPEngine) == kCGLNoError)
+	if (CGLEnable(CGLGetCurrentContext(), kCGLCEMPEngine) == kCGLNoError)
 		if (m_debug)
 			fprintf(stderr, "\nSwitched OpenGL to multithreaded mode\n");
 #endif

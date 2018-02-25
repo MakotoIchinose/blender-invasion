@@ -378,7 +378,7 @@ static void *g_ogl_context = NULL;
 static Gwn_Context *g_gwn_context = NULL;
 
 /* Mutex to lock the drw manager and avoid concurent context usage. */
-static ThreadMutex cache_rwlock = BLI_MUTEX_INITIALIZER;
+static ThreadMutex g_ogl_context_mutex = BLI_MUTEX_INITIALIZER;
 
 #ifdef USE_GPU_SELECT
 static unsigned int g_DRW_select_id = (unsigned int)-1;
@@ -4309,6 +4309,8 @@ void DRW_opengl_context_create(void)
 	BLI_assert(g_ogl_context == NULL); /* Ensure it's called once */
 	BLI_assert(BLI_thread_is_main());
 
+	BLI_mutex_init(&g_ogl_context_mutex);
+
 	immDeactivate();
 	/* This changes the active context. */
 	g_ogl_context = WM_opengl_context_create();
@@ -4327,6 +4329,7 @@ void DRW_opengl_context_destroy(void)
 		GWN_context_active_set(g_gwn_context);
 		GWN_context_discard(g_gwn_context);
 		WM_opengl_context_dispose(g_ogl_context);
+		BLI_mutex_end(&g_ogl_context_mutex);
 	}
 }
 
@@ -4336,7 +4339,7 @@ void DRW_opengl_context_enable(void)
 		/* IMPORTANT: We dont support immediate mode in render mode!
 		 * This shall remain in effect until immediate mode supports
 		 * multiple threads. */
-		BLI_mutex_lock(&cache_rwlock);
+		BLI_mutex_lock(&g_ogl_context_mutex);
 		if (BLI_thread_is_main()) {
 			immDeactivate();
 		}
@@ -4351,6 +4354,12 @@ void DRW_opengl_context_enable(void)
 void DRW_opengl_context_disable(void)
 {
 	if (g_ogl_context != NULL) {
+#ifdef __APPLE__
+		/* Need to flush before disabling draw context, otherwise it does not
+		 * always finish drawing and viewport can be empty or partially drawn */
+		glFlush();
+#endif
+
 		if (BLI_thread_is_main()) {
 			wm_window_reset_drawable();
 		}
@@ -4358,7 +4367,8 @@ void DRW_opengl_context_disable(void)
 			WM_opengl_context_release(g_ogl_context);
 			GWN_context_active_set(NULL);
 		}
-		BLI_mutex_unlock(&cache_rwlock);
+
+		BLI_mutex_unlock(&g_ogl_context_mutex);
 	}
 }
 
