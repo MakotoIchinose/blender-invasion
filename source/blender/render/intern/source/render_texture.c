@@ -3816,13 +3816,17 @@ Material *RE_sample_material_init(Material *orig_mat, Scene *scene)
 			if (tex->type==TEX_POINTDENSITY) {
 				/* set dummy values for render and do cache */
 				Render dummy_re = {NULL};
-				//TODO DFELINTO brb dfelinto DONT COMMIT WITH THIS //
+				EvaluationContext eval_ctx = {
+				    .object_mode = OB_MODE_OBJECT
+				};
+				DEG_evaluation_context_init(&eval_ctx, DAG_EVAL_RENDER);
+
 				dummy_re.scene = scene;
 				unit_m4(dummy_re.viewinv);
 				unit_m4(dummy_re.viewmat);
 				unit_m4(dummy_re.winmat);
 				dummy_re.winx = dummy_re.winy = 128;
-				cache_pointdensity(NULL, &dummy_re, tex->pd);
+				cache_pointdensity(&eval_ctx, &dummy_re, tex->pd);
 			}
 
 			/* update image sequences and movies */
