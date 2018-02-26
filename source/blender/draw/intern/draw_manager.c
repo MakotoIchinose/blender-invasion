@@ -1792,16 +1792,16 @@ static void draw_geometry_execute_ex(
 	}
 
 	/* step 2 : bind vertex array & draw */
-	GWN_batch_program_set(geom, GPU_shader_get_program(shgroup->shader), GPU_shader_get_interface(shgroup->shader));
+	GWN_batch_program_set_no_use(geom, GPU_shader_get_program(shgroup->shader), GPU_shader_get_interface(shgroup->shader));
+	/* XXX hacking gawain. we don't want to call glUseProgram! (huge performance loss) */
+	geom->program_in_use = true;
 	if (ELEM(shgroup->type, DRW_SHG_INSTANCE, DRW_SHG_INSTANCE_EXTERNAL)) {
 		GWN_batch_draw_range_ex(geom, start, count, true);
 	}
 	else {
 		GWN_batch_draw_range(geom, start, count);
 	}
-	/* XXX this just tells gawain we are done with the shader.
-	 * This does not unbind the shader. */
-	GWN_batch_program_unset(geom);
+	geom->program_in_use = false; /* XXX hacking gawain */
 }
 
 static void draw_geometry_execute(DRWShadingGroup *shgroup, Gwn_Batch *geom)
@@ -3670,8 +3670,15 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 
 	/* Main rendering loop. */
 
-	/* Init render result. */
 	const float *render_size = DRW_viewport_size_get();
+	rctf view_rect;
+	rcti render_rect;
+	RE_GetViewPlane(render, &view_rect, &render_rect);
+	if (BLI_rcti_is_empty(&render_rect)) {
+		BLI_rcti_init(&render_rect, 0, size[0], 0, size[1]);
+	}
+
+	/* Init render result. */
 	RenderResult *render_result = RE_engine_begin_result(engine, 0, 0, (int)render_size[0], (int)render_size[1], NULL, NULL);
 
 	for (RenderView *render_view = render_result->views.first;
@@ -3690,7 +3697,7 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 			 * For rendering depsgraph is to be owned by Render. */
 			DST.draw_ctx.depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
 
-			engine_type->draw_engine->render_to_image(data, engine, render_result, render_layer);
+			engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
 			DST.buffer_finish_called = false;
 			/* Force cache to reset. */
 			drw_viewport_cache_resize();
