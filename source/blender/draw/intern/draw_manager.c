@@ -3618,7 +3618,7 @@ void DRW_draw_render_loop_offscreen(
 	GPU_offscreen_bind(ofs, false);
 }
 
-void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph, RenderLayer *render_layer)
+void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 {
 	Scene *scene = DEG_get_evaluated_scene(depsgraph);
 	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
@@ -3659,8 +3659,27 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph, Rend
 		BLI_rcti_init(&render_rect, 0, size[0], 0, size[1]);
 	}
 
-	engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
-	DST.buffer_finish_called = false;
+	/* Init render result. */
+	RenderResult *render_result = RE_engine_begin_result(
+	        engine,
+	        0,
+	        0,
+	        (int)size[0],
+	        (int)size[1],
+	        view_layer->name,
+	        /* RR_ALL_VIEWS */ NULL);
+
+	RenderLayer *render_layer = render_result->layers.first;
+	for (RenderView *render_view = render_result->views.first;
+	     render_view != NULL;
+	     render_view = render_view->next)
+	{
+		RE_SetActiveRenderView(render, render_view->name);
+		engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
+		DST.buffer_finish_called = false;
+	}
+
+	RE_engine_end_result(engine, render_result, false, false, false);
 
 	/* Force cache to reset. */
 	drw_viewport_cache_resize();

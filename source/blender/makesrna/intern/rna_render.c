@@ -165,7 +165,7 @@ static void engine_update(RenderEngine *engine, Main *bmain, Scene *scene)
 	RNA_parameter_list_free(&list);
 }
 
-static void engine_render_to_image(RenderEngine *engine, Depsgraph *depsgraph, RenderLayer *render_layer)
+static void engine_render_to_image(RenderEngine *engine, Depsgraph *depsgraph)
 {
 	extern FunctionRNA rna_RenderEngine_render_to_image_func;
 	PointerRNA ptr;
@@ -177,7 +177,6 @@ static void engine_render_to_image(RenderEngine *engine, Depsgraph *depsgraph, R
 
 	RNA_parameter_list_create(&list, &ptr, func);
 	RNA_parameter_set_lookup(&list, "depsgraph", &depsgraph);
-	RNA_parameter_set_lookup(&list, "render_layer", &render_layer);
 	engine->type->ext.call(NULL, &ptr, func, &list);
 
 	RNA_parameter_list_free(&list);
@@ -509,7 +508,6 @@ static void rna_def_render_engine(BlenderRNA *brna)
 	RNA_def_function_ui_description(func, "Render scene into an image");
 	RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
 	RNA_def_pointer(func, "depsgraph", "Depsgraph", "", "");
-	RNA_def_pointer(func, "render_layer", "RenderLayer", "", "");
 
 	func = RNA_def_function(srna, "bake", NULL);
 	RNA_def_function_ui_description(func, "Bake passes");
