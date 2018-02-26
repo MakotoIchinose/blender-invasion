@@ -2725,9 +2725,10 @@ static void do_render_seq(Render *re)
 
 	tot_views = BKE_scene_multiview_num_views_get(&re->r);
 	ibuf_arr = MEM_mallocN(sizeof(ImBuf *) * tot_views, "Sequencer Views ImBufs");
+	EvaluationContext *eval_ctx = DEG_evaluation_context_new(DAG_EVAL_RENDER);
 
 	BKE_sequencer_new_render_data(
-	        NULL, re->main, re->scene,
+	        eval_ctx, re->main, re->scene,
 	        re_x, re_y, 100,
 	        &context);
 
@@ -2748,6 +2749,8 @@ static void do_render_seq(Render *re)
 			ibuf_arr[view_id] = NULL;
 		}
 	}
+
+	DEG_evaluation_context_free(eval_ctx);
 
 	rr = re->result;
 
