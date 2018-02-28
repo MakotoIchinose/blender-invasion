@@ -39,11 +39,12 @@ struct Scene;
 class DocumentExporter
 {
  public:
-	DocumentExporter(const ExportSettings *export_settings);
-	int  exportCurrentScene(const EvaluationContext *eval_ctx, Scene *sce);
+	DocumentExporter(EvaluationContext *eval_ctx, const ExportSettings *export_settings);
+	int  exportCurrentScene(Scene *sce);
 	void exportScenes(const char *filename);
 private:
 	const ExportSettings *export_settings;
+	EvaluationContext *eval_ctx;
 };
 
 #endif
