@@ -138,6 +138,19 @@ Main *bc_get_main()
 	return G.main;
 }
 
+std::vector<bAction *> bc_getSceneActions()
+{
+	std::vector<bAction *> actions;
+	Main *main = bc_get_main();
+	ID *id;
+
+	for (id = (ID *)main->action.first; id; id = (ID *)(id->next)) {
+		bAction *act = (bAction *)id;
+		actions.push_back(act);
+	}
+	return actions;
+}
+
 EvaluationContext *bc_get_evaluation_context()
 {
 	Main *bmain = G.main;
