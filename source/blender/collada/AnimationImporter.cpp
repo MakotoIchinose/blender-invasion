@@ -304,7 +304,6 @@ bool AnimationImporter::write_animation(const COLLADAFW::Animation *anim)
 bool AnimationImporter::write_animation_list(const COLLADAFW::AnimationList *animlist)
 {
 	const COLLADAFW::UniqueId& animlist_id = animlist->getUniqueId();
-
 	animlist_map[animlist_id] = animlist;
 
 #if 0
@@ -829,6 +828,8 @@ void AnimationImporter::apply_matrix_curves(Object *ob, std::vector<FCurve *>& a
 				add_bezt(newcu[i], fra, scale[i - 7]);
 		}
 	}
+
+
 	verify_adt_action((ID *)&ob->id, 1);
 
 	ListBase *curves = &ob->adt->action->curves;
@@ -919,8 +920,10 @@ void AnimationImporter::translate_Animations(COLLADAFW::Node *node,
 			armature_importer->get_rna_path_for_joint(node, joint_path, sizeof(joint_path));
 
 
-		if (!ob->adt || !ob->adt->action) act = verify_adt_action((ID *)&ob->id, 1);
-		else act = ob->adt->action;
+		if (!ob->adt || !ob->adt->action)
+			act = verify_adt_action((ID *)&ob->id, 1);
+		else
+			act = ob->adt->action;
 
 		//Get the list of animation curves of the object
 		ListBase *AnimCurves = &(act->curves);
@@ -983,8 +986,10 @@ void AnimationImporter::translate_Animations(COLLADAFW::Node *node,
 	if ((animType->light) != 0) {
 		Lamp *lamp  = (Lamp *) ob->data;
 
-		if (!lamp->adt || !lamp->adt->action) act = verify_adt_action((ID *)&lamp->id, 1);
-		else act = lamp->adt->action;
+		if (!lamp->adt || !lamp->adt->action)
+			act = verify_adt_action((ID *)&lamp->id, 1);
+		else
+			act = lamp->adt->action;
 
 		ListBase *AnimCurves = &(act->curves);
 		const COLLADAFW::InstanceLightPointerArray& nodeLights = node->getInstanceLights();
@@ -1015,6 +1020,7 @@ void AnimationImporter::translate_Animations(COLLADAFW::Node *node,
 	}
 
 	if (animType->camera != 0) {
+
 		Camera *cam  = (Camera *) ob->data;
 		if (!cam->adt || !cam->adt->action)
 			act = verify_adt_action((ID *)&cam->id, 1);
@@ -1069,8 +1075,10 @@ void AnimationImporter::translate_Animations(COLLADAFW::Node *node,
 	}
 	if (animType->material != 0) {
 		Material *ma = give_current_material(ob, 1);
-		if (!ma->adt || !ma->adt->action) act = verify_adt_action((ID *)&ma->id, 1);
-		else act = ma->adt->action;
+		if (!ma->adt || !ma->adt->action)
+			act = verify_adt_action((ID *)&ma->id, 1);
+		else
+			act = ma->adt->action;
 
 		ListBase *AnimCurves = &(act->curves);
 
