@@ -138,16 +138,27 @@ Main *bc_get_main()
 	return G.main;
 }
 
-std::vector<bAction *> bc_getSceneActions()
+std::vector<bAction *> bc_getSceneActions(Object *ob, bool all_actions)
 {
 	std::vector<bAction *> actions;
-	Main *main = bc_get_main();
-	ID *id;
+	if (all_actions) {
+		Main *main = bc_get_main();
+		ID *id;
 
-	for (id = (ID *)main->action.first; id; id = (ID *)(id->next)) {
-		bAction *act = (bAction *)id;
-		actions.push_back(act);
+		for (id = (ID *)main->action.first; id; id = (ID *)(id->next)) {
+			bAction *act = (bAction *)id;
+			/* XXX This currently creates too many actions.
+			   TODO Need to check if the action is compatible to the given object
+			*/
+			actions.push_back(act);
+		}
 	}
+	else
+	{
+		bAction *action = bc_getSceneObjectAction(ob);
+		actions.push_back(action);
+	}
+
 	return actions;
 }
 
