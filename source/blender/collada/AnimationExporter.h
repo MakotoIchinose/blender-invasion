@@ -20,6 +20,9 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
+#ifndef __ANIMATION_EXPORTER_H__
+#define __ANIMATION_EXPORTER_H__
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -215,3 +218,5 @@ protected:
 
 
 };
+
+#endif
