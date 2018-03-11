@@ -2230,7 +2230,7 @@ static void editmesh_set_connectivity_distance(BMesh *bm, float mtx[3][3], float
 	}
 }
 
-static struct TransIslandData *UNUSED_FUNCTION(editmesh_islands_info_calc)(
+static struct TransIslandData *editmesh_islands_info_calc(
         BMEditMesh *em, int *r_island_tot, int **r_island_vert_map,
         bool calc_single_islands)
 {
@@ -2587,6 +2587,7 @@ static void createTransEditVerts(TransInfo *t)
 	}
 
 	/* TODO */
+	(void)editmesh_islands_info_calc;
 # if 0
 	if (is_island_center) {
 		/* In this specific case, near-by vertices will need to know the island of the nearest connected vertex. */
