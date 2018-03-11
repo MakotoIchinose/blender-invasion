@@ -66,6 +66,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_editmesh.h"
+#include "BKE_layer.h"
 
 #include "DEG_depsgraph.h"
 
@@ -89,6 +90,7 @@
 
 #include "uvedit_intern.h"
 
+static bool uv_select_is_any_selected(Scene *scene, Image *ima, Object *obedit, BMEditMesh *em);
 static void uv_select_all_perform(Scene *scene, Image *ima, Object *obedit, BMEditMesh *em, int action);
 static void uv_select_flush_from_tag_face(SpaceImage *sima, Scene *scene, Object *obedit, const bool select);
 static void uv_select_flush_from_tag_loop(SpaceImage *sima, Scene *scene, Object *obedit, const bool select);
@@ -1848,6 +1850,35 @@ static void UV_OT_weld(wmOperatorType *ot)
 
 /* ******************** (de)select all operator **************** */
 
+
+static bool uv_select_is_any_selected(Scene *scene, Image *ima, Object *obedit, BMEditMesh *em)
+{
+	ToolSettings *ts = scene->toolsettings;
+	BMFace *efa;
+	BMLoop *l;
+	BMIter iter, liter;
+	MLoopUV *luv;
+
+	if (ts->uv_flag & UV_SYNC_SELECTION) {
+		return (em->bm->totvertsel || em->bm->totedgesel || em->bm->totfacesel);
+	}
+	else {
+		const int cd_loop_uv_offset  = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
+		BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+			if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+				continue;
+			}
+			BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+				luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+				if (luv->flag & MLOOPUV_VERTSEL) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 static void uv_select_all_perform(Scene *scene, Image *ima, Object *obedit, BMEditMesh *em, int action)
 {
 	ToolSettings *ts = scene->toolsettings;
@@ -1858,8 +1889,11 @@ static void uv_select_all_perform(Scene *scene, Image *ima, Object *obedit, BMEd
 
 	const int cd_loop_uv_offset  = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
-	if (ts->uv_flag & UV_SYNC_SELECTION) {
+	if (action == SEL_TOGGLE) {
+		action = uv_select_is_any_selected(scene, ima, obedit, em) ? SEL_DESELECT : SEL_SELECT;
+	}
 
+	if (ts->uv_flag & UV_SYNC_SELECTION) {
 		switch (action) {
 			case SEL_TOGGLE:
 				EDBM_select_toggle_all(em);
@@ -1877,24 +1911,6 @@ static void uv_select_all_perform(Scene *scene, Image *ima, Object *obedit, BMEd
 		}
 	}
 	else {
-		if (action == SEL_TOGGLE) {
-			action = SEL_SELECT;
-			BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-				if (!uvedit_face_visible_test(scene, obedit, ima, efa))
-					continue;
-
-				BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
-					luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-
-					if (luv->flag & MLOOPUV_VERTSEL) {
-						action = SEL_DESELECT;
-						break;
-					}
-				}
-			}
-		}
-	
-		
 		BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
 			if (!uvedit_face_visible_test(scene, obedit, ima, efa))
 				continue;
@@ -1920,16 +1936,32 @@ static void uv_select_all_perform(Scene *scene, Image *ima, Object *obedit, BMEd
 
 static int uv_select_all_exec(bContext *C, wmOperator *op)
 {
+	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Scene *scene = CTX_data_scene(C);
-	Object *obedit = CTX_data_edit_object(C);
 	Image *ima = CTX_data_edit_image(C);
-	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
 	int action = RNA_enum_get(op->ptr, "action");
 
-	uv_select_all_perform(scene, ima, obedit, em, action);
+	if (action == SEL_TOGGLE) {
+		action = SEL_SELECT;
+		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+			if (uv_select_is_any_selected(scene, ima, ob_iter, em)) {
+				action = SEL_DESELECT;
+				break;
+			}
+		} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	}
 
-	WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+	/* don't indent to avoid diff noise! */
+	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+
+	uv_select_all_perform(scene, ima, ob_iter, em, action);
+
+	WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
+
+	} FOREACH_OBJECT_IN_EDIT_MODE_END;
 
 	return OPERATOR_FINISHED;
 }
@@ -2746,24 +2778,21 @@ static void uv_select_flush_from_tag_loop(SpaceImage *sima, Scene *scene, Object
 
 static int uv_border_select_exec(bContext *C, wmOperator *op)
 {
+	ViewLayer *view_layer = CTX_data_view_layer(C);
 	SpaceImage *sima = CTX_wm_space_image(C);
 	Scene *scene = CTX_data_scene(C);
 	ToolSettings *ts = scene->toolsettings;
-	Object *obedit = CTX_data_edit_object(C);
 	Image *ima = CTX_data_edit_image(C);
 	ARegion *ar = CTX_wm_region(C);
-	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	BMFace *efa;
 	BMLoop *l;
 	BMIter iter, liter;
 	MLoopUV *luv;
 	rctf rectf;
-	bool changed, pinned, select, extend;
+	bool pinned, select, extend;
 	const bool use_face_center = (ts->uv_flag & UV_SYNC_SELECTION) ?
 	                            (ts->selectmode == SCE_SELECT_FACE) :
 	                            (ts->uv_selectmode == UV_SELECT_FACE);
-
-	const int cd_loop_uv_offset  = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
 	/* get rectangle from operator */
 	WM_operator_properties_border_to_rctf(op, &rectf);
@@ -2774,8 +2803,18 @@ static int uv_border_select_exec(bContext *C, wmOperator *op)
 	extend = RNA_boolean_get(op->ptr, "extend");
 	pinned = RNA_boolean_get(op->ptr, "pinned");
 
+	bool changed_multi = false;
+
+	/* don't indent to avoid diff noise! */
+	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+
+	bool changed = false;
+
+	const int cd_loop_uv_offset  = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
+
 	if (!extend)
-		uv_select_all_perform(scene, ima, obedit, em, SEL_DESELECT);
+		uv_select_all_perform(scene, ima, ob_iter, em, SEL_DESELECT);
 
 	/* do actual selection */
 	if (use_face_center && !pinned) {
@@ -2788,7 +2827,7 @@ static int uv_border_select_exec(bContext *C, wmOperator *op)
 			/* assume not touched */
 			BM_elem_flag_disable(efa, BM_ELEM_TAG);
 
-			if (uvedit_face_visible_test(scene, obedit, ima, efa)) {
+			if (uvedit_face_visible_test(scene, ob_iter, ima, efa)) {
 				uv_poly_center(efa, cent, cd_loop_uv_offset);
 				if (BLI_rctf_isect_pt_v(&rectf, cent)) {
 					BM_elem_flag_enable(efa, BM_ELEM_TAG);
@@ -2799,7 +2838,7 @@ static int uv_border_select_exec(bContext *C, wmOperator *op)
 
 		/* (de)selects all tagged faces and deals with sticky modes */
 		if (changed) {
-			uv_select_flush_from_tag_face(sima, scene, obedit, select);
+			uv_select_flush_from_tag_face(sima, scene, ob_iter, select);
 		}
 	}
 	else {
@@ -2808,7 +2847,7 @@ static int uv_border_select_exec(bContext *C, wmOperator *op)
 		BM_mesh_elem_hflag_disable_all(em->bm, BM_VERT, BM_ELEM_TAG, false);
 
 		BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-			if (!uvedit_face_visible_test(scene, obedit, ima, efa))
+			if (!uvedit_face_visible_test(scene, ob_iter, ima, efa))
 				continue;
 			BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
 				luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
@@ -2839,14 +2878,19 @@ static int uv_border_select_exec(bContext *C, wmOperator *op)
 		uv_select_sync_flush(ts, em, select);
 
 		if (ts->uv_flag & UV_SYNC_SELECTION) {
-			WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+			WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
 		}
-		
-		return OPERATOR_FINISHED;
 	}
 
+	changed_multi |= changed;
+
+	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+
+	if (changed_multi) {
+		return OPERATOR_FINISHED;
+	}
 	return OPERATOR_CANCELLED;
-} 
+}
 
 static void UV_OT_select_border(wmOperatorType *ot)
 {
@@ -2995,32 +3039,39 @@ static void UV_OT_circle_select(wmOperatorType *ot)
 static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short moves,
                                     const bool select, const bool extend)
 {
+	ViewLayer *view_layer = CTX_data_view_layer(C);
 	SpaceImage *sima = CTX_wm_space_image(C);
 	Image *ima = CTX_data_edit_image(C);
 	ARegion *ar = CTX_wm_region(C);
-	Object *obedit = CTX_data_edit_object(C);
 	Scene *scene = CTX_data_scene(C);
 	ToolSettings *ts = scene->toolsettings;
-	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	const bool use_face_center = (
 	        (ts->uv_flag & UV_SYNC_SELECTION) ?
 	        (ts->selectmode == SCE_SELECT_FACE) :
 	        (ts->uv_selectmode == UV_SELECT_FACE));
 
-	const int cd_loop_uv_offset  = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
 	BMIter iter, liter;
 
 	BMFace *efa;
 	BMLoop *l;
 	int screen_uv[2];
-	bool changed = false;
+	bool changed_multi = false;
 	rcti rect;
 
 	BLI_lasso_boundbox(&rect, mcords, moves);
 
+	/* don't indent to avoid diff noise! */
+	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+
+	bool changed = false;
+
+	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+
+	const int cd_loop_uv_offset  = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
+
 	if (!extend && select) {
-		uv_select_all_perform(scene, ima, obedit, em, SEL_DESELECT);
+		uv_select_all_perform(scene, ima, ob_iter, em, SEL_DESELECT);
 	}
 
 	if (use_face_center) { /* Face Center Sel */
@@ -3043,14 +3094,14 @@ static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short mo
 
 		/* (de)selects all tagged faces and deals with sticky modes */
 		if (changed) {
-			uv_select_flush_from_tag_face(sima, scene, obedit, select);
+			uv_select_flush_from_tag_face(sima, scene, ob_iter, select);
 		}
 	}
 	else { /* Vert Sel */
 		BM_mesh_elem_hflag_disable_all(em->bm, BM_VERT, BM_ELEM_TAG, false);
 
 		BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-			if (uvedit_face_visible_test(scene, obedit, ima, efa)) {
+			if (uvedit_face_visible_test(scene, ob_iter, ima, efa)) {
 				BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
 					if ((select) != (uvedit_uv_select_test(scene, l, cd_loop_uv_offset))) {
 						MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
@@ -3078,11 +3129,15 @@ static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short mo
 		uv_select_sync_flush(scene->toolsettings, em, select);
 
 		if (ts->uv_flag & UV_SYNC_SELECTION) {
-			WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+			WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
 		}
 	}
 
-	return changed;
+	changed_multi |= changed;
+
+	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+
+	return changed_multi;
 }
 
 static int uv_lasso_select_exec(bContext *C, wmOperator *op)
