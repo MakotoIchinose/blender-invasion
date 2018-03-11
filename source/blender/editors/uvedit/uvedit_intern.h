@@ -50,19 +50,41 @@ void  uv_poly_center(struct BMFace *f, float r_cent[2], const int cd_loop_uv_off
 
 /* find nearest */
 
-typedef struct NearestHit {
+typedef struct UvNearestHit {
+	/** Only for `*_multi(..)` versions of functions. */
+	struct Object *ob;
+	/** Always set if we have a hit. */
 	struct BMFace *efa;
 	struct BMLoop *l;
 	struct MLoopUV *luv, *luv_next;
-	int lindex;  /* index of loop within face */
-} NearestHit;
+	/** Index of loop within face */
+	int lindex;
+	/** Needs to be set. */
+	float dist_sq;
+} UvNearestHit;
 
-void uv_find_nearest_vert(
-        struct Scene *scene, struct Image *ima, struct Object *obedit, struct BMEditMesh *em,
-        const float co[2], const float penalty[2], struct NearestHit *hit);
-void uv_find_nearest_edge(
-        struct Scene *scene, struct Image *ima, struct Object *obedit, struct BMEditMesh *em,
-        const float co[2], struct NearestHit *hit);
+#define UV_NEAREST_HIT_INIT { .dist_sq = FLT_MAX, }
+
+bool uv_find_nearest_vert_single(
+        struct Scene *scene, struct Image *ima, struct Object *obedit,
+        const float co[2], const float penalty_dist, struct UvNearestHit *hit_final);
+bool uv_find_nearest_vert_multi(
+        struct Scene *scene, struct Image *ima, struct ViewLayer *view_layer,
+        const float co[2], const float penalty_dist, struct UvNearestHit *hit_final);
+
+bool uv_find_nearest_edge_single(
+        struct Scene *scene, struct Image *ima, struct Object *obedit,
+        const float co[2], struct UvNearestHit *hit_final);
+bool uv_find_nearest_edge_multi(
+        struct Scene *scene, struct Image *ima, struct ViewLayer *view_layer,
+        const float co[2], struct UvNearestHit *hit_final);
+
+bool uv_find_nearest_face_single(
+        struct Scene *scene, struct Image *ima, struct Object *obedit,
+        const float co[2], struct UvNearestHit *hit_final);
+bool uv_find_nearest_face_multi(
+        struct Scene *scene, struct Image *ima, struct ViewLayer *view_layer,
+        const float co[2], struct UvNearestHit *hit_final);
 
 /* utility tool functions */
 
