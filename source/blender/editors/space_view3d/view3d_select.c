@@ -858,6 +858,12 @@ static void view3d_lasso_select(
 		}
 	}
 	else { /* Edit Mode */
+
+		/* don't indent to avoid diff noise! */
+		FOREACH_OBJECT_IN_MODE_BEGIN (eval_ctx.view_layer, eval_ctx.object_mode, ob_iter) {
+		ED_view3d_viewcontext_init_object(vc, ob_iter);
+		/* --- */
+
 		switch (vc->obedit->type) {
 			case OB_MESH:
 				do_lasso_select_mesh(&eval_ctx, vc, mcords, moves, extend, select);
@@ -881,6 +887,8 @@ static void view3d_lasso_select(
 		}
 
 		WM_event_add_notifier(C, NC_GEOM | ND_SELECT, vc->obedit->data);
+
+		} FOREACH_OBJECT_IN_MODE_END;
 	}
 }
 
@@ -2151,12 +2159,13 @@ static int view3d_borderselect_exec(bContext *C, wmOperator *op)
 	extend = RNA_boolean_get(op->ptr, "extend");
 	WM_operator_properties_border_to_rcti(op, &rect);
 
-	/* don't indent to avoid diff noise! */
-	FOREACH_OBJECT_IN_MODE_BEGIN (eval_ctx.view_layer, eval_ctx.object_mode, ob_iter) {
-	ED_view3d_viewcontext_init_object(&vc, ob_iter);
-	/* --- */
-
 	if (vc.obedit) {
+
+		/* don't indent to avoid diff noise! */
+		FOREACH_OBJECT_IN_MODE_BEGIN (eval_ctx.view_layer, eval_ctx.object_mode, ob_iter) {
+		ED_view3d_viewcontext_init_object(&vc, ob_iter);
+		/* --- */
+
 		switch (vc.obedit->type) {
 			case OB_MESH:
 				vc.em = BKE_editmesh_from_object(vc.obedit);
@@ -2194,7 +2203,7 @@ static int view3d_borderselect_exec(bContext *C, wmOperator *op)
 			default:
 				assert(!"border select on incorrect object type");
 				break;
-		}
+		}} FOREACH_OBJECT_IN_MODE_END;
 	}
 	else {  /* no editmode, unified for bones and objects */
 		if (vc.obact && eval_ctx.object_mode & OB_MODE_SCULPT) {
@@ -2212,7 +2221,7 @@ static int view3d_borderselect_exec(bContext *C, wmOperator *op)
 		else { /* object mode with none active */
 			ret |= do_object_pose_box_select(C, &vc, &rect, select, extend);
 		}
-	}} FOREACH_OBJECT_IN_MODE_END;
+	}
 
 	if (ret & OPERATOR_FINISHED) {
 		ret = OPERATOR_FINISHED;
