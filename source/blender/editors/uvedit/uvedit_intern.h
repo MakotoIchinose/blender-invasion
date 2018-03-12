@@ -57,29 +57,29 @@ typedef struct UvNearestHit {
 	struct BMFace *efa;
 	struct BMLoop *l;
 	struct MLoopUV *luv, *luv_next;
-	/** Index of loop within face */
+	/** Index of loop within face. */
 	int lindex;
-	/** Needs to be set. */
+	/** Needs to be set before calling nearest functions. */
 	float dist_sq;
 } UvNearestHit;
 
 #define UV_NEAREST_HIT_INIT { .dist_sq = FLT_MAX, }
 
-bool uv_find_nearest_vert_single(
+bool uv_find_nearest_vert(
         struct Scene *scene, struct Image *ima, struct Object *obedit,
         const float co[2], const float penalty_dist, struct UvNearestHit *hit_final);
 bool uv_find_nearest_vert_multi(
         struct Scene *scene, struct Image *ima, struct ViewLayer *view_layer,
         const float co[2], const float penalty_dist, struct UvNearestHit *hit_final);
 
-bool uv_find_nearest_edge_single(
+bool uv_find_nearest_edge(
         struct Scene *scene, struct Image *ima, struct Object *obedit,
         const float co[2], struct UvNearestHit *hit_final);
 bool uv_find_nearest_edge_multi(
         struct Scene *scene, struct Image *ima, struct ViewLayer *view_layer,
         const float co[2], struct UvNearestHit *hit_final);
 
-bool uv_find_nearest_face_single(
+bool uv_find_nearest_face(
         struct Scene *scene, struct Image *ima, struct Object *obedit,
         const float co[2], struct UvNearestHit *hit_final);
 bool uv_find_nearest_face_multi(

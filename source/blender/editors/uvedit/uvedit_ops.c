@@ -711,7 +711,7 @@ bool ED_uvedit_center(Scene *scene, Image *ima, Object *obedit, float cent[2], c
 
 /************************** find nearest ****************************/
 
-bool uv_find_nearest_edge_single(
+bool uv_find_nearest_edge(
         Scene *scene, Image *ima, Object *obedit, const float co[2],
         UvNearestHit *hit)
 {
@@ -759,7 +759,7 @@ bool uv_find_nearest_edge_multi(
 {
 	bool found = false;
 	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-		if (uv_find_nearest_edge_single(scene, ima, ob_iter, co, hit_final)) {
+		if (uv_find_nearest_edge(scene, ima, ob_iter, co, hit_final)) {
 			hit_final->ob = ob_iter;
 			found = true;
 		}
@@ -767,7 +767,7 @@ bool uv_find_nearest_edge_multi(
 	return found;
 }
 
-bool uv_find_nearest_face_single(
+bool uv_find_nearest_face(
         Scene *scene, Image *ima, Object *obedit, const float co[2],
         UvNearestHit *hit_final)
 {
@@ -779,7 +779,7 @@ bool uv_find_nearest_face_single(
 	/* this will fill in hit.vert1 and hit.vert2 */
 	float dist_sq_init = hit_final->dist_sq;
 	UvNearestHit hit = *hit_final;
-	if (uv_find_nearest_edge_single(scene, ima, obedit, co, &hit)) {
+	if (uv_find_nearest_edge(scene, ima, obedit, co, &hit)) {
 		hit.dist_sq = dist_sq_init;
 		hit.l = NULL;
 		hit.luv = hit.luv_next = NULL;
@@ -816,7 +816,7 @@ bool uv_find_nearest_face_multi(
 {
 	bool found = false;
 	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-		if (uv_find_nearest_face_single(scene, ima, ob_iter, co, hit_final)) {
+		if (uv_find_nearest_face(scene, ima, ob_iter, co, hit_final)) {
 			hit_final->ob = ob_iter;
 			found = true;
 		}
@@ -835,7 +835,7 @@ static bool uv_nearest_between(const BMLoop *l, const float co[2],
 	        (line_point_side_v2(uv_next, uv_curr, co) <= 0.0f));
 }
 
-bool uv_find_nearest_vert_single(
+bool uv_find_nearest_vert(
         Scene *scene, Image *ima, Object *obedit,
         float const co[2], const float penalty_dist, UvNearestHit *hit_final)
 {
@@ -844,7 +844,7 @@ bool uv_find_nearest_vert_single(
 	/* this will fill in hit.vert1 and hit.vert2 */
 	float dist_sq_init = hit_final->dist_sq;
 	UvNearestHit hit = *hit_final;
-	if (uv_find_nearest_edge_single(scene, ima, obedit, co, &hit)) {
+	if (uv_find_nearest_edge(scene, ima, obedit, co, &hit)) {
 		hit.dist_sq = dist_sq_init;
 
 		hit.l = NULL;
@@ -910,7 +910,7 @@ bool uv_find_nearest_vert_multi(
 {
 	bool found = false;
 	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-		if (uv_find_nearest_vert_single(scene, ima, ob_iter, co, penalty_dist, hit_final)) {
+		if (uv_find_nearest_vert(scene, ima, ob_iter, co, penalty_dist, hit_final)) {
 			hit_final->ob = ob_iter;
 			found = true;
 		}
@@ -1061,7 +1061,7 @@ static int uv_select_edgeloop(
 	BM_mesh_elem_index_ensure(em->bm, BM_VERT | BM_FACE);
 
 	if (!extend) {
-		uv_select_all_perform(scene, ima, obedit, em, SEL_DESELECT);
+		uv_select_all_perform(scene, ima, obedit, SEL_DESELECT);
 	}
 
 	BM_mesh_elem_hflag_disable_all(em->bm, BM_FACE, BM_ELEM_TAG, false);
@@ -1142,7 +1142,7 @@ static int uv_select_edgeloop(
 
 static void uv_select_linked(
         Scene *scene, Image *ima, Object *obedit,
-        const float limit[2], UvNearestHit *hit, bool extend, bool select_faces)
+        const float limit[2], UvNearestHit *hit_final, bool extend, bool select_faces)
 {
 	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	BMFace *efa;
@@ -1173,7 +1173,8 @@ static void uv_select_linked(
 	stack = MEM_mallocN(sizeof(*stack) * (em->bm->totface + 1), "UvLinkStack");
 	flag = MEM_callocN(sizeof(*flag) * em->bm->totface, "UvLinkFlag");
 
-	if (!hit) {
+	if (hit_final == NULL) {
+		/* Use existing selection */
 		BM_ITER_MESH_INDEX (efa, &iter, em->bm, BM_FACES_OF_MESH, a) {
 			if (uvedit_face_visible_test(scene, obedit, ima, efa)) {
 				if (select_faces) {
@@ -1201,7 +1202,7 @@ static void uv_select_linked(
 	}
 	else {
 		BM_ITER_MESH_INDEX (efa, &iter, em->bm, BM_FACES_OF_MESH, a) {
-			if (efa == hit->efa) {
+			if (efa == hit_final->efa) {
 				stack[stacksize] = a;
 				stacksize++;
 				flag[a] = 1;
@@ -2460,7 +2461,7 @@ static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent 
 	int extend;
 	bool select_faces = (ts->uv_flag & UV_SYNC_SELECTION) && (ts->selectmode & SCE_SELECT_FACE);
 
-	UvNearestHit hit, *hit_p = NULL;
+	UvNearestHit hit = UV_NEAREST_HIT_INIT;
 
 	if ((ts->uv_flag & UV_SYNC_SELECTION) && !(ts->selectmode & SCE_SELECT_FACE)) {
 		BKE_report(op->reports, RPT_ERROR, "Select linked only works in face select mode when sync selection is enabled");
@@ -2485,8 +2486,8 @@ static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent 
 			RNA_float_get_array(op->ptr, "location", co);
 		}
 
-		if (uv_find_nearest_edge_single(scene, ima, obedit, co, &hit)) {
-			hit_p = &hit;
+		if (!uv_find_nearest_edge(scene, ima, obedit, co, &hit)) {
+			return OPERATOR_CANCELLED;
 		}
 	}
 
@@ -2494,7 +2495,7 @@ static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent 
 		uv_select_all_perform_multi(scene, ima, view_layer, SEL_DESELECT);
 	}
 
-	uv_select_linked(scene, ima, obedit, limit, hit_p, extend, select_faces);
+	uv_select_linked(scene, ima, obedit, limit, pick ? &hit : NULL, extend, select_faces);
 
 	DEG_id_tag_update(obedit->data, 0);
 	WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);

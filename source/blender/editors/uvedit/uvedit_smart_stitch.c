@@ -2134,7 +2134,7 @@ static void stitch_select(bContext *C, Scene *scene, const wmEvent *event, Stitc
 	UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &co[0], &co[1]);
 
 	if (state->mode == STITCH_VERT) {
-		if (uv_find_nearest_vert_single(
+		if (uv_find_nearest_vert(
 		            scene, ima, state->obedit, co, 0.0f, &hit))
 		{
 			/* Add vertex to selection, deselect all common uv's of vert other
@@ -2148,7 +2148,7 @@ static void stitch_select(bContext *C, Scene *scene, const wmEvent *event, Stitc
 		}
 	}
 	else {
-		if (uv_find_nearest_edge_single(
+		if (uv_find_nearest_edge(
 		            scene, ima, state->obedit, co, &hit))
 		{
 			UvEdge *edge = uv_edge_get(hit.l, state);
