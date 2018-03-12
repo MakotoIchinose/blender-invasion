@@ -1173,7 +1173,7 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 	}
 
 	if (htype & BM_VERT) {
-		if (bm->elem_index_dirty & BM_VERT) {
+		if ((bm->elem_index_dirty & BM_VERT) || (elem_offset && elem_offset[0])) {
 			BMIter iter;
 			BMElem *ele;
 
@@ -1192,7 +1192,7 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 	}
 
 	if (htype & BM_EDGE) {
-		if (bm->elem_index_dirty & BM_EDGE) {
+		if ((bm->elem_index_dirty & BM_EDGE) || (elem_offset && elem_offset[1])) {
 			BMIter iter;
 			BMElem *ele;
 
@@ -1211,7 +1211,7 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 	}
 
 	if (htype & (BM_FACE | BM_LOOP)) {
-		if (bm->elem_index_dirty & (BM_FACE | BM_LOOP)) {
+		if ((bm->elem_index_dirty & (BM_FACE | BM_LOOP)) || (elem_offset && (elem_offset[2] || elem_offset[3]))) {
 			BMIter iter;
 			BMElem *ele;
 
