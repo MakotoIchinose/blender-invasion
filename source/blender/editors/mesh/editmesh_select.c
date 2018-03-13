@@ -2561,10 +2561,10 @@ static bool select_linked_delimit_test(
  * Gets the default from the operator fallback to own last-used value
  * (selected based on mode)
  */
-static int select_linked_delimit_default_from_op(wmOperator *op, BMEditMesh *em)
+static int select_linked_delimit_default_from_op(wmOperator *op, const int select_mode)
 {
 	static char delimit_last_store[2] = {0, BMO_DELIM_SEAM};
-	int delimit_last_index = (em->selectmode & (SCE_SELECT_VERTEX | SCE_SELECT_EDGE)) == 0;
+	int delimit_last_index = (select_mode & (SCE_SELECT_VERTEX | SCE_SELECT_EDGE)) == 0;
 	char *delimit_last = &delimit_last_store[delimit_last_index];
 	PropertyRNA *prop_delimit = RNA_struct_find_property(op->ptr, "delimit");
 	int delimit;
@@ -2627,17 +2627,29 @@ static void select_linked_delimit_end(BMEditMesh *em)
 
 static int edbm_select_linked_exec(bContext *C, wmOperator *op)
 {
-	Object *obedit = CTX_data_edit_object(C);
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+
+#ifdef USE_LINKED_SELECT_DEFAULT_HACK
+	const int delimit_init = select_linked_delimit_default_from_op(op, scene->toolsettings->selectmode);
+#else
+	const int delimit_init = RNA_enum_get(op->ptr, "delimit");
+#endif
+
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
+
 	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	BMesh *bm = em->bm;
 	BMIter iter;
 	BMWalker walker;
 
-#ifdef USE_LINKED_SELECT_DEFAULT_HACK
-	int delimit = select_linked_delimit_default_from_op(op, em);
-#else
-	int delimit = RNA_enum_get(op->ptr, "delimit");
-#endif
+	int delimit = delimit_init;
 
 	select_linked_delimit_validate(bm, &delimit);
 
@@ -2793,6 +2805,10 @@ static int edbm_select_linked_exec(bContext *C, wmOperator *op)
 	}
 
 	WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+
+	} /* objects */
+
+	MEM_SAFE_FREE(objects);
 
 	return OPERATOR_FINISHED;
 }
@@ -2982,7 +2998,7 @@ static int edbm_select_linked_pick_invoke(bContext *C, wmOperator *op, const wmE
 	BMesh *bm = em->bm;
 
 #ifdef USE_LINKED_SELECT_DEFAULT_HACK
-	int delimit = select_linked_delimit_default_from_op(op, vc.em);
+	int delimit = select_linked_delimit_default_from_op(op, vc.scene->toolsettings->selectmode);
 #else
 	int delimit = RNA_enum_get(op->ptr, "delimit");
 #endif
@@ -3021,7 +3037,7 @@ static int edbm_select_linked_pick_exec(bContext *C, wmOperator *op)
 	BMElem *ele = EDBM_elem_from_index_any(em, index);
 
 #ifdef USE_LINKED_SELECT_DEFAULT_HACK
-	int delimit = select_linked_delimit_default_from_op(op, em);
+	int delimit = select_linked_delimit_default_from_op(op, em->selectmode);
 #else
 	int delimit = RNA_enum_get(op->ptr, "delimit");
 #endif
