@@ -1069,6 +1069,7 @@ void ED_uvedit_draw_main(
 			uint objects_len = 0;
 			Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 			        view_layer, &objects_len,
+			        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 			        .no_dupe_data = true);
 			for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 				Object *ob_iter = objects[ob_index];

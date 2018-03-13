@@ -348,9 +348,15 @@ struct ObjectsRenderableIteratorData {
 
 /* Array utilities. */
 
+typedef bool (*ObjectsFilterFn)(
+        struct Object *ob, void *user_data);
+
 struct ObjectsInModeParams {
 	int object_mode;
 	uint no_dupe_data : 1;
+
+	ObjectsFilterFn  filter_fn;
+	void            *filter_userdata;
 };
 
 Base **BKE_view_layer_array_from_bases_in_mode_params(
@@ -375,6 +381,9 @@ struct Object **BKE_view_layer_array_from_objects_in_mode_params(
 	BKE_view_layer_array_from_objects_in_mode_params( \
 	        view_layer, r_len, \
 	        &(const struct ObjectsInModeParams){ .object_mode = OB_MODE_EDIT, __VA_ARGS__})
+
+
+bool BKE_view_layer_filter_edit_mesh_has_uvs(struct Object *ob, void *user_data);
 
 #ifdef __cplusplus
 }

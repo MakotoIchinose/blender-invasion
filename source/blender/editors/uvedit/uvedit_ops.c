@@ -2140,6 +2140,7 @@ static int uv_select_all_exec(bContext *C, wmOperator *op)
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 	        view_layer, &objects_len,
+	        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 	        .no_dupe_data = true);
 
 	uv_select_all_perform_multi(scene, ima, objects, objects_len, action);
@@ -2254,6 +2255,7 @@ static int uv_mouse_select(bContext *C, const float co[2], bool extend, bool loo
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 	        view_layer, &objects_len,
+	        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 	        .no_dupe_data = true);
 
 	/* find nearest element */
@@ -2592,6 +2594,7 @@ static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent 
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 	        view_layer, &objects_len,
+	        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 	        .no_dupe_data = true);
 
 	if (pick) {
@@ -3058,6 +3061,7 @@ static int uv_border_select_exec(bContext *C, wmOperator *op)
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 	        view_layer, &objects_len,
+	        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 	        .no_dupe_data = true);
 
 	/* don't indent to avoid diff noise! */
@@ -3330,6 +3334,7 @@ static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short mo
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 	        view_layer, &objects_len,
+	        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 	        .no_dupe_data = true);
 
 	/* don't indent to avoid diff noise! */

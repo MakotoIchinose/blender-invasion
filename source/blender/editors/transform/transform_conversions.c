@@ -3041,6 +3041,9 @@ static void createTransUVs(bContext *C, TransInfo *t)
 	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
 	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
 	const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
+	if (cd_loop_uv_offset == -1) {
+		continue;
+	}
 
 	BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
 		BMLoop *l;
@@ -3109,6 +3112,9 @@ static void createTransUVs(bContext *C, TransInfo *t)
 	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
 	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
 	const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
+	if (cd_loop_uv_offset == -1) {
+		continue;
+	}
 
 	BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
 		BMLoop *l;

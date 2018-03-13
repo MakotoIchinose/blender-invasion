@@ -849,6 +849,7 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
 	        view_layer, &objects_len,
+	        .filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs,
 	        .no_dupe_data = true);
 
 	if (!uvedit_have_selection_multi(scene, objects, objects_len, true)) {
