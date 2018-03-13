@@ -89,14 +89,15 @@ BMEditMesh *BKE_editmesh_from_object(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
 	/* sanity check */
+#if 0 /* disable in mutlti-object edit. */
 #ifndef NDEBUG
 	if (((Mesh *)ob->data)->edit_btmesh) {
 		BLI_assert(((Mesh *)ob->data)->edit_btmesh->ob == ob);
 	}
 #endif
+#endif
 	return ((Mesh *)ob->data)->edit_btmesh;
 }
-
 
 static void editmesh_tessface_calc_intern(BMEditMesh *em)
 {

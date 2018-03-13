@@ -121,7 +121,8 @@ void ED_uvedit_live_unwrap(struct Scene *scene, struct Object *obedit);
 void ED_uvedit_pack_islands_single(
         struct Scene *scene, struct Object *ob, struct BMesh *bm, bool selected, bool correct_aspect, bool do_rotate);
 void ED_uvedit_pack_islands_multi(
-        struct Scene *scene, ViewLayer *view_layer, bool selected, bool correct_aspect, bool do_rotate);
+        struct Scene *scene, struct Object **objects, const uint objects_len,
+        bool selected, bool correct_aspect, bool do_rotate);
 void ED_uvedit_unwrap_cube_project(
         struct BMesh *bm, float cube_size, bool use_select, const float center[3]);
 

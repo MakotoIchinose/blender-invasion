@@ -346,7 +346,6 @@ struct ObjectsRenderableIteratorData {
 	ITER_END;                                                                 \
 } ((void)0)
 
-
 /* Array utilities. */
 
 struct ObjectsInModeParams {
@@ -367,6 +366,10 @@ struct Object **BKE_view_layer_array_from_objects_in_mode_params(
 	        view_layer, r_len, \
 	        &(const struct ObjectsInModeParams){__VA_ARGS__})
 
+#define BKE_view_layer_array_from_bases_in_edit_mode(view_layer, r_len, ...) \
+	BKE_view_layer_array_from_bases_in_mode_params( \
+	        view_layer, r_len, \
+	        &(const struct ObjectsInModeParams){ .object_mode = OB_MODE_EDIT, __VA_ARGS__})
 
 #define BKE_view_layer_array_from_objects_in_edit_mode(view_layer, r_len, ...) \
 	BKE_view_layer_array_from_objects_in_mode_params( \

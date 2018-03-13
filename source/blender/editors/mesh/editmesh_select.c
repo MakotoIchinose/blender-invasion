@@ -915,11 +915,14 @@ static int unified_findnearest(
 	float dist = dist_init;
 	BMFace *efa_zbuf = NULL;
 	BMEdge *eed_zbuf = NULL;
-	
+
 	BMVert *eve = NULL;
 	BMEdge *eed = NULL;
 	BMFace *efa = NULL;
 
+	uint bases_len = 0;
+	Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(
+	        eval_ctx->view_layer, &bases_len);
 
 	/* no afterqueue (yet), so we check it now, otherwise the em_xxxofs indices are bad */
 
@@ -927,7 +930,8 @@ static int unified_findnearest(
 		float dist_center = 0.0f;
 		float *dist_center_p = (em->selectmode & (SCE_SELECT_EDGE | SCE_SELECT_VERTEX)) ? &dist_center : NULL;
 
-		FOREACH_BASE_IN_EDIT_MODE_BEGIN (eval_ctx->view_layer, base_iter) {
+		for (uint base_index = 0; base_index < bases_len; base_index++) {
+			Base *base_iter = bases[base_index];
 			Object *obedit = base_iter->object;
 			ED_view3d_viewcontext_init_object(vc, obedit);
 			ED_view3d_backbuf_validate(eval_ctx, vc);
@@ -940,14 +944,15 @@ static int unified_findnearest(
 				*r_base = base_iter;
 				efa = efa_test;
 			}
-		} FOREACH_BASE_IN_EDIT_MODE_END;
+		} /* bases */
 	}
 
 	if ((dist > 0.0f) && (em->selectmode & SCE_SELECT_EDGE)) {
 		float dist_center = 0.0f;
 		float *dist_center_p = (em->selectmode & SCE_SELECT_VERTEX) ? &dist_center : NULL;
 
-		FOREACH_BASE_IN_EDIT_MODE_BEGIN (eval_ctx->view_layer, base_iter) {
+		for (uint base_index = 0; base_index < bases_len; base_index++) {
+			Base *base_iter = bases[base_index];
 			Object *obedit = base_iter->object;
 			ED_view3d_viewcontext_init_object(vc, obedit);
 			ED_view3d_backbuf_validate(eval_ctx, vc);
@@ -959,11 +964,12 @@ static int unified_findnearest(
 				*r_base = base_iter;
 				eed = eed_test;
 			}
-		} FOREACH_BASE_IN_EDIT_MODE_END;
+		} /* bases */
 	}
 
 	if ((dist > 0.0f) && em->selectmode & SCE_SELECT_VERTEX) {
-		FOREACH_BASE_IN_EDIT_MODE_BEGIN (eval_ctx->view_layer, base_iter) {
+		for (uint base_index = 0; base_index < bases_len; base_index++) {
+			Base *base_iter = bases[base_index];
 			Object *obedit = base_iter->object;
 			ED_view3d_viewcontext_init_object(vc, obedit);
 			ED_view3d_backbuf_validate(eval_ctx, vc);
@@ -972,8 +978,10 @@ static int unified_findnearest(
 				*r_base = base_iter;
 				eve = eve_test;
 			}
-		} FOREACH_BASE_IN_EDIT_MODE_END;
+		} /* bases */
 	}
+
+	MEM_SAFE_FREE(bases);
 
 	/* return only one of 3 pointers, for frontbuffer redraws */
 	if (eve) {
@@ -1799,19 +1807,25 @@ static int edbm_select_all_exec(bContext *C, wmOperator *op)
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	int action = RNA_enum_get(op->ptr, "action");
 
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
 	if (action == SEL_TOGGLE) {
 		action = SEL_SELECT;
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, obedit) {
+		for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+			Object *obedit = objects[ob_index];
 			BMEditMesh *em = BKE_editmesh_from_object(obedit);
 			if (em->bm->totvertsel || em->bm->totedgesel || em->bm->totfacesel) {
 				action = SEL_DESELECT;
 				break;
 			}
 		}
-		FOREACH_OBJECT_IN_MODE_END;
 	}
 
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, obedit) {
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *obedit = objects[ob_index];
 		BMEditMesh *em = BKE_editmesh_from_object(obedit);
 		switch (action) {
 			case SEL_SELECT:
@@ -1827,7 +1841,8 @@ static int edbm_select_all_exec(bContext *C, wmOperator *op)
 		}
 		WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
 	}
-	FOREACH_OBJECT_IN_MODE_END;
+
+	MEM_SAFE_FREE(objects);
 
 	return OPERATOR_FINISHED;
 }
@@ -1905,12 +1920,18 @@ bool EDBM_select_pick(bContext *C, const int mval[2], bool extend, bool deselect
 
 		/* Deselect everything */
 		if (extend == false && deselect == false && toggle == false) {
-			FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (eval_ctx.view_layer, ob_iter) {
+			uint objects_len = 0;
+			Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+			        eval_ctx.view_layer, &objects_len,
+			        .no_dupe_data = true);
+
+			for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+				Object *ob_iter = objects[ob_index];
 				EDBM_flag_disable_all(BKE_editmesh_from_object(ob_iter), BM_ELEM_SELECT);
 				if (basact->object != ob_iter) {
 					WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
 				}
-			} FOREACH_OBJECT_IN_MODE_END;
+			}
 		}
 
 		if (efa) {
@@ -2293,24 +2314,32 @@ bool EDBM_selectmode_toggle(bContext *C, const short selectmode_new,
 			break;
 	}
 
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (eval_ctx.view_layer, ob_iter) {
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        eval_ctx.view_layer, &objects_len,
+	        .no_dupe_data = true);
+
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *ob_iter = objects[ob_index];
 		BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
 		if (em_iter != em) {
 			em_iter->selectmode = em->selectmode;
 		}
-	} FOREACH_OBJECT_IN_MODE_END;
+	}
 
 	if (only_update) {
+		MEM_SAFE_FREE(objects);
 		return false;
 	}
 
 	if (use_extend == 0 || em->selectmode == 0) {
 		if (use_expand) {
 			const short selmode_max = highest_order_bit_s(ts->selectmode);
-			FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (eval_ctx.view_layer, ob_iter) {
+			for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+				Object *ob_iter = objects[ob_index];
 				BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
 				EDBM_selectmode_convert(em_iter, selmode_max, selectmode_new);
-			} FOREACH_OBJECT_IN_MODE_END;
+			}
 		}
 	}
 
@@ -2341,14 +2370,16 @@ bool EDBM_selectmode_toggle(bContext *C, const short selectmode_new,
 	if (ret == true) {
 		ts->selectmode = em->selectmode;
 		em = NULL;
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (eval_ctx.view_layer, ob_iter) {
+		for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+			Object *ob_iter = objects[ob_index];
 			BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
 			EDBM_selectmode_set(em_iter);
 			WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
-		} FOREACH_OBJECT_IN_MODE_END;
+		}
 		WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, NULL);
 	}
 
+	MEM_SAFE_FREE(objects);
 	return ret;
 }
 
@@ -2919,13 +2950,19 @@ static int edbm_select_linked_pick_invoke(bContext *C, wmOperator *op, const wmE
 	em_setup_viewcontext(C, &vc);
 
 	{
+		uint objects_len = 0;
+		Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+		        eval_ctx.view_layer, &objects_len,
+		        .no_dupe_data = true);
 		bool has_edges = false;
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (eval_ctx.view_layer, ob_iter) {
+		for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+			Object *ob_iter = objects[ob_index];
 			ED_view3d_viewcontext_init_object(&vc, ob_iter);
 			if (vc.em->bm->totedge) {
 				has_edges = true;
 			}
-		} FOREACH_OBJECT_IN_MODE_END;
+		}
+		MEM_SAFE_FREE(objects);
 		if (has_edges == false) {
 			return OPERATOR_CANCELLED;
 		}

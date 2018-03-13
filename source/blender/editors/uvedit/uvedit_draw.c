@@ -1066,9 +1066,15 @@ void ED_uvedit_draw_main(
 			draw_uvs_shadow(obedit);
 		}
 		else if (show_uvedit) {
-			FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+			uint objects_len = 0;
+			Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+			        view_layer, &objects_len,
+			        .no_dupe_data = true);
+			for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+				Object *ob_iter = objects[ob_index];
 				draw_uvs(sima, scene, view_layer, ob_iter, depsgraph);
-			} FOREACH_OBJECT_IN_EDIT_MODE_END;
+			}
+			MEM_SAFE_FREE(objects);
 		}
 		else {
 			draw_uvs_texpaint(sima, scene, view_layer, obact);

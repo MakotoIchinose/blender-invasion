@@ -1384,7 +1384,9 @@ MDeformVert *ED_mesh_active_dvert_get_only(Object *ob)
 	}
 }
 
-void EDBM_mesh_stats_multi(ViewLayer *view_layer, int totelem[3], int totelem_sel[3])
+void EDBM_mesh_stats_multi(
+        struct Object **objects, const uint objects_len,
+        int totelem[3], int totelem_sel[3])
 {
 	if (totelem) {
 		totelem[0] = 0;
@@ -1397,8 +1399,9 @@ void EDBM_mesh_stats_multi(ViewLayer *view_layer, int totelem[3], int totelem_se
 		totelem_sel[2] = 0;
 	}
 
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-		BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *obedit = objects[ob_index];
+		BMEditMesh *em = BKE_editmesh_from_object(obedit);
 		BMesh *bm = em->bm;
 		if (totelem) {
 			totelem[0] += bm->totvert;
@@ -1410,16 +1413,17 @@ void EDBM_mesh_stats_multi(ViewLayer *view_layer, int totelem[3], int totelem_se
 			totelem_sel[1] += bm->totedgesel;
 			totelem_sel[2] += bm->totfacesel;
 		}
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	}
 }
 
 
-void EDBM_mesh_elem_index_ensure_multi(ViewLayer *view_layer, const char htype)
+void EDBM_mesh_elem_index_ensure_multi(Object **objects, const uint objects_len, const char htype)
 {
 	int elem_offset[4] = {0, 0, 0, 0};
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-		BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *obedit = objects[ob_index];
+		BMEditMesh *em = BKE_editmesh_from_object(obedit);
 		BMesh *bm = em->bm;
 		BM_mesh_elem_index_ensure_ex(bm, htype, elem_offset);
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	}
 }

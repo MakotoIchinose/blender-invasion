@@ -90,10 +90,17 @@
 static int edbm_subdivide_exec(bContext *C, wmOperator *op)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	/* no indent for diff noise. */
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
 
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
+	/* no indent for diff noise. */
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
+
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	const int cuts = RNA_int_get(op->ptr, "number_cuts");
 	float smooth = RNA_float_get(op->ptr, "smoothness");
 	const float fractal = RNA_float_get(op->ptr, "fractal") / 2.5f;
@@ -115,7 +122,9 @@ static int edbm_subdivide_exec(bContext *C, wmOperator *op)
 
 	EDBM_update_generic(em, true, true);
 
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	}
+
+	MEM_SAFE_FREE(objects);
 
 	return OPERATOR_FINISHED;
 }
@@ -362,8 +371,15 @@ static void edbm_report_delete_info(ReportList *reports, const int totelem_old[3
 static int edbm_delete_exec(bContext *C, wmOperator *op)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	const int type = RNA_enum_get(op->ptr, "type");
 
 	switch (type) {
@@ -398,7 +414,7 @@ static int edbm_delete_exec(bContext *C, wmOperator *op)
 
 	EDBM_update_generic(em, true, true);
 
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	} /* objects */
 
 	return OPERATOR_FINISHED;
 }
@@ -454,14 +470,21 @@ static int edbm_delete_loose_exec(bContext *C, wmOperator *op)
 	int totelem_old_sel[3];
 	int totelem_old[3];
 
-	EDBM_mesh_stats_multi(view_layer, totelem_old, totelem_old_sel);
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
+	EDBM_mesh_stats_multi(objects, objects_len, totelem_old, totelem_old_sel);
 
 	const bool use_verts = (RNA_boolean_get(op->ptr, "use_verts") && totelem_old_sel[0]);
 	const bool use_edges = (RNA_boolean_get(op->ptr, "use_edges") && totelem_old_sel[1]);
 	const bool use_faces = (RNA_boolean_get(op->ptr, "use_faces") && totelem_old_sel[2]);
 
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
+
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	BMesh *bm = em->bm;
 	BMIter iter;
 
@@ -508,12 +531,14 @@ static int edbm_delete_loose_exec(bContext *C, wmOperator *op)
 	EDBM_update_generic(em, true, true);
 
 	// no indent
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	}
 
 	int totelem_new[3];
-	EDBM_mesh_stats_multi(view_layer, totelem_new, NULL);
+	EDBM_mesh_stats_multi(objects, objects_len, totelem_new, NULL);
 
 	edbm_report_delete_info(op->reports, totelem_old, totelem_new);
+
+	MEM_SAFE_FREE(objects);
 
 	return OPERATOR_FINISHED;
 }
@@ -3922,10 +3947,16 @@ static int edbm_quads_convert_to_tris_exec(bContext *C, wmOperator *op)
 	const int ngon_method = RNA_enum_get(op->ptr, "ngon_method");
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 
-	/* no indent for diff noise. */
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
 
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	/* no indent for diff noise. */
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
+
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	BMOperator bmop;
 	BMOIter oiter;
 	BMFace *f;
@@ -3952,7 +3983,7 @@ static int edbm_quads_convert_to_tris_exec(bContext *C, wmOperator *op)
 
 	EDBM_update_generic(em, true, true);
 
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	} /* objects */
 
 	return OPERATOR_FINISHED;
 }
@@ -3982,18 +4013,24 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
 	bool is_face_pair;
 
 	{
 		int totelem_sel[3];
-		EDBM_mesh_stats_multi(view_layer, NULL, totelem_sel);
+		EDBM_mesh_stats_multi(objects, objects_len, NULL, totelem_sel);
 		is_face_pair = (totelem_sel[2] == 2);
 	}
 
 	/* no indent for diff noise. */
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
 
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	bool do_seam, do_sharp, do_uvs, do_vcols, do_materials;
 	float angle_face_threshold, angle_shape_threshold;
 	PropertyRNA *prop;
@@ -4039,7 +4076,7 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 
 	EDBM_update_generic(em, true, true);
 
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	} /* objects */
 
 	return OPERATOR_FINISHED;
 }
@@ -4539,17 +4576,25 @@ static int edbm_dissolve_degenerate_exec(bContext *C, wmOperator *op)
 	int totelem_old[3] = {0, 0, 0};
 	int totelem_new[3] = {0, 0, 0};
 
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-		BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	uint objects_len = 0;
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode(
+	        view_layer, &objects_len,
+	        .no_dupe_data = true);
+
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *obedit = objects[ob_index];
+		BMEditMesh *em = BKE_editmesh_from_object(obedit);
 		BMesh *bm = em->bm;
 		totelem_old[0] += bm->totvert;
 		totelem_old[1] += bm->totedge;
 		totelem_old[2] += bm->totface;
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
+	} /* objects */
 
 	const float thresh = RNA_float_get(op->ptr, "threshold");
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, ob_iter) {
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
+	
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+	Object *obedit = objects[ob_index];
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
 	BMesh *bm = em->bm;
 
 	if (!EDBM_op_callf(
@@ -4570,7 +4615,7 @@ static int edbm_dissolve_degenerate_exec(bContext *C, wmOperator *op)
 	totelem_new[2] += bm->totface;
 
 	// no indent
-	} FOREACH_OBJECT_IN_MODE_END;
+	} /* objects */
 
 	edbm_report_delete_info(op->reports, totelem_old, totelem_new);
 
