@@ -1181,9 +1181,6 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 			BM_ITER_MESH (ele, &iter, bm, BM_VERTS_OF_MESH) {
 				BM_elem_index_set(ele, index++); /* set_ok */
 			}
-			if (elem_offset) {
-				elem_offset[0] = index;
-			}
 			BLI_assert(elem_offset || index == bm->totvert);
 		}
 		else {
@@ -1199,9 +1196,6 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 			int index = elem_offset ? elem_offset[1] : 0;
 			BM_ITER_MESH (ele, &iter, bm, BM_EDGES_OF_MESH) {
 				BM_elem_index_set(ele, index++); /* set_ok */
-			}
-			if (elem_offset) {
-				elem_offset[1] = index;
 			}
 			BLI_assert(elem_offset || index == bm->totedge);
 		}
@@ -1236,11 +1230,6 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 				}
 			}
 
-			if (elem_offset) {
-				elem_offset[2] = index_loop;
-				elem_offset[3] = index;
-			}
-
 			BLI_assert(elem_offset || !update_face || index == bm->totface);
 			if (update_loop) {
 				BLI_assert(elem_offset || !update_loop || index_loop == bm->totloop);
@@ -1255,21 +1244,25 @@ finally:
 	bm->elem_index_dirty &= ~htype;
 	if (elem_offset) {
 		if (htype & BM_VERT) {
+			elem_offset[0] += bm->totvert;
 			if (elem_offset[0] != bm->totvert) {
 				bm->elem_index_dirty |= BM_VERT;
 			}
 		}
 		if (htype & BM_EDGE) {
+			elem_offset[1] += bm->totedge;
 			if (elem_offset[1] != bm->totedge) {
 				bm->elem_index_dirty |= BM_EDGE;
 			}
 		}
 		if (htype & BM_LOOP) {
+			elem_offset[2] += bm->totloop;
 			if (elem_offset[2] != bm->totloop) {
 				bm->elem_index_dirty |= BM_LOOP;
 			}
 		}
 		if (htype & BM_FACE) {
+			elem_offset[3] += bm->totface;
 			if (elem_offset[3] != bm->totface) {
 				bm->elem_index_dirty |= BM_FACE;
 			}
