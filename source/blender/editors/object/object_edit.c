@@ -443,7 +443,7 @@ void ED_object_editmode_enter(bContext *C, int flag)
 	if (ob == NULL) return;
 	if (ID_IS_LINKED(ob)) return;
 
-	ED_object_editmode_enter_ex(workspace, scene, ob, flag);
+	ED_object_editmode_enter_ex(workspace, scene, ob, flag & ~EM_DO_UNDO);
 	if (flag & EM_DO_UNDO) ED_undo_push(C, "Enter Editmode");
 }
 
