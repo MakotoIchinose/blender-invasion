@@ -34,7 +34,6 @@
 #include "BLT_translation.h"
 
 #include "BKE_collection.h"
-#include "BKE_editmesh.h"
 #include "BKE_freestyle.h"
 #include "BKE_global.h"
 #include "BKE_group.h"
@@ -51,7 +50,6 @@
 #include "DNA_ID.h"
 #include "DNA_layer_types.h"
 #include "DNA_object_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
@@ -2409,76 +2407,6 @@ void BKE_layer_eval_layer_collection_post(const struct EvaluationContext *UNUSED
 			base->flag &= ~BASE_SELECTED;
 		}
 	}
-}
-
-
-Base **BKE_view_layer_array_from_bases_in_mode_params(
-        ViewLayer *view_layer, uint *r_len,
-        const struct ObjectsInModeParams *params)
-{
-	if (params->no_dupe_data) {
-		FOREACH_BASE_IN_MODE_BEGIN(view_layer, params->object_mode, base_iter) {
-			ID *id = base_iter->object->data;
-			if (id) {
-				id->tag |= LIB_TAG_DOIT;
-			}
-		} FOREACH_BASE_IN_MODE_END;
-	}
-
-	Base **base_array = NULL;
-	BLI_array_declare(base_array);
-
-	FOREACH_BASE_IN_MODE_BEGIN(view_layer, params->object_mode, base_iter) {
-		if (params->filter_fn) {
-			if (!params->filter_fn(base_iter->object, params->filter_userdata)) {
-				continue;
-			}
-		}
-		if (params->no_dupe_data) {
-			ID *id = base_iter->object->data;
-			if (id) {
-				if (id->tag & LIB_TAG_DOIT) {
-					id->tag &= ~LIB_TAG_DOIT;
-				}
-				else {
-					continue;
-				}
-			}
-		}
-		BLI_array_append(base_array, base_iter);
-	} FOREACH_BASE_IN_MODE_END;
-
-	if (base_array != NULL) {
-		base_array = MEM_reallocN(base_array, sizeof(*base_array) * BLI_array_count(base_array));
-	}
-	*r_len = BLI_array_count(base_array);
-	return base_array;
-}
-
-Object **BKE_view_layer_array_from_objects_in_mode_params(
-        ViewLayer *view_layer, uint *r_len,
-        const struct ObjectsInModeParams *params)
-{
-	Base **base_array = BKE_view_layer_array_from_bases_in_mode_params(
-	        view_layer, r_len, params);
-	if (base_array != NULL) {
-		for (uint i = 0; i < *r_len; i++) {
-			((Object **)base_array)[i] = base_array[i]->object;
-		}
-	}
-	return (Object **)base_array;
-}
-
-bool BKE_view_layer_filter_edit_mesh_has_uvs(Object *ob, void *UNUSED(user_data))
-{
-	if (ob->type == OB_MESH) {
-		Mesh *me = ob->data;
-		BMEditMesh *em = me->edit_btmesh;
-		if (em != NULL) {
-			return CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV) != -1;
-		}
-	}
-	return false;
 }
 
 /**

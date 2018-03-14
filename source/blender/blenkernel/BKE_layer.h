@@ -346,17 +346,15 @@ struct ObjectsRenderableIteratorData {
 	ITER_END;                                                                 \
 } ((void)0)
 
-/* Array utilities. */
 
-typedef bool (*ObjectsFilterFn)(
-        struct Object *ob, void *user_data);
+/* layer_utils.c */
 
 struct ObjectsInModeParams {
 	int object_mode;
 	uint no_dupe_data : 1;
 
-	ObjectsFilterFn  filter_fn;
-	void            *filter_userdata;
+	bool (*filter_fn)(struct Object *ob, void *user_data);
+	void  *filter_userdata;
 };
 
 Base **BKE_view_layer_array_from_bases_in_mode_params(
