@@ -101,6 +101,7 @@ public:
 private:
 	friend class ArmatureExporter;
 	void exportHierarchy(Scene *sce);
+	void writeNodeList(std::vector<Object *> &child_objects, Object *parent, Scene *sce);
 	void writeNodes(Object *ob, Scene *sce);
 	
 	ArmatureExporter *arm_exporter;
