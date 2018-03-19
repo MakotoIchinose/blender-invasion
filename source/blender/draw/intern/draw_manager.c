@@ -297,7 +297,12 @@ void DRW_engine_viewport_data_size_get(
 
 const float *DRW_viewport_size_get(void)
 {
-	return &DST.size[0];
+	return DST.size;
+}
+
+const float *DRW_viewport_invert_size_get(void)
+{
+	return DST.inv_size;
 }
 
 const float *DRW_viewport_screenvecs_get(void)
@@ -364,6 +369,8 @@ static void drw_viewport_var_init(void)
 		GPU_viewport_size_get(DST.viewport, size);
 		DST.size[0] = size[0];
 		DST.size[1] = size[1];
+		DST.inv_size[0] = 1.0f / size[0];
+		DST.inv_size[1] = 1.0f / size[1];
 
 		DefaultFramebufferList *fbl = (DefaultFramebufferList *)GPU_viewport_framebuffer_list_get(DST.viewport);
 		DST.default_framebuffer = fbl->default_fb;
@@ -392,6 +399,9 @@ static void drw_viewport_var_init(void)
 	else {
 		DST.size[0] = 0;
 		DST.size[1] = 0;
+
+		DST.inv_size[0] = 0;
+		DST.inv_size[1] = 0;
 
 		DST.default_framebuffer = NULL;
 		DST.vmempool = NULL;
@@ -436,13 +446,13 @@ static void drw_viewport_var_init(void)
 		DST.RST.bound_texs = MEM_callocN(sizeof(GPUTexture *) * GPU_max_textures(), "Bound GPUTexture refs");
 	}
 	if (DST.RST.bound_tex_slots == NULL) {
-		DST.RST.bound_tex_slots = MEM_callocN(sizeof(bool) * GPU_max_textures(), "Bound Texture Slots");
+		DST.RST.bound_tex_slots = MEM_callocN(sizeof(char) * GPU_max_textures(), "Bound Texture Slots");
 	}
 	if (DST.RST.bound_ubos == NULL) {
 		DST.RST.bound_ubos = MEM_callocN(sizeof(GPUUniformBuffer *) * GPU_max_ubo_binds(), "Bound GPUUniformBuffer refs");
 	}
 	if (DST.RST.bound_ubo_slots == NULL) {
-		DST.RST.bound_ubo_slots = MEM_callocN(sizeof(bool) * GPU_max_textures(), "Bound Ubo Slots");
+		DST.RST.bound_ubo_slots = MEM_callocN(sizeof(char) * GPU_max_textures(), "Bound Ubo Slots");
 	}
 
 	if (view_ubo == NULL) {
@@ -1133,7 +1143,11 @@ void DRW_draw_render_loop_ex(
 		drw_engines_cache_finish();
 
 		DRW_render_instance_buffer_finish();
-		PROFILE_END_ACCUM(DST.cache_time, stime);
+
+#ifdef USE_PROFILE
+		double *cache_time = GPU_viewport_cache_time_get(DST.viewport);
+		PROFILE_END_UPDATE(*cache_time, stime);
+#endif
 	}
 
 	DRW_stats_begin();

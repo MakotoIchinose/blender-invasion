@@ -52,7 +52,7 @@
 #ifdef USE_PROFILE
 #  include "PIL_time.h"
 
-#  define PROFILE_TIMER_FALLOFF 0.1
+#  define PROFILE_TIMER_FALLOFF 0.04
 
 #  define PROFILE_START(time_start) \
 	double time_start = PIL_check_seconds_timer();
@@ -159,8 +159,10 @@ typedef enum {
 	DRW_UNIFORM_INT,
 	DRW_UNIFORM_FLOAT,
 	DRW_UNIFORM_TEXTURE,
+	DRW_UNIFORM_TEXTURE_PERSIST,
 	DRW_UNIFORM_BUFFER,
-	DRW_UNIFORM_BLOCK
+	DRW_UNIFORM_BLOCK,
+	DRW_UNIFORM_BLOCK_PERSIST
 } DRWUniformType;
 
 struct DRWUniform {
@@ -278,6 +280,7 @@ typedef struct DRWManager {
 	GPUViewport *viewport;
 	struct GPUFrameBuffer *default_framebuffer;
 	float size[2];
+	float inv_size[2];
 	float screenvecs[2][3];
 	float pixsize;
 
@@ -300,9 +303,6 @@ typedef struct DRWManager {
 	ListBase enabled_engines; /* RenderEngineType */
 
 	bool buffer_finish_called; /* Avoid bad usage of DRW_render_instance_buffer_finish */
-
-	/* Profiling */
-	double cache_time;
 
 	/* View dependant uniforms. */
 	DRWMatrixState original_mat; /* Original rv3d matrices. */
@@ -334,10 +334,10 @@ typedef struct DRWManager {
 	/** GPU Resource State: Memory storage between drawing. */
 	struct {
 		GPUTexture **bound_texs;
-		bool *bound_tex_slots;
+		char *bound_tex_slots;
 		int bind_tex_inc;
 		GPUUniformBuffer **bound_ubos;
-		bool *bound_ubo_slots;
+		char *bound_ubo_slots;
 		int bind_ubo_inc;
 	} RST;
 } DRWManager;
