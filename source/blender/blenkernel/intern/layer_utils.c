@@ -76,9 +76,9 @@ Base **BKE_view_layer_array_from_bases_in_mode_params(
 	} FOREACH_BASE_IN_MODE_END;
 
 	if (base_array != NULL) {
-		base_array = MEM_reallocN(base_array, sizeof(*base_array) * BLI_array_count(base_array));
+		base_array = MEM_reallocN(base_array, sizeof(*base_array) * BLI_array_len(base_array));
 	}
-	*r_len = BLI_array_count(base_array);
+	*r_len = BLI_array_len(base_array);
 	return base_array;
 }
 
