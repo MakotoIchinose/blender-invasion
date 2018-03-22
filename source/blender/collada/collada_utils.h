@@ -40,6 +40,7 @@
 extern "C" {
 #include "DNA_object_types.h"
 #include "DNA_anim_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_lamp_types.h"
 #include "DNA_camera_types.h"
@@ -77,33 +78,36 @@ std::vector<bAction *> bc_getSceneActions(Object *ob, bool all_actions);
 
 inline bAction *bc_getSceneObjectAction(Object *ob)
 {
-	return (ob->adt && ob->adt->action) ? ob->adt->action : NULL;
+	return (ob->adt && ob->adt->action) ? ob->adt->action : nullptr;
 }
 
+/* Returns Lamp Action or nullptr */
 inline bAction *bc_getSceneLampAction(Object *ob)
 {
 	if (ob->type != OB_LAMP)
-		return NULL;
+		return nullptr;
 
 	Lamp *lamp = (Lamp *)ob->data;
-	return (lamp->adt && lamp->adt->action) ? lamp->adt->action : NULL;
+	return (lamp->adt && lamp->adt->action) ? lamp->adt->action : nullptr;
 }
 
+/* Return Camera Action or nullptr */
 inline bAction *bc_getSceneCameraAction(Object *ob)
 {
 	if (ob->type != OB_CAMERA)
-		return NULL;
+		return nullptr;
 
 	Camera *camera = (Camera *)ob->data;
-	return (camera->adt && camera->adt->action) ? camera->adt->action : NULL;
+	return (camera->adt && camera->adt->action) ? camera->adt->action : nullptr;
 }
 
+/* returns material action or nullptr */
 inline bAction *bc_getSceneMaterialAction(Material *ma)
 {
-	if (ma == NULL)
-		return NULL;
+	if (ma == nullptr)
+		return nullptr;
 
-	return (ma->adt && ma->adt->action) ? ma->adt->action : NULL;
+	return (ma->adt && ma->adt->action) ? ma->adt->action : nullptr;
 }
 
 inline void bc_setSceneObjectAction(bAction *action, Object *ob)
@@ -116,6 +120,10 @@ std::string bc_get_action_id(std::string action_name, std::string ob_name, std::
 
 extern float bc_get_float_value(const COLLADAFW::FloatOrDoubleArray& array, unsigned int index);
 extern int bc_test_parent_loop(Object *par, Object *ob);
+
+extern void bc_get_children(std::vector<Object *> &child_set, Object *ob, Scene *scene);
+extern bool bc_validateConstraints(bConstraint *con);
+
 extern int bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space = true);
 extern Object *bc_add_object(Scene *scene, int type, const char *name);
 extern Mesh *bc_get_mesh_copy(Scene *scene, Object *ob, BC_export_mesh_type export_mesh_type, bool apply_modifiers, bool triangulate);
@@ -123,7 +131,7 @@ extern Mesh *bc_get_mesh_copy(Scene *scene, Object *ob, BC_export_mesh_type expo
 extern Object *bc_get_assigned_armature(Object *ob);
 extern Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob);
 extern bool bc_is_base_node(LinkNode *export_set, Object *ob);
-extern bool bc_is_in_Export_set(LinkNode *export_set, Object *ob);
+extern bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, Scene *sce);
 extern bool bc_has_object_type(LinkNode *export_set, short obtype);
 
 extern int bc_is_marked(Object *ob);
@@ -137,7 +145,9 @@ extern void bc_bubble_sort_by_Object_name(LinkNode *export_set);
 extern bool bc_is_root_bone(Bone *aBone, bool deform_bones_only);
 extern int  bc_get_active_UVLayer(Object *ob);
 
-inline std::string bc_string_after(const std::string& s, const char c) {
+std::string bc_find_bonename_in_path(std::string path, std::string probe);
+
+inline std::string bc_string_after(const std::string& s, const char c){
 
 	size_t i = s.rfind(c, s.length());
 	if (i != std::string::npos) {

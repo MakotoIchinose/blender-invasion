@@ -38,6 +38,7 @@ extern "C" {
 #include "DNA_modifier_types.h"
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_armature_types.h"
@@ -47,6 +48,7 @@ extern "C" {
 
 #include "BKE_context.h"
 #include "BKE_customdata.h"
+#include "BKE_constraint.h"
 #include "BKE_depsgraph.h"
 #include "BKE_object.h"
 #include "BKE_global.h"
@@ -57,6 +59,8 @@ extern "C" {
 
 #include "ED_armature.h"
 #include "ED_screen.h"
+
+#include "MEM_guardedalloc.h"
 
 #include "WM_api.h" // XXX hrm, see if we can do without this
 #include "WM_types.h"
@@ -107,6 +111,29 @@ void bc_get_children(std::vector<Object *> &child_set, Object *ob, Scene *scene)
 		}
 	}
 }
+
+bool bc_validateConstraints(bConstraint *con)
+{
+	const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
+
+	/* these we can skip completely (invalid constraints...) */
+	if (cti == NULL)
+		return false;
+	if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF))
+		return false;
+
+	/* these constraints can't be evaluated anyway */
+	if (cti->evaluate_constraint == NULL)
+		return false;
+
+	/* influence == 0 should be ignored */
+	if (con->enforce == 0.0f)
+		return false;
+
+	/* validation passed */
+	return true;
+}
+
 
 // a shortened version of parent_set_exec()
 // if is_parent_space is true then ob->obmat will be multiplied by par->obmat before parenting
@@ -277,11 +304,12 @@ Object *bc_get_assigned_armature(Object *ob)
 	return ob_arm;
 }
 
-// Returns the highest selected ancestor
-// returns NULL if no ancestor is selected
-// IMPORTANT: This function expects that
-// all exported objects have set:
-// ob->id.tag & LIB_TAG_DOIT
+/*
+ * Returns the highest selected ancestor
+ * returns NULL if no ancestor is selected
+ * IMPORTANT: This function expects that all exported objects have set:
+ * ob->id.tag & LIB_TAG_DOIT
+ */
 Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob) 
 {
 	Object *ancestor = ob;
@@ -292,16 +320,31 @@ Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *o
 	return ancestor;
 }
 
-
 bool bc_is_base_node(LinkNode *export_set, Object *ob)
 {
 	Object *root = bc_get_highest_selected_ancestor_or_self(export_set, ob);
 	return (root == ob);
 }
 
-bool bc_is_in_Export_set(LinkNode *export_set, Object *ob)
+bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, Scene *sce)
 {
-	return (BLI_linklist_index(export_set, ob) != -1);
+	bool to_export = (BLI_linklist_index(export_set, ob) != -1);
+
+	if (!to_export)
+	{
+		/* Mark this object as to_export even if it is not in the 
+		export list, but it contains children to export */
+
+		std::vector<Object *> children;
+		bc_get_children(children, ob, sce);
+		for (int i = 0; i < children.size(); i++) {
+			if (bc_is_in_Export_set(export_set, children[i], sce)) {
+				to_export = true;
+				break;
+			}
+		}
+	}
+	return to_export;
 }
 
 bool bc_has_object_type(LinkNode *export_set, short obtype)
@@ -1026,6 +1069,17 @@ std::string bc_get_uvlayer_name(Mesh *me, int layer)
 		}
 	}
 	return "";
+}
+
+std::string bc_find_bonename_in_path(std::string path, std::string probe)
+{
+	std::string result;
+	char *boneName = BLI_str_quoted_substrN(path.c_str(), probe.c_str());
+	if (boneName) {
+		result = std::string(boneName);
+		MEM_freeN(boneName);
+	}
+	return result;
 }
 
 /**********************************************************************

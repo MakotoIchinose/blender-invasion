@@ -61,7 +61,7 @@ public:
 
 	// write bone nodes
 	void add_armature_bones(Object *ob_arm, Scene *sce, SceneExporter *se,
-	                        std::list<Object *>& child_objects);
+	                        std::vector<Object *>& child_objects);
 
 	bool add_instance_controller(Object *ob);
 
@@ -86,7 +86,7 @@ private:
 	// Scene, SceneExporter and the list of child_objects
 	// are required for writing bone parented objects
 	void add_bone_node(Bone *bone, Object *ob_arm, Scene *sce, SceneExporter *se,
-	                   std::list<Object *>& child_objects);
+	                   std::vector<Object *>& child_objects);
 
 	void add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW::Node& node);
 

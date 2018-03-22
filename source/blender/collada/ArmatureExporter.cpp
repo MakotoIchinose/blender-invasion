@@ -64,7 +64,7 @@ ArmatureExporter::ArmatureExporter(COLLADASW::StreamWriter *sw, const ExportSett
 // write bone nodes
 void ArmatureExporter::add_armature_bones(Object *ob_arm, Scene *sce,
                                           SceneExporter *se,
-                                          std::list<Object *>& child_objects)
+                                          std::vector<Object *>& child_objects)
 {
 	// write bone nodes
 
@@ -164,7 +164,7 @@ void ArmatureExporter::find_objects_using_armature(Object *ob_arm, std::vector<O
 // parent_mat is armature-space
 void ArmatureExporter::add_bone_node(Bone *bone, Object *ob_arm, Scene *sce,
                                      SceneExporter *se,
-                                     std::list<Object *>& child_objects)
+                                     std::vector<Object *>& child_objects)
 {
 	if (!(this->export_settings->deform_bones_only && bone->flag & BONE_NO_DEFORM)) {
 		std::string node_id = translate_id(id_name(ob_arm) + "_" + bone->name);
@@ -207,7 +207,7 @@ void ArmatureExporter::add_bone_node(Bone *bone, Object *ob_arm, Scene *sce,
 			add_bone_transform(ob_arm, bone, node);
 
 			// Write nodes of childobjects, remove written objects from list
-			std::list<Object *>::iterator i = child_objects.begin();
+			std::vector<Object *>::iterator i = child_objects.begin();
 
 			while (i != child_objects.end()) {
 				if ((*i)->partype == PARBONE && STREQ((*i)->parsubstr, bone->name)) {
