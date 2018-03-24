@@ -108,7 +108,6 @@ public:
 
 	// Main entry point into Animation export (called for each exported object)
 	void exportObjectAnimation(Object *ob, BCAnimationSampler &sampler);
-	bool exportObjectDataAnimation(Object *ob, BCAnimationSampler &sampler, bool has_container);
 
 protected:
 
