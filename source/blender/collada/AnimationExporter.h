@@ -218,6 +218,7 @@ protected:
 	}
 
 	std::string get_subchannel(std::string channel, int id);
+	const std::string get_sid(const BCAnimationCurve &curve, const std::string axis_name) const;
 
 };
 
