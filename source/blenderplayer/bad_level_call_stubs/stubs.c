@@ -482,7 +482,7 @@ void ED_fsmenu_entry_set_path(struct FSMenuEntry *fsentry, const char *name) RET
 char *ED_fsmenu_entry_get_name(struct FSMenuEntry *fsentry) RET_NULL
 void ED_fsmenu_entry_set_name(struct FSMenuEntry *fsentry, const char *name) RET_NONE
 
-struct PTCacheEdit *PE_get_current(struct Scene *scene, struct ViewLayer *view_layer, struct Object *ob) RET_NULL
+struct PTCacheEdit *PE_get_current(struct Scene *scene, struct Object *ob) RET_NULL
 void PE_current_changed(const struct EvaluationContext *eval_ctx, struct Scene *scene, struct Object *ob) RET_NONE
 
 /* rna keymap */
@@ -631,12 +631,8 @@ bool ED_transform_snap_object_project_ray_ex(
         struct Object **r_ob, float r_obmat[4][4]) RET_ZERO
 void BIF_selectTransformOrientationValue(struct View3D *v3d, int orientation) RET_NONE
 
-void ED_lattice_editlatt_make(struct Object *obedit) RET_NONE
-void ED_lattice_editlatt_load(struct Object *obedit) RET_NONE
-
 void ED_curve_editnurb_load(struct Object *obedit) RET_NONE
 void ED_curve_editnurb_make(struct Object *obedit) RET_NONE
-
 
 void uiItemR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int flag, const char *name, int icon) RET_NONE
 
@@ -680,6 +676,8 @@ void UI_GetThemeColorBlendShade3fv(int colorid1, int colorid2, float fac, int of
 void UI_GetThemeColorBlendShade4fv(int colorid1, int colorid2, float fac, int offset, float col[4]) RET_NONE
 void UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, unsigned char col[3]) RET_NONE
 void UI_GetThemeColorShadeAlpha4ubv(int colorid, int coloffset, int alphaoffset, unsigned char col[4]) RET_NONE
+void UI_widget_batch_preset_reset(void) RET_NONE
+void UI_widget_batch_preset_exit(void) RET_NONE
 
 /* rna template */
 void uiTemplateAnyID(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *proptypename, const char *text) RET_NONE

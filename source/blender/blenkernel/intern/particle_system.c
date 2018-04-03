@@ -76,7 +76,6 @@
 #include "BKE_effect.h"
 #include "BKE_library_query.h"
 #include "BKE_particle.h"
-#include "BKE_global.h"
 
 #include "BKE_collection.h"
 #include "BKE_DerivedMesh.h"
@@ -4417,24 +4416,16 @@ void BKE_particlesystem_id_loop(ParticleSystem *psys, ParticleSystemIDFunc func,
 
 /* **** Depsgraph evaluation **** */
 
-void BKE_particle_system_settings_eval(const struct EvaluationContext *UNUSED(eval_ctx),
-                                       ParticleSystem *psys)
-{
-	DEG_debug_print_eval(__func__, psys->name, psys);
-	psys->recalc |= psys->part->recalc;
-}
-
-void BKE_particle_system_settings_recalc_clear(struct EvaluationContext *UNUSED(eval_ctx),
-                                               ParticleSettings *particle_settings)
-{
-	DEG_debug_print_eval(__func__, particle_settings->id.name, particle_settings);
-	particle_settings->recalc = 0;
-}
-
 void BKE_particle_system_eval_init(const struct EvaluationContext *UNUSED(eval_ctx),
                                    Scene *scene,
                                    Object *ob)
 {
 	DEG_debug_print_eval(__func__, ob->id.name, ob);
+	for (ParticleSystem *psys = ob->particlesystem.first;
+	     psys != NULL;
+	     psys = psys->next)
+	{
+		psys->recalc |= (psys->part->id.recalc & DEG_TAG_PSYS_ALL);
+	}
 	BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_DEPSGRAPH);
 }

@@ -2626,8 +2626,7 @@ static int image_invert_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 
 	if (support_undo) {
-		ED_undo_paint_push_begin(UNDO_PAINT_IMAGE, op->type->name,
-		                         ED_image_undo_restore, ED_image_undo_free, NULL);
+		ED_image_undo_push_begin(op->type->name);
 		/* not strictly needed, because we only imapaint_dirty_region to invalidate all tiles
 		 * but better do this right in case someone copies this for a tool that uses partial redraw better */
 		ED_imapaint_clear_partial_redraw();
@@ -2668,8 +2667,9 @@ static int image_invert_exec(bContext *C, wmOperator *op)
 	if (ibuf->mipmap[0])
 		ibuf->userflags |= IB_MIPMAP_INVALID;
 
-	if (support_undo)
-		ED_undo_paint_push_end(UNDO_PAINT_IMAGE);
+	if (support_undo) {
+		ED_image_undo_push_end();
+	}
 
 	/* force GPU reupload, all image is invalid */
 	GPU_free_image(ima);
