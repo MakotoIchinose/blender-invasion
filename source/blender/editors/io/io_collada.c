@@ -596,8 +596,7 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
 	import_settings.min_chain_length = min_chain_length;
 	import_settings.keep_bind_info = keep_bind_info != 0;
 
-	if (collada_import(C, &import_settings) )
-	{
+	if (collada_import(C, &import_settings)) {
 		return OPERATOR_FINISHED;
 	}
 	else {
