@@ -441,7 +441,6 @@ static void edit_mesh_add_ob_to_pass(
 	}
 }
 
-
 static void EDIT_MESH_cache_populate(void *vedata, Object *ob)
 {
 	EDIT_MESH_StorageList *stl = ((EDIT_MESH_Data *)vedata)->stl;

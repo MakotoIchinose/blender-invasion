@@ -173,9 +173,9 @@ void BKE_object_handle_data_update(
 		case OB_MESH:
 		{
 #if 0
-			BMEditMesh *em = (eval_ctx->object_mode & OB_MODE_EDIT) ? BKE_editmesh_from_object(ob) : NULL;
+			BMEditMesh *em = (ob->mode & OB_MODE_EDIT) ? BKE_editmesh_from_object(ob) : NULL;
 #else
-			BMEditMesh *em = (eval_ctx->object_mode & OB_MODE_EDIT) ? ((Mesh *)ob->data)->edit_btmesh : NULL;
+			BMEditMesh *em = (ob->mode & OB_MODE_EDIT) ? ((Mesh *)ob->data)->edit_btmesh : NULL;
 			if (em && em->ob != ob) {
 				em = NULL;
 			}
@@ -230,7 +230,7 @@ void BKE_object_handle_data_update(
 	}
 
 	/* particles */
-	if ((ob != OBEDIT_FROM_EVAL_CTX(eval_ctx)) && ob->particlesystem.first) {
+	if ((ob != OBEDIT_FROM_VIEW_LAYER(eval_ctx->view_layer)) && ob->particlesystem.first) {
 		ParticleSystem *tpsys, *psys;
 		DerivedMesh *dm;
 		ob->transflag &= ~OB_DUPLIPARTS;

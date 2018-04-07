@@ -1703,10 +1703,9 @@ static KeyingSet *rna_Scene_keying_set_new(Scene *sce, ReportList *reports, cons
 
 static void rna_UnifiedPaintSettings_update(bContext *C, PointerRNA *UNUSED(ptr))
 {
-	const WorkSpace *workspace = CTX_wm_workspace(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	Brush *br = BKE_paint_brush(BKE_paint_get_active(scene, view_layer, workspace->object_mode));
+	Brush *br = BKE_paint_brush(BKE_paint_get_active(scene, view_layer));
 	WM_main_add_notifier(NC_BRUSH | NA_EDITED, br);
 }
 
@@ -6137,7 +6136,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "use_stamp_date", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_DATE);
-	RNA_def_property_ui_text(prop, "Stamp Date", "Include the current date in image metadata");
+	RNA_def_property_ui_text(prop, "Stamp Date", "Include the current date in image/video metadata");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 	
 	prop = RNA_def_property(srna, "use_stamp_frame", PROP_BOOLEAN, PROP_NONE);
@@ -6145,6 +6144,11 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Stamp Frame", "Include the frame number in image metadata");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 	
+	prop = RNA_def_property(srna, "use_stamp_frame_range", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_FRAME_RANGE);
+	RNA_def_property_ui_text(prop, "Stamp Frame", "Include the rendered frame range in image/video metadata");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
 	prop = RNA_def_property(srna, "use_stamp_camera", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_CAMERA);
 	RNA_def_property_ui_text(prop, "Stamp Camera", "Include the name of the active camera in image metadata");
@@ -6157,12 +6161,12 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "use_stamp_scene", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_SCENE);
-	RNA_def_property_ui_text(prop, "Stamp Scene", "Include the name of the active scene in image metadata");
+	RNA_def_property_ui_text(prop, "Stamp Scene", "Include the name of the active scene in image/video metadata");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 	
 	prop = RNA_def_property(srna, "use_stamp_note", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_NOTE);
-	RNA_def_property_ui_text(prop, "Stamp Note", "Include a custom note in image metadata");
+	RNA_def_property_ui_text(prop, "Stamp Note", "Include a custom note in image/video metadata");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 	
 	prop = RNA_def_property(srna, "use_stamp_marker", PROP_BOOLEAN, PROP_NONE);
@@ -6172,7 +6176,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "use_stamp_filename", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_FILENAME);
-	RNA_def_property_ui_text(prop, "Stamp Filename", "Include the .blend filename in image metadata");
+	RNA_def_property_ui_text(prop, "Stamp Filename", "Include the .blend filename in image/video metadata");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 	
 	prop = RNA_def_property(srna, "use_stamp_sequencer_strip", PROP_BOOLEAN, PROP_NONE);
@@ -6956,7 +6960,6 @@ void RNA_def_scene(BlenderRNA *brna)
 
 	/* Statistics */
 	func = RNA_def_function(srna, "statistics", "ED_info_stats_string");
-	parm = RNA_def_pointer(func, "workspace", "WorkSpace", "", "Active workspace");
 	parm = RNA_def_pointer(func, "view_layer", "ViewLayer", "", "Active layer");
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 	parm = RNA_def_string(func, "statistics", NULL, 0, "Statistics", "");

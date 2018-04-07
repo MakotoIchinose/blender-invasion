@@ -296,7 +296,7 @@ bool EDBM_backbuf_border_mask_init(const struct EvaluationContext *eval_ctx, Vie
 
 	/* method in use for face selecting too */
 	if (vc->obedit == NULL) {
-		if (!BKE_paint_select_elem_test(vc->obact, eval_ctx->object_mode)) {
+		if (!BKE_paint_select_elem_test(vc->obact)) {
 			return false;
 		}
 	}
@@ -348,7 +348,7 @@ bool EDBM_backbuf_circle_init(
 
 	/* method in use for face selecting too */
 	if (vc->obedit == NULL) {
-		if (!BKE_paint_select_elem_test(vc->obact, eval_ctx->object_mode)) {
+		if (!BKE_paint_select_elem_test(vc->obact)) {
 			return false;
 		}
 	}
@@ -2077,7 +2077,7 @@ bool EDBM_select_pick(bContext *C, const int mval[2], bool extend, bool deselect
 				const int cd_fmap_offset = CustomData_get_offset(&vc.em->bm->pdata, CD_FACEMAP);
 				if (cd_fmap_offset != -1) {
 					int map = *((int *)BM_ELEM_CD_GET_VOID_P(efa, cd_fmap_offset));
-					if ((map < -1) || (map > BLI_listbase_count_ex(&vc.obedit->fmaps, map))) {
+					if ((map < -1) || (map > BLI_listbase_count_at_most(&vc.obedit->fmaps, map))) {
 						map = -1;
 					}
 					map += 1;
