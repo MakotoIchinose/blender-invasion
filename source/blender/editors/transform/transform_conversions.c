@@ -2461,16 +2461,13 @@ static void createTransEditVerts(TransInfo *t)
 {
 	TransData *tob = NULL;
 	TransDataExtension *tx = NULL;
-	const Mesh *me = t->obedit->data;
+	BMEditMesh *em = BKE_editmesh_from_object(t->obedit);
+	Mesh *me = t->obedit->data;
+	BMesh *bm = em->bm;
 	BMVert *eve;
 	BMIter iter;
-#if 0
 	float (*mappedcos)[3] = NULL, (*quats)[4] = NULL;
-#endif
-	float mtx[3][3], smtx[3][3];
-#if 0
-	float (*defmats)[3][3] = NULL, (*defcos)[3] = NULL;
-#endif
+	float mtx[3][3], smtx[3][3], (*defmats)[3][3] = NULL, (*defcos)[3] = NULL;
 	float *dists = NULL;
 	int a;
 	const int prop_mode = (t->flag & T_PROP_EDIT) ? (t->flag & T_PROP_EDIT_ALL) : 0;
@@ -2478,11 +2475,9 @@ static void createTransEditVerts(TransInfo *t)
 	int cd_vert_bweight_offset = -1;
 	bool use_topology = (me->editflag & ME_EDIT_MIRROR_TOPO) != 0;
 
-#if 0
 	struct TransIslandData *island_info = NULL;
 	int island_info_tot;
 	int *island_vert_map = NULL;
-#endif
 
 	/* Even for translation this is needed because of island-orientation, see: T51651. */
 	const bool is_island_center = (t->around == V3D_AROUND_LOCAL_ORIGINS);
@@ -2491,19 +2486,9 @@ static void createTransEditVerts(TransInfo *t)
 	int *dists_index = NULL;
 
 	if (t->flag & T_MIRROR) {
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			EDBM_verts_mirror_cache_begin(em, 0, false, (t->flag & T_PROP_EDIT) == 0, use_topology);
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
+		EDBM_verts_mirror_cache_begin(em, 0, false, (t->flag & T_PROP_EDIT) == 0, use_topology);
 		mirror = 1;
 	}
-
-#if 0
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-		BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-		BMesh *bm = em->bm;
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
-#endif
 
 	/**
 	 * Quick check if we can transform.
@@ -2511,57 +2496,35 @@ static void createTransEditVerts(TransInfo *t)
 	 * \note ignore modes here, even in edge/face modes, transform data is created by selected vertices.
 	 * \note in prop mode we need at least 1 selected.
 	 */
-
-	int totvertsel_multi = 0;
-	int select_mode = -1;
-	{
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			if (select_mode == -1) {
-				select_mode = em->selectmode;
-			}
-			totvertsel_multi += em->bm->totvertsel;
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
-
-		if (totvertsel_multi == 0) {
-			goto cleanup;
-		}
+	if (bm->totvertsel == 0) {
+		goto cleanup;
 	}
 
 	if (t->mode == TFM_BWEIGHT) {
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			BMesh *bm = em->bm;
-			BM_mesh_cd_flag_ensure(bm, BKE_mesh_from_object(ob_iter), ME_CDFLAG_VERT_BWEIGHT);
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
+		BM_mesh_cd_flag_ensure(bm, BKE_mesh_from_object(t->obedit), ME_CDFLAG_VERT_BWEIGHT);
+		cd_vert_bweight_offset = CustomData_get_offset(&bm->vdata, CD_BWEIGHT);
 	}
 
 	if (prop_mode) {
 		unsigned int count = 0;
-		unsigned int count_total = 0;
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			BMesh *bm = em->bm;
-			BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-				if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
-					count++;
-				}
+		BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
+			if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
+				count++;
 			}
-			count_total += bm->totvert;
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
+		}
 
 		t->total = count;
 
 		/* allocating scratch arrays */
 		if (prop_mode & T_PROP_CONNECTED) {
-			dists = MEM_mallocN(count_total * sizeof(float), __func__);
+			dists = MEM_mallocN(em->bm->totvert * sizeof(float), __func__);
 			if (is_island_center) {
-				dists_index =  MEM_mallocN(count_total * sizeof(int), __func__);
+				dists_index =  MEM_mallocN(em->bm->totvert * sizeof(int), __func__);
 			}
 		}
 	}
 	else {
-		t->total = totvertsel_multi;
+		t->total = bm->totvertsel;
 	}
 
 	tob = t->data = MEM_callocN(t->total * sizeof(TransData), "TransObData(Mesh EditMode)");
@@ -2580,21 +2543,15 @@ static void createTransEditVerts(TransInfo *t)
 	pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
 	if (prop_mode & T_PROP_CONNECTED) {
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			editmesh_set_connectivity_distance(em->bm, mtx, dists, dists_index);
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
+		editmesh_set_connectivity_distance(em->bm, mtx, dists, dists_index);
 	}
 
-	/* TODO */
-	(void)editmesh_islands_info_calc;
-# if 0
 	if (is_island_center) {
 		/* In this specific case, near-by vertices will need to know the island of the nearest connected vertex. */
 		const bool calc_single_islands = (
 		        (prop_mode & T_PROP_CONNECTED) &&
 		        (t->around == V3D_AROUND_LOCAL_ORIGINS) &&
-		        (select_mode & SCE_SELECT_VERTEX));
+		        (em->selectmode & SCE_SELECT_VERTEX));
 
 		island_info = editmesh_islands_info_calc(em, &island_info_tot, &island_vert_map, calc_single_islands);
 	}
@@ -2629,15 +2586,9 @@ static void createTransEditVerts(TransInfo *t)
 			MEM_freeN(defcos);
 		}
 	}
-#endif /* XXX, TODO */
 
 	/* find out which half we do */
 	if (mirror) {
-
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			BMesh *bm = em->bm;
-	
 		BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
 			if (BM_elem_flag_test(eve, BM_ELEM_SELECT) && eve->co[0] != 0.0f) {
 				if (eve->co[0] < 0.0f) {
@@ -2647,14 +2598,7 @@ static void createTransEditVerts(TransInfo *t)
 				break;
 			}
 		}
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
 	}
-
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-		BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-		BMesh *bm = em->bm;
-
-	cd_vert_bweight_offset = CustomData_get_offset(&bm->vdata, CD_BWEIGHT);
 
 	BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, a) {
 		if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
@@ -2662,13 +2606,11 @@ static void createTransEditVerts(TransInfo *t)
 				struct TransIslandData *v_island = NULL;
 				float *bweight = (cd_vert_bweight_offset != -1) ? BM_ELEM_CD_GET_VOID_P(eve, cd_vert_bweight_offset) : NULL;
 
-#if 0
 				if (island_info) {
 					const int connected_index = (dists_index && dists_index[a] != -1) ? dists_index[a] : a;
 					v_island = (island_vert_map[connected_index] != -1) ?
 					           &island_info[island_vert_map[connected_index]] : NULL;
 				}
-#endif
 
 
 				VertsToTransData(t, tob, tx, em, eve, bweight, v_island);
@@ -2689,7 +2631,6 @@ static void createTransEditVerts(TransInfo *t)
 					}
 				}
 
-#if 0
 				/* CrazySpace */
 				if (defmats || (quats && BM_elem_flag_test(eve, BM_ELEM_TAG))) {
 					float mat[3][3], qmat[3][3], imat[3][3];
@@ -2711,9 +2652,7 @@ static void createTransEditVerts(TransInfo *t)
 					copy_m3_m3(tob->smtx, imat);
 					copy_m3_m3(tob->mtx, mat);
 				}
-				else
-#endif
-				{
+				else {
 					copy_m3_m3(tob->smtx, smtx);
 					copy_m3_m3(tob->mtx, mtx);
 				}
@@ -2729,16 +2668,11 @@ static void createTransEditVerts(TransInfo *t)
 			}
 		}
 	}
-
-	/* XXX, no indent, avoid diff noise */
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
-
-#if 0
+	
 	if (island_info) {
 		MEM_freeN(island_info);
 		MEM_freeN(island_vert_map);
 	}
-#endif
 
 	if (mirror != 0) {
 		tob = t->data;
@@ -2751,22 +2685,17 @@ static void createTransEditVerts(TransInfo *t)
 
 cleanup:
 	/* crazy space free */
-#if 0
 	if (quats)
 		MEM_freeN(quats);
 	if (defmats)
 		MEM_freeN(defmats);
-#endif
 	if (dists)
 		MEM_freeN(dists);
 	if (dists_index)
 		MEM_freeN(dists_index);
 
 	if (t->flag & T_MIRROR) {
-		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-			BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-			EDBM_verts_mirror_cache_end(em);
-		} FOREACH_OBJECT_IN_EDIT_MODE_END;
+		EDBM_verts_mirror_cache_end(em);
 	}
 }
 
@@ -3004,6 +2933,7 @@ static void createTransUVs(bContext *C, TransInfo *t)
 	ToolSettings *ts = CTX_data_tool_settings(C);
 	TransData *td = NULL;
 	TransData2D *td2d = NULL;
+	BMEditMesh *em = BKE_editmesh_from_object(t->obedit);
 	BMFace *efa;
 	BMIter iter, liter;
 	UvElementMap *elementmap = NULL;
@@ -3013,13 +2943,12 @@ static void createTransUVs(bContext *C, TransInfo *t)
 	const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
 	const bool is_prop_connected = (t->flag & T_PROP_CONNECTED) != 0;
 	const bool is_island_center = (t->around == V3D_AROUND_LOCAL_ORIGINS);
+	const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
 	if (!ED_space_image_show_uvedit(sima, t->obedit))
 		return;
 
 	/* count */
-	if (0) {
-	BMEditMesh *em = BKE_editmesh_from_object(t->obedit);
 	if (is_prop_connected || is_island_center) {
 		/* create element map with island information */
 		const bool use_facesel = (ts->uv_flag & UV_SYNC_SELECTION) == 0;
@@ -3035,14 +2964,6 @@ static void createTransUVs(bContext *C, TransInfo *t)
 		if (is_island_center) {
 			island_center = MEM_callocN(sizeof(*island_center) * elementmap->totalIslands, __func__);
 		}
-	}
-	}
-
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-	const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
-	if (cd_loop_uv_offset == -1) {
-		continue;
 	}
 
 	BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
@@ -3081,7 +3002,6 @@ static void createTransUVs(bContext *C, TransInfo *t)
 			}
 		}
 	}
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
 
 	/* note: in prop mode we need at least 1 selected */
 	if (countsel == 0) {
@@ -3108,13 +3028,6 @@ static void createTransUVs(bContext *C, TransInfo *t)
 
 	td = t->data;
 	td2d = t->data2d;
-
-	FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-	BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-	const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
-	if (cd_loop_uv_offset == -1) {
-		continue;
-	}
 
 	BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
 		BMLoop *l;
@@ -3150,8 +3063,6 @@ static void createTransUVs(bContext *C, TransInfo *t)
 			UVsToTransData(t->aspect, td++, td2d++, luv->uv, center, selected);
 		}
 	}
-
-	} FOREACH_OBJECT_IN_EDIT_MODE_END;
 
 	if (is_prop_connected) {
 		t->total -= count_rejected;
