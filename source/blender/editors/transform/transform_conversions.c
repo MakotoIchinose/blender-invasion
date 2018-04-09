@@ -8098,7 +8098,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 	 * For now, we just do these without creating TransData2D for the 2D
 	 * strokes. This may cause issues in future though.
 	 */
-	t->total = 0;
+	th->total = 0;
 	
 	if (gpd == NULL)
 		return;
@@ -8127,11 +8127,11 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 					if (is_prop_edit_connected) {
 						/* connected only - so only if selected */
 						if (gps->flag & GP_STROKE_SELECT)
-							t->total += gps->totpoints;
+							th->total += gps->totpoints;
 					}
 					else {
 						/* everything goes - connection status doesn't matter */
-						t->total += gps->totpoints;
+						th->total += gps->totpoints;
 					}
 				}
 				else {
@@ -8143,7 +8143,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 						// TODO: 2D vs 3D?
 						for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
 							if (pt->flag & GP_SPOINT_SELECT)
-								t->total++;
+								th->total++;
 						}
 					}
 				}				
@@ -8152,13 +8152,13 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 	}
 	
 	/* Stop trying if nothing selected */
-	if (t->total == 0) {
+	if (th->total == 0) {
 		return;
 	}
 	
 	/* Allocate memory for data */
-	t->data = MEM_callocN(t->total * sizeof(TransData), "TransData(GPencil)");
-	td = t->data;
+	th->data = MEM_callocN(th->total * sizeof(TransData), "TransData(GPencil)");
+	td = th->data;
 	
 	unit_m3(smtx);
 	unit_m3(mtx);
@@ -8339,10 +8339,13 @@ void createTransData(bContext *C, TransInfo *t)
 		createTransTexspace(t);
 	}
 	else if (t->options & CTX_EDGE) {
-		t->ext = NULL;
 		t->flag |= T_EDIT;
+		FOREACH_THAND (t, th) {
+			th->ext = NULL;
+		}
+
 		createTransEdge(t);
-		if (t->data && t->flag & T_PROP_EDIT) {
+		if (t->total_all_handle && t->flag & T_PROP_EDIT) {
 			sort_trans_data(t); // makes selected become first in array
 			set_prop_dist(t, 1);
 			sort_trans_data_dist(t);
@@ -8353,7 +8356,7 @@ void createTransData(bContext *C, TransInfo *t)
 		t->flag |= T_POINTS;
 		createTransGPencil(C, t);
 		
-		if (t->data && (t->flag & T_PROP_EDIT)) {
+		if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 			sort_trans_data(t); // makes selected become first in array
 			set_prop_dist(t, 1);
 			sort_trans_data_dist(t);
@@ -8365,7 +8368,7 @@ void createTransData(bContext *C, TransInfo *t)
 			/* copied from below */
 			createTransMaskingData(C, t);
 
-			if (t->data && (t->flag & T_PROP_EDIT)) {
+			if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 				sort_trans_data(t); // makes selected become first in array
 				set_prop_dist(t, true);
 				sort_trans_data_dist(t);
@@ -8375,9 +8378,9 @@ void createTransData(bContext *C, TransInfo *t)
 			if (!ELEM(t->mode, TFM_SHEAR, TFM_SHRINKFATTEN))
 				createTransPaintCurveVerts(C, t);
 		}
-		else if (t->obedit) {
+		else if (t->flag & T_EDIT) {
 			createTransUVs(C, t);
-			if (t->data && (t->flag & T_PROP_EDIT)) {
+			if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 				sort_trans_data(t); // makes selected become first in array
 				set_prop_dist(t, 1);
 				sort_trans_data_dist(t);
@@ -8388,7 +8391,7 @@ void createTransData(bContext *C, TransInfo *t)
 		t->flag |= T_POINTS | T_2D_EDIT;
 		createTransActionData(C, t);
 
-		if (t->data && (t->flag & T_PROP_EDIT)) {
+		if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 			sort_trans_data(t); // makes selected become first in array
 			//set_prop_dist(t, false); /* don't do that, distance has been set in createTransActionData already */
 			sort_trans_data_dist(t);
@@ -8407,7 +8410,7 @@ void createTransData(bContext *C, TransInfo *t)
 		t->flag |= T_POINTS | T_2D_EDIT;
 		createTransGraphEditData(C, t);
 
-		if (t->data && (t->flag & T_PROP_EDIT)) {
+		if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 			sort_trans_data(t); // makes selected become first in array
 			set_prop_dist(t, false); /* don't do that, distance has been set in createTransGraphEditData already */
 			sort_trans_data_dist(t);
@@ -8416,7 +8419,7 @@ void createTransData(bContext *C, TransInfo *t)
 	else if (t->spacetype == SPACE_NODE) {
 		t->flag |= T_POINTS | T_2D_EDIT;
 		createTransNodeData(C, t);
-		if (t->data && (t->flag & T_PROP_EDIT)) {
+		if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 			sort_trans_data(t); // makes selected become first in array
 			set_prop_dist(t, 1);
 			sort_trans_data_dist(t);
@@ -8430,28 +8433,30 @@ void createTransData(bContext *C, TransInfo *t)
 			/* copied from above */
 			createTransMaskingData(C, t);
 
-			if (t->data && (t->flag & T_PROP_EDIT)) {
+			if (t->total_all_handle && (t->flag & T_PROP_EDIT)) {
 				sort_trans_data(t); // makes selected become first in array
 				set_prop_dist(t, true);
 				sort_trans_data_dist(t);
 			}
 		}
 	}
-	else if (t->obedit) {
-		t->ext = NULL;
-		if (t->obedit->type == OB_MESH) {
+	else if (t->flag & T_EDIT) {
+		FOREACH_THAND (t, th) {
+			th->ext = NULL;
+		}
+		if (t->obedit_type == OB_MESH) {
 			createTransEditVerts(t);
 		}
-		else if (ELEM(t->obedit->type, OB_CURVE, OB_SURF)) {
+		else if (ELEM(t->obedit_type, OB_CURVE, OB_SURF)) {
 			createTransCurveVerts(t);
 		}
-		else if (t->obedit->type == OB_LATTICE) {
+		else if (t->obedit_type == OB_LATTICE) {
 			createTransLatticeVerts(t);
 		}
-		else if (t->obedit->type == OB_MBALL) {
+		else if (t->obedit_type == OB_MBALL) {
 			createTransMBallVerts(t);
 		}
-		else if (t->obedit->type == OB_ARMATURE) {
+		else if (t->obedit_type == OB_ARMATURE) {
 			t->flag &= ~T_PROP_EDIT;
 			createTransArmatureVerts(t);
 		}
@@ -8461,10 +8466,10 @@ void createTransData(bContext *C, TransInfo *t)
 
 		t->flag |= T_EDIT | T_POINTS;
 
-		if (t->data && t->flag & T_PROP_EDIT) {
-			if (ELEM(t->obedit->type, OB_CURVE, OB_MESH)) {
+		if (t->total_all_handle && t->flag & T_PROP_EDIT) {
+			if (ELEM(t->obedit_type, OB_CURVE, OB_MESH)) {
 				sort_trans_data(t); // makes selected become first in array
-				if ((t->obedit->type == OB_MESH) && (t->flag & T_PROP_CONNECTED)) {
+				if ((t->obedit_type == OB_MESH) && (t->flag & T_PROP_CONNECTED)) {
 					/* already calculated by editmesh_set_connectivity_distance */
 				}
 				else {
@@ -8483,13 +8488,17 @@ void createTransData(bContext *C, TransInfo *t)
 		if (t->mode == TFM_BONESIZE) {
 			t->flag &= ~(T_EDIT | T_POINTS);
 			t->flag |= T_POSE;
-			t->poseobj = ob;    /* <- tsk tsk, this is going to give issues one day */
+
+			FOREACH_THAND (t, th) {
+				th->poseobj = th->obedit;
+				th->obedit = NULL;
+			}
 		}
 	}
 	else if (ob && (ob->mode & OB_MODE_POSE)) {
 		// XXX this is currently limited to active armature only...
 		// XXX active-layer checking isn't done as that should probably be checked through context instead
-		Object **objects[1];
+		Object *objects[1];
 		objects[0] = ob;
 		uint objects_len = 1;
 		createTransPose(t, objects, objects_len);
@@ -8502,7 +8511,7 @@ void createTransData(bContext *C, TransInfo *t)
 			Base *base_arm = BKE_view_layer_base_find(t->view_layer, ob_armature);
 			if (base_arm) {
 				if (BASE_VISIBLE(base_arm)) {
-					Object **objects[1];
+					Object *objects[1];
 					objects[0] = ob_armature;
 					uint objects_len = 1;
 					createTransPose(t, objects, objects_len);
@@ -8514,7 +8523,7 @@ void createTransData(bContext *C, TransInfo *t)
 		createTransParticleVerts(C, t);
 		t->flag |= T_POINTS;
 
-		if (t->data && t->flag & T_PROP_EDIT) {
+		if (t->total_all_handle && t->flag & T_PROP_EDIT) {
 			sort_trans_data(t); // makes selected become first in array
 			set_prop_dist(t, 1);
 			sort_trans_data_dist(t);
@@ -8530,7 +8539,7 @@ void createTransData(bContext *C, TransInfo *t)
 		createTransObject(C, t);
 		t->flag |= T_OBJECT;
 
-		if (t->data && t->flag & T_PROP_EDIT) {
+		if (t->total_all_handle && t->flag & T_PROP_EDIT) {
 			// selected objects are already first, no need to presort
 			set_prop_dist(t, 1);
 			sort_trans_data_dist(t);

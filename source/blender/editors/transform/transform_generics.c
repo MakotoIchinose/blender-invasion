@@ -167,7 +167,7 @@ static void clipMirrorModifier(TransInfo *t)
 					}
 					
 					TransData *td = th->data;
-					for (i = 0; i < t->total; i++, td++) {
+					for (i = 0; i < th->total; i++, td++) {
 						int clip;
 						float loc[3], iloc[3];
 						
@@ -231,11 +231,12 @@ static void clipMirrorModifier(TransInfo *t)
 /* assumes obedit set to mesh object */
 static void editbmesh_apply_to_mirror(TransInfo *t)
 {
-	TransData *td = t->data;
+	FOREACH_THAND (t, th) {
+	TransData *td = th->data;
 	BMVert *eve;
 	int i;
-	
-	for (i = 0; i < t->total; i++, td++) {
+
+	for (i = 0; i < th->total; i++, td++) {
 		if (td->flag & TD_NOACTION)
 			break;
 		if (td->loc == NULL)
@@ -254,6 +255,8 @@ static void editbmesh_apply_to_mirror(TransInfo *t)
 			td->loc[0] = 0;
 		}
 	}
+
+	} // FIXME(indent)
 }
 
 /* for the realtime animation recording feature, handle overlapping data */
@@ -436,12 +439,16 @@ static void recalcData_nla(TransInfo *t)
 	Scene *scene = t->scene;
 	double secf = FPS;
 	int i;
-	
+
+	/* only ever one */
+	BLI_assert(t->thand_len == 1);
+	TransHandle *th = &t->thand[0];
+
 	/* for each strip we've got, perform some additional validation of the values that got set before
 	 * using RNA to set the value (which does some special operations when setting these values to make
 	 * sure that everything works ok)
 	 */
-	for (i = 0; i < t->total; i++, tdn++) {
+	for (i = 0; i < th->total; i++, tdn++) {
 		NlaStrip *strip = tdn->strip;
 		PointerRNA strip_ptr;
 		short pExceeded, nExceeded, iter;
@@ -658,14 +665,18 @@ static void recalcData_image(TransInfo *t)
 	else if (t->options & CTX_PAINT_CURVE) {
 		flushTransPaintCurve(t);
 	}
-	else if (t->obedit && t->obedit->type == OB_MESH) {
+	else if ((t->flag & T_EDIT) && t->obedit_type == OB_MESH) {
 		SpaceImage *sima = t->sa->spacedata.first;
 		
 		flushTransUVs(t);
 		if (sima->flag & SI_LIVE_UNWRAP)
 			ED_uvedit_live_unwrap_re_solve();
-		
-		DEG_id_tag_update(t->obedit->data, 0);
+
+		FOREACH_THAND (t, th) {
+			if (th->total) {
+				DEG_id_tag_update(th->obedit->data, 0);
+			}
+		}
 	}
 }
 
@@ -720,19 +731,21 @@ static void recalcData_objects(TransInfo *t)
 {
 	Base *base = t->view_layer->basact;
 
-	if (t->obedit) {
-		if (ELEM(t->obedit->type, OB_CURVE, OB_SURF)) {
-			Curve *cu = t->obedit->data;
-			ListBase *nurbs = BKE_curve_editNurbs_get(cu);
-			Nurb *nu = nurbs->first;
-			
+	if (t->obedit_type != -1) {
+		if (ELEM(t->obedit_type, OB_CURVE, OB_SURF)) {
+
 			if (t->state != TRANS_CANCEL) {
 				clipMirrorModifier(t);
 				applyProject(t);
 			}
-			
-			DEG_id_tag_update(t->obedit->data, 0);  /* sets recalc flags */
-				
+
+			FOREACH_THAND (t, th) {
+			Curve *cu = th->obedit->data;
+			ListBase *nurbs = BKE_curve_editNurbs_get(cu);
+			Nurb *nu = nurbs->first;
+
+			DEG_id_tag_update(th->obedit->data, 0);  /* sets recalc flags */
+
 			if (t->state == TRANS_CANCEL) {
 				while (nu) {
 					BKE_nurb_handles_calc(nu); /* Cant do testhandlesNurb here, it messes up the h1 and h2 flags */
@@ -747,17 +760,21 @@ static void recalcData_objects(TransInfo *t)
 					nu = nu->next;
 				}
 			}
+			} // FIXME(indent)
 		}
-		else if (t->obedit->type == OB_LATTICE) {
-			Lattice *la = t->obedit->data;
-			
+		else if (t->obedit_type == OB_LATTICE) {
+
 			if (t->state != TRANS_CANCEL) {
 				applyProject(t);
 			}
-			
-			DEG_id_tag_update(t->obedit->data, 0);  /* sets recalc flags */
-			
-			if (la->editlatt->latt->flag & LT_OUTSIDE) outside_lattice(la->editlatt->latt);
+
+			FOREACH_THAND (t, th) {
+			Lattice *la = th->obedit->data;
+			DEG_id_tag_update(th->obedit->data, 0);  /* sets recalc flags */
+			if (la->editlatt->latt->flag & LT_OUTSIDE) {
+				outside_lattice(la->editlatt->latt);
+			}
+			} // FIXME(indent)
 		}
 		else if (t->obedit_type == OB_MESH) {
 			/* mirror modifier clipping? */
@@ -776,28 +793,32 @@ static void recalcData_objects(TransInfo *t)
 				projectVertSlideData(t, false);
 			}
 
-			FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (t->eval_ctx.view_layer, ob_iter) {
-				DEG_id_tag_update(ob_iter->data, 0);  /* sets recalc flags */
-				BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
-				EDBM_mesh_normals_update(em);
-				BKE_editmesh_tessface_calc(em);
-			} FOREACH_OBJECT_IN_EDIT_MODE_END;
-		}
-		else if (t->obedit->type == OB_ARMATURE) { /* no recalc flag, does pose */
-			bArmature *arm = t->obedit->data;
-			ListBase *edbo = arm->edbo;
-			EditBone *ebo, *ebo_parent;
-			TransData *td = t->data;
-			int i;
+			FOREACH_THAND (t, th) {
+			DEG_id_tag_update(th->obedit->data, 0);  /* sets recalc flags */
+			BMEditMesh *em = BKE_editmesh_from_object(th->obedit);
+			EDBM_mesh_normals_update(em);
+			BKE_editmesh_tessface_calc(em);
+			} // FIXME(indent)
+
 			
+		}
+		else if (t->obedit_type == OB_ARMATURE) { /* no recalc flag, does pose */
+
 			if (t->state != TRANS_CANCEL) {
 				applyProject(t);
 			}
-			
+
+			FOREACH_THAND (t, th) {
+			bArmature *arm = th->obedit->data;
+			ListBase *edbo = arm->edbo;
+			EditBone *ebo, *ebo_parent;
+			TransData *td = th->data;
+			int i;
+
 			/* Ensure all bones are correctly adjusted */
 			for (ebo = edbo->first; ebo; ebo = ebo->next) {
 				ebo_parent = (ebo->flag & BONE_CONNECTED) ? ebo->parent : NULL;
-				
+
 				if (ebo_parent) {
 					/* If this bone has a parent tip that has been moved */
 					if (ebo_parent->flag & BONE_TIPSEL) {
@@ -837,7 +858,7 @@ static void recalcData_objects(TransInfo *t)
 			
 			if (!ELEM(t->mode, TFM_BONE_ROLL, TFM_BONE_ENVELOPE, TFM_BONE_ENVELOPE_DIST, TFM_BONESIZE)) {
 				/* fix roll */
-				for (i = 0; i < t->total; i++, td++) {
+				for (i = 0; i < th->total; i++, td++) {
 					if (td->extra) {
 						float vec[3], up_axis[3];
 						float qrot[4];
@@ -864,23 +885,32 @@ static void recalcData_objects(TransInfo *t)
 					}
 				}
 			}
-			
+
 			if (arm->flag & ARM_MIRROR_EDIT) {
-				if (t->state != TRANS_CANCEL)
-					transform_armature_mirror_update(t->obedit);
-				else
+				if (t->state != TRANS_CANCEL) {
+						transform_armature_mirror_update(th->obedit);
+					}
+				}
+				else {
 					restoreBones(t);
+				}
 			}
 		}
 		else {
 			if (t->state != TRANS_CANCEL) {
 				applyProject(t);
 			}
-			DEG_id_tag_update(t->obedit->data, 0);  /* sets recalc flags */
+			FOREACH_THAND (t, th) {
+				if (th->total) {
+					DEG_id_tag_update(th->obedit->data, 0);  /* sets recalc flags */
+				}
+			} // FIXME(indent)
 		}
+
 	}
-	else if ((t->flag & T_POSE) && t->poseobj) {
-		Object *ob = t->poseobj;
+	else if (t->flag & T_POSE) {
+		FOREACH_THAND (t, th) {
+		Object *ob = th->poseobj;
 		bArmature *arm = ob->data;
 		
 		/* if animtimer is running, and the object already has animation data,
@@ -905,6 +935,7 @@ static void recalcData_objects(TransInfo *t)
 		}
 		else
 			BKE_pose_where_is(&t->eval_ctx, t->scene, ob);
+		} // FIXME(indent)
 	}
 	else if (base && (base->object->mode & OB_MODE_PARTICLE_EDIT) &&
 	         PE_get_current(t->scene, base->object))
@@ -920,9 +951,11 @@ static void recalcData_objects(TransInfo *t)
 		if (t->state != TRANS_CANCEL) {
 			applyProject(t);
 		}
-		
-		for (i = 0; i < t->total; i++) {
-			TransData *td = t->data + i;
+
+		FOREACH_THAND (t, th) {
+		TransData *td = th->data;
+
+		for (i = 0; i < th->total; i++, td++) {
 			Object *ob = td->ob;
 			
 			if (td->flag & TD_NOACTION)
@@ -949,6 +982,7 @@ static void recalcData_objects(TransInfo *t)
 			if (t->flag & T_TEXTURE)
 				DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
 		}
+		} // FIXME(indent)
 	}
 }
 
@@ -959,7 +993,11 @@ static void recalcData_sequencer(TransInfo *t)
 	int a;
 	Sequence *seq_prev = NULL;
 
-	for (a = 0, td = t->data; a < t->total; a++, td++) {
+	/* only ever one */
+	BLI_assert(t->thand_len == 1);
+	TransHandle *th = &t->thand[0];
+
+	for (a = 0, td = th->data; a < th->total; a++, td++) {
 		TransDataSeq *tdsq = (TransDataSeq *) td->extra;
 		Sequence *seq = tdsq->seq;
 
@@ -984,8 +1022,12 @@ static void recalcData_sequencer(TransInfo *t)
 /* force recalculation of triangles during transformation */
 static void recalcData_gpencil_strokes(TransInfo *t)
 {
-	TransData *td = t->data;
-	for (int i = 0; i < t->total; i++, td++) {
+	/* only ever one */
+	BLI_assert(t->thand_len == 1);
+	TransHandle *th = &t->thand[0];
+
+	TransData *td = th->data;
+	for (int i = 0; i < th->total; i++, td++) {
 		bGPDstroke *gps = td->extra;
 		if (gps != NULL) {
 			gps->flag |= GP_STROKE_RECALC_CACHES;
@@ -1163,9 +1205,9 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 		t->obedit_type = -1;
 	}
 
-	t->data = NULL;
-	t->ext = NULL;
-	
+	t->thand = NULL;
+	t->thand_len = 0;
+
 	t->helpline = HLP_NONE;
 	
 	t->flag = 0;
@@ -1190,7 +1232,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->transform        = NULL;
 	t->handleEvent      = NULL;
 	
-	t->total            = 0;
+	t->total_all_handle            = 0;
 	
 	t->val = 0.0f;
 
@@ -1316,7 +1358,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 		t->view = &ar->v2d;
 		t->around = sima->around;
 
-		if (ED_space_image_show_uvedit(sima, t->obedit)) {
+		if (ED_space_image_show_uvedit(sima, OBACT(t->view_layer))) {
 			/* UV transform */
 		}
 		else if (sima->mode == SI_MODE_MASK) {
@@ -1406,7 +1448,8 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	}
 	// Need stuff to take it from edit mesh or whatnot here
 	else if (t->spacetype == SPACE_VIEW3D) {
-		if (t->obedit && t->obedit->type == OB_MESH && (((Mesh *)t->obedit->data)->editflag & ME_EDIT_MIRROR_X)) {
+		/* TODO(campbell): xform, get mirror from each object. */
+		if (t->obedit_type == OB_MESH && (((Mesh *)OBACT(t->view_layer)->data)->editflag & ME_EDIT_MIRROR_X)) {
 			t->flag |= T_MIRROR;
 			t->mirror = 1;
 		}
@@ -1427,7 +1470,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 					else if (t->spacetype == SPACE_ACTION) {
 						t->flag |= initTransInfo_edit_pet_to_flag(ts->proportional_action);
 					}
-					else if (t->obedit) {
+					else if (t->obedit_type != -1) {
 						t->flag |= initTransInfo_edit_pet_to_flag(ts->proportional);
 					}
 					else if (t->options & CTX_GPENCIL_STROKES) {
@@ -1442,7 +1485,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 							}
 						}
 					}
-					else if (t->obedit == NULL && ts->proportional_objects) {
+					else if ((t->obedit_type == -1) && ts->proportional_objects) {
 						t->flag |= T_PROP_EDIT;
 					}
 				}
@@ -1500,8 +1543,6 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 /* Here I would suggest only TransInfo related issues, like free data & reset vars. Not redraws */
 void postTrans(bContext *C, TransInfo *t)
 {
-	TransData *td;
-	
 	if (t->draw_handle_view)
 		ED_region_draw_cb_exit(t->ar->type, t->draw_handle_view);
 	if (t->draw_handle_apply)
@@ -1528,30 +1569,31 @@ void postTrans(bContext *C, TransInfo *t)
 	}
 
 	/* postTrans can be called when nothing is selected, so data is NULL already */
-	if (t->data) {
-		
-		/* free data malloced per trans-data */
-		if ((t->obedit && ELEM(t->obedit->type, OB_CURVE, OB_SURF)) ||
-		    (t->spacetype == SPACE_IPO))
-		{
-			int a;
-			for (a = 0, td = t->data; a < t->total; a++, td++) {
-				if (td->flag & TD_BEZTRIPLE) {
-					MEM_freeN(td->hdata);
+	if (t->total_all_handle) {
+		FOREACH_THAND (t, th) {
+			/* free data malloced per trans-data */
+			if (ELEM(t->obedit_type, OB_CURVE, OB_SURF) ||
+				(t->spacetype == SPACE_IPO))
+			{
+				TransData *td = th->data;
+				for (int a = 0; a < th->total; a++, td++) {
+					if (td->flag & TD_BEZTRIPLE) {
+						MEM_freeN(td->hdata);
+					}
 				}
 			}
+			MEM_freeN(th->data);
+	
+			MEM_SAFE_FREE(th->ext);
+			MEM_SAFE_FREE(th->data2d);
 		}
-		MEM_freeN(t->data);
 	}
 	
+	MEM_SAFE_FREE(t->thand);
+	t->thand = NULL;
+
 	BLI_freelistN(&t->tsnap.points);
 
-	if (t->ext) MEM_freeN(t->ext);
-	if (t->data2d) {
-		MEM_freeN(t->data2d);
-		t->data2d = NULL;
-	}
-	
 	if (t->spacetype == SPACE_IMAGE) {
 		if (t->options & (CTX_MASK | CTX_PAINT_CURVE)) {
 			/* pass */
@@ -1579,9 +1621,13 @@ void postTrans(bContext *C, TransInfo *t)
 
 void applyTransObjects(TransInfo *t)
 {
+	/* only ever one */
+	BLI_assert(t->thand_len == 1);
+	TransHandle *th = &t->thand[0];
+
 	TransData *td;
-	
-	for (td = t->data; td < t->data + t->total; td++) {
+
+	for (td = th->data; td < th->data + th->total; td++) {
 		copy_v3_v3(td->iloc, td->loc);
 		if (td->ext->rot) {
 			copy_v3_v3(td->ext->irot, td->ext->rot);
@@ -1630,14 +1676,18 @@ static void restoreElement(TransData *td)
 
 void restoreTransObjects(TransInfo *t)
 {
+	/* only ever one */
+	BLI_assert(t->thand_len == 1);
+	TransHandle *th = &t->thand[0];
+
 	TransData *td;
 	TransData2D *td2d;
 
-	for (td = t->data; td < t->data + t->total; td++) {
+	for (td = th->data; td < th->data + th->total; td++) {
 		restoreElement(td);
 	}
 	
-	for (td2d = t->data2d; t->data2d && td2d < t->data2d + t->total; td2d++) {
+	for (td2d = th->data2d; th->data2d && td2d < th->data2d + th->total; td2d++) {
 		if (td2d->h1) {
 			td2d->h1[0] = td2d->ih1[0];
 			td2d->h1[1] = td2d->ih1[1];
@@ -1657,8 +1707,8 @@ void calculateCenter2D(TransInfo *t)
 {
 	BLI_assert(!is_zero_v3(t->aspect));
 
-	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = t->obedit ? t->obedit : t->poseobj;
+	if (th->flag & (T_EDIT | T_POSE)) {
+		Object *ob = th->obedit ? t->obedit : t->poseobj;
 		float vec[3];
 		
 		copy_v3_v3(vec, t->center);
