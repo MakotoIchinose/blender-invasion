@@ -843,4 +843,15 @@ bool checkUseAxisMatrix(TransInfo *t);
 #define TRANSFORM_SNAP_MAX_PX 100.0f
 #define TRANSFORM_DIST_INVALID -FLT_MAX
 
+/* Temp macros. */
+
+/* This is to be replaced, just to get things compiling early on. */
+#define THAND_FIRST_EVIL(t) (&(t)->thand[0])
+
+#define FOREACH_THAND(t, th) \
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++)
+
+#define FOREACH_THAND_INDEX(t, th, i) \
+	for (TransHandle *th = ((i = 0), t->thand), *th_end = t->thand + t->thand_len; th != th_end; th++, i++)
+
 #endif

@@ -102,7 +102,23 @@ bool BKE_view_layer_filter_edit_mesh_has_uvs(Object *ob, void *UNUSED(user_data)
 		Mesh *me = ob->data;
 		BMEditMesh *em = me->edit_btmesh;
 		if (em != NULL) {
-			return CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV) != -1;
+			if (CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV) != -1) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool BKE_view_layer_filter_edit_mesh_has_edges(Object *ob, void *UNUSED(user_data))
+{
+	if (ob->type == OB_MESH) {
+		Mesh *me = ob->data;
+		BMEditMesh *em = me->edit_btmesh;
+		if (em != NULL) {
+			if (em->bm->totedge != 0) {
+				return true;
+			}
 		}
 	}
 	return false;

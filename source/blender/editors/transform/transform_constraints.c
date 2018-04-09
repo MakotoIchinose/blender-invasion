@@ -847,7 +847,7 @@ static void drawObjectConstraint(TransInfo *t)
 	int i;
 	float tmp_axismtx[3][3];
 
-	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	FOREACH_THAND (t, th) {
 	TransData *td = th->data;
 	for (i = 0; i < th->total; i++, td++) {
 		float co[3];

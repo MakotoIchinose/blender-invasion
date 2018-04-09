@@ -383,6 +383,7 @@ struct Object **BKE_view_layer_array_from_objects_in_mode_params(
 
 
 bool BKE_view_layer_filter_edit_mesh_has_uvs(struct Object *ob, void *user_data);
+bool BKE_view_layer_filter_edit_mesh_has_edges(struct Object *ob, void *user_data);
 
 #ifdef __cplusplus
 }

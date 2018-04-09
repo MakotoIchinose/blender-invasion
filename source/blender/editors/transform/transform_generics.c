@@ -130,7 +130,7 @@ void getViewVector(TransInfo *t, float coord[3], float vec[3])
 
 static void clipMirrorModifier(TransInfo *t)
 {
-	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	FOREACH_THAND (t, th) {
 	Object *ob = th->obedit;
 	ModifierData *md = ob->modifiers.first;
 	float tolerance[3] = {0.0f, 0.0f, 0.0f};
@@ -1138,14 +1138,29 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->engine_type = engine_type;
 	t->sa = sa;
 	t->ar = ar;
-	t->obedit = obedit;
-	t->obedit_type = obedit ? obedit->type : -1;
 	t->settings = ts;
 	t->reports = op ? op->reports : NULL;
 
 	if (obedit) {
-		copy_m3_m4(t->obedit_mat, obedit->obmat);
-		normalize_m3(t->obedit_mat);
+	}
+
+	if (CTX_data_edit_object(C) /* || pose mode .. etc. */) {
+		uint objects_len;
+		Object **objects = BKE_view_layer_array_from_objects_in_mode(
+		        t->view_layer, &objects_len,
+		        .no_dupe_data = true);
+		t->thand = MEM_callocN(sizeof(*t->thand) * objects_len, __func__);
+
+		for (int i = 0; i < objects_len; i++) {
+			TransHandle *th = &t->thand[i];
+			th->obedit = objects[i];
+			copy_m3_m4(th->obedit_mat, obedit->obmat);
+			normalize_m3(th->obedit_mat);
+		}
+		t->obedit_type = objects[0]->type;
+	}
+	else {
+		t->obedit_type = -1;
 	}
 
 	t->data = NULL;
