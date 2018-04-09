@@ -1707,7 +1707,7 @@ void calculateCenter2D(TransInfo *t)
 {
 	BLI_assert(!is_zero_v3(t->aspect));
 
-	if (th->flag & (T_EDIT | T_POSE)) {
+	if (t->flag & (T_EDIT | T_POSE)) {
 		Object *ob = th->obedit ? t->obedit : t->poseobj;
 		float vec[3];
 		
@@ -1868,7 +1868,7 @@ void calculateCenterBound(TransInfo *t, float r_center[3])
 bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 {
 	/* first is always active */
-	TransHandle *th = t->thand[0];
+	TransHandle *th = &t->thand[0];
 	bool ok = false;
 
 	if (t->obedit) {
@@ -2024,7 +2024,6 @@ const TransCenterData *transformCenter_from_type(TransInfo *t, int around)
 
 void calculatePropRatio(TransInfo *t)
 {
-	TransData *td = t->data;
 	int i;
 	float dist;
 	const bool connected = (t->flag & T_PROP_CONNECTED) != 0;
@@ -2033,6 +2032,8 @@ void calculatePropRatio(TransInfo *t)
 
 	if (t->flag & T_PROP_EDIT) {
 		const char *pet_id = NULL;
+		FOREACH_THAND (t, th) {
+		TransData *td = th->data;
 		for (i = 0; i < t->total; i++, td++) {
 			if (td->flag & TD_SELECTED) {
 				td->factor = 1.0f;
@@ -2102,6 +2103,8 @@ void calculatePropRatio(TransInfo *t)
 				}
 			}
 		}
+		} // FIXME(indent)
+
 		switch (t->prop_mode) {
 			case PROP_SHARP:
 				pet_id = N_("(Sharp)");
@@ -2136,8 +2139,11 @@ void calculatePropRatio(TransInfo *t)
 		}
 	}
 	else {
-		for (i = 0; i < t->total; i++, td++) {
-			td->factor = 1.0;
+		FOREACH_THAND (t, th) {
+			TransData *td = th->data;
+			for (i = 0; i < th->total; i++, td++) {
+				td->factor = 1.0;
+			}
 		}
 	}
 }
