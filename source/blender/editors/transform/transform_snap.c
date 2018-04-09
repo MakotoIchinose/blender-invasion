@@ -272,17 +272,19 @@ void applyProject(TransInfo *t)
 {
 	/* XXX FLICKER IN OBJECT MODE */
 	if ((t->tsnap.project) && activeSnap(t) && (t->flag & T_NO_PROJECT) == 0) {
-		TransData *td = t->data;
 		float tvec[3];
-		float imat[4][4];
 		int i;
-	
+
+		for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+		TransData *td = th->data;
+
+		float imat[4][4];
 		if (t->flag & (T_EDIT | T_POSE)) {
-			Object *ob = t->obedit ? t->obedit : t->poseobj;
+			Object *ob = th->obedit ? th->obedit : th->poseobj;
 			invert_m4_m4(imat, ob->obmat);
 		}
 
-		for (i = 0; i < t->total; i++, td++) {
+		for (i = 0; i < th->total; i++, td++) {
 			float iloc[3], loc[3], no[3];
 			float mval_fl[2];
 			float dist_px = TRANSFORM_DIST_MAX_PX;
@@ -298,7 +300,7 @@ void applyProject(TransInfo *t)
 			
 			copy_v3_v3(iloc, td->loc);
 			if (t->flag & (T_EDIT | T_POSE)) {
-				Object *ob = t->obedit ? t->obedit : t->poseobj;
+				Object *ob = th->obedit ? th->obedit : th->poseobj;
 				mul_m4_v3(ob->obmat, iloc);
 			}
 			else if (t->flag & T_OBJECT) {
@@ -340,6 +342,7 @@ void applyProject(TransInfo *t)
 			
 			//XXX constraintTransLim(t, td);
 		}
+		} // FIXME(indent)
 	}
 }
 
@@ -347,7 +350,6 @@ void applyGridAbsolute(TransInfo *t)
 {
 	float grid_size = 0.0f;
 	GearsType grid_action;
-	TransData *td;
 	float (*obmat)[4] = NULL;
 	bool use_obmat = false;
 	int i;
@@ -368,13 +370,16 @@ void applyGridAbsolute(TransInfo *t)
 	if (grid_size == 0.0f)
 		return;
 	
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	TransData *td;
+
 	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = t->obedit ? t->obedit : t->poseobj;
+		Object *ob = th->obedit ? th->obedit : th->poseobj;
 		obmat = ob->obmat;
 		use_obmat = true;
 	}
 	
-	for (i = 0, td = t->data; i < t->total; i++, td++) {
+	for (i = 0, td = th->data; i < th->total; i++, td++) {
 		float iloc[3], loc[3], tvec[3];
 		
 		if (td->flag & TD_NOACTION)
@@ -405,6 +410,7 @@ void applyGridAbsolute(TransInfo *t)
 		mul_m3_v3(td->smtx, tvec);
 		add_v3_v3(td->loc, tvec);
 	}
+	} // FIXME(indent)
 }
 
 void applySnapping(TransInfo *t, float *vec)
@@ -501,7 +507,8 @@ static bool bm_face_is_snap_target(BMFace *f, void *UNUSED(user_data))
 static void initSnappingMode(TransInfo *t)
 {
 	ToolSettings *ts = t->settings;
-	Object *obedit = t->obedit;
+	/* All obedit types will match. */
+	const int obedit_type = t->thand->obedit ? t->thand->obedit->type : -1;
 	ViewLayer *view_layer = t->view_layer;
 	Base *base_act = view_layer->basact;
 
@@ -532,10 +539,10 @@ static void initSnappingMode(TransInfo *t)
 
 		/* Edit mode */
 		if (t->tsnap.applySnap != NULL && // A snapping function actually exist
-		    (obedit != NULL && ELEM(obedit->type, OB_MESH, OB_ARMATURE, OB_CURVE, OB_LATTICE, OB_MBALL)) ) // Temporary limited to edit mode meshes, armature, curves, mballs
+		    ((obedit_type != -1) && ELEM(obedit_type, OB_MESH, OB_ARMATURE, OB_CURVE, OB_LATTICE, OB_MBALL)) ) // Temporary limited to edit mode meshes, armature, curves, mballs
 		{
 			/* Exclude editmesh if using proportional edit */
-			if ((obedit->type == OB_MESH) && (t->flag & T_PROP_EDIT)) {
+			if ((obedit_type == OB_MESH) && (t->flag & T_PROP_EDIT)) {
 				t->tsnap.modeSelect = SNAP_NOT_ACTIVE;
 			}
 			else {
@@ -544,13 +551,13 @@ static void initSnappingMode(TransInfo *t)
 		}
 		/* Particles edit mode*/
 		else if (t->tsnap.applySnap != NULL && // A snapping function actually exist
-		         (obedit == NULL && base_act && base_act->object && base_act->object->mode & OB_MODE_PARTICLE_EDIT))
+		         ((obedit_type == -1) && base_act && base_act->object && base_act->object->mode & OB_MODE_PARTICLE_EDIT))
 		{
 			t->tsnap.modeSelect = SNAP_ALL;
 		}
 		/* Object mode */
 		else if (t->tsnap.applySnap != NULL && // A snapping function actually exist
-		         (obedit == NULL) ) // Object Mode
+		         (obedit_type == -1) ) // Object Mode
 		{
 			/* In "Edit Strokes" mode, Snap tool can perform snap to selected or active objects (see T49632)
 			 * TODO: perform self snap in gpencil_strokes */
@@ -864,7 +871,8 @@ static float TranslationBetween(TransInfo *UNUSED(t), const float p1[3], const f
 	return len_squared_v3v3(p1, p2);
 }
 
-static float RotationBetween(TransInfo *t, const float p1[3], const float p2[3])
+static float RotationBetween(
+        TransInfo *t, const float p1[3], const float p2[3])
 {
 	float angle, start[3], end[3];
 
@@ -875,7 +883,7 @@ static float RotationBetween(TransInfo *t, const float p1[3], const float p2[3])
 	if (t->con.applyRot != NULL && (t->con.mode & CON_APPLY)) {
 		float axis[3], tmp[3];
 		
-		t->con.applyRot(t, NULL, axis, NULL);
+		t->con.applyRot(t, NULL, NULL, axis, NULL);
 
 		project_v3_v3v3(tmp, end, axis);
 		sub_v3_v3v3(end, end, tmp);
@@ -978,7 +986,7 @@ static void CalcSnapGeometry(TransInfo *t, float *UNUSED(vec))
 			t->tsnap.status &= ~POINT_INIT;
 		}
 	}
-	else if (t->spacetype == SPACE_IMAGE && t->obedit != NULL && t->obedit->type == OB_MESH) {
+	else if (t->spacetype == SPACE_IMAGE && t->obedit_type == OB_MESH) {
 		/* same as above but for UV's */
 		Image *ima = ED_space_image(t->sa->spacedata.first);
 		float co[2];
@@ -1116,6 +1124,8 @@ static void TargetSnapClosest(TransInfo *t)
 		/* Object mode */
 		if (t->flag & T_OBJECT) {
 			int i;
+			for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+			TransData *td = th->data;
 			for (td = t->data, i = 0; i < t->total && td->flag & TD_SELECTED; i++, td++) {
 				struct BoundBox *bb = BKE_object_boundbox_get(td->ob);
 				
@@ -1158,6 +1168,7 @@ static void TargetSnapClosest(TransInfo *t)
 					}
 				}
 			}
+			} // FIXME(indent)
 		}
 		else {
 			int i;

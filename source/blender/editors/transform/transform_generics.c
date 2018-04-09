@@ -128,8 +128,10 @@ void getViewVector(TransInfo *t, float coord[3], float vec[3])
 /* ************************** GENERICS **************************** */
 
 
-static void clipMirrorModifier(TransInfo *t, Object *ob)
+static void clipMirrorModifier(TransInfo *t)
 {
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	Object *ob = th->obedit;
 	ModifierData *md = ob->modifiers.first;
 	float tolerance[3] = {0.0f, 0.0f, 0.0f};
 	int axis = 0;
@@ -155,7 +157,6 @@ static void clipMirrorModifier(TransInfo *t, Object *ob)
 				if (axis) {
 					float mtx[4][4], imtx[4][4];
 					int i;
-					TransData *td = t->data;
 					
 					if (mmd->mirror_ob) {
 						float obinv[4][4];
@@ -165,6 +166,7 @@ static void clipMirrorModifier(TransInfo *t, Object *ob)
 						invert_m4_m4(imtx, mtx);
 					}
 					
+					TransData *td = th->data;
 					for (i = 0; i < t->total; i++, td++) {
 						int clip;
 						float loc[3], iloc[3];
@@ -223,6 +225,7 @@ static void clipMirrorModifier(TransInfo *t, Object *ob)
 			}
 		}
 	}
+	} // FIXME(indent)
 }
 
 /* assumes obedit set to mesh object */
@@ -724,7 +727,7 @@ static void recalcData_objects(TransInfo *t)
 			Nurb *nu = nurbs->first;
 			
 			if (t->state != TRANS_CANCEL) {
-				clipMirrorModifier(t, t->obedit);
+				clipMirrorModifier(t);
 				applyProject(t);
 			}
 			
@@ -756,12 +759,12 @@ static void recalcData_objects(TransInfo *t)
 			
 			if (la->editlatt->latt->flag & LT_OUTSIDE) outside_lattice(la->editlatt->latt);
 		}
-		else if (t->obedit->type == OB_MESH) {
+		else if (t->obedit_type == OB_MESH) {
 			/* mirror modifier clipping? */
 			if (t->state != TRANS_CANCEL) {
 				/* apply clipping after so we never project past the clip plane [#25423] */
 				applyProject(t);
-				clipMirrorModifier(t, t->obedit);
+				clipMirrorModifier(t);
 			}
 			if ((t->options & CTX_NO_MIRROR) == 0 && (t->flag & T_MIRROR))
 				editbmesh_apply_to_mirror(t);
@@ -1136,6 +1139,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->sa = sa;
 	t->ar = ar;
 	t->obedit = obedit;
+	t->obedit_type = obedit ? obedit->type : -1;
 	t->settings = ts;
 	t->reports = op ? op->reports : NULL;
 
@@ -1798,6 +1802,8 @@ void calculateCenterBound(TransInfo *t, float r_center[3])
  */
 bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 {
+	/* first is always active */
+	TransHandle *th = t->thand[0];
 	bool ok = false;
 
 	if (t->obedit) {

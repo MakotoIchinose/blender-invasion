@@ -2963,7 +2963,6 @@ static eRedrawFlag handleEventBend(TransInfo *UNUSED(t), const wmEvent *event)
 
 static void Bend(TransInfo *t, const int UNUSED(mval[2]))
 {
-	TransData *td = t->data;
 	float vec[3];
 	float pivot[3];
 	float warp_end_radius[3];
@@ -3034,7 +3033,9 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
 		madd_v3_v3fl(pivot, data->warp_tan, +values.scale * shell_angle_to_dist((float)M_PI_2 + values.angle));
 	}
 
-	for (i = 0; i < t->total; i++, td++) {
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	TransData *td = th->data;
+	for (i = 0; i < th->total; i++, td++) {
 		float mat[3][3];
 		float delta[3];
 		float fac, fac_scaled;
@@ -3080,6 +3081,7 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
 		/* location */
 		copy_v3_v3(td->loc, vec);
 	}
+	} // FIXME(indent)
 	
 	recalcData(t);
 	
@@ -3194,7 +3196,9 @@ static void applyShear(TransInfo *t, const int UNUSED(mval[2]))
 	mul_m3_m3m3(tmat, smat, persmat);
 	mul_m3_m3m3(totmat, persinv, tmat);
 
-	for (i = 0; i < t->total; i++, td++) {
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	TransData *td = th->data;
+	for (i = 0; i < th->total; i++, td++) {
 		const float *center, *co;
 
 		if (td->flag & TD_NOACTION)
@@ -3232,6 +3236,7 @@ static void applyShear(TransInfo *t, const int UNUSED(mval[2]))
 		
 		add_v3_v3v3(td->loc, td->iloc, vec);
 	}
+	} // FIXME(indent)
 	
 	recalcData(t);
 	
@@ -3719,7 +3724,7 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
 static void postInputRotation(TransInfo *t, float values[3])
 {
 	if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
-		t->con.applyRot(t, NULL, t->axis, values);
+		t->con.applyRot(t, NULL, NULL, t->axis, values);
 	}
 }
 
@@ -4032,7 +4037,7 @@ static void applyRotation(TransInfo *t, const int UNUSED(mval[2]))
 	snapGridIncrement(t, &final);
 
 	if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
-		t->con.applyRot(t, NULL, t->axis, NULL);
+		t->con.applyRot(t, NULL, NULL, t->axis, NULL);
 	}
 	else {
 		/* reset axis if constraint is not set */
@@ -5004,7 +5009,7 @@ static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
 	}
 
 	if (t->con.applyRot && t->con.mode & CON_APPLY) {
-		t->con.applyRot(t, NULL, axis_global, NULL);
+		t->con.applyRot(t, NULL, NULL, axis_global, NULL);
 	}
 
 	for (i = 0; i < t->total; i++, td++) {
@@ -5018,7 +5023,7 @@ static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
 		if (t->con.applyRot && t->con.mode & CON_APPLY) {
 			float axis[3];
 			copy_v3_v3(axis, axis_global);
-			t->con.applyRot(t, td, axis, NULL);
+			t->con.applyRot(t, th, td, axis, NULL);
 
 			mul_m3_v3(td->smtx, axis);
 			if (isLockConstraint(t)) {
@@ -8280,8 +8285,6 @@ static void headerTimeTranslate(TransInfo *t, char str[UI_MAX_DRAW_STR])
 
 static void applyTimeTranslateValue(TransInfo *t)
 {
-	TransData *td = t->data;
-	TransData2D *td2d = t->data2d;
 	Scene *scene = t->scene;
 	int i;
 	
@@ -8290,6 +8293,9 @@ static void applyTimeTranslateValue(TransInfo *t)
 
 	float deltax, val /* , valprev */;
 
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	TransData *td = th->data;
+	TransData2D *td2d = th->data2d;
 	/* it doesn't matter whether we apply to t->data or t->data2d, but t->data2d is more convenient */
 	for (i = 0; i < t->total; i++, td++, td2d++) {
 		/* it is assumed that td->extra is a pointer to the AnimData,
@@ -8331,6 +8337,7 @@ static void applyTimeTranslateValue(TransInfo *t)
 		/* apply nearest snapping */
 		doAnimEdit_SnapFrame(t, td, td2d, adt, autosnap);
 	}
+	} // FIXME(indent)
 }
 
 static void applyTimeTranslate(TransInfo *t, const int mval[2])
@@ -8622,7 +8629,8 @@ static void applyTimeScaleValue(TransInfo *t)
 	const short autosnap = getAnimEdit_SnapMode(t);
 	const double secf = FPS;
 
-
+	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	TransData *td = th->data;
 	for (i = 0; i < t->total; i++, td++, td2d++) {
 		/* it is assumed that td->extra is a pointer to the AnimData,
 		 * whose active action is where this keyframe comes from
@@ -8649,6 +8657,7 @@ static void applyTimeScaleValue(TransInfo *t)
 		/* apply nearest snapping */
 		doAnimEdit_SnapFrame(t, td, td2d, adt, autosnap);
 	}
+	} // FIXME(indent)
 }
 
 static void applyTimeScale(TransInfo *t, const int UNUSED(mval[2]))

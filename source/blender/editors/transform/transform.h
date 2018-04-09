@@ -47,6 +47,7 @@
 
 struct Depsgraph;
 struct TransInfo;
+struct TransHandle;
 struct TransData;
 struct TransformOrientation;
 struct TransSnap;
@@ -109,7 +110,7 @@ typedef struct TransSnap {
 	 * \note Return value can be anything,
 	 * where the smallest absolute value defines whats closest.
 	 */
-	float  (*distance)(struct TransInfo *, const float p1[3], const float p2[3]);
+	float  (*distance)(struct TransInfo *t, const float p1[3], const float p2[3]);
 
 	/**
 	 * Re-usable snap context data.
@@ -127,14 +128,16 @@ typedef struct TransCon {
 	                     /* the one in TransInfo is not garanty to stay the same (Rotates change it)  */
 	int   mode;          /* Mode flags of the Constraint                                              */
 	void  (*drawExtra)(struct TransInfo *t);
+
+	                     /* Note: if 'th' is NULL, 'td' must also be NULL. */
 	                     /* For constraints that needs to draw differently from the other
 	                      * uses this instead of the generic draw function                            */
-	void  (*applyVec)(struct TransInfo *t, struct TransData *td, const float in[3], float out[3], float pvec[3]);
+	void  (*applyVec)(struct TransInfo *t, struct TransHandle *th, struct TransData *td, const float in[3], float out[3], float pvec[3]);
 	                     /* Apply function pointer for linear vectorial transformation                */
 	                     /* The last three parameters are pointers to the in/out/printable vectors    */
-	void  (*applySize)(struct TransInfo *t, struct TransData *td, float smat[3][3]);
+	void  (*applySize)(struct TransInfo *t, struct TransHandle *th, struct TransData *td, float smat[3][3]);
 	                     /* Apply function pointer for size transformation */
-	void  (*applyRot)(struct TransInfo *t, struct TransData *td, float vec[3], float *angle);
+	void  (*applyRot)(struct TransInfo *t, struct TransHandle *th, struct TransData *td, float vec[3], float *angle);
 	                     /* Apply function pointer for rotation transformation */
 } TransCon;
 
@@ -382,7 +385,23 @@ typedef struct TransCenterData {
 	unsigned int is_set : 1;
 } TransCenterData;
 
+typedef struct TransHandle {
+	TransData  *data;           /* transformed data (array)             */
+	TransDataExtension *ext;	/* transformed data extension (array)   */
+	TransData2D *data2d;		/* transformed data for 2d (array)      */
+	int         total;          /* total number of transformed data     */
+
+	struct Object *obedit;
+	float          obedit_mat[3][3]; /* normalized editmode matrix (T_EDIT only) */
+
+	struct Object *poseobj;		/* if t->flag & T_POSE, this denotes pose object */
+} TransHandle;
+
 typedef struct TransInfo {
+	TransHandle *thand;
+	int          thand_len;
+	int          total_all_handle;
+
 	int         mode;           /* current mode                         */
 	int	        flag;           /* generic flags for special behaviors  */
 	int			modifiers;		/* special modifiers, by function, not key */
@@ -393,10 +412,6 @@ typedef struct TransInfo {
 								/* transform function pointer           */
 	eRedrawFlag (*handleEvent)(struct TransInfo *, const struct wmEvent *);
 								/* event handler function pointer  RETURN 1 if redraw is needed */
-	int         total;          /* total number of transformed data     */
-	TransData  *data;           /* transformed data (array)             */
-	TransDataExtension *ext;	/* transformed data extension (array)   */
-	TransData2D *data2d;		/* transformed data for 2d (array)      */
 	TransCon    con;            /* transformed constraint               */
 	TransSnap	tsnap;
 	NumInput    num;            /* numerical input                      */
@@ -425,14 +440,13 @@ typedef struct TransInfo {
 	short		around;
 	char		spacetype;		/* spacetype where transforming is      */
 	char		helpline;		/* helpline modes (not to be confused with hotline) */
+	short		obedit_type;	/* Avoid looking inside TransHandle obedit. */
 
 	float		vec[3];			/* translation, to show for widget   	*/
 	float		mat[3][3];		/* rot/rescale, to show for widget   	*/
 
 	float		spacemtx[3][3];	/* orientation matrix of the current space	*/
 	char		spacename[64];	/* name of the current space, MAX_NAME		*/
-
-	struct Object *poseobj;		/* if t->flag & T_POSE, this denotes pose object */
 
 	/**
 	 * Rule of thumb for choosing between mode/type:
@@ -484,8 +498,6 @@ typedef struct TransInfo {
 	struct ReportList *reports;  /* assign from the operator, or can be NULL */
 	int         mval[2];        /* current mouse position               */
 	float       zfac;           /* use for 3d view */
-	struct Object *obedit;
-	float          obedit_mat[3][3]; /* normalized editmode matrix (T_EDIT only) */
 	void		*draw_handle_apply;
 	void		*draw_handle_view;
 	void		*draw_handle_pixel;
