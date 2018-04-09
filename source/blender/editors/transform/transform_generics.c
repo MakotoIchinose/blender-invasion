@@ -1708,12 +1708,15 @@ void calculateCenter2D(TransInfo *t)
 	BLI_assert(!is_zero_v3(t->aspect));
 
 	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = th->obedit ? t->obedit : t->poseobj;
-		float vec[3];
-		
-		copy_v3_v3(vec, t->center);
-		mul_m4_v3(ob->obmat, vec);
-		projectFloatView(t, vec, t->center2d);
+		FOREACH_THAND (t, th) {
+			TransData *td = th->data;
+			Object *ob = th->obedit ? th->obedit : t->poseobj;
+			float vec[3];
+
+			copy_v3_v3(vec, t->center);
+			mul_m4_v3(ob->obmat, vec);
+			projectFloatView(t, vec, t->center2d);
+		}
 	}
 	else {
 		projectFloatView(t, t->center, t->center2d);
@@ -1872,7 +1875,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 	bool ok = false;
 
 	if (t->obedit) {
-		if (ED_object_editmode_calc_active_center(t->obedit, select_only, r_center)) {
+		if (ED_object_editmode_calc_active_center(th->obedit, select_only, r_center)) {
 			ok = true;
 		}
 	}
