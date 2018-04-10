@@ -482,6 +482,17 @@ static int editmode_toggle_exec(bContext *C, wmOperator *op)
 	}
 	else {
 		ED_object_editmode_exit(C, EM_FREEDATA | EM_WAITCURSOR);  /* had EM_DO_UNDO but op flag calls undo too [#24685] */
+		if ((obact->mode & mode_flag) == 0) {
+			FOREACH_SELECTED_OBJECT_BEGIN(view_layer, ob)
+			{
+				if (ob != obact) {
+					if (ob->flag & SELECT) {
+						ED_object_editmode_exit_ex(NULL, scene, ob, EM_FREEDATA | EM_WAITCURSOR);
+					}
+				}
+			}
+			FOREACH_SELECTED_OBJECT_END;
+		}
 	}
 	
 	ED_space_image_uv_sculpt_update(CTX_wm_manager(C), scene);
