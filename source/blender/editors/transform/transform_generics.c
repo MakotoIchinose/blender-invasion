@@ -1183,9 +1183,15 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->settings = ts;
 	t->reports = op ? op->reports : NULL;
 
-	if (obedit) {
+	if (t->thand == NULL) {
+		t->thand = MEM_callocN(sizeof(*t->thand), __func__);
+		t->thand_len = 1;
 	}
 
+	t->helpline = HLP_NONE;
+	
+	t->flag = 0;
+	
 	if (CTX_data_edit_object(C) /* || pose mode .. etc. */) {
 		uint objects_len;
 		Object **objects = BKE_view_layer_array_from_objects_in_mode(
@@ -1200,18 +1206,12 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			normalize_m3(th->obedit_mat);
 		}
 		t->obedit_type = objects[0]->type;
+		t->flag |= T_EDIT;
 	}
 	else {
 		t->obedit_type = -1;
 	}
 
-	t->thand = NULL;
-	t->thand_len = 0;
-
-	t->helpline = HLP_NONE;
-	
-	t->flag = 0;
-	
 	t->redraw = TREDRAW_HARD;  /* redraw first time */
 	
 	if (event) {

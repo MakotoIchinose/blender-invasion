@@ -8557,4 +8557,9 @@ void createTransData(bContext *C, TransInfo *t)
 			}
 		}
 	}
+
+	BLI_assert(t->total_all_handle == 0);
+	FOREACH_THAND (t, th) {
+		t->total_all_handle += th->total;
+	}
 }
