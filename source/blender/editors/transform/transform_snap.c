@@ -1468,7 +1468,7 @@ void snapSequenceBounds(TransInfo *t, const int mval[2])
 	float xmouse, ymouse;
 	int frame;
 	int mframe;
-	TransSeq *ts = t->custom.type.data;
+	TransSeq *ts = THAND_FIRST_SINGLE(t)->custom.type.data;
 	/* reuse increment, strictly speaking could be another snap mode, but leave as is */
 	if (!(t->modifiers & MOD_SNAP_INVERT))
 		return;

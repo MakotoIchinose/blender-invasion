@@ -386,6 +386,10 @@ typedef struct TransCenterData {
 } TransCenterData;
 
 typedef struct TransHandle {
+	/* Use for cases we care about the active, eg: active vert of active mesh.
+	 * if set this will _always_ be the first item in the array. */
+	bool is_active;
+
 	TransData  *data;           /* transformed data (array)             */
 	TransDataExtension *ext;	/* transformed data extension (array)   */
 	TransData2D *data2d;		/* transformed data for 2d (array)      */
@@ -395,6 +399,22 @@ typedef struct TransHandle {
 	float          obedit_mat[3][3]; /* normalized editmode matrix (T_EDIT only) */
 
 	struct Object *poseobj;		/* if t->flag & T_POSE, this denotes pose object */
+
+	/**
+	 * Rule of thumb for choosing between mode/type:
+	 * - If transform mode uses the data, assign to `mode`
+	 *   (typically in transform.c).
+	 * - If conversion uses the data as an extension to the #TransData, assign to `type`
+	 *   (typically in transform_conversion.c).
+	 */
+	struct {
+		/* owned by the mode (grab, scale, bend... )*/
+		union {
+			TransCustomData mode, first_elem;
+		};
+		TransCustomData type;
+	} custom;
+#define TRANS_CUSTOM_DATA_ELEM_MAX (sizeof(((TransHandle *)NULL)->custom) / sizeof(TransCustomData))
 } TransHandle;
 
 typedef struct TransInfo {
@@ -447,23 +467,6 @@ typedef struct TransInfo {
 
 	float		spacemtx[3][3];	/* orientation matrix of the current space	*/
 	char		spacename[64];	/* name of the current space, MAX_NAME		*/
-
-	/**
-	 * Rule of thumb for choosing between mode/type:
-	 * - If transform mode uses the data, assign to `mode`
-	 *   (typically in transform.c).
-	 * - If conversion uses the data as an extension to the #TransData, assign to `type`
-	 *   (typically in transform_conversion.c).
-	 */
-	struct {
-		/* owned by the mode (grab, scale, bend... )*/
-		union {
-			TransCustomData mode, first_elem;
-		};
-		/* owned by the type (mesh, armature, nla...) */
-		TransCustomData type;
-	} custom;
-#define TRANS_CUSTOM_DATA_ELEM_MAX (sizeof(((TransInfo *)NULL)->custom) / sizeof(TransCustomData))
 
 	/*************** NEW STUFF *********************/
 	short		launch_event; 	/* event type used to launch transform */
@@ -847,6 +850,7 @@ bool checkUseAxisMatrix(TransInfo *t);
 
 /* This is to be replaced, just to get things compiling early on. */
 #define THAND_FIRST_EVIL(t) (&(t)->thand[0])
+#define THAND_FIRST_OK(t) (&(t)->thand[0])
 /* For cases we _know_ there is only one handle. */
 #define THAND_FIRST_SINGLE(t) (BLI_assert((t)->thand_len == 1), (&(t)->thand[0]))
 

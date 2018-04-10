@@ -1158,7 +1158,7 @@ void restoreBones(TransInfo *t)
 	FOREACH_THAND (t, th) {
 
 	bArmature *arm = th->obedit->data;
-	BoneInitData *bid = t->custom.type.data;
+	BoneInitData *bid = th->custom.type.data;
 	EditBone *ebo;
 
 	while (bid->bone) {
@@ -1251,8 +1251,8 @@ static void createTransArmatureVerts(TransInfo *t)
 	td = th->data = MEM_callocN(th->total * sizeof(TransData), "TransEditBone");
 
 	if (mirror) {
-		t->custom.type.data = bid = MEM_mallocN((total_mirrored + 1) * sizeof(BoneInitData), "BoneInitData");
-		t->custom.type.use_free = true;
+		th->custom.type.data = bid = MEM_mallocN((total_mirrored + 1) * sizeof(BoneInitData), "BoneInitData");
+		th->custom.type.use_free = true;
 	}
 
 	i = 0;
@@ -2562,7 +2562,7 @@ static void createTransEditVerts(TransInfo *t)
 
 	if (t->flag & T_MIRROR) {
 		/* TODO(campbell): xform: We need support for many mirror objects at once! */
-		if (th == t->thand) {
+		if (th->is_active) {
 			EDBM_verts_mirror_cache_begin(em, 0, false, (t->flag & T_PROP_EDIT) == 0, use_topology);
 			mirror = 1;
 		}
@@ -3159,7 +3159,7 @@ static void createTransUVs(bContext *C, TransInfo *t)
 	if (sima->flag & SI_LIVE_UNWRAP) {
 		/* TODO(campbell): xform: Only active object currently!
 		 * it uses a static variable. */
-		if (th == t->thand) {
+		if (th->is_active) {
 			ED_uvedit_live_unwrap_begin(t->scene, th->obedit);
 		}
 	}
@@ -3379,8 +3379,8 @@ static void createTransNlaData(bContext *C, TransInfo *t)
 	
 	th->data = MEM_callocN(th->total * sizeof(TransData), "TransData(NLA Editor)");
 	td = th->data;
-	t->custom.type.data = tdn = MEM_callocN(th->total * sizeof(TransDataNla), "TransDataNla (NLA Editor)");
-	t->custom.type.use_free = true;
+	th->custom.type.data = tdn = MEM_callocN(th->total * sizeof(TransDataNla), "TransDataNla (NLA Editor)");
+	th->custom.type.use_free = true;
 	
 	/* loop 2: build transdata array */
 	for (ale = anim_data.first; ale; ale = ale->next) {
@@ -3910,10 +3910,10 @@ typedef struct tGPFtransdata {
 /* This function helps flush transdata written to tempdata into the gp-frames  */
 void flushTransIntFrameActionData(TransInfo *t)
 {
-	tGPFtransdata *tfd = t->custom.type.data;
+	TransHandle *th = THAND_FIRST_SINGLE(t);
+	tGPFtransdata *tfd = th->custom.type.data;
 	int i;
 
-	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* flush data! */
 	for (i = 0; i < th->total; i++, tfd++) {
@@ -4084,8 +4084,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
 	td2d = th->data2d;
 	
 	if (ELEM(ac.datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
-		t->custom.type.data = tfd = MEM_callocN(sizeof(tGPFtransdata) * count, "tGPFtransdata");
-		t->custom.type.use_free = true;
+		th->custom.type.data = tfd = MEM_callocN(sizeof(tGPFtransdata) * count, "tGPFtransdata");
+		th->custom.type.use_free = true;
 	}
 	
 	/* loop 2: build transdata array */
@@ -4481,12 +4481,12 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
 	th->data = MEM_callocN(th->total * sizeof(TransData), "TransData (Graph Editor)");
 	/* for each 2d vert a 3d vector is allocated, so that they can be treated just as if they were 3d verts */
 	th->data2d = MEM_callocN(th->total * sizeof(TransData2D), "TransData2D (Graph Editor)");
-	t->custom.type.data = MEM_callocN(th->total * sizeof(TransDataGraph), "TransDataGraph");
-	t->custom.type.use_free = true;
+	th->custom.type.data = MEM_callocN(th->total * sizeof(TransDataGraph), "TransDataGraph");
+	th->custom.type.use_free = true;
 	
 	td = th->data;
 	td2d = th->data2d;
-	tdg = t->custom.type.data;
+	tdg = th->custom.type.data;
 	
 	/* precompute space-conversion matrices for dealing with non-uniform scaling of Graph Editor */
 	unit_m3(mtx);
@@ -4892,7 +4892,7 @@ void flushTransGraphData(TransInfo *t)
 	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* flush to 2d vector from internally used 3d vector */
-	for (a = 0, td = th->data, td2d = th->data2d, tdg = t->custom.type.data;
+	for (a = 0, td = th->data, td2d = th->data2d, tdg = th->custom.type.data;
 	     a < th->total;
 	     a++, td++, td2d++, tdg++)
 	{
@@ -5457,7 +5457,7 @@ static void createTransSeqData(bContext *C, TransInfo *t)
 		return;
 	}
 
-	t->custom.type.free_cb = freeSeqData;
+	th->custom.type.free_cb = freeSeqData;
 
 	xmouse = (int)UI_view2d_region_to_view_x(v2d, t->mouse.imval[0]);
 
@@ -5503,8 +5503,8 @@ static void createTransSeqData(bContext *C, TransInfo *t)
 		return;
 	}
 
-	t->custom.type.data = ts = MEM_callocN(sizeof(TransSeq), "transseq");
-	t->custom.type.use_free = true;
+	th->custom.type.data = ts = MEM_callocN(sizeof(TransSeq), "transseq");
+	th->custom.type.use_free = true;
 	td = th->data = MEM_callocN(th->total * sizeof(TransData), "TransSeq TransData");
 	td2d = th->data2d = MEM_callocN(th->total * sizeof(TransData2D), "TransSeq TransData2D");
 	ts->tdseq = tdsq = MEM_callocN(th->total * sizeof(TransDataSeq), "TransSeq TransDataSeq");
@@ -6302,22 +6302,26 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 			if (canceled == 0) {
 				/* we need to delete the temporary faces before automerging */
 				if (t->mode == TFM_EDGE_SLIDE) {
-					EdgeSlideData *sld = t->custom.mode.data;
-
 					/* handle multires re-projection, done
 					 * on transform completion since it's
 					 * really slow -joeedh */
 					projectEdgeSlideData(t, true);
 
+					FOREACH_THAND (t, th) {
+					EdgeSlideData *sld = th->custom.mode.data;
+
 					/* free temporary faces to avoid automerging and deleting
 					 * during cleanup - psy-fi */
 					freeEdgeSlideTempFaces(sld);
+					} // FIXME(indent)
 				}
 				else if (t->mode == TFM_VERT_SLIDE) {
 					/* as above */
-					VertSlideData *sld = t->custom.mode.data;
 					projectVertSlideData(t, true);
+					FOREACH_THAND (t, th) {
+					VertSlideData *sld = th->custom.mode.data;
 					freeVertSlideTempFaces(sld);
+					} // FIXME(indent)
 				}
 
 				if (t->obedit_type == OB_MESH) {
@@ -6326,15 +6330,17 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 			}
 			else {
 				if (t->mode == TFM_EDGE_SLIDE) {
-					EdgeSlideData *sld = t->custom.mode.data;
-
-					sld->perc = 0.0;
+					FOREACH_THAND (t, th) {
+						EdgeSlideData *sld = th->custom.mode.data;
+						sld->perc = 0.0;
+					}
 					projectEdgeSlideData(t, false);
 				}
 				else if (t->mode == TFM_VERT_SLIDE) {
-					VertSlideData *sld = t->custom.mode.data;
-
-					sld->perc = 0.0;
+					FOREACH_THAND (t, th) {
+						EdgeSlideData *sld = th->custom.mode.data;
+						sld->perc = 0.0;
+					}
 					projectVertSlideData(t, false);
 				}
 			}
@@ -6900,8 +6906,7 @@ static void createTransNodeData(bContext *UNUSED(C), TransInfo *t)
 	SpaceNode *snode = t->sa->spacedata.first;
 	bNode *node;
 
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	th->total = 0;
 
@@ -7171,9 +7176,9 @@ static void createTransTrackingTracksData(bContext *C, TransInfo *t)
 
 	td = th->data = MEM_callocN(th->total * sizeof(TransData), "TransTracking TransData");
 	td2d = th->data2d = MEM_callocN(th->total * sizeof(TransData2D), "TransTracking TransData2D");
-	tdt = t->custom.type.data = MEM_callocN(th->total * sizeof(TransDataTracking), "TransTracking TransDataTracking");
+	tdt = th->custom.type.data = MEM_callocN(th->total * sizeof(TransDataTracking), "TransTracking TransDataTracking");
 
-	t->custom.type.free_cb = transDataTrackingFree;
+	th->custom.type.free_cb = transDataTrackingFree;
 
 	/* create actual data */
 	track = tracksbase->first;
@@ -7310,8 +7315,8 @@ static void createTransTrackingCurvesData(bContext *C, TransInfo *t)
 
 	td = th->data = MEM_callocN(th->total * sizeof(TransData), "TransTracking TransData");
 	td2d = th->data2d = MEM_callocN(th->total * sizeof(TransData2D), "TransTracking TransData2D");
-	t->custom.type.data = tdt = MEM_callocN(th->total * sizeof(TransDataTracking), "TransTracking TransDataTracking");
-	t->custom.type.free_cb = transDataTrackingFree;
+	th->custom.type.data = tdt = MEM_callocN(th->total * sizeof(TransDataTracking), "TransTracking TransDataTracking");
+	th->custom.type.free_cb = transDataTrackingFree;
 
 	/* create actual data */
 	track = tracksbase->first;
@@ -7375,11 +7380,11 @@ static void createTransTrackingData(bContext *C, TransInfo *t)
 
 static void cancelTransTracking(TransInfo *t)
 {
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 	SpaceClip *sc = t->sa->spacedata.first;
 	int i, framenr = ED_space_clip_get_clip_frame_number(sc);
-	TransDataTracking *tdt_array = t->custom.type.data;
+	TransDataTracking *tdt_array = th->custom.type.data;
 
-	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	i = 0;
 	while (i < th->total) {
@@ -7442,7 +7447,7 @@ void flushTransTracking(TransInfo *t)
 	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* flush to 2d vector from internally used 3d vector */
-	for (a = 0, td = th->data, td2d = th->data2d, tdt = t->custom.type.data; a < th->total; a++, td2d++, td++, tdt++) {
+	for (a = 0, td = th->data, td2d = th->data2d, tdt = th->custom.type.data; a < th->total; a++, td2d++, td++, tdt++) {
 		if (tdt->mode == transDataTracking_ModeTracks) {
 			float loc2d[2];
 
@@ -7775,8 +7780,8 @@ static void createTransMaskingData(bContext *C, TransInfo *t)
 	/* for each 2d uv coord a 3d vector is allocated, so that they can be
 	 * treated just as if they were 3d verts */
 	td2d = th->data2d = MEM_callocN(th->total * sizeof(TransData2D), "TransObData2D(Mask Editing)");
-	t->custom.type.data = tdm = MEM_callocN(th->total * sizeof(TransDataMasking), "TransDataMasking(Mask Editing)");
-	t->custom.type.use_free = true;
+	th->custom.type.data = tdm = MEM_callocN(th->total * sizeof(TransDataMasking), "TransDataMasking(Mask Editing)");
+	th->custom.type.use_free = true;
 
 	/* create data */
 	for (masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
@@ -7840,7 +7845,7 @@ void flushTransMasking(TransInfo *t)
 	inv[1] = 1.0f / asp[1];
 
 	/* flush to 2d vector from internally used 3d vector */
-	for (a = 0, td = th->data2d, tdm = t->custom.type.data; a < th->total; a++, td++, tdm++) {
+	for (a = 0, td = th->data2d, tdm = th->custom.type.data; a < th->total; a++, td++, tdm++) {
 		td->loc2d[0] = td->loc[0] * inv[0];
 		td->loc2d[1] = td->loc[1] * inv[1];
 		mul_m3_v2(tdm->parent_inverse_matrix, td->loc2d);
@@ -7990,8 +7995,8 @@ static void createTransPaintCurveVerts(bContext *C, TransInfo *t)
 	th->total = total;
 	td2d = th->data2d = MEM_callocN(th->total * sizeof(TransData2D), "TransData2D");
 	td = th->data = MEM_callocN(th->total * sizeof(TransData), "TransData");
-	t->custom.type.data = tdpc = MEM_callocN(th->total * sizeof(TransDataPaintCurve), "TransDataPaintCurve");
-	t->custom.type.use_free = true;
+	th->custom.type.data = tdpc = MEM_callocN(th->total * sizeof(TransDataPaintCurve), "TransDataPaintCurve");
+	th->custom.type.use_free = true;
 
 	for (pcp = pc->points, i = 0; i < pc->tot_points; i++, pcp++) {
 		if (PC_IS_ANY_SEL(pcp)) {
@@ -8026,7 +8031,7 @@ void flushTransPaintCurve(TransInfo *t)
 	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	TransData2D *td2d = th->data2d;
-	TransDataPaintCurve *tdpc = t->custom.type.data;
+	TransDataPaintCurve *tdpc = th->custom.type.data;
 
 	for (i = 0; i < th->total; i++, tdpc++, td2d++) {
 		PaintCurvePoint *pcp = tdpc->pcp;
@@ -8517,7 +8522,21 @@ void createTransData(bContext *C, TransInfo *t)
 	}
 
 	BLI_assert(t->total_all_handle == 0);
-	FOREACH_THAND (t, th) {
-		t->total_all_handle += th->total;
+	uint thand_len_orig = t->thand_len;
+	for (TransHandle *th_end = t->thand - 1, *th = t->thand + (t->thand_len - 1); th != th_end; th--) {
+		if (th->total == 0) {
+			uint index = th - t->thand;
+			if (index + 1 != t->thand_len) {
+				/* we could change order and avoid memmove */
+				ARRAY_DELETE(t->thand, index, 1, t->thand_len);
+			}
+			t->thand_len -= 1;
+		}
+		else {
+			t->total_all_handle += th->total;
+		}
+	}
+	if (thand_len_orig != t->thand_len) {
+		t->thand = MEM_reallocN(t->thand, sizeof(*t->thand) * t->thand_len);
 	}
 }
