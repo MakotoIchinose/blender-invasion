@@ -1708,15 +1708,12 @@ void calculateCenter2D(TransInfo *t)
 	BLI_assert(!is_zero_v3(t->aspect));
 
 	if (t->flag & (T_EDIT | T_POSE)) {
-		FOREACH_THAND (t, th) {
-			TransData *td = th->data;
-			Object *ob = th->obedit ? th->obedit : t->poseobj;
-			float vec[3];
+		Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
+		float vec[3];
 
-			copy_v3_v3(vec, t->center);
-			mul_m4_v3(ob->obmat, vec);
-			projectFloatView(t, vec, t->center2d);
-		}
+		copy_v3_v3(vec, t->center);
+		mul_m4_v3(ob->obmat, vec);
+		projectFloatView(t, vec, t->center2d);
 	}
 	else {
 		projectFloatView(t, t->center, t->center2d);
@@ -1730,7 +1727,7 @@ void calculateCenterGlobal(
 	/* setting constraint center */
 	/* note, init functions may over-ride t->center */
 	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = t->obedit ? t->obedit : t->poseobj;
+		Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
 		mul_v3_m4v3(r_center_global, ob->obmat, center_local);
 	}
 	else {
@@ -1747,7 +1744,7 @@ void calculateCenterCursor(TransInfo *t, float r_center[3])
 	
 	/* If edit or pose mode, move cursor in local space */
 	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = t->obedit ? t->obedit : t->poseobj;
+		Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
 		float mat[3][3], imat[3][3];
 		
 		sub_v3_v3v3(r_center, r_center, ob->obmat[3]);
@@ -1831,10 +1828,10 @@ void calculateCenterMedian(TransInfo *t, float r_center[3])
 	int total = 0;
 	int i;
 	
-	for (i = 0; i < t->total; i++) {
-		if (t->data[i].flag & TD_SELECTED) {
-			if (!(t->data[i].flag & TD_NOCENTER)) {
-				add_v3_v3(partial, t->data[i].center);
+	for (i = 0; i < THAND_FIRST_EVIL(t)->total; i++) {
+		if (THAND_FIRST_EVIL(t)->data[i].flag & TD_SELECTED) {
+			if (!(THAND_FIRST_EVIL(t)->data[i].flag & TD_NOCENTER)) {
+				add_v3_v3(partial, THAND_FIRST_EVIL(t)->data[i].center);
 				total++;
 			}
 		}
@@ -1850,16 +1847,16 @@ void calculateCenterBound(TransInfo *t, float r_center[3])
 	float max[3];
 	float min[3];
 	int i;
-	for (i = 0; i < t->total; i++) {
+	for (i = 0; i < THAND_FIRST_EVIL(t)->total; i++) {
 		if (i) {
-			if (t->data[i].flag & TD_SELECTED) {
-				if (!(t->data[i].flag & TD_NOCENTER))
-					minmax_v3v3_v3(min, max, t->data[i].center);
+			if (THAND_FIRST_EVIL(t)->data[i].flag & TD_SELECTED) {
+				if (!(THAND_FIRST_EVIL(t)->data[i].flag & TD_NOCENTER))
+					minmax_v3v3_v3(min, max, THAND_FIRST_EVIL(t)->data[i].center);
 			}
 		}
 		else {
-			copy_v3_v3(max, t->data[i].center);
-			copy_v3_v3(min, t->data[i].center);
+			copy_v3_v3(max, THAND_FIRST_EVIL(t)->data[i].center);
+			copy_v3_v3(min, THAND_FIRST_EVIL(t)->data[i].center);
 		}
 	}
 	mid_v3_v3v3(r_center, min, max);
@@ -1874,7 +1871,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 	TransHandle *th = &t->thand[0];
 	bool ok = false;
 
-	if (t->obedit) {
+	if (th->obedit) {
 		if (ED_object_editmode_calc_active_center(th->obedit, select_only, r_center)) {
 			ok = true;
 		}
@@ -2037,7 +2034,7 @@ void calculatePropRatio(TransInfo *t)
 		const char *pet_id = NULL;
 		FOREACH_THAND (t, th) {
 		TransData *td = th->data;
-		for (i = 0; i < t->total; i++, td++) {
+		for (i = 0; i < th->total; i++, td++) {
 			if (td->flag & TD_SELECTED) {
 				td->factor = 1.0f;
 			}

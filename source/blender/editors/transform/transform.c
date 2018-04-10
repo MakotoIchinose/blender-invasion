@@ -244,6 +244,7 @@ void setTransformViewMatrices(TransInfo *t)
 		t->persp = RV3D_ORTHO;
 	}
 
+	calculateCenterGlobal(t, t->center, t->center_global);
 	calculateCenter2D(t);
 }
 

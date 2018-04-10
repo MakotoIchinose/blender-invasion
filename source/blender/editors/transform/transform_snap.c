@@ -275,7 +275,7 @@ void applyProject(TransInfo *t)
 		float tvec[3];
 		int i;
 
-		for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+		FOREACH_THAND(t, th) {
 		TransData *td = th->data;
 
 		float imat[4][4];
@@ -370,7 +370,7 @@ void applyGridAbsolute(TransInfo *t)
 	if (grid_size == 0.0f)
 		return;
 	
-	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+	FOREACH_THAND(t, th) {
 	TransData *td;
 
 	if (t->flag & (T_EDIT | T_POSE)) {
@@ -993,7 +993,7 @@ static void CalcSnapGeometry(TransInfo *t, float *UNUSED(vec))
 		
 		UI_view2d_region_to_view(&t->ar->v2d, t->mval[0], t->mval[1], &co[0], &co[1]);
 
-		if (ED_uvedit_nearest_uv(t->scene, t->obedit, ima, co, t->tsnap.snapPoint)) {
+		if (ED_uvedit_nearest_uv(t->scene, THAND_FIRST_EVIL(t)->obedit, ima, co, t->tsnap.snapPoint)) {
 			t->tsnap.snapPoint[0] *= t->aspect[0];
 			t->tsnap.snapPoint[1] *= t->aspect[1];
 
@@ -1069,7 +1069,7 @@ static void TargetSnapActive(TransInfo *t)
 	if ((t->tsnap.status & TARGET_INIT) == 0) {
 		if (calculateCenterActive(t, true, t->tsnap.snapTarget)) {
 			if (t->flag & (T_EDIT | T_POSE)) {
-				Object *ob = t->obedit ? t->obedit : t->poseobj;
+				Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
 				mul_m4_v3(ob->obmat, t->tsnap.snapTarget);
 			}
 
@@ -1090,23 +1090,34 @@ static void TargetSnapMedian(TransInfo *t)
 {
 	// Only need to calculate once
 	if ((t->tsnap.status & TARGET_INIT) == 0) {
-		TransData *td = NULL;
-		int i;
+		int i_accum = 0;
 
 		t->tsnap.snapTarget[0] = 0;
 		t->tsnap.snapTarget[1] = 0;
 		t->tsnap.snapTarget[2] = 0;
-		
-		for (td = t->data, i = 0; i < t->total && td->flag & TD_SELECTED; i++, td++) {
-			add_v3_v3(t->tsnap.snapTarget, td->center);
+
+		FOREACH_THAND (t, th) {
+			Object *ob_xform = NULL;
+			if (t->flag & (T_EDIT | T_POSE)) {
+				ob_xform = th->obedit ? th->obedit : th->poseobj;
+			}
+			TransData *td = th->data;
+			int i;
+			for (i = 0; i < th->total && td->flag & TD_SELECTED; i++, td++) {
+				/* TODO(campbell): perform the global transformation once per TransHandle */
+				if (ob_xform) {
+					float v[3];
+					mul_v3_m4v3(v, ob_xform->obmat, td->center);
+					add_v3_v3(t->tsnap.snapTarget, v);
+				}
+				else {
+					add_v3_v3(t->tsnap.snapTarget, td->center);
+				}
+			}
+			i_accum += i;
 		}
-		
-		mul_v3_fl(t->tsnap.snapTarget, 1.0 / i);
-		
-		if (t->flag & (T_EDIT | T_POSE)) {
-			Object *ob = t->obedit ? t->obedit : t->poseobj;
-			mul_m4_v3(ob->obmat, t->tsnap.snapTarget);
-		}
+
+		mul_v3_fl(t->tsnap.snapTarget, 1.0 / i_accum);
 		
 		TargetSnapOffset(t, NULL);
 		
@@ -1119,14 +1130,14 @@ static void TargetSnapClosest(TransInfo *t)
 	// Only valid if a snap point has been selected
 	if (t->tsnap.status & POINT_INIT) {
 		float dist_closest = 0.0f;
-		TransData *closest = NULL, *td = NULL;
+		TransData *closest = NULL;
 		
 		/* Object mode */
 		if (t->flag & T_OBJECT) {
 			int i;
-			for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++) {
+			FOREACH_THAND(t, th) {
 			TransData *td = th->data;
-			for (td = t->data, i = 0; i < t->total && td->flag & TD_SELECTED; i++, td++) {
+			for (td = th->data, i = 0; i < th->total && td->flag & TD_SELECTED; i++, td++) {
 				struct BoundBox *bb = BKE_object_boundbox_get(td->ob);
 				
 				/* use boundbox if possible */
@@ -1171,15 +1182,17 @@ static void TargetSnapClosest(TransInfo *t)
 			} // FIXME(indent)
 		}
 		else {
+			FOREACH_THAND(t, th) {
+			TransData *td = th->data;
 			int i;
-			for (td = t->data, i = 0; i < t->total && td->flag & TD_SELECTED; i++, td++) {
+			for (i = 0; i < th->total && td->flag & TD_SELECTED; i++, td++) {
 				float loc[3];
 				float dist;
 				
 				copy_v3_v3(loc, td->center);
 				
 				if (t->flag & (T_EDIT | T_POSE)) {
-					Object *ob = t->obedit ? t->obedit : t->poseobj;
+					Object *ob = th->obedit ? th->obedit : th->poseobj;
 					mul_m4_v3(ob->obmat, loc);
 				}
 				
@@ -1193,6 +1206,7 @@ static void TargetSnapClosest(TransInfo *t)
 					dist_closest = dist;
 				}
 			}
+			} // FIXME(indent)
 		}
 		
 		TargetSnapOffset(t, closest);
