@@ -621,9 +621,7 @@ static void viewRedrawForce(const bContext *C, TransInfo *t)
 			// XXX how to deal with lock?
 			SpaceImage *sima = (SpaceImage *)t->sa->spacedata.first;
 			if (sima->lock) {
-				FOREACH_THAND (t, th) {
-					WM_event_add_notifier(C, NC_GEOM | ND_DATA, th->obedit->data);
-				}
+				WM_event_add_notifier(C, NC_GEOM | ND_DATA, OBEDIT_FROM_VIEW_LAYER(t->view_layer)->data);
 			}
 			else {
 				ED_area_tag_redraw(t->sa);

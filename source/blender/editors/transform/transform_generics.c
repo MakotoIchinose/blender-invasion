@@ -440,9 +440,7 @@ static void recalcData_nla(TransInfo *t)
 	double secf = FPS;
 	int i;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* for each strip we've got, perform some additional validation of the values that got set before
 	 * using RNA to set the value (which does some special operations when setting these values to make
@@ -993,9 +991,7 @@ static void recalcData_sequencer(TransInfo *t)
 	int a;
 	Sequence *seq_prev = NULL;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	for (a = 0, td = th->data; a < th->total; a++, td++) {
 		TransDataSeq *tdsq = (TransDataSeq *) td->extra;
@@ -1022,9 +1018,7 @@ static void recalcData_sequencer(TransInfo *t)
 /* force recalculation of triangles during transformation */
 static void recalcData_gpencil_strokes(TransInfo *t)
 {
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	TransData *td = th->data;
 	for (int i = 0; i < th->total; i++, td++) {
@@ -1196,8 +1190,10 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 		uint objects_len;
 		Object **objects = BKE_view_layer_array_from_objects_in_mode(
 		        t->view_layer, &objects_len,
+		        .object_mode = OB_MODE_EDIT,
 		        .no_dupe_data = true);
 		t->thand = MEM_callocN(sizeof(*t->thand) * objects_len, __func__);
+		t->thand_len = objects_len;
 
 		for (int i = 0; i < objects_len; i++) {
 			TransHandle *th = &t->thand[i];
@@ -1621,9 +1617,7 @@ void postTrans(bContext *C, TransInfo *t)
 
 void applyTransObjects(TransInfo *t)
 {
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	TransData *td;
 
@@ -1676,9 +1670,7 @@ static void restoreElement(TransData *td)
 
 void restoreTransObjects(TransInfo *t)
 {
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	FOREACH_THAND (t, th) {
 
 	TransData *td;
 	TransData2D *td2d;
@@ -1699,6 +1691,8 @@ void restoreTransObjects(TransInfo *t)
 	}
 
 	unit_m3(t->mat);
+
+	} // FIXME(indent)
 	
 	recalcData(t);
 }

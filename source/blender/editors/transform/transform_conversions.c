@@ -2854,9 +2854,7 @@ void flushTransSeq(TransInfo *t)
 	TransDataSeq *tdsq = NULL;
 	Sequence *seq;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* prevent updating the same seq twice
 	 * if the transdata order is changed this will mess up
@@ -3316,9 +3314,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
 	
 	int count = 0;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* determine what type of data we are operating on */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
@@ -3917,9 +3913,7 @@ void flushTransIntFrameActionData(TransInfo *t)
 	tGPFtransdata *tfd = t->custom.type.data;
 	int i;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* flush data! */
 	for (i = 0; i < th->total; i++, tfd++) {
@@ -4079,9 +4073,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
 		return;
 	}
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* allocate memory for data */
 	th->total = count;
@@ -4481,9 +4473,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
 		return;
 	}
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* allocate memory for data */
 	th->total = count;
@@ -4780,9 +4770,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
 	int i, j;
 	char *adjusted;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* dynamically allocate an array of chars to mark whether an TransData's
 	 * pointers have been fixed already, so that we don't override ones that are
@@ -4901,9 +4889,7 @@ void flushTransGraphData(TransInfo *t)
 	double secf = FPS;
 	int a;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* flush to 2d vector from internally used 3d vector */
 	for (a = 0, td = th->data, td2d = th->data2d, tdg = t->custom.type.data;
@@ -5273,9 +5259,7 @@ static void freeSeqData(TransInfo *t, TransCustomData *custom_data)
 {
 	Editing *ed = BKE_sequencer_editing_get(t->scene, false);
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	if (ed != NULL) {
 
@@ -5466,9 +5450,7 @@ static void createTransSeqData(bContext *C, TransInfo *t)
 
 	int count = 0;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	if (ed == NULL) {
 		th->total = 0;
@@ -6707,9 +6689,7 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
 		BLI_assert(t->flag & (T_OBJECT | T_TEXTURE));
 
-		/* only ever one */
-		BLI_assert(t->thand_len == 1);
-		TransHandle *th = &t->thand[0];
+		TransHandle *th = THAND_FIRST_SINGLE(t);
 
 		for (i = 0; i < th->total; i++) {
 			TransData *td = th->data + i;
@@ -6784,9 +6764,7 @@ static void createTransObject(bContext *C, TransInfo *t)
 
 	set_trans_object_base_flags(t);
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* count */
 	th->total = CTX_DATA_COUNT(C, selected_objects);
@@ -7156,9 +7134,7 @@ static void createTransTrackingTracksData(bContext *C, TransInfo *t)
 	TransDataTracking *tdt;
 	int framenr = ED_space_clip_get_clip_frame_number(sc);
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* count */
 	th->total = 0;
@@ -7299,9 +7275,7 @@ static void createTransTrackingCurvesData(bContext *C, TransInfo *t)
 
 	BKE_movieclip_get_size(clip, &sc->user, &width, &height);
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* count */
 	th->total = 0;
@@ -7378,9 +7352,7 @@ static void createTransTrackingData(bContext *C, TransInfo *t)
 	MovieClip *clip = ED_space_clip_get_clip(sc);
 	int width, height;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	th->total = 0;
 
@@ -7407,9 +7379,7 @@ static void cancelTransTracking(TransInfo *t)
 	int i, framenr = ED_space_clip_get_clip_frame_number(sc);
 	TransDataTracking *tdt_array = t->custom.type.data;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	i = 0;
 	while (i < th->total) {
@@ -7469,9 +7439,7 @@ void flushTransTracking(TransInfo *t)
 	if (t->state == TRANS_CANCEL)
 		cancelTransTracking(t);
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* flush to 2d vector from internally used 3d vector */
 	for (a = 0, td = th->data, td2d = th->data2d, tdt = t->custom.type.data; a < th->total; a++, td2d++, td++, tdt++) {
@@ -7740,9 +7708,7 @@ static void createTransMaskingData(bContext *C, TransInfo *t)
 	const bool is_prop_edit = (t->flag & T_PROP_EDIT);
 	float asp[2];
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	th->total = 0;
 
@@ -7867,9 +7833,7 @@ void flushTransMasking(TransInfo *t)
 	int a;
 	float asp[2], inv[2];
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	ED_mask_get_aspect(t->sa, t->ar, &asp[0], &asp[1]);
 	inv[0] = 1.0f / asp[0];
@@ -7995,9 +7959,7 @@ static void createTransPaintCurveVerts(bContext *C, TransInfo *t)
 	int i;
 	int total = 0;
 
-		/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	th->total = 0;
 
@@ -8061,9 +8023,7 @@ void flushTransPaintCurve(TransInfo *t)
 {
 	int i;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	TransData2D *td2d = th->data2d;
 	TransDataPaintCurve *tdpc = t->custom.type.data;
@@ -8088,9 +8048,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 	const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
 	const bool is_prop_edit_connected = (t->flag & T_PROP_CONNECTED) != 0;
 
-	/* only ever one */
-	BLI_assert(t->thand_len == 1);
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_SINGLE(t);
 
 	/* == Grease Pencil Strokes to Transform Data ==
 	 * Grease Pencil stroke points can be a mixture of 2D (screen-space),

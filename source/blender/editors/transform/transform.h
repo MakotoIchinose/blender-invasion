@@ -847,6 +847,8 @@ bool checkUseAxisMatrix(TransInfo *t);
 
 /* This is to be replaced, just to get things compiling early on. */
 #define THAND_FIRST_EVIL(t) (&(t)->thand[0])
+/* For cases we _know_ there is only one handle. */
+#define THAND_FIRST_SINGLE(t) (BLI_assert((t)->thand_len == 1), (&(t)->thand[0]))
 
 #define FOREACH_THAND(t, th) \
 	for (TransHandle *th = t->thand, *th_end = t->thand + t->thand_len; th != th_end; th++)
