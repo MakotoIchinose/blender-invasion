@@ -5732,12 +5732,12 @@ static void slide_origdata_interp_data_vert(
 }
 
 static void slide_origdata_interp_data(
-        TransInfo *t, SlideOrigData *sod,
+        Object *obedit, SlideOrigData *sod,
         TransDataGenericSlideVert *sv, unsigned int v_stride, unsigned int v_num,
         bool is_final)
 {
 	if (sod->use_origfaces) {
-		BMEditMesh *em = BKE_editmesh_from_object(THAND_FIRST_EVIL(t)->obedit);
+		BMEditMesh *em = BKE_editmesh_from_object(obedit);
 		BMesh *bm = em->bm;
 		unsigned int i;
 		const bool has_mdisps = (sod->cd_loop_mdisp_offset != -1);
@@ -5997,11 +5997,11 @@ static BMLoop *get_next_loop(BMVert *v, BMLoop *l,
  * Calculate screenspace `mval_start` / `mval_end`, optionally slide direction.
  */
 static void calcEdgeSlide_mval_range(
-        TransInfo *t, EdgeSlideData *sld, const int *sv_table, const int loop_nr,
+        TransInfo *t, TransHandle *th, EdgeSlideData *sld, const int *sv_table, const int loop_nr,
         const float mval[2], const bool use_occlude_geometry, const bool use_calc_direction)
 {
 	TransDataEdgeSlideVert *sv_array = sld->sv;
-	BMEditMesh *em = BKE_editmesh_from_object(THAND_FIRST_EVIL(t)->obedit);
+	BMEditMesh *em = BKE_editmesh_from_object(th->obedit);
 	BMesh *bm = em->bm;
 	ARegion *ar = t->ar;
 	View3D *v3d = NULL;
@@ -6028,7 +6028,7 @@ static void calcEdgeSlide_mval_range(
 		unit_m4(projectMat);
 	}
 	else {
-		ED_view3d_ob_project_mat_get(rv3d, THAND_FIRST_EVIL(t)->obedit, projectMat);
+		ED_view3d_ob_project_mat_get(rv3d, th->obedit, projectMat);
 	}
 
 	if (use_occlude_geometry) {
@@ -6071,7 +6071,7 @@ static void calcEdgeSlide_mval_range(
 
 					/* This test is only relevant if object is not wire-drawn! See [#32068]. */
 					if (use_occlude_geometry &&
-					    !BMBVH_EdgeVisible(bmbvh, e_other, t->depsgraph, ar, v3d, THAND_FIRST_EVIL(t)->obedit))
+					    !BMBVH_EdgeVisible(bmbvh, e_other, t->depsgraph, ar, v3d, th->obedit))
 					{
 						continue;
 					}
@@ -6159,7 +6159,7 @@ static void calcEdgeSlide_mval_range(
 }
 
 static void calcEdgeSlide_even(
-        TransInfo *t, EdgeSlideData *sld, const float mval[2])
+        TransInfo *t, TransHandle *th, EdgeSlideData *sld, const float mval[2])
 {
 	TransDataEdgeSlideVert *sv = sld->sv;
 
@@ -6184,7 +6184,7 @@ static void calcEdgeSlide_even(
 			unit_m4(projectMat);
 		}
 		else {
-			ED_view3d_ob_project_mat_get(rv3d, THAND_FIRST_EVIL(t)->obedit, projectMat);
+			ED_view3d_ob_project_mat_get(rv3d, th->obedit, projectMat);
 		}
 
 		for (i = 0; i < sld->totsv; i++, sv++) {
@@ -6543,10 +6543,10 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransHandle *th, bool
 	if (t->spacetype == SPACE_VIEW3D) {
 		v3d = t->sa ? t->sa->spacedata.first : NULL;
 		rv3d = t->ar ? t->ar->regiondata : NULL;
-		use_occlude_geometry = (v3d && THAND_FIRST_EVIL(t)->obedit->dt > OB_WIRE && v3d->drawtype > OB_WIRE);
+		use_occlude_geometry = (v3d && THAND_FIRST_OK(t)->obedit->dt > OB_WIRE && v3d->drawtype > OB_WIRE);
 	}
 
-	calcEdgeSlide_mval_range(t, sld, sv_table, loop_nr, mval, use_occlude_geometry, true);
+	calcEdgeSlide_mval_range(t, th, sld, sv_table, loop_nr, mval, use_occlude_geometry, true);
 
 	/* create copies of faces for customdata projection */
 	bmesh_edit_begin(bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
@@ -6554,7 +6554,7 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransHandle *th, bool
 	slide_origdata_create_data(t, th, &sld->orig_data, (TransDataGenericSlideVert *)sld->sv, sizeof(*sld->sv), sld->totsv);
 
 	if (rv3d) {
-		calcEdgeSlide_even(t, sld, mval);
+		calcEdgeSlide_even(t, th, sld, mval);
 	}
 
 	sld->em = em;
@@ -6746,10 +6746,10 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransHandle *th, bool
 	if (t->spacetype == SPACE_VIEW3D) {
 		v3d = t->sa ? t->sa->spacedata.first : NULL;
 		rv3d = t->ar ? t->ar->regiondata : NULL;
-		use_occlude_geometry = (v3d && THAND_FIRST_EVIL(t)->obedit->dt > OB_WIRE && v3d->drawtype > OB_WIRE);
+		use_occlude_geometry = (v3d && THAND_FIRST_OK(t)->obedit->dt > OB_WIRE && v3d->drawtype > OB_WIRE);
 	}
 
-	calcEdgeSlide_mval_range(t, sld, sv_table, loop_nr, mval, use_occlude_geometry, false);
+	calcEdgeSlide_mval_range(t, th, sld, sv_table, loop_nr, mval, use_occlude_geometry, false);
 
 	/* create copies of faces for customdata projection */
 	bmesh_edit_begin(bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
@@ -6757,7 +6757,7 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransHandle *th, bool
 	slide_origdata_create_data(t, th, &sld->orig_data, (TransDataGenericSlideVert *)sld->sv, sizeof(*sld->sv), sld->totsv);
 
 	if (rv3d) {
-		calcEdgeSlide_even(t, sld, mval);
+		calcEdgeSlide_even(t, th, sld, mval);
 	}
 
 	sld->em = em;
@@ -6781,7 +6781,7 @@ void projectEdgeSlideData(TransInfo *t, bool is_final)
 		return;
 	}
 
-	slide_origdata_interp_data(t, sod, (TransDataGenericSlideVert *)sld->sv, sizeof(*sld->sv), sld->totsv, is_final);
+	slide_origdata_interp_data(th->obedit, sod, (TransDataGenericSlideVert *)sld->sv, sizeof(*sld->sv), sld->totsv, is_final);
 	} // FIXME(indent)
 
 }
@@ -6931,7 +6931,7 @@ static void drawEdgeSlide(TransInfo *t)
 			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 			gpuPushMatrix();
-			gpuMultMatrix(THAND_FIRST_EVIL(t)->obedit->obmat);
+			gpuMultMatrix(THAND_FIRST_OK(t)->obedit->obmat);
 
 			unsigned int pos = GWN_vertformat_attr_add(immVertexFormat(), "pos", GWN_COMP_F32, 3, GWN_FETCH_FLOAT);
 
@@ -7166,7 +7166,7 @@ static void applyEdgeSlide(TransInfo *t, const int UNUSED(mval[2]))
 
 static void calcVertSlideCustomPoints(struct TransInfo *t)
 {
-	VertSlideData *sld = THAND_FIRST_EVIL(t)->custom.mode.data;
+	VertSlideData *sld = THAND_FIRST_OK(t)->custom.mode.data;
 	TransDataVertSlideVert *sv = &sld->sv[sld->curr_sv_index];
 
 	const float *co_orig_3d = sv->co_orig_3d;
@@ -7202,7 +7202,7 @@ static void calcVertSlideCustomPoints(struct TransInfo *t)
 static void calcVertSlideMouseActiveVert(struct TransInfo *t, const int mval[2])
 {
 	/* Active object may have no selected vertices. */
-	VertSlideData *sld = THAND_FIRST_EVIL(t)->custom.mode.data;
+	VertSlideData *sld = THAND_FIRST_OK(t)->custom.mode.data;
 	float mval_fl[2] = {UNPACK2(mval)};
 	TransDataVertSlideVert *sv;
 
@@ -7229,7 +7229,7 @@ static void calcVertSlideMouseActiveVert(struct TransInfo *t, const int mval[2])
  */
 static void calcVertSlideMouseActiveEdges(struct TransInfo *t, const int mval[2])
 {
-	VertSlideData *sld = THAND_FIRST_EVIL(t)->custom.mode.data;
+	VertSlideData *sld = THAND_FIRST_OK(t)->custom.mode.data;
 	float imval_fl[2] = {UNPACK2(t->mouse.imval)};
 	float  mval_fl[2] = {UNPACK2(mval)};
 
@@ -7257,7 +7257,7 @@ static void calcVertSlideMouseActiveEdges(struct TransInfo *t, const int mval[2]
 				float dir_dot;
 
 				sub_v3_v3v3(tdir, sv->co_orig_3d, sv->co_link_orig_3d[j]);
-				mul_mat3_m4_v3(THAND_FIRST_EVIL(t)->obedit->obmat, tdir);
+				mul_mat3_m4_v3(THAND_FIRST_OK(t)->obedit->obmat, tdir);
 				project_plane_v3_v3v3(tdir, tdir, t->viewinv[2]);
 
 				normalize_v3(tdir);
@@ -7277,7 +7277,7 @@ static void calcVertSlideMouseActiveEdges(struct TransInfo *t, const int mval[2]
 
 static bool createVertSlideVerts(TransInfo *t, TransHandle *th, bool use_even, bool flipped, bool use_clamp)
 {
-	BMEditMesh *em = BKE_editmesh_from_object(THAND_FIRST_EVIL(t)->obedit);
+	BMEditMesh *em = BKE_editmesh_from_object(th->obedit);
 	BMesh *bm = em->bm;
 	BMIter iter;
 	BMIter eiter;
@@ -7375,7 +7375,7 @@ static bool createVertSlideVerts(TransInfo *t, TransHandle *th, bool use_even, b
 
 		rv3d = ar ? ar->regiondata : NULL;
 		if (rv3d) {
-			ED_view3d_ob_project_mat_get(rv3d, THAND_FIRST_EVIL(t)->obedit, sld->proj_mat);
+			ED_view3d_ob_project_mat_get(rv3d, th->obedit, sld->proj_mat);
 		}
 	}
 
@@ -7394,7 +7394,7 @@ void projectVertSlideData(TransInfo *t, bool is_final)
 	VertSlideData *sld = th->custom.mode.data;
 	SlideOrigData *sod = &sld->orig_data;
 	if (sod->use_origfaces == true) {
-		slide_origdata_interp_data(t, sod, (TransDataGenericSlideVert *)sld->sv, sizeof(*sld->sv), sld->totsv, is_final);
+		slide_origdata_interp_data(th->obedit, sod, (TransDataGenericSlideVert *)sld->sv, sizeof(*sld->sv), sld->totsv, is_final);
 	}
 	} // FIXME(indent)
 }
@@ -7557,7 +7557,7 @@ static void drawVertSlide(TransInfo *t)
 			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 			gpuPushMatrix();
-			gpuMultMatrix(THAND_FIRST_EVIL(t)->obedit->obmat);
+			gpuMultMatrix(THAND_FIRST_OK(t)->obedit->obmat);
 
 			glLineWidth(line_size);
 
@@ -7612,13 +7612,13 @@ static void drawVertSlide(TransInfo *t)
 				mval_ofs[0] = t->mval[0] - t->mouse.imval[0];
 				mval_ofs[1] = t->mval[1] - t->mouse.imval[1];
 
-				mul_v3_m4v3(co_orig_3d, THAND_FIRST_EVIL(t)->obedit->obmat, curr_sv->co_orig_3d);
+				mul_v3_m4v3(co_orig_3d, THAND_FIRST_OK(t)->obedit->obmat, curr_sv->co_orig_3d);
 				zfac = ED_view3d_calc_zfac(t->ar->regiondata, co_orig_3d, NULL);
 
 				ED_view3d_win_to_delta(t->ar, mval_ofs, co_dest_3d, zfac);
 
-				invert_m4_m4(THAND_FIRST_EVIL(t)->obedit->imat, THAND_FIRST_EVIL(t)->obedit->obmat);
-				mul_mat3_m4_v3(THAND_FIRST_EVIL(t)->obedit->imat, co_dest_3d);
+				invert_m4_m4(THAND_FIRST_OK(t)->obedit->imat, THAND_FIRST_OK(t)->obedit->obmat);
+				mul_mat3_m4_v3(THAND_FIRST_OK(t)->obedit->imat, co_dest_3d);
 
 				add_v3_v3(co_dest_3d, curr_sv->co_orig_3d);
 
@@ -7653,7 +7653,8 @@ static void drawVertSlide(TransInfo *t)
 
 static void doVertSlide(TransInfo *t, float perc)
 {
-	VertSlideData *sld = THAND_FIRST_OK(t)->custom.mode.data;
+	FOREACH_THAND (t, th) {
+	VertSlideData *sld = th->custom.mode.data;
 	TransDataVertSlideVert *svlist = sld->sv, *sv;
 	int i;
 
@@ -7690,6 +7691,7 @@ static void doVertSlide(TransInfo *t, float perc)
 			}
 		}
 	}
+	} // FIXME(indent)
 }
 
 static void applyVertSlide(TransInfo *t, const int UNUSED(mval[2]))
