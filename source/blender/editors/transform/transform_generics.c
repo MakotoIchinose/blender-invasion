@@ -1829,10 +1829,10 @@ void calculateCenterMedian(TransInfo *t, float r_center[3])
 			}
 		}
 	}
+	} // FIXME(indent)
 	if (total) {
 		mul_v3_fl(partial, 1.0f / (float)total);
 	}
-	} // FIXME(indent)
 	copy_v3_v3(r_center, partial);
 }
 
@@ -1858,6 +1858,7 @@ void calculateCenterBound(TransInfo *t, float r_center[3])
 					}
 				}
 			}
+			is_first = false;
 		}
 		else {
 			copy_v3_v3(max, th->data[i].center);
