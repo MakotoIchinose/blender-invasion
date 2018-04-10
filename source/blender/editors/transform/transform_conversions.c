@@ -3232,17 +3232,17 @@ bool clipUVTransform(TransInfo *t, float vec[2], const bool resize)
 	}
 
 	if (resize) {
-		if (min[0] < 0.0f && t->center[0] > 0.0f && t->center[0] < t->aspect[0] * 0.5f)
-			vec[0] *= t->center[0] / (t->center[0] - min[0]);
-		else if (max[0] > t->aspect[0] && t->center[0] < t->aspect[0])
-			vec[0] *= (t->center[0] - t->aspect[0]) / (t->center[0] - max[0]);
+		if (min[0] < 0.0f && t->center_global[0] > 0.0f && t->center_global[0] < t->aspect[0] * 0.5f)
+			vec[0] *= t->center_global[0] / (t->center_global[0] - min[0]);
+		else if (max[0] > t->aspect[0] && t->center_global[0] < t->aspect[0])
+			vec[0] *= (t->center_global[0] - t->aspect[0]) / (t->center_global[0] - max[0]);
 		else
 			clipx = 0;
 
-		if (min[1] < 0.0f && t->center[1] > 0.0f && t->center[1] < t->aspect[1] * 0.5f)
-			vec[1] *= t->center[1] / (t->center[1] - min[1]);
-		else if (max[1] > t->aspect[1] && t->center[1] < t->aspect[1])
-			vec[1] *= (t->center[1] - t->aspect[1]) / (t->center[1] - max[1]);
+		if (min[1] < 0.0f && t->center_global[1] > 0.0f && t->center_global[1] < t->aspect[1] * 0.5f)
+			vec[1] *= t->center_global[1] / (t->center_global[1] - min[1]);
+		else if (max[1] > t->aspect[1] && t->center_global[1] < t->aspect[1])
+			vec[1] *= (t->center_global[1] - t->aspect[1]) / (t->center_global[1] - max[1]);
 		else
 			clipy = 0;
 	}

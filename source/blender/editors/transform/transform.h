@@ -381,7 +381,7 @@ typedef struct TransCustomData {
 } TransCustomData;
 
 typedef struct TransCenterData {
-	float local[3], global[3];
+	float global[3];
 	unsigned int is_set : 1;
 } TransCenterData;
 
@@ -400,6 +400,8 @@ typedef struct TransHandle {
 
 	struct Object *poseobj;		/* if t->flag & T_POSE, this denotes pose object */
 
+	/* center of transformation (in local-space) */
+	float center_local[3];
 	/**
 	 * Rule of thumb for choosing between mode/type:
 	 * - If transform mode uses the data, assign to `mode`
@@ -441,7 +443,6 @@ typedef struct TransInfo {
 	char		proptext[20];	/* proportional falloff text			*/
 	float       aspect[3];      /* spaces using non 1:1 aspect, (uv's, f-curve, movie-clip... etc)
 	                             * use for conversion and snapping. */
-	float       center[3];      /* center of transformation (in local-space) */
 	float       center_global[3];  /* center of transformation (in global-space) */
 	float       center2d[2];    /* center in screen coordinates         */
 	/* Lazy initialize center data for when we need other center values.
@@ -788,9 +789,7 @@ void restoreTransObjects(TransInfo *t);
 void recalcData(TransInfo *t);
 
 void calculateCenter2D(TransInfo *t);
-void calculateCenterGlobal(
-        TransInfo *t, const float center_local[3],
-        float r_center_global[3]);
+void calculateCenterLocal(TransInfo *t, const float center_global[3]);
 
 const TransCenterData *transformCenter_from_type(TransInfo *t, int around);
 void calculateCenter(TransInfo *t);

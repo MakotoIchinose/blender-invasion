@@ -1239,7 +1239,6 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->val = 0.0f;
 
 	zero_v3(t->vec);
-	zero_v3(t->center);
 	zero_v3(t->center_global);
 
 	unit_m3(t->mat);
@@ -1533,8 +1532,8 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	setTransformViewAspect(t, t->aspect);
 
 	if (op && (prop = RNA_struct_find_property(op->ptr, "center_override")) && RNA_property_is_set(op->ptr, prop)) {
-		RNA_property_float_get_array(op->ptr, prop, t->center);
-		mul_v3_v3(t->center, t->aspect);
+		RNA_property_float_get_array(op->ptr, prop, t->center_global);
+		mul_v3_v3(t->center_global, t->aspect);
 		t->flag |= T_OVERRIDE_CENTER;
 	}
 
@@ -1706,32 +1705,26 @@ void restoreTransObjects(TransInfo *t)
 void calculateCenter2D(TransInfo *t)
 {
 	BLI_assert(!is_zero_v3(t->aspect));
-
-	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
-		float vec[3];
-
-		copy_v3_v3(vec, t->center);
-		mul_m4_v3(ob->obmat, vec);
-		projectFloatView(t, vec, t->center2d);
-	}
-	else {
-		projectFloatView(t, t->center, t->center2d);
-	}
+	projectFloatView(t, t->center_global, t->center2d);
 }
 
-void calculateCenterGlobal(
-        TransInfo *t, const float center_local[3],
-        float r_center_global[3])
+void calculateCenterLocal(
+        TransInfo *t, const float center_global[3])
 {
 	/* setting constraint center */
 	/* note, init functions may over-ride t->center */
 	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
-		mul_v3_m4v3(r_center_global, ob->obmat, center_local);
+		FOREACH_THAND (t, th) {
+			float obinv[4][4];
+			Object *ob = th->obedit ? th->obedit : th->poseobj;
+			invert_m4_m4(obinv, ob->obmat);
+			mul_v3_m4v3(th->center_local, obinv, center_global);
+		}
 	}
 	else {
-		copy_v3_v3(r_center_global, center_local);
+		FOREACH_THAND (t, th) {
+			copy_v3_v3(th->center_local, center_global);
+		}
 	}
 }
 
@@ -1743,16 +1736,7 @@ void calculateCenterCursor(TransInfo *t, float r_center[3])
 	copy_v3_v3(r_center, cursor);
 	
 	/* If edit or pose mode, move cursor in local space */
-	if (t->flag & (T_EDIT | T_POSE)) {
-		Object *ob = THAND_FIRST_EVIL(t)->obedit ? THAND_FIRST_EVIL(t)->obedit : THAND_FIRST_EVIL(t)->poseobj;
-		float mat[3][3], imat[3][3];
-		
-		sub_v3_v3v3(r_center, r_center, ob->obmat[3]);
-		copy_m3_m4(mat, ob->obmat);
-		invert_m3_m3(imat, mat);
-		mul_m3_v3(imat, r_center);
-	}
-	else if (t->options & CTX_PAINT_CURVE) {
+	if (t->options & CTX_PAINT_CURVE) {
 		if (ED_view3d_project_float_global(t->ar, cursor, r_center, V3D_PROJ_TEST_NOP) != V3D_PROJ_RET_OK) {
 			r_center[0] = t->ar->winx / 2.0f;
 			r_center[1] = t->ar->winy / 2.0f;
@@ -1826,12 +1810,21 @@ void calculateCenterMedian(TransInfo *t, float r_center[3])
 {
 	float partial[3] = {0.0f, 0.0f, 0.0f};
 	int total = 0;
+
+	FOREACH_THAND (t, th) {
+	Object *ob_xform = th->obedit ? th->obedit : th->poseobj;
 	int i;
-	
-	for (i = 0; i < THAND_FIRST_EVIL(t)->total; i++) {
-		if (THAND_FIRST_EVIL(t)->data[i].flag & TD_SELECTED) {
-			if (!(THAND_FIRST_EVIL(t)->data[i].flag & TD_NOCENTER)) {
-				add_v3_v3(partial, THAND_FIRST_EVIL(t)->data[i].center);
+	for (i = 0; i < th->total; i++) {
+		if (th->data[i].flag & TD_SELECTED) {
+			if (!(th->data[i].flag & TD_NOCENTER)) {
+				if (ob_xform) {
+					float v[3];
+					mul_v3_m4v3(v, ob_xform->obmat, th->data[i].center);
+					add_v3_v3(partial, v);
+				}
+				else {
+					add_v3_v3(partial, th->data[i].center);
+				}
 				total++;
 			}
 		}
@@ -1839,6 +1832,7 @@ void calculateCenterMedian(TransInfo *t, float r_center[3])
 	if (total) {
 		mul_v3_fl(partial, 1.0f / (float)total);
 	}
+	} // FIXME(indent)
 	copy_v3_v3(r_center, partial);
 }
 
@@ -1847,18 +1841,30 @@ void calculateCenterBound(TransInfo *t, float r_center[3])
 	float max[3];
 	float min[3];
 	int i;
-	for (i = 0; i < THAND_FIRST_EVIL(t)->total; i++) {
-		if (i) {
-			if (THAND_FIRST_EVIL(t)->data[i].flag & TD_SELECTED) {
-				if (!(THAND_FIRST_EVIL(t)->data[i].flag & TD_NOCENTER))
-					minmax_v3v3_v3(min, max, THAND_FIRST_EVIL(t)->data[i].center);
+	bool is_first = true;
+	FOREACH_THAND (t, th) {
+	Object *ob_xform = th->obedit ? th->obedit : th->poseobj;
+	for (i = 0; i < th->total; i++) {
+		if (is_first == false) {
+			if (th->data[i].flag & TD_SELECTED) {
+				if (!(th->data[i].flag & TD_NOCENTER)) {
+					if (ob_xform) {
+						float v[3];
+						mul_v3_m4v3(v, ob_xform->obmat, th->data[i].center);
+						minmax_v3v3_v3(min, max, v);
+					}
+					else {
+						minmax_v3v3_v3(min, max, th->data[i].center);
+					}
+				}
 			}
 		}
 		else {
-			copy_v3_v3(max, THAND_FIRST_EVIL(t)->data[i].center);
-			copy_v3_v3(min, THAND_FIRST_EVIL(t)->data[i].center);
+			copy_v3_v3(max, th->data[i].center);
+			copy_v3_v3(min, th->data[i].center);
 		}
 	}
+	} // FIXME(indent)
 	mid_v3_v3v3(r_center, min, max);
 }
 
@@ -1867,12 +1873,13 @@ void calculateCenterBound(TransInfo *t, float r_center[3])
  */
 bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 {
-	/* first is always active */
-	TransHandle *th = &t->thand[0];
+	TransHandle *th = THAND_FIRST_OK(t);
+
 	bool ok = false;
 
 	if (th->obedit) {
 		if (ED_object_editmode_calc_active_center(th->obedit, select_only, r_center)) {
+			mul_m4_v3(th->obedit->obmat, r_center);
 			ok = true;
 		}
 	}
@@ -1883,6 +1890,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 			bPoseChannel *pchan = BKE_pose_channel_active(ob);
 			if (pchan && (!select_only || (pchan->bone->flag & BONE_SELECTED))) {
 				copy_v3_v3(r_center, pchan->pose_head);
+				mul_m4_v3(th->obedit->obmat, r_center);
 				ok = true;
 			}
 		}
@@ -1947,14 +1955,13 @@ static void calculateCenter_FromAround(TransInfo *t, int around, float r_center[
 void calculateCenter(TransInfo *t)
 {
 	if ((t->flag & T_OVERRIDE_CENTER) == 0) {
-		calculateCenter_FromAround(t, t->around, t->center);
+		calculateCenter_FromAround(t, t->around, t->center_global);
 	}
-	calculateCenterGlobal(t, t->center, t->center_global);
+	calculateCenterLocal(t, t->center_global);
 
 	/* avoid calculating again */
 	{
 		TransCenterData *cd = &t->center_cache[t->around];
-		copy_v3_v3(cd->local, t->center);
 		copy_v3_v3(cd->global, t->center_global);
 		cd->is_set = true;
 	}
@@ -1972,16 +1979,15 @@ void calculateCenter(TransInfo *t)
 				normalize_v3(axis);
 				
 				/* 6.0 = 6 grid units */
-				axis[0] = t->center[0] - 6.0f * axis[0];
-				axis[1] = t->center[1] - 6.0f * axis[1];
-				axis[2] = t->center[2] - 6.0f * axis[2];
+				axis[0] = t->center_global[0] - 6.0f * axis[0];
+				axis[1] = t->center_global[1] - 6.0f * axis[1];
+				axis[2] = t->center_global[2] - 6.0f * axis[2];
 				
 				projectFloatView(t, axis, t->center2d);
 				
 				/* rotate only needs correct 2d center, grab needs ED_view3d_calc_zfac() value */
 				if (t->mode == TFM_TRANSLATION) {
-					copy_v3_v3(t->center, axis);
-					copy_v3_v3(t->center_global, t->center);
+					copy_v3_v3(t->center_global, axis);
 				}
 			}
 		}
@@ -2015,8 +2021,7 @@ const TransCenterData *transformCenter_from_type(TransInfo *t, int around)
 	BLI_assert(around <= V3D_AROUND_ACTIVE);
 	TransCenterData *cd = &t->center_cache[around];
 	if (cd->is_set == false) {
-		calculateCenter_FromAround(t, around, cd->local);
-		calculateCenterGlobal(t, cd->local, cd->global);
+		calculateCenter_FromAround(t, around, cd->global);
 		cd->is_set = true;
 	}
 	return cd;
