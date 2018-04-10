@@ -912,7 +912,7 @@ static void view3d_main_region_listener(
 					WM_manipulatormap_tag_refresh(mmap);
 
 					ID *obdata = NULL;
-					if (wmn->reference && ELEM(GS(((ID *)wmn->reference)->name), ID_ME)) {
+					if (wmn->reference && OB_DATA_SUPPORT_ID(GS(((ID *)wmn->reference)->name))) {
 						obdata = wmn->reference;
 					}
 					else {
