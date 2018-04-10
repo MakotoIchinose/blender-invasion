@@ -911,12 +911,19 @@ static void view3d_main_region_listener(
 				{
 					WM_manipulatormap_tag_refresh(mmap);
 
-					ViewLayer *view_layer = WM_window_get_active_view_layer(wmn->window);
-					Object *obedit = OBEDIT_FROM_VIEW_LAYER(view_layer);
-					if (obedit) {
-						/* TODO(sergey): Notifiers shouldn't really be doing DEG tags. */
-						DEG_id_tag_update((ID *)obedit->data, DEG_TAG_SELECT_UPDATE);
+					ID *obdata = NULL;
+					if (wmn->reference && ELEM(GS(((ID *)wmn->reference)->name), ID_ME)) {
+						obdata = wmn->reference;
 					}
+					else {
+						ViewLayer *view_layer = WM_window_get_active_view_layer(wmn->window);
+						Object *obedit = OBEDIT_FROM_VIEW_LAYER(view_layer);
+						if (obedit) {
+							/* TODO(sergey): Notifiers shouldn't really be doing DEG tags. */
+							obdata = obedit->data;
+						}
+					}
+					DEG_id_tag_update(obdata, DEG_TAG_SELECT_UPDATE);
 					ATTR_FALLTHROUGH;
 				}
 				case ND_DATA:
