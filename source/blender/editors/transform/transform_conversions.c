@@ -1069,21 +1069,27 @@ static short pose_grab_with_ik(Object *ob)
 }
 
 
-/* only called with pose mode active object now */
+/**
+ * When objects array is NULL, use 't->thand' as is.
+ */
 static void createTransPose(TransInfo *t, Object **objects, uint objects_len)
 {
-	/* TODO(campbell): xform, properly handle pose mode errors across many meshes. */
-	if (t->thand) {
-		MEM_freeN(t->thand);
+	if (objects != NULL) {
+		if (t->thand) {
+			MEM_freeN(t->thand);
+		}
+		t->thand = MEM_callocN(sizeof(*t->thand) * objects_len, __func__);
+		t->thand_len = objects_len;
+		int th_index;
+		FOREACH_THAND_INDEX (t, th, th_index) {
+			th->poseobj = objects[th_index];
+		}
 	}
-	t->thand = MEM_callocN(sizeof(*t->thand) * objects_len, __func__);
-	t->thand_len = objects_len;
 
 	t->total_all_handle = 0;
 
-	int th_index;
-	FOREACH_THAND_INDEX (t, th, th_index) {
-	Object *ob = objects[th_index];
+	FOREACH_THAND (t, th) {
+	Object *ob = th->poseobj;
 
 	bArmature *arm;
 	bPoseChannel *pchan;
@@ -8461,10 +8467,7 @@ void createTransData(bContext *C, TransInfo *t)
 	else if (ob && (ob->mode & OB_MODE_POSE)) {
 		// XXX this is currently limited to active armature only...
 		// XXX active-layer checking isn't done as that should probably be checked through context instead
-		Object *objects[1];
-		objects[0] = ob;
-		uint objects_len = 1;
-		createTransPose(t, objects, objects_len);
+		createTransPose(t, NULL, 0);
 	}
 	else if (ob && (ob->mode & OB_MODE_WEIGHT_PAINT) && !(t->options & CTX_PAINT_CURVE)) {
 		/* important that ob_armature can be set even when its not selected [#23412]

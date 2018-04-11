@@ -1165,11 +1165,12 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Scene *sce = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	const eObjectMode object_mode = OBACT(view_layer) ? OBACT(view_layer)->mode : OB_MODE_OBJECT;
+	const short object_type = OBACT(view_layer) ? OBACT(view_layer)->type : -1;
 	ToolSettings *ts = CTX_data_tool_settings(C);
 	ARegion *ar = CTX_wm_region(C);
 	ScrArea *sa = CTX_wm_area(C);
-	Object *obedit = CTX_data_edit_object(C);
-	Object *ob = CTX_data_active_object(C);
+
 	bGPdata *gpd = CTX_data_gpencil_data(C);
 	RenderEngineType *engine_type = CTX_data_engine_type(C);
 	PropertyRNA *prop;
@@ -1183,35 +1184,47 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	t->settings = ts;
 	t->reports = op ? op->reports : NULL;
 
-	if (t->thand == NULL) {
-		t->thand = MEM_callocN(sizeof(*t->thand), __func__);
-		t->thand_len = 1;
-	}
-
 	t->helpline = HLP_NONE;
 	
 	t->flag = 0;
+
+	t->obedit_type = -1;
 	
-	if (CTX_data_edit_object(C) /* || pose mode .. etc. */) {
+	if (((object_mode & OB_MODE_EDIT) && (object_type == OB_MESH)) ||
+	    ((object_mode & OB_MODE_POSE) && (object_type == OB_ARMATURE)))
+	{
 		uint objects_len;
 		Object **objects = BKE_view_layer_array_from_objects_in_mode(
 		        t->view_layer, &objects_len,
-		        .object_mode = OB_MODE_EDIT,
+		        .object_mode = object_mode,
 		        .no_dupe_data = true);
 		t->thand = MEM_callocN(sizeof(*t->thand) * objects_len, __func__);
 		t->thand_len = objects_len;
 
 		for (int i = 0; i < objects_len; i++) {
 			TransHandle *th = &t->thand[i];
-			th->obedit = objects[i];
-			copy_m3_m4(th->obedit_mat, obedit->obmat);
-			normalize_m3(th->obedit_mat);
+			if (object_mode & OB_MODE_EDIT) {
+				th->obedit = objects[i];
+				copy_m3_m4(th->obedit_mat, th->obedit->obmat);
+				normalize_m3(th->obedit_mat);
+			}
+			else if (object_mode & OB_MODE_POSE) {
+				th->poseobj = objects[i];
+			}
 		}
-		t->obedit_type = objects[0]->type;
-		t->flag |= T_EDIT;
+		if (object_mode & OB_MODE_EDIT) {
+			t->flag |= T_EDIT;
+			t->obedit_type = objects[0]->type;
+		}
+		else if (object_mode & OB_MODE_POSE) {
+			t->flag |= T_POSE;
+		}
 	}
-	else {
-		t->obedit_type = -1;
+
+	/* Many kinds of transform only use a single handle. */
+	if (t->thand == NULL) {
+		t->thand = MEM_callocN(sizeof(*t->thand), __func__);
+		t->thand_len = 1;
 	}
 
 	t->redraw = TREDRAW_HARD;  /* redraw first time */
@@ -1324,13 +1337,13 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			if (ELEM(t->mode, TFM_ROTATION, TFM_RESIZE, TFM_TRACKBALL)) {
 				const bool use_island = transdata_check_local_islands(t, t->around);
 
-				if (obedit && !use_island) {
+				if ((t->obedit_type != -1) && !use_island) {
 					t->options |= CTX_NO_PET;
 				}
 			}
 		}
 
-		if (ob && ob->mode & OB_MODE_ALL_PAINT) {
+		if (object_mode & OB_MODE_ALL_PAINT) {
 			Paint *p = BKE_paint_get_active_from_context(C);
 			if (p && p->brush && (p->brush->flag & BRUSH_CURVE)) {
 				t->options |= CTX_PAINT_CURVE;
