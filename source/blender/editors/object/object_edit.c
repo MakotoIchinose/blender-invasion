@@ -471,7 +471,7 @@ static int editmode_toggle_exec(bContext *C, wmOperator *op)
 		if (obact->mode & mode_flag) {
 			FOREACH_SELECTED_OBJECT_BEGIN(view_layer, ob)
 			{
-				if (ob != obact) {
+				if ((ob != obact) && (ob->type == obact->type)) {
 					if (ob->flag & SELECT) {
 						ED_object_editmode_enter_ex(scene, ob, EM_WAITCURSOR | EM_NO_CONTEXT);
 					}
@@ -485,7 +485,7 @@ static int editmode_toggle_exec(bContext *C, wmOperator *op)
 		if ((obact->mode & mode_flag) == 0) {
 			FOREACH_SELECTED_OBJECT_BEGIN(view_layer, ob)
 			{
-				if (ob != obact) {
+				if ((ob != obact) && (ob->type == obact->type)) {
 					if (ob->flag & SELECT) {
 						ED_object_editmode_exit_ex(NULL, scene, ob, EM_FREEDATA | EM_WAITCURSOR);
 					}
