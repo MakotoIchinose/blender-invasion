@@ -1211,6 +1211,7 @@ void ui_theme_init_default(void)
 	btheme->tclip.handle_vertex_size = 5;
 	ui_theme_space_init_handles_color(&btheme->tclip);
 
+  /* space shot */
 	btheme->tshot = btheme->tv3d;
 }
 
@@ -2778,6 +2779,17 @@ void init_userdef_do_versions(void)
 		U.uiflag |= USER_LOCK_CURSOR_ADJUST;
 	}
 
+	if (!USER_VERSION_ATLEAST(279, 0)) {
+    bTheme *btheme;
+    /* new space type */
+    for (btheme = U.themes.first; btheme; btheme = btheme->next) {
+      /* check for (alpha == 0) is safe, then color was never set */
+      if (btheme->tshot.back[3] == 0) {
+        /* copied from ui_theme_init_default */
+        btheme->tshot = btheme->tv3d;
+      }
+    }
+  }
 	/**
 	 * Include next version bump.
 	 */

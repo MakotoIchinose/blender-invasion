@@ -814,7 +814,7 @@ struct SpaceClip *CTX_wm_space_clip(const bContext *C)
 	return NULL;
 }
 
-struct SpaceShot *CTX_wm_space_asset(const bContext *C)
+struct SpaceShot *CTX_wm_space_shot(const bContext *C)
 {
 	if(C->wm.area && C->wm.area->spacetype==SPACE_SHOT)
 	return C->wm.area->spacedata.first;
