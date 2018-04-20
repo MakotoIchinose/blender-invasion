@@ -70,6 +70,7 @@ const EnumPropertyItem rna_enum_space_type_items[] = {
 	{SPACE_IMAGE, "IMAGE_EDITOR", ICON_IMAGE_COL, "UV/Image Editor", "View and edit images and UV Maps"},
 	{SPACE_NODE, "NODE_EDITOR", ICON_NODETREE, "Node Editor", "Editor for node-based shading and compositing tools"},
 	{SPACE_SEQ, "SEQUENCE_EDITOR", ICON_SEQUENCE, "Video Sequencer", "Video editing tools"},
+	{SPACE_SHOT, "SHOT_EDITOR", ICON_SHOT, "Shot Editor", "Editor for per-shot manipulations and display"},
 	{SPACE_CLIP, "CLIP_EDITOR", ICON_CLIP, "Movie Clip Editor", "Motion tracking tools"},
 
 	/* Animation */
@@ -325,6 +326,8 @@ static StructRNA *rna_Space_refine(struct PointerRNA *ptr)
 			return &RNA_SpaceUserPreferences;
 		case SPACE_CLIP:
 			return &RNA_SpaceClipEditor;
+		case SPACE_SHOT:
+			return &RNA_SpaceShotEditor;
 		default:
 			return &RNA_Space;
 	}
@@ -4788,6 +4791,16 @@ static void rna_def_space_clip(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CLIP, NULL);
 }
 
+static void rna_def_space_shot(BlenderRNA *brna)
+{
+StructRNA *srna;
+PropertyRNA *prop;
+
+srna= RNA_def_struct(brna, "SpaceShotEditor", "Space");
+RNA_def_struct_sdna(srna, "SpaceShot");
+RNA_def_struct_ui_text(srna, "Shot Editor", "Shot Editor space data");
+}
+
 
 void RNA_def_space(BlenderRNA *brna)
 {
@@ -4814,6 +4827,7 @@ void RNA_def_space(BlenderRNA *brna)
 	rna_def_space_node(brna);
 	rna_def_space_logic(brna);
 	rna_def_space_clip(brna);
+	rna_def_space_shot(brna);
 }
 
 #endif

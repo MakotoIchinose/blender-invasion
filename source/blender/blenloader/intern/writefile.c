@@ -3059,6 +3059,9 @@ static void write_screen(WriteData *wd, bScreen *sc)
 			else if (sl->spacetype == SPACE_INFO) {
 				writestruct(wd, DATA, SpaceInfo, 1, sl);
 			}
+			else if (sl->spacetype == SPACE_SHOT) {
+				writestruct(wd, DATA, SpaceShot, 1, sl);
+			}
 		}
 	}
 }

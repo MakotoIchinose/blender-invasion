@@ -584,6 +584,44 @@ typedef enum eSpaceSeq_OverlayType {
 	SEQ_DRAW_OVERLAY_CURRENT = 2
 } eSpaceSeq_OverlayType;
 
+/* Shot Editor ============================================ */
+
+/* Shot Editor */
+
+typedef struct SpaceShot {
+	SpaceLink *next, *prev;
+	ListBase regionbase;        /* storage of regions for inactive spaces */
+	int spacetype;
+	char pad[4];
+	// float blockscale DNA_DEPRECATED;
+  //
+	// short blockhandler[8]  DNA_DEPRECATED;
+  //
+	// View2D v2d DNA_DEPRECATED;  /* deprecated, copied to region */
+  //
+	// float xof DNA_DEPRECATED, yof DNA_DEPRECATED;   /* deprecated: offset for drawing the image preview */
+	// short mainb;    /* weird name for the sequencer subtype (seq, image, luma... etc) */
+	// short render_size;  /* eSpaceSeq_Proxy_RenderSize */
+	// short chanshown;
+	// short zebra;
+	// int flag;
+	// float zoom DNA_DEPRECATED;  /* deprecated, handled by View2D now */
+	// int view; /* see SEQ_VIEW_* below */
+	// int overlay_type;
+	// int draw_flag; /* overlay an image of the editing on below the strips */
+	// int pad;
+  //
+	// struct bGPdata *gpd;        /* grease-pencil data */
+  //
+	// struct SequencerScopes scopes;  /* different scoped displayed in space */
+  //
+	// char multiview_eye;				/* multiview current eye - for internal use */
+	// char pad2[7];
+  //
+	// struct GPUFX *compositor;
+	// void *pad3;
+} SpaceShot;
+
 /* File Selector ========================================== */
 
 /* Config and Input for File Selector */
@@ -1377,8 +1415,9 @@ typedef enum eSpace_Type {
 	SPACE_CONSOLE  = 18,
 	SPACE_USERPREF = 19,
 	SPACE_CLIP     = 20,
+	SPACE_SHOT		 = 21,
 	
-	SPACEICONMAX = SPACE_CLIP
+	SPACEICONMAX = SPACE_SHOT
 } eSpace_Type;
 
 /* use for function args */

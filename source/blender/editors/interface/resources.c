@@ -166,6 +166,9 @@ const unsigned char *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colo
 				case SPACE_CLIP:
 					ts = &btheme->tclip;
 					break;
+        case SPACE_SHOT:
+					ts = &btheme->tshot;
+					break;
 				default:
 					ts = &btheme->tv3d;
 					break;
@@ -1207,6 +1210,8 @@ void ui_theme_init_default(void)
 	rgba_char_args_set(btheme->tclip.strip_select, 0xff, 0x8c, 0x00, 0xff);
 	btheme->tclip.handle_vertex_size = 5;
 	ui_theme_space_init_handles_color(&btheme->tclip);
+
+	btheme->tshot = btheme->tv3d;
 }
 
 void ui_style_init_default(void)
