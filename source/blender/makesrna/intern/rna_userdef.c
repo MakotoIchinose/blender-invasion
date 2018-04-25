@@ -2965,6 +2965,27 @@ static void rna_def_userdef_theme_space_topbar(BlenderRNA *brna)
 	rna_def_userdef_theme_spaces_main(srna);
 }
 
+static void rna_def_userdef_theme_space_strip(BlenderRNA *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	/* space_strip */
+
+	srna = RNA_def_struct(brna, "ThemeStripEditor", NULL);
+	RNA_def_struct_sdna(srna, "ThemeSpace");
+	RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
+	RNA_def_struct_ui_text(srna, "Theme Strip Editor", "Theme settings for the Strip Editor");
+
+	prop = RNA_def_property(srna, "reel_color", PROP_FLOAT, PROP_COLOR_GAMMA);
+	RNA_def_property_float_sdna(prop, NULL, "reel_color");
+	RNA_def_property_array(prop, 3);
+	RNA_def_property_ui_text(prop, "Reel Color", "Color of reel");
+	RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+	rna_def_userdef_theme_spaces_main(srna);
+}
+
 static void rna_def_userdef_themes(BlenderRNA *brna)
 {
 	StructRNA *srna;
@@ -2990,6 +3011,7 @@ static void rna_def_userdef_themes(BlenderRNA *brna)
 		{17, "CONSOLE", ICON_CONSOLE, "Python Console", ""},
 		{20, "CLIP_EDITOR", ICON_CLIP, "Movie Clip Editor", ""},
 		{21, "TOPBAR", ICON_NONE, "Top Bar", ""},
+		{22, "STRIP_EDITOR", ICON_STRIP, "Strip Editor", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -3208,6 +3230,7 @@ static void rna_def_userdef_dothemes(BlenderRNA *brna)
 	rna_def_userdef_theme_space_clip(brna);
 	rna_def_userdef_theme_space_topbar(brna);
 	rna_def_userdef_theme_colorset(brna);
+	rna_def_userdef_theme_space_strip(brna);
 	rna_def_userdef_themes(brna);
 }
 
