@@ -359,6 +359,10 @@ typedef struct ThemeSpace {
 
 	char metadatabg[4];
 	char metadatatext[4];
+
+	/* Strip Editor */
+	char reel_color[4];
+	char pad[4];
 } ThemeSpace;
 
 
@@ -403,6 +407,7 @@ typedef struct bTheme {
 	ThemeSpace tuserpref;
 	ThemeSpace tconsole;
 	ThemeSpace tclip;
+	ThemeSpace tstrip;
 	ThemeSpace ttopbar;
 
 	/* 20 sets of bone colors for this theme */
@@ -413,7 +418,7 @@ typedef struct bTheme {
 } bTheme;
 
 #define UI_THEMESPACE_START(btheme)  (CHECK_TYPE_INLINE(btheme, bTheme *),  &((btheme)->tbuts))
-#define UI_THEMESPACE_END(btheme)    (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->tclip) + 1))
+#define UI_THEMESPACE_END(btheme)    (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->tstrip) + 1))
 
 typedef struct bAddon {
 	struct bAddon *next, *prev;

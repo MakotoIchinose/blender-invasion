@@ -165,6 +165,9 @@ const unsigned char *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colo
 				case SPACE_TOPBAR:
 					ts = &btheme->ttopbar;
 					break;
+				case SPACE_STRIP:
+  				ts = &btheme->tstrip;
+  				break;
 				default:
 					ts = &btheme->tv3d;
 					break;
@@ -1229,6 +1232,10 @@ void ui_theme_init_default(void)
 	rgba_char_args_set(btheme->tclip.strip_select, 0xff, 0x8c, 0x00, 0xff);
 	btheme->tclip.handle_vertex_size = 5;
 	ui_theme_space_init_handles_color(&btheme->tclip);
+
+  /* space strip */
+	btheme->tstrip = btheme->tv3d;
+	rgba_char_args_set_fl(btheme->tstrip.reel_color,   0.5, 0.3, 0.3, 1.0);
 
 	/* space topbar */
 	char tmp[4];
@@ -2982,6 +2989,14 @@ void init_userdef_do_versions(void)
 			btheme->tui.wcol_list_item.roundness = 0.2f;
 			btheme->tui.wcol_pie_menu.roundness = 0.5f;
 			rgba_char_args_set_fl(btheme->tui.editor_outline, 0.25f, 0.25f, 0.25f, 1.0f);
+		}
+
+    for (bTheme *btheme = U.themes.first; btheme; btheme = btheme->next) {
+			if (btheme->tstrip.reel_color[3] == 0) {
+        /* If Strip Space is new, set it to a default theme */
+        btheme->tstrip = btheme->tv3d;
+				rgba_char_args_set_fl(btheme->tstrip.reel_color,   0.5, 0.3, 0.3, 1.0);
+			}
 		}
 	}
 

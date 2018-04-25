@@ -1355,6 +1355,15 @@ typedef struct SpaceTopBar {
 	int pad;
 } SpaceTopBar;
 
+/* Top Bar ======================================= */
+
+typedef struct SpaceStrip {
+	SpaceLink *next, *prev;
+	ListBase regionbase;        /* storage of regions for inactive spaces */
+	int spacetype;
+
+	int pad;
+} SpaceStrip;
 
 /* **************** SPACE DEFINES ********************* */
 
@@ -1386,8 +1395,9 @@ typedef enum eSpace_Type {
 	SPACE_USERPREF = 19,
 	SPACE_CLIP     = 20,
 	SPACE_TOPBAR   = 21,
+	SPACE_STRIP    = 22,
 
-	SPACEICONMAX = SPACE_TOPBAR
+	SPACEICONMAX = SPACE_STRIP
 } eSpace_Type;
 
 /* use for function args */
