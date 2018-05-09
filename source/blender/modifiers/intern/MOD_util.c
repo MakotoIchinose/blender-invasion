@@ -308,6 +308,8 @@ Mesh *get_mesh(Object *ob, struct BMEditMesh *em, Mesh *mesh,
 			        false);
 		}
 
+		/* TODO(sybren): after modifier conversion to Mesh is done, check whether
+		 * we really need vertexCos here. */
 		if (vertexCos) {
 			BKE_mesh_apply_vert_coords(mesh, vertexCos);
 			mesh->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
