@@ -384,7 +384,7 @@ static void deformVerts(ModifierData *md, const ModifierEvalContext *ctx,
                         float (*vertexCos)[3],
                         int numVerts)
 {
-	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, NULL, false, false);
 
 	SimpleDeformModifier_do((SimpleDeformModifierData *)md, ctx->object, mesh_src, vertexCos, numVerts);
 
@@ -399,7 +399,7 @@ static void deformVertsEM(ModifierData *md, const ModifierEvalContext *ctx,
                           float (*vertexCos)[3],
                           int numVerts)
 {
-	Mesh *mesh_src = get_mesh(ctx->object, editData, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, editData, mesh, NULL, false, false);
 
 	SimpleDeformModifier_do((SimpleDeformModifierData *)md, ctx->object, mesh_src, vertexCos, numVerts);
 

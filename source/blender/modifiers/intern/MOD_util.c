@@ -300,6 +300,8 @@ Mesh *get_mesh(Object *ob, struct BMEditMesh *em, Mesh *mesh,
 		struct BMeshToMeshParams bmtmp = {0};
 		if (em) mesh = BKE_bmesh_to_mesh_nomain(em->bm, &bmtmp);
 		else {
+			/* TODO(sybren): after modifier conversion to Mesh is done, check whether
+			 * we really need a copy here. Maybe the CoW ob->data can be directly used. */
 			BKE_id_copy_ex(
 			        NULL, ob->data, (ID **)&mesh,
 			        LIB_ID_CREATE_NO_MAIN |

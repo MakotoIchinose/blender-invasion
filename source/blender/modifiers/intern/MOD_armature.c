@@ -135,7 +135,7 @@ static void deformVertsEM(
         Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
 	ArmatureModifierData *amd = (ArmatureModifierData *) md;
-	Mesh *mesh_src = get_mesh(ctx->object, em, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, em, mesh, NULL, false, false);
 
 	modifier_vgroup_cache(md, vertexCos); /* if next modifier needs original vertices */
 
@@ -159,7 +159,7 @@ static void deformMatricesEM(
         float (*defMats)[3][3], int numVerts)
 {
 	ArmatureModifierData *amd = (ArmatureModifierData *) md;
-	Mesh *mesh_src = get_mesh(ctx->object, em, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, em, mesh, NULL, false, false);
 
 	armature_deform_verts(amd->object, ctx->object, mesh_src, vertexCos, defMats, numVerts,
 	                      amd->deformflag, NULL, amd->defgrp_name);
@@ -173,7 +173,7 @@ static void deformMatrices(ModifierData *md, const ModifierEvalContext *ctx, Mes
                            float (*vertexCos)[3], float (*defMats)[3][3], int numVerts)
 {
 	ArmatureModifierData *amd = (ArmatureModifierData *) md;
-	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, NULL, false, false);
 
 	armature_deform_verts(amd->object, ctx->object, mesh_src, vertexCos, defMats, numVerts,
 	                      amd->deformflag, NULL, amd->defgrp_name);

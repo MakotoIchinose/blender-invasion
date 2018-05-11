@@ -428,7 +428,7 @@ static void deformVerts(ModifierData *md, const ModifierEvalContext *ctx,
                         int numVerts)
 {
 	CastModifierData *cmd = (CastModifierData *)md;
-	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, NULL, false, false);
 
 	BLI_assert(mesh_src->totvert == numVerts);
 
@@ -450,7 +450,7 @@ static void deformVertsEM(
         Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
 	CastModifierData *cmd = (CastModifierData *)md;
-	Mesh *mesh_src = get_mesh(ctx->object, editData, mesh, vertexCos, false, false);
+	Mesh *mesh_src = get_mesh(ctx->object, editData, mesh, NULL, false, false);
 
 	BLI_assert(mesh_src->totvert == numVerts);
 

@@ -99,7 +99,7 @@ static void deformVerts(ModifierData *md, const ModifierEvalContext *ctx,
                         int numVerts)
 {
 	LatticeModifierData *lmd = (LatticeModifierData *) md;
-	struct Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, vertexCos, false, false);
+	struct Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, NULL, false, false);
 
 	modifier_vgroup_cache(md, vertexCos); /* if next modifier needs original vertices */
 
@@ -114,7 +114,7 @@ static void deformVertsEM(
         ModifierData *md, const ModifierEvalContext *ctx, struct BMEditMesh *em,
         struct Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
-	struct Mesh *mesh_src = get_mesh(ctx->object, em, mesh, vertexCos, false, false);
+	struct Mesh *mesh_src = get_mesh(ctx->object, em, mesh, NULL, false, false);
 
 	deformVerts(md, ctx, mesh_src, vertexCos, numVerts);
 
