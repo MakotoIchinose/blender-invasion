@@ -354,7 +354,7 @@ static void deformVerts(struct ModifierData *md, const struct ModifierEvalContex
 	HookModifierData *hmd = (HookModifierData *)md;
 	Mesh *mesh_src = get_mesh(ctx->object, NULL, mesh, NULL, false, false);
 
-	deformVerts_do(hmd, ctx->object, mesh_src, NULL, numVerts);
+	deformVerts_do(hmd, ctx->object, mesh_src, vertexCos, numVerts);
 
 	if (mesh_src != mesh) {
 		BKE_id_free(NULL, mesh_src);
