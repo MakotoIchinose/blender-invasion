@@ -51,6 +51,7 @@
 #include "BLI_noise.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
+#include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_rand.h"
 #include "BLI_task.h"
@@ -80,7 +81,7 @@
 #include "BKE_library_remap.h"
 #include "BKE_modifier.h"
 #include "BKE_mesh.h"
-#include "BKE_cdderivedmesh.h"
+#include "BKE_cdderivedmesh.h"  /* for weight_to_rgb() */
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
 #include "BKE_deform.h"
@@ -1371,7 +1372,7 @@ int psys_particle_dm_face_lookup(
 	else { /* if we have no node, try every face */
 		for (int findex_dst = 0; findex_dst < totface_final; findex_dst++) {
 			/* If current tessface from 'final' DM and orig tessface (given by index) map to the same orig poly... */
-			if (DM_origindex_mface_mpoly(index_mf_to_mpoly, index_mp_to_orig, findex_dst) == pindex_orig) {
+			if (BKE_mesh_origindex_mface_mpoly(index_mf_to_mpoly, index_mp_to_orig, findex_dst) == pindex_orig) {
 				faceuv = osface_final[findex_dst].uv;
 
 				/* check that this intersects - Its possible this misses :/ -

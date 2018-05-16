@@ -50,8 +50,6 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_cdderivedmesh.h"
-#include "BKE_DerivedMesh.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_mesh.h"
@@ -801,8 +799,7 @@ static void distribute_invalid(ParticleSimulationData *sim, int from)
 	}
 }
 
-/* Creates a distribution of coordinates on a DerivedMesh */
-/* This is to denote functionality that does not yet work with mesh - only derived mesh */
+/* Creates a distribution of coordinates on a Mesh */
 static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, ParticleSimulationData *sim, int from)
 {
 	Scene *scene = sim->scene;
