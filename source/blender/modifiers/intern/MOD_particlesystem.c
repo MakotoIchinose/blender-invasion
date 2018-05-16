@@ -144,7 +144,6 @@ static void deformVerts(
 	}
 
 	/* make new mesh */
-	/* TODO(sybren): this probably creates a copy too many. */
 	BKE_id_copy_ex(NULL, &mesh_src->id, (ID **)&psmd->mesh_final,
 	               LIB_ID_CREATE_NO_MAIN |
 	               LIB_ID_CREATE_NO_USER_REFCOUNT |
@@ -154,9 +153,6 @@ static void deformVerts(
 	BKE_mesh_apply_vert_coords(psmd->mesh_final, vertexCos);
 	BKE_mesh_calc_normals(psmd->mesh_final);
 
-	/* protect dm */
-	// TODO(sybren): how to port psmd->mesh_final->needsFree = false;
-	BLI_assert(psmd->mesh_final);
 	BKE_mesh_tessface_ensure(psmd->mesh_final);
 
 	if (!psmd->mesh_final->runtime.deformed_only) {

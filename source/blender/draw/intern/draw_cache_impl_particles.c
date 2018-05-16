@@ -260,7 +260,7 @@ static void particle_calculate_parent_uvs(ParticleSystem *psys,
 		}
 	}
 	if (num != DMCACHE_NOTFOUND) {
-		MFace *mface = CustomData_get(&psmd->mesh_final->fdata, num, CD_MFACE);
+		MFace *mface = &psmd->mesh_final->mface[num];
 		for (int j = 0; j < num_uv_layers; j++) {
 			psys_interpolate_uvs(mtfaces[j] + num,
 			                     mface->v4,
@@ -288,7 +288,7 @@ static void particle_interpolate_children_uvs(ParticleSystem *psys,
 	ChildParticle *particle = &psys->child[child_index];
 	int num = particle->num;
 	if (num != DMCACHE_NOTFOUND) {
-		MFace *mface = CustomData_get(&psmd->mesh_final->fdata, num, CD_MFACE);
+		MFace *mface = &psmd->mesh_final->mface[num];
 		for (int j = 0; j < num_uv_layers; j++) {
 			psys_interpolate_uvs(
 			        mtfaces[j] + num, mface->v4, particle->fuv, r_uv[j]);

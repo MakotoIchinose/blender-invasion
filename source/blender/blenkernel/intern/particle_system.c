@@ -3214,8 +3214,8 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
 	            LIB_ID_COPY_NO_PREVIEW,
 	            false);
 	deformedVerts = BKE_mesh_vertexCos_get(psys->hair_out_mesh, NULL);
-	
-	/* TODO: after porting Cloth modifier, remove this conversion */
+
+	/* TODO(Sybren): after porting Cloth modifier, remove this conversion */
 	DerivedMesh *hair_in_dm = CDDM_from_mesh(psys->hair_in_mesh);
 	clothModifier_do(psys->clmd, sim->depsgraph, sim->scene, sim->ob, hair_in_dm, deformedVerts);
 	hair_in_dm->needsFree = 1;

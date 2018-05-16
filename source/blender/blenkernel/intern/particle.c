@@ -1238,7 +1238,7 @@ static float psys_interpolate_value_from_verts(Mesh *mesh, short from, int index
 		case PART_FROM_FACE:
 		case PART_FROM_VOLUME:
 		{
-			MFace *mf = CustomData_get(&mesh->fdata, index, CD_MFACE); /* TODO(sybren): is this the same as mesh->mface[index]? */
+			MFace *mf = &mesh->mface[index];
 			return interpolate_particle_value(values[mf->v1], values[mf->v2], values[mf->v3], values[mf->v4], fw, mf->v4);
 		}
 			
@@ -2483,7 +2483,7 @@ void psys_cache_paths(ParticleSimulationData *sim, float cfra, const bool use_re
 		pind.cache = baked ? psys->pointcache : NULL;
 		pind.epoint = NULL;
 		pind.bspline = (psys->part->flag & PART_HAIR_BSPLINE);
-		pind.mesh = hair_mesh; /* XXX Sybren: eek! */
+		pind.mesh = hair_mesh;
 
 		memset(cache[p], 0, sizeof(*cache[p]) * (segments + 1));
 
