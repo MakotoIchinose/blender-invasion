@@ -1106,7 +1106,7 @@ void recalc_emitter_field(Depsgraph *depsgraph, Object *ob, ParticleSystem *psys
 {
 	Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
 	ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
-	Mesh *mesh = psys_get_modifier(ob, psys)->mesh_final;
+	Mesh *mesh = psys_get_modifier(object_eval, psys_eval)->mesh_final;
 	PTCacheEdit *edit = psys->edit;
 	float *vec, *nor;
 	int i, totface /*, totvert*/;
