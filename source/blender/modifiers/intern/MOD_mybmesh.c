@@ -4028,6 +4028,7 @@ static struct OpenSubdiv_Evaluator *create_osd_eval(BMesh *bm, Mesh *mesh){
 	BKE_subdiv_converter_free(&converter);
 
 	osd_evaluator = openSubdiv_createEvaluatorFromTopologyRefiner(topology_refiner);
+	openSubdiv_deleteTopologyRefiner(topology_refiner);
 
 	if (osd_evaluator == NULL) {
 		printf("OpenSubdiv initialization failed, should not happen.");
@@ -4333,7 +4334,7 @@ static void freeData(ModifierData *md)
 {
 	MyBMeshModifierData *mmd = (MyBMeshModifierData *) md;
 	if (mmd->osd_eval != NULL){
-	openSubdiv_deleteEvaluator(mmd->osd_eval);
+		openSubdiv_deleteEvaluator(mmd->osd_eval);
 	}
 }
 
