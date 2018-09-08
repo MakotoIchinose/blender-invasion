@@ -3792,86 +3792,6 @@ static void optimization( MeshData *m_d ){
 		wiggled_verts = opti_vertex_wiggle(m_d, &inco_faces);
 	} while( wiggled_verts > 0 );
 
-	// 2.a (Not in the paper) Vertex dissolve
-	{
-		int face_i;
-
-		for(face_i = 0; face_i < inco_faces.count; face_i++){
-			IncoFace *inface = &BLI_buffer_at(&inco_faces, IncoFace, face_i);
-
-			BMVert *vert;
-			BMIter iter_v;
-
-			if( inface->face == NULL ){
-				//Already fixed this edge
-				continue;
-			}
-
-			BM_ITER_ELEM (vert, &iter_v, inface->face, BM_VERTS_OF_FACE) {
-				//Do not try to wiggle C verts
-				if (is_vert_in_buffer( vert, m_d->C_verts)){
-					continue;
-				}
-				if( BM_elem_index_get(vert) < m_d->radi_start_idx ){
-					//Not a radial vert, see if we can dissolve it to improve the consistency
-
-					if( BM_vert_edge_count(vert) == 3 && BM_vert_face_count(vert) == 3 ){
-						float vec1[3], vec2[3], P[3], no[3];
-						BMLoop *l1, *l2;
-						BMVert *v1, *v2;
-						BM_edge_calc_rotate(vert->e, true, &l1, &l2);
-
-						BM_edge_ordered_verts(vert->e, &v1, &v2);
-
-						if( vert == v1 ){
-							sub_v3_v3v3(vec1, v2->co, l1->v->co);
-							sub_v3_v3v3(vec2, v2->co, l2->v->co);
-
-							cross_v3_v3v3(no, vec2, vec1);
-							normalize_v3(no);
-
-							//Calc center mean of new face
-							zero_v3(P);
-							add_v3_v3( P, v2->co );
-							add_v3_v3( P, l1->v->co );
-							add_v3_v3( P, l2->v->co );
-
-							mul_v3_fl( P, 1.0f / 3.0f );
-						} else {
-							sub_v3_v3v3(vec1, v1->co, l1->v->co);
-							sub_v3_v3v3(vec2, v1->co, l2->v->co);
-
-							cross_v3_v3v3(no, vec1, vec2);
-							normalize_v3(no);
-
-							//Calc center mean of new face
-							zero_v3(P);
-							add_v3_v3( P, v1->co );
-							add_v3_v3( P, l1->v->co );
-							add_v3_v3( P, l2->v->co );
-
-							mul_v3_fl( P, 1.0f / 3.0f );
-						}
-
-						if(inface->back_f == calc_if_B_nor(m_d->cam_loc, P, no)){
-							//printf("Opti dissolve\n");
-							//TODO remove this or only when debug
-
-							if(!BM_disk_dissolve(m_d->bm, vert)){
-								printf("Failed to opti dissolve\n");
-								continue;
-							}
-							inface->face = NULL;
-							//Done with this face
-							break;
-						}
-
-					}
-
-				}
-			}
-		}
-	}
 	// 2.b (Not in the paper) Smooth vertex position
 	// TODO perhaps move this to before wiggling in normal direction (IE after step 4)
 	{
@@ -3948,6 +3868,7 @@ static void optimization( MeshData *m_d ){
 			}
 		}
 	}
+
 	// 5. Vertex wiggling in normal direction
 	{
 		int face_i;
