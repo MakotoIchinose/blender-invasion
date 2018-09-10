@@ -3310,6 +3310,9 @@ static void optimization( MeshData *m_d ){
 	//Find and save all inconsistent faces before we begin with the other optimization steps
 	{
 		BMVert *vert;
+		BLI_buffer_declare_static(BMFace*, search_queue, BLI_BUFFER_NOP, 32);
+		int search_queue_start = 0;
+
 		for(int vert_i = 0; vert_i < m_d->radi_vert_buffer->count; vert_i++){
 			Radi_vert r_vert = BLI_buffer_at(m_d->radi_vert_buffer, Radi_vert, vert_i);
 			vert = r_vert.vert;
@@ -3324,29 +3327,41 @@ static void optimization( MeshData *m_d ){
 					// and only check each face once
 					// taken from BM_face_exists_overlap for marks
 					if(BM_ELEM_API_FLAG_TEST(face, _FLAG_OVERLAP) != 0){
-						//Already added this face to inco_faces
+						//Already added this face
 						continue;
 					}
 
+					BLI_buffer_append(&search_queue, BMFace*, face);
+					BM_ELEM_API_FLAG_ENABLE(face, _FLAG_OVERLAP);
+
 					{
-						// This shouldn't be needed, but in case we manage to have inconsistent
-						// faces that borders our contour line, don't mark it for adjustment.
 						BMVert *v;
-						BMIter iter;
-						bool found_c_vert = false;
+						BMFace *face_v;
+						BMIter iter, iter_f_v;
 
 						BM_ITER_ELEM (v, &iter, face, BM_VERTS_OF_FACE) {
 							if( is_vert_in_buffer(v, m_d->C_verts) ) {
-								found_c_vert = true;
-								break;
+								//Do not go to the other side of the contour line!
+								continue;
+							}
+							BM_ITER_ELEM (face_v, &iter_f_v, v, BM_FACES_OF_VERT) {
+								if(BM_ELEM_API_FLAG_TEST(face_v, _FLAG_OVERLAP) != 0){
+									//Already added this face
+									continue;
+								}
+
+								BLI_buffer_append(&search_queue, BMFace*, face_v);
+								BM_ELEM_API_FLAG_ENABLE(face_v, _FLAG_OVERLAP);
+
 							}
 						}
 
-						if( found_c_vert ) {
-							continue;
-						}
-
 					}
+				}
+
+				for(int face_i = search_queue_start; face_i < search_queue.count; face_i++){
+					face = BLI_buffer_at(&search_queue, BMFace*, face_i);
+
 					BM_face_calc_center_mean(face, P);
 					BM_face_calc_normal(face, no);
 
@@ -3354,20 +3369,22 @@ static void optimization( MeshData *m_d ){
 						IncoFace inface;
 						inface.face = face;
 						inface.back_f = b_f;
-						BM_ELEM_API_FLAG_ENABLE(face, _FLAG_OVERLAP);
 						BLI_buffer_append(&inco_faces, IncoFace, inface);
 					}
-
 				}
+
+				search_queue_start = search_queue.count;
 			}
 
 		}
 
 		//Clear _OVERLAP flag
-		for(int face_i = 0; face_i < inco_faces.count; face_i++){
-			IncoFace *inface = &BLI_buffer_at(&inco_faces, IncoFace, face_i);
-			BM_ELEM_API_FLAG_DISABLE(inface->face, _FLAG_OVERLAP);
+		for(int face_i = 0; face_i < search_queue.count; face_i++){
+			BMFace *face = BLI_buffer_at(&search_queue, BMFace*, face_i);
+			BM_ELEM_API_FLAG_DISABLE(face, _FLAG_OVERLAP);
 		}
+
+		BLI_buffer_free(&search_queue);
 	}
 
 	// 2. Edge flipping
