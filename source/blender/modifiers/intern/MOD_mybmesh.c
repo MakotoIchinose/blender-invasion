@@ -1149,6 +1149,7 @@ static void mult_face_search( BMFace *f, BMFace *f2, BMEdge *e, const float v1_u
 	float edge_no[3], no[3];
 
 	interp_v3_v3v3(edge_no, e->v1->no, e->v2->no, 0.5f);
+	normalize_v3(edge_no);
 
 	BLI_buffer_declare_static(BMFace*, faces, BLI_BUFFER_NOP, 32);
 
@@ -1447,7 +1448,7 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 				convert_uv_to_new_face( v_buf2.orig_edge, v_buf2.orig_face, f, &v2_u, &v2_v);
 			} else {
 				f = v_buf2.orig_face;
-				convert_uv_to_new_face( v_buf1.orig_edge, v_buf1.orig_face, f, &v1_u, &v2_v);
+				convert_uv_to_new_face( v_buf1.orig_edge, v_buf1.orig_face, f, &v1_u, &v1_v);
 			}
 		} else {
 			//No orig face. So this in on a orig edge. So just get the face from the v1 edge
@@ -1970,7 +1971,7 @@ static void cusp_detection( MeshData *m_d ){
 								}
 							}
 
-							if( (edge_idx < orig_edges) ){
+							if( edge_idx < orig_edges ){
 								//Point on orig edge
 								BMEdge *orig_e = BM_edge_at_index_find(m_d->bm_orig, edge_idx);
 								v_buf.orig_edge = orig_e;
@@ -2389,12 +2390,10 @@ static void radial_insertion( MeshData *m_d ){
 
 				//Do not attempt to insert radial edges on the "inside" region of the cusp
 				//That is, if the opposite edge as a cusp vert, do not try to insert a radial edge here.
-				/*
 				if (cur_vert != vert && is_vert_in_buffer(cur_vert, m_d->cusp_verts)){
 					skip_face = true;
 					break;
 				}
-				*/
 
 				for(vert_j = 0; vert_j < m_d->C_verts->count; vert_j++){
 					BMVert *vert2 = BLI_buffer_at(m_d->C_verts, BMVert*, vert_j);
@@ -2578,9 +2577,11 @@ static void radial_flip( MeshData *m_d ){
 		int edge_count = BM_vert_edge_count(vert);
 		BMEdge **edge_arr = BLI_array_alloca(edge_arr, edge_count);
 
+		bool cusp_edge = false;
+
         if( is_vert_in_buffer(vert, m_d->cusp_verts) ){
-			//Do not flip cusp edges
-			//continue;
+			//Do not flip certain cusp edges
+			cusp_edge = true;
 		}
 
 		BM_ITER_ELEM_INDEX (e, &iter_e, vert, BM_EDGES_OF_VERT, edge_idx) {
@@ -2624,6 +2625,13 @@ static void radial_flip( MeshData *m_d ){
 					//Do not flip it
 					continue;
 				}
+
+				if( cusp_edge && !BM_edge_rotate_check_degenerate(e, l1, l2) ){
+					//Do not attempt to flip cusp edges that will result in zero
+					//area faces
+					continue;
+				}
+
 				//Check if the flip creates any folds
 				{
 					float mat[3][3];
@@ -3324,38 +3332,25 @@ static void optimization( MeshData *m_d ){
 				float P[3], no[3];
 
 				BM_ITER_ELEM (face, &iter_f, vert, BM_FACES_OF_VERT) {
-					// and only check each face once
-					// taken from BM_face_exists_overlap for marks
-					if(BM_ELEM_API_FLAG_TEST(face, _FLAG_OVERLAP) != 0){
-						//Already added this face
-						continue;
-					}
+					BMVert *v;
+					BMFace *face_v;
+					BMIter iter, iter_f_v;
 
-					BLI_buffer_append(&search_queue, BMFace*, face);
-					BM_ELEM_API_FLAG_ENABLE(face, _FLAG_OVERLAP);
-
-					{
-						BMVert *v;
-						BMFace *face_v;
-						BMIter iter, iter_f_v;
-
-						BM_ITER_ELEM (v, &iter, face, BM_VERTS_OF_FACE) {
-							if( is_vert_in_buffer(v, m_d->C_verts) ) {
-								//Do not go to the other side of the contour line!
+					BM_ITER_ELEM (v, &iter, face, BM_VERTS_OF_FACE) {
+						if( is_vert_in_buffer(v, m_d->C_verts) ) {
+							//Do not go to the other side of the contour line!
+							continue;
+						}
+						BM_ITER_ELEM (face_v, &iter_f_v, v, BM_FACES_OF_VERT) {
+							if(BM_ELEM_API_FLAG_TEST(face_v, _FLAG_OVERLAP) != 0){
+								//Already added this face
 								continue;
 							}
-							BM_ITER_ELEM (face_v, &iter_f_v, v, BM_FACES_OF_VERT) {
-								if(BM_ELEM_API_FLAG_TEST(face_v, _FLAG_OVERLAP) != 0){
-									//Already added this face
-									continue;
-								}
 
-								BLI_buffer_append(&search_queue, BMFace*, face_v);
-								BM_ELEM_API_FLAG_ENABLE(face_v, _FLAG_OVERLAP);
+							BLI_buffer_append(&search_queue, BMFace*, face_v);
+							BM_ELEM_API_FLAG_ENABLE(face_v, _FLAG_OVERLAP);
 
-							}
 						}
-
 					}
 				}
 
@@ -3413,8 +3408,8 @@ static void optimization( MeshData *m_d ){
 				cv = m_d->C_verts;
 				BMLoop *l1, *l2;
 				BM_edge_calc_rotate(edge, true, &l1, &l2);
-				if( !is_vert_in_buffer(edge->v1, cv) && !is_vert_in_buffer(edge->v2, cv) &&
-					!is_vert_in_buffer(l1->v, cv) && !is_vert_in_buffer(l2->v, cv)){
+				if( !(is_vert_in_buffer(edge->v1, cv) && is_vert_in_buffer(edge->v2, cv)) &&
+					!(is_vert_in_buffer(l1->v, cv) && is_vert_in_buffer(l2->v, cv)) ){
 					//This is not a radial triangle edge, see if we can flip it
 
 					if( !BM_edge_rotate_check_degenerate(edge, l1, l2) ){
@@ -3517,8 +3512,12 @@ static void optimization( MeshData *m_d ){
 						}
 						if (new_inco_faces < nr_inco_faces){
 							best_edge = edge;
-						} else if ( new_inco_faces == nr_inco_faces && new_diff_facing < cur_diff_facing ){
+							nr_inco_faces = new_inco_faces;
+							cur_diff_facing = new_diff_facing;
+						} else if ( nr_inco_faces == new_inco_faces && new_diff_facing < cur_diff_facing ){
 							best_edge = edge;
+							nr_inco_faces = new_inco_faces;
+							cur_diff_facing = new_diff_facing;
 						}
 					}
 				}
@@ -3613,6 +3612,7 @@ static void optimization( MeshData *m_d ){
 				float start[2], end[2], cur_v2[2];
 
 				interp_v3_v3v3(edge_no, edge->v1->no, edge->v2->no, 0.5f);
+				normalize_v3(edge_no);
 
 				axis_dominant_v3_to_m3(mat, edge_no);
 				get_vert_st_pos(m_d, mat, edge->v1, start);
