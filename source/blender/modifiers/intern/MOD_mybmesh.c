@@ -2390,10 +2390,11 @@ static void radial_insertion( MeshData *m_d ){
 
 				//Do not attempt to insert radial edges on the "inside" region of the cusp
 				//That is, if the opposite edge as a cusp vert, do not try to insert a radial edge here.
+				/*
 				if (cur_vert != vert && is_vert_in_buffer(cur_vert, m_d->cusp_verts)){
 					skip_face = true;
 					break;
-				}
+				}*/
 
 				for(vert_j = 0; vert_j < m_d->C_verts->count; vert_j++){
 					BMVert *vert2 = BLI_buffer_at(m_d->C_verts, BMVert*, vert_j);
@@ -2577,11 +2578,9 @@ static void radial_flip( MeshData *m_d ){
 		int edge_count = BM_vert_edge_count(vert);
 		BMEdge **edge_arr = BLI_array_alloca(edge_arr, edge_count);
 
-		bool cusp_edge = false;
-
         if( is_vert_in_buffer(vert, m_d->cusp_verts) ){
-			//Do not flip certain cusp edges
-			cusp_edge = true;
+			//Do not flip cusp edges
+			continue;
 		}
 
 		BM_ITER_ELEM_INDEX (e, &iter_e, vert, BM_EDGES_OF_VERT, edge_idx) {
@@ -2623,12 +2622,6 @@ static void radial_flip( MeshData *m_d ){
 					BM_elem_index_get(l2->v) < m_d->radi_start_idx ){
 					//The flip will not increase the number of standard radial triangles
 					//Do not flip it
-					continue;
-				}
-
-				if( cusp_edge && !BM_edge_rotate_check_degenerate(e, l1, l2) ){
-					//Do not attempt to flip cusp edges that will result in zero
-					//area faces
 					continue;
 				}
 
@@ -2816,8 +2809,8 @@ static int radial_extention( MeshData *m_d ){
 					BMLoop *l1, *l2;
 					BM_edge_calc_rotate(edge, true, &l1, &l2);
 					//TODO actually check if we flip a radial edge!
-					if( !is_vert_in_buffer(edge->v1, cv) && !is_vert_in_buffer(edge->v2, cv) &&
-						!is_vert_in_buffer(l1->v, cv) && !is_vert_in_buffer(l2->v, cv)){
+					if( !(is_vert_in_buffer(edge->v1, cv) && is_vert_in_buffer(edge->v2, cv)) &&
+						!(is_vert_in_buffer(l1->v, cv) || is_vert_in_buffer(l2->v, cv))){
 						float lambda;
 						float temp[3];
 						sub_v3_v3v3(temp, edge->v2->co, edge->v1->co);
@@ -2875,7 +2868,7 @@ static int radial_extention( MeshData *m_d ){
 			//Get C_vert st pos
 			get_vert_st_pos(m_d, mat, r_vert.C_vert, c_pos_v2);
 
-			for( int i=1; i < 11; i++ ){
+			for( int i=0; i < 11; i++ ){
 				float t = 1.0f + (float)i/10.0f;
 				float P[3], du[3], dv[3];
 				float uv_P[2];
@@ -3385,8 +3378,9 @@ static void optimization( MeshData *m_d ){
 	// 2. Edge flipping
 	{
 		int face_i;
+		int initial_inco_len = inco_faces.count; //Don't try to split inco faces added in this step
 
-		for(face_i = 0; face_i < inco_faces.count; face_i++){
+		for(face_i = 0; face_i < initial_inco_len; face_i++){
 			IncoFace *inface = &BLI_buffer_at(&inco_faces, IncoFace, face_i);
 
 			BMEdge *edge;
@@ -3397,6 +3391,15 @@ static void optimization( MeshData *m_d ){
 				//Already fixed this edge
 				continue;
 			}
+
+			BMesh *bm_fan_copy;
+			bm_fan_copy = BM_mesh_create(&bm_mesh_allocsize_default, &((struct BMeshCreateParams){0}));
+
+			GHash *vhash = BLI_ghash_ptr_new("opti edge split vhash");
+			GHash *ehash = BLI_ghash_ptr_new("opti edge split ehash");
+			GHash *fhash = BLI_ghash_ptr_new("opti face split fhash");
+
+			create_fan_copy(bm_fan_copy, inface->face, vhash, ehash, fhash);
 
 			BM_ITER_ELEM (edge, &iter_e, inface->face, BM_EDGES_OF_FACE) {
 
@@ -3415,10 +3418,9 @@ static void optimization( MeshData *m_d ){
 					if( !BM_edge_rotate_check_degenerate(edge, l1, l2) ){
 						continue;
 					}
-
-					if( !BM_edge_rotate_check_beauty(edge, l1, l2) ){
-						continue;
-					}
+					BMesh *bm_temp = BM_mesh_copy(bm_fan_copy);
+					BMEdge *copy_e = BLI_ghash_lookup(ehash, edge);
+					BMEdge *temp_e = BM_edge_at_index_find(bm_temp, BM_elem_index_get(copy_e));
 
 					//Calculate nr of info faces of egde
 					int nr_inco_faces = 0;
@@ -3444,84 +3446,33 @@ static void optimization( MeshData *m_d ){
 						int new_inco_faces = 0;
 						float new_diff_facing = 0;
 
-						//Taken from BM_edge_rotate_check_degenerate
+						//Flip temp edge and see if it improves the inco faces.
+						temp_e = BM_edge_rotate(bm_temp, temp_e, true, 0);
 
-						//Check if the flip will cause a potential fold
-						float ed_dir_new[3], ed_dir_v1_new[3], ed_dir_v2_new[3];
-						BMVert *v1, *v2;
-						BMVert *v1_old, *v2_old;
-						BMVert *v1_alt, *v2_alt;
+						BM_ITER_ELEM (face, &iter_f, temp_e, BM_FACES_OF_EDGE) {
+							BM_face_calc_normal(face, no);
+							BM_face_calc_center_mean(face, P);
 
-						BM_edge_ordered_verts(edge, &v1_old, &v2_old);
+							face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 
-						v1 = l1->v;
-						v2 = l2->v;
-
-						/* get the next vert along */
-						v1_alt = BM_face_other_vert_loop(l1->f, v1_old, v1)->v;
-						v2_alt = BM_face_other_vert_loop(l2->f, v2_old, v2)->v;
-
-						sub_v3_v3v3(ed_dir_new, v1->co, v2->co);
-						normalize_v3(ed_dir_new);
-
-						sub_v3_v3v3(ed_dir_v1_new, v1->co, v1_alt->co);
-						sub_v3_v3v3(ed_dir_v2_new, v2->co, v2_alt->co);
-						normalize_v3(ed_dir_v1_new);
-						normalize_v3(ed_dir_v2_new);
-
-						//First flipped face
-						cross_v3_v3v3(no, ed_dir_new, ed_dir_v1_new);
-						normalize_v3(no);
-
-						//Calc center mean of new face
-						zero_v3(P);
-						add_v3_v3( P, v1->co );
-						add_v3_v3( P, l1->v->co );
-						add_v3_v3( P, l2->v->co );
-
-						mul_v3_fl( P, 1.0f / 3.0f );
-
-						//Facing of first new flip face
-						face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
-						if( inface->back_f != (face_dir < 0) ){
-							//This is not a good flip!
-							//printf("Opti flip, first face not good\n");
-							new_diff_facing += fabs(face_dir);
-							new_inco_faces++;
+							if( inface->back_f != (face_dir < 0) ){
+								new_diff_facing += fabs(face_dir);
+								new_inco_faces++;
+							}
 						}
 
-						//Second flipped face
-						cross_v3_v3v3(no, ed_dir_new, ed_dir_v2_new);
-						normalize_v3(no);
-
-						//Calc center mean of new face
-						zero_v3(P);
-						add_v3_v3( P, v2->co );
-						add_v3_v3( P, l1->v->co );
-						add_v3_v3( P, l2->v->co );
-
-						mul_v3_fl( P, 1.0f / 3.0f );
-
-						//Facing of second new flip face
-						face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
-						if( inface->back_f != (face_dir < 0) ){
-							//This is not a good flip!
-							//printf("Opti flip, second face not good\n");
-							new_diff_facing += fabs(face_dir);
-							new_inco_faces++;
-						}
 						if (new_inco_faces < nr_inco_faces){
 							best_edge = edge;
 							nr_inco_faces = new_inco_faces;
 							cur_diff_facing = new_diff_facing;
-						} else if ( nr_inco_faces == new_inco_faces && new_diff_facing < cur_diff_facing ){
+						}/* else if ( nr_inco_faces == new_inco_faces && new_diff_facing < cur_diff_facing ){
 							best_edge = edge;
 							nr_inco_faces = new_inco_faces;
 							cur_diff_facing = new_diff_facing;
-						}
+						}*/
 					}
+					BM_mesh_free(bm_temp);
 				}
-
 			}
 			if (best_edge != NULL){
 				//printf("Opti filped an edge!\n");
@@ -3544,6 +3495,10 @@ static void optimization( MeshData *m_d ){
 				null_opti_edge(m_d, best_edge, inface->back_f, &inco_faces);
 			}
 
+			BLI_ghash_free(vhash, NULL, NULL);
+			BLI_ghash_free(ehash, NULL, NULL);
+			BLI_ghash_free(fhash, NULL, NULL);
+			BM_mesh_free(bm_fan_copy);
 		}
 	}
 
@@ -3724,13 +3679,15 @@ static void optimization( MeshData *m_d ){
 							BM_face_calc_normal(f, no);
 							BM_face_calc_center_mean(f, P);
 
+							if( dot_v3v3(no, split_vert->no) < 0.0f ){
+								//Punish flipped faces
+								fold = true;
+								break;
+							}
+
 							float face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 							if( inface->back_f != (face_dir < 0) ){
 								new_diff_facing += fabs(face_dir);
-								if( dot_v3v3(no, split_vert->no) < 0.0f ){
-									//Punish flipped faces
-									fold = true;
-								}
 								new_inco_faces++;
 							}
 						}
