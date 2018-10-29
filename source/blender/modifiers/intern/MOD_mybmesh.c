@@ -287,6 +287,12 @@ static BMVert* split_edge_and_move_nor(MeshData *m_d, BMesh *bm, BMEdge *edge, c
 	BM_ITER_ELEM_INDEX (face, &iter, edge, BM_FACES_OF_EDGE, i){
 		face_arr[i] = face;
 	}
+
+	//if (i > 2){
+	//	print_v3("deg coord", edge->v1->co);
+	//	printf("Deg face!\n");
+	//}
+
 	//printf("Split edge!\n");
 
 	//TODO perhaps use BM_edge_split instead?
@@ -1341,6 +1347,25 @@ static bool bisect_search(const float v1_uv[2], const float v2_uv[2], BMEdge *e,
 	return true;
 }
 
+static BMFace* get_orig_face_overlap(BMFace* f, BMVert *v){
+	BMIter iter_v, iter_f, iter_v_f;
+	BMVert *cur_v;
+	BMFace *cur_f, *cur_v_f;
+
+	BM_ITER_ELEM (cur_v, &iter_v, f, BM_VERTS_OF_FACE) {
+		BM_ITER_ELEM (cur_f, &iter_f, cur_v, BM_FACES_OF_VERT) {
+			BM_ITER_ELEM (cur_v_f, &iter_v_f, v, BM_FACES_OF_VERT) {
+				if( cur_f == cur_v_f ){
+					//Found overlapping face
+					return cur_f;
+				}
+			}
+		}
+	}
+
+	return NULL;
+}
+
 static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 
 	float v1_u, v1_v, v2_u, v2_v;
@@ -1356,6 +1381,7 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 
 	v1 = BLI_ghash_lookup(m_d->vert_hash, e->v1);
 
+	//If v1 does not exist in the original mesh, lookup the data for the new vert v1
 	if( v1 == NULL ){
 		v_buf1 = BLI_buffer_at(m_d->new_vert_buffer, Vert_buf, v1_idx - orig_verts);
 		v1_u = v_buf1.u;
@@ -1367,6 +1393,7 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 
 	v2 = BLI_ghash_lookup(m_d->vert_hash, e->v2);
 
+	//If v2 does not exist in the original mesh, lookup the data for the new vert v2
 	if( v2 == NULL ){
 		v_buf2 = BLI_buffer_at(m_d->new_vert_buffer, Vert_buf, v2_idx - orig_verts);
 		v2_u = v_buf2.u;
@@ -1377,7 +1404,7 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 	}
 
 	if( v1 && v2 ){
-
+		//Both v1 & v2 exist in the original mesh
 		if( i < orig_edges ){
 			//this edge is on the original mesh
 			BMIter iter_f;
@@ -1400,6 +1427,7 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 		get_uv_coord(v1, f, &v1_u, &v1_v);
 		get_uv_coord(v2, f, &v2_u, &v2_v);
 	} else if ( v1 ){
+		//Only v1 exist in the original mesh
 		if( v2_has_face ){
 			f = v_buf2.orig_face;
 		} else {
@@ -1416,8 +1444,15 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 			}
 			convert_uv_to_new_face( v_buf2.orig_edge, v_buf2.orig_face, f, &v2_u, &v2_v);
 		}
-		get_uv_coord(v1, f, &v1_u, &v1_v);
+		if( !get_uv_coord(v1, f, &v1_u, &v1_v) ){
+			//v1 doesn't belong to f!
+			f2 = f;
+			f = get_orig_face_overlap(f, v1);
+			get_uv_coord(v1, f, &v1_u, &v1_v);
+			diff_faces = true;
+		}
 	} else if ( v2 ){
+		//Only v2 exist in the original mesh
 		if( v1_has_face ){
 			f = v_buf1.orig_face;
 		} else {
@@ -1435,7 +1470,14 @@ static void search_edge( const int i, BMEdge *e, MeshData *m_d){
 			convert_uv_to_new_face( v_buf1.orig_edge, v_buf1.orig_face, f, &v1_u, &v1_v);
 		}
 		get_uv_coord(v2, f, &v2_u, &v2_v);
+		if( !get_uv_coord(v2, f, &v2_u, &v2_v) ){
+			//v2 doesn't belong to f!
+			f2 = get_orig_face_overlap(f, v2);
+			get_uv_coord(v2, f2, &v2_u, &v2_v);
+			diff_faces = true;
+		}
 	} else {
+		//Neither exist in the original mesh
 		if( v1_has_face || v2_has_face ){
 			if( v1_has_face && v2_has_face ){
 				if( v_buf1.orig_face != v_buf2.orig_face ){
