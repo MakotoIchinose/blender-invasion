@@ -135,8 +135,9 @@ typedef struct {
 	BLI_Buffer *C_verts;
 	BLI_Buffer *cusp_verts;
 	BLI_Buffer *radi_vert_buffer;
-	//Radial edge vert start idx
+	//Idx of next inserted vert
 	int new_vert_idx;
+	//Radial edge vert start idx
 	int radi_start_idx;
 
 	struct OpenSubdiv_Evaluator *eval;
@@ -276,7 +277,8 @@ static float get_facing_dir_nor(const float cam_loc[3], const float P[3], const 
 static BMVert* split_edge_and_move_nor(MeshData *m_d, BMesh *bm, BMEdge *edge, const float new_pos[3], const float new_no[3]){
 	//Split edge one time and move the created vert to new_pos
 	BMVert *vert;
-	BMFace *face_arr[2];
+	int face_count = BM_edge_face_count(edge);
+	BMFace **face_arr = BLI_array_alloca(face_arr, face_count);
 
 	BMIter iter;
 	BMFace *face;
@@ -287,10 +289,10 @@ static BMVert* split_edge_and_move_nor(MeshData *m_d, BMesh *bm, BMEdge *edge, c
 		face_arr[i] = face;
 	}
 
-	//if (i > 2){
-	//	print_v3("deg coord", edge->v1->co);
-	//	printf("Deg face!\n");
-	//}
+	if (i > 2){
+		print_v3("deg coord", edge->v1->co);
+		printf("Deg face!\n");
+	}
 
 	//printf("Split edge!\n");
 
@@ -1920,6 +1922,7 @@ static void cusp_detection( MeshData *m_d ){
 					if(cusp_triangle(m_d->eval, m_d->cam_loc, face_index, &c_tri, &cusp)){
 						//We found a cusp!
 						float uv_1[2], uv_2[2], uv_3[2];
+						float edge_dir[3];
 						BMEdge *edge;
 						BMVert *cusp_e_vert;
 
@@ -1934,6 +1937,7 @@ static void cusp_detection( MeshData *m_d ){
 							uv_3[1] = v_arr[2];
 							edge = BM_edge_exists( vert_arr[0], vert_arr[1] );
 							cusp_e_vert = vert_arr[2];
+							sub_v3_v3v3(edge_dir, vert_arr[1]->co, vert_arr[0]->co);
 						} else if(b_arr[0] == b_arr[2]){
 							uv_1[0] = u_arr[0];
 							uv_2[0] = u_arr[2];
@@ -1944,6 +1948,7 @@ static void cusp_detection( MeshData *m_d ){
 							uv_3[1] = v_arr[1];
 							edge = BM_edge_exists( vert_arr[0], vert_arr[2] );
 							cusp_e_vert = vert_arr[1];
+							sub_v3_v3v3(edge_dir, vert_arr[2]->co, vert_arr[0]->co);
 						} else {
 							uv_1[0] = u_arr[1];
 							uv_2[0] = u_arr[2];
@@ -1954,6 +1959,7 @@ static void cusp_detection( MeshData *m_d ){
 							uv_3[1] = v_arr[0];
 							edge = BM_edge_exists( vert_arr[1], vert_arr[2] );
 							cusp_e_vert = vert_arr[0];
+							sub_v3_v3v3(edge_dir, vert_arr[2]->co, vert_arr[1]->co);
 						}
 
 						{
@@ -1965,13 +1971,53 @@ static void cusp_detection( MeshData *m_d ){
 							int v1_idx = BM_elem_index_get(edge->v1);
 							int v2_idx = BM_elem_index_get(edge->v2);
 
-							if( isect_line_line_v2_point( uv_1, uv_2, uv_3, cusp_uv, edge_uv ) != ISECT_LINE_LINE_CROSS ){
-								printf("Couldn't find intersection point to edge from cusp!\n");
-								//TODO this is a big error so quit instead
-								continue;
-							}
+							//The paper suggests using a paramter space search to get the new edge intersection point
+							//however in practice this seemes to be too unpresice
 
-							m_d->eval->evaluateLimit(m_d->eval, face_index, edge_uv[0], edge_uv[1], P, du, dv);
+							//if( isect_line_line_v2_point( uv_1, uv_2, uv_3, cusp_uv, edge_uv ) != ISECT_LINE_LINE_CROSS ){
+							//	printf("Couldn't find intersection point to edge from cusp!\n");
+							//	//TODO this is a big error so quit instead
+							//	continue;
+							//}
+
+							//m_d->eval->evaluateLimit(m_d->eval, face_index, edge_uv[0], edge_uv[1], P, du, dv);
+
+							{
+								//Search edge for sign crossing and split it!
+								float step = 0.5f;
+								float step_len = 0.25f;
+
+								float plane[4], plane_no[3], temp[3];
+								float face_dir;
+								bool search_dir;
+
+								sub_v3_v3v3(temp, cusp.cusp_co, cusp_e_vert->co);
+								cross_v3_v3v3(plane_no, temp, cusp.cusp_no);
+
+								search_dir = ( dot_v3v3(plane_no, edge_dir) < 0 );
+
+								//TODO get search normal pointing from uv_1 to uv_2
+								plane_from_point_normal_v3(plane, cusp.cusp_co, plane_no);
+
+								for(int i = 0; i < 10; i++){
+									interp_v2_v2v2( edge_uv, uv_1, uv_2, step);
+									m_d->eval->evaluateLimit(m_d->eval, face_index, edge_uv[0], edge_uv[1], P, du, dv);
+									face_dir = dist_signed_to_plane_v3(P, plane);
+
+									if( fabs(face_dir) < 1e-14 ){
+										//We got lucky and found the zero crossing!
+										printf("--->> got lucky\n");
+										break;
+									}
+
+									if( (face_dir < 0) != search_dir ){
+										step += step_len;
+									} else {
+										step -= step_len;
+									}
+									step_len = step_len/2.0f;
+								}
+							}
 
 							float cusp_dist_to_edge1 = dist_to_line_v3(cusp.cusp_co, cusp_e_vert->co, edge->v1->co);
 							float cusp_dist_to_edge2 = dist_to_line_v3(cusp.cusp_co, cusp_e_vert->co, edge->v2->co);
@@ -2629,10 +2675,11 @@ static void radial_flip( MeshData *m_d ){
 			BMVert *edge_vert;
 			e = edge_arr[edge_i];
 
-			if(e->v1 != vert){
-				edge_vert = e->v1;
-			} else {
-				edge_vert = e->v2;
+			edge_vert = BM_edge_other_vert(e, vert);
+
+			if( edge_vert == NULL ){
+				//We have flipped this edge so it is no longer connected to "vert"
+				continue;
 			}
 
 			if( radial_C_vert( edge_vert, m_d ) ){
@@ -2652,9 +2699,6 @@ static void radial_flip( MeshData *m_d ){
 				//Check if we can just do a simple rotation that doesn't create any bad faces
 				BMLoop *l1, *l2;
 				BM_edge_calc_rotate(e, true, &l1, &l2);
-
-				// new_v1 = l1->v;
-				// new_v2 = l2->v;
 
 				if( BM_elem_index_get(l1->v) < m_d->radi_start_idx &&
 					BM_elem_index_get(l2->v) < m_d->radi_start_idx ){
@@ -2676,7 +2720,6 @@ static void radial_flip( MeshData *m_d ){
 					mul_v2_m3v3(mat_coords[2], mat, l2->v->co);
 
 					if( !isect_point_tri_v2(mat_new_pos, mat_coords[0], mat_coords[1], mat_coords[2]) ){
-
 						//We can simply rotate it!
 						BM_edge_rotate(m_d->bm, e, true, 0);
 						flips++;
@@ -2685,9 +2728,11 @@ static void radial_flip( MeshData *m_d ){
 				}
 
 				//printf("Try to dissolve vert!\n");
-
+				//We will try to flip edges so that edge_vert is only connected with three edges
+				//This way, we can dissolve edge_vert and it will leave a nice triangle face
 				{
 					int edge_count2 = BM_vert_edge_count(edge_vert);
+					int flip_edges = edge_count2 - 3;
 					BMEdge *cur_e = e;
 					BMEdge **edge_arr2 = BLI_array_alloca(edge_arr2, edge_count2);
 					edge_idx = 0;
@@ -2698,7 +2743,8 @@ static void radial_flip( MeshData *m_d ){
 					BMLoop *first_loop = BM_face_vert_share_loop( cur_e->l->f, edge_vert);
 					BMLoop *cur_loop = first_loop;
 
-					if( edge_count2 - 3 < 1 ){
+					if( flip_edges < 1 ){
+						//Too few edges to be able to fix it with a vertex dissolve
 						continue;
 					}
 
@@ -2712,34 +2758,35 @@ static void radial_flip( MeshData *m_d ){
 					}
 
 					while (((cur_loop = BM_vert_step_fan_loop(cur_loop, &cur_e)) != first_loop) && (cur_loop != NULL)) {
+						//Add all fan edges besides radial edges and the initial edge
+						//These will be removed by the dissolve later
 						if(cur_e == e || cur_e == rad1_edge || cur_e == rad2_edge){
 							continue;
 						}
 
 						edge_arr2[edge_idx] = cur_e;
 						edge_idx++;
-
 					}
 
 					if(cur_loop == NULL){
 						continue;
 					}
 
-					for( edge_idx = 0; edge_idx < edge_count2 - 3; edge_idx++){
+					for( edge_idx = 0; edge_idx < flip_edges; edge_idx++){
 						BMLoop *loop1, *loop2;
 						BM_edge_calc_rotate(edge_arr2[edge_idx], true, &loop1, &loop2);
 
 						if( BM_edge_rotate_check_degenerate(edge_arr2[edge_idx], loop1, loop2) ){
 							BM_edge_rotate(m_d->bm, edge_arr2[edge_idx], true, 0);
 						} else {
-							//Try to rotate from the other side instead
+							//Try to continue rotating from the other side
 							//printf("Try from other side!\n");
 							break;
 						}
 					}
 
-					if( edge_idx != edge_count2 - 3 ){
-						int op_idx = edge_count2 -4;
+					if( edge_idx != flip_edges ){
+						int op_idx = flip_edges - 1;
 						bool failed_rotate = false;
 
 						for(; edge_idx <= op_idx; op_idx--){
@@ -3115,6 +3162,132 @@ static void create_fan_copy(BMesh *bm_copy, BMFace *input_face, GHash *vhash, GH
 	}
 }
 
+static void opti_edge_flip( MeshData *m_d, BLI_Buffer *inco_faces ){
+	int face_i;
+	int initial_inco_len = inco_faces->count; //Don't try to split inco faces added in this step
+
+	for(face_i = 0; face_i < initial_inco_len; face_i++){
+		IncoFace *inface = &BLI_buffer_at(inco_faces, IncoFace, face_i);
+
+		BMEdge *edge;
+		BMIter iter_e;
+		BMEdge *best_edge = NULL;
+
+		if( inface->face == NULL ){
+			//Already fixed this edge
+			continue;
+		}
+
+		BMesh *bm_fan_copy;
+		bm_fan_copy = BM_mesh_create(&bm_mesh_allocsize_default, &((struct BMeshCreateParams){0}));
+
+		GHash *vhash = BLI_ghash_ptr_new("opti edge split vhash");
+		GHash *ehash = BLI_ghash_ptr_new("opti edge split ehash");
+		GHash *fhash = BLI_ghash_ptr_new("opti face split fhash");
+
+		create_fan_copy(bm_fan_copy, inface->face, vhash, ehash, fhash);
+
+		BM_ITER_ELEM (edge, &iter_e, inface->face, BM_EDGES_OF_FACE) {
+
+			if( !BM_edge_rotate_check(edge) ){
+				continue;
+			}
+
+			BLI_Buffer *cv;
+			cv = m_d->C_verts;
+			BMLoop *l1, *l2;
+			BM_edge_calc_rotate(edge, true, &l1, &l2);
+			if( !(is_vert_in_buffer(edge->v1, cv) && is_vert_in_buffer(edge->v2, cv)) &&
+					!(is_vert_in_buffer(l1->v, cv) && is_vert_in_buffer(l2->v, cv)) ){
+				//This is not a radial triangle edge, see if we can flip it
+
+				if( !BM_edge_rotate_check_degenerate(edge, l1, l2) ){
+					continue;
+				}
+				BMesh *bm_temp = BM_mesh_copy(bm_fan_copy);
+				BMEdge *copy_e = BLI_ghash_lookup(ehash, edge);
+				BMEdge *temp_e = BM_edge_at_index_find(bm_temp, BM_elem_index_get(copy_e));
+
+				//Calculate nr of info faces of egde
+				int nr_inco_faces = 0;
+				float P[3], no[3];
+				float face_dir;
+				float cur_diff_facing = 0;
+				BMFace *face;
+				BMIter iter_f;
+				BM_ITER_ELEM (face, &iter_f, edge, BM_FACES_OF_EDGE) {
+					BM_face_calc_normal(face, no);
+					BM_face_calc_center_mean(face, P);
+
+					//Calc facing of face
+					face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
+
+					if( inface->back_f != (face_dir < 0) ){
+						cur_diff_facing += fabs(face_dir);
+						nr_inco_faces++;
+					}
+				}
+
+				{
+					int new_inco_faces = 0;
+					float new_diff_facing = 0;
+
+					//Flip temp edge and see if it improves the inco faces.
+					temp_e = BM_edge_rotate(bm_temp, temp_e, true, 0);
+
+					BM_ITER_ELEM (face, &iter_f, temp_e, BM_FACES_OF_EDGE) {
+						BM_face_calc_normal(face, no);
+						BM_face_calc_center_mean(face, P);
+
+						face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
+
+						if( inface->back_f != (face_dir < 0) ){
+							new_diff_facing += fabs(face_dir);
+							new_inco_faces++;
+						}
+					}
+
+					if (new_inco_faces < nr_inco_faces){
+						best_edge = edge;
+						nr_inco_faces = new_inco_faces;
+						cur_diff_facing = new_diff_facing;
+					}/* else if ( nr_inco_faces == new_inco_faces && new_diff_facing < cur_diff_facing ){
+						best_edge = edge;
+						nr_inco_faces = new_inco_faces;
+						cur_diff_facing = new_diff_facing;
+						}*/
+				}
+				BM_mesh_free(bm_temp);
+			}
+		}
+		if (best_edge != NULL){
+			//printf("Opti filped an edge!\n");
+
+			//When we rotate, the connected inco faces might be lost.
+			//Remove them before flipping and add the new inco faces later (if any)
+			BMFace *face;
+			BMIter iter_f;
+			BM_ITER_ELEM (face, &iter_f, best_edge, BM_FACES_OF_EDGE) {
+				for(int i = 0; i < inco_faces->count; i++){
+					IncoFace *edge_inface = &BLI_buffer_at(inco_faces, IncoFace, i);
+					if( edge_inface->face != NULL && edge_inface->face == face ){
+						edge_inface->face = NULL;
+					}
+				}
+			}
+
+			best_edge = BM_edge_rotate(m_d->bm, best_edge, true, 0);
+
+			null_opti_edge(m_d, best_edge, inface->back_f, inco_faces);
+		}
+
+		BLI_ghash_free(vhash, NULL, NULL);
+		BLI_ghash_free(ehash, NULL, NULL);
+		BLI_ghash_free(fhash, NULL, NULL);
+		BM_mesh_free(bm_fan_copy);
+	}
+}
+
 static int opti_vertex_wiggle( MeshData *m_d, BLI_Buffer *inco_faces ){
 	int face_i;
 	int wiggled_verts = 0;
@@ -3414,131 +3587,7 @@ static void optimization( MeshData *m_d ){
 	}
 
 	// 2. Edge flipping
-	{
-		int face_i;
-		int initial_inco_len = inco_faces.count; //Don't try to split inco faces added in this step
-
-		for(face_i = 0; face_i < initial_inco_len; face_i++){
-			IncoFace *inface = &BLI_buffer_at(&inco_faces, IncoFace, face_i);
-
-			BMEdge *edge;
-			BMIter iter_e;
-			BMEdge *best_edge = NULL;
-
-			if( inface->face == NULL ){
-				//Already fixed this edge
-				continue;
-			}
-
-			BMesh *bm_fan_copy;
-			bm_fan_copy = BM_mesh_create(&bm_mesh_allocsize_default, &((struct BMeshCreateParams){0}));
-
-			GHash *vhash = BLI_ghash_ptr_new("opti edge split vhash");
-			GHash *ehash = BLI_ghash_ptr_new("opti edge split ehash");
-			GHash *fhash = BLI_ghash_ptr_new("opti face split fhash");
-
-			create_fan_copy(bm_fan_copy, inface->face, vhash, ehash, fhash);
-
-			BM_ITER_ELEM (edge, &iter_e, inface->face, BM_EDGES_OF_FACE) {
-
-				if( !BM_edge_rotate_check(edge) ){
-					continue;
-				}
-
-				BLI_Buffer *cv;
-				cv = m_d->C_verts;
-				BMLoop *l1, *l2;
-				BM_edge_calc_rotate(edge, true, &l1, &l2);
-				if( !(is_vert_in_buffer(edge->v1, cv) && is_vert_in_buffer(edge->v2, cv)) &&
-					!(is_vert_in_buffer(l1->v, cv) && is_vert_in_buffer(l2->v, cv)) ){
-					//This is not a radial triangle edge, see if we can flip it
-
-					if( !BM_edge_rotate_check_degenerate(edge, l1, l2) ){
-						continue;
-					}
-					BMesh *bm_temp = BM_mesh_copy(bm_fan_copy);
-					BMEdge *copy_e = BLI_ghash_lookup(ehash, edge);
-					BMEdge *temp_e = BM_edge_at_index_find(bm_temp, BM_elem_index_get(copy_e));
-
-					//Calculate nr of info faces of egde
-					int nr_inco_faces = 0;
-					float P[3], no[3];
-					float face_dir;
-					float cur_diff_facing = 0;
-					BMFace *face;
-					BMIter iter_f;
-					BM_ITER_ELEM (face, &iter_f, edge, BM_FACES_OF_EDGE) {
-						BM_face_calc_normal(face, no);
-						BM_face_calc_center_mean(face, P);
-
-						//Calc facing of face
-						face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
-
-						if( inface->back_f != (face_dir < 0) ){
-							cur_diff_facing += fabs(face_dir);
-							nr_inco_faces++;
-						}
-					}
-
-					{
-						int new_inco_faces = 0;
-						float new_diff_facing = 0;
-
-						//Flip temp edge and see if it improves the inco faces.
-						temp_e = BM_edge_rotate(bm_temp, temp_e, true, 0);
-
-						BM_ITER_ELEM (face, &iter_f, temp_e, BM_FACES_OF_EDGE) {
-							BM_face_calc_normal(face, no);
-							BM_face_calc_center_mean(face, P);
-
-							face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
-
-							if( inface->back_f != (face_dir < 0) ){
-								new_diff_facing += fabs(face_dir);
-								new_inco_faces++;
-							}
-						}
-
-						if (new_inco_faces < nr_inco_faces){
-							best_edge = edge;
-							nr_inco_faces = new_inco_faces;
-							cur_diff_facing = new_diff_facing;
-						}/* else if ( nr_inco_faces == new_inco_faces && new_diff_facing < cur_diff_facing ){
-							best_edge = edge;
-							nr_inco_faces = new_inco_faces;
-							cur_diff_facing = new_diff_facing;
-						}*/
-					}
-					BM_mesh_free(bm_temp);
-				}
-			}
-			if (best_edge != NULL){
-				//printf("Opti filped an edge!\n");
-
-				//When we rotate, the connected inco faces might be lost.
-				//Remove them before flipping and add the new inco faces later (if any)
-				BMFace *face;
-				BMIter iter_f;
-				BM_ITER_ELEM (face, &iter_f, best_edge, BM_FACES_OF_EDGE) {
-					for(int i = 0; i < inco_faces.count; i++){
-						IncoFace *edge_inface = &BLI_buffer_at(&inco_faces, IncoFace, i);
-						if( edge_inface->face != NULL && edge_inface->face == face ){
-							edge_inface->face = NULL;
-						}
-					}
-				}
-
-				best_edge = BM_edge_rotate(m_d->bm, best_edge, true, 0);
-
-				null_opti_edge(m_d, best_edge, inface->back_f, &inco_faces);
-			}
-
-			BLI_ghash_free(vhash, NULL, NULL);
-			BLI_ghash_free(ehash, NULL, NULL);
-			BLI_ghash_free(fhash, NULL, NULL);
-			BM_mesh_free(bm_fan_copy);
-		}
-	}
+	opti_edge_flip(m_d, &inco_faces);
 
 	// 3. Vertex wiggling in paramter space
 	int wiggled_verts = 0;
@@ -3799,7 +3848,9 @@ static void optimization( MeshData *m_d ){
 		}
 	}
 
-	//Try to wiggle again after split
+	//Try to flip/wiggle again after split
+	opti_edge_flip(m_d, &inco_faces);
+
 	do {
 		wiggled_verts = opti_vertex_wiggle(m_d, &inco_faces);
 	} while( wiggled_verts > 0 );
