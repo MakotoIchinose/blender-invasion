@@ -463,6 +463,40 @@ static void get_uv_point(BMFace *face, float uv[2], const float point_v2[2], con
 
 }
 
+static float get_uv_point_overflow(BMFace *face, float uv[2], const float point_v2[2], const float mat[3][3] ){
+	int vert_idx;
+	float st[4][2];
+
+	BMVert *v;
+	BMIter iter_v;
+
+	BM_ITER_ELEM_INDEX (v, &iter_v, face, BM_VERTS_OF_FACE, vert_idx) {
+		mul_v2_m3v3(st[vert_idx], mat, v->co);
+	}
+
+	resolve_quad_uv_v2(uv, point_v2, st[0], st[1], st[2], st[3]);
+
+	float overflow = 0;
+
+	if( uv[0] > 1.0f ){
+		overflow += uv[0] - 1.0f;
+		uv[0] = 1.0f;
+	} else if( uv[0] < 0.0f ){
+		overflow += fabsf(uv[0]);
+		uv[0] = 0.0f;
+	}
+
+	if( uv[1] > 1.0f ){
+		overflow += uv[1] - 1.0f;
+		uv[1] = 1.0f;
+	} else if( uv[1] < 0.0f ){
+		overflow += fabsf(uv[1]);
+		uv[1] = 0.0f;
+	}
+
+	return overflow;
+}
+
 static void get_st_point(BMFace *face, const float u, const float v, const float mat[3][3], float st[2]){
 	int vert_idx;
 	float face_st[4][3];
@@ -1228,13 +1262,37 @@ static void mult_face_search( BMFace *f, BMFace *f2, BMEdge *e, const float v1_u
 			for( int i = 0; i < 10; i++ ){
 				interp_v2_v2v2(cur_v2, start, end, step);
 
+				bool found_face = false;
+
 				for(int face_i = 0; face_i < faces.count; face_i++){
 						cur_face = BLI_buffer_at(&faces, BMFace*, face_i);
 						if( point_inside_v2( mat, cur_v2, cur_face ) ){
 							get_uv_point( cur_face, uv_P, cur_v2, mat );
+							found_face = true;
 							break;
 						}
 				}
+
+				if( !found_face ){
+					//This should only happen if we shifted a border edge vert (so the interpolation path lies outside the mesh faces)
+					//so just try to find the uv with the least amount of overflow and use that
+
+					float overflow = INFINITY;
+					float cur_over;
+					float uv[2];
+					BMFace *over_face;
+
+					for(int face_i = 0; face_i < faces.count; face_i++){
+						over_face = BLI_buffer_at(&faces, BMFace*, face_i);
+						cur_over = get_uv_point_overflow( over_face, uv, cur_v2, mat );
+						if( cur_over < overflow ){
+							overflow = cur_over;
+							cur_face = over_face;
+							copy_v2_v2(uv_P, uv);
+						}
+					}
+				}
+
 				face_index = BM_elem_index_get(cur_face);
 				m_d->eval->evaluateLimit(m_d->eval, face_index, uv_P[0], uv_P[1], P, du, dv);
 
