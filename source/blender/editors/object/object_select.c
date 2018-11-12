@@ -34,7 +34,7 @@
 #include <string.h>
 
 #include "DNA_anim_types.h"
-#include "DNA_group_types.h"
+#include "DNA_collection_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
@@ -53,17 +53,17 @@
 
 #include "BKE_collection.h"
 #include "BKE_context.h"
+#include "BKE_deform.h"
 #include "BKE_layer.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_object.h"
-#include "BKE_particle.h"
 #include "BKE_paint.h"
+#include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
-#include "BKE_library.h"
-#include "BKE_deform.h"
 
 #include "DEG_depsgraph.h"
 

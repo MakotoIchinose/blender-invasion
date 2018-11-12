@@ -39,6 +39,7 @@
 #include "BLI_rect.h"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
+#include "BLI_math_color.h"
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -185,6 +186,10 @@ static void hud_region_layout(const bContext *C, ARegion *ar)
 		ar->winrct.ymax = (ar->winrct.ymin + ar->winy) - 1;
 
 		UI_view2d_region_reinit(v2d, V2D_COMMONVIEW_PANELS_UI, ar->winx, ar->winy);
+
+		/* Weak, but needed to avoid glitches, especially with hi-dpi (where resizing the view glitches often).
+		 * Fortunately this only happens occasionally. */
+		ED_region_panels_layout(C, ar);
 	}
 
 	/* restore view matrix */
@@ -199,12 +204,20 @@ static void hud_region_draw(const bContext *C, ARegion *ar)
 	GPU_clear(GPU_COLOR_BIT);
 
 	if ((ar->flag & RGN_FLAG_HIDDEN) == 0) {
-		float color[4];
-		UI_GetThemeColor4fv(TH_BUTBACK, color);
-		if ((U.uiflag2 & USER_REGION_OVERLAP) == 0) {
-			color[3] = 1.0f;
+		if (0) {
+			/* Has alpha flickering glitch, see T56752. */
+			ui_draw_menu_back(NULL, NULL, &(rcti){.xmax = ar->winx, .ymax = ar->winy});
 		}
-		ui_draw_widget_back_color(UI_WTYPE_BOX, false, &(rcti){.xmax = ar->winx, .ymax = ar->winy}, color);
+		else {
+			/* Use basic drawing instead. */
+			bTheme *btheme = UI_GetTheme();
+			float color[4];
+			rgba_uchar_to_float(color, (const uchar *)btheme->tui.wcol_menu_back.inner);
+			const float radius = U.widget_unit * btheme->tui.wcol_menu_back.roundness;
+			UI_draw_roundbox_corner_set(UI_CNR_ALL);
+			UI_draw_roundbox_4fv(true, 0, 0, ar->winx, ar->winy, radius, color);
+		}
+
 		ED_region_panels_draw(C, ar);
 	}
 }
@@ -289,14 +302,6 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *sa)
 		ar->type = art;
 	}
 
-	ED_region_init(ar);
-	ED_region_tag_redraw(ar);
-
-	/* Reset zoom level (not well supported). */
-	ar->v2d.cur = ar->v2d.tot = (rctf){.xmax = ar->winx, .ymax = ar->winy};
-	ar->v2d.minzoom = 1.0f;
-	ar->v2d.maxzoom = 1.0f;
-
 	/* Let 'ED_area_update_region_sizes' do the work of placing the region.
 	 * Otherwise we could set the 'ar->winrct' & 'ar->winx/winy' here. */
 	if (init) {
@@ -325,6 +330,20 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *sa)
 		}
 	}
 
+	if (init) {
+		/* This is needed or 'winrct' will be invalid. */
+		wmWindow *win = CTX_wm_window(C);
+		ED_area_update_region_sizes(wm, win, sa);
+	}
+
+	ED_region_init(ar);
+	ED_region_tag_redraw(ar);
+
+	/* Reset zoom level (not well supported). */
+	ar->v2d.cur = ar->v2d.tot = (rctf){.xmax = ar->winx, .ymax = ar->winy};
+	ar->v2d.minzoom = 1.0f;
+	ar->v2d.maxzoom = 1.0f;
+
 	/* XXX, should be handled in more general way. */
 	ar->visible = !((ar->flag & RGN_FLAG_HIDDEN) || (ar->flag & RGN_FLAG_TOO_SMALL));
 
@@ -334,6 +353,7 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *sa)
 	CTX_wm_region_set((bContext *)C, ar);
 	hud_region_layout(C, ar);
 	CTX_wm_region_set((bContext *)C, ar_prev);
+
 }
 
 /** \} */

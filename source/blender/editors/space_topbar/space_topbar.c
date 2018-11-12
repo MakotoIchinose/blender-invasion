@@ -128,7 +128,7 @@ static void topbar_main_region_init(wmWindowManager *wm, ARegion *region)
 	}
 	UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_HEADER, region->winx, region->winy);
 
-	keymap = WM_keymap_find(wm->defaultconf, "View2D Buttons List", 0, 0);
+	keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", 0, 0);
 	WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -180,6 +180,14 @@ static void topbar_header_listener(wmWindow *UNUSED(win), ScrArea *UNUSED(sa), A
 {
 	/* context changes */
 	switch (wmn->category) {
+		case NC_WM:
+			if (wmn->data == ND_JOB)
+				ED_region_tag_redraw(ar);
+			break;
+		case NC_SPACE:
+			if (wmn->data == ND_SPACE_INFO)
+				ED_region_tag_redraw(ar);
+			break;
 		case NC_SCREEN:
 			if (wmn->data == ND_LAYER)
 				ED_region_tag_redraw(ar);

@@ -313,7 +313,7 @@ class CLIP_OT_bundles_to_mesh(Operator):
             ob = bpy.data.objects.new(name="Tracks", object_data=mesh)
             ob.matrix_world = matrix
             context.collection.objects.link(ob)
-            ob.select_set('SELECT')
+            ob.select_set(True)
             context.view_layer.objects.active = ob
         else:
             self.report({'WARNING'}, "No usable tracks selected")
@@ -624,7 +624,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
             fg.use_sky = True
 
         if not view_layers.get("Background"):
-            bg = view_layers.new("Background")
+            _bg = view_layers.new("Background")
 
     @staticmethod
     def createCollection(context, collection_name):
@@ -662,7 +662,6 @@ class CLIP_OT_setup_tracking_scene(Operator):
                 else:
                     setup_collection_recursively(collection.children, collection_name, attr_name)
 
-        collection = context.collection
         collections = context.scene.collection.children
         vlayers = context.scene.view_layers
 
@@ -674,13 +673,13 @@ class CLIP_OT_setup_tracking_scene(Operator):
 
         # rendersettings
         setup_collection_recursively(
-            vlayers["Foreground"].collections[0].children,
+            vlayers["Foreground"].layer_collection.children,
             "background",
             "holdout",
         )
 
         setup_collection_recursively(
-            vlayers["Background"].collections[0].children,
+            vlayers["Background"].layer_collection.children,
             "foreground",
             "indirect_only",
         )
@@ -970,9 +969,6 @@ class CLIP_OT_setup_tracking_scene(Operator):
             setup_shadow_catcher_objects(bg_coll)
 
     def execute(self, context):
-        scene = context.scene
-        current_active_layer = scene.active_layer
-
         self._setupScene(context)
         self._setupWorld(context)
         self._setupCamera(context)

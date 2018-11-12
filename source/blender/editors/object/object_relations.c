@@ -37,8 +37,8 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
-#include "DNA_group_types.h"
 #include "DNA_lamp_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_material_types.h"
@@ -69,6 +69,7 @@
 #include "BKE_curve.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_displist.h"
+#include "BKE_editmesh.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_fcurve.h"
@@ -92,7 +93,6 @@
 #include "BKE_scene.h"
 #include "BKE_speaker.h"
 #include "BKE_texture.h"
-#include "BKE_editmesh.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -109,6 +109,7 @@
 
 #include "ED_armature.h"
 #include "ED_curve.h"
+#include "ED_gpencil.h"
 #include "ED_keyframing.h"
 #include "ED_object.h"
 #include "ED_mesh.h"
@@ -128,12 +129,12 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
+	View3D *v3d = CTX_wm_view3d(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Object *obedit = CTX_data_edit_object(C);
 	BMVert *eve;
 	BMIter iter;
-	Curve *cu;
 	Nurb *nu;
 	BezTriple *bezt;
 	BPoint *bp;
@@ -174,15 +175,13 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
 	else if (ELEM(obedit->type, OB_SURF, OB_CURVE)) {
 		ListBase *editnurb = object_editcurve_get(obedit);
 
-		cu = obedit->data;
-
 		nu = editnurb->first;
 		while (nu) {
 			if (nu->type == CU_BEZIER) {
 				bezt = nu->bezt;
 				a = nu->pntsu;
 				while (a--) {
-					if (BEZT_ISSEL_ANY_HIDDENHANDLES(cu, bezt)) {
+					if (BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt)) {
 						if (v1 == 0) v1 = nr;
 						else if (v2 == 0) v2 = nr;
 						else if (v3 == 0) v3 = nr;
@@ -642,7 +641,7 @@ bool ED_object_parent_set(ReportList *reports, const bContext *C, Scene *scene, 
 			if (partype == PAR_FOLLOW) {
 				/* get or create F-Curve */
 				bAction *act = verify_adt_action(bmain, &cu->id, 1);
-				FCurve *fcu = verify_fcurve(act, NULL, NULL, "eval_time", 0, 1);
+				FCurve *fcu = verify_fcurve(bmain, act, NULL, NULL, "eval_time", 0, 1);
 
 				/* setup dummy 'generator' modifier here to get 1-1 correspondence still working */
 				if (!fcu->bezt && !fcu->fpt && !fcu->modifiers.first)
@@ -789,6 +788,23 @@ bool ED_object_parent_set(ReportList *reports, const bContext *C, Scene *scene, 
 				else if (partype == PAR_ARMATURE_AUTO) {
 					WM_cursor_wait(1);
 					ED_object_vgroup_calc_from_armature(reports, depsgraph, scene, ob, par, ARM_GROUPS_AUTO, xmirror);
+					WM_cursor_wait(0);
+				}
+				/* get corrected inverse */
+				ob->partype = PAROBJECT;
+				BKE_object_workob_calc_parent(depsgraph, scene, ob, &workob);
+
+				invert_m4_m4(ob->parentinv, workob.obmat);
+			}
+			else if (pararm && (ob->type == OB_GPENCIL) && (par->type == OB_ARMATURE)) {
+				if (partype == PAR_ARMATURE_NAME) {
+					ED_gpencil_add_armature_weights(C, reports, ob, par, GP_PAR_ARMATURE_NAME);
+				}
+				else if ((partype == PAR_ARMATURE_AUTO) ||
+				         (partype == PAR_ARMATURE_ENVELOPE))
+				{
+					WM_cursor_wait(1);
+					ED_gpencil_add_armature_weights(C, reports, ob, par, GP_PAR_ARMATURE_AUTO);
 					WM_cursor_wait(0);
 				}
 				/* get corrected inverse */
@@ -1457,13 +1473,13 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
 						DEG_id_tag_update(&ob_dst->id, OB_RECALC_DATA);
 						break;
 					case MAKE_LINKS_ANIMDATA:
-						BKE_animdata_copy_id(bmain, (ID *)ob_dst, (ID *)ob_src, false, true);
+						BKE_animdata_copy_id(bmain, (ID *)ob_dst, (ID *)ob_src, 0);
 						if (ob_dst->data && ob_src->data) {
 							if (ID_IS_LINKED(obdata_id)) {
 								is_lib = true;
 								break;
 							}
-							BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, false, true);
+							BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
 						}
 						DEG_id_tag_update(&ob_dst->id, OB_RECALC_OB | OB_RECALC_DATA | OB_RECALC_TIME);
 						break;
@@ -1610,20 +1626,11 @@ void OBJECT_OT_make_links_data(wmOperatorType *ot)
 
 /**************************** Make Single User ********************************/
 
-static Object *single_object_users_object(Main *bmain, Object *ob)
-{
-	/* base gets copy of object */
-	Object *obn = ID_NEW_SET(ob, BKE_object_copy(bmain, ob));
-
-
-	id_us_plus(&obn->id);
-	id_us_min(&ob->id);
-	return obn;
-}
-
 static void libblock_relink_collection(Collection *collection)
 {
-	for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
+	BKE_libblock_relink_to_newid(&collection->id);
+
+	for (CollectionObject *cob = collection->gobject.first; cob != NULL; cob = cob->next) {
 		BKE_libblock_relink_to_newid(&cob->ob->id);
 	}
 
@@ -1632,42 +1639,47 @@ static void libblock_relink_collection(Collection *collection)
 	}
 }
 
-static void single_object_users_collection(Main *bmain, Scene *scene, Collection *collection, const int flag, const bool copy_collections)
+static void single_object_users_collection(
+        Main *bmain, Scene *scene, Collection *collection,
+        const int flag, const bool copy_collections, const bool is_master_collection)
 {
+	/* Generate new copies for objects in given collection and all its children,
+	 * and optionnaly also copy collections themselves. */
+	if (copy_collections && !is_master_collection) {
+		collection = ID_NEW_SET(collection, BKE_collection_copy(bmain, NULL, collection));
+	}
+
+	/* We do not remap to new objects here, this is done in separate step. */
 	for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
 		Object *ob = cob->ob;
 		/* an object may be in more than one collection */
 		if ((ob->id.newid == NULL) && ((ob->flag & flag) == flag)) {
 			if (!ID_IS_LINKED(ob) && ob->id.us > 1) {
-				cob->ob = single_object_users_object(bmain, cob->ob);
+				ID_NEW_SET(ob, BKE_object_copy(bmain, ob));
 			}
 		}
 	}
 
 	for (CollectionChild *child = collection->children.first; child; child = child->next) {
-		single_object_users_collection(bmain, scene, child->collection, flag, copy_collections);
+		single_object_users_collection(bmain, scene, child->collection, flag, copy_collections, false);
 	}
 }
 
 /* Warning, sets ID->newid pointers of objects and collections, but does not clear them. */
 static void single_object_users(Main *bmain, Scene *scene, View3D *v3d, const int flag, const bool copy_collections)
 {
-	Collection *collection, *collectionn;
-
-	/* duplicate all the objects of the scene */
+	/* duplicate all the objects of the scene (and matching collections, if required). */
 	Collection *master_collection = BKE_collection_master(scene);
-	single_object_users_collection(bmain, scene, master_collection, flag, copy_collections);
-
-	/* loop over ViewLayers and assign the pointers accordingly */
-	for (ViewLayer *view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
-		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-			ID_NEW_REMAP(base->object);
-		}
-	}
+	single_object_users_collection(bmain, scene, master_collection, flag, copy_collections, true);
 
 	/* duplicate collections that consist entirely of duplicated objects */
-	for (collection = bmain->collection.first; collection; collection = collection->id.next) {
-		if (copy_collections) {
+	/* XXX I guess that was designed for calls from 'make single user' operator... But since copy_collection is
+	 *     always false then, was not doing anything. And that kind of behavior should be added at operator level,
+	 *     not in a utility function also used by rather different code... */
+#if 0
+	if (copy_collections) {
+		Collection *collection, *collectionn;
+		for (collection = bmain->collection.first; collection; collection = collection->id.next) {
 			bool all_duplicated = true;
 			bool any_duplicated = false;
 
@@ -1689,6 +1701,10 @@ static void single_object_users(Main *bmain, Scene *scene, View3D *v3d, const in
 			}
 		}
 	}
+#endif
+
+	/* Collection and object pointers in collections */
+	libblock_relink_collection(master_collection);
 
 	/* collection pointers in scene */
 	BKE_scene_groups_relink(scene);
@@ -1697,8 +1713,7 @@ static void single_object_users(Main *bmain, Scene *scene, View3D *v3d, const in
 	ID_NEW_REMAP(scene->camera);
 	if (v3d) ID_NEW_REMAP(v3d->camera);
 
-	/* object and collection pointers */
-	libblock_relink_collection(master_collection);
+	BKE_scene_collection_sync(scene);
 }
 
 /* not an especially efficient function, only added so the single user
@@ -2313,7 +2328,7 @@ static int make_override_static_exec(bContext *C, wmOperator *op)
 
 		success = BKE_override_static_create_from_tag(bmain);
 
-		/* Intantiate our newly overridden objects in scene, if not yet done. */
+		/* Instantiate our newly overridden objects in scene, if not yet done. */
 		Scene *scene = CTX_data_scene(C);
 		ViewLayer *view_layer = CTX_data_view_layer(C);
 		Collection *new_collection = (Collection *)collection->id.newid;
@@ -2332,7 +2347,8 @@ static int make_override_static_exec(bContext *C, wmOperator *op)
 					new_ob->parent = obcollection;
 				}
 				if (new_ob == (Object *)obact->id.newid) {
-					BKE_view_layer_base_select(view_layer, base);
+					/* TODO: is setting active needed? */
+					BKE_view_layer_base_select_and_set_active(view_layer, base);
 				}
 				else {
 					/* Disable auto-override tags for non-active objects, will help with performaces... */
@@ -2347,7 +2363,7 @@ static int make_override_static_exec(bContext *C, wmOperator *op)
 		/* obcollection is no more duplicollection-ing, it merely parents whole collection of overriding instantiated objects. */
 		obcollection->dup_group = NULL;
 
-		/* Also, we'd likely want to lock by default things like transformations of implicitly overriden objects? */
+		/* Also, we'd likely want to lock by default things like transformations of implicitly overridden objects? */
 
 		DEG_id_tag_update(&scene->id, 0);
 
@@ -2367,7 +2383,7 @@ static int make_override_static_exec(bContext *C, wmOperator *op)
 
 		success = BKE_override_static_create_from_tag(bmain);
 
-		/* Also, we'd likely want to lock by default things like transformations of implicitly overriden objects? */
+		/* Also, we'd likely want to lock by default things like transformations of implicitly overridden objects? */
 
 		/* Cleanup. */
 		BKE_main_id_clear_newpoins(bmain);
@@ -2388,7 +2404,8 @@ static bool make_override_static_poll(bContext *C)
 	Object *obact = CTX_data_active_object(C);
 
 	/* Object must be directly linked to be overridable. */
-	return (ED_operator_objectmode(C) && obact != NULL &&
+	return (BKE_override_static_is_enabled() &&
+	        ED_operator_objectmode(C) && obact != NULL &&
 	        ((ID_IS_LINKED(obact) && obact->id.tag & LIB_TAG_EXTERN) ||
 	         (!ID_IS_LINKED(obact) && obact->dup_group != NULL && ID_IS_LINKED(obact->dup_group))));
 }

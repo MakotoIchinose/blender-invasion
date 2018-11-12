@@ -75,6 +75,13 @@ static SpaceLink *buttons_new(const ScrArea *UNUSED(area), const Scene *UNUSED(s
 	ar->regiontype = RGN_TYPE_HEADER;
 	ar->alignment = RGN_ALIGN_TOP;
 
+	/* navigation bar */
+	ar = MEM_callocN(sizeof(ARegion), "navigation bar for buts");
+
+	BLI_addtail(&sbuts->regionbase, ar);
+	ar->regiontype = RGN_TYPE_NAV_BAR;
+	ar->alignment = RGN_ALIGN_LEFT;
+
 #if 0
 	/* context region */
 	ar = MEM_callocN(sizeof(ARegion), "context region for buts");
@@ -130,7 +137,7 @@ static void buttons_main_region_init(wmWindowManager *wm, ARegion *ar)
 
 	ED_region_panels_init(wm, ar);
 
-	keymap = WM_keymap_find(wm->defaultconf, "Property Editor", SPACE_BUTS, 0);
+	keymap = WM_keymap_ensure(wm->defaultconf, "Property Editor", SPACE_BUTS, 0);
 	WM_event_add_keymap_handler(&ar->handlers, keymap);
 }
 
@@ -147,14 +154,14 @@ static void buttons_main_region_layout_properties(const bContext *C, SpaceButs *
 		case BCONTEXT_RENDER:
 			contexts[0] = "render";
 			break;
+		case BCONTEXT_OUTPUT:
+			contexts[0] = "output";
+			break;
 		case BCONTEXT_VIEW_LAYER:
 			contexts[0] = "view_layer";
 			break;
 		case BCONTEXT_WORLD:
 			contexts[0] = "world";
-			break;
-		case BCONTEXT_WORKSPACE:
-			contexts[0] = "workspace";
 			break;
 		case BCONTEXT_OBJECT:
 			contexts[0] = "object";
@@ -200,10 +207,12 @@ static void buttons_main_region_layout_properties(const bContext *C, SpaceButs *
 
 static void buttons_main_region_layout_tool(const bContext *C, ARegion *ar)
 {
-	const char *contexts[3] = {NULL};
-
 	const WorkSpace *workspace = CTX_wm_workspace(C);
 	const int mode = CTX_data_mode_enum(C);
+
+	const char *contexts_base[5] = {NULL};
+	contexts_base[0] = ".active_tool";
+	const char **contexts = &contexts_base[1];
 
 	if (workspace->tools_space_type == SPACE_VIEW3D) {
 		switch (mode) {
@@ -261,7 +270,20 @@ static void buttons_main_region_layout_tool(const bContext *C, ARegion *ar)
 		}
 	}
 	else if (workspace->tools_space_type == SPACE_IMAGE) {
-		/* TODO */
+		switch (workspace->tools_mode) {
+			case SI_MODE_VIEW:
+				break;
+			case SI_MODE_PAINT:
+				ARRAY_SET_ITEMS(contexts, ".paint_common_2d", ".imagepaint_2d");
+				break;
+			case SI_MODE_MASK:
+				break;
+			case SI_MODE_UV:
+				if (mode == CTX_MODE_EDIT_MESH) {
+					ARRAY_SET_ITEMS(contexts, ".uv_sculpt");
+				}
+				break;
+		}
 	}
 
 	/* for grease pencil we don't use tool system yet, so we need check outside
@@ -282,8 +304,15 @@ static void buttons_main_region_layout_tool(const bContext *C, ARegion *ar)
 			break;
 	}
 
+	int i = 0;
+	while (contexts_base[i]) {
+		i++;
+	}
+	BLI_assert(i < ARRAY_SIZE(contexts_base));
+	contexts_base[i] = ".workspace";
+
 	const bool vertical = true;
-	ED_region_panels_layout_ex(C, ar, contexts, -1, vertical);
+	ED_region_panels_layout_ex(C, ar, contexts_base, -1, vertical);
 }
 
 static void buttons_main_region_layout(const bContext *C, ARegion *ar)
@@ -324,14 +353,19 @@ static void buttons_operatortypes(void)
 
 static void buttons_keymap(struct wmKeyConfig *keyconf)
 {
-	wmKeyMap *keymap = WM_keymap_find(keyconf, "Property Editor", SPACE_BUTS, 0);
-
-	WM_keymap_add_item(keymap, "BUTTONS_OT_context_menu", RIGHTMOUSE, KM_PRESS, 0, 0);
+	WM_keymap_ensure(keyconf, "Property Editor", SPACE_BUTS, 0);
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
 static void buttons_header_region_init(wmWindowManager *UNUSED(wm), ARegion *ar)
 {
+#ifdef USE_HEADER_CONTEXT_PATH
+	/* Reinsert context buttons header-type at the end of the list so it's drawn last. */
+	HeaderType *context_ht = BLI_findstring(&ar->type->headertypes, "BUTTONS_HT_context", offsetof(HeaderType, idname));
+	BLI_remlink(&ar->type->headertypes, context_ht);
+	BLI_addtail(&ar->type->headertypes, context_ht);
+#endif
+
 	ED_region_header_init(ar);
 }
 
@@ -362,9 +396,39 @@ static void buttons_header_region_message_subscribe(
 	 * where one has no active object, so that available contexts changes. */
 	WM_msg_subscribe_rna_anon_prop(mbus, Window, view_layer, &msg_sub_value_region_tag_redraw);
 
-	if (!ELEM(sbuts->mainb, BCONTEXT_RENDER, BCONTEXT_SCENE, BCONTEXT_WORLD)) {
+	if (!ELEM(sbuts->mainb, BCONTEXT_RENDER, BCONTEXT_OUTPUT, BCONTEXT_SCENE, BCONTEXT_WORLD)) {
 		WM_msg_subscribe_rna_anon_prop(mbus, ViewLayer, name, &msg_sub_value_region_tag_redraw);
 	}
+
+	if (sbuts->mainb == BCONTEXT_TOOL) {
+		WM_msg_subscribe_rna_anon_prop(mbus, WorkSpace, tools, &msg_sub_value_region_tag_redraw);
+	}
+
+#ifdef USE_HEADER_CONTEXT_PATH
+	WM_msg_subscribe_rna_anon_prop(mbus, SpaceProperties, context, &msg_sub_value_region_tag_redraw);
+#endif
+}
+
+static void buttons_navigation_bar_region_init(wmWindowManager *wm, ARegion *ar)
+{
+	wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "Property Editor", SPACE_BUTS, 0);
+	WM_event_add_keymap_handler(&ar->handlers, keymap);
+
+	ar->flag |= RGN_FLAG_PREFSIZE_OR_HIDDEN;
+
+	ED_region_panels_init(wm, ar);
+	ar->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
+}
+
+static void buttons_navigation_bar_region_draw(const bContext *C, ARegion *ar)
+{
+	for (PanelType *pt = ar->type->paneltypes.first; pt; pt = pt->next) {
+		pt->flag |= PNL_LAYOUT_VERT_BAR;
+	}
+
+	ED_region_panels_layout(C, ar);
+	ar->v2d.scroll &= ~V2D_SCROLL_VERTICAL; /* ED_region_panels_layout adds vertical scrollbars, we don't want them. */
+	ED_region_panels_draw(C, ar);
 }
 
 /* draw a certain button set only if properties area is currently
@@ -501,6 +565,7 @@ static void buttons_area_listener(
 			break;
 		case NC_BRUSH:
 			buttons_area_redraw(sa, BCONTEXT_TEXTURE);
+			buttons_area_redraw(sa, BCONTEXT_TOOL);
 			sbuts->preview = 1;
 			break;
 		case NC_TEXTURE:
@@ -641,9 +706,10 @@ void ED_spacetype_buttons(void)
 	art->draw = ED_region_panels_draw;
 	art->listener = buttons_main_region_listener;
 	art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
-	BLI_addhead(&st->regiontypes, art);
-
+#ifndef USE_HEADER_CONTEXT_PATH
 	buttons_context_register(art);
+#endif
+	BLI_addhead(&st->regiontypes, art);
 
 	/* regions: header */
 	art = MEM_callocN(sizeof(ARegionType), "spacetype buttons region");
@@ -654,6 +720,18 @@ void ED_spacetype_buttons(void)
 	art->init = buttons_header_region_init;
 	art->draw = buttons_header_region_draw;
 	art->message_subscribe = buttons_header_region_message_subscribe;
+#ifdef USE_HEADER_CONTEXT_PATH
+	buttons_context_register(art);
+#endif
+	BLI_addhead(&st->regiontypes, art);
+
+	/* regions: navigation bar */
+	art = MEM_callocN(sizeof(ARegionType), "spacetype nav buttons region");
+	art->regionid = RGN_TYPE_NAV_BAR;
+	art->prefsizex = AREAMINX - 3; /* XXX Works and looks best, should we update AREAMINX accordingly? */
+	art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
+	art->init = buttons_navigation_bar_region_init;
+	art->draw = buttons_navigation_bar_region_draw;
 	BLI_addhead(&st->regiontypes, art);
 
 	BKE_spacetype_register(st);

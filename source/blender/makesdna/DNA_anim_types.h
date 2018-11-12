@@ -415,6 +415,8 @@ typedef struct ChannelDriver {
 	char expression[256];	/* expression to compile for evaluation */
 	void *expr_comp; 		/* PyObject - compiled expression, don't save this */
 
+	struct ExprPyLike_Parsed *expr_simple; /* compiled simple arithmetic expression */
+
 	float curval;		/* result of previous evaluation */
 	float influence;	/* influence of driver on result */ // XXX to be implemented... this is like the constraint influence setting
 
@@ -853,6 +855,7 @@ typedef enum eInsertKeyFlags {
 	 * Used by copy/paste code. */
 	INSERTKEY_OVERWRITE_FULL = (1<<7),
 	INSERTKEY_DRIVER         = (1<<8),	/* for driver FCurves, use driver's "input" value - for easier corrective driver setup */
+	INSERTKEY_CYCLE_AWARE    = (1<<9),	/* for cyclic FCurves, adjust key timing to preserve the cycle period and flow */
 } eInsertKeyFlags;
 
 /* ************************************************ */

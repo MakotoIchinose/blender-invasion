@@ -171,7 +171,6 @@ class SelectHierarchy(Operator):
         return context.object
 
     def execute(self, context):
-        scene = context.scene
         view_layer = context.view_layer
         select_new = []
         act_new = None
@@ -255,7 +254,7 @@ class SubdivisionSet(Operator):
                     if not relative:
                         if level > mod.total_levels:
                             sub = level - mod.total_levels
-                            for i in range(sub):
+                            for _ in range(sub):
                                 bpy.ops.object.multires_subdivide(modifier="Multires")
 
                         if obj.mode == 'SCULPT':
@@ -288,7 +287,7 @@ class SubdivisionSet(Operator):
                 if obj.mode == 'SCULPT':
                     mod = obj.modifiers.new("Multires", 'MULTIRES')
                     if level > 0:
-                        for i in range(0, level):
+                        for _ in range(level):
                             bpy.ops.object.multires_subdivide(modifier="Multires")
                 else:
                     mod = obj.modifiers.new("Subsurf", 'SUBSURF')
@@ -476,7 +475,7 @@ class ShapeTransfer(Operator):
         objects = [ob for ob in context.selected_editable_objects
                    if ob != ob_act]
 
-        if 1:  # swap from/to, means we cant copy to many at once.
+        if 1:  # swap from/to, means we can't copy to many at once.
             if len(objects) != 1:
                 self.report({'ERROR'},
                             ("Expected one other selected "
@@ -871,11 +870,56 @@ class DupliOffsetFromCursor(Operator):
         return {'FINISHED'}
 
 
+class LoadImageAsEmpty(Operator):
+    """Select an image file and create a new image empty with it"""
+    bl_idname = "object.load_image_as_empty"
+    bl_label = "Load Image as Empty"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    filepath: StringProperty(
+        subtype='FILE_PATH'
+    )
+
+    filter_image: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+    filter_folder: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+
+    view_align: BoolProperty(
+        name="Align to view",
+        default=True
+    )
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        scene = context.scene
+        space = context.space_data
+        cursor = (space if space and space.type == 'VIEW_3D' else scene).cursor_location
+        try:
+            image = bpy.data.images.load(self.filepath, check_existing=True)
+        except RuntimeError as ex:
+            self.report({"ERROR"}, str(ex))
+            return {"CANCELLED"}
+
+        bpy.ops.object.empty_add(
+            'INVOKE_REGION_WIN',
+            type='IMAGE',
+            location=cursor,
+            view_align=self.view_align,
+        )
+        obj = context.active_object
+        obj.data = image
+        obj.empty_display_size = 5.0
+        return {'FINISHED'}
+
+
 classes = (
     ClearAllRestrictRender,
     DupliOffsetFromCursor,
     IsolateTypeRender,
     JoinUVs,
+    LoadImageAsEmpty,
     MakeDupliFace,
     SelectCamera,
     SelectHierarchy,

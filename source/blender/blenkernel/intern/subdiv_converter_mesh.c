@@ -23,6 +23,10 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
+/** \file blender/blenkernel/intern/subdiv_converter_mesh.c
+ *  \ingroup bke
+ */
+
 #include "subdiv_converter.h"
 
 #include <string.h>
@@ -81,6 +85,13 @@ static OpenSubdiv_SchemeType get_scheme_type(
 	else {
 		return OSD_SCHEME_CATMARK;
 	}
+}
+
+static OpenSubdiv_VtxBoundaryInterpolation get_vtx_boundary_interpolation(
+        const struct OpenSubdiv_Converter *converter) {
+	ConverterStorage *storage = converter->user_data;
+	return BKE_subdiv_converter_vtx_boundary_interpolation_from_settings(
+	        &storage->settings);
 }
 
 static OpenSubdiv_FVarLinearInterpolation get_fvar_linear_interpolation(
@@ -260,6 +271,7 @@ static void free_user_data(const OpenSubdiv_Converter *converter)
 static void init_functions(OpenSubdiv_Converter *converter)
 {
 	converter->getSchemeType = get_scheme_type;
+	converter->getVtxBoundaryInterpolation = get_vtx_boundary_interpolation;
 	converter->getFVarLinearInterpolation = get_fvar_linear_interpolation;
 	converter->specifiesFullTopology = specifies_full_topology;
 

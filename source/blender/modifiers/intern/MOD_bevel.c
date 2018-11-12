@@ -283,8 +283,8 @@ static void bevel_fix_normal_shading_continuity(BevelModifierData *bmd, BMesh *b
 		if (f_b)
 			has_f_b = BLI_ghash_haskey(faceHash, f_b);
 		if (has_f_a ^ has_f_b) {
-		/* If one of both faces is present in faceHash then we are at a border
-		*  between new vmesh created and reconstructed face */
+			/* If one of both faces is present in faceHash then we are at a border
+			 * between new vmesh created and reconstructed face */
 
 			for (int i = 0; i < 2; i++) {
 				BMVert *v = (i == 0) ? e->v1 : e->v2;
@@ -316,8 +316,8 @@ static void bevel_fix_normal_shading_continuity(BevelModifierData *bmd, BMesh *b
 			}
 		}
 		else if (has_f_a == true  && has_f_b == true) {
-		/* Else if both faces are present we assign clnor corresponding
-		*  to vert normal and face normal */
+			/* Else if both faces are present we assign clnor corresponding
+			 * to vert normal and face normal */
 			for (int i = 0; i < 2; i++) {
 				BMVert *v = (i == 0) ? e->v1 : e->v2;
 				BM_ITER_ELEM(l, &liter, v, BM_LOOPS_OF_VERT) {
@@ -377,6 +377,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	            .add_key_index = false,
 	            .use_shapekey = true,
 	            .active_shapekey = ctx->object->shapenr,
+	            .cd_mask_extra = CD_MASK_ORIGINDEX,
 	        });
 
 	if ((bmd->lim_flags & MOD_BEVEL_VGROUP) && bmd->defgrp_name[0])
@@ -448,7 +449,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	if (set_wn_strength)
 		bevel_set_weighted_normal_face_strength(bm, scene);
 
-	result = BKE_bmesh_to_mesh_nomain(bm, &(struct BMeshToMeshParams){0});
+	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
 
 	BLI_assert(bm->vtoolflagpool == NULL &&
 	           bm->etoolflagpool == NULL &&
@@ -485,14 +486,12 @@ ModifierTypeInfo modifierType_Bevel = {
 	/* deformVertsEM_DM */  NULL,
 	/* deformMatricesEM_DM*/NULL,
 	/* applyModifier_DM */  NULL,
-	/* applyModifierEM_DM */NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
 	/* deformMatricesEM */  NULL,
 	/* applyModifier */     applyModifier,
-	/* applyModifierEM */   NULL,
 
 	/* initData */          initData,
 	/* requiredDataMask */  requiredDataMask,

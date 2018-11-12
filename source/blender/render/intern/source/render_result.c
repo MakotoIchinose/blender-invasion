@@ -45,11 +45,10 @@
 #include "BLI_threads.h"
 
 #include "BKE_appdir.h"
-#include "BKE_image.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
 #include "BKE_camera.h"
+#include "BKE_global.h"
+#include "BKE_image.h"
+#include "BKE_report.h"
 #include "BKE_scene.h"
 
 #include "IMB_imbuf.h"
@@ -882,7 +881,8 @@ bool RE_WriteRenderResult(ReportList *reports, RenderResult *rr, const char *fil
 			/* Skip non-RGBA and Z passes if not using multi layer. */
 			if (!multi_layer && !(STREQ(rp->name, RE_PASSNAME_COMBINED) ||
 			                      STREQ(rp->name, "") ||
-			                      (STREQ(rp->name, RE_PASSNAME_Z) && write_z))) {
+			                      (STREQ(rp->name, RE_PASSNAME_Z) && write_z)))
+			{
 				continue;
 			}
 

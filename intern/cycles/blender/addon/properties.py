@@ -54,6 +54,7 @@ enum_displacement_methods = (
 enum_bvh_layouts = (
     ('BVH2', "BVH2", "", 1),
     ('BVH4', "BVH4", "", 2),
+    ('BVH8', "BVH8", "", 4),
 )
 
 enum_bvh_types = (
@@ -528,6 +529,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         items=enum_bvh_types,
         default='DYNAMIC_BVH',
     )
+    use_bvh_embree: BoolProperty(
+        name="Use Embree",
+        description="Use Embree as ray accelerator",
+        default=False,
+    )
     debug_use_spatial_splits: BoolProperty(
         name="Use Spatial Splits",
         description="Use BVH spatial splits: longer builder time, faster render",
@@ -678,7 +684,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     debug_bvh_layout: EnumProperty(
         name="BVH Layout",
         items=enum_bvh_layouts,
-        default='BVH4',
+        default='BVH8',
     )
     debug_use_cpu_split_kernel: BoolProperty(name="Split Kernel", default=False)
 
@@ -1346,6 +1352,36 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         default=False,
         update=update_render_passes,
     )
+    use_pass_crypto_object: BoolProperty(
+        name="Cryptomatte Object",
+        description="Render cryptomatte object pass, for isolating objects in compositing",
+        default=False,
+        update=update_render_passes,
+        )
+    use_pass_crypto_material: BoolProperty(
+        name="Cryptomatte Material",
+        description="Render cryptomatte material pass, for isolating materials in compositing",
+        default=False,
+        update=update_render_passes,
+        )
+    use_pass_crypto_asset: BoolProperty(
+        name="Cryptomatte Asset",
+        description="Render cryptomatte asset pass, for isolating groups of objects with the same parent",
+        default=False,
+        update=update_render_passes,
+        )
+    pass_crypto_depth: IntProperty(
+        name="Cryptomatte Levels",
+        description="Sets how many unique objects can be distinguished per pixel",
+        default=6, min=2, max=16, step=2,
+        update=update_render_passes,
+        )
+    pass_crypto_accurate: BoolProperty(
+        name="Cryptomatte Accurate",
+        description="Generate a more accurate Cryptomatte pass. CPU only, may render slower and use more memory",
+        default=True,
+        update=update_render_passes,
+        )
 
     @classmethod
     def register(cls):
@@ -1361,12 +1397,10 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
 
 
 class CyclesDeviceSettings(bpy.types.PropertyGroup):
-    @classmethod
-    def register(cls):
-        cls.id = StringProperty(name="ID")
-        cls.name = StringProperty(name="Name")
-        cls.use = BoolProperty(name="Use", default=True)
-        cls.type = EnumProperty(name="Type", items=enum_device_type, default='CUDA')
+    id: StringProperty(name="ID")
+    name: StringProperty(name="Name")
+    use: BoolProperty(name="Use", default=True)
+    type: EnumProperty(name="Type", items=enum_device_type, default='CUDA')
 
 
 class CyclesPreferences(bpy.types.AddonPreferences):

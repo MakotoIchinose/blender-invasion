@@ -46,11 +46,11 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
-#include "BKE_fcurve.h"
-#include "BKE_nla.h"
 #include "BKE_context.h"
+#include "BKE_fcurve.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
+#include "BKE_nla.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 
@@ -1057,7 +1057,7 @@ static int nlaedit_duplicate_exec(bContext *C, wmOperator *op)
 			/* if selected, split the strip at its midpoint */
 			if (strip->flag & NLASTRIP_FLAG_SELECT) {
 				/* make a copy (assume that this is possible) */
-				nstrip = BKE_nlastrip_copy(ac.bmain, strip, linked);
+				nstrip = BKE_nlastrip_copy(ac.bmain, strip, linked, 0);
 
 				/* in case there's no space in the track above, or we haven't got a reference to it yet, try adding */
 				if (BKE_nlatrack_add_strip(nlt->next, nstrip) == 0) {
@@ -1160,14 +1160,14 @@ static int nlaedit_delete_exec(bContext *C, wmOperator *UNUSED(op))
 			if (strip->flag & NLASTRIP_FLAG_SELECT) {
 				/* if a strip either side of this was a transition, delete those too */
 				if ((strip->prev) && (strip->prev->type == NLASTRIP_TYPE_TRANSITION))
-					BKE_nlastrip_free(&nlt->strips, strip->prev);
+					BKE_nlastrip_free(&nlt->strips, strip->prev, true);
 				if ((nstrip) && (nstrip->type == NLASTRIP_TYPE_TRANSITION)) {
 					nstrip = nstrip->next;
-					BKE_nlastrip_free(&nlt->strips, strip->next);
+					BKE_nlastrip_free(&nlt->strips, strip->next, true);
 				}
 
 				/* finally, delete this strip */
-				BKE_nlastrip_free(&nlt->strips, strip);
+				BKE_nlastrip_free(&nlt->strips, strip, true);
 			}
 		}
 	}
@@ -1242,7 +1242,7 @@ static void nlaedit_split_strip_actclip(Main *bmain, AnimData *adt, NlaTrack *nl
 	/* make a copy (assume that this is possible) and append
 	 * it immediately after the current strip
 	 */
-	nstrip = BKE_nlastrip_copy(bmain, strip, true);
+	nstrip = BKE_nlastrip_copy(bmain, strip, true, 0);
 	BLI_insertlinkafter(&nlt->strips, strip, nstrip);
 
 	/* set the endpoint of the first strip and the start of the new strip
@@ -1339,60 +1339,6 @@ void NLA_OT_split(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = nlaedit_split_exec;
-	ot->poll = nlaop_poll_tweakmode_off;
-
-	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/* ******************** Bake Strips Operator ***************************** */
-/* Bakes the NLA Strips for the active AnimData blocks */
-
-static int nlaedit_bake_exec(bContext *C, wmOperator *UNUSED(op))
-{
-	bAnimContext ac;
-
-	ListBase anim_data = {NULL, NULL};
-	bAnimListElem *ale;
-	int filter;
-//	int flag = 0;
-
-	/* get editor data */
-	if (ANIM_animdata_get_context(C, &ac) == 0)
-		return OPERATOR_CANCELLED;
-
-	/* get a list of the editable tracks being shown in the NLA */
-	filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_ANIMDATA | ANIMFILTER_FOREDIT);
-	ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
-
-	/* for each AnimData block, bake strips to animdata... */
-	for (ale = anim_data.first; ale; ale = ale->next) {
-		//BKE_nla_bake(ac.scene, ale->id, ale->data, flag);
-	}
-
-	/* free temp data */
-	ANIM_animdata_freelist(&anim_data);
-
-	/* refresh auto strip properties */
-	ED_nla_postop_refresh(&ac);
-
-	/* set notifier that things have changed */
-	WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
-
-	/* done */
-	return OPERATOR_FINISHED;
-}
-
-/* why isn't this used? */
-static void UNUSED_FUNCTION(NLA_OT_bake)(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Bake Strips";
-	ot->idname = "NLA_OT_bake";
-	ot->description = "Bake all strips of selected AnimData blocks";
-
-	/* api callbacks */
-	ot->exec = nlaedit_bake_exec;
 	ot->poll = nlaop_poll_tweakmode_off;
 
 	/* flags */
