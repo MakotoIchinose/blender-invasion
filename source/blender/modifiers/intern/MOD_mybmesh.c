@@ -4273,9 +4273,12 @@ static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 
 	//TODO do not calc normals as we overwrite them later
 	bm = BKE_mesh_to_bmesh_ex(
-			mesh,
-			&((struct BMeshCreateParams){0}),
-			&((struct BMeshFromMeshParams){.calc_face_normal = true,}));
+	        mesh,
+	        &(struct BMeshCreateParams){0},
+	        &(struct BMeshFromMeshParams){
+	            .calc_face_normal = true,
+	            .cd_mask_extra = CD_MASK_ORIGINDEX,
+	        });
 
 	TIMEIT_START(quad_check);
 
@@ -4298,7 +4301,7 @@ static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 			debug_colorize(bm, cam_loc);
 		}
 
-		result = BKE_bmesh_to_mesh_nomain(bm, &((struct BMeshToMeshParams){0}));
+		result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
 
 		BM_mesh_free(bm);
 
@@ -4334,7 +4337,7 @@ static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 
 	if( mmd->camera_ob == NULL){
 		//Can't proceed without camera obj
-		result = BKE_bmesh_to_mesh_nomain(bm, &((struct BMeshToMeshParams){0}));
+		result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
 		BM_mesh_free(bm);
 		BM_mesh_free(bm_orig);
 		return result;
@@ -4431,7 +4434,7 @@ static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 		BLI_buffer_free(&cusp_verts);
 		BLI_buffer_free(&radi_vert_buffer);
 	}
-	result = BKE_bmesh_to_mesh_nomain(bm, &((struct BMeshToMeshParams){0}));
+	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
 
 	BM_mesh_free(bm);
 	BM_mesh_free(bm_orig);
@@ -4535,14 +4538,12 @@ ModifierTypeInfo modifierType_MyBMesh = {
 	/* deformVertsEM_DM */  NULL,
 	/* deformMatricesEM_DM*/NULL,
 	/* applyModifier_DM */  NULL,
-	/* applyModifierEM_DM */NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
 	/* deformMatricesEM */  NULL,
 	/* applyModifier */     applyModifier,
-	/* applyModifierEM */   NULL,
 
 	/* initData */          initData,
 	/* requiredDataMask */  NULL,
