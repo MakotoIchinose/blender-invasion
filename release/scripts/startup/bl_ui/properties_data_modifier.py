@@ -666,6 +666,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.label(text="Camera Object:")
         col.prop(md, "camera_object", text="")
 
+        col.prop(md, "do_sel")
+
     def OCEAN(self, layout, ob, md):
         if not bpy.app.build_options.mod_oceansim:
             layout.label(text="Built without OceanSim modifier")

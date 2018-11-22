@@ -4261,6 +4261,23 @@ static void create_vert_mapping(MeshData *m_d){
 	}
 }
 
+static void select_C_verts(MeshData *m_d){
+	BMVert *vert;
+	BMIter iter;
+
+	//Deselect all verts
+	BM_ITER_MESH (vert, &iter, m_d->bm, BM_VERTS_OF_MESH) {
+			BM_elem_flag_disable(vert, BM_ELEM_SELECT);
+	}
+
+	BM_mesh_deselect_flush(m_d->bm);
+
+	for(int vert_i = 0; vert_i < m_d->C_verts->count; vert_i++){
+		vert = BLI_buffer_at(m_d->C_verts, BMVert*, vert_i);
+		BM_elem_flag_enable(vert, BM_ELEM_SELECT);
+	}
+}
+
 /* bmesh only function */
 static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 {
@@ -4422,6 +4439,11 @@ static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 			recalc_face_normals(bm);
 		}
 
+		if (mmd->flag & MOD_MYBMESH_SEL){
+			//Select C verts so we can easily export them as GP strokes
+			select_C_verts(&mesh_data);
+		}
+
 		TIMEIT_START(debug_color);
 		debug_colorize(bm, cam_loc);
 		debug_colorize_radi(&mesh_data);
@@ -4490,6 +4512,10 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx,
 		printf("3: %f\n", cam_loc[2]);
 		*/
 	}
+
+	//Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+	//Only needed for GP
+	//int scene_frame = BKE_scene_frame_get(scene);
 
 	if (!(result = mybmesh_do(mesh, mmd, cam_loc))) {
 		return mesh;

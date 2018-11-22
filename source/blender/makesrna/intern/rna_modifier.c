@@ -5026,6 +5026,11 @@ static void rna_def_modifier_mybmesh(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Camera Object", "Object to use as camera location");
 	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
 	RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+	prop = RNA_def_property(srna, "do_sel", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_SEL);
+	RNA_def_property_ui_text(prop, "Select C verts", "Select contour verts for GP stroke creation");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_weightednormal(BlenderRNA *brna)

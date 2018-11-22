@@ -1747,6 +1747,7 @@ enum {
 	MOD_MYBMESH_RAD_I = (1 << 5),
 	MOD_MYBMESH_RAD_FLIP = (1 << 6),
 	MOD_MYBMESH_OPTI = (1 << 7),
+	MOD_MYBMESH_SEL = (1 << 8),
 };
 
 #endif  /* __DNA_MODIFIER_TYPES_H__ */
