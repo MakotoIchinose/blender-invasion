@@ -52,6 +52,7 @@ typedef enum GpencilModifierType {
 	eGpencilModifierType_Mirror    = 14,
 	eGpencilModifierType_Armature  = 15,
 	eGpencilModifierType_Time      = 16,
+	eGpencilModifierType_Stroke    = 17,
 	NUM_GREASEPENCIL_MODIFIER_TYPES
 } GpencilModifierType;
 
@@ -479,5 +480,23 @@ typedef struct ArmatureGpencilModifierData {
 	char vgname[64];         /* MAX_VGROUP_NAME */
 
 } ArmatureGpencilModifierData;
+
+typedef struct StrokeGpencilModifierData {
+	GpencilModifierData modifier;
+	struct Object *object;
+	int flag;                    /* several flags */
+
+	int pass_index;              /* custom index for passes */
+	char layername[64];          /* layer name */
+	int mat_rpl;                 /* material replace (0 keep default) */
+	int layer_pass;              /* custom index for passes */
+} StrokeGpencilModifierData;
+
+typedef enum eStrokeGpencil_Flag {
+	GP_STROKE_INVERT_LAYER  = (1 << 0),
+	GP_STROKE_INVERT_PASS   = (1 << 1),
+	GP_STROKE_KEEP_ONTOP    = (1 << 2),
+	GP_STROKE_INVERT_LAYERPASS = (1 << 3),
+} eStrokeGpencil_Flag;
 
 #endif  /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

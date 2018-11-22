@@ -59,6 +59,7 @@ set(SRC
 	intern/MOD_gpencilhook.c
 	intern/MOD_gpenciloffset.c
 	intern/MOD_gpenciltime.c
+	intern/MOD_gpencilstroke.c
 
 	MOD_gpencil_modifiertypes.h
 )
