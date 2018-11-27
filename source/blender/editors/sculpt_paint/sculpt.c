@@ -1213,7 +1213,7 @@ float tex_strength(SculptSession *ss, const Brush *br,
 	else if (mtex->brush_map_mode == MTEX_MAP_MODE_3D) {
 		/* Get strength by feeding the vertex
 		 * location directly into a texture */
-		avg = BKE_brush_sample_tex_3D(scene, br, point, rgba, 0, ss->tex_pool);
+		avg = BKE_brush_sample_tex_3d(scene, br, point, rgba, 0, ss->tex_pool);
 	}
 	else if (ss->texcache) {
 		float symm_point[3], point_2d[2];
@@ -1254,7 +1254,7 @@ float tex_strength(SculptSession *ss, const Brush *br,
 		}
 		else {
 			const float point_3d[3] = {point_2d[0], point_2d[1], 0.0f};
-			avg = BKE_brush_sample_tex_3D(scene, br, point_3d, rgba, 0, ss->tex_pool);
+			avg = BKE_brush_sample_tex_3d(scene, br, point_3d, rgba, 0, ss->tex_pool);
 		}
 	}
 
@@ -3954,8 +3954,9 @@ static void do_tiled(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSettings 
 	SculptSession *ss = ob->sculpt;
 	StrokeCache *cache = ss->cache;
 	const float radius = cache->radius;
-	const float *bbMin = ob->bb->vec[0];
-	const float *bbMax = ob->bb->vec[6];
+	BoundBox *bb = BKE_object_boundbox_get(ob);
+	const float *bbMin = bb->vec[0];
+	const float *bbMax = bb->vec[6];
 	const float *step = sd->paint.tile_offset;
 	int dim;
 
@@ -4534,7 +4535,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob,
 	 *      brush coord/pressure/etc.
 	 *      It's more an events design issue, which doesn't split coordinate/pressure/angle
 	 *      changing events. We should avoid this after events system re-design */
-	if (paint_supports_dynamic_size(brush, ePaintSculpt) || cache->first_time) {
+	if (paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT) || cache->first_time) {
 		cache->pressure = RNA_float_get(ptr, "pressure");
 	}
 
@@ -4551,7 +4552,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob,
 		}
 	}
 
-	if (BKE_brush_use_size_pressure(scene, brush) && paint_supports_dynamic_size(brush, ePaintSculpt)) {
+	if (BKE_brush_use_size_pressure(scene, brush) && paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT)) {
 		cache->radius = cache->initial_radius * cache->pressure;
 	}
 	else {
@@ -5693,8 +5694,8 @@ void ED_object_sculptmode_enter_ex(
 		           "Object has negative scale, sculpting may be unpredictable");
 	}
 
-	Paint *paint = BKE_paint_get_active_from_paintmode(scene, ePaintSculpt);
-	BKE_paint_init(bmain, scene, ePaintSculpt, PAINT_CURSOR_SCULPT);
+	Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_SCULPT);
+	BKE_paint_init(bmain, scene, PAINT_MODE_SCULPT, PAINT_CURSOR_SCULPT);
 
 	paint_cursor_start_explicit(paint, bmain->wm.first, sculpt_poll_view3d);
 

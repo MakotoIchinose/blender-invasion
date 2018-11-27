@@ -314,7 +314,7 @@ static bConstraint *rna_constraint_from_target(PointerRNA *ptr)
 	Object *ob = ptr->id.data;
 	bConstraintTarget *tgt = ptr->data;
 
-	return BKE_constraint_find_from_target(ob, tgt);
+	return BKE_constraint_find_from_target(ob, tgt, NULL);
 }
 
 static char *rna_ConstraintTarget_path(PointerRNA *ptr)
@@ -2648,7 +2648,7 @@ void RNA_def_constraint(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_EXPAND);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 	RNA_def_property_ui_text(prop, "Expanded", "Constraint's panel is expanded in UI");
-	RNA_def_property_ui_icon(prop, ICON_TRIA_RIGHT, 1);
+	RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 
 	/* XXX this is really an internal flag, but it may be useful for some tools to be able to access this... */
 	prop = RNA_def_property(srna, "is_valid", PROP_BOOLEAN, PROP_NONE);

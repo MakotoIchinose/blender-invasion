@@ -541,7 +541,9 @@ typedef struct UserDef {
 	 * which are outside the scope of typical preferences. */
 	short app_flag;
 	short language;
-	short userpref, viewzoom;
+	short userpref;
+	char  userpref_flag;
+	char viewzoom;
 
 	int mixbufsize;
 	int audiodevice;
@@ -568,8 +570,8 @@ typedef struct UserDef {
 	struct ListBase themes;
 	struct ListBase uifonts;
 	struct ListBase uistyles;
-	struct ListBase keymaps  DNA_DEPRECATED; /* deprecated in favor of user_keymaps */
 	struct ListBase user_keymaps;
+	struct ListBase user_keyconfig_prefs; /* wmKeyConfigPref. */
 	struct ListBase addons;
 	struct ListBase autoexec_paths;
 	struct ListBase user_menus; /* bUserMenu */
@@ -615,6 +617,9 @@ typedef struct UserDef {
 	short widget_unit;		/* private, defaults to 20 for 72 DPI setting */
 	short anisotropic_filter;
 	short use_16bit_textures, use_gpu_mipmap;
+
+	float pressure_threshold_max; /* raw tablet pressure that maps to 100% */
+	float pressure_softness;      /* curve non-linearity parameter */
 
 	float ndof_sensitivity;	/* overall sensitivity of 3D mouse */
 	float ndof_orbit_sensitivity;
@@ -672,17 +677,36 @@ extern UserDef U; /* from blenkernel blender.c */
 
 /* ***************** USERDEF ****************** */
 
+/* Toggles for unfinished 2.8 UserPref design. */
+//#define WITH_USERDEF_WORKSPACES
+//#define WITH_USERDEF_SYSTEM_SPLIT
+
 /* UserDef.userpref (UI active_section) */
 typedef enum eUserPref_Section {
-	USER_SECTION_INTERFACE	= 0,
-	USER_SECTION_EDIT		= 1,
-	USER_SECTION_FILE		= 2,
-	USER_SECTION_SYSTEM		= 3,
-	USER_SECTION_THEME		= 4,
-	USER_SECTION_INPUT		= 5,
-	USER_SECTION_ADDONS 	= 6,
-	USER_SECTION_LIGHT 	= 7,
+	USER_SECTION_INTERFACE         = 0,
+	USER_SECTION_EDIT              = 1,
+	USER_SECTION_SYSTEM_FILES      = 2,
+	USER_SECTION_SYSTEM_GENERAL    = 3,
+	USER_SECTION_THEME             = 4,
+	USER_SECTION_INPUT             = 5,
+	USER_SECTION_ADDONS            = 6,
+	USER_SECTION_LIGHT             = 7,
+#ifdef WITH_USERDEF_WORKSPACES
+	USER_SECTION_WORKSPACE_CONFIG  = 8,
+	USER_SECTION_WORKSPACE_ADDONS  = 9,
+	USER_SECTION_WORKSPACE_KEYMAPS = 10,
+#endif
+#ifdef WITH_USERDEF_SYSTEM_SPLIT
+	USER_SECTION_SYSTEM_DISPLAY    = 11,
+	USER_SECTION_SYSTEM_DEVICES    = 12,
+#endif
 } eUserPref_Section;
+
+/* UserDef.userpref_flag (State of the user preferences UI). */
+typedef enum eUserPref_SectionFlag {
+	/* Hide/expand keymap preferences. */
+	USER_SECTION_INPUT_HIDE_UI_KEYCONFIG        = (1 << 0),
+} eUserPref_SectionFlag;
 
 /* UserDef.flag */
 typedef enum eUserPref_Flag {
@@ -700,7 +724,7 @@ typedef enum eUserPref_Flag {
 	USER_TOOLTIPS			= (1 << 11),
 	USER_TWOBUTTONMOUSE		= (1 << 12),
 	USER_NONUMPAD			= (1 << 13),
-	USER_LMOUSESELECT		= (1 << 14),
+	USER_FLAG_DEPRECATED_14	= (1 << 14),  /* cleared */
 	USER_FILECOMPRESS		= (1 << 15),
 	USER_SAVE_PREVIEWS		= (1 << 16),
 	USER_CUSTOM_RANGE		= (1 << 17),

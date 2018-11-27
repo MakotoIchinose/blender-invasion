@@ -59,25 +59,34 @@ static const EnumPropertyItem parent_type_items[] = {
 
 #ifndef RNA_RUNTIME
 static EnumPropertyItem rna_enum_gpencil_xraymodes_items[] = {
-	{ GP_XRAY_FRONT, "FRONT", 0, "Front", "Draw all strokes in front" },
-	{ GP_XRAY_3DSPACE, "3DSPACE", 0, "3D Space", "Draw strokes relative to other objects in 3D space" },
-	{ GP_XRAY_BACK, "BACK", 0, "Back", "Draw all strokes last" },
-	{ 0, NULL, 0, NULL, NULL }
+	{GP_XRAY_FRONT, "FRONT", 0, "Front", "Draw all strokes in front"},
+	{GP_XRAY_3DSPACE, "3DSPACE", 0, "3D Space", "Draw strokes relative to other objects in 3D space"},
+	{GP_XRAY_BACK, "BACK", 0, "Back", "Draw all strokes last"},
+	{0, NULL, 0, NULL, NULL}
 };
 
 static EnumPropertyItem rna_enum_gpencil_onion_modes_items[] = {
-	{ GP_ONION_MODE_ABSOLUTE, "ABSOLUTE", 0, "Frames", "Frames in absolute range of the scene frame" },
-	{ GP_ONION_MODE_RELATIVE, "RELATIVE", 0, "Keyframes", "Frames in relative range of the Grease Pencil keyframes" },
-	{ GP_ONION_MODE_SELECTED, "SELECTED", 0, "Selected", "Only selected keyframes" },
-	{ 0, NULL, 0, NULL, NULL }
+	{GP_ONION_MODE_ABSOLUTE, "ABSOLUTE", 0, "Frames", "Frames in absolute range of the scene frame"},
+	{GP_ONION_MODE_RELATIVE, "RELATIVE", 0, "Keyframes", "Frames in relative range of the Grease Pencil keyframes"},
+	{GP_ONION_MODE_SELECTED, "SELECTED", 0, "Selected", "Only selected keyframes"},
+	{0, NULL, 0, NULL, NULL}
 };
 
 const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {
-   { -1, "UP", 0, "Up", ""},
-   {  1, "DOWN", 0, "Down", ""},
-   {  0, NULL, 0, NULL, NULL}
+   {-1, "UP", 0, "Up", ""},
+   {1, "DOWN", 0, "Down", ""},
+   {0, NULL, 0, NULL, NULL}
 };
 
+static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
+	{eGplBlendMode_Normal, "NORMAL", 0, "Normal", "" },
+	{eGplBlendMode_Overlay, "OVERLAY", 0, "Overlay", "" },
+	{eGplBlendMode_Add, "ADD", 0, "Add", "" },
+	{eGplBlendMode_Subtract, "SUBTRACT", 0, "Subtract", "" },
+	{eGplBlendMode_Multiply, "MULTIPLY", 0, "Multiply", "" },
+	{eGplBlendMode_Divide, "DIVIDE", 0, "Divide", "" },
+	{0, NULL, 0, NULL, NULL }
+};
 #endif
 
 #ifdef RNA_RUNTIME
@@ -374,7 +383,7 @@ static void rna_GPencil_active_layer_index_set(PointerRNA *ptr, int value)
 
 	/* Now do standard updates... */
 	DEG_id_tag_update(&gpd->id, OB_RECALC_DATA);
-	WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
+	WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 }
 
 static void rna_GPencil_active_layer_index_range(PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
@@ -1159,6 +1168,13 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "ViewLayer",
 		"Only include Layer in this View Layer render output (leave blank to include always)");
 
+	/* blend mode */
+	prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "blend_mode");
+	RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
+	RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
 	/* Flags */
 	prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_HIDE);
@@ -1184,6 +1200,12 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Lock Material", "Disable Material editing");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
+	prop = RNA_def_property(srna, "clamp_layer", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_USE_MASK);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_ui_text(prop, "Clamp Layer",
+		"Clamp any pixel outside underlying layers drawing");
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
 	/* exposed as layers.active */
 #if 0

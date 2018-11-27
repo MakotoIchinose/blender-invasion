@@ -2063,9 +2063,6 @@ static void make_local_animdata_tag_strips(ListBase *strips)
 		if (strip->act) {
 			strip->act->id.tag &= ~LIB_TAG_PRE_EXISTING;
 		}
-		if (strip->remap && strip->remap->target) {
-			strip->remap->target->id.tag &= ~LIB_TAG_PRE_EXISTING;
-		}
 
 		make_local_animdata_tag_strips(&strip->strips);
 	}
@@ -2081,10 +2078,6 @@ static void make_local_animdata_tag(AnimData *adt)
 		}
 		if (adt->tmpact) {
 			adt->tmpact->id.tag &= ~LIB_TAG_PRE_EXISTING;
-		}
-		/* Remaps */
-		if (adt->remap && adt->remap->target) {
-			adt->remap->target->id.tag &= ~LIB_TAG_PRE_EXISTING;
 		}
 
 		/* Drivers */
@@ -2543,7 +2536,6 @@ void OBJECT_OT_drop_named_material(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Drop Named Material on Object";
-	ot->description = "";
 	ot->idname = "OBJECT_OT_drop_named_material";
 
 	/* api callbacks */
@@ -2600,7 +2592,6 @@ void OBJECT_OT_unlink_data(wmOperatorType *ot)
 	/* identifiers */
 	ot->name = "Unlink";
 	ot->idname = "OBJECT_OT_unlink_data";
-	ot->description = "";
 
 	/* api callbacks */
 	ot->exec = object_unlink_data_exec;

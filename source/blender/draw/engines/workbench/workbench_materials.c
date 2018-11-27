@@ -5,6 +5,7 @@
 #include "BIF_gl.h"
 
 #include "BLI_dynstr.h"
+#include "BLI_hash.h"
 
 #define HSV_SATURATION 0.5
 #define HSV_VALUE 0.9
@@ -27,9 +28,9 @@ void workbench_material_update_data(WORKBENCH_PrivateData *wpd, Object *ob, Mate
 		if (ob->id.lib) {
 			hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob->id.lib->name);
 		}
-		float offset = fmodf((hash / 100000.0) * M_GOLDEN_RATION_CONJUGATE, 1.0);
 
-		float hsv[3] = {offset, HSV_SATURATION, HSV_VALUE};
+		float hue = BLI_hash_int_01(hash);
+		float hsv[3] = {hue, HSV_SATURATION, HSV_VALUE};
 		hsv_to_rgb_v(hsv, data->diffuse_color);
 	}
 	else {
@@ -54,8 +55,17 @@ char *workbench_material_build_defines(WORKBENCH_PrivateData *wpd, bool use_text
 	if (wpd->shading.flag & V3D_SHADING_SHADOW) {
 		BLI_dynstr_appendf(ds, "#define V3D_SHADING_SHADOW\n");
 	}
-	if (CAVITY_ENABLED(wpd)) {
-		BLI_dynstr_appendf(ds, "#define V3D_SHADING_CAVITY\n");
+	if (SSAO_ENABLED(wpd)) {
+		BLI_dynstr_appendf(ds, "#define V3D_SHADING_SSAO\n");
+	}
+	if (CURVATURE_ENABLED(wpd)) {
+		BLI_dynstr_appendf(ds, "#define V3D_SHADING_CURVATURE\n");
+		if (U.pixelsize > 1.5f) {
+			BLI_dynstr_appendf(ds, "#define CURVATURE_OFFSET 2\n");
+		}
+		else {
+			BLI_dynstr_appendf(ds, "#define CURVATURE_OFFSET 1\n");
+		}
 	}
 	if (SPECULAR_HIGHLIGHT_ENABLED(wpd)) {
 		BLI_dynstr_appendf(ds, "#define V3D_SHADING_SPECULAR_HIGHLIGHT\n");
@@ -91,19 +101,8 @@ char *workbench_material_build_defines(WORKBENCH_PrivateData *wpd, bool use_text
 		BLI_dynstr_appendf(ds, "#define HAIR_SHADER\n");
 	}
 
-#if STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL == 0
-	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL 0\n");
-#endif
-#if STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL == 1
-	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL 1\n");
-#endif
-#if STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL == 2
-	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL 2\n");
-#endif
-#if STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL == 4
-	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SPHERICAL_HARMONICS_LEVEL 4\n");
-#endif
-	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SPHERICAL_HARMONICS_MAX_COMPONENTS 18\n");
+	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SH_BANDS %d\n", STUDIOLIGHT_SH_BANDS);
+	BLI_dynstr_appendf(ds, "#define STUDIOLIGHT_SH_MAX_COMPONENTS %d\n", WORKBENCH_SH_DATA_LEN);
 
 	str = BLI_dynstr_get_cstring(ds);
 	BLI_dynstr_free(ds);
@@ -149,13 +148,16 @@ int workbench_material_get_shader_index(WORKBENCH_PrivateData *wpd, bool use_tex
 	/* 1 bit V3D_SHADING_SPECULAR_HIGHLIGHT */
 	SET_FLAG_FROM_TEST(index, wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT, 1 << 3);
 	SET_FLAG_FROM_TEST(index, wpd->shading.flag & V3D_SHADING_SHADOW, 1 << 4);
-	SET_FLAG_FROM_TEST(index, wpd->shading.flag & V3D_SHADING_CAVITY, 1 << 5);
+	SET_FLAG_FROM_TEST(index, SSAO_ENABLED(wpd), 1 << 5);
 	SET_FLAG_FROM_TEST(index, wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE, 1 << 6);
+	bool uses_curvature = CURVATURE_ENABLED(wpd);
+	SET_FLAG_FROM_TEST(index, uses_curvature, 1 << 7);
+	SET_FLAG_FROM_TEST(index, uses_curvature && (U.pixelsize > 1.5f), 1 << 8);
 	/* 2 bits STUDIOLIGHT_ORIENTATION */
-	SET_FLAG_FROM_TEST(index, wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_WORLD, 1 << 7);
-	SET_FLAG_FROM_TEST(index, wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_VIEWNORMAL, 1 << 8);
+	SET_FLAG_FROM_TEST(index, wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_WORLD, 1 << 9);
+	SET_FLAG_FROM_TEST(index, wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_VIEWNORMAL, 1 << 10);
 	/* 1 bit for hair */
-	SET_FLAG_FROM_TEST(index, is_hair, 1 << 9);
+	SET_FLAG_FROM_TEST(index, is_hair, 1 << 11);
 	return index;
 }
 

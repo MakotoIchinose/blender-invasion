@@ -197,7 +197,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 
 	int tot_faces_selected_all = 0;
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
@@ -244,6 +244,9 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 		if (bm->totfacesel == 0) {
 			continue;
 		}
+
+		float ob_m3[3][3];
+		copy_m3_m4(ob_m3, ob->obmat);
 
 		switch (type) {
 			case SIMFACE_MATERIAL:
@@ -293,14 +296,14 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 					}
 					case SIMFACE_AREA:
 					{
-						float area = BM_face_calc_area(face);
+						float area = BM_face_calc_area_with_mat3(face, ob_m3);
 						float dummy[3] = {area, 0.0f, 0.0f};
 						BLI_kdtree_insert(tree, tree_index++, dummy);
 						break;
 					}
 					case SIMFACE_PERIMETER:
 					{
-						float perimeter = BM_face_calc_perimeter(face);
+						float perimeter = BM_face_calc_perimeter_with_mat3(face, ob_m3);
 						float dummy[3] = {perimeter, 0.0f, 0.0f};
 						BLI_kdtree_insert(tree, tree_index++, dummy);
 						break;
@@ -371,6 +374,9 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 		Material ***material_array = NULL;
 		int custom_data_offset;
 
+		float ob_m3[3][3];
+		copy_m3_m4(ob_m3, ob->obmat);
+
 		bool has_custom_data_layer = false;
 		switch (type) {
 			case SIMFACE_MATERIAL:
@@ -440,7 +446,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 					}
 					case SIMFACE_AREA:
 					{
-						float area = BM_face_calc_area(face);
+						float area = BM_face_calc_area_with_mat3(face, ob_m3);
 						if (ED_select_similar_compare_float_tree(tree, area, thresh, compare)) {
 							select = true;
 						}
@@ -448,7 +454,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 					}
 					case SIMFACE_PERIMETER:
 					{
-						float perimeter = BM_face_calc_perimeter(face);
+						float perimeter = BM_face_calc_perimeter_with_mat3(face, ob_m3);
 						if (ED_select_similar_compare_float_tree(tree, perimeter, thresh, compare)) {
 							select = true;
 						}
@@ -677,7 +683,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
 	int tot_edges_selected_all = 0;
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
@@ -748,6 +754,10 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 			}
 		}
 
+		float ob_m3[3][3], ob_m3_inv[3][3];
+		copy_m3_m4(ob_m3, ob->obmat);
+		invert_m3_m3(ob_m3_inv, ob_m3);
+
 		BMEdge *edge; /* Mesh edge. */
 		BMIter iter; /* Selected edges iterator. */
 
@@ -774,7 +784,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 					case SIMEDGE_FACE_ANGLE:
 					{
 						if (BM_edge_face_count_at_most(edge, 2) == 2) {
-							float angle = BM_edge_calc_face_angle(edge);
+							float angle = BM_edge_calc_face_angle_with_imat3(edge, ob_m3_inv);
 							float dummy[3] = {angle, 0.0f, 0.0f};
 							BLI_kdtree_insert(tree, tree_index++, dummy);
 						}
@@ -855,6 +865,10 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 			}
 		}
 
+		float ob_m3[3][3], ob_m3_inv[3][3];
+		copy_m3_m4(ob_m3, ob->obmat);
+		invert_m3_m3(ob_m3_inv, ob_m3);
+
 		BMEdge *edge; /* Mesh edge. */
 		BMIter iter; /* Selected edges iterator. */
 
@@ -904,7 +918,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 					case SIMEDGE_FACE_ANGLE:
 					{
 						if (BM_edge_face_count_at_most(edge, 2) == 2) {
-							float angle = BM_edge_calc_face_angle(edge);
+							float angle = BM_edge_calc_face_angle_with_imat3(edge, ob_m3_inv);
 							if (ED_select_similar_compare_float_tree(tree, angle, thresh, SIM_CMP_EQ)) {
 								select = true;
 							}
@@ -1024,7 +1038,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
 	int tot_verts_selected_all = 0;
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];

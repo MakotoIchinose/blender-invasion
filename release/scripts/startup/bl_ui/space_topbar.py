@@ -297,8 +297,13 @@ class _draw_left_context_mode:
 
         @staticmethod
         def GPENCIL_PAINT(context, layout, tool):
+            if tool is None:
+                return
 
-            if (tool is None) or (not tool.has_datablock):
+            is_paint = True
+            if (tool.name in {"Line", "Box", "Circle"}):
+                is_paint = False
+            elif (not tool.has_datablock):
                 return
 
             paint = context.tool_settings.gpencil_paint
@@ -358,15 +363,52 @@ class _draw_left_context_mode:
                 row.prop(gp_settings, "fill_draw_mode", text="")
                 row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
 
-            else:  # bgpsettings.tool == 'DRAW':
+            else:  # brush.gpencil_tool == 'DRAW':
                 row = layout.row(align=True)
                 row.prop(brush, "size", text="Radius")
-                row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
+                if is_paint:
+                    row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
                 row = layout.row(align=True)
                 row.prop(gp_settings, "pen_strength", slider=True)
-                row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+                if is_paint:
+                    row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
 
                 draw_color_selector()
+
+        @staticmethod
+        def GPENCIL_SCULPT(context, layout, tool):
+            if (tool is None) or (not tool.has_datablock):
+                return
+            tool_settings = context.tool_settings
+            settings = tool_settings.gpencil_sculpt
+            tool = settings.sculpt_tool
+            brush = settings.brush
+
+            layout.prop(brush, "size", slider=True)
+
+            row = layout.row(align=True)
+            row.prop(brush, "strength", slider=True)
+            row.prop(brush, "use_pressure_strength", text="")
+
+            if tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
+                row.separator()
+                row.prop(brush, "direction", expand=True, text="")
+
+        @staticmethod
+        def GPENCIL_WEIGHT(context, layout, tool):
+            if (tool is None) or (not tool.has_datablock):
+                return
+            tool_settings = context.tool_settings
+            settings = tool_settings.gpencil_sculpt
+            brush = settings.brush
+
+            layout.prop(brush, "size", slider=True)
+
+            row = layout.row(align=True)
+            row.prop(brush, "strength", slider=True)
+            row.prop(brush, "use_pressure_strength", text="")
+
+            layout.prop(brush, "target_weight", slider=True)
 
         @staticmethod
         def PARTICLE(context, layout, tool):
@@ -474,6 +516,16 @@ class TOPBAR_PT_gpencil_layers(Panel):
         col.template_list("GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
                           rows=layer_rows, reverse=True)
 
+        gpl = context.active_gpencil_layer
+        if gpl:
+            srow = col.row(align=True)
+            srow.prop(gpl, "blend_mode", text="Blend")
+
+            srow = col.row(align=True)
+            srow.prop(gpl, "opacity", text="Opacity", slider=True)
+            srow.prop(gpl, "clamp_layer", text="",
+                     icon='MOD_MASK' if gpl.clamp_layer else 'ONIONSKIN_OFF')
+
         col = row.column()
 
         sub = col.column(align=True)
@@ -496,10 +548,6 @@ class TOPBAR_PT_gpencil_layers(Panel):
                 sub = col.column(align=True)
                 sub.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
                 sub.operator("gpencil.layer_isolate", icon='HIDE_OFF', text="").affect_visibility = True
-
-        row = layout.row(align=True)
-        if gpl:
-            row.prop(gpl, "opacity", text="Opacity", slider=True)
 
 
 class TOPBAR_MT_editor_menus(Menu):
@@ -786,7 +834,7 @@ class TOPBAR_MT_edit(Menu):
 
         layout.separator()
 
-        layout.operator("screen.userpref_show", text="User Preferences...", icon='PREFERENCES')
+        layout.operator("screen.settings_show", text="Settings...", icon='PREFERENCES')
 
 
 class TOPBAR_MT_window(Menu):
@@ -939,7 +987,7 @@ class TOPBAR_MT_window_specials(Menu):
 
         layout.separator()
 
-        layout.operator("screen.userpref_show", text="User Preferences...", icon='PREFERENCES')
+        layout.operator("screen.settings_show", text="Settings...", icon='PREFERENCES')
 
 
 class TOPBAR_MT_workspace_menu(Menu):

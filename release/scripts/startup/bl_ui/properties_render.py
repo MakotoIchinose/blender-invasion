@@ -64,7 +64,7 @@ class RENDER_PT_context(Panel):
 class RENDER_PT_color_management(RenderButtonsPanel, Panel):
     bl_label = "Color Management"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -97,7 +97,7 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
     bl_label = "Use Curves"
     bl_parent_id = "RENDER_PT_color_management"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
 
@@ -197,7 +197,8 @@ class RENDER_PT_eevee_depth_of_field(RenderButtonsPanel, Panel):
         layout.active = props.use_dof
         col = layout.column()
         col.prop(props, "bokeh_max_size")
-        col.prop(props, "bokeh_threshold")
+        # Not supported yet
+        # col.prop(props, "bokeh_threshold")
 
 
 class RENDER_PT_eevee_bloom(RenderButtonsPanel, Panel):
@@ -261,7 +262,7 @@ class RENDER_PT_eevee_volumetric(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(props, "volumetric_tile_size")
         col.prop(props, "volumetric_samples")
-        col.prop(props, "volumetric_sample_distribution")
+        col.prop(props, "volumetric_sample_distribution", text="Distribution")
 
 
 class RENDER_PT_eevee_volumetric_lighting(RenderButtonsPanel, Panel):
@@ -389,6 +390,7 @@ class RENDER_PT_eevee_shadows(RenderButtonsPanel, Panel):
         col.prop(props, "shadow_cascade_size", text="Cascade Size")
         col.prop(props, "use_shadow_high_bitdepth")
         col.prop(props, "use_soft_shadows")
+        col.prop(props, "light_threshold")
 
 
 class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
@@ -444,6 +446,10 @@ class RENDER_PT_eevee_indirect_lighting(RenderButtonsPanel, Panel):
         col.prop(props, "gi_diffuse_bounces")
         col.prop(props, "gi_cubemap_resolution")
         col.prop(props, "gi_visibility_resolution", text="Diffuse Occlusion")
+        col.prop(props, "gi_irradiance_smoothing")
+        col.prop(props, "gi_glossy_clamp")
+        col.prop(props, "gi_filter_quality")
+
 
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
     bl_label = "Display"
@@ -523,7 +529,7 @@ class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):
 class RENDER_PT_opengl_film(RenderButtonsPanel, Panel):
     bl_label = "Film"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -540,7 +546,7 @@ class RENDER_PT_opengl_film(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_lighting(RenderButtonsPanel, Panel):
     bl_label = "Lighting"
-    COMPAT_ENGINES = {'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -552,7 +558,7 @@ class RENDER_PT_opengl_lighting(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
     bl_label = "Color"
-    COMPAT_ENGINES = {'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -564,7 +570,7 @@ class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_options(RenderButtonsPanel, Panel):
     bl_label = "Options"
-    COMPAT_ENGINES = {'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -577,7 +583,7 @@ class RENDER_PT_opengl_options(RenderButtonsPanel, Panel):
 class RENDER_PT_simplify(RenderButtonsPanel, Panel):
     bl_label = "Simplify"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
         rd = context.scene.render
@@ -590,7 +596,7 @@ class RENDER_PT_simplify(RenderButtonsPanel, Panel):
 class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
     bl_label = "Viewport"
     bl_parent_id = "RENDER_PT_simplify"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -612,7 +618,7 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
 class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
     bl_label = "Render"
     bl_parent_id = "RENDER_PT_simplify"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -644,6 +650,7 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
 
         rd = context.scene.render
 
@@ -653,8 +660,8 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel):
         col.prop(rd, "simplify_gpencil_onplay", text="Playback Only")
         col.prop(rd, "simplify_gpencil_view_modifier", text="Modifiers")
         col.prop(rd, "simplify_gpencil_shader_fx", text="ShaderFX")
+        col.prop(rd, "simplify_gpencil_blend", text="Layers Blending")
 
-        col = layout.column(align=True)
         col.prop(rd, "simplify_gpencil_view_fill")
         sub = col.column()
         sub.active = rd.simplify_gpencil_view_fill

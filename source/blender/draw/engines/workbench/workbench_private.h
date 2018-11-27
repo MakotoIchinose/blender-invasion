@@ -40,7 +40,7 @@
 
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
 #define M_GOLDEN_RATION_CONJUGATE 0.618033988749895
-#define MAX_SHADERS (1 << 10)
+#define MAX_SHADERS (1 << 12)
 
 #define TEXTURE_DRAWING_ENABLED(wpd) (wpd->shading.color_type & V3D_SHADING_TEXTURE_COLOR)
 #define FLAT_ENABLED(wpd) (wpd->shading.light == V3D_LIGHTING_FLAT)
@@ -49,7 +49,8 @@
 #define STUDIOLIGHT_ORIENTATION_WORLD_ENABLED(wpd) (STUDIOLIGHT_ENABLED(wpd) && (wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_WORLD))
 #define STUDIOLIGHT_ORIENTATION_CAMERA_ENABLED(wpd) (STUDIOLIGHT_ENABLED(wpd) && (wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_CAMERA))
 #define STUDIOLIGHT_ORIENTATION_VIEWNORMAL_ENABLED(wpd) (MATCAP_ENABLED(wpd) && (wpd->studio_light->flag & STUDIOLIGHT_ORIENTATION_VIEWNORMAL))
-#define CAVITY_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_CAVITY)
+#define SSAO_ENABLED(wpd) ((wpd->shading.flag & V3D_SHADING_CAVITY) && ((wpd->shading.cavity_type == V3D_SHADING_CAVITY_SSAO) || (wpd->shading.cavity_type == V3D_SHADING_CAVITY_BOTH)))
+#define CURVATURE_ENABLED(wpd) ((wpd->shading.flag & V3D_SHADING_CAVITY) && ((wpd->shading.cavity_type == V3D_SHADING_CAVITY_CURVATURE) || (wpd->shading.cavity_type == V3D_SHADING_CAVITY_BOTH)))
 #define SHADOW_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_SHADOW)
 #define GHOST_ENABLED(psl) (!DRW_pass_is_empty(psl->ghost_prepass_pass) || !DRW_pass_is_empty(psl->ghost_prepass_hair_pass))
 
@@ -59,9 +60,10 @@
                              ((IS_NAVIGATING(wpd) || wpd->is_playback) && (wpd->user_preferences->gpu_viewport_quality >= GPU_VIEWPORT_QUALITY_TAA8))))
 #define TAA_ENABLED(wpd) (DRW_state_is_image_render() || (wpd->user_preferences->gpu_viewport_quality >= GPU_VIEWPORT_QUALITY_TAA8 && !IS_NAVIGATING(wpd) && !wpd->is_playback))
 #define SPECULAR_HIGHLIGHT_ENABLED(wpd) ((wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT) && (!STUDIOLIGHT_ORIENTATION_VIEWNORMAL_ENABLED(wpd)))
-#define OBJECT_ID_PASS_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE)
-#define NORMAL_VIEWPORT_COMP_PASS_ENABLED(wpd) (MATCAP_ENABLED(wpd) || STUDIOLIGHT_ENABLED(wpd) || SHADOW_ENABLED(wpd) || SPECULAR_HIGHLIGHT_ENABLED(wpd))
-#define NORMAL_VIEWPORT_PASS_ENABLED(wpd) (NORMAL_VIEWPORT_COMP_PASS_ENABLED(wpd) || CAVITY_ENABLED(wpd))
+#define OBJECT_OUTLINE_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE)
+#define OBJECT_ID_PASS_ENABLED(wpd) (OBJECT_OUTLINE_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
+#define NORMAL_VIEWPORT_COMP_PASS_ENABLED(wpd) (MATCAP_ENABLED(wpd) || STUDIOLIGHT_ENABLED(wpd) || SHADOW_ENABLED(wpd) || SPECULAR_HIGHLIGHT_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
+#define NORMAL_VIEWPORT_PASS_ENABLED(wpd) (NORMAL_VIEWPORT_COMP_PASS_ENABLED(wpd) || SSAO_ENABLED(wpd))
 #define NORMAL_ENCODING_ENABLED() (true)
 
 
@@ -138,8 +140,10 @@ typedef struct WORKBENCH_UBO_Light {
 	float energy;
 } WORKBENCH_UBO_Light;
 
+#define WORKBENCH_SH_DATA_LEN ((STUDIOLIGHT_SH_BANDS == 2) ? 6 : STUDIOLIGHT_SH_EFFECTIVE_COEFS_LEN)
+
 typedef struct WORKBENCH_UBO_World {
-	float spherical_harmonics_coefs[STUDIOLIGHT_SPHERICAL_HARMONICS_MAX_COMPONENTS][4];
+	float spherical_harmonics_coefs[WORKBENCH_SH_DATA_LEN][4];
 	float background_color_low[4];
 	float background_color_high[4];
 	float object_outline_color[4];
@@ -148,7 +152,9 @@ typedef struct WORKBENCH_UBO_World {
 	int num_lights;
 	int matcap_orientation;
 	float background_alpha;
-	int pad[1];
+	float curvature_ridge;
+	float curvature_valley;
+	int pad[3];
 } WORKBENCH_UBO_World;
 BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_World, 16)
 

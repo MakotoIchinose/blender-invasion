@@ -128,6 +128,7 @@ set(SRC
 	intern/image_gen.c
 	intern/ipo.c
 	intern/key.c
+	intern/keyconfig.c
 	intern/lamp.c
 	intern/lattice.c
 	intern/library.c
@@ -280,6 +281,7 @@ set(SRC
 	BKE_image.h
 	BKE_ipo.h
 	BKE_key.h
+	BKE_keyconfig.h
 	BKE_lamp.h
 	BKE_lattice.h
 	BKE_library.h
@@ -546,9 +548,6 @@ if(WITH_OPENSUBDIV)
 	list(APPEND INC_SYS
 		${OPENSUBDIV_INCLUDE_DIRS}
 	)
-	if(WITH_OPENSUBDIV_MODIFIER)
-		add_definitions(-DWITH_OPENSUBDIV_MODIFIER)
-	endif()
 endif()
 
 if(WITH_OPENVDB)

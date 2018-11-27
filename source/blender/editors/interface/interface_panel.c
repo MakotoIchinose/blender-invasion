@@ -1914,10 +1914,6 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
 	ui_fontscale(&fstyle_points, aspect / (U.pixelsize * 1.1f));
 	BLF_size(fontid, fstyle_points, U.dpi);
 
-	BLF_enable(fontid, BLF_SHADOW);
-	BLF_shadow(fontid, 3, (const float[4]){1.0f, 1.0f, 1.0f, 0.25f});
-	BLF_shadow_offset(fontid, -1, -1);
-
 	BLI_assert(UI_panel_category_is_visible(ar));
 
 
@@ -1992,12 +1988,6 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
 		// int category_width = BLF_width(fontid, category_id_draw, BLF_DRAW_STR_DUMMY_MAX);
 
 		const bool is_active = STREQ(category_id, category_id_active);
-
-#ifdef DEBUG
-		if (STREQ(category_id, PNL_CATEGORY_FALLBACK)) {
-			printf("WARNING: Panel has no 'bl_category', script needs updating!\n");
-		}
-#endif
 
 		GPU_blend(true);
 
@@ -2105,8 +2095,6 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
 	GPU_line_smooth(false);
 
 	BLF_disable(fontid, BLF_ROTATION);
-
-	BLF_disable(fontid, BLF_SHADOW);
 
 	if (fstyle->kerning == 1) {
 		BLF_disable(fstyle->uifont_id, BLF_KERNING_DEFAULT);
@@ -2382,9 +2370,9 @@ static void panel_activate_state(const bContext *C, Panel *pa, uiHandlePanelStat
 	if (state == PANEL_STATE_EXIT || state == PANEL_STATE_ANIMATION) {
 		if (data && data->state != PANEL_STATE_ANIMATION) {
 			/* XXX:
-			 *	- the panel tabbing function call below (test_add_new_tabs()) has been commented out
-			 *	  "It is too easy to do by accident when reordering panels,
-			 *     is very hard to control and use, and has no real benefit." - BillRey
+			 * - the panel tabbing function call below (test_add_new_tabs()) has been commented out
+			 *   "It is too easy to do by accident when reordering panels,
+			 *   is very hard to control and use, and has no real benefit." - BillRey
 			 * Aligorith, 2009Sep
 			 */
 			//test_add_new_tabs(ar);   // also copies locations of tabs in dragged panel

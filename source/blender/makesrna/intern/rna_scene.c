@@ -828,8 +828,8 @@ static void rna_Scene_active_keying_set_set(PointerRNA *ptr, PointerRNA value)
 }
 
 /* get KeyingSet index stuff for list of Keying Sets editing UI
- *	- active_keyingset-1 since 0 is reserved for 'none'
- *	- don't clamp, otherwise can never set builtins types as active...
+ * - active_keyingset-1 since 0 is reserved for 'none'
+ * - don't clamp, otherwise can never set builtins types as active...
  */
 static int rna_Scene_active_keying_set_index_get(PointerRNA *ptr)
 {
@@ -838,7 +838,7 @@ static int rna_Scene_active_keying_set_index_get(PointerRNA *ptr)
 }
 
 /* get KeyingSet index stuff for list of Keying Sets editing UI
- *	- value+1 since 0 is reserved for 'none'
+ * - value+1 since 0 is reserved for 'none'
  */
 static void rna_Scene_active_keying_set_index_set(PointerRNA *ptr, int value)
 {
@@ -2043,7 +2043,7 @@ static const EnumPropertyItem *get_unit_enum_items(int system, int type, bool *r
 	for (int i = 0; i < len; i++) {
 		if (!bUnit_IsSuppressed(usys, i)) {
 			EnumPropertyItem tmp = { 0 };
-			tmp.identifier = bUnit_GetName(usys, i);
+			tmp.identifier = bUnit_GetIdentifier(usys, i);
 			tmp.name = bUnit_GetNameDisplay(usys, i);
 			tmp.value = i;
 			RNA_enum_item_add(&items, &totitem, &tmp);
@@ -2225,7 +2225,7 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 		{GP_PROJECT_VIEWSPACE, "ORIGIN", ICON_OBJECT_ORIGIN, "Origin", "Draw stroke at Object origin"},
 		{GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR, "CURSOR", ICON_PIVOT_CURSOR, "3D Cursor", "Draw stroke at 3D cursor location" },
 		{GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW, "SURFACE", ICON_SNAP_FACE, "Surface", "Stick stroke to surfaces"},
-		{GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE, "STROKE", ICON_GP_STROKE, "Stroke", "Stick stroke to other strokes"},
+		{GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE, "STROKE", ICON_STROKE, "Stroke", "Stick stroke to other strokes"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -2244,11 +2244,8 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 
 	static const EnumPropertyItem annotation_stroke_placement_items[] = {
 		{GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR, "CURSOR", ICON_PIVOT_CURSOR, "3D Cursor", "Draw stroke at 3D cursor location" },
-		{0, "VIEW", ICON_VISIBLE_IPO_ON, "View", "Stick stroke to the view "}, /* weird, GP_PROJECT_VIEWALIGN is inverted */
+		{0, "VIEW", ICON_RESTRICT_VIEW_ON, "View", "Stick stroke to the view "}, /* weird, GP_PROJECT_VIEWALIGN is inverted */
 		{GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW, "SURFACE", ICON_FACESEL, "Surface", "Stick stroke to surfaces"},
-		/* Stroke option is disabled because is not working as expected and maybe is not
-		 * required. If we confirm this is not used, we can remove it. */
-		//{GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE, "STROKE", ICON_GREASEPENCIL, "Stroke", "Stick stroke to other strokes"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -2484,7 +2481,7 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, "rna_ToolSettings_gizmo_flag_update");
 
 	/* Grease Pencil */
-	prop = RNA_def_property(srna, "use_gpencil_additive_drawing", PROP_BOOLEAN, PROP_NONE);
+	prop = RNA_def_property(srna, "use_gpencil_draw_additive", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "gpencil_flags", GP_TOOL_FLAG_RETAIN_LAST);
 	RNA_def_property_ui_text(prop, "Use Additive Drawing",
 	                         "When creating new frames, the strokes from the previous/active frame "
@@ -4875,8 +4872,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "motion_blur_shutter", PROP_FLOAT, PROP_UNSIGNED);
 	RNA_def_property_float_sdna(prop, NULL, "blurfac");
 	RNA_def_property_ui_range(prop, 0.01f, 2.0f, 1, 2);
-	RNA_def_property_ui_text(prop, "Shutter", "Time taken in frames between shutter open and close "
-	                                          "(NOTE: Blender Internal does not support animated shutter)");
+	RNA_def_property_ui_text(prop, "Shutter", "Time taken in frames between shutter open and close");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_glsl_update");
 
 	prop = RNA_def_property(srna, "motion_blur_shutter_curve", PROP_POINTER, PROP_NONE);
@@ -5348,6 +5344,11 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Simplify Shaders", "Do not apply shader fx");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
+	prop = RNA_def_property(srna, "simplify_gpencil_blend", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "simplify_gpencil", SIMPLIFY_GPENCIL_BLEND);
+	RNA_def_property_ui_text(prop, "Layers Blending", "Do not display blend layers");
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
 	/* persistent data */
 	prop = RNA_def_property(srna, "use_persistent_data", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "mode", R_PERSISTENT_DATA);
@@ -5683,6 +5684,26 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 	RNA_def_property_enum_default(prop, 32);
 	RNA_def_property_ui_text(prop, "Irradiance Visibility Size",
 	                               "Size of the shadow map applied to each irradiance sample");
+	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+
+	prop = RNA_def_property(srna, "gi_irradiance_smoothing", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_range(prop, 0.0f, FLT_MAX);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 5, 2);
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_ui_text(prop, "Irradiance Smoothing", "Smoother irradiance interpolation but introduce light bleeding");
+	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+
+	prop = RNA_def_property(srna, "gi_glossy_clamp", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_default(prop, 0.0f);
+	RNA_def_property_ui_text(prop, "Clamp Glossy", "Clamp pixel intensity to reduce noise inside glossy reflections "
+	                                               "from reflection cubemaps (0 to disabled)");
+	RNA_def_property_range(prop, 0.0f, FLT_MAX);
+	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+
+	prop = RNA_def_property(srna, "gi_filter_quality", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_default(prop, 1.0f);
+	RNA_def_property_ui_text(prop, "Filter Quality", "Take more samples during cubemap filtering to remove artifacts");
+	RNA_def_property_range(prop, 1.0f, 8.0f);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	prop = RNA_def_property(srna, "gi_show_irradiance", PROP_BOOLEAN, PROP_NONE);
@@ -6036,6 +6057,13 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", SCE_EEVEE_SHADOW_SOFT);
 	RNA_def_property_boolean_default(prop, 0);
 	RNA_def_property_ui_text(prop, "Soft Shadows", "Randomize shadowmaps origin to create soft shadows");
+	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+
+	prop = RNA_def_property(srna, "light_threshold", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_float_default(prop, 0.01f);
+	RNA_def_property_ui_text(prop, "Light Threshold", "Minimum light intensity for a light to contribute to the lighting");
+	RNA_def_property_range(prop, 0.0f, FLT_MAX);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 3);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	/* Overscan */

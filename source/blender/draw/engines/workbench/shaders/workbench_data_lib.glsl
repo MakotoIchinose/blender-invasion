@@ -4,7 +4,7 @@ struct LightData {
 };
 
 struct WorldData {
-	vec3 spherical_harmonics_coefs[STUDIOLIGHT_SPHERICAL_HARMONICS_MAX_COMPONENTS];
+	vec3 spherical_harmonics_coefs[STUDIOLIGHT_SH_MAX_COMPONENTS];
 	vec4 background_color_low;
 	vec4 background_color_high;
 	vec4 object_outline_color;
@@ -13,5 +13,7 @@ struct WorldData {
 	int num_lights;
 	int matcap_orientation;
 	float background_alpha;
-	int pad[1];
+	float curvature_ridge;
+	float curvature_valley;
+	int pad[3];
 };

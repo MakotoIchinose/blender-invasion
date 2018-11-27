@@ -58,7 +58,6 @@ static struct {
 	struct GPUShader *default_hair_prepass_clip_sh;
 	struct GPUShader *default_lit[VAR_MAT_MAX];
 	struct GPUShader *default_background;
-	struct GPUShader *default_studiolight_background;
 	struct GPUShader *update_noise_sh;
 
 	/* 64*64 array texture containing all LUTs and other utilitarian arrays.
@@ -597,10 +596,6 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata, EEVEE_StorageList *stl, E
 		        datatoc_background_vert_glsl, NULL, datatoc_default_world_frag_glsl,
 		        NULL);
 
-		e_data.default_studiolight_background = DRW_shader_create(
-		        datatoc_background_vert_glsl, NULL, datatoc_default_world_frag_glsl,
-		        "#define LOOKDEV\n");
-
 		e_data.default_prepass_sh = DRW_shader_create(
 		        datatoc_prepass_vert_glsl, NULL, datatoc_prepass_frag_glsl,
 		        NULL);
@@ -969,7 +964,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		float *col = ts.colorBackground;
 
 		/* LookDev */
-		EEVEE_lookdev_cache_init(vedata, &grp, e_data.default_studiolight_background, psl->background_pass, wo, NULL);
+		EEVEE_lookdev_cache_init(vedata, &grp, psl->background_pass, wo, NULL);
 		/* END */
 
 		if (!grp && wo) {
@@ -1455,6 +1450,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 	        is_sculpt_mode &&
 	        ((ob->sculpt && ob->sculpt->pbvh) && (BKE_pbvh_type(ob->sculpt->pbvh) != PBVH_FACES));
 #endif
+	const bool use_hide = is_active && DRW_object_use_hide_faces(ob);
 	const bool is_default_mode_shader = is_sculpt_mode;
 
 	/* First get materials for this mesh. */
@@ -1531,7 +1527,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 			int *auto_layer_is_srgb;
 			int auto_layer_count;
 			struct GPUBatch **mat_geom = DRW_cache_object_surface_material_get(
-			        ob, gpumat_array, materials_len,
+			        ob, gpumat_array, materials_len, use_hide,
 			        &auto_layer_names,
 			        &auto_layer_is_srgb,
 			        &auto_layer_count);
@@ -1799,7 +1795,6 @@ void EEVEE_materials_free(void)
 	DRW_SHADER_FREE_SAFE(e_data.default_prepass_sh);
 	DRW_SHADER_FREE_SAFE(e_data.default_prepass_clip_sh);
 	DRW_SHADER_FREE_SAFE(e_data.default_background);
-	DRW_SHADER_FREE_SAFE(e_data.default_studiolight_background);
 	DRW_SHADER_FREE_SAFE(e_data.update_noise_sh);
 	DRW_TEXTURE_FREE_SAFE(e_data.util_tex);
 	DRW_TEXTURE_FREE_SAFE(e_data.noise_tex);

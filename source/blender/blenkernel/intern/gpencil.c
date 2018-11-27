@@ -211,46 +211,6 @@ void BKE_gpencil_free_layers(ListBase *list)
 	}
 }
 
-/* clear all runtime derived data */
-static void BKE_gpencil_clear_derived(bGPDlayer *gpl)
-{
-	if (gpl->runtime.derived_array == NULL) {
-		return;
-	}
-
-	for (int i = 0; i < gpl->runtime.len_derived; i++) {
-		bGPDframe *derived_gpf = &gpl->runtime.derived_array[i];
-		BKE_gpencil_free_frame_runtime_data(derived_gpf);
-		derived_gpf = NULL;
-	}
-	gpl->runtime.len_derived = 0;
-	MEM_SAFE_FREE(gpl->runtime.derived_array);
-}
-
-/* Free all of the gp-layers temp data*/
-static void BKE_gpencil_free_layers_temp_data(ListBase *list)
-{
-	bGPDlayer *gpl_next;
-
-	/* error checking */
-	if (list == NULL) return;
-	/* delete layers */
-	for (bGPDlayer *gpl = list->first; gpl; gpl = gpl_next) {
-		gpl_next = gpl->next;
-		BKE_gpencil_clear_derived(gpl);
-	}
-}
-
-/* Free temp gpf derived frames */
-void BKE_gpencil_free_derived_frames(bGPdata *gpd)
-{
-	/* error checking */
-	if (gpd == NULL) return;
-	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-		BKE_gpencil_clear_derived(gpl);
-	}
-}
-
 /** Free (or release) any data used by this grease pencil (does not free the gpencil itself). */
 void BKE_gpencil_free(bGPdata *gpd, bool free_all)
 {
@@ -258,9 +218,6 @@ void BKE_gpencil_free(bGPdata *gpd, bool free_all)
 	BKE_animdata_free(&gpd->id, false);
 
 	/* free layers */
-	if (free_all) {
-		BKE_gpencil_free_layers_temp_data(&gpd->layers);
-	}
 	BKE_gpencil_free_layers(&gpd->layers);
 
 	/* materials */
@@ -639,8 +596,6 @@ bGPDlayer *BKE_gpencil_layer_duplicate(const bGPDlayer *gpl_src)
 	/* make a copy of source layer */
 	gpl_dst = MEM_dupallocN(gpl_src);
 	gpl_dst->prev = gpl_dst->next = NULL;
-	gpl_dst->runtime.derived_array = NULL;
-	gpl_dst->runtime.len_derived = 0;
 
 	/* copy frames */
 	BLI_listbase_clear(&gpl_dst->frames);
@@ -826,8 +781,8 @@ bGPDframe *BKE_gpencil_layer_find_frame(bGPDlayer *gpl, int cframe)
 }
 
 /* get the appropriate gp-frame from a given layer
- *	- this sets the layer's actframe var (if allowed to)
- *	- extension beyond range (if first gp-frame is after all frame in interest and cannot add)
+ * - this sets the layer's actframe var (if allowed to)
+ * - extension beyond range (if first gp-frame is after all frame in interest and cannot add)
  */
 bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_Mode addnew)
 {
@@ -1031,9 +986,6 @@ void BKE_gpencil_layer_delete(bGPdata *gpd, bGPDlayer *gpl)
 	/* free icon providing preview of icon color */
 	BKE_icon_delete(gpl->runtime.icon_id);
 
-	/* free derived data */
-	BKE_gpencil_clear_derived(gpl);
-
 	BLI_freelinkN(&gpd->layers, gpl);
 }
 
@@ -1133,8 +1085,21 @@ bool BKE_gpencil_data_minmax(Object *ob, const bGPdata *gpd, float r_min[3], flo
 	return changed;
 }
 
+bool BKE_gpencil_stroke_select_check(
+        const bGPDstroke *gps)
+{
+	const bGPDspoint *pt;
+	int i;
+	for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+		if (pt->flag & GP_SPOINT_SELECT) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /* compute center of bounding box */
-void BKE_gpencil_centroid_3D(bGPdata *gpd, float r_centroid[3])
+void BKE_gpencil_centroid_3d(bGPdata *gpd, float r_centroid[3])
 {
 	float min[3], max[3], tot[3];
 

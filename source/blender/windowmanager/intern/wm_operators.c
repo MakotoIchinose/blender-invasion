@@ -863,6 +863,18 @@ int WM_operator_confirm(bContext *C, wmOperator *op, const wmEvent *UNUSED(event
 	return WM_operator_confirm_message(C, op, NULL);
 }
 
+int WM_operator_confirm_or_exec(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+	const bool confirm = RNA_boolean_get(op->ptr, "confirm");
+	if (confirm) {
+		return WM_operator_confirm_message(C, op, NULL);
+	}
+	else {
+		return op->type->exec(C, op);
+	}
+}
+
+
 /* op->invoke, opens fileselect if path property not set, otherwise executes */
 int WM_operator_filesel(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
@@ -3288,7 +3300,7 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
 	WM_modalkeymap_assign(keymap, "CLIP_OT_graph_select_box");
 	WM_modalkeymap_assign(keymap, "MASK_OT_select_box");
 	WM_modalkeymap_assign(keymap, "VIEW2D_OT_zoom_border");
-	WM_modalkeymap_assign(keymap, "VIEW3D_OT_clip_border");
+//	WM_modalkeymap_assign(keymap, "VIEW3D_OT_clip_border"); /* TODO */
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_render_border");
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_box");
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_zoom_border"); /* XXX TODO: zoom border should perhaps map rightmouse to zoom out instead of in+cancel */

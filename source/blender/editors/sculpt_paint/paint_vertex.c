@@ -58,6 +58,7 @@
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_paint.h"
@@ -71,6 +72,7 @@
 #include "WM_message.h"
 #include "WM_toolsystem.h"
 
+#include "ED_armature.h"
 #include "ED_object.h"
 #include "ED_mesh.h"
 #include "ED_screen.h"
@@ -348,7 +350,7 @@ static void tex_color_alpha(
 	const Brush *brush = BKE_paint_brush(&vp->paint);
 	BLI_assert(brush->mtex.tex != NULL);
 	if (brush->mtex.brush_map_mode == MTEX_MAP_MODE_3D) {
-		BKE_brush_sample_tex_3D(vc->scene, brush, co, r_rgba, 0, NULL);
+		BKE_brush_sample_tex_3d(vc->scene, brush, co, r_rgba, 0, NULL);
 	}
 	else {
 		float co_ss[2];  /* screenspace */
@@ -358,7 +360,7 @@ static void tex_color_alpha(
 		        V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_NEAR) == V3D_PROJ_RET_OK)
 		{
 			const float co_ss_3d[3] = {co_ss[0], co_ss[1], 0.0f};  /* we need a 3rd empty value */
-			BKE_brush_sample_tex_3D(vc->scene, brush, co_ss_3d, r_rgba, 0, NULL);
+			BKE_brush_sample_tex_3d(vc->scene, brush, co_ss_3d, r_rgba, 0, NULL);
 		}
 		else {
 			zero_v4(r_rgba);
@@ -1079,7 +1081,7 @@ static void ed_vwpaintmode_enter_generic(
 	BKE_object_free_derived_caches(ob);
 
 	if (mode_flag == OB_MODE_VERTEX_PAINT) {
-		const ePaintMode paint_mode = ePaintVertex;
+		const ePaintMode paint_mode = PAINT_MODE_VERTEX;
 		ED_mesh_color_ensure(me, NULL);
 
 		BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->vpaint);
@@ -1088,7 +1090,7 @@ static void ed_vwpaintmode_enter_generic(
 		BKE_paint_init(bmain, scene, paint_mode, PAINT_CURSOR_VERTEX_PAINT);
 	}
 	else if (mode_flag == OB_MODE_WEIGHT_PAINT) {
-		const  ePaintMode paint_mode = ePaintWeight;
+		const  ePaintMode paint_mode = PAINT_MODE_WEIGHT;
 
 		BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->wpaint);
 		Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
@@ -1261,6 +1263,21 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 		BKE_paint_toolslots_brush_validate(bmain, &ts->wpaint->paint);
 	}
 
+	/* When locked, it's almost impossible to select the pose then the object to enter weight paint mode.
+	 * In this case move our pose object in/out of pose mode.
+	 * This is in fits with the convention of selecting multiple objects and entering a mode. */
+	if (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) {
+		Object *ob_arm = modifiers_isDeformedByArmature(ob);
+		if (ob_arm && (ob_arm->base_flag & BASE_SELECTED)) {
+			if (ob_arm->mode & OB_MODE_POSE) {
+				ED_object_posemode_exit_ex(bmain, ob_arm);
+			}
+			else {
+				ED_object_posemode_enter_ex(bmain, ob_arm);
+			}
+		}
+	}
+
 	/* Weightpaint works by overriding colors in mesh,
 	 * so need to make sure we recalc on enter and
 	 * exit (exit needs doing regardless because we
@@ -1409,7 +1426,7 @@ static void vwpaint_update_cache_variants(bContext *C, VPaint *vp, Object *ob, P
 	 * brush coord/pressure/etc.
 	 * It's more an events design issue, which doesn't split coordinate/pressure/angle
 	 * changing events. We should avoid this after events system re-design */
-	if (paint_supports_dynamic_size(brush, ePaintSculpt) || cache->first_time) {
+	if (paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT) || cache->first_time) {
 		cache->pressure = RNA_float_get(ptr, "pressure");
 	}
 
@@ -1425,7 +1442,7 @@ static void vwpaint_update_cache_variants(bContext *C, VPaint *vp, Object *ob, P
 		}
 	}
 
-	if (BKE_brush_use_size_pressure(scene, brush) && paint_supports_dynamic_size(brush, ePaintSculpt)) {
+	if (BKE_brush_use_size_pressure(scene, brush) && paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT)) {
 		cache->radius = cache->initial_radius * cache->pressure;
 	}
 	else {

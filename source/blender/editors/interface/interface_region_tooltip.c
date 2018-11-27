@@ -228,17 +228,11 @@ static void ui_tooltip_region_draw_cb(const bContext *UNUSED(C), ARegion *ar)
 			uiFontStyle fstyle_header = data->fstyle;
 
 			/* override text-style */
-			fstyle_header.shadow = 1;
-			fstyle_header.shadowcolor = rgb_to_grayscale(tip_colors[UI_TIP_LC_MAIN]);
-			fstyle_header.shadx = fstyle_header.shady = 0;
-			fstyle_header.shadowalpha = 1.0f;
 			fstyle_header.word_wrap = true;
 
 			rgb_float_to_uchar(drawcol, tip_colors[UI_TIP_LC_MAIN]);
 			UI_fontstyle_set(&fstyle_header);
 			UI_fontstyle_draw(&fstyle_header, &bbox, field->text, drawcol);
-
-			fstyle_header.shadow = 0;
 
 			/* offset to the end of the last line */
 			if (field->text_suffix) {
@@ -449,7 +443,7 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
 	}
 
 	/* Shortcut. */
-	if (is_label == false) {
+	if (is_label == false && ((but->block->flag & UI_BLOCK_SHOW_SHORTCUT_ALWAYS) == 0)) {
 		/* There are different kinds of shortcuts:
 		 *
 		 * - Direct access to the tool (as if the toolbar button is pressed).
@@ -476,7 +470,6 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
 					wmOperatorType *ot = WM_operatortype_find("paint.brush_select", true);
 					PointerRNA op_props;
 					WM_operator_properties_create_ptr(&op_props, ot);
-					RNA_enum_set(&op_props, "paint_mode", paint_mode);
 					RNA_enum_set(&op_props, tool_attr, items[i].value);
 
 					/* Check for direct access to the tool. */
@@ -501,10 +494,10 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
 			{
 				/* Generate keymap in order to inspect it.
 				 * Note, we could make a utility to avoid the keymap generation part of this. */
-				const char *expr_imports[] = {"bpy", "bl_ui", NULL};
+				const char *expr_imports[] = {"bpy", "bl_keymap_utils", "bl_keymap_utils.keymap_from_toolbar", NULL};
 				const char *expr = (
 				        "getattr("
-				        "bl_ui.space_toolsystem_common.keymap_from_context("
+				        "bl_keymap_utils.keymap_from_toolbar.generate("
 				        "bpy.context, "
 				        "bpy.context.space_data.type), "
 				        "'as_pointer', lambda: 0)()");
@@ -898,22 +891,20 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
 
 				/* Shortcut */
 				{
-					bool found = false;
 					IDProperty *prop = gzop->ptr.data;
 					char buf[128];
 					if (WM_key_event_operator_string(
 					            C, gzop->type->idname, WM_OP_INVOKE_DEFAULT, prop, true,
 					            buf, ARRAY_SIZE(buf)))
 					{
-						found = true;
+						uiTooltipField *field = text_field_add(
+						        data, &(uiTooltipFormat){
+						            .style = UI_TIP_STYLE_NORMAL,
+						            .color_id = UI_TIP_LC_VALUE,
+						            .is_pad = true,
+						        });
+						field->text = BLI_sprintfN(TIP_("Shortcut: %s"), buf);
 					}
-					uiTooltipField *field = text_field_add(
-					        data, &(uiTooltipFormat){
-					            .style = UI_TIP_STYLE_NORMAL,
-					            .color_id = UI_TIP_LC_VALUE,
-					            .is_pad = true,
-					        });
-					field->text = BLI_sprintfN(TIP_("Shortcut: %s"), found ? buf : "None");
 				}
 			}
 		}

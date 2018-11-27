@@ -454,6 +454,7 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 
 	/* Handle legacy render layers. */
 	bool have_override = false;
+	const bool need_default_renderlayer = scene->r.layers.first == NULL;
 
 	for (SceneRenderLayer *srl = scene->r.layers.first; srl; srl = srl->next) {
 		ViewLayer *view_layer = BKE_view_layer_add(scene, srl->name);
@@ -541,9 +542,9 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 
 	BLI_freelistN(&scene->r.layers);
 
-	/* If render layers included overrides, we also create a vanilla
-	 * viewport layer without them. */
-	if (have_override) {
+	/* If render layers included overrides, or there are no render layers,
+	 * we also create a vanilla viewport layer. */
+	if (have_override || need_default_renderlayer) {
 		ViewLayer *view_layer = BKE_view_layer_add(scene, "Viewport");
 
 		/* Make it first in the list. */
@@ -1078,12 +1079,12 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		{
 			/* Grease pencil sculpt and paint cursors */
-			if (!DNA_struct_elem_find(fd->filesdna, "GP_BrushEdit_Settings", "int", "weighttype")) {
+			if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "weighttype")) {
 				for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 					/* sculpt brushes */
-					GP_BrushEdit_Settings *gset = &scene->toolsettings->gp_sculpt;
+					GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
 					if (gset) {
-						gset->weighttype = GP_EDITBRUSH_TYPE_WEIGHT;
+						gset->weighttype = GP_SCULPT_TYPE_WEIGHT;
 					}
 				}
 			}
@@ -1092,15 +1093,15 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				float curcolor_add[3], curcolor_sub[3];
 				ARRAY_SET_ITEMS(curcolor_add, 1.0f, 0.6f, 0.6f);
 				ARRAY_SET_ITEMS(curcolor_sub, 0.6f, 0.6f, 1.0f);
-				GP_EditBrush_Data *gp_brush;
+				GP_Sculpt_Data *gp_brush;
 
 				for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 					ToolSettings *ts = scene->toolsettings;
 					/* sculpt brushes */
-					GP_BrushEdit_Settings *gset = &ts->gp_sculpt;
-					for (int i = 0; i < TOT_GP_EDITBRUSH_TYPES; ++i) {
+					GP_Sculpt_Settings *gset = &ts->gp_sculpt;
+					for (int i = 0; i < GP_SCULPT_TYPE_MAX; ++i) {
 						gp_brush = &gset->brush[i];
-						gp_brush->flag |= GP_EDITBRUSH_FLAG_ENABLE_CURSOR;
+						gp_brush->flag |= GP_SCULPT_FLAG_ENABLE_CURSOR;
 						copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
 						copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
 					}
@@ -1122,10 +1123,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 
 			/* Grease pencil multiframe falloff curve */
-			if (!DNA_struct_elem_find(fd->filesdna, "GP_BrushEdit_Settings", "CurveMapping", "cur_falloff")) {
+			if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "CurveMapping", "cur_falloff")) {
 				for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 					/* sculpt brushes */
-					GP_BrushEdit_Settings *gset = &scene->toolsettings->gp_sculpt;
+					GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
 					if ((gset) && (gset->cur_falloff == NULL)) {
 						gset->cur_falloff = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 						curvemapping_initialize(gset->cur_falloff);
@@ -1372,16 +1373,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_find(fd->filesdna, "View3DCursor")) {
 			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 				unit_qt(scene->cursor.rotation);
-			}
-			for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
-				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-						if (sl->spacetype == SPACE_VIEW3D) {
-							View3D *v3d = (View3D *)sl;
-							unit_qt(v3d->cursor.rotation);
-						}
-					}
-				}
 			}
 		}
 	}
@@ -1726,13 +1717,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				}
 			}
 		}
-		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "bone_select_alpha")) {
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "xray_alpha_bone")) {
 			for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
 				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 						if (sl->spacetype == SPACE_VIEW3D) {
 							View3D *v3d = (View3D *)sl;
-							v3d->overlay.bone_select_alpha = 0.5f;
+							v3d->overlay.xray_alpha_bone = 0.5f;
 						}
 					}
 				}
@@ -1809,7 +1800,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		if (!DNA_struct_elem_find(fd->filesdna, "View3DShadeing", "short", "background_type")) {
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShadeing", "char", "background_type")) {
 			for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
 				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -1962,10 +1953,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		/* default loc axis */
-		if (!DNA_struct_elem_find(fd->filesdna, "GP_BrushEdit_Settings", "int", "lock_axis")) {
+		if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "lock_axis")) {
 			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 				/* lock axis */
-				GP_BrushEdit_Settings *gset = &scene->toolsettings->gp_sculpt;
+				GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
 				if (gset) {
 					gset->lock_axis = GP_LOCKAXIS_Y;
 				}
@@ -2151,7 +2142,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 						if (sl->spacetype == SPACE_VIEW3D) {
 							View3D *v3d = (View3D *)sl;
-							v3d->shading.flag |= V3D_SHADING_XRAY_WIREFRAME;
+							v3d->shading.flag |= V3D_SHADING_XRAY_BONE;
 						}
 					}
 				}
@@ -2235,7 +2226,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
 			ob->empty_image_visibility_flag = (
 			        OB_EMPTY_IMAGE_VISIBLE_PERSPECTIVE |
-			        OB_EMPTY_IMAGE_VISIBLE_ORTHOGRAPHIC);
+			        OB_EMPTY_IMAGE_VISIBLE_ORTHOGRAPHIC |
+			        OB_EMPTY_IMAGE_VISIBLE_BACKSIDE);
 		}
 
 
@@ -2251,10 +2243,77 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
-	{
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 33)) {
+		/* Grease pencil reset sculpt brushes after struct rename  */
+		if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "weighttype")) {
+			float curcolor_add[3], curcolor_sub[3];
+			ARRAY_SET_ITEMS(curcolor_add, 1.0f, 0.6f, 0.6f);
+			ARRAY_SET_ITEMS(curcolor_sub, 0.6f, 0.6f, 1.0f);
+
+			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+				/* sculpt brushes */
+				GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
+				if (gset) {
+					for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
+						GP_Sculpt_Data *gp_brush = &gset->brush[i];
+						gp_brush->size = 30;
+						gp_brush->strength = 0.5f;
+						gp_brush->flag = GP_SCULPT_FLAG_USE_FALLOFF | GP_SCULPT_FLAG_ENABLE_CURSOR;
+						copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
+						copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
+					}
+				}
+			}
+		}
+
+		/* Grease pencil target weight  */
+		if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "float", "target_weight")) {
+			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+				/* sculpt brushes */
+				GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
+				if (gset) {
+					for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
+						GP_Sculpt_Data *gp_brush = &gset->brush[i];
+						gp_brush->target_weight = 1.0f;
+					}
+				}
+			}
+		}
+
 		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "overscan")) {
 			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 				scene->eevee.overscan = 3.0f;
+			}
+		}
+
+		for (Lamp *la = bmain->lamp.first; la; la = la->id.next) {
+			/* Removed Hemi lights. */
+			if (!ELEM(la->type, LA_LOCAL, LA_SUN, LA_SPOT, LA_AREA)) {
+				la->type = LA_SUN;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "light_threshold")) {
+			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+				scene->eevee.light_threshold = 0.01f;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "gi_irradiance_smoothing")) {
+			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+				scene->eevee.gi_irradiance_smoothing = 0.1f;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "gi_filter_quality")) {
+			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+				scene->eevee.gi_filter_quality = 1.0f;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "Lamp", "float", "att_dist")) {
+			for (Lamp *la = bmain->lamp.first; la; la = la->id.next) {
+				la->att_dist = la->clipend;
 			}
 		}
 
@@ -2355,8 +2414,54 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 #undef PAINT_BLEND_HUE
 #undef PAINT_BLEND_ALPHA_SUB
 #undef PAINT_BLEND_ALPHA_ADD
-
 		}
 	}
 
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 34)) {
+		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+			for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+				for (SpaceLink *slink = area->spacedata.first; slink; slink = slink->next) {
+					if (slink->spacetype == SPACE_USERPREF) {
+						ARegion *navigation_region = BKE_spacedata_find_region_type(slink, area, RGN_TYPE_NAV_BAR);
+
+						if (!navigation_region) {
+							ListBase *regionbase = (slink == area->spacedata.first) ?
+							                           &area->regionbase : &slink->regionbase;
+
+							navigation_region = MEM_callocN(sizeof(ARegion), "userpref navigation-region do_versions");
+
+							BLI_addhead(regionbase, navigation_region); /* order matters, addhead not addtail! */
+							navigation_region->regiontype = RGN_TYPE_NAV_BAR;
+							navigation_region->alignment = RGN_ALIGN_LEFT;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	{
+		/* Versioning code until next subversion bump goes here. */
+
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "curvature_ridge_factor")) {
+			for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->shading.curvature_ridge_factor = 1.0f;
+							v3d->shading.curvature_valley_factor = 1.0f;
+						}
+					}
+				}
+			}
+		}
+
+		/* Rename OpenGL to Workbench. */
+		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+			if (STREQ(scene->r.engine, "BLENDER_OPENGL")) {
+				STRNCPY(scene->r.engine, RE_engine_id_BLENDER_WORKBENCH);
+			}
+		}
+	}
 }

@@ -39,9 +39,9 @@
  * Shrinkwrap is composed by a set of functions and options that define the type of shrink.
  *
  * 3 modes are available:
- *    - Nearest vertex
- *	  - Nearest surface
- *    - Normal projection
+ * - Nearest vertex
+ * - Nearest surface
+ * - Normal projection
  *
  * ShrinkwrapCalcData encapsulates all needed data for shrinkwrap functions.
  * (So that you don't have to pass an enormous amount of arguments to functions)
@@ -104,8 +104,9 @@ bool BKE_shrinkwrap_init_tree(struct ShrinkwrapTreeData *data, Mesh *mesh, int s
 void BKE_shrinkwrap_free_tree(struct ShrinkwrapTreeData *data);
 
 /* Implementation of the Shrinkwrap modifier */
-void shrinkwrapModifier_deform(struct ShrinkwrapModifierData *smd, struct Scene *scene, struct Object *ob, struct Mesh *mesh,
-                               float (*vertexCos)[3], int numVerts);
+void shrinkwrapModifier_deform(
+        struct ShrinkwrapModifierData *smd, struct Scene *scene, struct Object *ob, struct Mesh *mesh,
+        struct MDeformVert *dvert, const int defgrp_index, float (*vertexCos)[3], int numVerts);
 
 /*
  * This function casts a ray in the given BVHTree.. but it takes into consideration the space_transform, that is:

@@ -30,6 +30,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -78,6 +79,7 @@
 #include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_library_remap.h"
+#include "BKE_lightprobe.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
@@ -125,7 +127,6 @@ const EnumPropertyItem rna_enum_light_type_items[] = {
 	{LA_LOCAL, "POINT", ICON_LIGHT_POINT, "Point", "Omnidirectional point light source"},
 	{LA_SUN, "SUN", ICON_LIGHT_SUN, "Sun", "Constant direction parallel ray light source"},
 	{LA_SPOT, "SPOT", ICON_LIGHT_SPOT, "Spot", "Directional cone light source"},
-	{LA_HEMI, "HEMI", ICON_LIGHT_HEMI, "Hemi", "180 degree constant light source"},
 	{LA_AREA, "AREA", ICON_LIGHT_AREA, "Area", "Directional area light source"},
 	{0, NULL, 0, NULL, NULL}
 };
@@ -162,13 +163,8 @@ static EnumPropertyItem lightprobe_type_items[] = {
 
 void ED_object_location_from_view(bContext *C, float loc[3])
 {
-	View3D *v3d = CTX_wm_view3d(C);
-	Scene *scene = CTX_data_scene(C);
-	const float *cursor;
-
-	cursor = ED_view3d_cursor3d_get(scene, v3d)->location;
-
-	copy_v3_v3(loc, cursor);
+	const Scene *scene = CTX_data_scene(C);
+	copy_v3_v3(loc, scene->cursor.location);
 }
 
 void ED_object_rotation_from_quat(float rot[3], const float viewquat[4], const char align_axis)
@@ -274,7 +270,12 @@ static void view_align_update(struct Main *UNUSED(main), struct Scene *UNUSED(sc
 	RNA_struct_idprops_unset(ptr, "rotation");
 }
 
-void ED_object_add_unit_props(wmOperatorType *ot)
+void ED_object_add_unit_props_size(wmOperatorType *ot)
+{
+	RNA_def_float_distance(ot->srna, "size", 2.0f, 0.0, OBJECT_ADD_SIZE_MAXF, "Size", "", 0.001, 100.00);
+}
+
+void ED_object_add_unit_props_radius(wmOperatorType *ot)
 {
 	RNA_def_float_distance(ot->srna, "radius", 1.0f, 0.0, OBJECT_ADD_SIZE_MAXF, "Radius", "", 0.001, 100.00);
 }
@@ -458,7 +459,7 @@ void OBJECT_OT_add(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* properties */
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	RNA_def_enum(ot->srna, "type", rna_enum_object_type_items, 0, "Type", "");
 
 	ED_object_add_generic_props(ot, true);
@@ -542,7 +543,7 @@ void OBJECT_OT_lightprobe_add(wmOperatorType *ot)
 	/* properties */
 	ot->prop = RNA_def_enum(ot->srna, "type", lightprobe_type_items, 0, "Type", "");
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -610,7 +611,7 @@ void OBJECT_OT_effector_add(wmOperatorType *ot)
 	/* properties */
 	ot->prop = RNA_def_enum(ot->srna, "type", field_type_items, 0, "Type", "");
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -726,7 +727,7 @@ void OBJECT_OT_metaball_add(wmOperatorType *ot)
 
 	ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_metaelem_type_items, 0, "Primitive", "");
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -768,7 +769,7 @@ void OBJECT_OT_text_add(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* properties */
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -828,7 +829,7 @@ void OBJECT_OT_armature_add(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* properties */
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -870,7 +871,7 @@ void OBJECT_OT_empty_add(wmOperatorType *ot)
 	/* properties */
 	ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_object_empty_drawtype_items, 0, "Type", "");
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, false);
 }
 
@@ -1052,7 +1053,7 @@ void OBJECT_OT_gpencil_add(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* properties */
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, false);
 
 	ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_object_gpencil_type_items, 0, "Type", "");
@@ -1066,7 +1067,6 @@ static const char *get_light_defname(int type)
 		case LA_LOCAL: return CTX_DATA_(BLT_I18NCONTEXT_ID_LAMP, "Point");
 		case LA_SUN: return CTX_DATA_(BLT_I18NCONTEXT_ID_LAMP, "Sun");
 		case LA_SPOT: return CTX_DATA_(BLT_I18NCONTEXT_ID_LAMP, "Spot");
-		case LA_HEMI: return CTX_DATA_(BLT_I18NCONTEXT_ID_LAMP, "Hemi");
 		case LA_AREA: return CTX_DATA_(BLT_I18NCONTEXT_ID_LAMP, "Area");
 		default:
 			return CTX_DATA_(BLT_I18NCONTEXT_ID_LAMP, "Light");
@@ -1132,7 +1132,7 @@ void OBJECT_OT_light_add(wmOperatorType *ot)
 	ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_light_type_items, 0, "Type", "");
 	RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_LAMP);
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, false);
 }
 
@@ -1300,7 +1300,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
 	wmWindowManager *wm = CTX_wm_manager(C);
 	wmWindow *win;
 	const bool use_global = RNA_boolean_get(op->ptr, "use_global");
-	bool changed = false;
+	uint changed_count = 0;
 
 	if (CTX_data_edit_object(C))
 		return OPERATOR_CANCELLED;
@@ -1333,7 +1333,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
 		if (use_global && ob->id.lib == NULL) {
 			/* We want to nuke the object, let's nuke it the easy way (not for linked data though)... */
 			BKE_libblock_delete(bmain, &ob->id);
-			changed = true;
+			changed_count += 1;
 			continue;
 		}
 
@@ -1352,7 +1352,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
 
 		/* remove from current scene only */
 		ED_object_base_free_and_unlink(bmain, scene, ob);
-		changed = true;
+		changed_count += 1;
 
 		if (use_global) {
 			Scene *scene_iter;
@@ -1372,8 +1372,11 @@ static int object_delete_exec(bContext *C, wmOperator *op)
 	}
 	CTX_DATA_END;
 
-	if (!changed)
+	BKE_reportf(op->reports, RPT_INFO, "Deleted %u object(s)", changed_count);
+
+	if (changed_count == 0) {
 		return OPERATOR_CANCELLED;
+	}
 
 	/* delete has to handle all open scenes */
 	BKE_main_id_tag_listbase(&bmain->scene, LIB_TAG_DOIT, true);
@@ -1402,7 +1405,7 @@ void OBJECT_OT_delete(wmOperatorType *ot)
 	ot->idname = "OBJECT_OT_delete";
 
 	/* api callbacks */
-	ot->invoke = WM_operator_confirm;
+	ot->invoke = WM_operator_confirm_or_exec;
 	ot->exec = object_delete_exec;
 	ot->poll = ED_operator_objectmode;
 
@@ -1412,6 +1415,7 @@ void OBJECT_OT_delete(wmOperatorType *ot)
 	PropertyRNA *prop;
 	prop = RNA_def_boolean(ot->srna, "use_global", 0, "Delete Globally", "Remove object from all scenes");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+	WM_operator_properties_confirm_or_exec(ot);
 }
 
 /**************************** Copy Utilities ******************************/
@@ -2334,6 +2338,16 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, ViewLayer 
 					ID_NEW_REMAP_US2(obn->data)
 					else {
 						obn->data = ID_NEW_SET(obn->data, BKE_camera_copy(bmain, obn->data));
+						didit = 1;
+					}
+					id_us_min(id);
+				}
+				break;
+			case OB_LIGHTPROBE:
+				if (dupflag != 0) {
+					ID_NEW_REMAP_US2(obn->data)
+					else {
+						obn->data = ID_NEW_SET(obn->data, BKE_lightprobe_copy(bmain, obn->data));
 						didit = 1;
 					}
 					id_us_min(id);

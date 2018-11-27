@@ -273,9 +273,9 @@ static void animrecord_check_state(Scene *scene, ID *id, wmTimer *animtimer)
 		return;
 
 	/* check if we need a new strip if:
-	 *  - if animtimer is running
-	 *	- we're not only keying for available channels
-	 *	- the option to add new actions for each round is not enabled
+	 * - if animtimer is running
+	 * - we're not only keying for available channels
+	 * - the option to add new actions for each round is not enabled
 	 */
 	if (IS_AUTOKEY_FLAG(scene, INSERTAVAIL) == 0 && (scene->toolsettings->autokey_flag & ANIMRECORD_FLAG_WITHNLA)) {
 		/* if playback has just looped around, we need to add a new NLA track+strip to allow a clean pass to occur */
@@ -491,7 +491,7 @@ static void recalcData_nla(TransInfo *t)
 		 * BUT only if realtime updates are enabled
 		 */
 		if ((snla->flag & SNLA_NOREALTIMEUPDATES) == 0)
-			ANIM_id_update(t->scene, tdn->id);
+			ANIM_id_update(CTX_data_main(t->context), tdn->id);
 
 		/* if canceling transform, just write the values without validating, then move on */
 		if (t->state == TRANS_CANCEL) {
@@ -535,8 +535,8 @@ static void recalcData_nla(TransInfo *t)
 
 			if ((pExceeded && nExceeded) || (iter == 4)) {
 				/* both endpoints exceeded (or iteration ping-pong'd meaning that we need a compromise)
-				 *	- simply crop strip to fit within the bounds of the strips bounding it
-				 *	- if there were no neighbors, clear the transforms (make it default to the strip's current values)
+				 * - simply crop strip to fit within the bounds of the strips bounding it
+				 * - if there were no neighbors, clear the transforms (make it default to the strip's current values)
 				 */
 				if (strip->prev && strip->next) {
 					tdn->h1[0] = strip->prev->end;
@@ -626,7 +626,7 @@ static void recalcData_nla(TransInfo *t)
 
 
 		/* now, check if we need to try and move track
-		 *	- we need to calculate both, as only one may have been altered by transform if only 1 handle moved
+		 * - we need to calculate both, as only one may have been altered by transform if only 1 handle moved
 		 */
 		delta_y1 = ((int)tdn->h1[1] / NLACHANNEL_STEP(snla) - tdn->trackIndex);
 		delta_y2 = ((int)tdn->h2[1] / NLACHANNEL_STEP(snla) - tdn->trackIndex);
@@ -784,7 +784,7 @@ static void recalcData_objects(TransInfo *t)
 				else {
 					/* Normal updating */
 					while (nu) {
-						BKE_nurb_test2D(nu);
+						BKE_nurb_test_2d(nu);
 						BKE_nurb_handles_calc(nu);
 						nu = nu->next;
 					}
@@ -1213,7 +1213,7 @@ void initTransDataContainers_FromObjectData(TransInfo *t, Object *obact, Object 
 		bool free_objects = false;
 		if (objects == NULL) {
 			objects = BKE_view_layer_array_from_objects_in_mode(
-			        t->view_layer, &objects_len, {
+			        t->view_layer, t->view, &objects_len, {
 			            .object_mode = object_mode,
 			            .no_dup_data = true});
 			free_objects = true;
@@ -1848,9 +1848,7 @@ void calculateCenterLocal(
 
 void calculateCenterCursor(TransInfo *t, float r_center[3])
 {
-	const float *cursor;
-
-	cursor = ED_view3d_cursor3d_get(t->scene, t->view)->location;
+	const float *cursor = t->scene->cursor.location;
 	copy_v3_v3(r_center, cursor);
 
 	/* If edit or pose mode, move cursor in local space */

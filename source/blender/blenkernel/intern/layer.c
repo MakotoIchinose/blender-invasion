@@ -726,6 +726,7 @@ static short layer_collection_sync(
 
 			if (base->flag & BASE_HIDDEN) {
 				view_layer->runtime_flag |= VIEW_LAYER_HAS_HIDE;
+				lc->runtime_flag |= LAYER_COLLECTION_HAS_HIDDEN_OBJECTS;
 			}
 			else if (base->flag & BASE_VISIBLE) {
 				lc->runtime_flag |= LAYER_COLLECTION_HAS_VISIBLE_OBJECTS;
@@ -1095,20 +1096,56 @@ void BKE_override_layer_collection_boolean_add(
 /** \name Private Iterator Helpers
  * \{ */
 
-static void object_bases_iterator_begin(BLI_Iterator *iter, void *data_in, const int flag)
+typedef struct LayerObjectBaseIteratorData {
+	View3D *v3d;
+	Base *base;
+} LayerObjectBaseIteratorData;
+
+static bool object_bases_iterator_is_valid_ex(View3D *v3d, Base *base, const int flag)
 {
-	ViewLayer *view_layer = data_in;
+	if (v3d != NULL) {
+		if ((v3d->object_type_exclude_viewport & (1 << base->object->type)) != 0) {
+			return false;
+		}
+
+		if (v3d->localvd && ((base->local_view_bits & v3d->local_view_uuid) == 0)) {
+			return false;
+		}
+	}
+
+	if ((base->flag & flag) == 0) {
+		return false;
+	}
+
+	return true;
+}
+
+static bool object_bases_iterator_is_valid(View3D *v3d, Base *base)
+{
+	return object_bases_iterator_is_valid_ex(v3d, base, ~(0));
+}
+
+static void object_bases_iterator_begin(BLI_Iterator *iter, void *data_in_v, const int flag)
+{
+	ObjectsVisibleIteratorData *data_in = data_in_v;
+	ViewLayer *view_layer = data_in->view_layer;
+	View3D *v3d = data_in->v3d;
 	Base *base = view_layer->object_bases.first;
 
 	/* when there are no objects */
 	if (base ==  NULL) {
+		iter->data = NULL;
 		iter->valid = false;
 		return;
 	}
 
-	iter->data = base;
+	LayerObjectBaseIteratorData *data = MEM_callocN(sizeof(LayerObjectBaseIteratorData), __func__);
+	iter->data = data;
 
-	if ((base->flag & flag) == 0) {
+	data->v3d = v3d;
+	data->base = base;
+
+	if (object_bases_iterator_is_valid_ex(v3d, base, flag) == false) {
 		object_bases_iterator_next(iter, flag);
 	}
 	else {
@@ -1118,18 +1155,24 @@ static void object_bases_iterator_begin(BLI_Iterator *iter, void *data_in, const
 
 static void object_bases_iterator_next(BLI_Iterator *iter, const int flag)
 {
-	Base *base = ((Base *)iter->data)->next;
+	LayerObjectBaseIteratorData *data = iter->data;
+	Base *base = data->base->next;
 
 	while (base) {
-		if ((base->flag & flag) != 0) {
+		if (object_bases_iterator_is_valid_ex(data->v3d, base, flag)) {
 			iter->current = base;
-			iter->data = base;
+			data->base = base;
 			return;
 		}
 		base = base->next;
 	}
 
 	iter->valid = false;
+}
+
+static void object_bases_iterator_end(BLI_Iterator *iter)
+{
+	MEM_SAFE_FREE(iter->data);
 }
 
 static void objects_iterator_begin(BLI_Iterator *iter, void *data_in, const int flag)
@@ -1150,6 +1193,11 @@ static void objects_iterator_next(BLI_Iterator *iter, const int flag)
 	}
 }
 
+static void objects_iterator_end(BLI_Iterator *iter)
+{
+	object_bases_iterator_end(iter);
+}
+
 /* -------------------------------------------------------------------- */
 /** \name BKE_view_layer_selected_objects_iterator
  * See: #FOREACH_SELECTED_OBJECT_BEGIN
@@ -1165,9 +1213,9 @@ void BKE_view_layer_selected_objects_iterator_next(BLI_Iterator *iter)
 	objects_iterator_next(iter, BASE_SELECTED);
 }
 
-void BKE_view_layer_selected_objects_iterator_end(BLI_Iterator *UNUSED(iter))
+void BKE_view_layer_selected_objects_iterator_end(BLI_Iterator *iter)
 {
-	/* do nothing */
+	objects_iterator_end(iter);
 }
 
 /** \} */
@@ -1186,9 +1234,9 @@ void BKE_view_layer_visible_objects_iterator_next(BLI_Iterator *iter)
 	objects_iterator_next(iter, BASE_VISIBLE);
 }
 
-void BKE_view_layer_visible_objects_iterator_end(BLI_Iterator *UNUSED(iter))
+void BKE_view_layer_visible_objects_iterator_end(BLI_Iterator *iter)
 {
-	/* do nothing */
+	objects_iterator_end(iter);
 }
 
 /** \} */
@@ -1220,9 +1268,9 @@ void BKE_view_layer_selected_editable_objects_iterator_next(BLI_Iterator *iter)
 	} while (iter->valid && BKE_object_is_libdata((Object *)iter->current) != false);
 }
 
-void BKE_view_layer_selected_editable_objects_iterator_end(BLI_Iterator *UNUSED(iter))
+void BKE_view_layer_selected_editable_objects_iterator_end(BLI_Iterator *iter)
 {
-	/* do nothing */
+	objects_iterator_end(iter);
 }
 
 /** \} */
@@ -1233,7 +1281,7 @@ void BKE_view_layer_selected_editable_objects_iterator_end(BLI_Iterator *UNUSED(
 
 void BKE_view_layer_selected_bases_iterator_begin(BLI_Iterator *iter, void *data_in)
 {
-	object_bases_iterator_begin(iter, data_in, BASE_SELECTED);
+	objects_iterator_begin(iter, data_in, BASE_SELECTED);
 }
 
 void BKE_view_layer_selected_bases_iterator_next(BLI_Iterator *iter)
@@ -1241,9 +1289,9 @@ void BKE_view_layer_selected_bases_iterator_next(BLI_Iterator *iter)
 	object_bases_iterator_next(iter, BASE_SELECTED);
 }
 
-void BKE_view_layer_selected_bases_iterator_end(BLI_Iterator *UNUSED(iter))
+void BKE_view_layer_selected_bases_iterator_end(BLI_Iterator *iter)
 {
-	/* do nothing */
+	object_bases_iterator_end(iter);
 }
 
 /** \} */
@@ -1262,9 +1310,9 @@ void BKE_view_layer_visible_bases_iterator_next(BLI_Iterator *iter)
 	object_bases_iterator_next(iter, BASE_VISIBLE);
 }
 
-void BKE_view_layer_visible_bases_iterator_end(BLI_Iterator *UNUSED(iter))
+void BKE_view_layer_visible_bases_iterator_end(BLI_Iterator *iter)
 {
-	/* do nothing */
+	object_bases_iterator_end(iter);
 }
 
 /** \} */
@@ -1376,6 +1424,10 @@ void BKE_view_layer_bases_in_mode_iterator_begin(BLI_Iterator *iter, void *data_
 	}
 	iter->data = data_in;
 	iter->current = base;
+
+	if (object_bases_iterator_is_valid(data->v3d, base) == false) {
+		BKE_view_layer_bases_in_mode_iterator_next(iter);
+	}
 }
 
 void BKE_view_layer_bases_in_mode_iterator_next(BLI_Iterator *iter)
@@ -1397,7 +1449,8 @@ void BKE_view_layer_bases_in_mode_iterator_next(BLI_Iterator *iter)
 	while (base) {
 		if ((base->object->type == data->base_active->object->type) &&
 		    (base != data->base_active) &&
-		    (base->object->mode & data->object_mode))
+		    (base->object->mode & data->object_mode) &&
+		    object_bases_iterator_is_valid(data->v3d, base))
 		{
 			iter->current = base;
 			return;
@@ -1425,8 +1478,9 @@ void BKE_layer_eval_view_layer(
 
 	/* Visibility based on depsgraph mode. */
 	const eEvaluationMode mode = DEG_get_mode(depsgraph);
-	const int base_flag = (mode == DAG_EVAL_VIEWPORT) ? BASE_ENABLED_VIEWPORT : BASE_ENABLED_RENDER;
-
+	const int base_visible_flag = (mode == DAG_EVAL_VIEWPORT)
+	        ? BASE_ENABLED_VIEWPORT
+	        : BASE_ENABLED_RENDER;
 	/* Create array of bases, for fast index-based lookup. */
 	const int num_object_bases = BLI_listbase_count(&view_layer->object_bases);
 	MEM_SAFE_FREE(view_layer->object_bases_array);
@@ -1435,9 +1489,8 @@ void BKE_layer_eval_view_layer(
 	int base_index = 0;
 	for (Base *base = view_layer->object_bases.first; base; base = base->next) {
 		/* Compute visibility for depsgraph evaluation mode. */
-		if (base->flag & base_flag) {
+		if (base->flag & base_visible_flag) {
 			base->flag |= BASE_ENABLED | BASE_VISIBLE;
-
 			if (mode == DAG_EVAL_VIEWPORT && (base->flag & BASE_HIDDEN)) {
 				base->flag &= ~BASE_VISIBLE;
 			}
@@ -1445,24 +1498,23 @@ void BKE_layer_eval_view_layer(
 		else {
 			base->flag &= ~(BASE_ENABLED | BASE_VISIBLE | BASE_SELECTABLE);
 		}
-
 		/* If base is not selectabled, clear select. */
 		if ((base->flag & BASE_SELECTABLE) == 0) {
 			base->flag &= ~BASE_SELECTED;
 		}
-
 		view_layer->object_bases_array[base_index++] = base;
 	}
-
 	/* Flush back base flag to the original view layer for editing. */
 	if (view_layer == DEG_get_evaluated_view_layer(depsgraph)) {
 		ViewLayer *view_layer_orig = DEG_get_input_view_layer(depsgraph);
 		Base *base_orig = view_layer_orig->object_bases.first;
 		const Base *base_eval = view_layer->object_bases.first;
 		while (base_orig != NULL) {
-			base_orig->flag = base_eval->flag;
+			if (base_orig->flag & base_visible_flag) {
+				base_orig->flag = base_eval->flag;
+				base_eval = base_eval->next;
+			}
 			base_orig = base_orig->next;
-			base_eval = base_eval->next;
 		}
 	}
 }

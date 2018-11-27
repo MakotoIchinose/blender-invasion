@@ -140,7 +140,6 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 	int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
 	bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-	Brush *brush;
 
 	/* if brush doesn't exist, create a new one */
 	Paint *paint = &ts->gp_paint->paint;
@@ -148,13 +147,8 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 	if (paint->brush == NULL) {
 		/* create new brushes */
 		BKE_brush_gpencil_presets(C);
-		brush = BKE_brush_getactive_gpencil(ts);
 	}
-	else {
-		/* Use the current */
-		brush = BKE_brush_getactive_gpencil(ts);
-	}
-	tgpi->brush = brush;
+	tgpi->brush = paint->brush;
 
 	/* if layer doesn't exist, create a new one */
 	if (gpl == NULL) {
@@ -354,7 +348,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
 
 		/* convert screen-coordinates to 3D coordinates */
-		gp_stroke_convertcoords_tpoint(tgpi->scene, tgpi->ar, tgpi->v3d, tgpi->ob, tgpi->gpl, p2d, NULL, &pt->x);
+		gp_stroke_convertcoords_tpoint(tgpi->scene, tgpi->ar, tgpi->ob, tgpi->gpl, p2d, NULL, &pt->x);
 
 		pt->pressure = 1.0f;
 		pt->strength = tgpi->brush->gpencil_settings->draw_strength;
@@ -371,7 +365,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 	if (tgpi->lock_axis > GP_LOCKAXIS_VIEW) {
 		bGPDspoint *tpt = gps->points;
 		float origin[3];
-		ED_gp_get_drawing_reference(tgpi->v3d, tgpi->scene, tgpi->ob, tgpi->gpl,
+		ED_gp_get_drawing_reference(tgpi->scene, tgpi->ob, tgpi->gpl,
 			ts->gpencil_v3d_align, origin);
 
 		for (int i = 0; i < gps->totpoints; i++, tpt++) {
@@ -393,6 +387,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 	/* free temp data */
 	MEM_SAFE_FREE(points2D);
 
+	DEG_id_tag_update(&gpd->id, DEG_TAG_COPY_ON_WRITE);
 	DEG_id_tag_update(&gpd->id, OB_RECALC_OB | OB_RECALC_DATA);
 	WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, NULL);
 }
@@ -568,6 +563,7 @@ static void gpencil_primitive_interaction_end(bContext *C, wmOperator *op, wmWin
 	if (gps) {
 		gps->thickness = tgpi->brush->size;
 		gps->flag |= GP_STROKE_RECALC_CACHES;
+		gps->tot_triangles = 0;
 	}
 
 	/* transfer stroke from temporary buffer to the actual frame */
@@ -586,6 +582,9 @@ static void gpencil_primitive_interaction_end(bContext *C, wmOperator *op, wmWin
 
 		}
 	}
+
+	DEG_id_tag_update(&tgpi->gpd->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&tgpi->gpd->id, OB_RECALC_OB | OB_RECALC_DATA);
 
 	/* clean up temp data */
 	gpencil_primitive_exit(C, op);
@@ -724,10 +723,10 @@ static void gpencil_primitive_cancel(bContext *C, wmOperator *op)
 void GPENCIL_OT_primitive(wmOperatorType *ot)
 {
 	static EnumPropertyItem primitive_type[] = {
-		{ GP_STROKE_BOX, "BOX", 0, "Box", "" },
-		{ GP_STROKE_LINE, "LINE", 0, "Line", "" },
-		{ GP_STROKE_CIRCLE, "CIRCLE", 0, "Circle", "" },
-		{ 0, NULL, 0, NULL, NULL }
+		{GP_STROKE_BOX, "BOX", 0, "Box", ""},
+		{GP_STROKE_LINE, "LINE", 0, "Line", ""},
+		{GP_STROKE_CIRCLE, "CIRCLE", 0, "Circle", ""},
+		{0, NULL, 0, NULL, NULL}
 	};
 
 	/* identifiers */

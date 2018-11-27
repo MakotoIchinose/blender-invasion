@@ -33,8 +33,7 @@ class USERPREF_HT_header(Header):
     def draw(self, context):
         layout = self.layout
 
-        # No need to show type selector.
-        # layout.template_header()
+        layout.template_header()
 
         userpref = context.user_preferences
 
@@ -59,10 +58,10 @@ class USERPREF_HT_header(Header):
         layout.operator("wm.save_userpref")
 
 
-class USERPREF_PT_tabs(Panel):
+class USERPREF_PT_navigation(Panel):
     bl_label = ""
     bl_space_type = 'USER_PREFERENCES'
-    bl_region_type = 'WINDOW'
+    bl_region_type = 'NAVIGATION_BAR'
     bl_options = {'HIDE_HEADER'}
 
     def draw(self, context):
@@ -70,26 +69,11 @@ class USERPREF_PT_tabs(Panel):
 
         userpref = context.user_preferences
 
-        layout.row().prop(userpref, "active_section", expand=True)
+        col = layout.column()
 
-
-class USERPREF_MT_interaction_presets(Menu):
-    bl_label = "Presets"
-    preset_subdir = "interaction"
-    preset_operator = "script.execute_preset"
-    draw = Menu.draw_preset
-
-
-class USERPREF_MT_appconfigs(Menu):
-    bl_label = "AppPresets"
-    preset_subdir = "keyconfig"
-    preset_operator = "wm.appconfig_activate"
-
-    def draw(self, context):
-        self.layout.operator("wm.appconfig_default", text="Blender (default)")
-
-        # now draw the presets
-        Menu.draw_preset(self, context)
+        col.scale_x = 1.3
+        col.scale_y = 1.3
+        col.prop(userpref, "active_section", expand=True)
 
 
 class USERPREF_PT_interface(Panel):
@@ -350,16 +334,16 @@ class USERPREF_PT_edit(Panel):
         col.prop(edit, "use_duplicate_particle", text="Particle")
 
 
-class USERPREF_PT_system(Panel):
+class USERPREF_PT_system_general(Panel):
     bl_space_type = 'USER_PREFERENCES'
-    bl_label = "System"
+    bl_label = "System General"
     bl_region_type = 'WINDOW'
     bl_options = {'HIDE_HEADER'}
 
     @classmethod
     def poll(cls, context):
         userpref = context.user_preferences
-        return (userpref.active_section == 'SYSTEM')
+        return (userpref.active_section == 'SYSTEM_GENERAL')
 
     def draw(self, context):
         import sys
@@ -399,9 +383,10 @@ class USERPREF_PT_system(Panel):
                 addon.preferences.draw_impl(col, context)
             del addon
 
-        if hasattr(system, "opensubdiv_compute_type"):
-            col.label(text="OpenSubdiv compute:")
-            col.row().prop(system, "opensubdiv_compute_type", text="")
+        # NOTE: Disabled for until GPU side of OpenSubdiv is brought back.
+        # if hasattr(system, "opensubdiv_compute_type"):
+        #     col.label(text="OpenSubdiv compute:")
+        #     col.row().prop(system, "opensubdiv_compute_type", text="")
 
         # 2. Column
         column = split.column()
@@ -483,14 +468,15 @@ class USERPREF_PT_system(Panel):
 
         if bpy.app.build_options.international:
             column.prop(system, "use_international_fonts")
-            if system.use_international_fonts:
-                column.prop(system, "language")
-                row = column.row()
-                row.label(text="Translate:", text_ctxt=i18n_contexts.id_windowmanager)
-                row = column.row(align=True)
-                row.prop(system, "use_translate_interface", text="Interface", toggle=True)
-                row.prop(system, "use_translate_tooltips", text="Tooltips", toggle=True)
-                row.prop(system, "use_translate_new_dataname", text="New Data", toggle=True)
+            sub_col = column.column()
+            sub_col.active = system.use_international_fonts
+            sub_col.prop(system, "language")
+            row = sub_col.row()
+            row.label(text="Translate:", text_ctxt=i18n_contexts.id_windowmanager)
+            row = sub_col.row(align=True)
+            row.prop(system, "use_translate_tooltips", text="Tooltips", toggle=True)
+            row.prop(system, "use_translate_interface", text="Interface", toggle=True)
+            row.prop(system, "use_translate_new_dataname", text="New Data", toggle=True)
 
 
 class USERPREF_MT_interface_theme_presets(Menu):
@@ -898,7 +884,7 @@ class USERPREF_PT_file(Panel):
     @classmethod
     def poll(cls, context):
         userpref = context.user_preferences
-        return (userpref.active_section == 'FILES')
+        return (userpref.active_section == 'SYSTEM_FILES')
 
     def draw(self, context):
         layout = self.layout
@@ -1074,30 +1060,15 @@ class USERPREF_PT_input(Panel):
         import sys
 
         # General settings
-        row = layout.row()
-        col = row.column()
-
-        sub = col.column()
-        sub.label(text="Presets:")
-        subrow = sub.row(align=True)
-
-        subrow.menu("USERPREF_MT_interaction_presets", text=bpy.types.USERPREF_MT_interaction_presets.bl_label)
-        subrow.operator("wm.interaction_preset_add", text="", icon='ADD')
-        subrow.operator("wm.interaction_preset_add", text="", icon='REMOVE').remove_active = True
-        sub.separator()
+        sub = layout.column()
 
         sub.label(text="Mouse:")
-        sub1 = sub.column()
-        sub1.active = (inputs.select_mouse == 'RIGHT')
-        sub1.prop(inputs, "use_mouse_emulate_3_button")
+        sub.prop(inputs, "use_mouse_emulate_3_button")
         sub.prop(inputs, "use_mouse_continuous")
         sub.prop(inputs, "drag_threshold")
         sub.prop(inputs, "tweak_threshold")
 
-        sub.label(text="Select With:")
-        sub.row().prop(inputs, "select_mouse", expand=True)
-
-        sub = col.column()
+        sub = layout.column()
         sub.label(text="Double Click:")
         sub.prop(inputs, "mouse_double_click_time", text="Speed")
 
@@ -1120,18 +1091,18 @@ class USERPREF_PT_input(Panel):
 
         #sub.prop(inputs, "use_mouse_mmb_paste")
 
-        # col.separator()
+        # layout.separator()
 
-        sub = col.column()
+        sub = layout.column()
         sub.prop(inputs, "invert_zoom_wheel", text="Invert Wheel Zoom Direction")
         #sub.prop(view, "wheel_scroll_lines", text="Scroll Lines")
 
         if sys.platform == "darwin":
-            sub = col.column()
+            sub = layout.column()
             sub.prop(inputs, "use_trackpad_natural", text="Natural Trackpad Direction")
 
-        col.separator()
-        sub = col.column()
+        layout.separator()
+        sub = layout.column()
         sub.label(text="View Navigation:")
         sub.row().prop(inputs, "navigation_mode", expand=True)
 
@@ -1143,36 +1114,40 @@ class USERPREF_PT_input(Panel):
         sub.prop(walk, "mouse_speed")
         sub.prop(walk, "teleport_time")
 
-        sub = col.column(align=True)
+        sub = layout.column(align=True)
         sub.prop(walk, "walk_speed")
         sub.prop(walk, "walk_speed_factor")
 
         sub.separator()
         sub.prop(walk, "use_gravity")
-        sub = col.column(align=True)
+        sub = layout.column(align=True)
         sub.active = walk.use_gravity
         sub.prop(walk, "view_height")
         sub.prop(walk, "jump_height")
 
+        sub.separator()
+        sub = layout.column()
+        sub.label(text="Tablet Pressure:")
+        sub.prop(inputs, "pressure_threshold_max")
+        sub.prop(inputs, "pressure_softness")
+
         if inputs.use_ndof:
-            col.separator()
-            col.label(text="NDOF Device:")
-            sub = col.column(align=True)
+            layout.separator()
+            layout.label(text="NDOF Device:")
+            sub = layout.column(align=True)
             sub.prop(inputs, "ndof_sensitivity", text="Pan Sensitivity")
             sub.prop(inputs, "ndof_orbit_sensitivity", text="Orbit Sensitivity")
             sub.prop(inputs, "ndof_deadzone", text="Deadzone")
 
             sub.separator()
-            col.label(text="Navigation Style:")
-            sub = col.column(align=True)
+            layout.label(text="Navigation Style:")
+            sub = layout.column(align=True)
             sub.row().prop(inputs, "ndof_view_navigate_method", expand=True)
 
             sub.separator()
-            col.label(text="Rotation Style:")
-            sub = col.column(align=True)
+            layout.label(text="Rotation Style:")
+            sub = layout.column(align=True)
             sub.row().prop(inputs, "ndof_view_rotate_method", expand=True)
-
-        row.separator()
 
     def draw(self, context):
         from rna_keymap_ui import draw_keymaps
@@ -1189,11 +1164,17 @@ class USERPREF_PT_input(Panel):
 
         split = layout.split(factor=0.25)
 
+        row = split.row()
+        col = row.column()
+
         # Input settings
-        self.draw_input_prefs(inputs, split)
+        self.draw_input_prefs(inputs, col)
+
+        row.separator()
 
         # Keymap Settings
-        draw_keymaps(context, split)
+        col = split.column()
+        draw_keymaps(context, col)
 
         #print("runtime", time.time() - start)
 
@@ -1233,8 +1214,8 @@ class USERPREF_PT_addons(Panel):
 
     _support_icon_mapping = {
         'OFFICIAL': 'FILE_BLEND',
-        'COMMUNITY': 'POSE_DATA',
-        'TESTING': 'MOD_EXPLODE',
+        'COMMUNITY': 'COMMUNITY',
+        'TESTING': 'EXPERIMENTAL',
     }
 
     @classmethod
@@ -1377,7 +1358,7 @@ class USERPREF_PT_addons(Panel):
 
                 row.operator(
                     "wm.addon_expand",
-                    icon='TRIA_DOWN' if info["show_expanded"] else 'TRIA_RIGHT',
+                    icon='DISCLOSURE_TRI_DOWN' if info["show_expanded"] else 'DISCLOSURE_TRI_RIGHT',
                     emboss=False,
                 ).module = module_name
 
@@ -1595,12 +1576,10 @@ class USERPREF_PT_studiolight_specular(Panel, StudioLightPanelMixin):
 
 classes = (
     USERPREF_HT_header,
-    USERPREF_PT_tabs,
-    USERPREF_MT_interaction_presets,
-    USERPREF_MT_appconfigs,
+    USERPREF_PT_navigation,
     USERPREF_PT_interface,
     USERPREF_PT_edit,
-    USERPREF_PT_system,
+    USERPREF_PT_system_general,
     USERPREF_MT_interface_theme_presets,
     USERPREF_PT_theme,
     USERPREF_PT_file,
