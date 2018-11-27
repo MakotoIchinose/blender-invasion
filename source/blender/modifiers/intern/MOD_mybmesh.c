@@ -4140,6 +4140,7 @@ static struct OpenSubdiv_Evaluator *create_osd_eval(BMesh *bm, Mesh *mesh){
 
 	sub_settings.is_simple = false; //Use catmark subdiv
 	sub_settings.fvar_linear_interpolation = SUBDIV_FVAR_LINEAR_INTERPOLATION_ALL;
+	sub_settings.vtx_boundary_interpolation = SUBDIV_VTX_BOUNDARY_EDGE_ONLY;
 
 	BKE_subdiv_converter_init_for_mesh(&converter, &sub_settings, mesh);
 

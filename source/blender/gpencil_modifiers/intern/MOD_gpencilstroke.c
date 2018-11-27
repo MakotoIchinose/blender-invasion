@@ -237,6 +237,7 @@ static void bakeModifier(
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
 			generate_geometry(md, depsgraph, ob, gpl, gpf);
+			return;
 		}
 	}
 }
