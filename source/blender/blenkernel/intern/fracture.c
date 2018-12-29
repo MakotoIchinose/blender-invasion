@@ -944,6 +944,12 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 				result->id = mi->id + j;
 				result->rigidbody->flag = mi->rigidbody->flag;
 
+				/* dont forget copying over the neighborhood info, we expose this to python so it might be useful */
+				if ((i < count) && shards && shards[i]) {
+					result->neighbor_count = shards[i]->neighbor_count;
+					result->neighbors = MEM_dupallocN(shards[i]->neighbors);
+				}
+
 				if (!BKE_rigidbody_activate_by_size_check(ob, mi))
 				{
 					result->rigidbody->flag |= RBO_FLAG_KINEMATIC;

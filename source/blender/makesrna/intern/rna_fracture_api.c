@@ -51,6 +51,14 @@
 #include "BKE_context.h"
 #include "BKE_fracture.h"
 
+static int rna_Shard_get_neighbor(Shard* s, int index)
+{
+	if (index > 0 && index < s->neighbor_count) {
+		return s->neighbors[index];
+	}
+	return -1;
+}
+
 static Shard *rna_FractureModifier_mesh_island_new(ID* id, FractureModifierData *fmd, Main *bmain, bContext* C, Object* ob)
 {
 	Object *owner = (Object*)id;
@@ -1144,7 +1152,8 @@ static void rna_MeshCon_use_spring_ang_z(PointerRNA *ptr, int value)
 static void rna_def_mesh_island(BlenderRNA *brna)
 {
 	StructRNA *srna;
-	PropertyRNA *prop;
+	PropertyRNA *prop, *parm;
+	FunctionRNA *func;
 
 	srna = RNA_def_struct(brna, "Shard", NULL);
 	RNA_def_struct_sdna(srna, "Shard");
@@ -1185,6 +1194,20 @@ static void rna_def_mesh_island(BlenderRNA *brna)
 	RNA_def_property_int_funcs(prop, NULL, "rna_MeshIsland_cluster_index_set", NULL);
 	RNA_def_property_ui_text(prop, "Cluster Index", "To which cluster this mesh island belongs.");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "neighbor_count", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "neighbor_count");
+	RNA_def_property_ui_text(prop, "Neighbor Count", "How many neighbors this shard has.");
+	//RNA_def_property_update(prop, 0, "rna_Modifier_update");
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+	//do as function, because i just have an integer array and no (stupid) struct here in dna...
+	func = RNA_def_function(srna, "neighbor", "rna_Shard_get_neighbor");
+	parm = RNA_def_int(func, "index", 0, 0, INT_MAX, "Index", "The index of the neighbor to retrieve", 0, INT_MAX);
+	RNA_def_property_flag(parm, PARM_REQUIRED);
+
+	parm = RNA_def_int(func, "neighbor", 0, -1, INT_MAX, "Neighbor", "Neighbor", -1, INT_MAX);
+	RNA_def_function_return(func, parm);
 }
 
 static void rna_def_mesh_constraint(BlenderRNA *brna)
@@ -1662,7 +1685,7 @@ static void rna_def_fracture_meshislands(BlenderRNA *brna, PropertyRNA *cprop)
 
 	func = RNA_def_function(srna, "new", "rna_FractureModifier_mesh_island_new");
 	RNA_def_function_ui_description(func, "Add mesh island to Fracture Modifier");
-    RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_CONTEXT);
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_CONTEXT);
 
 	parm = RNA_def_pointer(func, "source_object", "Object", "Object", "Source Mesh Object for this mesh island");
 	RNA_def_property_flag(parm, PARM_REQUIRED | PROP_NEVER_NULL | PARM_RNAPTR);
@@ -1671,14 +1694,14 @@ static void rna_def_fracture_meshislands(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_function_return(func, parm);
 
 	func = RNA_def_function(srna, "remove", "rna_FractureModifier_mesh_island_remove");
-    RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
 	RNA_def_function_ui_description(func, "Delete shard from fracture modifier");
 	parm = RNA_def_pointer(func, "shard", "Shard", "", "Mesh Island to remove");
 	RNA_def_property_flag(parm, PARM_REQUIRED | PROP_NEVER_NULL | PARM_RNAPTR);
 	RNA_def_property_clear_flag(parm, PROP_THICK_WRAP);
 
 	func = RNA_def_function(srna, "clear", "rna_FractureModifier_mesh_island_clear");
-    RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+	RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 	RNA_def_function_ui_description(func, "Delete all shards from fracture modifier");
 }
 
@@ -1696,7 +1719,7 @@ static void rna_def_fracture_meshconstraints(BlenderRNA *brna, PropertyRNA *cpro
 
 	func = RNA_def_function(srna, "new", "rna_FractureModifier_mesh_constraint_new");
 	RNA_def_function_ui_description(func, "Add constraint to Fracture Modifier");
-    RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+	RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 	parm = RNA_def_pointer(func, "first", "Shard", "", "First mesh island");
 	RNA_def_property_flag(parm, PARM_REQUIRED);
 	parm = RNA_def_pointer(func, "second", "Shard", "", "Second mesh island");
@@ -1708,14 +1731,14 @@ static void rna_def_fracture_meshconstraints(BlenderRNA *brna, PropertyRNA *cpro
 	RNA_def_function_return(func, parm);
 
 	func = RNA_def_function(srna, "remove", "rna_FractureModifier_mesh_constraint_remove");
-    RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
 	RNA_def_function_ui_description(func, "Delete mesh constraint from fracture modifier");
 	parm = RNA_def_pointer(func, "mesh_constraint", "MeshConstraint", "", "Mesh Constraint to remove");
 	RNA_def_property_flag(parm, PARM_REQUIRED | PROP_NEVER_NULL | PARM_RNAPTR);
-    RNA_def_property_clear_flag(parm, PROP_THICK_WRAP);
+	RNA_def_property_clear_flag(parm, PROP_THICK_WRAP);
 
 	func = RNA_def_function(srna, "clear", "rna_FractureModifier_mesh_constraint_clear");
-    RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+	RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 	RNA_def_function_ui_description(func, "Delete all mesh constraints from fracture modifier");
 }
 
