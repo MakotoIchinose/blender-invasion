@@ -32,6 +32,7 @@
  *  \author Sergey Sharybin
  */
 
+#include "../memutil/MEM_CacheLimiterC-Api.h"
 #include "BLI_utildefines.h"
 #include "BLI_ghash.h"
 
@@ -40,13 +41,53 @@
  * other movie-related areas */
 
 struct ImBuf;
-struct MovieCache;
 
 typedef void (*MovieCacheGetKeyDataFP) (void *userkey, int *framenr, int *proxy, int *render_flags);
 
 typedef void  *(*MovieCacheGetPriorityDataFP) (void *userkey);
-typedef int    (*MovieCacheGetItemPriorityFP) (void *last_userkey, void *priority_data);
-typedef void   (*MovieCachePriorityDeleterFP) (void *priority_data);
+typedef int(*MovieCacheGetItemPriorityFP) (void *last_userkey, void *priority_data);
+typedef void(*MovieCachePriorityDeleterFP) (void *priority_data);
+
+typedef struct MovieCache {
+	char name[64];
+
+	struct GHash *hash;
+	GHashHashFP hashfp;
+	GHashCmpFP cmpfp;
+	MovieCacheGetKeyDataFP getdatafp;
+
+	MovieCacheGetPriorityDataFP getprioritydatafp;
+	MovieCacheGetItemPriorityFP getitempriorityfp;
+	MovieCachePriorityDeleterFP prioritydeleterfp;
+
+	struct BLI_mempool *keys_pool;
+	struct BLI_mempool *items_pool;
+	struct BLI_mempool *userkeys_pool;
+
+	MEM_CacheLimiterC *limiter;
+
+	int keysize;
+	float expensive_min_val;
+
+	void *last_userkey;
+	struct MovieCacheKey *last_key;
+
+	int totseg, *points, proxy, render_flags;  /* for visual statistics optimization */
+	bool use_limiter_to_free;
+	int pad;
+} MovieCache;
+
+typedef struct MovieCacheKey {
+	struct MovieCache *cache_owner;
+	void *userkey;
+} MovieCacheKey;
+
+typedef struct MovieCacheItem {
+	struct MovieCache *cache_owner;
+	struct ImBuf *ibuf;
+	MEM_CacheLimiterHandleC *c_handle;
+	void *priority_data;
+} MovieCacheItem;
 
 void IMB_moviecache_init(void);
 void IMB_moviecache_destruct(void);
@@ -68,6 +109,8 @@ void IMB_moviecache_cleanup(struct MovieCache *cache,
                             void *userdata);
 
 void IMB_moviecache_get_cache_segments(struct MovieCache *cache, int proxy, int render_flags, int *totseg_r, int **points_r);
+size_t IMB_moviecache_get_mem_total(MovieCache *cache);
+size_t IMB_moviecache_get_mem_used(MovieCache *cache);
 
 struct MovieCacheIter;
 struct MovieCacheIter *IMB_moviecacheIter_new(struct MovieCache *cache);

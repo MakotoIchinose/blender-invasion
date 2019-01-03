@@ -2547,7 +2547,7 @@ static ImBuf *do_multicam(
 		return NULL;
 	}
 
-	if (BKE_sequencer_input_have_to_preprocess(context, seq, cfra)) {
+	if (BKE_sequencer_input_have_to_preprocess(context, seq)) {
 		out = IMB_dupImBuf(i);
 		IMB_freeImBuf(i);
 	}
@@ -2619,7 +2619,7 @@ static ImBuf *do_adjustment(
 
 	i = do_adjustment_impl(context, seq, cfra);
 
-	if (BKE_sequencer_input_have_to_preprocess(context, seq, cfra)) {
+	if (BKE_sequencer_input_have_to_preprocess(context, seq)) {
 		out = IMB_dupImBuf(i);
 		if (out) {
 			IMB_metadata_copy(out, i);

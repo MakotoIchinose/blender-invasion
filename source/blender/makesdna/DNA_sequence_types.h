@@ -225,6 +225,12 @@ typedef struct Editing {
 	int over_ofs, over_cfra;
 	int over_flag, proxy_storage;
 	rctf over_border;
+
+	/* Prefetching control */
+	int cache_flag;
+	float prefetch_store_ratio;
+	float prefetch_offset;
+	int pad[3];
 } Editing;
 
 /* ************* Effect Variable Structs ********* */
@@ -588,6 +594,18 @@ enum {
 	SEQUENCE_MASK_TIME_RELATIVE = 0,
 	/* Global (scene) frame number will be used to access the mask. */
 	SEQUENCE_MASK_TIME_ABSOLUTE = 1,
+};
+
+/* Editing->cache_flag */
+enum {
+	SEQ_CACHE_STORE_RAW = (1 << 0),
+	SEQ_CACHE_STORE_PREPROCESSED = (1 << 1),
+	SEQ_CACHE_STORE_COMPOSITE = (1 << 2),
+	SEQ_CACHE_STORE_FINAL_OUT = (1 << 3),
+	/* enable prefetching */
+	SEQ_CACHE_PREFETCH_ENABLE = (1 << 4),
+	/* enable cache visualization overlay in timeline UI */
+	SEQ_CACHE_MEMVIEW_ENABLE = (1 << 5),
 };
 
 #endif  /* __DNA_SEQUENCE_TYPES_H__ */
