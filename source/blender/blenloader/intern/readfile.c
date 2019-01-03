@@ -6096,6 +6096,9 @@ static void lib_link_scene(FileData *fd, Main *main)
 			/* Motion Tracking */
 			sce->clip = newlibadr_us(fd, sce->id.lib, sce->clip);
 
+			sce->seq_cache = NULL;
+			sce->pfjob = NULL;
+
 #ifdef USE_COLLECTION_COMPAT_28
 			if (sce->collection) {
 				lib_link_scene_collection(fd, sce->id.lib, sce->collection);

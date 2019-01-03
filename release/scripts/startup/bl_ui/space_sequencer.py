@@ -79,6 +79,7 @@ class SEQUENCER_HT_header(Header):
 
         st = context.space_data
         scene = context.scene
+        ed = scene.sequence_editor
 
         row = layout.row(align=True)
         row.template_header()
@@ -97,6 +98,8 @@ class SEQUENCER_HT_header(Header):
         if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
             layout.separator()
             layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="")
+            layout.prop(ed, "prefetch_enable", toggle=True)
+            layout.prop(ed, "ignore_sources", toggle=True)
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
             layout.prop(st, "display_mode", text="", icon_only=True)
@@ -1326,6 +1329,25 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                         col.prop(mod, "offset")
                         col.prop(mod, "gamma")
 
+class SEQUENCER_PT_prefetch(SequencerButtonsPanel, Panel):
+    bl_label = "Prefetching"
+    bl_category = "Prefetching"
+
+    def draw(self, context):
+        layout = self.layout
+        ed = context.scene.sequence_editor
+
+        layout.label(text = 'Prefetching control')
+        layout.prop(ed, "prefetch_enable", toggle=True)
+        layout.prop(ed, "memview_enable", toggle=True)
+        layout.separator()
+        layout.prop(ed, "store_raw", toggle=True)
+        layout.prop(ed, "store_preprocessed", toggle=True)
+        layout.prop(ed, "store_composite", toggle=True)
+        layout.prop(ed, "store_final", toggle=True)
+        layout.separator()
+        layout.prop(ed, "prefetch_store_ratio")
+        layout.prop(ed, "prefetch_offset")
 
 class SEQUENCER_PT_grease_pencil(AnnotationDataPanel, SequencerButtonsPanel_Output, Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
@@ -1391,6 +1413,7 @@ classes = (
     SEQUENCER_PT_view,
     SEQUENCER_PT_view_safe_areas,
     SEQUENCER_PT_modifiers,
+    SEQUENCER_PT_prefetch,
     SEQUENCER_PT_grease_pencil,
     SEQUENCER_PT_annotation_onion,
     SEQUENCER_PT_grease_pencil_tools,

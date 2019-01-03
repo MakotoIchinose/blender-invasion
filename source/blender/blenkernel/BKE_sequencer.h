@@ -104,7 +104,10 @@ typedef struct SeqRenderData {
 	float motion_blur_shutter;
 	bool skip_cache;
 	bool is_proxy_render;
+	bool is_prefetch_render;
 	int view_id;
+	int chanshown;
+	bool special_seq_update;
 
 	/* special case for OpenGL render */
 	struct GPUOffScreen *gpu_offscreen;
@@ -181,6 +184,21 @@ struct SeqEffectHandle {
 	                      int start_line, int total_lines, struct ImBuf *out);
 };
 
+/* This has to be in sync with DNA Editing->cache_flag */
+typedef enum {
+	SEQ_CACHE_RAW = (1 << 0), /* _Raw_ data provided by library */
+	SEQ_CACHE_PREPROCESSED = (1 << 1), /* Preprocessed image */
+	SEQ_CACHE_COMPOSITE = (1 << 2), /* Intermediate steps (alpha over etc) */
+	SEQ_CACHE_FINAL_OUT = (1 << 3), /* Result of whole strip stack rendering */
+
+	/* For lookup purposes */
+	SEQ_CACHE_ANY_TYPE =
+	SEQ_CACHE_RAW |
+	SEQ_CACHE_PREPROCESSED |
+	SEQ_CACHE_COMPOSITE |
+	SEQ_CACHE_FINAL_OUT,
+} eSeqStripElemIBuf;
+
 /* ********************* prototypes *************** */
 
 /* **********************************************************************
@@ -190,10 +208,8 @@ struct SeqEffectHandle {
  * ********************************************************************** */
 
 struct ImBuf *BKE_sequencer_give_ibuf(const SeqRenderData *context, float cfra, int chanshown);
-struct ImBuf *BKE_sequencer_give_ibuf_threaded(const SeqRenderData *context, float cfra, int chanshown);
 struct ImBuf *BKE_sequencer_give_ibuf_direct(const SeqRenderData *context, float cfra, struct Sequence *seq);
 struct ImBuf *BKE_sequencer_give_ibuf_seqbase(const SeqRenderData *context, float cfra, int chan_shown, struct ListBase *seqbasep);
-void BKE_sequencer_give_ibuf_prefetch_request(const SeqRenderData *context, float cfra, int chan_shown);
 
 /* **********************************************************************
  * sequencer.c
@@ -242,11 +258,13 @@ void BKE_sequence_calc_disp(struct Scene *scene, struct Sequence *seq);
 void BKE_sequence_reload_new_file(struct Scene *scene, struct Sequence *seq, const bool lock_range);
 int BKE_sequencer_evaluate_frame(struct Scene *scene, int cfra);
 
+int get_shown_sequences(struct ListBase *seqbasep, int cfra, int chanshown, struct Sequence **seq_arr_out);
 struct StripElem *BKE_sequencer_give_stripelem(struct Sequence *seq, int cfra);
+bool BKE_sequencer_is_cache_type_created(const struct SeqRenderData *context, struct Sequence *seq, int cfra, eSeqStripElemIBuf type);
 
 /* intern */
 void BKE_sequencer_update_changed_seq_and_deps(struct Scene *scene, struct Sequence *changed_seq, int len_change, int ibuf_change);
-bool BKE_sequencer_input_have_to_preprocess(const SeqRenderData *context, struct Sequence *seq, float cfra);
+bool BKE_sequencer_input_have_to_preprocess(const SeqRenderData *context, struct Sequence *seq);
 
 void BKE_sequencer_proxy_rebuild_context(struct Main *bmain, struct Depsgraph *depsgraph, struct Scene *scene, struct Sequence *seq, struct GSet *file_list, ListBase *queue);
 void BKE_sequencer_proxy_rebuild(struct SeqIndexBuildContext *context, short *stop, short *do_update, float *progress);
@@ -259,32 +277,70 @@ void BKE_sequencer_proxy_set(struct Sequence *seq, bool value);
  * Sequencer memory cache management functions
  * ********************************************************************** */
 
-typedef enum {
-	SEQ_STRIPELEM_IBUF,
-	SEQ_STRIPELEM_IBUF_COMP,
-	SEQ_STRIPELEM_IBUF_STARTSTILL,
-	SEQ_STRIPELEM_IBUF_ENDSTILL
-} eSeqStripElemIBuf;
+typedef struct SeqCacheKey {
+	struct MovieCache *cache_owner;
+	void *userkey;
+	struct MovieCacheKey *link_prev; /* Used for linking intermediate items to final frame */
+	struct MovieCacheKey *link_next; /* Used for linking intermediate items to final frame */
+	struct Sequence *seq;
+	SeqRenderData context;
+	float nfra;
+	float cfra;
+	float cost;
+	bool free_after_render;
+	bool is_base_frame;
+	eSeqStripElemIBuf type;
+} SeqCacheKey;
 
-void BKE_sequencer_cache_destruct(void);
-void BKE_sequencer_cache_cleanup(void);
+typedef struct PrefetchJob {
+	struct Main *bmain;
+	struct Main *bmain_cpy;
+	struct Scene *scene;
+	struct Scene *scene_cpy;
+	struct Depsgraph *depsgraph;
+	struct MovieCache *cache;
+	struct ThreadMutex *cache_mutex;
+	struct ThreadMutex *prefetch_mutex;
+	struct ListBase *threads;
 
-/* returned ImBuf is properly refed and has to be freed */
+	/* context */
+	struct SeqRenderData context;
+	struct SeqRenderData context_cpy;
+	struct ListBase *seqbasep;
+	struct ListBase *seqbasep_cpy;
+	int rectx;
+	int recty;
+	int proxy_size;
+	float cfra;
+	int chanshown;
+
+	/* control */
+	volatile bool running;
+	volatile bool stop;
+	int target;
+	int progress;
+
+} PrefetchJob;
+
+/* ImBuf refcount is increased. */
 struct ImBuf *BKE_sequencer_cache_get(const SeqRenderData *context, struct Sequence *seq, float cfra, eSeqStripElemIBuf type);
+struct Sequence *BKE_sequencer_prefetch_find_seq_in_scene(struct Sequence *seq, struct Scene *scene);
 
-/* passed ImBuf is properly refed, so ownership is *not*
- * transferred to the cache.
- * you can pass the same ImBuf multiple times to the cache without problems.
- */
+/* ImBuf refcount is decreased. */
+void BKE_sequencer_cache_put(const SeqRenderData *context, struct Sequence *seq, float cfra, eSeqStripElemIBuf type, struct ImBuf *nval, float cost);
+void BKE_sequencer_cache_create(struct Scene *scene);
+void BKE_sequencer_cache_destruct(struct Scene *scene);
+void BKE_sequencer_cache_cleanup(struct Scene *scene);
+void BKE_sequencer_cache_cleanup_sequence(struct Scene *scene, struct Sequence *seq);
+void BKE_sequencer_cache_free_temp_cache(struct Scene *scene);
+void BKE_sequencer_cache_lock(struct Scene *scene);
+void BKE_sequencer_cache_unlock(struct Scene *scene);
+void BKE_sequencer_prefetch_stop_and_wait(struct Scene *scene);
+void BKE_sequencer_prefetch_update_scene(Scene *scene);
 
-void BKE_sequencer_cache_put(const SeqRenderData *context, struct Sequence *seq, float cfra, eSeqStripElemIBuf type, struct ImBuf *nval);
+float BKE_sequencer_set_new_min_expensive_val(Scene *scene, int num_cheap_frames);
 
-void BKE_sequencer_cache_cleanup_sequence(struct Sequence *seq);
-
-struct ImBuf *BKE_sequencer_preprocessed_cache_get(const SeqRenderData *context, struct Sequence *seq, float cfra, eSeqStripElemIBuf type);
-void BKE_sequencer_preprocessed_cache_put(const SeqRenderData *context, struct Sequence *seq, float cfra, eSeqStripElemIBuf type, struct ImBuf *ibuf);
-void BKE_sequencer_preprocessed_cache_cleanup(void);
-void BKE_sequencer_preprocessed_cache_cleanup_sequence(struct Sequence *seq);
+int BKE_sequencer_cache_count_cheap_frames(struct Scene *scene, float min_cost);
 
 /* **********************************************************************
  * seqeffects.c
@@ -338,7 +394,7 @@ struct Sequence *BKE_sequence_dupli_recursive(
         const struct Scene *scene_src, struct Scene *scene_dst, struct Sequence *seq, int dupe_flag);
 int BKE_sequence_swap(struct Sequence *seq_a, struct Sequence *seq_b, const char **error_str);
 
-bool BKE_sequence_check_depend(struct Sequence *seq, struct Sequence *cur);
+bool BKE_sequence_check_depend(struct Sequence *seq, struct Sequence *cur, eSeqStripElemIBuf type);
 void BKE_sequence_invalidate_cache(struct Scene *scene, struct Sequence *seq);
 void BKE_sequence_invalidate_dependent(struct Scene *scene, struct Sequence *seq);
 void BKE_sequence_invalidate_cache_for_modifier(struct Scene *scene, struct Sequence *seq);
