@@ -298,6 +298,12 @@ bool IMB_anim_get_fps(struct anim *anim,
                       short *frs_sec, float *frs_sec_base, bool no_av_base);
 
 /**
+ * Sets parameter x to width and y to height of the given \a anim.
+ */
+void IMB_anim_get_rect(struct anim *anim, int *x, int *y);
+
+
+/**
  *
  * \attention Defined in anim_movie.c
  */

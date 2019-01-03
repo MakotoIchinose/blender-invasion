@@ -251,34 +251,52 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 	sce_dst->depsgraph_hash = NULL;
 	sce_dst->fps_info = NULL;
 
-	/* Master Collection */
-	if (sce_src->master_collection) {
-		sce_dst->master_collection = BKE_collection_copy_master(bmain, sce_src->master_collection, flag);
-	}
+	if ((flag & LIB_ID_COPY_SEQUENCER_PREFETCH) == 0) {
+		/* Master Collection */
+		if (sce_src->master_collection) {
+			sce_dst->master_collection = BKE_collection_copy_master(bmain, sce_src->master_collection, flag);
+		}
 
-	/* View Layers */
-	BLI_duplicatelist(&sce_dst->view_layers, &sce_src->view_layers);
-	for (ViewLayer *view_layer_src = sce_src->view_layers.first, *view_layer_dst = sce_dst->view_layers.first;
-	     view_layer_src;
-	     view_layer_src = view_layer_src->next, view_layer_dst = view_layer_dst->next)
-	{
-		BKE_view_layer_copy_data(sce_dst, sce_src, view_layer_dst, view_layer_src, flag_subdata);
-	}
+		if (sce_src->nodetree) {
+			/* Note: nodetree is *not* in bmain, however this specific case is handled at lower level
+			 *       (see BKE_libblock_copy_ex()). */
+			BKE_id_copy_ex(bmain, (ID *)sce_src->nodetree, (ID **)&sce_dst->nodetree, flag, false);
+			BKE_libblock_relink_ex(bmain, sce_dst->nodetree, (void *)(&sce_src->id), &sce_dst->id, false);
+		}
 
-	BLI_duplicatelist(&(sce_dst->markers), &(sce_src->markers));
-	BLI_duplicatelist(&(sce_dst->transform_spaces), &(sce_src->transform_spaces));
-	BLI_duplicatelist(&(sce_dst->r.views), &(sce_src->r.views));
-	BKE_keyingsets_copy(&(sce_dst->keyingsets), &(sce_src->keyingsets));
+		if (sce_src->rigidbody_world) {
+			sce_dst->rigidbody_world = BKE_rigidbody_world_copy(sce_src->rigidbody_world, flag_subdata);
+		}
 
-	if (sce_src->nodetree) {
-		/* Note: nodetree is *not* in bmain, however this specific case is handled at lower level
-		 *       (see BKE_libblock_copy_ex()). */
-		BKE_id_copy_ex(bmain, (ID *)sce_src->nodetree, (ID **)&sce_dst->nodetree, flag, false);
-		BKE_libblock_relink_ex(bmain, sce_dst->nodetree, (void *)(&sce_src->id), &sce_dst->id, false);
-	}
+		/* before scene copy */
+		BKE_sound_create_scene(sce_dst);
 
-	if (sce_src->rigidbody_world) {
-		sce_dst->rigidbody_world = BKE_rigidbody_world_copy(sce_src->rigidbody_world, flag_subdata);
+		sce_dst->eevee.light_cache = NULL;
+		/* TODO Copy the cache. */
+
+		/* View Layers */
+		BLI_duplicatelist(&sce_dst->view_layers, &sce_src->view_layers);
+		for (ViewLayer *view_layer_src = sce_src->view_layers.first, *view_layer_dst = sce_dst->view_layers.first;
+			view_layer_src;
+			view_layer_src = view_layer_src->next, view_layer_dst = view_layer_dst->next)
+		{
+			BKE_view_layer_copy_data(sce_dst, sce_src, view_layer_dst, view_layer_src, flag_subdata);
+		}
+
+		BLI_duplicatelist(&(sce_dst->markers), &(sce_src->markers));
+		BLI_duplicatelist(&(sce_dst->transform_spaces), &(sce_src->transform_spaces));
+		BLI_duplicatelist(&(sce_dst->r.views), &(sce_src->r.views));
+		BKE_keyingsets_copy(&(sce_dst->keyingsets), &(sce_src->keyingsets));
+
+		/* tool settings */
+		sce_dst->toolsettings = BKE_toolsettings_copy(sce_dst->toolsettings, flag_subdata);
+
+		if ((flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
+			BKE_previewimg_id_copy(&sce_dst->id, &sce_src->id);
+		}
+		else {
+			sce_dst->preview = NULL;
+		}
 	}
 
 	/* copy color management settings */
@@ -294,9 +312,6 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 
 	curvemapping_copy_data(&sce_dst->r.mblur_shutter_curve, &sce_src->r.mblur_shutter_curve);
 
-	/* tool settings */
-	sce_dst->toolsettings = BKE_toolsettings_copy(sce_dst->toolsettings, flag_subdata);
-
 	/* make a private copy of the avicodecdata */
 	if (sce_src->r.avicodecdata) {
 		sce_dst->r.avicodecdata = MEM_dupallocN(sce_src->r.avicodecdata);
@@ -308,9 +323,6 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 		sce_dst->r.ffcodecdata.properties = IDP_CopyProperty_ex(sce_src->r.ffcodecdata.properties, flag_subdata);
 	}
 
-	/* before scene copy */
-	BKE_sound_create_scene(sce_dst);
-
 	/* Copy sequencer, this is local data! */
 	if (sce_src->ed) {
 		sce_dst->ed = MEM_callocN(sizeof(*sce_dst->ed), __func__);
@@ -319,15 +331,14 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 		            sce_src, sce_dst, &sce_dst->ed->seqbase, &sce_src->ed->seqbase, SEQ_DUPE_ALL, flag_subdata);
 	}
 
-	if ((flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
-		BKE_previewimg_id_copy(&sce_dst->id, &sce_src->id);
+	if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
+		sce_dst->seq_cache = sce_src->seq_cache;
+		sce_dst->pfjob = sce_src->pfjob;
 	}
 	else {
-		sce_dst->preview = NULL;
+		sce_dst->seq_cache = NULL;
+		sce_dst->pfjob = NULL;
 	}
-
-	sce_dst->eevee.light_cache = NULL;
-	/* TODO Copy the cache. */
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
