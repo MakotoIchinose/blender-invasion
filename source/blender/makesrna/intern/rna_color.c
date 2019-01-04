@@ -554,7 +554,7 @@ static const EnumPropertyItem *rna_ColorManagedColorspaceSettings_colorspace_ite
 	return items;
 }
 
-static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	ID *id = ptr->id.data;
 
@@ -574,8 +574,7 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene 
 		BKE_movieclip_reload(bmain, clip);
 
 		/* all sequencers for now, we don't know which scenes are using this clip as a strip */
-		BKE_sequencer_cache_cleanup();
-		BKE_sequencer_preprocessed_cache_cleanup();
+		BKE_sequencer_cache_cleanup(scene);
 
 		WM_main_add_notifier(NC_MOVIECLIP | ND_DISPLAY, &clip->id);
 		WM_main_add_notifier(NC_MOVIECLIP | NA_EDITED, &clip->id);
@@ -608,7 +607,6 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene 
 				}
 
 				BKE_sequence_invalidate_cache(scene, seq);
-				BKE_sequencer_preprocessed_cache_cleanup_sequence(seq);
 			}
 			else {
 				SEQ_BEGIN(scene->ed, seq);
@@ -617,8 +615,7 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene 
 				}
 				SEQ_END;
 
-				BKE_sequencer_cache_cleanup();
-				BKE_sequencer_preprocessed_cache_cleanup();
+				BKE_sequencer_cache_cleanup(scene);
 			}
 
 			WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);

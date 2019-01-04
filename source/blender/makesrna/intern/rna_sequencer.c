@@ -145,6 +145,61 @@ static void rna_SequenceEditor_update_cache(Main *UNUSED(bmain), Scene *scene, P
 	BKE_sequencer_free_imbuf(scene, &ed->seqbase, false);
 }
 
+static void set_ed_cache_flag(int *file, const int bit, bool value)
+{
+	if ((*file & bit) && !value) {
+		*file &= ~bit;
+	}
+	if ((*file & bit) == 0 && value) {
+		*file |= bit;
+	}
+}
+
+static void rna_SequenceEditor_store_raw_set(PointerRNA *ptr, bool value)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	Editing *ed = BKE_sequencer_editing_get(scene, false);
+	if (ed) {
+		set_ed_cache_flag(&ed->cache_flag, SEQ_CACHE_STORE_RAW, value);
+	}
+	BKE_sequencer_prefetch_stop_and_wait(scene);
+}
+
+static void rna_SequenceEditor_store_preprocessed_set(PointerRNA *ptr, bool value)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	Editing *ed = BKE_sequencer_editing_get(scene, false);
+
+	BKE_sequencer_prefetch_stop_and_wait(scene);
+
+	if (ed) {
+		set_ed_cache_flag(&ed->cache_flag, SEQ_CACHE_STORE_PREPROCESSED, value);
+	}
+}
+
+static void rna_SequenceEditor_store_composite_set(PointerRNA *ptr, bool value)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	Editing *ed = BKE_sequencer_editing_get(scene, false);
+
+	BKE_sequencer_prefetch_stop_and_wait(scene);
+
+	if (ed) {
+		set_ed_cache_flag(&ed->cache_flag, SEQ_CACHE_STORE_COMPOSITE, value);
+	}
+}
+
+static void rna_SequenceEditor_store_final_set(PointerRNA *ptr, bool value)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	Editing *ed = BKE_sequencer_editing_get(scene, false);
+
+	BKE_sequencer_prefetch_stop_and_wait(scene);
+
+	if (ed) {
+		set_ed_cache_flag(&ed->cache_flag, SEQ_CACHE_STORE_FINAL_OUT, value);
+	}
+}
 
 static void rna_SequenceEditor_sequences_all_next(CollectionPropertyIterator *iter)
 {
@@ -1720,6 +1775,50 @@ static void rna_def_editor(BlenderRNA *brna)
 	RNA_def_property_string_sdna(prop, NULL, "proxy_dir");
 	RNA_def_property_ui_text(prop, "Proxy Directory", "");
 	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
+
+	/* cache flags */
+
+	prop = RNA_def_property(srna, "prefetch_enable", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_PREFETCH_ENABLE);
+	RNA_def_property_ui_text(prop, "prefetch_enable", "prefetch_enable");
+	RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+	prop = RNA_def_property(srna, "memview_enable", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_MEMVIEW_ENABLE);
+	RNA_def_property_ui_text(prop, "memview_enable", "memview_enable");
+	RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+	prop = RNA_def_property(srna, "store_raw", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_RAW);
+	RNA_def_property_ui_text(prop, "store_raw", "store_raw");
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_SequenceEditor_store_raw_set");
+
+	prop = RNA_def_property(srna, "store_preprocessed", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_PREPROCESSED);
+	RNA_def_property_ui_text(prop, "store_preprocessed", "store_preprocessed");
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_SequenceEditor_store_preprocessed_set");
+
+	prop = RNA_def_property(srna, "store_composite", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_COMPOSITE);
+	RNA_def_property_ui_text(prop, "store_composite", "store_composite");
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_SequenceEditor_store_composite_set");
+
+	prop = RNA_def_property(srna, "store_final", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_FINAL_OUT);
+	RNA_def_property_ui_text(prop, "store_final", "store_final");
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_SequenceEditor_store_final_set");
+
+	prop = RNA_def_property(srna, "prefetch_store_ratio", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 3);
+	RNA_def_property_float_sdna(prop, NULL, "prefetch_store_ratio");
+	RNA_def_property_ui_text(prop, "prefetch_store_ratio", "prefetch_store_ratio");
+
+	prop = RNA_def_property(srna, "prefetch_offset", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 3);
+	RNA_def_property_float_sdna(prop, NULL, "prefetch_offset");
+	RNA_def_property_ui_text(prop, "prefetch_offset", "prefetch_offset");
 }
 
 static void rna_def_filter_video(StructRNA *srna)

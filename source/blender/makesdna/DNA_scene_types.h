@@ -1626,6 +1626,8 @@ typedef struct Scene {
 
 	struct SceneDisplay display;
 	struct SceneEEVEE eevee;
+	struct MovieCache *seq_cache;
+	struct PrefetchJob *pfjob;
 } Scene;
 
 /* **************** RENDERDATA ********************* */
