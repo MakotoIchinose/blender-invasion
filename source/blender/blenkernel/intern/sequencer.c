@@ -4098,7 +4098,7 @@ static void BKE_sequencer_prefetch_set_target(PrefetchJob *pfjob)
 	Editing *ed = scene->ed;
 
 	int expensive_frames = BKE_sequencer_cache_count_cheap_frames(scene, cache->expensive_min_val);
-	pfjob->target = BKE_sequencer_prefetch_get_range(pfjob, pfjob->seqbasep);
+	pfjob->target = BKE_sequencer_prefetch_get_range(pfjob);
 	float prefetch_store_ratio = 1;
 
 	if (expensive_frames > pfjob->target) {
