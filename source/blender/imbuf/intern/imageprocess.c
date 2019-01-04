@@ -43,11 +43,16 @@
 #include "BLI_utildefines.h"
 #include "BLI_task.h"
 #include "BLI_math.h"
-
-#include "BKE_sequencer.h"
+#include "BLI_listbase.h"
 
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
+#include "IMB_moviecache.h"
+
+#include "DNA_scene_types.h"
+
+#include "BKE_sequencer.h"
+
 #include <math.h>
 
 /* Only this one is used liberally here, and in imbuf */
