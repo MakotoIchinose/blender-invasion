@@ -99,7 +99,6 @@ class SEQUENCER_HT_header(Header):
             layout.separator()
             layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="")
             layout.prop(ed, "prefetch_enable", toggle=True)
-            layout.prop(ed, "ignore_sources", toggle=True)
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
             layout.prop(st, "display_mode", text="", icon_only=True)
