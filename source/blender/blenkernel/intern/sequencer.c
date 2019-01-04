@@ -2669,11 +2669,8 @@ static ImBuf *seq_render_effect_execute_threaded(struct SeqEffectHandle *sh, con
 	RenderEffectInitData init_data;
 	ImBuf *out = sh->init_execution(context, ibuf1, ibuf2, ibuf3);
 
-	int threads_max = BLI_system_thread_count();
-
 	/* Using "too many" threads, when prefetching will nagatively impact performance, defying the purpose of prefetch.
 	 * 1 free thread seems to be OK.
-	 *
 	 */
 
 	init_data.sh = sh;
@@ -2686,17 +2683,6 @@ static ImBuf *seq_render_effect_execute_threaded(struct SeqEffectHandle *sh, con
 	init_data.ibuf2 = ibuf2;
 	init_data.ibuf3 = ibuf3;
 	init_data.out = out;
-	init_data.lines_per_task = 64;
-
-	if (context->is_prefetch_render) {
-		if (threads_max > 1) {
-			init_data.lines_per_task = out->y / (threads_max - 1);
-		}
-		else {
-			init_data.lines_per_task = out->y;
-		}
-	}
-
 
 	IMB_processor_apply_threaded(out->y, sizeof(RenderEffectThread), &init_data,
 	                             render_effect_execute_init_handle, render_effect_execute_do_thread);

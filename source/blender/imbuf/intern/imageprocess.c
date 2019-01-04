@@ -44,6 +44,8 @@
 #include "BLI_task.h"
 #include "BLI_math.h"
 
+#include "BKE_sequencer.h"
+
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
 #include <math.h>
@@ -354,9 +356,16 @@ void IMB_processor_apply_threaded(int buffer_lines, int handle_size, void *init_
 	RenderEffectInitData *init_data = (RenderEffectInitData *) init_customdata;
 	void *handles;
 	int lines_per_task = 64;
-	
-	if (init_data->lines_per_task > 0)
-		lines_per_task = init_data->lines_per_task;
+	int threads_max = BLI_system_thread_count();
+
+	if (init_data->context->is_prefetch_render && init_data->out->y > (threads_max - 1)) {
+		if (threads_max > 1) {
+			lines_per_task = init_data->out->y / (threads_max - 1);
+		}
+		else {
+			lines_per_task = init_data->out->y;
+		}
+	}
 
 	int total_tasks = (buffer_lines + lines_per_task - 1) / lines_per_task;
 	int i, start_line;
