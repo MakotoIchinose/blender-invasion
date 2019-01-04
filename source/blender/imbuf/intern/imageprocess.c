@@ -353,7 +353,11 @@ void IMB_processor_apply_threaded(int buffer_lines, int handle_size, void *init_
 
 	RenderEffectInitData *init_data = (RenderEffectInitData *) init_customdata;
 	void *handles;
-	int lines_per_task = init_data->lines_per_task;
+	int lines_per_task = 64;
+	
+	if (init_data->lines_per_task > 0)
+		lines_per_task = init_data->lines_per_task;
+
 	int total_tasks = (buffer_lines + lines_per_task - 1) / lines_per_task;
 	int i, start_line;
 
