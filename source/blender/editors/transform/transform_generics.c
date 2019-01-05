@@ -1080,7 +1080,7 @@ static void recalcData_gpencil_strokes(TransInfo *t)
 	for (int i = 0; i < tc->data_len; i++, td++) {
 		bGPDstroke *gps = td->extra;
 		if (gps != NULL) {
-			gps->flag |= GP_STROKE_RECALC_CACHES;
+			gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 		}
 	}
 }
@@ -1292,7 +1292,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
 	t->flag = 0;
 
-	t->obedit_type = (object_mode == OB_MODE_EDIT) ? object_type : -1;
+	t->obedit_type = ((object_mode == OB_MODE_EDIT) || (object_mode == OB_MODE_EDIT_GPENCIL)) ? object_type : -1;
 
 	/* Many kinds of transform only use a single handle. */
 	if (t->data_container == NULL) {
@@ -1374,7 +1374,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 		}
 
 		if (prop_id && (prop = RNA_struct_find_property(op->ptr, prop_id))) {
-			SET_FLAG_FROM_TEST(t->flag, !RNA_property_boolean_get(op->ptr, prop), T_ALT_TRANSFORM);
+			SET_FLAG_FROM_TEST(t->flag, RNA_property_boolean_get(op->ptr, prop), T_ALT_TRANSFORM);
 		}
 	}
 
@@ -1401,20 +1401,21 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			t->around = V3D_AROUND_CURSOR;
 		}
 
-		t->orientation.user = t->scene->orientation_type;
-		t->orientation.custom = BKE_scene_transform_orientation_find(
-		        t->scene, t->scene->orientation_index_custom);
+		TransformOrientationSlot *orient_slot = &t->scene->orientation_slots[SCE_ORIENT_DEFAULT];
+		t->orientation.user = orient_slot->type;
+		t->orientation.custom = BKE_scene_transform_orientation_find(t->scene, orient_slot->index_custom);
 
 		t->orientation.index = 0;
 		ARRAY_SET_ITEMS(
 		        t->orientation.types,
-		        NULL,
-		        &t->orientation.user);
+		        &t->orientation.user,
+		        NULL);
 
 		/* Make second orientation local if both are global. */
 		if (t->orientation.user == V3D_MANIP_GLOBAL) {
 			t->orientation.user_alt = V3D_MANIP_LOCAL;
-			t->orientation.types[1] = &t->orientation.user_alt;
+			t->orientation.types[0] = &t->orientation.user_alt;
+			SWAP(short *, t->orientation.types[0], t->orientation.types[1]);
 		}
 
 		/* exceptional case */
@@ -2002,12 +2003,13 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 {
 	TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
 
-	bool ok = false;
-
-	if (tc->obedit) {
+	if (t->spacetype != SPACE_VIEW3D) {
+		return false;
+	}
+	else if (tc->obedit) {
 		if (ED_object_calc_active_center_for_editmode(tc->obedit, select_only, r_center)) {
 			mul_m4_v3(tc->obedit->obmat, r_center);
-			ok = true;
+			return true;
 		}
 	}
 	else if (t->flag & T_POSE) {
@@ -2015,7 +2017,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 		Object *ob = OBACT(view_layer) ;
 		if (ED_object_calc_active_center_for_posemode(ob, select_only, r_center)) {
 			mul_m4_v3(ob->obmat, r_center);
-			ok = true;
+			return true;
 		}
 	}
 	else if (t->options & CTX_PAINT_CURVE) {
@@ -2024,7 +2026,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 		PaintCurve *pc = br->paint_curve;
 		copy_v3_v3(r_center, pc->points[pc->add_index - 1].bez.vec[1]);
 		r_center[2] = 0.0f;
-		ok = true;
+		return true;
 	}
 	else {
 		/* object mode */
@@ -2033,11 +2035,11 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
 		Base *base = BASACT(view_layer);
 		if (ob && ((!select_only) || ((base->flag & BASE_SELECTED) != 0))) {
 			copy_v3_v3(r_center, ob->obmat[3]);
-			ok = true;
+			return true;
 		}
 	}
 
-	return ok;
+	return false;
 }
 
 static void calculateCenter_FromAround(TransInfo *t, int around, float r_center[3])

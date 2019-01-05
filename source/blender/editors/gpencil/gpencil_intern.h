@@ -157,11 +157,14 @@ typedef struct tGPDprimitive {
 	int type;                         /* type of primitive */
 	int orign_type;                   /* original type of primitive */
 	bool curve;                       /* type of primitive is a curve */
+	int brush_size;                   /* brush size */
+	float brush_strength;             /* brush strength */
 	short flip;                       /* flip option */
 	tGPspoint *points;                /* array of data-points for stroke */
 	int point_count;                  /* number of edges allocated */
 	int tot_stored_edges;             /* stored number of polygon edges */
 	int tot_edges;                    /* number of polygon edges */
+	float move[2];                    /* move distance */
 	float origin[2];                  /* initial box corner */
 	float start[2];                   /* first box corner */
 	float end[2];                     /* last box corner */
@@ -192,6 +195,8 @@ void ED_gp_draw_fill(struct tGPDdraw *tgpw);
 /* gpencil_utils.c */
 
 typedef struct GP_SpaceConversion {
+	struct Scene *scene;
+	struct Object *ob;
 	struct bGPdata *gpd;
 	struct bGPDlayer *gpl;
 
@@ -332,7 +337,6 @@ void GPENCIL_OT_layer_change(struct wmOperatorType *ot);
 void GPENCIL_OT_snap_to_grid(struct wmOperatorType *ot);
 void GPENCIL_OT_snap_to_cursor(struct wmOperatorType *ot);
 void GPENCIL_OT_snap_cursor_to_selected(struct wmOperatorType *ot);
-void GPENCIL_OT_snap_cursor_to_center(struct wmOperatorType *ot);
 
 void GPENCIL_OT_reproject(struct wmOperatorType *ot);
 
@@ -383,6 +387,10 @@ enum {
 	GP_STROKE_CURVE = 4
 };
 
+enum {
+	GP_MERGE_STROKE = -1,
+	GP_MERGE_POINT = 1
+};
 
 void GPENCIL_OT_stroke_arrange(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_change_color(struct wmOperatorType *ot);
@@ -397,6 +405,7 @@ void GPENCIL_OT_stroke_simplify_fixed(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_separate(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_split(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_smooth(struct wmOperatorType *ot);
+void GPENCIL_OT_stroke_merge(struct wmOperatorType *ot);
 
 void GPENCIL_OT_brush_presets_create(struct wmOperatorType *ot);
 
@@ -503,7 +512,7 @@ struct GP_EditableStrokes_Iter {
  */
 #define GP_EDITABLE_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)                           \
 {                                                                                       \
-	struct GP_EditableStrokes_Iter gpstroke_iter = {0};                                 \
+	struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}};                             \
 	Depsgraph *depsgraph_ = CTX_data_depsgraph(C);                                      \
 	Object *obact_ = CTX_data_active_object(C);                                         \
 	bGPdata *gpd_ = CTX_data_gpencil_data(C);                                           \

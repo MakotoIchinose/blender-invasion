@@ -927,7 +927,7 @@ static void bind_ubo(GPUUniformBuffer *ubo, char bind_type)
 				return;
 			}
 		}
-		/* printf so user can report bad behaviour */
+		/* printf so user can report bad behavior */
 		printf("Not enough ubo slots! This should not happen!\n");
 		/* This is not depending on user input.
 		 * It is our responsibility to make sure there is enough slots. */
@@ -1146,7 +1146,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 			GPU_select_load_id(select_id[_start]);                   \
 		}
 
-# define GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(_start, _count) \
+#  define GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(_start, _count) \
 		_start += _count;                                    \
 	}
 

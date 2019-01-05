@@ -4650,25 +4650,6 @@ int PE_minmax(Scene *scene, ViewLayer *view_layer, float min[3], float max[3])
 
 /************************ particle edit toggle operator ************************/
 
-static struct ParticleSystem *psys_eval_get(
-        Depsgraph *depsgraph,
-        Object *object,
-        ParticleSystem *psys)
-{
-	Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
-	if (object_eval == object) {
-		return psys;
-	}
-	ParticleSystem *psys_eval = object_eval->particlesystem.first;
-	while (psys_eval != NULL) {
-		if (psys_eval->orig_psys == psys) {
-			return psys_eval;
-		}
-		psys_eval = psys_eval->next;
-	}
-	return psys_eval;
-}
-
 /* initialize needed data for bake edit */
 void PE_create_particle_edit(
         Depsgraph *depsgraph, Scene *scene, Object *ob, PointCache *cache, ParticleSystem *psys)
@@ -4810,6 +4791,21 @@ static bool particle_edit_toggle_poll(bContext *C)
 	        modifiers_findByType(ob, eModifierType_Softbody));
 }
 
+static void free_all_psys_edit(Object *object)
+{
+	for (ParticleSystem *psys = object->particlesystem.first;
+	     psys != NULL;
+	     psys = psys->next)
+	{
+		if (psys->edit != NULL) {
+			BLI_assert(psys->free_edit != NULL);
+			psys->free_edit(psys->edit);
+			psys->free_edit = NULL;
+			psys->edit = NULL;
+		}
+	}
+}
+
 static int particle_edit_toggle_exec(bContext *C, wmOperator *op)
 {
 	struct wmMsgBus *mbus = CTX_wm_message_bus(C);
@@ -4851,6 +4847,7 @@ static int particle_edit_toggle_exec(bContext *C, wmOperator *op)
 	else {
 		ob->mode &= ~mode_flag;
 		toggle_particle_cursor(C, 0);
+		free_all_psys_edit(ob);
 		WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, NULL);
 	}
 

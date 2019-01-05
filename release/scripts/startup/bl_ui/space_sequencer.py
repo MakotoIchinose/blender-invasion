@@ -36,10 +36,7 @@ def act_strip(context):
 
 
 def sel_sequences(context):
-    try:
-        return len(context.selected_sequences) if context.selected_sequences else 0
-    except AttributeError:
-        return 0
+    return len(getattr(context, "selected_sequences", ()))
 
 
 def draw_color_balance(layout, color_balance):
@@ -99,7 +96,7 @@ class SEQUENCER_HT_header(Header):
 
         if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
             layout.separator()
-            layout.operator("sequencer.refresh_all", icon="FILE_REFRESH", text="")
+            layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="")
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
             layout.prop(st, "display_mode", text="", icon_only=True)
@@ -136,10 +133,7 @@ class SEQUENCER_MT_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context)
-
-    @staticmethod
-    def draw_menus(layout, context):
+        layout = self.layout
         st = context.space_data
 
         layout.menu("SEQUENCER_MT_view")
@@ -321,29 +315,35 @@ class SEQUENCER_MT_add(Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        if len(bpy.data.scenes) > 10:
+        bpy_data_scenes_len = len(bpy.data.scenes)
+        if bpy_data_scenes_len > 10:
             layout.operator_context = 'INVOKE_DEFAULT'
             layout.operator("sequencer.scene_strip_add", text="Scene...", icon='SCENE_DATA')
-        elif len(bpy.data.scenes) > 1:
+        elif bpy_data_scenes_len > 1:
             layout.operator_menu_enum("sequencer.scene_strip_add", "scene", text="Scene", icon='SCENE_DATA')
         else:
             layout.menu("SEQUENCER_MT_add_empty", text="Scene", icon='SCENE_DATA')
+        del bpy_data_scenes_len
 
-        if len(bpy.data.movieclips) > 10:
+        bpy_data_movieclips_len = len(bpy.data.movieclips)
+        if bpy_data_movieclips_len > 10:
             layout.operator_context = 'INVOKE_DEFAULT'
-            layout.operator("sequencer.movieclip_strip_add", text="Clip...", icon='CLIP')
-        elif len(bpy.data.movieclips) > 1:
-            layout.operator_menu_enum("sequencer.movieclip_strip_add", "clip", text="Clip", icon='CLIP')
+            layout.operator("sequencer.movieclip_strip_add", text="Clip...", icon='TRACKER')
+        elif bpy_data_movieclips_len > 0:
+            layout.operator_menu_enum("sequencer.movieclip_strip_add", "clip", text="Clip", icon='TRACKER')
         else:
-            layout.menu("SEQUENCER_MT_add_empty", text="Clip", icon='CLIP')
+            layout.menu("SEQUENCER_MT_add_empty", text="Clip", icon='TRACKER')
+        del bpy_data_movieclips_len
 
-        if len(bpy.data.masks) > 10:
+        bpy_data_masks_len = len(bpy.data.masks)
+        if bpy_data_masks_len > 10:
             layout.operator_context = 'INVOKE_DEFAULT'
             layout.operator("sequencer.mask_strip_add", text="Mask...", icon='MOD_MASK')
-        elif len(bpy.data.masks) > 1:
+        elif bpy_data_masks_len > 0:
             layout.operator_menu_enum("sequencer.mask_strip_add", "mask", text="Mask", icon='MOD_MASK')
         else:
             layout.menu("SEQUENCER_MT_add_empty", text="Mask", icon='MOD_MASK')
+        del bpy_data_masks_len
 
         layout.separator()
 
@@ -411,7 +411,7 @@ class SEQUENCER_MT_add_effect(Menu):
         col.operator("sequencer.effect_strip_add", text="Alpha Over").type = 'ALPHA_OVER'
         col.operator("sequencer.effect_strip_add", text="Alpha Under").type = 'ALPHA_UNDER'
         col.operator("sequencer.effect_strip_add", text="Color Mix").type = 'COLORMIX'
-        col.enabled = sel_sequences(context) >=2
+        col.enabled = sel_sequences(context) >= 2
 
         layout.separator()
 

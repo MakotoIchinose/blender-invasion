@@ -378,7 +378,8 @@ static void rna_Sculpt_ShowDiffuseColor_update(bContext *C, PointerRNA *UNUSED(p
 		if (ob->sculpt->pbvh)
 			pbvh_show_diffuse_color_set(ob->sculpt->pbvh, ob->sculpt->show_diffuse_color);
 
-		WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+		WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ob);
 	}
 }
 
@@ -395,7 +396,8 @@ static void rna_Sculpt_ShowMask_update(bContext *C, PointerRNA *UNUSED(ptr))
 	if (object->sculpt->pbvh != NULL) {
 		pbvh_show_mask_set(object->sculpt->pbvh, object->sculpt->show_mask);
 	}
-	WM_main_add_notifier(NC_OBJECT | ND_DRAW, object);
+	DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+	WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, object);
 }
 
 static char *rna_Sculpt_path(PointerRNA *UNUSED(ptr))
@@ -1302,7 +1304,7 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
-	prop = RNA_def_property(srna, "target_weight", PROP_FLOAT, PROP_FACTOR);
+	prop = RNA_def_property(srna, "weight", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_range(prop, 0.0, 1.0);
 	RNA_def_property_ui_text(prop, "Weight", "Target weight");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
@@ -1358,7 +1360,7 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
 	RNA_def_property_array(prop, 3);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_float_array_default(prop, default_2);
-	RNA_def_property_ui_text(prop, "Cursor Sub", "Color for the cursor for substration");
+	RNA_def_property_ui_text(prop, "Cursor Sub", "Color for the cursor for subtraction");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 
 	prop = RNA_def_property(srna, "use_cursor", PROP_BOOLEAN, PROP_NONE);

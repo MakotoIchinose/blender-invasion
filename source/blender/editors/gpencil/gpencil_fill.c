@@ -88,6 +88,7 @@
 
   /* Temporary fill operation data (op->customdata) */
 typedef struct tGPDfill {
+	bContext *C;
 	struct Main *bmain;
 	struct Depsgraph *depsgraph;
 	struct wmWindow *win;               /* window where painting originated */
@@ -218,6 +219,13 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 		/* do not draw layer if hidden */
 		if (gpl->flag & GP_LAYER_HIDE)
 			continue;
+
+		/* if active layer and no keyframe, create a new one */
+		if (gpl == tgpf->gpl) {
+			if (gpl->actframe->framenum != cfra_eval) {
+				BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
+			}
+		}
 
 		/* get frame to draw */
 		bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
@@ -819,6 +827,10 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	const int cfra_eval = (int)DEG_get_ctime(tgpf->depsgraph);
 
 	ToolSettings *ts = tgpf->scene->toolsettings;
+	const char *align_flag = &ts->gpencil_v3d_align;
+	const bool is_depth = (bool)(*align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
+	const bool is_camera = (bool)(ts->gp_sculpt.lock_axis == 0) &&
+		(tgpf->rv3d->persp == RV3D_CAMOB) && (!is_depth);
 	Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
 	if (brush == NULL) {
 		return;
@@ -858,7 +870,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	/* initialize triangle memory to dummy data */
 	gps->tot_triangles = 0;
 	gps->triangles = NULL;
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* add stroke to frame */
 	if ((ts->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) || (tgpf->on_back == true)) {
@@ -936,6 +948,11 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 		gp_apply_parent_point(tgpf->depsgraph, tgpf->ob, tgpf->gpd, tgpf->gpl, pt);
 	}
 
+	/* if camera view, reproject flat to view to avoid perspective effect */
+	if (is_camera) {
+		ED_gpencil_project_stroke_to_view(tgpf->C, tgpf->gpl, gps);
+	}
+
 	/* simplify stroke */
 	for (int b = 0; b < tgpf->fill_simplylvl; b++) {
 		BKE_gpencil_simplify_fixed(gps);
@@ -1004,6 +1021,7 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	Main *bmain = CTX_data_main(C);
 
 	/* set current scene and window info */
+	tgpf->C = C;
 	tgpf->bmain = CTX_data_main(C);
 	tgpf->scene = CTX_data_scene(C);
 	tgpf->ob = CTX_data_active_object(C);

@@ -678,7 +678,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
 }
 
-struct {
+static struct {
 	char app_template[64];
 	bool override;
 } wm_init_state_app_template = {{0}};
@@ -853,7 +853,7 @@ void wm_homefile_read(
 		            app_template, app_template_system, sizeof(app_template_system)))
 		{
 			/* Can safely continue with code below, just warn it's not found. */
-			BKE_reportf(reports, RPT_WARNING, "Application Template '%s' not found.", app_template);
+			BKE_reportf(reports, RPT_WARNING, "Application Template '%s' not found", app_template);
 		}
 
 		/* Insert template name into startup file. */
@@ -1684,7 +1684,7 @@ void WM_OT_save_userpref(wmOperatorType *ot)
 {
 	ot->name = "Save Preferences";
 	ot->idname = "WM_OT_save_userpref";
-	ot->description = "Save user preferences separately, overrides startup file preferences";
+	ot->description = "Save preferences separately, overrides startup file preferences";
 
 	ot->invoke = WM_operator_confirm;
 	ot->exec = wm_userpref_write_exec;
@@ -1825,7 +1825,7 @@ void WM_OT_read_factory_settings(wmOperatorType *ot)
 
 	ot->name = "Load Factory Settings";
 	ot->idname = "WM_OT_read_factory_settings";
-	ot->description = "Load default file and user preferences";
+	ot->description = "Load default file and preferences";
 
 	ot->invoke = WM_operator_confirm;
 	ot->exec = wm_homefile_read_exec;
@@ -2419,13 +2419,13 @@ static uiBlock *block_create_autorun_warning(struct bContext *C, struct ARegion 
 	uiLayout *sub = uiLayoutRow(col, true);
 	uiLayoutSetRedAlert(sub, true);
 	uiItemL(sub, G.autoexec_fail, ICON_BLANK1);
-	uiItemL(col, IFACE_("This may lead to unexpected behavior."), ICON_BLANK1);
+	uiItemL(col, IFACE_("This may lead to unexpected behavior"), ICON_BLANK1);
 
 	uiItemS(layout);
 
-	PointerRNA userpref_ptr;
-	RNA_pointer_create(NULL, &RNA_UserPreferencesSystem, &U, &userpref_ptr);
-	uiItemR(layout, &userpref_ptr, "use_scripts_auto_execute", 0, IFACE_("Permanently allow execution of scripts"), ICON_NONE);
+	PointerRNA pref_ptr;
+	RNA_pointer_create(NULL, &RNA_PreferencesSystem, &U, &pref_ptr);
+	uiItemR(layout, &pref_ptr, "use_scripts_auto_execute", 0, IFACE_("Permanently allow execution of scripts"), ICON_NONE);
 
 	uiItemS(layout);
 

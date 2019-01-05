@@ -631,7 +631,7 @@ static void gp_duplicate_points(const bGPDstroke *gps, ListBase *new_strokes, co
 
 				/* initialize triangle memory - will be calculated on next redraw */
 				gpsd->triangles = NULL;
-				gpsd->flag |= GP_STROKE_RECALC_CACHES;
+				gpsd->flag |= GP_STROKE_RECALC_GEOMETRY;
 				gpsd->tot_triangles = 0;
 
 				/* now, make a new points array, and copy of the relevant parts */
@@ -713,7 +713,7 @@ static int gp_duplicate_exec(bContext *C, wmOperator *op)
 					}
 
 					/* triangle information - will be calculated on next redraw */
-					gpsd->flag |= GP_STROKE_RECALC_CACHES;
+					gpsd->flag |= GP_STROKE_RECALC_GEOMETRY;
 					gpsd->triangles = NULL;
 
 					/* add to temp buffer */
@@ -871,7 +871,9 @@ GHash *gp_copybuf_validate_colormap(bContext *C)
 		}
 
 		/* Store this mapping (for use later when pasting) */
-		BLI_ghash_insert(new_colors, key, ma);
+		if (!BLI_ghash_haskey(new_colors, POINTER_FROM_INT(*key))) {
+			BLI_ghash_insert(new_colors, POINTER_FROM_INT(*key), ma);
+		}
 	}
 
 	gp_strokes_copypastebuf_colors_name_to_material_free(name_to_ma);
@@ -934,7 +936,7 @@ static int gp_strokes_copy_exec(bContext *C, wmOperator *op)
 					}
 
 					/* triangles cache - will be recalculated on next redraw */
-					gpsd->flag |= GP_STROKE_RECALC_CACHES;
+					gpsd->flag |= GP_STROKE_RECALC_GEOMETRY;
 					gpsd->tot_triangles = 0;
 					gpsd->triangles = NULL;
 
@@ -1111,20 +1113,20 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
 					new_stroke->dvert = MEM_dupallocN(gps->dvert);
 					BKE_gpencil_stroke_weights_duplicate(gps, new_stroke);
 				}
-				new_stroke->flag |= GP_STROKE_RECALC_CACHES;
+				new_stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
 				new_stroke->triangles = NULL;
 
 				new_stroke->next = new_stroke->prev = NULL;
 				BLI_addtail(&gpf->strokes, new_stroke);
 
 				/* Remap material */
-				Material *ma = BLI_ghash_lookup(new_colors, &new_stroke->mat_nr);
+				Material *ma = BLI_ghash_lookup(new_colors, POINTER_FROM_INT(new_stroke->mat_nr));
 				if ((ma) && (BKE_gpencil_get_material_index(ob, ma) > 0)) {
-					gps->mat_nr = BKE_gpencil_get_material_index(ob, ma) - 1;
-					CLAMP_MIN(gps->mat_nr, 0);
+					new_stroke->mat_nr = BKE_gpencil_get_material_index(ob, ma) - 1;
+					CLAMP_MIN(new_stroke->mat_nr, 0);
 				}
 				else {
-					gps->mat_nr = 0; /* only if the color is not found */
+					new_stroke->mat_nr = 0; /* only if the color is not found */
 				}
 
 			}
@@ -1775,7 +1777,7 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
 							gps->totpoints = tot;
 
 							/* triangles cache needs to be recalculated */
-							gps->flag |= GP_STROKE_RECALC_CACHES;
+							gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 							gps->tot_triangles = 0;
 
 							/* deselect the stroke, since none of its selected points will still be selected */
@@ -1875,7 +1877,7 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 
 			/* initialize triangle memory  - to be calculated on next redraw */
 			new_stroke->triangles = NULL;
-			new_stroke->flag |= GP_STROKE_RECALC_CACHES;
+			new_stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
 			new_stroke->tot_triangles = 0;
 
 			/* Compute new buffer size (+ 1 needed as the endpoint index is "inclusive") */
@@ -2099,7 +2101,8 @@ void GPENCIL_OT_dissolve(wmOperatorType *ot)
 	ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
 	/* props */
-	ot->prop = RNA_def_enum(ot->srna, "type", prop_gpencil_dissolve_types, 0, "Type", "Method used for disolving Stroke points");
+	ot->prop = RNA_def_enum(ot->srna, "type", prop_gpencil_dissolve_types, 0,
+	                        "Type", "Method used for dissolving Stroke points");
 }
 
 /* ****************** Snapping - Strokes <-> Cursor ************************ */
@@ -2121,11 +2124,12 @@ static bool gp_snap_poll(bContext *C)
 static int gp_snap_to_grid(bContext *C, wmOperator *UNUSED(op))
 {
 	bGPdata *gpd = ED_gpencil_data_get_active(C);
+	RegionView3D *rv3d = CTX_wm_region_data(C);
 	View3D *v3d = CTX_wm_view3d(C);
 	Scene *scene = CTX_data_scene(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Object *obact = CTX_data_active_object(C);
-	const float gridf = ED_view3d_grid_scale(scene, v3d, NULL);
+	const float gridf = ED_view3d_grid_view_scale(scene, v3d, rv3d, NULL);
 
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		/* only editable and visible layers are considered */
@@ -2704,7 +2708,7 @@ static int gp_stroke_join_exec(bContext *C, wmOperator *op)
 						}
 						new_stroke->triangles = NULL;
 						new_stroke->tot_triangles = 0;
-						new_stroke->flag |= GP_STROKE_RECALC_CACHES;
+						new_stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 						/* if new, set current color */
 						if (type == GP_STROKE_JOINCOPY) {
@@ -3121,7 +3125,7 @@ static int gp_stroke_subdivide_exec(bContext *C, wmOperator *op)
 				if (gps->dvert != NULL) {
 					gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * gps->totpoints);
 				}
-				gps->flag |= GP_STROKE_RECALC_CACHES;
+				gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 				/* loop and interpolate */
 				i2 = 0;
@@ -3192,7 +3196,7 @@ static int gp_stroke_subdivide_exec(bContext *C, wmOperator *op)
 			}
 
 			/* triangles cache needs to be recalculated */
-			gps->flag |= GP_STROKE_RECALC_CACHES;
+			gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 			gps->tot_triangles = 0;
 		}
 	}

@@ -779,7 +779,6 @@ void DepsgraphNodeBuilder::build_object_data_speaker(Object *object)
 void DepsgraphNodeBuilder::build_object_transform(Object *object)
 {
 	OperationDepsNode *op_node;
-	Scene *scene_cow = get_cow_datablock(scene_);
 	Object *ob_cow = get_cow_datablock(object);
 
 	/* local transforms (from transform channels - loc/rot/scale + deltas) */
@@ -795,7 +794,6 @@ void DepsgraphNodeBuilder::build_object_transform(Object *object)
 		add_operation_node(&object->id, DEG_NODE_TYPE_TRANSFORM,
 		                   function_bind(BKE_object_eval_parent,
 		                                 _1,
-		                                 scene_cow,
 		                                 ob_cow),
 		                   DEG_OPCODE_TRANSFORM_PARENT);
 	}
@@ -1444,6 +1442,11 @@ void DepsgraphNodeBuilder::build_lamp(Lamp *lamp)
 	                             DEG_NODE_TYPE_PARAMETERS,
 	                             NULL,
 	                             DEG_OPCODE_PARAMETERS_EVAL);
+	/* NOTE: We mark this node as both entry and exit. This way we have a
+	 * node to link all dependencies for shading (which includes relation to the
+	 * lamp object, and incldues relation from node tree) without adding a
+	 * dedicated component type. */
+	op_node->set_as_entry();
 	op_node->set_as_exit();
 	/* lamp's nodetree */
 	build_nodetree(lamp->nodetree);

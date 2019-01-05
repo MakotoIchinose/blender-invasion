@@ -45,6 +45,7 @@
 #include "BKE_appdir.h"
 #include "BKE_brush.h"
 #include "BKE_colortools.h"
+#include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
@@ -73,6 +74,15 @@ void BLO_update_defaults_userpref_blend(void)
 	U.flag &= ~USER_SCRIPT_AUTOEXEC_DISABLE;
 #endif
 
+	/* Clear addon preferences. */
+	for (bAddon *addon = U.addons.first; addon; addon = addon->next) {
+		if (addon->prop) {
+			IDP_FreeProperty(addon->prop);
+			MEM_freeN(addon->prop);
+			addon->prop = NULL;
+		}
+	}
+
 	/* Transform tweak with single click and drag. */
 	U.flag |= USER_RELEASECONFIRM;
 
@@ -89,6 +99,9 @@ void BLO_update_defaults_userpref_blend(void)
 	/* Only enable tooltips translation by default, without actually enabling translation itself, for now. */
 	U.transopts = USER_TR_TOOLTIPS;
 	U.memcachelimit = 4096;
+
+	/* Auto perspective. */
+	U.uiflag |= USER_AUTOPERSP;
 
 	/* Default to left click select. */
 	BKE_keyconfig_pref_set_select_mouse(&U, 0, true);
@@ -118,7 +131,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 					case SPACE_VIEW3D:
 					{
 						View3D *v3d = (View3D *)sl;
+						v3d->overlay.texture_paint_mode_opacity = 1.0f;
 						v3d->overlay.weight_paint_mode_opacity = 1.0f;
+						v3d->overlay.vertex_paint_mode_opacity = 1.0f;
 						/* grease pencil settings */
 						v3d->vertex_opacity = 1.0f;
 						v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
@@ -131,6 +146,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 							const char *dir_default = BKE_appdir_folder_default();
 							if (dir_default) {
 								STRNCPY(sfile->params->dir, dir_default);
+								sfile->params->file[0] = '\0';
 							}
 						}
 						break;
@@ -194,29 +210,32 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 				ts->gp_sculpt.cur_falloff = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 				CurveMapping *gp_falloff_curve = ts->gp_sculpt.cur_falloff;
 				curvemapping_initialize(gp_falloff_curve);
-				curvemap_reset(gp_falloff_curve->cm,
-				               &gp_falloff_curve->clipr,
-				               CURVE_PRESET_GAUSS,
-				               CURVEMAP_SLOPE_POSITIVE);
+				curvemap_reset(
+				        gp_falloff_curve->cm,
+				        &gp_falloff_curve->clipr,
+				        CURVE_PRESET_GAUSS,
+				        CURVEMAP_SLOPE_POSITIVE);
 			}
 			if (ts->gp_sculpt.cur_primitive == NULL) {
 				ts->gp_sculpt.cur_primitive = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 				CurveMapping *gp_primitive_curve = ts->gp_sculpt.cur_primitive;
 				curvemapping_initialize(gp_primitive_curve);
-				curvemap_reset(gp_primitive_curve->cm,
-					&gp_primitive_curve->clipr,
-					CURVE_PRESET_BELL,
-					CURVEMAP_SLOPE_POSITIVE);
+				curvemap_reset(
+				        gp_primitive_curve->cm,
+				        &gp_primitive_curve->clipr,
+				        CURVE_PRESET_BELL,
+				        CURVEMAP_SLOPE_POSITIVE);
 			}
 		}
 	}
 
 	/* For all builtin templates shipped with Blender. */
-	bool builtin_template = !app_template ||
-	                        STREQ(app_template, "2D_Animation") ||
-	                        STREQ(app_template, "Sculpting") ||
-	                        STREQ(app_template, "VFX") ||
-	                        STREQ(app_template, "Video_Editing");
+	bool builtin_template = (
+	        !app_template ||
+	        STREQ(app_template, "2D_Animation") ||
+	        STREQ(app_template, "Sculpting") ||
+	        STREQ(app_template, "VFX") ||
+	        STREQ(app_template, "Video_Editing"));
 
 	if (builtin_template) {
 		/* Clear all tools to use default options instead, ignore the tool saved in the file. */

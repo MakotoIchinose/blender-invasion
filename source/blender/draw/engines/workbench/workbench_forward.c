@@ -34,6 +34,7 @@
 #include "BKE_node.h"
 #include "BKE_particle.h"
 #include "BKE_modifier.h"
+#include "BKE_object.h"
 
 #include "DNA_image_types.h"
 #include "DNA_mesh_types.h"
@@ -325,7 +326,7 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
 	});
 
 	workbench_volume_cache_init(vedata);
-	const bool do_cull = (draw_ctx->v3d && (draw_ctx->v3d->flag2 & V3D_BACKFACE_CULLING));
+	const bool do_cull = (draw_ctx->v3d && (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING));
 	const int cull_state = (do_cull) ? DRW_STATE_CULL_BACK : 0;
 
 	/* Transparency Accum */
@@ -489,7 +490,10 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 		return; /* Do not draw solid in this case. */
 	}
 
-	if (!DRW_object_is_visible_in_active_context(ob) || (ob->dt < OB_WIRE)) {
+	if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
+		return;
+	}
+	if (ob->dt < OB_WIRE) {
 		return;
 	}
 
@@ -528,7 +532,9 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 
 		/* Fallback from not drawn OB_TEXTURE mode or just OB_SOLID mode */
 		if (!is_drawn) {
-			if (ELEM(wpd->shading.color_type, V3D_SHADING_SINGLE_COLOR, V3D_SHADING_RANDOM_COLOR)) {
+			if (ELEM(wpd->shading.color_type,
+			         V3D_SHADING_SINGLE_COLOR, V3D_SHADING_OBJECT_COLOR, V3D_SHADING_RANDOM_COLOR))
+			{
 				/* No material split needed */
 				struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
 				if (geom) {

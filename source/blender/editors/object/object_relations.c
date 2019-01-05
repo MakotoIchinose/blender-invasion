@@ -385,8 +385,9 @@ static int make_proxy_exec(bContext *C, wmOperator *op)
 }
 
 /* Generic itemf's for operators that take library args */
-static const EnumPropertyItem *proxy_collection_object_itemf(bContext *C, PointerRNA *UNUSED(ptr),
-                                                             PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *proxy_collection_object_itemf(
+        bContext *C, PointerRNA *UNUSED(ptr),
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	EnumPropertyItem item_tmp = {0}, *item = NULL;
 	int totitem = 0;
@@ -1872,6 +1873,9 @@ static void single_mat_users(Main *bmain, Scene *scene, ViewLayer *view_layer, V
 					if (ma->id.us > 1) {
 						man = BKE_material_copy(bmain, ma);
 						BKE_animdata_copy_id_action(bmain, &man->id, false);
+						if (man->nodetree != NULL) {
+							BKE_animdata_copy_id_action(bmain, &man->nodetree->id, false);
+						}
 
 						man->id.us = 0;
 						assign_material(bmain, ob, man, a, BKE_MAT_ASSIGN_USERPREF);

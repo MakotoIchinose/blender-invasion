@@ -294,6 +294,12 @@ static void rna_uiItemM(
 	uiItemM(layout, menuname, name, icon);
 }
 
+static void rna_uiItemM_contents(
+        uiLayout *layout, const char *menuname)
+{
+	uiItemMContents(layout, menuname);
+}
+
 static void rna_uiItemPopoverPanel(
         uiLayout *layout, bContext *C,
         const char *panel_type, const char *name, const char *text_ctxt,
@@ -741,6 +747,10 @@ void RNA_api_ui_layout(StructRNA *srna)
 	parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_ui_text(parm, "Icon Value", "Override automatic icon of the item");
 
+	func = RNA_def_function(srna, "menu_contents", "rna_uiItemM_contents");
+	parm = RNA_def_string(func, "menu", NULL, 0, "", "Identifier of the menu");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
 	func = RNA_def_function(srna, "popover", "rna_uiItemPopoverPanel");
 	RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 	parm = RNA_def_string(func, "panel", NULL, 0, "", "Identifier of the panel");
@@ -931,7 +941,8 @@ void RNA_api_ui_layout(StructRNA *srna)
 	RNA_def_function_ui_description(func, "Enum. Large widget showing Icon previews");
 	api_ui_item_rna_common(func);
 	RNA_def_boolean(func, "show_labels", false, "", "Show enum label in preview buttons");
-	RNA_def_float(func, "scale", 5.0f, 1.0f, 100.0f, "Scale", "Scale the icon size (by the button size)", 1.0f, 100.0f);
+	RNA_def_float(func, "scale", 6.0f, 1.0f, 100.0f, "UI Units", "Scale the button icon size (by the button size)", 1.0f, 100.0f);
+	RNA_def_float(func, "scale_popup", 5.0f, 1.0f, 100.0f, "Scale", "Scale the popup icon size (by the button size)", 1.0f, 100.0f);
 
 	func = RNA_def_function(srna, "template_histogram", "uiTemplateHistogram");
 	RNA_def_function_ui_description(func, "Item. A histogramm widget to analyze imaga data");

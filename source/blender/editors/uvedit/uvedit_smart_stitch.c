@@ -981,7 +981,7 @@ static void stitch_propagate_uv_final_position(
 				int face_preview_pos = preview_position[BM_elem_index_get(element_iter->l->f)].data_position;
 				if (face_preview_pos != STITCH_NO_PREVIEW) {
 					copy_v2_v2(preview->preview_polys + face_preview_pos + 2 * element_iter->loop_of_poly_index,
-						final_position[index].uv);
+					           final_position[index].uv);
 				}
 			}
 
@@ -2743,8 +2743,8 @@ void UV_OT_stitch(wmOperatorType *ot)
 	RNA_def_property_flag(prop, PROP_HIDDEN);
 
 	/* test should not be editable or viewed in toolbar */
-	prop = RNA_def_int_array(ot->srna, "objects_selection_count", 1, NULL, 0, INT_MAX, "objects_selection_count",
-	                         "objects_selection_count", 0, INT_MAX);
+	prop = RNA_def_int_array(ot->srna, "objects_selection_count", 1, NULL, 0, INT_MAX, "Objects Selection Count",
+	                         "", 0, INT_MAX);
 	RNA_def_property_array(prop, 6);
 	RNA_def_property_flag(prop, PROP_HIDDEN);
 }

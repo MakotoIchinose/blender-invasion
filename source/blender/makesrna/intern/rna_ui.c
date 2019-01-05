@@ -950,6 +950,11 @@ static void rna_UILayout_alignment_set(PointerRNA *ptr, int value)
 	uiLayoutSetAlignment(ptr->data, value);
 }
 
+static int rna_UILayout_direction_get(PointerRNA *ptr)
+{
+	return uiLayoutGetLocalDir(ptr->data);
+}
+
 static float rna_UILayout_scale_x_get(PointerRNA *ptr)
 {
 	return uiLayoutGetScaleX(ptr->data);
@@ -1035,6 +1040,12 @@ static void rna_def_ui_layout(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	static const EnumPropertyItem direction_items[] = {
+		{UI_LAYOUT_HORIZONTAL, "HORIZONTAL", 0, "Horizontal", ""},
+		{UI_LAYOUT_VERTICAL, "VERTICAL", 0, "Vertical", ""},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	static const EnumPropertyItem emboss_items[] = {
 		{UI_EMBOSS, "NORMAL", 0, "Normal", "Draw standard button emboss style"},
 		{UI_EMBOSS_NONE, "NONE", 0, "None", "Draw only text and icons"},
@@ -1066,6 +1077,11 @@ static void rna_def_ui_layout(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "alignment", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, alignment_items);
 	RNA_def_property_enum_funcs(prop, "rna_UILayout_alignment_get", "rna_UILayout_alignment_set", NULL);
+
+	prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, direction_items);
+	RNA_def_property_enum_funcs(prop, "rna_UILayout_direction_get", NULL, NULL);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
 #if 0
 	prop = RNA_def_property(srna, "keep_aspect", PROP_BOOLEAN, PROP_NONE);
@@ -1218,7 +1234,7 @@ static void rna_def_panel(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "bl_parent_id", PROP_STRING, PROP_NONE);
 	RNA_def_property_string_sdna(prop, NULL, "type->parent_id");
 	RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-	RNA_def_property_ui_text(prop, "Parent ID Name", "If this is set, the panel becomes a subpanel");
+	RNA_def_property_ui_text(prop, "Parent ID Name", "If this is set, the panel becomes a sub-panel");
 
 	prop = RNA_def_property(srna, "bl_ui_units_x", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_int_sdna(prop, NULL, "type->ui_units_x");

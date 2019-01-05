@@ -843,8 +843,8 @@ static void ui_menu_block_set_keyaccels(uiBlock *block)
 {
 	uiBut *but;
 
-	unsigned int menu_key_mask = 0;
-	unsigned char menu_key;
+	uint menu_key_mask = 0;
+	uchar menu_key;
 	const char *str_pt;
 	int pass;
 	int tot_missing = 0;
@@ -2594,8 +2594,19 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 					PointerRNA ptr = but->rnasearchpoin;
 					PropertyRNA *prop = but->rnasearchprop;
 
-					if (prop && RNA_property_collection_lookup_string(&ptr, prop, str, &rptr))
+					/* This is kind of hackish, in theory think we could only ever use the second member of
+					 * this if/else, since ui_searchbox_apply() is supposed to always set that pointer when
+					 * we are storing pointers... But keeping str search first for now, to try to break as little as
+					 * possible existing code. All this is band-aids anyway.
+					 * Fact remains, using editstr as main 'reference' over whole search button thingy is utterly weak
+					 * and should be redesigned imho, but that's not a simple task. */
+					if (prop && RNA_property_collection_lookup_string(&ptr, prop, str, &rptr)) {
 						RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
+					}
+					else if (but->func_arg2 != NULL) {
+						RNA_pointer_create(NULL, RNA_property_pointer_type(&but->rnapoin, but->rnaprop), but->func_arg2, &rptr);
+						RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
+					}
 
 					return true;
 				}
@@ -3826,7 +3837,7 @@ uiBut *uiDefBut(uiBlock *block, int type, int retval, const char *str, int x, in
  *     ((1 << findBitIndex(x)) == x);
  * \endcode
  */
-static int findBitIndex(unsigned int x)
+static int findBitIndex(uint x)
 {
 	if (!x || !is_power_of_2_i(x)) { /* is_power_of_2_i(x) strips lowest bit */
 		return -1;
@@ -4333,7 +4344,7 @@ PointerRNA *UI_but_operator_ptr_get(uiBut *but)
 
 void UI_but_unit_type_set(uiBut *but, const int unit_type)
 {
-	but->unit_type = (unsigned char)(RNA_SUBTYPE_UNIT_VALUE(unit_type));
+	but->unit_type = (uchar)(RNA_SUBTYPE_UNIT_VALUE(unit_type));
 }
 
 int UI_but_unit_type_get(const uiBut *but)
@@ -4765,8 +4776,15 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
 				tmp = BLI_strdup(but->optype->idname);
 			else if (ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_PULLDOWN)) {
 				MenuType *mt = UI_but_menutype_get(but);
-				if (mt)
+				if (mt) {
 					tmp = BLI_strdup(mt->idname);
+				}
+			}
+			else if (but->type == UI_BTYPE_POPOVER) {
+				PanelType *pt = UI_but_paneltype_get(but);
+				if (pt) {
+					tmp = BLI_strdup(pt->idname);
+				}
 			}
 		}
 		else if (ELEM(type, BUT_GET_RNA_LABEL, BUT_GET_RNA_TIP)) {

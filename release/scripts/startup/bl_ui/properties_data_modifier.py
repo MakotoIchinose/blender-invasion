@@ -147,6 +147,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "loop_slide")
         col.prop(md, "mark_seam")
         col.prop(md, "mark_sharp")
+        col.prop(md, "harden_normals")
 
         layout.label(text="Limit Method:")
         layout.row().prop(md, "limit_method", expand=True)
@@ -159,10 +160,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Width Method:")
         layout.row().prop(md, "offset_type", expand=True)
 
-        layout.label(text="Normal Mode")
-        layout.row().prop(md, "hnmode", expand=True)
-        layout.prop(md, "hn_strength")
-        layout.prop(md, "set_wn_strength")
+        layout.label(text="Set Face Strength Mode")
+        layout.row().prop(md, "face_strength_mode", expand=True)
 
     def BOOLEAN(self, layout, ob, md):
         split = layout.split()
@@ -615,7 +614,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.separator()
         col = layout.column()
 
-
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
         col.label(text="Textures:")
@@ -634,7 +632,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column(align=True)
         col.prop(md, "offset_u")
         col.prop(md, "offset_v")
-
 
     def MULTIRES(self, layout, ob, md):
         layout.row().prop(md, "subdivision_type", expand=True)

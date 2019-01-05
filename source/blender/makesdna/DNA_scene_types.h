@@ -194,7 +194,7 @@ typedef struct SceneRenderLayer {
 
 	char name[64] DNA_DEPRECATED;   /* MAX_NAME */
 
-	struct Material *mat_override DNA_DEPRECATED; /* Converted to ViewLayer override. */
+	struct Material *mat_override DNA_DEPRECATED; /* Converted to ViewLayer setting. */
 
 	unsigned int lay DNA_DEPRECATED; /* Converted to LayerCollection cycles camera visibility override. */
 	unsigned int lay_zmask DNA_DEPRECATED; /* Converted to LayerCollection cycles holdout override. */
@@ -205,7 +205,7 @@ typedef struct SceneRenderLayer {
 	int passflag DNA_DEPRECATED; /* pass_xor has to be after passflag */
 	int pass_xor DNA_DEPRECATED; /* Converted to ViewLayer passflag and flag. */
 
-	int samples DNA_DEPRECATED; /* Converted to ViewLayer override. */
+	int samples DNA_DEPRECATED; /* Converted to ViewLayer setting. */
 	float pass_alpha_threshold DNA_DEPRECATED; /* Converted to ViewLayer pass_alpha_threshold. */
 
 	IDProperty *prop DNA_DEPRECATED; /* Converted to ViewLayer id_properties. */
@@ -234,18 +234,18 @@ typedef struct SceneRenderLayer {
 typedef enum eScenePassType {
 	SCE_PASS_COMBINED                 = (1 << 0),
 	SCE_PASS_Z                        = (1 << 1),
-	SCE_PASS_RGBA                     = (1 << 2),
-	SCE_PASS_DIFFUSE                  = (1 << 3),
-	SCE_PASS_SPEC                     = (1 << 4),
+	SCE_PASS_DEPRECATED_1             = (1 << 2), /* RGBA */
+	SCE_PASS_DEPRECATED_2             = (1 << 3), /* DIFFUSE */
+	SCE_PASS_DEPRECATED_3             = (1 << 4), /* SPEC */
 	SCE_PASS_SHADOW                   = (1 << 5),
 	SCE_PASS_AO                       = (1 << 6),
-	SCE_PASS_REFLECT                  = (1 << 7),
+	SCE_PASS_DEPRECATED_4             = (1 << 7), /* REFLECT */
 	SCE_PASS_NORMAL                   = (1 << 8),
 	SCE_PASS_VECTOR                   = (1 << 9),
-	SCE_PASS_REFRACT                  = (1 << 10),
+	SCE_PASS_DEPRECATED_5             = (1 << 10), /* REFRACT */
 	SCE_PASS_INDEXOB                  = (1 << 11),
 	SCE_PASS_UV                       = (1 << 12),
-	SCE_PASS_INDIRECT                 = (1 << 13),
+	SCE_PASS_DEPRECATED_6             = (1 << 13), /* INDIRECT */
 	SCE_PASS_MIST                     = (1 << 14),
 	SCE_PASS_RAYHITS                  = (1 << 15),
 	SCE_PASS_EMIT                     = (1 << 16),
@@ -266,22 +266,18 @@ typedef enum eScenePassType {
 	SCE_PASS_ROUGHNESS                = (1u << 31u),
 } eScenePassType;
 
+#define RE_PASSNAME_DEPRECATED "Deprecated"
+
 #define RE_PASSNAME_COMBINED "Combined"
 #define RE_PASSNAME_Z "Depth"
 #define RE_PASSNAME_VECTOR "Vector"
 #define RE_PASSNAME_NORMAL "Normal"
 #define RE_PASSNAME_UV "UV"
-#define RE_PASSNAME_RGBA "Color"
 #define RE_PASSNAME_EMIT "Emit"
-#define RE_PASSNAME_DIFFUSE "Diffuse"
-#define RE_PASSNAME_SPEC "Spec"
 #define RE_PASSNAME_SHADOW "Shadow"
 
 #define RE_PASSNAME_AO "AO"
 #define RE_PASSNAME_ENVIRONMENT "Env"
-#define RE_PASSNAME_INDIRECT "Indirect"
-#define RE_PASSNAME_REFLECT "Reflect"
-#define RE_PASSNAME_REFRACT "Refract"
 #define RE_PASSNAME_INDEXOB "IndexOB"
 #define RE_PASSNAME_INDEXMA "IndexMA"
 #define RE_PASSNAME_MIST "Mist"
@@ -995,8 +991,8 @@ typedef struct GP_Sculpt_Data {
 	float strength;         /* strength of effect */
 	float curcolor_add[3];  /* cursor color for add */
 	float curcolor_sub[3];  /* cursor color for sub */
-	float target_weight;    /* target weight */
-	char pad_[4];
+	float weight;           /* target weight */
+	char _pad[4];
 } GP_Sculpt_Data;
 
 /* GP_Sculpt_Data.flag */
@@ -1341,7 +1337,7 @@ typedef struct ToolSettings {
 	char edge_mode;
 	char edge_mode_live_unwrap;
 
-	/* SCE_MPR_LOC/SCAL */
+	/* SCE_GIZMO_SHOW_* */
 	char gizmo_flag;
 
 	/* Transform */
@@ -1587,6 +1583,21 @@ typedef struct SceneLANPR {
 /* *************************************************************** */
 /* Scene ID-Block */
 
+typedef struct TransformOrientationSlot {
+	int type;
+	int index_custom;
+	char flag;
+	char _pad0[7];
+} TransformOrientationSlot;
+
+/* Indices when used in Scene.orientation. */
+enum {
+	SCE_ORIENT_DEFAULT = 0,
+	SCE_ORIENT_TRANSLATE = 1,
+	SCE_ORIENT_ROTATE = 2,
+	SCE_ORIENT_SCALE = 3,
+};
+
 typedef struct Scene {
 	ID id;
 	struct AnimData *adt;   /* animation data (must be immediately after id for utilities to use it) */
@@ -1627,8 +1638,8 @@ typedef struct Scene {
 	ListBase markers;
 	ListBase transform_spaces;
 
-	int orientation_index_custom;
-	int orientation_type;
+	/* First is the [scene, translate, rotate, scale]. */
+	TransformOrientationSlot orientation_slots[4];
 
 	void *sound_scene;
 	void *playback_handle;
@@ -1877,41 +1888,32 @@ extern const char *RE_engine_id_CYCLES;
 #define MINAFRAMEF  -1048574.0f
 
 /* deprecate this! */
-#define TESTBASE(v3d, base)  (                                                \
-	(((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0) && \
-		(((base)->flag & BASE_SELECTED) != 0) &&                                  \
-		(((base)->flag & BASE_VISIBLE) != 0))
-#define TESTBASELIB(v3d, base)  (                                             \
-	(((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0) && \
-		(((base)->flag & BASE_SELECTED) != 0) &&                                  \
-		((base)->object->id.lib == NULL) &&                                       \
-		(((base)->flag & BASE_VISIBLE) != 0))
-#define TESTBASELIB_BGMODE(v3d, base)  (                                      \
+#define BASE_VISIBLE(v3d, base) (                                                                        \
+	(((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) &&                  \
+	(((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0) &&                        \
+	(((base)->flag & BASE_VISIBLE) != 0))
+#define BASE_VISIBLE_BGMODE(v3d, base) (                                                                 \
 	((v3d == NULL) || ((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) && \
-		(((base)->flag & BASE_SELECTED) != 0) &&                                  \
-		((base)->object->id.lib == NULL) &&                                       \
-		(((base)->flag & BASE_VISIBLE) != 0))
-#define BASE_EDITABLE_BGMODE(v3d, base)  (                                    \
-	((v3d == NULL) || ((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) && \
-		((base)->object->id.lib == NULL) &&                                       \
-		(((base)->flag & BASE_VISIBLE) != 0))
-#define BASE_SELECTABLE(v3d, base)  (                                         \
-	(((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0) && \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0) && \
+	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) &&     \
+	(((base)->flag & BASE_VISIBLE) != 0))
+
+#define BASE_SELECTABLE(v3d, base) (                                                               \
+	BASE_VISIBLE(v3d, base) &&                                                                     \
+	(((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0) &&                    \
 	(((base)->flag & BASE_SELECTABLE) != 0))
-#define BASE_VISIBLE(v3d, base)  (                                            \
-	(((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0) && \
-	(((base)->flag & BASE_VISIBLE) != 0))
-#define BASE_VISIBLE_BGMODE(v3d, base) ( \
-	((v3d == NULL) || ((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) && \
-	(((base)->flag & BASE_VISIBLE) != 0))
+#define BASE_SELECTABLE_BGMODE(v3d, base) (                                                        \
+	BASE_VISIBLE_BGMODE(v3d, base) &&                                                              \
+	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0)) && \
+	(((base)->flag & BASE_SELECTABLE) != 0))
+
+#define TESTBASE(v3d, base) \
+	(BASE_VISIBLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
+#define TESTBASELIB(v3d, base) \
+	(TESTBASE(v3d, base) && ((base)->object->id.lib == NULL))
+#define BASE_EDITABLE_BGMODE(v3d, base) \
+	(BASE_VISIBLE_BGMODE(v3d, base) && ((base)->object->id.lib == NULL))
+#define TESTBASELIB_BGMODE(v3d, base) \
+	(BASE_EDITABLE_BGMODE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 
 #define FIRSTBASE(_view_layer)  ((_view_layer)->object_bases.first)
 #define LASTBASE(_view_layer)   ((_view_layer)->object_bases.last)

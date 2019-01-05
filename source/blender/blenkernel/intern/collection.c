@@ -683,8 +683,9 @@ static void collection_missing_parents_remove(Collection *collection)
 {
 	for (CollectionParent *parent = collection->parents.first, *parent_next; parent != NULL; parent = parent_next) {
 		parent_next = parent->next;
-
-		if (!collection_find_child(parent->collection, collection)) {
+		if ((parent->collection == NULL) ||
+		    !collection_find_child(parent->collection, collection))
+		{
 			BLI_freelinkN(&collection->parents, parent);
 		}
 	}
@@ -775,8 +776,9 @@ bool BKE_collection_is_in_scene(Collection *collection)
 
 void BKE_collections_after_lib_link(Main *bmain)
 {
-	/* Update view layer collections to match any changes in linked
-	 * collections after file load. */
+	/* Need to update layer collections because objects might have changed
+	 * in linked files, and because undo push does not include updated base
+	 * flags since those are refreshed after the operator completes. */
 	BKE_main_collection_sync(bmain);
 }
 

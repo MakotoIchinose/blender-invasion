@@ -65,7 +65,7 @@ class CyclesNodeButtonsPanel:
 
 
 def get_device_type(context):
-    return context.user_preferences.addons[__package__].preferences.compute_device_type
+    return context.preferences.addons[__package__].preferences.compute_device_type
 
 
 def use_cpu(context):
@@ -102,7 +102,7 @@ def show_device_active(context):
     cscene = context.scene.cycles
     if cscene.device != 'GPU':
         return True
-    return context.user_preferences.addons[__package__].preferences.has_active_device()
+    return context.preferences.addons[__package__].preferences.has_active_device()
 
 
 def draw_samples_info(layout, context):
@@ -243,6 +243,12 @@ class CYCLES_RENDER_PT_sampling_advanced(CyclesButtonsPanel, Panel):
             col = layout.column(align=True)
             col.prop(cscene, "sample_all_lights_direct")
             col.prop(cscene, "sample_all_lights_indirect")
+
+        for view_layer in scene.view_layers:
+            if view_layer.samples > 0:
+                layout.separator()
+                layout.row().prop(cscene, "use_layer_samples")
+                break
 
 
 class CYCLES_RENDER_PT_sampling_total(CyclesButtonsPanel, Panel):
@@ -718,6 +724,22 @@ class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
             col = flow.column()
             col.prop(view_layer, "use_freestyle", text="Freestyle")
             col.active = rd.use_freestyle
+
+
+class CYCLES_RENDER_PT_override(CyclesButtonsPanel, Panel):
+    bl_label = "Override"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_context = "view_layer"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        view_layer = context.view_layer
+
+        layout.prop(view_layer, "material_override")
+        layout.prop(view_layer, "samples")
 
 
 class CYCLES_RENDER_PT_passes(CyclesButtonsPanel, Panel):
@@ -2098,6 +2120,7 @@ classes = (
     CYCLES_RENDER_PT_performance_final_render,
     CYCLES_RENDER_PT_performance_viewport,
     CYCLES_RENDER_PT_filter,
+    CYCLES_RENDER_PT_override,
     CYCLES_RENDER_PT_passes,
     CYCLES_RENDER_PT_passes_data,
     CYCLES_RENDER_PT_passes_light,

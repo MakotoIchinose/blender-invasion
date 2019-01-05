@@ -89,7 +89,7 @@ void ui_resources_free(void)
 /*    THEMES */
 /* ******************************************************** */
 
-const unsigned char *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
+const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 {
 	ThemeSpace *ts = NULL;
 	static char error[4] = {240, 0, 240, 255};
@@ -183,6 +183,8 @@ const unsigned char *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colo
 						cp = ts->header;
 					else if (theme_regionid == RGN_TYPE_NAV_BAR)
 						cp = ts->navigation_bar;
+					else if (theme_regionid == RGN_TYPE_EXECUTE)
+						cp = ts->execution_buts;
 					else
 						cp = ts->button;
 
@@ -743,7 +745,7 @@ const unsigned char *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colo
 		}
 	}
 
-	return (const unsigned char *)cp;
+	return (const uchar *)cp;
 }
 
 /**
@@ -815,10 +817,10 @@ void UI_Theme_Restore(struct bThemeState *theme_state)
 	g_theme_state = *theme_state;
 }
 
-void UI_GetThemeColorShadeAlpha4ubv(int colorid, int coloffset, int alphaoffset, unsigned char col[4])
+void UI_GetThemeColorShadeAlpha4ubv(int colorid, int coloffset, int alphaoffset, uchar col[4])
 {
 	int r, g, b, a;
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	r = coloffset + (int) cp[0];
@@ -836,9 +838,9 @@ void UI_GetThemeColorShadeAlpha4ubv(int colorid, int coloffset, int alphaoffset,
 	col[3] = a;
 }
 
-void UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, unsigned char col[3])
+void UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, uchar col[3])
 {
-	const unsigned char *cp1, *cp2;
+	const uchar *cp1, *cp2;
 
 	cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
 	cp2 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid2);
@@ -851,7 +853,7 @@ void UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, unsigned c
 
 void UI_GetThemeColorBlend3f(int colorid1, int colorid2, float fac, float r_col[3])
 {
-	const unsigned char *cp1, *cp2;
+	const uchar *cp1, *cp2;
 
 	cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
 	cp2 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid2);
@@ -864,7 +866,7 @@ void UI_GetThemeColorBlend3f(int colorid1, int colorid2, float fac, float r_col[
 
 void UI_FontThemeColor(int fontid, int colorid)
 {
-	unsigned char color[4];
+	uchar color[4];
 	UI_GetThemeColor4ubv(colorid, color);
 	BLF_color4ubv(fontid, color);
 }
@@ -872,7 +874,7 @@ void UI_FontThemeColor(int fontid, int colorid)
 /* get individual values, not scaled */
 float UI_GetThemeValuef(int colorid)
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	return ((float)cp[0]);
@@ -881,7 +883,7 @@ float UI_GetThemeValuef(int colorid)
 /* get individual values, not scaled */
 int UI_GetThemeValue(int colorid)
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	return ((int) cp[0]);
@@ -890,7 +892,7 @@ int UI_GetThemeValue(int colorid)
 /* versions of the function above, which take a space-type */
 float UI_GetThemeValueTypef(int colorid, int spacetype)
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, spacetype, colorid);
 	return ((float)cp[0]);
@@ -898,7 +900,7 @@ float UI_GetThemeValueTypef(int colorid, int spacetype)
 
 int UI_GetThemeValueType(int colorid, int spacetype)
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, spacetype, colorid);
 	return ((int)cp[0]);
@@ -908,7 +910,7 @@ int UI_GetThemeValueType(int colorid, int spacetype)
 /* get the color, range 0.0-1.0 */
 void UI_GetThemeColor3fv(int colorid, float col[3])
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	col[0] = ((float)cp[0]) / 255.0f;
@@ -918,7 +920,7 @@ void UI_GetThemeColor3fv(int colorid, float col[3])
 
 void UI_GetThemeColor4fv(int colorid, float col[4])
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	col[0] = ((float)cp[0]) / 255.0f;
@@ -931,7 +933,7 @@ void UI_GetThemeColor4fv(int colorid, float col[4])
 void UI_GetThemeColorShade3fv(int colorid, int offset, float col[3])
 {
 	int r, g, b;
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 
@@ -947,10 +949,10 @@ void UI_GetThemeColorShade3fv(int colorid, int offset, float col[3])
 	col[2] = ((float)b) / 255.0f;
 }
 
-void UI_GetThemeColorShade3ubv(int colorid, int offset, unsigned char col[3])
+void UI_GetThemeColorShade3ubv(int colorid, int offset, uchar col[3])
 {
 	int r, g, b;
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 
@@ -966,9 +968,9 @@ void UI_GetThemeColorShade3ubv(int colorid, int offset, unsigned char col[3])
 	col[2] = b;
 }
 
-void UI_GetThemeColorBlendShade3ubv(int colorid1, int colorid2, float fac, int offset, unsigned char col[3])
+void UI_GetThemeColorBlendShade3ubv(int colorid1, int colorid2, float fac, int offset, uchar col[3])
 {
-	const unsigned char *cp1, *cp2;
+	const uchar *cp1, *cp2;
 
 	cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
 	cp2 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid2);
@@ -983,10 +985,10 @@ void UI_GetThemeColorBlendShade3ubv(int colorid1, int colorid2, float fac, int o
 	unit_float_to_uchar_clamp_v3(col, blend);
 }
 
-void UI_GetThemeColorShade4ubv(int colorid, int offset, unsigned char col[4])
+void UI_GetThemeColorShade4ubv(int colorid, int offset, uchar col[4])
 {
 	int r, g, b;
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	r = offset + (int) cp[0];
@@ -1005,7 +1007,7 @@ void UI_GetThemeColorShade4ubv(int colorid, int offset, unsigned char col[4])
 void UI_GetThemeColorShadeAlpha4fv(int colorid, int coloffset, int alphaoffset, float col[4])
 {
 	int r, g, b, a;
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 
@@ -1027,7 +1029,7 @@ void UI_GetThemeColorShadeAlpha4fv(int colorid, int coloffset, int alphaoffset, 
 void UI_GetThemeColorBlendShade3fv(int colorid1, int colorid2, float fac, int offset, float col[3])
 {
 	int r, g, b;
-	const unsigned char *cp1, *cp2;
+	const uchar *cp1, *cp2;
 
 	cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
 	cp2 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid2);
@@ -1049,7 +1051,7 @@ void UI_GetThemeColorBlendShade3fv(int colorid1, int colorid2, float fac, int of
 void UI_GetThemeColorBlendShade4fv(int colorid1, int colorid2, float fac, int offset, float col[4])
 {
 	int r, g, b, a;
-	const unsigned char *cp1, *cp2;
+	const uchar *cp1, *cp2;
 
 	cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
 	cp2 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid2);
@@ -1072,9 +1074,9 @@ void UI_GetThemeColorBlendShade4fv(int colorid1, int colorid2, float fac, int of
 }
 
 /* get the color, in char pointer */
-void UI_GetThemeColor3ubv(int colorid, unsigned char col[3])
+void UI_GetThemeColor3ubv(int colorid, uchar col[3])
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	col[0] = cp[0];
@@ -1086,7 +1088,7 @@ void UI_GetThemeColor3ubv(int colorid, unsigned char col[3])
 void UI_GetThemeColorShade4fv(int colorid, int offset, float col[4])
 {
 	int r, g, b, a;
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 
@@ -1107,9 +1109,9 @@ void UI_GetThemeColorShade4fv(int colorid, int offset, float col[4])
 }
 
 /* get the color, in char pointer */
-void UI_GetThemeColor4ubv(int colorid, unsigned char col[4])
+void UI_GetThemeColor4ubv(int colorid, uchar col[4])
 {
-	const unsigned char *cp;
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	col[0] = cp[0];
@@ -1118,9 +1120,19 @@ void UI_GetThemeColor4ubv(int colorid, unsigned char col[4])
 	col[3] = cp[3];
 }
 
-void UI_GetThemeColorType4ubv(int colorid, int spacetype, char col[4])
+void UI_GetThemeColorType3ubv(int colorid, int spacetype, uchar col[3])
 {
-	const unsigned char *cp;
+	const uchar *cp;
+
+	cp = UI_ThemeGetColorPtr(theme_active, spacetype, colorid);
+	col[0] = cp[0];
+	col[1] = cp[1];
+	col[2] = cp[2];
+}
+
+void UI_GetThemeColorType4ubv(int colorid, int spacetype, uchar col[4])
+{
+	const uchar *cp;
 
 	cp = UI_ThemeGetColorPtr(theme_active, spacetype, colorid);
 	col[0] = cp[0];
@@ -1144,7 +1156,7 @@ bool UI_GetIconThemeColor4fv(int colorid, float col[4])
 		return false;
 	}
 
-	const unsigned char *cp;
+	const uchar *cp;
 	cp = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid);
 	col[0] = ((float)cp[0]) / 255.0f;
 	col[1] = ((float)cp[1]) / 255.0f;
@@ -1154,7 +1166,7 @@ bool UI_GetIconThemeColor4fv(int colorid, float col[4])
 	return true;
 }
 
-void UI_GetColorPtrShade3ubv(const unsigned char cp[3], unsigned char col[3], int offset)
+void UI_GetColorPtrShade3ubv(const uchar cp[3], uchar col[3], int offset)
 {
 	int r, g, b;
 
@@ -1173,7 +1185,7 @@ void UI_GetColorPtrShade3ubv(const unsigned char cp[3], unsigned char col[3], in
 
 /* get a 3 byte color, blended and shaded between two other char color pointers */
 void UI_GetColorPtrBlendShade3ubv(
-        const unsigned char cp1[3], const unsigned char cp2[3], unsigned char col[3],
+        const uchar cp1[3], const uchar cp2[3], uchar col[3],
         float fac, int offset)
 {
 	int r, g, b;
@@ -1214,9 +1226,9 @@ int UI_ThemeMenuShadowWidth(void)
 	return (int)(btheme->tui.menu_shadow_width * UI_DPI_FAC);
 }
 
-void UI_make_axis_color(const unsigned char src_col[3], unsigned char dst_col[3], const char axis)
+void UI_make_axis_color(const uchar src_col[3], uchar dst_col[3], const char axis)
 {
-	unsigned char col[3];
+	uchar col[3];
 
 	switch (axis) {
 		case 'X':

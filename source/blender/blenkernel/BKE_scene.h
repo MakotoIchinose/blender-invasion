@@ -104,7 +104,6 @@ int BKE_scene_base_iter_next(
         struct Scene **scene, int val, struct Base **base, struct Object **ob);
 
 void BKE_scene_base_flag_to_objects(struct ViewLayer *view_layer);
-void BKE_scene_base_flag_from_objects(struct Scene *scene);
 void BKE_scene_object_base_flag_sync_from_base(struct Base *base);
 void BKE_scene_object_base_flag_sync_from_object(struct Base *base);
 
@@ -138,6 +137,10 @@ bool BKE_scene_validate_setscene(struct Main *bmain, struct Scene *sce);
 float BKE_scene_frame_get(const struct Scene *scene);
 float BKE_scene_frame_get_from_ctime(const struct Scene *scene, const float frame);
 void  BKE_scene_frame_set(struct Scene *scene, double cfra);
+
+struct TransformOrientationSlot *BKE_scene_orientation_slot_get(struct Scene *scene, int flag);
+void BKE_scene_orientation_slot_set_index(struct TransformOrientationSlot *orient_slot, int orientation);
+int BKE_scene_orientation_slot_get_index(const struct TransformOrientationSlot *orient_slot);
 
 /* **  Scene evaluation ** */
 

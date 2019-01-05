@@ -79,13 +79,14 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *UNUSED(op))
 	ViewLayer *view_layer_eval = DEG_get_evaluated_view_layer(depsgraph);
 	Object *obedit = CTX_data_edit_object(C);
 	Scene *scene = CTX_data_scene(C);
+	RegionView3D *rv3d = CTX_wm_region_data(C);
 	View3D *v3d = CTX_wm_view3d(C);
 	TransVertStore tvs = {NULL};
 	TransVert *tv;
 	float gridf, imat[3][3], bmat[3][3], vec[3];
 	int a;
 
-	gridf = ED_view3d_grid_scale(scene, v3d, NULL);
+	gridf = ED_view3d_grid_view_scale(scene, v3d, rv3d, NULL);
 
 	if (obedit) {
 		ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -516,10 +517,11 @@ void VIEW3D_OT_snap_selected_to_active(wmOperatorType *ot)
 static int snap_curs_to_grid_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Scene *scene = CTX_data_scene(C);
+	RegionView3D *rv3d = CTX_wm_region_data(C);
 	View3D *v3d = CTX_wm_view3d(C);
 	float gridf, *curs;
 
-	gridf = ED_view3d_grid_scale(scene, v3d, NULL);
+	gridf = ED_view3d_grid_view_scale(scene, v3d, rv3d, NULL);
 	curs = scene->cursor.location;
 
 	curs[0] = gridf * floorf(0.5f + curs[0] / gridf);
@@ -550,7 +552,7 @@ void VIEW3D_OT_snap_cursor_to_grid(wmOperatorType *ot)
 /* **************************************************** */
 
 /** Returns the center position of a tracking marker visible on the viewport (useful to snap to). **/
-static void bundle_midpoint(Depsgraph *depsgraph, Scene *scene, Object *ob, float r_vec[3])
+static void bundle_midpoint(Scene *scene, Object *ob, float r_vec[3])
 {
 	MovieClip *clip = BKE_object_movieclip_get(scene, ob, false);
 	MovieTracking *tracking;
@@ -565,7 +567,7 @@ static void bundle_midpoint(Depsgraph *depsgraph, Scene *scene, Object *ob, floa
 
 	copy_m4_m4(cammat, ob->obmat);
 
-	BKE_tracking_get_camera_object_matrix(depsgraph, scene, ob, mat);
+	BKE_tracking_get_camera_object_matrix(scene, ob, mat);
 
 	INIT_MINMAX(min, max);
 
@@ -694,7 +696,7 @@ static bool snap_curs_to_sel_ex(bContext *C, float cursor[3])
 				if (ob_eval->type == OB_CAMERA) {
 					/* snap to bundles should happen only when bundles are visible */
 					if (v3d->flag2 & V3D_SHOW_RECONSTRUCTION) {
-						bundle_midpoint(depsgraph, scene, DEG_get_original_object(ob_eval), vec);
+						bundle_midpoint(scene, DEG_get_original_object(ob_eval), vec);
 					}
 				}
 
@@ -759,6 +761,9 @@ void VIEW3D_OT_snap_cursor_to_selected(wmOperatorType *ot)
 static bool snap_calc_active_center(bContext *C, const bool select_only, float r_center[3])
 {
 	Object *ob = CTX_data_active_object(C);
+	if (ob == NULL) {
+		return false;
+	}
 	return ED_object_calc_active_center(ob, select_only, r_center);
 }
 

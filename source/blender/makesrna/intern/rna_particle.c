@@ -373,8 +373,9 @@ static void rna_ParticleSystem_co_hair(ParticleSystem *particlesystem, Object *o
 }
 
 
-static const EnumPropertyItem *rna_Particle_Material_itemf(bContext *C, PointerRNA *UNUSED(ptr),
-                                                      PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Particle_Material_itemf(
+        bContext *C, PointerRNA *UNUSED(ptr),
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	Object *ob = CTX_data_pointer_get(C, "object").data;
 	Material *ma;
@@ -670,6 +671,8 @@ static void rna_Particle_change_physics_type(Main *bmain, Scene *scene, PointerR
 		part->fluid = MEM_callocN(sizeof(SPHFluidSettings), "SPH Fluid Settings");
 		BKE_particlesettings_fluid_default_settings(part);
 	}
+
+	DEG_relations_tag_update(bmain);
 }
 
 static void rna_Particle_redo_child(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -1152,8 +1155,9 @@ static int rna_ParticleDupliWeight_name_length(PointerRNA *ptr)
 	return strlen(tstr);
 }
 
-static const EnumPropertyItem *rna_Particle_from_itemf(bContext *UNUSED(C), PointerRNA *UNUSED(ptr),
-                                                 PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_Particle_from_itemf(
+        bContext *UNUSED(C), PointerRNA *UNUSED(ptr),
+        PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	/*if (part->type==PART_REACTOR) */
 	/*	return part_reactor_from_items; */
@@ -1161,8 +1165,9 @@ static const EnumPropertyItem *rna_Particle_from_itemf(bContext *UNUSED(C), Poin
 	return part_from_items;
 }
 
-static const EnumPropertyItem *rna_Particle_dist_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                 PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_Particle_dist_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	ParticleSettings *part = ptr->id.data;
 
@@ -1172,8 +1177,9 @@ static const EnumPropertyItem *rna_Particle_dist_itemf(bContext *UNUSED(C), Poin
 		return part_dist_items;
 }
 
-static const EnumPropertyItem *rna_Particle_draw_as_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                    PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_Particle_draw_as_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	ParticleSettings *part = ptr->id.data;
 
@@ -1183,8 +1189,9 @@ static const EnumPropertyItem *rna_Particle_draw_as_itemf(bContext *UNUSED(C), P
 		return part_draw_as_items;
 }
 
-static const EnumPropertyItem *rna_Particle_ren_as_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                   PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_Particle_ren_as_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	ParticleSettings *part = ptr->id.data;
 
@@ -3168,7 +3175,7 @@ static void rna_def_particle_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "twist", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, -100000.0f, 100000.0f);
 	RNA_def_property_ui_range(prop, -10.0f, 10.0f, 0.1, 3);
-	RNA_def_property_ui_text(prop, "Twist", "Number of turns around parent allong the strand");
+	RNA_def_property_ui_text(prop, "Twist", "Number of turns around parent along the strand");
 	RNA_def_property_update(prop, 0, "rna_Particle_redo_child");
 
 	prop = RNA_def_property(srna, "use_twist_curve", PROP_BOOLEAN, PROP_NONE);

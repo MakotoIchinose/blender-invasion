@@ -780,9 +780,9 @@ float ED_view3d_grid_scale(Scene *scene, View3D *v3d, const char **grid_unit)
 	return v3d->grid * ED_scene_grid_scale(scene, grid_unit);
 }
 
-/* Simulates the grid scale that is visualized by the shaders drawing functions.
- * The actual code is seen in `object_grid_frag.glsl` when you get the `grid_res` value.
- * Currently the simulation is done only when RV3D_VIEW_IS_AXIS. */
+/* Simulates the grid scale that is actually viewed.
+ * The actual code is seen in `object_grid_frag.glsl` (see `grid_res`).
+ * Currently the simulation is only done when RV3D_VIEW_IS_AXIS. */
 float ED_view3d_grid_view_scale(
         Scene *scene, View3D *v3d, RegionView3D *rv3d, const char **grid_unit)
 {
@@ -791,19 +791,18 @@ float ED_view3d_grid_view_scale(
 		/* Decrease the distance between grid snap points depending on zoom. */
 		float grid_subdiv = v3d->gridsubdiv;
 		if (grid_subdiv > 1) {
+			/* Allow 3 more subdivisions (see OBJECT_engine_init). */
+			grid_scale /= powf(grid_subdiv, 3);
+
 			float grid_distance = rv3d->dist;
 			float lvl = (logf(grid_distance / grid_scale) / logf(grid_subdiv));
-			if (lvl < 0.0f) {
-				/* Negative values need an offset for correct casting.
-				 * By convention, the minimum lvl is limited to -2 (see `objec_mode.c`) */
-				if (lvl > -2.0f) {
-					lvl -= 1.0f;
-				}
-				else {
-					lvl = -2.0f;
-				}
-			}
-			grid_scale *= pow(grid_subdiv, (int)lvl - 1);
+
+			/* 1.3f is a visually chosen offset for the
+			 * subdivision to match the visible grid. */
+			lvl -= 1.3f;
+			CLAMP_MIN(lvl, 0.0f);
+
+			grid_scale *= pow(grid_subdiv, (int)lvl);
 		}
 	}
 
