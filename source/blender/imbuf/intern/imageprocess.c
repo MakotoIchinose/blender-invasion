@@ -363,12 +363,12 @@ void IMB_processor_apply_threaded(int buffer_lines, int handle_size, void *init_
 	int lines_per_task = 64;
 	int threads_max = BLI_system_thread_count();
 
-	if (init_data->context->is_prefetch_render && init_data->out->y > (threads_max - 1)) {
+	if (init_data->context->is_prefetch_render && buffer_lines > (threads_max - 1)) {
 		if (threads_max > 1) {
-			lines_per_task = init_data->out->y / (threads_max - 1);
+			lines_per_task = buffer_lines / (threads_max - 1);
 		}
 		else {
-			lines_per_task = init_data->out->y;
+			lines_per_task = buffer_lines;
 		}
 	}
 
