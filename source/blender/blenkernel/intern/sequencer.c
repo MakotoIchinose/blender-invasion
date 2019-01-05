@@ -4312,7 +4312,7 @@ void BKE_sequencer_prefetch_update_scene(Scene *scene)
 	if (pfjob && scene->adt) {
 		Scene *scene_cpy;
 		BKE_scene_free(pfjob->scene_cpy);
-		BKE_id_copy_ex(pfjob->bmain_cpy, (ID *)pfjob->scene, (ID **)&scene_cpy, LIB_ID_COPY_ACTIONS | LIB_ID_COPY_SEQUENCER_PREFETCH, false);
+		BKE_id_copy_ex(pfjob->bmain_cpy, (ID *)pfjob->scene, (ID **)&scene_cpy, LIB_ID_COPY_ACTIONS | LIB_ID_COPY_SEQUENCER_PREFETCH | LIB_ID_FREE_NO_DEG_TAG , false);
 		scene_cpy->nodetree = NULL;
 		scene_cpy->pfjob = NULL;
 		scene_cpy->seq_cache = NULL;
