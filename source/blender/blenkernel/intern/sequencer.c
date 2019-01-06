@@ -3847,8 +3847,8 @@ ImBuf *BKE_sequencer_give_ibuf(const SeqRenderData *context, float cfra, int cha
 
 	/* moving playhead outside of precached area should reset prefetcher */
 	if (pfjob->running &&
-		cfra < pfjob->cfra &&
-		cfra > pfjob->cfra + pfjob->progress)
+		!(cfra >= pfjob->cfra &&
+		cfra <= pfjob->cfra + pfjob->progress))
 	{
 		BKE_sequencer_prefetch_stop_and_wait(scene);
 	}

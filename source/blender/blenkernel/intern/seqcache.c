@@ -264,6 +264,11 @@ void BKE_sequencer_cache_put(const SeqRenderData *context, Sequence *seq, float 
 		return;
 	}
 
+	if (type == SEQ_CACHE_FINAL_OUT && !scene->pfjob->scene->seq_cache->last_key) {
+		//todo seems that final_out is freed prematurely...
+		int link_err_trap = 1;
+	}
+
 	if (context->is_prefetch_render) {
 		scene = pfjob->scene;
 		context = &pfjob->context;
@@ -308,32 +313,38 @@ void BKE_sequencer_cache_put(const SeqRenderData *context, Sequence *seq, float 
 		}
 	}
 
-	if (BKE_sequencer_cache_recycle_item(scene, type)){
-		MovieCacheKey *temp_last_key = cache->last_key;
+	MovieCacheKey *temp_last_key = cache->last_key;
 
+	bool memory_free = BKE_sequencer_cache_recycle_item(scene, type);
+	if (cache->insert_allowed) {
 		IMB_moviecache_put(cache, &key, i);
+	}
 
-		/* Restore pointer to previous item as this one will be freed when stack is rendered */
-		if (key.free_after_render) {
-			cache->last_key = temp_last_key;
+	/* Restore pointer to previous item as this one will be freed when stack is rendered */
+	if (key.free_after_render) {
+		cache->last_key = temp_last_key;
+	}
+
+	/* Set last_key's reference to this key so we can look up chain backwards
+	* Item is already put in cache, so cache->last_key points to current key;
+	*/
+	if (scene->ed->cache_flag & type && temp_last_key) {
+		((SeqCacheKey *)temp_last_key->userkey)->link_next = cache->last_key;
+	}
+
+	/* Reset linking */
+	if (key.is_base_frame) {
+		cache->last_key = NULL;
+
+		/* This decision can be made only when entire 'stack' for a frame is stored */
+		if (memory_free) {
+			cache->insert_allowed = true;
 		}
-
-		/* Set last_key's reference to this key so we can look up chain backwards
-		* Item is already put in cache, so cache->last_key points to current key;
-		*/
-		if (scene->ed->cache_flag & type && temp_last_key) {
-			((SeqCacheKey *)temp_last_key->userkey)->link_next = cache->last_key;
-		}
-
-		/* Reset linking */
-		if (key.is_base_frame) {
-			cache->last_key = NULL;
+		else {
+			cache->insert_allowed = false;
 		}
 	}
-	else {
-		/* prefetch overrun */
-		pfjob->stop = true;
-	}
+
 	BKE_sequencer_cache_unlock(scene);
 }
 
@@ -454,6 +465,7 @@ static void moviecache_valfree(void *val)
 	MovieCache *cache = item->cache_owner;
 
 	if (item->ibuf) {
+		cache->memory_used -= IMB_get_size_in_memory(item->ibuf);
 		MEM_CacheLimiter_unmanage(item->c_handle);
 		IMB_freeImBuf(item->ibuf);
 	}
@@ -575,16 +587,167 @@ void BKE_sequencer_cache_free_temp_cache(Scene *scene)
 	BKE_sequencer_cache_unlock(scene);
 }
 
+int BKE_sequencer_cache_recalculate_expensive_value(Scene *scene, int total_count, int cheap_count)
+{
+	Editing *ed = scene->ed;
+
+	/* Calculate prefetch_store_ratio if not using prefetching
+	* We need at least 10 samples for reasonable granularity of 0.1
+	*/
+	float cost_diff = 0;
+	if (total_count > 10) {
+		float prefetch_store_ratio = (float)cheap_count / (float)total_count;
+		if (prefetch_store_ratio < ed->prefetch_store_ratio) {
+			int min_frames = total_count * ed->prefetch_store_ratio;
+			/* We are already locked. */
+			BKE_sequencer_cache_unlock(scene);
+			cost_diff = BKE_sequencer_set_new_min_expensive_val(scene, min_frames);
+			BKE_sequencer_cache_lock(scene);
+		}
+	}
+	return cost_diff;
+}
+
+static MovieCacheKey *BKE_sequencer_cache_choose_key(Scene *scene, MovieCacheKey *lkey, MovieCacheKey *rkey)
+{
+	Editing *ed = scene->ed;
+	MovieCacheKey *finalkey = NULL;
+
+	if (rkey && lkey) {
+		if (((SeqCacheKey *)lkey->userkey)->nfra > ((SeqCacheKey *)rkey->userkey)->nfra) {
+			MovieCacheKey *swapkey = lkey;
+			lkey = rkey;
+			rkey = swapkey;
+		}
+
+		if (ed->cache_flag & SEQ_CACHE_PREFETCH_ENABLE) {
+			/* lkey must be left to playhead to be removed else remove rkey */
+			if (((SeqCacheKey *)lkey->userkey)->nfra < scene->r.cfra) {
+				finalkey = lkey;
+			}
+			else {
+				finalkey = rkey;
+			}
+		}
+		else {
+			/* Without prefetch remove most distant frame from playhead */
+			int l_diff = scene->r.cfra - ((SeqCacheKey *)lkey->userkey)->nfra;
+			int r_diff = ((SeqCacheKey *)rkey->userkey)->nfra - scene->r.cfra;
+
+			if (l_diff > r_diff) {
+				finalkey = lkey;
+			}
+			else {
+				finalkey = rkey;
+			}
+		}
+	}
+	else {
+		if (lkey) {
+			finalkey = lkey;
+		}
+		else {
+			finalkey = rkey;
+		}
+	}
+	return finalkey;
+}
+
 static void BKE_sequencer_cache_recycle_linked(Scene *scene, MovieCacheKey *base)
 {
 	MovieCache *cache = scene->seq_cache;
-	int i = 0;
+	MovieCacheKey *next = ((SeqCacheKey *)base->userkey)->link_next;
+
 	while (base) {
 		MovieCacheKey *prev = ((SeqCacheKey *)base->userkey)->link_prev;
 		BLI_ghash_remove(cache->hash, base, moviecache_keyfree, moviecache_valfree);
 		base = prev;
-		i++;
 	}
+
+	base = next;
+	while (base) {
+		next = ((SeqCacheKey *)base->userkey)->link_next;
+		BLI_ghash_remove(cache->hash, base, moviecache_keyfree, moviecache_valfree);
+		base = next;
+	}
+}
+
+static MovieCacheKey *BKE_sequencer_cache_get_item_for_removal(Scene *scene, bool recursive_run)
+{
+	MovieCache *cache = scene->seq_cache;
+
+	if (!cache) {
+		return NULL;
+	}
+
+	MovieCacheKey *finalkey = NULL;
+	/*leftmost key*/
+	MovieCacheKey *lkey = NULL;
+	/*rightmost key*/
+	MovieCacheKey *rkey = NULL;
+	MovieCacheKey *key = NULL;
+
+	GHashIterator gh_iter;
+	BLI_ghashIterator_init(&gh_iter, cache->hash);
+	int total_count = 0;
+	int cheap_count = 0;
+
+	while (!BLI_ghashIterator_done(&gh_iter)) {
+		key = BLI_ghashIterator_getKey(&gh_iter);
+		SeqCacheKey *skey = key->userkey;
+		MovieCacheItem *item = BLI_ghashIterator_getValue(&gh_iter);
+		BLI_ghashIterator_step(&gh_iter);
+
+		if (!item->ibuf) {
+			int item_freed_err_trap = 1;
+ 			BKE_sequencer_cache_recycle_linked(scene, key);
+			/* can not continue iterating after linked remove */
+			BLI_ghashIterator_init(&gh_iter, cache->hash);
+			continue;
+		}
+
+		if (!skey->is_base_frame) {
+			continue;
+		}
+
+		total_count++;
+		if (skey->cost <= cache->expensive_min_val) {
+			cheap_count++;
+			if (lkey) {
+				if (skey->nfra < ((SeqCacheKey *)lkey->userkey)->nfra) {
+					lkey = key;
+				}
+			}
+			else {
+				lkey = key;
+			}
+			if (rkey) {
+				if (skey->nfra > ((SeqCacheKey *)rkey->userkey)->nfra) {
+					rkey = key;
+				}
+			}
+			else {
+				rkey = key;
+			}
+		}
+	}
+
+	finalkey = BKE_sequencer_cache_choose_key(scene, lkey, rkey);
+
+	/* No frames to free were found */
+	if(!finalkey) {
+		if (!recursive_run) {
+			/* Recalculate min_expensive_val */
+			int cost_diff = BKE_sequencer_cache_recalculate_expensive_value(scene, total_count, cheap_count);
+
+			/* Value changed? try again, but only once */
+			if (cost_diff > 0) {
+				finalkey = BKE_sequencer_cache_get_item_for_removal(scene, true);
+			}
+		}
+	}
+
+	return finalkey;
 }
 
 /* Free only keys with is_base_frame set
@@ -598,93 +761,13 @@ static bool BKE_sequencer_cache_recycle_item(Scene *scene, eSeqStripElemIBuf typ
 		return false;
 	}
 
-	Editing *ed = scene->ed;
-	int cfra = scene->r.cfra;
-	int cfra_freed = -1;
-	MovieCacheKey *finalkey = NULL;
+	while (cache->memory_used > IMB_moviecache_get_mem_total(cache) * 0.5f) {
+		MovieCacheKey *finalkey = BKE_sequencer_cache_get_item_for_removal(scene, false);
 
-	while (IMB_moviecache_get_mem_used(cache) > IMB_moviecache_get_mem_total(cache)) {
-		/*leftmost key*/
-		MovieCacheKey *lkey = NULL;
-		/*rightmost key*/
-		MovieCacheKey *rkey = NULL;
-		finalkey = NULL;
-		MovieCacheKey *key = NULL;
+		if (finalkey) {
+			int cfra_freed = ((SeqCacheKey *)finalkey->userkey)->nfra;
 
-		GHashIterator gh_iter;
-		BLI_ghashIterator_init(&gh_iter, cache->hash);
-		int total_count = 0;
-		int cheap_count = 0;
-
-		while (!BLI_ghashIterator_done(&gh_iter)) {
-			key = BLI_ghashIterator_getKey(&gh_iter);
-			SeqCacheKey *skey = key->userkey;
-			BLI_ghashIterator_step(&gh_iter);
-
-			if (!skey->is_base_frame) {
-				continue;
-			}
-			total_count++;
-			if (skey->cost <= cache->expensive_min_val) {
-				cheap_count++;
-				if (lkey) {
-					if (skey->nfra < ((SeqCacheKey *)lkey->userkey)->nfra) {
-						lkey = key;
-					}
-				}
-				else {
-					lkey = key;
-				}
-				if (rkey) {
-					if (skey->nfra > ((SeqCacheKey *)rkey->userkey)->nfra) {
-						rkey = key;
-					}
-				}
-				else {
-					rkey = key;
-				}
-			}
-		}
-
-		if (rkey || lkey) {
-			if (ed->cache_flag & SEQ_CACHE_PREFETCH_ENABLE) {
-				/* lkey must be left to playhead to be removed else remove rkey */
-				if (lkey && ((SeqCacheKey *)lkey->userkey)->nfra < cfra) {
-					finalkey = lkey;
-				}
-				else {
-					if (rkey) {
-						finalkey = rkey;
-					}
-				}
-			}
-			else {
-				/* Without prefetch remove most distant frame from playhead */
-				int l_diff = 0;
-				int r_diff = 0;
-				if (lkey) {
-					l_diff = cfra - ((SeqCacheKey *)lkey->userkey)->nfra;
-				}
-				if (rkey) {
-					r_diff = ((SeqCacheKey *)rkey->userkey)->nfra - cfra;
-				}
-				if (l_diff > r_diff) {
-					if (lkey) {
-						finalkey = lkey;
-					}
-				}
-				else {
-					if (rkey) {
-						finalkey = rkey;
-					}
-				}
-			}
-
-			if (((SeqCacheKey *)finalkey->userkey)->nfra > cfra_freed) {
-				cfra_freed = ((SeqCacheKey *)finalkey->userkey)->nfra;
-			}
-
-			if ((cfra_freed && cfra_freed != (scene->pfjob->cfra + scene->pfjob->progress)) ||
+			if (!(cfra_freed >= scene->r.cfra && cfra_freed <= (scene->pfjob->cfra + scene->pfjob->progress + 2)) ||
 				!scene->pfjob->running)
 			{
 				BKE_sequencer_cache_recycle_linked(scene, finalkey);
@@ -695,32 +778,10 @@ static bool BKE_sequencer_cache_recycle_item(Scene *scene, eSeqStripElemIBuf typ
 				return false;
 			}
 		}
-		else { /* No frames to free were found */
-
-			/* Calculate prefetch_store_ratio if not using prefetching
-			 * We need at least 10 samples for reasonable granularity of 0.1
-			 */
-			float cost_diff = 0;
-			if (total_count > 10) {
-				float prefetch_store_ratio = (float)cheap_count / (float)total_count;
-				if (prefetch_store_ratio < ed->prefetch_store_ratio) {
-					int min_frames = total_count * ed->prefetch_store_ratio;
-					/* We are already locked. */
-					BKE_sequencer_cache_unlock(scene);
-					cost_diff = BKE_sequencer_set_new_min_expensive_val(scene, min_frames);
-					BKE_sequencer_cache_lock(scene);
-				}
-			}
-
-			/* Frame cost has been altered, so this is OK */
-			if (cost_diff > 0) {
-				continue;
-			}
-			else {
-				/* Not enough memory to continue operation */
-				scene->pfjob->stop = true;
-				return false;
-			}
+		else {
+			/* Not enough memory to continue operation */
+			scene->pfjob->stop = true;
+			return false;
 		}
 	}
 	return true;

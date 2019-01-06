@@ -73,8 +73,10 @@ typedef struct MovieCache {
 	struct MovieCacheKey *last_key;
 
 	int totseg, *points, proxy, render_flags;  /* for visual statistics optimization */
+
+	size_t memory_used;
 	bool use_limiter_to_free;
-	int pad;
+	bool insert_allowed;
 } MovieCache;
 
 typedef struct MovieCacheKey {
@@ -111,6 +113,7 @@ void IMB_moviecache_cleanup(struct MovieCache *cache,
 void IMB_moviecache_get_cache_segments(struct MovieCache *cache, int proxy, int render_flags, int *totseg_r, int **points_r);
 size_t IMB_moviecache_get_mem_total(MovieCache *cache);
 size_t IMB_moviecache_get_mem_used(MovieCache *cache);
+size_t IMB_get_size_in_memory(struct ImBuf *ibuf);
 
 struct MovieCacheIter;
 struct MovieCacheIter *IMB_moviecacheIter_new(struct MovieCache *cache);
