@@ -1442,3 +1442,9 @@ int IMB_anim_get_preseek(struct anim *anim)
 {
 	return anim->preseek;
 }
+
+void IMB_anim_get_rect(struct anim *anim, int *x, int *y)
+{
+	*x = anim->x;
+	*y = anim->y;
+}

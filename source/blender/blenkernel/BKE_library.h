@@ -87,6 +87,7 @@ enum {
 	LIB_ID_COPY_ACTIONS            = 1 << 24,  /* EXCEPTION! Deep-copy actions used by animdata of copied ID. */
 	LIB_ID_COPY_KEEP_LIB           = 1 << 25,  /* Keep the library pointer when copying datablock outside of bmain. */
 	LIB_ID_COPY_SHAPEKEY           = 1 << 26,  /* EXCEPTION! Deep-copy shapekeys used by copied obdata ID. */
+	LIB_ID_COPY_SEQUENCER_PREFETCH = 1 << 27,  /* custom copy for sequencer prefetching */
 };
 
 void BKE_libblock_copy_ex(struct Main *bmain, const struct ID *id, struct ID **r_newid, const int flag);

@@ -43,9 +43,16 @@
 #include "BLI_utildefines.h"
 #include "BLI_task.h"
 #include "BLI_math.h"
+#include "BLI_listbase.h"
 
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
+#include "IMB_moviecache.h"
+
+#include "DNA_scene_types.h"
+
+#include "BKE_sequencer.h"
+
 #include <math.h>
 
 /* Only this one is used liberally here, and in imbuf */
@@ -324,6 +331,18 @@ void nearest_interpolation(ImBuf *in, ImBuf *out, float x, float y, int xout, in
 
 /*********************** Threaded image processing *************************/
 
+
+typedef struct RenderEffectInitData {
+	struct SeqEffectHandle *sh;
+	struct SeqRenderData *context;
+	struct Sequence *seq;
+	float cfra, facf0, facf1;
+	int lines_per_task;
+	struct ImBuf *ibuf1, *ibuf2, *ibuf3;
+
+	struct ImBuf *out;
+} RenderEffectInitData;
+
 static void processor_apply_func(TaskPool * __restrict pool, void *taskdata, int UNUSED(threadid))
 {
 	void (*do_thread) (void *) = (void (*) (void *)) BLI_task_pool_userdata(pool);
@@ -335,12 +354,24 @@ void IMB_processor_apply_threaded(int buffer_lines, int handle_size, void *init_
                                                       void *customdata),
                                   void *(do_thread) (void *))
 {
-	const int lines_per_task = 64;
 
 	TaskScheduler *task_scheduler = BLI_task_scheduler_get();
 	TaskPool *task_pool;
 
+	RenderEffectInitData *init_data = (RenderEffectInitData *) init_customdata;
 	void *handles;
+	int lines_per_task = 64;
+	int threads_max = BLI_system_thread_count();
+
+	if (init_data->context->is_prefetch_render && buffer_lines > (threads_max - 1)) {
+		if (threads_max > 1) {
+			lines_per_task = buffer_lines / (threads_max - 1);
+		}
+		else {
+			lines_per_task = buffer_lines;
+		}
+	}
+
 	int total_tasks = (buffer_lines + lines_per_task - 1) / lines_per_task;
 	int i, start_line;
 

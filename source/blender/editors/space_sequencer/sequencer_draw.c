@@ -55,6 +55,7 @@
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
+#include "IMB_moviecache.h"
 
 #include "BIF_glutil.h"
 
@@ -77,6 +78,7 @@
 #include "UI_view2d.h"
 
 #include "WM_api.h"
+#include "WM_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -927,7 +929,8 @@ ImBuf *sequencer_ibuf_get(
 	        rectx, recty, proxy_size, false,
 	        &context);
 	context.view_id = BKE_scene_multiview_view_id_get(&scene->r, viewname);
-
+	context.chanshown = sseq->chanshown;
+	context.special_seq_update = special_seq_update;
 	/* sequencer could start rendering, in this case we need to be sure it wouldn't be canceled
 	 * by Esc pressed somewhere in the past
 	 */
@@ -935,10 +938,8 @@ ImBuf *sequencer_ibuf_get(
 
 	if (special_seq_update)
 		ibuf = BKE_sequencer_give_ibuf_direct(&context, cfra + frame_ofs, special_seq_update);
-	else if (!U.prefetchframes) // XXX || (G.f & G_PLAYANIM) == 0) {
-		ibuf = BKE_sequencer_give_ibuf(&context, cfra + frame_ofs, sseq->chanshown);
 	else
-		ibuf = BKE_sequencer_give_ibuf_threaded(&context, cfra + frame_ofs, sseq->chanshown);
+		ibuf = BKE_sequencer_give_ibuf(&context, cfra + frame_ofs, sseq->chanshown);
 
 	/* restore state so real rendering would be canceled (if needed) */
 	G.is_break = is_break;
@@ -1140,6 +1141,16 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 
 	/* for now we only support Left/Right */
 	ibuf = sequencer_ibuf_get(bmain, depsgraph, scene, sseq, cfra, frame_ofs, names[sseq->multiview_eye]);
+
+	PrefetchJob *pfjob = scene->pfjob;
+	/* force redraw, when prefetching and using memview. */
+	if (pfjob && pfjob->running && scene->ed->cache_flag & SEQ_CACHE_MEMVIEW_ENABLE) {
+		WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, NULL);
+	}
+	/* Sometimes scrubbing flag is set when not scrubbing. In that case I want to catch "event" of stopping scrubbing */
+	if (ED_screen_animation_playing(CTX_wm_manager(C))) {
+		WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, NULL);
+	}
 
 	if ((ibuf == NULL) ||
 	    (ibuf->rect == NULL && ibuf->rect_float == NULL))
@@ -1431,12 +1442,12 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 	if (cache_handle)
 		IMB_display_buffer_release(cache_handle);
 
-	if (!scope)
-		IMB_freeImBuf(ibuf);
-
 	if (draw_metadata) {
 		ED_region_image_metadata_draw(0.0, 0.0, ibuf, &v2d->tot, 1.0, 1.0);
 	}
+
+	if (!scope)
+		IMB_freeImBuf(ibuf);
 
 	if (draw_backdrop) {
 		GPU_matrix_pop();
@@ -1481,33 +1492,6 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 		}
 	}
 }
-
-#if 0
-void drawprefetchseqspace(Scene *scene, ARegion *UNUSED(ar), SpaceSeq *sseq)
-{
-	int rectx, recty;
-	int render_size = sseq->render_size;
-	int proxy_size = 100.0;
-	if (render_size == 0) {
-		render_size = scene->r.size;
-	}
-	else {
-		proxy_size = render_size;
-	}
-	if (render_size < 0) {
-		return;
-	}
-
-	rectx = (render_size * scene->r.xsch) / 100;
-	recty = (render_size * scene->r.ysch) / 100;
-
-	if (sseq->mainb != SEQ_DRAW_SEQUENCE) {
-		give_ibuf_prefetch_request(
-		    rectx, recty, (scene->r.cfra), sseq->chanshown,
-		    proxy_size);
-	}
-}
-#endif
 
 /* draw backdrop of the sequencer strips view */
 static void draw_seq_backdrop(View2D *v2d)
@@ -1665,6 +1649,94 @@ static void seq_draw_sfra_efra(Scene *scene, View2D *v2d)
 	GPU_blend(false);
 }
 
+static void draw_cache_memview(const bContext *C) {
+	Scene *scene = CTX_data_scene(C);
+	Editing *ed = scene->ed;
+
+	if (ed->cache_flag & SEQ_CACHE_MEMVIEW_ENABLE) {
+		Sequence *seq;
+		GHashIterator gh_iter;
+
+		GPU_blend(true);
+		uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+		immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+
+		char bgr = 127;
+		char bgg = 127;
+		char bgb = 127;
+		char bga = 255;
+
+		immUniformColor4ub(bgr, bgg, bgb, bga);
+		immRectf(pos, scene->r.sfra, SEQ_STRIP_OFSBOTTOM * 10, scene->r.efra, SEQ_STRIP_OFSTOP);
+
+		BKE_sequencer_cache_lock(scene);
+		MovieCache *cache = CTX_data_scene(C)->seq_cache;
+		if (!cache) {
+			BKE_sequencer_cache_unlock(scene);
+			immUnbindProgram();
+			GPU_blend(false);
+			return;
+		}
+
+		GHASH_ITER(gh_iter, cache->hash) {
+			MovieCacheKey *key = BLI_ghashIterator_getKey(&gh_iter);
+			SeqCacheKey * skey = key->userkey;
+			int framenr = skey->cfra;
+			float cost = skey->cost;
+			seq = skey->seq;
+			int x1 = seq->start + framenr;
+			int x2 = x1 + 1;
+			char r, g, b, a;
+
+			g = 50;
+			if (cost > 1) {
+				r = 255;
+				b = 0;
+				a = 50 * cost;
+				if (a > 255)a = 255;
+			}
+			else {
+				r = 0;
+				b = 255;
+				a = 50 / cost;
+				if (a > 255)a = 255;
+			}
+
+			switch (skey->type) {
+				case SEQ_CACHE_FINAL_OUT:
+					immUniformColor4ub(r, g, b, a);
+					immRectf(pos, x1, SEQ_STRIP_OFSBOTTOM * 10 + 0.1f, x2, SEQ_STRIP_OFSTOP - 0.1f);
+					break;
+
+				case SEQ_CACHE_RAW:
+					immUniformColor4ub(bgr, bgg, bgb, bga);
+					immRectf(pos, x1, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.05f, x2, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.15f);
+					immUniformColor4ub(r, g, b, 180);
+					immRectf(pos, x1, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.05f, x2, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.15f);
+					break;
+
+				case SEQ_CACHE_PREPROCESSED:
+					immUniformColor4ub(bgr, bgg, bgb, bga);
+					immRectf(pos, x1, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.2f, x2, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.3f);
+					immUniformColor4ub(r, g, b, 180);
+					immRectf(pos, x1, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.2f, x2, seq->machine + SEQ_STRIP_OFSBOTTOM + 0.3f);
+					break;
+
+				case SEQ_CACHE_COMPOSITE:
+					immUniformColor4ub(bgr, bgg, bgb, bga);
+					immRectf(pos, x1, seq->machine + SEQ_STRIP_OFSTOP - 0.15f, x2, seq->machine + SEQ_STRIP_OFSTOP - 0.05f);
+					immUniformColor4ub(r, g, b, a);
+					immRectf(pos, x1, seq->machine + SEQ_STRIP_OFSTOP - 0.15f, x2, seq->machine + SEQ_STRIP_OFSTOP - 0.05f);
+					break;
+			}
+		}
+
+		immUnbindProgram();
+		GPU_blend(false);
+		BKE_sequencer_cache_unlock(scene);
+	}
+}
+
 /* Draw Timeline/Strip Editor Mode for Sequencer */
 void draw_timeline_seq(const bContext *C, ARegion *ar)
 {
@@ -1713,6 +1785,7 @@ void draw_timeline_seq(const bContext *C, ARegion *ar)
 	if (ed) {
 		/* draw the data */
 		draw_seq_strips(C, ed, ar);
+		draw_cache_memview(C);
 
 		/* text draw cached (for sequence names), in pixelspace now */
 		UI_view2d_text_cache_draw(ar);

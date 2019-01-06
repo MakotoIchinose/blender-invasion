@@ -956,6 +956,7 @@ static bool sequence_offset_after_frame(Scene *scene, const int delta, const int
 		if (seq->startdisp >= cfra) {
 			BKE_sequence_translate(scene, seq, delta);
 			BKE_sequence_calc(scene, seq);
+			BKE_sequencer_cache_cleanup_sequence(scene, seq);
 			done = true;
 		}
 	}
@@ -1044,6 +1045,7 @@ static int sequencer_gap_remove_exec(bContext *C, wmOperator *op)
 	int cfra, efra, sfra;
 	bool first = false, done;
 	bool do_all = RNA_boolean_get(op->ptr, "all");
+	BKE_sequencer_prefetch_stop_and_wait(scene);
 
 	/* get first and last frame */
 	boundbox_seq(scene, &rectf);
@@ -1073,6 +1075,7 @@ static int sequencer_gap_remove_exec(bContext *C, wmOperator *op)
 		}
 	}
 
+	BKE_sequencer_prefetch_update_scene(scene);
 	WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
 	return OPERATOR_FINISHED;
