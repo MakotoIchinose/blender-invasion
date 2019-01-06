@@ -661,7 +661,7 @@ static void sequencer_preview_region_draw(const bContext *C, ARegion *ar)
 
 static void sequencer_preview_region_listener(
         wmWindow *UNUSED(win), ScrArea *UNUSED(sa), ARegion *ar,
-        wmNotifier *wmn, const Scene *UNUSED(scene))
+        wmNotifier *wmn, Scene *scene)
 {
 	/* context changes */
 	switch (wmn->category) {
@@ -685,7 +685,7 @@ static void sequencer_preview_region_listener(
 			switch (wmn->data) {
 				case ND_KEYFRAME:
 					/* Otherwise, often prevents seeing immediately effects of keyframe editing... */
-					BKE_sequencer_cache_cleanup();
+					BKE_sequencer_cache_cleanup(scene);
 					ED_region_tag_redraw(ar);
 					break;
 			}

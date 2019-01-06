@@ -61,42 +61,6 @@
 static MEM_CacheLimiterC *limitor = NULL;
 static pthread_mutex_t limitor_lock = BLI_MUTEX_INITIALIZER;
 
-typedef struct MovieCache {
-	char name[64];
-
-	GHash *hash;
-	GHashHashFP hashfp;
-	GHashCmpFP cmpfp;
-	MovieCacheGetKeyDataFP getdatafp;
-
-	MovieCacheGetPriorityDataFP getprioritydatafp;
-	MovieCacheGetItemPriorityFP getitempriorityfp;
-	MovieCachePriorityDeleterFP prioritydeleterfp;
-
-	struct BLI_mempool *keys_pool;
-	struct BLI_mempool *items_pool;
-	struct BLI_mempool *userkeys_pool;
-
-	int keysize;
-
-	void *last_userkey;
-
-	int totseg, *points, proxy, render_flags;  /* for visual statistics optimization */
-	int pad;
-} MovieCache;
-
-typedef struct MovieCacheKey {
-	MovieCache *cache_owner;
-	void *userkey;
-} MovieCacheKey;
-
-typedef struct MovieCacheItem {
-	MovieCache *cache_owner;
-	ImBuf *ibuf;
-	MEM_CacheLimiterHandleC *c_handle;
-	void *priority_data;
-} MovieCacheItem;
-
 static unsigned int moviecache_hashhash(const void *keyv)
 {
 	const MovieCacheKey *key = keyv;
@@ -310,10 +274,14 @@ MovieCache *IMB_moviecache_create(const char *name, int keysize, GHashHashFP has
 	cache->userkeys_pool = BLI_mempool_create(keysize, 0, 64, BLI_MEMPOOL_NOP);
 	cache->hash = BLI_ghash_new(moviecache_hashhash, moviecache_hashcmp, "MovieClip ImBuf cache hash");
 
+	cache->limiter = limitor;
 	cache->keysize = keysize;
 	cache->hashfp = hashfp;
 	cache->cmpfp = cmpfp;
 	cache->proxy = -1;
+	cache->expensive_min_val = 1;
+	cache->use_limiter_to_free = true;
+	cache->last_key = NULL;
 
 	return cache;
 }
@@ -362,7 +330,9 @@ static void do_moviecache_put(MovieCache *cache, void *userkey, ImBuf *ibuf, boo
 		item->priority_data = cache->getprioritydatafp(userkey);
 	}
 
-	BLI_ghash_reinsert(cache->hash, key, item, moviecache_keyfree, moviecache_valfree);
+	if (BLI_ghash_reinsert(cache->hash, key, item, moviecache_keyfree, moviecache_valfree)) {
+		cache->last_key = key;
+	}
 
 	if (cache->last_userkey) {
 		memcpy(cache->last_userkey, userkey, cache->keysize);
@@ -373,9 +343,11 @@ static void do_moviecache_put(MovieCache *cache, void *userkey, ImBuf *ibuf, boo
 
 	item->c_handle = MEM_CacheLimiter_insert(limitor, item);
 
-	MEM_CacheLimiter_ref(item->c_handle);
-	MEM_CacheLimiter_enforce_limits(limitor);
-	MEM_CacheLimiter_unref(item->c_handle);
+	if (cache->use_limiter_to_free) {
+		MEM_CacheLimiter_ref(item->c_handle);
+		MEM_CacheLimiter_enforce_limits(limitor);
+		MEM_CacheLimiter_unref(item->c_handle);
+	}
 
 	if (need_lock)
 		BLI_mutex_unlock(&limitor_lock);
@@ -573,6 +545,16 @@ void IMB_moviecache_get_cache_segments(MovieCache *cache, int proxy, int render_
 
 		MEM_freeN(frames);
 	}
+}
+
+size_t IMB_moviecache_get_mem_total(MovieCache *cache)
+{
+	return MEM_CacheLimiter_get_maximum();
+}
+
+size_t IMB_moviecache_get_mem_used(MovieCache *cache)
+{
+	return MEM_CacheLimiter_get_memory_in_use(cache->limiter);
 }
 
 struct MovieCacheIter *IMB_moviecacheIter_new(MovieCache *cache)

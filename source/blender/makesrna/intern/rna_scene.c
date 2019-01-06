@@ -1781,10 +1781,9 @@ static void rna_SceneCamera_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Po
 	}
 }
 
-static void rna_SceneSequencer_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
+static void rna_SceneSequencer_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
 {
-	BKE_sequencer_cache_cleanup();
-	BKE_sequencer_preprocessed_cache_cleanup();
+	BKE_sequencer_cache_cleanup(scene);
 }
 
 static char *rna_ToolSettings_path(PointerRNA *UNUSED(ptr))
@@ -1932,8 +1931,7 @@ static void rna_GPUDOFSettings_blades_set(PointerRNA *ptr, const int value)
 static void rna_GPUDOFSettings_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
 {
 	/* TODO(sergey): Can be more selective here. */
-	BKE_sequencer_cache_cleanup();
-	BKE_sequencer_preprocessed_cache_cleanup();
+	BKE_sequencer_cache_cleanup(scene);
 	WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, scene);
 }
 
