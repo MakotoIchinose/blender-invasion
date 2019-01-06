@@ -1093,6 +1093,8 @@ static void sequencer_draw_background(
 	}
 }
 
+int tmp_cfra;
+
 void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq, int cfra, int frame_ofs, bool draw_overlay, bool draw_backdrop)
 {
 	struct Main *bmain = CTX_data_main(C);
@@ -1112,6 +1114,11 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 	const bool draw_gpencil = ((sseq->flag & SEQ_SHOW_GPENCIL) && sseq->gpd);
 	const char *names[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
 	bool draw_metadata = false;
+
+	if (cfra == tmp_cfra) {
+		int dbl_draw_trap = 1;
+	}
+	tmp_cfra = cfra;
 
 	if (G.is_rendering == false && (scene->r.seq_prev_type) == OB_RENDER) {
 		/* stop all running jobs, except screen one. currently previews frustrate Render
@@ -1701,6 +1708,8 @@ static void draw_cache_memview(const bContext *C) {
 				a = 50 / cost;
 				if (a > 255)a = 255;
 			}
+
+			a = 255;
 
 			switch (skey->type) {
 				case SEQ_CACHE_FINAL_OUT:
