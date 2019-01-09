@@ -362,11 +362,7 @@ typedef struct AssetRepositoryRef {
 typedef struct Library {
 	ID id;
 	struct FileData *filedata;
-<<<<<<< HEAD
-	/* path name used for reading, can be relative and edited in the outliner. */
-=======
 	/** Path name used for reading, can be relative and edited in the outliner. */
->>>>>>> master
 	char name[1024];
 
 	/**
