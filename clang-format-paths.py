@@ -4,6 +4,8 @@ import os
 import sys
 import subprocess
 
+VERSION_MIN = (6, 0, 0)
+
 # Optionally pass in files to operate on.
 paths = sys.argv[1:]
 if not paths:
@@ -45,6 +47,14 @@ def convert_tabs_to_spaces(files):
             fh.write(data)
 
 
+def clang_format_version():
+    version_output = subprocess.check_output(("clang-format", "-version")).decode('utf-8')
+    version = next(iter(v for v in version_output.split() if v[0].isdigit()), None)
+    if version is not None:
+        version = tuple(int(n) for n in version.split("."))
+    return version
+
+
 def clang_format(files):
     for f in files:
         cmd = (
@@ -54,6 +64,14 @@ def clang_format(files):
 
 
 def main():
+    version = clang_format_version()
+    if version is None:
+        print("Unable to detect 'clang-format -version'")
+        sys.exit(1)
+    if version < VERSION_MIN:
+        print("Version of clang-format is too old:", version, "<", VERSION_MIN)
+        sys.exit(1)
+
     files = [
         f for f in source_files_from_git()
         if f.endswith(extensions)
