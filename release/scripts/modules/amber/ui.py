@@ -65,8 +65,8 @@ class AMBER_PT_repositories(Panel, AmberPanel):
                           item_dyntip_propname="path", rows=1)
 
         col = row.column()
-        col.operator("AMBER_OT_repository_add", text="", icon='ZOOMIN')
-        col.operator("AMBER_OT_repository_remove", text="", icon='ZOOMOUT')
+        col.operator("AMBER_OT_repository_add", text="", icon='ZOOM_IN')
+        col.operator("AMBER_OT_repository_remove", text="", icon='ZOOM_OUT')
         col.operator("AMBER_OT_repository_remove", text="", icon='PANEL_CLOSE').do_erase = True
 
         if 0 <= ae.repositories_pg.repository_index_active < len(ae.repositories_pg.repositories):
@@ -81,15 +81,15 @@ class AMBER_UL_tags_filter(UIList):
         ae_amber_repo = data
         tag = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(0.66, False)
+            split = layout.split(factor=0.66, align=False)
             split.prop(tag, "name", text="", emboss=False, icon_value=icon)
             row = split.row(align=True)
             sub = row.row(align=True)
             sub.active = tag.use_include
-            sub.prop(tag, "use_include", emboss=False, text="", icon='ZOOMIN')
+            sub.prop(tag, "use_include", emboss=False, text="", icon='ZOOM_IN')
             sub = row.row(align=True)
             sub.active = tag.use_exclude
-            sub.prop(tag, "use_exclude", emboss=False, text="", icon='ZOOMOUT')
+            sub.prop(tag, "use_exclude", emboss=False, text="", icon='ZOOM_OUT')
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
@@ -131,15 +131,15 @@ class AMBER_UL_datablocks(UIList):
         ae_amber_repo = data
         tag = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(0.66, False)
+            split = layout.split(factor=0.66, align=False)
             split.prop(tag, "name", text="", emboss=False, icon_value=icon)
             row = split.row(align=True)
             sub = row.row(align=True)
             sub.active = tag.use_include
-            sub.prop(tag, "use_include", emboss=False, text="", icon='ZOOMIN')
+            sub.prop(tag, "use_include", emboss=False, text="", icon='ZOOM_IN')
             sub = row.row(align=True)
             sub.active = tag.use_exclude
-            sub.prop(tag, "use_exclude", emboss=False, text="", icon='ZOOMOUT')
+            sub.prop(tag, "use_exclude", emboss=False, text="", icon='ZOOM_OUT')
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
@@ -151,7 +151,7 @@ class AMBER_UL_assets(UIList):
         ae_amber_repo = data
         asset = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(0.66, False)
+            split = layout.split(factor=0.66, align=False)
             split.prop(asset, "name", text="", emboss=False, icon_value=icon)
             split.prop(asset, "is_selected", text="")
         elif self.layout_type == 'GRID':
@@ -164,7 +164,7 @@ class AMBER_UL_asset_tags(UIList):
         # assert(isinstance(item, bpy.types.AmberDataTagPG))
         tag = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(0.66, False)
+            split = layout.split(factor=0.66, align=False)
             split.prop(tag, "name", text="", emboss=False, icon_value=icon)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
@@ -172,29 +172,29 @@ class AMBER_UL_asset_tags(UIList):
 
 
 class AMBER_UL_tags(UIList):
-    use_filter_name_reverse = bpy.props.BoolProperty(name="Reverse Name", default=False, options=set(),
-                                                     description="Reverse name filtering")
+    use_filter_name_reverse: bpy.props.BoolProperty(name="Reverse Name", default=False, options=set(),
+                                                    description="Reverse name filtering")
 
     def _gen_order_update(name1, name2):
         def _u(self, ctxt):
             if (getattr(self, name1)):
                 setattr(self, name2, False)
         return _u
-    use_order_name = bpy.props.BoolProperty(name="Name", default=False, options=set(),
-                                            description="Sort tags by their name (case-insensitive)",
-                                            update=_gen_order_update("use_order_name", "use_order_importance"))
-    use_order_importance = bpy.props.BoolProperty(name="Importance", default=True, options=set(),
-                                                  description="Sort tags by their weight",
-                                                  update=_gen_order_update("use_order_importance", "use_order_name"))
+    use_order_name: bpy.props.BoolProperty(name="Name", default=False, options=set(),
+                                           description="Sort tags by their name (case-insensitive)",
+                                           update=_gen_order_update("use_order_name", "use_order_importance"))
+    use_order_importance: bpy.props.BoolProperty(name="Importance", default=True, options=set(),
+                                                 description="Sort tags by their weight",
+                                                 update=_gen_order_update("use_order_importance", "use_order_name"))
 
-    use_filter_orderby_invert= bpy.props.BoolProperty(name="Invert Ordering", default=False, options=set(),
+    use_filter_orderby_invert: bpy.props.BoolProperty(name="Invert Ordering", default=False, options=set(),
                                                       description="Reverse tag ordering")
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         # assert(isinstance(item, bpy.types.AmberDataTagPG))
         tag = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(0.5, False)
+            split = layout.split(factor=0.5, align=False)
             split.prop(tag, "name", text="", emboss=False, icon_value=icon)
             split.prop(tag, "priority", text="", emboss=False)
         elif self.layout_type == 'GRID':
@@ -274,16 +274,16 @@ class AMBER_PT_assets(Panel, AmberPanelEditing):
         col.operator("AMBER_OT_asset_add", text="", icon='OBJECT_DATA').active_type = 'OBJECT'
         col.operator("AMBER_OT_asset_add", text="", icon='MATERIAL_DATA').active_type = 'MATERIAL'
         col.operator_context = 'INVOKE_DEFAULT'
-        col.operator_menu_enum("AMBER_OT_asset_add", "datablock_name", text="", icon='ZOOMIN')
-        col.operator("AMBER_OT_asset_delete", text="", icon='ZOOMOUT')
+        col.operator_menu_enum("AMBER_OT_asset_add", "datablock_name", text="", icon='ZOOM_IN')
+        col.operator("AMBER_OT_asset_delete", text="", icon='ZOOM_OUT')
 
         row = self.layout.row()
         if 0 <= ae.repository_pg.asset_index_active < len(ae.repository_pg.assets):
             asset = ae.repository_pg.assets[ae.repository_pg.asset_index_active]
             row.template_list("AMBER_UL_asset_tags", "", asset, "tags", asset, "tag_index_active", rows=2)
             col = row.column()
-            col.operator_menu_enum("AMBER_OT_asset_tag_add", "tag", text="", icon='ZOOMIN')
-            col.operator("AMBER_OT_asset_tag_remove", text="", icon='ZOOMOUT')
+            col.operator_menu_enum("AMBER_OT_asset_tag_add", "tag", text="", icon='ZOOM_IN')
+            col.operator("AMBER_OT_asset_tag_remove", text="", icon='ZOOM_OUT')
 
 
 class AMBER_PT_tags(Panel, AmberPanelEditing):
@@ -299,8 +299,8 @@ class AMBER_PT_tags(Panel, AmberPanelEditing):
         row.template_list("AMBER_UL_tags", "", ae.repository_pg, "tags", ae.repository_pg, "tag_index_active", rows=3)
 
         col = row.column()
-        col.operator("AMBER_OT_tag_add", text="", icon='ZOOMIN')
-        col.operator("AMBER_OT_tag_delete", text="", icon='ZOOMOUT')
+        col.operator("AMBER_OT_tag_add", text="", icon='ZOOM_IN')
+        col.operator("AMBER_OT_tag_delete", text="", icon='ZOOM_OUT')
 
 
 classes = (

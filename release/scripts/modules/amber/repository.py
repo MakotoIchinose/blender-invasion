@@ -72,11 +72,11 @@ class AmberDataTagPG(PropertyGroup):
 
         AmberDataRepository.update_from_asset_engine(ae)
 
-    name = StringProperty(name="Name", description="Tag name", update=tag_data_update)
-    priority = IntProperty(name="Priority", default=0, update=tag_data_update,
-                           description="Tag priority (used to order tags, highest priority go first)")
+    name: StringProperty(name="Name", description="Tag name", update=tag_data_update)
+    priority: IntProperty(name="Priority", default=0, update=tag_data_update,
+                          description="Tag priority (used to order tags, highest priority go first)")
 
-    name_prev = StringProperty(options={'HIDDEN'})
+    name_prev: StringProperty(options={'HIDDEN'})
 
     def include_update(self, context):
         if self.use_include:
@@ -84,8 +84,8 @@ class AmberDataTagPG(PropertyGroup):
         sd = context.space_data
         if sd and sd.type == 'FILE_BROWSER' and sd.asset_engine:
             sd.asset_engine.is_dirty_filtering = True
-    use_include = BoolProperty(name="Include", default=False, description="This tag must exist in filtered items",
-                               update=include_update)
+    use_include: BoolProperty(name="Include", default=False, description="This tag must exist in filtered items",
+                              update=include_update)
 
     def exclude_update(self, context):
         if self.use_exclude:
@@ -93,8 +93,8 @@ class AmberDataTagPG(PropertyGroup):
         sd = context.space_data
         if sd and sd.type == 'FILE_BROWSER' and sd.asset_engine:
             sd.asset_engine.is_dirty_filtering = True
-    use_exclude = BoolProperty(name="Exclude", default=False, description="This tag must not exist in filtered items",
-                               update=exclude_update)
+    use_exclude: BoolProperty(name="Exclude", default=False, description="This tag must not exist in filtered items",
+                              update=exclude_update)
 
     @staticmethod
     def from_dict(tags, tags_dict):
@@ -134,14 +134,14 @@ class AmberDataTagPG(PropertyGroup):
 
 
 class AmberDataAssetViewPG(PropertyGroup):
-    uuid = IntVectorProperty(name="UUID", description="View unique identifier", size=4)
-    name = StringProperty(name="Name", description="Asset/Variant/Revision view name")
-    description = StringProperty(name="Description", description="Asset/Variant/Revision view description")
+    uuid: IntVectorProperty(name="UUID", description="View unique identifier", size=4)
+    name: StringProperty(name="Name", description="Asset/Variant/Revision view name")
+    description: StringProperty(name="Description", description="Asset/Variant/Revision view description")
 
-    size = IntProperty(name="Size")
-    timestamp = IntProperty(name="Timestamp")
+    size: IntProperty(name="Size")
+    timestamp: IntProperty(name="Timestamp")
 
-    path = StringProperty(name="Path", description="File path of this item", subtype='FILE_PATH')
+    path: StringProperty(name="Path", description="File path of this item", subtype='FILE_PATH')
 
 
 class AmberDataAssetView():
@@ -219,16 +219,16 @@ class AmberDataAssetView():
 
 
 class AmberDataAssetRevisionPG(PropertyGroup):
-    comment = StringProperty(name="Comment", description="Asset/Variant revision comment")
-    uuid = IntVectorProperty(name="UUID", description="Revision unique identifier", size=4)
+    comment: StringProperty(name="Comment", description="Asset/Variant revision comment")
+    uuid: IntVectorProperty(name="UUID", description="Revision unique identifier", size=4)
 
-    timestamp = IntProperty(name="Timestamp")
+    timestamp: IntProperty(name="Timestamp")
 
-    views = CollectionProperty(name="Views", type=AmberDataAssetViewPG, description="Views of the revision")
-    view_index_active = IntProperty(name="Active View", options={'HIDDEN'})
+    views: CollectionProperty(name="Views", type=AmberDataAssetViewPG, description="Views of the revision")
+    view_index_active: IntProperty(name="Active View", options={'HIDDEN'})
 
-    view_default = IntVectorProperty(name="Default view", size=4,
-                                     description="Default view of the revision, to be used when nothing explicitly chosen")
+    view_default: IntVectorProperty(name="Default view", size=4,
+                                    description="Default view of the revision, to be used when nothing explicitly chosen")
     def views_itemf(self, context):
         if not hasattr(self, "views_items"):
             self.views_items = [(utils.uuid_pack(v.uuid),) * 2 + (v.name[0], idx) for idx, v in enumerate(self.views)]
@@ -239,8 +239,8 @@ class AmberDataAssetRevisionPG(PropertyGroup):
         return self.views_uuid_to_itemidx_map[self.view_default]
     def view_default_ui_set(self, val):
         self.view_default = self.views_itemidx_to_uuid_map[val]
-    view_default_ui = EnumProperty(items=views_itemf, get=view_default_ui_get, set=view_default_ui_set, name="Default View",
-                                   description="Default view of the variant, to be used when nothing explicitly chosen")
+    view_default_ui: EnumProperty(items=views_itemf, get=view_default_ui_get, set=view_default_ui_set, name="Default View",
+                                  description="Default view of the variant, to be used when nothing explicitly chosen")
 
 
 class AmberDataAssetRevision():
@@ -316,16 +316,16 @@ class AmberDataAssetRevision():
 
 
 class AmberDataAssetVariantPG(PropertyGroup):
-    name = StringProperty(name="Name", description="Asset name")
+    name: StringProperty(name="Name", description="Asset name")
 
-    description = StringProperty(name="Description", description="Asset description")
-    uuid = IntVectorProperty(name="UUID", description="Variant unique identifier", size=4)
+    description: StringProperty(name="Description", description="Asset description")
+    uuid: IntVectorProperty(name="UUID", description="Variant unique identifier", size=4)
 
-    revisions = CollectionProperty(name="Revisions", type=AmberDataAssetRevisionPG, description="Revisions of the variant")
-    revision_index_active = IntProperty(name="Active Revision", options={'HIDDEN'})
+    revisions: CollectionProperty(name="Revisions", type=AmberDataAssetRevisionPG, description="Revisions of the variant")
+    revision_index_active: IntProperty(name="Active Revision", options={'HIDDEN'})
 
-    revision_default = IntVectorProperty(name="Default Revision", size=4,
-                                              description="Default revision of the variant, to be used when nothing explicitly chosen")
+    revision_default: IntVectorProperty(name="Default Revision", size=4,
+                                        description="Default revision of the variant, to be used when nothing explicitly chosen")
     def revisions_itemf(self, context):
         if not hasattr(self, "revisions_items"):
             self.revisions_items = [(utils.uuid_pack(r.uuid),) * 2 + (r.comment.split('\n')[0], idx) for idx, r in enumerate(self.revisions)]
@@ -336,9 +336,9 @@ class AmberDataAssetVariantPG(PropertyGroup):
         return self.revisions_uuid_to_itemidx_map[self.revision_default]
     def revision_default_ui_set(self, val):
         self.revision_default = self.revisions_itemidx_to_uuid_map[val]
-    revision_default_ui = EnumProperty(items=revisions_itemf, get=revision_default_ui_get, set=revision_default_ui_set,
-                                       name="Default Revision",
-                                       description="Default revision of the variant, to be used when nothing explicitly chosen")
+    revision_default_ui: EnumProperty(items=revisions_itemf, get=revision_default_ui_get, set=revision_default_ui_set,
+                                      name="Default Revision",
+                                      description="Default revision of the variant, to be used when nothing explicitly chosen")
 
 
 class AmberDataAssetVariant():
@@ -420,24 +420,24 @@ class AmberDataAssetPG(PropertyGroup):
         AmberDataRepository.update_from_asset_engine(ae)
         bpy.ops.file.refresh()
 
-    name = StringProperty(name="Name", description="Asset name", update=asset_data_update)
-    description = StringProperty(name="Description", description="Asset description", update=asset_data_update)
-    uuid = IntVectorProperty(name="UUID", description="Asset unique identifier", size=4, update=asset_data_update)
+    name: StringProperty(name="Name", description="Asset name", update=asset_data_update)
+    description: StringProperty(name="Description", description="Asset description", update=asset_data_update)
+    uuid: IntVectorProperty(name="UUID", description="Asset unique identifier", size=4, update=asset_data_update)
 
-    file_type = EnumProperty(items=[(e.identifier, e.name, e.description, e.value) for e in AssetEntry.bl_rna.properties["type"].enum_items],
-                             name="File Type", description="Type of file storing the asset", update=asset_data_update)
-    blender_type = EnumProperty(items=[(e.identifier, e.name, e.description, e.value) for e in AssetEntry.bl_rna.properties["blender_type"].enum_items],
-                                name="Blender Type", description="Blender data-block type of the asset", update=asset_data_update)
+    file_type: EnumProperty(items=[(e.identifier, e.name, e.description, e.value) for e in AssetEntry.bl_rna.properties["type"].enum_items],
+                            name="File Type", description="Type of file storing the asset", update=asset_data_update)
+    blender_type: EnumProperty(items=[(e.identifier, e.name, e.description, e.value) for e in AssetEntry.bl_rna.properties["blender_type"].enum_items],
+                               name="Blender Type", description="Blender data-block type of the asset", update=asset_data_update)
 
-    preview_path = StringProperty(name="Preview Path", description="File path of the preview of this item", subtype='FILE_PATH')
-    tags = CollectionProperty(name="Tags", type=AmberDataTagPG, description="Tags of the asset")
-    tag_index_active = IntProperty(name="Active Tag", options={'HIDDEN'})
+    preview_path: StringProperty(name="Preview Path", description="File path of the preview of this item", subtype='FILE_PATH')
+    tags: CollectionProperty(name="Tags", type=AmberDataTagPG, description="Tags of the asset")
+    tag_index_active: IntProperty(name="Active Tag", options={'HIDDEN'})
 
-    variants = CollectionProperty(name="Variants", type=AmberDataAssetVariantPG, description="Variants of the asset")
-    variant_index_active = IntProperty(name="Active Variant", options={'HIDDEN'})
+    variants: CollectionProperty(name="Variants", type=AmberDataAssetVariantPG, description="Variants of the asset")
+    variant_index_active: IntProperty(name="Active Variant", options={'HIDDEN'})
 
-    variant_default = IntVectorProperty(name="Default Variant", size=4,
-                                        description="Default variant of the asset, to be used when nothing explicitly chosen")
+    variant_default: IntVectorProperty(name="Default Variant", size=4,
+                                       description="Default variant of the asset, to be used when nothing explicitly chosen")
     def variants_itemf(self, context):
         if not hasattr(self, "variants_items"):
             self.variants_items = [(utils.uuid_pack(v.uuid),) * 2 + (v.description.split('\n')[0], idx) for idx, v in enumerate(self.variants)]
@@ -448,11 +448,11 @@ class AmberDataAssetPG(PropertyGroup):
         return self.variants_uuid_to_itemidx_map[self.variant_default]
     def variant_default_ui_set(self, val):
         self.variant_default = self.variants_itemidx_to_uuid_map[val]
-    variant_default_ui = EnumProperty(items=variants_itemf, get=variant_default_ui_get, set=variant_default_ui_set,
-                                      name="Default Variant",
-                                      description="Default variant of the asset, to be used when nothing explicitly chosen")
+    variant_default_ui: EnumProperty(items=variants_itemf, get=variant_default_ui_get, set=variant_default_ui_set,
+                                     name="Default Variant",
+                                     description="Default variant of the asset, to be used when nothing explicitly chosen")
 
-    is_selected = BoolProperty(name="Selected", default=False, description="Whether this item is selected")
+    is_selected: BoolProperty(name="Selected", default=False, description="Whether this item is selected")
 
 
 class AmberDataAsset():
@@ -561,19 +561,19 @@ class AmberDataAsset():
 class AmberDataRepositoryPG(PropertyGroup):
     VERSION = "1.0.1"
 
-    path = StringProperty(name="Path", description="Path to Amber repository", subtype='FILE_PATH')
+    path: StringProperty(name="Path", description="Path to Amber repository", subtype='FILE_PATH')
 
-    version = StringProperty(name="Version", description="Repository version")
-    name = StringProperty(name="Name", description="Repository name")
-    description = StringProperty(name="Description", description="Repository description")
-    uuid = IntVectorProperty(name="UUID", description="Repository unique identifier", size=4)
+    version: StringProperty(name="Version", description="Repository version")
+    name: StringProperty(name="Name", description="Repository name")
+    description: StringProperty(name="Description", description="Repository description")
+    uuid: IntVectorProperty(name="UUID", description="Repository unique identifier", size=4)
 
-    tags = CollectionProperty(name="Tags", type=AmberDataTagPG, description="Filtering tags")
-    tag_index_active = IntProperty(name="Active Tag", options={'HIDDEN'})
-    tag_lock_updates = BoolProperty(options={'HIDDEN'})
+    tags: CollectionProperty(name="Tags", type=AmberDataTagPG, description="Filtering tags")
+    tag_index_active: IntProperty(name="Active Tag", options={'HIDDEN'})
+    tag_lock_updates: BoolProperty(options={'HIDDEN'})
 
-    assets = CollectionProperty(name="Assets", type=AmberDataAssetPG)
-    asset_index_active = IntProperty(name="Active Asset", options={'HIDDEN'})
+    assets: CollectionProperty(name="Assets", type=AmberDataAssetPG)
+    asset_index_active: IntProperty(name="Active Asset", options={'HIDDEN'})
 
 
 class AmberDataRepository:
@@ -711,10 +711,10 @@ class AmberDataRepositoryListItemPG(PropertyGroup):
                 repos.from_pg(ae.repositories_pg)
                 repos.save()
 
-    uuid = IntVectorProperty(name="UUID", description="Repository unique identifier", size=4)
-    name = StringProperty(name="Name", update=repository_update)
-    path = StringProperty(name="Path", description="Path to this Amber repository", subtype='DIR_PATH')
-    is_valid = BoolProperty(name="Is Valid")
+    uuid: IntVectorProperty(name="UUID", description="Repository unique identifier", size=4)
+    name: StringProperty(name="Name", update=repository_update)
+    path: StringProperty(name="Path", description="Path to this Amber repository", subtype='DIR_PATH')
+    is_valid: BoolProperty(name="Is Valid")
 
 
 class AmberDataRepositoryListPG(PropertyGroup):
@@ -725,9 +725,9 @@ class AmberDataRepositoryListPG(PropertyGroup):
             if ae and space.asset_engine_type == "AssetEngineAmber":
                 space.params.directory = self.repositories[self.repository_index_active].path
 
-    repositories = CollectionProperty(name="Repositories", type=AmberDataRepositoryListItemPG)
-    repository_index_active = IntProperty(name="Active Repository", options={'HIDDEN'},
-                                          update=repositories_active_update, default=-1)
+    repositories: CollectionProperty(name="Repositories", type=AmberDataRepositoryListItemPG)
+    repository_index_active: IntProperty(name="Active Repository", options={'HIDDEN'},
+                                         update=repositories_active_update, default=-1)
 
 
 class AmberDataRepositoryList:

@@ -215,8 +215,8 @@ class AssetEngineAmber(AssetEngine):
     bl_label = "Amber"
     bl_version = (0 << 16) + (0 << 8) + 4  # Usual maj.min.rev version scheme...
 
-    repository_pg = PointerProperty(name="Repository", type=AmberDataRepositoryPG, description="Current Amber repository")
-    repositories_pg = PointerProperty(name="Repositories", type=AmberDataRepositoryListPG, description="Known Amber repositories")
+    repository_pg: PointerProperty(name="Repository", type=AmberDataRepositoryPG, description="Current Amber repository")
+    repositories_pg: PointerProperty(name="Repositories", type=AmberDataRepositoryListPG, description="Known Amber repositories")
 
     def __init__(self):
         self.executor = futures.ThreadPoolExecutor(8)  # Using threads for now, if issues arise we'll switch to process.

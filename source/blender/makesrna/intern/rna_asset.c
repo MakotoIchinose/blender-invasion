@@ -693,7 +693,7 @@ static bool rna_ae_load_pre(AssetEngine *engine, AssetUUIDList *uuids, struct Fi
 
 	parm = RNA_function_find_parameter(NULL, func, "success_return");
 	RNA_parameter_get(&list, parm, &ret);
-	ret_success = ((*(int *)ret) != 0);
+	ret_success = *(bool *)ret;
 
 	RNA_parameter_list_free(&list);
 
@@ -721,7 +721,7 @@ static bool rna_ae_load_post(bContext *C, AssetEngine *engine, AssetUUIDList *uu
 
 	parm = RNA_function_find_parameter(NULL, func, "success_return");
 	RNA_parameter_get(&list, parm, &ret);
-	ret_success = ((*(int *)ret) != 0);
+	ret_success = *(bool *)ret;
 
 	RNA_parameter_list_free(&list);
 
@@ -754,7 +754,7 @@ static bool rna_ae_check_dir(AssetEngine *engine, char *r_dir, bool do_change)
 
 	parm = RNA_function_find_parameter(NULL, func, "is_valid_return");
 	RNA_parameter_get(&list, parm, &ret);
-	ret_is_valid = ((*(int *)ret) != 0);
+	ret_is_valid = *(bool *)ret;
 
 	BLI_strncpy(r_dir, entries.root, FILE_MAX);
 
@@ -791,7 +791,7 @@ static bool rna_ae_sort_filter(
 
 	parm = RNA_function_find_parameter(NULL, func, "changed_return");
 	RNA_parameter_get(&list, parm, &ret);
-	ret_changed = ((*(int *)ret) != 0);
+	ret_changed = *(bool *)ret;
 
 	RNA_parameter_list_free(&list);
 
@@ -821,7 +821,7 @@ static bool rna_ae_entries_block_get(
 
 	parm = RNA_function_find_parameter(NULL, func, "success_return");
 	RNA_parameter_get(&list, parm, &ret);
-	ret_success = ((*(int *)ret) != 0);
+	ret_success = *(bool *)ret;
 
 	RNA_parameter_list_free(&list);
 
@@ -850,7 +850,7 @@ static bool rna_ae_entries_uuid_get(
 
 	parm = RNA_function_find_parameter(NULL, func, "success_return");
 	RNA_parameter_get(&list, parm, &ret);
-	ret_success = ((*(int *)ret) != 0);
+	ret_success = *(bool *)ret;
 
 	RNA_parameter_list_free(&list);
 
