@@ -1828,9 +1828,13 @@ void BKE_fracture_animated_loc_rot(FractureModifierData *fmd, Object *ob, bool d
 
 				if (fmd->flag & MOD_FRACTURE_USE_ANIMATED_MESH_ROTATION)
 				{
-					float ob_quat[4];
+					float ob_quat[4], anim_quat[4];
 					mat4_to_quat(ob_quat, ob->obmat);
+					mat4_to_quat(anim_quat, fmd->anim_mesh_ob->obmat);
+
 					mul_qt_qtqt(quat, ob_quat, quat);
+					mul_qt_qtqt(quat, anim_quat, quat);
+
 					copy_qt_qt(mi->rigidbody->orn, quat);
 				}
 
