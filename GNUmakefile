@@ -260,6 +260,7 @@ help: .FORCE
 	@echo "                 to define your own command."
 	@echo "  * tgz        - create a compressed archive of the source code."
 	@echo "  * update     - updates git and all submodules"
+	@echo "  * format     - format source code using clang (uses PATHS if passed in)."
 	@echo ""
 	@echo "Environment Variables"
 	@echo "  * BUILD_CMAKE_ARGS    - arguments passed to CMake."
@@ -460,6 +461,9 @@ update: .FORCE
 	git submodule update --init --recursive
 	git submodule foreach git checkout master
 	git submodule foreach git pull --rebase origin master
+
+format: .FORCE
+	python3 clang-format-migration.py $(PATHS)
 
 
 # -----------------------------------------------------------------------------
