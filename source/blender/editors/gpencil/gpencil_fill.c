@@ -1100,12 +1100,35 @@ static void gpencil_fill_exit(bContext *C, wmOperator *op)
 
 		/* delete temp image */
 		if (tgpf->ima) {
+			Image *image;
 			for (Image *ima = bmain->image.first; ima; ima = ima->id.next) {
 				if (ima == tgpf->ima) {
-					BLI_remlink(&bmain->image, ima);
+					image = ima;
+					break;
+				}
+			}
+
+			if (image) {
+				bool debug = true;
+				if (debug) {
+				/* set active for debugging */
+					const bScreen *screen = WM_window_get_active_screen(tgpf->win);
+					for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+						if (sa->spacetype == SPACE_IMAGE) {
+							SpaceImage *sima = sa->spacedata.first;
+							if (sima) {
+								sima->image = image;
+							}
+							else {
+								debug = false;
+							}
+						}
+					}
+				}
+				if (debug == false) {
+					BLI_remlink(&bmain->image, image);
 					BKE_image_free(tgpf->ima);
 					MEM_SAFE_FREE(tgpf->ima);
-					break;
 				}
 			}
 		}
