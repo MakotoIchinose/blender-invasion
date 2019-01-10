@@ -10,10 +10,26 @@ VERSION_MIN = (6, 0, 0)
 paths = sys.argv[1:]
 if not paths:
     paths.extend((
+        "intern/atomic",
+        "intern/audaspace",
         "intern/clog",
+        "intern/cycles",
+        "intern/dualcon",
+        "intern/eigen",
+        "intern/ffmpeg",
         "intern/ghost",
+        "intern/glew-mx",
         "intern/guardedalloc",
+        "intern/iksolver",
+        "intern/locale",
+        "intern/memutil",
+        "intern/mikktspace",
+        "intern/opencolorio",
+        "intern/opensubdiv",
+        "intern/openvdb",
+        "intern/rigidbody",
         "intern/string",
+        "intern/utfconv",
         "source",
     ))
 
@@ -25,6 +41,10 @@ extensions = (
     ".h", ".hh", ".hpp", ".hxx",
     ".m", ".mm",
     ".osl", ".glsl",
+)
+
+ignore_files = (
+    "sobol.cpp",  # Too heavy for clang-format
 )
 
 print("Operating on:")
@@ -75,7 +95,7 @@ def main():
 
     files = [
         f for f in source_files_from_git()
-        if f.endswith(extensions)
+        if f.endswith(extensions) and os.path.basename(f) not in ignore_files
     ]
 
     convert_tabs_to_spaces(files)
