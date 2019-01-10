@@ -51,6 +51,7 @@ def clang_format_version():
     version_output = subprocess.check_output(("clang-format", "-version")).decode('utf-8')
     version = next(iter(v for v in version_output.split() if v[0].isdigit()), None)
     if version is not None:
+        version = version.split("-")[0]
         version = tuple(int(n) for n in version.split("."))
     return version
 
