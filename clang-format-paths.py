@@ -30,6 +30,7 @@ if not paths:
         "intern/string",
         "intern/utfconv",
         "source",
+        "tests/gtests",
     ))
 
 if os.sep != "/":
@@ -42,9 +43,16 @@ extensions = (
     ".osl", ".glsl",
 )
 
-ignore_files = (
-    "sobol.cpp",  # Too heavy for clang-format
-)
+ignore_files = {
+    "intern/cycles/render/sobol.cpp",  # Too heavy for clang-format
+
+    # could use clang-format on/off
+    "source/blender/blenlib/BLI_compiler_typecheck.h",    # Over wraps args.
+    "source/blender/blenlib/BLI_utildefines_variadic.h",  # Over wraps args.
+    "tests/gtests/blenlib/BLI_ressource_strings.h",       # Large data file, not helpful to format.
+}
+if os.sep != "/":
+    ignore_files = set(f.replace("/", os.sep) for f in ignore_files)
 
 print("Operating on:")
 for p in paths:
@@ -94,7 +102,8 @@ def main():
 
     files = [
         f for f in source_files_from_git()
-        if f.endswith(extensions) and os.path.basename(f) not in ignore_files
+        if f.endswith(extensions)
+        if f not in ignore_files
     ]
 
     convert_tabs_to_spaces(files)
