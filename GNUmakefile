@@ -463,7 +463,7 @@ update: .FORCE
 	git submodule foreach git pull --rebase origin master
 
 format: .FORCE
-	python3 clang-format-paths.py $(PATHS)
+	PATH="../lib/${OS_NCASE}/llvm/bin/:$(PATH)" python3 clang-format-paths.py $(PATHS)
 
 
 # -----------------------------------------------------------------------------
