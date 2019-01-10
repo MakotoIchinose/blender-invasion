@@ -120,10 +120,16 @@ typedef struct tGPDfill {
 	short sbuffer_size;                 /* number of elements currently in cache */
 	void *sbuffer;                      /* temporary points */
 	float *depth_arr;                   /* depth array for reproject */
+	int overspill;                      /* overspill or bleed outside fill area */
 
 	Image *ima;                         /* temp image */
 	BLI_Stack *stack;                   /* temp points data */
 	void *draw_handle_3d;               /* handle for drawing strokes while operator is running 3d stuff */
+
+	int bwinx;                          /* tmp size */
+	int bwiny;
+	rcti brect;
+
 } tGPDfill;
 
 
@@ -287,6 +293,43 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 		return;
 	}
 
+	if (tgpf->overspill < 0) {
+		tgpf->overspill = 0;
+	}
+		
+
+	/* set temporary new size */
+	tgpf->bwinx = tgpf->ar->winx;
+	tgpf->bwiny = tgpf->ar->winy;
+	tgpf->brect = tgpf->ar->winrct;
+
+	/* resize ar */
+	tgpf->ar->winrct.xmin -= tgpf->overspill;
+	tgpf->ar->winrct.ymin -= tgpf->overspill;
+	tgpf->ar->winrct.xmax += tgpf->overspill;
+	tgpf->ar->winrct.ymax += tgpf->overspill;
+	tgpf->ar->winx = (short)abs(tgpf->ar->winrct.xmax - tgpf->ar->winrct.xmin);
+	tgpf->ar->winy = (short)abs(tgpf->ar->winrct.ymax - tgpf->ar->winrct.ymin);
+
+	/* save new size */
+	tgpf->sizex = (int)tgpf->ar->winx;
+	tgpf->sizey = (int)tgpf->ar->winy;
+
+	/* debug prints */
+	printf("center: %i, %i\n", tgpf->center[0], tgpf->center[1]);
+
+	/* adjust center */
+	float center[2];
+	center[0] = (float)tgpf->center[0] * ((float)tgpf->ar->winx / (float)tgpf->bwinx);
+	center[1] = (float)tgpf->center[1] * ((float)tgpf->ar->winy / (float)tgpf->bwiny);
+	round_v2i_v2fl(tgpf->center, center);
+
+	/* debug prints */
+	printf("new center: %i, %i\n", tgpf->center[0], tgpf->center[1]);
+	printf("size: %i, %i\n", tgpf->sizex, tgpf->sizey);
+	print_rcti("before", &tgpf->brect);
+	print_rcti("after", &tgpf->ar->winrct);
+
 	char err_out[256] = "unknown";
 	GPUOffScreen *offscreen = GPU_offscreen_create(tgpf->sizex, tgpf->sizey, 0, true, false, err_out);
 	GPU_offscreen_bind(offscreen, true);
@@ -303,18 +346,6 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	else {
 		perspective_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, clipsta, clipend);
 	}
-
-	/* set temporary new size */
-	int bwinx = tgpf->ar->winx;
-	int bwiny = tgpf->ar->winy;
-	rcti brect = tgpf->ar->winrct;
-
-	tgpf->ar->winx = (short)tgpf->sizex;
-	tgpf->ar->winy = (short)tgpf->sizey;
-	tgpf->ar->winrct.xmin = 0;
-	tgpf->ar->winrct.ymin = 0;
-	tgpf->ar->winrct.xmax = tgpf->sizex;
-	tgpf->ar->winrct.ymax = tgpf->sizey;
 
 	GPU_matrix_push_projection();
 	GPU_matrix_identity_set();
@@ -334,11 +365,6 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	/* draw strokes */
 	float ink[4] = {1.0f, 0.0f, 0.0f, 1.0f};
 	gp_draw_datablock(tgpf, ink);
-
-	/* restore size */
-	tgpf->ar->winx = (short)bwinx;
-	tgpf->ar->winy = (short)bwiny;
-	tgpf->ar->winrct = brect;
 
 	GPU_matrix_pop_projection();
 	GPU_matrix_pop();
@@ -1237,13 +1263,12 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 					in_bounds = BLI_rcti_isect_pt(&ar->winrct, event->x, event->y);
 
 					if ((in_bounds) && (ar->regiontype == RGN_TYPE_WINDOW)) {
+						/* set fill overspill */
+						tgpf->overspill = 50;
+
 						/* TODO GPXX: Verify the mouse click is right for any window size */
 						tgpf->center[0] = event->mval[0];
 						tgpf->center[1] = event->mval[1];
-
-						/* save size */
-						tgpf->sizex = ar->winx;
-						tgpf->sizey = ar->winy;
 
 						/* render screen to temp image */
 						gp_render_offscreen(tgpf);
@@ -1265,6 +1290,11 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
 						/* create stroke and reproject */
 						gpencil_stroke_from_buffer(tgpf);
+
+						/* restore size */
+						tgpf->ar->winx = (short)tgpf->bwinx;
+						tgpf->ar->winy = (short)tgpf->bwiny;
+						tgpf->ar->winrct = tgpf->brect;
 
 						/* free temp stack data */
 						if (tgpf->stack) {
