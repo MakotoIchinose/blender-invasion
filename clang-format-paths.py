@@ -25,7 +25,6 @@ if not paths:
         "intern/memutil",
         "intern/mikktspace",
         "intern/opencolorio",
-        "intern/opensubdiv",
         "intern/openvdb",
         "intern/rigidbody",
         "intern/string",
