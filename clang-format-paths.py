@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import multiprocessing
 import os
 import sys
 import subprocess
@@ -95,12 +96,23 @@ def clang_format_version():
     return version
 
 
+def clang_format_file(f):
+    cmd = (
+        CLANG_FORMAT_CMD, "-i", "-verbose", f.encode("ascii")
+    )
+    return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+
+
+def clang_print_output(output):
+    print(output.decode('utf8', errors='ignore').strip())
+
+
 def clang_format(files):
+    pool = multiprocessing.Pool()
     for f in files:
-        cmd = (
-            CLANG_FORMAT_CMD, "-i", "-verbose", f.encode("ascii")
-        )
-        subprocess.check_call(cmd)
+        pool.apply_async(clang_format_file, args=[f], callback=clang_print_output)
+    pool.close()
+    pool.join()
 
 
 def main():
