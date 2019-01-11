@@ -3384,6 +3384,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 			break;
 		}
 		if (drawmode) {
+			p->status = GP_STATUS_IDLING;
 			p->paintmode = GP_PAINTMODE_DRAW;
 			ED_gpencil_toggle_brush_cursor(C, true, NULL);
 			DEG_id_tag_update(&p->scene->id, ID_RECALC_COPY_ON_WRITE);
