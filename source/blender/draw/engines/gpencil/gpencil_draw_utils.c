@@ -79,6 +79,7 @@ static void gpencil_calc_vertex(
 		main_onion && DRW_gpencil_onion_active(gpd) && !playing;
 
 	const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
+	const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
 	cache_ob->tot_vertex = 0;
 	cache_ob->tot_triangles = 0;
@@ -90,9 +91,9 @@ static void gpencil_calc_vertex(
 			continue;
 		}
 
-		/* if onion skin need to count all frames of the layer */
-		if (is_onion) {
-			init_gpf = gpl->actframe;
+		/* if multiedit or onion skin need to count all frames of the layer */
+		if ((is_multiedit) || (is_onion)) {
+			init_gpf = gpl->frames.first;
 		}
 		else {
 			/* verify time modifiers */
@@ -116,7 +117,7 @@ static void gpencil_calc_vertex(
 				cache_ob->tot_vertex += gps->totpoints + 3;
 				cache_ob->tot_triangles += gps->totpoints - 1;
 			}
-			if (!is_onion) {
+			if ((!is_multiedit) && (!is_onion)) {
 				break;
 			}
 		}
@@ -125,6 +126,8 @@ static void gpencil_calc_vertex(
 	cache->b_fill.tot_vertex = cache_ob->tot_triangles * 3;
 	cache->b_stroke.tot_vertex = cache_ob->tot_vertex;
 	cache->b_point.tot_vertex = cache_ob->tot_vertex;
+	cache->b_edit.tot_vertex = cache_ob->tot_vertex;
+	cache->b_edlin.tot_vertex = cache_ob->tot_vertex;
 
 	/* some modifiers can change the number of points */
 	int factor = 0;
@@ -138,6 +141,8 @@ static void gpencil_calc_vertex(
 			cache->b_fill.tot_vertex *= factor;
 			cache->b_stroke.tot_vertex *= factor;
 			cache->b_point.tot_vertex *= factor;
+			cache->b_edit.tot_vertex *= factor;
+			cache->b_edlin.tot_vertex *= factor;
 		}
 	}
 }

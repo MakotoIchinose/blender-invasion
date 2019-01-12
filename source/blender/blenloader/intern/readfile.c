@@ -5645,7 +5645,13 @@ static void direct_link_object(FileData *fd, Object *ob)
 	/* in case this value changes in future, clamp else we get undefined behavior */
 	CLAMP(ob->rotmode, ROT_MODE_MIN, ROT_MODE_MAX);
 
-	ob->sculpt = NULL;
+	if (ob->sculpt) {
+		ob->sculpt = NULL;
+		/* Only create data on undo, otherwise rely on editor mode switching. */
+		if (fd->memfile && (ob->mode & OB_MODE_ALL_SCULPT)) {
+			BKE_object_sculpt_data_create(ob);
+		}
+	}
 
 	link_list(fd, &ob->lodlevels);
 	ob->currentlod = ob->lodlevels.first;
@@ -10846,9 +10852,9 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 						while (fd == NULL) {
 							char newlib_path[FILE_MAX] = {0};
 							printf("Missing library...'\n");
-							printf("	current file: %s\n", BKE_main_blendfile_path_from_global());
-							printf("	absolute lib: %s\n", mainptr->curlib->filepath);
-							printf("	relative lib: %s\n", mainptr->curlib->name);
+							printf("\tcurrent file: %s\n", BKE_main_blendfile_path_from_global());
+							printf("\tabsolute lib: %s\n", mainptr->curlib->filepath);
+							printf("\trelative lib: %s\n", mainptr->curlib->name);
 							printf("  enter a new path:\n");
 
 							if (scanf("%1023s", newlib_path) > 0) {  /* Warning, keep length in sync with FILE_MAX! */

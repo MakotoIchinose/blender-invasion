@@ -2752,7 +2752,17 @@ static void gpencil_draw_apply_event(bContext *C, wmOperator *op, const wmEvent 
 
 		/* calculate once and store snapping distance and origin */
 		RegionView3D * rv3d = p->ar->regiondata;
-		p->guide_spacing = guide->spacing / rv3d->pixsize;
+		float scale = 1.0f;
+		if (rv3d->is_persp) {
+			float vec[3];
+			gp_get_3d_reference(p, vec);
+			mul_m4_v3(rv3d->persmat, vec);
+			scale = vec[2] * rv3d->pixsize;
+		}
+		else {
+			scale = rv3d->pixsize;
+		}
+		p->guide_spacing = guide->spacing / scale;
 		p->half_spacing = p->guide_spacing * 0.5f;
 		gp_origin_get(p, p->origin);
 
@@ -3374,6 +3384,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 			break;
 		}
 		if (drawmode) {
+			p->status = GP_STATUS_IDLING;
 			p->paintmode = GP_PAINTMODE_DRAW;
 			ED_gpencil_toggle_brush_cursor(C, true, NULL);
 			DEG_id_tag_update(&p->scene->id, ID_RECALC_COPY_ON_WRITE);

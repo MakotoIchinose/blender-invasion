@@ -923,6 +923,9 @@ typedef struct ImagePaintSettings {
 	float stencil_col[3];
 	/** Dither amount used when painting on byte images. */
 	float dither;
+	/** Display texture interpolation method. */
+	int interp;
+	int pad;
 } ImagePaintSettings;
 
 /* ------------------------------------------- */
@@ -1976,34 +1979,22 @@ extern const char *RE_engine_id_CYCLES;
 #define MINAFRAME	-1048574
 #define MINAFRAMEF	-1048574.0f
 
-/* deprecate this! */
 #define BASE_VISIBLE(v3d, base) (                                                                        \
-	(((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) &&                  \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0) &&                        \
-	(((base)->flag & BASE_VISIBLE) != 0))
-#define BASE_VISIBLE_BGMODE(v3d, base) (                                                                 \
 	((v3d == NULL) || ((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
 	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) &&     \
 	(((base)->flag & BASE_VISIBLE) != 0))
-
 #define BASE_SELECTABLE(v3d, base) (                                                               \
 	BASE_VISIBLE(v3d, base) &&                                                                     \
-	(((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0) &&                    \
-	(((base)->flag & BASE_SELECTABLE) != 0))
-#define BASE_SELECTABLE_BGMODE(v3d, base) (                                                        \
-	BASE_VISIBLE_BGMODE(v3d, base) &&                                                              \
 	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0)) && \
 	(((base)->flag & BASE_SELECTABLE) != 0))
-
-#define TESTBASE(v3d, base) \
+#define BASE_SELECTED(v3d, base) \
 	(BASE_VISIBLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
-#define TESTBASELIB(v3d, base) \
-	(TESTBASE(v3d, base) && ((base)->object->id.lib == NULL))
-#define BASE_EDITABLE_BGMODE(v3d, base) \
-	(BASE_VISIBLE_BGMODE(v3d, base) && ((base)->object->id.lib == NULL))
-#define TESTBASELIB_BGMODE(v3d, base) \
-	(BASE_EDITABLE_BGMODE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
+#define BASE_EDITABLE(v3d, base) \
+	(BASE_VISIBLE(v3d, base) && ((base)->object->id.lib == NULL))
+#define BASE_SELECTED_EDITABLE(v3d, base) \
+	(BASE_EDITABLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 
+/* deprecate this! */
 #define FIRSTBASE(_view_layer)  ((_view_layer)->object_bases.first)
 #define LASTBASE(_view_layer)   ((_view_layer)->object_bases.last)
 #define BASACT(_view_layer)     ((_view_layer)->basact)
@@ -2235,6 +2226,12 @@ typedef enum eImagePaintMode {
 	IMAGEPAINT_MODE_MATERIAL, /* detect texture paint slots from the material */
 	IMAGEPAINT_MODE_IMAGE,    /* select texture paint image directly */
 } eImagePaintMode;
+
+/* ImagePaintSettings.interp */
+enum {
+	IMAGEPAINT_INTERP_LINEAR = 0,
+	IMAGEPAINT_INTERP_CLOSEST,
+};
 
 /* ImagePaintSettings.flag */
 #define IMAGEPAINT_DRAWING				(1 << 0)
