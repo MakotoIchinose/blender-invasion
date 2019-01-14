@@ -665,6 +665,7 @@ class _defs_edit_mesh:
             props = tool.operator_properties("transform.shear")
             layout.label(text="View Axis:")
             layout.prop(props, "shear_axis", expand=True)
+            _template_widget.TRANSFORM_GGT_gizmo.draw_settings_with_index(context, layout, 2)
         return dict(
             text="Shear",
             icon="ops.transform.shear",
@@ -1077,6 +1078,16 @@ class _defs_gpencil_paint:
         )
 
     @ToolDef.from_fn
+    def cutter():
+        return dict(
+            text="Cutter",
+            icon="ops.gpencil.stroke_cutter",
+            cursor='KNIFE',
+            widget=None,
+            keymap=(),
+        )
+
+    @ToolDef.from_fn
     def line():
         return dict(
             text="Line",
@@ -1140,7 +1151,7 @@ class _defs_gpencil_edit:
     @ToolDef.from_fn
     def select():
         def draw_settings(context, layout, tool):
-            pass
+            layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
         return dict(
             text="Select",
             icon="ops.generic.select",
@@ -1154,6 +1165,7 @@ class _defs_gpencil_edit:
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("gpencil.select_box")
             layout.prop(props, "mode", expand=True)
+            layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
         return dict(
             text="Select Box",
             icon="ops.generic.select_box",
@@ -1167,6 +1179,7 @@ class _defs_gpencil_edit:
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("gpencil.select_lasso")
             layout.prop(props, "mode", expand=True)
+            layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
         return dict(
             text="Select Lasso",
             icon="ops.generic.select_lasso",
@@ -1177,11 +1190,14 @@ class _defs_gpencil_edit:
 
     @ToolDef.from_fn
     def circle_select():
+        def draw_settings(context, layout, tool):
+            layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
         return dict(
             text="Select Circle",
             icon="ops.generic.select_circle",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -1586,6 +1602,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'EDIT_LATTICE': [
             *_tools_default,
         ],
+        'EDIT_TEXT': [
+            _defs_view3d_generic.cursor,
+            None,
+            *_tools_annotate,
+        ],
         'PARTICLE': [
             _defs_view3d_generic.cursor,
             _defs_particle.generate_from_brushes,
@@ -1628,6 +1649,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_view3d_generic.cursor,
             None,
             _defs_gpencil_paint.generate_from_brushes,
+            _defs_gpencil_paint.cutter,
             None,
             _defs_gpencil_paint.line,
             _defs_gpencil_paint.arc,

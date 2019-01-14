@@ -40,12 +40,15 @@
 #include "zlib.h" /* wm_read_exotic() */
 
 #ifdef WIN32
-#  include <windows.h> /* need to include windows.h so _WIN32_IE is defined  */
+   /* Need to include windows.h so _WIN32_IE is defined. */
+#  include <windows.h>
 #  ifndef _WIN32_IE
-#    define _WIN32_IE 0x0400 /* minimal requirements for SHGetSpecialFolderPath on MINGW MSVC has this defined already */
+     /* Minimal requirements for SHGetSpecialFolderPath on MINGW MSVC has this defined already. */
+#    define _WIN32_IE 0x0400
 #  endif
-#  include <shlobj.h>  /* for SHGetSpecialFolderPath, has to be done before BLI_winstuff
-                        * because 'near' is disabled through BLI_windstuff */
+   /* For SHGetSpecialFolderPath, has to be done before BLI_winstuff
+    * because 'near' is disabled through BLI_windstuff */
+#  include <shlobj.h>
 #  include "BLI_winstuff.h"
 #endif
 
@@ -2434,7 +2437,7 @@ static uiBlock *block_create_autorun_warning(struct bContext *C, struct ARegion 
 	uiItemS(layout);
 
 	PointerRNA pref_ptr;
-	RNA_pointer_create(NULL, &RNA_PreferencesSystem, &U, &pref_ptr);
+	RNA_pointer_create(NULL, &RNA_PreferencesFilePaths, &U, &pref_ptr);
 	uiItemR(layout, &pref_ptr, "use_scripts_auto_execute", 0, IFACE_("Permanently allow execution of scripts"), ICON_NONE);
 
 	uiItemS(layout);

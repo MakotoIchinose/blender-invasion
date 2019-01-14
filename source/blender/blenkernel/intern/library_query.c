@@ -425,6 +425,11 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 						for (SequenceModifierData *smd = seq->modifiers.first; smd; smd = smd->next) {
 							CALLBACK_INVOKE(smd->mask_id, IDWALK_CB_USER);
 						}
+
+						if (seq->type == SEQ_TYPE_TEXT && seq->effectdata) {
+							TextVars *text_data = seq->effectdata;
+							CALLBACK_INVOKE(text_data->text_font, IDWALK_CB_USER);
+						}
 					} SEQ_END;
 				}
 
@@ -466,7 +471,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				for (TimeMarker *marker = scene->markers.first; marker; marker = marker->next) {
 					CALLBACK_INVOKE(marker->camera, IDWALK_CB_NOP);
 				}
-
+				
 				if (toolsett) {
 					CALLBACK_INVOKE(toolsett->particle.scene, IDWALK_CB_NOP);
 					CALLBACK_INVOKE(toolsett->particle.object, IDWALK_CB_NOP);
@@ -493,6 +498,9 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 					if (toolsett->gp_paint) {
 						library_foreach_paint(&data, &toolsett->gp_paint->paint);
 					}
+
+					CALLBACK_INVOKE(toolsett->gp_sculpt.guide.reference_object, IDWALK_CB_NOP);
+
 				}
 
 				if (scene->rigidbody_world) {

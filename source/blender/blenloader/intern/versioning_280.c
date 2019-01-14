@@ -1780,7 +1780,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		if (!DNA_struct_elem_find(fd->filesdna, "View3DShadeing", "char", "background_type")) {
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "char", "background_type")) {
 			for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
 				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -2738,6 +2738,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 						GP_Sculpt_Data *gp_brush = &gset->brush[i];
 						gp_brush->weight = 1.0f;
 					}
+				}
+			}
+		}
+
+		/* Grease pencil cutter/select segment intersection threshold  */
+		if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "float", "isect_threshold")) {
+			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+				GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
+				if (gset) {
+					gset->isect_threshold = 0.1f;
 				}
 			}
 		}
