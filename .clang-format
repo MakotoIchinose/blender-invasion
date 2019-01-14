@@ -142,6 +142,9 @@ BreakBeforeTernaryOperators: false
 
 SpaceAfterTemplateKeyword: false
 
+# Handy comment at the end of each C++ name space.
+FixNamespaceComments: true
+
 # Use "if (...)" instead of "if(...)", but have function calls like foo().
 SpaceBeforeParens: ControlStatements
 SpaceInEmptyParentheses: false
@@ -152,7 +155,8 @@ SpaceInEmptyParentheses: false
 #
 SpacesBeforeTrailingComments: 2
 
-# Don't reflow comments, let developers define line breaks
+# Don't reflow comments, let developers define line breaks.
+# Enabling breaks some ascii art.
 ReflowComments: false
 
 # Never use tabs for indentation.
