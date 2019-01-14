@@ -718,7 +718,8 @@ typedef enum eNlaStrip_Blend_Mode {
 	NLASTRIP_MODE_REPLACE = 0,
 	NLASTRIP_MODE_ADD,
 	NLASTRIP_MODE_SUBTRACT,
-	NLASTRIP_MODE_MULTIPLY
+	NLASTRIP_MODE_MULTIPLY,
+	NLASTRIP_MODE_COMBINE,
 } eNlaStrip_Blend_Mode;
 
 /* NLA Strip Extrpolation Mode */
@@ -763,6 +764,8 @@ typedef enum eNlaStrip_Flag {
 	NLASTRIP_FLAG_MIRROR        = (1<<13),
 
 	/* temporary editing flags */
+		/* NLA strip should ignore frame range and hold settings, and evaluate at global time. */
+	NLASTRIP_FLAG_NO_TIME_MAP   = (1<<29),
 		/* NLA-Strip is really just a temporary meta used to facilitate easier transform code */
 	NLASTRIP_FLAG_TEMP_META     = (1<<30),
 	NLASTRIP_FLAG_EDIT_TOUCHED  = (1u << 31)

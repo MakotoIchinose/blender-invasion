@@ -1154,6 +1154,7 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 			sequencer_draw_gpencil(C);
 		}
 
+		UI_view2d_view_restore(C);
 		return;
 	}
 
@@ -1431,12 +1432,12 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 	if (cache_handle)
 		IMB_display_buffer_release(cache_handle);
 
-	if (!scope)
-		IMB_freeImBuf(ibuf);
-
 	if (draw_metadata) {
 		ED_region_image_metadata_draw(0.0, 0.0, ibuf, &v2d->tot, 1.0, 1.0);
 	}
+
+	if (!scope)
+		IMB_freeImBuf(ibuf);
 
 	if (draw_backdrop) {
 		GPU_matrix_pop();
@@ -1564,7 +1565,7 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *ar)
 	/* loop through twice, first unselected, then selected */
 	for (j = 0; j < 2; j++) {
 		Sequence *seq;
-		int outline_tint = (j) ? 40 : -40; /* highlighting around strip edges indicating selection */
+		int outline_tint = (j) ? -60 : -150; /* highlighting around strip edges indicating selection */
 
 		/* loop through strips, checking for those that are visible */
 		for (seq = ed->seqbasep->first; seq; seq = seq->next) {
