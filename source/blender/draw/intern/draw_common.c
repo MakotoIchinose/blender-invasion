@@ -60,8 +60,6 @@ void DRW_globals_update(void)
 	UI_GetThemeColor4fv(TH_WIRE_EDIT, ts.colorWireEdit);
 	UI_GetThemeColor4fv(TH_ACTIVE, ts.colorActive);
 	UI_GetThemeColor4fv(TH_SELECT, ts.colorSelect);
-	UI_GetThemeColorBlend4f(TH_SELECT, TH_HIGH_GRAD, 0.66f, ts.colorDupliSelect);
-	UI_GetThemeColorBlend4f(TH_WIRE, TH_HIGH_GRAD, 0.66f, ts.colorDupli);
 	UI_COLOR_RGBA_FROM_U8(0x88, 0xFF, 0xFF, 155, ts.colorLibrarySelect);
 	UI_COLOR_RGBA_FROM_U8(0x55, 0xCC, 0xCC, 155, ts.colorLibrary);
 	UI_GetThemeColor4fv(TH_TRANSFORM, ts.colorTransform);
@@ -92,6 +90,11 @@ void DRW_globals_update(void)
 	/* Custom median color to slightly affect the edit mesh colors. */
 	interp_v4_v4v4(ts.colorEditMeshMiddle, ts.colorVertexSelect, ts.colorWireEdit, 0.35f);
 	copy_v3_fl(ts.colorEditMeshMiddle, dot_v3v3(ts.colorEditMeshMiddle, (float[3]){0.3333f, 0.3333f, 0.3333f})); /* Desaturate */
+
+	interp_v4_v4v4(ts.colorDupliSelect, ts.colorBackground, ts.colorSelect, 0.5f);
+	/* Was 50% in 2.7x since the background was lighter making it easier to tell the color from black,
+	 * with a darker background we need a more faded color. */
+	interp_v4_v4v4(ts.colorDupli, ts.colorBackground, ts.colorWire, 0.3f);
 
 #ifdef WITH_FREESTYLE
 	UI_GetThemeColor4fv(TH_FREESTYLE_EDGE_MARK, ts.colorEdgeFreestyle);
@@ -441,18 +444,18 @@ DRWShadingGroup *shgroup_instance(DRWPass *pass, struct GPUBatch *geom)
 	GPUShader *sh_inst = GPU_shader_get_builtin_shader(GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SIZE);
 
 	DRW_shgroup_instance_format(g_formats.instance_sized, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
+		{"color",               DRW_ATTRIB_FLOAT, 4},
 		{"size",                DRW_ATTRIB_FLOAT, 1},
 		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_sized);
-	DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
+	DRW_shgroup_state_disable(grp, DRW_STATE_BLEND);
 
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_alpha(DRWPass *pass, struct GPUBatch *geom, float alpha)
+DRWShadingGroup *shgroup_instance_alpha(DRWPass *pass, struct GPUBatch *geom)
 {
 	GPUShader *sh_inst = GPU_shader_get_builtin_shader(GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SIZE);
 
@@ -463,7 +466,6 @@ DRWShadingGroup *shgroup_instance_alpha(DRWPass *pass, struct GPUBatch *geom, fl
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_sized);
-	DRW_shgroup_uniform_float_copy(grp, "alpha", alpha);
 
 	return grp;
 }
@@ -904,7 +906,10 @@ int DRW_object_wire_theme_get(Object *ob, ViewLayer *view_layer, float **r_color
 	}
 
 	if (r_color != NULL) {
-		if (UNLIKELY(ob->base_flag & BASE_FROMDUPLI)) {
+		if (UNLIKELY(ob->base_flag & BASE_FROM_SET)) {
+			*r_color = ts.colorDupli;
+		}
+		else if (UNLIKELY(ob->base_flag & BASE_FROMDUPLI)) {
 			switch (theme_id) {
 				case TH_ACTIVE:
 				case TH_SELECT:       *r_color = ts.colorDupliSelect; break;
