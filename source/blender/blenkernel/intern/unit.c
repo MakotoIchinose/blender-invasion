@@ -45,6 +45,9 @@
 
 /* no BKE or DNA includes! */
 
+/* Keep alignment. */
+/* clang-format off */
+
 #define TEMP_STR_SIZE 256
 
 #define SEP_CHR		'#'
@@ -82,6 +85,8 @@
 #define UN_SC_ST	6.35029318f
 #define UN_SC_LB	0.45359237f
 #define UN_SC_OZ	0.028349523125f
+
+/* clang-format on */
 
 /* define a single unit */
 typedef struct bUnitDef {
@@ -123,6 +128,9 @@ typedef struct bUnitCollection {
 	/** to quickly find the last item */
 	int length;
 } bUnitCollection;
+
+/* Keep table lignment. */
+/* clang-format off */
 
 #define UNIT_COLLECTION_LENGTH(def) (sizeof(def) / sizeof(bUnitDef) - 1)
 #define NULL_UNIT {NULL, NULL, NULL, NULL, NULL, NULL, 0.0, 0.0}
@@ -315,7 +323,7 @@ static const struct bUnitCollection *bUnitSystems[][B_UNIT_TYPE_TOT] = {
 	{NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
 };
 
-
+/* clang-format off */
 
 /* internal, has some option not exposed */
 static const bUnitCollection *unit_get_system(int system, int type)
