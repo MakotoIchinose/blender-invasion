@@ -292,9 +292,9 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 		return;
 	}
 
-	const int factor = 4;
-	tgpf->fill_leak = (int)ceilf((float)tgpf->fill_leak * 0.5f);
-
+	/* fill zoom factor */
+	const int factor = 2;
+	
 	/* set temporary new size */
 	tgpf->bwinx = tgpf->ar->winx;
 	tgpf->bwiny = tgpf->ar->winy;
