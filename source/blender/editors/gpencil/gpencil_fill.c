@@ -284,13 +284,13 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 }
 
 /* draw strokes in offscreen buffer */
-static void gp_render_offscreen(tGPDfill *tgpf)
+static bool gp_render_offscreen(tGPDfill *tgpf)
 {
 	bool is_ortho = false;
 	float winmat[4][4];
 
 	if (!tgpf->gpd) {
-		return;
+		return false;
 	}
 	
 	/* set temporary new size */
@@ -318,6 +318,11 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 
 	char err_out[256] = "unknown";
 	GPUOffScreen *offscreen = GPU_offscreen_create(tgpf->sizex, tgpf->sizey, 0, true, false, err_out);
+	if (offscreen == NULL) {
+		printf("GPencil - Fill - Unable to create fill buffer\n"); 
+		return false;
+	}
+
 	GPU_offscreen_bind(offscreen, true);
 	uint flag = IB_rect | IB_rectfloat;
 	ImBuf *ibuf = IMB_allocImBuf(tgpf->sizex, tgpf->sizey, 32, flag);
@@ -374,6 +379,8 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	/* switch back to window-system-provided framebuffer */
 	GPU_offscreen_unbind(offscreen, true);
 	GPU_offscreen_free(offscreen);
+
+	return true;
 }
 
 /* return pixel data (rgba) at index */
@@ -1233,25 +1240,27 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 						tgpf->center[1] = event->mval[1];
 
 						/* render screen to temp image */
-						gp_render_offscreen(tgpf);
+						if ( gp_render_offscreen(tgpf) ) {
 
-						/* apply boundary fill */
-						gpencil_boundaryfill_area(tgpf);
+							/* apply boundary fill */
+							gpencil_boundaryfill_area(tgpf);
 
-						/* clean borders to avoid infinite loops */
-						gpencil_clean_borders(tgpf);
+							/* clean borders to avoid infinite loops */
+							gpencil_clean_borders(tgpf);
 
-						/* analyze outline */
-						gpencil_get_outline_points(tgpf);
+							/* analyze outline */
+							gpencil_get_outline_points(tgpf);
 
-						/* create array of points from stack */
-						gpencil_points_from_stack(tgpf);
+							/* create array of points from stack */
+							gpencil_points_from_stack(tgpf);
 
-						/* create z-depth array for reproject */
-						gpencil_get_depth_array(tgpf);
+							/* create z-depth array for reproject */
+							gpencil_get_depth_array(tgpf);
 
-						/* create stroke and reproject */
-						gpencil_stroke_from_buffer(tgpf);
+							/* create stroke and reproject */
+							gpencil_stroke_from_buffer(tgpf);
+
+						}
 
 						/* restore size */
 						tgpf->ar->winx = (short)tgpf->bwinx;
