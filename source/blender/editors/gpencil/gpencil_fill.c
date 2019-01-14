@@ -120,7 +120,6 @@ typedef struct tGPDfill {
 	short sbuffer_size;                 /* number of elements currently in cache */
 	void *sbuffer;                      /* temporary points */
 	float *depth_arr;                   /* depth array for reproject */
-	int overspill;                      /* overspill or bleed outside fill area */
 
 	Image *ima;                         /* temp image */
 	BLI_Stack *stack;                   /* temp points data */
@@ -293,10 +292,8 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 		return;
 	}
 
-	if (tgpf->overspill < 0) {
-		tgpf->overspill = 0;
-	}
-		
+	const int factor = 4;
+	tgpf->fill_leak = (int)ceilf((float)tgpf->fill_leak * 0.5f);
 
 	/* set temporary new size */
 	tgpf->bwinx = tgpf->ar->winx;
@@ -304,10 +301,10 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	tgpf->brect = tgpf->ar->winrct;
 
 	/* resize ar */
-	tgpf->ar->winrct.xmin -= tgpf->overspill;
-	tgpf->ar->winrct.ymin -= tgpf->overspill;
-	tgpf->ar->winrct.xmax += tgpf->overspill;
-	tgpf->ar->winrct.ymax += tgpf->overspill;
+	tgpf->ar->winrct.xmin = 0;
+	tgpf->ar->winrct.ymin = 0;
+	tgpf->ar->winrct.xmax = (int)tgpf->ar->winx * factor - 1;
+	tgpf->ar->winrct.ymax = (int)tgpf->ar->winy * factor - 1;
 	tgpf->ar->winx = (short)abs(tgpf->ar->winrct.xmax - tgpf->ar->winrct.xmin);
 	tgpf->ar->winy = (short)abs(tgpf->ar->winrct.ymax - tgpf->ar->winrct.ymin);
 
@@ -1263,8 +1260,6 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 					in_bounds = BLI_rcti_isect_pt(&ar->winrct, event->x, event->y);
 
 					if ((in_bounds) && (ar->regiontype == RGN_TYPE_WINDOW)) {
-						/* set fill overspill */
-						tgpf->overspill = 50;
 
 						/* TODO GPXX: Verify the mouse click is right for any window size */
 						tgpf->center[0] = event->mval[0];
