@@ -1418,7 +1418,7 @@ static void gp_draw_data_layers(RegionView3D *rv3d,
 		/* calculate parent position */
 		ED_gpencil_parent_location(tgpw.depsgraph, ob, gpd, gpl, diff_mat);
 
-		short lthick = brush->size + gpl->line_change;
+		short lthick = (tgpw.is_fill_tool) ? 1 : brush->size + gpl->line_change;
 
 		/* don't draw layer if hidden */
 		if (gpl->flag & GP_LAYER_HIDE)

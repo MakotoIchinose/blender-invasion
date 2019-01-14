@@ -255,6 +255,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 			tgpw.t_gpf = gpf;
 
 			/* reduce thickness to avoid gaps */
+			tgpw.is_fill_tool = true;
 			tgpw.lthick = gpl->line_change - 4;
 			tgpw.opacity = 1.0;
 			copy_v4_v4(tgpw.tintcolor, ink);
