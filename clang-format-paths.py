@@ -45,15 +45,6 @@ extensions = (
 
 ignore_files = {
     "intern/cycles/render/sobol.cpp",  # Too heavy for clang-format
-
-    # could use clang-format on/off
-    "source/blender/blenlib/BLI_compiler_typecheck.h",    # Over wraps args.
-    "source/blender/blenlib/BLI_utildefines_variadic.h",  # Over wraps args.
-    "tests/gtests/blenlib/BLI_ressource_strings.h",       # Large data file, not helpful to format.
-
-
-    "source/blender/blenlib/intern/sort.c",               # Copied from FreeBSD, don't reformat.
-    "source/blender/blenlib/intern/fnmatch.c",            # Copied from GNU libc, don't reformat.
 }
 if os.sep != "/":
     ignore_files = set(f.replace("/", os.sep) for f in ignore_files)
