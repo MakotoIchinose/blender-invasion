@@ -28,7 +28,8 @@
  */
 
 
-/* a full doc with API notes can be found in bf-blender/trunk/blender/doc/guides/interface_API.txt */
+/* a full doc with API notes can be found in
+ * bf-blender/trunk/blender/doc/guides/interface_API.txt */
 
 #include <math.h>
 #include <stdlib.h>
@@ -627,7 +628,7 @@ void UI_panel_label_offset(uiBlock *block, int *x, int *y)
 	*y = UI_UNIT_Y * 1.5f;
 
 	if (is_subpanel) {
-		*x += 5.0f / block->aspect;
+		*x += (0.7f * UI_UNIT_X);
 	}
 }
 
@@ -699,7 +700,7 @@ void ui_draw_aligned_panel(
 
 	rcti titlerect = headrect;
 	if (is_subpanel) {
-		titlerect.xmin += 5.0f / block->aspect;
+		titlerect.xmin += (0.7f * UI_UNIT_X);
 	}
 
 	uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -1872,8 +1873,10 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
 	const int px_x_sign = is_left ? px : -px;
 	const int category_tabs_width = round_fl_to_int(UI_PANEL_CATEGORY_MARGIN_WIDTH * zoom);
 	const float dpi_fac = UI_DPI_FAC;
-	const int tab_v_pad_text = round_fl_to_int((2 + ((px * 3) * dpi_fac)) * zoom);  /* padding of tabs around text */
-	const int tab_v_pad = round_fl_to_int((4 + (2 * px * dpi_fac)) * zoom);  /* padding between tabs */
+	/* padding of tabs around text */
+	const int tab_v_pad_text = round_fl_to_int((2 + ((px * 3) * dpi_fac)) * zoom);
+	/* padding between tabs */
+	const int tab_v_pad = round_fl_to_int((4 + (2 * px * dpi_fac)) * zoom);
 	const float tab_curve_radius = ((px * 3) * dpi_fac) * zoom;
 	/* We flip the tab drawing, so always use these flags. */
 	const int roundboxtype = UI_CNR_TOP_LEFT | UI_CNR_BOTTOM_LEFT;
@@ -2153,7 +2156,8 @@ static int ui_handle_panel_category_cycling(const wmEvent *event, ARegion *ar, c
 					const bool backwards = event->shift;
 					pc_dyn = backwards ? pc_dyn->prev : pc_dyn->next;
 					if (!pc_dyn) {
-						/* proper cyclic behavior, back to first/last category (only used for ctrl+tab) */
+						/* proper cyclic behavior,
+						 * back to first/last category (only used for ctrl+tab) */
 						pc_dyn = backwards ? ar->panels_category.last : ar->panels_category.first;
 					}
 				}
@@ -2225,10 +2229,13 @@ int ui_handler_panel_region(bContext *C, const wmEvent *event, ARegion *ar, cons
 		/* checks for mouse position inside */
 		pa = block->panel;
 
-		if (!pa || pa->paneltab != NULL)
+		if (!pa || pa->paneltab != NULL) {
 			continue;
-		if (pa->type && pa->type->flag & PNL_NO_HEADER)  /* XXX - accessed freed panels when scripts reload, need to fix. */
+		}
+		/* XXX - accessed freed panels when scripts reload, need to fix. */
+		if (pa->type && pa->type->flag & PNL_NO_HEADER) {
 			continue;
+		}
 
 		mouse_state = ui_panel_mouse_state_get(block, pa, mx, my);
 

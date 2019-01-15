@@ -61,7 +61,7 @@ typedef enum eUIFont_ID {
 
 	/* free slots */
 	UIFONT_CUSTOM1	= 2,
-	UIFONT_CUSTOM2	= 3
+	UIFONT_CUSTOM2	= 3,
 } eUIFont_ID;
 
 /* default fonts to load/initialize */
@@ -694,12 +694,15 @@ typedef struct UserDef {
 	/** Seconds to zoom around current frame. */
 	float view_frame_seconds;
 
-	char _pad1[4];
+	char _pad1[2];
 
 	/** Private, defaults to 20 for 72 DPI setting. */
 	short widget_unit;
 	short anisotropic_filter;
 	short use_16bit_textures, use_gpu_mipmap;
+
+	/** Tablet API to use (Windows only). */
+	short tablet_api;
 
 	/** Raw tablet pressure that maps to 100%. */
 	float pressure_threshold_max;
@@ -717,7 +720,8 @@ typedef struct UserDef {
 	/** #eMultiSample_Type, amount of samples for OpenGL FSA, if zero no FSA. */
 	short ogl_multisamples;
 
-	/* eImageDrawMethod, Method to be used to draw the images (AUTO, GLSL, Textures or DrawPixels) */
+	/** eImageDrawMethod, Method to be used to draw the images
+	 * (AUTO, GLSL, Textures or DrawPixels) */
 	short image_draw_method;
 
 	float glalphaclip;
@@ -858,7 +862,7 @@ typedef enum ePathCompare_Flag {
 typedef enum eViewZoom_Style {
 	USER_ZOOM_CONT			= 0,
 	USER_ZOOM_SCALE			= 1,
-	USER_ZOOM_DOLLY			= 2
+	USER_ZOOM_DOLLY			= 2,
 } eViewZoom_Style;
 
 /* UserDef.navigation_mode */
@@ -905,7 +909,7 @@ typedef enum eUserpref_UI_Flag {
 	USER_HIDE_RECENT            = (1 << 28),
 	USER_SHOW_THUMBNAILS        = (1 << 29),
 	USER_QUIT_PROMPT            = (1 << 30),
-	USER_HIDE_SYSTEM_BOOKMARKS  = (1u << 31)
+	USER_HIDE_SYSTEM_BOOKMARKS  = (1u << 31),
 } eUserpref_UI_Flag;
 
 /* UserDef.uiflag2 */
@@ -914,6 +918,13 @@ typedef enum eUserpref_UI_Flag2 {
 	USER_REGION_OVERLAP			= (1 << 1),
 	USER_TRACKPAD_NATURAL		= (1 << 2),
 } eUserpref_UI_Flag2;
+
+/* UserDef.tablet_api */
+typedef enum eUserpref_TableAPI {
+	USER_TABLET_AUTOMATIC = 0,
+	USER_TABLET_NATIVE = 1,
+	USER_TABLET_WINTAB = 2,
+} eUserpref_TabletAPI;
 
 /* UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {
@@ -926,9 +937,10 @@ typedef enum eAutokey_Mode {
 	/* AUTOKEY_ON is a bitflag */
 	AUTOKEY_ON             = 1,
 
-	/* AUTOKEY_ON + 2**n...  (i.e. AUTOKEY_MODE_NORMAL = AUTOKEY_ON + 2) to preserve setting, even when autokey turned off  */
+	/** AUTOKEY_ON + 2**n...  (i.e. AUTOKEY_MODE_NORMAL = AUTOKEY_ON + 2)
+	 * to preserve setting, even when autokey turned off  */
 	AUTOKEY_MODE_NORMAL    = 3,
-	AUTOKEY_MODE_EDITKEYS  = 5
+	AUTOKEY_MODE_EDITKEYS  = 5,
 } eAutokey_Mode;
 
 /* Zoom to frame mode.
@@ -936,7 +948,7 @@ typedef enum eAutokey_Mode {
 typedef enum eZoomFrame_Mode {
 	ZOOM_FRAME_MODE_KEEP_RANGE = 0,
 	ZOOM_FRAME_MODE_SECONDS = 1,
-	ZOOM_FRAME_MODE_KEYFRAMES = 2
+	ZOOM_FRAME_MODE_KEYFRAMES = 2,
 } eZoomFrame_Mode;
 
 /* Auto-Keying flag
@@ -982,14 +994,14 @@ typedef enum eDupli_ID_Flags {
 	USER_DUP_TEX			= (1 << 8),
 	USER_DUP_ARM			= (1 << 9),
 	USER_DUP_ACT			= (1 << 10),
-	USER_DUP_PSYS			= (1 << 11)
+	USER_DUP_PSYS			= (1 << 11),
 } eDupli_ID_Flags;
 
 /* selection method for opengl gpu_select_method */
 typedef enum eOpenGL_SelectOptions {
 	USER_SELECT_AUTO = 0,
 	USER_SELECT_USE_OCCLUSION_QUERY = 1,
-	USER_SELECT_USE_SELECT_RENDERMODE = 2
+	USER_SELECT_USE_SELECT_RENDERMODE = 2,
 } eOpenGL_SelectOptions;
 
 /* max anti alias draw method UserDef.gpu_viewport_antialias */
@@ -1065,7 +1077,7 @@ typedef enum eTheme_DrawTypes {
 	TH_ROUNDSHADED	= 1,
 	TH_ROUNDED  	= 2,
 	TH_OLDSKOOL 	= 3,
-	TH_SHADED   	= 4
+	TH_SHADED   	= 4,
 } eTheme_DrawTypes;
 
 /* UserDef.ndof_flag (3D mouse options) */
