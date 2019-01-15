@@ -255,7 +255,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 			tgpw.t_gpf = gpf;
 
 			/* reduce thickness to avoid gaps */
-			tgpw.is_fill_tool = true;
+			tgpw.is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false ;
 			tgpw.lthick = gpl->line_change - 4;
 			tgpw.opacity = 1.0;
 			copy_v4_v4(tgpw.tintcolor, ink);
@@ -264,14 +264,15 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 
 			/* normal strokes */
 			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
+				(tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ||
 			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH))
 			{
 				ED_gp_draw_fill(&tgpw);
-
 			}
 
 			/* 3D Lines with basic shapes and invisible lines */
 			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ||
+			    (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ||
 			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH))
 			{
 				gp_draw_basic_stroke(
@@ -302,8 +303,8 @@ static bool gp_render_offscreen(tGPDfill *tgpf)
 	/* resize ar */
 	tgpf->ar->winrct.xmin = 0;
 	tgpf->ar->winrct.ymin = 0;
-	tgpf->ar->winrct.xmax = (int)tgpf->ar->winx * tgpf->fill_factor - 1;
-	tgpf->ar->winrct.ymax = (int)tgpf->ar->winy * tgpf->fill_factor - 1;
+	tgpf->ar->winrct.xmax = (int)tgpf->ar->winx * tgpf->fill_factor;
+	tgpf->ar->winrct.ymax = (int)tgpf->ar->winy * tgpf->fill_factor;
 	tgpf->ar->winx = (short)abs(tgpf->ar->winrct.xmax - tgpf->ar->winrct.xmin);
 	tgpf->ar->winy = (short)abs(tgpf->ar->winrct.ymax - tgpf->ar->winrct.ymin);
 
@@ -455,7 +456,8 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
 				}
 			}
 			else {
-				t_a = true; /* edge of image*/
+				/* edge of image*/
+				t_a = true;
 				break;
 			}
 		}
@@ -470,7 +472,8 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
 				}
 			}
 			else {
-				t_b = true; /* edge of image*/
+				/* edge of image*/
+				t_b = true;
 				break;
 			}
 		}
@@ -576,22 +579,22 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 					}
 				}
 				/* pixel right */
-				if (v + 1 < maxpixel) {
+				if (v + 1 <= maxpixel) {
 					index = v + 1;
 					if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_HORZ)) {
 						BLI_stack_push(stack, &index);
 					}
 				}
 				/* pixel top */
-				if (v + tgpf->sizex < maxpixel) {
-					index = v + tgpf->sizex;
+				if (v + ibuf->x <= maxpixel) {
+					index = v + ibuf->x;
 					if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
 						BLI_stack_push(stack, &index);
 					}
 				}
 				/* pixel bottom */
-				if (v - tgpf->sizex >= 0) {
-					index = v - tgpf->sizex;
+				if (v - ibuf->x >= 0) {
+					index = v - ibuf->x;
 					if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
 						BLI_stack_push(stack, &index);
 					}
@@ -621,7 +624,7 @@ static void gpencil_clean_borders(tGPDfill *tgpf)
 	int pixel = 0;
 
 	/* horizontal lines */
-	for (idx = 0; idx < ibuf->x - 1; idx++) {
+	for (idx = 0; idx < ibuf->x; idx++) {
 		/* bottom line */
 		set_pixel(ibuf, idx, fill_col);
 		/* top line */

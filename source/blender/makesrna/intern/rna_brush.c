@@ -135,6 +135,7 @@ static EnumPropertyItem rna_enum_gpencil_fill_draw_modes_items[] = {
 	{GP_FILL_DMODE_STROKE, "STROKE", 0, "Strokes", "Use visible strokes as fill boundary limits"},
 	{GP_FILL_DMODE_CONTROL, "CONTROL", 0, "Control", "Use internal control lines as fill boundary limits"},
 	{GP_FILL_DMODE_BOTH, "BOTH", 0, "Both", "Use visible strokes and control lines as fill boundary limits"},
+	{GP_FILL_DMODE_ADAPTIVE, "ADAPTIVE", 0, "Adaptive", "Use thin strokes and control lines as fill boundary limits"},
 	{0, NULL, 0, NULL, NULL}
 };
 

@@ -164,6 +164,7 @@ typedef enum eGP_FillDrawModes {
 	GP_FILL_DMODE_BOTH = 0,
 	GP_FILL_DMODE_STROKE = 1,
 	GP_FILL_DMODE_CONTROL = 2,
+	GP_FILL_DMODE_ADAPTIVE = 3,
 } eGP_FillDrawModes;
 
 /* BrushGpencilSettings->gp_eraser_mode */

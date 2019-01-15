@@ -1020,6 +1020,10 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
 		/* calculate thickness */
 		sthickness = gps->thickness + tgpw->lthick;
 
+		if (tgpw->is_adaptive_fill) {
+			sthickness = (short)max_ii(1, sthickness / 4 * 3);
+		}
+
 		if (sthickness <= 0) {
 			continue;
 		}
@@ -1413,12 +1417,13 @@ static void gp_draw_data_layers(RegionView3D *rv3d,
 	tgpw.winx = winx;
 	tgpw.winy = winy;
 	tgpw.dflag = dflag;
+	tgpw.is_adaptive_fill = false;
 
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		/* calculate parent position */
 		ED_gpencil_parent_location(tgpw.depsgraph, ob, gpd, gpl, diff_mat);
 
-		short lthick = (tgpw.is_fill_tool) ? 1 : brush->size + gpl->line_change;
+		short lthick = brush->size + gpl->line_change;
 
 		/* don't draw layer if hidden */
 		if (gpl->flag & GP_LAYER_HIDE)
