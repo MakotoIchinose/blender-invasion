@@ -694,12 +694,15 @@ typedef struct UserDef {
 	/** Seconds to zoom around current frame. */
 	float view_frame_seconds;
 
-	char _pad1[4];
+	char _pad1[2];
 
 	/** Private, defaults to 20 for 72 DPI setting. */
 	short widget_unit;
 	short anisotropic_filter;
 	short use_16bit_textures, use_gpu_mipmap;
+
+	/** Tablet API to use (Windows only). */
+	short tablet_api;
 
 	/** Raw tablet pressure that maps to 100%. */
 	float pressure_threshold_max;
@@ -717,7 +720,8 @@ typedef struct UserDef {
 	/** #eMultiSample_Type, amount of samples for OpenGL FSA, if zero no FSA. */
 	short ogl_multisamples;
 
-	/* eImageDrawMethod, Method to be used to draw the images (AUTO, GLSL, Textures or DrawPixels) */
+	/** eImageDrawMethod, Method to be used to draw the images
+	 * (AUTO, GLSL, Textures or DrawPixels) */
 	short image_draw_method;
 
 	float glalphaclip;
@@ -915,6 +919,13 @@ typedef enum eUserpref_UI_Flag2 {
 	USER_TRACKPAD_NATURAL		= (1 << 2),
 } eUserpref_UI_Flag2;
 
+/* UserDef.tablet_api */
+typedef enum eUserpref_TableAPI {
+	USER_TABLET_AUTOMATIC = 0,
+	USER_TABLET_NATIVE = 1,
+	USER_TABLET_WINTAB = 2,
+} eUserpref_TabletAPI;
+
 /* UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {
 	USER_APP_LOCK_UI_LAYOUT = (1 << 0),
@@ -926,7 +937,8 @@ typedef enum eAutokey_Mode {
 	/* AUTOKEY_ON is a bitflag */
 	AUTOKEY_ON             = 1,
 
-	/* AUTOKEY_ON + 2**n...  (i.e. AUTOKEY_MODE_NORMAL = AUTOKEY_ON + 2) to preserve setting, even when autokey turned off  */
+	/** AUTOKEY_ON + 2**n...  (i.e. AUTOKEY_MODE_NORMAL = AUTOKEY_ON + 2)
+	 * to preserve setting, even when autokey turned off  */
 	AUTOKEY_MODE_NORMAL    = 3,
 	AUTOKEY_MODE_EDITKEYS  = 5
 } eAutokey_Mode;

@@ -175,7 +175,8 @@ static void ui_update_color_picker_buts_rgb(
 	}
 	ui_rgb_to_color_picker_compat_v(tmp, hsv);
 
-	/* this updates button strings, is hackish... but button pointers are on stack of caller function */
+	/* this updates button strings,
+	 * is hackish... but button pointers are on stack of caller function */
 	for (bt = block->buttons.first; bt; bt = bt->next) {
 		if (bt->custom_data != cpicker)
 			continue;
@@ -193,7 +194,8 @@ static void ui_update_color_picker_buts_rgb(
 			double intpart;
 			char col[16];
 
-			/* Hex code is assumed to be in sRGB space (coming from other applications, web, etc) */
+			/* Hex code is assumed to be in sRGB space
+			 * (coming from other applications, web, etc) */
 			copy_v3_v3(rgb_hex, rgb);
 			if (from_but && !ui_but_is_color_gamma(from_but)) {
 				IMB_colormanagement_scene_linear_to_srgb_v3(rgb_hex);
@@ -288,7 +290,7 @@ static void ui_colorpicker_hex_rna_cb(bContext *UNUSED(C), void *bt1, void *hexc
 		IMB_colormanagement_srgb_to_scene_linear_v3(rgb);
 	}
 
-	ui_update_color_picker_buts_rgb(NULL, but->block, cpicker, rgb);
+	ui_update_color_picker_buts_rgb(but, but->block, cpicker, rgb);
 
 	if (popup)
 		popup->menuretval = UI_RETURN_UPDATE;
@@ -476,6 +478,7 @@ static void ui_block_colorpicker(
 		bt = uiDefIconButO(
 		        block, UI_BTYPE_BUT, "UI_OT_eyedropper_color", WM_OP_INVOKE_DEFAULT, ICON_EYEDROPPER,
 		        butwidth + 10, yco, UI_UNIT_X, UI_UNIT_Y, NULL);
+		UI_but_drawflag_disable(bt, UI_BUT_ICON_LEFT);
 		UI_but_func_set(bt, ui_popup_close_cb, bt, NULL);
 		bt->custom_data = cpicker;
 	}

@@ -314,6 +314,7 @@ static struct {
 	GPUShader *outline_detect_sh;
 	GPUShader *outline_detect_wire_sh;
 	GPUShader *outline_fade_sh;
+	GPUShader *outline_fade_large_sh;
 
 	/* regular shaders */
 	GPUShader *object_empty_image_sh;
@@ -435,6 +436,7 @@ static void OBJECT_engine_init(void *vedata)
 
 
 		e_data.outline_fade_sh = DRW_shader_create_fullscreen(datatoc_object_outline_expand_frag_glsl, NULL);
+		e_data.outline_fade_large_sh = DRW_shader_create_fullscreen(datatoc_object_outline_expand_frag_glsl, "#define LARGE_OUTLINE\n");
 
 		/* Empty images */
 #		define EMPTY_IMAGE_SHADER_DEFINES \
@@ -670,6 +672,7 @@ static void OBJECT_engine_free(void)
 	DRW_SHADER_FREE_SAFE(e_data.outline_detect_sh);
 	DRW_SHADER_FREE_SAFE(e_data.outline_detect_wire_sh);
 	DRW_SHADER_FREE_SAFE(e_data.outline_fade_sh);
+	DRW_SHADER_FREE_SAFE(e_data.outline_fade_large_sh);
 	DRW_SHADER_FREE_SAFE(e_data.object_empty_image_sh);
 	DRW_SHADER_FREE_SAFE(e_data.object_empty_image_wire_sh);
 	DRW_SHADER_FREE_SAFE(e_data.grid_sh);
@@ -710,7 +713,7 @@ static DRWShadingGroup *shgroup_points(DRWPass *pass, const float col[4], GPUSha
 static int *shgroup_theme_id_to_probe_outline_counter(
         OBJECT_StorageList *stl, int theme_id, const int base_flag)
 {
-	if (UNLIKELY(base_flag & BASE_FROMDUPLI)) {
+	if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
 		switch (theme_id) {
 			case TH_ACTIVE:
 			case TH_SELECT:
@@ -735,7 +738,7 @@ static int *shgroup_theme_id_to_probe_outline_counter(
 static int *shgroup_theme_id_to_outline_counter(
         OBJECT_StorageList *stl, int theme_id, const int base_flag)
 {
-	if (UNLIKELY(base_flag & BASE_FROMDUPLI)) {
+	if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
 		switch (theme_id) {
 			case TH_ACTIVE:
 			case TH_SELECT:
@@ -776,7 +779,7 @@ static DRWShadingGroup *shgroup_theme_id_to_probe_cube_outline_shgrp(
         OBJECT_StorageList *stl, int theme_id, const int base_flag)
 {
 	/* does not increment counter */
-	if (UNLIKELY(base_flag & BASE_FROMDUPLI)) {
+	if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
 		switch (theme_id) {
 			case TH_ACTIVE:
 			case TH_SELECT:
@@ -804,7 +807,7 @@ static DRWShadingGroup *shgroup_theme_id_to_outline_or_null(
 	int *counter = shgroup_theme_id_to_outline_counter(stl, theme_id, base_flag);
 	*counter += 1;
 
-	if (UNLIKELY(base_flag & BASE_FROMDUPLI)) {
+	if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
 		switch (theme_id) {
 			case TH_ACTIVE:
 			case TH_SELECT:
@@ -834,7 +837,7 @@ static DRWShadingGroup *shgroup_theme_id_to_wire(
 	if (UNLIKELY(base_flag & BASE_FROM_SET)) {
 		return sgl->wire_dupli;
 	}
-	else if (UNLIKELY(base_flag & BASE_FROMDUPLI)) {
+	else if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
 		switch (theme_id) {
 			case TH_ACTIVE:
 			case TH_SELECT:
@@ -864,7 +867,7 @@ static DRWShadingGroup *shgroup_theme_id_to_point(
 	if (UNLIKELY(base_flag & BASE_FROM_SET)) {
 		return sgl->points_dupli;
 	}
-	else if (UNLIKELY(base_flag & BASE_FROMDUPLI)) {
+	else if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
 		switch (theme_id) {
 			case TH_ACTIVE:
 			case TH_SELECT:
@@ -985,8 +988,10 @@ static void OBJECT_cache_init(void *vedata)
 	DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 	OBJECT_PrivateData *g_data;
 	const DRWContextState *draw_ctx = DRW_context_state_get();
-	/* TODO : use dpi setting for enabling the second pass */
-	const bool do_outline_expand = false;
+
+	const float outline_width = UI_GetThemeValuef(TH_OUTLINE_WIDTH);
+	const bool do_outline_expand = (U.pixelsize > 1.0) || (outline_width > 2.0f);
+	const bool do_large_expand = ((U.pixelsize > 1.0) && (outline_width > 2.0f)) || (outline_width > 4.0f);
 
 	if (!stl->g_data) {
 		/* Alloc transient pointers */
@@ -1046,9 +1051,6 @@ static void OBJECT_cache_init(void *vedata)
 		struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
 		/* Don't occlude the "outline" detection pass if in xray mode (too much flickering). */
 		float alphaOcclu = (g_data->xray_enabled) ? 1.0f : 0.35f;
-		/* Reminder : bool uniforms need to be 4 bytes. */
-		static const int bTrue = true;
-		static const int bFalse = false;
 
 		psl->outlines_search = DRW_pass_create("Outlines Detect Pass", state);
 
@@ -1062,11 +1064,13 @@ static void OBJECT_cache_init(void *vedata)
 		DRW_shgroup_uniform_int(grp, "idOffsets", &stl->g_data->id_ofs_active, 4);
 		DRW_shgroup_call_add(grp, quad, NULL);
 
+		/* This is the bleed pass if do_outline_expand is false. */
+		GPUShader *fade_sh = (do_large_expand) ? e_data.outline_fade_large_sh : e_data.outline_fade_sh;
 		psl->outlines_expand = DRW_pass_create("Outlines Expand Pass", state);
 
-		grp = DRW_shgroup_create(e_data.outline_fade_sh, psl->outlines_expand);
+		grp = DRW_shgroup_create(fade_sh, psl->outlines_expand);
 		DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &e_data.outlines_blur_tx);
-		DRW_shgroup_uniform_bool(grp, "doExpand", (do_outline_expand) ? &bTrue : &bFalse, 1);
+		DRW_shgroup_uniform_bool_copy(grp, "doExpand", do_outline_expand);
 		DRW_shgroup_call_add(grp, quad, NULL);
 
 		psl->outlines_bleed = DRW_pass_create("Outlines Bleed Pass", state);
@@ -1074,7 +1078,7 @@ static void OBJECT_cache_init(void *vedata)
 		if (do_outline_expand) {
 			grp = DRW_shgroup_create(e_data.outline_fade_sh, psl->outlines_bleed);
 			DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &e_data.outlines_color_tx);
-			DRW_shgroup_uniform_bool(grp, "doExpand", &bFalse, 1);
+			DRW_shgroup_uniform_bool_copy(grp, "doExpand", false);
 			DRW_shgroup_call_add(grp, quad, NULL);
 		}
 	}
@@ -1508,7 +1512,7 @@ static void DRW_shgroup_lamp(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLayer
 	float (*shapemat)[4] = lamp_engine_data->shape_mat;
 	float (*spotblendmat)[4] = lamp_engine_data->spot_blend_mat;
 
-	if ((ob->base_flag & (BASE_FROM_SET | BASE_FROMDUPLI)) == 0) {
+	if ((ob->base_flag & (BASE_FROM_SET | BASE_FROM_DUPLI)) == 0) {
 		/* Don't draw the center if it's selected or active */
 		if (theme_id == TH_LAMP) {
 			DRW_shgroup_call_dynamic_add(sgl->lamp_center, ob->obmat[3]);
@@ -3115,7 +3119,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
 	}
 
 	/* don't show object extras in set's */
-	if ((ob->base_flag & (BASE_FROM_SET | BASE_FROMDUPLI)) == 0) {
+	if ((ob->base_flag & (BASE_FROM_SET | BASE_FROM_DUPLI)) == 0) {
 		if ((draw_ctx->object_mode & (OB_MODE_ALL_PAINT | OB_MODE_ALL_PAINT_GPENCIL)) == 0) {
 			DRW_shgroup_object_center(stl, ob, view_layer, v3d);
 		}
