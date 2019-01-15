@@ -1035,7 +1035,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
 		sthickness = gps->thickness + tgpw->lthick;
 
 		if (tgpw->is_adaptive_fill) {
-			sthickness = (short)max_ii(1, sthickness / 4 * 3);
+			sthickness = (short)max_ii(1, sthickness / 2);
 		}
 
 		if (sthickness <= 0) {

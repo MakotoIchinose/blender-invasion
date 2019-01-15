@@ -246,6 +246,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 	tgpw.dflag = 0;
 	tgpw.disable_fill = 1;
 	tgpw.dflag |= (GP_DRAWFILLS_ONLY3D | GP_DRAWFILLS_NOSTATUS);
+	
 
 	glEnable(GL_BLEND);
 
@@ -287,7 +288,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 
 			/* reduce thickness to avoid gaps */
 			tgpw.is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false ;
-			tgpw.lthick = gpl->line_change - 4;
+			tgpw.lthick = tgpw.is_adaptive_fill ? gpl->line_change : gpl->line_change - 4;
 			tgpw.opacity = 1.0;
 			copy_v4_v4(tgpw.tintcolor, ink);
 			tgpw.onion = true;
@@ -573,7 +574,7 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 
 	/* calculate index of the seed point using the position of the mouse */
 	int index = (tgpf->sizex * tgpf->center[1]) + tgpf->center[0];
-	if ((index >= 0) && (index < maxpixel)) {
+	if ((index >= 0) && (index <= maxpixel)) {
 		BLI_stack_push(stack, &index);
 	}
 
@@ -591,6 +592,7 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 	 */
 	while (!BLI_stack_is_empty(stack)) {
 		int v;
+		
 		BLI_stack_pop(stack, &v);
 
 		get_pixel(ibuf, v, rgba);
@@ -598,7 +600,7 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 		if (true) { /* Was: 'rgba' */
 			/* check if no border(red) or already filled color(green) */
 			if ((rgba[0] != 1.0f) && (rgba[1] != 1.0f)) {
-				/* fill current pixel */
+				/* fill current pixel with green */
 				set_pixel(ibuf, v, fill_col);
 
 				/* add contact pixels */
@@ -684,7 +686,7 @@ static void gpencil_clean_borders(tGPDfill *tgpf)
  * This is a Blender customized version of the general algorithm described
  * in https://en.wikipedia.org/wiki/Moore_neighborhood
  */
-static  void gpencil_get_outline_points(tGPDfill *tgpf)
+static void gpencil_get_outline_points(tGPDfill *tgpf)
 {
 	ImBuf *ibuf;
 	float rgba[4];
@@ -715,6 +717,51 @@ static  void gpencil_get_outline_points(tGPDfill *tgpf)
 
 	ibuf = BKE_image_acquire_ibuf(tgpf->ima, NULL, &lock);
 	int imagesize = ibuf->x * ibuf->y;
+
+	/* naive dilate */
+	bool is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false;
+	if (is_adaptive_fill) {
+		const int maxpixel = (ibuf->x * ibuf->y) - 1;
+		for (int v = imagesize - 1; v != 0; v--) {
+			float color[4];
+			int index;
+			get_pixel(ibuf, v, rgba);
+			if (rgba[1] == 1.0f) {
+				/* pixel left */
+				if (v - 1 >= 0) {
+					index = v - 1;
+					get_pixel(ibuf, index, color);
+					if (color[0] == 1.0f) {
+						set_pixel(ibuf, index, rgba);
+					}
+				}
+				/* pixel right */
+				if (v + 1 <= maxpixel) {
+					index = v + 1;
+					get_pixel(ibuf, index, color);
+					if (color[0] == 1.0f) {
+						set_pixel(ibuf, index, rgba);
+					}
+				}
+				/* pixel top */
+				if (v + ibuf->x <= maxpixel) {
+					index = v + ibuf->x;
+					get_pixel(ibuf, index, color);
+					if (color[0] == 1.0f) {
+						set_pixel(ibuf, index, rgba);
+					}
+				}
+				/* pixel bottom */
+				if (v - ibuf->x >= 0) {
+					index = v - ibuf->x;
+					get_pixel(ibuf, index, color);
+					if (color[0] == 1.0f) {
+						set_pixel(ibuf, index, rgba);
+					}
+				}
+			}
+		}
+	}
 
 	/* find the initial point to start outline analysis */
 	for (int idx = imagesize - 1; idx != 0; idx--) {
@@ -858,6 +905,8 @@ static void gpencil_points_from_stack(tGPDfill *tgpf)
 		return;
 	}
 
+	bool is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false;
+
 	tgpf->sbuffer_size = (short)totpoints;
 	tgpf->sbuffer = MEM_callocN(sizeof(tGPspoint) * totpoints, __func__);
 
@@ -865,8 +914,11 @@ static void gpencil_points_from_stack(tGPDfill *tgpf)
 	while (!BLI_stack_is_empty(tgpf->stack)) {
 		int v[2];
 		BLI_stack_pop(tgpf->stack, &v);
-		point2D->x = v[0];
-		point2D->y = v[1];
+		copy_v2fl_v2i(&point2D->x, v);
+		if (is_adaptive_fill) {
+			/* shift points to center of pixel */
+			add_v2_fl(&point2D->x, 0.5f);
+		}
 
 		point2D->pressure = 1.0f;
 		point2D->strength = 1.0f;
