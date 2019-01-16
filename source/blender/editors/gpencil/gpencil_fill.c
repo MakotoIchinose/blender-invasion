@@ -681,6 +681,65 @@ static void gpencil_clean_borders(tGPDfill *tgpf)
 	tgpf->ima->id.tag |= LIB_TAG_DOIT;
 }
 
+/* Naive dilate
+ *
+ * Expand green areas into enclosing red areas.
+ * Using stack prevents creep when replacing colors directly.
+ */
+static void dilate(ImBuf *ibuf)
+{
+	BLI_Stack *stack = BLI_stack_new(sizeof(int), __func__);
+	const float green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+	const int maxpixel = (ibuf->x * ibuf->y) - 1;
+	/* detect pixels and expand into red areas */
+	for (int v = maxpixel; v != 0; v--) {
+		float color[4];
+		int index;
+		get_pixel(ibuf, v, color);
+		if (color[1] == 1.0f) {
+			/* pixel left */
+			if (v - 1 >= 0) {
+				index = v - 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel right */
+			if (v + 1 <= maxpixel) {
+				index = v + 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel top */
+			if (v + ibuf->x <= maxpixel) {
+				index = v + ibuf->x;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel bottom */
+			if (v - ibuf->x >= 0) {
+				index = v - ibuf->x;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+		}
+	}
+	/* set dilated pixels */
+	while (!BLI_stack_is_empty(stack)) {
+		int v;
+		BLI_stack_pop(stack, &v);
+		set_pixel(ibuf, v, green);
+	}
+	BLI_stack_free(stack);
+}
+
 /* Get the outline points of a shape using Moore Neighborhood algorithm
  *
  * This is a Blender customized version of the general algorithm described
@@ -718,49 +777,10 @@ static void gpencil_get_outline_points(tGPDfill *tgpf)
 	ibuf = BKE_image_acquire_ibuf(tgpf->ima, NULL, &lock);
 	int imagesize = ibuf->x * ibuf->y;
 
-	/* naive dilate */
+	/* dilate */
 	bool is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false;
 	if (is_adaptive_fill) {
-		const int maxpixel = (ibuf->x * ibuf->y) - 1;
-		for (int v = imagesize - 1; v != 0; v--) {
-			float color[4];
-			int index;
-			get_pixel(ibuf, v, rgba);
-			if (rgba[1] == 1.0f) {
-				/* pixel left */
-				if (v - 1 >= 0) {
-					index = v - 1;
-					get_pixel(ibuf, index, color);
-					if (color[0] == 1.0f) {
-						set_pixel(ibuf, index, rgba);
-					}
-				}
-				/* pixel right */
-				if (v + 1 <= maxpixel) {
-					index = v + 1;
-					get_pixel(ibuf, index, color);
-					if (color[0] == 1.0f) {
-						set_pixel(ibuf, index, rgba);
-					}
-				}
-				/* pixel top */
-				if (v + ibuf->x <= maxpixel) {
-					index = v + ibuf->x;
-					get_pixel(ibuf, index, color);
-					if (color[0] == 1.0f) {
-						set_pixel(ibuf, index, rgba);
-					}
-				}
-				/* pixel bottom */
-				if (v - ibuf->x >= 0) {
-					index = v - ibuf->x;
-					get_pixel(ibuf, index, color);
-					if (color[0] == 1.0f) {
-						set_pixel(ibuf, index, rgba);
-					}
-				}
-			}
-		}
+		dilate(ibuf);
 	}
 
 	/* find the initial point to start outline analysis */
