@@ -685,6 +685,12 @@ static void gpencil_clean_borders(tGPDfill *tgpf)
  *
  * Expand green areas into enclosing red areas.
  * Using stack prevents creep when replacing colors directly.
+ * -----------
+ *  XXXXXXX
+ *  XoooooX
+ *  XXooXXX
+ *   XXXX
+ * -----------
  */
 static void dilate(ImBuf *ibuf)
 {
@@ -695,6 +701,10 @@ static void dilate(ImBuf *ibuf)
 	for (int v = maxpixel; v != 0; v--) {
 		float color[4];
 		int index;
+		int tp = 0;
+		int bm = 0;
+		int lt = 0;
+		int rt = 0;
 		get_pixel(ibuf, v, color);
 		if (color[1] == 1.0f) {
 			/* pixel left */
@@ -703,6 +713,7 @@ static void dilate(ImBuf *ibuf)
 				get_pixel(ibuf, index, color);
 				if (color[0] == 1.0f) {
 					BLI_stack_push(stack, &index);
+					lt = index;
 				}
 			}
 			/* pixel right */
@@ -711,6 +722,7 @@ static void dilate(ImBuf *ibuf)
 				get_pixel(ibuf, index, color);
 				if (color[0] == 1.0f) {
 					BLI_stack_push(stack, &index);
+					rt = index;
 				}
 			}
 			/* pixel top */
@@ -719,11 +731,45 @@ static void dilate(ImBuf *ibuf)
 				get_pixel(ibuf, index, color);
 				if (color[0] == 1.0f) {
 					BLI_stack_push(stack, &index);
+					tp = index;
 				}
 			}
 			/* pixel bottom */
 			if (v - ibuf->x >= 0) {
 				index = v - ibuf->x;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+					bm = index;
+				}
+			}
+			/* pixel top-left */
+			if (tp && lt) {
+				index = tp - 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel top-right */
+			if (tp && rt) {
+				index = tp + 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel bottom-left */
+			if (bm && lt) {
+				index = bm - 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel bottom-right */
+			if (bm && rt) {
+				index = bm + 1;
 				get_pixel(ibuf, index, color);
 				if (color[0] == 1.0f) {
 					BLI_stack_push(stack, &index);
