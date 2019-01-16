@@ -683,9 +683,8 @@ typedef struct UserDef {
 	char  ipo_new;
 	/** Handle types for newly added keyframes. */
 	char  keyhandles_new;
-	char  gpu_select_method;
 	char  gpu_select_pick_deph;
-	char  pad0;
+	char  pad0[2];
 	/** #eZoomFrame_Mode. */
 	char  view_frame_type;
 
@@ -694,12 +693,11 @@ typedef struct UserDef {
 	/** Seconds to zoom around current frame. */
 	float view_frame_seconds;
 
-	char _pad1[2];
+	char _pad1[6];
 
 	/** Private, defaults to 20 for 72 DPI setting. */
 	short widget_unit;
 	short anisotropic_filter;
-	short use_16bit_textures, use_gpu_mipmap;
 
 	/** Tablet API to use (Windows only). */
 	short tablet_api;
@@ -996,13 +994,6 @@ typedef enum eDupli_ID_Flags {
 	USER_DUP_ACT			= (1 << 10),
 	USER_DUP_PSYS			= (1 << 11),
 } eDupli_ID_Flags;
-
-/* selection method for opengl gpu_select_method */
-typedef enum eOpenGL_SelectOptions {
-	USER_SELECT_AUTO = 0,
-	USER_SELECT_USE_OCCLUSION_QUERY = 1,
-	USER_SELECT_USE_SELECT_RENDERMODE = 2,
-} eOpenGL_SelectOptions;
 
 /* max anti alias draw method UserDef.gpu_viewport_antialias */
 typedef enum eOpenGL_AntiAliasMethod {
