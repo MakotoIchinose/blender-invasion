@@ -140,6 +140,8 @@ typedef struct tGPDfill {
 	int fill_draw_mode;
 	/* scaling factor */
 	short fill_factor;
+	/* dilate */
+	bool fill_dilate;
 
 	/** number of elements currently in cache */
 	short sbuffer_size;
@@ -824,8 +826,7 @@ static void gpencil_get_outline_points(tGPDfill *tgpf)
 	int imagesize = ibuf->x * ibuf->y;
 
 	/* dilate */
-	bool is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false;
-	if (is_adaptive_fill) {
+	if (tgpf->fill_dilate) {
 		dilate(ibuf);
 	}
 
@@ -981,11 +982,8 @@ static void gpencil_points_from_stack(tGPDfill *tgpf)
 		int v[2];
 		BLI_stack_pop(tgpf->stack, &v);
 		copy_v2fl_v2i(&point2D->x, v);
-		if (is_adaptive_fill) {
-			/* shift points to center of pixel */
-			add_v2_fl(&point2D->x, 0.5f);
-		}
-
+		/* shift points to center of pixel */
+		add_v2_fl(&point2D->x, 0.5f);
 		point2D->pressure = 1.0f;
 		point2D->strength = 1.0f;
 		point2D->time = 0.0f;
@@ -1224,6 +1222,7 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	tgpf->fill_threshold = brush->gpencil_settings->fill_threshold;
 	tgpf->fill_simplylvl = brush->gpencil_settings->fill_simplylvl;
 	tgpf->fill_draw_mode = brush->gpencil_settings->fill_draw_mode;
+	tgpf->fill_dilate = (bool)brush->gpencil_settings->fill_dilate;
 	tgpf->fill_factor = (short)max_ii(1, min_ii((int)brush->gpencil_settings->fill_factor,8));
 	
 	/* get color info */

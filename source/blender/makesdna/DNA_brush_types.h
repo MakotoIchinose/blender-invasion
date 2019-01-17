@@ -93,7 +93,9 @@ typedef struct BrushGpencilSettings {
 	short fill_leak;
 	/** Fill zoom factor */
 	short fill_factor;
-	char _pad_1[4];
+	/** Fill dilate */
+	char fill_dilate;
+	char _pad_1[3];
 
 	/** Number of simplify steps. */
 	int fill_simplylvl;

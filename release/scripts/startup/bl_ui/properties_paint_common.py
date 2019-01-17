@@ -419,6 +419,9 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row.prop(gp_settings, "fill_factor", text="Resolution")
         row.separator()
         row = layout.column(align=True)
+        row.prop(gp_settings, "fill_dilate", text="Dilate")
+        row.separator()        
+        row = layout.column(align=True)
         row.prop(brush, "size", text="Thickness")
         row = layout.column(align=True)
         row.prop(gp_settings, "fill_simplify_level", text="Simplify")
@@ -427,12 +430,12 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row.prop(gp_settings, "fill_draw_mode", text="Boundary Draw Mode")
         row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
 
-        col = layout.column(align=True)
-        col.enabled = gp_settings.fill_draw_mode != 'STROKE'
-        col.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-        sub = col.row(align=True)
-        sub.enabled = not gp_settings.show_fill
-        sub.prop(gp_settings, "fill_threshold", text="Threshold")
+        if gp_settings.fill_draw_mode != 'STROKE':
+            row = layout.row(align=True)
+            row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
+            row.separator()
+            row = layout.column(align=True)
+            row.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")

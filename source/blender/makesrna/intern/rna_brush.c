@@ -1151,6 +1151,13 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
+	/* fill dilate */
+	prop = RNA_def_property(srna, "fill_dilate", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "fill_dilate", 0);
+	RNA_def_property_ui_text(prop, "Dilate", "Spread fill area");
+	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
+
 	/* fill factor size */
 	prop = RNA_def_property(srna, "fill_factor", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "fill_factor");
