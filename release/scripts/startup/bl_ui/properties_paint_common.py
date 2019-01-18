@@ -393,7 +393,7 @@ def brush_basic_sculpt_settings(layout, context, brush, *, compact=False):
     layout.row().prop(brush, "direction", expand=True, **({"text": ""} if compact else {}))
 
 
-def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False):
+def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=True):
     gp_settings = brush.gpencil_settings
 
     # Brush details
@@ -415,24 +415,12 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_leak", text="Leak Size")
         row = layout.row(align=True)
-        row.prop(gp_settings, "fill_factor", text="Resolution")
-        row = layout.row(align=True)
-        row.prop(gp_settings, "fill_dilate", text="Dilate")
-        row = layout.row(align=True)
         row.prop(brush, "size", text="Thickness")
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_simplify_level", text="Simplify")
-
         row = layout.row(align=True)
-        row.prop(gp_settings, "fill_draw_mode", text="Boundary Draw Mode")
+        row.prop(gp_settings, "fill_draw_mode", text="Mode")
         row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
-
-        if gp_settings.fill_draw_mode != 'STROKE':
-            row = layout.row(align=True)
-            row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-            row.separator()
-            row = layout.row(align=True)
-            row.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")
