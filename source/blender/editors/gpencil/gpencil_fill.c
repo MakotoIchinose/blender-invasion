@@ -972,8 +972,6 @@ static void gpencil_points_from_stack(tGPDfill *tgpf)
 		return;
 	}
 
-	bool is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false;
-
 	tgpf->sbuffer_size = (short)totpoints;
 	tgpf->sbuffer = MEM_callocN(sizeof(tGPspoint) * totpoints, __func__);
 
