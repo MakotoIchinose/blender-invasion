@@ -21,12 +21,7 @@ void vert_from_gl_in(int v)
 {
 	gl_Position = gl_in[v].gl_Position;
 #ifdef USE_WORLD_CLIP_PLANES
-	gl_ClipDistance[0] = gl_in[v].gl_ClipDistance[0];
-	gl_ClipDistance[1] = gl_in[v].gl_ClipDistance[1];
-	gl_ClipDistance[2] = gl_in[v].gl_ClipDistance[2];
-	gl_ClipDistance[3] = gl_in[v].gl_ClipDistance[3];
-	gl_ClipDistance[4] = gl_in[v].gl_ClipDistance[4];
-	gl_ClipDistance[5] = gl_in[v].gl_ClipDistance[5];
+	world_clip_planes_set_clip_distance(gl_in[v].gl_ClipDistance);
 #endif
 }
 

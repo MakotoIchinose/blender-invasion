@@ -73,12 +73,7 @@ void doVertex(int v)
 	gl_Position = pPos[v];
 
 #ifdef USE_WORLD_CLIP_PLANES
-	gl_ClipDistance[0] = gl_in[v].gl_ClipDistance[0];
-	gl_ClipDistance[1] = gl_in[v].gl_ClipDistance[1];
-	gl_ClipDistance[2] = gl_in[v].gl_ClipDistance[2];
-	gl_ClipDistance[3] = gl_in[v].gl_ClipDistance[3];
-	gl_ClipDistance[4] = gl_in[v].gl_ClipDistance[4];
-	gl_ClipDistance[5] = gl_in[v].gl_ClipDistance[5];
+	world_clip_planes_set_clip_distance(gl_in[v].gl_ClipDistance);
 #endif
 
 	EmitVertex();
@@ -97,12 +92,7 @@ void doVertexOfs(int v, vec2 fixvec)
 	gl_Position = pPos[v] + vec4(fixvec * pPos[v].w, z_ofs, 0.0);
 
 #ifdef USE_WORLD_CLIP_PLANES
-	gl_ClipDistance[0] = gl_in[v].gl_ClipDistance[0];
-	gl_ClipDistance[1] = gl_in[v].gl_ClipDistance[1];
-	gl_ClipDistance[2] = gl_in[v].gl_ClipDistance[2];
-	gl_ClipDistance[3] = gl_in[v].gl_ClipDistance[3];
-	gl_ClipDistance[4] = gl_in[v].gl_ClipDistance[4];
-	gl_ClipDistance[5] = gl_in[v].gl_ClipDistance[5];
+	world_clip_planes_set_clip_distance(gl_in[v].gl_ClipDistance);
 #endif
 
 	EmitVertex();
