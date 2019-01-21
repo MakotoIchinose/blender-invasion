@@ -6016,7 +6016,7 @@ static void lib_link_scene(FileData *fd, Main *main)
 			sce->toolsettings->particle.shape_object = newlibadr(fd, sce->id.lib, sce->toolsettings->particle.shape_object);
 
 			sce->toolsettings->gp_sculpt.guide.reference_object = newlibadr(fd, sce->id.lib, sce->toolsettings->gp_sculpt.guide.reference_object);
-			
+
 			for (Base *base_legacy_next, *base_legacy = sce->base.first; base_legacy; base_legacy = base_legacy_next) {
 				base_legacy_next = base_legacy->next;
 
@@ -6675,10 +6675,6 @@ static void direct_link_region(FileData *fd, ARegion *ar, int spacetype)
 				rv3d->render_engine = NULL;
 				rv3d->sms = NULL;
 				rv3d->smooth_timer = NULL;
-
-				/* TODO: support clipping in 2.8x,
-				 * Tools use clipping which is confusing when it isn't displayed, T59580. */
-				rv3d->rflag &= ~RV3D_CLIPPING;
 			}
 		}
 	}

@@ -41,7 +41,7 @@
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
 #define M_GOLDEN_RATION_CONJUGATE 0.618033988749895
 #define MAX_COMPOSITE_SHADERS (1 << 6)
-#define MAX_PREPASS_SHADERS (1 << 6)
+#define MAX_PREPASS_SHADERS (1 << 7)
 #define MAX_ACCUM_SHADERS (1 << 4)
 #define MAX_CAVITY_SHADERS (1 << 3)
 
@@ -199,6 +199,9 @@ typedef struct WORKBENCH_PrivateData {
 	float shadow_near_sides[2][4];
 	bool shadow_changed;
 	bool is_playback;
+
+	float world_clip_planes[6][4];
+	int   world_clip_planes_len;
 
 	/* Volumes */
 	bool volumes_do;
