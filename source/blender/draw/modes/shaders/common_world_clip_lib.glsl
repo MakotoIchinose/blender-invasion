@@ -10,8 +10,9 @@ void world_clip_planes_calc_clip_distance(vec3 wpos)
 	gl_ClipDistance[4] = dot(WorldClipPlanes[4].xyz, wpos) + WorldClipPlanes[4].w;
 	gl_ClipDistance[5] = dot(WorldClipPlanes[5].xyz, wpos) + WorldClipPlanes[5].w;
 }
+#endif
 
-#define world_clip_planes_set_clip_distance(c)
+#define world_clip_planes_set_clip_distance(c) \
 { \
 	gl_ClipDistance[0] = (c)[0]; \
 	gl_ClipDistance[1] = (c)[1]; \
@@ -21,5 +22,4 @@ void world_clip_planes_calc_clip_distance(vec3 wpos)
 	gl_ClipDistance[5] = (c)[5]; \
 }
 
-#endif
 #endif

@@ -114,7 +114,7 @@ static void overlay_engine_init(void *vedata)
 	const bool is_clip = (draw_ctx->rv3d->rflag & RV3D_CLIPPING) != 0;
 
 	if (is_clip) {
-		DRW_state_clip_planes_len_set((draw_ctx->rv3d->viewlock & RV3D_BOXCLIP) ? 4 : 6);
+		DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
 	}
 
 	if (!stl->g_data) {

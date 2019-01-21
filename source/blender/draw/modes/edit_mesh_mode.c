@@ -299,7 +299,7 @@ static void EDIT_MESH_engine_init(void *vedata)
 	});
 
 	if (is_clip) {
-		DRW_state_clip_planes_len_set((draw_ctx->rv3d->viewlock & RV3D_BOXCLIP) ? 4 : 6);
+		DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
 	}
 
 	if (!sh_data->weight_face) {
