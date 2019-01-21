@@ -37,7 +37,7 @@ void main()
 #  endif
 
 #  ifdef USE_WORLD_CLIP_PLANES
-	world_clip_planes_set_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
+	world_clip_planes_calc_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
 #  endif
 }
 
@@ -104,7 +104,7 @@ void main()
 #  endif
 
 #  ifdef USE_WORLD_CLIP_PLANES
-	world_clip_planes_set_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
+	world_clip_planes_calc_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
 #  endif
 }
 
