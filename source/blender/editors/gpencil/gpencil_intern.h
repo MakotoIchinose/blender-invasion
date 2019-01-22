@@ -237,6 +237,9 @@ typedef struct tGPDprimitive {
 
 	/** numeric input */
 	NumInput num;
+
+	/** size in pixels for uv calculation */
+	float totpixlen;
 } tGPDprimitive;
 
 
