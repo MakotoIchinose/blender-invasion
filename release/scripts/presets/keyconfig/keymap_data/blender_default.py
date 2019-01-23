@@ -1035,7 +1035,7 @@ def km_view3d(params):
          {"properties": [("mode", 'SUB')]}),
         ("view3d.select_circle", {"type": 'C', "value": 'PRESS'}, None),
         # Borders.
-        # ("view3d.clip_border", {"type": 'B', "value": 'PRESS', "alt": True}, None),
+        ("view3d.clip_border", {"type": 'B', "value": 'PRESS', "alt": True}, None),
         ("view3d.zoom_border", {"type": 'B', "value": 'PRESS', "shift": True}, None),
         ("view3d.render_border", {"type": 'B', "value": 'PRESS', "ctrl": True}, None),
         ("view3d.clear_render_border", {"type": 'B', "value": 'PRESS', "ctrl": True, "alt": True}, None),
@@ -3883,6 +3883,10 @@ def km_mesh(params):
              {"properties": [("extend", True), ("deselect", False), ("toggle", False)]}),
             ("mesh.loop_select", {"type": params.select_mouse, "value": 'DOUBLE_CLICK', "alt": True},
              {"properties": [("extend", False), ("deselect", True), ("toggle", False)]}),
+            ("mesh.edgering_select", {"type": params.select_mouse, "value": 'DOUBLE_CLICK', "ctrl": True},
+             {"properties": [("extend", False), ("deselect", False), ("toggle", False)]}),
+            ("mesh.edgering_select", {"type": params.select_mouse, "value": 'DOUBLE_CLICK', "shift": True, "ctrl": True},
+             {"properties": [("extend", False), ("deselect", False), ("toggle", True)]}),
         ])
 
     if params.legacy:

@@ -44,6 +44,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_brush.h"
+#include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
@@ -103,6 +104,12 @@ void BLO_update_defaults_userpref_blend(void)
 	/* Auto perspective. */
 	U.uiflag |= USER_AUTOPERSP;
 
+	/* Init weight paint range. */
+	BKE_colorband_init(&U.coba_weight, true);
+
+	/* Default visible section. */
+	U.userpref = USER_SECTION_INTERFACE;
+
 	/* Default to left click select. */
 	BKE_keyconfig_pref_set_select_mouse(&U, 0, true);
 }
@@ -137,7 +144,10 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 						/* grease pencil settings */
 						v3d->vertex_opacity = 1.0f;
 						v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
-						copy_v3_fl(v3d->shading.background_color, 0.05f);
+						/* Skip startups that use the viewport color by default. */
+						if (v3d->shading.background_type != V3D_SHADING_BACKGROUND_VIEWPORT) {
+							copy_v3_fl(v3d->shading.background_color, 0.05f);
+						}
 						break;
 					}
 					case SPACE_FILE:
@@ -267,8 +277,12 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 			scene->r.cfra = 1.0f;
 			scene->r.displaymode = R_OUTPUT_WINDOW;
 
-			/* AV Sync break physics sim caching, disable until that is fixed. */
-			if (!(app_template && STREQ(app_template, "Video_Editing"))) {
+			if (app_template && STREQ(app_template, "Video_Editing")) {
+				/* Filmic is too slow, use default until it is optimized. */
+				STRNCPY(scene->view_settings.view_transform, "Default");
+			}
+			else {
+				/* AV Sync break physics sim caching, disable until that is fixed. */
 				scene->audio.flag &= ~AUDIO_SYNC;
 				scene->flag &= ~SCE_FRAME_DROP;
 			}

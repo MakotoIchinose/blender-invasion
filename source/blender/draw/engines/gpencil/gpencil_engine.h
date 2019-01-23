@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2017, Blender Foundation.
  * Contributor(s): Antonio Vazquez
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -366,7 +369,7 @@ typedef struct GpencilBatchCache {
 struct DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(
         struct GPENCIL_e_data *e_data, struct GPENCIL_Data *vedata, struct DRWPass *pass, struct GPUShader *shader,
         struct Object *ob, struct bGPdata *gpd, struct bGPDstroke *gps,
-		struct MaterialGPencilStyle *gp_style, int id, bool onion);
+        struct MaterialGPencilStyle *gp_style, int id, bool onion);
 void DRW_gpencil_populate_datablock(
         struct GPENCIL_e_data *e_data, void *vedata,
         struct Object *ob, struct tGPencilObjectCache *cache_ob);

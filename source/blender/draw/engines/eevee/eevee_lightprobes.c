@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -65,7 +68,6 @@ static struct {
 	struct GPUVertFormat *format_probe_display_planar;
 } e_data = {NULL}; /* Engine data */
 
-extern GlobalsUboStorage ts;
 
 /* *********** FUNCTIONS *********** */
 
@@ -316,7 +318,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
 		Scene *scene = draw_ctx->scene;
 		World *wo = scene->world;
 
-		float *col = ts.colorBackground;
+		const float *col = G_draw.block.colorBackground;
 
 		/* LookDev */
 		EEVEE_lookdev_cache_init(vedata, &grp, psl->probe_background, wo, pinfo);
@@ -328,7 +330,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
 				static float error_col[3] = {1.0f, 0.0f, 1.0f};
 				struct GPUMaterial *gpumat = EEVEE_material_world_lightprobe_get(scene, wo);
 
-				GPUMaterialStatus status = GPU_material_status(gpumat);
+				eGPUMaterialStatus status = GPU_material_status(gpumat);
 
 				switch (status) {
 					case GPU_MAT_SUCCESS:
@@ -898,7 +900,7 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
 	sldata->clip_data.clip_planes[0][3] += eplanar->clipsta;
 	/* Set clipping plane */
 	DRW_uniformbuffer_update(sldata->clip_ubo, &sldata->clip_data);
-	DRW_state_clip_planes_count_set(1);
+	DRW_state_clip_planes_len_set(1);
 
 	GPU_framebuffer_bind(fbl->planarref_fb);
 	GPU_framebuffer_clear_depth(fbl->planarref_fb, 1.0);

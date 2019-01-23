@@ -339,7 +339,7 @@ GPUShader *GPU_shader_create_ex(
         const char *geocode,
         const char *libcode,
         const char *defines,
-        const GPUShaderTFBType tf_type,
+        const eGPUShaderTFBType tf_type,
         const char **tf_names,
         const int tf_count,
         const char *shname)
@@ -361,7 +361,7 @@ GPUShader *GPU_shader_create_ex(
 #endif
 
 	/* At least a vertex shader and a fragment shader are required. */
-	// BLI_assert((fragcode != NULL) && (vertexcode != NULL));
+	BLI_assert((fragcode != NULL) && (vertexcode != NULL));
 
 	if (vertexcode)
 		shader->vertex = glCreateShader(GL_VERTEX_SHADER);
@@ -386,11 +386,12 @@ GPUShader *GPU_shader_create_ex(
 	gpu_shader_standard_extensions(standard_extensions);
 
 	if (vertexcode) {
-		const char *source[5];
+		const char *source[6];
 		/* custom limit, may be too small, beware */
 		int num_source = 0;
 
 		source[num_source++] = gpu_shader_version();
+		source[num_source++] = "#define GPU_VERTEX_SHADER\n";
 		source[num_source++] = standard_extensions;
 		source[num_source++] = standard_defines;
 
@@ -419,6 +420,7 @@ GPUShader *GPU_shader_create_ex(
 		int num_source = 0;
 
 		source[num_source++] = gpu_shader_version();
+		source[num_source++] = "#define GPU_FRAGMENT_SHADER\n";
 		source[num_source++] = standard_extensions;
 		source[num_source++] = standard_defines;
 
@@ -448,6 +450,7 @@ GPUShader *GPU_shader_create_ex(
 		int num_source = 0;
 
 		source[num_source++] = gpu_shader_version();
+		source[num_source++] = "#define GPU_GEOMETRY_SHADER\n";
 		source[num_source++] = standard_extensions;
 		source[num_source++] = standard_defines;
 
@@ -563,6 +566,13 @@ int GPU_shader_get_uniform(GPUShader *shader, const char *name)
 {
 	BLI_assert(shader && shader->program);
 	const GPUShaderInput *uniform = GPU_shaderinterface_uniform(shader->interface, name);
+	return uniform ? uniform->location : -2;
+}
+
+int GPU_shader_get_uniform_ensure(GPUShader *shader, const char *name)
+{
+	BLI_assert(shader && shader->program);
+	const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(shader->interface, name);
 	return uniform ? uniform->location : -1;
 }
 
@@ -576,7 +586,6 @@ int GPU_shader_get_builtin_uniform(GPUShader *shader, int builtin)
 int GPU_shader_get_uniform_block(GPUShader *shader, const char *name)
 {
 	BLI_assert(shader && shader->program);
-
 	const GPUShaderInput *ubo = GPU_shaderinterface_ubo(shader->interface, name);
 	return ubo ? ubo->location : -1;
 }
@@ -795,6 +804,9 @@ static const GPUShaderStages builtin_shader_stages[GPU_NUM_BUILTIN_SHADERS] = {
 	[GPU_SHADER_3D_UNIFORM_COLOR] =
 		{ datatoc_gpu_shader_3D_vert_glsl,
 		  datatoc_gpu_shader_uniform_color_frag_glsl },
+	[GPU_SHADER_3D_UNIFORM_COLOR_BACKGROUND] =
+		{ datatoc_gpu_shader_3D_vert_glsl,
+		  datatoc_gpu_shader_uniform_color_frag_glsl },
 	[GPU_SHADER_3D_FLAT_COLOR] =
 		{ datatoc_gpu_shader_3D_flat_color_vert_glsl,
 		  datatoc_gpu_shader_flat_color_frag_glsl },
@@ -962,7 +974,7 @@ static const GPUShaderStages builtin_shader_stages[GPU_NUM_BUILTIN_SHADERS] = {
 
 /* just a few special cases */
 static const char *gpu_shader_get_builtin_shader_defines(
-        GPUBuiltinShader shader)
+        eGPUBuiltinShader shader)
 {
 	switch (shader) {
 		case GPU_SHADER_2D_IMAGE_MULTISAMPLE_2:
@@ -1021,13 +1033,14 @@ static const char *gpu_shader_get_builtin_shader_defines(
 
 		case GPU_SHADER_2D_UV_FACES_STRETCH_ANGLE:
 			return "#define STRETCH_ANGLE\n";
-
+		case GPU_SHADER_3D_UNIFORM_COLOR_BACKGROUND:
+			return "#define USE_BACKGROUND\n";
 		default:
 			return NULL;
 	}
 }
 
-GPUShader *GPU_shader_get_builtin_shader(GPUBuiltinShader shader)
+GPUShader *GPU_shader_get_builtin_shader(eGPUBuiltinShader shader)
 {
 	BLI_assert(shader != GPU_NUM_BUILTIN_SHADERS); /* don't be a troll */
 
@@ -1063,7 +1076,7 @@ GPUShader *GPU_shader_get_builtin_shader(GPUBuiltinShader shader)
 }
 
 void GPU_shader_get_builtin_shader_code(
-        GPUBuiltinShader shader,
+        eGPUBuiltinShader shader,
         const char **r_vert, const char **r_frag,
         const char **r_geom, const char **r_defines)
 {

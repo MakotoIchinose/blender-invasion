@@ -6,6 +6,7 @@ uniform mat3 NormalMatrix;
 uniform mat4 ProjectionMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat4 ModelViewProjectionMatrix;
+uniform mat4 ModelMatrix;
 uniform ivec4 dataMask = ivec4(0xFF);
 
 in vec3 pos;
@@ -33,6 +34,10 @@ void main()
 		? normalize(vpos.xyz)
 		: vec3(0.0, 0.0, 1.0);
 	vFacing = dot(view_vec, view_normal);
+#  endif
+
+#  ifdef USE_WORLD_CLIP_PLANES
+	world_clip_planes_calc_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
 #  endif
 }
 
@@ -96,6 +101,10 @@ void main()
 		? normalize(vPos.xyz)
 		: vec3(0.0, 0.0, 1.0);
 	facing = dot(view_vec, view_normal);
+#  endif
+
+#  ifdef USE_WORLD_CLIP_PLANES
+	world_clip_planes_calc_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
 #  endif
 }
 

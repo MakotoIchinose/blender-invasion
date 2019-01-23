@@ -91,30 +91,34 @@ typedef struct BrushGpencilSettings {
 	float fill_threshold;
 	/** Number of pixel to consider the leak is too small (x 2). */
 	short fill_leak;
-	char pad_1[6];
+	/** Fill zoom factor */
+	short fill_factor;
+	/** Fill dilate */
+	char fill_dilate;
+	char _pad_1[3];
 
 	/** Number of simplify steps. */
-	int   fill_simplylvl;
+	int fill_simplylvl;
 	/** Type of control lines drawing mode. */
-	int   fill_draw_mode;
+	int fill_draw_mode;
 	/** Icon identifier. */
-	int   icon_id;
+	int icon_id;
 
 	/** Maximum distance before generate new point for very fast mouse movements. */
-	int   input_samples;
+	int input_samples;
 	/** Random factor for UV rotation. */
 	float uv_random;
 	/** Moved to 'Brush.gpencil_tool'. */
-	int   brush_type DNA_DEPRECATED;
+	int brush_type DNA_DEPRECATED;
 	/** Soft, hard or stroke. */
-	int   eraser_mode;
+	int eraser_mode;
 	/** Smooth while drawing factor. */
 	float active_smooth;
 	/** Factor to apply to strength for soft eraser. */
 	float era_strength_f;
 	/** Factor to apply to thickness for soft eraser. */
 	float era_thickness_f;
-	char pad_2[4];
+	char _pad_2[4];
 
 	struct CurveMapping *curve_sensitivity;
 	struct CurveMapping *curve_strength;
@@ -162,6 +166,7 @@ typedef enum eGP_FillDrawModes {
 	GP_FILL_DMODE_BOTH = 0,
 	GP_FILL_DMODE_STROKE = 1,
 	GP_FILL_DMODE_CONTROL = 2,
+	GP_FILL_DMODE_ADAPTIVE = 3,
 } eGP_FillDrawModes;
 
 /* BrushGpencilSettings->gp_eraser_mode */
@@ -182,7 +187,7 @@ typedef enum eGP_BrushIcons {
 	GP_BRUSH_ICON_FILL = 7,
 	GP_BRUSH_ICON_ERASE_SOFT = 8,
 	GP_BRUSH_ICON_ERASE_HARD = 9,
-	GP_BRUSH_ICON_ERASE_STROKE = 10
+	GP_BRUSH_ICON_ERASE_STROKE = 10,
 } eGP_BrushIcons;
 
 typedef struct Brush {
@@ -389,12 +394,12 @@ typedef enum eBrushFlags {
 	BRUSH_CUSTOM_ICON = (1 << 28),
 	BRUSH_LINE = (1 << 29),
 	BRUSH_ABSOLUTE_JITTER = (1 << 30),
-	BRUSH_CURVE = (1u << 31)
+	BRUSH_CURVE = (1u << 31),
 } eBrushFlags;
 
 typedef enum {
 	BRUSH_MASK_PRESSURE_RAMP = (1 << 1),
-	BRUSH_MASK_PRESSURE_CUTOFF = (1 << 2)
+	BRUSH_MASK_PRESSURE_CUTOFF = (1 << 2),
 } BrushMaskPressureFlags;
 
 /* Brush.overlay_flags */
@@ -404,7 +409,7 @@ typedef enum eOverlayFlags {
 	BRUSH_OVERLAY_SECONDARY = (1 << 2),
 	BRUSH_OVERLAY_CURSOR_OVERRIDE_ON_STROKE = (1 << 3),
 	BRUSH_OVERLAY_PRIMARY_OVERRIDE_ON_STROKE = (1 << 4),
-	BRUSH_OVERLAY_SECONDARY_OVERRIDE_ON_STROKE = (1 << 5)
+	BRUSH_OVERLAY_SECONDARY_OVERRIDE_ON_STROKE = (1 << 5),
 } eOverlayFlags;
 
 #define BRUSH_OVERLAY_OVERRIDE_MASK (BRUSH_OVERLAY_CURSOR_OVERRIDE_ON_STROKE | \
@@ -431,7 +436,7 @@ typedef enum eBrushSculptTool {
 	SCULPT_TOOL_CREASE = 16,
 	SCULPT_TOOL_BLOB = 17,
 	SCULPT_TOOL_CLAY_STRIPS = 18,
-	SCULPT_TOOL_MASK = 19
+	SCULPT_TOOL_MASK = 19,
 } eBrushSculptTool;
 
 /** When #BRUSH_ACCUMULATE is used */
@@ -463,7 +468,8 @@ typedef enum eBrushSculptTool {
 	SCULPT_TOOL_THUMB, \
 	SCULPT_TOOL_LAYER, \
 	\
-	/* These brushes could handle dynamic topology, but user feedback indicates it's better not to */ \
+	/* These brushes could handle dynamic topology, \
+	 * but user feedback indicates it's better not to */ \
 	SCULPT_TOOL_SMOOTH, \
 	SCULPT_TOOL_MASK \
 	) == 0)
@@ -475,7 +481,7 @@ typedef enum eBrushImagePaintTool {
 	PAINT_TOOL_SMEAR = 2,
 	PAINT_TOOL_CLONE = 3,
 	PAINT_TOOL_FILL = 4,
-	PAINT_TOOL_MASK = 5
+	PAINT_TOOL_MASK = 5,
 } eBrushImagePaintTool;
 
 typedef enum eBrushVertexPaintTool {
@@ -506,12 +512,12 @@ enum {
 	SCULPT_DISP_DIR_VIEW = 1,
 	SCULPT_DISP_DIR_X = 2,
 	SCULPT_DISP_DIR_Y = 3,
-	SCULPT_DISP_DIR_Z = 4
+	SCULPT_DISP_DIR_Z = 4,
 };
 
 typedef enum {
 	BRUSH_MASK_DRAW = 0,
-	BRUSH_MASK_SMOOTH = 1
+	BRUSH_MASK_SMOOTH = 1,
 } BrushMaskTool;
 
 /* blur kernel types, Brush.blur_mode */

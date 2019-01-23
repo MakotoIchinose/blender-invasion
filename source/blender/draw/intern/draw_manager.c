@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -103,6 +106,17 @@ extern struct GPUUniformBuffer *view_ubo; /* draw_manager_exec.c */
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
 	memset(dst, 0x0, offsetof(DRWManager, gl_context));
+
+	/* Maybe not the best place for this. */
+	if (!DST.uniform_names.buffer) {
+		DST.uniform_names.buffer = MEM_callocN(DRW_UNIFORM_BUFFER_NAME, "Name Buffer");
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	else if (DST.uniform_names.buffer_len > DRW_UNIFORM_BUFFER_NAME) {
+		DST.uniform_names.buffer = MEM_reallocN(DST.uniform_names.buffer, DRW_UNIFORM_BUFFER_NAME);
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	DST.uniform_names.buffer_ofs = 0;
 }
 
 /* This function is used to reset draw manager to a state
@@ -529,6 +543,11 @@ static void drw_context_state_init(void)
 	else {
 		DST.draw_ctx.object_pose = NULL;
 	}
+
+	DST.draw_ctx.shader_slot = DRW_SHADER_SLOT_DEFAULT;
+	if (DST.draw_ctx.rv3d && DST.draw_ctx.rv3d->rflag & RV3D_CLIPPING) {
+		DST.draw_ctx.shader_slot = DRW_SHADER_SLOT_CLIPPED;
+	}
 }
 
 /* It also stores viewport variable to an immutable place: DST
@@ -878,7 +897,7 @@ DrawData *DRW_drawdata_ensure(
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
 	/* Allocate new data. */
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		/* NOTE: data is not persistent in this case. It is reset each redraw. */
 		BLI_assert(free_cb == NULL); /* No callback allowed. */
 		/* Round to sizeof(float) for DRW_instance_data_request(). */
@@ -925,7 +944,7 @@ void DRW_drawdata_free(ID *id)
 /* Unlink (but don't free) the drawdata from the DrawDataList if the ID is an OB from dupli. */
 static void drw_drawdata_unlink_dupli(ID *id)
 {
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
 		if (drawdata == NULL)
@@ -2134,7 +2153,7 @@ void DRW_draw_select_loop(
 				    (object_type_exclude_select & (1 << ob->type)) == 0)
 				{
 					if (object_filter_fn != NULL) {
-						if (ob->base_flag & BASE_FROMDUPLI) {
+						if (ob->base_flag & BASE_FROM_DUPLI) {
 							/* pass (use previous filter_exclude value) */
 						}
 						else {
@@ -2146,7 +2165,7 @@ void DRW_draw_select_loop(
 					}
 
 					/* This relies on dupli instances being after their instancing object. */
-					if ((ob->base_flag & BASE_FROMDUPLI) == 0) {
+					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						Object *ob_orig = DEG_get_original_object(ob);
 						DRW_select_load_id(ob_orig->select_color);
 					}
@@ -2580,9 +2599,6 @@ void DRW_engines_register(void)
 }
 
 extern struct GPUVertFormat *g_pos_format; /* draw_shgroup.c */
-extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
-extern struct GPUTexture *globals_ramp; /* draw_common.c */
-extern struct GPUTexture *globals_weight_ramp; /* draw_common.c */
 void DRW_engines_free(void)
 {
 	DRW_opengl_context_enable();
@@ -2605,16 +2621,18 @@ void DRW_engines_free(void)
 		}
 	}
 
-	DRW_UBO_FREE_SAFE(globals_ubo);
+	DRW_UBO_FREE_SAFE(G_draw.block_ubo);
 	DRW_UBO_FREE_SAFE(view_ubo);
-	DRW_TEXTURE_FREE_SAFE(globals_ramp);
-	DRW_TEXTURE_FREE_SAFE(globals_weight_ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
 	MEM_SAFE_FREE(g_pos_format);
 
 	MEM_SAFE_FREE(DST.RST.bound_texs);
 	MEM_SAFE_FREE(DST.RST.bound_tex_slots);
 	MEM_SAFE_FREE(DST.RST.bound_ubos);
 	MEM_SAFE_FREE(DST.RST.bound_ubo_slots);
+
+	MEM_SAFE_FREE(DST.uniform_names.buffer);
 
 	DRW_opengl_context_disable();
 }

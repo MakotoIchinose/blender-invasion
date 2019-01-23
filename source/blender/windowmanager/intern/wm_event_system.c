@@ -314,7 +314,7 @@ void wm_event_do_depsgraph(bContext *C)
 		const Scene *scene = WM_window_get_active_scene(win);
 		const bScreen *screen = WM_window_get_active_screen(win);
 
-		win_combine_v3d_datamask |= ED_view3d_screen_datamask(scene, screen);
+		win_combine_v3d_datamask |= ED_view3d_screen_datamask(C, scene, screen);
 	}
 	/* Update all the dependency graphs of visible vew layers. */
 	for (wmWindow *win = wm->windows.first; win; win = win->next) {
@@ -2057,7 +2057,12 @@ static int wm_handler_operator_call(bContext *C, ListBase *handlers, wmEventHand
 						wmGizmoGroupType *gzgt = WM_gizmogrouptype_find(idname, false);
 						if (gzgt != NULL) {
 							if ((gzgt->flag & WM_GIZMOGROUPTYPE_TOOL_INIT) != 0) {
-								WM_gizmo_group_type_ensure_ptr(gzgt);
+								ARegion *ar = CTX_wm_region(C);
+								if (ar != NULL) {
+									wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&gzgt->gzmap_params);
+									WM_gizmo_group_type_ensure_ptr_ex(gzgt, gzmap_type);
+									WM_gizmomaptype_group_init_runtime_with_region(gzmap_type, gzgt, ar);
+								}
 							}
 						}
 					}
@@ -4623,6 +4628,7 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
 		wmEvent test_event = *win->eventstate;
 		test_event.type = event_data[data_index].event_type;
 		test_event.val = event_data[data_index].event_value;
+		wm_eventemulation(&test_event);
 		wmKeyMapItem *kmi = NULL;
 		for (int handler_index = 0; handler_index < ARRAY_SIZE(handlers); handler_index++) {
 			kmi = wm_kmi_from_event(C, wm, handlers[handler_index], &test_event);

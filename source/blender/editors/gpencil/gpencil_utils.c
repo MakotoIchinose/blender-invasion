@@ -140,7 +140,8 @@ bGPdata **ED_gpencil_data_get_pointers_direct(ID *screen_id, ScrArea *sa, Scene 
 
 				/* return the GP data for the active node block/node */
 				if (snode && snode->nodetree) {
-					/* for now, as long as there's an active node tree, default to using that in the Nodes Editor */
+					/* for now, as long as there's an active node tree,
+					 * default to using that in the Nodes Editor */
 					if (r_ptr) RNA_id_pointer_create(&snode->nodetree->id, r_ptr);
 					return &snode->nodetree->gpd;
 				}
@@ -546,7 +547,7 @@ void gp_point_conversion_init(bContext *C, GP_SpaceConversion *r_gsc)
 
 		/* for camera view set the subrect */
 		if (rv3d->persp == RV3D_CAMOB) {
-			ED_view3d_calc_camera_border(scene, CTX_data_depsgraph(C), ar, v3d, rv3d, &r_gsc->subrect_data, true); /* no shift */
+			ED_view3d_calc_camera_border(scene, CTX_data_depsgraph(C), ar, v3d, rv3d, &r_gsc->subrect_data, true);
 			r_gsc->subrect = &r_gsc->subrect_data;
 		}
 	}
@@ -1215,7 +1216,8 @@ void ED_gpencil_parent_location(
 				mul_m4_m4m4(diff_mat, tmp_mat, gpl->inverse);
 			}
 			else {
-				mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse); /* if bone not found use object (armature) */
+				/* if bone not found use object (armature) */
+				mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
 			}
 			return;
 		}
@@ -2052,9 +2054,14 @@ static bool gpencil_check_collision(
 	return hit;
 }
 
-void static gp_copy_points(
+static void gp_copy_points(
 	bGPDstroke *gps, bGPDspoint *pt, bGPDspoint *pt_final, int i, int i2)
 {
+	/* don't copy same point */
+	if (i == i2) {
+		return;
+	}
+
 	copy_v3_v3(&pt_final->x, &pt->x);
 	pt_final->pressure = pt->pressure;
 	pt_final->strength = pt->strength;
@@ -2066,14 +2073,21 @@ void static gp_copy_points(
 	if (gps->dvert != NULL) {
 		MDeformVert *dvert = &gps->dvert[i];
 		MDeformVert *dvert_final = &gps->dvert[i2];
+		MEM_SAFE_FREE(dvert_final->dw);
 
 		dvert_final->totweight = dvert->totweight;
-		dvert_final->dw = dvert->dw;
+		if (dvert->dw == NULL) {
+			dvert_final->dw = NULL;
+			dvert_final->totweight = 0;
+		}
+		else {
+			dvert_final->dw = MEM_dupallocN(dvert->dw);
+		}
 	}
 
 }
 
-void static gp_insert_point(
+static void gp_insert_point(
 	bGPDstroke *gps,
 	bGPDspoint *a_pt, bGPDspoint *b_pt,
 	float co_a[3], float co_b[3])
@@ -2182,7 +2196,6 @@ int ED_gpencil_select_stroke_segment(
 	/* Save list of strokes to check */
 	int totstrokes = 0;
 	for (bGPDstroke *gps_iter = gpf->strokes.first; gps_iter; gps_iter = gps_iter->next) {
-		
 		if (gps_iter->totpoints < 2) {
 			continue;
 		}

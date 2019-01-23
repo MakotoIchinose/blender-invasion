@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -41,7 +44,7 @@
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
 #define M_GOLDEN_RATION_CONJUGATE 0.618033988749895
 #define MAX_COMPOSITE_SHADERS (1 << 6)
-#define MAX_PREPASS_SHADERS (1 << 6)
+#define MAX_PREPASS_SHADERS (1 << 7)
 #define MAX_ACCUM_SHADERS (1 << 4)
 #define MAX_CAVITY_SHADERS (1 << 3)
 
@@ -123,6 +126,7 @@ typedef struct WORKBENCH_PassList {
 	struct DRWPass *composite_pass;
 	struct DRWPass *composite_shadow_pass;
 	struct DRWPass *background_pass;
+	struct DRWPass *background_pass_clip;
 	struct DRWPass *ghost_resolve_pass;
 	struct DRWPass *effect_aa_pass;
 	struct DRWPass *volume_pass;
@@ -199,6 +203,10 @@ typedef struct WORKBENCH_PrivateData {
 	float shadow_near_sides[2][4];
 	bool shadow_changed;
 	bool is_playback;
+
+	float (*world_clip_planes)[4];
+	struct GPUBatch *world_clip_planes_batch;
+	float world_clip_planes_color[4];
 
 	/* Volumes */
 	bool volumes_do;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2017, Blender Foundation.
  * Contributor(s): Antonio Vazquez
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -370,7 +373,7 @@ DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(
 	DRW_shgroup_uniform_float(grp, "pixsize", stl->storage->pixsize, 1);
 
 	/* avoid wrong values */
-	if ((gpd) && (gpd->pixfactor == 0)) {
+	if ((gpd) && (gpd->pixfactor == 0.0f)) {
 		gpd->pixfactor = GP_DEFAULT_PIX_FACTOR;
 	}
 
@@ -465,7 +468,7 @@ static DRWShadingGroup *DRW_gpencil_shgroup_point_create(
 	DRW_shgroup_uniform_float(grp, "pixsize", stl->storage->pixsize, 1);
 
 	/* avoid wrong values */
-	if ((gpd) && (gpd->pixfactor == 0)) {
+	if ((gpd) && (gpd->pixfactor == 0.0f)) {
 		gpd->pixfactor = GP_DEFAULT_PIX_FACTOR;
 	}
 
@@ -816,7 +819,9 @@ static void gpencil_draw_strokes(
 						opacity, tintcolor, false, custonion);
 				}
 				/* stroke */
-				if ((gp_style->flag & GP_STYLE_STROKE_SHOW) &&
+				/* No fill strokes, must show stroke always */
+				if (((gp_style->flag & GP_STYLE_STROKE_SHOW) ||
+				     (gps->flag & GP_STROKE_NOFILL)) &&
 				    ((gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) ||
 				     (gpl->blend_mode == eGplBlendMode_Normal)))
 				{
@@ -1208,7 +1213,10 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data, void *vedata, T
 						gpd, lthick);
 				}
 
-				if (gp_style->flag & GP_STYLE_STROKE_SHOW) {
+				/* No fill strokes, must show stroke always */
+				if ((gp_style->flag & GP_STYLE_STROKE_SHOW) ||
+				    (gpd->runtime.sbuffer_sflag & GP_STROKE_NOFILL))
+				{
 					DRW_shgroup_call_add(
 					        stl->g_data->shgrps_drawing_stroke,
 					        e_data->batch_buffer_stroke,
@@ -1253,7 +1261,7 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data, void *vedata, T
 	const bool is_show_gizmo = (((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) && ((v3d->gizmo_flag & V3D_GIZMO_HIDE_TOOL) == 0));
 
 	if ((overlay) && (is_cppoint || is_speed_guide) && (is_show_gizmo) &&
-		((gpd->runtime.sbuffer_sflag & GP_STROKE_ERASER) == 0))
+	    ((gpd->runtime.sbuffer_sflag & GP_STROKE_ERASER) == 0))
 	{
 		DRWShadingGroup *shgrp = DRW_shgroup_create(
 			e_data->gpencil_edit_point_sh, psl->drawing_pass);

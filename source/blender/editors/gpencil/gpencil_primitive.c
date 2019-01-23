@@ -249,7 +249,8 @@ static void gp_primitive_update_cps(tGPDprimitive *tgpi)
 }
 
 /* Helper to reflect point */
-static void gp_reflect_point_v2_v2v2v2(float va[2], const float p[2], const float a[2], const float b[2])
+static void UNUSED_FUNCTION(gp_reflect_point_v2_v2v2v2)(
+        float va[2], const float p[2], const float a[2], const float b[2])
 {
 	float point[2];
 	closest_to_line_v2(point, p, a, b);
@@ -688,22 +689,22 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
 	if (tgpi->tot_edges > 1) {
 		switch (tgpi->type) {
-		case GP_STROKE_BOX:
-			gp_primitive_rectangle(tgpi, points2D);
-			break;
-		case GP_STROKE_LINE:
-			gp_primitive_line(tgpi, points2D);
-			break;
-		case GP_STROKE_CIRCLE:
-			gp_primitive_circle(tgpi, points2D);
-			break;
-		case GP_STROKE_ARC:
-			gp_primitive_arc(tgpi, points2D);
-			break;
-		case GP_STROKE_CURVE:
-			gp_primitive_bezier(tgpi, points2D);
-		default:
-			break;
+			case GP_STROKE_BOX:
+				gp_primitive_rectangle(tgpi, points2D);
+				break;
+			case GP_STROKE_LINE:
+				gp_primitive_line(tgpi, points2D);
+				break;
+			case GP_STROKE_CIRCLE:
+				gp_primitive_circle(tgpi, points2D);
+				break;
+			case GP_STROKE_ARC:
+				gp_primitive_arc(tgpi, points2D);
+				break;
+			case GP_STROKE_CURVE:
+				gp_primitive_bezier(tgpi, points2D);
+			default:
+				break;
 		}
 	}
 
@@ -924,7 +925,36 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 		tpt->pressure = pressure;
 		tpt->strength = strength;
 		tpt->time = p2d->time;
-		tpt->uv_fac = 1.0f;
+
+		/* point uv */
+		if (gpd->runtime.sbuffer_size > 0) {
+			MaterialGPencilStyle *gp_style = tgpi->mat->gp_style;
+			const float pixsize = gp_style->texture_pixsize / 1000000.0f;
+			tGPspoint *tptb = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_size - 1;
+			bGPDspoint spt, spt2;
+
+			/* get origin to reproject point */
+			float origin[3];
+			ED_gp_get_drawing_reference(tgpi->scene, tgpi->ob, tgpi->gpl,
+				ts->gpencil_v3d_align, origin);
+			/* reproject current */
+			ED_gpencil_tpoint_to_point(tgpi->ar, origin, tpt, &spt);
+			ED_gp_project_point_to_plane(tgpi->ob, tgpi->rv3d, origin, tgpi->lock_axis - 1, &spt);
+
+			/* reproject previous */
+			ED_gpencil_tpoint_to_point(tgpi->ar, origin, tptb, &spt2);
+			ED_gp_project_point_to_plane(tgpi->ob, tgpi->rv3d, origin, tgpi->lock_axis - 1, &spt2);
+			tgpi->totpixlen += len_v3v3(&spt.x, &spt2.x) / pixsize;
+			tpt->uv_fac = tgpi->totpixlen;
+			if ((gp_style) && (gp_style->sima)) {
+				tpt->uv_fac /= gp_style->sima->gen_x;
+			}
+		}
+		else {
+			tgpi->totpixlen = 0.0f;
+			tpt->uv_fac = 0.0f;
+		}
+
 		tpt->uv_rot = p2d->uv_rot;
 
 		gpd->runtime.sbuffer_size++;
@@ -944,7 +974,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 		pt->strength = strength;
 		pt->time = 0.0f;
 		pt->flag = 0;
-		pt->uv_fac = 1.0f;
+		pt->uv_fac = tpt->uv_fac;
 
 		if (gps->dvert != NULL) {
 			MDeformVert *dvert = &gps->dvert[i];
@@ -1216,6 +1246,9 @@ static void gpencil_primitive_interaction_end(bContext *C, wmOperator *op, wmWin
 		gps->thickness = tgpi->brush->size;
 		gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 		gps->tot_triangles = 0;
+
+		/* calculate UVs along the stroke */
+		ED_gpencil_calc_stroke_uv(tgpi->ob, gps);
 	}
 
 	/* transfer stroke from temporary buffer to the actual frame */
@@ -1443,22 +1476,28 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
 	if (tgpi->flag == IN_MOVE) {
 
 		switch (event->type) {
-		case MOUSEMOVE:
-			gpencil_primitive_move(tgpi, false);
-			gpencil_primitive_update(C, op, tgpi);
-			break;
-		case ESCKEY:
-		case LEFTMOUSE:
-			zero_v2(tgpi->move);
-			tgpi->flag = IN_CURVE_EDIT;
-			break;
-		case RIGHTMOUSE:
-			if (event->val == KM_RELEASE) {
-				tgpi->flag = IN_CURVE_EDIT;
-				gpencil_primitive_move(tgpi, true);
+			case MOUSEMOVE:
+			{
+				gpencil_primitive_move(tgpi, false);
 				gpencil_primitive_update(C, op, tgpi);
+				break;
 			}
-			break;
+			case ESCKEY:
+			case LEFTMOUSE:
+			{
+				zero_v2(tgpi->move);
+				tgpi->flag = IN_CURVE_EDIT;
+				break;
+			}
+			case RIGHTMOUSE:
+			{
+				if (event->val == KM_RELEASE) {
+					tgpi->flag = IN_CURVE_EDIT;
+					gpencil_primitive_move(tgpi, true);
+					gpencil_primitive_update(C, op, tgpi);
+				}
+				break;
+			}
 		}
 		copy_v2_v2(tgpi->mvalo, tgpi->mval);
 		return OPERATOR_RUNNING_MODAL;

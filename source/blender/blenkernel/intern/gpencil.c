@@ -1209,6 +1209,15 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
 							if (dw != NULL) {
 								defvert_remove_group(dvert, dw);
 							}
+							else {
+								/* reorganize weights in other strokes */
+								for (int g = 0; g < gps->dvert->totweight; g++) {
+									dw = &dvert->dw[g];
+									if ((dw != NULL) && (dw->def_nr > def_nr)) {
+										dw->def_nr--;
+									}
+								}
+							}
 						}
 					}
 				}
@@ -1645,7 +1654,7 @@ void BKE_gpencil_stroke_2d_flat_ref(
 		copy_v3_v3(v3, &pt3->x);
 	}
 
-	sub_v3_v3v3(loc3,v3, &pt0->x);
+	sub_v3_v3v3(loc3, v3, &pt0->x);
 
 	/* vector orthogonal to polygon plane */
 	cross_v3_v3v3(normal, locx, loc3);
@@ -1686,7 +1695,7 @@ void BKE_gpencil_stroke_2d_flat_ref(
 		else {
 			copy_v3_v3(v1, &pt->x);
 		}
-		
+
 		/* Get local space using first point as origin (ref stroke) */
 		sub_v3_v3v3(loc, v1, &pt0->x);
 

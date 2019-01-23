@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2017, Blender Foundation.
  * Contributor(s): Antonio Vazquez
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -77,7 +80,7 @@ tGPencilObjectCache *gpencil_object_cache_add(
 	cache_elem->idx = *gp_cache_used;
 
 	/* object is duplicated (particle) */
-	cache_elem->is_dup_ob = ob->base_flag & BASE_FROMDUPLI;
+	cache_elem->is_dup_ob = ob->base_flag & BASE_FROM_DUPLI;
 
 	/* save FXs */
 	cache_elem->pixfactor = cache_elem->gpd->pixfactor;

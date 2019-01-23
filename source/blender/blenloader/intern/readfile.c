@@ -5073,6 +5073,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			SubsurfModifierData *smd = (SubsurfModifierData *)md;
 
 			smd->emCache = smd->mCache = NULL;
+			smd->subdiv = NULL;
 		}
 		else if (md->type == eModifierType_Armature) {
 			ArmatureModifierData *amd = (ArmatureModifierData *)md;
@@ -5391,6 +5392,10 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 		else if (md->type == eModifierType_Bevel) {
 			BevelModifierData *bmd = (BevelModifierData *)md;
 			bmd->clnordata.faceHash = NULL;
+		}
+		else if (md->type == eModifierType_Multires) {
+			MultiresModifierData *mmd = (MultiresModifierData *)md;
+			mmd->subdiv = NULL;
 		}
 	}
 }
@@ -6011,7 +6016,7 @@ static void lib_link_scene(FileData *fd, Main *main)
 			sce->toolsettings->particle.shape_object = newlibadr(fd, sce->id.lib, sce->toolsettings->particle.shape_object);
 
 			sce->toolsettings->gp_sculpt.guide.reference_object = newlibadr(fd, sce->id.lib, sce->toolsettings->gp_sculpt.guide.reference_object);
-			
+
 			for (Base *base_legacy_next, *base_legacy = sce->base.first; base_legacy; base_legacy = base_legacy_next) {
 				base_legacy_next = base_legacy->next;
 
@@ -6060,6 +6065,10 @@ static void lib_link_scene(FileData *fd, Main *main)
 						id_us_plus_no_lib((ID *)seq->sound);
 						seq->scene_sound = BKE_sound_add_scene_sound_defaults(sce, seq);
 					}
+				}
+				if (seq->type == SEQ_TYPE_TEXT) {
+					TextVars *t = seq->effectdata;
+					t->text_font = newlibadr_us(fd, sce->id.lib, t->text_font);
 				}
 				BLI_listbase_clear(&seq->anims);
 
@@ -6312,6 +6321,11 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 			if (seq->type == SEQ_TYPE_SPEED) {
 				SpeedControlVars *s = seq->effectdata;
 				s->frameMap = NULL;
+			}
+
+			if (seq->type == SEQ_TYPE_TEXT) {
+				TextVars *t = seq->effectdata;
+				t->text_blf_id = SEQ_FONT_NOT_LOADED;
 			}
 
 			seq->prop = newdataadr(fd, seq->prop);
@@ -8673,7 +8687,7 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const short 
 	oldnewmap_clear(fd->datamap);
 
 	if (wrong_id) {
-		BKE_libblock_free(main, id);
+		BKE_id_free(main, id);
 	}
 
 	return (bhead);
@@ -9951,6 +9965,11 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
 			if (seq->clip) expand_doit(fd, mainvar, seq->clip);
 			if (seq->mask) expand_doit(fd, mainvar, seq->mask);
 			if (seq->sound) expand_doit(fd, mainvar, seq->sound);
+
+			if (seq->type == SEQ_TYPE_TEXT && seq->effectdata) {
+				TextVars *data = seq->effectdata;
+				expand_doit(fd, mainvar, data->text_font);
+			}
 		} SEQ_END;
 	}
 
@@ -10822,7 +10841,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 				FileData *fd = mainptr->curlib->filedata;
 
 				if (fd == NULL) {
-
 					/* printf and reports for now... its important users know this */
 
 					/* if packed file... */
@@ -10847,30 +10865,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 						        library_parent_filepath(mainptr->curlib));
 						fd = blo_openblenderfile(mainptr->curlib->filepath, basefd->reports);
 					}
-					/* allow typing in a new lib path */
-					if (G.debug_value == -666) {
-						while (fd == NULL) {
-							char newlib_path[FILE_MAX] = {0};
-							printf("Missing library...'\n");
-							printf("\tcurrent file: %s\n", BKE_main_blendfile_path_from_global());
-							printf("\tabsolute lib: %s\n", mainptr->curlib->filepath);
-							printf("\trelative lib: %s\n", mainptr->curlib->name);
-							printf("  enter a new path:\n");
-
-							if (scanf("%1023s", newlib_path) > 0) {  /* Warning, keep length in sync with FILE_MAX! */
-								BLI_strncpy(mainptr->curlib->name, newlib_path, sizeof(mainptr->curlib->name));
-								BLI_strncpy(mainptr->curlib->filepath, newlib_path, sizeof(mainptr->curlib->filepath));
-								BLI_cleanup_path(BKE_main_blendfile_path_from_global(), mainptr->curlib->filepath);
-
-								fd = blo_openblenderfile(mainptr->curlib->filepath, basefd->reports);
-
-								if (fd) {
-									fd->mainlist = mainlist;
-									printf("found: '%s', party on macuno!\n", mainptr->curlib->filepath);
-								}
-							}
-						}
-					}
 
 					if (fd) {
 						/* share the mainlist, so all libraries are added immediately in a
@@ -10894,7 +10888,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 #ifdef USE_GHASH_BHEAD
 						read_file_bhead_idname_map_create(fd);
 #endif
-
 					}
 					else {
 						mainptr->curlib->filedata = NULL;

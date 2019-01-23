@@ -302,8 +302,11 @@ def brush_mask_texture_settings(layout, brush):
 # Share between topbar and brush panel.
 
 def brush_basic_wpaint_settings(layout, context, brush, *, compact=False):
-    row = layout.row(align=True)
-    UnifiedPaintPanel.prop_unified_weight(row, context, brush, "weight", slider=True, text="Weight")
+    capabilities = brush.weight_paint_capabilities
+
+    if capabilities.has_weight:
+        row = layout.row(align=True)
+        UnifiedPaintPanel.prop_unified_weight(row, context, brush, "weight", slider=True, text="Weight")
 
     row = layout.row(align=True)
     UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True, text="Radius")
@@ -390,7 +393,7 @@ def brush_basic_sculpt_settings(layout, context, brush, *, compact=False):
     layout.row().prop(brush, "direction", expand=True, **({"text": ""} if compact else {}))
 
 
-def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False):
+def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=True):
     gp_settings = brush.gpencil_settings
 
     # Brush details
@@ -409,24 +412,15 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
             row = layout.row(align=True)
             row.prop(gp_settings, "eraser_thickness_factor")
     elif brush.gpencil_tool == 'FILL':
-        row = layout.column(align=True)
-        row.prop(gp_settings, "fill_leak", text="Leak Size")
-        row.separator()
-        row = layout.column(align=True)
-        row.prop(brush, "size", text="Thickness")
-        row = layout.column(align=True)
-        row.prop(gp_settings, "fill_simplify_level", text="Simplify")
-
         row = layout.row(align=True)
-        row.prop(gp_settings, "fill_draw_mode", text="Boundary Draw Mode")
+        row.prop(gp_settings, "fill_leak", text="Leak Size")
+        row = layout.row(align=True)
+        row.prop(brush, "size", text="Thickness")
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_simplify_level", text="Simplify")
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_draw_mode", text="Mode")
         row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
-
-        col = layout.column(align=True)
-        col.enabled = gp_settings.fill_draw_mode != 'STROKE'
-        col.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-        sub = col.row(align=True)
-        sub.enabled = not gp_settings.show_fill
-        sub.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")

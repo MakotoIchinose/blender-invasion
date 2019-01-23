@@ -1,5 +1,5 @@
 /*
- * ***** begin GPL LICENSE BLOCK *****
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -402,9 +402,11 @@ Sequence *find_nearest_seq(Scene *scene, View2D *v2d, int *hand, const int mval[
 					handsize = seq->handsize;
 					displen = (float)abs(seq->startdisp - seq->enddisp);
 
-					if (displen / pixelx > 16) { /* don't even try to grab the handles of small strips */
-						/* Set the max value to handle to 1/3 of the total len when its less than 28.
-						 * This is important because otherwise selecting handles happens even when you click in the middle */
+					/* don't even try to grab the handles of small strips */
+					if (displen / pixelx > 16) {
+						/* Set the max value to handle to 1/3 of the total len when its
+						 * less than 28. This is important because otherwise selecting
+						 * handles happens even when you click in the middle. */
 
 						if ((displen / 3) < 30 * pixelx) {
 							handsize = displen / 3;
@@ -667,7 +669,7 @@ static void recurs_del_seq_flag(Scene *scene, ListBase *lb, short flag, short de
 }
 
 
-static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
+static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, ListBase *new_seq_list, int cutframe)
 {
 	TransSeq ts;
 	Sequence *seqn = NULL;
@@ -739,7 +741,7 @@ static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
 
 	if (!skip_dup) {
 		/* Duplicate AFTER the first change */
-		seqn = BKE_sequence_dupli_recursive(scene, scene, seq, SEQ_DUPE_ANIM);
+		seqn = BKE_sequence_dupli_recursive(scene, scene, new_seq_list, seq, SEQ_DUPE_UNIQUE_NAME | SEQ_DUPE_ANIM);
 	}
 
 	if (seqn) {
@@ -788,7 +790,7 @@ static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
 	return seqn;
 }
 
-static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, int cutframe)
+static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, ListBase *new_seq_list, int cutframe)
 {
 	TransSeq ts;
 	Sequence *seqn = NULL;
@@ -848,7 +850,7 @@ static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, int cutframe)
 
 	if (!skip_dup) {
 		/* Duplicate AFTER the first change */
-		seqn = BKE_sequence_dupli_recursive(scene, scene, seq, SEQ_DUPE_ANIM);
+		seqn = BKE_sequence_dupli_recursive(scene, scene, new_seq_list, seq, SEQ_DUPE_UNIQUE_NAME | SEQ_DUPE_ANIM);
 	}
 
 	if (seqn) {
@@ -900,7 +902,7 @@ static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, int cutframe)
  */
 
 static bool cut_seq_list(Scene *scene, ListBase *slist, int cutframe,
-                         Sequence * (*cut_seq)(Scene *, Sequence *, int))
+                         Sequence * (*cut_seq)(Scene *, Sequence *, ListBase *, int))
 {
 	Sequence *seq, *seq_next_iter;
 	Sequence *seq_first_new = NULL;
@@ -914,9 +916,8 @@ static bool cut_seq_list(Scene *scene, ListBase *slist, int cutframe,
 			if (cutframe > seq->startdisp &&
 			    cutframe < seq->enddisp)
 			{
-				Sequence *seqn = cut_seq(scene, seq, cutframe);
+				Sequence *seqn = cut_seq(scene, seq, slist, cutframe);
 				if (seqn) {
-					BLI_addtail(slist, seqn);
 					if (seq_first_new == NULL) {
 						seq_first_new = seqn;
 					}
@@ -2089,7 +2090,6 @@ static int sequencer_cut_exec(bContext *C, wmOperator *op)
 
 		SEQP_BEGIN (ed, seq)
 		{
-			BKE_sequence_base_unique_name_recursive(&ed->seqbase, seq);
 			if (seq->seq1 || seq->seq2 || seq->seq3) {
 				BKE_sequence_calc(scene, seq);
 			}
@@ -2391,8 +2391,7 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
 				/* new seq */
 				se = BKE_sequencer_give_stripelem(seq, cfra);
 
-				seq_new = BKE_sequence_dupli_recursive(scene, scene, seq, SEQ_DUPE_UNIQUE_NAME);
-				BLI_addtail(ed->seqbasep, seq_new);
+				seq_new = BKE_sequence_dupli_recursive(scene, scene, ed->seqbasep, seq, SEQ_DUPE_UNIQUE_NAME);
 
 				seq_new->start = start_ofs;
 				seq_new->type = SEQ_TYPE_IMAGE;
@@ -2404,7 +2403,8 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
 				strip_new->us = 1;
 
 				/* new stripdata (only one element now!) */
-				/* Note this assume all elements (images) have the same dimension, since we only copy the name here. */
+				/* Note this assume all elements (images) have the same dimension,
+				 * since we only copy the name here. */
 				se_new = MEM_reallocN(strip_new->stripdata, sizeof(*se_new));
 				BLI_strncpy(se_new->name, se->name, sizeof(se_new->name));
 				strip_new->stripdata = se_new;

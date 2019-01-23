@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -742,8 +745,11 @@ static bool set_pchan_color(short colCode, const int boneflag, const short const
 /** See: 'set_pchan_color'*/
 static void update_color(const Object *ob, const float const_color[4])
 {
+	const bArmature *arm = ob->data;
 	g_theme.const_color = const_color;
-	g_theme.const_wire = ((ob->base_flag & BASE_SELECTED) != 0) ? 1.5f : 0.0f;
+	g_theme.const_wire = (
+	        ((ob->base_flag & BASE_SELECTED) ||
+	         (arm->drawtype == ARM_WIRE)) ? 1.5f : 0.0f);
 
 #define NO_ALPHA(c) (((c)[3] = 1.0f), (c))
 
@@ -1853,7 +1859,7 @@ static void draw_armature_pose(Object *ob, const float const_color[4])
 				if (!is_pose_select && show_relations &&
 				    (arm->flag & ARM_POSEMODE) &&
 				    (bone->flag & BONE_SELECTED) &&
-				    ((ob->base_flag & BASE_FROMDUPLI) == 0) &&
+				    ((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
 				    (pchan->ikflag & (BONE_IK_XLIMIT | BONE_IK_ZLIMIT)))
 				{
 					draw_bone_dofs(pchan);
