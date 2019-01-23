@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -76,8 +79,7 @@ typedef struct OVERLAY_Shaders {
 
 /* *********** STATIC *********** */
 static struct {
-	/* 0: normal, 1: clipped. */
-	OVERLAY_Shaders sh_data[2];
+	OVERLAY_Shaders sh_data[DRW_SHADER_SLOT_LEN];
 } e_data = {NULL};
 
 extern char datatoc_common_world_clip_lib_glsl[];
@@ -91,14 +93,6 @@ extern char datatoc_overlay_face_wireframe_geom_glsl[];
 extern char datatoc_overlay_face_wireframe_frag_glsl[];
 extern char datatoc_gpu_shader_depth_only_frag_glsl[];
 
-static int OVERLAY_sh_data_index_from_rv3d(const RegionView3D *rv3d)
-{
-	if (rv3d->rflag & RV3D_CLIPPING) {
-		return 1;
-	}
-	return 0;
-}
-
 /* Functions */
 static void overlay_engine_init(void *vedata)
 {
@@ -106,7 +100,7 @@ static void overlay_engine_init(void *vedata)
 	OVERLAY_StorageList *stl = data->stl;
 
 	const DRWContextState *draw_ctx = DRW_context_state_get();
-	OVERLAY_Shaders *sh_data = &e_data.sh_data[OVERLAY_sh_data_index_from_rv3d(draw_ctx->rv3d)];
+	OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->shader_slot];
 	const bool is_clip = (draw_ctx->rv3d->rflag & RV3D_CLIPPING) != 0;
 
 	if (is_clip) {
@@ -159,7 +153,7 @@ static void overlay_cache_init(void *vedata)
 
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	RegionView3D *rv3d = draw_ctx->rv3d;
-	OVERLAY_Shaders *sh_data = &e_data.sh_data[OVERLAY_sh_data_index_from_rv3d(rv3d)];
+	OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->shader_slot];
 
 	const DRWContextState *DCS = DRW_context_state_get();
 

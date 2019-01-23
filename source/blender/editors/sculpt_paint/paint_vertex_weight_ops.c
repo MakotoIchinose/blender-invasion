@@ -647,11 +647,6 @@ static void gradientVertInit__mapFunc(
 		return;
 	}
 
-	if (me->mvert[index].flag & ME_HIDE) {
-		copy_v2_fl(vs->sco, FLT_MAX);
-		return;
-	}
-
 	/* run first pass only,
 	 * the screen coords of the verts need to be cached because
 	 * updating the mesh may move them about (entering feedback loop) */

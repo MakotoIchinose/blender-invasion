@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -327,7 +330,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
 				static float error_col[3] = {1.0f, 0.0f, 1.0f};
 				struct GPUMaterial *gpumat = EEVEE_material_world_lightprobe_get(scene, wo);
 
-				GPUMaterialStatus status = GPU_material_status(gpumat);
+				eGPUMaterialStatus status = GPU_material_status(gpumat);
 
 				switch (status) {
 					case GPU_MAT_SUCCESS:
