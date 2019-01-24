@@ -16,29 +16,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * ***** END GPL LICENSE BLOCK *****
- */
-#ifndef __BKE_BLENDER_VERSION_H__
-#define __BKE_BLENDER_VERSION_H__
-
-/** \file BKE_blender_version.h
- *  \ingroup bke
+ *
  */
 
-/* these lines are grep'd, watch out for our not-so-awesome regex
- * and keep comment above the defines.
- * Use STRINGIFY() rather than defining with quotes */
-#define BLENDER_VERSION         280
-#define BLENDER_SUBVERSION      42
-/* Several breakages with 280, e.g. collections vs layers */
-#define BLENDER_MINVERSION      280
-#define BLENDER_MINSUBVERSION   0
+/** \file draw_builtin_shader.h
+ *  \ingroup draw
+ */
 
-/* used by packaging tools */
-/* can be left blank, otherwise a,b,c... etc with no quotes */
-#define BLENDER_VERSION_CHAR
-/* alpha/beta/rc/release, docs use this */
-#define BLENDER_VERSION_CYCLE   beta
+#ifndef __DRAW_BUILTIN_SHADER_H__
+#define __DRAW_BUILTIN_SHADER_H__
 
-extern char versionstr[]; /* from blender.c */
+struct GPUShader;
 
-#endif  /* __BKE_BLENDER_VERSION_H__ */
+struct GPUShader *DRW_shader_get_builtin_shader(eGPUBuiltinShader shader_id, eDRW_ShaderSlot slot);
+void DRW_shader_free_builtin_shaders(void);
+
+#endif  /* __DRAW_BUILTIN_SHADER_H__ */
