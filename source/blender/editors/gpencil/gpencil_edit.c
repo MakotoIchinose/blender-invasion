@@ -3455,113 +3455,6 @@ void GPENCIL_OT_stroke_simplify_fixed(wmOperatorType *ot)
 }
 
 /* ******************* Stroke trim ************************** */
-
-/**
- * Trim stroke to the first intersection or loop
- * \param gps: Stroke data
- */
-bool gpencil_trim_stroke(bGPDstroke *gps)
-{
-	if (gps->totpoints < 4) {
-		return false;
-	}
-	bool intersect = false;
-	int start, end;
-	float point[3];	
-	/* loop segments from start until we have an intersection */
-	for (int i = 0; i < gps->totpoints - 2; i++) {
-		start = i;
-		bGPDspoint *a = &gps->points[start];
-		bGPDspoint *b = &gps->points[start + 1];
-		for (int j = start + 2; j < gps->totpoints; j++) {
-			end = j + 1;
-			bGPDspoint *c = &gps->points[j];
-			bGPDspoint *d = &gps->points[end];
-			float pointb[3];
-			/* get intersection */
-			if (isect_line_line_v3(&a->x, &b->x, &c->x, &d->x, point, pointb)) {
-				if (len_v3(point) > 0.0f) {
-					float closest[3];
-					/* check intersection is on both lines */
-					float lambda = closest_to_line_v3(closest, point, &a->x, &b->x);
-					if ((lambda <= 0.0f) || (lambda >= 1.0f)) {
-						continue;
-					}
-					lambda = closest_to_line_v3(closest, point, &c->x, &d->x);
-					if ((lambda <= 0.0f) || (lambda >= 1.0f)) {
-						continue;
-					}
-					else {
-						intersect = true;
-						break;
-					}
-				}
-			}
-		}
-		if (intersect) {
-			break;
-		}
-	}
-
-	/* trim unwanted points */
-	if (intersect) {
-
-		/* save points */
-		bGPDspoint *old_points = MEM_dupallocN(gps->points);
-		MDeformVert *old_dvert = NULL;
-		MDeformVert *dvert_src = NULL;
-
-		if (gps->dvert != NULL) {
-			old_dvert = MEM_dupallocN(gps->dvert);
-		}
-
-		/* resize gps */
-		int newtot = end - start + 1;
-
-		print_v3_id(point);
-		printf("\tstart: %i, end: %i\n", start, end);
-		printf("\told: %i\n", gps->totpoints);
-		printf("\tnewtot: %i\n", newtot);
-
-		gps->points = MEM_recallocN(gps->points, sizeof(*gps->points) * newtot);
-		if (gps->dvert != NULL) {
-			gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * newtot);
-		}
-
-		for (int i = 0; i < newtot; i++) {
-			int idx = start + i;
-			bGPDspoint *pt_src = &old_points[idx];
-			bGPDspoint *pt_new = &gps->points[i];
-			memcpy(pt_new, pt_src, sizeof(bGPDspoint));
-			if (gps->dvert != NULL) {
-				dvert_src = &old_dvert[idx];
-				MDeformVert *dvert = &gps->dvert[i];
-				memcpy(dvert, dvert_src, sizeof(MDeformVert));
-				if (dvert_src->dw) {
-					memcpy(dvert->dw, dvert_src->dw, sizeof(MDeformWeight));
-				}
-			}
-			if (idx == start || idx == end) {
-				copy_v3_v3(&pt_new->x, point);
-			}
-		}
-
-		gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-		gps->tot_triangles = 0;
-		gps->totpoints = newtot;
-
-		MEM_SAFE_FREE(old_points);
-		MEM_SAFE_FREE(old_dvert);
-	}
-	return intersect;
-}
-
-/* Trim stroke to first loop or intersection */
-void BKE_gpencil_trim_stroke(bGPDstroke *gps)
-{
-	gpencil_trim_stroke(gps);
-}
-
 static int gp_stroke_trim_exec(bContext *C, wmOperator *op)
 {
 	bGPdata *gpd = ED_gpencil_data_get_active(C);
@@ -3571,14 +3464,41 @@ static int gp_stroke_trim_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 
 	/* Go through each editable + selected stroke */
-	GP_EDITABLE_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
+	const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+
+	CTX_DATA_BEGIN(C, bGPDlayer *, gpl, editable_gpencil_layers)
 	{
-		if (gps->flag & GP_STROKE_SELECT) {
-			/* simplify stroke using Ramer-Douglas-Peucker algorithm */
-			BKE_gpencil_trim_stroke(gps);
+		bGPDframe *init_gpf = gpl->actframe;
+		if (is_multiedit) {
+			init_gpf = gpl->frames.first;
+		}
+
+		for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+			if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+				bGPDstroke *gps, *gpsn;
+
+				if (gpf == NULL)
+					continue;
+
+				for (gps = gpf->strokes.first; gps; gps = gpsn) {
+					gpsn = gps->next;
+
+					/* skip strokes that are invalid for current view */
+					if (ED_gpencil_stroke_can_use(C, gps) == false)
+						continue;
+
+					if (gps->flag & GP_STROKE_SELECT) {
+						BKE_gpencil_trim_stroke(gps);
+					}
+				}
+				/* if not multiedit, exit loop*/
+				if (!is_multiedit) {
+					break;
+				}
+			}
 		}
 	}
-	GP_EDITABLE_STROKES_END(gpstroke_iter);
+	CTX_DATA_END;
 
 	/* notifiers */
 	DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
