@@ -1170,7 +1170,7 @@ static void mesh_calc_modifiers(
 	ModifierData *firstmd, *md, *previewmd = NULL;
 	CDMaskLink *datamasks, *curr;
 	/* XXX Always copying POLYINDEX, else tessellated data are no more valid! */
-	CustomDataMask mask, nextmask, previewmask = 0, append_mask = CD_MASK_ORIGINDEX;
+	CustomDataMask mask, nextmask, previewmask = 0, append_mask = CD_MASK_ORIGINDEX | CD_MASK_BAREMESH;
 	float (*deformedVerts)[3] = NULL;
 	int numVerts = ((Mesh *)ob->data)->totvert;
 	const bool useRenderParams = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
@@ -1507,7 +1507,7 @@ static void mesh_calc_modifiers(
 				mesh_set_only_copy(me_orco_cloth, nextmask | CD_MASK_ORIGINDEX);
 
 				me_next = modwrap_applyModifier(md, &mectx_orco, me_orco_cloth);
-				ASSERT_IS_VALID_DM(me_next);
+				ASSERT_IS_VALID_MESH(me_next);
 
 				if (me_next) {
 					/* if the modifier returned a new mesh, release the old one */
@@ -1688,7 +1688,7 @@ static void editbmesh_calc_modifiers(
 {
 	ModifierData *md;
 	float (*deformedVerts)[3] = NULL;
-	CustomDataMask mask = 0, append_mask = 0;
+	CustomDataMask mask = 0, append_mask = CD_MASK_BAREMESH;
 	int i, numVerts = 0, cageIndex = modifiers_getCageIndex(scene, ob, NULL, 1);
 	CDMaskLink *datamasks, *curr;
 	const int required_mode = eModifierMode_Realtime | eModifierMode_Editmode;
@@ -2052,7 +2052,11 @@ static void mesh_build_data(
 #endif
 
 	BKE_object_boundbox_calc_from_mesh(ob, ob->runtime.mesh_eval);
-	BKE_mesh_texspace_copy_from_object(ob->runtime.mesh_eval, ob);
+	/* Only copy texspace from orig mesh if some modifier (hint: smoke sim, see T58492)
+	 * did not re-enable that flag (which always get disabled for eval mesh as a start). */
+	if (!(ob->runtime.mesh_eval->texflag & ME_AUTOSPACE)) {
+		BKE_mesh_texspace_copy_from_object(ob->runtime.mesh_eval, ob);
+	}
 
 	mesh_finalize_eval(ob);
 

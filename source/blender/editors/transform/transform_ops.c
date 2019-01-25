@@ -39,6 +39,7 @@
 #include "BKE_global.h"
 #include "BKE_report.h"
 #include "BKE_editmesh.h"
+#include "BKE_scene.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -168,12 +169,12 @@ static int select_orientation_exec(bContext *C, wmOperator *op)
 	Scene *scene = CTX_data_scene(C);
 	int orientation = RNA_enum_get(op->ptr, "orientation");
 
-	BIF_selectTransformOrientationValue(scene, orientation);
+	BKE_scene_orientation_slot_set_index(&scene->orientation_slots[SCE_ORIENT_DEFAULT], orientation);
 
 	WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
 	struct wmMsgBus *mbus = CTX_wm_message_bus(C);
-	WM_msg_publish_rna_prop(mbus, &scene->id, scene, Scene, transform_orientation);
+	WM_msg_publish_rna_prop(mbus, &scene->id, scene, TransformOrientationSlot, type);
 
 	return OPERATOR_FINISHED;
 }
@@ -215,7 +216,7 @@ static void TRANSFORM_OT_select_orientation(struct wmOperatorType *ot)
 static int delete_orientation_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Scene *scene = CTX_data_scene(C);
-	BIF_removeTransformOrientationIndex(C, scene->orientation_index_custom);
+	BIF_removeTransformOrientationIndex(C, scene->orientation_slots[SCE_ORIENT_DEFAULT].index_custom);
 
 	WM_event_add_notifier(C, NC_SCENE | NA_EDITED, scene);
 
@@ -234,7 +235,8 @@ static bool delete_orientation_poll(bContext *C)
 	if (ED_operator_areaactive(C) == 0)
 		return 0;
 
-	return (scene->orientation_type >= V3D_MANIP_CUSTOM) && (scene->orientation_index_custom != -1);
+	return ((scene->orientation_slots[SCE_ORIENT_DEFAULT].type >= V3D_MANIP_CUSTOM) &&
+	        (scene->orientation_slots[SCE_ORIENT_DEFAULT].index_custom != -1));
 }
 
 static void TRANSFORM_OT_delete_orientation(struct wmOperatorType *ot)
@@ -407,7 +409,8 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
 	/* XXX, workaround: active needs to be calculated before transforming,
 	 * since we're not reading from 'td->center' in this case. see: T40241 */
 	if (t->tsnap.target == SCE_SNAP_TARGET_ACTIVE) {
-		/* In camera view, tsnap callback is not set (see initSnappingMode() in transfrom_snap.c, and T40348). */
+		/* In camera view, tsnap callback is not set
+		 * (see initSnappingMode() in transfrom_snap.c, and T40348). */
 		if (t->tsnap.targetSnap && ((t->tsnap.status & TARGET_INIT) == 0)) {
 			t->tsnap.targetSnap(t);
 		}
@@ -587,7 +590,8 @@ void Transform_Properties(struct wmOperatorType *ot, int flags)
 		RNA_def_enum(ot->srna, "proportional", rna_enum_proportional_editing_items, 0, "Proportional Editing", "");
 		prop = RNA_def_enum(ot->srna, "proportional_edit_falloff", rna_enum_proportional_falloff_items, 0,
 		                    "Proportional Falloff", "Falloff type for proportional editing mode");
-		RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVE); /* Abusing id_curve :/ */
+		/* Abusing id_curve :/ */
+		RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVE);
 		RNA_def_float(ot->srna, "proportional_size", 1, T_PROP_SIZE_MIN, T_PROP_SIZE_MAX,
 		              "Proportional Size", "", 0.001f, 100.0f);
 	}
@@ -894,7 +898,7 @@ static void TRANSFORM_OT_shrink_fatten(struct wmOperatorType *ot)
 
 	RNA_def_float(ot->srna, "value", 0, -FLT_MAX, FLT_MAX, "Offset", "", -FLT_MAX, FLT_MAX);
 
-	RNA_def_boolean(ot->srna, "use_even_offset", true, "Offset Even", "Scale the offset to give more even thickness");
+	RNA_def_boolean(ot->srna, "use_even_offset", false, "Offset Even", "Scale the offset to give more even thickness");
 
 	WM_operatortype_props_advanced_begin(ot);
 

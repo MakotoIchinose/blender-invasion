@@ -107,8 +107,7 @@ void ED_pose_bone_select_tag_update(Object *ob)
 		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	}
 
-	/* copy on write tag is needed (for the armature), or else no refresh happens */
-	DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
+	DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
 }
 
 
@@ -239,7 +238,8 @@ bool ED_armature_pose_select_pick_with_buffer(
 }
 
 /* 'select_mode' is usual SEL_SELECT/SEL_DESELECT/SEL_TOGGLE/SEL_INVERT.
- * When true, 'ignore_visibility' makes this func also affect invisible bones (hidden or on hidden layers). */
+ * When true, 'ignore_visibility' makes this func also affect invisible bones
+ * (hidden or on hidden layers). */
 bool ED_pose_deselect_all(Object *ob, int select_mode, const bool ignore_visibility)
 {
 	bArmature *arm = ob->data;

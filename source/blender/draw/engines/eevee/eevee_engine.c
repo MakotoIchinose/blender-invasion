@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -44,7 +47,6 @@
 
 #define EEVEE_ENGINE "BLENDER_EEVEE"
 
-extern GlobalsUboStorage ts;
 
 /* *********** FUNCTIONS *********** */
 
@@ -130,15 +132,14 @@ void EEVEE_cache_populate(void *vedata, Object *ob)
 	EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
 
 	const DRWContextState *draw_ctx = DRW_context_state_get();
+	const int ob_visibility = DRW_object_visibility_in_active_context(ob);
 	bool cast_shadow = false;
 
-	if (ob->base_flag & BASE_VISIBLE) {
+	if (ob_visibility & OB_VISIBLE_PARTICLES) {
 		EEVEE_hair_cache_populate(vedata, sldata, ob, &cast_shadow);
 	}
 
-	if (DRW_object_is_renderable(ob) &&
-	    DRW_object_is_visible_in_active_context(ob))
-	{
+	if (DRW_object_is_renderable(ob) && (ob_visibility & OB_VISIBLE_SELF)) {
 		if (ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL)) {
 			EEVEE_materials_cache_populate(vedata, sldata, ob, &cast_shadow);
 		}
@@ -146,7 +147,7 @@ void EEVEE_cache_populate(void *vedata, Object *ob)
 			/* do not add any scene light sources to the cache */
 		}
 		else if (ob->type == OB_LIGHTPROBE) {
-			if ((ob->base_flag & BASE_FROMDUPLI) != 0) {
+			if ((ob->base_flag & BASE_FROM_DUPLI) != 0) {
 				/* TODO: Special case for dupli objects because we cannot save the object pointer. */
 			}
 			else {
@@ -255,7 +256,7 @@ static void eevee_draw_background(void *vedata)
 		DRW_uniformbuffer_update(sldata->common_ubo, &sldata->common_data);
 
 		GPU_framebuffer_bind(fbl->main_fb);
-		GPUFrameBufferBits clear_bits = GPU_DEPTH_BIT;
+		eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT;
 		clear_bits |= (DRW_state_draw_background()) ? 0 : GPU_COLOR_BIT;
 		clear_bits |= ((stl->effects->enabled_effects & EFFECT_SSS) != 0) ? GPU_STENCIL_BIT : 0;
 		GPU_framebuffer_clear(fbl->main_fb, clear_bits, clear_col, clear_depth, clear_stencil);

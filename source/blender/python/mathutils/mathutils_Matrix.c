@@ -158,7 +158,7 @@ Mathutils_Callback mathutils_matrix_row_cb = {
 	mathutils_matrix_row_get,
 	mathutils_matrix_row_set,
 	mathutils_matrix_row_get_index,
-	mathutils_matrix_row_set_index
+	mathutils_matrix_row_set_index,
 };
 
 
@@ -250,7 +250,7 @@ Mathutils_Callback mathutils_matrix_col_cb = {
 	mathutils_matrix_col_get,
 	mathutils_matrix_col_set,
 	mathutils_matrix_col_get_index,
-	mathutils_matrix_col_set_index
+	mathutils_matrix_col_set_index,
 };
 
 
@@ -327,7 +327,7 @@ Mathutils_Callback mathutils_matrix_translation_cb = {
 	mathutils_matrix_translation_get,
 	mathutils_matrix_translation_set,
 	mathutils_matrix_translation_get_index,
-	mathutils_matrix_translation_set_index
+	mathutils_matrix_translation_set_index,
 };
 
 
@@ -354,7 +354,7 @@ static PyObject *Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 			/* Input is now as a sequence of rows so length of sequence
 			 * is the number of rows */
-			/* -1 is an error, size checks will accunt for this */
+			/* -1 is an error, size checks will account for this */
 			const unsigned short num_row = PySequence_Size(arg);
 
 			if (num_row >= 2 && num_row <= 4) {
@@ -969,7 +969,7 @@ static void matrix_invert_with_det_n_internal(float *mat_dst, const float *mat_s
 }
 
 /**
- * \param r_mat can be from ``self->matrix`` or not.
+ * \param r_mat: can be from ``self->matrix`` or not.
  */
 static bool matrix_invert_internal(const MatrixObject *self, float *r_mat)
 {
@@ -988,7 +988,7 @@ static bool matrix_invert_internal(const MatrixObject *self, float *r_mat)
 
 /**
  * Similar to ``matrix_invert_internal`` but should never error.
- * \param r_mat can be from ``self->matrix`` or not.
+ * \param r_mat: can be from ``self->matrix`` or not.
  */
 static void matrix_invert_safe_internal(const MatrixObject *self, float *r_mat)
 {
@@ -2550,7 +2550,7 @@ static PyObject *Matrix_imatmul(PyObject *m1, PyObject *m2)
 		}
 
 		/* copy matrix back */
-		memcpy(mat1->matrix, mat, mat1->num_row * mat1->num_col);
+		memcpy(mat1->matrix, mat, (mat1->num_row * mat1->num_col) * sizeof(float));
 	}
 	else {
 		PyErr_Format(PyExc_TypeError,
@@ -2652,7 +2652,7 @@ static int Matrix_ass_subscript(MatrixObject *self, PyObject *item, PyObject *va
 static PyMappingMethods Matrix_AsMapping = {
 	(lenfunc)Matrix_len,
 	(binaryfunc)Matrix_subscript,
-	(objobjargproc)Matrix_ass_subscript
+	(objobjargproc)Matrix_ass_subscript,
 };
 
 
@@ -3314,7 +3314,7 @@ static PyObject *MatrixAccess_iter(MatrixAccessObject *self)
 static PyMappingMethods MatrixAccess_AsMapping = {
 	(lenfunc)MatrixAccess_len,
 	(binaryfunc)MatrixAccess_subscript,
-	(objobjargproc) MatrixAccess_ass_subscript
+	(objobjargproc) MatrixAccess_ass_subscript,
 };
 
 PyTypeObject matrix_access_Type = {

@@ -70,8 +70,6 @@ void WM_gizmo_unlink(
         ListBase *gizmolist, struct wmGizmoMap *gzmap, struct wmGizmo *gz,
         struct bContext *C);
 
-void WM_gizmo_name_set(struct wmGizmoGroup *gzgroup, struct wmGizmo *gz, const char *name);
-
 bool WM_gizmo_select_unlink(struct wmGizmoMap *gzmap, struct wmGizmo *gz);
 bool WM_gizmo_select_set(struct wmGizmoMap *gzmap, struct wmGizmo *gz, bool select);
 void WM_gizmo_highlight_set(struct wmGizmoMap *gzmap, struct wmGizmo *gz);
@@ -85,6 +83,8 @@ struct wmGizmoOpElem *WM_gizmo_operator_get(
 struct PointerRNA *WM_gizmo_operator_set(
         struct wmGizmo *gz, int part_index,
         struct wmOperatorType *ot, struct IDProperty *properties);
+int WM_gizmo_operator_invoke(
+        struct bContext *C, struct wmGizmo *gz, struct wmGizmoOpElem *gzop);
 
 /* callbacks */
 void WM_gizmo_set_fn_custom_modal(struct wmGizmo *gz, wmGizmoFnModal fn);
@@ -299,6 +299,9 @@ void WM_gizmomaptype_group_init_runtime_keymap(
 void WM_gizmomaptype_group_init_runtime(
         const struct Main *bmain, struct wmGizmoMapType *gzmap_type,
         struct wmGizmoGroupType *gzgt);
+void WM_gizmomaptype_group_init_runtime_with_region(
+        struct wmGizmoMapType *gzmap_type,
+        struct wmGizmoGroupType *gzgt, struct ARegion *ar);
 void WM_gizmomaptype_group_unlink(
         struct bContext *C, struct Main *bmain, struct wmGizmoMapType *gzmap_type,
         const struct wmGizmoGroupType *gzgt);

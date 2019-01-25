@@ -62,7 +62,7 @@ static size_t idp_size_table[] = {
 	0, /*arrays don't have a fixed size*/
 	sizeof(ListBase), /*Group type*/
 	sizeof(void *),
-	sizeof(double)
+	sizeof(double),
 };
 
 
@@ -330,9 +330,9 @@ static IDProperty *IDP_CopyArray(const IDProperty *prop, const int flag)
 
 /**
  *
- * \param st  The string to assign.
- * \param name  The property name.
- * \param maxlen  The size of the new string (including the \0 terminator).
+ * \param st: The string to assign.
+ * \param name: The property name.
+ * \param maxlen: The size of the new string (including the \0 terminator).
  * \return The new string property.
  */
 IDProperty *IDP_NewString(const char *st, const char *name, int maxlen)
@@ -837,7 +837,7 @@ IDProperty *IDP_GetProperties(ID *id, const bool create_if_needed)
 }
 
 /**
- * \param is_strict When false treat missing items as a match */
+ * \param is_strict: When false treat missing items as a match */
 bool IDP_EqualsProperties_ex(IDProperty *prop1, IDProperty *prop2, const bool is_strict)
 {
 	if (prop1 == NULL && prop2 == NULL)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2017, Blender Foundation.
  * Contributor(s): Antonio Vazquez
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -114,6 +117,7 @@ typedef struct GPENCIL_shgroup {
 	int texture_clamp;
 	int fill_style;
 	int keep_size;
+	int caps_mode[2];
 	float obj_scale;
 } GPENCIL_shgroup;
 
@@ -133,10 +137,13 @@ typedef struct GPENCIL_Storage {
 	bool reset_cache;
 	bool buffer_stroke;
 	bool buffer_fill;
+	bool buffer_ctrlpoint;
 	const float *pixsize;
 	float render_pixsize;
 	int tonemapping;
 	short multisamples;
+
+	short framebuffer_flag; /* flag what framebuffer need to create */
 
 	int blend_mode;
 	int clamp_layer;
@@ -158,6 +165,12 @@ typedef struct GPENCIL_Storage {
 
 	Object *camera; /* camera pointer for render mode */
 } GPENCIL_Storage;
+
+typedef enum eGpencilFramebuffer_Flag {
+	GP_FRAMEBUFFER_MULTISAMPLE = (1 << 0),
+	GP_FRAMEBUFFER_BASIC       = (1 << 1),
+	GP_FRAMEBUFFER_DRAW        = (1 << 2),
+} eGpencilFramebuffer_Flag;
 
 typedef struct GPENCIL_StorageList {
 	struct GPENCIL_Storage *storage;
@@ -291,6 +304,7 @@ typedef struct GPENCIL_e_data {
 	/* for buffer only one batch is nedeed because the drawing is only of one stroke */
 	GPUBatch *batch_buffer_stroke;
 	GPUBatch *batch_buffer_fill;
+	GPUBatch *batch_buffer_ctrlpoint;
 
 	/* grid geometry */
 	GPUBatch *batch_grid;
@@ -354,7 +368,8 @@ typedef struct GpencilBatchCache {
 /* general drawing functions */
 struct DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(
         struct GPENCIL_e_data *e_data, struct GPENCIL_Data *vedata, struct DRWPass *pass, struct GPUShader *shader,
-        struct Object *ob, struct bGPdata *gpd, struct MaterialGPencilStyle *gp_style, int id, bool onion);
+        struct Object *ob, struct bGPdata *gpd, struct bGPDstroke *gps,
+        struct MaterialGPencilStyle *gp_style, int id, bool onion);
 void DRW_gpencil_populate_datablock(
         struct GPENCIL_e_data *e_data, void *vedata,
         struct Object *ob, struct tGPencilObjectCache *cache_ob);
@@ -378,6 +393,7 @@ void DRW_gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be, struct bGPDstr
 struct GPUBatch *DRW_gpencil_get_buffer_stroke_geom(struct bGPdata *gpd, short thickness);
 struct GPUBatch *DRW_gpencil_get_buffer_fill_geom(struct bGPdata *gpd);
 struct GPUBatch *DRW_gpencil_get_buffer_point_geom(struct bGPdata *gpd, short thickness);
+struct GPUBatch *DRW_gpencil_get_buffer_ctrlpoint_geom(struct bGPdata *gpd);
 struct GPUBatch *DRW_gpencil_get_grid(Object *ob);
 
 /* object cache functions */

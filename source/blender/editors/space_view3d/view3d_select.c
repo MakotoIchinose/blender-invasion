@@ -110,6 +110,11 @@
 
 // #include "PIL_time_utildefines.h"
 
+
+/* -------------------------------------------------------------------- */
+/** \name Public Utilities
+ * \{ */
+
 float ED_view3d_select_dist_px(void)
 {
 	return 75.0f * U.pixelsize;
@@ -147,9 +152,40 @@ void ED_view3d_viewcontext_init_object(ViewContext *vc, Object *obact)
 	}
 }
 
-/* ********************** view3d_select: selection manipulations ********************* */
+/** \} */
 
-/* local prototypes */
+/* -------------------------------------------------------------------- */
+/** \name Internal Object Utilities
+ * \{ */
+
+static void object_deselect_all_visible(ViewLayer *view_layer, View3D *v3d)
+{
+	Base *base;
+
+	for (base = view_layer->object_bases.first; base; base = base->next) {
+		if (BASE_SELECTABLE(v3d, base)) {
+			ED_object_base_select(base, BA_DESELECT);
+		}
+	}
+}
+
+/* deselect all except b */
+static void object_deselect_all_except(ViewLayer *view_layer, Base *b)
+{
+	for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+		if (base->flag & BASE_SELECTED) {
+			if (b != base) {
+				ED_object_base_select(base, BA_DESELECT);
+			}
+		}
+	}
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Internal Edit-Mesh Utilities
+ * \{ */
 
 static void edbm_backbuf_check_and_select_verts(BMEditMesh *em, const eSelectOp sel_op)
 {
@@ -248,7 +284,11 @@ static void edbm_backbuf_check_and_select_tfaces(Mesh *me, const eSelectOp sel_o
 	}
 }
 
-/* *********************** GESTURE AND LASSO ******************* */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Lasso Select
+ * \{ */
 
 typedef struct LassoSelectUserData {
 	ViewContext *vc;
@@ -403,17 +443,6 @@ static void do_lasso_tag_pose(ViewContext *vc, Object *ob, const int mcords[][2]
 	ED_view3d_init_mats_rv3d(vc_tmp.obact, vc->rv3d);
 
 	pose_foreachScreenBone(&vc_tmp, do_lasso_select_pose__do_tag, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
-}
-
-static void object_deselect_all_visible(ViewLayer *view_layer, View3D *v3d)
-{
-	Base *base;
-
-	for (base = view_layer->object_bases.first; base; base = base->next) {
-		if (BASE_SELECTABLE(v3d, base)) {
-			ED_object_base_select(base, BA_DESELECT);
-		}
-	}
 }
 
 static void do_lasso_select_objects(
@@ -744,61 +773,46 @@ static void do_lasso_select_lattice(ViewContext *vc, const int mcords[][2], shor
 	lattice_foreachScreenVert(vc, do_lasso_select_lattice__doSelect, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
 }
 
-static void do_lasso_select_armature__doSelectBone(void *userData, struct EditBone *ebone, const float screen_co_a[2], const float screen_co_b[2])
+static void do_lasso_select_armature__doSelectBone(
+        void *userData, EditBone *ebone, const float screen_co_a[2], const float screen_co_b[2])
 {
 	LassoSelectUserData *data = userData;
 	bArmature *arm = data->vc->obedit->data;
 	if (EBONE_VISIBLE(arm, ebone)) {
-		bool is_point_done = false;
-		int points_proj_tot = 0;
+		int is_ignore_flag = 0;
+		int is_inside_flag = 0;
 
-		/* project head location to screenspace */
 		if (screen_co_a[0] != IS_CLIPPED) {
-			points_proj_tot++;
-			const bool is_select = ebone->flag & BONE_ROOTSEL;
-			const bool is_inside = (
-			        BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_a)) &&
-			        BLI_lasso_is_point_inside(data->mcords, data->moves, UNPACK2(screen_co_a), INT_MAX));
-			const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
-			if (sel_op_result != -1) {
-				if (sel_op_result == 0 || EBONE_SELECTABLE(arm, ebone)) {
-					SET_FLAG_FROM_TEST(ebone->flag, sel_op_result, BONE_ROOTSEL);
-				}
+			if (BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_a)) &&
+			    BLI_lasso_is_point_inside(data->mcords, data->moves, UNPACK2(screen_co_a), INT_MAX))
+			{
+				is_inside_flag |= BONESEL_ROOT;
 			}
-			is_point_done |= is_inside;
+		}
+		else {
+			is_ignore_flag |= BONESEL_ROOT;
 		}
 
-		/* project tail location to screenspace */
 		if (screen_co_b[0] != IS_CLIPPED) {
-			points_proj_tot++;
-			const bool is_select = ebone->flag & BONE_TIPSEL;
-			const bool is_inside = (
-			        BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_b)) &&
-			        BLI_lasso_is_point_inside(data->mcords, data->moves, UNPACK2(screen_co_b), INT_MAX));
-			const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
-			if (sel_op_result != -1) {
-				if (sel_op_result == 0 || EBONE_SELECTABLE(arm, ebone)) {
-					SET_FLAG_FROM_TEST(ebone->flag, sel_op_result, BONE_TIPSEL);
-				}
+			if (BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_b)) &&
+			    BLI_lasso_is_point_inside(data->mcords, data->moves, UNPACK2(screen_co_b), INT_MAX))
+			{
+				is_inside_flag |= BONESEL_TIP;
 			}
-			is_point_done |= is_inside;
+		}
+		else {
+			is_ignore_flag |= BONESEL_TIP;
 		}
 
-		/* if one of points selected, we skip the bone itself */
-		if ((is_point_done == false) && (points_proj_tot == 2)) {
-			const bool is_select = ebone->flag & (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-			const bool is_inside = BLI_lasso_is_edge_inside(
-			        data->mcords, data->moves, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX);
-			const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
-			if (sel_op_result != -1) {
-				if (sel_op_result == 0 || EBONE_SELECTABLE(arm, ebone)) {
-					SET_FLAG_FROM_TEST(ebone->flag, sel_op_result, (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL));
-				}
-			}
-			data->is_changed = true;
+		if (is_inside_flag == (BONE_ROOTSEL | BONE_TIPSEL) ||
+		    BLI_lasso_is_edge_inside(
+		            data->mcords, data->moves, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX))
+		{
+			is_inside_flag |= BONESEL_BONE;
 		}
 
-		data->is_changed |= is_point_done;
+
+		ebone->temp.i = is_inside_flag | (is_ignore_flag >> 16);
 	}
 }
 
@@ -817,12 +831,15 @@ static void do_lasso_select_armature(ViewContext *vc, const int mcords[][2], sho
 		ED_armature_edit_deselect_all_visible(vc->obedit);
 	}
 
+	bArmature *arm = vc->obedit->data;
+
+	ED_armature_ebone_listbase_temp_clear(arm->edbo);
+
 	armature_foreachScreenBone(vc, do_lasso_select_armature__doSelectBone, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
 
+	data.is_changed = ED_armature_edit_select_op_from_tagged(vc->obedit->data, sel_op);
+
 	if (data.is_changed) {
-		bArmature *arm = vc->obedit->data;
-		ED_armature_edit_sync_selection(arm->edbo);
-		ED_armature_edit_validate_active(arm);
 		WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, vc->obedit);
 	}
 }
@@ -925,7 +942,8 @@ static void do_lasso_select_paintface(ViewContext *vc, const int mcords[][2], sh
 		return;
 
 	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
-		paintface_deselect_all_visible(vc->C, ob, SEL_DESELECT, false);  /* flush selection at the end */
+		/* flush selection at the end */
+		paintface_deselect_all_visible(vc->C, ob, SEL_DESELECT, false);
 	}
 
 	bm_vertoffs = me->totpoly + 1; /* max index array */
@@ -1077,7 +1095,11 @@ void VIEW3D_OT_select_lasso(wmOperatorType *ot)
 	WM_operator_properties_select_operation(ot);
 }
 
-/* ************************** mouse select ************************* */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Cursor Picking
+ * \{ */
 
 /* The max number of menu items in an object select menu */
 typedef struct SelMenuItemF {
@@ -1135,7 +1157,8 @@ static int object_select_menu_exec(bContext *C, wmOperator *op)
 
 	CTX_DATA_BEGIN (C, Base *, base, selectable_bases)
 	{
-		/* this is a bit dodjy, there should only be ONE object with this name, but library objects can mess this up */
+		/* this is a bit dodjy, there should only be ONE object with this name,
+		 * but library objects can mess this up */
 		if (STREQ(name, base->object->id.name + 2)) {
 			ED_object_base_activate(C, base);
 			ED_object_base_select(base, BA_SELECT);
@@ -1182,17 +1205,6 @@ void VIEW3D_OT_select_menu(wmOperatorType *ot)
 	ot->prop = prop;
 
 	RNA_def_boolean(ot->srna, "toggle", 0, "Toggle", "Toggle selection instead of deselecting everything first");
-}
-
-static void deselectall_except(ViewLayer *view_layer, Base *b)   /* deselect all except b */
-{
-	for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-		if (base->flag & BASE_SELECTED) {
-			if (b != base) {
-				ED_object_base_select(base, BA_DESELECT);
-			}
-		}
-	}
 }
 
 static Base *object_mouse_select_menu(
@@ -1573,11 +1585,16 @@ static bool ed_object_select_pick(
         bool extend, bool deselect, bool toggle, bool obcenter, bool enumerate, bool object)
 {
 	ViewContext vc;
+	/* setup view context for argument to callbacks */
+	ED_view3d_viewcontext_init(C, &vc);
+
 	ARegion *ar = CTX_wm_region(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	View3D *v3d = CTX_wm_view3d(C);
-	Base *base, *startbase = NULL, *basact = NULL, *oldbasact = BASACT(view_layer);
+	/* Don't set when the context has no active object (hidden), see: T60807. */
+	const Base *oldbasact = vc.obact ? BASACT(view_layer) : NULL;
+	Base *base, *startbase = NULL, *basact = NULL;
 	const eObjectMode object_mode = oldbasact ? oldbasact->object->mode : OB_MODE_OBJECT;
 	bool is_obedit;
 	float dist = ED_view3d_select_dist_px() * 1.3333f;
@@ -1585,8 +1602,6 @@ static bool ed_object_select_pick(
 	int hits;
 	const float mval_fl[2] = {(float)mval[0], (float)mval[1]};
 
-	/* setup view context for argument to callbacks */
-	ED_view3d_viewcontext_init(C, &vc);
 
 	is_obedit = (vc.obedit != NULL);
 	if (object) {
@@ -1599,9 +1614,13 @@ static bool ed_object_select_pick(
 
 	/* always start list from basact in wire mode */
 	startbase =  FIRSTBASE(view_layer);
-	if (BASACT(view_layer) && BASACT(view_layer)->next) startbase = BASACT(view_layer)->next;
+	if (oldbasact && oldbasact->next) {
+		startbase = oldbasact->next;
+	}
 
-	/* This block uses the control key to make the object selected by its center point rather than its contents */
+	/* This block uses the control key to make the object selected
+	 * by its center point rather than its contents */
+
 	/* in editmode do not activate */
 	if (obcenter) {
 
@@ -1619,7 +1638,9 @@ static bool ed_object_select_pick(
 					            V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_WIN | V3D_PROJ_TEST_CLIP_NEAR) == V3D_PROJ_RET_OK)
 					{
 						float dist_temp = len_manhattan_v2v2(mval_fl, screen_co);
-						if (base == BASACT(view_layer)) dist_temp += 10.0f;
+						if (base == oldbasact) {
+							dist_temp += 10.0f;
+						}
 						if (dist_temp < dist) {
 							dist = dist_temp;
 							basact = base;
@@ -1628,8 +1649,12 @@ static bool ed_object_select_pick(
 				}
 				base = base->next;
 
-				if (base == NULL) base = FIRSTBASE(view_layer);
-				if (base == startbase) break;
+				if (base == NULL) {
+					base = FIRSTBASE(view_layer);
+				}
+				if (base == startbase) {
+					break;
+				}
 			}
 		}
 		if (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) {
@@ -1676,7 +1701,7 @@ static bool ed_object_select_pick(
 
 			if (has_bones && basact) {
 				if (basact->object->type == OB_CAMERA) {
-					if (BASACT(view_layer) == basact) {
+					if (oldbasact == basact) {
 						int i, hitresult;
 						bool changed = false;
 
@@ -1690,7 +1715,8 @@ static bool ed_object_select_pick(
 							}
 
 							/* index of bundle is 1<<16-based. if there's no "bone" index
-							 * in height word, this buffer value belongs to camera. not to bundle */
+							 * in height word, this buffer value belongs to camera. not to bundle
+							 */
 							if (buffer[4 * i + 3] & 0xFFFF0000) {
 								MovieClip *clip = BKE_object_movieclip_get(scene, basact->object, false);
 								MovieTracking *tracking = &clip->tracking;
@@ -1705,13 +1731,15 @@ static bool ed_object_select_pick(
 								}
 								else {
 									int oldsel = TRACK_SELECTED(track) ? 1 : 0;
-									if (!extend)
+									if (!extend) {
 										deselect_all_tracks(tracking);
+									}
 
 									BKE_tracking_track_select(tracksbase, track, TRACK_AREA_ALL, extend);
 
-									if (oldsel != (TRACK_SELECTED(track) ? 1 : 0))
+									if (oldsel != (TRACK_SELECTED(track) ? 1 : 0)) {
 										changed = true;
+									}
 								}
 
 								basact->flag |= BASE_SELECTED;
@@ -1749,16 +1777,18 @@ static bool ed_object_select_pick(
 					WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, basact->object);
 					WM_event_add_notifier(C, NC_OBJECT | ND_BONE_ACTIVE, basact->object);
 
-					/* in weightpaint, we use selected bone to select vertexgroup, so no switch to new active object */
-					if (BASACT(view_layer) && (BASACT(view_layer)->object->mode & OB_MODE_WEIGHT_PAINT)) {
+					/* in weightpaint, we use selected bone to select vertexgroup,
+					 * so no switch to new active object */
+					if (oldbasact && (oldbasact->object->mode & OB_MODE_WEIGHT_PAINT)) {
 						/* prevent activating */
 						basact = NULL;
 					}
 
 				}
 				/* prevent bone selecting to pass on to object selecting */
-				if (basact == BASACT(view_layer))
+				if (basact == oldbasact) {
 					basact = NULL;
+				}
 			}
 
 			if (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) {
@@ -1791,13 +1821,16 @@ static bool ed_object_select_pick(
 		}
 	}
 
+	/* Ensure code above doesn't change the active base. */
+	BLI_assert(oldbasact == (vc.obact ? BASACT(view_layer) : NULL));
+
 	/* so, do we have something selected? */
 	if (basact) {
 		retval = true;
 
 		if (vc.obedit) {
 			/* only do select */
-			deselectall_except(view_layer, basact);
+			object_deselect_all_except(view_layer, basact);
 			ED_object_base_select(basact, BA_SELECT);
 		}
 		/* also prevent making it active on mouse selection */
@@ -1821,7 +1854,7 @@ static bool ed_object_select_pick(
 			else {
 				/* When enabled, this puts other objects out of multi pose-mode. */
 				if (is_pose_mode == false) {
-					deselectall_except(view_layer, basact);
+					object_deselect_all_except(view_layer, basact);
 					ED_object_base_select(basact, BA_SELECT);
 				}
 			}
@@ -1840,9 +1873,9 @@ static bool ed_object_select_pick(
 			{
 				/* set cursor */
 				if (ELEM(basact->object->mode,
-				         OB_MODE_GPENCIL_PAINT,
-				         OB_MODE_GPENCIL_SCULPT,
-				         OB_MODE_GPENCIL_WEIGHT))
+				         OB_MODE_PAINT_GPENCIL,
+				         OB_MODE_SCULPT_GPENCIL,
+				         OB_MODE_WEIGHT_GPENCIL))
 				{
 					ED_gpencil_toggle_brush_cursor(C, true, NULL);
 				}
@@ -1860,7 +1893,160 @@ static bool ed_object_select_pick(
 	return retval;
 }
 
-/* ********************  border and circle ************************************** */
+/* mouse selection in weight paint */
+/* gets called via generic mouse select operator */
+static bool ed_wpaint_vertex_select_pick(
+        bContext *C, const int mval[2],
+        bool extend, bool deselect, bool toggle, Object *obact)
+{
+	View3D *v3d = CTX_wm_view3d(C);
+	const bool use_zbuf = V3D_IS_ZBUF(v3d);
+
+	Mesh *me = obact->data; /* already checked for NULL */
+	unsigned int index = 0;
+	MVert *mv;
+
+	if (ED_mesh_pick_vert(C, obact, mval, &index, ED_MESH_PICK_DEFAULT_VERT_SIZE, use_zbuf)) {
+		mv = &me->mvert[index];
+		if (extend) {
+			mv->flag |= SELECT;
+		}
+		else if (deselect) {
+			mv->flag &= ~SELECT;
+		}
+		else if (toggle) {
+			mv->flag ^= SELECT;
+		}
+		else {
+			paintvert_deselect_all_visible(obact, SEL_DESELECT, false);
+			mv->flag |= SELECT;
+		}
+
+		/* update mselect */
+		if (mv->flag & SELECT) {
+			BKE_mesh_mselect_active_set(me, index, ME_VSEL);
+		}
+		else {
+			BKE_mesh_mselect_validate(me);
+		}
+
+		paintvert_flush_flags(obact);
+		paintvert_tag_select_update(C, obact);
+		return true;
+	}
+	return false;
+}
+
+static int view3d_select_exec(bContext *C, wmOperator *op)
+{
+	Object *obedit = CTX_data_edit_object(C);
+	Object *obact = CTX_data_active_object(C);
+	bool extend = RNA_boolean_get(op->ptr, "extend");
+	bool deselect = RNA_boolean_get(op->ptr, "deselect");
+	bool toggle = RNA_boolean_get(op->ptr, "toggle");
+	bool center = RNA_boolean_get(op->ptr, "center");
+	bool enumerate = RNA_boolean_get(op->ptr, "enumerate");
+	/* only force object select for editmode to support vertex parenting,
+	 * or paint-select to allow pose bone select with vert/face select */
+	bool object = (RNA_boolean_get(op->ptr, "object") &&
+	               (obedit ||
+	                BKE_paint_select_elem_test(obact) ||
+	                /* so its possible to select bones in weightpaint mode (LMB select) */
+	                (obact && (obact->mode & OB_MODE_WEIGHT_PAINT) && BKE_object_pose_armature_get(obact))));
+
+	bool retval = false;
+	int location[2];
+
+	RNA_int_get_array(op->ptr, "location", location);
+
+	view3d_operator_needs_opengl(C);
+
+	if (object) {
+		obedit = NULL;
+		obact = NULL;
+
+		/* ack, this is incorrect but to do this correctly we would need an
+		 * alternative editmode/objectmode keymap, this copies the functionality
+		 * from 2.4x where Ctrl+Select in editmode does object select only */
+		center = false;
+	}
+
+	if (obedit && object == false) {
+		if (obedit->type == OB_MESH)
+			retval = EDBM_select_pick(C, location, extend, deselect, toggle);
+		else if (obedit->type == OB_ARMATURE)
+			retval = ED_armature_edit_select_pick(C, location, extend, deselect, toggle);
+		else if (obedit->type == OB_LATTICE)
+			retval = ED_lattice_select_pick(C, location, extend, deselect, toggle);
+		else if (ELEM(obedit->type, OB_CURVE, OB_SURF))
+			retval = ED_curve_editnurb_select_pick(C, location, extend, deselect, toggle);
+		else if (obedit->type == OB_MBALL)
+			retval = ED_mball_select_pick(C, location, extend, deselect, toggle);
+		else if (obedit->type == OB_FONT)
+			retval = ED_curve_editfont_select_pick(C, location, extend, deselect, toggle);
+
+	}
+	else if (obact && obact->mode & OB_MODE_PARTICLE_EDIT)
+		return PE_mouse_particles(C, location, extend, deselect, toggle);
+	else if (obact && BKE_paint_select_face_test(obact))
+		retval = paintface_mouse_select(C, obact, location, extend, deselect, toggle);
+	else if (BKE_paint_select_vert_test(obact))
+		retval = ed_wpaint_vertex_select_pick(C, location, extend, deselect, toggle, obact);
+	else
+		retval = ed_object_select_pick(C, location, extend, deselect, toggle, center, enumerate, object);
+
+	/* passthrough allows tweaks
+	 * FINISHED to signal one operator worked
+	 * */
+	if (retval)
+		return OPERATOR_PASS_THROUGH | OPERATOR_FINISHED;
+	else
+		return OPERATOR_PASS_THROUGH;  /* nothing selected, just passthrough */
+}
+
+static int view3d_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+	RNA_int_set_array(op->ptr, "location", event->mval);
+
+	return view3d_select_exec(C, op);
+}
+
+void VIEW3D_OT_select(wmOperatorType *ot)
+{
+	PropertyRNA *prop;
+
+	/* identifiers */
+	ot->name = "Select";
+	ot->description = "Select and activate item(s)";
+	ot->idname = "VIEW3D_OT_select";
+
+	/* api callbacks */
+	ot->invoke = view3d_select_invoke;
+	ot->exec = view3d_select_exec;
+	ot->poll = ED_operator_view3d_active;
+
+	/* flags */
+	ot->flag = OPTYPE_UNDO;
+
+	/* properties */
+	WM_operator_properties_mouse_select(ot);
+
+	prop = RNA_def_boolean(ot->srna, "center", 0, "Center", "Use the object center when selecting, in editmode used to extend object selection");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+	prop = RNA_def_boolean(ot->srna, "enumerate", 0, "Enumerate", "List objects under the mouse (object mode only)");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+	prop = RNA_def_boolean(ot->srna, "object", 0, "Object", "Use object selection (editmode only)");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+	prop = RNA_def_int_vector(ot->srna, "location", 2, NULL, INT_MIN, INT_MAX, "Location", "Mouse location", INT_MIN, INT_MAX);
+	RNA_def_property_flag(prop, PROP_HIDDEN);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Box Select
+ * \{ */
 
 typedef struct BoxSelectUserData {
 	ViewContext *vc;
@@ -2247,8 +2433,7 @@ static int do_armature_box_select(
         ViewContext *vc,
         const rcti *rect, const eSelectOp sel_op)
 {
-	/* TODO(campbell): Full support for seleciton operations for edit bones. */
-	const bool select = sel_op == SEL_OP_ADD;
+	bool changed = false;
 	int a;
 
 	unsigned int buffer[MAXPICKBUF];
@@ -2261,88 +2446,45 @@ static int do_armature_box_select(
 	uint objects_len = 0;
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(vc->view_layer, vc->v3d, &objects_len);
 
-	/* clear flag we use to detect point was affected */
-	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-		Object *obedit = objects[ob_index];
-		bArmature *arm = obedit->data;
-		for (EditBone *ebone = arm->edbo->first; ebone; ebone = ebone->next) {
-			ebone->flag &= ~BONE_DONE;
-		}
-	}
-
 	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
 		ED_armature_edit_deselect_all_visible_multi(objects, objects_len);
+		changed = true;
+	}
+
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *obedit = objects[ob_index];
+		obedit->id.tag &= ~LIB_TAG_DOIT;
+
+		bArmature *arm = obedit->data;
+		ED_armature_ebone_listbase_temp_clear(arm->edbo);
 	}
 
 	/* first we only check points inside the border */
 	for (a = 0; a < hits; a++) {
-		int index = buffer[(4 * a) + 3];
-		if (index != -1) {
-			if ((index & 0xFFFF0000) == 0) {
+		int select_id = buffer[(4 * a) + 3];
+		if (select_id != -1) {
+			if ((select_id & 0xFFFF0000) == 0) {
 				continue;
 			}
 
 			EditBone *ebone;
-			ED_armature_object_and_ebone_from_select_buffer(objects, objects_len, index, &ebone);
-			if ((select == false) || ((ebone->flag & BONE_UNSELECTABLE) == 0)) {
-				if (index & BONESEL_TIP) {
-					ebone->flag |= BONE_DONE;
-					if (select) ebone->flag |= BONE_TIPSEL;
-					else ebone->flag &= ~BONE_TIPSEL;
-				}
-
-				if (index & BONESEL_ROOT) {
-					ebone->flag |= BONE_DONE;
-					if (select) ebone->flag |= BONE_ROOTSEL;
-					else ebone->flag &= ~BONE_ROOTSEL;
-				}
-			}
-		}
-	}
-
-	/* now we have to flush tag from parents... */
-	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-		Object *obedit = objects[ob_index];
-		bArmature *arm = obedit->data;
-		for (EditBone *ebone = arm->edbo->first; ebone; ebone = ebone->next) {
-			if (ebone->parent && (ebone->flag & BONE_CONNECTED)) {
-				if (ebone->parent->flag & BONE_DONE) {
-					ebone->flag |= BONE_DONE;
-				}
-			}
-		}
-	}
-
-	/* only select/deselect entire bones when no points where in the rect */
-	for (a = 0; a < hits; a++) {
-		int index = buffer[(4 * a) + 3];
-		if (index != -1) {
-			if (index & BONESEL_BONE) {
-				EditBone *ebone;
-				ED_armature_object_and_ebone_from_select_buffer(objects, objects_len, index, &ebone);
-				if ((select == false) || ((ebone->flag & BONE_UNSELECTABLE) == 0)) {
-					if (!(ebone->flag & BONE_DONE)) {
-						if (select) {
-							ebone->flag |= (BONE_ROOTSEL | BONE_TIPSEL | BONE_SELECTED);
-						}
-						else {
-							ebone->flag &= ~(BONE_ROOTSEL | BONE_TIPSEL | BONE_SELECTED);
-						}
-					}
-				}
-			}
+			Object *obedit = ED_armature_object_and_ebone_from_select_buffer(objects, objects_len, select_id, &ebone);
+			ebone->temp.i |= select_id & BONESEL_ANY;
+			obedit->id.tag |= LIB_TAG_DOIT;
 		}
 	}
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
-		bArmature *arm = obedit->data;
-		ED_armature_edit_sync_selection(arm->edbo);
+		if (obedit->id.tag & LIB_TAG_DOIT) {
+			obedit->id.tag &= ~LIB_TAG_DOIT;
+			changed |= ED_armature_edit_select_op_from_tagged(obedit->data, sel_op);
+		}
 	}
 
 	MEM_freeN(objects);
 
-	return hits > 0 ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+	return (hits > 0 || changed) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 /**
@@ -2618,10 +2760,6 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
 	return ret;
 }
 
-
-/* *****************Selection Operators******************* */
-
-/* ****** Box Select ****** */
 void VIEW3D_OT_select_box(wmOperatorType *ot)
 {
 	/* identifiers */
@@ -2644,161 +2782,11 @@ void VIEW3D_OT_select_box(wmOperatorType *ot)
 	WM_operator_properties_select_operation(ot);
 }
 
+/** \} */
 
-/* mouse selection in weight paint */
-/* gets called via generic mouse select operator */
-static bool ed_wpaint_vertex_select_pick(
-        bContext *C, const int mval[2],
-        bool extend, bool deselect, bool toggle, Object *obact)
-{
-	View3D *v3d = CTX_wm_view3d(C);
-	const bool use_zbuf = V3D_IS_ZBUF(v3d);
-
-	Mesh *me = obact->data; /* already checked for NULL */
-	unsigned int index = 0;
-	MVert *mv;
-
-	if (ED_mesh_pick_vert(C, obact, mval, &index, ED_MESH_PICK_DEFAULT_VERT_SIZE, use_zbuf)) {
-		mv = &me->mvert[index];
-		if (extend) {
-			mv->flag |= SELECT;
-		}
-		else if (deselect) {
-			mv->flag &= ~SELECT;
-		}
-		else if (toggle) {
-			mv->flag ^= SELECT;
-		}
-		else {
-			paintvert_deselect_all_visible(obact, SEL_DESELECT, false);
-			mv->flag |= SELECT;
-		}
-
-		/* update mselect */
-		if (mv->flag & SELECT) {
-			BKE_mesh_mselect_active_set(me, index, ME_VSEL);
-		}
-		else {
-			BKE_mesh_mselect_validate(me);
-		}
-
-		paintvert_flush_flags(obact);
-		paintvert_tag_select_update(C, obact);
-		return true;
-	}
-	return false;
-}
-
-/* ****** Mouse Select ****** */
-
-
-static int view3d_select_exec(bContext *C, wmOperator *op)
-{
-	Object *obedit = CTX_data_edit_object(C);
-	Object *obact = CTX_data_active_object(C);
-	bool extend = RNA_boolean_get(op->ptr, "extend");
-	bool deselect = RNA_boolean_get(op->ptr, "deselect");
-	bool toggle = RNA_boolean_get(op->ptr, "toggle");
-	bool center = RNA_boolean_get(op->ptr, "center");
-	bool enumerate = RNA_boolean_get(op->ptr, "enumerate");
-	/* only force object select for editmode to support vertex parenting,
-	 * or paint-select to allow pose bone select with vert/face select */
-	bool object = (RNA_boolean_get(op->ptr, "object") &&
-	               (obedit ||
-	                BKE_paint_select_elem_test(obact) ||
-	                /* so its possible to select bones in weightpaint mode (LMB select) */
-	                (obact && (obact->mode & OB_MODE_WEIGHT_PAINT) && BKE_object_pose_armature_get(obact))));
-
-	bool retval = false;
-	int location[2];
-
-	RNA_int_get_array(op->ptr, "location", location);
-
-	view3d_operator_needs_opengl(C);
-
-	if (object) {
-		obedit = NULL;
-		obact = NULL;
-
-		/* ack, this is incorrect but to do this correctly we would need an
-		 * alternative editmode/objectmode keymap, this copies the functionality
-		 * from 2.4x where Ctrl+Select in editmode does object select only */
-		center = false;
-	}
-
-	if (obedit && object == false) {
-		if (obedit->type == OB_MESH)
-			retval = EDBM_select_pick(C, location, extend, deselect, toggle);
-		else if (obedit->type == OB_ARMATURE)
-			retval = ED_armature_edit_select_pick(C, location, extend, deselect, toggle);
-		else if (obedit->type == OB_LATTICE)
-			retval = ED_lattice_select_pick(C, location, extend, deselect, toggle);
-		else if (ELEM(obedit->type, OB_CURVE, OB_SURF))
-			retval = ED_curve_editnurb_select_pick(C, location, extend, deselect, toggle);
-		else if (obedit->type == OB_MBALL)
-			retval = ED_mball_select_pick(C, location, extend, deselect, toggle);
-		else if (obedit->type == OB_FONT)
-			retval = ED_curve_editfont_select_pick(C, location, extend, deselect, toggle);
-
-	}
-	else if (obact && obact->mode & OB_MODE_PARTICLE_EDIT)
-		return PE_mouse_particles(C, location, extend, deselect, toggle);
-	else if (obact && BKE_paint_select_face_test(obact))
-		retval = paintface_mouse_select(C, obact, location, extend, deselect, toggle);
-	else if (BKE_paint_select_vert_test(obact))
-		retval = ed_wpaint_vertex_select_pick(C, location, extend, deselect, toggle, obact);
-	else
-		retval = ed_object_select_pick(C, location, extend, deselect, toggle, center, enumerate, object);
-
-	/* passthrough allows tweaks
-	 * FINISHED to signal one operator worked
-	 * */
-	if (retval)
-		return OPERATOR_PASS_THROUGH | OPERATOR_FINISHED;
-	else
-		return OPERATOR_PASS_THROUGH;  /* nothing selected, just passthrough */
-}
-
-static int view3d_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-	RNA_int_set_array(op->ptr, "location", event->mval);
-
-	return view3d_select_exec(C, op);
-}
-
-void VIEW3D_OT_select(wmOperatorType *ot)
-{
-	PropertyRNA *prop;
-
-	/* identifiers */
-	ot->name = "Select";
-	ot->description = "Select and activate item(s)";
-	ot->idname = "VIEW3D_OT_select";
-
-	/* api callbacks */
-	ot->invoke = view3d_select_invoke;
-	ot->exec = view3d_select_exec;
-	ot->poll = ED_operator_view3d_active;
-
-	/* flags */
-	ot->flag = OPTYPE_UNDO;
-
-	/* properties */
-	WM_operator_properties_mouse_select(ot);
-
-	prop = RNA_def_boolean(ot->srna, "center", 0, "Center", "Use the object center when selecting, in editmode used to extend object selection");
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "enumerate", 0, "Enumerate", "List objects under the mouse (object mode only)");
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "object", 0, "Object", "Use object selection (editmode only)");
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-	prop = RNA_def_int_vector(ot->srna, "location", 2, NULL, INT_MIN, INT_MAX, "Location", "Mouse location", INT_MIN, INT_MAX);
-	RNA_def_property_flag(prop, PROP_HIDDEN);
-}
-
-
-/* -------------------- circle select --------------------------------------------- */
+/* -------------------------------------------------------------------- */
+/** \name Circle Select
+ * \{ */
 
 typedef struct CircleSelectUserData {
 	ViewContext *vc;
@@ -3327,3 +3315,5 @@ void VIEW3D_OT_select_circle(wmOperatorType *ot)
 	/* properties */
 	WM_operator_properties_gesture_circle_select(ot);
 }
+
+/** \} */

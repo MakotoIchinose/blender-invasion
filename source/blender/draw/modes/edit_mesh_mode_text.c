@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -345,7 +348,7 @@ void DRW_edit_mesh_mode_text_measure_stats(
 
 			BM_ITER_MESH_INDEX(f, &iter, em->bm, BM_FACES_OF_MESH, i) {
 				if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
-					BM_face_calc_center_mean(f, v1);
+					BM_face_calc_center_median(f, v1);
 					mul_m4_v3(ob->obmat, v1);
 
 					numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%d", i);

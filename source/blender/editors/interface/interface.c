@@ -164,7 +164,8 @@ void ui_block_to_window_rctf(const ARegion *ar, uiBlock *block, rctf *rct_dst, c
 	ui_block_to_window_fl(ar, block, &rct_dst->xmax, &rct_dst->ymax);
 }
 
-void ui_window_to_block_fl(const ARegion *ar, uiBlock *block, float *x, float *y)   /* for mouse cursor */
+/* for mouse cursor */
+void ui_window_to_block_fl(const ARegion *ar, uiBlock *block, float *x, float *y)
 {
 	float a, b, c, d, e, f, px, py;
 	int sx, sy, getsizex, getsizey;
@@ -505,7 +506,8 @@ static void ui_block_bounds_calc_popup(
 	ui_block_bounds_calc(block);
 
 	/* If given, adjust input coordinates such that they would generate real final popup position.
-	 * Needed to handle correctly floating panels once they have been dragged around, see T52999. */
+	 * Needed to handle correctly floating panels once they have been dragged around,
+	 * see T52999. */
 	if (r_xy) {
 		r_xy[0] = xy[0] + block->rect.xmin - raw_x;
 		r_xy[1] = xy[1] + block->rect.ymin - raw_y;
@@ -843,8 +845,8 @@ static void ui_menu_block_set_keyaccels(uiBlock *block)
 {
 	uiBut *but;
 
-	unsigned int menu_key_mask = 0;
-	unsigned char menu_key;
+	uint menu_key_mask = 0;
+	uchar menu_key;
 	const char *str_pt;
 	int pass;
 	int tot_missing = 0;
@@ -1116,7 +1118,8 @@ static bool ui_but_event_property_operator_string(
 	/* Don't use the button again. */
 	but = NULL;
 
-	/* this version is only for finding hotkeys for properties (which get set via context using operators) */
+	/* this version is only for finding hotkeys for properties
+	 * (which get set via context using operators) */
 	if (prop) {
 		/* to avoid massive slowdowns on property panels, for now, we only check the
 		 * hotkeys for Editor / Scene settings...
@@ -1327,7 +1330,8 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
 					continue;
 				}
 				else if (((block->flag & UI_BLOCK_POPOVER) == 0) && UI_but_is_tool(but)) {
-					/* For non-popovers, shown in shortcut only (has special shortcut handling code). */
+					/* For non-popovers, shown in shortcut only
+					 * (has special shortcut handling code). */
 					continue;
 				}
 			}
@@ -2090,7 +2094,8 @@ void ui_but_value_set(uiBut *but, double value)
 				case PROP_ENUM:
 					if (RNA_property_flag(prop) & PROP_ENUM_FLAG) {
 						int ivalue = (int)value;
-						ivalue ^= RNA_property_enum_get(&but->rnapoin, prop); /* toggle for enum/flag buttons */
+						/* toggle for enum/flag buttons */
+						ivalue ^= RNA_property_enum_get(&but->rnapoin, prop);
 						RNA_property_enum_set(&but->rnapoin, prop, ivalue);
 					}
 					else {
@@ -2264,7 +2269,7 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen)
 }
 
 /**
- * \param float_precision  Override the button precision.
+ * \param float_precision: Override the button precision.
  */
 static void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
 {
@@ -2294,7 +2299,8 @@ static float ui_get_but_step_unit(uiBut *but, float step_default)
 {
 	int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
 	const double step_orig = step_default * UI_PRECISION_FLOAT_SCALE;
-	/* Scaling up 'step_origg ' here is a bit arbitrary, its just giving better scales from user POV */
+	/* Scaling up 'step_origg ' here is a bit arbitrary,
+	 * its just giving better scales from user POV */
 	const double scale_step = ui_get_but_scale_unit(but, step_orig * 10);
 	const double step = bUnit_ClosestScalar(scale_step, but->block->unit->system, unit_type);
 
@@ -2326,8 +2332,8 @@ static float ui_get_but_step_unit(uiBut *but, float step_default)
 }
 
 /**
- * \param float_precision  For number buttons the precision to use or -1 to fallback to the button default.
- * \param use_exp_float  Use exponent representation of floats when out of reasonable range (outside of 1e3/1e-3).
+ * \param float_precision: For number buttons the precision to use or -1 to fallback to the button default.
+ * \param use_exp_float: Use exponent representation of floats when out of reasonable range (outside of 1e3/1e-3).
  */
 void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision, const bool use_exp_float, bool *r_use_exp_float)
 {
@@ -2514,7 +2520,8 @@ bool ui_but_string_set_eval_num(bContext *C, uiBut *but, const char *str, double
 		bool is_unit_but = (ui_but_is_float(but) && ui_but_is_unit(but));
 		/* only enable verbose if we won't run again with units */
 		if (BPY_execute_string_as_number(C, NULL, str, is_unit_but == false, r_value)) {
-			/* if the value parsed ok without unit conversion this button may still need a unit multiplier */
+			/* if the value parsed ok without unit conversion
+			 * this button may still need a unit multiplier */
 			if (is_unit_but) {
 				char str_new[128];
 
@@ -2594,8 +2601,19 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 					PointerRNA ptr = but->rnasearchpoin;
 					PropertyRNA *prop = but->rnasearchprop;
 
-					if (prop && RNA_property_collection_lookup_string(&ptr, prop, str, &rptr))
+					/* This is kind of hackish, in theory think we could only ever use the second member of
+					 * this if/else, since ui_searchbox_apply() is supposed to always set that pointer when
+					 * we are storing pointers... But keeping str search first for now, to try to break as little as
+					 * possible existing code. All this is band-aids anyway.
+					 * Fact remains, using editstr as main 'reference' over whole search button thingy is utterly weak
+					 * and should be redesigned imho, but that's not a simple task. */
+					if (prop && RNA_property_collection_lookup_string(&ptr, prop, str, &rptr)) {
 						RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
+					}
+					else if (but->func_arg2 != NULL) {
+						RNA_pointer_create(NULL, RNA_property_pointer_type(&but->rnapoin, but->rnaprop), but->func_arg2, &rptr);
+						RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
+					}
 
 					return true;
 				}
@@ -2992,18 +3010,19 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, const char *name, sh
 	block->evil_C = (void *)C;  /* XXX */
 
 	if (scn) {
-		block->color_profile = true;
-
 		/* store display device name, don't lookup for transformations yet
 		 * block could be used for non-color displays where looking up for transformation
 		 * would slow down redraw, so only lookup for actual transform when it's indeed
 		 * needed
 		 */
-		BLI_strncpy(block->display_device, scn->display_settings.display_device, sizeof(block->display_device));
+		STRNCPY(block->display_device, scn->display_settings.display_device);
 
 		/* copy to avoid crash when scene gets deleted with ui still open */
 		block->unit = MEM_mallocN(sizeof(scn->unit), "UI UnitSettings");
 		memcpy(block->unit, &scn->unit, sizeof(scn->unit));
+	}
+	else {
+		STRNCPY(block->display_device, IMB_colormanagement_display_get_default_name());
 	}
 
 	BLI_strncpy(block->name, name, sizeof(block->name));
@@ -3288,27 +3307,6 @@ void ui_block_cm_to_display_space_v3(uiBlock *block, float pixel[3])
 	IMB_colormanagement_scene_linear_to_display_v3(pixel, display);
 }
 
-void ui_block_cm_to_scene_linear_v3(uiBlock *block, float pixel[3])
-{
-	struct ColorManagedDisplay *display = ui_block_cm_display_get(block);
-
-	IMB_colormanagement_display_to_scene_linear_v3(pixel, display);
-}
-
-void ui_block_cm_to_display_space_range(uiBlock *block, float *min, float *max)
-{
-	struct ColorManagedDisplay *display = ui_block_cm_display_get(block);
-	float pixel[3];
-
-	copy_v3_fl(pixel, *min);
-	IMB_colormanagement_scene_linear_to_display_v3(pixel, display);
-	*min = min_fff(UNPACK3(pixel));
-
-	copy_v3_fl(pixel, *max);
-	IMB_colormanagement_scene_linear_to_display_v3(pixel, display);
-	*max = max_fff(UNPACK3(pixel));
-}
-
 static uiBut *ui_but_alloc(const eButType type)
 {
 	switch (type) {
@@ -3578,7 +3576,8 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 					uiItemL(column, item->name, item->icon);
 				}
 				else {
-					/* Do not use uiItemL here, as our root layout is a menu one, it will add a fake blank icon! */
+					/* Do not use uiItemL here, as our root layout is a menu one,
+					 * it will add a fake blank icon! */
 					uiDefBut(block, UI_BTYPE_LABEL, 0, item->name, 0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
 				}
 			}
@@ -3846,7 +3845,7 @@ uiBut *uiDefBut(uiBlock *block, int type, int retval, const char *str, int x, in
  *     ((1 << findBitIndex(x)) == x);
  * \endcode
  */
-static int findBitIndex(unsigned int x)
+static int findBitIndex(uint x)
 {
 	if (!x || !is_power_of_2_i(x)) { /* is_power_of_2_i(x) strips lowest bit */
 		return -1;
@@ -4353,7 +4352,7 @@ PointerRNA *UI_but_operator_ptr_get(uiBut *but)
 
 void UI_but_unit_type_set(uiBut *but, const int unit_type)
 {
-	but->unit_type = (unsigned char)(RNA_SUBTYPE_UNIT_VALUE(unit_type));
+	but->unit_type = (uchar)(RNA_SUBTYPE_UNIT_VALUE(unit_type));
 }
 
 int UI_but_unit_type_get(const uiBut *but)
@@ -4597,7 +4596,8 @@ void UI_but_func_search_set(
         uiButSearchFunc search_func, void *arg,
         uiButHandleFunc bfunc, void *active)
 {
-	/* needed since callers don't have access to internal functions (as an alternative we could expose it) */
+	/* needed since callers don't have access to internal functions
+	 * (as an alternative we could expose it) */
 	if (search_create_func == NULL) {
 		search_create_func = ui_searchbox_create_generic;
 	}
@@ -4646,7 +4646,8 @@ static void operator_enum_search_cb(const struct bContext *C, void *but, const c
 		RNA_property_enum_items_gettexted((bContext *)C, ptr, prop, &item_array, NULL, &do_free);
 
 		for (item = item_array; item->identifier; item++) {
-			/* note: need to give the index rather than the identifier because the enum can be freed */
+			/* note: need to give the index rather than the
+			 * identifier because the enum can be freed */
 			if (BLI_strcasestr(item->name, str)) {
 				if (false == UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon))
 					break;
@@ -4785,8 +4786,15 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
 				tmp = BLI_strdup(but->optype->idname);
 			else if (ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_PULLDOWN)) {
 				MenuType *mt = UI_but_menutype_get(but);
-				if (mt)
+				if (mt) {
 					tmp = BLI_strdup(mt->idname);
+				}
+			}
+			else if (but->type == UI_BTYPE_POPOVER) {
+				PanelType *pt = UI_but_paneltype_get(but);
+				if (pt) {
+					tmp = BLI_strdup(pt->idname);
+				}
 			}
 		}
 		else if (ELEM(type, BUT_GET_RNA_LABEL, BUT_GET_RNA_TIP)) {

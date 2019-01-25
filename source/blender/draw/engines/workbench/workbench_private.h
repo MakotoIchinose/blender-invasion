@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -41,11 +44,11 @@
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
 #define M_GOLDEN_RATION_CONJUGATE 0.618033988749895
 #define MAX_COMPOSITE_SHADERS (1 << 6)
-#define MAX_PREPASS_SHADERS (1 << 6)
+#define MAX_PREPASS_SHADERS (1 << 7)
 #define MAX_ACCUM_SHADERS (1 << 4)
 #define MAX_CAVITY_SHADERS (1 << 3)
 
-#define TEXTURE_DRAWING_ENABLED(wpd) (wpd->shading.color_type & V3D_SHADING_TEXTURE_COLOR)
+#define TEXTURE_DRAWING_ENABLED(wpd) (wpd->shading.color_type == V3D_SHADING_TEXTURE_COLOR)
 #define FLAT_ENABLED(wpd) (wpd->shading.light == V3D_LIGHTING_FLAT)
 #define STUDIOLIGHT_ENABLED(wpd) (wpd->shading.light == V3D_LIGHTING_STUDIO)
 #define MATCAP_ENABLED(wpd) (wpd->shading.light == V3D_LIGHTING_MATCAP)
@@ -61,9 +64,9 @@
 
 #define IS_NAVIGATING(wpd) ((DRW_context_state_get()->rv3d) && (DRW_context_state_get()->rv3d->rflag & RV3D_NAVIGATING))
 #define FXAA_ENABLED(wpd) ((!DRW_state_is_opengl_render()) && \
-                            (IN_RANGE(wpd->user_preferences->gpu_viewport_quality, GPU_VIEWPORT_QUALITY_FXAA, GPU_VIEWPORT_QUALITY_TAA8) || \
-                             ((IS_NAVIGATING(wpd) || wpd->is_playback) && (wpd->user_preferences->gpu_viewport_quality >= GPU_VIEWPORT_QUALITY_TAA8))))
-#define TAA_ENABLED(wpd) (DRW_state_is_image_render() || (wpd->user_preferences->gpu_viewport_quality >= GPU_VIEWPORT_QUALITY_TAA8 && !IS_NAVIGATING(wpd) && !wpd->is_playback))
+                            (IN_RANGE(wpd->preferences->gpu_viewport_quality, GPU_VIEWPORT_QUALITY_FXAA, GPU_VIEWPORT_QUALITY_TAA8) || \
+                             ((IS_NAVIGATING(wpd) || wpd->is_playback) && (wpd->preferences->gpu_viewport_quality >= GPU_VIEWPORT_QUALITY_TAA8))))
+#define TAA_ENABLED(wpd) (DRW_state_is_image_render() || (wpd->preferences->gpu_viewport_quality >= GPU_VIEWPORT_QUALITY_TAA8 && !IS_NAVIGATING(wpd) && !wpd->is_playback))
 #define SPECULAR_HIGHLIGHT_ENABLED(wpd) (STUDIOLIGHT_ENABLED(wpd) && (wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT) && (!STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)))
 #define OBJECT_OUTLINE_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE)
 #define OBJECT_ID_PASS_ENABLED(wpd) (OBJECT_OUTLINE_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
@@ -123,6 +126,7 @@ typedef struct WORKBENCH_PassList {
 	struct DRWPass *composite_pass;
 	struct DRWPass *composite_shadow_pass;
 	struct DRWPass *background_pass;
+	struct DRWPass *background_pass_clip;
 	struct DRWPass *ghost_resolve_pass;
 	struct DRWPass *effect_aa_pass;
 	struct DRWPass *volume_pass;
@@ -179,7 +183,7 @@ typedef struct WORKBENCH_PrivateData {
 	struct GPUShader *transparent_accum_texture_hair_sh;
 	View3DShading shading;
 	StudioLight *studio_light;
-	UserDef *user_preferences;
+	const UserDef *preferences;
 	struct GPUUniformBuffer *world_ubo;
 	struct DRWShadingGroup *shadow_shgrp;
 	struct DRWShadingGroup *depth_shgrp;
@@ -188,13 +192,21 @@ typedef struct WORKBENCH_PrivateData {
 	float cached_shadow_direction[3];
 	float shadow_mat[4][4];
 	float shadow_inv[4][4];
-	float shadow_far_plane[4]; /* Far plane of the view frustum. */
-	float shadow_near_corners[4][3]; /* Near plane corners in shadow space. */
-	float shadow_near_min[3]; /* min and max of shadow_near_corners. allow fast test */
+	/* Far plane of the view frustum. */
+	float shadow_far_plane[4];
+	/* Near plane corners in shadow space. */
+	float shadow_near_corners[4][3];
+	/* min and max of shadow_near_corners. allow fast test */
+	float shadow_near_min[3];
 	float shadow_near_max[3];
-	float shadow_near_sides[2][4]; /* This is a parallelogram, so only 2 normal and distance to the edges. */
+	/* This is a parallelogram, so only 2 normal and distance to the edges. */
+	float shadow_near_sides[2][4];
 	bool shadow_changed;
 	bool is_playback;
+
+	float (*world_clip_planes)[4];
+	struct GPUBatch *world_clip_planes_batch;
+	float world_clip_planes_color[4];
 
 	/* Volumes */
 	bool volumes_do;
@@ -230,6 +242,7 @@ typedef struct WORKBENCH_MaterialData {
 	float roughness;
 	int object_id;
 	int color_type;
+	int interp;
 	Image *ima;
 
 	/* Linked shgroup for drawing */
@@ -243,20 +256,13 @@ typedef struct WORKBENCH_ObjectData {
 
 	/* Shadow direction in local object space. */
 	float shadow_dir[3], shadow_depth;
-	float shadow_min[3], shadow_max[3]; /* Min, max in shadow space */
+	/* Min, max in shadow space */
+	float shadow_min[3], shadow_max[3];
 	BoundBox shadow_bbox;
 	bool shadow_bbox_dirty;
 
 	int object_id;
 } WORKBENCH_ObjectData;
-
-/* workbench_engine.c */
-void workbench_solid_materials_init(WORKBENCH_Data *vedata);
-void workbench_solid_materials_cache_init(WORKBENCH_Data *vedata);
-void workbench_solid_materials_cache_populate(WORKBENCH_Data *vedata, Object *ob);
-void workbench_solid_materials_cache_finish(WORKBENCH_Data *vedata);
-void workbench_solid_materials_draw_scene(WORKBENCH_Data *vedata);
-void workbench_solid_materials_free(void);
 
 /* workbench_deferred.c */
 void workbench_deferred_engine_init(WORKBENCH_Data *vedata);
@@ -298,6 +304,7 @@ int workbench_taa_calculate_num_iterations(WORKBENCH_Data *vedata);
 
 /* workbench_materials.c */
 int workbench_material_determine_color_type(WORKBENCH_PrivateData *wpd, Image *ima, Object *ob);
+void workbench_material_get_image_and_mat(Object *ob, int mat_nr, Image **r_image, int *r_interp, Material **r_mat);
 char *workbench_material_build_defines(WORKBENCH_PrivateData *wpd, bool use_textures, bool is_hair);
 void workbench_material_update_data(WORKBENCH_PrivateData *wpd, Object *ob, Material *mat, WORKBENCH_MaterialData *data);
 uint workbench_material_get_hash(WORKBENCH_MaterialData *material_template, bool is_ghost);
@@ -306,7 +313,7 @@ int workbench_material_get_prepass_shader_index(WORKBENCH_PrivateData *wpd, bool
 int workbench_material_get_accum_shader_index(WORKBENCH_PrivateData *wpd, bool use_textures, bool is_hair);
 void workbench_material_shgroup_uniform(
         WORKBENCH_PrivateData *wpd, DRWShadingGroup *grp, WORKBENCH_MaterialData *material, Object *ob,
-        const bool use_metallic, const bool deferred);
+        const bool use_metallic, const bool deferred, const int interp);
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material, const WORKBENCH_MaterialData *source_material);
 
 /* workbench_studiolight.c */

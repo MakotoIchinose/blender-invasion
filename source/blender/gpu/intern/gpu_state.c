@@ -31,7 +31,7 @@
 #include "GPU_state.h"
 #include "GPU_extensions.h"
 
-static GLenum gpu_get_gl_blendfunction(GPUBlendFunction blend)
+static GLenum gpu_get_gl_blendfunction(eGPUBlendFunction blend)
 {
 	switch (blend) {
 		case GPU_ONE:
@@ -60,14 +60,14 @@ void GPU_blend(bool enable)
 	}
 }
 
-void GPU_blend_set_func(GPUBlendFunction sfactor, GPUBlendFunction dfactor)
+void GPU_blend_set_func(eGPUBlendFunction sfactor, eGPUBlendFunction dfactor)
 {
 	glBlendFunc(gpu_get_gl_blendfunction(sfactor), gpu_get_gl_blendfunction(dfactor));
 }
 
 void GPU_blend_set_func_separate(
-	GPUBlendFunction src_rgb, GPUBlendFunction dst_rgb,
-	GPUBlendFunction src_alpha, GPUBlendFunction dst_alpha)
+	eGPUBlendFunction src_rgb, eGPUBlendFunction dst_rgb,
+	eGPUBlendFunction src_alpha, eGPUBlendFunction dst_alpha)
 {
 	glBlendFuncSeparate(
 	        gpu_get_gl_blendfunction(src_rgb),
@@ -122,9 +122,7 @@ void GPU_line_width(float width)
 	float max_size = GPU_max_line_width();
 	float final_size = width * U.pixelsize;
 	/* Fix opengl errors on certain platform / drivers. */
-	if (max_size < final_size) {
-		final_size = max_size;
-	}
+	CLAMP(final_size, 1.0f, max_size);
 	glLineWidth(final_size);
 }
 

@@ -228,6 +228,11 @@ static void outliner_main_region_listener(
 				ED_region_tag_redraw(ar);
 			}
 			break;
+		case NC_MASK:
+			if (ELEM(wmn->action, NA_ADDED)) {
+				ED_region_tag_redraw(ar);
+			}
+			break;
 	}
 
 }
@@ -301,7 +306,7 @@ static SpaceLink *outliner_new(const ScrArea *UNUSED(area), const Scene *UNUSED(
 
 	BLI_addtail(&soutliner->regionbase, ar);
 	ar->regiontype = RGN_TYPE_HEADER;
-	ar->alignment = RGN_ALIGN_TOP;
+	ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
 	/* main region */
 	ar = MEM_callocN(sizeof(ARegion), "main region for outliner");

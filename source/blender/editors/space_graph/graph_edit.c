@@ -54,6 +54,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_animsys.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
@@ -278,7 +279,8 @@ void GRAPH_OT_view_all(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = graphkeys_viewall_exec;
-	ot->poll = ED_operator_graphedit_active; /* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	/* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	ot->poll = ED_operator_graphedit_active;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -297,7 +299,8 @@ void GRAPH_OT_view_selected(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = graphkeys_view_selected_exec;
-	ot->poll = ED_operator_graphedit_active; /* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	/* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	ot->poll = ED_operator_graphedit_active;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -521,6 +524,7 @@ static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
 static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
 {
 	ListBase anim_data = {NULL, NULL};
+	ListBase nla_cache = {NULL, NULL};
 	bAnimListElem *ale;
 	int filter;
 	size_t num_items;
@@ -602,7 +606,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
 			 */
 			if (ale->id && !ale->owner && !fcu->driver) {
 				insert_keyframe(ac->bmain, depsgraph, reports, ale->id, NULL, ((fcu->grp) ? (fcu->grp->name) : (NULL)),
-				                fcu->rna_path, fcu->array_index, cfra, ts->keyframe_type, flag);
+				                fcu->rna_path, fcu->array_index, cfra, ts->keyframe_type, &nla_cache, flag);
 			}
 			else {
 				AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -620,6 +624,8 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
 			ale->update |= ANIM_UPDATE_DEFAULT;
 		}
 	}
+
+	BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
 	ANIM_animdata_update(ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
@@ -1797,9 +1803,12 @@ void GRAPH_OT_handle_type(wmOperatorType *ot)
 typedef struct tEulerFilter {
 	struct tEulerFilter *next, *prev;
 
-	ID *id;                         /* ID-block which owns the channels */
-	FCurve *(fcurves[3]);           /* 3 Pointers to F-Curves */
-	const char *rna_path;           /* Pointer to one of the RNA Path's used by one of the F-Curves */
+	/** ID-block which owns the channels */
+	ID *id;
+	/** 3 Pointers to F-Curves */
+	FCurve *(fcurves[3]);
+	/** Pointer to one of the RNA Path's used by one of the F-Curves */
+	const char *rna_path;
 } tEulerFilter;
 
 static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
@@ -1860,7 +1869,8 @@ static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
 			groups++;
 
 			euf->id = ale->id;
-			euf->rna_path = fcu->rna_path; /* this should be safe, since we're only using it for a short time */
+			/* this should be safe, since we're only using it for a short time */
+			euf->rna_path = fcu->rna_path;
 			euf->fcurves[fcu->array_index] = fcu;
 		}
 
@@ -1880,7 +1890,8 @@ static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
 		int f;
 
 		/* sanity check: ensure that there are enough F-Curves to work on in this group */
-		/* TODO: also enforce assumption that there be a full set of keyframes at each position by ensuring that totvert counts are same? */
+		/* TODO: also enforce assumption that there be a full set of keyframes
+		 * at each position by ensuring that totvert counts are same? */
 		if (ELEM(NULL, euf->fcurves[0], euf->fcurves[1], euf->fcurves[2])) {
 			/* report which components are missing */
 			BKE_reportf(op->reports, RPT_WARNING,
@@ -1913,7 +1924,8 @@ static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
 
 				/* > 180 degree flip? */
 				if ((sign * (prev->vec[1][1] - bezt->vec[1][1])) >= (float)M_PI) {
-					/* 360 degrees to add/subtract frame value until difference is acceptably small that there's no more flip */
+					/* 360 degrees to add/subtract frame value until difference
+					 * is acceptably small that there's no more flip */
 					const float fac = sign * 2.0f * (float)M_PI;
 
 					while ((sign * (prev->vec[1][1] - bezt->vec[1][1])) >= (float)M_PI) {

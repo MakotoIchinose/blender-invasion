@@ -213,7 +213,7 @@ void outliner_cleanup_tree(SpaceOops *soops)
  * Free \a element and its sub-tree and remove its link in \a parent_subtree.
  *
  * \note Does not remove the TreeStoreElem of \a element!
- * \param parent_subtree Subtree of the parent element, so the list containing \a element.
+ * \param parent_subtree: Subtree of the parent element, so the list containing \a element.
  */
 void outliner_free_tree_element(TreeElement *element, ListBase *parent_subtree)
 {
@@ -1313,6 +1313,12 @@ static void outliner_add_layer_collections_recursive(
 		ten->name = id->name + 2;
 		ten->directdata = lc;
 
+		/* Open by default. */
+		TreeStoreElem *tselem = TREESTORE(ten);
+		if (!tselem->used) {
+			tselem->flag &= ~TSE_CLOSED;
+		}
+
 		const bool exclude = (lc->flag & LAYER_COLLECTION_EXCLUDE) != 0;
 		if (exclude ||
 		    ((layer->runtime_flag & VIEW_LAYER_HAS_HIDE) &&
@@ -1929,7 +1935,8 @@ void outliner_build_tree(Main *mainvar, Scene *scene, ViewLayer *view_layer, Spa
 {
 	TreeElement *te = NULL, *ten;
 	TreeStoreElem *tselem;
-	int show_opened = !soops->treestore || !BLI_mempool_len(soops->treestore); /* on first view, we open scenes */
+	/* on first view, we open scenes */
+	int show_opened = !soops->treestore || !BLI_mempool_len(soops->treestore);
 
 	/* Are we looking for something - we want to tag parents to filter child matches
 	 * - NOT in datablocks view - searching all datablocks takes way too long to be useful

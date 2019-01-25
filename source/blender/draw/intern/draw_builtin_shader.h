@@ -16,15 +16,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * ***** END GPL LICENSE BLOCK *****
+ *
  */
 
-/** \file blender/python/gpu/gpu_py_primitive.h
- *  \ingroup bpygpu
+/** \file draw_builtin_shader.h
+ *  \ingroup draw
  */
 
-#ifndef __GPU_PY_PRIMITIVE_H__
-#define __GPU_PY_PRIMITIVE_H__
+#ifndef __DRAW_BUILTIN_SHADER_H__
+#define __DRAW_BUILTIN_SHADER_H__
 
-int bpygpu_ParsePrimType(PyObject *o, void *p);
+struct GPUShader;
 
-#endif /* __GPU_PY_PRIMITIVE_H__ */
+struct GPUShader *DRW_shader_get_builtin_shader(eGPUBuiltinShader shader_id, eDRW_ShaderSlot slot);
+void DRW_shader_free_builtin_shaders(void);
+
+#endif  /* __DRAW_BUILTIN_SHADER_H__ */

@@ -394,7 +394,7 @@ static void uilist_draw_item(uiList *ui_list, bContext *C, uiLayout *layout, Poi
 	RNA_parameter_list_free(&list);
 }
 
-static void uilist_draw_filter(uiList *ui_list, bContext *C, uiLayout *layout, bool reverse)
+static void uilist_draw_filter(uiList *ui_list, bContext *C, uiLayout *layout)
 {
 	extern FunctionRNA rna_UIList_draw_filter_func;
 
@@ -408,7 +408,6 @@ static void uilist_draw_filter(uiList *ui_list, bContext *C, uiLayout *layout, b
 	RNA_parameter_list_create(&list, &ul_ptr, func);
 	RNA_parameter_set_lookup(&list, "context", &C);
 	RNA_parameter_set_lookup(&list, "layout", &layout);
-	RNA_parameter_set_lookup(&list, "reverse", &reverse);
 	ui_list->type->ext.call((bContext *)C, &ul_ptr, func, &list);
 
 	RNA_parameter_list_free(&list);
@@ -950,6 +949,11 @@ static void rna_UILayout_alignment_set(PointerRNA *ptr, int value)
 	uiLayoutSetAlignment(ptr->data, value);
 }
 
+static int rna_UILayout_direction_get(PointerRNA *ptr)
+{
+	return uiLayoutGetLocalDir(ptr->data);
+}
+
 static float rna_UILayout_scale_x_get(PointerRNA *ptr)
 {
 	return uiLayoutGetScaleX(ptr->data);
@@ -1035,6 +1039,12 @@ static void rna_def_ui_layout(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	static const EnumPropertyItem direction_items[] = {
+		{UI_LAYOUT_HORIZONTAL, "HORIZONTAL", 0, "Horizontal", ""},
+		{UI_LAYOUT_VERTICAL, "VERTICAL", 0, "Vertical", ""},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	static const EnumPropertyItem emboss_items[] = {
 		{UI_EMBOSS, "NORMAL", 0, "Normal", "Draw standard button emboss style"},
 		{UI_EMBOSS_NONE, "NONE", 0, "None", "Draw only text and icons"},
@@ -1066,6 +1076,11 @@ static void rna_def_ui_layout(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "alignment", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, alignment_items);
 	RNA_def_property_enum_funcs(prop, "rna_UILayout_alignment_get", "rna_UILayout_alignment_set", NULL);
+
+	prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, direction_items);
+	RNA_def_property_enum_funcs(prop, "rna_UILayout_direction_get", NULL, NULL);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
 #if 0
 	prop = RNA_def_property(srna, "keep_aspect", PROP_BOOLEAN, PROP_NONE);
@@ -1218,7 +1233,7 @@ static void rna_def_panel(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "bl_parent_id", PROP_STRING, PROP_NONE);
 	RNA_def_property_string_sdna(prop, NULL, "type->parent_id");
 	RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-	RNA_def_property_ui_text(prop, "Parent ID Name", "If this is set, the panel becomes a subpanel");
+	RNA_def_property_ui_text(prop, "Parent ID Name", "If this is set, the panel becomes a sub-panel");
 
 	prop = RNA_def_property(srna, "bl_ui_units_x", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_int_sdna(prop, NULL, "type->ui_units_x");
@@ -1281,6 +1296,12 @@ static void rna_def_uilist(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "filter_flag", UILST_FLT_EXCLUDE);
 	RNA_def_property_ui_text(prop, "Invert", "Invert filtering (show hidden items, and vice-versa)");
 
+	/* WARNING: This is sort of an abuse, sort-by-alpha is actually a value, should even be an enum in full logic
+	 * (of two values, sort by index and sort by name).
+	 * But for default UIList, it's nicer (better UI-wise) to show this as a boolean bit-flag option,
+	 * avoids having to define custom setters/getters using UILST_FLT_SORT_MASK to mask out
+	 * actual bitflags on same var, etc.
+	 */
 	prop = RNA_def_property(srna, "use_filter_sort_alpha", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "filter_sort_flag", UILST_FLT_SORT_ALPHA);
 	RNA_def_property_ui_icon(prop, ICON_SORTALPHA, 0);
@@ -1288,7 +1309,11 @@ static void rna_def_uilist(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "use_filter_sort_reverse", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "filter_sort_flag", UILST_FLT_SORT_REVERSE);
-	RNA_def_property_ui_text(prop, "Invert", "Invert the order of shown items");
+	RNA_def_property_ui_text(prop, "Reverse", "Reverse the order of shown items");
+
+	prop = RNA_def_property(srna, "use_filter_sort_lock", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "filter_sort_flag", UILST_FLT_SORT_LOCK);
+	RNA_def_property_ui_text(prop, "Lock Order", "Lock the order of shown items (user cannot change it)");
 
 	/* draw_item */
 	func = RNA_def_function(srna, "draw_item", NULL);
@@ -1325,7 +1350,6 @@ static void rna_def_uilist(BlenderRNA *brna)
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	parm = RNA_def_pointer(func, "layout", "UILayout", "", "Layout to draw the item");
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-	RNA_def_boolean(func, "reverse", false, "", "Display items in reverse order");
 
 	/* filter */
 	func = RNA_def_function(srna, "filter_items", NULL);

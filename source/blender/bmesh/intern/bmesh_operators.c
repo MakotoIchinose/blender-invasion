@@ -142,7 +142,7 @@ static void bmo_op_slots_init(const BMOSlotType *slot_types, BMOpSlot *slot_args
 				break;
 			case BMO_OP_SLOT_INT:
 				if (ELEM(slot->slot_subtype.intg, BMO_OP_SLOT_SUBTYPE_INT_ENUM, BMO_OP_SLOT_SUBTYPE_INT_FLAG)) {
-					slot->data.enum_flags = slot_types[i].enum_flags;
+					slot->data.enum_data.flags = slot_types[i].enum_flags;
 				}
 			default:
 				break;
@@ -1379,7 +1379,7 @@ void *BMO_slot_buffer_get_first(BMOpSlot slot_args[BMO_OP_MAX_SLOTS], const char
 /**
  * \brief New Iterator
  *
- * \param restrictmask restricts the iteration to certain element types
+ * \param restrictmask: restricts the iteration to certain element types
  * (e.g. combination of BM_VERT, BM_EDGE, BM_FACE), if iterating
  * over an element buffer (not a mapping). */
 void *BMO_iter_new(
@@ -1851,7 +1851,12 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
 							BMO_slot_buffer_from_disabled_hflag(bm, op, op->slots_in, slot_name, htype, va_arg(vlist, int));
 						}
 						else if (type == 'a') {
-							BMO_slot_buffer_from_all(bm, op, op->slots_in, slot_name, htype);
+							if ((op->flag & BMO_FLAG_RESPECT_HIDE) == 0) {
+								BMO_slot_buffer_from_all(bm, op, op->slots_in, slot_name, htype);
+							}
+							else {
+								BMO_slot_buffer_from_disabled_hflag(bm, op, op->slots_in, slot_name, htype, BM_ELEM_HIDDEN);
+							}
 						}
 						else if (type == 'f') {
 							BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_in, slot_name, htype, va_arg(vlist, int));

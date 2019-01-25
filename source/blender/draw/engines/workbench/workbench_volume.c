@@ -1,5 +1,5 @@
 /*
- * Copyright 2018, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2018, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -52,7 +55,7 @@ static struct {
 	struct GPUShader *volume_slice_coba_sh;
 	struct GPUTexture *dummy_tex;
 	struct GPUTexture *dummy_coba_tex;
-} e_data = {NULL};
+} e_data = {{NULL}};
 
 extern char datatoc_workbench_volume_vert_glsl[];
 extern char datatoc_workbench_volume_frag_glsl[];

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -108,7 +111,6 @@ extern char datatoc_volumetric_lib_glsl[];
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 
 extern Material defmaterial;
-extern GlobalsUboStorage ts;
 
 /* *********** FUNCTIONS *********** */
 
@@ -961,7 +963,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		Scene *scene = draw_ctx->scene;
 		World *wo = scene->world;
 
-		float *col = ts.colorBackground;
+		const float *col = G_draw.block.colorBackground;
 
 		/* LookDev */
 		EEVEE_lookdev_cache_init(vedata, &grp, psl->background_pass, wo, NULL);
@@ -1162,14 +1164,14 @@ static void material_opaque(
 		        scene, ma, vedata, false, false, use_ssrefract,
 		        use_sss, use_translucency, linfo->shadow_method);
 
-		GPUMaterialStatus status_mat_surface = GPU_material_status(*gpumat);
+		eGPUMaterialStatus status_mat_surface = GPU_material_status(*gpumat);
 
 		/* Alpha CLipped : Discard pixel from depth pass, then
 		 * fail the depth test for shading. */
 		if (ELEM(ma->blend_method, MA_BM_CLIP, MA_BM_HASHED)) {
 			*gpumat_depth = EEVEE_material_mesh_depth_get(scene, ma, (ma->blend_method == MA_BM_HASHED), false);
 
-			GPUMaterialStatus status_mat_depth = GPU_material_status(*gpumat_depth);
+			eGPUMaterialStatus status_mat_depth = GPU_material_status(*gpumat_depth);
 			if (status_mat_depth != GPU_MAT_SUCCESS) {
 				/* Mixing both flags. If depth shader fails, show it to the user by not using
 				 * the surface shader. */
@@ -1387,7 +1389,7 @@ static void material_transparent(
 		DRW_shgroup_uniform_float(*shgrp, "roughness", rough_p, 1);
 	}
 
-	const bool use_prepass = ((ma->blend_flag & MA_BL_HIDE_BACKSIDE) != 0);
+	const bool use_prepass = ((ma->blend_flag & MA_BL_HIDE_BACKFACE) != 0);
 
 	DRWState all_state = (
 	        DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_CULL_BACK |
@@ -1439,18 +1441,13 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 	Scene *scene = draw_ctx->scene;
 	GHash *material_hash = stl->g_data->material_hash;
 
-	const bool do_cull = (draw_ctx->v3d && (draw_ctx->v3d->flag2 & V3D_BACKFACE_CULLING));
+	const bool do_cull = (draw_ctx->v3d && (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING));
 	const bool is_active = (ob == draw_ctx->obact);
 	const bool is_sculpt_mode = is_active && (draw_ctx->object_mode & OB_MODE_SCULPT) != 0;
-#if 0
-	const bool is_sculpt_mode_draw = is_sculpt_mode && (draw_ctx->v3d->flag2 & V3D_SHOW_MODE_SHADE_OVERRIDE) == 0;
-#else
 	/* For now just force fully shaded with eevee when supported. */
 	const bool is_sculpt_mode_draw =
 	        is_sculpt_mode &&
 	        ((ob->sculpt && ob->sculpt->pbvh) && (BKE_pbvh_type(ob->sculpt->pbvh) != PBVH_FACES));
-#endif
-	const bool use_hide = is_active && DRW_object_use_hide_faces(ob);
 	const bool is_default_mode_shader = is_sculpt_mode;
 
 	/* First get materials for this mesh. */
@@ -1527,7 +1524,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 			int *auto_layer_is_srgb;
 			int auto_layer_count;
 			struct GPUBatch **mat_geom = DRW_cache_object_surface_material_get(
-			        ob, gpumat_array, materials_len, use_hide,
+			        ob, gpumat_array, materials_len,
 			        &auto_layer_names,
 			        &auto_layer_is_srgb,
 			        &auto_layer_count);
@@ -1552,7 +1549,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 
 					/* XXX TODO rewrite this to include the dupli objects.
 					 * This means we cannot exclude dupli objects from reflections!!! */
-					if ((ob->base_flag & BASE_FROMDUPLI) == 0) {
+					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						oedata = EEVEE_object_data_ensure(ob);
 						oedata->ob = ob;
 						oedata->test_data = &sldata->probes->vis_data;

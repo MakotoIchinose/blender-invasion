@@ -36,6 +36,7 @@
 #include "../generic/python_utildefines.h"
 #include "../mathutils/mathutils.h"
 
+#include "gpu_py_api.h"
 #include "gpu_py_shader.h" /* own include */
 #include "gpu_py_vertex_format.h"
 
@@ -63,7 +64,7 @@ static int bpygpu_ParseBultinShaderEnum(PyObject *o, void *p)
 		} \
 	} ((void)0)
 
-	GPUBuiltinShader mode;
+	eGPUBuiltinShader mode;
 	MATCH_ID(2D_UNIFORM_COLOR);
 	MATCH_ID(2D_FLAT_COLOR);
 	MATCH_ID(2D_SMOOTH_COLOR);
@@ -79,13 +80,13 @@ static int bpygpu_ParseBultinShaderEnum(PyObject *o, void *p)
 	return 0;
 
 success:
-	(*(GPUBuiltinShader *)p) = mode;
+	(*(eGPUBuiltinShader *)p) = mode;
 	return 1;
 }
 
 static int bpygpu_uniform_location_get(GPUShader *shader, const char *name, const char *error_prefix)
 {
-	int uniform = GPU_shader_get_uniform(shader, name);
+	int uniform = GPU_shader_get_uniform_ensure(shader, name);
 
 	if (uniform == -1) {
 		PyErr_Format(PyExc_ValueError, "%s: uniform %.32s %.32s not found", error_prefix, name);
@@ -104,6 +105,8 @@ static int bpygpu_uniform_location_get(GPUShader *shader, const char *name, cons
 
 static PyObject *bpygpu_shader_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
 {
+	BPYGPU_IS_INIT_OR_ERROR_OBJ;
+
 	struct {
 		const char *vertexcode;
 		const char *fragcode;
@@ -715,7 +718,9 @@ PyDoc_STRVAR(bpygpu_shader_from_builtin_doc,
 );
 static PyObject *bpygpu_shader_from_builtin(PyObject *UNUSED(self), PyObject *arg)
 {
-	GPUBuiltinShader shader_id;
+	BPYGPU_IS_INIT_OR_ERROR_OBJ;
+
+	eGPUBuiltinShader shader_id;
 
 	if (!bpygpu_ParseBultinShaderEnum(arg, &shader_id)) {
 		return NULL;
@@ -745,7 +750,7 @@ PyDoc_STRVAR(bpygpu_shader_code_from_builtin_doc,
 );
 static PyObject *bpygpu_shader_code_from_builtin(BPyGPUShader *UNUSED(self), PyObject *arg)
 {
-	GPUBuiltinShader shader_id;
+	eGPUBuiltinShader shader_id;
 
 	const char *vert;
 	const char *frag;

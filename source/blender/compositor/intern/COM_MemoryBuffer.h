@@ -44,7 +44,7 @@ typedef enum MemoryBufferState {
 	/** \brief memory is available for use, content has been created */
 	COM_MB_AVAILABLE = 2,
 	/** \brief chunk is consolidated from other chunks. special state.*/
-	COM_MB_TEMPORARILY = 6
+	COM_MB_TEMPORARILY = 6,
 } MemoryBufferState;
 
 typedef enum MemoryBufferExtend {
@@ -279,7 +279,7 @@ public:
 
 	/**
 	 * \brief add the content from otherBuffer to this MemoryBuffer
-	 * \param otherBuffer source buffer
+	 * \param otherBuffer: source buffer
 	 *
 	 * \note take care when running this on a new buffer since it wont fill in
 	 *       uninitialized values in areas where the buffers don't overlap.

@@ -1,4 +1,5 @@
 uniform mat4 ModelViewProjectionMatrix;
+uniform mat4 ModelMatrix;
 uniform mat4 ModelMatrixInverse;
 uniform mat4 ProjectionMatrix;
 uniform mat4 ViewProjectionMatrix;
@@ -8,7 +9,8 @@ uniform mat3 NormalMatrix;
 #ifndef HAIR_SHADER
 in vec3 pos;
 in vec3 nor;
-in vec2 uv;
+in vec2 u; /* active texture layer */
+#define uv u
 #else /* HAIR_SHADER */
 #  ifdef V3D_SHADING_TEXTURE_COLOR
 uniform samplerBuffer u; /* active texture layer */
@@ -67,4 +69,9 @@ void main()
 	normal_viewport = normalize(normal_viewport);
 #  endif
 #endif
+
+#ifdef USE_WORLD_CLIP_PLANES
+	world_clip_planes_calc_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
+#endif
+
 }

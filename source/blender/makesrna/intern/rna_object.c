@@ -74,10 +74,10 @@ const EnumPropertyItem rna_enum_object_mode_items[] = {
 	{OB_MODE_WEIGHT_PAINT, "WEIGHT_PAINT", ICON_WPAINT_HLT, "Weight Paint", ""},
 	{OB_MODE_TEXTURE_PAINT, "TEXTURE_PAINT", ICON_TPAINT_HLT, "Texture Paint", ""},
 	{OB_MODE_PARTICLE_EDIT, "PARTICLE_EDIT", ICON_PARTICLEMODE, "Particle Edit", ""},
-	{OB_MODE_GPENCIL_EDIT, "GPENCIL_EDIT", ICON_EDITMODE_HLT, "Edit Mode", "Edit Grease Pencil Strokes"},
-	{OB_MODE_GPENCIL_SCULPT, "GPENCIL_SCULPT", ICON_SCULPTMODE_HLT, "Sculpt Mode", "Sculpt Grease Pencil Strokes"},
-	{OB_MODE_GPENCIL_PAINT, "GPENCIL_PAINT", ICON_GREASEPENCIL, "Draw", "Paint Grease Pencil Strokes"},
-	{OB_MODE_GPENCIL_WEIGHT, "GPENCIL_WEIGHT", ICON_WPAINT_HLT, "Weight Paint", "Grease Pencil Weight Paint Strokes" },
+	{OB_MODE_EDIT_GPENCIL, "EDIT_GPENCIL", ICON_EDITMODE_HLT, "Edit Mode", "Edit Grease Pencil Strokes"},
+	{OB_MODE_SCULPT_GPENCIL, "SCULPT_GPENCIL", ICON_SCULPTMODE_HLT, "Sculpt Mode", "Sculpt Grease Pencil Strokes"},
+	{OB_MODE_PAINT_GPENCIL, "PAINT_GPENCIL", ICON_GREASEPENCIL, "Draw", "Paint Grease Pencil Strokes"},
+	{OB_MODE_WEIGHT_GPENCIL, "WEIGHT_GPENCIL", ICON_WPAINT_HLT, "Weight Paint", "Grease Pencil Weight Paint Strokes" },
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -91,10 +91,10 @@ const EnumPropertyItem rna_enum_workspace_object_mode_items[] = {
 	{OB_MODE_WEIGHT_PAINT, "WEIGHT_PAINT", ICON_WPAINT_HLT, "Weight Paint", ""},
 	{OB_MODE_TEXTURE_PAINT, "TEXTURE_PAINT", ICON_TPAINT_HLT, "Texture Paint", ""},
 	{OB_MODE_PARTICLE_EDIT, "PARTICLE_EDIT", ICON_PARTICLEMODE, "Particle Edit", ""},
-	{OB_MODE_GPENCIL_EDIT, "GPENCIL_EDIT", ICON_EDITMODE_HLT, "Grease Pencil Edit Mode", "Edit Grease Pencil Strokes"},
-	{OB_MODE_GPENCIL_SCULPT, "GPENCIL_SCULPT", ICON_SCULPTMODE_HLT, "Grease Pencil Sculpt Mode", "Sculpt Grease Pencil Strokes"},
-	{OB_MODE_GPENCIL_PAINT, "GPENCIL_PAINT", ICON_GREASEPENCIL, "Grease Pencil Draw", "Paint Grease Pencil Strokes"},
-	{OB_MODE_GPENCIL_WEIGHT, "GPENCIL_WEIGHT", ICON_WPAINT_HLT, "Grease Pencil Weight Paint", "Grease Pencil Weight Paint Strokes" },
+	{OB_MODE_EDIT_GPENCIL, "EDIT_GPENCIL", ICON_EDITMODE_HLT, "Grease Pencil Edit Mode", "Edit Grease Pencil Strokes"},
+	{OB_MODE_SCULPT_GPENCIL, "SCULPT_GPENCIL", ICON_SCULPTMODE_HLT, "Grease Pencil Sculpt Mode", "Sculpt Grease Pencil Strokes"},
+	{OB_MODE_PAINT_GPENCIL, "PAINT_GPENCIL", ICON_GREASEPENCIL, "Grease Pencil Draw", "Paint Grease Pencil Strokes"},
+	{OB_MODE_WEIGHT_GPENCIL, "WEIGHT_GPENCIL", ICON_WPAINT_HLT, "Grease Pencil Weight Paint", "Grease Pencil Weight Paint Strokes" },
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -110,7 +110,7 @@ const EnumPropertyItem rna_enum_object_empty_drawtype_items[] = {
 	{0, NULL, 0, NULL, NULL}
 };
 
-const EnumPropertyItem rna_enum_object_empty_image_depth_items[] = {
+static const EnumPropertyItem rna_enum_object_empty_image_depth_items[] = {
 	{OB_EMPTY_IMAGE_DEPTH_DEFAULT, "DEFAULT", 0, "Default", ""},
 	{OB_EMPTY_IMAGE_DEPTH_FRONT, "FRONT", 0, "Front", ""},
 	{OB_EMPTY_IMAGE_DEPTH_BACK, "BACK", 0, "Back", ""},
@@ -193,6 +193,19 @@ const EnumPropertyItem rna_enum_object_type_curve_items[] = {
 	OBTYPE_CU_CURVE,
 	OBTYPE_CU_SURF,
 	OBTYPE_CU_FONT,
+	{0, NULL, 0, NULL, NULL}
+};
+
+const EnumPropertyItem rna_enum_object_rotation_mode_items[] = {
+	{ROT_MODE_QUAT, "QUATERNION", 0, "Quaternion (WXYZ)", "No Gimbal Lock"},
+	{ROT_MODE_XYZ, "XYZ", 0, "XYZ Euler", "XYZ Rotation Order - prone to Gimbal Lock (default)"},
+	{ROT_MODE_XZY, "XZY", 0, "XZY Euler", "XZY Rotation Order - prone to Gimbal Lock"},
+	{ROT_MODE_YXZ, "YXZ", 0, "YXZ Euler", "YXZ Rotation Order - prone to Gimbal Lock"},
+	{ROT_MODE_YZX, "YZX", 0, "YZX Euler", "YZX Rotation Order - prone to Gimbal Lock"},
+	{ROT_MODE_ZXY, "ZXY", 0, "ZXY Euler", "ZXY Rotation Order - prone to Gimbal Lock"},
+	{ROT_MODE_ZYX, "ZYX", 0, "ZYX Euler", "ZYX Rotation Order - prone to Gimbal Lock"},
+	{ROT_MODE_AXISANGLE, "AXIS_ANGLE", 0, "Axis Angle",
+	                     "Axis Angle (W+XYZ), defines a rotation around some axis defined by 3D-Vector"},
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -471,8 +484,9 @@ static void rna_Object_parent_type_set(PointerRNA *ptr, int value)
 	ED_object_parent(ob, ob->parent, value, ob->parsubstr);
 }
 
-static const EnumPropertyItem *rna_Object_parent_type_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                      PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Object_parent_type_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	Object *ob = (Object *)ptr->data;
 	EnumPropertyItem *item = NULL;
@@ -905,7 +919,7 @@ static void rna_Object_dimensions_get(PointerRNA *ptr, float *value)
 static void rna_Object_dimensions_set(PointerRNA *ptr, const float *value)
 {
 	Object *ob = ptr->data;
-	BKE_object_dimensions_set(ob, value);
+	BKE_object_dimensions_set(ob, value, 0);
 }
 
 static int rna_Object_location_editable(PointerRNA *ptr, int index)
@@ -2114,22 +2128,6 @@ static void rna_def_object(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
-
-	/* XXX: this RNA enum define is currently duplicated for objects,
-	 *      since there is some text here which is not applicable */
-	static const EnumPropertyItem prop_rotmode_items[] = {
-		{ROT_MODE_QUAT, "QUATERNION", 0, "Quaternion (WXYZ)", "No Gimbal Lock"},
-		{ROT_MODE_XYZ, "XYZ", 0, "XYZ Euler", "XYZ Rotation Order - prone to Gimbal Lock (default)"},
-		{ROT_MODE_XZY, "XZY", 0, "XZY Euler", "XZY Rotation Order - prone to Gimbal Lock"},
-		{ROT_MODE_YXZ, "YXZ", 0, "YXZ Euler", "YXZ Rotation Order - prone to Gimbal Lock"},
-		{ROT_MODE_YZX, "YZX", 0, "YZX Euler", "YZX Rotation Order - prone to Gimbal Lock"},
-		{ROT_MODE_ZXY, "ZXY", 0, "ZXY Euler", "ZXY Rotation Order - prone to Gimbal Lock"},
-		{ROT_MODE_ZYX, "ZYX", 0, "ZYX Euler", "ZYX Rotation Order - prone to Gimbal Lock"},
-		{ROT_MODE_AXISANGLE, "AXIS_ANGLE", 0, "Axis Angle",
-		                     "Axis Angle (W+XYZ), defines a rotation around some axis defined by 3D-Vector"},
-		{0, NULL, 0, NULL, NULL}
-	};
-
 	static float default_quat[4] = {1, 0, 0, 0};    /* default quaternion values */
 	static float default_axisAngle[4] = {0, 0, 1, 0};   /* default axis-angle rotation values */
 	static float default_scale[3] = {1, 1, 1}; /* default scale values */
@@ -2291,7 +2289,7 @@ static void rna_def_object(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "rotation_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "rotmode");
-	RNA_def_property_enum_items(prop, prop_rotmode_items); /* XXX move to using a single define of this someday */
+	RNA_def_property_enum_items(prop, rna_enum_object_rotation_mode_items);
 	RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
 	RNA_def_property_ui_text(prop, "Rotation Mode", "");
 	RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
@@ -2308,11 +2306,14 @@ static void rna_def_object(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "dimensions", PROP_FLOAT, PROP_XYZ_LENGTH);
 	RNA_def_property_array(prop, 3);
-	/* only for the transform-panel and conflicts with animating scale */
+	/* Only as convinient helper for py API, and conflicts with animating scale. */
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_float_funcs(prop, "rna_Object_dimensions_get", "rna_Object_dimensions_set", NULL);
 	RNA_def_property_ui_range(prop, 0.0f, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
-	RNA_def_property_ui_text(prop, "Dimensions", "Absolute bounding box dimensions of the object");
+	RNA_def_property_ui_text(prop, "Dimensions",
+	                         "Absolute bounding box dimensions of the object (WARNING: assigning to it or "
+	                         "its members mutiple consecutive times will not work correctly, "
+	                         "as this needs up-to-date evaluated data)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
 
@@ -2502,18 +2503,25 @@ static void rna_def_object(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "show_empty_image_perspective", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "empty_image_visibility_flag", OB_EMPTY_IMAGE_VISIBLE_PERSPECTIVE);
+	RNA_def_property_boolean_negative_sdna(prop, NULL, "empty_image_visibility_flag", OB_EMPTY_IMAGE_HIDE_PERSPECTIVE);
 	RNA_def_property_ui_text(prop, "Display in Perspective Mode", "Display image in perspective mode");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "show_empty_image_orthographic", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "empty_image_visibility_flag", OB_EMPTY_IMAGE_VISIBLE_ORTHOGRAPHIC);
+	RNA_def_property_boolean_negative_sdna(prop, NULL, "empty_image_visibility_flag", OB_EMPTY_IMAGE_HIDE_ORTHOGRAPHIC);
 	RNA_def_property_ui_text(prop, "Display in Orthographic Mode", "Display image in orthographic mode");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-	prop = RNA_def_property(srna, "show_empty_image_backside", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "empty_image_visibility_flag", OB_EMPTY_IMAGE_VISIBLE_BACKSIDE);
-	RNA_def_property_ui_text(prop, "Display Back Side", "Display empty image even when viewed from the back");
+	static EnumPropertyItem prop_empty_image_side_items[] = {
+		{0, "DOUBLE_SIDED", 0, "Both", ""},
+		{OB_EMPTY_IMAGE_HIDE_BACK, "FRONT", 0, "Front", ""},
+		{OB_EMPTY_IMAGE_HIDE_FRONT, "BACK", 0, "Back", ""},
+		{0, NULL, 0, NULL, NULL}
+	};
+	prop = RNA_def_property(srna, "empty_image_side", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "empty_image_visibility_flag");
+	RNA_def_property_enum_items(prop, prop_empty_image_side_items);
+	RNA_def_property_ui_text(prop, "Empty Image Side", "Show front/back side");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	/* render */
@@ -2796,7 +2804,7 @@ static void rna_def_object(BlenderRNA *brna)
 
 	/* Base Settings */
 	prop = RNA_def_property(srna, "is_from_instancer", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "base_flag", BASE_FROMDUPLI);
+	RNA_def_property_boolean_sdna(prop, NULL, "base_flag", BASE_FROM_DUPLI);
 	RNA_def_property_ui_text(prop, "Base from Instancer", "Object comes from a instancer");
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 

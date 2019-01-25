@@ -1905,7 +1905,7 @@ static void bpy_prop_callback_assign_enum(struct PropertyRNA *prop, PyObject *ge
 
 #define BPY_PROPDEF_UNIT_DOC \
 "   :arg unit: Enumerator in ['NONE', 'LENGTH', 'AREA', 'VOLUME', 'ROTATION', 'TIME', 'VELOCITY', 'ACCELERATION', 'MASS', 'CAMERA'].\n" \
-"   :type unit: string\n"	\
+"   :type unit: string\n" \
 
 #define BPY_PROPDEF_NUM_MIN_DOC \
 "   :arg min: Hard minimum, trying to assign a value below will silently assign this minimum instead.\n" \
@@ -3083,9 +3083,10 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
 			return NULL;
 
 		if (!RNA_struct_is_a(ptype, &RNA_PropertyGroup)) {
-			PyErr_Format(PyExc_TypeError,
-				"CollectionProperty(...) expected an RNA type derived from %.200s",
-				RNA_struct_ui_name(&RNA_ID), RNA_struct_ui_name(&RNA_PropertyGroup));
+			PyErr_Format(
+			        PyExc_TypeError,
+			        "CollectionProperty(...) expected an RNA type derived from %.200s",
+			        RNA_struct_ui_name(&RNA_ID), RNA_struct_ui_name(&RNA_PropertyGroup));
 			return NULL;
 		}
 
@@ -3192,7 +3193,7 @@ static struct PyModuleDef props_module = {
 	".. note:: All parameters to these functions must be passed as keywords.\n",
 	-1, /* multiple "initialization" just copies the module dict. */
 	props_methods,
-	NULL, NULL, NULL, NULL
+	NULL, NULL, NULL, NULL,
 };
 
 PyObject *BPY_rna_props(void)

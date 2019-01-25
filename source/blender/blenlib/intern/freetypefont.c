@@ -419,7 +419,7 @@ static int check_freetypefont(PackedFile *pf)
  * Construct a new VFontData structure from
  * Freetype font data in a PackedFile.
  *
- * \param pf The font data.
+ * \param pf: The font data.
  * \retval A new VFontData structure, or NULL
  * if unable to load.
  */
@@ -486,7 +486,8 @@ VChar *BLI_vfontchar_from_freetypefont(VFont *vfont, unsigned long character)
 }
 
 /* Yeah, this is very bad... But why is this in BLI in the first place, since it uses Nurb data?
- * Anyway, do not feel like duplicating whole Nurb copy code here, so unless someone has a better idea... */
+ * Anyway, do not feel like duplicating whole Nurb copy code here,
+ * so unless someone has a better idea... */
 #include "../../blenkernel/BKE_curve.h"
 
 VChar *BLI_vfontchar_copy(const VChar *vchar_src, const int UNUSED(flag))

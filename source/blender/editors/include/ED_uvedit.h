@@ -68,6 +68,8 @@ void ED_object_assign_active_image(struct Main *bmain, struct Object *ob, int ma
 bool ED_uvedit_test(struct Object *obedit);
 
 /* visibility and selection */
+bool uvedit_face_visible_nolocal(
+        struct Scene *scene, struct BMFace *efa);
 bool uvedit_face_visible_test(
         struct Scene *scene, struct Object *obedit, struct Image *ima, struct BMFace *efa);
 bool uvedit_face_select_test(
@@ -125,18 +127,8 @@ void ED_uvedit_live_unwrap_begin(struct Scene *scene, struct Object *obedit);
 void ED_uvedit_live_unwrap_re_solve(void);
 void ED_uvedit_live_unwrap_end(short cancel);
 
-void ED_uvedit_live_unwrap(struct Scene *scene, struct Object *obedit);
-void ED_uvedit_pack_islands(
-        struct Scene *scene, struct Object *ob, struct BMesh *bm,
-        bool selected, bool correct_aspect, bool do_rotate);
-void ED_uvedit_pack_islands_multi(
-        struct Scene *scene, struct Object **objects, const uint objects_len,
-        bool selected, bool correct_aspect, bool do_rotate, bool implicit);
-void ED_uvedit_unwrap_cube_project(
-        struct BMesh *bm, float cube_size, bool use_select, const float center[3]);
-
-/* single call up unwrap using scene settings, used for edge tag unwrapping */
-void ED_unwrap_lscm(struct Scene *scene, struct Object *obedit, const short sel, const bool pack);
+void ED_uvedit_live_unwrap(struct Scene *scene, struct Object **objects, int objects_len);
+void ED_uvedit_add_simple_uvs(struct Main *bmain, struct Scene *scene, struct Object *ob);
 
 
 /* uvedit_draw.c */

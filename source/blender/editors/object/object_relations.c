@@ -385,8 +385,9 @@ static int make_proxy_exec(bContext *C, wmOperator *op)
 }
 
 /* Generic itemf's for operators that take library args */
-static const EnumPropertyItem *proxy_collection_object_itemf(bContext *C, PointerRNA *UNUSED(ptr),
-                                                             PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *proxy_collection_object_itemf(
+        bContext *C, PointerRNA *UNUSED(ptr),
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	EnumPropertyItem item_tmp = {0}, *item = NULL;
 	int totitem = 0;
@@ -504,7 +505,8 @@ void ED_object_parent_clear(Object *ob, const int type)
 	switch (type) {
 		case CLEAR_PARENT_ALL:
 		{
-			/* for deformers, remove corresponding modifiers to prevent a large number of modifiers building up */
+			/* for deformers, remove corresponding modifiers to prevent
+			 * a large number of modifiers building up */
 			object_remove_parent_deform_modifiers(ob, ob->parent);
 
 			/* clear parenting relationship completely */
@@ -513,14 +515,16 @@ void ED_object_parent_clear(Object *ob, const int type)
 		}
 		case CLEAR_PARENT_KEEP_TRANSFORM:
 		{
-			/* remove parent, and apply the parented transform result as object's local transforms */
+			/* remove parent, and apply the parented transform
+			 * result as object's local transforms */
 			ob->parent = NULL;
 			BKE_object_apply_mat4(ob, ob->obmat, true, false);
 			break;
 		}
 		case CLEAR_PARENT_INVERSE:
 		{
-			/* object stays parented, but the parent inverse (i.e. offset from parent to retain binding state)
+			/* object stays parented, but the parent inverse
+			 * (i.e. offset from parent to retain binding state)
 			 * is cleared. In other words: nothing to do here! */
 			break;
 		}
@@ -631,7 +635,8 @@ bool ED_object_parent_set(ReportList *reports, const bContext *C, Scene *scene, 
 
 			if ((cu->flag & CU_PATH) == 0) {
 				cu->flag |= CU_PATH | CU_FOLLOW;
-				BKE_displist_make_curveTypes(depsgraph, scene, par, false, false);  /* force creation of path data */
+				/* force creation of path data */
+				BKE_displist_make_curveTypes(depsgraph, scene, par, false, false);
 			}
 			else {
 				cu->flag |= CU_FOLLOW;
@@ -915,7 +920,7 @@ static int parent_set_exec(bContext *C, wmOperator *op)
 
 static int parent_set_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
 {
-	Object *ob = ED_object_active_context(C);
+	Object *parent = ED_object_active_context(C);
 	uiPopupMenu *pup = UI_popup_menu_begin(C, IFACE_("Set Parent To"), ICON_NONE);
 	uiLayout *layout = UI_popup_menu_layout(pup);
 
@@ -935,26 +940,46 @@ static int parent_set_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent 
 	RNA_enum_set(&opptr, "type", PAR_OBJECT);
 	RNA_boolean_set(&opptr, "keep_transform", true);
 #endif
-	/* ob becomes parent, make the associated menus */
-	if (ob->type == OB_ARMATURE) {
+
+	struct {
+		bool mesh, gpencil;
+	} has_children_of_type = { 0 };
+
+	CTX_DATA_BEGIN (C, Object *, child, selected_editable_objects)
+	{
+		if (child == parent) {
+			continue;
+		}
+		if (child->type == OB_MESH) {
+			has_children_of_type.mesh = true;
+		}
+		if (child->type == OB_GPENCIL) {
+			has_children_of_type.gpencil = true;
+		}
+	}
+	CTX_DATA_END;
+
+	if (parent->type == OB_ARMATURE) {
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE);
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_NAME);
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_ENVELOPE);
-		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_AUTO);
+		if (has_children_of_type.mesh || has_children_of_type.gpencil) {
+			uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_AUTO);
+		}
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_BONE);
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_BONE_RELATIVE);
 	}
-	else if (ob->type == OB_CURVE) {
+	else if (parent->type == OB_CURVE) {
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_CURVE);
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_FOLLOW);
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_PATH_CONST);
 	}
-	else if (ob->type == OB_LATTICE) {
+	else if (parent->type == OB_LATTICE) {
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_LATTICE);
 	}
 
 	/* vertex parenting */
-	if (OB_TYPE_SUPPORT_PARVERT(ob->type)) {
+	if (OB_TYPE_SUPPORT_PARVERT(parent->type)) {
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_VERTEX);
 		uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_VERTEX_TRI);
 	}
@@ -1336,7 +1361,7 @@ static void link_to_scene(Main *UNUSED(bmain), unsigned short UNUSED(nr))
 	if (sce->id.lib) return;
 
 	for (base = FIRSTBASE; base; base = base->next) {
-		if (TESTBASE(v3d, base)) {
+		if (BASE_SELECTED(v3d, base)) {
 			nbase = MEM_mallocN(sizeof(Base), "newbase");
 			*nbase = *base;
 			BLI_addhead(&(sce->base), nbase);
@@ -1468,7 +1493,8 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
 						/* new approach, using functions from kernel */
 						for (a = 0; a < ob_src->totcol; a++) {
 							Material *ma = give_current_material(ob_src, a + 1);
-							assign_material(bmain, ob_dst, ma, a + 1, BKE_MAT_ASSIGN_USERPREF); /* also works with ma==NULL */
+							/* also works with `ma == NULL` */
+							assign_material(bmain, ob_dst, ma, a + 1, BKE_MAT_ASSIGN_USERPREF);
 						}
 						DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
 						break;
@@ -1754,7 +1780,7 @@ static void new_id_matar(Main *bmain, Material **matar, const int totcol)
 	}
 }
 
-static void single_obdata_users(Main *bmain, Scene *scene, ViewLayer *view_layer, const int flag)
+static void single_obdata_users(Main *bmain, Scene *scene, ViewLayer *view_layer, View3D *v3d, const int flag)
 {
 	Lamp *la;
 	Curve *cu;
@@ -1763,7 +1789,7 @@ static void single_obdata_users(Main *bmain, Scene *scene, ViewLayer *view_layer
 	Lattice *lat;
 	ID *id;
 
-	FOREACH_OBJECT_FLAG_BEGIN(scene, view_layer, flag, ob)
+	FOREACH_OBJECT_FLAG_BEGIN(scene, view_layer, v3d, flag, ob)
 	{
 		if (!ID_IS_LINKED(ob)) {
 			id = ob->data;
@@ -1844,9 +1870,9 @@ static void single_obdata_users(Main *bmain, Scene *scene, ViewLayer *view_layer
 	}
 }
 
-static void single_object_action_users(Main *bmain, Scene *scene, ViewLayer *view_layer, const int flag)
+static void single_object_action_users(Main *bmain, Scene *scene, ViewLayer *view_layer, View3D *v3d, const int flag)
 {
-	FOREACH_OBJECT_FLAG_BEGIN(scene, view_layer, flag, ob)
+	FOREACH_OBJECT_FLAG_BEGIN(scene, view_layer, v3d, flag, ob)
 	{
 		if (!ID_IS_LINKED(ob)) {
 			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -1856,22 +1882,26 @@ static void single_object_action_users(Main *bmain, Scene *scene, ViewLayer *vie
 	FOREACH_OBJECT_FLAG_END;
 }
 
-static void single_mat_users(Main *bmain, Scene *scene, ViewLayer *view_layer, const int flag)
+static void single_mat_users(Main *bmain, Scene *scene, ViewLayer *view_layer, View3D *v3d, const int flag)
 {
 	Material *ma, *man;
 	int a;
 
-	FOREACH_OBJECT_FLAG_BEGIN(scene, view_layer, flag, ob)
+	FOREACH_OBJECT_FLAG_BEGIN(scene, view_layer, v3d, flag, ob)
 	{
 		if (!ID_IS_LINKED(ob)) {
 			for (a = 1; a <= ob->totcol; a++) {
 				ma = give_current_material(ob, a);
 				if (ma) {
-					/* do not test for LIB_TAG_NEW or use newid: this functions guaranteed delivers single_users! */
+					/* do not test for LIB_TAG_NEW or use newid:
+					 * this functions guaranteed delivers single_users! */
 
 					if (ma->id.us > 1) {
 						man = BKE_material_copy(bmain, ma);
 						BKE_animdata_copy_id_action(bmain, &man->id, false);
+						if (man->nodetree != NULL) {
+							BKE_animdata_copy_id_action(bmain, &man->nodetree->id, false);
+						}
 
 						man->id.us = 0;
 						assign_material(bmain, ob, man, a, BKE_MAT_ASSIGN_USERPREF);
@@ -1919,8 +1949,8 @@ void ED_object_single_users(Main *bmain, Scene *scene, const bool full, const bo
 	single_object_users(bmain, scene, NULL, 0, copy_collections);
 
 	if (full) {
-		single_obdata_users(bmain, scene, NULL, 0);
-		single_object_action_users(bmain, scene, NULL, 0);
+		single_obdata_users(bmain, scene, NULL, NULL, 0);
+		single_object_action_users(bmain, scene, NULL, NULL, 0);
 		single_mat_users_expand(bmain);
 	}
 
@@ -2210,8 +2240,9 @@ static void make_override_static_tag_object(Object *obact, Object *ob)
 		return;
 	}
 
-	/* Note: all this is very case-by-case bad handling, ultimately we'll want a real full 'automatic', generic
-	 * handling of all this, will probably require adding some override-aware stuff to library_query code... */
+	/* Note: all this is very case-by-case bad handling, ultimately we'll want a real full
+	 * 'automatic', generic handling of all this,
+	 * will probably require adding some override-aware stuff to library_query code... */
 
 	if (obact->type == OB_ARMATURE && ob->modifiers.first != NULL) {
 		for (ModifierData *md = ob->modifiers.first; md != NULL; md = md->next) {
@@ -2353,10 +2384,12 @@ static int make_override_static_exec(bContext *C, wmOperator *op)
 		}
 		FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
 
-		/* obcollection is no more duplicollection-ing, it merely parents whole collection of overriding instantiated objects. */
+		/* obcollection is no more duplicollection-ing,
+		 * it merely parents whole collection of overriding instantiated objects. */
 		obcollection->dup_group = NULL;
 
-		/* Also, we'd likely want to lock by default things like transformations of implicitly overridden objects? */
+		/* Also, we'd likely want to lock by default things like
+		 * transformations of implicitly overridden objects? */
 
 		DEG_id_tag_update(&scene->id, 0);
 
@@ -2376,7 +2409,8 @@ static int make_override_static_exec(bContext *C, wmOperator *op)
 
 		success = BKE_override_static_create_from_tag(bmain);
 
-		/* Also, we'd likely want to lock by default things like transformations of implicitly overridden objects? */
+		/* Also, we'd likely want to lock by default things like
+		 * transformations of implicitly overridden objects? */
 
 		/* Cleanup. */
 		BKE_main_id_clear_newpoins(bmain);
@@ -2456,15 +2490,15 @@ static int make_single_user_exec(bContext *C, wmOperator *op)
 	}
 
 	if (RNA_boolean_get(op->ptr, "obdata")) {
-		single_obdata_users(bmain, scene, view_layer, flag);
+		single_obdata_users(bmain, scene, view_layer, v3d, flag);
 	}
 
 	if (RNA_boolean_get(op->ptr, "material")) {
-		single_mat_users(bmain, scene, view_layer, flag);
+		single_mat_users(bmain, scene, view_layer, v3d, flag);
 	}
 
 	if (RNA_boolean_get(op->ptr, "animation")) {
-		single_object_action_users(bmain, scene, view_layer, flag);
+		single_object_action_users(bmain, scene, view_layer, v3d, flag);
 	}
 
 	BKE_main_id_clear_newpoins(bmain);

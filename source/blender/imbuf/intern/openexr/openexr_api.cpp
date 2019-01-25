@@ -1,5 +1,5 @@
 /*
- * ***** BEGIN GPLLICENSE BLOCK *****
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -302,7 +302,7 @@ extern "C"
 
 /**
  * Test presence of OpenEXR file.
- * \param mem pointer to loaded OpenEXR bitstream
+ * \param mem: pointer to loaded OpenEXR bitstream
  */
 int imb_is_a_openexr(const unsigned char *mem)
 {

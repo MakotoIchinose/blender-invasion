@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -109,7 +112,7 @@ void EEVEE_lookdev_cache_init(
 			stl->g_data->light_cache = stl->lookdev_lightcache;
 
 			static float background_color[4];
-			UI_GetThemeColor4fv(TH_HIGH_GRAD, background_color);
+			UI_GetThemeColor4fv(TH_BACK, background_color);
 			/* XXX: Really quick conversion to avoid washed out background.
 			 * Needs to be addressed properly (color managed using ocio). */
 			srgb_to_linearrgb_v4(background_color, background_color);

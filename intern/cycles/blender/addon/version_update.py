@@ -281,9 +281,9 @@ def ambient_occlusion_nodes_relink():
 
 @persistent
 def do_versions(self):
-    if bpy.context.user_preferences.version <= (2, 78, 1):
-        prop = bpy.context.user_preferences.addons[__package__].preferences
-        system = bpy.context.user_preferences.system
+    if bpy.context.preferences.version <= (2, 78, 1):
+        prop = bpy.context.preferences.addons[__package__].preferences
+        system = bpy.context.preferences.system
         if not prop.is_property_set("compute_device_type"):
             # Device might not currently be available so this can fail
             try:
@@ -461,3 +461,11 @@ def do_versions(self):
                     cworld.sampling_method = 'NONE'
 
         ambient_occlusion_nodes_relink()
+
+    if bpy.data.version <= (2, 79, 6) or \
+       (bpy.data.version >= (2, 80, 0) and bpy.data.version <= (2, 80, 41)):
+        # Change default to bump again.
+        for mat in bpy.data.materials:
+            cmat = mat.cycles
+            if not cmat.is_property_set("displacement_method"):
+                cmat.displacement_method = 'DISPLACEMENT'

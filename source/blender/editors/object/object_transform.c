@@ -491,7 +491,8 @@ static int apply_objects_internal(
 					bool has_unparented_layers = false;
 
 					for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-						/* Parented layers aren't supported as we can't easily re-evaluate the scene to sample parent movement */
+						/* Parented layers aren't supported as we can't easily re-evaluate
+						 * the scene to sample parent movement */
 						if (gpl->parent == NULL) {
 							has_unparented_layers = true;
 							break;
@@ -785,9 +786,9 @@ void OBJECT_OT_transform_apply(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	RNA_def_boolean(ot->srna, "location", 0, "Location", "");
-	RNA_def_boolean(ot->srna, "rotation", 0, "Rotation", "");
-	RNA_def_boolean(ot->srna, "scale", 0, "Scale", "");
+	RNA_def_boolean(ot->srna, "location", true, "Location", "");
+	RNA_def_boolean(ot->srna, "rotation", true, "Rotation", "");
+	RNA_def_boolean(ot->srna, "scale", true, "Scale", "");
 	RNA_def_boolean(ot->srna, "properties", true, "Apply Properties",
 	                "Modify properties such as curve vertex radius, font size and bone envelope");
 }
@@ -810,9 +811,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 	Object *obedit = CTX_data_edit_object(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Object *tob;
-	float cursor[3], cent[3], cent_neg[3], centn[3];
+	float cent[3], cent_neg[3], centn[3];
+	const float *cursor = scene->cursor.location;
 	int centermode = RNA_enum_get(op->ptr, "type");
-	int around = RNA_enum_get(op->ptr, "center"); /* initialized from v3d->around */
 
 	ListBase ctx_data_list;
 	CollectionPointerLink *ctx_ob;
@@ -825,12 +826,22 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 		BKE_report(op->reports, RPT_ERROR, "Operation cannot be performed in edit mode");
 		return OPERATOR_CANCELLED;
 	}
-	else {
-		/* get the view settings if 'around' isn't set and the view is available */
-		View3D *v3d = CTX_wm_view3d(C);
-		copy_v3_v3(cursor, scene->cursor.location);
-		if (v3d && !RNA_struct_property_is_set(op->ptr, "center"))
-			around = scene->toolsettings->transform_pivot_point;
+
+	int around;
+	{
+		PropertyRNA *prop_center = RNA_struct_find_property(op->ptr, "center");
+		if (RNA_property_is_set(op->ptr, prop_center)) {
+			around = RNA_property_enum_get(op->ptr, prop_center);
+		}
+		else {
+			if (scene->toolsettings->transform_pivot_point == V3D_AROUND_CENTER_BOUNDS) {
+				around = V3D_AROUND_CENTER_BOUNDS;
+			}
+			else {
+				around = V3D_AROUND_CENTER_MEDIAN;
+			}
+			RNA_property_enum_set(op->ptr, prop_center, around);
+		}
 	}
 
 	zero_v3(cent);
@@ -848,7 +859,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 				mul_m4_v3(obedit->imat, cent);
 			}
 			else {
-				if (around == V3D_AROUND_CENTER_MEAN) {
+				if (around == V3D_AROUND_CENTER_MEDIAN) {
 					if (em->bm->totvert) {
 						const float total_div = 1.0f / (float)em->bm->totvert;
 						BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
@@ -963,7 +974,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 				else if (centermode == ORIGIN_TO_CENTER_OF_MASS_VOLUME) {
 					BKE_mesh_center_of_volume(me, cent);
 				}
-				else if (around == V3D_AROUND_CENTER_MEAN) {
+				else if (around == V3D_AROUND_CENTER_MEDIAN) {
 					BKE_mesh_center_median(me, cent);
 				}
 				else {
@@ -980,9 +991,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 			else if (ELEM(ob->type, OB_CURVE, OB_SURF)) {
 				Curve *cu = ob->data;
 
-				if      (centermode == ORIGIN_TO_CURSOR)    { /* done */ }
-				else if (around == V3D_AROUND_CENTER_MEAN)  { BKE_curve_center_median(cu, cent); }
-				else                                        { BKE_curve_center_bounds(cu, cent); }
+				if      (centermode == ORIGIN_TO_CURSOR)     { /* done */ }
+				else if (around == V3D_AROUND_CENTER_MEDIAN) { BKE_curve_center_median(cu, cent); }
+				else                                         { BKE_curve_center_bounds(cu, cent); }
 
 				/* don't allow Z change if curve is 2D */
 				if ((ob->type == OB_CURVE) && !(cu->flag & CU_3D))
@@ -1062,9 +1073,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 			else if (ob->type == OB_MBALL) {
 				MetaBall *mb = ob->data;
 
-				if      (centermode == ORIGIN_TO_CURSOR)    { /* done */ }
-				else if (around == V3D_AROUND_CENTER_MEAN)  { BKE_mball_center_median(mb, cent); }
-				else                                        { BKE_mball_center_bounds(mb, cent); }
+				if      (centermode == ORIGIN_TO_CURSOR)     { /* done */ }
+				else if (around == V3D_AROUND_CENTER_MEDIAN) { BKE_mball_center_median(mb, cent); }
+				else                                         { BKE_mball_center_bounds(mb, cent); }
 
 				negate_v3_v3(cent_neg, cent);
 				BKE_mball_translate(mb, cent_neg);
@@ -1083,9 +1094,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 			else if (ob->type == OB_LATTICE) {
 				Lattice *lt = ob->data;
 
-				if      (centermode == ORIGIN_TO_CURSOR)    { /* done */ }
-				else if (around == V3D_AROUND_CENTER_MEAN)  { BKE_lattice_center_median(lt, cent); }
-				else                                        { BKE_lattice_center_bounds(lt, cent); }
+				if      (centermode == ORIGIN_TO_CURSOR)     { /* done */ }
+				else if (around == V3D_AROUND_CENTER_MEDIAN) { BKE_lattice_center_median(lt, cent); }
+				else                                         { BKE_lattice_center_bounds(lt, cent); }
 
 				negate_v3_v3(cent_neg, cent);
 				BKE_lattice_translate(lt, cent_neg, 1);
@@ -1122,7 +1133,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 						float diff_mat[4][4];
 						float inverse_diff_mat[4][4];
 
-						/* recalculate all strokes (all layers are considered without evaluating lock attributtes) */
+						/* recalculate all strokes
+						 * (all layers are considered without evaluating lock attributtes) */
 						for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 							/* calculate difference matrix */
 							ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
@@ -1203,7 +1215,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
 						BKE_object_where_is_calc(depsgraph, scene, ob_other);
 						if (ob_other->type == OB_ARMATURE) {
-							BKE_pose_where_is(depsgraph, scene, ob_other); /* needed for bone parents */
+							/* needed for bone parents */
+							BKE_pose_where_is(depsgraph, scene, ob_other);
 						}
 						ignore_parent_tx(C, bmain, scene, ob_other);
 					}
@@ -1254,7 +1267,7 @@ void OBJECT_OT_origin_set(wmOperatorType *ot)
 	};
 
 	static const EnumPropertyItem prop_set_bounds_types[] = {
-		{V3D_AROUND_CENTER_MEAN, "MEDIAN", 0, "Median Center", ""},
+		{V3D_AROUND_CENTER_MEDIAN, "MEDIAN", 0, "Median Center", ""},
 		{V3D_AROUND_CENTER_BOUNDS, "BOUNDS", 0, "Bounds Center", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
@@ -1274,7 +1287,7 @@ void OBJECT_OT_origin_set(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	ot->prop = RNA_def_enum(ot->srna, "type", prop_set_center_types, 0, "Type", "");
-	RNA_def_enum(ot->srna, "center", prop_set_bounds_types, V3D_AROUND_CENTER_MEAN, "Center", "");
+	RNA_def_enum(ot->srna, "center", prop_set_bounds_types, V3D_AROUND_CENTER_MEDIAN, "Center", "");
 }
 
 /* -------------------------------------------------------------------- */
@@ -1288,6 +1301,10 @@ void OBJECT_OT_origin_set(wmOperatorType *ot)
 
 /* When using multiple objects, apply their relative rotational offset to the active object. */
 #define USE_RELATIVE_ROTATION
+/* Disable overlays, ignoring user setting (lamp wire gets in the way). */
+#define USE_RENDER_OVERRIDE
+/* Calculate a depth if the cursor isn't already over a depth (not essential but feels buggy without). */
+#define USE_FAKE_DEPTH_INIT
 
 struct XFormAxisItem {
 	Object *ob;
@@ -1317,6 +1334,37 @@ struct XFormAxisData {
 	int init_event;
 };
 
+#ifdef USE_FAKE_DEPTH_INIT
+static void object_transform_axis_target_calc_depth_init(struct XFormAxisData *xfd, const int mval[2])
+{
+	struct XFormAxisItem *item = xfd->object_data;
+	float view_co_a[3], view_co_b[3];
+	const float mval_fl[2] = {UNPACK2(mval)};
+	ED_view3d_win_to_ray(xfd->vc.ar, mval_fl, view_co_a, view_co_b);
+	add_v3_v3(view_co_b, view_co_a);
+	float center[3] = {0.0f};
+	int   center_tot = 0;
+	for (int i = 0; i < xfd->object_data_len; i++, item++) {
+		const Object *ob = item->ob;
+		const float *ob_co_a = ob->obmat[3];
+		float        ob_co_b[3];
+		add_v3_v3v3(ob_co_b, ob->obmat[3], ob->obmat[2]);
+		float view_isect[3], ob_isect[3];
+		if (isect_line_line_v3(view_co_a, view_co_b, ob_co_a, ob_co_b, view_isect, ob_isect)) {
+			add_v3_v3(center, view_isect);
+			center_tot += 1;
+		}
+	}
+	if (center_tot) {
+		mul_v3_fl(center, 1.0f / center_tot);
+		float center_proj[3];
+		ED_view3d_project(xfd->vc.ar, center, center_proj);
+		xfd->prev.depth = center_proj[2];
+		xfd->prev.is_depth_valid = true;
+	}
+}
+#endif  /* USE_FAKE_DEPTH_INIT */
+
 static bool object_is_target_compat(const Object *ob)
 {
 	if (ob->type == OB_LAMP) {
@@ -1338,6 +1386,13 @@ static void object_transform_axis_target_free_data(wmOperator *op)
 {
 	struct XFormAxisData *xfd = op->customdata;
 	struct XFormAxisItem *item = xfd->object_data;
+
+#ifdef USE_RENDER_OVERRIDE
+	if (xfd->vc.rv3d->depths) {
+		xfd->vc.rv3d->depths->damaged = true;
+	}
+#endif
+
 	for (int i = 0; i < xfd->object_data_len; i++, item++) {
 		MEM_freeN(item->obtfm);
 	}
@@ -1412,10 +1467,16 @@ static int object_transform_axis_target_invoke(bContext *C, wmOperator *op, cons
 	ViewContext vc;
 	ED_view3d_viewcontext_init(C, &vc);
 
-	if (!object_is_target_compat(vc.obact)) {
+	if (vc.obact == NULL || !object_is_target_compat(vc.obact)) {
 		/* Falls back to texture space transform. */
 		return OPERATOR_PASS_THROUGH;
 	}
+
+
+#ifdef USE_RENDER_OVERRIDE
+	int flag2_prev = vc.v3d->flag2;
+	vc.v3d->flag2 |= V3D_RENDER_OVERRIDE;
+#endif
 
 	ED_view3d_autodist_init(vc.depsgraph, vc.ar, vc.v3d, 0);
 
@@ -1423,6 +1484,10 @@ static int object_transform_axis_target_invoke(bContext *C, wmOperator *op, cons
 		vc.rv3d->depths->damaged = true;
 	}
 	ED_view3d_depth_update(vc.ar);
+
+#ifdef USE_RENDER_OVERRIDE
+	vc.v3d->flag2 = flag2_prev;
+#endif
 
 	if (vc.rv3d->depths == NULL) {
 		BKE_report(op->reports, RPT_WARNING, "Unable to access depth buffer, using view plane");
@@ -1506,6 +1571,19 @@ static int object_transform_axis_target_modal(bContext *C, wmOperator *op, const
 					depth = (double)xfd->prev.depth;
 				}
 			}
+
+#ifdef USE_FAKE_DEPTH_INIT
+			/* First time only. */
+			if (depth == 1.0f) {
+				if (xfd->prev.is_depth_valid == false) {
+					object_transform_axis_target_calc_depth_init(xfd, event->mval);
+					if (xfd->prev.is_depth_valid) {
+						depth = (double)xfd->prev.depth;
+					}
+				}
+			}
+#endif
+
 			if ((depth > depths->depth_range[0]) && (depth < depths->depth_range[1])) {
 				xfd->prev.depth = depth;
 				xfd->prev.is_depth_valid = true;
@@ -1586,7 +1664,8 @@ static int object_transform_axis_target_modal(bContext *C, wmOperator *op, const
 									copy_v3_v3(loc, location_world);
 									madd_v3_v3fl(loc, target_normal, item->xform_dist);
 									object_apply_location(item->ob, loc);
-									copy_v3_v3(item->ob->obmat[3], loc);  /* so orient behaves as expected */
+									/* so orient behaves as expected */
+									copy_v3_v3(item->ob->obmat[3], loc);
 								}
 
 								object_orient_to_location(item->ob, item->rot_mat, item->rot_mat[2], location_world);

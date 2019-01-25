@@ -209,7 +209,7 @@ void DRW_gpencil_get_fill_geom(struct GpencilBatchCacheElem *be, Object *ob, bGP
 	BLI_assert(gps->totpoints >= 3);
 
 	/* Calculate triangles cache for filling area (must be done only after changes) */
-	if ((gps->flag & GP_STROKE_RECALC_CACHES) || (gps->tot_triangles == 0) || (gps->triangles == NULL)) {
+	if ((gps->flag & GP_STROKE_RECALC_GEOMETRY) || (gps->tot_triangles == 0) || (gps->triangles == NULL)) {
 		DRW_gpencil_triangulate_stroke_fill(ob, gps);
 		ED_gpencil_calc_stroke_uv(ob, gps);
 	}
@@ -252,6 +252,9 @@ GPUBatch *DRW_gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
 
 	tGPspoint *points = gpd->runtime.sbuffer;
 	int totpoints = gpd->runtime.sbuffer_size;
+	/* if cyclic needs more vertex */
+	int cyclic_add = (gpd->runtime.sbuffer_sflag & GP_STROKE_CYCLIC) ? 1 : 0;
+	int totvertex = totpoints + cyclic_add + 2;
 
 	static GPUVertFormat format = { 0 };
 	static uint pos_id, color_id, thickness_id, uvdata_id;
@@ -263,11 +266,11 @@ GPUBatch *DRW_gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
 	}
 
 	GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-	GPU_vertbuf_data_alloc(vbo, totpoints + 2);
+	GPU_vertbuf_data_alloc(vbo, totvertex);
 
 	/* draw stroke curve */
 	const tGPspoint *tpt = points;
-	bGPDspoint pt, pt2;
+	bGPDspoint pt, pt2, pt3;
 	int idx = 0;
 
 	/* get origin to reproject point */
@@ -281,19 +284,22 @@ GPUBatch *DRW_gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
 
 		/* first point for adjacency (not drawn) */
 		if (i == 0) {
-			if (totpoints > 1) {
-				ED_gpencil_tpoint_to_point(ar, origin, &points[1], &pt2);
+			if (gpd->runtime.sbuffer_sflag & GP_STROKE_CYCLIC && totpoints > 2) {
+				ED_gpencil_tpoint_to_point(ar, origin, &points[totpoints - 1], &pt2);
 				gpencil_set_stroke_point(
-				        vbo, &pt2, idx,
-				        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+					vbo, &pt2, idx,
+					pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+				idx++;
 			}
 			else {
+				ED_gpencil_tpoint_to_point(ar, origin, &points[1], &pt2);
 				gpencil_set_stroke_point(
-				        vbo, &pt, idx,
-				        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+					vbo, &pt2, idx,
+					pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+				idx++;
 			}
-			idx++;
 		}
+
 		/* set point */
 		gpencil_set_stroke_point(
 		        vbo, &pt, idx,
@@ -302,16 +308,27 @@ GPUBatch *DRW_gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
 	}
 
 	/* last adjacency point (not drawn) */
-	if (totpoints > 2) {
+	if (gpd->runtime.sbuffer_sflag & GP_STROKE_CYCLIC && totpoints > 2) {
+		/* draw line to first point to complete the cycle */
+		ED_gpencil_tpoint_to_point(ar, origin, &points[0], &pt2);
+		gpencil_set_stroke_point(
+			vbo, &pt2, idx,
+			pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+		idx++;
+		/* now add adjacency point (not drawn) */
+		ED_gpencil_tpoint_to_point(ar, origin, &points[1], &pt3);
+		gpencil_set_stroke_point(
+			vbo, &pt3, idx,
+			pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+		idx++;
+	}
+	/* last adjacency point (not drawn) */
+	else {
 		ED_gpencil_tpoint_to_point(ar, origin, &points[totpoints - 2], &pt2);
 		gpencil_set_stroke_point(
-		        vbo, &pt2, idx,
-		        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
-	}
-	else {
-		gpencil_set_stroke_point(
-		        vbo, &pt, idx,
-		        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+			vbo, &pt2, idx,
+			pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+		idx++;
 	}
 
 	return GPU_batch_create_ex(GPU_PRIM_LINE_STRIP_ADJ, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -362,6 +379,69 @@ GPUBatch *DRW_gpencil_get_buffer_point_geom(bGPdata *gpd, short thickness)
 		        pos_id, color_id, thickness_id, uvdata_id,
 		        thickness, gpd->runtime.scolor);
 		idx++;
+	}
+
+	return GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, NULL, GPU_BATCH_OWNS_VBO);
+}
+
+/* create batch geometry data for current buffer control point shader */
+GPUBatch *DRW_gpencil_get_buffer_ctrlpoint_geom(bGPdata *gpd)
+{
+	bGPDcontrolpoint *cps = gpd->runtime.cp_points;
+	int totpoints = gpd->runtime.tot_cp_points;
+
+	const DRWContextState *draw_ctx = DRW_context_state_get();
+	Scene *scene = draw_ctx->scene;
+	ToolSettings *ts = scene->toolsettings;
+
+	if (ts->gp_sculpt.guide.use_guide) {
+		totpoints++;
+	}
+
+	static GPUVertFormat format = { 0 };
+	static uint pos_id, color_id, size_id;
+	if (format.attr_len == 0) {
+		pos_id = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+		size_id = GPU_vertformat_attr_add(&format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+		color_id = GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+	}
+
+	GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+	GPU_vertbuf_data_alloc(vbo, totpoints);
+
+	int idx = 0;
+	for (int i = 0; i < gpd->runtime.tot_cp_points; i++) {
+		bGPDcontrolpoint *cp = &cps[i];
+
+		GPU_vertbuf_attr_set(vbo, color_id, idx, cp->color);
+
+		/* scale size */
+		float size = cp->size * 0.8f;
+		GPU_vertbuf_attr_set(vbo, size_id, idx, &size);
+
+		GPU_vertbuf_attr_set(vbo, pos_id, idx, &cp->x);
+		idx++;
+	}
+
+	if (ts->gp_sculpt.guide.use_guide) {
+		float size = 10 * 0.8f;
+		float color[4];
+		float position[3];
+		if (ts->gp_sculpt.guide.reference_point == GP_GUIDE_REF_CUSTOM) {
+			UI_GetThemeColor4fv(TH_GIZMO_PRIMARY, color);
+			copy_v3_v3(position, ts->gp_sculpt.guide.location);
+		}
+		else if (ts->gp_sculpt.guide.reference_point == GP_GUIDE_REF_OBJECT && ts->gp_sculpt.guide.reference_object != NULL) {
+			UI_GetThemeColor4fv(TH_GIZMO_SECONDARY, color);
+			copy_v3_v3(position, ts->gp_sculpt.guide.reference_object->loc);
+		}
+		else {
+			UI_GetThemeColor4fv(TH_REDALERT, color);
+			copy_v3_v3(position, scene->cursor.location);
+		}
+		GPU_vertbuf_attr_set(vbo, pos_id, idx, position);
+		GPU_vertbuf_attr_set(vbo, size_id, idx, &size);
+		GPU_vertbuf_attr_set(vbo, color_id, idx, color);
 	}
 
 	return GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -452,7 +532,7 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be, bGPDstroke *gps
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	Object *ob = draw_ctx->obact;
 	bGPdata *gpd = ob->data;
-	bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
+	const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
 
 	int vgindex = ob->actdef - 1;
 	if (!BLI_findlink(&ob->defbase, vgindex)) {
@@ -489,7 +569,7 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be, bGPDstroke *gps
 		be->thickness_id = GPU_vertformat_attr_add(&be->format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
 
 		be->vbo = GPU_vertbuf_create_with_format(&be->format);
-		GPU_vertbuf_data_alloc(be->vbo, gps->totpoints);
+		GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
 		be->vbo_len = 0;
 	}
 	gpencil_vbo_ensure_size(be, gps->totpoints);
@@ -506,7 +586,7 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be, bGPDstroke *gps
 	for (int i = 0; i < gps->totpoints; i++, pt++) {
 		/* weight paint */
 		if (is_weight_paint) {
-			float weight = (dvert && dvert->dw) ? defvert_find_weight(dvert, vgindex) : 0.0f;
+			float weight = (dvert && dvert->dw && (vgindex > -1)) ? defvert_find_weight(dvert, vgindex) : 0.0f;
 			float hue = 2.0f * (1.0f - weight) / 3.0f;
 			hsv_to_rgb(hue, 1.0f, 1.0f, &selectColor[0], &selectColor[1], &selectColor[2]);
 			selectColor[3] = 1.0f;
@@ -550,7 +630,7 @@ void DRW_gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be, bGPDstroke *gp
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	Object *ob = draw_ctx->obact;
 	bGPdata *gpd = ob->data;
-	bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
+	const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
 
 	int vgindex = ob->actdef - 1;
 	if (!BLI_findlink(&ob->defbase, vgindex)) {
@@ -568,7 +648,7 @@ void DRW_gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be, bGPDstroke *gp
 		be->color_id = GPU_vertformat_attr_add(&be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
 		be->vbo = GPU_vertbuf_create_with_format(&be->format);
-		GPU_vertbuf_data_alloc(be->vbo, gps->totpoints);
+		GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
 		be->vbo_len = 0;
 	}
 	gpencil_vbo_ensure_size(be, gps->totpoints);
@@ -581,7 +661,7 @@ void DRW_gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be, bGPDstroke *gp
 	for (int i = 0; i < gps->totpoints; i++, pt++) {
 		/* weight paint */
 		if (is_weight_paint) {
-			float weight = (dvert && dvert->dw) ? defvert_find_weight(dvert, vgindex) : 0.0f;
+			float weight = (dvert && dvert->dw && (vgindex > -1)) ? defvert_find_weight(dvert, vgindex) : 0.0f;
 			float hue = 2.0f * (1.0f - weight) / 3.0f;
 			hsv_to_rgb(hue, 1.0f, 1.0f, &selectColor[0], &selectColor[1], &selectColor[2]);
 			selectColor[3] = 1.0f;

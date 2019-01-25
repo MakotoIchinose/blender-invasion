@@ -70,6 +70,7 @@
 #include "GPU_draw.h"
 #include "GPU_matrix.h"
 #include "GPU_framebuffer.h"
+#include "GPU_state.h"
 
 #include "UI_interface.h"
 
@@ -87,41 +88,70 @@
 
   /* Temporary fill operation data (op->customdata) */
 typedef struct tGPDfill {
+	bContext *C;
 	struct Main *bmain;
 	struct Depsgraph *depsgraph;
-	struct wmWindow *win;               /* window where painting originated */
-	struct Scene *scene;                /* current scene from context */
-	struct Object *ob;                  /* current active gp object */
-	struct ScrArea *sa;                 /* area where painting originated */
-	struct RegionView3D *rv3d;          /* region where painting originated */
-	struct View3D *v3d;                 /* view3 where painting originated */
-	struct ARegion *ar;                 /* region where painting originated */
-	struct bGPdata *gpd;                /* current GP datablock */
-	struct Material *mat;               /* current material */
-	struct bGPDlayer *gpl;              /* layer */
-	struct bGPDframe *gpf;              /* frame */
+	/** window where painting originated */
+	struct wmWindow *win;
+	/** current scene from context */
+	struct Scene *scene;
+	/** current active gp object */
+	struct Object *ob;
+	/** area where painting originated */
+	struct ScrArea *sa;
+	/** region where painting originated */
+	struct RegionView3D *rv3d;
+	/** view3 where painting originated */
+	struct View3D *v3d;
+	/** region where painting originated */
+	struct ARegion *ar;
+	/** current GP datablock */
+	struct bGPdata *gpd;
+	/** current material */
+	struct Material *mat;
+	/** layer */
+	struct bGPDlayer *gpl;
+	/** frame */
+	struct bGPDframe *gpf;
 
-	short flag;                         /* flags */
-	short oldkey;                       /* avoid too fast events */
-	bool on_back;                       /* send to back stroke */
+	/** flags */
+	short flag;
+	/** avoid too fast events */
+	short oldkey;
+	/** send to back stroke */
+	bool on_back;
 
-	int center[2];                      /* mouse fill center position */
-	int sizex;                          /* windows width */
-	int sizey;                          /* window height */
-	int lock_axis;                      /* lock to viewport axis */
+	/** mouse fill center position */
+	int center[2];
+	/** windows width */
+	int sizex;
+	/** window height */
+	int sizey;
+	/** lock to viewport axis */
+	int lock_axis;
 
-	short fill_leak;                    /* number of pixel to consider the leak is too small (x 2) */
-	float fill_threshold;               /* factor for transparency */
-	int fill_simplylvl;                 /* number of simplify steps */
-	int fill_draw_mode;                 /* boundary limits drawing mode */
+	/** number of pixel to consider the leak is too small (x 2) */
+	short fill_leak;
+	/** factor for transparency */
+	float fill_threshold;
+	/** number of simplify steps */
+	int fill_simplylvl;
+	/** boundary limits drawing mode */
+	int fill_draw_mode;
 
-	short sbuffer_size;                 /* number of elements currently in cache */
-	void *sbuffer;                      /* temporary points */
-	float *depth_arr;                   /* depth array for reproject */
+	/** number of elements currently in cache */
+	short sbuffer_size;
+	/** temporary points */
+	void *sbuffer;
+	/** depth array for reproject */
+	float *depth_arr;
 
-	Image *ima;                         /* temp image */
-	BLI_Stack *stack;                   /* temp points data */
-	void *draw_handle_3d;               /* handle for drawing strokes while operator is running 3d stuff */
+	/** temp image */
+	Image *ima;
+	/** temp points data */
+	BLI_Stack *stack;
+	/** handle for drawing strokes while operator is running 3d stuff */
+	void *draw_handle_3d;
 } tGPDfill;
 
 
@@ -151,7 +181,7 @@ static void gp_draw_basic_stroke(
 	immBindBuiltinProgram(GPU_SHADER_3D_FLAT_COLOR);
 
 	/* draw stroke curve */
-	glLineWidth(1.0f);
+	GPU_line_width(1.0f);
 	immBeginAtMost(GPU_PRIM_LINE_STRIP, totpoints + cyclic_add);
 	const bGPDspoint *pt = points;
 
@@ -217,6 +247,13 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 		/* do not draw layer if hidden */
 		if (gpl->flag & GP_LAYER_HIDE)
 			continue;
+
+		/* if active layer and no keyframe, create a new one */
+		if (gpl == tgpf->gpl) {
+			if ((gpl->actframe == NULL) || (gpl->actframe->framenum != cfra_eval)) {
+				BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
+			}
+		}
 
 		/* get frame to draw */
 		bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
@@ -393,11 +430,11 @@ static void set_pixel(ImBuf *ibuf, int idx, const float col[4])
  * this is used for strokes with small gaps between them to get a full fill
  * and do not get a full screen fill.
  *
- * \param ibuf      Image pixel data
- * \param maxpixel  Maximum index
- * \param limit     Limit of pixels to analyze
- * \param index     Index of current pixel
- * \param type      0-Horizontal 1-Vertical
+ * \param ibuf: Image pixel data
+ * \param maxpixel: Maximum index
+ * \param limit: Limit of pixels to analyze
+ * \param index: Index of current pixel
+ * \param type: 0-Horizontal 1-Vertical
  */
 static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index, int type)
 {
@@ -495,7 +532,7 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
  * Fills the space created by a set of strokes using the stroke color as the boundary
  * of the shape to fill.
  *
- * \param tgpf       Temporary fill data
+ * \param tgpf: Temporary fill data
  */
 static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 {
@@ -818,6 +855,10 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	const int cfra_eval = (int)DEG_get_ctime(tgpf->depsgraph);
 
 	ToolSettings *ts = tgpf->scene->toolsettings;
+	const char *align_flag = &ts->gpencil_v3d_align;
+	const bool is_depth = (bool)(*align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
+	const bool is_camera = (bool)(ts->gp_sculpt.lock_axis == 0) &&
+		(tgpf->rv3d->persp == RV3D_CAMOB) && (!is_depth);
 	Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
 	if (brush == NULL) {
 		return;
@@ -857,7 +898,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	/* initialize triangle memory to dummy data */
 	gps->tot_triangles = 0;
 	gps->triangles = NULL;
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* add stroke to frame */
 	if ((ts->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) || (tgpf->on_back == true)) {
@@ -935,6 +976,11 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 		gp_apply_parent_point(tgpf->depsgraph, tgpf->ob, tgpf->gpd, tgpf->gpl, pt);
 	}
 
+	/* if camera view, reproject flat to view to avoid perspective effect */
+	if (is_camera) {
+		ED_gpencil_project_stroke_to_view(tgpf->C, tgpf->gpl, gps);
+	}
+
 	/* simplify stroke */
 	for (int b = 0; b < tgpf->fill_simplylvl; b++) {
 		BKE_gpencil_simplify_fixed(gps);
@@ -1003,6 +1049,7 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	Main *bmain = CTX_data_main(C);
 
 	/* set current scene and window info */
+	tgpf->C = C;
 	tgpf->bmain = CTX_data_main(C);
 	tgpf->scene = CTX_data_scene(C);
 	tgpf->ob = CTX_data_active_object(C);

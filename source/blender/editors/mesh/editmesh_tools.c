@@ -171,7 +171,8 @@ void MESH_OT_subdivide(wmOperatorType *ot)
 
 	/* properties */
 	prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 100, "Number of Cuts", "", 1, 10);
-	/* avoid re-using last var because it can cause _very_ high poly meshes and annoy users (or worse crash) */
+	/* avoid re-using last var because it can cause
+	 * _very_ high poly meshes and annoy users (or worse crash) */
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
 	RNA_def_float(ot->srna, "smoothness", 0.0f, 0.0f, 1e3f, "Smoothness", "Smoothness factor", 0.0f, 1.0f);
@@ -1005,10 +1006,16 @@ static int edbm_mark_seam_exec(bContext *C, wmOperator *op)
 				BM_elem_flag_enable(eed, BM_ELEM_SEAM);
 			}
 		}
+	}
 
-		ED_uvedit_live_unwrap(scene, obedit);
+	ED_uvedit_live_unwrap(scene, objects, objects_len);
+
+	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+		Object *obedit = objects[ob_index];
+		BMEditMesh *em = BKE_editmesh_from_object(obedit);
 		EDBM_update_generic(em, true, false);
 	}
+
 	MEM_freeN(objects);
 
 	return OPERATOR_FINISHED;
@@ -1173,7 +1180,8 @@ static bool edbm_connect_vert_pair(BMEditMesh *em, wmOperator *op)
 			len = 0;
 		}
 		else {
-			EDBM_selectmode_flush(em);  /* so newly created edges get the selection state from the vertex */
+			/* so newly created edges get the selection state from the vertex */
+			EDBM_selectmode_flush(em);
 
 			EDBM_update_generic(em, true, true);
 		}
@@ -1906,7 +1914,8 @@ static int edbm_edge_rotate_selected_exec(bContext *C, wmOperator *op)
 		EDBM_op_init(em, &bmop, op, "rotate_edges edges=%he use_ccw=%b", BM_ELEM_TAG, use_ccw);
 
 		/* avoids leaving old verts selected which can be a problem running multiple times,
-		 * since this means the edges become selected around the face which then attempt to rotate */
+		 * since this means the edges become selected around the face
+		 * which then attempt to rotate */
 		BMO_slot_buffer_hflag_disable(em->bm, bmop.slots_in, "edges", BM_EDGE, BM_ELEM_SELECT, true);
 
 		BMO_op_exec(em->bm, &bmop);
@@ -2882,7 +2891,8 @@ static const EnumPropertyItem *merge_type_itemf(bContext *C, PointerRNA *UNUSED(
 		return item;
 	}
 
-	return NULL;
+	/* Get all items e.g. when creating keymap item. */
+	return merge_type_items;
 }
 
 void MESH_OT_merge(wmOperatorType *ot)
@@ -3464,8 +3474,10 @@ static float bm_edge_seg_isect(
 		y12 = mouse_path[i][1];
 
 		/* Perp. Distance from point to line */
-		if (m2 != MAXSLOPE) dist = (y12 - m2 * x12 - b2);  /* /sqrt(m2 * m2 + 1); Only looking for */
-		/* change in sign.  Skip extra math */
+		if (m2 != MAXSLOPE) {
+			/* /sqrt(m2 * m2 + 1); Only looking for change in sign.  Skip extra math .*/
+			dist = (y12 - m2 * x12 - b2);
+		}
 		else dist = x22 - x12;
 
 		if (i == 0) lastdist = dist;
@@ -3592,7 +3604,8 @@ static int edbm_knife_cut_exec(bContext *C, wmOperator *op)
 
 	/* TODO, investigate using index lookup for screen_vert_coords() rather then a hash table */
 
-	/* the floating point coordinates of verts in screen space will be stored in a hash table according to the vertices pointer */
+	/* the floating point coordinates of verts in screen space will be
+	 * stored in a hash table according to the vertices pointer */
 	screen_vert_coords = sco = MEM_mallocN(bm->totvert * sizeof(float) * 2, __func__);
 
 	BM_ITER_MESH_INDEX (bv, &iter, bm, BM_VERTS_OF_MESH, i) {
@@ -3723,8 +3736,12 @@ static Base *mesh_separate_tagged(Main *bmain, Scene *scene, ViewLayer *view_lay
 	CustomData_bmesh_init_pool(&bm_new->pdata, bm_mesh_allocsize_default.totface, BM_FACE);
 
 	base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_old, USER_DUP_MESH);
-	/* DAG_relations_tag_update(bmain); */ /* normally would call directly after but in this case delay recalc */
-	assign_matarar(bmain, base_new->object, give_matarar(obedit), *give_totcolp(obedit)); /* new in 2.5 */
+
+	/* normally would call directly after but in this case delay recalc */
+	/* DAG_relations_tag_update(bmain); */
+
+	/* new in 2.5 */
+	assign_matarar(bmain, base_new->object, give_matarar(obedit), *give_totcolp(obedit));
 
 	ED_object_base_select(base_new, BA_SELECT);
 
@@ -4647,9 +4664,9 @@ static int edbm_poke_face_exec(bContext *C, wmOperator *op)
 void MESH_OT_poke(wmOperatorType *ot)
 {
 	static const EnumPropertyItem poke_center_modes[] = {
-		{BMOP_POKE_MEAN_WEIGHTED, "MEAN_WEIGHTED", 0, "Weighted Mean", "Weighted Mean Face Center"},
-		{BMOP_POKE_MEAN, "MEAN", 0, "Mean", "Mean Face Center"},
-		{BMOP_POKE_BOUNDS, "BOUNDS", 0, "Bounds", "Face Bounds Center"},
+		{BMOP_POKE_MEDIAN_WEIGHTED, "MEDIAN_WEIGHTED", 0, "Weighted Median", "Weighted median face center"},
+		{BMOP_POKE_MEDIAN, "MEDIAN", 0, "Median", "Median face center"},
+		{BMOP_POKE_BOUNDS, "BOUNDS", 0, "Bounds", "Face bounds center"},
 		{0, NULL, 0, NULL, NULL}};
 
 
@@ -4667,7 +4684,7 @@ void MESH_OT_poke(wmOperatorType *ot)
 
 	RNA_def_float_distance(ot->srna, "offset", 0.0f, -1e3f, 1e3f, "Poke Offset", "Poke Offset", -1.0f, 1.0f);
 	RNA_def_boolean(ot->srna, "use_relative_offset", false, "Offset Relative", "Scale the offset by surrounding geometry");
-	RNA_def_enum(ot->srna, "center_mode", poke_center_modes, BMOP_POKE_MEAN_WEIGHTED,
+	RNA_def_enum(ot->srna, "center_mode", poke_center_modes, BMOP_POKE_MEDIAN_WEIGHTED,
 	             "Poke Center", "Poke Face Center Calculation");
 }
 
@@ -5662,7 +5679,8 @@ static void sort_bmelem_flag(
 		float fact = reverse ? -1.0 : 1.0;
 		int coidx = (action == SRT_VIEW_ZAXIS) ? 2 : 0;
 
-		mul_m4_m4m4(mat, rv3d->viewmat, ob->obmat);  /* Apply the view matrix to the object matrix. */
+		/* Apply the view matrix to the object matrix. */
+		mul_m4_m4m4(mat, rv3d->viewmat, ob->obmat);
 
 		if (totelem[0]) {
 			pb = pblock[0] = MEM_callocN(sizeof(char) * totelem[0], "sort_bmelem vert pblock");
@@ -5710,7 +5728,7 @@ static void sort_bmelem_flag(
 			BM_ITER_MESH_INDEX (fa, &iter, em->bm, BM_FACES_OF_MESH, i) {
 				if (BM_elem_flag_test(fa, flag)) {
 					float co[3];
-					BM_face_calc_center_mean(fa, co);
+					BM_face_calc_center_median(fa, co);
 					mul_m4_v3(mat, co);
 
 					pb[i] = false;
@@ -5776,7 +5794,7 @@ static void sort_bmelem_flag(
 			BM_ITER_MESH_INDEX (fa, &iter, em->bm, BM_FACES_OF_MESH, i) {
 				if (BM_elem_flag_test(fa, flag)) {
 					float co[3];
-					BM_face_calc_center_mean(fa, co);
+					BM_face_calc_center_median(fa, co);
 
 					pb[i] = false;
 					sb[affected[2]].org_idx = i;
@@ -5801,9 +5819,11 @@ static void sort_bmelem_flag(
 				float srt = reverse ? (float)(MAXMAT - fa->mat_nr) : (float)fa->mat_nr;
 				pb[i] = false;
 				sb[affected[2]].org_idx = i;
-				/* Multiplying with totface and adding i ensures us we keep current order for all faces of same mat. */
+				/* Multiplying with totface and adding i ensures us
+				 * we keep current order for all faces of same mat. */
 				sb[affected[2]++].srt = srt * ((float)totelem[2]) + ((float)i);
-/*				printf("e: %d; srt: %f; final: %f\n", i, srt, srt * ((float)totface) + ((float)i));*/
+				// printf("e: %d; srt: %f; final: %f\n",
+				//        i, srt, srt * ((float)totface) + ((float)i));
 			}
 			else {
 				pb[i] = true;
@@ -7260,7 +7280,10 @@ static void point_normals_apply(bContext *C, wmOperator *op, float target[3], co
 			float spherized_normal[3];
 
 			sub_v3_v3v3(spherized_normal, target, lnor_ed->loc);
-			normalize_v3(spherized_normal);  /* otherwise, multiplication by strength is meaningless... */
+
+			/* otherwise, multiplication by strength is meaningless... */
+			normalize_v3(spherized_normal);
+
 			mul_v3_fl(spherized_normal, strength);
 			mul_v3_v3fl(lnor_ed->nloc, lnor_ed->niloc, 1.0f - strength);
 			add_v3_v3(lnor_ed->nloc, spherized_normal);
@@ -7346,7 +7369,8 @@ static int edbm_point_normals_modal(bContext *C, wmOperator *op, const wmEvent *
 
 			case EDBM_CLNOR_MODAL_POINTTO_USE_MOUSE:
 				new_mode = EDBM_CLNOR_POINTTO_MODE_MOUSE;
-				force_mousemove = true;  /* We want to immediately update to mouse cursor position... */
+				/* We want to immediately update to mouse cursor position... */
+				force_mousemove = true;
 				ret = OPERATOR_RUNNING_MODAL;
 				break;
 
@@ -7367,7 +7391,9 @@ static int edbm_point_normals_modal(bContext *C, wmOperator *op, const wmEvent *
 				new_mode = EDBM_CLNOR_POINTTO_MODE_COORDINATES;
 				view3d_operator_needs_opengl(C);
 				if (EDBM_select_pick(C, event->mval, false, false, false)) {
-					ED_object_editmode_calc_active_center(obedit, false, target);  /* Point to newly selected active. */
+					/* Point to newly selected active. */
+					ED_object_calc_active_center_for_editmode(obedit, false, target);
+
 					add_v3_v3(target, obedit->loc);
 					ret = OPERATOR_RUNNING_MODAL;
 				}
@@ -7400,7 +7426,7 @@ static int edbm_point_normals_modal(bContext *C, wmOperator *op, const wmEvent *
 						break;
 					}
 
-					case V3D_AROUND_CENTER_MEAN:
+					case V3D_AROUND_CENTER_MEDIAN:
 					{
 						bmesh_selected_verts_center_calc(bm, target);
 						add_v3_v3(target, obedit->loc);
@@ -7412,7 +7438,7 @@ static int edbm_point_normals_modal(bContext *C, wmOperator *op, const wmEvent *
 						break;
 
 					case V3D_AROUND_ACTIVE:
-						if (!ED_object_editmode_calc_active_center(obedit, false, target)) {
+						if (!ED_object_calc_active_center_for_editmode(obedit, false, target)) {
 							zero_v3(target);
 						}
 						add_v3_v3(target, obedit->loc);
@@ -7490,7 +7516,8 @@ static int edbm_point_normals_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	/* Note that 'mode' is ignored in exec case, we directly use vector stored in target_location, whatever that is. */
+	/* Note that 'mode' is ignored in exec case,
+	 * we directly use vector stored in target_location, whatever that is. */
 
 	float target[3];
 	RNA_float_get_array(op->ptr, "target_location", target);
@@ -7940,7 +7967,6 @@ void MESH_OT_average_normals(struct wmOperatorType *ot)
 
 	ot->prop = RNA_def_enum(ot->srna, "average_type", average_method_items, EDBM_CLNOR_AVERAGE_LOOP,
 	                        "Type", "Averaging method");
-	RNA_def_property_flag(ot->prop, PROP_HIDDEN);
 
 	RNA_def_int(ot->srna, "weight", 50, 1, 100, "Weight", "Weight applied per face", 1, 100);
 

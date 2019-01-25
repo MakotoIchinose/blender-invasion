@@ -140,24 +140,6 @@ void ED_view3d_clipping_enable(void)
 	}
 }
 
-static bool view3d_clipping_test(const float co[3], const float clip[6][4])
-{
-	if (plane_point_side_v3(clip[0], co) > 0.0f)
-		if (plane_point_side_v3(clip[1], co) > 0.0f)
-			if (plane_point_side_v3(clip[2], co) > 0.0f)
-				if (plane_point_side_v3(clip[3], co) > 0.0f)
-					return false;
-
-	return true;
-}
-
-/* for 'local' ED_view3d_clipping_local must run first
- * then all comparisons can be done in localspace */
-bool ED_view3d_clipping_test(const RegionView3D *rv3d, const float co[3], const bool is_local)
-{
-	return view3d_clipping_test(co, is_local ? rv3d->clip_local : rv3d->clip);
-}
-
 /* *********************** backdraw for selection *************** */
 
 static void backdrawview3d(
@@ -563,7 +545,8 @@ static void view3d_draw_bgpic(Scene *scene, Depsgraph *depsgraph,
 			if (ibuf == NULL)
 				continue;
 
-			if ((ibuf->rect == NULL && ibuf->rect_float == NULL) || ibuf->channels != 4) { /* invalid image format */
+			if ((ibuf->rect == NULL && ibuf->rect_float == NULL) || ibuf->channels != 4) {
+				/* invalid image format */
 				if (freeibuf)
 					IMB_freeImBuf(freeibuf);
 				if (releaseibuf)
@@ -767,7 +750,7 @@ void view3d_update_depths_rect(ARegion *ar, ViewDepths *d, rcti *rect)
 		.xmin = 0,
 		.xmax = ar->winx - 1,
 		.ymin = 0,
-		.ymax = ar->winy - 1
+		.ymax = ar->winy - 1,
 	};
 
 	/* Constrain rect to depth bounds */
@@ -888,32 +871,36 @@ void ED_view3d_draw_depth_gpencil(
 
 /* *********************** customdata **************** */
 
-CustomDataMask ED_view3d_datamask(const Scene *UNUSED(scene), const View3D *v3d)
+CustomDataMask ED_view3d_datamask(const bContext *C, const Scene *UNUSED(scene), const View3D *v3d)
 {
 	CustomDataMask mask = 0;
 	const int drawtype = view3d_effective_drawtype(v3d);
 
-	if (ELEM(drawtype, OB_TEXTURE, OB_MATERIAL) ||
-	    ((drawtype == OB_SOLID) && (v3d->flag2 & V3D_SOLID_TEX)))
-	{
+	if (ELEM(drawtype, OB_TEXTURE, OB_MATERIAL)) {
 		mask |= CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL;
 
 		if (drawtype == OB_MATERIAL)
 			mask |= CD_MASK_ORCO;
 	}
 
+	if ((CTX_data_mode_enum(C) == CTX_MODE_EDIT_MESH) &&
+	    (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_WEIGHT))
+	{
+		mask |= CD_MASK_MDEFORMVERT;
+	}
+
 	return mask;
 }
 
 /* goes over all modes and view3d settings */
-CustomDataMask ED_view3d_screen_datamask(const Scene *scene, const bScreen *screen)
+CustomDataMask ED_view3d_screen_datamask(const bContext *C, const Scene *scene, const bScreen *screen)
 {
 	CustomDataMask mask = CD_MASK_BAREMESH;
 
 	/* check if we need tfaces & mcols due to view mode */
 	for (const ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 		if (sa->spacetype == SPACE_VIEW3D) {
-			mask |= ED_view3d_datamask(scene, sa->spacedata.first);
+			mask |= ED_view3d_datamask(C, scene, sa->spacedata.first);
 		}
 	}
 

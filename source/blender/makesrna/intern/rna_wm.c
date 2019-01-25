@@ -406,6 +406,21 @@ const EnumPropertyItem rna_enum_keymap_propvalue_items[] = {
 	{0, NULL, 0, NULL, NULL}
 };
 
+
+/* Mask event types used in keymap items. */
+const EnumPropertyItem rna_enum_event_type_mask_items[] = {
+	{EVT_TYPE_MASK_KEYBOARD_MODIFIER, "KEYBOARD_MODIFIER", 0, "Keyboard Modifier", ""},
+	{EVT_TYPE_MASK_KEYBOARD, "KEYBOARD", 0, "Keyboard", ""},
+	{EVT_TYPE_MASK_MOUSE_WHEEL, "MOUSE_WHEEL", 0, "Mouse Wheel", ""},
+	{EVT_TYPE_MASK_MOUSE_GESTURE, "MOUSE_GESTURE", 0, "Mouse Gesture", ""},
+	{EVT_TYPE_MASK_MOUSE_BUTTON, "MOUSE_BUTTON", 0, "Mouse Button", ""},
+	{EVT_TYPE_MASK_MOUSE, "MOUSE", 0, "Mouse", ""},
+	{EVT_TYPE_MASK_NDOF, "NDOF", 0, "NDOF", ""},
+	{EVT_TYPE_MASK_TWEAK, "TWEAK", 0, "Tweak", ""},
+	{EVT_TYPE_MASK_ACTIONZONE, "ACTIONZONE", 0, "Action Zone", ""},
+	{0, NULL, 0, NULL, NULL}
+};
+
 #if 0
 static const EnumPropertyItem keymap_modifiers_items[] = {
 	{KM_ANY, "ANY", 0, "Any", ""},
@@ -862,8 +877,9 @@ static void rna_wmKeyMapItem_keymodifier_set(PointerRNA *ptr, int value)
 }
 
 
-static const EnumPropertyItem *rna_KeyMapItem_type_itemf(bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop),
-                                                   bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_KeyMapItem_type_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop),
+        bool *UNUSED(r_free))
 {
 	int map_type = rna_wmKeyMapItem_map_type_get(ptr);
 
@@ -875,8 +891,9 @@ static const EnumPropertyItem *rna_KeyMapItem_type_itemf(bContext *UNUSED(C), Po
 	else return rna_enum_event_type_items;
 }
 
-static const EnumPropertyItem *rna_KeyMapItem_value_itemf(bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop),
-                                                    bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_KeyMapItem_value_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop),
+        bool *UNUSED(r_free))
 {
 	int map_type = rna_wmKeyMapItem_map_type_get(ptr);
 
@@ -888,8 +905,9 @@ static const EnumPropertyItem *rna_KeyMapItem_value_itemf(bContext *UNUSED(C), P
 		return rna_enum_event_value_items;
 }
 
-static const EnumPropertyItem *rna_KeyMapItem_propvalue_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop),
-                                                        bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_KeyMapItem_propvalue_itemf(
+        bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop),
+        bool *UNUSED(r_free))
 {
 	wmWindowManager *wm = CTX_wm_manager(C);
 	wmKeyConfig *kc;

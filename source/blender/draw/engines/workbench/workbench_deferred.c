@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -35,6 +38,7 @@
 
 #include "BKE_node.h"
 #include "BKE_modifier.h"
+#include "BKE_object.h"
 #include "BKE_particle.h"
 
 #include "DNA_image_types.h"
@@ -89,6 +93,7 @@ static struct {
 
 /* Shaders */
 extern char datatoc_common_hair_lib_glsl[];
+extern char datatoc_common_world_clip_lib_glsl[];
 
 extern char datatoc_workbench_prepass_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
@@ -158,12 +163,15 @@ static char *workbench_build_prepass_vert(bool is_hair)
 {
 	char *str = NULL;
 	if (!is_hair) {
-		return BLI_strdup(datatoc_workbench_prepass_vert_glsl);
+		return BLI_string_joinN(
+		        datatoc_common_world_clip_lib_glsl,
+		        datatoc_workbench_prepass_vert_glsl);
 	}
 
 	DynStr *ds = BLI_dynstr_new();
 
 	BLI_dynstr_append(ds, datatoc_common_hair_lib_glsl);
+	BLI_dynstr_append(ds, datatoc_common_world_clip_lib_glsl);
 	BLI_dynstr_append(ds, datatoc_workbench_prepass_vert_glsl);
 
 	str = BLI_dynstr_get_cstring(ds);
@@ -401,9 +409,9 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
 	{
 		const float *viewport_size = DRW_viewport_size_get();
 		const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
-		const GPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16 : GPU_RGBA32F;
-		const GPUTextureFormat comp_tex_format = DRW_state_is_image_render() ? GPU_RGBA16F : GPU_R11F_G11F_B10F;
-		const GPUTextureFormat id_tex_format = OBJECT_ID_PASS_ENABLED(wpd) ? GPU_R32UI : GPU_R8;
+		const eGPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16 : GPU_RGBA32F;
+		const eGPUTextureFormat comp_tex_format = DRW_state_is_image_render() ? GPU_RGBA16F : GPU_R11F_G11F_B10F;
+		const eGPUTextureFormat id_tex_format = OBJECT_ID_PASS_ENABLED(wpd) ? GPU_R32UI : GPU_R8;
 
 		e_data.object_id_tx = NULL;
 		e_data.color_buffer_tx = NULL;
@@ -487,7 +495,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
 	/* Prepass */
 	{
 		DRWShadingGroup *grp;
-		const bool do_cull = (draw_ctx->v3d && (draw_ctx->v3d->flag2 & V3D_BACKFACE_CULLING));
+		const bool do_cull = (draw_ctx->v3d && (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING));
 
 		int state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
 		psl->prepass_pass = DRW_pass_create("Prepass", (do_cull) ? state | DRW_STATE_CULL_BACK : state);
@@ -632,6 +640,14 @@ void workbench_deferred_cache_init(WORKBENCH_Data *vedata)
 			DRW_shgroup_uniform_texture_ref(grp, "objectId", &e_data.object_id_tx);
 		}
 		DRW_shgroup_call_add(grp, DRW_cache_fullscreen_quad_get(), NULL);
+
+		if (draw_ctx->rv3d && (draw_ctx->rv3d->rflag & RV3D_CLIPPING) && draw_ctx->rv3d->clipbb) {
+			GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_UNIFORM_COLOR_BACKGROUND);
+			grp = DRW_shgroup_create(shader, psl->background_pass);
+			wpd->world_clip_planes_batch = DRW_draw_background_clipping_batch_from_rv3d(draw_ctx->rv3d);
+			DRW_shgroup_call_add(grp, wpd->world_clip_planes_batch, NULL);
+			DRW_shgroup_uniform_vec4(grp, "color", &wpd->world_clip_planes_color[0], 1);
+		}
 	}
 
 	/* Deferred Mix Pass */
@@ -708,7 +724,7 @@ void workbench_deferred_cache_init(WORKBENCH_Data *vedata)
 }
 
 static WORKBENCH_MaterialData *get_or_create_material_data(
-        WORKBENCH_Data *vedata, Object *ob, Material *mat, Image *ima, int color_type)
+        WORKBENCH_Data *vedata, Object *ob, Material *mat, Image *ima, int color_type, int interp)
 {
 	WORKBENCH_StorageList *stl = vedata->stl;
 	WORKBENCH_PassList *psl = vedata->psl;
@@ -724,6 +740,7 @@ static WORKBENCH_MaterialData *get_or_create_material_data(
 	material_template.object_id = OBJECT_ID_PASS_ENABLED(wpd) ? engine_object_data->object_id : 1;
 	material_template.color_type = color_type;
 	material_template.ima = ima;
+	material_template.interp = interp;
 	uint hash = workbench_material_get_hash(&material_template, is_ghost);
 
 	material = BLI_ghash_lookup(wpd->material_hash, POINTER_FROM_UINT(hash));
@@ -735,8 +752,12 @@ static WORKBENCH_MaterialData *get_or_create_material_data(
 		workbench_material_copy(material, &material_template);
 		DRW_shgroup_stencil_mask(material->shgrp, (ob->dtx & OB_DRAWXRAY) ? 0x00 : 0xFF);
 		DRW_shgroup_uniform_int(material->shgrp, "object_id", &material->object_id, 1);
-		workbench_material_shgroup_uniform(wpd, material->shgrp, material, ob, true, true);
-
+		workbench_material_shgroup_uniform(wpd, material->shgrp, material, ob, true, true, interp);
+		if (wpd->world_clip_planes) {
+			const DRWContextState *draw_ctx = DRW_context_state_get();
+			RegionView3D *rv3d = draw_ctx->rv3d;
+			DRW_shgroup_world_clip_planes_from_rv3d(material->shgrp, rv3d);
+		}
 		BLI_ghash_insert(wpd->material_hash, POINTER_FROM_UINT(hash), material);
 	}
 	return material;
@@ -763,11 +784,12 @@ static void workbench_cache_populate_particles(WORKBENCH_Data *vedata, Object *o
 		const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
 
 		if (draw_as == PART_DRAW_PATH) {
-			Image *image = NULL;
-			Material *mat = give_current_material(ob, part->omat);
-			ED_object_get_active_image(ob, part->omat, &image, NULL, NULL, NULL);
+			Material *mat;
+			Image *image;
+			int interp;
+			workbench_material_get_image_and_mat(ob, part->omat, &image, &interp, &mat);
 			int color_type = workbench_material_determine_color_type(wpd, image, ob);
-			WORKBENCH_MaterialData *material = get_or_create_material_data(vedata, ob, mat, image, color_type);
+			WORKBENCH_MaterialData *material = get_or_create_material_data(vedata, ob, mat, image, color_type, interp);
 
 			struct GPUShader *shader = (color_type != V3D_SHADING_TEXTURE_COLOR) ?
 			        wpd->prepass_solid_hair_sh :
@@ -778,7 +800,7 @@ static void workbench_cache_populate_particles(WORKBENCH_Data *vedata, Object *o
 			        shader);
 			DRW_shgroup_stencil_mask(shgrp, (ob->dtx & OB_DRAWXRAY) ? 0x00 : 0xFF);
 			DRW_shgroup_uniform_int(shgrp, "object_id", &material->object_id, 1);
-			workbench_material_shgroup_uniform(wpd, shgrp, material, ob, true, true);
+			workbench_material_shgroup_uniform(wpd, shgrp, material, ob, true, true, interp);
 		}
 	}
 }
@@ -799,7 +821,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 	}
 
 	ModifierData *md;
-	if (((ob->base_flag & BASE_FROMDUPLI) == 0) &&
+	if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
 	    (md = modifiers_findByType(ob, eModifierType_Smoke)) &&
 	    (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
 	    (((SmokeModifierData *)md)->domain != NULL))
@@ -808,7 +830,10 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 		return; /* Do not draw solid in this case. */
 	}
 
-	if (!DRW_object_is_visible_in_active_context(ob) || (ob->dt < OB_SOLID)) {
+	if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
+		return;
+	}
+	if (ob->dt < OB_SOLID) {
 		return;
 	}
 
@@ -817,69 +842,58 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 		const bool is_active = (ob == draw_ctx->obact);
 		const bool is_sculpt_mode = is_active && (draw_ctx->object_mode & OB_MODE_SCULPT) != 0;
 		const bool use_hide = is_active && DRW_object_use_hide_faces(ob);
-		bool is_drawn = false;
-		if (!is_sculpt_mode && TEXTURE_DRAWING_ENABLED(wpd) && ELEM(ob->type, OB_MESH)) {
-			const Mesh *me = ob->data;
-			if (me->mloopuv) {
-				const int materials_len = MAX2(1, (is_sculpt_mode ? 1 : ob->totcol));
-				struct GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
-				struct GPUBatch **geom_array = me->totcol ? DRW_cache_mesh_surface_texpaint_get(ob, use_hide) : NULL;
-				if (materials_len > 0 && geom_array) {
-					for (int i = 0; i < materials_len; i++) {
-						if (geom_array[i] == NULL) {
-							continue;
-						}
+		const int materials_len = MAX2(1, (is_sculpt_mode ? 1 : ob->totcol));
+		const Mesh *me = (ob->type == OB_MESH) ? ob->data : NULL;
 
-						Material *mat = give_current_material(ob, i + 1);
-						Image *image;
-						ED_object_get_active_image(ob, i + 1, &image, NULL, NULL, NULL);
-						int color_type = workbench_material_determine_color_type(wpd, image, ob);
-						material = get_or_create_material_data(vedata, ob, mat, image, color_type);
-						DRW_shgroup_call_object_add(material->shgrp, geom_array[i], ob);
-					}
-					is_drawn = true;
+		if (!is_sculpt_mode && me && me->mloopuv && TEXTURE_DRAWING_ENABLED(wpd)) {
+			/* Draw textured */
+			struct GPUBatch **geom_array = DRW_cache_mesh_surface_texpaint_get(ob);
+			for (int i = 0; i < materials_len; i++) {
+				if (geom_array != NULL && geom_array[i] != NULL) {
+					Material *mat;
+					Image *image;
+					int interp;
+					workbench_material_get_image_and_mat(ob, i + 1, &image, &interp, &mat);
+					int color_type = workbench_material_determine_color_type(wpd, image, ob);
+					material = get_or_create_material_data(vedata, ob, mat, image, color_type, interp);
+					DRW_shgroup_call_object_add(material->shgrp, geom_array[i], ob);
 				}
 			}
 		}
-
-		/* Fallback from not drawn OB_TEXTURE mode or just OB_SOLID mode */
-		if (!is_drawn) {
-			if (ELEM(wpd->shading.color_type, V3D_SHADING_SINGLE_COLOR, V3D_SHADING_RANDOM_COLOR)) {
-				/* No material split needed */
-				struct GPUBatch *geom = DRW_cache_object_surface_get_ex(ob, use_hide);
+		else if (ELEM(wpd->shading.color_type,
+		              V3D_SHADING_SINGLE_COLOR, V3D_SHADING_OBJECT_COLOR, V3D_SHADING_RANDOM_COLOR))
+		{
+			/* Draw solid color */
+			material = get_or_create_material_data(vedata, ob, NULL, NULL, wpd->shading.color_type, 0);
+			if (is_sculpt_mode) {
+				DRW_shgroup_call_sculpt_add(material->shgrp, ob, ob->obmat);
+			}
+			else {
+				struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
 				if (geom) {
-					material = get_or_create_material_data(vedata, ob, NULL, NULL, wpd->shading.color_type);
-					if (is_sculpt_mode) {
-						DRW_shgroup_call_sculpt_add(material->shgrp, ob, ob->obmat);
-					}
-					else {
-						DRW_shgroup_call_object_add(material->shgrp, geom, ob);
-					}
+					DRW_shgroup_call_object_add(material->shgrp, geom, ob);
 				}
 			}
-			else { /* MATERIAL colors */
-				const int materials_len = MAX2(1, (is_sculpt_mode ? 1 : ob->totcol));
+		}
+		else {
+			/* Draw material color */
+			if (is_sculpt_mode) {
+				/* Multiple materials are not supported in sculpt mode yet. */
+				Material *mat = give_current_material(ob, 1);
+				material = get_or_create_material_data(vedata, ob, mat, NULL, V3D_SHADING_MATERIAL_COLOR, 0);
+				DRW_shgroup_call_sculpt_add(material->shgrp, ob, ob->obmat);
+			}
+			else {
+				struct GPUBatch **geoms;
 				struct GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
-				for (int i = 0; i < materials_len; i++) {
-					gpumat_array[i] = NULL;
-				}
+				memset(gpumat_array, 0, sizeof(*gpumat_array) * materials_len);
 
-				struct GPUBatch **mat_geom = DRW_cache_object_surface_material_get(
-				        ob, gpumat_array, materials_len, use_hide, NULL, NULL, NULL);
-				if (mat_geom) {
-					for (int i = 0; i < materials_len; ++i) {
-						if (mat_geom[i] == NULL) {
-							continue;
-						}
-
+				geoms = DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len, NULL, NULL, NULL);
+				for (int i = 0; i < materials_len; ++i) {
+					if (geoms != NULL && geoms[i] != NULL) {
 						Material *mat = give_current_material(ob, i + 1);
-						material = get_or_create_material_data(vedata, ob, mat, NULL, V3D_SHADING_MATERIAL_COLOR);
-						if (is_sculpt_mode) {
-							DRW_shgroup_call_sculpt_add(material->shgrp, ob, ob->obmat);
-						}
-						else {
-							DRW_shgroup_call_object_add(material->shgrp, mat_geom[i], ob);
-						}
+						material = get_or_create_material_data(vedata, ob, mat, NULL, V3D_SHADING_MATERIAL_COLOR, 0);
+						DRW_shgroup_call_object_add(material->shgrp, geoms[i], ob);
 					}
 				}
 			}

@@ -100,13 +100,14 @@ enum {
 
 GPUBatch *GPU_batch_create_ex(GPUPrimType, GPUVertBuf *, GPUIndexBuf *, uint owns_flag);
 void GPU_batch_init_ex(GPUBatch *, GPUPrimType, GPUVertBuf *, GPUIndexBuf *, uint owns_flag);
-GPUBatch *GPU_batch_duplicate(GPUBatch *batch_src);
+void GPU_batch_copy(GPUBatch *batch_dst, GPUBatch *batch_src);
 
 #define GPU_batch_create(prim, verts, elem) \
 	GPU_batch_create_ex(prim, verts, elem, 0)
 #define GPU_batch_init(batch, prim, verts, elem) \
 	GPU_batch_init_ex(batch, prim, verts, elem, 0)
 
+void GPU_batch_clear(GPUBatch *); /* Same as discard but does not free. */
 void GPU_batch_discard(GPUBatch *); /* verts & elem are not discarded */
 
 void GPU_batch_vao_cache_clear(GPUBatch *);
@@ -122,7 +123,7 @@ int GPU_batch_vertbuf_add_ex(GPUBatch *, GPUVertBuf *, bool own_vbo);
 
 void GPU_batch_program_set_no_use(GPUBatch *, uint32_t program, const GPUShaderInterface *);
 void GPU_batch_program_set(GPUBatch *, uint32_t program, const GPUShaderInterface *);
-void GPU_batch_program_set_builtin(GPUBatch *batch, GPUBuiltinShader shader_id);
+void GPU_batch_program_set_builtin(GPUBatch *batch, eGPUBuiltinShader shader_id);
 /* Entire batch draws with one shader program, but can be redrawn later with another program. */
 /* Vertex shader's inputs must be compatible with the batch's vertex format. */
 
@@ -193,6 +194,13 @@ void gpu_batch_exit(void);
 	if (batch != NULL) { \
 		GPU_batch_discard(batch); \
 		batch = NULL; \
+	} \
+} while (0)
+
+#define GPU_BATCH_CLEAR_SAFE(batch) do { \
+	if (batch != NULL) { \
+		GPU_batch_clear(batch); \
+		memset(batch, 0, sizeof(*(batch))); \
 	} \
 } while (0)
 

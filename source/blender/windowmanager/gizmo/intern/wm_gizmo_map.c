@@ -258,8 +258,8 @@ bool WM_gizmomap_minmax(
 /**
  * Creates and returns idname hash table for (visible) gizmos in \a gzmap
  *
- * \param poll  Polling function for excluding gizmos.
- * \param data  Custom data passed to \a poll
+ * \param poll: Polling function for excluding gizmos.
+ * \param data: Custom data passed to \a poll
  *
  * TODO(campbell): this uses unreliable order,
  * best we use an iterator function instead of a hash.
@@ -520,22 +520,18 @@ static int gizmo_find_intersected_3d_intern(
 	/* Almost certainly overkill, but allow for many custom gizmos. */
 	GLuint buffer[MAXPICKBUF];
 	short hits;
-	const bool do_passes = GPU_select_query_check_active();
 
 	BLI_rcti_init_pt_radius(&rect, co, hotspot);
 
 	ED_view3d_draw_setup_view(CTX_wm_window(C), CTX_data_depsgraph(C), CTX_data_scene(C), ar, v3d, NULL, NULL, &rect);
 
-	if (do_passes)
-		GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
-	else
-		GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_ALL, 0);
+	GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
 	/* do the drawing */
 	gizmo_draw_select_3D_loop(C, visible_gizmos, gz_stop);
 
 	hits = GPU_select_end();
 
-	if (do_passes && (hits > 0)) {
+	if (hits > 0) {
 		GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_SECOND_PASS, hits);
 		gizmo_draw_select_3D_loop(C, visible_gizmos, gz_stop);
 		GPU_select_end();
@@ -975,7 +971,7 @@ void wm_gizmomap_modal_set(
 
 		struct wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, gz->highlight_part);
 		if (gzop && gzop->type) {
-			const int retval = WM_operator_name_call_ptr(C, gzop->type, WM_OP_INVOKE_DEFAULT, &gzop->ptr);
+			const int retval = WM_gizmo_operator_invoke(C, gz, gzop);
 			if ((retval & OPERATOR_RUNNING_MODAL) == 0) {
 				wm_gizmomap_modal_set(gzmap, C, gz, event, false);
 			}

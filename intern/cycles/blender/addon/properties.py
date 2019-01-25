@@ -272,7 +272,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     use_layer_samples: EnumProperty(
         name="Layer Samples",
-        description="How to use per render layer sample settings",
+        description="How to use per view layer sample settings",
         items=enum_use_layer_samples,
         default='USE',
     )
@@ -889,7 +889,7 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         name="Displacement Method",
         description="Method to use for the displacement",
         items=enum_displacement_methods,
-        default='DISPLACEMENT',
+        default='BUMP',
     )
 
     @classmethod
@@ -1129,7 +1129,7 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
 
     dicing_rate: FloatProperty(
         name="Dicing Scale",
-        description="Multiplier for scene dicing rate (located in the Geometry Panel)",
+        description="Multiplier for scene dicing rate (located in the Subdivision panel)",
         min=0.1, max=1000.0, soft_min=0.5,
         default=1.0,
     )
@@ -1144,7 +1144,7 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
         name="Holdout",
         description="Render objects as a holdout or matte, creating a "
         "hole in the image with zero alpha, to fill out in "
-        "compositing with real footange or another render",
+        "compositing with real footage or another render",
         default=False,
     )
 
@@ -1485,7 +1485,6 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
     def draw_impl(self, layout, context):
         available_device_types = self.get_device_types(context)
-        layout.label(text="Cycles Compute Device:")
         if len(available_device_types) == 1:
             layout.label(text="No compatible GPUs found", icon='INFO')
             return

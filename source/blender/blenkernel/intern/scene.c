@@ -188,6 +188,7 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
 	ts->gp_interpolate.custom_ipo = curvemapping_copy(ts->gp_interpolate.custom_ipo);
 	/* duplicate Grease Pencil multiframe fallof */
 	ts->gp_sculpt.cur_falloff = curvemapping_copy(ts->gp_sculpt.cur_falloff);
+	ts->gp_sculpt.cur_primitive = curvemapping_copy(ts->gp_sculpt.cur_primitive);
 	return ts;
 }
 
@@ -226,6 +227,9 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
 	if (toolsettings->gp_sculpt.cur_falloff) {
 		curvemapping_free(toolsettings->gp_sculpt.cur_falloff);
 	}
+	if (toolsettings->gp_sculpt.cur_primitive) {
+		curvemapping_free(toolsettings->gp_sculpt.cur_primitive);
+	}
 
 	MEM_freeN(toolsettings);
 }
@@ -236,7 +240,7 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, const int flag)
 {
@@ -470,7 +474,7 @@ void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
 
 	/* is no lib link block, but scene extension */
 	if (sce->nodetree) {
-		ntreeFreeTree(sce->nodetree);
+		ntreeFreeNestedTree(sce->nodetree);
 		MEM_freeN(sce->nodetree);
 		sce->nodetree = NULL;
 	}
@@ -586,6 +590,7 @@ void BKE_scene_init(Scene *sce)
 	 */
 	sce->r.color_mgt_flag |= R_COLOR_MANAGEMENT;
 
+	sce->r.gauss = 1.5;
 	sce->r.dither_intensity = 1.0f;
 
 	sce->r.bake_mode = 0;
@@ -662,10 +667,11 @@ void BKE_scene_init(Scene *sce)
 	sce->toolsettings->autokey_mode = U.autokey_mode;
 
 
-	sce->toolsettings->transform_pivot_point = V3D_AROUND_CENTER_MEAN;
+	sce->toolsettings->transform_pivot_point = V3D_AROUND_CENTER_MEDIAN;
 	sce->toolsettings->snap_mode = SCE_SNAP_MODE_INCREMENT;
 	sce->toolsettings->snap_node_mode = SCE_SNAP_MODE_GRID;
 	sce->toolsettings->snap_uv_mode = SCE_SNAP_MODE_INCREMENT;
+	sce->toolsettings->snap_transform_mode_flag = SCE_SNAP_TRANSFORM_MODE_TRANSLATE;
 
 	sce->toolsettings->curve_paint_settings.curve_type = CU_BEZIER;
 	sce->toolsettings->curve_paint_settings.flag |= CURVE_PAINT_FLAG_CORNERS_DETECT;
@@ -694,10 +700,22 @@ void BKE_scene_init(Scene *sce)
 	sce->toolsettings->gp_sculpt.cur_falloff = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 	CurveMapping *gp_falloff_curve = sce->toolsettings->gp_sculpt.cur_falloff;
 	curvemapping_initialize(gp_falloff_curve);
-	curvemap_reset(gp_falloff_curve->cm,
-		&gp_falloff_curve->clipr,
-		CURVE_PRESET_GAUSS,
-		CURVEMAP_SLOPE_POSITIVE);
+	curvemap_reset(
+	        gp_falloff_curve->cm,
+	        &gp_falloff_curve->clipr,
+	        CURVE_PRESET_GAUSS,
+	        CURVEMAP_SLOPE_POSITIVE);
+
+	sce->toolsettings->gp_sculpt.cur_primitive = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+	CurveMapping *gp_primitive_curve = sce->toolsettings->gp_sculpt.cur_primitive;
+	curvemapping_initialize(gp_primitive_curve);
+	curvemap_reset(
+	        gp_primitive_curve->cm,
+	        &gp_primitive_curve->clipr,
+	        CURVE_PRESET_BELL,
+	        CURVEMAP_SLOPE_POSITIVE);
+
+	sce->toolsettings->gp_sculpt.guide.spacing = 20.0f;
 
 	sce->physics_settings.gravity[0] = 0.0f;
 	sce->physics_settings.gravity[1] = 0.0f;
@@ -769,8 +787,8 @@ void BKE_scene_init(Scene *sce)
 	            sizeof(sce->sequencer_colorspace_settings.name));
 
 	/* Safe Areas */
-	copy_v2_fl2(sce->safe_areas.title, 3.5f / 100.0f, 3.5f / 100.0f);
-	copy_v2_fl2(sce->safe_areas.action, 10.0f / 100.0f, 5.0f / 100.0f);
+	copy_v2_fl2(sce->safe_areas.title, 10.0f / 100.0f, 5.0f / 100.0f);
+	copy_v2_fl2(sce->safe_areas.action, 3.5f / 100.0f, 3.5f / 100.0f);
 	copy_v2_fl2(sce->safe_areas.title_center, 17.5f / 100.0f, 5.0f / 100.0f);
 	copy_v2_fl2(sce->safe_areas.action_center, 15.0f / 100.0f, 5.0f / 100.0f);
 
@@ -851,7 +869,9 @@ void BKE_scene_init(Scene *sce)
 	sce->toolsettings->annotate_v3d_align = GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR;
 	sce->toolsettings->annotate_thickness = 3;
 
-	sce->orientation_index_custom = -1;
+	for (int i = 0; i < ARRAY_SIZE(sce->orientation_slots); i++) {
+		sce->orientation_slots[i].index_custom = -1;
+	}
 
 	/* Master Collection */
 	sce->master_collection = BKE_collection_master_add();
@@ -909,12 +929,12 @@ void BKE_scene_init(Scene *sce)
 	copy_v3_fl(sce->eevee.bloom_color, 1.0f);
 	sce->eevee.bloom_threshold = 0.8f;
 	sce->eevee.bloom_knee = 0.5f;
-	sce->eevee.bloom_intensity = 0.8f;
+	sce->eevee.bloom_intensity = 0.05f;
 	sce->eevee.bloom_radius = 6.5f;
-	sce->eevee.bloom_clamp = 1.0f;
+	sce->eevee.bloom_clamp = 0.0f;
 
 	sce->eevee.motion_blur_samples = 8;
-	sce->eevee.motion_blur_shutter = 1.0f;
+	sce->eevee.motion_blur_shutter = 0.5f;
 
 	sce->eevee.shadow_method = SHADOW_ESM;
 	sce->eevee.shadow_cube_size = 512;
@@ -1308,7 +1328,6 @@ float BKE_scene_frame_get_from_ctime(const Scene *scene, const float frame)
 
 	return ctime;
 }
-
 /**
  * Sets the frame int/float components.
  */
@@ -1318,6 +1337,52 @@ void BKE_scene_frame_set(struct Scene *scene, double cfra)
 	scene->r.subframe = modf(cfra, &intpart);
 	scene->r.cfra = (int)intpart;
 }
+
+
+/* -------------------------------------------------------------------- */
+/** \name Scene Orientation Slots
+ * \{ */
+
+TransformOrientationSlot *BKE_scene_orientation_slot_get(Scene *scene, int flag)
+{
+	BLI_assert(flag && !(flag & ~(SCE_GIZMO_SHOW_TRANSLATE | SCE_GIZMO_SHOW_ROTATE | SCE_GIZMO_SHOW_SCALE)));
+	int index = SCE_ORIENT_DEFAULT;
+	if (flag & SCE_GIZMO_SHOW_TRANSLATE) {
+		index = SCE_ORIENT_TRANSLATE;
+	}
+	else if (flag & SCE_GIZMO_SHOW_ROTATE) {
+		index = SCE_ORIENT_ROTATE;
+	}
+	else if (flag & SCE_GIZMO_SHOW_SCALE) {
+		index = SCE_ORIENT_SCALE;
+	}
+
+	if ((scene->orientation_slots[index].flag & SELECT) == 0) {
+		index = SCE_ORIENT_DEFAULT;
+	}
+	return &scene->orientation_slots[index];
+}
+
+/**
+ * Activate a transform orientation in a 3D view based on an enum value.
+ *
+ * \param orientation: If this is #V3D_MANIP_CUSTOM or greater, the custom transform orientation
+ * with index \a orientation - #V3D_MANIP_CUSTOM gets activated.
+ */
+void BKE_scene_orientation_slot_set_index(TransformOrientationSlot *orient_slot, int orientation)
+{
+	const bool is_custom = orientation >= V3D_MANIP_CUSTOM;
+	orient_slot->type = is_custom ? V3D_MANIP_CUSTOM : orientation;
+	orient_slot->index_custom = is_custom ? (orientation - V3D_MANIP_CUSTOM) : -1;
+}
+
+int BKE_scene_orientation_slot_get_index(const TransformOrientationSlot *orient_slot)
+{
+	return (orient_slot->type == V3D_MANIP_CUSTOM) ? (orient_slot->type + orient_slot->index_custom) : orient_slot->type;
+}
+
+/** \} */
+
 
 /* That's like really a bummer, because currently animation data for armatures
  * might want to use pose, and pose might be missing on the object.
@@ -2153,11 +2218,16 @@ void BKE_scene_transform_orientation_remove(
         Scene *scene, TransformOrientation *orientation)
 {
 	const int orientation_index = BKE_scene_transform_orientation_get_index(scene, orientation);
-	if (scene->orientation_index_custom == orientation_index) {
-		/* could also use orientation_index-- */
-		scene->orientation_type = V3D_MANIP_GLOBAL;
-		scene->orientation_index_custom = -1;
+
+	for (int i = 0; i < ARRAY_SIZE(scene->orientation_slots); i++) {
+		TransformOrientationSlot *orient_slot = &scene->orientation_slots[i];
+		if (orient_slot->index_custom == orientation_index) {
+			/* could also use orientation_index-- */
+			orient_slot->type = V3D_MANIP_GLOBAL;
+			orient_slot->index_custom = -1;
+		}
 	}
+
 	BLI_freelinkN(&scene->transform_spaces, orientation);
 }
 

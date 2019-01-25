@@ -55,6 +55,7 @@ set(INC_SYS
 set(SRC
 	intern/draw_anim_viz.c
 	intern/draw_armature.c
+	intern/draw_builtin_shader.c
 	intern/draw_cache.c
 	intern/draw_cache_impl_curve.c
 	intern/draw_cache_impl_displist.c
@@ -133,6 +134,7 @@ set(SRC
 
 	DRW_engine.h
 	intern/DRW_render.h
+	intern/draw_builtin_shader.h
 	intern/draw_cache.h
 	intern/draw_cache_impl.h
 	intern/draw_common.h
@@ -249,6 +251,7 @@ data_to_c_simple(modes/shaders/common_hair_refine_vert.glsl SRC)
 data_to_c_simple(modes/shaders/common_view_lib.glsl SRC)
 data_to_c_simple(modes/shaders/common_fxaa_lib.glsl SRC)
 data_to_c_simple(modes/shaders/common_fullscreen_vert.glsl SRC)
+data_to_c_simple(modes/shaders/common_world_clip_lib.glsl SRC)
 data_to_c_simple(modes/shaders/animviz_mpath_lines_vert.glsl SRC)
 data_to_c_simple(modes/shaders/animviz_mpath_lines_geom.glsl SRC)
 data_to_c_simple(modes/shaders/animviz_mpath_points_vert.glsl SRC)
@@ -281,6 +284,7 @@ data_to_c_simple(modes/shaders/edit_mesh_overlay_facefill_frag.glsl SRC)
 data_to_c_simple(modes/shaders/edit_curve_overlay_handle_vert.glsl SRC)
 data_to_c_simple(modes/shaders/edit_curve_overlay_handle_geom.glsl SRC)
 data_to_c_simple(modes/shaders/edit_curve_overlay_loosevert_vert.glsl SRC)
+data_to_c_simple(modes/shaders/edit_curve_overlay_normals_vert.glsl SRC)
 data_to_c_simple(modes/shaders/edit_lattice_overlay_frag.glsl SRC)
 data_to_c_simple(modes/shaders/edit_lattice_overlay_loosevert_vert.glsl SRC)
 data_to_c_simple(modes/shaders/edit_normals_vert.glsl SRC)
@@ -313,6 +317,7 @@ data_to_c_simple(modes/shaders/paint_vertex_frag.glsl SRC)
 data_to_c_simple(modes/shaders/paint_vertex_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_weight_frag.glsl SRC)
 data_to_c_simple(modes/shaders/paint_weight_vert.glsl SRC)
+data_to_c_simple(modes/shaders/paint_face_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_wire_frag.glsl SRC)
 data_to_c_simple(modes/shaders/paint_wire_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_vert_frag.glsl SRC)
@@ -320,6 +325,8 @@ data_to_c_simple(modes/shaders/particle_strand_frag.glsl SRC)
 data_to_c_simple(modes/shaders/particle_strand_vert.glsl SRC)
 data_to_c_simple(modes/shaders/sculpt_mask_vert.glsl SRC)
 data_to_c_simple(modes/shaders/volume_velocity_vert.glsl SRC)
+data_to_c_simple(modes/shaders/drw_shader_3D_vert.glsl SRC)
+data_to_c_simple(modes/shaders/drw_shader_3D_smooth_color_vert.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_vert.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_frag.glsl SRC)

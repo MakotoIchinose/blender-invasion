@@ -118,13 +118,14 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator *UNUSED(op))
 		br = BKE_brush_copy(bmain, br);
 	}
 	else {
-		br = BKE_brush_add(bmain, "Brush", OB_MODE_GPENCIL_PAINT);
+		br = BKE_brush_add(bmain, "Brush", OB_MODE_PAINT_GPENCIL);
 		id_us_min(&br->id);  /* fake user only */
 	}
 
 	BKE_paint_brush_set(paint, br);
 
-	/* TODO init grease pencil specific data */
+	/* init grease pencil specific data */
+	BKE_brush_init_gpencil_settings(br);
 
 	return OPERATOR_FINISHED;
 }
@@ -560,13 +561,13 @@ typedef enum {
 
 typedef enum {
 	STENCIL_PRIMARY = 0,
-	STENCIL_SECONDARY = 1
+	STENCIL_SECONDARY = 1,
 } StencilTextureMode;
 
 
 typedef enum {
 	STENCIL_CONSTRAINT_X = 1,
-	STENCIL_CONSTRAINT_Y = 2
+	STENCIL_CONSTRAINT_Y = 2,
 } StencilConstraint;
 
 typedef struct {

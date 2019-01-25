@@ -42,6 +42,7 @@
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
+#include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 
 #include "DNA_ID.h"
@@ -172,7 +173,7 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
 		}
 	}
 
-	BKE_libblock_delete(bmain, collection);
+	BKE_id_delete(bmain, collection);
 
 	BKE_main_collection_sync(bmain);
 
@@ -187,7 +188,7 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_collection_copy_data(
         Main *bmain, Collection *collection_dst, const Collection *collection_src, const int flag)
@@ -515,6 +516,10 @@ static bool collection_object_add(Main *bmain, Collection *collection, Object *o
 		DEG_id_tag_update_ex(bmain, &collection->id, ID_RECALC_COPY_ON_WRITE);
 	}
 
+	if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
+		BKE_rigidbody_main_collection_object_add(bmain, collection, ob);
+	}
+
 	return true;
 }
 
@@ -529,7 +534,7 @@ static bool collection_object_remove(Main *bmain, Collection *collection, Object
 	BKE_collection_object_cache_free(collection);
 
 	if (free_us) {
-		BKE_libblock_free_us(bmain, ob);
+		BKE_id_free_us(bmain, ob);
 	}
 	else {
 		id_us_min(&ob->id);
@@ -678,8 +683,9 @@ static void collection_missing_parents_remove(Collection *collection)
 {
 	for (CollectionParent *parent = collection->parents.first, *parent_next; parent != NULL; parent = parent_next) {
 		parent_next = parent->next;
-
-		if (!collection_find_child(parent->collection, collection)) {
+		if ((parent->collection == NULL) ||
+		    !collection_find_child(parent->collection, collection))
+		{
 			BLI_freelinkN(&collection->parents, parent);
 		}
 	}
@@ -692,7 +698,7 @@ static void collection_missing_parents_remove(Collection *collection)
  *
  * \note caller must ensure BKE_main_collection_sync_remap() is called afterwards!
  *
- * \param collection may be \a NULL, in which case whole \a bmain database of collections is checked.
+ * \param collection: may be \a NULL, in which case whole \a bmain database of collections is checked.
  */
 void BKE_collections_child_remove_nulls(Main *bmain, Collection *collection)
 {
@@ -770,8 +776,9 @@ bool BKE_collection_is_in_scene(Collection *collection)
 
 void BKE_collections_after_lib_link(Main *bmain)
 {
-	/* Update view layer collections to match any changes in linked
-	 * collections after file load. */
+	/* Need to update layer collections because objects might have changed
+	 * in linked files, and because undo push does not include updated base
+	 * flags since those are refreshed after the operator completes. */
 	BKE_main_collection_sync(bmain);
 }
 

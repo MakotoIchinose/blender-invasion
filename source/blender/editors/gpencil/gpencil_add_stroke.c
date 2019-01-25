@@ -213,10 +213,9 @@ static const ColorTemplate gp_stroke_material_grey = {
 /* Stroke API */
 
 /* add a Simple stroke with colors (original design created by Daniel M. Lara and Matias Mendiola) */
-void ED_gpencil_create_stroke(bContext *C, float mat[4][4])
+void ED_gpencil_create_stroke(bContext *C, Object *ob, float mat[4][4])
 {
 	Main *bmain = CTX_data_main(C);
-	Object *ob = CTX_data_active_object(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	int cfra_eval = (int)DEG_get_ctime(depsgraph);
 	bGPdata *gpd = (bGPdata *)ob->data;
@@ -247,7 +246,7 @@ void ED_gpencil_create_stroke(bContext *C, float mat[4][4])
 	UNUSED_VARS(frame_color);
 
 	/* generate stroke */
-	gps = BKE_gpencil_add_stroke(frame_lines, color_black, 175, 3);
+	gps = BKE_gpencil_add_stroke(frame_lines, color_black, 175, 75);
 	BKE_gpencil_stroke_add_points(gps, data0, 175, mat);
 
 	/* update depsgraph */

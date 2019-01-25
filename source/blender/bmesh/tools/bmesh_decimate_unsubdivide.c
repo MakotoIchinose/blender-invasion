@@ -168,7 +168,7 @@ static bool bm_vert_dissolve_fan(BMesh *bm, BMVert *v)
 enum {
 	VERT_INDEX_DO_COLLAPSE  = -1,
 	VERT_INDEX_INIT         =  0,
-	VERT_INDEX_IGNORE       =  1
+	VERT_INDEX_IGNORE       =  1,
 };
 
 // #define USE_WALKER  /* gives uneven results, disable for now */
@@ -178,7 +178,7 @@ enum {
  */
 
 /**
- * \param tag_only so we can call this from an operator */
+ * \param tag_only: so we can call this from an operator */
 void BM_mesh_decimate_unsubdivide_ex(BMesh *bm, const int iterations, const bool tag_only)
 {
 #ifdef USE_WALKER

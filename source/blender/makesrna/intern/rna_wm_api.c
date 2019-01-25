@@ -44,6 +44,7 @@
 #include "UI_interface.h"
 
 #include "wm_cursors.h"
+#include "wm_event_types.h"
 
 #include "rna_internal.h"  /* own include */
 
@@ -252,7 +253,7 @@ static wmKeyMapItem *rna_KeyMap_item_new_from_item(
 /*	wmWindowManager *wm = CTX_wm_manager(C); */
 
 	if ((km->flag & KEYMAP_MODAL) == (kmi_src->idname[0] != '\0')) {
-		BKE_report(reports, RPT_ERROR, "Can not mix mondal/non-modal items");
+		BKE_report(reports, RPT_ERROR, "Can not mix modal/non-modal items");
 		return NULL;
 	}
 
@@ -306,6 +307,23 @@ static void rna_KeyMap_item_remove(wmKeyMap *km, ReportList *reports, PointerRNA
 	}
 
 	RNA_POINTER_INVALIDATE(kmi_ptr);
+}
+
+static PointerRNA rna_KeyMap_item_find_from_operator(
+        ID *id,
+        wmKeyMap *km,
+        const char *idname,
+        PointerRNA *properties,
+        int include_mask, int exclude_mask)
+{
+	char idname_bl[OP_MAX_TYPENAME];
+	WM_operator_bl_idname(idname_bl, idname);
+
+	wmKeyMapItem *kmi = WM_key_event_operator_from_keymap(
+	        km, idname_bl, properties->data, include_mask, exclude_mask);
+	PointerRNA kmi_ptr;
+	RNA_pointer_create(id, &RNA_KeyMapItem, kmi, &kmi_ptr);
+	return kmi_ptr;
 }
 
 static wmKeyMap *rna_keymap_new(wmKeyConfig *keyconf, const char *idname, int spaceid, int regionid, bool modal, bool tool)
@@ -371,14 +389,15 @@ static PointerRNA rna_KeyConfig_find_item_from_operator(
         const char *idname,
         int opcontext,
         PointerRNA *properties,
-        bool is_hotkey,
+        int include_mask, int exclude_mask,
         PointerRNA *km_ptr)
 {
 	char idname_bl[OP_MAX_TYPENAME];
 	WM_operator_bl_idname(idname_bl, idname);
 
 	wmKeyMap *km = NULL;
-	wmKeyMapItem *kmi = WM_key_event_operator(C, idname_bl, opcontext, properties->data, (bool)is_hotkey, &km);
+	wmKeyMapItem *kmi = WM_key_event_operator(
+	        C, idname_bl, opcontext, properties->data, include_mask, exclude_mask, &km);
 	PointerRNA kmi_ptr;
 	RNA_pointer_create(&wm->id, &RNA_KeyMap, km, km_ptr);
 	RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi, &kmi_ptr);
@@ -906,6 +925,20 @@ void RNA_api_keymapitems(StructRNA *srna)
 	RNA_def_property_ui_text(parm, "id", "ID of the item");
 	parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
 	RNA_def_function_return(func, parm);
+
+	/* Keymap introspection
+	 * Args follow: KeyConfigs.find_item_from_operator */
+	func = RNA_def_function(srna, "find_from_operator", "rna_KeyMap_item_find_from_operator");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+	parm = RNA_def_string(func, "idname", NULL, 0, "Operator Identifier", "");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_pointer(func, "properties", "OperatorProperties", "", "");
+	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
+	RNA_def_enum_flag(func, "include", rna_enum_event_type_mask_items, EVT_TYPE_MASK_ALL, "Include", "");
+	RNA_def_enum_flag(func, "exclude", rna_enum_event_type_mask_items, 0, "Exclude", "");
+	parm = RNA_def_pointer(func, "item", "KeyMapItem", "", "");
+	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
+	RNA_def_function_return(func, parm);
 }
 
 void RNA_api_keymaps(StructRNA *srna)
@@ -972,7 +1005,8 @@ void RNA_api_keyconfigs(StructRNA *srna)
 	RNA_def_property_enum_items(parm, rna_enum_operator_context_items);
 	parm = RNA_def_pointer(func, "properties", "OperatorProperties", "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
-	RNA_def_boolean(func, "is_hotkey", 0, "Hotkey", "Event is not a modifier");
+	RNA_def_enum_flag(func, "include", rna_enum_event_type_mask_items, EVT_TYPE_MASK_ALL, "Include", "");
+	RNA_def_enum_flag(func, "exclude", rna_enum_event_type_mask_items, 0, "Exclude", "");
 	parm = RNA_def_pointer(func, "keymap", "KeyMap", "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR | PARM_OUTPUT);
 	parm = RNA_def_pointer(func, "item", "KeyMapItem", "", "");

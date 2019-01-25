@@ -78,7 +78,7 @@ Scene *ED_scene_add(Main *bmain, bContext *C, wmWindow *win, eSceneCopyMethod me
 			ED_object_single_users(bmain, scene_new, false, true);
 		}
 		else if (method == SCE_COPY_FULL) {
-			ED_editors_flush_edits(C, false);
+			ED_editors_flush_edits(bmain, false);
 			ED_object_single_users(bmain, scene_new, true, true);
 		}
 	}
@@ -115,7 +115,7 @@ bool ED_scene_delete(bContext *C, Main *bmain, wmWindow *win, Scene *scene)
 
 	id_us_clear_real(&scene->id);
 	if (scene->id.us == 0) {
-		BKE_libblock_free(bmain, scene);
+		BKE_id_free(bmain, scene);
 	}
 
 	return true;
@@ -238,6 +238,12 @@ static void SCENE_OT_new(wmOperatorType *ot)
 	ot->prop = RNA_def_enum(ot->srna, "type", type_items, 0, "Type", "");
 }
 
+static bool scene_delete_poll(bContext *C)
+{
+	Scene *scene = CTX_data_scene(C);
+	return (scene->id.prev || scene->id.next);
+}
+
 static int scene_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Scene *scene = CTX_data_scene(C);
@@ -263,6 +269,7 @@ static void SCENE_OT_delete(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = scene_delete_exec;
+	ot->poll = scene_delete_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

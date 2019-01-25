@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -111,7 +114,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 
 			int buffer_size[2] = {(int)viewport_size[0] / 2, (int)viewport_size[1] / 2};
 
-			GPUTextureFormat down_format = DRW_state_draw_background() ? GPU_R11F_G11F_B10F : GPU_RGBA16F;
+			eGPUTextureFormat down_format = DRW_state_draw_background() ? GPU_R11F_G11F_B10F : GPU_RGBA16F;
 
 			effects->dof_down_near = DRW_texture_pool_query_2D(buffer_size[0], buffer_size[1], down_format,
 			                                                   &draw_engine_eevee_type);
@@ -128,7 +131,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 			});
 
 			/* Go full 32bits for rendering and reduce the color artifacts. */
-			GPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16F;
+			eGPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16F;
 
 			effects->dof_blur = DRW_texture_pool_query_2D(buffer_size[0] * 2, buffer_size[1], fb_format,
 			                                              &draw_engine_eevee_type);
@@ -178,9 +181,9 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 
 			/* Precompute values to save instructions in fragment shader. */
 			effects->dof_bokeh_sides[0] = blades;
-			effects->dof_bokeh_sides[1] = 2.0f * M_PI / blades;
+			effects->dof_bokeh_sides[1] = blades > 0.0f ? 2.0f * M_PI / blades : 0.0f;
 			effects->dof_bokeh_sides[2] = blades / (2.0f * M_PI);
-			effects->dof_bokeh_sides[3] = cosf(M_PI / blades);
+			effects->dof_bokeh_sides[3] = blades > 0.0f ? cosf(M_PI / blades) : 0.0f;
 
 			return EFFECT_DOF | EFFECT_POST_BUFFER;
 		}

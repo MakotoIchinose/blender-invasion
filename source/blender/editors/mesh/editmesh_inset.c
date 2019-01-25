@@ -241,7 +241,8 @@ static bool edbm_inset_calc(wmOperator *op)
 	const float thickness          = RNA_float_get(op->ptr,   "thickness");
 	const float depth              = RNA_float_get(op->ptr,   "depth");
 	const bool use_outset          = RNA_boolean_get(op->ptr, "use_outset");
-	const bool use_select_inset    = RNA_boolean_get(op->ptr, "use_select_inset"); /* not passed onto the BMO */
+	/* not passed onto the BMO */
+	const bool use_select_inset    = RNA_boolean_get(op->ptr, "use_select_inset");
 	const bool use_individual      = RNA_boolean_get(op->ptr, "use_individual");
 	const bool use_interpolate     = RNA_boolean_get(op->ptr, "use_interpolate");
 
@@ -326,7 +327,7 @@ static int edbm_inset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	opdata = op->customdata;
 
 	/* initialize mouse values */
-	if (!calculateTransformCenter(C, V3D_AROUND_CENTER_MEAN, center_3d, opdata->mcenter)) {
+	if (!calculateTransformCenter(C, V3D_AROUND_CENTER_MEDIAN, center_3d, opdata->mcenter)) {
 		/* in this case the tool will likely do nothing,
 		 * ideally this will never happen and should be checked for above */
 		opdata->mcenter[0] = opdata->mcenter[1] = 0;

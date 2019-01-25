@@ -144,13 +144,17 @@ int WM_keymap_item_raw_to_string(
         const short val, const short type, const bool compact,
         char *result, const int result_len);
 wmKeyMapItem *WM_key_event_operator(
-        const struct bContext *C, const char *opname, int opcontext,
-        struct IDProperty *properties, const bool is_hotkey,
+        const struct bContext *C, const char *opname, int opcontext, struct IDProperty *properties,
+        const short include_mask, const short exclude_mask,
         struct wmKeyMap **r_keymap);
 char *WM_key_event_operator_string(
         const struct bContext *C, const char *opname, int opcontext,
         struct IDProperty *properties, const bool is_strict,
         char *result, const int result_len);
+
+wmKeyMapItem *WM_key_event_operator_from_keymap(
+        struct wmKeyMap *keymap, const char *opname, struct IDProperty *properties,
+        const short include_mask, const short exclude_mask);
 
 const char *WM_bool_as_string(bool test);
 

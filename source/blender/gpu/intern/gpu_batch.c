@@ -114,19 +114,22 @@ void GPU_batch_init_ex(
 }
 
 /* This will share the VBOs with the new batch. */
-GPUBatch *GPU_batch_duplicate(GPUBatch *batch_src)
+void GPU_batch_copy(GPUBatch *batch_dst, GPUBatch *batch_src)
 {
-	GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_POINTS, batch_src->verts[0], batch_src->elem, 0);
+	GPU_batch_init_ex(batch_dst, GPU_PRIM_POINTS, batch_src->verts[0], batch_src->elem, 0);
 
-	batch->gl_prim_type = batch_src->gl_prim_type;
+	batch_dst->gl_prim_type = batch_src->gl_prim_type;
 	for (int v = 1; v < GPU_BATCH_VBO_MAX_LEN; ++v) {
-		batch->verts[v] = batch_src->verts[v];
+		batch_dst->verts[v] = batch_src->verts[v];
 	}
-	return batch;
 }
 
-void GPU_batch_discard(GPUBatch *batch)
+void GPU_batch_clear(GPUBatch *batch)
 {
+	if (batch->free_callback) {
+		batch->free_callback(batch, batch->callback_data);
+	}
+
 	if (batch->owns_flag & GPU_BATCH_OWNS_INDEX) {
 		GPU_indexbuf_discard(batch->elem);
 	}
@@ -144,10 +147,11 @@ void GPU_batch_discard(GPUBatch *batch)
 		}
 	}
 	GPU_batch_vao_cache_clear(batch);
+}
 
-	if (batch->free_callback) {
-		batch->free_callback(batch, batch->callback_data);
-	}
+void GPU_batch_discard(GPUBatch *batch)
+{
+	GPU_batch_clear(batch);
 	MEM_freeN(batch);
 }
 
@@ -424,9 +428,9 @@ void GPU_batch_program_use_end(GPUBatch *batch)
 }
 
 #if TRUST_NO_ONE
-#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform(batch->interface, name); assert(uniform);
+#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(batch->interface, name); assert(uniform);
 #else
-#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform(batch->interface, name);
+#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(batch->interface, name);
 #endif
 
 void GPU_batch_uniform_1ui(GPUBatch *batch, const char *name, int value)
@@ -666,7 +670,7 @@ void GPU_draw_primitive(GPUPrimType prim_type, int v_count)
 /** \name Utilities
  * \{ */
 
-void GPU_batch_program_set_builtin(GPUBatch *batch, GPUBuiltinShader shader_id)
+void GPU_batch_program_set_builtin(GPUBatch *batch, eGPUBuiltinShader shader_id)
 {
 	GPUShader *shader = GPU_shader_get_builtin_shader(shader_id);
 	GPU_batch_program_set(batch, shader->program, shader->interface);

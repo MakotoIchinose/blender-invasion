@@ -77,6 +77,7 @@ const char *screen_context_dir[] = {
 	"selected_objects", "selected_bases",
 	"editable_objects", "editable_bases",
 	"selected_editable_objects", "selected_editable_bases",
+	"objects_in_mode", "objects_in_mode_unique_data",
 	"visible_bones", "editable_bones", "selected_bones", "selected_editable_bones",
 	"visible_pose_bones", "selected_pose_bones", "selected_pose_bones_from_active_object",
 	"active_bone", "active_pose_bone",
@@ -86,7 +87,7 @@ const char *screen_context_dir[] = {
 	"sequences", "selected_sequences", "selected_editable_sequences", /* sequencer */
 	"gpencil_data", "gpencil_data_owner", /* grease pencil data */
 	"visible_gpencil_layers", "editable_gpencil_layers", "editable_gpencil_strokes",
-	"active_gpencil_layer", "active_gpencil_frame", "active_gpencil_brush",
+	"active_gpencil_layer", "active_gpencil_frame",
 	"active_operator", "selected_editable_fcurves",
 	NULL};
 
@@ -110,26 +111,17 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 		return 1;
 	}
 	else if (CTX_data_equals(member, "visible_objects")) {
-		FOREACH_VISIBLE_OBJECT_BEGIN(view_layer, v3d, ob)
-		{
-			CTX_data_id_list_add(result, &ob->id);
+		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+			if (BASE_VISIBLE(v3d, base)) {
+				CTX_data_id_list_add(result, &base->object->id);
+			}
 		}
-		FOREACH_VISIBLE_BASE_END;
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
 		return 1;
 	}
 	else if (CTX_data_equals(member, "selectable_objects")) {
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-			if (v3d && v3d->localvd && ((base->local_view_bits & v3d->local_view_uuid) == 0)) {
-				continue;
-			}
-			if (v3d && ((v3d->object_type_exclude_viewport & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if (v3d && ((v3d->object_type_exclude_select & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if (((base->flag & BASE_VISIBLE) != 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
+			if (BASE_SELECTABLE(v3d, base)) {
 				CTX_data_id_list_add(result, &base->object->id);
 			}
 		}
@@ -137,58 +129,45 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 		return 1;
 	}
 	else if (CTX_data_equals(member, "selected_objects")) {
-		FOREACH_SELECTED_OBJECT_BEGIN(view_layer, v3d, ob)
-		{
-			CTX_data_id_list_add(result, &ob->id);
+		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+			if (BASE_SELECTED(v3d, base)) {
+				CTX_data_id_list_add(result, &base->object->id);
+			}
 		}
-		FOREACH_SELECTED_OBJECT_END;
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
 		return 1;
 	}
 	else if (CTX_data_equals(member, "selected_editable_objects")) {
-		FOREACH_SELECTED_OBJECT_BEGIN(view_layer, v3d, ob)
-		{
-			if (0 == BKE_object_is_libdata(ob)) {
-				CTX_data_id_list_add(result, &ob->id);
+		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+			if (BASE_SELECTED_EDITABLE(v3d, base)) {
+				CTX_data_id_list_add(result, &base->object->id);
 			}
 		}
-		FOREACH_SELECTED_OBJECT_END;
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
 		return 1;
 	}
 	else if (CTX_data_equals(member, "editable_objects")) {
 		/* Visible + Editable, but not necessarily selected */
-		FOREACH_VISIBLE_OBJECT_BEGIN(view_layer, v3d, ob)
-		{
-			if (0 == BKE_object_is_libdata(ob)) {
-				CTX_data_id_list_add(result, &ob->id);
+		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+			if (BASE_EDITABLE(v3d, base)) {
+				CTX_data_id_list_add(result, &base->object->id);
 			}
 		}
-		FOREACH_VISIBLE_OBJECT_END;
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
 		return 1;
 	}
 	else if ( CTX_data_equals(member, "visible_bases")) {
-		FOREACH_VISIBLE_BASE_BEGIN(view_layer, v3d, base)
-		{
-			CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
+		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+			if (BASE_VISIBLE(v3d, base)) {
+				CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
+			}
 		}
-		FOREACH_VISIBLE_BASE_END;
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
 		return 1;
 	}
 	else if (CTX_data_equals(member, "selectable_bases")) {
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-			if (v3d && v3d->localvd && ((base->local_view_bits & v3d->local_view_uuid) == 0)) {
-				continue;
-			}
-			if (v3d && ((v3d->object_type_exclude_viewport & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if (v3d && ((v3d->object_type_exclude_select & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if ((base->flag & BASE_VISIBLE) && (base->flag & BASE_SELECTABLE) != 0) {
+			if (BASE_SELECTABLE(v3d, base)) {
 				CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
 			}
 		}
@@ -197,13 +176,7 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 	}
 	else if (CTX_data_equals(member, "selected_bases")) {
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-			if (v3d && v3d->localvd && ((base->local_view_bits & v3d->local_view_uuid) == 0)) {
-				continue;
-			}
-			if (v3d && ((v3d->object_type_exclude_viewport & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if ((base->flag & BASE_SELECTED) != 0) {
+			if (BASE_SELECTED(v3d, base)) {
 				CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
 			}
 		}
@@ -212,16 +185,8 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 	}
 	else if (CTX_data_equals(member, "selected_editable_bases")) {
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-			if (v3d && v3d->localvd && ((base->local_view_bits & v3d->local_view_uuid) == 0)) {
-				continue;
-			}
-			if (v3d && ((v3d->object_type_exclude_viewport & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if ((base->flag & BASE_SELECTED) != 0) {
-				if (0 == BKE_object_is_libdata(base->object)) {
-					CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
-				}
+			if (BASE_SELECTED_EDITABLE(v3d, base)) {
+				CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
 			}
 		}
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
@@ -230,17 +195,33 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 	else if (CTX_data_equals(member, "editable_bases")) {
 		/* Visible + Editable, but not necessarily selected */
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-			if (v3d && v3d->localvd && ((base->local_view_bits & v3d->local_view_uuid) == 0)) {
-				continue;
+			if (BASE_EDITABLE(v3d, base)) {
+				CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
 			}
-			if (v3d && ((v3d->object_type_exclude_viewport & (1 << base->object->type)) != 0)) {
-				continue;
-			}
-			if ((base->flag & BASE_VISIBLE) != 0) {
-				if (0 == BKE_object_is_libdata(base->object)) {
-					CTX_data_list_add(result, &scene->id, &RNA_ObjectBase, base);
+		}
+		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
+		return 1;
+	}
+	else if (CTX_data_equals(member, "objects_in_mode")) {
+		if (obact && (obact->mode != OB_MODE_OBJECT)) {
+			FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, obact->type, obact->mode, ob_iter) {
+				CTX_data_id_list_add(result, &ob_iter->id);
+			} FOREACH_OBJECT_IN_MODE_END;
+		}
+		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
+		return 1;
+	}
+	else if (CTX_data_equals(member, "objects_in_mode_unique_data")) {
+		if (obact && (obact->mode != OB_MODE_OBJECT)) {
+			FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, obact->type, obact->mode, ob_iter) {
+				ob_iter->id.tag |= LIB_TAG_DOIT;
+			} FOREACH_OBJECT_IN_MODE_END;
+			FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, obact->type, obact->mode, ob_iter) {
+				if (ob_iter->id.tag & LIB_TAG_DOIT) {
+					ob_iter->id.tag &= ~LIB_TAG_DOIT;
+					CTX_data_id_list_add(result, &ob_iter->id);
 				}
-			}
+			} FOREACH_OBJECT_IN_MODE_END;
 		}
 		CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
 		return 1;
@@ -270,7 +251,8 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 						if (arm->flag & ARM_MIRROR_EDIT)
 							flipbone = ED_armature_ebone_get_mirrored(arm->edbo, ebone);
 
-						/* if we're filtering for editable too, use the check for that instead, as it has selection check too */
+						/* if we're filtering for editable too, use the check for that instead,
+						 * as it has selection check too */
 						if (editable_bones) {
 							/* only selected + editable */
 							if (EBONE_EDITABLE(ebone)) {
@@ -321,7 +303,8 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 						if (arm->flag & ARM_MIRROR_EDIT)
 							flipbone = ED_armature_ebone_get_mirrored(arm->edbo, ebone);
 
-						/* if we're filtering for editable too, use the check for that instead, as it has selection check too */
+						/* if we're filtering for editable too, use the check for that instead,
+						 * as it has selection check too */
 						if (selected_editable_bones) {
 							/* only selected + editable */
 							if (EBONE_EDITABLE(ebone)) {
@@ -576,14 +559,6 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 				CTX_data_pointer_set(result, &gpd->id, &RNA_GPencilLayer, gpl);
 				return 1;
 			}
-		}
-	}
-	else if (CTX_data_equals(member, "active_gpencil_brush")) {
-		Brush *brush = BKE_paint_brush(&scene->toolsettings->gp_paint->paint);
-
-		if (brush) {
-			CTX_data_pointer_set(result, &scene->id, &RNA_Brush, brush);
-			return 1;
 		}
 	}
 	else if (CTX_data_equals(member, "active_gpencil_frame")) {

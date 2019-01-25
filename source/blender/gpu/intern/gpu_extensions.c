@@ -77,9 +77,9 @@ static struct GPUGlobal {
 	GLint maxubobinds;
 	int colordepth;
 	int samples_color_texture_max;
-	GPUDeviceType device;
-	GPUOSType os;
-	GPUDriverType driver;
+	eGPUDeviceType device;
+	eGPUOSType os;
+	eGPUDriverType driver;
 	float line_width_range[2];
 	/* workaround for different calculation of dfdy factors on GPUs. Some GPUs/drivers
 	 * calculate dfdy in shader differently when drawing to an offscreen buffer. First
@@ -132,7 +132,7 @@ static void gpu_detect_mip_render_workaround(void)
 
 /* GPU Types */
 
-bool GPU_type_matches(GPUDeviceType device, GPUOSType os, GPUDriverType driver)
+bool GPU_type_matches(eGPUDeviceType device, eGPUOSType os, eGPUDriverType driver)
 {
 	return (GG.device & device) && (GG.os & os) && (GG.driver & driver);
 }
@@ -272,7 +272,8 @@ void gpu_extensions_init(void)
 
 #ifdef _WIN32
 		if (strstr(version, "4.5.13399") ||
-		    strstr(version, "4.5.13417"))
+		    strstr(version, "4.5.13417") ||
+		    strstr(version, "4.5.13422"))
 		{
 			/* The renderers include:
 			 *   Mobility Radeon HD 5000;
@@ -307,6 +308,8 @@ void gpu_extensions_init(void)
 		GG.driver = GPU_DRIVER_OFFICIAL;
 
 		if (strstr(renderer, "UHD Graphics") ||
+		    /* Not UHD but affected by the same bugs. */
+		    strstr(renderer, "HD Graphics 530") ||
 		    strstr(renderer, "Kaby Lake GT2"))
 		{
 			GG.device |= GPU_DEVICE_INTEL_UHD;
@@ -336,8 +339,15 @@ void gpu_extensions_init(void)
 		GG.device = GPU_DEVICE_SOFTWARE;
 		GG.driver = GPU_DRIVER_SOFTWARE;
 	}
+	else if (strstr(renderer, "llvmpipe")) {
+		GG.device = GPU_DEVICE_SOFTWARE;
+		GG.driver = GPU_DRIVER_SOFTWARE;
+	}
 	else {
 		printf("Warning: Could not find a matching GPU name. Things may not behave as expected.\n");
+		printf("Detected OpenGL configuration:\n");
+		printf("Vendor: %s\n", vendor);
+		printf("Renderer: %s\n", renderer);
 		GG.device = GPU_DEVICE_ANY;
 		GG.driver = GPU_DRIVER_ANY;
 	}
@@ -355,7 +365,7 @@ void gpu_extensions_init(void)
 	if (G.debug & G_DEBUG_GPU_FORCE_WORKAROUNDS) {
 		printf("\n");
 		printf("GPU: Bypassing workaround detection.\n");
-		printf("GPU: OpenGL indentification strings\n");
+		printf("GPU: OpenGL identification strings\n");
 		printf("GPU: vendor: %s\n", vendor);
 		printf("GPU: renderer: %s\n", renderer);
 		printf("GPU: version: %s\n\n", version);

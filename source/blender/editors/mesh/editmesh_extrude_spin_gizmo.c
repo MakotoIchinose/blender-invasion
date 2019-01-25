@@ -25,6 +25,7 @@
 #include "BLI_math.h"
 
 #include "BKE_context.h"
+#include "BKE_scene.h"
 
 #include "RNA_define.h"
 #include "RNA_access.h"
@@ -143,7 +144,7 @@ static void gizmo_mesh_spin_init_setup(const bContext *UNUSED(C), wmGizmoGroup *
 			WM_gizmo_set_scale(gz, scale_button);
 			gz->color[3] = 0.6f;
 
-			gz->flag |= WM_GIZMO_DRAW_OFFSET_SCALE;
+			gz->flag |= WM_GIZMO_DRAW_OFFSET_SCALE | WM_GIZMO_OPERATOR_TOOL_INIT;
 
 			ggd->gizmos.icon_button[i][j] = gz;
 		}
@@ -244,7 +245,8 @@ static void gizmo_mesh_spin_init_draw_prepare(
 
 	{
 		Scene *scene = CTX_data_scene(C);
-		switch (scene->orientation_type) {
+		const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, SCE_GIZMO_SHOW_ROTATE);
+		switch (orient_slot->type) {
 			case V3D_MANIP_VIEW:
 			{
 				if (!equals_m3m3(viewinv_m3, ggd->prev.viewinv_m3)) {
@@ -444,10 +446,8 @@ static void gizmo_mesh_spin_init_message_subscribe(
 	RNA_id_pointer_create(&scene->id, &scene_ptr);
 
 	{
-		extern PropertyRNA rna_Scene_transform_orientation;
 		extern PropertyRNA rna_Scene_cursor_location;
 		const PropertyRNA *props[] = {
-			&rna_Scene_transform_orientation,
 			&rna_Scene_cursor_location,
 		};
 		for (int i = 0; i < ARRAY_SIZE(props); i++) {
@@ -458,7 +458,7 @@ static void gizmo_mesh_spin_init_message_subscribe(
 	WM_msg_subscribe_rna_params(
 	        mbus,
 	        &(const wmMsgParams_RNA){
-	            .ptr = (PointerRNA){.type = gzgroup->type->srna},
+	            .ptr = (PointerRNA){ .type = gzgroup->type->srna, },
 	            .prop = ggd->data.gzgt_axis_prop,
 	        },
 	        &msg_sub_value_gz_tag_refresh, __func__);

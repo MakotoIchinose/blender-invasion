@@ -74,7 +74,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
 
 	srna = RNA_def_struct(brna, "LightProbe", "ID");
 	RNA_def_struct_ui_text(srna, "LightProbe", "Light Probe data-block for lighting capture objects");
-	RNA_def_struct_ui_icon(srna, ICON_LIGHTPROBE_CUBEMAP);
+	RNA_def_struct_ui_icon(srna, ICON_OUTLINER_OB_LIGHTPROBE);
 
 	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, lightprobe_type_items);
@@ -188,7 +188,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
 	RNA_def_property_float_sdna(prop, NULL, "vis_blur");
 	RNA_def_property_float_default(prop, 0.2f);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
-	RNA_def_property_ui_text(prop, "Visibility Blur", "Filter size of the visibilty blur");
+	RNA_def_property_ui_text(prop, "Visibility Blur", "Filter size of the visibility blur");
 	RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
 	prop = RNA_def_property(srna, "intensity", PROP_FLOAT, PROP_NONE);

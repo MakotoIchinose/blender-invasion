@@ -214,7 +214,8 @@ static int weight_sample_invoke(bContext *C, wmOperator *op, const wmEvent *even
 			const int vgroup_active = vc.obact->actdef - 1;
 			float vgroup_weight = defvert_find_weight(&me->dvert[v_idx_best], vgroup_active);
 
-			/* use combined weight in multipaint mode, since that's what is displayed to the user in the colors */
+			/* use combined weight in multipaint mode,
+			 * since that's what is displayed to the user in the colors */
 			if (ts->multipaint) {
 				int defbase_tot_sel;
 				const int defbase_tot = BLI_listbase_count(&vc.obact->defbase);
@@ -229,7 +230,8 @@ static int weight_sample_invoke(bContext *C, wmOperator *op, const wmEvent *even
 					vgroup_weight = BKE_defvert_multipaint_collective_weight(
 					        &me->dvert[v_idx_best], defbase_tot, defbase_sel, defbase_tot_sel, ts->auto_normalize);
 
-					/* if autonormalize is enabled, but weights are not normalized, the value can exceed 1 */
+					/* if autonormalize is enabled, but weights are not normalized,
+					 * the value can exceed 1 */
 					CLAMP(vgroup_weight, 0.0f, 1.0f);
 				}
 
@@ -376,7 +378,8 @@ static int weight_sample_group_exec(bContext *C, wmOperator *op)
 	return OPERATOR_FINISHED;
 }
 
-/* TODO, we could make this a menu into OBJECT_OT_vertex_group_set_active rather than its own operator */
+/* TODO, we could make this a menu into OBJECT_OT_vertex_group_set_active
+ * rather than its own operator */
 void PAINT_OT_weight_sample_group(wmOperatorType *ot)
 {
 	PropertyRNA *prop = NULL;
@@ -541,7 +544,7 @@ typedef struct WPGradient_vertStore {
 	float weight_orig;
 	enum {
 		VGRAD_STORE_NOP      = 0,
-		VGRAD_STORE_DW_EXIST = (1 << 0)
+		VGRAD_STORE_DW_EXIST = (1 << 0),
 	} flag;
 } WPGradient_vertStore;
 
@@ -622,13 +625,13 @@ static void gradientVertUpdate__mapFunc(
         const float UNUSED(no_f[3]), const short UNUSED(no_s[3]))
 {
 	WPGradient_userData *grad_data = userData;
-	Mesh *me = grad_data->me;
-	if ((grad_data->use_select == false) || (me->mvert[index].flag & SELECT)) {
-		WPGradient_vertStore *vs = &grad_data->vert_cache->elem[index];
-		if (vs->sco[0] != FLT_MAX) {
-			gradientVert_update(grad_data, index);
-		}
+	WPGradient_vertStore *vs = &grad_data->vert_cache->elem[index];
+
+	if (vs->sco[0] == FLT_MAX) {
+		return;
 	}
+
+	gradientVert_update(grad_data, index);
 }
 
 static void gradientVertInit__mapFunc(
@@ -637,42 +640,41 @@ static void gradientVertInit__mapFunc(
 {
 	WPGradient_userData *grad_data = userData;
 	Mesh *me = grad_data->me;
+	WPGradient_vertStore *vs = &grad_data->vert_cache->elem[index];
 
-	if ((grad_data->use_select == false) || (me->mvert[index].flag & SELECT)) {
-		/* run first pass only,
-		 * the screen coords of the verts need to be cached because
-		 * updating the mesh may move them about (entering feedback loop) */
-
-		if (BLI_BITMAP_TEST(grad_data->vert_visit, index) == 0) {
-			WPGradient_vertStore *vs = &grad_data->vert_cache->elem[index];
-			if (ED_view3d_project_float_object(
-			            grad_data->ar,
-			            co, vs->sco,
-			            V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_NEAR) == V3D_PROJ_RET_OK)
-			{
-				/* ok */
-				MDeformVert *dv = &me->dvert[index];
-				const MDeformWeight *dw;
-				dw = defvert_find_index(dv, grad_data->def_nr);
-				if (dw) {
-					vs->weight_orig = dw->weight;
-					vs->flag = VGRAD_STORE_DW_EXIST;
-				}
-				else {
-					vs->weight_orig = 0.0f;
-					vs->flag = VGRAD_STORE_NOP;
-				}
-
-				BLI_BITMAP_ENABLE(grad_data->vert_visit, index);
-
-				gradientVert_update(grad_data, index);
-			}
-			else {
-				/* no go */
-				copy_v2_fl(vs->sco, FLT_MAX);
-			}
-		}
+	if (grad_data->use_select && !(me->mvert[index].flag & SELECT)) {
+		copy_v2_fl(vs->sco, FLT_MAX);
+		return;
 	}
+
+	/* run first pass only,
+	 * the screen coords of the verts need to be cached because
+	 * updating the mesh may move them about (entering feedback loop) */
+	if (BLI_BITMAP_TEST(grad_data->vert_visit, index)) {
+		copy_v2_fl(vs->sco, FLT_MAX);
+		return;
+	}
+
+	if (ED_view3d_project_float_object(
+	            grad_data->ar,
+	            co, vs->sco,
+	            V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_NEAR) != V3D_PROJ_RET_OK)
+	{
+		return;
+	}
+
+	MDeformVert *dv = &me->dvert[index];
+	const MDeformWeight *dw = defvert_find_index(dv, grad_data->def_nr);
+	if (dw) {
+		vs->weight_orig = dw->weight;
+		vs->flag = VGRAD_STORE_DW_EXIST;
+	}
+	else {
+		vs->weight_orig = 0.0f;
+		vs->flag = VGRAD_STORE_NOP;
+	}
+	BLI_BITMAP_ENABLE(grad_data->vert_visit, index);
+	gradientVert_update(grad_data, index);
 }
 
 static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEvent *event)

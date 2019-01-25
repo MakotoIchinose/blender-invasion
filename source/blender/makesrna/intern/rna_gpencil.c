@@ -20,9 +20,9 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_gpencil.c
- *  \ingroup RNA
- */
+ /** \file blender/makesrna/intern/rna_gpencil.c
+  *  \ingroup RNA
+  */
 
 #include <stdlib.h>
 
@@ -49,7 +49,7 @@
 
 #include "WM_types.h"
 
-/* parent type */
+  /* parent type */
 static const EnumPropertyItem parent_type_items[] = {
 	{PAROBJECT, "OBJECT", 0, "Object", "The layer is parented to an object"},
 	{PARSKEL, "ARMATURE", 0, "Armature", ""},
@@ -72,7 +72,7 @@ static EnumPropertyItem rna_enum_gpencil_onion_modes_items[] = {
 	{0, NULL, 0, NULL, NULL}
 };
 
-const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {
+static const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {
    {-1, "UP", 0, "Up", ""},
    {1, "DOWN", 0, "Down", ""},
    {0, NULL, 0, NULL, NULL}
@@ -86,6 +86,12 @@ static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
 	{eGplBlendMode_Multiply, "MULTIPLY", 0, "Multiply", "" },
 	{eGplBlendMode_Divide, "DIVIDE", 0, "Divide", "" },
 	{0, NULL, 0, NULL, NULL }
+};
+
+static EnumPropertyItem rna_enum_gpencil_caps_modes_items[] = {
+	{GP_STROKE_CAP_ROUND, "ROUND", 0, "Rounded", ""},
+	{GP_STROKE_CAP_FLAT, "FLAT", 0, "Flat", ""},
+	{0, NULL, 0, NULL, NULL}
 };
 #endif
 
@@ -285,8 +291,8 @@ static void rna_GPencilLayer_parent_bone_set(PointerRNA *ptr, const char *value)
 
 /* parent types enum */
 static const EnumPropertyItem *rna_Object_parent_type_itemf(
-        bContext *UNUSED(C), PointerRNA *ptr,
-        PropertyRNA *UNUSED(prop), bool *r_free)
+	bContext *UNUSED(C), PointerRNA *ptr,
+	PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	bGPDlayer *gpl = (bGPDlayer *)ptr->data;
 	EnumPropertyItem *item = NULL;
@@ -376,7 +382,7 @@ static int rna_GPencil_active_layer_index_get(PointerRNA *ptr)
 
 static void rna_GPencil_active_layer_index_set(PointerRNA *ptr, int value)
 {
-	bGPdata *gpd   = (bGPdata *)ptr->id.data;
+	bGPdata *gpd = (bGPdata *)ptr->id.data;
 	bGPDlayer *gpl = BLI_findlink(&gpd->layers, value);
 
 	BKE_gpencil_layer_setactive(gpd, gpl);
@@ -398,11 +404,11 @@ static void rna_GPencil_active_layer_index_range(PointerRNA *ptr, int *min, int 
 }
 
 static const EnumPropertyItem *rna_GPencil_active_layer_itemf(
-        bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+	bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	bGPdata *gpd = (bGPdata *)ptr->id.data;
 	bGPDlayer *gpl;
-	EnumPropertyItem *item = NULL, item_tmp = {0};
+	EnumPropertyItem *item = NULL, item_tmp = { 0 };
 	int totitem = 0;
 	int i = 0;
 
@@ -500,16 +506,18 @@ static void rna_GPencil_stroke_point_select_set(PointerRNA *ptr, const bool valu
 	}
 }
 
-static void rna_GPencil_stroke_point_add(bGPDstroke *stroke, int count, float pressure, float strength)
+static void rna_GPencil_stroke_point_add(ID *id, bGPDstroke *stroke, int count, float pressure, float strength)
 {
+	bGPdata *gpd = (bGPdata *)id;
+
 	if (count > 0) {
 		/* create space at the end of the array for extra points */
 		stroke->points = MEM_recallocN_id(stroke->points,
-		                                  sizeof(bGPDspoint) * (stroke->totpoints + count),
-		                                  "gp_stroke_points");
+			sizeof(bGPDspoint) * (stroke->totpoints + count),
+			"gp_stroke_points");
 		stroke->dvert = MEM_recallocN_id(stroke->dvert,
-		                                  sizeof(MDeformVert) * (stroke->totpoints + count),
-		                                  "gp_stroke_weight");
+			sizeof(MDeformVert) * (stroke->totpoints + count),
+			"gp_stroke_weight");
 
 		/* init the pressure and strength values so that old scripts won't need to
 		 * be modified to give these initial values...
@@ -525,11 +533,19 @@ static void rna_GPencil_stroke_point_add(bGPDstroke *stroke, int count, float pr
 		}
 
 		stroke->totpoints += count;
+
+		stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
+
+		gpd->flag |= GP_DATA_PYTHON_UPDATED;
+		DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+
+		WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 	}
 }
 
-static void rna_GPencil_stroke_point_pop(bGPDstroke *stroke, ReportList *reports, int index)
+static void rna_GPencil_stroke_point_pop(ID *id, bGPDstroke *stroke, ReportList *reports, int index)
 {
+	bGPdata *gpd = (bGPdata *)id;
 	bGPDspoint *pt_tmp = stroke->points;
 	MDeformVert *pt_dvert = stroke->dvert;
 
@@ -570,6 +586,11 @@ static void rna_GPencil_stroke_point_pop(bGPDstroke *stroke, ReportList *reports
 	if (pt_dvert != NULL) {
 		MEM_freeN(pt_dvert);
 	}
+
+	stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
+
+	gpd->flag |= GP_DATA_PYTHON_UPDATED;
+	DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 
 	WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 }
@@ -805,6 +826,7 @@ static void rna_def_gpencil_stroke_points_api(BlenderRNA *brna, PropertyRNA *cpr
 
 	func = RNA_def_function(srna, "add", "rna_GPencil_stroke_point_add");
 	RNA_def_function_ui_description(func, "Add a new grease pencil stroke point");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID);
 	parm = RNA_def_int(func, "count", 1, 0, INT_MAX, "Number", "Number of points to add to the stroke", 0, INT_MAX);
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	RNA_def_float(func, "pressure", 1.0f, 0.0f, 1.0f, "Pressure", "Pressure for newly created points", 0.0f, 1.0f);
@@ -812,7 +834,7 @@ static void rna_def_gpencil_stroke_points_api(BlenderRNA *brna, PropertyRNA *cpr
 
 	func = RNA_def_function(srna, "pop", "rna_GPencil_stroke_point_pop");
 	RNA_def_function_ui_description(func, "Remove a grease pencil stroke point");
-	RNA_def_function_flag(func, FUNC_USE_REPORTS);
+	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	RNA_def_int(func, "index", -1, INT_MIN, INT_MAX, "Index", "point index", INT_MIN, INT_MAX);
 }
 
@@ -952,6 +974,19 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Cyclic", "Enable cyclic drawing, closing the stroke");
 	RNA_def_property_update(prop, 0, "rna_GPencil_update");
 
+	/* Caps mode */
+	prop = RNA_def_property(srna, "start_cap_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "caps[0]");
+	RNA_def_property_enum_items(prop, rna_enum_gpencil_caps_modes_items);
+	RNA_def_property_ui_text(prop, "Start Cap", "Stroke start extreme cap style");
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
+	prop = RNA_def_property(srna, "end_cap_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "caps[1]");
+	RNA_def_property_enum_items(prop, rna_enum_gpencil_caps_modes_items);
+	RNA_def_property_ui_text(prop, "End Cap", "Stroke end extreme cap style");
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
 	/* No fill: The stroke never must fill area and must use fill color as stroke color (this is a special flag for fill brush) */
 	prop = RNA_def_property(srna, "is_nofill_stroke", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STROKE_NOFILL);
@@ -1050,7 +1085,7 @@ static void rna_def_gpencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_function_ui_description(func, "Add a new grease pencil frame");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS);
 	parm = RNA_def_int(func, "frame_number", 1, MINAFRAME, MAXFRAME, "Frame Number",
-	                   "The frame on which this sketch appears", MINAFRAME, MAXFRAME);
+		"The frame on which this sketch appears", MINAFRAME, MAXFRAME);
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	parm = RNA_def_pointer(func, "frame", "GPencilFrame", "", "The newly created frame");
 	RNA_def_function_return(func, parm);
@@ -1245,6 +1280,13 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
 		"Clamp any pixel outside underlying layers drawing");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
+	/* solo mode: Only display frames with keyframe */
+	prop = RNA_def_property(srna, "use_solo_mode", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_SOLO_MODE);
+	RNA_def_property_ui_text(prop, "Solo Mode",
+		"In Paint mode display only layers with keyframe in current frame");
+	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
 	/* exposed as layers.active */
 #if 0
 	prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
@@ -1357,20 +1399,20 @@ static void rna_def_gpencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
 
 	prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_int_funcs(
-	        prop,
-	        "rna_GPencil_active_layer_index_get",
-	        "rna_GPencil_active_layer_index_set",
-	        "rna_GPencil_active_layer_index_range");
+		prop,
+		"rna_GPencil_active_layer_index_get",
+		"rna_GPencil_active_layer_index_set",
+		"rna_GPencil_active_layer_index_range");
 	RNA_def_property_ui_text(prop, "Active Layer Index", "Index of active grease pencil layer");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, NULL);
 
 	/* Active Layer - As an enum (for selecting active layer for annotations) */
 	prop = RNA_def_property(srna, "active_note", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_funcs(
-	        prop,
-	        "rna_GPencil_active_layer_index_get",
-	        "rna_GPencil_active_layer_index_set",
-	        "rna_GPencil_active_layer_itemf");
+		prop,
+		"rna_GPencil_active_layer_index_get",
+		"rna_GPencil_active_layer_index_set",
+		"rna_GPencil_active_layer_itemf");
 	RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items); /* purely dynamic, as it maps to user-data */
 	RNA_def_property_ui_text(prop, "Active Note", "Note/Layer to add annotation strokes to");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
@@ -1389,7 +1431,7 @@ static void rna_def_gpencil_grid(BlenderRNA *brna)
 
 	RNA_def_struct_path_func(srna, "rna_GreasePencilGrid_path");
 	RNA_def_struct_ui_text(srna, "Grid and Canvas Settings",
-	                       "Settings for grid and canvas in 3D viewport");
+		"Settings for grid and canvas in 3D viewport");
 
 	prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
 	RNA_def_property_float_sdna(prop, NULL, "scale");
@@ -1458,7 +1500,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "xray_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "xray_mode");
 	RNA_def_property_enum_items(prop, rna_enum_gpencil_xraymodes_items);
-	RNA_def_property_ui_text(prop, "Xray", "");
+	RNA_def_property_ui_text(prop, "X-Ray", "");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
 	/* Flags */
@@ -1494,7 +1536,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "show_stroke_direction", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_SHOW_DIRECTION);
 	RNA_def_property_ui_text(prop, "Show Direction", "Show stroke drawing direction with a bigger green dot (start) "
-	                         "and smaller red dot (end) points");
+		"and smaller red dot (end) points");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
 	prop = RNA_def_property(srna, "show_constant_thickness", PROP_BOOLEAN, PROP_NONE);
@@ -1519,9 +1561,9 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Force Fill Update", "Force recalc of fill data after use deformation modifiers (reduce FPS)");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
-	prop = RNA_def_property(srna, "use_adaptative_uv", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_UV_ADAPTATIVE);
-	RNA_def_property_ui_text(prop, "Adaptative UV", "Automatic UVs are calculated depending of the stroke size");
+	prop = RNA_def_property(srna, "use_adaptive_uv", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_UV_ADAPTIVE);
+	RNA_def_property_ui_text(prop, "Adaptive UV", "Automatic UVs are calculated depending of the stroke size");
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
 	prop = RNA_def_property(srna, "use_autolock_layers", PROP_BOOLEAN, PROP_NONE);

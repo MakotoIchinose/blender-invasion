@@ -83,26 +83,30 @@ static void update_position(Object *ob, MirrorGpencilModifierData *mmd, bGPDstro
 	float clear[3] = { 0.0f, 0.0f, 0.0f };
 	clear[axis] = 1.0f;
 
-	float origin[3];
-	float mirror_origin[3];
-
-	copy_v3_v3(origin, ob->loc);
-	/* only works with current axis */
-	mul_v3_v3(origin, clear);
-	zero_v3(mirror_origin);
+	float ob_origin[3];
+	float pt_origin[3];
 
 	if (mmd->object) {
-		copy_v3_v3(mirror_origin, mmd->object->loc);
-		mul_v3_v3(mirror_origin, clear);
-		sub_v3_v3(origin, mirror_origin);
+		float inv_mat[4][4];
+
+		invert_m4_m4(inv_mat, mmd->object->obmat);
+		mul_v3_m4v3(ob_origin, inv_mat, ob->obmat[3]);
 	}
-	/* clear other axis */
-	for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-		add_v3_v3(&pt->x, origin);
-		mul_v3_v3(&pt->x, factor);
-		add_v3_v3(&pt->x, mirror_origin);
+	else {
+		copy_v3_v3(ob_origin, ob->obmat[3]);
 	}
 
+	/* only works with current axis */
+	mul_v3_v3(ob_origin, clear);
+
+	mul_v3_v3fl(pt_origin, ob_origin, -2.0f);
+
+	for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+		mul_v3_v3(&pt->x, factor);
+		if (mmd->object) {
+			add_v3_v3(&pt->x, pt_origin);
+		}
+	}
 }
 
 /* Generic "generateStrokes" callback */

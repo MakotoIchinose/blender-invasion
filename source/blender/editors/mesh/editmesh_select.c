@@ -204,7 +204,8 @@ void EDBM_automerge(Scene *scene, Object *obedit, bool update, const char hflag)
 /** \name Back-Buffer OpenGL Selection
  * \{ */
 
-unsigned int bm_solidoffs = 0, bm_wireoffs = 0, bm_vertoffs = 0;    /* set in drawobject.c ... for colorindices */
+/* set in drawobject.c ... for colorindices */
+unsigned int bm_solidoffs = 0, bm_wireoffs = 0, bm_vertoffs = 0;
 
 /* facilities for box select and circle select */
 static BLI_bitmap *selbuf = NULL;
@@ -466,11 +467,11 @@ static void findnearestvert__doClosest(void *userData, BMVert *eve, const float 
 /**
  * Nearest vertex under the cursor.
  *
- * \param r_dist (in/out), minimal distance to the nearest and at the end, actual distance
- * \param use_select_bias
+ * \param r_dist: (in/out), minimal distance to the nearest and at the end, actual distance
+ * \param use_select_bias:
  * - When true, selected vertice are given a 5 pixel bias to make them further than unselect verts.
  * - When false, unselected vertice are given the bias.
- * \param use_cycle Cycle over elements within #FIND_NEAR_CYCLE_THRESHOLD_MIN in order of index.
+ * \param use_cycle: Cycle over elements within #FIND_NEAR_CYCLE_THRESHOLD_MIN in order of index.
  */
 BMVert *EDBM_vert_find_nearest_ex(
         ViewContext *vc, float *r_dist,
@@ -984,7 +985,7 @@ static bool unified_findnearest(
 			ED_view3d_backbuf_validate(vc);
 			BMFace *efa_zbuf = NULL;
 			BMFace *efa_test = EDBM_face_find_nearest_ex(vc, &dist, dist_center_p, true, use_cycle, &efa_zbuf);
-			if (hit.f.ele && dist_center_p) {
+			if (efa_test && dist_center_p) {
 				dist = min_ff(dist_margin, dist_center);
 			}
 			if (efa_test) {
@@ -1009,7 +1010,7 @@ static bool unified_findnearest(
 			ED_view3d_backbuf_validate(vc);
 			BMEdge *eed_zbuf = NULL;
 			BMEdge *eed_test = EDBM_edge_find_nearest_ex(vc, &dist, dist_center_p, true, use_cycle, &eed_zbuf);
-			if (hit.e.ele && dist_center_p) {
+			if (eed_test && dist_center_p) {
 				dist = min_ff(dist_margin, dist_center);
 			}
 			if (eed_test) {
@@ -1262,10 +1263,10 @@ bool EDBM_unified_findnearest_from_raycast(
 					if (BM_elem_flag_test(f, BM_ELEM_HIDDEN) == false) {
 						float point[3];
 						if (coords) {
-							BM_face_calc_center_mean_vcos(bm, f, point, coords);
+							BM_face_calc_center_median_vcos(bm, f, point, coords);
 						}
 						else {
-							BM_face_calc_center_mean(f, point);
+							BM_face_calc_center_median(f, point);
 						}
 						mul_m4_v3(obedit->obmat, point);
 						float depth;
@@ -1830,7 +1831,7 @@ static bool mouse_mesh_loop(bContext *C, const int mval[2], bool extend, bool de
 					float cent[3];
 					float co[2], tdist;
 
-					BM_face_calc_center_mean(f, cent);
+					BM_face_calc_center_median(f, cent);
 					if (ED_view3d_project_float_object(
 					            vc.ar, cent, co, V3D_PROJ_TEST_CLIP_NEAR) == V3D_PROJ_RET_OK)
 					{
@@ -2245,7 +2246,8 @@ void EDBM_selectmode_set(BMEditMesh *em)
 
 	em->bm->selectmode = em->selectmode;
 
-	edbm_strip_selections(em); /* strip BMEditSelections from em->selected that are not relevant to new mode */
+	/* strip BMEditSelections from em->selected that are not relevant to new mode */
+	edbm_strip_selections(em);
 
 	if (em->bm->totvertsel == 0 &&
 	    em->bm->totedgesel == 0 &&
@@ -4372,7 +4374,7 @@ static int edbm_select_axis_exec(bContext *C, wmOperator *op)
 	ED_transform_calc_orientation_from_type_ex(
 	        C, axis_mat,
 	        scene, CTX_wm_region_view3d(C), obedit, obedit,
-	        orientation, V3D_AROUND_ACTIVE);
+	        orientation, 0, V3D_AROUND_ACTIVE);
 
 	const float *axis_vector = axis_mat[axis];
 

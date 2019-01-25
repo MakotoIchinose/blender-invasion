@@ -56,6 +56,8 @@ struct PointerRNA;
 struct PropertyRNA;
 struct EnumPropertyItem;
 
+struct NlaKeyframingContext;
+
 #include "DNA_anim_types.h"
 #include "RNA_types.h"
 
@@ -109,7 +111,7 @@ int insert_vert_fcurve(struct FCurve *fcu, float x, float y, eBezTriple_Keyframe
  * Use this to insert a keyframe using the current value being keyframed, in the
  * nominated F-Curve (no creation of animation data performed). Returns success.
  */
-bool insert_keyframe_direct(struct Depsgraph *depsgraph, struct ReportList *reports, struct PointerRNA ptr, struct PropertyRNA *prop, struct FCurve *fcu, float cfra, eBezTriple_KeyframeType keytype, eInsertKeyFlags flag);
+bool insert_keyframe_direct(struct Depsgraph *depsgraph, struct ReportList *reports, struct PointerRNA ptr, struct PropertyRNA *prop, struct FCurve *fcu, float cfra, eBezTriple_KeyframeType keytype, struct NlaKeyframingContext *nla, eInsertKeyFlags flag);
 
 /* -------- */
 
@@ -119,7 +121,7 @@ bool insert_keyframe_direct(struct Depsgraph *depsgraph, struct ReportList *repo
  */
 short insert_keyframe(
         struct Main *bmain, struct Depsgraph *depsgraph, struct ReportList *reports, struct ID *id, struct bAction *act,
-        const char group[], const char rna_path[], int array_index, float cfra, eBezTriple_KeyframeType keytype, eInsertKeyFlags flag);
+        const char group[], const char rna_path[], int array_index, float cfra, eBezTriple_KeyframeType keytype, struct ListBase *nla_cache, eInsertKeyFlags flag);
 
 /* Main Keyframing API call:
  *  Use this to delete keyframe on current frame for relevant channel. Will perform checks just in case.
@@ -193,7 +195,8 @@ typedef enum eModifyKey_Returns {
 	MODIFYKEY_MISSING_TYPEINFO = -2,
 } eModifyKey_Returns;
 
-/* poll the current KeyingSet, updating it's set of paths (if "builtin"/"relative") for context changes */
+/* poll the current KeyingSet, updating it's set of paths
+ * (if "builtin"/"relative") for context changes */
 short ANIM_validate_keyingset(struct bContext *C, ListBase *dsources, struct KeyingSet *ks);
 
 /* use the specified KeyingSet to add/remove various Keyframes on the specified frame */
@@ -201,7 +204,8 @@ int ANIM_apply_keyingset(struct bContext *C, ListBase *dsources, struct bAction 
 
 /* -------- */
 
-/* Get the first builtin KeyingSet with the given name, which occurs after the given one (or start of list if none given) */
+/* Get the first builtin KeyingSet with the given name, which occurs after the given one
+ * (or start of list if none given) */
 struct KeyingSet *ANIM_builtin_keyingset_get_named(struct KeyingSet *prevKS, const char name[]);
 
 /* Find KeyingSet type info given a name */
@@ -238,18 +242,27 @@ bool ANIM_keyingset_context_ok_poll(struct bContext *C, struct KeyingSet *ks);
 
 /* Flags for use by driver creation calls */
 typedef enum eCreateDriverFlags {
-	CREATEDRIVER_WITH_DEFAULT_DVAR  = (1 << 0),   /* create drivers with a default variable for nicer UI */
-	CREATEDRIVER_WITH_FMODIFIER     = (1 << 1),   /* create drivers with Generator FModifier (for backwards compat) */
+	/** create drivers with a default variable for nicer UI */
+	CREATEDRIVER_WITH_DEFAULT_DVAR  = (1 << 0),
+	/** create drivers with Generator FModifier (for backwards compat) */
+	CREATEDRIVER_WITH_FMODIFIER     = (1 << 1),
 } eCreateDriverFlags;
 
 /* Heuristic to use for connecting target properties to driven ones */
 typedef enum eCreateDriver_MappingTypes {
-	CREATEDRIVER_MAPPING_1_N        = 0,           /* 1 to Many - Use the specified index, and drive all elements with it */
-	CREATEDRIVER_MAPPING_1_1        = 1,           /* 1 to 1 - Only for the specified index on each side */
-	CREATEDRIVER_MAPPING_N_N        = 2,           /* Many to Many - Match up the indices one by one (only for drivers on vectors/arrays) */
+	/** 1 to Many - Use the specified index, and drive all elements with it */
+	CREATEDRIVER_MAPPING_1_N        = 0,
+	/** 1 to 1 - Only for the specified index on each side */
+	CREATEDRIVER_MAPPING_1_1        = 1,
+	/** Many to Many - Match up the indices one by one (only for drivers on vectors/arrays) */
+	CREATEDRIVER_MAPPING_N_N        = 2,
 
-	CREATEDRIVER_MAPPING_NONE       = 3,           /* None (Single Prop)    - Do not create driver with any targets; these will get added later instead */
-	CREATEDRIVER_MAPPING_NONE_ALL   = 4,           /* None (All Properties) - Do not create driver with any targets; these will get added later instead */
+	/** None (Single Prop):
+	 * Do not create driver with any targets; these will get added later instead */
+	CREATEDRIVER_MAPPING_NONE       = 3,
+	/** None (All Properties):
+	 * Do not create driver with any targets; these will get added later instead */
+	CREATEDRIVER_MAPPING_NONE_ALL   = 4,
 } eCreateDriver_MappingTypes;
 
 /* RNA Enum of eCreateDriver_MappingTypes, for use by the appropriate operators */

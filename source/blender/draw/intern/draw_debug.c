@@ -1,5 +1,5 @@
 /*
- * Copyright 2018, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2018, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -211,7 +214,6 @@ static void drw_debug_draw_spheres(void)
 	GPUBatch *draw_batch = GPU_batch_create(GPU_PRIM_LINES, empty_sphere->verts[0], NULL);
 	GPU_batch_instbuf_set(draw_batch, inst_vbo, true);
 	GPU_batch_program_set_builtin(draw_batch, GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SIZE);
-	GPU_batch_uniform_1f(draw_batch, "alpha", 1.0f);
 
 	GPU_batch_draw(draw_batch);
 	GPU_batch_discard(draw_batch);

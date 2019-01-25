@@ -423,7 +423,7 @@ static void gp_stroke_path_animation_add_keyframes(
 				if ((cfra - last_valid_time) < MIN_TIME_DELTA) {
 					cfra = last_valid_time + MIN_TIME_DELTA;
 				}
-				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 				last_valid_time = cfra;
 			}
 			else if (G.debug & G_DEBUG) {
@@ -435,7 +435,7 @@ static void gp_stroke_path_animation_add_keyframes(
 			if ((cfra - last_valid_time) < MIN_TIME_DELTA) {
 				cfra = last_valid_time + MIN_TIME_DELTA;
 			}
-			insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+			insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 			last_valid_time = cfra;
 		}
 		else {
@@ -443,7 +443,7 @@ static void gp_stroke_path_animation_add_keyframes(
 			 * and also far enough from (not yet added!) end_stroke keyframe!
 			 */
 			if ((cfra - last_valid_time) > MIN_TIME_DELTA && (end_stroke_time - cfra) > MIN_TIME_DELTA) {
-				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_BREAKDOWN, INSERTKEY_FAST);
+				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_BREAKDOWN, NULL, INSERTKEY_FAST);
 				last_valid_time = cfra;
 			}
 			else if (G.debug & G_DEBUG) {
@@ -499,7 +499,7 @@ static void gp_stroke_path_animation(bContext *C, ReportList *reports, Curve *cu
 
 		cu->ctime = 0.0f;
 		cfra = (float)gtd->start_frame;
-		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 
 		cu->ctime = cu->pathlen;
 		if (gtd->realtime) {
@@ -508,7 +508,7 @@ static void gp_stroke_path_animation(bContext *C, ReportList *reports, Curve *cu
 		else {
 			cfra = (float)gtd->end_frame;
 		}
-		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 	}
 	else {
 		/* Use actual recorded timing! */
@@ -1129,7 +1129,7 @@ static int gp_camera_view_subrect(bContext *C, rctf *subrect)
 		if (rv3d->persp == RV3D_CAMOB) {
 			Scene *scene = CTX_data_scene(C);
 			Depsgraph *depsgraph = CTX_data_depsgraph(C);
-			ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, subrect, true); /* no shift */
+			ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, subrect, true);
 			return 1;
 		}
 	}
@@ -1137,7 +1137,8 @@ static int gp_camera_view_subrect(bContext *C, rctf *subrect)
 	return 0;
 }
 
-/* convert a given grease-pencil layer to a 3d-curve representation (using current view if appropriate) */
+/* convert a given grease-pencil layer to a 3d-curve representation
+ * (using current view if appropriate) */
 static void gp_layer_to_curve(
         bContext *C, ReportList *reports, bGPdata *gpd, bGPDlayer *gpl, const int mode,
         const bool norm_weights, const float rad_fac, const bool link_strokes, tGpTimingData *gtd)
@@ -1179,6 +1180,7 @@ static void gp_layer_to_curve(
 	cu = ob->data = BKE_curve_add(bmain, gpl->info, OB_CURVE);
 	BKE_collection_object_add(bmain, collection, ob);
 	base_new = BKE_view_layer_base_find(view_layer, ob);
+	DEG_relations_tag_update(bmain); /* added object */
 
 	cu->flag |= CU_3D;
 
@@ -1189,7 +1191,8 @@ static void gp_layer_to_curve(
 		const bool add_start_point = (link_strokes && !(prev_gps));
 		const bool add_end_point = (link_strokes && !(gps->next));
 
-		/* Detect new strokes created because of GP_STROKE_BUFFER_MAX reached, and stitch them to previous one. */
+		/* Detect new strokes created because of GP_STROKE_BUFFER_MAX reached,
+		 * and stitch them to previous one. */
 		bool stitch = false;
 		if (prev_gps) {
 			bGPDspoint *pt1 = &prev_gps->points[prev_gps->totpoints - 1];
@@ -1312,14 +1315,18 @@ static void gp_convert_set_end_frame(struct Main *UNUSED(main), struct Scene *UN
 
 static bool gp_convert_poll(bContext *C)
 {
-	bGPdata *gpd = ED_gpencil_data_get_active(C);
+	Object *ob = CTX_data_active_object(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
+	if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+		return false;
+	}
+
+	bGPdata *gpd = (bGPdata *)ob->data;
 	bGPDlayer *gpl = NULL;
 	bGPDframe *gpf = NULL;
 	ScrArea *sa = CTX_wm_area(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 
 	/* only if the current view is 3D View, if there's valid data (i.e. at least one stroke!),
 	 * and if we are not in edit mode!
@@ -1328,13 +1335,15 @@ static bool gp_convert_poll(bContext *C)
 	        (gpl = BKE_gpencil_layer_getactive(gpd)) &&
 	        (gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV)) &&
 	        (gpf->strokes.first) &&
-	        (OBEDIT_FROM_VIEW_LAYER(view_layer) == NULL));
+	        (!GPENCIL_ANY_EDIT_MODE(gpd)));
 }
 
 static int gp_convert_layer_exec(bContext *C, wmOperator *op)
 {
 	PropertyRNA *prop = RNA_struct_find_property(op->ptr, "use_timing_data");
-	bGPdata *gpd = ED_gpencil_data_get_active(C);
+	Object *ob = CTX_data_active_object(C);
+	bGPdata *gpd = (bGPdata *)ob->data;
+
 	bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
 	Scene *scene = CTX_data_scene(C);
 	const int mode = RNA_enum_get(op->ptr, "type");
@@ -1493,7 +1502,7 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
 	                "Normalize weight (set from stroke width)");
 	RNA_def_float(ot->srna, "radius_multiplier", 1.0f, 0.0f, 1000.0f, "Radius Fac",
 	              "Multiplier for the points' radii (set from stroke width)", 0.0f, 10.0f);
-	RNA_def_boolean(ot->srna, "use_link_strokes", true, "Link Strokes",
+	RNA_def_boolean(ot->srna, "use_link_strokes", false, "Link Strokes",
 	                "Whether to link strokes with zero-radius sections of curves");
 
 	prop = RNA_def_enum(ot->srna, "timing_mode", prop_gpencil_convert_timingmodes, GP_STROKECONVERT_TIMING_FULL,

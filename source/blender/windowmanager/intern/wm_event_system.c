@@ -314,7 +314,7 @@ void wm_event_do_depsgraph(bContext *C)
 		const Scene *scene = WM_window_get_active_scene(win);
 		const bScreen *screen = WM_window_get_active_screen(win);
 
-		win_combine_v3d_datamask |= ED_view3d_screen_datamask(scene, screen);
+		win_combine_v3d_datamask |= ED_view3d_screen_datamask(C, scene, screen);
 	}
 	/* Update all the dependency graphs of visible vew layers. */
 	for (wmWindow *win = wm->windows.first; win; win = win->next) {
@@ -1009,7 +1009,7 @@ static int wm_operator_exec_notest(bContext *C, wmOperator *op)
 /**
  * for running operators with frozen context (modal handlers, menus)
  *
- * \param store Store settings for re-use.
+ * \param store: Store settings for re-use.
  *
  * warning: do not use this within an operator to call its self! [#29537] */
 int WM_operator_call_ex(bContext *C, wmOperator *op,
@@ -1040,6 +1040,42 @@ int WM_operator_repeat(bContext *C, wmOperator *op)
 {
 	return wm_operator_exec(C, op, true, true);
 }
+/**
+ * Execute this operator again interactively
+ * without using #PROP_SKIP_SAVE properties, see: T60777.
+ */
+int WM_operator_repeat_interactive(bContext *C, wmOperator *op)
+{
+	IDProperty *properties = op->properties ? IDP_New(IDP_GROUP, &(IDPropertyTemplate){0}, "wmOperatorProperties") : NULL;
+	PointerRNA *ptr = MEM_dupallocN(op->ptr);
+
+	SWAP(IDProperty *, op->properties, properties);
+	SWAP(PointerRNA *, op->ptr, ptr);
+	if (op->ptr) {
+		op->ptr->data = op->properties;
+	}
+
+	/* Use functionality to initialize from previous execution to avoid re-using PROP_SKIP_SAVE. */
+	if (properties) {
+		WM_operator_last_properties_init_ex(op, properties);
+	}
+
+	int retval = wm_operator_exec(C, op, true, true);
+
+	SWAP(IDProperty *, op->properties, properties);
+	SWAP(PointerRNA *, op->ptr, ptr);
+
+	if (properties) {
+		IDP_FreeProperty(properties);
+		MEM_freeN(properties);
+	}
+	if (ptr) {
+		MEM_freeN(ptr);
+	}
+
+	return retval;
+}
+
 /**
  * \return true if #WM_operator_repeat can run
  * simple check for now but may become more involved.
@@ -1226,19 +1262,24 @@ static bool operator_last_properties_init_impl(wmOperator *op, IDProperty *last_
 	return changed;
 }
 
-bool WM_operator_last_properties_init(wmOperator *op)
+bool WM_operator_last_properties_init_ex(wmOperator *op, IDProperty *last_properties)
 {
 	bool changed = false;
-	if (op->type->last_properties) {
-		changed |= operator_last_properties_init_impl(op, op->type->last_properties);
+	if (last_properties) {
+		changed |= operator_last_properties_init_impl(op, last_properties);
 		for (wmOperator *opm = op->macro.first; opm; opm = opm->next) {
-			IDProperty *idp_src = IDP_GetPropertyFromGroup(op->type->last_properties, opm->idname);
+			IDProperty *idp_src = IDP_GetPropertyFromGroup(last_properties, opm->idname);
 			if (idp_src) {
 				changed |= operator_last_properties_init_impl(opm, idp_src);
 			}
 		}
 	}
 	return changed;
+}
+
+bool WM_operator_last_properties_init(wmOperator *op)
+{
+	return WM_operator_last_properties_init_ex(op, op->type->last_properties);
 }
 
 bool WM_operator_last_properties_store(wmOperator *op)
@@ -1271,6 +1312,11 @@ bool WM_operator_last_properties_store(wmOperator *op)
 }
 
 #else
+
+bool WM_operator_last_properties_init_ex(wmOperator *UNUSED(op), IDProperty *UNUSED(last_properties))
+{
+	return false;
+}
 
 bool WM_operator_last_properties_init(wmOperator *UNUSED(op))
 {
@@ -2057,7 +2103,12 @@ static int wm_handler_operator_call(bContext *C, ListBase *handlers, wmEventHand
 						wmGizmoGroupType *gzgt = WM_gizmogrouptype_find(idname, false);
 						if (gzgt != NULL) {
 							if ((gzgt->flag & WM_GIZMOGROUPTYPE_TOOL_INIT) != 0) {
-								WM_gizmo_group_type_ensure_ptr(gzgt);
+								ARegion *ar = CTX_wm_region(C);
+								if (ar != NULL) {
+									wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&gzgt->gzmap_params);
+									WM_gizmo_group_type_ensure_ptr_ex(gzgt, gzmap_type);
+									WM_gizmomaptype_group_init_runtime_with_region(gzmap_type, gzgt, ar);
+								}
 							}
 						}
 					}
@@ -2292,7 +2343,7 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
 	        /* comment this out to flood the console! (if you really want to test) */
 	        !ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)
 	        ;
-# define PRINT if (do_debug_handler) printf
+#define PRINT if (do_debug_handler) printf
 
 	wmWindowManager *wm = CTX_wm_manager(C);
 	wmEventHandler *handler, *nexthandler;
@@ -3534,6 +3585,54 @@ bool WM_event_is_modal_tweak_exit(const wmEvent *event, int tweak_event)
 	return 0;
 }
 
+bool WM_event_type_mask_test(const int event_type, const enum eEventType_Mask mask)
+{
+	/* Keyboard. */
+	if (mask & EVT_TYPE_MASK_KEYBOARD) {
+		if (ISKEYBOARD(event_type)) {
+			return true;
+		}
+	}
+	else if (mask & EVT_TYPE_MASK_KEYBOARD_MODIFIER) {
+		if (ISKEYMODIFIER(event_type)) {
+			return true;
+		}
+	}
+
+	/* Mouse. */
+	if (mask & EVT_TYPE_MASK_MOUSE) {
+		if (ISMOUSE(event_type)) {
+			return true;
+		}
+	}
+	else if (mask & EVT_TYPE_MASK_MOUSE_WHEEL) {
+		if (ISMOUSE_WHEEL(event_type)) {
+			return true;
+		}
+	}
+	else if (mask & EVT_TYPE_MASK_MOUSE_GESTURE) {
+		if (ISMOUSE_GESTURE(event_type)) {
+			return true;
+		}
+	}
+
+	/* Tweak. */
+	if (mask & EVT_TYPE_MASK_TWEAK) {
+		if (ISTWEAK(event_type)) {
+			return true;
+		}
+	}
+
+	/* Action Zone. */
+	if (mask & EVT_TYPE_MASK_ACTIONZONE) {
+		if (IS_EVENT_ACTIONZONE(event_type)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /* ********************* ghost stuff *************** */
 
 static int convert_key(GHOST_TKey key)
@@ -3622,7 +3721,7 @@ static int convert_key(GHOST_TKey key)
 	}
 }
 
-static void wm_eventemulation(wmEvent *event)
+static void wm_eventemulation(wmEvent *event, bool test_only)
 {
 	/* Store last mmb/rmb event value to make emulation work when modifier keys
 	 * are released first. This really should be in a data structure somewhere. */
@@ -3635,13 +3734,19 @@ static void wm_eventemulation(wmEvent *event)
 			if (event->val == KM_PRESS && event->alt) {
 				event->type = MIDDLEMOUSE;
 				event->alt = 0;
-				emulating_event = MIDDLEMOUSE;
+
+				if (!test_only) {
+					emulating_event = MIDDLEMOUSE;
+				}
 			}
 #ifdef __APPLE__
 			else if (event->val == KM_PRESS && event->oskey) {
 				event->type = RIGHTMOUSE;
 				event->oskey = 0;
-				emulating_event = RIGHTMOUSE;
+
+				if (!test_only) {
+					emulating_event = RIGHTMOUSE;
+				}
 			}
 #endif
 			else if (event->val == KM_RELEASE) {
@@ -3654,7 +3759,10 @@ static void wm_eventemulation(wmEvent *event)
 					event->type = RIGHTMOUSE;
 					event->oskey = 0;
 				}
-				emulating_event = EVENT_NONE;
+
+				if (!test_only) {
+					emulating_event = EVENT_NONE;
+				}
 			}
 		}
 
@@ -3937,7 +4045,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, int type, int U
 			else
 				event.type = MIDDLEMOUSE;
 
-			wm_eventemulation(&event);
+			wm_eventemulation(&event, false);
 
 			/* copy previous state to prev event state (two old!) */
 			evt->prevval = evt->val;
@@ -3997,7 +4105,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, int type, int U
 			memcpy(event.utf8_buf, kd->utf8_buf, sizeof(event.utf8_buf)); /* might be not null terminated*/
 			event.val = (type == GHOST_kEventKeyDown) ? KM_PRESS : KM_RELEASE;
 
-			wm_eventemulation(&event);
+			wm_eventemulation(&event, false);
 
 			/* copy previous state to prev event state (two old!) */
 			evt->prevval = evt->val;
@@ -4575,6 +4683,7 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
 		wmEvent test_event = *win->eventstate;
 		test_event.type = event_data[data_index].event_type;
 		test_event.val = event_data[data_index].event_value;
+		wm_eventemulation(&test_event, true);
 		wmKeyMapItem *kmi = NULL;
 		for (int handler_index = 0; handler_index < ARRAY_SIZE(handlers); handler_index++) {
 			kmi = wm_kmi_from_event(C, wm, handlers[handler_index], &test_event);

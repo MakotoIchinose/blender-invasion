@@ -88,14 +88,16 @@ def generate(context, space_type):
     km_name_default = "Toolbar Popup"
     km_name = km_name_default + " <temp>"
     wm = context.window_manager
-    keyconf = wm.keyconfigs.active
-    keymap = keyconf.keymaps.get(km_name)
+    keyconf_user = wm.keyconfigs.user
+    keyconf_active = wm.keyconfigs.active
+
+    keymap = keyconf_active.keymaps.get(km_name)
     if keymap is None:
-        keymap = keyconf.keymaps.new(km_name, space_type='EMPTY', region_type='TEMPORARY')
+        keymap = keyconf_active.keymaps.new(km_name, space_type='EMPTY', region_type='TEMPORARY')
     for kmi in keymap.keymap_items:
         keymap.keymap_items.remove(kmi)
 
-    keymap_src = keyconf.keymaps.get(km_name_default)
+    keymap_src = keyconf_user.keymaps.get(km_name_default)
     if keymap_src is not None:
         for kmi_src in keymap_src.keymap_items:
             # Skip tools that aren't currently shown.
@@ -129,7 +131,9 @@ def generate(context, space_type):
         kmi_hack_brush_select.active = False
 
     if use_release_confirm or use_tap_reset:
-        kmi_toolbar = wm.keyconfigs.find_item_from_operator(idname="wm.toolbar")[1]
+        kmi_toolbar = wm.keyconfigs.find_item_from_operator(
+            idname="wm.toolbar",
+        )[1]
         kmi_toolbar_type = None if not kmi_toolbar else kmi_toolbar.type
         if use_tap_reset and kmi_toolbar_type is not None:
             kmi_toolbar_args_type_only = {"type": kmi_toolbar_type}
@@ -148,6 +152,7 @@ def generate(context, space_type):
                 context='INVOKE_REGION_WIN',
                 # properties={"name": item.text},
                 properties=kmi_hack_properties,
+                include={'KEYBOARD'},
             )[1]
             if kmi_found:
                 use_tap_reset = False
@@ -180,6 +185,7 @@ def generate(context, space_type):
                 context='INVOKE_REGION_WIN',
                 # properties={"name": item.text},
                 properties=kmi_hack_properties,
+                include={'KEYBOARD'},
             )[1]
 
             if kmi_found is None:
@@ -192,7 +198,7 @@ def generate(context, space_type):
                         'VERTEX_PAINT': "vertex_tool",
                         'WEIGHT_PAINT': "weight_tool",
                         'TEXTURE_PAINT': "image_tool",
-                        'GPENCIL_PAINT': "gpencil_tool",
+                        'PAINT_GPENCIL': "gpencil_tool",
                     }.get(mode, None)
                     if attr is not None:
                         setattr(kmi_hack_brush_select_properties, attr, item.data_block)
@@ -200,6 +206,7 @@ def generate(context, space_type):
                             idname="paint.brush_select",
                             context='INVOKE_REGION_WIN',
                             properties=kmi_hack_brush_select_properties,
+                            include={'KEYBOARD'},
                         )[1]
                     else:
                         print("Unsupported mode:", mode)
@@ -214,9 +221,10 @@ def generate(context, space_type):
             kmi_found = wm.keyconfigs.find_item_from_operator(
                 idname=item.operator,
                 context='INVOKE_REGION_WIN',
+                include={'KEYBOARD'},
             )[1]
         elif item.keymap is not None:
-            km = keyconf.keymaps.get(item.keymap[0])
+            km = keyconf_user.keymaps.get(item.keymap[0])
             if km is None:
                 print("Keymap", repr(item.keymap[0]), "not found for tool", item.text)
                 kmi_found = None
@@ -228,7 +236,19 @@ def generate(context, space_type):
                         idname=kmi_first.idname,
                         # properties=kmi_first.properties,  # prevents matches, don't use.
                         context='INVOKE_REGION_WIN',
+                        include={'KEYBOARD'},
                     )[1]
+                    if kmi_found is None:
+                        # We need non-keyboard events so keys with 'key_modifier' key is found.
+                        kmi_found = wm.keyconfigs.find_item_from_operator(
+                            idname=kmi_first.idname,
+                            # properties=kmi_first.properties,  # prevents matches, don't use.
+                            context='INVOKE_REGION_WIN',
+                            exclude={'KEYBOARD'},
+                        )[1]
+                        if kmi_found is not None:
+                            if kmi_found.key_modifier == 'NONE':
+                                kmi_found = None
                 else:
                     kmi_found = None
                 del kmi_first

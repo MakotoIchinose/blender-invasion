@@ -148,6 +148,7 @@ class RENDER_PT_eevee_ambient_occlusion(RenderButtonsPanel, Panel):
         col.prop(props, "use_gtao_bent_normals")
         col.prop(props, "use_gtao_bounce")
 
+
 class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
     bl_label = "Motion Blur"
     bl_options = {'DEFAULT_CLOSED'}
@@ -410,8 +411,8 @@ class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
         props = scene.eevee
 
         col = layout.column()
-        col.prop(props, "taa_samples")
-        col.prop(props, "taa_render_samples")
+        col.prop(props, "taa_render_samples", text="Render")
+        col.prop(props, "taa_samples", text="Viewport")
         col.prop(props, "use_taa_reprojection")
 
 
@@ -503,7 +504,6 @@ class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(rd, "filter_size")
         col.prop(rd, "alpha_mode", text="Alpha")
-
 
 
 class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):

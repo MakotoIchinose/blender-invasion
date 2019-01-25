@@ -282,6 +282,24 @@ ParticleSystem *psys_orig_get(ParticleSystem *psys)
 	return psys->orig_psys;
 }
 
+struct ParticleSystem *psys_eval_get(Depsgraph *depsgraph,
+                                     Object *object,
+                                     ParticleSystem *psys)
+{
+	Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+	if (object_eval == object) {
+		return psys;
+	}
+	ParticleSystem *psys_eval = object_eval->particlesystem.first;
+	while (psys_eval != NULL) {
+		if (psys_eval->orig_psys == psys) {
+			return psys_eval;
+		}
+		psys_eval = psys_eval->next;
+	}
+	return psys_eval;
+}
+
 static PTCacheEdit *psys_orig_edit_get(ParticleSystem *psys)
 {
 	if (psys->orig_psys == NULL) {
@@ -1322,13 +1340,13 @@ static void psys_origspace_to_w(OrigSpaceFace *osface, int quad, const float w[4
  * Find the final derived mesh tessface for a particle, from its original tessface index.
  * This is slow and can be optimized but only for many lookups.
  *
- * \param dm_final final DM, it may not have the same topology as original mesh.
- * \param dm_deformed deformed-only DM, it has the exact same topology as original mesh.
- * \param findex_orig the input tessface index.
- * \param fw face weights (position of the particle inside the \a findex_orig tessface).
- * \param poly_nodes may be NULL, otherwise an array of linked list, one for each final DM polygon, containing all
- *                   its tessfaces indices.
- * \return the DM tessface index.
+ * \param mesh_final: Final mesh, it may not have the same topology as original mesh.
+ * \param mesh_original: Original mesh, use for accessing #MPoly to #MFace mapping.
+ * \param findex_orig: The input tessface index.
+ * \param fw: Face weights (position of the particle inside the \a findex_orig tessface).
+ * \param poly_nodes: May be NULL, otherwise an array of linked list,
+ * one for each final \a mesh_final polygon, containing all its tessfaces indices.
+ * \return The \a mesh_final tessface index.
  */
 int psys_particle_dm_face_lookup(
         Mesh *mesh_final, Mesh *mesh_original,
@@ -3286,7 +3304,7 @@ void BKE_particlesettings_twist_curve_init(ParticleSettings *part)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_particlesettings_copy_data(
         Main *UNUSED(bmain), ParticleSettings *part_dst, const ParticleSettings *part_src, const int UNUSED(flag))

@@ -70,7 +70,7 @@ struct GPUMaterial {
 	Scene *scene; /* DEPRECATED was only useful for lamps */
 	Material *ma;
 
-	GPUMaterialStatus status;
+	eGPUMaterialStatus status;
 
 	const void *engine_type;   /* attached engine type */
 	int options;    /* to identify shader variations (shadow, probe, world background...) */
@@ -133,7 +133,7 @@ struct GPUMaterial {
 enum {
 	GPU_DOMAIN_SURFACE    = (1 << 0),
 	GPU_DOMAIN_VOLUME     = (1 << 1),
-	GPU_DOMAIN_SSS        = (1 << 2)
+	GPU_DOMAIN_SSS        = (1 << 2),
 };
 
 /* Functions */
@@ -215,7 +215,7 @@ void GPU_material_free(ListBase *gpumaterial)
 	BLI_freelistN(gpumaterial);
 }
 
-GPUBuiltin GPU_get_material_builtins(GPUMaterial *material)
+eGPUBuiltin GPU_get_material_builtins(GPUMaterial *material)
 {
 	return material->builtins;
 }
@@ -242,7 +242,8 @@ GPUUniformBuffer *GPU_material_uniform_buffer_get(GPUMaterial *material)
 
 /**
  * Create dynamic UBO from parameters
- * \param ListBase of BLI_genericNodeN(GPUInput)
+ *
+ * \param inputs: Items are #LinkData, data is #GPUInput (`BLI_genericNodeN(GPUInput)`).
  */
 void GPU_material_uniform_buffer_create(GPUMaterial *material, ListBase *inputs)
 {
@@ -585,7 +586,7 @@ void gpu_material_add_node(GPUMaterial *material, GPUNode *node)
 }
 
 /* Return true if the material compilation has not yet begin or begin. */
-GPUMaterialStatus GPU_material_status(GPUMaterial *mat)
+eGPUMaterialStatus GPU_material_status(GPUMaterial *mat)
 {
 	return mat->status;
 }
@@ -610,12 +611,12 @@ bool GPU_material_use_domain_volume(GPUMaterial *mat)
 	return (mat->domain & GPU_DOMAIN_VOLUME);
 }
 
-void GPU_material_flag_set(GPUMaterial *mat, GPUMatFlag flag)
+void GPU_material_flag_set(GPUMaterial *mat, eGPUMatFlag flag)
 {
 	mat->flag |= flag;
 }
 
-bool GPU_material_flag_get(GPUMaterial *mat, GPUMatFlag flag)
+bool GPU_material_flag_get(GPUMaterial *mat, eGPUMatFlag flag)
 {
 	return (mat->flag & flag);
 }
@@ -713,7 +714,7 @@ GPUMaterial *GPU_material_from_nodetree(
 
 	/* Only free after GPU_pass_shader_get where GPUUniformBuffer
 	 * read data from the local tree. */
-	ntreeFreeTree(localtree);
+	ntreeFreeLocalTree(localtree);
 	MEM_freeN(localtree);
 
 	/* note that even if building the shader fails in some way, we still keep

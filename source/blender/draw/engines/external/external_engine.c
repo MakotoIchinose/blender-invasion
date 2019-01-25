@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2017, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -100,7 +103,7 @@ static void external_engine_init(void *UNUSED(vedata))
 {
 	/* Depth prepass */
 	if (!e_data.depth_sh) {
-		e_data.depth_sh = DRW_shader_create_3D_depth_only();
+		e_data.depth_sh = DRW_shader_create_3D_depth_only(DRW_SHADER_SLOT_DEFAULT);
 	}
 }
 

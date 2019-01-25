@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2017, Blender Foundation.
  * Contributor(s): Antonio Vazquez
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -28,6 +31,7 @@
 #include "DRW_render.h"
 
 #include "BKE_camera.h"
+#include "BKE_object.h"
 
 #include "DNA_gpencil_types.h"
 
@@ -85,7 +89,7 @@ void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgra
 	}
 
 	vedata->render_depth_tx = DRW_texture_pool_query_2D(
-	        size[0], size[1], GPU_DEPTH24_STENCIL8,
+	        size[0], size[1], GPU_DEPTH_COMPONENT24,
 	        &draw_engine_gpencil_type);
 	vedata->render_color_tx = DRW_texture_pool_query_2D(
 	        size[0], size[1], GPU_RGBA32F,
@@ -130,12 +134,10 @@ static void GPENCIL_render_cache(
 	void *vedata, struct Object *ob,
 	struct RenderEngine *UNUSED(engine), struct Depsgraph *UNUSED(depsgraph))
 {
-	if ((ob == NULL) || (DRW_object_is_visible_in_active_context(ob) == false)) {
-		return;
-	}
-
-	if (ob->type == OB_GPENCIL) {
-		GPENCIL_cache_populate(vedata, ob);
+	if (ob && ob->type == OB_GPENCIL) {
+		if (DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF) {
+			GPENCIL_cache_populate(vedata, ob);
+		}
 	}
 }
 
@@ -339,7 +341,12 @@ void GPENCIL_render_to_image(void *vedata, RenderEngine *engine, struct RenderLa
 					}
 					else {
 						/* blend gp render */
-						blend_pixel(tmp, gp_pixel_rgba);
+						if (tmp[3] < 1.0f) {
+							blend_pixel(tmp, gp_pixel_rgba);
+						}
+						else {
+							copy_v4_v4(gp_pixel_rgba, tmp);
+						}
 					}
 				}
 			}

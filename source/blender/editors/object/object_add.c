@@ -396,7 +396,7 @@ Object *ED_object_add_type(
 
 	/* for as long scene has editmode... */
 	if (CTX_data_edit_object(C)) {
-		ED_object_editmode_exit(C, EM_FREEDATA | EM_WAITCURSOR);
+		ED_object_editmode_exit(C, EM_FREEDATA);
 	}
 
 	/* deselects all, sets active object */
@@ -967,6 +967,23 @@ void OBJECT_OT_drop_named_image(wmOperatorType *ot)
 }
 
 /********************* Add Gpencil Operator ********************/
+static bool object_gpencil_add_poll(bContext *C)
+{
+	Scene *scene = CTX_data_scene(C);
+	Object *obact = CTX_data_active_object(C);
+
+	if ((scene == NULL) || (ID_IS_LINKED(scene))) {
+		return false;
+	}
+
+	if (obact && obact->type == OB_GPENCIL) {
+		if (obact->mode != OB_MODE_OBJECT) {
+			return false;
+		}
+	}
+
+	return true;
+}
 
 static int object_gpencil_add_exec(bContext *C, wmOperator *op)
 {
@@ -1030,7 +1047,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
 			mul_v3_fl(mat[1], radius);
 			mul_v3_fl(mat[2], radius);
 
-			ED_gpencil_create_stroke(C, mat);
+			ED_gpencil_create_stroke(C, ob, mat);
 			break;
 		}
 		case GP_MONKEY:
@@ -1043,7 +1060,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
 			mul_v3_fl(mat[1], radius);
 			mul_v3_fl(mat[2], radius);
 
-			ED_gpencil_create_monkey(C, mat);
+			ED_gpencil_create_monkey(C, ob, mat);
 			break;
 		}
 		case GP_EMPTY:
@@ -1057,7 +1074,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
 
 	/* if this is a new object, initialise default stuff (colors, etc.) */
 	if (newob) {
-		ED_gpencil_add_defaults(C);
+		ED_gpencil_add_defaults(C, ob);
 	}
 
 	return OPERATOR_FINISHED;
@@ -1073,7 +1090,7 @@ void OBJECT_OT_gpencil_add(wmOperatorType *ot)
 	/* api callbacks */
 	ot->invoke = WM_menu_invoke;
 	ot->exec = object_gpencil_add_exec;
-	ot->poll = ED_operator_scene_editable;
+	ot->poll = object_gpencil_add_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1361,7 +1378,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
 		 */
 		if (use_global && ob->id.lib == NULL) {
 			/* We want to nuke the object, let's nuke it the easy way (not for linked data though)... */
-			BKE_libblock_delete(bmain, &ob->id);
+			BKE_id_delete(bmain, &ob->id);
 			changed_count += 1;
 			continue;
 		}
@@ -1600,8 +1617,9 @@ static void make_object_duplilist_real(bContext *C, Scene *scene, Base *base,
 		BLI_ghash_insert(dupli_gh, dob, ob_dst);
 		if (parent_gh) {
 			void **val;
-			/* Due to nature of hash/comparison of this ghash, a lot of duplis may be considered as 'the same',
-			 * this avoids trying to insert same key several time and raise asserts in debug builds... */
+			/* Due to nature of hash/comparison of this ghash, a lot of duplis may be considered as
+			 * 'the same', this avoids trying to insert same key several time and
+			 * raise asserts in debug builds... */
 			if (!BLI_ghash_ensure_p(parent_gh, dob, &val)) {
 				*val = ob_dst;
 			}
@@ -1609,7 +1627,7 @@ static void make_object_duplilist_real(bContext *C, Scene *scene, Base *base,
 	}
 
 	for (dob = lb_duplis->first; dob; dob = dob->next) {
-		Object *ob_src = DEG_get_original_object(dob->ob);
+		Object *ob_src = dob->ob;
 		Object *ob_dst = BLI_ghash_lookup(dupli_gh, dob);
 
 		/* Remap new object to itself, and clear again newid pointer of orig object. */
@@ -1860,8 +1878,8 @@ static int convert_exec(bContext *C, wmOperator *op)
 			Object *ob = base->object;
 
 			/* The way object type conversion works currently (enforcing conversion of *all* objects using converted
-			 * obdata, even some un-selected/hidden/inother scene ones, sounds totally bad to me.
-			 * However, changing this is more design than bugfix, not to mention convoluted code below,
+			 * object-data, even some un-selected/hidden/another scene ones, sounds totally bad to me.
+			 * However, changing this is more design than bug-fix, not to mention convoluted code below,
 			 * so that will be for later.
 			 * But at the very least, do not do that with linked IDs! */
 			if ((ID_IS_LINKED(ob) || (ob->data && ID_IS_LINKED(ob->data))) && !keep_original) {
@@ -1981,7 +1999,8 @@ static int convert_exec(bContext *C, wmOperator *op)
 			 *               datablock, but for until we've got granular update
 			 *               lets take care by selves.
 			 */
-			/* XXX This may fail/crash, since BKE_vfont_to_curve() accesses evaluated data in some cases (bastien). */
+			/* XXX This may fail/crash, since BKE_vfont_to_curve()
+			 * accesses evaluated data in some cases (bastien). */
 			BKE_vfont_to_curve(newob, FO_EDIT);
 
 			newob->type = OB_CURVE;
@@ -2143,7 +2162,7 @@ static int convert_exec(bContext *C, wmOperator *op)
 	}
 
 // XXX	ED_object_editmode_enter(C, 0);
-// XXX	exit_editmode(C, EM_FREEDATA|EM_WAITCURSOR); /* freedata, but no undo */
+// XXX	exit_editmode(C, EM_FREEDATA|); /* freedata, but no undo */
 
 	if (basact) {
 		/* active base was changed */

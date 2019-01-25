@@ -80,10 +80,10 @@ static bool BLI_path_is_abs(const char *name);
  * Looks for a sequence of decimal digits in string, preceding any filename extension,
  * returning the integer value if found, or 0 if not.
  *
- * \param string  String to scan.
- * \param head  Optional area to return copy of part of string prior to digits, or before dot if no digits.
- * \param tail  Optional area to return copy of part of string following digits, or from dot if no digits.
- * \param numlen  Optional to return number of digits found.
+ * \param string: String to scan.
+ * \param head: Optional area to return copy of part of string prior to digits, or before dot if no digits.
+ * \param tail: Optional area to return copy of part of string following digits, or from dot if no digits.
+ * \param r_num_len: Optional to return number of digits found.
  */
 int BLI_stringdec(const char *string, char *head, char *tail, ushort *r_num_len)
 {
@@ -243,7 +243,7 @@ void BLI_cleanup_path(const char *relabase, char *path)
 
 			/* Note: previous version of following call used an offset of 3 instead of 4,
 			 * which meant that the "/../home/me" example actually became "home/me".
-			 * Using offset of 3 gives behaviour consistent with the abovementioned
+			 * Using offset of 3 gives behavior consistent with the abovementioned
 			 * Python routine. */
 			memmove(path, path + 3, strlen(path + 3) + 1);
 		}
@@ -342,14 +342,16 @@ bool BLI_filename_make_safe(char *fname)
 			changed = true;
 		}
 
-		/* Check for forbidden names - not we have to check all combination of upper and lower cases, hence the usage
-		 * of lower_fname (more efficient than using BLI_strcasestr repeatedly). */
+		/* Check for forbidden names - not we have to check all combination
+		 * of upper and lower cases, hence the usage of lower_fname
+		 * (more efficient than using BLI_strcasestr repeatedly). */
 		BLI_str_tolower_ascii(lower_fname, len);
 		for (iname = invalid_names; *iname; iname++) {
 			if (strstr(lower_fname, *iname) == lower_fname) {
 				const size_t iname_len = strlen(*iname);
-				/* Only invalid if the whole name is made of the invalid chunk, or it has an (assumed extension) dot
-				 * just after. This means it will also catch 'valid' names like 'aux.foo.bar', but should be
+				/* Only invalid if the whole name is made of the invalid chunk, or it has an
+				 * (assumed extension) dot just after. This means it will also catch 'valid'
+				 * names like 'aux.foo.bar', but should be
 				 * good enough for us! */
 				if ((iname_len == len) || (lower_fname[iname_len] == '.')) {
 					*fname = '_';
@@ -652,10 +654,10 @@ void BLI_path_rel(char *file, const char *relfile)
  * string = Foo.png, suffix = 123, separator = _
  * Foo.png -> Foo_123.png
  *
- * \param string  original (and final) string
- * \param maxlen  Maximum length of string
- * \param suffix  String to append to the original string
- * \param sep Optional separator character
+ * \param string: original (and final) string
+ * \param maxlen: Maximum length of string
+ * \param suffix: String to append to the original string
+ * \param sep: Optional separator character
  * \return  true if succeeded
  */
 bool BLI_path_suffix(char *string, size_t maxlen, const char *suffix, const char *sep)
@@ -1048,7 +1050,8 @@ bool BLI_path_abs(char *path, const char *basepath)
 		BLI_str_replace_char(base + BLI_path_unc_prefix_len(base), '\\', '/');
 
 		if (lslash) {
-			const int baselen = (int) (lslash - base) + 1;  /* length up to and including last "/" */
+			/* length up to and including last "/" */
+			const int baselen = (int) (lslash - base) + 1;
 			/* use path for temp storage here, we copy back over it right away */
 			BLI_strncpy(path, tmp + 2, FILE_MAX);  /* strip "//" */
 
@@ -1324,8 +1327,8 @@ bool BLI_make_existing_file(const char *name)
  * separators, including ensuring there is exactly one between the copies of *dir and *file,
  * and between the copies of *relabase and *dir.
  *
- * \param relabase  Optional prefix to substitute for "//" on front of *dir
- * \param string  Area to return result
+ * \param relabase: Optional prefix to substitute for "//" on front of *dir
+ * \param string: Area to return result
  */
 void BLI_make_file_string(const char *relabase, char *string, const char *dir, const char *file)
 {
@@ -1501,7 +1504,8 @@ bool BLI_path_extension_glob_validate(char *ext_fnmatch)
 
 	for (size_t i = strlen(ext_fnmatch); i-- > 0; ) {
 		if (ext_fnmatch[i] == ';') {
-			/* Group separator, we truncate here if we only had wildcards so far. Otherwise, all is sound and fine. */
+			/* Group separator, we truncate here if we only had wildcards so far.
+			 * Otherwise, all is sound and fine. */
 			if (only_wildcards) {
 				ext_fnmatch[i] = '\0';
 				return true;
@@ -1515,7 +1519,8 @@ bool BLI_path_extension_glob_validate(char *ext_fnmatch)
 		/* So far, only wildcards in last group of the pattern... */
 		only_wildcards = true;
 	}
-	/* Only one group in the pattern, so even if its only made of wildcard(s), it is assumed vaid. */
+	/* Only one group in the pattern, so even if its only made of wildcard(s),
+	 * it is assumed vaid. */
 	return false;
 }
 
@@ -1613,7 +1618,8 @@ void BLI_split_dirfile(const char *string, char *dir, char *file, const size_t d
 
 	if (dir) {
 		if (lslash) {
-			BLI_strncpy(dir, string, MIN2(dirlen, lslash + 1)); /* +1 to include the slash and the last char */
+			/* +1 to include the slash and the last char */
+			BLI_strncpy(dir, string, MIN2(dirlen, lslash + 1));
 		}
 		else {
 			dir[0] = '\0';

@@ -48,6 +48,7 @@ struct Scene;
 struct bAction;
 struct bActionGroup;
 struct bContext;
+struct NlaKeyframingContext;
 
 /* ************************************* */
 /* AnimData API */
@@ -86,7 +87,7 @@ typedef enum eAnimData_MergeCopy_Modes {
 	ADT_MERGECOPY_SRC_COPY = 1,
 
 	/* Use src action (but just reference the existing version) */
-	ADT_MERGECOPY_SRC_REF  = 2
+	ADT_MERGECOPY_SRC_REF  = 2,
 } eAnimData_MergeCopy_Modes;
 
 void BKE_animdata_merge_copy(
@@ -153,7 +154,7 @@ char *BKE_animdata_driver_path_hack(struct bContext *C, struct PointerRNA *ptr, 
                                     char *base_path);
 
 /* ************************************* */
-/* GPUBatch AnimData API */
+/* Batch AnimData API */
 
 /* Define for callback looper used in BKE_animdata_main_cb */
 typedef void (*ID_AnimData_Edit_Callback)(struct ID *id, struct AnimData *adt, void *user_data);
@@ -170,6 +171,14 @@ void BKE_fcurves_main_cb(struct Main *bmain, ID_FCurve_Edit_Callback func, void 
 
 /* ************************************* */
 // TODO: overrides, remapping, and path-finding api's
+
+/* ------------ NLA Keyframing --------------- */
+
+typedef struct NlaKeyframingContext NlaKeyframingContext;
+
+struct NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(struct ListBase *cache, struct Depsgraph *depsgraph, struct PointerRNA *ptr, struct AnimData *adt, float ctime);
+bool BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context, struct PointerRNA *prop_ptr, struct PropertyRNA *prop, float *values, int count, int index, bool *r_force_all);
+void BKE_animsys_free_nla_keyframing_context_cache(struct ListBase *cache);
 
 /* ************************************* */
 /* Evaluation API */

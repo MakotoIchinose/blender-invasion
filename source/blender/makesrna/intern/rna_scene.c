@@ -118,7 +118,7 @@ const EnumPropertyItem rna_enum_uv_sculpt_tool_items[] = {
 
 const EnumPropertyItem rna_enum_snap_target_items[] = {
 	{SCE_SNAP_TARGET_CLOSEST, "CLOSEST", 0, "Closest", "Snap closest point onto target"},
-	{SCE_SNAP_TARGET_CENTER, "CENTER", 0, "Center", "Snap transormation center onto target"},
+	{SCE_SNAP_TARGET_CENTER, "CENTER", 0, "Center", "Snap transformation center onto target"},
 	{SCE_SNAP_TARGET_MEDIAN, "MEDIAN", 0, "Median", "Snap median onto target"},
 	{SCE_SNAP_TARGET_ACTIVE, "ACTIVE", 0, "Active", "Snap active onto target"},
 	{0, NULL, 0, NULL, NULL}
@@ -462,7 +462,7 @@ const EnumPropertyItem rna_enum_transform_pivot_items_full[] = {
 	{V3D_AROUND_CURSOR, "CURSOR", ICON_PIVOT_CURSOR, "3D Cursor", "Pivot around the 3D cursor"},
 	{V3D_AROUND_LOCAL_ORIGINS, "INDIVIDUAL_ORIGINS", ICON_PIVOT_INDIVIDUAL,
 	            "Individual Origins", "Pivot around each object's own origin"},
-	{V3D_AROUND_CENTER_MEAN, "MEDIAN_POINT", ICON_PIVOT_MEDIAN, "Median Point",
+	{V3D_AROUND_CENTER_MEDIAN, "MEDIAN_POINT", ICON_PIVOT_MEDIAN, "Median Point",
 	               "Pivot around the median point of selected objects"},
 	{V3D_AROUND_ACTIVE, "ACTIVE_ELEMENT", ICON_PIVOT_ACTIVE, "Active Element", "Pivot around active object"},
 	{0, NULL, 0, NULL, NULL}
@@ -1392,6 +1392,7 @@ static void rna_Scene_world_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 	rna_Scene_glsl_update(bmain, scene, ptr);
 	WM_main_add_notifier(NC_WORLD | ND_WORLD, &sc->id);
+	DEG_relations_tag_update(bmain);
 }
 
 void rna_Scene_freestyle_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
@@ -1422,6 +1423,13 @@ static void rna_SceneRenderView_name_set(PointerRNA *ptr, const char *value)
 	SceneRenderView *rv = (SceneRenderView *)ptr->data;
 	BLI_strncpy_utf8(rv->name, value, sizeof(rv->name));
 	BLI_uniquename(&scene->r.views, rv, DATA_("RenderView"), '.', offsetof(SceneRenderView, name), sizeof(rv->name));
+}
+
+void rna_ViewLayer_material_override_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	rna_Scene_glsl_update(bmain, scene, ptr);
+	DEG_relations_tag_update(bmain);
 }
 
 void rna_ViewLayer_pass_update(Main *bmain, Scene *activescene, PointerRNA *ptr)
@@ -1565,6 +1573,20 @@ static void rna_Scene_use_persistent_data_update(Main *UNUSED(bmain), Scene *UNU
 
 	if (!(sce->r.mode & R_PERSISTENT_DATA))
 		RE_FreePersistentData();
+}
+
+/* Scene.transform_orientation_slots */
+static void rna_Scene_transform_orientation_slots_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	TransformOrientationSlot *orient_slot = &scene->orientation_slots[0];
+	rna_iterator_array_begin(iter, orient_slot, sizeof(*orient_slot), ARRAY_SIZE(scene->orientation_slots), 0, NULL);
+}
+
+static int rna_Scene_transform_orientation_slots_length(PointerRNA *ptr)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	return ARRAY_SIZE(scene->orientation_slots);
 }
 
 static bool rna_Scene_use_audio_get(PointerRNA *ptr)
@@ -1961,51 +1983,75 @@ static void rna_ViewLayer_remove(
 	}
 }
 
-static int rna_Scene_transform_orientation_get(PointerRNA *ptr)
+/* Fake value, used internally (not saved to DNA). */
+#define V3D_MANIP_DEFAULT -1
+
+static int rna_TransformOrientationSlot_type_get(PointerRNA *ptr)
 {
-	Scene *scene = ptr->data;
-	/* convert to enum value */
-	return (scene->orientation_type == V3D_MANIP_CUSTOM) ?
-	            (scene->orientation_type + scene->orientation_index_custom) : scene->orientation_type;
+	Scene *scene = ptr->id.data;
+	TransformOrientationSlot *orient_slot = ptr->data;
+	if (orient_slot != &scene->orientation_slots[SCE_ORIENT_DEFAULT]) {
+		if ((orient_slot->flag & SELECT) == 0) {
+			return V3D_MANIP_DEFAULT;
+		}
+	}
+	return BKE_scene_orientation_slot_get_index(orient_slot);
 }
 
-void rna_Scene_transform_orientation_set(PointerRNA *ptr, int value)
+void rna_TransformOrientationSlot_type_set(PointerRNA *ptr, int value)
 {
-	Scene *scene = ptr->data;
-	BIF_selectTransformOrientationValue(scene, value);
+	Scene *scene = ptr->id.data;
+	TransformOrientationSlot *orient_slot = ptr->data;
+
+	if (orient_slot != &scene->orientation_slots[SCE_ORIENT_DEFAULT]) {
+		if (value == V3D_MANIP_DEFAULT) {
+			orient_slot->flag &= ~SELECT;
+			return;
+		}
+		else {
+			orient_slot->flag |= SELECT;
+		}
+	}
+
+	BKE_scene_orientation_slot_set_index(orient_slot, value);
 }
 
-static PointerRNA rna_Scene_current_orientation_get(PointerRNA *ptr)
+static PointerRNA rna_TransformOrientationSlot_get(PointerRNA *ptr)
 {
-	Scene *scene = ptr->data;
+	Scene *scene = ptr->id.data;
+	TransformOrientationSlot *orient_slot = ptr->data;
 	TransformOrientation *orientation;
-
-	if (scene->orientation_type < V3D_MANIP_CUSTOM) {
+	if (orient_slot->type < V3D_MANIP_CUSTOM) {
 		orientation = NULL;
 	}
 	else {
-		orientation = BKE_scene_transform_orientation_find(scene, scene->orientation_index_custom);
+		orientation = BKE_scene_transform_orientation_find(scene, orient_slot->index_custom);
 	}
-
 	return rna_pointer_inherit_refine(ptr, &RNA_TransformOrientation, orientation);
 }
 
-const EnumPropertyItem *rna_TransformOrientation_itemf(
-        bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_TransformOrientation_impl_itemf(
+        Scene *scene, const bool include_default,
+        bool *r_free)
 {
 	EnumPropertyItem tmp = {0, "", 0, "", ""};
 	EnumPropertyItem *item = NULL;
 	int i = V3D_MANIP_CUSTOM, totitem = 0;
 
+	if (include_default) {
+		tmp.identifier = "DEFAULT";
+		tmp.name = "Default";
+		tmp.description = "Use the scene orientation";
+		tmp.value = V3D_MANIP_DEFAULT;
+		tmp.icon = ICON_OBJECT_ORIGIN;
+		RNA_enum_item_add(&item, &totitem, &tmp);
+		tmp.icon = 0;
+
+		RNA_enum_item_add_separator(&item, &totitem);
+	}
+
 	RNA_enum_items_add(&item, &totitem, rna_enum_transform_orientation_items);
 
-	Scene *scene;
-	if (ptr->type == &RNA_Scene) {
-		scene = ptr->data;
-	}
-	else {
-		scene = CTX_data_scene(C);
-	}
 	const ListBase *transform_orientations = scene ? &scene->transform_spaces : NULL;
 
 	if (transform_orientations && (BLI_listbase_is_empty(transform_orientations) == false)) {
@@ -2024,8 +2070,52 @@ const EnumPropertyItem *rna_TransformOrientation_itemf(
 
 	return item;
 }
+const EnumPropertyItem *rna_TransformOrientation_itemf(
+        bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+{
+	Scene *scene;
+	if (ptr->id.data && (GS(((ID *)ptr->id.data)->name) == ID_SCE)) {
+		scene = ptr->id.data;
+	}
+	else {
+		scene = CTX_data_scene(C);
+	}
+	return rna_TransformOrientation_impl_itemf(scene, false, r_free);
+}
 
-static const EnumPropertyItem *get_unit_enum_items(int system, int type, bool *r_free)
+const EnumPropertyItem *rna_TransformOrientation_with_scene_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+{
+	Scene *scene = ptr->id.data;
+	TransformOrientationSlot *orient_slot = ptr->data;
+	bool include_default = (orient_slot != &scene->orientation_slots[SCE_ORIENT_DEFAULT]);
+	return rna_TransformOrientation_impl_itemf(scene, include_default, r_free);
+}
+
+#undef V3D_MANIP_DEFAULT
+
+void rna_TransformOrientationSlot_ui_info(
+        ID *scene_id, TransformOrientationSlot *orient_slot,
+        char *r_name, int *r_icon_value)
+{
+	Scene *scene = (Scene *)scene_id;
+
+	if (orient_slot->type < V3D_MANIP_CUSTOM) {
+		const EnumPropertyItem *items = rna_enum_transform_orientation_items;
+		const int i = RNA_enum_from_value(items, orient_slot->type);
+		strcpy(r_name, items[i].name);
+		*r_icon_value = items[i].icon;
+	}
+	else {
+		TransformOrientation *orientation = BKE_scene_transform_orientation_find(
+		        scene, orient_slot->index_custom);
+		strcpy(r_name, orientation->name);
+		*r_icon_value = ICON_OBJECT_ORIGIN;
+	}
+}
+
+static const EnumPropertyItem *rna_UnitSettings_itemf_wrapper(
+        const int system, const int type, bool *r_free)
 {
 	const void *usys;
 	int len;
@@ -2054,28 +2144,28 @@ static const EnumPropertyItem *get_unit_enum_items(int system, int type, bool *r
 	return items;
 }
 
-const EnumPropertyItem *rna_get_length_unit_items(
+const EnumPropertyItem *rna_UnitSettings_length_unit_itemf(
         bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	UnitSettings *units = ptr->data;
-	return get_unit_enum_items(units->system, B_UNIT_LENGTH, r_free);
+	return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_LENGTH, r_free);
 }
 
-const EnumPropertyItem *rna_get_mass_unit_items(
+const EnumPropertyItem *rna_UnitSettings_mass_unit_itemf(
         bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	UnitSettings *units = ptr->data;
-	return get_unit_enum_items(units->system, B_UNIT_MASS, r_free);
+	return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_MASS, r_free);
 }
 
-const EnumPropertyItem *rna_get_time_unit_items(
+const EnumPropertyItem *rna_UnitSettings_time_unit_itemf(
         bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	UnitSettings *units = ptr->data;
-	return get_unit_enum_items(units->system, B_UNIT_TIME, r_free);
+	return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_TIME, r_free);
 }
 
-static void rna_unit_system_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
+static void rna_UnitSettings_system_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
 {
 	UnitSettings *unit = &scene->unit;
 	if (unit->system == USER_UNIT_NONE) {
@@ -2180,6 +2270,53 @@ static void rna_def_transform_orientation(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 }
 
+static void rna_def_transform_orientation_slot(BlenderRNA *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	srna = RNA_def_struct(brna, "TransformOrientationSlot", NULL);
+	RNA_def_struct_sdna(srna, "TransformOrientationSlot");
+	RNA_def_struct_ui_text(srna, "Orientation Slot", "");
+
+	/* Orientations */
+	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, rna_enum_transform_orientation_items);
+	RNA_def_property_enum_funcs(
+	        prop,
+	        "rna_TransformOrientationSlot_type_get",
+	        "rna_TransformOrientationSlot_type_set",
+	        "rna_TransformOrientation_with_scene_itemf");
+	RNA_def_property_ui_text(prop, "Orientation", "Transformation orientation");
+	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
+	prop = RNA_def_property(srna, "custom_orientation", PROP_POINTER, PROP_NONE);
+	RNA_def_property_struct_type(prop, "TransformOrientation");
+	RNA_def_property_pointer_funcs(prop, "rna_TransformOrientationSlot_get", NULL, NULL, NULL);
+	RNA_def_property_ui_text(prop, "Current Transform Orientation", "");
+
+	/* flag */
+	prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", SELECT);
+	RNA_def_property_ui_text(prop, "Use", "Use scene orientation instead of a custom setting");
+	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+	FunctionRNA *func;
+	PropertyRNA *parm;
+
+	/* UI access only (avoid slow RNA introspection). */
+	func = RNA_def_function(srna, "ui_info", "rna_TransformOrientationSlot_ui_info");
+	RNA_def_function_ui_description(func, "");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+	parm = RNA_def_string(func, "name", NULL, sizeof(((TransformOrientation *)NULL)->name), "name", "");
+	RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
+	RNA_def_function_output(func, parm);
+	parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_NONE);
+	RNA_def_property_ui_text(parm, "", "");
+	RNA_def_function_output(func, parm);
+}
+
+
 static void rna_def_tool_settings(BlenderRNA  *brna)
 {
 	StructRNA *srna;
@@ -2244,6 +2381,8 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 	static const EnumPropertyItem gpencil_selectmode_items[] = {
 		{GP_SELECTMODE_POINT, "POINT", ICON_GP_SELECT_POINTS, "Point", "Select only points"},
 		{GP_SELECTMODE_STROKE, "STROKE", ICON_GP_SELECT_STROKES, "Stroke", "Select all stroke points" },
+		/* GPXX need better icon for segment */
+		{GP_SELECTMODE_SEGMENT, "SEGMENT", ICON_SHADERFX, "Segment", "Select all stroke points between other strokes" },
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -2476,6 +2615,26 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 	prop = RNA_def_property(srna, "use_snap_self", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_negative_sdna(prop, NULL, "snap_flag", SCE_SNAP_NO_SELF);
 	RNA_def_property_ui_text(prop, "Project onto Self", "Snap onto itself (Edit Mode Only)");
+	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+	prop = RNA_def_property(srna, "use_snap_translate", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "snap_transform_mode_flag", SCE_SNAP_TRANSFORM_MODE_TRANSLATE);
+	RNA_def_property_ui_text(prop, "Use Snap for Translation",
+	                         "Move is affected by snapping settings");
+	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+	prop = RNA_def_property(srna, "use_snap_rotate", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "snap_transform_mode_flag", SCE_SNAP_TRANSFORM_MODE_ROTATE);
+	RNA_def_property_boolean_default(prop, false);
+	RNA_def_property_ui_text(prop, "Use Snap for Rotation",
+	                         "Rotate is affected by the snapping settings");
+	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+	prop = RNA_def_property(srna, "use_snap_scale", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "snap_transform_mode_flag", SCE_SNAP_TRANSFORM_MODE_SCALE);
+	RNA_def_property_boolean_default(prop, false);
+	RNA_def_property_ui_text(prop, "Use Snap for Scale",
+	                         "Scale is affected by snapping settings");
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
 	prop = RNA_def_property(srna, "use_gizmo_mode", PROP_ENUM, PROP_NONE);
@@ -2783,6 +2942,7 @@ static void rna_def_unified_paint_settings(BlenderRNA  *brna)
 	RNA_def_property_ui_text(prop, "Use Blender Units",
 	                         "When locked brush stays same size relative to object; "
 	                         "when unlocked brush size is given in pixels");
+	RNA_def_property_ui_icon(prop, ICON_UNLOCKED, true);
 }
 
 
@@ -3027,7 +3187,7 @@ static void rna_def_unit_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "system", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, unit_systems);
 	RNA_def_property_ui_text(prop, "Unit System", "The unit system to use for button display");
-	RNA_def_property_update(prop, NC_WINDOW, "rna_unit_system_update");
+	RNA_def_property_update(prop, NC_WINDOW, "rna_UnitSettings_system_update");
 
 	prop = RNA_def_property(srna, "system_rotation", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, rotation_units);
@@ -3049,24 +3209,24 @@ static void rna_def_unit_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "length_unit", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items);
-	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_get_length_unit_items");
+	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_UnitSettings_length_unit_itemf");
 	RNA_def_property_ui_text(prop, "Length Unit", "Unit that will be used to display length values");
 	RNA_def_property_update(prop, NC_WINDOW, NULL);
 
 	prop = RNA_def_property(srna, "mass_unit", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items);
-	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_get_mass_unit_items");
+	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_UnitSettings_mass_unit_itemf");
 	RNA_def_property_ui_text(prop, "Mass Unit", "Unit that will be used to display mass values");
 	RNA_def_property_update(prop, NC_WINDOW, NULL);
 
 	prop = RNA_def_property(srna, "time_unit", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items);
-	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_get_time_unit_items");
+	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_UnitSettings_time_unit_itemf");
 	RNA_def_property_ui_text(prop, "Time Unit", "Unit that will be used to display time values");
 	RNA_def_property_update(prop, NC_WINDOW, NULL);
 }
 
-void rna_def_view_layer_common(StructRNA *srna, int scene)
+void rna_def_view_layer_common(StructRNA *srna, const bool scene)
 {
 	PropertyRNA *prop;
 
@@ -3079,6 +3239,19 @@ void rna_def_view_layer_common(StructRNA *srna, int scene)
 	else RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
 	if (scene) {
+		prop = RNA_def_property(srna, "material_override", PROP_POINTER, PROP_NONE);
+		RNA_def_property_pointer_sdna(prop, NULL, "mat_override");
+		RNA_def_property_struct_type(prop, "Material");
+		RNA_def_property_flag(prop, PROP_EDITABLE);
+		RNA_def_property_ui_text(prop, "Material Override",
+		                         "Material to override all other materials in this view layer");
+		RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_material_override_update");
+
+		prop = RNA_def_property(srna, "samples", PROP_INT, PROP_UNSIGNED);
+		RNA_def_property_ui_text(prop, "Samples", "Override number of render samples for this view layer, "
+		                                          "0 will use the scene setting");
+		RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
 		prop = RNA_def_property(srna, "pass_alpha_threshold", PROP_FLOAT, PROP_FACTOR);
 		RNA_def_property_ui_text(prop, "Alpha Threshold",
 		                         "Z, Index, normal, UV and vector passes are only affected by surfaces with "
@@ -3197,12 +3370,6 @@ void rna_def_view_layer_common(StructRNA *srna, int scene)
 	if (scene) RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
 	else RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-	prop = RNA_def_property(srna, "use_pass_specular", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "passflag", SCE_PASS_SPEC);
-	RNA_def_property_ui_text(prop, "Specular", "Deliver specular pass");
-	if (scene) RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
-	else RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
 	prop = RNA_def_property(srna, "use_pass_shadow", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "passflag", SCE_PASS_SHADOW);
 	RNA_def_property_ui_text(prop, "Shadow", "Deliver shadow pass");
@@ -3224,12 +3391,6 @@ void rna_def_view_layer_common(StructRNA *srna, int scene)
 	prop = RNA_def_property(srna, "use_pass_environment", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "passflag", SCE_PASS_ENVIRONMENT);
 	RNA_def_property_ui_text(prop, "Environment", "Deliver environment lighting pass");
-	if (scene) RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
-	else RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-	prop = RNA_def_property(srna, "use_pass_indirect", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "passflag", SCE_PASS_INDIRECT);
-	RNA_def_property_ui_text(prop, "Indirect", "Deliver indirect lighting pass");
 	if (scene) RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
 	else RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
@@ -3954,7 +4115,7 @@ static void rna_def_gpu_dof_fx(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "ratio", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_ui_text(prop, "Ratio", "Distortion to simulate anamorphic lens bokeh");
 	RNA_def_property_float_default(prop, 1.0f);
-	RNA_def_property_range(prop, 0.0000001f, FLT_MAX);
+	RNA_def_property_range(prop, 0.01f, FLT_MAX);
 	RNA_def_property_ui_range(prop, 1.0f, 2.0f, 0.1, 3);
 	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 }
@@ -5539,8 +5700,8 @@ static void rna_def_display_safe_areas(BlenderRNA *brna)
 	StructRNA *srna;
 	PropertyRNA *prop;
 
-	static float default_title[2] = {0.035f, 0.035f};
-	static float default_action[2] = {0.1f, 0.05f};
+	static float default_title[2] = {0.1f, 0.05f};
+	static float default_action[2] = {0.035f, 0.035f};
 
 	static float default_title_center[2] = {0.175f, 0.05f};
 	static float default_action_center[2] = {0.15f, 0.05f};
@@ -6015,17 +6176,17 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	prop = RNA_def_property(srna, "bloom_clamp", PROP_FLOAT, PROP_FACTOR);
-	RNA_def_property_float_default(prop, 1.0f);
-	RNA_def_property_ui_text(prop, "Clamp", "Maximum intensity a bloom pixel can have");
-	RNA_def_property_range(prop, 0.0f, 1000.0f);
-	RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1, 3);
+	RNA_def_property_float_default(prop, 0.0f);
+	RNA_def_property_ui_text(prop, "Clamp", "Maximum intensity a bloom pixel can have (0 to disabled)");
+	RNA_def_property_range(prop, 0.0f, 100000.0f);
+	RNA_def_property_ui_range(prop, 0.0f, 1000.0f, 1, 3);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
-	prop = RNA_def_property(srna, "bloom_intensity", PROP_FLOAT, PROP_UNSIGNED);
-	RNA_def_property_float_default(prop, 0.8f);
+	prop = RNA_def_property(srna, "bloom_intensity", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_float_default(prop, 0.05f);
 	RNA_def_property_ui_text(prop, "Intensity", "Blend factor");
 	RNA_def_property_range(prop, 0.0f, 10000.0f);
-	RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1, 3);
+	RNA_def_property_ui_range(prop, 0.0f, 0.1f, 1, 3);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	/* Motion blur */
@@ -6090,7 +6251,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", SCE_EEVEE_OVERSCAN);
 	RNA_def_property_boolean_default(prop, 0);
 	RNA_def_property_ui_text(prop, "Overscan", "Internally render past the image border to avoid "
-	                                           "screen-space effects disapearing");
+	                                           "screen-space effects disappearing");
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	prop = RNA_def_property(srna, "overscan_size", PROP_FLOAT, PROP_PERCENTAGE);
@@ -6409,19 +6570,18 @@ void RNA_def_scene(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Timeline Markers", "Markers used in all timelines for the current scene");
 	rna_def_timeline_markers(brna, prop);
 
-	/* Orientations */
-	prop = RNA_def_property(srna, "transform_orientation", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "orientation_type");
-	RNA_def_property_enum_items(prop, rna_enum_transform_orientation_items);
-	RNA_def_property_enum_funcs(prop, "rna_Scene_transform_orientation_get", "rna_Scene_transform_orientation_set",
-	                            "rna_TransformOrientation_itemf");
-	RNA_def_property_ui_text(prop, "Transform Orientation", "Transformation orientation");
-	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
-
-	prop = RNA_def_property(srna, "current_orientation", PROP_POINTER, PROP_NONE);
-	RNA_def_property_struct_type(prop, "TransformOrientation");
-	RNA_def_property_pointer_funcs(prop, "rna_Scene_current_orientation_get", NULL, NULL, NULL);
-	RNA_def_property_ui_text(prop, "Current Transform Orientation", "Current transformation orientation");
+	/* Transform Orientations */
+	prop = RNA_def_property(srna, "transform_orientation_slots", PROP_COLLECTION, PROP_NONE);
+	RNA_def_property_collection_funcs(
+	        prop,
+	        "rna_Scene_transform_orientation_slots_begin",
+	        "rna_iterator_array_next",
+	        "rna_iterator_array_end",
+	        "rna_iterator_array_get",
+	        "rna_Scene_transform_orientation_slots_length",
+	        NULL, NULL, NULL);
+	RNA_def_property_struct_type(prop, "TransformOrientationSlot");
+	RNA_def_property_ui_text(prop, "Transform Orientation Slots", "");
 
 	/* Audio Settings */
 	prop = RNA_def_property(srna, "use_audio", PROP_BOOLEAN, PROP_NONE);
@@ -6546,6 +6706,7 @@ void RNA_def_scene(BlenderRNA *brna)
 	rna_def_unit_settings(brna);
 	rna_def_scene_image_format_data(brna);
 	rna_def_transform_orientation(brna);
+	rna_def_transform_orientation_slot(brna);
 	rna_def_selected_uv_element(brna);
 	rna_def_display_safe_areas(brna);
 	rna_def_scene_display(brna);

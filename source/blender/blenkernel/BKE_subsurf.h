@@ -62,6 +62,7 @@ typedef enum {
 	SUBSURF_IN_EDIT_MODE = 8,
 	SUBSURF_ALLOC_PAINT_MASK = 16,
 	SUBSURF_USE_GPU_BACKEND = 32,
+	SUBSURF_IGNORE_SIMPLIFY = 64,
 } SubsurfFlags;
 
 struct DerivedMesh *subsurf_make_derived_from_derived(
@@ -97,7 +98,7 @@ typedef enum MultiresModifiedFlags {
 	 * have to be updated */
 	MULTIRES_COORDS_MODIFIED = 1,
 	/* indicates elements have been hidden or unhidden */
-	MULTIRES_HIDDEN_MODIFIED = 2
+	MULTIRES_HIDDEN_MODIFIED = 2,
 } MultiresModifiedFlags;
 
 /**************************** Internal *****************************/

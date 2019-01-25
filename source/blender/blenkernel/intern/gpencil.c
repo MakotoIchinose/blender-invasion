@@ -364,7 +364,7 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setacti
 		BLI_insertlinkafter(&gpd->layers, gpl_active, gpl);
 	}
 
-	/* annotation vs GP Object behaviour is slightly different */
+	/* annotation vs GP Object behavior is slightly different */
 	if (gpd->flag & GP_DATA_ANNOTATIONS) {
 		/* set default color of new strokes for this layer */
 		copy_v4_v4(gpl->color, U.gpencil_new_layer_col);
@@ -447,8 +447,8 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
 /**
  * Populate stroke with point data from data buffers
  *
- * \param array Flat array of point data values. Each entry has GP_PRIM_DATABUF_SIZE values
- * \param mat   4x4 transform matrix to transform points into the right coordinate space
+ * \param array: Flat array of point data values. Each entry has GP_PRIM_DATABUF_SIZE values
+ * \param mat: 4x4 transform matrix to transform points into the right coordinate space
  */
 void BKE_gpencil_stroke_add_points(bGPDstroke *gps, const float *array, const int totpoints, const float mat[4][4])
 {
@@ -472,18 +472,18 @@ bGPDstroke *BKE_gpencil_add_stroke(bGPDframe *gpf, int mat_idx, int totpoints, s
 	/* allocate memory for a new stroke */
 	bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
 
-	gps->thickness = thickness * 25;
+	gps->thickness = thickness;
 	gps->inittime = 0;
 
 	/* enable recalculation flag by default */
-	gps->flag = GP_STROKE_RECALC_CACHES | GP_STROKE_3DSPACE;
+	gps->flag = GP_STROKE_RECALC_GEOMETRY | GP_STROKE_3DSPACE;
 
 	gps->totpoints = totpoints;
 	gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
 
 	/* initialize triangle memory to dummy data */
 	gps->triangles = MEM_callocN(sizeof(bGPDtriangle), "GP Stroke triangulation");
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 	gps->tot_triangles = 0;
 
 	gps->mat_nr = mat_idx;
@@ -532,7 +532,7 @@ bGPDstroke *BKE_gpencil_stroke_duplicate(bGPDstroke *gps_src)
 	 * this data to get recalculated will destroy the data anyway though.
 	 */
 	gps_dst->triangles = MEM_dupallocN(gps_dst->triangles);
-	/* gps_dst->flag |= GP_STROKE_RECALC_CACHES; */
+	/* gps_dst->flag |= GP_STROKE_RECALC_GEOMETRY; */
 
 	/* return new stroke */
 	return gps_dst;
@@ -621,7 +621,7 @@ bGPDlayer *BKE_gpencil_layer_duplicate(const bGPDlayer *gpl_src)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_gpencil_copy_data(bGPdata *gpd_dst, const bGPdata *gpd_src, const int UNUSED(flag))
 {
@@ -1179,7 +1179,7 @@ void BKE_gpencil_transform(bGPdata *gpd, float mat[4][4])
 				}
 
 				/* TODO: Do we need to do this? distortion may mean we need to re-triangulate */
-				gps->flag |= GP_STROKE_RECALC_CACHES;
+				gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 				gps->tot_triangles = 0;
 			}
 		}
@@ -1209,6 +1209,15 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
 							if (dw != NULL) {
 								defvert_remove_group(dvert, dw);
 							}
+							else {
+								/* reorganize weights in other strokes */
+								for (int g = 0; g < gps->dvert->totweight; g++) {
+									dw = &dvert->dw[g];
+									if ((dw != NULL) && (dw->def_nr > def_nr)) {
+										dw->def_nr--;
+									}
+								}
+							}
 						}
 					}
 				}
@@ -1233,9 +1242,9 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 
 /**
  * Apply smooth to stroke point
- * \param gps              Stroke to smooth
- * \param i                Point index
- * \param inf              Amount of smoothing to apply
+ * \param gps: Stroke to smooth
+ * \param i: Point index
+ * \param inf: Amount of smoothing to apply
  */
 bool BKE_gpencil_smooth_stroke(bGPDstroke *gps, int i, float inf)
 {
@@ -1412,9 +1421,9 @@ bool BKE_gpencil_smooth_stroke_uv(bGPDstroke *gps, int point_index, float influe
  * Get range of selected frames in layer.
  * Always the active frame is considered as selected, so if no more selected the range
  * will be equal to the current active frame.
- * \param gpl              Layer
- * \param r_initframe      Number of first selected frame
- * \param r_endframe       Number of last selected frame
+ * \param gpl: Layer
+ * \param r_initframe: Number of first selected frame
+ * \param r_endframe: Number of last selected frame
  */
 void BKE_gpencil_get_range_selected(bGPDlayer *gpl, int *r_initframe, int *r_endframe)
 {
@@ -1435,11 +1444,11 @@ void BKE_gpencil_get_range_selected(bGPDlayer *gpl, int *r_initframe, int *r_end
 
 /**
  * Get Falloff factor base on frame range
- * \param gpf          Frame
- * \param actnum       Number of active frame in layer
- * \param f_init       Number of first selected frame
- * \param f_end        Number of last selected frame
- * \param cur_falloff  Curve with falloff factors
+ * \param gpf: Frame
+ * \param actnum: Number of active frame in layer
+ * \param f_init: Number of first selected frame
+ * \param f_end: Number of last selected frame
+ * \param cur_falloff: Curve with falloff factors
  */
 float BKE_gpencil_multiframe_falloff_calc(bGPDframe *gpf, int actnum, int f_init, int f_end, CurveMapping *cur_falloff)
 {
@@ -1558,4 +1567,142 @@ int BKE_gpencil_get_material_index(Object *ob, Material *ma)
 	}
 
 	return 0;
+}
+
+/* Get points of stroke always flat to view not affected by camera view or view position */
+void BKE_gpencil_stroke_2d_flat(const bGPDspoint *points, int totpoints, float(*points2d)[2], int *r_direction)
+{
+	BLI_assert(totpoints >= 2);
+
+	const bGPDspoint *pt0 = &points[0];
+	const bGPDspoint *pt1 = &points[1];
+	const bGPDspoint *pt3 = &points[(int)(totpoints * 0.75)];
+
+	float locx[3];
+	float locy[3];
+	float loc3[3];
+	float normal[3];
+
+	/* local X axis (p0 -> p1) */
+	sub_v3_v3v3(locx, &pt1->x, &pt0->x);
+
+	/* point vector at 3/4 */
+	float v3[3];
+	if (totpoints == 2) {
+		mul_v3_v3fl(v3, &pt3->x, 0.001f);
+	}
+	else {
+		copy_v3_v3(v3, &pt3->x);
+	}
+
+	sub_v3_v3v3(loc3, v3, &pt0->x);
+
+	/* vector orthogonal to polygon plane */
+	cross_v3_v3v3(normal, locx, loc3);
+
+	/* local Y axis (cross to normal/x axis) */
+	cross_v3_v3v3(locy, normal, locx);
+
+	/* Normalize vectors */
+	normalize_v3(locx);
+	normalize_v3(locy);
+
+	/* Get all points in local space */
+	for (int i = 0; i < totpoints; i++) {
+		const bGPDspoint *pt = &points[i];
+		float loc[3];
+
+		/* Get local space using first point as origin */
+		sub_v3_v3v3(loc, &pt->x, &pt0->x);
+
+		points2d[i][0] = dot_v3v3(loc, locx);
+		points2d[i][1] = dot_v3v3(loc, locy);
+	}
+
+	/* Concave (-1), Convex (1), or Autodetect (0)? */
+	*r_direction = (int)locy[2];
+}
+
+/* Get points of stroke always flat to view not affected by camera view or view position
+ * using another stroke as reference
+ */
+void BKE_gpencil_stroke_2d_flat_ref(
+	const bGPDspoint *ref_points, int ref_totpoints,
+	const bGPDspoint *points, int totpoints,
+	float(*points2d)[2], const float scale, int *r_direction)
+{
+	BLI_assert(totpoints >= 2);
+
+	const bGPDspoint *pt0 = &ref_points[0];
+	const bGPDspoint *pt1 = &ref_points[1];
+	const bGPDspoint *pt3 = &ref_points[(int)(ref_totpoints * 0.75)];
+
+	float locx[3];
+	float locy[3];
+	float loc3[3];
+	float normal[3];
+
+	/* local X axis (p0 -> p1) */
+	sub_v3_v3v3(locx, &pt1->x, &pt0->x);
+
+	/* point vector at 3/4 */
+	float v3[3];
+	if (totpoints == 2) {
+		mul_v3_v3fl(v3, &pt3->x, 0.001f);
+	}
+	else {
+		copy_v3_v3(v3, &pt3->x);
+	}
+
+	sub_v3_v3v3(loc3, v3, &pt0->x);
+
+	/* vector orthogonal to polygon plane */
+	cross_v3_v3v3(normal, locx, loc3);
+
+	/* local Y axis (cross to normal/x axis) */
+	cross_v3_v3v3(locy, normal, locx);
+
+	/* Normalize vectors */
+	normalize_v3(locx);
+	normalize_v3(locy);
+
+	/* Get all points in local space */
+	for (int i = 0; i < totpoints; i++) {
+		const bGPDspoint *pt = &points[i];
+		float loc[3];
+		float v1[3];
+		float vn[3] = { 0.0f, 0.0f, 0.0f };
+
+		/* apply scale to extremes of the stroke to get better collision detection
+		 * the scale is divided to get more control in the UI parameter
+		 */
+		/* first point */
+		if (i == 0) {
+			const bGPDspoint *pt_next = &points[i + 1];
+			sub_v3_v3v3(vn, &pt->x, &pt_next->x);
+			normalize_v3(vn);
+			mul_v3_fl(vn, scale / 10.0f);
+			add_v3_v3v3(v1, &pt->x, vn);
+		}
+		/* last point */
+		else if (i == totpoints - 1) {
+			const bGPDspoint *pt_prev = &points[i - 1];
+			sub_v3_v3v3(vn, &pt->x, &pt_prev->x);
+			normalize_v3(vn);
+			mul_v3_fl(vn, scale / 10.0f);
+			add_v3_v3v3(v1, &pt->x, vn);
+		}
+		else {
+			copy_v3_v3(v1, &pt->x);
+		}
+
+		/* Get local space using first point as origin (ref stroke) */
+		sub_v3_v3v3(loc, v1, &pt0->x);
+
+		points2d[i][0] = dot_v3v3(loc, locx);
+		points2d[i][1] = dot_v3v3(loc, locy);
+	}
+
+	/* Concave (-1), Convex (1), or Autodetect (0)? */
+	*r_direction = (int)locy[2];
 }

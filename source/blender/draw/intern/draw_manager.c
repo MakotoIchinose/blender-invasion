@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -79,6 +82,7 @@
 #include "draw_cache_impl.h"
 
 #include "draw_mode_engines.h"
+#include "draw_builtin_shader.h"
 #include "engines/eevee/eevee_engine.h"
 #include "engines/basic/basic_engine.h"
 #include "engines/workbench/workbench_engine.h"
@@ -103,6 +107,17 @@ extern struct GPUUniformBuffer *view_ubo; /* draw_manager_exec.c */
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
 	memset(dst, 0x0, offsetof(DRWManager, gl_context));
+
+	/* Maybe not the best place for this. */
+	if (!DST.uniform_names.buffer) {
+		DST.uniform_names.buffer = MEM_callocN(DRW_UNIFORM_BUFFER_NAME, "Name Buffer");
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	else if (DST.uniform_names.buffer_len > DRW_UNIFORM_BUFFER_NAME) {
+		DST.uniform_names.buffer = MEM_reallocN(DST.uniform_names.buffer, DRW_UNIFORM_BUFFER_NAME);
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	DST.uniform_names.buffer_ofs = 0;
 }
 
 /* This function is used to reset draw manager to a state
@@ -151,7 +166,7 @@ struct DRWTextStore *DRW_text_cache_ensure(void)
 
 bool DRW_object_is_renderable(const Object *ob)
 {
-	BLI_assert(BKE_object_is_visible(ob, OB_VISIBILITY_CHECK_UNKNOWN_RENDER_MODE));
+	BLI_assert((ob->base_flag & BASE_VISIBLE) != 0);
 
 	if (ob->type == OB_MESH) {
 		if ((ob == DST.draw_ctx.object_edit) || BKE_object_is_in_editmode(ob)) {
@@ -171,12 +186,12 @@ bool DRW_object_is_renderable(const Object *ob)
  * Return whether this object is visible depending if
  * we are rendering or drawing in the viewport.
  */
-bool DRW_object_is_visible_in_active_context(const Object *ob)
+int DRW_object_visibility_in_active_context(const Object *ob)
 {
-	const eObjectVisibilityCheck mode = DRW_state_is_scene_render() ?
-	                                     OB_VISIBILITY_CHECK_FOR_RENDER :
-	                                     OB_VISIBILITY_CHECK_FOR_VIEWPORT;
-	return BKE_object_is_visible(ob, mode);
+	const eEvaluationMode mode = DRW_state_is_scene_render() ?
+	                                     DAG_EVAL_RENDER :
+	                                     DAG_EVAL_VIEWPORT;
+	return BKE_object_visibility(ob, mode);
 }
 
 bool DRW_object_is_flat_normal(const Object *ob)
@@ -197,9 +212,8 @@ bool DRW_object_use_hide_faces(const struct Object *ob)
 
 		switch (ob->mode) {
 			case OB_MODE_TEXTURE_PAINT:
-			case OB_MODE_VERTEX_PAINT:
 				return (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-
+			case OB_MODE_VERTEX_PAINT:
 			case OB_MODE_WEIGHT_PAINT:
 				return (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) != 0;
 		}
@@ -529,6 +543,11 @@ static void drw_context_state_init(void)
 	}
 	else {
 		DST.draw_ctx.object_pose = NULL;
+	}
+
+	DST.draw_ctx.shader_slot = DRW_SHADER_SLOT_DEFAULT;
+	if (DST.draw_ctx.rv3d && DST.draw_ctx.rv3d->rflag & RV3D_CLIPPING) {
+		DST.draw_ctx.shader_slot = DRW_SHADER_SLOT_CLIPPED;
 	}
 }
 
@@ -879,7 +898,7 @@ DrawData *DRW_drawdata_ensure(
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
 	/* Allocate new data. */
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		/* NOTE: data is not persistent in this case. It is reset each redraw. */
 		BLI_assert(free_cb == NULL); /* No callback allowed. */
 		/* Round to sizeof(float) for DRW_instance_data_request(). */
@@ -926,7 +945,7 @@ void DRW_drawdata_free(ID *id)
 /* Unlink (but don't free) the drawdata from the DrawDataList if the ID is an OB from dupli. */
 static void drw_drawdata_unlink_dupli(ID *id)
 {
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
 		if (drawdata == NULL)
@@ -1255,10 +1274,10 @@ static void drw_engines_enable_from_mode(int mode)
 		case CTX_MODE_PAINT_VERTEX:
 		case CTX_MODE_PAINT_TEXTURE:
 		case CTX_MODE_OBJECT:
-		case CTX_MODE_GPENCIL_PAINT:
-		case CTX_MODE_GPENCIL_EDIT:
-		case CTX_MODE_GPENCIL_SCULPT:
-		case CTX_MODE_GPENCIL_WEIGHT:
+		case CTX_MODE_PAINT_GPENCIL:
+		case CTX_MODE_EDIT_GPENCIL:
+		case CTX_MODE_SCULPT_GPENCIL:
+		case CTX_MODE_WEIGHT_GPENCIL:
 			break;
 		default:
 			BLI_assert(!"Draw mode invalid");
@@ -1673,8 +1692,10 @@ bool DRW_render_check_grease_pencil(Depsgraph *depsgraph)
 {
 	DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN(depsgraph, ob)
 	{
-		if ((ob->type == OB_GPENCIL) && (DRW_object_is_visible_in_active_context(ob))) {
-			return true;
+		if (ob->type == OB_GPENCIL) {
+			if (DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF) {
+				return true;
+			}
 		}
 	}
 	DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END
@@ -1917,6 +1938,8 @@ void DRW_render_object_iter(
 			DST.dupli_source = data_.dupli_object_current;
 			DST.ob_state = NULL;
 			callback(vedata, ob, engine, depsgraph);
+
+			drw_batch_cache_generate_requested(ob);
 		}
 	}
 	DEG_OBJECT_ITER_END
@@ -2131,7 +2154,7 @@ void DRW_draw_select_loop(
 				    (object_type_exclude_select & (1 << ob->type)) == 0)
 				{
 					if (object_filter_fn != NULL) {
-						if (ob->base_flag & BASE_FROMDUPLI) {
+						if (ob->base_flag & BASE_FROM_DUPLI) {
 							/* pass (use previous filter_exclude value) */
 						}
 						else {
@@ -2143,7 +2166,7 @@ void DRW_draw_select_loop(
 					}
 
 					/* This relies on dupli instances being after their instancing object. */
-					if ((ob->base_flag & BASE_FROMDUPLI) == 0) {
+					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						Object *ob_orig = DEG_get_original_object(ob);
 						DRW_select_load_id(ob_orig->select_color);
 					}
@@ -2277,7 +2300,9 @@ void DRW_draw_depth_loop(
 	/* Get list of enabled engines */
 	{
 		drw_engines_enable_basic();
-		drw_engines_enable_from_object_mode();
+		if (DRW_state_draw_support()) {
+			drw_engines_enable_from_object_mode();
+		}
 	}
 
 	/* Setup viewport */
@@ -2575,9 +2600,6 @@ void DRW_engines_register(void)
 }
 
 extern struct GPUVertFormat *g_pos_format; /* draw_shgroup.c */
-extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
-extern struct GPUTexture *globals_ramp; /* draw_common.c */
-extern struct GPUTexture *globals_weight_ramp; /* draw_common.c */
 void DRW_engines_free(void)
 {
 	DRW_opengl_context_enable();
@@ -2589,6 +2611,7 @@ void DRW_engines_free(void)
 	DRW_shape_cache_free();
 	DRW_stats_free();
 	DRW_globals_free();
+	DRW_shader_free_builtin_shaders();
 
 	DrawEngineType *next;
 	for (DrawEngineType *type = DRW_engines.first; type; type = next) {
@@ -2600,16 +2623,18 @@ void DRW_engines_free(void)
 		}
 	}
 
-	DRW_UBO_FREE_SAFE(globals_ubo);
+	DRW_UBO_FREE_SAFE(G_draw.block_ubo);
 	DRW_UBO_FREE_SAFE(view_ubo);
-	DRW_TEXTURE_FREE_SAFE(globals_ramp);
-	DRW_TEXTURE_FREE_SAFE(globals_weight_ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
 	MEM_SAFE_FREE(g_pos_format);
 
 	MEM_SAFE_FREE(DST.RST.bound_texs);
 	MEM_SAFE_FREE(DST.RST.bound_tex_slots);
 	MEM_SAFE_FREE(DST.RST.bound_ubos);
 	MEM_SAFE_FREE(DST.RST.bound_ubo_slots);
+
+	MEM_SAFE_FREE(DST.uniform_names.buffer);
 
 	DRW_opengl_context_disable();
 }

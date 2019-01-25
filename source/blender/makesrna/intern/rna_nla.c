@@ -488,7 +488,11 @@ static void rna_NlaTrack_solo_set(PointerRNA *ptr, bool value)
 /* enum defines exported for rna_animation.c */
 const EnumPropertyItem rna_enum_nla_mode_blend_items[] = {
 	{NLASTRIP_MODE_REPLACE, "REPLACE", 0, "Replace",
-	                        "Result strip replaces the accumulated results by amount specified by influence"},
+	                        "The strip values replace the accumulated results by amount specified by influence"},
+	{NLASTRIP_MODE_COMBINE, "COMBINE", 0, "Combine",
+	                        "The strip values are combined with accumulated results by appropriately using addition, "
+	                        "multiplication, or quaternion math, based on channel type"},
+	{0, "", 0, NULL, NULL},
 	{NLASTRIP_MODE_ADD, "ADD", 0, "Add", "Weighted result of strip is added to the accumulated results"},
 	{NLASTRIP_MODE_SUBTRACT, "SUBTRACT", 0, "Subtract",
 	                         "Weighted result of strip is removed from the accumulated results"},
@@ -721,7 +725,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_MUTED);
-	RNA_def_property_ui_text(prop, "Muted", "NLA Strip is not evaluated");
+	RNA_def_property_ui_text(prop, "Muted", "Disable NLA Strip evaluation");
 	RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
 	prop = RNA_def_property(srna, "use_reverse", PROP_BOOLEAN, PROP_NONE);
@@ -818,7 +822,7 @@ static void rna_def_nlatrack(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_MUTED);
-	RNA_def_property_ui_text(prop, "Muted", "NLA Track is not evaluated");
+	RNA_def_property_ui_text(prop, "Muted", "Disable NLA Track evaluation");
 	RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
 	prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);

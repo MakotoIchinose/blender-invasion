@@ -91,6 +91,7 @@ void		WM_init_state_fullscreen_set(void);
 void		WM_init_state_normal_set(void);
 void		WM_init_window_focus_set(bool do_it);
 void		WM_init_native_pixels(bool do_it);
+void		WM_init_tablet_api(void);
 
 void		WM_init				(struct bContext *C, int argc, const char **argv);
 void		WM_exit_ext			(struct bContext *C, const bool do_python);
@@ -320,6 +321,8 @@ bool        WM_operator_poll_context(struct bContext *C, struct wmOperatorType *
 int         WM_operator_call_ex(struct bContext *C, struct wmOperator *op, const bool store);
 int			WM_operator_call		(struct bContext *C, struct wmOperator *op);
 int			WM_operator_call_notest(struct bContext *C, struct wmOperator *op);
+
+int			WM_operator_repeat_interactive(struct bContext *C, struct wmOperator *op);
 int			WM_operator_repeat		(struct bContext *C, struct wmOperator *op);
 bool        WM_operator_repeat_check(const struct bContext *C, struct wmOperator *op);
 bool        WM_operator_is_repeat(const struct bContext *C, const struct wmOperator *op);
@@ -344,6 +347,7 @@ void        WM_operator_last_properties_ensure(struct wmOperatorType *ot, struct
 wmOperator *WM_operator_last_redo(const struct bContext *C);
 ID         *WM_operator_drop_load_path(struct bContext *C, struct wmOperator *op, const short idcode);
 
+bool        WM_operator_last_properties_init_ex(struct wmOperator *op, struct IDProperty *last_properties);
 bool        WM_operator_last_properties_init(struct wmOperator *op);
 bool        WM_operator_last_properties_store(struct wmOperator *op);
 
@@ -514,7 +518,7 @@ enum {
 	WM_JOB_PRIORITY     = (1 << 0),
 	WM_JOB_EXCL_RENDER  = (1 << 1),
 	WM_JOB_PROGRESS     = (1 << 2),
-	WM_JOB_SUSPEND      = (1 << 3)
+	WM_JOB_SUSPEND      = (1 << 3),
 };
 
 /* identifying jobs by owner alone is unreliable, this isnt saved, order can change (keep 0 for 'any') */

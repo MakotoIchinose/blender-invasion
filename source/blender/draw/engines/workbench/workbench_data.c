@@ -1,8 +1,34 @@
+/*
+ * ***** BEGIN GPL LICENSE BLOCK *****
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * Copyright 2018, Blender Foundation.
+ * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
+ *
+ */
+
 #include "workbench_private.h"
 
 #include "DNA_userdef_types.h"
 
 #include "UI_resources.h"
+
+#include "GPU_batch.h"
 
 
 void workbench_effect_info_init(WORKBENCH_EffectInfo *effect_info)
@@ -16,7 +42,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	const Scene *scene = draw_ctx->scene;
 	wpd->material_hash = BLI_ghash_ptr_new(__func__);
-	wpd->user_preferences = &U;
+	wpd->preferences = &U;
 
 	View3D *v3d = draw_ctx->v3d;
 	if (!v3d) {
@@ -55,19 +81,20 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 	wd->matcap_orientation = (wpd->shading.flag & V3D_SHADING_MATCAP_FLIP_X) != 0;
 	wd->background_alpha = (DRW_state_is_image_render() && scene->r.alphamode == R_ALPHAPREMUL) ? 0.0f : 1.0f;
 
-	if (!v3d || ((v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD) &&
-	    (scene->world != NULL)))
+	if ((scene->world != NULL) &&
+	    (!v3d || (v3d && ((v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD) ||
+	                      (v3d->shading.type == OB_RENDER)))))
 	{
 		copy_v3_v3(wd->background_color_low, &scene->world->horr);
 		copy_v3_v3(wd->background_color_high, &scene->world->horr);
 	}
-	else if (v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT) {
+	else if (v3d && (v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT)) {
 		copy_v3_v3(wd->background_color_low, v3d->shading.background_color);
 		copy_v3_v3(wd->background_color_high, v3d->shading.background_color);
 	}
 	else if (v3d) {
-		UI_GetThemeColor3fv(UI_GetThemeValue(TH_SHOW_BACK_GRAD) ? TH_LOW_GRAD : TH_HIGH_GRAD, wd->background_color_low);
-		UI_GetThemeColor3fv(TH_HIGH_GRAD, wd->background_color_high);
+		UI_GetThemeColor3fv(UI_GetThemeValue(TH_SHOW_BACK_GRAD) ? TH_BACK_GRAD : TH_BACK, wd->background_color_low);
+		UI_GetThemeColor3fv(TH_BACK, wd->background_color_high);
 
 		/* XXX: Really quick conversion to avoid washed out background.
 		 * Needs to be addressed properly (color managed using ocio). */
@@ -86,6 +113,20 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
 	wd->curvature_ridge = 0.5f / max_ff(SQUARE(wpd->shading.curvature_ridge_factor), 1e-4f);
 	wd->curvature_valley = 0.7f / max_ff(SQUARE(wpd->shading.curvature_valley_factor), 1e-4f);
+
+	/* Will be NULL when rendering. */
+	if (draw_ctx->rv3d != NULL) {
+		RegionView3D *rv3d = draw_ctx->rv3d;
+		if (rv3d->rflag & RV3D_CLIPPING) {
+			wpd->world_clip_planes = rv3d->clip;
+			DRW_state_clip_planes_set_from_rv3d(rv3d);
+			UI_GetThemeColor4fv(TH_V3D_CLIPPING_BORDER, wpd->world_clip_planes_color);
+			srgb_to_linearrgb_v3_v3(wpd->world_clip_planes_color, wpd->world_clip_planes_color);
+		}
+		else {
+			wpd->world_clip_planes = NULL;
+		}
+	}
 
 	wpd->world_ubo = DRW_uniformbuffer_create(sizeof(WORKBENCH_UBO_World), &wpd->world_data);
 
@@ -175,4 +216,5 @@ void workbench_private_data_free(WORKBENCH_PrivateData *wpd)
 {
 	BLI_ghash_free(wpd->material_hash, NULL, MEM_freeN);
 	DRW_UBO_FREE_SAFE(wpd->world_ubo);
+	GPU_BATCH_DISCARD_SAFE(wpd->world_clip_planes_batch);
 }

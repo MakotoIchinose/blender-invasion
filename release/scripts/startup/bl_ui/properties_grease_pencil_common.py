@@ -33,19 +33,20 @@ def gpencil_stroke_placement_settings(context, layout):
     else:
         propname = "annotation_stroke_placement_view2d"
 
-    ts = context.tool_settings
+    tool_settings = context.tool_settings
 
     col = layout.column(align=True)
 
     if context.space_data.type != 'VIEW_3D':
         col.label(text="Stroke Placement:")
         row = col.row(align=True)
-        row.prop_enum(ts, propname, 'VIEW')
-        row.prop_enum(ts, propname, 'CURSOR', text="Cursor")
+        row.prop_enum(tool_settings, propname, 'VIEW')
+        row.prop_enum(tool_settings, propname, 'CURSOR', text="Cursor")
 
 
 def gpencil_active_brush_settings_simple(context, layout):
-    brush = context.active_gpencil_brush
+    tool_settings = context.tool_settings
+    brush = tool_settings.gpencil_paint.brush
     if brush is None:
         layout.label(text="No Active Brush")
         return
@@ -190,6 +191,7 @@ class GreasePencilStrokeEditPanel:
         col.operator("gpencil.duplicate_move", text="Duplicate")
         if is_3d_view:
             col.operator("gpencil.stroke_cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'
+            col.operator_menu_enum("gpencil.stroke_caps_set", text="Toggle Caps...", property="type")
 
         layout.separator()
 
@@ -211,11 +213,12 @@ class GreasePencilStrokeEditPanel:
         col.operator("gpencil.stroke_subdivide", text="Subdivide")
         row = col.row(align=True)
         row.operator("gpencil.stroke_simplify_fixed", text="Simplify")
-        row.operator("gpencil.stroke_simplify", text="Adaptative")
+        row.operator("gpencil.stroke_simplify", text="Adaptive")
 
         col.separator()
 
         row = col.row(align=True)
+        row.operator("gpencil.stroke_merge", text="Merge")
         row.operator("gpencil.stroke_join", text="Join").type = 'JOIN'
         row.operator("gpencil.stroke_join", text="& Copy").type = 'JOINCOPY'
 
@@ -252,29 +255,11 @@ class GreasePencilStrokeSculptPanel:
 
         layout.template_icon_view(settings, "sculpt_tool", show_labels=True)
 
-        row = layout.row(align=True)
-        row.prop(brush, "size", slider=True)
-        sub = row.row(align=True)
-        sub.enabled = tool not in {'GRAB', 'CLONE'}
-        sub.prop(brush, "use_pressure_radius", text="")
-
-        row = layout.row(align=True)
-        row.prop(brush, "strength", slider=True)
-        row.prop(brush, "use_pressure_strength", text="")
-
-        layout.prop(brush, "use_falloff")
-
-        layout.use_property_split = False
-        if tool in {'THICKNESS', 'STRENGTH'}:
-            layout.row().prop(brush, "direction", expand=True)
-        elif tool == 'PINCH':
-            row = layout.row(align=True)
-            row.prop_enum(brush, "direction", value='ADD', text="Pinch")
-            row.prop_enum(brush, "direction", value='SUBTRACT', text="Inflate")
-        elif tool == 'TWIST':
-            row = layout.row(align=True)
-            row.prop_enum(brush, "direction", value='ADD', text="CCW")
-            row.prop_enum(brush, "direction", value='SUBTRACT', text="CW")
+        if not self.is_popover:
+            from .properties_paint_common import (
+                brush_basic_gpencil_sculpt_settings,
+            )
+            brush_basic_gpencil_sculpt_settings(layout, context, brush)
 
 
 class GreasePencilSculptOptionsPanel:
@@ -324,10 +309,11 @@ class GreasePencilAppearancePanel:
         layout.use_property_split = True
         layout.use_property_decorate = False
 
+        tool_settings = context.tool_settings
         ob = context.active_object
 
-        if ob.mode == 'GPENCIL_PAINT':
-            brush = context.active_gpencil_brush
+        if ob.mode == 'PAINT_GPENCIL':
+            brush = tool_settings.gpencil_paint.brush
             gp_settings = brush.gpencil_settings
 
             sub = layout.column(align=True)
@@ -347,8 +333,8 @@ class GreasePencilAppearancePanel:
             if brush.gpencil_tool == 'FILL':
                 layout.prop(brush, "cursor_color_add", text="Color")
 
-        elif ob.mode in {'GPENCIL_SCULPT', 'GPENCIL_WEIGHT'}:
-            settings = context.tool_settings.gpencil_sculpt
+        elif ob.mode in {'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
+            settings = tool_settings.gpencil_sculpt
             brush = settings.brush
             tool = settings.sculpt_tool
 
@@ -357,7 +343,7 @@ class GreasePencilAppearancePanel:
 
             if tool in {'THICKNESS', 'STRENGTH'}:
                 col.prop(brush, "cursor_color_add", text="Add")
-                col.prop(brush, "cursor_color_sub", text="Substract")
+                col.prop(brush, "cursor_color_sub", text="Subtract")
             elif tool == 'PINCH':
                 col.prop(brush, "cursor_color_add", text="Pinch")
                 col.prop(brush, "cursor_color_sub", text="Inflate")
@@ -452,7 +438,6 @@ class GPENCIL_MT_pie_settings_palette(Menu):
         gpd = context.gpencil_data
         gpl = context.active_gpencil_layer
         palcolor = None  # context.active_gpencil_palettecolor
-        # brush = context.active_gpencil_brush
 
         is_editmode = bool(gpd and gpd.use_stroke_edit_mode and context.editable_gpencil_strokes)
 
@@ -645,6 +630,7 @@ class GPENCIL_MT_gpencil_draw_specials(Menu):
         layout.operator("gpencil.primitive", text="Rectangle", icon='UV_FACESEL').type = 'BOX'
         layout.operator("gpencil.primitive", text="Circle", icon='ANTIALIASED').type = 'CIRCLE'
         layout.operator("gpencil.primitive", text="Arc", icon='SPHERECURVE').type = 'ARC'
+        layout.operator("gpencil.primitive", text="Curve", icon='CURVE_BEZCURVE').type = 'CURVE'
 
 
 class GPENCIL_MT_gpencil_draw_delete(Menu):
@@ -743,7 +729,7 @@ class AnnotationDataPanel:
         else:
             layer_rows = 3
         col.template_list("GPENCIL_UL_annotation_layer", "", gpd, "layers", gpd.layers, "active_index",
-                          rows=layer_rows, reverse=True)
+                          rows=layer_rows, sort_reverse=True, sort_lock=True)
 
         col = row.column()
 
@@ -981,8 +967,8 @@ class GPENCIL_UL_layer(UIList):
 
             row = layout.row(align=True)
             row.prop(gpl, "clamp_layer", text="",
-                        icon='MOD_MASK' if gpl.clamp_layer else 'LAYER_ACTIVE',
-                        emboss=False)
+                     icon='MOD_MASK' if gpl.clamp_layer else 'LAYER_ACTIVE',
+                     emboss=False)
 
             row.prop(gpl, "lock", text="", emboss=False)
             row.prop(gpl, "hide", text="", emboss=False)

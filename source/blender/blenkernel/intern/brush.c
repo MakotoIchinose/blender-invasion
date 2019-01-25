@@ -79,6 +79,7 @@ static void brush_defaults(Brush *brush)
 	brush->size = 35; /* radius of the brush in pixels */
 	brush->alpha = 0.5f; /* brush strength/intensity probably variable should be renamed? */
 	brush->autosmooth_factor = 0.0f;
+	brush->topology_rake_factor = 0.0f;
 	brush->crease_pinch_factor = 0.5f;
 	brush->sculpt_plane = SCULPT_DISP_DIR_AREA;
 	brush->plane_offset = 0.0f; /* how far above or below the plane that is found by averaging the faces */
@@ -182,6 +183,7 @@ void BKE_brush_init_gpencil_settings(Brush *brush)
 	brush->gpencil_settings->draw_jitter = 0.0f;
 	brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
 	brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PEN;
+	brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
 	/* curves */
 	brush->gpencil_settings->curve_sensitivity = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
@@ -194,7 +196,7 @@ Brush *BKE_brush_add_gpencil(Main *bmain, ToolSettings *ts, const char *name)
 {
 	Brush *brush;
 	Paint *paint = &ts->gp_paint->paint;
-	brush = BKE_brush_add(bmain, name, OB_MODE_GPENCIL_PAINT);
+	brush = BKE_brush_add(bmain, name, OB_MODE_PAINT_GPENCIL);
 
 	BKE_paint_brush_set(paint, brush);
 	id_us_min(&brush->id);
@@ -566,7 +568,7 @@ struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mo
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_brush_copy_data(Main *UNUSED(bmain), Brush *brush_dst, const Brush *brush_src, const int flag)
 {
@@ -737,6 +739,8 @@ void BKE_brush_debug_print_state(Brush *br)
 	BR_TEST(plane_offset, f);
 
 	BR_TEST(autosmooth_factor, f);
+
+	BR_TEST(topology_rake_factor, f);
 
 	BR_TEST(crease_pinch_factor, f);
 

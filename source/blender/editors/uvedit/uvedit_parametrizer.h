@@ -37,7 +37,7 @@ typedef void ParamHandle;	/* handle to a set of charts */
 typedef intptr_t ParamKey;		/* (hash) key for identifying verts and faces */
 typedef enum ParamBool {
 	PARAM_TRUE = 1,
-	PARAM_FALSE = 0
+	PARAM_FALSE = 0,
 } ParamBool;
 
 /* Chart construction:
@@ -98,11 +98,11 @@ void param_smooth_area(ParamHandle *handle);
 
 /* Packing */
 
-void param_pack(ParamHandle *handle, float margin, bool do_rotate);
+void param_pack(ParamHandle *handle, float margin, bool do_rotate, bool ignore_pinned);
 
 /* Average area for all charts */
 
-void param_average(ParamHandle *handle);
+void param_average(ParamHandle *handle, bool ignore_pinned);
 
 /* Simple x,y scale */
 

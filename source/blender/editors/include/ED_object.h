@@ -67,9 +67,19 @@ struct uiLayout;
 #include "BLI_compiler_attrs.h"
 
 /* object_edit.c */
-struct Object *ED_object_context(struct bContext *C);               /* context.object */
-struct Object *ED_object_active_context(struct bContext *C); /* context.object or context.active_object */
-void ED_hide_collections_menu_draw(const struct bContext *C, struct uiLayout *layout);
+/* context.object */
+struct Object *ED_object_context(struct bContext *C);
+/* context.object or context.active_object */
+struct Object *ED_object_active_context(struct bContext *C);
+void ED_collection_hide_menu_draw(const struct bContext *C, struct uiLayout *layout);
+
+/* object_utils.c */
+bool ED_object_calc_active_center_for_editmode(
+        struct Object *obedit, const bool select_only, float r_center[3]);
+bool ED_object_calc_active_center_for_posemode(
+        struct Object *ob, const bool select_only, float r_center[3]);
+bool ED_object_calc_active_center(
+        struct Object *ob, const bool select_only, float r_center[3]);
 
 /* object_ops.c */
 void ED_operatortypes_object(void);
@@ -123,7 +133,6 @@ void ED_object_parent(struct Object *ob, struct Object *parent, const int type, 
 /* bitflags for enter/exit editmode */
 enum {
 	EM_FREEDATA         = (1 << 0),
-	EM_WAITCURSOR       = (1 << 1),
 	EM_IGNORE_LAYER     = (1 << 3),
 	EM_NO_CONTEXT       = (1 << 4),
 };
@@ -134,9 +143,6 @@ bool ED_object_editmode_exit(struct bContext *C, int flag);
 bool ED_object_editmode_enter_ex(struct Main *bmain, struct Scene *scene, struct Object *ob, int flag);
 bool ED_object_editmode_enter(struct bContext *C, int flag);
 bool ED_object_editmode_load(struct Main *bmain, struct Object *obedit);
-
-bool ED_object_editmode_calc_active_center(struct Object *obedit, const bool select_only, float r_center[3]);
-
 
 void ED_object_vpaintmode_enter_ex(
         struct Main *bmain, struct Depsgraph *depsgraph, struct wmWindowManager *wm,
@@ -171,7 +177,8 @@ float ED_object_new_primitive_matrix(
         const float loc[3], const float rot[3], float primmat[4][4]);
 
 
-/* Avoid allowing too much insane values even by typing (typos can hang/crash Blender otherwise). */
+/* Avoid allowing too much insane values even by typing
+ * (typos can hang/crash Blender otherwise). */
 #define OBJECT_ADD_SIZE_MAXF 1.0e12f
 
 void ED_object_add_unit_props_size(struct wmOperatorType *ot);
@@ -243,7 +250,7 @@ void ED_object_modifier_clear(struct Main *bmain, struct Object *ob);
 int ED_object_modifier_move_down(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_move_up(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_convert(
-        struct ReportList *reports, struct Main *bmain, struct Scene *scene,
+        struct ReportList *reports, struct Main *bmain, struct Depsgraph *depsgraph, struct Scene *scene,
         struct ViewLayer *view_layer, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_apply(
         struct Main *bmain, struct ReportList *reports, struct Depsgraph *depsgraph, struct Scene *scene,

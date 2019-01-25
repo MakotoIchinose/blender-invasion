@@ -3531,7 +3531,8 @@ static bAnimChannelType ACF_NLAACTION =
 	"NLA Active Action",            /* type name */
 	ACHANNEL_ROLE_CHANNEL,          /* role */
 
-	acf_nlaaction_color,            /* backdrop color (NOTE: the backdrop handles this too, since it needs special hacks) */
+	acf_nlaaction_color,            /* backdrop color (NOTE: the backdrop handles this too,
+	                                 * since it needs special hacks) */
 	acf_nlaaction_backdrop,         /* backdrop */
 	acf_generic_indention_flexible, /* indent level */
 	acf_generic_group_offset,       /* offset */           // XXX?
@@ -4064,7 +4065,7 @@ static void achannel_setting_flush_widget_cb(bContext *C, void *ale_npoin, void 
 
 	/* tag copy-on-write flushing (so that the settings will have an effect) */
 	if (ale_setting->id) {
-		DEG_id_tag_update(ale_setting->id, ID_RECALC_COPY_ON_WRITE);
+		DEG_id_tag_update(ale_setting->id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
 	}
 	if (ale_setting->adt && ale_setting->adt->action) {
 		/* action is it's own datablock, so has to be tagged specifically... */
@@ -4095,10 +4096,11 @@ static void achannel_setting_flush_widget_cb(bContext *C, void *ale_npoin, void 
 }
 
 /* callback for wrapping NLA Track "solo" toggle logic */
-static void achannel_nlatrack_solo_widget_cb(bContext *C, void *adt_poin, void *nlt_poin)
+static void achannel_nlatrack_solo_widget_cb(bContext *C, void *ale_poin, void *UNUSED(arg2))
 {
-	AnimData *adt = adt_poin;
-	NlaTrack *nlt = nlt_poin;
+	bAnimListElem *ale = ale_poin;
+	AnimData *adt = ale->adt;
+	NlaTrack *nlt = ale->data;
 
 	/* Toggle 'solo' mode. There are several complications here which need explaining:
 	 * - The method call is needed to perform a few additional validation operations
@@ -4111,7 +4113,8 @@ static void achannel_nlatrack_solo_widget_cb(bContext *C, void *adt_poin, void *
 	BKE_nlatrack_solo_toggle(adt, nlt);
 
 	/* send notifiers */
-	WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_RENAME, NULL);
+	DEG_id_tag_update(ale->id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+	WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
 }
 
 /* callback for widget sliders - insert keyframes */
@@ -4125,20 +4128,24 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
 	ReportList *reports = CTX_wm_reports(C);
 	Scene *scene = CTX_data_scene(C);
 	ToolSettings *ts = scene->toolsettings;
+	ListBase nla_cache = {NULL, NULL};
 	PointerRNA id_ptr, ptr;
 	PropertyRNA *prop;
 	short flag = 0;
 	bool done = false;
 	float cfra;
 
+	/* Get RNA pointer */
+	RNA_id_pointer_create(id, &id_ptr);
+
+	/* Get NLA context for value remapping */
+	NlaKeyframingContext *nla_context = BKE_animsys_get_nla_keyframing_context(&nla_cache, depsgraph, &id_ptr, adt, (float)CFRA);
+
 	/* get current frame and apply NLA-mapping to it (if applicable) */
 	cfra = BKE_nla_tweakedit_remap(adt, (float)CFRA, NLATIME_CONVERT_UNMAP);
 
 	/* get flags for keyframing */
 	flag = ANIM_get_keyframing_flags(scene, 1);
-
-	/* get RNA pointer, and resolve the path */
-	RNA_id_pointer_create(id, &id_ptr);
 
 	/* try to resolve the path stored in the F-Curve */
 	if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
@@ -4147,11 +4154,13 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
 			flag |= INSERTKEY_REPLACE;
 
 		/* insert a keyframe for this F-Curve */
-		done = insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, ts->keyframe_type, flag);
+		done = insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, ts->keyframe_type, nla_context, flag);
 
 		if (done)
 			WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
 	}
+
+	BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 }
 
 /* callback for shapekey widget sliders - insert keyframes */
@@ -4166,20 +4175,24 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
 	ReportList *reports = CTX_wm_reports(C);
 	Scene *scene = CTX_data_scene(C);
 	ToolSettings *ts = scene->toolsettings;
+	ListBase nla_cache = {NULL, NULL};
 	PointerRNA id_ptr, ptr;
 	PropertyRNA *prop;
 	short flag = 0;
 	bool done = false;
 	float cfra;
 
+	/* Get RNA pointer */
+	RNA_id_pointer_create((ID *)key, &id_ptr);
+
+	/* Get NLA context for value remapping */
+	NlaKeyframingContext *nla_context = BKE_animsys_get_nla_keyframing_context(&nla_cache, depsgraph, &id_ptr, key->adt, (float)CFRA);
+
 	/* get current frame and apply NLA-mapping to it (if applicable) */
 	cfra = BKE_nla_tweakedit_remap(key->adt, (float)CFRA, NLATIME_CONVERT_UNMAP);
 
 	/* get flags for keyframing */
 	flag = ANIM_get_keyframing_flags(scene, 1);
-
-	/* get RNA pointer, and resolve the path */
-	RNA_id_pointer_create((ID *)key, &id_ptr);
 
 	/* try to resolve the path stored in the F-Curve */
 	if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop)) {
@@ -4193,7 +4206,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
 			flag |= INSERTKEY_REPLACE;
 
 		/* insert a keyframe for this F-Curve */
-		done = insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, ts->keyframe_type, flag);
+		done = insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, ts->keyframe_type, nla_context, flag);
 
 		if (done)
 			WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
@@ -4202,6 +4215,8 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
 	/* free the path */
 	if (rna_path)
 		MEM_freeN(rna_path);
+
+	BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 }
 
 /* callback for NLA Control Curve widget sliders - insert keyframes */
@@ -4237,7 +4252,7 @@ static void achannel_setting_slider_nla_curve_cb(bContext *C, void *UNUSED(id_po
 			flag |= INSERTKEY_REPLACE;
 
 		/* insert a keyframe for this F-Curve */
-		done = insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, ts->keyframe_type, flag);
+		done = insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, ts->keyframe_type, NULL, flag);
 
 		if (done)
 			WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
@@ -4395,11 +4410,12 @@ static void draw_setting_widget(bAnimContext *ac, bAnimListElem *ale, const bAni
 
 				/* settings needing special attention */
 				case ACHANNEL_SETTING_SOLO: /* NLA Tracks - Solo toggle */
-					UI_but_func_set(but, achannel_nlatrack_solo_widget_cb, ale->adt, ale->data);
+					UI_but_funcN_set(but, achannel_nlatrack_solo_widget_cb, MEM_dupallocN(ale), NULL);
 					break;
 
 				/* no flushing */
-				case ACHANNEL_SETTING_EXPAND: /* expanding - cannot flush, otherwise all would open/close at once */
+				case ACHANNEL_SETTING_EXPAND: /* expanding - cannot flush,
+				                               * otherwise all would open/close at once */
 				default:
 					UI_but_func_set(but, achannel_setting_widget_cb, NULL, NULL);
 					break;
@@ -4587,7 +4603,8 @@ void ANIM_channel_draw_widgets(const bContext *C, bAnimContext *ac, bAnimListEle
 
 			/* modifiers disable */
 			if (acf->has_setting(ac, ale, ACHANNEL_SETTING_MOD_OFF)) {
-				offset += ICON_WIDTH * 1.2f; /* hack: extra spacing, to avoid touching the mute toggle */
+				/* hack: extra spacing, to avoid touching the mute toggle */
+				offset += ICON_WIDTH * 1.2f;
 				draw_setting_widget(ac, ale, acf, block, (int)v2d->cur.xmax - offset, ymid, ACHANNEL_SETTING_MOD_OFF);
 			}
 

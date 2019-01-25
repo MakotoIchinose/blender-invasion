@@ -84,7 +84,7 @@
 
 enum {
 	COM_RECALC_COMPOSITE = 1,
-	COM_RECALC_VIEWER    = 2
+	COM_RECALC_VIEWER    = 2,
 };
 
 typedef struct CompoJob {
@@ -258,7 +258,7 @@ static void compo_startjob(void *cjv, short *stop, short *do_update, float *prog
 }
 
 /**
- * \param scene_owner is the owner of the job,
+ * \param scene_owner: is the owner of the job,
  * we don't use it for anything else currently so could also be a void pointer,
  * but for now keep it an 'Scene' for consistency.
  *
@@ -1947,7 +1947,8 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
 			/* ensure valid pointers */
 			if (new_node->parent) {
-				/* parent pointer must be redirected to new node or detached if parent is not copied */
+				/* parent pointer must be redirected to new node or detached if parent is
+				 * not copied */
 				if (new_node->parent->flag & NODE_SELECT) {
 					new_node->parent = new_node->parent->new_node;
 				}
@@ -2629,7 +2630,7 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Remove Cryptomatte Socket";
-	ot->description = "Remove layer from a Crytpomatte node";
+	ot->description = "Remove layer from a Cryptomatte node";
 	ot->idname = "NODE_OT_cryptomatte_layer_remove";
 
 	/* callbacks */

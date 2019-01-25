@@ -110,7 +110,7 @@ MetaBall *BKE_mball_add(Main *bmain, const char *name)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_mball_copy_data(Main *UNUSED(bmain), MetaBall *mb_dst, const MetaBall *mb_src, const int UNUSED(flag))
 {
@@ -422,7 +422,7 @@ Object *BKE_mball_basis_find(Scene *scene, Object *basis)
 	for (ViewLayer *view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
 			Object *ob = base->object;
-			if ((ob->type == OB_MBALL) && !(base->flag & BASE_FROMDUPLI)) {
+			if ((ob->type == OB_MBALL) && !(base->flag & BASE_FROM_DUPLI)) {
 				if (ob != bob) {
 					BLI_split_name_num(obname, &obnr, ob->id.name + 2, '.');
 

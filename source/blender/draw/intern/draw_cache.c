@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
+ * Contributor(s): Blender Foundation (2008).
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -40,6 +42,7 @@
 #include "BLI_listbase.h"
 
 #include "BKE_object.h"
+#include "BKE_paint.h"
 #include "BKE_object_deform.h"
 
 #include "GPU_batch.h"
@@ -505,10 +508,11 @@ GPUBatch *DRW_cache_circle_get(void)
 GPUBatch *DRW_cache_square_get(void)
 {
 	if (!SHC.drw_square) {
-		float p[4][3] = {{ 1.0f, 0.0f,  1.0f},
-		                 { 1.0f, 0.0f, -1.0f},
-		                 {-1.0f, 0.0f, -1.0f},
-		                 {-1.0f, 0.0f,  1.0f}};
+		float p[4][3] = {
+			{ 1.0f, 0.0f,  1.0f},
+			{ 1.0f, 0.0f, -1.0f},
+			{-1.0f, 0.0f, -1.0f},
+			{-1.0f, 0.0f,  1.0f}};
 
 		/* Position Only 3D format */
 		static GPUVertFormat format = { 0 };
@@ -670,11 +674,11 @@ GPUBatch *DRW_cache_gpencil_axes_get(void)
 /** \name Common Object API
 * \{ */
 
-GPUBatch *DRW_cache_object_wire_outline_get(Object *ob)
+GPUBatch *DRW_cache_object_all_edges_get(Object *ob)
 {
 	switch (ob->type) {
 		case OB_MESH:
-			return DRW_cache_mesh_wire_outline_get(ob);
+			return DRW_cache_mesh_all_edges_get(ob);
 
 		/* TODO, should match 'DRW_cache_object_surface_get' */
 		default:
@@ -694,7 +698,6 @@ GPUBatch *DRW_cache_object_edge_detection_get(Object *ob, bool *r_is_manifold)
 	}
 }
 
-/* Returns a buffer texture. */
 GPUBatch *DRW_cache_object_face_wireframe_get(Object *ob)
 {
 	switch (ob->type) {
@@ -718,8 +721,14 @@ GPUBatch *DRW_cache_object_loose_edges_get(struct Object *ob)
 	switch (ob->type) {
 		case OB_MESH:
 			return DRW_cache_mesh_loose_edges_get(ob);
-
-		/* TODO, should match 'DRW_cache_object_surface_get' */
+		case OB_CURVE:
+			return DRW_cache_curve_loose_edges_get(ob);
+		case OB_SURF:
+			return DRW_cache_surf_loose_edges_get(ob);
+		case OB_FONT:
+			return DRW_cache_text_loose_edges_get(ob);
+		case OB_MBALL:
+			/* Cannot have any loose edge */
 		default:
 			return NULL;
 	}
@@ -727,14 +736,9 @@ GPUBatch *DRW_cache_object_loose_edges_get(struct Object *ob)
 
 GPUBatch *DRW_cache_object_surface_get(Object *ob)
 {
-	return DRW_cache_object_surface_get_ex(ob, false);
-}
-
-GPUBatch *DRW_cache_object_surface_get_ex(Object *ob, bool use_hide)
-{
 	switch (ob->type) {
 		case OB_MESH:
-			return DRW_cache_mesh_surface_get(ob, use_hide);
+			return DRW_cache_mesh_surface_get(ob);
 		case OB_CURVE:
 			return DRW_cache_curve_surface_get(ob);
 		case OB_SURF:
@@ -749,7 +753,7 @@ GPUBatch *DRW_cache_object_surface_get_ex(Object *ob, bool use_hide)
 }
 
 GPUBatch **DRW_cache_object_surface_material_get(
-        struct Object *ob, struct GPUMaterial **gpumat_array, uint gpumat_array_len, bool use_hide,
+        struct Object *ob, struct GPUMaterial **gpumat_array, uint gpumat_array_len,
         char **auto_layer_names, int **auto_layer_is_srgb, int *auto_layer_count)
 {
 	if (auto_layer_names != NULL) {
@@ -760,8 +764,9 @@ GPUBatch **DRW_cache_object_surface_material_get(
 
 	switch (ob->type) {
 		case OB_MESH:
-			return DRW_cache_mesh_surface_shaded_get(ob, gpumat_array, gpumat_array_len, use_hide,
-			                                         auto_layer_names, auto_layer_is_srgb, auto_layer_count);
+			return DRW_cache_mesh_surface_shaded_get(
+			        ob, gpumat_array, gpumat_array_len,
+			        auto_layer_names, auto_layer_is_srgb, auto_layer_count);
 		case OB_CURVE:
 			return DRW_cache_curve_surface_shaded_get(ob, gpumat_array, gpumat_array_len);
 		case OB_SURF:
@@ -1652,11 +1657,12 @@ GPUBatch *DRW_cache_lamp_spot_volume_get(void)
 GPUBatch *DRW_cache_lamp_spot_square_get(void)
 {
 	if (!SHC.drw_lamp_spot_square) {
-		float p[5][3] = {{ 0.0f,  0.0f,  0.0f},
-		                 { 1.0f,  1.0f, -1.0f},
-		                 { 1.0f, -1.0f, -1.0f},
-		                 {-1.0f, -1.0f, -1.0f},
-		                 {-1.0f,  1.0f, -1.0f}};
+		float p[5][3] = {
+			{ 0.0f,  0.0f,  0.0f},
+			{ 1.0f,  1.0f, -1.0f},
+			{ 1.0f, -1.0f, -1.0f},
+			{-1.0f, -1.0f, -1.0f},
+			{-1.0f,  1.0f, -1.0f}};
 
 		uint v_idx = 0;
 
@@ -1687,11 +1693,12 @@ GPUBatch *DRW_cache_lamp_spot_square_get(void)
 GPUBatch *DRW_cache_lamp_spot_square_volume_get(void)
 {
 	if (!SHC.drw_lamp_spot_square_volume) {
-		float p[5][3] = {{ 0.0f,  0.0f,  0.0f},
-		                 { 1.0f,  1.0f, -1.0f},
-		                 { 1.0f, -1.0f, -1.0f},
-		                 {-1.0f, -1.0f, -1.0f},
-		                 {-1.0f,  1.0f, -1.0f}};
+		float p[5][3] = {
+			{ 0.0f,  0.0f,  0.0f},
+			{ 1.0f,  1.0f, -1.0f},
+			{ 1.0f, -1.0f, -1.0f},
+			{-1.0f, -1.0f, -1.0f},
+			{-1.0f,  1.0f, -1.0f}};
 
 		uint v_idx = 0;
 
@@ -2051,8 +2058,9 @@ GPUBatch *DRW_cache_bone_octahedral_get(void)
 			}
 		}
 
-		SHC.drw_bone_octahedral = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL,
-		                                              GPU_BATCH_OWNS_VBO);
+		SHC.drw_bone_octahedral = GPU_batch_create_ex(
+		        GPU_PRIM_TRIS, vbo, NULL,
+		        GPU_BATCH_OWNS_VBO);
 	}
 	return SHC.drw_bone_octahedral;
 }
@@ -2064,18 +2072,20 @@ GPUBatch *DRW_cache_bone_octahedral_wire_get(void)
 		GPU_indexbuf_init(&elb, GPU_PRIM_LINES_ADJ, 12, 24);
 
 		for (int i = 0; i < 12; i++) {
-			GPU_indexbuf_add_line_adj_verts(&elb,
-			                                bone_octahedral_wire_lines_adjacency[i][0],
-			                                bone_octahedral_wire_lines_adjacency[i][1],
-			                                bone_octahedral_wire_lines_adjacency[i][2],
-			                                bone_octahedral_wire_lines_adjacency[i][3]);
+			GPU_indexbuf_add_line_adj_verts(
+			        &elb,
+			        bone_octahedral_wire_lines_adjacency[i][0],
+			        bone_octahedral_wire_lines_adjacency[i][1],
+			        bone_octahedral_wire_lines_adjacency[i][2],
+			        bone_octahedral_wire_lines_adjacency[i][3]);
 		}
 
 		/* HACK Reuse vertex buffer. */
 		GPUBatch *pos_nor_batch = DRW_cache_bone_octahedral_get();
 
-		SHC.drw_bone_octahedral_wire = GPU_batch_create_ex(GPU_PRIM_LINES_ADJ, pos_nor_batch->verts[0], GPU_indexbuf_build(&elb),
-		                                                   GPU_BATCH_OWNS_INDEX);
+		SHC.drw_bone_octahedral_wire = GPU_batch_create_ex(
+		        GPU_PRIM_LINES_ADJ, pos_nor_batch->verts[0], GPU_indexbuf_build(&elb),
+		        GPU_BATCH_OWNS_INDEX);
 	}
 	return SHC.drw_bone_octahedral_wire;
 }
@@ -2217,8 +2227,9 @@ GPUBatch *DRW_cache_bone_box_get(void)
 			}
 		}
 
-		SHC.drw_bone_box = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL,
-		                                       GPU_BATCH_OWNS_VBO);
+		SHC.drw_bone_box = GPU_batch_create_ex(
+		        GPU_PRIM_TRIS, vbo, NULL,
+		        GPU_BATCH_OWNS_VBO);
 	}
 	return SHC.drw_bone_box;
 }
@@ -2230,18 +2241,20 @@ GPUBatch *DRW_cache_bone_box_wire_get(void)
 		GPU_indexbuf_init(&elb, GPU_PRIM_LINES_ADJ, 12, 36);
 
 		for (int i = 0; i < 12; i++) {
-			GPU_indexbuf_add_line_adj_verts(&elb,
-			                                bone_box_wire_lines_adjacency[i][0],
-			                                bone_box_wire_lines_adjacency[i][1],
-			                                bone_box_wire_lines_adjacency[i][2],
-			                                bone_box_wire_lines_adjacency[i][3]);
+			GPU_indexbuf_add_line_adj_verts(
+			        &elb,
+			        bone_box_wire_lines_adjacency[i][0],
+			        bone_box_wire_lines_adjacency[i][1],
+			        bone_box_wire_lines_adjacency[i][2],
+			        bone_box_wire_lines_adjacency[i][3]);
 		}
 
 		/* HACK Reuse vertex buffer. */
 		GPUBatch *pos_nor_batch = DRW_cache_bone_box_get();
 
-		SHC.drw_bone_box_wire = GPU_batch_create_ex(GPU_PRIM_LINES_ADJ, pos_nor_batch->verts[0], GPU_indexbuf_build(&elb),
-		                                                   GPU_BATCH_OWNS_INDEX);
+		SHC.drw_bone_box_wire = GPU_batch_create_ex(
+		        GPU_PRIM_LINES_ADJ, pos_nor_batch->verts[0], GPU_indexbuf_build(&elb),
+		        GPU_BATCH_OWNS_INDEX);
 	}
 	return SHC.drw_bone_box_wire;
 }
@@ -2544,8 +2557,9 @@ GPUBatch *DRW_cache_bone_stick_get(void)
 			GPU_indexbuf_add_generic_vert(&elb, v++);
 		}
 
-		SHC.drw_bone_stick = GPU_batch_create_ex(GPU_PRIM_TRI_FAN, vbo, GPU_indexbuf_build(&elb),
-		                                         GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+		SHC.drw_bone_stick = GPU_batch_create_ex(
+		        GPU_PRIM_TRI_FAN, vbo, GPU_indexbuf_build(&elb),
+		        GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
 #undef CIRCLE_RESOL
 	}
 	return SHC.drw_bone_stick;
@@ -2714,7 +2728,7 @@ GPUBatch *DRW_cache_bone_arrows_get(void)
 	return SHC.drw_bone_arrows;
 }
 
-const float staticSine[16] = {
+static const float staticSine[16] = {
 	0.0f, 0.104528463268f, 0.207911690818f, 0.309016994375f,
 	0.406736643076f, 0.5f, 0.587785252292f, 0.669130606359f,
 	0.743144825477f, 0.809016994375f, 0.866025403784f,
@@ -2991,188 +3005,82 @@ GPUBatch *DRW_cache_single_vert_get(void)
 /** \name Meshes
  * \{ */
 
-GPUBatch *DRW_cache_mesh_surface_overlay_get(Object *ob)
+GPUBatch *DRW_cache_mesh_all_verts_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_all_triangles(me);
+	return DRW_mesh_batch_cache_get_all_verts(ob->data);
 }
 
-GPUBatch *DRW_cache_face_centers_get(Object *ob)
+GPUBatch *DRW_cache_mesh_all_edges_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-
-	return DRW_mesh_batch_cache_get_edit_facedots(me);
-}
-
-GPUBatch *DRW_cache_mesh_wire_outline_get(Object *ob)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_fancy_edges(me);
-}
-
-GPUBatch *DRW_cache_mesh_edge_detection_get(Object *ob, bool *r_is_manifold)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_edge_detection(me, r_is_manifold);
-}
-
-GPUBatch *DRW_cache_mesh_surface_get(Object *ob, bool use_hide)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_triangles_with_normals(me, use_hide);
-}
-
-GPUBatch *DRW_cache_mesh_face_wireframe_get(Object *ob)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_wireframes_face(me);
+	return DRW_mesh_batch_cache_get_all_edges(ob->data);
 }
 
 GPUBatch *DRW_cache_mesh_loose_edges_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_loose_edges_with_normals(me);
+	return DRW_mesh_batch_cache_get_loose_edges(ob->data);
 }
 
-GPUBatch *DRW_cache_mesh_surface_weights_get(Object *ob, ToolSettings *ts, bool paint_mode)
+GPUBatch *DRW_cache_mesh_edge_detection_get(Object *ob, bool *r_is_manifold)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-
-	/* Extract complete vertex weight group selection state and mode flags. */
-	struct DRW_MeshWeightState wstate;
-	memset(&wstate, 0, sizeof(wstate));
-
-	wstate.defgroup_active = ob->actdef - 1;
-	wstate.defgroup_len = BLI_listbase_count(&ob->defbase);
-
-	wstate.alert_mode = ts->weightuser;
-
-	if (paint_mode && ts->multipaint) {
-		/* Multipaint needs to know all selected bones, not just the active group.
-		 * This is actually a relatively expensive operation, but caching would be difficult. */
-		wstate.defgroup_sel = BKE_object_defgroup_selected_get(ob, wstate.defgroup_len, &wstate.defgroup_sel_count);
-
-		if (wstate.defgroup_sel_count > 1) {
-			wstate.flags |= DRW_MESH_WEIGHT_STATE_MULTIPAINT | (ts->auto_normalize ? DRW_MESH_WEIGHT_STATE_AUTO_NORMALIZE : 0);
-
-			if (me->editflag & ME_EDIT_MIRROR_X) {
-				BKE_object_defgroup_mirror_selection(
-				        ob, wstate.defgroup_len, wstate.defgroup_sel, wstate.defgroup_sel, &wstate.defgroup_sel_count);
-			}
-		}
-		/* With only one selected bone Multipaint reverts to regular mode. */
-		else {
-			wstate.defgroup_sel_count = 0;
-			MEM_SAFE_FREE(wstate.defgroup_sel);
-		}
-	}
-
-	/* Generate the weight data using the selection. */
-	GPUBatch *batch = DRW_mesh_batch_cache_get_triangles_with_normals_and_weights(me, &wstate);
-
-	DRW_mesh_weight_state_clear(&wstate);
-
-	return batch;
+	return DRW_mesh_batch_cache_get_edge_detection(ob->data, r_is_manifold);
 }
 
-GPUBatch *DRW_cache_mesh_surface_vert_colors_get(Object *ob)
+GPUBatch *DRW_cache_mesh_surface_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_triangles_with_normals_and_vert_colors(me);
+	return DRW_mesh_batch_cache_get_surface(ob->data);
 }
 
-/* Return list of batches */
+GPUBatch *DRW_cache_mesh_surface_edges_get(Object *ob)
+{
+	BLI_assert(ob->type == OB_MESH);
+	return DRW_mesh_batch_cache_get_surface_edges(ob->data);
+}
+
+/* Return list of batches with length equal to max(1, totcol). */
 GPUBatch **DRW_cache_mesh_surface_shaded_get(
-        Object *ob, struct GPUMaterial **gpumat_array, uint gpumat_array_len, bool use_hide,
+        Object *ob, struct GPUMaterial **gpumat_array, uint gpumat_array_len,
         char **auto_layer_names, int **auto_layer_is_srgb, int *auto_layer_count)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_surface_shaded(me, gpumat_array, gpumat_array_len, use_hide,
-	                                               auto_layer_names, auto_layer_is_srgb, auto_layer_count);
+	return DRW_mesh_batch_cache_get_surface_shaded(
+	        ob->data, gpumat_array, gpumat_array_len,
+	        auto_layer_names, auto_layer_is_srgb, auto_layer_count);
 }
 
-/* Return list of batches */
-GPUBatch **DRW_cache_mesh_surface_texpaint_get(Object *ob, bool use_hide)
+/* Return list of batches with length equal to max(1, totcol). */
+GPUBatch **DRW_cache_mesh_surface_texpaint_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_surface_texpaint(me, use_hide);
+	return DRW_mesh_batch_cache_get_surface_texpaint(ob->data);
 }
 
 GPUBatch *DRW_cache_mesh_surface_texpaint_single_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_surface_texpaint_single(me);
+	return DRW_mesh_batch_cache_get_surface_texpaint_single(ob->data);
 }
 
-GPUBatch *DRW_cache_mesh_surface_verts_get(Object *ob)
+GPUBatch *DRW_cache_mesh_surface_vertpaint_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_points_with_normals(me);
+	return DRW_mesh_batch_cache_get_surface_vertpaint(ob->data);
 }
 
-GPUBatch *DRW_cache_mesh_edges_get(Object *ob)
+GPUBatch *DRW_cache_mesh_surface_weights_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_all_edges(me);
+	return DRW_mesh_batch_cache_get_surface_weights(ob->data);
 }
 
-GPUBatch *DRW_cache_mesh_verts_get(Object *ob)
+GPUBatch *DRW_cache_mesh_face_wireframe_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_all_verts(me);
-}
-
-GPUBatch *DRW_cache_mesh_edges_paint_overlay_get(Object *ob, bool use_wire, bool use_sel)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_weight_overlay_edges(me, use_wire, use_sel, use_sel);
-}
-
-GPUBatch *DRW_cache_mesh_faces_weight_overlay_get(Object *ob)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_weight_overlay_faces(me);
-}
-
-GPUBatch *DRW_cache_mesh_verts_weight_overlay_get(Object *ob)
-{
-	BLI_assert(ob->type == OB_MESH);
-
-	Mesh *me = ob->data;
-	return DRW_mesh_batch_cache_get_weight_overlay_verts(me);
+	return DRW_mesh_batch_cache_get_wireframes_face(ob->data);
 }
 
 void DRW_cache_mesh_sculpt_coords_ensure(Object *ob)
@@ -3195,15 +3103,15 @@ GPUBatch *DRW_cache_curve_edge_wire_get(Object *ob)
 	BLI_assert(ob->type == OB_CURVE);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_wire_edge(cu, ob->runtime.curve_cache);
+	return DRW_curve_batch_cache_get_wire_edge(cu);
 }
 
-GPUBatch *DRW_cache_curve_edge_normal_get(Object *ob, float normal_size)
+GPUBatch *DRW_cache_curve_edge_normal_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_CURVE);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_normal_edge(cu, ob->runtime.curve_cache, normal_size);
+	return DRW_curve_batch_cache_get_normal_edge(cu);
 }
 
 GPUBatch *DRW_cache_curve_edge_overlay_get(Object *ob)
@@ -3227,7 +3135,29 @@ GPUBatch *DRW_cache_curve_surface_get(Object *ob)
 	BLI_assert(ob->type == OB_CURVE);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_triangles_with_normals(cu, ob->runtime.curve_cache);
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_surface(mesh_eval);
+	}
+	else {
+		return DRW_curve_batch_cache_get_triangles_with_normals(cu);
+	}
+}
+
+GPUBatch *DRW_cache_curve_loose_edges_get(Object *ob)
+{
+	BLI_assert(ob->type == OB_CURVE);
+
+	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+	}
+	else {
+		/* TODO */
+		UNUSED_VARS(cu);
+		return NULL;
+	}
 }
 
 GPUBatch *DRW_cache_curve_face_wireframe_get(Object *ob)
@@ -3235,7 +3165,13 @@ GPUBatch *DRW_cache_curve_face_wireframe_get(Object *ob)
 	BLI_assert(ob->type == OB_CURVE);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_wireframes_face(cu, ob->runtime.curve_cache);
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_wireframes_face(mesh_eval);
+	}
+	else {
+		return DRW_curve_batch_cache_get_wireframes_face(cu);
+	}
 }
 
 /* Return list of batches */
@@ -3245,7 +3181,13 @@ GPUBatch **DRW_cache_curve_surface_shaded_get(
 	BLI_assert(ob->type == OB_CURVE);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_surface_shaded(cu, ob->runtime.curve_cache, gpumat_array, gpumat_array_len);
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_surface_shaded(mesh_eval, gpumat_array, gpumat_array_len, NULL, NULL, NULL);
+	}
+	else {
+		return DRW_curve_batch_cache_get_surface_shaded(cu, gpumat_array, gpumat_array_len);
+	}
 }
 
 /** \} */
@@ -3287,27 +3229,56 @@ GPUBatch *DRW_cache_text_edge_wire_get(Object *ob)
 	BLI_assert(ob->type == OB_FONT);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_wire_edge(cu, ob->runtime.curve_cache);
+	return DRW_curve_batch_cache_get_wire_edge(cu);
 }
 
 GPUBatch *DRW_cache_text_surface_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_FONT);
 	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
 	if (cu->editfont && (cu->flag & CU_FAST)) {
 		return NULL;
 	}
-	return DRW_curve_batch_cache_get_triangles_with_normals(cu, ob->runtime.curve_cache);
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_surface(mesh_eval);
+	}
+	else {
+		return DRW_curve_batch_cache_get_triangles_with_normals(cu);
+	}
+}
+
+GPUBatch *DRW_cache_text_loose_edges_get(Object *ob)
+{
+	BLI_assert(ob->type == OB_FONT);
+	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (cu->editfont && (cu->flag & CU_FAST)) {
+		return NULL;
+	}
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+	}
+	else {
+		/* TODO */
+		return NULL;
+	}
 }
 
 GPUBatch *DRW_cache_text_face_wireframe_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_FONT);
 	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
 	if (cu->editfont && (cu->flag & CU_FAST)) {
 		return NULL;
 	}
-	return DRW_curve_batch_cache_get_wireframes_face(cu, ob->runtime.curve_cache);
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_wireframes_face(mesh_eval);
+	}
+	else {
+		return DRW_curve_batch_cache_get_wireframes_face(cu);
+	}
 }
 
 GPUBatch **DRW_cache_text_surface_shaded_get(
@@ -3315,24 +3286,16 @@ GPUBatch **DRW_cache_text_surface_shaded_get(
 {
 	BLI_assert(ob->type == OB_FONT);
 	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
 	if (cu->editfont && (cu->flag & CU_FAST)) {
 		return NULL;
 	}
-	return DRW_curve_batch_cache_get_surface_shaded(cu, ob->runtime.curve_cache, gpumat_array, gpumat_array_len);
-}
-
-GPUBatch *DRW_cache_text_cursor_overlay_get(Object *ob)
-{
-	BLI_assert(ob->type == OB_FONT);
-	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_edit_cursor(cu);
-}
-
-GPUBatch *DRW_cache_text_select_overlay_get(Object *ob)
-{
-	BLI_assert(ob->type == OB_FONT);
-	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_edit_select(cu);
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_surface_shaded(mesh_eval, gpumat_array, gpumat_array_len, NULL, NULL, NULL);
+	}
+	else {
+		return DRW_curve_batch_cache_get_surface_shaded(cu, gpumat_array, gpumat_array_len);
+	}
 }
 
 /** \} */
@@ -3347,7 +3310,21 @@ GPUBatch *DRW_cache_surf_surface_get(Object *ob)
 	BLI_assert(ob->type == OB_SURF);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_triangles_with_normals(cu, ob->runtime.curve_cache);
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_surface(mesh_eval);
+	}
+	else {
+		return DRW_curve_batch_cache_get_triangles_with_normals(cu);
+	}
+}
+
+GPUBatch *DRW_cache_surf_edge_wire_get(Object *ob)
+{
+	BLI_assert(ob->type == OB_SURF);
+
+	struct Curve *cu = ob->data;
+	return DRW_curve_batch_cache_get_wire_edge(cu);
 }
 
 GPUBatch *DRW_cache_surf_face_wireframe_get(Object *ob)
@@ -3355,7 +3332,29 @@ GPUBatch *DRW_cache_surf_face_wireframe_get(Object *ob)
 	BLI_assert(ob->type == OB_SURF);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_wireframes_face(cu, ob->runtime.curve_cache);
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_wireframes_face(mesh_eval);
+	}
+	else {
+		return DRW_curve_batch_cache_get_wireframes_face(cu);
+	}
+}
+
+GPUBatch *DRW_cache_surf_loose_edges_get(Object *ob)
+{
+	BLI_assert(ob->type == OB_SURF);
+
+	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+	}
+	else {
+		/* TODO */
+		UNUSED_VARS(cu);
+		return NULL;
+	}
 }
 
 /* Return list of batches */
@@ -3365,7 +3364,13 @@ GPUBatch **DRW_cache_surf_surface_shaded_get(
 	BLI_assert(ob->type == OB_SURF);
 
 	struct Curve *cu = ob->data;
-	return DRW_curve_batch_cache_get_surface_shaded(cu, ob->runtime.curve_cache, gpumat_array, gpumat_array_len);
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_surface_shaded(mesh_eval, gpumat_array, gpumat_array_len, NULL, NULL, NULL);
+	}
+	else {
+		return DRW_curve_batch_cache_get_surface_shaded(cu, gpumat_array, gpumat_array_len);
+	}
 }
 
 /** \} */
@@ -3685,6 +3690,7 @@ GPUBatch *DRW_cache_cursor_get(bool crosshair_lines)
 
 GPUBatch *DRW_batch_request(GPUBatch **batch)
 {
+	/* XXX TODO(fclem): We are writting to batch cache here. Need to make this thread safe. */
 	if (*batch == NULL) {
 		*batch = MEM_callocN(sizeof(GPUBatch), "GPUBatch");
 	}
@@ -3717,7 +3723,7 @@ bool DRW_ibo_requested(GPUIndexBuf *ibo)
 {
 	/* TODO do not rely on data uploaded. This prevents multithreading.
 	 * (need access to a gl context) */
-	return (ibo != NULL && ibo->ibo_id == 0);
+	return (ibo != NULL && ibo->ibo_id == 0 && ibo->data == NULL);
 }
 
 void DRW_vbo_request(GPUBatch *batch, GPUVertBuf **vbo)
@@ -3732,8 +3738,10 @@ void DRW_vbo_request(GPUBatch *batch, GPUVertBuf **vbo)
 	}
 	else {
 		/* HACK: bypass assert */
+		int vbo_vert_len = (*vbo)->vertex_len;
 		(*vbo)->vertex_len = batch->verts[0]->vertex_len;
 		GPU_batch_vertbuf_add(batch, *vbo);
+		(*vbo)->vertex_len = vbo_vert_len;
 	}
 }
 
@@ -3744,9 +3752,28 @@ bool DRW_vbo_requested(GPUVertBuf *vbo)
 
 void drw_batch_cache_generate_requested(Object *ob)
 {
+	const DRWContextState *draw_ctx = DRW_context_state_get();
+	const ToolSettings *ts = draw_ctx->scene->toolsettings;
+	const int mode = CTX_data_mode_enum_ex(draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
+	const bool is_paint_mode = ELEM(mode, CTX_MODE_PAINT_TEXTURE, CTX_MODE_PAINT_VERTEX, CTX_MODE_PAINT_WEIGHT);
+	const bool use_hide = (
+	        (ob->type == OB_MESH) &&
+	        ((is_paint_mode && (ob == draw_ctx->obact) &&
+	          (BKE_paint_select_face_test(ob) || BKE_paint_select_vert_test(ob))) ||
+	         ((mode == CTX_MODE_EDIT_MESH) && BKE_object_is_in_editmode(ob))));
+
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
 	switch (ob->type) {
 		case OB_MESH:
-			DRW_mesh_batch_cache_create_requested(ob);
+			DRW_mesh_batch_cache_create_requested(ob, (Mesh *)ob->data, ts, is_paint_mode, use_hide);
+			break;
+		case OB_CURVE:
+		case OB_FONT:
+		case OB_SURF:
+			if (mesh_eval) {
+				DRW_mesh_batch_cache_create_requested(ob, mesh_eval, ts, is_paint_mode, use_hide);
+			}
+			DRW_curve_batch_cache_create_requested(ob);
 			break;
 		/* TODO all cases */
 		default:

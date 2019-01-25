@@ -223,11 +223,11 @@ bool BKE_mesh_validate_arrays(
         const bool do_verbose, const bool do_fixes,
         bool *r_changed)
 {
-#   define REMOVE_EDGE_TAG(_me) { _me->v2 = _me->v1; free_flag.edges = do_fixes; } (void)0
-#   define IS_REMOVED_EDGE(_me) (_me->v2 == _me->v1)
+#define REMOVE_EDGE_TAG(_me) { _me->v2 = _me->v1; free_flag.edges = do_fixes; } (void)0
+#define IS_REMOVED_EDGE(_me) (_me->v2 == _me->v1)
 
-#   define REMOVE_LOOP_TAG(_ml) { _ml->e = INVALID_LOOP_EDGE_MARKER; free_flag.polyloops = do_fixes; } (void)0
-#   define REMOVE_POLY_TAG(_mp) { _mp->totloop *= -1; free_flag.polyloops = do_fixes; } (void)0
+#define REMOVE_LOOP_TAG(_ml) { _ml->e = INVALID_LOOP_EDGE_MARKER; free_flag.polyloops = do_fixes; } (void)0
+#define REMOVE_POLY_TAG(_mp) { _mp->totloop *= -1; free_flag.polyloops = do_fixes; } (void)0
 
 	MVert *mv = mverts;
 	MEdge *me;
@@ -1363,8 +1363,8 @@ void BKE_mesh_calc_edges_legacy(Mesh *me, const bool use_old)
 /**
  * Calculate edges from polygons
  *
- * \param mesh  The mesh to add edges into
- * \param update  When true create new edges co-exist
+ * \param mesh: The mesh to add edges into
+ * \param update: When true create new edges co-exist
  */
 void BKE_mesh_calc_edges(Mesh *mesh, bool update, const bool select)
 {
@@ -1473,7 +1473,7 @@ void BKE_mesh_calc_edges_loose(Mesh *mesh)
 /**
  * Calculate/create edges from tessface data
  *
- * \param mesh  The mesh to add edges into
+ * \param mesh: The mesh to add edges into
  */
 
 void BKE_mesh_calc_edges_tessface(Mesh *mesh)

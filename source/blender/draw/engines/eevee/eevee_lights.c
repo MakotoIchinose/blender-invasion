@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -351,7 +354,7 @@ void EEVEE_lights_cache_add(EEVEE_ViewLayerData *sldata, Object *ob)
 		eevee_light_setup(ob, evli);
 
 		/* We do not support shadowmaps for dupli lamps. */
-		if ((ob->base_flag & BASE_FROMDUPLI) != 0) {
+		if ((ob->base_flag & BASE_FROM_DUPLI) != 0) {
 			linfo->num_light++;
 			return;
 		}
@@ -463,7 +466,7 @@ void EEVEE_lights_cache_shcaster_material_add(
 /* Make that object update shadow casting lamps inside its influence bounding box. */
 void EEVEE_lights_cache_shcaster_object_add(EEVEE_ViewLayerData *sldata, Object *ob)
 {
-	if ((ob->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((ob->base_flag & BASE_FROM_DUPLI) != 0) {
 		/* TODO: Special case for dupli objects because we cannot save the object pointer. */
 		return;
 	}
@@ -525,7 +528,7 @@ void EEVEE_lights_cache_shcaster_object_add(EEVEE_ViewLayerData *sldata, Object 
 void EEVEE_lights_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 {
 	EEVEE_LampsInfo *linfo = sldata->lamps;
-	GPUTextureFormat shadow_pool_format = GPU_R32F;
+	eGPUTextureFormat shadow_pool_format = GPU_R32F;
 
 	sldata->common_data.la_num_light = linfo->num_light;
 
@@ -1236,7 +1239,7 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		Lamp *la = (Lamp *)ob->data;
 		BoundSphere bsphere = {
 			.center = {ob->obmat[3][0], ob->obmat[3][1], ob->obmat[3][2]},
-			.radius = light_attenuation_radius_get(la, light_threshold)
+			.radius = light_attenuation_radius_get(la, light_threshold),
 		};
 		cube_visible[i] = DRW_culling_sphere_test(&bsphere);
 	}

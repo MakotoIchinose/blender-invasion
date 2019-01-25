@@ -382,12 +382,18 @@ class AddPresetCloth(AddPresetBase, Operator):
     ]
 
     preset_values = [
-        "cloth.settings.air_damping",
-        "cloth.settings.bending_stiffness",
-        "cloth.settings.mass",
         "cloth.settings.quality",
-        "cloth.settings.spring_damping",
-        "cloth.settings.structural_stiffness",
+        "cloth.settings.mass",
+        "cloth.settings.air_damping",
+        "cloth.settings.bending_model",
+        "cloth.settings.tension_stiffness",
+        "cloth.settings.compression_stiffness",
+        "cloth.settings.shear_stiffness",
+        "cloth.settings.bending_stiffness",
+        "cloth.settings.tension_damping",
+        "cloth.settings.compression_damping",
+        "cloth.settings.shear_damping",
+        "cloth.settings.bending_damping",
     ]
 
     preset_subdir = "cloth"
@@ -643,7 +649,7 @@ class AddPresetGpencilBrush(AddPresetBase, Operator):
     preset_menu = "VIEW3D_PT_gpencil_brush_presets"
 
     preset_defines = [
-        "brush = bpy.context.active_gpencil_brush",
+        "brush = bpy.context.tool_settings.gpencil_paint.brush",
         "settings = brush.gpencil_settings"
     ]
 
