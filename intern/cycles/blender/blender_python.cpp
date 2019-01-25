@@ -21,8 +21,6 @@
 #include "blender/blender_sync.h"
 #include "blender/blender_session.h"
 
-#include "render/denoising.h"
-
 #include "util/util_debug.h"
 #include "util/util_foreach.h"
 #include "util/util_logging.h"
@@ -620,97 +618,6 @@ static PyObject *opencl_disable_func(PyObject * /*self*/, PyObject * /*value*/)
 }
 #endif
 
-static PyObject *denoise_func(PyObject * /*self*/, PyObject *args, PyObject *keywords)
-{
-	static const char *keyword_list[] = {"in", "out", "device", "threads", "tile_width", "tile_height",
-	                                     "frames", "frameradius", "radius", "strength", "featurestrength",
-	                                     "relativepca", "ldr", "views", "list_devices", "samples", NULL};
-	const char *in_str = NULL, *out_str = NULL, *device_name = NULL, *frames_str = NULL;
-	PyObject *relative_pca = NULL, *ldr = NULL, *views = NULL, *list_devices = NULL;
-	int threads = 0, tile_width = 64, tile_height = -1, frame_radius = 2, radius = 8, samples = 0;
-	float strength = 0.5f, feature_strength = 0.5f;
-
-	if (!PyArg_ParseTupleAndKeywords(args, keywords, "|sssiiisiiffOOOOi", (char**)keyword_list,
-	                                 &in_str, &out_str, &device_name, &threads,
-	                                 &tile_width, &tile_height, &frames_str, &frame_radius,
-	                                 &radius, &strength, &feature_strength, &relative_pca,
-	                                 &ldr, &views, &list_devices, &samples)) {
-		Py_RETURN_FALSE;
-	}
-
-	if(list_devices && PyObject_IsTrue(list_devices)) {
-		vector<DeviceInfo>& devices = Device::available_devices();
-		printf("Devices:\n");
-		foreach(DeviceInfo& info, devices) {
-			printf("    %-10s%s%s\n",
-			       Device::string_from_type(info.type).c_str(),
-			       info.description.c_str(),
-			       (info.display_device)? " (display)": "");
-		}
-
-		Py_RETURN_TRUE;
-	}
-
-	string in = string(in_str? in_str : ""), out = string(out_str? out_str : "");
-
-	if(in.empty() || out.empty()) {
-		fprintf(stderr, "Both input and output name/pattern must be specified!\n");
-		Py_RETURN_FALSE;
-	}
-
-	TaskScheduler::init(threads);
-
-	DeviceType device_type = Device::type_from_string(device_name? device_name : "CPU");
-	vector<DeviceInfo>& devices = Device::available_devices();
-	vector<DeviceInfo> picked_devices;
-	foreach(DeviceInfo& info, devices) {
-		if(device_type == info.type) {
-			picked_devices.push_back(info);
-		}
-	}
-	if(picked_devices.size() == 0) {
-		fprintf(stderr, "Unknown device type!\n");
-		Py_RETURN_FALSE;
-	}
-
-	DeviceInfo device;
-	if(picked_devices.size() == 1) {
-		device = picked_devices[0];
-	}
-	else {
-		device = Device::get_multi_device(picked_devices, 0, true);
-	}
-
-	Stats stats;
-	Profiler profiler;
-	StandaloneDenoiser denoiser(Device::create(device, stats, profiler, true));
-	denoiser.views = views && PyObject_IsTrue(views);
-	denoiser.tile_size = make_int2(tile_width, (tile_height > 0)? tile_height : tile_width);
-	denoiser.samples = samples;
-	denoiser.ldr_out = ldr && PyObject_IsTrue(ldr);
-	denoiser.center_frame = string(frames_str? frames_str : "");
-	denoiser.frame_radius = frame_radius;
-	denoiser.strength = strength;
-	denoiser.feature_strength = feature_strength;
-	denoiser.relative_pca = relative_pca && PyObject_IsTrue(relative_pca);
-	denoiser.radius = radius;
-	denoiser.in_path = in;
-	denoiser.out_path = out;
-	denoiser.passthrough_incomplete = true;
-	denoiser.passthrough_additional = true;
-	denoiser.passthrough_unknown = true;
-
-	if(!denoiser.run_filter()) {
-		fprintf(stderr, "%s\n", denoiser.error.c_str());
-		TaskScheduler::exit();
-		Py_RETURN_FALSE;
-	}
-
-	TaskScheduler::exit();
-
-	Py_RETURN_TRUE;
-}
-
 static PyObject *debug_flags_update_func(PyObject * /*self*/, PyObject *args)
 {
 	PyObject *pyscene;
@@ -870,9 +777,6 @@ static PyMethodDef methods[] = {
 #ifdef WITH_OPENCL
 	{"opencl_disable", opencl_disable_func, METH_NOARGS, ""},
 #endif
-
-	/* Standalone denoising */
-	{"denoise", (PyCFunction)denoise_func, METH_VARARGS|METH_KEYWORDS, ""},
 
 	/* Debugging routines */
 	{"debug_flags_update", debug_flags_update_func, METH_VARARGS, ""},

@@ -29,7 +29,7 @@
 extern "C" __global__ void
 CUDA_LAUNCH_BOUNDS(CUDA_THREADS_BLOCK_WIDTH, CUDA_KERNEL_MAX_REGISTERS)
 kernel_cuda_filter_divide_shadow(int sample,
-                                 CCL_FILTER_TILE_INFO,
+                                 TileInfo *tile_info,
                                  float *unfilteredA,
                                  float *unfilteredB,
                                  float *sampleVariance,
@@ -59,12 +59,11 @@ kernel_cuda_filter_divide_shadow(int sample,
 extern "C" __global__ void
 CUDA_LAUNCH_BOUNDS(CUDA_THREADS_BLOCK_WIDTH, CUDA_KERNEL_MAX_REGISTERS)
 kernel_cuda_filter_get_feature(int sample,
-                               CCL_FILTER_TILE_INFO,
+                               TileInfo *tile_info,
                                int m_offset,
                                int v_offset,
                                float *mean,
                                float *variance,
-                               float scale,
                                int4 prefilter_rect,
                                int buffer_pass_stride,
                                int buffer_denoising_offset)
@@ -77,34 +76,9 @@ kernel_cuda_filter_get_feature(int sample,
 		                          m_offset, v_offset,
 		                          x, y,
 		                          mean, variance,
-		                          scale,
 		                          prefilter_rect,
 		                          buffer_pass_stride,
 		                          buffer_denoising_offset);
-	}
-}
-
-extern "C" __global__ void
-CUDA_LAUNCH_BOUNDS(CUDA_THREADS_BLOCK_WIDTH, CUDA_KERNEL_MAX_REGISTERS)
-kernel_cuda_filter_write_feature(int sample,
-                                 int4 buffer_params,
-                                 int4 filter_area,
-                                 float *from,
-                                 float *buffer,
-                                 int out_offset,
-                                 int4 prefilter_rect)
-{
-	int x = blockDim.x*blockIdx.x + threadIdx.x;
-	int y = blockDim.y*blockIdx.y + threadIdx.y;
-	if(x < filter_area.z && y < filter_area.w) {
-	        kernel_filter_write_feature(sample,
-	                                    x + filter_area.x,
-	                                    y + filter_area.y,
-	                                    buffer_params,
-	                                    from,
-	                                    buffer,
-	                                    out_offset,
-	                                    prefilter_rect);
 	}
 }
 
@@ -138,12 +112,10 @@ kernel_cuda_filter_combine_halves(float *mean, float *variance, float *a, float 
 extern "C" __global__ void
 CUDA_LAUNCH_BOUNDS(CUDA_THREADS_BLOCK_WIDTH, CUDA_KERNEL_MAX_REGISTERS)
 kernel_cuda_filter_construct_transform(float const* __restrict__ buffer,
-                                       CCL_FILTER_TILE_INFO,
                                        float *transform, int *rank,
                                        int4 filter_area, int4 rect,
                                        int radius, float pca_threshold,
-                                       int pass_stride, int frame_stride,
-                                       bool use_time)
+                                       int pass_stride)
 {
 	int x = blockDim.x*blockIdx.x + threadIdx.x;
 	int y = blockDim.y*blockIdx.y + threadIdx.y;
@@ -151,11 +123,8 @@ kernel_cuda_filter_construct_transform(float const* __restrict__ buffer,
 		int *l_rank = rank + y*filter_area.z + x;
 		float *l_transform = transform + y*filter_area.z + x;
 		kernel_filter_construct_transform(buffer,
-		                                  tile_info,
 		                                  x + filter_area.x, y + filter_area.y,
-		                                  rect,
-		                                  pass_stride, frame_stride,
-		                                  use_time,
+		                                  rect, pass_stride,
 		                                  l_transform, l_rank,
 		                                  radius, pca_threshold,
 		                                  filter_area.z*filter_area.w,
@@ -167,7 +136,6 @@ extern "C" __global__ void
 CUDA_LAUNCH_BOUNDS(CUDA_THREADS_BLOCK_WIDTH, CUDA_KERNEL_MAX_REGISTERS)
 kernel_cuda_filter_nlm_calc_difference(const float *ccl_restrict weight_image,
                                        const float *ccl_restrict variance_image,
-                                       const float *ccl_restrict scale_image,
                                        float *difference_image,
                                        int w,
                                        int h,
@@ -175,7 +143,6 @@ kernel_cuda_filter_nlm_calc_difference(const float *ccl_restrict weight_image,
                                        int pass_stride,
                                        int r,
                                        int channel_offset,
-                                       int frame_offset,
                                        float a,
                                        float k_2)
 {
@@ -185,12 +152,9 @@ kernel_cuda_filter_nlm_calc_difference(const float *ccl_restrict weight_image,
 		kernel_filter_nlm_calc_difference(co.x, co.y, co.z, co.w,
 		                                  weight_image,
 		                                  variance_image,
-		                                  scale_image,
 		                                  difference_image + ofs,
 		                                  rect, stride,
-		                                  channel_offset,
-		                                  frame_offset,
-		                                  a, k_2);
+		                                  channel_offset, a, k_2);
 	}
 }
 
@@ -246,7 +210,6 @@ kernel_cuda_filter_nlm_update_output(const float *ccl_restrict difference_image,
                                      int h,
                                      int stride,
                                      int pass_stride,
-                                     int channel_offset,
                                      int r,
                                      int f)
 {
@@ -258,9 +221,7 @@ kernel_cuda_filter_nlm_update_output(const float *ccl_restrict difference_image,
 		                                image,
 		                                out_image,
 		                                accum_image,
-		                                rect,
-		                                channel_offset,
-		                                stride, f);
+		                                rect, stride, f);
 	}
 }
 
@@ -281,8 +242,7 @@ kernel_cuda_filter_nlm_normalize(float *out_image,
 
 extern "C" __global__ void
 CUDA_LAUNCH_BOUNDS(CUDA_THREADS_BLOCK_WIDTH, CUDA_KERNEL_MAX_REGISTERS)
-kernel_cuda_filter_nlm_construct_gramian(int t,
-                                         const float *ccl_restrict difference_image,
+kernel_cuda_filter_nlm_construct_gramian(const float *ccl_restrict difference_image,
                                          const float *ccl_restrict buffer,
                                          float const* __restrict__ transform,
                                          int *rank,
@@ -294,16 +254,13 @@ kernel_cuda_filter_nlm_construct_gramian(int t,
                                          int stride,
                                          int pass_stride,
                                          int r,
-                                         int f,
-                                         int frame_offset,
-                                         bool use_time)
+                                         int f)
 {
 	int4 co, rect;
 	int ofs;
 	if(get_nlm_coords_window(w, h, r, pass_stride, &rect, &co, &ofs, filter_window)) {
 		kernel_filter_nlm_construct_gramian(co.x, co.y,
 		                                    co.z, co.w,
-		                                    t,
 		                                    difference_image + ofs,
 		                                    buffer,
 		                                    transform, rank,
@@ -311,8 +268,6 @@ kernel_cuda_filter_nlm_construct_gramian(int t,
 		                                    rect, filter_window,
 		                                    stride, f,
 		                                    pass_stride,
-		                                    frame_offset,
-		                                    use_time,
 		                                    threadIdx.y*blockDim.x + threadIdx.x);
 	}
 }

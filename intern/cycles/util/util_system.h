@@ -27,9 +27,6 @@ bool system_cpu_ensure_initialized();
 /* Get total number of threads in all NUMA nodes / CPU groups. */
 int system_cpu_thread_count();
 
-/* Get width and height in characters of the current console output. */
-bool system_console_shape(int *rows, int *cols);
-
 /* Get number of available nodes.
  *
  * This is in fact an index of last node plus one and it's not guaranteed

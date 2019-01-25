@@ -32,7 +32,6 @@
 #  include <sys/types.h>
 #else
 #  include <unistd.h>
-#  include <sys/ioctl.h>
 #endif
 
 CCL_NAMESPACE_BEGIN
@@ -112,22 +111,6 @@ bool system_cpu_run_thread_on_node(int node)
 		return true;
 	}
 	return numaAPI_RunThreadOnNode(node);
-}
-
-bool system_console_shape(int *rows, int *cols)
-{
-#ifdef _WIN32
-	/* ToDo */
-	*rows = 50;
-	*cols = 80;
-	return false;
-#else
-	struct winsize w;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-	*rows = w.ws_row;
-	*cols = w.ws_col;
-	return true;
-#endif
 }
 
 int system_cpu_num_active_group_processors()
