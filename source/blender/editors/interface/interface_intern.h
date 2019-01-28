@@ -339,8 +339,11 @@ typedef struct uiButTab {
 
 typedef struct ColorPicker {
 	struct ColorPicker *next, *prev;
-	float color_data[3]; /* colr data may be HSV or HSL for now */
-	int representation; /* store hsv/hsl value */
+	/** Color data, may be HSV or HSL. */
+	float color_data[3];
+	/** Initial color data (detect changes). */
+	float color_data_init[3];
+	bool is_init;
 } ColorPicker;
 
 typedef struct ColorPickerData {
@@ -872,7 +875,6 @@ struct wmKeyMap *eyedropper_colorband_modal_keymap(struct wmKeyConfig *keyconf);
 
 /* interface_eyedropper_color.c */
 void UI_OT_eyedropper_color(struct wmOperatorType *ot);
-void UI_OT_eyedropper_color_crypto(struct wmOperatorType *ot);
 
 /* interface_eyedropper_colorband.c */
 void UI_OT_eyedropper_colorband(struct wmOperatorType *ot);

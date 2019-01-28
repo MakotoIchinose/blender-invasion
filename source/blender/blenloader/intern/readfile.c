@@ -129,7 +129,6 @@
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
@@ -171,9 +170,10 @@
 #include "NOD_common.h"
 #include "NOD_socket.h"
 
+#include "BLO_blend_defs.h"
+#include "BLO_blend_validate.h"
 #include "BLO_readfile.h"
 #include "BLO_undofile.h"
-#include "BLO_blend_defs.h"
 
 #include "RE_engine.h"
 
@@ -5073,6 +5073,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			SubsurfModifierData *smd = (SubsurfModifierData *)md;
 
 			smd->emCache = smd->mCache = NULL;
+			smd->subdiv = NULL;
 		}
 		else if (md->type == eModifierType_Armature) {
 			ArmatureModifierData *amd = (ArmatureModifierData *)md;
@@ -5391,6 +5392,10 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 		else if (md->type == eModifierType_Bevel) {
 			BevelModifierData *bmd = (BevelModifierData *)md;
 			bmd->clnordata.faceHash = NULL;
+		}
+		else if (md->type == eModifierType_Multires) {
+			MultiresModifierData *mmd = (MultiresModifierData *)md;
+			mmd->subdiv = NULL;
 		}
 	}
 }
@@ -6011,7 +6016,7 @@ static void lib_link_scene(FileData *fd, Main *main)
 			sce->toolsettings->particle.shape_object = newlibadr(fd, sce->id.lib, sce->toolsettings->particle.shape_object);
 
 			sce->toolsettings->gp_sculpt.guide.reference_object = newlibadr(fd, sce->id.lib, sce->toolsettings->gp_sculpt.guide.reference_object);
-			
+
 			for (Base *base_legacy_next, *base_legacy = sce->base.first; base_legacy; base_legacy = base_legacy_next) {
 				base_legacy_next = base_legacy->next;
 
@@ -6496,9 +6501,9 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 
 	if (sce->master_collection) {
 		sce->master_collection = newdataadr(fd, sce->master_collection);
-		direct_link_collection(fd, sce->master_collection);
 		/* Needed because this is an ID outside of Main. */
-		sce->master_collection->id.py_instance = NULL;
+		direct_link_id(fd, &sce->master_collection->id);
+		direct_link_collection(fd, sce->master_collection);
 	}
 
 	/* insert into global old-new map for reading without UI (link_global accesses it again) */
@@ -8868,6 +8873,10 @@ static void lib_link_all(FileData *fd, Main *main)
 	lib_link_workspaces(fd, main);
 
 	lib_link_library(fd, main);    /* only init users */
+
+	/* We could integrate that to mesh/curve/lattice lib_link, but this is really cheap process,
+	 * so simpler to just use it directly in this single call. */
+	BLO_main_validate_shapekeys(main, NULL);
 }
 
 static void direct_link_keymapitem(FileData *fd, wmKeyMapItem *kmi)
@@ -10836,7 +10845,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 				FileData *fd = mainptr->curlib->filedata;
 
 				if (fd == NULL) {
-
 					/* printf and reports for now... its important users know this */
 
 					/* if packed file... */
@@ -10861,30 +10869,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 						        library_parent_filepath(mainptr->curlib));
 						fd = blo_openblenderfile(mainptr->curlib->filepath, basefd->reports);
 					}
-					/* allow typing in a new lib path */
-					if (G.debug_value == -666) {
-						while (fd == NULL) {
-							char newlib_path[FILE_MAX] = {0};
-							printf("Missing library...'\n");
-							printf("\tcurrent file: %s\n", BKE_main_blendfile_path_from_global());
-							printf("\tabsolute lib: %s\n", mainptr->curlib->filepath);
-							printf("\trelative lib: %s\n", mainptr->curlib->name);
-							printf("  enter a new path:\n");
-
-							if (scanf("%1023s", newlib_path) > 0) {  /* Warning, keep length in sync with FILE_MAX! */
-								BLI_strncpy(mainptr->curlib->name, newlib_path, sizeof(mainptr->curlib->name));
-								BLI_strncpy(mainptr->curlib->filepath, newlib_path, sizeof(mainptr->curlib->filepath));
-								BLI_cleanup_path(BKE_main_blendfile_path_from_global(), mainptr->curlib->filepath);
-
-								fd = blo_openblenderfile(mainptr->curlib->filepath, basefd->reports);
-
-								if (fd) {
-									fd->mainlist = mainlist;
-									printf("found: '%s', party on macuno!\n", mainptr->curlib->filepath);
-								}
-							}
-						}
-					}
 
 					if (fd) {
 						/* share the mainlist, so all libraries are added immediately in a
@@ -10908,7 +10892,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 #ifdef USE_GHASH_BHEAD
 						read_file_bhead_idname_map_create(fd);
 #endif
-
 					}
 					else {
 						mainptr->curlib->filedata = NULL;

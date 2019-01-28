@@ -48,7 +48,6 @@
 
 #include "BKE_mesh.h"
 
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -133,6 +132,7 @@ static const EnumPropertyItem part_hair_ren_as_items[] = {
 #ifdef RNA_RUNTIME
 
 #include "BLI_math.h"
+#include "BLI_string_utils.h"
 
 #include "BKE_boids.h"
 #include "BKE_context.h"
@@ -3260,13 +3260,13 @@ static void rna_def_particle_target(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "time", PROP_FLOAT, PROP_TIME);
 	RNA_def_property_float_sdna(prop, NULL, "time");
-	RNA_def_property_range(prop, 0.0, 30000.0f); /*TODO: replace 30000 with MAXFRAMEF when available in 2.5 */
+	RNA_def_property_range(prop, 0.0, MAXFRAMEF);
 	RNA_def_property_ui_text(prop, "Time", "");
 	RNA_def_property_update(prop, 0, "rna_Particle_target_redo");
 
 	prop = RNA_def_property(srna, "duration", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "duration");
-	RNA_def_property_range(prop, 0.0, 30000.0f); /*TODO: replace 30000 with MAXFRAMEF when available in 2.5 */
+	RNA_def_property_range(prop, 0.0, MAXFRAMEF);
 	RNA_def_property_ui_text(prop, "Duration", "");
 	RNA_def_property_update(prop, 0, "rna_Particle_target_redo");
 

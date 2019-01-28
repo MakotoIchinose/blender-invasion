@@ -73,7 +73,22 @@ typedef struct Global {
 	/* to indicate render is busy, prevent renderwindow events etc */
 	bool is_rendering;
 
-	/* debug value, can be set from the UI and python, used for testing nonstandard features */
+	/* Debug value, can be set from the UI and python, used for testing nonstandard features.
+	 * DO NOT abuse it with generic checks like `if (G.debug_value > 0)`. Do not use it as bitflags.
+	 * Only precise specific values should be checked for, to avoid unpredictable side-effects.
+	 * Please document here the value(s) you are using (or a range of values reserved to some area).
+	 *   * -16384 and below: Reserved for python (add-ons) usage.
+	 *   *     -1: Disable faster motion paths computation (since 08/2018).
+	 *   * 1 - 30: EEVEE debug/stats values (01/2018).
+	 *   *    101: Enable UI debug drawing of fullscreen area's corner widget (10/2014).
+	 *   *    527: Old mysterious switch in behavior of MeshDeform modifier (before 04/2010).
+	 *   *    666: Use quicker batch delete for outliners' delete hierarchy (01/2019).
+	 *   *    777: Enable UI node panel's sockets polling (11/2011).
+	 *   *    799: Enable some mysterious new depsgraph behavior (05/2015).
+	 *   *   1112: Disable new Cloth internal springs hanlding (09/2014).
+	 *   *   1234: Disable new dyntopo code fixing skinny faces generation (04/2015).
+	 *   * 16384 and above: Reserved for python (add-ons) usage.
+	 */
 	short debug_value;
 
 	/* saved to the blend file as FileGlobal.globalf,
@@ -157,20 +172,8 @@ enum {
 
 #define G_FILE_USERPREFS         (1 << 9)
 #define G_FILE_NO_UI             (1 << 10)
-#ifdef DNA_DEPRECATED_ALLOW
-/* #define G_FILE_GAME_TO_IPO    (1 << 11) */           /* deprecated */
-#define G_FILE_GAME_MAT          (1 << 12)              /* deprecated */
-/* #define G_FILE_DISPLAY_LISTS  (1 << 13) */           /* deprecated */
-#define G_FILE_SHOW_PHYSICS      (1 << 14)              /* deprecated */
-#define G_FILE_GAME_MAT_GLSL     (1 << 15)              /* deprecated */
-/* #define G_FILE_GLSL_NO_LIGHTS     (1 << 16) */       /* deprecated */
-#define G_FILE_GLSL_NO_SHADERS   (1 << 17)              /* deprecated */
-#define G_FILE_GLSL_NO_SHADOWS   (1 << 18)              /* deprecated */
-#define G_FILE_GLSL_NO_RAMPS     (1 << 19)              /* deprecated */
-#define G_FILE_GLSL_NO_NODES     (1 << 20)              /* deprecated */
-#define G_FILE_GLSL_NO_EXTRA_TEX (1 << 21)              /* deprecated */
-#define G_FILE_IGNORE_DEPRECATION_WARNINGS  (1 << 22)   /* deprecated */
-#endif  /* DNA_DEPRECATED_ALLOW */
+
+/* Bits 11 to 22 (inclusive) are deprecated & need to be cleared */
 
 /* On read, use #FileGlobal.filename instead of the real location on-disk,
  * needed for recovering temp files so relative paths resolve */
@@ -183,7 +186,7 @@ enum {
 // #define G_FILE_MESH_COMPAT       (1 << 26)
 /* On write, restore paths after editing them (G_FILE_RELATIVE_REMAP) */
 #define G_FILE_SAVE_COPY         (1 << 27)
-#define G_FILE_GLSL_NO_ENV_LIGHTING (1 << 28)
+/* #define G_FILE_GLSL_NO_ENV_LIGHTING (1 << 28) */ /* deprecated */
 
 #define G_FILE_FLAGS_RUNTIME (G_FILE_NO_UI | G_FILE_RELATIVE_REMAP | G_FILE_SAVE_COPY)
 

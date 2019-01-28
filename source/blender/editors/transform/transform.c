@@ -72,8 +72,6 @@
 
 #include "DEG_depsgraph.h"
 
-#include "BIF_glutil.h"
-
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
@@ -3322,7 +3320,20 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
 				CLAMP(fac, 0.0f, 1.0f);
 			}
 
-			fac_scaled = fac * td->factor;
+			if (t->options & CTX_GPENCIL_STROKES) {
+				/* grease pencil multiframe falloff */
+				bGPDstroke *gps = (bGPDstroke *)td->extra;
+				if (gps != NULL) {
+					fac_scaled = fac * td->factor * gps->runtime.multi_frame_falloff;
+				}
+				else {
+					fac_scaled = fac * td->factor;
+				}
+			}
+			else {
+				fac_scaled = fac * td->factor;
+			}
+
 			axis_angle_normalized_to_mat3(mat, data->warp_nor, values.angle * fac_scaled);
 			interp_v3_v3v3(delta, warp_sta_local, warp_end_radius_local, fac_scaled);
 			sub_v3_v3(delta, warp_sta_local);
@@ -3521,7 +3532,19 @@ static void applyShear(TransInfo *t, const int UNUSED(mval[2]))
 			add_v3_v3(vec, center);
 			sub_v3_v3(vec, co);
 
-			mul_v3_fl(vec, td->factor);
+			if (t->options & CTX_GPENCIL_STROKES) {
+				/* grease pencil multiframe falloff */
+				bGPDstroke *gps = (bGPDstroke *)td->extra;
+				if (gps != NULL) {
+					mul_v3_fl(vec, td->factor * gps->runtime.multi_frame_falloff);
+				}
+				else {
+					mul_v3_fl(vec, td->factor);
+				}
+			}
+			else {
+				mul_v3_fl(vec, td->factor);
+			}
 
 			add_v3_v3v3(td->loc, td->iloc, vec);
 		}

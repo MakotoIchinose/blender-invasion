@@ -523,7 +523,7 @@ static PropertyRNA *typemap[IDP_NUMTYPES] = {
 	(PropertyRNA *)&rna_PropertyGroupItem_group,
 	(PropertyRNA *)&rna_PropertyGroupItem_id,
 	(PropertyRNA *)&rna_PropertyGroupItem_double,
-	(PropertyRNA *)&rna_PropertyGroupItem_idp_array
+	(PropertyRNA *)&rna_PropertyGroupItem_idp_array,
 };
 
 static PropertyRNA *arraytypemap[IDP_NUMTYPES] = {
@@ -531,7 +531,7 @@ static PropertyRNA *arraytypemap[IDP_NUMTYPES] = {
 	(PropertyRNA *)&rna_PropertyGroupItem_float_array,
 	NULL, NULL, NULL,
 	(PropertyRNA *)&rna_PropertyGroupItem_collection, NULL,
-	(PropertyRNA *)&rna_PropertyGroupItem_double_array
+	(PropertyRNA *)&rna_PropertyGroupItem_double_array,
 };
 
 static void *rna_idproperty_check_ex(PropertyRNA **prop, PointerRNA *ptr, const bool return_rnaprop)
@@ -6937,7 +6937,7 @@ static int rna_function_format_array_length(const char *format, int ofs, int fle
 	int idx = 0;
 
 	if (format[ofs++] == '[')
-		for (; ofs < flen && format[ofs] != ']' && idx < sizeof(*lenbuf) - 1; idx++, ofs++)
+		for (; ofs < flen && format[ofs] != ']' && idx < sizeof(lenbuf) - 1; idx++, ofs++)
 			lenbuf[idx] = format[ofs];
 
 	if (ofs < flen && format[ofs + 1] == ']') {

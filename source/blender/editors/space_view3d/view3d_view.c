@@ -949,8 +949,7 @@ int view3d_opengl_select(
 	const bool is_pick_select = (U.gpu_select_pick_deph != 0);
 	const bool do_passes = (
 	        (is_pick_select == false) &&
-	        (select_mode == VIEW3D_SELECT_PICK_NEAREST) &&
-	        GPU_select_query_check_active());
+	        (select_mode == VIEW3D_SELECT_PICK_NEAREST));
 	const bool use_nearest = (is_pick_select && select_mode == VIEW3D_SELECT_PICK_NEAREST);
 	bool draw_surface = true;
 
@@ -985,6 +984,8 @@ int view3d_opengl_select(
 		}
 	}
 
+	/* Important to use 'vc->obact', not 'OBACT(vc->view_layer)' below,
+	 * so it will be NULL when hidden. */
 	struct {
 		DRW_ObjectFilterFn fn;
 		void *user_data;
@@ -992,7 +993,7 @@ int view3d_opengl_select(
 	switch (select_filter) {
 		case VIEW3D_SELECT_FILTER_OBJECT_MODE_LOCK:
 		{
-			Object *obact = OBACT(vc->view_layer);
+			Object *obact = vc->obact;
 			if (obact && obact->mode != OB_MODE_OBJECT) {
 				object_filter.fn = drw_select_filter_object_mode_lock;
 				object_filter.user_data = obact;
@@ -1001,7 +1002,7 @@ int view3d_opengl_select(
 		}
 		case VIEW3D_SELECT_FILTER_WPAINT_POSE_MODE_LOCK:
 		{
-			Object *obact = OBACT(vc->view_layer);
+			Object *obact = vc->obact;
 			BLI_assert(obact && (obact->mode & OB_MODE_WEIGHT_PAINT));
 			Object *ob_pose = BKE_object_pose_armature_get(obact);
 

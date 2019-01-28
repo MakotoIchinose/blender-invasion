@@ -76,7 +76,6 @@
 #include "ED_view3d.h"
 #include "ED_clip.h"
 
-#include "BIF_glutil.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -755,9 +754,9 @@ static short gp_stroke_addpoint(
 		pt->time = (float)(curtime - p->inittime);
 
 		/* point uv (only 3d view) */
-		if ((p->sa->spacetype == SPACE_VIEW3D) && (gpd->runtime.sbuffer_size > 1)) {
+		if ((p->sa->spacetype == SPACE_VIEW3D) && (gpd->runtime.sbuffer_size > 0)) {
 			float pixsize = gp_style->texture_pixsize / 1000000.0f;
-			tGPspoint *ptb = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_size - 2;
+			tGPspoint *ptb = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_size - 1;
 			bGPDspoint spt, spt2;
 
 			/* get origin to reproject point */
@@ -1846,7 +1845,13 @@ static void gp_init_colors(tGPsdata *p)
 	if (gp_style) {
 
 		/* set colors */
-		copy_v4_v4(gpd->runtime.scolor, gp_style->stroke_rgba);
+		if (gp_style->flag & GP_STYLE_STROKE_SHOW) {
+			copy_v4_v4(gpd->runtime.scolor, gp_style->stroke_rgba);
+		}
+		else {
+			/* if no stroke, use fill */
+			copy_v4_v4(gpd->runtime.scolor, gp_style->fill_rgba);
+		}
 		copy_v4_v4(gpd->runtime.sfill, gp_style->fill_rgba);
 		/* add some alpha to make easy the filling without hide strokes */
 		if (gpd->runtime.sfill[3] > 0.8f) {
@@ -3069,8 +3074,11 @@ static void gpencil_guide_event_handling(bContext *C, wmOperator *op, const wmEv
 	/* Point guide */
 	else if ((event->type == CKEY) && (event->val == KM_RELEASE)) {
 		add_notifier = true;
-		guide->use_guide = true;
-		if (guide->type == GP_GUIDE_CIRCULAR) {
+		if (!guide->use_guide) {
+			guide->use_guide = true;
+			guide->type = GP_GUIDE_CIRCULAR;
+		}
+		else if (guide->type == GP_GUIDE_CIRCULAR) {
 			guide->type = GP_GUIDE_RADIAL;
 		}
 		else if (guide->type == GP_GUIDE_RADIAL) {
@@ -3632,7 +3640,9 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 			/* handle drawing event */
 			/* printf("\t\tGP - add point\n"); */
 
-			gpencil_add_missing_events(C, op, event, p);
+			if ((!(p->flags & GP_PAINTFLAG_FIRSTRUN)) && guide->use_guide) {
+				gpencil_add_missing_events(C, op, event, p);
+			}
 
 			gpencil_draw_apply_event(C, op, event, CTX_data_depsgraph(C), 0.0f, 0.0f);
 
@@ -3775,7 +3785,6 @@ void GPENCIL_OT_draw(wmOperatorType *ot)
 
 	/* guides */
 	prop = RNA_def_float(ot->srna, "guide_last_angle", 0.0f, -10000.0f, 10000.0f, "Angle", "Speed guide angle", -10000.0f, 10000.0f);
-	prop = RNA_def_float_vector(ot->srna, "guide_origin", 3, NULL, -10000.0f, 10000.0f, "Origin", "Speed guide origin", -10000.0f, 10000.0f);
 }
 
 /* additional OPs */

@@ -653,7 +653,10 @@ void buttons_context_compute(const bContext *C, SpaceButs *sbuts)
 				ptr = &path->ptr[path->len - 1];
 
 				if (ptr->type) {
-					sbuts->dataicon = RNA_struct_ui_icon(ptr->type);
+					if(RNA_struct_is_a(ptr->type, &RNA_Light))
+						sbuts->dataicon = ICON_OUTLINER_DATA_LIGHT;
+					else
+						sbuts->dataicon = RNA_struct_ui_icon(ptr->type);
 				}
 				else {
 					sbuts->dataicon = ICON_EMPTY_DATA;
@@ -711,7 +714,7 @@ const char *buttons_context_dir[] = {
 	"texture", "texture_user", "texture_user_property", "bone", "edit_bone",
 	"pose_bone", "particle_system", "particle_system_editable", "particle_settings",
 	"cloth", "soft_body", "fluid", "smoke", "collision", "brush", "dynamic_paint",
-	"line_style", "collection", NULL
+	"line_style", "collection", NULL,
 };
 
 int buttons_context(const bContext *C, const char *member, bContextDataResult *result)

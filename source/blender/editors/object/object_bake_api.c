@@ -41,9 +41,7 @@
 #include "RNA_enum_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 #include "BLI_fileops.h"
-#include "BLI_math_geom.h"
 #include "BLI_path_util.h"
 
 #include "BKE_context.h"
@@ -635,9 +633,9 @@ static size_t initialize_internal_images(BakeImages *bake_images, ReportList *re
 /* create new mesh with edit mode changes and modifiers applied */
 static Mesh *bake_mesh_new_from_object(Depsgraph *depsgraph, Main *bmain, Scene *scene, Object *ob)
 {
-	ED_object_editmode_load(bmain, ob);
+	bool apply_modifiers = (ob->type != OB_MESH);
+	Mesh *me = BKE_mesh_new_from_object(depsgraph, bmain, scene, ob, apply_modifiers, false);
 
-	Mesh *me = BKE_mesh_new_from_object(depsgraph, bmain, scene, ob, 1, 0);
 	if (me->flag & ME_AUTOSMOOTH) {
 		BKE_mesh_split_faces(me, true);
 	}
@@ -806,7 +804,7 @@ static int bake(
 	ob_low_eval = DEG_get_evaluated_object(depsgraph, ob_low);
 
 	/* get the mesh as it arrives in the renderer */
-	me_low = bake_mesh_new_from_object(depsgraph, bmain, scene, ob_low);
+	me_low = bake_mesh_new_from_object(depsgraph, bmain, scene, ob_low_eval);
 
 	/* populate the pixel array with the face data */
 	if ((is_selected_to_active && (ob_cage == NULL) && is_cage) == false)
@@ -819,7 +817,7 @@ static int bake(
 
 		/* prepare cage mesh */
 		if (ob_cage) {
-			me_cage = bake_mesh_new_from_object(depsgraph, bmain, scene, ob_cage);
+			me_cage = bake_mesh_new_from_object(depsgraph, bmain, scene, ob_cage_eval);
 			if ((me_low->totpoly != me_cage->totpoly) || (me_low->totloop != me_cage->totloop)) {
 				BKE_report(reports, RPT_ERROR,
 				           "Invalid cage object, the cage mesh must have the same number "
@@ -828,6 +826,8 @@ static int bake(
 			}
 		}
 		else if (is_cage) {
+			BKE_object_eval_reset(ob_low_eval);
+
 			ModifierData *md = ob_low_eval->modifiers.first;
 			while (md) {
 				ModifierData *md_next = md->next;
@@ -845,7 +845,6 @@ static int bake(
 				md = md_next;
 			}
 
-			BKE_object_eval_reset(ob_low_eval);
 			me_cage = bake_mesh_new_from_object(depsgraph, bmain, scene, ob_low_eval);
 			RE_bake_pixels_populate(me_cage, pixel_array_low, num_pixels, &bake_images, uv_layer);
 		}
@@ -861,10 +860,10 @@ static int bake(
 
 			/* initialize highpoly_data */
 			highpoly[i].ob = ob_iter;
-			highpoly[i].me = bake_mesh_new_from_object(depsgraph, bmain, scene, highpoly[i].ob);
 			highpoly[i].ob_eval = DEG_get_evaluated_object(depsgraph, ob_iter);
 			highpoly[i].ob_eval->restrictflag &= ~OB_RESTRICT_RENDER;
 			highpoly[i].ob_eval->base_flag |= (BASE_VISIBLE | BASE_ENABLED_RENDER);
+			highpoly[i].me = bake_mesh_new_from_object(depsgraph, bmain, scene, highpoly[i].ob_eval);
 
 			/* lowpoly to highpoly transformation matrix */
 			copy_m4_m4(highpoly[i].obmat, highpoly[i].ob->obmat);
@@ -888,7 +887,7 @@ static int bake(
 		/* populate the pixel arrays with the corresponding face data for each high poly object */
 		if (!RE_bake_pixels_populate_from_objects(
 		            me_low, pixel_array_low, pixel_array_high, highpoly, tot_highpoly, num_pixels, ob_cage != NULL,
-		            cage_extrusion, ob_low->obmat, (ob_cage ? ob_cage->obmat : ob_low->obmat), me_cage))
+		            cage_extrusion, ob_low_eval->obmat, (ob_cage ? ob_cage->obmat : ob_low_eval->obmat), me_cage))
 		{
 			BKE_report(reports, RPT_ERROR, "Error handling selected objects");
 			goto cleanup;
@@ -906,10 +905,10 @@ static int bake(
 	}
 	else {
 		/* If low poly is not renderable it should have failed long ago. */
-		BLI_assert((ob_low->restrictflag & OB_RESTRICT_RENDER) == 0);
+		BLI_assert((ob_low_eval->restrictflag & OB_RESTRICT_RENDER) == 0);
 
 		if (RE_bake_has_engine(re)) {
-			ok = RE_bake_engine(re, depsgraph, ob_low, 0, pixel_array_low, num_pixels, depth, pass_type, pass_filter, result);
+			ok = RE_bake_engine(re, depsgraph, ob_low_eval, 0, pixel_array_low, num_pixels, depth, pass_type, pass_filter, result);
 		}
 		else {
 			BKE_report(reports, RPT_ERROR, "Current render engine does not support baking");
@@ -937,13 +936,13 @@ static int bake(
 			}
 			case R_BAKE_SPACE_OBJECT:
 			{
-				RE_bake_normal_world_to_object(pixel_array_low, num_pixels, depth, result, ob_low, normal_swizzle);
+				RE_bake_normal_world_to_object(pixel_array_low, num_pixels, depth, result, ob_low_eval, normal_swizzle);
 				break;
 			}
 			case R_BAKE_SPACE_TANGENT:
 			{
 				if (is_selected_to_active) {
-					RE_bake_normal_world_to_tangent(pixel_array_low, num_pixels, depth, result, me_low, normal_swizzle, ob_low->obmat);
+					RE_bake_normal_world_to_tangent(pixel_array_low, num_pixels, depth, result, me_low, normal_swizzle, ob_low_eval->obmat);
 				}
 				else {
 					/* from multiresolution */
@@ -951,17 +950,19 @@ static int bake(
 					ModifierData *md = NULL;
 					int mode;
 
-					md = modifiers_findByType(ob_low, eModifierType_Multires);
+					BKE_object_eval_reset(ob_low_eval);
+					md = modifiers_findByType(ob_low_eval, eModifierType_Multires);
 
 					if (md) {
 						mode = md->mode;
 						md->mode &= ~eModifierMode_Render;
 					}
 
-					me_nores = bake_mesh_new_from_object(depsgraph, bmain, scene, ob_low);
+					/* Evaluate modifiers again. */
+					me_nores = BKE_mesh_new_from_object(depsgraph, bmain, scene, ob_low_eval, true, false);
 					RE_bake_pixels_populate(me_nores, pixel_array_low, num_pixels, &bake_images, uv_layer);
 
-					RE_bake_normal_world_to_tangent(pixel_array_low, num_pixels, depth, result, me_nores, normal_swizzle, ob_low->obmat);
+					RE_bake_normal_world_to_tangent(pixel_array_low, num_pixels, depth, result, me_nores, normal_swizzle, ob_low_eval->obmat);
 					BKE_id_free(bmain, me_nores);
 
 					if (md)
@@ -1023,8 +1024,8 @@ static int bake(
 						BLI_path_suffix(name, FILE_MAX, bk_image->image->id.name + 2, "_");
 					}
 					else {
-						if (ob_low->mat[i]) {
-							BLI_path_suffix(name, FILE_MAX, ob_low->mat[i]->id.name + 2, "_");
+						if (ob_low_eval->mat[i]) {
+							BLI_path_suffix(name, FILE_MAX, ob_low_eval->mat[i]->id.name + 2, "_");
 						}
 						else if (me_low->mat[i]) {
 							BLI_path_suffix(name, FILE_MAX, me_low->mat[i]->id.name + 2, "_");

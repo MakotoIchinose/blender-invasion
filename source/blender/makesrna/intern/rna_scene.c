@@ -43,7 +43,6 @@
 #include "IMB_imbuf_types.h"
 
 #include "BLI_math.h"
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -483,6 +482,8 @@ const EnumPropertyItem rna_enum_transform_orientation_items[] = {
 };
 
 #ifdef RNA_RUNTIME
+
+#include "BLI_string_utils.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_color_types.h"
@@ -5707,7 +5708,7 @@ static void rna_def_display_safe_areas(BlenderRNA *brna)
 	static float default_action_center[2] = {0.15f, 0.05f};
 
 	srna = RNA_def_struct(brna, "DisplaySafeAreas", NULL);
-	RNA_def_struct_ui_text(srna, "Safe Areas", "Safe Areas used in 3D view and the VSE");
+	RNA_def_struct_ui_text(srna, "Safe Areas", "Safe areas used in 3D view and the sequencer");
 	RNA_def_struct_sdna(srna, "DisplaySafeAreas");
 
 	/* SAFE AREAS */
@@ -6176,17 +6177,17 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	prop = RNA_def_property(srna, "bloom_clamp", PROP_FLOAT, PROP_FACTOR);
-	RNA_def_property_float_default(prop, 1.0f);
-	RNA_def_property_ui_text(prop, "Clamp", "Maximum intensity a bloom pixel can have");
-	RNA_def_property_range(prop, 0.0f, 1000.0f);
-	RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1, 3);
+	RNA_def_property_float_default(prop, 0.0f);
+	RNA_def_property_ui_text(prop, "Clamp", "Maximum intensity a bloom pixel can have (0 to disabled)");
+	RNA_def_property_range(prop, 0.0f, 100000.0f);
+	RNA_def_property_ui_range(prop, 0.0f, 1000.0f, 1, 3);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
-	prop = RNA_def_property(srna, "bloom_intensity", PROP_FLOAT, PROP_UNSIGNED);
-	RNA_def_property_float_default(prop, 0.8f);
+	prop = RNA_def_property(srna, "bloom_intensity", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_float_default(prop, 0.05f);
 	RNA_def_property_ui_text(prop, "Intensity", "Blend factor");
 	RNA_def_property_range(prop, 0.0f, 10000.0f);
-	RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1, 3);
+	RNA_def_property_ui_range(prop, 0.0f, 0.1f, 1, 3);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 
 	/* Motion blur */

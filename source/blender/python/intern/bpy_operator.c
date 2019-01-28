@@ -37,7 +37,6 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 
 #include "BPY_extern.h"
 #include "bpy_operator.h"
@@ -438,7 +437,7 @@ static struct PyModuleDef bpy_ops_module = {
 	NULL,
 	-1, /* multiple "initialization" just copies the module dict. */
 	bpy_ops_methods,
-	NULL, NULL, NULL, NULL
+	NULL, NULL, NULL, NULL,
 };
 
 PyObject *BPY_operator_module(void)

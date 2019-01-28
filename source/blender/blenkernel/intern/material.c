@@ -53,19 +53,15 @@
 #include "BLI_math.h"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
-#include "BLI_string.h"
 #include "BLI_array_utils.h"
 
 #include "BKE_animsys.h"
 #include "BKE_brush.h"
 #include "BKE_displist.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
@@ -1097,6 +1093,8 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma)
 	if (!ma)
 		return;
 
+	DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
+
 	if (ma->texpaintslot) {
 		MEM_freeN(ma->texpaintslot);
 		ma->tot_slots = 0;
@@ -1399,7 +1397,10 @@ void copy_matcopybuf(Main *bmain, Material *ma)
 
 	memcpy(&matcopybuf, ma, sizeof(Material));
 
-	matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
+	if (ma->nodetree != NULL) {
+		matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
+	}
+
 	matcopybuf.preview = NULL;
 	BLI_listbase_clear(&matcopybuf.gpumaterial);
 	/* TODO Duplicate Engine Settings and set runtime to NULL */
@@ -1425,7 +1426,9 @@ void paste_matcopybuf(Main *bmain, Material *ma)
 	memcpy(ma, &matcopybuf, sizeof(Material));
 	(ma->id) = id;
 
-	ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
+	if (matcopybuf.nodetree != NULL) {
+		ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
+	}
 }
 
 void BKE_material_eval(struct Depsgraph *depsgraph, Material *material)

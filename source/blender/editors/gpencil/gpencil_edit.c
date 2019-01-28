@@ -43,7 +43,6 @@
 #include "BLI_lasso_2d.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -66,7 +65,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
 #include "BKE_workspace.h"
 
 #include "UI_interface.h"
@@ -1843,7 +1841,6 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 	bool in_island  = false;
 	int num_islands = 0;
 
-
 	/* First Pass: Identify start/end of islands */
 	bGPDspoint *pt = gps->points;
 	for (int i = 0; i < gps->totpoints; i++, pt++) {
@@ -1894,7 +1891,7 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 			memcpy(new_stroke->points, gps->points + island->start_idx, sizeof(bGPDspoint) * new_stroke->totpoints);
 
 			/* Copy over vertex weight data (if available) */
-			if (new_stroke->dvert != NULL) {
+			if (gps->dvert != NULL) {
 				/* Copy over the relevant vertex-weight points */
 				new_stroke->dvert = MEM_callocN(sizeof(MDeformVert) * new_stroke->totpoints, "gp delete stroke fragment weight");
 				memcpy(new_stroke->dvert, gps->dvert + island->start_idx, sizeof(MDeformVert) * new_stroke->totpoints);
@@ -1902,13 +1899,14 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 				/* Copy weights */
 				int e = island->start_idx;
 				for (int i = 0; i < new_stroke->totpoints; i++) {
-					MDeformVert *dvert_dst = &gps->dvert[e];
-					MDeformVert *dvert_src = &new_stroke->dvert[i];
-					dvert_dst->dw = MEM_dupallocN(dvert_src->dw);
+					MDeformVert *dvert_src = &gps->dvert[e];
+					MDeformVert *dvert_dst = &new_stroke->dvert[i];
+					if (dvert_src->dw) {
+						dvert_dst->dw = MEM_dupallocN(dvert_src->dw);
+					}
 					e++;
 				}
 			}
-
 			/* Each island corresponds to a new stroke. We must adjust the
 			 * timings of these new strokes:
 			 *
@@ -1954,17 +1952,8 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 	MEM_freeN(islands);
 
 	/* Delete the old stroke */
-	if (gps->points) {
-		MEM_freeN(gps->points);
-	}
-	if (gps->dvert) {
-		BKE_gpencil_free_stroke_weights(gps);
-		MEM_freeN(gps->dvert);
-	}
-	if (gps->triangles) {
-		MEM_freeN(gps->triangles);
-	}
-	BLI_freelinkN(&gpf->strokes, gps);
+	BLI_remlink(&gpf->strokes, gps);
+	BKE_gpencil_free_stroke(gps);
 }
 
 /* Split selected strokes into segments, splitting on selected points */
@@ -3497,6 +3486,12 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 	if (ELEM(NULL, gpd_src)) {
 		return OPERATOR_CANCELLED;
 	}
+
+	if ((mode == GP_SEPARATE_LAYER) && (BLI_listbase_count(&gpd_src->layers) == 1)) {
+		BKE_report(op->reports, RPT_ERROR, "Cannot separate an object with one layer only");
+		return OPERATOR_CANCELLED;
+	}
+
 	const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_src);
 
 	/* create a new object */
@@ -3504,7 +3499,6 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 	ob_dst = base_new->object;
 	ob_dst->mode = OB_MODE_OBJECT;
 	/* create new grease pencil datablock */
-	// XXX: check usercounts
 	gpd_dst = BKE_gpencil_data_addnew(bmain, gpd_src->id.name + 2);
 	ob_dst->data = (bGPdata *)gpd_dst;
 
@@ -3632,8 +3626,35 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 			gpl->prev = gpl->next = NULL;
 			/* relink to destination datablock */
 			BLI_addtail(&gpd_dst->layers, gpl);
+
+			/* add duplicate materials */
+			for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+				for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+					/* skip strokes that are invalid for current view */
+					if (ED_gpencil_stroke_can_use(C, gps) == false) {
+						continue;
+					}
+					ma = give_current_material(ob, gps->mat_nr + 1);
+					idx = BKE_gpencil_get_material_index(ob_dst, ma);
+					if (idx == 0) {
+						totadd++;
+						ob_dst->actcol = totadd;
+						ob_dst->totcol = totadd;
+
+						if (totadd > totslots) {
+							BKE_object_material_slot_add(bmain, ob_dst);
+						}
+
+						assign_material(bmain, ob_dst, ma, ob_dst->totcol, BKE_MAT_ASSIGN_USERPREF);
+						idx = totadd;
+					}
+					/* reasign material */
+					gps->mat_nr = idx - 1;
+				}
+			}
 		}
 	}
+
 	DEG_id_tag_update(&gpd_src->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 	DEG_id_tag_update(&gpd_dst->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
@@ -3982,6 +4003,8 @@ static int gpencil_cutter_lasso_select(
 		for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gpsn) {
 			gpsn = gps->next;
 			if (gps->flag & GP_STROKE_SELECT) {
+				/* disable cyclic */
+				gps->flag &= ~GP_STROKE_CYCLIC;
 				gpencil_cutter_dissolve(gpl, gps);
 			}
 		}

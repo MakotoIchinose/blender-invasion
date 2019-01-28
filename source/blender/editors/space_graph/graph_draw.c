@@ -46,7 +46,6 @@
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
 
-#include "BIF_glutil.h"
 
 #include "GPU_draw.h"
 #include "GPU_immediate.h"
@@ -246,8 +245,7 @@ static void draw_fcurve_selected_handle_vertices(FCurve *fcu, View2D *v2d, bool 
 		if (!sel_handle_only || BEZT_ISSEL_ANY(bezt)) {
 			if ((!prevbezt && (bezt->ipo == BEZT_IPO_BEZ)) || (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ))) {
 				if ((bezt->f1 & SELECT) == sel
-					/* && v2d->cur.xmin < bezt->vec[0][0] < v2d->cur.xmax)*/
-					)
+				    /* && v2d->cur.xmin < bezt->vec[0][0] < v2d->cur.xmax) */ )
 				{
 					immVertex2fv(pos, bezt->vec[0]);
 				}
@@ -255,8 +253,7 @@ static void draw_fcurve_selected_handle_vertices(FCurve *fcu, View2D *v2d, bool 
 
 			if (bezt->ipo == BEZT_IPO_BEZ) {
 				if ((bezt->f3 & SELECT) == sel
-					/* && v2d->cur.xmin < bezt->vec[2][0] < v2d->cur.xmax)*/
-					)
+				    /* && v2d->cur.xmin < bezt->vec[2][0] < v2d->cur.xmax) */ )
 				{
 					immVertex2fv(pos, bezt->vec[2]);
 				}

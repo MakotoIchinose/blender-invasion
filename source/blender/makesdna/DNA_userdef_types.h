@@ -683,9 +683,8 @@ typedef struct UserDef {
 	char  ipo_new;
 	/** Handle types for newly added keyframes. */
 	char  keyhandles_new;
-	char  gpu_select_method;
 	char  gpu_select_pick_deph;
-	char  pad0;
+	char  pad0[2];
 	/** #eZoomFrame_Mode. */
 	char  view_frame_type;
 
@@ -694,12 +693,11 @@ typedef struct UserDef {
 	/** Seconds to zoom around current frame. */
 	float view_frame_seconds;
 
-	char _pad1[2];
+	char _pad1[6];
 
 	/** Private, defaults to 20 for 72 DPI setting. */
 	short widget_unit;
 	short anisotropic_filter;
-	short use_16bit_textures, use_gpu_mipmap;
 
 	/** Tablet API to use (Windows only). */
 	short tablet_api;
@@ -786,14 +784,13 @@ extern UserDef U;
 
 /* Toggles for unfinished 2.8 UserPref design. */
 //#define WITH_USERDEF_WORKSPACES
-//#define WITH_USERDEF_SYSTEM_SPLIT
 
 /* UserDef.userpref (UI active_section) */
 typedef enum eUserPref_Section {
 	USER_SECTION_INTERFACE         = 0,
-	USER_SECTION_EDIT              = 1,
-	USER_SECTION_SYSTEM_FILES      = 2,
-	USER_SECTION_SYSTEM_GENERAL    = 3,
+	USER_SECTION_EDITING           = 1,
+	USER_SECTION_SAVE_LOAD         = 2,
+	USER_SECTION_SYSTEM            = 3,
 	USER_SECTION_THEME             = 4,
 	USER_SECTION_INPUT             = 5,
 	USER_SECTION_ADDONS            = 6,
@@ -804,10 +801,10 @@ typedef enum eUserPref_Section {
 	USER_SECTION_WORKSPACE_ADDONS  = 10,
 	USER_SECTION_WORKSPACE_KEYMAPS = 11,
 #endif
-#ifdef WITH_USERDEF_SYSTEM_SPLIT
-	USER_SECTION_SYSTEM_DISPLAY    = 12,
-	USER_SECTION_SYSTEM_DEVICES    = 13,
-#endif
+	USER_SECTION_VIEWPORT          = 12,
+	USER_SECTION_ANIMATION         = 13,
+	USER_SECTION_NAVIGATION        = 14,
+	USER_SECTION_FILE_PATHS        = 15,
 } eUserPref_Section;
 
 /* UserDef.userpref_flag (State of the user preferences UI). */
@@ -996,13 +993,6 @@ typedef enum eDupli_ID_Flags {
 	USER_DUP_ACT			= (1 << 10),
 	USER_DUP_PSYS			= (1 << 11),
 } eDupli_ID_Flags;
-
-/* selection method for opengl gpu_select_method */
-typedef enum eOpenGL_SelectOptions {
-	USER_SELECT_AUTO = 0,
-	USER_SELECT_USE_OCCLUSION_QUERY = 1,
-	USER_SELECT_USE_SELECT_RENDERMODE = 2,
-} eOpenGL_SelectOptions;
 
 /* max anti alias draw method UserDef.gpu_viewport_antialias */
 typedef enum eOpenGL_AntiAliasMethod {

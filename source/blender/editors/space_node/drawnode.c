@@ -3255,7 +3255,7 @@ void draw_nodespace_back_pix(const bContext *C, ARegion *ar, SpaceNode *snode, b
 					shuffle[3] = 1.0f;
 
 				IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
-				GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, shuffle);
+				GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, shuffle);
 
 				immDrawPixelsTex(&state, x, y, ibuf->x, ibuf->y, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST,
 				                 display_buffer, snode->zoom, snode->zoom, NULL);
@@ -3571,7 +3571,7 @@ static void nodelink_batch_draw(SpaceNode *snode)
 	UI_GetThemeColor4fv(TH_EDGE_SELECT, colors[nodelink_get_color_id(TH_EDGE_SELECT)]);
 	UI_GetThemeColor4fv(TH_REDALERT,    colors[nodelink_get_color_id(TH_REDALERT)]);
 
-	GPU_vertbuf_vertex_count_set(g_batch_link.inst_vbo, g_batch_link.count);
+	GPU_vertbuf_data_len_set(g_batch_link.inst_vbo, g_batch_link.count);
 	GPU_vertbuf_use(g_batch_link.inst_vbo); /* force update. */
 
 	GPU_batch_program_set_builtin(g_batch_link.batch, GPU_SHADER_2D_NODELINK_INST);
