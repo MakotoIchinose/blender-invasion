@@ -318,8 +318,8 @@ DRWShadingGroup *shgroup_dynlines_flat_color(DRWPass *pass)
 	GPUShader *sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_FLAT_COLOR);
 
 	DRW_shgroup_instance_format(g_formats.dynlines_color, {
-		{"pos",       DRW_ATTRIB_FLOAT, 3},
-		{"color",     DRW_ATTRIB_FLOAT, 4}
+		{"pos",       DRW_ATTR_FLOAT, 3},
+		{"color",     DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_line_batch_create_with_format(sh, pass, g_formats.dynlines_color);
@@ -358,24 +358,28 @@ DRWShadingGroup *shgroup_dynpoints_uniform_color(
 	return grp;
 }
 
-DRWShadingGroup *shgroup_groundlines_uniform_color(DRWPass *pass, const float color[4])
+DRWShadingGroup *shgroup_groundlines_uniform_color(DRWPass *pass, const float color[4], eDRW_ShaderSlot shader_slot)
 {
-	GPUShader *sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_GROUNDLINE);
+	GPUShader *sh = DRW_shader_get_builtin_shader(GPU_SHADER_3D_GROUNDLINE, shader_slot);
 
 	DRWShadingGroup *grp = DRW_shgroup_point_batch_create(sh, pass);
 	DRW_shgroup_uniform_vec4(grp, "color", color, 1);
-
+	if (shader_slot == DRW_SHADER_SLOT_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
-DRWShadingGroup *shgroup_groundpoints_uniform_color(DRWPass *pass, const float color[4])
+DRWShadingGroup *shgroup_groundpoints_uniform_color(DRWPass *pass, const float color[4], eDRW_ShaderSlot shader_slot)
 {
-	GPUShader *sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_GROUNDPOINT);
+	GPUShader *sh = DRW_shader_get_builtin_shader(GPU_SHADER_3D_GROUNDPOINT, shader_slot);
 
 	DRWShadingGroup *grp = DRW_shgroup_point_batch_create(sh, pass);
 	DRW_shgroup_uniform_vec4(grp, "color", color, 1);
 	DRW_shgroup_state_enable(grp, DRW_STATE_POINT);
-
+	if (shader_slot == DRW_SHADER_SLOT_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
@@ -385,8 +389,8 @@ DRWShadingGroup *shgroup_instance_screenspace(
 	GPUShader *sh = DRW_shader_get_builtin_shader(GPU_SHADER_3D_SCREENSPACE_VARIYING_COLOR, shader_slot);
 
 	DRW_shgroup_instance_format(g_formats.instance_screenspace, {
-		{"world_pos", DRW_ATTRIB_FLOAT, 3},
-		{"color",     DRW_ATTRIB_FLOAT, 3}
+		{"world_pos", DRW_ATTR_FLOAT, 3},
+		{"color",     DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh, pass, geom, g_formats.instance_screenspace);
@@ -405,8 +409,8 @@ DRWShadingGroup *shgroup_instance_solid(DRWPass *pass, struct GPUBatch *geom)
 	GPUShader *sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_OBJECTSPACE_SIMPLE_LIGHTING_VARIYING_COLOR);
 
 	DRW_shgroup_instance_format(g_formats.instance_color, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"color",               DRW_ATTRIB_FLOAT, 4}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"color",               DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh, pass, geom, g_formats.instance_color);
@@ -420,8 +424,8 @@ DRWShadingGroup *shgroup_instance_wire(DRWPass *pass, struct GPUBatch *geom)
 	GPUShader *sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_OBJECTSPACE_VARIYING_COLOR);
 
 	DRW_shgroup_instance_format(g_formats.instance_color, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"color",               DRW_ATTRIB_FLOAT, 4}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"color",               DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh, pass, geom, g_formats.instance_color);
@@ -435,9 +439,9 @@ DRWShadingGroup *shgroup_instance_screen_aligned(
 	GPUShader *sh = DRW_shader_get_builtin_shader(GPU_SHADER_3D_INSTANCE_SCREEN_ALIGNED, shader_slot);
 
 	DRW_shgroup_instance_format(g_formats.instance_screen_aligned, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
-		{"size",                DRW_ATTRIB_FLOAT, 1},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 3},
+		{"size",                DRW_ATTR_FLOAT, 1},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh, pass, geom, g_formats.instance_screen_aligned);
@@ -453,9 +457,9 @@ DRWShadingGroup *shgroup_instance_scaled(DRWPass *pass, struct GPUBatch *geom, e
 	GPUShader *sh_inst = DRW_shader_get_builtin_shader(GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SCALE, shader_slot);
 
 	DRW_shgroup_instance_format(g_formats.instance_scaled, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
-		{"size",                DRW_ATTRIB_FLOAT, 3},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 3},
+		{"size",                DRW_ATTR_FLOAT, 3},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_scaled);
@@ -470,9 +474,9 @@ DRWShadingGroup *shgroup_instance(DRWPass *pass, struct GPUBatch *geom, eDRW_Sha
 	GPUShader *sh_inst = DRW_shader_get_builtin_shader(GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SIZE, shader_slot);
 
 	DRW_shgroup_instance_format(g_formats.instance_sized, {
-		{"color",               DRW_ATTRIB_FLOAT, 4},
-		{"size",                DRW_ATTRIB_FLOAT, 1},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 4},
+		{"size",                DRW_ATTR_FLOAT, 1},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_sized);
@@ -488,9 +492,9 @@ DRWShadingGroup *shgroup_instance_alpha(DRWPass *pass, struct GPUBatch *geom, eD
 	GPUShader *sh_inst = DRW_shader_get_builtin_shader(GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SIZE, shader_slot);
 
 	DRW_shgroup_instance_format(g_formats.instance_sized, {
-		{"color",               DRW_ATTRIB_FLOAT, 4},
-		{"size",                DRW_ATTRIB_FLOAT, 1},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 4},
+		{"size",                DRW_ATTR_FLOAT, 1},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_sized);
@@ -513,9 +517,9 @@ DRWShadingGroup *shgroup_instance_empty_axes(DRWPass *pass, struct GPUBatch *geo
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_sized, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
-		{"size",                DRW_ATTRIB_FLOAT, 1},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 3},
+		{"size",                DRW_ATTR_FLOAT, 1},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_data->empty_axes_sh, pass, geom, g_formats.instance_sized);
@@ -531,9 +535,9 @@ DRWShadingGroup *shgroup_instance_outline(DRWPass *pass, struct GPUBatch *geom, 
 	GPUShader *sh_inst = GPU_shader_get_builtin_shader(GPU_SHADER_INSTANCE_VARIYING_ID_VARIYING_SIZE);
 
 	DRW_shgroup_instance_format(g_formats.instance_outline, {
-		{"callId",              DRW_ATTRIB_INT,   1},
-		{"size",                DRW_ATTRIB_FLOAT, 1},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"callId",              DRW_ATTR_INT,   1},
+		{"size",                DRW_ATTR_FLOAT, 1},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_outline);
@@ -547,11 +551,11 @@ DRWShadingGroup *shgroup_camera_instance(DRWPass *pass, struct GPUBatch *geom, e
 	GPUShader *sh_inst = DRW_shader_get_builtin_shader(GPU_SHADER_CAMERA, shader_slot);
 
 	DRW_shgroup_instance_format(g_formats.instance_camera, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
-		{"corners",             DRW_ATTRIB_FLOAT, 8},
-		{"depth",               DRW_ATTRIB_FLOAT, 1},
-		{"tria",                DRW_ATTRIB_FLOAT, 4},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 3},
+		{"corners",             DRW_ATTR_FLOAT, 8},
+		{"depth",               DRW_ATTR_FLOAT, 1},
+		{"tria",                DRW_ATTR_FLOAT, 4},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_camera);
@@ -561,40 +565,44 @@ DRWShadingGroup *shgroup_camera_instance(DRWPass *pass, struct GPUBatch *geom, e
 	return grp;
 }
 
-DRWShadingGroup *shgroup_distance_lines_instance(DRWPass *pass, struct GPUBatch *geom)
+DRWShadingGroup *shgroup_distance_lines_instance(DRWPass *pass, struct GPUBatch *geom, eDRW_ShaderSlot shader_slot)
 {
-	GPUShader *sh_inst = GPU_shader_get_builtin_shader(GPU_SHADER_DISTANCE_LINES);
+	GPUShader *sh_inst = DRW_shader_get_builtin_shader(GPU_SHADER_DISTANCE_LINES, shader_slot);
 	static float point_size = 4.0f;
 
 	DRW_shgroup_instance_format(g_formats.instance_distance_lines, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
-		{"start",               DRW_ATTRIB_FLOAT, 1},
-		{"end",                 DRW_ATTRIB_FLOAT, 1},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 3},
+		{"start",               DRW_ATTR_FLOAT, 1},
+		{"end",                 DRW_ATTR_FLOAT, 1},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_distance_lines);
 	DRW_shgroup_uniform_float(grp, "size", &point_size, 1);
-
+	if (shader_slot == DRW_SHADER_SLOT_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
-DRWShadingGroup *shgroup_spot_instance(DRWPass *pass, struct GPUBatch *geom)
+DRWShadingGroup *shgroup_spot_instance(DRWPass *pass, struct GPUBatch *geom, eDRW_ShaderSlot shader_slot)
 {
-	GPUShader *sh_inst = GPU_shader_get_builtin_shader(GPU_SHADER_INSTANCE_EDGES_VARIYING_COLOR);
+	GPUShader *sh_inst = DRW_shader_get_builtin_shader(GPU_SHADER_INSTANCE_EDGES_VARIYING_COLOR, shader_slot);
 	static const int True = true;
 	static const int False = false;
 
 	DRW_shgroup_instance_format(g_formats.instance_spot, {
-		{"color",               DRW_ATTRIB_FLOAT, 3},
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16}
+		{"color",               DRW_ATTR_FLOAT, 3},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(sh_inst, pass, geom, g_formats.instance_spot);
 	DRW_shgroup_uniform_bool(grp, "drawFront", &False, 1);
 	DRW_shgroup_uniform_bool(grp, "drawBack", &False, 1);
 	DRW_shgroup_uniform_bool(grp, "drawSilhouette", &True, 1);
-
+	if (shader_slot == DRW_SHADER_SLOT_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
@@ -608,8 +616,8 @@ DRWShadingGroup *shgroup_instance_bone_axes(DRWPass *pass)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_color, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"color",               DRW_ATTRIB_FLOAT, 4}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"color",               DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -631,10 +639,10 @@ DRWShadingGroup *shgroup_instance_bone_envelope_outline(DRWPass *pass)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_envelope_outline, {
-		{"headSphere",           DRW_ATTRIB_FLOAT, 4},
-		{"tailSphere",           DRW_ATTRIB_FLOAT, 4},
-		{"outlineColorSize",     DRW_ATTRIB_FLOAT, 4},
-		{"xAxis",                DRW_ATTRIB_FLOAT, 3}
+		{"headSphere",           DRW_ATTR_FLOAT, 4},
+		{"tailSphere",           DRW_ATTR_FLOAT, 4},
+		{"outlineColorSize",     DRW_ATTR_FLOAT, 4},
+		{"xAxis",                DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -656,9 +664,9 @@ DRWShadingGroup *shgroup_instance_bone_envelope_distance(DRWPass *pass)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_envelope_distance, {
-		{"headSphere",           DRW_ATTRIB_FLOAT, 4},
-		{"tailSphere",           DRW_ATTRIB_FLOAT, 4},
-		{"xAxis",                DRW_ATTRIB_FLOAT, 3}
+		{"headSphere",           DRW_ATTR_FLOAT, 4},
+		{"tailSphere",           DRW_ATTR_FLOAT, 4},
+		{"xAxis",                DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -679,11 +687,11 @@ DRWShadingGroup *shgroup_instance_bone_envelope_solid(DRWPass *pass, bool transp
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_envelope, {
-		{"headSphere",           DRW_ATTRIB_FLOAT, 4},
-		{"tailSphere",           DRW_ATTRIB_FLOAT, 4},
-		{"boneColor",            DRW_ATTRIB_FLOAT, 3},
-		{"stateColor",           DRW_ATTRIB_FLOAT, 3},
-		{"xAxis",                DRW_ATTRIB_FLOAT, 3}
+		{"headSphere",           DRW_ATTR_FLOAT, 4},
+		{"tailSphere",           DRW_ATTR_FLOAT, 4},
+		{"boneColor",            DRW_ATTR_FLOAT, 3},
+		{"stateColor",           DRW_ATTR_FLOAT, 3},
+		{"xAxis",                DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -705,9 +713,9 @@ DRWShadingGroup *shgroup_instance_mball_handles(DRWPass *pass)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_mball_handles, {
-		{"ScaleTranslationMatrix",  DRW_ATTRIB_FLOAT, 12},
-		{"radius",                  DRW_ATTRIB_FLOAT, 1},
-		{"color",                   DRW_ATTRIB_FLOAT, 3}
+		{"ScaleTranslationMatrix",  DRW_ATTR_FLOAT, 12},
+		{"radius",                  DRW_ATTR_FLOAT, 1},
+		{"color",                   DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -732,8 +740,8 @@ DRWShadingGroup *shgroup_instance_bone_shape_outline(DRWPass *pass, struct GPUBa
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_outline, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"outlineColorSize",    DRW_ATTRIB_FLOAT, 4}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"outlineColorSize",    DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -754,9 +762,9 @@ DRWShadingGroup *shgroup_instance_bone_shape_solid(DRWPass *pass, struct GPUBatc
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"boneColor",            DRW_ATTRIB_FLOAT, 3},
-		{"stateColor",           DRW_ATTRIB_FLOAT, 3}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"boneColor",            DRW_ATTR_FLOAT, 3},
+		{"stateColor",           DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -777,9 +785,9 @@ DRWShadingGroup *shgroup_instance_bone_sphere_solid(DRWPass *pass, bool transp)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"boneColor",           DRW_ATTRIB_FLOAT, 3},
-		{"stateColor",          DRW_ATTRIB_FLOAT, 3}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"boneColor",           DRW_ATTR_FLOAT, 3},
+		{"stateColor",          DRW_ATTR_FLOAT, 3}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -801,8 +809,8 @@ DRWShadingGroup *shgroup_instance_bone_sphere_outline(DRWPass *pass)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_outline, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"outlineColorSize",    DRW_ATTRIB_FLOAT, 4}
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"outlineColorSize",    DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -824,12 +832,12 @@ DRWShadingGroup *shgroup_instance_bone_stick(DRWPass *pass)
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_stick, {
-		{"boneStart", DRW_ATTRIB_FLOAT, 3},
-		{"boneEnd",   DRW_ATTRIB_FLOAT, 3},
-		{"wireColor", DRW_ATTRIB_FLOAT, 4}, /* TODO port theses to uchar color */
-		{"boneColor", DRW_ATTRIB_FLOAT, 4},
-		{"headColor", DRW_ATTRIB_FLOAT, 4},
-		{"tailColor", DRW_ATTRIB_FLOAT, 4}
+		{"boneStart", DRW_ATTR_FLOAT, 3},
+		{"boneEnd",   DRW_ATTR_FLOAT, 3},
+		{"wireColor", DRW_ATTR_FLOAT, 4}, /* TODO port theses to uchar color */
+		{"boneColor", DRW_ATTR_FLOAT, 4},
+		{"headColor", DRW_ATTR_FLOAT, 4},
+		{"tailColor", DRW_ATTR_FLOAT, 4}
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -852,10 +860,10 @@ struct DRWShadingGroup *shgroup_instance_bone_dof(struct DRWPass *pass, struct G
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_dof, {
-		{"InstanceModelMatrix", DRW_ATTRIB_FLOAT, 16},
-		{"color",               DRW_ATTRIB_FLOAT, 4},
-		{"amin",                DRW_ATTRIB_FLOAT, 2},
-		{"amax",                DRW_ATTRIB_FLOAT, 2},
+		{"InstanceModelMatrix", DRW_ATTR_FLOAT, 16},
+		{"color",               DRW_ATTR_FLOAT, 4},
+		{"amin",                DRW_ATTR_FLOAT, 2},
+		{"amax",                DRW_ATTR_FLOAT, 2},
 	});
 
 	DRWShadingGroup *grp = DRW_shgroup_instance_create(
