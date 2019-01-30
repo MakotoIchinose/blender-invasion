@@ -1,7 +1,5 @@
 # Apache License, Version 2.0
 
-# ./blender.bin --debug-events-simulate --python release/scripts/templates_py/debug_events_simulate.py
-
 import bpy
 event_types = tuple(
     e.identifier.lower()

@@ -270,7 +270,7 @@ static int bpy_app_debug_set__only_disable(PyObject *UNUSED(self), PyObject *val
 	const int param = PyObject_IsTrue(value);
 	if (param) {
 		PyErr_SetString(PyExc_ValueError, "This bpy.app.debug option can only be disabled");
-		return -1
+		return -1;
 	}
 	return bpy_app_debug_set(NULL, value, closure);
 }
