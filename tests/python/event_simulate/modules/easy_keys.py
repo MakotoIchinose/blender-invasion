@@ -3,10 +3,12 @@
 # ./blender.bin --debug-events-simulate --python release/scripts/templates_py/debug_events_simulate.py
 
 import bpy
-from bpy import context
-win = bpy.context.window
+event_types = tuple(
+    e.identifier.lower()
+    for e in bpy.types.Event.bl_rna.properties["type"].enum_items_static
+)
+del bpy
 
-event_types = tuple(e.identifier.lower() for e in bpy.types.Event.bl_rna.properties["type"].enum_items_static)
 # We don't normally care about which one.
 event_types_alias = {
     "ctrl": "left_ctrl",
