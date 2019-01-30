@@ -1260,7 +1260,7 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(
 		if (id_node_from != id_node_to) {
 			ComponentKey cow_key(id_node_to->id_orig,
 			                     DEG_NODE_TYPE_COPY_ON_WRITE);
-			add_relation(cow_key, adt_key, "Target CoW -> Animation", true);
+			add_relation(cow_key, adt_key, "Animated CoW -> Animation", true);
 		}
 	}
 }
@@ -1443,8 +1443,8 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
 		}
 	}
 	else if (rna_path != NULL && rna_path[0] != '\0') {
-		RNAPathKey target_key(id, rna_path);
-		if (RNA_pointer_is_null(&target_key.ptr)) {
+		RNAPathKey property_key(id, rna_path);
+		if (RNA_pointer_is_null(&property_key.ptr)) {
 			/* TODO(sergey): This would only mean that driver is broken.
 			 * so we can't create relation anyway. However, we need to avoid
 			 * adding drivers which are known to be buggy to a dependency
@@ -1452,7 +1452,7 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
 			 */
 			return;
 		}
-		add_relation(driver_key, target_key, "Driver -> Target");
+		add_relation(driver_key, property_key, "Driver -> Driven Property");
 		/* Similar to the case with f-curves, driver might drive a nested
 		 * datablock, which means driver execution should wait for that
 		 * datablock to be copied.
@@ -1467,20 +1467,20 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
 					                     DEG_NODE_TYPE_COPY_ON_WRITE);
 					add_relation(cow_key,
 					             driver_key,
-					             "Target CoW -> Driver",
+					             "Driven CoW -> Driver",
 					             true);
 				}
 			}
 		}
-		if (target_key.prop != NULL &&
-		    RNA_property_is_idprop(target_key.prop))
+		if (property_key.prop != NULL &&
+		    RNA_property_is_idprop(property_key.prop))
 		{
 			OperationKey parameters_key(id,
 			                            DEG_NODE_TYPE_PARAMETERS,
 			                            DEG_OPCODE_PARAMETERS_EVAL);
-			add_relation(target_key,
+			add_relation(property_key,
 			             parameters_key,
-			             "Driver Target -> Properties");
+			             "Driven Property -> Properties");
 		}
 	}
 }
@@ -1622,7 +1622,7 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
 	add_relation(time_src_key, init_key, "TimeSrc -> Rigidbody Reset/Rebuild (Optional)");
 
 	/* objects - simulation participants */
-	if (rbw->group) {
+	if (rbw->group != NULL) {
 		build_collection(NULL, NULL, rbw->group);
 
 		FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(rbw->group, object)
@@ -1684,9 +1684,8 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
 		}
 		FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
 	}
-
-	/* constraints */
-	if (rbw->constraints) {
+	/* Constraints. */
+	if (rbw->constraints != NULL) {
 		FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(rbw->constraints, object)
 		{
 			RigidBodyCon *rbc = object->rigidbody_constraint;
@@ -1694,19 +1693,19 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
 				/* When either ob1 or ob2 is NULL, the constraint doesn't work. */
 				continue;
 			}
-
-			/* final result of the constraint object's transform controls how the
-			 * constraint affects the physics sim for these objects
-			 */
+			/* Make sure indirectly linked objects are fully built. */
+			build_object(NULL, object);
+			build_object(NULL, rbc->ob1);
+			build_object(NULL, rbc->ob2);
+			/* final result of the constraint object's transform controls how
+			 * the constraint affects the physics sim for these objects. */
 			ComponentKey trans_key(&object->id, DEG_NODE_TYPE_TRANSFORM);
 			OperationKey ob1_key(&rbc->ob1->id, DEG_NODE_TYPE_TRANSFORM, DEG_OPCODE_RIGIDBODY_TRANSFORM_COPY);
 			OperationKey ob2_key(&rbc->ob2->id, DEG_NODE_TYPE_TRANSFORM, DEG_OPCODE_RIGIDBODY_TRANSFORM_COPY);
-
-			/* - constrained-objects sync depends on the constraint-holder */
+			/* Constrained-objects sync depends on the constraint-holder. */
 			add_relation(trans_key, ob1_key, "RigidBodyConstraint -> RBC.Object_1");
 			add_relation(trans_key, ob2_key, "RigidBodyConstraint -> RBC.Object_2");
-
-			/* - ensure that sim depends on this constraint's transform */
+			/* Ensure that sim depends on this constraint's transform. */
 			add_relation(trans_key, sim_key, "RigidBodyConstraint Transform -> RB Simulation");
 		}
 		FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
@@ -1733,32 +1732,28 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 	/* Particle systems. */
 	LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
 		ParticleSettings *part = psys->part;
-
 		/* Build particle settings relations.
-		 *
-		 * NOTE: The call itself ensures settings are only build once.
-		 */
+		 * NOTE: The call itself ensures settings are only build once. */
 		build_particle_settings(part);
-
 		/* This particle system. */
 		OperationKey psys_key(&object->id,
 		                      DEG_NODE_TYPE_PARTICLE_SYSTEM,
 		                      DEG_OPCODE_PARTICLE_SYSTEM_EVAL,
 		                      psys->name);
-
 		/* Update particle system when settings changes. */
 		OperationKey particle_settings_key(&part->id,
 		                                   DEG_NODE_TYPE_PARTICLE_SETTINGS,
 		                                   DEG_OPCODE_PARTICLE_SETTINGS_EVAL);
-		add_relation(particle_settings_key, eval_init_key, "Particle Settings Change");
+		add_relation(particle_settings_key,
+		             eval_init_key,
+		             "Particle Settings Change");
 		add_relation(eval_init_key, psys_key, "Init -> PSys");
 		add_relation(psys_key, eval_done_key, "PSys -> Done");
 		/* TODO(sergey): Currently particle update is just a placeholder,
 		 * hook it to the ubereval node so particle system is getting updated
-		 * on playback.
-		 */
+		 * on playback. */
 		add_relation(psys_key, obdata_ubereval_key, "PSys -> UberEval");
-		/* Collisions */
+		/* Collisions. */
 		if (part->type != PART_HAIR) {
 			add_particle_collision_relations(psys_key,
 			                                 object,
@@ -1766,8 +1761,8 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 			                                 "Particle Collision");
 		}
 		else if ((psys->flag & PSYS_HAIR_DYNAMICS) &&
-		         psys->clmd != NULL &&
-		         psys->clmd->coll_parms != NULL)
+		          psys->clmd != NULL &&
+		          psys->clmd->coll_parms != NULL)
 		{
 			add_particle_collision_relations(psys_key,
 			                                 object,
@@ -1782,7 +1777,7 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 		                                  part->type == PART_HAIR,
 		                                  "Particle Field");
 		/* Boids .*/
-		if (part->boids) {
+		if (part->boids != NULL) {
 			LISTBASE_FOREACH (BoidState *, state, &part->boids->states) {
 				LISTBASE_FOREACH (BoidRule *, rule, &state->rules) {
 					Object *ruleob = NULL;
@@ -1792,7 +1787,7 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 					else if (rule->type == eBoidRuleType_FollowLeader) {
 						ruleob = ((BoidRuleFollowLeader *)rule)->ob;
 					}
-					if (ruleob) {
+					if (ruleob != NULL) {
 						ComponentKey ruleob_key(&ruleob->id,
 						                        DEG_NODE_TYPE_TRANSFORM);
 						add_relation(ruleob_key, psys_key, "Boid Rule");
@@ -1800,6 +1795,24 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 				}
 			}
 		}
+		/* Keyed particle targets. */
+		if (part->phystype == PART_PHYS_KEYED) {
+			LISTBASE_FOREACH (ParticleTarget *, particle_target, &psys->targets) {
+				if (particle_target->ob == NULL ||
+				    particle_target->ob == object)
+				{
+					continue;
+				}
+				/* Make sure target object is pulled into the graph. */
+				build_object(NULL, particle_target->ob);
+				/* Use geometry component, since that's where particles are
+				 * actually evaluated. */
+				ComponentKey target_key(&particle_target->ob->id,
+				                        DEG_NODE_TYPE_GEOMETRY);
+				add_relation(target_key, psys_key, "Keyed Target");
+			}
+		}
+		/* Visualization. */
 		switch (part->ren_as) {
 			case PART_DRAW_OB:
 				if (part->dup_ob != NULL) {
@@ -1821,13 +1834,11 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 				break;
 		}
 	}
-
 	/* Particle depends on the object transform, so that channel is to be ready
 	 * first.
 	 *
 	 * TODO(sergey): This relation should be altered once real granular update
-	 * is implemented.
-	 */
+	 * is implemented. */
 	ComponentKey transform_key(&object->id, DEG_NODE_TYPE_TRANSFORM);
 	add_relation(transform_key, obdata_ubereval_key, "Particle Eval");
 }

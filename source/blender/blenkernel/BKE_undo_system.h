@@ -49,6 +49,11 @@ UNDO_REF_ID_TYPE(Text);
 typedef struct UndoStack {
 	ListBase         steps;
 	struct UndoStep *step_active;
+	/**
+	 * The last memfile state read, used so we can be sure the names from the
+	 * library state matches the state an undo step was written in.
+	 */
+	struct UndoStep *step_active_memfile;
 
 	/**
 	 * Some undo systems require begin/end, see: #UndoType.step_encode_init
@@ -68,6 +73,8 @@ typedef struct UndoStep {
 	size_t data_size;
 	/** Users should never see this step (only use for internal consistency). */
 	bool skip;
+	/** Some situations require the global state to be stored, edge cases when exiting modes. */
+	bool use_memfile_step;
 	/* Over alloc 'type->struct_size'. */
 } UndoStep;
 
