@@ -34,7 +34,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_rect.h"
 #include "BLI_timecode.h"
 #include "BLI_math.h"
 #include "BLI_threads.h"
@@ -86,9 +85,6 @@
 #include "IMB_imbuf_types.h"
 
 #include "GPU_shader.h"
-
-#include "BIF_gl.h"
-#include "BIF_glutil.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -152,7 +148,8 @@ static void image_buffer_rect_update(RenderJob *rj, RenderResult *rr, ImBuf *ibu
 
 	/* if renrect argument, we only refresh scanlines */
 	if (renrect) {
-		/* if (ymax == recty), rendering of layer is ready, we should not draw, other things happen... */
+		/* if (ymax == recty), rendering of layer is ready,
+		 * we should not draw, other things happen... */
 		if (rr->renlay == NULL || renrect->ymax >= rr->recty)
 			return;
 
@@ -665,8 +662,9 @@ static void render_endjob(void *rjv)
 {
 	RenderJob *rj = rjv;
 
-	/* this render may be used again by the sequencer without the active 'Render' where the callbacks
-	 * would be re-assigned. assign dummy callbacks to avoid referencing freed renderjobs bug [#24508] */
+	/* this render may be used again by the sequencer without the active
+	 * 'Render' where the callbacks would be re-assigned. assign dummy callbacks
+	 * to avoid referencing freed renderjobs bug T24508. */
 	RE_InitRenderCB(rj->re);
 
 	if (rj->main != G_MAIN)
@@ -896,7 +894,7 @@ static int screen_render_invoke(bContext *C, wmOperator *op, const wmEvent *even
 	WM_cursor_wait(1);
 
 	/* flush sculpt and editmode changes */
-	ED_editors_flush_edits(C, true);
+	ED_editors_flush_edits(bmain, true);
 
 	/* cleanup sequencer caches before starting user triggered render.
 	 * otherwise, invalidated cache entries can make their way into

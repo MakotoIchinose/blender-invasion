@@ -36,12 +36,12 @@
 #include "DNA_ID.h"
 #include "DNA_color_types.h"  /* for color management */
 
+struct GPUTexture;
+struct MovieCache;
 struct PackedFile;
+struct RenderResult;
 struct Scene;
 struct anim;
-struct MovieCache;
-struct RenderResult;
-struct GPUTexture;
 
 /* ImageUser is in Texture, in Nodes, Background Image, Image Window, .... */
 /* should be used in conjunction with an ID * to Image. */
@@ -106,7 +106,7 @@ typedef struct RenderSlot {
 enum {
 	TEXTARGET_TEXTURE_2D = 0,
 	TEXTARGET_TEXTURE_CUBE_MAP = 1,
-	TEXTARGET_COUNT = 2
+	TEXTARGET_COUNT = 2,
 };
 
 typedef struct Image {

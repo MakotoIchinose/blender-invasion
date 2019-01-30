@@ -37,18 +37,18 @@
 extern "C" {
 #endif
 
-struct Image;
 struct ImBuf;
-struct ImbFormatOptions;
-struct anim;
-struct Scene;
-struct Object;
+struct Image;
 struct ImageFormatData;
 struct ImagePool;
+struct ImbFormatOptions;
 struct Main;
-struct ReportList;
+struct Object;
 struct RenderResult;
+struct ReportList;
+struct Scene;
 struct StampData;
+struct anim;
 
 #define IMA_MAX_SPACE       64
 
@@ -147,7 +147,7 @@ struct RenderResult;
 enum {
 	IMA_GENTYPE_BLANK = 0,
 	IMA_GENTYPE_GRID = 1,
-	IMA_GENTYPE_GRID_COLOR = 2
+	IMA_GENTYPE_GRID_COLOR = 2,
 };
 
 /* ima->ok */

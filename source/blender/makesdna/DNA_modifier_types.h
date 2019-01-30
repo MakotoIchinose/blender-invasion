@@ -34,6 +34,7 @@
 
 struct Mesh;
 struct Scene;
+struct Subdiv;
 
 typedef enum ModifierType {
 	eModifierType_None              = 0,
@@ -167,7 +168,10 @@ typedef struct SubsurfModifierData {
 	short quality;
 	short pad[2];
 
+	/* TODO(sergey): Get rid of those with the old CCG subdivision code. */
 	void *emCache, *mCache;
+	/* Cached subdivision surface descriptor, with topology and settings. */
+	struct Subdiv *subdiv;
 } SubsurfModifierData;
 
 typedef struct LatticeModifierData {
@@ -380,12 +384,18 @@ typedef struct BevelModifierData {
 	short mat;
 	short edge_flags;
 	short face_str_mode;
+	/* patterns to use for mitering non-reflex and reflex miter edges */
+	short miter_inner;
+	short miter_outer;
 	short pad2;
 	/** Controls profile shape (0->1, .5 is round). */
 	float profile;
-	/* if the MOD_BEVEL_ANGLE is set, this will be how "sharp" an edge must be before it gets beveled */
+	/** if the MOD_BEVEL_ANGLE is set,
+	 * this will be how "sharp" an edge must be before it gets beveled */
 	float bevel_angle;
-	/* if the MOD_BEVEL_VWEIGHT option is set, this will be the name of the vert group, MAX_VGROUP_NAME */
+	float spread;
+	/** if the MOD_BEVEL_VWEIGHT option is set,
+	 * this will be the name of the vert group, MAX_VGROUP_NAME */
 	char defgrp_name[64];
 	struct BevelModNorEditData clnordata;
 } BevelModifierData;
@@ -431,6 +441,13 @@ enum {
 	MOD_BEVEL_FACE_STRENGTH_NEW,
 	MOD_BEVEL_FACE_STRENGTH_AFFECTED,
 	MOD_BEVEL_FACE_STRENGTH_ALL,
+};
+
+/* BevelModifier->miter_inner and ->miter_outer */
+enum {
+	MOD_BEVEL_MITER_SHARP,
+	MOD_BEVEL_MITER_PATCH,
+	MOD_BEVEL_MITER_ARC,
 };
 
 typedef struct SmokeModifierData {
@@ -943,6 +960,8 @@ typedef struct MultiresModifierData {
 	short quality;
 	short uv_smooth;
 	short pad2[2];
+	struct Subdiv *subdiv;
+	void *pad3;
 } MultiresModifierData;
 
 typedef enum {
@@ -980,8 +999,8 @@ typedef struct ShrinkwrapModifierData {
 	/** Axis to project over. */
 	char  projAxis;
 
-	/* If using projection over vertex normal this controls the level of subsurface that must be done
-	 * before getting the vertex coordinates and normal
+	/** If using projection over vertex normal this controls the level of subsurface that must be
+	 * done before getting the vertex coordinates and normal
 	 */
 	char subsurfLevels;
 
@@ -998,32 +1017,33 @@ enum {
 
 /* Shrinkwrap->shrinkMode */
 enum {
-	/* Move vertex to the surface of the target object (keepDist towards original position) */
+	/** Move vertex to the surface of the target object (keepDist towards original position) */
 	MOD_SHRINKWRAP_ON_SURFACE      = 0,
-	/* Move the vertex inside the target object; don't change if already inside */
+	/** Move the vertex inside the target object; don't change if already inside */
 	MOD_SHRINKWRAP_INSIDE          = 1,
-	/* Move the vertex outside the target object; don't change if already outside */
+	/** Move the vertex outside the target object; don't change if already outside */
 	MOD_SHRINKWRAP_OUTSIDE         = 2,
-	/* Move vertex to the surface of the target object, with keepDist towards the outside */
+	/** Move vertex to the surface of the target object, with keepDist towards the outside */
 	MOD_SHRINKWRAP_OUTSIDE_SURFACE = 3,
-	/* Move vertex to the surface of the target object, with keepDist along the normal */
+	/** Move vertex to the surface of the target object, with keepDist along the normal */
 	MOD_SHRINKWRAP_ABOVE_SURFACE   = 4,
 };
 
 /* Shrinkwrap->shrinkOpts */
 enum {
-	/* allow shrinkwrap to move the vertex in the positive direction of axis */
+	/** allow shrinkwrap to move the vertex in the positive direction of axis */
 	MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR = (1 << 0),
-	/* allow shrinkwrap to move the vertex in the negative direction of axis */
+	/** allow shrinkwrap to move the vertex in the negative direction of axis */
 	MOD_SHRINKWRAP_PROJECT_ALLOW_NEG_DIR = (1 << 1),
 
-	/* ignore vertex moves if a vertex ends projected on a front face of the target */
+	/** ignore vertex moves if a vertex ends projected on a front face of the target */
 	MOD_SHRINKWRAP_CULL_TARGET_FRONTFACE = (1 << 3),
-	/* ignore vertex moves if a vertex ends projected on a back face of the target */
+	/** ignore vertex moves if a vertex ends projected on a back face of the target */
 	MOD_SHRINKWRAP_CULL_TARGET_BACKFACE  = (1 << 4),
 
 #ifdef DNA_DEPRECATED_ALLOW
-	MOD_SHRINKWRAP_KEEP_ABOVE_SURFACE    = (1 << 5),  /* distance is measure to the front face of the target */
+	/** distance is measure to the front face of the target */
+	MOD_SHRINKWRAP_KEEP_ABOVE_SURFACE    = (1 << 5),
 #endif
 
 	MOD_SHRINKWRAP_INVERT_VGROUP         = (1 << 6),
@@ -1034,7 +1054,8 @@ enum {
 
 /* Shrinkwrap->projAxis */
 enum {
-	MOD_SHRINKWRAP_PROJECT_OVER_NORMAL   = 0,        /* projection over normal is used if no axis is selected */
+	/** projection over normal is used if no axis is selected */
+	MOD_SHRINKWRAP_PROJECT_OVER_NORMAL   = 0,
 	MOD_SHRINKWRAP_PROJECT_OVER_X_AXIS   = (1 << 0),
 	MOD_SHRINKWRAP_PROJECT_OVER_Y_AXIS   = (1 << 1),
 	MOD_SHRINKWRAP_PROJECT_OVER_Z_AXIS   = (1 << 2),
@@ -1095,7 +1116,8 @@ typedef struct SolidifyModifierData {
 	float offset;
 	/** Midpoint of the offset . */
 	float offset_fac;
-	/* factor for the minimum weight to use when vgroups are used, avoids 0.0 weights giving duplicate geometry */
+	/** factor for the minimum weight to use when vgroups are used,
+	 * avoids 0.0 weights giving duplicate geometry */
 	float offset_fac_vg;
 	/** Clamp offset based on surrounding geometry. */
 	float offset_clamp;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Blender Foundation.
+ * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  * Contributor(s): Blender Institute
+ *
+ * ***** END GPL LICENSE BLOCK *****
  *
  */
 
@@ -35,11 +38,9 @@
 
 #include "BKE_colortools.h"
 #include "BKE_global.h"
-#include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_workspace.h"
 
 #include "draw_manager.h"
 #include "DNA_camera_types.h"
@@ -50,7 +51,6 @@
 #include "ED_space_api.h"
 #include "ED_screen.h"
 #include "ED_gpencil.h"
-#include "ED_particle.h"
 #include "ED_view3d.h"
 
 #include "GPU_draw.h"
@@ -66,7 +66,6 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "UI_interface.h"
 #include "UI_resources.h"
 
 #include "WM_api.h"
@@ -79,6 +78,7 @@
 #include "draw_cache_impl.h"
 
 #include "draw_mode_engines.h"
+#include "draw_builtin_shader.h"
 #include "engines/eevee/eevee_engine.h"
 #include "engines/basic/basic_engine.h"
 #include "engines/workbench/workbench_engine.h"
@@ -103,6 +103,17 @@ extern struct GPUUniformBuffer *view_ubo; /* draw_manager_exec.c */
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
 	memset(dst, 0x0, offsetof(DRWManager, gl_context));
+
+	/* Maybe not the best place for this. */
+	if (!DST.uniform_names.buffer) {
+		DST.uniform_names.buffer = MEM_callocN(DRW_UNIFORM_BUFFER_NAME, "Name Buffer");
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	else if (DST.uniform_names.buffer_len > DRW_UNIFORM_BUFFER_NAME) {
+		DST.uniform_names.buffer = MEM_reallocN(DST.uniform_names.buffer, DRW_UNIFORM_BUFFER_NAME);
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	DST.uniform_names.buffer_ofs = 0;
 }
 
 /* This function is used to reset draw manager to a state
@@ -145,7 +156,6 @@ struct DRWTextStore *DRW_text_cache_ensure(void)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Settings
  * \{ */
 
@@ -248,7 +258,6 @@ struct DupliObject *DRW_object_get_dupli(const Object *UNUSED(ob))
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Color Management
  * \{ */
 
@@ -351,7 +360,6 @@ void DRW_transform_none(GPUTexture *tex)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Multisample Resolve
  * \{ */
 
@@ -423,7 +431,6 @@ void DRW_multisamples_resolve(GPUTexture *src_depth, GPUTexture *src_color, bool
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Viewport (DRW_viewport)
  * \{ */
 
@@ -528,6 +535,11 @@ static void drw_context_state_init(void)
 	}
 	else {
 		DST.draw_ctx.object_pose = NULL;
+	}
+
+	DST.draw_ctx.shader_slot = DRW_SHADER_SLOT_DEFAULT;
+	if (DST.draw_ctx.rv3d && DST.draw_ctx.rv3d->rflag & RV3D_CLIPPING) {
+		DST.draw_ctx.shader_slot = DRW_SHADER_SLOT_CLIPPED;
 	}
 }
 
@@ -788,7 +800,6 @@ void **DRW_view_layer_engine_data_ensure(DrawEngineType *engine_type, void (*cal
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Draw Data (DRW_drawdata)
  * \{ */
 
@@ -822,8 +833,9 @@ static bool id_type_can_have_drawdata(const short id_type)
 static bool id_can_have_drawdata(const ID *id)
 {
 	/* sanity check */
-	if (id == NULL)
+	if (id == NULL) {
 		return false;
+	}
 
 	return id_type_can_have_drawdata(GS(id->name));
 }
@@ -841,16 +853,18 @@ DrawDataList *DRW_drawdatalist_from_id(ID *id)
 		IdDdtTemplate *idt = (IdDdtTemplate *)id;
 		return &idt->drawdata;
 	}
-	else
+	else {
 		return NULL;
+	}
 }
 
 DrawData *DRW_drawdata_get(ID *id, DrawEngineType *engine_type)
 {
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
-	if (drawdata == NULL)
+	if (drawdata == NULL) {
 		return NULL;
+	}
 
 	LISTBASE_FOREACH(DrawData *, dd, drawdata) {
 		if (dd->engine_type == engine_type) {
@@ -878,7 +892,7 @@ DrawData *DRW_drawdata_ensure(
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
 	/* Allocate new data. */
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		/* NOTE: data is not persistent in this case. It is reset each redraw. */
 		BLI_assert(free_cb == NULL); /* No callback allowed. */
 		/* Round to sizeof(float) for DRW_instance_data_request(). */
@@ -910,8 +924,9 @@ void DRW_drawdata_free(ID *id)
 {
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
-	if (drawdata == NULL)
+	if (drawdata == NULL) {
 		return;
+	}
 
 	LISTBASE_FOREACH(DrawData *, dd, drawdata) {
 		if (dd->free != NULL) {
@@ -925,11 +940,12 @@ void DRW_drawdata_free(ID *id)
 /* Unlink (but don't free) the drawdata from the DrawDataList if the ID is an OB from dupli. */
 static void drw_drawdata_unlink_dupli(ID *id)
 {
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
-		if (drawdata == NULL)
+		if (drawdata == NULL) {
 			return;
+		}
 
 		BLI_listbase_clear((ListBase *)drawdata);
 	}
@@ -939,7 +955,6 @@ static void drw_drawdata_unlink_dupli(ID *id)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Rendering (DRW_engines)
  * \{ */
 
@@ -1325,7 +1340,6 @@ static uint DRW_engines_get_hash(void)
 }
 
 /* -------------------------------------------------------------------- */
-
 /** \name View Update
  * \{ */
 
@@ -1384,7 +1398,6 @@ void DRW_notify_view_update(const DRWUpdateContext *update_ctx)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Main Draw Loops (DRW_draw)
  * \{ */
 
@@ -1752,7 +1765,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
 	drw_viewport_var_init();
 
 	/* set default viewport */
-	gpuPushAttrib(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
+	gpuPushAttr(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
 	glDisable(GL_SCISSOR_TEST);
 	glViewport(0, 0, size[0], size[1]);
 
@@ -1777,7 +1790,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
 	glDisable(GL_DEPTH_TEST);
 
 	/* Restore Drawing area. */
-	gpuPopAttrib();
+	gpuPopAttr();
 	glEnable(GL_SCISSOR_TEST);
 	GPU_framebuffer_restore();
 
@@ -2134,7 +2147,7 @@ void DRW_draw_select_loop(
 				    (object_type_exclude_select & (1 << ob->type)) == 0)
 				{
 					if (object_filter_fn != NULL) {
-						if (ob->base_flag & BASE_FROMDUPLI) {
+						if (ob->base_flag & BASE_FROM_DUPLI) {
 							/* pass (use previous filter_exclude value) */
 						}
 						else {
@@ -2146,7 +2159,7 @@ void DRW_draw_select_loop(
 					}
 
 					/* This relies on dupli instances being after their instancing object. */
-					if ((ob->base_flag & BASE_FROMDUPLI) == 0) {
+					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						Object *ob_orig = DEG_get_original_object(ob);
 						DRW_select_load_id(ob_orig->select_color);
 					}
@@ -2380,7 +2393,6 @@ void DRW_draw_depth_loop(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Draw Manager State (DRW_state)
  * \{ */
 
@@ -2486,7 +2498,6 @@ bool DRW_state_draw_background(void)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Context State (DRW_context_state)
  * \{ */
 
@@ -2499,7 +2510,6 @@ const DRWContextState *DRW_context_state_get(void)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Init/Exit (DRW_engines)
  * \{ */
 
@@ -2580,9 +2590,6 @@ void DRW_engines_register(void)
 }
 
 extern struct GPUVertFormat *g_pos_format; /* draw_shgroup.c */
-extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
-extern struct GPUTexture *globals_ramp; /* draw_common.c */
-extern struct GPUTexture *globals_weight_ramp; /* draw_common.c */
 void DRW_engines_free(void)
 {
 	DRW_opengl_context_enable();
@@ -2594,6 +2601,7 @@ void DRW_engines_free(void)
 	DRW_shape_cache_free();
 	DRW_stats_free();
 	DRW_globals_free();
+	DRW_shader_free_builtin_shaders();
 
 	DrawEngineType *next;
 	for (DrawEngineType *type = DRW_engines.first; type; type = next) {
@@ -2605,16 +2613,18 @@ void DRW_engines_free(void)
 		}
 	}
 
-	DRW_UBO_FREE_SAFE(globals_ubo);
+	DRW_UBO_FREE_SAFE(G_draw.block_ubo);
 	DRW_UBO_FREE_SAFE(view_ubo);
-	DRW_TEXTURE_FREE_SAFE(globals_ramp);
-	DRW_TEXTURE_FREE_SAFE(globals_weight_ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
 	MEM_SAFE_FREE(g_pos_format);
 
 	MEM_SAFE_FREE(DST.RST.bound_texs);
 	MEM_SAFE_FREE(DST.RST.bound_tex_slots);
 	MEM_SAFE_FREE(DST.RST.bound_ubos);
 	MEM_SAFE_FREE(DST.RST.bound_ubo_slots);
+
+	MEM_SAFE_FREE(DST.uniform_names.buffer);
 
 	DRW_opengl_context_disable();
 }

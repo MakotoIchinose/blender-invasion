@@ -34,9 +34,9 @@
 
 #include "DNA_listBase.h"
 
-struct bAction;
 struct Ipo;
 struct Object;
+struct bAction;
 
 /* simple uniform modifier structure, assumed it can hold all type info */
 typedef struct bActionModifier {
@@ -115,7 +115,7 @@ typedef enum eActStrip_Flag {
 	ACTSTRIP_CYCLIC_USEX	= (1<<8),
 	ACTSTRIP_CYCLIC_USEY	= (1<<9),
 	ACTSTRIP_CYCLIC_USEZ	= (1<<10),
-	ACTSTRIP_AUTO_BLENDS	= (1<<11)
+	ACTSTRIP_AUTO_BLENDS	= (1<<11),
 } eActStrip_Flag;
 
 #endif

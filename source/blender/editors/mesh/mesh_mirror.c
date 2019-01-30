@@ -29,7 +29,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
-#include "BLI_bitmap.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -317,7 +316,8 @@ void ED_mesh_mirrtopo_init(
 	if (em) {
 		BMVert **vtable = em->bm->vtable;
 		for (a = 1; a <= totvert; a++) {
-			/* printf("I %d %ld %d\n", (a - last), MirrTopoPairs[a].hash, MirrTopoPairs[a].v_indexs); */
+			// printf("I %d %ld %d\n",
+			//        (a - last), MirrTopoPairs[a].hash, MirrTopoPairs[a].v_indexs);
 			if ((a == totvert) || (topo_pairs[a - 1].hash != topo_pairs[a].hash)) {
 				const int match_count = a - last;
 				if (match_count == 2) {

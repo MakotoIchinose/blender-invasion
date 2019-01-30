@@ -67,7 +67,6 @@
 #include "ED_view3d.h"
 #include "ED_clip.h"
 
-#include "BIF_glutil.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -1912,6 +1911,11 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
 	Scene *scene = CTX_data_scene(C);
 	tGPsdata *p = NULL;
 
+	/* support for tablets eraser pen */
+	if (gpencil_is_tablet_eraser_active(event)) {
+		RNA_enum_set(op->ptr, "mode", GP_PAINTMODE_ERASER);
+	}
+
 	/* if try to do annotations with a gp object selected, first
 	 * unselect the object to avoid conflicts.
 	 * The solution is not perfect but we can keep running the annotations while
@@ -2370,7 +2374,8 @@ void GPENCIL_OT_annotate(wmOperatorType *ot)
 	prop = RNA_def_collection_runtime(ot->srna, "stroke", &RNA_OperatorStrokeElement, "Stroke", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-	/* NOTE: wait for input is enabled by default, so that all UI code can work properly without needing users to know about this */
+	/* NOTE: wait for input is enabled by default,
+	 * so that all UI code can work properly without needing users to know about this */
 	prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "Wait for first click instead of painting immediately");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

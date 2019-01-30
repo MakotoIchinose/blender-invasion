@@ -51,7 +51,6 @@
 #include "BLI_sys_types.h"
 #include "BLI_compiler_attrs.h"
 
-#include "BLI_alloca.h"
 #include "BLI_heap_simple.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
@@ -237,7 +236,8 @@ bool BLI_astar_graph_solve(
 		LinkData *ld;
 
 		if (BLI_BITMAP_TEST(done_nodes, node_curr_idx)) {
-			/* Might happen, because we always add nodes to heap when evaluating them, without ever removing them. */
+			/* Might happen, because we always add nodes to heap when evaluating them,
+			 * without ever removing them. */
 			continue;
 		}
 
@@ -268,8 +268,8 @@ bool BLI_astar_graph_solve(
 					prev_links[node_next_idx] = link;
 					g_costs[node_next_idx] = g_cst;
 					g_steps[node_next_idx] = g_steps[node_curr_idx] + 1;
-					/* We might have this node already in heap, but since this 'instance' will be evaluated first,
-					 * no problem. */
+					/* We might have this node already in heap, but since this 'instance'
+					 * will be evaluated first, no problem. */
 					BLI_heapsimple_insert(
 					        todo_nodes,
 					        f_cost_cb(as_graph, r_solution, link, node_curr_idx, node_next_idx, node_index_dst),

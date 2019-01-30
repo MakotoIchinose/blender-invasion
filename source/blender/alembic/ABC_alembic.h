@@ -27,12 +27,12 @@
 extern "C" {
 #endif
 
-struct bContext;
 struct CacheReader;
 struct ListBase;
 struct Mesh;
 struct Object;
 struct Scene;
+struct bContext;
 
 typedef struct AbcArchiveHandle AbcArchiveHandle;
 
@@ -58,6 +58,7 @@ struct AlembicExportParams {
 	bool normals;
 	bool vcolors;
 	bool apply_subdiv;
+	bool curves_as_mesh;
 	bool flatten_hierarchy;
 	bool visible_layers_only;
 	bool renderable_only;

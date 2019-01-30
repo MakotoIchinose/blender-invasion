@@ -51,7 +51,6 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_idcode.h"
 #include "BKE_layer.h"
@@ -2181,6 +2180,9 @@ void draw_outliner(const bContext *C)
 	/* get extents of data */
 	outliner_height(soops, &soops->tree, &sizey);
 
+	/* extend size to allow for horizontal scrollbar */
+	sizey += V2D_SCROLL_HEIGHT;
+
 	if (soops->outlinevis == SO_DATA_API) {
 		/* RNA has two columns:
 		 * - column 1 is (max_width + OL_RNA_COL_SPACEX) or
@@ -2199,7 +2201,8 @@ void draw_outliner(const bContext *C)
 		has_restrict_icons = false;
 	}
 	else {
-		/* width must take into account restriction columns (if visible) so that entries will still be visible */
+		/* width must take into account restriction columns (if visible)
+		 * so that entries will still be visible */
 		//outliner_width(soops, &soops->tree, &sizex);
 		// XXX should use outliner_width instead when te->xend will be set correctly...
 		outliner_rna_width(soops, &soops->tree, &sizex, 0);

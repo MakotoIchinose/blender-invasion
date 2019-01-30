@@ -48,7 +48,6 @@
 
 #include "BKE_mesh.h"
 
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -133,6 +132,7 @@ static const EnumPropertyItem part_hair_ren_as_items[] = {
 #ifdef RNA_RUNTIME
 
 #include "BLI_math.h"
+#include "BLI_string_utils.h"
 
 #include "BKE_boids.h"
 #include "BKE_context.h"
@@ -1793,14 +1793,14 @@ static void rna_def_particle_settings_mtex(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, texco_items);
 	RNA_def_property_ui_text(prop, "Texture Coordinates",
 	                         "Texture coordinates used to map the texture onto the background");
-	RNA_def_property_update(prop, 0, "rna_Particle_reset");
+	RNA_def_property_update(prop, 0, "rna_Particle_reset_dependency");
 
 	prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "object");
 	RNA_def_property_struct_type(prop, "Object");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Object", "Object to use for mapping with Object texture coordinates");
-	RNA_def_property_update(prop, 0, "rna_Particle_reset");
+	RNA_def_property_update(prop, 0, "rna_Particle_reset_dependency");
 
 	prop = RNA_def_property(srna, "uv_layer", PROP_STRING, PROP_NONE);
 	RNA_def_property_string_sdna(prop, NULL, "uvname");
@@ -3260,13 +3260,13 @@ static void rna_def_particle_target(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "time", PROP_FLOAT, PROP_TIME);
 	RNA_def_property_float_sdna(prop, NULL, "time");
-	RNA_def_property_range(prop, 0.0, 30000.0f); /*TODO: replace 30000 with MAXFRAMEF when available in 2.5 */
+	RNA_def_property_range(prop, 0.0, MAXFRAMEF);
 	RNA_def_property_ui_text(prop, "Time", "");
 	RNA_def_property_update(prop, 0, "rna_Particle_target_redo");
 
 	prop = RNA_def_property(srna, "duration", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "duration");
-	RNA_def_property_range(prop, 0.0, 30000.0f); /*TODO: replace 30000 with MAXFRAMEF when available in 2.5 */
+	RNA_def_property_range(prop, 0.0, MAXFRAMEF);
 	RNA_def_property_ui_text(prop, "Duration", "");
 	RNA_def_property_update(prop, 0, "rna_Particle_target_redo");
 

@@ -40,7 +40,6 @@
 
 #include "BKE_main.h"
 #include "BKE_DerivedMesh.h"
-#include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
@@ -616,7 +615,7 @@ void BKE_mesh_from_nurbs_displist(
 	cu->mat = NULL;
 	cu->totcol = 0;
 
-	/* Do not decrement ob->data usercount here, it's done at end of func with BKE_libblock_free_us() call. */
+	/* Do not decrement ob->data usercount here, it's done at end of func with BKE_id_free_us() call. */
 	ob->data = me;
 	ob->type = OB_MESH;
 
@@ -638,10 +637,10 @@ void BKE_mesh_from_nurbs_displist(
 		 * the entire scene with associated depsgraph updates, which are
 		 * problematic for renderers exporting data. */
 		id_us_min(&cu->id);
-		BKE_libblock_free(bmain, cu);
+		BKE_id_free(bmain, cu);
 	}
 	else {
-		BKE_libblock_free_us(bmain, cu);
+		BKE_id_free_us(bmain, cu);
 	}
 }
 
@@ -921,11 +920,11 @@ Mesh *BKE_mesh_new_from_object(
 			 * if it didn't the curve did not have any segments or otherwise
 			 * would have generated an empty mesh */
 			if (tmpobj->type != OB_MESH) {
-				BKE_libblock_free(bmain, tmpobj);
+				BKE_id_free(bmain, tmpobj);
 				return NULL;
 			}
 
-			BKE_libblock_free(bmain, tmpobj);
+			BKE_id_free(bmain, tmpobj);
 
 			/* XXX The curve to mesh conversion is convoluted... But essentially, BKE_mesh_from_nurbs_displist()
 			 *     already transfers the ownership of materials from the temp copy of the Curve ID to the new

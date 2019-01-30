@@ -30,7 +30,6 @@
  * Functions for dealing with append/link operators and helpers.
  */
 
-
 #include <float.h>
 #include <string.h>
 #include <ctype.h>
@@ -991,7 +990,7 @@ static void lib_relocate_do(
 		ID *old_id = item->customdata;
 
 		if (old_id->us == 0) {
-			BKE_libblock_free(bmain, old_id);
+			BKE_id_free(bmain, old_id);
 		}
 	}
 
@@ -1004,7 +1003,7 @@ static void lib_relocate_do(
 			id_next = id->next;
 			/* XXX That check may be a bit to generic/permissive? */
 			if (id->lib && (id->flag & LIB_TAG_PRE_EXISTING) && id->us == 0) {
-				BKE_libblock_free(bmain, id);
+				BKE_id_free(bmain, id);
 			}
 		}
 	}
@@ -1026,7 +1025,7 @@ static void lib_relocate_do(
 		if (lib->id.tag & LIB_TAG_DOIT) {
 			id_us_clear_real(&lib->id);
 			if (lib->id.us == 0) {
-				BKE_libblock_free(bmain, (ID *)lib);
+				BKE_id_free(bmain, (ID *)lib);
 			}
 		}
 	}

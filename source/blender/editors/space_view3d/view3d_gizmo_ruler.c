@@ -44,8 +44,6 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BIF_gl.h"
-
 #include "ED_gizmo_utils.h"
 #include "ED_gpencil.h"
 #include "ED_screen.h"
@@ -72,7 +70,6 @@
 
 #include "BLF_api.h"
 
-
 static const char *view3d_gzgt_ruler_id = "VIEW3D_GGT_ruler";
 
 
@@ -82,7 +79,7 @@ static const char *view3d_gzgt_ruler_id = "VIEW3D_GGT_ruler";
 /* Ruler Item (we can have many) */
 enum {
 	RULERITEM_USE_ANGLE = (1 << 0),  /* use protractor */
-	RULERITEM_USE_RAYCAST = (1 << 1)
+	RULERITEM_USE_RAYCAST = (1 << 1),
 };
 
 enum {

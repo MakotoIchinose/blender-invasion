@@ -44,21 +44,21 @@
 extern "C" {
 #endif
 
-struct Object;
 struct AnimData;
-struct Ipo;
 struct BoundBox;
-struct Path;
-struct Material;
-struct PartDeflect;
-struct SoftBody;
-struct FluidsimSettings;
-struct ParticleSystem;
 struct DerivedMesh;
-struct SculptSession;
-struct bGPdata;
-struct RigidBodyOb;
+struct FluidsimSettings;
 struct GpencilBatchCache;
+struct Ipo;
+struct Material;
+struct Object;
+struct PartDeflect;
+struct ParticleSystem;
+struct Path;
+struct RigidBodyOb;
+struct SculptSession;
+struct SoftBody;
+struct bGPdata;
 
 /* Vertex Groups - Name Info */
 typedef struct bDeformGroup {
@@ -259,7 +259,8 @@ typedef struct Object {
 	float obmat[4][4];
 	/** Inverse result of parent, so that object doesn't 'stick' to parent. */
 	float parentinv[4][4];
-	/** Inverse result of constraints. doesn't include effect of parent or object local transform. */
+	/** Inverse result of constraints.
+	 * doesn't include effect of parent or object local transform. */
 	float constinv[4][4];
 	/**
 	 * Inverse matrix of 'obmat' for any other use than rendering!
@@ -580,7 +581,7 @@ enum {
 enum {
 	GP_EMPTY = 0,
 	GP_STROKE = 1,
-	GP_MONKEY = 2
+	GP_MONKEY = 2,
 };
 
 /* boundtype */
@@ -612,7 +613,8 @@ enum {
 	/* NOTE: BA_HAS_RECALC_DATA can be re-used later if freed in readfile.c. */
 	// BA_HAS_RECALC_OB = (1 << 2),  /* DEPRECATED */
 	// BA_HAS_RECALC_DATA =  (1 << 3),  /* DEPRECATED */
-	BA_SNAP_FIX_DEPS_FIASCO = (1 << 2),  /* DEPRECATED, was runtime only, but was reusing an older flag. */
+	/** DEPRECATED, was runtime only, but was reusing an older flag. */
+	BA_SNAP_FIX_DEPS_FIASCO = (1 << 2),
 };
 
 	/* NOTE: this was used as a proper setting in past, so nullify before using */
@@ -629,12 +631,6 @@ enum {
 #  define OB_FLAG_DEPRECATED_11        (1 << 11)  /* cleared */
 #  define OB_FLAG_DEPRECATED_12        (1 << 12)  /* cleared */
 #endif
-
-/* controller state */
-#define OB_MAX_STATES       30
-
-/* collision masks */
-#define OB_MAX_COL_MASKS    16
 
 /* ob->restrictflag */
 enum {

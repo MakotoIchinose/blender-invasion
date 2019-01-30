@@ -45,8 +45,6 @@
 
 #include "BKE_global.h"
 
-#include "BIF_gl.h"
-
 #include "BLF_api.h"
 #ifdef WITH_INTERNATIONAL
 #  include "BLT_translation.h"
@@ -520,7 +518,8 @@ void uiStyleInit(void)
 	}
 #endif
 
-	/* XXX, this should be moved into a style, but for now best only load the monospaced font once. */
+	/* XXX, this should be moved into a style,
+	 * but for now best only load the monospaced font once. */
 	BLI_assert(blf_mono_font == -1);
 	if (U.font_path_ui_mono[0]) {
 		blf_mono_font = BLF_load_unique(U.font_path_ui_mono);

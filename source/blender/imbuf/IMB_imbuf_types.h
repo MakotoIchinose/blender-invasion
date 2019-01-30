@@ -295,9 +295,9 @@ enum {
 	/** indicates whether image on disk have premul alpha */
 	IB_alphamode_premul = 1 << 12,
 	/** if this flag is set, alpha mode would be guessed from file */
-	IB_alphamode_detect = 1 << 13 ,
+	IB_alphamode_detect = 1 << 13,
 	/** ignore alpha on load and substitute it with 1.0f */
-	IB_ignore_alpha     = 1 << 14 ,
+	IB_ignore_alpha     = 1 << 14,
 	IB_thumbnail        = 1 << 15,
 	IB_multiview        = 1 << 16,
 };
@@ -352,7 +352,7 @@ extern const char *imb_ext_image_filepath_only[];
  * \{ */
 
 enum {
-	IMB_COLORMANAGE_IS_DATA = (1 << 0)
+	IMB_COLORMANAGE_IS_DATA = (1 << 0),
 };
 
 /** \} */

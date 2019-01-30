@@ -32,11 +32,11 @@
 /* dissable holes for now, these are ifdef'd because they use more memory and cant be saved in DNA currently */
 // #define USE_BMESH_HOLES
 
-struct BMesh;
-struct BMVert;
 struct BMEdge;
-struct BMLoop;
 struct BMFace;
+struct BMLoop;
+struct BMVert;
+struct BMesh;
 
 struct MLoopNorSpaceArray;
 
@@ -265,7 +265,7 @@ enum {
 	BM_VERT = 1,
 	BM_EDGE = 2,
 	BM_LOOP = 4,
-	BM_FACE = 8
+	BM_FACE = 8,
 };
 
 typedef struct BMLoopNorEditData {

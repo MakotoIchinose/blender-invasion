@@ -40,9 +40,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 #include "BLI_math.h"
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -79,7 +77,7 @@
 
 enum {
 	GP_ARMATURE_NAME = 0,
-	GP_ARMATURE_AUTO = 1
+	GP_ARMATURE_AUTO = 1,
 };
 
 #define DEFAULT_RATIO 0.10f

@@ -210,7 +210,7 @@ static void area_draw_azone_fullscreen(short x1, short y1, short x2, short y2, f
 	 * The click_rect is the same as defined in fullscreen_click_rcti_init
 	 * Keep them both in sync */
 
-	if (G.debug_value == 1) {
+	if (G.debug_value == 101) {
 		rcti click_rect;
 		float icon_size = UI_DPI_ICON_SIZE + 7 * UI_DPI_FAC;
 
@@ -760,21 +760,21 @@ static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea 
 	    /* Bottom-left. */
 	    {sa->totrct.xmin,
 	     sa->totrct.ymin,
-	     sa->totrct.xmin + (AZONESPOT - 1),
-	     sa->totrct.ymin + (AZONESPOT - 1)},
+	     sa->totrct.xmin + AZONESPOTW,
+	     sa->totrct.ymin + AZONESPOTH},
 	    /* Bottom-right. */
-	    {sa->totrct.xmax - (AZONESPOT - 1),
+	    {sa->totrct.xmax - AZONESPOTW,
 	     sa->totrct.ymin,
 	     sa->totrct.xmax,
-	     sa->totrct.ymin + (AZONESPOT - 1)},
+	     sa->totrct.ymin + AZONESPOTH},
 	    /* Top-left. */
 	    {sa->totrct.xmin,
-	     sa->totrct.ymax - (AZONESPOT - 1),
-	     sa->totrct.xmin + (AZONESPOT - 1),
+	     sa->totrct.ymax - AZONESPOTH,
+	     sa->totrct.xmin + AZONESPOTW,
 	     sa->totrct.ymax},
 	    /* Top-right. */
-	    {sa->totrct.xmax - (AZONESPOT - 1),
-	     sa->totrct.ymax - (AZONESPOT - 1),
+	    {sa->totrct.xmax - AZONESPOTW,
+	     sa->totrct.ymax - AZONESPOTH,
 	     sa->totrct.xmax,
 	     sa->totrct.ymax}};
 

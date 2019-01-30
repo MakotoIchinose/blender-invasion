@@ -30,16 +30,13 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_listbase.h"
 
-#include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
 #include "BKE_object.h"
 #include "BKE_workspace.h"
 
@@ -150,7 +147,7 @@ WorkSpace *BKE_workspace_add(Main *bmain, const char *name)
 
 /**
  * The function that actually frees the workspace data (not workspace itself). It shouldn't be called
- * directly, instead #BKE_workspace_remove should be, which calls this through #BKE_libblock_free then.
+ * directly, instead #BKE_workspace_remove should be, which calls this through #BKE_id_free then.
  *
  * Should something like a bke_internal.h be added, this should go there!
  */
@@ -173,7 +170,7 @@ void BKE_workspace_free(WorkSpace *workspace)
 
 /**
  * Remove \a workspace by freeing itself and its data. This is a higher-level wrapper that
- * calls #BKE_workspace_free (through #BKE_libblock_free) to free the workspace data, and frees
+ * calls #BKE_workspace_free (through #BKE_id_free) to free the workspace data, and frees
  * other data-blocks owned by \a workspace and its layouts (currently that is screens only).
  *
  * Always use this to remove (and free) workspaces. Don't free non-ID workspace members here.
@@ -184,7 +181,7 @@ void BKE_workspace_remove(Main *bmain, WorkSpace *workspace)
 		layout_next = layout->next;
 		BKE_workspace_layout_remove(bmain, workspace, layout);
 	}
-	BKE_libblock_free(bmain, workspace);
+	BKE_id_free(bmain, workspace);
 }
 
 WorkSpaceInstanceHook *BKE_workspace_instance_hook_create(const Main *bmain)
@@ -247,7 +244,7 @@ void BKE_workspace_layout_remove(
         WorkSpace *workspace, WorkSpaceLayout *layout)
 {
 	id_us_min(&layout->screen->id);
-	BKE_libblock_free(bmain, layout->screen);
+	BKE_id_free(bmain, layout->screen);
 	BLI_freelinkN(&workspace->layouts, layout);
 }
 

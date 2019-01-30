@@ -37,7 +37,6 @@
 #include "BLI_linklist.h"
 #include "BLI_alloca.h"
 #include "BLI_memarena.h"
-#include "BLI_edgehash.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_utildefines_stack.h"
@@ -77,7 +76,7 @@
 typedef enum CD_UseFlag {
 	CD_DO_VERT = (1 << 0),
 	CD_DO_EDGE = (1 << 1),
-	CD_DO_LOOP = (1 << 2)
+	CD_DO_LOOP = (1 << 2),
 } CD_UseFlag;
 
 

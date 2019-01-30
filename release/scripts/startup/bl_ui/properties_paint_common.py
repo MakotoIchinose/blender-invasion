@@ -302,8 +302,11 @@ def brush_mask_texture_settings(layout, brush):
 # Share between topbar and brush panel.
 
 def brush_basic_wpaint_settings(layout, context, brush, *, compact=False):
-    row = layout.row(align=True)
-    UnifiedPaintPanel.prop_unified_weight(row, context, brush, "weight", slider=True, text="Weight")
+    capabilities = brush.weight_paint_capabilities
+
+    if capabilities.has_weight:
+        row = layout.row(align=True)
+        UnifiedPaintPanel.prop_unified_weight(row, context, brush, "weight", slider=True, text="Weight")
 
     row = layout.row(align=True)
     UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True, text="Radius")
@@ -421,10 +424,10 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row.prop(gp_settings, "fill_draw_mode", text="Boundary Draw Mode")
         row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
 
-        col = layout.column(align=True)
-        col.enabled = gp_settings.fill_draw_mode != 'STROKE'
-        col.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-        sub = col.row(align=True)
+        row = layout.column(align=True)
+        row.enabled = gp_settings.fill_draw_mode != 'STROKE'
+        row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
+        sub = layout.row(align=True)
         sub.enabled = not gp_settings.show_fill
         sub.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':

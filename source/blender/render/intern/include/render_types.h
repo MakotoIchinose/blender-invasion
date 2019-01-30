@@ -44,10 +44,10 @@
 
 #include "RE_pipeline.h"
 
+struct Main;
 struct Object;
 struct RenderEngine;
 struct ReportList;
-struct Main;
 
 /* this is handed over to threaded hiding/passes/shading engine */
 typedef struct RenderPart {
@@ -66,7 +66,7 @@ enum {
 	PART_STATUS_NONE        = 0,
 	PART_STATUS_IN_PROGRESS = 1,
 	PART_STATUS_RENDERED    = 2,
-	PART_STATUS_MERGED      = 3
+	PART_STATUS_MERGED      = 3,
 };
 
 /* controls state of render, everything that's read-only during render stage */
@@ -103,8 +103,6 @@ struct Render {
 	int partx, party;
 
 	/* Camera transform, only used by Freestyle. */
-	float viewmat[4][4], viewinv[4][4];
-	float viewmat_orig[4][4];	/* for incremental render */
 	float winmat[4][4];
 
 	/* clippping */

@@ -71,7 +71,6 @@
 #include "ED_uvedit.h"
 #include "ED_transform.h"
 
-#include "BIF_gl.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -308,9 +307,12 @@ static void image_keymap(struct wmKeyConfig *keyconf)
 /* dropboxes */
 static bool image_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event), const char **UNUSED(tooltip))
 {
-	if (drag->type == WM_DRAG_PATH)
-		if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) /* rule might not work? */
+	if (drag->type == WM_DRAG_PATH) {
+		/* rule might not work? */
+		if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) {
 			return 1;
+		}
+	}
 	return 0;
 }
 
@@ -403,7 +405,8 @@ static void image_listener(wmWindow *win, ScrArea *sa, wmNotifier *wmn, Scene *U
 		case NC_MASK:
 		{
 			// Scene *scene = wmn->window->screen->scene;
-			/* ideally would check for: ED_space_image_check_show_maskedit(scene, sima) but we cant get the scene */
+			/* ideally would check for: ED_space_image_check_show_maskedit(scene, sima)
+			 * but we cant get the scene */
 			if (sima->mode == SI_MODE_MASK) {
 				switch (wmn->data) {
 					case ND_SELECT:
@@ -631,7 +634,8 @@ static void image_main_region_draw(const bContext *C, ARegion *ar)
 	gpu_batch_presets_reset();
 
 	/* TODO(fclem) port to draw manager and remove the depth buffer allocation. */
-	DefaultFramebufferList *fbl = GPU_viewport_framebuffer_list_get(ar->draw_buffer->viewport[0]);
+	GPUViewport *viewport = ar->draw_buffer->viewport[ar->draw_buffer->stereo ? sima->iuser.multiview_eye : 0];
+	DefaultFramebufferList *fbl = GPU_viewport_framebuffer_list_get(viewport);
 	GPU_framebuffer_bind(fbl->color_only_fb);
 
 	/* XXX not supported yet, disabling for now */
@@ -789,6 +793,27 @@ static void image_buttons_region_init(wmWindowManager *wm, ARegion *ar)
 
 static void image_buttons_region_draw(const bContext *C, ARegion *ar)
 {
+	SpaceImage *sima = CTX_wm_space_image(C);
+	Scene *scene = CTX_data_scene(C);
+	void *lock;
+	ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &lock);
+	/* XXX performance regression if name of scopes category changes! */
+	PanelCategoryStack *category = UI_panel_category_active_find(ar, "Scopes");
+
+	/* only update scopes if scope category is active */
+	if (category) {
+		if (ibuf) {
+			if (!sima->scopes.ok) {
+				BKE_histogram_update_sample_line(&sima->sample_line_hist, ibuf, &scene->view_settings, &scene->display_settings);
+			}
+			if (sima->image->flag & IMA_VIEW_AS_RENDER)
+				ED_space_image_scopes_update(C, sima, ibuf, true);
+			else
+				ED_space_image_scopes_update(C, sima, ibuf, false);
+		}
+	}
+	ED_space_image_release_buffer(sima, ibuf, lock);
+
 	ED_region_panels(C, ar);
 }
 
@@ -843,27 +868,6 @@ static void image_tools_region_init(wmWindowManager *wm, ARegion *ar)
 
 static void image_tools_region_draw(const bContext *C, ARegion *ar)
 {
-	SpaceImage *sima = CTX_wm_space_image(C);
-	Scene *scene = CTX_data_scene(C);
-	void *lock;
-	ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &lock);
-	/* XXX performance regression if name of scopes category changes! */
-	PanelCategoryStack *category = UI_panel_category_active_find(ar, "Scopes");
-
-	/* only update scopes if scope category is active */
-	if (category) {
-		if (ibuf) {
-			if (!sima->scopes.ok) {
-				BKE_histogram_update_sample_line(&sima->sample_line_hist, ibuf, &scene->view_settings, &scene->display_settings);
-			}
-			if (sima->image->flag & IMA_VIEW_AS_RENDER)
-				ED_space_image_scopes_update(C, sima, ibuf, true);
-			else
-				ED_space_image_scopes_update(C, sima, ibuf, false);
-		}
-	}
-	ED_space_image_release_buffer(sima, ibuf, lock);
-
 	ED_region_panels(C, ar);
 }
 
@@ -1037,7 +1041,7 @@ void ED_spacetype_image(void)
 	art->listener = image_main_region_listener;
 	BLI_addhead(&st->regiontypes, art);
 
-	/* regions: listview/buttons */
+	/* regions: listview/buttons/scopes */
 	art = MEM_callocN(sizeof(ARegionType), "spacetype image region");
 	art->regionid = RGN_TYPE_UI;
 	art->prefsizex = 220; // XXX
@@ -1050,7 +1054,7 @@ void ED_spacetype_image(void)
 	ED_uvedit_buttons_register(art);
 	image_buttons_register(art);
 
-	/* regions: statistics/scope buttons */
+	/* regions: tool(bar) */
 	art = MEM_callocN(sizeof(ARegionType), "spacetype image region");
 	art->regionid = RGN_TYPE_TOOLS;
 	art->prefsizex = 58; /* XXX */

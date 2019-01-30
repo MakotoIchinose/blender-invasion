@@ -64,7 +64,6 @@
 #include "DNA_world_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_listbase.h"
 #include "BLI_ghash.h"
 #include "BLI_linklist_stack.h"
 
@@ -82,6 +81,7 @@
 #include "BKE_particle.h"
 #include "BKE_rigidbody.h"
 #include "BKE_sequencer.h"
+#include "BKE_shader_fx.h"
 #include "BKE_tracking.h"
 #include "BKE_workspace.h"
 
@@ -196,6 +196,15 @@ static void library_foreach_modifiersForeachIDLink(
 }
 
 static void library_foreach_gpencil_modifiersForeachIDLink(
+        void *user_data, Object *UNUSED(object), ID **id_pointer, int cb_flag)
+{
+	LibraryForeachIDData *data = (LibraryForeachIDData *) user_data;
+	FOREACH_CALLBACK_INVOKE_ID_PP(data, id_pointer, cb_flag);
+
+	FOREACH_FINALIZE_VOID;
+}
+
+static void library_foreach_shaderfxForeachIDLink(
         void *user_data, Object *UNUSED(object), ID **id_pointer, int cb_flag)
 {
 	LibraryForeachIDData *data = (LibraryForeachIDData *) user_data;
@@ -471,7 +480,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				for (TimeMarker *marker = scene->markers.first; marker; marker = marker->next) {
 					CALLBACK_INVOKE(marker->camera, IDWALK_CB_NOP);
 				}
-				
+
 				if (toolsett) {
 					CALLBACK_INVOKE(toolsett->particle.scene, IDWALK_CB_NOP);
 					CALLBACK_INVOKE(toolsett->particle.object, IDWALK_CB_NOP);
@@ -593,6 +602,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				modifiers_foreachIDLink(object, library_foreach_modifiersForeachIDLink, &data);
 				BKE_gpencil_modifiers_foreachIDLink(object, library_foreach_gpencil_modifiersForeachIDLink, &data);
 				BKE_constraints_id_loop(&object->constraints, library_foreach_constraintObjectLooper, &data);
+				BKE_shaderfx_foreachIDLink(object, library_foreach_shaderfxForeachIDLink, &data);
 
 				for (psys = object->particlesystem.first; psys; psys = psys->next) {
 					BKE_particlesystem_id_loop(psys, library_foreach_particlesystemsObjectLooper, &data);

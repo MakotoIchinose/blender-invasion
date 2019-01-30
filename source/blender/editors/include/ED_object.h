@@ -35,40 +35,42 @@
 extern "C" {
 #endif
 
-struct bFaceMap;
 struct Base;
+struct Depsgraph;
+struct EnumPropertyItem;
 struct EnumPropertyItem;
 struct ID;
 struct Main;
 struct Menu;
 struct ModifierData;
-struct ShaderFxData;
 struct Object;
+struct PointerRNA;
+struct PropertyRNA;
 struct ReportList;
 struct Scene;
+struct ShaderFxData;
 struct View3D;
 struct ViewLayer;
 struct bConstraint;
 struct bContext;
+struct bFaceMap;
 struct bPoseChannel;
+struct uiLayout;
 struct wmKeyConfig;
 struct wmKeyMap;
 struct wmOperator;
 struct wmOperatorType;
 struct wmWindow;
 struct wmWindowManager;
-struct PointerRNA;
-struct PropertyRNA;
-struct EnumPropertyItem;
-struct Depsgraph;
-struct uiLayout;
 
 #include "DNA_object_enums.h"
 #include "BLI_compiler_attrs.h"
 
 /* object_edit.c */
-struct Object *ED_object_context(struct bContext *C);               /* context.object */
-struct Object *ED_object_active_context(struct bContext *C); /* context.object or context.active_object */
+/* context.object */
+struct Object *ED_object_context(struct bContext *C);
+/* context.object or context.active_object */
+struct Object *ED_object_active_context(struct bContext *C);
 void ED_collection_hide_menu_draw(const struct bContext *C, struct uiLayout *layout);
 
 /* object_utils.c */
@@ -175,7 +177,8 @@ float ED_object_new_primitive_matrix(
         const float loc[3], const float rot[3], float primmat[4][4]);
 
 
-/* Avoid allowing too much insane values even by typing (typos can hang/crash Blender otherwise). */
+/* Avoid allowing too much insane values even by typing
+ * (typos can hang/crash Blender otherwise). */
 #define OBJECT_ADD_SIZE_MAXF 1.0e12f
 
 void ED_object_add_unit_props_size(struct wmOperatorType *ot);

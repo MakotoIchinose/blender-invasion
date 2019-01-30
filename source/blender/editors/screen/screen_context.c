@@ -51,10 +51,8 @@
 #include "BKE_action.h"
 #include "BKE_armature.h"
 #include "BKE_paint.h"
-#include "BKE_main.h"
 #include "BKE_gpencil.h"
 #include "BKE_layer.h"
-#include "BKE_screen.h"
 #include "BKE_sequencer.h"
 #include "BKE_workspace.h"
 
@@ -251,7 +249,8 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 						if (arm->flag & ARM_MIRROR_EDIT)
 							flipbone = ED_armature_ebone_get_mirrored(arm->edbo, ebone);
 
-						/* if we're filtering for editable too, use the check for that instead, as it has selection check too */
+						/* if we're filtering for editable too, use the check for that instead,
+						 * as it has selection check too */
 						if (editable_bones) {
 							/* only selected + editable */
 							if (EBONE_EDITABLE(ebone)) {
@@ -302,7 +301,8 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
 						if (arm->flag & ARM_MIRROR_EDIT)
 							flipbone = ED_armature_ebone_get_mirrored(arm->edbo, ebone);
 
-						/* if we're filtering for editable too, use the check for that instead, as it has selection check too */
+						/* if we're filtering for editable too, use the check for that instead,
+						 * as it has selection check too */
 						if (selected_editable_bones) {
 							/* only selected + editable */
 							if (EBONE_EDITABLE(ebone)) {

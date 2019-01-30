@@ -251,7 +251,7 @@ void UI_draw_roundbox_4fv(bool filled, float minx, float miny, float maxx, float
 }
 
 #if 0
-static void round_box_shade_col(unsigned attrib, const float col1[3], float const col2[3], const float fac)
+static void round_box_shade_col(uint attr, const float col1[3], float const col2[3], const float fac)
 {
 	float col[4] = {
 		fac * col1[0] + (1.0f - fac) * col2[0],
@@ -259,7 +259,7 @@ static void round_box_shade_col(unsigned attrib, const float col1[3], float cons
 		fac * col1[2] + (1.0f - fac) * col2[2],
 		1.0f
 	};
-	immAttr4fv(attrib, col);
+	immAttr4fv(attr, col);
 }
 #endif
 
@@ -547,7 +547,8 @@ void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const flo
 
 /* ************** SPECIAL BUTTON DRAWING FUNCTIONS ************* */
 
-/* based on UI_draw_roundbox_gl_mode, check on making a version which allows us to skip some sides */
+/* based on UI_draw_roundbox_gl_mode,
+ * check on making a version which allows us to skip some sides */
 void ui_draw_but_TAB_outline(const rcti *rect, float rad, uchar highlight[3], uchar highlight_fade[3])
 {
 	GPUVertFormat *format = immVertexFormat();
@@ -685,8 +686,8 @@ void ui_draw_but_IMAGE(ARegion *UNUSED(ar), uiBut *but, const uiWidgetColors *UN
  *
  * \Note This functionn is to be used with the 2D dashed shader enabled.
  *
- * \param pos: is a PRIM_FLOAT, 2, GPU_FETCH_FLOAT vertex attrib
- * \param line_origin: is a PRIM_FLOAT, 2, GPU_FETCH_FLOAT vertex attrib
+ * \param pos: is a PRIM_FLOAT, 2, GPU_FETCH_FLOAT vertex attribute.
+ * \param line_origin: is a PRIM_FLOAT, 2, GPU_FETCH_FLOAT vertex attribute.
  *
  * The next 4 parameters are the offsets for the view, not the zones.
  */
@@ -732,7 +733,7 @@ static void draw_scope_end(const rctf *rect, GLint *scissor)
 static void histogram_draw_one(
         float r, float g, float b, float alpha,
         float x, float y, float w, float h, const float *data, int res, const bool is_line,
-        uint pos_attrib)
+        uint pos_attr)
 {
 	float color[4] = {r, g, b, alpha};
 
@@ -752,19 +753,19 @@ static void histogram_draw_one(
 		immBegin(GPU_PRIM_LINE_STRIP, res);
 		for (int i = 0; i < res; i++) {
 			float x2 = x + i * (w / (float)res);
-			immVertex2f(pos_attrib, x2, y + (data[i] * h));
+			immVertex2f(pos_attr, x2, y + (data[i] * h));
 		}
 		immEnd();
 	}
 	else {
 		/* under the curve */
 		immBegin(GPU_PRIM_TRI_STRIP, res * 2);
-		immVertex2f(pos_attrib, x, y);
-		immVertex2f(pos_attrib, x, y + (data[0] * h));
+		immVertex2f(pos_attr, x, y);
+		immVertex2f(pos_attr, x, y + (data[0] * h));
 		for (int i = 1; i < res; i++) {
 			float x2 = x + i * (w / (float)res);
-			immVertex2f(pos_attrib, x2, y + (data[i] * h));
-			immVertex2f(pos_attrib, x2, y);
+			immVertex2f(pos_attr, x2, y + (data[i] * h));
+			immVertex2f(pos_attr, x2, y);
 		}
 		immEnd();
 
@@ -775,7 +776,7 @@ static void histogram_draw_one(
 		immBegin(GPU_PRIM_LINE_STRIP, res);
 		for (int i = 0; i < res; i++) {
 			float x2 = x + i * (w / (float)res);
-			immVertex2f(pos_attrib, x2, y + (data[i] * h));
+			immVertex2f(pos_attr, x2, y + (data[i] * h));
 		}
 		immEnd();
 	}
@@ -892,7 +893,8 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(ar), uiBut *but, const uiWidgetColors 
 	int scissor[4];
 	float colors[3][3];
 	float colorsycc[3][3] = {{1, 0, 1}, {1, 1, 0}, {0, 1, 1}};
-	float colors_alpha[3][3], colorsycc_alpha[3][3]; /* colors  pre multiplied by alpha for speed up */
+	/* colors  pre multiplied by alpha for speed up */
+	float colors_alpha[3][3], colorsycc_alpha[3][3];
 	float min, max;
 
 	if (scopes == NULL) return;
@@ -2076,7 +2078,7 @@ void ui_draw_but_NODESOCKET(ARegion *ar, uiBut *but, const uiWidgetColors *UNUSE
  * would replace / modify the following 3 functions  - merwin
  */
 
-static void ui_shadowbox(unsigned pos, unsigned color, float minx, float miny, float maxx, float maxy, float shadsize, uchar alpha)
+static void ui_shadowbox(uint pos, uint color, float minx, float miny, float maxx, float maxy, float shadsize, uchar alpha)
 {
 	/**
 	 * <pre>

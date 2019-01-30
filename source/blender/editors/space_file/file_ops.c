@@ -30,7 +30,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_fileops_types.h"
 #include "BLI_linklist.h"
 
 #include "RNA_access.h"
@@ -110,7 +109,7 @@ static void file_deselect_all(SpaceFile *sfile, unsigned int flag)
 typedef enum FileSelect {
 	FILE_SELECT_NOTHING = 0,
 	FILE_SELECT_DIR = 1,
-	FILE_SELECT_FILE = 2
+	FILE_SELECT_FILE = 2,
 } FileSelect;
 
 static void clamp_to_filelist(int numfiles, FileSelection *sel)
@@ -445,7 +444,8 @@ static int file_box_select_exec(bContext *C, wmOperator *op)
 
 	ret = file_select(C, &rect, select ? FILE_SEL_ADD : FILE_SEL_REMOVE, false, false);
 
-	/* unselect '..' parent entry - it's not supposed to be selected if more than one file is selected */
+	/* unselect '..' parent entry - it's not supposed to be selected if more than
+	 * one file is selected */
 	filelist_entry_select_index_set(sfile->files, 0, FILE_SEL_REMOVE, FILE_SEL_SELECTED, CHECK_ALL);
 
 	if (FILE_SELECT_DIR == ret) {
@@ -509,7 +509,8 @@ static int file_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	ret = file_select(C, &rect, extend ? FILE_SEL_TOGGLE : FILE_SEL_ADD, fill, do_diropen);
 
 	if (extend) {
-		/* unselect '..' parent entry - it's not supposed to be selected if more than one file is selected */
+		/* unselect '..' parent entry - it's not supposed to be selected if more
+		 * than one file is selected */
 		filelist_entry_select_index_set(sfile->files, 0, FILE_SEL_REMOVE, FILE_SEL_SELECTED, CHECK_ALL);
 	}
 
@@ -573,10 +574,11 @@ static bool file_walk_select_selection_set(
 			deselect = (fill || other_site == -1 ||
 			            !filelist_entry_select_index_get(files, other_site, CHECK_ALL));
 
-			/* don't change highlight_file here since we either want to deselect active or we want to
-			 * walk through a block of selected files without selecting/deselecting anything */
+			/* don't change highlight_file here since we either want to deselect active or we want
+			 * to walk through a block of selected files without selecting/deselecting anything */
 			params->active_file = active_new;
-			/* but we want to change active if we use fill (needed to get correct selection bounds) */
+			/* but we want to change active if we use fill
+			 * (needed to get correct selection bounds) */
 			if (deselect && fill) {
 				active = active_new;
 			}
@@ -608,7 +610,8 @@ static bool file_walk_select_selection_set(
 		/* highlight the active walker file for extended selection for better visual feedback */
 		params->highlight_file = params->active_file;
 
-		/* unselect '..' parent entry - it's not supposed to be selected if more than one file is selected */
+		/* unselect '..' parent entry - it's not supposed to be selected if more
+		 * than one file is selected */
 		filelist_entry_select_index_set(files, 0, FILE_SEL_REMOVE, FILE_SEL_SELECTED, CHECK_ALL);
 	}
 	else {
@@ -826,7 +829,8 @@ void FILE_OT_select_all(wmOperatorType *ot)
 
 /* ---------- BOOKMARKS ----------- */
 
-/* Note we could get rid of this one, but it's used by some addon so... Does not hurt keeping it around for now. */
+/* Note we could get rid of this one, but it's used by some addon so...
+ * Does not hurt keeping it around for now. */
 static int bookmark_select_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
@@ -1880,7 +1884,8 @@ int file_directory_new_exec(bContext *C, wmOperator *op)
 	BLI_strncpy(sfile->params->renamefile, name, FILE_MAXFILE);
 
 	/* set timer to smoothly view newly generated file */
-	sfile->smoothscroll_timer = WM_event_add_timer(wm, CTX_wm_window(C), TIMER1, 1.0 / 1000.0);  /* max 30 frs/sec */
+	/* max 30 frs/sec */
+	sfile->smoothscroll_timer = WM_event_add_timer(wm, CTX_wm_window(C), TIMER1, 1.0 / 1000.0);
 	sfile->scroll_offset = 0;
 
 	/* reload dir to make sure we're seeing what's in the directory */
@@ -2077,7 +2082,8 @@ void file_filename_enter_handle(bContext *C, void *UNUSED(arg_unused), void *arg
 		BLI_filename_make_safe(sfile->params->file);
 
 		if (matches) {
-			/* replace the pattern (or filename that the user typed in, with the first selected file of the match */
+			/* replace the pattern (or filename that the user typed in,
+			 * with the first selected file of the match */
 			BLI_strncpy(sfile->params->file, matched_file, sizeof(sfile->params->file));
 
 			WM_event_add_notifier(C, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);

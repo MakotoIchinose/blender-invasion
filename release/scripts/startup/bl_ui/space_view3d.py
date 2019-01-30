@@ -245,7 +245,7 @@ class VIEW3D_HT_header(Header):
                 text=lk_name,
                 icon=lk_icon,
             )
-            
+
         if object_mode in {'PAINT_GPENCIL'}:
             if context.workspace.tools.from_space_view3d_mode(object_mode).name == "Draw":
                 settings = tool_settings.gpencil_sculpt.guide
@@ -784,7 +784,7 @@ class VIEW3D_MT_view_borders(Menu):
 
     def draw(self, context):
         layout = self.layout
-        # layout.operator("view3d.clip_border", text="Clipping Border...")
+        layout.operator("view3d.clip_border", text="Clipping Border...")
         layout.operator("view3d.render_border", text="Render Border...")
 
         layout.separator()
@@ -2335,6 +2335,10 @@ class VIEW3D_MT_sculpt(Menu):
 
         tool_settings = context.tool_settings
         sculpt = tool_settings.sculpt
+
+        layout.operator("sculpt.dynamic_topology_toggle", text="Toggle Dynamic Topology")
+
+        layout.separator()
 
         layout.prop(sculpt, "use_symmetry_x")
         layout.prop(sculpt, "use_symmetry_y")
@@ -3892,7 +3896,8 @@ class VIEW3D_MT_assign_material(Menu):
 
         for slot in ob.material_slots:
             mat = slot.material
-            layout.operator("gpencil.stroke_change_color", text=mat.name).material = mat.name
+            if mat:
+                layout.operator("gpencil.stroke_change_color", text=mat.name).material = mat.name
 
 
 class VIEW3D_MT_gpencil_copy_layer(Menu):
@@ -4205,7 +4210,10 @@ class VIEW3D_PT_view3d_properties(Panel):
         col = flow.column()
 
         subcol = col.column()
-        subcol.enabled = not view.lock_camera_and_layers
+        subcol.prop(view, "use_local_camera")
+
+        subcol = col.column()
+        subcol.enabled = view.use_local_camera
         subcol.prop(view, "camera", text="Local Camera")
 
         subcol = col.column(align=True)
@@ -4300,7 +4308,9 @@ class VIEW3D_PT_collections(Panel):
             subrow = sub.row()
             subrow.alignment = 'LEFT'
             subrow.active = has_visible_objects
-            subrow.operator("object.hide_collection", text=child.name, icon=icon, emboss=False).collection_index = index
+            subrow.operator(
+                "object.hide_collection", text=child.name, icon=icon, emboss=False,
+            ).collection_index = index
 
             sub = row.split()
             subrow = sub.row(align=True)
@@ -4588,6 +4598,10 @@ class VIEW3D_PT_shading_options(Panel):
                     sub = col.row(align=True)
                     sub.prop(shading, "curvature_ridge_factor", text="Ridge")
                     sub.prop(shading, "curvature_valley_factor", text="Valley")
+
+            row = col.row()
+            row.active = not shading.show_xray
+            row.prop(shading, "use_dof", text="Depth Of Field")
 
         if shading.type in {'WIREFRAME', 'SOLID'}:
             row = layout.split()
@@ -5330,7 +5344,7 @@ class VIEW3D_PT_gpencil_lock(Panel):
         col = row.column()
         col.prop(context.tool_settings.gpencil_sculpt, "lock_axis", expand=True)
 
-        
+
 class VIEW3D_PT_gpencil_guide(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
@@ -5343,34 +5357,34 @@ class VIEW3D_PT_gpencil_guide(Panel):
 
         layout = self.layout
         layout.label(text="Guides")
-        
+
         col = layout.column()
         col.active = settings.use_guide
         col.prop(settings, "type", expand=True)
-                
+
         if settings.type in {'PARALLEL'}:
             col.prop(settings, "angle")
             row = col.row(align=True)
-        
-        col.prop(settings, "use_snapping")        
+
+        col.prop(settings, "use_snapping")
         if settings.use_snapping:
-            
+
             if settings.type in {'RADIAL'}:
                 col.prop(settings, "angle_snap")
             else:
                 col.prop(settings, "spacing")
-        
+
         col.label(text="Reference Point")
         row = col.row(align=True)
-        row.prop(settings, "reference_point", expand=True)    
+        row.prop(settings, "reference_point", expand=True)
         if settings.reference_point in {'CUSTOM'}:
-            col.prop(settings, "location", text="Custom Location")        
+            col.prop(settings, "location", text="Custom Location")
         if settings.reference_point in {'OBJECT'}:
-            col.prop(settings, "reference_object", text="Object Location")     
+            col.prop(settings, "reference_object", text="Object Location")
             if not settings.reference_object:
                 col.label(text="No object selected, using cursor")
 
-        
+
 class VIEW3D_PT_overlay_gpencil_options(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'

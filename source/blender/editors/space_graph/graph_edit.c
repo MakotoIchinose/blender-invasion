@@ -58,7 +58,6 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
 
@@ -279,7 +278,8 @@ void GRAPH_OT_view_all(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = graphkeys_viewall_exec;
-	ot->poll = ED_operator_graphedit_active; /* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	/* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	ot->poll = ED_operator_graphedit_active;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -298,7 +298,8 @@ void GRAPH_OT_view_selected(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = graphkeys_view_selected_exec;
-	ot->poll = ED_operator_graphedit_active; /* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	/* XXX: unchecked poll to get fsamples working too, but makes modifier damage trickier... */
+	ot->poll = ED_operator_graphedit_active;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1801,9 +1802,12 @@ void GRAPH_OT_handle_type(wmOperatorType *ot)
 typedef struct tEulerFilter {
 	struct tEulerFilter *next, *prev;
 
-	ID *id;                         /* ID-block which owns the channels */
-	FCurve *(fcurves[3]);           /* 3 Pointers to F-Curves */
-	const char *rna_path;           /* Pointer to one of the RNA Path's used by one of the F-Curves */
+	/** ID-block which owns the channels */
+	ID *id;
+	/** 3 Pointers to F-Curves */
+	FCurve *(fcurves[3]);
+	/** Pointer to one of the RNA Path's used by one of the F-Curves */
+	const char *rna_path;
 } tEulerFilter;
 
 static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
@@ -1864,7 +1868,8 @@ static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
 			groups++;
 
 			euf->id = ale->id;
-			euf->rna_path = fcu->rna_path; /* this should be safe, since we're only using it for a short time */
+			/* this should be safe, since we're only using it for a short time */
+			euf->rna_path = fcu->rna_path;
 			euf->fcurves[fcu->array_index] = fcu;
 		}
 
@@ -1884,7 +1889,8 @@ static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
 		int f;
 
 		/* sanity check: ensure that there are enough F-Curves to work on in this group */
-		/* TODO: also enforce assumption that there be a full set of keyframes at each position by ensuring that totvert counts are same? */
+		/* TODO: also enforce assumption that there be a full set of keyframes
+		 * at each position by ensuring that totvert counts are same? */
 		if (ELEM(NULL, euf->fcurves[0], euf->fcurves[1], euf->fcurves[2])) {
 			/* report which components are missing */
 			BKE_reportf(op->reports, RPT_WARNING,
@@ -1917,7 +1923,8 @@ static int graphkeys_euler_filter_exec(bContext *C, wmOperator *op)
 
 				/* > 180 degree flip? */
 				if ((sign * (prev->vec[1][1] - bezt->vec[1][1])) >= (float)M_PI) {
-					/* 360 degrees to add/subtract frame value until difference is acceptably small that there's no more flip */
+					/* 360 degrees to add/subtract frame value until difference
+					 * is acceptably small that there's no more flip */
 					const float fac = sign * 2.0f * (float)M_PI;
 
 					while ((sign * (prev->vec[1][1] - bezt->vec[1][1])) >= (float)M_PI) {

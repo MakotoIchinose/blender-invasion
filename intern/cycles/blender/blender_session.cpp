@@ -30,6 +30,7 @@
 #include "render/shader.h"
 #include "render/stats.h"
 
+#include "util/util_algorithm.h"
 #include "util/util_color.h"
 #include "util/util_foreach.h"
 #include "util/util_function.h"
@@ -449,6 +450,12 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 	scene->integrator->tag_update(scene);
 
 	BL::RenderResult::views_iterator b_view_iter;
+
+	int num_views = 0;
+	for(b_rr.views.begin(b_view_iter); b_view_iter != b_rr.views.end(); ++b_view_iter) {
+		num_views++;
+	}
+
 	int view_index = 0;
 	for(b_rr.views.begin(b_view_iter); b_view_iter != b_rr.views.end(); ++b_view_iter, ++view_index) {
 		b_rview_name = b_view_iter->name();
@@ -470,7 +477,12 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 		/* Attempt to free all data which is held by Blender side, since at this
 		 * point we knwo that we've got everything to render current view layer.
 		 */
-		free_blender_memory_if_possible();
+		/* At the moment we only free if we are not doing multi-view (or if we are rendering the last view).
+		 * See T58142/D4239 for discussion.
+		 */
+		if(view_index == num_views - 1) {
+			free_blender_memory_if_possible();
+		}
 
 		/* Make sure all views have different noise patterns. - hardcoded value just to make it random */
 		if(view_index != 0) {
@@ -1384,9 +1396,15 @@ void BlenderSession::update_resumable_tile_manager(int num_samples)
 		return;
 	}
 
-	const int num_samples_per_chunk = (int)ceilf((float)num_samples / num_resumable_chunks);
+	if (num_resumable_chunks > num_samples) {
+		fprintf(stderr, "Cycles warning: more sample chunks (%d) than samples (%d), "
+		        "this will cause some samples to be included in multiple chunks.\n",
+		        num_resumable_chunks, num_samples);
+	}
 
-	int range_start_sample, range_num_samples;
+	const float num_samples_per_chunk = (float)num_samples / num_resumable_chunks;
+
+	float range_start_sample, range_num_samples;
 	if(current_resumable_chunk != 0) {
 		/* Single chunk rendering. */
 		range_start_sample = num_samples_per_chunk * (current_resumable_chunk - 1);
@@ -1398,19 +1416,25 @@ void BlenderSession::update_resumable_tile_manager(int num_samples)
 		range_start_sample = num_samples_per_chunk * (start_resumable_chunk - 1);
 		range_num_samples = num_chunks * num_samples_per_chunk;
 	}
+
+	/* Round after doing the multiplications with num_chunks and num_samples_per_chunk
+	 * to allow for many small chunks. */
+	int rounded_range_start_sample = (int)floor(range_start_sample + 0.5f);
+	int rounded_range_num_samples = max((int)floor(range_num_samples + 0.5f), 1);
+
 	/* Make sure we don't overshoot. */
-	if(range_start_sample + range_num_samples > num_samples) {
-		range_num_samples = num_samples - range_num_samples;
+	if(rounded_range_start_sample + rounded_range_num_samples > num_samples) {
+		rounded_range_num_samples = num_samples - rounded_range_num_samples;
 	}
 
 	VLOG(1) << "Samples range start is " << range_start_sample << ", "
 	        << "number of samples to render is " << range_num_samples;
 
-	scene->integrator->start_sample = range_start_sample;
+	scene->integrator->start_sample = rounded_range_start_sample;
 	scene->integrator->tag_update(scene);
 
-	session->tile_manager.range_start_sample = range_start_sample;
-	session->tile_manager.range_num_samples = range_num_samples;
+	session->tile_manager.range_start_sample = rounded_range_start_sample;
+	session->tile_manager.range_num_samples = rounded_range_num_samples;
 }
 
 void BlenderSession::free_blender_memory_if_possible()

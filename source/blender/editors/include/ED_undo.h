@@ -27,11 +27,11 @@
 
 #include "BLI_compiler_attrs.h"
 
-struct bContext;
 struct CLG_LogRef;
+struct UndoStack;
+struct bContext;
 struct wmOperator;
 struct wmOperatorType;
-struct UndoStack;
 
 /* undo.c */
 void    ED_undo_push(struct bContext *C, const char *str);
@@ -53,6 +53,8 @@ void    ED_undo_operator_repeat_cb(struct bContext *C, void *arg_op, void *arg_u
 void    ED_undo_operator_repeat_cb_evt(struct bContext *C, void *arg_op, int arg_unused);
 
 bool    ED_undo_is_valid(const struct bContext *C, const char *undoname);
+
+bool    ED_undo_is_memfile_compatible(const struct bContext *C);
 
 struct UndoStack *ED_undo_stack_get(void);
 

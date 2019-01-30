@@ -41,7 +41,6 @@
 #include "BKE_armature.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
 #include "BKE_object.h"
 
 #include "BKE_context.h"
@@ -244,7 +243,8 @@ void poseAnim_mapping_refresh(bContext *C, Scene *scene, Object *ob)
 	else
 		BKE_pose_where_is(depsgraph, scene, ob);
 
-	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE); /* otherwise animation doesn't get updated */
+	/* otherwise animation doesn't get updated */
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
 }
 

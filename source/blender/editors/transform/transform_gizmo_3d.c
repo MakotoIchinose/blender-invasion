@@ -59,8 +59,6 @@
 #include "BKE_workspace.h"
 #include "BKE_object.h"
 
-#include "BIF_gl.h"
-
 #include "DEG_depsgraph.h"
 
 #include "WM_api.h"
@@ -2265,7 +2263,8 @@ static void WIDGETGROUP_xform_shear_draw_prepare(const bContext *C, wmGizmoGroup
 		LISTBASE_FOREACH (wmGizmo *, gz, &gzgroup->gizmos) {
 			/* Since we have two pairs of each axis,
 			 * bias the values so gizmos that are orthogonal to the view get priority.
-			 * This means we never default to shearing along the view axis in the case of an overlap. */
+			 * This means we never default to shearing along
+			 * the view axis in the case of an overlap. */
 			float axis_order[3], axis_bias[3];
 			copy_v3_v3(axis_order, gz->matrix_basis[2]);
 			copy_v3_v3(axis_bias, gz->matrix_basis[1]);

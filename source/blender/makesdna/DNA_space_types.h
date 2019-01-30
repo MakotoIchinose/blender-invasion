@@ -47,25 +47,25 @@
 /* Hum ... Not really nice... but needed for spacebuts. */
 #include "DNA_view2d_types.h"
 
-struct ID;
-struct Text;
-struct Script;
-struct Image;
-struct Scopes;
-struct Histogram;
-struct SpaceIpo;
-struct bNodeTree;
-struct FileList;
-struct bGPdata;
-struct bDopeSheet;
-struct FileSelectParams;
+struct BLI_mempool;
 struct FileLayout;
-struct wmOperator;
-struct wmTimer;
+struct FileList;
+struct FileSelectParams;
+struct Histogram;
+struct ID;
+struct Image;
+struct Mask;
 struct MovieClip;
 struct MovieClipScopes;
-struct Mask;
-struct BLI_mempool;
+struct Scopes;
+struct Script;
+struct SpaceIpo;
+struct Text;
+struct bDopeSheet;
+struct bGPdata;
+struct bNodeTree;
+struct wmOperator;
+struct wmTimer;
 
 /* TODO 2.8: We don't write the global areas to files currently. Uncomment
  * define to enable writing (should become the default in a bit). */
@@ -218,7 +218,8 @@ typedef enum eSpaceButtons_Flag {
 	SB_PIN_CONTEXT = (1 << 1),
 	SB_FLAG_DEPRECATED_2 = (1 << 2),
 	SB_FLAG_DEPRECATED_3 = (1 << 3),
-	SB_TEX_USER_LIMITED = (1 << 3), /* Do not add materials, particles, etc. in TemplateTextureUser list. */
+	/** Do not add materials, particles, etc. in TemplateTextureUser list. */
+	SB_TEX_USER_LIMITED = (1 << 3),
 	SB_SHADING_CONTEXT = (1 << 4),
 } eSpaceButtons_Flag;
 
@@ -261,7 +262,9 @@ typedef struct SpaceOops {
 	char pad;
 	short filter_id_type;
 
-	/* pointers to treestore elements, grouped by (id, type, nr) in hashtable for faster searching */
+	/**
+	 * Pointers to treestore elements, grouped by (id, type, nr)
+	 * in hashtable for faster searching */
 	void *treehash;
 } SpaceOops;
 
@@ -389,7 +392,8 @@ typedef struct SpaceIpo {
 	/** Deprecated, copied to region. */
 	View2D v2d DNA_DEPRECATED;
 
-	/** Settings for filtering animation data (NOTE: we use a pointer due to code-linking issues). */
+	/** Settings for filtering animation data
+	 * \note we use a pointer due to code-linking issues. */
 	struct bDopeSheet *ads;
 
 	/** Mode for the Graph editor (eGraphEdit_Mode). */
@@ -627,7 +631,7 @@ typedef enum eSpaceSeq_Proxy_RenderSize {
 	SEQ_PROXY_RENDER_SIZE_50        =  50,
 	SEQ_PROXY_RENDER_SIZE_75        =  75,
 	SEQ_PROXY_RENDER_SIZE_100       =  99,
-	SEQ_PROXY_RENDER_SIZE_FULL      = 100
+	SEQ_PROXY_RENDER_SIZE_FULL      = 100,
 } eSpaceSeq_Proxy_RenderSize;
 
 typedef struct MaskSpaceInfo {
@@ -644,7 +648,7 @@ typedef struct MaskSpaceInfo {
 typedef enum eSpaceSeq_OverlayType {
 	SEQ_DRAW_OVERLAY_RECT = 0,
 	SEQ_DRAW_OVERLAY_REFERENCE = 1,
-	SEQ_DRAW_OVERLAY_CURRENT = 2
+	SEQ_DRAW_OVERLAY_CURRENT = 2,
 } eSpaceSeq_OverlayType;
 
 /** \} */
@@ -756,7 +760,7 @@ enum eFileDisplayType {
 	FILE_DEFAULTDISPLAY = 0,
 	FILE_SHORTDISPLAY = 1,
 	FILE_LONGDISPLAY = 2,
-	FILE_IMGDISPLAY = 3
+	FILE_IMGDISPLAY = 3,
 };
 
 /* FileSelectParams.sort */
@@ -765,7 +769,7 @@ enum eFileSortType {
 	FILE_SORT_ALPHA = 1,
 	FILE_SORT_EXTENSION = 2,
 	FILE_SORT_TIME = 3,
-	FILE_SORT_SIZE = 4
+	FILE_SORT_SIZE = 4,
 };
 
 /* these values need to be hardcoded in structs, dna does not recognize defines */
@@ -783,7 +787,6 @@ enum eFileSortType {
 
 #define FILE_LOADLIB        1
 #define FILE_MAIN           2
-#define FILE_LOADFONT       3
 
 /* filesel op property -> action */
 typedef enum eFileSel_Action {
@@ -822,14 +825,17 @@ typedef enum eFileSel_File_Types {
 	FILE_TYPE_SOUND             = (1 << 8),
 	FILE_TYPE_TEXT              = (1 << 9),
 	/* 1 << 10 was FILE_TYPE_MOVIE_ICON, got rid of this so free slot for future type... */
-	FILE_TYPE_FOLDER            = (1 << 11), /* represents folders for filtering */
+	/** represents folders for filtering */
+	FILE_TYPE_FOLDER            = (1 << 11),
 	FILE_TYPE_BTX               = (1 << 12),
 	FILE_TYPE_COLLADA           = (1 << 13),
-	FILE_TYPE_OPERATOR          = (1 << 14), /* from filter_glob operator property */
+	/** from filter_glob operator property */
+	FILE_TYPE_OPERATOR          = (1 << 14),
 	FILE_TYPE_APPLICATIONBUNDLE = (1 << 15),
 	FILE_TYPE_ALEMBIC           = (1 << 16),
 
-	FILE_TYPE_DIR               = (1 << 30),  /* An FS directory (i.e. S_ISDIR on its path is true). */
+	/** An FS directory (i.e. S_ISDIR on its path is true). */
+	FILE_TYPE_DIR               = (1 << 30),
 	FILE_TYPE_BLENDERLIB        = (1u << 31),
 } eFileSel_File_Types;
 
@@ -840,8 +846,6 @@ typedef enum eDirEntry_SelectFlag {
 	FILE_SEL_SELECTED       = (1 << 3),
 	FILE_SEL_EDITING        = (1 << 4),
 } eDirEntry_SelectFlag;
-
-#define FILE_LIST_MAX_RECURSION 4
 
 /* ***** Related to file browser, but never saved in DNA, only here to help with RNA. ***** */
 
@@ -899,7 +903,8 @@ typedef struct FileDirEntry {
 	char *name;
 	char *description;
 
-	/* Either point to active variant/revision if available, or own entry (in mere filebrowser case). */
+	/* Either point to active variant/revision if available, or own entry
+	 * (in mere filebrowser case). */
 	FileDirEntryView *entry;
 
 	/** #eFileSel_File_Types. */
@@ -1008,9 +1013,10 @@ typedef struct SpaceImage {
 	char dt_uvstretch;
 	char around;
 
-	int pad2;
-
 	int flag;
+
+	char pixel_snap_mode;
+	char pad[3];
 
 	MaskSpaceInfo mask_info;
 } SpaceImage;
@@ -1029,6 +1035,13 @@ typedef enum eSpaceImage_UVDT_Stretch {
 	SI_UVDT_STRETCH_ANGLE = 0,
 	SI_UVDT_STRETCH_AREA = 1,
 } eSpaceImage_UVDT_Stretch;
+
+/* SpaceImage.pixel_snap_mode */
+typedef enum eSpaceImage_PixelSnapMode {
+	SI_PIXEL_SNAP_DISABLED = 0,
+	SI_PIXEL_SNAP_CENTER = 1,
+	SI_PIXEL_SNAP_CORNER = 2,
+} eSpaceImage_Snap_Mode;
 
 /* SpaceImage.mode */
 typedef enum eSpaceImage_Mode {
@@ -1059,7 +1072,7 @@ typedef enum eSpaceImage_Flag {
 	SI_FLAG_DEPRECATED_7  = (1 << 7),  /* cleared */
 	SI_FLAG_DEPRECATED_8  = (1 << 8),  /* cleared */
 	SI_COORDFLOATS        = (1 << 9),
-	SI_PIXELSNAP          = (1 << 10),
+	SI_FLAG_DEPRECATED_10 = (1 << 10),
 	SI_LIVE_UNWRAP        = (1 << 11),
 	SI_USE_ALPHA          = (1 << 12),
 	SI_SHOW_ALPHA         = (1 << 13),
@@ -1321,7 +1334,8 @@ typedef enum eSpaceNode_Flag {
 	SNODE_FLAG_DEPRECATED_10 = (1 << 10),  /* cleared */
 	SNODE_FLAG_DEPRECATED_11 = (1 << 11),  /* cleared */
 	SNODE_PIN            = (1 << 12),
-	SNODE_SKIP_INSOFFSET = (1 << 13), /* automatically offset following nodes in a chain on insertion */
+	/** automatically offset following nodes in a chain on insertion */
+	SNODE_SKIP_INSOFFSET = (1 << 13),
 } eSpaceNode_Flag;
 
 /* SpaceNode.texfrom */
@@ -1372,7 +1386,7 @@ typedef enum eConsoleLine_Type {
 	CONSOLE_LINE_OUTPUT = 0,
 	CONSOLE_LINE_INPUT = 1,
 	CONSOLE_LINE_INFO = 2, /* autocomp feedback */
-	CONSOLE_LINE_ERROR = 3
+	CONSOLE_LINE_ERROR = 3,
 } eConsoleLine_Type;
 
 
@@ -1614,7 +1628,7 @@ typedef enum eSpace_Type {
 	SPACE_TOPBAR   = 21,
 	SPACE_STATUSBAR = 22,
 
-	SPACE_TYPE_LAST = SPACE_STATUSBAR
+	SPACE_TYPE_LAST = SPACE_STATUSBAR,
 } eSpace_Type;
 
 /* use for function args */

@@ -26,10 +26,8 @@
 
 #include <stdlib.h>
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLI_math_vector.h"
-#include "BLI_math_color.h"
 
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
@@ -561,13 +559,13 @@ typedef enum {
 
 typedef enum {
 	STENCIL_PRIMARY = 0,
-	STENCIL_SECONDARY = 1
+	STENCIL_SECONDARY = 1,
 } StencilTextureMode;
 
 
 typedef enum {
 	STENCIL_CONSTRAINT_X = 1,
-	STENCIL_CONSTRAINT_Y = 2
+	STENCIL_CONSTRAINT_Y = 2,
 } StencilConstraint;
 
 typedef struct {

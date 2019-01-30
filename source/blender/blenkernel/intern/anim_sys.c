@@ -44,6 +44,8 @@
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
 #include "BLI_string_utils.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -707,90 +709,97 @@ static char *rna_path_rename_fix(ID *owner_id, const char *prefix, const char *o
 }
 
 /* Check RNA-Paths for a list of F-Curves */
-static void fcurves_path_rename_fix(ID *owner_id, const char *prefix, const char *oldName, const char *newName,
+static bool fcurves_path_rename_fix(ID *owner_id, const char *prefix, const char *oldName, const char *newName,
                                     const char *oldKey, const char *newKey, ListBase *curves, bool verify_paths)
 {
 	FCurve *fcu;
-
-	/* we need to check every curve... */
+	bool is_changed = false;
+	/* We need to check every curve. */
 	for (fcu = curves->first; fcu; fcu = fcu->next) {
-		if (fcu->rna_path) {
-			const char *old_path = fcu->rna_path;
-
-			/* firstly, handle the F-Curve's own path */
-			fcu->rna_path = rna_path_rename_fix(owner_id, prefix, oldKey, newKey, fcu->rna_path, verify_paths);
-
-			/* if path changed and the F-Curve is grouped, check if its group also needs renaming
-			 * (i.e. F-Curve is first of a bone's F-Curves; hence renaming this should also trigger rename)
-			 */
-			if (fcu->rna_path != old_path) {
-				bActionGroup *agrp = fcu->grp;
-
-				if ((agrp) && STREQ(oldName, agrp->name)) {
-					BLI_strncpy(agrp->name, newName, sizeof(agrp->name));
-				}
+		if (fcu->rna_path == NULL) {
+			continue;
+		}
+		const char *old_path = fcu->rna_path;
+		/* Firstly, handle the F-Curve's own path. */
+		fcu->rna_path = rna_path_rename_fix(owner_id, prefix, oldKey, newKey, fcu->rna_path, verify_paths);
+		/* if path changed and the F-Curve is grouped, check if its group also needs renaming
+		 * (i.e. F-Curve is first of a bone's F-Curves; hence renaming this should also trigger rename) */
+		if (fcu->rna_path != old_path) {
+			bActionGroup *agrp = fcu->grp;
+			is_changed = true;
+			if ((agrp != NULL) && STREQ(oldName, agrp->name)) {
+				BLI_strncpy(agrp->name, newName, sizeof(agrp->name));
 			}
 		}
 	}
+	return is_changed;
 }
 
 /* Check RNA-Paths for a list of Drivers */
-static void drivers_path_rename_fix(ID *owner_id, ID *ref_id, const char *prefix, const char *oldName, const char *newName,
+static bool drivers_path_rename_fix(ID *owner_id, ID *ref_id, const char *prefix, const char *oldName, const char *newName,
                                     const char *oldKey, const char *newKey, ListBase *curves, bool verify_paths)
 {
+	bool is_changed = false;
 	FCurve *fcu;
-
-	/* we need to check every curve - drivers are F-Curves too! */
+	/* We need to check every curve - drivers are F-Curves too. */
 	for (fcu = curves->first; fcu; fcu = fcu->next) {
 		/* firstly, handle the F-Curve's own path */
-		if (fcu->rna_path)
+		if (fcu->rna_path != NULL) {
+			const char *old_rna_path = fcu->rna_path;
 			fcu->rna_path = rna_path_rename_fix(owner_id, prefix, oldKey, newKey, fcu->rna_path, verify_paths);
-
-		/* driver? */
-		if (fcu->driver) {
-			ChannelDriver *driver = fcu->driver;
-			DriverVar *dvar;
-
-			/* driver variables */
-			for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
-				/* only change the used targets, since the others will need fixing manually anyway */
-				DRIVER_TARGETS_USED_LOOPER_BEGIN(dvar)
-				{
-					/* rename RNA path */
-					if (dtar->rna_path && dtar->id)
-						dtar->rna_path = rna_path_rename_fix(dtar->id, prefix, oldKey, newKey, dtar->rna_path, verify_paths);
-
-					/* also fix the bone-name (if applicable) */
-					if (strstr(prefix, "bones")) {
-						if ( ((dtar->id) && (GS(dtar->id->name) == ID_OB) && (!ref_id || ((Object *)(dtar->id))->data == ref_id)) &&
-						     (dtar->pchan_name[0]) && STREQ(oldName, dtar->pchan_name) )
-						{
-							BLI_strncpy(dtar->pchan_name, newName, sizeof(dtar->pchan_name));
-						}
+			is_changed |= (fcu->rna_path != old_rna_path);
+		}
+		if (fcu->driver == NULL) {
+			continue;
+		}
+		ChannelDriver *driver = fcu->driver;
+		DriverVar *dvar;
+		/* driver variables */
+		for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
+			/* only change the used targets, since the others will need fixing manually anyway */
+			DRIVER_TARGETS_USED_LOOPER_BEGIN(dvar)
+			{
+				/* rename RNA path */
+				if (dtar->rna_path && dtar->id) {
+					const char *old_rna_path = dtar->rna_path;
+					dtar->rna_path = rna_path_rename_fix(dtar->id, prefix, oldKey, newKey, dtar->rna_path, verify_paths);
+					is_changed |= (dtar->rna_path != old_rna_path);
+				}
+				/* also fix the bone-name (if applicable) */
+				if (strstr(prefix, "bones")) {
+					if ( ((dtar->id) && (GS(dtar->id->name) == ID_OB) && (!ref_id || ((Object *)(dtar->id))->data == ref_id)) &&
+					     (dtar->pchan_name[0]) && STREQ(oldName, dtar->pchan_name) )
+					{
+						is_changed = true;
+						BLI_strncpy(dtar->pchan_name, newName, sizeof(dtar->pchan_name));
 					}
 				}
-				DRIVER_TARGETS_LOOPER_END;
 			}
+			DRIVER_TARGETS_LOOPER_END;
 		}
 	}
+	return is_changed;
 }
 
 /* Fix all RNA-Paths for Actions linked to NLA Strips */
-static void nlastrips_path_rename_fix(ID *owner_id, const char *prefix, const char *oldName, const char *newName,
+static bool nlastrips_path_rename_fix(ID *owner_id, const char *prefix, const char *oldName, const char *newName,
                                       const char *oldKey, const char *newKey, ListBase *strips, bool verify_paths)
 {
 	NlaStrip *strip;
-
-	/* recursively check strips, fixing only actions... */
+	bool is_changed = false;
+	/* Recursively check strips, fixing only actions. */
 	for (strip = strips->first; strip; strip = strip->next) {
 		/* fix strip's action */
-		if (strip->act)
-			fcurves_path_rename_fix(owner_id, prefix, oldName, newName, oldKey, newKey, &strip->act->curves, verify_paths);
-		/* ignore own F-Curves, since those are local...  */
-
-		/* check sub-strips (if metas) */
-		nlastrips_path_rename_fix(owner_id, prefix, oldName, newName, oldKey, newKey, &strip->strips, verify_paths);
+		if (strip->act != NULL) {
+			is_changed |= fcurves_path_rename_fix(
+			        owner_id, prefix, oldName, newName, oldKey, newKey, &strip->act->curves, verify_paths);
+		}
+		/* Ignore own F-Curves, since those are local.  */
+		/* Check sub-strips (if metas) */
+		is_changed |= nlastrips_path_rename_fix(
+		        owner_id, prefix, oldName, newName, oldKey, newKey, &strip->strips, verify_paths);
 	}
+	return is_changed;
 }
 
 /* Rename Sub-ID Entities in RNA Paths ----------------------- */
@@ -898,14 +907,14 @@ void BKE_animdata_fix_paths_rename(ID *owner_id, AnimData *adt, ID *ref_id, cons
 {
 	NlaTrack *nlt;
 	char *oldN, *newN;
-
-	/* if no AnimData, no need to proceed */
-	if (ELEM(NULL, owner_id, adt))
+	/* If no AnimData, no need to proceed. */
+	if (ELEM(NULL, owner_id, adt)) {
 		return;
-
-	/* Name sanitation logic - shared with BKE_action_fix_paths_rename() */
+	}
+	bool is_self_changed = false;
+	/* Name sanitation logic - shared with BKE_action_fix_paths_rename(). */
 	if ((oldName != NULL) && (newName != NULL)) {
-		/* pad the names with [" "] so that only exact matches are made */
+		/* Pad the names with [" "] so that only exact matches are made. */
 		const size_t name_old_len = strlen(oldName);
 		const size_t name_new_len = strlen(newName);
 		char *name_old_esc = BLI_array_alloca(name_old_esc, (name_old_len * 2) + 1);
@@ -920,20 +929,33 @@ void BKE_animdata_fix_paths_rename(ID *owner_id, AnimData *adt, ID *ref_id, cons
 		oldN = BLI_sprintfN("[%d]", oldSubscript);
 		newN = BLI_sprintfN("[%d]", newSubscript);
 	}
-
-	/* Active action and temp action */
-	if (adt->action)
-		fcurves_path_rename_fix(owner_id, prefix, oldName, newName, oldN, newN, &adt->action->curves, verify_paths);
-	if (adt->tmpact)
-		fcurves_path_rename_fix(owner_id, prefix, oldName, newName, oldN, newN, &adt->tmpact->curves, verify_paths);
-
+	/* Active action and temp action. */
+	if (adt->action != NULL) {
+		if (fcurves_path_rename_fix(owner_id, prefix, oldName, newName,
+		                            oldN, newN, &adt->action->curves, verify_paths))
+		{
+			DEG_id_tag_update(&adt->action->id, ID_RECALC_COPY_ON_WRITE);
+		}
+	}
+	if (adt->tmpact) {
+		if (fcurves_path_rename_fix(owner_id, prefix, oldName, newName,
+		                            oldN, newN, &adt->tmpact->curves, verify_paths))
+		{
+			DEG_id_tag_update(&adt->tmpact->id, ID_RECALC_COPY_ON_WRITE);
+		}
+	}
 	/* Drivers - Drivers are really F-Curves */
-	drivers_path_rename_fix(owner_id, ref_id, prefix, oldName, newName, oldN, newN, &adt->drivers, verify_paths);
-
+	is_self_changed |= drivers_path_rename_fix(
+	         owner_id, ref_id, prefix, oldName, newName, oldN, newN, &adt->drivers, verify_paths);
 	/* NLA Data - Animation Data for Strips */
-	for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next)
-		nlastrips_path_rename_fix(owner_id, prefix, oldName, newName, oldN, newN, &nlt->strips, verify_paths);
-
+	for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
+		is_self_changed |= nlastrips_path_rename_fix(
+		        owner_id, prefix, oldName, newName, oldN, newN, &nlt->strips, verify_paths);
+	}
+	/* Tag owner ID if it */
+	if (is_self_changed) {
+		DEG_id_tag_update(owner_id, ID_RECALC_COPY_ON_WRITE);
+	}
 	/* free the temp names */
 	MEM_freeN(oldN);
 	MEM_freeN(newN);
@@ -2191,6 +2213,10 @@ static void nlaeval_snapshot_free_data(NlaEvalSnapshot *snapshot)
 static void nlaevalchan_free_data(NlaEvalChannel *nec)
 {
 	nlavalidmask_free(&nec->valid);
+
+	if (nec->blend_snapshot != NULL) {
+		nlaevalchan_snapshot_free(nec->blend_snapshot);
+	}
 }
 
 /* Initialize a full NLA evaluation state structure. */
@@ -2242,6 +2268,17 @@ static void nlaevalchan_get_default_values(NlaEvalChannel *nec, float *r_values)
 	PointerRNA *ptr = &nec->key.ptr;
 	PropertyRNA *prop = nec->key.prop;
 	int length = nec->base_snapshot.length;
+
+	/* Use unit quaternion for quaternion properties. */
+	if (nec->mix_mode == NEC_MIX_QUATERNION) {
+		unit_qt(r_values);
+		return;
+	}
+	/* Use all zero for Axis-Angle properties. */
+	if (nec->mix_mode == NEC_MIX_AXIS_ANGLE) {
+		zero_v4(r_values);
+		return;
+	}
 
 	/* NOTE: while this doesn't work for all RNA properties as default values aren't in fact
 	 * set properly for most of them, at least the common ones (which also happen to get used
@@ -2296,6 +2333,33 @@ static void nlaevalchan_get_default_values(NlaEvalChannel *nec, float *r_values)
 				*r_values = 0.0f;
 		}
 	}
+
+	/* Ensure multiplicative properties aren't reset to 0. */
+	if (nec->mix_mode == NEC_MIX_MULTIPLY) {
+		for (int i = 0; i < length; i++) {
+			if (r_values[i] == 0.0f) {
+				r_values[i] = 1.0f;
+			}
+		}
+	}
+}
+
+static char nlaevalchan_detect_mix_mode(NlaEvalChannelKey *key, int length)
+{
+	PropertySubType subtype = RNA_property_subtype(key->prop);
+
+	if (subtype == PROP_QUATERNION && length == 4) {
+		return NEC_MIX_QUATERNION;
+	}
+	else if (subtype == PROP_AXISANGLE && length == 4) {
+		return NEC_MIX_AXIS_ANGLE;
+	}
+	else if (RNA_property_flag(key->prop) & PROP_PROPORTIONAL) {
+		return NEC_MIX_MULTIPLY;
+	}
+	else {
+		return NEC_MIX_ADD;
+	}
 }
 
 /* Verify that an appropriate NlaEvalChannel for this property exists. */
@@ -2323,6 +2387,8 @@ static NlaEvalChannel *nlaevalchan_verify_key(NlaEvalData *nlaeval, const char *
 	nec->owner = nlaeval;
 	nec->index = nlaeval->num_channels++;
 	nec->is_array = is_array;
+
+	nec->mix_mode = nlaevalchan_detect_mix_mode(key, length);
 
 	nlavalidmask_init(&nec->valid, length);
 
@@ -2409,6 +2475,10 @@ static float nla_blend_value(int blendmode, float old_value, float value, float 
 			 */
 			return inf * (old_value * value)  +   (1 - inf) * old_value;
 
+		case NLASTRIP_MODE_COMBINE:
+			BLI_assert(!"combine mode");
+			ATTR_FALLTHROUGH;
+
 		case NLASTRIP_MODE_REPLACE:
 		default: /* TODO: do we really want to blend by default? it seems more uses might prefer add... */
 			/* do linear interpolation
@@ -2416,6 +2486,33 @@ static float nla_blend_value(int blendmode, float old_value, float value, float 
 			 *   is 1 - influence, since the strip's influence is srcweight
 			 */
 			return old_value * (1.0f - inf)   +   (value * inf);
+	}
+}
+
+/* accumulate the old and new values of a channel according to mode and influence */
+static float nla_combine_value(int mix_mode, float base_value, float old_value, float value, float inf)
+{
+	/* optimisation: no need to try applying if there is no influence */
+	if (IS_EQF(inf, 0.0f)) {
+		return old_value;
+	}
+
+	/* perform blending */
+	switch (mix_mode) {
+		case NEC_MIX_ADD:
+		case NEC_MIX_AXIS_ANGLE:
+			return old_value + (value - base_value) * inf;
+
+		case NEC_MIX_MULTIPLY:
+			if (base_value == 0.0f) {
+				base_value = 1.0f;
+			}
+			return old_value * powf(value / base_value, inf);
+
+		case NEC_MIX_QUATERNION:
+		default:
+			BLI_assert(!"invalid mix mode");
+			return old_value;
 	}
 }
 
@@ -2446,6 +2543,10 @@ static bool nla_invert_blend_value(int blend_mode, float old_value, float target
 				return true;
 			}
 
+		case NLASTRIP_MODE_COMBINE:
+			BLI_assert(!"combine mode");
+			ATTR_FALLTHROUGH;
+
 		case NLASTRIP_MODE_REPLACE:
 		default:
 			*r_value = (target_value - old_value) / influence + old_value;
@@ -2453,12 +2554,91 @@ static bool nla_invert_blend_value(int blend_mode, float old_value, float target
 	}
 }
 
+/* compute the value that would blend to the desired target value using nla_combine_value */
+static bool nla_invert_combine_value(int mix_mode, float base_value, float old_value, float target_value, float influence, float *r_value)
+{
+	switch (mix_mode) {
+		case NEC_MIX_ADD:
+		case NEC_MIX_AXIS_ANGLE:
+			*r_value = base_value + (target_value - old_value) / influence;
+			return true;
+
+		case NEC_MIX_MULTIPLY:
+			if (base_value == 0.0f) {
+				base_value = 1.0f;
+			}
+			if (old_value == 0.0f) {
+				/* Resolve 0/0 to 1. */
+				if (target_value == 0.0f) {
+					*r_value = base_value;
+					return true;
+				}
+				/* Division by zero. */
+				return false;
+			}
+			else {
+				*r_value = base_value * powf(target_value / old_value, 1.0f / influence);
+				return true;
+			}
+
+		case NEC_MIX_QUATERNION:
+		default:
+			BLI_assert(!"invalid mix mode");
+			return false;
+	}
+}
+
+/* accumulate quaternion channels for Combine mode according to influence */
+static void nla_combine_quaternion(const float old_values[4], const float values[4], float influence, float result[4])
+{
+	float tmp_old[4], tmp_new[4];
+
+	normalize_qt_qt(tmp_old, old_values);
+	normalize_qt_qt(tmp_new, values);
+
+	pow_qt_fl_normalized(tmp_new, influence);
+	mul_qt_qtqt(result, tmp_old, tmp_new);
+}
+
+/* invert accumulation of quaternion channels for Combine mode according to influence */
+static void nla_invert_combine_quaternion(const float old_values[4], const float values[4], float influence, float result[4])
+{
+	float tmp_old[4], tmp_new[4];
+
+	normalize_qt_qt(tmp_old, old_values);
+	normalize_qt_qt(tmp_new, values);
+	invert_qt_normalized(tmp_old);
+
+	mul_qt_qtqt(result, tmp_old, tmp_new);
+	pow_qt_fl_normalized(result, 1.0f / influence);
+}
+
 /* Data about the current blend mode. */
 typedef struct NlaBlendData {
 	NlaEvalSnapshot *snapshot;
 	int mode;
 	float influence;
+
+	NlaEvalChannel *blend_queue;
 } NlaBlendData;
+
+/* Queue the channel for deferred blending. */
+static NlaEvalChannelSnapshot *nlaevalchan_queue_blend(NlaBlendData *blend, NlaEvalChannel *nec)
+{
+	if (!nec->in_blend) {
+		if (nec->blend_snapshot == NULL) {
+			nec->blend_snapshot = nlaevalchan_snapshot_new(nec);
+		}
+
+		nec->in_blend = true;
+		nlaevalchan_snapshot_copy(nec->blend_snapshot, &nec->base_snapshot);
+
+		nec->next_blend = blend->blend_queue;
+		blend->blend_queue = nec;
+	}
+
+	return nec->blend_snapshot;
+}
 
 /* Accumulate (i.e. blend) the given value on to the channel it affects. */
 static bool nlaeval_blend_value(NlaBlendData *blend, NlaEvalChannel *nec, int array_index, float value)
@@ -2479,13 +2659,56 @@ static bool nlaeval_blend_value(NlaBlendData *blend, NlaEvalChannel *nec, int ar
 		return false;
 	}
 
-	BLI_BITMAP_ENABLE(nec->valid.ptr, index);
+	if (nec->mix_mode == NEC_MIX_QUATERNION) {
+		/* For quaternion properties, always output all sub-channels. */
+		BLI_bitmap_set_all(nec->valid.ptr, true, 4);
+	}
+	else {
+		BLI_BITMAP_ENABLE(nec->valid.ptr, index);
+	}
 
 	NlaEvalChannelSnapshot *nec_snapshot = nlaeval_snapshot_ensure_channel(blend->snapshot, nec);
+	float *p_value = &nec_snapshot->values[index];
 
-	nec_snapshot->values[index] = nla_blend_value(blend->mode, nec_snapshot->values[index], value, blend->influence);
+	if (blend->mode == NLASTRIP_MODE_COMBINE) {
+		/* Quaternion blending is deferred until all sub-channel values are known. */
+		if (nec->mix_mode == NEC_MIX_QUATERNION) {
+			NlaEvalChannelSnapshot *blend_snapshot = nlaevalchan_queue_blend(blend, nec);
+
+			blend_snapshot->values[index] = value;
+		}
+		else {
+			float base_value = nec->base_snapshot.values[index];
+
+			*p_value = nla_combine_value(nec->mix_mode, base_value, *p_value, value, blend->influence);
+		}
+	}
+	else {
+		*p_value = nla_blend_value(blend->mode, *p_value, value, blend->influence);
+	}
 
 	return true;
+}
+
+/* Finish deferred quaternion blending. */
+static void nlaeval_blend_flush(NlaBlendData *blend)
+{
+	NlaEvalChannel *nec;
+
+	while ((nec = blend->blend_queue)) {
+		blend->blend_queue = nec->next_blend;
+		nec->in_blend = false;
+
+		NlaEvalChannelSnapshot *nec_snapshot = nlaeval_snapshot_ensure_channel(blend->snapshot, nec);
+		NlaEvalChannelSnapshot *blend_snapshot = nec->blend_snapshot;
+
+		if (nec->mix_mode == NEC_MIX_QUATERNION) {
+			nla_combine_quaternion(nec_snapshot->values, blend_snapshot->values, blend->influence, nec_snapshot->values);
+		}
+		else {
+			BLI_assert(!"mix quaternion");
+		}
+	}
 }
 
 /* Blend the specified snapshots into the target, and free the input snapshots. */
@@ -2650,6 +2873,8 @@ static void nlastrip_evaluate_actionclip(PointerRNA *ptr, NlaEvalData *channels,
 
 		nlaeval_blend_value(&blend, nec, fcu->array_index, value);
 	}
+
+	nlaeval_blend_flush(&blend);
 
 	/* free temporary storage */
 	evaluate_fmodifiers_storage_free(storage);
@@ -2835,6 +3060,12 @@ static void nla_eval_domain_action(PointerRNA *ptr, NlaEvalData *channels, bActi
 		NlaEvalChannel *nec = nlaevalchan_verify(ptr, channels, fcu->rna_path);
 
 		if (nec != NULL) {
+			/* For quaternion properties, enable all sub-channels. */
+			if (nec->mix_mode == NEC_MIX_QUATERNION) {
+				BLI_bitmap_set_all(nec->valid.ptr, true, 4);
+				continue;
+			}
+
 			int idx = nlaevalchan_validate_index(nec, fcu->array_index);
 
 			if (idx >= 0) {
@@ -3106,16 +3337,22 @@ NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
 }
 
 /**
- * Apply correction from the NLA context to the value about to be keyframed.
+ * Apply correction from the NLA context to the values about to be keyframed.
  *
  * @param context Context to use (may be NULL).
  * @param prop_ptr Property about to be keyframed.
- * @param index Array index within the property.
- * @param[in,out] r_value Value to correct.
- * @return False if correction fails due to a division by zero.
+ * @param[in,out] values Array of property values to adjust.
+ * @param count Number of values in the array.
+ * @param index Index of the element about to be updated, or -1.
+ * @param[out] r_force_all Set to true if all channels must be inserted. May be NULL.
+ * @return False if correction fails due to a division by zero, or null r_force_all when all channels are required.
  */
-bool BKE_animsys_nla_remap_keyframe_value(struct NlaKeyframingContext *context, struct PointerRNA *prop_ptr, struct PropertyRNA *prop, int index, float *r_value)
+bool BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context, struct PointerRNA *prop_ptr, struct PropertyRNA *prop, float *values, int count, int index, bool *r_force_all)
 {
+	if (r_force_all != NULL) {
+		*r_force_all = false;
+	}
+
 	/* No context means no correction. */
 	if (context == NULL || context->strip.act == NULL) {
 		return true;
@@ -3143,18 +3380,51 @@ bool BKE_animsys_nla_remap_keyframe_value(struct NlaKeyframingContext *context, 
 	NlaEvalChannelKey key = { .ptr = *prop_ptr, .prop = prop, };
 	NlaEvalData *nlaeval = &context->nla_channels;
 	NlaEvalChannel *nec = nlaevalchan_verify_key(nlaeval, NULL, &key);
-	int real_index = nlaevalchan_validate_index(nec, index);
 
-	if (real_index < 0) {
-		return true;
+	if (nec->base_snapshot.length != count) {
+		BLI_assert(!"invalid value count");
+		return false;
 	}
 
-	/* Invert the blending operation to compute the desired key value. */
+	/* Invert the blending operation to compute the desired key values. */
 	NlaEvalChannelSnapshot *nec_snapshot = nlaeval_snapshot_find_channel(&nlaeval->eval_snapshot, nec);
 
-	float old_value = nec_snapshot->values[real_index];
+	float *old_values = nec_snapshot->values;
 
-	return nla_invert_blend_value(blend_mode, old_value, *r_value, influence, r_value);
+	if (blend_mode == NLASTRIP_MODE_COMBINE) {
+		/* Quaternion combine handles all sub-channels as a unit. */
+		if (nec->mix_mode == NEC_MIX_QUATERNION) {
+			if (r_force_all == NULL) {
+				return false;
+			}
+
+			*r_force_all = true;
+
+			nla_invert_combine_quaternion(old_values, values, influence, values);
+		}
+		else {
+			float *base_values = nec->base_snapshot.values;
+
+			for (int i = 0; i < count; i++) {
+				if (ELEM(index, i, -1)) {
+					if (!nla_invert_combine_value(nec->mix_mode, base_values[i], old_values[i], values[i], influence, &values[i])) {
+						return false;
+					}
+				}
+			}
+		}
+	}
+	else {
+		for (int i = 0; i < count; i++) {
+			if (ELEM(index, i, -1)) {
+				if (!nla_invert_blend_value(blend_mode, old_values[i], values[i], influence, &values[i])) {
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 /**

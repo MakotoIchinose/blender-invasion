@@ -38,10 +38,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_ghash.h"
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -73,7 +71,6 @@
 #include "BKE_image.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
@@ -533,8 +530,10 @@ bool ED_object_editmode_exit_ex(Main *bmain, Scene *scene, Object *obedit, int f
 		/* flag object caches as outdated */
 		BKE_ptcache_ids_from_object(&pidlist, obedit, scene, 0);
 		for (pid = pidlist.first; pid; pid = pid->next) {
-			if (pid->type != PTCACHE_TYPE_PARTICLES) /* particles don't need reset on geometry change */
+			/* particles don't need reset on geometry change */
+			if (pid->type != PTCACHE_TYPE_PARTICLES) {
 				pid->cache->flag |= PTCACHE_OUTDATED;
+			}
 		}
 		BLI_freelistN(&pidlist);
 
@@ -602,7 +601,9 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
 		ok = 1;
 		ED_armature_to_edit(ob->data);
 		/* to ensure all goes in restposition and without striding */
-		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION); /* XXX: should this be ID_RECALC_GEOMETRY? */
+
+		/* XXX: should this be ID_RECALC_GEOMETRY? */
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
 
 		WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_ARMATURE, scene);
 	}

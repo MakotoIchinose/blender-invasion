@@ -132,7 +132,6 @@ struct ApplicationState app_state = {
 };
 
 /* -------------------------------------------------------------------- */
-
 /** \name Application Level Callbacks
  *
  * Initialize callbacks for the modules that need them.
@@ -188,9 +187,7 @@ static void callback_clg_fatal(void *fp)
 /** \} */
 
 
-
 /* -------------------------------------------------------------------- */
-
 /** \name Main Function
  * \{ */
 
@@ -250,7 +247,8 @@ int main(
 	_putenv_s("OMP_WAIT_POLICY", "PASSIVE");
 # endif
 
-	/* FMA3 support in the 2013 CRT is broken on Vista and Windows 7 RTM (fixed in SP1). Just disable it. */
+	/* FMA3 support in the 2013 CRT is broken on Vista and Windows 7 RTM
+	 * (fixed in SP1). Just disable it. */
 #  if defined(_MSC_VER) && defined(_M_X64)
 	_set_FMA3_enable(0);
 #  endif
@@ -399,7 +397,8 @@ int main(
 	main_signal_setup();
 
 #else
-	G.factory_startup = true;  /* using preferences or user startup makes no sense for py-as-module */
+	/* using preferences or user startup makes no sense for py-as-module */
+	G.factory_startup = true;
 #endif
 
 #ifdef WITH_FFMPEG

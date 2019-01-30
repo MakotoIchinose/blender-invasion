@@ -37,7 +37,6 @@
 extern "C" {
 #endif
 
-struct bContext;
 struct ID;
 struct IDOverrideStatic;
 struct IDOverrideStaticProperty;
@@ -46,6 +45,7 @@ struct ListBase;
 struct Main;
 struct ReportList;
 struct Scene;
+struct bContext;
 
 /* Types */
 extern BlenderRNA BLENDER_RNA;
@@ -103,6 +103,8 @@ extern StructRNA RNA_BoneGroup;
 extern StructRNA RNA_BoolProperty;
 extern StructRNA RNA_BooleanModifier;
 extern StructRNA RNA_Brush;
+extern StructRNA RNA_BrushCapabilitiesImagePaint;
+extern StructRNA RNA_BrushCapabilitiesVertexPaint;
 extern StructRNA RNA_BrushTextureSlot;
 extern StructRNA RNA_BuildGpencilModifier;
 extern StructRNA RNA_BuildModifier;
@@ -307,7 +309,6 @@ extern StructRNA RNA_ImagePreview;
 extern StructRNA RNA_ImageSequence;
 extern StructRNA RNA_ImageTexture;
 extern StructRNA RNA_ImageUser;
-extern StructRNA RNA_ImapaintToolCapabilities;
 extern StructRNA RNA_InflowFluidSettings;
 extern StructRNA RNA_IntProperty;
 extern StructRNA RNA_Itasc;
@@ -731,7 +732,6 @@ extern StructRNA RNA_VertexPaint;
 extern StructRNA RNA_VertexWeightEditModifier;
 extern StructRNA RNA_VertexWeightMixModifier;
 extern StructRNA RNA_VertexWeightProximityModifier;
-extern StructRNA RNA_VertexpaintToolCapabilities;
 extern StructRNA RNA_View3DOverlay;
 extern StructRNA RNA_View3DShading;
 extern StructRNA RNA_ViewLayer;

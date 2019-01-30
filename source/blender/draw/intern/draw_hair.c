@@ -34,18 +34,12 @@
 #include "BLI_utildefines.h"
 #include "BLI_string_utils.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_customdata_types.h"
 
 #include "BKE_anim.h"
-#include "BKE_mesh.h"
-#include "BKE_particle.h"
-#include "BKE_pointcache.h"
 
-#include "ED_particle.h"
 
 #include "GPU_batch.h"
 #include "GPU_shader.h"
@@ -141,7 +135,7 @@ static DRWShadingGroup *drw_shgroup_create_hair_procedural_ex(
 		}
 	}
 
-	if (dupli_parent) {
+	if ((dupli_parent != NULL) && (dupli_object != NULL)) {
 		DRWHairInstanceData *hair_inst_data = (DRWHairInstanceData *)DRW_drawdata_ensure(
 		        &object->id, (DrawEngineType *)&drw_shgroup_create_hair_procedural_ex,
 		        sizeof(DRWHairInstanceData), NULL, NULL);

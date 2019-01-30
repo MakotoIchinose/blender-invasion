@@ -48,7 +48,6 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_sequencer.h"
 #include "BKE_sound.h"
 #include "BKE_scene.h"
@@ -56,7 +55,6 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
-#include "BIF_glutil.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -648,7 +646,8 @@ static void draw_sequence_extensions(Scene *scene, ARegion *ar, Sequence *seq, u
 
 		immUniformColor3ubvAlpha(col, col[3] + 50);
 
-		imm_draw_box_wire_2d(pos, (float)(seq->start), y1 - SEQ_STRIP_OFSBOTTOM, x1, y1);  /* outline */
+		/* outline */
+		imm_draw_box_wire_2d(pos, (float)(seq->start), y1 - SEQ_STRIP_OFSBOTTOM, x1, y1);
 	}
 	if (seq->endofs) {
 		immUniformColor4ubv(col);
@@ -656,7 +655,8 @@ static void draw_sequence_extensions(Scene *scene, ARegion *ar, Sequence *seq, u
 
 		immUniformColor3ubvAlpha(col, col[3] + 50);
 
-		imm_draw_box_wire_2d(pos, x2, y2, (float)(seq->start + seq->len), y2 + SEQ_STRIP_OFSBOTTOM); /* outline */
+		/* outline */
+		imm_draw_box_wire_2d(pos, x2, y2, (float)(seq->start + seq->len), y2 + SEQ_STRIP_OFSBOTTOM);
 	}
 
 	if (seq->startofs || seq->endofs) {
@@ -1308,9 +1308,10 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 	}
 
 	if (draw_backdrop) {
-		/* XXX: need to load identity projection too? */
 		GPU_matrix_push();
 		GPU_matrix_identity_set();
+		GPU_matrix_push_projection();
+		GPU_matrix_identity_projection_set();
 	}
 
 	glGenTextures(1, (GLuint *)&texid);
@@ -1441,6 +1442,7 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 
 	if (draw_backdrop) {
 		GPU_matrix_pop();
+		GPU_matrix_pop_projection();
 		return;
 	}
 
@@ -1565,7 +1567,8 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *ar)
 	/* loop through twice, first unselected, then selected */
 	for (j = 0; j < 2; j++) {
 		Sequence *seq;
-		int outline_tint = (j) ? 40 : -40; /* highlighting around strip edges indicating selection */
+		/* highlighting around strip edges indicating selection */
+		int outline_tint = (j) ? -60 : -150;
 
 		/* loop through strips, checking for those that are visible */
 		for (seq = ed->seqbasep->first; seq; seq = seq->next) {
@@ -1585,7 +1588,8 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *ar)
 		sel = SELECT;
 	}
 
-	/* draw the last selected last (i.e. 'active' in other parts of Blender), removes some overlapping error */
+	/* draw the last selected last (i.e. 'active' in other parts of Blender),
+	 * removes some overlapping error */
 	if (last_seq)
 		draw_seq_strip(C, sseq, scene, ar, last_seq, 120, pixelx);
 

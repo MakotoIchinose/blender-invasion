@@ -228,7 +228,11 @@ typedef struct BMOpSlot {
 		float vec[3];
 		void **buf;
 		GHash *ghash;
-		BMO_FlagSet *enum_flags;
+		struct {
+			/** Don't clobber (i) when assigning flags, see #eBMOpSlotSubType_Int. */
+			int _i;
+			BMO_FlagSet *flags;
+		} enum_data;
 	} data;
 } BMOpSlot;
 
@@ -246,7 +250,7 @@ typedef struct BMOpSlot {
 	           ((slot >= (op)->slots_out) && (slot < &(op)->slots_out[BMO_OP_MAX_SLOTS])))
 
 /* way more than probably needed, compiler complains if limit hit */
-#define BMO_OP_MAX_SLOTS 16
+#define BMO_OP_MAX_SLOTS 20
 
 /* BMOpDefine->type_flag */
 typedef enum {

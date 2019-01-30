@@ -52,7 +52,7 @@ struct FileDirEntryArr;
 typedef enum FileSelType {
 	FILE_SEL_REMOVE = 0,
 	FILE_SEL_ADD    = 1,
-	FILE_SEL_TOGGLE = 2
+	FILE_SEL_TOGGLE = 2,
 } FileSelType;
 
 struct ListBase    *folderlist_new(void);

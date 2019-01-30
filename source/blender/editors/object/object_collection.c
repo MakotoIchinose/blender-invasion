@@ -42,7 +42,6 @@
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_library.h"
-#include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -538,7 +537,7 @@ static int collection_unlink_exec(bContext *C, wmOperator *UNUSED(op))
 	if (!collection)
 		return OPERATOR_CANCELLED;
 
-	BKE_libblock_delete(bmain, collection);
+	BKE_id_delete(bmain, collection);
 
 	DEG_relations_tag_update(bmain);
 
@@ -562,7 +561,8 @@ void OBJECT_OT_collection_unlink(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int select_grouped_exec(bContext *C, wmOperator *UNUSED(op))  /* Select objects in the same collection as the active */
+/* Select objects in the same collection as the active */
+static int select_grouped_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Scene *scene = CTX_data_scene(C);
 	Collection *collection = CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data;

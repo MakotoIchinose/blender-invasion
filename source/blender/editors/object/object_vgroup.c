@@ -50,7 +50,6 @@
 #include "BLI_math.h"
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_linklist_stack.h"
 #include "BLI_utildefines_stack.h"
 
 
@@ -960,7 +959,9 @@ float ED_vgroup_vert_weight(Object *ob, bDeformGroup *dg, int vertnum)
 }
 
 void ED_vgroup_select_by_name(Object *ob, const char *name)
-{   /* note: ob->actdef==0 signals on painting to create a new one, if a bone in posemode is selected */
+{
+	/* note: ob->actdef==0 signals on painting to create a new one,
+     * if a bone in posemode is selected */
 	ob->actdef = defgroup_name_index(ob, name) + 1;
 }
 
@@ -1946,20 +1947,22 @@ static int inv_cmp_mdef_vert_weights(const void *a1, const void *a2)
 {
 	/* qsort sorts in ascending order.  We want descending order to save a memcopy
 	 * so this compare function is inverted from the standard greater than comparison qsort needs.
-	 * A normal compare function is called with two pointer arguments and should return an integer less than, equal to,
-	 * or greater than zero corresponding to whether its first argument is considered less than, equal to,
-	 * or greater than its second argument.  This does the opposite. */
+	 * A normal compare function is called with two pointer arguments and should return an integer
+	 * less than, equal to, or greater than zero corresponding to whether its first argument is
+	 * considered less than, equal to, or greater than its second argument.
+	 * This does the opposite. */
 	const struct MDeformWeight *dw1 = a1, *dw2 = a2;
 
 	if      (dw1->weight < dw2->weight) return  1;
 	else if (dw1->weight > dw2->weight) return -1;
-	else if (&dw1 < &dw2)               return  1; /* compare addresses so we have a stable sort algorithm */
+	else if (&dw1 < &dw2)               return  1; /* compare address for stable sort algorithm */
 	else                                return -1;
 }
 
 /* Used for limiting the number of influencing bones per vertex when exporting
  * skinned meshes.  if all_deform_weights is True, limit all deform modifiers
- * to max_weights regardless of type, otherwise, only limit the number of influencing bones per vertex*/
+ * to max_weights regardless of type, otherwise,
+ * only limit the number of influencing bones per vertex. */
 static int vgroup_limit_total_subset(
         Object *ob,
         const bool *vgroup_validmap,
@@ -2679,8 +2682,10 @@ void OBJECT_OT_vertex_group_remove(wmOperatorType *ot)
 	ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
 	/* properties */
-	RNA_def_boolean(ot->srna, "all", 0, "All", "Remove all vertex groups");
-	RNA_def_boolean(ot->srna, "all_unlocked", 0, "All Unlocked", "Remove all unlocked vertex groups");
+	PropertyRNA *prop = RNA_def_boolean(ot->srna, "all", 0, "All", "Remove all vertex groups");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+	prop = RNA_def_boolean(ot->srna, "all_unlocked", 0, "All Unlocked", "Remove all unlocked vertex groups");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 static int vertex_group_assign_exec(bContext *C, wmOperator *UNUSED(op))
@@ -3626,7 +3631,7 @@ static void vgroup_sort_bone_hierarchy(Object *ob, ListBase *bonebase)
 
 enum {
 	SORT_TYPE_NAME          = 0,
-	SORT_TYPE_BONEHIERARCHY = 1
+	SORT_TYPE_BONEHIERARCHY = 1,
 };
 
 static int vertex_group_sort_exec(bContext *C, wmOperator *op)

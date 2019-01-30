@@ -52,15 +52,12 @@
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
 #include "BKE_main.h"
 
 #include "BKE_animsys.h"
 #include "BKE_curve.h"
 #include "BKE_scene.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
 #include "BKE_displist.h"
 #include "BKE_mball.h"
 #include "BKE_object.h"
@@ -422,7 +419,7 @@ Object *BKE_mball_basis_find(Scene *scene, Object *basis)
 	for (ViewLayer *view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
 		for (Base *base = view_layer->object_bases.first; base; base = base->next) {
 			Object *ob = base->object;
-			if ((ob->type == OB_MBALL) && !(base->flag & BASE_FROMDUPLI)) {
+			if ((ob->type == OB_MBALL) && !(base->flag & BASE_FROM_DUPLI)) {
 				if (ob != bob) {
 					BLI_split_name_num(obname, &obnr, ob->id.name + 2, '.');
 
