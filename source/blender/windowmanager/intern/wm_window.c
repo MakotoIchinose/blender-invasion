@@ -1055,6 +1055,11 @@ void wm_cursor_position_to_ghost(wmWindow *win, int *x, int *y)
 
 void wm_get_cursor_position(wmWindow *win, int *x, int *y)
 {
+	if (UNLIKELY(G.debug & G_DEBUG_EVENTS_SIMULATE)) {
+		*x = win->eventstate->x;
+		*y = win->eventstate->y;
+		return;
+	}
 	GHOST_GetCursorPosition(g_system, x, y);
 	wm_cursor_position_from_ghost(win, x, y);
 }

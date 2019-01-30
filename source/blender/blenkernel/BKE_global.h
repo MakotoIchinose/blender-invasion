@@ -159,10 +159,13 @@ enum {
 	G_DEBUG_IO =        (1 << 17),  /* IO Debugging (for Collada, ...)*/
 	G_DEBUG_GPU_SHADERS = (1 << 18),  /* GLSL shaders */
 	G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 19),  /* force gpu workarounds bypassing detections. */
+	G_DEBUG_EVENTS_SIMULATE = (1 << 20),  /* input/window/screen events */
 };
 
-#define G_DEBUG_ALL  (G_DEBUG | G_DEBUG_FFMPEG | G_DEBUG_PYTHON | G_DEBUG_EVENTS | G_DEBUG_WM | G_DEBUG_JOBS | \
-                      G_DEBUG_FREESTYLE | G_DEBUG_DEPSGRAPH | G_DEBUG_GPU_MEM | G_DEBUG_IO | G_DEBUG_GPU_SHADERS)
+#define G_DEBUG_ALL \
+	(G_DEBUG | G_DEBUG_FFMPEG | G_DEBUG_PYTHON | G_DEBUG_EVENTS | G_DEBUG_WM | G_DEBUG_JOBS | \
+	 G_DEBUG_FREESTYLE | G_DEBUG_DEPSGRAPH | G_DEBUG_GPU_MEM | G_DEBUG_IO | G_DEBUG_GPU_SHADERS | \
+	 G_DEBUG_EVENTS_SIMULATE)
 
 
 /* G.fileflags */

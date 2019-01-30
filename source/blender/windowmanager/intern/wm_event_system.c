@@ -134,6 +134,18 @@ wmEvent *wm_event_add(wmWindow *win, const wmEvent *event_to_add)
 	return wm_event_add_ex(win, event_to_add, NULL);
 }
 
+wmEvent *WM_event_add_simulate(wmWindow *win, const wmEvent *event_to_add)
+{
+	if ((G.debug & G_DEBUG_EVENTS_SIMULATE) == 0) {
+		BLI_assert(0);
+		return NULL;
+	}
+	wmEvent *event = wm_event_add(win, event_to_add);
+	win->eventstate->x = event->x;
+	win->eventstate->y = event->y;
+	return event;
+}
+
 void wm_event_free(wmEvent *event)
 {
 	if (event->customdata) {
@@ -3905,6 +3917,10 @@ static wmEvent *wm_event_add_mousemove(wmWindow *win, const wmEvent *event)
 void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, int type, int UNUSED(time), void *customdata)
 {
 	wmWindow *owin;
+
+	if (UNLIKELY(G.debug & G_DEBUG_EVENTS_SIMULATE)) {
+		return;
+	}
 
 	/* Having both, event and evt, can be highly confusing to work with, but is necessary for
 	 * our current event system, so let's clear things up a bit:

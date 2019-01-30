@@ -265,6 +265,16 @@ static int bpy_app_debug_set(PyObject *UNUSED(self), PyObject *value, void *clos
 	return 0;
 }
 
+static int bpy_app_debug_set__only_disable(PyObject *UNUSED(self), PyObject *value, void *closure)
+{
+	const int param = PyObject_IsTrue(value);
+	if (param) {
+		PyErr_SetString(PyExc_ValueError, "This bpy.app.debug option can only be disabled");
+		return -1
+	}
+	return bpy_app_debug_set(NULL, value, closure);
+}
+
 #define BROKEN_BINARY_PATH_PYTHON_HACK
 
 PyDoc_STRVAR(bpy_app_binary_path_python_doc,
@@ -394,6 +404,7 @@ static PyGetSetDef bpy_app_getsets[] = {
 	{(char *)"debug_freestyle", bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_FREESTYLE},
 	{(char *)"debug_python",    bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_PYTHON},
 	{(char *)"debug_events",    bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_EVENTS},
+	{(char *)"debug_events_simulate", bpy_app_debug_get, bpy_app_debug_set__only_disable, (char *)bpy_app_debug_doc, (void *)G_DEBUG_EVENTS_SIMULATE},
 	{(char *)"debug_handlers",  bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_HANDLERS},
 	{(char *)"debug_wm",        bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_WM},
 	{(char *)"debug_depsgraph", bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_DEPSGRAPH},

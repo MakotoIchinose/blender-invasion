@@ -535,6 +535,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 
 	printf("\n");
 	BLI_argsPrintArgDoc(ba, "--debug-events");
+	BLI_argsPrintArgDoc(ba, "--debug-events-simulate");
 #ifdef WITH_FFMPEG
 	BLI_argsPrintArgDoc(ba, "--debug-ffmpeg");
 #endif
@@ -867,6 +868,8 @@ static const char arg_handle_debug_mode_generic_set_doc_python[] =
 "\n\tEnable debug messages for Python.";
 static const char arg_handle_debug_mode_generic_set_doc_events[] =
 "\n\tEnable debug messages for the event system.";
+static const char arg_handle_debug_mode_generic_set_doc_events_simulate[] =
+"\n\tEnable event simulation API: 'bpy.types.Window.event_simulate'.";
 static const char arg_handle_debug_mode_generic_set_doc_handlers[] =
 "\n\tEnable debug messages for event handling.";
 static const char arg_handle_debug_mode_generic_set_doc_wm[] =
@@ -1903,6 +1906,8 @@ void main_args_setup(bContext *C, bArgs *ba)
 	            CB_EX(arg_handle_debug_mode_generic_set, python), (void *)G_DEBUG_PYTHON);
 	BLI_argsAdd(ba, 1, NULL, "--debug-events",
 	            CB_EX(arg_handle_debug_mode_generic_set, events), (void *)G_DEBUG_EVENTS);
+	BLI_argsAdd(ba, 1, NULL, "--debug-events-simulate",
+	            CB_EX(arg_handle_debug_mode_generic_set, events_simulate), (void *)G_DEBUG_EVENTS_SIMULATE);
 	BLI_argsAdd(ba, 1, NULL, "--debug-handlers",
 	            CB_EX(arg_handle_debug_mode_generic_set, handlers), (void *)G_DEBUG_HANDLERS);
 	BLI_argsAdd(ba, 1, NULL, "--debug-wm",
