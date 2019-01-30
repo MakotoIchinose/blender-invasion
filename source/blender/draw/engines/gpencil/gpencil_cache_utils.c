@@ -42,7 +42,6 @@
 #include "draw_cache_impl.h"
 
 #include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
 
  /* add a gpencil object to cache to defer drawing */
 tGPencilObjectCache *gpencil_object_cache_add(
