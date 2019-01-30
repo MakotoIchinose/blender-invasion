@@ -217,6 +217,7 @@ class EventGenerate:
 
 
 def run(event_iter):
+    import bpy
 
     # 3 works, 4  to be on the safe side.
     TICKS = 4
