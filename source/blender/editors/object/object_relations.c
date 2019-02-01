@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,10 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2008 full recode
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/object/object_relations.c
@@ -1081,83 +1075,6 @@ void OBJECT_OT_parent_no_inverse_set(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-/************************ Clear Slow Parent Operator *********************/
-
-static int object_slow_parent_clear_exec(bContext *C, wmOperator *UNUSED(op))
-{
-	Depsgraph *depsgraph = CTX_data_depsgraph(C);
-	Scene *scene = CTX_data_scene(C);
-
-	CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects)
-	{
-		if (ob->parent) {
-			if (ob->partype & PARSLOW) {
-				ob->partype -= PARSLOW;
-				BKE_object_where_is_calc(depsgraph, scene, ob);
-				ob->partype |= PARSLOW;
-				DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
-			}
-		}
-	}
-	CTX_DATA_END;
-
-	WM_event_add_notifier(C, NC_SCENE, scene);
-
-	return OPERATOR_FINISHED;
-}
-
-void OBJECT_OT_slow_parent_clear(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Clear Slow Parent";
-	ot->description = "Clear the object's slow parent";
-	ot->idname = "OBJECT_OT_slow_parent_clear";
-
-	/* api callbacks */
-	ot->invoke = WM_operator_confirm;
-	ot->exec = object_slow_parent_clear_exec;
-	ot->poll = ED_operator_view3d_active;
-
-	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/********************** Make Slow Parent Operator *********************/
-
-static int object_slow_parent_set_exec(bContext *C, wmOperator *UNUSED(op))
-{
-	Scene *scene = CTX_data_scene(C);
-
-	CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects)
-	{
-		if (ob->parent)
-			ob->partype |= PARSLOW;
-
-		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
-	}
-	CTX_DATA_END;
-
-	WM_event_add_notifier(C, NC_SCENE, scene);
-
-	return OPERATOR_FINISHED;
-}
-
-void OBJECT_OT_slow_parent_set(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Set Slow Parent";
-	ot->description = "Set the object's slow parent";
-	ot->idname = "OBJECT_OT_slow_parent_set";
-
-	/* api callbacks */
-	ot->invoke = WM_operator_confirm;
-	ot->exec = object_slow_parent_set_exec;
-	ot->poll = ED_operator_view3d_active;
-
-	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
 /* ******************** Clear Track Operator ******************* */
 
 enum {
@@ -1626,8 +1543,8 @@ void OBJECT_OT_make_links_data(wmOperatorType *ot)
 		{MAKE_LINKS_OBDATA,     "OBDATA", 0, "Object Data", ""},
 		{MAKE_LINKS_MATERIALS,  "MATERIAL", 0, "Materials", ""},
 		{MAKE_LINKS_ANIMDATA,   "ANIMATION", 0, "Animation Data", ""},
-		{MAKE_LINKS_GROUP,      "GROUPS", 0, "Group", ""},
-		{MAKE_LINKS_DUPLICOLLECTION, "DUPLICOLLECTION", 0, "DupliGroup", ""},
+		{MAKE_LINKS_GROUP,      "GROUPS", 0, "Collection", ""},
+		{MAKE_LINKS_DUPLICOLLECTION, "DUPLICOLLECTION", 0, "Instance Collection", ""},
 		{MAKE_LINKS_MODIFIERS,  "MODIFIERS", 0, "Modifiers", ""},
 		{MAKE_LINKS_FONTS,      "FONTS", 0, "Fonts", ""},
 		{0, NULL, 0, NULL, NULL}};

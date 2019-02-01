@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,10 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009, Xavier Thomas
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/space_image/image_ops.c
@@ -3761,6 +3755,7 @@ static int render_border_exec(bContext *C, wmOperator *op)
 		scene->r.mode |= R_BORDER;
 	}
 
+	DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
 	return OPERATOR_FINISHED;

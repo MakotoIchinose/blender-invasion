@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,36 +15,26 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Joshua Leung
- * Contributor(s): None Yet
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file depsgraph/intern/nodes/deg_node_time.h
+/** \file blender/depsgraph/intern/node/deg_node_time.cc
  *  \ingroup depsgraph
  */
 
-#pragma once
+#include "intern/node/deg_node_time.h"
 
-#include "intern/nodes/deg_node.h"
+#include "DNA_scene_types.h"
+
+#include "intern/depsgraph.h"
 
 namespace DEG {
 
-/* Time Source Node. */
-struct TimeSourceDepsNode : public DepsNode {
-	/* New "current time". */
-	float cfra;
-
-	/* time-offset relative to the "official" time source that this one has. */
-	float offset;
-
-	// TODO: evaluate() operation needed
-
-	virtual void tag_update(Depsgraph *graph, eDepsTag_Source source) override;
-
-	DEG_DEPSNODE_DECLARE;
-};
+void TimeSourceNode::tag_update(Depsgraph *graph, eUpdateSource /*source*/)
+{
+	for (Relation *rel : outlinks) {
+		Node *node = rel->to;
+		node->tag_update(graph, DEG_UPDATE_SOURCE_TIME);
+	}
+}
 
 }  // namespace DEG

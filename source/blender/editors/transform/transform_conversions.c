@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/transform/transform_conversions.c
@@ -3349,7 +3341,7 @@ void flushTransUVs(TransInfo *t)
 				td->loc2d[0] *= size[0];
 				td->loc2d[1] *= size[1];
 
-				switch(sima->pixel_snap_mode) {
+				switch (sima->pixel_snap_mode) {
 					case SI_PIXEL_SNAP_CENTER:
 						td->loc2d[0] = roundf(td->loc2d[0] - 0.5f) + 0.5f;
 						td->loc2d[1] = roundf(td->loc2d[1] - 0.5f) + 0.5f;
@@ -5791,7 +5783,7 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
 		skip_invert = true;
 
 	if (skip_invert == false && constinv == false) {
-		ob->transflag |= OB_NO_CONSTRAINTS;  /* BKE_object_where_is_calc_time checks this */
+		ob->transflag |= OB_NO_CONSTRAINTS;  /* BKE_object_where_is_calc checks this */
 		BKE_object_where_is_calc(t->depsgraph, t->scene, ob);
 		ob->transflag &= ~OB_NO_CONSTRAINTS;
 	}
