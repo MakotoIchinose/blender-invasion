@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/blenkernel/intern/scene.c
@@ -1402,7 +1394,7 @@ static void scene_armature_depsgraph_workaround(Main *bmain, Depsgraph *depsgrap
 		return;
 	}
 	for (ob = bmain->object.first; ob; ob = ob->id.next) {
-		if (ob->type == OB_ARMATURE && ob->adt && ob->adt->recalc & ADT_RECALC_ANIM) {
+		if (ob->type == OB_ARMATURE && ob->adt) {
 			if (ob->pose == NULL || (ob->pose->flag & POSE_RECALC)) {
 				BKE_pose_rebuild(bmain, ob, ob->data, true);
 			}

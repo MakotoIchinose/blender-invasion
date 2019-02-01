@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -18,10 +16,6 @@
  * All rights reserved.
  *
  * The Original Code is: some of this file.
- *
- * Contributor(s): Jens Ole Wund (bjornmose), Campbell Barton (ideasman42)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/sculpt_paint/paint_image_proj.c
@@ -6026,13 +6020,15 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
 			BKE_texpaint_slot_refresh_cache(scene, ma);
 			BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_USER_NEW_IMAGE);
 			WM_event_add_notifier(C, NC_IMAGE | NA_ADDED, ima);
-			DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
-			ED_area_tag_redraw(CTX_wm_area(C));
-
-			BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
-
-			return true;
 		}
+
+		DEG_id_tag_update(&ntree->id, 0);
+		DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
+		ED_area_tag_redraw(CTX_wm_area(C));
+
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+
+		return true;
 	}
 
 	return false;

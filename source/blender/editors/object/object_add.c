@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,10 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2008 full recode
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/object/object_add.c
@@ -416,8 +410,9 @@ Object *ED_object_add_type(
 		DEG_id_tag_update_ex(bmain, (ID *)ob->data, ID_RECALC_EDITORS);
 	}
 
-	if (enter_editmode)
-		ED_object_editmode_enter(C, EM_IGNORE_LAYER);
+	if (enter_editmode) {
+		ED_object_editmode_enter_ex(bmain, scene, ob, 0);
+	}
 
 	WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
 
@@ -2239,8 +2234,11 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, ViewLayer 
 			LayerCollection *layer_collection = BKE_layer_collection_get_active(view_layer);
 			BKE_collection_object_add(bmain, layer_collection->collection, obn);
 		}
+
 		basen = BKE_view_layer_base_find(view_layer, obn);
-		basen->local_view_bits = base->local_view_bits;
+		if (base != NULL) {
+			basen->local_view_bits = base->local_view_bits;
+		}
 
 		/* 1) duplis should end up in same collection as the original
 		 * 2) Rigid Body sim participants MUST always be part of a collection...

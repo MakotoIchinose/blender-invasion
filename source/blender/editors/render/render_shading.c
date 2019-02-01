@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,10 +14,6 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/render/render_shading.c
@@ -927,9 +921,9 @@ static int light_cache_free_exec(bContext *C, wmOperator *UNUSED(op))
 void SCENE_OT_light_cache_free(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Free Light Cache";
+	ot->name = "Delete Light Cache";
 	ot->idname = "SCENE_OT_light_cache_free";
-	ot->description = "Free cached indirect lighting";
+	ot->description = "Delete cached indirect lighting";
 
 	/* api callbacks */
 	ot->exec = light_cache_free_exec;

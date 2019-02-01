@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,10 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/object/object_modifier.c
@@ -2190,23 +2184,8 @@ static int ocean_bake_exec(bContext *C, wmOperator *op)
 
 	/* precalculate time variable before baking */
 	for (f = omd->bakestart; f <= omd->bakeend; f++) {
-		/* from physics_fluid.c:
-		 *
-		 * XXX: This can't be used due to an anim sys optimization that ignores recalc object animation,
-		 * leaving it for the depgraph (this ignores object animation such as modifier properties though... :/ )
-		 * --> BKE_animsys_evaluate_all_animation(bmain, eval_time);
-		 * This doesn't work with drivers:
-		 * --> BKE_animsys_evaluate_animdata(&fsDomain->id, fsDomain->adt, eval_time, ADT_RECALC_ALL);
-		 */
-
-		/* Modifying the global scene isn't nice, but we can do it in
-		 * this part of the process before a threaded job is created */
-
-		//scene->r.cfra = f;
-		//ED_update_for_newframe(bmain, scene);
-
-		/* ok, this doesn't work with drivers, but is way faster.
-		 * let's use this for now and hope nobody wants to drive the time value... */
+		/* For now only simple animation of time value is supported, nothing else.
+		 * No drivers or other modifier parameters. */
 		BKE_animsys_evaluate_animdata(CTX_data_depsgraph(C), scene, (ID *)ob, ob->adt, f, ADT_RECALC_ANIM);
 
 		och->time[i] = omd->time;

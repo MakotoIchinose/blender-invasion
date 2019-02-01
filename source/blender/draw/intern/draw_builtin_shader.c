@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,9 +12,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
 /** \file draw_builtin_shader.c
@@ -79,7 +74,8 @@ static GPUShader *drw_shader_get_builtin_shader_clipped(eGPUBuiltinShader shader
 	        .vert = (const char *[]){world_clip_lib, shader_code.vert, NULL},
 	        .geom = (const char *[]){shader_code.geom ? world_clip_lib : NULL, shader_code.geom, NULL},
 	        .frag = (const char *[]){shader_code.frag, NULL},
-	        .defs = (const char *[]){world_clip_def, shader_code.defs, NULL}});
+	        .defs = (const char *[]){world_clip_def, shader_code.defs, NULL},
+	});
 }
 
 GPUShader *DRW_shader_get_builtin_shader(eGPUBuiltinShader shader_id, eDRW_ShaderSlot slot)

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/makesrna/intern/rna_sculpt_paint.c
@@ -694,7 +688,7 @@ static void rna_def_sculpt(BlenderRNA  *brna)
 		{0, "RELATIVE", 0,
 		 "Relative Detail", "Mesh detail is relative to the brush size and detail size"},
 		{SCULPT_DYNTOPO_DETAIL_CONSTANT, "CONSTANT", 0,
-		 "Constant Detail", "Mesh detail is constant in object space according to detail size"},
+		 "Constant Detail", "Mesh detail is constant in world space according to detail size"},
 		{SCULPT_DYNTOPO_DETAIL_BRUSH, "BRUSH", 0,
 		 "Brush Detail", "Mesh detail is relative to brush radius"},
 		{SCULPT_DYNTOPO_DETAIL_MANUAL, "MANUAL", 0,

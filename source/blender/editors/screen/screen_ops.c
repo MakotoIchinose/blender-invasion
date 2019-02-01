@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,9 +15,6 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/screen/screen_ops.c
@@ -4705,6 +4700,12 @@ static void SCREEN_OT_region_blend(wmOperatorType *ot)
 /** \name Space Type Set or Cycle Operator
  * \{ */
 
+static bool space_type_set_or_cycle_poll(bContext *C)
+{
+	ScrArea *sa = CTX_wm_area(C);
+	return (sa && !ELEM(sa->spacetype, SPACE_TOPBAR, SPACE_STATUSBAR));
+}
+
 static int space_type_set_or_cycle_exec(bContext *C, wmOperator *op)
 {
 	const int space_type = RNA_enum_get(op->ptr, "space_type");
@@ -4753,7 +4754,7 @@ static void SCREEN_OT_space_type_set_or_cycle(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = space_type_set_or_cycle_exec;
-	ot->poll = ED_operator_areaactive;
+	ot->poll = space_type_set_or_cycle_poll;
 
 	ot->flag = 0;
 
