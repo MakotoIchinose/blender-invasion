@@ -115,7 +115,7 @@ ConstructorInitializerIndentWidth: 0
 # This will unfortunately use spaces in some cases where it's not desired (like
 # function calls) but the overall result is better since it will allow
 # alignment to work properly with different tab width settings.
-ContinuationIndentWidth: 2
+ContinuationIndentWidth: 4
 
 # This tries to match Blender's style as much as possible. One
 BreakBeforeBraces: Custom
