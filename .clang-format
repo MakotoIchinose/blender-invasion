@@ -182,6 +182,8 @@ AllowShortFunctionsOnASingleLine: None
 # TODO: look into enabling this in the future.
 SortIncludes: false
 
+# Don't right align escapted newlines to the right because we have a wide default
+AlignEscapedNewlines: DontAlign
 
 # There are macros in Blender for custom for loops; tell Clang to treat them
 # like loops rather than an expression, and so put the { on the same line.
