@@ -14,9 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Institute
- *
  */
 
 /** \file workbench_effect_dof.c
@@ -137,7 +134,7 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
 	WORKBENCH_FramebufferList *fbl = vedata->fbl;
 
 	if ((wpd->shading.flag & V3D_SHADING_DEPTH_OF_FIELD) == 0 ||
-		(camera == NULL))
+	    (camera == NULL))
 	{
 		wpd->dof_enabled = false;
 		return;

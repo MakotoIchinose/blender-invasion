@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Brecht Van Lommel.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/gpu/intern/gpu_codegen.c
@@ -154,7 +146,7 @@ typedef struct GPUFunction {
 /* Indices match the eGPUType enum */
 static const char *GPU_DATATYPE_STR[17] = {
 	"", "float", "vec2", "vec3", "vec4",
-	NULL, NULL, NULL, NULL, "mat3", NULL, NULL, NULL, NULL, NULL, NULL, "mat4"
+	NULL, NULL, NULL, NULL, "mat3", NULL, NULL, NULL, NULL, NULL, NULL, "mat4",
 };
 
 /* GLSL code parsing for finding function definitions.

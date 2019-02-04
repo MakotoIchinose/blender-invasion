@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
 /** \file blender/blenloader/intern/readfile.c
@@ -3955,6 +3947,12 @@ static void direct_link_image(FileData *fd, Image *ima)
 		}
 		ima->rr = NULL;
 	}
+	else {
+		for (int i = 0; i < TEXTARGET_COUNT; i++) {
+			ima->gputexture[i] = newimaadr(fd, ima->gputexture[i]);
+		}
+		ima->rr = newimaadr(fd, ima->rr);
+	}
 
 	/* undo system, try to restore render buffers */
 	link_list(fd, &(ima->renderslots));
@@ -4189,7 +4187,7 @@ static const char *ptcache_data_struct[] = {
 	"", // BPHYS_DATA_AVELOCITY / BPHYS_DATA_XCONST */
 	"", // BPHYS_DATA_SIZE:
 	"", // BPHYS_DATA_TIMES:
-	"BoidData" // case BPHYS_DATA_BOIDS:
+	"BoidData", // case BPHYS_DATA_BOIDS:
 };
 
 static void direct_link_pointcache_cb(FileData *fd, void *data)

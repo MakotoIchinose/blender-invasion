@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2008, Blender Foundation, Joshua Leung
+ * The Original Code is Copyright (C) 2008, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung, Antonio Vazquez, Charlie Jolly
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
  /** \file blender/editors/gpencil/gpencil_paint.c
@@ -1771,6 +1765,25 @@ static Brush *gp_get_default_eraser(Main *bmain, ToolSettings *ts)
 	}
 }
 
+/* helper to set default eraser and disable others */
+static void gp_set_default_eraser(Main *bmain, Brush *brush_dft)
+{
+	if (brush_dft == NULL) {
+		return;
+	}
+
+	for (Brush *brush = bmain->brush.first; brush; brush = brush->id.next) {
+		if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+			if (brush == brush_dft) {
+				brush->gpencil_settings->flag |= GP_BRUSH_DEFAULT_ERASER;
+			}
+			else if (brush->gpencil_settings->flag & GP_BRUSH_DEFAULT_ERASER) {
+				brush->gpencil_settings->flag &= ~GP_BRUSH_DEFAULT_ERASER;
+			}
+		}
+	}
+}
+
 /* initialize a drawing brush */
 static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
 {
@@ -1797,6 +1810,9 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
 	else {
 		p->eraser = paint->brush;
 	}
+	/* set new eraser as default */
+	gp_set_default_eraser(p->bmain, p->eraser);
+
 	/* use radius of eraser */
 	p->radius = (short)p->eraser->size;
 
@@ -3744,7 +3760,7 @@ static const EnumPropertyItem prop_gpencil_drawmodes[] = {
 	{GP_PAINTMODE_DRAW_STRAIGHT, "DRAW_STRAIGHT", 0, "Draw Straight Lines", "Draw straight line segment(s)"},
 	{GP_PAINTMODE_DRAW_POLY, "DRAW_POLY", 0, "Draw Poly Line", "Click to place endpoints of straight line segments (connected)"},
 	{GP_PAINTMODE_ERASER, "ERASER", 0, "Eraser", "Erase Grease Pencil strokes"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 void GPENCIL_OT_draw(wmOperatorType *ot)

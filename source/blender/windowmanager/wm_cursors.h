@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/windowmanager/wm_cursors.h
@@ -47,7 +39,7 @@ enum {
 	CURSOR_STD,
 	CURSOR_NONE,
 	CURSOR_PENCIL,
-	CURSOR_COPY
+	CURSOR_COPY,
 };
 
 
@@ -105,7 +97,7 @@ enum {
 	BC_RED,
 	BC_BLUE,
 	BC_GREEN,
-	BC_YELLOW
+	BC_YELLOW,
 };
 
 struct wmEvent;

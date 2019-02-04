@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2004 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file blender/editors/space_outliner/outliner_tools.c
@@ -316,7 +308,7 @@ typedef enum eOutliner_PropSceneOps {
 
 static const EnumPropertyItem prop_scene_op_types[] = {
 	{OL_SCENE_OP_DELETE, "DELETE", ICON_X, "Delete", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static bool outliner_do_scene_operation(
@@ -1005,7 +997,7 @@ static const EnumPropertyItem prop_object_op_types[] = {
 	{OL_OP_RENAME, "RENAME", 0, "Rename", ""},
 	{OL_OP_OBJECT_MODE_ENTER, "OBJECT_MODE_ENTER", 0, "Enter Mode", ""},
 	{OL_OP_OBJECT_MODE_EXIT, "OBJECT_MODE_EXIT", 0, "Exit Mode", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int outliner_object_operation_exec(bContext *C, wmOperator *op)
@@ -1170,7 +1162,7 @@ static const EnumPropertyItem prop_id_op_types[] = {
 	{OUTLINER_IDOP_FAKE_CLEAR, "CLEAR_FAKE", 0, "Clear Fake User", ""},
 	{OUTLINER_IDOP_RENAME, "RENAME", 0, "Rename", ""},
 	{OUTLINER_IDOP_SELECT_LINKED, "SELECT_LINKED", 0, "Select Linked", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem *outliner_id_operation_itemf(
@@ -1396,7 +1388,7 @@ static const EnumPropertyItem outliner_lib_op_type_items[] = {
 	{OL_LIB_DELETE, "DELETE", 0, "Delete", "Delete this library and all its item from Blender - WARNING: no undo"},
 	{OL_LIB_RELOCATE, "RELOCATE", 0, "Relocate", "Select a new path for this library, and reload all its data"},
 	{OL_LIB_RELOAD, "RELOAD", 0, "Reload", "Reload all data from this library"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int outliner_lib_operation_exec(bContext *C, wmOperator *op)
@@ -1608,7 +1600,7 @@ static const EnumPropertyItem prop_animdata_op_types[] = {
 	//{OUTLINER_ANIMOP_COPY_DRIVERS, "COPY_DRIVERS", 0, "Copy Drivers", ""},
 	//{OUTLINER_ANIMOP_PASTE_DRIVERS, "PASTE_DRIVERS", 0, "Paste Drivers", ""},
 	{OUTLINER_ANIMOP_CLEAR_DRV, "CLEAR_DRIVERS", 0, "Clear Drivers", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int outliner_animdata_operation_exec(bContext *C, wmOperator *op)
@@ -1703,7 +1695,7 @@ static const EnumPropertyItem prop_constraint_op_types[] = {
 	{OL_CONSTRAINTOP_ENABLE, "ENABLE", ICON_HIDE_OFF, "Enable", ""},
 	{OL_CONSTRAINTOP_DISABLE, "DISABLE", ICON_HIDE_ON, "Disable", ""},
 	{OL_CONSTRAINTOP_DELETE, "DELETE", ICON_X, "Delete", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int outliner_constraint_operation_exec(bContext *C, wmOperator *op)
@@ -1748,7 +1740,7 @@ static const EnumPropertyItem prop_modifier_op_types[] = {
 	{OL_MODIFIER_OP_TOGVIS, "TOGVIS", ICON_RESTRICT_VIEW_OFF, "Toggle viewport use", ""},
 	{OL_MODIFIER_OP_TOGREN, "TOGREN", ICON_RESTRICT_RENDER_OFF, "Toggle render use", ""},
 	{OL_MODIFIER_OP_DELETE, "DELETE", ICON_X, "Delete", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int outliner_modifier_operation_exec(bContext *C, wmOperator *op)
@@ -1796,7 +1788,7 @@ static const EnumPropertyItem prop_data_op_types[] = {
 	{OL_DOP_HIDE, "HIDE", 0, "Hide", ""},
 	{OL_DOP_UNHIDE, "UNHIDE", 0, "Unhide", ""},
 	{OL_DOP_SELECT_LINKED, "SELECT_LINKED", 0, "Select Linked", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int outliner_data_operation_exec(bContext *C, wmOperator *op)

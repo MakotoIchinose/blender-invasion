@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,8 +12,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_UNDO_SYSTEM_H__
 #define __BKE_UNDO_SYSTEM_H__
@@ -29,6 +25,7 @@ struct UndoStep;
 struct bContext;
 
 /* ID's */
+struct Main;
 struct Mesh;
 struct Object;
 struct Scene;
@@ -115,8 +112,8 @@ typedef struct UndoType {
 	 */
 	void (*step_encode_init)(struct bContext *C, UndoStep *us);
 
-	bool (*step_encode)(struct bContext *C, UndoStep *us);
-	void (*step_decode)(struct bContext *C, UndoStep *us, int dir);
+	bool (*step_encode)(struct bContext *C, struct Main *bmain, UndoStep *us);
+	void (*step_decode)(struct bContext *C, struct Main *bmain, UndoStep *us, int dir);
 
 	/**
 	 * \note When freeing all steps,
@@ -202,5 +199,7 @@ struct ID *BKE_undosys_ID_map_lookup_with_prev(
 void BKE_undosys_ID_map_foreach_ID_ref(
         struct UndoIDPtrMap *map,
         UndoTypeForEachIDRefFn foreach_ID_ref_fn, void *user_data);
+
+void BKE_undosys_print(UndoStack *ustack);
 
 #endif  /* __BKE_UNDO_SYSTEM_H__ */

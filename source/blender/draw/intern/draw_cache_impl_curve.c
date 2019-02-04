@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,8 +15,6 @@
  *
  * The Original Code is Copyright (C) 2017 by Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file draw_cache_impl_curve.c
@@ -756,7 +752,7 @@ static void curve_create_edit_data_and_handles(
 					char vflag[3] = {
 						beztriple_vflag_get(rdata, bezt->f1, bezt->h1, v_idx, nu_id),
 						beztriple_vflag_get(rdata, bezt->f2, bezt->h1, v_idx, nu_id),
-						beztriple_vflag_get(rdata, bezt->f3, bezt->h2, v_idx, nu_id)
+						beztriple_vflag_get(rdata, bezt->f3, bezt->h2, v_idx, nu_id),
 					};
 					for (int j = 0; j < 3; j++) {
 						GPU_vertbuf_attr_set(vbo_data, attr_id.data, vbo_len_used + j, &vflag[j]);

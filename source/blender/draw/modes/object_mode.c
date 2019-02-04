@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,10 +14,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
 /** \file blender/draw/modes/object_mode.c
@@ -414,12 +408,14 @@ static void OBJECT_engine_init(void *vedata)
 		sh_data->outline_prepass = DRW_shader_create_from_arrays({
 		        .vert = (const char *[]){world_clip_lib_or_empty, datatoc_gpu_shader_3D_vert_glsl, NULL},
 		        .frag = (const char *[]){datatoc_object_outline_prepass_frag_glsl, NULL},
-		        .defs = (const char *[]){world_clip_def_or_empty, NULL}});
+		        .defs = (const char *[]){world_clip_def_or_empty, NULL},
+		});
 		sh_data->outline_prepass_wire = DRW_shader_create_from_arrays({
 		        .vert = (const char *[]){world_clip_lib_or_empty, datatoc_object_outline_prepass_vert_glsl, NULL},
 		        .geom = (const char *[]){world_clip_lib_or_empty, datatoc_object_outline_prepass_geom_glsl, NULL},
 		        .frag = (const char *[]){datatoc_object_outline_prepass_frag_glsl, NULL},
-		        .defs = (const char *[]){world_clip_def_or_empty, NULL}});
+		        .defs = (const char *[]){world_clip_def_or_empty, NULL},
+		});
 
 		sh_data->outline_resolve = DRW_shader_create_fullscreen(datatoc_object_outline_resolve_frag_glsl, NULL);
 
@@ -456,11 +452,13 @@ static void OBJECT_engine_init(void *vedata)
 			sh_data->object_empty_image = DRW_shader_create_from_arrays({
 			        .vert = (const char *[]){world_clip_lib_or_empty, datatoc_object_empty_image_vert_glsl, NULL},
 			        .frag = (const char *[]){datatoc_object_empty_image_frag_glsl, NULL},
-			        .defs = (const char *[]){world_clip_def_or_empty, empty_image_defs, NULL}});
+			        .defs = (const char *[]){world_clip_def_or_empty, empty_image_defs, NULL},
+			});
 			sh_data->object_empty_image_wire = DRW_shader_create_from_arrays({
 			        .vert = (const char *[]){world_clip_lib_or_empty, datatoc_object_empty_image_vert_glsl, NULL},
 			        .frag = (const char *[]){datatoc_object_empty_image_frag_glsl, NULL},
-			        .defs = (const char *[]){world_clip_def_or_empty, "#define USE_WIRE\n", empty_image_defs, NULL}});
+			        .defs = (const char *[]){world_clip_def_or_empty, "#define USE_WIRE\n", empty_image_defs, NULL},
+			});
 		}
 
 		/* Grid */
@@ -488,7 +486,8 @@ static void OBJECT_engine_init(void *vedata)
 		sh_data->loose_points = DRW_shader_create_from_arrays({
 		        .vert = (const char *[]){world_clip_lib_or_empty, datatoc_gpu_shader_3D_vert_glsl, NULL},
 		        .frag = (const char *[]){datatoc_object_loose_points_frag_glsl, NULL},
-		        .defs = (const char *[]){world_clip_def_or_empty, NULL}});
+		        .defs = (const char *[]){world_clip_def_or_empty, NULL},
+		});
 	}
 
 	{
@@ -520,7 +519,7 @@ static void OBJECT_engine_init(void *vedata)
 			float fov;
 			float viewvecs[2][4] = {
 			    {1.0f, -1.0f, -1.0f, 1.0f},
-			    {-1.0f, 1.0f, -1.0f, 1.0f}
+			    {-1.0f, 1.0f, -1.0f, 1.0f},
 			};
 
 			/* convert the view vectors to view space */

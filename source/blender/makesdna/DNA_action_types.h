@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Original design: Reevan McKay
- * Contributor(s): Full recode, Ton Roosendaal, Crete 2005
- * Contributor(s): Animation recode, Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file DNA_action_types.h
@@ -735,12 +727,12 @@ typedef struct bDopeSheet {
 
 	/** Flags to use for filtering data. */
 	int filterflag;
+	int filterflag2;
 	/** Standard flags. */
 	int flag;
 
 	/** Index+1 of channel to rename - only gets set by renaming operator. */
 	int renameIndex;
-	int pad;
 } bDopeSheet;
 
 
@@ -803,6 +795,11 @@ typedef enum eDopeSheet_FilterFlag {
 	ADS_FILTER_NOOBDATA = (ADS_FILTER_NOCAM | ADS_FILTER_NOMAT | ADS_FILTER_NOLAM | ADS_FILTER_NOCUR | ADS_FILTER_NOPART | ADS_FILTER_NOARM | ADS_FILTER_NOSPK | ADS_FILTER_NOMODIFIERS),
 } eDopeSheet_FilterFlag;
 
+/* DopeSheet filter-flags - Overflow (filterflag2) */
+typedef enum eDopeSheet_FilterFlag2 {
+	ADS_FILTER_NOCACHEFILES      = (1 << 1),
+} eDopeSheet_FilterFlag2;
+
 /* DopeSheet general flags */
 typedef enum eDopeSheet_Flag {
 	/** when summary is shown, it is collapsed, so all other channels get hidden */
@@ -815,8 +812,6 @@ typedef enum eDopeSheet_Flag {
 	ADS_FLAG_FUZZY_NAMES        = (1 << 2),
 	/** do not sort datablocks (mostly objects) by name (NOTE: potentially expensive operation) */
 	ADS_FLAG_NO_DB_SORT         = (1 << 3),
-
-	/* NOTE: datablock filter flags continued (1 << 10) onwards... */
 } eDopeSheet_Flag;
 
 

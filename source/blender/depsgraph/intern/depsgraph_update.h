@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,27 +13,25 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2014 Blender Foundation.
+ * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Lukas Toenne
- * Contributor(s):
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/util/deg_util_function.h
+/** \file blender/depsgraph/intern/depsgraph_update.h
  *  \ingroup depsgraph
  */
 
 #pragma once
 
-#include <functional>
+struct DEGEditorUpdateContext;
+struct ID;
 
 namespace DEG {
 
-using std::function;
-using namespace std::placeholders;
-#define function_bind std::bind
+void deg_editors_id_update(const DEGEditorUpdateContext *update_ctx,
+                           struct ID *id);
 
-}  // namespace
+void deg_editors_scene_update(const DEGEditorUpdateContext *update_ctx,
+                              bool updated);
+
+}  // namespace DEG
