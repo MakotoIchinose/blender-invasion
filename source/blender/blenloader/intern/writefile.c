@@ -1332,11 +1332,11 @@ static const char *ptcache_data_struct[] = {
 	"", // BPHYS_DATA_AVELOCITY / BPHYS_DATA_XCONST */
 	"", // BPHYS_DATA_SIZE:
 	"", // BPHYS_DATA_TIMES:
-	"BoidData" // case BPHYS_DATA_BOIDS:
+	"BoidData", // case BPHYS_DATA_BOIDS:
 };
 static const char *ptcache_extra_struct[] = {
 	"",
-	"ParticleSpring"
+	"ParticleSpring",
 };
 static void write_pointcaches(WriteData *wd, ListBase *ptcaches)
 {
@@ -3782,7 +3782,7 @@ static void write_global(WriteData *wd, int fileflags, Main *mainvar)
 	fg.cur_view_layer = view_layer;
 
 	/* prevent to save this, is not good convention, and feature with concerns... */
-	fg.fileflags = (fileflags & ~G_FILE_FLAGS_RUNTIME);
+	fg.fileflags = (fileflags & ~G_FILE_FLAG_ALL_RUNTIME);
 
 	fg.globalf = G.f;
 	BLI_strncpy(fg.filename, mainvar->name, sizeof(fg.filename));

@@ -18,8 +18,6 @@
  */
 /** \file DNA_sequence_types.h
  *  \ingroup DNA
- *  \since mar-2001
- *  \author nzc
  *
  * Structs for use by the 'Sequencer' (Video Editor)
  *
@@ -617,7 +615,7 @@ enum {
 	seqModifierType_WhiteBalance   = 6,
 	seqModifierType_Tonemap        = 7,
 
-	NUM_SEQUENCE_MODIFIER_TYPES
+	NUM_SEQUENCE_MODIFIER_TYPES,
 };
 
 /* SequenceModifierData->flag */

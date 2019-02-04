@@ -17,8 +17,6 @@
 /** \file blender/freestyle/intern/stroke/ChainingIterators.cpp
  *  \ingroup freestyle
  *  \brief Chaining iterators
- *  \author Stephane Grabli
- *  \date 01/07/2003
  */
 
 #include "../python/Director.h"
@@ -157,7 +155,7 @@ int ChainSilhouetteIterator::traverse(const AdjacencyIterator& ait)
 			Nature::EDGE_MARK,
 			Nature::SUGGESTIVE_CONTOUR,
 			Nature::VALLEY,
-			Nature::RIDGE
+			Nature::RIDGE,
 		};
 		int numNatures = sizeof(natures) / sizeof(Nature::EdgeNature);
 		for (int i = 0; i < numNatures; ++i) {

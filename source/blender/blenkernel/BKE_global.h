@@ -21,8 +21,6 @@
 
 /** \file BKE_global.h
  *  \ingroup bke
- *  \since March 2001
- *  \author nzc
  *  \section aboutglobal Global settings
  *   Global settings, handles, pointers. This is the root for finding
  *   any data in Blender. This block is not serialized, but built anew
@@ -107,23 +105,26 @@ typedef struct Global {
 /* **************** GLOBAL ********************* */
 
 /** #Global.f */
-#define G_RENDER_OGL    (1 <<  0)
-#define G_SWAP_EXCHANGE (1 <<  1)
-/* #define G_RENDER_SHADOW	(1 <<  3) */ /* temp flag, removed */
-#define G_BACKBUFSEL    (1 <<  4)
-#define G_PICKSEL       (1 <<  5)
+enum {
+	G_FLAG_RENDER_VIEWPORT = (1 << 0),
+	G_FLAG_BACKBUFSEL = (1 << 1),
+	G_FLAG_PICKSEL = (1 << 2),
+	/** Support simulating events (for testing). */
+	G_FLAG_EVENT_SIMULATE = (1 << 3),
 
-/* #define G_FACESELECT	(1 <<  8) use (mesh->editflag & ME_EDIT_PAINT_FACE_SEL) */
+	G_FLAG_SCRIPT_AUTOEXEC = (1 << 13),
+	/** When this flag is set ignore the prefs #USER_SCRIPT_AUTOEXEC_DISABLE. */
+	G_FLAG_SCRIPT_OVERRIDE_PREF = (1 << 14),
+	G_FLAG_SCRIPT_AUTOEXEC_FAIL = (1 << 15),
+	G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET = (1 << 16),
+};
 
-#define G_SCRIPT_AUTOEXEC (1 << 13)
-#define G_SCRIPT_OVERRIDE_PREF (1 << 14) /* when this flag is set ignore the userprefs */
-#define G_SCRIPT_AUTOEXEC_FAIL (1 << 15)
-#define G_SCRIPT_AUTOEXEC_FAIL_QUIET (1 << 16)
+/** Don't overwrite these flags when reading a file. */
+#define G_FLAG_ALL_RUNTIME \
+	(G_FLAG_SCRIPT_AUTOEXEC | G_FLAG_SCRIPT_OVERRIDE_PREF | G_FLAG_EVENT_SIMULATE)
 
-/* #define G_NOFROZEN	(1 << 17) also removed */
-/* #define G_GREASEPENCIL   (1 << 17)   also removed */
-
-/* #define G_AUTOMATKEYS	(1 << 30)   also removed */
+/** Flags to read from blend file. */
+#define G_FLAG_ALL_READFILE 0
 
 /** #Global.debug */
 enum {
@@ -159,29 +160,32 @@ enum {
 
 
 /** #Global.fileflags */
+enum {
+	G_FILE_AUTOPACK          = (1 << 0),
+	G_FILE_COMPRESS          = (1 << 1),
 
-#define G_AUTOPACK               (1 << 0)
-#define G_FILE_COMPRESS          (1 << 1)
+	G_FILE_USERPREFS         = (1 << 9),
+	G_FILE_NO_UI             = (1 << 10),
 
-#define G_FILE_USERPREFS         (1 << 9)
-#define G_FILE_NO_UI             (1 << 10)
+	/* Bits 11 to 22 (inclusive) are deprecated & need to be cleared */
 
-/* Bits 11 to 22 (inclusive) are deprecated & need to be cleared */
-
-/** On read, use #FileGlobal.filename instead of the real location on-disk,
- * needed for recovering temp files so relative paths resolve */
-#define G_FILE_RECOVER           (1 << 23)
-/** On write, remap relative file paths to the new file location. */
-#define G_FILE_RELATIVE_REMAP    (1 << 24)
-/** On write, make backup `.blend1`, `.blend2` ... files, when the users preference is enabled */
-#define G_FILE_HISTORY           (1 << 25)
-/** BMesh option to save as older mesh format */
+	/** On read, use #FileGlobal.filename instead of the real location on-disk,
+	 * needed for recovering temp files so relative paths resolve */
+	G_FILE_RECOVER           = (1 << 23),
+	/** On write, remap relative file paths to the new file location. */
+	G_FILE_RELATIVE_REMAP    = (1 << 24),
+	/** On write, make backup `.blend1`, `.blend2` ... files, when the users preference is enabled */
+	G_FILE_HISTORY           = (1 << 25),
+	/** BMesh option to save as older mesh format */
 /* #define G_FILE_MESH_COMPAT       (1 << 26) */
-/** On write, restore paths after editing them (G_FILE_RELATIVE_REMAP) */
-#define G_FILE_SAVE_COPY         (1 << 27)
+	/** On write, restore paths after editing them (G_FILE_RELATIVE_REMAP) */
+	G_FILE_SAVE_COPY         = (1 << 27),
 /* #define G_FILE_GLSL_NO_ENV_LIGHTING (1 << 28) */ /* deprecated */
+};
 
-#define G_FILE_FLAGS_RUNTIME (G_FILE_NO_UI | G_FILE_RELATIVE_REMAP | G_FILE_SAVE_COPY)
+/** Don't overwrite these flags when reading a file. */
+#define G_FILE_FLAG_ALL_RUNTIME \
+	(G_FILE_NO_UI | G_FILE_RELATIVE_REMAP | G_FILE_SAVE_COPY)
 
 /** ENDIAN_ORDER: indicates what endianness the platform where the file was written had. */
 #if !defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__)
@@ -198,11 +202,13 @@ enum {
 #endif
 
 /** #Global.moving, signals drawing in (3d) window to denote transform */
-#define G_TRANSFORM_OBJ         1
-#define G_TRANSFORM_EDIT        2
-#define G_TRANSFORM_SEQ         4
-#define G_TRANSFORM_FCURVES     8
-#define G_TRANSFORM_WM          16
+enum {
+	G_TRANSFORM_OBJ         = (1 << 0),
+	G_TRANSFORM_EDIT        = (1 << 1),
+	G_TRANSFORM_SEQ         = (1 << 2),
+	G_TRANSFORM_FCURVES     = (1 << 3),
+	G_TRANSFORM_WM          = (1 << 4),
+};
 
 /** Defined in blender.c */
 extern Global G;
