@@ -1015,14 +1015,14 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 	parm = RNA_def_int_array(func, "location", 2, NULL, INT_MIN, INT_MAX, "Location", "Region coordinates", INT_MIN, INT_MAX);
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-	parm = RNA_def_int(func, "intersect_id", 0, 0, INT_MAX, "", "", 0, INT_MAX);
+	parm = RNA_def_int(func, "intersect_id", -1, -1, INT_MAX, "", "Use -1 to skip this gizmo", -1, INT_MAX);
 	RNA_def_function_return(func, parm);
 
 	/* wmGizmo.handler */
 	static EnumPropertyItem tweak_actions[] = {
 		{WM_GIZMO_TWEAK_PRECISE, "PRECISE", 0, "Precise", ""},
 		{WM_GIZMO_TWEAK_SNAP, "SNAP", 0, "Snap", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	func = RNA_def_function(srna, "modal", NULL);
 	RNA_def_function_ui_description(func, "");
@@ -1303,7 +1303,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
 		 "Show all while interacting"},
 		{WM_GIZMOGROUPTYPE_TOOL_INIT, "TOOL_INIT", 0, "Tool Init",
 		 "Postpone running until tool operator run (when used with a tool)"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	prop = RNA_def_property(srna, "bl_options", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "type->flag");

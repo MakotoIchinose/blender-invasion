@@ -378,7 +378,7 @@ static void copy_image_packedfiles(ListBase *lb_dst, const ListBase *lb_src)
 
 /**
  * Only copy internal data of Image ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -420,7 +420,7 @@ void BKE_image_copy_data(Main *UNUSED(bmain), Image *ima_dst, const Image *ima_s
 Image *BKE_image_copy(Main *bmain, const Image *ima)
 {
 	Image *ima_copy;
-	BKE_id_copy_ex(bmain, &ima->id, (ID **)&ima_copy, 0, false);
+	BKE_id_copy(bmain, &ima->id, (ID **)&ima_copy);
 	return ima_copy;
 }
 

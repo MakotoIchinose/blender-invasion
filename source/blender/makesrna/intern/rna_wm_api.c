@@ -60,12 +60,13 @@ const EnumPropertyItem rna_enum_window_cursor_items[] = {
 	{BC_NS_SCROLLCURSOR, "SCROLL_Y", 0, "Scroll-Y", ""},
 	{BC_NSEW_SCROLLCURSOR, "SCROLL_XY", 0, "Scroll-XY", ""},
 	{BC_EYEDROPPER_CURSOR, "EYEDROPPER", 0, "Eyedropper", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #ifdef RNA_RUNTIME
 
 #include "BKE_context.h"
+#include "BKE_undo_system.h"
 
 #include "WM_types.h"
 
@@ -457,6 +458,11 @@ static void rna_PieMenuEnd(bContext *C, PointerRNA *handle)
 	UI_pie_menu_end(C, handle->data);
 }
 
+static void rna_WindowManager_print_undo_steps(wmWindowManager *wm)
+{
+	BKE_undosys_print(wm->undo_stack);
+}
+
 static PointerRNA rna_WindoManager_operator_properties_last(const char *idname)
 {
 	wmOperatorType *ot = WM_operatortype_find(idname, true);
@@ -783,6 +789,7 @@ void RNA_api_wm(StructRNA *srna)
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_RNAPTR);
 	RNA_def_function_return(func, parm);
 
+	RNA_def_function(srna, "print_undo_steps", "rna_WindowManager_print_undo_steps");
 }
 
 void RNA_api_operator(StructRNA *srna)

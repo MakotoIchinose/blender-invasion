@@ -1502,7 +1502,7 @@ void BKE_movieclip_free(MovieClip *clip)
 
 /**
  * Only copy internal data of MovieClip ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -1525,7 +1525,7 @@ void BKE_movieclip_copy_data(Main *UNUSED(bmain), MovieClip *clip_dst, const Mov
 MovieClip *BKE_movieclip_copy(Main *bmain, const MovieClip *clip)
 {
 	MovieClip *clip_copy;
-	BKE_id_copy_ex(bmain, &clip->id, (ID **)&clip_copy, 0, false);
+	BKE_id_copy(bmain, &clip->id, (ID **)&clip_copy);
 	return clip_copy;
 }
 
