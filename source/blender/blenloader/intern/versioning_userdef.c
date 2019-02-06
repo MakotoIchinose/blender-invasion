@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenloader/intern/versioning_userdef.c
- *  \ingroup blenloader
+/** \file \ingroup blenloader
  *
  * Version patch user preferences.
  */
@@ -149,10 +148,6 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 	if (userdef->menuthreshold1 == 0) {
 		userdef->menuthreshold1 = 5;
 		userdef->menuthreshold2 = 2;
-	}
-	if (userdef->tb_leftmouse == 0) {
-		userdef->tb_leftmouse = 5;
-		userdef->tb_rightmouse = 5;
 	}
 	if (userdef->mixbufsize == 0) userdef->mixbufsize = 2048;
 	if (userdef->autokey_mode == 0) {

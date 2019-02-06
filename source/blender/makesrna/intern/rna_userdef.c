@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/makesrna/intern/rna_userdef.c
- *  \ingroup RNA
+/** \file \ingroup RNA
  */
 
 #include <limits.h>
@@ -1194,11 +1193,6 @@ static void rna_def_userdef_theme_ui(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "menu_shadow_width", PROP_INT, PROP_PIXEL);
 	RNA_def_property_ui_text(prop, "Menu Shadow Width", "Width of menu shadows, set to zero to disable");
 	RNA_def_property_range(prop, 0.0f, 24.0f);
-	RNA_def_property_update(prop, 0, "rna_userdef_update");
-
-	prop = RNA_def_property(srna, "icon_file", PROP_STRING, PROP_FILEPATH);
-	RNA_def_property_string_sdna(prop, NULL, "iconfile");
-	RNA_def_property_ui_text(prop, "Icon File", "");
 	RNA_def_property_update(prop, 0, "rna_userdef_update");
 
 	prop = RNA_def_property(srna, "icon_alpha", PROP_FLOAT, PROP_FACTOR);
@@ -3834,19 +3828,6 @@ static void rna_def_userdef_view(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_QUIT_PROMPT);
 	RNA_def_property_ui_text(prop, "Prompt Quit",
 	                         "Ask for confirmation when quitting with unsaved changes");
-
-	/* Toolbox click-hold delay */
-	prop = RNA_def_property(srna, "open_left_mouse_delay", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "tb_leftmouse");
-	RNA_def_property_range(prop, 1, 40);
-	RNA_def_property_ui_text(prop, "Hold LMB Open Toolbox Delay",
-	                         "Time in 1/10 seconds to hold the Left Mouse Button before opening the toolbox");
-
-	prop = RNA_def_property(srna, "open_right_mouse_delay", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "tb_rightmouse");
-	RNA_def_property_range(prop, 1, 40);
-	RNA_def_property_ui_text(prop, "Hold RMB Open Toolbox Delay",
-	                         "Time in 1/10 seconds to hold the Right Mouse Button before opening the toolbox");
 
 	prop = RNA_def_property(srna, "show_column_layout", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_PLAINMENUS);
