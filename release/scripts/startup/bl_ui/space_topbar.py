@@ -408,6 +408,8 @@ class TOPBAR_MT_file_import(Menu):
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_import", text="Alembic (.abc)")
 
+        self.layout.operator("wm.obj_import", text="Wavefront (.obj)")
+
 
 class TOPBAR_MT_file_export(Menu):
     bl_idname = "TOPBAR_MT_file_export"
@@ -419,6 +421,7 @@ class TOPBAR_MT_file_export(Menu):
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_export", text="Alembic (.abc)")
 
+        self.layout.operator("wm.obj_export", text="Wavefront (.obj)")
 
 class TOPBAR_MT_file_external_data(Menu):
     bl_label = "External Data"

@@ -28,6 +28,7 @@ set(INC
   ../../makesrna
   ../../windowmanager
   ../../../../intern/guardedalloc
+  intern
 )
 
 set(INC_SYS
@@ -39,11 +40,20 @@ set(SRC
   io_cache.c
   io_collada.c
   io_ops.c
+  io_common.c
+  io_obj.c
 
   io_alembic.h
   io_cache.h
   io_collada.h
   io_ops.h
+  io_common.h
+  io_obj.h
+
+  intern/obj.cpp
+  intern/obj.h
+  intern/common.c
+  intern/common.h
 )
 
 set(LIB

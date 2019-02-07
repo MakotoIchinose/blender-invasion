@@ -26,6 +26,7 @@ Desktop.ini
 # commonly used paths in blender
 /blender.bin
 /BUILD_NOTES.txt
+build_files/build_environment/BUILD_NOTES.txt
 
 # local patches
 /*.patch
@@ -40,3 +41,10 @@ Desktop.ini
 
 # in-source lib downloads
 /build_files/build_environment/downloads
+
+# in-source GTAGS databases
+GPATH
+GRTAGS
+GTAGS
+
+CMakeFiles/
