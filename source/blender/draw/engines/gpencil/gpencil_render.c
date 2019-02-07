@@ -16,8 +16,8 @@
  * Copyright 2017, Blender Foundation.
  */
 
-/** \file \ingroup draw
- */
+ /** \file \ingroup draw
+  */
 #include "BLI_rect.h"
 
 #include "DRW_render.h"
@@ -141,7 +141,7 @@ static void GPENCIL_render_update_viewvecs(float invproj[4][4], float winmat[4][
 		{-1.0f, -1.0f, -1.0f, 1.0f},
 		{1.0f, -1.0f, -1.0f, 1.0f},
 		{-1.0f,  1.0f, -1.0f, 1.0f},
-		{-1.0f, -1.0f,  1.0f, 1.0f},
+		{-1.0f, -1.0f,  1.0f, 1.0f}
 	};
 
 	/* convert the view vectors to view space */
@@ -337,7 +337,7 @@ void GPENCIL_render_to_image(void *vedata, RenderEngine *engine, struct RenderLa
 
 							blend_pixel(gp_pixel_rgba, src_pixel_rgba, gp_pixel_rgba);
 
-							gp_pixel_rgba[3] = src_pixel_rgba[3];
+							gp_pixel_rgba[3] = gp_pixel_rgba[3] > src_pixel_rgba[3] ? gp_pixel_rgba[3] : src_pixel_rgba[3];
 						}
 					}
 				}
