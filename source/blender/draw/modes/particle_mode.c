@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,38 +14,25 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/draw/modes/particle_mode.c
- *  \ingroup draw
+/** \file \ingroup draw
  */
 
-#include "DRW_engine.h"
 #include "DRW_render.h"
 
-#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 
-#include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
 #include "GPU_shader.h"
-#include "GPU_batch.h"
 
 #include "draw_common.h"
-
-#include "draw_mode_engines.h"
 
 #include "ED_particle.h"
 
 #include "DEG_depsgraph_query.h"
-
-#include "draw_cache_impl.h"
 
 extern char datatoc_particle_strand_vert_glsl[];
 extern char datatoc_particle_strand_frag_glsl[];

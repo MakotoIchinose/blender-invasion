@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,11 @@
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez, Charlie Jolly
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operators for creating new Grease Pencil primitives (boxes, circles, ...)
  */
 
- /** \file blender/editors/gpencil/gpencil_primitive.c
-  *  \ingroup edgpencil
-  */
-
+/** \file \ingroup edgpencil
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -174,7 +165,14 @@ static void gp_init_colors(tGPDprimitive *p)
 	if (gp_style) {
 
 		/* set colors */
-		copy_v4_v4(gpd->runtime.scolor, gp_style->stroke_rgba);
+		if (gp_style->flag & GP_STYLE_STROKE_SHOW) {
+			copy_v4_v4(gpd->runtime.scolor, gp_style->stroke_rgba);
+		}
+		else {
+			/* if no stroke, use fill */
+			copy_v4_v4(gpd->runtime.scolor, gp_style->fill_rgba);
+		}
+
 		copy_v4_v4(gpd->runtime.sfill, gp_style->fill_rgba);
 		/* add some alpha to make easy the filling without hide strokes */
 		if (gpd->runtime.sfill[3] > 0.8f) {
@@ -1785,7 +1783,7 @@ void GPENCIL_OT_primitive(wmOperatorType *ot)
 		{GP_STROKE_CIRCLE, "CIRCLE", 0, "Circle", ""},
 		{GP_STROKE_ARC, "ARC", 0, "Arc", ""},
 		{GP_STROKE_CURVE, "CURVE", 0, "Curve", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */

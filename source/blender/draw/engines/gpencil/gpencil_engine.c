@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,22 +14,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2017, Blender Foundation.
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/draw/engines/gpencil/gpencil_engine.c
- *  \ingroup draw
+/** \file \ingroup draw
  */
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
-#include "BKE_camera.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
-#include "BKE_gpencil.h"
 #include "BKE_shader_fx.h"
 
 #include "DNA_gpencil_types.h"
@@ -39,7 +29,6 @@
 
 #include "draw_mode_engines.h"
 
-#include "UI_resources.h"
 
 #include "GPU_texture.h"
 
@@ -48,9 +37,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "ED_screen.h"
-#include "ED_gpencil.h"
 
-#include "WM_api.h"
 
 extern char datatoc_gpencil_fill_vert_glsl[];
 extern char datatoc_gpencil_fill_frag_glsl[];

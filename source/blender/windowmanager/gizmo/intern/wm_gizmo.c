@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,15 @@
  *
  * The Original Code is Copyright (C) 2014 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/gizmo/intern/wm_gizmo.c
- *  \ingroup wm
+/** \file \ingroup wm
  */
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
-#include "BLI_string.h"
-#include "BLI_string_utils.h"
 
 #include "BKE_context.h"
 
@@ -409,7 +400,6 @@ void WM_gizmo_set_fn_custom_modal(struct wmGizmo *gz, wmGizmoFnModal fn)
 
 
 /* -------------------------------------------------------------------- */
-
 /**
  * Add/Remove \a gizmo to selection.
  * Reallocates memory for selected gizmos so better not call for selecting multiple ones.

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file creator/creator.c
- *  \ingroup creator
+/** \file \ingroup creator
  */
 
 #include <stdlib.h>
@@ -131,7 +122,6 @@ struct ApplicationState app_state = {
 };
 
 /* -------------------------------------------------------------------- */
-
 /** \name Application Level Callbacks
  *
  * Initialize callbacks for the modules that need them.
@@ -187,9 +177,7 @@ static void callback_clg_fatal(void *fp)
 /** \} */
 
 
-
 /* -------------------------------------------------------------------- */
-
 /** \name Main Function
  * \{ */
 
@@ -479,13 +467,6 @@ int main(
 	/* OK we are ready for it */
 #ifndef WITH_PYTHON_MODULE
 	main_args_setup_post(C, ba);
-
-	if (G.background == 0) {
-		if (!G.file_loaded)
-			if (U.uiflag2 & USER_KEEP_SESSION)
-				WM_recover_last_session(C, NULL);
-	}
-
 #endif
 
 	/* Explicitly free data allocated for argument parsing:

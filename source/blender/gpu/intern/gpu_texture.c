@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Brecht Van Lommel.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include "MEM_guardedalloc.h"
@@ -32,8 +24,6 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 #include "BLI_math_base.h"
-#include "BLI_listbase.h"
-#include "BLI_threads.h"
 
 #include "BKE_global.h"
 
@@ -994,6 +984,7 @@ GPUTexture *GPU_texture_from_preview(PreviewImage *prv, int mipmap)
 GPUTexture *GPU_texture_create_1D(
         int w, eGPUTextureFormat tex_format, const float *pixels, char err_out[256])
 {
+	BLI_assert(w > 0);
 	eGPUDataFormat data_format = gpu_get_data_format_from_tex_format(tex_format);
 	return GPU_texture_create_nD(w, 0, 0, 1, pixels, tex_format, data_format, 0, false, err_out);
 }
@@ -1001,6 +992,7 @@ GPUTexture *GPU_texture_create_1D(
 GPUTexture *GPU_texture_create_1D_array(
         int w, int h, eGPUTextureFormat tex_format, const float *pixels, char err_out[256])
 {
+	BLI_assert(w > 0 && h > 0);
 	eGPUDataFormat data_format = gpu_get_data_format_from_tex_format(tex_format);
 	return GPU_texture_create_nD(w, h, 0, 1, pixels, tex_format, data_format, 0, false, err_out);
 }
@@ -1008,6 +1000,7 @@ GPUTexture *GPU_texture_create_1D_array(
 GPUTexture *GPU_texture_create_2D(
         int w, int h, eGPUTextureFormat tex_format, const float *pixels, char err_out[256])
 {
+	BLI_assert(w > 0 && h > 0);
 	eGPUDataFormat data_format = gpu_get_data_format_from_tex_format(tex_format);
 	return GPU_texture_create_nD(w, h, 0, 2, pixels, tex_format, data_format, 0, false, err_out);
 }
@@ -1015,6 +1008,7 @@ GPUTexture *GPU_texture_create_2D(
 GPUTexture *GPU_texture_create_2D_multisample(
         int w, int h, eGPUTextureFormat tex_format, const float *pixels, int samples, char err_out[256])
 {
+	BLI_assert(w > 0 && h > 0);
 	eGPUDataFormat data_format = gpu_get_data_format_from_tex_format(tex_format);
 	return GPU_texture_create_nD(w, h, 0, 2, pixels, tex_format, data_format, samples, false, err_out);
 }
@@ -1022,6 +1016,7 @@ GPUTexture *GPU_texture_create_2D_multisample(
 GPUTexture *GPU_texture_create_2D_array(
         int w, int h, int d, eGPUTextureFormat tex_format, const float *pixels, char err_out[256])
 {
+	BLI_assert(w > 0 && h > 0 && d > 0);
 	eGPUDataFormat data_format = gpu_get_data_format_from_tex_format(tex_format);
 	return GPU_texture_create_nD(w, h, d, 2, pixels, tex_format, data_format, 0, false, err_out);
 }
@@ -1029,6 +1024,7 @@ GPUTexture *GPU_texture_create_2D_array(
 GPUTexture *GPU_texture_create_3D(
         int w, int h, int d, eGPUTextureFormat tex_format, const float *pixels, char err_out[256])
 {
+	BLI_assert(w > 0 && h > 0 && d > 0);
 	eGPUDataFormat data_format = gpu_get_data_format_from_tex_format(tex_format);
 	return GPU_texture_create_nD(w, h, d, 3, pixels, tex_format, data_format, 0, true, err_out);
 }
@@ -1036,6 +1032,7 @@ GPUTexture *GPU_texture_create_3D(
 GPUTexture *GPU_texture_create_cube(
         int w, eGPUTextureFormat tex_format, const float *fpixels, char err_out[256])
 {
+	BLI_assert(w > 0);
 	const float *fpixels_px, *fpixels_py, *fpixels_pz, *fpixels_nx, *fpixels_ny, *fpixels_nz;
 	const int channels = gpu_get_component_count(tex_format);
 
@@ -1059,7 +1056,7 @@ GPUTexture *GPU_texture_create_cube(
 GPUTexture *GPU_texture_create_from_vertbuf(GPUVertBuf *vert)
 {
 	GPUVertFormat *format = &vert->format;
-	GPUVertAttr *attr = &format->attribs[0];
+	GPUVertAttr *attr = &format->attrs[0];
 
 	/* Detect incompatible cases (not supported by texture buffers) */
 	BLI_assert(format->attr_len == 1 && vert->vbo_id != 0);

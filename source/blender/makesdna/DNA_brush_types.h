@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_brush_types.h
- *  \ingroup DNA
+/** \file \ingroup DNA
  */
 
 #ifndef __DNA_BRUSH_TYPES_H__
@@ -42,8 +33,8 @@
 //#endif
 
 struct CurveMapping;
-struct MTex;
 struct Image;
+struct MTex;
 struct Material;
 
 typedef struct BrushClone {
@@ -79,8 +70,7 @@ typedef struct BrushGpencilSettings {
 	short draw_smoothlvl;
 	/** Number of times to subdivide new strokes. */
 	short draw_subdivide;
-	/** Internal grease pencil drawing flags. */
-	short flag;
+	short _pad;
 
 	/** Number of times to apply thickness smooth factor to new strokes. */
 	short thick_smoothlvl;
@@ -118,7 +108,8 @@ typedef struct BrushGpencilSettings {
 	float era_strength_f;
 	/** Factor to apply to thickness for soft eraser. */
 	float era_thickness_f;
-	char _pad_2[4];
+	/** Internal grease pencil drawing flags. */
+	int flag;
 
 	struct CurveMapping *curve_sensitivity;
 	struct CurveMapping *curve_strength;
@@ -159,6 +150,8 @@ typedef enum eGPDbrush_Flag {
 	GP_BRUSH_DISSABLE_LASSO = (1 << 14),
 	/* Do not erase strokes oLcluded */
 	GP_BRUSH_OCCLUDE_ERASER = (1 << 15),
+	/* Post process trim stroke */
+	GP_BRUSH_TRIM_STROKE = (1 << 16),
 } eGPDbrush_Flag;
 
 /* BrushGpencilSettings->gp_fill_draw_mode */
@@ -277,9 +270,11 @@ typedef struct Brush {
 	char mask_tool;
 	/** Active grease pencil tool. */
 	char gpencil_tool;
-	char _pad0[6];
+	char _pad0[2];
 
 	float autosmooth_factor;
+
+	float topology_rake_factor;
 
 	float crease_pinch_factor;
 
@@ -471,6 +466,14 @@ typedef enum eBrushSculptTool {
 	/* These brushes could handle dynamic topology, \
 	 * but user feedback indicates it's better not to */ \
 	SCULPT_TOOL_SMOOTH, \
+	SCULPT_TOOL_MASK \
+	) == 0)
+
+#define SCULPT_TOOL_HAS_TOPOLOGY_RAKE(t) (ELEM(t, \
+	/* These brushes, as currently coded, cannot support topology rake. */ \
+	SCULPT_TOOL_GRAB, \
+	SCULPT_TOOL_ROTATE, \
+	SCULPT_TOOL_THUMB, \
 	SCULPT_TOOL_MASK \
 	) == 0)
 

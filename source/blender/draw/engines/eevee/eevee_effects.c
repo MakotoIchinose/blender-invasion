@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file eevee_effects.c
- *  \ingroup draw_engine
+/** \file \ingroup draw_engine
  *
  * Gather all screen space effects technique such as Bloom, Motion Blur, DoF, SSAO, SSR, ...
  */
@@ -31,8 +24,6 @@
 #include "DRW_render.h"
 
 #include "BKE_global.h" /* for G.debug_value */
-
-#include "BLI_string_utils.h"
 
 #include "eevee_private.h"
 #include "GPU_texture.h"

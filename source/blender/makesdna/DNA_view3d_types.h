@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,34 +15,27 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_view3d_types.h
- *  \ingroup DNA
+/** \file \ingroup DNA
  */
 
 #ifndef __DNA_VIEW3D_TYPES_H__
 #define __DNA_VIEW3D_TYPES_H__
 
-struct ViewDepths;
-struct Object;
-struct Image;
-struct SpaceLink;
 struct BoundBox;
+struct GPUViewport;
+struct Image;
+struct Material;
 struct MovieClip;
 struct MovieClipUser;
+struct Object;
 struct RenderEngine;
-struct bGPdata;
 struct SmoothView3DStore;
+struct SpaceLink;
+struct ViewDepths;
+struct bGPdata;
 struct wmTimer;
-struct Material;
-struct GPUViewport;
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
@@ -439,6 +430,7 @@ enum {
 	V3D_SHADING_XRAY_BONE           = (1 << 8),
 	V3D_SHADING_WORLD_ORIENTATION   = (1 << 9),
 	V3D_SHADING_BACKFACE_CULLING    = (1 << 10),
+	V3D_SHADING_DEPTH_OF_FIELD      = (1 << 11),
 };
 
 /* View3DShading->color_type */
@@ -558,14 +550,17 @@ enum {
 #define V3D_SHOW_Z              (1 << 3)
 
 /** #TransformOrientationSlot.type */
-#define V3D_MANIP_GLOBAL		0
-#define V3D_MANIP_LOCAL			1
-#define V3D_MANIP_NORMAL		2
-#define V3D_MANIP_VIEW			3
-#define V3D_MANIP_GIMBAL		4
-#define V3D_MANIP_CURSOR		5
-#define V3D_MANIP_CUSTOM_MATRIX	(V3D_MANIP_CUSTOM - 1)  /* Runtime only, never saved to DNA. */
-#define V3D_MANIP_CUSTOM		1024
+enum {
+	V3D_ORIENT_GLOBAL        = 0,
+	V3D_ORIENT_LOCAL         = 1,
+	V3D_ORIENT_NORMAL        = 2,
+	V3D_ORIENT_VIEW          = 3,
+	V3D_ORIENT_GIMBAL        = 4,
+	V3D_ORIENT_CURSOR        = 5,
+	V3D_ORIENT_CUSTOM        = 1024,
+	/** Runtime only, never saved to DNA. */
+	V3D_ORIENT_CUSTOM_MATRIX =   (V3D_ORIENT_CUSTOM - 1),
+};
 
 /* View3d.mpr_flag (also) */
 enum {

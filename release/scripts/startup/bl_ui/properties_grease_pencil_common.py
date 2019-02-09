@@ -100,7 +100,8 @@ class AnnotationDrawingToolsPanel:
         col.label(text="Draw:")
         row = col.row(align=True)
         row.operator("gpencil.annotate", icon='GREASEPENCIL', text="Draw").mode = 'DRAW'
-        row.operator("gpencil.annotate", icon='FORCE_CURVE', text="Erase").mode = 'ERASER'  # XXX: Needs a dedicated icon
+        # XXX: Needs a dedicated icon
+        row.operator("gpencil.annotate", icon='FORCE_CURVE', text="Erase").mode = 'ERASER'
 
         row = col.row(align=True)
         row.operator("gpencil.annotate", icon='LINE_DATA', text="Line").mode = 'DRAW_STRAIGHT'
@@ -214,6 +215,7 @@ class GreasePencilStrokeEditPanel:
         row = col.row(align=True)
         row.operator("gpencil.stroke_simplify_fixed", text="Simplify")
         row.operator("gpencil.stroke_simplify", text="Adaptive")
+        row.operator("gpencil.stroke_trim", text="Trim")
 
         col.separator()
 

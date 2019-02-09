@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/transform/transform_constraints.c
- *  \ingroup edtransform
+/** \file \ingroup edtransform
  */
 
 #include <stdlib.h>
@@ -333,7 +324,6 @@ static void planeProjection(const TransInfo *t, const float in[3], float out[3])
  * The IN vector in projected into the constrained space and then further
  * projected along the view vector.
  * (in perspective mode, the view vector is relative to the position on screen)
- *
  */
 
 static void applyAxisConstraintVec(
@@ -668,7 +658,7 @@ void setUserConstraint(TransInfo *t, short orientation, int mode, const char fte
 	char text[256];
 
 	switch (orientation) {
-		case V3D_MANIP_GLOBAL:
+		case V3D_ORIENT_GLOBAL:
 		{
 			float mtx[3][3];
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("global"));
@@ -676,11 +666,11 @@ void setUserConstraint(TransInfo *t, short orientation, int mode, const char fte
 			setConstraint(t, mtx, mode, text);
 			break;
 		}
-		case V3D_MANIP_LOCAL:
+		case V3D_ORIENT_LOCAL:
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("local"));
 			setLocalConstraint(t, mode, text);
 			break;
-		case V3D_MANIP_NORMAL:
+		case V3D_ORIENT_NORMAL:
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("normal"));
 			if (checkUseAxisMatrix(t)) {
 				setAxisMatrixConstraint(t, mode, text);
@@ -689,23 +679,23 @@ void setUserConstraint(TransInfo *t, short orientation, int mode, const char fte
 				setConstraint(t, t->spacemtx, mode, text);
 			}
 			break;
-		case V3D_MANIP_VIEW:
+		case V3D_ORIENT_VIEW:
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("view"));
 			setConstraint(t, t->spacemtx, mode, text);
 			break;
-		case V3D_MANIP_CURSOR:
+		case V3D_ORIENT_CURSOR:
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("cursor"));
 			setConstraint(t, t->spacemtx, mode, text);
 			break;
-		case V3D_MANIP_GIMBAL:
+		case V3D_ORIENT_GIMBAL:
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("gimbal"));
 			setConstraint(t, t->spacemtx, mode, text);
 			break;
-		case V3D_MANIP_CUSTOM_MATRIX:
+		case V3D_ORIENT_CUSTOM_MATRIX:
 			BLI_snprintf(text, sizeof(text), ftext, IFACE_("custom matrix"));
 			setConstraint(t, t->spacemtx, mode, text);
 			break;
-		case V3D_MANIP_CUSTOM:
+		case V3D_ORIENT_CUSTOM:
 		{
 			char orientation_str[128];
 			BLI_snprintf(orientation_str, sizeof(orientation_str), "%s \"%s\"",

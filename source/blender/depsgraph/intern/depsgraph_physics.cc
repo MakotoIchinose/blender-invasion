@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,14 @@
  *
  * The Original Code is Copyright (C) 2018 Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/intern/depsgraph_physics.cc
- *  \ingroup depsgraph
+/** \file \ingroup depsgraph
  *
  * Physics utilities for effectors and collision.
  */
+
+#include "intern/depsgraph_physics.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -48,7 +45,6 @@ extern "C" {
 #include "DEG_depsgraph_query.h"
 
 #include "depsgraph.h"
-#include "depsgraph_intern.h"
 
 /*************************** Evaluation Query API *****************************/
 
@@ -110,7 +106,7 @@ void DEG_add_collision_relations(DepsNodeHandle *handle,
 {
 	Depsgraph *depsgraph = DEG_get_graph_from_handle(handle);
 	DEG::Depsgraph *deg_graph = (DEG::Depsgraph *)depsgraph;
-	ListBase *relations = deg_build_collision_relations(
+	ListBase *relations = build_collision_relations(
 	        deg_graph, collection, modifier_type);
 	LISTBASE_FOREACH (CollisionRelation *, relation, relations) {
 		Object *ob1 = relation->ob;
@@ -140,7 +136,7 @@ void DEG_add_forcefield_relations(DepsNodeHandle *handle,
 	Depsgraph *depsgraph = DEG_get_graph_from_handle(handle);
 	DEG::Depsgraph *deg_graph = (DEG::Depsgraph *)depsgraph;
 	ListBase *relations =
-	        deg_build_effector_relations(deg_graph, effector_weights->group);
+	        build_effector_relations(deg_graph, effector_weights->group);
 	LISTBASE_FOREACH (EffectorRelation *, relation, relations) {
 		if (relation->ob == object) {
 			continue;
@@ -155,7 +151,8 @@ void DEG_add_forcefield_relations(DepsNodeHandle *handle,
 		        handle, relation->ob, DEG_OB_COMP_TRANSFORM, name);
 
 		if (relation->psys ||
-		    ELEM(relation->pd->shape, PFIELD_SHAPE_SURFACE, PFIELD_SHAPE_POINTS))
+		    ELEM(relation->pd->shape, PFIELD_SHAPE_SURFACE, PFIELD_SHAPE_POINTS) ||
+		    relation->pd->forcefield == PFIELD_GUIDE)
 		{
 			/* TODO(sergey): Consider going more granular with more dedicated
 			 * particle system operation. */
@@ -194,8 +191,7 @@ void DEG_add_forcefield_relations(DepsNodeHandle *handle,
 namespace DEG
 {
 
-ListBase *deg_build_effector_relations(Depsgraph *graph,
-                                       Collection *collection)
+ListBase *build_effector_relations(Depsgraph *graph, Collection *collection)
 {
 	GHash *hash = graph->physics_relations[DEG_PHYSICS_EFFECTOR];
 	if (hash == NULL) {
@@ -214,9 +210,9 @@ ListBase *deg_build_effector_relations(Depsgraph *graph,
 	return relations;
 }
 
-ListBase *deg_build_collision_relations(Depsgraph *graph,
-                                        Collection *collection,
-                                        unsigned int modifier_type)
+ListBase *build_collision_relations(Depsgraph *graph,
+                                    Collection *collection,
+                                    unsigned int modifier_type)
 {
 	const ePhysicsRelationType type = modifier_to_relation_type(modifier_type);
 	GHash *hash = graph->physics_relations[type];
@@ -250,11 +246,11 @@ void free_collision_relations(void *value)
 
 }  // namespace
 
-void deg_clear_physics_relations(Depsgraph *graph)
+void clear_physics_relations(Depsgraph *graph)
 {
 	for (int i = 0; i < DEG_PHYSICS_RELATIONS_NUM; i++) {
 		if (graph->physics_relations[i]) {
-			ePhysicsRelationType type = (ePhysicsRelationType)i;
+			const ePhysicsRelationType type = (ePhysicsRelationType)i;
 
 			switch (type) {
 				case DEG_PHYSICS_EFFECTOR:

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,9 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/gpencil/gpencil_intern.h
- *  \ingroup edgpencil
+/** \file \ingroup edgpencil
  */
 
 #ifndef __GPENCIL_INTERN_H__
@@ -38,27 +30,27 @@
 
 
 /* internal exports only */
-struct bGPdata;
-struct bGPDstroke;
-struct bGPDspoint;
-struct tGPspoint;
 struct Material;
+struct bGPDspoint;
+struct bGPDstroke;
+struct bGPdata;
+struct tGPspoint;
 
 struct GHash;
 struct RNG;
 
+struct ARegion;
 struct Brush;
 struct Scene;
-struct ARegion;
-struct View3D;
 struct View2D;
+struct View3D;
 struct wmOperatorType;
 
 struct Depsgraph;
 
+struct EnumPropertyItem;
 struct PointerRNA;
 struct PropertyRNA;
-struct EnumPropertyItem;
 
 
 /* ***************************************************** */
@@ -475,6 +467,7 @@ void GPENCIL_OT_stroke_split(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_smooth(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_merge(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_cutter(struct wmOperatorType *ot);
+void GPENCIL_OT_stroke_trim(struct wmOperatorType *ot);
 
 void GPENCIL_OT_brush_presets_create(struct wmOperatorType *ot);
 

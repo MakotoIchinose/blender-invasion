@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,9 @@
  *
  * The Original Code is Copyright (C) 2018 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/subdiv_mesh.c
- *  \ingroup bke
+/** \file \ingroup bke
  */
 
 #include "BKE_subdiv_mesh.h"
@@ -36,9 +29,7 @@
 #include "DNA_key_types.h"
 
 #include "BLI_alloca.h"
-#include "BLI_bitmap.h"
 #include "BLI_math_vector.h"
-#include "BLI_task.h"
 
 #include "BKE_mesh.h"
 #include "BKE_key.h"
@@ -604,7 +595,7 @@ static void evaluate_vertex_and_apply_displacement_copy(
 	const float inv_num_accumulated =
 	        1.0f / ctx->accumulated_counters[subdiv_vertex_index];
 	/* Displacement is accumulated in subdiv vertex position.
-	 * Needs to to be backed up before copying data from original vertex. */
+	 * Needs to be backed up before copying data from original vertex. */
 	float D[3] = {0.0f, 0.0f, 0.0f};
 	if (ctx->have_displacement) {
 		copy_v3_v3(D, subdiv_vert->co);
@@ -636,7 +627,7 @@ static void evaluate_vertex_and_apply_displacement_interpolate(
 	const float inv_num_accumulated =
 	        1.0f / ctx->accumulated_counters[subdiv_vertex_index];
 	/* Displacement is accumulated in subdiv vertex position.
-	 * Needs to to be backed up before copying data from original vertex. */
+	 * Needs to be backed up before copying data from original vertex. */
 	float D[3] = {0.0f, 0.0f, 0.0f};
 	if (ctx->have_displacement) {
 		copy_v3_v3(D, subdiv_vert->co);
@@ -1034,6 +1025,7 @@ static void find_edge_neighbors(const SubdivMeshContext *ctx,
 	const MEdge *coarse_medge = coarse_mesh->medge;
 	neighbors[0] = NULL;
 	neighbors[1] = NULL;
+	int neighbor_counters[2] = {0, 0};
 	for (int edge_index = 0; edge_index < coarse_mesh->totedge; edge_index++) {
 		const MEdge *current_edge = &coarse_medge[edge_index];
 		if (current_edge == edge) {
@@ -1041,10 +1033,21 @@ static void find_edge_neighbors(const SubdivMeshContext *ctx,
 		}
 		if (ELEM(edge->v1, current_edge->v1, current_edge->v2)) {
 			neighbors[0] = current_edge;
+			++neighbor_counters[0];
 		}
 		if (ELEM(edge->v2, current_edge->v1, current_edge->v2)) {
 			neighbors[1] = current_edge;
+			++neighbor_counters[1];
 		}
+	}
+	/* Vertices which has more than one neighbor are considered infinitely
+	 * sharp. This is also how topology factory treats vertices of a surface
+	 * which are adjacent to a loose edge. */
+	if (neighbor_counters[0] > 1) {
+		neighbors[0] = NULL;
+	}
+	if (neighbor_counters[1] > 1) {
+		neighbors[1] = NULL;
 	}
 }
 
@@ -1119,6 +1122,9 @@ static void subdiv_mesh_vertex_of_loose_edge_interpolate(
 		                  coarse_vertex_indices,
 		                  interpolation_weights, NULL,
 		                  2, subdiv_vertex_index);
+		if (ctx->vert_origindex != NULL) {
+			ctx->vert_origindex[subdiv_vertex_index] = ORIGINDEX_NONE;
+		}
 	}
 }
 
@@ -1144,7 +1150,6 @@ static void subdiv_mesh_vertex_of_loose_edge(
 	/* Perform interpolation. */
 	float weights[4];
 	key_curve_position_weights(u, weights, KEY_BSPLINE);
-
 	/* Interpolate custom data. */
 	subdiv_mesh_vertex_of_loose_edge_interpolate(
 	        ctx, coarse_edge, u, subdiv_vertex_index);

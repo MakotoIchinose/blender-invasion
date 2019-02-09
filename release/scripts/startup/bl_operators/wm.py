@@ -2170,7 +2170,7 @@ class WM_OT_addon_remove(Operator):
         addon_utils.disable(self.module, default_set=True)
 
         import shutil
-        if isdir:
+        if isdir and (not os.path.islink(path)):
             shutil.rmtree(path)
         else:
             os.remove(path)
@@ -2465,15 +2465,15 @@ class WM_OT_studiolight_install(Operator):
         import shutil
         prefs = context.preferences
 
-        filepaths = [os.path.join(self.directory, e.name) for e in self.files]
-        path_studiolights = bpy.utils.user_resource('DATAFILES', "studiolights", create=True)
+        path_studiolights = os.path.join("studiolights", self.type.lower())
+        path_studiolights = bpy.utils.user_resource('DATAFILES', path_studiolights, create=True)
         if not path_studiolights:
             self.report({'ERROR'}, "Failed to create Studio Light path")
             return {'CANCELLED'}
 
-        for filepath in filepaths:
-            shutil.copy(filepath, path_studiolights)
-            prefs.studio_lights.load(os.path.join(path_studiolights, filepath), self.type)
+        for e in self.files:
+            shutil.copy(os.path.join(self.directory, e.name), path_studiolights)
+            prefs.studio_lights.load(os.path.join(path_studiolights, e.name), self.type)
 
         # print message
         msg = (

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,13 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/versioning_userdef.c
- *  \ingroup blenloader
+/** \file \ingroup blenloader
  *
  * Version patch user preferences.
  */
@@ -154,10 +148,6 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 	if (userdef->menuthreshold1 == 0) {
 		userdef->menuthreshold1 = 5;
 		userdef->menuthreshold2 = 2;
-	}
-	if (userdef->tb_leftmouse == 0) {
-		userdef->tb_leftmouse = 5;
-		userdef->tb_rightmouse = 5;
 	}
 	if (userdef->mixbufsize == 0) userdef->mixbufsize = 2048;
 	if (userdef->autokey_mode == 0) {
@@ -465,7 +455,7 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 		        USER_FLAG_DEPRECATED_4);
 
 		userdef->uiflag &= ~(
-		        USER_UIFLAG_DEPRECATED_8 |
+		        USER_HEADER_FROM_PREF |
 		        USER_UIFLAG_DEPRECATED_12 |
 		        USER_UIFLAG_DEPRECATED_22);
 	}
@@ -476,6 +466,15 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 		if (userdef->pie_tap_timeout == 0) {
 			userdef->pie_tap_timeout = 20;
 		}
+	}
+
+	if (!USER_VERSION_ATLEAST(280, 44)) {
+		userdef->uiflag &= ~(
+		        USER_UIFLAG_DEPRECATED_0 | USER_UIFLAG_DEPRECATED_1);
+		userdef->uiflag2 &= ~(
+		        USER_UIFLAG2_DEPRECATED_0);
+		userdef->gp_settings &= ~(
+		        GP_PAINT_DEPRECATED_0);
 	}
 
 	/**

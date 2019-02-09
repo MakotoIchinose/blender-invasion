@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,10 +14,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2017, Blender Foundation.
- * Contributor(s): Luca Rood
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
 #include "DNA_mesh_types.h"
@@ -27,7 +21,6 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_alloca.h"
 #include "BLI_math.h"
 #include "BLI_math_geom.h"
 #include "BLI_task.h"

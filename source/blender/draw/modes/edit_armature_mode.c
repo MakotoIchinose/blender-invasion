@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/draw/modes/edit_armature_mode.c
- *  \ingroup draw
+/** \file \ingroup draw
  */
 
 #include "DRW_engine.h"
@@ -33,10 +26,6 @@
 #include "DNA_view3d_types.h"
 
 #include "draw_common.h"
-
-#include "draw_mode_engines.h"
-
-
 
 /* *********** LISTS *********** */
 typedef struct EDIT_ARMATURE_PassList {

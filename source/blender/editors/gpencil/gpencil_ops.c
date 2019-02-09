@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,16 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2009, Blender Foundation, Joshua Leung
+ * The Original Code is Copyright (C) 2009, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung, Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/gpencil/gpencil_ops.c
- *  \ingroup edgpencil
+/** \file \ingroup edgpencil
  */
 
 
@@ -316,6 +309,7 @@ void ED_operatortypes_gpencil(void)
 	WM_operatortype_append(GPENCIL_OT_stroke_smooth);
 	WM_operatortype_append(GPENCIL_OT_stroke_merge);
 	WM_operatortype_append(GPENCIL_OT_stroke_cutter);
+	WM_operatortype_append(GPENCIL_OT_stroke_trim);
 
 	WM_operatortype_append(GPENCIL_OT_brush_presets_create);
 

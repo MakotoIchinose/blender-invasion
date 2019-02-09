@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,20 +15,13 @@
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpencilnoise.c
- *  \ingroup modifiers
+/** \file \ingroup modifiers
  */
 
 #include <stdio.h>
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
@@ -43,8 +34,6 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
@@ -118,10 +107,10 @@ static void deformStroke(
 	}
 
 	if (!is_stroke_affected_by_modifier(
-		ob,
-		mmd->layername, mmd->pass_index, mmd->layer_pass, 1, gpl, gps,
-		mmd->flag & GP_NOISE_INVERT_LAYER, mmd->flag & GP_NOISE_INVERT_PASS,
-		mmd->flag & GP_NOISE_INVERT_LAYERPASS))
+	            ob,
+	            mmd->layername, mmd->pass_index, mmd->layer_pass, 1, gpl, gps,
+	            mmd->flag & GP_NOISE_INVERT_LAYER, mmd->flag & GP_NOISE_INVERT_PASS,
+	            mmd->flag & GP_NOISE_INVERT_LAYERPASS))
 	{
 		return;
 	}
@@ -170,7 +159,12 @@ static void deformStroke(
 		}
 
 		/* initial vector (p0 -> p1) */
-		sub_v3_v3v3(vec1, &pt1->x, &pt0->x);
+		if (i == 0) {
+			sub_v3_v3v3(vec1, &pt0->x, &pt1->x);
+		}
+		else {
+			sub_v3_v3v3(vec1, &pt1->x, &pt0->x);
+		}
 		vran = len_v3(vec1);
 		/* vector orthogonal to normal */
 		cross_v3_v3v3(vec2, vec1, normal);
@@ -180,7 +174,7 @@ static void deformStroke(
 			sc_diff = abs(mmd->scene_frame - sc_frame);
 			/* only recalc if the gp frame change or the number of scene frames is bigger than step */
 			if ((!gpl->actframe) || (mmd->gp_frame != gpl->actframe->framenum) ||
-				(sc_diff >= mmd->step))
+			    (sc_diff >= mmd->step))
 			{
 				vran = mmd->vrand1 = BLI_rng_get_float(mmd->rng);
 				vdir = mmd->vrand2 = BLI_rng_get_float(mmd->rng);

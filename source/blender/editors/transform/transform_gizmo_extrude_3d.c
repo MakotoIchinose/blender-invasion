@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/transform/transform_gizmo_extrude_3d.c
- *  \ingroup edmesh
+/** \file \ingroup edmesh
  */
 
 #include "BLI_utildefines.h"
@@ -235,7 +230,7 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
 	ggd->data.orientation_type = scene->orientation_slots[SCE_ORIENT_DEFAULT].type;
 	const bool use_normal = (
-	        (ggd->data.orientation_type != V3D_MANIP_NORMAL) ||
+	        (ggd->data.orientation_type != V3D_ORIENT_NORMAL) ||
 	        (axis_type == EXTRUDE_AXIS_NORMAL));
 	const int axis_len_used = use_normal ? 4 : 3;
 
@@ -245,7 +240,7 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 		struct TransformBounds tbounds_normal;
 		if (!ED_transform_calc_gizmo_stats(
 		            C, &(struct TransformCalcParams){
-		                .orientation_type = V3D_MANIP_NORMAL + 1,
+		                .orientation_type = V3D_ORIENT_NORMAL + 1,
 		            }, &tbounds_normal))
 		{
 			unit_m3(tbounds_normal.axis);
@@ -358,7 +353,7 @@ static void gizmo_mesh_extrude_draw_prepare(const bContext *C, wmGizmoGroup *gzg
 {
 	GizmoExtrudeGroup *ggd = gzgroup->customdata;
 	switch (ggd->data.orientation_type) {
-		case V3D_MANIP_VIEW:
+		case V3D_ORIENT_VIEW:
 		{
 			RegionView3D *rv3d = CTX_wm_region_view3d(C);
 			float mat[3][3];
@@ -406,7 +401,7 @@ static void gizmo_mesh_extrude_invoke_prepare(const bContext *UNUSED(C), wmGizmo
 		if (i == 3) {
 			use_normal_matrix = true;
 		}
-		else if (ggd->data.orientation_type == V3D_MANIP_NORMAL) {
+		else if (ggd->data.orientation_type == V3D_ORIENT_NORMAL) {
 			use_normal_matrix = true;
 		}
 		if (use_normal_matrix) {
@@ -464,7 +459,7 @@ void VIEW3D_GGT_xform_extrude(struct wmGizmoGroupType *gzgt)
 	static const EnumPropertyItem axis_type_items[] = {
 		{EXTRUDE_AXIS_NORMAL, "NORMAL", 0, "Normal", "Only show normal axis"},
 		{EXTRUDE_AXIS_XYZ, "XYZ", 0, "XYZ", "Follow scene orientation"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	RNA_def_enum(gzgt->srna, "axis_type", axis_type_items, 0, "Axis Type", "");
 }
