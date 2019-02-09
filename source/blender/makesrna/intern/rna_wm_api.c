@@ -17,8 +17,7 @@
  * All rights reserved.
  */
 
-/** \file blender/makesrna/intern/rna_wm_api.c
- *  \ingroup RNA
+/** \file \ingroup RNA
  */
 
 
@@ -522,7 +521,7 @@ static wmEvent *rna_Window_event_add_simulate(
 		}
 	}
 
-	wmEvent e = {NULL};
+	wmEvent e = *win->eventstate;
 	e.type = type;
 	e.val = value;
 	e.x = x;
@@ -533,12 +532,13 @@ static wmEvent *rna_Window_event_add_simulate(
 	e.alt = alt;
 	e.oskey = oskey;
 
-	const wmEvent *evt = win->eventstate;
-	e.prevx = evt->x;
-	e.prevy = evt->y;
-	e.prevval = evt->val;
-	e.prevtype = evt->type;
+	e.prevx = win->eventstate->x;
+	e.prevy = win->eventstate->y;
+	e.prevval = win->eventstate->val;
+	e.prevtype = win->eventstate->type;
 
+	e.ascii = '\0';
+	e.utf8_buf[0] = '\0';
 	if (unicode != NULL) {
 		e.ascii = ascii;
 		STRNCPY(e.utf8_buf, unicode);
