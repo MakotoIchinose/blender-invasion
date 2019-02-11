@@ -1716,7 +1716,7 @@ bool BKE_gpencil_trim_stroke(bGPDstroke *gps)
 		start = i;
 		bGPDspoint *a = &gps->points[start];
 		bGPDspoint *b = &gps->points[start + 1];
-		for (int j = start + 2; j < gps->totpoints; j++) {
+		for (int j = start + 2; j < gps->totpoints - 1; j++) {
 			end = j + 1;
 			bGPDspoint *c = &gps->points[j];
 			bGPDspoint *d = &gps->points[end];
