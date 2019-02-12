@@ -263,30 +263,28 @@ static const char *version_struct_runtime_from_static(const char *str)
 	return str;
 }
 
-static const char *version_elem_runtime_from_static(
-        const int strct, const char *elem_static_full)
+static const char *version_elem_static_from_runtime(
+        const int strct, const char *elem_runtime_full)
 {
 	/* First get the old name with everything stripped out of it. */
-	const uint elem_static_offset_start = DNA_elem_id_offset_start(elem_static_full);
-	const char *elem_static_trim = elem_static_full + elem_static_offset_start;
-	const uint elem_static_len = DNA_elem_id_offset_end(elem_static_trim);
+	const uint elem_runtime_offset_start = DNA_elem_id_offset_start(elem_runtime_full);
+	const char *elem_runtime_trim = elem_runtime_full + elem_runtime_offset_start;
+	const uint elem_runtime_len = DNA_elem_id_offset_end(elem_runtime_trim);
+	char *elem_runtime = alloca(elem_runtime_len + 1);
+	memcpy(elem_runtime, elem_runtime_trim, elem_runtime_len);
+	elem_runtime[elem_runtime_len] = '\0';
 
-	char *elem_static = alloca(elem_static_len + 1);
-	memcpy(elem_static, elem_static_trim, elem_static_len);
-	elem_static[elem_static_len] = '\0';
-
-	/* Now we have name, no junk around it, get the renamed version. */
-	const char *str_pair[2] = {types[strct], elem_static};
-	const char *elem_runtime = BLI_ghash_lookup(g_version_data.elem_map_static_from_runtime, str_pair);
-	if (elem_runtime != NULL) {
+	const char *str_pair[2] = {types[strct], elem_runtime};
+	const char *elem_static = BLI_ghash_lookup(g_version_data.elem_map_static_from_runtime, str_pair);
+	if (elem_static != NULL) {
 		return DNA_elem_id_rename(
 		        mem_arena,
-		        elem_static, strlen(elem_static),
 		        elem_runtime, strlen(elem_runtime),
-		        elem_static, elem_static_len,
-		        elem_static_offset_start);
+		        elem_static, strlen(elem_static),
+		        elem_runtime, elem_runtime_len,
+		        elem_runtime_offset_start);
 	}
-	return elem_static_full;
+	return elem_runtime_full;
 }
 
 static int add_type(const char *str, int len)
@@ -725,7 +723,7 @@ static int convert_include(const char *filename)
 									if (md1[slen - 1] == ';') {
 										md1[slen - 1] = 0;
 
-										name = add_name(version_elem_runtime_from_static(strct, md1));
+										name = add_name(version_elem_static_from_runtime(strct, md1));
 										slen += additional_slen_offset;
 										sp[0] = type;
 										sp[1] = name;
@@ -741,7 +739,7 @@ static int convert_include(const char *filename)
 										break;
 									}
 
-									name = add_name(version_elem_runtime_from_static(strct, md1));
+									name = add_name(version_elem_static_from_runtime(strct, md1));
 									slen += additional_slen_offset;
 
 									sp[0] = type;
