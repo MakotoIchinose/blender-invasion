@@ -108,6 +108,18 @@ uint DNA_elem_id_offset_end(const char *elem_dna)
 }
 
 /**
+ * \a elem_dst must be at least the size of \a elem_src.
+ */
+void DNA_elem_id_strip(char *elem_dst, const char *elem_src)
+{
+	const uint elem_src_offset = DNA_elem_id_offset_start(elem_src);
+	const char *elem_src_trim = elem_src + elem_src_offset;
+	const uint elem_src_trim_len = DNA_elem_id_offset_end(elem_src_trim);
+	memcpy(elem_dst, elem_src_trim, elem_src_trim_len);
+	elem_dst[elem_src_trim_len] = '\0';
+}
+
+/**
  * Check if 'var' matches '*var[3]' for eg,
  * return true if it does, with start/end offsets.
  */

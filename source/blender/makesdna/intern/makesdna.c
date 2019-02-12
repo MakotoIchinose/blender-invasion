@@ -1028,7 +1028,7 @@ void printStructLengths(void)
 
 static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offsets)
 {
-	int len, i;
+	int i;
 	const short *sp;
 	/* str contains filenames. Since we now include paths, I stretched       */
 	/* it a bit. Hope this is enough :) -nzc-                                */
@@ -1148,7 +1148,7 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 	}
 	else {
 		const char nil_bytes[4] = {0};
-		int len_align;
+		int len, len_align;
 
 		dna_write(file, "SDNA", 4);
 
@@ -1249,6 +1249,36 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 		}
 		fprintf(file_offsets, "\tSDNA_TYPE_MAX = %d,\n", nr_structs);
 		fprintf(file_offsets, "};\n");
+	}
+
+	/* Check versioning errors which could cause duplicate names,
+	 * do last because names are stripped. */
+	{
+		GSet *names_unique = BLI_gset_str_new_ex(__func__, 512);
+		char name_buf[512];
+
+		for (int struct_nr = 0; struct_nr < nr_structs; struct_nr++) {
+			sp = structs[struct_nr];
+			const char *struct_name = types[sp[0]];
+			const int len = sp[1];
+			sp += 2;
+			for (int a = 0; a < len; a++, sp += 2) {
+				char *name = names[sp[1]];
+				const int name_len = strlen(name);
+				BLI_assert(name_len < sizeof(name_buf));
+				DNA_elem_id_strip(name_buf, name);
+				strcpy(name, name_buf);
+
+				if (!BLI_gset_add(names_unique, name)) {
+					fprintf(stderr, "Error: duplicate name found '%s.%s', "
+					       "likely cause is 'versioning_dna.c'\n",
+					       struct_name, name);
+					return 1;
+				}
+			}
+			BLI_gset_clear(names_unique, NULL);
+		}
+		BLI_gset_free(names_unique, NULL);
 	}
 
 	MEM_freeN(structdata);

@@ -27,6 +27,7 @@ int DNA_elem_array_size(const char *str);
 
 uint DNA_elem_id_offset_start(const char *elem_dna);
 uint DNA_elem_id_offset_end(const char *elem_dna);
+void DNA_elem_id_strip(char *elem_dst, const char *elem_src);
 bool DNA_elem_id_match(
         const char *elem_search, const int elem_search_len,
         const char *elem_dna,
