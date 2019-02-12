@@ -58,6 +58,13 @@
 
 BlenderDefRNA DefRNA = {NULL, {NULL, NULL}, {NULL, NULL}, NULL, 0, 0, 0, 1, 1};
 
+static struct {
+	char _dont_leave_me_empty;
+// #ifndef RNA_RUNTIME
+	GHash *struct_map_static_from_runtime;
+// #endif
+} g_version_data;
+
 /* Duplicated code since we can't link in blenkernel or blenlib */
 
 /* pedantic check for final '.', note '...' are allowed though. */
@@ -354,7 +361,17 @@ static int rna_find_sdna_member(SDNA *sdna, const char *structname, const char *
 	const short *sp;
 	int a, b, structnr, totmember, cmp;
 
-	structnr = DNA_struct_find_nr(sdna, structname);
+	/* TODO: (campbell) either support this by allocating 'struct_map_static_from_runtime'
+	 * at 'RNA_RUNTIME', or disable this function at runtime. */
+#ifdef RNA_RUNTIME
+	BLI_assert(0);
+#endif
+	{
+		const char *structname_maybe_static = BLI_ghash_lookup_default(
+		        g_version_data.struct_map_static_from_runtime, structname, (void *)structname);
+		structnr = DNA_struct_find_nr(sdna, structname_maybe_static);
+	}
+
 	if (structnr == -1)
 		return 0;
 
@@ -363,8 +380,7 @@ static int rna_find_sdna_member(SDNA *sdna, const char *structname, const char *
 	sp += 2;
 
 	for (a = 0; a < totmember; a++, sp += 2) {
-		dnaname = sdna->names[sp[1]];
-
+		dnaname = sdna->runtime.names[sp[1]];
 		cmp = rna_member_cmp(dnaname, membername);
 
 		if (cmp == 1) {
@@ -572,6 +588,16 @@ BlenderRNA *RNA_create(void)
 		DefRNA.error = 1;
 	}
 
+	/* We need runtime and on-disk names. */
+	DNA_sdna_softpatch_runtime_ensure(DefRNA.sdna);
+
+#ifndef RNA_RUNTIME
+	DNA_softupdate_maps(
+	        DNA_VERSION_STATIC_FROM_RUNTIME,
+	        &g_version_data.struct_map_static_from_runtime,
+	        NULL);
+#endif
+
 	return brna;
 }
 
@@ -705,6 +731,12 @@ void RNA_free(BlenderRNA *brna)
 			RNA_struct_free(brna, srna);
 		}
 	}
+
+#ifndef RNA_RUNTIME
+	BLI_ghash_free(g_version_data.struct_map_static_from_runtime, NULL, NULL);
+	g_version_data.struct_map_static_from_runtime = NULL;
+#endif
+
 }
 
 static size_t rna_property_type_sizeof(PropertyType type)

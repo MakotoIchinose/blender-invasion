@@ -21,6 +21,7 @@
 #define __DNA_UTILS_H__
 
 struct MemArena;
+struct GHash;
 
 int DNA_elem_array_size(const char *str);
 
@@ -36,5 +37,18 @@ char *DNA_elem_id_rename(
         const char *elem_dst, const int elem_dst_len,
         const char *elem_dna_src, const int elem_dna_src_len,
         const uint elem_dna_offset_start);
+
+/* When requesting version info, support both directions. */
+enum eDNAVersionDir {
+	DNA_VERSION_STATIC_FROM_RUNTIME = -1,
+	DNA_VERSION_RUNTIME_FROM_STATIC = 1,
+};
+
+void DNA_softupdate_maps(
+        enum eDNAVersionDir version_dir,
+        struct GHash **r_struct_map, struct GHash **r_elem_map);
+
+/* Needs 'DNA_MAKESDNA' to be defined. */
+#define DNA_VERSIONING_DEFINES "../../blenloader/intern/versioning_dna.c"
 
 #endif /* __DNA_UTILS_H__ */

@@ -16,19 +16,27 @@
 
 /** \file \ingroup blenloader
  *
- * Apply edits to DNA at load time
- * to behave as if old files were written new names.
+ * Apply edits to DNA at load time.
+ *
+ * - #DNA_MAKESDNA undefined:
+ *   Behave as if old files were written new names.
+ * - #DNA_MAKESDNA defined:
+ *   Defines store files with old names but runtime uses new names.
  */
 
-#include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
+#ifndef DNA_MAKESDNA
+#  include "BLI_compiler_attrs.h"
+#  include "BLI_utildefines.h"
 
-#include "DNA_genfile.h"
-#include "DNA_listBase.h"
+#  include "DNA_genfile.h"
+#  include "DNA_listBase.h"
 
-#include "BLO_readfile.h"
-#include "readfile.h"
+#  include "BLO_readfile.h"
+#  include "readfile.h"
+#endif
 
+
+#ifndef DNA_MAKESDNA
 /**
  * Manipulates SDNA before calling #DNA_struct_get_compareflags,
  * allowing us to rename structs and struct members.
@@ -57,3 +65,15 @@ void blo_do_versions_dna(SDNA *sdna, const int versionfile, const int subversion
 
 #undef DNA_VERSION_ATLEAST
 }
+
+#else /* !DNA_MAKESDNA */
+
+/* Included in DNA versioning code. */
+
+DNA_STRUCT_REPLACE(Lamp, Light)
+DNA_STRUCT_MEMBER_REPLACE(Lamp, clipsta, clip_start)
+DNA_STRUCT_MEMBER_REPLACE(Lamp, clipend, clip_end)
+
+DNA_STRUCT_MEMBER_REPLACE(Camera, YF_dofdist, dof_dist)
+
+#endif /* !DNA_MAKESDNA */

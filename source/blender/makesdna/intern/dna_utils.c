@@ -23,9 +23,12 @@
 
 #include <string.h>
 
+#include "MEM_guardedalloc.h"
+
 #include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
 #include "BLI_assert.h"
+#include "BLI_ghash.h"
 
 #include "BLI_memarena.h"
 
@@ -104,6 +107,7 @@ uint DNA_elem_id_offset_end(const char *elem_dna)
 	return elem_dna_offset;
 }
 
+
 /**
  * Check if 'var' matches '*var[3]' for eg,
  * return true if it does, with start/end offsets.
@@ -160,5 +164,98 @@ char *DNA_elem_id_rename(
 	BLI_assert((strlen(elem_dna_dst) == elem_final_len) && (i == elem_final_len));
 	return elem_dna_dst;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Versioning
+ * \{ */
+
+/* Use for #DNA_VERSIONING_INCLUDE */
+#define DNA_MAKESDNA
+
+static void dna_softupdate_ghash_add_pair(GHash *gh, const char *a, const char *b, void *value)
+{
+	const char **str_pair = MEM_mallocN(sizeof(char *) * 2, __func__);
+	str_pair[0] = a;
+	str_pair[1] = b;
+	BLI_ghash_insert(gh, str_pair, value);
+}
+
+static uint strhash_pair_p(const void *ptr)
+{
+	const char * const *pair = ptr;
+	return (BLI_ghashutil_strhash_p(pair[0]) ^
+	        BLI_ghashutil_strhash_p(pair[1]));
+}
+
+static bool strhash_pair_cmp(const void *a, const void *b)
+{
+	const char * const *pair_a = a;
+	const char * const *pair_b = b;
+	return (STREQ(pair_a[0], pair_b[0]) &&
+	        STREQ(pair_a[1], pair_b[1])) ? false : true;
+}
+
+void DNA_softupdate_maps(
+        enum eDNAVersionDir version_dir,
+        GHash **r_struct_map, GHash **r_elem_map)
+{
+
+	if (r_struct_map != NULL) {
+		const char *data[][2] = {
+#define DNA_STRUCT_REPLACE(old, new) {#old, #new},
+#define DNA_STRUCT_MEMBER_REPLACE(struct_name, old, new)
+#include DNA_VERSIONING_DEFINES
+#undef DNA_STRUCT_REPLACE
+#undef DNA_STRUCT_MEMBER_REPLACE
+		};
+
+		int elem_key, elem_val;
+		if (version_dir == DNA_VERSION_RUNTIME_FROM_STATIC) {
+			elem_key = 0;
+			elem_val = 1;
+
+		}
+		else {
+			elem_key = 1;
+			elem_val = 0;
+		}
+
+		GHash *struct_map = BLI_ghash_str_new_ex(__func__, ARRAY_SIZE(data));
+		for (int i = 0; i < ARRAY_SIZE(data); i++) {
+			BLI_ghash_insert(struct_map, (void *)data[i][elem_key], (void *)data[i][elem_val]);
+		}
+		*r_struct_map = struct_map;
+	}
+
+	if (r_elem_map != NULL) {
+		const char *data[][3] = {
+#define DNA_STRUCT_REPLACE(old, new)
+#define DNA_STRUCT_MEMBER_REPLACE(struct_name, old, new) {#struct_name, #old, #new},
+#include DNA_VERSIONING_DEFINES
+#undef DNA_STRUCT_REPLACE
+#undef DNA_STRUCT_MEMBER_REPLACE
+		};
+
+		int elem_key, elem_val;
+		if (version_dir == DNA_VERSION_RUNTIME_FROM_STATIC) {
+			elem_key = 1;
+			elem_val = 2;
+
+		}
+		else {
+			elem_key = 2;
+			elem_val = 1;
+		}
+		GHash *elem_map = BLI_ghash_new_ex(strhash_pair_p, strhash_pair_cmp, __func__, ARRAY_SIZE(data));
+		for (int i = 0; i < ARRAY_SIZE(data); i++) {
+			dna_softupdate_ghash_add_pair(elem_map, data[i][0], data[i][elem_key], (void *)data[i][elem_val]);
+		}
+		*r_elem_map = elem_map;
+	}
+}
+
+#undef DNA_MAKESDNA
 
 /** \} */

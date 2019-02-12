@@ -156,6 +156,9 @@ void DNA_sdna_free(SDNA *sdna)
 		BLI_memarena_free(sdna->mem_arena);
 	}
 
+	MEM_SAFE_FREE(sdna->runtime.names);
+	MEM_SAFE_FREE(sdna->runtime.types);
+
 	MEM_freeN(sdna);
 }
 
@@ -310,6 +313,9 @@ static bool init_structDNA(
 	sdna->structs_map = NULL;
 #endif
 	sdna->mem_arena = NULL;
+
+	/* Lazy initialize. */
+	memset(&sdna->runtime, 0, sizeof(sdna->runtime));
 
 	/* Struct DNA ('SDNA') */
 	if (*data != MAKE_ID('S', 'D', 'N', 'A')) {
@@ -1435,6 +1441,116 @@ bool DNA_sdna_patch_struct_member(
 		return DNA_sdna_patch_struct_member_nr(sdna, struct_name_nr, member_old, member_new);
 	}
 	return false;
+}
+
+/** \} */
+
+
+/* -------------------------------------------------------------------- */
+/** \name Versioning (Forward Compatible)
+ *
+ * Versioning that allows new names.
+ * \{ */
+
+/**
+ * Unique names are shared, which causes problems renaming.
+ * Make sure every struct member gets it's own name so any renaming
+ */
+static void sdna_softpatch_runtime_expand_names(SDNA *sdna)
+{
+	int names_len_all = 0;
+	for (int struct_nr = 0; struct_nr < sdna->nr_structs; struct_nr++) {
+		const short *sp = sdna->structs[struct_nr];
+		names_len_all += sp[1];
+	}
+	const char **names_expand = MEM_mallocN(sizeof(*names_expand) * names_len_all, __func__);
+
+	int names_expand_index = 0;
+	for (int struct_nr = 0; struct_nr < sdna->nr_structs; struct_nr++) {
+		/* We can't edit this memory 'sdna->structs' points to (readonly datatoc file). */
+		const short *sp = sdna->structs[struct_nr];
+		short *sp_expand = BLI_memarena_alloc(sdna->mem_arena, sizeof(short[2]) * (1 + sp[1]));
+		memcpy(sp_expand, sp, sizeof(short[2]) * (1 + sp[1]));
+		sdna->structs[struct_nr] = sp_expand;
+		const int names_len = sp[1];
+		sp += 2;
+		sp_expand += 2;
+		for (int i = 0; i < names_len; i++, sp += 2, sp_expand += 2) {
+			names_expand[names_expand_index] = sdna->names[sp[1]];
+			BLI_assert(names_expand_index <  SHRT_MAX);
+			sp_expand[1] = names_expand_index;
+			names_expand_index++;
+		}
+	}
+	MEM_freeN((void *)sdna->names);
+	sdna->names = names_expand;
+	sdna->nr_names = names_len_all;
+}
+
+void DNA_sdna_softpatch_runtime_ensure(SDNA *sdna)
+{
+	if (sdna->mem_arena == NULL) {
+		sdna->mem_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+	}
+
+	GHash *struct_map_runtime_from_static;
+	GHash *elem_map_runtime_from_static;
+
+	DNA_softupdate_maps(
+	        DNA_VERSION_RUNTIME_FROM_STATIC,
+	        &struct_map_runtime_from_static,
+	        &elem_map_runtime_from_static);
+
+
+	if (sdna->runtime.types == NULL) {
+		sdna->runtime.types = MEM_mallocN(sizeof(*sdna->runtime.types) * sdna->nr_types, __func__);
+		for (int type_nr = 0; type_nr < sdna->nr_types; type_nr++) {
+			const char *str = sdna->types[type_nr];
+			sdna->runtime.types[type_nr] = BLI_ghash_lookup_default(
+			        struct_map_runtime_from_static, str, (void *)str);
+		}
+	}
+
+	if (sdna->runtime.names == NULL) {
+		sdna_softpatch_runtime_expand_names(sdna);
+		sdna->runtime.names = MEM_mallocN(sizeof(*sdna->runtime.names) * sdna->nr_names, __func__);
+		for (int struct_nr = 0; struct_nr < sdna->nr_structs; struct_nr++) {
+			const short *sp = sdna->structs[struct_nr];
+			const char *struct_name_static = sdna->types[sp[0]];
+			const int dna_struct_names_len = sp[1];
+			sp += 2;
+			for (int a = 0; a < dna_struct_names_len; a++, sp += 2) {
+				const char *elem_static = sdna->names[sp[1]];
+				const uint elem_static_offset_start = DNA_elem_id_offset_start(elem_static);
+				const char *elem_static_trim = elem_static + elem_static_offset_start;
+				const uint member_dna_offset_end = (
+				        elem_static_offset_start + DNA_elem_id_offset_end(elem_static_trim));
+
+				const uint elem_static_buf_len = member_dna_offset_end - elem_static_offset_start;
+				char elem_static_buf[1024];
+				strncpy(elem_static_buf, elem_static_trim, elem_static_buf_len);
+				elem_static_buf[elem_static_buf_len] = '\0';
+				// printf("Searching '%s.%s'\n", struct_name_static, elem_static_buf);
+				const char *str_pair[2] = {struct_name_static, elem_static_buf};
+				const char *elem_runtime = BLI_ghash_lookup(elem_map_runtime_from_static, str_pair);
+				if (elem_runtime) {
+					// printf("Found %s from %s\n", elem_runtime, elem_static_buf);
+					sdna->runtime.names[sp[1]] = DNA_elem_id_rename(
+					        sdna->mem_arena,
+					        elem_static_trim, strlen(elem_static_trim),
+					        elem_runtime, strlen(elem_runtime),
+					        elem_static, strlen(elem_static),
+					        elem_static_offset_start);
+					// printf("result is: %s\n", sdna->runtime.names[sp[1]]);
+				}
+				else {
+					sdna->runtime.names[sp[1]] = sdna->names[sp[1]];
+				}
+			}
+		}
+	}
+	BLI_ghash_free(struct_map_runtime_from_static, NULL, NULL);
+	BLI_ghash_free(elem_map_runtime_from_static, MEM_freeN, NULL);
 }
 
 /** \} */

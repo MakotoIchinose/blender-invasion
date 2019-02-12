@@ -43,11 +43,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_sys_types.h"  /* for intptr_t support */
+#include "BLI_utildefines.h"
+#include "BLI_alloca.h"
+#include "BLI_ghash.h"
 #include "BLI_memarena.h"
+#include "BLI_sys_types.h"  /* for intptr_t support */
 
 #include "dna_utils.h"
 
@@ -153,6 +157,16 @@ static short *typelens_64;
  * sp[1] is amount of elements
  * sp[2] sp[3] is typenr,  namenr (etc) */
 static short **structs, *structdata;
+
+/** Versioning data */
+static struct {
+	GHash *struct_map_runtime_from_static;
+	GHash *struct_map_static_from_runtime;
+
+	GHash *elem_map_runtime_from_static;
+	GHash *elem_map_static_from_runtime;
+} g_version_data = {NULL};
+
 /**
  * Variable to control debug output of makesdna.
  * debugSDNA:
@@ -167,10 +181,8 @@ static int additional_slen_offset;
 #define DEBUG_PRINTF(debug_level, ...) \
 	{ if (debugSDNA > debug_level) { printf(__VA_ARGS__); } } ((void)0)
 
-
 /* stub for BLI_abort() */
 #ifndef NDEBUG
-void BLI_system_backtrace(FILE *fp);
 void BLI_system_backtrace(FILE *fp)
 {
        (void)fp;
@@ -234,6 +246,51 @@ void printStructLengths(void);
 
 /* ************************* MAKEN DNA ********************** */
 
+
+static const char *version_struct_static_from_runtime(const char *str)
+{
+	const char *str_test = BLI_ghash_lookup(g_version_data.struct_map_static_from_runtime, str);
+	if (str_test != NULL) {
+		return str_test;
+	}
+	return str;
+}
+
+static const char *version_struct_runtime_from_static(const char *str)
+{
+	const char *str_test = BLI_ghash_lookup(g_version_data.struct_map_runtime_from_static, str);
+	if (str_test != NULL) {
+		return str_test;
+	}
+	return str;
+}
+
+static const char *version_struct_elem_runtime_from_static(
+        const int strct, const char *elem_static_untrimmed)
+{
+	/* First get the old name with everything stripped out of it. */
+	const uint elem_static_offset_start = DNA_elem_id_offset_start(elem_static_untrimmed);
+	const char *elem_static_trim = elem_static_untrimmed + elem_static_offset_start;
+	const uint elem_static_len = DNA_elem_id_offset_end(elem_static_trim);
+
+	char *elem_static = alloca(elem_static_len + 1);
+	memcpy(elem_static, elem_static_trim, elem_static_len);
+	elem_static[elem_static_len] = '\0';
+
+	/* Now we have name, no junk around it, get the renamed version. */
+	const char *str_pair[2] = {types[strct], elem_static};
+	const char *elem_runtime = BLI_ghash_lookup(g_version_data.elem_map_static_from_runtime, str_pair);
+	if (elem_runtime != NULL) {
+		return DNA_elem_id_rename(
+		        mem_arena,
+		        elem_static, strlen(elem_static),
+		        elem_runtime, strlen(elem_runtime),
+		        elem_static, elem_static_len,
+		        elem_static_offset_start);
+	}
+	return elem_static_untrimmed;
+}
+
 static int add_type(const char *str, int len)
 {
 	int nr;
@@ -248,6 +305,8 @@ static int add_type(const char *str, int len)
 		 * 'struct SomeStruct* somevar;' <-- correct but we cant handle right now. */
 		return -1;
 	}
+
+	str = version_struct_static_from_runtime(str);
 
 	/* search through type array */
 	for (nr = 0; nr < nr_types; nr++) {
@@ -668,8 +727,9 @@ static int convert_include(const char *filename)
 									if (md1[slen - 1] == ';') {
 										md1[slen - 1] = 0;
 
+										const char *md1_maybe_versioned = version_struct_elem_runtime_from_static(strct, md1);
 
-										name = add_name(md1);
+										name = add_name(md1_maybe_versioned);
 										slen += additional_slen_offset;
 										sp[0] = type;
 										sp[1] = name;
@@ -685,8 +745,9 @@ static int convert_include(const char *filename)
 										break;
 									}
 
+									const char *md1_maybe_versioned = version_struct_elem_runtime_from_static(strct, md1);
 
-									name = add_name(md1);
+									name = add_name(md1_maybe_versioned);
 									slen += additional_slen_offset;
 
 									sp[0] = type;
@@ -1000,6 +1061,16 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 	typelens_64 = MEM_callocN(sizeof(short) * maxnr, "typelens_64");
 	structs = MEM_callocN(sizeof(short *) * maxnr, "structs");
 
+	/* Build versioning data */
+	DNA_softupdate_maps(
+	        DNA_VERSION_RUNTIME_FROM_STATIC,
+	        &g_version_data.struct_map_runtime_from_static,
+	        &g_version_data.elem_map_runtime_from_static);
+	DNA_softupdate_maps(
+	        DNA_VERSION_STATIC_FROM_RUNTIME,
+	        &g_version_data.struct_map_static_from_runtime,
+	        &g_version_data.elem_map_static_from_runtime);
+
 	/**
 	 * Insertion of all known types.
 	 *
@@ -1182,7 +1253,7 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 		for (i = 0; i < nr_structs; i++) {
 			const short *structpoin = structs[i];
 			const int    structtype = structpoin[0];
-			fprintf(file_offsets, "\t_SDNA_TYPE_%s = %d,\n", types[structtype], i);
+			fprintf(file_offsets, "\t_SDNA_TYPE_%s = %d,\n", version_struct_runtime_from_static(types[structtype]), i);
 		}
 		fprintf(file_offsets, "\tSDNA_TYPE_MAX = %d,\n", nr_structs);
 		fprintf(file_offsets, "};\n");
@@ -1197,6 +1268,12 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 	MEM_freeN(structs);
 
 	BLI_memarena_free(mem_arena);
+
+	BLI_ghash_free(g_version_data.struct_map_runtime_from_static, NULL, NULL);
+	BLI_ghash_free(g_version_data.struct_map_static_from_runtime, NULL, NULL);
+
+	BLI_ghash_free(g_version_data.elem_map_runtime_from_static, MEM_freeN, NULL);
+	BLI_ghash_free(g_version_data.elem_map_static_from_runtime, MEM_freeN, NULL);
 
 	DEBUG_PRINTF(0, "done.\n");
 
