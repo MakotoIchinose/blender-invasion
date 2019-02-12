@@ -1453,18 +1453,17 @@ bool DNA_sdna_patch_struct_member(
  * \{ */
 
 /**
- * Unique names are shared, which causes problems renaming.
- * Make sure every struct member gets it's own name so renaming
- * only ever impacts a single struct.
+ * Names are shared between structs which causes problems renaming.
+ * Make sure every struct member gets it's own name so renaming only ever impacts a single struct.
  */
 static void sdna_softpatch_runtime_expand_names(SDNA *sdna)
 {
-	int names_len_all = 0;
+	int names_expand_len = 0;
 	for (int struct_nr = 0; struct_nr < sdna->nr_structs; struct_nr++) {
 		const short *sp = sdna->structs[struct_nr];
-		names_len_all += sp[1];
+		names_expand_len += sp[1];
 	}
-	const char **names_expand = MEM_mallocN(sizeof(*names_expand) * names_len_all, __func__);
+	const char **names_expand = MEM_mallocN(sizeof(*names_expand) * names_expand_len, __func__);
 
 	int names_expand_index = 0;
 	for (int struct_nr = 0; struct_nr < sdna->nr_structs; struct_nr++) {
@@ -1485,7 +1484,7 @@ static void sdna_softpatch_runtime_expand_names(SDNA *sdna)
 	}
 	MEM_freeN((void *)sdna->names);
 	sdna->names = names_expand;
-	sdna->nr_names = names_len_all;
+	sdna->nr_names = names_expand_len;
 }
 
 void DNA_sdna_softpatch_runtime_ensure(SDNA *sdna)
