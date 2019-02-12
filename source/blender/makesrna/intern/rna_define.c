@@ -593,7 +593,7 @@ BlenderRNA *RNA_create(void)
 	DNA_sdna_softpatch_runtime_ensure(DefRNA.sdna);
 
 #ifndef RNA_RUNTIME
-	DNA_softupdate_maps(
+	DNA_softpatch_maps(
 	        DNA_VERSION_STATIC_FROM_RUNTIME,
 	        &g_version_data.struct_map_static_from_runtime,
 	        NULL);

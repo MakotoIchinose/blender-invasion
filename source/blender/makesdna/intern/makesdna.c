@@ -1056,11 +1056,11 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 	structs = MEM_callocN(sizeof(short *) * maxnr, "structs");
 
 	/* Build versioning data */
-	DNA_softupdate_maps(
+	DNA_softpatch_maps(
 	        DNA_VERSION_RUNTIME_FROM_STATIC,
 	        &g_version_data.struct_map_runtime_from_static,
 	        NULL);
-	DNA_softupdate_maps(
+	DNA_softpatch_maps(
 	        DNA_VERSION_STATIC_FROM_RUNTIME,
 	        &g_version_data.struct_map_static_from_runtime,
 	        &g_version_data.elem_map_static_from_runtime);

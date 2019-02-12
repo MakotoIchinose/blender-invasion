@@ -173,14 +173,6 @@ char *DNA_elem_id_rename(
 /* Use for #DNA_VERSIONING_INCLUDE */
 #define DNA_MAKESDNA
 
-static void dna_softupdate_ghash_add_pair(GHash *gh, const char *a, const char *b, void *value)
-{
-	const char **str_pair = MEM_mallocN(sizeof(char *) * 2, __func__);
-	str_pair[0] = a;
-	str_pair[1] = b;
-	BLI_ghash_insert(gh, str_pair, value);
-}
-
 static uint strhash_pair_p(const void *ptr)
 {
 	const char * const *pair = ptr;
@@ -196,7 +188,7 @@ static bool strhash_pair_cmp(const void *a, const void *b)
 	        STREQ(pair_a[1], pair_b[1])) ? false : true;
 }
 
-void DNA_softupdate_maps(
+void DNA_softpatch_maps(
         enum eDNAVersionDir version_dir,
         GHash **r_struct_map, GHash **r_elem_map)
 {
@@ -252,8 +244,10 @@ void DNA_softupdate_maps(
 		}
 		GHash *elem_map = BLI_ghash_new_ex(strhash_pair_p, strhash_pair_cmp, __func__, ARRAY_SIZE(data));
 		for (int i = 0; i < ARRAY_SIZE(data); i++) {
-			const char *struct_old = BLI_ghash_lookup_default(struct_map_local, data[i][0], (void *)data[i][0]);
-			dna_softupdate_ghash_add_pair(elem_map, struct_old, data[i][elem_key], (void *)data[i][elem_val]);
+			const char **str_pair = MEM_mallocN(sizeof(char *) * 2, __func__);
+			str_pair[0] = BLI_ghash_lookup_default(struct_map_local, data[i][0], (void *)data[i][0]);
+			str_pair[1] = data[i][elem_key],
+			BLI_ghash_insert(elem_map, str_pair, (void *)data[i][elem_val]);
 		}
 		*r_elem_map = elem_map;
 	}

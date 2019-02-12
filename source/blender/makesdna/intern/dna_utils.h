@@ -43,8 +43,7 @@ enum eDNAVersionDir {
 	DNA_VERSION_STATIC_FROM_RUNTIME = -1,
 	DNA_VERSION_RUNTIME_FROM_STATIC = 1,
 };
-
-void DNA_softupdate_maps(
+void DNA_softpatch_maps(
         enum eDNAVersionDir version_dir,
         struct GHash **r_struct_map, struct GHash **r_elem_map);
 

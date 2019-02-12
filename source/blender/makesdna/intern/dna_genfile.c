@@ -1497,7 +1497,7 @@ void DNA_sdna_softpatch_runtime_ensure(SDNA *sdna)
 	GHash *struct_map_runtime_from_static;
 	GHash *elem_map_runtime_from_static;
 
-	DNA_softupdate_maps(
+	DNA_softpatch_maps(
 	        DNA_VERSION_RUNTIME_FROM_STATIC,
 	        &struct_map_runtime_from_static,
 	        &elem_map_runtime_from_static);
