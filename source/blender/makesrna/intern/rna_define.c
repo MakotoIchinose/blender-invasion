@@ -58,12 +58,12 @@
 
 BlenderDefRNA DefRNA = {NULL, {NULL, NULL}, {NULL, NULL}, NULL, 0, 0, 0, 1, 1};
 
+#ifndef RNA_RUNTIME
 static struct {
 	char _dont_leave_me_empty;
-// #ifndef RNA_RUNTIME
 	GHash *struct_map_static_from_runtime;
-// #endif
 } g_version_data;
+#endif
 
 /* Duplicated code since we can't link in blenkernel or blenlib */
 
@@ -365,12 +365,13 @@ static int rna_find_sdna_member(SDNA *sdna, const char *structname, const char *
 	 * at 'RNA_RUNTIME', or disable this function at runtime. */
 #ifdef RNA_RUNTIME
 	BLI_assert(0);
-#endif
+#else
 	{
 		const char *structname_maybe_static = BLI_ghash_lookup_default(
 		        g_version_data.struct_map_static_from_runtime, structname, (void *)structname);
 		structnr = DNA_struct_find_nr(sdna, structname_maybe_static);
 	}
+#endif
 
 	if (structnr == -1)
 		return 0;
