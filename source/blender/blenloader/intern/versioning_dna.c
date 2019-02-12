@@ -51,7 +51,12 @@
 DNA_STRUCT_REPLACE(Lamp, Light)
 DNA_STRUCT_MEMBER_REPLACE(Lamp, clipsta, clip_start)
 DNA_STRUCT_MEMBER_REPLACE(Lamp, clipend, clip_end)
+DNA_STRUCT_MEMBER_REPLACE(LightProbe, clipsta, clip_start)
+DNA_STRUCT_MEMBER_REPLACE(LightProbe, clipend, clip_end)
+DNA_STRUCT_MEMBER_REPLACE(Camera, clipsta, clip_start)
+DNA_STRUCT_MEMBER_REPLACE(Camera, clipend, clip_end)
 DNA_STRUCT_MEMBER_REPLACE(Camera, YF_dofdist, dof_dist)
+
 
 #else /* !DNA_MAKESDNA */
 
