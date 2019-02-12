@@ -162,8 +162,6 @@ static short **structs, *structdata;
 static struct {
 	GHash *struct_map_runtime_from_static;
 	GHash *struct_map_static_from_runtime;
-
-	GHash *elem_map_runtime_from_static;
 	GHash *elem_map_static_from_runtime;
 } g_version_data = {NULL};
 
@@ -265,12 +263,12 @@ static const char *version_struct_runtime_from_static(const char *str)
 	return str;
 }
 
-static const char *version_struct_elem_runtime_from_static(
-        const int strct, const char *elem_static_untrimmed)
+static const char *version_elem_runtime_from_static(
+        const int strct, const char *elem_static_full)
 {
 	/* First get the old name with everything stripped out of it. */
-	const uint elem_static_offset_start = DNA_elem_id_offset_start(elem_static_untrimmed);
-	const char *elem_static_trim = elem_static_untrimmed + elem_static_offset_start;
+	const uint elem_static_offset_start = DNA_elem_id_offset_start(elem_static_full);
+	const char *elem_static_trim = elem_static_full + elem_static_offset_start;
 	const uint elem_static_len = DNA_elem_id_offset_end(elem_static_trim);
 
 	char *elem_static = alloca(elem_static_len + 1);
@@ -288,7 +286,7 @@ static const char *version_struct_elem_runtime_from_static(
 		        elem_static, elem_static_len,
 		        elem_static_offset_start);
 	}
-	return elem_static_untrimmed;
+	return elem_static_full;
 }
 
 static int add_type(const char *str, int len)
@@ -727,9 +725,7 @@ static int convert_include(const char *filename)
 									if (md1[slen - 1] == ';') {
 										md1[slen - 1] = 0;
 
-										const char *md1_maybe_versioned = version_struct_elem_runtime_from_static(strct, md1);
-
-										name = add_name(md1_maybe_versioned);
+										name = add_name(version_elem_runtime_from_static(strct, md1));
 										slen += additional_slen_offset;
 										sp[0] = type;
 										sp[1] = name;
@@ -745,9 +741,7 @@ static int convert_include(const char *filename)
 										break;
 									}
 
-									const char *md1_maybe_versioned = version_struct_elem_runtime_from_static(strct, md1);
-
-									name = add_name(md1_maybe_versioned);
+									name = add_name(version_elem_runtime_from_static(strct, md1));
 									slen += additional_slen_offset;
 
 									sp[0] = type;
@@ -1065,7 +1059,7 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 	DNA_softupdate_maps(
 	        DNA_VERSION_RUNTIME_FROM_STATIC,
 	        &g_version_data.struct_map_runtime_from_static,
-	        &g_version_data.elem_map_runtime_from_static);
+	        NULL);
 	DNA_softupdate_maps(
 	        DNA_VERSION_STATIC_FROM_RUNTIME,
 	        &g_version_data.struct_map_static_from_runtime,
@@ -1271,8 +1265,6 @@ static int make_structDNA(const char *baseDirectory, FILE *file, FILE *file_offs
 
 	BLI_ghash_free(g_version_data.struct_map_runtime_from_static, NULL, NULL);
 	BLI_ghash_free(g_version_data.struct_map_static_from_runtime, NULL, NULL);
-
-	BLI_ghash_free(g_version_data.elem_map_runtime_from_static, MEM_freeN, NULL);
 	BLI_ghash_free(g_version_data.elem_map_static_from_runtime, MEM_freeN, NULL);
 
 	DEBUG_PRINTF(0, "done.\n");
