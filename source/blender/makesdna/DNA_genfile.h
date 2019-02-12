@@ -109,4 +109,6 @@ bool DNA_sdna_patch_struct(
 bool DNA_sdna_patch_struct_member(
         struct SDNA *sdna, const char *struct_name, const char *member_old, const char *member_new);
 
+void DNA_sdna_softpatch_runtime_ensure(struct SDNA *sdna);
+
 #endif /* __DNA_GENFILE_H__ */

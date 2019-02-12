@@ -16,12 +16,18 @@
 
 /** \file \ingroup blenloader
  *
- * Apply edits to DNA at load time.
+ * Support for version patching DNA, there are two kinds.
+ *
+ * - #DNA_MAKESDNA defined:
+ *   Defines store files with old names but run-time uses new names.
+ *
+ *   Allows us to rename variables & structs without breaking compatibility.
  *
  * - #DNA_MAKESDNA undefined:
  *   Behave as if old files were written new names.
- * - #DNA_MAKESDNA defined:
- *   Defines store files with old names but runtime uses new names.
+ *
+ *   This means older versions of Blender won't have access to this data *USE WITH CARE*.
+ *
  */
 
 #ifndef DNA_MAKESDNA
@@ -35,8 +41,20 @@
 #  include "readfile.h"
 #endif
 
+#ifdef DNA_MAKESDNA
 
-#ifndef DNA_MAKESDNA
+/**
+ * Included in DNA versioning code.
+ *
+ * Currently use 'old' names when replacing struct members.
+ */
+DNA_STRUCT_REPLACE(Lamp, Light)
+DNA_STRUCT_MEMBER_REPLACE(Lamp, clipsta, clip_start)
+DNA_STRUCT_MEMBER_REPLACE(Lamp, clipend, clip_end)
+DNA_STRUCT_MEMBER_REPLACE(Camera, YF_dofdist, dof_dist)
+
+#else /* !DNA_MAKESDNA */
+
 /**
  * Manipulates SDNA before calling #DNA_struct_get_compareflags,
  * allowing us to rename structs and struct members.
@@ -65,15 +83,5 @@ void blo_do_versions_dna(SDNA *sdna, const int versionfile, const int subversion
 
 #undef DNA_VERSION_ATLEAST
 }
-
-#else /* !DNA_MAKESDNA */
-
-/* Included in DNA versioning code. */
-
-DNA_STRUCT_REPLACE(Lamp, Light)
-DNA_STRUCT_MEMBER_REPLACE(Lamp, clipsta, clip_start)
-DNA_STRUCT_MEMBER_REPLACE(Lamp, clipend, clip_end)
-
-DNA_STRUCT_MEMBER_REPLACE(Camera, YF_dofdist, dof_dist)
 
 #endif /* !DNA_MAKESDNA */
