@@ -588,7 +588,7 @@ BlenderRNA *RNA_create(void)
 		DefRNA.error = 1;
 	}
 
-	/* We need runtime and on-disk names. */
+	/* We need both runtime and static (on-disk) DNA names. */
 	DNA_sdna_softpatch_runtime_ensure(DefRNA.sdna);
 
 #ifndef RNA_RUNTIME

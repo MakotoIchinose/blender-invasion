@@ -107,7 +107,6 @@ uint DNA_elem_id_offset_end(const char *elem_dna)
 	return elem_dna_offset;
 }
 
-
 /**
  * Check if 'var' matches '*var[3]' for eg,
  * return true if it does, with start/end offsets.

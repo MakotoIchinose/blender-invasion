@@ -1454,7 +1454,8 @@ bool DNA_sdna_patch_struct_member(
 
 /**
  * Unique names are shared, which causes problems renaming.
- * Make sure every struct member gets it's own name so any renaming
+ * Make sure every struct member gets it's own name so renaming
+ * only ever impacts a single struct.
  */
 static void sdna_softpatch_runtime_expand_names(SDNA *sdna)
 {
