@@ -200,8 +200,8 @@ void DNA_softupdate_maps(
         enum eDNAVersionDir version_dir,
         GHash **r_struct_map, GHash **r_elem_map)
 {
-
-	if (r_struct_map != NULL) {
+	GHash *struct_map_local;
+	if (r_struct_map) {
 		const char *data[][2] = {
 #define DNA_STRUCT_REPLACE(old, new) {#old, #new},
 #define DNA_STRUCT_MEMBER_REPLACE(struct_name, old, new)
@@ -214,18 +214,22 @@ void DNA_softupdate_maps(
 		if (version_dir == DNA_VERSION_RUNTIME_FROM_STATIC) {
 			elem_key = 0;
 			elem_val = 1;
-
 		}
 		else {
 			elem_key = 1;
 			elem_val = 0;
 		}
-
 		GHash *struct_map = BLI_ghash_str_new_ex(__func__, ARRAY_SIZE(data));
 		for (int i = 0; i < ARRAY_SIZE(data); i++) {
 			BLI_ghash_insert(struct_map, (void *)data[i][elem_key], (void *)data[i][elem_val]);
 		}
 		*r_struct_map = struct_map;
+
+		/* We know the direction of this, for local use. */
+		struct_map_local = BLI_ghash_str_new_ex(__func__, ARRAY_SIZE(data));
+		for (int i = 0; i < ARRAY_SIZE(data); i++) {
+			BLI_ghash_insert(struct_map_local, (void *)data[i][1], (void *)data[i][0]);
+		}
 	}
 
 	if (r_elem_map != NULL) {
@@ -241,7 +245,6 @@ void DNA_softupdate_maps(
 		if (version_dir == DNA_VERSION_RUNTIME_FROM_STATIC) {
 			elem_key = 1;
 			elem_val = 2;
-
 		}
 		else {
 			elem_key = 2;
@@ -249,10 +252,13 @@ void DNA_softupdate_maps(
 		}
 		GHash *elem_map = BLI_ghash_new_ex(strhash_pair_p, strhash_pair_cmp, __func__, ARRAY_SIZE(data));
 		for (int i = 0; i < ARRAY_SIZE(data); i++) {
-			dna_softupdate_ghash_add_pair(elem_map, data[i][0], data[i][elem_key], (void *)data[i][elem_val]);
+			const char *struct_old = BLI_ghash_lookup_default(struct_map_local, data[i][0], (void *)data[i][0]);
+			dna_softupdate_ghash_add_pair(elem_map, struct_old, data[i][elem_key], (void *)data[i][elem_val]);
 		}
 		*r_elem_map = elem_map;
 	}
+
+	BLI_ghash_free(struct_map_local, NULL, NULL);
 }
 
 #undef DNA_MAKESDNA

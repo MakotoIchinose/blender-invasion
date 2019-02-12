@@ -19,7 +19,6 @@ replace_tables = (
     replace_all,
 )
 
-
 replace_tables_re = [
     [(src, dst) for src, dst in table]
         for table in replace_tables
@@ -52,8 +51,6 @@ def source_files(path):
             if filename.endswith("versioning_dna.c"):
                 continue
 
-            # if ext.lower() in {".py"}:
-            # if ext.lower() in {".c", ".cc", ".cxx", ".cpp", ".h", ".hxx", ".hpp", ".py"}:
             if ext.lower() in {".c", ".cc", ".cxx", ".cpp", ".h", ".hxx", ".hpp"}:
                 yield os.path.join(dirpath, filename)
 

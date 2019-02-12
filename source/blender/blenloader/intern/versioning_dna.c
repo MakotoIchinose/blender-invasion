@@ -46,11 +46,11 @@
 /**
  * Included in DNA versioning code.
  *
- * Currently use 'old' names when replacing struct members.
+ * Currently use 'new' names when replacing struct members.
  */
 DNA_STRUCT_REPLACE(Lamp, Light)
-DNA_STRUCT_MEMBER_REPLACE(Lamp, clipsta, clip_start)
-DNA_STRUCT_MEMBER_REPLACE(Lamp, clipend, clip_end)
+DNA_STRUCT_MEMBER_REPLACE(Light, clipsta, clip_start)
+DNA_STRUCT_MEMBER_REPLACE(Light, clipend, clip_end)
 DNA_STRUCT_MEMBER_REPLACE(LightProbe, clipsta, clip_start)
 DNA_STRUCT_MEMBER_REPLACE(LightProbe, clipend, clip_end)
 DNA_STRUCT_MEMBER_REPLACE(Camera, clipsta, clip_start)
