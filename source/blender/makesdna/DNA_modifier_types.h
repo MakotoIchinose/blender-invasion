@@ -87,6 +87,7 @@ typedef enum ModifierType {
 	eModifierType_MeshSequenceCache = 52,
 	eModifierType_SurfaceDeform     = 53,
 	eModifierType_WeightedNormal	= 54,
+	eModifierType_RigidDeform       = 55,
 	NUM_MODIFIER_TYPES
 } ModifierType;
 
@@ -1941,5 +1942,25 @@ enum {
 
 #define MOD_MESHSEQ_READ_ALL \
 	(MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)
+
+typedef struct RigidDeformModifierBindData {
+	int *anchor_indices;
+	float (*initial_positions)[3];
+	int anchor_amount, vertex_amount;
+} RigidDeformModifierBindData;
+
+typedef struct RigidDeformModifierData {
+	ModifierData modifier;
+	char anchor_group_name[64];  /* MAX_VGROUP_NAME */
+	RigidDeformModifierBindData *bind_data;
+	int iterations;
+	char bind_next_execution;
+	char update_anchors_next_execution;
+	char is_main;
+	char pad[1];
+
+	/* runtime only */
+	void *cache;
+} RigidDeformModifierData;
 
 #endif  /* __DNA_MODIFIER_TYPES_H__ */

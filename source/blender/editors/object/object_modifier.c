@@ -2320,6 +2320,62 @@ void OBJECT_OT_laplaciandeform_bind(wmOperatorType *ot)
 	edit_modifier_properties(ot);
 }
 
+/************************ RigidDeform bind operator *********************/
+
+static bool rigiddeform_bind_poll(bContext *C)
+{
+	return edit_modifier_poll_generic(C, &RNA_RigidDeformModifier, 0);
+}
+
+static int rigiddeform_bind_exec(bContext *C, wmOperator *op)
+{
+	Scene *scene = CTX_data_scene(C);
+	Object *ob = ED_object_active_context(C);
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
+	RigidDeformModifierData *rdmd = (RigidDeformModifierData *)edit_modifier_property_get(op, ob, eModifierType_RigidDeform);
+
+	if (RNA_boolean_get(op->ptr, "only_update")) {
+		rdmd->update_anchors_next_execution = true;
+	}
+	else {
+		rdmd->bind_next_execution = true;
+	}
+	object_force_modifier_update_for_bind(depsgraph, scene, ob);
+
+	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+	WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+
+	return OPERATOR_FINISHED;
+}
+
+static int rigiddeform_bind_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+	if (edit_modifier_invoke_properties(C, op))
+		return rigiddeform_bind_exec(C, op);
+	else
+		return OPERATOR_CANCELLED;
+}
+
+void OBJECT_OT_rigiddeform_bind(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Rigid Deform Bind";
+	ot->description = "Bind current mesh as relaxed state to rigid deform modifier";
+	ot->idname = "OBJECT_OT_rigiddeform_bind";
+
+	/* api callbacks */
+	ot->poll = rigiddeform_bind_poll;
+	ot->invoke = rigiddeform_bind_invoke;
+	ot->exec = rigiddeform_bind_exec;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+	edit_modifier_properties(ot);
+
+	RNA_def_boolean(ot->srna, "only_update", false, "Only Update",
+	        "Update anchors without rebinding the initial mesh");
+}
+
 /************************ sdef bind operator *********************/
 
 static bool surfacedeform_bind_poll(bContext *C)
