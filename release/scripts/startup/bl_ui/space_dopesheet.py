@@ -148,6 +148,8 @@ class DopesheetFilterPopoverBase:
             flow.prop(dopesheet, "show_textures", text="Textures")
         if bpy.data.shape_keys:
             flow.prop(dopesheet, "show_shapekeys", text="Shape Keys")
+        if bpy.data.cache_files:
+            flow.prop(dopesheet, "show_cache_files", text="Cache Files")
 
         layout.separator()
 
@@ -240,7 +242,8 @@ class DOPESHEET_HT_editor_buttons(Header):
         tool_settings = context.tool_settings
 
         if st.mode in {'ACTION', 'SHAPEKEY'}:
-            # TODO: These buttons need some tidying up - Probably by using a popover, and bypassing the template_id() here
+            # TODO: These buttons need some tidying up -
+            # Probably by using a popover, and bypassing the template_id() here
             row = layout.row(align=True)
             row.operator("action.layer_prev", text="", icon='TRIA_DOWN')
             row.operator("action.layer_next", text="", icon='TRIA_UP')
@@ -351,7 +354,7 @@ class DOPESHEET_MT_view(Menu):
 
         # Add this to show key-binding (reverse action in dope-sheet).
         layout.separator()
-        props = layout.operator("wm.context_set_enum", text="Toggle Graph Editor")
+        props = layout.operator("wm.context_set_enum", text="Toggle Graph Editor", icon="GRAPH")
         props.data_path = "area.type"
         props.value = 'GRAPH_EDITOR'
 

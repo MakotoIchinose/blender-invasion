@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_extrude_spin_gizmo.c
- *  \ingroup edmesh
+/** \file \ingroup edmesh
  */
 
 #include "BLI_math.h"
@@ -247,7 +242,7 @@ static void gizmo_mesh_spin_init_draw_prepare(
 		Scene *scene = CTX_data_scene(C);
 		const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, SCE_GIZMO_SHOW_ROTATE);
 		switch (orient_slot->type) {
-			case V3D_MANIP_VIEW:
+			case V3D_ORIENT_VIEW:
 			{
 				if (!equals_m3m3(viewinv_m3, ggd->prev.viewinv_m3)) {
 					/* Take care calling refresh from draw_prepare,

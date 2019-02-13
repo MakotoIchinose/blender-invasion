@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __WM_API_H__
 #define __WM_API_H__
 
-/** \file blender/windowmanager/WM_api.h
- *  \ingroup wm
+/** \file \ingroup wm
  *
  * \page wmpage windowmanager
  * \section wmabout About windowmanager
@@ -46,41 +38,41 @@
 extern "C" {
 #endif
 
+struct ARegion;
+struct GHashIterator;
+struct GPUViewport;
+struct IDProperty;
+struct ImBuf;
+struct ImageFormatData;
+struct Main;
+struct MenuType;
+struct PointerRNA;
+struct PropertyRNA;
+struct ScrArea;
+struct ViewLayer;
 struct bContext;
 struct bToolRef_Runtime;
-struct GHashIterator;
-struct IDProperty;
+struct rcti;
+struct wmDrag;
+struct wmDropBox;
 struct wmEvent;
 struct wmEventHandler;
 struct wmGesture;
 struct wmJob;
 struct wmMsgSubscribeKey;
 struct wmMsgSubscribeValue;
-struct wmOperatorType;
 struct wmOperator;
+struct wmOperatorType;
 struct wmPaintCursor;
-struct rcti;
-struct PointerRNA;
-struct PropertyRNA;
-struct MenuType;
-struct wmDropBox;
-struct wmDrag;
-struct ImBuf;
-struct ImageFormatData;
-struct ARegion;
-struct ScrArea;
-struct Main;
-struct ViewLayer;
-struct GPUViewport;
 
 #ifdef WITH_INPUT_NDOF
 struct wmNDOFMotionData;
 #endif
 
-typedef struct wmJob wmJob;
 typedef struct wmGizmo wmGizmo;
 typedef struct wmGizmoMap wmGizmoMap;
 typedef struct wmGizmoMapType wmGizmoMapType;
+typedef struct wmJob wmJob;
 
 /* general API */
 void		WM_init_state_app_template_set(const char *app_template);
@@ -89,6 +81,7 @@ const char *WM_init_state_app_template_get(void);
 void		WM_init_state_size_set		(int stax, int stay, int sizx, int sizy);
 void		WM_init_state_fullscreen_set(void);
 void		WM_init_state_normal_set(void);
+void		WM_init_state_maximized_set(void);
 void		WM_init_window_focus_set(bool do_it);
 void		WM_init_native_pixels(bool do_it);
 void		WM_init_tablet_api(void);
@@ -321,9 +314,8 @@ bool        WM_operator_poll_context(struct bContext *C, struct wmOperatorType *
 int         WM_operator_call_ex(struct bContext *C, struct wmOperator *op, const bool store);
 int			WM_operator_call		(struct bContext *C, struct wmOperator *op);
 int			WM_operator_call_notest(struct bContext *C, struct wmOperator *op);
-
-int			WM_operator_repeat_interactive(struct bContext *C, struct wmOperator *op);
 int			WM_operator_repeat		(struct bContext *C, struct wmOperator *op);
+int			WM_operator_repeat_interactive(struct bContext *C, struct wmOperator *op);
 bool        WM_operator_repeat_check(const struct bContext *C, struct wmOperator *op);
 bool        WM_operator_is_repeat(const struct bContext *C, const struct wmOperator *op);
 int         WM_operator_name_call_ptr(struct bContext *C, struct wmOperatorType *ot, short context, struct PointerRNA *properties);
@@ -347,7 +339,6 @@ void        WM_operator_last_properties_ensure(struct wmOperatorType *ot, struct
 wmOperator *WM_operator_last_redo(const struct bContext *C);
 ID         *WM_operator_drop_load_path(struct bContext *C, struct wmOperator *op, const short idcode);
 
-bool        WM_operator_last_properties_init_ex(struct wmOperator *op, struct IDProperty *last_properties);
 bool        WM_operator_last_properties_init(struct wmOperator *op);
 bool        WM_operator_last_properties_store(struct wmOperator *op);
 
@@ -624,6 +615,9 @@ bool        WM_event_is_tablet(const struct wmEvent *event);
 #ifdef WITH_INPUT_IME
 bool        WM_event_is_ime_switch(const struct wmEvent *event);
 #endif
+
+/* For testing only 'G_FLAG_EVENT_SIMULATE' */
+struct wmEvent *WM_event_add_simulate(struct wmWindow *win, const struct wmEvent *event_to_add);
 
 const char *WM_window_cursor_keymap_status_get(const struct wmWindow *win, int button_index, int type_index);
 void WM_window_cursor_keymap_status_refresh(struct bContext *C, struct wmWindow *win);

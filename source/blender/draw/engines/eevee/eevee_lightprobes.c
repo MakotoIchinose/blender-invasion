@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,20 +14,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file eevee_lightprobes.c
- *  \ingroup draw_engine
+/** \file \ingroup draw_engine
  */
 
 #include "DRW_render.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_string_utils.h"
 #include "BLI_rand.h"
 
 #include "DNA_world_types.h"
@@ -44,15 +36,12 @@
 
 #include "GPU_material.h"
 #include "GPU_texture.h"
-#include "GPU_glew.h"
 
 #include "DEG_depsgraph_query.h"
 
-#include "eevee_engine.h"
 #include "eevee_lightcache.h"
 #include "eevee_private.h"
 
-#include "ED_screen.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -78,15 +67,18 @@ bool EEVEE_lightprobes_obj_visibility_cb(bool vis_in, void *user_data)
 	EEVEE_ObjectEngineData *oed = (EEVEE_ObjectEngineData *)user_data;
 
 	/* test disabled if group is NULL */
-	if (oed->test_data->collection == NULL)
+	if (oed->test_data->collection == NULL) {
 		return vis_in;
+	}
 
-	if (oed->test_data->cached == false)
+	if (oed->test_data->cached == false) {
 		oed->ob_vis_dirty = true;
+	}
 
 	/* early out, don't need to compute ob_vis yet. */
-	if (vis_in == false)
+	if (vis_in == false) {
 		return vis_in;
+	}
 
 	if (oed->ob_vis_dirty) {
 		oed->ob_vis_dirty = false;
@@ -409,8 +401,8 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
 
 		/* Planar Display */
 		DRW_shgroup_instance_format(e_data.format_probe_display_planar, {
-		    {"probe_id", DRW_ATTRIB_INT, 1},
-		    {"probe_mat", DRW_ATTRIB_FLOAT, 16},
+		    {"probe_id", DRW_ATTR_INT, 1},
+		    {"probe_mat", DRW_ATTR_FLOAT, 16},
 		});
 
 		DRWShadingGroup *grp = DRW_shgroup_instance_create(
@@ -744,7 +736,6 @@ void EEVEE_lightprobes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 }
 
 /* -------------------------------------------------------------------- */
-
 /** \name Rendering
  * \{ */
 
@@ -955,7 +946,6 @@ static void eevee_lightbake_render_scene_to_planars(
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Filtering
  * \{ */
 

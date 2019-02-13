@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/draw/intern/draw_view.c
- *  \ingroup draw
+/** \file \ingroup draw
  *
  * Contains dynamic drawing using immediate mode
  */
@@ -31,27 +24,21 @@
 #include "DNA_brush_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
-#include "DNA_world_types.h"
 #include "DNA_view3d_types.h"
 
 #include "ED_screen.h"
-#include "ED_transform.h"
 #include "ED_view3d.h"
 
-#include "GPU_draw.h"
 #include "GPU_shader.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 
 #include "UI_resources.h"
 
-#include "WM_api.h"
 #include "WM_types.h"
 
-#include "BKE_global.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_unit.h"
 
 #include "DRW_render.h"
 
@@ -135,7 +122,7 @@ GPUBatch *DRW_draw_background_clipping_batch_from_rv3d(const RegionView3D *rv3d)
 		{4, 7, 6, 5},
 		{7, 3, 2, 6},
 		{1, 5, 6, 2},
-		{7, 4, 0, 3}
+		{7, 4, 0, 3},
 	};
 	GPUVertBuf *vbo;
 	GPUIndexBuf *el;

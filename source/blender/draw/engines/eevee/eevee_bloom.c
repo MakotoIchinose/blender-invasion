@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,25 +14,15 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file eevee_bloom.c
- *  \ingroup draw_engine
+/** \file \ingroup draw_engine
  *
  * Eevee's bloom shader.
  */
 
 #include "DRW_render.h"
 
-#include "BLI_dynstr.h"
-
-#include "BKE_global.h" /* for G.debug_value */
-
-#include "GPU_extensions.h"
 #include "GPU_texture.h"
 
 #include "DEG_depsgraph_query.h"
@@ -230,7 +218,7 @@ void EEVEE_bloom_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *ved
 		 *   and do an upsample blur for each new accumulated layer.
 		 * - Finally add accumulation buffer onto the source color buffer.
 		 *
-		 *  [1/1] is original copy resolution (can be half or quater res for performance)
+		 *  [1/1] is original copy resolution (can be half or quarter res for performance)
 		 *
 		 *                                [DOWNSAMPLE CHAIN]                      [UPSAMPLE CHAIN]
 		 *

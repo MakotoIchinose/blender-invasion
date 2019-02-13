@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2017, Blender Foundation.
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/draw/engines/gpencil/gpencil_cache_utils.c
- *  \ingroup draw
+/** \file \ingroup draw
  */
 
 #include "DRW_engine.h"
@@ -42,7 +35,6 @@
 #include "draw_cache_impl.h"
 
 #include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
 
  /* add a gpencil object to cache to defer drawing */
 tGPencilObjectCache *gpencil_object_cache_add(
@@ -72,19 +64,19 @@ tGPencilObjectCache *gpencil_object_cache_add(
 	cache_elem = &cache_array[*gp_cache_used];
 	memset(cache_elem, 0, sizeof(*cache_elem));
 
-	Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-	cache_elem->ob = ob_orig;
-	cache_elem->gpd = (bGPdata *)ob_orig->data;
+	cache_elem->ob = ob;
+	cache_elem->gpd = (bGPdata *)ob->data;
 	copy_v3_v3(cache_elem->loc, ob->obmat[3]);
 	copy_m4_m4(cache_elem->obmat, ob->obmat);
 	cache_elem->idx = *gp_cache_used;
 
 	/* object is duplicated (particle) */
 	cache_elem->is_dup_ob = ob->base_flag & BASE_FROM_DUPLI;
+	cache_elem->scale = mat4_to_scale(ob->obmat);
 
 	/* save FXs */
 	cache_elem->pixfactor = cache_elem->gpd->pixfactor;
-	cache_elem->shader_fx = ob_orig->shader_fx;
+	cache_elem->shader_fx = ob->shader_fx;
 
 	/* shgrp array */
 	cache_elem->tot_layers = 0;
@@ -170,8 +162,7 @@ GpencilBatchGroup *gpencil_group_cache_add(
 /* get current cache data */
 static GpencilBatchCache *gpencil_batch_get_element(Object *ob)
 {
-	Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-	return ob_orig->runtime.gpencil_cache;
+	return ob->runtime.gpencil_cache;
 }
 
 /* verify if cache is valid */
@@ -213,14 +204,13 @@ static bool gpencil_batch_cache_valid(GpencilBatchCache *cache, bGPdata *gpd, in
 /* cache init */
 static GpencilBatchCache *gpencil_batch_cache_init(Object *ob, int cfra)
 {
-	Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-	bGPdata *gpd = (bGPdata *)ob_orig->data;
+	bGPdata *gpd = (bGPdata *)ob->data;
 
 	GpencilBatchCache *cache = gpencil_batch_get_element(ob);
 
 	if (!cache) {
 		cache = MEM_callocN(sizeof(*cache), __func__);
-		ob_orig->runtime.gpencil_cache = cache;
+		ob->runtime.gpencil_cache = cache;
 	}
 	else {
 		memset(cache, 0, sizeof(*cache));
@@ -276,8 +266,7 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
 /* get cache */
 GpencilBatchCache *gpencil_batch_cache_get(Object *ob, int cfra)
 {
-	Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-	bGPdata *gpd = (bGPdata *)ob_orig->data;
+	bGPdata *gpd = (bGPdata *)ob->data;
 
 	GpencilBatchCache *cache = gpencil_batch_get_element(ob);
 	if (!gpencil_batch_cache_valid(cache, gpd, cfra)) {
@@ -294,8 +283,7 @@ GpencilBatchCache *gpencil_batch_cache_get(Object *ob, int cfra)
 /* set cache as dirty */
 void DRW_gpencil_batch_cache_dirty_tag(bGPdata *gpd)
 {
-	bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
-	gpd_orig->flag |= GP_DATA_CACHE_IS_DIRTY;
+	gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
 }
 
 /* free batch cache */

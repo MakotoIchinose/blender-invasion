@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm_playanim.c
- *  \ingroup wm
+/** \file \ingroup wm
  *
  * Animation player for image sequences & video's with sound support.
  * Launched in a separate process from Blender's #RENDER_OT_play_rendered_anim
@@ -63,7 +54,6 @@
 
 #include "BKE_image.h"
 
-#include "BIF_gl.h"
 #include "BIF_glutil.h"
 
 #include "GPU_matrix.h"
@@ -215,30 +205,24 @@ static void playanim_event_qual_update(void)
 
 	/* Shift */
 	GHOST_GetModifierKeyState(g_WS.ghost_system, GHOST_kModifierKeyLeftShift, &val);
-	if (val) g_WS.qual |=  WS_QUAL_LSHIFT;
-	else     g_WS.qual &= ~WS_QUAL_LSHIFT;
+	SET_FLAG_FROM_TEST(g_WS.qual, val, WS_QUAL_LSHIFT);
 
 	GHOST_GetModifierKeyState(g_WS.ghost_system, GHOST_kModifierKeyRightShift, &val);
-	if (val) g_WS.qual |=  WS_QUAL_RSHIFT;
-	else     g_WS.qual &= ~WS_QUAL_RSHIFT;
+	SET_FLAG_FROM_TEST(g_WS.qual, val, WS_QUAL_RSHIFT);
 
 	/* Control */
 	GHOST_GetModifierKeyState(g_WS.ghost_system, GHOST_kModifierKeyLeftControl, &val);
-	if (val) g_WS.qual |=  WS_QUAL_LCTRL;
-	else     g_WS.qual &= ~WS_QUAL_LCTRL;
+	SET_FLAG_FROM_TEST(g_WS.qual, val, WS_QUAL_LCTRL);
 
 	GHOST_GetModifierKeyState(g_WS.ghost_system, GHOST_kModifierKeyRightControl, &val);
-	if (val) g_WS.qual |=  WS_QUAL_RCTRL;
-	else     g_WS.qual &= ~WS_QUAL_RCTRL;
+	SET_FLAG_FROM_TEST(g_WS.qual, val, WS_QUAL_RCTRL);
 
 	/* Alt */
 	GHOST_GetModifierKeyState(g_WS.ghost_system, GHOST_kModifierKeyLeftAlt, &val);
-	if (val) g_WS.qual |=  WS_QUAL_LALT;
-	else     g_WS.qual &= ~WS_QUAL_LALT;
+	SET_FLAG_FROM_TEST(g_WS.qual, val, WS_QUAL_LALT);
 
 	GHOST_GetModifierKeyState(g_WS.ghost_system, GHOST_kModifierKeyRightAlt, &val);
-	if (val) g_WS.qual |=  WS_QUAL_RALT;
-	else     g_WS.qual &= ~WS_QUAL_RALT;
+	SET_FLAG_FROM_TEST(g_WS.qual, val, WS_QUAL_RALT);
 }
 
 typedef struct PlayAnimPict {

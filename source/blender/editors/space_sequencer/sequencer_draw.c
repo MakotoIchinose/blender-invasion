@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2003-2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_sequencer/sequencer_draw.c
- *  \ingroup spseq
+/** \file \ingroup spseq
  */
 
 
@@ -48,7 +41,6 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_sequencer.h"
 #include "BKE_sound.h"
 #include "BKE_scene.h"
@@ -56,7 +48,6 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
-#include "BIF_glutil.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -257,7 +248,7 @@ static void drawseqwave(View2D *v2d, const bContext *C, SpaceSeq *sseq, Scene *s
 		endsample = ceil((seq->startofs + seq->anim_startofs + seq->enddisp - seq->startdisp) / FPS * SOUND_WAVE_SAMPLES_PER_SECOND);
 		samplestep = (endsample - startsample) * stepsize / (x2 - x1);
 
-		length = min_ii(floor((waveform->length - startsample) / samplestep), length);
+		length = min_ii(floor((waveform->length - startsample) / samplestep - (x1_offset - x1) / stepsize), length);
 
 		if (length < 2) {
 			return;
@@ -285,7 +276,7 @@ static void drawseqwave(View2D *v2d, const bContext *C, SpaceSeq *sseq, Scene *s
 						value2 = waveform->data[j * 3 + 1];
 				}
 			}
-			else {
+			else if (p + 1 < waveform->length) {
 				/* use simple linear interpolation */
 				float f = sampleoffset - p;
 				value1 = (1.0f - f) * value1 + f * waveform->data[p * 3 + 3];

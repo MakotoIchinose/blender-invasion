@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_context_menu.c
- *  \ingroup edinterface
+/** \file \ingroup edinterface
  *
  * Generic context popup menus.
  */
@@ -715,7 +710,9 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
 				item_found = true;
 			}
 		}
-		MEM_freeN(um_array);
+		if (um_array) {
+			MEM_freeN(um_array);
+		}
 
 		if (!item_found) {
 			but2 = uiDefIconTextBut(

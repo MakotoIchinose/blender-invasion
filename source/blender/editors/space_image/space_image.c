@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,9 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_image/space_image.c
- *  \ingroup spimage
+/** \file \ingroup spimage
  */
 
 #include "DNA_gpencil_types.h"
@@ -71,7 +63,6 @@
 #include "ED_uvedit.h"
 #include "ED_transform.h"
 
-#include "BIF_gl.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -99,7 +90,7 @@ static void image_scopes_tag_refresh(ScrArea *sa)
 
 	/* only while histogram is visible */
 	for (ar = sa->regionbase.first; ar; ar = ar->next) {
-		if (ar->regiontype == RGN_TYPE_TOOLS && ar->flag & RGN_FLAG_HIDDEN)
+		if (ar->regiontype == RGN_TYPE_TOOL_PROPS && ar->flag & RGN_FLAG_HIDDEN)
 			return;
 	}
 
@@ -635,7 +626,8 @@ static void image_main_region_draw(const bContext *C, ARegion *ar)
 	gpu_batch_presets_reset();
 
 	/* TODO(fclem) port to draw manager and remove the depth buffer allocation. */
-	DefaultFramebufferList *fbl = GPU_viewport_framebuffer_list_get(ar->draw_buffer->viewport[0]);
+	GPUViewport *viewport = ar->draw_buffer->viewport[ar->draw_buffer->stereo ? sima->iuser.multiview_eye : 0];
+	DefaultFramebufferList *fbl = GPU_viewport_framebuffer_list_get(viewport);
 	GPU_framebuffer_bind(fbl->color_only_fb);
 
 	/* XXX not supported yet, disabling for now */

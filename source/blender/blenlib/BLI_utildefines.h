@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,12 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_UTILDEFINES_H__
 #define __BLI_UTILDEFINES_H__
 
-/** \file BLI_utildefines.h
- *  \ingroup bli
+/** \file \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -596,7 +587,7 @@ extern bool BLI_memory_is_zero(const void *arr, const size_t arr_size);
 
 /* Expands to an integer constant expression evaluating to a close upper bound
  * on the number the number of decimal digits in a value expressible in the
- * integer type given by the argument (if it is a type name) or the the integer
+ * integer type given by the argument (if it is a type name) or the integer
  * type of the argument (if it is an expression). The meaning of the resulting
  * expression is unspecified for other arguments.
  * i.e: DECIMAL_DIGITS_BOUND(uchar) is equal to 3. */

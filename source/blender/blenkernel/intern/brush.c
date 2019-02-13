@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/brush.c
- *  \ingroup bke
+/** \file \ingroup bke
  */
 
 #include "MEM_guardedalloc.h"
@@ -32,13 +25,11 @@
 #include "DNA_gpencil_types.h"
 
 #include "BLI_math.h"
-#include "BLI_blenlib.h"
 #include "BLI_rand.h"
 
 #include "BKE_brush.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_library_remap.h"
@@ -564,7 +555,7 @@ struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mo
 
 /**
  * Only copy internal data of Brush ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -598,7 +589,7 @@ void BKE_brush_copy_data(Main *UNUSED(bmain), Brush *brush_dst, const Brush *bru
 Brush *BKE_brush_copy(Main *bmain, const Brush *brush)
 {
 	Brush *brush_copy;
-	BKE_id_copy_ex(bmain, &brush->id, (ID **)&brush_copy, 0, false);
+	BKE_id_copy(bmain, &brush->id, (ID **)&brush_copy);
 	return brush_copy;
 }
 

@@ -52,13 +52,22 @@ class VIEW3D_HT_header(Header):
 
         object_mode = 'OBJECT' if obj is None else obj.mode
 
+        # Note: This is actually deadly in case enum_items have to be dynamically generated
+        #       (because internal RNA array iterator will free everything immediately...).
+        # XXX This is an RNA internal issue, not sure how to fix it.
+        # Note: Tried to add an accessor to get translated UI strings instead of manual call
+        #       to pgettext_iface below, but this fails because translated enumitems
+        #       are always dynamically allocated.
         act_mode_item = bpy.types.Object.bl_rna.properties["mode"].enum_items[object_mode]
+        act_mode_i18n_context = bpy.types.Object.bl_rna.properties["mode"].translation_context
 
         row.separator()
 
         sub = row.row()
         sub.ui_units_x = 5.5
-        sub.operator_menu_enum("object.mode_set", "mode", text=act_mode_item.name, icon=act_mode_item.icon)
+        sub.operator_menu_enum("object.mode_set", "mode",
+                               text=bpy.app.translations.pgettext_iface(act_mode_item.name, act_mode_i18n_context),
+                               icon=act_mode_item.icon)
         del act_mode_item
 
         layout.template_header_3D_mode()
@@ -2037,6 +2046,11 @@ class VIEW3D_MT_object_collection(Menu):
     def draw(self, context):
         layout = self.layout
 
+        layout.operator("object.move_to_collection")
+        layout.operator("object.link_to_collection")
+
+        layout.separator()
+
         layout.operator("collection.create")
         # layout.operator_menu_enum("collection.objects_remove", "collection")  # BUGGY
         layout.operator("collection.objects_remove")
@@ -2335,6 +2349,10 @@ class VIEW3D_MT_sculpt(Menu):
 
         tool_settings = context.tool_settings
         sculpt = tool_settings.sculpt
+
+        layout.operator("sculpt.dynamic_topology_toggle", text="Toggle Dynamic Topology")
+
+        layout.separator()
 
         layout.prop(sculpt, "use_symmetry_x")
         layout.prop(sculpt, "use_symmetry_y")
@@ -4206,7 +4224,10 @@ class VIEW3D_PT_view3d_properties(Panel):
         col = flow.column()
 
         subcol = col.column()
-        subcol.enabled = not view.lock_camera_and_layers
+        subcol.prop(view, "use_local_camera")
+
+        subcol = col.column()
+        subcol.enabled = view.use_local_camera
         subcol.prop(view, "camera", text="Local Camera")
 
         subcol = col.column(align=True)
@@ -4301,16 +4322,15 @@ class VIEW3D_PT_collections(Panel):
             subrow = sub.row()
             subrow.alignment = 'LEFT'
             subrow.active = has_visible_objects
-            subrow.operator("object.hide_collection", text=child.name, icon=icon, emboss=False).collection_index = index
+            subrow.operator(
+                "object.hide_collection", text=child.name, icon=icon, emboss=False,
+            ).collection_index = index
 
             sub = row.split()
             subrow = sub.row(align=True)
             subrow.alignment = 'RIGHT'
-            icon = 'HIDE_OFF' if has_visible_objects else 'HIDE_ON'
-            props = subrow.operator("object.hide_collection", text="", icon=icon, emboss=False)
-            props.collection_index = index
-            props.toggle = True
-            subrow.prop(child.collection, "hide_select", text="", emboss=False)
+            subrow.active = collection.is_visible # Parent collection runtime visibility
+            subrow.prop(child, "hide_viewport", text="", emboss=False)
 
         for child in collection.children:
             index = self._draw_collection(layout, view_layer, child, index)
@@ -4435,11 +4455,11 @@ class VIEW3D_PT_shading_lighting(Panel):
                 prefs = context.preferences
                 system = prefs.system
 
-                if not system.edit_studio_light:
+                if not system.use_studio_light_edit:
                     sub.scale_y = 0.6  # smaller studiolight preview
                     sub.template_icon_view(shading, "studio_light", scale_popup=3.0)
                 else:
-                    sub.prop(system, "edit_studio_light", text="Disable Studio Light Edit", icon='NONE', toggle=True)
+                    sub.prop(system, "use_studio_light_edit", text="Disable Studio Light Edit", icon='NONE', toggle=True)
 
                 col = split.column()
                 col.operator("wm.studiolight_userpref_show", emboss=False, text="", icon='PREFERENCES')
@@ -4589,6 +4609,10 @@ class VIEW3D_PT_shading_options(Panel):
                     sub = col.row(align=True)
                     sub.prop(shading, "curvature_ridge_factor", text="Ridge")
                     sub.prop(shading, "curvature_valley_factor", text="Valley")
+
+            row = col.row()
+            row.active = not shading.show_xray
+            row.prop(shading, "use_dof", text="Depth Of Field")
 
         if shading.type in {'WIREFRAME', 'SOLID'}:
             row = layout.split()

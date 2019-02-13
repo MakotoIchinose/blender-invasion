@@ -62,9 +62,8 @@ class Params:
             use_v3d_tab_menu=False,
             use_v3d_shade_ex_pie=False,
     ):
-        import platform
-
-        self.apple = platform.system() == 'Darwin'
+        from sys import platform
+        self.apple = (platform == 'darwin')
         self.legacy = legacy
 
         if select_mouse == 'RIGHT':
@@ -686,6 +685,8 @@ def km_outliner(params):
         ("object.link_to_collection", {"type": 'M', "value": 'PRESS', "shift": True}, None),
         ("outliner.collection_exclude_set", {"type": 'E', "value": 'PRESS'}, None),
         ("outliner.collection_exclude_clear", {"type": 'E', "value": 'PRESS', "alt": True}, None),
+        ("outliner.hide", {"type": 'H', "value": 'PRESS'}, None),
+        ("outliner.unhide_all", {"type": 'H', "value": 'PRESS', "alt": True}, None),
         ("object.hide_view_clear", {"type": 'H', "value": 'PRESS', "alt": True},
          {"properties": [("select", False)]}),
         ("object.hide_view_set", {"type": 'H', "value": 'PRESS'},
@@ -2946,8 +2947,6 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
         # Snap
         op_menu("GPENCIL_MT_snap", {"type": 'S', "value": 'PRESS', "shift": True}),
-        # Convert to geometry
-        ("gpencil.convert", {"type": 'C', "value": 'PRESS', "alt": True}, None),
         # Show/hide
         ("gpencil.reveal", {"type": 'H', "value": 'PRESS', "alt": True}, None),
         ("gpencil.hide", {"type": 'H', "value": 'PRESS'},
@@ -2994,6 +2993,12 @@ def km_grease_pencil_stroke_edit_mode(params):
             ("gpencil.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
         ])
 
+    if params.legacy:
+        items.extend([
+            # Convert to geometry
+            ("gpencil.convert", {"type": 'C', "value": 'PRESS', "alt": True}, None),
+        ])
+
     return keymap
 
 
@@ -3012,9 +3017,6 @@ def km_grease_pencil_stroke_paint_mode(params):
         # Brush size
         ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_paint.brush.size')]}),
-        # Brush size
-        ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
-         {"properties": [("data_path_primary", 'preferences.edit.grease_pencil_eraser_radius')]}),
         # Draw context menu
         op_menu("GPENCIL_MT_gpencil_draw_specials", params.context_menu_event),
         # Draw delete menu
@@ -4749,6 +4751,40 @@ def km_custom_normals_modal_map(_params):
     return keymap
 
 
+def km_bevel_modal_map(_params):
+    items = []
+    keymap = (
+        "Bevel Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("VALUE_OFFSET", {"type": 'A', "value": 'PRESS', "any": True}, None),
+        ("VALUE_PROFILE", {"type": 'P', "value": 'PRESS', "any": True}, None),
+        ("VALUE_SEGMENTS", {"type": 'S', "value": 'PRESS', "any": True}, None),
+        ("SEGMENTS_UP", {"type": 'WHEELUPMOUSE', "value": 'PRESS', "any": True}, None),
+        ("SEGMENTS_UP", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "any": True}, None),
+        ("SEGMENTS_DOWN", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS', "any": True}, None),
+        ("SEGMENTS_DOWN", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "any": True}, None),
+        ("OFFSET_MODE_CHANGE", {"type": 'M', "value": 'PRESS', "any": True}, None),
+        ("CLAMP_OVERLAP_TOGGLE", {"type": 'C', "value": 'PRESS', "any": True}, None),
+        ("VERTEX_ONLY_TOGGLE", {"type": 'V', "value": 'PRESS', "any": True}, None),
+        ("HARDEN_NORMALS_TOGGLE", {"type": 'H', "value": 'PRESS', "any": True}, None),
+        ("MARK_SEAM_TOGGLE", {"type": 'U', "value": 'PRESS', "any": True}, None),
+        ("MARK_SHARP_TOGGLE", {"type": 'K', "value": 'PRESS', "any": True}, None),
+        ("OUTER_MITER_CHANGE", {"type": 'O', "value": 'PRESS', "any": True}, None),
+        ("INNER_MITER_CHANGE", {"type": 'I', "value": 'PRESS', "any": True}, None),
+    ])
+
+    return keymap
+
+
 def km_view3d_fly_modal(_params):
     items = []
     keymap = (
@@ -5122,7 +5158,6 @@ def km_node_editor_tool_links_cut(params):
             ("node.links_cut", {"type": params.tool_mouse, "value": 'PRESS'}, None),
         ]},
     )
-
 
 
 def km_3d_view_tool_cursor(params):
@@ -5969,6 +6004,7 @@ def generate_keymaps(params=None):
         km_standard_modal_map(params),
         km_knife_tool_modal_map(params),
         km_custom_normals_modal_map(params),
+        km_bevel_modal_map(params),
         km_view3d_fly_modal(params),
         km_view3d_walk_modal(params),
         km_view3d_rotate_modal(params),

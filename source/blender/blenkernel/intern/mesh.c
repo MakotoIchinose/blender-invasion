@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/mesh.c
- *  \ingroup bke
+/** \file \ingroup bke
  */
 
 #include "MEM_guardedalloc.h"
@@ -68,7 +61,7 @@ enum {
 	MESHCMP_POLYMISMATCH,
 	MESHCMP_EDGEUNKNOWN,
 	MESHCMP_VERTCOMISMATCH,
-	MESHCMP_CDLAYERS_MISMATCH
+	MESHCMP_CDLAYERS_MISMATCH,
 };
 
 static const char *cmpcode_to_str(int code)
@@ -524,7 +517,7 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
 
 /**
  * Only copy internal data of Mesh ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -532,6 +525,14 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
  */
 void BKE_mesh_copy_data(Main *bmain, Mesh *me_dst, const Mesh *me_src, const int flag)
 {
+	BKE_mesh_runtime_reset_on_copy(me_dst, flag);
+	if ((me_src->id.tag & LIB_TAG_NO_MAIN) == 0) {
+		/* This is a direct copy of a main mesh, so for now it has the same topology. */
+		me_dst->runtime.deformed_only = true;
+	}
+	/* XXX WHAT? Why? Comment, please! And pretty sure this is not valid for regular Mesh copying? */
+	me_dst->runtime.is_original = false;
+
 	const bool do_tessface = ((me_src->totface != 0) && (me_src->totpoly == 0)); /* only do tessface if we have no polys */
 	CustomDataMask mask = CD_MASK_MESH;
 
@@ -558,27 +559,12 @@ void BKE_mesh_copy_data(Main *bmain, Mesh *me_dst, const Mesh *me_src, const int
 
 	me_dst->edit_btmesh = NULL;
 
-	/* Call BKE_mesh_runtime_reset? */
-	me_dst->runtime.batch_cache = NULL;
-	me_dst->runtime.looptris.array = NULL;
-	me_dst->runtime.bvh_cache = NULL;
-	me_dst->runtime.shrinkwrap_data = NULL;
-
-	if (me_src->id.tag & LIB_TAG_NO_MAIN) {
-		me_dst->runtime.deformed_only = me_src->runtime.deformed_only;
-	}
-	else {
-		/* This is a direct copy of a main mesh, so for now it has the same topology. */
-		me_dst->runtime.deformed_only = 1;
-	}
-	me_dst->runtime.is_original = false;
-
 	me_dst->mselect = MEM_dupallocN(me_dst->mselect);
 	me_dst->bb = MEM_dupallocN(me_dst->bb);
 
 	/* TODO Do we want to add flag to prevent this? */
 	if (me_src->key && (flag & LIB_ID_COPY_SHAPEKEY)) {
-		BKE_id_copy_ex(bmain, &me_src->key->id, (ID **)&me_dst->key, flag, false);
+		BKE_id_copy_ex(bmain, &me_src->key->id, (ID **)&me_dst->key, flag);
 	}
 }
 
@@ -615,9 +601,7 @@ Mesh *BKE_mesh_new_nomain(int verts_len, int edges_len, int tessface_len, int lo
 	Mesh *mesh = BKE_libblock_alloc(
 	        NULL, ID_ME,
 	        BKE_idcode_to_name(ID_ME),
-	        LIB_ID_CREATE_NO_MAIN |
-	        LIB_ID_CREATE_NO_USER_REFCOUNT |
-	        LIB_ID_CREATE_NO_DEG_TAG);
+	        LIB_ID_COPY_LOCALIZE);
 	BKE_libblock_init_empty(&mesh->id);
 
 	/* don't use CustomData_reset(...); because we dont want to touch customdata */
@@ -697,24 +681,21 @@ Mesh *BKE_mesh_new_nomain_from_template(
 
 Mesh *BKE_mesh_copy_for_eval(struct Mesh *source, bool reference)
 {
-	int flags = (LIB_ID_CREATE_NO_MAIN |
-	             LIB_ID_CREATE_NO_USER_REFCOUNT |
-	             LIB_ID_CREATE_NO_DEG_TAG |
-	             LIB_ID_COPY_NO_PREVIEW);
+	int flags = LIB_ID_COPY_LOCALIZE;
 
 	if (reference) {
 		flags |= LIB_ID_COPY_CD_REFERENCE;
 	}
 
 	Mesh *result;
-	BKE_id_copy_ex(NULL, &source->id, (ID **)&result, flags, false);
+	BKE_id_copy_ex(NULL, &source->id, (ID **)&result, flags);
 	return result;
 }
 
 Mesh *BKE_mesh_copy(Main *bmain, const Mesh *me)
 {
 	Mesh *me_copy;
-	BKE_id_copy_ex(bmain, &me->id, (ID **)&me_copy, LIB_ID_COPY_SHAPEKEY, false);
+	BKE_id_copy(bmain, &me->id, (ID **)&me_copy);
 	return me_copy;
 }
 

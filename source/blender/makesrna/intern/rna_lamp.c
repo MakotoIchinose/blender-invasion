@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_lamp.c
- *  \ingroup RNA
+/** \file \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -114,7 +107,7 @@ const EnumPropertyItem rna_enum_light_type_items[] = {
 	{LA_SUN, "SUN", 0, "Sun", "Constant direction parallel ray light source"},
 	{LA_SPOT, "SPOT", 0, "Spot", "Directional cone light source"},
 	{LA_AREA, "AREA", 0, "Area", "Directional area light source"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static void rna_def_light(BlenderRNA *brna)
@@ -127,12 +120,13 @@ static void rna_def_light(BlenderRNA *brna)
 	RNA_def_struct_sdna(srna, "Lamp");
 	RNA_def_struct_refine_func(srna, "rna_Light_refine");
 	RNA_def_struct_ui_text(srna, "Light", "Light data-block for lighting a scene");
+	RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_ID_LIGHT);
 	RNA_def_struct_ui_icon(srna, ICON_LIGHT_DATA);
 
 	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, rna_enum_light_type_items);
 	RNA_def_property_ui_text(prop, "Type", "Type of Light");
-	RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_LAMP);
+	RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_LIGHT);
 	RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 
 	prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_DISTANCE);
@@ -145,7 +139,7 @@ static void rna_def_light(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "energy", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_default(prop, 10.0f);
-	RNA_def_property_ui_range(prop, 0, 10, 1, 3);
+	RNA_def_property_ui_range(prop, 0, 1000000.0f, 1, 3);
 	RNA_def_property_ui_text(prop, "Energy", "Amount of light emitted");
 	RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 
@@ -204,7 +198,7 @@ static void rna_def_light_falloff(StructRNA *srna)
 		{LA_FALLOFF_INVCOEFFICIENTS, "INVERSE_COEFFICIENTS", 0, "Inverse Coefficients", ""},
 		{LA_FALLOFF_CURVE, "CUSTOM_CURVE", 0, "Custom Curve", ""},
 		{LA_FALLOFF_SLIDERS, "LINEAR_QUADRATIC_WEIGHTED", 0, "Lin/Quad Weighted", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "falloff_type", PROP_ENUM, PROP_NONE);
@@ -425,7 +419,7 @@ static void rna_def_area_light(BlenderRNA *brna)
 		{LA_AREA_RECT, "RECTANGLE", 0, "Rectangle", ""},
 		{LA_AREA_DISK, "DISK", 0, "Disk", ""},
 		{LA_AREA_ELLIPSE, "ELLIPSE", 0, "Ellipse", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "AreaLight", "Light");

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_camera_types.h
- *  \ingroup DNA
+/** \file \ingroup DNA
  */
 
 #ifndef __DNA_CAMERA_TYPES_H__
@@ -42,9 +33,9 @@
 extern "C" {
 #endif
 
-struct Object;
 struct AnimData;
 struct Ipo;
+struct Object;
 
 /* ------------------------------------------- */
 /* Stereo Settings */
@@ -74,6 +65,15 @@ typedef struct CameraBGImage {
 	short flag;
 	short source;
 } CameraBGImage;
+
+typedef struct Camera_Runtime {
+	/* For draw manager. */
+	float drw_corners[2][4][2];
+	float drw_tria[2][2];
+	float drw_depth[2];
+	float drw_focusmat[4][4];
+	float drw_normalmat[4][4];
+} Camera_Runtime;
 
 typedef struct Camera {
 	ID id;
@@ -108,15 +108,11 @@ typedef struct Camera {
 	char sensor_fit;
 	char pad[7];
 
-	/* runtime only, used for drawing */
-	float drwcorners[2][4][2];
-	float drwtria[2][2];
-	float drwdepth[2];
-	float drwfocusmat[4][4];
-	float drwnormalmat[4][4];
-
 	/* Stereo settings */
 	struct CameraStereoSettings stereo;
+
+	/** Runtime data (keep last). */
+	Camera_Runtime runtime;
 } Camera;
 
 /* **************** CAMERA ********************* */
@@ -203,8 +199,6 @@ enum {
 	CAM_BGIMG_FLAG_FLIP_X        = (1 << 7),
 	CAM_BGIMG_FLAG_FLIP_Y        = (1 << 8),
 };
-
-#define CAM_BGIMG_FLAG_EXPANDED (CAM_BGIMG_FLAG_EXPANDED | CAM_BGIMG_FLAG_CAMERACLIP)
 
 /* CameraBGImage->source */
 /* may want to use 1 for select ?*/

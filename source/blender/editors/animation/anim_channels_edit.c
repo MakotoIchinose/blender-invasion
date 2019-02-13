@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,9 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/anim_channels_edit.c
- *  \ingroup edanimation
+/** \file \ingroup edanimation
  */
 
 
@@ -716,7 +709,7 @@ static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
 	{REARRANGE_ANIMCHAN_UP, "UP", 0, "Up", ""},
 	{REARRANGE_ANIMCHAN_DOWN, "DOWN", 0, "Down", ""},
 	{REARRANGE_ANIMCHAN_BOTTOM, "BOTTOM", 0, "To Bottom", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* Reordering "Islands" Defines ----------------------------------- */
@@ -1632,6 +1625,27 @@ static void ANIM_OT_channels_ungroup(wmOperatorType *ot)
 
 /* ******************** Delete Channel Operator *********************** */
 
+static void update_dependencies_on_delete(bAnimListElem *ale)
+{
+	ID *id = ale->id;
+	AnimData *adt = BKE_animdata_from_id(id);
+	/* TODO(sergey): Technically, if the animation element is being deleted
+	 * from a driver we don't have to tag action. This is something we can check
+	 * for in the future. For now just do most reliable tag whic hwas always
+	 * happening. */
+	if (adt != NULL) {
+		DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+		if (adt->action != NULL) {
+			DEG_id_tag_update(&adt->action->id, ID_RECALC_COPY_ON_WRITE);
+		}
+	}
+	/* Deals with NLA and drivers.
+	 * Doesn't cause overhead for action updates, since object will receive
+	 * animation update after dependency graph flushes update from action to
+	 * all its users. */
+	DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+}
+
 static int animchannels_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	bAnimContext ac;
@@ -1704,7 +1718,7 @@ static int animchannels_delete_exec(bContext *C, wmOperator *UNUSED(op))
 
 				/* try to free F-Curve */
 				ANIM_fcurve_delete_from_animdata(&ac, adt, fcu);
-				ale->update = ANIM_UPDATE_DEPS;
+				update_dependencies_on_delete(ale);
 				break;
 			}
 			case ANIMTYPE_NLACURVE:
@@ -1726,7 +1740,7 @@ static int animchannels_delete_exec(bContext *C, wmOperator *UNUSED(op))
 				/* unlink and free the F-Curve */
 				BLI_remlink(&strip->fcurves, fcu);
 				free_fcurve(fcu);
-				ale->update = ANIM_UPDATE_DEPS;
+				update_dependencies_on_delete(ale);
 				break;
 			}
 			case ANIMTYPE_GPLAYER:
@@ -1754,7 +1768,6 @@ static int animchannels_delete_exec(bContext *C, wmOperator *UNUSED(op))
 	}
 
 	/* cleanup */
-	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 
 	/* send notifier that things have changed */
@@ -1787,7 +1800,7 @@ static const EnumPropertyItem prop_animchannel_setflag_types[] = {
 	{ACHANNEL_SETFLAG_CLEAR, "DISABLE", 0, "Disable", ""},
 	{ACHANNEL_SETFLAG_ADD, "ENABLE", 0, "Enable", ""},
 	{ACHANNEL_SETFLAG_INVERT, "INVERT", 0, "Invert", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* defines for set animation-channel settings */
@@ -1795,7 +1808,7 @@ static const EnumPropertyItem prop_animchannel_setflag_types[] = {
 static const EnumPropertyItem prop_animchannel_settings_types[] = {
 	{ACHANNEL_SETTING_PROTECT, "PROTECT", 0, "Protect", ""},
 	{ACHANNEL_SETTING_MUTE, "MUTE", 0, "Mute", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 

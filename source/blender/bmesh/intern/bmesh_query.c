@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar, Geoffrey Bantle, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/intern/bmesh_query.c
- *  \ingroup bmesh
+/** \file \ingroup bmesh
  *
  * This file contains functions for answering common
  * Topological and geometric queries about a mesh, such
@@ -1678,13 +1671,13 @@ float BM_edge_calc_face_angle(const BMEdge *e)
 }
 
 /**
-* \brief BMESH EDGE/FACE ANGLE
-*
-* Calculates the angle between two faces in world space.
-* Assumes the face normals are correct.
-*
-* \return angle in radians
-*/
+ * \brief BMESH EDGE/FACE ANGLE
+ *
+ * Calculates the angle between two faces in world space.
+ * Assumes the face normals are correct.
+ *
+ * \return angle in radians
+ */
 float BM_edge_calc_face_angle_with_imat3_ex(const BMEdge *e, const float imat3[3][3], const float fallback)
 {
 	if (BM_edge_is_manifold(e)) {

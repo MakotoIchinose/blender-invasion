@@ -112,7 +112,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row.active = ob.data.use_mirror_x
         row.prop(mesh, "use_mirror_topology")
 
-        layout.prop(tool_settings, "edge_path_live_unwrap")
+        layout.prop(tool_settings, "use_edge_path_live_unwrap")
         layout.prop(tool_settings, "use_mesh_automerge")
 
         layout.prop(tool_settings, "double_threshold")
@@ -614,7 +614,10 @@ class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
         sub = row.row(align=True)
         sub.prop(brush, "cursor_overlay_alpha", text="Curve Alpha")
         sub.prop(brush, "use_cursor_overlay_override", toggle=True, text="", icon='BRUSH_DATA')
-        row.prop(brush, "use_cursor_overlay", text="", toggle=True, icon='HIDE_OFF' if brush.use_cursor_overlay else 'HIDE_ON')
+        row.prop(
+            brush, "use_cursor_overlay", text="", toggle=True,
+            icon='HIDE_OFF' if brush.use_cursor_overlay else 'HIDE_ON',
+        )
 
         col.active = brush.brush_capabilities.has_overlay
 
@@ -625,7 +628,10 @@ class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
             sub.prop(brush, "texture_overlay_alpha", text="Texture Alpha")
             sub.prop(brush, "use_primary_overlay_override", toggle=True, text="", icon='BRUSH_DATA')
             if tex_slot.map_mode != 'STENCIL':
-                row.prop(brush, "use_primary_overlay", text="", toggle=True, icon='HIDE_OFF' if brush.use_primary_overlay else 'HIDE_ON')
+                row.prop(
+                    brush, "use_primary_overlay", text="", toggle=True,
+                    icon='HIDE_OFF' if brush.use_primary_overlay else 'HIDE_ON',
+                )
 
         if context.image_paint_object:
             row = col.row(align=True)
@@ -634,7 +640,10 @@ class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
             sub.prop(brush, "mask_overlay_alpha", text="Mask Texture Alpha")
             sub.prop(brush, "use_secondary_overlay_override", toggle=True, text="", icon='BRUSH_DATA')
             if tex_slot_mask.map_mode != 'STENCIL':
-                row.prop(brush, "use_secondary_overlay", text="", toggle=True, icon='HIDE_OFF' if brush.use_secondary_overlay else 'HIDE_ON')
+                row.prop(
+                    brush, "use_secondary_overlay", text="", toggle=True,
+                    icon='HIDE_OFF' if brush.use_secondary_overlay else 'HIDE_ON',
+                )
 
 
 # TODO, move to space_view3d.py
@@ -1476,10 +1485,7 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
         if brush is not None:
             gp_settings = brush.gpencil_settings
 
-            # XXX: Items in "sub" currently show up beside the brush selector in a separate column
-            if brush.gpencil_tool == 'ERASE':
-                sub.prop(gp_settings, "use_default_eraser", text="")
-            elif brush.gpencil_tool in {'DRAW', 'FILL'}:
+            if brush.gpencil_tool in {'DRAW', 'FILL'}:
                 layout.row(align=True).template_ID(gp_settings, "material")
 
             if not self.is_popover:

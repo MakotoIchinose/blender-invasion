@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,9 @@
  *
  * The Original Code is Copyright (C) 2011 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenfont/intern/blf_font_i18n.c
- *  \ingroup blf
+/** \file \ingroup blf
  *
  * API for accessing font files.
  */
@@ -37,14 +29,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_fileops.h"
-#include "BLI_path_util.h"
-#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
 
 #ifdef WITH_INTERNATIONAL
+
+#include "BLI_fileops.h"
+#include "BLI_string.h"
 
 struct FontBuf {
 	const char *filename;

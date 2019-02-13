@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,9 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/screen/screen_user_menu.c
- *  \ingroup spview3d
+/** \file \ingroup spview3d
  */
 
 #include <string.h>
@@ -66,6 +58,11 @@ bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len)
 {
 	SpaceLink *sl = CTX_wm_space_data(C);
 	const char *context = CTX_data_mode_string(C);
+
+	if (sl == NULL) {
+		*r_len = 0;
+		return NULL;
+	}
 
 	uint array_len = 3;
 	bUserMenu **um_array = MEM_calloc_arrayN(array_len, sizeof(*um_array), __func__);
@@ -261,7 +258,9 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
 			}
 		}
 	}
-	MEM_freeN(um_array);
+	if (um_array) {
+		MEM_freeN(um_array);
+	}
 
 	if (is_empty) {
 		uiItemL(menu->layout, IFACE_("No menu items found"), ICON_NONE);

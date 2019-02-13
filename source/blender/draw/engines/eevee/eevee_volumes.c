@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file eevee_volumes.c
- *  \ingroup draw_engine
+/** \file \ingroup draw_engine
  *
  * Volumetric effects rendering using frostbite approach.
  */
@@ -37,10 +30,8 @@
 #include "DNA_smoke_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_global.h" /* for G.debug_value */
 #include "BKE_modifier.h"
 #include "BKE_mesh.h"
-#include "BKE_object.h"
 
 #include "ED_screen.h"
 

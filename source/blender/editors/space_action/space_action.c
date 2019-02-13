@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_action/space_action.c
- *  \ingroup spaction
+/** \file \ingroup spaction
  */
-
 
 #include <string.h>
 #include <stdio.h>
@@ -40,7 +31,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -53,8 +43,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 #include "WM_message.h"
-
-#include "BIF_gl.h"
 
 #include "UI_resources.h"
 #include "UI_view2d.h"

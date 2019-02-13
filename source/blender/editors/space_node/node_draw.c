@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,9 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- * Contributor(s): Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_draw.c
- *  \ingroup spnode
+/** \file \ingroup spnode
  *  \brief higher level node drawing for the node editor.
  */
 
@@ -1315,7 +1307,7 @@ static void draw_group_overlay(const bContext *C, ARegion *ar)
 	/* shade node groups to separate them visually */
 	GPU_blend(true);
 
-	UI_GetThemeColorShadeAlpha4fv(TH_NODE_GROUP, 0, -70, color);
+	UI_GetThemeColorShadeAlpha4fv(TH_NODE_GROUP, 0, 0, color);
 	UI_draw_roundbox_corner_set(UI_CNR_NONE);
 	UI_draw_roundbox_4fv(true, rect.xmin, rect.ymin, rect.xmax, rect.ymax, 0, color);
 	GPU_blend(false);

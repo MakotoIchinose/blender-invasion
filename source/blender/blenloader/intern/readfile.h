@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  * blenloader readfile private function prototypes
  */
 
-/** \file blender/blenloader/intern/readfile.h
- *  \ingroup blenloader
+/** \file \ingroup blenloader
  */
 
 #ifndef __READFILE_H__
@@ -38,13 +29,13 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"  /* for ReportType */
 
-struct OldNewMap;
-struct MemFile;
-struct ReportList;
-struct Object;
-struct PartEff;
-struct View3D;
 struct Key;
+struct MemFile;
+struct Object;
+struct OldNewMap;
+struct PartEff;
+struct ReportList;
+struct View3D;
 
 typedef struct FileData {
 	// linked list of BHeadN's
@@ -103,10 +94,6 @@ typedef struct FileData {
 	ListBase *mainlist;
 	ListBase *old_mainlist;  /* Used for undo. */
 
-	/* ick ick, used to return
-	 * data through streamglue.
-	 */
-	BlendFileData **bfd_r;
 	struct ReportList *reports;
 } FileData;
 
@@ -138,17 +125,17 @@ FileData *blo_openblenderfile(const char *filepath, struct ReportList *reports);
 FileData *blo_openblendermemory(const void *buffer, int buffersize, struct ReportList *reports);
 FileData *blo_openblendermemfile(struct MemFile *memfile, struct ReportList *reports);
 
-void blo_clear_proxy_pointers_from_lib(Main *oldmain);
-void blo_make_image_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_image_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_scene_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_scene_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_movieclip_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_movieclip_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_sound_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_sound_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_packed_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_packed_pointer_map(FileData *fd, Main *oldmain);
+void blo_clear_proxy_pointers_from_lib(struct Main *oldmain);
+void blo_make_image_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_image_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_scene_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_scene_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_movieclip_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_movieclip_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_sound_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_sound_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_packed_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_packed_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_add_library_pointer_map(ListBase *old_mainlist, FileData *fd);
 
 void blo_freefiledata(FileData *fd);
@@ -162,6 +149,8 @@ const char *bhead_id_name(const FileData *fd, const BHead *bhead);
 /* do versions stuff */
 
 void blo_reportf_wrap(struct ReportList *reports, ReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(3, 4);
+
+void blo_do_versions_dna(struct SDNA *sdna, const int versionfile, const int subversionfile);
 
 void blo_do_versions_oldnewmap_insert(struct OldNewMap *onm, const void *oldaddr, void *newaddr, int nr);
 void *blo_do_versions_newlibadr(struct FileData *fd, const void *lib, const void *adr);

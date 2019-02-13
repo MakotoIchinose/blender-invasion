@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/readfile.c
- *  \ingroup blenloader
+/** \file \ingroup blenloader
  */
 
 
@@ -129,7 +120,6 @@
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
@@ -171,9 +161,10 @@
 #include "NOD_common.h"
 #include "NOD_socket.h"
 
+#include "BLO_blend_defs.h"
+#include "BLO_blend_validate.h"
 #include "BLO_readfile.h"
 #include "BLO_undofile.h"
-#include "BLO_blend_defs.h"
 
 #include "RE_engine.h"
 
@@ -941,13 +932,30 @@ static void decode_blender_header(FileData *fd)
 static bool read_file_dna(FileData *fd, const char **r_error_message)
 {
 	BHead *bhead;
+	int subversion = 0;
 
 	for (bhead = blo_firstbhead(fd); bhead; bhead = blo_nextbhead(fd, bhead)) {
-		if (bhead->code == DNA1) {
+		if (bhead->code == GLOB) {
+			/* Before this, the subversion didn't exist in 'FileGlobal' so the subversion
+			 * value isn't accessible for the purpose of DNA versioning in this case. */
+			if (fd->fileversion <= 242) {
+				continue;
+			}
+			/* We can't use read_global because this needs 'DNA1' to be decoded,
+			 * however the first 4 chars are _always_ the subversion. */
+			FileGlobal *fg = (void *)&bhead[1];
+			BLI_STATIC_ASSERT(offsetof(FileGlobal, subvstr) == 0, "Must be first: subvstr");
+			char num[5];
+			memcpy(num, fg->subvstr, 4);
+			num[4] = 0;
+			subversion = atoi(num);
+		}
+		else if (bhead->code == DNA1) {
 			const bool do_endian_swap = (fd->flags & FD_FLAGS_SWITCH_ENDIAN) != 0;
 
 			fd->filesdna = DNA_sdna_from_data(&bhead[1], bhead->len, do_endian_swap, true, r_error_message);
 			if (fd->filesdna) {
+				blo_do_versions_dna(fd->filesdna, fd->fileversion, subversion);
 				fd->compflags = DNA_struct_get_compareflags(fd->filesdna, fd->memsdna);
 				/* used to retrieve ID names from (bhead+1) */
 				fd->id_name_offs = DNA_elem_offset(fd->filesdna, "ID", "char", "name[]");
@@ -986,10 +994,9 @@ static int *read_file_thumbnail(FileData *fd)
 				BLI_endian_switch_int32(&data[1]);
 			}
 
-			int width = data[0];
-			int height = data[1];
-
-			if (!BLEN_THUMB_SAFE_MEMSIZE(width, height)) {
+			const int width = data[0];
+			const int height = data[1];
+			if (!BLEN_THUMB_MEMSIZE_IS_VALID(width, height)) {
 				break;
 			}
 			if (bhead->len < BLEN_THUMB_MEMSIZE_FILE(width, height)) {
@@ -1431,14 +1438,11 @@ BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
 	fd_data = fd ? read_file_thumbnail(fd) : NULL;
 
 	if (fd_data) {
-		int width = fd_data[0];
-		int height = fd_data[1];
-
-		/* Protect against buffer overflow vulnerability. */
-		if (BLEN_THUMB_SAFE_MEMSIZE(width, height)) {
+		const int width = fd_data[0];
+		const int height = fd_data[1];
+		if (BLEN_THUMB_MEMSIZE_IS_VALID(width, height)) {
 			const size_t sz = BLEN_THUMB_MEMSIZE(width, height);
 			data = MEM_mallocN(sz, __func__);
-
 			if (data) {
 				BLI_assert((sz - sizeof(*data)) == (BLEN_THUMB_MEMSIZE_FILE(width, height) - (sizeof(*fd_data) * 2)));
 				data->width = width;
@@ -1573,14 +1577,17 @@ static void change_idid_adr(ListBase *mainlist, FileData *basefd, void *old, voi
 /* lib linked proxy objects point to our local data, we need
  * to clear that pointer before reading the undo memfile since
  * the object might be removed, it is set again in reading
- * if the local object still exists */
+ * if the local object still exists.
+ * This is only valid for local proxy objects though, linked ones should not be affected here.
+ */
 void blo_clear_proxy_pointers_from_lib(Main *oldmain)
 {
 	Object *ob = oldmain->object.first;
 
 	for (; ob; ob = ob->id.next) {
-		if (ob->id.lib)
+		if (ob->id.lib != NULL && ob->proxy_from != NULL && ob->proxy_from->id.lib == NULL) {
 			ob->proxy_from = NULL;
+		}
 	}
 }
 
@@ -3943,6 +3950,12 @@ static void direct_link_image(FileData *fd, Image *ima)
 		}
 		ima->rr = NULL;
 	}
+	else {
+		for (int i = 0; i < TEXTARGET_COUNT; i++) {
+			ima->gputexture[i] = newimaadr(fd, ima->gputexture[i]);
+		}
+		ima->rr = newimaadr(fd, ima->rr);
+	}
 
 	/* undo system, try to restore render buffers */
 	link_list(fd, &(ima->renderslots));
@@ -4177,7 +4190,7 @@ static const char *ptcache_data_struct[] = {
 	"", // BPHYS_DATA_AVELOCITY / BPHYS_DATA_XCONST */
 	"", // BPHYS_DATA_SIZE:
 	"", // BPHYS_DATA_TIMES:
-	"BoidData" // case BPHYS_DATA_BOIDS:
+	"BoidData", // case BPHYS_DATA_BOIDS:
 };
 
 static void direct_link_pointcache_cb(FileData *fd, void *data)
@@ -4264,7 +4277,7 @@ static void lib_link_particlesettings(FileData *fd, Main *main)
 			part->ipo = newlibadr_us(fd, part->id.lib, part->ipo); // XXX deprecated - old animation system
 
 			part->dup_ob = newlibadr(fd, part->id.lib, part->dup_ob);
-			part->dup_group = newlibadr(fd, part->id.lib, part->dup_group);
+			part->dup_group = newlibadr_us(fd, part->id.lib, part->dup_group);
 			part->eff_group = newlibadr(fd, part->id.lib, part->eff_group);
 			part->bb_ob = newlibadr(fd, part->id.lib, part->bb_ob);
 			part->collision_group = newlibadr(fd, part->id.lib, part->collision_group);
@@ -6501,9 +6514,9 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 
 	if (sce->master_collection) {
 		sce->master_collection = newdataadr(fd, sce->master_collection);
-		direct_link_collection(fd, sce->master_collection);
 		/* Needed because this is an ID outside of Main. */
-		sce->master_collection->id.py_instance = NULL;
+		direct_link_id(fd, &sce->master_collection->id);
+		direct_link_collection(fd, sce->master_collection);
 	}
 
 	/* insert into global old-new map for reading without UI (link_global accesses it again) */
@@ -6572,6 +6585,11 @@ static void direct_link_gpencil(FileData *fd, bGPdata *gpd)
 	/* relink animdata */
 	gpd->adt = newdataadr(fd, gpd->adt);
 	direct_link_animdata(fd, gpd->adt);
+
+	/* init stroke buffer */
+	gpd->runtime.sbuffer = NULL;
+	gpd->runtime.sbuffer_size = 0;
+	gpd->runtime.tot_cp_points = 0;
 
 	/* relink palettes (old palettes deprecated, only to convert old files) */
 	link_list(fd, &gpd->palettes);
@@ -7635,9 +7653,9 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map, Main
  * Used to link a file (without UI) to the current UI.
  * Note that it assumes the old pointers in UI are still valid, so old Main is not freed.
  */
-void blo_lib_link_restore(Main *newmain, wmWindowManager *curwm, Scene *curscene, ViewLayer *cur_view_layer)
+void blo_lib_link_restore(Main *oldmain, Main *newmain, wmWindowManager *curwm, Scene *curscene, ViewLayer *cur_view_layer)
 {
-	struct IDNameLib_Map *id_map = BKE_main_idmap_create(newmain);
+	struct IDNameLib_Map *id_map = BKE_main_idmap_create(newmain, true, oldmain);
 
 	for (WorkSpace *workspace = newmain->workspaces.first; workspace; workspace = workspace->id.next) {
 		ListBase *layouts = BKE_workspace_layouts_get(workspace);
@@ -8873,6 +8891,10 @@ static void lib_link_all(FileData *fd, Main *main)
 	lib_link_workspaces(fd, main);
 
 	lib_link_library(fd, main);    /* only init users */
+
+	/* We could integrate that to mesh/curve/lattice lib_link, but this is really cheap process,
+	 * so simpler to just use it directly in this single call. */
+	BLO_main_validate_shapekeys(main, NULL);
 }
 
 static void direct_link_keymapitem(FileData *fd, wmKeyMapItem *kmi)
@@ -8988,11 +9010,9 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 		const int *data = read_file_thumbnail(fd);
 
 		if (data) {
-			int width = data[0];
-			int height = data[1];
-
-			/* Protect against buffer overflow vulnerability. */
-			if (BLEN_THUMB_SAFE_MEMSIZE(width, height)) {
+			const int width = data[0];
+			const int height = data[1];
+			if (BLEN_THUMB_MEMSIZE_IS_VALID(width, height)) {
 				const size_t sz = BLEN_THUMB_MEMSIZE(width, height);
 				bfd->main->blen_thumb = MEM_mallocN(sz, __func__);
 
@@ -10346,43 +10366,61 @@ static void add_loose_objects_to_scene(
 
 static void add_collections_to_scene(
         Main *mainvar, Main *bmain,
-        Scene *scene, ViewLayer *view_layer, const View3D *v3d, Library *UNUSED(lib), const short flag)
+        Scene *scene, ViewLayer *view_layer, const View3D *v3d, Library *lib, const short flag)
 {
 	Collection *active_collection = get_collection_active(bmain, scene, view_layer, FILE_ACTIVE_COLLECTION);
 
 	/* Give all objects which are tagged a base. */
 	for (Collection *collection = mainvar->collection.first; collection; collection = collection->id.next) {
-		if (collection->id.tag & LIB_TAG_DOIT) {
-			if (flag & FILE_GROUP_INSTANCE) {
-				/* Any indirect collection should not have been tagged. */
-				BLI_assert((collection->id.tag & LIB_TAG_INDIRECT) == 0);
+		if ((flag & FILE_GROUP_INSTANCE) && (collection->id.tag & LIB_TAG_DOIT)) {
+			/* Any indirect collection should not have been tagged. */
+			BLI_assert((collection->id.tag & LIB_TAG_INDIRECT) == 0);
 
-				/* BKE_object_add(...) messes with the selection. */
-				Object *ob = BKE_object_add_only_object(bmain, OB_EMPTY, collection->id.name + 2);
-				ob->type = OB_EMPTY;
+			/* BKE_object_add(...) messes with the selection. */
+			Object *ob = BKE_object_add_only_object(bmain, OB_EMPTY, collection->id.name + 2);
+			ob->type = OB_EMPTY;
 
-				BKE_collection_object_add(bmain, active_collection, ob);
-				Base *base = BKE_view_layer_base_find(view_layer, ob);
+			BKE_collection_object_add(bmain, active_collection, ob);
+			Base *base = BKE_view_layer_base_find(view_layer, ob);
 
-				if (v3d != NULL) {
-					base->local_view_bits |= v3d->local_view_uuid;
-				}
-
-				if (base->flag & BASE_SELECTABLE) {
-					base->flag |= BASE_SELECTED;
-				}
-
-				BKE_scene_object_base_flag_sync_from_base(base);
-				DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
-				view_layer->basact = base;
-
-				/* Assign the collection. */
-				ob->dup_group = collection;
-				id_us_plus(&collection->id);
-				ob->transflag |= OB_DUPLICOLLECTION;
-				copy_v3_v3(ob->loc, scene->cursor.location);
+			if (v3d != NULL) {
+				base->local_view_bits |= v3d->local_view_uuid;
 			}
-			else {
+
+			if (base->flag & BASE_SELECTABLE) {
+				base->flag |= BASE_SELECTED;
+			}
+
+			BKE_scene_object_base_flag_sync_from_base(base);
+			DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+			view_layer->basact = base;
+
+			/* Assign the collection. */
+			ob->dup_group = collection;
+			id_us_plus(&collection->id);
+			ob->transflag |= OB_DUPLICOLLECTION;
+			copy_v3_v3(ob->loc, scene->cursor.location);
+		}
+		else {
+			bool do_add_collection = (collection->id.tag & LIB_TAG_DOIT) != 0;
+			if (!do_add_collection) {
+				/* We need to check that objects in that collections are already instantiated in a scene.
+				 * Otherwise, it's better to add the collection to the scene's active collection, than to
+				 * instantiate its objects in active scene's collection directly. See T61141.
+				 * Note that we only check object directly into that collection, not recursively into its children.
+				 */
+				for (CollectionObject *coll_ob = collection->gobject.first; coll_ob != NULL; coll_ob = coll_ob->next) {
+					Object *ob = coll_ob->ob;
+					if ((ob->id.tag & LIB_TAG_PRE_EXISTING) == 0 &&
+					    (ob->id.lib == lib) &&
+					    (object_in_any_scene(bmain, ob) == 0))
+					{
+						do_add_collection = true;
+						break;
+					}
+				}
+			}
+			if (do_add_collection) {
 				/* Add collection as child of active collection. */
 				BKE_collection_child_add(bmain, active_collection, collection);
 
@@ -10931,7 +10969,7 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 							change_idid_adr(mainlist, basefd, id, *realid);
 
 							/* We cannot free old lib-ref placeholder ID here anymore, since we use its name
-							 * as key in loaded_ids hass. */
+							 * as key in loaded_ids has. */
 							BLI_addtail(&pending_free_ids, id);
 						}
 						id = idn;

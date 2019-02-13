@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,20 +15,14 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
-/**
- * \file DNA_sdna_types.h
- * \ingroup DNA
+/** \file \ingroup DNA
  */
 
 #ifndef __DNA_SDNA_TYPES_H__
 #define __DNA_SDNA_TYPES_H__
+
+struct MemArena;
 
 #
 #
@@ -69,6 +61,9 @@ typedef struct SDNA {
 
 	/** #GHash for faster lookups, requires WITH_DNA_GHASH to be used for now. */
 	struct GHash *structs_map;
+
+	/** Temporary memory currently only used for version patching DNA. */
+	struct MemArena *mem_arena;
 } SDNA;
 
 #

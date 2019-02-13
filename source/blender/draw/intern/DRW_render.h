@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file DRW_render.h
- *  \ingroup draw
+/** \file \ingroup draw
  */
 
 /* This is the Render Functions used by Realtime engines to draw with OpenGL */
@@ -66,43 +59,33 @@
 
 #include "DEG_depsgraph.h"
 
-struct rcti;
-struct bContext;
-struct GPUFrameBuffer;
-struct GPUShader;
-struct GPUMaterial;
-struct GPUTexture;
-struct GPUUniformBuffer;
-struct Object;
-struct GPUBatch;
+struct DRWTextStore;
 struct DefaultFramebufferList;
 struct DefaultTextureList;
-struct DRWTextStore;
+struct GPUBatch;
+struct GPUFrameBuffer;
+struct GPUMaterial;
+struct GPUShader;
+struct GPUTexture;
+struct GPUUniformBuffer;
 struct LampEngineData;
+struct Object;
 struct ParticleSystem;
 struct RenderEngineType;
 struct ViewportEngineData;
 struct ViewportEngineData_Info;
+struct bContext;
+struct rcti;
 
-typedef struct DRWUniform DRWUniform;
 typedef struct DRWInterface DRWInterface;
 typedef struct DRWPass DRWPass;
 typedef struct DRWShadingGroup DRWShadingGroup;
+typedef struct DRWUniform DRWUniform;
 
 /* TODO Put it somewhere else? */
 typedef struct BoundSphere {
 	float center[3], radius;
 } BoundSphere;
-
-/**
- * Support selecting shaders with different options compiled in.
- * Needed for clipping support because it means using a separate set of shaders.
- */
-typedef enum eDRW_ShaderSlot {
-	DRW_SHADER_SLOT_DEFAULT = 0,
-	DRW_SHADER_SLOT_CLIPPED = 1,
-} eDRW_ShaderSlot;
-#define DRW_SHADER_SLOT_LEN 2
 
 /* declare members as empty (unused) */
 typedef char DRWViewportEmptyList;
@@ -248,7 +231,7 @@ void DRW_uniformbuffer_free(struct GPUUniformBuffer *ubo);
 	} \
 } while (0)
 
-void DRW_transform_to_display(struct GPUTexture *tex, bool use_view_settings);
+void DRW_transform_to_display(struct GPUTexture *tex, bool use_view_transform, bool use_render_settings);
 void DRW_transform_none(struct GPUTexture *tex);
 void DRW_multisamples_resolve(
         struct GPUTexture *src_depth, struct GPUTexture *src_color, bool use_depth);
@@ -256,11 +239,6 @@ void DRW_multisamples_resolve(
 /* Shaders */
 struct GPUShader *DRW_shader_create(
         const char *vert, const char *geom, const char *frag, const char *defines);
-struct DRW_ShaderCreateFromArray_Params { const char **vert, **geom, **frag, **defs; };
-struct GPUShader *DRW_shader_create_from_arrays_impl(
-        const struct DRW_ShaderCreateFromArray_Params *params);
-#define DRW_shader_create_from_arrays(...) \
-	DRW_shader_create_from_arrays_impl(&(const struct DRW_ShaderCreateFromArray_Params)__VA_ARGS__)
 struct GPUShader *DRW_shader_create_with_lib(
         const char *vert, const char *geom, const char *frag, const char *lib, const char *defines);
 struct GPUShader *DRW_shader_create_with_transform_feedback(
@@ -269,7 +247,7 @@ struct GPUShader *DRW_shader_create_with_transform_feedback(
 struct GPUShader *DRW_shader_create_2D(const char *frag, const char *defines);
 struct GPUShader *DRW_shader_create_3D(const char *frag, const char *defines);
 struct GPUShader *DRW_shader_create_fullscreen(const char *frag, const char *defines);
-struct GPUShader *DRW_shader_create_3D_depth_only(eDRW_ShaderSlot slot);
+struct GPUShader *DRW_shader_create_3D_depth_only(eGPUShaderConfig slot);
 struct GPUMaterial *DRW_shader_find_from_world(struct World *wo, const void *engine_type, int options, bool deferred);
 struct GPUMaterial *DRW_shader_find_from_material(struct Material *ma, const void *engine_type, int options, bool deferred);
 struct GPUMaterial *DRW_shader_create_from_world(
@@ -305,7 +283,7 @@ typedef enum {
 	DRW_STATE_OFFSET_POSITIVE = (1 << 12),
 	/** Polygon offset. Does not work with lines and points. */
 	DRW_STATE_OFFSET_NEGATIVE = (1 << 13),
-	/* DRW_STATE_STIPPLE_4     = (1 << 14), */ /* Not used */
+	DRW_STATE_WIRE_WIDE     = (1 << 14),
 	DRW_STATE_BLEND         = (1 << 15),
 	DRW_STATE_ADDITIVE      = (1 << 16),
 	DRW_STATE_MULTIPLY      = (1 << 17),
@@ -329,21 +307,21 @@ typedef enum {
 #define DRW_STATE_DEFAULT (DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL)
 
 typedef enum {
-	DRW_ATTRIB_INT,
-	DRW_ATTRIB_FLOAT,
-} DRWAttribType;
+	DRW_ATTR_INT,
+	DRW_ATTR_FLOAT,
+} eDRWAttrType;
 
-typedef struct DRWInstanceAttribFormat {
+typedef struct DRWInstanceAttrFormat {
 	char name[32];
-	DRWAttribType type;
+	eDRWAttrType type;
 	int components;
-} DRWInstanceAttribFormat;
+} DRWInstanceAttrFormat;
 
-struct GPUVertFormat *DRW_shgroup_instance_format_array(const DRWInstanceAttribFormat attribs[], int arraysize);
+struct GPUVertFormat *DRW_shgroup_instance_format_array(const DRWInstanceAttrFormat attrs[], int arraysize);
 #define DRW_shgroup_instance_format(format, ...) do { \
 	if (format == NULL) { \
-		DRWInstanceAttribFormat drw_format[] = __VA_ARGS__;\
-		format = DRW_shgroup_instance_format_array(drw_format, (sizeof(drw_format) / sizeof(DRWInstanceAttribFormat))); \
+		DRWInstanceAttrFormat drw_format[] = __VA_ARGS__;\
+		format = DRW_shgroup_instance_format_array(drw_format, (sizeof(drw_format) / sizeof(DRWInstanceAttrFormat))); \
 	} \
 } while (0)
 
@@ -393,7 +371,7 @@ void DRW_shgroup_call_object_add_ex(
 void DRW_shgroup_call_object_add_with_callback(
         DRWShadingGroup *shgroup, struct GPUBatch *geom, struct Object *ob, struct Material *ma,
         DRWCallVisibilityFn *callback, void *user_data);
-/* Used for drawing a batch with instancing without instance attribs. */
+/* Used for drawing a batch with instancing without instance attributes. */
 void DRW_shgroup_call_instances_add(
         DRWShadingGroup *shgroup, struct GPUBatch *geom, float (*obmat)[4], uint *count);
 void DRW_shgroup_call_object_instances_add(
@@ -600,7 +578,7 @@ typedef struct DRWContextState {
 
 	eObjectMode object_mode;
 
-	eDRW_ShaderSlot shader_slot;
+	eGPUShaderConfig sh_cfg;
 
 	/** Last resort (some functions take this as an arg so we can't easily avoid).
 	 * May be NULL when used for selection or depth buffer. */

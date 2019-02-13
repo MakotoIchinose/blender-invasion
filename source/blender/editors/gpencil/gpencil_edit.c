@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,20 +13,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2008, Blender Foundation, Joshua Leung
+ * The Original Code is Copyright (C) 2008, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung, Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operators for editing Grease Pencil strokes
  */
 
- /** \file blender/editors/gpencil/gpencil_edit.c
-  *  \ingroup edgpencil
-  */
-
+/** \file \ingroup edgpencil
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -43,7 +34,6 @@
 #include "BLI_lasso_2d.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -66,7 +56,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
 #include "BKE_workspace.h"
 
 #include "UI_interface.h"
@@ -1153,7 +1142,7 @@ void GPENCIL_OT_paste(wmOperatorType *ot)
 	static const EnumPropertyItem copy_type[] = {
 		{GP_COPY_ONLY, "COPY", 0, "Copy", ""},
 		{GP_COPY_MERGE, "MERGE", 0, "Merge", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -1197,10 +1186,16 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 	bGPDlayer *target_layer = NULL;
 	ListBase strokes = {NULL, NULL};
 	int layer_num = RNA_enum_get(op->ptr, "layer");
+	const bool use_autolock = (bool)(gpd->flag & GP_DATA_AUTOLOCK_LAYERS);
 
 	if (GPENCIL_MULTIEDIT_SESSIONS_ON(gpd)) {
 		BKE_report(op->reports, RPT_ERROR, "Operator not supported in multiframe edition");
 		return OPERATOR_CANCELLED;
+	}
+
+	/* if autolock enabled, disabled now */
+	if (use_autolock) {
+		gpd->flag &= ~GP_DATA_AUTOLOCK_LAYERS;
 	}
 
 	/* Get layer or create new one */
@@ -1213,6 +1208,10 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 		target_layer = BLI_findlink(&gpd->layers, layer_num);
 
 		if (target_layer == NULL) {
+			/* back autolock status */
+			if (use_autolock) {
+				gpd->flag |= GP_DATA_AUTOLOCK_LAYERS;
+			}
 			BKE_reportf(op->reports, RPT_ERROR, "There is no layer number %d", layer_num);
 			return OPERATOR_CANCELLED;
 		}
@@ -1245,6 +1244,11 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 				BLI_addtail(&strokes, gps);
 			}
 		}
+
+		/* if new layer and autolock, lock old layer */
+		if ((layer_num == -1) && (use_autolock)) {
+			gpl->flag |= GP_LAYER_LOCKED;
+		}
 	}
 	CTX_DATA_END;
 
@@ -1254,6 +1258,11 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 
 		BLI_movelisttolist(&gpf->strokes, &strokes);
 		BLI_assert((strokes.first == strokes.last) && (strokes.first == NULL));
+	}
+
+	/* back autolock status */
+	if (use_autolock) {
+		gpd->flag |= GP_DATA_AUTOLOCK_LAYERS;
 	}
 
 	/* updates */
@@ -1821,6 +1830,89 @@ typedef struct tGPDeleteIsland {
 	int end_idx;
 } tGPDeleteIsland;
 
+static void gp_stroke_join_islands(bGPDframe *gpf, bGPDstroke *gps_first, bGPDstroke *gps_last)
+{
+	bGPDspoint *pt = NULL;
+	bGPDspoint *pt_final = NULL;
+	const int totpoints = gps_first->totpoints + gps_last->totpoints;
+
+	/* create new stroke */
+	bGPDstroke *join_stroke = MEM_dupallocN(gps_first);
+
+	join_stroke->points = MEM_callocN(sizeof(bGPDspoint) * totpoints, __func__);
+	join_stroke->totpoints = totpoints;
+	join_stroke->flag &= ~GP_STROKE_CYCLIC;
+
+	/* copy points (last before) */
+	int e1 = 0;
+	int e2 = 0;
+	float delta = 0.0f;
+
+	for (int i = 0; i < totpoints; i++) {
+		pt_final = &join_stroke->points[i];
+		if (i < gps_last->totpoints) {
+			pt = &gps_last->points[e1];
+			e1++;
+		}
+		else {
+			pt = &gps_first->points[e2];
+			e2++;
+		}
+
+		/* copy current point */
+		copy_v3_v3(&pt_final->x, &pt->x);
+		pt_final->pressure = pt->pressure;
+		pt_final->strength = pt->strength;
+		pt_final->time = delta;
+		pt_final->flag = pt->flag;
+
+		/* retiming with fixed time interval (we cannot determine real time) */
+		delta += 0.01f;
+	}
+
+	/* Copy over vertex weight data (if available) */
+	if ((gps_first->dvert != NULL) || (gps_last->dvert != NULL)) {
+		join_stroke->dvert = MEM_callocN(sizeof(MDeformVert) * totpoints, __func__);
+		MDeformVert *dvert_src = NULL;
+		MDeformVert *dvert_dst = NULL;
+
+		/* Copy weights (last before)*/
+		e1 = 0;
+		e2 = 0;
+		for (int i = 0; i < totpoints; i++) {
+			dvert_dst = &join_stroke->dvert[i];
+			dvert_src = NULL;
+			if (i < gps_last->totpoints) {
+				if (gps_last->dvert) {
+					dvert_src = &gps_last->dvert[e1];
+					e1++;
+				}
+			}
+			else {
+				if (gps_first->dvert) {
+					dvert_src = &gps_first->dvert[e2];
+					e2++;
+				}
+			}
+
+			if ((dvert_src) && (dvert_src->dw)) {
+				dvert_dst->dw = MEM_dupallocN(dvert_src->dw);
+			}
+		}
+	}
+
+	/* add new stroke at head */
+	BLI_addhead(&gpf->strokes, join_stroke);
+
+	/* remove first stroke */
+	BLI_remlink(&gpf->strokes, gps_first);
+	BKE_gpencil_free_stroke(gps_first);
+
+	/* remove last stroke */
+	BLI_remlink(&gpf->strokes, gps_last);
+	BKE_gpencil_free_stroke(gps_last);
+}
+
 
 /* Split the given stroke into several new strokes, partitioning
  * it based on whether the stroke points have a particular flag
@@ -1842,6 +1934,9 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 	tGPDeleteIsland *islands = MEM_callocN(sizeof(tGPDeleteIsland) * (gps->totpoints + 1) / 2, "gp_point_islands");
 	bool in_island  = false;
 	int num_islands = 0;
+
+	bGPDstroke *gps_first = NULL;
+	const bool is_cyclic = (bool)(gps->flag & GP_STROKE_CYCLIC);
 
 	/* First Pass: Identify start/end of islands */
 	bGPDspoint *pt = gps->points;
@@ -1874,15 +1969,22 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 	if (num_islands) {
 		/* there are islands, so create a series of new strokes, adding them before the "next" stroke */
 		int idx;
+		bGPDstroke *new_stroke = NULL;
 
 		/* Create each new stroke... */
 		for (idx = 0; idx < num_islands; idx++) {
 			tGPDeleteIsland *island = &islands[idx];
-			bGPDstroke *new_stroke = MEM_dupallocN(gps);
+			new_stroke = MEM_dupallocN(gps);
+
+			/* if cyclic and first stroke, save to join later */
+			if ((is_cyclic) && (gps_first == NULL)) {
+				gps_first = new_stroke;
+			}
 
 			/* initialize triangle memory  - to be calculated on next redraw */
 			new_stroke->triangles = NULL;
 			new_stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
+			new_stroke->flag &= ~GP_STROKE_CYCLIC;
 			new_stroke->tot_triangles = 0;
 
 			/* Compute new buffer size (+ 1 needed as the endpoint index is "inclusive") */
@@ -1948,6 +2050,11 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf, bGPDstroke *gps, bGPDstroke 
 				}
 			}
 		}
+		/* if cyclic, need to join last stroke with first stroke */
+		if ((is_cyclic) && (gps_first != NULL) && (gps_first != new_stroke)) {
+			gp_stroke_join_islands(gpf, gps_first, new_stroke);
+		}
+
 	}
 
 	/* free islands */
@@ -2053,7 +2160,7 @@ void GPENCIL_OT_delete(wmOperatorType *ot)
 		{GP_DELETEOP_POINTS, "POINTS", 0, "Points", "Delete selected points and split strokes into segments"},
 		{GP_DELETEOP_STROKES, "STROKES", 0, "Strokes", "Delete selected strokes"},
 		{GP_DELETEOP_FRAME, "FRAME", 0, "Frame", "Delete active frame"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -2086,7 +2193,7 @@ void GPENCIL_OT_dissolve(wmOperatorType *ot)
 		{GP_DISSOLVE_POINTS, "POINTS", 0, "Dissolve", "Dissolve selected points"},
 		{GP_DISSOLVE_BETWEEN, "BETWEEN", 0, "Dissolve Between", "Dissolve points between selected points"},
 		{GP_DISSOLVE_UNSELECT, "UNSELECT", 0, "Dissolve Unselect", "Dissolve all unselected points"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -2490,7 +2597,7 @@ void GPENCIL_OT_stroke_cyclical_set(wmOperatorType *ot)
 		{GP_STROKE_CYCLIC_CLOSE, "CLOSE", 0, "Close all", ""},
 		{GP_STROKE_CYCLIC_OPEN, "OPEN", 0, "Open all", ""},
 		{GP_STROKE_CYCLIC_TOGGLE, "TOGGLE", 0, "Toggle", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -2593,7 +2700,7 @@ void GPENCIL_OT_stroke_caps_set(wmOperatorType *ot)
 		{GP_STROKE_CAPS_TOGGLE_START, "START", 0, "Start", ""},
 		{GP_STROKE_CAPS_TOGGLE_END, "END", 0, "End", ""},
 		{GP_STROKE_CAPS_TOGGLE_DEFAULT, "TOGGLE", 0, "Default", "Set as default rounded"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -2867,7 +2974,7 @@ void GPENCIL_OT_stroke_join(wmOperatorType *ot)
 	static const EnumPropertyItem join_type[] = {
 		{GP_STROKE_JOIN, "JOIN", 0, "Join", ""},
 		{GP_STROKE_JOINCOPY, "JOINCOPY", 0, "Join and Copy", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -3101,7 +3208,7 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
 		 "using 'Cursor' Stroke Placement"},
 		{GP_REPROJECT_SURFACE, "SURFACE", 0, "Surface",
 		 "Reproject the strokes on to the scene geometry, as if drawn using 'Surface' placement"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -3673,7 +3780,7 @@ void GPENCIL_OT_stroke_separate(wmOperatorType *ot)
 		{GP_SEPARATE_POINT, "POINT", 0, "Selected Points", "Separate the selected points"},
 		{GP_SEPARATE_STROKE, "STROKE", 0, "Selected Strokes", "Separate the selected strokes"},
 		{GP_SEPARATE_LAYER, "LAYER", 0, "Active Layer", "Separate the strokes of the current layer"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */

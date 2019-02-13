@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,9 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_mask.c
- *  \ingroup modifiers
+/** \file \ingroup modifiers
  */
 
 
@@ -47,7 +35,6 @@
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
 #include "BKE_customdata.h"
-#include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
@@ -82,7 +69,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		/* TODO(sergey): Is it a proper relation here? */
 		DEG_add_object_relation(ctx->node, mmd->ob_arm, DEG_OB_COMP_TRANSFORM, "Mask Modifier");
 		arm->flag |= ARM_HAS_VIZ_DEPS;
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Mask Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "Mask Modifier");
 	}
 }
 

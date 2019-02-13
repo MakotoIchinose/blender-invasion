@@ -1,27 +1,21 @@
 /*
-* ***** BEGIN GPL LICENSE BLOCK *****
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License
-* as published by the Free Software Foundation; either version 2
-* of the License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software Foundation,
-* Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-*
-* The Original Code is Copyright (C) 2008 Blender Foundation.
-* All rights reserved.
-*
-* Contributor(s): Blender Foundation
-*
-* ***** END GPL LICENSE BLOCK *****
-*/
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * The Original Code is Copyright (C) 2008 Blender Foundation.
+ * All rights reserved.
+ */
 
 #include <vector>
 #include <map>
@@ -400,11 +394,11 @@ void BCAnimationSampler::generate_transforms(Object *ob, Bone *bone, BCAnimation
 		generate_transforms(ob, child, curves);
 }
 
-/*
-* Collect all keyframes from all animation curves related to the object
-* The bc_get... functions check for NULL and correct object type
-* The add_keyframes_from() function checks for NULL
-*/
+/**
+ * Collect all keyframes from all animation curves related to the object
+ * The bc_get... functions check for NULL and correct object type
+ * The add_keyframes_from() function checks for NULL
+ */
 void BCAnimationSampler::initialize_keyframes(BCFrameSet &frameset, Object *ob)
 {
 	frameset.clear();

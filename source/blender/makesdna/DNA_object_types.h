@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_object_types.h
- *  \ingroup DNA
+/** \file \ingroup DNA
  *  \brief Object is a sort of wrapper for general info.
  */
 
@@ -44,21 +35,21 @@
 extern "C" {
 #endif
 
-struct Object;
 struct AnimData;
-struct Ipo;
 struct BoundBox;
-struct Path;
-struct Material;
-struct PartDeflect;
-struct SoftBody;
-struct FluidsimSettings;
-struct ParticleSystem;
 struct DerivedMesh;
-struct SculptSession;
-struct bGPdata;
-struct RigidBodyOb;
+struct FluidsimSettings;
 struct GpencilBatchCache;
+struct Ipo;
+struct Material;
+struct Object;
+struct PartDeflect;
+struct ParticleSystem;
+struct Path;
+struct RigidBodyOb;
+struct SculptSession;
+struct SoftBody;
+struct bGPdata;
 
 /* Vertex Groups - Name Info */
 typedef struct bDeformGroup {
@@ -93,8 +84,6 @@ typedef struct bFaceMap {
  * | /
  * |/
  * .-----X
- *
- *
  *     2----------6
  *    /|         /|
  *   / |        / |
@@ -124,10 +113,6 @@ typedef struct LodLevel {
 	float distance, pad;
 	int obhysteresis;
 } LodLevel;
-
-typedef struct ObjectDisplay {
-	int flag;
-} ObjectDisplay;
 
 /* Forward declaration for cache bbone deformation information.
  *
@@ -295,9 +280,6 @@ typedef struct Object {
 	char pad12;
 	char duplicator_visibility_flag;
 
-	/* dupli-frame settings */
-	int dupon, dupoff, dupsta, dupend;
-
 	/* Depsgraph */
 	/** Used by depsgraph, flushed from base. */
 	short base_flag;
@@ -324,16 +306,13 @@ typedef struct Object {
 	/** Dupliface scale. */
 	float dupfacesca;
 
-	/** Sf is time-offset. */
-	float sf;
-
 	/** Custom index, for renderpasses. */
 	short index;
 	/** Current deformation group, note: index starts at 1. */
 	unsigned short actdef;
 	/** Current face map, note: index starts at 1. */
 	unsigned short actfmap;
-	unsigned char pad5[6];
+	unsigned char pad5[2];
 	/** Object color. */
 	float col[4];
 
@@ -397,12 +376,8 @@ typedef struct Object {
 	int pad6;
 	int select_color;
 
-	/* Runtime evaluation data. */
+	/* Runtime evaluation data (keep last). */
 	Object_Runtime runtime;
-
-	/* Object Display */
-	struct ObjectDisplay display;
-	int pad9;
 } Object;
 
 /* Warning, this is not used anymore because hooks are now modifiers */
@@ -461,11 +436,6 @@ enum {
 	OB_TYPE_MAX,
 };
 
-/* ObjectDisplay.flag */
-enum {
-	OB_SHOW_SHADOW = (1 << 0),
-};
-
 /* check if the object type supports materials */
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
 	(((_type) >= OB_MESH && (_type) <= OB_MBALL) || ((_type) == OB_GPENCIL))
@@ -501,8 +471,7 @@ enum {
 	PARVERT3      = 6,
 	PARBONE       = 7,
 
-	/** Slow parenting - is not threadsafe and/or may give errors after jumping. */
-	PARSLOW       = 16,
+	PAR_DEPRECATED = 16,
 };
 
 /* (short) transflag */
@@ -510,10 +479,10 @@ enum {
 	OB_TRANSFLAG_DEPRECATED_0 = 1 << 0,
 	OB_TRANSFLAG_DEPRECATED_1 = 1 << 1,
 	OB_NEG_SCALE        = 1 << 2,
-	OB_DUPLIFRAMES      = 1 << 3,
+	OB_TRANSFLAG_DEPRECATED_3 = 1 << 3,
 	OB_DUPLIVERTS       = 1 << 4,
 	OB_DUPLIROT         = 1 << 5,
-	OB_DUPLINOSPEED     = 1 << 6,
+	OB_TRANSFLAG_DEPRECATED_4 = 1 << 6,
 	/* runtime, calculate derivedmesh for dupli before it's used */
 	OB_DUPLICALCDERIVED = 1 << 7,
 	OB_DUPLICOLLECTION  = 1 << 8,
@@ -526,7 +495,7 @@ enum {
 	/* hack to work around particle issue */
 	OB_NO_PSYS_UPDATE   = 1 << 14,
 
-	OB_DUPLI = OB_DUPLIFRAMES | OB_DUPLIVERTS | OB_DUPLICOLLECTION | OB_DUPLIFACES | OB_DUPLIPARTS,
+	OB_DUPLI = OB_DUPLIVERTS | OB_DUPLICOLLECTION | OB_DUPLIFACES | OB_DUPLIPARTS,
 };
 
 /* (short) trackflag / upflag */
@@ -563,6 +532,7 @@ enum {
 	/* enable transparent draw */
 	OB_DRAWTRANSP     = 1 << 7,
 	OB_DRAW_ALL_EDGES = 1 << 8,  /* only for meshes currently */
+	OB_DRAW_NO_SHADOW_CAST = 1 << 9,
 };
 
 /* empty_drawtype: no flags */
@@ -631,12 +601,6 @@ enum {
 #  define OB_FLAG_DEPRECATED_11        (1 << 11)  /* cleared */
 #  define OB_FLAG_DEPRECATED_12        (1 << 12)  /* cleared */
 #endif
-
-/* controller state */
-#define OB_MAX_STATES       30
-
-/* collision masks */
-#define OB_MAX_COL_MASKS    16
 
 /* ob->restrictflag */
 enum {

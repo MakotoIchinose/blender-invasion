@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,9 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_region_color_picker.c
- *  \ingroup edinterface
+/** \file \ingroup edinterface
  *
  * Color Picker Region & Color Utils
  */
@@ -405,7 +398,7 @@ static void ui_block_colorpicker(
         uiBlock *block, uiBut *from_but, float rgba[4], bool show_picker)
 {
 	/* ePickerType */
-	static char colormode = 0;
+	static char colormode = 1;
 	uiBut *bt;
 	int width, butwidth;
 	static char hexcol[128];

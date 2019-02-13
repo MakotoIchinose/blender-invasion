@@ -14,10 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor:
- *      Jeroen Bakker
- *      Monique Dewanchand
  */
 
 #include "COM_TextureOperation.h"
@@ -116,7 +112,7 @@ void TextureBaseOperation::executePixelSampled(float output[4], float x, float y
 
 	/* When no interpolation/filtering happens in multitex() foce nearest interpolation.
 	 * We do it here because (a) we can't easily say multitex() that we want nearest
-	 * interpolaiton and (b) in such configuration multitex() sinply floor's the value
+	 * interpolation and (b) in such configuration multitex() sinply floor's the value
 	 * which often produces artifacts.
 	 */
 	if (m_texture != NULL && (m_texture->imaflag & TEX_INTERPOL) == 0) {

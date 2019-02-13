@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,31 +14,20 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2017, Blender Foundation.
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/draw/engines/gpencil/gpencil_shader_fx.c
- *  \ingroup draw
+/** \file \ingroup draw
  */
 #include "DNA_gpencil_types.h"
 #include "DNA_shader_fx_types.h"
-#include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_camera_types.h"
 
 #include "BKE_gpencil.h"
-#include "BKE_shader_fx.h"
 
-#include "DRW_engine.h"
 #include "DRW_render.h"
 
 #include "BKE_camera.h"
-
-#include "ED_view3d.h"
-#include "ED_gpencil.h"
 
 #include "gpencil_engine.h"
 
@@ -92,13 +79,15 @@ static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_render)
 static bool get_normal_vector(bGPdata *gpd, float r_point[3], float r_normal[3])
 {
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-		if (gpl->flag & GP_LAYER_HIDE)
+		if (gpl->flag & GP_LAYER_HIDE) {
 			continue;
+		}
 
 		/* get frame  */
 		bGPDframe *gpf = gpl->actframe;
-		if (gpf == NULL)
+		if (gpf == NULL) {
 			continue;
+		}
 		for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
 			if (gps->totpoints >= 3) {
 				bGPDspoint *pt = &gps->points[0];

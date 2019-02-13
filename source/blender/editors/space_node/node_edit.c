@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): David Millan Escriva, Juho Vepsäläinen, Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_edit.c
- *  \ingroup spnode
+/** \file \ingroup spnode
  */
 
 #include "MEM_guardedalloc.h"
@@ -1121,15 +1112,10 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
 	lastnode = ntree->nodes.last;
 	for (node = ntree->nodes.first; node; node = node->next) {
 		if (node->flag & SELECT) {
-			newnode = nodeCopyNode(ntree, node);
+			newnode = BKE_node_copy_ex(ntree, node, LIB_ID_COPY_DEFAULT);
 
-			if (newnode->id) {
-				/* simple id user adjustment, node internal functions don't touch this
-				 * but operators and readfile.c do. */
-				id_us_plus(newnode->id);
-				/* to ensure redraws or rerenders happen */
-				ED_node_tag_update_id(snode->id);
-			}
+			/* to ensure redraws or rerenders happen */
+			ED_node_tag_update_id(snode->id);
 		}
 
 		/* make sure we don't copy new nodes again! */
@@ -1935,8 +1921,8 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
 	for (node = ntree->nodes.first; node; node = node->next) {
 		if (node->flag & SELECT) {
-			bNode *new_node;
-			new_node = nodeCopyNode(NULL, node);
+			/* No ID refcounting, this node is virtual, detached from any actual Blender data currently. */
+			bNode *new_node = BKE_node_copy_ex(ntree, node, LIB_ID_CREATE_NO_USER_REFCOUNT);
 			BKE_node_clipboard_add_node(new_node);
 		}
 	}
@@ -2056,10 +2042,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 
 	/* copy nodes from clipboard */
 	for (node = clipboard_nodes_lb->first; node; node = node->next) {
-		bNode *new_node = nodeCopyNode(ntree, node);
-
-		/* needed since nodeCopyNode() doesn't increase ID's */
-		id_us_plus(node->id);
+		bNode *new_node = BKE_node_copy_ex(ntree, node, LIB_ID_COPY_DEFAULT);
 
 		/* pasted nodes are selected */
 		nodeSetSelected(new_node, true);

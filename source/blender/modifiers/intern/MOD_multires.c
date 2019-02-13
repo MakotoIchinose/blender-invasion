@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,9 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_multires.c
- *  \ingroup modifiers
+/** \file \ingroup modifiers
  */
 
 
@@ -42,7 +30,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_cdderivedmesh.h"
-#include "BKE_global.h"
 #include "BKE_mesh.h"
 #include "BKE_multires.h"
 #include "BKE_modifier.h"
@@ -65,6 +52,15 @@ static void initData(ModifierData *md)
 	mmd->totlvl = 0;
 	mmd->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_CORNERS;
 	mmd->quality = 3;
+}
+
+static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
+{
+	MultiresModifierData *mmd_dst = (MultiresModifierData *)md_dst;
+
+	modifier_copyData_generic(md_src, md_dst, flag);
+
+	mmd_dst->subdiv = NULL;
 }
 
 static void freeData(ModifierData *md)
@@ -194,7 +190,7 @@ ModifierTypeInfo modifierType_Multires = {
 	                        eModifierTypeFlag_SupportsMapping |
 	                        eModifierTypeFlag_RequiresOriginalData,
 
-	/* copyData */          modifier_copyData_generic,
+	/* copyData */          copyData,
 
 	/* deformVerts_DM */    NULL,
 	/* deformMatrices_DM */ NULL,

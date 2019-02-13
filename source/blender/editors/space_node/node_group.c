@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): David Millan Escriva, Juho Vepsäläinen, Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_group.c
- *  \ingroup spnode
+/** \file \ingroup spnode
  */
 
 #include <stdlib.h>
@@ -45,7 +36,6 @@
 #include "BKE_action.h"
 #include "BKE_animsys.h"
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -414,7 +404,7 @@ static int node_group_separate_selected(
 	for (node = ntree->nodes.first; node; node = node->next)
 		nodeSetSelected(node, false);
 
-	/* clear new pointers, set in nodeCopyNode */
+	/* clear new pointers, set in BKE_node_copy_ex(). */
 	for (node = ngroup->nodes.first; node; node = node->next)
 		node->new_node = NULL;
 
@@ -432,7 +422,7 @@ static int node_group_separate_selected(
 
 		if (make_copy) {
 			/* make a copy */
-			newnode = nodeCopyNode(ngroup, node);
+			newnode = BKE_node_copy_ex(ngroup, node, LIB_ID_COPY_DEFAULT);
 		}
 		else {
 			/* use the existing node */
@@ -526,7 +516,7 @@ typedef enum eNodeGroupSeparateType {
 static const EnumPropertyItem node_group_separate_types[] = {
 	{NODE_GS_COPY, "COPY", 0, "Copy", "Copy to parent node tree, keep group intact"},
 	{NODE_GS_MOVE, "MOVE", 0, "Move", "Move to parent node tree, remove from group"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int node_group_separate_exec(bContext *C, wmOperator *op)
@@ -551,13 +541,13 @@ static int node_group_separate_exec(bContext *C, wmOperator *op)
 
 	switch (type) {
 		case NODE_GS_COPY:
-			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, 1)) {
+			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, true)) {
 				BKE_report(op->reports, RPT_WARNING, "Cannot separate nodes");
 				return OPERATOR_CANCELLED;
 			}
 			break;
 		case NODE_GS_MOVE:
-			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, 0)) {
+			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, false)) {
 				BKE_report(op->reports, RPT_WARNING, "Cannot separate nodes");
 				return OPERATOR_CANCELLED;
 			}

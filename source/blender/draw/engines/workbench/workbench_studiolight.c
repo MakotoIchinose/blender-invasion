@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,24 +14,17 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * Contributor(s): Blender Institute
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file workbench_studiolight.c
- *  \ingroup draw_engine
+/** \file \ingroup draw_engine
  */
 #include "BKE_studiolight.h"
 
-#include "DRW_engine.h"
 #include "workbench_private.h"
 
 #include "BKE_object.h"
 
 #include "BLI_math.h"
-#include "BKE_global.h"
 
 void studiolight_update_world(WORKBENCH_PrivateData *wpd, StudioLight *studiolight, WORKBENCH_UBO_World *wd)
 {
@@ -276,7 +267,7 @@ bool studiolight_camera_in_object_shadow(WORKBENCH_PrivateData *wpd, Object *ob,
 	        {oed->shadow_min[0], oed->shadow_min[1]},
 	        {oed->shadow_min[0], oed->shadow_max[1]},
 	        {oed->shadow_max[0], oed->shadow_min[1]},
-	        {oed->shadow_max[0], oed->shadow_max[1]}
+	        {oed->shadow_max[0], oed->shadow_max[1]},
 	};
 
 	for (int i = 0; i < 2; ++i) {

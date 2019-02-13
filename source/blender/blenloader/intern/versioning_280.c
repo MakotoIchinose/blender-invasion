@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Dalai Felinto
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/versioning_280.c
- *  \ingroup blenloader
+/** \file \ingroup blenloader
  */
 
 /* allow readfile to use deprecated functionality */
@@ -35,7 +27,6 @@
 #include "BLI_math.h"
 #include "BLI_mempool.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_object_types.h"
@@ -1369,13 +1360,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		if (!DNA_struct_elem_find(fd->filesdna, "Object", "ObjectDisplay", "display")) {
-			/* Initialize new object.ObjectDisplay */
-			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
-				ob->display.flag = OB_SHOW_SHADOW;
-			}
-		}
-
 		if (!DNA_struct_elem_find(fd->filesdna, "ToolSettings", "char", "transform_pivot_point")) {
 			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
 				scene->toolsettings->transform_pivot_point = V3D_AROUND_CENTER_MEDIAN;
@@ -1990,9 +1974,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "ClothSimSettings", "short", "bending_model")) {
 			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
 				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+					ClothModifierData *clmd = NULL;
 					if (md->type == eModifierType_Cloth) {
-						ClothModifierData *clmd = (ClothModifierData *)md;
-
+						clmd = (ClothModifierData *)md;
+					}
+					else if (md->type == eModifierType_ParticleSystem) {
+						ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
+						ParticleSystem *psys = psmd->psys;
+						clmd = psys->clmd;
+					}
+					if (clmd != NULL) {
 						clmd->sim_parms->bending_model = CLOTH_BENDING_LINEAR;
 						clmd->sim_parms->tension = clmd->sim_parms->structural;
 						clmd->sim_parms->compression = clmd->sim_parms->structural;
@@ -2784,7 +2775,40 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 43)) {
+		ListBase *lb = which_libbase(bmain, ID_BR);
+		BKE_main_id_repair_duplicate_names_listbase(lb);
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 44)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "Material", "float", "a")) {
+			for (Material *mat = bmain->mat.first; mat; mat = mat->id.next) {
+				mat->a = 1.0f;
+			}
+		}
+
+		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+			enum {
+				R_ALPHAKEY = 2,
+			};
+			scene->r.seq_flag &= ~(
+			        R_SEQ_DEPRECATED_0 |
+			        R_SEQ_DEPRECATED_1 |
+			        R_SEQ_DEPRECATED_2);
+			scene->r.color_mgt_flag &= ~R_COLOR_MANAGEMENT_DEPRECATED_1;
+			if (scene->r.alphamode == R_ALPHAKEY) {
+				scene->r.alphamode = R_ADDSKY;
+			}
+			ToolSettings *ts = scene->toolsettings;
+			ts->particle.flag &= ~PE_DEPRECATED_6;
+			if (ts->sculpt != NULL) {
+				ts->sculpt->flags &= ~SCULPT_FLAG_DEPRECATED_6;
+			}
+		}
+	}
+
 	{
 		/* Versioning code until next subversion bump goes here. */
+
 	}
 }

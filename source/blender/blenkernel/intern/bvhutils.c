@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Andr Pinto.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/bvhutils.c
- *  \ingroup bke
+/** \file \ingroup bke
  */
 
 #include <stdio.h>
@@ -387,7 +378,6 @@ static void mesh_edges_spherecast(void *userdata, int index, const BVHTreeRay *r
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Vertex Builder
  * \{ */
 
@@ -554,7 +544,6 @@ BVHTree *bvhtree_from_mesh_verts_ex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Edge Builder
  * \{ */
 
@@ -739,7 +728,6 @@ BVHTree *bvhtree_from_mesh_edges_ex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Tessellated Face Builder
  * \{ */
 
@@ -835,7 +823,6 @@ BVHTree *bvhtree_from_mesh_faces_ex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name LoopTri Face Builder
  * \{ */
 
@@ -1310,7 +1297,6 @@ void free_bvhtree_from_mesh(struct BVHTreeFromMesh *data)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name BVHCache
  * \{ */
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /* note: the original vertex color stuff is now just used for
  * getting info on the layers themselves, accessing the data is
  * done through the (not yet written) mpoly interfaces.*/
 
-/** \file blender/makesrna/intern/rna_mesh.c
- *  \ingroup RNA
+/** \file \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -53,7 +46,7 @@
 #include "WM_types.h"
 
 const EnumPropertyItem rna_enum_mesh_delimit_mode_items[] = {
-	{BMO_DELIM_NORMAL, "NORMAL", 0, "Normal", "Delimit by face directions"},
+	{BMO_DELIM_NORMAL, "NORMAL", 0, "Regular", "Delimit by face directions"},
 	{BMO_DELIM_MATERIAL, "MATERIAL", 0, "Material", "Delimit by face material"},
 	{BMO_DELIM_SEAM, "SEAM", 0, "Seam", "Delimit by edge seams"},
 	{BMO_DELIM_SHARP, "SHARP", 0, "Sharp", "Delimit by sharp edges"},
@@ -2776,6 +2769,7 @@ static void rna_def_mesh(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "texflag", ME_AUTOSPACE);
 	RNA_def_property_ui_text(prop, "Auto Texture Space",
 	                         "Adjust active object's texture space automatically when transforming object");
+	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
 
 #if 0
 	prop = RNA_def_property(srna, "texspace_location", PROP_FLOAT, PROP_TRANSLATION);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -18,14 +16,9 @@
  * All rights reserved.
  *
  * The Original Code is: some of this file.
- *
- * Contributor(s): Jens Ole Wund (bjornmose), Campbell Barton (ideasman42)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/sculpt_paint/paint_image_proj.c
- *  \ingroup edsculpt
+/** \file \ingroup edsculpt
  *  \brief Functions to paint images in 2D and 3D.
  */
 
@@ -487,7 +480,6 @@ typedef struct {
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name MLoopTri accessor functions.
  * \{ */
 
@@ -2602,7 +2594,7 @@ static void project_paint_face_init(
 		ps->do_masking,
 		IMAPAINT_TILE_NUMBER(ibuf->x),
 		tmpibuf,
-		ps->projImages + image_index
+		ps->projImages + image_index,
 	};
 
 	const MLoopTri *lt = &ps->mlooptri_eval[tri_index];
@@ -5553,7 +5545,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
 
 	scene->toolsettings->imapaint.flag |= IMAGEPAINT_DRAWING;
 
-	ED_image_undo_push_begin(op->type->name);
+	ED_image_undo_push_begin(op->type->name, PAINT_MODE_TEXTURE_3D);
 
 	/* allocate and initialize spatial data structures */
 	project_paint_begin(C, &ps, false, 0);
@@ -5831,7 +5823,7 @@ enum {
 	LAYER_METALLIC,
 	LAYER_NORMAL,
 	LAYER_BUMP,
-	LAYER_DISPLACEMENT
+	LAYER_DISPLACEMENT,
 };
 
 static const EnumPropertyItem layer_type_items[] = {
@@ -5842,7 +5834,7 @@ static const EnumPropertyItem layer_type_items[] = {
 	{LAYER_NORMAL, "NORMAL", 0, "Normal", ""},
 	{LAYER_BUMP, "BUMP", 0, "Bump", ""},
 	{LAYER_DISPLACEMENT, "DISPLACEMENT", 0, "Displacement", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static Image *proj_paint_image_create(wmOperator *op, Main *bmain)
@@ -6027,13 +6019,15 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
 			BKE_texpaint_slot_refresh_cache(scene, ma);
 			BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_USER_NEW_IMAGE);
 			WM_event_add_notifier(C, NC_IMAGE | NA_ADDED, ima);
-			DEG_id_tag_update(&ma->id, 0);
-			ED_area_tag_redraw(CTX_wm_area(C));
-
-			BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
-
-			return true;
 		}
+
+		DEG_id_tag_update(&ntree->id, 0);
+		DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
+		ED_area_tag_redraw(CTX_wm_area(C));
+
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+
+		return true;
 	}
 
 	return false;
@@ -6083,8 +6077,12 @@ static void get_default_texture_layer_name_for_object(Object *ob, int texture_ty
 
 static int texture_paint_add_texture_paint_slot_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
+	/* Get material and default color to display in the popup. */
 	Object *ob = ED_object_active_context(C);
+	Material *ma = get_or_create_current_material(C, ob);
+
 	int type = get_texture_layer_type(op, "type");
+	proj_paint_default_color(op, type, ma);
 
 	char imagename[MAX_ID_NAME - 2];
 	get_default_texture_layer_name_for_object(ob, type, (char *)&imagename, sizeof(imagename));

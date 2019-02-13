@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation 2002-2008, full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface.c
- *  \ingroup edinterface
+/** \file \ingroup edinterface
  */
 
 
@@ -162,6 +155,16 @@ void ui_block_to_window_rctf(const ARegion *ar, uiBlock *block, rctf *rct_dst, c
 	*rct_dst = *rct_src;
 	ui_block_to_window_fl(ar, block, &rct_dst->xmin, &rct_dst->ymin);
 	ui_block_to_window_fl(ar, block, &rct_dst->xmax, &rct_dst->ymax);
+}
+
+float ui_block_to_window_scale(const ARegion *ar, uiBlock *block)
+{
+	/* We could have function for this to avoid dummy arg. */
+	float dummy_x;
+	float min_y = 0, max_y = 1;
+	ui_block_to_window_fl(ar, block, &dummy_x, &min_y);
+	ui_block_to_window_fl(ar, block, &dummy_x, &max_y);
+	return max_y - min_y;
 }
 
 /* for mouse cursor */
@@ -437,7 +440,7 @@ static void ui_block_bounds_calc_centered_pie(uiBlock *block)
 {
 	const int xy[2] = {
 	    block->pie_data.pie_center_spawned[0],
-	    block->pie_data.pie_center_spawned[1]
+	    block->pie_data.pie_center_spawned[1],
 	};
 
 	UI_block_translate(block, xy[0], xy[1]);
@@ -1073,17 +1076,17 @@ static bool ui_but_event_property_operator_string(
 		"WM_OT_context_cycle_enum",
 		"WM_OT_context_cycle_array",
 		"WM_OT_context_menu_enum",
-		NULL
+		NULL,
 	};
 
 	const char *ctx_enum_opnames[] = {
 		"WM_OT_context_set_enum",
-		NULL
+		NULL,
 	};
 
 	const char *ctx_enum_opnames_for_Area_ui_type[] = {
 		"SCREEN_OT_space_type_set_or_cycle",
-		NULL
+		NULL,
 	};
 
 	const char **opnames = ctx_toggle_opnames;

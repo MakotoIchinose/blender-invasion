@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_intern.h
- *  \ingroup edinterface
+/** \file \ingroup edinterface
  */
 
 
@@ -39,19 +30,19 @@
 #include "DNA_listBase.h"
 
 struct ARegion;
+struct ID;
+struct ImBuf;
+struct Scene;
 struct bContext;
+struct bContextStore;
 struct uiHandleButtonData;
+struct uiLayout;
+struct uiStyle;
+struct uiWidgetColors;
 struct wmEvent;
 struct wmKeyConfig;
 struct wmOperatorType;
 struct wmTimer;
-struct uiStyle;
-struct uiWidgetColors;
-struct uiLayout;
-struct bContextStore;
-struct Scene;
-struct ID;
-struct ImBuf;
 
 /* ****************** general defines ************** */
 
@@ -492,6 +483,7 @@ void ui_fontscale(short *points, float aspect);
 extern void ui_block_to_window_fl(const struct ARegion *ar, uiBlock *block, float *x, float *y);
 extern void ui_block_to_window(const struct ARegion *ar, uiBlock *block, int *x, int *y);
 extern void ui_block_to_window_rctf(const struct ARegion *ar, uiBlock *block, rctf *rct_dst, const rctf *rct_src);
+extern float ui_block_to_window_scale(const struct ARegion *ar, uiBlock *block);
 extern void ui_window_to_block_fl(const struct ARegion *ar, uiBlock *block, float *x, float *y);
 extern void ui_window_to_block(const struct ARegion *ar, uiBlock *block, int *x, int *y);
 extern void ui_window_to_region(const ARegion *ar, int *x, int *y);

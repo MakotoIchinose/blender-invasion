@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,10 @@
  *
  * The Original Code is Copyright (C) 2006 by Nicholas Bishop
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Jason Wilkins, Tom Musgrove.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Implements the Sculpt Mode tools
- *
  */
 
-/** \file blender/editors/sculpt_paint/sculpt.c
- *  \ingroup edsculpt
+/** \file \ingroup edsculpt
  */
 
 
@@ -56,7 +45,6 @@
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
@@ -68,7 +56,9 @@
 #include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_particle.h"
 #include "BKE_pbvh.h"
+#include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_subsurf.h"
@@ -732,7 +722,6 @@ static bool sculpt_brush_test_cyl(SculptBrushTest *test, float co[3], float loca
 #endif
 
 /* ===== Sculpting =====
- *
  */
 static void flip_v3(float v[3], const char symm)
 {
@@ -2152,7 +2141,7 @@ static void bmesh_topology_rake(
 	for (iteration = 0; iteration <= count; ++iteration) {
 
 		SculptThreadedTaskData data = {
-			.sd = sd,.ob = ob,.brush = brush,.nodes = nodes,
+			.sd = sd, .ob = ob, .brush = brush, .nodes = nodes,
 			.strength = factor,
 		};
 		ParallelRangeSettings settings;
@@ -4105,7 +4094,7 @@ void sculpt_cache_calc_brushdata_symm(
 	/* XXX This reduces the length of the grab delta if it approaches the line of symmetry
 	 * XXX However, a different approach appears to be needed */
 #if 0
-	if (sd->paint.symmetry_flags & SCULPT_SYMMETRY_FEATHER) {
+	if (sd->paint.symmetry_flags & PAINT_SYMMETRY_FEATHER) {
 		float frac = 1.0f / max_overlap_count(sd);
 		float reduce = (feather - frac) / (1 - frac);
 
@@ -4576,7 +4565,7 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
 	StrokeCache *cache = ss->cache;
 	const float mouse[2] = {
 		cache->mouse[0],
-		cache->mouse[1]
+		cache->mouse[1],
 	};
 	int tool = brush->sculpt_tool;
 
@@ -5167,8 +5156,8 @@ static void sculpt_stroke_update_step(bContext *C, struct PaintStroke *UNUSED(st
 	sculpt_restore_mesh(sd, ob);
 
 	if (sd->flags & (SCULPT_DYNTOPO_DETAIL_CONSTANT | SCULPT_DYNTOPO_DETAIL_MANUAL)) {
-		float object_space_constant_detail = sd->constant_detail * mat4_to_scale(ob->imat);
-		BKE_pbvh_bmesh_detail_size_set(ss->pbvh, 1.0f / object_space_constant_detail);
+		float object_space_constant_detail = mat4_to_scale(ob->obmat) / sd->constant_detail;
+		BKE_pbvh_bmesh_detail_size_set(ss->pbvh, object_space_constant_detail);
 	}
 	else if (sd->flags & SCULPT_DYNTOPO_DETAIL_BRUSH) {
 		BKE_pbvh_bmesh_detail_size_set(ss->pbvh, ss->cache->radius * sd->detail_percent / 100.0f);
@@ -5570,6 +5559,9 @@ void sculpt_dynamic_topology_disable_ex(
 		ss->bm_log = NULL;
 	}
 
+	BKE_particlesystem_reset_all(ob);
+	BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_OUTDATED);
+
 	/* Refresh */
 	sculpt_update_after_dynamic_topology_toggle(depsgraph, scene, ob);
 }
@@ -5853,7 +5845,7 @@ static int ed_object_sculptmode_flush_recalc_flag(Scene *scene, Object *ob, Mult
 
 void ED_object_sculptmode_enter_ex(
         Main *bmain, Depsgraph *depsgraph,
-        Scene *scene, Object *ob,
+        Scene *scene, Object *ob, const bool force_dyntopo,
         ReportList *reports)
 {
 	const int mode_flag = OB_MODE_SCULPT;
@@ -5934,7 +5926,7 @@ void ED_object_sculptmode_enter_ex(
 			}
 		}
 
-		if (message_unsupported == NULL) {
+		if ((message_unsupported == NULL) || force_dyntopo) {
 			/* Needed because we may be entering this mode before the undo system loads. */
 			wmWindowManager *wm = bmain->wm.first;
 			bool has_undo = wm->undo_stack != NULL;
@@ -5967,7 +5959,7 @@ void ED_object_sculptmode_enter(struct bContext *C, ReportList *reports)
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Object *ob = OBACT(view_layer);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
-	ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, reports);
+	ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, reports);
 }
 
 void ED_object_sculptmode_exit_ex(
@@ -6049,7 +6041,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 		ED_object_sculptmode_exit_ex(depsgraph, scene, ob);
 	}
 	else {
-		ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, op->reports);
+		ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, op->reports);
 		BKE_paint_toolslots_brush_validate(bmain, &ts->sculpt->paint);
 	}
 
@@ -6111,8 +6103,8 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *UNUSED(op))
 	size = max_fff(dim[0], dim[1], dim[2]);
 
 	/* update topology size */
-	float object_space_constant_detail = sd->constant_detail * mat4_to_scale(ob->imat);
-	BKE_pbvh_bmesh_detail_size_set(ss->pbvh, 1.0f / object_space_constant_detail);
+	float object_space_constant_detail = mat4_to_scale(ob->obmat) / sd->constant_detail;
+	BKE_pbvh_bmesh_detail_size_set(ss->pbvh, object_space_constant_detail);
 
 	sculpt_undo_push_begin("Dynamic topology flood fill");
 	sculpt_undo_push_node(ob, NULL, SCULPT_UNDO_COORDS);

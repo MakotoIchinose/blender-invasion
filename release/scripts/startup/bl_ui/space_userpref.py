@@ -210,10 +210,10 @@ class USERPREF_PT_interface_editors(PreferencePanel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
-        flow.row().prop(view, "header_align_default", expand=True)
         flow.prop(system, "use_region_overlap")
         flow.prop(view, "show_layout_ui", text="Corner Splitting")
         flow.prop(view, "color_picker_type")
+        flow.row().prop(view, "header_align")
 
 
 class USERPREF_PT_interface_menus(Panel):
@@ -1282,7 +1282,6 @@ class USERPREF_PT_saveload_blend_autosave(PreferencePanel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
-        flow.prop(paths, "use_keep_session")
         flow.prop(paths, "use_auto_save_temporary_files")
         sub = flow.column()
         sub.active = paths.use_auto_save_temporary_files
@@ -1391,7 +1390,6 @@ class USERPREF_PT_input_mouse(PreferencePanel):
         flow.prop(inputs, "use_mouse_continuous")
         flow.prop(inputs, "use_drag_immediately")
         flow.prop(inputs, "drag_threshold")
-        flow.prop(inputs, "tweak_threshold")
         flow.prop(inputs, "mouse_double_click_time", text="Double Click Speed")
 
 
@@ -1985,14 +1983,14 @@ class USERPREF_PT_studiolight_light_editor(Panel):
         system = prefs.system
 
         row = layout.row()
-        row.prop(system, "edit_studio_light", toggle=True)
+        row.prop(system, "use_studio_light_edit", toggle=True)
         row.operator("wm.studiolight_new", text="Save as Studio light", icon='FILE_TICK')
 
         layout.separator()
 
         layout.use_property_split = True
         column = layout.split()
-        column.active = system.edit_studio_light
+        column.active = system.use_studio_light_edit
 
         light = system.solid_lights[0]
         colsplit = column.split(factor=0.85)

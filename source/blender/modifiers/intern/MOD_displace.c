@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,9 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_displace.c
- *  \ingroup modifiers
+/** \file \ingroup modifiers
  */
 
 
@@ -148,14 +136,14 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 {
 	DisplaceModifierData *dmd = (DisplaceModifierData *)md;
 	if (dmd->map_object != NULL && dmd->texmapping == MOD_DISP_MAP_OBJECT) {
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Displace Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "Displace Modifier");
 		DEG_add_object_relation(ctx->node, dmd->map_object, DEG_OB_COMP_TRANSFORM, "Displace Modifier");
 	}
 	if (dmd->texmapping == MOD_DISP_MAP_GLOBAL ||
 	    (ELEM(dmd->direction, MOD_DISP_DIR_X, MOD_DISP_DIR_Y, MOD_DISP_DIR_Z, MOD_DISP_DIR_RGB_XYZ) &&
 	    dmd->space == MOD_DISP_SPACE_GLOBAL))
 	{
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Displace Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "Displace Modifier");
 	}
 	if (dmd->texture != NULL) {
 		DEG_add_generic_id_relation(ctx->node, &dmd->texture->id, "Displace Modifier");
