@@ -102,7 +102,6 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
 	{eModifierType_SurfaceDeform, "SURFACE_DEFORM", ICON_MOD_MESHDEFORM, "Surface Deform", ""},
 	{eModifierType_Warp, "WARP", ICON_MOD_WARP, "Warp", ""},
 	{eModifierType_Wave, "WAVE", ICON_MOD_WAVE, "Wave", ""},
-	{eModifierType_RigidDeform, "RIGID_DEFORM", ICON_NONE, "Rigid Deform", ""},
 	{0, "", 0, N_("Simulate"), ""},
 	{eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
 	{eModifierType_Collision, "COLLISION", ICON_MOD_PHYSICS, "Collision", ""},
@@ -429,8 +428,6 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
 			return &RNA_SurfaceDeformModifier;
 		case eModifierType_WeightedNormal:
 			return &RNA_WeightedNormalModifier;
-		case eModifierType_RigidDeform:
-			return &RNA_RigidDeformModifier;
 		/* Default */
 		case eModifierType_None:
 		case eModifierType_ShapeKey:
@@ -511,7 +508,6 @@ RNA_MOD_VGROUP_NAME_SET(Shrinkwrap, vgroup_name);
 RNA_MOD_VGROUP_NAME_SET(SimpleDeform, vgroup_name);
 RNA_MOD_VGROUP_NAME_SET(Smooth, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Solidify, defgrp_name);
-RNA_MOD_VGROUP_NAME_SET(RigidDeform, anchor_group_name);
 RNA_MOD_VGROUP_NAME_SET(UVWarp, vgroup_name);
 RNA_MOD_VGROUP_NAME_SET(Warp, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Wave, defgrp_name);
@@ -779,12 +775,6 @@ static bool rna_LaplacianDeformModifier_is_bind_get(PointerRNA *ptr)
 {
 	LaplacianDeformModifierData *lmd = (LaplacianDeformModifierData *)ptr->data;
 	return ((lmd->flag & MOD_LAPLACIANDEFORM_BIND) && (lmd->vertexco != NULL));
-}
-
-static bool rna_RigidDeformModifier_is_bind_get(PointerRNA *ptr)
-{
-	RigidDeformModifierData *rdmd = (RigidDeformModifierData *)ptr->data;
-	return rdmd->bind_data != NULL;
 }
 
 /* NOTE: Curve and array modifiers requires curve path to be evaluated,
@@ -5070,32 +5060,6 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
-static void rna_def_modifier_rigiddeform(BlenderRNA *brna)
-{
-	StructRNA *srna;
-	PropertyRNA *prop;
-
-	srna = RNA_def_struct(brna, "RigidDeformModifier", "Modifier");
-	RNA_def_struct_ui_text(srna, "Rigid Deform Modifier", "");
-	RNA_def_struct_sdna(srna, "RigidDeformModifierData");
-	RNA_def_struct_ui_icon(srna, ICON_NONE);
-
-	prop = RNA_def_property(srna, "anchor_group_name", PROP_STRING, PROP_NONE);
-	RNA_def_property_ui_text(prop, "Vertex Group for Anchors",
-	    "Name of the vertex group which determines anchors");
-	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_RigidDeformModifier_anchor_group_name_set");
-
-	prop = RNA_def_property(srna, "is_bind", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_funcs(prop, "rna_RigidDeformModifier_is_bind_get", NULL);
-	RNA_def_property_ui_text(prop, "Bound", "Geometry has been bound to the modifier");
-	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-	prop = RNA_def_property(srna, "iterations", PROP_INT, PROP_NONE);
-	RNA_def_property_range(prop, 0, 20000);
-	RNA_def_property_ui_text(prop, "Iterations", "More means better result but slower");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
-}
-
 void RNA_def_modifier(BlenderRNA *brna)
 {
 	StructRNA *srna;
@@ -5218,7 +5182,6 @@ void RNA_def_modifier(BlenderRNA *brna)
 	rna_def_modifier_meshseqcache(brna);
 	rna_def_modifier_surfacedeform(brna);
 	rna_def_modifier_weightednormal(brna);
-	rna_def_modifier_rigiddeform(brna);
 }
 
 #endif

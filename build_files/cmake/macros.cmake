@@ -672,7 +672,6 @@ function(SETUP_BLENDER_SORTED_LIBS)
 		bf_intern_mikktspace
 		bf_intern_dualcon
 		bf_intern_cycles
-		extern_cholup
 		cycles_device
 		cycles_render
 		cycles_graph
@@ -692,7 +691,6 @@ function(SETUP_BLENDER_SORTED_LIBS)
 		bf_intern_clog
 		bf_intern_opensubdiv
 		bf_intern_numaapi
-		bf_intern_fast_svd
 	)
 
 	if(NOT WITH_SYSTEM_GLOG)
@@ -1062,7 +1060,7 @@ function(get_blender_version)
 
 	# So cmake depends on BKE_blender.h, beware of inf-loops!
 	CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/source/blender/blenkernel/BKE_blender_version.h
-				   ${CMAKE_BINARY_DIR}/source/blender/blenkernel/BKE_blender_version.h.done)
+	               ${CMAKE_BINARY_DIR}/source/blender/blenkernel/BKE_blender_version.h.done)
 
 	file(STRINGS ${CMAKE_SOURCE_DIR}/source/blender/blenkernel/BKE_blender_version.h _contents REGEX "^#define[ \t]+BLENDER_.*$")
 
@@ -1383,15 +1381,15 @@ function(find_python_package
 		unset(PYTHON_${_upper_package}_PATH CACHE)
 		find_path(PYTHON_${_upper_package}_PATH
 		  NAMES
-			${package}
+		    ${package}
 		  HINTS
-			"${PYTHON_LIBPATH}/"
-			"${PYTHON_LIBPATH}/python${PYTHON_VERSION}/"
-			"${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/"
+		    "${PYTHON_LIBPATH}/"
+		    "${PYTHON_LIBPATH}/python${PYTHON_VERSION}/"
+		    "${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/"
 		  PATH_SUFFIXES
-			site-packages
-			dist-packages
-			vendor-packages
+		    site-packages
+		    dist-packages
+		    vendor-packages
 		   NO_DEFAULT_PATH
 		)
 
