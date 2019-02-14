@@ -289,10 +289,13 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 			tgpw.onion = true;
 			tgpw.custonion = true;
 
+			bool textured_stroke = (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE);
+
 			/* normal strokes */
-			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
+			if (((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
 				(tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ||
-			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH))
+			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH)) &&
+				!textured_stroke)
 			{
 				ED_gp_draw_fill(&tgpw);
 			}
@@ -300,7 +303,8 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 			/* 3D Lines with basic shapes and invisible lines */
 			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ||
 			    (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ||
-			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH))
+			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH) ||
+				textured_stroke)
 			{
 				gp_draw_basic_stroke(
 				        tgpf, gps, tgpw.diff_mat, gps->flag & GP_STROKE_CYCLIC, ink,
