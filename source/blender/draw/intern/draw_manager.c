@@ -536,9 +536,9 @@ static void drw_context_state_init(void)
 		DST.draw_ctx.object_pose = NULL;
 	}
 
-	DST.draw_ctx.shader_cfg = GPU_SHADER_CFG_DEFAULT;
+	DST.draw_ctx.sh_cfg = GPU_SHADER_CFG_DEFAULT;
 	if (DST.draw_ctx.rv3d && DST.draw_ctx.rv3d->rflag & RV3D_CLIPPING) {
-		DST.draw_ctx.shader_cfg = GPU_SHADER_CFG_CLIPPED;
+		DST.draw_ctx.sh_cfg = GPU_SHADER_CFG_CLIPPED;
 	}
 }
 
@@ -1218,8 +1218,6 @@ static void drw_engines_enable_from_paint_mode(int mode)
 			use_drw_engine(&draw_engine_sculpt_type);
 			break;
 		case CTX_MODE_PAINT_WEIGHT:
-			use_drw_engine(&draw_engine_paint_weight_type);
-			break;
 		case CTX_MODE_PAINT_VERTEX:
 			use_drw_engine(&draw_engine_paint_vertex_type);
 			break;
@@ -2541,7 +2539,6 @@ void DRW_engines_register(void)
 	DRW_engine_register(&draw_engine_overlay_type);
 	DRW_engine_register(&draw_engine_paint_texture_type);
 	DRW_engine_register(&draw_engine_paint_vertex_type);
-	DRW_engine_register(&draw_engine_paint_weight_type);
 	DRW_engine_register(&draw_engine_particle_type);
 	DRW_engine_register(&draw_engine_pose_type);
 	DRW_engine_register(&draw_engine_sculpt_type);

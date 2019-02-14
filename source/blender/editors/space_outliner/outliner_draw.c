@@ -245,8 +245,11 @@ static void restrictbutton_ebone_visibility_cb(bContext *C, void *UNUSED(poin), 
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, NULL);
 }
 
-static void restrictbutton_gp_layer_flag_cb(bContext *C, void *UNUSED(poin), void *UNUSED(poin2))
+static void restrictbutton_gp_layer_flag_cb(bContext *C, void *poin, void *UNUSED(poin2))
 {
+	ID *id = (ID *)poin;
+
+	DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
 	WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 }
 
@@ -276,16 +279,16 @@ static void hidebutton_base_flag_cb(bContext *C, void *poin, void *poin2)
 	bool do_isolate = (win->eventstate->ctrl != 0) && !do_disable;
 	bool extend = (win->eventstate->shift != 0);
 	bool depsgraph_changed = false;
-	const bool is_library = (ob->id.lib != NULL);
+	const bool is_linked = ID_IS_LINKED(ob);
 
 	if (do_disable) {
-		if (!is_library) {
+		if (!is_linked) {
 			ob->restrictflag |= OB_RESTRICT_VIEW;
 			depsgraph_changed = true;
 		}
 	}
 	else if (do_isolate) {
-		depsgraph_changed = (!is_library) && ((ob->restrictflag & OB_RESTRICT_VIEW) != 0);
+		depsgraph_changed = (!is_linked) && ((ob->restrictflag & OB_RESTRICT_VIEW) != 0);
 
 		if (!extend) {
 			/* Make only one base visible. */
@@ -300,12 +303,12 @@ static void hidebutton_base_flag_cb(bContext *C, void *poin, void *poin2)
 			base->flag ^= BASE_HIDDEN;
 		}
 
-		if (!is_library) {
+		if (!is_linked) {
 			ob->restrictflag &= ~OB_RESTRICT_VIEW;
 		}
 	}
 	else if (ob->restrictflag & OB_RESTRICT_VIEW) {
-		if (!is_library) {
+		if (!is_linked) {
 			ob->restrictflag &= ~OB_RESTRICT_VIEW;
 			base->flag &= ~BASE_HIDDEN;
 		}
@@ -342,7 +345,7 @@ static void hidebutton_layer_collection_flag_cb(bContext *C, void *poin, void *p
 	bool depsgraph_changed = false;
 
 	if (do_disable) {
-		if (collection->id.lib == NULL) {
+		if (!ID_IS_LINKED(collection)) {
 			collection->flag |= COLLECTION_RESTRICT_VIEW;
 			depsgraph_changed = true;
 		}
@@ -681,6 +684,7 @@ static void outliner_draw_restrictbuts(
 				UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
 			}
 			else if (tselem->type == TSE_GP_LAYER) {
+				ID *id = tselem->id;
 				bGPDlayer *gpl = (bGPDlayer *)te->directdata;
 
 				bt = uiDefIconButBitS(
@@ -688,7 +692,7 @@ static void outliner_draw_restrictbuts(
 				        (int)(ar->v2d.cur.xmax - OL_TOG_RESTRICT_VIEWX), te->ys, UI_UNIT_X,
 				        UI_UNIT_Y, &gpl->flag, 0, 0, 0, 0,
 				        TIP_("Restrict/Allow visibility in the 3D View"));
-				UI_but_func_set(bt, restrictbutton_gp_layer_flag_cb, NULL, gpl);
+				UI_but_func_set(bt, restrictbutton_gp_layer_flag_cb, id, gpl);
 				UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
 				UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
 
@@ -697,10 +701,8 @@ static void outliner_draw_restrictbuts(
 				        (int)(ar->v2d.cur.xmax - OL_TOG_RESTRICT_SELECTX), te->ys, UI_UNIT_X,
 				        UI_UNIT_Y, &gpl->flag, 0, 0, 0, 0,
 				        TIP_("Restrict/Allow editing of strokes and keyframes in this layer"));
-				UI_but_func_set(bt, restrictbutton_gp_layer_flag_cb, NULL, gpl);
+				UI_but_func_set(bt, restrictbutton_gp_layer_flag_cb, id, gpl);
 				UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-
-				/* TODO: visibility in renders */
 			}
 			else if (outliner_is_collection_tree_element(te)) {
 				LayerCollection *lc = (tselem->type == TSE_LAYER_COLLECTION) ? te->directdata : NULL;

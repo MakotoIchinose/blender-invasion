@@ -1241,9 +1241,10 @@ static bool ui_drag_toggle_but_is_supported(const uiBut *but)
  * then just true or false for toggle buttons with more than 2 states. */
 static int ui_drag_toggle_but_pushed_state(uiBut *but)
 {
-	if (but->icon) {
+	if (but->rnapoin.data == NULL && but->poin == NULL && but->icon) {
 		/* Assume icon identifies a unique state, for buttons that
-		 * work though functions callbacks. */
+		 * work though functions callbacks and don't have an boolean
+		 * value that indicates the state. */
 		return but->icon + but->iconadd;
 	}
 	else if (ui_but_is_bool(but)) {
@@ -1734,8 +1735,13 @@ static bool ui_but_drag_init(
 	/* prevent other WM gestures to start while we try to drag */
 	WM_gestures_remove(C);
 
-	if (ABS(data->dragstartx - event->x) + ABS(data->dragstarty - event->y) > U.dragthreshold * U.dpi_fac) {
+	/* Clamp the maximum to half the UI unit size so a high user preference
+	 * doesn't require the user to drag more then half the default button height. */
+	const int drag_threshold = min_ii(
+	        U.tweak_threshold * U.dpi_fac,
+	        (int)((UI_UNIT_Y / 2) * ui_block_to_window_scale(data->region, but->block)));
 
+	if (ABS(data->dragstartx - event->x) + ABS(data->dragstarty - event->y) > drag_threshold) {
 		button_activate_state(C, but, BUTTON_STATE_EXIT);
 		data->cancel = true;
 #ifdef USE_DRAG_TOGGLE

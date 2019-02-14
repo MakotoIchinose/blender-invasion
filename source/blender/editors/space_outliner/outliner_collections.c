@@ -1065,7 +1065,7 @@ static int collection_flag_exec(bContext *C, wmOperator *op)
 		GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
 			LayerCollection *layer_collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
 			Collection *collection = layer_collection->collection;
-			if (collection->id.lib != NULL) {
+			if (ID_IS_LINKED(collection)) {
 				continue;
 			}
 			if (clear) {
@@ -1190,12 +1190,12 @@ static TreeTraversalAction outliner_hide_find_data_to_edit(TreeElement *te, void
 		LayerCollection *lc = te->directdata;
 
 		if (lc->collection->flag & COLLECTION_IS_MASTER) {
-			/* skip - showing warning/error message might be misleading
-			* when deleting multiple collections, so just do nothing */
+			/* Skip - showing warning/error message might be misleading
+			 * when deleting multiple collections, so just do nothing. */
 		}
 		else {
-			/* Delete, duplicate and link don't edit children, those will come along
-			* with the parents. */
+			/* Delete, duplicate and link don't edit children,
+			 * those will come along with the parents. */
 			BLI_gset_add(data->collections_to_edit, lc);
 		}
 	}
