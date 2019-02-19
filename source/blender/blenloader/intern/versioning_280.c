@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 /* allow readfile to use deprecated functionality */
@@ -2644,12 +2645,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			        IMA_FLAG_DEPRECATED_8 |
 			        IMA_FLAG_DEPRECATED_15 |
 			        IMA_FLAG_DEPRECATED_16);
-			image->tpageflag &= ~(
-			        IMA_TPAGEFLAG_DEPRECATED_0 |
-			        IMA_TPAGEFLAG_DEPRECATED_1 |
-			        IMA_TPAGEFLAG_DEPRECATED_2 |
-			        IMA_TPAGEFLAG_DEPRECATED_4 |
-			        IMA_TPAGEFLAG_DEPRECATED_5);
 		}
 
 		for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
@@ -2803,8 +2798,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 45)) {
+		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+			for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+				for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_SEQ) {
+						SpaceSeq *sseq = (SpaceSeq *)sl;
+						sseq->flag |= SEQ_SHOW_MARKER_LINES;
+					}
+				}
+			}
+		}
+	}
+
 	{
 		/* Versioning code until next subversion bump goes here. */
-
 	}
 }

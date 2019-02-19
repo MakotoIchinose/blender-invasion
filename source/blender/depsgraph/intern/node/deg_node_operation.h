@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #pragma once
@@ -171,6 +172,9 @@ enum class OperationCode {
 	/* Movie clips. --------------------------------------------------------- */
 	MOVIECLIP_EVAL,
 	MOVIECLIP_SELECT_UPDATE,
+
+	/* Images. -------------------------------------------------------------- */
+	IMAGE_ANIMATION,
 
 	/* Synchronization clips. ----------------------------------------------- */
 	SYNCHRONIZE_TO_ORIGINAL,

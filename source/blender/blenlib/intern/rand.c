@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 
@@ -73,6 +74,11 @@ RNG *BLI_rng_new_srandom(unsigned int seed)
 	BLI_rng_srandom(rng, seed);
 
 	return rng;
+}
+
+RNG *BLI_rng_copy(RNG *rng)
+{
+	return MEM_dupallocN(rng);
 }
 
 void BLI_rng_free(RNG *rng)
