@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Methods for constructing depsgraph's nodes
  */
@@ -72,6 +73,7 @@ extern "C" {
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_idcode.h"
+#include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_mask.h"
@@ -376,7 +378,8 @@ void DepsgraphNodeBuilder::end_build()
 		if (comp_node == NULL) {
 			continue;
 		}
-		OperationNode *op_node = comp_node->find_operation(entry_tag.opcode, entry_tag.name, entry_tag.name_tag);
+		OperationNode *op_node = comp_node->find_operation(
+		        entry_tag.opcode, entry_tag.name.c_str(), entry_tag.name_tag);
 		if (op_node == NULL) {
 			continue;
 		}
@@ -622,11 +625,11 @@ void DepsgraphNodeBuilder::build_object(int base_index,
 		        -1, object->proxy_group, DEG_ID_LINKED_INDIRECTLY, is_visible);
 	}
 	/* Object dupligroup. */
-	if (object->dup_group != NULL) {
+	if (object->instance_collection != NULL) {
 		const bool is_current_parent_collection_visible =
 		        is_parent_collection_visible_;
 		is_parent_collection_visible_ = is_visible;
-		build_collection(NULL, object->dup_group);
+		build_collection(NULL, object->instance_collection);
 		is_parent_collection_visible_ = is_current_parent_collection_visible;
 		add_operation_node(
 		        &object->id, NodeType::DUPLI, OperationCode::DUPLI);
@@ -823,11 +826,13 @@ void DepsgraphNodeBuilder::build_object_pointcache(Object *object)
 }
 
 /**
- * Build graph nodes for AnimData block
+ * Build graph nodes for AnimData block and any animated images used.
  * \param id: ID-Block which hosts the AnimData
  */
 void DepsgraphNodeBuilder::build_animdata(ID *id)
 {
+	build_animation_images(id);
+
 	AnimData *adt = BKE_animdata_from_id(id);
 	if (adt == NULL) {
 		return;
@@ -881,6 +886,20 @@ void DepsgraphNodeBuilder::build_animdata_nlastrip_targets(ListBase *strips)
 		else if (strip->strips.first != NULL) {
 			build_animdata_nlastrip_targets(&strip->strips);
 		}
+	}
+}
+
+/**
+ * Build graph nodes to update the current frame in image users.
+ */
+void DepsgraphNodeBuilder::build_animation_images(ID *id)
+{
+	if (BKE_image_user_id_has_animation(id)) {
+		ID *id_cow = get_cow_id(id);
+		add_operation_node(id,
+		                   NodeType::ANIMATION,
+		                   OperationCode::IMAGE_ANIMATION,
+		                   function_bind(BKE_image_user_id_eval_animation, _1, id_cow));
 	}
 }
 
@@ -1123,16 +1142,16 @@ void DepsgraphNodeBuilder::build_particle_systems(Object *object,
 		/* Visualization of particle system. */
 		switch (part->ren_as) {
 			case PART_DRAW_OB:
-				if (part->dup_ob != NULL) {
+				if (part->instance_object != NULL) {
 					build_object(-1,
-					             part->dup_ob,
+					             part->instance_object,
 					             DEG_ID_LINKED_INDIRECTLY,
 					             is_object_visible);
 				}
 				break;
 			case PART_DRAW_GR:
-				if (part->dup_group != NULL) {
-					build_collection(NULL, part->dup_group);
+				if (part->instance_collection != NULL) {
+					build_collection(NULL, part->instance_collection);
 				}
 				break;
 		}

@@ -16,7 +16,8 @@
 #ifndef __BKE_MODIFIER_H__
 #define __BKE_MODIFIER_H__
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_modifier_types.h"     /* needed for all enum typdefs */
@@ -426,6 +427,6 @@ struct DerivedMesh *modifier_applyModifier_DM_deprecated(
         struct DerivedMesh *dm);
 
 struct Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(
-        struct Object *ob_eval, bool *r_free_mesh);
+        struct Object *ob_eval, const bool get_cage_mesh);
 
 #endif

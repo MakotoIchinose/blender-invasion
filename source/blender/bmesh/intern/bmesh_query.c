@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * This file contains functions for answering common
  * Topological and geometric queries about a mesh, such
@@ -1671,13 +1672,13 @@ float BM_edge_calc_face_angle(const BMEdge *e)
 }
 
 /**
-* \brief BMESH EDGE/FACE ANGLE
-*
-* Calculates the angle between two faces in world space.
-* Assumes the face normals are correct.
-*
-* \return angle in radians
-*/
+ * \brief BMESH EDGE/FACE ANGLE
+ *
+ * Calculates the angle between two faces in world space.
+ * Assumes the face normals are correct.
+ *
+ * \return angle in radians
+ */
 float BM_edge_calc_face_angle_with_imat3_ex(const BMEdge *e, const float imat3[3][3], const float fallback)
 {
 	if (BM_edge_is_manifold(e)) {

@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 
@@ -658,7 +659,7 @@ GPUBatch *DRW_cache_gpencil_axes_get(void)
 
 /* -------------------------------------------------------------------- */
 /** \name Common Object API
-* \{ */
+ * \{ */
 
 GPUBatch *DRW_cache_object_all_edges_get(Object *ob)
 {

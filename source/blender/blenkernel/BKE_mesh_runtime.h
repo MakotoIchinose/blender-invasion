@@ -19,7 +19,8 @@
 #ifndef __BKE_MESH_RUNTIME_H__
 #define __BKE_MESH_RUNTIME_H__
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * This file contains access functions for the Mesh.runtime struct.
  */
@@ -45,7 +46,7 @@ struct DerivedMesh;
 #endif
 
 void BKE_mesh_runtime_reset(struct Mesh *mesh);
-void BKE_mesh_runtime_reset_on_copy(struct Mesh *mesh);
+void BKE_mesh_runtime_reset_on_copy(struct Mesh *mesh, const int flag);
 int BKE_mesh_runtime_looptri_len(const struct Mesh *mesh);
 void BKE_mesh_runtime_looptri_recalc(struct Mesh *mesh);
 const struct MLoopTri *BKE_mesh_runtime_looptri_ensure(struct Mesh *mesh);

@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 
@@ -597,7 +598,7 @@ static uiBut *template_id_def_new_but(
 	        BLT_I18NCONTEXT_ID_TEXTURE,
 	        BLT_I18NCONTEXT_ID_IMAGE,
 	        BLT_I18NCONTEXT_ID_LATTICE,
-	        BLT_I18NCONTEXT_ID_LAMP,
+	        BLT_I18NCONTEXT_ID_LIGHT,
 	        BLT_I18NCONTEXT_ID_CAMERA,
 	        BLT_I18NCONTEXT_ID_WORLD,
 	        BLT_I18NCONTEXT_ID_SCREEN,
@@ -2268,7 +2269,8 @@ void uiTemplatePreview(
 				          pr_texture, 10, TEX_PR_OTHER, 0, 0, "");
 			}
 			else if (GS(parent->name) == ID_LA) {
-				uiDefButS(block, UI_BTYPE_ROW, B_MATPRV, IFACE_("Light"),  0, 0, UI_UNIT_X * 10, UI_UNIT_Y,
+				uiDefButS(block, UI_BTYPE_ROW, B_MATPRV, CTX_IFACE_(BLT_I18NCONTEXT_ID_LIGHT, "Light"),
+				          0, 0, UI_UNIT_X * 10, UI_UNIT_Y,
 				          pr_texture, 10, TEX_PR_OTHER, 0, 0, "");
 			}
 			else if (GS(parent->name) == ID_WO) {
@@ -5048,7 +5050,7 @@ void uiTemplateCacheFile(uiLayout *layout, bContext *C, PointerRNA *ptr, const c
 		return;
 	}
 
-	SpaceButs *sbuts = CTX_wm_space_buts(C);
+	SpaceProperties *sbuts = CTX_wm_space_properties(C);
 
 	uiLayout *row = uiLayoutRow(layout, false);
 	uiBlock *block = uiLayoutGetBlock(row);

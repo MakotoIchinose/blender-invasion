@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
@@ -99,7 +100,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		}
 	}
 	if (do_add_own_transform) {
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "UV Project Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "UV Project Modifier");
 	}
 }
 

@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Contains management of ID's and libraries remap, unlink and free logic.
  */
@@ -244,10 +245,19 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 				                     ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 			}
 			if (cb_flag & IDWALK_CB_USER) {
-				id_us_min(old_id);
-				/* We do not want to handle LIB_TAG_INDIRECT/LIB_TAG_EXTERN here. */
-				if (new_id)
+				/* NOTE: We don't user-count IDs which are not in the main database.
+				 * This is because in certain conditions we can have datablocks in
+				 * the main which are referencing datablocks outside of it.
+				 * For example, BKE_mesh_new_from_object() called on an evaluated
+				 * object will cause such situation.
+				 */
+				if ((old_id->tag & LIB_TAG_NO_MAIN) == 0) {
+					id_us_min(old_id);
+				}
+				if (new_id != NULL && (new_id->tag & LIB_TAG_NO_MAIN) == 0) {
+					/* We do not want to handle LIB_TAG_INDIRECT/LIB_TAG_EXTERN here. */
 					new_id->us++;
+				}
 			}
 			else if (cb_flag & IDWALK_CB_USER_ONE) {
 				id_us_ensure_real(new_id);
@@ -388,8 +398,6 @@ ATTR_NONNULL(1) static void libblock_remap_data(
         Main *bmain, ID *id, ID *old_id, ID *new_id, const short remap_flags, IDRemap *r_id_remap_data)
 {
 	IDRemap id_remap_data;
-	ListBase *lb_array[MAX_LIBARRAY];
-	int i;
 	const int foreach_id_flags = (remap_flags & ID_REMAP_NO_INDIRECT_PROXY_DATA_USAGE) != 0 ? IDWALK_NO_INDIRECT_PROXY_DATA_USAGE : IDWALK_NOP;
 
 	if (r_id_remap_data == NULL) {
@@ -414,24 +422,23 @@ ATTR_NONNULL(1) static void libblock_remap_data(
 		BKE_library_foreach_ID_link(NULL, id, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
 	}
 	else {
-		i = set_listbasepointers(bmain, lb_array);
-
-		/* Note that this is a very 'bruteforce' approach, maybe we could use some depsgraph to only process
+		/* Note that this is a very 'brute force' approach, maybe we could use some depsgraph to only process
 		 * objects actually using given old_id... sounds rather unlikely currently, though, so this will do for now. */
+		ID *id_curr;
 
-		while (i--) {
-			for (ID *id_curr = lb_array[i]->first; id_curr; id_curr = id_curr->next) {
-				if (BKE_library_id_can_use_idtype(id_curr, GS(old_id->name))) {
-					/* Note that we cannot skip indirect usages of old_id here (if requested), we still need to check it for
-					 * the user count handling...
-					 * XXX No more true (except for debug usage of those skipping counters). */
-					r_id_remap_data->id = id_curr;
-					libblock_remap_data_preprocess(r_id_remap_data);
-					BKE_library_foreach_ID_link(
-					            NULL, id_curr, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
-				}
+		FOREACH_MAIN_ID_BEGIN(bmain, id_curr)
+		{
+			if (BKE_library_id_can_use_idtype(id_curr, GS(old_id->name))) {
+				/* Note that we cannot skip indirect usages of old_id here (if requested), we still need to check it for
+				 * the user count handling...
+				 * XXX No more true (except for debug usage of those skipping counters). */
+				r_id_remap_data->id = id_curr;
+				libblock_remap_data_preprocess(r_id_remap_data);
+				BKE_library_foreach_ID_link(
+				            NULL, id_curr, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
 			}
 		}
+		FOREACH_MAIN_ID_END;
 	}
 
 	/* XXX We may not want to always 'transfer' fakeuser from old to new id... Think for now it's desired behavior
@@ -819,12 +826,12 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
  * However, they might still be using (referencing) other IDs, this code takes care of it if
  * \a LIB_TAG_NO_USER_REFCOUNT is not defined.
  *
- * \param bmain Main database containing the freed ID, can be NULL in case it's a temp ID outside of any Main.
- * \param idv Pointer to ID to be freed.
- * \param flag Set of \a LIB_ID_FREE_... flags controlling/overriding usual freeing process,
- *             0 to get default safe behavior.
- * \param use_flag_from_idtag Still use freeing info flags from given ID datablock,
- *                            even if some overriding ones are passed in \a falg parameter.
+ * \param bmain: Main database containing the freed ID, can be NULL in case it's a temp ID outside of any Main.
+ * \param idv: Pointer to ID to be freed.
+ * \param flag: Set of \a LIB_ID_FREE_... flags controlling/overriding usual freeing process,
+ * 0 to get default safe behavior.
+ * \param use_flag_from_idtag: Still use freeing info flags from given ID datablock,
+ * even if some overriding ones are passed in \a falg parameter.
  */
 void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_idtag)
 {
@@ -914,8 +921,8 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
  *
  * See #BKE_id_free_ex description for full details.
  *
- * \param bmain Main database containing the freed ID, can be NULL in case it's a temp ID outside of any Main.
- * \param idv Pointer to ID to be freed.
+ * \param bmain: Main database containing the freed ID, can be NULL in case it's a temp ID outside of any Main.
+ * \param idv: Pointer to ID to be freed.
  */
 void BKE_id_free(Main *bmain, void *idv)
 {
@@ -970,7 +977,7 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 		 * This means that we won't have to loop over all deleted IDs to remove usages
 		 * of other deleted IDs.
 		 * This gives tremendous speed-up when deleting a large amount of IDs from a Main
-		 * countaining thousands of those.
+		 * containing thousands of those.
 		 * This also means that we have to be very careful here, as we by-pass many 'common'
 		 * processing, hence risking to 'corrupt' at least user counts, if not IDs themselves. */
 		bool keep_looping = true;
@@ -1085,7 +1092,7 @@ void BKE_id_delete(Main *bmain, void *idv)
 /**
  * Properly delete all IDs tagged with \a LIB_TAG_DOIT, in given \a bmain database.
  *
- * This is more efficient than calling #BKE_id_delete repitively on a large set of IDs
+ * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
  * (several times faster when deleting most of the IDs at once)...
  *
  * \warning Considered experimental for now, seems to be working OK but this is

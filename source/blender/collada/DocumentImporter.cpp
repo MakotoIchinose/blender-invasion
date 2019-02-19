@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 // TODO:
@@ -836,10 +837,10 @@ bool DocumentImporter::writeCamera(const COLLADAFW::Camera *camera)
 	if (et && et->isProfile("blender")) {
 		et->setData("shiftx",&(cam->shiftx));
 		et->setData("shifty",&(cam->shifty));
-		et->setData("YF_dofdist",&(cam->YF_dofdist));
+		et->setData("dof_distance",&(cam->dof_distance));
 	}
-	cam->clipsta = camera->getNearClippingPlane().getValue();
-	cam->clipend = camera->getFarClippingPlane().getValue();
+	cam->clip_start = camera->getNearClippingPlane().getValue();
+	cam->clip_end = camera->getFarClippingPlane().getValue();
 
 	COLLADAFW::Camera::CameraType type = camera->getCameraType();
 	switch (type) {

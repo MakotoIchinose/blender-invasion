@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup spoutliner
+/** \file
+ * \ingroup spoutliner
  */
 
 #include <string.h>
@@ -133,13 +134,13 @@ TreeTraversalAction outliner_find_selected_objects(TreeElement *te, void *custom
 
 bool ED_outliner_collections_editor_poll(bContext *C)
 {
-	SpaceOops *so = CTX_wm_space_outliner(C);
+	SpaceOutliner *so = CTX_wm_space_outliner(C);
 	return (so != NULL) && ELEM(so->outlinevis, SO_VIEW_LAYER, SO_SCENES, SO_LIBRARIES);
 }
 
 static bool outliner_view_layer_collections_editor_poll(bContext *C)
 {
-	SpaceOops *so = CTX_wm_space_outliner(C);
+	SpaceOutliner *so = CTX_wm_space_outliner(C);
 	return (so != NULL) && (so->outlinevis == SO_VIEW_LAYER);
 }
 
@@ -171,7 +172,7 @@ static TreeTraversalAction collection_find_selected_to_add(TreeElement *te, void
 
 static int collection_new_exec(bContext *C, wmOperator *op)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	ARegion *ar = CTX_wm_region(C);
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
@@ -233,7 +234,7 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
 
 struct CollectionEditData {
 	Scene *scene;
-	SpaceOops *soops;
+	SpaceOutliner *soops;
 	GSet *collections_to_edit;
 };
 
@@ -264,7 +265,7 @@ static int collection_delete_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 	bool hierarchy = RNA_boolean_get(op->ptr, "hierarchy");
 
@@ -340,7 +341,7 @@ static TreeTraversalAction outliner_find_first_selected_layer_collection(TreeEle
 
 static LayerCollection *outliner_active_layer_collection(bContext *C)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
 	struct CollectionObjectsSelectData data = {
 		.layer_collection = NULL,
@@ -424,7 +425,7 @@ static TreeTraversalAction outliner_find_first_selected_collection(TreeElement *
 
 static TreeElement *outliner_active_collection(bContext *C)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
 	struct CollectionDuplicateData data = {
 		.te = NULL,
@@ -437,7 +438,7 @@ static TreeElement *outliner_active_collection(bContext *C)
 static int collection_duplicate_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	TreeElement *te = outliner_active_collection(C);
 
 	/* Can happen when calling from a key binding. */
@@ -490,7 +491,7 @@ static int collection_link_exec(bContext *C, wmOperator *UNUSED(op))
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	Collection *active_collection = CTX_data_layer_collection(C)->collection;
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
@@ -538,7 +539,7 @@ static int collection_instance_exec(bContext *C, wmOperator *UNUSED(op))
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
@@ -562,7 +563,7 @@ static int collection_instance_exec(bContext *C, wmOperator *UNUSED(op))
 	GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
 		Collection *collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
 		Object *ob = ED_object_add_type(C, OB_EMPTY, collection->id.name + 2, scene->cursor.location, NULL, false, 0);
-		ob->dup_group = collection;
+		ob->instance_collection = collection;
 		ob->transflag |= OB_DUPLICOLLECTION;
 		id_lib_extern(&collection->id);
 	}
@@ -620,7 +621,7 @@ static TreeTraversalAction layer_collection_find_data_to_edit(TreeElement *te, v
 static bool collections_view_layer_poll(bContext *C, bool clear, int flag)
 {
 	/* Poll function so the right click menu show current state of selected collections. */
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	if (!(soops && soops->outlinevis == SO_VIEW_LAYER)) {
 		return false;
 	}
@@ -697,7 +698,7 @@ static int collection_view_layer_exec(bContext *C, wmOperator *op)
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 	bool clear = strstr(op->idname, "clear") != NULL;
 	int flag = strstr(op->idname, "holdout") ?       LAYER_COLLECTION_HOLDOUT :
@@ -828,7 +829,7 @@ static int collection_isolate_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	const bool extend = RNA_boolean_get(op->ptr, "extend");
 	bool depsgraph_changed = false;
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
@@ -914,7 +915,7 @@ static int collection_visibility_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	const bool is_inside = strstr(op->idname, "inside") != NULL;
 	const bool show = strstr(op->idname, "show") != NULL;
 	bool depsgraph_changed = false;
@@ -1051,7 +1052,7 @@ static int collection_flag_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	const bool is_render = strstr(op->idname, "render");
 	const bool clear = strstr(op->idname, "show") || strstr(op->idname, "enable");
 	int flag = is_render ? COLLECTION_RESTRICT_RENDER : COLLECTION_RESTRICT_VIEW;
@@ -1065,7 +1066,7 @@ static int collection_flag_exec(bContext *C, wmOperator *op)
 		GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
 			LayerCollection *layer_collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
 			Collection *collection = layer_collection->collection;
-			if (collection->id.lib != NULL) {
+			if (ID_IS_LINKED(collection)) {
 				continue;
 			}
 			if (clear) {
@@ -1172,7 +1173,7 @@ void OUTLINER_OT_collection_disable_render(wmOperatorType *ot)
 struct OutlinerHideEditData {
 	Scene *scene;
 	ViewLayer *view_layer;
-	SpaceOops *soops;
+	SpaceOutliner *soops;
 	GSet *collections_to_edit;
 	GSet *bases_to_edit;
 };
@@ -1190,12 +1191,12 @@ static TreeTraversalAction outliner_hide_find_data_to_edit(TreeElement *te, void
 		LayerCollection *lc = te->directdata;
 
 		if (lc->collection->flag & COLLECTION_IS_MASTER) {
-			/* skip - showing warning/error message might be misleading
-			* when deleting multiple collections, so just do nothing */
+			/* Skip - showing warning/error message might be misleading
+			 * when deleting multiple collections, so just do nothing. */
 		}
 		else {
-			/* Delete, duplicate and link don't edit children, those will come along
-			* with the parents. */
+			/* Delete, duplicate and link don't edit children,
+			 * those will come along with the parents. */
 			BLI_gset_add(data->collections_to_edit, lc);
 		}
 	}
@@ -1212,7 +1213,7 @@ static int outliner_hide_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct OutlinerHideEditData data = {.scene = scene, .view_layer = view_layer, .soops = soops,};
 	data.collections_to_edit = BLI_gset_ptr_new("outliner_hide_exec__collections_to_edit");
 	data.bases_to_edit = BLI_gset_ptr_new("outliner_hide_exec__bases_to_edit");
@@ -1301,7 +1302,7 @@ void OUTLINER_OT_unhide_all(wmOperatorType *ot)
  */
 void ED_outliner_selected_objects_get(const bContext *C, ListBase *objects)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct IDsSelectedData data = {{NULL}};
 	outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, outliner_find_selected_objects, &data);
 	LISTBASE_FOREACH (LinkData *, link, &data.selected_array) {

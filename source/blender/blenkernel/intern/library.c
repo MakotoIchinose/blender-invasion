@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Contains management of ID's and libraries
  * allocate and free of all library data
@@ -515,32 +516,6 @@ static int id_copy_libmanagement_cb(void *user_data, ID *UNUSED(id_self), ID **i
 	return IDWALK_RET_NOP;
 }
 
-static void id_copy_clear_runtime_pointers(ID *id, int UNUSED(flag))
-{
-	if (id == NULL) {
-		return;
-	}
-	/* TODO(sergey): We might want to do a deep-copy of all the pointers inside.
-	 * This isn't currently needed, and is quite involved change (to cover all
-	 * things like batch cache and such). */
-	switch ((ID_Type)GS(id->name)) {
-		case ID_OB:
-		{
-			Object *object = (Object *)id;
-			BKE_object_runtime_reset_on_copy(object);
-			break;
-		}
-		case ID_ME:
-		{
-			Mesh *mesh = (Mesh *)id;
-			BKE_mesh_runtime_reset_on_copy(mesh);
-			break;
-		}
-		default:
-			break;
-	}
-}
-
 bool BKE_id_copy_is_allowed(const ID *id)
 {
 #define LIB_ID_TYPES_NOCOPY ID_LI, ID_SCR, ID_WM,  /* Not supported */ \
@@ -707,8 +682,6 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
 		(*r_newid)->lib = id->lib;
 	}
 
-	id_copy_clear_runtime_pointers(*r_newid, flag);
-
 	return true;
 }
 
@@ -722,7 +695,7 @@ bool BKE_id_copy(Main *bmain, const ID *id, ID **newid)
 }
 
 /** Does a mere memory swap over the whole IDs data (including type-specific memory).
- *  \note Most internal ID data itself is not swapped (only IDProperties are). */
+ * \note Most internal ID data itself is not swapped (only IDProperties are). */
 void BKE_id_swap(Main *bmain, ID *id_a, ID *id_b)
 {
 	BLI_assert(GS(id_a->name) == GS(id_b->name));
@@ -1696,19 +1669,14 @@ void id_clear_lib_data(Main *bmain, ID *id)
 /* next to indirect usage in read/writefile also in editobject.c scene.c */
 void BKE_main_id_clear_newpoins(Main *bmain)
 {
-	ListBase *lbarray[MAX_LIBARRAY];
 	ID *id;
-	int a;
 
-	a = set_listbasepointers(bmain, lbarray);
-	while (a--) {
-		id = lbarray[a]->first;
-		while (id) {
-			id->newid = NULL;
-			id->tag &= ~LIB_TAG_NEW;
-			id = id->next;
-		}
+	FOREACH_MAIN_ID_BEGIN(bmain, id)
+	{
+		id->newid = NULL;
+		id->tag &= ~LIB_TAG_NEW;
 	}
+	FOREACH_MAIN_ID_END;
 }
 
 

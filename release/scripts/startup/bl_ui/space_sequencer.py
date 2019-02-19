@@ -212,6 +212,7 @@ class SEQUENCER_MT_view(Menu):
             layout.prop(st, "show_seconds")
             layout.prop(st, "show_frame_indicator")
             layout.prop(st, "show_strip_offset")
+            layout.prop(st, "show_marker_lines")
 
             layout.prop_menu_enum(st, "waveform_display_type")
 
@@ -742,7 +743,7 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
                     layout.prop(strip, "speed_factor")
                 else:
                     layout.prop(strip, "speed_factor", text="Frame Number")
-                    layout.prop(strip, "scale_to_length")
+                    layout.prop(strip, "use_scale_to_length")
 
         elif strip.type == 'TRANSFORM':
             layout = self.layout

@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 
@@ -155,6 +156,16 @@ void ui_block_to_window_rctf(const ARegion *ar, uiBlock *block, rctf *rct_dst, c
 	*rct_dst = *rct_src;
 	ui_block_to_window_fl(ar, block, &rct_dst->xmin, &rct_dst->ymin);
 	ui_block_to_window_fl(ar, block, &rct_dst->xmax, &rct_dst->ymax);
+}
+
+float ui_block_to_window_scale(const ARegion *ar, uiBlock *block)
+{
+	/* We could have function for this to avoid dummy arg. */
+	float dummy_x;
+	float min_y = 0, max_y = 1;
+	ui_block_to_window_fl(ar, block, &dummy_x, &min_y);
+	ui_block_to_window_fl(ar, block, &dummy_x, &max_y);
+	return max_y - min_y;
 }
 
 /* for mouse cursor */

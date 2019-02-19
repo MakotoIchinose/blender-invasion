@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 #include "DNA_camera_types.h"
@@ -1072,7 +1073,7 @@ int view3d_opengl_select(
 			.rect = &rect,
 			.gpu_select_mode = gpu_select_mode,
 		};
-		draw_surface = true;
+		draw_surface = (v3d->shading.type > OB_WIRE);
 		DRW_draw_select_loop(
 		        depsgraph, ar, v3d,
 		        use_obedit_skip, draw_surface, use_nearest, &rect,
@@ -1233,7 +1234,7 @@ static bool view3d_localview_init(
 
 					if (rv3d->persp == RV3D_PERSP) {
 						/* Don't zoom closer than the near clipping plane. */
-						dist_new = max_ff(dist_new, v3d->near * 1.5f);
+						dist_new = max_ff(dist_new, v3d->clip_start * 1.5f);
 					}
 				}
 

@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -1261,7 +1262,6 @@ makebreak:
 					sb = &selboxes[i - selstart];
 					sb->rot = -ct->rot;
 				}
-				
 			}
 		}
 	}

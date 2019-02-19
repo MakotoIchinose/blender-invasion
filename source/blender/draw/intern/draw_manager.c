@@ -16,7 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include <stdio.h>
@@ -536,9 +537,9 @@ static void drw_context_state_init(void)
 		DST.draw_ctx.object_pose = NULL;
 	}
 
-	DST.draw_ctx.shader_cfg = GPU_SHADER_CFG_DEFAULT;
+	DST.draw_ctx.sh_cfg = GPU_SHADER_CFG_DEFAULT;
 	if (DST.draw_ctx.rv3d && DST.draw_ctx.rv3d->rflag & RV3D_CLIPPING) {
-		DST.draw_ctx.shader_cfg = GPU_SHADER_CFG_CLIPPED;
+		DST.draw_ctx.sh_cfg = GPU_SHADER_CFG_CLIPPED;
 	}
 }
 
@@ -1218,8 +1219,6 @@ static void drw_engines_enable_from_paint_mode(int mode)
 			use_drw_engine(&draw_engine_sculpt_type);
 			break;
 		case CTX_MODE_PAINT_WEIGHT:
-			use_drw_engine(&draw_engine_paint_weight_type);
-			break;
 		case CTX_MODE_PAINT_VERTEX:
 			use_drw_engine(&draw_engine_paint_vertex_type);
 			break;
@@ -2160,7 +2159,7 @@ void DRW_draw_select_loop(
 					/* This relies on dupli instances being after their instancing object. */
 					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						Object *ob_orig = DEG_get_original_object(ob);
-						DRW_select_load_id(ob_orig->select_color);
+						DRW_select_load_id(ob_orig->select_id);
 					}
 					DST.dupli_parent = data_.dupli_parent;
 					DST.dupli_source = data_.dupli_object_current;
@@ -2541,7 +2540,6 @@ void DRW_engines_register(void)
 	DRW_engine_register(&draw_engine_overlay_type);
 	DRW_engine_register(&draw_engine_paint_texture_type);
 	DRW_engine_register(&draw_engine_paint_vertex_type);
-	DRW_engine_register(&draw_engine_paint_weight_type);
 	DRW_engine_register(&draw_engine_particle_type);
 	DRW_engine_register(&draw_engine_pose_type);
 	DRW_engine_register(&draw_engine_sculpt_type);

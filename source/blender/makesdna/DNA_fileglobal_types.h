@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_FILEGLOBAL_TYPES_H__
@@ -28,8 +29,9 @@
  * the moment of saving, and the file-specific settings.
  */
 typedef struct FileGlobal {
-	/** Needs to be here, for human fileformat recognition. */
+	/** Needs to be here, for human fileformat recognition (keep first!). */
 	char subvstr[4];
+
 	short subversion;
 	short minversion, minsubversion;
 	char pad[6];

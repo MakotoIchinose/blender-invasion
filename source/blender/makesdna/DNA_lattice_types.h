@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_LATTICE_TYPES_H__
@@ -32,12 +33,12 @@ struct Ipo;
 struct Key;
 struct MDeformVert;
 
+#
+#
 typedef struct EditLatt {
 	struct Lattice *latt;
 
 	int shapenr;
-
-	char pad[4];
 } EditLatt;
 
 typedef struct Lattice {

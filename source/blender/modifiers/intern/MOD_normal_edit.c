@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <string.h>
@@ -61,7 +62,7 @@ static void generate_vert_coordinates(
 	if (r_size != NULL) {
 		if (ob_center != NULL) {
 			/* Not we are not interested in signs here - they are even troublesome actually, due to security clamping! */
-			abs_v3_v3(r_size, ob_center->size);
+			abs_v3_v3(r_size, ob_center->scale);
 		}
 		else {
 			/* Set size. */
@@ -531,7 +532,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	NormalEditModifierData *enmd = (NormalEditModifierData *) md;
 	if (enmd->target) {
 		DEG_add_object_relation(ctx->node, enmd->target, DEG_OB_COMP_TRANSFORM, "NormalEdit Modifier");
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "NormalEdit Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "NormalEdit Modifier");
 	}
 }
 

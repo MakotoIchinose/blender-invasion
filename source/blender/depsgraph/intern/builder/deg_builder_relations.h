@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #pragma once
@@ -36,6 +37,7 @@
 #include "BLI_string.h"
 
 #include "intern/builder/deg_builder_map.h"
+#include "intern/builder/deg_builder_rna.h"
 #include "intern/depsgraph.h"
 #include "intern/node/deg_node.h"
 #include "intern/node/deg_node_component.h"
@@ -194,6 +196,12 @@ struct DepsgraphRelationBuilder
 	                                   const char *description,
 	                                   int flags = 0);
 
+	/* Adds relation from proper transformation opertation to the modifier.
+	 * Takes care of checking for possible physics solvers modifying position
+	 * of this object. */
+	void add_modifier_to_transform_relation(const DepsNodeHandle *handle,
+	                                        const char *description);
+
 	void add_customdata_mask(Object *object, uint64_t mask);
 	void add_special_eval_flag(ID *object, uint32_t flag);
 
@@ -230,6 +238,7 @@ struct DepsgraphRelationBuilder
 	                                     OperationNode *operation_from,
 	                                     ListBase *strips);
 	void build_animdata_drivers(ID *id);
+	void build_animation_images(ID *id);
 	void build_action(bAction *action);
 	void build_driver(ID *id, FCurve *fcurve);
 	void build_driver_data(ID *id, FCurve *fcurve);
@@ -292,7 +301,7 @@ protected:
 	TimeSourceNode *get_node(const TimeSourceKey &key) const;
 	ComponentNode *get_node(const ComponentKey &key) const;
 	OperationNode *get_node(const OperationKey &key) const;
-	Node *get_node(const RNAPathKey &key) const;
+	Node *get_node(const RNAPathKey &key);
 
 	OperationNode *find_node(const OperationKey &key) const;
 	bool has_node(const OperationKey &key) const;
@@ -349,6 +358,7 @@ private:
 	Scene *scene_;
 
 	BuilderMap built_map_;
+	RNANodeQuery rna_node_query_;
 };
 
 struct DepsNodeHandle

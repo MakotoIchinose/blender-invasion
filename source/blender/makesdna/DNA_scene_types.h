@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_SCENE_TYPES_H__
@@ -738,7 +739,7 @@ typedef struct RenderData {
 	short simplify_subsurf;
 	short simplify_subsurf_render;
 	short simplify_gpencil;
-	short pad10;
+	short simplify_smoke_ignore_highres;
 	float simplify_particles;
 	float simplify_particles_render;
 
@@ -1520,15 +1521,6 @@ typedef struct ToolSettings {
 
 /* *************************************************************** */
 /* Assorted Scene Data */
-
-/* ------------------------------------------- */
-/* Stats (show in Info header) */
-
-typedef struct bStats {
-	/* scene totals for visible layers */
-	int totobj, totlamp, totobjsel, totcurve, totmesh, totarmature;
-	int totvert, totface;
-} bStats;
 
 /* ------------------------------------------- */
 /* Unit Settings */

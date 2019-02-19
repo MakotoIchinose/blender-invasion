@@ -225,7 +225,7 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
                 else:
                     row = split.row()
                     row.enabled = particle_panel_enabled(context, psys)
-                    row.prop(part, "regrow_hair")
+                    row.prop(part, "use_regrow_hair")
                     row.prop(part, "use_advanced_hair")
 
                 if psys is not None and psys.is_edited:
@@ -479,8 +479,10 @@ class PARTICLE_PT_cache(ParticleButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        psys = context.particle_system
         engine = context.engine
+        if engine not in cls.COMPAT_ENGINES:
+            return False
+        psys = context.particle_system
         if psys is None:
             return False
         if psys.settings is None:
@@ -491,10 +493,10 @@ class PARTICLE_PT_cache(ParticleButtonsPanel, Panel):
         if phystype == 'NO' or phystype == 'KEYED':
             return False
         return (
-            (psys.settings.type in {'EMITTER', 'REACTOR'} or
-             (psys.settings.type == 'HAIR' and
-              (psys.use_hair_dynamics or psys.point_cache.is_baked))) and
-            engine in cls.COMPAT_ENGINES
+            psys.settings.type in {'EMITTER', 'REACTOR'} or (
+                (psys.settings.type == 'HAIR') and
+                (psys.use_hair_dynamics or psys.point_cache.is_baked)
+            )
         )
 
     def draw(self, context):
@@ -681,8 +683,6 @@ class PARTICLE_PT_physics(ParticleButtonsPanel, Panel):
             if psys:
                 col.prop(psys, "use_keyed_timing", text="Use Timing")
 
-            col.label(text="Keys")
-
 
 class PARTICLE_PT_physics_fluid_advanced(ParticleButtonsPanel, Panel):
     bl_label = "Advanced"
@@ -709,15 +709,15 @@ class PARTICLE_PT_physics_fluid_advanced(ParticleButtonsPanel, Panel):
 
         if fluid.solver == 'DDR':
             sub = col.column()
-            sub.prop(fluid, "repulsion", slider=fluid.factor_repulsion)
-            sub.prop(fluid, "factor_repulsion")
+            sub.prop(fluid, "repulsion", slider=fluid.use_factor_repulsion)
+            sub.prop(fluid, "use_factor_repulsion")
 
-            sub.prop(fluid, "stiff_viscosity", slider=fluid.factor_stiff_viscosity)
-            sub.prop(fluid, "factor_stiff_viscosity")
+            sub.prop(fluid, "stiff_viscosity", slider=fluid.use_factor_stiff_viscosity)
+            sub.prop(fluid, "use_factor_stiff_viscosity")
 
         sub = col.column()
-        sub.prop(fluid, "fluid_radius", slider=fluid.factor_radius)
-        sub.prop(fluid, "factor_radius")
+        sub.prop(fluid, "fluid_radius", slider=fluid.use_factor_radius)
+        sub.prop(fluid, "use_factor_radius")
 
         sub.prop(fluid, "rest_density", slider=fluid.use_factor_density)
         sub.prop(fluid, "use_factor_density")
@@ -821,8 +821,8 @@ class PARTICLE_PT_physics_fluid_springs_advanced(ParticleButtonsPanel, Panel):
         fluid = part.fluid
 
         sub = layout.column()
-        sub.prop(fluid, "rest_length", slider=fluid.factor_rest_length)
-        sub.prop(fluid, "factor_rest_length")
+        sub.prop(fluid, "rest_length", slider=fluid.use_factor_rest_length)
+        sub.prop(fluid, "use_factor_rest_length")
 
 
 class PARTICLE_PT_physics_boids_movement(ParticleButtonsPanel, Panel):
@@ -939,7 +939,7 @@ class PARTICLE_PT_physics_relations(ParticleButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         part = particle_get_settings(context)
-        return part.physics_type in {'KEYED', 'BOIDS', 'FLUID'}
+        return part.physics_type in {'KEYED', 'BOIDS'}
 
     def draw(self, context):
         layout = self.layout
@@ -982,12 +982,48 @@ class PARTICLE_PT_physics_relations(ParticleButtonsPanel, Panel):
                 sub.prop(key, "object")
                 sub.prop(key, "system", text="System")
                 layout.prop(key, "alliance")
-            elif part.physics_type == 'FLUID':
-                sub = layout.column()
-                # doesn't work yet
-                #sub.alert = key.valid
-                sub.prop(key, "object")
-                sub.prop(key, "system", text="System")
+
+
+class PARTICLE_PT_physics_fluid_interaction(ParticleButtonsPanel, Panel):
+    bl_label = "Fluid Interaction"
+    bl_parent_id = "PARTICLE_PT_physics"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        part = particle_get_settings(context)
+        return part.physics_type == 'FLUID'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        psys = context.particle_system
+        part = particle_get_settings(context)
+
+        row = layout.row()
+        row.template_list("UI_UL_list", "particle_targets", psys, "targets",
+                          psys, "active_particle_target_index", rows=4)
+
+        col = row.column()
+        sub = col.row()
+        subsub = sub.column(align=True)
+        subsub.operator("particle.new_target", icon='ADD', text="")
+        subsub.operator("particle.target_remove", icon='REMOVE', text="")
+        sub = col.row()
+        subsub = sub.column(align=True)
+        subsub.operator("particle.target_move_up", icon='TRIA_UP', text="")
+        subsub.operator("particle.target_move_down", icon='TRIA_DOWN', text="")
+
+        key = psys.active_particle_target
+
+        if key:
+            sub = layout.column()
+            # doesn't work yet
+            #sub.alert = key.valid
+            sub.prop(key, "object")
+            sub.prop(key, "system", text="System")
 
 
 class PARTICLE_PT_physics_deflection(ParticleButtonsPanel, Panel):
@@ -1025,7 +1061,7 @@ class PARTICLE_PT_physics_forces(ParticleButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         part = particle_get_settings(context)
-        return part.physics_type == 'NEWTON'
+        return part.physics_type in {'NEWTON', 'FLUID'}
 
     def draw(self, context):
         layout = self.layout
@@ -1052,7 +1088,7 @@ class PARTICLE_PT_physics_integration(ParticleButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         part = particle_get_settings(context)
-        return part.physics_type == 'NEWTON'
+        return part.physics_type in {'NEWTON', 'FLUID'}
 
     def draw(self, context):
         layout = self.layout
@@ -2096,10 +2132,6 @@ classes = (
     PARTICLE_PT_rotation,
     PARTICLE_PT_rotation_angular_velocity,
     PARTICLE_PT_physics,
-    PARTICLE_PT_physics_fluid_springs,
-    PARTICLE_PT_physics_fluid_springs_viscoelastic,
-    PARTICLE_PT_physics_fluid_springs_advanced,
-    PARTICLE_PT_physics_fluid_advanced,
     PARTICLE_PT_physics_boids_movement,
     PARTICLE_PT_physics_boids_battle,
     PARTICLE_PT_physics_boids_misc,
@@ -2107,6 +2139,11 @@ classes = (
     PARTICLE_PT_physics_deflection,
     PARTICLE_PT_physics_integration,
     PARTICLE_PT_physics_relations,
+    PARTICLE_PT_physics_fluid_springs,
+    PARTICLE_PT_physics_fluid_springs_viscoelastic,
+    PARTICLE_PT_physics_fluid_springs_advanced,
+    PARTICLE_PT_physics_fluid_advanced,
+    PARTICLE_PT_physics_fluid_interaction,
     PARTICLE_PT_boidbrain,
     PARTICLE_PT_render,
     PARTICLE_PT_render_line,

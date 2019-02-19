@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdlib.h>
@@ -89,7 +90,10 @@
 	if (!((_data)->status & IDWALK_STOP)) { \
 		const int _flag = (_data)->flag; \
 		ID *old_id = *(id_pp); \
-		const int callback_return = (_data)->callback((_data)->user_data, (_data)->self_id, id_pp, _cb_flag | (_data)->cb_flag); \
+		const int callback_return = (_data)->callback((_data)->user_data, \
+		                                              (_data)->self_id, \
+		                                              id_pp, \
+		                                              (_cb_flag | (_data)->cb_flag) & ~(_data)->cb_flag_clear); \
 		if (_flag & IDWALK_READONLY) { \
 			BLI_assert(*(id_pp) == old_id); \
 		} \
@@ -130,6 +134,7 @@ typedef struct LibraryForeachIDData {
 	ID *self_id;
 	int flag;
 	int cb_flag;
+	int cb_flag_clear;
 	LibraryIDLinkCallback callback;
 	void *user_data;
 	int status;
@@ -368,6 +373,8 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 	for (; id != NULL; id = (flag & IDWALK_RECURSE) ? BLI_LINKSTACK_POP(data.ids_todo) : NULL) {
 		data.self_id = id;
 		data.cb_flag = ID_IS_LINKED(id) ? IDWALK_CB_INDIRECT_USAGE : 0;
+		/* When an ID is not in Main database, it should never refcount IDs it is using. */
+		data.cb_flag_clear = (id->tag & LIB_TAG_NO_MAIN) ? IDWALK_CB_USER | IDWALK_CB_USER_ONE : 0;
 
 		if (bmain != NULL && bmain->relations != NULL && (flag & IDWALK_READONLY)) {
 			/* Note that this is minor optimization, even in worst cases (like id being an object with lots of
@@ -560,7 +567,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				data.cb_flag = data_cb_flag;
 
 				CALLBACK_INVOKE(object->gpd, IDWALK_CB_USER);
-				CALLBACK_INVOKE(object->dup_group, IDWALK_CB_USER);
+				CALLBACK_INVOKE(object->instance_collection, IDWALK_CB_USER);
 
 				if (object->pd) {
 					CALLBACK_INVOKE(object->pd->tex, IDWALK_CB_USER);
@@ -812,8 +819,8 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 			case ID_PA:
 			{
 				ParticleSettings *psett = (ParticleSettings *) id;
-				CALLBACK_INVOKE(psett->dup_group, IDWALK_CB_NOP);
-				CALLBACK_INVOKE(psett->dup_ob, IDWALK_CB_NOP);
+				CALLBACK_INVOKE(psett->instance_collection, IDWALK_CB_USER);
+				CALLBACK_INVOKE(psett->instance_object, IDWALK_CB_NOP);
 				CALLBACK_INVOKE(psett->bb_ob, IDWALK_CB_NOP);
 				CALLBACK_INVOKE(psett->collision_group, IDWALK_CB_NOP);
 
@@ -854,7 +861,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 					}
 				}
 
-				for (ParticleDupliWeight *dw = psett->dupliweights.first; dw; dw = dw->next) {
+				for (ParticleDupliWeight *dw = psett->instance_weights.first; dw; dw = dw->next) {
 					CALLBACK_INVOKE(dw->ob, IDWALK_CB_NOP);
 				}
 				break;
@@ -1328,27 +1335,6 @@ static int foreach_libblock_used_linked_data_tag_clear_cb(
 	return IDWALK_RET_NOP;
 }
 
-static bool unused_linked_data_tag_init_cb(Main *UNUSED(bmain), ID *id, void *UNUSED(user_data))
-{
-	if (id->lib && (id->tag & LIB_TAG_INDIRECT) != 0) {
-		id->tag |= LIB_TAG_DOIT;
-	}
-	else {
-		id->tag &= ~LIB_TAG_DOIT;
-	}
-	return true;
-}
-
-static bool unused_linked_data_check_cb(Main *bmain, ID *id, void *user_data)
-{
-	if ((id->tag & LIB_TAG_DOIT) == 0) {
-		BKE_library_foreach_ID_link(
-		            bmain, id, foreach_libblock_used_linked_data_tag_clear_cb, user_data, IDWALK_READONLY);
-	}
-	/* Else it is an unused ID (so far), no need to check it further. */
-	return true;
-}
-
 /**
  * Detect orphaned linked data blocks (i.e. linked data not used (directly or indirectly) in any way by any local data),
  * including complex cases like 'linked archipelagoes', i.e. linked datablocks that use each other in loops,
@@ -1359,13 +1345,35 @@ static bool unused_linked_data_check_cb(Main *bmain, ID *id, void *user_data)
  */
 void BKE_library_unused_linked_data_set_tag(Main *bmain, const bool do_init_tag)
 {
+	ID *id;
+
 	if (do_init_tag) {
-		BKE_main_foreach_id(bmain, true, unused_linked_data_tag_init_cb, NULL);
+		FOREACH_MAIN_ID_BEGIN(bmain, id)
+		{
+			if (id->lib && (id->tag & LIB_TAG_INDIRECT) != 0) {
+				id->tag |= LIB_TAG_DOIT;
+			}
+			else {
+				id->tag &= ~LIB_TAG_DOIT;
+			}
+		}
+		FOREACH_MAIN_ID_END;
 	}
 
 	for (bool do_loop = true; do_loop; ) {
+		bool do_break = false;
 		do_loop = false;
-		BKE_main_foreach_id(bmain, true, unused_linked_data_check_cb, &do_loop);
+		FOREACH_MAIN_ID_BREAKABLE_BEGIN(bmain, id, do_break)
+		{
+			if ((id->tag & LIB_TAG_DOIT) == 0) {
+				BKE_library_foreach_ID_link(
+				            bmain, id, foreach_libblock_used_linked_data_tag_clear_cb, &do_loop, IDWALK_READONLY);
+			}
+			/* Else it is an unused ID (so far), no need to check it further. */
+			do_break = true;
+			break;
+		}
+		FOREACH_MAIN_ID_BREAKABLE_END;
 	}
 }
 

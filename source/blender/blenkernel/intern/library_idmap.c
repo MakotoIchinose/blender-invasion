@@ -29,7 +29,8 @@
 #include "BKE_library_idmap.h"  /* own include */
 #include "BKE_main.h"
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Utility functions for faster ID lookups.
  */
@@ -87,8 +88,8 @@ static struct IDNameLib_TypeMap *main_idmap_from_idcode(struct IDNameLib_Map *id
  *       #BKE_main_idmap_lookup_id will then check that given ID does exist in \a old_bmain
  *       before trying to use it.
  *
- * \param create_valid_ids_set If \a true, generate a reference to prevent freed memory accesses.
- * \param old_bmain If not NULL, its IDs will be added the the valid references set.
+ * \param create_valid_ids_set: If \a true, generate a reference to prevent freed memory accesses.
+ * \param old_bmain: If not NULL, its IDs will be added the valid references set.
  */
 struct IDNameLib_Map *BKE_main_idmap_create(
         struct Main *bmain, const bool create_valid_ids_set, struct Main *old_bmain)
