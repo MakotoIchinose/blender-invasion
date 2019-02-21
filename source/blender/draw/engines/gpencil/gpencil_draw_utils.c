@@ -302,7 +302,7 @@ static DRWShadingGroup *DRW_gpencil_shgroup_fill_create(
 	DRW_shgroup_uniform_int(grp, "texture_flip", &stl->shgroups[id].texture_flip, 1);
 
 	DRW_shgroup_uniform_int(grp, "xraymode", (const int *) &gpd->xray_mode, 1);
-	DRW_shgroup_uniform_int(grp, "drawmode", (const int *)&gpd->draw_mode, 1);
+	DRW_shgroup_uniform_int(grp, "drawmode", (const int *) &gpd->draw_mode, 1);
 
 	/* image texture */
 	if ((gp_style->flag & GP_STYLE_COLOR_TEX_MIX) ||
