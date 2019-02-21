@@ -174,7 +174,8 @@ typedef struct GPENCIL_StorageList {
 } GPENCIL_StorageList;
 
 typedef struct GPENCIL_PassList {
-	struct DRWPass *stroke_pass;
+	struct DRWPass *stroke_pass_2d;
+	struct DRWPass *stroke_pass_3d;
 	struct DRWPass *edit_pass;
 	struct DRWPass *drawing_pass;
 	struct DRWPass *mix_pass;

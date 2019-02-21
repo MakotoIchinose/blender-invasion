@@ -346,6 +346,7 @@ class DATA_PT_gpencil_display(DataButtonsPanel, Panel):
         gpd = context.gpencil_data
         gpl = context.active_gpencil_layer
 
+        layout.prop(gpd, "draw_mode", text="Mode")
         layout.prop(gpd, "xray_mode", text="Depth Ordering")
         layout.prop(ob, "empty_display_size", text="Marker Size")
 
