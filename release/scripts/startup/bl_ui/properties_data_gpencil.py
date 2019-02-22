@@ -346,8 +346,10 @@ class DATA_PT_gpencil_display(DataButtonsPanel, Panel):
         gpd = context.gpencil_data
         gpl = context.active_gpencil_layer
 
-        layout.prop(gpd, "draw_mode", text="Mode")
         layout.prop(gpd, "xray_mode", text="Depth Ordering")
+        if gpd.xray_mode == '3DSPACE':
+            layout.prop(gpd, "draw_mode", text="Mode")
+
         layout.prop(ob, "empty_display_size", text="Marker Size")
 
         col = layout.column(align=True)

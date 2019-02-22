@@ -140,7 +140,13 @@ void main()
 		gl_FragDepth = 0.000001;
 	}
 	else if (xraymode == GP_XRAY_3DSPACE) {
-		gl_FragDepth = gl_FragCoord.z;
+	/* if 3D mode, move slightly the fill to avoid z-fighting between stroke and fill on same stroke */
+		if (drawmode == GP_DRAWMODE_3D) {
+			gl_FragDepth = gl_FragCoord.z * 1.0001;
+		}
+		else {
+			gl_FragDepth = gl_FragCoord.z;
+		}
 	}
 	else if  (xraymode == GP_XRAY_BACK) {
 		gl_FragDepth = 0.999999;
@@ -149,8 +155,4 @@ void main()
 		gl_FragDepth = 0.000001;
 	}
 	
-	/* if 3D mode, move slightly the fill to avoid z-fighting between stroke and fill on same stroke */
-	if (drawmode == GP_DRAWMODE_3D) {
-		gl_FragDepth *= 1.0001;
-	}
 }

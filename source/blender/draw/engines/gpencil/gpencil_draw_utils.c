@@ -1308,7 +1308,7 @@ static void DRW_gpencil_shgroups_create(
 	GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
 	GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
 	bGPdata *gpd = (bGPdata *)ob->data;
-	DRWPass *stroke_pass = (gpd->draw_mode == GP_DRAWMODE_3D) ? psl->stroke_pass_3d : psl->stroke_pass_2d;
+	DRWPass *stroke_pass = GPENCIL_3D_DRAWMODE(gpd) ? psl->stroke_pass_3d : psl->stroke_pass_2d;
 
 	GpencilBatchGroup *elm = NULL;
 	DRWShadingGroup *shgrp = NULL;

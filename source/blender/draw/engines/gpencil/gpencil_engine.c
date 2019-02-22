@@ -707,7 +707,7 @@ static void gpencil_draw_pass_range(
 	}
 
 	DRW_draw_pass_subset(
-		(gpd->draw_mode == GP_DRAWMODE_3D) ? psl->stroke_pass_3d : psl->stroke_pass_2d,
+		GPENCIL_3D_DRAWMODE(gpd) ? psl->stroke_pass_3d : psl->stroke_pass_2d,
 		init_shgrp, end_shgrp);
 
 	if ((!stl->storage->is_mat_preview) && (multi)) {

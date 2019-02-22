@@ -452,4 +452,7 @@ void GPENCIL_render_to_image(void *vedata, struct RenderEngine *engine, struct R
 	} \
 }
 
+#define GPENCIL_3D_DRAWMODE(gpd) \
+	((gpd) && (gpd->draw_mode == GP_DRAWMODE_3D) && (gpd->xray_mode == GP_XRAY_3DSPACE))
+
 #endif /* __GPENCIL_ENGINE_H__ */
