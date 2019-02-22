@@ -53,7 +53,7 @@ static const EnumPropertyItem parent_type_items[] = {
 #ifndef RNA_RUNTIME
 static EnumPropertyItem rna_enum_gpencil_drawmodes_items[] = {
 	{GP_DRAWMODE_2D, "2D", 0, "2D Layers",	"Draw strokes using grease pencil layers to define order"},
-	{GP_DRAWMODE_3D, "3D", 0, "3D Space", "Draw strokes using real 3D position in 3D space"},
+	{GP_DRAWMODE_3D, "3D", 0, "3D Location", "Draw strokes using real 3D position in 3D space"},
 	{0, NULL, 0, NULL, NULL},
 };
 
