@@ -55,10 +55,15 @@
 
 #include "intern/CCGSubSurf.h"
 
+static Mesh *applyModifier_subdiv(ModifierData *md,
+                           const ModifierEvalContext *ctx,
+                           Mesh *mesh);
+
 static void initData(ModifierData *md)
 {
 	SubsurfModifierData *smd = (SubsurfModifierData *) md;
 
+	smd->subdivType = SUBSURF_TYPE_CATMULL_CLARK; //legacy is the default, since new opensubdiv impl sucks atm...
 	smd->levels = 1;
 	smd->renderLevels = 2;
 	smd->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_CORNERS;
@@ -99,7 +104,7 @@ static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParam
 	return get_render_subsurf_level(&scene->r, levels, useRenderParams != 0) == 0;
 }
 
-#ifndef WITH_OPENSUBDIV_MODIFIER
+//#ifndef WITH_OPENSUBDIV_MODIFIER
 
 static DerivedMesh *applyModifier_DM(
         ModifierData *md, const ModifierEvalContext *ctx,
@@ -135,9 +140,28 @@ static DerivedMesh *applyModifier_DM(
 	return result;
 }
 
-applyModifier_DM_wrapper(applyModifier, applyModifier_DM)
+applyModifier_DM_wrapper(applyModifier_legacy, applyModifier_DM)
 
+//#endif
+
+static Mesh *applyModifier(ModifierData *md,
+                                  const ModifierEvalContext *ctx,
+                                  Mesh *mesh)
+{
+	SubsurfModifierData* smd = (SubsurfModifierData*)md;
+	if (smd->flags & eSubsurfModifierFlag_OpenSubdiv)
+	{
+#ifdef WITH_OPENSUBDIV_MODIFIER
+		return applyModifier_subdiv(md, ctx, mesh);
+#else
+		//silent fallback
+		return applyModifier_legacy(md, ctx, mesh);
 #endif
+	}
+	else {
+		return applyModifier_legacy(md, ctx, mesh);
+	}
+}
 
 #ifdef WITH_OPENSUBDIV_MODIFIER
 static int subdiv_levels_for_modifier_get(const SubsurfModifierData *smd,
@@ -275,11 +299,11 @@ ModifierTypeInfo modifierType_Subsurf = {
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
 	/* deformMatricesEM */  NULL,
-#ifdef WITH_OPENSUBDIV_MODIFIER
-	/* applyModifier */     applyModifier_subdiv,
-#else
+//#ifdef WITH_OPENSUBDIV_MODIFIER
+//	/* applyModifier */     applyModifier_subdiv,
+//#else
 	/* applyModifier */     applyModifier,
-#endif
+//#endif
 
 	/* initData */          initData,
 	/* requiredDataMask */  NULL,

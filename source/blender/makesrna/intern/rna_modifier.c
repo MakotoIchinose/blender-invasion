@@ -1286,6 +1286,11 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_ControlEdges);
 	RNA_def_property_ui_text(prop, "Optimal Display", "Skip drawing/rendering of interior subdivided edges");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "use_opensubdiv", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_OpenSubdiv);
+	RNA_def_property_ui_text(prop, "Use Opensubdiv", "Use (slower) OpenSubdiv instead of legacy subsurf code");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_generic_map_info(StructRNA *srna)
@@ -1430,6 +1435,11 @@ static void rna_def_modifier_multires(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "show_only_control_edges", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", eMultiresModifierFlag_ControlEdges);
 	RNA_def_property_ui_text(prop, "Optimal Display", "Skip drawing/rendering of interior subdivided edges");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "use_opensubdiv", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", eMultiresModifierFlag_OpenSubdiv);
+	RNA_def_property_ui_text(prop, "Use Opensubdiv", "Use (slower) OpenSubdiv instead of legacy multires code");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

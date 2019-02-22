@@ -55,6 +55,10 @@
 
 #include "MOD_modifiertypes.h"
 
+static Mesh *applyModifier_subdiv(ModifierData *md,
+                           const ModifierEvalContext *ctx,
+                           Mesh *mesh);
+
 static void initData(ModifierData *md)
 {
 	MultiresModifierData *mmd = (MultiresModifierData *)md;
@@ -67,7 +71,7 @@ static void initData(ModifierData *md)
 	mmd->quality = 3;
 }
 
-#ifndef WITH_OPENSUBDIV_MODIFIER
+//#ifndef WITH_OPENSUBDIV_MODIFIER
 
 static DerivedMesh *applyModifier_DM(
         ModifierData *md, const ModifierEvalContext *ctx,
@@ -146,9 +150,28 @@ static DerivedMesh *applyModifier_DM(
 	return result;
 }
 
-applyModifier_DM_wrapper(applyModifier, applyModifier_DM)
+applyModifier_DM_wrapper(applyModifier_legacy, applyModifier_DM)
 
+//#endif
+
+static Mesh *applyModifier(ModifierData *md,
+                                  const ModifierEvalContext *ctx,
+                                  Mesh *mesh)
+{
+	MultiresModifierData* mmd = (MultiresModifierData*)md;
+	if (mmd->flags & eMultiresModifierFlag_OpenSubdiv)
+	{
+#ifdef WITH_OPENSUBDIV_MODIFIER
+		return applyModifier_subdiv(md, ctx, mesh);
+#else
+		//silent fallback
+		return applyModifier_legacy(md, ctx, mesh);
 #endif
+	}
+	else {
+		return applyModifier_legacy(md, ctx, mesh);
+	}
+}
 
 #ifdef WITH_OPENSUBDIV_MODIFIER
 

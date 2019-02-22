@@ -643,13 +643,14 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def MULTIRES(self, layout, ob, md):
         layout.row().prop(md, "subdivision_type", expand=True)
+        layout.row().prop(md, "use_opensubdiv")
 
         split = layout.split()
         col = split.column()
         col.prop(md, "levels", text="Preview")
         col.prop(md, "sculpt_levels", text="Sculpt")
         col.prop(md, "render_levels", text="Render")
-        if hasattr(md, "quality"):
+        if hasattr(md, "quality") and md.use_opensubdiv:
             col.prop(md, "quality")
 
         col = split.column()
@@ -1005,6 +1006,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
     def SUBSURF(self, layout, ob, md):
         from bpy import context
         layout.row().prop(md, "subdivision_type", expand=True)
+        layout.row().prop(md, "use_opensubdiv")
 
         split = layout.split()
         col = split.column()
@@ -1028,7 +1030,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             col.label(text="Subdivisions:")
             col.prop(md, "levels", text="View")
             col.prop(md, "render_levels", text="Render")
-            if hasattr(md, "quality"):
+            if hasattr(md, "quality") and md.use_opensubdiv:
                 col.prop(md, "quality")
 
         col = split.column()
