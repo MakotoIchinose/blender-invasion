@@ -5028,13 +5028,6 @@ static void lib_link_object(FileData *fd, Main *main)
 						level->source = ob;
 				}
 			}
-
-			for (BakePass *bp = ob->bake_passes.first; bp; bp = bp->next) {
-				bp->image = newlibadr_us(fd, ob->id.lib, bp->image);
-				bp->material = newlibadr_us(fd, ob->id.lib, bp->material);
-				bp->cage_object = newlibadr(fd, ob->id.lib, bp->cage_object);
-				bp->bake_from_collection = newlibadr(fd, ob->id.lib, bp->bake_from_collection);
-			}
 		}
 	}
 
@@ -5492,7 +5485,6 @@ static void direct_link_shaderfxs(FileData *fd, ListBase *lb)
 static void direct_link_object(FileData *fd, Object *ob)
 {
 	PartEff *paf;
-	BakePass *bp;
 
 	/* XXX This should not be needed - but seems like it can happen in some cases, so for now play safe... */
 	ob->proxy_from = NULL;
@@ -5696,12 +5688,6 @@ static void direct_link_object(FileData *fd, Object *ob)
 	ob->currentlod = ob->lodlevels.first;
 
 	ob->preview = direct_link_preview_image(fd, ob->preview);
-
-	link_list(fd, &ob->bake_passes);
-	for (bp = ob->bake_passes.first; bp; bp = bp->next) {
-		bp->prop = newdataadr(fd, bp->prop);
-		IDP_DirectLinkGroup_OrFree(&bp->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
-	}
 }
 
 static void direct_link_view_settings(FileData *fd, ColorManagedViewSettings *view_settings)
@@ -6167,6 +6153,10 @@ static void lib_link_scene(FileData *fd, Main *main)
 
 			for (ViewLayer *view_layer = sce->view_layers.first; view_layer; view_layer = view_layer->next) {
 				lib_link_view_layer(fd, sce->id.lib, view_layer);
+			}
+
+			if (sce->r.bake.cage_object) {
+				sce->r.bake.cage_object = newlibadr(fd, sce->id.lib, sce->r.bake.cage_object);
 			}
 
 #ifdef USE_SETSCENE_CHECK
@@ -9830,7 +9820,6 @@ static void expand_object(FileData *fd, Main *mainvar, Object *ob)
 	ParticleSystem *psys;
 	bActionStrip *strip;
 	PartEff *paf;
-	BakePass *bp;
 	int a;
 
 	expand_doit(fd, mainvar, ob->data);
@@ -9926,13 +9915,6 @@ static void expand_object(FileData *fd, Main *mainvar, Object *ob)
 		for (level = ob->lodlevels.first; level; level = level->next) {
 			expand_doit(fd, mainvar, level->source);
 		}
-	}
-
-	for (bp = ob->bake_passes.first; bp; bp = bp->next) {
-		expand_doit(fd, mainvar, bp->image);
-		expand_doit(fd, mainvar, bp->material);
-		expand_doit(fd, mainvar, bp->cage_object);
-		expand_doit(fd, mainvar, bp->bake_from_collection);
 	}
 }
 
@@ -10045,6 +10027,10 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
 
 	if (sce->master_collection) {
 		expand_collection(fd, mainvar, sce->master_collection);
+	}
+
+	if (sce->r.bake.cage_object) {
+		expand_doit(fd, mainvar, sce->r.bake.cage_object);
 	}
 }
 

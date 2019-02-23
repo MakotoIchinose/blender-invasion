@@ -348,7 +348,190 @@ enum {
 	R_IMF_VIEWS_MULTIVIEW  = 2,
 };
 
-/* DEPRECATED, only kept for versioning code. */
+typedef struct Stereo3dFormat {
+	short flag;
+	/** Encoding mode. */
+	char display_mode;
+	/** Anaglyph scheme for the user display. */
+	char anaglyph_type;
+	/** Interlace type for the user display. */
+	char interlace_type;
+	char pad[3];
+} Stereo3dFormat;
+
+/* Stereo3dFormat.display_mode */
+typedef enum eStereoDisplayMode {
+	S3D_DISPLAY_ANAGLYPH    = 0,
+	S3D_DISPLAY_INTERLACE   = 1,
+	S3D_DISPLAY_PAGEFLIP    = 2,
+	S3D_DISPLAY_SIDEBYSIDE  = 3,
+	S3D_DISPLAY_TOPBOTTOM   = 4,
+} eStereoDisplayMode;
+
+/* Stereo3dFormat.flag */
+typedef enum eStereo3dFlag {
+	S3D_INTERLACE_SWAP        = (1 << 0),
+	S3D_SIDEBYSIDE_CROSSEYED  = (1 << 1),
+	S3D_SQUEEZED_FRAME        = (1 << 2),
+} eStereo3dFlag;
+
+/* Stereo3dFormat.anaglyph_type */
+typedef enum eStereo3dAnaglyphType {
+	S3D_ANAGLYPH_REDCYAN      = 0,
+	S3D_ANAGLYPH_GREENMAGENTA = 1,
+	S3D_ANAGLYPH_YELLOWBLUE   = 2,
+} eStereo3dAnaglyphType;
+
+/* Stereo3dFormat.interlace_type */
+typedef enum eStereo3dInterlaceType {
+	S3D_INTERLACE_ROW          = 0,
+	S3D_INTERLACE_COLUMN       = 1,
+	S3D_INTERLACE_CHECKERBOARD = 2,
+} eStereo3dInterlaceType;
+
+/* *************************************************************** */
+
+/* Generic image format settings,
+ * this is used for NodeImageFile and IMAGE_OT_save_as operator too.
+ *
+ * note: its a bit strange that even though this is an image format struct
+ * the imtype can still be used to select video formats.
+ * RNA ensures these enum's are only selectable for render output.
+ */
+typedef struct ImageFormatData {
+	/**
+	 * R_IMF_IMTYPE_PNG, R_...
+	 * \note, video types should only ever be set from this structure when used from RenderData.
+	 */
+	char imtype;
+	/**
+	 * bits per channel, R_IMF_CHAN_DEPTH_8 -> 32,
+	 * not a flag, only set 1 at a time. */
+	char depth;
+
+	/** R_IMF_PLANES_BW, R_IMF_PLANES_RGB, R_IMF_PLANES_RGBA. */
+	char planes;
+	/** Generic options for all image types, alpha zbuffer. */
+	char flag;
+
+	/** (0 - 100), eg: jpeg quality. */
+	char quality;
+	/** (0 - 100), eg: png compression. */
+	char compress;
+
+
+	/* --- format specific --- */
+
+	/* OpenEXR */
+	char  exr_codec;
+
+	/* Cineon */
+	char  cineon_flag;
+	short cineon_white, cineon_black;
+	float cineon_gamma;
+
+	/* Jpeg2000 */
+	char  jp2_flag;
+	char jp2_codec;
+
+	/* TIFF */
+	char tiff_codec;
+
+	char pad[4];
+
+	/* Multiview */
+	char views_format;
+	Stereo3dFormat stereo3d_format;
+
+	/* color management */
+	ColorManagedViewSettings view_settings;
+	ColorManagedDisplaySettings display_settings;
+} ImageFormatData;
+
+
+/* ImageFormatData.imtype */
+#define R_IMF_IMTYPE_TARGA           0
+#define R_IMF_IMTYPE_IRIS            1
+/* #define R_HAMX                    2 */ /* hamx is nomore */
+/* #define R_FTYPE                   3 */ /* ftype is nomore */
+#define R_IMF_IMTYPE_JPEG90          4
+/* #define R_MOVIE                   5 */ /* movie is nomore */
+#define R_IMF_IMTYPE_IRIZ            7
+#define R_IMF_IMTYPE_RAWTGA         14
+#define R_IMF_IMTYPE_AVIRAW         15
+#define R_IMF_IMTYPE_AVIJPEG        16
+#define R_IMF_IMTYPE_PNG            17
+/* #define R_IMF_IMTYPE_AVICODEC    18 */ /* avicodec is nomore */
+/* #define R_IMF_IMTYPE_QUICKTIME   19 */ /* quicktime is nomore */
+#define R_IMF_IMTYPE_BMP            20
+#define R_IMF_IMTYPE_RADHDR         21
+#define R_IMF_IMTYPE_TIFF           22
+#define R_IMF_IMTYPE_OPENEXR        23
+#define R_IMF_IMTYPE_FFMPEG         24
+/* #define R_IMF_IMTYPE_FRAMESERVER    25 */ /* frame server is nomore */
+#define R_IMF_IMTYPE_CINEON         26
+#define R_IMF_IMTYPE_DPX            27
+#define R_IMF_IMTYPE_MULTILAYER     28
+#define R_IMF_IMTYPE_DDS            29
+#define R_IMF_IMTYPE_JP2            30
+#define R_IMF_IMTYPE_H264           31
+#define R_IMF_IMTYPE_XVID           32
+#define R_IMF_IMTYPE_THEORA         33
+#define R_IMF_IMTYPE_PSD            34
+
+#define R_IMF_IMTYPE_INVALID        255
+
+/* ImageFormatData.flag */
+#define R_IMF_FLAG_ZBUF         (1<<0)   /* was R_OPENEXR_ZBUF */
+#define R_IMF_FLAG_PREVIEW_JPG  (1<<1)   /* was R_PREVIEW_JPG */
+
+/* return values from BKE_imtype_valid_depths, note this is depts per channel */
+#define R_IMF_CHAN_DEPTH_1  (1<<0) /* 1bits  (unused) */
+#define R_IMF_CHAN_DEPTH_8  (1<<1) /* 8bits  (default) */
+#define R_IMF_CHAN_DEPTH_10 (1<<2) /* 10bits (uncommon, Cineon/DPX support) */
+#define R_IMF_CHAN_DEPTH_12 (1<<3) /* 12bits (uncommon, jp2/DPX support) */
+#define R_IMF_CHAN_DEPTH_16 (1<<4) /* 16bits (tiff, halff float exr) */
+#define R_IMF_CHAN_DEPTH_24 (1<<5) /* 24bits (unused) */
+#define R_IMF_CHAN_DEPTH_32 (1<<6) /* 32bits (full float exr) */
+
+/* ImageFormatData.planes */
+#define R_IMF_PLANES_RGB   24
+#define R_IMF_PLANES_RGBA  32
+#define R_IMF_PLANES_BW    8
+
+/* ImageFormatData.exr_codec */
+#define R_IMF_EXR_CODEC_NONE  0
+#define R_IMF_EXR_CODEC_PXR24 1
+#define R_IMF_EXR_CODEC_ZIP   2
+#define R_IMF_EXR_CODEC_PIZ   3
+#define R_IMF_EXR_CODEC_RLE   4
+#define R_IMF_EXR_CODEC_ZIPS  5
+#define R_IMF_EXR_CODEC_B44   6
+#define R_IMF_EXR_CODEC_B44A  7
+#define R_IMF_EXR_CODEC_DWAA  8
+#define R_IMF_EXR_CODEC_DWAB  9
+#define R_IMF_EXR_CODEC_MAX  10
+
+/* ImageFormatData.jp2_flag */
+#define R_IMF_JP2_FLAG_YCC          (1<<0)  /* when disabled use RGB */ /* was R_JPEG2K_YCC */
+#define R_IMF_JP2_FLAG_CINE_PRESET  (1<<1)  /* was R_JPEG2K_CINE_PRESET */
+#define R_IMF_JP2_FLAG_CINE_48      (1<<2)  /* was R_JPEG2K_CINE_48FPS */
+
+/* ImageFormatData.jp2_codec */
+#define R_IMF_JP2_CODEC_JP2  0
+#define R_IMF_JP2_CODEC_J2K  1
+
+/* ImageFormatData.cineon_flag */
+#define R_IMF_CINEON_FLAG_LOG (1<<0)  /* was R_CINEON_LOG */
+
+/* ImageFormatData.tiff_codec */
+enum {
+	R_IMF_TIFF_CODEC_DEFLATE   = 0,
+	R_IMF_TIFF_CODEC_LZW       = 1,
+	R_IMF_TIFF_CODEC_PACKBITS  = 2,
+	R_IMF_TIFF_CODEC_NONE      = 3,
+};
+
 typedef struct BakeData {
 	struct ImageFormatData im_format;
 
@@ -369,6 +552,38 @@ typedef struct BakeData {
 
 	struct Object *cage_object;
 } BakeData;
+
+/* BakeData.normal_swizzle (char) */
+typedef enum eBakeNormalSwizzle {
+	R_BAKE_POSX = 0,
+	R_BAKE_POSY = 1,
+	R_BAKE_POSZ = 2,
+	R_BAKE_NEGX = 3,
+	R_BAKE_NEGY = 4,
+	R_BAKE_NEGZ = 5,
+} eBakeNormalSwizzle;
+
+/* BakeData.save_mode (char) */
+typedef enum eBakeSaveMode {
+	R_BAKE_SAVE_INTERNAL = 0,
+	R_BAKE_SAVE_EXTERNAL = 1,
+} eBakeSaveMode;
+
+/* BakeData.pass_filter */
+typedef enum eBakePassFilter {
+	R_BAKE_PASS_FILTER_NONE           = 0,
+	R_BAKE_PASS_FILTER_AO             = (1 << 0),
+	R_BAKE_PASS_FILTER_EMIT           = (1 << 1),
+	R_BAKE_PASS_FILTER_DIFFUSE        = (1 << 2),
+	R_BAKE_PASS_FILTER_GLOSSY         = (1 << 3),
+	R_BAKE_PASS_FILTER_TRANSM         = (1 << 4),
+	R_BAKE_PASS_FILTER_SUBSURFACE     = (1 << 5),
+	R_BAKE_PASS_FILTER_DIRECT         = (1 << 6),
+	R_BAKE_PASS_FILTER_INDIRECT       = (1 << 7),
+	R_BAKE_PASS_FILTER_COLOR          = (1 << 8),
+} eBakePassFilter;
+
+#define R_BAKE_PASS_FILTER_ALL (~0)
 
 /* RenderEngineSettingsClay.options */
 typedef enum ClayFlagSettings {
@@ -538,7 +753,7 @@ typedef struct RenderData {
 	int pad2;
 
 	/* Cycles baking */
-	struct BakeData bake DNA_DEPRECATED;
+	struct BakeData bake;
 
 	int preview_start_resolution;
 	short preview_pixel_size;
@@ -1709,16 +1924,15 @@ enum {
 /* RenderData.bake_flag */
 #define R_BAKE_CLEAR        (1 << 0)
 /* #define R_BAKE_OSA       (1 << 1) */ /* deprecated */
-/* #define R_BAKE_TO_ACTIVE (1 << 2) */ /* deprecated */
+#define R_BAKE_TO_ACTIVE    (1 << 2)
 /* #define R_BAKE_NORMALIZE (1 << 3) */ /* deprecated */
 #define R_BAKE_MULTIRES     (1 << 4)
 #define R_BAKE_LORES_MESH   (1 << 5)
 /* #define R_BAKE_VCOL      (1 << 6) */ /* deprecated */
 #define R_BAKE_USERSCALE    (1 << 7)
 #define R_BAKE_CAGE         (1 << 8)
-/* #define R_BAKE_SPLIT_MAT (1 << 9) */ /* deprecated */
+#define R_BAKE_SPLIT_MAT    (1 << 9)
 #define R_BAKE_AUTO_NAME    (1 << 10)
-#define R_BAKE_ENABLED      (1 << 11)
 
 /* RenderData.bake_normal_space */
 #define R_BAKE_SPACE_CAMERA	 0

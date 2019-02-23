@@ -346,9 +346,6 @@ void BKE_object_type_set_empty_for_versioning(struct Object *ob);
 
 bool BKE_object_empty_image_is_visible_in_view3d(const struct Object *ob, const struct RegionView3D *rv3d);
 
-struct BakePass *BKE_object_add_bake_pass(struct Object *ob, const char *name);
-bool BKE_object_remove_bake_pass(struct Object *ob, struct BakePass* bp);
-
 #ifdef __cplusplus
 }
 #endif

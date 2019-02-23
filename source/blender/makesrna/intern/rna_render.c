@@ -74,6 +74,22 @@ const EnumPropertyItem rna_enum_render_pass_type_items[] = {
 	{0, NULL, 0, NULL, NULL},
 };
 
+const EnumPropertyItem rna_enum_bake_pass_type_items[] = {
+	{SCE_PASS_COMBINED, "COMBINED", 0, "Combined", ""},
+	{SCE_PASS_AO, "AO", 0, "Ambient Occlusion", ""},
+	{SCE_PASS_SHADOW, "SHADOW", 0, "Shadow", ""},
+	{SCE_PASS_NORMAL, "NORMAL", 0, "Normal", ""},
+	{SCE_PASS_UV, "UV", 0, "UV", ""},
+	{SCE_PASS_ROUGHNESS, "ROUGHNESS", 0, "ROUGHNESS", ""},
+	{SCE_PASS_EMIT, "EMIT", 0, "Emit", ""},
+	{SCE_PASS_ENVIRONMENT, "ENVIRONMENT", 0, "Environment", ""},
+	{SCE_PASS_DIFFUSE_COLOR, "DIFFUSE", 0, "Diffuse", ""},
+	{SCE_PASS_GLOSSY_COLOR, "GLOSSY", 0, "Glossy", ""},
+	{SCE_PASS_TRANSM_COLOR, "TRANSMISSION", 0, "Transmission", ""},
+	{SCE_PASS_SUBSURFACE_COLOR, "SUBSURFACE", 0, "Subsurface", ""},
+	{0, NULL, 0, NULL, NULL},
+};
+
 #ifdef RNA_RUNTIME
 
 #include "MEM_guardedalloc.h"
@@ -159,9 +175,9 @@ static void engine_render(RenderEngine *engine, Depsgraph *depsgraph)
 }
 
 static void engine_bake(RenderEngine *engine, struct Depsgraph *depsgraph,
-                        struct BakePass *bp, struct Object *object,
+                        struct Object *object, const int pass_type, const int pass_filter,
                         const int object_id, const struct BakePixel *pixel_array,
-                        struct BakeResult *result)
+                        const int num_pixels, const int depth, void *result)
 {
 	extern FunctionRNA rna_RenderEngine_bake_func;
 	PointerRNA ptr;
@@ -173,10 +189,13 @@ static void engine_bake(RenderEngine *engine, struct Depsgraph *depsgraph,
 
 	RNA_parameter_list_create(&list, &ptr, func);
 	RNA_parameter_set_lookup(&list, "depsgraph", &depsgraph);
-	RNA_parameter_set_lookup(&list, "bakepass", &bp);
 	RNA_parameter_set_lookup(&list, "object", &object);
+	RNA_parameter_set_lookup(&list, "pass_type", &pass_type);
+	RNA_parameter_set_lookup(&list, "pass_filter", &pass_filter);
 	RNA_parameter_set_lookup(&list, "object_id", &object_id);
 	RNA_parameter_set_lookup(&list, "pixel_array", &pixel_array);
+	RNA_parameter_set_lookup(&list, "num_pixels", &num_pixels);
+	RNA_parameter_set_lookup(&list, "depth", &depth);
 	RNA_parameter_set_lookup(&list, "result", &result);
 	engine->type->ext.call(NULL, &ptr, func, &list);
 
@@ -428,56 +447,7 @@ static RenderPass *rna_RenderPass_find_by_name(RenderLayer *rl, const char *name
 	return RE_pass_find_by_name(rl, name, view);
 }
 
-static struct AnyType *rna_BakeResult_allocate(BakeResult *br)
-{
-	BLI_assert(br->pixels == NULL);
-	br->pixels = MEM_callocN(sizeof(float) * br->depth * br->num_pixels, "bake result pixels");
-
-	return (struct AnyType *)br->pixels;
-}
-
 #else /* RNA_RUNTIME */
-
-static void rna_def_render_bake_result(BlenderRNA *brna)
-{
-	StructRNA *srna;
-	PropertyRNA *prop;
-	FunctionRNA *func;
-	PropertyRNA *parm;
-
-	srna = RNA_def_struct(brna, "BakeResult", NULL);
-	RNA_def_struct_ui_text(srna, "Bake Result", "Bake result");
-
-	RNA_define_verify_sdna(0);
-
-	prop = RNA_def_property(srna, "num_pixels", PROP_INT, PROP_UNSIGNED);
-	RNA_def_property_int_sdna(prop, NULL, "num_pixels");
-	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-	prop = RNA_def_property(srna, "depth", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "depth");
-
-	prop = RNA_def_property(srna, "is_color", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "is_color", 1);
-
-	prop = RNA_def_property(srna, "is_normal", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "is_normal", 1);
-
-	prop = RNA_def_property(srna, "fill_color", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_float_sdna(prop, NULL, "fill_color");
-	RNA_def_property_array(prop, 4);
-
-	prop = RNA_def_property(srna, "identifier", PROP_STRING, PROP_NONE);
-	RNA_def_property_string_sdna(prop, NULL, "identifier");
-
-	func = RNA_def_function(srna, "allocate", "rna_BakeResult_allocate");
-	RNA_def_function_ui_description(func, "Allocate memory for the baking result");
-	parm = RNA_def_pointer(func, "result", "AnyType", "", "");
-	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-	RNA_def_function_return(func, parm);
-
-	RNA_define_verify_sdna(1);
-}
 
 static void rna_def_render_engine(BlenderRNA *brna)
 {
@@ -519,15 +489,23 @@ static void rna_def_render_engine(BlenderRNA *brna)
 	RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
 	parm = RNA_def_pointer(func, "depsgraph", "Depsgraph", "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-	parm = RNA_def_pointer(func, "bakepass", "BakePass", "", "");
-	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	parm = RNA_def_pointer(func, "object", "Object", "", "");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_enum(func, "pass_type", rna_enum_bake_pass_type_items, 0, "Pass", "Pass to bake");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_int(func, "pass_filter", 0, 0, INT_MAX, "Pass Filter", "Filter to combined, diffuse, glossy, transmission and subsurface passes", 0, INT_MAX);
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	parm = RNA_def_int(func, "object_id", 0, 0, INT_MAX, "Object Id", "Id of the current object being baked in relation to the others", 0, INT_MAX);
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	parm = RNA_def_pointer(func, "pixel_array", "BakePixel", "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-	parm = RNA_def_pointer(func, "result", "BakeResult", "", "");
+	parm = RNA_def_int(func, "num_pixels", 0, 0, INT_MAX, "Number of Pixels", "Size of the baking batch", 0, INT_MAX);
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_int(func, "depth", 0, 0, INT_MAX, "Pixels depth", "Number of channels", 1, INT_MAX);
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	/* TODO, see how array size of 0 works, this shouldnt be used */
+	parm = RNA_def_pointer(func, "result", "AnyType", "", "");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
 	/* viewport render callbacks */
 	func = RNA_def_function(srna, "view_update", NULL);
@@ -1030,7 +1008,6 @@ void RNA_def_render(BlenderRNA *brna)
 	rna_def_render_layer(brna);
 	rna_def_render_pass(brna);
 	rna_def_render_bake_pixel(brna);
-	rna_def_render_bake_result(brna);
 }
 
 #endif /* RNA_RUNTIME */

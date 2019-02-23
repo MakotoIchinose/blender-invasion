@@ -534,6 +534,28 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 271, 0)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "BakeData", "bake")) {
+			Scene *sce;
+
+			for (sce = bmain->scene.first; sce; sce = sce->id.next) {
+				sce->r.bake.flag = R_BAKE_CLEAR;
+				sce->r.bake.width = 512;
+				sce->r.bake.height = 512;
+				sce->r.bake.margin = 16;
+				sce->r.bake.normal_space = R_BAKE_SPACE_TANGENT;
+				sce->r.bake.normal_swizzle[0] = R_BAKE_POSX;
+				sce->r.bake.normal_swizzle[1] = R_BAKE_POSY;
+				sce->r.bake.normal_swizzle[2] = R_BAKE_POSZ;
+				BLI_strncpy(sce->r.bake.filepath, U.renderdir, sizeof(sce->r.bake.filepath));
+
+				sce->r.bake.im_format.planes = R_IMF_PLANES_RGBA;
+				sce->r.bake.im_format.imtype = R_IMF_IMTYPE_PNG;
+				sce->r.bake.im_format.depth = R_IMF_CHAN_DEPTH_8;
+				sce->r.bake.im_format.quality = 90;
+				sce->r.bake.im_format.compress = 15;
+			}
+		}
+
 		if (!DNA_struct_elem_find(fd->filesdna, "FreestyleLineStyle", "float", "texstep")) {
 			FreestyleLineStyle *linestyle;
 
@@ -1172,6 +1194,13 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			for (ID *id = lbarray[a]->first; id; id = id->next) {
 				id->flag &= LIB_FAKEUSER;
 			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 276, 7)) {
+		Scene *scene;
+		for (scene = bmain->scene.first; scene != NULL; scene = scene->id.next) {
+			scene->r.bake.pass_filter = R_BAKE_PASS_FILTER_ALL;
 		}
 	}
 

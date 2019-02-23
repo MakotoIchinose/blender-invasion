@@ -1912,13 +1912,6 @@ static void write_object(WriteData *wd, Object *ob)
 		writelist(wd, DATA, LodLevel, &ob->lodlevels);
 
 		write_previews(wd, ob->preview);
-
-		for (BakePass *bp = ob->bake_passes.first; bp; bp = bp->next) {
-			writestruct(wd, DATA, BakePass, 1, bp);
-			if (bp->prop) {
-				IDP_WriteProperty(bp->prop, wd);
-			}
-		}
 	}
 }
 

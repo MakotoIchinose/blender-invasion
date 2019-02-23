@@ -402,6 +402,20 @@ const EnumPropertyItem rna_enum_stereo3d_interlace_type_items[] = {
 	{0, NULL, 0, NULL, NULL},
 };
 
+const EnumPropertyItem rna_enum_bake_pass_filter_type_items[] = {
+	{R_BAKE_PASS_FILTER_NONE, "NONE", 0, "None", ""},
+	{R_BAKE_PASS_FILTER_AO, "AO", 0, "Ambient Occlusion", ""},
+	{R_BAKE_PASS_FILTER_EMIT, "EMIT", 0, "Emit", ""},
+	{R_BAKE_PASS_FILTER_DIRECT, "DIRECT", 0, "Direct", ""},
+	{R_BAKE_PASS_FILTER_INDIRECT, "INDIRECT", 0, "Indirect", ""},
+	{R_BAKE_PASS_FILTER_COLOR, "COLOR", 0, "Color", ""},
+	{R_BAKE_PASS_FILTER_DIFFUSE, "DIFFUSE", 0, "Diffuse", ""},
+	{R_BAKE_PASS_FILTER_GLOSSY, "GLOSSY", 0, "Glossy", ""},
+	{R_BAKE_PASS_FILTER_TRANSM, "TRANSMISSION", 0, "Transmission", ""},
+	{R_BAKE_PASS_FILTER_SUBSURFACE, "SUBSURFACE", 0, "Subsurface", ""},
+	{0, NULL, 0, NULL, NULL},
+};
+
 static const EnumPropertyItem rna_enum_gizmo_items[] = {
 	{SCE_GIZMO_SHOW_TRANSLATE, "TRANSLATE", 0, "Move", ""},
 	{SCE_GIZMO_SHOW_ROTATE, "ROTATE", 0, "Rotate", ""},
@@ -894,6 +908,11 @@ static char *rna_RenderSettings_path(PointerRNA *UNUSED(ptr))
 	return BLI_sprintfN("render");
 }
 
+static char *rna_BakeSettings_path(PointerRNA *UNUSED(ptr))
+{
+	return BLI_sprintfN("render.bake");
+}
+
 static char *rna_ImageFormatSettings_path(PointerRNA *ptr)
 {
 	ImageFormatData *imf = (ImageFormatData *)ptr->data;
@@ -907,16 +926,8 @@ static char *rna_ImageFormatSettings_path(PointerRNA *ptr)
 			if (&scene->r.im_format == imf) {
 				return BLI_sprintfN("render.image_settings");
 			}
-			return BLI_sprintfN("..");
-		}
-		case ID_OB:
-		{
-			Object *ob = (Object *)id;
-
-			for (BakePass *bp = ob->bake_passes.first; bp; bp = bp->next) {
-				if (&bp->im_format == imf) {
-					return BLI_sprintfN("bake_passes['%s'].image_settings", bp->name);
-				}
+			else if (&scene->r.bake.im_format == imf) {
+				return BLI_sprintfN("render.bake.image_settings");
 			}
 			return BLI_sprintfN("..");
 		}
@@ -3897,6 +3908,169 @@ void rna_def_freestyle_settings(BlenderRNA *brna)
 	rna_def_freestyle_linesets(brna, prop);
 }
 
+static void rna_def_bake_data(BlenderRNA *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	srna = RNA_def_struct(brna, "BakeSettings", NULL);
+	RNA_def_struct_sdna(srna, "BakeData");
+	RNA_def_struct_nested(brna, srna, "RenderSettings");
+	RNA_def_struct_ui_text(srna, "Bake Data", "Bake data for a Scene data-block");
+	RNA_def_struct_path_func(srna, "rna_BakeSettings_path");
+
+	prop = RNA_def_property(srna, "cage_object", PROP_POINTER, PROP_NONE);
+	RNA_def_property_ui_text(prop, "Cage Object", "Object to use as cage "
+	                         "instead of calculating the cage from the active object with cage extrusion");
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "filepath", PROP_STRING, PROP_FILEPATH);
+	RNA_def_property_ui_text(prop, "File Path", "Image filepath to use when saving externally");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "width", PROP_INT, PROP_PIXEL);
+	RNA_def_property_range(prop, 4, 10000);
+	RNA_def_property_ui_text(prop, "Width", "Horizontal dimension of the baking map");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "height", PROP_INT, PROP_PIXEL);
+	RNA_def_property_range(prop, 4, 10000);
+	RNA_def_property_ui_text(prop, "Height", "Vertical dimension of the baking map");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "margin", PROP_INT, PROP_PIXEL);
+	RNA_def_property_range(prop, 0, SHRT_MAX);
+	RNA_def_property_ui_range(prop, 0, 64, 1, 1);
+	RNA_def_property_ui_text(prop, "Margin", "Extends the baked result as a post process filter");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "cage_extrusion", PROP_FLOAT, PROP_DISTANCE);
+	RNA_def_property_range(prop, 0.0, FLT_MAX);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1, 3);
+	RNA_def_property_ui_text(prop, "Cage Extrusion",
+	                         "Distance to use for the inward ray cast when using selected to active");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "normal_space", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_space");
+	RNA_def_property_enum_items(prop, rna_enum_normal_space_items);
+	RNA_def_property_ui_text(prop, "Normal Space", "Choose normal space for baking");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "normal_r", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_swizzle[0]");
+	RNA_def_property_enum_items(prop, rna_enum_normal_swizzle_items);
+	RNA_def_property_ui_text(prop, "Normal Space", "Axis to bake in red channel");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "normal_g", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_swizzle[1]");
+	RNA_def_property_enum_items(prop, rna_enum_normal_swizzle_items);
+	RNA_def_property_ui_text(prop, "Normal Space", "Axis to bake in green channel");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "normal_b", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_swizzle[2]");
+	RNA_def_property_enum_items(prop, rna_enum_normal_swizzle_items);
+	RNA_def_property_ui_text(prop, "Normal Space", "Axis to bake in blue channel");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "image_settings", PROP_POINTER, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NEVER_NULL);
+	RNA_def_property_pointer_sdna(prop, NULL, "im_format");
+	RNA_def_property_struct_type(prop, "ImageFormatSettings");
+	RNA_def_property_ui_text(prop, "Image Format", "");
+
+	prop = RNA_def_property(srna, "save_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "save_mode");
+	RNA_def_property_enum_items(prop, rna_enum_bake_save_mode_items);
+	RNA_def_property_ui_text(prop, "Save Mode", "Choose how to save the baking map");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	/* flags */
+	prop = RNA_def_property(srna, "use_selected_to_active", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_TO_ACTIVE);
+	RNA_def_property_ui_text(prop, "Selected to Active",
+	                         "Bake shading on the surface of selected objects to the active object");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_clear", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_CLEAR);
+	RNA_def_property_ui_text(prop, "Clear",
+	                         "Clear Images before baking (internal only)");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_split_materials", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_SPLIT_MAT);
+	RNA_def_property_ui_text(prop, "Split Materials",
+	                         "Split external images per material (external only)");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_automatic_name", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_AUTO_NAME);
+	RNA_def_property_ui_text(prop, "Automatic Name",
+	                         "Automatically name the output file with the pass type (external only)");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_cage", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_CAGE);
+	RNA_def_property_ui_text(prop, "Cage",
+	                         "Cast rays to active object from a cage");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	/* custom passes flags */
+	prop = RNA_def_property(srna, "use_pass_ambient_occlusion", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_AO);
+	RNA_def_property_ui_text(prop, "Ambient Occlusion", "Add ambient occlusion contribution");
+
+	prop = RNA_def_property(srna, "use_pass_emit", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_EMIT);
+	RNA_def_property_ui_text(prop, "Emit", "Add emission contribution");
+
+	prop = RNA_def_property(srna, "use_pass_direct", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_DIRECT);
+	RNA_def_property_ui_text(prop, "Direct", "Add direct lighting contribution");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_pass_indirect", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_INDIRECT);
+	RNA_def_property_ui_text(prop, "Indirect", "Add indirect lighting contribution");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_pass_color", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_COLOR);
+	RNA_def_property_ui_text(prop, "Color", "Color the pass");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_pass_diffuse", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_DIFFUSE);
+	RNA_def_property_ui_text(prop, "Diffuse", "Add diffuse contribution");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_pass_glossy", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_GLOSSY);
+	RNA_def_property_ui_text(prop, "Glossy", "Add glossy contribution");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_pass_transmission", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_TRANSM);
+	RNA_def_property_ui_text(prop, "Transmission", "Add transmission contribution");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "use_pass_subsurface", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_SUBSURFACE);
+	RNA_def_property_ui_text(prop, "Subsurface", "Add subsurface contribution");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	prop = RNA_def_property(srna, "pass_filter", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "pass_filter");
+	RNA_def_property_enum_items(prop, rna_enum_bake_pass_filter_type_items);
+	RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+	RNA_def_property_ui_text(prop, "Pass Filter",  "Passes to include in the active baking pass");
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+}
+
 static void rna_def_gpu_dof_fx(BlenderRNA *brna)
 {
 	StructRNA *srna;
@@ -5041,6 +5215,12 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Bake Type", "Choose shading information to bake into the image");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
+	prop = RNA_def_property(srna, "use_bake_selected_to_active", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "bake_flag", R_BAKE_TO_ACTIVE);
+	RNA_def_property_ui_text(prop, "Selected to Active",
+	                         "Bake shading on the surface of selected objects to the active object");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
 	prop = RNA_def_property(srna, "use_bake_clear", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "bake_flag", R_BAKE_CLEAR);
 	RNA_def_property_ui_text(prop, "Clear", "Clear Images before baking");
@@ -5372,6 +5552,19 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_range(prop, 0.f, 10000.f);
 	RNA_def_property_ui_text(prop, "Line Thickness", "Line thickness in pixels");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_freestyle_update");
+
+	/* Bake Settings */
+	prop = RNA_def_property(srna, "bake", PROP_POINTER, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NEVER_NULL);
+	RNA_def_property_pointer_sdna(prop, NULL, "bake");
+	RNA_def_property_struct_type(prop, "BakeSettings");
+	RNA_def_property_ui_text(prop, "Bake Data", "");
+
+	/* Nestled Data  */
+	/* *** Non-Animated *** */
+	RNA_define_animate_sdna(false);
+	rna_def_bake_data(brna);
+	RNA_define_animate_sdna(true);
 
 	/* *** Animated *** */
 

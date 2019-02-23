@@ -280,6 +280,9 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 	BKE_color_managed_display_settings_copy(&sce_dst->r.im_format.display_settings, &sce_src->r.im_format.display_settings);
 	BKE_color_managed_view_settings_copy(&sce_dst->r.im_format.view_settings, &sce_src->r.im_format.view_settings);
 
+	BKE_color_managed_display_settings_copy(&sce_dst->r.bake.im_format.display_settings, &sce_src->r.bake.im_format.display_settings);
+	BKE_color_managed_view_settings_copy(&sce_dst->r.bake.im_format.view_settings, &sce_src->r.bake.im_format.view_settings);
+
 	curvemapping_copy_data(&sce_dst->r.mblur_shutter_curve, &sce_src->r.mblur_shutter_curve);
 
 	/* tool settings */
@@ -350,6 +353,9 @@ Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
 
 		BKE_color_managed_display_settings_copy(&sce_copy->r.im_format.display_settings, &sce->r.im_format.display_settings);
 		BKE_color_managed_view_settings_copy(&sce_copy->r.im_format.view_settings, &sce->r.im_format.view_settings);
+
+		BKE_color_managed_display_settings_copy(&sce_copy->r.bake.im_format.display_settings, &sce->r.bake.im_format.display_settings);
+		BKE_color_managed_view_settings_copy(&sce_copy->r.bake.im_format.view_settings, &sce->r.bake.im_format.view_settings);
 
 		curvemapping_copy_data(&sce_copy->r.mblur_shutter_curve, &sce->r.mblur_shutter_curve);
 
@@ -585,6 +591,23 @@ void BKE_scene_init(Scene *sce)
 	sce->r.bake_flag = R_BAKE_CLEAR;
 	sce->r.bake_samples = 256;
 	sce->r.bake_biasdist = 0.001;
+
+	sce->r.bake.flag = R_BAKE_CLEAR;
+	sce->r.bake.pass_filter = R_BAKE_PASS_FILTER_ALL;
+	sce->r.bake.width = 512;
+	sce->r.bake.height = 512;
+	sce->r.bake.margin = 16;
+	sce->r.bake.normal_space = R_BAKE_SPACE_TANGENT;
+	sce->r.bake.normal_swizzle[0] = R_BAKE_POSX;
+	sce->r.bake.normal_swizzle[1] = R_BAKE_POSY;
+	sce->r.bake.normal_swizzle[2] = R_BAKE_POSZ;
+	BLI_strncpy(sce->r.bake.filepath, U.renderdir, sizeof(sce->r.bake.filepath));
+
+	sce->r.bake.im_format.planes = R_IMF_PLANES_RGBA;
+	sce->r.bake.im_format.imtype = R_IMF_IMTYPE_PNG;
+	sce->r.bake.im_format.depth = R_IMF_CHAN_DEPTH_8;
+	sce->r.bake.im_format.quality = 90;
+	sce->r.bake.im_format.compress = 15;
 
 	sce->r.scemode = R_DOCOMP | R_DOSEQ | R_EXTENSION;
 	sce->r.stamp = R_STAMP_TIME | R_STAMP_FRAME | R_STAMP_DATE | R_STAMP_CAMERA | R_STAMP_SCENE | R_STAMP_FILENAME | R_STAMP_RENDERTIME | R_STAMP_MEMORY;

@@ -63,7 +63,6 @@
 #include "BLI_utildefines.h"
 #include "BLI_linklist.h"
 #include "BLI_kdtree.h"
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -117,7 +116,6 @@
 #include "BKE_camera.h"
 #include "BKE_image.h"
 #include "BKE_gpencil.h"
-#include "BKE_colortools.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -602,14 +600,6 @@ void BKE_object_free(Object *ob)
 	}
 
 	BKE_previewimg_free(&ob->preview);
-
-	for (BakePass *bp = ob->bake_passes.first; bp; bp = bp->next) {
-		if (bp->prop != NULL) {
-			IDP_FreeProperty(bp->prop);
-			MEM_freeN(bp->prop);
-		}
-	}
-	BLI_freelistN(&ob->bake_passes);
 }
 
 /* actual check for internal data, not context or flags */
@@ -1422,19 +1412,6 @@ void BKE_object_copy_data(Main *bmain, Object *ob_dst, const Object *ob_src, con
 	}
 	else {
 		ob_dst->preview = NULL;
-	}
-
-	BLI_duplicatelist(&ob_dst->bake_passes, &ob_src->bake_passes);
-	for (BakePass *bp_dst = ob_dst->bake_passes.first, *bp_src = ob_src->bake_passes.first;
-		bp_src;
-		bp_dst = bp_dst->next, bp_src = bp_src->next)
-	{
-		if (bp_dst->prop != NULL) {
-			bp_dst->prop = IDP_CopyProperty_ex(bp_dst->prop, flag_subdata);
-		}
-
-		BKE_color_managed_display_settings_copy(&bp_dst->im_format.display_settings, &bp_src->im_format.display_settings);
-		BKE_color_managed_view_settings_copy(&bp_dst->im_format.view_settings, &bp_src->im_format.view_settings);
 	}
 }
 
@@ -4082,56 +4059,4 @@ void BKE_object_type_set_empty_for_versioning(Object *ob)
 		ob->pose = NULL;
 	}
 	ob->mode = OB_MODE_OBJECT;
-}
-
-/* return default layer, also used to patch old files */
-BakePass *BKE_object_add_bake_pass(Object *ob, const char *name)
-{
-	BakePass *bp;
-
-	if (!name)
-		name = DATA_("BakePass");
-
-	bp = MEM_callocN(sizeof(BakePass), "new bake pass");
-	BLI_strncpy(bp->name, name, sizeof(bp->name));
-	bp->flag = R_BAKE_CLEAR | R_BAKE_ENABLED;
-	bp->width = 512;
-	bp->height = 512;
-	bp->margin = 16;
-	bp->normal_space = R_BAKE_SPACE_TANGENT;
-	bp->normal_swizzle[0] = R_BAKE_POSX;
-	bp->normal_swizzle[1] = R_BAKE_POSY;
-	bp->normal_swizzle[2] = R_BAKE_POSZ;
-	BLI_strncpy(bp->filepath, U.renderdir, sizeof(bp->filepath));
-	bp->im_format.planes = R_IMF_PLANES_RGBA;
-	bp->im_format.imtype = R_IMF_IMTYPE_PNG;
-	bp->im_format.depth = R_IMF_CHAN_DEPTH_8;
-	bp->im_format.quality = 90;
-	bp->im_format.compress = 15;
-
-	BLI_uniquename(&ob->bake_passes, bp, DATA_("BakePass"), '.', offsetof(BakePass, name), sizeof(bp->name));
-	BLI_addtail(&ob->bake_passes, bp);
-
-	return bp;
-}
-
-bool BKE_object_remove_bake_pass(Object *ob, BakePass *bp)
-{
-	const int act = BLI_findindex(&ob->bake_passes, bp);
-
-	if (act == -1) {
-		return false;
-	}
-
-	if (bp->prop) {
-		IDP_FreeProperty(bp->prop);
-		MEM_freeN(bp->prop);
-	}
-
-	BLI_remlink(&ob->bake_passes, bp);
-	MEM_freeN(bp);
-
-	ob->active_bake_pass = 0;
-
-	return true;
 }

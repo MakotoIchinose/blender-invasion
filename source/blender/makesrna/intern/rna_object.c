@@ -36,7 +36,6 @@
 #include "DNA_shader_fx_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -45,7 +44,6 @@
 #include "BKE_paint.h"
 #include "BKE_editlattice.h"
 #include "BKE_editmesh.h"
-#include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_object_deform.h"
 #include "BKE_object_facemap.h"
@@ -1609,94 +1607,6 @@ int rna_Object_use_dynamic_topology_sculpting_get(PointerRNA *ptr)
 	return (ss && ss->bm);
 }
 
-static IDProperty *rna_BakePass_idprops(PointerRNA *ptr, bool create)
-{
-	BakePass *bp = (BakePass *)ptr->data;
-
-	if (create && !bp->prop) {
-		IDPropertyTemplate val = {0};
-		bp->prop = IDP_New(IDP_GROUP, &val, "BakePass ID properties");
-	}
-
-	return bp->prop;
-}
-
-static int rna_Object_active_bake_pass_index_get(PointerRNA *ptr)
-{
-	Object *ob = (Object *)ptr->data;
-	return ob->active_bake_pass;
-}
-
-static void rna_Object_active_bake_pass_index_set(PointerRNA *ptr, int value)
-{
-	Object *ob = (Object *)ptr->data;
-	int num_bake_passes = BLI_listbase_count(&ob->bake_passes);
-	ob->active_bake_pass = min_ff(value, num_bake_passes - 1);
-}
-
-static void rna_Object_active_bake_pass_index_range(
-		PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
-{
-	Object *ob = (Object *)ptr->data;
-
-	*min = 0;
-	*max = max_ii(0, BLI_listbase_count(&ob->bake_passes) - 1);
-}
-
-static PointerRNA rna_Object_active_bake_pass_get(PointerRNA *ptr)
-{
-	Object *ob = (Object *)ptr->data;
-	BakePass *bp = BLI_findlink(&ob->bake_passes, ob->active_bake_pass);
-
-	return rna_pointer_inherit_refine(ptr, &RNA_BakePass, bp);
-}
-
-static void rna_Object_active_bake_pass_set(PointerRNA *ptr, PointerRNA value)
-{
-	Object *ob = (Object *)ptr->data;
-	BakePass *bp = (BakePass *)value.data;
-	const int index = BLI_findindex(&ob->bake_passes, bp);
-	if (index != -1) ob->active_bake_pass = index;
-}
-
-static BakePass *rna_BakePass_new(Object *ob, const char *name)
-{
-	BakePass *bp = BKE_object_add_bake_pass(ob, name);
-
-	DEG_id_tag_update(&ob->id, 0);
-	WM_main_add_notifier(NC_SCENE, NULL);
-
-	return bp;
-}
-
-static void rna_BakePass_remove(
-		Object *ob, PointerRNA *bp_ptr)
-{
-	BakePass *bp = bp_ptr->data;
-
-	BKE_object_remove_bake_pass(ob, bp);
-
-	RNA_POINTER_INVALIDATE(bp_ptr);
-
-	DEG_id_tag_update(&ob->id, 0);
-	WM_main_add_notifier(NC_SCENE, NULL);
-}
-
-static void rna_BakePass_name_set(PointerRNA *ptr, const char *value)
-{
-	Object *ob = (Object *)ptr->id.data;
-	BakePass *bp = (BakePass *)ptr->data;
-
-	BLI_strncpy_utf8(bp->name, value, sizeof(bp->name));
-	BLI_uniquename(&ob->bake_passes, bp, DATA_("BakePass"), '.', offsetof(BakePass, name), sizeof(bp->name));
-}
-
-static void rna_BakePass_uvlayer_set(PointerRNA *ptr, const char *value)
-{
-	BakePass *bp = (BakePass *)ptr->data;
-	rna_object_uvlayer_name_set(ptr, value, bp->uvlayer_name, sizeof(bp->uvlayer_name));
-}
-
 #else
 
 static void rna_def_vertex_group(BlenderRNA *brna)
@@ -2162,166 +2072,6 @@ static void rna_def_object_face_maps(BlenderRNA *brna, PropertyRNA *cprop)
 
 	func = RNA_def_function(srna, "clear", "rna_Object_fmap_clear");
 	RNA_def_function_ui_description(func, "Delete all vertex groups from object");
-}
-
-static void rna_def_bake_pass(BlenderRNA *brna)
-{
-	StructRNA *srna;
-	PropertyRNA *prop;
-
-	srna = RNA_def_struct(brna, "BakePass", NULL);
-	RNA_def_struct_ui_text(srna, "Bake Pass", "Bake Pass");
-	RNA_def_struct_ui_icon(srna, ICON_RENDERLAYERS);
-	RNA_def_struct_idprops_func(srna, "rna_BakePass_idprops");
-
-	prop = RNA_def_property(srna, "enable", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_ENABLED);
-	RNA_def_property_ui_text(prop, "Enabled", "Disable or enable the bake pass");
-
-	prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_BakePass_name_set");
-	RNA_def_property_ui_text(prop, "Name", "Bake pass name");
-	RNA_def_struct_name_property(srna, prop);
-
-	prop = RNA_def_property(srna, "image", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "image");
-	RNA_def_property_struct_type(prop, "Image");
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Image", "Image to bake to");
-
-	prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "material");
-	RNA_def_property_struct_type(prop, "Material");
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Material", "Limit baking to this material (when empty, all materials are baked)");
-
-	prop = RNA_def_property(srna, "uv_layer", PROP_STRING, PROP_NONE);
-	RNA_def_property_string_sdna(prop, NULL, "uvlayer_name");
-	RNA_def_property_ui_text(prop, "UV Map", "UV map name");
-	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_BakePass_uvlayer_set");
-
-	prop = RNA_def_property(srna, "cage_object", PROP_POINTER, PROP_NONE);
-	RNA_def_property_ui_text(prop, "Cage Object", "Object to use as cage "
-	                         "instead of calculating the cage from the active object with cage extrusion");
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-
-	prop = RNA_def_property(srna, "bake_from_collection", PROP_POINTER, PROP_NONE);
-	RNA_def_property_struct_type(prop, "Collection");
-	RNA_def_property_pointer_sdna(prop, NULL, "bake_from_collection");
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Bake from Collection", "Bake shading on the surface of objects in this collection to "
-	                                                       "the active object");
-
-	prop = RNA_def_property(srna, "filepath", PROP_STRING, PROP_FILEPATH);
-	RNA_def_property_ui_text(prop, "File Path", "Image filepath to use when saving externally");
-
-	prop = RNA_def_property(srna, "width", PROP_INT, PROP_PIXEL);
-	RNA_def_property_range(prop, 4, 10000);
-	RNA_def_property_ui_text(prop, "Width", "Horizontal dimension of the baking map");
-
-	prop = RNA_def_property(srna, "height", PROP_INT, PROP_PIXEL);
-	RNA_def_property_range(prop, 4, 10000);
-	RNA_def_property_ui_text(prop, "Height", "Vertical dimension of the baking map");
-
-	prop = RNA_def_property(srna, "margin", PROP_INT, PROP_PIXEL);
-	RNA_def_property_range(prop, 0, SHRT_MAX);
-	RNA_def_property_ui_range(prop, 0, 64, 1, 1);
-	RNA_def_property_ui_text(prop, "Margin", "Extends the baked result as a post process filter");
-
-	prop = RNA_def_property(srna, "cage_extrusion", PROP_FLOAT, PROP_DISTANCE);
-	RNA_def_property_range(prop, 0.0, FLT_MAX);
-	RNA_def_property_ui_range(prop, 0.0, 1.0, 1, 3);
-	RNA_def_property_ui_text(prop, "Cage Extrusion",
-	                         "Distance to use for the inward ray cast when using selected to active");
-
-	prop = RNA_def_property(srna, "normal_space", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_space");
-	RNA_def_property_enum_items(prop, rna_enum_normal_space_items);
-	RNA_def_property_ui_text(prop, "Normal Space", "Choose normal space for baking");
-
-	prop = RNA_def_property(srna, "normal_r", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_swizzle[0]");
-	RNA_def_property_enum_items(prop, rna_enum_normal_swizzle_items);
-	RNA_def_property_ui_text(prop, "Normal Space", "Axis to bake in red channel");
-
-	prop = RNA_def_property(srna, "normal_g", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_swizzle[1]");
-	RNA_def_property_enum_items(prop, rna_enum_normal_swizzle_items);
-	RNA_def_property_ui_text(prop, "Normal Space", "Axis to bake in green channel");
-
-	prop = RNA_def_property(srna, "normal_b", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_bitflag_sdna(prop, NULL, "normal_swizzle[2]");
-	RNA_def_property_enum_items(prop, rna_enum_normal_swizzle_items);
-	RNA_def_property_ui_text(prop, "Normal Space", "Axis to bake in blue channel");
-
-	prop = RNA_def_property(srna, "image_settings", PROP_POINTER, PROP_NONE);
-	RNA_def_property_flag(prop, PROP_NEVER_NULL);
-	RNA_def_property_pointer_sdna(prop, NULL, "im_format");
-	RNA_def_property_struct_type(prop, "ImageFormatSettings");
-	RNA_def_property_ui_text(prop, "Image Format", "");
-
-	prop = RNA_def_property(srna, "save_mode", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_bitflag_sdna(prop, NULL, "save_mode");
-	RNA_def_property_enum_items(prop, rna_enum_bake_save_mode_items);
-	RNA_def_property_ui_text(prop, "Save Mode", "Choose how to save the baking map");
-
-	/* flags */
-	prop = RNA_def_property(srna, "use_clear", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_CLEAR);
-	RNA_def_property_ui_text(prop, "Clear",
-	                         "Clear Images before baking (internal only)");
-
-	prop = RNA_def_property(srna, "use_automatic_name", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_AUTO_NAME);
-	RNA_def_property_ui_text(prop, "Automatic Name",
-	                         "Automatically name the output file with the pass type (external only)");
-
-	prop = RNA_def_property(srna, "use_cage", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", R_BAKE_CAGE);
-	RNA_def_property_ui_text(prop, "Cage",
-	                         "Cast rays to active object from a cage");
-}
-
-/* Bake Passes */
-static void rna_def_bake_passes(BlenderRNA *brna, PropertyRNA *cprop)
-{
-	StructRNA *srna;
-	PropertyRNA *prop;
-
-	FunctionRNA *func;
-	PropertyRNA *parm;
-
-	RNA_def_property_srna(cprop, "BakePasses");
-	srna = RNA_def_struct(brna, "BakePasses", NULL);
-	RNA_def_struct_sdna(srna, "Object");
-	RNA_def_struct_ui_text(srna, "Bake Passes", "Collection of bake passes");
-
-	prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
-	RNA_def_property_int_sdna(prop, NULL, "active_bake_pass");
-	RNA_def_property_int_funcs(prop, "rna_Object_active_bake_pass_index_get",
-	                                 "rna_Object_active_bake_pass_index_set",
-	                                 "rna_Object_active_bake_pass_index_range");
-	RNA_def_property_ui_text(prop, "Active Bake Pass Index", "Active index in bake pass array");
-
-	prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
-	RNA_def_property_struct_type(prop, "BakePass");
-	RNA_def_property_pointer_funcs(prop, "rna_Object_active_bake_pass_get",
-	                                     "rna_Object_active_bake_pass_set", NULL, NULL);
-	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_NULL);
-	RNA_def_property_ui_text(prop, "Active Bake Pass", "Active Bake Pass");
-
-	func = RNA_def_function(srna, "new", "rna_BakePass_new");
-	RNA_def_function_ui_description(func, "Add a bake pass to scene");
-	parm = RNA_def_string(func, "name", "BakePass", 0, "", "New name for the bake pass (not unique)");
-	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-	parm = RNA_def_pointer(func, "result", "BakePass", "", "Newly created bake pass");
-	RNA_def_function_return(func, parm);
-
-	func = RNA_def_function(srna, "remove", "rna_BakePass_remove");
-	RNA_def_function_ui_description(func, "Remove a bake pass");
-	parm = RNA_def_pointer(func, "layer", "BakePass", "", "Bake pass to remove");
-	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-	RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
 static void rna_def_object_display(BlenderRNA *brna)
@@ -3009,13 +2759,6 @@ static void rna_def_object(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Base from Set", "Object comes from a background set");
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-	/* Bake Passes */
-	prop = RNA_def_property(srna, "bake_passes", PROP_COLLECTION, PROP_NONE);
-	RNA_def_property_collection_sdna(prop, NULL, "bake_passes", NULL);
-	RNA_def_property_struct_type(prop, "BakePass");
-	RNA_def_property_ui_text(prop, "Bake Passes", "");
-	rna_def_bake_passes(brna, prop);
-
 	/* Object Display */
 	prop = RNA_def_property(srna, "display", PROP_POINTER, PROP_NONE);
 	RNA_def_property_flag(prop, PROP_NEVER_NULL);
@@ -3035,7 +2778,6 @@ void RNA_def_object(BlenderRNA *brna)
 	rna_def_face_map(brna);
 	rna_def_material_slot(brna);
 	rna_def_object_display(brna);
-	rna_def_bake_pass(brna);
 	RNA_define_animate_sdna(true);
 }
 

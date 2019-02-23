@@ -54,7 +54,6 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -1953,61 +1952,6 @@ void TEXTURE_OT_slot_paste(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = paste_mtex_exec;
-
-	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
-}
-
-/********************** bake pass operators *********************/
-
-static int bake_pass_add_exec(bContext *C, wmOperator *UNUSED(op))
-{
-	Object *ob = CTX_data_active_object(C);
-
-	BKE_object_add_bake_pass(ob, NULL);
-	ob->active_bake_pass = BLI_listbase_count(&ob->bake_passes) - 1;
-
-	DEG_id_tag_update(&ob->id, 0);
-
-	return OPERATOR_FINISHED;
-}
-
-void OBJECT_OT_bake_pass_add(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Add Bake Pass";
-	ot->idname = "OBJECT_OT_bake_pass_add";
-	ot->description = "Add a bake pass";
-
-	/* api callbacks */
-	ot->exec = bake_pass_add_exec;
-
-	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
-}
-
-static int bake_pass_remove_exec(bContext *C, wmOperator *UNUSED(op))
-{
-	Object *ob = CTX_data_active_object(C);
-	BakePass *bp = BLI_findlink(&ob->bake_passes, ob->active_bake_pass);
-
-	if (!BKE_object_remove_bake_pass(ob, bp))
-		return OPERATOR_CANCELLED;
-
-	DEG_id_tag_update(&ob->id, 0);
-
-	return OPERATOR_FINISHED;
-}
-
-void OBJECT_OT_bake_pass_remove(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Remove Bake Pass";
-	ot->idname = "OBJECT_OT_bake_pass_remove";
-	ot->description = "Remove the selected bake pass";
-
-	/* api callbacks */
-	ot->exec = bake_pass_remove_exec;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
