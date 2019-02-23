@@ -88,8 +88,8 @@
 typedef struct BakeDataZSpan {
 	BakePixel *pixel_array;
 	int primitive_id;
-	BakeImage *bk_image;
-	ZSpan *zspan;
+	const BakeImage *bk_image;
+	ZSpan zspan;
 	float du_dx, du_dy;
 	float dv_dx, dv_dy;
 } BakeDataZSpan;
@@ -115,8 +115,7 @@ static void store_bake_pixel(void *handle, int x, int y, float u, float v)
 	BakePixel *pixel;
 
 	const int width = bd->bk_image->width;
-	const size_t offset = bd->bk_image->offset;
-	const int i = offset + y * width + x;
+	const int i = y * width + x;
 
 	pixel = &bd->pixel_array[i];
 	pixel->primitive_id = bd->primitive_id;
@@ -612,11 +611,16 @@ static void bake_differentials(BakeDataZSpan *bd, const float *uv1, const float 
 
 void RE_bake_pixels_populate(
         Mesh *me, BakePixel pixel_array[],
-        const size_t num_pixels, const BakeImages *bake_images, const char *uv_layer)
+        const size_t num_pixels, const BakeImage *bake_image, const char *uv_layer)
 {
-	BakeDataZSpan bd;
+	BakeDataZSpan bd = {0};
 	size_t i;
-	int a, p_id;
+
+	/* initialize all pixel arrays so we know which ones are 'blank' */
+	for (i = 0; i < num_pixels; i++) {
+		pixel_array[i].primitive_id = -1;
+		pixel_array[i].object_id = 0;
+	}
 
 	const MLoopUV *mloopuv;
 	const int tottri = poly_to_tri_count(me->totpoly, me->totloop);
@@ -626,26 +630,17 @@ void RE_bake_pixels_populate(
 		mloopuv = CustomData_get_layer(&me->ldata, CD_MLOOPUV);
 	}
 	else {
-		int uv_id = CustomData_get_named_layer(&me->ldata, CD_MLOOPUV, uv_layer);
-		mloopuv = CustomData_get_layer_n(&me->ldata, CD_MTFACE, uv_id);
+		mloopuv = CustomData_get_layer_named(&me->ldata, CD_MLOOPUV, uv_layer);
 	}
 
-	if (mloopuv == NULL)
+	if (mloopuv == NULL) {
+		BLI_assert(false);
 		return;
-
+	}
 
 	bd.pixel_array = pixel_array;
-	bd.zspan = MEM_callocN(sizeof(ZSpan) * bake_images->size, "bake zspan");
 
-	/* initialize all pixel arrays so we know which ones are 'blank' */
-	for (i = 0; i < num_pixels; i++) {
-		pixel_array[i].primitive_id = -1;
-		pixel_array[i].object_id = 0;
-	}
-
-	for (i = 0; i < bake_images->size; i++) {
-		zbuf_alloc_span(&bd.zspan[i], bake_images->data[i].width, bake_images->data[i].height);
-	}
+	zbuf_alloc_span(&bd.zspan, bake_image->width, bake_image->height);
 
 	looptri = MEM_mallocN(sizeof(*looptri) * tottri, __func__);
 
@@ -655,22 +650,20 @@ void RE_bake_pixels_populate(
 	        me->totloop, me->totpoly,
 	        looptri);
 
-	p_id = -1;
 	for (i = 0; i < tottri; i++) {
 		const MLoopTri *lt = &looptri[i];
 		const MPoly *mp = &me->mpoly[lt->poly];
 		float vec[3][2];
 		int mat_nr = mp->mat_nr;
-		int image_id = bake_images->lookup[mat_nr];
 
-		if (image_id < 0) {
+		if (mat_nr < bake_image->mat_mask_length && !bake_image->mat_mask[mat_nr]) {
 			continue;
 		}
 
-		bd.bk_image = &bake_images->data[image_id];
-		bd.primitive_id = ++p_id;
+		bd.bk_image = bake_image;
+		bd.primitive_id = i;
 
-		for (a = 0; a < 3; a++) {
+		for (int a = 0; a < 3; a++) {
 			const float *uv = mloopuv[lt->tri[a]].uv;
 
 			/* Note, workaround for pixel aligned UVs which are common and can screw up our intersection tests
@@ -682,15 +675,12 @@ void RE_bake_pixels_populate(
 		}
 
 		bake_differentials(&bd, vec[0], vec[1], vec[2]);
-		zspan_scanconvert(&bd.zspan[image_id], (void *)&bd, vec[0], vec[1], vec[2], store_bake_pixel);
+		zspan_scanconvert(&bd.zspan, (void *)&bd, vec[0], vec[1], vec[2], store_bake_pixel);
 	}
 
-	for (i = 0; i < bake_images->size; i++) {
-		zbuf_free_span(&bd.zspan[i]);
-	}
+	zbuf_free_span(&bd.zspan);
 
 	MEM_freeN(looptri);
-	MEM_freeN(bd.zspan);
 }
 
 /* ******************** NORMALS ************************ */
@@ -908,70 +898,20 @@ void RE_bake_normal_world_to_world(
 	}
 }
 
-void RE_bake_ibuf_clear(Image *image, const bool is_tangent)
+void RE_bake_ibuf_clear(Image *image, const float clear_color[3])
 {
 	ImBuf *ibuf;
 	void *lock;
 
-	const float vec_alpha[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-	const float vec_solid[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-	const float nor_alpha[4] = {0.5f, 0.5f, 1.0f, 0.0f};
-	const float nor_solid[4] = {0.5f, 0.5f, 1.0f, 1.0f};
+	float col[4];
+	copy_v3_v3(col, clear_color);
 
 	ibuf = BKE_image_acquire_ibuf(image, NULL, &lock);
 	BLI_assert(ibuf);
 
-	if (is_tangent)
-		IMB_rectfill(ibuf, (ibuf->planes == R_IMF_PLANES_RGBA) ? nor_alpha : nor_solid);
-	else
-		IMB_rectfill(ibuf, (ibuf->planes == R_IMF_PLANES_RGBA) ? vec_alpha : vec_solid);
+	col[3] = (ibuf->planes == R_IMF_PLANES_RGBA)? 1.0f : 0.0f;
+
+	IMB_rectfill(ibuf, col);
 
 	BKE_image_release_ibuf(image, ibuf, lock);
-}
-
-/* ************************************************************* */
-
-int RE_pass_depth(const eScenePassType pass_type)
-{
-	/* IMB_buffer_byte_from_float assumes 4 channels
-	 * making it work for now - XXX */
-	return 4;
-
-	switch (pass_type) {
-		case SCE_PASS_Z:
-		case SCE_PASS_AO:
-		case SCE_PASS_MIST:
-		{
-			return 1;
-		}
-		case SCE_PASS_UV:
-		{
-			return 2;
-		}
-		case SCE_PASS_COMBINED:
-		case SCE_PASS_SHADOW:
-		case SCE_PASS_NORMAL:
-		case SCE_PASS_VECTOR:
-		case SCE_PASS_INDEXOB:  /* XXX double check */
-		case SCE_PASS_RAYHITS:  /* XXX double check */
-		case SCE_PASS_EMIT:
-		case SCE_PASS_ENVIRONMENT:
-		case SCE_PASS_INDEXMA:
-		case SCE_PASS_DIFFUSE_DIRECT:
-		case SCE_PASS_DIFFUSE_INDIRECT:
-		case SCE_PASS_DIFFUSE_COLOR:
-		case SCE_PASS_GLOSSY_DIRECT:
-		case SCE_PASS_GLOSSY_INDIRECT:
-		case SCE_PASS_GLOSSY_COLOR:
-		case SCE_PASS_TRANSM_DIRECT:
-		case SCE_PASS_TRANSM_INDIRECT:
-		case SCE_PASS_TRANSM_COLOR:
-		case SCE_PASS_SUBSURFACE_DIRECT:
-		case SCE_PASS_SUBSURFACE_INDIRECT:
-		case SCE_PASS_SUBSURFACE_COLOR:
-		default:
-		{
-			return 3;
-		}
-	}
 }

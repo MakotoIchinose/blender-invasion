@@ -83,6 +83,9 @@ void ED_operatortypes_render(void)
 	WM_operatortype_append(TEXTURE_OT_slot_paste);
 	WM_operatortype_append(TEXTURE_OT_slot_move);
 
+	WM_operatortype_append(OBJECT_OT_bake_pass_add);
+	WM_operatortype_append(OBJECT_OT_bake_pass_remove);
+
 	/* render_internal.c */
 	WM_operatortype_append(RENDER_OT_view_show);
 	WM_operatortype_append(RENDER_OT_render);

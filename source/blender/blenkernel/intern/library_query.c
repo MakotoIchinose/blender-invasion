@@ -416,7 +416,6 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				CALLBACK_INVOKE(scene->world, IDWALK_CB_USER);
 				CALLBACK_INVOKE(scene->set, IDWALK_CB_NOP);
 				CALLBACK_INVOKE(scene->clip, IDWALK_CB_USER);
-				CALLBACK_INVOKE(scene->r.bake.cage_object, IDWALK_CB_NOP);
 				if (scene->nodetree) {
 					/* nodetree **are owned by IDs**, treat them as mere sub-data and not real ID! */
 					library_foreach_ID_as_subdata_link((ID **)&scene->nodetree, callback, user_data, flag, &data);
@@ -523,6 +522,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 			{
 				Object *object = (Object *) id;
 				ParticleSystem *psys;
+				BakePass *bp;
 
 				/* Object is special, proxies make things hard... */
 				const int data_cb_flag = data.cb_flag;
@@ -613,6 +613,21 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 
 					if (object->soft->effector_weights) {
 						CALLBACK_INVOKE(object->soft->effector_weights->group, IDWALK_CB_NOP);
+					}
+				}
+
+				for (bp = object->bake_passes.first; bp; bp = bp->next) {
+					if (bp->image) {
+						CALLBACK_INVOKE(bp->image, IDWALK_CB_USER);
+					}
+					if (bp->material) {
+						CALLBACK_INVOKE(bp->material, IDWALK_CB_USER);
+					}
+					if (bp->cage_object) {
+						CALLBACK_INVOKE(bp->cage_object, IDWALK_CB_NOP);
+					}
+					if (bp->bake_from_collection) {
+						CALLBACK_INVOKE(bp->bake_from_collection, IDWALK_CB_NOP);
 					}
 				}
 				break;

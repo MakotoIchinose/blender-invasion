@@ -328,6 +328,24 @@ static void outliner_add_object_contents(SpaceOutliner *soops, TreeElement *te, 
 
 	outliner_add_element(soops, &te->subtree, ob->data, te, 0, 0);
 
+	if (ob->bake_passes.first) {
+		BakePass *bp;
+		TreeElement *tenla = outliner_add_element(soops, &te->subtree, ob, te, TSE_R_LAYER_BASE, 0);
+		int a;
+
+		tenla->name = IFACE_("BakePasses");
+		for (a = 0, bp = ob->bake_passes.first; bp; bp = bp->next, a++) {
+			TreeElement *tenlay = outliner_add_element(soops, &tenla->subtree, ob, te, TSE_R_LAYER, a);
+			tenlay->name = bp->name;
+			tenlay->directdata = bp;
+
+			if (bp->image)
+				outliner_add_element(soops, &tenlay->subtree, bp->image, tenlay, TSE_R_LAYER, 0);
+			if (bp->material)
+				outliner_add_element(soops, &tenlay->subtree, bp->material, tenlay, TSE_LINKED_MAT, 0);
+		}
+	}
+
 	if (ob->pose) {
 		bArmature *arm = ob->data;
 		bPoseChannel *pchan;

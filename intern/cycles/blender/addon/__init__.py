@@ -83,8 +83,8 @@ class CyclesRender(bpy.types.RenderEngine):
     def render(self, depsgraph):
         engine.render(self, depsgraph)
 
-    def bake(self, depsgraph, obj, pass_type, pass_filter, object_id, pixel_array, num_pixels, depth, result):
-        engine.bake(self, depsgraph, obj, pass_type, pass_filter, object_id, pixel_array, num_pixels, depth, result)
+    def bake(self, depsgraph, bakepass, obj, object_id, pixel_array, result):
+        engine.bake(self, depsgraph, bakepass, obj, object_id, pixel_array, result)
 
     # viewport render
     def view_update(self, context):

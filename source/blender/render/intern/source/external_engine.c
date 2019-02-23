@@ -542,11 +542,9 @@ bool RE_bake_has_engine(Render *re)
 }
 
 bool RE_bake_engine(
-        Render *re, Depsgraph *depsgraph, Object *object,
-        const int object_id, const BakePixel pixel_array[],
-        const size_t num_pixels, const int depth,
-        const eScenePassType pass_type, const int pass_filter,
-        float result[])
+        Render *re, Depsgraph *depsgraph, BakePass *bp,
+        Object *object, const int object_id,
+        const BakePixel pixel_array[], BakeResult *result)
 {
 	RenderEngineType *type = RE_engines_find(re->r.engine);
 	RenderEngine *engine;
@@ -586,13 +584,10 @@ bool RE_bake_engine(
 
 		type->bake(engine,
 		           engine->depsgraph,
+		           bp,
 		           object,
-		           pass_type,
-		           pass_filter,
 		           object_id,
 		           pixel_array,
-		           num_pixels,
-		           depth,
 		           result);
 
 		engine->depsgraph = NULL;

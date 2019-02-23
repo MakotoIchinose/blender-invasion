@@ -18,7 +18,7 @@
 
 # <pep8 compliant>
 import bpy
-from bpy.types import Panel, Menu
+from bpy.types import Panel, Menu, UIList
 from rna_prop_ui import PropertyPanel
 
 
@@ -333,6 +333,119 @@ class OBJECT_PT_motion_paths(MotionPathButtonsPanel, Panel):
         self.draw_settings(context, avs, mpath)
 
 
+class OBJECT_UL_bake_passes(UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        layer = item
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(layer, "name", text="", icon_value=icon, emboss=False)
+            layout.prop(layer, "enable", text="", index=index)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.label("", icon_value=icon)
+
+
+class OBJECT_PT_bake_passes(ObjectButtonsPanel, Panel):
+    bl_label = "Bake Passes"
+    bl_context = "object"
+
+    def draw(self, context):
+        layout = self.layout
+
+        rd = context.scene.render
+        layout.prop(rd, "use_bake_multires")
+
+        if rd.use_bake_multires:
+            layout.operator("object.bake_image", icon='RENDER_STILL')
+            layout.prop(rd, "bake_type")
+        else:
+            ob = context.object
+
+            row = layout.row()
+            col = row.column()
+            col.template_list("OBJECT_UL_bake_passes", "", ob, "bake_passes", ob.bake_passes, "active_index", rows=2)
+
+            col = row.column()
+            sub = col.column(align=True)
+            sub.operator("object.bake_pass_add", icon='ADD', text="")
+            sub.operator("object.bake_pass_remove", icon='REMOVE', text="")
+
+            bp = context.object.bake_passes.active
+            if bp:
+                col = layout.column(align=True)
+                # TODO: How to align this properly?
+                split = col.split(factor=0.24)
+                split.label(text="Image:")
+                split.template_ID(bp, "image", new="IMAGE_OT_new")
+                col.prop(bp, "material")
+                col.prop_search(bp, "uv_layer", ob.data, "uv_layers", icon='GROUP_UVS')
+
+                layout.operator("object.bake", icon='RENDER_STILL')
+
+
+class OBJECT_PT_bake_bake_from_collection(ObjectButtonsPanel, Panel):
+    bl_label = "Bake from Collection"
+    bl_context = "object"
+    bl_parent_id = "OBJECT_PT_bake_passes"
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        rd = scene.render
+        bp = context.object.bake_passes.active
+        return bp and not rd.use_bake_multires
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        bp = context.object.bake_passes.active
+
+        layout.prop(bp, "bake_from_collection")
+
+        col = layout.column()
+        col.active = bp.bake_from_collection is not None
+
+        col.prop(bp, "use_cage", text="Cage")
+        if bp.use_cage:
+            col.prop(bp, "cage_extrusion", text="Extrusion")
+            col.prop(bp, "cage_object", text="Cage Object")
+        else:
+            col.prop(bp, "cage_extrusion", text="Ray Distance")
+
+
+class OBJECT_PT_bake_output(ObjectButtonsPanel, Panel):
+    bl_label = "Output"
+    bl_context = "object"
+    bl_parent_id = "OBJECT_PT_bake_passes"
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        rd = scene.render
+        bp = context.object.bake_passes.active
+        return rd.use_bake_multires or bp
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        scene = context.scene
+        rd = scene.render
+
+        if rd.use_bake_multires:
+            layout.prop(rd, "bake_margin")
+            layout.prop(rd, "use_bake_clear", text="Clear Image")
+
+            if rd.bake_type == 'DISPLACEMENT':
+                layout.prop(rd, "use_bake_lores_mesh")
+        else:
+            bp = context.object.bake_passes.active
+            layout.prop(bp, "margin")
+            layout.prop(bp, "use_clear", text="Clear Image")
+
+
 class OBJECT_PT_motion_paths_display(MotionPathButtonsPanel_display, Panel):
     #bl_label = "Object Motion Paths"
     bl_context = "object"
@@ -371,6 +484,10 @@ classes = (
     OBJECT_PT_motion_paths_display,
     OBJECT_PT_display,
     OBJECT_PT_custom_props,
+    OBJECT_UL_bake_passes,
+    OBJECT_PT_bake_passes,
+    OBJECT_PT_bake_bake_from_collection,
+    OBJECT_PT_bake_output,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -80,6 +80,9 @@ void TEXTURE_OT_slot_copy(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_paste(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_move(struct wmOperatorType *ot);
 
+void OBJECT_OT_bake_pass_add(struct wmOperatorType *ot);
+void OBJECT_OT_bake_pass_remove(struct wmOperatorType *ot);
+
 /* render_internal.c */
 void RENDER_OT_render(struct wmOperatorType *ot);
 void RENDER_OT_shutter_curve_preset(struct wmOperatorType *ot);

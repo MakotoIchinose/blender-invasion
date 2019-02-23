@@ -117,6 +117,67 @@ typedef struct LodLevel {
 	int obhysteresis;
 } LodLevel;
 
+typedef struct BakePass {
+	struct BakePass *next, *prev;
+
+	char name[64];
+	struct Image *image;
+	struct Material *material;
+
+	struct ImageFormatData im_format;
+
+	char uvlayer_name[64];
+
+	char filepath[1024]; /* FILE_MAX */
+
+	short width, height;
+	short margin, flag;
+
+	float cage_extrusion;
+	int pass_filter;
+
+	char normal_swizzle[3];
+	char normal_space;
+
+	char save_mode;
+	char pad[3];
+
+	struct Collection *bake_from_collection;
+	struct Object *cage_object;
+
+	IDProperty *prop;
+} BakePass;
+
+/* BakePass.normal_swizzle (char) */
+typedef enum eBakeNormalSwizzle {
+    R_BAKE_POSX = 0,
+    R_BAKE_POSY = 1,
+    R_BAKE_POSZ = 2,
+    R_BAKE_NEGX = 3,
+    R_BAKE_NEGY = 4,
+    R_BAKE_NEGZ = 5,
+} eBakeNormalSwizzle;
+
+/* BakePass.save_mode (char) */
+typedef enum eBakeSaveMode {
+    R_BAKE_SAVE_INTERNAL = 0,
+    R_BAKE_SAVE_EXTERNAL = 1,
+} eBakeSaveMode;
+
+/* BakePass.pass_filter */
+typedef enum eBakePassFilter {
+    R_BAKE_PASS_FILTER_NONE           = 0,
+    R_BAKE_PASS_FILTER_AO             = (1 << 0),
+    R_BAKE_PASS_FILTER_EMIT           = (1 << 1),
+    R_BAKE_PASS_FILTER_DIFFUSE        = (1 << 2),
+    R_BAKE_PASS_FILTER_GLOSSY         = (1 << 3),
+    R_BAKE_PASS_FILTER_TRANSM         = (1 << 4),
+    R_BAKE_PASS_FILTER_SUBSURFACE     = (1 << 5),
+    R_BAKE_PASS_FILTER_DIRECT         = (1 << 6),
+    R_BAKE_PASS_FILTER_INDIRECT       = (1 << 7),
+    R_BAKE_PASS_FILTER_COLOR          = (1 << 8),
+} eBakePassFilter;
+
 /* Forward declaration for cache bbone deformation information.
  *
  * TODO(sergey): Consider moving it to more appropriate place. */
@@ -287,6 +348,10 @@ typedef struct Object {
 
 	char _pad1;
 	char duplicator_visibility_flag;
+
+	int active_bake_pass;
+	int _pad4;
+	ListBase bake_passes;
 
 	/* Depsgraph */
 	/** Used by depsgraph, flushed from base. */
