@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -600,7 +601,7 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
 		case CAM_YF_APERT:
 			poin = &(ca->YF_aperture); break;
 		case CAM_YF_FDIST:
-			poin = &(ca->YF_dofdist); break;
+			poin = &(ca->dof_distance); break;
 #endif // XXX these are not defined in RNA
 
 		case CAM_SHIFT_X:

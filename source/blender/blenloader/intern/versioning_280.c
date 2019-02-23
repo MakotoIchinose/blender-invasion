@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 /* allow readfile to use deprecated functionality */
@@ -516,10 +517,6 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 	if (have_override || need_default_renderlayer) {
 		ViewLayer *view_layer = BKE_view_layer_add(scene, "Viewport");
 
-		/* Make it first in the list. */
-		BLI_remlink(&scene->view_layers, view_layer);
-		BLI_addhead(&scene->view_layers, view_layer);
-
 		/* If we ported all the original render layers, we don't need to make the viewport layer renderable. */
 		if (!BLI_listbase_is_single(&scene->view_layers)) {
 			view_layer->flag &= ~VIEW_LAYER_RENDER;
@@ -633,7 +630,7 @@ void do_versions_after_linking_280(Main *bmain)
 			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 				for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
 					if (space->spacetype == SPACE_OUTLINER) {
-						SpaceOops *soutliner = (SpaceOops *)space;
+						SpaceOutliner *soutliner = (SpaceOutliner *)space;
 
 						soutliner->outlinevis = SO_VIEW_LAYER;
 
@@ -1151,7 +1148,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 280, 6)) {
-		if (DNA_struct_elem_find(fd->filesdna, "SpaceOops", "int", "filter") == false) {
+		if (DNA_struct_elem_find(fd->filesdna, "SpaceOutliner", "int", "filter") == false) {
 			bScreen *sc;
 			ScrArea *sa;
 			SpaceLink *sl;
@@ -1161,7 +1158,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				for (sa = sc->areabase.first; sa; sa = sa->next) {
 					for (sl = sa->spacedata.first; sl; sl = sl->next) {
 						if (sl->spacetype == SPACE_OUTLINER) {
-							SpaceOops *so = (SpaceOops *)sl;
+							SpaceOutliner *so = (SpaceOutliner *)sl;
 
 							if (!ELEM(so->outlinevis,
 							          SO_SCENES,
@@ -1558,7 +1555,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 						if (sl->spacetype == SPACE_OUTLINER) {
-							SpaceOops *soops = (SpaceOops *)sl;
+							SpaceOutliner *soops = (SpaceOutliner *)sl;
 							soops->filter_id_type = ID_GR;
 							soops->outlinevis = SO_VIEW_LAYER;
 						}
@@ -2060,9 +2057,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				}
 			}
 		}
-	}
 
-	{
 		if (!DNA_struct_elem_find(fd->filesdna, "ShrinkwrapModifierData", "char", "shrinkMode")) {
 			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
 				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
@@ -2076,9 +2071,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				}
 			}
 		}
-	}
 
-	if (!MAIN_VERSION_ATLEAST(bmain, 280, 24)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "PartDeflect", "float", "pdef_cfrict")) {
 			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
 				if (ob->pd) {
@@ -2138,7 +2131,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
-	{
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 29)) {
 		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
 			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -2153,13 +2146,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				}
 			}
 		}
-	}
 
-	if (!MAIN_VERSION_ATLEAST(bmain, 280, 29)) {
 		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
 			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-					if (sl->spacetype == SPACE_BUTS) {
+					if (sl->spacetype == SPACE_PROPERTIES) {
 						ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
 						ARegion *ar = MEM_callocN(sizeof(ARegion), "navigation bar for properties");
 						ARegion *ar_header = NULL;
@@ -2525,7 +2516,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 						}
 						case SPACE_OUTLINER:
 						{
-							SpaceOops *so = (SpaceOops *)sl;
+							SpaceOutliner *so = (SpaceOutliner *)sl;
 							so->filter &= ~(
 							        SO_FILTER_DEPRECATED_1 |
 							        SO_FILTER_DEPRECATED_5 |
@@ -2554,9 +2545,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 							        SNODE_FLAG_DEPRECATED_11);
 							break;
 						}
-						case SPACE_BUTS:
+						case SPACE_PROPERTIES:
 						{
-							SpaceButs *sbuts = (SpaceButs *)sl;
+							SpaceProperties *sbuts = (SpaceProperties *)sl;
 							sbuts->flag &= ~(
 							        SB_FLAG_DEPRECATED_2 |
 							        SB_FLAG_DEPRECATED_3);
@@ -2648,12 +2639,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			        IMA_FLAG_DEPRECATED_8 |
 			        IMA_FLAG_DEPRECATED_15 |
 			        IMA_FLAG_DEPRECATED_16);
-			image->tpageflag &= ~(
-			        IMA_TPAGEFLAG_DEPRECATED_0 |
-			        IMA_TPAGEFLAG_DEPRECATED_1 |
-			        IMA_TPAGEFLAG_DEPRECATED_2 |
-			        IMA_TPAGEFLAG_DEPRECATED_4 |
-			        IMA_TPAGEFLAG_DEPRECATED_5);
 		}
 
 		for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
@@ -2807,8 +2792,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 45)) {
+		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+			for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+				for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_SEQ) {
+						SpaceSeq *sseq = (SpaceSeq *)sl;
+						sseq->flag |= SEQ_SHOW_MARKER_LINES;
+					}
+				}
+			}
+		}
+	}
+
 	{
 		/* Versioning code until next subversion bump goes here. */
-
 	}
 }

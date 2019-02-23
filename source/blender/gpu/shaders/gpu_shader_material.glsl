@@ -856,7 +856,7 @@ void hue_sat(float hue, float sat, float value, float fac, vec4 col, out vec4 ou
 
 	rgb_to_hsv(col, hsv);
 
-	hsv[0] = fract(hsv[0] + (hue - 0.5));
+	hsv[0] = fract(hsv[0] + hue + 0.5);
 	hsv[1] = clamp(hsv[1] * sat, 0.0, 1.0);
 	hsv[2] = hsv[2] * value;
 
@@ -1089,6 +1089,8 @@ void convert_metallic_to_specular_tinted(
 vec3 principled_sheen(float NV, vec3 basecol_tint, float sheen_tint)
 {
 	float f = 1.0 - NV;
+	/* Temporary fix for T59784. Normal map seems to contain NaNs for tangent space normal maps, therefore we need to clamp value. */
+	f = clamp(f, 0.0, 1.0);
 	/* Empirical approximation (manual curve fitting). Can be refined. */
 	float sheen = f*f*f*0.077 + f*0.01 + 0.00026;
 	return sheen * mix(vec3(1.0), basecol_tint, sheen_tint);

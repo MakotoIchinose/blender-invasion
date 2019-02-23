@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup edobj
+/** \file
+ * \ingroup edobj
  */
 
 
@@ -439,7 +440,7 @@ static int object_add_exec(bContext *C, wmOperator *op)
 	if (ob->type == OB_LATTICE) {
 		/* lattice is a special case!
 		 * we never want to scale the obdata since that is the rest-state */
-		copy_v3_fl(ob->size, radius);
+		copy_v3_fl(ob->scale, radius);
 	}
 	else {
 		BKE_object_obdata_size_init(ob, radius);
@@ -1216,7 +1217,7 @@ static int collection_instance_add_exec(bContext *C, wmOperator *op)
 		}
 
 		Object *ob = ED_object_add_type(C, OB_EMPTY, collection->id.name + 2, loc, rot, false, local_view_bits);
-		ob->dup_group = collection;
+		ob->instance_collection = collection;
 		ob->transflag |= OB_DUPLICOLLECTION;
 		id_us_plus(&collection->id);
 
@@ -1685,7 +1686,7 @@ static void make_object_duplilist_real(bContext *C, Scene *scene, Base *base,
 		}
 	}
 
-	if (base->object->transflag & OB_DUPLICOLLECTION && base->object->dup_group) {
+	if (base->object->transflag & OB_DUPLICOLLECTION && base->object->instance_collection) {
 		for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
 			if (ob->proxy_group == base->object) {
 				ob->proxy = NULL;
@@ -1771,7 +1772,7 @@ static void convert_ensure_curve_cache(Depsgraph *depsgraph, Scene *scene, Objec
 		if (ELEM(ob->type, OB_SURF, OB_CURVE, OB_FONT)) {
 			/* We need 'for render' ON here, to enable computing bevel dipslist if needed.
 			 * Also makes sense anyway, we would not want e.g. to loose hidden parts etc. */
-			BKE_displist_make_curveTypes(depsgraph, scene, ob, true, false);
+			BKE_displist_make_curveTypes(depsgraph, scene, ob, true, false, NULL);
 		}
 		else if (ob->type == OB_MBALL) {
 			BKE_displist_make_mball(depsgraph, scene, ob);

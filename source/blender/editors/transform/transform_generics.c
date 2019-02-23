@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup edtransform
+/** \file
+ * \ingroup edtransform
  */
 
 #include <string.h>
@@ -397,7 +398,7 @@ static void recalcData_actedit(TransInfo *t)
 /* helper for recalcData() - for Graph Editor transforms */
 static void recalcData_graphedit(TransInfo *t)
 {
-	SpaceIpo *sipo = (SpaceIpo *)t->sa->spacedata.first;
+	SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
 	ViewLayer *view_layer = t->view_layer;
 
 	ListBase anim_data = {NULL, NULL};
@@ -1117,7 +1118,7 @@ void recalcData(TransInfo *t)
 	else if (t->spacetype == SPACE_SEQ) {
 		recalcData_sequencer(t);
 	}
-	else if (t->spacetype == SPACE_IPO) {
+	else if (t->spacetype == SPACE_GRAPH) {
 		recalcData_graphedit(t);
 	}
 	else if (t->spacetype == SPACE_NODE) {
@@ -1142,7 +1143,7 @@ void drawLine(TransInfo *t, const float center[3], const float dir[3], char axis
 		GPU_matrix_push();
 
 		copy_v3_v3(v3, dir);
-		mul_v3_fl(v3, v3d->far);
+		mul_v3_fl(v3, v3d->clip_end);
 
 		sub_v3_v3v3(v2, center, v3);
 		add_v3_v3v3(v1, center, v3);
@@ -1231,6 +1232,7 @@ void initTransDataContainers_FromObjectData(TransInfo *t, Object *obact, Object 
 			tc->mirror.axis_flag = (
 			        ((t->flag & T_NO_MIRROR) == 0) &&
 			        ((t->options & CTX_NO_MIRROR) == 0) &&
+			        (objects[i]->type == OB_MESH) &&
 			        (((Mesh *)objects[i]->data)->editflag & ME_EDIT_MIRROR_X) != 0);
 
 			if (object_mode & OB_MODE_EDIT) {
@@ -1483,8 +1485,8 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 		t->view = &ar->v2d;
 		t->around = V3D_AROUND_CENTER_BOUNDS;
 	}
-	else if (t->spacetype == SPACE_IPO) {
-		SpaceIpo *sipo = sa->spacedata.first;
+	else if (t->spacetype == SPACE_GRAPH) {
+		SpaceGraph *sipo = sa->spacedata.first;
 		t->view = &ar->v2d;
 		t->around = sipo->around;
 	}
@@ -1511,11 +1513,19 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	}
 
 	if (op && ((prop = RNA_struct_find_property(op->ptr, "constraint_matrix")) &&
-	           RNA_property_is_set(op->ptr, prop)))
+	           RNA_property_is_set(op->ptr, prop)) &&
+	    ((t->flag & T_MODAL) ||
+	     /* When using redo, don't use the the custom constraint matrix
+	      * if the user selects a different orientation. */
+	     (RNA_enum_get(op->ptr, "constraint_orientation") ==
+	      RNA_enum_get(op->ptr, "constraint_matrix_orientation"))))
 	{
 		RNA_property_float_get_array(op->ptr, prop, &t->spacemtx[0][0]);
 		t->orientation.user = V3D_ORIENT_CUSTOM_MATRIX;
 		t->orientation.custom = 0;
+		if (t->flag & T_MODAL) {
+			RNA_enum_set(op->ptr, "constraint_matrix_orientation", RNA_enum_get(op->ptr, "constraint_orientation"));
+		}
 	}
 	else if (op && ((prop = RNA_struct_find_property(op->ptr, "constraint_orientation")) &&
 	                RNA_property_is_set(op->ptr, prop)))
@@ -1575,7 +1585,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			/* use settings from scene only if modal */
 			if (t->flag & T_MODAL) {
 				if ((t->options & CTX_NO_PET) == 0) {
-					if (t->spacetype == SPACE_IPO) {
+					if (t->spacetype == SPACE_GRAPH) {
 						t->flag |= initTransInfo_edit_pet_to_flag(ts->proportional_fcurve);
 					}
 					else if (t->spacetype == SPACE_ACTION) {
@@ -1716,7 +1726,7 @@ void postTrans(bContext *C, TransInfo *t)
 		FOREACH_TRANS_DATA_CONTAINER (t, tc) {
 			/* free data malloced per trans-data */
 			if (ELEM(t->obedit_type, OB_CURVE, OB_SURF) ||
-			    (t->spacetype == SPACE_IPO))
+			    (t->spacetype == SPACE_GRAPH))
 			{
 				TransData *td = tc->data;
 				for (int a = 0; a < tc->data_len; a++, td++) {
@@ -1931,7 +1941,7 @@ void calculateCenterCursor2D(TransInfo *t, float r_center[2])
 
 void calculateCenterCursorGraph2D(TransInfo *t, float r_center[2])
 {
-	SpaceIpo *sipo = (SpaceIpo *)t->sa->spacedata.first;
+	SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
 	Scene *scene = t->scene;
 
 	/* cursor is combination of current frame, and graph-editor cursor value */
@@ -2058,7 +2068,7 @@ static void calculateCenter_FromAround(TransInfo *t, int around, float r_center[
 		case V3D_AROUND_CURSOR:
 			if (ELEM(t->spacetype, SPACE_IMAGE, SPACE_CLIP))
 				calculateCenterCursor2D(t, r_center);
-			else if (t->spacetype == SPACE_IPO)
+			else if (t->spacetype == SPACE_GRAPH)
 				calculateCenterCursorGraph2D(t, r_center);
 			else
 				calculateCenterCursor(t, r_center);

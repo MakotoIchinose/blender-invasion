@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_VIEW3D_TYPES_H__
@@ -43,15 +44,6 @@ struct wmTimer;
 #include "DNA_object_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_gpu_types.h"
-
-/* ******************************** */
-
-/* The near/far thing is a Win EXCEPTION, caused by indirect includes from <windows.h>.
- * Thus, leave near/far in the code, and undef for windows. */
-#ifdef _WIN32
-#  undef near
-#  undef far
-#endif
 
 typedef struct RegionView3D {
 
@@ -275,7 +267,7 @@ typedef struct View3D {
 	int flag2;
 
 	float lens, grid;
-	float near, far;
+	float clip_start, clip_end;
 	float ofs[3] DNA_DEPRECATED;
 
 	char _pad[4];

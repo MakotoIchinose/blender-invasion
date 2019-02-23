@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_MESH_H__
@@ -94,8 +95,8 @@ void EDBM_select_flush(struct BMEditMesh *em);
 
 bool EDBM_vert_color_check(struct BMEditMesh *em);
 
-void EDBM_mesh_hide(struct BMEditMesh *em, bool swap);
-void EDBM_mesh_reveal(struct BMEditMesh *em, bool select);
+bool EDBM_mesh_hide(struct BMEditMesh *em, bool swap);
+bool EDBM_mesh_reveal(struct BMEditMesh *em, bool select);
 
 void EDBM_update_generic(struct BMEditMesh *em, const bool do_tessface, const bool is_destructive);
 

@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdio.h>
@@ -347,8 +348,8 @@ static void rna_Object_active_shape_update(bContext *C, PointerRNA *ptr)
 
 				DEG_id_tag_update(ob->data, 0);
 
-				EDBM_mesh_normals_update(((Mesh *)ob->data)->edit_btmesh);
-				BKE_editmesh_tessface_calc(((Mesh *)ob->data)->edit_btmesh);
+				EDBM_mesh_normals_update(((Mesh *)ob->data)->edit_mesh);
+				BKE_editmesh_tessface_calc(((Mesh *)ob->data)->edit_mesh);
 				break;
 			case OB_CURVE:
 			case OB_SURF:
@@ -553,9 +554,9 @@ static void rna_Object_dup_collection_set(PointerRNA *ptr, PointerRNA value)
 	 */
 	if (BKE_collection_has_object_recursive(grp, ob) == 0) {
 		if (ob->type == OB_EMPTY) {
-			id_us_min(&ob->dup_group->id);
-			ob->dup_group = grp;
-			id_us_plus(&ob->dup_group->id);
+			id_us_min(&ob->instance_collection->id);
+			ob->instance_collection = grp;
+			id_us_plus(&ob->instance_collection->id);
 		}
 		else {
 			BKE_report(NULL, RPT_ERROR,
@@ -789,8 +790,8 @@ static void rna_Object_active_material_index_set(PointerRNA *ptr, int value)
 	if (ob->type == OB_MESH) {
 		Mesh *me = ob->data;
 
-		if (me->edit_btmesh)
-			me->edit_btmesh->mat_nr = value;
+		if (me->edit_mesh)
+			me->edit_mesh->mat_nr = value;
 	}
 }
 
@@ -2289,7 +2290,6 @@ static void rna_def_object(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
 	prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
-	RNA_def_property_float_sdna(prop, NULL, "size");
 	RNA_def_property_flag(prop, PROP_PROPORTIONAL);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 	RNA_def_property_editable_array_func(prop, "rna_Object_scale_editable");
@@ -2525,7 +2525,6 @@ static void rna_def_object(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT, "rna_Object_internal_update_draw");
 
 	prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
-	RNA_def_property_float_sdna(prop, NULL, "col");
 	RNA_def_property_ui_text(prop, "Color", "Object color and alpha, used when faces have the ObColor mode enabled");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
@@ -2620,14 +2619,14 @@ static void rna_def_object(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update");
 
 	prop = RNA_def_property(srna, "instance_faces_scale", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_float_sdna(prop, NULL, "dupfacesca");
+	RNA_def_property_float_sdna(prop, NULL, "instance_faces_scale");
 	RNA_def_property_range(prop, 0.001f, 10000.0f);
 	RNA_def_property_ui_text(prop, "Instance Faces Scale", "Scale the face instance objects");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update");
 
 	prop = RNA_def_property(srna, "instance_collection", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Collection");
-	RNA_def_property_pointer_sdna(prop, NULL, "dup_group");
+	RNA_def_property_pointer_sdna(prop, NULL, "instance_collection");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
 	RNA_def_property_pointer_funcs(prop, NULL, "rna_Object_dup_collection_set", NULL, NULL);
 	RNA_def_property_ui_text(prop, "Instance Collection", "Instance an existing collection");

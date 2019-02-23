@@ -159,6 +159,7 @@ set(SRC
 	rna_define.c
 	${DEFSRC}
 	${APISRC}
+	../../../../intern/clog/clog.c
 	../../../../intern/guardedalloc/intern/mallocn.c
 	../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
 	../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
@@ -166,7 +167,7 @@ set(SRC
 )
 
 set(INC
-
+    ../../../../intern/clog
 )
 
 set(INC_SYS
@@ -350,7 +351,7 @@ setup_platform_linker_flags()
 add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
 
 target_link_libraries(makesrna bf_dna)
-target_link_libraries(makesrna bf_dna_blenlib)
+target_link_libraries(makesrna bf_dna_blenlib ${PTHREADS_LIBRARIES})
 
 # Output rna_*_gen.c
 # note (linux only): with crashes try add this after COMMAND: valgrind --leak-check=full --track-origins=yes

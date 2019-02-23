@@ -18,7 +18,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Window management, wrap GHOST.
  */
@@ -602,8 +603,12 @@ void WM_window_set_dpi(wmWindow *win)
 	U.pixelsize = pixelsize;
 	U.dpi = dpi / pixelsize;
 	U.virtual_pixel = (pixelsize == 1) ? VIRTUAL_PIXEL_NATIVE : VIRTUAL_PIXEL_DOUBLE;
-	U.widget_unit = (U.pixelsize * U.dpi * 20 + 36) / 72;
 	U.dpi_fac = ((U.pixelsize * (float)U.dpi) / 72.0f);
+
+	/* Set user preferences globals for drawing, and for forward compatibility. */
+	U.widget_unit = (U.pixelsize * U.dpi * 20 + 36) / 72;
+	/* If line thickness differs from scaling factor then adjustments need to be made */
+	U.widget_unit += 2 * ((int)U.pixelsize - (int)U.dpi_fac);
 
 	/* update font drawing */
 	BLF_default_dpi(U.pixelsize * U.dpi);
@@ -947,7 +952,7 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
 		ED_area_newspace(C, sa, SPACE_IMAGE, false);
 	}
 	else if (type == WM_WINDOW_DRIVERS) {
-		ED_area_newspace(C, sa, SPACE_IPO, false);
+		ED_area_newspace(C, sa, SPACE_GRAPH, false);
 	}
 	else {
 		ED_area_newspace(C, sa, SPACE_USERPREF, false);
@@ -967,7 +972,7 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
 		title = IFACE_("Blender Preferences");
 	else if (sa->spacetype == SPACE_FILE)
 		title = IFACE_("Blender File View");
-	else if (sa->spacetype == SPACE_IPO)
+	else if (sa->spacetype == SPACE_GRAPH)
 		title = IFACE_("Blender Drivers Editor");
 	else
 		title = "Blender";

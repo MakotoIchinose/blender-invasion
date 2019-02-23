@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -120,7 +121,6 @@ void BKE_material_init_gpencil_settings(Material *ma)
 		gp_style->texture_pixsize = 100.0f;
 
 		gp_style->flag |= GP_STYLE_STROKE_SHOW;
-		gp_style->flag |= GP_STYLE_FILL_SHOW;
 	}
 }
 

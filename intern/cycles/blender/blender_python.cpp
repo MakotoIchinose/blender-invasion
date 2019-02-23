@@ -40,6 +40,10 @@
 #include <OSL/oslconfig.h>
 #endif
 
+#ifdef WITH_OPENCL
+#include "device/device_intern.h"
+#endif
+
 CCL_NAMESPACE_BEGIN
 
 namespace {
@@ -63,7 +67,6 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
 	/* Backup some settings for comparison. */
 	DebugFlags::OpenCL::DeviceType opencl_device_type = flags.opencl.device_type;
-	DebugFlags::OpenCL::KernelType opencl_kernel_type = flags.opencl.kernel_type;
 	/* Synchronize shared flags. */
 	flags.viewport_static_bvh = get_enum(cscene, "debug_bvh_type");
 	/* Synchronize CPU flags. */
@@ -77,18 +80,6 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	/* Synchronize CUDA flags. */
 	flags.cuda.adaptive_compile = get_boolean(cscene, "debug_use_cuda_adaptive_compile");
 	flags.cuda.split_kernel = get_boolean(cscene, "debug_use_cuda_split_kernel");
-	/* Synchronize OpenCL kernel type. */
-	switch(get_enum(cscene, "debug_opencl_kernel_type")) {
-		case 0:
-			flags.opencl.kernel_type = DebugFlags::OpenCL::KERNEL_DEFAULT;
-			break;
-		case 1:
-			flags.opencl.kernel_type = DebugFlags::OpenCL::KERNEL_MEGA;
-			break;
-		case 2:
-			flags.opencl.kernel_type = DebugFlags::OpenCL::KERNEL_SPLIT;
-			break;
-	}
 	/* Synchronize OpenCL device type. */
 	switch(get_enum(cscene, "debug_opencl_device_type")) {
 		case 0:
@@ -114,8 +105,7 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	flags.opencl.debug = get_boolean(cscene, "debug_use_opencl_debug");
 	flags.opencl.mem_limit = ((size_t)get_int(cscene, "debug_opencl_mem_limit"))*1024*1024;
 	flags.opencl.single_program = get_boolean(cscene, "debug_opencl_kernel_single_program");
-	return flags.opencl.device_type != opencl_device_type ||
-	       flags.opencl.kernel_type != opencl_kernel_type;
+	return flags.opencl.device_type != opencl_device_type;
 }
 
 /* Reset debug flags to default values.
@@ -126,10 +116,8 @@ bool debug_flags_reset()
 	DebugFlagsRef flags = DebugFlags();
 	/* Backup some settings for comparison. */
 	DebugFlags::OpenCL::DeviceType opencl_device_type = flags.opencl.device_type;
-	DebugFlags::OpenCL::KernelType opencl_kernel_type = flags.opencl.kernel_type;
 	flags.reset();
-	return flags.opencl.device_type != opencl_device_type ||
-	       flags.opencl.kernel_type != opencl_kernel_type;
+	return flags.opencl.device_type != opencl_device_type;
 }
 
 }  /* namespace */
@@ -628,6 +616,31 @@ static PyObject *opencl_disable_func(PyObject * /*self*/, PyObject * /*value*/)
 	DebugFlags().opencl.device_type = DebugFlags::OpenCL::DEVICE_NONE;
 	Py_RETURN_NONE;
 }
+
+static PyObject *opencl_compile_func(PyObject * /*self*/, PyObject *args)
+{
+	PyObject *sequence = PySequence_Fast(args, "Arguments must be a sequence");
+	if(sequence == NULL) {
+		Py_RETURN_FALSE;
+	}
+
+	vector<string> parameters;
+	for(Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(sequence); i++) {
+		PyObject *item = PySequence_Fast_GET_ITEM(sequence, i);
+		PyObject *item_as_string = PyObject_Str(item);
+		const char *parameter_string = PyUnicode_AsUTF8(item_as_string);
+		parameters.push_back(parameter_string);
+		Py_DECREF(item_as_string);
+	}
+	Py_DECREF(sequence);
+
+	if (device_opencl_compile_kernel(parameters)) {
+		Py_RETURN_TRUE;
+	}
+	else {
+		Py_RETURN_FALSE;
+	}
+}
 #endif
 
 static bool denoise_parse_filepaths(PyObject *pyfilepaths, vector<string>& filepaths)
@@ -903,6 +916,7 @@ static PyMethodDef methods[] = {
 	{"system_info", system_info_func, METH_NOARGS, ""},
 #ifdef WITH_OPENCL
 	{"opencl_disable", opencl_disable_func, METH_NOARGS, ""},
+ 	{"opencl_compile", opencl_compile_func, METH_VARARGS, ""},
 #endif
 
 	/* Standalone denoising */

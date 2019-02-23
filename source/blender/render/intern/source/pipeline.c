@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup render
+/** \file
+ * \ingroup render
  */
 
 #include <math.h>
@@ -928,31 +929,31 @@ void render_update_anim_renderdata(Render *re, RenderData *rd, ListBase *render_
 	BLI_duplicatelist(&re->r.views, &rd->views);
 }
 
-void RE_SetWindow(Render *re, const rctf *viewplane, float clipsta, float clipend)
+void RE_SetWindow(Render *re, const rctf *viewplane, float clip_start, float clip_end)
 {
 	/* re->ok flag? */
 
 	re->viewplane = *viewplane;
-	re->clipsta = clipsta;
-	re->clipend = clipend;
+	re->clip_start = clip_start;
+	re->clip_end = clip_end;
 
 	perspective_m4(re->winmat,
 	               re->viewplane.xmin, re->viewplane.xmax,
-	               re->viewplane.ymin, re->viewplane.ymax, re->clipsta, re->clipend);
+	               re->viewplane.ymin, re->viewplane.ymax, re->clip_start, re->clip_end);
 
 }
 
-void RE_SetOrtho(Render *re, const rctf *viewplane, float clipsta, float clipend)
+void RE_SetOrtho(Render *re, const rctf *viewplane, float clip_start, float clip_end)
 {
 	/* re->ok flag? */
 
 	re->viewplane = *viewplane;
-	re->clipsta = clipsta;
-	re->clipend = clipend;
+	re->clip_start = clip_start;
+	re->clip_end = clip_end;
 
 	orthographic_m4(re->winmat,
 	                re->viewplane.xmin, re->viewplane.xmax,
-	                re->viewplane.ymin, re->viewplane.ymax, re->clipsta, re->clipend);
+	                re->viewplane.ymin, re->viewplane.ymax, re->clip_start, re->clip_end);
 }
 
 void RE_GetViewPlane(Render *re, rctf *r_viewplane, rcti *r_disprect)
@@ -2085,6 +2086,8 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 
 					ImBuf *ibuf = render_result_rect_to_ibuf(rr, rd, view_id);
 					ibuf->planes = 24;
+					IMB_colormanagement_imbuf_for_write(ibuf, true, false, &scene->view_settings,
+					                                    &scene->display_settings, &imf);
 
 					ok = render_imbuf_write_stamp_test(reports, scene, rr, ibuf, name, &imf, stamp);
 

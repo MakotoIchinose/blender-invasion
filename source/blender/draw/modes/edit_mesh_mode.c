@@ -16,7 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "DRW_engine.h"
@@ -545,7 +546,7 @@ static void edit_mesh_add_ob_to_pass(
 	bool has_edit_mesh_cage = false;
 	/* TODO: Should be its own function. */
 	Mesh *me = (Mesh *)ob->data;
-	BMEditMesh *embm = me->edit_btmesh;
+	BMEditMesh *embm = me->edit_mesh;
 	if (embm) {
 		has_edit_mesh_cage = embm->mesh_eval_cage && (embm->mesh_eval_cage != embm->mesh_eval_final);
 	}
@@ -720,11 +721,7 @@ static void EDIT_MESH_draw_scene(void *vedata)
 			DRW_draw_pass(psl->edit_face_overlay);
 		}
 		else {
-			// MULTISAMPLE_SYNC_ENABLE(dfbl, dtxl);
-
 			DRW_draw_pass(psl->edit_face_overlay);
-
-			// MULTISAMPLE_SYNC_DISABLE(dfbl, dtxl)
 		}
 	}
 

@@ -19,8 +19,9 @@
 #ifndef __BKE_MAIN_H__
 #define __BKE_MAIN_H__
 
-/** \file \ingroup bke
- *  \section aboutmain Main struct
+/** \file
+ * \ingroup bke
+ * \section aboutmain Main struct
  * Main is the root of the 'database' of a Blender context. All data
  * is stuffed into lists, and all these lists are knotted to here. A
  * Blender file is not much more but a binary dump of these
@@ -140,14 +141,43 @@ void BKE_main_relations_free(struct Main *bmain);
 struct GSet *BKE_main_gset_create(struct Main *bmain, struct GSet *gset);
 
 /* *** Generic utils to loop over whole Main database. *** */
-/** \return false to stop iteration, true to keep going. */
-typedef bool (*MainForeachIDCallback) (struct Main *bmain, struct ID *id, void *user_data);
-bool BKE_main_listbase_foreach_id(
-        struct Main *bmain, struct ListBase *lb,
-        MainForeachIDCallback callback, void *user_data);
-bool BKE_main_foreach_id(
-        struct Main *bmain, const bool reverse_type_order,
-        MainForeachIDCallback callback, void *user_data);
+
+#define FOREACH_MAIN_LISTBASE_ID_BEGIN(_lb, _id)                          \
+	{                                                                     \
+		ID *_id_next = _lb->first;                                        \
+		for (_id = _id_next; _id != NULL; _id = _id_next) {               \
+			_id_next = _id->next;
+
+#define FOREACH_MAIN_LISTBASE_ID_END                                      \
+		}                                                                 \
+	} ((void)0)
+
+
+#define FOREACH_MAIN_ID_BEGIN(_bmain, _id)                                \
+	{                                                                     \
+		ListBase *_lbarray[MAX_LIBARRAY];                                 \
+		int _i = set_listbasepointers(_bmain, _lbarray);                  \
+		while (_i--) {                                                    \
+			FOREACH_MAIN_LISTBASE_ID_BEGIN(_lbarray[_i], _id)
+
+#define FOREACH_MAIN_ID_END                                               \
+			FOREACH_MAIN_LISTBASE_ID_END;                                 \
+		}                                                                 \
+	} ((void)0)
+
+/** \param _do_break A boolean, to allow breaking iteration (only used to break by type,
+ *                   you must also use an explicit `break;` operation if you want to
+ *                   immediately break from inner by-ID loop).
+ */
+#define FOREACH_MAIN_ID_BREAKABLE_BEGIN(_bmain, _id, _do_break)           \
+	{                                                                     \
+		ListBase *_lbarray[MAX_LIBARRAY];                                 \
+		int i = set_listbasepointers(_bmain, _lbarray);                   \
+		while (i-- && !_do_break) {                                       \
+			FOREACH_MAIN_LISTBASE_ID_BEGIN(_lbarray[i], _id)              \
+
+#define FOREACH_MAIN_ID_BREAKABLE_END FOREACH_MAIN_ID_END
+
 
 struct BlendThumbnail *BKE_main_thumbnail_from_imbuf(struct Main *bmain, struct ImBuf *img);
 struct ImBuf *BKE_main_thumbnail_to_imbuf(struct Main *bmain, struct BlendThumbnail *data);

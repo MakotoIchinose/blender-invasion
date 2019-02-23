@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup sptext
+/** \file
+ * \ingroup sptext
  */
 
 
@@ -613,7 +614,7 @@ static int text_run_script(bContext *C, ReportList *reports)
 			}
 		}
 
-		BKE_report(reports, RPT_ERROR, "Python script fail, look in the console for now...");
+		BKE_report(reports, RPT_ERROR, "Python script failed, check the message in the system console");
 
 		return OPERATOR_FINISHED;
 	}

@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "CLG_log.h"
@@ -896,7 +897,9 @@ Mesh *BKE_mesh_new_from_object(
 			copycu->editnurb = tmpcu->editnurb;
 
 			/* get updated display list, and convert to a mesh */
-			BKE_displist_make_curveTypes_forRender(depsgraph, sce, tmpobj, &dispbase, &me_eval_final, false, render);
+			BKE_displist_make_curveTypes_forRender(
+			        depsgraph, sce, tmpobj, &dispbase, &me_eval_final, false, render,
+			        NULL);
 
 			copycu->editfont = NULL;
 			copycu->editnurb = NULL;

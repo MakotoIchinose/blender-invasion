@@ -17,7 +17,8 @@
 #ifndef __RNA_ACCESS_H__
 #define __RNA_ACCESS_H__
 
-/** \file \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdarg.h>
@@ -319,6 +320,7 @@ extern StructRNA RNA_LatticeGpencilModifier;
 extern StructRNA RNA_LatticeModifier;
 extern StructRNA RNA_LatticePoint;
 extern StructRNA RNA_LayerCollection;
+extern StructRNA RNA_LayerObjects;
 extern StructRNA RNA_Library;
 extern StructRNA RNA_Light;
 extern StructRNA RNA_LightProbe;

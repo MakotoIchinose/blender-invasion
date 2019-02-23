@@ -35,6 +35,8 @@ class Params:
         "cursor_set_event",
         "cursor_tweak_event",
         "use_mouse_emulate_3_button",
+        # Experemental option.
+        "pie_value",
 
         # User preferences.
         #
@@ -45,7 +47,9 @@ class Params:
         # Use pie menu for tab by default (swap 'Tab/Ctrl-Tab').
         "use_v3d_tab_menu",
         # Use extended pie menu for shading.
-        "use_v3d_shade_ex_pie"
+        "use_v3d_shade_ex_pie",
+        # Experemental option.
+        "use_pie_click_drag",
     )
 
     def __init__(
@@ -61,6 +65,7 @@ class Params:
             use_pie_on_tab=False,
             use_v3d_tab_menu=False,
             use_v3d_shade_ex_pie=False,
+            use_pie_click_drag=False,
     ):
         from sys import platform
         self.apple = (platform == 'darwin')
@@ -105,6 +110,12 @@ class Params:
         self.use_select_all_toggle = use_select_all_toggle
         self.use_v3d_tab_menu = use_v3d_tab_menu
         self.use_v3d_shade_ex_pie = use_v3d_shade_ex_pie
+
+        self.use_pie_click_drag = use_pie_click_drag
+        if not use_pie_click_drag:
+            self.pie_value = 'PRESS'
+        else:
+            self.pie_value = 'CLICK_DRAG'
 
 
 # ------------------------------------------------------------------------------
@@ -278,8 +289,7 @@ def km_window(params):
             ("wm.read_homefile", {"type": 'N', "value": 'PRESS', "oskey": True}, None),
             op_menu("TOPBAR_MT_file_open_recent", {"type": 'O', "value": 'PRESS', "shift": True, "oskey": True}),
             ("wm.open_mainfile", {"type": 'O', "value": 'PRESS', "oskey": True}, None),
-            ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "oskey": True},
-             {"properties": [("check_existing", False)]}),
+            ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "oskey": True}, None),
             ("wm.save_as_mainfile", {"type": 'S', "value": 'PRESS', "shift": True, "oskey": True}, None),
             ("wm.quit_blender", {"type": 'Q', "value": 'PRESS', "oskey": True}, None),
             ("wm.search_menu", {"type": 'F', "value": 'PRESS', "oskey": True}, None),
@@ -290,8 +300,7 @@ def km_window(params):
         ("wm.read_homefile", {"type": 'N', "value": 'PRESS', "ctrl": True}, None),
         op_menu("TOPBAR_MT_file_open_recent", {"type": 'O', "value": 'PRESS', "shift": True, "ctrl": True}),
         ("wm.open_mainfile", {"type": 'O', "value": 'PRESS', "ctrl": True}, None),
-        ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "ctrl": True},
-         {"properties": [("check_existing", False)]}),
+        ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "ctrl": True}, None),
         ("wm.save_as_mainfile", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ("wm.quit_blender", {"type": 'Q', "value": 'PRESS', "ctrl": True}, None),
 
@@ -927,7 +936,9 @@ def km_view3d(params):
          {"properties": [("use_all_regions", True), ("center", False)]}),
         ("view3d.view_all", {"type": 'C', "value": 'PRESS', "shift": True},
          {"properties": [("center", True)]}),
-        op_menu_pie("VIEW3D_MT_view_pie", {"type": 'ACCENT_GRAVE', "value": 'PRESS'}),
+        op_menu_pie("VIEW3D_MT_view_pie", {"type": 'ACCENT_GRAVE', "value": params.pie_value}),
+        *(() if not params.use_pie_click_drag else
+          (("view3d.navigate", {"type": 'ACCENT_GRAVE', "value": 'CLICK'}, None),)),
         ("view3d.navigate", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "shift": True}, None),
         # Numpad views.
         ("view3d.view_camera", {"type": 'NUMPAD_0', "value": 'PRESS'}, None),
@@ -1081,7 +1092,11 @@ def km_view3d(params):
              {"properties": [("data_path", 'space_data.show_gizmo_tool')]}),
             op_menu_pie(
                 "VIEW3D_MT_shading_pie" if not params.use_v3d_shade_ex_pie else
-                "VIEW3D_MT_shading_ex_pie", {"type": 'Z', "value": 'PRESS'}),
+                "VIEW3D_MT_shading_ex_pie",
+                {"type": 'Z', "value": params.pie_value}),
+            *(() if not params.use_pie_click_drag else
+              (("view3d.toggle_shading", {"type": 'Z', "value": 'CLICK'},
+                {"properties": [("type", 'WIREFRAME')]}),)),
             ("view3d.toggle_shading", {"type": 'Z', "value": 'PRESS', "shift": True},
              {"properties": [("type", 'WIREFRAME')]}),
             ("view3d.toggle_xray", {"type": 'Z', "value": 'PRESS', "alt": True}, None),
@@ -1906,6 +1921,8 @@ def km_dopesheet(params):
         op_menu_pie("VIEW3D_MT_proportional_editing_falloff_pie", {"type": 'O', "value": 'PRESS', "shift": True}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
         ("marker.rename", {"type": 'M', "value": 'PRESS', "ctrl": True}, None),
+        ("anim.start_frame_set", {"type": 'HOME', "value": 'PRESS', "ctrl": True}, None),
+        ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     if params.apple:
@@ -3548,7 +3565,7 @@ def _template_paint_radial_control(paint, rotation=False, secondary_rotation=Fal
     return items
 
 
-def km_image_paint(_params):
+def km_image_paint(params):
     items = []
     keymap = (
         "Image Paint",
@@ -3588,12 +3605,13 @@ def km_image_paint(_params):
         op_menu("VIEW3D_MT_angle_control", {"type": 'R', "value": 'PRESS'}),
         ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.image_paint.brush.stroke_method')]}),
+        op_menu("VIEW3D_MT_paint_texture_specials", params.context_menu_event),
     ])
 
     return keymap
 
 
-def km_vertex_paint(_params):
+def km_vertex_paint(params):
     items = []
     keymap = (
         "Vertex Paint",
@@ -3630,6 +3648,7 @@ def km_vertex_paint(_params):
         op_menu("VIEW3D_MT_angle_control", {"type": 'R', "value": 'PRESS'}),
         ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
+        op_menu("VIEW3D_MT_paint_vertex_specials", params.context_menu_event),
     ])
 
     return keymap
@@ -3657,7 +3676,7 @@ def km_weight_paint(params):
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("weight_paint"),
-        ("wm.radial_control", {"type": 'W', "value": 'PRESS'},
+        ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
          radial_control_properties("weight_paint", 'weight', 'use_unified_weight')),
         ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
@@ -3667,6 +3686,7 @@ def km_weight_paint(params):
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask_vertex')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.weight_paint.brush.use_smooth_stroke')]}),
+        op_menu("VIEW3D_MT_paint_weight_specials", params.context_menu_event),
     ])
 
     if params.select_mouse == 'LEFTMOUSE':
@@ -3678,7 +3698,7 @@ def km_weight_paint(params):
     return keymap
 
 
-def km_sculpt(_params):
+def km_sculpt(params):
     items = []
     keymap = (
         "Sculpt",
@@ -3766,6 +3786,7 @@ def km_sculpt(_params):
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.sculpt.brush.use_smooth_stroke')]}),
         op_menu("VIEW3D_MT_angle_control", {"type": 'R', "value": 'PRESS'}),
+        op_menu("VIEW3D_MT_sculpt_specials", params.context_menu_event),
     ])
 
     return keymap
@@ -3830,6 +3851,7 @@ def km_mesh(params):
          {"properties": [("inside", False)]}),
         ("mesh.normals_make_consistent", {"type": 'N', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("inside", True)]}),
+        ("mesh.flip_normals", {"type": 'N', "value": 'PRESS', "alt": True}, None),
         ("view3d.edit_mesh_extrude_move_normal", {"type": 'E', "value": 'PRESS'}, None),
         op_menu("VIEW3D_MT_edit_mesh_extrude", {"type": 'E', "value": 'PRESS', "alt": True}),
         ("transform.edge_crease", {"type": 'E', "value": 'PRESS', "shift": True}, None),
@@ -5258,6 +5280,8 @@ def km_3d_view_tool_measure(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("view3d.ruler_add", {"type": params.tool_tweak, "value": 'ANY'}, None),
+            ("view3d.ruler_remove", {"type": 'X', "value": 'PRESS'}, None),
+            ("view3d.ruler_remove", {"type": 'DEL', "value": 'PRESS'}, None),
         ]},
     )
 

@@ -14,10 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  *
- * Apply edits to DNA at load time
- * to behave as if old files were written new names.
+ * Apply edits to DNA at load time to behave as if old files were written with new names.
  */
 
 #include "BLI_compiler_attrs.h"
@@ -33,8 +33,11 @@
  * Manipulates SDNA before calling #DNA_struct_get_compareflags,
  * allowing us to rename structs and struct members.
  *
- * \attention Changes here will cause breakages in forward compatbility,
- * Use this only in the _rare_ cases when migrating to new naming is needed.
+ * - This means older versions of Blender won't have access to this data **USE WITH CARE**.
+ *
+ * - These changes are applied on file load (run-time), similar to versioning for compatibility.
+ *
+ * \attention ONLY USE THIS KIND OF VERSIONING WHEN `dna_rename_defs.h` ISN'T SUFFICIENT.
  */
 void blo_do_versions_dna(SDNA *sdna, const int versionfile, const int subversionfile)
 {
