@@ -224,10 +224,12 @@
 
 /**
  * Delay reading blocks we might not use (especially applies to library linking).
- * which keeps large arrays in memory from data-blocks we may not even use. */
-#if !defined(_WIN32)  /* Slow on windows, see: T61855 */
-#  define USE_BHEAD_READ_ON_DEMAND
-#endif
+ * which keeps large arrays in memory from data-blocks we may not even use.
+ *
+ * \note This is disabled when using compression,
+ * while zlib supports seek ist's unusably slow, see: T61880.
+ */
+#define USE_BHEAD_READ_ON_DEMAND
 
 /* use GHash for BHead name-based lookups (speeds up linking) */
 #define USE_GHASH_BHEAD
@@ -1118,6 +1120,30 @@ static int *read_file_thumbnail(FileData *fd)
 /** \name File Data API
  * \{ */
 
+/* Regular file reading. */
+
+static int fd_read_data_from_file(FileData *filedata, void *buffer, uint size)
+{
+	int readsize = read(filedata->filedes, buffer, size);
+
+	if (readsize < 0) {
+		readsize = EOF;
+	}
+	else {
+		filedata->file_offset += readsize;
+	}
+
+	return (readsize);
+}
+
+static off_t fd_seek_data_from_file(FileData *filedata, off_t offset, int whence)
+{
+	filedata->file_offset = lseek(filedata->filedes, offset, whence);
+	return filedata->file_offset;
+}
+
+/* GZip file reading. */
+
 static int fd_read_gzip_from_file(FileData *filedata, void *buffer, uint size)
 {
 	int readsize = gzread(filedata->gzfiledes, buffer, size);
@@ -1132,11 +1158,7 @@ static int fd_read_gzip_from_file(FileData *filedata, void *buffer, uint size)
 	return (readsize);
 }
 
-static off_t fd_seek_gzip_from_file(FileData *filedata, off_t offset, int whence)
-{
-	filedata->file_offset = gzseek(filedata->gzfiledes, offset, whence);
-	return filedata->file_offset;
-}
+/* Memory reading. */
 
 static int fd_read_from_memory(FileData *filedata, void *buffer, uint size)
 {
@@ -1148,6 +1170,8 @@ static int fd_read_from_memory(FileData *filedata, void *buffer, uint size)
 
 	return (readsize);
 }
+
+/* MemFile reading. */
 
 static int fd_read_from_memfile(FileData *filedata, void *buffer, uint size)
 {
@@ -1214,6 +1238,7 @@ static FileData *filedata_new(void)
 {
 	FileData *fd = MEM_callocN(sizeof(FileData), "FileData");
 
+	fd->filedes = -1;
 	fd->gzfiledes = NULL;
 
 	fd->memsdna = DNA_sdna_current_get();
@@ -1248,30 +1273,96 @@ static FileData *blo_decode_and_check(FileData *fd, ReportList *reports)
 	return fd;
 }
 
-/* cannot be called with relative paths anymore! */
-/* on each new library added, it now checks for the current FileData and expands relativeness */
-FileData *blo_filedata_from_file(const char *filepath, ReportList *reports)
+static FileData *blo_filedata_from_file_descriptor(const char *filepath, ReportList *reports, int file)
 {
-	gzFile gzfile;
-	errno = 0;
-	gzfile = BLI_gzopen(filepath, "rb");
+	FileDataReadFn *read_fn = NULL;
+	FileDataSeekFn *seek_fn = NULL;  /* Optional. */
 
-	if (gzfile == (gzFile)Z_NULL) {
+	gzFile gzfile = (gzFile)Z_NULL;
+
+	char header[7];
+
+	/* Regular file. */
+	errno = 0;
+	if (read(file, header, sizeof(header)) != sizeof(header)) {
+		BKE_reportf(reports, RPT_WARNING, "Unable to read '%s': %s",
+		            filepath, errno ? strerror(errno) : TIP_("insufficient content"));
+		return NULL;
+	}
+	else {
+		lseek(file, 0, SEEK_SET);
+	}
+
+	/* Regular file. */
+	if (memcmp(header, "BLENDER", sizeof(header)) == 0) {
+		read_fn = fd_read_data_from_file;
+		seek_fn = fd_seek_data_from_file;
+	}
+
+	/* Gzip file. */
+	errno = 0;
+	if ((read_fn == NULL) &&
+	    /* Check header magic. */
+	    (header[0] == 0x1f && header[1] == 0x8b))
+	{
+		gzfile = BLI_gzopen(filepath, "rb");
+		if (gzfile == (gzFile)Z_NULL) {
+			BKE_reportf(reports, RPT_WARNING, "Unable to open '%s': %s",
+			            filepath, errno ? strerror(errno) : TIP_("unknown error reading file"));
+			return NULL;
+		}
+		else {
+			/* 'seek_fn' is too slow for gzip, don't set it. */
+			read_fn = fd_read_gzip_from_file;
+			/* Caller must close. */
+			file = -1;
+		}
+	}
+
+	if (read_fn == NULL) {
+		BKE_reportf(reports, RPT_WARNING, "Unrecognized file format '%s'", filepath);
+		return NULL;
+	}
+
+	FileData *fd = filedata_new();
+
+	fd->filedes = file;
+	fd->gzfiledes = gzfile;
+
+	fd->read = read_fn;
+	fd->seek = seek_fn;
+
+	return fd;
+}
+
+static FileData *blo_filedata_from_file_open(const char *filepath, ReportList *reports)
+{
+	errno = 0;
+	const int file = BLI_open(filepath, O_BINARY | O_RDONLY, 0);
+	if (file == -1) {
 		BKE_reportf(reports, RPT_WARNING, "Unable to open '%s': %s",
 		            filepath, errno ? strerror(errno) : TIP_("unknown error reading file"));
 		return NULL;
 	}
-	else {
-		FileData *fd = filedata_new();
-		fd->gzfiledes = gzfile;
-		fd->read = fd_read_gzip_from_file;
-		fd->seek = fd_seek_gzip_from_file;
+	FileData *fd = blo_filedata_from_file_descriptor(filepath, reports, file);
+	if ((fd == NULL) || (fd->filedes == -1)) {
+		close(file);
+	}
+	return fd;
+}
 
+/* cannot be called with relative paths anymore! */
+/* on each new library added, it now checks for the current FileData and expands relativeness */
+FileData *blo_filedata_from_file(const char *filepath, ReportList *reports)
+{
+	FileData *fd = blo_filedata_from_file_open(filepath, reports);
+	if (fd != NULL) {
 		/* needed for library_append and read_libraries */
 		BLI_strncpy(fd->relabase, filepath, sizeof(fd->relabase));
 
 		return blo_decode_and_check(fd, reports);
 	}
+	return NULL;
 }
 
 /**
@@ -1280,24 +1371,14 @@ FileData *blo_filedata_from_file(const char *filepath, ReportList *reports)
  */
 static FileData *blo_filedata_from_file_minimal(const char *filepath)
 {
-	gzFile gzfile;
-	errno = 0;
-	gzfile = BLI_gzopen(filepath, "rb");
-
-	if (gzfile != (gzFile)Z_NULL) {
-		FileData *fd = filedata_new();
-		fd->gzfiledes = gzfile;
-		fd->read = fd_read_gzip_from_file;
-
+	FileData *fd = blo_filedata_from_file_open(filepath, NULL);
+	if (fd != NULL) {
 		decode_blender_header(fd);
-
 		if (fd->flags & FD_FLAGS_FILE_OK) {
 			return fd;
 		}
-
 		blo_filedata_free(fd);
 	}
-
 	return NULL;
 }
 
@@ -1391,6 +1472,10 @@ FileData *blo_filedata_from_memfile(MemFile *memfile, ReportList *reports)
 void blo_filedata_free(FileData *fd)
 {
 	if (fd) {
+		if (fd->filedes != -1) {
+			close(fd->filedes);
+		}
+
 		if (fd->gzfiledes != NULL) {
 			gzclose(fd->gzfiledes);
 		}
