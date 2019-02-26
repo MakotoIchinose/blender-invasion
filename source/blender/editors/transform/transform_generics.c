@@ -1337,6 +1337,11 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
 	unit_m3(t->mat);
 
+	unit_m3(t->orient_matrix);
+	negate_m3(t->orient_matrix);
+	/* Leave 't->orient_matrix_is_set' to false,
+	 * so we overwrite it when we have a useful value. */
+
 	/* if there's an event, we're modal */
 	if (event) {
 		t->flag |= T_MODAL;
@@ -1410,6 +1415,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 		}
 
 		TransformOrientationSlot *orient_slot = &t->scene->orientation_slots[SCE_ORIENT_DEFAULT];
+		t->orientation.unset = V3D_ORIENT_GLOBAL;
 		t->orientation.user = orient_slot->type;
 		t->orientation.custom = BKE_scene_transform_orientation_find(t->scene, orient_slot->index_custom);
 
@@ -1521,6 +1527,10 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	      RNA_enum_get(op->ptr, "constraint_matrix_orientation"))))
 	{
 		RNA_property_float_get_array(op->ptr, prop, &t->spacemtx[0][0]);
+		/* Some transform modes use this to operate on an axis. */
+		t->orient_matrix_is_set = true;
+		copy_m3_m3(t->orient_matrix, t->spacemtx);
+		t->orient_matrix_is_set = true;
 		t->orientation.user = V3D_ORIENT_CUSTOM_MATRIX;
 		t->orientation.custom = 0;
 		if (t->flag & T_MODAL) {
