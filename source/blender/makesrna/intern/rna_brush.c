@@ -126,9 +126,9 @@ static EnumPropertyItem rna_enum_gpencil_brush_eraser_modes_items[] = {
 };
 
 static EnumPropertyItem rna_enum_gpencil_fill_draw_modes_items[] = {
+	{GP_FILL_DMODE_BOTH, "BOTH", 0, "Default", "Use both visible strokes and edit lines as fill boundary limits"},
 	{GP_FILL_DMODE_STROKE, "STROKE", 0, "Strokes", "Use visible strokes as fill boundary limits"},
-	{GP_FILL_DMODE_CONTROL, "CONTROL", 0, "Control", "Use internal control lines as fill boundary limits"},
-	{GP_FILL_DMODE_BOTH, "BOTH", 0, "Both", "Use visible strokes and control lines as fill boundary limits"},
+	{GP_FILL_DMODE_CONTROL, "CONTROL", 0, "Edit Lines", "Use edit lines as fill boundary limits"},
 	{0, NULL, 0, NULL, NULL}
 };
 
