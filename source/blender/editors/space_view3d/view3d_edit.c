@@ -287,7 +287,7 @@ static bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
 	else if (ob_act == NULL || ob_act->mode == OB_MODE_OBJECT) {
 		/* object mode use boundbox centers */
 		Base *base_eval;
-		unsigned int tot = 0;
+		uint tot = 0;
 		float select_center[3];
 
 		zero_v3(select_center);
@@ -4819,8 +4819,9 @@ void ED_view3d_cursor3d_update(
 
 	{
 		struct wmMsgBus *mbus = CTX_wm_message_bus(C);
-		WM_msg_publish_rna_prop(
-		        mbus, &scene->id, scene, Scene, cursor_location);
+		wmMsgParams_RNA msg_key_params = {{{0}}};
+		RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &msg_key_params.ptr);
+		WM_msg_publish_rna_params(mbus, &msg_key_params);
 	}
 
 	DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);

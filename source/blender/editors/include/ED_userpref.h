@@ -12,38 +12,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2016 Blender Foundation.
- * All rights reserved.
  */
 
 /** \file
- * \ingroup depsgraph
+ * \ingroup editors
  */
 
-#pragma once
+#ifndef __ED_USERPREF_H__
+#define __ED_USERPREF_H__
 
-struct Base;
-struct Main;
+void ED_operatortypes_userpref(void);
 
-namespace DEG {
-
-struct Depsgraph;
-
-class DepsgraphBuilder {
-public:
-	bool need_pull_base_into_graph(struct Base *base);
-
-protected:
-	DepsgraphBuilder(Main *bmain, Depsgraph *graph);
-
-	/* State which never changes, same for the whole builder time. */
-	Main *bmain_;
-	Depsgraph *graph_;
-};
-
-bool deg_check_base_available_for_build(const Depsgraph *graph,
-                                        Base *base);
-void deg_graph_build_finalize(struct Main *bmain, struct Depsgraph *graph);
-
-}  // namespace DEG
+#endif  /* __ED_USERPREF_H__ */
