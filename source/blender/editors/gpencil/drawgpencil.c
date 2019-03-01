@@ -724,7 +724,7 @@ static void gp_draw_stroke_3d(tGPDdraw *tgpw, short thickness, const float ink[4
 	immUniform1i("xraymode", GP_XRAY_3DSPACE);
 	immUniform1i("caps_start", (int)tgpw->gps->caps[0]);
 	immUniform1i("caps_end", (int)tgpw->gps->caps[1]);
-	immUniform1i("fill_stroke", (int)tgpw->is_adaptive_fill);
+	immUniform1i("fill_stroke", (int)tgpw->is_fill_stroke);
 
 	/* draw stroke curve */
 	GPU_line_width(max_ff(curpressure * thickness, 1.0f));
@@ -1029,7 +1029,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
 		/* calculate thickness */
 		sthickness = gps->thickness + tgpw->lthick;
 
-		if (tgpw->is_adaptive_fill) {
+		if (tgpw->is_fill_stroke) {
 			sthickness = (short)max_ii(1, sthickness / 2);
 		}
 
@@ -1430,7 +1430,7 @@ static void gp_draw_data_layers(RegionView3D *rv3d,
 	tgpw.winx = winx;
 	tgpw.winy = winy;
 	tgpw.dflag = dflag;
-	tgpw.is_adaptive_fill = false;
+	tgpw.is_fill_stroke = false;
 
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		/* calculate parent position */

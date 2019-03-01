@@ -85,9 +85,7 @@ typedef struct BrushGpencilSettings {
 	short fill_leak;
 	/** Fill zoom factor */
 	short fill_factor;
-	/** Fill dilate */
-	char fill_dilate;
-	char _pad_1[3];
+	char _pad_1[4];
 
 	/** Number of simplify steps. */
 	int fill_simplylvl;
@@ -161,7 +159,6 @@ typedef enum eGP_FillDrawModes {
 	GP_FILL_DMODE_BOTH = 0,
 	GP_FILL_DMODE_STROKE = 1,
 	GP_FILL_DMODE_CONTROL = 2,
-	GP_FILL_DMODE_ADAPTIVE = 3,
 } eGP_FillDrawModes;
 
 /* BrushGpencilSettings->gp_eraser_mode */

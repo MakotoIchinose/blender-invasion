@@ -134,8 +134,6 @@ typedef struct tGPDfill {
 	int fill_draw_mode;
 	/* scaling factor */
 	short fill_factor;
-	/* dilate */
-	bool fill_dilate;
 
 	/** number of elements currently in cache */
 	short sbuffer_size;
@@ -283,8 +281,8 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 			tgpw.t_gpf = gpf;
 
 			/* reduce thickness to avoid gaps */
-			tgpw.is_adaptive_fill = (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ? true : false ;
-			tgpw.lthick = tgpw.is_adaptive_fill ? gpl->line_change : gpl->line_change - 4;
+			tgpw.is_fill_stroke = (tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ? false : true ;
+			tgpw.lthick = gpl->line_change;
 			tgpw.opacity = 1.0;
 			copy_v4_v4(tgpw.tintcolor, ink);
 			tgpw.onion = true;
@@ -294,7 +292,6 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 
 			/* normal strokes */
 			if (((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
-				(tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ||
 			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH)) &&
 				!textured_stroke)
 			{
@@ -303,7 +300,6 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 
 			/* 3D Lines with basic shapes and invisible lines */
 			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ||
-			    (tgpf->fill_draw_mode == GP_FILL_DMODE_ADAPTIVE) ||
 			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH) ||
 				textured_stroke)
 			{
@@ -826,9 +822,7 @@ static void gpencil_get_outline_points(tGPDfill *tgpf)
 	int imagesize = ibuf->x * ibuf->y;
 
 	/* dilate */
-	if (tgpf->fill_dilate) {
-		dilate(ibuf);
-	}
+	dilate(ibuf);
 
 	/* find the initial point to start outline analysis */
 	for (int idx = imagesize - 1; idx != 0; idx--) {
@@ -1220,7 +1214,6 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	tgpf->fill_threshold = brush->gpencil_settings->fill_threshold;
 	tgpf->fill_simplylvl = brush->gpencil_settings->fill_simplylvl;
 	tgpf->fill_draw_mode = brush->gpencil_settings->fill_draw_mode;
-	tgpf->fill_dilate = (bool)brush->gpencil_settings->fill_dilate;
 	tgpf->fill_factor = (short)max_ii(1, min_ii((int)brush->gpencil_settings->fill_factor,8));
 	
 	/* get color info */

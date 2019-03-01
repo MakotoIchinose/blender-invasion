@@ -129,7 +129,6 @@ static EnumPropertyItem rna_enum_gpencil_fill_draw_modes_items[] = {
 	{GP_FILL_DMODE_STROKE, "STROKE", 0, "Strokes", "Use visible strokes as fill boundary limits"},
 	{GP_FILL_DMODE_CONTROL, "CONTROL", 0, "Control", "Use internal control lines as fill boundary limits"},
 	{GP_FILL_DMODE_BOTH, "BOTH", 0, "Both", "Use visible strokes and control lines as fill boundary limits"},
-	{GP_FILL_DMODE_ADAPTIVE, "ADAPTIVE", 0, "Adaptive", "Use thin strokes and control lines as fill boundary limits"},
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -1149,13 +1148,6 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
 	RNA_def_property_range(prop, 0, 100);
 	RNA_def_property_ui_text(prop, "Leak Size",
 		"Size in pixels to consider the leak closed");
-	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
-	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
-
-	/* fill dilate */
-	prop = RNA_def_property(srna, "fill_dilate", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "fill_dilate", 0);
-	RNA_def_property_ui_text(prop, "Dilate", "Spread fill area");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
