@@ -490,8 +490,6 @@ static Mesh *applyModifier(
 		}
 	}
 
-	BKE_mesh_calc_edges(result, true, false);
-	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 	return result;
 }
 
