@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,33 +15,24 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_decimate.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
-
 #include "MEM_guardedalloc.h"
 
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
-#include "BKE_library.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -88,6 +77,18 @@ static DecimateModifierData *getOriginalModifierData(
 	return (DecimateModifierData *)modifiers_findByName(ob_orig, dmd->modifier.name);
 }
 
+static void updateFaceCount(
+        const ModifierEvalContext *ctx, DecimateModifierData *dmd, int face_count)
+{
+	dmd->face_count = face_count;
+
+	if (DEG_is_active(ctx->depsgraph)) {
+		/* update for display only */
+		DecimateModifierData *dmd_orig = getOriginalModifierData(dmd, ctx);
+		dmd_orig->face_count = face_count;
+	}
+}
+
 static Mesh *applyModifier(
         ModifierData *md, const ModifierEvalContext *ctx,
         Mesh *meshData)
@@ -103,7 +104,7 @@ static Mesh *applyModifier(
 #endif
 
 	/* set up front so we dont show invalid info in the UI */
-	dmd->face_count = mesh->totpoly;
+	updateFaceCount(ctx, dmd, mesh->totpoly);
 
 	switch (dmd->mode) {
 		case MOD_DECIM_MODE_COLLAPSE:
@@ -196,11 +197,7 @@ static Mesh *applyModifier(
 		MEM_freeN(vweights);
 	}
 
-	if (DEG_is_active(ctx->depsgraph)) {
-		/* update for display only */
-		DecimateModifierData *dmd_orig = getOriginalModifierData(dmd, ctx);
-		dmd_orig->face_count = bm->totface;
-	}
+	updateFaceCount(ctx, dmd, bm->totface);
 
 	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
 	BLI_assert(bm->vtoolflagpool == NULL &&

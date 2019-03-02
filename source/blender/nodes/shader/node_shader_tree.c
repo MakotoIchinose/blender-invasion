@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,16 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s):
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/shader/node_shader_tree.c
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 
 #include <string.h>
 
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
@@ -95,7 +87,7 @@ static void shader_get_from_context(const bContext *C, bNodeTreeType *UNUSED(tre
 			*r_from = &ob->id;
 			if (ob->type == OB_LAMP) {
 				*r_id = ob->data;
-				*r_ntree = ((Lamp *)ob->data)->nodetree;
+				*r_ntree = ((Light *)ob->data)->nodetree;
 			}
 			else {
 				Material *ma = give_current_material(ob, ob->actcol);
@@ -185,9 +177,9 @@ void register_node_tree_type_sh(void)
 
 	tt->type = NTREE_SHADER;
 	strcpy(tt->idname, "ShaderNodeTree");
-	strcpy(tt->ui_name, "Shader Editor");
+	strcpy(tt->ui_name, N_("Shader Editor"));
 	tt->ui_icon = 0;    /* defined in drawnode.c */
-	strcpy(tt->ui_description, "Shader nodes");
+	strcpy(tt->ui_description, N_("Shader nodes"));
 
 	tt->foreach_nodeclass = foreach_nodeclass;
 	tt->localize = localize;
@@ -715,7 +707,7 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, bool *has_sur
 	/* TODO(fclem): consider moving this to the gpu shader tree evaluation. */
 	nTreeTags tags = {
 		.ssr_id = 1.0,
-		.sss_id = 1.0
+		.sss_id = 1.0,
 	};
 	ntree_shader_tag_nodes(localtree, output, &tags);
 

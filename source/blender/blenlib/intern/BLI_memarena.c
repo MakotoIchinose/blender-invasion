@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,13 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  * Efficient memory allocation for lots of similar small chunks.
  */
 
-/** \file blender/blenlib/intern/BLI_memarena.c
- *  \ingroup bli
- *  \brief Memory arena ADT.
- *  \section aboutmemarena Memory Arena
+/** \file
+ * \ingroup bli
+ * \brief Memory arena ADT.
+ * \section aboutmemarena Memory Arena
  *
  * Memory arena's are commonly used when the program
  * needs to quickly allocate lots of little bits of data,
@@ -45,23 +37,36 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_memarena.h"
-#include "BLI_linklist.h"
 #include "BLI_strict_flags.h"
 
 #ifdef WITH_MEM_VALGRIND
 #  include "valgrind/memcheck.h"
 #endif
 
+struct MemBuf {
+	struct MemBuf *next;
+	uchar data[0];
+};
+
 struct MemArena {
 	unsigned char *curbuf;
 	const char *name;
-	LinkNode *bufs;
+	struct MemBuf *bufs;
 
 	size_t bufsize, cursize;
 	size_t align;
 
 	bool use_calloc;
 };
+
+static void memarena_buf_free_all(struct MemBuf *mb)
+{
+	while (mb != NULL) {
+		struct MemBuf *mb_next = mb->next;
+		MEM_freeN(mb);
+		mb = mb_next;
+	}
+}
 
 MemArena *BLI_memarena_new(const size_t bufsize, const char *name)
 {
@@ -95,8 +100,7 @@ void BLI_memarena_use_align(struct MemArena *ma, const size_t align)
 
 void BLI_memarena_free(MemArena *ma)
 {
-	BLI_linklist_freeN(ma->bufs);
-
+	memarena_buf_free_all(ma->bufs);
 #ifdef WITH_MEM_VALGRIND
 	VALGRIND_DESTROY_MEMPOOL(ma);
 #endif
@@ -133,8 +137,11 @@ void *BLI_memarena_alloc(MemArena *ma, size_t size)
 			ma->cursize = ma->bufsize;
 		}
 
-		ma->curbuf = (ma->use_calloc ? MEM_callocN : MEM_mallocN)(ma->cursize, ma->name);
-		BLI_linklist_prepend(&ma->bufs, ma->curbuf);
+		struct MemBuf *mb = (ma->use_calloc ? MEM_callocN : MEM_mallocN)(sizeof(*mb) + ma->cursize, ma->name);
+		ma->curbuf = mb->data;
+		mb->next = ma->bufs;
+		ma->bufs = mb;
+
 		memarena_curbuf_align(ma);
 	}
 
@@ -173,12 +180,12 @@ void BLI_memarena_clear(MemArena *ma)
 		size_t curbuf_used;
 
 		if (ma->bufs->next) {
-			BLI_linklist_freeN(ma->bufs->next);
+			memarena_buf_free_all(ma->bufs->next);
 			ma->bufs->next = NULL;
 		}
 
 		curbuf_prev = ma->curbuf;
-		ma->curbuf = ma->bufs->link;
+		ma->curbuf = ma->bufs->data;
 		memarena_curbuf_align(ma);
 
 		/* restore to original size */

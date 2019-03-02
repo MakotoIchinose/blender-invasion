@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,23 +15,22 @@
  *
  * The Original Code is Copyright (C) 2013 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Alexander Pinzon Fernandez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_laplaciandeform.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "BLI_utildefines.h"
-#include "BLI_utildefines_stack.h"
+
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_utildefines_stack.h"
 
 #include "MEM_guardedalloc.h"
+
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
@@ -41,9 +38,6 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_particle.h"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "MOD_util.h"
 

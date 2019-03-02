@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2008 full recode
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/object/object_hook.c
- *  \ingroup edobj
+/** \file
+ * \ingroup edobj
  */
 
 
@@ -143,7 +137,7 @@ static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name,
 static void select_editbmesh_hook(Object *ob, HookModifierData *hmd)
 {
 	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
+	BMEditMesh *em = me->edit_mesh;
 	BMVert *eve;
 	BMIter iter;
 	int index = 0, nr = 0;
@@ -323,7 +317,7 @@ static bool object_hook_index_array(Main *bmain, Scene *scene, Object *obedit,
 
 			DEG_id_tag_update(obedit->data, 0);
 
-			em = me->edit_btmesh;
+			em = me->edit_mesh;
 
 			EDBM_mesh_normals_update(em);
 			BKE_editmesh_tessface_calc(em);

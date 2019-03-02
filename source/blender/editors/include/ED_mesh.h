@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ED_mesh.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_MESH_H__
@@ -35,36 +28,36 @@
 extern "C" {
 #endif
 
-struct Base;
-struct ID;
-struct View3D;
 struct ARegion;
-struct bContext;
-struct Depsgraph;
-struct wmOperator;
-struct wmKeyConfig;
-struct ReportList;
-struct ViewContext;
-struct bDeformGroup;
-struct MDeformVert;
-struct Scene;
-struct Mesh;
-struct UvVertMap;
-struct UvMapVert;
-struct BMEditMesh;
-struct BMElem;
-struct BMesh;
-struct BMVert;
-struct BMLoop;
 struct BMBVHTree;
 struct BMEdge;
+struct BMEditMesh;
+struct BMElem;
 struct BMFace;
-struct UvVertMap;
-struct UvMapVert;
-struct ToolSettings;
+struct BMLoop;
+struct BMVert;
+struct BMesh;
+struct Base;
+struct Depsgraph;
+struct ID;
+struct MDeformVert;
+struct Mesh;
 struct Object;
-struct rcti;
+struct ReportList;
+struct Scene;
+struct ToolSettings;
 struct UndoType;
+struct UvMapVert;
+struct UvMapVert;
+struct UvVertMap;
+struct UvVertMap;
+struct View3D;
+struct ViewContext;
+struct bContext;
+struct bDeformGroup;
+struct rcti;
+struct wmKeyConfig;
+struct wmOperator;
 
 /* editmesh_utils.c */
 void           EDBM_verts_mirror_cache_begin_ex(struct BMEditMesh *em, const int axis,
@@ -102,8 +95,8 @@ void EDBM_select_flush(struct BMEditMesh *em);
 
 bool EDBM_vert_color_check(struct BMEditMesh *em);
 
-void EDBM_mesh_hide(struct BMEditMesh *em, bool swap);
-void EDBM_mesh_reveal(struct BMEditMesh *em, bool select);
+bool EDBM_mesh_hide(struct BMEditMesh *em, bool swap);
+bool EDBM_mesh_reveal(struct BMEditMesh *em, bool select);
 
 void EDBM_update_generic(struct BMEditMesh *em, const bool do_tessface, const bool is_destructive);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,13 @@
  *
  * The Original Code is Copyright (C) 2014 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Bastien Montagne.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/data_transfer.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -37,12 +31,10 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_array.h"
 #include "BLI_math.h"
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h"
@@ -50,12 +42,14 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_remap.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
 #include "data_transfer_intern.h"
 
+static CLG_LogRef LOG = {"bke.data_transfer"};
 
 CustomDataMask BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types)
 {
@@ -256,7 +250,7 @@ int BKE_object_data_transfer_dttype_to_srcdst_index(const int dtdata_type)
 
 static void data_transfer_dtdata_type_preprocess(
         Mesh *me_src, Mesh *me_dst,
-        const int dtdata_type, const bool dirty_nors_dst)
+        const int dtdata_type, const bool dirty_nors_dst, const bool is_modifier)
 {
 	if (dtdata_type == DT_TYPE_LNOR) {
 		/* Compute custom normals into regular loop normals, which will be used for the transfer. */
@@ -274,7 +268,9 @@ static void data_transfer_dtdata_type_preprocess(
 		const bool use_split_nors_dst = (me_dst->flag & ME_AUTOSMOOTH) != 0;
 		const float split_angle_dst = me_dst->smoothresh;
 
-		BKE_mesh_calc_normals_split(me_src);
+		if (!is_modifier) {
+			BKE_mesh_calc_normals_split(me_src);
+		}
 
 		float (*poly_nors_dst)[3];
 		float (*loop_nors_dst)[3];
@@ -509,12 +505,15 @@ static bool data_transfer_layersmapping_cdlayers_multisrc_to_dst(
 			idx_src++;
 
 			if (idx_dst < idx_src) {
-				if (!use_create) {
-					return true;
+				if (use_create) {
+					/* Create as much data layers as necessary! */
+					for (; idx_dst < idx_src; idx_dst++) {
+						CustomData_add_layer(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst);
+					}
 				}
-				/* Create as much data layers as necessary! */
-				for (; idx_dst < idx_src; idx_dst++) {
-					CustomData_add_layer(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst);
+				else {
+					/* Otherwise, just try to map what we can with existing dst data layers. */
+					idx_src = idx_dst;
 				}
 			}
 			else if (use_delete && idx_dst > idx_src) {
@@ -559,14 +558,14 @@ static bool data_transfer_layersmapping_cdlayers_multisrc_to_dst(
 				data_src = CustomData_get_layer_n(cd_src, cddata_type, idx_src);
 
 				if ((idx_dst = CustomData_get_named_layer(cd_dst, cddata_type, name)) == -1) {
-					if (!use_create) {
-						if (r_map) {
-							BLI_freelistN(r_map);
-						}
-						return true;
+					if (use_create) {
+						CustomData_add_layer_named(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst, name);
+						idx_dst = CustomData_get_named_layer(cd_dst, cddata_type, name);
 					}
-					CustomData_add_layer_named(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst, name);
-					idx_dst = CustomData_get_named_layer(cd_dst, cddata_type, name);
+					else {
+						/* If we are not allowed to create missing dst data layers, just skip matching src one. */
+						continue;
+					}
 				}
 				else if (data_dst_to_delete) {
 					data_dst_to_delete[idx_dst] = false;
@@ -1116,10 +1115,10 @@ bool BKE_object_data_transfer_ex(
 	/* Get source evaluated mesh.*/
 	me_src_mask |= BKE_object_data_transfer_dttypes_to_cdmask(data_types);
 	if (is_modifier) {
-		me_src = ob_src->runtime.mesh_eval;
+		me_src = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_src, false);
 
 		if (me_src == NULL || (me_src_mask & ~ob_src->runtime.last_data_mask) != 0) {
-			printf("Data Transfer: source mesh data is not ready - dependency cycle?\n");
+			CLOG_WARN(&LOG, "Data Transfer: source mesh data is not ready - dependency cycle?");
 			return changed;
 		}
 	}
@@ -1149,7 +1148,7 @@ bool BKE_object_data_transfer_ex(
 			continue;
 		}
 
-		data_transfer_dtdata_type_preprocess(me_src, me_dst, dtdata_type, dirty_nors_dst);
+		data_transfer_dtdata_type_preprocess(me_src, me_dst, dtdata_type, dirty_nors_dst, is_modifier);
 
 		cddata_type = BKE_object_data_transfer_dttype_to_cdtype(dtdata_type);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,37 +12,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_MODIFIER_H__
 #define __BKE_MODIFIER_H__
 
-/** \file BKE_modifier.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_modifier_types.h"     /* needed for all enum typdefs */
 #include "BLI_compiler_attrs.h"
 #include "BKE_customdata.h"
 
-struct ID;
+struct BMEditMesh;
+struct DepsNodeHandle;
 struct Depsgraph;
 struct DerivedMesh;
+struct ID;
+struct ListBase;
+struct Main;
 struct Mesh;
+struct ModifierData;
 struct Object;
 struct Scene;
 struct ViewLayer;
-struct ListBase;
 struct bArmature;
-struct Main;
-struct ModifierData;
-struct BMEditMesh;
-struct DepsNodeHandle;
 
 typedef enum {
 	/* Should not be used, only for None modifier type */
@@ -445,6 +437,6 @@ struct DerivedMesh *modifier_applyModifier_DM_deprecated(
         struct DerivedMesh *dm);
 
 struct Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(
-        struct Object *ob_eval, bool *r_free_mesh);
+        struct Object *ob_eval, const bool get_cage_mesh);
 
 #endif

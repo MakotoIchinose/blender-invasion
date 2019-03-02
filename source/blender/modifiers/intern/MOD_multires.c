@@ -35,6 +35,8 @@
 
 #include <stddef.h>
 
+#include "BLI_utildefines.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -71,7 +73,34 @@ static void initData(ModifierData *md)
 	mmd->quality = 3;
 }
 
-//#ifndef WITH_OPENSUBDIV_MODIFIER
+static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
+{
+	MultiresModifierData *mmd_dst = (MultiresModifierData *)md_dst;
+
+	modifier_copyData_generic(md_src, md_dst, flag);
+
+	mmd_dst->subdiv = NULL;
+}
+
+static void freeData(ModifierData *md)
+{
+	MultiresModifierData *mmd = (MultiresModifierData *) md;
+	if (mmd->subdiv != NULL) {
+		BKE_subdiv_free(mmd->subdiv);
+	}
+}
+
+/* Main goal of this function is to give usable subdivision surface descriptor
+ * which matches settings and topology. */
+static Subdiv *subdiv_descriptor_ensure(MultiresModifierData *mmd,
+                                        const SubdivSettings *subdiv_settings,
+                                        const Mesh *mesh)
+{
+	Subdiv *subdiv = BKE_subdiv_update_from_mesh(
+	        mmd->subdiv, subdiv_settings, mesh);
+	mmd->subdiv = subdiv;
+	return subdiv;
+}
 
 static DerivedMesh *applyModifier_DM(
         ModifierData *md, const ModifierEvalContext *ctx,
@@ -151,8 +180,6 @@ static DerivedMesh *applyModifier_DM(
 }
 
 applyModifier_DM_wrapper(applyModifier_legacy, applyModifier_DM)
-
-//#endif
 
 static Mesh *applyModifier(ModifierData *md,
                                   const ModifierEvalContext *ctx,
@@ -245,28 +272,32 @@ static Mesh *applyModifier_subdiv(ModifierData *md,
 	if (subdiv_settings.level == 0) {
 		return result;
 	}
-	/* TODO(sergey): Try to re-use subdiv when possible. */
-	Subdiv *subdiv = BKE_subdiv_new_from_mesh(&subdiv_settings, mesh);
+	BKE_subdiv_settings_validate_for_mesh(&subdiv_settings, mesh);
+	Subdiv *subdiv = subdiv_descriptor_ensure(mmd, &subdiv_settings, mesh);
 	if (subdiv == NULL) {
 		/* Happens on bad topology, ut also on empty input mesh. */
 		return result;
 	}
 	/* NOTE: Orco needs final coordinates on CPU side, which are expected to be
 	 * accessible via MVert. For this reason we do not evaluate multires to
-	 * grids when orco is requested.
-	 */
+	 * grids when orco is requested. */
 	const bool for_orco = (ctx->flag & MOD_APPLY_ORCO) != 0;
 	if ((ctx->object->mode & OB_MODE_SCULPT) && !for_orco) {
 		/* NOTE: CCG takes ownership over Subdiv. */
 		result = multires_as_ccg(mmd, ctx, mesh, subdiv);
 		result->runtime.subdiv_ccg_tot_level = mmd->totlvl;
+		/* NOTE: CCG becomes an owner of Subdiv descriptor, so can not share
+		 * this pointer. Not sure if it's needed, but might have a second look
+		 * on the ownership model here. */
+		mmd->subdiv = NULL;
 		// BKE_subdiv_stats_print(&subdiv->stats);
 	}
 	else {
 		result = multires_as_mesh(mmd, ctx, mesh, subdiv);
-		/* TODO(sergey): Cache subdiv somehow. */
 		// BKE_subdiv_stats_print(&subdiv->stats);
-		BKE_subdiv_free(subdiv);
+		if (subdiv != mmd->subdiv) {
+			BKE_subdiv_free(subdiv);
+		}
 	}
 	return result;
 }
@@ -281,7 +312,7 @@ ModifierTypeInfo modifierType_Multires = {
 	                        eModifierTypeFlag_SupportsMapping |
 	                        eModifierTypeFlag_RequiresOriginalData,
 
-	/* copyData */          modifier_copyData_generic,
+	/* copyData */          copyData,
 
 	/* deformVerts_DM */    NULL,
 	/* deformMatrices_DM */ NULL,
@@ -293,15 +324,11 @@ ModifierTypeInfo modifierType_Multires = {
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
 	/* deformMatricesEM */  NULL,
-#ifdef WITH_OPENSUBDIV_MODIFIER
-	/* applyModifier */     applyModifier_subdiv,
-#else
 	/* applyModifier */     applyModifier,
-#endif
 
 	/* initData */          initData,
 	/* requiredDataMask */  NULL,
-	/* freeData */          NULL,
+	/* freeData */          freeData,
 	/* isDisabled */        NULL,
 	/* updateDepsgraph */   NULL,
 	/* dependsOnTime */     NULL,

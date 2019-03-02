@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,23 +15,13 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Modifier stack implementation.
  *
  * BKE_modifier.h contains the function prototypes for this file.
- *
  */
 
-/** \file blender/blenkernel/intern/modifier.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdlib.h>
@@ -80,6 +68,9 @@
 
 #include "MOD_modifiertypes.h"
 
+#include "CLG_log.h"
+
+static CLG_LogRef LOG = {"bke.modifier"};
 static ModifierTypeInfo *modifier_types[NUM_MODIFIER_TYPES] = {NULL};
 static VirtualModifierData virtualModifierCommonData;
 
@@ -401,6 +392,7 @@ void modifier_setError(ModifierData *md, const char *_format, ...)
 
 	md->error = BLI_strdup(buffer);
 
+	CLOG_STR_ERROR(&LOG, md->error);
 }
 
 /* used for buttons, to find out if the 'draw deformed in editmode' option is
@@ -917,23 +909,24 @@ struct DerivedMesh *modifier_applyModifier_DM_deprecated(
  * Get evaluated mesh for other evaluated object, which is used as an operand for the modifier,
  * e.g. second operand for boolean modifier.
  * Note that modifiers in stack always get fully evaluated COW ID pointers, never original ones. Makes things simpler.
+ *
+ * \param get_cage_mesh Return evaluated mesh with only deforming modifiers applied
+ *                      (i.e. mesh topology remains the same as original one, a.k.a. 'cage' mesh).
  */
-Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(Object *ob_eval, bool *r_free_mesh)
+Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(Object *ob_eval, const bool get_cage_mesh)
 {
 	Mesh *me = NULL;
 
 	if ((ob_eval->type == OB_MESH) && (ob_eval->mode & OB_MODE_EDIT)) {
-		/* Note: currently we have no equivalent to derived cagemesh or even final dm in BMEditMesh...
-		 * This is TODO in core depsgraph/modifier stack code still. */
+		/* In EditMode, evaluated mesh is stored in BMEditMesh, not the object... */
 		BMEditMesh *em = BKE_editmesh_from_object(ob_eval);
 		if (em != NULL) {  /* em might not exist yet in some cases, just after loading a .blend file, see T57878. */
-			me = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, 0);
-			*r_free_mesh = true;
+			me = (get_cage_mesh && em->mesh_eval_cage != NULL) ? em->mesh_eval_cage : em->mesh_eval_final;
 		}
 	}
 	if (me == NULL) {
-		me = ob_eval->runtime.mesh_eval;
-		*r_free_mesh = false;
+		me = (get_cage_mesh && ob_eval->runtime.mesh_deform_eval != NULL) ? ob_eval->runtime.mesh_deform_eval :
+		                                                                    ob_eval->runtime.mesh_eval;
 	}
 
 	return me;

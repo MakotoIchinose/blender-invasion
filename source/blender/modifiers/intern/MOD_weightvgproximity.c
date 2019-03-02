@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,14 @@
  *
  * The Original Code is Copyright (C) 2011 by Bastien Montagne.
  * All rights reserved.
- *
- * Contributor(s): None yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_weightvgproximity.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "BLI_utildefines.h"
+
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
@@ -352,8 +346,10 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		DEG_add_object_relation(ctx->node, wmd->mask_tex_map_obj, DEG_OB_COMP_TRANSFORM, "WeightVGProximity Modifier");
 		DEG_add_object_relation(ctx->node, wmd->mask_tex_map_obj, DEG_OB_COMP_GEOMETRY, "WeightVGProximity Modifier");
 	}
-	DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "WeightVGProximity Modifier");
-	DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_GEOMETRY, "WeightVGProximity Modifier");
+	if (wmd->mask_texture != NULL) {
+		DEG_add_generic_id_relation(ctx->node, &wmd->mask_texture->id, "WeightVGProximity Modifier");
+	}
+	DEG_add_modifier_to_transform_relation(ctx->node, "WeightVGProximity Modifier");
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene), ModifierData *md, bool UNUSED(useRenderParams))
@@ -489,8 +485,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 		const bool use_trgt_faces = (wmd->proximity_flags & MOD_WVG_PROXIMITY_GEOM_FACES) != 0;
 
 		if (use_trgt_verts || use_trgt_edges || use_trgt_faces) {
-			bool target_mesh_free;
-			Mesh *target_mesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(obr, &target_mesh_free);
+			Mesh *target_mesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(obr, false);
 
 			/* We must check that we do have a valid target_mesh! */
 			if (target_mesh != NULL) {
@@ -513,10 +508,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 				MEM_SAFE_FREE(dists_v);
 				MEM_SAFE_FREE(dists_e);
 				MEM_SAFE_FREE(dists_f);
-
-				if (target_mesh_free) {
-					BKE_id_free(NULL, target_mesh);
-				}
 			}
 			/* Else, fall back to default obj2vert behavior. */
 			else {

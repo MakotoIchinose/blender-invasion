@@ -56,6 +56,7 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -464,7 +465,7 @@ static rbMaterialDensityItem RB_MATERIAL_DENSITY_TABLE[] = {
 	{N_("Steel"), 7860.0f},
 	{N_("Stone"), 2515.0f},
 	{N_("Stone (Crushed)"), 1602.0f},
-	{N_("Timber"), 610.0f}
+	{N_("Timber"), 610.0f},
 };
 static const int NUM_RB_MATERIAL_PRESETS = sizeof(RB_MATERIAL_DENSITY_TABLE) / sizeof(rbMaterialDensityItem);
 
@@ -508,6 +509,7 @@ static const EnumPropertyItem *rigidbody_materials_itemf(bContext *UNUSED(C), Po
 
 static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
 {
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	int material = RNA_enum_get(op->ptr, "material");
 	float density;
 	bool changed = false;
@@ -539,10 +541,10 @@ static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
 			/* mass is calculated from the approximate volume of the object,
 			 * and the density of the material we're simulating
 			 */
-
-			if (ob->type == OB_MESH) {
+			Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+			if (ob_eval->type == OB_MESH) {
 				/* if we have a mesh, determine its volume */
-                dm_ob = ob->data;
+                dm_ob = ob_eval->data;
 				volume = BKE_rigidbody_calc_volume_dm(dm_ob, ob->rigidbody_object, ob);
 			}
 			else {
@@ -550,7 +552,7 @@ static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
 				/* else get object boundbox as last resort,
 				 * because fracture modifier can operate on non-mesh objects too
 				 * and there we need a fallback volume of the "whole" object as well*/
-				BKE_object_dimensions_get(ob, dim);
+				BKE_object_dimensions_get(ob_eval, dim);
 				volume = dim[0] * dim[1] * dim[2];
 			}
 
@@ -594,7 +596,7 @@ void RIGIDBODY_OT_mass_calculate(wmOperatorType *ot)
 	ot->poll = ED_operator_scene_editable;
 
 	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
 
 	/* properties */
 	ot->prop = prop = RNA_def_enum(ot->srna, "material",

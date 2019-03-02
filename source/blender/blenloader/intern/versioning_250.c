@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/versioning_250.c
- *  \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 #ifndef WIN32
@@ -46,7 +39,7 @@
 #include "DNA_ipo_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -144,7 +137,7 @@ static void area_add_window_regions(ScrArea *sa, SpaceLink *sl, ListBase *lb)
 	if (sl) {
 		/* first channels for ipo action nla... */
 		switch (sl->spacetype) {
-			case SPACE_IPO:
+			case SPACE_GRAPH:
 				ar = MEM_callocN(sizeof(ARegion), "area region from do_versions");
 				BLI_addtail(lb, ar);
 				ar->regiontype = RGN_TYPE_CHANNELS;
@@ -242,7 +235,7 @@ static void area_add_window_regions(ScrArea *sa, SpaceLink *sl, ListBase *lb)
 				ar->alignment = RGN_ALIGN_RIGHT;
 				ar->flag = RGN_FLAG_HIDDEN;
 #if 0
-			case SPACE_BUTS:
+			case SPACE_PROPERTIES:
 				/* context UI region */
 				ar = MEM_callocN(sizeof(ARegion), "area region from do_versions");
 				BLI_addtail(lb, ar);
@@ -272,7 +265,7 @@ static void area_add_window_regions(ScrArea *sa, SpaceLink *sl, ListBase *lb)
 
 			case SPACE_OUTLINER:
 			{
-				SpaceOops *soops = (SpaceOops *)sl;
+				SpaceOutliner *soops = (SpaceOutliner *)sl;
 
 				memcpy(&ar->v2d, &soops->v2d, sizeof(View2D));
 
@@ -285,9 +278,9 @@ static void area_add_window_regions(ScrArea *sa, SpaceLink *sl, ListBase *lb)
 				//ar->v2d.flag |= V2D_IS_INITIALISED;
 				break;
 			}
-			case SPACE_IPO:
+			case SPACE_GRAPH:
 			{
-				SpaceIpo *sipo = (SpaceIpo *)sl;
+				SpaceGraph *sipo = (SpaceGraph *)sl;
 				memcpy(&ar->v2d, &sipo->v2d, sizeof(View2D));
 
 				/* init mainarea view2d */
@@ -371,9 +364,9 @@ static void area_add_window_regions(ScrArea *sa, SpaceLink *sl, ListBase *lb)
 				ar->v2d.keepzoom = V2D_LIMITZOOM | V2D_KEEPASPECT;
 				break;
 			}
-			case SPACE_BUTS:
+			case SPACE_PROPERTIES:
 			{
-				SpaceButs *sbuts = (SpaceButs *)sl;
+				SpaceProperties *sbuts = (SpaceProperties *)sl;
 				memcpy(&ar->v2d, &sbuts->v2d, sizeof(View2D));
 
 				ar->v2d.scroll |= (V2D_SCROLL_RIGHT | V2D_SCROLL_BOTTOM);
@@ -964,7 +957,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 			}
 		}
 
-		for (lt = bmain->latt.first; lt; lt = lt->id.next) {
+		for (lt = bmain->lattice.first; lt; lt = lt->id.next) {
 			if ((key = blo_do_versions_newlibadr(fd, lib, lt->key)) && key->refkey) {
 				data = key->refkey->data;
 				tot = MIN2(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
@@ -1236,41 +1229,13 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 				if (arm) { /* XXX - why does this fail in some cases? */
 					bAnimVizSettings *avs = &ob->pose->avs;
 
-					/* ghosting settings ---------------- */
-					/* ranges */
-					avs->ghost_bc = avs->ghost_ac = arm->ghostep;
-
-					avs->ghost_sf = arm->ghostsf;
-					avs->ghost_ef = arm->ghostef;
-					if ((avs->ghost_sf == avs->ghost_ef) && (avs->ghost_sf == 0)) {
-						avs->ghost_sf = 1;
-						avs->ghost_ef = 100;
-					}
-
-					/* type */
-					if (arm->ghostep == 0)
-						avs->ghost_type = GHOST_TYPE_NONE;
-					else
-						avs->ghost_type = arm->ghosttype + 1;
-
-					/* stepsize */
-					avs->ghost_step = arm->ghostsize;
-					if (avs->ghost_step == 0)
-						avs->ghost_step = 1;
-
 					/* path settings --------------------- */
 					/* ranges */
-					avs->path_bc = arm->pathbc;
-					avs->path_ac = arm->pathac;
-					if ((avs->path_bc == avs->path_ac) && (avs->path_bc == 0))
-						avs->path_bc = avs->path_ac = 10;
+					avs->path_bc = 10;
+					avs->path_ac = 10;
 
-					avs->path_sf = arm->pathsf;
-					avs->path_ef = arm->pathef;
-					if ((avs->path_sf == avs->path_ef) && (avs->path_sf == 0)) {
-						avs->path_sf = 1;
-						avs->path_ef = 250;
-					}
+					avs->path_sf = 1;
+					avs->path_ef = 250;
 
 					/* flags */
 					if (arm->pathflag & ARM_PATH_FNUMS)
@@ -1289,9 +1254,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 						avs->path_type = MOTIONPATH_TYPE_ACFRA;
 
 					/* stepsize */
-					avs->path_step = arm->pathsize;
-					if (avs->path_step == 0)
-						avs->path_step = 1;
+					avs->path_step = 1;
 				}
 				else
 					animviz_settings_init(&ob->pose->avs);
@@ -1435,7 +1398,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 		/* Blender 2.5.2 - subversion 0 introduced a new setting: V3D_RENDER_OVERRIDE.
 		 * This bit was used in the past for V3D_TRANSFORM_SNAP, which is now deprecated.
 		 * Here we clear it for old files so they don't come in with V3D_RENDER_OVERRIDE set,
-		 * which would cause cameras, lamps, etc to become invisible */
+		 * which would cause cameras, lights, etc to become invisible */
 		for (sc = bmain->screen.first; sc; sc = sc->id.next) {
 			ScrArea *sa;
 			for (sa = sc->areabase.first; sa; sa = sa->next) {

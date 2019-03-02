@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_graph/graph_select.c
- *  \ingroup spgraph
+/** \file
+ * \ingroup spgraph
  */
 
 
@@ -90,7 +84,7 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
 	bAnimListElem *ale;
 	int filter;
 
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	KeyframeEditData ked = {{NULL}};
 	KeyframeEditFunc test_cb, sel_cb;
 
@@ -242,7 +236,7 @@ static void box_select_graphkeys(
 	bAnimListElem *ale;
 	int filter, mapping_flag;
 
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	KeyframeEditData ked;
 	KeyframeEditFunc ok_cb, select_cb;
 	View2D *v2d = &ac->ar->v2d;
@@ -460,7 +454,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
 		selectmode = SELECT_SUBTRACT;
 
 	{
-		SpaceIpo *sipo = (SpaceIpo *)ac.sl;
+		SpaceGraph *sipo = (SpaceGraph *)ac.sl;
 		if (selectmode == SELECT_ADD) {
 			incl_handles = ((sipo->flag & SIPO_SELVHANDLESONLY) ||
 			                (sipo->flag & SIPO_NOHANDLES)) == 0;
@@ -537,7 +531,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
 	rect_fl.ymax = y + radius;
 
 	{
-		SpaceIpo *sipo = (SpaceIpo *)ac.sl;
+		SpaceGraph *sipo = (SpaceGraph *)ac.sl;
 		if (selectmode == SELECT_ADD) {
 			incl_handles = ((sipo->flag & SIPO_SELVHANDLESONLY) ||
 			                (sipo->flag & SIPO_NOHANDLES)) == 0;
@@ -589,7 +583,7 @@ static const EnumPropertyItem prop_column_select_types[] = {
 	{GRAPHKEYS_COLUMNSEL_CFRA, "CFRA", 0, "On Current Frame", ""},
 	{GRAPHKEYS_COLUMNSEL_MARKERS_COLUMN, "MARKERS_COLUMN", 0, "On Selected Markers", ""},
 	{GRAPHKEYS_COLUMNSEL_MARKERS_BETWEEN, "MARKERS_BETWEEN", 0, "Between Min/Max Selected Markers", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* ------------------- */
@@ -933,7 +927,7 @@ static const EnumPropertyItem prop_graphkeys_leftright_select_types[] = {
 	{GRAPHKEYS_LRSEL_TEST, "CHECK", 0, "Check if Select Left or Right", ""},
 	{GRAPHKEYS_LRSEL_LEFT, "LEFT", 0, "Before current frame", ""},
 	{GRAPHKEYS_LRSEL_RIGHT, "RIGHT", 0, "After current frame", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* --------------------------------- */
@@ -1120,7 +1114,7 @@ typedef enum eGraphVertIndex {
 
 /* check if its ok to select a handle */
 // XXX also need to check for int-values only?
-static bool fcurve_handle_sel_check(SpaceIpo *sipo, BezTriple *bezt)
+static bool fcurve_handle_sel_check(SpaceGraph *sipo, BezTriple *bezt)
 {
 	if (sipo->flag & SIPO_NOHANDLES) return 0;
 	if ((sipo->flag & SIPO_SELVHANDLESONLY) && BEZT_ISSEL_ANY(bezt) == 0) return 0;
@@ -1190,7 +1184,7 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 	bAnimListElem *ale;
 	int filter;
 
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	View2D *v2d = &ac->ar->v2d;
 	short mapping_flag = 0;
 
@@ -1314,7 +1308,7 @@ static tNearestVertInfo *find_nearest_fcurve_vert(bAnimContext *ac, const int mv
 /* option 1) select keyframe directly under mouse */
 static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_mode, short curves_only)
 {
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	tNearestVertInfo *nvi;
 	BezTriple *bezt = NULL;
 
@@ -1421,7 +1415,8 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 	}
 
 	/* set active F-Curve (NOTE: sync the filter flags with findnearest_fcurve_vert) */
-	/* needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY) otherwise the active flag won't be set [#26452] */
+	/* needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY)
+	 * otherwise the active flag won't be set T26452. */
 	if (nvi->fcu->flag & FCURVE_SELECTED) {
 		int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
 		ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, nvi->ctype);
@@ -1431,7 +1426,8 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 	MEM_freeN(nvi);
 }
 
-/* Option 2) Selects all the keyframes on either side of the current frame (depends on which side the mouse is on) */
+/* Option 2) Selects all the keyframes on either side of the current frame
+ * (depends on which side the mouse is on) */
 /* (see graphkeys_select_leftright) */
 
 /* Option 3) Selects all visible keyframes in the same frame as the mouse click */

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/versioning_260.c
- *  \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 #include "BLI_utildefines.h"
@@ -790,13 +783,13 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				int i;
 				for (i = 0; i < 3; i++) {
 					if ( (ob->dsize[i] == 0.0f) || /* simple case, user never touched dsize */
-					     (ob->size[i]  == 0.0f))   /* cant scale the dsize to give a non zero result,
+					     (ob->scale[i]  == 0.0f))   /* cant scale the dsize to give a non zero result,
 					                                * so fallback to 1.0f */
 					{
 						ob->dscale[i] = 1.0f;
 					}
 					else {
-						ob->dscale[i] = (ob->size[i] + ob->dsize[i]) / ob->size[i];
+						ob->dscale[i] = (ob->scale[i] + ob->dsize[i]) / ob->scale[i];
 					}
 				}
 			}
@@ -829,7 +822,6 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			Scene *sce;
 			Material *mat;
 			Tex *tex;
-			Lamp *lamp;
 			World *world;
 			bNodeTree *ntree;
 
@@ -848,9 +840,9 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					do_versions_nodetree_socket_use_flags_2_62(tex->nodetree);
 			}
 
-			for (lamp = bmain->lamp.first; lamp; lamp = lamp->id.next) {
-				if (lamp->nodetree)
-					do_versions_nodetree_socket_use_flags_2_62(lamp->nodetree);
+			for (Light *la = bmain->light.first; la; la = la->id.next) {
+				if (la->nodetree)
+					do_versions_nodetree_socket_use_flags_2_62(la->nodetree);
 			}
 
 			for (world = bmain->world.first; world; world = world->id.next) {
@@ -1184,7 +1176,6 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		Scene *sce;
 		Material *mat;
 		Tex *tex;
-		Lamp *lamp;
 		World *world;
 		bNodeTree *ntree;
 
@@ -1200,9 +1191,9 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			if (tex->nodetree)
 				do_versions_nodetree_frame_2_64_6(tex->nodetree);
 
-		for (lamp = bmain->lamp.first; lamp; lamp = lamp->id.next)
-			if (lamp->nodetree)
-				do_versions_nodetree_frame_2_64_6(lamp->nodetree);
+		for (Light *la = bmain->light.first; la; la = la->id.next)
+			if (la->nodetree)
+				do_versions_nodetree_frame_2_64_6(la->nodetree);
 
 		for (world = bmain->world.first; world; world = world->id.next)
 			if (world->nodetree)
@@ -2245,7 +2236,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			for (sa = sc->areabase.first; sa; sa = sa->next) {
 				for (sl = sa->spacedata.first; sl; sl = sl->next) {
 					if (sl->spacetype == SPACE_OUTLINER) {
-						SpaceOops *so = (SpaceOops *)sl;
+						SpaceOutliner *so = (SpaceOutliner *)sl;
 
 						if (!ELEM(so->outlinevis,
 						          SO_SCENES,
@@ -2326,10 +2317,10 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		{
 			Scene *scene;
 			Object *ob;
-			Lamp *lamp;
 
-			for (lamp = bmain->lamp.first; lamp; lamp = lamp->id.next)
-				lamp->spotsize = DEG2RADF(lamp->spotsize);
+			for (Light *la = bmain->light.first; la; la = la->id.next) {
+				la->spotsize = DEG2RADF(la->spotsize);
+			}
 
 			for (ob = bmain->object.first; ob; ob = ob->id.next) {
 				ModifierData *md;
@@ -2402,6 +2393,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					SCULPT_SYMM_X = (1 << 0),
 					SCULPT_SYMM_Y = (1 << 1),
 					SCULPT_SYMM_Z = (1 << 2),
+					SCULPT_SYMMETRY_FEATHER = (1 << 6),
 				};
 				int symmetry_flags = sd->flags & 7;
 

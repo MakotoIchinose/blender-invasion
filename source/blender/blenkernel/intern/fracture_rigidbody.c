@@ -61,6 +61,7 @@
 #include "BKE_modifier.h"
 #include "BKE_global.h"
 #include "BKE_pointcache.h"
+#include "BKE_layer.h"
 
 /*====================================================================================================================*/
 
@@ -605,7 +606,7 @@ void BKE_rigidbody_validate_sim_shard(RigidBodyWorld *rbw, Shard *mi, Object *ob
 		copy_qt_qt(rot, rbo->orn);
 		copy_v3_v3(size, isize);
 
-		mul_v3_v3(size, ob->size);
+		mul_v3_v3(size, ob->scale);
 		rbo->shared->physics_object = RB_body_new(rbo->shared->physics_shape, loc, rot);
 
 		RB_body_set_friction(rbo->shared->physics_object, rbo->friction);
@@ -680,7 +681,7 @@ Shard* BKE_rigidbody_closest_meshisland_to_point(FractureModifierData* fmd, Obje
 	index = BLI_kdtree_find_nearest(tree, ob2->loc, n);
 
 	//create "aabb"
-	mul_v3_v3(vec, ob2->size);
+	mul_v3_v3(vec, ob2->scale);
 	sub_v3_v3v3(min, ob2->loc, vec);
 	add_v3_v3v3(max, ob2->loc, vec);
 
@@ -697,7 +698,7 @@ Shard* BKE_rigidbody_closest_meshisland_to_point(FractureModifierData* fmd, Obje
 	mi = mi_array[index];
 
 	//do a range search and clip against "aabb" of empty scale for additional inner constraint
-	r = BLI_kdtree_range_search(tree, ob2->loc, &n, max_fff(UNPACK3(ob2->size)));
+	r = BLI_kdtree_range_search(tree, ob2->loc, &n, max_fff(UNPACK3(ob2->scale)));
 	for (i = 0; i < r; i++)
 	{
 		float co[3];
@@ -2324,9 +2325,11 @@ bool BKE_rigidbody_modifier_update(Scene* scene, Object* ob, RigidBodyWorld *rbw
 	}
 }
 
-bool BKE_rigidbody_modifier_sync(ModifierData *md, Object *ob, Scene *scene, float ctime)
+bool BKE_rigidbody_modifier_sync(ModifierData *md, Object *ob, Scene *scene, Depsgraph *depsgraph)
 {
 	RigidBodyWorld *rbw = scene->rigidbody_world;
+	float ctime = DEG_get_ctime(depsgraph);
+
 	bool modFound = false;
 	FractureModifierData *fmd = NULL;
 	Shard *mi;
@@ -2351,8 +2354,8 @@ bool BKE_rigidbody_modifier_sync(ModifierData *md, Object *ob, Scene *scene, flo
 				}
 
 				/* use rigid body transform after cache start frame if objects is not being transformed */
-				if (BKE_rigidbody_check_sim_running(rbw, ctime) && !(ob->flag & SELECT && G.moving & G_TRANSFORM_OBJ)) {
-
+				if (BKE_rigidbody_check_sim_running(rbw, ctime) &&!((ob->flag & SELECT) && (G.moving & G_TRANSFORM_OBJ)))
+				{
 					/* keep original transform when the simulation is muted */
 					if (rbw->flag & RBW_FLAG_MUTED)
 						break;
@@ -2373,10 +2376,10 @@ bool BKE_rigidbody_modifier_sync(ModifierData *md, Object *ob, Scene *scene, flo
 				}
 			}
 
-			if ((ob->flag & SELECT && G.moving & G_TRANSFORM_OBJ) ||
+			if (((ob->flag & SELECT) && (G.moving & G_TRANSFORM_OBJ)) ||
 				((ob->rigidbody_object) && (ob->rigidbody_object->flag & RBO_FLAG_KINEMATIC)))
 			{
-				if (ob->flag & SELECT && G.moving & G_TRANSFORM_OBJ && rbw) {
+				if ((ob->flag & SELECT) && (G.moving & G_TRANSFORM_OBJ && rbw)) {
 					RigidBodyShardCon *con;
 
 					BKE_rigidbody_cache_reset(scene);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Dalai Felinto
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/collection.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <string.h>
@@ -33,7 +27,6 @@
 #include "BLI_math_base.h"
 #include "BLI_threads.h"
 #include "BLT_translation.h"
-#include "BLI_string_utils.h"
 
 #include "BKE_collection.h"
 #include "BKE_icons.h"
@@ -173,7 +166,7 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
 		}
 	}
 
-	BKE_libblock_delete(bmain, collection);
+	BKE_id_delete(bmain, collection);
 
 	BKE_main_collection_sync(bmain);
 
@@ -184,7 +177,7 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
 
 /**
  * Only copy internal data of Collection ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -216,22 +209,77 @@ void BKE_collection_copy_data(
 	}
 }
 
+static void collection_duplicate_recursive(Main *bmain, GHash *visited, Collection *collection, const int dupflag)
+{
+	const bool is_first_run = (visited == NULL);
+	if (is_first_run) {
+		visited = BLI_ghash_ptr_new(__func__);
+		BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
+	}
+
+	if (collection->id.tag & LIB_TAG_DOIT) {
+		return;
+	}
+	collection->id.tag |= LIB_TAG_DOIT;
+
+	ListBase collection_object_list = {NULL, NULL};
+	BLI_duplicatelist(&collection_object_list, &collection->gobject);
+	for (CollectionObject *cob = collection_object_list.first; cob; cob = cob->next) {
+		Object *ob_old = cob->ob;
+		Object *ob_new = NULL;
+		void **ob_key_p, **ob_value_p;
+
+		if (!BLI_ghash_ensure_p_ex(visited, ob_old, &ob_key_p, &ob_value_p)) {
+			ob_new = BKE_object_duplicate(bmain, ob_old, dupflag);
+			*ob_key_p = ob_old;
+			*ob_value_p = ob_new;
+		}
+		else {
+			ob_new = *ob_value_p;
+		}
+
+		collection_object_add(bmain, collection, ob_new, 0, true);
+		collection_object_remove(bmain, collection, ob_old, false);
+	}
+	BLI_freelistN(&collection_object_list);
+
+	ListBase collection_child_list = {NULL, NULL};
+	BLI_duplicatelist(&collection_child_list, &collection->children);
+	for (CollectionChild *child = collection_child_list.first; child; child = child->next) {
+		Collection *child_collection_old = child->collection;
+		Collection *child_collection_new = BKE_collection_copy(bmain, collection, child_collection_old);
+
+		collection_duplicate_recursive(bmain, visited, child_collection_new, dupflag);
+		collection_child_remove(collection, child_collection_old);
+	}
+	BLI_freelistN(&collection_child_list);
+
+	if (is_first_run) {
+		BLI_ghash_free(visited, NULL, NULL);
+	}
+}
+
 /**
  * Makes a shallow copy of a Collection
  *
- * Add a new collection in the same level as the old one, copy any nested collections
- * but link the objects to the new collection (as oppose to copy them).
+ * Add a new collection in the same level as the old one, link any nested collections
+ * and finally link the objects to the new collection (as oppose to copy them).
  */
 Collection *BKE_collection_copy(Main *bmain, Collection *parent, Collection *collection)
 {
+	return BKE_collection_duplicate(bmain, parent, collection, false, false);
+}
+
+Collection *BKE_collection_duplicate(Main *bmain, Collection *parent, Collection *collection, const bool do_hierarchy, const bool do_deep_copy)
+{
 	/* It's not allowed to copy the master collection. */
 	if (collection->flag & COLLECTION_IS_MASTER) {
-		BLI_assert("!Master collection can't be copied");
+		BLI_assert("!Master collection can't be duplicated");
 		return NULL;
 	}
 
 	Collection *collection_new;
-	BKE_id_copy_ex(bmain, &collection->id, (ID **)&collection_new, 0, false);
+	BKE_id_copy(bmain, &collection->id, (ID **)&collection_new);
 	id_us_min(&collection_new->id);  /* Copying add one user by default, need to get rid of that one. */
 
 	/* Optionally add to parent. */
@@ -246,6 +294,10 @@ Collection *BKE_collection_copy(Main *bmain, Collection *parent, Collection *col
 				BLI_insertlinkafter(&parent->children, child, child_new);
 			}
 		}
+	}
+
+	if (do_hierarchy) {
+		collection_duplicate_recursive(bmain, NULL, collection_new, (do_deep_copy) ? U.dupflag : 0);
 	}
 
 	BKE_main_collection_sync(bmain);
@@ -409,8 +461,8 @@ Collection *BKE_collection_master(const Scene *scene)
 
 static bool collection_object_cyclic_check_internal(Object *object, Collection *collection)
 {
-	if (object->dup_group) {
-		Collection *dup_collection = object->dup_group;
+	if (object->instance_collection) {
+		Collection *dup_collection = object->instance_collection;
 		if ((dup_collection->id.tag & LIB_TAG_DOIT) == 0) {
 			/* Cycle already exists in collections, let's prevent further crappyness */
 			return true;
@@ -491,9 +543,9 @@ bool BKE_collection_is_empty(Collection *collection)
 
 static bool collection_object_add(Main *bmain, Collection *collection, Object *ob, int flag, const bool add_us)
 {
-	if (ob->dup_group) {
+	if (ob->instance_collection) {
 		/* Cyclic dependency check. */
-		if (collection_find_child_recursive(ob->dup_group, collection)) {
+		if (collection_find_child_recursive(ob->instance_collection, collection)) {
 			return false;
 		}
 	}
@@ -534,7 +586,7 @@ static bool collection_object_remove(Main *bmain, Collection *collection, Object
 	BKE_collection_object_cache_free(collection);
 
 	if (free_us) {
-		BKE_libblock_free_us(bmain, ob);
+		BKE_id_free_us(bmain, ob);
 	}
 	else {
 		id_us_min(&ob->id);
@@ -611,7 +663,9 @@ static bool scene_collections_object_remove(Main *bmain, Scene *scene, Object *o
 {
 	bool removed = false;
 
-	BKE_scene_remove_rigidbody_object(bmain, scene, ob);
+	if (collection_skip == NULL) {
+		BKE_scene_remove_rigidbody_object(bmain, scene, ob);
+	}
 
 	FOREACH_SCENE_COLLECTION_BEGIN(scene, collection)
 	{
@@ -776,8 +830,9 @@ bool BKE_collection_is_in_scene(Collection *collection)
 
 void BKE_collections_after_lib_link(Main *bmain)
 {
-	/* Update view layer collections to match any changes in linked
-	 * collections after file load. */
+	/* Need to update layer collections because objects might have changed
+	 * in linked files, and because undo push does not include updated base
+	 * flags since those are refreshed after the operator completes. */
 	BKE_main_collection_sync(bmain);
 }
 
@@ -1122,7 +1177,7 @@ void BKE_scene_collections_iterator_end(struct BLI_Iterator *iter)
 }
 
 
-/* scene objects iteractor */
+/* scene objects iterator */
 
 typedef struct SceneObjectsIteratorData {
 	GSet *visited;

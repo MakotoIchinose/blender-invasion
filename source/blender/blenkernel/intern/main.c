@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,12 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/main.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
- * Contains management of Main database itself.
+ * Contains management of #Main database itself.
  */
 
 #include <string.h>
@@ -64,61 +56,69 @@ void BKE_main_free(Main *mainvar)
 	ListBase *lbarray[MAX_LIBARRAY];
 	int a;
 
+	/* Since we are removing whole main, no need to bother 'properly' (and slowly) removing each ID from it. */
+	const int free_flag = (LIB_ID_FREE_NO_MAIN |
+	                       LIB_ID_FREE_NO_UI_USER |
+	                       LIB_ID_FREE_NO_USER_REFCOUNT |
+	                       LIB_ID_FREE_NO_DEG_TAG);
+
 	MEM_SAFE_FREE(mainvar->blen_thumb);
 
 	a = set_listbasepointers(mainvar, lbarray);
 	while (a--) {
 		ListBase *lb = lbarray[a];
-		ID *id;
+		ID *id, *id_next;
 
-		while ( (id = lb->first) ) {
+		for (id = lb->first; id != NULL; id = id_next) {
+			id_next = id->next;
 #if 1
-			BKE_libblock_free_ex(mainvar, id, false, false);
+			BKE_id_free_ex(mainvar, id, free_flag, false);
 #else
 			/* errors freeing ID's can be hard to track down,
 			 * enable this so valgrind will give the line number in its error log */
 			switch (a) {
-				case   0: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   1: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   2: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   3: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   4: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   5: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   6: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   7: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   8: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case   9: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  10: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  11: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  12: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  13: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  14: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  15: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  16: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  17: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  18: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  19: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  20: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  21: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  22: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  23: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  24: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  25: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  26: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  27: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  28: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  29: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  30: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  31: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  32: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  33: BKE_libblock_free_ex(mainvar, id, false, false); break;
-				case  34: BKE_libblock_free_ex(mainvar, id, false, false); break;
+				case   0: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   1: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   2: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   3: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   4: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   5: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   6: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   7: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   8: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case   9: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  10: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  11: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  12: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  13: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  14: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  15: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  16: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  17: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  18: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  19: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  20: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  21: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  22: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  23: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  24: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  25: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  26: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  27: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  28: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  29: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  30: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  31: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  32: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  33: BKE_id_free_ex(mainvar, id, free_flag, false); break;
+				case  34: BKE_id_free_ex(mainvar, id, free_flag, false); break;
 				default:
 					BLI_assert(0);
 					break;
 			}
 #endif
 		}
+		BLI_listbase_clear(lb);
 	}
 
 	if (mainvar->relations) {
@@ -141,7 +141,7 @@ void BKE_main_unlock(struct Main *bmain)
 }
 
 
-static int main_relations_create_cb(void *user_data, ID *id_self, ID **id_pointer, int cb_flag)
+static int main_relations_create_idlink_cb(void *user_data, ID *id_self, ID **id_pointer, int cb_flag)
 {
 	MainIDRelations *rel = user_data;
 
@@ -177,10 +177,6 @@ static int main_relations_create_cb(void *user_data, ID *id_self, ID **id_pointe
 /** Generate the mappings between used IDs and their users, and vice-versa. */
 void BKE_main_relations_create(Main *bmain)
 {
-	ListBase *lbarray[MAX_LIBARRAY];
-	ID *id;
-	int a;
-
 	if (bmain->relations != NULL) {
 		BKE_main_relations_free(bmain);
 	}
@@ -190,11 +186,12 @@ void BKE_main_relations_create(Main *bmain)
 	bmain->relations->id_user_to_used = BLI_ghash_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
 	bmain->relations->entry_pool = BLI_mempool_create(sizeof(MainIDRelationsEntry), 128, 128, BLI_MEMPOOL_NOP);
 
-	for (a = set_listbasepointers(bmain, lbarray); a--; ) {
-		for (id = lbarray[a]->first; id; id = id->next) {
-			BKE_library_foreach_ID_link(NULL, id, main_relations_create_cb, bmain->relations, IDWALK_READONLY);
-		}
+	ID *id;
+	FOREACH_MAIN_ID_BEGIN(bmain, id)
+	{
+		BKE_library_foreach_ID_link(NULL, id, main_relations_create_idlink_cb, bmain->relations, IDWALK_READONLY);
 	}
+	FOREACH_MAIN_ID_END;
 }
 
 void BKE_main_relations_free(Main *bmain)
@@ -210,6 +207,26 @@ void BKE_main_relations_free(Main *bmain)
 		MEM_freeN(bmain->relations);
 		bmain->relations = NULL;
 	}
+}
+
+/**
+ * Create a GSet storing all IDs present in given \a bmain, by their pointers.
+ *
+ * \param gset: If not NULL, given GSet will be extended with IDs from given \a bmain, instead of creating a new one.
+ */
+GSet *BKE_main_gset_create(Main *bmain, GSet *gset)
+{
+	if (gset == NULL) {
+		gset = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
+	}
+
+	ID *id;
+	FOREACH_MAIN_ID_BEGIN(bmain, id)
+	{
+		BLI_gset_add(gset, id);
+	}
+	FOREACH_MAIN_ID_END;
+	return gset;
 }
 
 /**
@@ -289,7 +306,7 @@ const char *BKE_main_blendfile_path(const Main *bmain)
 }
 
 /**
- * Return filepath of global main (G_MAIN).
+ * Return filepath of global main #G_MAIN.
  *
  * \warning Usage is not recommended, you should always try to get a valid Main pointer from context...
  */
@@ -323,9 +340,9 @@ ListBase *which_libbase(Main *bmain, short type)
 		case ID_IM:
 			return &(bmain->image);
 		case ID_LT:
-			return &(bmain->latt);
+			return &(bmain->lattice);
 		case ID_LA:
-			return &(bmain->lamp);
+			return &(bmain->light);
 		case ID_CA:
 			return &(bmain->camera);
 		case ID_IP:
@@ -369,24 +386,24 @@ ListBase *which_libbase(Main *bmain, short type)
 		case ID_LS:
 			return &(bmain->linestyle);
 		case ID_PAL:
-			return &(bmain->palettes);
+			return &(bmain->palette);
 		case ID_PC:
-			return &(bmain->paintcurves);
+			return &(bmain->paintcurve);
 		case ID_CF:
-			return &(bmain->cachefiles);
+			return &(bmain->cachefile);
 		case ID_WS:
-			return &(bmain->workspaces);
+			return &(bmain->workspace);
 	}
 	return NULL;
 }
 
 /**
- * puts into array *lb pointers to all the ListBase structs in main,
+ * puts into array *lb pointers to all the #ListBase structs in main,
  * and returns the number of them as the function result. This is useful for
  * generic traversal of all the blocks in a Main (by traversing all the
  * lists in turn), without worrying about block types.
  *
- * \note MAX_LIBARRAY define should match this code */
+ * \note #MAX_LIBARRAY define should match this code */
 int set_listbasepointers(Main *bmain, ListBase **lb)
 {
 	/* BACKWARDS! also watch order of free-ing! (mesh<->mat), first items freed last.
@@ -396,7 +413,7 @@ int set_listbasepointers(Main *bmain, ListBase **lb)
 	lb[INDEX_ID_IP] = &(bmain->ipo);
 	lb[INDEX_ID_AC] = &(bmain->action); /* moved here to avoid problems when freeing with animato (aligorith) */
 	lb[INDEX_ID_KE] = &(bmain->key);
-	lb[INDEX_ID_PAL] = &(bmain->palettes); /* referenced by gpencil, so needs to be before that to avoid crashes */
+	lb[INDEX_ID_PAL] = &(bmain->palette); /* referenced by gpencil, so needs to be before that to avoid crashes */
 	lb[INDEX_ID_GD] = &(bmain->gpencil); /* referenced by nodes, objects, view, scene etc, before to free after. */
 	lb[INDEX_ID_NT] = &(bmain->nodetree);
 	lb[INDEX_ID_IM] = &(bmain->image);
@@ -410,20 +427,20 @@ int set_listbasepointers(Main *bmain, ListBase **lb)
 
 	lb[INDEX_ID_AR] = &(bmain->armature);
 
-	lb[INDEX_ID_CF] = &(bmain->cachefiles);
+	lb[INDEX_ID_CF] = &(bmain->cachefile);
 	lb[INDEX_ID_ME] = &(bmain->mesh);
 	lb[INDEX_ID_CU] = &(bmain->curve);
 	lb[INDEX_ID_MB] = &(bmain->mball);
 
-	lb[INDEX_ID_LT] = &(bmain->latt);
-	lb[INDEX_ID_LA] = &(bmain->lamp);
+	lb[INDEX_ID_LT] = &(bmain->lattice);
+	lb[INDEX_ID_LA] = &(bmain->light);
 	lb[INDEX_ID_CA] = &(bmain->camera);
 
 	lb[INDEX_ID_TXT] = &(bmain->text);
 	lb[INDEX_ID_SO]  = &(bmain->sound);
 	lb[INDEX_ID_GR]  = &(bmain->collection);
-	lb[INDEX_ID_PAL] = &(bmain->palettes);
-	lb[INDEX_ID_PC]  = &(bmain->paintcurves);
+	lb[INDEX_ID_PAL] = &(bmain->palette);
+	lb[INDEX_ID_PC]  = &(bmain->paintcurve);
 	lb[INDEX_ID_BR]  = &(bmain->brush);
 	lb[INDEX_ID_PA]  = &(bmain->particle);
 	lb[INDEX_ID_SPK] = &(bmain->speaker);
@@ -435,7 +452,7 @@ int set_listbasepointers(Main *bmain, ListBase **lb)
 	lb[INDEX_ID_OB]  = &(bmain->object);
 	lb[INDEX_ID_LS]  = &(bmain->linestyle); /* referenced by scenes */
 	lb[INDEX_ID_SCE] = &(bmain->scene);
-	lb[INDEX_ID_WS]  = &(bmain->workspaces); /* before wm, so it's freed after it! */
+	lb[INDEX_ID_WS]  = &(bmain->workspace); /* before wm, so it's freed after it! */
 	lb[INDEX_ID_WM]  = &(bmain->wm);
 	lb[INDEX_ID_MSK] = &(bmain->mask);
 

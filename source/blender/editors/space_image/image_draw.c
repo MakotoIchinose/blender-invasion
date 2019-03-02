@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_image/image_draw.c
- *  \ingroup spimage
+/** \file
+ * \ingroup spimage
  */
 
 
@@ -56,7 +50,6 @@
 #include "IMB_moviecache.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_paint.h"
 
@@ -434,7 +427,7 @@ static void sima_draw_zbuf_pixels(float x1, float y1, int rectx, int recty, int 
 	}
 
 	IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
-	GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, red);
+	GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, red);
 
 	immDrawPixelsTex(&state, x1, y1, rectx, recty, GL_RED, GL_INT, GL_NEAREST, recti, zoomx, zoomy, NULL);
 
@@ -444,24 +437,24 @@ static void sima_draw_zbuf_pixels(float x1, float y1, int rectx, int recty, int 
 static void sima_draw_zbuffloat_pixels(Scene *scene, float x1, float y1, int rectx, int recty,
                                        float *rect_float, float zoomx, float zoomy)
 {
-	float bias, scale, *rectf, clipend;
+	float bias, scale, *rectf, clip_end;
 	int a;
 	float red[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 
 	if (scene->camera && scene->camera->type == OB_CAMERA) {
-		bias = ((Camera *)scene->camera->data)->clipsta;
-		clipend = ((Camera *)scene->camera->data)->clipend;
-		scale = 1.0f / (clipend - bias);
+		bias = ((Camera *)scene->camera->data)->clip_start;
+		clip_end = ((Camera *)scene->camera->data)->clip_end;
+		scale = 1.0f / (clip_end - bias);
 	}
 	else {
 		bias = 0.1f;
 		scale = 0.01f;
-		clipend = 100.0f;
+		clip_end = 100.0f;
 	}
 
 	rectf = MEM_mallocN(rectx * recty * sizeof(float), "temp");
 	for (a = rectx * recty - 1; a >= 0; a--) {
-		if (rect_float[a] > clipend)
+		if (rect_float[a] > clip_end)
 			rectf[a] = 0.0f;
 		else if (rect_float[a] < bias)
 			rectf[a] = 1.0f;
@@ -472,7 +465,7 @@ static void sima_draw_zbuffloat_pixels(Scene *scene, float x1, float y1, int rec
 	}
 
 	IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
-	GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, red);
+	GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, red);
 
 	immDrawPixelsTex(&state, x1, y1, rectx, recty, GL_RED, GL_FLOAT, GL_NEAREST, rectf, zoomx, zoomy, NULL);
 
@@ -531,7 +524,7 @@ static void draw_image_buffer(const bContext *C, SpaceImage *sima, ARegion *ar, 
 				shuffle[3] = 1.0f;
 
 			IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
-			GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, shuffle);
+			GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, shuffle);
 
 			IMB_colormanagement_display_settings_from_ctx(C, &view_settings, &display_settings);
 			display_buffer = IMB_display_buffer_acquire(ibuf, view_settings, display_settings, &cache_handle);

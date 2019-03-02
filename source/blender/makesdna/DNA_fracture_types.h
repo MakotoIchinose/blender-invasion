@@ -213,7 +213,7 @@ typedef struct FractureModifierData_Shared {
 	int last_cache_start;
 	int last_cache_end;
 
-	char pad[4];
+	char _pad[4];
 
 } FractureModifierData_Shared;
 
@@ -242,7 +242,7 @@ typedef struct Shard {
 	float *aves; //angular velocities
 
 	char name[66]; /* MAX_ID_NAME */
-	char pad1[2];
+	char _pad1[2];
 
 	/* valid start and end frames, between those the shard is considered valid and visible */
 	int startframe;
@@ -301,7 +301,7 @@ typedef struct Shard {
 	/* size of impact area (bbox-like) */
 	float impact_size[3];
 
-	char pad[4];
+	char _pad[4];
 } Shard;
 
 //TODO
@@ -311,7 +311,7 @@ typedef struct SharedVertGroup {
 	float delta[3];
 	int index, excession_frame;
 	int exceeded, deltas_set, moved;
-	char pad[4];
+	char _pad[4];
 	ListBase verts;
 } SharedVertGroup;
 
@@ -321,7 +321,7 @@ typedef struct SharedVert {
 	float delta[3];
 	int index, excession_frame;
 	int exceeded, deltas_set, moved;
-	char pad[4];
+	char _pad[4];
 } SharedVert;
 
 #ifdef __cplusplus

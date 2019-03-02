@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/workspace.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 /* allow accessing private members of DNA_workspace_types.h */
@@ -30,16 +26,13 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_listbase.h"
 
-#include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
 #include "BKE_object.h"
 #include "BKE_workspace.h"
 
@@ -130,7 +123,7 @@ static bool UNUSED_FUNCTION(workspaces_is_screen_used)
 #endif
         (const Main *bmain, bScreen *screen)
 {
-	for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+	for (WorkSpace *workspace = bmain->workspace.first; workspace; workspace = workspace->id.next) {
 		if (workspace_layout_find_exec(workspace, screen)) {
 			return true;
 		}
@@ -150,7 +143,7 @@ WorkSpace *BKE_workspace_add(Main *bmain, const char *name)
 
 /**
  * The function that actually frees the workspace data (not workspace itself). It shouldn't be called
- * directly, instead #BKE_workspace_remove should be, which calls this through #BKE_libblock_free then.
+ * directly, instead #BKE_workspace_remove should be, which calls this through #BKE_id_free then.
  *
  * Should something like a bke_internal.h be added, this should go there!
  */
@@ -173,7 +166,7 @@ void BKE_workspace_free(WorkSpace *workspace)
 
 /**
  * Remove \a workspace by freeing itself and its data. This is a higher-level wrapper that
- * calls #BKE_workspace_free (through #BKE_libblock_free) to free the workspace data, and frees
+ * calls #BKE_workspace_free (through #BKE_id_free) to free the workspace data, and frees
  * other data-blocks owned by \a workspace and its layouts (currently that is screens only).
  *
  * Always use this to remove (and free) workspaces. Don't free non-ID workspace members here.
@@ -184,7 +177,7 @@ void BKE_workspace_remove(Main *bmain, WorkSpace *workspace)
 		layout_next = layout->next;
 		BKE_workspace_layout_remove(bmain, workspace, layout);
 	}
-	BKE_libblock_free(bmain, workspace);
+	BKE_id_free(bmain, workspace);
 }
 
 WorkSpaceInstanceHook *BKE_workspace_instance_hook_create(const Main *bmain)
@@ -192,7 +185,7 @@ WorkSpaceInstanceHook *BKE_workspace_instance_hook_create(const Main *bmain)
 	WorkSpaceInstanceHook *hook = MEM_callocN(sizeof(WorkSpaceInstanceHook), __func__);
 
 	/* set an active screen-layout for each possible window/workspace combination */
-	for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+	for (WorkSpace *workspace = bmain->workspace.first; workspace; workspace = workspace->id.next) {
 		BKE_workspace_hook_layout_for_workspace_set(hook, workspace, workspace->layouts.first);
 	}
 
@@ -201,10 +194,10 @@ WorkSpaceInstanceHook *BKE_workspace_instance_hook_create(const Main *bmain)
 void BKE_workspace_instance_hook_free(const Main *bmain, WorkSpaceInstanceHook *hook)
 {
 	/* workspaces should never be freed before wm (during which we call this function) */
-	BLI_assert(!BLI_listbase_is_empty(&bmain->workspaces));
+	BLI_assert(!BLI_listbase_is_empty(&bmain->workspace));
 
 	/* Free relations for this hook */
-	for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+	for (WorkSpace *workspace = bmain->workspace.first; workspace; workspace = workspace->id.next) {
 		for (WorkSpaceDataRelation *relation = workspace->hook_layout_relations.first, *relation_next;
 		     relation;
 		     relation = relation_next)
@@ -247,7 +240,7 @@ void BKE_workspace_layout_remove(
         WorkSpace *workspace, WorkSpaceLayout *layout)
 {
 	id_us_min(&layout->screen->id);
-	BKE_libblock_free(bmain, layout->screen);
+	BKE_id_free(bmain, layout->screen);
 	BLI_freelinkN(&workspace->layouts, layout);
 }
 
@@ -294,7 +287,7 @@ WorkSpaceLayout *BKE_workspace_layout_find_global(
 		*r_workspace = NULL;
 	}
 
-	for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+	for (WorkSpace *workspace = bmain->workspace.first; workspace; workspace = workspace->id.next) {
 		if ((layout = workspace_layout_find_exec(workspace, screen))) {
 			if (r_workspace) {
 				*r_workspace = workspace;

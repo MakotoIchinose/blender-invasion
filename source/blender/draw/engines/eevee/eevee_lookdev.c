@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_lookdev.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 #include "DRW_render.h"
 
@@ -109,7 +106,7 @@ void EEVEE_lookdev_cache_init(
 			stl->g_data->light_cache = stl->lookdev_lightcache;
 
 			static float background_color[4];
-			UI_GetThemeColor4fv(TH_HIGH_GRAD, background_color);
+			UI_GetThemeColor4fv(TH_BACK, background_color);
 			/* XXX: Really quick conversion to avoid washed out background.
 			 * Needs to be addressed properly (color managed using ocio). */
 			srgb_to_linearrgb_v4(background_color, background_color);
@@ -191,8 +188,8 @@ void EEVEE_lookdev_draw_background(EEVEE_Data *vedata)
 		params.offsety = 0.0f;
 		params.shiftx = 0.0f;
 		params.shifty = 0.0f;
-		params.clipsta = 0.001f;
-		params.clipend = 20.0f;
+		params.clip_start = 0.001f;
+		params.clip_end = 20.0f;
 		BKE_camera_params_compute_viewplane(&params, ar->winx, ar->winy, aspect[0], aspect[1]);
 		BKE_camera_params_compute_matrix(&params);
 

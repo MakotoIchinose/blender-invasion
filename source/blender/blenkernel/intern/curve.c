@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/curve.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -40,6 +32,7 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_ghash.h"
+#include "BLI_linklist.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_curve_types.h"
@@ -55,20 +48,21 @@
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_font.h"
-#include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_material.h"
 
 #include "DEG_depsgraph.h"
 
+#include "CLG_log.h"
+
 /* globals */
 
 /* local */
+static CLG_LogRef LOG = {"bke.curve"};
+
 static int cu_isectLL(const float v1[3], const float v2[3], const float v3[3], const float v4[3],
                       short cox, short coy,
                       float *lambda, float *mu, float vec[3]);
@@ -193,7 +187,7 @@ Curve *BKE_curve_add(Main *bmain, const char *name, int type)
 
 /**
  * Only copy internal data of Curve ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -213,7 +207,7 @@ void BKE_curve_copy_data(Main *bmain, Curve *cu_dst, const Curve *cu_src, const 
 	cu_dst->batch_cache = NULL;
 
 	if (cu_src->key && (flag & LIB_ID_COPY_SHAPEKEY)) {
-		BKE_id_copy_ex(bmain, &cu_src->key->id, (ID **)&cu_dst->key, flag, false);
+		BKE_id_copy_ex(bmain, &cu_src->key->id, (ID **)&cu_dst->key, flag);
 	}
 
 	cu_dst->editnurb = NULL;
@@ -223,7 +217,7 @@ void BKE_curve_copy_data(Main *bmain, Curve *cu_dst, const Curve *cu_src, const 
 Curve *BKE_curve_copy(Main *bmain, const Curve *cu)
 {
 	Curve *cu_copy;
-	BKE_id_copy_ex(bmain, &cu->id, (ID **)&cu_copy, LIB_ID_COPY_SHAPEKEY, false);
+	BKE_id_copy(bmain, &cu->id, (ID **)&cu_copy);
 	return cu_copy;
 }
 
@@ -326,21 +320,21 @@ void BKE_curve_boundbox_calc(Curve *cu, float r_loc[3], float r_size[3])
 BoundBox *BKE_curve_boundbox_get(Object *ob)
 {
 	/* This is Object-level data access, DO NOT touch to Mesh's bb, would be totally thread-unsafe. */
-	if (ob->bb == NULL || ob->bb->flag & BOUNDBOX_DIRTY) {
+	if (ob->runtime.bb == NULL || ob->runtime.bb->flag & BOUNDBOX_DIRTY) {
 		Curve *cu = ob->data;
 		float min[3], max[3];
 
 		INIT_MINMAX(min, max);
 		BKE_curve_minmax(cu, true, min, max);
 
-		if (ob->bb == NULL) {
-			ob->bb = MEM_mallocN(sizeof(*ob->bb), __func__);
+		if (ob->runtime.bb == NULL) {
+			ob->runtime.bb = MEM_mallocN(sizeof(*ob->runtime.bb), __func__);
 		}
-		BKE_boundbox_init_from_minmax(ob->bb, min, max);
-		ob->bb->flag &= ~BOUNDBOX_DIRTY;
+		BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
+		ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
 	}
 
-	return ob->bb;
+	return ob->runtime.bb;
 }
 
 void BKE_curve_texspace_calc(Curve *cu)
@@ -1035,7 +1029,7 @@ static void calcknots(float *knots, const int pnts, const short order, const sho
 				}
 			}
 			else {
-				printf("bez nurb curve order is not 3 or 4, should never happen\n");
+				CLOG_ERROR(&LOG, "bez nurb curve order is not 3 or 4, should never happen");
 			}
 			break;
 		default:
@@ -1743,7 +1737,7 @@ float *BKE_curve_make_orco(Depsgraph *depsgraph, Scene *scene, Object *ob, int *
 	float *fp, *coord_array;
 	ListBase disp = {NULL, NULL};
 
-	BKE_displist_make_curveTypes_forOrco(depsgraph, scene, ob, &disp);
+	BKE_displist_make_curveTypes_forOrco(depsgraph, scene, ob, &disp, NULL);
 
 	numVerts = 0;
 	for (dl = disp.first; dl; dl = dl->next) {
@@ -1836,7 +1830,8 @@ float *BKE_curve_make_orco(Depsgraph *depsgraph, Scene *scene, Object *ob, int *
 
 void BKE_curve_bevel_make(
         Depsgraph *depsgraph, Scene *scene, Object *ob, ListBase *disp,
-        const bool for_render, const bool use_render_resolution)
+        const bool for_render, const bool use_render_resolution,
+        LinkNode *ob_cyclic_list)
 {
 	DispList *dl, *dlnew;
 	Curve *bevcu, *cu;
@@ -1856,12 +1851,19 @@ void BKE_curve_bevel_make(
 		bevcu = cu->bevobj->data;
 		if (bevcu->ext1 == 0.0f && bevcu->ext2 == 0.0f) {
 			ListBase bevdisp = {NULL, NULL};
-			facx = cu->bevobj->size[0];
-			facy = cu->bevobj->size[1];
+			facx = cu->bevobj->scale[0];
+			facy = cu->bevobj->scale[1];
 
 			if (for_render) {
-				BKE_displist_make_curveTypes_forRender(depsgraph, scene, cu->bevobj, &bevdisp, NULL, false, use_render_resolution);
-				dl = bevdisp.first;
+				if (BLI_linklist_index(ob_cyclic_list, cu->bevobj) == -1) {
+					BKE_displist_make_curveTypes_forRender(
+					        depsgraph, scene, cu->bevobj, &bevdisp, NULL, false, use_render_resolution,
+					        &(LinkNode){ .link = ob, .next = ob_cyclic_list, });
+					dl = bevdisp.first;
+				}
+				else {
+					dl = NULL;
+				}
 			}
 			else if (cu->bevobj->runtime.curve_cache) {
 				dl = cu->bevobj->runtime.curve_cache->disp.first;
@@ -3710,8 +3712,6 @@ static bool tridiagonal_solve_with_limits(float *a, float *b, float *c, float *d
  * |    |      |          |            |        |
  * |    |      |          |            |        |
  * |-------t1---------t2--------- ~ --------tN-------------------> time (co 0)
- *
- *
  * Mathematical basis:
  *
  *   1. Handle lengths on either side of each point are connected by a factor

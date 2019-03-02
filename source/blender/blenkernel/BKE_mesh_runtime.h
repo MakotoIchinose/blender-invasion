@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,12 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_MESH_RUNTIME_H__
 #define __BKE_MESH_RUNTIME_H__
 
-/** \file BKE_mesh_runtime.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * This file contains access functions for the Mesh.runtime struct.
  */
@@ -39,10 +31,10 @@ struct ColorBand;
 struct CustomData;
 struct Depsgraph;
 struct KeyBlock;
-struct Mesh;
 struct MLoop;
 struct MLoopTri;
 struct MVertTri;
+struct Mesh;
 struct Object;
 struct Scene;
 
@@ -54,7 +46,7 @@ struct DerivedMesh;
 #endif
 
 void BKE_mesh_runtime_reset(struct Mesh *mesh);
-void BKE_mesh_runtime_reset_on_copy(struct Mesh *mesh);
+void BKE_mesh_runtime_reset_on_copy(struct Mesh *mesh, const int flag);
 int BKE_mesh_runtime_looptri_len(const struct Mesh *mesh);
 void BKE_mesh_runtime_looptri_recalc(struct Mesh *mesh);
 const struct MLoopTri *BKE_mesh_runtime_looptri_ensure(struct Mesh *mesh);

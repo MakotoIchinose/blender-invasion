@@ -16,9 +16,6 @@
 #
 # The Original Code is Copyright (C) 2016, Blender Foundation
 # All rights reserved.
-#
-# Contributor(s): Sergey Sharybin.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 # Libraries configuration for Windows.
@@ -173,7 +170,10 @@ if(NOT DEFINED LIBDIR)
 		set(LIBDIR_BASE "windows")
 	endif()
 	# Can be 1910..1912
-	if(MSVC_VERSION GREATER 1909)
+	if(MSVC_VERSION GREATER 1919)
+		message(STATUS "Visual Studio 2019 detected.")
+		set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_BASE}_vc14)
+	elseif(MSVC_VERSION GREATER 1909)
 		message(STATUS "Visual Studio 2017 detected.")
 		set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_BASE}_vc14)
 	elseif(MSVC_VERSION EQUAL 1900)

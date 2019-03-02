@@ -194,7 +194,7 @@ void CLOSURE_NAME(
 	vec4 rand = texelFetch(utilTex, ivec3(ivec2(gl_FragCoord.xy) % LUT_SIZE, 2.0), 0);
 
 	/* ---------------------------------------------------------------- */
-	/* -------------------- SCENE LAMPS LIGHTING ---------------------- */
+	/* -------------------- SCENE LIGHTS LIGHTING --------------------- */
 	/* ---------------------------------------------------------------- */
 
 #ifdef CLOSURE_GLOSSY
@@ -217,8 +217,9 @@ void CLOSURE_NAME(
 
 		float l_vis = light_visibility(ld, worldPosition, viewPosition, viewNormal, l_vector);
 
-		if (l_vis < 1e-8)
+		if (l_vis < 1e-8) {
 			continue;
+		}
 
 		vec3 l_color_vis = ld.l_color * l_vis;
 
@@ -240,13 +241,13 @@ void CLOSURE_NAME(
 	}
 
 #ifdef CLOSURE_GLOSSY
-	vec3 brdf_lut_lamps = texture(utilTex, vec3(lut_uv, 1.0)).rgb;
-	out_spec *= F_area(f0, brdf_lut_lamps.xy) * brdf_lut_lamps.z;
+	vec3 brdf_lut_lights = texture(utilTex, vec3(lut_uv, 1.0)).rgb;
+	out_spec *= F_area(f0, brdf_lut_lights.xy) * brdf_lut_lights.z;
 #endif
 
 #ifdef CLOSURE_CLEARCOAT
-	vec3 brdf_lut_lamps_clear = texture(utilTex, vec3(lut_uv_clear, 1.0)).rgb;
-	out_spec_clear *= F_area(vec3(0.04), brdf_lut_lamps_clear.xy) * brdf_lut_lamps_clear.z;
+	vec3 brdf_lut_lights_clear = texture(utilTex, vec3(lut_uv_clear, 1.0)).rgb;
+	out_spec_clear *= F_area(vec3(0.04), brdf_lut_lights_clear.xy) * brdf_lut_lights_clear.z;
 	out_spec += out_spec_clear * C_intensity;
 #endif
 

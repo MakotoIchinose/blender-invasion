@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,17 @@
  *
  * The Original Code is Copyright (C) Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Matt Ebb
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/modifiers/intern/MOD_ocean.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
+#include "BLI_math_inline.h"
+#include "BLI_task.h"
 
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
@@ -36,14 +34,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
-#include "BLI_math_inline.h"
-#include "BLI_task.h"
-#include "BLI_utildefines.h"
-
-#include "BKE_global.h"
 #include "BKE_library.h"
-#include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_ocean.h"
@@ -394,12 +385,7 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
 		BKE_mesh_ensure_normals(result);
 	}
 	else if (omd->geometry_mode == MOD_OCEAN_GEOM_DISPLACE) {
-		BKE_id_copy_ex(NULL, &mesh->id, (ID **)&result,
-		               LIB_ID_CREATE_NO_MAIN |
-		               LIB_ID_CREATE_NO_USER_REFCOUNT |
-		               LIB_ID_CREATE_NO_DEG_TAG |
-		               LIB_ID_COPY_NO_PREVIEW,
-		               false);
+		BKE_id_copy_ex(NULL, &mesh->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
 	}
 
 	cfra_for_cache = cfra_scene;

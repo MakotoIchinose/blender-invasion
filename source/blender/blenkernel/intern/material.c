@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,18 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/material.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
 #include <string.h>
 #include <math.h>
 #include <stddef.h>
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -53,19 +47,15 @@
 #include "BLI_math.h"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
-#include "BLI_string.h"
 #include "BLI_array_utils.h"
 
 #include "BKE_animsys.h"
 #include "BKE_brush.h"
 #include "BKE_displist.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
@@ -82,6 +72,8 @@
 
 /* used in UI and render */
 Material defmaterial;
+
+static CLG_LogRef LOG = {"bke.material"};
 
 /* called on startup, creator.c */
 void init_def_material(void)
@@ -129,7 +121,6 @@ void BKE_material_init_gpencil_settings(Material *ma)
 		gp_style->texture_pixsize = 100.0f;
 
 		gp_style->flag |= GP_STYLE_STROKE_SHOW;
-		gp_style->flag |= GP_STYLE_FILL_SHOW;
 	}
 }
 
@@ -139,12 +130,11 @@ void BKE_material_init(Material *ma)
 
 	ma->r = ma->g = ma->b = 0.8;
 	ma->specr = ma->specg = ma->specb = 1.0;
-	// ma->alpha = 1.0;  /* DEPRECATED */
+	ma->a = 1.0f;
 	ma->spec = 0.5;
 
 	ma->roughness = 0.25f;
 
-	ma->pr_lamp = 3;         /* two lamps, is bits */
 	ma->pr_type = MA_SPHERE;
 
 	ma->preview = NULL;
@@ -181,7 +171,7 @@ Material *BKE_material_add_gpencil(Main *bmain, const char *name)
 
 /**
  * Only copy internal data of Material ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -192,7 +182,7 @@ void BKE_material_copy_data(Main *bmain, Material *ma_dst, const Material *ma_sr
 	if (ma_src->nodetree) {
 		/* Note: nodetree is *not* in bmain, however this specific case is handled at lower level
 		 *       (see BKE_libblock_copy_ex()). */
-		BKE_id_copy_ex(bmain, (ID *)ma_src->nodetree, (ID **)&ma_dst->nodetree, flag, false);
+		BKE_id_copy_ex(bmain, (ID *)ma_src->nodetree, (ID **)&ma_dst->nodetree, flag);
 	}
 
 	if ((flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
@@ -218,7 +208,7 @@ void BKE_material_copy_data(Main *bmain, Material *ma_dst, const Material *ma_sr
 Material *BKE_material_copy(Main *bmain, const Material *ma)
 {
 	Material *ma_copy;
-	BKE_id_copy_ex(bmain, &ma->id, (ID **)&ma_copy, 0, false);
+	BKE_id_copy(bmain, &ma->id, (ID **)&ma_copy);
 	return ma_copy;
 }
 
@@ -238,6 +228,7 @@ Material *BKE_material_localize(Material *ma)
 	Material *man = BKE_libblock_copy_for_localize(&ma->id);
 
 	man->texpaintslot = NULL;
+	man->tot_slots = 0;
 	man->preview = NULL;
 
 	if (ma->nodetree != NULL) {
@@ -512,9 +503,9 @@ void BKE_material_clear_id(Main *bmain, ID *id, bool update_data)
 	}
 }
 
-Material *give_current_material(Object *ob, short act)
+Material **give_current_material_p(Object *ob, short act)
 {
-	Material ***matarar, *ma;
+	Material ***matarar, **ma_p;
 	const short *totcolp;
 
 	if (ob == NULL) return NULL;
@@ -528,13 +519,13 @@ Material *give_current_material(Object *ob, short act)
 		return NULL;
 	else if (act <= 0) {
 		if (act < 0) {
-			printf("Negative material index!\n");
+			CLOG_ERROR(&LOG, "Negative material index!");
 		}
 		return NULL;
 	}
 
 	if (ob->matbits && ob->matbits[act - 1]) {    /* in object */
-		ma = ob->mat[act - 1];
+		ma_p = &ob->mat[act - 1];
 	}
 	else {                              /* in data */
 
@@ -545,12 +536,21 @@ Material *give_current_material(Object *ob, short act)
 
 		matarar = give_matarar(ob);
 
-		if (matarar && *matarar) ma = (*matarar)[act - 1];
-		else ma = NULL;
-
+		if (matarar && *matarar) {
+			ma_p = &(*matarar)[act - 1];
+		}
+		else {
+			ma_p = NULL;
+		}
 	}
 
-	return ma;
+	return ma_p;
+}
+
+Material *give_current_material(Object *ob, short act)
+{
+	Material **ma_p = give_current_material_p(ob, act);
+	return ma_p ? *ma_p : NULL;
 }
 
 MaterialGPencilStyle *BKE_material_gpencil_settings_get(Object *ob, short act)
@@ -933,7 +933,7 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
 
 	/* this should never happen and used to crash */
 	if (ob->actcol <= 0) {
-		printf("%s: invalid material index %d, report a bug!\n", __func__, ob->actcol);
+		CLOG_ERROR(&LOG, "invalid material index %d, report a bug!", ob->actcol);
 		BLI_assert(0);
 		return false;
 	}
@@ -1047,101 +1047,84 @@ static int count_texture_nodes_recursive(bNodeTree *nodetree)
 	return tex_nodes;
 }
 
-static void fill_texpaint_slots_recursive(bNodeTree *nodetree, bNode *active_node, Material *ma, int *index)
+static void fill_texpaint_slots_recursive(bNodeTree *nodetree, bNode *active_node, Material *ma, TexPaintSlot *slots, int *index)
 {
 	for (bNode *node = nodetree->nodes.first; node; node = node->next) {
 		if (node->typeinfo->nclass == NODE_CLASS_TEXTURE && node->typeinfo->type == SH_NODE_TEX_IMAGE && node->id) {
 			if (active_node == node) {
 				ma->paint_active_slot = *index;
 			}
-			ma->texpaintslot[*index].ima = (Image *)node->id;
+
+			slots[*index].ima = (Image *)node->id;
+			slots[*index].interp = ((NodeTexImage *)node->storage)->interpolation;
 
 			/* for new renderer, we need to traverse the treeback in search of a UV node */
 			bNode *uvnode = nodetree_uv_node_recursive(node);
 
 			if (uvnode) {
 				NodeShaderUVMap *storage = (NodeShaderUVMap *)uvnode->storage;
-				ma->texpaintslot[*index].uvname = storage->uv_map;
+				slots[*index].uvname = storage->uv_map;
 				/* set a value to index so UI knows that we have a valid pointer for the mesh */
-				ma->texpaintslot[*index].valid = true;
+				slots[*index].valid = true;
 			}
 			else {
 				/* just invalidate the index here so UV map does not get displayed on the UI */
-				ma->texpaintslot[*index].valid = false;
+				slots[*index].valid = false;
 			}
 			(*index)++;
 		}
 		else if (node->type == NODE_GROUP) {
 			/* recurse into the node group and see if it contains any textures */
-			fill_texpaint_slots_recursive((bNodeTree *)node->id, active_node, ma, index);
+			fill_texpaint_slots_recursive((bNodeTree *)node->id, active_node, ma, slots, index);
 		}
 	}
 }
 
-void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma)
+void BKE_texpaint_slot_refresh_cache(Material *ma)
 {
-	int count = 0;
-	int index = 0;
-
-	if (!ma)
+	if (ma == NULL) {
 		return;
+	}
 
+	/* Compute texture paint slots. */
+	TexPaintSlot *texpaintslot = NULL;
+	int tot_slots = (ma->nodetree) ? count_texture_nodes_recursive(ma->nodetree) : 0;
+
+	if (tot_slots) {
+		texpaintslot = MEM_callocN(sizeof(*texpaintslot) * tot_slots, "texpaint_slots");
+
+		bNode *active_node = nodeGetActiveTexture(ma->nodetree);
+		int index = 0;
+		fill_texpaint_slots_recursive(ma->nodetree, active_node, ma, texpaintslot, &index);
+	}
+
+	/* Keep active slots within range. */
+	if (ma->paint_active_slot >= tot_slots) {
+		ma->paint_active_slot = MAX2(tot_slots - 1, 0);
+	}
+
+	if (ma->paint_clone_slot >= tot_slots) {
+		ma->paint_clone_slot = MAX2(tot_slots - 1, 0);
+	}
+
+	/* Replace slots. */
 	if (ma->texpaintslot) {
 		MEM_freeN(ma->texpaintslot);
-		ma->tot_slots = 0;
-		ma->texpaintslot = NULL;
 	}
 
-	if (scene->toolsettings->imapaint.mode == IMAGEPAINT_MODE_IMAGE) {
-		ma->paint_active_slot = 0;
-		ma->paint_clone_slot = 0;
-		return;
-	}
-
-	if (!(ma->nodetree)) {
-		ma->paint_active_slot = 0;
-		ma->paint_clone_slot = 0;
-		return;
-	}
-
-	count = count_texture_nodes_recursive(ma->nodetree);
-
-	if (count == 0) {
-		ma->paint_active_slot = 0;
-		ma->paint_clone_slot = 0;
-		return;
-	}
-
-	ma->texpaintslot = MEM_callocN(sizeof(*ma->texpaintslot) * count, "texpaint_slots");
-
-	bNode *active_node = nodeGetActiveTexture(ma->nodetree);
-
-	fill_texpaint_slots_recursive(ma->nodetree, active_node, ma, &index);
-
-	ma->tot_slots = count;
-
-
-	if (ma->paint_active_slot >= count) {
-		ma->paint_active_slot = count - 1;
-	}
-
-	if (ma->paint_clone_slot >= count) {
-		ma->paint_clone_slot = count - 1;
-	}
-
-	return;
+	ma->texpaintslot = texpaintslot;
+	ma->tot_slots = tot_slots;
 }
 
-void BKE_texpaint_slots_refresh_object(Scene *scene, struct Object *ob)
+void BKE_texpaint_slots_refresh_object(struct Object *ob)
 {
 	int i;
 
 	for (i = 1; i < ob->totcol + 1; i++) {
 		Material *ma = give_current_material(ob, i);
-		BKE_texpaint_slot_refresh_cache(scene, ma);
+		BKE_texpaint_slot_refresh_cache(ma);
 	}
 }
-
 
 /* r_col = current value, col = new value, (fac == 0) is no change */
 void ramp_blend(int type, float r_col[3], const float fac, const float col[3])
@@ -1388,7 +1371,10 @@ void copy_matcopybuf(Main *bmain, Material *ma)
 
 	memcpy(&matcopybuf, ma, sizeof(Material));
 
-	matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
+	if (ma->nodetree != NULL) {
+		matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
+	}
+
 	matcopybuf.preview = NULL;
 	BLI_listbase_clear(&matcopybuf.gpumaterial);
 	/* TODO Duplicate Engine Settings and set runtime to NULL */
@@ -1414,7 +1400,9 @@ void paste_matcopybuf(Main *bmain, Material *ma)
 	memcpy(ma, &matcopybuf, sizeof(Material));
 	(ma->id) = id;
 
-	ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
+	if (matcopybuf.nodetree != NULL) {
+		ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
+	}
 }
 
 void BKE_material_eval(struct Depsgraph *depsgraph, Material *material)

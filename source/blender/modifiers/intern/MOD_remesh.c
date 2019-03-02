@@ -37,6 +37,8 @@
 #include "BKE_mball_tessellate.h"
 #include "BKE_deform.h"
 
+#include "BLI_math_base.h"
+
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
@@ -57,6 +59,8 @@
 #include <string.h>
 
 #ifdef WITH_MOD_REMESH
+#  include "BLI_math_vector.h"
+
 #  include "dualcon.h"
 #endif
 
@@ -486,6 +490,8 @@ static Mesh *applyModifier(
 		}
 	}
 
+	BKE_mesh_calc_edges(result, true, false);
+	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 	return result;
 }
 

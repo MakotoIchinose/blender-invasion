@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,27 +15,22 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Jack Simpson,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_correctivesmooth.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  *
  * Method of smoothing deformation, also known as 'delta-mush'.
  */
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_scene_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "MEM_guardedalloc.h"
 

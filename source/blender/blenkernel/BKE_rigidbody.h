@@ -20,7 +20,7 @@
  *
  * The Original Code is: all of this file.
  *
- * Contributor(s): Joshua Leung, Sergej Reich
+ * Contributor(s): Joshua Leung, Sergej Reich, Martin Felke
  *
  * ***** END GPL LICENSE BLOCK *****
  */
@@ -136,7 +136,7 @@ void BKE_rigidbody_update_ob_array(struct RigidBodyWorld *rbw, bool do_bake_corr
 
 void BKE_rigidbody_aftertrans_update(struct Object *ob, float loc[3], float rot[3],
                                      float quat[4], float rotAxis[3], float rotAngle);
-void BKE_rigidbody_sync_transforms(struct Scene* scene, struct Object *ob, float ctime);
+void BKE_rigidbody_sync_transforms(struct Scene* scene, struct Object *ob, struct Depsgraph *depsgraph);
 bool BKE_rigidbody_check_sim_running(struct RigidBodyWorld *rbw, float ctime);
 void BKE_rigidbody_cache_reset(struct Scene *scene);
 void BKE_rigidbody_rebuild_world(struct Depsgraph *depsgraph, struct Scene *scene, float ctime);
@@ -165,7 +165,7 @@ void BKE_rigidbody_activate(struct RigidBodyOb* rbo, struct RigidBodyWorld *rbw,
 bool BKE_rigidbody_modifier_update(struct Scene* scene, struct Object* ob, struct RigidBodyWorld *rbw,  bool rebuild,
                                    struct Depsgraph *depsgraph);
 
-bool BKE_rigidbody_modifier_sync(struct ModifierData *md, struct Object *ob, struct Scene *scene, float ctime);
+bool BKE_rigidbody_modifier_sync(struct ModifierData *md, struct Object *ob, struct Scene *scene, struct Depsgraph *depsgraph);
 void BKE_rigidbody_passive_hook(struct FractureModifierData *fmd, struct Shard *mi, struct Object* ob,
                                 struct Scene* scene, struct Depsgraph *depsgraph);
 
@@ -186,8 +186,7 @@ void BKE_rigidbody_object_sync_transforms(struct Depsgraph *depsgraph,
                                           struct Object *ob);
 
 bool BKE_restoreKinematic(struct RigidBodyWorld *rbw, bool override_bind);
-void BKE_rigidbody_update_simulation(struct Scene *scene, struct RigidBodyWorld *rbw, bool rebuild,
-                                     struct Depsgraph *depsgraph);
+void BKE_rigidbody_update_simulation(struct Depsgraph *depsgraph, struct Scene *scene, struct RigidBodyWorld *rbw, bool rebuild);
 
 void BKE_rigidbody_physics_visualize(struct RigidBodyWorld *rbw);
 

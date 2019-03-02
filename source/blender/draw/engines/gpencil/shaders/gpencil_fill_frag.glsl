@@ -15,10 +15,15 @@ uniform int texture_mix;
 uniform int texture_flip;
 uniform float texture_opacity;
 uniform int xraymode;
+uniform int drawmode;
 uniform float layer_opacity;
 
 uniform sampler2D myTexture;
 uniform int texture_clamp;
+
+uniform int viewport_xray;
+uniform int shading_type;
+uniform vec4 wire_color;
 
 /* keep this list synchronized with list in gpencil_draw_utils.c */
 #define SOLID 0
@@ -31,6 +36,12 @@ uniform int texture_clamp;
 #define GP_XRAY_FRONT 0
 #define GP_XRAY_3DSPACE 1
 #define GP_XRAY_BACK  2
+
+#define GP_DRAWMODE_2D 0
+#define GP_DRAWMODE_3D 1
+
+#define OB_WIRE  2
+#define OB_SOLID 3
 
 in vec4 finalColor;
 in vec2 texCoord_interp;
@@ -79,6 +90,11 @@ void main()
 	tmp_color = (texture_clamp == 0) ? texture2D(myTexture, rot_tex * texture_scale) : texture2D(myTexture, clamp(rot_tex * texture_scale, 0.0, 1.0));
 	vec4 text_color = vec4(tmp_color[0], tmp_color[1], tmp_color[2], tmp_color[3] * texture_opacity);
 	vec4 chesscolor;
+
+	/* wireframe with x-ray discard */
+	if ((viewport_xray == 1) && (shading_type == OB_WIRE)) {
+		discard;
+	}
 
 	/* solid fill */
 	if (fill_type == SOLID) {
@@ -136,7 +152,13 @@ void main()
 		gl_FragDepth = 0.000001;
 	}
 	else if (xraymode == GP_XRAY_3DSPACE) {
-		gl_FragDepth = gl_FragCoord.z;
+	/* if 3D mode, move slightly the fill to avoid z-fighting between stroke and fill on same stroke */
+		if (drawmode == GP_DRAWMODE_3D) {
+			gl_FragDepth = gl_FragCoord.z * 1.0001;
+		}
+		else {
+			gl_FragDepth = gl_FragCoord.z;
+		}
 	}
 	else if  (xraymode == GP_XRAY_BACK) {
 		gl_FragDepth = 0.999999;
@@ -144,4 +166,20 @@ void main()
 	else {
 		gl_FragDepth = 0.000001;
 	}
+
+	/* if wireframe override colors */
+	if (shading_type == OB_WIRE) {
+		fragColor = wire_color;
+	}
+		/* solid with x-ray discard */
+	if (shading_type == OB_SOLID) {
+		if (viewport_xray == 1) {
+			/* use 50% of color */
+			fragColor = vec4(wire_color.rgb, wire_color.a * 0.5);
+		}
+		else {
+			fragColor = wire_color;
+		}
+	}
+
 }

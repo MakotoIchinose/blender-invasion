@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/versioning_legacy.c
- *  \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 
@@ -51,7 +43,7 @@
 #include "DNA_effect_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -544,17 +536,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 		}
 	}
 
-	if (bmain->versionfile <= 105) {
-		Object *ob = bmain->object.first;
-		while (ob) {
-			ob->dupon = 1;
-			ob->dupoff = 0;
-			ob->dupsta = 1;
-			ob->dupend = 100;
-			ob = ob->id.next;
-		}
-	}
-
 	if (bmain->versionfile <= 106) {
 		/* mcol changed */
 		Mesh *me = bmain->mesh.first;
@@ -701,8 +682,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 			while (sa) {
 				SpaceLink *sl = sa->spacedata.first;
 				while (sl) {
-					if (sl->spacetype == SPACE_IPO) {
-						SpaceIpo *sipo = (SpaceIpo *)sl;
+					if (sl->spacetype == SPACE_GRAPH) {
+						SpaceGraph *sipo = (SpaceGraph *)sl;
 						sipo->v2d.max[0] = 15000.0;
 					}
 					sl = sl->next;
@@ -893,7 +874,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 				SpaceLink *sl;
 
 				for (sl = sa->spacedata.first; sl; sl = sl->next) {
-					if (sl->spacetype == SPACE_IPO) {
+					if (sl->spacetype == SPACE_GRAPH) {
 						SpaceSeq *sseq = (SpaceSeq *)sl;
 						sseq->v2d.keeptot = 0;
 					}
@@ -1033,8 +1014,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 				SpaceLink *sl;
 
 				for (sl = sa->spacedata.first; sl; sl = sl->next) {
-					if (sl->spacetype == SPACE_BUTS) {
-						SpaceButs *sbuts = (SpaceButs *)sl;
+					if (sl->spacetype == SPACE_PROPERTIES) {
+						SpaceProperties *sbuts = (SpaceProperties *)sl;
 
 						sbuts->v2d.maxzoom = 1.2f;
 
@@ -1197,14 +1178,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
 	if (bmain->versionfile <= 233) {
 		bScreen *sc;
-		Material *ma = bmain->mat.first;
-		/* Object *ob = bmain->object.first; */
-
-		while (ma) {
-			if (ma->pr_lamp == 0)
-				ma->pr_lamp = 3;
-			ma = ma->id.next;
-		}
 
 		for (sc = bmain->screen.first; sc; sc = sc->id.next) {
 			ScrArea *sa;
@@ -1398,7 +1371,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 			sce = sce->id.next;
 		}
 
-		for (lt = bmain->latt.first; lt; lt = lt->id.next) {
+		for (lt = bmain->lattice.first; lt; lt = lt->id.next) {
 			if (lt->fu == 0.0f && lt->fv == 0.0f && lt->fw == 0.0f) {
 				calc_lat_fudu(lt->flag, lt->pntsu, &lt->fu, &lt->du);
 				calc_lat_fudu(lt->flag, lt->pntsv, &lt->fv, &lt->dv);
@@ -1531,8 +1504,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
 		/* updating stepsize for ghost drawing */
 		for (arm = bmain->armature.first; arm; arm = arm->id.next) {
-			if (arm->ghostsize == 0)
-				arm->ghostsize = 1;
 			bone_version_239(&arm->bonebase);
 			if (arm->layer == 0)
 				arm->layer = 1;
@@ -1562,7 +1533,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 	if (bmain->versionfile <= 241) {
 		Object *ob;
 		Scene *sce;
-		Lamp *la;
+		Light *la;
 		bArmature *arm;
 		bNodeTree *ntree;
 
@@ -1602,7 +1573,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 		for (ntree = bmain->nodetree.first; ntree; ntree = ntree->id.next)
 			ntree_version_241(ntree);
 
-		for (la = bmain->lamp.first; la; la = la->id.next)
+		for (la = bmain->light.first; la; la = la->id.next)
 			if (la->buffers == 0)
 				la->buffers = 1;
 
@@ -1936,7 +1907,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 		Scene *sce;
 		Object *ob;
 		Image *ima;
-		Lamp *la;
+		Light *la;
 		Material *ma;
 		ParticleSettings *part;
 		Mesh *me;
@@ -2069,7 +2040,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 		}
 
 		if (bmain->versionfile != 245 || bmain->subversionfile < 1) {
-			for (la = bmain->lamp.first; la; la = la->id.next) {
+			for (la = bmain->light.first; la; la = la->id.next) {
 				la->falloff_type = LA_FALLOFF_INVLINEAR;
 
 				if (la->curfalloff == NULL) {
@@ -2315,7 +2286,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
 					for (; dup; dup = dup->id.next) {
 						if (ob == blo_do_versions_newlibadr(fd, lib, dup->parent)) {
-							part->dup_ob = dup;
+							part->instance_object = dup;
 							ob->transflag |= OB_DUPLIPARTS;
 							ob->transflag &= ~OB_DUPLIVERTS;
 
@@ -2366,7 +2337,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
 		/* dupliface scale */
 		for (ob = bmain->object.first; ob; ob = ob->id.next)
-			ob->dupfacesca = 1.0f;
+			ob->instance_faces_scale = 1.0f;
 	}
 
 	if ((bmain->versionfile < 245) || (bmain->versionfile == 245 && bmain->subversionfile < 11)) {
@@ -2423,8 +2394,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 		idproperties_fix_group_lengths(bmain->mat);
 		idproperties_fix_group_lengths(bmain->tex);
 		idproperties_fix_group_lengths(bmain->image);
-		idproperties_fix_group_lengths(bmain->latt);
-		idproperties_fix_group_lengths(bmain->lamp);
+		idproperties_fix_group_lengths(bmain->lattice);
+		idproperties_fix_group_lengths(bmain->light);
 		idproperties_fix_group_lengths(bmain->camera);
 		idproperties_fix_group_lengths(bmain->ipo);
 		idproperties_fix_group_lengths(bmain->key);
@@ -2523,9 +2494,9 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 							sact->autosnap = SACTSNAP_FRAME;
 							break;
 						}
-						case SPACE_IPO:
+						case SPACE_GRAPH:
 						{
-							SpaceIpo *sipo = (SpaceIpo *)sl;
+							SpaceGraph *sipo = (SpaceGraph *)sl;
 							sipo->autosnap = SACTSNAP_FRAME;
 							break;
 						}

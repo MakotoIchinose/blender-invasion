@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenlib/intern/threads.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include <stdlib.h>
@@ -866,13 +858,13 @@ static bool check_is_threadripper2_alike_topology(void)
 	}
 	if (strstr(cpu_brand, "Threadripper")) {
 		/* NOTE: We consinder all Threadrippers having similar topology to
-		* the second one. This is because we are trying to utilize NUMA node
-		* 0 as much as possible. This node does exist on earlier versions of
-		* threadripper and setting affinity to it should not have negative
-		* effect.
-		* This allows us to avoid per-model check, making the code more
-		* reliable for the CPUs which are not yet released.
-		*/
+		 * the second one. This is because we are trying to utilize NUMA node
+		 * 0 as much as possible. This node does exist on earlier versions of
+		 * threadripper and setting affinity to it should not have negative
+		 * effect.
+		 * This allows us to avoid per-model check, making the code more
+		 * reliable for the CPUs which are not yet released.
+		 */
 		if (strstr(cpu_brand, "2990WX") || strstr(cpu_brand, "2950X")) {
 			is_threadripper2 = true;
 		}

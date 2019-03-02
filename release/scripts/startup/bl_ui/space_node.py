@@ -59,7 +59,7 @@ class NODE_HT_header(Header):
 
                 NODE_MT_editor_menus.draw_collapsible(context, layout)
 
-                # No shader nodes for Eevee lamps
+                # No shader nodes for Eevee lights
                 if snode_id and not (context.engine == 'BLENDER_EEVEE' and ob.type == 'LIGHT'):
                     row = layout.row()
                     row.prop(snode_id, "use_nodes")
@@ -444,7 +444,8 @@ class NODE_PT_active_node_properties(Panel):
         elif hasattr(node, "draw_buttons"):
             node.draw_buttons(context, layout)
 
-        # XXX this could be filtered further to exclude socket types which don't have meaningful input values (e.g. cycles shader)
+        # XXX this could be filtered further to exclude socket types
+        # which don't have meaningful input values (e.g. cycles shader)
         value_inputs = [socket for socket in node.inputs if socket.enabled and not socket.is_linked]
         if value_inputs:
             layout.separator()

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,25 +15,18 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_smoke.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 #include <stddef.h>
 
 #include "MEM_guardedalloc.h"
+
+#include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
@@ -44,13 +35,9 @@
 #include "DNA_object_force_types.h"
 #include "DNA_mesh_types.h"
 
-#include "BLI_utildefines.h"
-
 #include "BKE_cdderivedmesh.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
 #include "BKE_library_query.h"
-#include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_smoke.h"
 
@@ -201,5 +188,5 @@ ModifierTypeInfo modifierType_Smoke = {
 	/* dependsOnNormals */	NULL,
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     foreachIDLink,
-	/* foreachTexLink */    NULL
+	/* foreachTexLink */    NULL,
 };

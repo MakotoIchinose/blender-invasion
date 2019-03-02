@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,11 @@
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Ben Batt <benbatt@gmail.com>
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file BKE_customdata.h
- *  \ingroup bke
- *  \author Ben Batt
- *  \brief CustomData interface, see also DNA_customdata_types.h.
+/** \file
+ * \ingroup bke
+ * \brief CustomData interface, see also DNA_customdata_types.h.
  */
 
 #ifndef __BKE_CUSTOMDATA_H__
@@ -44,8 +35,8 @@ extern "C" {
 #include "DNA_customdata_types.h"
 
 struct BMesh;
-struct ID;
 struct CustomData;
+struct ID;
 typedef uint64_t CustomDataMask;
 
 /*a data type large enough to hold 1 element from any customdata layer type*/
@@ -361,6 +352,7 @@ void CustomData_set_layer_stencil_index(struct CustomData *data, int type, int n
 
 /* adds flag to the layer flags */
 void CustomData_set_layer_flag(struct CustomData *data, int type, int flag);
+void CustomData_clear_layer_flag(struct CustomData *data, int type, int flag);
 
 void CustomData_bmesh_set_default(struct CustomData *data, void **block);
 void CustomData_bmesh_free_block(struct CustomData *data, void **block);
@@ -426,8 +418,8 @@ void CustomData_external_reload(struct CustomData *data,
 
 /* Mesh-to-mesh transfer data. */
 
-struct MeshPairRemap;
 struct CustomDataTransferLayerMap;
+struct MeshPairRemap;
 
 typedef void (*cd_datatransfer_interp)(
         const struct CustomDataTransferLayerMap *laymap, void *dest,

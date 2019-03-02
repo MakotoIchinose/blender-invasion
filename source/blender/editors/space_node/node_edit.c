@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,21 +15,15 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): David Millan Escriva, Juho Vepsäläinen, Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_edit.c
- *  \ingroup spnode
+/** \file
+ * \ingroup spnode
  */
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_text_types.h"
@@ -84,7 +76,7 @@
 
 enum {
 	COM_RECALC_COMPOSITE = 1,
-	COM_RECALC_VIEWER    = 2
+	COM_RECALC_VIEWER    = 2,
 };
 
 typedef struct CompoJob {
@@ -421,7 +413,7 @@ void ED_node_shader_default(const bContext *C, ID *id)
 		}
 		case ID_LA:
 		{
-			Lamp *la = (Lamp *)id;
+			Light *la = (Light *)id;
 			la->nodetree = ntree;
 
 			output_type = SH_NODE_OUTPUT_LIGHT;
@@ -1121,15 +1113,10 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
 	lastnode = ntree->nodes.last;
 	for (node = ntree->nodes.first; node; node = node->next) {
 		if (node->flag & SELECT) {
-			newnode = nodeCopyNode(ntree, node);
+			newnode = BKE_node_copy_ex(ntree, node, LIB_ID_COPY_DEFAULT);
 
-			if (newnode->id) {
-				/* simple id user adjustment, node internal functions don't touch this
-				 * but operators and readfile.c do. */
-				id_us_plus(newnode->id);
-				/* to ensure redraws or rerenders happen */
-				ED_node_tag_update_id(snode->id);
-			}
+			/* to ensure redraws or rerenders happen */
+			ED_node_tag_update_id(snode->id);
 		}
 
 		/* make sure we don't copy new nodes again! */
@@ -1935,8 +1922,8 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
 	for (node = ntree->nodes.first; node; node = node->next) {
 		if (node->flag & SELECT) {
-			bNode *new_node;
-			new_node = nodeCopyNode(NULL, node);
+			/* No ID refcounting, this node is virtual, detached from any actual Blender data currently. */
+			bNode *new_node = BKE_node_copy_ex(NULL, node, LIB_ID_CREATE_NO_USER_REFCOUNT);
 			BKE_node_clipboard_add_node(new_node);
 		}
 	}
@@ -1947,7 +1934,8 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
 			/* ensure valid pointers */
 			if (new_node->parent) {
-				/* parent pointer must be redirected to new node or detached if parent is not copied */
+				/* parent pointer must be redirected to new node or detached if parent is
+				 * not copied */
 				if (new_node->parent->flag & NODE_SELECT) {
 					new_node->parent = new_node->parent->new_node;
 				}
@@ -2055,10 +2043,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 
 	/* copy nodes from clipboard */
 	for (node = clipboard_nodes_lb->first; node; node = node->next) {
-		bNode *new_node = nodeCopyNode(ntree, node);
-
-		/* needed since nodeCopyNode() doesn't increase ID's */
-		id_us_plus(node->id);
+		bNode *new_node = BKE_node_copy_ex(ntree, node, LIB_ID_COPY_DEFAULT);
 
 		/* pasted nodes are selected */
 		nodeSetSelected(new_node, true);
@@ -2629,7 +2614,7 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Remove Cryptomatte Socket";
-	ot->description = "Remove layer from a Crytpomatte node";
+	ot->description = "Remove layer from a Cryptomatte node";
 	ot->idname = "NODE_OT_cryptomatte_layer_remove";
 
 	/* callbacks */

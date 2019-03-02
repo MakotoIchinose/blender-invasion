@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2014 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/library_query.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdlib.h>
@@ -39,7 +33,7 @@
 #include "DNA_constraint_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_key_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
@@ -64,7 +58,6 @@
 #include "DNA_world_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_listbase.h"
 #include "BLI_ghash.h"
 #include "BLI_linklist_stack.h"
 
@@ -82,6 +75,7 @@
 #include "BKE_particle.h"
 #include "BKE_rigidbody.h"
 #include "BKE_sequencer.h"
+#include "BKE_shader_fx.h"
 #include "BKE_tracking.h"
 #include "BKE_workspace.h"
 
@@ -96,7 +90,10 @@
 	if (!((_data)->status & IDWALK_STOP)) { \
 		const int _flag = (_data)->flag; \
 		ID *old_id = *(id_pp); \
-		const int callback_return = (_data)->callback((_data)->user_data, (_data)->self_id, id_pp, _cb_flag | (_data)->cb_flag); \
+		const int callback_return = (_data)->callback((_data)->user_data, \
+		                                              (_data)->self_id, \
+		                                              id_pp, \
+		                                              (_cb_flag | (_data)->cb_flag) & ~(_data)->cb_flag_clear); \
 		if (_flag & IDWALK_READONLY) { \
 			BLI_assert(*(id_pp) == old_id); \
 		} \
@@ -137,6 +134,7 @@ typedef struct LibraryForeachIDData {
 	ID *self_id;
 	int flag;
 	int cb_flag;
+	int cb_flag_clear;
 	LibraryIDLinkCallback callback;
 	void *user_data;
 	int status;
@@ -196,6 +194,15 @@ static void library_foreach_modifiersForeachIDLink(
 }
 
 static void library_foreach_gpencil_modifiersForeachIDLink(
+        void *user_data, Object *UNUSED(object), ID **id_pointer, int cb_flag)
+{
+	LibraryForeachIDData *data = (LibraryForeachIDData *) user_data;
+	FOREACH_CALLBACK_INVOKE_ID_PP(data, id_pointer, cb_flag);
+
+	FOREACH_FINALIZE_VOID;
+}
+
+static void library_foreach_shaderfxForeachIDLink(
         void *user_data, Object *UNUSED(object), ID **id_pointer, int cb_flag)
 {
 	LibraryForeachIDData *data = (LibraryForeachIDData *) user_data;
@@ -366,6 +373,8 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 	for (; id != NULL; id = (flag & IDWALK_RECURSE) ? BLI_LINKSTACK_POP(data.ids_todo) : NULL) {
 		data.self_id = id;
 		data.cb_flag = ID_IS_LINKED(id) ? IDWALK_CB_INDIRECT_USAGE : 0;
+		/* When an ID is not in Main database, it should never refcount IDs it is using. */
+		data.cb_flag_clear = (id->tag & LIB_TAG_NO_MAIN) ? IDWALK_CB_USER | IDWALK_CB_USER_ONE : 0;
 
 		if (bmain != NULL && bmain->relations != NULL && (flag & IDWALK_READONLY)) {
 			/* Note that this is minor optimization, even in worst cases (like id being an object with lots of
@@ -425,6 +434,11 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 						for (SequenceModifierData *smd = seq->modifiers.first; smd; smd = smd->next) {
 							CALLBACK_INVOKE(smd->mask_id, IDWALK_CB_USER);
 						}
+
+						if (seq->type == SEQ_TYPE_TEXT && seq->effectdata) {
+							TextVars *text_data = seq->effectdata;
+							CALLBACK_INVOKE(text_data->text_font, IDWALK_CB_USER);
+						}
 					} SEQ_END;
 				}
 
@@ -438,6 +452,8 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 
 				ViewLayer *view_layer;
 				for (view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
+					CALLBACK_INVOKE(view_layer->mat_override, IDWALK_CB_USER);
+
 					for (Base *base = view_layer->object_bases.first; base; base = base->next) {
 						CALLBACK_INVOKE(base->object, IDWALK_CB_NOP);
 					}
@@ -491,6 +507,9 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 					if (toolsett->gp_paint) {
 						library_foreach_paint(&data, &toolsett->gp_paint->paint);
 					}
+
+					CALLBACK_INVOKE(toolsett->gp_sculpt.guide.reference_object, IDWALK_CB_NOP);
+
 				}
 
 				if (scene->rigidbody_world) {
@@ -548,7 +567,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				data.cb_flag = data_cb_flag;
 
 				CALLBACK_INVOKE(object->gpd, IDWALK_CB_USER);
-				CALLBACK_INVOKE(object->dup_group, IDWALK_CB_USER);
+				CALLBACK_INVOKE(object->instance_collection, IDWALK_CB_USER);
 
 				if (object->pd) {
 					CALLBACK_INVOKE(object->pd->tex, IDWALK_CB_USER);
@@ -583,6 +602,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 				modifiers_foreachIDLink(object, library_foreach_modifiersForeachIDLink, &data);
 				BKE_gpencil_modifiers_foreachIDLink(object, library_foreach_gpencil_modifiersForeachIDLink, &data);
 				BKE_constraints_id_loop(&object->constraints, library_foreach_constraintObjectLooper, &data);
+				BKE_shaderfx_foreachIDLink(object, library_foreach_shaderfxForeachIDLink, &data);
 
 				for (psys = object->particlesystem.first; psys; psys = psys->next) {
 					BKE_particlesystem_id_loop(psys, library_foreach_particlesystemsObjectLooper, &data);
@@ -682,7 +702,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 
 			case ID_LA:
 			{
-				Lamp *lamp = (Lamp *) id;
+				Light *lamp = (Light *) id;
 				if (lamp->nodetree) {
 					/* nodetree **are owned by IDs**, treat them as mere sub-data and not real ID! */
 					library_foreach_ID_as_subdata_link((ID **)&lamp->nodetree, callback, user_data, flag, &data);
@@ -799,8 +819,8 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 			case ID_PA:
 			{
 				ParticleSettings *psett = (ParticleSettings *) id;
-				CALLBACK_INVOKE(psett->dup_group, IDWALK_CB_NOP);
-				CALLBACK_INVOKE(psett->dup_ob, IDWALK_CB_NOP);
+				CALLBACK_INVOKE(psett->instance_collection, IDWALK_CB_USER);
+				CALLBACK_INVOKE(psett->instance_object, IDWALK_CB_NOP);
 				CALLBACK_INVOKE(psett->bb_ob, IDWALK_CB_NOP);
 				CALLBACK_INVOKE(psett->collision_group, IDWALK_CB_NOP);
 
@@ -841,7 +861,7 @@ void BKE_library_foreach_ID_link(Main *bmain, ID *id, LibraryIDLinkCallback call
 					}
 				}
 
-				for (ParticleDupliWeight *dw = psett->dupliweights.first; dw; dw = dw->next) {
+				for (ParticleDupliWeight *dw = psett->instance_weights.first; dw; dw = dw->next) {
 					CALLBACK_INVOKE(dw->ob, IDWALK_CB_NOP);
 				}
 				break;
@@ -1325,38 +1345,35 @@ static int foreach_libblock_used_linked_data_tag_clear_cb(
  */
 void BKE_library_unused_linked_data_set_tag(Main *bmain, const bool do_init_tag)
 {
-	ListBase *lb_array[MAX_LIBARRAY];
+	ID *id;
 
 	if (do_init_tag) {
-		int i = set_listbasepointers(bmain, lb_array);
-
-		while (i--) {
-			for (ID *id = lb_array[i]->first; id; id = id->next) {
-				if (id->lib && (id->tag & LIB_TAG_INDIRECT) != 0) {
-					id->tag |= LIB_TAG_DOIT;
-				}
-				else {
-					id->tag &= ~LIB_TAG_DOIT;
-				}
+		FOREACH_MAIN_ID_BEGIN(bmain, id)
+		{
+			if (id->lib && (id->tag & LIB_TAG_INDIRECT) != 0) {
+				id->tag |= LIB_TAG_DOIT;
+			}
+			else {
+				id->tag &= ~LIB_TAG_DOIT;
 			}
 		}
+		FOREACH_MAIN_ID_END;
 	}
 
-	bool do_loop = true;
-	while (do_loop) {
-		int i = set_listbasepointers(bmain, lb_array);
+	for (bool do_loop = true; do_loop; ) {
+		bool do_break = false;
 		do_loop = false;
-
-		while (i--) {
-			for (ID *id = lb_array[i]->first; id; id = id->next) {
-				if (id->tag & LIB_TAG_DOIT) {
-					/* Unused ID (so far), no need to check it further. */
-					continue;
-				}
+		FOREACH_MAIN_ID_BREAKABLE_BEGIN(bmain, id, do_break)
+		{
+			if ((id->tag & LIB_TAG_DOIT) == 0) {
 				BKE_library_foreach_ID_link(
 				            bmain, id, foreach_libblock_used_linked_data_tag_clear_cb, &do_loop, IDWALK_READONLY);
 			}
+			/* Else it is an unused ID (so far), no need to check it further. */
+			do_break = true;
+			break;
 		}
+		FOREACH_MAIN_ID_BREAKABLE_END;
 	}
 }
 
