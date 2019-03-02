@@ -402,20 +402,25 @@ void BKE_fracture_meshislands_connect(Scene* sc, FractureModifierData *fmd, Shar
 	if (ok) {
 		/* search local constraint list instead of global one !!! saves lots of time */
 		int i;
-		for (i = 0; i < mi1->participating_constraint_count; i++) {
-			con = mi1->participating_constraints[i];
-			if (con && ((con->mi1 == mi2) || (con->mi2 == mi2))) {
-				con_found = true;
-				break;
+
+		if (mi1->participating_constraints != NULL) {
+			for (i = 0; i < mi1->participating_constraint_count; i++) {
+				con = mi1->participating_constraints[i];
+				if (con && ((con->mi1 == mi2) || (con->mi2 == mi2))) {
+					con_found = true;
+					break;
+				}
 			}
 		}
 
 		if (!con_found) {
-			for (i = 0; i < mi2->participating_constraint_count; i++) {
-				con = mi2->participating_constraints[i];
-				if (con && ((con->mi1 == mi1) || (con->mi2 == mi1))) {
-					con_found = true;
-					break;
+			if (mi2->participating_constraints != NULL) {
+				for (i = 0; i < mi2->participating_constraint_count; i++) {
+					con = mi2->participating_constraints[i];
+					if (con && ((con->mi1 == mi1) || (con->mi2 == mi1))) {
+						con_found = true;
+						break;
+					}
 				}
 			}
 		}
