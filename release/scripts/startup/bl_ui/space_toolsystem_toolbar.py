@@ -514,7 +514,7 @@ class _defs_edit_mesh:
             layout.prop(props, "axis")
 
         return dict(
-            text="Spin (Duplicate)",
+            text="Spin Duplicates",
             icon="ops.mesh.spin.duplicate",
             widget="MESH_GGT_spin",
             keymap=(),
@@ -802,6 +802,14 @@ class _defs_edit_curve:
             keymap=(),
         )
 
+    @ToolDef.from_fn
+    def curve_shrink_fatten():
+        return dict(
+            text="Shrink/Fatten",
+            icon="ops.curve.shrink_fatten",
+            widget=None,
+            keymap=(),
+        )
 
 class _defs_pose:
 
@@ -1591,6 +1599,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'EDIT_CURVE': [
             *_tools_default,
             None,
+            _defs_edit_curve.curve_shrink_fatten,
             _defs_edit_curve.tilt,
             _defs_edit_curve.draw,
             (
