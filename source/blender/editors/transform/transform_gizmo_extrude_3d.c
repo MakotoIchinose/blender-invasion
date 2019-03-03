@@ -147,7 +147,12 @@ static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
 	{
 		const Object *obedit = CTX_data_edit_object(C);
 		const char *op_idname = NULL;
-		if (obedit->type == OB_MESH) {
+		/* grease pencil does not use obedit */
+		const Object *ob = CTX_data_active_object(C);
+		if (ob->type == OB_GPENCIL) {
+			op_idname = "GPENCIL_OT_extrude_move";
+		}
+		else if (obedit->type == OB_MESH) {
 			op_idname = "MESH_OT_extrude_context_move";
 			ggd->normal_axis = 2;
 		}
