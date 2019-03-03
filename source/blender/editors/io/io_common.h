@@ -2,6 +2,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "BKE_context.h"
+
 #include "DNA_space_types.h"
 
 #ifndef __IO_COMMON_H__
@@ -17,6 +19,7 @@ typedef struct ExportSettings {
 	struct Scene *scene;
 	struct ViewLayer *view_layer;  // Scene layer to export; all its objects will be exported, unless selected_only=true
 	struct Depsgraph *depsgraph;
+	struct Main *main;
 	/* SimpleLogger logger; */
 
 	char filepath[FILE_MAX];
@@ -25,23 +28,27 @@ typedef struct ExportSettings {
 	bool visible_only;
 	bool renderable_only;
 
-	double frame_start;
-	double frame_end;
-	double frame_samples_xform;
-	double frame_samples_shape;
-	double shutter_open;
-	double shutter_close;
+	float frame_start;
+	float frame_end;
+	float frame_samples_xform;
+	float frame_samples_shape;
+	float shutter_open;
+	float shutter_close;
 
 	bool flatten_hierarchy;
 
+	bool export_animations;
 	bool export_normals;
 	bool export_uvs;
+	bool export_materials;
 	bool export_vcolors;
 	bool export_face_sets;
-	bool export_vweigths;
+	bool export_vweights;
 	bool export_particles;
 	bool export_hair;
 	bool export_child_hairs;
+	bool export_objects_as_objects;
+	bool export_objects_as_groups;
 
 	bool apply_subdiv;
 	bool curves_as_mesh;
@@ -102,6 +109,7 @@ int io_common_export_invoke(struct bContext *C, wmOperator *op,
                             const wmEvent *UNUSED(event), const char *ext);
 int io_common_export_exec(struct bContext *C, struct wmOperator *op,
                           bool (*exporter)(struct bContext *C, ExportSettings *settings));
+void io_common_export_draw(bContext *C, wmOperator *op);
 
 ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
                                                             struct wmOperator *op);

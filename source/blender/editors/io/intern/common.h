@@ -7,11 +7,10 @@
 
 #include "../io_common.h"
 
-bool common_export_object_p(const ExportSettings * const settings, const Base * const ob_base,
-                             bool is_duplicated);
+bool common_should_export_object(const ExportSettings * const settings, const Base * const ob_base,
+                                 bool is_duplicated);
 
 
-bool common_object_type_is_exportable(Scene *scene, Object *ob);
+bool common_object_type_is_exportable(Object *ob);
 
-
-static bool common_object_is_smoke_sim(Object *ob);
+bool get_final_mesh(ExportSettings *settings, Scene *escene, Object *eob, Mesh *mesh);

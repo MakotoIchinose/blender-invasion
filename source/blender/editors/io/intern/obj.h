@@ -36,7 +36,6 @@ bool OBJ_export(bContext *C, ExportSettings *settings);
 bool OBJ_export_start(bContext *C, ExportSettings *settings);
 bool OBJ_export_end(bContext *C, ExportSettings *settings);
 
-
 #ifdef __cplusplus
 }
 #endif  /* __cplusplus */

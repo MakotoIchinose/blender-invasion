@@ -6,6 +6,8 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 
+#include "DNA_space_types.h"
+
 #include "io_obj.h"
 #include "intern/obj.h"
 
@@ -15,7 +17,9 @@ static int wm_obj_export_invoke(bContext *C, wmOperator *op, const wmEvent *even
 static int wm_obj_export_exec(bContext *C, wmOperator *op) {
 	return io_common_export_exec(C, op, &OBJ_export /* export function */);
 }
-static void wm_obj_export_draw(bContext *C, wmOperator *op) {} /* TODO someoene */
+static void wm_obj_export_draw(bContext *C, wmOperator *op) {
+	return io_common_export_draw(C, op);
+}
 static bool wm_obj_export_check(bContext *C, wmOperator *op) {
 	return io_common_export_check(C, op, ".obj");
 }
