@@ -905,33 +905,39 @@ static int gp_extrude_exec(bContext *C, wmOperator *op)
 {
 	Object *obact = CTX_data_active_object(C);
 	bGPdata *gpd = (bGPdata *)obact->data;
-	bGPDstroke *gps;
+	const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+	bGPDstroke *gps = NULL;
 
 	if (gpd == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "No Grease Pencil data");
 		return OPERATOR_CANCELLED;
 	}
 
-	if (GPENCIL_MULTIEDIT_SESSIONS_ON(gpd)) {
-		BKE_report(op->reports, RPT_ERROR, "Operator not supported in multiframe edition");
-		return OPERATOR_CANCELLED;
-	}
-
 	CTX_DATA_BEGIN(C, bGPDlayer *, gpl, editable_gpencil_layers)
 	{
-		bGPDframe *gpf = gpl->actframe;
+		bGPDframe *init_gpf = gpl->actframe;
+		if (is_multiedit) {
+			init_gpf = gpl->frames.first;
+		}
 
-		if (gpf == NULL)
-			continue;
+		for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+			if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+				if (gpf == NULL)
+					continue;
 
-		for (gps = gpf->strokes.first; gps; gps = gps->next) {
-			/* skip strokes that are invalid for current view */
-			if (ED_gpencil_stroke_can_use(C, gps) == false) {
-				continue;
-			}
+				for (gps = gpf->strokes.first; gps; gps = gps->next) {
+					/* skip strokes that are invalid for current view */
+					if (ED_gpencil_stroke_can_use(C, gps) == false)
+						continue;
 
-			if (gps->flag & GP_STROKE_SELECT) {
-				gpencil_add_move_points(gpf, gps);
+					if (gps->flag & GP_STROKE_SELECT) {
+						gpencil_add_move_points(gpf, gps);
+					}
+				}
+				/* if not multiedit, exit loop*/
+				if (!is_multiedit) {
+					break;
+				}
 			}
 		}
 	}
