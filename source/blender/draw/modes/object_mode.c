@@ -96,7 +96,7 @@ extern char datatoc_gpu_shader_3D_vert_glsl[];
 typedef struct OBJECT_PassList {
 	struct DRWPass *non_meshes[2];
 	struct DRWPass *image_empties[2];
-	struct DRWPass *spot_shapes[2];
+	struct DRWPass *transp_shapes[2];
 	struct DRWPass *ob_center;
 	struct DRWPass *outlines;
 	struct DRWPass *outlines_search;
@@ -160,7 +160,7 @@ typedef struct OBJECT_ShadingGroupList {
 	/* Reference only */
 	struct DRWPass *non_meshes;
 	struct DRWPass *image_empties;
-	struct DRWPass *spot_shapes;
+	struct DRWPass *transp_shapes;
 	struct DRWPass *bone_solid;
 	struct DRWPass *bone_outline;
 	struct DRWPass *bone_wire;
@@ -1260,12 +1260,6 @@ static void OBJECT_cache_init(void *vedata)
 		sgl->camera_clip_points = shgroup_distance_lines_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 		sgl->camera_mist_points = shgroup_distance_lines_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 
-		geom = DRW_cache_quad_get();
-		sgl->camera_stereo_plane = shgroup_instance_alpha(sgl->non_meshes, geom, draw_ctx->sh_cfg);
-
-		geom = DRW_cache_cube_get();
-		sgl->camera_stereo_volume = shgroup_instance_alpha(sgl->non_meshes, geom, draw_ctx->sh_cfg);
-
 		geom = DRW_cache_empty_cube_get();
 		sgl->camera_stereo_volume_wires = shgroup_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 
@@ -1376,25 +1370,33 @@ static void OBJECT_cache_init(void *vedata)
 		geom = DRW_cache_field_cone_limit_get();
 		sgl->field_cone_limit = shgroup_instance_scaled(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 
-		/* Spot shapes */
+		/* Transparent Shapes */
 		state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND | DRW_STATE_CULL_FRONT;
-		sgl->spot_shapes = psl->spot_shapes[i] = DRW_pass_create("Spot Shape Pass", state);
+		sgl->transp_shapes = psl->transp_shapes[i] = DRW_pass_create("Transparent Shapes", state);
 
+		/* Spot cones */
 		geom = DRW_cache_light_spot_volume_get();
-		sgl->light_spot_volume = shgroup_instance_alpha(sgl->spot_shapes, geom, draw_ctx->sh_cfg);
+		sgl->light_spot_volume = shgroup_instance_alpha(sgl->transp_shapes, geom, draw_ctx->sh_cfg);
 
 		geom = DRW_cache_light_spot_square_volume_get();
-		sgl->light_spot_volume_rect = shgroup_instance_alpha(sgl->spot_shapes, geom, draw_ctx->sh_cfg);
+		sgl->light_spot_volume_rect = shgroup_instance_alpha(sgl->transp_shapes, geom, draw_ctx->sh_cfg);
 
 		geom = DRW_cache_light_spot_volume_get();
-		sgl->light_spot_volume_outside = shgroup_instance_alpha(sgl->spot_shapes, geom, draw_ctx->sh_cfg);
+		sgl->light_spot_volume_outside = shgroup_instance_alpha(sgl->transp_shapes, geom, draw_ctx->sh_cfg);
 		DRW_shgroup_state_disable(sgl->light_spot_volume_outside, DRW_STATE_CULL_FRONT);
 		DRW_shgroup_state_enable(sgl->light_spot_volume_outside, DRW_STATE_CULL_BACK);
 
 		geom = DRW_cache_light_spot_square_volume_get();
-		sgl->light_spot_volume_rect_outside = shgroup_instance_alpha(sgl->spot_shapes, geom, draw_ctx->sh_cfg);
+		sgl->light_spot_volume_rect_outside = shgroup_instance_alpha(sgl->transp_shapes, geom, draw_ctx->sh_cfg);
 		DRW_shgroup_state_disable(sgl->light_spot_volume_rect_outside, DRW_STATE_CULL_FRONT);
 		DRW_shgroup_state_enable(sgl->light_spot_volume_rect_outside, DRW_STATE_CULL_BACK);
+
+		/* Camera stereo volumes */
+		geom = DRW_cache_cube_get();
+		sgl->camera_stereo_volume = shgroup_instance_alpha(sgl->transp_shapes, geom, draw_ctx->sh_cfg);
+
+		geom = DRW_cache_quad_get();
+		sgl->camera_stereo_plane = shgroup_instance_alpha(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 	}
 
 	{
@@ -1790,7 +1792,7 @@ static void camera_stereo3d(
 		static float one = 1.0f;
 		float color_volume[3][4] = {{0.0f, 1.0f, 1.0f, v3d->stereo3d_volume_alpha},
 		                            {1.0f, 0.0f, 0.0f, v3d->stereo3d_volume_alpha},
-		                            {0.0f, 0.0f, 0.0f, 0.0f}};
+		                            {0.0f, 0.0f, 0.0f, 1.0f}};
 
 		for (int eye = 0; eye < 2; eye++) {
 			float winmat[4][4], viewinv[4][4], viewmat[4][4], persmat[4][4], persinv[4][4];
@@ -1803,7 +1805,9 @@ static void camera_stereo3d(
 			mul_m4_m4m4(persmat, winmat, viewmat);
 			invert_m4_m4(persinv, persmat);
 
-			DRW_shgroup_call_dynamic_add(sgl->camera_stereo_volume, color_volume[eye], &one, persinv);
+			if (v3d->stereo3d_volume_alpha > 0.0f) {
+				DRW_shgroup_call_dynamic_add(sgl->camera_stereo_volume, color_volume[eye], &one, persinv);
+			}
 			DRW_shgroup_call_dynamic_add(sgl->camera_stereo_volume_wires, color_volume[2], &one, persinv);
 		}
 	}
@@ -1867,10 +1871,10 @@ static void DRW_shgroup_camera(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLay
 	cam->runtime.drw_tria[1][0] = shift[0];
 	cam->runtime.drw_tria[1][1] = shift[1] + ((1.1f * drawsize * (asp[1] + 0.7f)) * scale[1]);
 
-	if (look_through && !is_stereo3d_cameras) {
+	if (look_through) {
 		/* Only draw the frame. */
 		float mat[4][4];
-		if (is_stereo3d) {
+		if (is_stereo3d_view) {
 			const bool is_left = v3d->multiview_eye == STEREO_LEFT_ID;
 			const char *view_name = is_left ? STEREO_LEFT_NAME : STEREO_RIGHT_NAME;
 			BKE_camera_multiview_model_matrix(&scene->r, ob, view_name, mat);
@@ -1888,7 +1892,7 @@ static void DRW_shgroup_camera(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLay
 		        sgl->camera_frame, color, cam->runtime.drw_corners[0],
 		        &cam->runtime.drw_depth[0], cam->runtime.drw_tria, mat);
 	}
-	else if (!look_through) {
+	else {
 		if (!is_stereo3d_cameras) {
 			DRW_shgroup_call_dynamic_add(
 			        sgl->camera, color, cam->runtime.drw_corners[0],
@@ -1944,7 +1948,7 @@ static void DRW_shgroup_camera(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLay
 	}
 
 	/* Stereo cameras drawing. */
-	if (is_stereo3d) {
+	if (is_stereo3d && !look_through) {
 		camera_stereo3d(sgl, scene, view_layer, v3d, ob, cam, vec, drawsize, scale);
 	}
 
@@ -3203,11 +3207,12 @@ static void OBJECT_draw_scene(void *vedata)
 
 	float clearcol[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
+	/* Don't draw Transparent passes in MSAA buffer. */
 //	DRW_draw_pass(psl->bone_envelope);  /* Never drawn in Object mode currently. */
+	DRW_draw_pass(stl->g_data->sgl.transp_shapes);
 
 	MULTISAMPLE_SYNC_ENABLE(dfbl, dtxl);
 
-	DRW_draw_pass(stl->g_data->sgl.spot_shapes);
 	DRW_draw_pass(stl->g_data->sgl.bone_solid);
 	DRW_draw_pass(stl->g_data->sgl.bone_wire);
 	DRW_draw_pass(stl->g_data->sgl.bone_outline);
@@ -3303,7 +3308,7 @@ static void OBJECT_draw_scene(void *vedata)
 			GPU_depth_range(0.0f, 0.01f);
 		}
 
-		DRW_draw_pass(stl->g_data->sgl_ghost.spot_shapes);
+		DRW_draw_pass(stl->g_data->sgl_ghost.transp_shapes);
 		DRW_draw_pass(stl->g_data->sgl_ghost.bone_solid);
 		DRW_draw_pass(stl->g_data->sgl_ghost.bone_wire);
 		DRW_draw_pass(stl->g_data->sgl_ghost.bone_outline);
