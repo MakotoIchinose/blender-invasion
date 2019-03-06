@@ -60,6 +60,13 @@ bool is_equal(vec4 p1, vec4 p2)
 	return false;
 }
 
+vec2 scaleUV(vec2 uv, float scale)
+{
+	float limit = 0.025;
+	float factor = 1.0 + clamp(scale, -limit, limit);
+	return vec2(uv.x * factor, uv.y);
+}
+
 void main(void)
 {
 	float MiterLimit = 0.75;
@@ -195,11 +202,13 @@ void main(void)
 	EmitVertex();
 
 	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 0) : vec2(finaluvdata[2].x, 0);
+	mTexCoord = scaleUV(mTexCoord, finaluvdata[2].y);
 	mColor = finalColor[2];
 	gl_Position = vec4((sp2 + length_b * miter_b) / Viewport, getZdepth(P2), 1.0);
 	EmitVertex();
 
 	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 1) : vec2(finaluvdata[2].x, 1);
+	mTexCoord = scaleUV(mTexCoord, finaluvdata[2].y);
 	mColor = finalColor[2];
 	gl_Position = vec4((sp2 - length_b * miter_b) / Viewport, getZdepth(P2), 1.0);
 	EmitVertex();
