@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -18,15 +16,12 @@
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
  *
- * Contributor(s):
  * - Blender Foundation, 2003-2009
  * - Peter Schlaile <peter [at] schlaile [dot] de> 2005/2006
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/sequencer.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stddef.h>
@@ -401,7 +396,13 @@ static void sequence_clipboard_pointers(Main *bmain, Sequence *seq, void (*callb
 	callback(bmain, (ID **)&seq->clip);
 	callback(bmain, (ID **)&seq->mask);
 	callback(bmain, (ID **)&seq->sound);
+
+	if (seq->type == SEQ_TYPE_TEXT && seq->effectdata) {
+		TextVars *text_data = seq->effectdata;
+		callback(bmain, (ID **)&text_data->text_font);
+	}
 }
+
 /* recursive versions of functions above */
 void BKE_sequencer_base_clipboard_pointers_free(ListBase *seqbase)
 {
@@ -1069,7 +1070,7 @@ void BKE_sequencer_clear_scene_in_allseqs(Main *bmain, Scene *scene)
 	Scene *scene_iter;
 
 	/* when a scene is deleted: test all seqs */
-	for (scene_iter = bmain->scene.first; scene_iter; scene_iter = scene_iter->id.next) {
+	for (scene_iter = bmain->scenes.first; scene_iter; scene_iter = scene_iter->id.next) {
 		if (scene_iter != scene && scene_iter->ed) {
 			BKE_sequencer_base_recursive_apply(&scene_iter->ed->seqbase, clear_scene_in_allseqs_cb, scene);
 		}
@@ -1957,7 +1958,7 @@ void BKE_sequencer_proxy_rebuild_context(
 
 		context = MEM_callocN(sizeof(SeqIndexBuildContext), "seq proxy rebuild context");
 
-		nseq = BKE_sequence_dupli_recursive(scene, scene, seq, 0);
+		nseq = BKE_sequence_dupli_recursive(scene, scene, NULL, seq, 0);
 
 		context->tc_flags   = nseq->strip->proxy->build_tc_flags;
 		context->size_flags = nseq->strip->proxy->build_size_flags;
@@ -3474,7 +3475,7 @@ static ImBuf *do_render_strip_uncached(
 					if (BLI_linklist_index(state->scene_parents, seq->scene) != -1) {
 						break;
 					}
-					LinkNode scene_parent = {.next = state->scene_parents, .link = seq->scene};
+					LinkNode scene_parent = { .next = state->scene_parents, .link = seq->scene, };
 					state->scene_parents = &scene_parent;
 					/* end check */
 
@@ -5231,14 +5232,14 @@ Sequence *BKE_sequencer_add_sound_strip(bContext *C, ListBase *seqbasep, SeqLoad
 	sound = BKE_sound_new_file(bmain, seq_load->path); /* handles relative paths */
 
 	if (sound->playback_handle == NULL) {
-		BKE_libblock_free(bmain, sound);
+		BKE_id_free(bmain, sound);
 		return NULL;
 	}
 
 	info = AUD_getInfo(sound->playback_handle);
 
 	if (info.specs.channels == AUD_CHANNELS_INVALID) {
-		BKE_libblock_free(bmain, sound);
+		BKE_id_free(bmain, sound);
 		return NULL;
 	}
 
@@ -5413,7 +5414,8 @@ Sequence *BKE_sequencer_add_movie_strip(bContext *C, ListBase *seqbasep, SeqLoad
 	return seq;
 }
 
-static Sequence *seq_dupli(const Scene *scene_src, Scene *scene_dst, Sequence *seq, int dupe_flag, const int flag)
+static Sequence *seq_dupli(
+        const Scene *scene_src, Scene *scene_dst, ListBase *new_seq_list, Sequence *seq, int dupe_flag, const int flag)
 {
 	Sequence *seqn = MEM_dupallocN(seq);
 
@@ -5498,9 +5500,18 @@ static Sequence *seq_dupli(const Scene *scene_src, Scene *scene_dst, Sequence *s
 		BLI_assert(0);
 	}
 
+	/* When using SEQ_DUPE_UNIQUE_NAME, it is mandatory to add new sequences in relevant container
+	 * (scene or meta's one), *before* checking for unique names. Otherwise the meta's list is empty
+	 * and hence we miss all seqs in that meta that have already been duplicated (see T55668).
+	 * Note that unique name check itslef could be done at a later step in calling code, once all seqs
+	 * have bee duplicated (that was first, simpler solution), but then handling of animation data will
+	 * be broken (see T60194). */
+	if (new_seq_list != NULL) {
+		BLI_addtail(new_seq_list, seqn);
+	}
+
 	if (scene_src == scene_dst) {
 		if (dupe_flag & SEQ_DUPE_UNIQUE_NAME) {
-			/* TODO this is broken in case of Meta strips recursive duplication... Not trivial to fix. */
 			BKE_sequence_base_unique_name_recursive(&scene_dst->ed->seqbase, seqn);
 		}
 
@@ -5534,22 +5545,30 @@ static void seq_new_fix_links_recursive(Sequence *seq)
 	}
 }
 
-Sequence *BKE_sequence_dupli_recursive(const Scene *scene_src, Scene *scene_dst, Sequence *seq, int dupe_flag)
+static Sequence *sequence_dupli_recursive_do(
+        const Scene *scene_src, Scene *scene_dst, ListBase *new_seq_list, Sequence *seq, const int dupe_flag)
 {
 	Sequence *seqn;
 
 	seq->tmp = NULL;
-	seqn = seq_dupli(scene_src, scene_dst, seq, dupe_flag, 0);
+	seqn = seq_dupli(scene_src, scene_dst, new_seq_list, seq, dupe_flag, 0);
 	if (seq->type == SEQ_TYPE_META) {
 		Sequence *s;
 		for (s = seq->seqbase.first; s; s = s->next) {
-			Sequence *n = BKE_sequence_dupli_recursive(scene_src, scene_dst, s, dupe_flag);
-			if (n) {
-				BLI_addtail(&seqn->seqbase, n);
-			}
+			sequence_dupli_recursive_do(scene_src, scene_dst, &seqn->seqbase, s, dupe_flag);
 		}
 	}
 
+	return seqn;
+}
+
+Sequence *BKE_sequence_dupli_recursive(
+        const Scene *scene_src, Scene *scene_dst,
+        ListBase *new_seq_list, Sequence *seq, int dupe_flag)
+{
+	Sequence *seqn = sequence_dupli_recursive_do(scene_src, scene_dst, new_seq_list, seq, dupe_flag);
+
+	/* This does not need to be in recursive call itself, since it is already recursive... */
 	seq_new_fix_links_recursive(seqn);
 
 	return seqn;
@@ -5568,14 +5587,13 @@ void BKE_sequence_base_dupli_recursive(
 	for (seq = seqbase->first; seq; seq = seq->next) {
 		seq->tmp = NULL;
 		if ((seq->flag & SELECT) || (dupe_flag & SEQ_DUPE_ALL)) {
-			seqn = seq_dupli(scene_src, scene_dst, seq, dupe_flag, flag);
+			seqn = seq_dupli(scene_src, scene_dst, nseqbase, seq, dupe_flag, flag);
 			if (seqn) { /*should never fail */
 				if (dupe_flag & SEQ_DUPE_CONTEXT) {
 					seq->flag &= ~SEQ_ALLSEL;
 					seqn->flag &= ~(SEQ_LEFTSEL + SEQ_RIGHTSEL + SEQ_LOCK);
 				}
 
-				BLI_addtail(nseqbase, seqn);
 				if (seq->type == SEQ_TYPE_META) {
 					BKE_sequence_base_dupli_recursive(
 					        scene_src, scene_dst, &seqn->seqbase, &seq->seqbase,
@@ -5698,7 +5716,7 @@ static void sequencer_all_free_anim_ibufs(ListBase *seqbase, int cfra)
 void BKE_sequencer_all_free_anim_ibufs(Main *bmain, int cfra)
 {
 	BKE_sequencer_cache_cleanup();
-	for (Scene *scene = bmain->scene.first;
+	for (Scene *scene = bmain->scenes.first;
 	     scene != NULL;
 	     scene = scene->id.next)
 	{

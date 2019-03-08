@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,12 @@
  *
  * The Original Code is Copyright (C) 2017 Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez, Matias Mendiola
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/gpencil/gpencil_add_stroke.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
-#include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
@@ -72,6 +65,10 @@ static int gp_stroke_material(Main *bmain, Object *ob, const ColorTemplate *pct)
 
 	copy_v4_v4(ma->gp_style->stroke_rgba, pct->line);
 	copy_v4_v4(ma->gp_style->fill_rgba, pct->fill);
+
+	if (pct->fill) {
+		ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+	}
 
 	return BKE_gpencil_get_material_index(ob, ma) - 1;
 }

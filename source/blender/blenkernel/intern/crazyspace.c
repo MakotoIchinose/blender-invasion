@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/crazyspace.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -108,18 +100,18 @@ float (*BKE_crazyspace_get_mapped_editverts(
 	Mesh *me = obedit->data;
 	Mesh *me_eval;
 	float (*vertexcos)[3];
-	int nverts = me->edit_btmesh->bm->totvert;
+	int nverts = me->edit_mesh->bm->totvert;
 
 	/* disable subsurf temporal, get mapped cos, and enable it */
 	if (modifiers_disable_subsurf_temporary(obedit)) {
 		/* need to make new derivemesh */
-		makeDerivedMesh(depsgraph, scene, obedit, me->edit_btmesh, CD_MASK_BAREMESH, false);
+		makeDerivedMesh(depsgraph, scene, obedit, me->edit_mesh, &CD_MASK_BAREMESH, false);
 	}
 
 	/* now get the cage */
 	vertexcos = MEM_mallocN(sizeof(*vertexcos) * nverts, "vertexcos map");
 
-	me_eval = editbmesh_get_eval_cage_from_orig(depsgraph, scene, obedit, me->edit_btmesh, CD_MASK_BAREMESH);
+	me_eval = editbmesh_get_eval_cage_from_orig(depsgraph, scene, obedit, me->edit_mesh, &CD_MASK_BAREMESH);
 
 	mesh_get_mapped_verts_coords(me_eval, vertexcos, nverts);
 
@@ -281,12 +273,12 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(
 		if (mti->type == eModifierTypeType_OnlyDeform && mti->deformMatricesEM) {
 			if (!defmats) {
 				const int required_mode = eModifierMode_Realtime | eModifierMode_Editmode;
-				CustomDataMask data_mask = CD_MASK_BAREMESH;
-				CDMaskLink *datamasks = modifiers_calcDataMasks(scene, ob, md, data_mask, required_mode, NULL, 0);
+				CustomData_MeshMasks data_mask = CD_MASK_BAREMESH;
+				CDMaskLink *datamasks = modifiers_calcDataMasks(scene, ob, md, &data_mask, required_mode, NULL, NULL);
 				data_mask = datamasks->mask;
 				BLI_linklist_free((LinkNode *)datamasks, NULL);
 
-				me = BKE_mesh_from_editmesh_with_coords_thin_wrap(em, data_mask, NULL);
+				me = BKE_mesh_from_editmesh_with_coords_thin_wrap(em, &data_mask, NULL);
 				deformedVerts = editbmesh_get_vertex_cos(em, &numVerts);
 				defmats = MEM_mallocN(sizeof(*defmats) * numVerts, "defmats");
 

@@ -1,6 +1,4 @@
 /*
- * ***** begin GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2003-2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_sequencer/sequencer_edit.c
- *  \ingroup spseq
+/** \file
+ * \ingroup spseq
  */
 
 
@@ -95,7 +89,7 @@ EnumPropertyItem sequencer_prop_effect_types[] = {
 	{SEQ_TYPE_GAUSSIAN_BLUR, "GAUSSIAN_BLUR", 0, "Gaussian Blur", ""},
 	{SEQ_TYPE_TEXT, "TEXT", 0, "Text", ""},
 	{SEQ_TYPE_COLORMIX, "COLORMIX", 0, "Color Mix", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* mute operator */
@@ -107,13 +101,13 @@ EnumPropertyItem prop_side_types[] = {
 	{SEQ_SIDE_LEFT, "LEFT", 0, "Left", "" },
 	{SEQ_SIDE_RIGHT, "RIGHT", 0, "Right", ""},
 	{SEQ_SIDE_BOTH, "BOTH", 0, "Both", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem prop_side_lr_types[] = {
 	{SEQ_SIDE_LEFT, "LEFT", 0, "Left", ""},
 	{SEQ_SIDE_RIGHT, "RIGHT", 0, "Right", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 typedef struct TransSeq {
@@ -402,9 +396,11 @@ Sequence *find_nearest_seq(Scene *scene, View2D *v2d, int *hand, const int mval[
 					handsize = seq->handsize;
 					displen = (float)abs(seq->startdisp - seq->enddisp);
 
-					if (displen / pixelx > 16) { /* don't even try to grab the handles of small strips */
-						/* Set the max value to handle to 1/3 of the total len when its less than 28.
-						 * This is important because otherwise selecting handles happens even when you click in the middle */
+					/* don't even try to grab the handles of small strips */
+					if (displen / pixelx > 16) {
+						/* Set the max value to handle to 1/3 of the total len when its
+						 * less than 28. This is important because otherwise selecting
+						 * handles happens even when you click in the middle. */
 
 						if ((displen / 3) < 30 * pixelx) {
 							handsize = displen / 3;
@@ -667,7 +663,7 @@ static void recurs_del_seq_flag(Scene *scene, ListBase *lb, short flag, short de
 }
 
 
-static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
+static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, ListBase *new_seq_list, int cutframe)
 {
 	TransSeq ts;
 	Sequence *seqn = NULL;
@@ -739,7 +735,7 @@ static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
 
 	if (!skip_dup) {
 		/* Duplicate AFTER the first change */
-		seqn = BKE_sequence_dupli_recursive(scene, scene, seq, SEQ_DUPE_ANIM);
+		seqn = BKE_sequence_dupli_recursive(scene, scene, new_seq_list, seq, SEQ_DUPE_UNIQUE_NAME | SEQ_DUPE_ANIM);
 	}
 
 	if (seqn) {
@@ -788,7 +784,7 @@ static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
 	return seqn;
 }
 
-static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, int cutframe)
+static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, ListBase *new_seq_list, int cutframe)
 {
 	TransSeq ts;
 	Sequence *seqn = NULL;
@@ -848,7 +844,7 @@ static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, int cutframe)
 
 	if (!skip_dup) {
 		/* Duplicate AFTER the first change */
-		seqn = BKE_sequence_dupli_recursive(scene, scene, seq, SEQ_DUPE_ANIM);
+		seqn = BKE_sequence_dupli_recursive(scene, scene, new_seq_list, seq, SEQ_DUPE_UNIQUE_NAME | SEQ_DUPE_ANIM);
 	}
 
 	if (seqn) {
@@ -900,7 +896,7 @@ static Sequence *cut_seq_soft(Scene *scene, Sequence *seq, int cutframe)
  */
 
 static bool cut_seq_list(Scene *scene, ListBase *slist, int cutframe,
-                         Sequence * (*cut_seq)(Scene *, Sequence *, int))
+                         Sequence * (*cut_seq)(Scene *, Sequence *, ListBase *, int))
 {
 	Sequence *seq, *seq_next_iter;
 	Sequence *seq_first_new = NULL;
@@ -914,9 +910,8 @@ static bool cut_seq_list(Scene *scene, ListBase *slist, int cutframe,
 			if (cutframe > seq->startdisp &&
 			    cutframe < seq->enddisp)
 			{
-				Sequence *seqn = cut_seq(scene, seq, cutframe);
+				Sequence *seqn = cut_seq(scene, seq, slist, cutframe);
 				if (seqn) {
-					BLI_addtail(slist, seqn);
 					if (seq_first_new == NULL) {
 						seq_first_new = seqn;
 					}
@@ -2045,7 +2040,7 @@ void SEQUENCER_OT_swap_inputs(struct wmOperatorType *ot)
 static const EnumPropertyItem prop_cut_types[] = {
 	{SEQ_CUT_SOFT, "SOFT", 0, "Soft", ""},
 	{SEQ_CUT_HARD, "HARD", 0, "Hard", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int sequencer_cut_exec(bContext *C, wmOperator *op)
@@ -2089,7 +2084,6 @@ static int sequencer_cut_exec(bContext *C, wmOperator *op)
 
 		SEQP_BEGIN (ed, seq)
 		{
-			BKE_sequence_base_unique_name_recursive(&ed->seqbase, seq);
 			if (seq->seq1 || seq->seq2 || seq->seq3) {
 				BKE_sequence_calc(scene, seq);
 			}
@@ -2391,8 +2385,7 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
 				/* new seq */
 				se = BKE_sequencer_give_stripelem(seq, cfra);
 
-				seq_new = BKE_sequence_dupli_recursive(scene, scene, seq, SEQ_DUPE_UNIQUE_NAME);
-				BLI_addtail(ed->seqbasep, seq_new);
+				seq_new = BKE_sequence_dupli_recursive(scene, scene, ed->seqbasep, seq, SEQ_DUPE_UNIQUE_NAME);
 
 				seq_new->start = start_ofs;
 				seq_new->type = SEQ_TYPE_IMAGE;
@@ -2404,7 +2397,8 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
 				strip_new->us = 1;
 
 				/* new stripdata (only one element now!) */
-				/* Note this assume all elements (images) have the same dimension, since we only copy the name here. */
+				/* Note this assume all elements (images) have the same dimension,
+				 * since we only copy the name here. */
 				se_new = MEM_reallocN(strip_new->stripdata, sizeof(*se_new));
 				BLI_strncpy(se_new->name, se->name, sizeof(se_new->name));
 				strip_new->stripdata = se_new;
@@ -2846,7 +2840,7 @@ static const EnumPropertyItem view_type_items[] = {
 	{SEQ_VIEW_SEQUENCE, "SEQUENCER", ICON_SEQ_SEQUENCER, "Sequencer", ""},
 	{SEQ_VIEW_PREVIEW,  "PREVIEW", ICON_SEQ_PREVIEW, "Image Preview", ""},
 	{SEQ_VIEW_SEQUENCE_PREVIEW,  "SEQUENCER_PREVIEW", ICON_SEQ_SEQUENCER, "Sequencer and Image Preview", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 #endif
 
@@ -3585,7 +3579,7 @@ void SEQUENCER_OT_enable_proxies(wmOperatorType *ot)
 	/* identifiers */
 	ot->name = "Set Selected Strip Proxies";
 	ot->idname = "SEQUENCER_OT_enable_proxies";
-	ot->description = "Enable selected proxies on all selected Movie strips";
+	ot->description = "Enable selected proxies on all selected Movie, Image and Meta strips";
 
 	/* api callbacks */
 	ot->invoke = sequencer_enable_proxies_invoke;
@@ -3607,7 +3601,7 @@ static const EnumPropertyItem prop_change_effect_input_types[] = {
 	{0, "A_B", 0, "A -> B", ""},
 	{1, "B_C", 0, "B -> C", ""},
 	{2, "A_C", 0, "A -> C", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int sequencer_change_effect_input_exec(bContext *C, wmOperator *op)

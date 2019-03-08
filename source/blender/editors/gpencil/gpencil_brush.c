@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2015, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung, Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Brush based operators for editing Grease Pencil strokes
  */
 
-/** \file blender/editors/gpencil/gpencil_brush.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 
@@ -63,7 +56,6 @@
 #include "BKE_material.h"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
 
 #include "UI_interface.h"
 
@@ -707,7 +699,8 @@ static bool gp_brush_twist_apply(
 		axis_angle_normalized_to_mat3(rmat, axis, angle);
 
 		/* Rotate point (no matrix-space transforms needed, as GP points are in world space) */
-		sub_v3_v3v3(vec, &pt->x, gso->dvec); /* make relative to center (center is stored in dvec) */
+		sub_v3_v3v3(vec, &pt->x, gso->dvec); /* make relative to center
+		                                      * (center is stored in dvec) */
 		mul_m3_v3(rmat, vec);
 		add_v3_v3v3(&pt->x, vec, gso->dvec); /* restore */
 
@@ -1252,9 +1245,8 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 	gso->is_multiframe = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
 	gso->use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
 
-	/* init multiedit falloff curve data before doing anything,
-	 * so we won't have to do it again later
-	 */
+	/* Init multi-edit falloff curve data before doing anything,
+	 * so we won't have to do it again later. */
 	if (gso->is_multiframe) {
 		curvemapping_initialize(ts->gp_sculpt.cur_falloff);
 	}

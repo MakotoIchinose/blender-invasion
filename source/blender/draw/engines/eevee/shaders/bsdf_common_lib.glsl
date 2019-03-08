@@ -29,7 +29,7 @@ struct LightData {
 	vec4 spotdata_radius_shadow;  /* x : spot size, y : spot blend, z : radius, w: shadow id */
 	vec4 rightvec_sizex;          /* xyz: Normalized up vector, w: area size X or spot scale X */
 	vec4 upvec_sizey;             /* xyz: Normalized right vector, w: area size Y or spot scale Y */
-	vec4 forwardvec_type;         /* xyz: Normalized forward vector, w: Lamp Type */
+	vec4 forwardvec_type;         /* xyz: Normalized forward vector, w: Light Type */
 };
 
 /* convenience aliases */
@@ -244,8 +244,9 @@ float line_unit_sphere_intersect_dist(vec3 lineorigin, vec3 linedirection)
 
 	float dist = 1e15;
 	float determinant = b * b - a * c;
-	if (determinant >= 0)
+	if (determinant >= 0) {
 		dist = (sqrt(determinant) - b) / a;
+	}
 
 	return dist;
 }
@@ -740,16 +741,23 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 #    endif
 #  endif
 	}
+
+	/* When mixing SSR don't blend roughness.
+	 *
+	 * It makes no sense to mix them really, so we take either one of them and
+	 * tone down its specularity (ssr_data.xyz) while keeping its roughness (ssr_data.w).
+	 */
 	if (cl1.ssr_id == outputSsrId) {
-		cl.ssr_data = mix(cl1.ssr_data.xyzw, vec4(vec3(0.0), cl1.ssr_data.w), fac); /* do not blend roughness */
+		cl.ssr_data = mix(cl1.ssr_data.xyzw, vec4(vec3(0.0), cl1.ssr_data.w), fac);
 		cl.ssr_normal = cl1.ssr_normal;
 		cl.ssr_id = cl1.ssr_id;
 	}
 	else {
-		cl.ssr_data = mix(vec4(vec3(0.0), cl2.ssr_data.w), cl2.ssr_data.xyzw, fac); /* do not blend roughness */
+		cl.ssr_data = mix(vec4(vec3(0.0), cl2.ssr_data.w), cl2.ssr_data.xyzw, fac);
 		cl.ssr_normal = cl2.ssr_normal;
 		cl.ssr_id = cl2.ssr_id;
 	}
+
 	cl.opacity = mix(cl1.opacity, cl2.opacity, fac);
 	cl.radiance = mix(cl1.radiance * cl1.opacity, cl2.radiance * cl2.opacity, fac);
 	cl.radiance /= max(1e-8, cl.opacity);

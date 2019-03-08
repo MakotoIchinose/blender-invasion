@@ -136,7 +136,10 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         split = layout.split()
 
         col = split.column()
-        col.prop(md, "width")
+        if md.offset_type == 'PERCENT':
+            col.prop(md, "width_pct")
+        else:
+            col.prop(md, "width")
         col.prop(md, "segments")
         col.prop(md, "profile")
         col.prop(md, "material")
@@ -162,6 +165,11 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         layout.label(text="Set Face Strength Mode")
         layout.row().prop(md, "face_strength_mode", expand=True)
+
+        layout.label(text="Miter Patterns")
+        layout.row().prop(md, "miter_outer")
+        layout.row().prop(md, "miter_inner")
+        layout.row().prop(md, "spread")
 
     def BOOLEAN(self, layout, ob, md):
         split = layout.split()
@@ -754,7 +762,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.separator()
 
         if md.is_cached:
-            layout.operator("object.ocean_bake", text="Free Bake").free = True
+            layout.operator("object.ocean_bake", text="Delete Bake").free = True
         else:
             layout.operator("object.ocean_bake").free = False
 
@@ -1383,6 +1391,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col = row.column()
         col.label(text="Quad Method:")
         col.prop(md, "quad_method", text="")
+        col.prop(md, "keep_custom_normals")
         col = row.column()
         col.label(text="Ngon Method:")
         col.prop(md, "ngon_method", text="")

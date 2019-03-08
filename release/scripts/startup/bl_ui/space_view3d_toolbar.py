@@ -112,7 +112,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row.active = ob.data.use_mirror_x
         row.prop(mesh, "use_mirror_topology")
 
-        layout.prop(tool_settings, "edge_path_live_unwrap")
+        layout.prop(tool_settings, "use_edge_path_live_unwrap")
         layout.prop(tool_settings, "use_mesh_automerge")
 
         layout.prop(tool_settings, "double_threshold")
@@ -269,6 +269,14 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
 
             if not self.is_popover:
                 brush_basic_sculpt_settings(col, context, brush)
+
+            # topology_rake_factor
+            if (capabilities.has_topology_rake and
+                context.sculpt_object.use_dynamic_topology_sculpting
+            ):
+                col.separator()
+                row = col.row()
+                row.prop(brush, "topology_rake_factor", slider=True)
 
             # auto_smooth_factor and use_inverse_smooth_pressure
             if capabilities.has_auto_smooth:
@@ -511,6 +519,8 @@ class VIEW3D_PT_slots_projectpaint(View3DPanel, Panel):
                 layout.menu("VIEW3D_MT_tools_projectpaint_uvlayer", text=uv_text, translate=False)
             have_image = settings.canvas is not None
 
+            layout.prop(settings, "interpolation", text="")
+
         if settings.missing_uvs:
             layout.separator()
             split = layout.split()
@@ -604,7 +614,10 @@ class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
         sub = row.row(align=True)
         sub.prop(brush, "cursor_overlay_alpha", text="Curve Alpha")
         sub.prop(brush, "use_cursor_overlay_override", toggle=True, text="", icon='BRUSH_DATA')
-        row.prop(brush, "use_cursor_overlay", text="", toggle=True, icon='HIDE_OFF' if brush.use_cursor_overlay else 'HIDE_ON')
+        row.prop(
+            brush, "use_cursor_overlay", text="", toggle=True,
+            icon='HIDE_OFF' if brush.use_cursor_overlay else 'HIDE_ON',
+        )
 
         col.active = brush.brush_capabilities.has_overlay
 
@@ -615,7 +628,10 @@ class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
             sub.prop(brush, "texture_overlay_alpha", text="Texture Alpha")
             sub.prop(brush, "use_primary_overlay_override", toggle=True, text="", icon='BRUSH_DATA')
             if tex_slot.map_mode != 'STENCIL':
-                row.prop(brush, "use_primary_overlay", text="", toggle=True, icon='HIDE_OFF' if brush.use_primary_overlay else 'HIDE_ON')
+                row.prop(
+                    brush, "use_primary_overlay", text="", toggle=True,
+                    icon='HIDE_OFF' if brush.use_primary_overlay else 'HIDE_ON',
+                )
 
         if context.image_paint_object:
             row = col.row(align=True)
@@ -624,7 +640,10 @@ class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
             sub.prop(brush, "mask_overlay_alpha", text="Mask Texture Alpha")
             sub.prop(brush, "use_secondary_overlay_override", toggle=True, text="", icon='BRUSH_DATA')
             if tex_slot_mask.map_mode != 'STENCIL':
-                row.prop(brush, "use_secondary_overlay", text="", toggle=True, icon='HIDE_OFF' if brush.use_secondary_overlay else 'HIDE_ON')
+                row.prop(
+                    brush, "use_secondary_overlay", text="", toggle=True,
+                    icon='HIDE_OFF' if brush.use_secondary_overlay else 'HIDE_ON',
+                )
 
 
 # TODO, move to space_view3d.py
@@ -1466,10 +1485,7 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
         if brush is not None:
             gp_settings = brush.gpencil_settings
 
-            # XXX: Items in "sub" currently show up beside the brush selector in a separate column
-            if brush.gpencil_tool == 'ERASE':
-                sub.prop(gp_settings, "use_default_eraser", text="")
-            elif brush.gpencil_tool in {'DRAW', 'FILL'}:
+            if brush.gpencil_tool in {'DRAW', 'FILL'}:
                 layout.row(align=True).template_ID(gp_settings, "material")
 
             if not self.is_popover:
@@ -1488,7 +1504,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool != 'ERASE'
+        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL'}
 
     def draw_header_preset(self, context):
         VIEW3D_PT_gpencil_brush_presets.draw_panel_header(self.layout)
@@ -1583,6 +1599,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_settings(View3DPanel, Panel):
         col.prop(gp_settings, "pen_subdivision_steps")
         col.prop(gp_settings, "random_subdiv", text="Randomness", slider=True)
 
+        col = layout.column(align=True)
+        col.prop(gp_settings, "trim")
+
 
 class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
@@ -1628,7 +1647,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool != 'ERASE'
+        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL'}
 
     @staticmethod
     def draw(self, context):

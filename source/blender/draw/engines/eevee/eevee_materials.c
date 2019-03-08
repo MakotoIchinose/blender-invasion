@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_materials.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 
 #include "DRW_render.h"
@@ -34,7 +31,6 @@
 #include "BKE_particle.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
-#include "BKE_studiolight.h"
 
 #include "DNA_world_types.h"
 #include "DNA_modifier_types.h"
@@ -74,7 +70,7 @@ static struct {
 	float noise_offsets[3];
 } e_data = {NULL}; /* Engine data */
 
-extern char datatoc_lamps_lib_glsl[];
+extern char datatoc_lights_lib_glsl[];
 extern char datatoc_lightprobe_lib_glsl[];
 extern char datatoc_ambient_occlusion_lib_glsl[];
 extern char datatoc_prepass_frag_glsl[];
@@ -106,9 +102,6 @@ extern char datatoc_volumetric_frag_glsl[];
 extern char datatoc_volumetric_lib_glsl[];
 
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
-
-extern Material defmaterial;
-extern GlobalsUboStorage ts;
 
 /* *********** FUNCTIONS *********** */
 
@@ -512,7 +505,7 @@ static void EEVEE_update_viewvecs(float invproj[4][4], float winmat[4][4], float
 	    {-1.0f, -1.0f, -1.0f, 1.0f},
 	    { 1.0f, -1.0f, -1.0f, 1.0f},
 	    {-1.0f,  1.0f, -1.0f, 1.0f},
-	    {-1.0f, -1.0f,  1.0f, 1.0f}
+	    {-1.0f, -1.0f,  1.0f, 1.0f},
 	};
 
 	/* convert the view vectors to view space */
@@ -560,7 +553,7 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata, EEVEE_StorageList *stl, E
 		        datatoc_irradiance_lib_glsl,
 		        datatoc_lightprobe_lib_glsl,
 		        datatoc_ltc_lib_glsl,
-		        datatoc_lamps_lib_glsl,
+		        datatoc_lights_lib_glsl,
 		        /* Add one for each Closure */
 		        datatoc_lit_surface_frag_glsl,
 		        datatoc_lit_surface_frag_glsl,
@@ -583,7 +576,7 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata, EEVEE_StorageList *stl, E
 		        datatoc_irradiance_lib_glsl,
 		        datatoc_lightprobe_lib_glsl,
 		        datatoc_ltc_lib_glsl,
-		        datatoc_lamps_lib_glsl,
+		        datatoc_lights_lib_glsl,
 		        datatoc_volumetric_lib_glsl,
 		        datatoc_volumetric_frag_glsl);
 
@@ -782,8 +775,9 @@ struct GPUMaterial *EEVEE_material_mesh_depth_get(
 		options |= VAR_MAT_CLIP;
 	}
 
-	if (is_shadow)
+	if (is_shadow) {
 		options |= VAR_MAT_SHADOW;
+	}
 
 	GPUMaterial *mat = DRW_shader_find_from_material(ma, engine, options, true);
 	if (mat) {
@@ -961,7 +955,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		Scene *scene = draw_ctx->scene;
 		World *wo = scene->world;
 
-		float *col = ts.colorBackground;
+		const float *col = G_draw.block.colorBackground;
 
 		/* LookDev */
 		EEVEE_lookdev_cache_init(vedata, &grp, psl->background_pass, wo, NULL);
@@ -1123,7 +1117,7 @@ static void material_opaque(
 	Scene *scene = draw_ctx->scene;
 	EEVEE_StorageList *stl = ((EEVEE_Data *)vedata)->stl;
 	EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
-	EEVEE_LampsInfo *linfo = sldata->lamps;
+	EEVEE_LightsInfo *linfo = sldata->lights;
 	bool use_diffuse, use_glossy, use_refract;
 
 	float *color_p = &ma->r;
@@ -1162,14 +1156,14 @@ static void material_opaque(
 		        scene, ma, vedata, false, false, use_ssrefract,
 		        use_sss, use_translucency, linfo->shadow_method);
 
-		GPUMaterialStatus status_mat_surface = GPU_material_status(*gpumat);
+		eGPUMaterialStatus status_mat_surface = GPU_material_status(*gpumat);
 
 		/* Alpha CLipped : Discard pixel from depth pass, then
 		 * fail the depth test for shading. */
 		if (ELEM(ma->blend_method, MA_BM_CLIP, MA_BM_HASHED)) {
 			*gpumat_depth = EEVEE_material_mesh_depth_get(scene, ma, (ma->blend_method == MA_BM_HASHED), false);
 
-			GPUMaterialStatus status_mat_depth = GPU_material_status(*gpumat_depth);
+			eGPUMaterialStatus status_mat_depth = GPU_material_status(*gpumat_depth);
 			if (status_mat_depth != GPU_MAT_SUCCESS) {
 				/* Mixing both flags. If depth shader fails, show it to the user by not using
 				 * the surface shader. */
@@ -1324,7 +1318,7 @@ static void material_transparent(
 	Scene *scene = draw_ctx->scene;
 	EEVEE_StorageList *stl = ((EEVEE_Data *)vedata)->stl;
 	EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
-	EEVEE_LampsInfo *linfo = sldata->lamps;
+	EEVEE_LightsInfo *linfo = sldata->lights;
 
 	const bool use_ssrefract = (
 	        ((ma->blend_flag & MA_BL_SS_REFRACTION) != 0) &&
@@ -1483,8 +1477,9 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 			shgrp_depth_array[i] = NULL;
 			shgrp_depth_clip_array[i] = NULL;
 
-			if (ma == NULL)
+			if (ma == NULL) {
 				ma = &defmaterial;
+			}
 
 			switch (ma->blend_method) {
 				case MA_BM_SOLID:
@@ -1521,21 +1516,27 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 			char *auto_layer_names;
 			int *auto_layer_is_srgb;
 			int auto_layer_count;
-			struct GPUBatch **mat_geom = DRW_cache_object_surface_material_get(
-			        ob, gpumat_array, materials_len,
-			        &auto_layer_names,
-			        &auto_layer_is_srgb,
-			        &auto_layer_count);
-			if (mat_geom) {
+			struct GPUBatch **mat_geom = NULL;
+
+			if (!is_sculpt_mode_draw) {
+				mat_geom = DRW_cache_object_surface_material_get(
+				        ob, gpumat_array, materials_len,
+				        &auto_layer_names,
+				        &auto_layer_is_srgb,
+				        &auto_layer_count);
+			}
+
+			if (is_sculpt_mode_draw || mat_geom) {
 				for (int i = 0; i < materials_len; ++i) {
-					if (mat_geom[i] == NULL) {
+					if (!is_sculpt_mode_draw && mat_geom[i] == NULL) {
 						continue;
 					}
 					EEVEE_ObjectEngineData *oedata = NULL;
 					Material *ma = give_current_material(ob, i + 1);
 
-					if (ma == NULL)
+					if (ma == NULL) {
 						ma = &defmaterial;
+					}
 
 					/* Do not render surface if we are rendering a volume object
 					 * and do not have a surface closure. */
@@ -1547,7 +1548,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 
 					/* XXX TODO rewrite this to include the dupli objects.
 					 * This means we cannot exclude dupli objects from reflections!!! */
-					if ((ob->base_flag & BASE_FROMDUPLI) == 0) {
+					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						oedata = EEVEE_object_data_ensure(ob);
 						oedata->ob = ob;
 						oedata->test_data = &sldata->probes->vis_data;
@@ -1559,6 +1560,11 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 					/* Depth Prepass */
 					ADD_SHGROUP_CALL_SAFE(shgrp_depth_array[i], ob, ma, mat_geom[i], oedata);
 					ADD_SHGROUP_CALL_SAFE(shgrp_depth_clip_array[i], ob, ma, mat_geom[i], oedata);
+
+					/* TODO(fclem): Don't support shadows in sculpt mode. */
+					if (is_sculpt_mode_draw) {
+						break;
+					}
 
 					char *name = auto_layer_names;
 					for (int j = 0; j < auto_layer_count; ++j) {
@@ -1676,7 +1682,7 @@ void EEVEE_hair_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sldata, 
 					static float half = 0.5f;
 					static float error_col[3] = {1.0f, 0.0f, 1.0f};
 					static float compile_col[3] = {0.5f, 0.5f, 0.5f};
-					struct GPUMaterial *gpumat = EEVEE_material_hair_get(scene, ma, sldata->lamps->shadow_method);
+					struct GPUMaterial *gpumat = EEVEE_material_hair_get(scene, ma, sldata->lights->shadow_method);
 
 					switch (GPU_material_status(gpumat)) {
 						case GPU_MAT_SUCCESS:
@@ -1713,7 +1719,7 @@ void EEVEE_hair_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sldata, 
 					shgrp = EEVEE_default_shading_group_get(sldata, vedata,
 					                                        ob, psys, md,
 					                                        true, false, use_ssr,
-					                                        sldata->lamps->shadow_method);
+					                                        sldata->lights->shadow_method);
 					DRW_shgroup_uniform_vec3(shgrp, "basecol", color_p, 1);
 					DRW_shgroup_uniform_float(shgrp, "metallic", metal_p, 1);
 					DRW_shgroup_uniform_float(shgrp, "specular", spec_p, 1);
@@ -1740,7 +1746,7 @@ void EEVEE_materials_cache_finish(EEVEE_Data *vedata)
 	const View3D *v3d = draw_ctx->v3d;
 	if (LOOK_DEV_OVERLAY_ENABLED(v3d)) {
 		EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
-		EEVEE_LampsInfo *linfo = sldata->lamps;
+		EEVEE_LightsInfo *linfo = sldata->lights;
 		struct GPUBatch *sphere = DRW_cache_sphere_get();
 		static float mat1[4][4];
 		static float color[3] = {0.8f, 0.8f, 0.8f};

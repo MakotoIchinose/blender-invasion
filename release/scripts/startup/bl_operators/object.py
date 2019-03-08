@@ -133,7 +133,7 @@ class SelectCamera(Operator):
         scene = context.scene
         view_layer = context.view_layer
         view = context.space_data
-        if view.type == 'VIEW_3D' and not view.lock_camera_and_layers:
+        if view.type == 'VIEW_3D' and view.use_local_camera:
             camera = view.camera
         else:
             camera = scene.camera
@@ -873,7 +873,7 @@ class DupliOffsetFromCursor(Operator):
         scene = context.scene
         collection = context.collection
 
-        collection.instance_offset = scene.cursor_location
+        collection.instance_offset = scene.cursor.location
 
         return {'FINISHED'}
 
@@ -895,7 +895,7 @@ class LoadImageAsEmpty:
 
     @classmethod
     def poll(cls, context):
-        return context.mode == "OBJECT"
+        return context.mode == 'OBJECT'
 
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
@@ -904,13 +904,13 @@ class LoadImageAsEmpty:
     def execute(self, context):
         scene = context.scene
         space = context.space_data
-        cursor = scene.cursor_location
+        cursor = scene.cursor.location
 
         try:
             image = bpy.data.images.load(self.filepath, check_existing=True)
         except RuntimeError as ex:
-            self.report({"ERROR"}, str(ex))
-            return {"CANCELLED"}
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
 
         bpy.ops.object.empty_add(
             'INVOKE_REGION_WIN',
@@ -953,7 +953,8 @@ class LoadReferenceImage(LoadImageAsEmpty, Operator):
 
 
 class OBJECT_OT_assign_property_defaults(Operator):
-    """Assign the current values of custom properties as their defaults, for use as part of the rest pose state in NLA track mixing"""
+    """Assign the current values of custom properties as their defaults, """ \
+    """for use as part of the rest pose state in NLA track mixing"""
     bl_idname = "object.assign_property_defaults"
     bl_label = "Assign Custom Property Values as Default"
     bl_options = {'UNDO', 'REGISTER'}

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_widgets.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 #include <limits.h>
@@ -159,7 +153,7 @@ typedef struct uiWidgetType {
 static const float cornervec[WIDGET_CURVE_RESOLU][2] = {
 	{0.0, 0.0}, {0.195, 0.02}, {0.383, 0.067},
 	{0.55, 0.169}, {0.707, 0.293}, {0.831, 0.45},
-	{0.924, 0.617}, {0.98, 0.805}, {1.0, 1.0}
+	{0.924, 0.617}, {0.98, 0.805}, {1.0, 1.0},
 };
 
 
@@ -167,7 +161,7 @@ const float ui_pixel_jitter[UI_PIXEL_AA_JITTER][2] = {
 	{ 0.468813, -0.481430}, {-0.155755, -0.352820},
 	{ 0.219306, -0.238501}, {-0.393286, -0.110949},
 	{-0.024699,  0.013908}, { 0.343805,  0.147431},
-	{-0.272855,  0.269918}, { 0.095909,  0.388710}
+	{-0.272855,  0.269918}, { 0.095909,  0.388710},
 };
 #define WIDGET_AA_JITTER UI_PIXEL_AA_JITTER
 #define jit ui_pixel_jitter
@@ -177,36 +171,36 @@ const float ui_pixel_jitter[UI_PIXEL_AA_JITTER][2] = {
  * \{ */
 
 static const float g_shape_preset_number_arrow_vert[3][2] = {
-	{-0.352077, 0.532607}, {-0.352077, -0.549313}, {0.330000, -0.008353}
+	{-0.352077, 0.532607}, {-0.352077, -0.549313}, {0.330000, -0.008353},
 };
 static const uint g_shape_preset_number_arrow_face[1][3] = {
-	{0, 1, 2}
+	{0, 1, 2},
 };
 
 static const float g_shape_preset_scroll_circle_vert[16][2] = {
 	{0.382684, 0.923879}, {0.000001, 1.000000}, {-0.382683, 0.923880}, {-0.707107, 0.707107},
 	{-0.923879, 0.382684}, {-1.000000, 0.000000}, {-0.923880, -0.382684}, {-0.707107, -0.707107},
 	{-0.382683, -0.923880}, {0.000000, -1.000000}, {0.382684, -0.923880}, {0.707107, -0.707107},
-	{0.923880, -0.382684}, {1.000000, -0.000000}, {0.923880, 0.382683}, {0.707107, 0.707107}
+	{0.923880, -0.382684}, {1.000000, -0.000000}, {0.923880, 0.382683}, {0.707107, 0.707107},
 };
 static const uint g_shape_preset_scroll_circle_face[14][3] = {
 	{0, 1, 2}, {2, 0, 3}, {3, 0, 15}, {3, 15, 4}, {4, 15, 14}, {4, 14, 5}, {5, 14, 13}, {5, 13, 6},
-	{6, 13, 12}, {6, 12, 7}, {7, 12, 11}, {7, 11, 8}, {8, 11, 10}, {8, 10, 9}
+	{6, 13, 12}, {6, 12, 7}, {7, 12, 11}, {7, 11, 8}, {8, 11, 10}, {8, 10, 9},
 };
 
 static const float g_shape_preset_menu_arrow_vert[6][2] = {
 	{-0.33, 0.16}, {0.33, 0.16}, {0, 0.82},
-	{0, -0.82}, {-0.33, -0.16}, {0.33, -0.16}
+	{0, -0.82}, {-0.33, -0.16}, {0.33, -0.16},
 };
 static const uint g_shape_preset_menu_arrow_face[2][3] = {{2, 0, 1}, {3, 5, 4}};
 
 static const float g_shape_preset_checkmark_vert[6][2] = {
 	{-0.578579, 0.253369},  {-0.392773, 0.412794},  {-0.004241, -0.328551},
-	{-0.003001, 0.034320},  {1.055313, 0.864744},   {0.866408, 1.026895}
+	{-0.003001, 0.034320},  {1.055313, 0.864744},   {0.866408, 1.026895},
 };
 
 static const uint g_shape_preset_checkmark_face[4][3] = {
-	{3, 2, 4}, {3, 4, 5}, {1, 0, 3}, {0, 2, 3}
+	{3, 2, 4}, {3, 4, 5}, {1, 0, 3}, {0, 2, 3},
 };
 
 #define OY (-0.2 / 2)
@@ -368,7 +362,8 @@ GPUBatch *ui_batch_roundbox_widget_get(int tria)
 		set_roundbox_vertex_data(&vflag_step, last_data);
 		set_roundbox_vertex(&vflag_step, 0, 0, 0, false, false, EMBOSS);
 		/* Emboss */
-		bool rev = false; /* go back and forth : avoid degenerate triangle (but beware of backface cull) */
+		/* go back and forth : avoid degenerate triangle (but beware of backface cull) */
+		bool rev = false;
 		for (int j = 0; j < WIDGET_AA_JITTER; j++, rev = !rev) {
 			for (int c = (rev) ? 1 : 0; (rev) ? c >= 0 : c < 2; (rev) ? c-- : c++) {
 				int sta = (rev) ? WIDGET_CURVE_RESOLU - 1 : 0;
@@ -685,7 +680,8 @@ static void round_box__edges(uiWidgetBase *wt, int roundboxalign, const rcti *re
 	float maxxi = maxx - U.pixelsize;
 	float minyi = miny + U.pixelsize;
 	float maxyi = maxy - U.pixelsize;
-	float facxi = (maxxi != minxi) ? 1.0f / (maxxi - minxi) : 0.0f; /* for uv, can divide by zero */
+	/* for uv, can divide by zero */
+	float facxi = (maxxi != minxi) ? 1.0f / (maxxi - minxi) : 0.0f;
 	float facyi = (maxyi != minyi) ? 1.0f / (maxyi - minyi) : 0.0f;
 	int a, tot = 0, minsize;
 	const int hnum = (
@@ -1448,7 +1444,8 @@ float UI_text_clip_middle_ex(
 	float strwidth;
 
 	/* Add some epsilon to OK width, avoids 'ellipsing' text that nearly fits!
-	 * Better to have a small piece of the last char cut out, than two remaining chars replaced by an ellipsis... */
+	 * Better to have a small piece of the last char cut out,
+	 * than two remaining chars replaced by an ellipsis... */
 	okwidth += 1.0f + UI_DPI_FAC;
 
 	BLI_assert(str[0]);
@@ -1463,7 +1460,8 @@ float UI_text_clip_middle_ex(
 	strwidth = BLF_width(fstyle->uifont_id, str, max_len);
 
 	if ((okwidth > 0.0f) && (strwidth > okwidth)) {
-		/* utf8 two-dots leader '..' (shorter than ellipsis '...'), some compilers complain with real litteral string. */
+		/* utf8 two-dots leader '..' (shorter than ellipsis '...'),
+		 * some compilers complain with real litteral string. */
 		const char sep[] = {0xe2, 0x80, 0xA5, 0x0};
 		const int sep_len = sizeof(sep) - 1;
 		const float sep_strwidth = BLF_width(fstyle->uifont_id, sep, sep_len + 1);
@@ -1527,7 +1525,8 @@ float UI_text_clip_middle_ex(
 			else {
 				memmove(str + l_end + sep_len, str + r_offset, r_len);
 				memcpy(str + l_end, sep, sep_len);
-				final_lpart_len = (size_t)(l_end + sep_len + r_len - 1);  /* -1 to remove trailing '\0'! */
+				/* -1 to remove trailing '\0'! */
+				final_lpart_len = (size_t)(l_end + sep_len + r_len - 1);
 
 				while (BLF_width(fstyle->uifont_id, str, max_len) > okwidth) {
 					/* This will happen because a lot of string width processing is done in integer pixels,
@@ -1690,7 +1689,8 @@ static void ui_text_clip_right_label(const uiFontStyle *fstyle, uiBut *but, cons
 			const char *prev_utf8 = BLI_str_find_prev_char_utf8(but->drawstr, cp2);
 			int bytes = cp2 - prev_utf8;
 
-			/* shift the text after and including cp2 back by 1 char, +1 to include null terminator */
+			/* shift the text after and including cp2 back by 1 char,
+			 * +1 to include null terminator */
 			memmove(cp2 - bytes, cp2, drawstr_len + 1);
 			cp2 -= bytes;
 
@@ -2323,7 +2323,8 @@ static void widget_state(uiWidgetType *wt, int state, int drawflag)
 static void widget_state_numslider(uiWidgetType *wt, int state, int drawflag)
 {
 	uiWidgetStateColors *wcol_state = wt->wcol_state;
-	float blend = wcol_state->blend - 0.2f; /* XXX special tweak to make sure that bar will still be visible */
+	/* XXX special tweak to make sure that bar will still be visible */
+	float blend = wcol_state->blend - 0.2f;
 
 	/* call this for option button */
 	widget_state(wt, state, drawflag);
@@ -2756,7 +2757,9 @@ void ui_draw_gradient(const rcti *rect, const float hsv[3], const int type, cons
 	immBindBuiltinProgram(GPU_SHADER_2D_SMOOTH_COLOR);
 
 	immBegin(GPU_PRIM_TRIS, steps * 3 * 6);
-	for (dx = 0.0f; dx < 0.999f; dx += color_step) { /* 0.999 = prevent float inaccuracy for steps */
+
+	/* 0.999 = prevent float inaccuracy for steps */
+	for (dx = 0.0f; dx < 0.999f; dx += color_step) {
 		const float dx_next = dx + color_step;
 
 		/* previous color */
@@ -2981,7 +2984,7 @@ static void ui_draw_separator(const rcti *rect, const uiWidgetColors *wcol)
 		wcol->text[0],
 		wcol->text[1],
 		wcol->text[2],
-		30
+		30,
 	};
 
 	uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -3366,7 +3369,8 @@ static void widget_numslider(uiBut *but, uiWidgetColors *wcol, rcti *rect, int s
 	wtb.draw_inner = false;
 	widgetbase_draw(&wtb, wcol);
 
-	/* Add space at either side of the button so text aligns with numbuttons (which have arrow icons). */
+	/* Add space at either side of the button so text aligns with numbuttons
+	 * (which have arrow icons). */
 	if (!(state & UI_STATE_TEXT_INPUT)) {
 		rect->xmax -= toffs;
 		rect->xmin += toffs;
@@ -3763,7 +3767,8 @@ static void widget_tab(uiWidgetColors *wcol, rcti *rect, int state, int roundbox
 	const float rad = wcol->roundness * U.widget_unit;
 	const bool is_active = (state & UI_SELECT);
 
-/* Draw shaded outline - Disabled for now, seems incorrect and also looks nicer without it imho ;) */
+/* Draw shaded outline - Disabled for now,
+ * seems incorrect and also looks nicer without it imho ;) */
 //#define USE_TAB_SHADED_HIGHLIGHT
 
 	uiWidgetBase wtb;
@@ -4252,7 +4257,8 @@ void ui_draw_but(const bContext *C, ARegion *ar, uiStyle *style, uiBut *but, rct
 				break;
 
 			case UI_BTYPE_HSVCUBE:
-				if (ELEM(but->a1, UI_GRAD_V_ALT, UI_GRAD_L_ALT)) {  /* vertical V slider, uses new widget draw now */
+				if (ELEM(but->a1, UI_GRAD_V_ALT, UI_GRAD_L_ALT)) {
+					/* vertical V slider, uses new widget draw now */
 					ui_draw_but_HSV_v(but, rect);
 				}
 				else {  /* other HSV pickers... */
@@ -4745,7 +4751,8 @@ void ui_draw_menu_item(const uiFontStyle *fstyle, rcti *rect, const char *name, 
 		aspect = ICON_DEFAULT_HEIGHT / height;
 
 		GPU_blend(true);
-		UI_icon_draw_aspect(xs, ys, iconid, aspect, 1.0f, wt->wcol.text); /* XXX scale weak get from fstyle? */
+		/* XXX scale weak get from fstyle? */
+		UI_icon_draw_aspect(xs, ys, iconid, aspect, 1.0f, wt->wcol.text);
 		GPU_blend(false);
 	}
 }

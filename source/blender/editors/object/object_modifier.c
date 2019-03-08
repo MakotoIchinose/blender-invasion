@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/object/object_modifier.c
- *  \ingroup edobj
+/** \file
+ * \ingroup edobj
  */
 
 
@@ -102,7 +96,7 @@ static void modifier_skin_customdata_delete(struct Object *ob);
 static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
 	if (ob->type == OB_MESH) {
-		Mesh *me_eval = mesh_create_eval_final_view(depsgraph, scene, ob, 0);
+		Mesh *me_eval = mesh_create_eval_final_view(depsgraph, scene, ob, &CD_MASK_BAREMESH);
 		BKE_id_free(NULL, me_eval);
 	}
 	else if (ob->type == OB_LATTICE) {
@@ -112,7 +106,7 @@ static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Scene *s
 		BKE_displist_make_mball(depsgraph, scene, ob);
 	}
 	else if (ELEM(ob->type, OB_CURVE, OB_SURF, OB_FONT)) {
-		BKE_displist_make_curveTypes(depsgraph, scene, ob, false, false);
+		BKE_displist_make_curveTypes(depsgraph, scene, ob, false, false, NULL);
 	}
 }
 
@@ -239,7 +233,7 @@ bool ED_object_iter_other(
 		Object *ob;
 		int totfound = include_orig ? 0 : 1;
 
-		for (ob = bmain->object.first; ob && totfound < users;
+		for (ob = bmain->objects.first; ob && totfound < users;
 		     ob = ob->id.next)
 		{
 			if (((ob != orig_ob) || include_orig) &&
@@ -267,8 +261,8 @@ static bool object_has_modifier_cb(Object *ob, void *data)
 }
 
 /* Use with ED_object_iter_other(). Sets the total number of levels
-* for any multires modifiers on the object to the int pointed to by
-* callback_data. */
+ * for any multires modifiers on the object to the int pointed to by
+ * callback_data. */
 bool ED_object_multires_update_totlevels_cb(Object *ob, void *totlevel_v)
 {
 	ModifierData *md;
@@ -643,7 +637,7 @@ static int modifier_apply_obdata(ReportList *reports, Depsgraph *depsgraph, Scen
 				return 0;
 			}
 
-			BKE_mesh_nomain_to_mesh(mesh_applied, me, ob, CD_MASK_MESH, true);
+			BKE_mesh_nomain_to_mesh(mesh_applied, me, ob, &CD_MASK_MESH, true);
 
 			if (md->type == eModifierType_Multires)
 				multires_customdata_delete(me);
@@ -1068,7 +1062,7 @@ static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
 static const EnumPropertyItem modifier_apply_as_items[] = {
 	{MODIFIER_APPLY_DATA, "DATA", 0, "Object Data", "Apply modifier to the object's data"},
 	{MODIFIER_APPLY_SHAPE, "SHAPE", 0, "New Shape", "Apply deform-only modifier to a new shape on this object"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 void OBJECT_OT_modifier_apply(wmOperatorType *ot)
@@ -1359,7 +1353,7 @@ static int multires_external_save_exec(bContext *C, wmOperator *op)
 		BLI_path_rel(path, BKE_main_blendfile_path(bmain));
 
 	CustomData_external_add(&me->ldata, &me->id, CD_MDISPS, me->totloop, path);
-	CustomData_external_write(&me->ldata, &me->id, CD_MASK_MESH, me->totloop, 0);
+	CustomData_external_write(&me->ldata, &me->id, CD_MASK_MESH.lmask, me->totloop, 0);
 
 	return OPERATOR_FINISHED;
 }
@@ -1492,7 +1486,7 @@ void OBJECT_OT_multires_base_apply(wmOperatorType *ot)
 static void modifier_skin_customdata_delete(Object *ob)
 {
 	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
+	BMEditMesh *em = me->edit_mesh;
 
 	if (em)
 		BM_data_layer_free(em->bm, &em->bm->vdata, CD_MVERT_SKIN);
@@ -1628,7 +1622,7 @@ void OBJECT_OT_skin_loose_mark_clear(wmOperatorType *ot)
 	static const EnumPropertyItem action_items[] = {
 		{SKIN_LOOSE_MARK, "MARK", 0, "Mark", "Mark selected vertices as loose"},
 		{SKIN_LOOSE_CLEAR, "CLEAR", 0, "Clear", "Set selected vertices as not loose"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	ot->name = "Skin Mark/Clear Loose";
@@ -1754,7 +1748,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
 	Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
 	Object *ob_eval = DEG_get_evaluated_object(depsgraph, skin_ob);
 
-	me_eval_deform = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, CD_MASK_BAREMESH);
+	me_eval_deform = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 	mvert = me_eval_deform->mvert;
 
 	/* add vertex weights to original mesh */
@@ -1916,7 +1910,8 @@ static int correctivesmooth_bind_exec(bContext *C, wmOperator *op)
 		/* signal to modifier to recalculate */
 		csmd->bind_coords_num = (unsigned int)-1;
 
-		/* Force modifier to run, it will call binding routine (this has to happen outside of depsgraph evaluation). */
+		/* Force modifier to run, it will call binding routine
+		 * (this has to happen outside of depsgraph evaluation). */
 		const int mode = csmd->modifier.mode;
 		csmd->modifier.mode |= eModifierMode_Realtime;
 		object_force_modifier_update_for_bind(depsgraph, scene, ob);
@@ -2189,23 +2184,8 @@ static int ocean_bake_exec(bContext *C, wmOperator *op)
 
 	/* precalculate time variable before baking */
 	for (f = omd->bakestart; f <= omd->bakeend; f++) {
-		/* from physics_fluid.c:
-		 *
-		 * XXX: This can't be used due to an anim sys optimization that ignores recalc object animation,
-		 * leaving it for the depgraph (this ignores object animation such as modifier properties though... :/ )
-		 * --> BKE_animsys_evaluate_all_animation(bmain, eval_time);
-		 * This doesn't work with drivers:
-		 * --> BKE_animsys_evaluate_animdata(&fsDomain->id, fsDomain->adt, eval_time, ADT_RECALC_ALL);
-		 */
-
-		/* Modifying the global scene isn't nice, but we can do it in
-		 * this part of the process before a threaded job is created */
-
-		//scene->r.cfra = f;
-		//ED_update_for_newframe(bmain, scene);
-
-		/* ok, this doesn't work with drivers, but is way faster.
-		 * let's use this for now and hope nobody wants to drive the time value... */
+		/* For now only simple animation of time value is supported, nothing else.
+		 * No drivers or other modifier parameters. */
 		BKE_animsys_evaluate_animdata(CTX_data_depsgraph(C), scene, (ID *)ob, ob->adt, f, ADT_RECALC_ANIM);
 
 		och->time[i] = omd->time;
@@ -2303,7 +2283,8 @@ static int laplaciandeform_bind_exec(bContext *C, wmOperator *op)
 		lmd->flag |= MOD_LAPLACIANDEFORM_BIND;
 	}
 
-	/* Force modifier to run, it will call binding routine (this has to happen outside of depsgraph evaluation). */
+	/* Force modifier to run, it will call binding routine
+	 * (this has to happen outside of depsgraph evaluation). */
 	const int mode = lmd->modifier.mode;
 	lmd->modifier.mode |= eModifierMode_Realtime;
 	object_force_modifier_update_for_bind(depsgraph, scene, ob);
@@ -2365,7 +2346,8 @@ static int surfacedeform_bind_exec(bContext *C, wmOperator *op)
 		smd->flags |= MOD_SDEF_BIND;
 	}
 
-	/* Force modifier to run, it will call binding routine (this has to happen outside of depsgraph evaluation). */
+	/* Force modifier to run, it will call binding routine
+	 * (this has to happen outside of depsgraph evaluation). */
 	const int mode = smd->modifier.mode;
 	smd->modifier.mode |= eModifierMode_Realtime;
 	object_force_modifier_update_for_bind(depsgraph, scene, ob);

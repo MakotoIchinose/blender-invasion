@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_view3d/view3d_snap.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 
@@ -317,8 +309,12 @@ static int snap_selected_to_location(bContext *C, const float snap_target_global
 	}
 	else if (obact && (obact->mode & OB_MODE_POSE)) {
 		struct KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_LOCATION_ID);
-		CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects)
-		{
+		ViewLayer *view_layer = CTX_data_view_layer(C);
+		uint objects_len = 0;
+		Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, CTX_wm_view3d(C),
+		                                                                         &objects_len, OB_MODE_POSE);
+		for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+			Object *ob = objects[ob_index];
 			bPoseChannel *pchan;
 			bArmature *arm = ob->data;
 			float snap_target_local[3];
@@ -382,7 +378,7 @@ static int snap_selected_to_location(bContext *C, const float snap_target_global
 
 			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		}
-		CTX_DATA_END;
+		MEM_freeN(objects);
 	}
 	else {
 		struct KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_LOCATION_ID);
@@ -395,7 +391,7 @@ static int snap_selected_to_location(bContext *C, const float snap_target_global
 		CTX_data_selected_editable_objects(C, &ctx_data_list);
 
 		/* reset flags */
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 			ob->flag &= ~OB_DONE;
 		}
 
@@ -551,7 +547,10 @@ void VIEW3D_OT_snap_cursor_to_grid(wmOperatorType *ot)
 
 /* **************************************************** */
 
-/** Returns the center position of a tracking marker visible on the viewport (useful to snap to). **/
+/**
+ * Returns the center position of a tracking marker visible on the viewport
+ * (useful to snap to).
+ */
 static void bundle_midpoint(Scene *scene, Object *ob, float r_vec[3])
 {
 	MovieClip *clip = BKE_object_movieclip_get(scene, ob, false);
@@ -830,7 +829,10 @@ void VIEW3D_OT_snap_cursor_to_center(wmOperatorType *ot)
 
 /* **************************************************** */
 
-/** Calculates the bounding box corners (min and max) for \a obedit. The returned values are in global space. **/
+/**
+ * Calculates the bounding box corners (min and max) for \a obedit.
+ * The returned values are in global space.
+ */
 bool ED_view3d_minmax_verts(Object *obedit, float r_min[3], float r_max[3])
 {
 	TransVertStore tvs = {NULL};

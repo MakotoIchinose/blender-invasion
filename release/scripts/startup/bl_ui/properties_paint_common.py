@@ -113,7 +113,7 @@ def brush_texpaint_common(panel, context, layout, brush, settings, projpaint=Fal
 
     col = layout.column()
 
-    if brush.image_tool in {'DRAW', 'FILL'}:
+    if capabilities.has_color:
         if brush.blend not in {'ERASE_ALPHA', 'ADD_ALPHA'}:
             if not brush.use_gradient:
                 panel.prop_unified_color_picker(col, context, brush, "color", value_slider=True)
@@ -302,8 +302,11 @@ def brush_mask_texture_settings(layout, brush):
 # Share between topbar and brush panel.
 
 def brush_basic_wpaint_settings(layout, context, brush, *, compact=False):
-    row = layout.row(align=True)
-    UnifiedPaintPanel.prop_unified_weight(row, context, brush, "weight", slider=True, text="Weight")
+    capabilities = brush.weight_paint_capabilities
+
+    if capabilities.has_weight:
+        row = layout.row(align=True)
+        UnifiedPaintPanel.prop_unified_weight(row, context, brush, "weight", slider=True, text="Weight")
 
     row = layout.row(align=True)
     UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True, text="Radius")
@@ -318,6 +321,8 @@ def brush_basic_wpaint_settings(layout, context, brush, *, compact=False):
 
 
 def brush_basic_vpaint_settings(layout, context, brush, *, compact=False):
+    capabilities = brush.vertex_paint_capabilities
+
     row = layout.row(align=True)
     UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True, text="Radius")
     UnifiedPaintPanel.prop_unified_size(row, context, brush, "use_pressure_size")
@@ -326,8 +331,10 @@ def brush_basic_vpaint_settings(layout, context, brush, *, compact=False):
     UnifiedPaintPanel.prop_unified_strength(row, context, brush, "strength", text="Strength")
     UnifiedPaintPanel.prop_unified_strength(row, context, brush, "use_pressure_strength")
 
-    layout.separator()
-    layout.prop(brush, "blend", text="" if compact else "Blend")
+
+    if capabilities.has_color:
+        layout.separator()
+        layout.prop(brush, "blend", text="" if compact else "Blend")
 
 
 def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
@@ -346,7 +353,7 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
     UnifiedPaintPanel.prop_unified_strength(row, context, brush, "strength", text="Strength")
     UnifiedPaintPanel.prop_unified_strength(row, context, brush, "use_pressure_strength")
 
-    if brush.image_tool in {'DRAW', 'FILL'}:
+    if capabilities.has_color:
         layout.separator()
         layout.prop(brush, "blend", text="" if compact else "Blend")
 
@@ -405,20 +412,22 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
             row = layout.row(align=True)
             row.prop(gp_settings, "eraser_thickness_factor")
     elif brush.gpencil_tool == 'FILL':
-        col = layout.column(align=True)
-        col.prop(gp_settings, "fill_leak", text="Leak Size")
-        col.separator()
-        col.prop(brush, "size", text="Thickness")
-        col.prop(gp_settings, "fill_simplify_level", text="Simplify")
+        row = layout.column(align=True)
+        row.prop(gp_settings, "fill_leak", text="Leak Size")
+        row.separator()
+        row = layout.column(align=True)
+        row.prop(brush, "size", text="Thickness")
+        row = layout.column(align=True)
+        row.prop(gp_settings, "fill_simplify_level", text="Simplify")
 
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_draw_mode", text="Boundary Draw Mode")
         row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
 
-        col = layout.column(align=True)
-        col.enabled = gp_settings.fill_draw_mode != 'STROKE'
-        col.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-        sub = col.row(align=True)
+        row = layout.column(align=True)
+        row.enabled = gp_settings.fill_draw_mode != 'STROKE'
+        row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
+        sub = layout.row(align=True)
         sub.enabled = not gp_settings.show_fill
         sub.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':

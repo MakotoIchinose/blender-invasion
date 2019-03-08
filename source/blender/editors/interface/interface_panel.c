@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,15 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2003-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_panel.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 
-/* a full doc with API notes can be found in bf-blender/trunk/blender/doc/guides/interface_API.txt */
+/* a full doc with API notes can be found in
+ * bf-blender/trunk/blender/doc/guides/interface_API.txt */
 
 #include <math.h>
 #include <stdlib.h>
@@ -130,7 +125,7 @@ static void panel_title_color_get(bool show_background, uchar color[4])
 /*********************** space specific code ************************/
 /* temporary code to remove all sbuts stuff from panel code         */
 
-/* SpaceButs.align */
+/* SpaceProperties.align */
 typedef enum eSpaceButtons_Align {
 	BUT_HORIZONTAL = 0,
 	BUT_VERTICAL = 1,
@@ -139,7 +134,7 @@ typedef enum eSpaceButtons_Align {
 
 static int panel_aligned(ScrArea *sa, ARegion *ar)
 {
-	if (sa->spacetype == SPACE_BUTS && ar->regiontype == RGN_TYPE_WINDOW)
+	if (sa->spacetype == SPACE_PROPERTIES && ar->regiontype == RGN_TYPE_WINDOW)
 		return BUT_VERTICAL;
 	else if (sa->spacetype == SPACE_USERPREF && ar->regiontype == RGN_TYPE_WINDOW)
 		return BUT_VERTICAL;
@@ -195,8 +190,8 @@ static bool panels_need_realign(ScrArea *sa, ARegion *ar, Panel **pa_animate)
 {
 	*pa_animate = NULL;
 
-	if (sa->spacetype == SPACE_BUTS && ar->regiontype == RGN_TYPE_WINDOW) {
-		SpaceButs *sbuts = sa->spacedata.first;
+	if (sa->spacetype == SPACE_PROPERTIES && ar->regiontype == RGN_TYPE_WINDOW) {
+		SpaceProperties *sbuts = sa->spacedata.first;
 
 		if (sbuts->mainbo != sbuts->mainb) {
 			return true;
@@ -621,14 +616,13 @@ static void ui_draw_panel_dragwidget(uint pos, uint col, const rctf *rect)
 void UI_panel_label_offset(uiBlock *block, int *x, int *y)
 {
 	Panel *panel = block->panel;
-	uiStyle *style = UI_style_get_dpi();
 	const bool is_subpanel = (panel->type && panel->type->parent);
 
-	*x = UI_UNIT_X * 1.1f;
-	*y = (UI_UNIT_Y * 1.1f) + style->panelspace;
+	*x = UI_UNIT_X * 1.0f;
+	*y = UI_UNIT_Y * 1.5f;
 
 	if (is_subpanel) {
-		*x += 5.0f / block->aspect;
+		*x += (0.7f * UI_UNIT_X);
 	}
 }
 
@@ -646,9 +640,9 @@ static void ui_draw_aligned_panel_header(
 
 	/* + 0.001f to avoid flirting with float inaccuracy */
 	if (panel->control & UI_PNL_CLOSE)
-		pnl_icons = (panel->labelofs + 2 * PNL_ICON + 5) / block->aspect + 0.001f;
+		pnl_icons = (panel->labelofs + (2.0f * PNL_ICON)) / block->aspect + 0.001f;
 	else
-		pnl_icons = (panel->labelofs + PNL_ICON + 5) / block->aspect + 0.001f;
+		pnl_icons = (panel->labelofs + (1.1f * PNL_ICON)) / block->aspect + 0.001f;
 
 	/* draw text label */
 	panel_title_color_get(show_background, col_title);
@@ -657,7 +651,7 @@ static void ui_draw_aligned_panel_header(
 	hrect = *rect;
 	if (dir == 'h') {
 		hrect.xmin = rect->xmin + pnl_icons;
-		hrect.ymin += 2.0f / block->aspect;
+		hrect.ymin -= 2.0f / block->aspect;
 		UI_fontstyle_draw(
 		        fontstyle, &hrect, activename, col_title,
 		        &(struct uiFontStyleDraw_Params) { .align = UI_STYLE_TEXT_LEFT, });
@@ -700,7 +694,7 @@ void ui_draw_aligned_panel(
 
 	rcti titlerect = headrect;
 	if (is_subpanel) {
-		titlerect.xmin += 5.0f / block->aspect;
+		titlerect.xmin += (0.7f * UI_UNIT_X);
 	}
 
 	uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -763,7 +757,7 @@ void ui_draw_aligned_panel(
 			col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
 			/* itemrect smaller */
-			itemrect.xmax = headrect.xmax - 5.0f / block->aspect;
+			itemrect.xmax = headrect.xmax - (0.2f * UI_UNIT_X);
 			itemrect.xmin = itemrect.xmax - BLI_rcti_size_y(&headrect);
 			itemrect.ymin = headrect.ymin;
 			itemrect.ymax = headrect.ymax;
@@ -835,7 +829,7 @@ void ui_draw_aligned_panel(
 	/* draw collapse icon */
 
 	/* itemrect smaller */
-	itemrect.xmin = titlerect.xmin + 3.0f / block->aspect;
+	itemrect.xmin = titlerect.xmin;
 	itemrect.xmax = itemrect.xmin + BLI_rcti_size_y(&titlerect);
 	itemrect.ymin = titlerect.ymin;
 	itemrect.ymax = titlerect.ymax;
@@ -1873,8 +1867,10 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
 	const int px_x_sign = is_left ? px : -px;
 	const int category_tabs_width = round_fl_to_int(UI_PANEL_CATEGORY_MARGIN_WIDTH * zoom);
 	const float dpi_fac = UI_DPI_FAC;
-	const int tab_v_pad_text = round_fl_to_int((2 + ((px * 3) * dpi_fac)) * zoom);  /* padding of tabs around text */
-	const int tab_v_pad = round_fl_to_int((4 + (2 * px * dpi_fac)) * zoom);  /* padding between tabs */
+	/* padding of tabs around text */
+	const int tab_v_pad_text = round_fl_to_int((2 + ((px * 3) * dpi_fac)) * zoom);
+	/* padding between tabs */
+	const int tab_v_pad = round_fl_to_int((4 + (2 * px * dpi_fac)) * zoom);
 	const float tab_curve_radius = ((px * 3) * dpi_fac) * zoom;
 	/* We flip the tab drawing, so always use these flags. */
 	const int roundboxtype = UI_CNR_TOP_LEFT | UI_CNR_BOTTOM_LEFT;
@@ -2154,7 +2150,8 @@ static int ui_handle_panel_category_cycling(const wmEvent *event, ARegion *ar, c
 					const bool backwards = event->shift;
 					pc_dyn = backwards ? pc_dyn->prev : pc_dyn->next;
 					if (!pc_dyn) {
-						/* proper cyclic behavior, back to first/last category (only used for ctrl+tab) */
+						/* proper cyclic behavior,
+						 * back to first/last category (only used for ctrl+tab) */
 						pc_dyn = backwards ? ar->panels_category.last : ar->panels_category.first;
 					}
 				}
@@ -2226,10 +2223,13 @@ int ui_handler_panel_region(bContext *C, const wmEvent *event, ARegion *ar, cons
 		/* checks for mouse position inside */
 		pa = block->panel;
 
-		if (!pa || pa->paneltab != NULL)
+		if (!pa || pa->paneltab != NULL) {
 			continue;
-		if (pa->type && pa->type->flag & PNL_NO_HEADER)  /* XXX - accessed freed panels when scripts reload, need to fix. */
+		}
+		/* XXX - accessed freed panels when scripts reload, need to fix. */
+		if (pa->type && pa->type->flag & PNL_NO_HEADER) {
 			continue;
+		}
 
 		mouse_state = ui_panel_mouse_state_get(block, pa, mx, my);
 
@@ -2314,7 +2314,7 @@ int ui_handler_panel_region(bContext *C, const wmEvent *event, ARegion *ar, cons
 						ScrArea *sa = CTX_wm_area(C);
 						SpaceLink *sl = sa->spacedata.first;
 
-						if (sa->spacetype != SPACE_BUTS) {
+						if (sa->spacetype != SPACE_PROPERTIES) {
 							if (!(pa->control & UI_PNL_SCALE)) {
 								if (event->type == PADPLUSKEY) sl->blockscale += 0.1;
 								else sl->blockscale -= 0.1;

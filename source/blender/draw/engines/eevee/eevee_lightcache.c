@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_lightcache.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Eevee's indirect lighting cache.
  */
@@ -28,7 +25,6 @@
 #include "DRW_render.h"
 
 #include "BKE_global.h"
-#include "BKE_blender.h"
 
 #include "BLI_threads.h"
 
@@ -71,7 +67,8 @@
 #  define IRRADIANCE_FORMAT GPU_RGBA8
 #endif
 
-#define IRRADIANCE_MAX_POOL_LAYER 256 /* OpenGL 3.3 core requirement, can be extended but it's already very big */
+/* OpenGL 3.3 core requirement, can be extended but it's already very big */
+#define IRRADIANCE_MAX_POOL_LAYER 256
 #define IRRADIANCE_MAX_POOL_SIZE 1024
 #define MAX_IRRADIANCE_SAMPLES \
         (IRRADIANCE_MAX_POOL_SIZE / IRRADIANCE_SAMPLE_SIZE_X) * \
@@ -147,7 +144,6 @@ typedef struct EEVEE_LightBake {
 } EEVEE_LightBake;
 
 /* -------------------------------------------------------------------- */
-
 /** \name Light Cache
  * \{ */
 
@@ -367,7 +363,6 @@ void EEVEE_lightcache_free(LightCache *lcache)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Light Bake Context
  * \{ */
 
@@ -400,7 +395,6 @@ static void eevee_lightbake_context_disable(EEVEE_LightBake *lbake)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Light Bake Job
  * \{ */
 
@@ -510,8 +504,9 @@ wmJob *EEVEE_lightbake_job_create(
 	EEVEE_LightBake *lbake = NULL;
 
 	/* only one render job at a time */
-	if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER))
+	if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER)) {
 		return NULL;
+	}
 
 	wmJob *wm_job = WM_jobs_get(wm, win, scene, "Bake Lighting",
 	                            WM_JOB_EXCL_RENDER | WM_JOB_PRIORITY | WM_JOB_PROGRESS, WM_JOB_TYPE_LIGHT_BAKE);
@@ -691,7 +686,7 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
 	txl->color = lbake->rt_color;
 	int viewport_size[2] = {
 		GPU_texture_width(txl->color),
-		GPU_texture_height(txl->color)
+		GPU_texture_height(txl->color),
 	};
 	DRW_render_viewport_size_set(viewport_size);
 
@@ -1187,7 +1182,7 @@ void EEVEE_lightbake_update_world_quick(EEVEE_ViewLayerData *sldata, EEVEE_Data 
 	float filter_quality = scene->eevee.gi_filter_quality;
 
 	EEVEE_LightBake lbake = {
-		.resource_only = true
+		.resource_only = true,
 	};
 
 	/* Create resources. */

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation 2002-2008, full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 
@@ -164,7 +158,18 @@ void ui_block_to_window_rctf(const ARegion *ar, uiBlock *block, rctf *rct_dst, c
 	ui_block_to_window_fl(ar, block, &rct_dst->xmax, &rct_dst->ymax);
 }
 
-void ui_window_to_block_fl(const ARegion *ar, uiBlock *block, float *x, float *y)   /* for mouse cursor */
+float ui_block_to_window_scale(const ARegion *ar, uiBlock *block)
+{
+	/* We could have function for this to avoid dummy arg. */
+	float dummy_x;
+	float min_y = 0, max_y = 1;
+	ui_block_to_window_fl(ar, block, &dummy_x, &min_y);
+	ui_block_to_window_fl(ar, block, &dummy_x, &max_y);
+	return max_y - min_y;
+}
+
+/* for mouse cursor */
+void ui_window_to_block_fl(const ARegion *ar, uiBlock *block, float *x, float *y)
 {
 	float a, b, c, d, e, f, px, py;
 	int sx, sy, getsizex, getsizey;
@@ -436,7 +441,7 @@ static void ui_block_bounds_calc_centered_pie(uiBlock *block)
 {
 	const int xy[2] = {
 	    block->pie_data.pie_center_spawned[0],
-	    block->pie_data.pie_center_spawned[1]
+	    block->pie_data.pie_center_spawned[1],
 	};
 
 	UI_block_translate(block, xy[0], xy[1]);
@@ -505,7 +510,8 @@ static void ui_block_bounds_calc_popup(
 	ui_block_bounds_calc(block);
 
 	/* If given, adjust input coordinates such that they would generate real final popup position.
-	 * Needed to handle correctly floating panels once they have been dragged around, see T52999. */
+	 * Needed to handle correctly floating panels once they have been dragged around,
+	 * see T52999. */
 	if (r_xy) {
 		r_xy[0] = xy[0] + block->rect.xmin - raw_x;
 		r_xy[1] = xy[1] + block->rect.ymin - raw_y;
@@ -1071,17 +1077,17 @@ static bool ui_but_event_property_operator_string(
 		"WM_OT_context_cycle_enum",
 		"WM_OT_context_cycle_array",
 		"WM_OT_context_menu_enum",
-		NULL
+		NULL,
 	};
 
 	const char *ctx_enum_opnames[] = {
 		"WM_OT_context_set_enum",
-		NULL
+		NULL,
 	};
 
 	const char *ctx_enum_opnames_for_Area_ui_type[] = {
 		"SCREEN_OT_space_type_set_or_cycle",
-		NULL
+		NULL,
 	};
 
 	const char **opnames = ctx_toggle_opnames;
@@ -1116,7 +1122,8 @@ static bool ui_but_event_property_operator_string(
 	/* Don't use the button again. */
 	but = NULL;
 
-	/* this version is only for finding hotkeys for properties (which get set via context using operators) */
+	/* this version is only for finding hotkeys for properties
+	 * (which get set via context using operators) */
 	if (prop) {
 		/* to avoid massive slowdowns on property panels, for now, we only check the
 		 * hotkeys for Editor / Scene settings...
@@ -1327,7 +1334,8 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
 					continue;
 				}
 				else if (((block->flag & UI_BLOCK_POPOVER) == 0) && UI_but_is_tool(but)) {
-					/* For non-popovers, shown in shortcut only (has special shortcut handling code). */
+					/* For non-popovers, shown in shortcut only
+					 * (has special shortcut handling code). */
 					continue;
 				}
 			}
@@ -2090,7 +2098,8 @@ void ui_but_value_set(uiBut *but, double value)
 				case PROP_ENUM:
 					if (RNA_property_flag(prop) & PROP_ENUM_FLAG) {
 						int ivalue = (int)value;
-						ivalue ^= RNA_property_enum_get(&but->rnapoin, prop); /* toggle for enum/flag buttons */
+						/* toggle for enum/flag buttons */
+						ivalue ^= RNA_property_enum_get(&but->rnapoin, prop);
 						RNA_property_enum_set(&but->rnapoin, prop, ivalue);
 					}
 					else {
@@ -2294,7 +2303,8 @@ static float ui_get_but_step_unit(uiBut *but, float step_default)
 {
 	int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
 	const double step_orig = step_default * UI_PRECISION_FLOAT_SCALE;
-	/* Scaling up 'step_origg ' here is a bit arbitrary, its just giving better scales from user POV */
+	/* Scaling up 'step_origg ' here is a bit arbitrary,
+	 * its just giving better scales from user POV */
 	const double scale_step = ui_get_but_scale_unit(but, step_orig * 10);
 	const double step = bUnit_ClosestScalar(scale_step, but->block->unit->system, unit_type);
 
@@ -2514,7 +2524,8 @@ bool ui_but_string_set_eval_num(bContext *C, uiBut *but, const char *str, double
 		bool is_unit_but = (ui_but_is_float(but) && ui_but_is_unit(but));
 		/* only enable verbose if we won't run again with units */
 		if (BPY_execute_string_as_number(C, NULL, str, is_unit_but == false, r_value)) {
-			/* if the value parsed ok without unit conversion this button may still need a unit multiplier */
+			/* if the value parsed ok without unit conversion
+			 * this button may still need a unit multiplier */
 			if (is_unit_but) {
 				char str_new[128];
 
@@ -2643,7 +2654,7 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 	}
 	else if (but->type == UI_BTYPE_TEXT) {
 		/* string */
-		if (!but->poin || (str[0] == '\0')) {
+		if (!but->poin) {
 			str = "";
 		}
 		else if (ui_but_is_utf8(but)) {
@@ -3045,6 +3056,61 @@ void UI_block_theme_style_set(uiBlock *block, char theme_style)
 	block->theme_style = theme_style;
 }
 
+static void ui_but_build_drawstr_float(uiBut *but, double value)
+{
+	size_t slen = 0;
+	STR_CONCAT(but->drawstr, slen, but->str);
+
+	PropertySubType subtype = PROP_NONE;
+	if (but->rnaprop) {
+		subtype = RNA_property_subtype(but->rnaprop);
+	}
+
+	if (value == (double)FLT_MAX) {
+		STR_CONCAT(but->drawstr, slen, "inf");
+	}
+	else if (value == (double)-FLT_MIN) {
+		STR_CONCAT(but->drawstr, slen, "-inf");
+	}
+	else if (subtype == PROP_PERCENTAGE) {
+		int prec = ui_but_calc_float_precision(but, value);
+		STR_CONCATF(but->drawstr, slen, "%.*f %%", prec, value);
+	}
+	else if (subtype == PROP_PIXEL) {
+		int prec = ui_but_calc_float_precision(but, value);
+		STR_CONCATF(but->drawstr, slen, "%.*f px", prec, value);
+	}
+	else if (ui_but_is_unit(but)) {
+		char new_str[sizeof(but->drawstr)];
+		ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
+		STR_CONCAT(but->drawstr, slen, new_str);
+	}
+	else {
+		int prec = ui_but_calc_float_precision(but, value);
+		STR_CONCATF(but->drawstr, slen, "%.*f", prec, value);
+	}
+}
+
+static void ui_but_build_drawstr_int(uiBut *but, int value)
+{
+	size_t slen = 0;
+	STR_CONCAT(but->drawstr, slen, but->str);
+
+	PropertySubType subtype = PROP_NONE;
+	if (but->rnaprop) {
+		subtype = RNA_property_subtype(but->rnaprop);
+	}
+
+	STR_CONCATF(but->drawstr, slen, "%d", value);
+
+	if (subtype == PROP_PERCENTAGE) {
+		STR_CONCAT(but->drawstr, slen, "%");
+	}
+	else if (subtype == PROP_PIXEL) {
+		STR_CONCAT(but->drawstr, slen, " px");
+	}
+}
+
 /**
  * \param but: Button to update.
  * \param validate: When set, this function may change the button value.
@@ -3134,52 +3200,15 @@ void ui_but_update_ex(uiBut *but, const bool validate)
 
 		case UI_BTYPE_NUM:
 		case UI_BTYPE_NUM_SLIDER:
-
-			if (!but->editstr) {
-				const char *drawstr_suffix = NULL;
-				size_t slen;
-
-				UI_GET_BUT_VALUE_INIT(but, value);
-
-				slen = BLI_strncpy_rlen(but->drawstr, but->str, sizeof(but->drawstr));
-
-				if (ui_but_is_float(but)) {
-					if (value == (double) FLT_MAX) {
-						slen += BLI_strncpy_rlen(but->drawstr + slen, "inf", sizeof(but->drawstr) - slen);
-					}
-					else if (value == (double) -FLT_MAX) {
-						slen += BLI_strncpy_rlen(but->drawstr + slen, "-inf", sizeof(but->drawstr) - slen);
-					}
-					/* support length type buttons */
-					else if (ui_but_is_unit(but)) {
-						char new_str[sizeof(but->drawstr)];
-						ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
-						slen += BLI_strncpy_rlen(but->drawstr + slen, new_str, sizeof(but->drawstr) - slen);
-					}
-					else {
-						const int prec = ui_but_calc_float_precision(but, value);
-						slen += BLI_snprintf_rlen(but->drawstr + slen, sizeof(but->drawstr) - slen, "%.*f", prec, value);
-					}
-				}
-				else {
-					slen += BLI_snprintf_rlen(but->drawstr + slen, sizeof(but->drawstr) - slen, "%d", (int)value);
-				}
-
-				if (but->rnaprop) {
-					PropertySubType pstype = RNA_property_subtype(but->rnaprop);
-
-					if (pstype == PROP_PERCENTAGE) {
-						drawstr_suffix = "%";
-					}
-					else if (pstype == PROP_PIXEL) {
-						drawstr_suffix = " px";
-					}
-				}
-
-				if (drawstr_suffix) {
-					BLI_strncpy(but->drawstr + slen, drawstr_suffix, sizeof(but->drawstr) - slen);
-				}
-
+			if (but->editstr) {
+				break;
+			}
+			UI_GET_BUT_VALUE_INIT(but, value);
+			if (ui_but_is_float(but)) {
+				ui_but_build_drawstr_float(but, value);
+			}
+			else {
+				ui_but_build_drawstr_int(but, (int)value);
 			}
 			break;
 
@@ -3489,7 +3518,7 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 
 	int totitems = 0;
 	int columns, rows, a, b;
-	int column_start = 0, column_end = 0;
+	int column_end = 0;
 	int nbr_entries_nosepr = 0;
 
 	UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
@@ -3502,7 +3531,7 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 
 	for (item = item_array; item->identifier; item++, totitems++) {
 		if (!item->identifier[0]) {
-			/* inconsistent, but menus with labels do not look good flipped */
+			/* inconsistent, but menus with categories do not look good flipped */
 			if (item->name) {
 				block->flag |= UI_BLOCK_NO_FLIP;
 				nbr_entries_nosepr++;
@@ -3526,10 +3555,12 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 	while (rows * columns < totitems)
 		rows++;
 
-	/* Title */
-	uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
-	         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
-	uiItemS(layout);
+	if (block->flag & UI_BLOCK_NO_FLIP) {
+		/* Title at the top for menus with categories. */
+		uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
+		         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
+		uiItemS(layout);
+	}
 
 	/* note, item_array[...] is reversed on access */
 
@@ -3540,7 +3571,6 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 		if (a == column_end) {
 			/* start new column, and find out where it ends in advance, so we
 			 * can flip the order of items properly per column */
-			column_start = a;
 			column_end = totitems;
 
 			for (b = a + 1; b < totitems; b++) {
@@ -3556,12 +3586,7 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 			column = uiLayoutColumn(split, false);
 		}
 
-		if (block->flag & UI_BLOCK_NO_FLIP) {
-			item = &item_array[a];
-		}
-		else {
-			item = &item_array[(column_start + column_end - 1 - a)];
-		}
+		item = &item_array[a];
 
 		if (!item->identifier[0]) {
 			if (item->name) {
@@ -3569,7 +3594,8 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 					uiItemL(column, item->name, item->icon);
 				}
 				else {
-					/* Do not use uiItemL here, as our root layout is a menu one, it will add a fake blank icon! */
+					/* Do not use uiItemL here, as our root layout is a menu one,
+					 * it will add a fake blank icon! */
 					uiDefBut(block, UI_BTYPE_LABEL, 0, item->name, 0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
 				}
 			}
@@ -3589,6 +3615,13 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 				        UI_UNIT_X * 5, UI_UNIT_X, &handle->retvalue, item->value, 0.0, 0, -1, item->description);
 			}
 		}
+	}
+
+	if (!(block->flag & UI_BLOCK_NO_FLIP)) {
+		/* Title at the bottom for menus without categories. */
+		uiItemS(layout);
+		uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
+		         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
 	}
 
 	UI_block_layout_set_current(block, layout);
@@ -4444,6 +4477,12 @@ void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *argN)
 	but->tip_argN = argN;
 }
 
+void UI_but_func_pushed_state_set(uiBut *but, uiButPushedStateFunc func, void *arg)
+{
+	but->pushed_state_func = func;
+	but->pushed_state_arg = arg;
+}
+
 uiBut *uiDefBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, const char *str, int x, int y, short width, short height, const char *tip)
 {
 	uiBut *but = ui_def_but(block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
@@ -4588,7 +4627,8 @@ void UI_but_func_search_set(
         uiButSearchFunc search_func, void *arg,
         uiButHandleFunc bfunc, void *active)
 {
-	/* needed since callers don't have access to internal functions (as an alternative we could expose it) */
+	/* needed since callers don't have access to internal functions
+	 * (as an alternative we could expose it) */
 	if (search_create_func == NULL) {
 		search_create_func = ui_searchbox_create_generic;
 	}
@@ -4637,7 +4677,8 @@ static void operator_enum_search_cb(const struct bContext *C, void *but, const c
 		RNA_property_enum_items_gettexted((bContext *)C, ptr, prop, &item_array, NULL, &do_free);
 
 		for (item = item_array; item->identifier; item++) {
-			/* note: need to give the index rather than the identifier because the enum can be freed */
+			/* note: need to give the index rather than the
+			 * identifier because the enum can be freed */
 			if (BLI_strcasestr(item->name, str)) {
 				if (false == UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon))
 					break;

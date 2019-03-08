@@ -382,12 +382,18 @@ class AddPresetCloth(AddPresetBase, Operator):
     ]
 
     preset_values = [
-        "cloth.settings.air_damping",
-        "cloth.settings.bending_stiffness",
-        "cloth.settings.mass",
         "cloth.settings.quality",
-        "cloth.settings.spring_damping",
-        "cloth.settings.structural_stiffness",
+        "cloth.settings.mass",
+        "cloth.settings.air_damping",
+        "cloth.settings.bending_model",
+        "cloth.settings.tension_stiffness",
+        "cloth.settings.compression_stiffness",
+        "cloth.settings.shear_stiffness",
+        "cloth.settings.bending_stiffness",
+        "cloth.settings.tension_damping",
+        "cloth.settings.compression_damping",
+        "cloth.settings.shear_damping",
+        "cloth.settings.bending_damping",
     ]
 
     preset_subdir = "cloth"
@@ -557,7 +563,7 @@ class AddPresetKeyconfig(AddPresetBase, Operator):
     preset_subdir = "keyconfig"
 
     def add(self, context, filepath):
-        bpy.ops.wm.keyconfig_export(filepath=filepath)
+        bpy.ops.preferences.keyconfig_export(filepath=filepath)
         bpy.utils.keyconfig_set(filepath)
 
     def pre_cb(self, context):
@@ -667,6 +673,7 @@ class AddPresetGpencilBrush(AddPresetBase, Operator):
         "settings.uv_random",
         "settings.pen_jitter",
         "settings.use_jitter_pressure",
+        "settings.trim",
     ]
 
     preset_subdir = "gpencil_brush"

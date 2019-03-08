@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/intern/draw_manager.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include <stdio.h>
@@ -34,12 +31,15 @@
 #include "BLF_api.h"
 
 #include "BKE_colortools.h"
+#include "BKE_curve.h"
 #include "BKE_global.h"
+#include "BKE_gpencil.h"
+#include "BKE_lattice.h"
+#include "BKE_mball.h"
 #include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_workspace.h"
 
 #include "draw_manager.h"
 #include "DNA_camera_types.h"
@@ -50,7 +50,6 @@
 #include "ED_space_api.h"
 #include "ED_screen.h"
 #include "ED_gpencil.h"
-#include "ED_particle.h"
 #include "ED_view3d.h"
 
 #include "GPU_draw.h"
@@ -66,7 +65,6 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "UI_interface.h"
 #include "UI_resources.h"
 
 #include "WM_api.h"
@@ -99,11 +97,20 @@ DRWManager DST = {NULL};
 
 static ListBase DRW_engines = {NULL, NULL};
 
-extern struct GPUUniformBuffer *view_ubo; /* draw_manager_exec.c */
-
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
 	memset(dst, 0x0, offsetof(DRWManager, gl_context));
+
+	/* Maybe not the best place for this. */
+	if (!DST.uniform_names.buffer) {
+		DST.uniform_names.buffer = MEM_callocN(DRW_UNIFORM_BUFFER_NAME, "Name Buffer");
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	else if (DST.uniform_names.buffer_len > DRW_UNIFORM_BUFFER_NAME) {
+		DST.uniform_names.buffer = MEM_reallocN(DST.uniform_names.buffer, DRW_UNIFORM_BUFFER_NAME);
+		DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
+	}
+	DST.uniform_names.buffer_ofs = 0;
 }
 
 /* This function is used to reset draw manager to a state
@@ -146,7 +153,6 @@ struct DRWTextStore *DRW_text_cache_ensure(void)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Settings
  * \{ */
 
@@ -198,9 +204,8 @@ bool DRW_object_use_hide_faces(const struct Object *ob)
 
 		switch (ob->mode) {
 			case OB_MODE_TEXTURE_PAINT:
-			case OB_MODE_VERTEX_PAINT:
 				return (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-
+			case OB_MODE_VERTEX_PAINT:
 			case OB_MODE_WEIGHT_PAINT:
 				return (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) != 0;
 		}
@@ -250,12 +255,11 @@ struct DupliObject *DRW_object_get_dupli(const Object *UNUSED(ob))
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Color Management
  * \{ */
 
 /* Use color management profile to draw texture to framebuffer */
-void DRW_transform_to_display(GPUTexture *tex, bool use_view_settings)
+void DRW_transform_to_display(GPUTexture *tex, bool use_view_transform, bool use_render_settings)
 {
 	drw_state_set(DRW_STATE_WRITE_COLOR);
 
@@ -271,19 +275,26 @@ void DRW_transform_to_display(GPUTexture *tex, bool use_view_settings)
 	if (!(DST.options.is_image_render && !DST.options.is_scene_render)) {
 		Scene *scene = DST.draw_ctx.scene;
 		ColorManagedDisplaySettings *display_settings = &scene->display_settings;
-		ColorManagedViewSettings *active_view_settings;
-		ColorManagedViewSettings default_view_settings;
-		if (use_view_settings) {
-			active_view_settings = &scene->view_settings;
+		ColorManagedViewSettings view_settings;
+		if (use_render_settings) {
+			/* Use full render settings, for renders with scene lighting. */
+			view_settings = scene->view_settings;
+		}
+		else if (use_view_transform) {
+			/* Use only view transform + look and nothing else for lookdev without
+			 * scene lighting, as exposure depends on scene light intensity. */
+			BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
+			STRNCPY(view_settings.view_transform, scene->view_settings.view_transform);
+			STRNCPY(view_settings.look, scene->view_settings.look);
 		}
 		else {
-			BKE_color_managed_view_settings_init_render(
-			        &default_view_settings,
-			        display_settings);
-			active_view_settings = &default_view_settings;
+			/* For workbench use only default view transform in configuration,
+			 * using no scene settings. */
+			BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
 		}
+
 		use_ocio = IMB_colormanagement_setup_glsl_draw_from_space(
-		        active_view_settings, display_settings, NULL, dither, false);
+		        &view_settings, display_settings, NULL, dither, false);
 	}
 
 	if (!use_ocio) {
@@ -353,7 +364,6 @@ void DRW_transform_none(GPUTexture *tex)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Multisample Resolve
  * \{ */
 
@@ -425,7 +435,6 @@ void DRW_multisamples_resolve(GPUTexture *src_depth, GPUTexture *src_color, bool
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Viewport (DRW_viewport)
  * \{ */
 
@@ -531,6 +540,11 @@ static void drw_context_state_init(void)
 	else {
 		DST.draw_ctx.object_pose = NULL;
 	}
+
+	DST.draw_ctx.sh_cfg = GPU_SHADER_CFG_DEFAULT;
+	if (DST.draw_ctx.rv3d && DST.draw_ctx.rv3d->rflag & RV3D_CLIPPING) {
+		DST.draw_ctx.sh_cfg = GPU_SHADER_CFG_CLIPPED;
+	}
 }
 
 /* It also stores viewport variable to an immutable place: DST
@@ -632,8 +646,8 @@ static void drw_viewport_var_init(void)
 		DST.RST.bound_ubo_slots = MEM_callocN(sizeof(char) * GPU_max_ubo_binds(), "Bound Ubo Slots");
 	}
 
-	if (view_ubo == NULL) {
-		view_ubo = DRW_uniformbuffer_create(sizeof(ViewUboStorage), NULL);
+	if (G_draw.view_ubo == NULL) {
+		G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(ViewUboStorage), NULL);
 	}
 
 	DST.override_mat = 0;
@@ -790,7 +804,6 @@ void **DRW_view_layer_engine_data_ensure(DrawEngineType *engine_type, void (*cal
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Draw Data (DRW_drawdata)
  * \{ */
 
@@ -824,8 +837,9 @@ static bool id_type_can_have_drawdata(const short id_type)
 static bool id_can_have_drawdata(const ID *id)
 {
 	/* sanity check */
-	if (id == NULL)
+	if (id == NULL) {
 		return false;
+	}
 
 	return id_type_can_have_drawdata(GS(id->name));
 }
@@ -843,16 +857,18 @@ DrawDataList *DRW_drawdatalist_from_id(ID *id)
 		IdDdtTemplate *idt = (IdDdtTemplate *)id;
 		return &idt->drawdata;
 	}
-	else
+	else {
 		return NULL;
+	}
 }
 
 DrawData *DRW_drawdata_get(ID *id, DrawEngineType *engine_type)
 {
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
-	if (drawdata == NULL)
+	if (drawdata == NULL) {
 		return NULL;
+	}
 
 	LISTBASE_FOREACH(DrawData *, dd, drawdata) {
 		if (dd->engine_type == engine_type) {
@@ -880,7 +896,7 @@ DrawData *DRW_drawdata_ensure(
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
 	/* Allocate new data. */
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		/* NOTE: data is not persistent in this case. It is reset each redraw. */
 		BLI_assert(free_cb == NULL); /* No callback allowed. */
 		/* Round to sizeof(float) for DRW_instance_data_request(). */
@@ -912,8 +928,9 @@ void DRW_drawdata_free(ID *id)
 {
 	DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
-	if (drawdata == NULL)
+	if (drawdata == NULL) {
 		return;
+	}
 
 	LISTBASE_FOREACH(DrawData *, dd, drawdata) {
 		if (dd->free != NULL) {
@@ -927,11 +944,12 @@ void DRW_drawdata_free(ID *id)
 /* Unlink (but don't free) the drawdata from the DrawDataList if the ID is an OB from dupli. */
 static void drw_drawdata_unlink_dupli(ID *id)
 {
-	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROMDUPLI) != 0) {
+	if ((GS(id->name) == ID_OB) && (((Object *)id)->base_flag & BASE_FROM_DUPLI) != 0) {
 		DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
 
-		if (drawdata == NULL)
+		if (drawdata == NULL) {
 			return;
+		}
 
 		BLI_listbase_clear((ListBase *)drawdata);
 	}
@@ -941,7 +959,6 @@ static void drw_drawdata_unlink_dupli(ID *id)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Rendering (DRW_engines)
  * \{ */
 
@@ -1083,6 +1100,8 @@ static void drw_engines_draw_scene(void)
 
 		PROFILE_END_UPDATE(data->render_time, stime);
 	}
+	/* Reset state after drawing */
+	DRW_state_reset();
 }
 
 static void drw_engines_draw_text(void)
@@ -1206,8 +1225,6 @@ static void drw_engines_enable_from_paint_mode(int mode)
 			use_drw_engine(&draw_engine_sculpt_type);
 			break;
 		case CTX_MODE_PAINT_WEIGHT:
-			use_drw_engine(&draw_engine_paint_weight_type);
-			break;
 		case CTX_MODE_PAINT_VERTEX:
 			use_drw_engine(&draw_engine_paint_vertex_type);
 			break;
@@ -1265,8 +1282,6 @@ static void drw_engines_enable_from_mode(int mode)
 			BLI_assert(!"Draw mode invalid");
 			break;
 	}
-	/* grease pencil */
-	use_drw_engine(&draw_engine_gpencil_type);
 }
 
 static void drw_engines_enable_from_overlays(int UNUSED(overlay_flag))
@@ -1290,6 +1305,8 @@ static void drw_engines_enable(ViewLayer *view_layer, RenderEngineType *engine_t
 	const bool use_xray = XRAY_ENABLED(v3d);
 
 	drw_engines_enable_from_engine(engine_type, drawtype, use_xray);
+	/* grease pencil */
+	use_drw_engine(&draw_engine_gpencil_type);
 
 	if (DRW_state_draw_support()) {
 		/* Draw paint modes first so that they are drawn below the wireframes. */
@@ -1303,7 +1320,7 @@ static void drw_engines_enable(ViewLayer *view_layer, RenderEngineType *engine_t
 		if (v3d->shading.type == OB_WIRE) {
 			drw_engines_enable_from_overlays(v3d->overlay.flag);
 		}
-		/* if gpencil must draw the strokes, but not the object */
+
 		drw_engines_enable_from_mode(mode);
 	}
 }
@@ -1327,7 +1344,6 @@ static uint DRW_engines_get_hash(void)
 }
 
 /* -------------------------------------------------------------------- */
-
 /** \name View Update
  * \{ */
 
@@ -1386,7 +1402,6 @@ void DRW_notify_view_update(const DRWUpdateContext *update_ctx)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Main Draw Loops (DRW_draw)
  * \{ */
 
@@ -1405,7 +1420,7 @@ void DRW_draw_view(const bContext *C)
 	/* Reset before using it. */
 	drw_state_prepare_clean_for_draw(&DST);
 	DST.options.draw_text = (
-	        (v3d->flag2 & V3D_RENDER_OVERRIDE) == 0 &&
+	        (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0 &&
 	        (v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) != 0);
 	DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
@@ -1425,7 +1440,10 @@ void DRW_draw_render_loop_ex(
 	Scene *scene = DEG_get_evaluated_scene(depsgraph);
 	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
 	RegionView3D *rv3d = ar->regiondata;
-	bool do_annotations = (((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0) && ((v3d->flag2 & V3D_RENDER_OVERRIDE) == 0));
+	const bool do_annotations = (
+	        ((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0) &&
+	        ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0));
+	const bool do_camera_frame = !DST.options.is_image_render;
 
 	DST.draw_ctx.evil_C = evil_C;
 	DST.viewport = viewport;
@@ -1521,7 +1539,7 @@ void DRW_draw_render_loop_ex(
 	GPU_framebuffer_bind(DST.default_framebuffer);
 
 	if (do_bg_image) {
-		ED_view3d_draw_bgpic_test(scene, depsgraph, ar, v3d, false, true);
+		ED_view3d_draw_bgpic_test(scene, depsgraph, ar, v3d, false, do_camera_frame);
 	}
 
 	DRW_draw_callbacks_pre_scene();
@@ -1539,28 +1557,32 @@ void DRW_draw_render_loop_ex(
 	/* annotations - temporary drawing buffer (3d space) */
 	/* XXX: Or should we use a proper draw/overlay engine for this case? */
 	if (do_annotations) {
-		glDisable(GL_DEPTH_TEST);
+		GPU_depth_test(false);
 		/* XXX: as scene->gpd is not copied for COW yet */
 		ED_gpencil_draw_view3d_annotations(DEG_get_input_scene(depsgraph), depsgraph, v3d, ar, true);
-		glEnable(GL_DEPTH_TEST);
+		GPU_depth_test(true);
 	}
 
 	DRW_draw_callbacks_post_scene();
 	if (DST.draw_ctx.evil_C) {
+		DRW_state_reset();
 		ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.ar, REGION_DRAW_POST_VIEW);
+		/* Callback can be nasty and do whatever they want with the state.
+		 * Don't trust them! */
+		DRW_state_reset();
 	}
 
 	DRW_state_reset();
 
 	drw_debug_draw();
 
-	glDisable(GL_DEPTH_TEST);
+	GPU_depth_test(false);
 	drw_engines_draw_text();
-	glEnable(GL_DEPTH_TEST);
+	GPU_depth_test(true);
 
 	if (DST.draw_ctx.evil_C) {
 		/* needed so gizmo isn't obscured */
-		if (((v3d->flag2 & V3D_RENDER_OVERRIDE) == 0) &&
+		if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) &&
 		    ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0))
 		{
 			glDisable(GL_DEPTH_TEST);
@@ -1571,36 +1593,36 @@ void DRW_draw_render_loop_ex(
 
 		/* annotations - temporary drawing buffer (screenspace) */
 		/* XXX: Or should we use a proper draw/overlay engine for this case? */
-		if (((v3d->flag2 & V3D_RENDER_OVERRIDE) == 0) &&
+		if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) &&
 		    (do_annotations))
 		{
-			glDisable(GL_DEPTH_TEST);
+			GPU_depth_test(false);
 			/* XXX: as scene->gpd is not copied for COW yet */
 			ED_gpencil_draw_view3d_annotations(DEG_get_input_scene(depsgraph), depsgraph, v3d, ar, false);
-			glEnable(GL_DEPTH_TEST);
+			GPU_depth_test(true);
 		}
 
-		if ((v3d->flag2 & V3D_RENDER_OVERRIDE) == 0) {
+		if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
 			/* Draw 2D after region info so we can draw on top of the camera passepartout overlay.
 			 * 'DRW_draw_region_info' sets the projection in pixel-space. */
-			glDisable(GL_DEPTH_TEST);
+			GPU_depth_test(false);
 			DRW_draw_gizmo_2d();
-			glEnable(GL_DEPTH_TEST);
+			GPU_depth_test(true);
 		}
 	}
 
 	DRW_stats_reset();
 
 	if (do_bg_image) {
-		ED_view3d_draw_bgpic_test(scene, depsgraph, ar, v3d, true, true);
+		ED_view3d_draw_bgpic_test(scene, depsgraph, ar, v3d, true, do_camera_frame);
 	}
 
 	if (G.debug_value > 20 && G.debug_value < 30) {
-		glDisable(GL_DEPTH_TEST);
+		GPU_depth_test(false);
 		rcti rect; /* local coordinate visible rect inside region, to accommodate overlapping ui */
 		ED_region_visible_rect(DST.draw_ctx.ar, &rect);
 		DRW_stats_draw(&rect);
-		glEnable(GL_DEPTH_TEST);
+		GPU_depth_test(true);
 	}
 
 	if (WM_draw_region_get_bound_viewport(ar)) {
@@ -1754,7 +1776,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
 	drw_viewport_var_init();
 
 	/* set default viewport */
-	gpuPushAttrib(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
+	gpuPushAttr(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
 	glDisable(GL_SCISSOR_TEST);
 	glViewport(0, 0, size[0], size[1]);
 
@@ -1779,7 +1801,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
 	glDisable(GL_DEPTH_TEST);
 
 	/* Restore Drawing area. */
-	gpuPopAttrib();
+	gpuPopAttr();
 	glEnable(GL_SCISSOR_TEST);
 	GPU_framebuffer_restore();
 
@@ -2053,7 +2075,7 @@ void DRW_draw_select_loop(
 		}
 	}
 	if (v3d->overlay.flag & V3D_OVERLAY_BONE_SELECT) {
-		if (!(v3d->flag2 & V3D_RENDER_OVERRIDE)) {
+		if (!(v3d->flag2 & V3D_HIDE_OVERLAYS)) {
 			/* Note: don't use "BKE_object_pose_armature_get" here, it breaks selection. */
 			Object *obpose = OBPOSE_FROM_OBACT(obact);
 			if (obpose) {
@@ -2075,11 +2097,17 @@ void DRW_draw_select_loop(
 		drw_engines_enable_from_mode(obedit_mode);
 	}
 	else if (!draw_surface) {
+		/* grease pencil selection */
+		use_drw_engine(&draw_engine_gpencil_type);
+
 		drw_engines_enable_from_overlays(v3d->overlay.flag);
 		drw_engines_enable_from_object_mode();
 	}
 	else {
 		drw_engines_enable_basic();
+		/* grease pencil selection */
+		use_drw_engine(&draw_engine_gpencil_type);
+
 		drw_engines_enable_from_overlays(v3d->overlay.flag);
 		drw_engines_enable_from_object_mode();
 	}
@@ -2136,7 +2164,7 @@ void DRW_draw_select_loop(
 				    (object_type_exclude_select & (1 << ob->type)) == 0)
 				{
 					if (object_filter_fn != NULL) {
-						if (ob->base_flag & BASE_FROMDUPLI) {
+						if (ob->base_flag & BASE_FROM_DUPLI) {
 							/* pass (use previous filter_exclude value) */
 						}
 						else {
@@ -2148,9 +2176,9 @@ void DRW_draw_select_loop(
 					}
 
 					/* This relies on dupli instances being after their instancing object. */
-					if ((ob->base_flag & BASE_FROMDUPLI) == 0) {
+					if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
 						Object *ob_orig = DEG_get_original_object(ob);
-						DRW_select_load_id(ob_orig->select_color);
+						DRW_select_load_id(ob_orig->select_id);
 					}
 					DST.dupli_parent = data_.dupli_parent;
 					DST.dupli_source = data_.dupli_object_current;
@@ -2382,7 +2410,6 @@ void DRW_draw_depth_loop(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Draw Manager State (DRW_state)
  * \{ */
 
@@ -2470,7 +2497,7 @@ bool DRW_state_draw_support(void)
 	View3D *v3d = DST.draw_ctx.v3d;
 	return (DRW_state_is_scene_render() == false) &&
 	        (v3d != NULL) &&
-	        ((v3d->flag2 & V3D_RENDER_OVERRIDE) == 0);
+	        ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
 }
 
 /**
@@ -2488,7 +2515,6 @@ bool DRW_state_draw_background(void)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Context State (DRW_context_state)
  * \{ */
 
@@ -2501,7 +2527,6 @@ const DRWContextState *DRW_context_state_get(void)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Init/Exit (DRW_engines)
  * \{ */
 
@@ -2535,7 +2560,6 @@ void DRW_engines_register(void)
 	DRW_engine_register(&draw_engine_overlay_type);
 	DRW_engine_register(&draw_engine_paint_texture_type);
 	DRW_engine_register(&draw_engine_paint_vertex_type);
-	DRW_engine_register(&draw_engine_paint_weight_type);
 	DRW_engine_register(&draw_engine_particle_type);
 	DRW_engine_register(&draw_engine_pose_type);
 	DRW_engine_register(&draw_engine_sculpt_type);
@@ -2543,25 +2567,6 @@ void DRW_engines_register(void)
 
 	/* setup callbacks */
 	{
-		/* BKE: mball.c */
-		extern void *BKE_mball_batch_cache_dirty_tag_cb;
-		extern void *BKE_mball_batch_cache_free_cb;
-		/* BKE: curve.c */
-		extern void *BKE_curve_batch_cache_dirty_tag_cb;
-		extern void *BKE_curve_batch_cache_free_cb;
-		/* BKE: mesh.c */
-		extern void *BKE_mesh_batch_cache_dirty_tag_cb;
-		extern void *BKE_mesh_batch_cache_free_cb;
-		/* BKE: lattice.c */
-		extern void *BKE_lattice_batch_cache_dirty_tag_cb;
-		extern void *BKE_lattice_batch_cache_free_cb;
-		/* BKE: particle.c */
-		extern void *BKE_particle_batch_cache_dirty_tag_cb;
-		extern void *BKE_particle_batch_cache_free_cb;
-		/* BKE: gpencil.c */
-		extern void *BKE_gpencil_batch_cache_dirty_tag_cb;
-		extern void *BKE_gpencil_batch_cache_free_cb;
-
 		BKE_mball_batch_cache_dirty_tag_cb = DRW_mball_batch_cache_dirty_tag;
 		BKE_mball_batch_cache_free_cb = DRW_mball_batch_cache_free;
 
@@ -2582,10 +2587,6 @@ void DRW_engines_register(void)
 	}
 }
 
-extern struct GPUVertFormat *g_pos_format; /* draw_shgroup.c */
-extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
-extern struct GPUTexture *globals_ramp; /* draw_common.c */
-extern struct GPUTexture *globals_weight_ramp; /* draw_common.c */
 void DRW_engines_free(void)
 {
 	DRW_opengl_context_enable();
@@ -2608,16 +2609,18 @@ void DRW_engines_free(void)
 		}
 	}
 
-	DRW_UBO_FREE_SAFE(globals_ubo);
-	DRW_UBO_FREE_SAFE(view_ubo);
-	DRW_TEXTURE_FREE_SAFE(globals_ramp);
-	DRW_TEXTURE_FREE_SAFE(globals_weight_ramp);
+	DRW_UBO_FREE_SAFE(G_draw.block_ubo);
+	DRW_UBO_FREE_SAFE(G_draw.view_ubo);
+	DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
+	DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
 	MEM_SAFE_FREE(g_pos_format);
 
 	MEM_SAFE_FREE(DST.RST.bound_texs);
 	MEM_SAFE_FREE(DST.RST.bound_tex_slots);
 	MEM_SAFE_FREE(DST.RST.bound_ubos);
 	MEM_SAFE_FREE(DST.RST.bound_ubo_slots);
+
+	MEM_SAFE_FREE(DST.uniform_names.buffer);
 
 	DRW_opengl_context_disable();
 }
@@ -2707,6 +2710,9 @@ void DRW_opengl_context_disable_ex(bool restore)
 
 void DRW_opengl_context_enable(void)
 {
+	if (G.background && DST.gl_context == NULL) {
+		WM_init_opengl(G_MAIN);
+	}
 	DRW_opengl_context_enable_ex(true);
 }
 

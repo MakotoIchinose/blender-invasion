@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,17 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/mesh_evaluate.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Functions to evaluate mesh data.
  */
 
 #include <limits.h>
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -39,7 +35,6 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_memarena.h"
-#include "BLI_mempool.h"
 #include "BLI_math.h"
 #include "BLI_edgehash.h"
 #include "BLI_bitmap.h"
@@ -68,8 +63,9 @@
 #  include "PIL_time_utildefines.h"
 #endif
 
-/* -------------------------------------------------------------------- */
+static CLG_LogRef LOG = {"bke.mesh_evaluate"};
 
+/* -------------------------------------------------------------------- */
 /** \name Mesh Normal Calculation
  * \{ */
 
@@ -137,7 +133,7 @@ void BKE_mesh_calc_normals_mapping_ex(
 
 	/* if we are not calculating verts and no verts were passes then we have nothing to do */
 	if ((only_face_normals == true) && (r_polyNors == NULL) && (r_faceNors == NULL)) {
-		printf("%s: called with nothing to do\n", __func__);
+		CLOG_WARN(&LOG, "called with nothing to do");
 		return;
 	}
 
@@ -170,7 +166,7 @@ void BKE_mesh_calc_normals_mapping_ex(
 			}
 			else {
 				/* eek, we're not corresponding to polys */
-				printf("error in %s: tessellation face indices are incorrect.  normals may look bad.\n", __func__);
+				CLOG_ERROR(&LOG, "tessellation face indices are incorrect.  normals may look bad.");
 			}
 		}
 	}
@@ -324,7 +320,7 @@ void BKE_mesh_calc_normals_poly(
 
 	MeshCalcNormalsData data = {
 	    .mpolys = mpolys, .mloop = mloop, .mverts = mverts,
-	    .pnors = pnors, .lnors_weighted = lnors_weighted, .vnors = vnors
+	    .pnors = pnors, .lnors_weighted = lnors_weighted, .vnors = vnors,
 	};
 
 	/* Compute poly normals, and prepare weighted loop normals. */
@@ -1854,6 +1850,61 @@ void BKE_mesh_normals_loop_custom_from_vertices_set(
 	        mpolys, polynors, numPolys, r_clnors_data, true);
 }
 
+static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const bool use_vertices)
+{
+	short (*clnors)[2];
+	const int numloops = mesh->totloop;
+
+	clnors = CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL);
+	if (clnors != NULL) {
+		memset(clnors, 0, sizeof(*clnors) * (size_t)numloops);
+	}
+	else {
+		clnors = CustomData_add_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL, CD_CALLOC, NULL, numloops);
+	}
+
+	float (*polynors)[3] = CustomData_get_layer(&mesh->pdata, CD_NORMAL);
+	bool free_polynors = false;
+	if (polynors == NULL) {
+		polynors = MEM_mallocN(sizeof(float[3]) * (size_t)mesh->totpoly, __func__);
+		BKE_mesh_calc_normals_poly(
+		            mesh->mvert, NULL, mesh->totvert,
+		            mesh->mloop, mesh->mpoly, mesh->totloop, mesh->totpoly, polynors, false);
+		free_polynors = true;
+	}
+
+	mesh_normals_loop_custom_set(
+	            mesh->mvert, mesh->totvert, mesh->medge, mesh->totedge, mesh->mloop, r_custom_nors, mesh->totloop,
+	            mesh->mpoly, polynors, mesh->totpoly, clnors, use_vertices);
+
+	if (free_polynors) {
+		MEM_freeN(polynors);
+	}
+}
+
+/**
+ * Higher level functions hiding most of the code needed around call to #BKE_mesh_normals_loop_custom_set().
+ *
+ * \param r_custom_loopnors is not const, since code will replace zero_v3 normals there
+ *                          with automatically computed vectors.
+ */
+void BKE_mesh_set_custom_normals(Mesh *mesh, float (*r_custom_loopnors)[3])
+{
+	mesh_set_custom_normals(mesh, r_custom_loopnors, false);
+}
+
+/**
+ * Higher level functions hiding most of the code needed around call to #BKE_mesh_normals_loop_custom_from_vertices_set().
+ *
+ * \param r_custom_loopnors is not const, since code will replace zero_v3 normals there
+ *                          with automatically computed vectors.
+ */
+void BKE_mesh_set_custom_normals_from_vertices(Mesh *mesh, float (*r_custom_vertnors)[3])
+{
+	mesh_set_custom_normals(mesh, r_custom_vertnors, true);
+}
+
+
 /**
  * Computes average per-vertex normals from given custom loop normals.
  *
@@ -1892,7 +1943,6 @@ void BKE_mesh_normals_loop_to_vertex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Polygon Calculations
  * \{ */
 
@@ -1902,7 +1952,6 @@ void BKE_mesh_normals_loop_to_vertex(
  * Computes the normal of a planar
  * polygon See Graphics Gems for
  * computing newell normal.
- *
  */
 static void mesh_calc_ngon_normal(
         const MPoly *mpoly, const MLoop *loopstart,
@@ -2223,7 +2272,6 @@ void BKE_mesh_poly_edgebitmap_insert(unsigned int *edge_bitmap, const MPoly *mp,
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Center Calculation
  * \{ */
 
@@ -2325,7 +2373,6 @@ bool BKE_mesh_center_of_volume(const Mesh *me, float r_cent[3])
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Volume Calculation
  * \{ */
 
@@ -2431,7 +2478,6 @@ void BKE_mesh_calc_volume(
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name NGon Tessellation (NGon/Tessface Conversion)
  * \{ */
 
@@ -3401,7 +3447,6 @@ void BKE_mesh_polygons_flip(
 }
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Flag Flushing
  * \{ */
 
@@ -3592,7 +3637,6 @@ void BKE_mesh_flush_select_from_verts(Mesh *me)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Spatial Calculation
  * \{ */
 

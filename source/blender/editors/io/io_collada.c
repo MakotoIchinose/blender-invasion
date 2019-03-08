@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/io/io_collada.c
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 #ifdef WITH_COLLADA
 #include "DNA_space_types.h"
@@ -98,6 +91,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 	int sampling_rate;
 	int keep_smooth_curves;
 	int keep_keyframes;
+	int keep_flat_curves;
 
 	int export_animation_type;
 	int use_texture_copies;
@@ -157,6 +151,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 	sampling_rate            = (sample_animations) ? RNA_int_get(op->ptr, "sampling_rate") : 0;
 	keep_smooth_curves       = RNA_boolean_get(op->ptr, "keep_smooth_curves");
 	keep_keyframes           = RNA_boolean_get(op->ptr, "keep_keyframes");
+	keep_flat_curves         = RNA_boolean_get(op->ptr, "keep_flat_curves");
 
 	deform_bones_only        = RNA_boolean_get(op->ptr, "deform_bones_only");
 
@@ -195,6 +190,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 	export_settings.include_all_actions = include_all_actions != 0;
 	export_settings.sampling_rate = sampling_rate;
 	export_settings.keep_keyframes = keep_keyframes != 0 || sampling_rate < 1;
+	export_settings.keep_flat_curves = keep_flat_curves != 0;
 
 	export_settings.active_uv_only = active_uv_only != 0;
 	export_settings.export_animation_type = export_animation_type;
@@ -357,6 +353,9 @@ static void uiCollada_exportSettings(uiLayout *layout, PointerRNA *imfptr)
 		uiItemR(row, imfptr, "keep_keyframes", 0, NULL, ICON_NONE);
 		uiLayoutSetEnabled(row, sampling && include_animations);
 
+		row = uiLayoutColumn(box, false);
+		uiItemR(row, imfptr, "keep_flat_curves", 0, NULL, ICON_NONE);
+
 		row = uiLayoutRow(box, false);
 		uiItemR(row, imfptr, "include_all_actions", 0, NULL, ICON_NONE);
 		uiLayoutSetEnabled(row, include_animations);
@@ -413,7 +412,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
 	static const EnumPropertyItem prop_bc_export_mesh_type[] = {
 		{BC_MESH_TYPE_VIEW, "view", 0, "View", "Apply modifier's view settings"},
 		{BC_MESH_TYPE_RENDER, "render", 0, "Render", "Apply modifier's render settings"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_bc_export_transformation_type[] = {
@@ -502,7 +501,10 @@ void WM_OT_collada_export(wmOperatorType *ot)
 	                "is the unity matrix, otherwise you may end up with odd results)");
 
 	RNA_def_boolean(func, "keep_keyframes", 0, "Keep Keyframes",
-	                "Use existing keyframes as additional sample points (this helps when you want to keep manual tweaks)");
+		"Use existing keyframes as additional sample points (this helps when you want to keep manual tweaks)");
+
+	RNA_def_boolean(func, "keep_flat_curves", 0, "All keyed curves",
+		"Export also curves which have only one key or are totally flat");
 
 	RNA_def_boolean(func, "active_uv_only", 0, "Only Selected UV Map",
 	                "Export only the selected UV Map");

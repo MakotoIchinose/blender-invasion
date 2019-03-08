@@ -21,7 +21,6 @@
  * Execute for surface, volume or displacement.
  * Evaluate one or more closures.
  * Release.
- *
  */
 
 #include "kernel/closure/alloc.h"
@@ -299,6 +298,10 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
 	else if(lamp != LAMP_NONE) {
 		sd->ob_tfm  = lamp_fetch_transform(kg, lamp, false);
 		sd->ob_itfm = lamp_fetch_transform(kg, lamp, true);
+		sd->lamp = lamp;
+#else
+	}
+	else if(lamp != LAMP_NONE) {
 		sd->lamp = lamp;
 #endif
 	}

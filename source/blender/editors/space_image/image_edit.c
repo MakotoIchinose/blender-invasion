@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_image/image_edit.c
- *  \ingroup spimage
+/** \file
+ * \ingroup spimage
  */
 
 #include "DNA_brush_types.h"
@@ -65,7 +58,7 @@ Image *ED_space_image(SpaceImage *sima)
 }
 
 /* called to assign images to UV faces */
-void ED_space_image_set(Main *bmain, SpaceImage *sima, Scene *UNUSED(scene), Object *obedit, Image *ima)
+void ED_space_image_set(Main *bmain, SpaceImage *sima, Object *obedit, Image *ima)
 {
 	/* change the space ima after because uvedit_face_visible_test uses the space ima
 	 * to check if the face is displayed in UV-localview */
