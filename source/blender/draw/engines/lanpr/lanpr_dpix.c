@@ -377,8 +377,8 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, L
 	pd->dpix_sample_step = 1;
 	pd->dpix_buffer_width = TNS_DPIX_TEXTURE_SIZE;
 	pd->dpix_depth_offset = 0.0001;
-	pd->dpix_znear = camera ? ((Camera *)camera->data)->clipsta : v3d->near;
-	pd->dpix_zfar = camera ? ((Camera *)camera->data)->clipend : v3d->far;
+	pd->dpix_znear = camera ? ((Camera *)camera->data)->clip_start : v3d->clip_start;
+	pd->dpix_zfar = camera ? ((Camera *)camera->data)->clip_end : v3d->clip_end;
 
 	GPU_point_size(1);
 	//GPU_line_width(2);
@@ -386,7 +386,7 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, L
 	DRW_draw_pass(psl->dpix_transform_pass);
 
 	GPU_framebuffer_bind(fbl->dpix_preview);
-	GPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
+	eGPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
 	GPU_framebuffer_clear(fbl->dpix_preview, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
 	DRW_draw_pass(psl->dpix_preview_pass);
 

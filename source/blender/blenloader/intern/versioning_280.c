@@ -1539,7 +1539,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
-			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 
 				scene->lanpr.crease_threshold = 0.7;
 

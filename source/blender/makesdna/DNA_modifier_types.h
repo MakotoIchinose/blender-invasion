@@ -1769,7 +1769,7 @@ typedef struct MyBMeshModifierData {
 	struct Object *camera_ob;
 	void *osd_eval;
 	int flag;  /* options stored here */
-	short pad[2];
+	short _pad[2];
 } MyBMeshModifierData;
 
 typedef struct DataTransferModifierData {

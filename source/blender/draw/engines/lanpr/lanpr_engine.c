@@ -440,7 +440,7 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
 	uint clear_stencil = 0xFF;
 
 	GPU_framebuffer_bind(fbl->passes);
-	GPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
+	eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
 	GPU_framebuffer_clear(fbl->passes, clear_bits, clear_col, clear_depth, clear_stencil);
 
 	const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -585,7 +585,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata, RenderEngine *engine, stru
 	float clear_col[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float clear_depth = 1.0f;
 	uint clear_stencil = 0xFF;
-	GPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
+	eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
 
 	GPU_framebuffer_bind(dfbl->default_fb);
 	GPU_framebuffer_clear(dfbl->default_fb, clear_bits, clear_col, clear_depth, clear_stencil);

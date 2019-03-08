@@ -320,7 +320,7 @@ void lanpr_snake_free_readback_data(LANPR_PrivateData *pd) {
 }
 
 void lanpr_snake_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, LANPR_PassList *psl, LANPR_PrivateData *pd, SceneLANPR *lanpr, GPUFrameBuffer *DefaultFB, int is_render){
-	GPUFrameBufferBits clear_bits = GPU_COLOR_BIT | GPU_DEPTH_BIT;
+	eGPUFrameBufferBits clear_bits = GPU_COLOR_BIT | GPU_DEPTH_BIT;
 	float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 	float clear_depth = 1.0f;
 	uint clear_stencil = 0xFF;
@@ -337,8 +337,8 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, 
 		camera = scene->camera;
 	}
 
-	pd->znear = camera ? ((Camera *)camera->data)->clipsta : 0.1;
-	pd->zfar = camera ? ((Camera *)camera->data)->clipend : 100;
+	pd->znear = camera ? ((Camera *)camera->data)->clip_start : 0.1;
+	pd->zfar = camera ? ((Camera *)camera->data)->clip_end : 100;
 	pd->normal_clamp =    lanpr->normal_clamp;
 	pd->normal_strength = lanpr->normal_strength;
 	pd->depth_clamp =     lanpr->depth_clamp;

@@ -1140,7 +1140,7 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb) {
 	real view_dir[3], clip_advance[3];
 	tMatVectorCopy3d(rb->ViewVector,view_dir);
 	tMatVectorCopy3d(rb->ViewVector,clip_advance);
-	tMatVectorMultiSelf3d(clip_advance, -((Camera*)cam->data)->clipsta);
+	tMatVectorMultiSelf3d(clip_advance, -((Camera*)cam->data)->clip_start);
 	tMatVectorAccum3d(cam_pos, clip_advance);
 
 	veln = lanpr_new_cull_point_space64(rb);
@@ -1826,11 +1826,11 @@ void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph, Scene *s, Object *
 	real asp = ((real)rb->W / (real)rb->H);
 
 	if (cam->type == CAM_PERSP) {
-		tmat_make_perspective_matrix_44d(proj, fov, asp, cam->clipsta, cam->clipend);
+		tmat_make_perspective_matrix_44d(proj, fov, asp, cam->clip_start, cam->clip_end);
 	} elif(cam->type == CAM_ORTHO)
 	{
 		real w = cam->ortho_scale/2;
-		tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clipsta, cam->clipend);
+		tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
 	}
 
 	tmat_load_identity_44d(view);
@@ -2477,8 +2477,8 @@ LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(LANPR_RenderBuf
 	LANPR_RenderVert *TE1 = 0;
 	LANPR_RenderVert *TE2 = 0;
 	tnsVector3d cl;// rb->Scene->ActiveCamera->GLocation;
-	real ZMax = ((Camera *)rb->Scene->camera->data)->clipend;
-	real ZMin = ((Camera *)rb->Scene->camera->data)->clipsta;
+	real ZMax = ((Camera *)rb->Scene->camera->data)->clip_end;
+	real ZMin = ((Camera *)rb->Scene->camera->data)->clip_start;
 	LANPR_RenderVert *Share = lanpr_triangle_share_point(Testing, rt);
 
 	tMatVectorConvert3fd(rb->Scene->camera->obmat[3], cl);
@@ -3155,7 +3155,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl, LANPR_Framebuffe
 	DRW_draw_pass(psl->dpix_transform_pass);
 
 	GPU_framebuffer_bind(fbl->dpix_preview);
-	GPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
+	eGPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
 	GPU_framebuffer_clear(fbl->dpix_preview, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
 	DRW_draw_pass(psl->dpix_preview_pass);
 
@@ -3229,7 +3229,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 	float clear_col[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 	float clear_depth = 1.0f;
 	uint clear_stencil = 0xFF;
-	GPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
+	eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
 
 	//Object *camera;
 	//if (v3d) {
