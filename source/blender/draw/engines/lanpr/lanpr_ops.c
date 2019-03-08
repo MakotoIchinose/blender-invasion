@@ -1132,7 +1132,7 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb) {
 	Object *o;
 
 	real cam_pos[3];
-	Object* cam = ((Camera *)rb->Scene->camera);
+	Object* cam = ((Object *)rb->Scene->camera);
 	cam_pos[0] = cam->obmat[3][0];
 	cam_pos[1] = cam->obmat[3][1];
 	cam_pos[2] = cam->obmat[3][2];
