@@ -367,6 +367,7 @@ static void prepare_boolean(FractureModifierData* fmd, Object* ob, BooleanContex
 {
 	ctx->use_fractal = false;
 	ctx->operation = 0;
+	ctx->solver = fmd->boolean_solver;
 	ctx->thresh = fmd->boolean_double_threshold;
 	BLI_strncpy(ctx->uv_layer, fmd->uvlayer_name, 64);
 	ctx->inner_material_index = BKE_object_material_slot_find_index(ob, fmd->inner_material) - 1;
