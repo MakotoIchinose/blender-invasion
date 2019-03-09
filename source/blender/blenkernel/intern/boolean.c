@@ -157,6 +157,7 @@ Mesh *BKE_boolean_operation(Mesh *mesh, struct Object *ob,
 
 				dm->needsFree = 1;
 				dm->release(dm);
+				result = mesh;
 
 				if (dm_result && dm_result != dm_other)
 				{
@@ -165,9 +166,10 @@ Mesh *BKE_boolean_operation(Mesh *mesh, struct Object *ob,
 
 					dm_other->needsFree = 1;
 					dm_other->release(dm_other);
+
+					result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 				}
 
-				result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 #ifdef DEBUG_TIME
 			TIMEIT_END(boolean_carve);
 #endif
