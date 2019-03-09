@@ -172,6 +172,11 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.row().prop(md, "spread")
 
     def BOOLEAN(self, layout, ob, md):
+        solver = md.solver
+        if not bpy.app.build_options.mod_boolean:
+            if solver == 'CARVE':
+                layout.label("Built without Carve solver")
+
         split = layout.split()
 
         col = split.column()
@@ -182,10 +187,15 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.label(text="Object:")
         col.prop(md, "object", text="")
 
-        layout.prop(md, "double_threshold")
+        split = layout.split()
+        split.column().label(text="Solver:")
+        split.column().prop(md, "solver", text="")
 
-        if bpy.app.debug:
-            layout.prop(md, "debug_options")
+        if solver == 'BMESH':
+            layout.prop(md, "double_threshold")
+
+            if bpy.app.debug:
+                layout.prop(md, "debug_options")
 
             if bpy.app.debug:
                 layout.prop(md, "debug_options")

@@ -790,7 +790,8 @@ typedef struct BooleanModifierData {
 
 	struct Object *object;
 	char operation;
-	char _pad[2];
+	char solver;
+	char _pad;
 	char bm_flag;
 	float double_threshold;
 } BooleanModifierData;
@@ -800,6 +801,11 @@ typedef enum {
 	eBooleanModifierOp_Union      = 1,
 	eBooleanModifierOp_Difference = 2,
 } BooleanModifierOp;
+
+typedef enum {
+	eBooleanModifierSolver_Carve    = 0,
+	eBooleanModifierSolver_BMesh = 1,
+} BooleanSolver;
 
 /* bm_flag (only used when G_DEBUG) */
 enum {
@@ -1918,6 +1924,9 @@ typedef struct FractureModifierData {
 	/* which fracture algorithm to use */
 	int frac_algorithm;
 
+	/* use carve (yay) or bmesh */
+	int boolean_solver;
+
 	/* number of prefractured uniform shards */
 	int shard_count;
 
@@ -2091,7 +2100,7 @@ typedef struct FractureModifierData {
 	short mat_ofs_intersect;
 	short mat_ofs_difference;
 
-	//char pad[4];
+	char _pad[4];
 } FractureModifierData;
 
 typedef struct DataTransferModifierData {

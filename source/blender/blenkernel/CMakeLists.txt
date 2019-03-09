@@ -583,6 +583,13 @@ if(WITH_OPENVDB)
 	endif()
 endif()
 
+if(WITH_MOD_BOOLEAN)
+	add_definitions(-DWITH_MOD_BOOLEAN)
+	list(APPEND INC
+		../../../extern/carve
+	)
+endif()
+
 ## Warnings as errors, this is too strict!
 #if(MSVC)
 #	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")

@@ -33,7 +33,6 @@
  */
 
 // #ifdef DEBUG_TIME
-
 #include <stdio.h>
 
 #include "BLI_utildefines.h"
@@ -66,14 +65,15 @@
 #include "tools/bmesh_intersect.h"
 
 #ifdef DEBUG_TIME
-#  include "PIL_time.h"
-#  include "PIL_time_utildefines.h"
+#include "PIL_time.h"
+#include "PIL_time_utildefines.h"
 #endif
 
 static void initData(ModifierData *md)
 {
 	BooleanModifierData *bmd = (BooleanModifierData *)md;
 
+	bmd->solver = eBooleanModifierSolver_BMesh;
 	bmd->double_threshold = 1e-6f;
 	bmd->operation = eBooleanModifierOp_Difference;
 }
@@ -105,30 +105,29 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	DEG_add_modifier_to_transform_relation(ctx->node, "Boolean Modifier");
 }
 
-
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
 	BooleanModifierData *bmd = (BooleanModifierData *) md;
 	Mesh *result = mesh;
 
 	Mesh *mesh_other;
-	bool mesh_other_free;
+	bool mesh_other_free = false;
 
 	if (bmd->object == NULL) {
 		return result;
 	}
 
-    Object *other = DEG_get_evaluated_object(ctx->depsgraph, bmd->object);
-    mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(other, &mesh_other_free);
+	Object *other = DEG_get_evaluated_object(ctx->depsgraph, bmd->object);
+	mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(other, &mesh_other_free);
 
-    result = BKE_boolean_operation(mesh, ctx->object, mesh_other, bmd->object, bmd->operation,
-                                      bmd->double_threshold, bmd);
+	result = BKE_boolean_operation(mesh, ctx->object, mesh_other, bmd->object, bmd->operation,
+									bmd->solver, bmd->double_threshold, bmd);
 
-    /* if new mesh returned, return it; otherwise there was
-     * an error, so delete the modifier object */
-    if (result == NULL) {
-        modifier_setError(md, "Cannot execute boolean operation");
-    }
+	/* if new mesh returned, return it; otherwise there was
+	 * an error, so delete the modifier object */
+	if (result == NULL) {
+		modifier_setError(md, "Cannot execute boolean operation");
+	}
 
 	if (mesh_other != NULL && mesh_other_free) {
 		BKE_id_free(NULL, mesh_other);

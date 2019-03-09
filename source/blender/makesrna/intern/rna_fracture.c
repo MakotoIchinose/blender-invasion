@@ -636,6 +636,12 @@ void RNA_def_fracture(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	static const EnumPropertyItem prop_boolean_solver_items[] = {
+		{eBooleanModifierSolver_BMesh, "BMESH", 0, "BMesh", "Use the BMesh boolean solver"},
+		{eBooleanModifierSolver_Carve, "CARVE", 0, "Carve", "Use the Carve boolean solver"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	srna = RNA_def_struct(brna, "FractureModifier", "Modifier");
 	RNA_def_struct_ui_text(srna, "Fracture Modifier", "Add a fracture container to this object");
 	RNA_def_struct_sdna(srna, "FractureModifierData");
@@ -1047,6 +1053,12 @@ void RNA_def_fracture(BlenderRNA *brna)
 	RNA_def_property_enum_default(prop, MOD_FRACTURE_KEEP_BOTH);
 	RNA_def_property_ui_text(prop, "Cutter Mode", "Determines which shards to keep from cutting process");
 	RNA_def_property_update(prop, noteflag, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "boolean_solver", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, prop_boolean_solver_items);
+	RNA_def_property_ui_text(prop, "Solver", "");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
 	prop = RNA_def_property(srna, "boolean_double_threshold", PROP_FLOAT, PROP_DISTANCE);
 	RNA_def_property_float_sdna(prop, NULL, "boolean_double_threshold");

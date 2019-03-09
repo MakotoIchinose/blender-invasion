@@ -60,6 +60,7 @@ typedef struct BooleanContext {
 	bool use_smooth_inner;
 	int num_cuts;
 	int num_iterations;
+	int solver;
 	float fractal_amount;
 	float cutter_plane_matrix[4][4];
 	float cutter_plane_radius;

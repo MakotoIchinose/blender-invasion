@@ -420,7 +420,7 @@ Mesh* BKE_fracture_mesh_boolean(Mesh* geometry, Mesh* shard, Object* obj, Boolea
 	BKE_fracture_copy_customdata(&geometry->pdata, &shard->pdata, CD_MASK_ISLAND, 0, 0, totpoly, totpoly);
 #endif
 
-	result = BKE_boolean_operation(geometry, obj, shard, obj, ctx->operation, ctx->thresh, NULL);
+	result = BKE_boolean_operation(geometry, obj, shard, obj, ctx->operation, ctx->solver, ctx->thresh, NULL);
 	/*0 == intersection, 2 == difference*/
 
 #if 0

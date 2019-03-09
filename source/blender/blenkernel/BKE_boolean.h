@@ -28,7 +28,7 @@
 #define MOD_BOOLEAN_UTIL_BMESH_H
 
 struct Mesh *BKE_boolean_operation(struct Mesh *mesh, struct Object *ob,
-                                   struct Mesh *mesh_other, struct Object *ob_other, int op_type,
+                                   struct Mesh *mesh_other, struct Object *ob_other, int op_type, int solver,
                                    float double_threshold, struct BooleanModifierData *bmd);
 
 #endif // MOD_BOOLEAN_UTIL_BMESH_H

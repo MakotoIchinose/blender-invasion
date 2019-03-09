@@ -160,7 +160,9 @@ class PHYSICS_PT_fracture_basic(PhysicButtonsPanel, Panel):
 
         col.prop(md, "frac_algorithm")
         if md.frac_algorithm in {'BOOLEAN', 'BOOLEAN_FRACTAL'}:
-            col.prop(md, "boolean_double_threshold")
+            col.prop(md, "boolean_solver")
+            if md.boolean_solver == 'BMESH':
+                col.prop(md, "boolean_double_threshold")
         col.prop(md, "shard_count")
         col.prop(md, "point_seed")
 
