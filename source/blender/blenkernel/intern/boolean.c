@@ -152,30 +152,16 @@ Mesh *BKE_boolean_operation(Mesh *mesh, struct Object *ob,
 				DerivedMesh *dm_other = CDDM_from_mesh(mesh_other);
 				DerivedMesh *dm_result = NULL;
 
-				dm_result = NewBooleanDerivedMesh(dm, object, dm_other, other,
+				dm_result = NewBooleanDerivedMesh(dm_other, other, dm, object,
 											   1 + op_type);
 
-				if (dm_result && dm_result != dm)
-				{
-					float imat[4][4];
-					float omat[4][4];
+				dm->needsFree = 1;
+				dm->release(dm);
 
+				if (dm_result && dm_result != dm_other)
+				{
 					result = BKE_id_new_nomain(ID_ME, NULL);
 					DM_to_mesh(dm_result, result, object, CD_MASK_MESH, true);
-
-					//correct transform
-					invert_m4_m4(imat, object->obmat);
-					mul_m4_m4m4(omat, imat, other->obmat);
-
-					const int mverts_len = result->totvert;
-					MVert *mv = result->mvert;
-
-					for (int i = 0; i < mverts_len; i++, mv++) {
-						mul_m4_v3(omat, mv->co);
-					}
-
-					dm->needsFree = 1;
-					dm->release(dm);
 
 					dm_other->needsFree = 1;
 					dm_other->release(dm_other);
