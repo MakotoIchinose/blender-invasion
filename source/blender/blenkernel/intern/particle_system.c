@@ -3939,7 +3939,7 @@ static void system_step(ParticleSimulationData *sim, float cfra, const bool use_
 		BKE_ptcache_id_time(pid, sim->scene, 0.0f, &startframe, &endframe, NULL);
 
 		/* clear everything on start frame, or when psys needs full reset! */
-		if ((cfra == startframe) || (psys->recalc & ID_RECALC_PSYS_RESET)) {
+		if ((cfra == startframe) /*|| (psys->recalc & ID_RECALC_PSYS_RESET)*/) {
 			BKE_ptcache_id_reset(sim->scene, pid, PTCACHE_RESET_OUTDATED);
 			BKE_ptcache_validate(cache, startframe);
 			cache->flag &= ~PTCACHE_REDO_NEEDED;
@@ -3972,7 +3972,7 @@ static void system_step(ParticleSimulationData *sim, float cfra, const bool use_
 
 /* 2. try to read from the cache */
 	if (pid) {
-		int cache_result = BKE_ptcache_read(pid, cache_cfra, true);
+		int cache_result = BKE_ptcache_read(pid, cache_cfra, false);
 
 		if (ELEM(cache_result, PTCACHE_READ_EXACT, PTCACHE_READ_INTERPOLATED)) {
 			cached_step(sim, cfra, use_render_params);
