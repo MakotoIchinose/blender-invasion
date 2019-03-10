@@ -2876,6 +2876,10 @@ static void OBJECT_cache_populate_particles(
 
 static void OBJECT_gpencil_color_names(Object *ob, struct DRWTextStore *dt, uchar color[4])
 {
+	if (ob->mode != OB_MODE_EDIT_GPENCIL) {
+		return;
+	}
+
 	bGPdata *gpd = (bGPdata *)ob->data;
 	if (gpd == NULL) {
 		return;
