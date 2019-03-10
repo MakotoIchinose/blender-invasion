@@ -110,7 +110,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	BooleanModifierData *bmd = (BooleanModifierData *) md;
 	Mesh *result = mesh;
 
-	Mesh *mesh_other;
+	Mesh *mesh_other = NULL;
 	bool mesh_other_free = false;
 
 	if (bmd->object == NULL) {
@@ -118,7 +118,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	}
 
 	Object *other = DEG_get_evaluated_object(ctx->depsgraph, bmd->object);
-	mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(other, &mesh_other_free);
+	mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(other, mesh_other_free);
 
 	result = BKE_boolean_operation(mesh, ctx->object, mesh_other, bmd->object, bmd->operation,
 									bmd->solver, bmd->double_threshold, bmd);
