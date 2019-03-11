@@ -2733,7 +2733,7 @@ static void DRW_shgroup_bounds(OBJECT_ShadingGroupList *sgl, Object *ob, int the
 	BoundBox *bb = BKE_object_boundbox_get(ob);
 
 	if (!ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT,
-	                    OB_MBALL, OB_ARMATURE, OB_LATTICE))
+	                    OB_MBALL, OB_ARMATURE, OB_LATTICE, OB_GPENCIL))
 	{
 		const float min[3] = {-1.0f, -1.0f, -1.0f}, max[3] = {1.0f, 1.0f, 1.0f};
 		bb = &bb_local;
@@ -3164,7 +3164,9 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
 		DRW_shgroup_forcefield(sgl, ob, view_layer);
 	}
 
-	if (ob->dt == OB_BOUNDBOX) {
+	if ((ob->dt == OB_BOUNDBOX) &&
+	    !ELEM(ob->type, OB_LAMP, OB_CAMERA, OB_EMPTY, OB_SPEAKER, OB_LIGHTPROBE))
+	{
 		if (theme_id == TH_UNDEFINED) {
 			theme_id = DRW_object_wire_theme_get(ob, view_layer, NULL);
 		}
@@ -3208,7 +3210,10 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
 		}
 
 		/* Don't draw bounding box again if draw type is bound box. */
-		if (ob->dtx & OB_DRAWBOUNDOX && ob->dt != OB_BOUNDBOX) {
+		if ((ob->dtx & OB_DRAWBOUNDOX) &&
+		    (ob->dt != OB_BOUNDBOX) &&
+		    !ELEM(ob->type, OB_LAMP, OB_CAMERA, OB_EMPTY, OB_SPEAKER, OB_LIGHTPROBE))
+		{
 			DRW_shgroup_bounds(sgl, ob, theme_id);
 		}
 

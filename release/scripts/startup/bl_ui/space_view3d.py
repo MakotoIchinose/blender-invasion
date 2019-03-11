@@ -400,6 +400,12 @@ class VIEW3D_MT_transform_base(Menu):
     def draw(self, context):
         layout = self.layout
 
+        layout.operator("transform.translate")
+        layout.operator("transform.rotate")
+        layout.operator("transform.resize", text="Scale")
+
+        layout.separator()
+
         layout.operator("transform.tosphere", text="To Sphere")
         layout.operator("transform.shear", text="Shear")
         layout.operator("transform.bend", text="Bend")
@@ -1979,6 +1985,10 @@ class VIEW3D_MT_object_apply(Menu):
 
         props = layout.operator("object.transform_apply", text="Scale", text_ctxt=i18n_contexts.default)
         props.location, props.rotation, props.scale = False, False, True
+
+        props = layout.operator("object.transform_apply", text="All Transforms", text_ctxt=i18n_contexts.default)
+        props.location, props.rotation, props.scale = True, True, True
+
         props = layout.operator("object.transform_apply", text="Rotation & Scale", text_ctxt=i18n_contexts.default)
         props.location, props.rotation, props.scale = False, True, True
 
@@ -2949,6 +2959,8 @@ class VIEW3D_MT_edit_mesh_specials(Menu):
             col.operator("mesh.bevel", text="Bevel Edges").vertex_only = False
             if selected_edges_len >= 2:
                 col.operator("mesh.bridge_edge_loops")
+                col.operator("mesh.edge_face_add", text="New Face from Edges")
+                col.operator("mesh.fill")
 
             col.separator()
 
@@ -5655,36 +5667,69 @@ class VIEW3D_MT_gpencil_edit_specials(Menu):
         layout.menu("VIEW3D_MT_edit_gpencil_delete")
 
 
-class VIEW3D_MT_gpencil_sculpt_specials(Menu):
+class VIEW3D_PT_gpencil_sculpt_specials(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
     bl_label = "Sculpt Context Menu"
 
     def draw(self, context):
+        brush = context.tool_settings.gpencil_sculpt.brush
+
         layout = self.layout
+
+        if context.mode == 'WEIGHT_GPENCIL':
+            layout.prop(brush, "weight")
+        layout.prop(brush, "size", slider=True)
+        layout.prop(brush, "strength")
+
+        layout.separator()
+
+        # Frames 
+        layout.label(text="Frames:")
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        # Add
-        layout.operator("gpencil.stroke_subdivide", text="Subdivide")
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank", icon='ADD')
+        layout.operator("gpencil.frame_duplicate", text="Duplicate Active", icon='DUPLICATE')
+        layout.operator("gpencil.frame_duplicate", text="Duplicate for All Layers", icon='DUPLICATE').mode = 'ALL'
 
         layout.separator()
 
-        # Modify
-        layout.menu("VIEW3D_MT_assign_material")
+        layout.operator("gpencil.delete", text="Delete Active", icon='REMOVE').type = 'FRAME'
+        layout.operator("gpencil.active_frames_delete_all", text="Delete All Active Layers", icon='REMOVE')
+
+
+class VIEW3D_PT_gpencil_draw_specials(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Draw Context Menu"
+
+    def draw(self, context):
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout = self.layout
+
+        if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
+            layout.prop(brush, "size", slider=True)
+        if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
+            layout.prop(gp_settings, "pen_strength")
 
         layout.separator()
 
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Frame")
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Frame All Layers").mode = 'ALL'
+        # Frames 
+        layout.label(text="Frames:")
 
-        if context.mode == 'WEIGHT_GPENCIL':
-            layout.separator()
-            layout.menu("VIEW3D_MT_gpencil_autoweights")
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank", icon='ADD')
+        layout.operator("gpencil.frame_duplicate", text="Duplicate Active", icon='DUPLICATE')
+        layout.operator("gpencil.frame_duplicate", text="Duplicate for All Layers", icon='DUPLICATE').mode = 'ALL'
 
         layout.separator()
 
-        # Remove
-        layout.operator("gpencil.stroke_simplify_fixed", text="Simplify")
-        layout.operator("gpencil.stroke_simplify", text="Simplify Adaptive")
+        layout.operator("gpencil.delete", text="Delete Active", icon='REMOVE').type = 'FRAME'
+        layout.operator("gpencil.active_frames_delete_all", text="Delete All Active Layers", icon='REMOVE')
 
 
 class VIEW3D_PT_paint_vertex_specials(Panel):
@@ -5694,19 +5739,22 @@ class VIEW3D_PT_paint_vertex_specials(Panel):
     bl_label = "Vertex Paint Context Menu"
 
     def draw(self, context):
+        brush = context.tool_settings.vertex_paint.brush
+        ups = context.tool_settings.unified_paint_settings
+
         layout = self.layout
-        # TODO: populate with useful items.
-        layout.operator("paint.vertex_color_set")
-        layout.operator("paint.vertex_color_smooth")
-        layout.operator("paint.vertex_color_dirt")
-        layout.operator("paint.vertex_color_from_weight")
 
-        layout.separator()
+        # Size
+        if ups.use_unified_size:
+            layout.prop(ups, "size", slider=True)
+        else:
+            layout.prop(brush, "size", slider=True)
 
-        layout.operator("paint.vertex_color_invert", text="Invert")
-        layout.operator("paint.vertex_color_levels", text="Levels")
-        layout.operator("paint.vertex_color_hsv", text="Hue Saturation Value")
-        layout.operator("paint.vertex_color_brightness_contrast", text="Bright/Contrast")
+        # Strength
+        if ups.use_unified_strength:
+            layout.prop(ups, "strength")
+        else:
+            layout.prop(brush, "strength")
 
 
 class VIEW3D_PT_paint_texture_specials(Panel):
@@ -5716,9 +5764,22 @@ class VIEW3D_PT_paint_texture_specials(Panel):
     bl_label = "Texture Paint Context Menu"
 
     def draw(self, context):
+        brush = context.tool_settings.image_paint.brush
+        ups = context.tool_settings.unified_paint_settings
+
         layout = self.layout
-        # TODO: populate with useful items.
-        layout.operator("image.save_dirty")
+
+        # Size
+        if ups.use_unified_size:
+            layout.prop(ups, "size", slider=True)
+        else:
+            layout.prop(brush, "size", slider=True)
+
+        # Strength
+        if ups.use_unified_strength:
+            layout.prop(ups, "strength")
+        else:
+            layout.prop(brush, "strength")
 
 
 class VIEW3D_PT_paint_weight_specials(Panel):
@@ -5728,23 +5789,27 @@ class VIEW3D_PT_paint_weight_specials(Panel):
     bl_label = "Weights Context Menu"
 
     def draw(self, context):
+        brush = context.tool_settings.weight_paint.brush
+        capabilities = brush.weight_paint_capabilities
+        ups = context.tool_settings.unified_paint_settings
+
         layout = self.layout
-        # TODO: populate with useful items.
-        layout.operator("paint.weight_set")
-        layout.separator()
-        layout.operator("object.vertex_group_normalize", text="Normalize")
-        layout.operator("object.vertex_group_clean", text="Clean")
 
-        layout.separator()
+        # Weight
+        if capabilities.has_weight or brush.use_gradient:
+            layout.prop(ups, "weight")
 
-        layout.operator("object.vertex_group_quantize", text="Quantize")
-        layout.operator("object.vertex_group_levels", text="Levels")
-        layout.operator("object.vertex_group_smooth", text="Smooth")
+        # Size
+        if ups.use_unified_size:
+            layout.prop(ups, "size", slider=True)
+        else:
+            layout.prop(brush, "size", slider=True)
 
-        layout.separator()
-
-        layout.operator("object.vertex_group_limit_total", text="Limit Total")
-        layout.operator("object.vertex_group_fix", text="Fix Deforms")
+        # Strength
+        if ups.use_unified_strength:
+            layout.prop(ups, "strength")
+        else:
+            layout.prop(brush, "strength")
 
 
 class VIEW3D_PT_sculpt_specials(Panel):
@@ -5754,10 +5819,25 @@ class VIEW3D_PT_sculpt_specials(Panel):
     bl_label = "Sculpt Context Menu"
 
     def draw(self, context):
+        brush = context.tool_settings.sculpt.brush
+        ups = context.tool_settings.unified_paint_settings
+
         layout = self.layout
-        # TODO: populate with useful items.
-        layout.operator("object.shade_smooth")
-        layout.operator("object.shade_flat")
+
+        # Direction
+        layout.prop(brush, "direction", expand=True)
+
+        # Size
+        if ups.use_unified_size:
+            layout.prop(ups, "size", slider=True)
+        else:
+            layout.prop(brush, "size", slider=True)
+
+        # Strength
+        if ups.use_unified_strength:
+            layout.prop(ups, "strength")
+        else:
+            layout.prop(brush, "strength")
 
 
 class TOPBAR_PT_gpencil_materials(GreasePencilMaterialsPanel, Panel):
@@ -5891,7 +5971,6 @@ classes = (
     VIEW3D_MT_gpencil_copy_layer,
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_specials,
-    VIEW3D_MT_gpencil_sculpt_specials,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
     VIEW3D_MT_edit_curve_segments,
@@ -5964,6 +6043,8 @@ classes = (
     VIEW3D_PT_paint_vertex_specials,
     VIEW3D_PT_paint_texture_specials,
     VIEW3D_PT_paint_weight_specials,
+    VIEW3D_PT_gpencil_sculpt_specials,
+    VIEW3D_PT_gpencil_draw_specials,
     VIEW3D_PT_sculpt_specials,
     TOPBAR_PT_gpencil_materials,
     TOPBAR_PT_annotation_layers,
