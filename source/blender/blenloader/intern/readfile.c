@@ -5797,6 +5797,95 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				fmd->shared->last_cache_end = 250;
 				fmd->shared->flag |= MOD_FRACTURE_REFRESH;
 			}
+			else {
+
+				SharedVertGroup *vg;
+				Shard *s;
+				RigidBodyShardCon *con;
+
+				/*clear runtime stuff */
+				fmd->shared->vertex_normals_tree = NULL;
+				fmd->shared->adjacent_face_pairs = NULL;
+				fmd->shared->vertex_index_map = NULL;
+				fmd->shared->vertex_island_map = NULL;
+				fmd->shared->material_index_map = NULL;
+				fmd->shared->defgrp_index_map = NULL;
+				fmd->shared->dupli_shard_map = NULL;
+				fmd->shared->last_islands = NULL;
+				fmd->shared->last_island_tree = NULL;
+				fmd->shared->last_islands_count = 0;
+				fmd->shared->rng = NULL;
+				fmd->shared->mesh_cached = NULL;  //what was the purpose of this again ?
+
+				link_list(fd, &fmd->shared->automerge_shared_verts);
+				for (vg = fmd->shared->automerge_shared_verts.first; vg; vg = vg->next)
+				{
+					link_list(fd, &vg->verts);
+
+					if (BLI_listbase_is_empty(&fmd->shared->automerge_shared_verts))
+					{
+						fmd->distortion_cached = false;
+					}
+					else {
+						fmd->distortion_cached = true;
+					}
+				}
+
+				link_list(fd, &fmd->shared->shards);
+
+				for (s = fmd->shared->shards.first; s; s = s->next) {
+
+					//read mesh
+					s->mesh = newdataadr(fd, s->mesh);
+					direct_link_mesh(fd, s->mesh);
+
+					//neighbors
+					s->neighbors = newdataadr(fd, s->neighbors);
+
+					//rigid body
+					s->rigidbody = newdataadr(fd, s->rigidbody);
+					if (s->rigidbody)
+					{
+						/*should not happen that a mesh island has no rigidbody... */
+						/*maybe the modifier was inactive while saving ?*/
+						//RigidBodyOb_Shared seems not to be part of the DNA for some reason, so recreate here
+						s->rigidbody->shared = MEM_callocN(sizeof(RigidBodyOb_Shared), "RigidBodyOb_Shared");
+						s->rigidbody->flag |= RBO_FLAG_NEEDS_VALIDATE;
+						s->rigidbody->flag |= RBO_FLAG_NEEDS_RESHAPE;
+					}
+
+					/* will be refreshed on the fly if not there*/
+					s->participating_constraints = newdataadr(fd, s->participating_constraints);
+					s->participating_constraint_count = 0;
+
+					//motion data
+					s->locs = newdataadr(fd, s->locs);
+					s->rots = newdataadr(fd, s->rots);
+					s->vels = newdataadr(fd, s->vels);
+					s->aves = newdataadr(fd, s->aves);
+				}
+
+				//participating constraints (pointer to pointer)
+				link_list(fd, &fmd->shared->constraints);
+
+				for (con = fmd->shared->constraints.first; con; con = con->next) {
+					con->mi1 = newdataadr(fd, con->mi1);
+					con->mi2 = newdataadr(fd, con->mi2);
+					con->physics_constraint = NULL;
+					con->flag |= RBC_FLAG_NEEDS_VALIDATE;
+					if (con->mi1->participating_constraints != NULL) {
+						con->mi1->participating_constraints[con->mi1->participating_constraint_count] = con;
+						con->mi1->participating_constraint_count++;
+					}
+
+					if (con->mi2->participating_constraints != NULL) {
+						con->mi2->participating_constraints[con->mi2->participating_constraint_count] = con;
+						con->mi2->participating_constraint_count++;
+					}
+				}
+
+				fmd->shared->anim_bind = newdataadr(fd, fmd->shared->anim_bind);
+			}
 		}
 	}
 }

@@ -112,6 +112,7 @@
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_shader_fx_types.h"
 #include "DNA_fileglobal_types.h"
+#include "DNA_fracture_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
@@ -347,6 +348,9 @@ typedef struct {
 	 */
 	WriteWrap *ww;
 } WriteData;
+
+//prototype for FM shard mesh
+static void write_mesh(WriteData *wd, Mesh *mesh);
 
 static WriteData *writedata_new(WriteWrap *ww)
 {
@@ -1811,6 +1815,59 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
 				}
 			}
 		}
+		else if (md->type == eModifierType_Fracture)
+		{
+			FractureModifierData *fmd = (FractureModifierData *)md;
+			SharedVertGroup *vg;
+			RigidBodyShardCon *con;
+			Shard *s;
+
+			writestruct(wd, DATA, FractureModifierData_Shared, 1, fmd->shared);
+
+			for (vg = fmd->shared->automerge_shared_verts.first; vg; vg = vg->next)
+			{
+				SharedVert *sv;
+				writestruct(wd, DATA, SharedVertGroup, 1, vg);
+				for (sv = vg->verts.first; sv; sv = sv->next)
+				{
+					writestruct(wd, DATA, SharedVert, 1, sv);
+				}
+			}
+
+			for (s = fmd->shared->shards.first; s; s = s->next) {
+				int frame_count = s->endframe - s->startframe + 1;
+
+				writestruct(wd, DATA, Shard, 1, s);
+
+				//write mesh
+				write_mesh(wd, s->mesh);
+
+				//write neighbors
+				writedata(wd, DATA, sizeof(int) * s->neighbor_count, s->neighbors);
+
+				//rigid body
+				writestruct(wd, DATA, RigidBodyOb, 1, s->rigidbody);
+				//writestruct(wd, DATA, RigidBodyOb_Shared, 1, s->rigidbody->shared);
+
+				//motion data
+				writedata(wd, DATA, sizeof(float) * 3 * frame_count, s->locs);
+				writedata(wd, DATA, sizeof(float) * 4 * frame_count, s->rots);
+				writedata(wd, DATA, sizeof(float) * 3 * frame_count, s->vels);
+				writedata(wd, DATA, sizeof(float) * 3 * frame_count, s->aves);
+
+				//participating constraints (pointer to pointer)
+				writedata(wd, DATA,
+				          sizeof(RigidBodyShardCon*) * s->participating_constraint_count,
+				          s->participating_constraints);
+			}
+
+			for (con = fmd->shared->constraints.first; con; con = con->next)
+			{
+				writestruct(wd, DATA, RigidBodyShardCon, 1, con);
+			}
+
+			writestruct(wd, DATA, AnimBind, fmd->shared->anim_bind_len, fmd->shared->anim_bind);
+		}
 	}
 }
 
@@ -2171,7 +2228,8 @@ static void write_mesh(WriteData *wd, Mesh *mesh)
 	CustomDataLayer *llayers = NULL, llayers_buff[CD_TEMP_CHUNK_SIZE];
 	CustomDataLayer *players = NULL, players_buff[CD_TEMP_CHUNK_SIZE];
 
-	if (mesh->id.us > 0 || wd->use_memfile) {
+	/* FM shard meshs use LIB_TAG_NO_MAIN */
+	if (mesh->id.us > 0 || wd->use_memfile || (mesh->id.tag & LIB_TAG_NO_MAIN)) {
 		/* write LibData */
 		{
 			/* write a copy of the mesh, don't modify in place because it is
@@ -2198,7 +2256,15 @@ static void write_mesh(WriteData *wd, Mesh *mesh)
 			CustomData_file_write_prepare(&mesh->ldata, &llayers, llayers_buff, ARRAY_SIZE(llayers_buff));
 			CustomData_file_write_prepare(&mesh->pdata, &players, players_buff, ARRAY_SIZE(players_buff));
 
-			writestruct_at_address(wd, ID_ME, Mesh, 1, old_mesh, mesh);
+			if (mesh->id.tag & LIB_TAG_NO_MAIN)
+			{
+				writestruct_at_address(wd, DATA, Mesh, 1, old_mesh, mesh);
+			}
+			else
+			{
+				writestruct_at_address(wd, ID_ME, Mesh, 1, old_mesh, mesh);
+			}
+
 			write_iddata(wd, &mesh->id);
 
 			/* direct data */
