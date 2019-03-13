@@ -184,18 +184,21 @@ void main(void)
 
 	float uv_x1 = finaluvdata[1].x;
 	float uv_x2 = finaluvdata[2].x;
+	float d = 0;
 	/* normalize UVs */
 	if (uv_x2 > 1.0) {
-		float d = ceil(uv_x2) - 1.0;
+		d = ceil(uv_x2) - 1.0;
 		uv_x1 = uv_x1 - d;
 		uv_x2 = uv_x2 - d;
 	}
 
-	/* invert uv if random angle (angles equal to 0 keep unchanged) */
-	if ((finaluvdata[1].y > 0.0) || (finaluvdata[1].y < 0.25)) {
-		float t = uv_x2;
-		uv_x2 = uv_x1;
-		uv_x1 = t;
+	/* invert uv */
+	if ((finaluvdata[1].y != 0.0) && (finaluvdata[2].y != 0.0)) {
+		if (floor(d / 2.0) == (d / 2.0)) {
+			float t = uv_x2;
+			uv_x2 = uv_x1;
+			uv_x1 = t;
+		}
 	}
 	
 	/* generate the triangle strip */
