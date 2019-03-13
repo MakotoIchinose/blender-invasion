@@ -1293,7 +1293,18 @@ float tex_strength(SculptSession *ss, const Brush *br,
 	}
 
 	/* Falloff curve */
-	avg *= BKE_brush_curve_strength(br, len, cache->radius);
+	float dist_nrm, factor;
+	switch (br->sculpt_tool) {
+		case SCULPT_TOOL_GRAB:
+			dist_nrm = len/cache->radius;
+			factor = 3.0f * dist_nrm * dist_nrm - 2.0f * dist_nrm * dist_nrm * dist_nrm;
+			avg *= (1 - factor);
+			avg *= 0.5f;
+			break;
+		default:
+			avg *= BKE_brush_curve_strength(br, len, cache->radius);
+			break;
+	}
 
 	avg *= frontface(br, cache->view_normal, vno, fno);
 
