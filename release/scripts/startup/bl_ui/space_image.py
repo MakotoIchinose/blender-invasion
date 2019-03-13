@@ -438,7 +438,7 @@ class IMAGE_MT_uvs_select_mode(Menu):
             props.data_path = "tool_settings.uv_select_mode"
 
 
-class IMAGE_MT_uvs_specials(Menu):
+class IMAGE_MT_uvs_context_menu(Menu):
     bl_label = "UV Context Menu"
 
     def draw(self, context):
@@ -1148,12 +1148,12 @@ class IMAGE_PT_uv_sculpt(Panel):
                 col = layout.column()
 
                 row = col.row(align=True)
-                UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True, text="Radius")
-                UnifiedPaintPanel.prop_unified_size(row, context, brush, "use_pressure_size")
+                UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True)
+                UnifiedPaintPanel.prop_unified_size(row, context, brush, "use_pressure_size", text="")
 
                 row = col.row(align=True)
-                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "strength", slider=True, text="Strength")
-                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "use_pressure_strength")
+                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "strength", slider=True)
+                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "use_pressure_strength", text="")
 
         col = layout.column()
         col.prop(tool_settings, "uv_sculpt_lock_borders")
@@ -1284,13 +1284,13 @@ class IMAGE_PT_uv_cursor(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Image"
-    bl_label = "3D Cursor"
+    bl_label = "2D Cursor"
 
     @classmethod
     def poll(cls, context):
         sima = context.space_data
 
-        return (sima and (sima.show_uvedit) or (sima.show_maskedit))
+        return (sima and (sima.show_uvedit or sima.show_maskedit))
 
     def draw(self, context):
         layout = self.layout
@@ -1333,7 +1333,7 @@ classes = (
     IMAGE_MT_uvs_mirror,
     IMAGE_MT_uvs_weldalign,
     IMAGE_MT_uvs_select_mode,
-    IMAGE_MT_uvs_specials,
+    IMAGE_MT_uvs_context_menu,
     IMAGE_MT_pivot_pie,
     IMAGE_MT_uvs_snap_pie,
     IMAGE_HT_header,
