@@ -71,6 +71,7 @@ static void brush_defaults(Brush *brush)
 	brush->size = 35; /* radius of the brush in pixels */
 	brush->alpha = 0.5f; /* brush strength/intensity probably variable should be renamed? */
 	brush->autosmooth_factor = 0.0f;
+	brush->normal_radius_factor = 0.2f;
 	brush->topology_rake_factor = 0.0f;
 	brush->crease_pinch_factor = 0.5f;
 	brush->sculpt_plane = SCULPT_DISP_DIR_AREA;

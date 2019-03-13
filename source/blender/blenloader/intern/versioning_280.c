@@ -2892,6 +2892,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				                                            "Filmic");
 			}
 		}
+
+		Brush *br;
+		for (br = bmain->brushes.first; br; br = br->id.next) {
+			if (br->ob_mode & OB_MODE_SCULPT) {
+				br->normal_radius_factor = 0.2f;
+			}
+		}
 	}
 
 	{
