@@ -900,6 +900,7 @@ typedef enum eUserpref_UI_Flag2 {
 	USER_REGION_OVERLAP			= (1 << 1),
 	USER_TRACKPAD_NATURAL		= (1 << 2),
 	USER_EDIT_MODE_SMOOTH_WIRE	= (1 << 3),
+	USER_2D_VIEWPORT_PANNING	= (1 << 4),
 } eUserpref_UI_Flag2;
 
 /** #UserDef.tablet_api */

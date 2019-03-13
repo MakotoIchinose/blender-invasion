@@ -1405,6 +1405,7 @@ class USERPREF_PT_navigation_orbit(PreferencePanel, Panel):
         flow.prop(inputs, "use_rotate_around_active")
         flow.prop(inputs, "use_auto_perspective")
         flow.prop(inputs, "use_mouse_depth_navigate")
+        flow.prop(inputs, "use_2d_viewport_panning")
         if sys.platform == "darwin":
             flow.prop(inputs, "use_trackpad_natural", text="Natural Trackpad Direction")
 

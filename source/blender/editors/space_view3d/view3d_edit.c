@@ -125,6 +125,7 @@ static void view3d_operator_properties_common(wmOperatorType *ot, const enum eV3
 typedef struct ViewOpsData {
 	/** Context pointers (assigned by #viewops_data_alloc). */
 	Main *bmain;
+	bContext *C;
 	Scene *scene;
 	ScrArea *sa;
 	ARegion *ar;
@@ -499,7 +500,7 @@ static void viewops_data_create(
 		negate_v3_v3(tvec, rv3d->ofs);
 		vod->init.zfac = ED_view3d_calc_zfac(rv3d, tvec, NULL);
 	}
-
+	vod->C = C;
 	vod->reverse = 1.0f;
 	if (rv3d->persmat[2][1] < 0.0f)
 		vod->reverse = -1.0f;
@@ -1615,11 +1616,26 @@ static void viewmove_apply(ViewOpsData *vod, int x, int y)
 	}
 	else {
 		float dvec[3];
-		float mval_f[2];
 
-		mval_f[0] = x - vod->prev.event_xy[0];
-		mval_f[1] = y - vod->prev.event_xy[1];
-		ED_view3d_win_to_delta(vod->ar, mval_f, dvec, vod->init.zfac);
+		if (U.uiflag2 & USER_2D_VIEWPORT_PANNING) {
+			float nvec[3];
+			float center[3];
+			float ssdp[3];
+
+			view3d_orbit_calc_center(vod->C,center);
+			ED_view3d_project(vod->ar, center, ssdp);
+			ssdp[0] = ssdp[0] + x - vod->prev.event_xy[0];
+			ssdp[1] = ssdp[1] + y - vod->prev.event_xy[1];
+			ED_view3d_win_to_3d(vod->v3d, vod->ar, center, ssdp, nvec);
+			sub_v3_v3v3(dvec,  nvec, center);
+		}
+		else {
+			float mval_f[2];
+
+			mval_f[0] = x - vod->prev.event_xy[0];
+			mval_f[1] = y - vod->prev.event_xy[1];
+			ED_view3d_win_to_delta(vod->ar, mval_f, dvec, vod->init.zfac);
+		}
 
 		add_v3_v3(vod->rv3d->ofs, dvec);
 

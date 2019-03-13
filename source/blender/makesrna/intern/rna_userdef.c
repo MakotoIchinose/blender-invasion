@@ -4679,6 +4679,11 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 	        "When entering numbers while transforming, "
 	        "default to advanced mode for full math expression evaluation");
 
+	/* View Panning */
+	prop = RNA_def_property(srna, "use_2d_viewport_panning", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "uiflag2", USER_2D_VIEWPORT_PANNING);
+	RNA_def_property_ui_text(prop, "2D viewport panning", "Keeps the rotation center under the cursor when panning");
+
 	/* View Navigation */
 	prop = RNA_def_property(srna, "navigation_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "navigation_mode");
