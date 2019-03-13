@@ -1187,10 +1187,10 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 		wmWindow *win = CTX_wm_window(C);
 		if (sd->paint.brush->overlay_flags & BRUSH_OVERLAY_CURSOR) {
-			WM_cursor_set(win, CURSOR_EDIT);
+			WM_cursor_set(win, CURSOR_STD);
 		}
 		else {
-			WM_cursor_set(win, CURSOR_NONE);
+			WM_cursor_set(win, CURSOR_EDIT);
 		}
 		if (!ups->stroke_active) {
 			StrokeGeometryInfo gi;
