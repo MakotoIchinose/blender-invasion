@@ -192,33 +192,38 @@ void main(void)
 		uv_x2 = uv_x2 - d;
 	}
 
+	float y_a = 0.0;
+	float y_b = 1.0;
+
 	/* invert uv */
 	if ((finaluvdata[1].y != 0.0) && (finaluvdata[2].y != 0.0)) {
 		if (floor(d / 2.0) == (d / 2.0)) {
-			float t = uv_x2;
-			uv_x2 = uv_x1;
-			uv_x1 = t;
+			// float t = uv_x2;
+			// uv_x2 = uv_x1;
+			// uv_x1 = t;
+			y_a = 1.0;
+			y_b = 0.0;
 		}
 	}
 	
 	/* generate the triangle strip */
 	uvfac = vec2(0.0, 0.0);
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 0) : vec2(uv_x1, 0);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 0) : vec2(uv_x1, y_a);
 	mColor = finalColor[1];
 	gl_Position = vec4((sp1 + length_a * miter_a) / Viewport, getZdepth(P1), 1.0);
 	EmitVertex();
 
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 1) : vec2(uv_x1, 1);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 1) : vec2(uv_x1, y_b);
 	mColor = finalColor[1];
 	gl_Position = vec4((sp1 - length_a * miter_a) / Viewport, getZdepth(P1), 1.0);
 	EmitVertex();
 
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 0) : vec2(uv_x2, 0);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 0) : vec2(uv_x2, y_a);
 	mColor = finalColor[2];
 	gl_Position = vec4((sp2 + length_b * miter_b) / Viewport, getZdepth(P2), 1.0);
 	EmitVertex();
 
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 1) : vec2(uv_x2, 1);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 1) : vec2(uv_x2, y_b);
 	mColor = finalColor[2];
 	gl_Position = vec4((sp2 - length_b * miter_b) / Viewport, getZdepth(P2), 1.0);
 	EmitVertex();
