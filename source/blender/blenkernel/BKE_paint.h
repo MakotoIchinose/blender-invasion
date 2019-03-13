@@ -61,6 +61,7 @@ struct SubdivCCG;
 enum eOverlayFlags;
 
 #include "DNA_object_enums.h"
+#include "DNA_view3d_types.h"
 
 extern const char PAINT_CURSOR_SCULPT[3];
 extern const char PAINT_CURSOR_VERTEX_PAINT[3];
@@ -245,6 +246,13 @@ typedef struct SculptSession {
 	float (*layer_co)[3]; /* Copy of the mesh vertices' locations */
 
 	struct StrokeCache *cache;
+
+	float cursor_radius;
+	float cursor_location[3];
+	float cursor_view_normal[3];
+	float cursor_normal[3];
+
+	RegionView3D *rv3d;
 
 	union {
 		struct {

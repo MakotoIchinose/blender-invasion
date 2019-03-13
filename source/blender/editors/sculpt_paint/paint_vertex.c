@@ -2075,7 +2075,7 @@ static PBVHNode **vwpaint_pbvh_gather_generic(
 		};
 		BKE_pbvh_search_gather(ss->pbvh, sculpt_search_sphere_cb, &data, &nodes, r_totnode);
 		if (use_normal) {
-			sculpt_pbvh_calc_area_normal(brush, ob, nodes, *r_totnode, true, ss->cache->sculpt_normal_symm);
+			sculpt_pbvh_calc_area_normal(brush, ob, nodes, *r_totnode, true, ss->cache->sculpt_normal_symm, NULL);
 		}
 		else {
 			zero_v3(ss->cache->sculpt_normal_symm);

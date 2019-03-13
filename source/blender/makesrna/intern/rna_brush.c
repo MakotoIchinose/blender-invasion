@@ -1617,6 +1617,14 @@ static void rna_def_brush(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Autosmooth", "Amount of smoothing to automatically apply to each stroke");
 	RNA_def_property_update(prop, 0, "rna_Brush_update");
 
+	prop = RNA_def_property(srna, "normal_radius_factor", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_float_sdna(prop, NULL, "normal_radius_factor");
+	RNA_def_property_float_default(prop, 0.2f);
+	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.001, 3);
+	RNA_def_property_ui_text(prop, "Normal Radius", "Ratio between the brush radius and the radius that is going to be used to sample the normal");
+	RNA_def_property_update(prop, 0, "rna_Brush_update");
+
 	prop = RNA_def_property(srna, "topology_rake_factor", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "topology_rake_factor");
 	RNA_def_property_float_default(prop, 0);

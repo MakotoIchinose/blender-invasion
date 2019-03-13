@@ -99,7 +99,7 @@ void BKE_pbvh_raycast(
 bool BKE_pbvh_node_raycast(
         PBVH *bvh, PBVHNode *node, float (*origco)[3], bool use_origco,
         const float ray_start[3], const float ray_normal[3],
-        float *depth);
+        float *depth, float* normal, float *nearest_vertex_co);
 
 bool BKE_pbvh_bmesh_node_raycast_detail(
         PBVHNode *node,

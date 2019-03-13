@@ -271,9 +271,12 @@ typedef struct Brush {
 
 	float autosmooth_factor;
 
+	float normal_radius_factor;
+
 	float topology_rake_factor;
 
 	float crease_pinch_factor;
+	char _pad1[4];
 
 	float plane_trim;
 	/** Affectable height of brush (layer height for layer tool, i.e.). */

@@ -47,7 +47,16 @@ bool sculpt_poll(struct bContext *C);
 bool sculpt_poll_view3d(struct bContext *C);
 
 /* Stroke */
+typedef struct StrokeGeometryInfo {
+	float location[3];
+	float normal[3];
+	float nearest_vertex_co[3];
+	bool use_sampled_normal;
+} StrokeGeometryInfo;
+
+
 bool sculpt_stroke_get_location(struct bContext *C, float out[3], const float mouse[2]);
+bool sculpt_stroke_get_geometry_info(struct bContext *C, StrokeGeometryInfo *out, const float mouse[2]);
 
 /* Dynamic topology */
 void sculpt_pbvh_clear(Object *ob);
@@ -171,6 +180,7 @@ typedef struct SculptThreadedTaskData {
 	float(*area_cos)[3];
 	float(*area_nos)[3];
 	int *count;
+	int vertex_count;
 
 	ThreadMutex mutex;
 
@@ -189,6 +199,8 @@ typedef struct SculptBrushTest {
 	/* Some tool code uses a plane for it's calculateions. */
 	float plane_tool[4];
 
+	float radius_factor;
+
 	/* View3d clipping - only set rv3d for clipping */
 	struct RegionView3D *clip_rv3d;
 } SculptBrushTest;
@@ -200,6 +212,7 @@ typedef struct {
 	struct SculptSession *ss;
 	float radius_squared;
 	bool original;
+	float location[3];
 } SculptSearchSphereData;
 
 typedef struct {
@@ -208,6 +221,7 @@ typedef struct {
 	float radius_squared;
 	bool original;
 	struct DistRayAABB_Precalc *dist_ray_to_aabb_precalc;
+	float location[3];
 } SculptSearchCircleData;
 
 void sculpt_brush_test_init(struct SculptSession *ss, SculptBrushTest *test);
@@ -238,7 +252,8 @@ void sculpt_pbvh_calc_area_normal(
         const struct Brush *brush, Object *ob,
         PBVHNode **nodes, int totnode,
         bool use_threading,
-        float r_area_no[3]);
+        float r_area_no[3],
+        int *vertex_count);
 
 /* Cache stroke properties. Used because
  * RNA property lookup isn't particularly fast.

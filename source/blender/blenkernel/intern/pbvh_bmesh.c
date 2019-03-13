@@ -1503,10 +1503,12 @@ static bool pbvh_bmesh_collapse_short_edges(
 bool pbvh_bmesh_node_raycast(
         PBVHNode *node, const float ray_start[3],
         const float ray_normal[3], float *depth,
-        bool use_original)
+        bool use_original, float *normal, float *nearest_vertex_co)
 {
 	bool hit = false;
 
+	float min_depth = FLT_MAX;
+	float location[3] = {0.0f};
 	if (use_original && node->bm_tot_ortri) {
 		for (int i = 0; i < node->bm_tot_ortri; i++) {
 			const int *t = node->bm_ortri[i];
@@ -1535,6 +1537,16 @@ bool pbvh_bmesh_node_raycast(
 				        v_tri[1]->co,
 				        v_tri[2]->co,
 				        depth);
+				if (hit && *depth < min_depth) {
+					min_depth = *depth;
+					normal_tri_v3(normal, v_tri[0]->co, v_tri[1]->co, v_tri[2]->co);
+					madd_v3_v3v3fl(location, ray_start, ray_normal, *depth);
+					for (int j = 0; j < 3; j++) {
+						if (len_squared_v3v3(location, v_tri[j]->co) < len_squared_v3v3(location, nearest_vertex_co)) {
+							copy_v3_v3(nearest_vertex_co, v_tri[j]->co);
+						}
+					}
+				}
 			}
 		}
 	}

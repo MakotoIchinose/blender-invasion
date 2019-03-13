@@ -529,17 +529,24 @@ void ED_sculpt_redraw_planes_get(float planes[4][4], ARegion *ar, Object *ob)
 
 void sculpt_brush_test_init(SculptSession *ss, SculptBrushTest *test)
 {
-	RegionView3D *rv3d = ss->cache->vc->rv3d;
+	RegionView3D *rv3d = ss->cache? ss->cache->vc->rv3d : ss->rv3d;
 
-	test->radius_squared = ss->cache->radius_squared;
-	copy_v3_v3(test->location, ss->cache->location);
+	test->radius_squared = ss->cache? ss->cache->radius_squared : ss->cursor_radius * ss->cursor_radius;
+	if (ss->cache){
+		copy_v3_v3(test->location, ss->cache->location);
+		test->mirror_symmetry_pass = ss->cache->mirror_symmetry_pass;
+	}
+	else {
+		copy_v3_v3(test->location, ss->cursor_location);
+		test->mirror_symmetry_pass = 0;
+	}
 	test->dist = 0.0f;   /* just for initialize */
 
 	/* Only for 2D projection. */
 	zero_v4(test->plane_view);
 	zero_v4(test->plane_tool);
 
-	test->mirror_symmetry_pass = ss->cache->mirror_symmetry_pass;
+	test->radius_factor = 1.0f;
 
 	if (rv3d->rflag & RV3D_CLIPPING) {
 		test->clip_rv3d = rv3d;
@@ -548,6 +555,7 @@ void sculpt_brush_test_init(SculptSession *ss, SculptBrushTest *test)
 		test->clip_rv3d = NULL;
 	}
 }
+
 
 BLI_INLINE bool sculpt_brush_test_clipping(const SculptBrushTest *test, const float co[3])
 {
@@ -580,7 +588,7 @@ bool sculpt_brush_test_sphere_sq(SculptBrushTest *test, const float co[3])
 {
 	float distsq = len_squared_v3v3(co, test->location);
 
-	if (distsq <= test->radius_squared) {
+	if (distsq <= test->radius_squared * test->radius_factor) {
 		if (sculpt_brush_test_clipping(test, co)) {
 			return 0;
 		}
@@ -606,7 +614,7 @@ bool sculpt_brush_test_circle_sq(SculptBrushTest *test, const float co[3])
 	closest_to_plane_normalized_v3(co_proj, test->plane_view, co);
 	float distsq = len_squared_v3v3(co_proj, test->location);
 
-	if (distsq <= test->radius_squared) {
+	if (distsq <= test->radius_squared * test->radius_factor) {
 		if (sculpt_brush_test_clipping(test, co)) {
 			return 0;
 		}
@@ -823,7 +831,7 @@ static void calc_area_normal_and_center_task_cb(
 	int   private_count[2] = {0};
 	bool use_original = false;
 
-	if (ss->cache->original) {
+	if (ss->cache && ss->cache->original) {
 		unode = sculpt_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
 		use_original = (unode->co || unode->bm_entry);
 	}
@@ -832,6 +840,8 @@ static void calc_area_normal_and_center_task_cb(
 	SculptBrushTestFn sculpt_brush_test_sq_fn =
 	        sculpt_brush_test_init_with_falloff_shape(ss, &test, data->brush->falloff_shape);
 
+	/* Add the normal radius factor to the test */
+	test.radius_factor = data->brush->normal_radius_factor;
 
 	/* when the mesh is edited we can't rely on original coords
 	 * (original mesh may not even have verts in brush radius) */
@@ -857,9 +867,17 @@ static void calc_area_normal_and_center_task_cb(
 				float no[3];
 				int flip_index;
 
+				data->vertex_count++;
+
 				normal_tri_v3(no, UNPACK3(co_tri));
 
-				flip_index = (dot_v3v3(ss->cache->view_normal, no) <= 0.0f);
+				if (ss->cache) {
+					flip_index = (dot_v3v3(ss->cache->view_normal, no) <= 0.0f);
+				}
+				else {
+					flip_index = (dot_v3v3(ss->cursor_view_normal, no) <= 0.0f);
+				}
+
 				if (area_cos)
 					add_v3_v3(private_co[flip_index], co);
 				if (area_nos)
@@ -892,6 +910,8 @@ static void calc_area_normal_and_center_task_cb(
 				const float *no;
 				int flip_index;
 
+				data->vertex_count++;
+
 				if (use_original) {
 					normal_short_to_float_v3(no_buf, no_s);
 					no = no_buf;
@@ -906,7 +926,13 @@ static void calc_area_normal_and_center_task_cb(
 					}
 				}
 
-				flip_index = (dot_v3v3(ss->cache->view_normal, no) <= 0.0f);
+				if (ss->cache) {
+					flip_index = (dot_v3v3(ss->cache->view_normal, no) <= 0.0f);
+				}
+				else {
+					flip_index = (dot_v3v3(ss->cursor_view_normal, no) <= 0.0f);
+				}
+
 				if (area_cos)
 					add_v3_v3(private_co[flip_index], co);
 				if (area_nos)
@@ -990,7 +1016,7 @@ static void calc_area_normal(
 {
 	const Brush *brush = BKE_paint_brush(&sd->paint);
 	bool use_threading = (sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT;
-	sculpt_pbvh_calc_area_normal(brush, ob, nodes, totnode, use_threading, r_area_no);
+	sculpt_pbvh_calc_area_normal(brush, ob, nodes, totnode, use_threading, r_area_no, NULL);
 }
 
 /* expose 'calc_area_normal' externally. */
@@ -998,7 +1024,8 @@ void sculpt_pbvh_calc_area_normal(
         const Brush *brush, Object *ob,
         PBVHNode **nodes, int totnode,
         bool use_threading,
-        float r_area_no[3])
+        float r_area_no[3],
+        int *vertex_count)
 {
 	SculptSession *ss = ob->sculpt;
 	const bool has_bm_orco = ss->bm && sculpt_stroke_is_dynamic_topology(ss, brush);
@@ -1012,6 +1039,7 @@ void sculpt_pbvh_calc_area_normal(
 	SculptThreadedTaskData data = {
 		.sd = NULL, .ob = ob, .brush = brush, .nodes = nodes, .totnode = totnode,
 		.has_bm_orco = has_bm_orco, .area_cos = NULL, .area_nos = area_nos, .count = count,
+		.vertex_count = 0,
 	};
 	BLI_mutex_init(&data.mutex);
 
@@ -1025,6 +1053,10 @@ void sculpt_pbvh_calc_area_normal(
 	            &settings);
 
 	BLI_mutex_end(&data.mutex);
+
+	if (vertex_count) {
+		*vertex_count = data.vertex_count;
+	}
 
 	/* for area normal */
 	for (int i = 0; i < ARRAY_SIZE(area_nos); i++) {
@@ -1057,6 +1089,7 @@ static void calc_area_normal_and_center(
 	SculptThreadedTaskData data = {
 		.sd = NULL, .ob = ob, .brush = brush, .nodes = nodes, .totnode = totnode,
 		.has_bm_orco = has_bm_orco, .area_cos = area_cos, .area_nos = area_nos, .count = count,
+		.vertex_count = 0,
 	};
 	BLI_mutex_init(&data.mutex);
 
@@ -1274,7 +1307,8 @@ float tex_strength(SculptSession *ss, const Brush *br,
 bool sculpt_search_sphere_cb(PBVHNode *node, void *data_v)
 {
 	SculptSearchSphereData *data = data_v;
-	float *center = data->ss->cache->location, nearest[3];
+	float *center, nearest[3];
+	center = data->ss->cache? data->ss->cache->location : data->location;
 	float t[3], bb_min[3], bb_max[3];
 	int i;
 
@@ -1342,9 +1376,10 @@ static PBVHNode **sculpt_pbvh_gather_generic(
 		SculptSearchSphereData data = {
 			.ss = ss,
 			.sd = sd,
-			.radius_squared = SQUARE(ss->cache->radius * radius_scale),
+			.radius_squared = ss->cache? SQUARE(ss->cache->radius * radius_scale): ss->cursor_radius,
 			.original = use_original,
 		};
+		copy_v3_v3(data.location, ss->cursor_location);
 		BKE_pbvh_search_gather(ss->pbvh, sculpt_search_sphere_cb, &data, &nodes, r_totnode);
 	}
 	else {
@@ -1353,10 +1388,11 @@ static PBVHNode **sculpt_pbvh_gather_generic(
 		SculptSearchCircleData data = {
 			.ss = ss,
 			.sd = sd,
-			.radius_squared = SQUARE(ss->cache->radius * radius_scale),
+			.radius_squared = ss->cache? SQUARE(ss->cache->radius * radius_scale): ss->cursor_radius,
 			.original = use_original,
 			.dist_ray_to_aabb_precalc = &dist_ray_to_aabb_precalc,
 		};
+		copy_v3_v3(data.location, ss->cursor_location);
 		BKE_pbvh_search_gather(ss->pbvh, sculpt_search_circle_cb, &data, &nodes, r_totnode);
 	}
 	return nodes;
@@ -1726,6 +1762,8 @@ typedef struct {
 	bool hit;
 	float depth;
 	bool original;
+	float *normal;
+	float *nearest_vertex_co;
 } SculptRaycastData;
 
 typedef struct {
@@ -4826,7 +4864,7 @@ static void sculpt_raycast_cb(PBVHNode *node, void *data_v, float *tmin)
 		}
 
 		if (BKE_pbvh_node_raycast(srd->ss->pbvh, node, origco, use_origco,
-		                          srd->ray_start, srd->ray_normal, &srd->depth))
+								  srd->ray_start, srd->ray_normal, &srd->depth, srd->normal, srd->nearest_vertex_co))
 		{
 			srd->hit = 1;
 			*tmin = srd->depth;
@@ -4910,6 +4948,99 @@ static float sculpt_raycast_init(
 	return dist;
 }
 
+
+bool sculpt_stroke_get_geometry_info(bContext *C, StrokeGeometryInfo *out, const float mouse[2])
+{
+	Scene *scene = CTX_data_scene(C);
+	Sculpt *sd = scene->toolsettings->sculpt;
+	Object *ob;
+	SculptSession *ss;
+	float ray_start[3], ray_end[3], ray_normal[3], depth, face_normal[3], sampled_normal[3], viewDir[3], mat[3][3];
+	float nearest_vetex_co[3] = {0.0f};
+	int totnode;
+	bool original, hit = false;
+	ViewContext vc;
+	const Brush *brush = BKE_paint_brush(BKE_paint_get_active_from_context(C));
+
+	ED_view3d_viewcontext_init(C, &vc);
+
+	ob = vc.obact;
+	ss = ob->sculpt;
+
+	depth = sculpt_raycast_init(&vc, mouse, ray_start, ray_end, ray_normal, original);
+	sculpt_stroke_modifiers_check(C, ob, brush);
+
+
+	SculptRaycastData srd = {
+		.original = original,
+		.ss = ob->sculpt,
+		.hit = 0,
+		.ray_start = ray_start,
+		.ray_normal = ray_normal,
+		.depth = depth,
+		.normal = face_normal,
+		.nearest_vertex_co = nearest_vetex_co,
+	};
+	BKE_pbvh_raycast(
+			ss->pbvh, sculpt_raycast_cb, &srd,
+			ray_start, ray_normal, srd.original);
+	if (srd.hit) {
+		hit = true;
+		copy_v3_v3(out->location, ray_normal);
+		mul_v3_fl(out->location, srd.depth);
+		add_v3_v3(out->location, ray_start);
+		copy_v3_v3(out->nearest_vertex_co, srd.nearest_vertex_co);
+
+		if (!out->use_sampled_normal) {
+			copy_v3_v3(out->normal, srd.normal);
+			return hit;
+		}
+		const float radius_scale = 1.0f;
+		float radius;
+
+		invert_m4_m4(ob->imat, ob->obmat);
+		copy_m3_m4(mat, vc.rv3d->viewinv);
+		mul_m3_v3(mat, viewDir);
+		copy_m3_m4(mat, ob->imat);
+		mul_m3_v3(mat, viewDir);
+		normalize_v3_v3(ss->cursor_view_normal, viewDir);
+
+		copy_v3_v3(ss->cursor_normal, srd.normal);
+
+		if (!BKE_brush_use_locked_size(scene, brush)) {
+			radius = paint_calc_object_space_radius(&vc, out->location, BKE_brush_size_get(scene, brush));
+		}
+		else {
+			radius = BKE_brush_unprojected_radius_get(scene, brush);
+		}
+		copy_v3_v3(ss->cursor_location, out->location);
+		ss->rv3d = vc.rv3d;
+		ss->cursor_radius = radius;
+		PBVHNode **nodes = sculpt_pbvh_gather_generic(ob, sd, brush, original, radius_scale, &totnode);
+
+		if (totnode) {
+			int vertex_count;
+			sculpt_pbvh_calc_area_normal(brush, ob, nodes, totnode, true, sampled_normal, &vertex_count);
+			if (vertex_count == 0) {
+				copy_v3_v3(out->normal, srd.normal);
+			}
+			else {
+				copy_v3_v3(out->normal, sampled_normal);
+			}
+		}
+		else {
+			copy_v3_v3(out->normal, srd.normal);
+		}
+	}
+	else {
+		copy_v3_fl(out->location, 0.0f);
+		copy_v3_fl(out->normal, 0.0f);
+		copy_v3_fl(out->nearest_vertex_co, 0.0f);
+	}
+
+	return hit;
+}
+
 /* Do a raycast in the tree to find the 3d brush location
  * (This allows us to ignore the GL depth buffer)
  * Returns 0 if the ray doesn't hit the mesh, non-zero otherwise
@@ -4919,7 +5050,7 @@ bool sculpt_stroke_get_location(bContext *C, float out[3], const float mouse[2])
 	Object *ob;
 	SculptSession *ss;
 	StrokeCache *cache;
-	float ray_start[3], ray_end[3], ray_normal[3], depth;
+	float ray_start[3], ray_end[3], ray_normal[3], depth, face_normal[3], nearest_vertex_co[3];
 	bool original;
 	ViewContext vc;
 
@@ -4946,6 +5077,8 @@ bool sculpt_stroke_get_location(bContext *C, float out[3], const float mouse[2])
 			.ray_start = ray_start,
 			.ray_normal = ray_normal,
 			.depth = depth,
+			.normal = face_normal,
+			.nearest_vertex_co = nearest_vertex_co,
 		};
 		BKE_pbvh_raycast(
 		        ss->pbvh, sculpt_raycast_cb, &srd,
