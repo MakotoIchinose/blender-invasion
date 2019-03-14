@@ -215,6 +215,7 @@ class USERPREF_PT_interface_editors(PreferencePanel, Panel):
         flow.prop(view, "show_layout_ui", text="Corner Splitting")
         flow.prop(view, "color_picker_type")
         flow.row().prop(view, "header_align")
+        flow.prop(view, "factor_display_type")
 
 
 class USERPREF_PT_interface_menus(Panel):
@@ -600,7 +601,6 @@ class USERPREF_PT_viewport_quality(PreferencePanel, Panel):
         return (prefs.active_section == 'VIEWPORT')
 
     def draw_props(self, context, layout):
-        import sys
         prefs = context.preferences
         system = prefs.system
 
