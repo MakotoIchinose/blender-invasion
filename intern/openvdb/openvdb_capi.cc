@@ -20,6 +20,7 @@
 #include "openvdb_capi.h"
 #include "openvdb_dense_convert.h"
 #include "openvdb_util.h"
+#include "openvdb_level_set.h"
 
 struct OpenVDBFloatGrid { int unused; };
 struct OpenVDBIntGrid { int unused; };
@@ -233,4 +234,9 @@ void OpenVDBReader_get_meta_v3_int(OpenVDBReader *reader, const char *name, int 
 void OpenVDBReader_get_meta_mat4(OpenVDBReader *reader, const char *name, float value[4][4])
 {
 	reader->mat4sMeta(name, value);
+}
+
+
+void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd){
+	OpenVDB_level_set_remesh(rmd);
 }

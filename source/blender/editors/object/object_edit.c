@@ -32,6 +32,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_ghash.h"
 
@@ -78,6 +79,8 @@
 #include "BKE_editmesh.h"
 #include "BKE_report.h"
 #include "BKE_workspace.h"
+#include "BKE_mesh_runtime.h"
+#include "BKE_library.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -109,6 +112,10 @@
 #include "WM_toolsystem.h"
 
 #include "object_intern.h"  // own include
+
+#ifdef WITH_OPENVDB
+	#include "openvdb_capi.h"
+#endif
 
 /* prototypes */
 typedef struct MoveToCollectionData MoveToCollectionData;
@@ -1734,4 +1741,108 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
 	prop = RNA_def_string(ot->srna, "new_collection_name", NULL, MAX_NAME, "Name",
 	                      "Name of the newly added collection");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+
+static int remesh_exec(bContext *C, wmOperator *op)
+{
+	bool linked_data = false;
+
+	Object *ob = CTX_data_active_object(C);
+	Main *bmain = CTX_data_main(C);
+	struct OpenVDBRemeshData rmd;
+
+	ID *data;
+	data = ob->data;
+	if (data && ID_IS_LINKED(data)) {
+		linked_data = true;
+		return OPERATOR_CANCELLED;
+	}
+
+	if (ob->type == OB_MESH) {
+		Mesh *mesh = ob->data;
+		BKE_mesh_runtime_looptri_recalc(mesh);
+		const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
+		MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh), "remesh_looptri");
+		BKE_mesh_runtime_verttri_from_looptri(verttri, mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(mesh));
+
+		rmd.totfaces = BKE_mesh_runtime_looptri_len(mesh);
+		rmd.totverts = mesh->totvert;
+		rmd.verts = (float *)MEM_calloc_arrayN(rmd.totverts * 3, sizeof(float), "remesh_input_verts");
+		rmd.faces = (unsigned int *)MEM_calloc_arrayN(rmd.totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
+		PropertyRNA *prop = RNA_struct_find_property(op->ptr, "voxel_size");
+		rmd.voxel_size = RNA_property_float_get(op->ptr, prop);
+		rmd.isovalue = 0.0f;
+
+		for(int i = 0; i < mesh->totvert; i++) {
+			MVert mvert = mesh->mvert[i];
+			rmd.verts[i * 3] = mvert.co[0];
+			rmd.verts[i * 3 + 1] = mvert.co[1];
+			rmd.verts[i * 3 + 2] = mvert.co[2];
+		}
+
+		for(int i = 0; i < rmd.totfaces; i++) {
+			MVertTri vt = verttri[i];
+			rmd.faces[i * 3] = vt.tri[0];
+			rmd.faces[i * 3 + 1] = vt.tri[1];
+			rmd.faces[i * 3 + 2] = vt.tri[2];
+		}
+
+		OpenVDB_voxel_remesh(&rmd);
+
+		Mesh *newMesh = BKE_mesh_new_nomain(rmd.out_totverts, 0, rmd.out_totfaces, 0, 0);
+
+		for(int i = 0; i < rmd.out_totverts; i++) {
+			float vco[3] = { rmd.out_verts[i * 3], rmd.out_verts[i * 3 + 1], rmd.out_verts[i * 3 + 2]};
+			copy_v3_v3(newMesh->mvert[i].co, vco);
+
+		}
+		for(int i = 0; i < rmd.out_totfaces; i++) {
+			newMesh->mface[i].v4 = rmd.out_faces[i * 4];
+			newMesh->mface[i].v3 = rmd.out_faces[i * 4 + 1];
+			newMesh->mface[i].v2 = rmd.out_faces[i * 4 + 2];
+			newMesh->mface[i].v1 = rmd.out_faces[i * 4 + 3];
+		}
+
+		BKE_mesh_calc_edges_tessface(newMesh);
+		BKE_mesh_convert_mfaces_to_mpolys(newMesh);
+		BKE_mesh_calc_normals(newMesh);
+		BKE_mesh_nomain_to_mesh(newMesh, ob->data, ob, &CD_MASK_EVERYTHING, true);
+		BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
+		DEG_relations_tag_update(bmain);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+
+		BKE_mesh_free(newMesh);
+		MEM_freeN(rmd.faces);
+		MEM_freeN(rmd.verts);
+		MEM_freeN(verttri);
+		MEM_freeN(rmd.out_verts);
+		MEM_freeN(rmd.out_faces);
+
+		return OPERATOR_FINISHED;
+	}
+	return OPERATOR_CANCELLED;
+}
+
+void OBJECT_OT_remesh(wmOperatorType *ot)
+{
+	PropertyRNA *prop;
+
+	/* identifiers */
+	ot->name = "Voxel remesh";
+	ot->description = "Run OpenVDB voxel remesher";
+	ot->idname = "OBJECT_OT_remesh";
+
+	/* api callbacks */
+	ot->poll = object_mode_set_poll;
+	ot->exec = remesh_exec;
+
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+	prop = RNA_def_property(ot->srna, "voxel_size", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_range(prop, 0.001, 1.0);
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_ui_range(prop, 0.0001, 1, 0.01, 4);
+	RNA_def_property_ui_text(prop, "Voxel Size", "Voxel size used for volume evaluation");
 }

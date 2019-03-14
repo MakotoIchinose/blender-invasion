@@ -29,6 +29,21 @@ struct OpenVDBWriter;
 struct OpenVDBFloatGrid;
 struct OpenVDBIntGrid;
 struct OpenVDBVectorGrid;
+struct OpenVDBRemeshData {
+	float *verts;
+	unsigned int *faces;
+	int totfaces;
+	int totverts;
+
+	float *out_verts;
+	unsigned int *out_faces;
+	int out_totverts;
+	int out_totfaces;
+
+	float voxel_size;
+	float isovalue;
+};
+
 
 int OpenVDB_getVersionHex(void);
 
@@ -92,6 +107,9 @@ void OpenVDBReader_get_meta_int(struct OpenVDBReader *reader, const char *name, 
 void OpenVDBReader_get_meta_v3(struct OpenVDBReader *reader, const char *name, float value[3]);
 void OpenVDBReader_get_meta_v3_int(struct OpenVDBReader *reader, const char *name, int value[3]);
 void OpenVDBReader_get_meta_mat4(struct OpenVDBReader *reader, const char *name, float value[4][4]);
+
+void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd);
+
 
 #ifdef __cplusplus
 }
