@@ -1808,6 +1808,11 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		BKE_mesh_convert_mfaces_to_mpolys(newMesh);
 		BKE_mesh_calc_normals(newMesh);
 		BKE_mesh_nomain_to_mesh(newMesh, ob->data, ob, &CD_MASK_EVERYTHING, true);
+
+		if (RNA_boolean_get(op->ptr, "smooth_normals")) {
+			BKE_mesh_smooth_flag_set(ob, true);
+		}
+
 		BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
 		DEG_relations_tag_update(bmain);
 		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -1845,4 +1850,6 @@ void OBJECT_OT_remesh(wmOperatorType *ot)
 	RNA_def_property_float_default(prop, 0.1f);
 	RNA_def_property_ui_range(prop, 0.0001, 1, 0.01, 4);
 	RNA_def_property_ui_text(prop, "Voxel Size", "Voxel size used for volume evaluation");
+
+	prop = RNA_def_boolean(ot->srna, "smooth_normals", false, "Shade smooth", "Smooth normals on the resulting mesh");
 }
