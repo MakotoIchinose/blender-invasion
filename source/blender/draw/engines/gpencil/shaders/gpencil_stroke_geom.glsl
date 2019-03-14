@@ -182,48 +182,37 @@ void main(void)
 		EmitVertex();
 	}
 
-	float uv_x1 = finaluvdata[1].x;
-	float uv_x2 = finaluvdata[2].x;
-	float d = 0;
-	/* normalize UVs */
-	if (uv_x2 > 1.0) {
-		d = ceil(uv_x2) - 1.0;
-		uv_x1 = uv_x1 - d;
-		uv_x2 = uv_x2 - d;
-	}
-
 	float y_a = 0.0;
 	float y_b = 1.0;
 
-	/* invert uv */
-	if ((finaluvdata[1].y != 0.0) && (finaluvdata[2].y != 0.0)) {
-		if (floor(d / 2.0) == (d / 2.0)) {
-			// float t = uv_x2;
-			// uv_x2 = uv_x1;
-			// uv_x1 = t;
-			y_a = 1.0;
-			y_b = 0.0;
+	/* invert uv (vertical) */
+	if (finaluvdata[2].x > 1.0) {
+		if ((finaluvdata[1].y != 0.0) && (finaluvdata[2].y != 0.0)) {
+			float d = ceil(finaluvdata[2].x) - 1.0;
+			if (floor(d / 2.0) == (d / 2.0)) {
+				y_a = 1.0;
+				y_b = 0.0;
+			}
 		}
-	}
-	
+	}	
 	/* generate the triangle strip */
 	uvfac = vec2(0.0, 0.0);
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 0) : vec2(uv_x1, y_a);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 0) : vec2(finaluvdata[1].x, y_a);
 	mColor = finalColor[1];
 	gl_Position = vec4((sp1 + length_a * miter_a) / Viewport, getZdepth(P1), 1.0);
 	EmitVertex();
 
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 1) : vec2(uv_x1, y_b);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 1) : vec2(finaluvdata[1].x, y_b);
 	mColor = finalColor[1];
 	gl_Position = vec4((sp1 - length_a * miter_a) / Viewport, getZdepth(P1), 1.0);
 	EmitVertex();
 
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 0) : vec2(uv_x2, y_a);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 0) : vec2(finaluvdata[2].x, y_a);
 	mColor = finalColor[2];
 	gl_Position = vec4((sp2 + length_b * miter_b) / Viewport, getZdepth(P2), 1.0);
 	EmitVertex();
 
-	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 1) : vec2(uv_x2, y_b);
+	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(1, 1) : vec2(finaluvdata[2].x, y_b);
 	mColor = finalColor[2];
 	gl_Position = vec4((sp2 - length_b * miter_b) / Viewport, getZdepth(P2), 1.0);
 	EmitVertex();
