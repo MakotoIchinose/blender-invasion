@@ -202,7 +202,7 @@ static void gpsculpt_compute_lock_axis(tGP_BrushEditData *gso, bGPDspoint *pt, c
 			/* compute a plane with cursor normal and position of the point
 			   before do the sculpt */
 			const float scale[3] = { 1.0f, 1.0f, 1.0f };
-			const float plane_normal[3] = { 0.0f, 0.0f, 1.0f };
+			float plane_normal[3] = { 0.0f, 0.0f, 1.0f };
 			float plane[4];
 			float mat[4][4];
 			float r_close[3];
