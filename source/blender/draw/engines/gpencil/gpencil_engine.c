@@ -663,7 +663,9 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 			}
 
 			/* now move the origin to Object or Cursor */
-			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+			if ((ob->mode == OB_MODE_PAINT_GPENCIL) &&
+				(ts->gpencil_v3d_align & GP_PROJECT_CURSOR))
+			{
 				copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
 			}
 			else {
