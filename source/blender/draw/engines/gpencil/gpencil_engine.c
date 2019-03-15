@@ -627,7 +627,9 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 		if ((v3d) &&
 		    ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) &&
 		    (v3d->gp_flag & V3D_GP_SHOW_GRID) &&
-		    (ob->type == OB_GPENCIL) && (ob == draw_ctx->obact))
+		    (ob->type == OB_GPENCIL) && (ob == draw_ctx->obact) &&
+			((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_VIEW) == 0) &&
+			((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) == 0))
 		{
 			GPU_BATCH_DISCARD_SAFE(e_data.batch_grid);
 			MEM_SAFE_FREE(e_data.batch_grid);
