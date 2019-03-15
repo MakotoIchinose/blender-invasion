@@ -1100,7 +1100,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 		        tgpf->scene, tgpf->ob, tgpf->gpl,
 		        ts->gpencil_v3d_align, origin);
 		ED_gp_project_stroke_to_plane(
-		        tgpf->ob, tgpf->rv3d, gps, origin,
+		        tgpf->scene, tgpf->ob, tgpf->rv3d, gps, origin,
 		        tgpf->lock_axis - 1);
 	}
 

@@ -3360,7 +3360,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
 						}
 					}
 
-					ED_gp_project_point_to_plane(ob, rv3d, origin,
+					ED_gp_project_point_to_plane(scene, ob, rv3d, origin,
 						axis, &pt2);
 
 					copy_v3_v3(&pt->x, &pt2.x);

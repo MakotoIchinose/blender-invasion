@@ -634,14 +634,30 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 			e_data.batch_grid = DRW_gpencil_get_grid(ob);
 
 			/* define grid orientation */
-			if (ts->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW) {
-				copy_m4_m4(stl->storage->grid_matrix, ob->obmat);
-			}
-			else {
-				/* align always to view */
-				invert_m4_m4(stl->storage->grid_matrix, draw_ctx->rv3d->viewmat);
-				/* copy ob location */
-				copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+			switch (ts->gp_sculpt.lock_axis) {
+				case GP_LOCKAXIS_VIEW:
+				{
+					/* align always to view */
+					invert_m4_m4(stl->storage->grid_matrix, draw_ctx->rv3d->viewmat);
+					/* copy ob location */
+					copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+					break;
+				}
+				case GP_LOCKAXIS_CURSOR:
+				{
+					const View3DCursor *cursor = &scene->cursor;
+					float scale[3] = { 1.0f, 1.0f, 1.0f };
+					loc_eul_size_to_mat4(stl->storage->grid_matrix,
+										cursor->location,
+										cursor->rotation_euler,
+										scale);
+					break;
+				}
+				default:
+				{
+					copy_m4_m4(stl->storage->grid_matrix, ob->obmat);
+					break;
+				}
 			}
 
 			DRW_shgroup_call_add(
