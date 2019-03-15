@@ -877,11 +877,9 @@ void ED_gp_get_drawing_reference(
         char align_flag, float r_vec[3])
 {
 	const float *fp = scene->cursor.location;
-	ToolSettings *ts = scene->toolsettings;
-	const int axis = ts->gp_sculpt.lock_axis;
 
 	/* if using a gpencil object at cursor mode, can use the location of the object */
-	if ((align_flag & GP_PROJECT_VIEWSPACE) && (axis != GP_LOCKAXIS_CURSOR)) {
+	if (align_flag & GP_PROJECT_VIEWSPACE) {
 		if (ob && (ob->type == OB_GPENCIL)) {
 			/* fallback (no strokes) - use cursor or object location */
 			if (align_flag & GP_PROJECT_CURSOR) {
@@ -943,6 +941,8 @@ void ED_gp_project_stroke_to_plane(
 		const RegionView3D *rv3d, bGPDstroke *gps,
 		const float origin[3], const int axis)
 {
+	const ToolSettings *ts = scene->toolsettings;
+	const View3DCursor *cursor = &scene->cursor;
 	float plane_normal[3];
 	float vn[3];
 
@@ -961,11 +961,18 @@ void ED_gp_project_stroke_to_plane(
 		plane_normal[axis] = 1.0f;
 		/* if object, apply object rotation */
 		if (ob && (ob->type == OB_GPENCIL)) {
-			mul_mat3_m4_v3(ob->obmat, plane_normal);
+			float mat[4][4];
+			copy_m4_m4(mat, ob->obmat);
+
+			/* move origin to cursor */
+			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+				copy_v3_v3(mat[3], cursor->location);
+			}
+
+			mul_mat3_m4_v3(mat, plane_normal);
 		}
 	}
 	else {
-		const View3DCursor *cursor = &scene->cursor;
 		float scale[3] = { 1.0f, 1.0f, 1.0f };
 		plane_normal[2] = 1.0f;
 		float mat[4][4];
@@ -973,6 +980,12 @@ void ED_gp_project_stroke_to_plane(
 			cursor->location,
 			cursor->rotation_euler,
 			scale);
+
+		/* move origin to object */
+		if ((ts->gpencil_v3d_align & GP_PROJECT_CURSOR) == 0) {
+			copy_v3_v3(mat[3], ob->obmat[3]);
+		}
+
 		mul_mat3_m4_v3(mat, plane_normal);
 	}
 
@@ -1003,6 +1016,8 @@ void ED_gp_project_point_to_plane(
 		const RegionView3D *rv3d, const float origin[3],
 		const int axis, bGPDspoint *pt)
 {
+	const ToolSettings *ts = scene->toolsettings;
+	const View3DCursor *cursor = &scene->cursor;
 	float plane_normal[3];
 	float vn[3];
 
@@ -1021,11 +1036,18 @@ void ED_gp_project_point_to_plane(
 		plane_normal[axis] = 1.0f;
 		/* if object, apply object rotation */
 		if (ob && (ob->type == OB_GPENCIL)) {
-			mul_mat3_m4_v3(ob->obmat, plane_normal);
+			float mat[4][4];
+			copy_m4_m4(mat, ob->obmat);
+
+			/* move origin to cursor */
+			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+				copy_v3_v3(mat[3], cursor->location);
+			}
+
+			mul_mat3_m4_v3(mat, plane_normal);
 		}
 	}
 	else {
-		const View3DCursor *cursor = &scene->cursor;
 		float scale[3] = { 1.0f, 1.0f, 1.0f };
 		plane_normal[2] = 1.0f;
 		float mat[4][4];
@@ -1033,6 +1055,12 @@ void ED_gp_project_point_to_plane(
 			cursor->location,
 			cursor->rotation_euler,
 			scale);
+
+		/* move origin to object */
+		if ((ts->gpencil_v3d_align & GP_PROJECT_CURSOR) == 0) {
+			copy_v3_v3(mat[3], ob->obmat[3]);
+		}
+
 		mul_mat3_m4_v3(mat, plane_normal);
 	}
 

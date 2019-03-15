@@ -582,6 +582,7 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 	Scene *scene = draw_ctx->scene;
 	ToolSettings *ts = scene->toolsettings;
 	View3D *v3d = draw_ctx->v3d;
+	const View3DCursor *cursor = &scene->cursor;
 
 	if (ob->type == OB_GPENCIL && ob->data) {
 		bGPdata *gpd = (bGPdata *)ob->data;
@@ -645,7 +646,6 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 				}
 				case GP_LOCKAXIS_CURSOR:
 				{
-					const View3DCursor *cursor = &scene->cursor;
 					float scale[3] = { 1.0f, 1.0f, 1.0f };
 					loc_eul_size_to_mat4(stl->storage->grid_matrix,
 										cursor->location,
@@ -658,6 +658,14 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 					copy_m4_m4(stl->storage->grid_matrix, ob->obmat);
 					break;
 				}
+			}
+
+			/* now move the origin to Object or Cursor */
+			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+				copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
+			}
+			else {
+				copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
 			}
 
 			DRW_shgroup_call_add(
