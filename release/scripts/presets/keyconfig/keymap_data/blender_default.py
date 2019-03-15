@@ -143,11 +143,11 @@ def op_panel(menu, kmi_args, kmi_data=()):
 
 
 def op_tool(tool, kmi_args):
-    return ("wm.tool_set_by_name", kmi_args, {"properties": [("name", tool)]})
+    return ("wm.tool_set_by_id", kmi_args, {"properties": [("name", tool)]})
 
 
 def op_tool_cycle(tool, kmi_args):
-    return ("wm.tool_set_by_name", kmi_args, {"properties": [("name", tool), ("cycle", True)]})
+    return ("wm.tool_set_by_id", kmi_args, {"properties": [("name", tool), ("cycle", True)]})
 
 
 # ------------------------------------------------------------------------------
@@ -5029,9 +5029,9 @@ def km_popup_toolbar(_params):
         "Toolbar Popup",
         {"space_type": 'EMPTY', "region_type": 'TEMPORARY'},
         {"items": [
-            op_tool("Select", {"type": 'W', "value": 'PRESS'}),
-            op_tool("Transform", {"type": 'T', "value": 'PRESS'}),
-            op_tool("Measure", {"type": 'M', "value": 'PRESS'}),
+            op_tool("builtin.select", {"type": 'W', "value": 'PRESS'}),
+            op_tool("builtin.transform", {"type": 'T', "value": 'PRESS'}),
+            op_tool("builtin.measure", {"type": 'M', "value": 'PRESS'}),
         ]},
     )
 
