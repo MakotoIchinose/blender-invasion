@@ -46,6 +46,7 @@ class Integrator : public Node {
 
   int volume_max_steps;
   float volume_step_size;
+  float volume_max_density;
 
   bool caustics_reflective;
   bool caustics_refractive;
@@ -88,6 +89,7 @@ class Integrator : public Node {
   Method method;
 
   SamplingPattern sampling_pattern;
+  VolumeIntegrator volume_integrator;
 
   /* diagnostics */
   bool ignore_shaders, ignore_volumes, ignore_lights, ignore_shadows;
