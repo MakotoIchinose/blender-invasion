@@ -628,6 +628,7 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 		    ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) &&
 		    (v3d->gp_flag & V3D_GP_SHOW_GRID) &&
 		    (ob->type == OB_GPENCIL) && (ob == draw_ctx->obact) &&
+			(ob->mode == OB_MODE_PAINT_GPENCIL) &&
 			((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_VIEW) == 0) &&
 			((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) == 0))
 		{
@@ -663,9 +664,7 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 			}
 
 			/* now move the origin to Object or Cursor */
-			if ((ob->mode == OB_MODE_PAINT_GPENCIL) &&
-				(ts->gpencil_v3d_align & GP_PROJECT_CURSOR))
-			{
+			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
 				copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
 			}
 			else {
