@@ -662,14 +662,24 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 				}
 			}
 
-			/* now move the origin to Object or Cursor */
-			if ((ob->mode == OB_MODE_PAINT_GPENCIL) &&
-				(ts->gpencil_v3d_align & GP_PROJECT_CURSOR))
-			{
-				copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
+			/* Move the origin to Object or Cursor
+			 * In Draw mode the origin is defined by origin
+			 * In other modes, the origin is defined by drawing plane */
+			if (ob->mode == OB_MODE_PAINT_GPENCIL) {
+				if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+					copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
+				}
+				else {
+					copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+				}
 			}
 			else {
-				copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+				if (ts->gp_sculpt.lock_axis == GP_LOCKAXIS_CURSOR) {
+					copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
+				}
+				else {
+					copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+				}
 			}
 
 			DRW_shgroup_call_add(
