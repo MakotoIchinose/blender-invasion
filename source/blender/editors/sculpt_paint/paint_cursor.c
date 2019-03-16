@@ -1045,12 +1045,13 @@ static bool ommit_cursor_drawing(Paint *paint, ePaintMode mode, Brush *brush)
 	return true;
 }
 
-void cursor_draw_point_screen_space(const uint gpuattr, const ARegion *ar, float location[3],
+void cursor_draw_point_screen_space(const uint gpuattr, const ARegion *ar, float true_location[3],
                                     float obmat[4][4], float persmat[4][4])
 {
 	float ar_width = ar->winrct.xmax - ar->winrct.xmin;
 	float ar_height = ar->winrct.ymax - ar->winrct.ymin;
-	float pv4[4], translation_vertex_cursor[2];
+	float pv4[4], translation_vertex_cursor[2], location[3];
+	copy_v3_v3(location, true_location);
 	mul_m4_v3(obmat, location);
 	copy_v3_v3(pv4, location);
 	pv4[3] = 1.0f;
@@ -1107,7 +1108,6 @@ void cursor_draw_point_with_symmetry(const uint gpuattr, const ARegion *ar,const
 	const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
 	float location[3], pv4[4], translation_vertex_cursor[2], symm_rot_mat[4][4];
 
-	copy_v3_v3(location, true_location);
 	for (int i = 0; i <= symm; ++i) {
 		if (i == 0 || (symm & i && (symm != 5 || i != 3) && (symm != 6 || (i != 3 && i != 5)))) {
 
@@ -1116,7 +1116,6 @@ void cursor_draw_point_with_symmetry(const uint gpuattr, const ARegion *ar,const
 			cursor_draw_point_screen_space(gpuattr, ar, location, ob->obmat, persmat);
 
 			/* Tiling */
-			copy_v3_v3(location, true_location);
 			cursor_draw_tiling_preview(gpuattr, ar, location, sd, ob, persmat, radius);
 
 			/* Radial Symmetry */
