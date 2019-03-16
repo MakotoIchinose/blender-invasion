@@ -45,6 +45,7 @@
 #include "BKE_node.h"
 #include "BKE_paint.h"
 #include "BKE_colortools.h"
+#include "BKE_object.h"
 
 #include "WM_api.h"
 #include "wm_cursors.h"
@@ -1044,37 +1045,93 @@ static bool ommit_cursor_drawing(Paint *paint, ePaintMode mode, Brush *brush)
 	return true;
 }
 
-void cursor_draw_point_with_symmetry(const uint gpuatrr, const ARegion *ar,const float pos[3], const char symm, const float obmat[4][4], const float persmat[4][4]){
+void cursor_draw_point_screen_space(const uint gpuattr, const ARegion *ar, float location[3],
+                                    float obmat[4][4], float persmat[4][4])
+{
 	float ar_width = ar->winrct.xmax - ar->winrct.xmin;
 	float ar_height = ar->winrct.ymax - ar->winrct.ymin;
-	int  i = 0;
-	for (i = 0; i <= symm; ++i) {
-		if (i == 0 || (symm & i && (symm != 5 || i != 3) && (symm != 6 || (i != 3 && i != 5)))) {
-			float vertex_pos[3] = {
-				pos[0],
-				pos[1],
-				pos[2],
-			};
-			flip_v3_v3(vertex_pos, vertex_pos, (char)i);
+	float pv4[4], translation_vertex_cursor[2];
+	mul_m4_v3(obmat, location);
+	copy_v3_v3(pv4, location);
+	pv4[3] = 1.0f;
+	mul_m4_v4(persmat, pv4);
+	if (pv4[3] > 0.0f) {
+		float width_half = ar_width * 0.5f;
+		float height_half = ar_height * 0.5f;
+		translation_vertex_cursor[0] = width_half + width_half * (pv4[0] / pv4[3]);
+		translation_vertex_cursor[1] = height_half + height_half * (pv4[1] / pv4[3]);
+	}
+	imm_draw_circle_fill_3d(gpuattr, translation_vertex_cursor[0], translation_vertex_cursor[1], 3, 10);
+}
 
-			float translation_vertex_cursor[2];
-			mul_m4_v3(obmat, vertex_pos);
-			float pv4[4] = {
-				vertex_pos[0],
-				vertex_pos[1],
-				vertex_pos[2],
-				1.0f,
-			};
-			mul_m4_v4(persmat, pv4);
+void cursor_draw_tiling_preview(const uint gpuattr, const ARegion *ar, float true_location[3],
+                                     Sculpt *sd, Object *ob, float persmat[4][4], float radius)
+{
+	BoundBox *bb = BKE_object_boundbox_get(ob);
+	float orgLoc[3], location[3], pv4[4], translation_vertex_cursor[2];
+	int  dim, tile_pass = 0;
+	int start[3];
+	int end[3];
+	int cur[3];
+	const float *bbMin = bb->vec[0];
+	const float *bbMax = bb->vec[6];
+	const float *step = sd->paint.tile_offset;
 
-			if (pv4[3] > 0.0f) {
-				float width_half = ar_width * 0.5f;
-				float height_half = ar_height * 0.5f;
-				translation_vertex_cursor[0] = width_half + width_half * (pv4[0] / pv4[3]);
-				translation_vertex_cursor[1] = height_half + height_half * (pv4[1] / pv4[3]);
+	copy_v3_v3(orgLoc, true_location);
+	for (dim = 0; dim < 3; ++dim) {
+		if ((sd->paint.symmetry_flags & (PAINT_TILE_X << dim)) && step[dim] > 0) {
+			start[dim] = (bbMin[dim] - orgLoc[dim] - radius) / step[dim];
+			end[dim] = (bbMax[dim] - orgLoc[dim] + radius) / step[dim];
+		}
+		else
+			start[dim] = end[dim] = 0;
+	}
+	copy_v3_v3_int(cur, start);
+	for (cur[0] = start[0]; cur[0] <= end[0]; ++cur[0]) {
+		for (cur[1] = start[1]; cur[1] <= end[1]; ++cur[1]) {
+			for (cur[2] = start[2]; cur[2] <= end[2]; ++cur[2]) {
+				if (!cur[0] && !cur[1] && !cur[2])
+					continue; /* skip tile at orgLoc, this was already handled before all others */
+				++tile_pass;
+				for (dim = 0; dim < 3; ++dim) {
+					location[dim] = cur[dim] * step[dim] + orgLoc[dim];
+				}
+				cursor_draw_point_screen_space(gpuattr, ar, location, ob->obmat, persmat);
 			}
+		}
+	}
+}
+void cursor_draw_point_with_symmetry(const uint gpuattr, const ARegion *ar,const float true_location[3],
+                                     Sculpt *sd, Object *ob, float persmat[4][4], float radius)
+{
+	const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
+	float location[3], pv4[4], translation_vertex_cursor[2], symm_rot_mat[4][4];
 
-			imm_draw_circle_fill_3d(gpuatrr, translation_vertex_cursor[0], translation_vertex_cursor[1], 3, 10);
+	copy_v3_v3(location, true_location);
+	for (int i = 0; i <= symm; ++i) {
+		if (i == 0 || (symm & i && (symm != 5 || i != 3) && (symm != 6 || (i != 3 && i != 5)))) {
+
+			/* Axis Symmetry */
+			flip_v3_v3(location, true_location, (char)i);
+			cursor_draw_point_screen_space(gpuattr, ar, location, ob->obmat, persmat);
+
+			/* Tiling */
+			copy_v3_v3(location, true_location);
+			cursor_draw_tiling_preview(gpuattr, ar, location, sd, ob, persmat, radius);
+
+			/* Radial Symmetry */
+			for (char raxis = 0; raxis < 3; raxis++) {
+				for (int r = 1; r < sd->radial_symm[raxis]; r++) {
+					float angle = 2 * M_PI * r / sd->radial_symm[(int)raxis];
+					flip_v3_v3(location, true_location, (char)i);
+					unit_m4(symm_rot_mat);
+					rotate_m4(symm_rot_mat, raxis+'X', angle);
+					mul_m4_v3(symm_rot_mat, location);
+
+					cursor_draw_tiling_preview(gpuattr, ar, location, sd, ob, persmat, radius);
+					cursor_draw_point_screen_space(gpuattr, ar, location, ob->obmat, persmat);
+				}
+			}
 		}
 	}
 }
@@ -1082,7 +1139,6 @@ void cursor_draw_point_with_symmetry(const uint gpuatrr, const ARegion *ar,const
 static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 {
 	Scene *scene = CTX_data_scene(C);
-	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	ARegion *ar = CTX_wm_region(C);
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 	Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1183,8 +1239,6 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 	/* Only sculpt cursor for now */
 	if ((mode == PAINT_MODE_SCULPT) && vc.obact->sculpt) {
 		Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-		const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
-
 		wmWindow *win = CTX_wm_window(C);
 		if (sd->paint.brush->overlay_flags & BRUSH_OVERLAY_CURSOR) {
 			WM_cursor_set(win, CURSOR_STD);
@@ -1199,7 +1253,6 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 			gi.use_sampled_normal = true;
 			hit = sculpt_stroke_get_geometry_info(C, &gi, mouse);
 			if (hit && !alpha_overlay_active) {
-
 				float rds;
 				if (!BKE_brush_use_locked_size(scene, brush)) {
 					rds = paint_calc_object_space_radius(&vc, gi.location, BKE_brush_size_get(scene, brush));
@@ -1212,7 +1265,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 				/* draw 3D vertex preview */
 				if (len_v3v3(gi.nearest_vertex_co, gi.location) < rds) {
-					cursor_draw_point_with_symmetry(pos3d, ar, gi.nearest_vertex_co, symm, vc.obact->obmat, vc.rv3d->persmat);
+					cursor_draw_point_with_symmetry(pos3d, ar, gi.nearest_vertex_co, sd, vc.obact, vc.rv3d->persmat, rds);
 				}
 
 				/* draw brush cursor */
@@ -1250,7 +1303,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 				if (ss->cache->brush->sculpt_tool == SCULPT_TOOL_GRAB) {
 					add_v3_v3(cursor_location, ss->cache->grab_delta);
 				}
-				cursor_draw_point_with_symmetry(pos3d, ar, cursor_location, symm, vc.obact->obmat, vc.rv3d->persmat);
+				cursor_draw_point_with_symmetry(pos3d, ar, cursor_location, sd, vc.obact, vc.rv3d->persmat, ss->cache->radius);
 			}
 		}
 	}
@@ -1258,7 +1311,6 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 		GPU_line_width(1.0f);
 		imm_draw_circle_wire_3d(pos3d, translation[0], translation[1], final_radius, 40);
 	}
-
 
 	immUnbindProgram();
 
