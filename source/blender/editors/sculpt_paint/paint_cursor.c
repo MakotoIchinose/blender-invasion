@@ -1236,7 +1236,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 	}
 
 	/* Only sculpt cursor for now */
-	if ((mode == PAINT_MODE_SCULPT) && vc.obact->sculpt) {
+	if ((mode == PAINT_MODE_SCULPT) && vc.obact->sculpt && !(brush->falloff_shape & BRUSH_AIRBRUSH)) {
 		Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
 		wmWindow *win = CTX_wm_window(C);
 		if (sd->paint.brush->overlay_flags & BRUSH_OVERLAY_CURSOR) {
