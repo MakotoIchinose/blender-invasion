@@ -1,9 +1,9 @@
 import bpy
 from . base import FunctionNode, DataSocket
 from . inferencer import Inferencer
-from . socket_decl import FixedSocketDecl, ListSocketDecl, BaseSocketDecl
+from . socket_decl import FixedSocketDecl, ListSocketDecl, BaseSocketDecl, AnyVariadicDecl
 from collections import defaultdict
-from . sockets import type_infos
+from . sockets import type_infos, OperatorSocket, DataSocket
 
 class TestOperator(bpy.types.Operator):
     bl_idname = "fn.test_operator"
@@ -11,8 +11,44 @@ class TestOperator(bpy.types.Operator):
 
     def execute(self, context):
         tree = context.space_data.node_tree
+        run_socket_operators(tree)
         run_socket_type_inferencer(tree)
         return {'FINISHED'}
+
+def run_socket_operators(tree):
+    while True:
+        for link in tree.links:
+            if isinstance(link.to_socket, OperatorSocket):
+                node = link.to_node
+                own_socket = link.to_socket
+                other_socket = link.from_socket
+                decl = link.to_node.storage.decl_per_socket[own_socket]
+                tree.links.remove(link)
+                decl.operator_socket_call(node, own_socket, other_socket)
+                break
+            elif isinstance(link.from_socket, OperatorSocket):
+                node = link.from_node
+                own_socket = link.from_socket
+                other_socket = link.to_socket
+                decl = node.storage.decl_per_socket[own_socket]
+                tree.links.remove(link)
+                decl.operator_socket_call(node, own_socket, other_socket)
+                break
+        else:
+            return
+
+def run_operator__extend_variadic(tree, node, decl, other_socket):
+    if not isinstance(other_socket, DataSocket):
+        return
+
+    data_type = other_socket.data_type
+    collection = getattr(node, decl.prop_name)
+    item = collection.add()
+    item.data_type = data_type
+
+    node.rebuild_current_declaration__keep_state()
+    target = node.storage.sockets_per_decl[decl][-2]
+    tree.links.new(target, other_socket)
 
 def run_socket_type_inferencer(tree):
     inferencer = Inferencer(type_infos)
@@ -40,7 +76,7 @@ def rebuild_nodes_and_links_that_changed(tree, inferencer):
 
     for node in nodes_to_rebuild:
         links_to_rebuild.update(links_by_node.get(node))
-        node.rebuild_existing_sockets()
+        node.rebuild_current_declaration()
 
     for link_id in links_to_rebuild:
         from_socket = socket_by_id(link_id[0])
@@ -62,23 +98,20 @@ def get_link_ids_by_node(tree):
 ########################################
 
 def insert_constraints__within_node(inferencer, node):
-    if isinstance(node, FunctionNode):
-        insert_constraints__function_node(inferencer, node)
-    else:
-        insert_constraints__other_node(inferencer, node)
-
-def insert_constraints__function_node(inferencer, node):
-    inputs, outputs = node.get_sockets()
+    storage = node.storage
 
     list_ids_per_prop = defaultdict(set)
     base_ids_per_prop = defaultdict(set)
 
-    for decl, socket_id in iter_sockets_decl_with_ids(node):
+    for decl, sockets in storage.sockets_per_decl.items():
         if isinstance(decl, FixedSocketDecl):
+            socket_id = get_socket_id_from_socket(node, sockets[0])
             inferencer.insert_final_type(socket_id, decl.data_type)
         elif isinstance(decl, ListSocketDecl):
+            socket_id = get_socket_id_from_socket(node, sockets[0])
             list_ids_per_prop[decl.type_property].add(socket_id)
         elif isinstance(decl, BaseSocketDecl):
+            socket_id = get_socket_id_from_socket(node, sockets[0])
             base_ids_per_prop[decl.type_property].add(socket_id)
 
     properties = set()
@@ -91,11 +124,6 @@ def insert_constraints__function_node(inferencer, node):
             base_ids_per_prop[prop],
             (node, prop))
 
-def insert_constraints__other_node(inferencer, node):
-    for socket, socket_id in iter_sockets_with_ids(node):
-        if isinstance(socket, DataSocket):
-            inferencer.insert_final_type(socket_id, socket.data_type)
-
 def insert_constraints__link(inferencer, link):
     if not isinstance(link.from_socket, DataSocket):
         return
@@ -106,19 +134,6 @@ def insert_constraints__link(inferencer, link):
     to_id = get_socket_id_from_socket(link.to_node, link.to_socket)
 
     inferencer.insert_equality_constraint((from_id, to_id))
-
-def iter_sockets_with_ids(node):
-    for i, socket in enumerate(node.inputs):
-        yield socket, get_socket_id(node, socket.is_output, i)
-    for i, socket in enumerate(node.outputs):
-        yield socket, get_socket_id(node, socket.is_output, i)
-
-def iter_sockets_decl_with_ids(node):
-    inputs, outputs = node.get_sockets()
-    for i, decl in enumerate(inputs):
-        yield decl, get_socket_id(node, False, i)
-    for i, decl in enumerate(outputs):
-        yield decl, get_socket_id(node, True, i)
 
 
 # Temporary IDs

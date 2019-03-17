@@ -1,6 +1,13 @@
 import bpy
-from . base import DataSocket
+from . base import DataSocket, BaseSocket
 from bpy.props import *
+
+class OperatorSocket(bpy.types.NodeSocket, BaseSocket):
+    bl_idname = "fn_OperatorSocket"
+    bl_label = "Operator Socket"
+
+    def draw_color(self, context, node):
+        return (0, 0, 0, 0)
 
 class FloatSocket(bpy.types.NodeSocket, DataSocket):
     bl_idname = "fn_FloatSocket"
@@ -69,15 +76,18 @@ class UniqueSocketBuilder(SocketBuilder):
     def __init__(self, socket_cls):
         self.socket_cls = socket_cls
 
-    def build(self, node_sockets, name):
-        return node_sockets.new(self.socket_cls.bl_idname, name)
+    def build(self, node_sockets, name, identifier):
+        return node_sockets.new(
+            self.socket_cls.bl_idname,
+            name,
+            identifier=identifier)
 
 class ColoredSocketBuilder(SocketBuilder):
     def __init__(self, color):
         self.color = color
 
-    def build(self, node_sockets, name):
-        socket = node_sockets.new("fn_CustomColoredSocket", name)
+    def build(self, node_sockets, name, identifier):
+        socket = node_sockets.new("fn_CustomColoredSocket", name, identifier)
         socket.color = self.color
         return socket
 
@@ -125,9 +135,9 @@ class DataTypesInfo:
         assert self.is_data_type(data_type)
         return self.builder_by_data_type[data_type]
 
-    def build(self, data_type, node_sockets, name):
+    def build(self, data_type, node_sockets, name, identifier):
         builder = self.to_builder(data_type)
-        socket = builder.build(node_sockets, name)
+        socket = builder.build(node_sockets, name, identifier)
         socket.data_type = data_type
         return socket
 
