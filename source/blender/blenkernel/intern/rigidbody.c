@@ -1837,6 +1837,7 @@ static void rigidbody_update_simulation_post_step(RigidBodyWorld *rbw)
 	Shard *mi;
 
 	FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(rbw->group, ob) {
+		modFound = false;
 		rmd = (FractureModifierData*)modifiers_findByType(ob, eModifierType_Fracture);
 		if (BKE_rigidbody_modifier_active(rmd)) {
 			for (mi = rmd->shared->shards.first; mi; mi = mi->next) {
@@ -1861,19 +1862,19 @@ static void rigidbody_update_simulation_post_step(RigidBodyWorld *rbw)
 						RB_body_get_angular_velocity(rbo->shared->physics_object, rbo->ang_vel);
 					}
 				}
-
-				/* purge constraints after sim step in case of dynamic, so they can be rebuilt by the modifier running next,
-				 * before the next rigidbody step */
-				if ((rmd->flag & MOD_FRACTURE_USE_DYNAMIC)) {
-					if (rmd->shared->flag & MOD_FRACTURE_REFRESH_DYNAMIC) {
-						/* very important, since old constraints may mess up the simulation after stopping and restarting */
-						BKE_fracture_constraints_free(rmd, rbw);
-						rmd->shared->flag |= MOD_FRACTURE_REFRESH_CONSTRAINTS;
-					}
+			}
+#if 0
+			/* purge constraints after sim step in case of dynamic, so they can be rebuilt by the modifier running next,
+			 * before the next rigidbody step */
+			if ((rmd->flag & MOD_FRACTURE_USE_DYNAMIC)) {
+				if (rmd->shared->flag & MOD_FRACTURE_REFRESH_DYNAMIC) {
+					/* very important, since old constraints may mess up the simulation after stopping and restarting */
+					BKE_fracture_constraints_free(rmd, rbw);
+					rmd->shared->flag |= MOD_FRACTURE_REFRESH_CONSTRAINTS;
 				}
 			}
+#endif
 			modFound = true;
-			break;
 		}
 
 		/* handle regular rigidbodies */
@@ -1893,7 +1894,6 @@ static void rigidbody_update_simulation_post_step(RigidBodyWorld *rbw)
 				RB_body_get_linear_velocity(rbo->shared->physics_object, rbo->lin_vel);
 				RB_body_get_angular_velocity(rbo->shared->physics_object, rbo->ang_vel);
 			}
-			modFound = false;
 		}
 	}
 	FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
@@ -2308,5 +2308,30 @@ void BKE_rigidbody_object_sync_transforms(Depsgraph *depsgraph,
 	DEG_debug_print_eval_time(depsgraph, __func__, ob->id.name, ob, ctime);
 	/* read values pushed into RBO from sim/cache... */
 	BKE_rigidbody_sync_transforms(scene, ob, depsgraph);
+}
+
+/* immediately stop all modifier activities, called from animation_play when stopping and animation cancel */
+void BKE_rigidbody_dynamic_stop(Scene *scene) {
+
+	RigidBodyWorld *rbw = scene->rigidbody_world;
+	FractureModifierData *fmd;
+
+	if (rbw) {
+		if (rbw->group) {
+			FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(rbw->group, obj)
+			{
+				if (obj && obj->rigidbody_object) {
+					fmd = (FractureModifierData*)modifiers_findByType(obj, eModifierType_Fracture);
+					if (fmd) {
+						fmd->shared->flag &= ~ MOD_FRACTURE_REFRESH_DYNAMIC;
+						fmd->shared->flag &= ~ MOD_FRACTURE_REFRESH_CONSTRAINTS;
+						fmd->shared->flag &= ~ MOD_FRACTURE_REFRESH_AUTOHIDE;
+						fmd->shared->flag &= ~ MOD_FRACTURE_REFRESH;
+					}
+				}
+			}
+			FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+		}
+	}
 }
 

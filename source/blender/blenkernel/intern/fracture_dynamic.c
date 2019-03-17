@@ -52,12 +52,14 @@
 void BKE_fracture_dynamic_do(FractureModifierData *fmd, Object* ob, Scene* scene, Depsgraph* depsgraph, Main* bmain)
 {
 	FractureQueueEntry *fid = fmd->shared->dynamic_fracture_queue.first;
+	int frame = (int)DEG_get_ctime(depsgraph);
 
 	while(fid){
 
 		if (!fid->mi->fractured) {
 			BKE_fracture_do(fmd, fid->mi, ob, depsgraph, bmain, scene, false);
 			fid->mi->fractured = true;
+			fid->mi->endframe = frame;
 		}
 
 		BLI_remlink(&fmd->shared->dynamic_fracture_queue, fid);

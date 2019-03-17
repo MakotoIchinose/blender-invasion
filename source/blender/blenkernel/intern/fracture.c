@@ -452,9 +452,14 @@ static void process_cells(FractureModifierData* fmd, Shard* mii, Object* ob, Sce
 						 fmd->frac_algorithm == MOD_FRACTURE_BISECT_FAST_FILL ||
 						 fmd->frac_algorithm == MOD_FRACTURE_BOOLEAN_FRACTAL);
 
+	bool is_dynamic = (fmd->flag & MOD_FRACTURE_USE_DYNAMIC);
+
 	/*global preparations */
-	islands = MEM_callocN(sizeof(Shard*) * count, "islands");
-	tree = BLI_kdtree_new(count);
+	if (!is_dynamic) {
+		islands = MEM_callocN(sizeof(Shard*) * count, "islands");
+		tree = BLI_kdtree_new(count);
+	}
+
 	temp_meshs = MEM_callocN(sizeof(Mesh*) * count_new, "temp_meshs");
 
 	mii->endframe = frame;
@@ -471,11 +476,13 @@ static void process_cells(FractureModifierData* fmd, Shard* mii, Object* ob, Sce
 		/* parse to raw meshisland*/
 		Shard *mi = parse_cell(c[i]);
 
-		BLI_kdtree_insert(tree, i, mi->loc);
-		islands[i] = mi;
+		if (!is_dynamic) {
+			BLI_kdtree_insert(tree, i, mi->loc);
+			islands[i] = mi;
+		}
 
 		/* check whether it needs to be processed */
-		if (needs_process(fmd, mi))
+		if (is_dynamic || needs_process(fmd, mi))
 		{
 			/* meshB is for "halving" algorithms like fractal and bisectfast/bisectfastfill*/
 			Mesh *meshA = NULL, *meshB = NULL;
@@ -560,34 +567,44 @@ static void process_cells(FractureModifierData* fmd, Shard* mii, Object* ob, Sce
 
 	BKE_fracture_postprocess_meshisland(fmd, ob, mii, &temp_meshs, count, scene, frame, islands);
 
-	BLI_kdtree_balance(tree);
-
 	/* swap old last islands and tree against new for next run */
 	if (fmd->shared->last_island_tree)
 	{
 		BLI_kdtree_free(fmd->shared->last_island_tree);
+		fmd->shared->last_island_tree = NULL;
 	}
 
-	fmd->shared->last_island_tree = tree;
+	if (!is_dynamic) {
+		BLI_kdtree_balance(tree);
+		fmd->shared->last_island_tree = tree;
+	}
 
 	if (fmd->shared->last_islands)
 	{
-		int k = 0;
-		for (k = 0; k < fmd->shared->last_islands_count; k++)
-		{
-			if (fmd->shared->last_islands[k])
+		if (!is_dynamic) {
+			int k = 0;
+			for (k = 0; k < fmd->shared->last_islands_count; k++)
 			{
-				//BLI_remlink(&fmd->shared->shards, fmd->shared->last_islands[k]);
-				BKE_fracture_mesh_island_free(fmd, fmd->shared->last_islands[k], scene);
+				if (fmd->shared->last_islands[k])
+				{
+					//BLI_remlink(&fmd->shared->shards, fmd->shared->last_islands[k]);
+					BKE_fracture_mesh_island_free(fmd, fmd->shared->last_islands[k], scene);
+				}
 			}
 		}
 
 		MEM_freeN(fmd->shared->last_islands);
+		fmd->shared->last_islands_count = 0;
+		fmd->shared->last_islands = NULL;
 	}
 
 	MEM_freeN(temp_meshs);
-	fmd->shared->last_islands = islands;
-	fmd->shared->last_islands_count = count;
+
+	if (!is_dynamic)
+	{
+		fmd->shared->last_islands = islands;
+		fmd->shared->last_islands_count = count;
+	}
 }
 
 static Shard *parse_cell(cell c)
@@ -901,6 +918,7 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 	float size[3];
 	bool* deletemap = MEM_callocN(sizeof(bool) * count_new, "deletemap");
 	mat4_to_size(size, ob->obmat);
+	int last_id = 0;
 
 	if (fmd->flag & MOD_FRACTURE_USE_SPLIT_TO_ISLANDS)
 	{
@@ -932,6 +950,8 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 		}
 	}
 
+	last_id = BLI_listbase_count(&fmd->shared->shards);
+
 	for (i = 0; i < count_new; i++)
 	{
 		if ((*temp_meshs)[i] && !deletemap[i])
@@ -942,7 +962,7 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 				Shard *result = BKE_fracture_mesh_island_create((*temp_meshs)[i], scene, ob, frame);
 
 				fracture_meshisland_add(fmd, result);
-				result->id = mi->id + j;
+				result->id = last_id + j;
 				result->rigidbody->flag = mi->rigidbody->flag;
 
 				/* dont forget copying over the neighborhood info, we expose this to python so it might be useful */
@@ -1854,7 +1874,7 @@ void BKE_fracture_animated_loc_rot(FractureModifierData *fmd, Object *ob, bool d
 bool BKE_fracture_meshisland_check_frame(FractureModifierData *fmd, Shard* mi, int frame)
 {
 	return ((frame < mi->startframe && mi->startframe > fmd->shared->last_cache_start) ||
-		   (frame > mi->endframe && mi->endframe < fmd->shared->last_cache_end));
+		   (frame >= mi->endframe && mi->endframe < fmd->shared->last_cache_end));
 }
 
 void BKE_fracture_meshisland_check_realloc_cache(FractureModifierData *fmd, RigidBodyWorld *rbw, Shard* mi, int frame)

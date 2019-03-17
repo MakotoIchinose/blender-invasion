@@ -1237,7 +1237,7 @@ int BKE_rigidbody_filter_callback(void* scene, void* island1, void* island2, voi
 	bool validOb = true, check_activate = false;
 
 	// oh man... the pleasures of CoW.., mooo
-	sc_orig = (Scene*)DEG_get_original_id(&sc->id);
+	sc_orig = sc; // (Scene*)DEG_get_original_id(&sc->id);
 	rbw = sc_orig->rigidbody_world;
 
 	mi1 = (Shard*)island1;
@@ -1544,14 +1544,10 @@ static void check_fracture(rbContactPoint* cp, Scene *scene)
 	cp = NULL;
 }
 
-static ThreadMutex dynamic_lock = BLI_MUTEX_INITIALIZER;
 void BKE_rigidbody_contact_callback(rbContactPoint* cp, void* sc)
 {
-	Scene* scene = (Scene*)DEG_get_original_id(sc);
-
-	BLI_mutex_lock(&dynamic_lock);
+	Scene* scene = (Scene*)sc; //DEG_get_original_id(sc);
 	check_fracture(cp,scene);
-	BLI_mutex_unlock(&dynamic_lock);
 }
 
 void BKE_rigidbody_id_callback(void* island, int* objectId, int* islandId)

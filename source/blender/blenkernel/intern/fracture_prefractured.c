@@ -31,6 +31,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_ghash.h"
+#include "BLI_threads.h"
 
 #include "BKE_fracture.h"
 #include "BKE_pointcache.h"
@@ -269,7 +270,8 @@ Mesh* BKE_fracture_apply(FractureModifierData *fmd, Object *ob, Mesh *me_orig, D
 		BKE_fracture_dynamic_do(fmd, ob, scene, depsgraph, bmain);
 
 		fmd->shared->flag &= ~ MOD_FRACTURE_REFRESH_DYNAMIC;
-		//fmd->shared->flag |= MOD_FRACTURE_REFRESH_AUTOHIDE;
+		fmd->shared->flag |= MOD_FRACTURE_REFRESH_CONSTRAINTS;
+		fmd->shared->flag |= MOD_FRACTURE_REFRESH_AUTOHIDE;
 	}
 
 	if ((fmd->flag & MOD_FRACTURE_USE_ANIMATED_MESH) && fmd->anim_mesh_ob)

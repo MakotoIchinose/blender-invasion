@@ -54,6 +54,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
+#include "BKE_rigidbody.h"
 #include "BKE_workspace.h"
 
 #include "BKE_sound.h"
@@ -455,6 +456,12 @@ void wm_event_do_notifiers(bContext *C)
 			}
 		}
 		if (do_anim) {
+
+			if (!ED_screen_animation_playing(wm))
+			{
+				/* stop all (dynamic) fracture modifiers in case anim has stopped*/
+				BKE_rigidbody_dynamic_stop(scene);
+			}
 
 			/* XXX, quick frame changes can cause a crash if framechange and rendering
 			 * collide (happens on slow scenes), BKE_scene_graph_update_for_newframe can be called

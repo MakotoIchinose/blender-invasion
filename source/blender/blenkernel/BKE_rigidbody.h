@@ -189,6 +189,7 @@ bool BKE_restoreKinematic(struct RigidBodyWorld *rbw, bool override_bind);
 void BKE_rigidbody_update_simulation(struct Depsgraph *depsgraph, struct Scene *scene, struct RigidBodyWorld *rbw, bool rebuild);
 
 void BKE_rigidbody_physics_visualize(struct RigidBodyWorld *rbw);
+void BKE_rigidbody_dynamic_stop(struct Scene *scene);
 
 
 #endif /* __BKE_RIGIDBODY_H__ */

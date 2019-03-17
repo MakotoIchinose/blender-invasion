@@ -1775,6 +1775,19 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
 				             "Object Geom Eval -> Rigidbody Rebuild",
 				             RELATION_FLAG_GODMODE);
 			}
+
+			/* make sure to update the modifier according to the sim result, except
+			 * for dynamic, where this makes problems */
+			if (fmd && ((fmd->flag & MOD_FRACTURE_USE_DYNAMIC) == 0)) {
+				OperationKey object_geometry_eval_key(
+				        &object->id, NodeType::GEOMETRY,
+				        OperationCode::GEOMETRY_EVAL);
+				add_relation(rb_simulate_key,
+				             object_geometry_eval_key,
+				             "Rigidbody Rebuild -> Object Geom Eval",
+				             RELATION_FLAG_GODMODE);
+			}
+
 			/* Final transform is whetever solver gave to us. */
 			OperationKey object_transform_final_key(
 			        &object->id,
