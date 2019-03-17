@@ -995,8 +995,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 		        tgpi->scene, tgpi->ob, tgpi->gpl,
 		        ts->gpencil_v3d_align, origin);
 		ED_gp_project_stroke_to_plane(
-			tgpi->scene, tgpi->ob, tgpi->rv3d, gps,
-			origin, ts->gp_sculpt.lock_axis - 1);
+				tgpi->scene, tgpi->ob, tgpi->rv3d, gps,
+				origin, ts->gp_sculpt.lock_axis - 1);
 	}
 
 	/* if parented change position relative to parent object */
