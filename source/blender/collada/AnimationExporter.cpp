@@ -92,11 +92,11 @@ bool AnimationExporter::exportAnimations()
 
 		try {
 			animation_sampler.sample_scene(
-				export_settings->sampling_rate,
-				/*keyframe_at_end = */ true,
-				export_settings->open_sim,
-				export_settings->keep_keyframes,
-				export_settings->export_animation_type
+			        export_settings->sampling_rate,
+			        /*keyframe_at_end = */ true,
+			        export_settings->open_sim,
+			        export_settings->keep_keyframes,
+			        export_settings->export_animation_type
 			);
 
 			openLibrary();
@@ -721,7 +721,7 @@ const std::string AnimationExporter::get_collada_name(std::string channel_target
 		{ "specular_hardness", "specular_hardness" },
 		{ "alpha", "alpha" },
 
-		/* Lamps */
+		/* Lights */
 		{ "color", "color" },
 		{ "fall_off_angle", "falloff_angle" },
 		{ "spot_size", "falloff_angle" },

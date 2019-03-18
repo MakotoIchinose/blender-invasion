@@ -85,6 +85,7 @@ void		WM_init_state_size_set		(int stax, int stay, int sizx, int sizy);
 void		WM_init_state_fullscreen_set(void);
 void		WM_init_state_normal_set(void);
 void		WM_init_state_maximized_set(void);
+void		WM_init_state_start_with_console_set(bool value);
 void		WM_init_window_focus_set(bool do_it);
 void		WM_init_native_pixels(bool do_it);
 void		WM_init_tablet_api(void);
@@ -101,6 +102,7 @@ void		WM_init_splash		(struct bContext *C);
 void		WM_init_opengl		(struct Main *bmain);
 
 void		WM_check			(struct bContext *C);
+void		WM_reinit_gizmomap_all(struct Main *bmain);
 
 int WM_window_pixels_x(const struct wmWindow *win);
 int WM_window_pixels_y(const struct wmWindow *win);
@@ -198,12 +200,20 @@ struct wmEventHandler_Keymap *WM_event_add_keymap_handler_bb(
 struct wmEventHandler_Keymap *WM_event_add_keymap_handler_priority(
         ListBase *handlers, wmKeyMap *keymap, int priority);
 
-void		WM_event_remove_keymap_handler(ListBase *handlers, wmKeyMap *keymap);
+typedef struct wmKeyMap *(wmEventHandler_KeymapDynamicFn)(wmWindowManager *wm, struct wmEventHandler_Keymap *handler) ATTR_WARN_UNUSED_RESULT;
 
-void WM_event_set_keymap_handler_callback(
+struct wmKeyMap *WM_event_get_keymap_from_toolsystem(struct wmWindowManager *wm, struct wmEventHandler_Keymap *handler);
+
+struct wmEventHandler_Keymap *WM_event_add_keymap_handler_dynamic(
+        ListBase *handlers, wmEventHandler_KeymapDynamicFn *keymap_fn, void *user_data);
+
+void WM_event_remove_keymap_handler(ListBase *handlers, wmKeyMap *keymap);
+
+void WM_event_set_keymap_handler_post_callback(
         struct wmEventHandler_Keymap *handler,
         void (keymap_tag)(wmKeyMap *keymap, wmKeyMapItem *kmi, void *user_data),
         void *user_data);
+wmKeyMap *WM_event_get_keymap_from_handler(wmWindowManager *wm, struct wmEventHandler_Keymap *handler);
 
 typedef int (*wmUIHandlerFunc)(struct bContext *C, const struct wmEvent *event, void *userdata);
 typedef void (*wmUIHandlerRemoveFunc)(struct bContext *C, void *userdata);
@@ -362,13 +372,9 @@ void        WM_operator_properties_gesture_box_ex(struct wmOperatorType *ot, boo
 void        WM_operator_properties_gesture_box(struct wmOperatorType *ot);
 void        WM_operator_properties_gesture_box_select(struct wmOperatorType *ot);
 void        WM_operator_properties_gesture_box_zoom(struct wmOperatorType *ot);
-void        WM_operator_properties_gesture_lasso_ex(struct wmOperatorType *ot, bool deselect, bool extend);
 void        WM_operator_properties_gesture_lasso(struct wmOperatorType *ot);
-void        WM_operator_properties_gesture_lasso_select(struct wmOperatorType *ot);
 void        WM_operator_properties_gesture_straightline(struct wmOperatorType *ot, int cursor);
-void        WM_operator_properties_gesture_circle_ex(struct wmOperatorType *ot, bool deselect);
 void        WM_operator_properties_gesture_circle(struct wmOperatorType *ot);
-void        WM_operator_properties_gesture_circle_select(struct wmOperatorType *ot);
 void        WM_operator_properties_mouse_select(struct wmOperatorType *ot);
 void        WM_operator_properties_select_all(struct wmOperatorType *ot);
 void        WM_operator_properties_select_action(struct wmOperatorType *ot, int default_action);
@@ -474,6 +480,7 @@ void		WM_gesture_straightline_cancel(struct bContext *C, struct wmOperator *op);
 struct wmGesture *WM_gesture_new(struct bContext *C, const struct wmEvent *event, int type);
 void		WM_gesture_end(struct bContext *C, struct wmGesture *gesture);
 void		WM_gestures_remove(struct bContext *C);
+bool		WM_gesture_is_modal_first(const struct wmGesture *gesture);
 
 			/* fileselecting support */
 void		WM_event_add_fileselect(struct bContext *C, struct wmOperator *op);

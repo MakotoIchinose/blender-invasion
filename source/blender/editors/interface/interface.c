@@ -163,7 +163,9 @@ float ui_block_to_window_scale(const ARegion *ar, uiBlock *block)
 	/* We could have function for this to avoid dummy arg. */
 	float dummy_x;
 	float min_y = 0, max_y = 1;
+	dummy_x = 0.0f;
 	ui_block_to_window_fl(ar, block, &dummy_x, &min_y);
+	dummy_x = 0.0f;
 	ui_block_to_window_fl(ar, block, &dummy_x, &max_y);
 	return max_y - min_y;
 }
@@ -493,8 +495,8 @@ static void ui_block_bounds_calc_popup(
 
 	/* offset block based on mouse position, user offset is scaled
 	 * along in case we resized the block in ui_block_bounds_calc_text */
-	raw_x = rect.xmin = xy[0] + block->rect.xmin + (block->mx * width) / oldwidth;
-	raw_y = rect.ymin = xy[1] + block->rect.ymin + (block->my * height) / oldheight;
+	raw_x = rect.xmin = xy[0] + block->rect.xmin + (block->bounds_offset[0] * width) / oldwidth;
+	raw_y = rect.ymin = xy[1] + block->rect.ymin + (block->bounds_offset[1] * height) / oldheight;
 	rect.xmax = rect.xmin + width;
 	rect.ymax = rect.ymin + height;
 
@@ -536,21 +538,33 @@ void UI_block_bounds_set_text(uiBlock *block, int addval)
 }
 
 /* used for block popups */
-void UI_block_bounds_set_popup(uiBlock *block, int addval, int mx, int my)
+void UI_block_bounds_set_popup(uiBlock *block, int addval, const int bounds_offset[2])
 {
 	block->bounds = addval;
 	block->bounds_type = UI_BLOCK_BOUNDS_POPUP_MOUSE;
-	block->mx = mx;
-	block->my = my;
+	if (bounds_offset != NULL) {
+		block->bounds_offset[0] = bounds_offset[0];
+		block->bounds_offset[1] = bounds_offset[1];
+	}
+	else {
+		block->bounds_offset[0] = 0;
+		block->bounds_offset[1] = 0;
+	}
 }
 
 /* used for menu popups */
-void UI_block_bounds_set_menu(uiBlock *block, int addval, int mx, int my)
+void UI_block_bounds_set_menu(uiBlock *block, int addval, const int bounds_offset[2])
 {
 	block->bounds = addval;
 	block->bounds_type = UI_BLOCK_BOUNDS_POPUP_MENU;
-	block->mx = mx;
-	block->my = my;
+	if (bounds_offset != NULL) {
+		block->bounds_offset[0] = bounds_offset[0];
+		block->bounds_offset[1] = bounds_offset[1];
+	}
+	else {
+		block->bounds_offset[0] = 0;
+		block->bounds_offset[1] = 0;
+	}
 }
 
 /* used for centered popups, i.e. splash */
@@ -2411,12 +2425,27 @@ void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int 
 
 		value = ui_but_value_get(but);
 
+		PropertySubType subtype = PROP_NONE;
+		if (but->rnaprop) {
+			subtype = RNA_property_subtype(but->rnaprop);
+		}
+
 		if (ui_but_is_float(but)) {
+			int prec = (float_precision == -1) ? ui_but_calc_float_precision(but, value) : float_precision;
+
 			if (ui_but_is_unit(but)) {
-				ui_get_but_string_unit(but, str, maxlen, value, false, float_precision);
+				ui_get_but_string_unit(but, str, maxlen, value, false, prec);
+			}
+			else if (subtype == PROP_FACTOR) {
+				if (U.factor_display_type == USER_FACTOR_AS_FACTOR) {
+					BLI_snprintf(str, maxlen, "%.*f", prec, value);
+				}
+				else {
+					BLI_snprintf(str, maxlen, "%.*f", MAX2(0, prec - 2), value * 100);
+				}
+
 			}
 			else {
-				int prec = (float_precision == -1) ? ui_but_calc_float_precision(but, value) : float_precision;
 				if (use_exp_float) {
 					const int int_digits_num = integer_digits_f(value);
 					if (int_digits_num < -6 || int_digits_num > 12) {
@@ -2514,44 +2543,80 @@ static bool ui_set_but_string_eval_num_unit(bContext *C, uiBut *but, const char 
 	return user_string_to_number(C, str, unit, type, r_value);
 }
 
+static bool ui_number_from_string(bContext *C, const char *str, double *r_value)
+{
+#ifdef WITH_PYTHON
+	return BPY_execute_string_as_number(C, NULL, str, true, r_value);
+#else
+	*r_value = atof(str);
+	return true;
+#endif
+}
+
+static bool ui_number_from_string_factor(bContext *C, const char *str, double *r_value)
+{
+	int len = strlen(str);
+	if (BLI_strn_endswith(str, "%", len)) {
+		char *str_new = BLI_strdupn(str, len - 1);
+		bool success = ui_number_from_string(C, str_new, r_value);
+		MEM_freeN(str_new);
+		*r_value /= 100.0;
+		return success;
+	}
+	else {
+		if (!ui_number_from_string(C, str, r_value)) {
+			return false;
+		}
+		if (U.factor_display_type == USER_FACTOR_AS_PERCENTAGE) {
+			*r_value /= 100.0;
+		}
+		return true;
+	}
+}
+
+static bool ui_number_from_string_percentage(bContext *C, const char *str, double *r_value)
+{
+	int len = strlen(str);
+	if (BLI_strn_endswith(str, "%", len)) {
+		char *str_new = BLI_strdupn(str, len - 1);
+		bool success = ui_number_from_string(C, str_new, r_value);
+		MEM_freeN(str_new);
+		return success;
+	}
+	else {
+		return ui_number_from_string(C, str, r_value);
+	}
+}
+
 bool ui_but_string_set_eval_num(bContext *C, uiBut *but, const char *str, double *r_value)
 {
-	bool ok = false;
-
-#ifdef WITH_PYTHON
-
-	if (str[0] != '\0') {
-		bool is_unit_but = (ui_but_is_float(but) && ui_but_is_unit(but));
-		/* only enable verbose if we won't run again with units */
-		if (BPY_execute_string_as_number(C, NULL, str, is_unit_but == false, r_value)) {
-			/* if the value parsed ok without unit conversion
-			 * this button may still need a unit multiplier */
-			if (is_unit_but) {
-				char str_new[128];
-
-				BLI_snprintf(str_new, sizeof(str_new), "%f", *r_value);
-				ok = ui_set_but_string_eval_num_unit(C, but, str_new, r_value);
-			}
-			else {
-				ok = true; /* parse normal string via py (no unit conversion needed) */
-			}
-		}
-		else if (is_unit_but) {
-			/* parse failed, this is a unit but so run replacements and parse again */
-			ok = ui_set_but_string_eval_num_unit(C, but, str, r_value);
-		}
+	if (str[0] == '\0') {
+		*r_value = 0.0;
+		return true;
 	}
 
-#else /* WITH_PYTHON */
+	PropertySubType subtype = PROP_NONE;
+	if (but->rnaprop) {
+		subtype = RNA_property_subtype(but->rnaprop);
+	}
 
-	*r_value = atof(str);
-	ok = true;
-
-	UNUSED_VARS(C, but);
-
-#endif /* WITH_PYTHON */
-
-	return ok;
+	if (ui_but_is_float(but)) {
+		if (ui_but_is_unit(but)) {
+			return ui_set_but_string_eval_num_unit(C, but, str, r_value);
+		}
+		else if (subtype == PROP_FACTOR) {
+			return ui_number_from_string_factor(C, str, r_value);
+		}
+		else if (subtype == PROP_PERCENTAGE) {
+			return ui_number_from_string_percentage(C, str, r_value);
+		}
+		else {
+			return ui_number_from_string(C, str, r_value);
+		}
+	}
+	else {
+		return ui_number_from_string(C, str, r_value);
+	}
 }
 
 /* just the assignment/free part */
@@ -2654,7 +2719,7 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 	}
 	else if (but->type == UI_BTYPE_TEXT) {
 		/* string */
-		if (!but->poin || (str[0] == '\0')) {
+		if (!but->poin) {
 			str = "";
 		}
 		else if (ui_but_is_utf8(but)) {
@@ -3056,12 +3121,77 @@ void UI_block_theme_style_set(uiBlock *block, char theme_style)
 	block->theme_style = theme_style;
 }
 
+static void ui_but_build_drawstr_float(uiBut *but, double value)
+{
+	size_t slen = 0;
+	STR_CONCAT(but->drawstr, slen, but->str);
+
+	PropertySubType subtype = PROP_NONE;
+	if (but->rnaprop) {
+		subtype = RNA_property_subtype(but->rnaprop);
+	}
+
+	if (value == (double)FLT_MAX) {
+		STR_CONCAT(but->drawstr, slen, "inf");
+	}
+	else if (value == (double)-FLT_MIN) {
+		STR_CONCAT(but->drawstr, slen, "-inf");
+	}
+	else if (subtype == PROP_PERCENTAGE) {
+		int prec = ui_but_calc_float_precision(but, value);
+		STR_CONCATF(but->drawstr, slen, "%.*f %%", prec, value);
+	}
+	else if (subtype == PROP_PIXEL) {
+		int prec = ui_but_calc_float_precision(but, value);
+		STR_CONCATF(but->drawstr, slen, "%.*f px", prec, value);
+	}
+	else if (subtype == PROP_FACTOR) {
+		int precision = ui_but_calc_float_precision(but, value);
+
+		if (U.factor_display_type == USER_FACTOR_AS_FACTOR) {
+			STR_CONCATF(but->drawstr, slen, "%.*f", precision, value);
+		}
+		else {
+			STR_CONCATF(but->drawstr, slen, "%.*f %%", MAX2(0, precision - 2), value * 100);
+		}
+	}
+	else if (ui_but_is_unit(but)) {
+		char new_str[sizeof(but->drawstr)];
+		ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
+		STR_CONCAT(but->drawstr, slen, new_str);
+	}
+	else {
+		int prec = ui_but_calc_float_precision(but, value);
+		STR_CONCATF(but->drawstr, slen, "%.*f", prec, value);
+	}
+}
+
+static void ui_but_build_drawstr_int(uiBut *but, int value)
+{
+	size_t slen = 0;
+	STR_CONCAT(but->drawstr, slen, but->str);
+
+	PropertySubType subtype = PROP_NONE;
+	if (but->rnaprop) {
+		subtype = RNA_property_subtype(but->rnaprop);
+	}
+
+	STR_CONCATF(but->drawstr, slen, "%d", value);
+
+	if (subtype == PROP_PERCENTAGE) {
+		STR_CONCAT(but->drawstr, slen, "%");
+	}
+	else if (subtype == PROP_PIXEL) {
+		STR_CONCAT(but->drawstr, slen, " px");
+	}
+}
+
 /**
  * \param but: Button to update.
  * \param validate: When set, this function may change the button value.
  * Otherwise treat the button value as read-only.
  */
-void ui_but_update_ex(uiBut *but, const bool validate)
+static void ui_but_update_ex(uiBut *but, const bool validate)
 {
 	/* if something changed in the button */
 	double value = UI_BUT_VALUE_UNSET;
@@ -3069,7 +3199,7 @@ void ui_but_update_ex(uiBut *but, const bool validate)
 	ui_but_update_select_flag(but, &value);
 
 	/* only update soft range while not editing */
-	if (!(but->editval || but->editstr || but->editvec)) {
+	if (!ui_but_is_editing(but)) {
 		if ((but->rnaprop != NULL) ||
 		    (but->poin && (but->pointype & UI_BUT_POIN_TYPES)))
 		{
@@ -3145,52 +3275,15 @@ void ui_but_update_ex(uiBut *but, const bool validate)
 
 		case UI_BTYPE_NUM:
 		case UI_BTYPE_NUM_SLIDER:
-
-			if (!but->editstr) {
-				const char *drawstr_suffix = NULL;
-				size_t slen;
-
-				UI_GET_BUT_VALUE_INIT(but, value);
-
-				slen = BLI_strncpy_rlen(but->drawstr, but->str, sizeof(but->drawstr));
-
-				if (ui_but_is_float(but)) {
-					if (value == (double) FLT_MAX) {
-						slen += BLI_strncpy_rlen(but->drawstr + slen, "inf", sizeof(but->drawstr) - slen);
-					}
-					else if (value == (double) -FLT_MAX) {
-						slen += BLI_strncpy_rlen(but->drawstr + slen, "-inf", sizeof(but->drawstr) - slen);
-					}
-					/* support length type buttons */
-					else if (ui_but_is_unit(but)) {
-						char new_str[sizeof(but->drawstr)];
-						ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
-						slen += BLI_strncpy_rlen(but->drawstr + slen, new_str, sizeof(but->drawstr) - slen);
-					}
-					else {
-						const int prec = ui_but_calc_float_precision(but, value);
-						slen += BLI_snprintf_rlen(but->drawstr + slen, sizeof(but->drawstr) - slen, "%.*f", prec, value);
-					}
-				}
-				else {
-					slen += BLI_snprintf_rlen(but->drawstr + slen, sizeof(but->drawstr) - slen, "%d", (int)value);
-				}
-
-				if (but->rnaprop) {
-					PropertySubType pstype = RNA_property_subtype(but->rnaprop);
-
-					if (pstype == PROP_PERCENTAGE) {
-						drawstr_suffix = "%";
-					}
-					else if (pstype == PROP_PIXEL) {
-						drawstr_suffix = " px";
-					}
-				}
-
-				if (drawstr_suffix) {
-					BLI_strncpy(but->drawstr + slen, drawstr_suffix, sizeof(but->drawstr) - slen);
-				}
-
+			if (but->editstr) {
+				break;
+			}
+			UI_GET_BUT_VALUE_INIT(but, value);
+			if (ui_but_is_float(but)) {
+				ui_but_build_drawstr_float(but, value);
+			}
+			else {
+				ui_but_build_drawstr_int(but, (int)value);
 			}
 			break;
 
@@ -3500,7 +3593,7 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 
 	int totitems = 0;
 	int columns, rows, a, b;
-	int column_start = 0, column_end = 0;
+	int column_end = 0;
 	int nbr_entries_nosepr = 0;
 
 	UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
@@ -3513,7 +3606,7 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 
 	for (item = item_array; item->identifier; item++, totitems++) {
 		if (!item->identifier[0]) {
-			/* inconsistent, but menus with labels do not look good flipped */
+			/* inconsistent, but menus with categories do not look good flipped */
 			if (item->name) {
 				block->flag |= UI_BLOCK_NO_FLIP;
 				nbr_entries_nosepr++;
@@ -3537,10 +3630,12 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 	while (rows * columns < totitems)
 		rows++;
 
-	/* Title */
-	uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
-	         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
-	uiItemS(layout);
+	if (block->flag & UI_BLOCK_NO_FLIP) {
+		/* Title at the top for menus with categories. */
+		uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
+		         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
+		uiItemS(layout);
+	}
 
 	/* note, item_array[...] is reversed on access */
 
@@ -3551,7 +3646,6 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 		if (a == column_end) {
 			/* start new column, and find out where it ends in advance, so we
 			 * can flip the order of items properly per column */
-			column_start = a;
 			column_end = totitems;
 
 			for (b = a + 1; b < totitems; b++) {
@@ -3567,12 +3661,7 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 			column = uiLayoutColumn(split, false);
 		}
 
-		if (block->flag & UI_BLOCK_NO_FLIP) {
-			item = &item_array[a];
-		}
-		else {
-			item = &item_array[(column_start + column_end - 1 - a)];
-		}
+		item = &item_array[a];
 
 		if (!item->identifier[0]) {
 			if (item->name) {
@@ -3601,6 +3690,13 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 				        UI_UNIT_X * 5, UI_UNIT_X, &handle->retvalue, item->value, 0.0, 0, -1, item->description);
 			}
 		}
+	}
+
+	if (!(block->flag & UI_BLOCK_NO_FLIP)) {
+		/* Title at the bottom for menus without categories. */
+		uiItemS(layout);
+		uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
+		         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
 	}
 
 	UI_block_layout_set_current(block, layout);
@@ -4473,6 +4569,12 @@ void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *argN)
 		MEM_freeN(but->tip_argN);
 	}
 	but->tip_argN = argN;
+}
+
+void UI_but_func_pushed_state_set(uiBut *but, uiButPushedStateFunc func, void *arg)
+{
+	but->pushed_state_func = func;
+	but->pushed_state_arg = arg;
 }
 
 uiBut *uiDefBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, const char *str, int x, int y, short width, short height, const char *tip)

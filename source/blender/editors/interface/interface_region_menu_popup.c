@@ -193,19 +193,12 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
 			minwidth = UI_MENU_WIDTH_MIN;
 		}
 
-		/* settings (typically rna-enum-popups) show above the button,
-		 * menu's like file-menu, show below */
 		if (pup->block->direction != 0) {
 			/* allow overriding the direction from menu_func */
 			direction = pup->block->direction;
 		}
-		else if ((pup->but->type == UI_BTYPE_PULLDOWN) ||
-		         (UI_but_menutype_get(pup->but) != NULL))
-		{
-			direction = UI_DIR_DOWN;
-		}
 		else {
-			direction = UI_DIR_UP;
+			direction = UI_DIR_DOWN;
 		}
 	}
 	else {
@@ -279,7 +272,7 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
 		}
 
 		block->minbounds = minwidth;
-		UI_block_bounds_set_menu(block, 1, offset[0], offset[1]);
+		UI_block_bounds_set_menu(block, 1, offset);
 	}
 	else {
 		/* for a header menu we set the direction automatic */
@@ -318,7 +311,7 @@ uiPopupBlockHandle *ui_popup_menu_create(
 	pup = MEM_callocN(sizeof(uiPopupMenu), __func__);
 	pup->block = UI_block_begin(C, NULL, __func__, UI_EMBOSS_PULLDOWN);
 	pup->block->flag |= UI_BLOCK_NUMSELECT;  /* default menus to numselect */
-	pup->layout = UI_block_layout(pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, MENU_PADDING, style);
+	pup->layout = UI_block_layout(pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, UI_MENU_PADDING, style);
 	pup->slideout = but ? ui_block_is_menu(but->block) : false;
 	pup->but = but;
 	uiLayoutSetOperatorContext(pup->layout, WM_OP_INVOKE_REGION_WIN);
@@ -384,7 +377,7 @@ uiPopupMenu *UI_popup_menu_begin_ex(bContext *C, const char *title, const char *
 	pup->block = UI_block_begin(C, NULL, block_name, UI_EMBOSS_PULLDOWN);
 	pup->block->flag |= UI_BLOCK_POPUP_MEMORY | UI_BLOCK_IS_FLIP;
 	pup->block->puphash = ui_popup_menu_hash(title);
-	pup->layout = UI_block_layout(pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, MENU_PADDING, style);
+	pup->layout = UI_block_layout(pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, UI_MENU_PADDING, style);
 
 	/* note, this intentionally differs from the menu & submenu default because many operators
 	 * use popups like this to select one of their options -

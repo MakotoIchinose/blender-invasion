@@ -24,9 +24,9 @@
 
 #include <string.h>
 
-#include "DNA_object_types.h"
-
 #include "BLI_utildefines.h"
+
+#include "DNA_object_types.h"
 
 #include "BKE_editmesh.h"
 #include "BKE_lattice.h"
@@ -47,15 +47,14 @@ static void initData(ModifierData *md)
 	lmd->strength = 1.0f;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	LatticeModifierData *lmd = (LatticeModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (lmd->name[0]) dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	if (lmd->name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene), ModifierData *md, bool UNUSED(userRenderParams))
@@ -150,4 +149,5 @@ ModifierTypeInfo modifierType_Lattice = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

@@ -25,7 +25,7 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -430,7 +430,7 @@ static eOLDrawState tree_element_active_material(
 	return OL_DRAWSEL_NONE;
 }
 
-static eOLDrawState tree_element_active_lamp(
+static eOLDrawState tree_element_active_light(
         bContext *UNUSED(C), Scene *UNUSED(scene), ViewLayer *view_layer, SpaceOutliner *soops,
         TreeElement *te, const eOLSetState set)
 {
@@ -522,7 +522,7 @@ static eOLDrawState tree_element_active_defgroup(
 	return OL_DRAWSEL_NONE;
 }
 
-static eOLDrawState UNUSED_FUNCTION(tree_element_active_gplayer)(
+static eOLDrawState tree_element_active_gplayer(
         bContext *C, Scene *UNUSED(scene), TreeElement *te, TreeStoreElem *tselem, const eOLSetState set)
 {
 	bGPdata *gpd = (bGPdata *)tselem->id;
@@ -928,7 +928,7 @@ eOLDrawState tree_element_active(bContext *C, Scene *scene, ViewLayer *view_laye
 		case ID_WO:
 			return tree_element_active_world(C, scene, view_layer, soops, te, set);
 		case ID_LA:
-			return tree_element_active_lamp(C, scene, view_layer, soops, te, set);
+			return tree_element_active_light(C, scene, view_layer, soops, te, set);
 		case ID_TXT:
 			return tree_element_active_text(C, scene, view_layer, soops, te, set);
 		case ID_CA:
@@ -980,7 +980,7 @@ eOLDrawState tree_element_type_active(
 		case TSE_KEYMAP_ITEM:
 			return tree_element_active_keymap_item(C, scene, view_layer, te, tselem, set);
 		case TSE_GP_LAYER:
-			//return tree_element_active_gplayer(C, scene, s, te, tselem, set);
+			return tree_element_active_gplayer(C, scene, te, tselem, set);
 			break;
 		case TSE_VIEW_COLLECTION_BASE:
 			return tree_element_active_master_collection(C, te, set);
@@ -1262,14 +1262,18 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
 	Scene *scene = CTX_data_scene(C);
 	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	ARegion *ar = CTX_wm_region(C);
-	TreeElement *te;
 	rctf rectf;
-	bool select = !RNA_boolean_get(op->ptr, "deselect");
+
+	const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+	const bool select = (sel_op != SEL_OP_SUB);
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+		outliner_flag_set(&soops->tree, TSE_SELECTED, 0);
+	}
 
 	WM_operator_properties_border_to_rctf(op, &rectf);
 	UI_view2d_region_to_view_rctf(&ar->v2d, &rectf, &rectf);
 
-	for (te = soops->tree.first; te; te = te->next) {
+	for (TreeElement *te = soops->tree.first; te; te = te->next) {
 		outliner_item_box_select(soops, scene, &rectf, te, select);
 	}
 
@@ -1298,8 +1302,9 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	/* rna */
-	WM_operator_properties_gesture_box_ex(ot, true, false);
+	/* properties */
+	WM_operator_properties_gesture_box(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ****************************************************** */

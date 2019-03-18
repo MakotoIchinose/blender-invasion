@@ -1111,6 +1111,7 @@ static void render_result_uncrop(Render *re)
 			render_result_disprect_to_full_resolution(re);
 
 			rres = render_result_new(re, &re->disprect, 0, RR_USE_MEM, RR_ALL_LAYERS, RR_ALL_VIEWS);
+			rres->stamp_data = BKE_stamp_data_copy(re->result->stamp_data);
 
 			render_result_clone_passes(re, rres, NULL);
 
@@ -1239,20 +1240,22 @@ static void ntree_render_scenes(Render *re)
 
 	if (re->scene->nodetree == NULL) return;
 
-	/* now foreach render-result node tagged we do a full render */
-	/* results are stored in a way compisitor will find it */
+	/* now foreach render-result node we do a full render */
+	/* results are stored in a way compositor will find it */
+	GSet *scenes_rendered = BLI_gset_ptr_new(__func__);
 	for (node = re->scene->nodetree->nodes.first; node; node = node->next) {
 		if (node->type == CMP_NODE_R_LAYERS && (node->flag & NODE_MUTED) == 0) {
 			if (node->id && node->id != (ID *)re->scene) {
 				Scene *scene = (Scene *)node->id;
-
-				if (render_scene_has_layers_to_render(scene, false)) {
+				if (!BLI_gset_haskey(scenes_rendered, scene) && render_scene_has_layers_to_render(scene, false)) {
 					render_scene(re, scene, cfra);
+					BLI_gset_add(scenes_rendered, scene);
 					nodeUpdate(restore_scene->nodetree, node);
 				}
 			}
 		}
 	}
+	BLI_gset_free(scenes_rendered, NULL);
 }
 
 /* bad call... need to think over proper method still */
@@ -1766,7 +1769,7 @@ static bool node_tree_has_composite_output(bNodeTree *ntree)
 		if (ELEM(node->type, CMP_NODE_COMPOSITE, CMP_NODE_OUTPUT_FILE)) {
 			return true;
 		}
-		else if (node->type == NODE_GROUP) {
+		else if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
 			if (node->id) {
 				if (node_tree_has_composite_output((bNodeTree *)node->id)) {
 					return true;
@@ -2086,6 +2089,8 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 
 					ImBuf *ibuf = render_result_rect_to_ibuf(rr, rd, view_id);
 					ibuf->planes = 24;
+					IMB_colormanagement_imbuf_for_write(ibuf, true, false, &scene->view_settings,
+					                                    &scene->display_settings, &imf);
 
 					ok = render_imbuf_write_stamp_test(reports, scene, rr, ibuf, name, &imf, stamp);
 

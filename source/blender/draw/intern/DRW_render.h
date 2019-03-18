@@ -38,7 +38,7 @@
 #include "BLT_translation.h"
 
 #include "DNA_object_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_world_types.h"
@@ -69,7 +69,7 @@ struct GPUMaterial;
 struct GPUShader;
 struct GPUTexture;
 struct GPUUniformBuffer;
-struct LampEngineData;
+struct LightEngineData;
 struct Object;
 struct ParticleSystem;
 struct RenderEngineType;
@@ -306,6 +306,8 @@ typedef enum {
 	DRW_STATE_STENCIL_NEQUAL         = (1 << 31),
 } DRWState;
 #define DRW_STATE_DEFAULT (DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL)
+#define DRW_STATE_RASTERIZER_ENABLED (DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_STENCIL | \
+                                      DRW_STATE_WRITE_STENCIL_SHADOW_PASS | DRW_STATE_WRITE_STENCIL_SHADOW_FAIL)
 
 typedef enum {
 	DRW_ATTR_INT,

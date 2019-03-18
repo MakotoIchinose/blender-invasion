@@ -77,6 +77,7 @@
 #include "BKE_softbody.h"
 #include "BKE_editmesh.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 #include "BKE_workspace.h"
 
 #include "DEG_depsgraph.h"
@@ -162,7 +163,10 @@ static int object_hide_view_clear_exec(bContext *C, wmOperator *op)
 			changed = true;
 
 			if (select) {
-				ED_object_base_select(base, BA_SELECT);
+				/* We cannot call `ED_object_base_select` because
+				 * base is not selectable while it is hidden. */
+				base->flag |= BASE_SELECTED;
+				BKE_scene_object_base_flag_sync_from_base(base);
 			}
 		}
 	}
@@ -306,12 +310,6 @@ void ED_collection_hide_menu_draw(const bContext *C, uiLayout *layout)
 			continue;
 		}
 
-		if ((view_layer->runtime_flag & VIEW_LAYER_HAS_HIDE) &&
-		    !(lc->runtime_flag & LAYER_COLLECTION_HAS_VISIBLE_OBJECTS))
-		{
-			uiLayoutSetActive(row, false);
-		}
-
 		int icon = ICON_NONE;
 		if (BKE_layer_collection_has_selected_objects(view_layer, lc)) {
 			icon = ICON_LAYER_ACTIVE;
@@ -381,7 +379,7 @@ static bool mesh_needs_keyindex(Main *bmain, const Mesh *me)
 		return false;  /* will be added */
 	}
 
-	for (const Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (const Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if ((ob->parent) && (ob->parent->data == me) && ELEM(ob->partype, PARVERT1, PARVERT3)) {
 			return true;
 		}
@@ -741,6 +739,12 @@ static int posemode_exec(bContext *C, wmOperator *op)
 {
 	struct wmMsgBus *mbus = CTX_wm_message_bus(C);
 	Base *base = CTX_data_active_base(C);
+
+	/* If the base is NULL it means we have an active object, but the object itself is hidden. */
+	if (base == NULL) {
+		return OPERATOR_CANCELLED;
+	}
+
 	Object *obact = base->object;
 	const int mode_flag = OB_MODE_POSE;
 	bool is_mode_set = (obact->mode & mode_flag) != 0;

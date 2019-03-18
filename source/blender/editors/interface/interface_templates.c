@@ -295,10 +295,10 @@ static bool id_search_add(
 		}
 
 		if (*str == '\0' || BLI_strcasestr(id->name + 2, str)) {
-			/* +1 is needed because BKE_id_ui_prefix uses 3 letter prefix
-			 * followed by ID_NAME-2 characters from id->name.
+			/* +1 is needed because BKE_id_ui_prefix used 3 letter prefix
+			 * followed by ID_NAME-2 characters from id->name
 			 */
-			char name_ui[MAX_ID_FULL_NAME];
+			char name_ui[MAX_ID_FULL_NAME_UI];
 			BKE_id_full_name_ui_prefix_get(name_ui, id);
 
 			int iconid = ui_id_icon_get(C, id, template_ui->preview);
@@ -1323,7 +1323,7 @@ void uiTemplatePathBuilder(
 
 /************************ Modifier Template *************************/
 
-#define ERROR_LIBDATA_MESSAGE IFACE_("Can't edit external libdata")
+#define ERROR_LIBDATA_MESSAGE IFACE_("Can't edit external library data")
 
 static void modifiers_convertToReal(bContext *C, void *ob_v, void *md_v)
 {
@@ -2144,7 +2144,7 @@ uiLayout *uiTemplateConstraint(uiLayout *layout, PointerRNA *ptr)
 
 /************************* Preview Template ***************************/
 
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_world_types.h"
 
@@ -2192,7 +2192,7 @@ void uiTemplatePreview(
 		else if (parent && (GS(parent->name) == ID_WO))
 			pr_texture = &((World *)parent)->pr_texture;
 		else if (parent && (GS(parent->name) == ID_LA))
-			pr_texture = &((Lamp *)parent)->pr_texture;
+			pr_texture = &((Light *)parent)->pr_texture;
 		else if (parent && (GS(parent->name) == ID_LS))
 			pr_texture = &((FreestyleLineStyle *)parent)->pr_texture;
 
@@ -2378,15 +2378,26 @@ static void colorband_tools_dofunc(bContext *C, void *coba_v, int event)
 static uiBlock *colorband_tools_func(
         bContext *C, ARegion *ar, void *coba_v)
 {
+	uiStyle *style = UI_style_get_dpi();
 	ColorBand *coba = coba_v;
 	uiBlock *block;
 	short yco = 0, menuwidth = 10 * UI_UNIT_X;
 
-	block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
+	block = UI_block_begin(C, ar, __func__, UI_EMBOSS_PULLDOWN);
 	UI_block_func_butmenu_set(block, colorband_tools_dofunc, coba);
 
+	uiLayout *layout = UI_block_layout(
+	        block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, UI_MENU_WIDTH_MIN, 0, UI_MENU_PADDING, style);
+	UI_block_layout_set_current(block, layout);
 	{
-		uiBut *but;
+		PointerRNA coba_ptr;
+		RNA_pointer_create(NULL, &RNA_ColorRamp, coba, &coba_ptr);
+		uiLayoutSetContextPointer(layout, "color_ramp", &coba_ptr);
+	}
+
+	/* We could move these to operators,
+	 * although this isn't important unless we want to assign key shortcuts to them. */
+	{
 		uiDefIconTextBut(
 		        block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1,
 		        IFACE_("Flip Color Ramp"), 0, yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y,
@@ -2399,11 +2410,9 @@ static uiBlock *colorband_tools_func(
 		        block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1,
 		        IFACE_("Distribute Stops Evenly"), 0, yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y,
 		        NULL, 0.0, 0.0, 0, CB_FUNC_DISTRIBUTE_EVENLY, "");
-		but = uiDefIconTextButO(
-		        block, UI_BTYPE_BUT_MENU, "UI_OT_eyedropper_colorband", WM_OP_INVOKE_DEFAULT, ICON_EYEDROPPER,
-		        IFACE_("Eyedropper"), 0, yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y,
-		        "");
-		but->custom_data = coba;
+
+		uiItemO(layout, IFACE_("Eyedropper"), ICON_EYEDROPPER, "UI_OT_eyedropper_colorramp");
+
 		uiDefIconTextBut(
 		        block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Reset Color Ramp"),
 		        0, yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0, CB_FUNC_RESET, "");
@@ -4614,7 +4623,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
 	else {
 		Scene *scene;
 		/* another scene can be rendering too, for example via compositor */
-		for (scene = CTX_data_main(C)->scene.first; scene; scene = scene->id.next) {
+		for (scene = CTX_data_main(C)->scenes.first; scene; scene = scene->id.next) {
 			if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER)) {
 				handle_event = B_STOPRENDER;
 				icon = ICON_SCENE;

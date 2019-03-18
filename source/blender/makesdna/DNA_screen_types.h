@@ -87,7 +87,7 @@ typedef struct bScreen {
 	char skip_handling;
 	/** Set when scrubbing to avoid some costly updates. */
 	char scrubbing;
-	char pad[1];
+	char _pad[1];
 
 	/** Active region that has mouse focus. */
 	struct ARegion *active_region;
@@ -116,7 +116,7 @@ typedef struct ScrEdge {
 	/** 1 when at edge of screen. */
 	short border;
 	short flag;
-	int pad;
+	char _pad[4];
 } ScrEdge;
 
 typedef struct ScrAreaMap {
@@ -141,7 +141,7 @@ typedef struct Panel {
 
 	/** Defined as UI_MAX_NAME_STR. */
 	char panelname[64], tabname[64];
-	/** Panelname is identifier for restoring location. */
+	/** Panel name is identifier for restoring location. */
 	char drawname[64];
 	/** Offset within the region. */
 	int ofsx, ofsy;
@@ -149,11 +149,12 @@ typedef struct Panel {
 	int sizex, sizey;
 	/** Panel size excluding children. */
 	int blocksizex, blocksizey;
-	short labelofs, pad;
+	short labelofs;
+	char _pad[2];
 	short flag, runtime_flag;
 	short control;
 	short snap;
-	/** Panels are aligned according to increasing sortorder. */
+	/** Panels are aligned according to increasing sort-order. */
 	int sortorder;
 	/** This panel is tabbed in *paneltab. */
 	struct Panel *paneltab;
@@ -164,15 +165,16 @@ typedef struct Panel {
 } Panel;
 
 
-/* Notes on Panel Catogories:
+/**
+ * Notes on Panel Categories:
  *
- * ar->panels_category (PanelCategoryDyn) is a runtime only list of categories collected during draw.
+ * - #ARegion.panels_category (#PanelCategoryDyn) is a runtime only list of categories collected during draw.
  *
- * ar->panels_category_active (PanelCategoryStack) is basically a list of strings (category id's).
+ * - #ARegion.panels_category_active (#PanelCategoryStack) is basically a list of strings (category id's).
  *
  * Clicking on a tab moves it to the front of ar->panels_category_active,
  * If the context changes so this tab is no longer displayed,
- * then the first-most tab in ar->panels_category_active is used.
+ * then the first-most tab in #ARegion.panels_category_active is used.
  *
  * This way you can change modes and always have the tab you last clicked on.
  */
@@ -260,7 +262,7 @@ typedef struct TransformOrientation {
 	/** MAX_NAME. */
 	char name[64];
 	float mat[3][3];
-	int pad;
+	char _pad[4];
 } TransformOrientation;
 
 /** Some preview UI data need to be saved in file. */
@@ -270,7 +272,7 @@ typedef struct uiPreview {
 	/** Defined as UI_MAX_NAME_STR. */
 	char preview_id[64];
 	short height;
-	short pad1[3];
+	char _pad1[6];
 } uiPreview;
 
 /* These two lines with # tell makesdna this struct can be excluded.
@@ -284,15 +286,14 @@ typedef struct ScrGlobalAreaData {
 	 * and winx/winy don't) */
 	short cur_fixed_height;
 	/* For global areas, this is the min and max size they can use depending on
-	 * if they are 'collapsed' or not. Value is set on area creation and not
-	 * touched afterwards. */
+	 * if they are 'collapsed' or not. */
 	short size_min, size_max;
 	/** GlobalAreaAlign. */
 	short align;
 
 	/** GlobalAreaFlag. */
 	short flag;
-	short pad;
+	char _pad[2];
 } ScrGlobalAreaData;
 
 enum GlobalAreaFlag {
@@ -346,7 +347,7 @@ typedef struct ScrArea {
 	 * runtime variable, updated by executing operators.
 	 */
 	short region_active_win;
-	char temp, pad;
+	char temp, _pad;
 
 	/** Callbacks for this space type. */
 	struct SpaceType *type;
@@ -401,9 +402,8 @@ typedef struct ARegion {
 	/** Hide, .... */
 	short flag;
 
-	/** Current split size in float (unused). */
-	float fsize;
-	/** Current split size in pixels (if zero it uses regiontype). */
+	/** Current split size in unscaled pixels (if zero it uses regiontype).
+	 * To convert to pixels use: `UI_DPI_FAC * ar->sizex + 0.5f`. */
 	short sizex, sizey;
 
 	/** Private, cached notifier events. */
@@ -414,7 +414,6 @@ typedef struct ARegion {
 	short overlap;
 	/** Temporary copy of flag settings for clean fullscreen. */
 	short flagfullscreen;
-	short pad1, pad2;
 
 	/** Callbacks for this region type. */
 	struct ARegionType *type;
@@ -451,15 +450,15 @@ typedef struct ARegion {
 /** #ScrArea.flag */
 enum {
 	HEADER_NO_PULLDOWN           = (1 << 0),
-//	AREA_FLAG_DEPRECATED_1       = (1 << 1),
-//	AREA_FLAG_DEPRECATED_2       = (1 << 2),
+//	AREA_FLAG_UNUSED_1           = (1 << 1),
+//	AREA_FLAG_UNUSED_2           = (1 << 2),
 #ifdef DNA_DEPRECATED_ALLOW
 	AREA_TEMP_INFO               = (1 << 3), /* versioned to make slot reusable */
 #endif
 	/* update size of regions within the area */
 	AREA_FLAG_REGION_SIZE_UPDATE = (1 << 3),
 	AREA_FLAG_ACTIVE_TOOL_UPDATE = (1 << 4),
-//	AREA_FLAG_DEPRECATED_5       = (1 << 5),
+//	AREA_FLAG_UNUSED_5           = (1 << 5),
 	/* used to check if we should switch back to prevspace (of a different type) */
 	AREA_FLAG_TEMP_TYPE          = (1 << 6),
 	/* for temporary fullscreens (file browser, image editor render)
@@ -469,9 +468,10 @@ enum {
 	AREA_FLAG_ACTIONZONES_UPDATE = (1 << 8),
 };
 
-#define AREAGRID	4
-#define AREAMINX	32
-#define HEADERY		26
+#define AREAGRID          4
+#define AREAMINX          32
+#define HEADER_PADDING_Y  6
+#define HEADERY           (20 + HEADER_PADDING_Y)
 
 /** #bScreen.flag */
 enum {
@@ -624,6 +624,9 @@ enum {
 	RGN_FLAG_TEMP_REGIONDATA    = (1 << 3),
 	/* The region must either use its prefsizex/y or be hidden. */
 	RGN_FLAG_PREFSIZE_OR_HIDDEN = (1 << 4),
+	/** Size has been clamped (floating regions only). */
+	RGN_FLAG_SIZE_CLAMP_X      = (1 << 5),
+	RGN_FLAG_SIZE_CLAMP_Y      = (1 << 6),
 };
 
 /** #ARegion.do_draw */
@@ -632,4 +635,5 @@ enum {
 #define RGN_DRAWING			4
 #define RGN_DRAW_REFRESH_UI	8  /* re-create uiBlock's where possible */
 #define RGN_DRAW_NO_REBUILD	16
-#endif
+
+#endif  /* __DNA_SCREEN_TYPES_H__ */

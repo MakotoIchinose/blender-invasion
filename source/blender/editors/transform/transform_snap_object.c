@@ -685,6 +685,11 @@ static bool raycastObj(
 	switch (ob->type) {
 		case OB_MESH:
 		{
+			if (ob->dt == OB_BOUNDBOX || ob->dt == OB_WIRE) {
+				/* Do not hit objects that are in wire or bounding box display mode */
+				return false;
+			}
+
 			Mesh *me = ob->data;
 			if (BKE_object_is_in_editmode(ob)) {
 				BMEditMesh *em = BKE_editmesh_from_object(ob);
@@ -1215,6 +1220,7 @@ static short snap_mesh_polygon(
 		l_iter = l_first = BM_FACE_FIRST_LOOP(f);
 		if (snapdata->snap_to_flag & SCE_SNAP_MODE_EDGE) {
 			elem = SCE_SNAP_MODE_EDGE;
+			BM_mesh_elem_index_ensure(em->bm, BM_EDGE);
 			BM_mesh_elem_table_ensure(em->bm, BM_VERT | BM_EDGE);
 			do {
 				cb_snap_edge(
@@ -1226,6 +1232,7 @@ static short snap_mesh_polygon(
 		}
 		else {
 			elem = SCE_SNAP_MODE_VERTEX;
+			BM_mesh_elem_index_ensure(em->bm, BM_VERT);
 			BM_mesh_elem_table_ensure(em->bm, BM_VERT);
 			do {
 				cb_snap_vert(
@@ -2183,6 +2190,11 @@ static short snapObject(
 					me = em->mesh_eval_final;
 				}
 			}
+			else if (ob->dt == OB_BOUNDBOX) {
+				/* Do not snap to objects that are in bounding box display mode */
+				return 0;
+			}
+
 			retval = snapMesh(
 			        sctx, snapdata, ob, me, obmat,
 			        dist_px,

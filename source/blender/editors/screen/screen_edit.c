@@ -480,7 +480,7 @@ void ED_screens_initialize(Main *bmain, wmWindowManager *wm)
 	}
 
 	if (U.uiflag & USER_HEADER_FROM_PREF) {
-		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
 			BKE_screen_header_alignment_reset(screen);
 		}
 	}
@@ -794,10 +794,15 @@ static void screen_global_area_refresh(
 	}
 }
 
+static int screen_global_header_size(void)
+{
+	return (int)ceilf(ED_area_headersize() / UI_DPI_FAC);
+}
+
 static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)
 {
-	const short size_min = HEADERY;
-	const short size_max = 2.25 * HEADERY;
+	const short size_min = screen_global_header_size();
+	const short size_max = 2.25 * screen_global_header_size();
 	const short size = (screen->flag & SCREEN_COLLAPSE_TOPBAR) ? size_min : size_max;
 	rcti rect;
 
@@ -810,7 +815,7 @@ static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)
 static void screen_global_statusbar_area_refresh(wmWindow *win, bScreen *screen)
 {
 	const short size_min = 1;
-	const short size_max = 0.8f * HEADERY;
+	const short size_max = 0.8f * screen_global_header_size();
 	const short size = (screen->flag & SCREEN_COLLAPSE_STATUSBAR) ? size_min : size_max;
 	rcti rect;
 
@@ -862,7 +867,7 @@ void ED_screen_global_areas_refresh(wmWindow *win)
 
 static bScreen *screen_fullscreen_find_associated_normal_screen(const Main *bmain, bScreen *screen)
 {
-	for (bScreen *screen_iter = bmain->screen.first; screen_iter; screen_iter = screen_iter->id.next) {
+	for (bScreen *screen_iter = bmain->screens.first; screen_iter; screen_iter = screen_iter->id.next) {
 		ScrArea *sa = screen_iter->areabase.first;
 		if (sa && sa->full == screen) {
 			return screen_iter;
@@ -879,7 +884,7 @@ static bScreen *screen_fullscreen_find_associated_normal_screen(const Main *bmai
 bScreen *screen_change_prepare(bScreen *screen_old, bScreen *screen_new, Main *bmain, bContext *C, wmWindow *win)
 {
 	/* validate screen, it's called with notifier reference */
-	if (BLI_findindex(&bmain->screen, screen_new) == -1) {
+	if (BLI_findindex(&bmain->screens, screen_new) == -1) {
 		return NULL;
 	}
 
@@ -1083,7 +1088,8 @@ void ED_screen_restore_temp_type(bContext *C, ScrArea *sa)
 
 	if (sa->flag & AREA_FLAG_TEMP_TYPE) {
 		ED_area_prevspace(C, sa);
-		sa->flag &= ~AREA_FLAG_TEMP_TYPE;
+		/* Flag should be cleared now. */
+		BLI_assert((sa->flag & AREA_FLAG_TEMP_TYPE) == 0);
 	}
 
 	if (sa->full) {
@@ -1153,6 +1159,9 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
 		/* restoring back to SCREENNORMAL */
 		sc = sa->full;       /* the old screen to restore */
 		oldscreen = WM_window_get_active_screen(win); /* the one disappearing */
+
+		BLI_assert(BKE_workspace_layout_screen_get(layout_old) != sc);
+		BLI_assert(BKE_workspace_layout_screen_get(layout_old)->state != SCREENNORMAL);
 
 		sc->state = SCREENNORMAL;
 		sc->flag = oldscreen->flag;
@@ -1405,7 +1414,7 @@ void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph)
 		bScreen *sc;
 		scene->camera = camera;
 		/* are there cameras in the views that are not in the scene? */
-		for (sc = bmain->screen.first; sc; sc = sc->id.next) {
+		for (sc = bmain->screens.first; sc; sc = sc->id.next) {
 			BKE_screen_view3d_scene_sync(sc, scene);
 		}
 		DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
@@ -1424,7 +1433,7 @@ void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph)
 	/* update animated texture nodes */
 	{
 		Tex *tex;
-		for (tex = bmain->tex.first; tex; tex = tex->id.next) {
+		for (tex = bmain->textures.first; tex; tex = tex->id.next) {
 			if (tex->use_nodes && tex->nodetree) {
 				ntreeTexTagAnimated(tex->nodetree);
 			}
@@ -1535,6 +1544,24 @@ Scene *ED_screen_scene_find_with_window(const bScreen *screen, const wmWindowMan
 	return NULL;
 }
 
+ScrArea *ED_screen_area_find_with_spacedata(const bScreen *screen, const SpaceLink *sl, const bool only_visible)
+{
+	if (only_visible) {
+		for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+			if (sa->spacedata.first == sl) {
+				return sa;
+			}
+		}
+	}
+	else {
+		for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+			if (BLI_findindex(&sa->spacedata, sl) != -1) {
+				return sa;
+			}
+		}
+	}
+	return NULL;
+}
 
 Scene *ED_screen_scene_find(const bScreen *screen, const wmWindowManager *wm)
 {

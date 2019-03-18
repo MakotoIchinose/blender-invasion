@@ -42,6 +42,7 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+#include "WM_message.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -194,8 +195,13 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 		}
 	}
 
-	if (data.collection == NULL) {
+	if (data.collection == NULL || ID_IS_LINKED(data.collection)) {
 		data.collection = BKE_collection_master(scene);
+	}
+
+	if (ID_IS_LINKED(scene)) {
+		BKE_report(op->reports, RPT_ERROR, "Can't add a new collection to linked scene/collection");
+		return OPERATOR_CANCELLED;
 	}
 
 	BKE_collection_add(
@@ -263,8 +269,11 @@ static TreeTraversalAction collection_find_data_to_edit(TreeElement *te, void *c
 
 static int collection_delete_exec(bContext *C, wmOperator *op)
 {
+	struct wmMsgBus *mbus = CTX_wm_message_bus(C);
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	const Base *basact_prev = BASACT(view_layer);
 	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 	bool hierarchy = RNA_boolean_get(op->ptr, "hierarchy");
@@ -280,8 +289,40 @@ static int collection_delete_exec(bContext *C, wmOperator *op)
 		Collection *collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
 
 		/* Test in case collection got deleted as part of another one. */
-		if (BLI_findindex(&bmain->collection, collection) != -1) {
-			BKE_collection_delete(bmain, collection, hierarchy);
+		if (BLI_findindex(&bmain->collections, collection) != -1) {
+			/* We cannot allow to delete collections that are indirectly linked, or that are used by (linked to...)
+			 * other linked scene/collection. */
+			bool skip = false;
+			if (ID_IS_LINKED(collection)) {
+				if (collection->id.tag & LIB_TAG_INDIRECT) {
+					skip = true;
+				}
+				else {
+					for (CollectionParent *cparent = collection->parents.first; cparent; cparent = cparent->next) {
+						Collection *parent = cparent->collection;
+						if (ID_IS_LINKED(parent)) {
+							skip = true;
+							break;
+						}
+						else if (parent->flag & COLLECTION_IS_MASTER) {
+							Scene *parent_scene = BKE_collection_master_scene_search(bmain, parent);
+							if (ID_IS_LINKED(parent_scene)) {
+								skip = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			if (!skip) {
+				BKE_collection_delete(bmain, collection, hierarchy);
+			}
+			else {
+				BKE_reportf(op->reports, RPT_WARNING,
+				            "Cannot delete linked collection '%s', it is used by other linked scenes/collections",
+				            collection->id.name + 2);
+			}
 		}
 	}
 
@@ -291,6 +332,10 @@ static int collection_delete_exec(bContext *C, wmOperator *op)
 	DEG_relations_tag_update(bmain);
 
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
+
+	if (basact_prev != BASACT(view_layer)) {
+		WM_msg_publish_rna_prop(mbus, &scene->id, view_layer, LayerObjects, active);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -438,8 +483,8 @@ static TreeElement *outliner_active_collection(bContext *C)
 static int collection_duplicate_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
-	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	TreeElement *te = outliner_active_collection(C);
+	const bool linked = strstr(op->idname, "linked") != NULL;
 
 	/* Can happen when calling from a key binding. */
 	if (te == NULL) {
@@ -450,18 +495,34 @@ static int collection_duplicate_exec(bContext *C, wmOperator *op)
 	Collection *collection = outliner_collection_from_tree_element(te);
 	Collection *parent = (te->parent) ? outliner_collection_from_tree_element(te->parent) : NULL;
 
+	/* We are allowed to duplicated linked collections (they will become local IDs then),
+	 * but we should not allow its parent to be a linked ID, ever.
+	 * This can happen when a whole scene is linked e.g. */
+	if (parent != NULL && ID_IS_LINKED(parent)) {
+		Scene *scene = CTX_data_scene(C);
+		parent = ID_IS_LINKED(scene) ? NULL : BKE_collection_master(scene);
+	}
+	else if (parent != NULL && (parent->flag & COLLECTION_IS_MASTER) != 0) {
+		Scene *scene = BKE_collection_master_scene_search(bmain, parent);
+		BLI_assert(scene != NULL);
+		if (ID_IS_LINKED(scene)) {
+			scene = CTX_data_scene(C);
+			parent = ID_IS_LINKED(scene) ? NULL : BKE_collection_master(scene);
+		}
+	}
+
 	if (collection->flag & COLLECTION_IS_MASTER) {
 		BKE_report(op->reports, RPT_ERROR, "Can't duplicate the master collection");
 		return OPERATOR_CANCELLED;
 	}
 
-	switch (soops->outlinevis) {
-		case SO_SCENES:
-		case SO_VIEW_LAYER:
-		case SO_LIBRARIES:
-			BKE_collection_copy(bmain, parent, collection);
-			break;
+	if (parent == NULL) {
+		BKE_report(op->reports, RPT_WARNING,
+		           "Could not find a valid parent collection for the new duplicate, "
+		           "it won't be linked to any view layer");
 	}
+
+	BKE_collection_duplicate(bmain, parent, collection, true, true, !linked);
 
 	DEG_relations_tag_update(bmain);
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, CTX_data_scene(C));
@@ -469,12 +530,27 @@ static int collection_duplicate_exec(bContext *C, wmOperator *op)
 	return OPERATOR_FINISHED;
 }
 
+void OUTLINER_OT_collection_duplicate_linked(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Duplicate Linked Collection";
+	ot->idname = "OUTLINER_OT_collection_duplicate_linked";
+	ot->description = "Recursively duplicate the collection, all its children and objects, with linked object data";
+
+	/* api callbacks */
+	ot->exec = collection_duplicate_exec;
+	ot->poll = ED_outliner_collections_editor_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 void OUTLINER_OT_collection_duplicate(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Duplicate Collection";
 	ot->idname = "OUTLINER_OT_collection_duplicate";
-	ot->description = "Duplicate selected collections";
+	ot->description = "Recursively duplicate the collection, all its children, objects and object data";
 
 	/* api callbacks */
 	ot->exec = collection_duplicate_exec;
@@ -486,13 +562,20 @@ void OUTLINER_OT_collection_duplicate(wmOperatorType *ot)
 
 /**************************** Link Collection ******************************/
 
-static int collection_link_exec(bContext *C, wmOperator *UNUSED(op))
+static int collection_link_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	Collection *active_collection = CTX_data_layer_collection(C)->collection;
 	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct CollectionEditData data = {.scene = scene, .soops = soops,};
+
+	if (ID_IS_LINKED(active_collection) ||
+	    ((active_collection->flag & COLLECTION_IS_MASTER) && ID_IS_LINKED(scene)))
+	{
+		BKE_report(op->reports, RPT_ERROR, "Cannot add a colection to a linked collection/scene");
+		return OPERATOR_CANCELLED;
+	}
 
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
 

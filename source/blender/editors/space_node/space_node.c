@@ -22,7 +22,7 @@
  */
 
 #include "DNA_gpencil_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_world_types.h"
@@ -531,7 +531,7 @@ static void node_area_refresh(const struct bContext *C, ScrArea *sa)
 					ED_preview_shader_job(C, sa, snode->id, NULL, NULL, 100, 100, PR_NODE_RENDER);
 			}
 			else if (GS(snode->id->name) == ID_LA) {
-				Lamp *la = (Lamp *)snode->id;
+				Light *la = (Light *)snode->id;
 				if (la->use_nodes)
 					ED_preview_shader_job(C, sa, snode->id, NULL, NULL, 100, 100, PR_NODE_RENDER);
 			}
@@ -793,7 +793,9 @@ static void node_region_listener(
 	}
 }
 
-const char *node_context_dir[] = {"selected_nodes", "active_node", NULL};
+const char *node_context_dir[] = {
+	"selected_nodes", "active_node", "light", "material", "world", NULL
+};
 
 static int node_context(const bContext *C, const char *member, bContextDataResult *result)
 {
@@ -831,6 +833,24 @@ static int node_context(const bContext *C, const char *member, bContextDataResul
 		}
 
 		CTX_data_type_set(result, CTX_DATA_TYPE_POINTER);
+		return 1;
+	}
+	else if (CTX_data_equals(member, "material")) {
+		if (snode->id && GS(snode->id->name) == ID_MA) {
+			CTX_data_id_pointer_set(result, snode->id);
+		}
+		return 1;
+	}
+	else if (CTX_data_equals(member, "light")) {
+		if (snode->id && GS(snode->id->name) == ID_LA) {
+			CTX_data_id_pointer_set(result, snode->id);
+		}
+		return 1;
+	}
+	else if (CTX_data_equals(member, "world")) {
+		if (snode->id && GS(snode->id->name) == ID_WO) {
+			CTX_data_id_pointer_set(result, snode->id);
+		}
 		return 1;
 	}
 
@@ -975,7 +995,7 @@ void ED_spacetype_node(void)
 	art->regionid = RGN_TYPE_WINDOW;
 	art->init = node_main_region_init;
 	art->draw = node_main_region_draw;
-	art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_GPENCIL;
+	art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_GIZMO | ED_KEYMAP_TOOL | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_GPENCIL;
 	art->listener = node_region_listener;
 	art->cursor = node_cursor;
 	art->event_cursor = true;

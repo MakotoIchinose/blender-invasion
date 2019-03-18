@@ -29,6 +29,7 @@
 #include "GPU_shader.h"
 
 #include "draw_common.h"
+#include "draw_mode_engines.h"
 
 extern char datatoc_common_globals_lib_glsl[];
 
@@ -98,7 +99,7 @@ static struct {
 
 	EDIT_LATTICE_Shaders sh_data[GPU_SHADER_CFG_LEN];
 
-} e_data = {NULL}; /* Engine data */
+} e_data = {{{NULL}}}; /* Engine data */
 
 typedef struct EDIT_LATTICE_PrivateData {
 	/* This keeps the references of the shading groups for

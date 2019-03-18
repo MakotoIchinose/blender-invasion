@@ -24,15 +24,15 @@
 
 /* UV Project modifier: Generates UVs projected from an object */
 
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
+#include "BLI_uvproject.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_math.h"
-#include "BLI_uvproject.h"
-#include "BLI_utildefines.h"
-
 
 #include "BKE_camera.h"
 #include "BKE_library_query.h"
@@ -57,14 +57,10 @@ static void initData(ModifierData *md)
 	umd->scalex = umd->scaley = 1.0f;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md))
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md), CustomData_MeshMasks *r_cddata_masks)
 {
-	CustomDataMask dataMask = 0;
-
 	/* ask for UV coordinates */
-	dataMask |= CD_MLOOPUV;
-
-	return dataMask;
+	r_cddata_masks->lmask |= CD_MLOOPUV;
 }
 
 static void foreachObjectLink(
@@ -349,4 +345,5 @@ ModifierTypeInfo modifierType_UVProject = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

@@ -105,7 +105,8 @@ typedef struct Ipo {
 	 * (show vertical yellow lines for editing). */
 	short blocktype, showkey;
 	/** Muteipo: either 0 or 1 (whether ipo block is muted). */
-	short muteipo, pad;
+	short muteipo;
+	char _pad[2];
 } Ipo;
 
 /* ----------- adrcodes (for matching ipo-curves to data) ------------- */
@@ -199,24 +200,24 @@ typedef struct Ipo {
 #define MA_FRESTRAI	25
 #define MA_ADD		26
 
-#define MA_MAP1		(1<<5)
-#define MA_MAP2		(1<<6)
-#define MA_MAP3		(1<<7)
-#define MA_MAP4		(1<<8)
-#define MA_MAP5		(1<<9)
-#define MA_MAP6		(1<<10)
-#define MA_MAP7		(1<<11)
-#define MA_MAP8		(1<<12)
-#define MA_MAP9		(1<<13)
-#define MA_MAP10	(1<<14)
-#define MA_MAP11	(1<<15)
-#define MA_MAP12	(1<<16)
-#define MA_MAP13	(1<<17)
-#define MA_MAP14	(1<<18)
-#define MA_MAP15	(1<<19)
-#define MA_MAP16	(1<<20)
-#define MA_MAP17	(1<<21)
-#define MA_MAP18	(1<<22)
+#define MA_MAP1		(1 << 5)
+#define MA_MAP2		(1 << 6)
+#define MA_MAP3		(1 << 7)
+#define MA_MAP4		(1 << 8)
+#define MA_MAP5		(1 << 9)
+#define MA_MAP6		(1 << 10)
+#define MA_MAP7		(1 << 11)
+#define MA_MAP8		(1 << 12)
+#define MA_MAP9		(1 << 13)
+#define MA_MAP10	(1 << 14)
+#define MA_MAP11	(1 << 15)
+#define MA_MAP12	(1 << 16)
+#define MA_MAP13	(1 << 17)
+#define MA_MAP14	(1 << 18)
+#define MA_MAP15	(1 << 19)
+#define MA_MAP16	(1 << 20)
+#define MA_MAP17	(1 << 21)
+#define MA_MAP18	(1 << 22)
 
 /* ********** Texture Slots (MTex) ********** */
 
@@ -325,7 +326,7 @@ typedef struct Ipo {
 #define WO_STARDIST	15
 #define WO_STARSIZE	16
 
-/* ********** Lamp (ID_LA) ********** */
+/* ********** Light (ID_LA) ********** */
 
 #define LA_TOTIPO	21
 #define LA_TOTNAM	10
@@ -517,6 +518,6 @@ typedef struct Ipo {
 
 /* driver->flag */
 	/* invalid flag: currently only used for buggy pydriver expressions */
-#define IPO_DRIVER_FLAG_INVALID 	(1<<0)
+#define IPO_DRIVER_FLAG_INVALID 	(1 << 0)
 
 #endif

@@ -41,7 +41,7 @@
 	ARRAY_SET_ITEMS(v4, (float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, (float)a / 255.0f)
 
 /* Colors & Constant */
-struct DRW_Global G_draw = {0};
+struct DRW_Global G_draw = {{{0}}};
 
 static bool weight_ramp_custom = false;
 static ColorBand weight_ramp_copy;
@@ -59,7 +59,7 @@ void DRW_globals_update(void)
 	UI_COLOR_RGBA_FROM_U8(0x88, 0xFF, 0xFF, 155, gb->colorLibrarySelect);
 	UI_COLOR_RGBA_FROM_U8(0x55, 0xCC, 0xCC, 155, gb->colorLibrary);
 	UI_GetThemeColor4fv(TH_TRANSFORM, gb->colorTransform);
-	UI_GetThemeColor4fv(TH_LAMP, gb->colorLamp);
+	UI_GetThemeColor4fv(TH_LIGHT, gb->colorLight);
 	UI_GetThemeColor4fv(TH_SPEAKER, gb->colorSpeaker);
 	UI_GetThemeColor4fv(TH_CAMERA, gb->colorCamera);
 	UI_GetThemeColor4fv(TH_EMPTY, gb->colorEmpty);
@@ -136,11 +136,11 @@ void DRW_globals_update(void)
 
 	UI_GetThemeColorShadeAlpha4fv(TH_TRANSFORM, 0, -80, gb->colorDeselect);
 	UI_GetThemeColorShadeAlpha4fv(TH_WIRE, 0, -30, gb->colorOutline);
-	UI_GetThemeColorShadeAlpha4fv(TH_LAMP, 0, 255, gb->colorLampNoAlpha);
+	UI_GetThemeColorShadeAlpha4fv(TH_LIGHT, 0, 255, gb->colorLightNoAlpha);
 
-	gb->sizeLampCenter = (U.obcenter_dia + 1.5f) * U.pixelsize;
-	gb->sizeLampCircle = U.pixelsize * 9.0f;
-	gb->sizeLampCircleShadow = gb->sizeLampCircle + U.pixelsize * 3.0f;
+	gb->sizeLightCenter = (U.obcenter_dia + 1.5f) * U.pixelsize;
+	gb->sizeLightCircle = U.pixelsize * 9.0f;
+	gb->sizeLightCircleShadow = gb->sizeLightCircle + U.pixelsize * 3.0f;
 
 	/* M_SQRT2 to be at least the same size of the old square */
 	gb->sizeVertex = U.pixelsize * (max_ff(1.0f, UI_GetThemeValuef(TH_VERTEX_SIZE) * (float)M_SQRT2 / 2.0f));
@@ -321,9 +321,9 @@ DRWShadingGroup *shgroup_dynlines_flat_color(DRWPass *pass, eGPUShaderConfig sh_
 	return grp;
 }
 
-DRWShadingGroup *shgroup_dynlines_dashed_uniform_color(DRWPass *pass, const float color[4])
+DRWShadingGroup *shgroup_dynlines_dashed_uniform_color(DRWPass *pass, const float color[4], eGPUShaderConfig sh_cfg)
 {
-	GPUShader *sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
+	GPUShader *sh = GPU_shader_get_builtin_shader_with_config(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR, sh_cfg);
 
 	static float dash_width = 6.0f;
 	static float dash_factor = 0.5f;
@@ -333,7 +333,9 @@ DRWShadingGroup *shgroup_dynlines_dashed_uniform_color(DRWPass *pass, const floa
 	DRW_shgroup_uniform_float(grp, "dash_width", &dash_width, 1);
 	DRW_shgroup_uniform_float(grp, "dash_factor", &dash_factor, 1);
 	DRW_shgroup_uniform_int_copy(grp, "colors_len", 0); /* "simple" mode */
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
@@ -600,13 +602,16 @@ DRWShadingGroup *shgroup_spot_instance(DRWPass *pass, struct GPUBatch *geom, eGP
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_bone_axes(DRWPass *pass)
+DRWShadingGroup *shgroup_instance_bone_axes(DRWPass *pass, eGPUShaderConfig sh_cfg)
 {
-	COMMON_Shaders *sh_data = &g_shaders[GPU_SHADER_CFG_DEFAULT];
+	COMMON_Shaders *sh_data = &g_shaders[sh_cfg];
 	if (sh_data->bone_axes == NULL) {
-		sh_data->bone_axes = DRW_shader_create(
-		        datatoc_armature_axes_vert_glsl, NULL,
-		        datatoc_gpu_shader_flat_color_frag_glsl, NULL);
+		const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+		sh_data->bone_axes = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_armature_axes_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_color, {
@@ -619,17 +624,22 @@ DRWShadingGroup *shgroup_instance_bone_axes(DRWPass *pass)
 	        pass, DRW_cache_bone_arrows_get(),
 	        g_formats.instance_color);
 	DRW_shgroup_uniform_vec3(grp, "screenVecs[0]", DRW_viewport_screenvecs_get(), 2);
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_bone_envelope_outline(DRWPass *pass)
+DRWShadingGroup *shgroup_instance_bone_envelope_outline(DRWPass *pass, eGPUShaderConfig sh_cfg)
 {
-	COMMON_Shaders *sh_data = &g_shaders[GPU_SHADER_CFG_DEFAULT];
+	COMMON_Shaders *sh_data = &g_shaders[sh_cfg];
 	if (sh_data->bone_envelope_outline == NULL) {
-		sh_data->bone_envelope_outline = DRW_shader_create(
-		        datatoc_armature_envelope_outline_vert_glsl, NULL,
-		        datatoc_gpu_shader_flat_color_frag_glsl, NULL);
+		const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+		sh_data->bone_envelope_outline = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_armature_envelope_outline_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_envelope_outline, {
@@ -644,17 +654,22 @@ DRWShadingGroup *shgroup_instance_bone_envelope_outline(DRWPass *pass)
 	        pass, DRW_cache_bone_envelope_outline_get(),
 	        g_formats.instance_bone_envelope_outline);
 	DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_bone_envelope_distance(DRWPass *pass)
+DRWShadingGroup *shgroup_instance_bone_envelope_distance(DRWPass *pass, eGPUShaderConfig sh_cfg)
 {
-	COMMON_Shaders *sh_data = &g_shaders[GPU_SHADER_CFG_DEFAULT];
+	COMMON_Shaders *sh_data = &g_shaders[sh_cfg];
 	if (sh_data->bone_envelope_distance == NULL) {
-		sh_data->bone_envelope_distance = DRW_shader_create(
-		        datatoc_armature_envelope_solid_vert_glsl, NULL,
-		        datatoc_armature_envelope_distance_frag_glsl, NULL);
+		const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+		sh_data->bone_envelope_distance = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_armature_envelope_solid_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_armature_envelope_distance_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_envelope_distance, {
@@ -667,17 +682,22 @@ DRWShadingGroup *shgroup_instance_bone_envelope_distance(DRWPass *pass)
 	        sh_data->bone_envelope_distance,
 	        pass, DRW_cache_bone_envelope_solid_get(),
 	        g_formats.instance_bone_envelope_distance);
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_bone_envelope_solid(DRWPass *pass, bool transp)
+DRWShadingGroup *shgroup_instance_bone_envelope_solid(DRWPass *pass, bool transp, eGPUShaderConfig sh_cfg)
 {
-	COMMON_Shaders *sh_data = &g_shaders[GPU_SHADER_CFG_DEFAULT];
+	COMMON_Shaders *sh_data = &g_shaders[sh_cfg];
 	if (sh_data->bone_envelope == NULL) {
-		sh_data->bone_envelope = DRW_shader_create(
-		        datatoc_armature_envelope_solid_vert_glsl, NULL,
-		        datatoc_armature_envelope_solid_frag_glsl, "#define SMOOTH_ENVELOPE\n");
+		const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+		sh_data->bone_envelope = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_armature_envelope_solid_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_armature_envelope_solid_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_envelope, {
@@ -693,7 +713,9 @@ DRWShadingGroup *shgroup_instance_bone_envelope_solid(DRWPass *pass, bool transp
 	        pass, DRW_cache_bone_envelope_solid_get(),
 	        g_formats.instance_bone_envelope);
 	DRW_shgroup_uniform_float_copy(grp, "alpha", transp ? 0.6f : 1.0f);
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
@@ -785,13 +807,16 @@ DRWShadingGroup *shgroup_instance_bone_shape_solid(
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_bone_sphere_solid(DRWPass *pass, bool transp)
+DRWShadingGroup *shgroup_instance_bone_sphere_solid(DRWPass *pass, bool transp, eGPUShaderConfig sh_cfg)
 {
-	COMMON_Shaders *sh_data = &g_shaders[GPU_SHADER_CFG_DEFAULT];
+	COMMON_Shaders *sh_data = &g_shaders[sh_cfg];
 	if (sh_data->bone_sphere == NULL) {
-		sh_data->bone_sphere = DRW_shader_create(
-		        datatoc_armature_sphere_solid_vert_glsl, NULL,
-		        datatoc_armature_sphere_solid_frag_glsl, NULL);
+		const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+		sh_data->bone_sphere = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_armature_sphere_solid_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_armature_sphere_solid_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone, {
@@ -805,17 +830,22 @@ DRWShadingGroup *shgroup_instance_bone_sphere_solid(DRWPass *pass, bool transp)
 	        pass, DRW_cache_bone_point_get(), g_formats.instance_bone);
 	/* More transparent than the shape to be less distractive. */
 	DRW_shgroup_uniform_float_copy(grp, "alpha", transp ? 0.4f : 1.0f);
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
-DRWShadingGroup *shgroup_instance_bone_sphere_outline(DRWPass *pass)
+DRWShadingGroup *shgroup_instance_bone_sphere_outline(DRWPass *pass, eGPUShaderConfig sh_cfg)
 {
-	COMMON_Shaders *sh_data = &g_shaders[GPU_SHADER_CFG_DEFAULT];
+	COMMON_Shaders *sh_data = &g_shaders[sh_cfg];
 	if (sh_data->bone_sphere_outline == NULL) {
-		sh_data->bone_sphere_outline = DRW_shader_create(
-		        datatoc_armature_sphere_outline_vert_glsl, NULL,
-		        datatoc_gpu_shader_flat_color_frag_glsl, NULL);
+		const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+		sh_data->bone_sphere_outline = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_armature_sphere_outline_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
 
 	DRW_shgroup_instance_format(g_formats.instance_bone_outline, {
@@ -828,7 +858,9 @@ DRWShadingGroup *shgroup_instance_bone_sphere_outline(DRWPass *pass)
 	        pass, DRW_cache_bone_point_wire_outline_get(),
 	        g_formats.instance_bone_outline);
 	DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
-
+	if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+	}
 	return grp;
 }
 
@@ -971,7 +1003,7 @@ int DRW_object_wire_theme_get(Object *ob, ViewLayer *view_layer, float **r_color
 			theme_id = (active) ? TH_ACTIVE : TH_SELECT;
 		}
 		else {
-			if (ob->type == OB_LAMP) theme_id = TH_LAMP;
+			if (ob->type == OB_LAMP) theme_id = TH_LIGHT;
 			else if (ob->type == OB_SPEAKER) theme_id = TH_SPEAKER;
 			else if (ob->type == OB_CAMERA) theme_id = TH_CAMERA;
 			else if (ob->type == OB_EMPTY) theme_id = TH_EMPTY;
@@ -1001,7 +1033,7 @@ int DRW_object_wire_theme_get(Object *ob, ViewLayer *view_layer, float **r_color
 				case TH_SPEAKER:      *r_color = G_draw.block.colorSpeaker; break;
 				case TH_CAMERA:       *r_color = G_draw.block.colorCamera; break;
 				case TH_EMPTY:        *r_color = G_draw.block.colorEmpty; break;
-				case TH_LAMP:         *r_color = G_draw.block.colorLamp; break;
+				case TH_LIGHT:         *r_color = G_draw.block.colorLight; break;
 				default:              *r_color = G_draw.block.colorWire; break;
 			}
 		}
@@ -1024,7 +1056,7 @@ float *DRW_color_background_blend_get(int theme_id)
 		case TH_SPEAKER:      ret = colors[6]; break;
 		case TH_CAMERA:       ret = colors[7]; break;
 		case TH_EMPTY:        ret = colors[8]; break;
-		case TH_LAMP:         ret = colors[9]; break;
+		case TH_LIGHT:         ret = colors[9]; break;
 		default:              ret = colors[10]; break;
 	}
 

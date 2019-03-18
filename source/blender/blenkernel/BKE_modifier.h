@@ -25,6 +25,7 @@
 #include "BKE_customdata.h"
 
 struct BMEditMesh;
+struct CustomData_MeshMasks;
 struct DepsNodeHandle;
 struct Depsgraph;
 struct DerivedMesh;
@@ -214,26 +215,25 @@ typedef struct ModifierTypeInfo {
 	 */
 	void (*initData)(struct ModifierData *md);
 
-	/* Should return a CustomDataMask indicating what data this
+	/* Should add to passed \a r_cddata_masks the data types that this
 	 * modifier needs. If (mask & (1 << (layer type))) != 0, this modifier
-	 * needs that custom data layer. This function's return value can change
+	 * needs that custom data layer. It can change required layers
 	 * depending on the modifier's settings.
 	 *
 	 * Note that this means extra data (e.g. vertex groups) - it is assumed
 	 * that all modifiers need mesh data and deform modifiers need vertex
 	 * coordinates.
 	 *
-	 * Note that this limits the number of custom data layer types to 32.
-	 *
-	 * If this function is not present or it returns 0, it is assumed that
-	 * no extra data is needed.
+	 * If this function is not present, it is assumed that no extra data is needed.
 	 *
 	 * This function is optional.
 	 */
-	CustomDataMask (*requiredDataMask)(struct Object *ob, struct ModifierData *md);
+	void (*requiredDataMask)(struct Object *ob, struct ModifierData *md, struct CustomData_MeshMasks *r_cddata_masks);
 
 	/* Free internal modifier data variables, this function should
 	 * not free the md variable itself.
+	 *
+	 * This function is responsible for freeing the runtime data as well.
 	 *
 	 * This function is optional.
 	 */
@@ -303,6 +303,18 @@ typedef struct ModifierTypeInfo {
 	 */
 	void (*foreachTexLink)(struct ModifierData *md, struct Object *ob,
 	                       TexWalkFunc walk, void *userData);
+
+	/* Free given runtime data.
+	 *
+	 * This data is coming from a modifier of the corresponding type, but actual
+	 * modifier data is not known here.
+	 *
+	 * Notes:
+	 *  - The data itself is to be de-allocated as well.
+	 *  - This calback is allowed to receive NULL pointer as a data, so it's
+	 *    more like "ensure the data is freed".
+	 */
+	void (*freeRuntimeData)(void *runtime_data);
 } ModifierTypeInfo;
 
 /* Initialize modifier's global data (type info and some common global storages). */
@@ -365,10 +377,10 @@ bool          modifiers_isPreview(struct Object *ob);
 
 typedef struct CDMaskLink {
 	struct CDMaskLink *next;
-	CustomDataMask mask;
+	struct CustomData_MeshMasks mask;
 } CDMaskLink;
 
-/* Calculates and returns a linked list of CustomDataMasks indicating the
+/* Calculates and returns a linked list of CustomData_MeshMasks indicating the
  * data required by each modifier in the stack pointed to by md for correct
  * evaluation, assuming the data indicated by dataMask is required at the
  * end of the stack.
@@ -376,9 +388,10 @@ typedef struct CDMaskLink {
 struct CDMaskLink *modifiers_calcDataMasks(struct Scene *scene,
                                            struct Object *ob,
                                            struct ModifierData *md,
-                                           CustomDataMask dataMask,
+                                           const struct CustomData_MeshMasks *dataMask,
                                            int required_mode,
-                                           ModifierData *previewmd, CustomDataMask previewmask);
+                                           ModifierData *previewmd,
+                                           const struct CustomData_MeshMasks *previewmask);
 struct ModifierData *modifiers_getLastPreview(struct Scene *scene,
                                               struct ModifierData *md,
                                               int required_mode);

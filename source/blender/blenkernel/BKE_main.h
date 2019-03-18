@@ -84,40 +84,40 @@ typedef struct Main {
 	BlendThumbnail *blen_thumb;
 
 	struct Library *curlib;
-	ListBase scene;
-	ListBase library;
-	ListBase object;
-	ListBase mesh;
-	ListBase curve;
-	ListBase mball;
-	ListBase mat;
-	ListBase tex;
-	ListBase image;
-	ListBase latt;
-	ListBase lamp;
-	ListBase camera;
-	ListBase ipo;   // XXX deprecated
-	ListBase key;
-	ListBase world;
-	ListBase screen;
-	ListBase vfont;
-	ListBase text;
-	ListBase speaker;
-	ListBase lightprobe;
-	ListBase sound;
-	ListBase collection;
-	ListBase armature;
-	ListBase action;
-	ListBase nodetree;
-	ListBase brush;
-	ListBase particle;
+	ListBase scenes;
+	ListBase libraries;
+	ListBase objects;
+	ListBase meshes;
+	ListBase curves;
+	ListBase metaballs;
+	ListBase materials;
+	ListBase textures;
+	ListBase images;
+	ListBase lattices;
+	ListBase lights;
+	ListBase cameras;
+	ListBase ipo;  /* Deprecated (only for versioning). */
+	ListBase shapekeys;
+	ListBase worlds;
+	ListBase screens;
+	ListBase fonts;
+	ListBase texts;
+	ListBase speakers;
+	ListBase lightprobes;
+	ListBase sounds;
+	ListBase collections;
+	ListBase armatures;
+	ListBase actions;
+	ListBase nodetrees;
+	ListBase brushes;
+	ListBase particles;
 	ListBase palettes;
 	ListBase paintcurves;
-	ListBase wm;
-	ListBase gpencil;
-	ListBase movieclip;
-	ListBase mask;
-	ListBase linestyle;
+	ListBase wm;  /* Singleton (exception). */
+	ListBase gpencils;
+	ListBase movieclips;
+	ListBase masks;
+	ListBase linestyles;
 	ListBase cachefiles;
 	ListBase workspaces;
 
@@ -152,31 +152,29 @@ struct GSet *BKE_main_gset_create(struct Main *bmain, struct GSet *gset);
 		}                                                                 \
 	} ((void)0)
 
-
-#define FOREACH_MAIN_ID_BEGIN(_bmain, _id)                                \
+#define FOREACH_MAIN_LISTBASE_BEGIN(_bmain, _lb)                          \
 	{                                                                     \
 		ListBase *_lbarray[MAX_LIBARRAY];                                 \
 		int _i = set_listbasepointers(_bmain, _lbarray);                  \
 		while (_i--) {                                                    \
-			FOREACH_MAIN_LISTBASE_ID_BEGIN(_lbarray[_i], _id)
+			_lb = _lbarray[_i];
 
-#define FOREACH_MAIN_ID_END                                               \
-			FOREACH_MAIN_LISTBASE_ID_END;                                 \
+#define FOREACH_MAIN_LISTBASE_END                                         \
 		}                                                                 \
 	} ((void)0)
 
-/** \param _do_break A boolean, to allow breaking iteration (only used to break by type,
- *                   you must also use an explicit `break;` operation if you want to
- *                   immediately break from inner by-ID loop).
- */
-#define FOREACH_MAIN_ID_BREAKABLE_BEGIN(_bmain, _id, _do_break)           \
+/* DO NOT use break statement with that macro, use FOREACH_MAIN_LISTBASE and FOREACH_MAIN_LISTBASE_ID instead
+ * if you need that kind of control flow. */
+#define FOREACH_MAIN_ID_BEGIN(_bmain, _id)                                \
 	{                                                                     \
-		ListBase *_lbarray[MAX_LIBARRAY];                                 \
-		int i = set_listbasepointers(_bmain, _lbarray);                   \
-		while (i-- && !_do_break) {                                       \
-			FOREACH_MAIN_LISTBASE_ID_BEGIN(_lbarray[i], _id)              \
+		ListBase *_lb;                                                    \
+		FOREACH_MAIN_LISTBASE_BEGIN(_bmain, _lb) {                        \
+			FOREACH_MAIN_LISTBASE_ID_BEGIN(_lb, _id)
 
-#define FOREACH_MAIN_ID_BREAKABLE_END FOREACH_MAIN_ID_END
+#define FOREACH_MAIN_ID_END                                               \
+			FOREACH_MAIN_LISTBASE_ID_END;                                 \
+		} FOREACH_MAIN_LISTBASE_END;                                      \
+	} ((void)0)
 
 
 struct BlendThumbnail *BKE_main_thumbnail_from_imbuf(struct Main *bmain, struct ImBuf *img);

@@ -390,8 +390,7 @@ static void wm_link_do(
 			}
 
 			new_id = BLO_library_link_named_part_asset(
-			             mainl, &bh, aet, lapp_data->root, item->idcode, item->name, item->uuid,
-			             flag, bmain, scene, view_layer, v3d);
+			             mainl, &bh, aet, lapp_data->root, item->idcode, item->name, item->uuid, flag);
 
 			if (new_id) {
 				/* If the link is successful, clear item's libs 'todo' flags.
@@ -1276,7 +1275,7 @@ static void asset_update_engines_uuids_fetch(
         Main *bmain, AssetUUIDList *uuids, const short uuid_tags,
         const bool do_reset_tags)
 {
-	for (Library *lib = bmain->library.first; lib; lib = lib->id.next) {
+	for (Library *lib = bmain->libraries.first; lib; lib = lib->id.next) {
 		if (lib->asset_repository) {
 			printf("Checking lib file '%s' (engine %s, ver. %d)\n", lib->filepath,
 			       lib->asset_repository->asset_engine, lib->asset_repository->asset_engine_version);
@@ -1414,7 +1413,7 @@ static void asset_updatecheck_update(void *aucjv)
 			if (auce->status & AUCE_UPDATE_CHECK_DONE) {
 				auce->ae_job_id = AE_JOB_ID_UNSET;
 
-				for (Library *lib = bmain->library.first; lib; lib = lib->id.next) {
+				for (Library *lib = bmain->libraries.first; lib; lib = lib->id.next) {
 					if (!lib->asset_repository ||
 					    (BKE_asset_engines_find(lib->asset_repository->asset_engine) != ae_type))
 					{

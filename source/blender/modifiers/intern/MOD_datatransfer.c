@@ -22,6 +22,7 @@
  */
 
 #include "BLI_utildefines.h"
+
 #include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
@@ -74,19 +75,16 @@ static void initData(ModifierData *md)
 	dtmd->flags              = MOD_DATATRANSFER_OBSRC_TRANSFORM;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	DataTransferModifierData *dtmd = (DataTransferModifierData *) md;
-	CustomDataMask dataMask = 0;
 
-	if (dtmd->defgrp_name[0]) {
+	if (dtmd->defgrp_name[0] != '\0') {
 		/* We need vertex groups! */
-		dataMask |= CD_MASK_MDEFORMVERT;
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 	}
 
-	dataMask |= BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types);
-
-	return dataMask;
+	BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types, r_cddata_masks);
 }
 
 static bool dependsOnNormals(ModifierData *md)
@@ -122,10 +120,13 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 {
 	DataTransferModifierData *dtmd = (DataTransferModifierData *) md;
 	if (dtmd->ob_source != NULL) {
-		CustomDataMask mask = BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types);
+		CustomData_MeshMasks cddata_masks = {0};
+		BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types, &cddata_masks);
+		BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(
+		            dtmd->vmap_mode, dtmd->emap_mode, dtmd->lmap_mode, dtmd->pmap_mode, &cddata_masks);
 
 		DEG_add_object_relation(ctx->node, dtmd->ob_source, DEG_OB_COMP_GEOMETRY, "DataTransfer Modifier");
-		DEG_add_customdata_mask(ctx->node, dtmd->ob_source, mask);
+		DEG_add_customdata_mask(ctx->node, dtmd->ob_source, &cddata_masks);
 
 		if (dtmd->flags & MOD_DATATRANSFER_OBSRC_TRANSFORM) {
 			DEG_add_object_relation(ctx->node, dtmd->ob_source, DEG_OB_COMP_TRANSFORM, "DataTransfer Modifier");
@@ -239,4 +240,5 @@ ModifierTypeInfo modifierType_DataTransfer = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

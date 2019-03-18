@@ -405,7 +405,6 @@ typedef struct PEData {
 	const int *mval;
 	const rcti *rect;
 	float rad;
-	float dist;
 	float dval;
 	int select;
 	eSelectOp sel_op;
@@ -425,6 +424,7 @@ typedef struct PEData {
 
 	int select_action;
 	int select_toggle_action;
+	bool is_changed;
 } PEData;
 
 static void PE_set_data(bContext *C, PEData *data)
@@ -450,7 +450,7 @@ static void PE_set_view3d_data(bContext *C, PEData *data)
 			/* needed or else the draw matrix can be incorrect */
 			view3d_operator_needs_opengl(C);
 
-			ED_view3d_backbuf_validate(&data->vc);
+			ED_view3d_backbuf_depth_validate(&data->vc);
 			/* we may need to force an update here by setting the rv3d as dirty
 			 * for now it seems ok, but take care!:
 			 * rv3d->depths->dirty = 1; */
@@ -600,9 +600,35 @@ static bool point_is_selected(PTCacheEditPoint *point)
 
 /*************************** iterators *******************************/
 
-typedef void (*ForPointFunc)(PEData *data, int point_index);
-typedef void (*ForKeyFunc)(PEData *data, int point_index, int key_index, bool is_inside);
-typedef void (*ForKeyMatFunc)(PEData *data, float mat[4][4], float imat[4][4], int point_index, int key_index, PTCacheEditKey *key);
+typedef void (*ForPointFunc)(
+    PEData *data,
+    int point_index);
+typedef void (*ForHitPointFunc)(
+    PEData *data,
+    int point_index,
+    float mouse_distance);
+
+typedef void (*ForKeyFunc)(
+    PEData *data,
+    int point_index,
+    int key_index,
+    bool is_inside);
+
+typedef void (*ForKeyMatFunc)(
+    PEData *data,
+    float mat[4][4],
+    float imat[4][4],
+    int point_index,
+    int key_index,
+    PTCacheEditKey *key);
+typedef void (*ForHitKeyMatFunc)(
+    PEData *data,
+    float mat[4][4],
+    float imat[4][4],
+    int point_index,
+    int key_index,
+    PTCacheEditKey *key,
+    float mouse_distance);
 
 enum eParticleSelectFlag {
 	PSEL_NEAREST = (1 << 0),
@@ -671,7 +697,7 @@ static void for_mouse_hit_keys(PEData *data, ForKeyFunc func, const enum ePartic
 	}
 }
 
-static void foreach_mouse_hit_point(PEData *data, ForPointFunc func, int selected)
+static void foreach_mouse_hit_point(PEData *data, ForHitPointFunc func, int selected)
 {
 	ParticleEditSettings *pset = PE_settings(data->scene);
 	PTCacheEdit *edit = data->edit;
@@ -687,17 +713,21 @@ static void foreach_mouse_hit_point(PEData *data, ForPointFunc func, int selecte
 				/* only do end keys */
 				key = point->keys + point->totkey - 1;
 
-				if (selected == 0 || key->flag & PEK_SELECT)
-					if (key_inside_circle(data, data->rad, KEY_WCO, &data->dist))
-						func(data, p);
+				if (selected == 0 || key->flag & PEK_SELECT) {
+					float mouse_distance;
+					if (key_inside_circle(data, data->rad, KEY_WCO, &mouse_distance)) {
+						func(data, p, mouse_distance);
+					}
+				}
 			}
 		}
 		else {
 			/* do all keys */
 			LOOP_VISIBLE_KEYS {
 				if (selected == 0 || key->flag & PEK_SELECT) {
-					if (key_inside_circle(data, data->rad, KEY_WCO, &data->dist)) {
-						func(data, p);
+					float mouse_distance;
+					if (key_inside_circle(data, data->rad, KEY_WCO, &mouse_distance)) {
+						func(data, p, mouse_distance);
 						break;
 					}
 				}
@@ -710,7 +740,7 @@ typedef struct KeyIterData {
 	PEData *data;
 	PTCacheEdit *edit;
 	int selected;
-	ForKeyMatFunc func;
+	ForHitKeyMatFunc func;
 } KeyIterData;
 
 static void foreach_mouse_hit_key_iter(
@@ -738,12 +768,13 @@ static void foreach_mouse_hit_key_iter(
 			PTCacheEditKey *key = point->keys + point->totkey - 1;
 
 			if (selected == 0 || key->flag & PEK_SELECT) {
-				if (key_inside_circle(data, data->rad, KEY_WCO, &data->dist)) {
+				float mouse_distance;
+				if (key_inside_circle(data, data->rad, KEY_WCO, &mouse_distance)) {
 					if (edit->psys && !(edit->psys->flag & PSYS_GLOBAL_HAIR)) {
 						psys_mat_hair_to_global(data->ob, psmd_eval->mesh_final, psys->part->from, psys->particles + iter, mat);
 						invert_m4_m4(imat, mat);
 					}
-					iter_data->func(data, mat, imat, iter, point->totkey - 1, key);
+					iter_data->func(data, mat, imat, iter, point->totkey - 1, key, mouse_distance);
 				}
 			}
 		}
@@ -754,19 +785,20 @@ static void foreach_mouse_hit_key_iter(
 		int k;
 		LOOP_VISIBLE_KEYS {
 			if (selected == 0 || key->flag & PEK_SELECT) {
-				if (key_inside_circle(data, data->rad, KEY_WCO, &data->dist)) {
+				float mouse_distance;
+				if (key_inside_circle(data, data->rad, KEY_WCO, &mouse_distance)) {
 					if (edit->psys && !(edit->psys->flag & PSYS_GLOBAL_HAIR)) {
 						psys_mat_hair_to_global(data->ob, psmd_eval->mesh_final, psys->part->from, psys->particles + iter, mat);
 						invert_m4_m4(imat, mat);
 					}
-					iter_data->func(data, mat, imat, iter, k, key);
+					iter_data->func(data, mat, imat, iter, k, key, mouse_distance);
 				}
 			}
 		}
 	}
 }
 
-static void foreach_mouse_hit_key(PEData *data, ForKeyMatFunc func, int selected)
+static void foreach_mouse_hit_key(PEData *data, ForHitKeyMatFunc func, int selected)
 {
 	PTCacheEdit *edit = data->edit;
 	ParticleEditSettings *pset = PE_settings(data->scene);
@@ -1516,6 +1548,7 @@ static void select_key(PEData *data, int point_index, int key_index, bool UNUSED
 		key->flag &= ~PEK_SELECT;
 
 	point->flag |= PEP_EDIT_RECALC;
+	data->is_changed = true;
 }
 
 static void select_key_op(PEData *data, int point_index, int key_index, bool is_inside)
@@ -1998,27 +2031,38 @@ int PE_box_select(bContext *C, const rcti *rect, const int sel_op)
 
 /************************ circle select operator ************************/
 
-int PE_circle_select(bContext *C, int selecting, const int mval[2], float rad)
+bool PE_circle_select(bContext *C, const int sel_op, const int mval[2], float rad)
 {
+	BLI_assert(ELEM(sel_op, SEL_OP_SET, SEL_OP_ADD, SEL_OP_SUB));
 	Scene *scene = CTX_data_scene(C);
 	Object *ob = CTX_data_active_object(C);
 	PTCacheEdit *edit = PE_get_current(scene, ob);
 	PEData data;
 
-	if (!PE_start_edit(edit))
-		return OPERATOR_FINISHED;
+	if (!PE_start_edit(edit)) {
+		return false;
+	}
+
+	bool changed = false;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+		PE_deselect_all_visible(edit);
+		changed = true;
+	}
+	const bool select = (sel_op != SEL_OP_SUB);
 
 	PE_set_view3d_data(C, &data);
 	data.mval = mval;
 	data.rad = rad;
-	data.select = selecting;
+	data.select = select;
 
 	for_mouse_hit_keys(&data, select_key, 0);
+	changed |= data.is_changed;
 
-	PE_update_selection(data.depsgraph, scene, ob, 1);
-	WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_SELECTED, ob);
-
-	return OPERATOR_FINISHED;
+	if (changed) {
+		PE_update_selection(data.depsgraph, scene, ob, 1);
+		WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_SELECTED, ob);
+	}
+	return changed;
 }
 
 /************************ lasso select operator ************************/
@@ -2902,7 +2946,7 @@ static void brush_drawcursor(bContext *C, int x, int y, void *UNUSED(customdata)
 	ParticleEditSettings *pset = PE_settings(scene);
 	ParticleBrushData *brush;
 
-	if (pset->brushtype < 0) {
+	if (!WM_toolsystem_active_tool_is_brush(C)) {
 		return;
 	}
 
@@ -3193,14 +3237,21 @@ void PARTICLE_OT_mirror(wmOperatorType *ot)
 
 /************************* brush edit callbacks ********************/
 
-static void brush_comb(PEData *data, float UNUSED(mat[4][4]), float imat[4][4], int point_index, int key_index, PTCacheEditKey *key)
+static void brush_comb(
+        PEData *data,
+        float UNUSED(mat[4][4]),
+        float imat[4][4],
+        int point_index,
+        int key_index,
+        PTCacheEditKey *key,
+        float mouse_distance)
 {
 	ParticleEditSettings *pset = PE_settings(data->scene);
 	float cvec[3], fac;
 
 	if (pset->flag & PE_LOCK_FIRST && key_index == 0) return;
 
-	fac = (float)pow((double)(1.0f - data->dist / data->rad), (double)data->combfac);
+	fac = (float)pow((double)(1.0f - mouse_distance / data->rad), (double)data->combfac);
 
 	copy_v3_v3(cvec, data->dvec);
 	mul_mat3_m4_v3(imat, cvec);
@@ -3313,7 +3364,7 @@ static void brush_cut(PEData *data, int pa_index)
 	}
 }
 
-static void brush_length(PEData *data, int point_index)
+static void brush_length(PEData *data, int point_index, float UNUSED(mouse_distance))
 {
 	PTCacheEdit *edit = data->edit;
 	PTCacheEditPoint *point = edit->points + point_index;
@@ -3335,7 +3386,7 @@ static void brush_length(PEData *data, int point_index)
 	point->flag |= PEP_EDIT_RECALC;
 }
 
-static void brush_puff(PEData *data, int point_index)
+static void brush_puff(PEData *data, int point_index, float mouse_distance)
 {
 	PTCacheEdit *edit = data->edit;
 	ParticleSystem *psys = edit->psys;
@@ -3394,7 +3445,7 @@ static void brush_puff(PEData *data, int point_index)
 				normalize_v3(onor_prev);
 			}
 
-			fac = (float)pow((double)(1.0f - data->dist / data->rad), (double)data->pufffac);
+			fac = (float)pow((double)(1.0f - mouse_distance / data->rad), (double)data->pufffac);
 			fac *= 0.025f;
 			if (data->invert)
 				fac = -fac;
@@ -3498,7 +3549,14 @@ static void brush_puff(PEData *data, int point_index)
 }
 
 
-static void BKE_brush_weight_get(PEData *data, float UNUSED(mat[4][4]), float UNUSED(imat[4][4]), int point_index, int key_index, PTCacheEditKey *UNUSED(key))
+static void BKE_brush_weight_get(
+        PEData *data,
+        float UNUSED(mat[4][4]),
+        float UNUSED(imat[4][4]),
+        int point_index,
+        int key_index,
+        PTCacheEditKey *UNUSED(key),
+        float UNUSED(mouse_distance))
 {
 	/* roots have full weight always */
 	if (key_index) {
@@ -3512,7 +3570,14 @@ static void BKE_brush_weight_get(PEData *data, float UNUSED(mat[4][4]), float UN
 	}
 }
 
-static void brush_smooth_get(PEData *data, float mat[4][4], float UNUSED(imat[4][4]), int UNUSED(point_index), int key_index, PTCacheEditKey *key)
+static void brush_smooth_get(
+        PEData *data,
+        float mat[4][4],
+        float UNUSED(imat[4][4]),
+        int UNUSED(point_index),
+        int key_index,
+        PTCacheEditKey *key,
+        float UNUSED(mouse_distance))
 {
 	if (key_index) {
 		float dvec[3];
@@ -3524,7 +3589,14 @@ static void brush_smooth_get(PEData *data, float mat[4][4], float UNUSED(imat[4]
 	}
 }
 
-static void brush_smooth_do(PEData *data, float UNUSED(mat[4][4]), float imat[4][4], int point_index, int key_index, PTCacheEditKey *key)
+static void brush_smooth_do(
+        PEData *data,
+        float UNUSED(mat[4][4]),
+        float imat[4][4],
+        int point_index,
+        int key_index,
+        PTCacheEditKey *key,
+        float UNUSED(mouse_distance))
 {
 	float vec[3], dvec[3];
 
@@ -3580,9 +3652,9 @@ static int particle_intersect_mesh(Depsgraph *depsgraph, Scene *UNUSED(scene), O
 		Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
 		Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
 
-		mesh = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, CD_MASK_BAREMESH);
+		mesh = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 		if (mesh == NULL) {
-			mesh = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, CD_MASK_BAREMESH);
+			mesh = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 		}
 
 		psys_enable_all(ob);
@@ -4065,14 +4137,14 @@ static int brush_edit_init(bContext *C, wmOperator *op)
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Object *ob = CTX_data_active_object(C);
-	ParticleEditSettings *pset = PE_settings(scene);
 	PTCacheEdit *edit = PE_get_current(scene, ob);
 	ARegion *ar = CTX_wm_region(C);
 	BrushEdit *bedit;
 	float min[3], max[3];
 
-	if (pset->brushtype < 0)
+	if (!WM_toolsystem_active_tool_is_brush(C)) {
 		return 0;
+	}
 
 	/* set the 'distance factor' for grabbing (used in comb etc) */
 	INIT_MINMAX(min, max);
@@ -4307,7 +4379,7 @@ static void brush_edit_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
 		if (edit->psys) {
 			WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_EDITED, ob);
 			BKE_particle_batch_cache_dirty_tag(edit->psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
-			DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
+			DEG_id_tag_update(&ob->id, ID_RECALC_PSYS_REDO);
 		}
 		else {
 			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -4464,8 +4536,8 @@ static bool shape_cut_test_point(PEData *data, ParticleCacheKey *key)
 	userdata.num_hits = 0;
 
 	BLI_bvhtree_ray_cast_all(
-		shape_bvh->tree, key->co, dir, 0.0f, BVH_RAYCAST_DIST_MAX,
-		point_inside_bvh_cb, &userdata);
+	        shape_bvh->tree, key->co, dir, 0.0f, BVH_RAYCAST_DIST_MAX,
+	        point_inside_bvh_cb, &userdata);
 
 	/* for any point inside a watertight mesh the number of hits is uneven */
 	return (userdata.num_hits % 2) == 1;
@@ -4576,7 +4648,7 @@ static int shape_cut_exec(bContext *C, wmOperator *UNUSED(op))
 		if (edit->psys) {
 			WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_EDITED, ob);
 			BKE_particle_batch_cache_dirty_tag(edit->psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
-			DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
+			DEG_id_tag_update(&ob->id, ID_RECALC_PSYS_REDO);
 		}
 		else {
 			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

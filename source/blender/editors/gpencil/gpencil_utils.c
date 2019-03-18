@@ -71,6 +71,7 @@
 #include "ED_view3d.h"
 #include "ED_object.h"
 #include "ED_screen.h"
+#include "ED_select_utils.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -795,8 +796,9 @@ bool gp_point_xy_to_3d(const GP_SpaceConversion *gsc, Scene *scene, const float 
 	const RegionView3D *rv3d = gsc->ar->regiondata;
 	float rvec[3];
 
-	ED_gp_get_drawing_reference(scene, gsc->ob, gsc->gpl,
-		scene->toolsettings->gpencil_v3d_align, rvec);
+	ED_gp_get_drawing_reference(
+	        scene, gsc->ob, gsc->gpl,
+	        scene->toolsettings->gpencil_v3d_align, rvec);
 
 	float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
 
@@ -935,8 +937,12 @@ void ED_gpencil_project_stroke_to_view(bContext *C, bGPDlayer *gpl, bGPDstroke *
  * Reproject all points of the stroke to a plane locked to axis to avoid stroke offset
  */
 void ED_gp_project_stroke_to_plane(
-        const Object *ob, const RegionView3D *rv3d, bGPDstroke *gps, const float origin[3], const int axis)
+        const Scene *scene, const Object *ob,
+        const RegionView3D *rv3d, bGPDstroke *gps,
+        const float origin[3], const int axis)
 {
+	const ToolSettings *ts = scene->toolsettings;
+	const View3DCursor *cursor = &scene->cursor;
 	float plane_normal[3];
 	float vn[3];
 
@@ -951,12 +957,36 @@ void ED_gp_project_stroke_to_plane(
 		 */
 		ED_view3d_global_to_vector(rv3d, origin, plane_normal);
 	}
-	else {
+	else if (axis < 3) {
 		plane_normal[axis] = 1.0f;
 		/* if object, apply object rotation */
 		if (ob && (ob->type == OB_GPENCIL)) {
-			mul_mat3_m4_v3(ob->obmat, plane_normal);
+			float mat[4][4];
+			copy_m4_m4(mat, ob->obmat);
+
+			/* move origin to cursor */
+			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+				copy_v3_v3(mat[3], cursor->location);
+			}
+
+			mul_mat3_m4_v3(mat, plane_normal);
 		}
+	}
+	else {
+		float scale[3] = { 1.0f, 1.0f, 1.0f };
+		plane_normal[2] = 1.0f;
+		float mat[4][4];
+		loc_eul_size_to_mat4(mat,
+			cursor->location,
+			cursor->rotation_euler,
+			scale);
+
+		/* move origin to object */
+		if ((ts->gpencil_v3d_align & GP_PROJECT_CURSOR) == 0) {
+			copy_v3_v3(mat[3], ob->obmat[3]);
+		}
+
+		mul_mat3_m4_v3(mat, plane_normal);
 	}
 
 	/* Reproject the points in the plane */
@@ -982,8 +1012,12 @@ void ED_gp_project_stroke_to_plane(
  * \param[in, out] pt : Point to affect
  */
 void ED_gp_project_point_to_plane(
-        const Object *ob, const RegionView3D *rv3d, const float origin[3], const int axis, bGPDspoint *pt)
+        const Scene *scene, const Object *ob,
+        const RegionView3D *rv3d, const float origin[3],
+        const int axis, bGPDspoint *pt)
 {
+	const ToolSettings *ts = scene->toolsettings;
+	const View3DCursor *cursor = &scene->cursor;
 	float plane_normal[3];
 	float vn[3];
 
@@ -998,14 +1032,37 @@ void ED_gp_project_point_to_plane(
 		 */
 		ED_view3d_global_to_vector(rv3d, origin, plane_normal);
 	}
-	else {
+	else if (axis < 3) {
 		plane_normal[axis] = 1.0f;
 		/* if object, apply object rotation */
 		if (ob && (ob->type == OB_GPENCIL)) {
-			mul_mat3_m4_v3(ob->obmat, plane_normal);
+			float mat[4][4];
+			copy_m4_m4(mat, ob->obmat);
+
+			/* move origin to cursor */
+			if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+				copy_v3_v3(mat[3], cursor->location);
+			}
+
+			mul_mat3_m4_v3(mat, plane_normal);
 		}
 	}
+	else {
+		float scale[3] = { 1.0f, 1.0f, 1.0f };
+		plane_normal[2] = 1.0f;
+		float mat[4][4];
+		loc_eul_size_to_mat4(mat,
+			cursor->location,
+			cursor->rotation_euler,
+			scale);
 
+		/* move origin to object */
+		if ((ts->gpencil_v3d_align & GP_PROJECT_CURSOR) == 0) {
+			copy_v3_v3(mat[3], ob->obmat[3]);
+		}
+
+		mul_mat3_m4_v3(mat, plane_normal);
+	}
 
 	/* Reproject the points in the plane */
 	/* get a vector from the point with the current view direction of the viewport */
@@ -1271,8 +1328,6 @@ Object *ED_gpencil_add_object(bContext *C, Scene *UNUSED(scene), const float loc
 
 	Object *ob = ED_object_add_type(C, OB_GPENCIL, NULL, loc, rot, false, local_view_bits);
 
-	/* define size */
-	BKE_object_obdata_size_init(ob, GP_OBGPENCIL_DEFAULT_SIZE);
 	/* create default brushes and colors */
 	ED_gpencil_add_defaults(C, ob);
 
@@ -1970,7 +2025,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
 {
 	Material *gps_ma = NULL;
 	/* read all strokes  */
-	for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if (ob->type == OB_GPENCIL) {
 			bGPdata *gpd = ob->data;
 			if (gpd == NULL) {
@@ -1995,6 +2050,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
 					}
 				}
 			}
+			DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 		}
 	}
 }
@@ -2217,8 +2273,8 @@ int ED_gpencil_select_stroke_segment(
 	int direction = 0;
 	float(*points2d)[2] = MEM_mallocN(sizeof(*points2d) * gps->totpoints, "GP Stroke temp 2d points");
 	BKE_gpencil_stroke_2d_flat_ref(
-		gps->points, gps->totpoints,
-		gps->points, gps->totpoints, points2d, scale, &direction);
+	        gps->points, gps->totpoints,
+	        gps->points, gps->totpoints, points2d, scale, &direction);
 
 	GHash *all_2d = BLI_ghash_ptr_new(__func__);
 
@@ -2229,9 +2285,9 @@ int ED_gpencil_select_stroke_segment(
 		/* the extremes of the stroke are scaled to improve collision detection
 		 * for near lines */
 		BKE_gpencil_stroke_2d_flat_ref(
-			gps->points, gps->totpoints,
-			gps_iter->points, gps_iter->totpoints, points2d_iter,
-			scale, &direction);
+		        gps->points, gps->totpoints,
+		        gps_iter->points, gps_iter->totpoints, points2d_iter,
+		        scale, &direction);
 		BLI_ghash_insert(all_2d, gps_iter, points2d_iter);
 	}
 
@@ -2255,7 +2311,7 @@ int ED_gpencil_select_stroke_segment(
 			copy_v2_v2(p2d_a2, points2d[i2]);
 
 			hit_a = gpencil_check_collision(
-				gps, gps_array, all_2d, totstrokes, p2d_a1, p2d_a2, r_hit2d);
+			        gps, gps_array, all_2d, totstrokes, p2d_a1, p2d_a2, r_hit2d);
 
 			if (select) {
 				pta1->flag |= GP_SPOINT_SELECT;
@@ -2289,7 +2345,7 @@ int ED_gpencil_select_stroke_segment(
 		copy_v2_v2(p2d_a2, points2d[i2]);
 
 		hit_b = gpencil_check_collision(
-			gps, gps_array, all_2d, totstrokes, p2d_a1, p2d_a2, r_hit2d);
+		        gps, gps_array, all_2d, totstrokes, p2d_a1, p2d_a2, r_hit2d);
 
 		if (select) {
 			pta1->flag |= GP_SPOINT_SELECT;
@@ -2351,5 +2407,93 @@ int ED_gpencil_select_stroke_segment(
 	}
 	else {
 		return 0;
+	}
+}
+
+void ED_gpencil_select_toggle_all(bContext *C, int action)
+{
+	/* for "toggle", test for existing selected strokes */
+	if (action == SEL_TOGGLE) {
+		action = SEL_SELECT;
+
+		CTX_DATA_BEGIN(C, bGPDstroke *, gps, editable_gpencil_strokes)
+		{
+			if (gps->flag & GP_STROKE_SELECT) {
+				action = SEL_DESELECT;
+				break; // XXX: this only gets out of the inner loop...
+			}
+		}
+		CTX_DATA_END;
+	}
+
+	/* if deselecting, we need to deselect strokes across all frames
+	 * - Currently, an exception is only given for deselection
+	 *   Selecting and toggling should only affect what's visible,
+	 *   while deselecting helps clean up unintended/forgotten
+	 *   stuff on other frames
+	 */
+	if (action == SEL_DESELECT) {
+		/* deselect strokes across editable layers
+		 * NOTE: we limit ourselves to editable layers, since once a layer is "locked/hidden
+		 *       nothing should be able to touch it
+		 */
+		CTX_DATA_BEGIN(C, bGPDlayer *, gpl, editable_gpencil_layers)
+		{
+			bGPDframe *gpf;
+
+			/* deselect all strokes on all frames */
+			for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+				bGPDstroke *gps;
+
+				for (gps = gpf->strokes.first; gps; gps = gps->next) {
+					bGPDspoint *pt;
+					int i;
+
+					/* only edit strokes that are valid in this view... */
+					if (ED_gpencil_stroke_can_use(C, gps)) {
+						for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+							pt->flag &= ~GP_SPOINT_SELECT;
+						}
+
+						gps->flag &= ~GP_STROKE_SELECT;
+					}
+				}
+			}
+		}
+		CTX_DATA_END;
+	}
+	else {
+		/* select or deselect all strokes */
+		CTX_DATA_BEGIN(C, bGPDstroke *, gps, editable_gpencil_strokes)
+		{
+			bGPDspoint *pt;
+			int i;
+			bool selected = false;
+
+			/* Change selection status of all points, then make the stroke match */
+			for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+				switch (action) {
+					case SEL_SELECT:
+						pt->flag |= GP_SPOINT_SELECT;
+						break;
+					//case SEL_DESELECT:
+					//	pt->flag &= ~GP_SPOINT_SELECT;
+					//	break;
+					case SEL_INVERT:
+						pt->flag ^= GP_SPOINT_SELECT;
+						break;
+				}
+
+				if (pt->flag & GP_SPOINT_SELECT)
+					selected = true;
+			}
+
+			/* Change status of stroke */
+			if (selected)
+				gps->flag |= GP_STROKE_SELECT;
+			else
+				gps->flag &= ~GP_STROKE_SELECT;
+		}
+		CTX_DATA_END;
 	}
 }

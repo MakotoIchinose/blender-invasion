@@ -761,8 +761,8 @@ public:
 		int start_sample = tile.start_sample;
 		int end_sample = tile.start_sample + tile.num_samples;
 
-		_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-		_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+		/* Needed for Embree. */
+		SIMD_SET_FLUSH_TO_ZERO;
 
 		for(int sample = start_sample; sample < end_sample; sample++) {
 			if(task.get_cancel() || task_pool.canceled()) {
@@ -1123,7 +1123,6 @@ void device_cpu_info(vector<DeviceInfo>& devices)
 	info.description = system_cpu_brand_string();
 	info.id = "CPU";
 	info.num = 0;
-	info.advanced_shading = true;
 	info.has_volume_decoupled = true;
 	info.has_osl = true;
 	info.has_half_images = true;

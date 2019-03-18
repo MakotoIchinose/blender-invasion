@@ -24,16 +24,17 @@
 
 #include <stddef.h>
 
+#include "BLI_utildefines.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-
-#include "BLI_utildefines.h"
 
 #include "BKE_cdderivedmesh.h"
 #include "BKE_mesh.h"
 #include "BKE_multires.h"
 #include "BKE_modifier.h"
+#include "BKE_paint.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_mesh.h"
@@ -80,9 +81,7 @@ static Subdiv *subdiv_descriptor_ensure(MultiresModifierData *mmd,
 {
 	Subdiv *subdiv = BKE_subdiv_update_from_mesh(
 	        mmd->subdiv, subdiv_settings, mesh);
-	if (false) {
-		mmd->subdiv = subdiv;
-	}
+	mmd->subdiv = subdiv;
 	return subdiv;
 }
 
@@ -100,7 +99,7 @@ static Mesh *multires_as_mesh(MultiresModifierData *mmd,
 	Object *object = ctx->object;
 	SubdivToMeshSettings mesh_settings;
 	BKE_multires_subdiv_mesh_settings_init(
-        &mesh_settings, scene, object, mmd, use_render_params, ignore_simplify);
+	        &mesh_settings, scene, object, mmd, use_render_params, ignore_simplify);
 	if (mesh_settings.resolution < 3) {
 		return result;
 	}
@@ -170,6 +169,18 @@ static Mesh *applyModifier(ModifierData *md,
 		/* NOTE: CCG takes ownership over Subdiv. */
 		result = multires_as_ccg(mmd, ctx, mesh, subdiv);
 		result->runtime.subdiv_ccg_tot_level = mmd->totlvl;
+		/* TODO(sergey): Usually it is sculpt stroke's update variants which
+		 * takes care of this, but is possible that we need this before the
+		 * stroke: i.e. when exiting blender right after stroke is done.
+		 * Annoying and not so much black-boxed as far as sculpting goes, and
+		 * surely there is a better way of solving this. */
+		if (ctx->object->sculpt != NULL) {
+			ctx->object->sculpt->subdiv_ccg = result->runtime.subdiv_ccg;
+		}
+		/* NOTE: CCG becomes an owner of Subdiv descriptor, so can not share
+		 * this pointer. Not sure if it's needed, but might have a second look
+		 * on the ownership model here. */
+		mmd->subdiv = NULL;
 		// BKE_subdiv_stats_print(&subdiv->stats);
 	}
 	else {
@@ -215,4 +226,5 @@ ModifierTypeInfo modifierType_Multires = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

@@ -73,7 +73,7 @@ typedef struct IDProperty {
 	char name[64];
 
 	/* saved is used to indicate if this struct has been saved yet.
-	 * seemed like a good idea as a pad var was needed anyway :) */
+	 * seemed like a good idea as a '_pad' var was needed anyway :) */
 	int saved;
 	/** Note, alignment for 64 bits. */
 	IDPropertyData data;
@@ -145,7 +145,7 @@ typedef struct IDOverrideStaticPropertyOperation {
 	/* Type of override. */
 	short operation;
 	short flag;
-	short pad_s1[2];
+	char _pad0[4];
 
 	/* Sub-item references, if needed (for arrays or collections only).
 	 * We need both reference and local values to allow e.g. insertion into collections (constraints, modifiers...).
@@ -208,7 +208,7 @@ typedef struct IDOverrideStatic {
 	ListBase properties;
 
 	short flag;
-	short pad[3];
+	char _pad[6];
 
 	/* Read/write data. */
 	/* Temp ID storing extra override data (used for differential operations only currently).
@@ -301,7 +301,7 @@ typedef struct ID {
 	int us;
 	int icon_id;
 	int recalc;
-	int pad;
+	char _pad[4];
 	IDProperty *properties;
 
 	/** Reference linked ID which this one overrides. */
@@ -427,7 +427,7 @@ typedef struct PreviewImage {
 
 	/** Runtime data. */
 	short tag;
-	char pad[2];
+	char _pad[2];
 } PreviewImage;
 
 #define PRV_DEFERRED_DATA(prv) \
@@ -466,7 +466,7 @@ typedef enum ID_Type {
 	ID_TE   = MAKE_ID2('T', 'E'), /* Tex (Texture) */
 	ID_IM   = MAKE_ID2('I', 'M'), /* Image */
 	ID_LT   = MAKE_ID2('L', 'T'), /* Lattice */
-	ID_LA   = MAKE_ID2('L', 'A'), /* Lamp */
+	ID_LA   = MAKE_ID2('L', 'A'), /* Light */
 	ID_CA   = MAKE_ID2('C', 'A'), /* Camera */
 	ID_IP   = MAKE_ID2('I', 'P'), /* Ipo (depreciated, replaced by FCurves) */
 	ID_KE   = MAKE_ID2('K', 'E'), /* Key (shape key) */
@@ -495,7 +495,7 @@ typedef enum ID_Type {
 } ID_Type;
 
 /* Only used as 'placeholder' in .blend files for directly linked datablocks. */
-#define ID_ID       MAKE_ID2('I', 'D') /* (internal use only) */
+#define ID_LINK_PLACEHOLDER  MAKE_ID2('I', 'D') /* (internal use only) */
 
 /* Deprecated. */
 #define ID_SCRN	    MAKE_ID2('S', 'N')
@@ -586,14 +586,12 @@ enum {
 	/* RESET_NEVER Datablock is (or is used by) an asset. */
 	LIB_TAG_ASSET           = 1 << 19,
 
-	/* RESET_AFTER_USE Three flags used internally in readfile.c,
-	 * to mark IDs needing to be read (only done once). */
-	LIB_TAG_NEED_EXPAND     = 1 << 3,
-	LIB_TAG_TESTEXT         = (LIB_TAG_NEED_EXPAND | LIB_TAG_EXTERN),
-	LIB_TAG_TESTIND         = (LIB_TAG_NEED_EXPAND | LIB_TAG_INDIRECT),
 	/* RESET_AFTER_USE Flag used internally in readfile.c,
-	 * to mark IDs needing to be linked from a library. */
-	LIB_TAG_READ            = 1 << 4,
+	 * to mark IDs needing to be expanded (only done once). */
+	LIB_TAG_NEED_EXPAND     = 1 << 3,
+	/* RESET_AFTER_USE Flag used internally in readfile.c to mark ID
+	 * placeholders for linked datablocks needing to be read. */
+	LIB_TAG_ID_LINK_PLACEHOLDER = 1 << 4,
 	/* RESET_AFTER_USE */
 	LIB_TAG_NEED_LINK       = 1 << 5,
 
@@ -631,12 +629,13 @@ enum {
 	LIB_TAG_NO_USER_REFCOUNT = 1 << 16,  /* Datablock does not refcount usages of other IDs. */
 	/* Datablock was not allocated by standard system (BKE_libblock_alloc), do not free its memory
 	 * (usual type-specific freeing is called though). */
-	LIB_TAG_NOT_ALLOCATED     = 1 << 17,
+	LIB_TAG_NOT_ALLOCATED     = 1 << 18,
 };
 
 /* Tag given ID for an update in all the dependency graphs. */
 typedef enum IDRecalcFlag {
-	/* Individual update tags, this is what ID gets tagged for update with. */
+	/***************************************************************************
+	 * Individual update tags, this is what ID gets tagged for update with. */
 
 	/* ** Object transformation changed. ** */
 	ID_RECALC_TRANSFORM   = (1 << 0),
@@ -694,7 +693,16 @@ typedef enum IDRecalcFlag {
 	 */
 	ID_RECALC_COPY_ON_WRITE = (1 << 13),
 
-	/* Aggregate flags, use only for checks on runtime.
+	/***************************************************************************
+	 * Pseudonyms, to have more semantic meaning in the actual code without
+	 * using too much low-level and implementation specific tags. */
+
+	/* Update animation datablock itself, without doing full re-evaluation of
+	 * all dependent objects. */
+	ID_RECALC_ANIMATION_NO_FLUSH = ID_RECALC_COPY_ON_WRITE,
+
+	/***************************************************************************
+	 * Aggregate flags, use only for checks on runtime.
 	 * Do NOT use those for tagging. */
 
 	/* Identifies that SOMETHING has been changed in this ID. */

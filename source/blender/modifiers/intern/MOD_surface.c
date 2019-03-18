@@ -22,6 +22,10 @@
  */
 
 
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
+
 #include "DNA_scene_types.h"
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
@@ -33,9 +37,6 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_util.h"
@@ -216,4 +217,5 @@ ModifierTypeInfo modifierType_Surface = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

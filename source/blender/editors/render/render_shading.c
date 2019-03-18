@@ -26,7 +26,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_curve_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
@@ -43,6 +43,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_animsys.h"
+#include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
@@ -287,18 +288,46 @@ void OBJECT_OT_material_slot_assign(wmOperatorType *ot)
 static int material_slot_de_select(bContext *C, bool select)
 {
 	bool changed_multi = false;
+	Object *obact = CTX_data_active_object(C);
+	const Material *mat_active = obact ? give_current_material(obact, obact->actcol) : NULL;
 
 	uint objects_len = 0;
 	Object **objects = object_array_for_shading(C, &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
+		short mat_nr_active = -1;
+
+		if (ob->totcol == 0) {
+			continue;
+		}
+		if (obact && (mat_active == give_current_material(ob, obact->actcol))) {
+			/* Avoid searching since there may be multiple slots with the same material.
+			 * For the active object or duplicates: match the material slot index first. */
+			mat_nr_active = obact->actcol - 1;
+		}
+		else {
+			/* Find the first matching material.
+			 * Note: there may be multiple but thats not a common use case. */
+			for (short i = 0; i < ob->totcol; i++) {
+				const Material *mat = give_current_material(ob, i + 1);
+				if (mat_active == mat) {
+					mat_nr_active = i;
+					break;
+				}
+			}
+			if (mat_nr_active == -1) {
+				continue;
+			}
+		}
+
+
 		bool changed = false;
 
 		if (ob->type == OB_MESH) {
 			BMEditMesh *em = BKE_editmesh_from_object(ob);
 
 			if (em) {
-				changed = EDBM_deselect_by_material(em, ob->actcol - 1, select);
+				changed = EDBM_deselect_by_material(em, mat_nr_active, select);
 			}
 		}
 		else if (ELEM(ob->type, OB_CURVE, OB_SURF)) {
@@ -310,7 +339,7 @@ static int material_slot_de_select(bContext *C, bool select)
 
 			if (nurbs) {
 				for (nu = nurbs->first; nu; nu = nu->next) {
-					if (nu->mat_nr == ob->actcol - 1) {
+					if (nu->mat_nr == mat_nr_active) {
 						if (nu->bezt) {
 							a = nu->pntsu;
 							bezt = nu->bezt;
@@ -530,6 +559,11 @@ static int new_material_exec(bContext *C, wmOperator *UNUSED(op))
 		Material *new_ma = NULL;
 		BKE_id_copy_ex(bmain, &ma->id, (ID **)&new_ma, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS);
 		ma = new_ma;
+
+		if (ob != NULL && ob->type == OB_GPENCIL) {
+			BKE_brush_update_material(bmain, new_ma, NULL);
+		}
+
 	}
 	else {
 		const char *name = DATA_("Material");
@@ -864,10 +898,12 @@ static int light_cache_bake_invoke(bContext *C, wmOperator *op, const wmEvent *U
 void SCENE_OT_light_cache_bake(wmOperatorType *ot)
 {
 	static const EnumPropertyItem light_cache_subset_items[] = {
-		{LIGHTCACHE_SUBSET_ALL, "ALL", 0, "All LightProbes", "Bake both irradiance grids and reflection cubemaps"},
-		{LIGHTCACHE_SUBSET_DIRTY, "DIRTY", 0, "Dirty Only", "Only bake lightprobes that are marked as dirty"},
-		{LIGHTCACHE_SUBSET_CUBE, "CUBEMAPS", 0, "Cubemaps Only", "Try to only bake reflection cubemaps if irradiance "
-	                                                             "grids are up to date"},
+		{LIGHTCACHE_SUBSET_ALL, "ALL", 0, "All LightProbes",
+		 "Bake both irradiance grids and reflection cubemaps"},
+		{LIGHTCACHE_SUBSET_DIRTY, "DIRTY", 0, "Dirty Only",
+		 "Only bake lightprobes that are marked as dirty"},
+		{LIGHTCACHE_SUBSET_CUBE, "CUBEMAPS", 0, "Cubemaps Only",
+		 "Try to only bake reflection cubemaps if irradiance grids are up to date"},
 		{0, NULL, 0, NULL, NULL},
 	};
 
@@ -1916,7 +1952,7 @@ static int paste_mtex_exec(bContext *C, wmOperator *UNUSED(op))
 
 	if (id == NULL) {
 		Material *ma = CTX_data_pointer_get_type(C, "material", &RNA_Material).data;
-		Lamp *la = CTX_data_pointer_get_type(C, "light", &RNA_Light).data;
+		Light *la = CTX_data_pointer_get_type(C, "light", &RNA_Light).data;
 		World *wo = CTX_data_pointer_get_type(C, "world", &RNA_World).data;
 		ParticleSystem *psys = CTX_data_pointer_get_type(C, "particle_system", &RNA_ParticleSystem).data;
 		FreestyleLineStyle *linestyle = CTX_data_pointer_get_type(C, "line_style", &RNA_FreestyleLineStyle).data;

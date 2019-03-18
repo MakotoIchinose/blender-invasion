@@ -536,14 +536,7 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *ar)
 
 static void view3d_main_region_exit(wmWindowManager *wm, ARegion *ar)
 {
-	RegionView3D *rv3d = ar->regiondata;
-
 	ED_view3d_stop_render_preview(wm, ar);
-
-	if (rv3d->gpuoffscreen) {
-		GPU_offscreen_free(rv3d->gpuoffscreen);
-		rv3d->gpuoffscreen = NULL;
-	}
 }
 
 static bool view3d_path_link_append_drop_poll(
@@ -750,9 +743,9 @@ static void view3d_widgets(void)
 	wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(
 	        &(const struct wmGizmoMapType_Params){SPACE_VIEW3D, RGN_TYPE_WINDOW});
 
-	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_lamp_spot);
-	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_lamp_area);
-	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_lamp_target);
+	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_spot);
+	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_area);
+	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_target);
 	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_force_field);
 	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_camera);
 	WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_camera_view);
@@ -793,9 +786,6 @@ static void view3d_main_region_free(ARegion *ar)
 		if (rv3d->sms) {
 			MEM_freeN(rv3d->sms);
 		}
-		if (rv3d->gpuoffscreen) {
-			GPU_offscreen_free(rv3d->gpuoffscreen);
-		}
 
 		MEM_freeN(rv3d);
 		ar->regiondata = NULL;
@@ -815,7 +805,6 @@ static void *view3d_main_region_duplicate(void *poin)
 			new->clipbb = MEM_dupallocN(rv3d->clipbb);
 
 		new->depths = NULL;
-		new->gpuoffscreen = NULL;
 		new->render_engine = NULL;
 		new->sms = NULL;
 		new->smooth_timer = NULL;
@@ -1386,7 +1375,7 @@ static void space_view3d_listener(
 		case NC_SCENE:
 			switch (wmn->data) {
 				case ND_WORLD:
-					if (v3d->flag2 & V3D_RENDER_OVERRIDE)
+					if (v3d->flag2 & V3D_HIDE_OVERLAYS)
 						ED_area_tag_redraw_regiontype(sa, RGN_TYPE_WINDOW);
 					break;
 			}
@@ -1537,7 +1526,7 @@ void ED_spacetype_view3d(void)
 	/* regions: main window */
 	art = MEM_callocN(sizeof(ARegionType), "spacetype view3d main region");
 	art->regionid = RGN_TYPE_WINDOW;
-	art->keymapflag = ED_KEYMAP_GIZMO | ED_KEYMAP_GPENCIL;
+	art->keymapflag = ED_KEYMAP_GIZMO | ED_KEYMAP_TOOL | ED_KEYMAP_GPENCIL;
 	art->draw = view3d_main_region_draw;
 	art->init = view3d_main_region_init;
 	art->exit = view3d_main_region_exit;

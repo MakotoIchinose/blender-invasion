@@ -189,7 +189,7 @@ void id_sort_by_name(struct ListBase *lb, struct ID *id);
 void BKE_id_expand_local(struct Main *bmain, struct ID *id);
 void BKE_id_copy_ensure_local(struct Main *bmain, const struct ID *old_id, struct ID *new_id);
 
-bool new_id(struct ListBase *lb, struct ID *id, const char *name) ATTR_NONNULL(1, 2);
+bool BKE_id_new_name_validate(struct ListBase *lb, struct ID *id, const char *name) ATTR_NONNULL(1, 2);
 void id_clear_lib_data(struct Main *bmain, struct ID *id);
 void id_clear_lib_data_ex(struct Main *bmain, struct ID *id, const bool id_in_mainlist);
 
@@ -243,9 +243,6 @@ void BKE_libraries_asset_repositories_clear(struct Main *bmain);
 void BKE_libraries_asset_repositories_rebuild(struct Main *bmain);
 struct AssetRef *BKE_libraries_asset_repository_uuid_find(struct Main *bmain, const struct AssetUUID *uuid);
 struct Library *BKE_library_asset_virtual_ensure(struct Main *bmain, const struct AssetEngineType *aet);
-
-/* use when "" is given to new_id() */
-#define ID_FALLBACK_NAME N_("Untitled")
 
 #define IS_TAGGED(_id) ((_id) && (((ID *)_id)->tag & LIB_TAG_DOIT))
 

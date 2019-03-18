@@ -24,11 +24,10 @@
 
 #include <stddef.h>
 
-#include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-
 #include "BLI_utildefines.h"
 
+#include "DNA_material_types.h"
+#include "DNA_mesh_types.h"
 
 #include "BKE_editmesh.h"
 #include "BKE_mesh.h"
@@ -82,10 +81,11 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 	tpsmd->totdmvert = tpsmd->totdmedge = tpsmd->totdmface = 0;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	ParticleSystemModifierData *psmd = (ParticleSystemModifierData *) md;
-	return psys_emitter_customdata_mask(psmd->psys);
+
+	psys_emitter_customdata_mask(psmd->psys, r_cddata_masks);
 }
 
 /* saves the current emitter state for a particle system and calculates particles */
@@ -155,7 +155,7 @@ static void deformVerts(
 
 			if (em) {
 				/* In edit mode get directly from the edit mesh. */
-				psmd->mesh_original = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, 0);
+				psmd->mesh_original = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, NULL);
 			}
 			else {
 				/* Otherwise get regular mesh. */
@@ -268,4 +268,5 @@ ModifierTypeInfo modifierType_ParticleSystem = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

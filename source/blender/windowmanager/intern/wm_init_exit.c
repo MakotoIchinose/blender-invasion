@@ -154,7 +154,12 @@ static void wm_free_reports(bContext *C)
 	BKE_reports_clear(reports);
 }
 
-bool wm_start_with_console = false; /* used in creator.c */
+static bool wm_start_with_console = false;
+
+void WM_init_state_start_with_console_set(bool value)
+{
+	wm_start_with_console = value;
+}
 
 /**
  * Since we cannot know in advance if we will require the draw manager
@@ -221,7 +226,6 @@ void WM_init(bContext *C, int argc, const char **argv)
 	BKE_region_callback_free_gizmomap_set(wm_gizmomap_remove); /* screen.c */
 	BKE_region_callback_refresh_tag_gizmomap_set(WM_gizmomap_tag_refresh);
 	BKE_library_callback_remap_editor_id_reference_set(WM_main_remap_editor_id_reference);   /* library.c */
-	BKE_blender_callback_test_break_set(wm_window_testbreak); /* blender.c */
 	BKE_spacedata_callback_id_remap_set(ED_spacedata_id_remap); /* screen.c */
 	DEG_editors_set_update_cb(ED_render_id_flush_update,
 	                          ED_render_scene_update);
@@ -497,6 +501,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	BKE_tracking_clipboard_free();
 	BKE_mask_clipboard_free();
 	BKE_vfont_clipboard_free();
+	BKE_node_clipboard_free();
 
 #ifdef WITH_COMPOSITOR
 	COM_deinitialize();
@@ -518,7 +523,6 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	ANIM_fmodifiers_copybuf_free();
 	ED_gpencil_anim_copybuf_free();
 	ED_gpencil_strokes_copybuf_free();
-	BKE_node_clipboard_clear();
 
 	/* free gizmo-maps after freeing blender, so no deleted data get accessed during cleaning up of areas */
 	wm_gizmomaptypes_free();

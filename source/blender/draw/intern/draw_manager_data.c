@@ -22,6 +22,7 @@
 
 #include "draw_manager.h"
 
+#include "BKE_anim.h"
 #include "BKE_curve.h"
 #include "BKE_global.h"
 #include "BKE_mesh.h"
@@ -40,8 +41,6 @@
 #include "intern/gpu_codegen.h"
 
 struct GPUVertFormat *g_pos_format = NULL;
-
-extern struct GPUUniformBuffer *view_ubo; /* draw_manager_exec.c */
 
 /* -------------------------------------------------------------------- */
 /** \name Uniform Buffer Object (DRW_uniformbuffer)
@@ -311,13 +310,40 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[3])
 	}
 }
 
+static void drw_call_state_update_matflag(DRWCallState *state, DRWShadingGroup *shgroup, Object *ob)
+{
+	uint16_t new_flags = ((state->matflag ^ shgroup->matflag) & shgroup->matflag);
+
+	/* HACK: Here we set the matflags bit to 1 when computing the value
+	 * so that it's not recomputed for other drawcalls.
+	 * This is the opposite of what draw_matrices_model_prepare() does. */
+	state->matflag |= shgroup->matflag;
+
+	/* Orco factors: We compute this at creation to not have to save the *ob_data */
+	if ((new_flags & DRW_CALL_ORCOTEXFAC) != 0) {
+		drw_call_calc_orco(ob, state->orcotexfac);
+	}
+
+	if ((new_flags & DRW_CALL_OBJECTINFO) != 0) {
+		state->objectinfo[0] = ob ? ob->index : 0;
+		uint random;
+		if (DST.dupli_source) {
+			random = DST.dupli_source->random_id;
+		}
+		else {
+			random = BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
+		}
+		state->objectinfo[1] = random * (1.0f / (float)0xFFFFFFFF);
+	}
+}
+
 static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obmat)[4], Object *ob)
 {
 	DRWCallState *state = BLI_mempool_alloc(DST.vmempool->states);
 	state->flag = 0;
 	state->cache_id = 0;
 	state->visibility_cb = NULL;
-	state->matflag = shgroup->matflag;
+	state->matflag = 0;
 
 	/* Matrices */
 	if (obmat != NULL) {
@@ -345,27 +371,7 @@ static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obm
 		state->bsphere.radius = -1.0f;
 	}
 
-	/* Orco factors: We compute this at creation to not have to save the *ob_data */
-	if ((state->matflag & DRW_CALL_ORCOTEXFAC) != 0) {
-		drw_call_calc_orco(ob, state->orcotexfac);
-		state->matflag &= ~DRW_CALL_ORCOTEXFAC;
-	}
-
-	if ((state->matflag & DRW_CALL_OBJECTINFO) != 0) {
-		state->objectinfo[0] = ob ? ob->index : 0;
-		uint random;
-#if 0 /* TODO(fclem) handle dupli objects */
-		if (GMS.dob) {
-			random = GMS.dob->random_id;
-		}
-		else
-#endif
-		{
-			random = BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
-		}
-		state->objectinfo[1] = random * (1.0f / (float)0xFFFFFFFF);
-		state->matflag &= ~DRW_CALL_OBJECTINFO;
-	}
+	drw_call_state_update_matflag(state, shgroup, ob);
 
 	return state;
 }
@@ -377,7 +383,7 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
 	}
 	else {
 		/* If the DRWCallState is reused, add necessary matrices. */
-		DST.ob_state->matflag |= shgroup->matflag;
+		drw_call_state_update_matflag(DST.ob_state, shgroup, ob);
 	}
 
 	return DST.ob_state;
@@ -670,7 +676,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 	int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");
 
 	if (view_ubo_location != -1) {
-		drw_shgroup_uniform_create_ex(shgroup, view_ubo_location, DRW_UNIFORM_BLOCK_PERSIST, view_ubo, 0, 1);
+		drw_shgroup_uniform_create_ex(shgroup, view_ubo_location, DRW_UNIFORM_BLOCK_PERSIST, G_draw.view_ubo, 0, 1);
 	}
 	else {
 		/* Only here to support builtin shaders. This should not be used by engines. */

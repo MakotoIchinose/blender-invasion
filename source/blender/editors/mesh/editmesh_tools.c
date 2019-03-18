@@ -1748,8 +1748,8 @@ static int edbm_duplicate_exec(bContext *C, wmOperator *op)
 
 		EDBM_op_init(
 		        em, &bmop, op,
-		        "duplicate geom=%hvef use_select_history=%b",
-		        BM_ELEM_SELECT, true);
+		        "duplicate geom=%hvef use_select_history=%b use_edge_flip_from_face=%b",
+		        BM_ELEM_SELECT, true, true);
 
 		BMO_op_exec(bm, &bmop);
 
@@ -2133,7 +2133,7 @@ void MESH_OT_normals_make_consistent(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Smooth Vertex Operator
+/** \name Smooth Vertices Operator
  * \{ */
 
 static int edbm_do_smooth_vertex_exec(bContext *C, wmOperator *op)
@@ -2218,7 +2218,7 @@ static int edbm_do_smooth_vertex_exec(bContext *C, wmOperator *op)
 void MESH_OT_vertices_smooth(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Smooth Vertex";
+	ot->name = "Smooth Vertices";
 	ot->description = "Flatten angles of selected vertices";
 	ot->idname = "MESH_OT_vertices_smooth";
 
@@ -2229,7 +2229,7 @@ void MESH_OT_vertices_smooth(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ot->prop = RNA_def_float(ot->srna, "factor", 0.5f, -10.0f, 10.0f, "Smoothing", "Smoothing factor", 0.0f, 1.0f);
+	ot->prop = RNA_def_float_factor(ot->srna, "factor", 0.5f, -10.0f, 10.0f, "Smoothing", "Smoothing factor", 0.0f, 1.0f);
 	RNA_def_int(ot->srna, "repeat", 1, 1, 1000, "Repeat", "Number of times to smooth the mesh", 1, 100);
 
 	WM_operatortype_props_advanced_begin(ot);
@@ -2242,7 +2242,7 @@ void MESH_OT_vertices_smooth(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Laplacian Vertex Smooth Operator
+/** \name Laplacian Smooth Vertices Operator
  * \{ */
 
 static int edbm_do_smooth_laplacian_vertex_exec(bContext *C, wmOperator *op)
@@ -2339,7 +2339,7 @@ static int edbm_do_smooth_laplacian_vertex_exec(bContext *C, wmOperator *op)
 void MESH_OT_vertices_smooth_laplacian(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Laplacian Smooth Vertex";
+	ot->name = "Laplacian Smooth Vertices";
 	ot->description = "Laplacian smooth of selected vertices";
 	ot->idname = "MESH_OT_vertices_smooth_laplacian";
 
@@ -3708,10 +3708,10 @@ static Base *mesh_separate_tagged(Main *bmain, Scene *scene, ViewLayer *view_lay
 	        &((struct BMeshCreateParams){.use_toolflags = true,}));
 	BM_mesh_elem_toolflags_ensure(bm_new);  /* needed for 'duplicate' bmo */
 
-	CustomData_copy(&bm_old->vdata, &bm_new->vdata, CD_MASK_BMESH, CD_CALLOC, 0);
-	CustomData_copy(&bm_old->edata, &bm_new->edata, CD_MASK_BMESH, CD_CALLOC, 0);
-	CustomData_copy(&bm_old->ldata, &bm_new->ldata, CD_MASK_BMESH, CD_CALLOC, 0);
-	CustomData_copy(&bm_old->pdata, &bm_new->pdata, CD_MASK_BMESH, CD_CALLOC, 0);
+	CustomData_copy(&bm_old->vdata, &bm_new->vdata, CD_MASK_BMESH.vmask, CD_CALLOC, 0);
+	CustomData_copy(&bm_old->edata, &bm_new->edata, CD_MASK_BMESH.emask, CD_CALLOC, 0);
+	CustomData_copy(&bm_old->ldata, &bm_new->ldata, CD_MASK_BMESH.lmask, CD_CALLOC, 0);
+	CustomData_copy(&bm_old->pdata, &bm_new->pdata, CD_MASK_BMESH.pmask, CD_CALLOC, 0);
 
 	CustomData_bmesh_init_pool(&bm_new->vdata, bm_mesh_allocsize_default.totvert, BM_VERT);
 	CustomData_bmesh_init_pool(&bm_new->edata, bm_mesh_allocsize_default.totedge, BM_EDGE);
@@ -8197,7 +8197,7 @@ static int edbm_set_normals_from_faces_exec(bContext *C, wmOperator *op)
 						if (!is_zero_v3(vnors[v_index])) {
 							short *clnors = BM_ELEM_CD_GET_VOID_P(l, cd_clnors_offset);
 							BKE_lnor_space_custom_normal_to_data(
-								bm->lnor_spacearr->lspacearr[l_index], vnors[v_index], clnors);
+							        bm->lnor_spacearr->lspacearr[l_index], vnors[v_index], clnors);
 
 							if (bm->lnor_spacearr->lspacearr[l_index]->flags & MLNOR_SPACE_IS_SINGLE) {
 								BLI_BITMAP_ENABLE(loop_set, l_index);

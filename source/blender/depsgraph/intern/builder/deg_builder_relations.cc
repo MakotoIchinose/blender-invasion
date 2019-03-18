@@ -46,7 +46,7 @@ extern "C" {
 #include "DNA_effect_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_key_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_mesh_types.h"
@@ -212,8 +212,7 @@ static bool bone_has_segments(Object *object, const char *bone_name)
 
 DepsgraphRelationBuilder::DepsgraphRelationBuilder(Main *bmain,
                                                    Depsgraph *graph)
-    : bmain_(bmain),
-      graph_(graph),
+    : DepsgraphBuilder(bmain, graph),
       scene_(NULL),
       rna_node_query_(graph)
 {
@@ -310,16 +309,18 @@ void DepsgraphRelationBuilder::add_modifier_to_transform_relation(
 	        transform_operation_node, geometry_operation_node, description);
 }
 
-void DepsgraphRelationBuilder::add_customdata_mask(Object *object, uint64_t mask)
+void DepsgraphRelationBuilder::add_customdata_mask(
+        Object *object,
+        const DEGCustomDataMeshMasks &customdata_masks)
 {
-	if (mask != 0 && object != NULL && object->type == OB_MESH) {
+	if (customdata_masks != DEGCustomDataMeshMasks() && object != NULL && object->type == OB_MESH) {
 		DEG::IDNode *id_node = graph_->find_id_node(&object->id);
 
 		if (id_node == NULL) {
 			BLI_assert(!"ID should always be valid");
 		}
 		else {
-			id_node->customdata_mask |= mask;
+			id_node->customdata_masks |= customdata_masks;
 		}
 	}
 }
@@ -495,7 +496,7 @@ void DepsgraphRelationBuilder::build_id(ID *id)
 			build_shapekeys((Key *)id);
 			break;
 		case ID_LA:
-			build_lamp((Lamp *)id);
+			build_light((Light *)id);
 			break;
 		case ID_LP:
 			build_lightprobe((LightProbe *)id);
@@ -710,6 +711,8 @@ void DepsgraphRelationBuilder::build_object(Base *base, Object *object)
 	                             OperationCode::SYNCHRONIZE_TO_ORIGINAL);
 	add_relation(
 	        final_transform_key, synchronize_key, "Synchronize to Original");
+	/* Parameters. */
+	build_parameters(&object->id);
 }
 
 void DepsgraphRelationBuilder::build_object_flags(Base *base, Object *object)
@@ -772,7 +775,7 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
 			}
 			break;
 		case OB_LAMP:
-			build_object_data_lamp(object);
+			build_object_data_light(object);
 			break;
 		case OB_CAMERA:
 			build_object_data_camera(object);
@@ -802,12 +805,12 @@ void DepsgraphRelationBuilder::build_object_data_camera(Object *object)
 	add_relation(camera_parameters_key, object_parameters_key, "Camera -> Object");
 }
 
-void DepsgraphRelationBuilder::build_object_data_lamp(Object *object)
+void DepsgraphRelationBuilder::build_object_data_light(Object *object)
 {
-	Lamp *lamp = (Lamp *)object->data;
-	build_lamp(lamp);
-	ComponentKey object_parameters_key(&object->id, NodeType::PARAMETERS);
+	Light *lamp = (Light *)object->data;
+	build_light(lamp);
 	ComponentKey lamp_parameters_key(&lamp->id, NodeType::PARAMETERS);
+	ComponentKey object_parameters_key(&object->id, NodeType::PARAMETERS);
 	add_relation(lamp_parameters_key, object_parameters_key, "Light -> Object");
 }
 
@@ -863,7 +866,11 @@ void DepsgraphRelationBuilder::build_object_parent(Object *object)
 			 * TODO(sergey): This optimization got lost at 2.8, so either verify
 			 * we can get rid of this mask here, or bring the optimization
 			 * back. */
-			add_customdata_mask(object->parent, CD_MASK_ORIGINDEX);
+			add_customdata_mask(object->parent,
+			                    DEGCustomDataMeshMasks::MaskVert(CD_MASK_ORIGINDEX) |
+			                    DEGCustomDataMeshMasks::MaskEdge(CD_MASK_ORIGINDEX) |
+			                    DEGCustomDataMeshMasks::MaskFace(CD_MASK_ORIGINDEX) |
+			                    DEGCustomDataMeshMasks::MaskPoly(CD_MASK_ORIGINDEX));
 			ComponentKey transform_key(parent_id, NodeType::TRANSFORM);
 			add_relation(transform_key, ob_key, "Vertex Parent TFM");
 			break;
@@ -1117,7 +1124,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
 					        target_transform_key, constraint_op_key, cti->name);
 					add_relation(
 					        target_geometry_key, constraint_op_key, cti->name);
-					add_customdata_mask(ct->tar, CD_MASK_MDEFORMVERT);
+					add_customdata_mask(ct->tar, DEGCustomDataMeshMasks::MaskVert(CD_MASK_MDEFORMVERT));
 				}
 				else if (con->type == CONSTRAINT_TYPE_SHRINKWRAP) {
 					bShrinkwrapConstraint *scon = (bShrinkwrapConstraint *) con->data;
@@ -1130,7 +1137,9 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
 					if (ct->tar->type == OB_MESH && scon->shrinkType != MOD_SHRINKWRAP_NEAREST_VERTEX) {
 						bool track = (scon->flag & CON_SHRINKWRAP_TRACK_NORMAL) != 0;
 						if (track || BKE_shrinkwrap_needs_normals(scon->shrinkType, scon->shrinkMode)) {
-							add_customdata_mask(ct->tar, CD_MASK_NORMAL | CD_MASK_CUSTOMLOOPNORMAL);
+							add_customdata_mask(ct->tar,
+							                    DEGCustomDataMeshMasks::MaskVert(CD_MASK_NORMAL) |
+							                    DEGCustomDataMeshMasks::MaskLoop(CD_MASK_CUSTOMLOOPNORMAL));
 						}
 						if (scon->shrinkType == MOD_SHRINKWRAP_TARGET_PROJECT) {
 							add_special_eval_flag(&ct->tar->id, DAG_EVAL_NEED_SHRINKWRAP_BOUNDARY);
@@ -1217,10 +1226,19 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
 	if (adt->action != NULL) {
 		build_action(adt->action);
 	}
-	if (adt->action == NULL && adt->nla_tracks.first == NULL) {
+	if (adt->action == NULL && BLI_listbase_is_empty(&adt->nla_tracks)) {
 		return;
 	}
-	/* Wire up dependency to time source. */
+	/* Ensure evaluation order from entry to exit. */
+	OperationKey animation_entry_key(
+	        id, NodeType::ANIMATION, OperationCode::ANIMATION_ENTRY);
+	OperationKey animation_eval_key(
+	        id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
+	OperationKey animation_exit_key(
+	        id, NodeType::ANIMATION, OperationCode::ANIMATION_EXIT);
+	add_relation(animation_entry_key, animation_eval_key, "Init -> Eval");
+	add_relation(animation_eval_key, animation_exit_key, "Eval -> Exit");
+	/* Wire up dependency from action. */
 	ComponentKey adt_key(id, NodeType::ANIMATION);
 	/* Relation from action itself. */
 	if (adt->action != NULL) {
@@ -1237,14 +1255,12 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
 	BLI_assert(operation_from != NULL);
 	/* Build relations from animation operation to properties it changes. */
 	if (adt->action != NULL) {
-		build_animdata_curves_targets(id, adt_key,
-	                              operation_from,
-	                              &adt->action->curves);
+		build_animdata_curves_targets(
+		        id, adt_key, operation_from, &adt->action->curves);
 	}
 	LISTBASE_FOREACH(NlaTrack *, nlt, &adt->nla_tracks) {
-		build_animdata_nlastrip_targets(id, adt_key,
-		                                operation_from,
-		                                &nlt->strips);
+		build_animdata_nlastrip_targets(
+		        id, adt_key, operation_from, &nlt->strips);
 	}
 }
 
@@ -1260,8 +1276,8 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(
 		PointerRNA ptr;
 		PropertyRNA *prop;
 		int index;
-		if (!RNA_path_resolve_full(&id_ptr, fcu->rna_path,
-		                           &ptr, &prop, &index))
+		if (!RNA_path_resolve_full(
+		        &id_ptr, fcu->rna_path,  &ptr, &prop, &index))
 		{
 			continue;
 		}
@@ -1275,9 +1291,8 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(
 		 * each of the bones. Bone evaluation could only start from pose
 		 * init anyway. */
 		if (operation_to->opcode == OperationCode::BONE_LOCAL) {
-			OperationKey pose_init_key(id,
-			                           NodeType::EVAL_POSE,
-			                           OperationCode::POSE_INIT);
+			OperationKey pose_init_key(
+			        id, NodeType::EVAL_POSE, OperationCode::POSE_INIT);
 			add_relation(adt_key,
 			             pose_init_key,
 			             "Animation -> Prop",
@@ -1292,8 +1307,7 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(
 		const IDNode *id_node_from = operation_from->owner->owner;
 		const IDNode *id_node_to = operation_to->owner->owner;
 		if (id_node_from != id_node_to) {
-			ComponentKey cow_key(id_node_to->id_orig,
-			                     NodeType::COPY_ON_WRITE);
+			ComponentKey cow_key(id_node_to->id_orig, NodeType::COPY_ON_WRITE);
 			add_relation(cow_key,
 			             adt_key,
 			             "Animated CoW -> Animation",
@@ -1314,14 +1328,12 @@ void DepsgraphRelationBuilder::build_animdata_nlastrip_targets(
 			ComponentKey action_key(&strip->act->id, NodeType::ANIMATION);
 			add_relation(action_key, adt_key, "Action -> Animation");
 
-			build_animdata_curves_targets(id, adt_key,
-			                              operation_from,
-			                              &strip->act->curves);
+			build_animdata_curves_targets(
+			        id, adt_key, operation_from, &strip->act->curves);
 		}
 		else if (strip->strips.first != NULL) {
-			build_animdata_nlastrip_targets(id, adt_key,
-			                                operation_from,
-			                                &strip->strips);
+			build_animdata_nlastrip_targets(
+			        id, adt_key, operation_from, &strip->strips);
 		}
 	}
 }
@@ -1546,6 +1558,7 @@ void DepsgraphRelationBuilder::build_driver_variables(ID *id, FCurve *fcu)
 				continue;
 			}
 			build_id(dtar->id);
+			build_driver_id_property(dtar->id, dtar->rna_path);
 			/* Initialize relations coming to proxy_from. */
 			Object *proxy_from = NULL;
 			if ((GS(dtar->id->name) == ID_OB) &&
@@ -1620,6 +1633,52 @@ void DepsgraphRelationBuilder::build_driver_variables(ID *id, FCurve *fcu)
 		}
 		DRIVER_TARGETS_LOOPER_END;
 	}
+}
+
+void DepsgraphRelationBuilder::build_driver_id_property(ID *id,
+                                                        const char *rna_path)
+{
+	if (id == NULL || rna_path == NULL) {
+		return;
+	}
+	PointerRNA id_ptr, ptr;
+	PropertyRNA *prop;
+	RNA_id_pointer_create(id, &id_ptr);
+	if (!RNA_path_resolve_full(&id_ptr, rna_path, &ptr, &prop, NULL)) {
+		return;
+	}
+	if (prop == NULL) {
+		return;
+	}
+	if (!RNA_property_is_idprop(prop)) {
+		return;
+	}
+	const char *prop_identifier = RNA_property_identifier((PropertyRNA *)prop);
+	OperationKey id_property_key(id,
+	                             NodeType::PARAMETERS,
+	                             OperationCode::ID_PROPERTY,
+	                             prop_identifier);
+	OperationKey parameters_exit_key(id,
+	                                 NodeType::PARAMETERS,
+	                                 OperationCode::PARAMETERS_EXIT);
+	add_relation(id_property_key,
+	             parameters_exit_key,
+	             "ID Property -> Done",
+	             RELATION_CHECK_BEFORE_ADD);
+}
+
+void DepsgraphRelationBuilder::build_parameters(ID *id)
+{
+	OperationKey parameters_entry_key(
+	        id, NodeType::PARAMETERS, OperationCode::PARAMETERS_ENTRY);
+	OperationKey parameters_eval_key(
+	        id, NodeType::PARAMETERS, OperationCode::PARAMETERS_EVAL);
+	OperationKey parameters_exit_key(
+	        id, NodeType::PARAMETERS, OperationCode::PARAMETERS_EXIT);
+	add_relation(
+	        parameters_entry_key, parameters_eval_key, "Entry -> Eval");
+	add_relation(
+	        parameters_eval_key, parameters_exit_key, "Entry -> Exit");
 }
 
 void DepsgraphRelationBuilder::build_world(World *world)
@@ -2210,30 +2269,37 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
 		{
 			Curve *cu = (Curve *)obdata;
 			if (cu->bevobj != NULL) {
-				ComponentKey bevob_geom_key(&cu->bevobj->id,
-					NodeType::GEOMETRY);
-				add_relation(bevob_geom_key,
-					obdata_geom_eval_key,
-					"Curve Bevel Geometry");
-				ComponentKey bevob_key(&cu->bevobj->id,
-					NodeType::TRANSFORM);
-				add_relation(bevob_key,
-					obdata_geom_eval_key,
-					"Curve Bevel Transform");
+				ComponentKey bevob_geom_key(
+				        &cu->bevobj->id,
+				        NodeType::GEOMETRY);
+				add_relation(
+				        bevob_geom_key,
+				        obdata_geom_eval_key,
+				        "Curve Bevel Geometry");
+				ComponentKey bevob_key(
+				        &cu->bevobj->id,
+				        NodeType::TRANSFORM);
+				add_relation(
+				        bevob_key,
+				        obdata_geom_eval_key,
+				        "Curve Bevel Transform");
 				build_object(NULL, cu->bevobj);
 			}
 			if (cu->taperobj != NULL) {
-				ComponentKey taperob_key(&cu->taperobj->id,
-					NodeType::GEOMETRY);
+				ComponentKey taperob_key(
+				        &cu->taperobj->id,
+				        NodeType::GEOMETRY);
 				add_relation(taperob_key, obdata_geom_eval_key, "Curve Taper");
 				build_object(NULL, cu->taperobj);
 			}
 			if (cu->textoncurve != NULL) {
-				ComponentKey textoncurve_key(&cu->textoncurve->id,
-					NodeType::GEOMETRY);
-				add_relation(textoncurve_key,
-					obdata_geom_eval_key,
-					"Text on Curve");
+				ComponentKey textoncurve_key(
+				        &cu->textoncurve->id,
+				        NodeType::GEOMETRY);
+				add_relation(
+				        textoncurve_key,
+				        obdata_geom_eval_key,
+				        "Text on Curve");
 				build_object(NULL, cu->textoncurve);
 			}
 			break;
@@ -2296,13 +2362,13 @@ void DepsgraphRelationBuilder::build_camera(Camera *camera)
 	}
 }
 
-/* Lamps */
-void DepsgraphRelationBuilder::build_lamp(Lamp *lamp)
+/* Lights */
+void DepsgraphRelationBuilder::build_light(Light *lamp)
 {
 	if (built_map_.checkIsBuiltAndTag(lamp)) {
 		return;
 	}
-	/* lamp's nodetree */
+	/* light's nodetree */
 	if (lamp->nodetree != NULL) {
 		build_nodetree(lamp->nodetree);
 		ComponentKey lamp_parameters_key(&lamp->id, NodeType::PARAMETERS);
@@ -2354,7 +2420,7 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
 		else if (id_type == ID_MC) {
 			build_movieclip((MovieClip *)id);
 		}
-		else if (bnode->type == NODE_GROUP) {
+		else if (ELEM(bnode->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
 			bNodeTree *group_ntree = (bNodeTree *)id;
 			build_nodetree(group_ntree);
 			ComponentKey group_shading_key(&group_ntree->id,
@@ -2378,6 +2444,8 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
 		ComponentKey animation_key(&ntree->id, NodeType::ANIMATION);
 		add_relation(animation_key, shading_parameters_key, "NTree Shading Parameters");
 	}
+	ComponentKey parameters_key(&ntree->id, NodeType::PARAMETERS);
+	add_relation(parameters_key, shading_parameters_key, "NTree Shading Parameters");
 }
 
 /* Recursively build graph for material */
@@ -2562,10 +2630,6 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
 		if (id_type == ID_ME && comp_node->type == NodeType::GEOMETRY) {
 			rel_flag &= ~RELATION_FLAG_NO_FLUSH;
 		}
-		/* materials need update grease pencil objects */
-		if (id_type == ID_MA) {
-			rel_flag &= ~RELATION_FLAG_NO_FLUSH;
-		}
 		/* Notes on exceptions:
 		 * - Parameters component is where drivers are living. Changing any
 		 *   of the (custom) properties in the original datablock (even the
@@ -2578,29 +2642,11 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
 		 *   copied by copy-on-write, and not preserved. PROBABLY it is better
 		 *   to preserve that cache in copy-on-write, but for the time being
 		 *   we allow flush to layer collections component which will ensure
-		 *   that cached array fo bases exists and is up-to-date.
-		 *
-		 * - Action is allowed to flush as well, this way it's possible to
-		 *   keep current tagging in animation editors (which tags action for
-		 *   CoW update when it's changed) but yet guarantee evaluation order
-		 *   with objects which are using that action. */
+		 *   that cached array fo bases exists and is up-to-date. */
 		if (comp_node->type == NodeType::PARAMETERS ||
 		    comp_node->type == NodeType::LAYER_COLLECTIONS)
 		{
 			rel_flag &= ~RELATION_FLAG_NO_FLUSH;
-		}
-		if (comp_node->type == NodeType::ANIMATION && id_type == ID_AC) {
-			rel_flag &= ~RELATION_FLAG_NO_FLUSH;
-			/* NOTE: We only allow flush on user edits. If the action block is
-			 * just brought into the dependency graph it is either due to
-			 * initial graph construction or due to some property got animated.
-			 * In first case all the related datablocks will be tagged for an
-			 * update as well. In the second case it is up to the editing
-			 * function to tag changed datablock.
-			 *
-			 * This logic allows to preserve unkeyed changes on file load and on
-			 * undo. */
-			rel_flag |= RELATION_FLAG_FLUSH_USER_EDIT_ONLY;
 		}
 		/* All entry operations of each component should wait for a proper
 		 * copy of ID. */

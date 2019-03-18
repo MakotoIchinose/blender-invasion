@@ -157,7 +157,7 @@ bAction *verify_adt_action(Main *bmain, ID *id, short add)
 		DEG_relations_tag_update(bmain);
 	}
 
-	DEG_id_tag_update(&adt->action->id, ID_RECALC_COPY_ON_WRITE);
+	DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
 
 	/* return the action */
 	return adt->action;
@@ -1317,10 +1317,10 @@ short insert_keyframe(
 
 	if (ret) {
 		if (act != NULL) {
-			DEG_id_tag_update(&act->id, ID_RECALC_COPY_ON_WRITE);
+			DEG_id_tag_update(&act->id, ID_RECALC_ANIMATION_NO_FLUSH);
 		}
 		if (adt != NULL && adt->action != NULL && adt->action != act) {
-			DEG_id_tag_update(&adt->action->id, ID_RECALC_COPY_ON_WRITE);
+			DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
 		}
 	}
 
@@ -1363,6 +1363,20 @@ static bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
 		return true;
 	}
 	return false;
+}
+
+static void deg_tag_after_keyframe_delete(Main *bmain, ID *id, AnimData *adt)
+{
+	if (adt->action == NULL) {
+		/* In the case last f-curve wes removed need to inform dependency graph
+		 * about relations update, since it needs to get rid of animation operation
+		 * for this datablock. */
+		DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION_NO_FLUSH);
+		DEG_relations_tag_update(bmain);
+	}
+	else {
+		DEG_id_tag_update_ex(bmain, &adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+	}
 }
 
 short delete_keyframe(Main *bmain, ReportList *reports, ID *id, bAction *act,
@@ -1441,12 +1455,8 @@ short delete_keyframe(Main *bmain, ReportList *reports, ID *id, bAction *act,
 		ret += delete_keyframe_fcurve(adt, fcu, cfra);
 
 	}
-	/* In the case last f-curve wes removed need to inform dependency graph
-	 * about relations update, since it needs to get rid of animation operation
-	 * for this datablock. */
-	if (ret && adt->action == NULL) {
-		DEG_id_tag_update_ex(bmain, id, ID_RECALC_COPY_ON_WRITE);
-		DEG_relations_tag_update(bmain);
+	if (ret) {
+		deg_tag_after_keyframe_delete(bmain, id, adt);
 	}
 	/* return success/failure */
 	return ret;
@@ -1537,12 +1547,8 @@ static short clear_keyframe(Main *bmain, ReportList *reports, ID *id, bAction *a
 		/* return success */
 		ret++;
 	}
-	/* In the case last f-curve wes removed need to inform dependency graph
-	 * about relations update, since it needs to get rid of animation operation
-	 * for this datablock. */
-	if (ret && adt->action == NULL) {
-		DEG_id_tag_update_ex(bmain, id, ID_RECALC_COPY_ON_WRITE);
-		DEG_relations_tag_update(bmain);
+	if (ret) {
+		deg_tag_after_keyframe_delete(bmain, id, adt);
 	}
 	/* return success/failure */
 	return ret;

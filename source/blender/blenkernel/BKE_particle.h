@@ -41,6 +41,7 @@ struct ParticleSystemModifierData;
 
 struct BVHTreeRay;
 struct BVHTreeRayHit;
+struct CustomData_MeshMasks;
 struct Depsgraph;
 struct Depsgraph;
 struct EdgeHash;
@@ -170,19 +171,6 @@ typedef struct ParticleTask {
 	struct RNG *rng, *rng_path;
 	int begin, end;
 } ParticleTask;
-
-typedef struct ParticleBillboardData {
-	struct Object *ob;
-	float vec[3], vel[3];
-	float offset[2];
-	float size[2];
-	float tilt, random, time;
-	int uv[3];
-	int lock, num;
-	int totnum;
-	int lifetime;
-	short align, uv_split, anim, split_offset;
-} ParticleBillboardData;
 
 typedef struct ParticleCollisionElement {
 	/* pointers to original data */
@@ -333,7 +321,7 @@ void psys_interpolate_mcol(const struct MCol *mcol, int quad, const float w[4], 
 
 void copy_particle_key(struct ParticleKey *to, struct ParticleKey *from, int time);
 
-CustomDataMask psys_emitter_customdata_mask(struct ParticleSystem *psys);
+void psys_emitter_customdata_mask(struct ParticleSystem *psys, struct CustomData_MeshMasks *r_cddata_masks);
 void psys_particle_on_emitter(struct ParticleSystemModifierData *psmd, int distr, int index, int index_dmcache,
                               float fuv[4], float foffset, float vec[3], float nor[3],
                               float utan[3], float vtan[3], float orco[3]);
@@ -352,6 +340,8 @@ void BKE_particlesettings_make_local(struct Main *bmain, struct ParticleSettings
 void psys_reset(struct ParticleSystem *psys, int mode);
 
 void psys_find_parents(struct ParticleSimulationData *sim, const bool use_render_params);
+
+void psys_unique_name(struct Object *object, struct ParticleSystem *psys, const char *defname);
 
 void psys_cache_paths(struct ParticleSimulationData *sim, float cfra, const bool use_render_params);
 void psys_cache_edit_paths(struct Depsgraph *depsgraph, struct Scene *scene, struct Object *ob, struct PTCacheEdit *edit, float cfra, const bool use_render_params);
@@ -388,7 +378,6 @@ void psys_thread_context_free(struct ParticleThreadContext *ctx);
 void psys_tasks_create(struct ParticleThreadContext *ctx, int startpart, int endpart, struct ParticleTask **r_tasks, int *r_numtasks);
 void psys_tasks_free(struct ParticleTask *tasks, int numtasks);
 
-void psys_make_billboard(ParticleBillboardData *bb, float xvec[3], float yvec[3], float zvec[3], float center[3]);
 void psys_apply_hair_lattice(struct Depsgraph *depsgraph, struct Scene *scene, struct Object *ob, struct ParticleSystem *psys);
 
 /* particle_system.c */
@@ -485,5 +474,8 @@ enum {
 };
 void BKE_particle_batch_cache_dirty_tag(struct ParticleSystem *psys, int mode);
 void BKE_particle_batch_cache_free(struct ParticleSystem *psys);
+
+extern void (*BKE_particle_batch_cache_dirty_tag_cb)(struct ParticleSystem *psys, int mode);
+extern void (*BKE_particle_batch_cache_free_cb)(struct ParticleSystem *psys);
 
 #endif  /* __BKE_PARTICLE_H__ */

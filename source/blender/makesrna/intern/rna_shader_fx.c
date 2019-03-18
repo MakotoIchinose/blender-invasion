@@ -77,7 +77,7 @@ static const EnumPropertyItem rna_enum_shaderfx_glow_modes_items[] = {
 static const EnumPropertyItem rna_enum_shaderfx_colorize_modes_items[] = {
 	{eShaderFxColorizeMode_GrayScale, "GRAYSCALE", 0, "Gray Scale", "" },
 	{eShaderFxColorizeMode_Sepia, "SEPIA", 0, "Sepia", "" },
-	{eShaderFxColorizeMode_BiTone, "BITONE", 0, "Bi-Tone", "" },
+	{eShaderFxColorizeMode_Duotone, "DUOTONE", 0, "Duotone", "" },
 	{eShaderFxColorizeMode_Transparent, "TRANSPARENT", 0, "Transparent", "" },
 	{eShaderFxColorizeMode_Custom, "CUSTOM", 0, "Custom", "" },
 	{0, NULL, 0, NULL, NULL }
@@ -518,7 +518,7 @@ static void rna_def_shader_fx_glow(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Mode", "Glow mode");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
-	prop = RNA_def_property(srna, "threshold", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "threshold", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "threshold");
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 3);

@@ -44,7 +44,8 @@
 #include "BKE_effect.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
-#include "BKE_lamp.h"
+#include "BKE_layer.h"
+#include "BKE_light.h"
 #include "BKE_lattice.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
@@ -167,18 +168,20 @@ void BKE_object_handle_data_update(
 			}
 #endif
 
-			uint64_t data_mask = scene->customdata_mask | CD_MASK_BAREMESH;
+			CustomData_MeshMasks cddata_masks = scene->customdata_mask;
+			CustomData_MeshMasks_update(&cddata_masks, &CD_MASK_BAREMESH);
 #ifdef WITH_FREESTYLE
 			/* make sure Freestyle edge/face marks appear in DM for render (see T40315) */
 			if (DEG_get_mode(depsgraph) != DAG_EVAL_VIEWPORT) {
-				data_mask |= CD_MASK_FREESTYLE_EDGE | CD_MASK_FREESTYLE_FACE;
+				cddata_masks.emask |= CD_MASK_FREESTYLE_EDGE;
+				cddata_masks.pmask |= CD_MASK_FREESTYLE_FACE;
 			}
 #endif
 			if (em) {
-				makeDerivedMesh(depsgraph, scene, ob, em,  data_mask, false); /* was CD_MASK_BAREMESH */
+				makeDerivedMesh(depsgraph, scene, ob, em,  &cddata_masks, false); /* was CD_MASK_BAREMESH */
 			}
 			else {
-				makeDerivedMesh(depsgraph, scene, ob, NULL, data_mask, false);
+				makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks, false);
 			}
 			break;
 		}
@@ -405,10 +408,10 @@ void BKE_object_data_select_update(Depsgraph *depsgraph, ID *object_data)
 	}
 }
 
-void BKE_object_eval_flush_base_flags(Depsgraph *depsgraph,
-                                      Scene *scene, const int view_layer_index,
-                                      Object *object, int base_index,
-                                      const bool is_from_set)
+void BKE_object_eval_eval_base_flags(Depsgraph *depsgraph,
+                                     Scene *scene, const int view_layer_index,
+                                     Object *object, int base_index,
+                                     const bool is_from_set)
 {
 	/* TODO(sergey): Avoid list lookup. */
 	BLI_assert(view_layer_index >= 0);
@@ -421,6 +424,20 @@ void BKE_object_eval_flush_base_flags(Depsgraph *depsgraph,
 	BLI_assert(base->object == object);
 
 	DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
+
+	/* Set base flags based on collection and object restriction. */
+	BKE_base_eval_flags(base);
+
+	/* For render, compute base visibility again since BKE_base_eval_flags
+	 * assumed viewport visibility. Selectability does not matter here. */
+	if (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER) {
+		if (base->flag & BASE_ENABLED_RENDER) {
+			base->flag |= BASE_VISIBLE;
+		}
+		else {
+			base->flag &= ~BASE_VISIBLE;
+		}
+	}
 
 	/* Copy flags and settings from base. */
 	object->base_flag = base->flag;
@@ -437,5 +454,13 @@ void BKE_object_eval_flush_base_flags(Depsgraph *depsgraph,
 		{
 			BKE_particle_batch_cache_dirty_tag(psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
 		}
+	}
+
+	/* Copy base flag back to the original view layer for editing. */
+	if (DEG_is_active(depsgraph) && (view_layer == DEG_get_evaluated_view_layer(depsgraph))) {
+		Base *base_orig = base->base_orig;
+		BLI_assert(base_orig != NULL);
+		BLI_assert(base_orig->object != NULL);
+		base_orig->flag = base->flag;
 	}
 }

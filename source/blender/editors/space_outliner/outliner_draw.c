@@ -26,7 +26,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -268,6 +268,16 @@ static void restrictbutton_id_user_toggle(bContext *UNUSED(C), void *poin, void 
 	}
 }
 
+static int base_pushed_state_cb(bContext *UNUSED(C), void *poin)
+{
+	Base *base = poin;
+	Object *ob = base->object;
+
+	const bool is_visible = ((base->flag & BASE_HIDDEN) == 0) &&
+	                        ((ob->restrictflag & OB_RESTRICT_VIEW) == 0);
+	return !is_visible;
+}
+
 static void hidebutton_base_flag_cb(bContext *C, void *poin, void *poin2)
 {
 	wmWindow *win = CTX_wm_window(C);
@@ -333,8 +343,19 @@ static void hidebutton_base_flag_cb(bContext *C, void *poin, void *poin2)
 	}
 }
 
+static int layer_collection_pushed_state_cb(bContext *UNUSED(C), void *poin)
+{
+	LayerCollection *lc = poin;
+	Collection *collection = lc->collection;
+
+	const bool is_visible = ((lc->flag & LAYER_COLLECTION_RESTRICT_VIEW) == 0) &&
+	                        ((collection->flag & COLLECTION_RESTRICT_VIEW) == 0);
+	return !is_visible;
+}
+
 static void hidebutton_layer_collection_flag_cb(bContext *C, void *poin, void *poin2)
 {
+	Main *bmain = CTX_data_main(C);
 	wmWindow *win = CTX_wm_window(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = poin;
@@ -364,7 +385,8 @@ static void hidebutton_layer_collection_flag_cb(bContext *C, void *poin, void *p
 	DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
 
 	if (depsgraph_changed) {
-		DEG_relations_tag_update(CTX_data_main(C));
+		BKE_main_collection_sync_remap(bmain);
+		DEG_relations_tag_update(bmain);
 	}
 	WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
 }
@@ -602,6 +624,7 @@ static void outliner_draw_restrictbuts(
 					             "* Alt to disable for all viewports\n"
 					             "* Ctrl to isolate visibility"));
 					UI_but_func_set(bt, hidebutton_base_flag_cb, view_layer, base);
+					UI_but_func_pushed_state_set(bt, base_pushed_state_cb, base);
 					UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
 				}
 				else {
@@ -731,6 +754,7 @@ static void outliner_draw_restrictbuts(
 						             "* Ctrl to isolate visibility\n"
 						             "* Shift to hide inside objects and collections"));
 						UI_but_func_set(bt, hidebutton_layer_collection_flag_cb, view_layer, lc);
+						UI_but_func_pushed_state_set(bt, layer_collection_pushed_state_cb, lc);
 						UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
 					}
 					else {
@@ -1337,7 +1361,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
 					data.icon = ICON_OUTLINER_DATA_LATTICE; break;
 				case ID_LA:
 				{
-					Lamp *la = (Lamp *)tselem->id;
+					Light *la = (Light *)tselem->id;
 					switch (la->type) {
 						case LA_LOCAL:
 							data.icon = ICON_LIGHT_POINT; break;
@@ -1416,6 +1440,8 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
 					data.icon = ICON_MOD_MASK; break;
 				case ID_MC:
 					data.icon = ICON_SEQUENCE; break;
+				case ID_PC:
+					data.icon = ICON_CURVE_BEZCURVE; break;
 				default:
 					break;
 			}

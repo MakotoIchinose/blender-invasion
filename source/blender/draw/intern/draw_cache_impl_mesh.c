@@ -52,6 +52,7 @@
 #include "bmesh.h"
 
 #include "GPU_batch.h"
+#include "GPU_extensions.h"
 #include "GPU_material.h"
 
 #include "DRW_render.h"
@@ -1507,6 +1508,7 @@ static void mesh_render_data_edge_flag(
 {
 	const ToolSettings *ts = rdata->toolsettings;
 	const bool is_vertex_select_mode = (ts != NULL) && (ts->selectmode & SCE_SELECT_VERTEX) != 0;
+	const bool is_face_only_select_mode = (ts != NULL) && (ts->selectmode == SCE_SELECT_FACE);
 
 	if (eed == rdata->eed_act) {
 		eattr->e_flag |= VFLAG_EDGE_ACTIVE;
@@ -1529,6 +1531,20 @@ static void mesh_render_data_edge_flag(
 	if (!BM_elem_flag_test(eed, BM_ELEM_SMOOTH)) {
 		eattr->e_flag |= VFLAG_EDGE_SHARP;
 	}
+
+	/* Use active edge color for active face edges because
+	 * specular highlights make it hard to see T55456#510873.
+	 *
+	 * This isn't ideal since it can't be used when mixing edge/face modes
+     * but it's still better then not being able to see the active face. */
+	if (is_face_only_select_mode) {
+		if (rdata->efa_act != NULL) {
+			if (BM_edge_in_face(eed, rdata->efa_act)) {
+				eattr->e_flag |= VFLAG_EDGE_ACTIVE;
+			}
+		}
+	}
+
 	/* Use a byte for value range */
 	if (rdata->cd.offset.crease != -1) {
 		float crease = BM_ELEM_CD_GET_FLOAT(eed, rdata->cd.offset.crease);
@@ -1587,9 +1603,10 @@ static bool add_edit_facedot(
 {
 	BLI_assert(rdata->types & (MR_DATATYPE_VERT | MR_DATATYPE_LOOP | MR_DATATYPE_POLY));
 	float pnor[3], center[3];
-	bool selected;
+	int facedot_flag;
 	if (rdata->edit_bmesh) {
-		const BMFace *efa = BM_face_at_index(rdata->edit_bmesh->bm, poly);
+		BMEditMesh *em = rdata->edit_bmesh;
+		const BMFace *efa = BM_face_at_index(em->bm, poly);
 		if (BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
 			return false;
 		}
@@ -1601,7 +1618,7 @@ static bool add_edit_facedot(
 			BM_face_calc_center_median(efa, center);
 			copy_v3_v3(pnor, efa->no);
 		}
-		selected = (BM_elem_flag_test(efa, BM_ELEM_SELECT) != 0) ? true : false;
+		facedot_flag = BM_elem_flag_test(efa, BM_ELEM_SELECT) ? ((efa == em->bm->act_face) ? -1 : 1) : 0;
 	}
 	else {
 		MVert *mvert = rdata->mvert;
@@ -1610,12 +1627,12 @@ static bool add_edit_facedot(
 
 		BKE_mesh_calc_poly_center(mpoly, mloop, mvert, center);
 		BKE_mesh_calc_poly_normal(mpoly, mloop, mvert, pnor);
-
-		selected = false; /* No selection if not in edit mode */
+		/* No selection if not in edit mode. */
+		facedot_flag = 0;
 	}
 
 	GPUPackedNormal nor = GPU_normal_convert_i10_v3(pnor);
-	nor.w = (selected) ? 1 : 0;
+	nor.w = facedot_flag;
 	GPU_vertbuf_attr_set(vbo, fdot_nor_flag_id, base_vert_idx, &nor);
 	GPU_vertbuf_attr_set(vbo, fdot_pos_id, base_vert_idx, center);
 
@@ -1634,7 +1651,7 @@ static bool add_edit_facedot_mapped(
 		return false;
 	}
 	BMEditMesh *em = rdata->edit_bmesh;
-	const BMFace *efa = BM_face_at_index(rdata->edit_bmesh->bm, p_orig);
+	const BMFace *efa = BM_face_at_index(em->bm, p_orig);
 	if (BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
 		return false;
 	}
@@ -1651,7 +1668,7 @@ static bool add_edit_facedot_mapped(
 	BKE_mesh_calc_poly_normal(mp, ml, mvert, pnor);
 
 	GPUPackedNormal nor = GPU_normal_convert_i10_v3(pnor);
-	nor.w = (BM_elem_flag_test(efa, BM_ELEM_SELECT) != 0) ? 1 : 0;
+	nor.w = BM_elem_flag_test(efa, BM_ELEM_SELECT) ? ((efa == em->bm->act_face) ? -1 : 1) : 0;
 	GPU_vertbuf_attr_set(vbo, fdot_nor_flag_id, base_vert_idx, &nor);
 	GPU_vertbuf_attr_set(vbo, fdot_pos_id, base_vert_idx, center);
 
@@ -2123,7 +2140,7 @@ static void mesh_create_edit_vertex_loops(
 	uchar fflag;
 
 	/* Static formats */
-	static struct { GPUVertFormat sel_id, pos_nor, lnor, flag, uv; } format = { 0 };
+	static struct { GPUVertFormat sel_id, pos_nor, lnor, flag, uv; } format = {{ 0 }};
 	static struct { uint sel_id, pos, nor, lnor, data, uvs; } attr_id;
 	if (format.sel_id.attr_len == 0) {
 		attr_id.sel_id = GPU_vertformat_attr_add(&format.sel_id, "color", GPU_COMP_U32, 1, GPU_FETCH_INT);
@@ -2655,12 +2672,34 @@ static float mesh_loop_edge_factor_get(
 	return d;
 }
 
+static void vertbuf_raw_step_u8(GPUVertBufRaw *wd_step, const uchar wiredata)
+{
+	*((uchar *)GPU_vertbuf_raw_step(wd_step)) = wiredata;
+}
+
+static void vertbuf_raw_step_u8_to_f32(GPUVertBufRaw *wd_step, const uchar wiredata)
+{
+	*((float *)GPU_vertbuf_raw_step(wd_step)) = wiredata / 255.0f;
+}
+
 static void mesh_create_loop_edge_fac(MeshRenderData *rdata, GPUVertBuf *vbo)
 {
 	static GPUVertFormat format = { 0 };
 	static struct { uint wd; } attr_id;
+	static union { float f; uchar u; } data;
+	static void (*vertbuf_raw_step)(GPUVertBufRaw *, const uchar);
 	if (format.attr_len == 0) {
-		attr_id.wd = GPU_vertformat_attr_add(&format, "wd", GPU_COMP_U8, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
+		if (!GPU_crappy_amd_driver()) {
+			/* Some AMD drivers strangely crash with a vbo with this format. */
+			attr_id.wd = GPU_vertformat_attr_add(&format, "wd", GPU_COMP_U8, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
+			vertbuf_raw_step = vertbuf_raw_step_u8;
+			data.u = UCHAR_MAX;
+		}
+		else {
+			attr_id.wd = GPU_vertformat_attr_add(&format, "wd", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+			vertbuf_raw_step = vertbuf_raw_step_u8_to_f32;
+			data.f = 1.0f;
+		}
 	}
 	const int poly_len = mesh_render_data_polys_len_get(rdata);
 	const int loop_len = mesh_render_data_loops_len_get(rdata);
@@ -2683,7 +2722,7 @@ static void mesh_create_loop_edge_fac(MeshRenderData *rdata, GPUVertBuf *vbo)
 			BM_ITER_MESH_INDEX (efa, &iter_efa, bm, BM_FACES_OF_MESH, f) {
 				BM_ITER_ELEM (loop, &iter_loop, efa, BM_LOOPS_OF_FACE) {
 					float ratio = mesh_loop_edge_factor_get(efa->no, loop->v->co, loop->v->no, loop->next->v->co);
-					*((uchar *)GPU_vertbuf_raw_step(&wd_step)) = ratio * 255;
+					vertbuf_raw_step(&wd_step, ratio * 255);
 				}
 			}
 			BLI_assert(GPU_vertbuf_raw_used(&wd_step) == loop_len);
@@ -2720,7 +2759,7 @@ static void mesh_create_loop_edge_fac(MeshRenderData *rdata, GPUVertBuf *vbo)
 					ed->flag ^= ME_EDGE_TMP_TAG;
 
 					if (use_edge_render) {
-						*((uchar *)GPU_vertbuf_raw_step(&wd_step)) = (ed->flag & ME_EDGERENDER) ? 255 : 0;
+						vertbuf_raw_step(&wd_step, (ed->flag & ME_EDGERENDER) ? 255 : 0);
 					}
 					else {
 						float vnor_f[3];
@@ -2729,7 +2768,7 @@ static void mesh_create_loop_edge_fac(MeshRenderData *rdata, GPUVertBuf *vbo)
 						                                        mvert[ml1->v].co,
 						                                        vnor_f,
 						                                        mvert[ml2->v].co);
-						*((uchar *)GPU_vertbuf_raw_step(&wd_step)) = ratio * 253 + 1;
+						vertbuf_raw_step(&wd_step, ratio * 253 + 1);
 					}
 				}
 			}
@@ -2737,7 +2776,6 @@ static void mesh_create_loop_edge_fac(MeshRenderData *rdata, GPUVertBuf *vbo)
 			for (int l = 0; l < loop_len; l++, mloop++) {
 				MEdge *ed = (MEdge *)rdata->medge + mloop->e;
 				if (ed->flag & ME_EDGE_TMP_TAG) {
-					uchar data = 255;
 					GPU_vertbuf_attr_set(vbo, attr_id.wd, l, &data);
 				}
 			}
@@ -3380,10 +3418,10 @@ static void mesh_create_loops_lines(
 			BM_ITER_MESH (bm_edge, &iter, bm, BM_EDGES_OF_MESH) {
 				/* use_hide always for edit-mode */
 				if (!BM_elem_flag_test(bm_edge, BM_ELEM_HIDDEN) &&
-					bm_edge->l != NULL)
+				    bm_edge->l != NULL)
 				{
-					BMLoop *bm_loop1 = BM_vert_find_first_loop(bm_edge->v1);
-					BMLoop *bm_loop2 = BM_vert_find_first_loop(bm_edge->v2);
+					BMLoop *bm_loop1 = BM_vert_find_first_loop_visible(bm_edge->v1);
+					BMLoop *bm_loop2 = BM_vert_find_first_loop_visible(bm_edge->v2);
 					int v1 = BM_elem_index_get(bm_loop1);
 					int v2 = BM_elem_index_get(bm_loop2);
 					if (v1 > v2) {
@@ -3549,7 +3587,7 @@ static void mesh_create_loops_tris(
 				if (BM_elem_flag_test(bm_face, BM_ELEM_HIDDEN)) {
 					continue;
 				}
-				int mat = (ibo_len > 1) ? bm_face->mat_nr : 0;
+				int mat = min_ii(ibo_len - 1, bm_face->mat_nr);
 				GPU_indexbuf_add_tri_verts(
 				        &elb[mat],
 				        BM_elem_index_get(bm_looptri[0]),
@@ -3564,7 +3602,7 @@ static void mesh_create_loops_tris(
 				if (use_hide && (mp->flag & ME_HIDE)) {
 					continue;
 				}
-				int mat = (ibo_len > 1) ? mp->mat_nr : 0;
+				int mat = min_ii(ibo_len - 1, mp->mat_nr);
 				GPU_indexbuf_add_tri_verts(&elb[mat], mlt->tri[0], mlt->tri[1], mlt->tri[2]);
 			}
 		}
@@ -3582,7 +3620,7 @@ static void mesh_create_loops_tris(
 				/* Assume 'use_hide' */
 				BMFace *efa = BM_face_at_index(bm, p_orig);
 				if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-					int mat = (ibo_len > 1) ? efa->mat_nr : 0;
+					int mat = min_ii(ibo_len - 1, efa->mat_nr);
 					GPU_indexbuf_add_tri_verts(&elb[mat], mlt->tri[0], mlt->tri[1], mlt->tri[2]);
 				}
 			}
@@ -3625,7 +3663,8 @@ static void mesh_create_edit_loops_points_lines(MeshRenderData *rdata, GPUIndexB
 			BMEdge *eed;
 			BM_ITER_MESH (eed, &iter, bm, BM_EDGES_OF_MESH) {
 				if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-					if (eed->l != NULL) {
+					BMLoop *l = BM_edge_find_first_loop_visible(eed);
+					if (l != NULL) {
 						int v1 = BM_elem_index_get(eed->l);
 						int v2 = BM_elem_index_get(eed->l->next);
 						GPU_indexbuf_add_line_verts(&elb_edge, v1, v2);
@@ -3638,7 +3677,7 @@ static void mesh_create_edit_loops_points_lines(MeshRenderData *rdata, GPUIndexB
 			BMVert *eve;
 			BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
 				if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
-					BMLoop *l = BM_vert_find_first_loop(eve);
+					BMLoop *l = BM_vert_find_first_loop_visible(eve);
 					if (l != NULL) {
 						int v = BM_elem_index_get(l);
 						GPU_indexbuf_add_generic_vert(&elb_vert, v);

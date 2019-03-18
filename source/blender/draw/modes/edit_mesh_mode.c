@@ -122,7 +122,7 @@ static struct {
 	/* temp buffer texture */
 	struct GPUTexture *occlude_wire_depth_tx;
 	struct GPUTexture *occlude_wire_color_tx;
-} e_data = {NULL}; /* Engine data */
+} e_data = {{{NULL}}}; /* Engine data */
 
 typedef struct EDIT_MESH_PrivateData {
 	/* weight */
@@ -197,6 +197,7 @@ static void EDIT_MESH_engine_init(void *vedata)
 			geom_sh_code[0] = NULL;
 		}
 		const char *use_geom_def = use_geom_shader ? "#define USE_GEOM_SHADER\n" : "";
+		const char *use_smooth_def = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) ? "" : "#define USE_SMOOTH_WIRE\n";
 		sh_data->overlay_face = GPU_shader_create_from_arrays({
 		        .vert = (const char *[]){lib, datatoc_edit_mesh_overlay_vert_glsl, NULL},
 		        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
@@ -205,13 +206,13 @@ static void EDIT_MESH_engine_init(void *vedata)
 		sh_data->overlay_edge = GPU_shader_create_from_arrays({
 		        .vert = (const char *[]){lib, datatoc_edit_mesh_overlay_vert_glsl, NULL},
 		        .frag = (const char *[]){lib, datatoc_edit_mesh_overlay_frag_glsl, NULL},
-		        .defs = (const char *[]){sh_cfg_data->def, use_geom_def, "#define EDGE\n", NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, use_geom_def, use_smooth_def, "#define EDGE\n", NULL},
 		        .geom = (use_geom_shader) ? geom_sh_code : NULL,
 		});
 		sh_data->overlay_edge_flat = GPU_shader_create_from_arrays({
 		        .vert = (const char *[]){lib, datatoc_edit_mesh_overlay_vert_glsl, NULL},
 		        .frag = (const char *[]){lib, datatoc_edit_mesh_overlay_frag_glsl, NULL},
-		        .defs = (const char *[]){sh_cfg_data->def, use_geom_def, "#define EDGE\n", "#define FLAT\n", NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, use_geom_def, use_smooth_def, "#define EDGE\n", "#define FLAT\n", NULL},
 		        .geom = (use_geom_shader) ? geom_sh_code : NULL,
 		});
 		sh_data->overlay_vert = GPU_shader_create_from_arrays({
@@ -274,6 +275,8 @@ static DRWPass *edit_mesh_create_overlay_pass(
 	const bool select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX) != 0;
 	const bool select_face = (tsettings->selectmode & SCE_SELECT_FACE) != 0;
 	const bool select_edge = (tsettings->selectmode & SCE_SELECT_EDGE) != 0;
+	const bool show_wide_edge = select_edge && !(draw_ctx->v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT);
+
 	float winmat[4][4];
 	float viewdist = rv3d->dist;
 	DRW_viewport_matrix_get(winmat, DRW_MAT_WIN);
@@ -326,7 +329,7 @@ static DRWPass *edit_mesh_create_overlay_pass(
 	DRW_shgroup_uniform_ivec4(grp, "dataMask", data_mask, 1);
 	DRW_shgroup_uniform_bool_copy(grp, "doEdges", do_edges);
 	DRW_shgroup_uniform_float_copy(grp, "ofs", depth_ofs);
-	DRW_shgroup_uniform_float_copy(grp, "edgeScale", select_edge ? 1.75f : 1.0f);
+	DRW_shgroup_uniform_float_copy(grp, "edgeScale", show_wide_edge ? 1.75f : 1.0f);
 	DRW_shgroup_state_enable(grp, DRW_STATE_OFFSET_NEGATIVE);
 	/* To match blender loop structure. */
 	DRW_shgroup_state_enable(grp, DRW_STATE_FIRST_VERTEX_CONVENTION);

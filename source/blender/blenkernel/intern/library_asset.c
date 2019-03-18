@@ -143,7 +143,7 @@ void BKE_libraries_asset_subdata_remove(Main *bmain, const void *idv)
 		return;
 	}
 
-	ListBase *lb = &bmain->library;
+	ListBase *lb = &bmain->libraries;
 	for (Library *lib = lb->first; lib; lib = lib->id.next) {
 		if (lib->asset_repository) {
 			for (AssetRef *aref = lib->asset_repository->assets.first; aref; aref = aref->next) {
@@ -162,7 +162,7 @@ void BKE_libraries_asset_subdata_remove(Main *bmain, const void *idv)
 
 void BKE_libraries_asset_repositories_clear(Main *bmain)
 {
-	ListBase *lb = which_libbase(bmain, ID_LI);
+	ListBase *lb = &bmain->libraries;
 	for (Library *lib = lb->first; lib; lib = lib->id.next) {
 		BKE_library_asset_repository_clear(lib);
 	}
@@ -230,7 +230,7 @@ void BKE_libraries_asset_repositories_rebuild(Main *bmain)
 
 AssetRef *BKE_libraries_asset_repository_uuid_find(Main *bmain, const AssetUUID *uuid)
 {
-	ListBase *lb = which_libbase(bmain, ID_LI);
+	ListBase *lb = &bmain->libraries;
 	for (Library *lib = lb->first; lib; lib = lib->id.next) {
 		for (AssetRef *aref = lib->asset_repository->assets.first; aref; aref = aref->next) {
 			if (ASSETUUID_EQUAL(&aref->uuid, uuid)) {
@@ -249,7 +249,7 @@ AssetRef *BKE_libraries_asset_repository_uuid_find(Main *bmain, const AssetUUID 
 Library *BKE_library_asset_virtual_ensure(Main *bmain, const AssetEngineType *aet)
 {
 	Library *lib;
-	ListBase *lb = which_libbase(bmain, ID_LI);
+	ListBase *lb = &bmain->libraries;
 
 	for (lib = lb->first; lib; lib = lib->id.next) {
 		if (!(lib->flag & LIBRARY_FLAG_VIRTUAL) || !lib->asset_repository) {

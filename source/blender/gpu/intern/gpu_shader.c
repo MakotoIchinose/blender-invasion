@@ -184,7 +184,7 @@ const struct GPUShaderConfigData GPU_shader_cfg_data[GPU_SHADER_CFG_LEN] = {
 };
 
 /* cache of built-in shaders (each is created on first use) */
-static GPUShader *builtin_shaders[GPU_SHADER_CFG_LEN][GPU_SHADER_BUILTIN_LEN] = {NULL};
+static GPUShader *builtin_shaders[GPU_SHADER_CFG_LEN][GPU_SHADER_BUILTIN_LEN] = {{NULL}};
 
 #ifndef NDEBUG
 static uint g_shaderid = 0;
@@ -270,6 +270,14 @@ static void gpu_shader_standard_defines(char defines[MAX_DEFINE_LENGTH])
 		strcat(defines, "#define GPU_NVIDIA\n");
 	else if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_ANY, GPU_DRIVER_ANY))
 		strcat(defines, "#define GPU_INTEL\n");
+
+	/* some useful defines to detect OS type */
+	if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_WIN, GPU_DRIVER_ANY))
+		strcat(defines, "#define OS_WIN\n");
+	else if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY))
+		strcat(defines, "#define OS_MAC\n");
+	else if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_UNIX, GPU_DRIVER_ANY))
+		strcat(defines, "#define OS_UNIX\n");
 
 	return;
 }
@@ -562,7 +570,7 @@ static const char *string_join_array_maybe_alloc(const char **str_arr, bool *r_i
 struct GPUShader *GPU_shader_create_from_arrays_impl(
         const struct GPU_ShaderCreateFromArray_Params *params)
 {
-	struct { const char *str; bool is_alloc;} str_dst[4] = {0};
+	struct { const char *str; bool is_alloc;} str_dst[4] = {{0}};
 	const char **str_src[4] = {params->vert, params->frag, params->geom, params->defs};
 
 	for (int i = 0; i < ARRAY_SIZE(str_src); i++) {
@@ -1234,7 +1242,8 @@ GPUShader *GPU_shader_get_builtin_shader_with_config(
 			                GPU_SHADER_3D_FLAT_SELECT_ID,
 			                GPU_SHADER_3D_UNIFORM_SELECT_ID) ||
 			           ELEM(shader,
-			                GPU_SHADER_3D_FLAT_COLOR));
+			                GPU_SHADER_3D_FLAT_COLOR,
+			                GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR));
 			const char *world_clip_lib = datatoc_gpu_shader_cfg_world_clip_lib_glsl;
 			const char *world_clip_def = "#define USE_WORLD_CLIP_PLANES\n";
 			/* In rare cases geometry shaders calculate clipping themselves. */

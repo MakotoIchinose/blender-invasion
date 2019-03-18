@@ -656,10 +656,11 @@ class WM_OT_context_collection_boolean_set(Operator):
 
     type: EnumProperty(
         name="Type",
-        items=(('TOGGLE', "Toggle", ""),
-               ('ENABLE', "Enable", ""),
-               ('DISABLE', "Disable", ""),
-               ),
+        items=(
+            ('TOGGLE', "Toggle", ""),
+            ('ENABLE', "Enable", ""),
+            ('DISABLE', "Disable", ""),
+        ),
     )
 
     def execute(self, context):
@@ -1485,14 +1486,14 @@ class WM_OT_owner_disable(Operator):
 
 
 
-class WM_OT_tool_set_by_name(Operator):
+class WM_OT_tool_set_by_id(Operator):
     """Set the tool by name (for keymaps)"""
-    bl_idname = "wm.tool_set_by_name"
+    bl_idname = "wm.tool_set_by_id"
     bl_label = "Set Tool By Name"
 
     name: StringProperty(
-        name="Text",
-        description="Display name of the tool",
+        name="Identifier",
+        description="Identifier of the tool",
     )
     cycle: BoolProperty(
         name="Cycle",
@@ -1517,8 +1518,8 @@ class WM_OT_tool_set_by_name(Operator):
 
     def execute(self, context):
         from bl_ui.space_toolsystem_common import (
-            activate_by_name,
-            activate_by_name_or_cycle,
+            activate_by_id,
+            activate_by_id_or_cycle,
         )
 
         if self.properties.is_property_set("space_type"):
@@ -1526,7 +1527,7 @@ class WM_OT_tool_set_by_name(Operator):
         else:
             space_type = context.space_data.type
 
-        fn = activate_by_name_or_cycle if self.cycle else activate_by_name
+        fn = activate_by_id_or_cycle if self.cycle else activate_by_id
         if fn(context, space_type, self.name):
             return {'FINISHED'}
         else:
@@ -1650,9 +1651,9 @@ class WM_MT_splash(Menu):
         row = layout.row()
 
         sub = row.row()
-        if bpy.types.WM_OT_copy_prev_settings.poll(context):
-            old_version = bpy.types.WM_OT_copy_prev_settings.previous_version()
-            sub.operator("wm.copy_prev_settings", text="Load %d.%d Settings" % old_version)
+        if bpy.types.PREFERENCES_OT_copy_prev.poll(context):
+            old_version = bpy.types.PREFERENCES_OT_copy_prev.previous_version()
+            sub.operator("preferences.copy_prev", text="Load %d.%d Settings" % old_version)
             sub.operator("wm.save_userpref", text="Save New Settings")
         else:
             sub.label()
@@ -1750,7 +1751,7 @@ class WM_OT_drop_blend_file(Operator):
 
     def invoke(self, context, event):
         context.window_manager.popup_menu(self.draw_menu, title=bpy.path.basename(self.filepath), icon='QUESTION')
-        return {"FINISHED"}
+        return {'FINISHED'}
 
     def draw_menu(self, menu, context):
         layout = menu.layout
@@ -1799,7 +1800,7 @@ classes = (
     WM_OT_owner_disable,
     WM_OT_owner_enable,
     WM_OT_url_open,
-    WM_OT_tool_set_by_name,
+    WM_OT_tool_set_by_id,
     WM_OT_toolbar,
     WM_MT_splash,
 )

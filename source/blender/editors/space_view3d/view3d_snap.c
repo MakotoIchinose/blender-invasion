@@ -391,7 +391,7 @@ static int snap_selected_to_location(bContext *C, const float snap_target_global
 		CTX_data_selected_editable_objects(C, &ctx_data_list);
 
 		/* reset flags */
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 			ob->flag &= ~OB_DONE;
 		}
 
@@ -472,8 +472,9 @@ void VIEW3D_OT_snap_selected_to_cursor(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
 
 	/* rna */
-	RNA_def_boolean(ot->srna, "use_offset", 1, "Offset",
-		"If the selection should be snapped as a whole or by each object center");
+	RNA_def_boolean(
+	        ot->srna, "use_offset", 1, "Offset",
+	        "If the selection should be snapped as a whole or by each object center");
 }
 
 /* *************************************************** */

@@ -69,6 +69,7 @@ void    BKE_imbuf_stamp_info(struct RenderResult *rr, struct ImBuf *ibuf);
 void    BKE_stamp_info_from_imbuf(struct RenderResult *rr, struct ImBuf *ibuf);
 void    BKE_stamp_info_callback(void *data, struct StampData *stamp_data, StampCallback callback, bool noskip);
 void    BKE_render_result_stamp_data(struct RenderResult *rr, const char *key, const char *value);
+struct StampData *BKE_stamp_data_copy(const struct StampData *stamp_data);
 void    BKE_stamp_data_free(struct StampData *stamp_data);
 void    BKE_image_stamp_buf(
         struct Scene *scene, struct Object *camera, const struct StampData *stamp_data_template,
@@ -195,8 +196,6 @@ struct Image *BKE_image_add_from_imbuf(struct Main *bmain, struct ImBuf *ibuf, c
 void BKE_image_init_imageuser(struct Image *ima, struct ImageUser *iuser);
 void BKE_image_signal(struct Main *bmain, struct Image *ima, struct ImageUser *iuser, int signal);
 
-void BKE_image_walk_id_all_users(struct ID *id, void *customdata,
-                                 void callback(struct Image *ima, struct ImageUser *iuser, void *customdata));
 void BKE_image_walk_all_users(const struct Main *mainp, void *customdata,
                               void callback(struct Image *ima, struct ImageUser *iuser, void *customdata));
 

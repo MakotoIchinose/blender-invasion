@@ -18,15 +18,16 @@
  * \ingroup bli
  */
 
-#include "DNA_meshdata_types.h"
-
 #include "MEM_guardedalloc.h"
+
+#include "BLI_utildefines.h"
 
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
-#include "BLI_utildefines.h"
 #include "BLI_ghash.h"
 #include "BLI_task.h"
+
+#include "DNA_meshdata_types.h"
 
 #include "BKE_pbvh.h"
 #include "BKE_ccg.h"
@@ -1112,11 +1113,8 @@ static void pbvh_update_draw_buffers(PBVH *bvh, PBVHNode **nodes, int totnode)
 				case PBVH_GRIDS:
 					node->draw_buffers =
 						GPU_pbvh_grid_buffers_build(
-						        node->prim_indices,
 						        node->totprim,
-						        bvh->grid_hidden,
-						        bvh->gridkey.grid_size,
-						        &bvh->gridkey);
+						        bvh->grid_hidden);
 					break;
 				case PBVH_FACES:
 					node->draw_buffers =

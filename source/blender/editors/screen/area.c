@@ -750,27 +750,31 @@ static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea 
 		return;
 	}
 
+	if (screen->temp) {
+		return;
+	}
+
 	float coords[4][4] = {
 	    /* Bottom-left. */
-	    {sa->totrct.xmin,
-	     sa->totrct.ymin,
+	    {sa->totrct.xmin - U.pixelsize,
+	     sa->totrct.ymin - U.pixelsize,
 	     sa->totrct.xmin + AZONESPOTW,
 	     sa->totrct.ymin + AZONESPOTH},
 	    /* Bottom-right. */
 	    {sa->totrct.xmax - AZONESPOTW,
-	     sa->totrct.ymin,
-	     sa->totrct.xmax,
+	     sa->totrct.ymin - U.pixelsize,
+	     sa->totrct.xmax + U.pixelsize,
 	     sa->totrct.ymin + AZONESPOTH},
 	    /* Top-left. */
-	    {sa->totrct.xmin,
+	    {sa->totrct.xmin - U.pixelsize,
 	     sa->totrct.ymax - AZONESPOTH,
 	     sa->totrct.xmin + AZONESPOTW,
-	     sa->totrct.ymax},
+	     sa->totrct.ymax + U.pixelsize},
 	    /* Top-right. */
 	    {sa->totrct.xmax - AZONESPOTW,
 	     sa->totrct.ymax - AZONESPOTH,
-	     sa->totrct.xmax,
-	     sa->totrct.ymax}};
+	     sa->totrct.xmax + U.pixelsize,
+	     sa->totrct.ymax + U.pixelsize}};
 
 	for (int i = 0; i < 4; i++) {
 		/* can't click on bottom corners on OS X, already used for resizing */
@@ -1105,7 +1109,7 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
 				return true;
 			}
 		}
-		else if (ELEM(spacetype, SPACE_VIEW3D, SPACE_SEQ, SPACE_IMAGE)) {
+		else if (ELEM(spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
 			if (ELEM(regiontype, RGN_TYPE_TOOLS, RGN_TYPE_UI, RGN_TYPE_TOOL_PROPS)) {
 				return true;
 			}
@@ -1145,7 +1149,7 @@ static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rct
 	ar->overlap = ED_region_is_overlap(sa->spacetype, ar->regiontype);
 
 	/* clear state flags first */
-	ar->flag &= ~RGN_FLAG_TOO_SMALL;
+	ar->flag &= ~(RGN_FLAG_TOO_SMALL | RGN_FLAG_SIZE_CLAMP_X | RGN_FLAG_SIZE_CLAMP_Y);
 	/* user errors */
 	if ((ar->next == NULL) && !ELEM(alignment, RGN_ALIGN_QSPLIT, RGN_ALIGN_FLOAT)) {
 		alignment = RGN_ALIGN_NONE;
@@ -1195,6 +1199,13 @@ static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rct
 		ar->winrct.ymax = ar->winrct.ymin + prefsizey - 1;
 
 		BLI_rcti_isect(&ar->winrct, &overlap_remainder_margin, &ar->winrct);
+
+		if (BLI_rcti_size_x(&ar->winrct) != prefsizex - 1) {
+			ar->flag |= RGN_FLAG_SIZE_CLAMP_X;
+		}
+		if (BLI_rcti_size_y(&ar->winrct) != prefsizey - 1) {
+			ar->flag |= RGN_FLAG_SIZE_CLAMP_Y;
+		}
 
 		/* We need to use a test that wont have been previously clamped. */
 		rcti winrct_test = {
@@ -1473,6 +1484,9 @@ static void ed_default_handlers(wmWindowManager *wm, ScrArea *sa, ARegion *ar, L
 			}
 			WM_gizmomap_add_handlers(ar, ar->gizmo_map);
 		}
+	}
+	if (flag & ED_KEYMAP_TOOL) {
+		WM_event_add_keymap_handler_dynamic(&ar->handlers, WM_event_get_keymap_from_toolsystem, sa);
 	}
 	if (flag & ED_KEYMAP_VIEW2D) {
 		/* 2d-viewport handling+manipulation */
@@ -1934,7 +1948,7 @@ void ED_area_prevspace(bContext *C, ScrArea *sa)
 		/* no change */
 		return;
 	}
-	sa->flag &= ~AREA_FLAG_STACKED_FULLSCREEN;
+	sa->flag &= ~(AREA_FLAG_STACKED_FULLSCREEN | AREA_FLAG_TEMP_TYPE);
 
 	ED_area_tag_redraw(sa);
 
@@ -2501,10 +2515,10 @@ void ED_region_header_init(ARegion *ar)
 	UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_HEADER, ar->winx, ar->winy);
 }
 
-/* UI_UNIT_Y is defined as U variable now, depending dpi */
 int ED_area_headersize(void)
 {
-	return (int)(HEADERY * UI_DPI_FAC);
+	/* Accomodate widget and padding. */
+	return U.widget_unit + (int)(UI_DPI_FAC * HEADER_PADDING_Y);
 }
 
 int ED_area_header_alignment_or_fallback(const ScrArea *area, int fallback)

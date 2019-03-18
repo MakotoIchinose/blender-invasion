@@ -14,7 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file bmesh_bevel.c
+/** \file
+ * \ingroup bmesh
  *
  * Main functions for beveling a BMesh (used by the tool and modifier)
  */
@@ -756,8 +757,11 @@ static int edges_angle_kind(EdgeHalf *e1, EdgeHalf *e2, BMVert *v)
 	v2 = BM_edge_other_vert(e2->e, v);
 	sub_v3_v3v3(dir1, v->co, v1->co);
 	sub_v3_v3v3(dir2, v->co, v2->co);
+	normalize_v3(dir1);
+	normalize_v3(dir2);
 	/* angles are in [0,pi]. need to compare cross product with normal to see if they are reflex */
 	cross_v3_v3v3(cross, dir1, dir2);
+	normalize_v3(cross);
 	if (e1->fnext)
 		no = e1->fnext->no;
 	else if (e2->fprev)
@@ -819,9 +823,10 @@ static bool point_between_edges(float co[3], BMVert *v, BMFace *f, EdgeHalf *e1,
  */
 static void offset_meet(EdgeHalf *e1, EdgeHalf *e2, BMVert *v, BMFace *f, bool edges_between, float meetco[3])
 {
-	float dir1[3], dir2[3], dir1n[3], dir2p[3], norm_v[3], norm_v1[3], norm_v2[3],
-		norm_perp1[3], norm_perp2[3], off1a[3], off1b[3], off2a[3], off2b[3],
-		isect2[3], dropco[3], plane[4], ang, d;
+	float dir1[3], dir2[3], dir1n[3], dir2p[3], norm_v[3], norm_v1[3], norm_v2[3];
+	float norm_perp1[3], norm_perp2[3], off1a[3], off1b[3], off2a[3], off2b[3];
+	float isect2[3], dropco[3], plane[4];
+	float ang, d;
 	BMVert *closer_v;
 	EdgeHalf *e, *e1next, *e2prev;
 	BMFace *ff;
@@ -1899,12 +1904,13 @@ static void bevel_harden_normals(BMesh *bm, BevelParams *bp)
 				}
 			}
 			if (pnorm) {
-				if (pnorm == norm)
+				if (pnorm == norm) {
 					normalize_v3(norm);
+				}
 				l_index = BM_elem_index_get(l);
 				clnors = BM_ELEM_CD_GET_VOID_P(l, cd_clnors_offset);
 				BKE_lnor_space_custom_normal_to_data(
-					bm->lnor_spacearr->lspacearr[l_index], pnorm, clnors);
+				        bm->lnor_spacearr->lspacearr[l_index], pnorm, clnors);
 			}
 		}
 	}
@@ -2523,7 +2529,7 @@ static void print_adjust_stats(BoundVert *vstart)
 			delta = fabs(eright->offset_r - eleft->offset_l);
 			delta_pct = 100.0 * delta / eright->offset_r_spec;
 			printf("e%d r(%f) vs l(%f): abs(delta)=%f, delta_pct=%f\n",
-				BM_elem_index_get(eright->e), eright->offset_r, eleft->offset_l, delta, delta_pct);
+			       BM_elem_index_get(eright->e), eright->offset_r, eleft->offset_l, delta, delta_pct);
 			even_residual2 += delta * delta;
 			if (delta > max_even_r)
 				max_even_r = delta;
@@ -2542,7 +2548,7 @@ static void print_adjust_stats(BoundVert *vstart)
 			delta = eright->offset_r - eright->offset_r_spec;
 			delta_pct = 100.0 * delta / eright->offset_r_spec;
 			printf("e%d r(%f) vs r spec(%f): delta=%f, delta_pct=%f\n",
-				BM_elem_index_get(eright->e), eright->offset_r, eright->offset_r_spec, delta, delta_pct);
+			       BM_elem_index_get(eright->e), eright->offset_r, eright->offset_r_spec, delta, delta_pct);
 			spec_residual2 += delta * delta;
 			delta = fabs(delta);
 			delta_pct = fabs(delta_pct);
@@ -2554,7 +2560,7 @@ static void print_adjust_stats(BoundVert *vstart)
 			delta = eleft->offset_l - eleft->offset_l_spec;
 			delta_pct = 100.0 * delta / eright->offset_l_spec;
 			printf("e%d l(%f) vs l spec(%f): delta=%f, delta_pct=%f\n",
-				BM_elem_index_get(eright->e), eleft->offset_l, eleft->offset_l_spec, delta, delta_pct);
+			       BM_elem_index_get(eright->e), eleft->offset_l, eleft->offset_l_spec, delta, delta_pct);
 			spec_residual2 += delta * delta;
 			delta = fabs(delta);
 			delta_pct = fabs(delta_pct);
@@ -2745,7 +2751,7 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
 			EIG_linear_solver_right_hand_side_add(solver, 0, row, weight * enextleft->offset_l);
 #ifdef DEBUG_ADJUST
 			printf("b[%d]=%f * %f, for e%d->offset_l\n", row, weight, enextleft->offset_l,
-				BM_elem_index_get(enextleft->e));
+			       BM_elem_index_get(enextleft->e));
 #endif
 		}
 		else {
@@ -4130,13 +4136,14 @@ static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
 		for (j = 1; j < ns2 + odd; j++) {
 			for (k = 1; k <= ns2; k++) {
 				ikind = isect_line_line_v3(
-					mesh_vert(vm, i, 0, k)->co, centerline + clstride * im1 + 3 * k,
-					mesh_vert(vm, i, j, 0)->co, centerline + clstride * i + 3 * j,
-					meet1, meet2);
+				        mesh_vert(vm, i, 0, k)->co, centerline + clstride * im1 + 3 * k,
+				        mesh_vert(vm, i, j, 0)->co, centerline + clstride * i + 3 * j,
+				        meet1, meet2);
 				if (ikind == 0) {
 					/* how can this happen? fall back on interpolation in one direction if it does */
-					interp_v3_v3v3(mesh_vert(vm, i, j, k)->co,
-						mesh_vert(vm, i, 0, k)->co, centerline + clstride * im1 + 3 * k, j * ns2inv);
+					interp_v3_v3v3(
+					        mesh_vert(vm, i, j, k)->co,
+					        mesh_vert(vm, i, 0, k)->co, centerline + clstride * im1 + 3 * k, j * ns2inv);
 				}
 				else if (ikind == 1) {
 					copy_v3_v3(mesh_vert(vm, i, j, k)->co, meet1);

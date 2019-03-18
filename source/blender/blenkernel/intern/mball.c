@@ -56,6 +56,8 @@
 #include "BKE_object.h"
 #include "BKE_material.h"
 
+#include "DEG_depsgraph.h"
+
 /* Functions */
 
 /** Free (or release) any data used by this mball (does not free the mball itself). */
@@ -73,7 +75,7 @@ void BKE_mball_free(MetaBall *mb)
 
 void BKE_mball_init(MetaBall *mb)
 {
-	BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(mb, id));
+	BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(mb, id));
 
 	mb->size[0] = mb->size[1] = mb->size[2] = 1.0;
 	mb->texflag = MB_AUTOSPACE;
@@ -388,6 +390,7 @@ void BKE_mball_properties_copy(Scene *scene, Object *active_object)
 					mb->rendersize = active_mball->rendersize;
 					mb->thresh = active_mball->thresh;
 					mb->flag = active_mball->flag;
+					DEG_id_tag_update(&mb->id, 0);
 				}
 			}
 		}

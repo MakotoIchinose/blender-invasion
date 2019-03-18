@@ -31,6 +31,7 @@
 
 #include "RNA_define.h"
 #include "RNA_types.h"
+#include "RNA_enum_types.h"
 
 #include "rna_internal.h"
 
@@ -2957,7 +2958,9 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
 					}
 				}
 				else {
-					if (!defaultfound) {
+					if (!defaultfound &&
+					    !(eprop->itemf && eprop->item == DummyRNA_NULL_items))
+					{
 						CLOG_ERROR(&LOG, "%s%s.%s, enum default is not in items.",
 						           srna->identifier, errnest, prop->identifier);
 						DefRNA.error = 1;
@@ -3409,7 +3412,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
 	{"rna_gpencil.c", NULL, RNA_def_gpencil},
 	{"rna_image.c", "rna_image_api.c", RNA_def_image},
 	{"rna_key.c", NULL, RNA_def_key},
-	{"rna_lamp.c", NULL, RNA_def_light},
+	{"rna_light.c", NULL, RNA_def_light},
 	{"rna_lattice.c", "rna_lattice_api.c", RNA_def_lattice},
 	{"rna_layer.c", NULL, RNA_def_view_layer},
 	{"rna_linestyle.c", NULL, RNA_def_linestyle},

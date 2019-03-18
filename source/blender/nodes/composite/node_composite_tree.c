@@ -214,6 +214,7 @@ void register_node_tree_type_cmp(void)
 	ntreeTypeAdd(tt);
 }
 
+extern void *COM_linker_hack;  /* Quiet warning. */
 void *COM_linker_hack = NULL;
 
 void ntreeCompositExecTree(Scene *scene, bNodeTree *ntree, RenderData *rd, int rendering, int do_preview,
@@ -275,7 +276,7 @@ void ntreeCompositTagRender(Scene *curscene)
 	/* XXX Think using G_MAIN here is valid, since you want to update current file's scene nodes,
 	 * not the ones in temp main generated for rendering?
 	 * This is still rather weak though, ideally render struct would store own main AND original G_MAIN... */
-	for (sce = G_MAIN->scene.first; sce; sce = sce->id.next) {
+	for (sce = G_MAIN->scenes.first; sce; sce = sce->id.next) {
 		if (sce->nodetree) {
 			bNode *node;
 

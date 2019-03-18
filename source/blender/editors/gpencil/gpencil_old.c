@@ -165,7 +165,7 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *UNUSED(op))
 
 #if 0 /* GPXX */
 	/* Handle object-linked grease pencil datablocks */
-	for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if (ob->gpd) {
 			if (ob->type == OB_GPENCIL) {
 				/* GP Object - remap the links */
@@ -187,7 +187,7 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *UNUSED(op))
 				 * to put them into from here...
 				 */
 				printf("WARNING: Old Grease Pencil data ('%s') still exists on Object '%s'\n",
-					ob->gpd->id.name + 2, ob->id.name + 2);
+				       ob->gpd->id.name + 2, ob->id.name + 2);
 			}
 		}
 	}

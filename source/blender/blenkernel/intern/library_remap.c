@@ -41,7 +41,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_ipo_types.h"
 #include "DNA_key_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
@@ -80,7 +80,7 @@
 #include "BKE_image.h"
 #include "BKE_ipo.h"
 #include "BKE_key.h"
-#include "BKE_lamp.h"
+#include "BKE_light.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
@@ -180,6 +180,11 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 	}
 
 	if (*id_p && (*id_p == old_id)) {
+		/* Better remap to NULL than not remapping at all, then we can handle it as a regular remap-to-NULL case... */
+		if ((cb_flag & IDWALK_CB_NEVER_SELF) && (new_id == id_self)) {
+			new_id = NULL;
+		}
+
 		const bool is_reference = (cb_flag & IDWALK_CB_STATIC_OVERRIDE_REFERENCE) != 0;
 		const bool is_indirect = (cb_flag & IDWALK_CB_INDIRECT_USAGE) != 0;
 		const bool skip_indirect = (id_remap_data->flag & ID_REMAP_SKIP_INDIRECT_USAGE) != 0;
@@ -189,7 +194,8 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 		const bool is_obj = (GS(id->name) == ID_OB);
 		const bool is_obj_proxy = (is_obj && (((Object *)id)->proxy || ((Object *)id)->proxy_group));
 		const bool is_obj_editmode = (is_obj && BKE_object_is_in_editmode((Object *)id));
-		const bool is_never_null = ((cb_flag & IDWALK_CB_NEVER_NULL) && (new_id == NULL) &&
+		const bool is_never_null = ((cb_flag & IDWALK_CB_NEVER_NULL) &&
+		                            (new_id == NULL) &&
 		                            (id_remap_data->flag & ID_REMAP_FORCE_NEVER_NULL_USAGE) == 0);
 		const bool skip_reference = (id_remap_data->flag & ID_REMAP_SKIP_STATIC_OVERRIDE) != 0;
 		const bool skip_never_null = (id_remap_data->flag & ID_REMAP_SKIP_NEVER_NULL_USAGE) != 0;
@@ -314,14 +320,14 @@ static void libblock_remap_data_postprocess_object_update(Main *bmain, Object *o
 	BKE_main_collection_sync_remap(bmain);
 
 	if (old_ob == NULL) {
-		for (Object *ob = bmain->object.first; ob != NULL; ob = ob->id.next) {
+		for (Object *ob = bmain->objects.first; ob != NULL; ob = ob->id.next) {
 			if (ob->type == OB_MBALL && BKE_mball_is_basis(ob)) {
 				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			}
 		}
 	}
 	else {
-		for (Object *ob = bmain->object.first; ob != NULL; ob = ob->id.next) {
+		for (Object *ob = bmain->objects.first; ob != NULL; ob = ob->id.next) {
 			if (ob->type == OB_MBALL && BKE_mball_is_basis_for(ob, old_ob)) {
 				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 				break;  /* There is only one basis... */
@@ -530,7 +536,7 @@ void BKE_libblock_remap_locked(
 		case ID_CU:
 		case ID_MB:
 			if (new_id) {  /* Only affects us in case obdata was relinked (changed). */
-				for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+				for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 					libblock_remap_data_postprocess_obdata_relink(bmain, ob, new_id);
 				}
 			}
@@ -673,7 +679,7 @@ static int id_relink_to_newid_looper(void *UNUSED(user_data), ID *UNUSED(self_id
 
 /** Similar to libblock_relink_ex, but is remapping IDs to their newid value if non-NULL, in given \a id.
  *
- * Very specific usage, not sure we'll keep it on the long run, currently only used in Object duplication code...
+ * Very specific usage, not sure we'll keep it on the long run, currently only used in Object/Collection duplication code...
  */
 void BKE_libblock_relink_to_newid(ID *id)
 {
@@ -736,7 +742,7 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
 			BKE_lattice_free((Lattice *)id);
 			break;
 		case ID_LA:
-			BKE_lamp_free((Lamp *)id);
+			BKE_light_free((Light *)id);
 			break;
 		case ID_CA:
 			BKE_camera_free((Camera *) id);
@@ -960,6 +966,7 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 {
 	const int tag = LIB_TAG_DOIT;
 	ListBase *lbarray[MAX_LIBARRAY];
+	Link dummy_link = {0};
 	int base_count, i;
 
 	/* Used by batch tagged deletion, when we call BKE_id_free then, id is no more in Main database,
@@ -998,17 +1005,16 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 					if ((id->tag & tag) || (id->lib != NULL && (id->lib->id.tag & tag))) {
 						BLI_remlink(lb, id);
 						BLI_addtail(&tagged_deleted_ids, id);
-						id->tag |= tag | LIB_TAG_NO_MAIN;
+						/* Do not tag as no_main now, we want to unlink it first (lower-level ID management code
+						 * has some specific handling of 'nom main' IDs that would be a problem in that case). */
+						id->tag |= tag;
 						keep_looping = true;
 					}
 				}
 			}
 			if (last_remapped_id == NULL) {
-				last_remapped_id = tagged_deleted_ids.first;
-				if (last_remapped_id == NULL) {
-					BLI_assert(!keep_looping);
-					break;
-				}
+				dummy_link.next = tagged_deleted_ids.first;
+				last_remapped_id = (ID *)(&dummy_link);
 			}
 			for (id = last_remapped_id->next; id; id = id->next) {
 				/* Will tag 'never NULL' users of this ID too.
@@ -1021,6 +1027,8 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 				            ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
 				/* Since we removed ID from Main, we also need to unlink its own other IDs usages ourself. */
 				BKE_libblock_relink_ex(bmain, id, NULL, NULL, true);
+				/* Now we can safely mark that ID as not being in Main database anymore. */
+				id->tag |= LIB_TAG_NO_MAIN;
 				/* This is needed because we may not have remapped usages of that ID by other deleted ones. */
 //				id->us = 0;  /* Is it actually? */
 			}

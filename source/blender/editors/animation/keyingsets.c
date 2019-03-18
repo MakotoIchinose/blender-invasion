@@ -607,7 +607,7 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *ksi)
 			BKE_keyingset_free(ks);
 			BLI_remlink(&builtin_keyingsets, ks);
 
-			for (scene = bmain->scene.first; scene; scene = scene->id.next)
+			for (scene = bmain->scenes.first; scene; scene = scene->id.next)
 				BLI_remlink_safe(&scene->keyingsets, ks);
 
 			MEM_freeN(ks);
@@ -1049,7 +1049,7 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, bAction *act, KeyingSe
 				break;
 			}
 			default:
-				DEG_id_tag_update(ksp->id, ID_RECALC_COPY_ON_WRITE);
+				DEG_id_tag_update(ksp->id, ID_RECALC_ANIMATION_NO_FLUSH);
 				break;
 		}
 

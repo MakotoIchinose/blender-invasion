@@ -48,7 +48,6 @@
 #include "bmesh.h"
 
 const EnumPropertyItem rna_enum_particle_edit_hair_brush_items[] = {
-	{PE_BRUSH_NONE, "NONE", 0, "None", "Don't use any brush"},
 	{PE_BRUSH_COMB, "COMB", 0, "Comb", "Comb hairs"},
 	{PE_BRUSH_SMOOTH, "SMOOTH", 0, "Smooth", "Smooth hairs"},
 	{PE_BRUSH_ADD, "ADD", 0, "Add", "Add hairs"},
@@ -83,6 +82,7 @@ static const EnumPropertyItem rna_enum_gpencil_lock_axis_items[] = {
 	{GP_LOCKAXIS_Y, "AXIS_Y", ICON_AXIS_FRONT, "Front (X-Z)", "Project strokes to plane locked to Y"},
 	{GP_LOCKAXIS_X, "AXIS_X", ICON_AXIS_SIDE, "Side (Y-Z)", "Project strokes to plane locked to X"},
 	{GP_LOCKAXIS_Z, "AXIS_Z", ICON_AXIS_TOP, "Top (X-Y)", "Project strokes to plane locked to Z"},
+	{GP_LOCKAXIS_CURSOR, "CURSOR", ICON_PIVOT_CURSOR, "Cursor", "Align strokes to current 3D cursor orientation"},
 	{0, NULL, 0, NULL, NULL},
 };
 #endif
@@ -136,7 +136,6 @@ static void rna_GPencil_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UN
 }
 
 const EnumPropertyItem rna_enum_particle_edit_disconnected_hair_brush_items[] = {
-	{PE_BRUSH_NONE, "NONE", 0, "None", "Don't use any brush"},
 	{PE_BRUSH_COMB, "COMB", 0, "Comb", "Comb hairs"},
 	{PE_BRUSH_SMOOTH, "SMOOTH", 0, "Smooth", "Smooth hairs"},
 	{PE_BRUSH_LENGTH, "LENGTH", 0, "Length", "Make hairs longer or shorter"},
@@ -146,7 +145,6 @@ const EnumPropertyItem rna_enum_particle_edit_disconnected_hair_brush_items[] = 
 };
 
 static const EnumPropertyItem particle_edit_cache_brush_items[] = {
-	{PE_BRUSH_NONE, "NONE", 0, "None", "Don't use any brush"},
 	{PE_BRUSH_COMB, "COMB", 0, "Comb", "Comb paths"},
 	{PE_BRUSH_SMOOTH, "SMOOTH", 0, "Smooth", "Smooth paths"},
 	{PE_BRUSH_LENGTH, "LENGTH", 0, "Length", "Make paths longer or shorter"},
@@ -158,8 +156,7 @@ static PointerRNA rna_ParticleEdit_brush_get(PointerRNA *ptr)
 	ParticleEditSettings *pset = (ParticleEditSettings *)ptr->data;
 	ParticleBrushData *brush = NULL;
 
-	if (pset->brushtype != PE_BRUSH_NONE)
-		brush = &pset->brush[pset->brushtype];
+	brush = &pset->brush[pset->brushtype];
 
 	return rna_pointer_inherit_refine(ptr, &RNA_ParticleBrush, brush);
 }
@@ -485,7 +482,7 @@ static void rna_ImaPaint_canvas_update(bContext *C, PointerRNA *UNUSED(ptr))
 	bScreen *sc;
 	Image *ima = scene->toolsettings->imapaint.canvas;
 
-	for (sc = bmain->screen.first; sc; sc = sc->id.next) {
+	for (sc = bmain->screens.first; sc; sc = sc->id.next) {
 		ScrArea *sa;
 		for (sa = sc->areabase.first; sa; sa = sa->next) {
 			SpaceLink *slink;
@@ -494,7 +491,7 @@ static void rna_ImaPaint_canvas_update(bContext *C, PointerRNA *UNUSED(ptr))
 					SpaceImage *sima = (SpaceImage *)slink;
 
 					if (!sima->pin)
-						ED_space_image_set(bmain, sima, scene, obedit, ima);
+						ED_space_image_set(bmain, sima, obedit, ima, true);
 				}
 			}
 		}
@@ -797,7 +794,7 @@ static void rna_def_sculpt(BlenderRNA  *brna)
 	                         "In dynamic-topology mode, how mesh detail size is calculated");
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
-	prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "gravity_factor");
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 3);
@@ -1374,8 +1371,9 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "multiframe_falloff_curve", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "cur_falloff");
 	RNA_def_property_struct_type(prop, "CurveMapping");
-	RNA_def_property_ui_text(prop, "Curve",
-		"Custom curve to control falloff of brush effect by Grease Pencil frames");
+	RNA_def_property_ui_text(
+	        prop, "Curve",
+	        "Custom curve to control falloff of brush effect by Grease Pencil frames");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
@@ -1383,8 +1381,9 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "thickness_primitive_curve", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "cur_primitive");
 	RNA_def_property_struct_type(prop, "CurveMapping");
-	RNA_def_property_ui_text(prop, "Curve",
-		"Custom curve to control primitive thickness");
+	RNA_def_property_ui_text(
+	        prop, "Curve",
+	        "Custom curve to control primitive thickness");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 

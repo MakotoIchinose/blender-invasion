@@ -268,7 +268,7 @@ static void do_item_rename(ARegion *ar, TreeElement *te, TreeStoreElem *tselem,
 		}
 	}
 	else if (ID_IS_LINKED(tselem->id)) {
-		BKE_report(reports, RPT_WARNING, "Cannot edit external libdata");
+		BKE_report(reports, RPT_WARNING, "Cannot edit external library data");
 	}
 	else if (te->idcode == ID_LI && ((Library *)tselem->id)->parent) {
 		BKE_report(reports, RPT_WARNING, "Cannot edit the path of an indirectly linked library");
@@ -476,8 +476,8 @@ static int outliner_id_remap_exec(bContext *C, wmOperator *op)
 	/* recreate dependency graph to include new objects */
 	DEG_relations_tag_update(bmain);
 
-	/* free gpu materials, some materials depend on existing objects,
-	 * such as lamps so freeing correctly refreshes */
+	/* Free gpu materials, some materials depend on existing objects,
+	 * such as lights so freeing correctly refreshes. */
 	GPU_materials_free(bmain);
 
 	WM_event_add_notifier(C, NC_WINDOW, NULL);

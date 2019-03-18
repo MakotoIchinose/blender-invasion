@@ -547,7 +547,7 @@ static void initSnappingMode(TransInfo *t)
 
 		/* Edit mode */
 		if (t->tsnap.applySnap != NULL && // A snapping function actually exist
-		    ((obedit_type != -1) && ELEM(obedit_type, OB_MESH, OB_ARMATURE, OB_CURVE, OB_LATTICE, OB_MBALL)) ) // Temporary limited to edit mode meshes, armature, curves, mballs
+		    ((obedit_type != -1) && ELEM(obedit_type, OB_MESH, OB_ARMATURE, OB_CURVE, OB_LATTICE, OB_MBALL)) ) // Temporary limited to edit mode meshes, armature, curves, metaballs
 		{
 			/* Exclude editmesh if using proportional edit */
 			if ((obedit_type == OB_MESH) && (t->flag & T_PROP_EDIT)) {
@@ -870,7 +870,9 @@ static void ApplySnapResize(TransInfo *t, float vec[3])
 	getSnapPoint(t, point);
 
 	float dist = ResizeBetween(t, t->tsnap.snapTarget, point);
-	copy_v3_fl(vec, dist);
+	if (dist != TRANSFORM_DIST_INVALID) {
+		copy_v3_fl(vec, dist);
+	}
 }
 
 /********************** DISTANCE **************************/

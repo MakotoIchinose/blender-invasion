@@ -68,7 +68,7 @@ typedef struct NodeLinkItem {
  */
 static bool node_link_item_compare(bNode *node, NodeLinkItem *item)
 {
-	if (node->type == NODE_GROUP) {
+	if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
 		return (node->id == (ID *)item->ngroup);
 	}
 	else
@@ -77,7 +77,7 @@ static bool node_link_item_compare(bNode *node, NodeLinkItem *item)
 
 static void node_link_item_apply(Main *bmain, bNode *node, NodeLinkItem *item)
 {
-	if (node->type == NODE_GROUP) {
+	if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
 		node->id = (ID *)item->ngroup;
 		ntreeUpdateTree(bmain, item->ngroup);
 	}
@@ -143,9 +143,7 @@ static void node_remove_linked(Main *bmain, bNodeTree *ntree, bNode *rem_node)
 		next = node->next;
 
 		if (node->flag & NODE_TEST) {
-			if (node->id)
-				id_us_min(node->id);
-			nodeDeleteNode(bmain, ntree, node);
+			nodeRemoveNode(bmain, ntree, node, true);
 		}
 	}
 }
@@ -301,7 +299,7 @@ static void ui_node_link_items(NodeLinkArg *arg, int in_out, NodeLinkItem **r_it
 		bNodeTree *ngroup;
 		int i;
 
-		for (ngroup = arg->bmain->nodetree.first; ngroup; ngroup = ngroup->id.next) {
+		for (ngroup = arg->bmain->nodetrees.first; ngroup; ngroup = ngroup->id.next) {
 			ListBase *lb = ((in_out == SOCK_IN) ? &ngroup->inputs : &ngroup->outputs);
 			totitems += BLI_listbase_count(lb);
 		}
@@ -310,7 +308,7 @@ static void ui_node_link_items(NodeLinkArg *arg, int in_out, NodeLinkItem **r_it
 			items = MEM_callocN(sizeof(NodeLinkItem) * totitems, "ui node link items");
 
 			i = 0;
-			for (ngroup = arg->bmain->nodetree.first; ngroup; ngroup = ngroup->id.next) {
+			for (ngroup = arg->bmain->nodetrees.first; ngroup; ngroup = ngroup->id.next) {
 				ListBase *lb = (in_out == SOCK_IN ? &ngroup->inputs : &ngroup->outputs);
 				bNodeSocket *stemp;
 				int index;

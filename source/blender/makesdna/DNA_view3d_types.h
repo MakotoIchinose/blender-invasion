@@ -75,7 +75,6 @@ typedef struct RegionView3D {
 	struct RegionView3D *localvd;
 	struct RenderEngine *render_engine;
 	struct ViewDepths *depths;
-	void *gpuoffscreen;
 
 	/** Animated smooth view. */
 	struct SmoothView3DStore *sms;
@@ -115,7 +114,7 @@ typedef struct RegionView3D {
 	char viewlock;
 	/** Options for quadview (store while out of quad view). */
 	char viewlock_quad;
-	char pad[3];
+	char _pad[3];
 	/** Normalized offset for locked view: (-1, -1) bottom left, (1, 1) upper right. */
 	float ofs_lock[2];
 
@@ -136,8 +135,13 @@ typedef struct RegionView3D {
 
 typedef struct View3DCursor {
 	float location[3];
-	float rotation[4];
-	char _pad[4];
+
+	float rotation_quaternion[4];
+	float rotation_euler[3];
+	float rotation_axis[3], rotation_angle;
+	short rotation_mode;
+
+	char _pad[6];
 } View3DCursor;
 
 /* 3D Viewport Shading settings */
@@ -154,7 +158,8 @@ typedef struct View3DShading {
 	char light;
 	char background_type;
 	char cavity_type;
-	char pad[7];
+	char wire_color_type;
+	char _pad[6];
 
 	/** FILE_MAXFILE. */
 	char studio_light[256];
@@ -205,7 +210,7 @@ typedef struct View3DOverlay {
 	float weight_paint_mode_opacity;
 
 	/* Armature edit/pose mode settings */
-	int arm_flag;
+	int _pad3;
 	float xray_alpha_bone;
 
 	/* Other settings */
@@ -300,14 +305,14 @@ typedef struct View3D {
 	/* Stereoscopy settings */
 	short stereo3d_flag;
 	char stereo3d_camera;
-	char pad4;
+	char _pad4;
 	float stereo3d_convergence_factor;
 	float stereo3d_volume_alpha;
 	float stereo3d_convergence_alpha;
 
 	/* Display settings */
 	short drawtype DNA_DEPRECATED;
-	short pad5[3];
+	char _pad5[6];
 
 	View3DShading shading;
 	View3DOverlay overlay;
@@ -320,14 +325,14 @@ typedef struct View3D {
 #define V3D_S3D_DISPVOLUME      (1 << 2)
 
 /* View3D->flag (short) */
-#define V3D_FLAG_DEPRECATED_0   (1 << 0)  /* cleared */
-#define V3D_FLAG_DEPRECATED_1   (1 << 1)  /* cleared */
+#define V3D_FLAG_UNUSED_0       (1 << 0)  /* cleared */
+#define V3D_FLAG_UNUSED_1       (1 << 1)  /* cleared */
 #define V3D_HIDE_HELPLINES      (1 << 2)
 #define V3D_INVALID_BACKBUF     (1 << 3)
 
-#define V3D_FLAG_DEPRECATED_10  (1 << 10)  /* cleared */
+#define V3D_FLAG_UNUSED_10      (1 << 10)  /* cleared */
 #define V3D_SELECT_OUTLINE      (1 << 11)
-#define V3D_FLAG_DEPRECATED_12  (1 << 12)  /* cleared */
+#define V3D_FLAG_UNUSED_12      (1 << 12)  /* cleared */
 #define V3D_GLOBAL_STATS        (1 << 13)
 #define V3D_DRAW_CENTERS        (1 << 15)
 
@@ -368,20 +373,20 @@ typedef struct View3D {
 	(((view) >= RV3D_VIEW_FRONT) && ((view) <= RV3D_VIEW_BOTTOM))
 
 /* View3d->flag2 (int) */
-#define V3D_RENDER_OVERRIDE     (1 << 2)
-#define V3D_FLAG2_DEPRECATED_3  (1 << 3)   /* cleared */
+#define V3D_HIDE_OVERLAYS       (1 << 2)
+#define V3D_FLAG2_UNUSED_3      (1 << 3)   /* cleared */
 #define V3D_SHOW_ANNOTATION     (1 << 4)
 #define V3D_LOCK_CAMERA         (1 << 5)
-#define V3D_FLAG2_DEPRECATED_6  (1 << 6)   /* cleared */
+#define V3D_FLAG2_UNUSED_6      (1 << 6)   /* cleared */
 #define V3D_SHOW_RECONSTRUCTION (1 << 7)
 #define V3D_SHOW_CAMERAPATH     (1 << 8)
 #define V3D_SHOW_BUNDLENAME     (1 << 9)
-#define V3D_FLAG2_DEPRECATED_10 (1 << 10)  /* cleared */
+#define V3D_FLAG2_UNUSED_10     (1 << 10)  /* cleared */
 #define V3D_RENDER_BORDER       (1 << 11)
-#define V3D_FLAG2_DEPRECATED_12 (1 << 12)  /* cleared */
-#define V3D_FLAG2_DEPRECATED_13 (1 << 13)  /* cleared */
-#define V3D_FLAG2_DEPRECATED_14 (1 << 14)  /* cleared */
-#define V3D_FLAG2_DEPRECATED_15 (1 << 15)  /* cleared */
+#define V3D_FLAG2_UNUSED_12     (1 << 12)  /* cleared */
+#define V3D_FLAG2_UNUSED_13     (1 << 13)  /* cleared */
+#define V3D_FLAG2_UNUSED_14     (1 << 14)  /* cleared */
+#define V3D_FLAG2_UNUSED_15     (1 << 15)  /* cleared */
 
 /* View3d->gp_flag (short) */
 #define V3D_GP_SHOW_PAPER            (1 << 0) /* Activate paper to cover all viewport */
@@ -483,11 +488,6 @@ enum {
 
 	V3D_OVERLAY_EDIT_CU_HANDLES   = (1 << 20),
 	V3D_OVERLAY_EDIT_CU_NORMALS   = (1 << 21),
-};
-
-/* View3DOverlay->arm_flag */
-enum {
-	V3D_OVERLAY_ARM_TRANSP_BONES  = (1 << 0),
 };
 
 /* View3DOverlay->paint_flag */

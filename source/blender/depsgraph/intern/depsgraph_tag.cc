@@ -572,7 +572,7 @@ NodeType geometry_tag_to_component(const ID *id)
 void id_tag_update(Main *bmain, ID *id, int flag, eUpdateSource update_source)
 {
 	graph_id_tag_update(bmain, NULL, id, flag, update_source);
-	LISTBASE_FOREACH (Scene *, scene, &bmain->scene) {
+	LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
 		LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
 			Depsgraph *depsgraph =
 			        (Depsgraph *)BKE_scene_get_depsgraph(scene,
@@ -603,8 +603,11 @@ void graph_id_tag_update(Main *bmain,
 		       update_source_as_string(update_source));
 	}
 	IDNode *id_node = (graph != NULL) ? graph->find_id_node(id)
-	                                      : NULL;
-	DEG_id_type_tag(bmain, GS(id->name));
+	                                  : NULL;
+	if (graph != NULL) {
+		DEG_graph_id_type_tag(reinterpret_cast<::Depsgraph*>(graph),
+		                      GS(id->name));
+	}
 	if (flag == 0) {
 		deg_graph_node_tag_zero(bmain, graph, id_node, update_source);
 	}
@@ -619,8 +622,12 @@ void graph_id_tag_update(Main *bmain,
 	/* Special case for nested node tree datablocks. */
 	id_tag_update_ntree_special(bmain, graph, id, flag, update_source);
 	/* Direct update tags means that something outside of simulated/cached
-	 * physics did change and that cache is to be invalidated. */
-	if (update_source == DEG_UPDATE_SOURCE_USER_EDIT) {
+	 * physics did change and that cache is to be invalidated.
+	 * This is only needed if data changes. If it's just a drawing, we keep the
+	 * point cache. */
+	if (update_source == DEG_UPDATE_SOURCE_USER_EDIT &&
+	    flag != ID_RECALC_SHADING)
+	{
 		graph_id_tag_update_single_flag(
 		        bmain, graph, id, id_node, ID_RECALC_POINT_CACHE, update_source);
 	}
@@ -680,29 +687,32 @@ void DEG_graph_id_tag_update(struct Main *bmain,
 }
 
 /* Mark a particular datablock type as having changing. */
-void DEG_id_type_tag(Main *bmain, short id_type)
+void DEG_graph_id_type_tag(Depsgraph *depsgraph, short id_type)
 {
 	if (id_type == ID_NT) {
 		/* Stupid workaround so parent datablocks of nested nodetree get looped
 		 * over when we loop over tagged datablock types. */
-		DEG_id_type_tag(bmain, ID_MA);
-		DEG_id_type_tag(bmain, ID_TE);
-		DEG_id_type_tag(bmain, ID_LA);
-		DEG_id_type_tag(bmain, ID_WO);
-		DEG_id_type_tag(bmain, ID_SCE);
+		DEG_graph_id_type_tag(depsgraph, ID_MA);
+		DEG_graph_id_type_tag(depsgraph, ID_TE);
+		DEG_graph_id_type_tag(depsgraph, ID_LA);
+		DEG_graph_id_type_tag(depsgraph, ID_WO);
+		DEG_graph_id_type_tag(depsgraph, ID_SCE);
 	}
+	const int id_type_index = BKE_idcode_to_index(id_type);
+	DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(depsgraph);
+	deg_graph->id_type_updated[id_type_index] = 1;
+}
 
-	int id_type_index = BKE_idcode_to_index(id_type);
-
-	LISTBASE_FOREACH (Scene *, scene, &bmain->scene) {
+void DEG_id_type_tag(Main *bmain, short id_type)
+{
+	LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
 		LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
 			Depsgraph *depsgraph =
 			        (Depsgraph *)BKE_scene_get_depsgraph(scene,
 			                                             view_layer,
 			                                             false);
 			if (depsgraph != NULL) {
-				DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(depsgraph);
-				deg_graph->id_type_updated[id_type_index] = 1;
+				DEG_graph_id_type_tag(depsgraph, id_type);
 			}
 		}
 	}
@@ -725,7 +735,7 @@ void DEG_graph_on_visible_update(Main *bmain, Depsgraph *depsgraph)
 
 void DEG_on_visible_update(Main *bmain, const bool UNUSED(do_time))
 {
-	LISTBASE_FOREACH (Scene *, scene, &bmain->scene) {
+	LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
 		LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
 			Depsgraph *depsgraph =
 			        (Depsgraph *)BKE_scene_get_depsgraph(scene,

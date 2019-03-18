@@ -25,26 +25,25 @@
 
 #include <stdio.h>
 
-#include "DNA_object_types.h"
-
 #include "BLI_utildefines.h"
-#include "BLI_math_matrix.h"
-
-#include "BKE_library_query.h"
-#include "BKE_modifier.h"
-
-#include "MOD_util.h"
 
 #include "BLI_alloca.h"
 #include "BLI_math_geom.h"
-
-#include "BKE_global.h"  /* only to check G.debug */
-#include "BKE_library.h"
-#include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
+
+#include "BKE_global.h"  /* only to check G.debug */
+#include "BKE_library.h"
+#include "BKE_library_query.h"
+#include "BKE_material.h"
+#include "BKE_mesh.h"
+#include "BKE_modifier.h"
+
+
+#include "MOD_util.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -302,7 +301,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 				MEM_freeN(looptris);
 			}
 
-			result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+			result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 
 			BM_mesh_free(bm);
 
@@ -322,13 +321,11 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	return result;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md))
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md), CustomData_MeshMasks *r_cddata_masks)
 {
-	CustomDataMask dataMask = CD_MASK_MTFACE | CD_MASK_MEDGE;
-
-	dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	r_cddata_masks->emask |= CD_MASK_MEDGE;
+	r_cddata_masks->fmask |= CD_MASK_MTFACE;
 }
 
 ModifierTypeInfo modifierType_Boolean = {
@@ -363,4 +360,5 @@ ModifierTypeInfo modifierType_Boolean = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

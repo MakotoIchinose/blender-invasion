@@ -97,7 +97,7 @@ static void join_mesh_single(
 		((Mesh *)ob_dst->data)->cd_flag |= me->cd_flag;
 
 		/* standard data */
-		CustomData_merge(&me->vdata, vdata, CD_MASK_MESH, CD_DEFAULT, totvert);
+		CustomData_merge(&me->vdata, vdata, CD_MASK_MESH.vmask, CD_DEFAULT, totvert);
 		CustomData_copy_data_named(&me->vdata, vdata, 0, *vertofs, me->totvert);
 
 		/* vertex groups */
@@ -191,7 +191,7 @@ static void join_mesh_single(
 	}
 
 	if (me->totedge) {
-		CustomData_merge(&me->edata, edata, CD_MASK_MESH, CD_DEFAULT, totedge);
+		CustomData_merge(&me->edata, edata, CD_MASK_MESH.emask, CD_DEFAULT, totedge);
 		CustomData_copy_data_named(&me->edata, edata, 0, *edgeofs, me->totedge);
 
 		for (a = 0; a < me->totedge; a++, medge++) {
@@ -213,7 +213,7 @@ static void join_mesh_single(
 			}
 		}
 
-		CustomData_merge(&me->ldata, ldata, CD_MASK_MESH, CD_DEFAULT, totloop);
+		CustomData_merge(&me->ldata, ldata, CD_MASK_MESH.lmask, CD_DEFAULT, totloop);
 		CustomData_copy_data_named(&me->ldata, ldata, 0, *loopofs, me->totloop);
 
 		for (a = 0; a < me->totloop; a++, mloop++) {
@@ -237,7 +237,7 @@ static void join_mesh_single(
 			}
 		}
 
-		CustomData_merge(&me->pdata, pdata, CD_MASK_MESH, CD_DEFAULT, totpoly);
+		CustomData_merge(&me->pdata, pdata, CD_MASK_MESH.pmask, CD_DEFAULT, totpoly);
 		CustomData_copy_data_named(&me->pdata, pdata, 0, *polyofs, me->totpoly);
 
 		for (a = 0; a < me->totpoly; a++, mpoly++) {
@@ -665,7 +665,7 @@ int join_mesh_shapes_exec(bContext *C, wmOperator *op)
 				Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
 				Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_iter);
 
-				me_deformed = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, CD_MASK_BAREMESH);
+				me_deformed = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
 				if (!me_deformed) {
 					continue;
@@ -1014,7 +1014,9 @@ int *mesh_get_x_mirror_faces(Object *ob, BMEditMesh *em, Mesh *me_eval)
  *
  * \return boolean true == Found
  */
-bool ED_mesh_pick_face(bContext *C, Object *ob, const int mval[2], unsigned int *index, int size)
+bool ED_mesh_pick_face(
+        bContext *C, Object *ob, const int mval[2], uint dist_px,
+        uint *r_index)
 {
 	ViewContext vc;
 	Mesh *me = ob->data;
@@ -1026,25 +1028,29 @@ bool ED_mesh_pick_face(bContext *C, Object *ob, const int mval[2], unsigned int 
 
 	ED_view3d_viewcontext_init(C, &vc);
 
-	if (size) {
+	if (dist_px) {
 		/* sample rect to increase chances of selecting, so that when clicking
 		 * on an edge in the backbuf, we can still select a face */
 
-		float dummy_dist;
-		*index = ED_view3d_backbuf_sample_rect(&vc, mval, size, 1, me->totpoly + 1, &dummy_dist);
+		ED_view3d_select_id_validate(&vc);
+
+		*r_index = ED_view3d_select_id_read_nearest(
+		        &vc, mval, 1, me->totpoly + 1, &dist_px);
 	}
 	else {
 		/* sample only on the exact position */
-		*index = ED_view3d_backbuf_sample(&vc, mval[0], mval[1]);
+		*r_index = ED_view3d_select_id_sample(&vc, mval[0], mval[1]);
 	}
 
-	if ((*index) == 0 || (*index) > (unsigned int)me->totpoly)
+	if ((*r_index) == 0 || (*r_index) > (unsigned int)me->totpoly) {
 		return false;
+	}
 
-	(*index)--;
+	(*r_index)--;
 
 	return true;
 }
+
 static void ed_mesh_pick_face_vert__mpoly_find(
         /* context */
         struct ARegion *ar, const float mval[2],
@@ -1073,7 +1079,9 @@ static void ed_mesh_pick_face_vert__mpoly_find(
  * Use when the back buffer stores face index values. but we want a vert.
  * This gets the face then finds the closest vertex to mval.
  */
-bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned int *index, int size)
+bool ED_mesh_pick_face_vert(
+        bContext *C, Object *ob, const int mval[2], uint dist_px,
+        uint *r_index)
 {
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	unsigned int poly_index;
@@ -1081,13 +1089,13 @@ bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned
 
 	BLI_assert(me && GS(me->id.name) == ID_ME);
 
-	if (ED_mesh_pick_face(C, ob, mval, &poly_index, size)) {
+	if (ED_mesh_pick_face(C, ob, mval, dist_px, &poly_index)) {
 		Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
 		Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
 		struct ARegion *ar = CTX_wm_region(C);
 
 		/* derived mesh to find deformed locations */
-		Mesh *me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, CD_MASK_BAREMESH | CD_MASK_ORIGINDEX);
+		Mesh *me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH_ORIGINDEX);
 
 		int v_idx_best = ORIGINDEX_NONE;
 
@@ -1131,7 +1139,7 @@ bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned
 			}
 		}
 
-		/* map 'dm -> me' index if possible */
+		/* map 'dm -> me' r_index if possible */
 		if (v_idx_best != ORIGINDEX_NONE) {
 			const int *index_mv_to_orig;
 			index_mv_to_orig = CustomData_get_layer(&me_eval->vdata, CD_ORIGINDEX);
@@ -1141,7 +1149,7 @@ bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned
 		}
 
 		if ((v_idx_best != ORIGINDEX_NONE) && (v_idx_best < me->totvert)) {
-			*index = v_idx_best;
+			*r_index = v_idx_best;
 			return true;
 		}
 	}
@@ -1181,7 +1189,9 @@ static void ed_mesh_pick_vert__mapFunc(void *userData, int index, const float co
 		}
 	}
 }
-bool ED_mesh_pick_vert(bContext *C, Object *ob, const int mval[2], unsigned int *index, int size, bool use_zbuf)
+bool ED_mesh_pick_vert(
+        bContext *C, Object *ob, const int mval[2], uint dist_px, bool use_zbuf,
+        uint *r_index)
 {
 	ViewContext vc;
 	Mesh *me = ob->data;
@@ -1194,29 +1204,32 @@ bool ED_mesh_pick_vert(bContext *C, Object *ob, const int mval[2], unsigned int 
 	ED_view3d_viewcontext_init(C, &vc);
 
 	if (use_zbuf) {
-		if (size > 0) {
+		if (dist_px > 0) {
 			/* sample rect to increase chances of selecting, so that when clicking
 			 * on an face in the backbuf, we can still select a vert */
 
-			float dummy_dist;
-			*index = ED_view3d_backbuf_sample_rect(&vc, mval, size, 1, me->totvert + 1, &dummy_dist);
+			ED_view3d_select_id_validate(&vc);
+
+			*r_index = ED_view3d_select_id_read_nearest(
+			        &vc, mval, 1, me->totvert + 1, &dist_px);
 		}
 		else {
 			/* sample only on the exact position */
-			*index = ED_view3d_backbuf_sample(&vc, mval[0], mval[1]);
+			*r_index = ED_view3d_select_id_sample(&vc, mval[0], mval[1]);
 		}
 
-		if ((*index) == 0 || (*index) > (unsigned int)me->totvert)
+		if ((*r_index) == 0 || (*r_index) > (uint)me->totvert) {
 			return false;
+		}
 
-		(*index)--;
+		(*r_index)--;
 	}
 	else {
 		Scene *scene_eval = DEG_get_evaluated_scene(vc.depsgraph);
 		Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, ob);
 
 		/* derived mesh to find deformed locations */
-		Mesh *me_eval = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, CD_MASK_BAREMESH);
+		Mesh *me_eval = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 		ARegion *ar = vc.ar;
 		RegionView3D *rv3d = ar->regiondata;
 
@@ -1245,7 +1258,7 @@ bool ED_mesh_pick_vert(bContext *C, Object *ob, const int mval[2], unsigned int 
 			return false;
 		}
 
-		*index = data.v_idx_best;
+		*r_index = data.v_idx_best;
 	}
 
 	return true;

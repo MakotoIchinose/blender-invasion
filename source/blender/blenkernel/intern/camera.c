@@ -25,7 +25,7 @@
 #include <stddef.h>
 
 #include "DNA_camera_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
@@ -54,7 +54,7 @@
 
 void BKE_camera_init(Camera *cam)
 {
-	BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(cam, id));
+	BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(cam, id));
 
 	cam->lens = 50.0f;
 	cam->sensor_x = DEFAULT_SENSOR_WIDTH;
@@ -201,8 +201,8 @@ void BKE_camera_params_from_object(CameraParams *params, const Object *ob)
 		params->clip_end = cam->clip_end;
 	}
 	else if (ob->type == OB_LAMP) {
-		/* lamp object */
-		Lamp *la = ob->data;
+		/* light object */
+		Light *la = ob->data;
 		params->lens = 16.0f / tanf(la->spotsize * 0.5f);
 		if (params->lens == 0.0f)
 			params->lens = 35.0f;

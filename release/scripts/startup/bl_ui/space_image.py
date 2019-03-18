@@ -18,8 +18,6 @@
 
 # <pep8 compliant>
 
-import bpy
-import math
 from bpy.types import (
     Header,
     Menu,
@@ -438,7 +436,7 @@ class IMAGE_MT_uvs_select_mode(Menu):
             props.data_path = "tool_settings.uv_select_mode"
 
 
-class IMAGE_MT_uvs_specials(Menu):
+class IMAGE_MT_uvs_context_menu(Menu):
     bl_label = "UV Context Menu"
 
     def draw(self, context):
@@ -559,6 +557,10 @@ class IMAGE_HT_header(Header):
             mesh = context.edit_object.data
             layout.prop_search(mesh.uv_layers, "active", mesh, "uv_layers", text="")
 
+        if show_uvedit or show_maskedit:
+            layout.prop(sima, "pivot_point", icon_only=True)
+
+        if show_uvedit:
             # Snap.
             row = layout.row(align=True)
             row.prop(tool_settings, "use_snap", text="")
@@ -566,15 +568,13 @@ class IMAGE_HT_header(Header):
             if tool_settings.snap_uv_element != 'INCREMENT':
                 row.prop(tool_settings, "snap_target", text="")
 
+            # Proportional Editing
             row = layout.row(align=True)
             row.prop(tool_settings, "proportional_edit", icon_only=True)
             # if tool_settings.proportional_edit != 'DISABLED':
             sub = row.row(align=True)
             sub.active = tool_settings.proportional_edit != 'DISABLED'
             sub.prop(tool_settings, "proportional_edit_falloff", icon_only=True)
-
-        if show_uvedit or show_maskedit:
-            layout.prop(sima, "pivot_point", icon_only=True)
 
         row = layout.row()
         row.popover(
@@ -719,7 +719,6 @@ class IMAGE_PT_view_display(Panel):
         ima = sima.image
 
         show_uvedit = sima.show_uvedit
-        show_maskedit = sima.show_maskedit
         uvedit = sima.uv_editor
 
         col = layout.column()
@@ -727,12 +726,6 @@ class IMAGE_PT_view_display(Panel):
         if ima:
             col.prop(ima, "display_aspect", text="Aspect Ratio")
             col.prop(sima, "show_repeat", text="Repeat Image")
-
-        if show_uvedit or show_maskedit:
-            col.separator()
-
-            col = layout.column()
-            col.prop(sima, "cursor_location", text="Cursor Location")
 
         if show_uvedit:
             col.prop(uvedit, "show_pixel_coords", text="Pixel Coordinates")
@@ -855,8 +848,8 @@ class IMAGE_PT_paint(Panel, ImagePaintPanel):
             brush_texpaint_common(self, context, layout, brush, settings)
 
 
-class IMAGE_PT_tools_brush_overlay(BrushButtonsPanel, Panel):
-    bl_label = "Overlay"
+class IMAGE_PT_tools_brush_display(BrushButtonsPanel, Panel):
+    bl_label = "Display"
     bl_context = ".paint_common_2d"
     bl_options = {'DEFAULT_CLOSED'}
     bl_category = "Options"
@@ -1071,7 +1064,7 @@ class IMAGE_PT_tools_brush_appearance(BrushButtonsPanel, Panel):
     bl_context = ".paint_common_2d"
     bl_options = {'DEFAULT_CLOSED'}
     bl_category = "Options"
-    bl_parent_id = "IMAGE_PT_tools_brush_overlay"
+    bl_parent_id = "IMAGE_PT_tools_brush_display"
 
     def draw(self, context):
         layout = self.layout
@@ -1152,12 +1145,12 @@ class IMAGE_PT_uv_sculpt(Panel):
                 col = layout.column()
 
                 row = col.row(align=True)
-                UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True, text="Radius")
-                UnifiedPaintPanel.prop_unified_size(row, context, brush, "use_pressure_size")
+                UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True)
+                UnifiedPaintPanel.prop_unified_size(row, context, brush, "use_pressure_size", text="")
 
                 row = col.row(align=True)
-                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "strength", slider=True, text="Strength")
-                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "use_pressure_strength")
+                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "strength", slider=True)
+                UnifiedPaintPanel.prop_unified_strength(row, context, brush, "use_pressure_strength", text="")
 
         col = layout.column()
         col.prop(tool_settings, "uv_sculpt_lock_borders")
@@ -1284,6 +1277,33 @@ class IMAGE_PT_scope_sample(ImageScopesPanel, Panel):
         col.prop(sima.scopes, "accuracy")
 
 
+class IMAGE_PT_uv_cursor(Panel):
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Image"
+    bl_label = "2D Cursor"
+
+    @classmethod
+    def poll(cls, context):
+        sima = context.space_data
+
+        return (sima and (sima.show_uvedit or sima.show_maskedit))
+
+    def draw(self, context):
+        layout = self.layout
+
+        sima = context.space_data
+        ima = sima.image
+
+
+        uvedit = sima.uv_editor
+
+        col = layout.column()
+
+        col = layout.column()
+        col.prop(sima, "cursor_location", text="Cursor Location")
+
+
 # Grease Pencil properties
 class IMAGE_PT_grease_pencil(AnnotationDataPanel, Panel):
     bl_space_type = 'IMAGE_EDITOR'
@@ -1310,7 +1330,7 @@ classes = (
     IMAGE_MT_uvs_mirror,
     IMAGE_MT_uvs_weldalign,
     IMAGE_MT_uvs_select_mode,
-    IMAGE_MT_uvs_specials,
+    IMAGE_MT_uvs_context_menu,
     IMAGE_MT_pivot_pie,
     IMAGE_MT_uvs_snap_pie,
     IMAGE_HT_header,
@@ -1327,7 +1347,7 @@ classes = (
     IMAGE_PT_view_display_uv_edit_overlays,
     IMAGE_PT_view_display_uv_edit_overlays_advanced,
     IMAGE_PT_paint,
-    IMAGE_PT_tools_brush_overlay,
+    IMAGE_PT_tools_brush_display,
     IMAGE_PT_tools_brush_texture,
     IMAGE_PT_tools_mask_texture,
     IMAGE_PT_paint_stroke,
@@ -1341,6 +1361,7 @@ classes = (
     IMAGE_PT_view_vectorscope,
     IMAGE_PT_sample_line,
     IMAGE_PT_scope_sample,
+    IMAGE_PT_uv_cursor,
     IMAGE_PT_grease_pencil,
 )
 

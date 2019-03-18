@@ -26,14 +26,14 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_utildefines.h"
+
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_smoke_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_mesh_types.h"
-
-#include "BLI_utildefines.h"
 
 #include "BKE_cdderivedmesh.h"
 #include "BKE_layer.h"
@@ -75,22 +75,20 @@ static void freeData(ModifierData *md)
 	smokeModifier_free(smd);
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	SmokeModifierData *smd  = (SmokeModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	if (smd && (smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow) {
 		if (smd->flow->source == MOD_SMOKE_FLOW_SOURCE_MESH) {
 			/* vertex groups */
 			if (smd->flow->vgroup_density)
-				dataMask |= CD_MASK_MDEFORMVERT;
+				r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 			/* uv layer */
 			if (smd->flow->texture_type == MOD_SMOKE_FLOW_TEXTURE_MAP_UV)
-				dataMask |= CD_MASK_MTFACE;
+				r_cddata_masks->fmask |= CD_MASK_MTFACE;
 		}
 	}
-	return dataMask;
 }
 
 static Mesh *applyModifier(
@@ -189,4 +187,5 @@ ModifierTypeInfo modifierType_Smoke = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

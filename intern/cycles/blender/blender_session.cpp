@@ -393,6 +393,15 @@ static void add_cryptomatte_layer(BL::RenderResult& b_rr, string name, string ma
 	render_add_metadata(b_rr, prefix+"manifest", manifest);
 }
 
+/* TODO(sergey): Ideally this will be an utility function in util string.h, but
+ * currently is relying on Blender side function, so can not do that. */
+static string make_human_readable_time(double time)
+{
+	char time_str[128];
+	BLI_timecode_string_from_time_simple(time_str, sizeof(time_str), time);
+	return time_str;
+}
+
 void BlenderSession::stamp_view_layer_metadata(Scene *scene, const string& view_layer_name)
 {
 	BL::RenderResult b_rr = b_engine.get_result();
@@ -416,16 +425,26 @@ void BlenderSession::stamp_view_layer_metadata(Scene *scene, const string& view_
 	/* Write cryptomatte metadata. */
 	if(scene->film->cryptomatte_passes & CRYPT_OBJECT) {
 		add_cryptomatte_layer(b_rr, view_layer_name + ".CryptoObject",
-							  scene->object_manager->get_cryptomatte_objects(scene));
+		                      scene->object_manager->get_cryptomatte_objects(scene));
 	}
 	if(scene->film->cryptomatte_passes & CRYPT_MATERIAL) {
 		add_cryptomatte_layer(b_rr, view_layer_name + ".CryptoMaterial",
-							  scene->shader_manager->get_cryptomatte_materials(scene));
+		                      scene->shader_manager->get_cryptomatte_materials(scene));
 	}
 	if(scene->film->cryptomatte_passes & CRYPT_ASSET) {
 		add_cryptomatte_layer(b_rr, view_layer_name + ".CryptoAsset",
-							  scene->object_manager->get_cryptomatte_assets(scene));
+		                      scene->object_manager->get_cryptomatte_assets(scene));
 	}
+
+	/* Store synchronization and bare-render times. */
+	double total_time, render_time;
+	session->progress.get_time(total_time, render_time);
+	b_rr.stamp_data_add_field((prefix + "total_time").c_str(),
+	                          make_human_readable_time(total_time).c_str());
+	b_rr.stamp_data_add_field((prefix + "render_time").c_str(),
+	                          make_human_readable_time(render_time).c_str());
+	b_rr.stamp_data_add_field((prefix + "synchronization_time").c_str(),
+	                          make_human_readable_time(total_time - render_time).c_str());
 }
 
 void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
@@ -451,7 +470,7 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 	b_rlay_name = b_view_layer.name();
 
 	/* add passes */
-	vector<Pass> passes = sync->sync_render_passes(b_rlay, b_view_layer, session_params);
+	vector<Pass> passes = sync->sync_render_passes(b_rlay, b_view_layer);
 	buffer_params.passes = passes;
 
 	PointerRNA crl = RNA_pointer_get(&b_view_layer.ptr, "cycles");
@@ -968,6 +987,11 @@ void BlenderSession::get_status(string& status, string& substatus)
 	session->progress.get_status(status, substatus);
 }
 
+void BlenderSession::get_kernel_status(string& kernel_status)
+{
+	session->progress.get_kernel_status(kernel_status);
+}
+
 void BlenderSession::get_progress(float& progress, double& total_time, double& render_time)
 {
 	session->progress.get_time(total_time, render_time);
@@ -986,7 +1010,7 @@ void BlenderSession::update_bake_progress()
 
 void BlenderSession::update_status_progress()
 {
-	string timestatus, status, substatus;
+	string timestatus, status, substatus, kernel_status;
 	string scene_status = "";
 	float progress;
 	double total_time, remaining_time = 0, render_time;
@@ -995,6 +1019,7 @@ void BlenderSession::update_status_progress()
 	float mem_peak = (float)session->stats.mem_peak / 1024.0f / 1024.0f;
 
 	get_status(status, substatus);
+	get_kernel_status(kernel_status);
 	get_progress(progress, total_time, render_time);
 
 	if(progress > 0)
@@ -1019,6 +1044,8 @@ void BlenderSession::update_status_progress()
 			status = " | " + status;
 		if(substatus.size() > 0)
 			status += " | " + substatus;
+		if(kernel_status.size() > 0)
+			status += " | " + kernel_status;
 	}
 
 	double current_time = time_dt();

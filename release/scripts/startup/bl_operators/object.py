@@ -161,9 +161,10 @@ class SelectHierarchy(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     direction: EnumProperty(
-        items=(('PARENT', "Parent", ""),
-               ('CHILD', "Child", ""),
-               ),
+        items=(
+            ('PARENT', "Parent", ""),
+            ('CHILD', "Child", ""),
+        ),
         name="Direction",
         description="Direction to select in the hierarchy",
         default='PARENT',
@@ -319,19 +320,20 @@ class ShapeTransfer(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     mode: EnumProperty(
-        items=(('OFFSET',
-                "Offset",
-                "Apply the relative positional offset",
-                ),
-               ('RELATIVE_FACE',
-                "Relative Face",
-                "Calculate relative position (using faces)",
-                ),
-               ('RELATIVE_EDGE',
-                "Relative Edge",
-                "Calculate relative position (using edges)",
-                ),
-               ),
+        items=(
+            ('OFFSET',
+             "Offset",
+             "Apply the relative positional offset",
+            ),
+            ('RELATIVE_FACE',
+             "Relative Face",
+             "Calculate relative position (using faces)",
+            ),
+            ('RELATIVE_EDGE',
+             "Relative Edge",
+             "Calculate relative position (using edges)",
+            ),
+        ),
         name="Transformation Mode",
         description="Relative shape positions to the new shape method",
         default='OFFSET',
@@ -873,7 +875,7 @@ class DupliOffsetFromCursor(Operator):
         scene = context.scene
         collection = context.collection
 
-        collection.instance_offset = scene.cursor_location
+        collection.instance_offset = scene.cursor.location
 
         return {'FINISHED'}
 
@@ -895,7 +897,7 @@ class LoadImageAsEmpty:
 
     @classmethod
     def poll(cls, context):
-        return context.mode == "OBJECT"
+        return context.mode == 'OBJECT'
 
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
@@ -904,13 +906,13 @@ class LoadImageAsEmpty:
     def execute(self, context):
         scene = context.scene
         space = context.space_data
-        cursor = scene.cursor_location
+        cursor = scene.cursor.location
 
         try:
             image = bpy.data.images.load(self.filepath, check_existing=True)
         except RuntimeError as ex:
-            self.report({"ERROR"}, str(ex))
-            return {"CANCELLED"}
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
 
         bpy.ops.object.empty_add(
             'INVOKE_REGION_WIN',

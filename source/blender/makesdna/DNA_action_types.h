@@ -86,7 +86,7 @@ typedef struct bMotionPath {
 	struct GPUVertBuf *points_vbo;
 	struct GPUBatch *batch_line;
 	struct GPUBatch *batch_points;
-	void *pad;
+	void *_pad;
 } bMotionPath;
 
 /* bMotionPath->flag */
@@ -120,7 +120,7 @@ typedef struct bAnimVizSettings {
 	short path_viewflag;
 	/** #eMotionPaths_BakeFlag. */
 	short path_bakeflag;
-	char pad[6];
+	char _pad[6];
 
 	/** Start and end frames of path-calculation range. */
 	int path_sf, path_ef;
@@ -185,7 +185,7 @@ struct Mat4;
 
 typedef struct bPoseChannel_Runtime {
 	int bbone_segments;
-	char pad[4];
+	char _pad[4];
 
 	/* Rest and posed matrices for segments. */
 	struct Mat4 *bbone_rest_mats;
@@ -231,7 +231,7 @@ typedef struct bPoseChannel {
 	char selectflag;
 	char drawflag;
 	char bboneflag DNA_DEPRECATED;
-	char pad0[4];
+	char _pad0[4];
 
 	/** Set on read file or rebuild pose. */
 	struct Bone         *bone;
@@ -257,7 +257,7 @@ typedef struct bPoseChannel {
 	struct bPoseChannel *custom_tx;
 	float custom_scale;
 
-	char pad1[4];
+	char _pad1[4];
 
 	/** Transforms - written in by actions or transform. */
 	float loc[3];
@@ -275,7 +275,7 @@ typedef struct bPoseChannel {
 	float rotAxis[3], rotAngle;
 	/** #eRotationModes - rotation representation to use. */
 	short rotmode;
-	short pad;
+	char _pad[2];
 
 	/** Matrix result of loc/quat/size, and where we put deform in, see next line */
 	float chan_mat[4][4];
@@ -460,10 +460,11 @@ typedef struct bPose {
 	 */
 	bPoseChannel **chan_array;
 
-	short flag, pad;
+	short flag;
+	char _pad[2];
 	/** Proxy layer: copy from armature, gets synced. */
 	unsigned int proxy_layer;
-	int pad1;
+	char _pad1[4];
 
 	/** Local action time of this pose. */
 	float ctime;
@@ -660,7 +661,7 @@ typedef struct bAction {
 	 * (if 0, will be set to whatever ID first evaluates it).
 	 */
 	int idroot;
-	int pad;
+	char _pad[4];
 } bAction;
 
 
@@ -698,7 +699,7 @@ typedef struct bDopeSheet {
 	/** Standard flags. */
 	int flag;
 
-	/** Index+1 of channel to rename - only gets set by renaming operator. */
+	/** `index + 1` of channel to rename - only gets set by renaming operator. */
 	int renameIndex;
 } bDopeSheet;
 
@@ -832,11 +833,11 @@ typedef enum eSAction_Flag {
 	/* draw time in seconds instead of time in frames */
 	SACTION_DRAWTIME = (1 << 2),
 	/* don't filter action channels according to visibility */
-	//SACTION_NOHIDE = (1<<3), // XXX deprecated... old animation system
+	//SACTION_NOHIDE = (1 << 3), // XXX deprecated... old animation system
 	/* don't kill overlapping keyframes after transform */
 	SACTION_NOTRANSKEYCULL = (1 << 4),
 	/* don't include keyframes that are out of view */
-	//SACTION_HORIZOPTIMISEON = (1<<5), // XXX deprecated... old irrelevant trick
+	//SACTION_HORIZOPTIMISEON = (1 << 5), // XXX deprecated... old irrelevant trick
 	/* show pose-markers (local to action) in Action Editor mode  */
 	SACTION_POSEMARKERS_SHOW = (1 << 6),
 	/* don't draw action channels using group colors (where applicable) */
@@ -851,6 +852,8 @@ typedef enum eSAction_Flag {
 	SACTION_SHOW_INTERPOLATION = (1 << 12),
 	/* show extremes */
 	SACTION_SHOW_EXTREMES = (1 << 13),
+	/* show vertical line markers */
+	SACTION_SHOW_MARKER_LINES = (1 << 14),
 } eSAction_Flag;
 
 

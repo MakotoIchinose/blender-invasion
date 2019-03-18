@@ -21,12 +21,13 @@
  * \ingroup modifiers
  */
 
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_editmesh.h"
 #include "BKE_mesh.h"
@@ -343,16 +344,14 @@ static void initData(ModifierData *md)
 	smd->limit[1] =  1.0f;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	SimpleDeformModifierData *smd = (SimpleDeformModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (smd->vgroup_name[0])
-		dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	if (smd->vgroup_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static void foreachObjectLink(
@@ -452,4 +451,5 @@ ModifierTypeInfo modifierType_SimpleDeform = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

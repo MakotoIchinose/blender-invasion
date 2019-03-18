@@ -133,7 +133,7 @@ typedef struct WorkSpace {
 
 	/* Feature tagging (use for addons) */
 	/** #wmOwnerID. */
-	ListBase owner_ids DNA_PRIVATE_WORKSPACE_READ_WRITE;
+	ListBase owner_ids;
 
 	/* should be: '#ifdef USE_WORKSPACE_TOOL'. */
 
@@ -142,7 +142,7 @@ typedef struct WorkSpace {
 
 	/**
 	 * BAD DESIGN WARNING:
-	 * This is a workaround for the topbar not knowing which tools spac */
+	 * This is a workaround for the topbar not knowing which tools spec. */
 	char tools_space_type;
 	/** Type is different for each space-type. */
 	char tools_mode;
@@ -151,7 +151,7 @@ typedef struct WorkSpace {
 	int object_mode;
 
 	/** Enum eWorkSpaceFlags. */
-	int flags DNA_PRIVATE_WORKSPACE;
+	int flags;
 
 	/* Number for workspace tab reordering in the UI. */
 	int order;

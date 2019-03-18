@@ -29,6 +29,7 @@
 #include "BKE_image.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -94,6 +95,7 @@ static void rna_Image_source_set(PointerRNA *ptr, int value)
 		BKE_image_signal(G_MAIN, ima, NULL, IMA_SIGNAL_SRC_CHANGE);
 		DEG_id_tag_update(&ima->id, 0);
 		DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+		DEG_relations_tag_update(G_MAIN);
 	}
 }
 
@@ -151,7 +153,7 @@ static void rna_ImageUser_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 			/* Special update for nodetrees to find parent datablock. */
 			ED_node_tag_update_nodetree(bmain, (bNodeTree *)id, NULL);
 		}
-		else  {
+		else {
 			/* Update material or texture for render preview. */
 			DEG_id_tag_update(id, 0);
 			DEG_id_tag_update(id, ID_RECALC_EDITORS);
@@ -159,6 +161,11 @@ static void rna_ImageUser_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 	}
 }
 
+static void rna_ImageUser_relations_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+	rna_ImageUser_update(bmain, scene, ptr);
+	DEG_relations_tag_update(bmain);
+}
 
 static char *rna_ImageUser_path(PointerRNA *ptr)
 {
@@ -515,7 +522,7 @@ static void rna_def_imageuser(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "use_auto_refresh", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", IMA_ANIM_ALWAYS);
 	RNA_def_property_ui_text(prop, "Auto Refresh", "Always refresh image on frame changes");
-	RNA_def_property_update(prop, 0, "rna_ImageUser_update");
+	RNA_def_property_update(prop, 0, "rna_ImageUser_relations_update");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
 	prop = RNA_def_property(srna, "frame_current", PROP_INT, PROP_TIME);
