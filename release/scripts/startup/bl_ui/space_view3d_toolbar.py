@@ -1545,6 +1545,8 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
             col.prop(gp_settings, "angle", slider=True)
             col.prop(gp_settings, "angle_factor", text="Factor", slider=True)
             col.separator()
+            col.prop(gp_settings, "gradient_factor", slider=True)
+            col.prop(gp_settings, "gradient_shape")
 
 
 class VIEW3D_PT_tools_grease_pencil_brush_stabilizer(View3DPanel, Panel):
