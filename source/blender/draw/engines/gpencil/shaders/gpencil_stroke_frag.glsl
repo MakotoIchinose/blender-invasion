@@ -58,8 +58,9 @@ void main()
 	}
 
 	/* gradient */
-	fragColor.a = gradient_f;
-
+	if (mTexCoord.y > gradient_f) {
+		fragColor.a = gradient_f;
+	}
 
 	if(fragColor.a < 0.0035)
 		discard;

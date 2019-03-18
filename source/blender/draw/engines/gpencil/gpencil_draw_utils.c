@@ -619,7 +619,7 @@ DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(
 /* create shading group for points */
 static DRWShadingGroup *DRW_gpencil_shgroup_point_create(
         GPENCIL_e_data *e_data, GPENCIL_Data *vedata, DRWPass *pass, GPUShader *shader, Object *ob,
-        bGPdata *gpd, bGPDlayer *gpl,
+        bGPdata *gpd, bGPDlayer *gpl, bGPDstroke *gps,
         MaterialGPencilStyle *gp_style, int id, bool onion,
         const float scale, const int shading_type[2])
 {
@@ -659,6 +659,11 @@ static DRWShadingGroup *DRW_gpencil_shgroup_point_create(
 		DRW_shgroup_uniform_int(grp, "mode", &stl->shgroups[id].mode, 1);
 		DRW_shgroup_uniform_float(grp, "pixfactor", &gpd->pixfactor, 1);
 
+		stl->shgroups[id].gradient_f = gps->gradient_f;
+		copy_v2_v2(stl->shgroups[id].gradient_s, gps->gradient_s);
+		DRW_shgroup_uniform_float(grp, "gradient_f", &stl->shgroups[id].gradient_f, 1);
+		DRW_shgroup_uniform_vec2(grp, "gradient_s", stl->shgroups[id].gradient_s, 1);
+
 		/* viewport x-ray */
 		stl->shgroups[id].is_xray = (ob->dt == OB_WIRE) ? 1 : stl->storage->is_xray;
 		DRW_shgroup_uniform_int(grp, "viewport_xray", (const int *)&stl->shgroups[id].is_xray, 1);
@@ -692,6 +697,10 @@ static DRWShadingGroup *DRW_gpencil_shgroup_point_create(
 		else {
 			DRW_shgroup_uniform_float(grp, "pixfactor", &stl->storage->pixfactor, 1);
 		}
+
+		DRW_shgroup_uniform_float(grp, "gradient_f", &stl->storage->gradient_f, 1);
+		DRW_shgroup_uniform_vec2(grp, "gradient_s", stl->storage->gradient_s, 1);
+
 		/* viewport x-ray */
 		stl->shgroups[id].is_xray = ((ob) && (ob->dt == OB_WIRE)) ? 1 : stl->storage->is_xray;
 		DRW_shgroup_uniform_int(grp, "viewport_xray", (const int *)&stl->shgroups[id].is_xray, 1);
@@ -1398,7 +1407,7 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data, void *vedata, T
 				else {
 					stl->g_data->shgrps_drawing_stroke = DRW_gpencil_shgroup_point_create(
 					        e_data, vedata, psl->drawing_pass, e_data->gpencil_point_sh, NULL,
-					        gpd, NULL, gp_style, -1,
+					        gpd, NULL, NULL, gp_style, -1,
 					        false, 1.0f, (const int *)stl->storage->shade_render);
 				}
 
@@ -1595,7 +1604,7 @@ static void DRW_gpencil_shgroups_create(
 
 				shgrp = DRW_gpencil_shgroup_point_create(
 				        e_data, vedata, stroke_pass, e_data->gpencil_point_sh,
-				        ob, gpd, gpl, gp_style, stl->storage->shgroup_id, elm->onion,
+				        ob, gpd, gpl, gps, gp_style, stl->storage->shgroup_id, elm->onion,
 				        scale, cache_ob->shading_type);
 
 				DRW_shgroup_call_range_add(

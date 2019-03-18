@@ -2,6 +2,9 @@ uniform int color_type;
 uniform int mode;
 uniform sampler2D myTexture;
 
+uniform float gradient_f;
+uniform vec2 gradient_s;
+
 in vec4 mColor;
 in vec2 mTexCoord;
 out vec4 fragColor;
