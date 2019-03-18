@@ -1,6 +1,9 @@
 uniform int color_type;
 uniform sampler2D myTexture;
 
+uniform float gradient_f;
+uniform vec2 gradient_s;
+
 in vec4 mColor;
 in vec2 mTexCoord;
 in vec2 uvfac;
@@ -53,6 +56,10 @@ void main()
 		/* mult both alpha factor to use strength factor with color alpha limit */
 		fragColor.a = min(text_color.a * tColor.a, tColor.a);
 	}
+
+	/* gradient */
+	fragColor.a = gradient_f;
+
 
 	if(fragColor.a < 0.0035)
 		discard;

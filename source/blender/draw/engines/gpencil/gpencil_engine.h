@@ -120,6 +120,9 @@ typedef struct GPENCIL_shgroup {
 	float obj_scale;
 	int xray_mode;
 
+	float gradient_f;
+	float gradient_s[2];
+
 	/* color of the wireframe */
 	float wire_color[4];
 	/* shading type and mode */
@@ -163,6 +166,9 @@ typedef struct GPENCIL_Storage {
 	bool simplify_modif;
 	bool simplify_fx;
 	bool simplify_blend;
+
+	float gradient_f;
+	float gradient_s[2];
 
 	/* Render Matrices and data */
 	float persmat[4][4], persinv[4][4];
