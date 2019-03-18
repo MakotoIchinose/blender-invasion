@@ -1190,7 +1190,7 @@ bool BKE_brush_sculpt_has_secondary_color(const Brush *brush)
 	        SCULPT_TOOL_INFLATE, SCULPT_TOOL_CLAY, SCULPT_TOOL_CLAY_STRIPS,
 	        SCULPT_TOOL_PINCH, SCULPT_TOOL_CREASE, SCULPT_TOOL_LAYER,
 	        SCULPT_TOOL_FLATTEN, SCULPT_TOOL_FILL, SCULPT_TOOL_SCRAPE,
-	        SCULPT_TOOL_MASK);
+	        SCULPT_TOOL_MASK, SCULPT_TOOL_DAM);
 }
 
 void BKE_brush_unprojected_radius_set(Scene *scene, Brush *brush, float unprojected_radius)

@@ -432,6 +432,7 @@ typedef enum eBrushSculptTool {
 	SCULPT_TOOL_BLOB = 17,
 	SCULPT_TOOL_CLAY_STRIPS = 18,
 	SCULPT_TOOL_MASK = 19,
+	SCULPT_TOOL_DAM = 20,
 } eBrushSculptTool;
 
 /** When #BRUSH_ACCUMULATE is used */
@@ -462,6 +463,7 @@ typedef enum eBrushSculptTool {
 	SCULPT_TOOL_ROTATE, \
 	SCULPT_TOOL_THUMB, \
 	SCULPT_TOOL_LAYER, \
+	SCULPT_TOOL_DAM, \
 	\
 	/* These brushes could handle dynamic topology, \
 	 * but user feedback indicates it's better not to */ \

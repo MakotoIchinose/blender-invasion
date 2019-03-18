@@ -154,6 +154,7 @@ static int sculpt_brush_needs_normal(
 	             SCULPT_TOOL_BLOB,
 	             SCULPT_TOOL_CREASE,
 	             SCULPT_TOOL_DRAW,
+	             SCULPT_TOOL_DAM,
 	             SCULPT_TOOL_LAYER,
 	             SCULPT_TOOL_NUDGE,
 	             SCULPT_TOOL_ROTATE,
@@ -1155,7 +1156,8 @@ static float brush_strength(
 		case SCULPT_TOOL_DRAW:
 		case SCULPT_TOOL_LAYER:
 			return alpha * flip * pressure * overlap * feather;
-
+		case SCULPT_TOOL_DAM:
+			return alpha * flip * 4 * pressure * overlap * feather;
 		case SCULPT_TOOL_MASK:
 			overlap = (1 + overlap) / 2;
 			switch ((BrushMaskTool)brush->mask_tool) {
@@ -1301,6 +1303,13 @@ float tex_strength(SculptSession *ss, const Brush *br,
 			avg *= (1 - factor);
 			avg *= 0.5f;
 			break;
+		case SCULPT_TOOL_DAM:
+			dist_nrm = len/cache->radius;
+			dist_nrm = 1 - dist_nrm;
+			factor = dist_nrm * dist_nrm * dist_nrm * dist_nrm;
+			factor = 1 - factor;
+			avg *= (1 - factor);
+			avg *= -2;
 		default:
 			avg *= BKE_brush_curve_strength(br, len, cache->radius);
 			break;
@@ -2344,6 +2353,78 @@ static void do_draw_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 	            0, totnode,
 	            &data,
 	            do_draw_brush_task_cb_ex,
+	            &settings);
+}
+
+static void do_dam_brush_task_cb_ex(
+        void *__restrict userdata,
+        const int n,
+        const ParallelRangeTLS *__restrict tls)
+{
+	SculptThreadedTaskData *data = userdata;
+	SculptSession *ss = data->ob->sculpt;
+	const Brush *brush = data->brush;
+	const float *offset = data->offset;
+
+	PBVHVertexIter vd;
+	float (*proxy)[3];
+
+	proxy = BKE_pbvh_node_add_proxy(ss->pbvh, data->nodes[n])->co;
+
+	SculptOrigVertData orig_data;
+	sculpt_orig_vert_data_init(&orig_data, data->ob, data->nodes[n]);
+
+	SculptBrushTest test;
+	SculptBrushTestFn sculpt_brush_test_sq_fn =
+	        sculpt_brush_test_init_with_falloff_shape(ss, &test, data->brush->falloff_shape);
+
+	BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
+	{
+		sculpt_orig_vert_data_update(&orig_data, &vd);
+		if (sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+			/* offset vertex */
+			const float fade = tex_strength(
+			        ss, brush, orig_data.co, sqrtf(test.dist),
+			        orig_data.no, vd.fno, vd.mask ? *vd.mask : 0.0f, tls->thread_id);
+
+			mul_v3_v3fl(proxy[vd.i], offset, fade);
+
+			if (vd.mvert)
+				vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+		}
+	}
+	BKE_pbvh_vertex_iter_end;
+}
+
+static void do_dam_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+{
+	SculptSession *ss = ob->sculpt;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	float offset[3];
+	const float bstrength = ss->cache->bstrength;
+
+	/* offset with as much as possible factored in already */
+	mul_v3_v3fl(offset, ss->cache->sculpt_normal_symm, ss->cache->radius);
+	mul_v3_v3(offset, ss->cache->scale);
+	mul_v3_fl(offset, bstrength);
+
+	/* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
+	 * initialize before threads so they can do curve mapping */
+	curvemapping_initialize(brush->curve);
+
+	/* threaded loop over nodes */
+	SculptThreadedTaskData data = {
+	    .sd = sd, .ob = ob, .brush = brush, .nodes = nodes,
+	    .offset = offset,
+	};
+
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+	BLI_task_parallel_range(
+	            0, totnode,
+	            &data,
+	            do_dam_brush_task_cb_ex,
 	            &settings);
 }
 
@@ -3890,6 +3971,9 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
 			case SCULPT_TOOL_SCRAPE:
 				do_scrape_brush(sd, ob, nodes, totnode);
 				break;
+			case SCULPT_TOOL_DAM:
+				do_dam_brush(sd, ob, nodes, totnode);
+				break;
 			case SCULPT_TOOL_MASK:
 				do_mask_brush(sd, ob, nodes, totnode);
 				break;
@@ -4383,6 +4467,8 @@ static const char *sculpt_tool_name(Sculpt *sd)
 			return "Rotate Brush";
 		case SCULPT_TOOL_MASK:
 			return "Mask Brush";
+		case SCULPT_TOOL_DAM:
+			return "Dam Brush";
 		case SCULPT_TOOL_SIMPLIFY:
 			return "Simplify Brush";
 	}
