@@ -217,6 +217,13 @@ bool DRW_object_is_visible_psys_in_active_context(
         const Object *object,
         const ParticleSystem *psys)
 {
+	const bool for_render = DRW_state_is_image_render();
+	/* NOTE: psys_check_enabled is using object and particle system for only
+	 * reading, but is using some other functions which are more generic and
+	 * which are hard to make const-pointer. */
+	if (!psys_check_enabled((Object *)object, (ParticleSystem *)psys, for_render)) {
+		return false;
+	}
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	const Scene *scene = draw_ctx->scene;
 	if (object == draw_ctx->object_edit) {
@@ -2008,20 +2015,26 @@ void DRW_custom_pipeline(
 }
 
 static struct DRWSelectBuffer {
-	struct GPUFrameBuffer *framebuffer;
+	struct GPUFrameBuffer *framebuffer_depth_only;
+	struct GPUFrameBuffer *framebuffer_select_id;
 	struct GPUTexture *texture_depth;
+	struct GPUTexture *texture_u32;
 } g_select_buffer = {NULL};
 
-static void draw_select_framebuffer_setup(const rcti *rect)
+static void draw_select_framebuffer_depth_only_setup(const rcti *rect)
 {
-	if (g_select_buffer.framebuffer == NULL) {
-		g_select_buffer.framebuffer = GPU_framebuffer_create();
+	float size[2];
+	size[0] = BLI_rcti_size_x(rect);
+	size[1] = BLI_rcti_size_y(rect);
+
+	if (g_select_buffer.framebuffer_depth_only == NULL) {
+		g_select_buffer.framebuffer_depth_only = GPU_framebuffer_create();
+		g_select_buffer.framebuffer_select_id = GPU_framebuffer_create();
 	}
 
-	/* If size mismatch recreate the texture. */
 	if ((g_select_buffer.texture_depth != NULL) &&
-	    ((GPU_texture_width(g_select_buffer.texture_depth) != BLI_rcti_size_x(rect)) ||
-	     (GPU_texture_height(g_select_buffer.texture_depth) != BLI_rcti_size_y(rect))))
+	    ((GPU_texture_width(g_select_buffer.texture_depth) != size[0]) ||
+	     (GPU_texture_height(g_select_buffer.texture_depth) != size[1])))
 	{
 		GPU_texture_free(g_select_buffer.texture_depth);
 		g_select_buffer.texture_depth = NULL;
@@ -2029,13 +2042,49 @@ static void draw_select_framebuffer_setup(const rcti *rect)
 
 	if (g_select_buffer.texture_depth == NULL) {
 		g_select_buffer.texture_depth = GPU_texture_create_2D(
-		        BLI_rcti_size_x(rect), BLI_rcti_size_y(rect), GPU_DEPTH_COMPONENT24, NULL, NULL);
+		        size[0], size[1], GPU_DEPTH_COMPONENT24, NULL, NULL);
 
-		GPU_framebuffer_texture_attach(g_select_buffer.framebuffer, g_select_buffer.texture_depth, 0, 0);
+		GPU_framebuffer_texture_attach(
+		        g_select_buffer.framebuffer_depth_only,
+		        g_select_buffer.texture_depth, 0, 0);
 
-		if (!GPU_framebuffer_check_valid(g_select_buffer.framebuffer, NULL)) {
-			printf("Error invalid selection framebuffer\n");
-		}
+		GPU_framebuffer_texture_attach(
+		        g_select_buffer.framebuffer_select_id,
+		        g_select_buffer.texture_depth, 0, 0);
+
+		GPU_framebuffer_check_valid(
+		        g_select_buffer.framebuffer_depth_only, NULL);
+		GPU_framebuffer_check_valid(
+		        g_select_buffer.framebuffer_select_id, NULL);
+	}
+}
+
+static void draw_select_framebuffer_select_id_setup(const rcti *rect)
+{
+	float size[2];
+	size[0] = BLI_rcti_size_x(rect);
+	size[1] = BLI_rcti_size_y(rect);
+
+	draw_select_framebuffer_depth_only_setup(rect);
+
+	if ((g_select_buffer.texture_u32 != NULL) &&
+	    ((GPU_texture_width(g_select_buffer.texture_u32) != size[0]) ||
+	     (GPU_texture_height(g_select_buffer.texture_u32) != size[1])))
+	{
+		GPU_texture_free(g_select_buffer.texture_u32);
+		g_select_buffer.texture_u32 = NULL;
+	}
+
+	if (g_select_buffer.texture_u32 == NULL) {
+		g_select_buffer.texture_u32 = GPU_texture_create_2D(
+		        size[0], size[1], GPU_R32UI, NULL, NULL);
+
+		GPU_framebuffer_texture_attach(
+		        g_select_buffer.framebuffer_select_id,
+		        g_select_buffer.texture_u32, 0, 0);
+
+		GPU_framebuffer_check_valid(
+		        g_select_buffer.framebuffer_select_id, NULL);
 	}
 }
 
@@ -2202,9 +2251,9 @@ void DRW_draw_select_loop(
 	}
 
 	/* Setup framebuffer */
-	draw_select_framebuffer_setup(rect);
-	GPU_framebuffer_bind(g_select_buffer.framebuffer);
-	GPU_framebuffer_clear_depth(g_select_buffer.framebuffer, 1.0f);
+	draw_select_framebuffer_depth_only_setup(rect);
+	GPU_framebuffer_bind(g_select_buffer.framebuffer_depth_only);
+	GPU_framebuffer_clear_depth(g_select_buffer.framebuffer_depth_only, 1.0f);
 
 	/* Start Drawing */
 	DRW_state_reset();
@@ -2308,9 +2357,9 @@ void DRW_draw_depth_loop(
 	GPU_viewport_size_set(viewport, (const int[2]){ar->winx, ar->winy});
 
 	/* Setup framebuffer */
-	draw_select_framebuffer_setup(&ar->winrct);
-	GPU_framebuffer_bind(g_select_buffer.framebuffer);
-	GPU_framebuffer_clear_depth(g_select_buffer.framebuffer, 1.0f);
+	draw_select_framebuffer_depth_only_setup(&ar->winrct);
+	GPU_framebuffer_bind(g_select_buffer.framebuffer_depth_only);
+	GPU_framebuffer_clear_depth(g_select_buffer.framebuffer_depth_only, 1.0f);
 
 	DST.viewport = viewport;
 	DST.options.is_depth = true;
@@ -2412,6 +2461,67 @@ void DRW_draw_depth_loop(
 
 	GPU_matrix_pop();
 	GPU_matrix_pop_projection();
+}
+
+
+/* Set an opengl context to be used with shaders that draw on U32 colors. */
+void DRW_framebuffer_select_id_setup(ARegion *ar, const bool clear)
+{
+	RegionView3D *rv3d = ar->regiondata;
+
+	DRW_opengl_context_enable();
+
+	/* Setup framebuffer */
+	draw_select_framebuffer_select_id_setup(&ar->winrct);
+	GPU_framebuffer_bind(g_select_buffer.framebuffer_select_id);
+
+	/* dithering and AA break color coding, so disable */
+	glDisable(GL_DITHER);
+
+	GPU_depth_test(true);
+
+	if (clear) {
+		GPU_framebuffer_clear_color_depth(
+		        g_select_buffer.framebuffer_select_id, (const float[4]){0.0f}, 1.0f);
+	}
+
+	if (rv3d->rflag & RV3D_CLIPPING) {
+		ED_view3d_clipping_set(rv3d);
+	}
+}
+
+
+/* Ends the context for selection and restoring the previous one. */
+void DRW_framebuffer_select_id_release(ARegion *ar)
+{
+	RegionView3D *rv3d = ar->regiondata;
+
+	if (rv3d->rflag & RV3D_CLIPPING) {
+		ED_view3d_clipping_disable();
+	}
+
+	GPU_framebuffer_restore();
+
+	GPU_depth_test(false);
+	glEnable(GL_DITHER);
+
+	DRW_opengl_context_disable();
+}
+
+
+/* Read a block of pixels from the select frame buffer. */
+void DRW_framebuffer_select_id_read(const rcti *rect, uint *r_buf)
+{
+	DRW_opengl_context_enable();
+	GPU_framebuffer_bind(g_select_buffer.framebuffer_select_id);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+	glReadPixels(rect->xmin, rect->ymin,
+	             BLI_rcti_size_x(rect), BLI_rcti_size_y(rect),
+	             GL_RED_INTEGER, GL_UNSIGNED_INT, r_buf);
+
+	GPU_framebuffer_restore();
+	DRW_opengl_context_disable();
 }
 
 /** \} */
@@ -2605,8 +2715,10 @@ void DRW_engines_free(void)
 
 	DRW_opengl_context_enable();
 
+	DRW_TEXTURE_FREE_SAFE(g_select_buffer.texture_u32);
 	DRW_TEXTURE_FREE_SAFE(g_select_buffer.texture_depth);
-	GPU_FRAMEBUFFER_FREE_SAFE(g_select_buffer.framebuffer);
+	GPU_FRAMEBUFFER_FREE_SAFE(g_select_buffer.framebuffer_select_id);
+	GPU_FRAMEBUFFER_FREE_SAFE(g_select_buffer.framebuffer_depth_only);
 
 	DRW_hair_free();
 	DRW_shape_cache_free();

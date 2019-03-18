@@ -587,9 +587,9 @@ class VIEW3D_PT_stencil_projectpaint(View3DPanel, Panel):
 
 
 # TODO, move to space_view3d.py
-class VIEW3D_PT_tools_brush_overlay(Panel, View3DPaintPanel):
+class VIEW3D_PT_tools_brush_display(Panel, View3DPaintPanel):
     bl_context = ".paint_common"  # dot on purpose (access from topbar)
-    bl_label = "Overlay"
+    bl_label = "Display"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1056,7 +1056,7 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
 class VIEW3D_PT_tools_brush_appearance(Panel, View3DPaintPanel):
     bl_context = ".paint_common"  # dot on purpose (access from topbar)
     bl_label = "Appearance"
-    bl_parent_id = "VIEW3D_PT_tools_brush_overlay"
+    bl_parent_id = "VIEW3D_PT_tools_brush_display"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1555,7 +1555,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
 class VIEW3D_PT_tools_grease_pencil_brush_stabilizer(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_option'
-    bl_label = "Stabilizer Settings"
+    bl_label = "Stabilize"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1584,7 +1584,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_stabilizer(View3DPanel, Panel):
 class VIEW3D_PT_tools_grease_pencil_brush_settings(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_option'
-    bl_label = "Post-processing Settings"
+    bl_label = "Post-Processing"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1625,7 +1625,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_settings(View3DPanel, Panel):
 class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_option'
-    bl_label = "Random Settings"
+    bl_label = "Randomize"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1668,7 +1668,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves(View3DPanel, Panel):
         return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL'}
 
     def draw(self, context):
-        layout = self.layout
+        pass
 
 
 class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
@@ -1839,7 +1839,7 @@ classes = (
     TEXTURE_UL_texpaintslots,
     VIEW3D_MT_tools_projectpaint_uvlayer,
     VIEW3D_PT_stencil_projectpaint,
-    VIEW3D_PT_tools_brush_overlay,
+    VIEW3D_PT_tools_brush_display,
     VIEW3D_PT_tools_brush_texture,
     VIEW3D_PT_tools_mask_texture,
     VIEW3D_PT_tools_brush_stroke,

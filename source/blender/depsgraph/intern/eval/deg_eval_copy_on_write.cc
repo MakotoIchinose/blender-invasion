@@ -26,8 +26,7 @@
  * material) to be handled in same way as "real" datablocks, even tho some
  * internal BKE routines doesn't treat them like that.
  *
- * TODO(sergey): Re-evaluate that after new ID handling is in place.
- */
+ * TODO(sergey): Re-evaluate that after new ID handling is in place. */
 #define NESTED_ID_NASTY_WORKAROUND
 
 /* Silence warnings from copying deprecated fields. */
@@ -162,8 +161,7 @@ void nested_id_hack_discard_pointers(ID *id_cow)
 
 /* Set ID pointer of nested owned IDs (nodetree, key) to NULL.
  *
- * Return pointer to a new ID to be used.
- */
+ * Return pointer to a new ID to be used. */
 const ID *nested_id_hack_get_discarded_pointers(NestedIDHackTempStorage *storage,
                                                 const ID *id)
 {
@@ -278,8 +276,7 @@ struct ValidateData {
 };
 
 /* Similar to generic BKE_id_copy() but does not require main and assumes pointer
- * is already allocated,
- */
+ * is already allocated. */
 bool id_copy_inplace_no_main(const ID *id, ID *newid)
 {
 	const ID *id_for_copy = id;
@@ -305,8 +302,7 @@ bool id_copy_inplace_no_main(const ID *id, ID *newid)
 }
 
 /* Similar to BKE_scene_copy() but does not require main and assumes pointer
- * is already allocated.
- */
+ * is already allocated. */
 bool scene_copy_inplace_no_main(const Scene *scene, Scene *new_scene)
 {
 	const ID *id_for_copy = &scene->id;
@@ -461,8 +457,7 @@ BLI_INLINE bool check_datablock_expanded(const ID *id_cow)
  * does not need any remapping or anything.
  *
  * TODO(sergey): How to make it more robust for the future, so we don't have
- * to maintain exception lists all over the code?
- */
+ * to maintain exception lists all over the code? */
 bool check_datablocks_copy_on_writable(const ID *id_orig)
 {
 	const ID_Type id_type = GS(id_orig->name);
@@ -476,8 +471,7 @@ bool check_datablocks_copy_on_writable(const ID *id_orig)
 }
 
 /* Callback for BKE_library_foreach_ID_link which remaps original ID pointer
- * with the one created by CoW system.
- */
+ * with the one created by CoW system. */
 
 struct RemapCallbackUserData {
 	/* Dependency graph for which remapping is happening. */
@@ -592,8 +586,7 @@ void update_mesh_edit_mode_pointers(const Depsgraph *depsgraph,
 }
 
 /* Edit data is stored and owned by original datablocks, copied ones
- * are simply referencing to them.
- */
+ * are simply referencing to them. */
 void update_edit_mode_pointers(const Depsgraph *depsgraph,
                                const ID *id_orig, ID *id_cow)
 {
@@ -619,18 +612,26 @@ void update_edit_mode_pointers(const Depsgraph *depsgraph,
 	}
 }
 
+template <typename T>
+void update_list_orig_pointers(const ListBase* listbase_orig,
+                               ListBase* listbase,
+                               T *T::*orig_field)
+{
+	T *element_orig = reinterpret_cast<T*>(listbase_orig->first);
+	T *element_cow = reinterpret_cast<T*>(listbase->first);
+	while (element_orig != NULL) {
+		element_cow->*orig_field = element_orig;
+		element_cow = element_cow->next;
+		element_orig = element_orig->next;
+	}
+}
+
 void update_particle_system_orig_pointers(const Object *object_orig,
                                           Object *object_cow)
 {
-	ParticleSystem *psys_cow =
-	        (ParticleSystem *) object_cow->particlesystem.first;
-	ParticleSystem *psys_orig =
-	        (ParticleSystem *) object_orig->particlesystem.first;
-	while (psys_orig != NULL) {
-		psys_cow->orig_psys = psys_orig;
-		psys_cow = psys_cow->next;
-		psys_orig = psys_orig->next;
-	}
+	update_list_orig_pointers(&object_orig->particlesystem,
+	                          &object_cow->particlesystem,
+	                          &ParticleSystem::orig_psys);
 }
 
 void set_particle_system_modifiers_loaded(Object *object_cow)
@@ -645,22 +646,31 @@ void set_particle_system_modifiers_loaded(Object *object_cow)
 	}
 }
 
+void update_particles_after_copy(const Object *object_orig, Object *object_cow)
+{
+	update_particle_system_orig_pointers(object_orig, object_cow);
+	set_particle_system_modifiers_loaded(object_cow);
+}
+
 void update_pose_orig_pointers(const bPose *pose_orig, bPose *pose_cow)
 {
-	bPoseChannel *pchan_cow = (bPoseChannel *) pose_cow->chanbase.first;
-	bPoseChannel *pchan_orig = (bPoseChannel *) pose_orig->chanbase.first;
-	while (pchan_orig != NULL) {
-		pchan_cow->orig_pchan = pchan_orig;
-		pchan_cow = pchan_cow->next;
-		pchan_orig = pchan_orig->next;
-	}
+	update_list_orig_pointers(&pose_orig->chanbase,
+	                          &pose_cow->chanbase,
+	                          &bPoseChannel::orig_pchan);
+}
+
+void update_modifiers_orig_pointers(const Object *object_orig,
+                                    Object *object_cow)
+{
+	update_list_orig_pointers(&object_orig->modifiers,
+	                          &object_cow->modifiers,
+	                          &ModifierData::orig_modifier_data);
 }
 
 /* Do some special treatment of data transfer from original ID to it's
  * CoW complementary part.
  *
- * Only use for the newly created CoW datablocks.
- */
+ * Only use for the newly created CoW datablocks. */
 void update_id_after_copy(const Depsgraph *depsgraph,
                           const IDNode *id_node,
                           const ID *id_orig, ID *id_cow)
@@ -687,8 +697,8 @@ void update_id_after_copy(const Depsgraph *depsgraph,
 					                          object_cow->pose);
 				}
 			}
-			update_particle_system_orig_pointers(object_orig, object_cow);
-			set_particle_system_modifiers_loaded(object_cow);
+			update_particles_after_copy(object_orig, object_cow);
+			update_modifiers_orig_pointers(object_orig, object_cow);
 			break;
 		}
 		case ID_SCE:
@@ -709,8 +719,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
 }
 
 /* This callback is used to validate that all nested ID datablocks are
- * properly expanded.
- */
+ * properly expanded. */
 int foreach_libblock_validate_callback(void *user_data,
                                        ID * /*id_self*/,
                                        ID **id_p,
@@ -731,8 +740,7 @@ int foreach_libblock_validate_callback(void *user_data,
 /* Actual implementation of logic which "expands" all the data which was not
  * yet copied-on-write.
  *
- * NOTE: Expects that CoW datablock is empty.
- */
+ * NOTE: Expects that CoW datablock is empty. */
 ID *deg_expand_copy_on_write_datablock(const Depsgraph *depsgraph,
                                        const IDNode *id_node,
                                        DepsgraphNodeBuilder *node_builder,
@@ -838,16 +846,15 @@ ID *deg_expand_copy_on_write_datablock(const Depsgraph *depsgraph,
 	                                          create_placeholders);
 }
 
-typedef struct ObjectRuntimeBackup {
+struct ObjectRuntimeBackup {
 	Object_Runtime runtime;
 	short base_flag;
 	unsigned short base_local_view_bits;
-} ObjectRuntimeBackup;
+};
 
 /* Make a backup of object's evaluation runtime data, additionally
  * make object to be safe for free without invalidating backed up
- * pointers.
- */
+ * pointers. */
 static void deg_backup_object_runtime(
         Object *object,
         ObjectRuntimeBackup *object_runtime_backup)
@@ -929,7 +936,7 @@ ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph,
 	 * generic backup structure. */
 	DrawDataList drawdata_backup;
 	DrawDataList *drawdata_ptr = NULL;
-	ObjectRuntimeBackup object_runtime_backup = {{0}};
+	ObjectRuntimeBackup object_runtime_backup = {{{0}}};
 	if (check_datablock_expanded(id_cow)) {
 		switch (id_type) {
 			case ID_OB:
@@ -1014,8 +1021,7 @@ void discard_scene_pointers(ID *id_cow)
 }
 
 /* NULL-ify all edit mode pointers which points to data from
- * original object.
- */
+ * original object. */
 void discard_edit_mode_pointers(ID *id_cow)
 {
 	const ID_Type type = GS(id_cow->name);
@@ -1050,8 +1056,7 @@ void discard_edit_mode_pointers(ID *id_cow)
 /* Free content of the CoW datablock
  * Notes:
  * - Does not recurs into nested ID datablocks.
- * - Does not free datablock itself.
- */
+ * - Does not free datablock itself. */
 void deg_free_copy_on_write_datablock(ID *id_cow)
 {
 	if (!check_datablock_expanded(id_cow)) {

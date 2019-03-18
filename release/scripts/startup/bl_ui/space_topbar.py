@@ -19,9 +19,6 @@
 # <pep8 compliant>
 import bpy
 from bpy.types import Header, Menu, Panel
-from .properties_grease_pencil_common import (
-    GPENCIL_UL_layer,
-)
 
 
 class TOPBAR_HT_upper_bar(Header):
@@ -90,12 +87,10 @@ class TOPBAR_HT_lower_bar(Header):
     def draw(self, context):
         region = context.region
 
-        if region.alignment == 'LEFT':
-            self.draw_left(context)
-        elif region.alignment == 'RIGHT':
+        if region.alignment == 'RIGHT':
             self.draw_right(context)
         else:
-            self.draw_center(context)
+            self.draw_left(context)
 
     def draw_left(self, context):
         layout = self.layout
@@ -158,9 +153,6 @@ class TOPBAR_HT_lower_bar(Header):
                     layout.popover_group(space_type='PROPERTIES', region_type='WINDOW', context=".paint_common_2d", category="")
             elif context.uv_sculpt_object is not None:
                 layout.popover_group(space_type='PROPERTIES', region_type='WINDOW', context=".uv_sculpt", category="")
-
-    def draw_center(self, context):
-        pass
 
     def draw_right(self, context):
         layout = self.layout
@@ -302,10 +294,12 @@ class _draw_left_context_mode:
             if tool is None:
                 return
 
-            is_paint = True
-            if tool.name in {"Line", "Box", "Circle", "Arc", "Curve"}:
-                is_paint = False
-            elif tool.name == "Cutter":
+            # is_paint = True
+            # FIXME: tools must use their own UI drawing!
+            if tool.idname in {"builtin.line", "builtin.box", "builtin.circle", "builtin.arc", "builtin.curve"}:
+                # is_paint = False
+                pass
+            elif tool.idname == "Cutter":
                 row = layout.row(align=True)
                 row.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
                 return
@@ -357,7 +351,8 @@ class _draw_left_context_mode:
             )
             brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
 
-            if tool.name in {"Arc", "Curve", "Line", "Box", "Circle"}:
+            # FIXME: tools must use their own UI drawing!
+            if tool.idname in {"builtin.arc", "builtin.curve", "builtin.line", "builtin.box", "builtin.circle"}:
                 settings = context.tool_settings.gpencil_sculpt
                 row = layout.row(align=True)
                 row.prop(settings, "use_thickness_curve", text="", icon='CURVE_DATA')
@@ -366,6 +361,15 @@ class _draw_left_context_mode:
                 sub.popover(
                     panel="TOPBAR_PT_gpencil_primitive",
                     text="Thickness Profile"
+                )
+                
+            if brush.gpencil_tool == 'FILL':
+                settings = context.tool_settings.gpencil_sculpt
+                row = layout.row(align=True)
+                sub = row.row(align=True)
+                sub.popover(
+                    panel="TOPBAR_PT_gpencil_fill",
+                    text="Fill Options"
                 )
 
         @staticmethod
@@ -1041,6 +1045,28 @@ class TOPBAR_PT_gpencil_primitive(Panel):
         # Curve
         layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
+# Grease Pencil Fill
+class TOPBAR_PT_gpencil_fill(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Advanced"
+
+    @staticmethod
+    def draw(self, context):
+        paint = context.tool_settings.gpencil_paint
+        brush = paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout = self.layout
+        # Fill
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_factor", text="Resolution")
+        if gp_settings.fill_draw_mode != 'STROKE':
+            row = layout.row(align=True)
+            row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
+            row = layout.row(align=True)
+            row.prop(gp_settings, "fill_threshold", text="Threshold")
+
 
 classes = (
     TOPBAR_HT_upper_bar,
@@ -1063,6 +1089,7 @@ classes = (
     TOPBAR_PT_active_tool,
     TOPBAR_PT_gpencil_layers,
     TOPBAR_PT_gpencil_primitive,
+    TOPBAR_PT_gpencil_fill,
 )
 
 if __name__ == "__main__":  # only for live edit.

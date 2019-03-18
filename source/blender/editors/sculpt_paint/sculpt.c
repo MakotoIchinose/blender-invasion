@@ -1917,8 +1917,8 @@ static void do_topology_rake_bmesh_task_cb_ex(
 
 	float tmp[3];
 	mul_v3_v3fl(
-		tmp, ss->cache->sculpt_normal_symm,
-		dot_v3v3(ss->cache->sculpt_normal_symm, direction));
+	        tmp, ss->cache->sculpt_normal_symm,
+	        dot_v3v3(ss->cache->sculpt_normal_symm, direction));
 	sub_v3_v3(direction, tmp);
 
 	/* Cancel if there's no grab data. */
@@ -1938,8 +1938,8 @@ static void do_topology_rake_bmesh_task_cb_ex(
 	{
 		if (sculpt_brush_test_sq_fn(&test, vd.co)) {
 			const float fade = bstrength * tex_strength(
-				ss, brush, vd.co, sqrtf(test.dist),
-				vd.no, vd.fno, *vd.mask, tls->thread_id) * ss->cache->pressure;
+			        ss, brush, vd.co, sqrtf(test.dist),
+			        vd.no, vd.fno, *vd.mask, tls->thread_id) * ss->cache->pressure;
 
 			float avg[3], val[3];
 
