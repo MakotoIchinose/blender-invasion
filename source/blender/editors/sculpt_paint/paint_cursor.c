@@ -1259,8 +1259,8 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 				else {
 					rds = BKE_brush_unprojected_radius_get(scene, brush);
 				}
+
 				wmViewport(&ar->winrct);
-				wmOrtho2_pixelspace(ar->winx, ar->winy);
 
 				/* draw 3D vertex preview */
 				if (len_v3v3(gi.nearest_vertex_co, gi.location) < rds) {
@@ -1286,6 +1286,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 				GPU_matrix_pop();
 				GPU_matrix_pop_projection();
+				wmWindowViewport(win);
 
 			}
 			else {
@@ -1293,16 +1294,16 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 				imm_draw_circle_wire_3d(pos3d, translation[0], translation[1], final_radius, 40);
 			}
 		} else {
-			if (vc.obact->sculpt->cache) {
+			if (vc.obact->sculpt->cache && !vc.obact->sculpt->cache->first_time) {
 				SculptSession *ss = vc.obact->sculpt;
 				wmViewport(&ar->winrct);
-				wmOrtho2_pixelspace(ar->winx, ar->winy);
 				float cursor_location[3];
 				copy_v3_v3(cursor_location, ss->cache->true_location);
 				if (ss->cache->brush->sculpt_tool == SCULPT_TOOL_GRAB) {
 					add_v3_v3(cursor_location, ss->cache->grab_delta);
 				}
 				cursor_draw_point_with_symmetry(pos3d, ar, cursor_location, sd, vc.obact, vc.rv3d->persmat, ss->cache->radius);
+				wmWindowViewport(win);
 			}
 		}
 	}
