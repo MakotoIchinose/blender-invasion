@@ -1189,7 +1189,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
 	/* gradient control along y */
 	prop = RNA_def_property(srna, "gradient_factor", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "gradient_f");
-	RNA_def_property_range(prop, 0.01f, 1.0f);
+	RNA_def_property_range(prop, 0.001f, 1.0f);
 	RNA_def_property_float_default(prop, 1.0f);
 	RNA_def_property_ui_text(
 		prop, "Gradient Factor",

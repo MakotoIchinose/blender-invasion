@@ -20,15 +20,25 @@ out vec4 fragColor;
 #define GPENCIL_COLOR_TEXTURE 1
 #define GPENCIL_COLOR_PATTERN 2
 
+/* Function to check the point inside ellipse */
+float checkpoint(vec2 pt, vec2 radius) 
+{ 
+    float p = (pow(pt.x, 2) / pow(radius.x, 2)) + (pow(pt.y, 2) / pow(radius.y, 2)); 
+  
+    return p; 
+} 
+
 void main()
 {
 	vec2 centered = mTexCoord - vec2(0.5);
 	float dist_squared = dot(centered, centered);
 	const float rad_squared = 0.25;
+	float ellip = checkpoint(centered, vec2(gradient_s / 2.0));
 
-	 /* Round point with jaggy edges. */
-	if ((mode != GPENCIL_MODE_BOX) && (dist_squared > rad_squared)) {
-		discard;
+	if (mode != GPENCIL_MODE_BOX) {
+		if (ellip > 1.0) {
+			discard;
+		}
 	}
 
 	vec4 tmp_color = texture2D(myTexture, mTexCoord);
@@ -50,6 +60,15 @@ void main()
 		/* mult both alpha factor to use strength factor with color alpha limit */
 		fragColor.a = min(text_color.a * mColor.a, mColor.a);
 	}
+	
+	if (gradient_f < 1.0) {
+		float in_rad = gradient_f / 4.0;
+		float ex_rad = rad_squared - in_rad;
+
+		float alpha = clamp((dist_squared - in_rad) / ex_rad, 0.0, 1.0);
+		fragColor.a = smoothstep(fragColor.a, 0.0, ellip);
+	}
+	
 	if(fragColor.a < 0.0035)
 		discard;
 }

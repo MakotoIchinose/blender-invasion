@@ -2,7 +2,6 @@ uniform int color_type;
 uniform sampler2D myTexture;
 
 uniform float gradient_f;
-uniform vec2 gradient_s;
 
 in vec4 mColor;
 in vec2 mTexCoord;
@@ -21,6 +20,7 @@ out vec4 fragColor;
 
 void main()
 {
+	
 	vec4 tColor = vec4(mColor);
 	/* if uvfac[1]  == 1, then encap */
 	if (uvfac[1] == ENDCAP) {
@@ -58,8 +58,11 @@ void main()
 	}
 
 	/* gradient */
-	if (mTexCoord.y > gradient_f) {
-		fragColor.a = gradient_f;
+	if (gradient_f < 1.0) {
+		float d = abs(mTexCoord.y - 0.5)  * (1.1 - gradient_f);
+		float alpha = 1.0 - clamp((fragColor.a - (d * 2.0)), 0.03, 1.0);
+		fragColor.a = smoothstep(fragColor.a, 0.0, alpha);
+		
 	}
 
 	if(fragColor.a < 0.0035)

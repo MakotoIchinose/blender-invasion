@@ -535,7 +535,6 @@ DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(
 		stl->shgroups[id].gradient_f = gps->gradient_f;
 		copy_v2_v2(stl->shgroups[id].gradient_s, gps->gradient_s);
 		DRW_shgroup_uniform_float(grp, "gradient_f", &stl->shgroups[id].gradient_f, 1);
-		DRW_shgroup_uniform_vec2(grp, "gradient_s", stl->shgroups[id].gradient_s, 1);
 
 		/* viewport x-ray */
 		stl->shgroups[id].is_xray = (ob->dt == OB_WIRE) ? 1 : stl->storage->is_xray;
@@ -571,7 +570,6 @@ DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(
 		DRW_shgroup_uniform_int(grp, "caps_mode", &zero[0], 2);
 
 		DRW_shgroup_uniform_float(grp, "gradient_f", &stl->storage->gradient_f, 1);
-		DRW_shgroup_uniform_vec2(grp, "gradient_s", stl->storage->gradient_s, 1);
 
 		/* viewport x-ray */
 		DRW_shgroup_uniform_int(grp, "viewport_xray", &stl->storage->is_xray, 1);
