@@ -62,18 +62,10 @@ void main()
 	}
 	
 	if (gradient_f < 1.0) {
-	
 		float dist = length(centered) * 2.0;
 		float ex = pow(dist, (-gradient_f * 2.0f));
 		float alpha = clamp(1.0 - abs((1.0f - ex) / 10.0f), 0.0f, 1.0f) * ellip;
 		fragColor.a = clamp(smoothstep(fragColor.a, 0.0, alpha), 0.01, 1.0);
-	
-	
-		// float in_rad = gradient_f / 4.0;
-		// float ex_rad = rad_squared - in_rad;
-
-		// float alpha = clamp((dist_squared - in_rad) / ex_rad, 0.0, 1.0);
-		// fragColor.a = smoothstep(fragColor.a, 0.0, ellip);
 	}
 	
 	if(fragColor.a < 0.0035)
