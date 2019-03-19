@@ -28,11 +28,13 @@
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
 #include "DNA_key_types.h"
+#include "DNA_mesh_types.h"
 
 #include "BLI_bitmap.h"
 #include "BLI_threads.h"
 
 #include "BKE_pbvh.h"
+#include "BKE_mesh.h"
 
 struct KeyBlock;
 struct Object;
@@ -83,6 +85,7 @@ typedef enum {
 	SCULPT_UNDO_DYNTOPO_BEGIN,
 	SCULPT_UNDO_DYNTOPO_END,
 	SCULPT_UNDO_DYNTOPO_SYMMETRIZE,
+	SCULPT_UNDO_REMESH,
 } SculptUndoType;
 
 typedef struct SculptUndoNode {
@@ -125,6 +128,17 @@ typedef struct SculptUndoNode {
 
 	/* shape keys */
 	char shapeName[sizeof(((KeyBlock *)0))->name];
+
+	/* remesh operations */
+	bool remesh_applied;
+	CustomData remesh_vdata;
+	CustomData remesh_edata;
+	CustomData remesh_ldata;
+	CustomData remesh_pdata;
+	int remesh_totvert;
+	int remesh_totedge;
+	int remesh_totloop;
+	int remesh_totpoly;
 
 	size_t undo_size;
 } SculptUndoNode;

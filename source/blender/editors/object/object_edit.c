@@ -113,6 +113,7 @@
 #include "WM_toolsystem.h"
 
 #include "object_intern.h"  // own include
+#include "sculpt_intern.h"
 
 #ifdef WITH_OPENVDB
 	#include "openvdb_capi.h"
@@ -1764,6 +1765,20 @@ static int remesh_exec(bContext *C, wmOperator *op)
 	}
 
 	if (ob->type == OB_MESH) {
+
+		if (ob->mode == OB_MODE_SCULPT) {
+			Depsgraph *depsgraph = CTX_data_depsgraph(C);
+			struct Scene *scene = CTX_data_scene(C);
+			Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+			BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, true, true);
+			PBVH *pbvh;
+			PBVHNode **nodes;
+			int totnode;
+			pbvh = ob->sculpt->pbvh;
+			BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
+			sculpt_undo_push_begin("voxel remesh");
+			sculpt_undo_push_node(ob, nodes[0], SCULPT_UNDO_REMESH);
+		}
 		Mesh *mesh = ob->data;
 		BKE_mesh_runtime_looptri_recalc(mesh);
 		const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
@@ -1816,6 +1831,9 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		if (RNA_boolean_get(op->ptr, "smooth_normals")) {
 			BKE_mesh_smooth_flag_set(ob, true);
 		}
+		if (ob->mode == OB_MODE_SCULPT) {
+			sculpt_undo_push_end();
+		}
 
 		BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
 		DEG_relations_tag_update(bmain);
@@ -1828,7 +1846,6 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		MEM_freeN(verttri);
 		MEM_freeN(rmd.out_verts);
 		MEM_freeN(rmd.out_faces);
-
 		return OPERATOR_FINISHED;
 	}
 	return OPERATOR_CANCELLED;

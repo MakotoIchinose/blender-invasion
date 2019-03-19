@@ -55,8 +55,11 @@
 #include "BKE_undo_system.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
+#include "BKE_pointcache.h"
+#include "BKE_particle.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -449,6 +452,7 @@ static int sculpt_undo_bmesh_restore(bContext *C,
                                      Object *ob,
                                      SculptSession *ss)
 {
+	Mesh *me;
 	switch (unode->type) {
 		case SCULPT_UNDO_DYNTOPO_BEGIN:
 			sculpt_undo_bmesh_restore_begin(C, unode, ob, ss);
@@ -457,7 +461,29 @@ static int sculpt_undo_bmesh_restore(bContext *C,
 		case SCULPT_UNDO_DYNTOPO_END:
 			sculpt_undo_bmesh_restore_end(C, unode, ob, ss);
 			return true;
-
+		case SCULPT_UNDO_REMESH:
+			sculpt_pbvh_clear(ob);
+			me = ob->data;
+			CustomData_free(&me->vdata, me->totvert);
+			CustomData_free(&me->edata, me->totedge);
+			CustomData_free(&me->fdata, me->totface);
+			CustomData_free(&me->ldata, me->totloop);
+			CustomData_free(&me->pdata, me->totpoly);
+			me->totvert = unode->remesh_totvert;
+			me->totedge = unode->remesh_totedge;
+			me->totloop = unode->remesh_totloop;
+			me->totpoly = unode->remesh_totpoly;
+			me->totface = 0;
+			CustomData_copy(&unode->remesh_vdata, &me->vdata, CD_MASK_MESH.vmask,
+					CD_DUPLICATE, unode->remesh_totvert);
+			CustomData_copy(&unode->remesh_edata, &me->edata, CD_MASK_MESH.emask,
+					CD_DUPLICATE, unode->remesh_totedge);
+			CustomData_copy(&unode->remesh_ldata, &me->ldata, CD_MASK_MESH.lmask,
+					CD_DUPLICATE, unode->remesh_totloop);
+			CustomData_copy(&unode->remesh_pdata, &me->pdata, CD_MASK_MESH.pmask,
+					CD_DUPLICATE, unode->remesh_totpoly);
+			BKE_mesh_update_customdata_pointers(me, false);
+			return false;
 		default:
 			if (ss->bm_log) {
 				sculpt_undo_bmesh_restore_generic(C, unode, ob, ss);
@@ -476,14 +502,19 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Object *ob = OBACT(view_layer);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
+	Main *bmain = CTX_data_main(C);
 	SculptSession *ss = ob->sculpt;
 	SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 	SculptUndoNode *unode;
 	bool update = false, rebuild = false;
 	bool need_mask = false;
 	bool partial_update = true;
+	bool remesh_update = false;
 
 	for (unode = lb->first; unode; unode = unode->next) {
+		if (unode->type == SCULPT_UNDO_REMESH) {
+			remesh_update = true;
+		}
 		if (STREQ(unode->idname, ob->id.name)) {
 			if (unode->type == SCULPT_UNDO_MASK) {
 				/* is possible that we can't do the mask undo (below)
@@ -541,7 +572,19 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 			case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
 				BLI_assert(!"Dynamic topology should've already been handled");
 				break;
+			case SCULPT_UNDO_REMESH:
+				break;
 		}
+	}
+
+	if (remesh_update) {
+		BKE_particlesystem_reset_all(ob);
+		BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_OUTDATED);
+		DEG_relations_tag_update(bmain);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+		BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, false);
+		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+		WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 	}
 
 	if (update || rebuild) {
@@ -626,6 +669,15 @@ static void sculpt_undo_free_list(ListBase *lb)
 			CustomData_free(&unode->bm_enter_ldata, unode->bm_enter_totloop);
 		if (unode->bm_enter_totpoly)
 			CustomData_free(&unode->bm_enter_pdata, unode->bm_enter_totpoly);
+
+		if (unode->remesh_totvert)
+			CustomData_free(&unode->remesh_vdata, unode->remesh_totvert);
+		if (unode->remesh_totedge)
+			CustomData_free(&unode->remesh_edata, unode->remesh_totedge);
+		if (unode->remesh_totloop)
+			CustomData_free(&unode->remesh_ldata, unode->remesh_totloop);
+		if (unode->remesh_totpoly)
+			CustomData_free(&unode->remesh_pdata, unode->remesh_totpoly);
 
 		MEM_freeN(unode);
 
@@ -861,6 +913,22 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob,
 			unode->bm_entry = BM_log_entry_add(ss->bm_log);
 			BM_log_all_added(ss->bm, ss->bm_log);
 		}
+		else if (type == SCULPT_UNDO_REMESH) {
+			Mesh *me = ob->data;
+
+			CustomData_copy(&me->vdata, &unode->remesh_vdata, CD_MASK_MESH.vmask,
+			                CD_DUPLICATE, me->totvert);
+			CustomData_copy(&me->edata, &unode->remesh_edata, CD_MASK_MESH.emask,
+			                CD_DUPLICATE, me->totedge);
+			CustomData_copy(&me->ldata, &unode->remesh_ldata, CD_MASK_MESH.lmask,
+			                CD_DUPLICATE, me->totloop);
+			CustomData_copy(&me->pdata, &unode->remesh_pdata, CD_MASK_MESH.pmask,
+			                CD_DUPLICATE, me->totpoly);
+			unode->remesh_totvert = me->totvert;
+			unode->remesh_totedge = me->totedge;
+			unode->remesh_totloop = me->totloop;
+			unode->remesh_totpoly = me->totpoly;
+		}
 		else {
 			unode->bm_entry = BM_log_entry_add(ss->bm_log);
 		}
@@ -899,6 +967,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob,
 			case SCULPT_UNDO_DYNTOPO_BEGIN:
 			case SCULPT_UNDO_DYNTOPO_END:
 			case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
+			case SCULPT_UNDO_REMESH:
 				break;
 		}
 	}
@@ -919,7 +988,7 @@ SculptUndoNode *sculpt_undo_push_node(
 	if (ss->bm ||
 	    ELEM(type,
 	         SCULPT_UNDO_DYNTOPO_BEGIN,
-	         SCULPT_UNDO_DYNTOPO_END))
+	         SCULPT_UNDO_DYNTOPO_END, SCULPT_UNDO_REMESH))
 	{
 		/* Dynamic topology stores only one undo node per stroke,
 		 * regardless of the number of PBVH nodes modified */
@@ -967,6 +1036,8 @@ SculptUndoNode *sculpt_undo_push_node(
 		case SCULPT_UNDO_DYNTOPO_END:
 		case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
 			BLI_assert(!"Dynamic topology should've already been handled");
+			break;
+		case SCULPT_UNDO_REMESH:
 			break;
 	}
 
@@ -1046,7 +1117,7 @@ static bool sculpt_undosys_step_encode(struct bContext *UNUSED(C), struct Main *
 	us->step.data_size = us->data.undo_size;
 
 	SculptUndoNode *unode = us->data.nodes.last;
-	if (unode && unode->type == SCULPT_UNDO_DYNTOPO_END) {
+	if (unode && (unode->type == SCULPT_UNDO_DYNTOPO_END)) {
 		us->step.use_memfile_step = true;
 	}
 	us->step.is_applied = true;

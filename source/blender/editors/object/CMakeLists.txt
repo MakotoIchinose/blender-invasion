@@ -33,6 +33,7 @@ set(INC
 	../../python
 	../../render/extern/include
 	../../windowmanager
+	../sculpt_paint
 	../../../../intern/guardedalloc
 	../../../../intern/glew-mx
 )
