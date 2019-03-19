@@ -399,8 +399,8 @@ static void gp_reproject_toplane(tGPsdata *p, bGPDstroke *gps)
 	/* get drawing origin */
 	gp_get_3d_reference(p, origin);
 	ED_gp_project_stroke_to_plane(
-								p->scene, obact, rv3d, gps,
-								origin, p->lock_axis - 1);
+	        p->scene, obact, rv3d, gps,
+	        origin, p->lock_axis - 1);
 }
 
 /* convert screen-coordinates to buffer-coordinates */
@@ -428,8 +428,8 @@ static void gp_stroke_convertcoords(tGPsdata *p, const float mval[2], float out[
 			 * - nothing more needs to be done here, since view_autodist_simple() has already done it
 			 */
 
-			 /* verify valid zdepth, if it's wrong, the default drawing mode is used
-			  * and the function doesn't return now */
+			/* verify valid zdepth, if it's wrong, the default drawing mode is used
+			 * and the function doesn't return now */
 			if ((depth == NULL) || (*depth <= 1.0f)) {
 				return;
 			}
