@@ -93,6 +93,9 @@ typedef struct MaskTaskData {
 	PaintMaskFloodMode mode;
 	float value;
 	float (*clip_planes_final)[4];
+	bool front_faces_only;
+	float trueViewDir[3];
+	float viewDir[3];
 } MaskTaskData;
 
 static void mask_flood_fill_task_cb(
@@ -391,10 +394,14 @@ static void mask_gesture_lasso_task_cb(
 	const float value = data->value;
 
 	PBVHVertexIter vi;
+	float vertex_normal[3];
 	bool any_masked = false;
 
 	BKE_pbvh_vertex_iter_begin(data->pbvh, node, vi, PBVH_ITER_UNIQUE) {
-		if (is_effected_lasso(lasso_data, vi.co)) {
+		normal_short_to_float_v3(vertex_normal, vi.no);
+		float dp = dot_v3v3(lasso_data->task_data.viewDir, vertex_normal);
+		if (!lasso_data->task_data.front_faces_only) dp = 1;
+		if (is_effected_lasso(lasso_data, vi.co) && dp > 0) {
 			if (!any_masked) {
 				any_masked = true;
 
@@ -460,6 +467,20 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
 
 		sculpt_undo_push_begin("Mask lasso fill");
 
+		data.task_data.front_faces_only = RNA_boolean_get(op->ptr, "front_faces_only");
+		float imat[4][4];
+		float mat[4][4];
+		float viewDir[3] = {0.0f, 0.0f, 1.0f};
+		if (data.task_data.front_faces_only) {
+			invert_m4_m4(imat, ob->obmat);
+			copy_m3_m4(mat, vc.rv3d->viewinv);
+			mul_m3_v3(mat, viewDir);
+			copy_m3_m4(mat, ob->imat);
+			mul_m3_v3(mat, viewDir);
+			normalize_v3_v3(data.task_data.viewDir, viewDir);
+			copy_v3_v3(data.task_data.trueViewDir, data.task_data.viewDir);
+		}
+
 		for (symmpass = 0; symmpass <= symm; ++symmpass) {
 			if ((symmpass == 0) ||
 			    (symm & symmpass &&
@@ -471,6 +492,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
 				/* flip the planes symmetrically as needed */
 				for (; j < 4; j++) {
 					flip_plane(clip_planes_final[j], clip_planes[j], symmpass);
+					flip_v3_v3(data.task_data.viewDir, data.task_data.trueViewDir, symmpass);
 				}
 
 				data.symmpass = symmpass;
@@ -534,4 +556,5 @@ void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot)
 	RNA_def_enum(ot->srna, "mode", mode_items, PAINT_MASK_FLOOD_VALUE, "Mode", NULL);
 	RNA_def_float(ot->srna, "value", 1.0, 0, 1.0, "Value",
 	              "Mask level to use when mode is 'Value'; zero means no masking and one is fully masked", 0, 1);
+	RNA_def_boolean(ot->srna, "front_faces_only", true, "Front faces only", "Affect only faces facing towards the view");
 }
