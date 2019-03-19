@@ -1003,7 +1003,7 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
 	RNA_def_property_float_sdna(prop, NULL, "gradient_f");
 	RNA_def_property_range(prop, 0.001f, 1.0f);
 	RNA_def_property_float_default(prop, 1.0f);
-	RNA_def_property_ui_text(prop, "Gradient Factor",
+	RNA_def_property_ui_text(prop, "Border Opacity Factor",
 		"Amount of gradient along section of stroke");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
