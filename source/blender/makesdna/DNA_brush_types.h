@@ -182,6 +182,18 @@ typedef enum eGP_BrushIcons {
 	GP_BRUSH_ICON_ERASE_STROKE = 10,
 } eGP_BrushIcons;
 
+typedef enum eBrushCurvePreset {
+	BRUSH_CURVE_CUSTOM = 0,
+	BRUSH_CURVE_SMOOTH = 1,
+	BRUSH_CURVE_SPHERE = 2,
+	BRUSH_CURVE_ROOT = 3,
+	BRUSH_CURVE_SHARP = 4,
+	BRUSH_CURVE_LIN = 5,
+	BRUSH_CURVE_POW4 = 6,
+	BRUSH_CURVE_INVSQUARE = 7,
+	BRUSH_CURVE_CONSTANT = 8,
+} eBrushCurvePreset;
+
 typedef struct Brush {
 	ID id;
 
@@ -278,7 +290,8 @@ typedef struct Brush {
 	float topology_rake_factor;
 
 	float crease_pinch_factor;
-	char _pad1[4];
+
+	int curve_preset;
 
 	float plane_trim;
 	/** Affectable height of brush (layer height for layer tool, i.e.). */

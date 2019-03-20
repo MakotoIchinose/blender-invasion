@@ -1295,25 +1295,41 @@ float tex_strength(SculptSession *ss, const Brush *br,
 	}
 
 	/* Falloff curve */
-	float dist_nrm, factor;
-	switch (br->sculpt_tool) {
-		case SCULPT_TOOL_GRAB:
-			dist_nrm = len/cache->radius;
-			factor = 3.0f * dist_nrm * dist_nrm - 2.0f * dist_nrm * dist_nrm * dist_nrm;
-			avg *= (1 - factor);
-			avg *= 0.5f;
+	float dist, factor;
+	dist = len/cache->radius;
+	dist = 1 - dist;
+
+	switch (br->curve_preset) {
+		case BRUSH_CURVE_CUSTOM:
+			factor = BKE_brush_curve_strength(br, len, cache->radius);
 			break;
-		case SCULPT_TOOL_DAM:
-			dist_nrm = len/cache->radius;
-			dist_nrm = 1 - dist_nrm;
-			factor = dist_nrm * dist_nrm * dist_nrm * dist_nrm;
-			factor = 1 - factor;
-			avg *= (1 - factor);
-			avg *= -2;
-		default:
-			avg *= BKE_brush_curve_strength(br, len, cache->radius);
+		case BRUSH_CURVE_SHARP:
+			factor = dist * dist;
+			break;
+		case BRUSH_CURVE_SMOOTH:
+			factor = 3.0f * dist * dist - 2.0f * dist * dist * dist;
+			break;
+		case BRUSH_CURVE_ROOT:
+			factor = sqrtf(dist);
+			break;
+		case BRUSH_CURVE_LIN:
+			factor = dist;
+			break;
+		case BRUSH_CURVE_CONSTANT:
+			factor = 1.0f;
+			break;
+		case BRUSH_CURVE_SPHERE:
+			factor = sqrtf(2 * dist - dist * dist);
+			break;
+		case BRUSH_CURVE_POW4:
+			factor = dist * dist * dist * dist;
+			break;
+		case BRUSH_CURVE_INVSQUARE:
+			factor = dist * (2.0f - dist);
 			break;
 	}
+
+	avg *= factor;
 
 	avg *= frontface(br, cache->view_normal, vno, fno);
 

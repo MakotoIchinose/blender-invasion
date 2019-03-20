@@ -1425,6 +1425,20 @@ static void rna_def_brush(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL},
 	};
 
+	static const EnumPropertyItem brush_curve_preset_items[] = {
+		{BRUSH_CURVE_CUSTOM, "CUSTOM", 0, "Custom", ""},
+		{BRUSH_CURVE_SMOOTH, "SMOOTH", 0, "Smooth", ""},
+		{BRUSH_CURVE_SPHERE, "SPHERE", 0, "Sphere", ""},
+		{BRUSH_CURVE_ROOT, "ROOT", 0, "Root", ""},
+		{BRUSH_CURVE_SHARP, "SHARP", 0, "Sharp", ""},
+		{BRUSH_CURVE_LIN, "LIN", 0, "Linear", ""},
+		{BRUSH_CURVE_POW4, "POW4", 0, "Sharper", ""},
+		{BRUSH_CURVE_INVSQUARE, "INVSQUARE", 0, "Inverse square", ""},
+		{BRUSH_CURVE_CONSTANT, "CONSTANT", 0, "Constant", ""},
+		{0, NULL, 0, NULL, NULL},
+	};
+
+
 	srna = RNA_def_struct(brna, "Brush", "ID");
 	RNA_def_struct_ui_text(srna, "Brush", "Brush data-block for storing brush settings for painting and sculpting");
 	RNA_def_struct_ui_icon(srna, ICON_BRUSH_DATA);
@@ -1494,6 +1508,11 @@ static void rna_def_brush(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "mask_tool", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, brush_mask_tool_items);
 	RNA_def_property_ui_text(prop, "Mask Tool", "");
+	RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+	prop = RNA_def_property(srna, "curve_preset", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, brush_curve_preset_items);
+	RNA_def_property_ui_text(prop, "Curve Preset", "");
 	RNA_def_property_update(prop, 0, "rna_Brush_update");
 
 	/* number values */
