@@ -2731,6 +2731,23 @@ static void rna_def_mesh(BlenderRNA *brna)
 	rna_def_paint_mask(brna, prop);
 	/* End paint mask */
 
+	/* Remesher */
+	prop = RNA_def_property(srna, "voxel_size", PROP_FLOAT, PROP_DISTANCE);
+	RNA_def_property_float_sdna(prop, NULL, "voxel_size");
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_range(prop, 0.001f, 1.0f);
+	RNA_def_property_ui_range(prop, 0.001f, 1.0f, 0.01, 4);
+	RNA_def_property_ui_text(prop, "Voxel size",
+	                         "Size of the voxel used for OpenVDB evaluation");
+	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
+
+	prop = RNA_def_property(srna, "smooth_normals", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_SMOOTH_NORMALS);
+	RNA_def_property_ui_text(prop, "Smooth normals",
+	                         "Smooth the normals of the remesher result");
+	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
+	/* End remesher */
+
 	prop = RNA_def_property(srna, "use_auto_smooth", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_AUTOSMOOTH);
 	RNA_def_property_ui_text(prop, "Auto Smooth",

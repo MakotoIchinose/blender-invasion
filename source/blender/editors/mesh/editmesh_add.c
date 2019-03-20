@@ -27,11 +27,13 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_mesh_types.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
+#include "BKE_mesh.h"
 
 #include "RNA_define.h"
 #include "RNA_access.h"
@@ -94,6 +96,10 @@ static void make_prim_finish(bContext *C, Object *obedit, const MakePrimitiveDat
 	/* userdef */
 	if (exit_editmode) {
 		ED_object_editmode_exit(C, EM_FREEDATA);
+		//TODO: Find a better place to init this
+		Mesh *me;
+		me = obedit->data;
+		me->voxel_size = 0.1f;
 	}
 	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obedit);
 }

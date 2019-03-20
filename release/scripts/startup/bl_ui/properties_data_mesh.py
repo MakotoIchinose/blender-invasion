@@ -454,6 +454,22 @@ class DATA_PT_vertex_colors(MeshButtonsPanel, Panel):
         col.operator("mesh.vertex_color_remove", icon='REMOVE', text="")
 
 
+class DATA_PT_remesh(MeshButtonsPanel, Panel):
+    bl_label = "Remesh"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        col = layout.column()
+
+        mesh = context.mesh
+        col.prop(mesh, "voxel_size")
+        col.prop(mesh, "smooth_normals")
+        col.operator("object.remesh", text="Remesh")
+
+
 class DATA_PT_customdata(MeshButtonsPanel, Panel):
     bl_label = "Geometry Data"
     bl_options = {'DEFAULT_CLOSED'}
@@ -503,6 +519,7 @@ classes = (
     DATA_PT_uv_texture,
     DATA_PT_vertex_colors,
     DATA_PT_face_maps,
+    DATA_PT_remesh,
     DATA_PT_normals,
     DATA_PT_normals_auto_smooth,
     DATA_PT_texture_space,

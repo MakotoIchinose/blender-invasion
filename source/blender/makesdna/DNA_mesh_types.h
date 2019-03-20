@@ -187,6 +187,8 @@ typedef struct Mesh {
 
 	short totcol;
 
+	float voxel_size;
+	char _pad1[4];
 	/** Deprecated multiresolution modeling data, only keep for loading old files. */
 	struct Multires *mr DNA_DEPRECATED;
 
@@ -244,6 +246,7 @@ enum {
 	ME_FLAG_UNUSED_8           = 1 << 8,  /* cleared */
 	ME_DS_EXPAND               = 1 << 9,
 	ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,
+	ME_REMESH_SMOOTH_NORMALS   = 1 << 11,
 };
 
 /* me->cd_flag */

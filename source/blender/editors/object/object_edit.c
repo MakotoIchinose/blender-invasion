@@ -1765,6 +1765,10 @@ static int remesh_exec(bContext *C, wmOperator *op)
 	}
 
 	if (ob->type == OB_MESH) {
+		Mesh *mesh = ob->data;
+		if (mesh->voxel_size <= 0.0f) {
+			return OPERATOR_CANCELLED;
+		}
 
 		if (ob->mode == OB_MODE_SCULPT) {
 			Depsgraph *depsgraph = CTX_data_depsgraph(C);
@@ -1779,7 +1783,6 @@ static int remesh_exec(bContext *C, wmOperator *op)
 			sculpt_undo_push_begin("voxel remesh");
 			sculpt_undo_push_node(ob, nodes[0], SCULPT_UNDO_REMESH);
 		}
-		Mesh *mesh = ob->data;
 		BKE_mesh_runtime_looptri_recalc(mesh);
 		const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
 		MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh), "remesh_looptri");
@@ -1789,8 +1792,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		rmd.totverts = mesh->totvert;
 		rmd.verts = (float *)MEM_calloc_arrayN(rmd.totverts * 3, sizeof(float), "remesh_input_verts");
 		rmd.faces = (unsigned int *)MEM_calloc_arrayN(rmd.totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
-		PropertyRNA *prop = RNA_struct_find_property(op->ptr, "voxel_size");
-		rmd.voxel_size = RNA_property_float_get(op->ptr, prop);
+		rmd.voxel_size = mesh->voxel_size;
 		rmd.isovalue = 0.0f;
 
 		for(int i = 0; i < mesh->totvert; i++) {
@@ -1828,7 +1830,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		BKE_mesh_calc_normals(newMesh);
 		BKE_mesh_nomain_to_mesh(newMesh, ob->data, ob, &CD_MASK_EVERYTHING, true);
 
-		if (RNA_boolean_get(op->ptr, "smooth_normals")) {
+		if (mesh->flag & ME_REMESH_SMOOTH_NORMALS) {
 			BKE_mesh_smooth_flag_set(ob, true);
 		}
 		if (ob->mode == OB_MODE_SCULPT) {
@@ -1853,8 +1855,6 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
 void OBJECT_OT_remesh(wmOperatorType *ot)
 {
-	PropertyRNA *prop;
-
 	/* identifiers */
 	ot->name = "Voxel remesh";
 	ot->description = "Run OpenVDB voxel remesher";
@@ -1864,13 +1864,5 @@ void OBJECT_OT_remesh(wmOperatorType *ot)
 	ot->poll = object_mode_set_poll;
 	ot->exec = remesh_exec;
 
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-	prop = RNA_def_property(ot->srna, "voxel_size", PROP_FLOAT, PROP_UNSIGNED);
-	RNA_def_property_range(prop, 0.001, 1.0);
-	RNA_def_property_float_default(prop, 0.1f);
-	RNA_def_property_ui_range(prop, 0.0001, 1, 0.01, 4);
-	RNA_def_property_ui_text(prop, "Voxel Size", "Voxel size used for volume evaluation");
-
-	prop = RNA_def_boolean(ot->srna, "smooth_normals", false, "Shade smooth", "Smooth normals on the resulting mesh");
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 }
