@@ -363,9 +363,11 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
 	}
 
 	if (tree_1d != NULL) {
+		BLI_kdtree_1d_deduplicate(tree_1d);
 		BLI_kdtree_1d_balance(tree_1d);
 	}
 	if (tree_3d != NULL) {
+		BLI_kdtree_3d_deduplicate(tree_3d);
 		BLI_kdtree_3d_balance(tree_3d);
 	}
 	/* Select MetaBalls with desired type. */
@@ -631,7 +633,7 @@ static int hide_metaelems_exec(bContext *C, wmOperator *op)
 void MBALL_OT_hide_metaelems(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Hide";
+	ot->name = "Hide Selected";
 	ot->description = "Hide (un)selected metaelement(s)";
 	ot->idname = "MBALL_OT_hide_metaelems";
 
@@ -674,7 +676,7 @@ static int reveal_metaelems_exec(bContext *C, wmOperator *op)
 void MBALL_OT_reveal_metaelems(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Reveal";
+	ot->name = "Reveal Hidden";
 	ot->description = "Reveal all hidden metaelements";
 	ot->idname = "MBALL_OT_reveal_metaelems";
 

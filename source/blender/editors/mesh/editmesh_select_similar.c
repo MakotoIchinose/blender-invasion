@@ -138,10 +138,7 @@ static bool face_data_value_set(BMFace *face, const int hflag, int *r_value)
 }
 
 /**
- * Note: This is not normal, but the face direction itself and always in
- * a positive quadrant (tries z, y then x).
- * Also, unlike edge_pos_direction_worldspace_get we don't normalize the direction.
- * In fact we scale the direction by the distance of the face center to the origin.
+ * World space normalized plane from a face.
  */
 static void face_to_plane(const Object *ob, BMFace *face, float r_plane[4])
 {
@@ -151,7 +148,6 @@ static void face_to_plane(const Object *ob, BMFace *face, float r_plane[4])
 	normalize_v3(normal);
 	mul_v3_m4v3(co, ob->obmat, BM_FACE_FIRST_LOOP(face)->v->co);
 	plane_from_point_normal_v3(r_plane, co, normal);
-
 }
 
 /* TODO(dfelinto): `types` that should technically be compared in world space but are not:
@@ -337,12 +333,15 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 	BLI_assert((type != SIMFACE_FREESTYLE) || (face_data_value != SIMFACE_DATA_NONE));
 
 	if (tree_1d != NULL) {
+		BLI_kdtree_1d_deduplicate(tree_1d);
 		BLI_kdtree_1d_balance(tree_1d);
 	}
 	if (tree_3d != NULL) {
+		BLI_kdtree_3d_deduplicate(tree_3d);
 		BLI_kdtree_3d_balance(tree_3d);
 	}
 	if (tree_4d != NULL) {
+		BLI_kdtree_4d_deduplicate(tree_4d);
 		BLI_kdtree_4d_balance(tree_4d);
 	}
 
@@ -553,6 +552,7 @@ face_select_all:
 	}
 
 	MEM_freeN(objects);
+	BLI_kdtree_1d_free(tree_1d);
 	BLI_kdtree_3d_free(tree_3d);
 	BLI_kdtree_4d_free(tree_4d);
 	if (gset != NULL) {
@@ -807,9 +807,11 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 	BLI_assert((type != SIMEDGE_FREESTYLE) || (edge_data_value != SIMEDGE_DATA_NONE));
 
 	if (tree_1d != NULL) {
+		BLI_kdtree_1d_deduplicate(tree_1d);
 		BLI_kdtree_1d_balance(tree_1d);
 	}
 	if (tree_3d != NULL) {
+		BLI_kdtree_3d_deduplicate(tree_3d);
 		BLI_kdtree_3d_balance(tree_3d);
 	}
 
@@ -992,6 +994,7 @@ edge_select_all:
 	}
 
 	MEM_freeN(objects);
+	BLI_kdtree_1d_free(tree_1d);
 	BLI_kdtree_3d_free(tree_3d);
 	if (gset != NULL) {
 		BLI_gset_free(gset, NULL);
@@ -1128,6 +1131,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
 	/* Remove duplicated entries. */
 	if (tree_3d != NULL) {
+		BLI_kdtree_3d_deduplicate(tree_3d);
 		BLI_kdtree_3d_balance(tree_3d);
 	}
 
