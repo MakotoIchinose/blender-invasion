@@ -394,13 +394,15 @@ static void mask_gesture_lasso_task_cb(
 	const float value = data->value;
 
 	PBVHVertexIter vi;
-	float vertex_normal[3];
+	float vertex_normal[3], dp = 1;
 	bool any_masked = false;
 
 	BKE_pbvh_vertex_iter_begin(data->pbvh, node, vi, PBVH_ITER_UNIQUE) {
-		normal_short_to_float_v3(vertex_normal, vi.no);
-		float dp = dot_v3v3(lasso_data->task_data.viewDir, vertex_normal);
-		if (!lasso_data->task_data.front_faces_only) dp = 1;
+		if (BKE_pbvh_type(data->pbvh) == PBVH_FACES){
+			normal_short_to_float_v3(vertex_normal, vi.no);
+			dp = dot_v3v3(lasso_data->task_data.viewDir, vertex_normal);
+			if (!lasso_data->task_data.front_faces_only) dp = 1;
+		}
 		if (is_effected_lasso(lasso_data, vi.co) && dp > 0) {
 			if (!any_masked) {
 				any_masked = true;
