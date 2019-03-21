@@ -133,6 +133,7 @@ BraceWrapping: {
     BeforeCatch : 'true'
     BeforeElse : 'true'
     IndentBraces : 'false'
+    AfterObjCDeclaration: 'true'
 }
 
 # For switch statements, indent the cases.
