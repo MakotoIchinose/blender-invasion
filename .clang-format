@@ -120,7 +120,7 @@ ContinuationIndentWidth: 4
 # This tries to match Blender's style as much as possible. One
 BreakBeforeBraces: Custom
 BraceWrapping: {
-    AfterClass: 'true'
+    AfterClass: 'false'
     AfterControlStatement: 'false'
     AfterEnum : 'false'
     AfterFunction : 'true'
