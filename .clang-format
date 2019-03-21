@@ -112,6 +112,9 @@ ConstructorInitializerAllOnOneLineOrOnePerLine: true
 #
 ConstructorInitializerIndentWidth: 4
 
+# Make access modifier slightly more visible.
+AccessModifierOffset: -1
+
 # This will unfortunately use spaces in some cases where it's not desired (like
 # function calls) but the overall result is better since it will allow
 # alignment to work properly with different tab width settings.
