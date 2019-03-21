@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 
+CLANG_FORMAT_CMD = "clang-format"
 VERSION_MIN = (6, 0, 0)
 
 # Optionally pass in files to operate on.
@@ -86,7 +87,7 @@ def convert_tabs_to_spaces(files):
 
 
 def clang_format_version():
-    version_output = subprocess.check_output(("clang-format", "-version")).decode('utf-8')
+    version_output = subprocess.check_output((CLANG_FORMAT_CMD, "-version")).decode('utf-8')
     version = next(iter(v for v in version_output.split() if v[0].isdigit()), None)
     if version is not None:
         version = version.split("-")[0]
@@ -97,7 +98,7 @@ def clang_format_version():
 def clang_format(files):
     for f in files:
         cmd = (
-            "clang-format", "-i", "-verbose", f.encode("ascii")
+            CLANG_FORMAT_CMD, "-i", "-verbose", f.encode("ascii")
         )
         subprocess.check_call(cmd)
 
