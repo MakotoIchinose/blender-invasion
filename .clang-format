@@ -103,14 +103,14 @@ ColumnLimit: 99
 # that all initializers can't fit on a single line.
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 
-# Don't indent the : after a constructor. For example:
+# Indent the : after a constructor. For example:
 #
 #   explicit foo_class ()
-#   : member1_(5)
+#       : member1_(5)
 #   {
 #   }
 #
-ConstructorInitializerIndentWidth: 0
+ConstructorInitializerIndentWidth: 4
 
 # This will unfortunately use spaces in some cases where it's not desired (like
 # function calls) but the overall result is better since it will allow
