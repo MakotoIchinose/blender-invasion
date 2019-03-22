@@ -525,6 +525,25 @@ void curves_rgb(
 	outcol = mix(col, outcol, fac);
 }
 
+void curves_rgb_opti(
+        float fac, vec4 col, sampler1DArray curvemap, float layer,
+        vec4 range, vec4 ext_a,
+        out vec4 outcol)
+{
+	vec4 co = vec4(RANGE_RESCALE(col.rgb, ext_a.x, range.a), layer);
+	vec3 samp;
+	samp.r = texture(curvemap, co.xw).a;
+	samp.g = texture(curvemap, co.yw).a;
+	samp.b = texture(curvemap, co.zw).a;
+
+	outcol.r = curve_extrapolate(co.x, samp.r, ext_a);
+	outcol.g = curve_extrapolate(co.y, samp.g, ext_a);
+	outcol.b = curve_extrapolate(co.z, samp.b, ext_a);
+	outcol.a = col.a;
+
+	outcol = mix(col, outcol, fac);
+}
+
 void set_value(float val, out float outval)
 {
 	outval = val;
@@ -1776,7 +1795,7 @@ void tangent_orco_z(vec3 orco_in, out vec3 orco_out)
 
 void node_tangentmap(vec4 attr_tangent, mat4 toworld, out vec3 tangent)
 {
-	tangent = (toworld * vec4(attr_tangent.xyz, 0.0)).xyz;
+	tangent = normalize((toworld * vec4(attr_tangent.xyz, 0.0)).xyz);
 }
 
 void node_tangent(vec3 N, vec3 orco, mat4 objmat, mat4 toworld, out vec3 T)
