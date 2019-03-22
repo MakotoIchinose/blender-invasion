@@ -21,6 +21,7 @@
  * \ingroup bke
  * \brief A BVH for high poly meshes.
  */
+#include "DNA_meshdata_types.h"
 
 #include "BLI_bitmap.h"
 #include "BLI_ghash.h"
@@ -47,6 +48,13 @@ typedef struct PBVHNode PBVHNode;
 typedef struct {
 	float (*co)[3];
 } PBVHProxyNode;
+
+typedef struct {
+	float normal[3];
+	float nearest_vertex_co[3];
+	MVert *active_vertex_mesh;
+	int active_vertex_mesh_index;
+} RaycastOutputData;
 
 /* Callbacks */
 
@@ -99,7 +107,7 @@ void BKE_pbvh_raycast(
 bool BKE_pbvh_node_raycast(
         PBVH *bvh, PBVHNode *node, float (*origco)[3], bool use_origco,
         const float ray_start[3], const float ray_normal[3],
-        float *depth, float* normal, float *nearest_vertex_co);
+        float *depth, RaycastOutputData *output_data);
 
 bool BKE_pbvh_bmesh_node_raycast_detail(
         PBVHNode *node,

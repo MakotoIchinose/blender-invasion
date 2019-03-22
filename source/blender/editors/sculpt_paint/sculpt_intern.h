@@ -56,6 +56,12 @@ typedef struct StrokeGeometryInfo {
 	bool use_sampled_normal;
 } StrokeGeometryInfo;
 
+typedef struct {
+	float *normal;
+	float *nearest_vertex_co;
+	MVert *mesh_active_vertex;
+} SculptRaycastOutputData;
+
 
 bool sculpt_stroke_get_location(struct bContext *C, float out[3], const float mouse[2]);
 bool sculpt_stroke_get_geometry_info(struct bContext *C, StrokeGeometryInfo *out, const float mouse[2]);
@@ -195,6 +201,9 @@ typedef struct SculptThreadedTaskData {
 	float(*area_nos)[3];
 	int *count;
 	int vertex_count;
+
+	float min_len;
+	bool use_automasking_brush_location;
 
 	ThreadMutex mutex;
 
@@ -359,6 +368,12 @@ typedef struct StrokeCache {
 	bool supports_gravity;
 	float true_gravity_direction[3];
 	float gravity_direction[3];
+
+	MVert *active_vertex_mesh;
+	int active_vertex_mesh_index;
+	struct GSet *influence_set[8];
+	struct GSet *topo_connected_set[8];
+	int mirror_active_vertex[8];
 
 	rcti previous_r; /* previous redraw rectangle */
 	rcti current_r; /* current redraw rectangle */

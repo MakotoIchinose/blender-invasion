@@ -1438,6 +1438,12 @@ static void rna_def_brush(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL},
 	};
 
+	static const EnumPropertyItem brush_automasking_mode_items[] = {
+		{BRUSH_AUTOMASKING_NONE, "NONE", 0, "Disabled", ""},
+		{BRUSH_AUTOMASKING_TOPOLOGY, "TOPOLOGY", 0, "Topology", ""},
+		{0, NULL, 0, NULL, NULL},
+	};
+
 
 	srna = RNA_def_struct(brna, "Brush", "ID");
 	RNA_def_struct_ui_text(srna, "Brush", "Brush data-block for storing brush settings for painting and sculpting");
@@ -1513,6 +1519,11 @@ static void rna_def_brush(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "curve_preset", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, brush_curve_preset_items);
 	RNA_def_property_ui_text(prop, "Curve Preset", "");
+	RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+	prop = RNA_def_property(srna, "automasking_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, brush_automasking_mode_items);
+	RNA_def_property_ui_text(prop, "Automasking", "");
 	RNA_def_property_update(prop, 0, "rna_Brush_update");
 
 	/* number values */

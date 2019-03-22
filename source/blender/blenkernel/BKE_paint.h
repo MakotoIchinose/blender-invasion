@@ -62,6 +62,7 @@ enum eOverlayFlags;
 
 #include "DNA_object_enums.h"
 #include "DNA_view3d_types.h"
+#include "DNA_meshdata_types.h"
 
 extern const char PAINT_CURSOR_SCULPT[3];
 extern const char PAINT_CURSOR_VERTEX_PAINT[3];
@@ -251,6 +252,10 @@ typedef struct SculptSession {
 	float cursor_location[3];
 	float cursor_view_normal[3];
 	float cursor_normal[3];
+
+	/* Automasking active vertex */
+	MVert *active_vertex_mesh;
+	int active_vertex_mesh_index;
 
 	RegionView3D *rv3d;
 

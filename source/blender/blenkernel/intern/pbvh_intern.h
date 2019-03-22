@@ -21,6 +21,8 @@
  * \ingroup bli
  */
 
+#include "BKE_pbvh.h"
+
 /* Axis-aligned bounding box */
 typedef struct {
 	float bmin[3], bmax[3];
@@ -196,7 +198,7 @@ void pbvh_update_BB_redraw(PBVH *bvh, PBVHNode **nodes, int totnode, int flag);
 bool pbvh_bmesh_node_raycast(
         PBVHNode *node, const float ray_start[3],
         const float ray_normal[3], float *dist,
-        bool use_original, float *normal, float *nearest_vertex_co);
+        bool use_original, RaycastOutputData *output_data);
 bool pbvh_bmesh_node_nearest_to_ray(
         PBVHNode *node, const float ray_start[3],
         const float ray_normal[3], float *depth, float *dist_sq,

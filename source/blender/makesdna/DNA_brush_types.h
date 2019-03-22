@@ -194,6 +194,11 @@ typedef enum eBrushCurvePreset {
 	BRUSH_CURVE_CONSTANT = 8,
 } eBrushCurvePreset;
 
+typedef enum eAutomaskingMode {
+	BRUSH_AUTOMASKING_NONE = 0,
+	BRUSH_AUTOMASKING_TOPOLOGY = 1,
+} eAutomaskingMode;
+
 typedef struct Brush {
 	ID id;
 
@@ -292,6 +297,9 @@ typedef struct Brush {
 	float crease_pinch_factor;
 
 	int curve_preset;
+
+	int automasking_mode;
+	char _pad1[4];
 
 	float plane_trim;
 	/** Affectable height of brush (layer height for layer tool, i.e.). */
