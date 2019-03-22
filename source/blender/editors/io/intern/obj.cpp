@@ -1,10 +1,12 @@
 extern "C" {
 
+#include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_global.h"
 #include "BKE_context.h"
 #include "BKE_scene.h"
 #include "BKE_library.h"
+#include "BKE_customdata.h"
 
 /* SpaceType struct has a member called 'new' which obviously conflicts with C++
  * so temporarily redefining the new keyword to make it compile. */
@@ -38,62 +40,110 @@ extern "C" {
 
 #include "obj.h"
 #include "../io_common.h"
-#include "common.h"
-
 }
 
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <set>
+#include <array>
+#include <vector>
+#include <chrono>
 
-
+#include "common.hpp"
 
 namespace {
-	void name_compat(std::string& ob_name, std::string& mesh_name) {
-		if(ob_name.compare(mesh_name) != 0) {
-			ob_name += "_" + mesh_name;
-		}
-		size_t start_pos = ob_name.find(" ");
-		while(start_pos != std::string::npos)
-			ob_name.replace(start_pos, 1, "_");
-	}
 
-	bool OBJ_export_mesh(bContext *UNUSED(C), ExportSettings *settings, std::fstream& fs,
-	                    Object *eob, Mesh *mesh) {
+	using namespace common;
 
-		std::cout << "Foo\n";
+	bool OBJ_export_mesh(bContext *UNUSED(C), ExportSettings *settings, std::fstream &fs,
+	                     Object *eob, Mesh *mesh,
+	                     ulong &vertex_total, ulong &uv_total, ulong &no_total,
+	                     dedup_pair_t<uv_key_t> &uv_mapping_pair,
+	                     dedup_pair_t<no_key_t> &no_mapping_pair) {
+
+		auto &uv_mapping = uv_mapping_pair.second;
+		auto &no_mapping = no_mapping_pair.second;
+
+		ulong uv_initial_count = uv_mapping.size();
+		ulong no_initial_count = no_mapping.size();
 
 		if (mesh->totvert == 0)
-			return  true;
+			return true;
 
 		if (settings->export_objects_as_objects || settings->export_objects_as_groups) {
-			std::string name{eob->id.name};
-			std::string mesh_name{mesh->id.name};
-			name_compat(name, mesh_name);
+			std::string name = common::get_object_name(eob, mesh);
 			if (settings->export_objects_as_objects)
 				fs << "o " << name << '\n';
 			else
 				fs << "g " << name << '\n';
 		}
 
-		// TODO someone Should this use iterators? Unsure if those are only for BMesh
-		for (int i = 0, e = mesh->totvert; i < e; ++i)
-			fs << "v "
-			   << mesh->mvert[i].co[0]
-			   << mesh->mvert[i].co[1]
-			   << mesh->mvert[i].co[2]
-			   << '\n';
+		fs << std::fixed << std::setprecision(6);
+		common::for_each_vertex(mesh, [&fs](ulong UNUSED(i), MVert v) {
+			                              fs << "v "
+			                                 << v.co[0] << ' '
+			                                 << v.co[1] << ' '
+			                                 << v.co[2] << '\n';
+		                              });
 
 		if (settings->export_uvs) {
 			// TODO someone Is T47010 still relevant?
-			for (int i = 0, e = mesh->totloop; i < e; ++i)
-				fs << "vt "
-				   << mesh->mloopuv[i].uv[0]
-				   << mesh->mloopuv[i].uv[1]
-				   << '\n';
-
+			common::for_each_deduplicated_uv(mesh, /* modifies */ uv_total,
+			                                 /* modifies */ uv_mapping_pair,
+			                                 [&fs](ulong UNUSED(i),
+			                                       typename set_t<uv_key_t>::iterator v) {
+				                                 fs << "vt " << v->first[0]
+				                                    << ' '   << v->first[1] << '\n';
+			                                 });
 		}
 
+		if (settings->export_normals) {
+			fs << std::fixed << std::setprecision(4);
+
+			// TODO someone Should deduplicate normals?
+			common::for_each_deduplicated_normal(mesh, /* modifies */ no_total,
+			                             /* modifies */ no_mapping_pair,
+			                             [&fs](ulong UNUSED(i),
+			                                   typename set_t<no_key_t>::iterator v) {
+				                             fs << "vn " << v->first[0]
+				                                << ' '   << v->first[1]
+				                                << ' '   << v->first[2] << '\n';
+			                             });
+		}
+
+		std::cout << "Totals: "  << uv_total << " " << no_total
+		          << "\nSizes: " << uv_mapping.size() << " " << no_mapping.size()  << '\n';
+
+		for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
+			fs << 'f';
+			MPoly *p = mesh->mpoly + p_i;
+			for (int l_i = p->loopstart, l_e = p->loopstart + p->totloop;
+			     l_i < l_e; ++l_i) {
+				MLoop *vxl = mesh->mloop + l_i;
+				if (settings->export_uvs && settings->export_normals) {
+					fs << ' '
+					   << vertex_total + vxl->v << '/'
+					   << uv_mapping[uv_initial_count + l_i]->second << '/'
+					   << no_mapping[no_initial_count + vxl->v]->second;
+				} else if (settings->export_uvs) {
+					fs << ' '
+					   << vertex_total + vxl->v << '/'
+					   << uv_mapping[uv_initial_count + l_i]->second;
+				} else if (settings->export_normals) {
+					fs << ' '
+					   << vertex_total + vxl->v << "//"
+					   << no_mapping[no_initial_count + vxl->v]->second;
+				} else {
+					fs << ' '
+					   << vertex_total + vxl->v;
+				}
+			}
+			fs << '\n';
+		}
+		vertex_total += mesh->totvert;
+		uv_total += mesh->totloop;
+		no_total += mesh->totvert;
 		return true;
 	}
 
@@ -101,9 +151,11 @@ namespace {
 }
 
 bool OBJ_export(bContext *C, ExportSettings *settings) {
-
+	auto f = std::chrono::steady_clock::now();
 	OBJ_export_start(C, settings);
-	return OBJ_export_end(C, settings);
+	auto ret = OBJ_export_end(C, settings);
+	std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
+	return ret;
 }
 
 bool OBJ_export_start(bContext *C, ExportSettings *settings) {
@@ -123,50 +175,62 @@ bool OBJ_export_start(bContext *C, ExportSettings *settings) {
 
 	std::fstream fs;
 	fs.open(settings->filepath, std::ios::out);
-	fs << std::fixed << std::setprecision(6);
 	fs << "# Blender v2.8\n# www.blender.org\n"; // TODO someone add proper version
 	// TODO someone add material export
 
 	Scene *scene  = DEG_get_evaluated_scene(settings->depsgraph);
+	ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
-	for (float frame = settings->frame_start; frame != settings->frame_end + 1.0; frame += 1.0) {
+	float frame = 0;
+
+	if (!settings->export_animations)
+		goto do_export;
+
+	// TODO someone Check this, it seems wrong
+	for (frame = settings->frame_start; frame <= settings->frame_end + 0.5; frame += 1.0) {
+	do_export:
 		BKE_scene_frame_set(scene, frame);
 		BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
+
+		auto uv_mapping_pair = make_deduplicate_set<common::uv_key_t>();
+		auto no_mapping_pair = make_deduplicate_set<common::no_key_t>();
+
+		// TODO someone if not exporting as objects, do they need to all be merged?
 
 		for (Base *base = static_cast<Base *>(settings->view_layer->object_bases.first);
 		     base; base = base->next) {
 			if (!G.is_break) {
-				// Object *ob = base->object;
+
 				Object *eob = DEG_get_evaluated_object(settings->depsgraph,
-				                                       base->object); // Is this expensive?
-				if (!common_should_export_object(settings, base,
-				                                 // TODO someone Currently ignoring
-				                                 // all dupli objects;
-				                                 // unsure if expected behavior
-				                                 eob->parent != NULL &&
-				                                 eob->parent->transflag & OB_DUPLI)
-
-				    || !common_object_type_is_exportable(eob))
+				                                       base->object); // TODO someone Is this expensive?
+				if (!common::should_export_object(settings, eob) ||
+				    !common::object_type_is_exportable(eob))
 					continue;
-
 
 				struct Mesh *mesh = nullptr;
 				bool needs_free = false;
 
-				std::cout << "BAR\n";
-
 				switch (eob->type) {
 				case OB_MESH:
-					needs_free = get_final_mesh(settings, scene,
-					                            eob, mesh /* OUT */);
-					if (!OBJ_export_mesh(C, settings, fs, eob,
-					                    mesh))
+
+					// std::cerr << "R: " << (**(*eob).mat).r
+					//           << "G: " << (**(*eob).mat).g
+					//           << "B: " << (**(*eob).mat).b << "\n";
+
+					needs_free = common::get_final_mesh(settings, scene,
+						                           eob, &mesh /* OUT */);
+
+					if (!OBJ_export_mesh(C, settings, fs, eob, mesh,
+					                     vertex_total, uv_total, no_total,
+					                     uv_mapping_pair, no_mapping_pair))
 						return false;
 
-					BKE_id_free(NULL, mesh);
+					if (needs_free)
+						BKE_id_free(NULL, mesh);
 					break;
 				default:
-					std::cerr << "OBJ Export Object Type not implemented\n";
+					// TODO someone Probably abort, it shouldn't be possible to get here
+					std::cerr << "OBJ Export for this Object Type not implemented" << eob->id.name << '\n';
 					return false;
 				}
 			}
@@ -182,7 +246,10 @@ bool OBJ_export_end(bContext *UNUSED(C), ExportSettings *settings) {
 	G.is_rendering = false;
 	BKE_spacedata_draw_locks(false);
 
+	DEG_graph_free(settings->depsgraph);
+
 	MEM_freeN(settings);
+
 	return true;
 }
 

@@ -14,7 +14,7 @@ struct Depsgraph;
 
 typedef struct ExportSettings {
 
-	/* Alembic */
+	/* Mostly From Alembic */
 
 	struct Scene *scene;
 	struct ViewLayer *view_layer;  // Scene layer to export; all its objects will be exported, unless selected_only=true
