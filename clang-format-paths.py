@@ -48,8 +48,6 @@ extensions = (
 ignore_files = {
     "intern/cycles/render/sobol.cpp",  # Too heavy for clang-format
 }
-if os.sep != "/":
-    ignore_files = set(f.replace("/", os.sep) for f in ignore_files)
 
 print("Operating on:")
 for p in paths:
@@ -96,10 +94,8 @@ def clang_format_version():
     return version
 
 
-def clang_format_file(f):
-    cmd = (
-        CLANG_FORMAT_CMD, "-i", "-verbose", f.encode("ascii")
-    )
+def clang_format_file(files):
+    cmd = ["clang-format", "-i", "-verbose"] + files
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
 
@@ -109,8 +105,14 @@ def clang_print_output(output):
 
 def clang_format(files):
     pool = multiprocessing.Pool()
-    for f in files:
-        pool.apply_async(clang_format_file, args=[f], callback=clang_print_output)
+
+    # Process in chunks to reduce overhead of starting processes.
+    cpu_count = multiprocessing.cpu_count()
+    chunk_size = min(max(len(files) // cpu_count // 2, 1), 32)
+    for i in range(0, len(files), chunk_size):
+        files_chunk = files[i:i+chunk_size];
+        pool.apply_async(clang_format_file, args=[files_chunk], callback=clang_print_output)
+
     pool.close()
     pool.join()
 
