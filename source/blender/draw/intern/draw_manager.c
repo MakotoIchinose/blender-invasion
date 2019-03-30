@@ -59,6 +59,7 @@
 #include "GPU_uniformbuffer.h"
 #include "GPU_viewport.h"
 #include "GPU_matrix.h"
+#include "GPU_select.h"
 
 #include "IMB_colormanagement.h"
 
@@ -1672,7 +1673,9 @@ void DRW_draw_render_loop(
 void DRW_draw_render_loop_offscreen(
         struct Depsgraph *depsgraph, RenderEngineType *engine_type,
         ARegion *ar, View3D *v3d,
-        const bool draw_background, GPUOffScreen *ofs,
+        const bool draw_background,
+        const bool do_color_management,
+        GPUOffScreen *ofs,
         GPUViewport *viewport)
 {
 	/* Create temporary viewport if needed. */
@@ -1685,7 +1688,9 @@ void DRW_draw_render_loop_offscreen(
 
 	/* Reset before using it. */
 	drw_state_prepare_clean_for_draw(&DST);
-	DST.options.is_image_render = true;
+	/* WATCH: Force color management to output CManaged byte buffer by
+	 * forcing is_image_render to false. */
+	DST.options.is_image_render = !do_color_management;
 	DST.options.draw_background = draw_background;
 	DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, render_viewport, NULL);
 
@@ -1784,11 +1789,6 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
 
 	drw_viewport_var_init();
 
-	/* set default viewport */
-	gpuPushAttr(GPU_ENABLE_BIT | GPU_VIEWPORT_BIT);
-	glDisable(GL_SCISSOR_TEST);
-	glViewport(0, 0, size[0], size[1]);
-
 	/* Main rendering. */
 	rctf view_rect;
 	rcti render_rect;
@@ -1810,8 +1810,6 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
 	glDisable(GL_DEPTH_TEST);
 
 	/* Restore Drawing area. */
-	gpuPopAttr();
-	glEnable(GL_SCISSOR_TEST);
 	GPU_framebuffer_restore();
 
 	/* Changing Context */
@@ -2007,6 +2005,12 @@ void DRW_custom_pipeline(
 
 	GPU_viewport_free(DST.viewport);
 	GPU_framebuffer_restore();
+
+	/* The use of custom pipeline in other thread using the same
+	 * resources as the main thread (viewport) may lead to data
+	 * races and undefined behavior on certain drivers. Using
+	 * GPU_finish to sync seems to fix the issue. (see T62997) */
+	GPU_finish();
 
 #ifdef DEBUG
 	/* Avoid accidental reuse. */
@@ -2537,9 +2541,7 @@ void DRW_framebuffer_select_id_release(ARegion *ar)
 		ED_view3d_clipping_disable();
 	}
 
-	glEnable(GL_SCISSOR_TEST);
 	GPU_depth_test(false);
-	glEnable(GL_DITHER);
 
 	GPU_framebuffer_restore();
 
@@ -2550,8 +2552,23 @@ void DRW_framebuffer_select_id_release(ARegion *ar)
 /* Read a block of pixels from the select frame buffer. */
 void DRW_framebuffer_select_id_read(const rcti *rect, uint *r_buf)
 {
+	/* clamp rect by texture */
+	rcti r = {
+		.xmin = 0,
+		.xmax = GPU_texture_width(g_select_buffer.texture_u32),
+		.ymin = 0,
+		.ymax = GPU_texture_height(g_select_buffer.texture_u32),
+	};
+
+	rcti rect_clamp = *rect;
+	BLI_rcti_isect(&r, rect, &rect_clamp);
+
 	GPU_texture_read_rect(
-	        g_select_buffer.texture_u32, GPU_DATA_UNSIGNED_INT, rect, r_buf);
+	        g_select_buffer.texture_u32, GPU_DATA_UNSIGNED_INT, &rect_clamp, r_buf);
+
+	if (!BLI_rcti_compare(rect, &rect_clamp)) {
+		GPU_select_buffer_stride_realign(rect, &rect_clamp, r_buf);
+	}
 }
 
 /** \} */

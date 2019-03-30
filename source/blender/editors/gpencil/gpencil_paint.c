@@ -1406,6 +1406,19 @@ static void gp_stroke_soft_refine(bGPDstroke *gps, const float cull_thresh)
 		}
 	}
 
+	/* last point special case to get smoother transition */
+	pt = &gps->points[gps->totpoints - 1];
+	pt_before = &gps->points[gps->totpoints - 2];
+	if (pt->flag & GP_SPOINT_TAG) {
+		pt->flag &= ~GP_SPOINT_TAG;
+		pt->flag &= ~GP_SPOINT_TEMP_TAG;
+		pt->strength = 0.0f;
+
+		pt_before->flag &= ~GP_SPOINT_TAG;
+		pt_before->flag &= ~GP_SPOINT_TEMP_TAG;
+		pt_before->strength *= 0.5f;
+	}
+
 	/* now untag temp tagged */
 	pt = gps->points;
 	for (i = 1; i < gps->totpoints - 1; i++, pt++) {
@@ -1483,18 +1496,14 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 		}
 	}
 	else {
-		/* Pressure threshold at which stroke should be culled: Calculated as pressure value
-		 * below which we would have invisible strokes
-		 */
-		const float cull_thresh = (gps->thickness) ? 1.0f / ((float)gps->thickness) : 1.0f;
+		/* Pressure threshold at which stroke should be culled */
+		const float cull_thresh = 0.005f;
 
 		/* Amount to decrease the pressure of each point with each stroke */
-		// TODO: Fetch from toolsettings, or compute based on thickness instead?
 		const float strength = 0.1f;
 
 		/* Perform culling? */
 		bool do_cull = false;
-
 
 		/* Clear Tags
 		 *
@@ -1561,20 +1570,24 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 						if (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_SOFT) {
 							float f_strength = eraser->gpencil_settings->era_strength_f / 100.0f;
 							float f_thickness = eraser->gpencil_settings->era_thickness_f / 100.0f;
+							float influence = 0.0f;
 
 							if (pt0) {
-								pt0->strength -= gp_stroke_eraser_calc_influence(p, mval, radius, pc0) * strength * f_strength * 0.5f;
+								influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc0);
+								pt0->strength -= influence * strength * f_strength * 0.5f;
 								CLAMP_MIN(pt0->strength, 0.0f);
-								pt0->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc0) * strength * f_thickness * 0.5f;
+								pt0->pressure -= influence * strength * f_thickness * 0.5f;
 							}
 
-							pt1->strength -= gp_stroke_eraser_calc_influence(p, mval, radius, pc1) * strength * f_strength;
+							influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc1);
+							pt1->strength -= influence * strength * f_strength;
 							CLAMP_MIN(pt1->strength, 0.0f);
-							pt1->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc1) * strength * f_thickness;
+							pt1->pressure -= influence * strength * f_thickness;
 
-							pt2->strength -= gp_stroke_eraser_calc_influence(p, mval, radius, pc2) * strength * f_strength * 0.5f;
+							influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc2);
+							pt2->strength -= influence * strength * f_strength * 0.5f;
 							CLAMP_MIN(pt2->strength, 0.0f);
-							pt2->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc2) * strength * f_thickness * 0.5f;
+							pt2->pressure -= influence * strength * f_thickness * 0.5f;
 
 							/* if invisible, delete point */
 							if ((pt0) &&
