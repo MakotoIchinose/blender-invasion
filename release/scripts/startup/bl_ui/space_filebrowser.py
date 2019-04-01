@@ -241,6 +241,54 @@ class FILEBROWSER_PT_advanced_filter(Panel):
                 col.prop(params, "filter_id")
 
 
+class FILEBROWSER_PT_directory_path(Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'UI'
+    bl_label = "Directory Path"
+    bl_category = "Directory Path"
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        layout = self.layout
+        space = context.space_data
+        params = space.params
+
+        layout.scale_x = 1.3
+        layout.scale_y = 1.3
+
+        row = layout.row()
+        # TODO proper directory input text field
+        row.prop(params, "directory", text="")
+
+
+class FILEBROWSER_PT_file_operation(Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'EXECUTE'
+    bl_label = "Execute File Operation"
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.active_operator
+
+    def draw(self, context):
+        layout = self.layout
+        space = context.space_data
+        params = space.params
+
+        layout.scale_x = 1.3
+        layout.scale_y = 1.3
+
+        row = layout.row()
+        sub = row.row()
+        sub.prop(params, "filename", text="")
+        sub = row.row()
+        sub.ui_units_x = 5
+        # TODO change to "Open Directory"/"Parent Directory" based on highlight.
+        sub.operator("FILE_OT_execute", text=params.title)
+        sub.operator("FILE_OT_cancel", text="Cancel")
+
+
 class FILEBROWSER_MT_view(Menu):
     bl_label = "View"
 
@@ -266,6 +314,8 @@ classes = (
     FILEBROWSER_PT_bookmarks,
     FILEBROWSER_PT_recent_folders,
     FILEBROWSER_PT_advanced_filter,
+    FILEBROWSER_PT_directory_path,
+    FILEBROWSER_PT_file_operation,
     FILEBROWSER_MT_view,
 )
 

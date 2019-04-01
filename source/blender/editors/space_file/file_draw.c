@@ -78,6 +78,7 @@ static char *file_draw_tooltip_func(bContext *UNUSED(C), void *argN, const char 
 	return BLI_strdup(dyn_tooltip);
 }
 
+#if 0
 /* Note: This function uses pixelspace (0, 0, winx, winy), not view2d.
  * The controls are laid out as follows:
  *
@@ -91,7 +92,7 @@ static char *file_draw_tooltip_func(bContext *UNUSED(C), void *argN, const char 
  * When there isn't enough space for all controls to be shown, they are
  * hidden in this order: x/-, execute/cancel, input widgets.
  */
-void file_draw_buttons(const bContext *C, ARegion *ar)
+void file_draw_filepath_buttons(const bContext *C, ARegion *ar)
 {
 	/* Button layout. */
 	const int max_x      = ar->winx - 10;
@@ -186,29 +187,80 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 		if (sfile->files && filelist_lib(sfile->files))
 			UI_but_flag_enable(but, UI_BUT_DISABLED);
 
-		if ((params->flag & FILE_DIRSEL_ONLY) == 0) {
-			but = uiDefBut(block, UI_BTYPE_TEXT, -1, "",
-			               min_x, line2_y, line2_w - chan_offs, btn_h,
-			               is_active_dir ? (char *)"" : params->file,
-			               0.0, (float)FILE_MAXFILE, 0, 0,
-			               TIP_(overwrite_alert ? N_("File name, overwrite existing") : N_("File name")));
-			UI_but_func_complete_set(but, autocomplete_file, NULL);
-			UI_but_flag_enable(but, UI_BUT_NO_UTF8);
-			UI_but_flag_disable(but, UI_BUT_UNDO);
-			/* silly workaround calling NFunc to ensure this does not get called
-			 * immediate ui_apply_but_func but only after button deactivates */
-			UI_but_funcN_set(but, file_filename_enter_handle, NULL, but);
-
-			/* check if this overrides a file and if the operator option is used */
-			if (overwrite_alert) {
-				UI_but_flag_enable(but, UI_BUT_REDALERT);
-			}
-		}
-
 		/* clear func */
 		UI_block_func_set(block, NULL, NULL, NULL);
 	}
 
+	UI_block_end(C, block);
+	UI_block_draw(C, block);
+}
+
+void file_draw_execute_buttons(const bContext *C, ARegion *ar)
+{
+	/* Button layout. */
+	const int max_x      = ar->winx - 10;
+	const int line_y    = ar->winy - (IMASEL_BUTTONS_HEIGHT / 2 + IMASEL_BUTTONS_MARGIN);
+	const int input_minw = 20;
+	const int btn_h      = UI_UNIT_Y;
+	const int btn_fn_w   = UI_UNIT_X;
+	const int btn_minw   = 80;
+	const int btn_margin = 20;
+	const int separator  = 4;
+
+	SpaceFile *sfile  = CTX_wm_space_file(C);
+	FileSelectParams *params = ED_fileselect_get_params(sfile);
+	const bool is_browse_only = (sfile->op == NULL);
+
+	char uiblockstr[32];
+	int loadbutton;
+	int min_x       = 10;
+	int available_w = max_x - min_x;
+	int line1_w     = available_w;
+	int line2_w     = available_w;
+
+	uiBlock *block;
+	uiBut *but;
+
+	/* Initialize UI block. */
+	BLI_snprintf(uiblockstr, sizeof(uiblockstr), "win %p", (void *)ar);
+	block = UI_block_begin(C, ar, uiblockstr, UI_EMBOSS);
+
+	if (is_browse_only) {
+		loadbutton = 0;
+	}
+	else {
+		const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
+		loadbutton = UI_fontstyle_string_width(fstyle, params->title) + btn_margin;
+		CLAMP_MIN(loadbutton, btn_minw);
+		if (available_w <= loadbutton + separator + input_minw) {
+			loadbutton = 0;
+		}
+	}
+
+	const struct FileDirEntry *file = sfile->files ? filelist_file(sfile->files, params->active_file) : NULL;
+	int overwrite_alert = file_draw_check_exists(sfile);
+	const bool is_active_dir = file && (file->typeflag & FILE_TYPE_FOLDER);
+
+	if ((params->flag & FILE_DIRSEL_ONLY) == 0) {
+		but = uiDefBut(block, UI_BTYPE_TEXT, -1, "",
+					   min_x, line_y, line2_w, btn_h,
+					   is_active_dir ? (char *)"" : params->file,
+					   0.0, (float)FILE_MAXFILE, 0, 0,
+					   TIP_(overwrite_alert ? N_("File name, overwrite existing") : N_("File name")));
+		UI_but_func_complete_set(but, autocomplete_file, NULL);
+		UI_but_flag_enable(but, UI_BUT_NO_UTF8);
+		UI_but_flag_disable(but, UI_BUT_UNDO);
+		/* silly workaround calling NFunc to ensure this does not get called
+		 * immediate ui_apply_but_func but only after button deactivates */
+		UI_but_funcN_set(but, file_filename_enter_handle, NULL, but);
+
+		/* check if this overrides a file and if the operator option is used */
+		if (overwrite_alert) {
+			UI_but_flag_enable(but, UI_BUT_REDALERT);
+		}
+	}
+
+#if 0
 	/* Filename number increment / decrement buttons. */
 	if (fnumbuttons && (params->flag & FILE_DIRSEL_ONLY) == 0) {
 		UI_block_align_begin(block);
@@ -225,6 +277,7 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 		RNA_int_set(UI_but_operator_ptr_get(but), "increment", 1);
 		UI_block_align_end(block);
 	}
+#endif
 
 	/* Execute / cancel buttons. */
 	if (loadbutton) {
@@ -243,17 +296,18 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 
 		but = uiDefButO(
 		        block, UI_BTYPE_BUT, "FILE_OT_execute", WM_OP_EXEC_REGION_WIN, str_exec,
-		        max_x - loadbutton, line1_y, loadbutton, btn_h, "");
+		        max_x - loadbutton, line_y, loadbutton, btn_h, "");
 		/* Just a display hint. */
 		UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 
 		uiDefButO(block, UI_BTYPE_BUT, "FILE_OT_cancel", WM_OP_EXEC_REGION_WIN, IFACE_("Cancel"),
-		          max_x - loadbutton, line2_y, loadbutton, btn_h, "");
+		          max_x - loadbutton, line_y, loadbutton, btn_h, "");
 	}
 
 	UI_block_end(C, block);
 	UI_block_draw(C, block);
 }
+#endif
 
 
 static void draw_tile(int sx, int sy, int width, int height, int colorid, int shade)

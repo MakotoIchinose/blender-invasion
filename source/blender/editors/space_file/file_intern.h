@@ -44,7 +44,10 @@ struct ARegion *file_tools_region(struct ScrArea *sa);
 
 #define SMALL_SIZE_CHECK(_size) ((_size) < 64)  /* Related to FileSelectParams.thumbnail_size. */
 
-void file_draw_buttons(const bContext *C, ARegion *ar);
+#if 0
+void file_draw_filepath_buttons(const bContext *C, ARegion *ar);
+void file_draw_execute_buttons(const bContext *C, ARegion *ar);
+#endif
 void file_calc_previews(const bContext *C, ARegion *ar);
 void file_draw_list(const bContext *C, ARegion *ar);
 

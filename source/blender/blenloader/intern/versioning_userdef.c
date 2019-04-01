@@ -114,6 +114,10 @@ static void do_versions_theme(UserDef *userdef, bTheme *btheme)
 		FROM_DEFAULT_V4_UCHAR(space_info.info_info);
 	}
 
+	if (!USER_VERSION_ATLEAST(280, 54)) {
+		FROM_DEFAULT_V4_UCHAR(space_file.execution_buts);
+	}
+
 #undef FROM_DEFAULT_V4_UCHAR
 
 #undef USER_VERSION_ATLEAST
