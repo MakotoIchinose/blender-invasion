@@ -2178,6 +2178,7 @@ static void wpaint_do_symmetrical_brush_actions(
 static void wpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, PointerRNA *itemptr)
 {
 	Scene *scene = CTX_data_scene(C);
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	ToolSettings *ts = CTX_data_tool_settings(C);
 	VPaint *wp = ts->wpaint;
 	Brush *brush = BKE_paint_brush(&wp->paint);
@@ -2242,6 +2243,7 @@ static void wpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, P
 
 	/* calculate pivot for rotation around seletion if needed */
 	/* also needed for "View Selected" on last stroke */
+	ED_view3d_autodist_init(depsgraph, vc->ar, vc->v3d, 0);
 	paint_last_stroke_update(scene, vc->ar, mval);
 
 	BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
@@ -3146,6 +3148,7 @@ static void vpaint_do_symmetrical_brush_actions(
 static void vpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, PointerRNA *itemptr)
 {
 	Scene *scene = CTX_data_scene(C);
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	ToolSettings *ts = CTX_data_tool_settings(C);
 	struct VPaintData *vpd = paint_stroke_mode_data(stroke);
 	VPaint *vp = ts->vpaint;
@@ -3177,6 +3180,7 @@ static void vpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, P
 
 	/* calculate pivot for rotation around seletion if needed */
 	/* also needed for "View Selected" on last stroke */
+	ED_view3d_autodist_init(depsgraph, vc->ar, vc->v3d, 0);
 	paint_last_stroke_update(scene, vc->ar, mval);
 
 	ED_region_tag_redraw(vc->ar);
