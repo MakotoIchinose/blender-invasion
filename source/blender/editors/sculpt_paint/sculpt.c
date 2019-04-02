@@ -843,7 +843,9 @@ static void calc_area_normal_and_center_task_cb(
 	        sculpt_brush_test_init_with_falloff_shape(ss, &test, data->brush->falloff_shape);
 
 	/* Add the normal radius factor to the test */
-	test.radius_factor = data->brush->normal_radius_factor;
+	if (data->brush->ob_mode == OB_MODE_SCULPT) {
+		test.radius_factor = data->brush->normal_radius_factor;
+	}
 
 	/* when the mesh is edited we can't rely on original coords
 	 * (original mesh may not even have verts in brush radius) */
