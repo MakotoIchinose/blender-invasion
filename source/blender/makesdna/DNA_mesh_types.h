@@ -191,6 +191,7 @@ typedef struct Mesh {
 	char _pad1[4];
 	/** Deprecated multiresolution modeling data, only keep for loading old files. */
 	struct Multires *mr DNA_DEPRECATED;
+	void *_pad1;
 
 	Mesh_Runtime runtime;
 } Mesh;

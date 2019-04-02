@@ -274,58 +274,58 @@ static char *eevee_get_defines(int options)
 	char *str = NULL;
 
 	DynStr *ds = BLI_dynstr_new();
-	BLI_dynstr_appendf(ds, SHADER_DEFINES);
+	BLI_dynstr_append(ds, SHADER_DEFINES);
 
 	if ((options & VAR_MAT_MESH) != 0) {
-		BLI_dynstr_appendf(ds, "#define MESH_SHADER\n");
+		BLI_dynstr_append(ds, "#define MESH_SHADER\n");
 	}
 	if ((options & VAR_MAT_HAIR) != 0) {
-		BLI_dynstr_appendf(ds, "#define HAIR_SHADER\n");
+		BLI_dynstr_append(ds, "#define HAIR_SHADER\n");
 	}
 	if ((options & VAR_MAT_PROBE) != 0) {
-		BLI_dynstr_appendf(ds, "#define PROBE_CAPTURE\n");
+		BLI_dynstr_append(ds, "#define PROBE_CAPTURE\n");
 	}
 	if ((options & VAR_MAT_FLAT) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_FLAT_NORMAL\n");
+		BLI_dynstr_append(ds, "#define USE_FLAT_NORMAL\n");
 	}
 	if ((options & VAR_MAT_CLIP) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_ALPHA_CLIP\n");
+		BLI_dynstr_append(ds, "#define USE_ALPHA_CLIP\n");
 	}
 	if ((options & VAR_MAT_SHADOW) != 0) {
-		BLI_dynstr_appendf(ds, "#define SHADOW_SHADER\n");
+		BLI_dynstr_append(ds, "#define SHADOW_SHADER\n");
 	}
 	if ((options & VAR_MAT_HASH) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_ALPHA_HASH\n");
+		BLI_dynstr_append(ds, "#define USE_ALPHA_HASH\n");
 	}
 	if ((options & VAR_MAT_BLEND) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_ALPHA_BLEND\n");
+		BLI_dynstr_append(ds, "#define USE_ALPHA_BLEND\n");
 	}
 	if ((options & VAR_MAT_MULT) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_MULTIPLY\n");
+		BLI_dynstr_append(ds, "#define USE_MULTIPLY\n");
 	}
 	if ((options & VAR_MAT_REFRACT) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_REFRACTION\n");
+		BLI_dynstr_append(ds, "#define USE_REFRACTION\n");
 	}
 	if ((options & VAR_MAT_SSS) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_SSS\n");
+		BLI_dynstr_append(ds, "#define USE_SSS\n");
 	}
 	if ((options & VAR_MAT_SSSALBED) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_SSS_ALBEDO\n");
+		BLI_dynstr_append(ds, "#define USE_SSS_ALBEDO\n");
 	}
 	if ((options & VAR_MAT_TRANSLUC) != 0) {
-		BLI_dynstr_appendf(ds, "#define USE_TRANSLUCENCY\n");
+		BLI_dynstr_append(ds, "#define USE_TRANSLUCENCY\n");
 	}
 	if ((options & VAR_MAT_VSM) != 0) {
-		BLI_dynstr_appendf(ds, "#define SHADOW_VSM\n");
+		BLI_dynstr_append(ds, "#define SHADOW_VSM\n");
 	}
 	if ((options & VAR_MAT_ESM) != 0) {
-		BLI_dynstr_appendf(ds, "#define SHADOW_ESM\n");
+		BLI_dynstr_append(ds, "#define SHADOW_ESM\n");
 	}
 	if (((options & VAR_MAT_VOLUME) != 0) && ((options & VAR_MAT_BLEND) != 0)) {
-		BLI_dynstr_appendf(ds, "#define USE_ALPHA_BLEND_VOLUMETRICS\n");
+		BLI_dynstr_append(ds, "#define USE_ALPHA_BLEND_VOLUMETRICS\n");
 	}
 	if ((options & VAR_MAT_LOOKDEV) != 0) {
-		BLI_dynstr_appendf(ds, "#define LOOKDEV\n");
+		BLI_dynstr_append(ds, "#define LOOKDEV\n");
 	}
 
 	str = BLI_dynstr_get_cstring(ds);
@@ -339,11 +339,11 @@ static char *eevee_get_volume_defines(int options)
 	char *str = NULL;
 
 	DynStr *ds = BLI_dynstr_new();
-	BLI_dynstr_appendf(ds, SHADER_DEFINES);
-	BLI_dynstr_appendf(ds, "#define VOLUMETRICS\n");
+	BLI_dynstr_append(ds, SHADER_DEFINES);
+	BLI_dynstr_append(ds, "#define VOLUMETRICS\n");
 
 	if ((options & VAR_MAT_VOLUME) != 0) {
-		BLI_dynstr_appendf(ds, "#define MESH_SHADER\n");
+		BLI_dynstr_append(ds, "#define MESH_SHADER\n");
 	}
 
 	str = BLI_dynstr_get_cstring(ds);
@@ -723,13 +723,27 @@ struct GPUMaterial *EEVEE_material_mesh_get(
 	const void *engine = &DRW_engine_viewport_eevee_type;
 	int options = VAR_MAT_MESH;
 
-	if (use_blend) options |= VAR_MAT_BLEND;
-	if (use_multiply) options |= VAR_MAT_MULT;
-	if (use_refract) options |= VAR_MAT_REFRACT;
-	if (use_sss) options |= VAR_MAT_SSS;
-	if (use_sss && effects->sss_separate_albedo) options |= VAR_MAT_SSSALBED;
-	if (use_translucency) options |= VAR_MAT_TRANSLUC;
-	if (((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) && use_blend) options |= VAR_MAT_VOLUME;
+	if (use_blend) {
+		options |= VAR_MAT_BLEND;
+	}
+	if (use_multiply) {
+		options |= VAR_MAT_MULT;
+	}
+	if (use_refract) {
+		options |= VAR_MAT_REFRACT;
+	}
+	if (use_sss) {
+		options |= VAR_MAT_SSS;
+	}
+	if (use_sss && effects->sss_separate_albedo) {
+		options |= VAR_MAT_SSSALBED;
+	}
+	if (use_translucency) {
+		options |= VAR_MAT_TRANSLUC;
+	}
+	if (((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) && use_blend) {
+		options |= VAR_MAT_VOLUME;
+	}
 
 	options |= eevee_material_shadow_option(shadow_method);
 
@@ -852,10 +866,18 @@ static struct DRWShadingGroup *EEVEE_default_shading_group_create(
 	ssr_id = (use_ssr) ? 1 : -1;
 	int options = VAR_MAT_MESH;
 
-	if (is_hair) options |= VAR_MAT_HAIR;
-	if (is_flat_normal) options |= VAR_MAT_FLAT;
-	if (use_blend) options |= VAR_MAT_BLEND;
-	if (((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) && use_blend) options |= VAR_MAT_VOLUME;
+	if (is_hair) {
+		options |= VAR_MAT_HAIR;
+	}
+	if (is_flat_normal) {
+		options |= VAR_MAT_FLAT;
+	}
+	if (use_blend) {
+		options |= VAR_MAT_BLEND;
+	}
+	if (((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) && use_blend) {
+		options |= VAR_MAT_VOLUME;
+	}
 
 	options |= eevee_material_shadow_option(shadow_method);
 
@@ -883,8 +905,12 @@ static struct DRWShadingGroup *EEVEE_default_shading_group_get(
 
 	BLI_assert(!is_hair || (ob && psys && md));
 
-	if (is_hair) options |= VAR_MAT_HAIR;
-	if (is_flat_normal) options |= VAR_MAT_FLAT;
+	if (is_hair) {
+		options |= VAR_MAT_HAIR;
+	}
+	if (is_flat_normal) {
+		options |= VAR_MAT_FLAT;
+	}
 
 	options |= eevee_material_shadow_option(shadow_method);
 
@@ -1598,34 +1624,28 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *sld
 					}
 
 					/* Shadow Pass */
-					if (ma->use_nodes && ma->nodetree && (ma->blend_method != MA_BM_SOLID)) {
-						struct GPUMaterial *gpumat;
-						switch (ma->blend_shadow) {
-							case MA_BS_SOLID:
-								EEVEE_lights_cache_shcaster_add(
-								        sldata, stl, mat_geom[i], ob);
-								*cast_shadow = true;
-								break;
-							case MA_BS_CLIP:
-								gpumat = EEVEE_material_mesh_depth_get(scene, ma, false, true);
-								EEVEE_lights_cache_shcaster_material_add(
-								        sldata, psl, gpumat, mat_geom[i], ob, &ma->alpha_threshold);
-								*cast_shadow = true;
-								break;
-							case MA_BS_HASHED:
-								gpumat = EEVEE_material_mesh_depth_get(scene, ma, true, true);
-								EEVEE_lights_cache_shcaster_material_add(
-								        sldata, psl, gpumat, mat_geom[i], ob, NULL);
-								*cast_shadow = true;
-								break;
-							case MA_BS_NONE:
-							default:
-								break;
-						}
-					}
-					else {
-						EEVEE_lights_cache_shcaster_add(sldata, stl, mat_geom[i], ob);
-						*cast_shadow = true;
+					struct GPUMaterial *gpumat;
+					switch (ma->blend_shadow) {
+						case MA_BS_SOLID:
+							EEVEE_lights_cache_shcaster_add(
+							        sldata, stl, mat_geom[i], ob);
+							*cast_shadow = true;
+							break;
+						case MA_BS_CLIP:
+							gpumat = EEVEE_material_mesh_depth_get(scene, ma, false, true);
+							EEVEE_lights_cache_shcaster_material_add(
+							        sldata, psl, gpumat, mat_geom[i], ob, &ma->alpha_threshold);
+							*cast_shadow = true;
+							break;
+						case MA_BS_HASHED:
+							gpumat = EEVEE_material_mesh_depth_get(scene, ma, true, true);
+							EEVEE_lights_cache_shcaster_material_add(
+							        sldata, psl, gpumat, mat_geom[i], ob, NULL);
+							*cast_shadow = true;
+							break;
+						case MA_BS_NONE:
+						default:
+							break;
 					}
 				}
 			}

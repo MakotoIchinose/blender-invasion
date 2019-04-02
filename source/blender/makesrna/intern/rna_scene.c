@@ -472,7 +472,7 @@ const EnumPropertyItem rna_enum_transform_orientation_items[] = {
 	                   "(bone Y axis for pose mode)"},
 	{V3D_ORIENT_GIMBAL, "GIMBAL", ICON_ORIENTATION_GIMBAL, "Gimbal", "Align each axis to the Euler rotation axis as used for input"},
 	{V3D_ORIENT_VIEW, "VIEW", ICON_ORIENTATION_VIEW, "View", "Align the transformation axes to the window"},
-	{V3D_ORIENT_CURSOR, "CURSOR", ICON_PIVOT_CURSOR, "Cursor", "Align the transformation axes to the 3D cursor"},
+	{V3D_ORIENT_CURSOR, "CURSOR", ICON_ORIENTATION_CURSOR, "Cursor", "Align the transformation axes to the 3D cursor"},
 	// {V3D_ORIENT_CUSTOM, "CUSTOM", 0, "Custom", "Use a custom transform orientation"},
 	{0, NULL, 0, NULL, NULL},
 };
@@ -907,12 +907,12 @@ static void rna_RenderSettings_stereoViews_begin(CollectionPropertyIterator *ite
 
 static char *rna_RenderSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("render");
+	return BLI_strdup("render");
 }
 
 static char *rna_BakeSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("render.bake");
+	return BLI_strdup("render.bake");
 }
 
 static char *rna_ImageFormatSettings_path(PointerRNA *ptr)
@@ -926,12 +926,12 @@ static char *rna_ImageFormatSettings_path(PointerRNA *ptr)
 			Scene *scene = (Scene *)id;
 
 			if (&scene->r.im_format == imf) {
-				return BLI_sprintfN("render.image_settings");
+				return BLI_strdup("render.image_settings");
 			}
 			else if (&scene->r.bake.im_format == imf) {
-				return BLI_sprintfN("render.bake.image_settings");
+				return BLI_strdup("render.bake.image_settings");
 			}
-			return BLI_sprintfN("..");
+			return BLI_strdup("..");
 		}
 		case ID_NT:
 		{
@@ -955,10 +955,10 @@ static char *rna_ImageFormatSettings_path(PointerRNA *ptr)
 					}
 				}
 			}
-			return BLI_sprintfN("..");
+			return BLI_strdup("..");
 		}
 		default:
-			return BLI_sprintfN("..");
+			return BLI_strdup("..");
 	}
 }
 
@@ -2124,26 +2124,6 @@ const EnumPropertyItem *rna_TransformOrientation_with_scene_itemf(
 
 #undef V3D_ORIENT_DEFAULT
 
-void rna_TransformOrientationSlot_ui_info(
-        ID *scene_id, TransformOrientationSlot *orient_slot,
-        char *r_name, int *r_icon_value)
-{
-	Scene *scene = (Scene *)scene_id;
-
-	if (orient_slot->type < V3D_ORIENT_CUSTOM) {
-		const EnumPropertyItem *items = rna_enum_transform_orientation_items;
-		const int i = RNA_enum_from_value(items, orient_slot->type);
-		strcpy(r_name, items[i].name);
-		*r_icon_value = items[i].icon;
-	}
-	else {
-		TransformOrientation *orientation = BKE_scene_transform_orientation_find(
-		        scene, orient_slot->index_custom);
-		strcpy(r_name, orientation->name);
-		*r_icon_value = ICON_OBJECT_ORIGIN;
-	}
-}
-
 static const EnumPropertyItem *rna_UnitSettings_itemf_wrapper(
         const int system, const int type, bool *r_free)
 {
@@ -2210,7 +2190,7 @@ static void rna_UnitSettings_system_update(Main *UNUSED(bmain), Scene *scene, Po
 
 static char *rna_UnitSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("unit_settings");
+	return BLI_strdup("unit_settings");
 }
 
 #else
@@ -2330,20 +2310,6 @@ static void rna_def_transform_orientation_slot(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", SELECT);
 	RNA_def_property_ui_text(prop, "Use", "Use scene orientation instead of a custom setting");
 	RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-	FunctionRNA *func;
-	PropertyRNA *parm;
-
-	/* UI access only (avoid slow RNA introspection). */
-	func = RNA_def_function(srna, "ui_info", "rna_TransformOrientationSlot_ui_info");
-	RNA_def_function_ui_description(func, "");
-	RNA_def_function_flag(func, FUNC_USE_SELF_ID);
-	parm = RNA_def_string(func, "name", NULL, sizeof(((TransformOrientation *)NULL)->name), "name", "");
-	RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
-	RNA_def_function_output(func, parm);
-	parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_NONE);
-	RNA_def_property_ui_text(parm, "", "");
-	RNA_def_function_output(func, parm);
 }
 
 static void rna_def_view3d_cursor(BlenderRNA *brna)
@@ -2784,7 +2750,7 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 	RNA_def_property_enum_sdna(prop, NULL, "gpencil_selectmode");
 	RNA_def_property_enum_items(prop, gpencil_selectmode_items);
 	RNA_def_property_ui_text(prop, "Select Mode", "");
-	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
 	/* Annotations - 2D Views Stroke Placement */
 	prop = RNA_def_property(srna, "annotation_stroke_placement_view2d", PROP_ENUM, PROP_NONE);

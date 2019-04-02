@@ -275,16 +275,12 @@ static void rna_Object_hide_update(Main *bmain, Scene *UNUSED(scene), PointerRNA
 	WM_main_add_notifier(NC_OBJECT | ND_DRAW, &ob->id);
 }
 
-static void rna_MaterialIndex_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_MaterialIndex_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	/* update the material of all brushes not pinned */
 	Object *ob = (Object *)ptr->id.data;
 	if (ob && ob->type == OB_GPENCIL) {
-		Material *ma = give_current_material(ob, ob->actcol);
-		if (ma != NULL) {
-			BKE_brush_update_material(bmain, ma, NULL);
-			WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, NULL);
-		}
+		/* notifying material property in topbar */
+		WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, NULL);
 	}
 }
 
@@ -821,6 +817,11 @@ static void rna_Object_active_material_set(PointerRNA *ptr, PointerRNA value)
 	BLI_assert(BKE_id_is_in_global_main(&ob->id));
 	BLI_assert(BKE_id_is_in_global_main(value.data));
 	assign_material(G_MAIN, ob, value.data, ob->actcol, BKE_MAT_ASSIGN_EXISTING);
+
+	if (ob && ob->type == OB_GPENCIL) {
+		/* notifying material property in topbar */
+		WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, NULL);
+	}
 }
 
 static int rna_Object_active_material_editable(PointerRNA *ptr, const char **UNUSED(r_info))
@@ -1679,7 +1680,9 @@ static void rna_def_face_map(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
+
 	FunctionRNA *func;
+	PropertyRNA *parm;
 
 	srna = RNA_def_struct(brna, "FaceMap", NULL);
 	RNA_def_struct_sdna(srna, "bFaceMap");
@@ -1707,15 +1710,15 @@ static void rna_def_face_map(BlenderRNA *brna)
 	RNA_def_function_ui_description(func, "Add vertices to the group");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	/* TODO, see how array size of 0 works, this shouldnt be used */
-	prop = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
-	RNA_def_parameter_flags(prop, PROP_DYNAMIC, PARM_REQUIRED);
+	parm = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
+	RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 
 	func = RNA_def_function(srna, "remove", "rna_FaceMap_face_remove");
 	RNA_def_function_ui_description(func, "Remove a vertex from the group");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	/* TODO, see how array size of 0 works, this shouldnt be used */
-	prop = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
-	RNA_def_parameter_flags(prop, PROP_DYNAMIC, PARM_REQUIRED);
+	parm = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
+	RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 }
 
 static void rna_def_material_slot(BlenderRNA *brna)

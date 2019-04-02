@@ -302,6 +302,12 @@ static bool gpencil_draw_poll(bContext *C)
 			return false;
 		}
 
+		ToolSettings *ts = CTX_data_scene(C)->toolsettings;
+		if (!ts->gp_paint->paint.brush) {
+			CTX_wm_operator_poll_msg_set(C, "Grease Pencil has no active paint tool");
+			return false;
+		}
+
 		return true;
 	}
 	else {
@@ -503,11 +509,11 @@ static void gp_brush_jitter(
 static void gp_brush_angle(bGPdata *gpd, Brush *brush, tGPspoint *pt, const float mval[2])
 {
 	float mvec[2];
-	float sen = brush->gpencil_settings->draw_angle_factor; /* sensitivity */;
+	float sen = brush->gpencil_settings->draw_angle_factor; /* sensitivity */
 	float fac;
 	float mpressure;
 
-	/* default angle of brush in radians */;
+	/* default angle of brush in radians */
 	float angle = brush->gpencil_settings->draw_angle;
 	/* angle vector of the brush with full thickness */
 	float v0[2] = { cos(angle), sin(angle) };
@@ -1217,7 +1223,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 	}
 
 	/* Save material index */
-	gps->mat_nr = BKE_gpencil_get_material_index(p->ob, p->material) - 1;
+	gps->mat_nr = BKE_gpencil_get_material_index_for_brush(p->ob, p->brush);
 
 	/* calculate UVs along the stroke */
 	ED_gpencil_calc_stroke_uv(obact, gps);
@@ -1357,11 +1363,10 @@ static void gp_free_stroke(bGPdata *gpd, bGPDframe *gpf, bGPDstroke *gps)
  * to avoid that segments gets the end points rounded.
  * The round caps breaks the artistic effect.
  */
-static void gp_stroke_soft_refine(bGPDstroke *gps, const float cull_thresh)
+static void gp_stroke_soft_refine(bGPDstroke *gps)
 {
 	bGPDspoint *pt = NULL;
-	bGPDspoint *pt_before = NULL;
-	bGPDspoint *pt_after = NULL;
+	bGPDspoint *pt2 = NULL;
 	int i;
 
 	/* check if enough points*/
@@ -1369,41 +1374,27 @@ static void gp_stroke_soft_refine(bGPDstroke *gps, const float cull_thresh)
 		return;
 	}
 
-	/* loop all points from second to last minus one
-	 * to untag any point that is not surrounded by tagged points
-	 */
+	/* loop all points to untag any point that next is not tagged */
 	pt = gps->points;
 	for (i = 1; i < gps->totpoints - 1; i++, pt++) {
 		if (pt->flag & GP_SPOINT_TAG) {
-			pt_before = &gps->points[i - 1];
-			pt_after = &gps->points[i + 1];
-
-			/* if any of the side points are not tagged, mark to keep */
-			if (((pt_before->flag & GP_SPOINT_TAG) == 0) ||
-			    ((pt_after->flag & GP_SPOINT_TAG) == 0))
+			pt2 = &gps->points[i + 1];
+			if (((pt2->flag & GP_SPOINT_TAG) == 0))
 			{
-				if (pt->pressure > cull_thresh) {
-					pt->flag |= GP_SPOINT_TEMP_TAG;
-				}
-			}
-			else {
-				/* reduce opacity of extreme points */
-				if ((pt_before->flag & GP_SPOINT_TAG) == 0) {
-					pt_before->strength *= 0.5f;
-				}
-				if ((pt_after->flag & GP_SPOINT_TAG) == 0) {
-					pt_after->strength *= 0.5f;
-				}
+				pt->flag &= ~GP_SPOINT_TAG;
 			}
 		}
 	}
 
-	/* now untag temp tagged */
-	pt = gps->points;
-	for (i = 1; i < gps->totpoints - 1; i++, pt++) {
-		if (pt->flag & GP_SPOINT_TEMP_TAG) {
-			pt->flag &= ~GP_SPOINT_TAG;
-			pt->flag &= ~GP_SPOINT_TEMP_TAG;
+	/* loop reverse all points to untag any point that previous is not tagged */
+	pt = &gps->points[gps->totpoints - 1];
+	for (i = gps->totpoints - 1; i > 0; i--, pt--) {
+		if (pt->flag & GP_SPOINT_TAG) {
+			pt2 = &gps->points[i - 1];
+			if (((pt2->flag & GP_SPOINT_TAG) == 0))
+			{
+				pt->flag &= ~GP_SPOINT_TAG;
+			}
 		}
 	}
 }
@@ -1475,18 +1466,14 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 		}
 	}
 	else {
-		/* Pressure threshold at which stroke should be culled: Calculated as pressure value
-		 * below which we would have invisible strokes
-		 */
-		const float cull_thresh = (gps->thickness) ? 1.0f / ((float)gps->thickness) : 1.0f;
+		/* Pressure threshold at which stroke should be culled */
+		const float cull_thresh = 0.005f;
 
 		/* Amount to decrease the pressure of each point with each stroke */
-		// TODO: Fetch from toolsettings, or compute based on thickness instead?
 		const float strength = 0.1f;
 
 		/* Perform culling? */
 		bool do_cull = false;
-
 
 		/* Clear Tags
 		 *
@@ -1553,20 +1540,24 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 						if (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_SOFT) {
 							float f_strength = eraser->gpencil_settings->era_strength_f / 100.0f;
 							float f_thickness = eraser->gpencil_settings->era_thickness_f / 100.0f;
+							float influence = 0.0f;
 
 							if (pt0) {
-								pt0->strength -= gp_stroke_eraser_calc_influence(p, mval, radius, pc0) * strength * f_strength * 0.5f;
+								influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc0);
+								pt0->strength -= influence * strength * f_strength * 0.5f;
 								CLAMP_MIN(pt0->strength, 0.0f);
-								pt0->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc0) * strength * f_thickness * 0.5f;
+								pt0->pressure -= influence * strength * f_thickness * 0.5f;
 							}
 
-							pt1->strength -= gp_stroke_eraser_calc_influence(p, mval, radius, pc1) * strength * f_strength;
+							influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc1);
+							pt1->strength -= influence * strength * f_strength;
 							CLAMP_MIN(pt1->strength, 0.0f);
-							pt1->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc1) * strength * f_thickness;
+							pt1->pressure -= influence * strength * f_thickness;
 
-							pt2->strength -= gp_stroke_eraser_calc_influence(p, mval, radius, pc2) * strength * f_strength * 0.5f;
+							influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc2);
+							pt2->strength -= influence * strength * f_strength * 0.5f;
 							CLAMP_MIN(pt2->strength, 0.0f);
-							pt2->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc2) * strength * f_thickness * 0.5f;
+							pt2->pressure -= influence * strength * f_thickness * 0.5f;
 
 							/* if invisible, delete point */
 							if ((pt0) &&
@@ -1613,7 +1604,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 			/* if soft eraser, must analyze points to be sure the stroke ends
 			 * don't get rounded */
 			if (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_SOFT) {
-				gp_stroke_soft_refine(gps, cull_thresh);
+				gp_stroke_soft_refine(gps);
 			}
 
 			gp_stroke_delete_tagged_points(gpf, gps, gps->next, GP_SPOINT_TAG, false, 0);
@@ -1834,31 +1825,10 @@ static void gp_init_colors(tGPsdata *p)
 	bGPdata *gpd = p->gpd;
 	Brush *brush = p->brush;
 
-	Material *ma = NULL;
 	MaterialGPencilStyle *gp_style = NULL;
 
 	/* use brush material */
-	ma = BKE_gpencil_get_material_from_brush(brush);
-
-	/* if no brush defaults, get material and color info
-	 * NOTE: Ensures that everything we need will exist...
-	 */
-	if ((ma == NULL) || (ma->gp_style == NULL)) {
-		BKE_gpencil_material_ensure(p->bmain, p->ob);
-
-		/* assign always the first material to the brush */
-		p->material = give_current_material(p->ob, 1);
-		brush->gpencil_settings->material = p->material;
-	}
-	else {
-		p->material = ma;
-	}
-
-	/* check if the material is already on object material slots and add it if missing */
-	if (BKE_gpencil_get_material_index(p->ob, p->material) == 0) {
-		BKE_object_material_slot_add(p->bmain, p->ob);
-		assign_material(p->bmain, p->ob, ma, p->ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-	}
+	p->material = BKE_gpencil_current_input_brush_material(p->bmain, p->ob, brush);
 
 	/* assign color information to temp tGPsdata */
 	gp_style = p->material->gp_style;
@@ -1996,7 +1966,14 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 		/* NOTE: This is only done for 3D view, as Materials aren't used for
 		 *       annotations in 2D editors
 		 */
+		int totcol = p->ob->totcol;
+
 		gp_init_colors(p);
+
+		/* check whether the material was newly added */
+		if (totcol != p->ob->totcol) {
+			WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, NULL);
+		}
 	}
 
 	/* lock axis (in some modes, disable) */
