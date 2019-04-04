@@ -18,8 +18,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
-import bpy
-from bpy.types import Menu, Panel, UIList
+from bpy.types import Panel
 from .space_view3d import (
     VIEW3D_PT_shading_lighting,
     VIEW3D_PT_shading_color,
@@ -492,7 +491,6 @@ class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
         layout.use_property_split = True
 
         scene = context.scene
-        props = scene.eevee
         rd = scene.render
 
         col = layout.column()
@@ -632,7 +630,7 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
         col.prop(rd, "simplify_child_particles", text="Max Child Particles")
 
         col = flow.column()
-        col.prop(rd, "use_simplify_smoke_highres")
+        col.prop(rd, "use_simplify_smoke_highres", text="High-resolution Smoke")
 
 
 class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):

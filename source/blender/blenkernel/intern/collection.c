@@ -298,9 +298,11 @@ Collection *BKE_collection_copy(Main *bmain, Collection *parent, Collection *col
  *
  * \warning If any 'deep copy' behavior is enabled, this functions will clear all \a bmain id.idnew pointers.
  *
- * \param do_hierarchy If true, it will recursively make shallow copies of children collections and objects.
+ * \param do_hierarchy If true, it will recursively make shallow copies of children collections.
+ * \param do_objects If true, it will also make duplicates of objects.
+ *                   This one does nothing if \a do_hierarchy is not set.
  * \param do_obdata If true, it will also make deep duplicates of objects, using behavior defined in user settings
- *                  (U.dupflag). This one does nothing if \a do_hierarchy is not set.
+ *                  (U.dupflag). This one does nothing if \a do_hierarchy and \a do_objects are not set.
  */
 Collection *BKE_collection_duplicate(
         Main *bmain, Collection *parent, Collection *collection,
@@ -358,7 +360,7 @@ void BKE_collection_new_name_get(Collection *collection_parent, char *rname)
 	char *name;
 
 	if (!collection_parent) {
-		name = BLI_sprintfN("Collection");
+		name = BLI_strdup("Collection");
 	}
 	else if (collection_parent->flag & COLLECTION_IS_MASTER) {
 		name = BLI_sprintfN("Collection %d", BLI_listbase_count(&collection_parent->children) + 1);
@@ -481,6 +483,19 @@ Collection *BKE_collection_master(const Scene *scene)
 	return scene->master_collection;
 }
 
+Scene *BKE_collection_master_scene_search(const Main *bmain, const Collection *master_collection)
+{
+	BLI_assert((master_collection->flag & COLLECTION_IS_MASTER) != 0);
+
+	for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
+		if (scene->master_collection == master_collection) {
+			return scene;
+		}
+	}
+
+	return NULL;
+}
+
 /*********************** Cyclic Checks ************************/
 
 static bool collection_object_cyclic_check_internal(Object *object, Collection *collection)
@@ -543,17 +558,32 @@ bool BKE_collection_has_object_recursive(Collection *collection, Object *ob)
 	return (BLI_findptr(&objects, ob, offsetof(Base, object)));
 }
 
-Collection *BKE_collection_object_find(Main *bmain, Collection *collection, Object *ob)
+static Collection *collection_next_find(Main *bmain, Scene *scene, Collection *collection)
 {
-	if (collection)
-		collection = collection->id.next;
-	else
+	if (scene && collection == BKE_collection_master(scene)) {
+		return bmain->collections.first;
+	}
+	else {
+		return collection->id.next;
+	}
+}
+
+Collection *BKE_collection_object_find(Main *bmain, Scene *scene, Collection *collection, Object *ob)
+{
+	if (collection) {
+		collection = collection_next_find(bmain, scene, collection);
+	}
+	else if (scene) {
+		collection = BKE_collection_master(scene);
+	}
+	else {
 		collection = bmain->collections.first;
+	}
 
 	while (collection) {
 		if (BKE_collection_has_object(collection, ob))
 			return collection;
-		collection = collection->id.next;
+		collection = collection_next_find(bmain, scene, collection);
 	}
 	return NULL;
 }

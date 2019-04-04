@@ -85,6 +85,7 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
+#include "GPU_state.h"
 
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
@@ -789,7 +790,9 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
 	/* fake button, it holds space for search items */
 	uiDefBut(block, UI_BTYPE_LABEL, 0, "", 10, 10 - UI_searchbox_size_y(), width, height, NULL, 0, 0, 0, 0, NULL);
 
-	UI_block_bounds_set_popup(block, 6, 0, -UI_UNIT_Y); /* move it downwards, mouse over button */
+	/* Move it downwards, mouse over button. */
+	UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
+
 	UI_but_focus_on_enter_event(win, but);
 
 	return block;
@@ -1062,7 +1065,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
 		        UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
 	}
 
-	UI_block_bounds_set_popup(block, 4, 0, 0);
+	UI_block_bounds_set_popup(block, 4, NULL);
 
 	return block;
 }
@@ -1146,11 +1149,14 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *ar, void *userData)
 		col_block = uiLayoutGetBlock(col);
 		/* Create OK button, the callback of which will execute op */
 		btn = uiDefBut(col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, -30, 0, UI_UNIT_Y, NULL, 0, 0, 0, 0, "");
+		UI_but_flag_enable(btn, UI_BUT_ACTIVE_DEFAULT);
 		UI_but_func_set(btn, dialog_exec_cb, data, col_block);
 	}
 
 	/* center around the mouse */
-	UI_block_bounds_set_popup(block, 4, data->width / -2, data->height / 2);
+	UI_block_bounds_set_popup(block, 4, (const int[2]){data->width / -2, data->height / 2});
+
+	UI_block_active_only_flagged_buttons(C, ar, block);
 
 	return block;
 }
@@ -1175,7 +1181,9 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *ar, void *userData)
 
 	UI_block_func_set(block, NULL, NULL, NULL);
 
-	UI_block_bounds_set_popup(block, 4, 0, 0);
+	UI_block_bounds_set_popup(block, 4, NULL);
+
+	UI_block_active_only_flagged_buttons(C, ar, block);
 
 	return block;
 }
@@ -1419,11 +1427,11 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 
 #ifndef WITH_HEADLESS
 	if (U.dpi_fac > 1.0) {
-		ibuf = IMB_ibImageFromMemory((unsigned char *)datatoc_splash_2x_png,
+		ibuf = IMB_ibImageFromMemory((const uchar *)datatoc_splash_2x_png,
 		                             datatoc_splash_2x_png_size, IB_rect, NULL, "<splash screen>");
 	}
 	else {
-		ibuf = IMB_ibImageFromMemory((unsigned char *)datatoc_splash_png,
+		ibuf = IMB_ibImageFromMemory((const uchar *)datatoc_splash_png,
 		                             datatoc_splash_png_size, IB_rect, NULL, "<splash screen>");
 	}
 
@@ -1581,8 +1589,6 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *ar, void *userdata)
 {
 	const struct SearchPopupInit_Data *init_data = userdata;
 	static char search[256] = "";
-	wmEvent event;
-	wmWindow *win = CTX_wm_window(C);
 	uiBlock *block;
 	uiBut *but;
 
@@ -1592,19 +1598,14 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *ar, void *userdata)
 
 	but = uiDefSearchBut(block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, init_data->size[0], UI_UNIT_Y, 0, 0, "");
 	UI_but_func_operator_search(but);
+	UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
 	/* fake button, it holds space for search items */
 	uiDefBut(block, UI_BTYPE_LABEL, 0, "", 10, 10 - init_data->size[1],
 	         init_data->size[0], init_data->size[1], NULL, 0, 0, 0, 0, NULL);
 
-	UI_block_bounds_set_popup(block, 6, 0, -UI_UNIT_Y); /* move it downwards, mouse over button */
-
-	wm_event_init_from_window(win, &event);
-	event.type = EVT_BUT_OPEN;
-	event.val = KM_PRESS;
-	event.customdata = but;
-	event.customdatafree = false;
-	wm_event_add(win, &event);
+	/* Move it downwards, mouse over button. */
+	UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
 
 	return block;
 }
@@ -2059,17 +2060,17 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
 		GLint swizzleMask[] = {GL_ZERO, GL_ZERO, GL_ZERO, GL_RED};
 		glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
 
-		immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_MASK_UNIFORM_COLOR);
-
-		immUniformColor3fvAlpha(col, alpha);
-		immUniform1i("image", 0);
-
 		/* set up rotation if available */
 		if (rc->rot_prop) {
 			rot = RNA_property_float_get(&rc->rot_ptr, rc->rot_prop);
 			GPU_matrix_push();
 			GPU_matrix_rotate_2d(RAD2DEGF(rot));
 		}
+
+		immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_MASK_UNIFORM_COLOR);
+
+		immUniformColor3fvAlpha(col, alpha);
+		immUniform1i("image", 0);
 
 		/* draw textured quad */
 		immBegin(GPU_PRIM_TRI_FAN, 4);
@@ -2159,8 +2160,8 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 	y = rc->initial_mouse[1];
 	GPU_matrix_translate_2f((float)x, (float)y);
 
-	glEnable(GL_BLEND);
-	glEnable(GL_LINE_SMOOTH);
+	GPU_blend(true);
+	GPU_line_smooth(true);
 
 	/* apply zoom if available */
 	if (rc->zoom_prop) {
@@ -2220,8 +2221,8 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 
 	BLF_disable(fontid, BLF_SHADOW);
 
-	glDisable(GL_BLEND);
-	glDisable(GL_LINE_SMOOTH);
+	GPU_blend(false);
+	GPU_line_smooth(false);
 
 }
 

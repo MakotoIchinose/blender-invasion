@@ -656,10 +656,11 @@ class WM_OT_context_collection_boolean_set(Operator):
 
     type: EnumProperty(
         name="Type",
-        items=(('TOGGLE', "Toggle", ""),
-               ('ENABLE', "Enable", ""),
-               ('DISABLE', "Disable", ""),
-               ),
+        items=(
+            ('TOGGLE', "Toggle", ""),
+            ('ENABLE', "Enable", ""),
+            ('DISABLE', "Disable", ""),
+        ),
     )
 
     def execute(self, context):
@@ -1008,7 +1009,7 @@ class WM_OT_doc_view(Operator):
     if bpy.app.version_cycle == "release":
         _prefix = ("https://docs.blender.org/api/current")
     else:
-        _prefix = ("https://docs.blender.org/api/blender2.7")
+        _prefix = ("https://docs.blender.org/api/master")
 
     def execute(self, context):
         url = _wm_doc_get_id(self.doc_id, do_url=True, url_prefix=self._prefix)
@@ -1124,7 +1125,6 @@ class WM_OT_properties_edit(Operator):
         )
 
         data_path = self.data_path
-        value = self.value
         prop = self.property
 
         prop_old = getattr(self, "_last_prop", [None])[0]
@@ -1485,14 +1485,14 @@ class WM_OT_owner_disable(Operator):
 
 
 
-class WM_OT_tool_set_by_name(Operator):
+class WM_OT_tool_set_by_id(Operator):
     """Set the tool by name (for keymaps)"""
-    bl_idname = "wm.tool_set_by_name"
+    bl_idname = "wm.tool_set_by_id"
     bl_label = "Set Tool By Name"
 
     name: StringProperty(
-        name="Text",
-        description="Display name of the tool",
+        name="Identifier",
+        description="Identifier of the tool",
     )
     cycle: BoolProperty(
         name="Cycle",
@@ -1517,8 +1517,8 @@ class WM_OT_tool_set_by_name(Operator):
 
     def execute(self, context):
         from bl_ui.space_toolsystem_common import (
-            activate_by_name,
-            activate_by_name_or_cycle,
+            activate_by_id,
+            activate_by_id_or_cycle,
         )
 
         if self.properties.is_property_set("space_type"):
@@ -1526,7 +1526,7 @@ class WM_OT_tool_set_by_name(Operator):
         else:
             space_type = context.space_data.type
 
-        fn = activate_by_name_or_cycle if self.cycle else activate_by_name
+        fn = activate_by_id_or_cycle if self.cycle else activate_by_id
         if fn(context, space_type, self.name):
             return {'FINISHED'}
         else:
@@ -1799,7 +1799,7 @@ classes = (
     WM_OT_owner_disable,
     WM_OT_owner_enable,
     WM_OT_url_open,
-    WM_OT_tool_set_by_name,
+    WM_OT_tool_set_by_id,
     WM_OT_toolbar,
     WM_MT_splash,
 )

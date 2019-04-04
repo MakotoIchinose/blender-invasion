@@ -175,7 +175,7 @@ static MDeformVert *defweight_prev_init(MDeformVert *dvert_prev, MDeformVert *dv
 }
 
 /* check if we can do partial updates and have them draw realtime
- * (without rebuilding the 'derivedFinal') */
+ * (without evaluating modifiers) */
 static bool vertex_paint_use_fast_update_check(Object *ob)
 {
 	Mesh *me_eval = ob->runtime.mesh_eval;
@@ -890,7 +890,7 @@ static void do_weight_paint_vertex_multi(
 		}
 
 		oldw = BKE_defvert_multipaint_collective_weight(
-			dv_prev, wpi->defbase_tot, wpi->defbase_sel, wpi->defbase_tot_sel, wpi->do_auto_normalize);
+		        dv_prev, wpi->defbase_tot, wpi->defbase_sel, wpi->defbase_tot_sel, wpi->do_auto_normalize);
 	}
 	else {
 		oldw = curw;

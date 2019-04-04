@@ -20,9 +20,6 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
-from .properties_grease_pencil_common import (
-    GPENCIL_UL_layer,
-)
 
 ###############################
 # Base-Classes (for shared stuff - e.g. poll, attributes, etc.)
@@ -71,7 +68,6 @@ class DATA_PT_context_gpencil(DataButtonsPanel, Panel):
         layout = self.layout
 
         ob = context.object
-        gpencil = context.gpencil
         space = context.space_data
 
         if ob:
@@ -80,7 +76,7 @@ class DATA_PT_context_gpencil(DataButtonsPanel, Panel):
             layout.template_ID(space, "pin_id")
 
 
-class GPENCIL_MT_layer_specials(Menu):
+class GPENCIL_MT_layer_context_menu(Menu):
     bl_label = "Layer"
 
     def draw(self, context):
@@ -154,7 +150,7 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
         sub.operator("gpencil.layer_remove", icon='REMOVE', text="")
 
         if gpl:
-            sub.menu("GPENCIL_MT_layer_specials", icon='DOWNARROW_HLT', text="")
+            sub.menu("GPENCIL_MT_layer_context_menu", icon='DOWNARROW_HLT', text="")
 
             if len(gpd.layers) > 1:
                 col.separator()
@@ -226,6 +222,23 @@ class DATA_PT_gpencil_layer_relations(LayerDataButtonsPanel, Panel):
 
         if parent and gpl.parent_type == 'BONE' and parent.type == 'ARMATURE':
             col.prop_search(gpl, "parent_bone", parent.data, "bones", text="Bone")
+
+
+class DATA_PT_gpencil_layer_display(LayerDataButtonsPanel, Panel):
+    bl_label = "Display"
+    bl_parent_id = 'DATA_PT_gpencil_layers'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        gpd = context.gpencil
+        gpl = gpd.layers.active
+
+        col = layout.row(align=True)
+        col.prop(gpl, "channel_color")
 
 
 class DATA_PT_gpencil_onion_skinning(DataButtonsPanel, Panel):
@@ -453,6 +466,7 @@ classes = (
     DATA_PT_gpencil_onion_skinning_display,
     DATA_PT_gpencil_layer_adjustments,
     DATA_PT_gpencil_layer_relations,
+    DATA_PT_gpencil_layer_display,
     DATA_PT_gpencil_vertex_groups,
     DATA_PT_gpencil_strokes,
     DATA_PT_gpencil_display,
@@ -461,7 +475,7 @@ classes = (
 
     GPENCIL_UL_vgroups,
 
-    GPENCIL_MT_layer_specials,
+    GPENCIL_MT_layer_context_menu,
     GPENCIL_MT_gpencil_vertex_group,
 )
 

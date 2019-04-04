@@ -17,6 +17,10 @@
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
+from .properties_animviz import (
+    MotionPathButtonsPanel,
+    MotionPathButtonsPanel_display,
+)
 import bpy
 from bpy.types import Panel, Menu
 from rna_prop_ui import PropertyPanel
@@ -158,7 +162,7 @@ class OBJECT_PT_relations(ObjectButtonsPanel, Panel):
         col.prop(ob, "pass_index")
 
 
-class COLLECTION_MT_specials(Menu):
+class COLLECTION_MT_context_menu(Menu):
     bl_label = "Collection Specials"
 
     def draw(self, context):
@@ -199,7 +203,7 @@ class OBJECT_PT_collections(ObjectButtonsPanel, Panel):
                 row = col.box().row()
                 row.prop(collection, "name", text="")
                 row.operator("object.collection_remove", text="", icon='X', emboss=False)
-                row.menu("COLLECTION_MT_specials", icon='DOWNARROW_HLT', text="")
+                row.menu("COLLECTION_MT_context_menu", icon='DOWNARROW_HLT', text="")
 
                 row = col.box().row()
                 row.prop(collection, "instance_offset", text="")
@@ -257,14 +261,14 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
             col.active = is_dupli
         col.prop(obj, "display_type", text="Display As")
 
-        if is_geometry or is_empty_image or is_gpencil:
+        if is_geometry or is_dupli or is_empty_image or is_gpencil:
             # Only useful with object having faces/materials...
             col = flow.column()
             col.prop(obj, "color")
 
 
 class OBJECT_PT_display_bounds(ObjectButtonsPanel, Panel):
-    bl_label = "Boundary"
+    bl_label = "Bounds"
     bl_parent_id = "OBJECT_PT_display"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -309,12 +313,6 @@ class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
             col = flow.column(align=True)
             col.prop(ob, "show_instancer_for_viewport")
             col.prop(ob, "show_instancer_for_render")
-
-
-from .properties_animviz import (
-    MotionPathButtonsPanel,
-    MotionPathButtonsPanel_display,
-)
 
 
 class OBJECT_PT_instancing_size(ObjectButtonsPanel, Panel):
@@ -390,7 +388,7 @@ classes = (
     OBJECT_PT_transform,
     OBJECT_PT_delta_transform,
     OBJECT_PT_relations,
-    COLLECTION_MT_specials,
+    COLLECTION_MT_context_menu,
     OBJECT_PT_collections,
     OBJECT_PT_instancing,
     OBJECT_PT_instancing_size,

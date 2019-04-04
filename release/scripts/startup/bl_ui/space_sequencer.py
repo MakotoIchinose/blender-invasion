@@ -37,7 +37,7 @@ def act_strip(context):
 
 def selected_sequences_len(context):
     selected_sequences = getattr(context, "selected_sequences", None)
-    if not selected_sequences:
+    if selected_sequences is None:
         return 0
     return len(selected_sequences)
 
@@ -225,7 +225,7 @@ class SEQUENCER_MT_view(Menu):
 
         layout.separator()
 
-        layout.operator("render.opengl", text="Sequence Render", icon='RENDER_STILL').sequencer = True
+        layout.operator("render.opengl", text="Sequence Render Image", icon='RENDER_STILL').sequencer = True
         props = layout.operator("render.opengl", text="Sequence Render Animation", icon='RENDER_ANIMATION')
         props.animation = True
         props.sequencer = True
@@ -277,7 +277,7 @@ class SEQUENCER_MT_marker(Menu):
         is_sequencer_view = st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}
 
         from .space_time import marker_menu_generic
-        marker_menu_generic(layout)
+        marker_menu_generic(layout, context)
 
         if is_sequencer_view:
             layout.prop(st, "use_marker_sync")
@@ -1144,6 +1144,7 @@ class SEQUENCER_PT_filter(SequencerButtonsPanel, Panel):
         col.prop(strip, "color_saturation", text="Saturation")
         col.prop(strip, "color_multiply", text="Multiply")
         layout.prop(strip, "use_float", text="Convert to Float")
+
 
 class SEQUENCER_PT_proxy_settings(SequencerButtonsPanel, Panel):
     bl_label = "Proxy settings"

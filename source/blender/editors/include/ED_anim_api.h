@@ -548,7 +548,13 @@ void ANIM_channel_debug_print_info(bAnimListElem *ale, short indent_level);
 /* Draw the given channel */
 void ANIM_channel_draw(bAnimContext *ac, bAnimListElem *ale, float yminc, float ymaxc, size_t channel_index);
 /* Draw the widgets for the given channel */
-void ANIM_channel_draw_widgets(const struct bContext *C, bAnimContext *ac, bAnimListElem *ale, struct uiBlock *block, float yminc, float ymaxc, size_t channel_index);
+void ANIM_channel_draw_widgets(
+    const struct bContext *C,
+    bAnimContext *ac,
+    bAnimListElem *ale,
+    struct uiBlock *block,
+    rctf *rect,
+    size_t channel_index);
 
 
 /* ------------------------ Editing API -------------------------- */
@@ -729,7 +735,7 @@ float ANIM_unit_mapping_get_factor(struct Scene *scene, struct ID *id, struct FC
 		if      (smode == ACHANNEL_SETFLAG_INVERT)  (channel)->flag ^=  (sflag); \
 		else if (smode == ACHANNEL_SETFLAG_ADD)     (channel)->flag |=  (sflag); \
 		else                                        (channel)->flag &= ~(sflag); \
-	}
+	} ((void)0)
 
 /* set/clear/toggle macro, where the flag is negative
  * - channel - channel with a 'flag' member that we're setting
@@ -741,7 +747,7 @@ float ANIM_unit_mapping_get_factor(struct Scene *scene, struct ID *id, struct FC
 		if      (smode == ACHANNEL_SETFLAG_INVERT)  (channel)->flag ^=  (sflag); \
 		else if (smode == ACHANNEL_SETFLAG_ADD)     (channel)->flag &= ~(sflag); \
 		else                                        (channel)->flag |=  (sflag); \
-	}
+	} ((void)0)
 
 
 /* --------- anim_deps.c, animation updates -------- */

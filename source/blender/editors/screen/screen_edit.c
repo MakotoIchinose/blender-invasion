@@ -794,10 +794,15 @@ static void screen_global_area_refresh(
 	}
 }
 
+static int screen_global_header_size(void)
+{
+	return (int)ceilf(ED_area_headersize() / UI_DPI_FAC);
+}
+
 static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)
 {
-	const short size_min = HEADERY;
-	const short size_max = 2.25 * HEADERY;
+	const short size_min = screen_global_header_size();
+	const short size_max = 2.25 * screen_global_header_size();
 	const short size = (screen->flag & SCREEN_COLLAPSE_TOPBAR) ? size_min : size_max;
 	rcti rect;
 
@@ -810,7 +815,7 @@ static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)
 static void screen_global_statusbar_area_refresh(wmWindow *win, bScreen *screen)
 {
 	const short size_min = 1;
-	const short size_max = 0.8f * HEADERY;
+	const short size_max = 0.8f * screen_global_header_size();
 	const short size = (screen->flag & SCREEN_COLLAPSE_STATUSBAR) ? size_min : size_max;
 	rcti rect;
 
@@ -1083,7 +1088,8 @@ void ED_screen_restore_temp_type(bContext *C, ScrArea *sa)
 
 	if (sa->flag & AREA_FLAG_TEMP_TYPE) {
 		ED_area_prevspace(C, sa);
-		sa->flag &= ~AREA_FLAG_TEMP_TYPE;
+		/* Flag should be cleared now. */
+		BLI_assert((sa->flag & AREA_FLAG_TEMP_TYPE) == 0);
 	}
 
 	if (sa->full) {
@@ -1153,6 +1159,9 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
 		/* restoring back to SCREENNORMAL */
 		sc = sa->full;       /* the old screen to restore */
 		oldscreen = WM_window_get_active_screen(win); /* the one disappearing */
+
+		BLI_assert(BKE_workspace_layout_screen_get(layout_old) != sc);
+		BLI_assert(BKE_workspace_layout_screen_get(layout_old)->state != SCREENNORMAL);
 
 		sc->state = SCREENNORMAL;
 		sc->flag = oldscreen->flag;
@@ -1535,6 +1544,24 @@ Scene *ED_screen_scene_find_with_window(const bScreen *screen, const wmWindowMan
 	return NULL;
 }
 
+ScrArea *ED_screen_area_find_with_spacedata(const bScreen *screen, const SpaceLink *sl, const bool only_visible)
+{
+	if (only_visible) {
+		for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+			if (sa->spacedata.first == sl) {
+				return sa;
+			}
+		}
+	}
+	else {
+		for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+			if (BLI_findindex(&sa->spacedata, sl) != -1) {
+				return sa;
+			}
+		}
+	}
+	return NULL;
+}
 
 Scene *ED_screen_scene_find(const bScreen *screen, const wmWindowManager *wm)
 {

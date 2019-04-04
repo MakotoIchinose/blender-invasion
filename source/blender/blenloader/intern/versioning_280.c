@@ -197,12 +197,13 @@ static void do_version_workspaces_after_lib_link(Main *bmain)
 
 			WorkSpace *workspace = BLI_findstring(&bmain->workspaces, screen->id.name + 2, offsetof(ID, name) + 2);
 			BLI_assert(workspace != NULL);
-			ListBase *layouts = BKE_workspace_layouts_get(workspace);
+			WorkSpaceLayout *layout = BKE_workspace_layout_find(workspace, win->screen);
+			BLI_assert(layout != NULL);
 
 			win->workspace_hook = BKE_workspace_instance_hook_create(bmain);
 
 			BKE_workspace_active_set(win->workspace_hook, workspace);
-			BKE_workspace_active_layout_set(win->workspace_hook, layouts->first);
+			BKE_workspace_active_layout_set(win->workspace_hook, layout);
 
 			/* Move scene and view layer to window. */
 			Scene *scene = screen->scene;
@@ -1433,7 +1434,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 							scene->eevee.flag &= ~_flag; \
 						} \
 					} \
-				}
+				} ((void)0)
 
 #define EEVEE_GET_INT(_props, _name) \
 				{ \
@@ -1441,7 +1442,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					if (_idprop != NULL) { \
 						scene->eevee._name = IDP_Int(_idprop); \
 					} \
-				}
+				} ((void)0)
 
 #define EEVEE_GET_FLOAT(_props, _name) \
 				{ \
@@ -1449,7 +1450,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					if (_idprop != NULL) { \
 						scene->eevee._name = IDP_Float(_idprop); \
 					} \
-				}
+				} ((void)0)
 
 #define EEVEE_GET_FLOAT_ARRAY(_props, _name, _length) \
 				{ \
@@ -1460,7 +1461,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 							scene->eevee._name [_i] = _values[_i]; \
 						} \
 					} \
-				}
+				} ((void)0)
 
 				IDProperty *props = IDP_GetPropertyFromGroup(scene->layer_properties, RE_engine_id_BLENDER_EEVEE);
 				EEVEE_GET_BOOL(props, volumetric_enable, SCE_EEVEE_VOLUMETRIC_ENABLED);
@@ -2152,6 +2153,12 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 28)) {
+		for (Mesh *mesh = bmain->meshes.first; mesh; mesh = mesh->id.next) {
+			BKE_mesh_calc_edges_loose(mesh);
+		}
+	}
+
 	if (!MAIN_VERSION_ATLEAST(bmain, 280, 29)) {
 		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
 			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
@@ -2506,44 +2513,44 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 						{
 							SpaceImage *sima = (SpaceImage *)sl;
 							sima->flag &= ~(
-							        SI_FLAG_DEPRECATED_0 |
-							        SI_FLAG_DEPRECATED_1 |
-							        SI_FLAG_DEPRECATED_3 |
-							        SI_FLAG_DEPRECATED_6 |
-							        SI_FLAG_DEPRECATED_7 |
-							        SI_FLAG_DEPRECATED_8 |
-							        SI_FLAG_DEPRECATED_17 |
-							        SI_FLAG_DEPRECATED_18 |
-							        SI_FLAG_DEPRECATED_23 |
-							        SI_FLAG_DEPRECATED_24);
+							        SI_FLAG_UNUSED_0 |
+							        SI_FLAG_UNUSED_1 |
+							        SI_FLAG_UNUSED_3 |
+							        SI_FLAG_UNUSED_6 |
+							        SI_FLAG_UNUSED_7 |
+							        SI_FLAG_UNUSED_8 |
+							        SI_FLAG_UNUSED_17 |
+							        SI_FLAG_UNUSED_18 |
+							        SI_FLAG_UNUSED_23 |
+							        SI_FLAG_UNUSED_24);
 							break;
 						}
 						case SPACE_VIEW3D:
 						{
 							View3D *v3d = (View3D *)sl;
 							v3d->flag &= ~(
-							        V3D_FLAG_DEPRECATED_0 |
-							        V3D_FLAG_DEPRECATED_1 |
-							        V3D_FLAG_DEPRECATED_10 |
-							        V3D_FLAG_DEPRECATED_12);
+							        V3D_FLAG_UNUSED_0 |
+							        V3D_FLAG_UNUSED_1 |
+							        V3D_FLAG_UNUSED_10 |
+							        V3D_FLAG_UNUSED_12);
 							v3d->flag2 &= ~(
-							        V3D_FLAG2_DEPRECATED_3 |
-							        V3D_FLAG2_DEPRECATED_6 |
-							        V3D_FLAG2_DEPRECATED_12 |
-							        V3D_FLAG2_DEPRECATED_13 |
-							        V3D_FLAG2_DEPRECATED_14 |
-							        V3D_FLAG2_DEPRECATED_15);
+							        V3D_FLAG2_UNUSED_3 |
+							        V3D_FLAG2_UNUSED_6 |
+							        V3D_FLAG2_UNUSED_12 |
+							        V3D_FLAG2_UNUSED_13 |
+							        V3D_FLAG2_UNUSED_14 |
+							        V3D_FLAG2_UNUSED_15);
 							break;
 						}
 						case SPACE_OUTLINER:
 						{
 							SpaceOutliner *so = (SpaceOutliner *)sl;
 							so->filter &= ~(
-							        SO_FILTER_DEPRECATED_1 |
-							        SO_FILTER_DEPRECATED_5 |
-							        SO_FILTER_DEPRECATED_12);
+							        SO_FILTER_UNUSED_1 |
+							        SO_FILTER_UNUSED_5 |
+							        SO_FILTER_UNUSED_12);
 							so->storeflag &= ~(
-							        SO_TREESTORE_DEPRECATED_1);
+							        SO_TREESTORE_UNUSED_1);
 							break;
 						}
 						case SPACE_FILE:
@@ -2551,9 +2558,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 							SpaceFile *sfile = (SpaceFile *)sl;
 							if (sfile->params) {
 								sfile->params->flag &= ~(
-								        FILE_PARAMS_FLAG_DEPRECATED_1 |
-								        FILE_PARAMS_FLAG_DEPRECATED_6 |
-								        FILE_PARAMS_FLAG_DEPRECATED_9);
+								        FILE_PARAMS_FLAG_UNUSED_1 |
+								        FILE_PARAMS_FLAG_UNUSED_6 |
+								        FILE_PARAMS_FLAG_UNUSED_9);
 							}
 							break;
 						}
@@ -2561,26 +2568,26 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 						{
 							SpaceNode *snode = (SpaceNode *)sl;
 							snode->flag &= ~(
-							        SNODE_FLAG_DEPRECATED_6 |
-							        SNODE_FLAG_DEPRECATED_10 |
-							        SNODE_FLAG_DEPRECATED_11);
+							        SNODE_FLAG_UNUSED_6 |
+							        SNODE_FLAG_UNUSED_10 |
+							        SNODE_FLAG_UNUSED_11);
 							break;
 						}
 						case SPACE_PROPERTIES:
 						{
 							SpaceProperties *sbuts = (SpaceProperties *)sl;
 							sbuts->flag &= ~(
-							        SB_FLAG_DEPRECATED_2 |
-							        SB_FLAG_DEPRECATED_3);
+							        SB_FLAG_UNUSED_2 |
+							        SB_FLAG_UNUSED_3);
 							break;
 						}
 						case SPACE_NLA:
 						{
 							SpaceNla *snla = (SpaceNla *)sl;
 							snla->flag &= ~(
-							        SNLA_FLAG_DEPRECATED_0 |
-							        SNLA_FLAG_DEPRECATED_1 |
-							        SNLA_FLAG_DEPRECATED_3);
+							        SNLA_FLAG_UNUSED_0 |
+							        SNLA_FLAG_UNUSED_1 |
+							        SNLA_FLAG_UNUSED_3);
 							break;
 						}
 					}
@@ -2590,37 +2597,37 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			scene->r.mode &= ~(
-			        R_MODE_DEPRECATED_1 |
-			        R_MODE_DEPRECATED_2 |
-			        R_MODE_DEPRECATED_3 |
-			        R_MODE_DEPRECATED_4 |
-			        R_MODE_DEPRECATED_5 |
-			        R_MODE_DEPRECATED_6 |
-			        R_MODE_DEPRECATED_7 |
-			        R_MODE_DEPRECATED_8 |
-			        R_MODE_DEPRECATED_10 |
-			        R_MODE_DEPRECATED_13 |
-			        R_MODE_DEPRECATED_16 |
-			        R_MODE_DEPRECATED_17 |
-			        R_MODE_DEPRECATED_18 |
-			        R_MODE_DEPRECATED_19 |
-			        R_MODE_DEPRECATED_20 |
-			        R_MODE_DEPRECATED_21 |
-			        R_MODE_DEPRECATED_27);
+			        R_MODE_UNUSED_1 |
+			        R_MODE_UNUSED_2 |
+			        R_MODE_UNUSED_3 |
+			        R_MODE_UNUSED_4 |
+			        R_MODE_UNUSED_5 |
+			        R_MODE_UNUSED_6 |
+			        R_MODE_UNUSED_7 |
+			        R_MODE_UNUSED_8 |
+			        R_MODE_UNUSED_10 |
+			        R_MODE_UNUSED_13 |
+			        R_MODE_UNUSED_16 |
+			        R_MODE_UNUSED_17 |
+			        R_MODE_UNUSED_18 |
+			        R_MODE_UNUSED_19 |
+			        R_MODE_UNUSED_20 |
+			        R_MODE_UNUSED_21 |
+			        R_MODE_UNUSED_27);
 
 			scene->r.scemode &= ~(
-			        R_SCEMODE_DEPRECATED_8 |
-			        R_SCEMODE_DEPRECATED_11 |
-			        R_SCEMODE_DEPRECATED_13 |
-			        R_SCEMODE_DEPRECATED_16 |
-			        R_SCEMODE_DEPRECATED_17 |
-			        R_SCEMODE_DEPRECATED_19);
+			        R_SCEMODE_UNUSED_8 |
+			        R_SCEMODE_UNUSED_11 |
+			        R_SCEMODE_UNUSED_13 |
+			        R_SCEMODE_UNUSED_16 |
+			        R_SCEMODE_UNUSED_17 |
+			        R_SCEMODE_UNUSED_19);
 
 			if (scene->toolsettings->sculpt) {
 				scene->toolsettings->sculpt->flags &= ~(
-				        SCULPT_FLAG_DEPRECATED_0 |
-				        SCULPT_FLAG_DEPRECATED_1 |
-				        SCULPT_FLAG_DEPRECATED_2);
+				        SCULPT_FLAG_UNUSED_0 |
+				        SCULPT_FLAG_UNUSED_1 |
+				        SCULPT_FLAG_UNUSED_2);
 			}
 
 			if (scene->ed) {
@@ -2628,14 +2635,14 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				SEQ_BEGIN (scene->ed, seq)
 				{
 					seq->flag &= ~(
-					        SEQ_FLAG_DEPRECATED_6 |
-					        SEQ_FLAG_DEPRECATED_18 |
-					        SEQ_FLAG_DEPRECATED_19 |
-					        SEQ_FLAG_DEPRECATED_21);
+					        SEQ_FLAG_UNUSED_6 |
+					        SEQ_FLAG_UNUSED_18 |
+					        SEQ_FLAG_UNUSED_19 |
+					        SEQ_FLAG_UNUSED_21);
 					if (seq->type == SEQ_TYPE_SPEED) {
 						SpeedControlVars *s = (SpeedControlVars *)seq->effectdata;
 						s->flags &= ~(
-						        SEQ_SPEED_DEPRECATED_1);
+						        SEQ_SPEED_UNUSED_1);
 					}
 				} SEQ_END;
 			}
@@ -2643,49 +2650,49 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		for (World *world = bmain->worlds.first; world; world = world->id.next) {
 			world->flag &= ~(
-			        WO_MODE_DEPRECATED_1 |
-			        WO_MODE_DEPRECATED_2 |
-			        WO_MODE_DEPRECATED_3 |
-			        WO_MODE_DEPRECATED_4 |
-			        WO_MODE_DEPRECATED_5 |
-			        WO_MODE_DEPRECATED_7);
+			        WO_MODE_UNUSED_1 |
+			        WO_MODE_UNUSED_2 |
+			        WO_MODE_UNUSED_3 |
+			        WO_MODE_UNUSED_4 |
+			        WO_MODE_UNUSED_5 |
+			        WO_MODE_UNUSED_7);
 		}
 
 		for (Image *image = bmain->images.first; image; image = image->id.next) {
 			image->flag &= ~(
-			        IMA_FLAG_DEPRECATED_0 |
-			        IMA_FLAG_DEPRECATED_1 |
-			        IMA_FLAG_DEPRECATED_4 |
-			        IMA_FLAG_DEPRECATED_6 |
-			        IMA_FLAG_DEPRECATED_8 |
-			        IMA_FLAG_DEPRECATED_15 |
-			        IMA_FLAG_DEPRECATED_16);
+			        IMA_FLAG_UNUSED_0 |
+			        IMA_FLAG_UNUSED_1 |
+			        IMA_FLAG_UNUSED_4 |
+			        IMA_FLAG_UNUSED_6 |
+			        IMA_FLAG_UNUSED_8 |
+			        IMA_FLAG_UNUSED_15 |
+			        IMA_FLAG_UNUSED_16);
 		}
 
 		for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 			ob->flag &= ~(
-			        OB_FLAG_DEPRECATED_11 |
-			        OB_FLAG_DEPRECATED_12);
+			        OB_FLAG_UNUSED_11 |
+			        OB_FLAG_UNUSED_12);
 			ob->transflag &= ~(
-			        OB_TRANSFLAG_DEPRECATED_0 |
-			        OB_TRANSFLAG_DEPRECATED_1);
-			ob->shapeflag &= ~OB_SHAPE_FLAG_DEPRECATED_1;
+			        OB_TRANSFLAG_UNUSED_0 |
+			        OB_TRANSFLAG_UNUSED_1);
+			ob->shapeflag &= ~OB_SHAPE_FLAG_UNUSED_1;
 		}
 
 		for (Mesh *me = bmain->meshes.first; me; me = me->id.next) {
 			me->flag &= ~(
-			        ME_FLAG_DEPRECATED_0 |
-			        ME_FLAG_DEPRECATED_1 |
-			        ME_FLAG_DEPRECATED_3 |
-			        ME_FLAG_DEPRECATED_4 |
-			        ME_FLAG_DEPRECATED_6 |
-			        ME_FLAG_DEPRECATED_7 |
-			        ME_FLAG_DEPRECATED_8);
+			        ME_FLAG_UNUSED_0 |
+			        ME_FLAG_UNUSED_1 |
+			        ME_FLAG_UNUSED_3 |
+			        ME_FLAG_UNUSED_4 |
+			        ME_FLAG_UNUSED_6 |
+			        ME_FLAG_UNUSED_7 |
+			        ME_FLAG_UNUSED_8);
 		}
 
 		for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
 			mat->blend_flag &= ~(
-			        MA_BL_FLAG_DEPRECATED_2);
+			        MA_BL_FLAG_UNUSED_2);
 		}
 	}
 
@@ -2798,17 +2805,17 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				R_ALPHAKEY = 2,
 			};
 			scene->r.seq_flag &= ~(
-			        R_SEQ_DEPRECATED_0 |
-			        R_SEQ_DEPRECATED_1 |
-			        R_SEQ_DEPRECATED_2);
-			scene->r.color_mgt_flag &= ~R_COLOR_MANAGEMENT_DEPRECATED_1;
+			        R_SEQ_UNUSED_0 |
+			        R_SEQ_UNUSED_1 |
+			        R_SEQ_UNUSED_2);
+			scene->r.color_mgt_flag &= ~R_COLOR_MANAGEMENT_UNUSED_1;
 			if (scene->r.alphamode == R_ALPHAKEY) {
 				scene->r.alphamode = R_ADDSKY;
 			}
 			ToolSettings *ts = scene->toolsettings;
-			ts->particle.flag &= ~PE_DEPRECATED_6;
+			ts->particle.flag &= ~PE_UNUSED_6;
 			if (ts->sculpt != NULL) {
-				ts->sculpt->flags &= ~SCULPT_FLAG_DEPRECATED_6;
+				ts->sculpt->flags &= ~SCULPT_FLAG_UNUSED_6;
 			}
 		}
 	}
@@ -2876,26 +2883,113 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 
 			ob->transflag &= ~(
-			        OB_TRANSFLAG_DEPRECATED_0 |
-			        OB_TRANSFLAG_DEPRECATED_1 |
-			        OB_TRANSFLAG_DEPRECATED_3 |
-			        OB_TRANSFLAG_DEPRECATED_6 |
-			        OB_TRANSFLAG_DEPRECATED_12);
+			        OB_TRANSFLAG_UNUSED_0 |
+			        OB_TRANSFLAG_UNUSED_1 |
+			        OB_TRANSFLAG_UNUSED_3 |
+			        OB_TRANSFLAG_UNUSED_6 |
+			        OB_TRANSFLAG_UNUSED_12);
 
-			ob->nlaflag &= ~(OB_ADS_DEPRECATED_1 | OB_ADS_DEPRECATED_2);
+			ob->nlaflag &= ~(OB_ADS_UNUSED_1 | OB_ADS_UNUSED_2);
 		}
 
 		LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
 			arm->flag &= ~(
-			        ARM_FLAG_DEPRECATED_1 |
-			        ARM_FLAG_DEPRECATED_5 |
-			        ARM_FLAG_DEPRECATED_7 |
-			        ARM_FLAG_DEPRECATED_12);
+			        ARM_FLAG_UNUSED_1 |
+			        ARM_FLAG_UNUSED_5 |
+			        ARM_FLAG_UNUSED_7 |
+			        ARM_FLAG_UNUSED_12);
 		}
 
 		LISTBASE_FOREACH (Text *, text, &bmain->texts) {
-			enum { TXT_READONLY = 1 << 8, TXT_FOLLOW = 1 << 9};
-			text->flags &= ~(TXT_READONLY | TXT_FOLLOW);
+			text->flags &= ~(TXT_FLAG_UNUSED_8 | TXT_FLAG_UNUSED_9);
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 48)) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+			/* Those are not currently used, but are accessible through RNA API and were not
+			 * properly initialized previously. This is mere copy of BKE_init_scene() code. */
+			if (scene->r.im_format.view_settings.look[0] == '\0') {
+				BKE_color_managed_display_settings_init(&scene->r.im_format.display_settings);
+				BKE_color_managed_view_settings_init_render(&scene->r.im_format.view_settings,
+				                                            &scene->r.im_format.display_settings,
+				                                            "Filmic");
+			}
+
+			if (scene->r.bake.im_format.view_settings.look[0] == '\0') {
+				BKE_color_managed_display_settings_init(&scene->r.bake.im_format.display_settings);
+				BKE_color_managed_view_settings_init_render(&scene->r.bake.im_format.view_settings,
+				                                            &scene->r.bake.im_format.display_settings,
+				                                            "Filmic");
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 49)) {
+		/* All tool names changed, reset to defaults. */
+		for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+			while (!BLI_listbase_is_empty(&workspace->tools)) {
+				BKE_workspace_tool_remove(workspace, workspace->tools.first);
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 52)) {
+		LISTBASE_FOREACH (ParticleSettings *, part, &bmain->particles) {
+			/* Replace deprecated PART_DRAW_BB by PART_DRAW_NOT */
+			if (part->ren_as == PART_DRAW_BB) {
+				part->ren_as = PART_DRAW_NOT;
+			}
+			if (part->draw_as == PART_DRAW_BB) {
+				part->draw_as = PART_DRAW_NOT;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "TriangulateModifierData", "int", "min_vertices")) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Triangulate) {
+						TriangulateModifierData *smd = (TriangulateModifierData *)md;
+						smd->min_vertices = 4;
+					}
+				}
+			}
+		}
+
+		FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
+			if (ntree->type == NTREE_SHADER) {
+				for (bNode *node = ntree->nodes.first; node; node = node->next) {
+					/* Fix missing version patching from earlier changes. */
+					if (STREQ(node->idname, "ShaderNodeOutputLamp")) {
+						STRNCPY(node->idname, "ShaderNodeOutputLight");
+					}
+					if (node->type == SH_NODE_BSDF_PRINCIPLED && node->custom2 == 0) {
+						node->custom2 = SHD_SUBSURFACE_BURLEY;
+					}
+				}
+			}
+		} FOREACH_NODETREE_END;
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 53)) {
+		for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
+			/* Eevee: Keep material appearance consistent with previous behavior. */
+			if (!mat->use_nodes || !mat->nodetree || mat->blend_method == MA_BM_SOLID) {
+				mat->blend_shadow = MA_BS_SOLID;
+			}
+		}
+
+		/* grease pencil default animation channel color */
+		{
+			for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+				if (gpd->flag & GP_DATA_ANNOTATIONS) {
+					continue;
+				}
+				for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+					/* default channel color */
+					ARRAY_SET_ITEMS(gpl->color, 0.2f, 0.2f, 0.2f);
+				}
+			}
 		}
 	}
 

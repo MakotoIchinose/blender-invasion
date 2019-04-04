@@ -20,7 +20,7 @@
 import bpy
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
-from bl_operators.presets import PresetMenu
+from bl_ui.utils import PresetPanel
 
 
 class CameraButtonsPanel:
@@ -34,7 +34,7 @@ class CameraButtonsPanel:
         return context.camera and (engine in cls.COMPAT_ENGINES)
 
 
-class CAMERA_PT_presets(PresetMenu):
+class CAMERA_PT_presets(PresetPanel, Panel):
     bl_label = "Camera Presets"
     preset_subdir = "camera"
     preset_operator = "script.execute_preset"
@@ -42,7 +42,7 @@ class CAMERA_PT_presets(PresetMenu):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
 
-class SAFE_AREAS_PT_presets(PresetMenu):
+class SAFE_AREAS_PT_presets(PresetPanel, Panel):
     bl_label = "Camera Presets"
     preset_subdir = "safe_areas"
     preset_operator = "script.execute_preset"
@@ -198,7 +198,7 @@ class DATA_PT_camera(CameraButtonsPanel, Panel):
         col.prop(cam, "sensor_fit")
 
         if cam.sensor_fit == 'AUTO':
-            col.prop(cam, "sensor_width")
+            col.prop(cam, "sensor_width", text="Size")
         else:
             sub = col.column(align=True)
             sub.active = cam.sensor_fit == 'HORIZONTAL'
@@ -367,10 +367,6 @@ class DATA_PT_camera_display(CameraButtonsPanel, Panel):
 
         cam = context.camera
 
-        split = layout.split()
-        split.label()
-        split.prop_menu_enum(cam, "show_guide")
-
         col = layout.column(align=True)
 
         col.separator()
@@ -379,10 +375,47 @@ class DATA_PT_camera_display(CameraButtonsPanel, Panel):
 
         col.separator()
 
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=False, even_rows=False, align=False)
+
+        col = flow.column()
         col.prop(cam, "show_limits", text="Limits")
+        col = flow.column()
         col.prop(cam, "show_mist", text="Mist")
+        col = flow.column()
         col.prop(cam, "show_sensor", text="Sensor")
+        col = flow.column()
         col.prop(cam, "show_name", text="Name")
+
+class DATA_PT_camera_display_composition_guides(CameraButtonsPanel, Panel):
+    bl_label = "Composition Guides"
+    bl_parent_id = "DATA_PT_camera_display"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        cam = context.camera
+
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=False, even_rows=False, align=False)
+
+        col = flow.column()
+        col.prop(cam, "show_composition_center")
+        col = flow.column()
+        col.prop(cam, "show_composition_center_diagonal")
+        col = flow.column()
+        col.prop(cam, "show_composition_thirds")
+        col = flow.column()
+        col.prop(cam, "show_composition_golden")
+        col = flow.column()
+        col.prop(cam, "show_composition_golden_tria_a")
+        col = flow.column()
+        col.prop(cam, "show_composition_golden_tria_b")
+        col = flow.column()
+        col.prop(cam, "show_composition_harmony_tri_a")
+        col = flow.column()
+        col.prop(cam, "show_composition_harmony_tri_b")
 
 
 class DATA_PT_camera_display_passepartout(CameraButtonsPanel, Panel):
@@ -503,6 +536,7 @@ classes = (
     DATA_PT_camera_safe_areas_center_cut,
     DATA_PT_camera_background_image,
     DATA_PT_camera_display,
+    DATA_PT_camera_display_composition_guides,
     DATA_PT_camera_display_passepartout,
     DATA_PT_custom_props_camera,
 )

@@ -154,14 +154,18 @@ void ED_view3d_smooth_view_ex(
 	}
 
 	/* store the options we want to end with */
-	if (sview->ofs)
+	if (sview->ofs) {
 		copy_v3_v3(sms.dst.ofs, sview->ofs);
-	if (sview->quat)
+	}
+	if (sview->quat) {
 		copy_qt_qt(sms.dst.quat, sview->quat);
-	if (sview->dist)
+	}
+	if (sview->dist) {
 		sms.dst.dist = *sview->dist;
-	if (sview->lens)
+	}
+	if (sview->lens) {
 		sms.dst.lens = *sview->lens;
+	}
 
 	if (sview->dyn_ofs) {
 		BLI_assert(sview->ofs  == NULL);
@@ -185,16 +189,21 @@ void ED_view3d_smooth_view_ex(
 	if (smooth_viewtx && v3d->shading.type != OB_RENDER) {
 		bool changed = false; /* zero means no difference */
 
-		if (sview->camera_old != sview->camera)
+		if (sview->camera_old != sview->camera) {
 			changed = true;
-		else if (sms.dst.dist != rv3d->dist)
+		}
+		else if (sms.dst.dist != rv3d->dist) {
 			changed = true;
-		else if (sms.dst.lens != v3d->lens)
+		}
+		else if (sms.dst.lens != v3d->lens) {
 			changed = true;
-		else if (!equals_v3v3(sms.dst.ofs, rv3d->ofs))
+		}
+		else if (!equals_v3v3(sms.dst.ofs, rv3d->ofs)) {
 			changed = true;
-		else if (!equals_v4v4(sms.dst.quat, rv3d->viewquat))
+		}
+		else if (!equals_v4v4(sms.dst.quat, rv3d->viewquat)) {
 			changed = true;
+		}
 
 		/* The new view is different from the old one
 		 * so animate the view */
@@ -301,10 +310,12 @@ static void view3d_smoothview_apply(bContext *C, View3D *v3d, ARegion *ar, bool 
 	struct SmoothView3DStore *sms = rv3d->sms;
 	float step, step_inv;
 
-	if (sms->time_allowed != 0.0)
+	if (sms->time_allowed != 0.0) {
 		step = (float)((rv3d->smooth_timer->duration) / sms->time_allowed);
-	else
+	}
+	else {
 		step = 1.0f;
+	}
 
 	/* end timer */
 	if (step >= 1.0f) {
@@ -639,8 +650,10 @@ static int view3d_setobjectascamera_exec(bContext *C, wmOperator *op)
 		Object *camera_old = (rv3d->persp == RV3D_CAMOB) ? V3D_CAMERA_SCENE(scene, v3d) : NULL;
 		rv3d->persp = RV3D_CAMOB;
 		v3d->camera = ob;
-		if (v3d->scenelock)
+		if (v3d->scenelock && scene->camera != ob) {
 			scene->camera = ob;
+			DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+		}
 
 		/* unlikely but looks like a glitch when set to the same */
 		if (camera_old != ob) {
@@ -777,11 +790,14 @@ void view3d_viewmatrix_set(
 
 
 		/* should be moved to better initialize later on XXX */
-		if (rv3d->viewlock & RV3D_LOCKED)
+		if (rv3d->viewlock & RV3D_LOCKED) {
 			ED_view3d_lock(rv3d);
+		}
 
 		quat_to_mat4(rv3d->viewmat, rv3d->viewquat);
-		if (rv3d->persp == RV3D_PERSP) rv3d->viewmat[3][2] -= rv3d->dist;
+		if (rv3d->persp == RV3D_PERSP) {
+			rv3d->viewmat[3][2] -= rv3d->dist;
+		}
 		if (v3d->ob_centre) {
 			Object *ob_eval = DEG_get_evaluated_object(depsgraph, v3d->ob_centre);
 			float vec[3];
@@ -942,7 +958,7 @@ int view3d_opengl_select(
 	rcti rect;
 	int hits = 0;
 	const bool use_obedit_skip = (OBEDIT_FROM_VIEW_LAYER(vc->view_layer) != NULL) && (vc->obedit == NULL);
-	const bool is_pick_select = (U.gpu_select_pick_deph != 0);
+	const bool is_pick_select = (U.gpu_flag & USER_GPU_FLAG_NO_DEPT_PICK) == 0;
 	const bool do_passes = (
 	        (is_pick_select == false) &&
 	        (select_mode == VIEW3D_SELECT_PICK_NEAREST));
@@ -1092,14 +1108,17 @@ int view3d_opengl_select(
 		GPU_depth_test(false);
 	}
 
-	if (vc->rv3d->rflag & RV3D_CLIPPING)
+	if (vc->rv3d->rflag & RV3D_CLIPPING) {
 		ED_view3d_clipping_disable();
+	}
 
 	DRW_opengl_context_disable();
 
 finally:
 
-	if (hits < 0) printf("Too many objects in select buffer\n");  /* XXX make error message */
+	if (hits < 0) {
+		printf("Too many objects in select buffer\n");  /* XXX make error message */
+	}
 
 	UI_Theme_Restore(&theme_state);
 
@@ -1273,7 +1292,9 @@ static void view3d_localview_exit(
 {
 	View3D *v3d = sa->spacedata.first;
 
-	if (v3d->localvd == NULL) return;
+	if (v3d->localvd == NULL) {
+		return;
+	}
 
 	for (Base *base = FIRSTBASE(view_layer); base; base = base->next) {
 		if (base->local_view_bits & v3d->local_view_uuid) {
@@ -1438,50 +1459,6 @@ void VIEW3D_OT_localview_remove_from(wmOperatorType *ot)
 	ot->invoke = WM_operator_confirm;
 	ot->poll = localview_remove_from_poll;
 	ot->flag = OPTYPE_UNDO;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name View Layer Utilities
- * \{ */
-
-int ED_view3d_view_layer_set(int lay, const bool *values, int *active)
-{
-	int i, tot = 0;
-
-	/* ensure we always have some layer selected */
-	for (i = 0; i < 20; i++)
-		if (values[i])
-			tot++;
-
-	if (tot == 0)
-		return lay;
-
-	for (i = 0; i < 20; i++) {
-
-		if (active) {
-			/* if this value has just been switched on, make that layer active */
-			if (values[i] && (lay & (1 << i)) == 0) {
-				*active = (1 << i);
-			}
-		}
-
-		if (values[i]) lay |= (1 << i);
-		else lay &= ~(1 << i);
-	}
-
-	/* ensure always an active layer */
-	if (active && (lay & *active) == 0) {
-		for (i = 0; i < 20; i++) {
-			if (lay & (1 << i)) {
-				*active = 1 << i;
-				break;
-			}
-		}
-	}
-
-	return lay;
 }
 
 /** \} */

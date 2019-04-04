@@ -19,8 +19,15 @@
 # <pep8 compliant>
 
 import bpy
-from bpy.types import Menu, Operator, Panel, WindowManager
-from bpy.props import StringProperty, BoolProperty
+from bpy.types import (
+    Menu,
+    Operator,
+    WindowManager,
+)
+from bpy.props import (
+    BoolProperty,
+    StringProperty,
+)
 
 # For preset popover menu
 WindowManager.preset_name = StringProperty(
@@ -261,40 +268,6 @@ class ExecutePreset(Operator):
             preset_class.post_cb(context)
 
         return {'FINISHED'}
-
-
-class PresetMenu(Panel):
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'HEADER'
-    bl_label = "Presets"
-    path_menu = Menu.path_menu
-
-    @classmethod
-    def draw_panel_header(cls, layout):
-        layout.emboss = 'NONE'
-        layout.popover(
-            panel=cls.__name__,
-            icon='PRESET',
-            text="",
-        )
-
-    @classmethod
-    def draw_menu(cls, layout, text=None):
-        if text is None:
-            text = cls.bl_label
-
-        layout.popover(
-            panel=cls.__name__,
-            icon='PRESET',
-            text=text,
-        )
-
-    def draw(self, context):
-        layout = self.layout
-        layout.emboss = 'PULLDOWN_MENU'
-        layout.operator_context = 'EXEC_DEFAULT'
-
-        Menu.draw_preset(self, context)
 
 
 class AddPresetRender(AddPresetBase, Operator):

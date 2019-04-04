@@ -48,6 +48,7 @@
 
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -105,7 +106,7 @@ static void ui_popover_create_block(bContext *C, uiPopover *pup, int opcontext)
 
 	pup->layout = UI_block_layout(
 	        pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0,
-	        pup->ui_size_x, 0, MENU_PADDING, style);
+	        pup->ui_size_x, 0, UI_MENU_PADDING, style);
 
 	uiLayoutSetOperatorContext(pup->layout, opcontext);
 
@@ -152,8 +153,9 @@ static uiBlock *ui_block_func_POPOVER(bContext *C, uiPopupBlockHandle *handle, v
 
 		/* If menu slides out of other menu, override direction. */
 		bool slideout = ui_block_is_menu(pup->but->block);
-		if (slideout)
+		if (slideout) {
 			UI_block_direction_set(block, UI_DIR_RIGHT);
+		}
 
 		/* Store the button location for positioning the popover arrow hint. */
 		if (!handle->refresh) {
@@ -161,12 +163,12 @@ static uiBlock *ui_block_func_POPOVER(bContext *C, uiPopupBlockHandle *handle, v
 			ui_block_to_window_fl(handle->ctx_region, pup->but->block, &center[0], &center[1]);
 			/* These variables aren't used for popovers,
 			 * we could add new variables if there is a conflict. */
-			handle->prev_mx = block->mx = (int)center[0];
-			handle->prev_my = block->my = (int)center[1];
+			block->bounds_offset[0] = (int)center[0];
+			block->bounds_offset[1] = (int)center[1];
+			copy_v2_v2_int(handle->prev_bounds_offset, block->bounds_offset);
 		}
 		else {
-			block->mx = handle->prev_mx;
-			block->my = handle->prev_my;
+			copy_v2_v2_int(block->bounds_offset, handle->prev_bounds_offset);
 		}
 
 		if (!slideout) {
@@ -192,28 +194,39 @@ static uiBlock *ui_block_func_POPOVER(bContext *C, uiPopupBlockHandle *handle, v
 	}
 	else {
 		/* Not attached to a button. */
-		int offset[2] = {0, 0};
+		int bounds_offset[2] = {0, 0};
 		UI_block_flag_enable(block, UI_BLOCK_LOOP);
 		UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 		UI_block_direction_set(block, block->direction);
 		block->minbounds = UI_MENU_WIDTH_MIN;
-		bool use_place_under_active = !handle->refresh;
 
-		if (use_place_under_active) {
+		if (!handle->refresh) {
 			uiBut *but = NULL;
+			uiBut *but_first = NULL;
 			for (but = block->buttons.first; but; but = but->next) {
+				if ((but_first == NULL) && ui_but_is_editable(but)) {
+					but_first = but;
+				}
 				if (but->flag & (UI_SELECT | UI_SELECT_DRAW)) {
 					break;
 				}
 			}
 
 			if (but) {
-				offset[0] = -(but->rect.xmin + 0.8f * BLI_rctf_size_x(&but->rect));
-				offset[1] = -(but->rect.ymin + 0.5f * BLI_rctf_size_y(&but->rect));
+				bounds_offset[0] = -(but->rect.xmin + 0.8f * BLI_rctf_size_x(&but->rect));
+				bounds_offset[1] = -BLI_rctf_cent_y(&but->rect);
 			}
+			else {
+				bounds_offset[0] = -(pup->ui_size_x / 2);
+				bounds_offset[1] = but_first ? -BLI_rctf_cent_y(&but_first->rect) : (UI_UNIT_Y / 2);
+			}
+			copy_v2_v2_int(handle->prev_bounds_offset, bounds_offset);
+		}
+		else {
+			copy_v2_v2_int(bounds_offset, handle->prev_bounds_offset);
 		}
 
-		UI_block_bounds_set_popup(block, block_margin, offset[0], offset[1]);
+		UI_block_bounds_set_popup(block, block_margin, bounds_offset);
 	}
 
 	return block;
@@ -290,16 +303,24 @@ int UI_popover_panel_invoke(
 		return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
 	}
 
+	uiBlock *block = NULL;
 	if (keep_open) {
-		ui_popover_panel_create(C, NULL, NULL, ui_item_paneltype_func, pt);
+		uiPopupBlockHandle *handle = ui_popover_panel_create(C, NULL, NULL, ui_item_paneltype_func, pt);
+		uiPopover *pup = handle->popup_create_vars.arg;
+		block = pup->block;
+
 	}
 	else {
 		uiPopover *pup = UI_popover_begin(C, U.widget_unit * pt->ui_units_x);
 		layout = UI_popover_layout(pup);
 		UI_paneltype_draw(C, pt, layout);
 		UI_popover_end(C, pup, NULL);
+		block = pup->block;
 	}
 
+	if (block) {
+		UI_block_active_only_flagged_buttons(C, CTX_wm_region(C), block);
+	}
 	return OPERATOR_INTERFACE;
 }
 

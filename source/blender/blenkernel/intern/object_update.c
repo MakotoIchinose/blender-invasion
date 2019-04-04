@@ -68,7 +68,7 @@
  * before being re-evaluated.
  * For example, we need to call this before BKE_mesh_new_from_object(),
  * in case we removed/added modifiers in the evaluated object.
- **/
+ */
 void BKE_object_eval_reset(Object *ob_eval)
 {
 	BKE_object_free_derived_caches(ob_eval);
@@ -178,10 +178,10 @@ void BKE_object_handle_data_update(
 			}
 #endif
 			if (em) {
-				makeDerivedMesh(depsgraph, scene, ob, em,  &cddata_masks, false); /* was CD_MASK_BAREMESH */
+				makeDerivedMesh(depsgraph, scene, ob, em,  &cddata_masks); /* was CD_MASK_BAREMESH */
 			}
 			else {
-				makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks, false);
+				makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks);
 			}
 			break;
 		}
@@ -425,27 +425,18 @@ void BKE_object_eval_eval_base_flags(Depsgraph *depsgraph,
 
 	DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
 
-	/* Visibility based on depsgraph mode. */
-	const eEvaluationMode mode = DEG_get_mode(depsgraph);
-	const int base_enabled_flag = (mode == DAG_EVAL_VIEWPORT)
-	        ? BASE_ENABLED_VIEWPORT
-	        : BASE_ENABLED_RENDER;
-
+	/* Set base flags based on collection and object restriction. */
 	BKE_base_eval_flags(base);
 
-	/* Compute visibility for depsgraph evaluation mode. */
-	if (base->flag & base_enabled_flag) {
-		/* When rendering, visibility is controlled by the enable/disable option. */
-		if (mode == DAG_EVAL_RENDER) {
+	/* For render, compute base visibility again since BKE_base_eval_flags
+	 * assumed viewport visibility. Selectability does not matter here. */
+	if (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER) {
+		if (base->flag & BASE_ENABLED_RENDER) {
 			base->flag |= BASE_VISIBLE;
 		}
-	}
-	else {
-		base->flag &= ~(BASE_VISIBLE | BASE_SELECTABLE);
-	}
-	/* If base is not selectable, clear select. */
-	if ((base->flag & BASE_SELECTABLE) == 0) {
-		base->flag &= ~BASE_SELECTED;
+		else {
+			base->flag &= ~BASE_VISIBLE;
+		}
 	}
 
 	/* Copy flags and settings from base. */

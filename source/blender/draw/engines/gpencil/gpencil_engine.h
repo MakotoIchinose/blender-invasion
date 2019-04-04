@@ -124,6 +124,7 @@ typedef struct GPENCIL_shgroup {
 	float wire_color[4];
 	/* shading type and mode */
 	int shading_type[2];
+	int is_xray;
 } GPENCIL_shgroup;
 
 typedef struct GPENCIL_Storage {
@@ -458,7 +459,7 @@ void GPENCIL_render_to_image(void *vedata, struct RenderEngine *engine, struct R
 		GPU_framebuffer_clear_color_depth(fbl->multisample_fb, (const float[4]){0.0f}, 1.0f); \
 		DRW_stats_query_end(); \
 	} \
-}
+} ((void)0)
 
 #define MULTISAMPLE_GP_SYNC_DISABLE(lvl, fbl, fb, txl) { \
 	if ((lvl > 0) && (fbl->multisample_fb != NULL)) { \
@@ -467,7 +468,7 @@ void GPENCIL_render_to_image(void *vedata, struct RenderEngine *engine, struct R
 		DRW_multisamples_resolve(txl->multisample_depth, txl->multisample_color, true); \
 		DRW_stats_query_end(); \
 	} \
-}
+} ((void)0)
 
 #define GPENCIL_3D_DRAWMODE(ob, gpd) \
 	((gpd) && (gpd->draw_mode == GP_DRAWMODE_3D) && \

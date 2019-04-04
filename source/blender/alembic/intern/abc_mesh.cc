@@ -552,7 +552,7 @@ Mesh *AbcGenericMeshWriter::getFinalMesh(bool &r_needsfree)
 		struct BMeshFromMeshParams bmfmp = {true, false, false, 0};
 		BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &bmcp, &bmfmp);
 
-		BM_mesh_triangulate(bm, quad_method, ngon_method, tag_only, NULL, NULL, NULL);
+		BM_mesh_triangulate(bm, quad_method, ngon_method, 4, tag_only, NULL, NULL, NULL);
 
 		Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 		BM_mesh_free(bm);
@@ -1101,10 +1101,10 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading mesh sample; more detail on the console";
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 
@@ -1350,10 +1350,10 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	}
 	catch(Alembic::Util::Exception &ex) {
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return;
 	}
 
@@ -1398,10 +1398,10 @@ Mesh *AbcSubDReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading mesh sample; more detail on the console";
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 

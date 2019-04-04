@@ -275,16 +275,12 @@ static void rna_Object_hide_update(Main *bmain, Scene *UNUSED(scene), PointerRNA
 	WM_main_add_notifier(NC_OBJECT | ND_DRAW, &ob->id);
 }
 
-static void rna_MaterialIndex_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_MaterialIndex_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	/* update the material of all brushes not pinned */
 	Object *ob = (Object *)ptr->id.data;
 	if (ob && ob->type == OB_GPENCIL) {
-		Material *ma = give_current_material(ob, ob->actcol);
-		if (ma != NULL) {
-			BKE_brush_update_material(bmain, ma, NULL);
-			WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, NULL);
-		}
+		/* notifying material property in topbar */
+		WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, NULL);
 	}
 }
 
@@ -821,6 +817,11 @@ static void rna_Object_active_material_set(PointerRNA *ptr, PointerRNA value)
 	BLI_assert(BKE_id_is_in_global_main(&ob->id));
 	BLI_assert(BKE_id_is_in_global_main(value.data));
 	assign_material(G_MAIN, ob, value.data, ob->actcol, BKE_MAT_ASSIGN_EXISTING);
+
+	if (ob && ob->type == OB_GPENCIL) {
+		/* notifying material property in topbar */
+		WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, NULL);
+	}
 }
 
 static int rna_Object_active_material_editable(PointerRNA *ptr, const char **UNUSED(r_info))
@@ -1474,6 +1475,7 @@ static void rna_VertexGroup_vertex_add(ID *id, bDeformGroup *def, ReportList *re
 	while (index_len--)
 		ED_vgroup_vert_add(ob, def, *index++, weight, assignmode);  /* XXX, not efficient calling within loop*/
 
+	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	WM_main_add_notifier(NC_GEOM | ND_DATA, (ID *)ob->data);
 }
 
@@ -1489,6 +1491,7 @@ static void rna_VertexGroup_vertex_remove(ID *id, bDeformGroup *dg, ReportList *
 	while (index_len--)
 		ED_vgroup_vert_remove(ob, dg, *index++);
 
+	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	WM_main_add_notifier(NC_GEOM | ND_DATA, (ID *)ob->data);
 }
 
@@ -1677,7 +1680,9 @@ static void rna_def_face_map(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
+
 	FunctionRNA *func;
+	PropertyRNA *parm;
 
 	srna = RNA_def_struct(brna, "FaceMap", NULL);
 	RNA_def_struct_sdna(srna, "bFaceMap");
@@ -1705,15 +1710,15 @@ static void rna_def_face_map(BlenderRNA *brna)
 	RNA_def_function_ui_description(func, "Add vertices to the group");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	/* TODO, see how array size of 0 works, this shouldnt be used */
-	prop = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
-	RNA_def_parameter_flags(prop, PROP_DYNAMIC, PARM_REQUIRED);
+	parm = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
+	RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 
 	func = RNA_def_function(srna, "remove", "rna_FaceMap_face_remove");
 	RNA_def_function_ui_description(func, "Remove a vertex from the group");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	/* TODO, see how array size of 0 works, this shouldnt be used */
-	prop = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
-	RNA_def_parameter_flags(prop, PROP_DYNAMIC, PARM_REQUIRED);
+	parm = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
+	RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 }
 
 static void rna_def_material_slot(BlenderRNA *brna)
@@ -2501,6 +2506,11 @@ static void rna_def_object(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "show_empty_image_orthographic", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_negative_sdna(prop, NULL, "empty_image_visibility_flag", OB_EMPTY_IMAGE_HIDE_ORTHOGRAPHIC);
 	RNA_def_property_ui_text(prop, "Display in Orthographic Mode", "Display image in orthographic mode");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "use_empty_image_alpha", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "empty_image_flag", OB_EMPTY_IMAGE_USE_ALPHA_BLEND);
+	RNA_def_property_ui_text(prop, "Use Alpha", "Use alpha blending instead of alpha test (can produce sorting artifacts)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	static EnumPropertyItem prop_empty_image_side_items[] = {

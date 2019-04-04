@@ -20,11 +20,10 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
-from bpy.app.translations import pgettext_iface as iface_
 from bpy_extras.node_utils import find_node_input
 
 
-class MATERIAL_MT_specials(Menu):
+class MATERIAL_MT_context_menu(Menu):
     bl_label = "Material Specials"
 
     def draw(self, context):
@@ -87,8 +86,13 @@ class EEVEE_MATERIAL_PT_context_material(MaterialButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
+        ob = context.object
         mat = context.material
-        return (context.object or mat) and (context.engine in cls.COMPAT_ENGINES) and not mat.grease_pencil
+
+        if (ob and ob.type == 'GPENCIL') or (mat and mat.grease_pencil):
+            return False
+
+        return (ob or mat) and (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout
@@ -114,7 +118,7 @@ class EEVEE_MATERIAL_PT_context_material(MaterialButtonsPanel, Panel):
 
             col.separator()
 
-            col.menu("MATERIAL_MT_specials", icon='DOWNARROW_HLT', text="")
+            col.menu("MATERIAL_MT_context_menu", icon='DOWNARROW_HLT', text="")
 
             if is_sortable:
                 col.separator()
@@ -202,19 +206,18 @@ class EEVEE_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
     bl_context = "material"
     COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
-    @staticmethod
-    def draw_shared(self, mat):
+    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
 
+        mat = context.material
+
         layout.prop(mat, "blend_method")
+        layout.prop(mat, "shadow_method")
 
-        if mat.blend_method != 'OPAQUE':
-            layout.prop(mat, "transparent_shadow_method")
-
-            row = layout.row()
-            row.active = ((mat.blend_method == 'CLIP') or (mat.transparent_shadow_method == 'CLIP'))
-            row.prop(mat, "alpha_threshold")
+        row = layout.row()
+        row.active = ((mat.blend_method == 'CLIP') or (mat.shadow_method == 'CLIP'))
+        row.prop(mat, "alpha_threshold")
 
         if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
             layout.prop(mat, "show_transparent_back")
@@ -223,9 +226,6 @@ class EEVEE_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
         layout.prop(mat, "refraction_depth")
         layout.prop(mat, "use_sss_translucency")
         layout.prop(mat, "pass_index")
-
-    def draw(self, context):
-        self.draw_shared(self, context.material)
 
 
 class MATERIAL_PT_viewport(MaterialButtonsPanel, Panel):
@@ -238,22 +238,20 @@ class MATERIAL_PT_viewport(MaterialButtonsPanel, Panel):
         mat = context.material
         return mat and not mat.grease_pencil
 
-    @staticmethod
-    def draw_shared(self, mat):
+    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+
+        mat = context.material
 
         col = layout.column()
         col.prop(mat, "diffuse_color", text="Color")
         col.prop(mat, "metallic")
         col.prop(mat, "roughness")
 
-    def draw(self, context):
-        self.draw_shared(self, context.material)
-
 
 classes = (
-    MATERIAL_MT_specials,
+    MATERIAL_MT_context_menu,
     MATERIAL_UL_matslots,
     MATERIAL_PT_preview,
     EEVEE_MATERIAL_PT_context_material,

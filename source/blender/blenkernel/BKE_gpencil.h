@@ -132,17 +132,32 @@ void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
 
 struct Material *BKE_gpencil_get_material_from_brush(struct Brush *brush);
+void BKE_gpencil_brush_set_material(struct Brush *brush, struct Material *material);
+
+struct Material *BKE_gpencil_handle_brush_material(struct Main *bmain, struct Object *ob, struct Brush *brush);
+int BKE_gpencil_handle_material(struct Main *bmain, struct Object *ob, struct Material *material);
+
+struct Material *BKE_gpencil_handle_new_material(struct Main *bmain, struct Object *ob, const char *name, int *r_index);
+
+struct Material *BKE_gpencil_get_material_for_brush(struct Object *ob, struct Brush *brush);
+int BKE_gpencil_get_material_index_for_brush(struct Object *ob, struct Brush *brush);
+
+struct Material *BKE_gpencil_current_input_toolsettings_material(struct Main *bmain, struct Object *ob, struct ToolSettings *ts);
+struct Material *BKE_gpencil_current_input_brush_material(struct Main *bmain, struct Object *ob, struct Brush *brush);
+struct Material *BKE_gpencil_current_input_material(struct Main *bmain, struct Object *ob);
+
+
 struct Material *BKE_gpencil_material_ensure(struct Main *bmain, struct Object *ob);
 
 /* object boundbox */
 bool BKE_gpencil_data_minmax(
-	struct Object *ob, const struct bGPdata *gpd,
-	float r_min[3], float r_max[3]);
+        const struct bGPdata *gpd,
+        float r_min[3], float r_max[3]);
 bool BKE_gpencil_stroke_minmax(
-	const struct bGPDstroke *gps, const bool use_select,
-	float r_min[3], float r_max[3]);
+        const struct bGPDstroke *gps, const bool use_select,
+        float r_min[3], float r_max[3]);
 bool BKE_gpencil_stroke_select_check(
-	const struct bGPDstroke *gps);
+        const struct bGPDstroke *gps);
 
 struct BoundBox *BKE_gpencil_boundbox_get(struct Object *ob);
 void BKE_gpencil_centroid_3d(struct bGPdata *gpd, float r_centroid[3]);

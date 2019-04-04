@@ -297,6 +297,8 @@ void OUTLINER_OT_object_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_lib_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_id_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_id_remap(struct wmOperatorType *ot);
+void OUTLINER_OT_id_copy(struct wmOperatorType *ot);
+void OUTLINER_OT_id_paste(struct wmOperatorType *ot);
 void OUTLINER_OT_data_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_animdata_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_action_set(struct wmOperatorType *ot);
@@ -315,7 +317,6 @@ bool outliner_is_collection_tree_element(const TreeElement *te);
 struct Collection *outliner_collection_from_tree_element(const TreeElement *te);
 
 void OUTLINER_OT_collection_new(struct wmOperatorType *ot);
-void OUTLINER_OT_collection_duplicate_hierarchy(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_duplicate_linked(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_duplicate(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_delete(struct wmOperatorType *ot);

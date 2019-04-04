@@ -318,6 +318,7 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 	}
 
 	sce_dst->eevee.light_cache = NULL;
+	sce_dst->eevee.light_cache_info[0] = '\0';
 	/* TODO Copy the cache. */
 }
 
@@ -339,6 +340,9 @@ Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
 		sce_copy->unit = sce->unit;
 		sce_copy->physics_settings = sce->physics_settings;
 		sce_copy->audio = sce->audio;
+		sce_copy->eevee = sce->eevee;
+		sce_copy->eevee.light_cache = NULL;
+		sce_copy->eevee.light_cache_info[0] = '\0';
 
 		if (sce->id.properties)
 			sce_copy->id.properties = IDP_CopyProperty(sce->id.properties);
@@ -427,14 +431,8 @@ Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
 			BKE_sequencer_editing_free(sce_copy, true);
 		}
 
-		/* NOTE: part of SCE_COPY_LINK_DATA and SCE_COPY_FULL operations
+		/* NOTE: part of SCE_COPY_FULL operations
 		 * are done outside of blenkernel with ED_object_single_users! */
-
-		/*  camera */
-		/* XXX This is most certainly useless? Object have not yet been duplicated... */
-		if (ELEM(type, SCE_COPY_LINK_DATA, SCE_COPY_FULL)) {
-			ID_NEW_REMAP(sce_copy->camera);
-		}
 
 		return sce_copy;
 	}
@@ -542,7 +540,7 @@ void BKE_scene_init(Scene *sce)
 	SceneRenderView *srv;
 	CurveMapping *mblur_shutter_curve;
 
-	BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(sce, id));
+	BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(sce, id));
 
 
 	sce->cursor.rotation_mode = ROT_MODE_XYZ;
@@ -779,6 +777,18 @@ void BKE_scene_init(Scene *sce)
 	                                            "Filmic");
 	BLI_strncpy(sce->sequencer_colorspace_settings.name, colorspace_name,
 	            sizeof(sce->sequencer_colorspace_settings.name));
+
+	/* Those next two sets (render and baking settings) are not currently in use,
+	 * but are exposed to RNA API and hence must have valid data. */
+	BKE_color_managed_display_settings_init(&sce->r.im_format.display_settings);
+	BKE_color_managed_view_settings_init_render(&sce->r.im_format.view_settings,
+	                                            &sce->r.im_format.display_settings,
+	                                            "Filmic");
+
+	BKE_color_managed_display_settings_init(&sce->r.bake.im_format.display_settings);
+	BKE_color_managed_view_settings_init_render(&sce->r.bake.im_format.view_settings,
+	                                            &sce->r.bake.im_format.display_settings,
+	                                            "Filmic");
 
 	/* Safe Areas */
 	copy_v2_fl2(sce->safe_areas.title, 10.0f / 100.0f, 5.0f / 100.0f);
@@ -1650,11 +1660,11 @@ int get_render_child_particle_number(const RenderData *r, int num, bool for_rend
 }
 
 /**
-  * Helper function for the SETLOOPER and SETLOOPER_VIEW_LAYER macros
-  *
-  * It iterates over the bases of the active layer and then the bases
-  * of the active layer of the background (set) scenes recursively.
-  */
+ * Helper function for the SETLOOPER and SETLOOPER_VIEW_LAYER macros
+ *
+ * It iterates over the bases of the active layer and then the bases
+ * of the active layer of the background (set) scenes recursively.
+ */
 Base *_setlooper_base_step(Scene **sce_iter, ViewLayer *view_layer, Base *base)
 {
 	if (base && base->next) {
@@ -1742,9 +1752,8 @@ void BKE_scene_object_base_flag_sync_from_object(Base *base)
 	Object *ob = base->object;
 	base->flag = ob->flag;
 
-	if ((ob->flag & SELECT) != 0) {
+	if ((ob->flag & SELECT) != 0 && (base->flag & BASE_SELECTABLE) != 0) {
 		base->flag |= BASE_SELECTED;
-		BLI_assert((base->flag & BASE_SELECTABLE) != 0);
 	}
 	else {
 		base->flag &= ~BASE_SELECTED;

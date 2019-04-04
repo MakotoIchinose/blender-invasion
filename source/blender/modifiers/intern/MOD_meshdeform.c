@@ -296,7 +296,7 @@ static void meshdeformModifier_do(
 	 *
 	 * We'll support this case once granular dependency graph is landed.
 	 */
-	Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, mmd->object);
+	Object *ob_target = mmd->object;
 	cagemesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target, false);
 #if 0  /* This shall not be needed if we always get evaluated target object... */
 	if (cagemesh == NULL && mmd->bindcagecos == NULL && ob == DEG_get_original_object(ob)) {
@@ -508,12 +508,6 @@ ModifierTypeInfo modifierType_MeshDeform = {
 
 	/* copyData */          copyData,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       deformVerts,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     deformVertsEM,
@@ -530,4 +524,5 @@ ModifierTypeInfo modifierType_MeshDeform = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

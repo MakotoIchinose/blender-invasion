@@ -503,7 +503,7 @@ static int lightprobe_add_exec(bContext *C, wmOperator *op)
 	radius = RNA_float_get(op->ptr, "radius");
 
 	ob = ED_object_add_type(C, OB_LIGHTPROBE, get_lightprobe_defname(type), loc, rot, false, local_view_bits);
-	BKE_object_obdata_size_init(ob, radius);
+	copy_v3_fl(ob->scale, radius);
 
 	probe = (LightProbe *)ob->data;
 	probe->type = type;
@@ -1879,8 +1879,8 @@ static int convert_exec(bContext *C, wmOperator *op)
 			 * But at the very least, do not do that with linked IDs! */
 			if ((ID_IS_LINKED(ob) || (ob->data && ID_IS_LINKED(ob->data))) && !keep_original) {
 				keep_original = true;
-				BKE_reportf(op->reports, RPT_INFO,
-				            "Converting some linked object/object data, enforcing 'Keep Original' option to True");
+				BKE_report(op->reports, RPT_INFO,
+				           "Converting some linked object/object data, enforcing 'Keep Original' option to True");
 			}
 
 			DEG_id_tag_update(&base->object->id, ID_RECALC_GEOMETRY);
@@ -2215,7 +2215,7 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, ViewLayer 
 	Object *obn;
 
 	if (ob->mode & OB_MODE_POSE) {
-		; /* nothing? */
+		/* nothing? */
 	}
 	else {
 		obn = ID_NEW_SET(ob, BKE_object_duplicate(bmain, ob, dupflag));

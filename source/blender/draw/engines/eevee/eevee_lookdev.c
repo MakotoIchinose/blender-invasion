@@ -41,6 +41,7 @@
 static void eevee_lookdev_lightcache_delete(EEVEE_Data *vedata)
 {
 	EEVEE_StorageList *stl = vedata->stl;
+	EEVEE_PrivateData *g_data = stl->g_data;
 	EEVEE_TextureList *txl = vedata->txl;
 
 	MEM_SAFE_FREE(stl->lookdev_lightcache);
@@ -48,14 +49,18 @@ static void eevee_lookdev_lightcache_delete(EEVEE_Data *vedata)
 	MEM_SAFE_FREE(stl->lookdev_cube_data);
 	DRW_TEXTURE_FREE_SAFE(txl->lookdev_grid_tx);
 	DRW_TEXTURE_FREE_SAFE(txl->lookdev_cube_tx);
+	g_data->studiolight_index = -1;
+	g_data->studiolight_rot_z = 0.0f;
 }
 
 void EEVEE_lookdev_cache_init(
         EEVEE_Data *vedata, DRWShadingGroup **grp, DRWPass *pass,
+        float background_alpha,
         World *UNUSED(world), EEVEE_LightProbesInfo *pinfo)
 {
 	EEVEE_StorageList *stl = vedata->stl;
 	EEVEE_TextureList *txl = vedata->txl;
+	EEVEE_PrivateData *g_data = stl->g_data;
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	View3D *v3d = draw_ctx->v3d;
 	if (LOOK_DEV_STUDIO_LIGHT_ENABLED(v3d)) {
@@ -114,7 +119,7 @@ void EEVEE_lookdev_cache_init(
 			*grp = DRW_shgroup_create(shader, pass);
 			axis_angle_to_mat3_single(stl->g_data->studiolight_matrix, 'Z', v3d->shading.studiolight_rot_z);
 			DRW_shgroup_uniform_mat3(*grp, "StudioLightMatrix", stl->g_data->studiolight_matrix);
-			DRW_shgroup_uniform_float(*grp, "backgroundAlpha", &stl->g_data->background_alpha, 1);
+			DRW_shgroup_uniform_float_copy(*grp, "backgroundAlpha", background_alpha);
 			DRW_shgroup_uniform_vec3(*grp, "color", background_color, 1);
 			DRW_shgroup_call_add(*grp, geom, NULL);
 			if (!pinfo) {
@@ -131,13 +136,12 @@ void EEVEE_lookdev_cache_init(
 			DRW_shgroup_uniform_texture(*grp, "image", tex);
 
 			/* Do we need to recalc the lightprobes? */
-			if (pinfo &&
-			    ((pinfo->studiolight_index != sl->index) ||
-			     (pinfo->studiolight_rot_z != v3d->shading.studiolight_rot_z)))
+			if (g_data->studiolight_index != sl->index ||
+			    g_data->studiolight_rot_z != v3d->shading.studiolight_rot_z)
 			{
 				stl->lookdev_lightcache->flag |= LIGHTCACHE_UPDATE_WORLD;
-				pinfo->studiolight_index = sl->index;
-				pinfo->studiolight_rot_z = v3d->shading.studiolight_rot_z;
+				g_data->studiolight_index = sl->index;
+				g_data->studiolight_rot_z = v3d->shading.studiolight_rot_z;
 			}
 		}
 	}

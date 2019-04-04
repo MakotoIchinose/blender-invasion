@@ -299,6 +299,9 @@ void modifier_copyData_generic(const ModifierData *md_src, ModifierData *md_dst,
 	char       *md_dst_data =       ((char *)md_dst) + data_size;
 	BLI_assert(data_size <= (size_t)mti->structSize);
 	memcpy(md_dst_data, md_src_data, (size_t)mti->structSize - data_size);
+
+	/* Runtime fields are never to be preserved. */
+	md_dst->runtime = NULL;
 }
 
 static void modifier_copy_data_id_us_cb(void *UNUSED(userData), Object *UNUSED(ob), ID **idpoin, int cb_flag)
@@ -855,41 +858,6 @@ void modwrap_deformVertsEM(
 
 /* end modifier callback wrappers */
 
-
-/* wrappers for modifier callbacks that accept Mesh and select the proper implementation
- * depending on if the modifier has been ported to Mesh or is still using DerivedMesh
- */
-
-/* deprecated variants of above that accept DerivedMesh */
-
-struct DerivedMesh *modifier_applyModifier_DM_deprecated(
-        struct ModifierData *md, const ModifierEvalContext *ctx,
-        struct DerivedMesh *dm)
-{
-	const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-
-	/* TODO(sybren): deduplicate all the copies of this code in this file. */
-	Mesh *mesh = NULL;
-	if (dm != NULL) {
-		mesh = BKE_id_new_nomain(ID_ME, NULL);
-		DM_to_mesh(dm, mesh, ctx->object, &CD_MASK_EVERYTHING, false);
-	}
-
-	struct Mesh *new_mesh = mti->applyModifier(md, ctx, mesh);
-
-	/* Make a DM that doesn't reference new_mesh so we can free the latter. */
-	DerivedMesh *ndm = CDDM_from_mesh_ex(new_mesh, CD_DUPLICATE, &CD_MASK_EVERYTHING);
-
-	if (new_mesh != mesh) {
-		BKE_id_free(NULL, new_mesh);
-	}
-	if (mesh != NULL) {
-		BKE_id_free(NULL, mesh);
-	}
-
-	return ndm;
-
-}
 
 /**
  * Get evaluated mesh for other evaluated object, which is used as an operand for the modifier,

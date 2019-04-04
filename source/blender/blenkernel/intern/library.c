@@ -515,7 +515,7 @@ static int id_copy_libmanagement_cb(void *user_data, ID *UNUSED(id_self), ID **i
 
 bool BKE_id_copy_is_allowed(const ID *id)
 {
-#define LIB_ID_TYPES_NOCOPY ID_LI, ID_SCR, ID_WM,  /* Not supported */ \
+#define LIB_ID_TYPES_NOCOPY ID_LI, ID_SCR, ID_WM, ID_WS,  /* Not supported */ \
                             ID_IP  /* Deprecated */
 
 	return !ELEM(GS(id->name), LIB_ID_TYPES_NOCOPY);
@@ -770,9 +770,8 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
 		/* if property isn't editable, we're going to have an extra block hanging around until we save */
 		if (RNA_property_editable(ptr, prop)) {
 			Main *bmain = CTX_data_main(C);
-			if (BKE_id_copy(bmain, id, &newid) && newid) {
-				/* copy animation actions too */
-				BKE_animdata_copy_id_action(bmain, id, false);
+			/* copy animation actions too */
+			if (BKE_id_copy_ex(bmain, id, &newid, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS) && newid) {
 				/* us is 1 by convention with new IDs, but RNA_property_pointer_set
 				 * will also increment it, decrement it here. */
 				id_us_min(newid);
@@ -1969,7 +1968,7 @@ void BKE_library_make_local(
 	 * relationship), se we tag it to be fully recomputed, but this does not seems to be enough in some cases,
 	 * and evaluation code ends up trying to evaluate a not-yet-updated armature object's deformations.
 	 * Try "make all local" in 04_01_H.lighting.blend from Agent327 without this, e.g. */
-	/* Also, use this object loop to we handle rigid body resetting. */
+	/* Also, we use this object loop to handle rigid body resetting. */
 	for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if (ob->data != NULL && ob->type == OB_ARMATURE && ob->pose != NULL && ob->pose->flag & POSE_RECALC) {
 			BKE_pose_rebuild(bmain, ob, ob->data, true);

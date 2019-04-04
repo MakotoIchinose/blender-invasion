@@ -57,9 +57,13 @@ Image *ED_space_image(SpaceImage *sima)
 	return sima->image;
 }
 
-/* called to assign images to UV faces */
-void ED_space_image_set(Main *bmain, SpaceImage *sima, Object *obedit, Image *ima)
+void ED_space_image_set(Main *bmain, SpaceImage *sima, Object *obedit, Image *ima, bool automatic)
 {
+	/* Automatically pin image when manually assigned, otherwise it follows object. */
+	if (!automatic && sima->image != ima && sima->mode == SI_MODE_UV) {
+		sima->pin = true;
+	}
+
 	/* change the space ima after because uvedit_face_visible_test uses the space ima
 	 * to check if the face is displayed in UV-localview */
 	sima->image = ima;
@@ -70,15 +74,49 @@ void ED_space_image_set(Main *bmain, SpaceImage *sima, Object *obedit, Image *im
 		}
 	}
 
-	if (sima->image)
+	if (sima->image) {
 		BKE_image_signal(bmain, sima->image, &sima->iuser, IMA_SIGNAL_USER_NEW_IMAGE);
+	}
 
 	id_us_ensure_real((ID *)sima->image);
 
-	if (obedit)
+	if (obedit) {
 		WM_main_add_notifier(NC_GEOM | ND_DATA, obedit->data);
+	}
 
 	WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, NULL);
+}
+
+void ED_space_image_auto_set(const bContext *C, SpaceImage *sima)
+{
+	if (sima->mode != SI_MODE_UV || sima->pin) {
+		return;
+	}
+
+	/* Track image assigned to active face in edit mode. */
+	Object *ob = CTX_data_active_object(C);
+	if (!(ob && (ob->mode & OB_MODE_EDIT) && ED_space_image_show_uvedit(sima, ob))) {
+		return;
+	}
+
+	BMEditMesh *em = BKE_editmesh_from_object(ob);
+	BMesh *bm = em->bm;
+	BMFace *efa = BM_mesh_active_face_get(bm, true, false);
+	if (efa == NULL) {
+		return;
+	}
+
+	Image *ima = NULL;
+	ED_object_get_active_image(ob, efa->mat_nr + 1, &ima, NULL, NULL, NULL);
+
+	if (ima != sima->image) {
+		sima->image = ima;
+
+		if (sima->image) {
+			Main *bmain = CTX_data_main(C);
+			BKE_image_signal(bmain, sima->image, &sima->iuser, IMA_SIGNAL_USER_NEW_IMAGE);
+		}
+	}
 }
 
 Mask *ED_space_image_get_mask(SpaceImage *sima)
@@ -111,22 +149,25 @@ ImBuf *ED_space_image_acquire_buffer(SpaceImage *sima, void **r_lock)
 		ibuf = BKE_image_acquire_ibuf(sima->image, &sima->iuser, r_lock);
 
 		if (ibuf) {
-			if (ibuf->rect || ibuf->rect_float)
+			if (ibuf->rect || ibuf->rect_float) {
 				return ibuf;
+			}
 			BKE_image_release_ibuf(sima->image, ibuf, *r_lock);
 			*r_lock = NULL;
 		}
 	}
-	else
+	else {
 		*r_lock = NULL;
+	}
 
 	return NULL;
 }
 
 void ED_space_image_release_buffer(SpaceImage *sima, ImBuf *ibuf, void *lock)
 {
-	if (sima && sima->image)
+	if (sima && sima->image) {
 		BKE_image_release_ibuf(sima->image, ibuf, lock);
+	}
 }
 
 bool ED_space_image_has_buffer(SpaceImage *sima)
@@ -299,7 +340,9 @@ bool ED_image_slot_cycle(struct Image *image, int direction)
 	int num_slots = BLI_listbase_count(&image->renderslots);
 	for (i = 1; i < num_slots; i++) {
 		slot = (cur + ((direction == -1) ? -i : i)) % num_slots;
-		if (slot < 0) slot += num_slots;
+		if (slot < 0) {
+			slot += num_slots;
+		}
 
 		RenderSlot *render_slot = BKE_image_get_renderslot(image, slot);
 		if ((render_slot && render_slot->render) || slot == image->last_render_slot) {
@@ -321,10 +364,12 @@ void ED_space_image_scopes_update(const struct bContext *C, struct SpaceImage *s
 	Object *ob = CTX_data_active_object(C);
 
 	/* scope update can be expensive, don't update during paint modes */
-	if (sima->mode == SI_MODE_PAINT)
+	if (sima->mode == SI_MODE_PAINT) {
 		return;
-	if (ob && ((ob->mode & (OB_MODE_TEXTURE_PAINT | OB_MODE_EDIT)) != 0))
+	}
+	if (ob && ((ob->mode & (OB_MODE_TEXTURE_PAINT | OB_MODE_EDIT)) != 0)) {
 		return;
+	}
 
 	/* We also don't update scopes of render result during render. */
 	if (G.is_rendering) {
@@ -346,8 +391,9 @@ bool ED_space_image_show_render(SpaceImage *sima)
 
 bool ED_space_image_show_paint(SpaceImage *sima)
 {
-	if (ED_space_image_show_render(sima))
+	if (ED_space_image_show_render(sima)) {
 		return false;
+	}
 
 	return (sima->mode == SI_MODE_PAINT);
 }
@@ -406,8 +452,9 @@ bool ED_space_image_paint_curve(const bContext *C)
 	if (sima && sima->mode == SI_MODE_PAINT) {
 		Brush *br = CTX_data_tool_settings(C)->imapaint.paint.brush;
 
-		if (br && (br->flag & BRUSH_CURVE))
+		if (br && (br->flag & BRUSH_CURVE)) {
 			return true;
+		}
 	}
 
 	return false;

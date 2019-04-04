@@ -45,10 +45,6 @@
 
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
-/* Allow using DNA struct members that are marked as private for read/write.
- * Note: Each header that uses this needs to define its own way of handling
- * it. There's no generic implementation, direct use does nothing. */
-#define DNA_PRIVATE_READ_WRITE_ALLOW
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -265,7 +261,7 @@ typedef struct BHeadN {
 	struct BHeadN *next, *prev;
 #ifdef USE_BHEAD_READ_ON_DEMAND
 	/** Use to read the data from the file directly into memory as needed. */
-	off_t file_offset;
+	off64_t file_offset;
 	/** When set, the remainder of this allocation is the data, otherwise it needs to be read. */
 	bool has_data;
 #endif
@@ -839,7 +835,7 @@ static BHeadN *get_bhead(FileData *fd)
 					new_bhead->file_offset = fd->file_offset;
 					new_bhead->has_data = false;
 					new_bhead->bhead = bhead;
-					off_t seek_new = fd->seek(fd, bhead.len, SEEK_CUR);
+					off64_t seek_new = fd->seek(fd, bhead.len, SEEK_CUR);
 					if (seek_new == -1) {
 						fd->is_eof = true;
 						MEM_freeN(new_bhead);
@@ -947,7 +943,7 @@ static bool blo_bhead_read_data(FileData *fd, BHead *thisblock, void *buf)
 	bool success = true;
 	BHeadN *new_bhead = BHEADN_FROM_BHEAD(thisblock);
 	BLI_assert(new_bhead->has_data == false && new_bhead->file_offset != 0);
-	off_t offset_backup = fd->file_offset;
+	off64_t offset_backup = fd->file_offset;
 	if (UNLIKELY(fd->seek(fd, new_bhead->file_offset, SEEK_SET) == -1)) {
 		success = false;
 	}
@@ -1137,7 +1133,7 @@ static int fd_read_data_from_file(FileData *filedata, void *buffer, uint size)
 	return (readsize);
 }
 
-static off_t fd_seek_data_from_file(FileData *filedata, off_t offset, int whence)
+static off64_t fd_seek_data_from_file(FileData *filedata, off64_t offset, int whence)
 {
 	filedata->file_offset = lseek(filedata->filedes, offset, whence);
 	return filedata->file_offset;
@@ -2619,7 +2615,16 @@ static void lib_link_brush(FileData *fd, Main *main)
 
 			/* link default grease pencil palette */
 			if (brush->gpencil_settings != NULL) {
-				brush->gpencil_settings->material = newlibadr_us(fd, brush->id.lib, brush->gpencil_settings->material);
+				if (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
+					brush->gpencil_settings->material = newlibadr_us(fd, brush->id.lib, brush->gpencil_settings->material);
+
+					if (!brush->gpencil_settings->material) {
+						brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
+					}
+				}
+				else {
+					brush->gpencil_settings->material = NULL;
+				}
 			}
 
 			brush->id.tag &= ~LIB_TAG_NEED_LINK;
@@ -3615,10 +3620,14 @@ static void direct_link_nodetree(FileData *fd, bNodeTree *ntree)
 				}
 			}
 			else if (ntree->type == NTREE_COMPOSIT) {
-				if (ELEM(node->type, CMP_NODE_TIME, CMP_NODE_CURVE_VEC, CMP_NODE_CURVE_RGB, CMP_NODE_HUECORRECT))
+				if (ELEM(node->type, CMP_NODE_TIME, CMP_NODE_CURVE_VEC, CMP_NODE_CURVE_RGB, CMP_NODE_HUECORRECT)) {
 					direct_link_curvemapping(fd, node->storage);
-				else if (ELEM(node->type, CMP_NODE_IMAGE, CMP_NODE_R_LAYERS, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER))
-					((ImageUser *)node->storage)->ok = 1;
+				}
+				else if (ELEM(node->type, CMP_NODE_IMAGE, CMP_NODE_R_LAYERS, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
+					ImageUser *iuser = node->storage;
+					iuser->ok = 1;
+					iuser->scene = NULL;
+				}
 				else if (node->type == CMP_NODE_CRYPTOMATTE) {
 					NodeCryptomatte *nc = (NodeCryptomatte *)node->storage;
 					nc->matte_id = newdataadr(fd, nc->matte_id);
@@ -4581,6 +4590,7 @@ static void direct_link_pointcache(FileData *fd, PointCache *cache)
 	cache->edit = NULL;
 	cache->free_edit = NULL;
 	cache->cached_frames = NULL;
+	cache->cached_frames_len = 0;
 }
 
 static void direct_link_pointcache_list(FileData *fd, ListBase *ptcaches, PointCache **ocache, int force_disk)
@@ -5454,6 +5464,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 
 	for (md = lb->first; md; md = md->next) {
 		md->error = NULL;
+		md->runtime = NULL;
 
 		/* if modifiers disappear, or for upward compatibility */
 		if (NULL == modifierType_getInfo(md->type))
@@ -5463,7 +5474,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			SubsurfModifierData *smd = (SubsurfModifierData *)md;
 
 			smd->emCache = smd->mCache = NULL;
-			smd->subdiv = NULL;
 		}
 		else if (md->type == eModifierType_Armature) {
 			ArmatureModifierData *amd = (ArmatureModifierData *)md;
@@ -5586,7 +5596,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			if (pmd->canvas) {
 				pmd->canvas = newdataadr(fd, pmd->canvas);
 				pmd->canvas->pmd = pmd;
-				pmd->canvas->mesh = NULL;
 				pmd->canvas->flags &= ~MOD_DPAINT_BAKING; /* just in case */
 
 				if (pmd->canvas->surfaces.first) {
@@ -5609,7 +5618,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				pmd->brush->psys = newdataadr(fd, pmd->brush->psys);
 				pmd->brush->paint_ramp = newdataadr(fd, pmd->brush->paint_ramp);
 				pmd->brush->vel_ramp = newdataadr(fd, pmd->brush->vel_ramp);
-				pmd->brush->mesh = NULL;
 			}
 		}
 		else if (md->type == eModifierType_Collision) {
@@ -5778,10 +5786,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 					}
 				}
 			}
-		}
-		else if (md->type == eModifierType_Multires) {
-			MultiresModifierData *mmd = (MultiresModifierData *)md;
-			mmd->subdiv = NULL;
 		}
 	}
 }
@@ -6751,15 +6755,13 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 					seq->strip->stripdata = NULL;
 				}
 				if (seq->flag & SEQ_USE_CROP) {
-					seq->strip->crop = newdataadr(
-						fd, seq->strip->crop);
+					seq->strip->crop = newdataadr(fd, seq->strip->crop);
 				}
 				else {
 					seq->strip->crop = NULL;
 				}
 				if (seq->flag & SEQ_USE_TRANSFORM) {
-					seq->strip->transform = newdataadr(
-						fd, seq->strip->transform);
+					seq->strip->transform = newdataadr(fd, seq->strip->transform);
 				}
 				else {
 					seq->strip->transform = NULL;
@@ -7109,7 +7111,6 @@ static void direct_link_region(FileData *fd, ARegion *ar, int spacetype)
 				rv3d->clipbb = newdataadr(fd, rv3d->clipbb);
 
 				rv3d->depths = NULL;
-				rv3d->gpuoffscreen = NULL;
 				rv3d->render_engine = NULL;
 				rv3d->sms = NULL;
 				rv3d->smooth_timer = NULL;
@@ -10880,15 +10881,12 @@ static void add_loose_objects_to_scene(
 					base->local_view_bits |= v3d->local_view_uuid;
 				}
 
-				BKE_scene_object_base_flag_sync_from_base(base);
-
 				if (flag & FILE_AUTOSELECT) {
-					if (base->flag & BASE_SELECTABLE) {
-						base->flag |= BASE_SELECTED;
-						BKE_scene_object_base_flag_sync_from_base(base);
-					}
+					base->flag |= BASE_SELECTED;
 					/* Do NOT make base active here! screws up GUI stuff, if you want it do it on src/ level. */
 				}
+
+				BKE_scene_object_base_flag_sync_from_base(base);
 
 				ob->id.tag &= ~LIB_TAG_INDIRECT;
 				ob->id.tag |= LIB_TAG_EXTERN;
@@ -10901,6 +10899,8 @@ static void add_collections_to_scene(
         Main *mainvar, Main *bmain,
         Scene *scene, ViewLayer *view_layer, const View3D *v3d, Library *lib, const short flag)
 {
+	const bool do_append = (flag & FILE_LINK) == 0;
+
 	Collection *active_collection = scene->master_collection;
 	if (flag & FILE_ACTIVE_COLLECTION) {
 		LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
@@ -10938,8 +10938,11 @@ static void add_collections_to_scene(
 			ob->transflag |= OB_DUPLICOLLECTION;
 			copy_v3_v3(ob->loc, scene->cursor.location);
 		}
-		/* We do not want to force instantiation of indirectly linked collections... */
-		else if ((collection->id.tag & LIB_TAG_INDIRECT) == 0) {
+		/* We do not want to force instantiation of indirectly linked collections...
+		 * Except when we are appending (since in that case, we'll end up instantiating all objects,
+		 * it's better to do it via their own collections if possible).
+		 * Reports showing that desired difference in behaviors between link and append: T62570, T61796. */
+		else if (do_append || (collection->id.tag & LIB_TAG_INDIRECT) == 0) {
 			bool do_add_collection = (collection->id.tag & LIB_TAG_DOIT) != 0;
 			if (!do_add_collection) {
 				/* We need to check that objects in that collections are already instantiated in a scene.
@@ -10951,7 +10954,7 @@ static void add_collections_to_scene(
 					Object *ob = coll_ob->ob;
 					if ((ob->id.tag & LIB_TAG_PRE_EXISTING) == 0 &&
 					    (ob->id.tag & LIB_TAG_DOIT) == 0 &&
-					    (ob->id.tag & LIB_TAG_INDIRECT) == 0 &&
+					    (do_append || (ob->id.tag & LIB_TAG_INDIRECT) == 0) &&
 					    (ob->id.lib == lib) &&
 					    (object_in_any_scene(bmain, ob) == 0))
 					{
@@ -10963,6 +10966,17 @@ static void add_collections_to_scene(
 			if (do_add_collection) {
 				/* Add collection as child of active collection. */
 				BKE_collection_child_add(bmain, active_collection, collection);
+
+				if (flag & FILE_AUTOSELECT) {
+					for (CollectionObject *coll_ob = collection->gobject.first; coll_ob != NULL; coll_ob = coll_ob->next) {
+						Object *ob = coll_ob->ob;
+						Base *base = BKE_view_layer_base_find(view_layer, ob);
+						if (base) {
+							base->flag |= BASE_SELECTED;
+							BKE_scene_object_base_flag_sync_from_base(base);
+						}
+					}
+				}
 
 				collection->id.tag &= ~LIB_TAG_INDIRECT;
 				collection->id.tag |= LIB_TAG_EXTERN;
@@ -11044,20 +11058,24 @@ static ID *link_named_part(
 /**
  * Simple reader for copy/paste buffers.
  */
-void BLO_library_link_copypaste(Main *mainl, BlendHandle *bh)
+int BLO_library_link_copypaste(Main *mainl, BlendHandle *bh, const unsigned int id_types_mask)
 {
 	FileData *fd = (FileData *)(bh);
 	BHead *bhead;
+	int num_directly_linked = 0;
 
 	for (bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
 		ID *id = NULL;
 
 		if (bhead->code == ENDB)
 			break;
-		if (ELEM(bhead->code, ID_OB, ID_GR)) {
-			read_libblock(fd, mainl, bhead, LIB_TAG_NEED_EXPAND | LIB_TAG_INDIRECT, &id);
-		}
 
+		if (BKE_idcode_is_valid(bhead->code) && BKE_idcode_is_linkable(bhead->code) &&
+		    (id_types_mask == 0 || (BKE_idcode_to_idfilter((short)bhead->code) & id_types_mask) != 0))
+		{
+			read_libblock(fd, mainl, bhead, LIB_TAG_NEED_EXPAND | LIB_TAG_INDIRECT, &id);
+			num_directly_linked++;
+		}
 
 		if (id) {
 			/* sort by name in list */
@@ -11074,6 +11092,8 @@ void BLO_library_link_copypaste(Main *mainl, BlendHandle *bh)
 			}
 		}
 	}
+
+	return num_directly_linked;
 }
 
 static ID *link_named_part_ex(
@@ -11137,7 +11157,8 @@ static Main *library_link_begin(Main *mainvar, FileData **fd, const char *filepa
 
 	(*fd)->mainlist = MEM_callocN(sizeof(ListBase), "FileData.mainlist");
 
-	/* clear for collection instantiating tag */
+	/* clear for objects and collections instantiating tag */
+	BKE_main_id_tag_listbase(&(mainvar->objects), LIB_TAG_DOIT, false);
 	BKE_main_id_tag_listbase(&(mainvar->collections), LIB_TAG_DOIT, false);
 
 	/* make mains */

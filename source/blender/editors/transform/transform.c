@@ -2633,7 +2633,10 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 	}
 
 	/* Constraint init from operator */
-	if (t->flag & T_MODAL) {
+	if ((t->flag & T_MODAL) ||
+	    /* For mirror operator the constraint axes are effectively the values. */
+	    (RNA_struct_find_property(op->ptr, "values") == NULL))
+	{
 		if ((prop = RNA_struct_find_property(op->ptr, "constraint_axis")) &&
 		    RNA_property_is_set(op->ptr, prop))
 		{
@@ -2644,21 +2647,14 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			if (constraint_axis[0] || constraint_axis[1] || constraint_axis[2]) {
 				t->con.mode |= CON_APPLY;
 
-				/* Only for interactive operation, when redoing, ignore these values since the numbers
-				 * will be constrainted already. */
-				if (t->flag & T_MODAL) {
-					if (constraint_axis[0]) {
-						t->con.mode |= CON_AXIS0;
-					}
-					if (constraint_axis[1]) {
-						t->con.mode |= CON_AXIS1;
-					}
-					if (constraint_axis[2]) {
-						t->con.mode |= CON_AXIS2;
-					}
+				if (constraint_axis[0]) {
+					t->con.mode |= CON_AXIS0;
 				}
-				else {
-					t->con.mode |= CON_AXIS0 | CON_AXIS1 | CON_AXIS2;
+				if (constraint_axis[1]) {
+					t->con.mode |= CON_AXIS1;
+				}
+				if (constraint_axis[2]) {
+					t->con.mode |= CON_AXIS2;
 				}
 
 				setUserConstraint(t, t->orientation.user, t->con.mode, "%s");
@@ -4189,7 +4185,7 @@ static void headerRotation(TransInfo *t, char str[UI_MAX_DRAW_STR], float final)
 	}
 	else {
 		ofs += BLI_snprintf(str + ofs, UI_MAX_DRAW_STR - ofs, IFACE_("Rot: %.2f%s %s"),
-			RAD2DEGF(final), t->con.text, t->proptext);
+		                    RAD2DEGF(final), t->con.text, t->proptext);
 	}
 
 	if (t->flag & T_PROP_EDIT_ALL) {
@@ -4650,7 +4646,7 @@ void freeCustomNormalArray(TransInfo *t, TransDataContainer *tc, TransCustomData
 		/* Restore custom loop normal on cancel */
 		for (int i = 0; i < lnors_ed_arr->totloop; i++, lnor_ed++) {
 			BKE_lnor_space_custom_normal_to_data(
-				bm->lnor_spacearr->lspacearr[lnor_ed->loop_index], lnor_ed->niloc, lnor_ed->clnors_data);
+			        bm->lnor_spacearr->lspacearr[lnor_ed->loop_index], lnor_ed->niloc, lnor_ed->clnors_data);
 		}
 	}
 
@@ -4727,7 +4723,7 @@ static void applyNormalRotation(TransInfo *t, const int UNUSED(mval[2]))
 			mul_v3_m3v3(lnor_ed->nloc, mat, lnor_ed->niloc);
 
 			BKE_lnor_space_custom_normal_to_data(
-				bm->lnor_spacearr->lspacearr[lnor_ed->loop_index], lnor_ed->nloc, lnor_ed->clnors_data);
+			        bm->lnor_spacearr->lspacearr[lnor_ed->loop_index], lnor_ed->nloc, lnor_ed->clnors_data);
 		}
 	}
 
@@ -5146,7 +5142,7 @@ static void applyShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
 	if (t->proptext[0]) {
 		ofs += BLI_snprintf(str + ofs, sizeof(str) - ofs, " %s", t->proptext);
 	}
-	ofs += BLI_snprintf(str + ofs, sizeof(str) - ofs, ", (");
+	ofs += BLI_strncpy_rlen(str + ofs, ", (", sizeof(str) - ofs);
 
 	if (t->keymap) {
 		wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(t->keymap, TFM_MODAL_RESIZE);
@@ -6131,7 +6127,8 @@ static void slide_origdata_create_data(
 
 			for (i = 0; i < tc->data_len; i++, td++) {
 				BMVert *eve = td->extra;
-				if (eve) {
+				/* Check the vertex has been used since both sides of the mirror may be selected & sliding. */
+				if (eve && !BLI_ghash_haskey(sod->origverts, eve)) {
 					sv_mirror->v = eve;
 					copy_v3_v3(sv_mirror->co_orig_3d, eve->co);
 

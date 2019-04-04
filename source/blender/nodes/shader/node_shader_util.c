@@ -102,6 +102,8 @@ void node_gpu_stack_from_data(struct GPUNodeStack *gs, int type, bNodeStack *ns)
 
 		if (type == SOCK_FLOAT)
 			gs->type = GPU_FLOAT;
+		else if (type == SOCK_INT)
+			gs->type = GPU_FLOAT; /* HACK: Support as float. */
 		else if (type == SOCK_VECTOR)
 			gs->type = GPU_VEC3;
 		else if (type == SOCK_RGBA)
@@ -199,7 +201,7 @@ bNode *nodeGetActiveTexture(bNodeTree *ntree)
 	return inactivenode;
 }
 
-void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, int do_outputs)
+void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node)
 {
 	bNodeExec *nodeexec;
 	bNode *node;
@@ -218,7 +220,7 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, int do_outputs)
 		do_it = false;
 		/* for groups, only execute outputs for edited group */
 		if (node->typeinfo->nclass == NODE_CLASS_OUTPUT) {
-			if (do_outputs && (node->flag & NODE_DO_OUTPUT))
+			if ((output_node != NULL) && (node == output_node))
 				do_it = true;
 		}
 		else {
