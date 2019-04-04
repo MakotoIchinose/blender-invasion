@@ -337,7 +337,7 @@ static Mesh* do_fractal(BooleanContext *ctx)
 	CustomData_bmesh_init_pool(&bm->ldata, bm->totloop, BM_LOOP);
 	CustomData_bmesh_init_pool(&bm->pdata, bm->totface, BM_FACE);
 
-	BM_data_layer_add(bm, &bm->ldata, CD_MLOOPUV);
+	BM_data_layer_add_named(bm, &bm->ldata, CD_MLOOPUV, "UVMap");
 
 	/* should be 4 loops, since its just a quad / plane */
 	mluv[0].uv[0] = 0.0f;
@@ -354,7 +354,7 @@ static Mesh* do_fractal(BooleanContext *ctx)
 
 	BM_ITER_MESH (efa, &fiter, bm, BM_FACES_OF_MESH) {
 		BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
-			MLoopUV *uv = CustomData_bmesh_get(&bm->ldata, ((BMHeader *)l)->data, CD_MLOOPUV);
+			MLoopUV *uv = CustomData_bmesh_get_named(&bm->ldata, ((BMHeader *)l)->data, CD_MLOOPUV, "UVMap");
 			if (uv) *uv = mluv[i];
 		}
 	}

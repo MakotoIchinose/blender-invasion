@@ -128,6 +128,32 @@ static Mesh *get_quick_mesh(
 	return result;
 }
 
+
+static void check_add_layer(CustomData *src, CustomData *dst, BMesh *bm, const char htype)
+{
+	int i = 0, index = -1;
+	CustomDataLayer *layer;
+
+	for (i = 0; i < src->totlayer; i++) {
+		layer = src->layers + i;
+		index = CustomData_get_named_layer(dst, layer->type, layer->name);
+		if (index == -1)
+		{
+			CustomData_bmesh_merge(src, dst, CD_MASK_BMESH, CD_DUPLICATE, bm, htype);
+			break;
+		}
+	}
+}
+
+/* satisfy customdata_copy_data layout, by adding required layers from src to dst */
+static void add_missing_layers(BMesh *bm, Mesh* me)
+{
+	check_add_layer(&me->vdata, &bm->vdata, bm, BM_VERT);
+	check_add_layer(&me->edata, &bm->edata, bm, BM_EDGE);
+	check_add_layer(&me->ldata, &bm->ldata, bm, BM_LOOP);
+	check_add_layer(&me->pdata, &bm->pdata, bm, BM_FACE);
+}
+
 Mesh *BKE_boolean_operation(Mesh *mesh, struct Object *ob,
 								 Mesh *mesh_other, struct Object *ob_other, int op_type, int solver,
 								 float double_threshold, struct BooleanModifierData *bmd)
@@ -188,6 +214,7 @@ Mesh *BKE_boolean_operation(Mesh *mesh, struct Object *ob,
 						 &allocsize,
 						 &((struct BMeshCreateParams){.use_toolflags = false,}));
 
+				add_missing_layers(bm, mesh);
 				BM_mesh_bm_from_me(bm, mesh_other, &((struct BMeshFromMeshParams){.calc_face_normal = true,}));
 
 				if (UNLIKELY(is_flip)) {
@@ -402,9 +429,14 @@ static void DM_loop_interp_from_poly(DerivedMesh *source_dm,
 {
 	float (*cos_3d)[3] = BLI_array_alloca(cos_3d, source_poly->totloop);
 	int *source_indices = BLI_array_alloca(source_indices, source_poly->totloop);
+	int *source_vert_indices = BLI_array_alloca(source_vert_indices, source_poly->totloop);
+	int *source_edge_indices = BLI_array_alloca(source_edge_indices, source_poly->totloop);
 	float *weights = BLI_array_alloca(weights, source_poly->totloop);
 	int i;
 	int target_vert_index = target_mloop[target_loop_index].v;
+	int target_edge_index = target_mloop[target_loop_index].e;
+	EdgeVertWeight *vweights = BLI_array_alloca(vweights, source_poly->totloop);
+
 	float coord[3];
 
 	for (i = 0; i < source_poly->totloop; ++i) {
@@ -422,8 +454,18 @@ static void DM_loop_interp_from_poly(DerivedMesh *source_dm,
 
 	interp_weights_poly_v3(weights, cos_3d, source_poly->totloop, coord);
 
+
 	DM_interp_loop_data(source_dm, target_dm, source_indices, weights,
 	                    source_poly->totloop, target_loop_index);
+
+	/* interpolate vertex data as well, for painted weights interpolation on fracture modifier */
+	DM_interp_vert_data(source_dm, target_dm, source_vert_indices ,weights,
+		                    source_poly->totloop, target_vert_index);
+
+	/*interpolate edge data as well, to keep creases and bweights hopefully */
+	DM_interp_edge_data(source_dm, target_dm, source_edge_indices, weights, vweights, source_poly->totloop, target_edge_index);
+
+	/*interpolate poly data ? */
 }
 
 typedef struct DMArrays {

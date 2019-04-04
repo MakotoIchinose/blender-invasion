@@ -920,6 +920,19 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 	mat4_to_size(size, ob->obmat);
 	int last_id = 0;
 
+	if (fmd->uvlayer_name[0])
+	{
+		for (i = 0; i < count+1; i++)
+		{
+			/* inner UV handling... */
+			if ((*temp_meshs)[i])
+			{
+				BKE_fracture_copy_inner_uv((*temp_meshs)[i], fmd->uvlayer_name,
+									BKE_object_material_slot_find_index(ob, fmd->inner_material) - 1);
+			}
+		}
+	}
+
 	if (fmd->flag & MOD_FRACTURE_USE_SPLIT_TO_ISLANDS)
 	{
 		for (i = 0; i < count+1; i++)
@@ -964,13 +977,6 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 				fracture_meshisland_add(fmd, result);
 				result->id = last_id + j;
 				result->rigidbody->flag = mi->rigidbody->flag;
-
-				/* inner UV handling... */
-				if (fmd->uvlayer_name[0])
-				{
-					BKE_fracture_copy_inner_uv(result->mesh, fmd->uvlayer_name,
-					                           BKE_object_material_slot_find_index(ob, fmd->inner_material) - 1);
-				}
 
 				/* dont forget copying over the neighborhood info, we expose this to python so it might be useful */
 				if ((i < count) && shards && shards[i]) {
