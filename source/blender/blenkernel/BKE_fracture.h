@@ -190,5 +190,6 @@ void BKE_fracture_meshislands_connect(struct Scene* scene, struct FractureModifi
                                       struct Shard* mi, struct Shard* mi2, short con_type, float thresh);
 
 void BKE_fracture_shard_velocity_ensure(struct Shard* mi);
+void BKE_fracture_copy_inner_uv(struct Mesh *dm, char uv_layer[64], int inner_material_index);
 
 #endif /* BKE_FRACTURE_H */

@@ -104,23 +104,30 @@ void uv_transform(float uv[][2], int num_uv, float mat[2][2])
 	}
 }
 
-static void do_clean_uv(Mesh *dm, char uv_layer[64])
+void BKE_fracture_copy_inner_uv(Mesh *dm, char uv_layer[64], int inner_material_index)
 {
-	MLoopUV* mluv = CustomData_get_layer_named(&dm->ldata, CD_MLOOPUV, uv_layer);
+	MLoopUV* mluv = CustomData_get_layer_named(&dm->ldata, CD_MLOOPUV, "UVMap");
+	MLoopUV* inner_uv = CustomData_get_layer_named(&dm->ldata, CD_MLOOPUV, uv_layer);
 	int i, totpoly = dm->totpoly;
 	MPoly *mp, *mpoly = dm->mpoly;
 
-	if (mluv)
+	if (mluv && inner_uv)
 	{
 		for (i = 0, mp = mpoly; i < totpoly; i++, mp++)
 		{
-			if (mp->mat_nr != 1)
-			{	//clean up (set uv coords to zero) all except inner faces (material based)
-				int j;
-				for (j = mp->loopstart; j < mp->loopstart + mp->totloop; j++)
-				{
+			int j;
+			for (j = mp->loopstart; j < mp->loopstart + mp->totloop; j++)
+			{
+				if (mp->mat_nr == inner_material_index)
+				{	//copy and clean (set uv coords to zero) all inner faces (material based)
+					inner_uv[j].uv[0] = mluv[j].uv[0];
+					inner_uv[j].uv[1] = mluv[j].uv[1];
 					mluv[j].uv[0] = 0.0f;
 					mluv[j].uv[1] = 0.0f;
+				}
+				else {
+					inner_uv[j].uv[0] = 0.0f;
+					inner_uv[j].uv[1] = 0.0f;
 				}
 			}
 		}
@@ -307,17 +314,52 @@ static bool compare_size(Mesh *result, Mesh *check)
 
 static Mesh* do_fractal(BooleanContext *ctx)
 {
-	BMFace* f;
-	BMIter iter;
+	BMLoop* l;
+	BMFace* f, *efa;
+	BMIter iter, liter, fiter;
 	BMesh *bm;
 	int i;
 	Mesh *ret = NULL;
+	MLoopUV *mluv;
 
 	/*create a grid plane */
 	bm = BM_mesh_create(&bm_mesh_allocsize_default,  &((struct BMeshCreateParams){.use_toolflags = true,}));
 	BMO_op_callf(bm, (BMO_FLAG_DEFAULTS & ~BMO_FLAG_RESPECT_HIDE),
 			"create_grid x_segments=%i y_segments=%i size=%f matrix=%m4",
 			1, 1, ctx->cutter_plane_radius, ctx->cutter_plane_matrix);
+
+	/* uv unwrap */
+	mluv = MEM_callocN(sizeof(MLoopUV) * bm->totloop, "mluv_cutter");
+
+	BM_mesh_elem_toolflags_ensure(bm);
+	CustomData_bmesh_init_pool(&bm->vdata, bm->totloop, BM_VERT);
+	CustomData_bmesh_init_pool(&bm->edata, bm->totedge, BM_EDGE);
+	CustomData_bmesh_init_pool(&bm->ldata, bm->totloop, BM_LOOP);
+	CustomData_bmesh_init_pool(&bm->pdata, bm->totface, BM_FACE);
+
+	BM_data_layer_add(bm, &bm->ldata, CD_MLOOPUV);
+
+	/* should be 4 loops, since its just a quad / plane */
+	mluv[0].uv[0] = 0.0f;
+	mluv[0].uv[1] = 0.0f;
+
+	mluv[1].uv[0] = 1.0f;
+	mluv[1].uv[1] = 0.0f;
+
+	mluv[2].uv[0] = 1.0f;
+	mluv[2].uv[1] = 1.0f;
+
+	mluv[3].uv[0] = 0.0f;
+	mluv[3].uv[1] = 1.0f;
+
+	BM_ITER_MESH (efa, &fiter, bm, BM_FACES_OF_MESH) {
+		BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
+			MLoopUV *uv = CustomData_bmesh_get(&bm->ldata, ((BMHeader *)l)->data, CD_MLOOPUV);
+			if (uv) *uv = mluv[i];
+		}
+	}
+
+	MEM_freeN(mluv);
 
 	/*subdivide the plane fractally*/
 	for (i = 0; i < ctx->num_iterations; i++)
@@ -444,7 +486,7 @@ void BKE_fracture_mesh_boolean_fractal(Mesh* geometry, Mesh **outputA, Mesh** ou
 {
 	Mesh* cutter = do_fractal(ctx);
 	/* dont do fancy boxpacking of uv here, the uv of the fractal surface takes ages to process else */
-	uv_unwrap_raw_geometry(cutter, ctx->uv_layer, false);
+	//uv_unwrap_raw_geometry(cutter, ctx->uv_layer, false);
 	do_set_inner_material(cutter, ctx->inner_material_index, obj);
 
 	/* first intersect, then difference with the cutter on inverted positions*/

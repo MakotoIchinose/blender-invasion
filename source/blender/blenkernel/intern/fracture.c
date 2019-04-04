@@ -965,6 +965,13 @@ void BKE_fracture_postprocess_meshisland(FractureModifierData *fmd, Object* ob, 
 				result->id = last_id + j;
 				result->rigidbody->flag = mi->rigidbody->flag;
 
+				/* inner UV handling... */
+				if (fmd->uvlayer_name[0])
+				{
+					BKE_fracture_copy_inner_uv(result->mesh, fmd->uvlayer_name,
+					                           BKE_object_material_slot_find_index(ob, fmd->inner_material) - 1);
+				}
+
 				/* dont forget copying over the neighborhood info, we expose this to python so it might be useful */
 				if ((i < count) && shards && shards[i]) {
 					result->neighbor_count = shards[i]->neighbor_count;
