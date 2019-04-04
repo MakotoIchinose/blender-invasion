@@ -98,6 +98,14 @@ GPUTexture *DRW_texture_create_2d_array(
 	return tex;
 }
 
+GPUTexture *DRW_texture_create_2d_multisample(int w, int h, eGPUTextureFormat format, int samples, DRWTextureFlag flags, const float *fpixels)
+{
+	GPUTexture *tex = GPU_texture_create_2d_multisample(w, h, format, fpixels, samples, NULL);
+	drw_texture_set_parameters(tex, flags);
+
+	return tex;
+}
+
 GPUTexture *DRW_texture_create_3d(
         int w, int h, int d, eGPUTextureFormat format, DRWTextureFlag flags, const float *fpixels)
 {
@@ -142,14 +150,14 @@ void DRW_texture_ensure_fullscreen_2D_multisample(GPUTexture **tex, eGPUTextureF
 {
 	if (*(tex) == NULL) {
 		const float *size = DRW_viewport_size_get();
-		*(tex) = DRW_texture_create_2D_multisample((int)size[0], (int)size[1], format, samples, flags, NULL);
+		*(tex) = DRW_texture_create_2d_multisample((int)size[0], (int)size[1], format, samples, flags, NULL);
 	}
 }
 
 void DRW_texture_ensure_2D_multisample(GPUTexture **tex, int w, int h, eGPUTextureFormat format, int samples, DRWTextureFlag flags)
 {
 	if (*(tex) == NULL) {
-		*(tex) = DRW_texture_create_2D_multisample(w, h, format, samples, flags, NULL);
+		*(tex) = DRW_texture_create_2d_multisample(w, h, format, samples, flags, NULL);
 	}
 }
 

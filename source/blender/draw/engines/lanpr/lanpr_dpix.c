@@ -46,14 +46,14 @@ void lanpr_init_atlas_inputs(void *ved){
 	SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
 
 	if (lanpr->reloaded || !txl->dpix_in_pl) {
-		DRW_texture_ensure_2D(&txl->dpix_in_pl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-		DRW_texture_ensure_2D(&txl->dpix_in_pr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-		DRW_texture_ensure_2D(&txl->dpix_in_nl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-		DRW_texture_ensure_2D(&txl->dpix_in_nr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-		DRW_texture_ensure_2D(&txl->dpix_in_edge_mask, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA8, 0);
-		DRW_texture_ensure_2D(&txl->dpix_out_pl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-		DRW_texture_ensure_2D(&txl->dpix_out_pr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-		DRW_texture_ensure_2D(&txl->dpix_out_length, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_in_pl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_in_pr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_in_nl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_in_nr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_in_edge_mask, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA8, 0);
+		DRW_texture_ensure_2d(&txl->dpix_out_pl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_out_pr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+		DRW_texture_ensure_2d(&txl->dpix_out_length, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
 	}
 
 	GPU_framebuffer_ensure_config(&fbl->dpix_transform, {

@@ -1718,7 +1718,7 @@ void lanpr_make_render_geometry_buffers_object(Object *o, real *MVMat, real *MVP
 		                    &((struct BMeshCreateParams) {.use_toolflags = true, }));
 		BM_mesh_bm_from_me(bm, o->data, &((struct BMeshFromMeshParams) {.calc_face_normal = true, }));
 		BM_mesh_elem_hflag_disable_all(bm, BM_FACE | BM_EDGE, BM_ELEM_TAG, false);
-		BM_mesh_triangulate(bm, MOD_TRIANGULATE_QUAD_BEAUTY, MOD_TRIANGULATE_NGON_BEAUTY, false, NULL, NULL, NULL);
+		BM_mesh_triangulate(bm, MOD_TRIANGULATE_QUAD_BEAUTY, MOD_TRIANGULATE_NGON_BEAUTY, 4, false, NULL, NULL, NULL);
 		BM_mesh_normals_update(bm);
 		BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
 		BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);

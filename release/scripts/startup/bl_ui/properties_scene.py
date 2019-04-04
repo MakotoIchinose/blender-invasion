@@ -620,11 +620,6 @@ class SCENE_PT_lanpr(SceneButtonsPanel, Panel):
         
         sc = lanpr_get_composition_scene(scene)
         
-        if lanpr_is_composition_scene(scene):
-            row = layout.row()
-            row.scale_y=1.5
-            row.operator("lanpr.goto_original_scene")
-
         if sc is not None:
             layout.label(text = 'You are adjusting values for LANPR compostion scene.')
             row = layout.row()
@@ -639,14 +634,19 @@ class SCENE_PT_lanpr(SceneButtonsPanel, Panel):
             layout.label(text = 'Select LANPR engine or use composition scene.')
             layout.operator("lanpr.make_composition_scene")
             return
+
+        if lanpr_is_composition_scene(scene):
+            row = layout.row()
+            row.scale_y=1.5
+            row.operator("lanpr.goto_original_scene") 
             
-        layout.label(text='LANPR Composition')
-        row = layout.row()
-        row.scale_y=1.5
-        row.scale_x=4
-        row.operator("lanpr.render_composited", icon = 'RENDER_STILL')
-        row.scale_x=1
-        row.prop(lanpr,"composite_render_animation", toggle=True, icon = 'RENDER_ANIMATION')
+            layout.label(text='LANPR Composition')
+            row = layout.row()
+            row.scale_y=1.5
+            row.scale_x=4
+            row.operator("lanpr.render_composited", icon = 'RENDER_STILL')
+            row.scale_x=1
+            row.prop(lanpr,"composite_render_animation", toggle=True, icon = 'RENDER_ANIMATION')
         
         layout.label(text='Mode:')
         

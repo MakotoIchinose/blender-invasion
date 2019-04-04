@@ -561,8 +561,8 @@ static void lanpr_render_to_image(LANPR_Data *vedata, RenderEngine *engine, stru
 	DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 	DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
-	DRW_texture_ensure_fullscreen_2D(&dtxl->depth, GPU_DEPTH_COMPONENT32F, 0);
-	DRW_texture_ensure_fullscreen_2D(&dtxl->color, GPU_RGBA32F, 0);
+	DRW_texture_ensure_fullscreen_2d(&dtxl->depth, GPU_DEPTH_COMPONENT32F, 0);
+	DRW_texture_ensure_fullscreen_2d(&dtxl->color, GPU_RGBA32F, 0);
 
 	GPU_framebuffer_ensure_config(&dfbl->default_fb, {
 		GPU_ATTACHMENT_TEXTURE(dtxl->depth),

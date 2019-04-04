@@ -33,7 +33,7 @@ def lanpr_make_composition_scene(scene):
     name = scene.name;
     new_name = scene.name+'_lanpr_comp'
     scene.name = new_name
-    bpy.ops.scene.new(type='LINK_OBJECTS')
+    bpy.ops.scene.new(type='LINK_COPY')
     for s in bpy.data.scenes:
         if s.name == new_name+'.001':
             new_scene = s
