@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,40 +15,34 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- * Contributor(s): Joshua Leung (full recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_FCURVE_H__
 #define __BKE_FCURVE_H__
 
-/** \file BKE_fcurve.h
- *  \ingroup bke
- *  \author Joshua Leung
- *  \since 2009
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+struct ChannelDriver;
+struct DriverTarget;
+struct DriverVar;
+struct FCM_EnvelopeData;
 struct FCurve;
 struct FModifier;
-struct ChannelDriver;
-struct DriverVar;
-struct DriverTarget;
-struct FCM_EnvelopeData;
 
-struct bContext;
 struct AnimData;
-struct bAction;
 struct BezTriple;
-struct StructRNA;
 struct PathResolvedRNA;
 struct PointerRNA;
 struct PropertyRNA;
+struct StructRNA;
+struct bAction;
+struct bContext;
 
 #include "DNA_curve_types.h"
 
@@ -72,14 +64,14 @@ void bezt_add_to_cfra_elem(ListBase *lb, struct BezTriple *bezt);
  */
 
 /* convenience looper over ALL driver targets for a given variable (even the unused ones) */
-#define DRIVER_TARGETS_LOOPER(dvar) \
+#define DRIVER_TARGETS_LOOPER_BEGIN(dvar) \
 	{ \
 		DriverTarget *dtar = &dvar->targets[0]; \
 		int tarIndex = 0; \
 		for (; tarIndex < MAX_DRIVER_TARGETS; tarIndex++, dtar++)
 
 /* convenience looper over USED driver targets only */
-#define DRIVER_TARGETS_USED_LOOPER(dvar) \
+#define DRIVER_TARGETS_USED_LOOPER_BEGIN(dvar) \
 	{ \
 		DriverTarget *dtar = &dvar->targets[0]; \
 		int tarIndex = 0; \
@@ -87,7 +79,7 @@ void bezt_add_to_cfra_elem(ListBase *lb, struct BezTriple *bezt);
 
 /* tidy up for driver targets loopers */
 #define DRIVER_TARGETS_LOOPER_END \
-}
+} ((void)0)
 
 /* ---------------------- */
 
@@ -183,7 +175,7 @@ typedef enum eFMI_Requirement_Flags {
 	FMI_REQUIRES_RUNTIME_CHECK      = (1 << 2),
 
 	/* Requires to store data shared between time and valua evaluation */
-	FMI_REQUIRES_STORAGE            = (1 << 3)
+	FMI_REQUIRES_STORAGE            = (1 << 3),
 } eFMI_Requirement_Flags;
 
 /* Function Prototypes for FModifierTypeInfo's */
@@ -297,6 +289,7 @@ void correct_bezpart(float v1[2], float v2[2], float v3[2], float v4[2]);
 
 /* evaluate fcurve */
 float evaluate_fcurve(struct FCurve *fcu, float evaltime);
+float evaluate_fcurve_only_curve(struct FCurve *fcu, float evaltime);
 float evaluate_fcurve_driver(struct PathResolvedRNA *anim_rna, struct FCurve *fcu,
                              struct ChannelDriver *driver_orig, float evaltime);
 /* evaluate fcurve and store value */

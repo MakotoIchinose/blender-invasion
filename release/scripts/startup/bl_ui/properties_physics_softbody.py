@@ -18,7 +18,6 @@
 
 # <pep8 compliant>
 
-import bpy
 from bpy.types import (
     Panel,
 )
@@ -56,7 +55,7 @@ class PHYSICS_PT_softbody(PhysicButtonsPanel, Panel):
         md = context.soft_body
         softbody = md.settings
 
-        layout.prop(softbody, "collision_group")
+        layout.prop(softbody, "collision_collection")
 
 
 class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
@@ -141,7 +140,7 @@ class PHYSICS_PT_softbody_goal(PhysicButtonsPanel, Panel):
         layout.prop_search(softbody, "vertex_group_goal", ob, "vertex_groups", text="Vertex Group")
 
 
-class PHYSICS_PT_softbody_goal_strenghts(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_softbody_goal_strengths(PhysicButtonsPanel, Panel):
     bl_label = "Strengths"
     bl_parent_id = 'PHYSICS_PT_softbody_goal'
     bl_options = {'DEFAULT_CLOSED'}
@@ -406,7 +405,7 @@ classes = (
     PHYSICS_PT_softbody_cache,
     PHYSICS_PT_softbody_goal,
     PHYSICS_PT_softbody_goal_settings,
-    PHYSICS_PT_softbody_goal_strenghts,
+    PHYSICS_PT_softbody_goal_strengths,
     PHYSICS_PT_softbody_edge,
     PHYSICS_PT_softbody_edge_aerodynamics,
     PHYSICS_PT_softbody_edge_stiffness,

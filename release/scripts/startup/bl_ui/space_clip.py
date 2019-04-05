@@ -21,7 +21,7 @@
 import bpy
 from bpy.types import Panel, Header, Menu, UIList
 from bpy.app.translations import pgettext_iface as iface_
-from bl_operators.presets import PresetMenu
+from bl_ui.utils import PresetPanel
 from .properties_grease_pencil_common import (
     AnnotationDrawingToolsPanel,
     AnnotationDataPanel,
@@ -231,7 +231,7 @@ class CLIP_HT_header(Header):
     def _draw_masking(self, context):
         layout = self.layout
 
-        toolsettings = context.tool_settings
+        tool_settings = context.tool_settings
         sc = context.space_data
         clip = sc.clip
 
@@ -249,10 +249,10 @@ class CLIP_HT_header(Header):
             layout.prop(sc, "pivot_point", text="", icon_only=True)
 
             row = layout.row(align=True)
-            row.prop(toolsettings, "use_proportional_edit_mask", text="", icon_only=True)
+            row.prop(tool_settings, "use_proportional_edit_mask", text="", icon_only=True)
             sub = row.row(align=True)
-            sub.active = toolsettings.use_proportional_edit_mask
-            sub.prop(toolsettings, "proportional_edit_falloff", text="", icon_only=True)
+            sub.active = tool_settings.use_proportional_edit_mask
+            sub.prop(tool_settings, "proportional_edit_falloff", text="", icon_only=True)
 
             row = layout.row()
             row.template_ID(sc, "mask", new="mask.new")
@@ -283,10 +283,7 @@ class CLIP_MT_tracking_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context)
-
-    @staticmethod
-    def draw_menus(layout, context):
+        layout = self.layout
         sc = context.space_data
         clip = sc.clip
 
@@ -308,10 +305,7 @@ class CLIP_MT_masking_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context)
-
-    @staticmethod
-    def draw_menus(layout, context):
+        layout = self.layout
         sc = context.space_data
         clip = sc.clip
 
@@ -388,8 +382,6 @@ class CLIP_PT_tools_marker(CLIP_PT_tracking_panel, Panel):
 
     def draw(self, context):
         layout = self.layout
-
-        sc = context.space_data
 
         col = layout.column(align=True)
         row = col.row(align=True)
@@ -964,7 +956,6 @@ class CLIP_PT_stabilization(CLIP_PT_reconstruction_panel, Panel):
     bl_region_type = 'UI'
     bl_label = "2D Stabilization"
     bl_category = "Stabilization"
-    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -1015,7 +1006,7 @@ class CLIP_PT_stabilization(CLIP_PT_reconstruction_panel, Panel):
             sub.operator("clip.stabilize_2d_add", icon='ADD', text="")
             sub.operator("clip.stabilize_2d_remove", icon='REMOVE', text="")
 
-            sub.menu('CLIP_MT_stabilize_2d_specials', text="",
+            sub.menu('CLIP_MT_stabilize_2d_context_menu', text="",
                      icon='DOWNARROW_HLT')
 
             # Usually we don't hide things from iterface, but here every pixel of
@@ -1032,7 +1023,7 @@ class CLIP_PT_stabilization(CLIP_PT_reconstruction_panel, Panel):
                 sub.operator("clip.stabilize_2d_rotation_add", icon='ADD', text="")
                 sub.operator("clip.stabilize_2d_rotation_remove", icon='REMOVE', text="")
 
-                sub.menu('CLIP_MT_stabilize_2d_rotation_specials', text="",
+                sub.menu('CLIP_MT_stabilize_2d_rotation_context_menu', text="",
                          icon='DOWNARROW_HLT')
 
         col = layout.column()
@@ -1177,7 +1168,6 @@ class CLIP_PT_footage(CLIP_PT_clip_view_panel, Panel):
     bl_region_type = 'UI'
     bl_category = "Footage"
     bl_label = "Footage Settings"
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1219,8 +1209,8 @@ class CLIP_PT_tools_scenesetup(Panel):
 class CLIP_PT_grease_pencil(AnnotationDataPanel, CLIP_PT_clip_view_panel, Panel):
     bl_space_type = 'CLIP_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Track"
-    bl_options = {'DEFAULT_CLOSED'}
+    bl_category = "Annotation"
+    bl_options = set()
 
     # NOTE: this is just a wrapper around the generic GP Panel
     # But, this should only be visible in "clip" view
@@ -1395,7 +1385,7 @@ class CLIP_MT_track_visibility(Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("clip.hide_tracks_clear", text="Show Hidden")
+        layout.operator("clip.hide_tracks_clear")
         layout.operator("clip.hide_tracks", text="Hide Selected").unselected = False
         layout.operator("clip.hide_tracks", text="Hide Unselected").unselected = True
 
@@ -1438,7 +1428,7 @@ class CLIP_MT_select_grouped(Menu):
         layout.operator_enum("clip.select_grouped", "group")
 
 
-class CLIP_MT_tracking_specials(Menu):
+class CLIP_MT_tracking_context_menu(Menu):
     bl_label = "Specials"
 
     @classmethod
@@ -1468,7 +1458,7 @@ class CLIP_MT_tracking_specials(Menu):
                         text="Unlock Tracks").action = 'UNLOCK'
 
 
-class CLIP_PT_camera_presets(PresetMenu):
+class CLIP_PT_camera_presets(PresetPanel, Panel):
     """Predefined tracking camera intrinsics"""
     bl_label = "Camera Presets"
     preset_subdir = "tracking_camera"
@@ -1476,7 +1466,7 @@ class CLIP_PT_camera_presets(PresetMenu):
     preset_add_operator = "clip.camera_preset_add"
 
 
-class CLIP_PT_track_color_presets(PresetMenu):
+class CLIP_PT_track_color_presets(PresetPanel, Panel):
     """Predefined track color"""
     bl_label = "Color Presets"
     preset_subdir = "tracking_track_color"
@@ -1484,7 +1474,7 @@ class CLIP_PT_track_color_presets(PresetMenu):
     preset_add_operator = "clip.track_color_preset_add"
 
 
-class CLIP_PT_tracking_settings_presets(PresetMenu):
+class CLIP_PT_tracking_settings_presets(PresetPanel, Panel):
     """Predefined tracking settings"""
     bl_label = "Tracking Presets"
     preset_subdir = "tracking_settings"
@@ -1492,7 +1482,7 @@ class CLIP_PT_tracking_settings_presets(PresetMenu):
     preset_add_operator = "clip.tracking_settings_preset_add"
 
 
-class CLIP_MT_stabilize_2d_specials(Menu):
+class CLIP_MT_stabilize_2d_context_menu(Menu):
     bl_label = "Translation Track Specials"
 
     def draw(self, context):
@@ -1501,7 +1491,7 @@ class CLIP_MT_stabilize_2d_specials(Menu):
         layout.operator("clip.stabilize_2d_select")
 
 
-class CLIP_MT_stabilize_2d_rotation_specials(Menu):
+class CLIP_MT_stabilize_2d_rotation_context_menu(Menu):
     bl_label = "Rotation Track Specials"
 
     def draw(self, context):
@@ -1551,15 +1541,15 @@ classes = (
     CLIP_PT_tracking_camera,
     CLIP_PT_tracking_lens,
     CLIP_PT_marker,
-    CLIP_PT_stabilization,
     CLIP_PT_proxy,
+    CLIP_PT_footage,
+    CLIP_PT_stabilization,
     CLIP_PT_mask,
     CLIP_PT_mask_layers,
     CLIP_PT_mask_display,
     CLIP_PT_active_mask_spline,
     CLIP_PT_active_mask_point,
     CLIP_PT_tools_mask_transforms,
-    CLIP_PT_footage,
     CLIP_PT_tools_scenesetup,
     CLIP_PT_grease_pencil,
     CLIP_PT_tools_grease_pencil_draw,
@@ -1571,12 +1561,12 @@ classes = (
     CLIP_MT_track_transform,
     CLIP_MT_select,
     CLIP_MT_select_grouped,
-    CLIP_MT_tracking_specials,
+    CLIP_MT_tracking_context_menu,
     CLIP_PT_camera_presets,
     CLIP_PT_track_color_presets,
     CLIP_PT_tracking_settings_presets,
-    CLIP_MT_stabilize_2d_specials,
-    CLIP_MT_stabilize_2d_rotation_specials,
+    CLIP_MT_stabilize_2d_context_menu,
+    CLIP_MT_stabilize_2d_rotation_context_menu,
     CLIP_MT_pivot_pie,
 )
 

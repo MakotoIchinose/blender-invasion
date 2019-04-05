@@ -1,27 +1,21 @@
 /*
-* ***** BEGIN GPL LICENSE BLOCK *****
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License
-* as published by the Free Software Foundation; either version 2
-* of the License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software Foundation,
-* Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-*
-* The Original Code is Copyright (C) 2008 Blender Foundation.
-* All rights reserved.
-*
-* Contributor(s): Blender Foundation
-*
-* ***** END GPL LICENSE BLOCK *****
-*/
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * The Original Code is Copyright (C) 2008 Blender Foundation.
+ * All rights reserved.
+ */
 
 #include "BCAnimationCurve.h"
 
@@ -69,7 +63,7 @@ void BCAnimationCurve::init_pointer_rna(Object *ob)
 	switch (this->curve_key.get_animation_type()) {
 	case BC_ANIMATION_TYPE_BONE:
 	{
-		bArmature * arm = (bArmature *)ob->data;
+		bArmature *arm = (bArmature *)ob->data;
 		RNA_id_pointer_create(&arm->id, &id_ptr);
 	}
 	break;
@@ -86,13 +80,13 @@ void BCAnimationCurve::init_pointer_rna(Object *ob)
 	break;
 	case BC_ANIMATION_TYPE_CAMERA:
 	{
-		Camera * camera = (Camera *)ob->data;
+		Camera *camera = (Camera *)ob->data;
 		RNA_id_pointer_create(&camera->id, &id_ptr);
 	}
 	break;
 	case BC_ANIMATION_TYPE_LIGHT:
 	{
-		Lamp * lamp = (Lamp *)ob->data;
+		Light *lamp = (Light *)ob->data;
 		RNA_id_pointer_create(&lamp->id, &id_ptr);
 	}
 	break;
@@ -181,14 +175,14 @@ const std::string BCAnimationCurve::get_animation_name(Object *ob) const
 
 		case BC_ANIMATION_TYPE_LIGHT:
 		{
-			Lamp *lamp = (Lamp *)ob->data;
+			Light *lamp = (Light *)ob->data;
 			name = id_name(ob) + "-" + id_name(lamp) + "-light";
 		}
 		break;
 
 		case BC_ANIMATION_TYPE_MATERIAL:
 		{
-			Material * ma = give_current_material(ob, this->curve_key.get_subindex() + 1);
+			Material *ma = give_current_material(ob, this->curve_key.get_subindex() + 1);
 			name = id_name(ob) + "-" + id_name(ma) + "-material";
 		}
 		break;
@@ -386,10 +380,10 @@ void BCAnimationCurve::add_value(const float val, const int frame_index)
 	FCurve *fcu = get_edit_fcurve();
 	fcu->auto_smoothing = FCURVE_SMOOTH_CONT_ACCEL;
 	insert_vert_fcurve(
-		fcu,
-		frame_index, val,
-		BEZT_KEYTYPE_KEYFRAME,
-		INSERTKEY_NOFLAGS);
+	        fcu,
+	        frame_index, val,
+	        BEZT_KEYTYPE_KEYFRAME,
+	        INSERTKEY_NOFLAGS);
 
 	if (fcu->totvert == 1) {
 		init_range(val);
@@ -404,9 +398,9 @@ bool BCAnimationCurve::add_value_from_matrix(const BCSample &sample, const int f
 	int array_index = curve_key.get_array_index();
 
 	/* transformation curves are feeded directly from the transformation matrix
-	* to resolve parent inverse matrix issues with object hierarchies.
-	* Maybe this can be unified with the
-	*/
+	 * to resolve parent inverse matrix issues with object hierarchies.
+	 * Maybe this can be unified with the
+	 */
 	const std::string channel_target = get_channel_target();
 	float val = 0;
 	/* Pick the value from the sample according to the definition of the FCurve */

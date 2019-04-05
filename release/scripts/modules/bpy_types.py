@@ -28,6 +28,7 @@ StructMetaPropGroup = bpy_types.bpy_struct_meta_idprop
 bpy_types.BlendDataLibraries.load = _bpy._library_load
 bpy_types.BlendDataLibraries.write = _bpy._library_write
 bpy_types.BlendData.user_map = _bpy._rna_id_collection_user_map
+bpy_types.BlendData.batch_remove = _bpy._rna_id_collection_batch_remove
 
 
 class Context(StructRNA):
@@ -104,7 +105,7 @@ class Collection(bpy_types.ID):
         """The collection instance objects this collection is used in"""
         import bpy
         return tuple(obj for obj in bpy.data.objects
-                     if self == obj.dupli_group)
+                     if self == obj.instance_collection)
 
 
 class Object(bpy_types.ID):
@@ -119,10 +120,12 @@ class Object(bpy_types.ID):
 
     @property
     def users_collection(self):
-        """The collections this object is in. Warning: takes O(len(bpy.data.collections)) time."""
+        """The collections this object is in. Warning: takes O(len(bpy.data.collections) + len(bpy.data.scenes)) time."""
         import bpy
         return tuple(collection for collection in bpy.data.collections
-                     if self in collection.objects[:])
+                     if self in collection.objects[:]) + \
+               tuple(scene.collection for scene in bpy.data.scenes
+                     if self in scene.collection.objects[:])
 
     @property
     def users_scene(self):
@@ -645,7 +648,7 @@ class Gizmo(StructRNA):
 
 # Only defined so operators members can be used by accessing self.order
 # with doc generation 'self.properties.bl_rna.properties' can fail
-class Operator(StructRNA):
+class Operator(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
     def __getattribute__(self, attr):
@@ -920,7 +923,7 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
         # only usable within headers
         if context.area.show_menus:
             # Align menus to space them closely.
-            cls.draw_menus(layout.row(align=True), context)
+            layout.row(align=True).menu_contents(cls.__name__)
         else:
             layout.menu(cls.__name__, icon='COLLAPSEMENU')
 

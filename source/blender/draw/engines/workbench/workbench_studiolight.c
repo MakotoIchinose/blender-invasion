@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,25 +13,62 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file workbench_studiolight.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 #include "BKE_studiolight.h"
 
-#include "DRW_engine.h"
 #include "workbench_private.h"
 
 #include "BKE_object.h"
 
 #include "BLI_math.h"
-#include "BKE_global.h"
 
-void studiolight_update_world(StudioLight *sl, WORKBENCH_UBO_World *wd)
+void studiolight_update_world(WORKBENCH_PrivateData *wpd, StudioLight *studiolight, WORKBENCH_UBO_World *wd)
 {
+	float view_matrix[4][4], rot_matrix[4][4];
+	DRW_viewport_matrix_get(view_matrix, DRW_MAT_VIEW);
+
+	if (USE_WORLD_ORIENTATION(wpd)) {
+		axis_angle_to_mat4_single(rot_matrix, 'Z', -wpd->shading.studiolight_rot_z);
+		mul_m4_m4m4(rot_matrix, view_matrix, rot_matrix);
+		swap_v3_v3(rot_matrix[2], rot_matrix[1]);
+		negate_v3(rot_matrix[2]);
+	}
+	else {
+		unit_m4(rot_matrix);
+	}
+
+	if (U.edit_studio_light) {
+		studiolight = BKE_studiolight_studio_edit_get();
+	}
+
+	/* Studio Lights. */
+	for (int i = 0; i < 4; i++) {
+		WORKBENCH_UBO_Light *light = &wd->lights[i];
+
+		SolidLight *sl = &studiolight->light[i];
+		if (sl->flag) {
+			copy_v3_v3(light->light_direction, sl->vec);
+			mul_mat3_m4_v3(rot_matrix, light->light_direction);
+			/* We should predivide the power by PI but that makes the lights really dim. */
+			copy_v3_v3(light->specular_color, sl->spec);
+			copy_v3_v3(light->diffuse_color, sl->col);
+			light->wrapped = sl->smooth;
+		}
+		else {
+			copy_v3_fl3(light->light_direction, 1.0f, 0.0f, 0.0f);
+			copy_v3_fl(light->specular_color, 0.0f);
+			copy_v3_fl(light->diffuse_color, 0.0f);
+		}
+	}
+
+	copy_v3_v3(wd->ambient_color, studiolight->light_ambient);
+
+#if 0
 	BKE_studiolight_ensure_flag(sl, STUDIOLIGHT_SPHERICAL_HARMONICS_COEFFICIENTS_CALCULATED);
 
 #if STUDIOLIGHT_SH_BANDS == 2
@@ -86,6 +121,7 @@ void studiolight_update_world(StudioLight *sl, WORKBENCH_UBO_World *wd)
 		/* Can't memcpy because of alignment */
 		copy_v3_v3(wd->spherical_harmonics_coefs[i], sl->spherical_harmonics_coefs[i]);
 	}
+#endif
 #endif
 }
 
@@ -232,7 +268,7 @@ bool studiolight_camera_in_object_shadow(WORKBENCH_PrivateData *wpd, Object *ob,
 	        {oed->shadow_min[0], oed->shadow_min[1]},
 	        {oed->shadow_min[0], oed->shadow_max[1]},
 	        {oed->shadow_max[0], oed->shadow_min[1]},
-	        {oed->shadow_max[0], oed->shadow_max[1]}
+	        {oed->shadow_max[0], oed->shadow_max[1]},
 	};
 
 	for (int i = 0; i < 2; ++i) {
@@ -240,8 +276,8 @@ bool studiolight_camera_in_object_shadow(WORKBENCH_PrivateData *wpd, Object *ob,
 		for (int j = 0; j < 4; ++j) {
 			float dst = dot_v2v2(wpd->shadow_near_sides[i], pts[j]);
 			/* Do min max */
-			if (min_dst > dst) min_dst = dst;
-			if (max_dst < dst) max_dst = dst;
+			if (min_dst > dst) { min_dst = dst; }
+			if (max_dst < dst) { max_dst = dst; }
 		}
 
 		if ((wpd->shadow_near_sides[i][2] > max_dst) ||

@@ -186,6 +186,8 @@ ccl_device_intersect bool scene_intersect(KernelGlobals *kg,
                                           float difl,
                                           float extmax)
 {
+	PROFILING_INIT(kg, PROFILING_INTERSECT);
+
 	if(!scene_intersect_valid(&ray)) {
 		return false;
 	}
@@ -248,7 +250,10 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals *kg,
                                                 uint *lcg_state,
                                                 int max_hits)
 {
+	PROFILING_INIT(kg, PROFILING_INTERSECT_LOCAL);
+
 	if(!scene_intersect_valid(&ray)) {
+		local_isect->num_hits = 0;
 		return false;
 	}
 #ifdef __EMBREE__
@@ -327,7 +332,10 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals *kg,
                                                      uint max_hits,
                                                      uint *num_hits)
 {
+	PROFILING_INIT(kg, PROFILING_INTERSECT_SHADOW_ALL);
+
 	if(!scene_intersect_valid(ray)) {
+		*num_hits = 0;
 		return false;
 	}
 #  ifdef __EMBREE__
@@ -407,6 +415,8 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals *kg,
                                                  Intersection *isect,
                                                  const uint visibility)
 {
+	PROFILING_INIT(kg, PROFILING_INTERSECT_VOLUME);
+
 	if(!scene_intersect_valid(ray)) {
 		return false;
 	}
@@ -438,6 +448,8 @@ ccl_device_intersect uint scene_intersect_volume_all(KernelGlobals *kg,
                                                      const uint max_hits,
                                                      const uint visibility)
 {
+	PROFILING_INIT(kg, PROFILING_INTERSECT_VOLUME_ALL);
+
 	if(!scene_intersect_valid(ray)) {
 		return false;
 	}

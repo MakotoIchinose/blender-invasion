@@ -14,8 +14,6 @@
 #  along with this program; if not, write to the Free Software Foundation,
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-# Contributor(s): Campbell Barton
-#
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
@@ -359,7 +357,7 @@ INFO_DOCS = (
 # only support for properties atm.
 RNA_BLACKLIST = {
     # XXX messes up PDF!, really a bug but for now just workaround.
-    "UserPreferencesSystem": {"language", }
+    "PreferencesSystem": {"language", }
 }
 
 MODULE_GROUPING = {
@@ -984,7 +982,6 @@ context_type_map = {
     # context_member: (RNA type, is_collection)
     "active_base": ("ObjectBase", False),
     "active_bone": ("EditBone", False),
-    "active_gpencil_brush": ("GPencilSculptBrush", False),
     "active_gpencil_frame": ("GreasePencilLayer", True),
     "active_gpencil_layer": ("GPencilLayer", True),
     "active_node": ("Node", False),
@@ -1012,11 +1009,12 @@ context_type_map = {
     "editable_gpencil_strokes": ("GPencilStroke", True),
     "editable_objects": ("Object", True),
     "fluid": ("FluidSimulationModifier", False),
-    "gpencil_data": ("GreasePencel", False),
+    "gpencil": ("GreasePencil", False),
+    "gpencil_data": ("GreasePencil", False),
     "gpencil_data_owner": ("ID", False),
     "image_paint_object": ("Object", False),
-    "light": ("Light", False),
     "lattice": ("Lattice", False),
+    "light": ("Light", False),
     "lightprobe": ("LightProbe", False),
     "line_style": ("FreestyleLineStyle", False),
     "material": ("Material", False),
@@ -1024,11 +1022,14 @@ context_type_map = {
     "mesh": ("Mesh", False),
     "meta_ball": ("MetaBall", False),
     "object": ("Object", False),
+    "objects_in_mode": ("Object", True),
+    "objects_in_mode_unique_data": ("Object", True),
     "particle_edit_object": ("Object", False),
     "particle_settings": ("ParticleSettings", False),
     "particle_system": ("ParticleSystem", False),
     "particle_system_editable": ("ParticleSystem", False),
     "pose_bone": ("PoseBone", False),
+    "pose_object": ("Object", False),
     "scene": ("Scene", False),
     "sculpt_object": ("Object", False),
     "selectable_bases": ("ObjectBase", True),
@@ -1037,7 +1038,7 @@ context_type_map = {
     "selected_bones": ("EditBone", True),
     "selected_editable_bases": ("ObjectBase", True),
     "selected_editable_bones": ("EditBone", True),
-    "selected_editable_fcurves": ("FCurce", True),
+    "selected_editable_fcurves": ("FCurve", True),
     "selected_editable_objects": ("Object", True),
     "selected_editable_sequences": ("Sequence", True),
     "selected_nodes": ("Node", True),
@@ -1055,6 +1056,7 @@ context_type_map = {
     "texture_user_property": ("Property", False),
     "uv_sculpt_object": ("Object", False),
     "vertex_paint_object": ("Object", False),
+    "view_layer": ("ViewLayer", False),
     "visible_bases": ("ObjectBase", True),
     "visible_bones": ("EditBone", True),
     "visible_gpencil_layers": ("GPencilLayer", True),
@@ -1062,7 +1064,6 @@ context_type_map = {
     "visible_pose_bones": ("PoseBone", True),
     "weight_paint_object": ("Object", False),
     "world": ("World", False),
-    "view_layer": ("ViewLayer", False),
 }
 
 

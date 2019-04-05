@@ -138,7 +138,7 @@ def create(engine, data, region=None, v3d=None, rv3d=None, preview_osl=False):
     import bpy
 
     data = data.as_pointer()
-    userpref = bpy.context.user_preferences.as_pointer()
+    prefs = bpy.context.preferences.as_pointer()
     if region:
         region = region.as_pointer()
     if v3d:
@@ -147,7 +147,7 @@ def create(engine, data, region=None, v3d=None, rv3d=None, preview_osl=False):
         rv3d = rv3d.as_pointer()
 
     engine.session = _cycles.create(
-            engine.as_pointer(), userpref, data, region, v3d, rv3d, preview_osl)
+            engine.as_pointer(), prefs, data, region, v3d, rv3d, preview_osl)
 
 
 def free(engine):
@@ -270,14 +270,11 @@ def register_passes(engine, scene, srl):
         engine.register_pass(scene, srl, "Noisy Image", 4, "RGBA", 'COLOR')
         if crl.denoising_store_passes:
             engine.register_pass(scene, srl, "Denoising Normal",          3, "XYZ", 'VECTOR')
-            engine.register_pass(scene, srl, "Denoising Normal Variance", 3, "XYZ", 'VECTOR')
             engine.register_pass(scene, srl, "Denoising Albedo",          3, "RGB", 'COLOR')
-            engine.register_pass(scene, srl, "Denoising Albedo Variance", 3, "RGB", 'COLOR')
             engine.register_pass(scene, srl, "Denoising Depth",           1, "Z",   'VALUE')
-            engine.register_pass(scene, srl, "Denoising Depth Variance",  1, "Z",   'VALUE')
-            engine.register_pass(scene, srl, "Denoising Shadow A",        3, "XYV", 'VECTOR')
-            engine.register_pass(scene, srl, "Denoising Shadow B",        3, "XYV", 'VECTOR')
-            engine.register_pass(scene, srl, "Denoising Image Variance",  3, "RGB", 'COLOR')
+            engine.register_pass(scene, srl, "Denoising Shadowing",       1, "X",   'VALUE')
+            engine.register_pass(scene, srl, "Denoising Variance",        3, "RGB", 'COLOR')
+            engine.register_pass(scene, srl, "Denoising Intensity",       1, "X",   'VALUE')
             clean_options = ("denoising_diffuse_direct", "denoising_diffuse_indirect",
                              "denoising_glossy_direct", "denoising_glossy_indirect",
                              "denoising_transmission_direct", "denoising_transmission_indirect",

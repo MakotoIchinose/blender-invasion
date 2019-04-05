@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_pose_api.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -95,8 +88,8 @@ static void rna_PoseBone_compute_bbone_handles(
 
 	BBoneSplineParameters params;
 
-	BKE_pchan_get_bbone_spline_parameters(pchan, rest, &params);
-	BKE_compute_b_bone_handles(&params, ret_h1, ret_roll1, ret_h2, ret_roll2, ease || offsets, offsets);
+	BKE_pchan_bbone_spline_params_get(pchan, rest, &params);
+	BKE_pchan_bbone_handles_compute(&params, ret_h1, ret_roll1, ret_h2, ret_roll2, ease || offsets, offsets);
 }
 #else
 

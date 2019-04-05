@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,13 @@
  *
  * The Original Code is Copyright (C) 2006-2007 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_STUDIOLIGHT_H__
 #define __BKE_STUDIOLIGHT_H__
 
-/** \file BKE_studiolight.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Studio lighting for the 3dview
  */
@@ -39,6 +31,7 @@
 #include "BLI_sys_types.h"
 
 #include "DNA_space_types.h"
+#include "DNA_userdef_types.h"
 
 #include "IMB_imbuf_types.h"
 
@@ -58,6 +51,8 @@
 #define STUDIOLIGHT_ICON_ID_TYPE_IRRADIANCE     (1 << 1)
 #define STUDIOLIGHT_ICON_ID_TYPE_MATCAP         (1 << 2)
 #define STUDIOLIGHT_ICON_ID_TYPE_MATCAP_FLIPPED (1 << 3)
+
+#define STUDIOLIGHT_MAX_LIGHT 4
 
 #define STUDIOLIGHT_ICON_SIZE 96
 
@@ -82,9 +77,9 @@ enum StudioLightFlag {
 /*	STUDIOLIGHT_LIGHT_DIRECTION_CALCULATED                  = (1 << 1), */
 	STUDIOLIGHT_INTERNAL                                    = (1 << 2),
 	STUDIOLIGHT_EXTERNAL_FILE                               = (1 << 3),
-	STUDIOLIGHT_ORIENTATION_CAMERA                          = (1 << 4),
-	STUDIOLIGHT_ORIENTATION_WORLD                           = (1 << 5),
-	STUDIOLIGHT_ORIENTATION_VIEWNORMAL                      = (1 << 6),
+	STUDIOLIGHT_TYPE_STUDIO                                 = (1 << 4),
+	STUDIOLIGHT_TYPE_WORLD                                  = (1 << 5),
+	STUDIOLIGHT_TYPE_MATCAP                                 = (1 << 6),
 	STUDIOLIGHT_EXTERNAL_IMAGE_LOADED                       = (1 << 7),
 	STUDIOLIGHT_EQUIRECT_IRRADIANCE_IMAGE_CALCULATED        = (1 << 8),
 	STUDIOLIGHT_EQUIRECT_RADIANCE_GPUTEXTURE                = (1 << 9),
@@ -95,9 +90,9 @@ enum StudioLightFlag {
 };
 
 #define STUDIOLIGHT_FLAG_ALL (STUDIOLIGHT_INTERNAL | STUDIOLIGHT_EXTERNAL_FILE)
-#define STUDIOLIGHT_FLAG_ORIENTATIONS (STUDIOLIGHT_ORIENTATION_CAMERA | STUDIOLIGHT_ORIENTATION_WORLD | STUDIOLIGHT_ORIENTATION_VIEWNORMAL)
-#define STUDIOLIGHT_ORIENTATIONS_MATERIAL_MODE (STUDIOLIGHT_ORIENTATION_WORLD)
-#define STUDIOLIGHT_ORIENTATIONS_SOLID (STUDIOLIGHT_INTERNAL | STUDIOLIGHT_ORIENTATION_CAMERA | STUDIOLIGHT_ORIENTATION_WORLD)
+#define STUDIOLIGHT_FLAG_ORIENTATIONS (STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_TYPE_MATCAP)
+#define STUDIOLIGHT_ORIENTATIONS_MATERIAL_MODE (STUDIOLIGHT_TYPE_WORLD)
+#define STUDIOLIGHT_ORIENTATIONS_SOLID (STUDIOLIGHT_INTERNAL | STUDIOLIGHT_TYPE_STUDIO)
 
 typedef void StudioLightFreeFunction(struct StudioLight *, void *data);
 
@@ -121,6 +116,8 @@ typedef struct StudioLight {
 	ImBuf *radiance_cubemap_buffers[6];
 	struct GPUTexture *equirect_radiance_gputexture;
 	struct GPUTexture *equirect_irradiance_gputexture;
+	SolidLight light[STUDIOLIGHT_MAX_LIGHT];
+	float light_ambient[3];
 
 	/*
 	 * Free function to clean up the running icons previews (wmJob) the usage is in
@@ -135,12 +132,14 @@ void BKE_studiolight_init(void);
 void BKE_studiolight_free(void);
 struct StudioLight *BKE_studiolight_find(const char *name, int flag);
 struct StudioLight *BKE_studiolight_findindex(int index, int flag);
-struct StudioLight *BKE_studiolight_find_first(int flag);
+struct StudioLight *BKE_studiolight_find_default(int flag);
 void BKE_studiolight_preview(uint *icon_buffer, StudioLight *sl, int icon_id_type);
 struct ListBase *BKE_studiolight_listbase(void);
 void BKE_studiolight_ensure_flag(StudioLight *sl, int flag);
 void BKE_studiolight_refresh(void);
-StudioLight *BKE_studiolight_new(const char *path, int orientation);
+StudioLight *BKE_studiolight_load(const char *path, int orientation);
+StudioLight *BKE_studiolight_create(const char *path, const SolidLight light[4], const float light_ambient[3]);
+StudioLight *BKE_studiolight_studio_edit_get(void);
 void BKE_studiolight_remove(StudioLight *sl);
 void BKE_studiolight_set_free_function(StudioLight *sl, StudioLightFreeFunction *free_function, void *data);
 void BKE_studiolight_unset_icon_id(StudioLight *sl, int icon_id);

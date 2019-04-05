@@ -812,7 +812,7 @@ static ShaderNode *add_node(Scene *scene,
 	else if(b_node.is_a(&RNA_ShaderNodeTexCoord)) {
 		BL::ShaderNodeTexCoord b_tex_coord_node(b_node);
 		TextureCoordinateNode *tex_coord = new TextureCoordinateNode();
-		tex_coord->from_dupli = b_tex_coord_node.from_dupli();
+		tex_coord->from_dupli = b_tex_coord_node.from_instancer();
 		if(b_tex_coord_node.object()) {
 			tex_coord->use_transform = true;
 			tex_coord->ob_tfm = get_transform(b_tex_coord_node.object().matrix_world());
@@ -865,7 +865,7 @@ static ShaderNode *add_node(Scene *scene,
 		BL::ShaderNodeUVMap b_uvmap_node(b_node);
 		UVMapNode *uvm = new UVMapNode();
 		uvm->attribute = b_uvmap_node.uv_map();
-		uvm->from_dupli = b_uvmap_node.from_dupli();
+		uvm->from_dupli = b_uvmap_node.from_instancer();
 		node = uvm;
 	}
 	else if(b_node.is_a(&RNA_ShaderNodeTexPointDensity)) {
@@ -1050,13 +1050,18 @@ static void add_nodes(Scene *scene,
 				graph->add(proxy);
 			}
 		}
-		else if(b_node->is_a(&RNA_ShaderNodeGroup) || b_node->is_a(&RNA_NodeCustomGroup)) {
+		else if(b_node->is_a(&RNA_ShaderNodeGroup) ||
+		        b_node->is_a(&RNA_NodeCustomGroup) ||
+		        b_node->is_a(&RNA_ShaderNodeCustomGroup)) {
 
 			BL::ShaderNodeTree b_group_ntree(PointerRNA_NULL);
 			if(b_node->is_a(&RNA_ShaderNodeGroup))
 				b_group_ntree = BL::ShaderNodeTree(((BL::NodeGroup)(*b_node)).node_tree());
-			else
+			else if (b_node->is_a(&RNA_NodeCustomGroup))
 				b_group_ntree = BL::ShaderNodeTree(((BL::NodeCustomGroup)(*b_node)).node_tree());
+			else
+				b_group_ntree = BL::ShaderNodeTree(((BL::ShaderNodeCustomGroup)(*b_node)).node_tree());
+
 			ProxyMap group_proxy_input_map, group_proxy_output_map;
 
 			/* Add a proxy node for each socket

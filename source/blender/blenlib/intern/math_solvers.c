@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2015 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * ***** END GPL LICENSE BLOCK *****
  * */
 
-/** \file blender/blenlib/intern/math_solvers.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "MEM_guardedalloc.h"
@@ -41,7 +35,7 @@
 /**
  * \brief Compute the eigen values and/or vectors of given 3D symmetric (aka adjoint) matrix.
  *
- * \param m3 the 3D symmetric matrix.
+ * \param m3: the 3D symmetric matrix.
  * \return r_eigen_values the computed eigen values (NULL if not needed).
  * \return r_eigen_vectors the computed eigen vectors (NULL if not needed).
  */
@@ -63,7 +57,7 @@ bool BLI_eigen_solve_selfadjoint_m3(const float m3[3][3], float r_eigen_values[3
 /**
  * \brief Compute the SVD (Singular Values Decomposition) of given 3D  matrix (m3 = USV*).
  *
- * \param m3 the matrix to decompose.
+ * \param m3: the matrix to decompose.
  * \return r_U the computed left singular vector of \a m3 (NULL if not needed).
  * \return r_S the computed singular values of \a m3 (NULL if not needed).
  * \return r_V the computed right singular vector of \a m3 (NULL if not needed).
@@ -82,20 +76,22 @@ void BLI_svd_m3(const float m3[3][3], float r_U[3][3], float r_S[3], float r_V[3
  *
  * Ignores a[0] and c[count-1]. Uses the Thomas algorithm, e.g. see wiki.
  *
- * \param r_x output vector, may be shared with any of the input ones
+ * \param r_x: output vector, may be shared with any of the input ones
  * \return true if success
  */
 bool BLI_tridiagonal_solve(const float *a, const float *b, const float *c, const float *d, float *r_x, const int count)
 {
-	if (count < 1)
+	if (count < 1) {
 		return false;
+	}
 
 	size_t bytes = sizeof(double) * (unsigned)count;
 	double *c1 = (double *)MEM_mallocN(bytes * 2, "tridiagonal_c1d1");
 	double *d1 = c1 + count;
 
-	if (!c1)
+	if (!c1) {
 		return false;
+	}
 
 	int i;
 	double c_prev, d_prev, x_prev;
@@ -130,13 +126,14 @@ bool BLI_tridiagonal_solve(const float *a, const float *b, const float *c, const
 /**
  * \brief Solve a possibly cyclic tridiagonal system using the Sherman-Morrison formula.
  *
- * \param r_x output vector, may be shared with any of the input ones
+ * \param r_x: output vector, may be shared with any of the input ones
  * \return true if success
  */
 bool BLI_tridiagonal_solve_cyclic(const float *a, const float *b, const float *c, const float *d, float *r_x, const int count)
 {
-	if (count < 1)
+	if (count < 1) {
 		return false;
+	}
 
 	float a0 = a[0], cN = c[count - 1];
 
@@ -149,8 +146,9 @@ bool BLI_tridiagonal_solve_cyclic(const float *a, const float *b, const float *c
 	float *tmp = (float *)MEM_mallocN(bytes * 2, "tridiagonal_ex");
 	float *b2 = tmp + count;
 
-	if (!tmp)
+	if (!tmp) {
 		return false;
+	}
 
 	/* prepare the noncyclic system; relies on tridiagonal_solve ignoring values */
 	memcpy(b2, b, bytes);
@@ -183,16 +181,15 @@ bool BLI_tridiagonal_solve_cyclic(const float *a, const float *b, const float *c
 /**
  * \brief Solve a generic f(x) = 0 equation using Newton's method.
  *
- * \param func_delta Callback computing the value of f(x).
- * \param func_jacobian Callback computing the Jacobian matrix of the function at x.
- * \param func_correction Callback for forcing the search into an arbitrary custom domain. May be NULL.
- * \param userdata Data for the callbacks.
- * \param epsilon Desired precision.
- * \param max_iterations Limit on the iterations.
- * \param max_corrections Limit on the number of times the correction callback can fire before giving up.
- * \param trace Enables logging to console.
- * \param x_init Initial solution vector.
- * \param result Final result.
+ * \param func_delta: Callback computing the value of f(x).
+ * \param func_jacobian: Callback computing the Jacobian matrix of the function at x.
+ * \param func_correction: Callback for forcing the search into an arbitrary custom domain. May be NULL.
+ * \param userdata: Data for the callbacks.
+ * \param epsilon: Desired precision.
+ * \param max_iterations: Limit on the iterations.
+ * \param trace: Enables logging to console.
+ * \param x_init: Initial solution vector.
+ * \param result: Final result.
  * \return true if success
  */
 bool BLI_newton3d_solve(

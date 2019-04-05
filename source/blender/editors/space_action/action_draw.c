@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_action/action_draw.c
- *  \ingroup spaction
+/** \file
+ * \ingroup spaction
  */
 
 
@@ -55,7 +47,6 @@
 
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
 
-#include "BIF_gl.h"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
@@ -137,7 +128,9 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *ar)
 			    IN_RANGE(ymaxc, v2d->cur.ymin, v2d->cur.ymax) )
 			{
 				/* draw all channels using standard channel-drawing API */
-				ANIM_channel_draw_widgets(C, ac, ale, block, yminc, ymaxc, channel_index);
+				rctf channel_rect;
+				BLI_rctf_init(&channel_rect, 0, v2d->cur.xmax, yminc, ymaxc);
+				ANIM_channel_draw_widgets(C, ac, ale, block, &channel_rect, channel_index);
 			}
 
 			/* adjust y-position for next one */

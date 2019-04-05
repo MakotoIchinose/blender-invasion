@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung (full recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/keyingsets.c
- *  \ingroup edanimation
+/** \file
+ * \ingroup edanimation
  */
 
 
@@ -615,7 +607,7 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *ksi)
 			BKE_keyingset_free(ks);
 			BLI_remlink(&builtin_keyingsets, ks);
 
-			for (scene = bmain->scene.first; scene; scene = scene->id.next)
+			for (scene = bmain->scenes.first; scene; scene = scene->id.next)
 				BLI_remlink_safe(&scene->keyingsets, ks);
 
 			MEM_freeN(ks);
@@ -962,6 +954,7 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, bAction *act, KeyingSe
 	Scene *scene = CTX_data_scene(C);
 	ReportList *reports = CTX_wm_reports(C);
 	KS_Path *ksp;
+	ListBase nla_cache = {NULL, NULL};
 	const short base_kflags = ANIM_get_keyframing_flags(scene, 1);
 	const char *groupname = NULL;
 	short kflag = 0, success = 0;
@@ -1025,7 +1018,8 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, bAction *act, KeyingSe
 			RNA_id_pointer_create(ksp->id, &id_ptr);
 			if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
 				arraylen = RNA_property_array_length(&ptr, prop);
-				i = 0;  /* start from start of array, instead of the previously specified index - T48020 */
+				/* start from start of array, instead of the previously specified index - T48020 */
+				i = 0;
 			}
 		}
 
@@ -1039,7 +1033,7 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, bAction *act, KeyingSe
 		for (; i < arraylen; i++) {
 			/* action to take depends on mode */
 			if (mode == MODIFYKEY_MODE_INSERT)
-				success += insert_keyframe(bmain, depsgraph, reports, ksp->id, act, groupname, ksp->rna_path, i, cfra, keytype, kflag2);
+				success += insert_keyframe(bmain, depsgraph, reports, ksp->id, act, groupname, ksp->rna_path, i, cfra, keytype, &nla_cache, kflag2);
 			else if (mode == MODIFYKEY_MODE_DELETE)
 				success += delete_keyframe(bmain, reports, ksp->id, act, groupname, ksp->rna_path, i, cfra, kflag2);
 		}
@@ -1051,17 +1045,19 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, bAction *act, KeyingSe
 				Object *ob = (Object *)ksp->id;
 
 				// XXX: only object transforms?
-				DEG_id_tag_update(&ob->id, OB_RECALC_OB | OB_RECALC_DATA);
+				DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 				break;
 			}
 			default:
-				DEG_id_tag_update(ksp->id, DEG_TAG_COPY_ON_WRITE);
+				DEG_id_tag_update(ksp->id, ID_RECALC_ANIMATION_NO_FLUSH);
 				break;
 		}
 
 		/* send notifiers for updates (this doesn't require context to work!) */
 		WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_ADDED, NULL);
 	}
+
+	BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
 	/* return the number of channels successfully affected */
 	return success;

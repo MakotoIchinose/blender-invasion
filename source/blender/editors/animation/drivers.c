@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung (full recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/drivers.c
- *  \ingroup edanimation
+/** \file
+ * \ingroup edanimation
  */
 
 
@@ -329,7 +321,8 @@ int ANIM_add_driver_with_target(
 
 	/* handle curve-property mappings based on mapping_type */
 	switch (mapping_type) {
-		case CREATEDRIVER_MAPPING_N_N: /* N-N - Try to match as much as possible, then use the first one */
+		case CREATEDRIVER_MAPPING_N_N: /* N-N - Try to match as much as possible,
+		                                * then use the first one */
 		{
 			/* Use the shorter of the two (to avoid out of bounds access) */
 			int dst_len = (RNA_property_array_check(prop)) ? RNA_property_array_length(&ptr, prop) : 1;
@@ -772,7 +765,7 @@ EnumPropertyItem prop_driver_create_mapping_types[] = {
 	 "Create drivers for all properties without assigning any targets yet"},
 	{CREATEDRIVER_MAPPING_NONE,     "NONE_SINGLE", 0, "Manually Create Later (Single)",
 	 "Create driver for this property only and without assigning any targets yet"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* Filtering callback for driver mapping types enum */
@@ -944,7 +937,7 @@ static int add_driver_button_invoke(bContext *C, wmOperator *op, const wmEvent *
 		if (success) {
 			/* send updates */
 			UI_context_update_anim_flag(C);
-			DEG_id_tag_update(ptr.id.data, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(ptr.id.data, ID_RECALC_COPY_ON_WRITE);
 			DEG_relations_tag_update(CTX_data_main(C));
 			WM_event_add_notifier(C, NC_ANIMATION | ND_FCURVES_ORDER, NULL);
 		}
@@ -1126,7 +1119,7 @@ static int paste_driver_button_exec(bContext *C, wmOperator *op)
 			UI_context_update_anim_flag(C);
 
 			DEG_relations_tag_update(CTX_data_main(C));
-			DEG_id_tag_update(ptr.id.data, OB_RECALC_OB | OB_RECALC_DATA);
+			DEG_id_tag_update(ptr.id.data, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
 			WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);  // XXX
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory, Sukhitha Jayathilake
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/ControllerExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #include "COLLADASWBaseInputElement.h"
@@ -196,11 +189,11 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
 	}
 
 	me = bc_get_mesh_copy(
-				blender_context,
-				ob,
-				this->export_settings->export_mesh_type,
-				this->export_settings->apply_modifiers,
-				this->export_settings->triangulate);
+	        blender_context,
+	        ob,
+	        this->export_settings->export_mesh_type,
+	        this->export_settings->apply_modifiers,
+	        this->export_settings->triangulate);
 
 	std::string controller_name = id_name(ob_arm);
 	std::string controller_id = get_controller_id(ob_arm, ob);

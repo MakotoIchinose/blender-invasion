@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): 2007, Joshua Leung, major recode
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/constraint.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -87,6 +79,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "CLG_log.h"
+
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
@@ -101,6 +95,8 @@
 /* Constraint Target Macros */
 #define VALID_CONS_TARGET(ct) ((ct) && (ct->tar))
 
+static CLG_LogRef LOG = {"bke.constraint"};
+
 /* ************************ Constraints - General Utilities *************************** */
 /* These functions here don't act on any specific constraints, and are therefore should/will
  * not require any of the special function-pointers afforded by the relevant constraint
@@ -110,6 +106,7 @@
 static void damptrack_do_transform(float matrix[4][4], const float tarvec[3], int track_axis);
 
 static bConstraint *constraint_find_original(Object *ob, bPoseChannel *pchan, bConstraint *con, Object **r_orig_ob);
+static bConstraint *constraint_find_original_for_update(bConstraintOb *cob, bConstraint *con);
 
 /* -------------- Naming -------------- */
 
@@ -468,7 +465,7 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
 
 	/* derive the rotation from the average normal:
 	 * - code taken from transform_gizmo.c,
-	 *   calc_gizmo_stats, V3D_MANIP_NORMAL case
+	 *   calc_gizmo_stats, V3D_ORIENT_NORMAL case
 	 */
 	/*	we need the transpose of the inverse for a normal... */
 	copy_m3_m4(imat, ob->obmat);
@@ -1093,7 +1090,7 @@ static void trackto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
 		float size[3], vec[3];
 		float totmat[3][3];
 
-		/* Get size property, since ob->size is only the object's own relative size, not its global one */
+		/* Get size property, since ob->scale is only the object's own relative size, not its global one */
 		mat4_to_size(size, cob->matrix);
 
 		/* Clear the object's rotation */
@@ -2058,7 +2055,7 @@ static void pycon_get_tarmat(struct Depsgraph *UNUSED(depsgraph),
 
 		/* only execute target calculation if allowed */
 #ifdef WITH_PYTHON
-		if (G.f & G_SCRIPT_AUTOEXEC)
+		if (G.f & G_FLAG_SCRIPT_AUTOEXEC)
 			BPY_pyconstraint_target(data, ct);
 #endif
 	}
@@ -2075,7 +2072,7 @@ static void pycon_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targe
 	bPythonConstraint *data = con->data;
 
 	/* only evaluate in python if we're allowed to do so */
-	if ((G.f & G_SCRIPT_AUTOEXEC) == 0) return;
+	if ((G.f & G_FLAG_SCRIPT_AUTOEXEC) == 0) return;
 
 	/* Now, run the actual 'constraint' function, which should only access the matrices */
 	BPY_pyconstraint_exec(data, cob, targets);
@@ -2819,8 +2816,18 @@ static void distlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
 		dist = len_v3v3(cob->matrix[3], ct->matrix[3]);
 
 		/* set distance (flag is only set when user demands it) */
-		if (data->dist == 0)
+		if (data->dist == 0) {
 			data->dist = dist;
+
+			/* Write the computed distance back to the master copy if in COW evaluation. */
+			bConstraint *orig_con = constraint_find_original_for_update(cob, con);
+
+			if (orig_con != NULL) {
+				bDistLimitConstraint *orig_data = orig_con->data;
+
+				orig_data->dist = data->dist;
+			}
+		}
 
 		/* check if we're which way to clamp from, and calculate interpolation factor (if needed) */
 		if (data->mode == LIMITDIST_OUTSIDE) {
@@ -2973,17 +2980,12 @@ static void stretchto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
 			data->orglength = dist;
 
 			/* Write the computed length back to the master copy if in COW evaluation. */
-			if (DEG_is_active(cob->depsgraph)) {
-				Object *orig_ob = NULL;
-				bConstraint *orig_con = constraint_find_original(cob->ob, cob->pchan, con, &orig_ob);
+			bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
-				if (orig_con != NULL) {
-					bStretchToConstraint *orig_data = orig_con->data;
+			if (orig_con != NULL) {
+				bStretchToConstraint *orig_data = orig_con->data;
 
-					orig_data->orglength = data->orglength;
-
-					DEG_id_tag_update(&orig_ob->id, DEG_TAG_COPY_ON_WRITE | DEG_TAG_TRANSFORM);
-				}
+				orig_data->orglength = data->orglength;
 			}
 		}
 
@@ -4241,7 +4243,7 @@ static void followtrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase 
 				translate_m4(cob->matrix, track->bundle_pos[0], track->bundle_pos[1], track->bundle_pos[2]);
 			}
 			else {
-				BKE_tracking_get_camera_object_matrix(depsgraph, cob->scene, camob_eval, mat);
+				BKE_tracking_get_camera_object_matrix(cob->scene, camob_eval, mat);
 
 				mul_m4_m4m4(cob->matrix, obmat, mat);
 				translate_m4(cob->matrix, track->bundle_pos[0], track->bundle_pos[1], track->bundle_pos[2]);
@@ -4253,7 +4255,7 @@ static void followtrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase 
 		float aspect = (scene->r.xsch * scene->r.xasp) / (scene->r.ysch * scene->r.yasp);
 		float len, d;
 
-		BKE_object_where_is_calc_mat4(depsgraph, scene, camob_eval, mat);
+		BKE_object_where_is_calc_mat4(camob_eval, mat);
 
 		/* camera axis */
 		vec[0] = 0.0f;
@@ -4515,7 +4517,7 @@ static void objectsolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase
 			float ctime = DEG_get_ctime(depsgraph);
 			float framenr = BKE_movieclip_remap_scene_to_clip_frame(clip, ctime);
 
-			BKE_object_where_is_calc_mat4(depsgraph, scene, camob, cammat);
+			BKE_object_where_is_calc_mat4(camob, cammat);
 
 			BKE_tracking_camera_get_reconstructed_interpolate(tracking, object, framenr, mat);
 
@@ -4570,10 +4572,12 @@ static void transformcache_evaluate(bConstraint *con, bConstraintOb *cob, ListBa
 	const float frame = DEG_get_ctime(cob->depsgraph);
 	const float time = BKE_cachefile_time_offset(cache_file, frame, FPS);
 
-	BKE_cachefile_ensure_handle(G.main, cache_file);
+	/* Must always load ABC handle on original. */
+	CacheFile *cache_file_orig = (CacheFile *)DEG_get_original_id(&cache_file->id);
+	BKE_cachefile_ensure_handle(G.main, cache_file_orig);
 
 	if (!data->reader) {
-		data->reader = CacheReader_open_alembic_object(cache_file->handle,
+		data->reader = CacheReader_open_alembic_object(cache_file_orig->handle,
 		                                               data->reader,
 		                                               cob->ob,
 		                                               data->object_path);
@@ -4700,7 +4704,7 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type)
 		return constraintsTypeInfo[type];
 	}
 	else {
-		printf("No valid constraint type-info data available. Type = %i\n", type);
+		CLOG_WARN(&LOG, "No valid constraint type-info data available. Type = %i", type);
 	}
 
 	return NULL;
@@ -5138,6 +5142,23 @@ static bConstraint *constraint_find_original(Object *ob, bPoseChannel *pchan, bC
 	}
 
 	return NULL;
+}
+
+static bConstraint *constraint_find_original_for_update(bConstraintOb *cob, bConstraint *con)
+{
+	/* Write the computed distance back to the master copy if in COW evaluation. */
+	if (!DEG_is_active(cob->depsgraph)) {
+		return NULL;
+	}
+
+	Object *orig_ob = NULL;
+	bConstraint *orig_con = constraint_find_original(cob->ob, cob->pchan, con, &orig_ob);
+
+	if (orig_con != NULL) {
+		DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM);
+	}
+
+	return orig_con;
 }
 
 /* -------- Constraints and Proxies ------- */

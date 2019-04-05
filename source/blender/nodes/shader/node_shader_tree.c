@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,16 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s):
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/shader/node_shader_tree.c
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 
 #include <string.h>
 
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
@@ -44,6 +36,7 @@
 #include "BLI_listbase.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "BLI_alloca.h"
 
 #include "BLT_translation.h"
 
@@ -66,8 +59,11 @@
 #include "node_shader_util.h"
 
 
-static void ntree_shader_tag_ssr_node(bNodeTree *ntree, bNode *output_node);
-static void ntree_shader_tag_sss_node(bNodeTree *ntree, bNode *output_node);
+typedef struct nTreeTags {
+	float ssr_id, sss_id;
+} nTreeTags;
+
+static void ntree_shader_tag_nodes(bNodeTree *ntree, bNode *output_node, nTreeTags *tags);
 
 static bool shader_tree_poll(const bContext *C, bNodeTreeType *UNUSED(treetype))
 {
@@ -92,7 +88,7 @@ static void shader_get_from_context(const bContext *C, bNodeTreeType *UNUSED(tre
 			*r_from = &ob->id;
 			if (ob->type == OB_LAMP) {
 				*r_id = ob->data;
-				*r_ntree = ((Lamp *)ob->data)->nodetree;
+				*r_ntree = ((Light *)ob->data)->nodetree;
 			}
 			else {
 				Material *ma = give_current_material(ob, ob->actcol);
@@ -147,7 +143,7 @@ static void localize(bNodeTree *localtree, bNodeTree *UNUSED(ntree))
 
 		if (node->flag & NODE_MUTED || node->type == NODE_REROUTE) {
 			nodeInternalRelink(localtree, node);
-			nodeFreeNode(localtree, node);
+			ntreeFreeLocalNode(localtree, node);
 		}
 	}
 }
@@ -182,9 +178,9 @@ void register_node_tree_type_sh(void)
 
 	tt->type = NTREE_SHADER;
 	strcpy(tt->idname, "ShaderNodeTree");
-	strcpy(tt->ui_name, "Shader Editor");
+	strcpy(tt->ui_name, N_("Shader Editor"));
 	tt->ui_icon = 0;    /* defined in drawnode.c */
-	strcpy(tt->ui_description, "Shader nodes");
+	strcpy(tt->ui_description, N_("Shader nodes"));
 
 	tt->foreach_nodeclass = foreach_nodeclass;
 	tt->localize = localize;
@@ -206,6 +202,113 @@ static void ntree_shader_link_builtin_normal(bNodeTree *ntree,
                                              bNodeSocket *socket_from,
                                              bNode *displacement_node,
                                              bNodeSocket *displacement_socket);
+
+static bNodeSocket *ntree_shader_node_find_input(bNode *node,
+                                                 const char *identifier);
+
+static bNode *ntree_group_output_node(bNodeTree *ntree);
+
+static bNode *ntree_shader_relink_output_from_group(bNodeTree *ntree,
+                                                    bNode *group_node,
+                                                    bNode *sh_output_node,
+                                                    int target)
+{
+	int i;
+	bNodeTree *group_ntree = (bNodeTree *)group_node->id;
+
+	int sock_len = BLI_listbase_count(&sh_output_node->inputs);
+	bNodeSocket **group_surface_sockets = BLI_array_alloca(group_surface_sockets, sock_len);
+
+	/* Create output sockets to plug output connection to. */
+	i = 0;
+	for (bNodeSocket *sock = sh_output_node->inputs.first; sock; sock = sock->next, ++i) {
+		group_surface_sockets[i] =
+		        ntreeAddSocketInterface(group_ntree,
+		                                SOCK_OUT,
+		                                sock->typeinfo->idname,
+		                                sock->name);
+	}
+
+	bNode *group_output_node = ntree_group_output_node(group_ntree);
+
+	/* If no group output node is present, we need to create one. */
+	if (group_output_node == NULL) {
+		group_output_node = nodeAddStaticNode(NULL, group_ntree, NODE_GROUP_OUTPUT);
+	}
+
+	/* Need to update tree so all node instances nodes gets proper sockets. */
+	node_group_verify(ntree, group_node, &group_ntree->id);
+	node_group_output_verify(group_ntree, group_output_node, &group_ntree->id);
+	ntreeUpdateTree(G.main, group_ntree);
+
+	/* Remove other shader output nodes so that only the new one can be selected as active. */
+	for (bNode *node = ntree->nodes.first; node; node = node->next) {
+		if (ELEM(node->type, SH_NODE_OUTPUT_MATERIAL,
+		                     SH_NODE_OUTPUT_WORLD,
+		                     SH_NODE_OUTPUT_LIGHT))
+		{
+			ntreeFreeLocalNode(ntree, node);
+		}
+	}
+
+	/* Create new shader output node outside the group. */
+	bNode *new_output_node = nodeAddStaticNode(NULL, ntree, sh_output_node->type);
+	new_output_node->custom1 = target;
+
+	i = 0;
+	for (bNodeSocket *sock = sh_output_node->inputs.first; sock; sock = sock->next, ++i) {
+		if (sock->link != NULL) {
+			/* Link the shader output node incoming link to the group output sockets */
+			bNodeSocket *group_output_node_surface_input_sock = nodeFindSocket(group_output_node,
+			                                                                   SOCK_IN,
+			                                                                   group_surface_sockets[i]->identifier);
+			nodeAddLink(group_ntree,
+			            sock->link->fromnode, sock->link->fromsock,
+			            group_output_node, group_output_node_surface_input_sock);
+
+			/* Link the group output sockets to the new shader output node. */
+			bNodeSocket *group_node_surface_output = nodeFindSocket(group_node,
+			                                                        SOCK_OUT,
+			                                                        group_surface_sockets[i]->identifier);
+			bNodeSocket *output_node_surface_input = ntree_shader_node_find_input(new_output_node, sock->name);
+
+			nodeAddLink(ntree,
+			            group_node, group_node_surface_output,
+			            new_output_node, output_node_surface_input);
+		}
+	}
+
+	ntreeUpdateTree(G.main, group_ntree);
+	ntreeUpdateTree(G.main, ntree);
+
+	return new_output_node;
+}
+
+static bNode *ntree_shader_output_node_from_group(bNodeTree *ntree, int target)
+{
+	bNode *output_node = NULL;
+
+	/* Search if node groups do not contain valid output nodes (recursively). */
+	for (bNode *node = ntree->nodes.first; node; node = node->next) {
+		if (!ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
+			continue;
+		}
+		if (node->id != NULL) {
+			output_node = ntree_shader_output_node_from_group((bNodeTree *)node->id, target);
+
+			if (output_node == NULL) {
+				output_node = ntreeShaderOutputNode((bNodeTree *)node->id, target);
+			}
+
+			if (output_node != NULL) {
+				/* Output is inside this group node. Create relink to make the output outside the group. */
+				output_node = ntree_shader_relink_output_from_group(ntree, node, output_node, target);
+				break;
+			}
+		}
+	}
+	return output_node;
+}
 
 /* Find an output node of the shader tree.
  *
@@ -342,13 +445,15 @@ static void ntree_shader_groups_expand_inputs(bNodeTree *localtree)
 {
 	bNode *value_node, *group_node;
 	bNodeSocket *value_socket;
+	bNodeSocketValueVector *src_vector;
 	bNodeSocketValueRGBA *src_rgba, *dst_rgba;
 	bNodeSocketValueFloat *src_float, *dst_float;
+	bNodeSocketValueInt *src_int;
 	bool link_added = false;
 
 	for (group_node = localtree->nodes.first; group_node; group_node = group_node->next) {
 
-		if (group_node->type != NODE_GROUP || group_node->id == NULL)
+		if (!(ELEM(group_node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) || group_node->id == NULL)
 			continue;
 
 		/* Do it recursively. */
@@ -365,6 +470,14 @@ static void ntree_shader_groups_expand_inputs(bNodeTree *localtree)
 
 			switch (group_socket->type) {
 				case SOCK_VECTOR:
+					value_node = nodeAddStaticNode(NULL, localtree, SH_NODE_RGB);
+					value_socket = ntree_shader_node_find_output(value_node, "Color");
+					BLI_assert(value_socket != NULL);
+					src_vector = group_socket->default_value;
+					dst_rgba = value_socket->default_value;
+					copy_v3_v3(dst_rgba->value, src_vector->value);
+					dst_rgba->value[3] = 1.0f; /* should never be read */
+					break;
 				case SOCK_RGBA:
 					value_node = nodeAddStaticNode(NULL, localtree, SH_NODE_RGB);
 					value_socket = ntree_shader_node_find_output(value_node, "Color");
@@ -372,6 +485,15 @@ static void ntree_shader_groups_expand_inputs(bNodeTree *localtree)
 					src_rgba = group_socket->default_value;
 					dst_rgba = value_socket->default_value;
 					copy_v4_v4(dst_rgba->value, src_rgba->value);
+					break;
+				case SOCK_INT:
+					/* HACK: Support as float. */
+					value_node = nodeAddStaticNode(NULL, localtree, SH_NODE_VALUE);
+					value_socket = ntree_shader_node_find_output(value_node, "Value");
+					BLI_assert(value_socket != NULL);
+					src_int = group_socket->default_value;
+					dst_float = value_socket->default_value;
+					dst_float->value = (float)(src_int->value);
 					break;
 				case SOCK_FLOAT:
 					value_node = nodeAddStaticNode(NULL, localtree, SH_NODE_VALUE);
@@ -552,7 +674,7 @@ static void ntree_shader_link_builtin_normal(bNodeTree *ntree,
 			/* Don't connect node itself! */
 			continue;
 		}
-		if (node->type == NODE_GROUP && node->id) {
+		if ((ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) && node->id) {
 			/* Special re-linking for group nodes. */
 			ntree_shader_link_builtin_group_normal(ntree,
 			                                       node,
@@ -633,29 +755,43 @@ static void ntree_shader_relink_displacement(bNodeTree *ntree, bNode *output_nod
 	ntreeUpdateTree(G.main, ntree);
 }
 
-static bool ntree_tag_ssr_bsdf_cb(bNode *fromnode, bNode *UNUSED(tonode), void *userdata, const bool UNUSED(reversed))
+static bool ntree_tag_bsdf_cb(bNode *fromnode, bNode *UNUSED(tonode), void *userdata, const bool UNUSED(reversed))
 {
+	/* Don't evaluate nodes more than once. */
+	if (fromnode->tmp_flag) {
+		return true;
+	}
+	fromnode->tmp_flag = 1;
+
 	switch (fromnode->type) {
 		case NODE_GROUP:
+		case NODE_CUSTOM_GROUP:
 			/* Recursive */
 			if (fromnode->id != NULL) {
 				bNodeTree *ntree = (bNodeTree *)fromnode->id;
 				bNode *group_output = ntree_group_output_node(ntree);
-				if (fromnode) {
-					ntree_shader_tag_ssr_node(ntree, group_output);
-				}
+				ntree_shader_tag_nodes(ntree, group_output, (nTreeTags *)userdata);
 			}
 			break;
 		case SH_NODE_BSDF_ANISOTROPIC:
 		case SH_NODE_EEVEE_SPECULAR:
-		case SH_NODE_BSDF_PRINCIPLED:
 		case SH_NODE_BSDF_GLOSSY:
 		case SH_NODE_BSDF_GLASS:
-			fromnode->ssr_id = (*(float *)userdata);
-			(*(float *)userdata) += 1;
+			fromnode->ssr_id = ((nTreeTags *)userdata)->ssr_id;
+			((nTreeTags *)userdata)->ssr_id += 1;
+			break;
+		case SH_NODE_SUBSURFACE_SCATTERING:
+			fromnode->sss_id = ((nTreeTags *)userdata)->sss_id;
+			((nTreeTags *)userdata)->sss_id += 1;
+			break;
+		case SH_NODE_BSDF_PRINCIPLED:
+			fromnode->ssr_id = ((nTreeTags *)userdata)->ssr_id;
+			fromnode->sss_id = ((nTreeTags *)userdata)->sss_id;
+			((nTreeTags *)userdata)->sss_id += 1;
+			((nTreeTags *)userdata)->ssr_id += 1;
 			break;
 		default:
-			/* We could return false here but since we (will)
+			/* We could return false here but since we
 			 * allow the use of Closure as RGBA, we can have
 			 * Bsdf nodes linked to other Bsdf nodes. */
 			break;
@@ -665,9 +801,9 @@ static bool ntree_tag_ssr_bsdf_cb(bNode *fromnode, bNode *UNUSED(tonode), void *
 }
 
 /* EEVEE: Scan the ntree to set the Screen Space Reflection
- * layer id of every specular node.
+ * layer id of every specular node AND the Subsurface Scattering id of every SSS node.
  */
-void ntree_shader_tag_ssr_node(bNodeTree *ntree, bNode *output_node)
+void ntree_shader_tag_nodes(bNodeTree *ntree, bNode *output_node, nTreeTags *tags)
 {
 	if (output_node == NULL) {
 		return;
@@ -675,54 +811,23 @@ void ntree_shader_tag_ssr_node(bNodeTree *ntree, bNode *output_node)
 	/* Make sure sockets links pointers are correct. */
 	ntreeUpdateTree(G.main, ntree);
 
-	float lobe_id = 1;
-	nodeChainIter(ntree, output_node, ntree_tag_ssr_bsdf_cb, &lobe_id, true);
-}
-
-static bool ntree_tag_sss_bsdf_cb(bNode *fromnode, bNode *UNUSED(tonode), void *userdata, const bool UNUSED(reversed))
-{
-	switch (fromnode->type) {
-		case NODE_GROUP:
-			/* Recursive */
-			if (fromnode->id != NULL) {
-				bNodeTree *ntree = (bNodeTree *)fromnode->id;
-				bNode *group_output = ntree_group_output_node(ntree);
-				if (fromnode) {
-					ntree_shader_tag_sss_node(ntree, group_output);
-				}
-			}
-			break;
-		case SH_NODE_BSDF_PRINCIPLED:
-		case SH_NODE_SUBSURFACE_SCATTERING:
-			fromnode->sss_id = (*(float *)userdata);
-			(*(float *)userdata) += 1;
-			break;
-		default:
-			break;
+	/* Reset visit flag. */
+	for (bNode *node = ntree->nodes.first; node; node = node->next) {
+		node->tmp_flag = 0;
 	}
 
-	return true;
-}
-
-/* EEVEE: Scan the ntree to set the Subsurface Scattering id of every SSS node.
- */
-void ntree_shader_tag_sss_node(bNodeTree *ntree, bNode *output_node)
-{
-	if (output_node == NULL) {
-		return;
-	}
-	/* Make sure sockets links pointers are correct. */
-	ntreeUpdateTree(G.main, ntree);
-
-	float sss_id = 1;
-	nodeChainIter(ntree, output_node, ntree_tag_sss_bsdf_cb, &sss_id, true);
+	nodeChainIter(ntree, output_node, ntree_tag_bsdf_cb, tags, true);
 }
 
 /* This one needs to work on a local tree. */
 void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, bool *has_surface_output, bool *has_volume_output)
 {
-	bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
 	bNodeTreeExec *exec;
+
+	/* Extract output nodes from inside nodegroups. */
+	ntree_shader_output_node_from_group(localtree, SHD_OUTPUT_EEVEE);
+
+	bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
 
 	ntree_shader_groups_expand_inputs(localtree);
 
@@ -731,11 +836,15 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, bool *has_sur
 	 */
 	ntree_shader_relink_displacement(localtree, output);
 
-	ntree_shader_tag_ssr_node(localtree, output);
-	ntree_shader_tag_sss_node(localtree, output);
+	/* TODO(fclem): consider moving this to the gpu shader tree evaluation. */
+	nTreeTags tags = {
+		.ssr_id = 1.0,
+		.sss_id = 1.0,
+	};
+	ntree_shader_tag_nodes(localtree, output, &tags);
 
 	exec = ntreeShaderBeginExecTree(localtree);
-	ntreeExecGPUNodes(exec, mat, 1);
+	ntreeExecGPUNodes(exec, mat, output);
 	ntreeShaderEndExecTree(exec);
 
 	/* EEVEE: Find which material domain was used (volume, surface ...). */

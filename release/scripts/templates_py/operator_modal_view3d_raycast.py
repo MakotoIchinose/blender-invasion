@@ -23,7 +23,7 @@ def main(context, event):
             if obj.type == 'MESH':
                 yield (obj, obj.matrix_world.copy())
 
-            if obj.dupli_type != 'NONE':
+            if obj.instance_type != 'NONE':
                 obj.dupli_list_create(scene)
                 for dob in obj.dupli_list:
                     obj_dupli = dob.object
@@ -58,7 +58,7 @@ def main(context, event):
             hit, normal, face_index = obj_ray_cast(obj, matrix)
             if hit is not None:
                 hit_world = matrix @ hit
-                scene.cursor_location = hit_world
+                scene.cursor.location = hit_world
                 length_squared = (hit_world - ray_origin).length_squared
                 if best_obj is None or length_squared < best_length_squared:
                     best_length_squared = length_squared

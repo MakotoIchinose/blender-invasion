@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/transform/transform_gizmo_3d.c
- *  \ingroup edtransform
+/** \file
+ * \ingroup edtransform
  *
  * \name 3D Transform Gizmo
  *
@@ -40,6 +36,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 
+#include "BLI_array_utils.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -57,8 +54,6 @@
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
 #include "BKE_object.h"
-
-#include "BIF_gl.h"
 
 #include "DEG_depsgraph.h"
 
@@ -174,6 +169,11 @@ typedef struct GizmoGroup {
 	int twtype_init;
 	int twtype_prev;
 	int use_twtype_refresh;
+
+	/* Only for view orientation. */
+	struct {
+		float viewinv_m3[3][3];
+	} prev;
 
 	struct wmGizmo *gizmos[MAN_AXIS_LAST];
 } GizmoGroup;
@@ -448,6 +448,17 @@ static void gizmo_get_axis_constraint(const int axis_idx, bool r_axis[3])
 
 /* **************** Preparation Stuff **************** */
 
+static void reset_tw_center(struct TransformBounds *tbounds)
+{
+	INIT_MINMAX(tbounds->min, tbounds->max);
+	zero_v3(tbounds->center);
+
+	for (int i = 0; i < 3; i++) {
+		tbounds->axis_min[i] = +FLT_MAX;
+		tbounds->axis_max[i] = -FLT_MAX;
+	}
+}
+
 /* transform widget center calc helper for below */
 static void calc_tw_center(struct TransformBounds *tbounds, const float co[3])
 {
@@ -621,28 +632,30 @@ void ED_transform_calc_orientation_from_type(
 	Object *obedit = CTX_data_edit_object(C);
 	RegionView3D *rv3d = ar->regiondata;
 	Object *ob = OBACT(view_layer);
-	const short orientation_type = scene->orientation_type;
+	const short orientation_type = scene->orientation_slots[SCE_ORIENT_DEFAULT].type;
+	const short orientation_index_custom = scene->orientation_slots[SCE_ORIENT_DEFAULT].index_custom;
 	const int pivot_point = scene->toolsettings->transform_pivot_point;
 
 	ED_transform_calc_orientation_from_type_ex(
 	        C, r_mat,
-	        scene, rv3d, ob, obedit, orientation_type, pivot_point);
+	        scene, rv3d, ob, obedit, orientation_type, orientation_index_custom, pivot_point);
 }
 
 void ED_transform_calc_orientation_from_type_ex(
         const bContext *C, float r_mat[3][3],
         /* extra args (can be accessed from context) */
         Scene *scene, RegionView3D *rv3d, Object *ob, Object *obedit,
-        const short orientation_type, const int pivot_point)
+        const short orientation_type, int orientation_index_custom,
+        const int pivot_point)
 {
 	bool ok = false;
 
 	switch (orientation_type) {
-		case V3D_MANIP_GLOBAL:
+		case V3D_ORIENT_GLOBAL:
 		{
 			break; /* nothing to do */
 		}
-		case V3D_MANIP_GIMBAL:
+		case V3D_ORIENT_GIMBAL:
 		{
 			if (gimbal_axis(ob, r_mat)) {
 				ok = true;
@@ -651,7 +664,7 @@ void ED_transform_calc_orientation_from_type_ex(
 			/* if not gimbal, fall through to normal */
 			ATTR_FALLTHROUGH;
 		}
-		case V3D_MANIP_NORMAL:
+		case V3D_ORIENT_NORMAL:
 		{
 			if (obedit || ob->mode & OB_MODE_POSE) {
 				ED_getTransformOrientationMatrix(C, r_mat, pivot_point);
@@ -661,7 +674,7 @@ void ED_transform_calc_orientation_from_type_ex(
 			/* no break we define 'normal' as 'local' in Object mode */
 			ATTR_FALLTHROUGH;
 		}
-		case V3D_MANIP_LOCAL:
+		case V3D_ORIENT_LOCAL:
 		{
 			if (ob->mode & OB_MODE_POSE) {
 				/* each bone moves on its own local axis, but  to avoid confusion,
@@ -677,7 +690,7 @@ void ED_transform_calc_orientation_from_type_ex(
 			ok = true;
 			break;
 		}
-		case V3D_MANIP_VIEW:
+		case V3D_ORIENT_VIEW:
 		{
 			if (rv3d != NULL) {
 				copy_m3_m4(r_mat, rv3d->viewinv);
@@ -686,16 +699,16 @@ void ED_transform_calc_orientation_from_type_ex(
 			}
 			break;
 		}
-		case V3D_MANIP_CURSOR:
+		case V3D_ORIENT_CURSOR:
 		{
 			ED_view3d_cursor3d_calc_mat3(scene, r_mat);
 			ok = true;
 			break;
 		}
-		case V3D_MANIP_CUSTOM:
+		case V3D_ORIENT_CUSTOM:
 		{
 			TransformOrientation *custom_orientation = BKE_scene_transform_orientation_find(
-			        scene, scene->orientation_index_custom);
+			        scene, orientation_index_custom);
 			if (applyTransformOrientation(custom_orientation, r_mat, NULL)) {
 				ok = true;
 			}
@@ -742,17 +755,19 @@ int ED_transform_calc_gizmo_stats(
 	/* global, local or normal orientation?
 	 * if we could check 'totsel' now, this should be skipped with no selection. */
 	if (ob) {
-		const short orientation_type = params->orientation_type ? (params->orientation_type - 1) : scene->orientation_type;
+		const short orientation_type = params->orientation_type ?
+			(params->orientation_type - 1) : scene->orientation_slots[SCE_ORIENT_DEFAULT].type;
+		const short orientation_index_custom = params->orientation_type ?
+			params->orientation_index_custom : scene->orientation_slots[SCE_ORIENT_DEFAULT].index_custom;
 		float mat[3][3];
 		ED_transform_calc_orientation_from_type_ex(
 		        C, mat,
-		        scene, rv3d, ob, obedit, orientation_type, pivot_point);
+		        scene, rv3d, ob, obedit, orientation_type, orientation_index_custom, pivot_point);
 		copy_m4_m3(rv3d->twmat, mat);
 	}
 
 	/* transform widget centroid/center */
-	INIT_MINMAX(tbounds->min, tbounds->max);
-	zero_v3(tbounds->center);
+	reset_tw_center(tbounds);
 
 	copy_m3_m4(tbounds->axis, rv3d->twmat);
 	if (params->use_local_axis && (ob && ob->mode & OB_MODE_EDIT)) {
@@ -764,16 +779,12 @@ int ED_transform_calc_gizmo_stats(
 		normalize_m3(tbounds->axis);
 	}
 
-	for (int i = 0; i < 3; i++) {
-		tbounds->axis_min[i] = +FLT_MAX;
-		tbounds->axis_max[i] = -FLT_MAX;
-	}
-
 	if (is_gp_edit) {
 		float diff_mat[4][4];
+		const bool use_mat_local = true;
 		for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 			/* only editable and visible layers are considered */
-			const bool use_mat_local = gpl->parent != NULL;
+
 			if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
 
 				/* calculate difference matrix */
@@ -826,220 +837,162 @@ int ED_transform_calc_gizmo_stats(
 
 		ob = obedit;
 		if (obedit->type == OB_MESH) {
-			BMEditMesh *em = BKE_editmesh_from_object(obedit);
-			BMEditSelection ese;
-			float vec[3] = {0, 0, 0};
+			FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
+				BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
+				BMesh *bm = em_iter->bm;
 
-			/* USE LAST SELECT WITH ACTIVE */
-			if ((pivot_point == V3D_AROUND_ACTIVE) && BM_select_history_active_get(em->bm, &ese)) {
-				BM_editselection_center(&ese, vec);
-				calc_tw_center(tbounds, vec);
-				totsel = 1;
-			}
-			else {
-				FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
-					BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
-					BMesh *bm = em_iter->bm;
+				if (bm->totvertsel == 0) {
+					continue;
+				}
 
-					if (bm->totvertsel == 0) {
-						continue;
-					}
+				BMVert *eve;
+				BMIter iter;
 
-					BMVert *eve;
-					BMIter iter;
+				float mat_local[4][4];
+				if (use_mat_local) {
+					mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
+				}
 
-					float mat_local[4][4];
-					if (use_mat_local) {
-						mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
-					}
-
-					BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-						if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
-							if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
-								calc_tw_center_with_matrix(tbounds, eve->co, use_mat_local, mat_local);
-								totsel++;
-							}
+				BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
+					if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
+						if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
+							calc_tw_center_with_matrix(tbounds, eve->co, use_mat_local, mat_local);
+							totsel++;
 						}
 					}
-				} FOREACH_EDIT_OBJECT_END();
-			}
+				}
+			} FOREACH_EDIT_OBJECT_END();
 		} /* end editmesh */
 		else if (obedit->type == OB_ARMATURE) {
-			bArmature *arm = obedit->data;
-			EditBone *ebo;
+			FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
+				bArmature *arm = ob_iter->data;
 
-			if ((pivot_point == V3D_AROUND_ACTIVE) && (ebo = arm->act_edbone)) {
-				/* doesn't check selection or visibility intentionally */
-				if (ebo->flag & BONE_TIPSEL) {
-					calc_tw_center(tbounds, ebo->tail);
-					totsel++;
+				float mat_local[4][4];
+				if (use_mat_local) {
+					mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
 				}
-				if ((ebo->flag & BONE_ROOTSEL) ||
-				    ((ebo->flag & BONE_TIPSEL) == false))  /* ensure we get at least one point */
-				{
-					calc_tw_center(tbounds, ebo->head);
-					totsel++;
-				}
-				protectflag_to_drawflags_ebone(rv3d, ebo);
-			}
-			else {
-				FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
-					arm = ob_iter->data;
-
-					float mat_local[4][4];
-					if (use_mat_local) {
-						mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
-					}
-					for (ebo = arm->edbo->first; ebo; ebo = ebo->next) {
-						if (EBONE_VISIBLE(arm, ebo)) {
-							if (ebo->flag & BONE_TIPSEL) {
-								calc_tw_center_with_matrix(tbounds, ebo->tail, use_mat_local, mat_local);
-								totsel++;
-							}
-							if ((ebo->flag & BONE_ROOTSEL) &&
-							    /* don't include same point multiple times */
-							    ((ebo->flag & BONE_CONNECTED) &&
-							     (ebo->parent != NULL) &&
-							     (ebo->parent->flag & BONE_TIPSEL) &&
-							     EBONE_VISIBLE(arm, ebo->parent)) == 0)
-							{
-								calc_tw_center_with_matrix(tbounds, ebo->head, use_mat_local, mat_local);
-								totsel++;
-							}
-							if (ebo->flag & BONE_SELECTED) {
-								protectflag_to_drawflags_ebone(rv3d, ebo);
-							}
+				for (EditBone *ebo = arm->edbo->first; ebo; ebo = ebo->next) {
+					if (EBONE_VISIBLE(arm, ebo)) {
+						if (ebo->flag & BONE_TIPSEL) {
+							calc_tw_center_with_matrix(tbounds, ebo->tail, use_mat_local, mat_local);
+							totsel++;
+						}
+						if ((ebo->flag & BONE_ROOTSEL) &&
+						    /* don't include same point multiple times */
+						    ((ebo->flag & BONE_CONNECTED) &&
+						     (ebo->parent != NULL) &&
+						     (ebo->parent->flag & BONE_TIPSEL) &&
+						     EBONE_VISIBLE(arm, ebo->parent)) == 0)
+						{
+							calc_tw_center_with_matrix(tbounds, ebo->head, use_mat_local, mat_local);
+							totsel++;
+						}
+						if (ebo->flag & BONE_SELECTED) {
+							protectflag_to_drawflags_ebone(rv3d, ebo);
 						}
 					}
-				} FOREACH_EDIT_OBJECT_END();
-			}
+				}
+			} FOREACH_EDIT_OBJECT_END();
 		}
 		else if (ELEM(obedit->type, OB_CURVE, OB_SURF)) {
-			Curve *cu = obedit->data;
-			float center[3];
+			FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
+				Curve *cu = ob_iter->data;
+				Nurb *nu;
+				BezTriple *bezt;
+				BPoint *bp;
+				ListBase *nurbs = BKE_curve_editNurbs_get(cu);
 
-			if ((pivot_point == V3D_AROUND_ACTIVE) && ED_curve_active_center(cu, center)) {
-				calc_tw_center(tbounds, center);
-				totsel++;
-			}
-			else {
-				FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
-					cu = ob_iter->data;
-					Nurb *nu;
-					BezTriple *bezt;
-					BPoint *bp;
-					ListBase *nurbs = BKE_curve_editNurbs_get(cu);
+				float mat_local[4][4];
+				if (use_mat_local) {
+					mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
+				}
 
-					float mat_local[4][4];
-					if (use_mat_local) {
-						mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
-					}
-
-					nu = nurbs->first;
-					while (nu) {
-						if (nu->type == CU_BEZIER) {
-							bezt = nu->bezt;
-							a = nu->pntsu;
-							while (a--) {
-								/* exceptions
-								 * if handles are hidden then only check the center points.
-								 * If the center knot is selected then only use this as the center point.
-								 */
-								if ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_HANDLES) == 0) {
-									if (bezt->f2 & SELECT) {
-										calc_tw_center_with_matrix(tbounds, bezt->vec[1], use_mat_local, mat_local);
-										totsel++;
-									}
-								}
-								else if (bezt->f2 & SELECT) {
+				nu = nurbs->first;
+				while (nu) {
+					if (nu->type == CU_BEZIER) {
+						bezt = nu->bezt;
+						a = nu->pntsu;
+						while (a--) {
+							/* exceptions
+							 * if handles are hidden then only check the center points.
+							 * If the center knot is selected then only use this as the center point.
+							 */
+							if ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_HANDLES) == 0) {
+								if (bezt->f2 & SELECT) {
 									calc_tw_center_with_matrix(tbounds, bezt->vec[1], use_mat_local, mat_local);
 									totsel++;
 								}
-								else {
-									if (bezt->f1 & SELECT) {
-										const float *co = bezt->vec[(pivot_point == V3D_AROUND_LOCAL_ORIGINS) ? 1 : 0];
-										calc_tw_center_with_matrix(tbounds, co, use_mat_local, mat_local);
-										totsel++;
-									}
-									if (bezt->f3 & SELECT) {
-										const float *co = bezt->vec[(pivot_point == V3D_AROUND_LOCAL_ORIGINS) ? 1 : 2];
-										calc_tw_center_with_matrix(tbounds, co, use_mat_local, mat_local);
-										totsel++;
-									}
-								}
-								bezt++;
 							}
-						}
-						else {
-							bp = nu->bp;
-							a = nu->pntsu * nu->pntsv;
-							while (a--) {
-								if (bp->f1 & SELECT) {
-									calc_tw_center_with_matrix(tbounds, bp->vec, use_mat_local, mat_local);
+							else if (bezt->f2 & SELECT) {
+								calc_tw_center_with_matrix(tbounds, bezt->vec[1], use_mat_local, mat_local);
+								totsel++;
+							}
+							else {
+								if (bezt->f1 & SELECT) {
+									const float *co = bezt->vec[(pivot_point == V3D_AROUND_LOCAL_ORIGINS) ? 1 : 0];
+									calc_tw_center_with_matrix(tbounds, co, use_mat_local, mat_local);
 									totsel++;
 								}
-								bp++;
+								if (bezt->f3 & SELECT) {
+									const float *co = bezt->vec[(pivot_point == V3D_AROUND_LOCAL_ORIGINS) ? 1 : 2];
+									calc_tw_center_with_matrix(tbounds, co, use_mat_local, mat_local);
+									totsel++;
+								}
 							}
+							bezt++;
 						}
-						nu = nu->next;
 					}
-				} FOREACH_EDIT_OBJECT_END();
-			}
+					else {
+						bp = nu->bp;
+						a = nu->pntsu * nu->pntsv;
+						while (a--) {
+							if (bp->f1 & SELECT) {
+								calc_tw_center_with_matrix(tbounds, bp->vec, use_mat_local, mat_local);
+								totsel++;
+							}
+							bp++;
+						}
+					}
+					nu = nu->next;
+				}
+			} FOREACH_EDIT_OBJECT_END();
 		}
 		else if (obedit->type == OB_MBALL) {
-			MetaBall *mb = (MetaBall *)obedit->data;
-			MetaElem *ml;
+			FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
+				MetaBall *mb = (MetaBall *)ob_iter->data;
 
-			if ((pivot_point == V3D_AROUND_ACTIVE) && (ml = mb->lastelem)) {
-				calc_tw_center(tbounds, &ml->x);
-				totsel++;
-			}
-			else {
-				FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
-					mb = (MetaBall *)ob_iter->data;
+				float mat_local[4][4];
+				if (use_mat_local) {
+					mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
+				}
 
-					float mat_local[4][4];
-					if (use_mat_local) {
-						mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
+				for (MetaElem *ml = mb->editelems->first; ml; ml = ml->next) {
+					if (ml->flag & SELECT) {
+						calc_tw_center_with_matrix(tbounds, &ml->x, use_mat_local, mat_local);
+						totsel++;
 					}
-
-					for (ml = mb->editelems->first; ml; ml = ml->next) {
-						if (ml->flag & SELECT) {
-							calc_tw_center_with_matrix(tbounds, &ml->x, use_mat_local, mat_local);
-							totsel++;
-						}
-					}
-				} FOREACH_EDIT_OBJECT_END();
-			}
+				}
+			} FOREACH_EDIT_OBJECT_END();
 		}
 		else if (obedit->type == OB_LATTICE) {
-			Lattice *lt = ((Lattice *)obedit->data)->editlatt->latt;
-			BPoint *bp;
+			FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
+				Lattice *lt = ((Lattice *)ob_iter->data)->editlatt->latt;
+				BPoint *bp = lt->def;
+				a = lt->pntsu * lt->pntsv * lt->pntsw;
 
-			if ((pivot_point == V3D_AROUND_ACTIVE) && (bp = BKE_lattice_active_point_get(lt))) {
-				calc_tw_center(tbounds, bp->vec);
-				totsel++;
-			}
-			else {
-				FOREACH_EDIT_OBJECT_BEGIN(ob_iter, use_mat_local) {
-					lt = ((Lattice *)ob_iter->data)->editlatt->latt;
-					bp = lt->def;
-					a = lt->pntsu * lt->pntsv * lt->pntsw;
+				float mat_local[4][4];
+				if (use_mat_local) {
+					mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
+				}
 
-					float mat_local[4][4];
-					if (use_mat_local) {
-						mul_m4_m4m4(mat_local, obedit->imat, ob_iter->obmat);
+				while (a--) {
+					if (bp->f1 & SELECT) {
+						calc_tw_center_with_matrix(tbounds, bp->vec, use_mat_local, mat_local);
+						totsel++;
 					}
-
-					while (a--) {
-						if (bp->f1 & SELECT) {
-							calc_tw_center_with_matrix(tbounds, bp->vec, use_mat_local, mat_local);
-							totsel++;
-						}
-						bp++;
-					}
-				} FOREACH_EDIT_OBJECT_END();
-			}
+					bp++;
+				}
+			} FOREACH_EDIT_OBJECT_END();
 		}
 
 #undef FOREACH_EDIT_OBJECT_BEGIN
@@ -1054,37 +1007,40 @@ int ED_transform_calc_gizmo_stats(
 		}
 	}
 	else if (ob && (ob->mode & OB_MODE_POSE)) {
-		bPoseChannel *pchan;
-		int mode = TFM_ROTATION; // mislead counting bones... bah. We don't know the gizmo mode, could be mixed
-		bool ok = false;
+		invert_m4_m4(ob->imat, ob->obmat);
+		uint objects_len = 0;
+		Object **objects = BKE_view_layer_array_from_objects_in_mode(
+		        view_layer, v3d, &objects_len, {.object_mode = OB_MODE_POSE});
+		for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+			Object *ob_iter = objects[ob_index];
+			const bool use_mat_local = (ob_iter != ob);
+			bPoseChannel *pchan;
 
-		if ((pivot_point == V3D_AROUND_ACTIVE) && (pchan = BKE_pose_channel_active(ob))) {
-			/* doesn't check selection or visibility intentionally */
-			Bone *bone = pchan->bone;
-			if (bone) {
-				calc_tw_center(tbounds, pchan->pose_head);
-				protectflag_to_drawflags_pchan(rv3d, pchan);
-				totsel = 1;
-				ok = true;
-			}
-		}
-		else {
-			totsel = count_set_pose_transflags(ob, mode, V3D_AROUND_CENTER_BOUNDS, NULL);
+			/* mislead counting bones... bah. We don't know the gizmo mode, could be mixed */
+			const int mode = TFM_ROTATION;
 
-			if (totsel) {
+			const int totsel_iter = count_set_pose_transflags(ob_iter, mode, V3D_AROUND_CENTER_BOUNDS, NULL);
+
+			if (totsel_iter) {
+				float mat_local[4][4];
+				if (use_mat_local) {
+					mul_m4_m4m4(mat_local, ob->imat, ob_iter->obmat);
+				}
+
 				/* use channels to get stats */
-				for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+				for (pchan = ob_iter->pose->chanbase.first; pchan; pchan = pchan->next) {
 					Bone *bone = pchan->bone;
 					if (bone && (bone->flag & BONE_TRANSFORM)) {
-						calc_tw_center(tbounds, pchan->pose_head);
+						calc_tw_center_with_matrix(tbounds, pchan->pose_head, use_mat_local, mat_local);
 						protectflag_to_drawflags_pchan(rv3d, pchan);
 					}
 				}
-				ok = true;
+				totsel += totsel_iter;
 			}
 		}
+		MEM_freeN(objects);
 
-		if (ok) {
+		if (totsel) {
 			mul_v3_fl(tbounds->center, 1.0f / (float)totsel);   // centroid!
 			mul_m4_v3(ob->obmat, tbounds->center);
 			mul_m4_v3(ob->obmat, tbounds->min);
@@ -1126,7 +1082,7 @@ int ED_transform_calc_gizmo_stats(
 		if (base && ((base->flag & BASE_SELECTED) == 0)) ob = NULL;
 
 		for (base = view_layer->object_bases.first; base; base = base->next) {
-			if (!TESTBASELIB(v3d, base)) {
+			if (!BASE_SELECTED_EDITABLE(v3d, base)) {
 				continue;
 			}
 			if (ob == NULL) {
@@ -1191,23 +1147,22 @@ static void gizmo_prepare_mat(
 		case V3D_AROUND_CENTER_BOUNDS:
 		case V3D_AROUND_ACTIVE:
 		{
-			bGPdata *gpd = CTX_data_gpencil_data(C);
-			Object *ob = OBACT(view_layer);
+			mid_v3_v3v3(rv3d->twmat[3], tbounds->min, tbounds->max);
 
-			if (((scene->toolsettings->transform_pivot_point == V3D_AROUND_ACTIVE) &&
-			     (OBEDIT_FROM_OBACT(ob) == NULL)) &&
-			    ((gpd == NULL) || !(gpd->flag & GP_DATA_STROKE_EDITMODE)) &&
-			    (!(ob->mode & OB_MODE_POSE)))
-			{
-				copy_v3_v3(rv3d->twmat[3], ob->obmat[3]);
-			}
-			else {
-				mid_v3_v3v3(rv3d->twmat[3], tbounds->min, tbounds->max);
+			if (scene->toolsettings->transform_pivot_point == V3D_AROUND_ACTIVE) {
+				bGPdata *gpd = CTX_data_gpencil_data(C);
+				Object *ob = OBACT(view_layer);
+				if (gpd && (gpd->flag & GP_DATA_STROKE_EDITMODE)) {
+					/* pass */
+				}
+				else if (ob != NULL) {
+					ED_object_calc_active_center(ob, false, rv3d->twmat[3]);
+				}
 			}
 			break;
 		}
 		case V3D_AROUND_LOCAL_ORIGINS:
-		case V3D_AROUND_CENTER_MEAN:
+		case V3D_AROUND_CENTER_MEDIAN:
 			copy_v3_v3(rv3d->twmat[3], tbounds->center);
 			break;
 		case V3D_AROUND_CURSOR:
@@ -1257,19 +1212,54 @@ static void gizmo_xform_message_subscribe(
 		.notify = WM_gizmo_do_msg_notify_tag_refresh,
 	};
 
+	int orient_flag = 0;
+	if (type_fn == TRANSFORM_GGT_gizmo) {
+		GizmoGroup *ggd = gzgroup->customdata;
+		orient_flag = ggd->twtype_init;
+	}
+	else if (type_fn == VIEW3D_GGT_xform_cage) {
+		orient_flag = SCE_GIZMO_SHOW_SCALE;
+		/* pass */
+	}
+	else if (type_fn == VIEW3D_GGT_xform_shear) {
+		orient_flag = SCE_GIZMO_SHOW_ROTATE;
+	}
+	TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, orient_flag);
+	PointerRNA orient_ref_ptr;
+	RNA_pointer_create(&scene->id, &RNA_TransformOrientationSlot, orient_slot, &orient_ref_ptr);
+	const ToolSettings *ts = scene->toolsettings;
+
 	PointerRNA scene_ptr;
 	RNA_id_pointer_create(&scene->id, &scene_ptr);
+	{
+		extern PropertyRNA rna_Scene_transform_orientation_slots;
+		const PropertyRNA *props[] = {
+			&rna_Scene_transform_orientation_slots,
+		};
+		for (int i = 0; i < ARRAY_SIZE(props); i++) {
+			WM_msg_subscribe_rna(mbus, &scene_ptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);
+		}
+	}
+
+	if ((ts->transform_pivot_point == V3D_AROUND_CURSOR) ||
+	    (orient_slot->type == V3D_ORIENT_CURSOR))
+	{
+		/* We could be more specific here, for now subscribe to any cursor change. */
+		PointerRNA cursor_ptr;
+		RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &cursor_ptr);
+		WM_msg_subscribe_rna(mbus, &cursor_ptr, NULL, &msg_sub_value_gz_tag_refresh, __func__);
+	}
 
 	{
-		extern PropertyRNA rna_Scene_transform_orientation;
-		extern PropertyRNA rna_Scene_cursor_location;
+		extern PropertyRNA rna_TransformOrientationSlot_type;
+		extern PropertyRNA rna_TransformOrientationSlot_use;
 		const PropertyRNA *props[] = {
-			&rna_Scene_transform_orientation,
-			(scene->toolsettings->transform_pivot_point == V3D_AROUND_CURSOR) ? &rna_Scene_cursor_location : NULL,
+			&rna_TransformOrientationSlot_type,
+			&rna_TransformOrientationSlot_use,
 		};
 		for (int i = 0; i < ARRAY_SIZE(props); i++) {
 			if (props[i]) {
-				WM_msg_subscribe_rna(mbus, &scene_ptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);
+				WM_msg_subscribe_rna(mbus, &orient_ref_ptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);
 			}
 		}
 	}
@@ -1278,11 +1268,12 @@ static void gizmo_xform_message_subscribe(
 	RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
 
 	if (type_fn == TRANSFORM_GGT_gizmo) {
+		GizmoGroup *ggd = gzgroup->customdata;
 		extern PropertyRNA rna_ToolSettings_transform_pivot_point;
 		extern PropertyRNA rna_ToolSettings_use_gizmo_mode;
 		const PropertyRNA *props[] = {
 			&rna_ToolSettings_transform_pivot_point,
-			&rna_ToolSettings_use_gizmo_mode,
+			ggd->use_twtype_refresh ? &rna_ToolSettings_use_gizmo_mode : NULL,
 		};
 		for (int i = 0; i < ARRAY_SIZE(props); i++) {
 			WM_msg_subscribe_rna(mbus, &toolsettings_ptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);
@@ -1305,7 +1296,7 @@ static void gizmo_xform_message_subscribe(
 void drawDial3d(const TransInfo *t)
 {
 	if (t->mode == TFM_ROTATION && t->spacetype == SPACE_VIEW3D) {
-		wmGizmo *gz = wm_gizmomap_highlight_get(t->ar->gizmo_map);
+		wmGizmo *gz = wm_gizmomap_modal_get(t->ar->gizmo_map);
 		if (gz == NULL) {
 			/* We only draw Dial3d if the operator has been called by a gizmo. */
 			return;
@@ -1338,7 +1329,7 @@ void drawDial3d(const TransInfo *t)
 		}
 		else {
 			axis_idx = MAN_AXIS_ROT_C;
-			negate_v3_v3(mat_basis[2], t->axis);
+			negate_v3_v3(mat_basis[2], t->orient_matrix[t->orient_axis]);
 			scale *= 1.2f;
 			line_with -= 1.0f;
 		}
@@ -1347,8 +1338,8 @@ void drawDial3d(const TransInfo *t)
 		mat_basis[2][3] = -dot_v3v3(mat_basis[2], mat_basis[3]);
 
 		if (ED_view3d_win_to_3d_on_plane(
-		        t->ar, mat_basis[2], (float[2]){UNPACK2(t->mouse.imval)},
-		        false, mat_basis[1]))
+		            t->ar, mat_basis[2], (float[2]){UNPACK2(t->mouse.imval)},
+		            false, mat_basis[1]))
 		{
 			sub_v3_v3(mat_basis[1], mat_basis[3]);
 			normalize_v3(mat_basis[1]);
@@ -1386,7 +1377,7 @@ void drawDial3d(const TransInfo *t)
 		GPU_line_smooth(true);
 
 		ED_gizmotypes_dial_3d_draw_util(
-		        mat_basis, mat_final, line_with, color,
+		        mat_basis, mat_final, line_with, color, false,
 		        &(struct Dial3dParams){
 		            .draw_options = ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE,
 		            .angle_delta = t->values[0],
@@ -1432,7 +1423,7 @@ static GizmoGroup *gizmogroup_init(wmGizmoGroup *gzgroup)
 	/* add/init widgets - order matters! */
 	GIZMO_NEW_DIAL(MAN_AXIS_ROT_T, ED_GIZMO_DIAL_DRAW_FLAG_FILL);
 
-	GIZMO_NEW_DIAL(MAN_AXIS_SCALE_C, ED_GIZMO_DIAL_DRAW_FLAG_NOP);
+	GIZMO_NEW_DIAL(MAN_AXIS_SCALE_C, ED_GIZMO_DIAL_DRAW_FLAG_FILL_SELECT);
 
 	GIZMO_NEW_ARROW(MAN_AXIS_SCALE_X, ED_GIZMO_ARROW_STYLE_BOX);
 	GIZMO_NEW_ARROW(MAN_AXIS_SCALE_Y, ED_GIZMO_ARROW_STYLE_BOX);
@@ -1449,7 +1440,7 @@ static GizmoGroup *gizmogroup_init(wmGizmoGroup *gzgroup)
 	/* init screen aligned widget last here, looks better, behaves better */
 	GIZMO_NEW_DIAL(MAN_AXIS_ROT_C, ED_GIZMO_DIAL_DRAW_FLAG_NOP);
 
-	GIZMO_NEW_DIAL(MAN_AXIS_TRANS_C, ED_GIZMO_DIAL_DRAW_FLAG_NOP);
+	GIZMO_NEW_DIAL(MAN_AXIS_TRANS_C, ED_GIZMO_DIAL_DRAW_FLAG_FILL_SELECT);
 
 	GIZMO_NEW_ARROW(MAN_AXIS_TRANS_X, ED_GIZMO_ARROW_STYLE_NORMAL);
 	GIZMO_NEW_ARROW(MAN_AXIS_TRANS_Y, ED_GIZMO_ARROW_STYLE_NORMAL);
@@ -1629,18 +1620,18 @@ static void WIDGETGROUP_gizmo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 		ScrArea *sa = CTX_wm_area(C);
 		const bToolRef *tref = sa->runtime.tool;
 
-		if (tref == NULL || STREQ(tref->idname, "Transform")) {
+		if (tref == NULL || STREQ(tref->idname, "builtin.transform")) {
 			/* Setup all gizmos, they can be toggled via 'ToolSettings.gizmo_flag' */
 			ggd->twtype = SCE_GIZMO_SHOW_TRANSLATE | SCE_GIZMO_SHOW_ROTATE | SCE_GIZMO_SHOW_SCALE;
 			ggd->use_twtype_refresh = true;
 		}
-		else if (STREQ(tref->idname, "Move")) {
+		else if (STREQ(tref->idname, "builtin.move")) {
 			ggd->twtype |= SCE_GIZMO_SHOW_TRANSLATE;
 		}
-		else if (STREQ(tref->idname, "Rotate")) {
+		else if (STREQ(tref->idname, "builtin.rotate")) {
 			ggd->twtype |= SCE_GIZMO_SHOW_ROTATE;
 		}
-		else if (STREQ(tref->idname, "Scale")) {
+		else if (STREQ(tref->idname, "builtin.scale")) {
 			ggd->twtype |= SCE_GIZMO_SHOW_SCALE;
 		}
 		BLI_assert(ggd->twtype != 0);
@@ -1654,12 +1645,12 @@ static void WIDGETGROUP_gizmo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 static void WIDGETGROUP_gizmo_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
 	GizmoGroup *ggd = gzgroup->customdata;
+	Scene *scene = CTX_data_scene(C);
 	ARegion *ar = CTX_wm_region(C);
 	RegionView3D *rv3d = ar->regiondata;
 	struct TransformBounds tbounds;
 
 	if (ggd->use_twtype_refresh) {
-		Scene *scene = CTX_data_scene(C);
 		ggd->twtype = scene->toolsettings->gizmo_flag & ggd->twtype_init;
 		if (ggd->twtype != ggd->twtype_prev) {
 			ggd->twtype_prev = ggd->twtype;
@@ -1667,11 +1658,15 @@ static void WIDGETGROUP_gizmo_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 		}
 	}
 
+	const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, ggd->twtype_init);
+
 	/* skip, we don't draw anything anyway */
 	if ((ggd->all_hidden =
 	     (ED_transform_calc_gizmo_stats(
 	             C, &(struct TransformCalcParams){
 	                 .use_only_center = true,
+	                 .orientation_type = orient_slot->type + 1,
+	                 .orientation_index_custom = orient_slot->index_custom,
 	             }, &tbounds) == 0)))
 	{
 		return;
@@ -1753,6 +1748,8 @@ static void WIDGETGROUP_gizmo_draw_prepare(const bContext *C, wmGizmoGroup *gzgr
 	ARegion *ar = CTX_wm_region(C);
 	// View3D *v3d = sa->spacedata.first;
 	RegionView3D *rv3d = ar->regiondata;
+	float viewinv_m3[3][3];
+	copy_m3_m4(viewinv_m3, rv3d->viewinv);
 	float idot[3];
 
 	/* when looking through a selected camera, the gizmo can be at the
@@ -1768,9 +1765,7 @@ static void WIDGETGROUP_gizmo_draw_prepare(const bContext *C, wmGizmoGroup *gzgr
 	gizmo_get_idot(rv3d, idot);
 
 	/* *** set properties for axes *** */
-
-	MAN_ITER_AXES_BEGIN(axis, axis_idx)
-	{
+	MAN_ITER_AXES_BEGIN(axis, axis_idx) {
 		const short axis_type = gizmo_get_axis_type(axis_idx);
 		/* XXX maybe unset _HIDDEN flag on redraw? */
 
@@ -1795,8 +1790,85 @@ static void WIDGETGROUP_gizmo_draw_prepare(const bContext *C, wmGizmoGroup *gzgr
 				WM_gizmo_set_matrix_rotation_from_z_axis(axis, rv3d->viewinv[2]);
 				break;
 		}
+	} MAN_ITER_AXES_END;
+
+	/* Refresh handled above when using view orientation. */
+	if (!equals_m3m3(viewinv_m3, ggd->prev.viewinv_m3)) {
+		{
+			Scene *scene = CTX_data_scene(C);
+			const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, ggd->twtype_init);
+			switch (orient_slot->type) {
+				case V3D_ORIENT_VIEW:
+				{
+					WIDGETGROUP_gizmo_refresh(C, gzgroup);
+					break;
+				}
+			}
+		}
+		copy_m3_m4(ggd->prev.viewinv_m3, rv3d->viewinv);
 	}
-	MAN_ITER_AXES_END;
+
+}
+
+static void WIDGETGROUP_gizmo_invoke_prepare(
+        const bContext *C, wmGizmoGroup *gzgroup, wmGizmo *gz)
+{
+
+	GizmoGroup *ggd = gzgroup->customdata;
+
+	/* Support gizmo spesific orientation. */
+	if (gz != ggd->gizmos[MAN_AXIS_ROT_T]) {
+		Scene *scene = CTX_data_scene(C);
+		wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
+		PointerRNA *ptr = &gzop->ptr;
+		PropertyRNA *prop_orient_type = RNA_struct_find_property(ptr, "orient_type");
+		const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, ggd->twtype_init);
+		if (orient_slot == &scene->orientation_slots[SCE_ORIENT_DEFAULT]) {
+			RNA_property_unset(ptr, prop_orient_type);
+		}
+		else {
+			/* TODO: APIfunction */
+			int index = BKE_scene_orientation_slot_get_index(orient_slot);
+			RNA_property_enum_set(ptr, prop_orient_type, index);
+		}
+	}
+
+	/* Support shift click to constrain axis. */
+	const int axis_idx = BLI_array_findindex(ggd->gizmos, ARRAY_SIZE(ggd->gizmos), &gz);
+	int axis = -1;
+	switch (axis_idx) {
+		case MAN_AXIS_TRANS_X:
+		case MAN_AXIS_TRANS_Y:
+		case MAN_AXIS_TRANS_Z:
+			axis = axis_idx - MAN_AXIS_TRANS_X; break;
+		case MAN_AXIS_SCALE_X:
+		case MAN_AXIS_SCALE_Y:
+		case MAN_AXIS_SCALE_Z:
+			axis = axis_idx - MAN_AXIS_SCALE_X; break;
+	}
+
+	if (axis != -1) {
+		wmWindow *win = CTX_wm_window(C);
+		/* Swap single axis for two-axis constraint. */
+		bool flip = win->eventstate->shift;
+		BLI_assert(axis_idx != -1);
+		const short axis_type = gizmo_get_axis_type(axis_idx);
+		if (axis_type != MAN_AXES_ROTATE) {
+			wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
+			PointerRNA *ptr = &gzop->ptr;
+			PropertyRNA *prop_constraint_axis = RNA_struct_find_property(ptr, "constraint_axis");
+			if (prop_constraint_axis) {
+				bool constraint[3] = {false};
+				constraint[axis] = true;
+				if (flip) {
+					for (int i = 0; i < ARRAY_SIZE(constraint); i++) {
+						constraint[i] = !constraint[i];
+					}
+				}
+				RNA_property_boolean_set_array(ptr, prop_constraint_axis, constraint);
+			}
+		}
+	}
 }
 
 static bool WIDGETGROUP_gizmo_poll(const struct bContext *C, struct wmGizmoGroupType *gzgt)
@@ -1806,6 +1878,9 @@ static bool WIDGETGROUP_gizmo_poll(const struct bContext *C, struct wmGizmoGroup
 	}
 	View3D *v3d = CTX_wm_view3d(C);
 	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_TOOL)) {
+		return false;
+	}
+	if (G.moving & (G_TRANSFORM_OBJ | G_TRANSFORM_EDIT)) {
 		return false;
 	}
 	return true;
@@ -1826,13 +1901,14 @@ void TRANSFORM_GGT_gizmo(wmGizmoGroupType *gzgt)
 	gzgt->refresh = WIDGETGROUP_gizmo_refresh;
 	gzgt->message_subscribe = WIDGETGROUP_gizmo_message_subscribe;
 	gzgt->draw_prepare = WIDGETGROUP_gizmo_draw_prepare;
+	gzgt->invoke_prepare = WIDGETGROUP_gizmo_invoke_prepare;
 
 	static const EnumPropertyItem rna_enum_gizmo_items[] = {
 		{SCE_GIZMO_SHOW_TRANSLATE, "TRANSLATE", 0, "Move", ""},
 		{SCE_GIZMO_SHOW_ROTATE, "ROTATE", 0, "Rotate", ""},
 		{SCE_GIZMO_SHOW_SCALE, "SCALE", 0, "Scale", ""},
 		{0, "NONE", 0, "None", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	RNA_def_enum(gzgt->srna, "drag_action", rna_enum_gizmo_items, SCE_GIZMO_SHOW_TRANSLATE, "Drag Action", "");
 }
@@ -1859,6 +1935,9 @@ static bool WIDGETGROUP_xform_cage_poll(const bContext *C, wmGizmoGroupType *gzg
 	}
 	View3D *v3d = CTX_wm_view3d(C);
 	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_TOOL)) {
+		return false;
+	}
+	if (G.moving & (G_TRANSFORM_OBJ | G_TRANSFORM_EDIT)) {
 		return false;
 	}
 	return true;
@@ -1911,15 +1990,20 @@ static void WIDGETGROUP_xform_cage_refresh(const bContext *C, wmGizmoGroup *gzgr
 {
 	ARegion *ar = CTX_wm_region(C);
 	RegionView3D *rv3d = ar->regiondata;
+	Scene *scene = CTX_data_scene(C);
 
 	struct XFormCageWidgetGroup *xgzgroup = gzgroup->customdata;
 	wmGizmo *gz = xgzgroup->gizmo;
 
 	struct TransformBounds tbounds;
 
+	const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, SCE_GIZMO_SHOW_SCALE);
+
 	if ((ED_transform_calc_gizmo_stats(
 	             C, &(struct TransformCalcParams) {
 	                 .use_local_axis = true,
+	                 .orientation_type = orient_slot->type + 1,
+	                 .orientation_index_custom = orient_slot->index_custom,
 	             }, &tbounds) == 0) ||
 	    equals_v3v3(rv3d->tw_axis_min, rv3d->tw_axis_max))
 	{
@@ -1995,8 +2079,9 @@ static void WIDGETGROUP_xform_cage_draw_prepare(const bContext *C, wmGizmoGroup 
 	RegionView3D *rv3d = CTX_wm_region_view3d(C);
 	{
 		Scene *scene = CTX_data_scene(C);
-		switch (scene->orientation_type) {
-			case V3D_MANIP_VIEW:
+		const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, SCE_GIZMO_SHOW_SCALE);
+		switch (orient_slot->type) {
+			case V3D_ORIENT_VIEW:
 			{
 				float viewinv_m3[3][3];
 				copy_m3_m4(viewinv_m3, rv3d->viewinv);
@@ -2085,15 +2170,20 @@ static void WIDGETGROUP_xform_shear_setup(const bContext *UNUSED(C), wmGizmoGrou
 
 static void WIDGETGROUP_xform_shear_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
+	Scene *scene = CTX_data_scene(C);
 	ARegion *ar = CTX_wm_region(C);
 	RegionView3D *rv3d = ar->regiondata;
 
 	struct XFormShearWidgetGroup *xgzgroup = gzgroup->customdata;
 	struct TransformBounds tbounds;
 
+	const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, SCE_GIZMO_SHOW_ROTATE);
+
 	if (ED_transform_calc_gizmo_stats(
 	            C, &(struct TransformCalcParams) {
 	                .use_local_axis = false,
+	                .orientation_type = orient_slot->type + 1,
+	                .orientation_index_custom = orient_slot->index_custom,
 	            }, &tbounds) == 0)
 	{
 		for (int i = 0; i < 3; i++) {
@@ -2117,15 +2207,12 @@ static void WIDGETGROUP_xform_shear_refresh(const bContext *C, wmGizmoGroup *gzg
 				WM_gizmo_set_matrix_rotation_from_yz_axis(gz, rv3d->twmat[i_ortho_a], rv3d->twmat[i]);
 				WM_gizmo_set_matrix_location(gz, rv3d->twmat[3]);
 
-				float axis[3];
-				if (j == 0) {
-					copy_v3_v3(axis, tbounds.axis[i_ortho_b]);
-				}
-				else {
-					negate_v3_v3(axis, tbounds.axis[i_ortho_b]);
-				}
-				RNA_float_set_array(&gzop->ptr, "axis", axis);
-				RNA_float_set_array(&gzop->ptr, "axis_ortho", tbounds.axis[i_ortho_a]);
+				RNA_float_set_array(&gzop->ptr, "orient_matrix", &tbounds.axis[0][0]);
+				RNA_enum_set(&gzop->ptr, "orient_type", orient_slot->type);
+
+				RNA_enum_set(&gzop->ptr, "orient_axis", i_ortho_b);
+				RNA_enum_set(&gzop->ptr, "orient_axis_ortho", i_ortho_a);
+
 				mul_v3_fl(gz->matrix_basis[0], 0.5f);
 				mul_v3_fl(gz->matrix_basis[1], 6.0f);
 			}
@@ -2152,8 +2239,10 @@ static void WIDGETGROUP_xform_shear_draw_prepare(const bContext *C, wmGizmoGroup
 	RegionView3D *rv3d = CTX_wm_region_view3d(C);
 	{
 		Scene *scene = CTX_data_scene(C);
-		switch (scene->orientation_type) {
-			case V3D_MANIP_VIEW:
+		/* Shear is like rotate, use the rotate setting. */
+		const TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get(scene, SCE_GIZMO_SHOW_ROTATE);
+		switch (orient_slot->type) {
+			case V3D_ORIENT_VIEW:
 			{
 				float viewinv_m3[3][3];
 				copy_m3_m4(viewinv_m3, rv3d->viewinv);
@@ -2172,7 +2261,8 @@ static void WIDGETGROUP_xform_shear_draw_prepare(const bContext *C, wmGizmoGroup
 		LISTBASE_FOREACH (wmGizmo *, gz, &gzgroup->gizmos) {
 			/* Since we have two pairs of each axis,
 			 * bias the values so gizmos that are orthogonal to the view get priority.
-			 * This means we never default to shearing along the view axis in the case of an overlap. */
+			 * This means we never default to shearing along
+			 * the view axis in the case of an overlap. */
 			float axis_order[3], axis_bias[3];
 			copy_v3_v3(axis_order, gz->matrix_basis[2]);
 			copy_v3_v3(axis_bias, gz->matrix_basis[1]);

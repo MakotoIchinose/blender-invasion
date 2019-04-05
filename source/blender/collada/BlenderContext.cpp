@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Gaia Clary,
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
- /** \file CameraExporter.h
-  *  \ingroup collada
-  */
+/** \file
+ * \ingroup collada
+ */
 
 #include "BlenderContext.h"
 #include "BKE_scene.h"
@@ -52,6 +46,18 @@ Depsgraph *BlenderContext::get_depsgraph()
 Scene *BlenderContext::get_scene()
 {
 	return scene;
+}
+
+Scene *BlenderContext::get_evaluated_scene()
+{
+	Scene *scene_eval = DEG_get_evaluated_scene(get_depsgraph());
+	return scene_eval;
+}
+
+Object *BlenderContext::get_evaluated_object(Object *ob)
+{
+	Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+	return ob_eval;
 }
 
 ViewLayer *BlenderContext::get_view_layer()

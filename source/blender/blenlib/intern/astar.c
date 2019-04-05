@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2014 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Bastien Montagne
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenlib/intern/astar.c
- *  \ingroup bli
- *  \brief An implementation of the A* (AStar) algorithm to solve shortest path problem.
+/** \file
+ * \ingroup bli
+ * \brief An implementation of the A* (AStar) algorithm to solve shortest path problem.
  *
  * This library implements the simple A* (AStar) algorithm, an optimized version of
  * classical dijkstra shortest path solver. The difference is that each future possible
@@ -51,7 +43,6 @@
 #include "BLI_sys_types.h"
 #include "BLI_compiler_attrs.h"
 
-#include "BLI_alloca.h"
 #include "BLI_heap_simple.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
@@ -62,7 +53,7 @@
 /**
  * Init a node in A* graph.
  *
- * \param custom_data an opaque pointer attached to this link, available e.g. to cost callback function.
+ * \param custom_data: an opaque pointer attached to this link, available e.g. to cost callback function.
  */
 void BLI_astar_node_init(BLI_AStarGraph *as_graph, const int node_index, void *custom_data)
 {
@@ -72,8 +63,8 @@ void BLI_astar_node_init(BLI_AStarGraph *as_graph, const int node_index, void *c
 /**
  * Add a link between two nodes of our A* graph.
  *
- * \param cost the 'length' of the link (actual distance between two vertices or face centers e.g.).
- * \param custom_data an opaque pointer attached to this link, available e.g. to cost callback function.
+ * \param cost: the 'length' of the link (actual distance between two vertices or face centers e.g.).
+ * \param custom_data: an opaque pointer attached to this link, available e.g. to cost callback function.
  */
 void BLI_astar_node_link_add(
         BLI_AStarGraph *as_graph, const int node1_index, const int node2_index, const float cost, void *custom_data)
@@ -104,7 +95,7 @@ int BLI_astar_node_link_other_node(BLI_AStarGNLink *lnk, const int idx)
 /**
  * Initialize a solution data for given A* graph. Does not compute anything!
  *
- * \param custom_data an opaque pointer attached to this link, available e.g. to cost callback function.
+ * \param custom_data: an opaque pointer attached to this link, available e.g. to cost callback function.
  *
  * \note BLI_AStarSolution stores nearly all data needed during solution compute.
  */
@@ -169,7 +160,7 @@ void BLI_astar_solution_free(BLI_AStarSolution *as_solution)
  *
  * Nodes might be e.g. vertices, faces, ...
  *
- * \param custom_data an opaque pointer attached to this link, available e.g. to cost callback function.
+ * \param custom_data: an opaque pointer attached to this link, available e.g. to cost callback function.
  */
 void BLI_astar_graph_init(BLI_AStarGraph *as_graph, const int node_num, void *custom_data)
 {
@@ -198,7 +189,7 @@ void BLI_astar_graph_free(BLI_AStarGraph *as_graph)
 /**
  * Solve a path in given graph, using given 'cost' callback function.
  *
- * \param max_steps maximum number of nodes the found path may have. Useful in performance-critical usages.
+ * \param max_steps: maximum number of nodes the found path may have. Useful in performance-critical usages.
  *                  If no path is found within given steps, returns false too.
  * \return true if a path was found, false otherwise.
  */
@@ -216,7 +207,7 @@ bool BLI_astar_graph_solve(
 
 	r_solution->steps = 0;
 	prev_nodes[node_index_src] = -1;
-	BLI_BITMAP_SET_ALL(done_nodes, false, as_graph->node_num);
+	BLI_bitmap_set_all(done_nodes, false, as_graph->node_num);
 	copy_vn_fl(g_costs, as_graph->node_num, FLT_MAX);
 	g_costs[node_index_src] = 0.0f;
 	g_steps[node_index_src] = 0;
@@ -237,7 +228,8 @@ bool BLI_astar_graph_solve(
 		LinkData *ld;
 
 		if (BLI_BITMAP_TEST(done_nodes, node_curr_idx)) {
-			/* Might happen, because we always add nodes to heap when evaluating them, without ever removing them. */
+			/* Might happen, because we always add nodes to heap when evaluating them,
+			 * without ever removing them. */
 			continue;
 		}
 
@@ -268,8 +260,8 @@ bool BLI_astar_graph_solve(
 					prev_links[node_next_idx] = link;
 					g_costs[node_next_idx] = g_cst;
 					g_steps[node_next_idx] = g_steps[node_curr_idx] + 1;
-					/* We might have this node already in heap, but since this 'instance' will be evaluated first,
-					 * no problem. */
+					/* We might have this node already in heap, but since this 'instance'
+					 * will be evaluated first, no problem. */
 					BLI_heapsimple_insert(
 					        todo_nodes,
 					        f_cost_cb(as_graph, r_solution, link, node_curr_idx, node_next_idx, node_index_dst),

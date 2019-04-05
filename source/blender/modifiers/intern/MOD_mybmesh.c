@@ -2916,7 +2916,7 @@ static int radial_extention( MeshData *m_d ){
 		bool flipped_edge = false;
 		float cent_f[3], no[3];
 		BM_ITER_ELEM (face, &iter, r_vert.vert, BM_FACES_OF_VERT) {
-			BM_face_calc_center_mean(face, cent_f);
+			BM_face_calc_center_median(face, cent_f);
 			BM_face_calc_normal(face, no);
 
 			float face_dir = get_facing_dir_nor(m_d->cam_loc, cent_f, no);
@@ -3056,7 +3056,7 @@ static int radial_extention( MeshData *m_d ){
 					float new_diff_facing = 0;
 
 					BM_ITER_ELEM (face, &iter, r_vert.vert, BM_FACES_OF_VERT) {
-						BM_face_calc_center_mean(face, cent_f);
+						BM_face_calc_center_median(face, cent_f);
 						BM_face_calc_normal(face, no);
 
 						float face_dir = get_facing_dir_nor(m_d->cam_loc, cent_f, no);
@@ -3107,7 +3107,7 @@ static void null_opti_edge(MeshData *m_d, BMEdge *e, bool back_f, BLI_Buffer *in
 	BM_ITER_ELEM (f, &iter, e, BM_FACES_OF_EDGE) {
 		float no[3], P[3];
 		BM_face_calc_normal(f, no);
-		BM_face_calc_center_mean(f, P);
+		BM_face_calc_center_median(f, P);
 		bool found_face = false;
 		bool face_good = (back_f == calc_if_B_nor(m_d->cam_loc, P, no));
 
@@ -3136,7 +3136,7 @@ static void null_opti_vert(MeshData *m_d, BMVert *v, bool back_f, BLI_Buffer *in
 	BM_ITER_ELEM (f, &iter, v, BM_FACES_OF_VERT) {
 		float no[3], P[3];
 		BM_face_calc_normal(f, no);
-		BM_face_calc_center_mean(f, P);
+		BM_face_calc_center_median(f, P);
 		bool found_face = false;
 		bool face_good = (back_f == calc_if_B_nor(m_d->cam_loc, P, no));
 
@@ -3275,7 +3275,7 @@ static void opti_edge_flip( MeshData *m_d, BLI_Buffer *inco_faces ){
 				BMIter iter_f;
 				BM_ITER_ELEM (face, &iter_f, edge, BM_FACES_OF_EDGE) {
 					BM_face_calc_normal(face, no);
-					BM_face_calc_center_mean(face, P);
+					BM_face_calc_center_median(face, P);
 
 					//Calc facing of face
 					face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
@@ -3295,7 +3295,7 @@ static void opti_edge_flip( MeshData *m_d, BLI_Buffer *inco_faces ){
 
 					BM_ITER_ELEM (face, &iter_f, temp_e, BM_FACES_OF_EDGE) {
 						BM_face_calc_normal(face, no);
-						BM_face_calc_center_mean(face, P);
+						BM_face_calc_center_median(face, P);
 
 						face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 
@@ -3398,7 +3398,7 @@ static int opti_vertex_wiggle( MeshData *m_d, BLI_Buffer *inco_faces ){
 					float no[3];
 					float P[3];
 					BM_face_calc_normal(f, no);
-					BM_face_calc_center_mean(f, P);
+					BM_face_calc_center_median(f, P);
 
 					float face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 					if( inface->back_f != (face_dir < 0) ){
@@ -3491,7 +3491,7 @@ static int opti_vertex_wiggle( MeshData *m_d, BLI_Buffer *inco_faces ){
 								float no[3];
 								float P[3];
 								BM_face_calc_normal(f, no);
-								BM_face_calc_center_mean(f, P);
+								BM_face_calc_center_median(f, P);
 
 								if( dot_v3v3(no, vert->no) < 0.0f ){
 									//Punish flipped faces
@@ -3619,7 +3619,7 @@ static void optimization( MeshData *m_d ){
 				for(int face_i = search_queue_start; face_i < search_queue.count; face_i++){
 					face = BLI_buffer_at(&search_queue, BMFace*, face_i);
 
-					BM_face_calc_center_mean(face, P);
+					BM_face_calc_center_median(face, P);
 					BM_face_calc_normal(face, no);
 
 					if( b_f != calc_if_B_nor(m_d->cam_loc, P, no) ){
@@ -3780,7 +3780,7 @@ static void optimization( MeshData *m_d ){
 				float no[3];
 				float P[3];
 				BM_face_calc_normal(f, no);
-				BM_face_calc_center_mean(f, P);
+				BM_face_calc_center_median(f, P);
 
 				float face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 				if( inface->back_f != (face_dir < 0) ){
@@ -3822,7 +3822,7 @@ static void optimization( MeshData *m_d ){
 							float no[3];
 							float P[3];
 							BM_face_calc_normal(f, no);
-							BM_face_calc_center_mean(f, P);
+							BM_face_calc_center_median(f, P);
 
 							if( dot_v3v3(no, split_vert->no) < 0.0f ){
 								//Punish flipped faces
@@ -3963,7 +3963,7 @@ static void optimization( MeshData *m_d ){
 							float no[3];
 							float P[3];
 							BM_face_calc_normal(face, no);
-							BM_face_calc_center_mean(face, P);
+							BM_face_calc_center_median(face, P);
 
 							if( inface->back_f != calc_if_B_nor(m_d->cam_loc, P, no) ){
 								//Bad vertex move
@@ -4020,7 +4020,7 @@ static void optimization( MeshData *m_d ){
 					float no[3];
 					float P[3];
 					BM_face_calc_normal(f, no);
-					BM_face_calc_center_mean(f, P);
+					BM_face_calc_center_median(f, P);
 
 					float face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 					if( inface->back_f != (face_dir < 0) ){
@@ -4070,7 +4070,7 @@ static void optimization( MeshData *m_d ){
 						float no[3];
 						float P[3];
 						BM_face_calc_normal(f, no);
-						BM_face_calc_center_mean(f, P);
+						BM_face_calc_center_median(f, P);
 
 						float face_dir = get_facing_dir_nor(m_d->cam_loc, P, no);
 						if( inface->back_f != (face_dir < 0) ){
@@ -4196,7 +4196,7 @@ static void debug_colorize(BMesh *bm, const float cam_loc[3]){
 		if( f->mat_nr == 4 ){
 			continue;
 		}
-		BM_face_calc_center_mean(f, P);
+		BM_face_calc_center_median(f, P);
 		if( calc_if_B_nor(cam_loc, P, f->no) ){
 			f->mat_nr = 1;
 		} else {
@@ -4230,7 +4230,7 @@ static void debug_colorize_radi( MeshData *m_d ){
 					if( f->mat_nr == 4 ){
 						continue;
 					}
-					BM_face_calc_center_mean(f, P);
+					BM_face_calc_center_median(f, P);
 					if( calc_if_B_nor(m_d->cam_loc, P, f->no) ){
 						f->mat_nr = 3;
 					} else {
@@ -4350,7 +4350,7 @@ static Mesh *mybmesh_do(Mesh *mesh, MyBMeshModifierData *mmd, float cam_loc[3])
 
 	if (mmd->flag & MOD_MYBMESH_TRIANG) {
 		//TODO check if shortest diagonal is better
-		BM_mesh_triangulate(bm, MOD_TRIANGULATE_QUAD_FIXED, MOD_TRIANGULATE_NGON_BEAUTY, false, NULL, NULL, NULL);
+		BM_mesh_triangulate(bm, MOD_TRIANGULATE_QUAD_FIXED, MOD_TRIANGULATE_NGON_BEAUTY, 4, false, NULL, NULL, NULL);
 	}
 
 	if( mmd->camera_ob == NULL){
@@ -4559,12 +4559,6 @@ ModifierTypeInfo modifierType_MyBMesh = {
 	/* flags cont */        eModifierTypeFlag_EnableInEditmode,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

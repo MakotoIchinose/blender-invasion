@@ -35,12 +35,12 @@ class RenderTile;
 class BlenderSession {
 public:
 	BlenderSession(BL::RenderEngine& b_engine,
-	               BL::UserPreferences& b_userpref,
+	               BL::Preferences& b_userpref,
 	               BL::BlendData& b_data,
 	               bool preview_osl);
 
 	BlenderSession(BL::RenderEngine& b_engine,
-	               BL::UserPreferences& b_userpref,
+	               BL::Preferences& b_userpref,
 	               BL::BlendData& b_data,
 	               BL::SpaceView3D& b_v3d,
 	               BL::RegionView3D& b_rv3d,
@@ -90,6 +90,7 @@ public:
 	void tag_redraw();
 	void tag_update();
 	void get_status(string& status, string& substatus);
+	void get_kernel_status(string& kernel_status);
 	void get_progress(float& progress, double& total_time, double& render_time);
 	void test_cancel();
 	void update_status_progress();
@@ -102,7 +103,7 @@ public:
 	double last_redraw_time;
 
 	BL::RenderEngine b_engine;
-	BL::UserPreferences b_userpref;
+	BL::Preferences b_userpref;
 	BL::BlendData b_data;
 	BL::RenderSettings b_render;
 	BL::Depsgraph b_depsgraph;
@@ -151,6 +152,8 @@ public:
 	static bool print_render_stats;
 
 protected:
+	void stamp_view_layer_metadata(Scene *scene, const string& view_layer_name);
+
 	void do_write_update_render_result(BL::RenderResult& b_rr,
 	                                   BL::RenderLayer& b_rlay,
 	                                   RenderTile& rtile,

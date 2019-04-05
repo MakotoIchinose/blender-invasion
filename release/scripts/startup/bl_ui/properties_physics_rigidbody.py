@@ -18,7 +18,6 @@
 
 # <pep8 compliant>
 
-import bpy
 from bpy.types import (
     Panel,
 )
@@ -191,7 +190,7 @@ class PHYSICS_PT_rigid_body_collisions_collections(PHYSICS_PT_rigidbody_panel, P
         ob = context.object
         rbo = ob.rigid_body
 
-        layout.prop(rbo, "collision_groups", text="")
+        layout.prop(rbo, "collision_collections", text="")
 
 
 class PHYSICS_PT_rigid_body_dynamics(PHYSICS_PT_rigidbody_panel, Panel):

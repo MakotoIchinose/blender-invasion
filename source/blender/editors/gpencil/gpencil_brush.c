@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2015, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung, Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Brush based operators for editing Grease Pencil strokes
  */
 
-/** \file blender/editors/gpencil/gpencil_brush.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 
@@ -63,7 +56,6 @@
 #include "BKE_material.h"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
 
 #include "UI_interface.h"
 
@@ -109,8 +101,10 @@ typedef struct tGP_BrushEditData {
 	/* Brush Settings */
 	GP_Sculpt_Settings *settings;
 	GP_Sculpt_Data *gp_brush;
+	GP_Sculpt_Data *gp_brush_old;
 
 	eGP_Sculpt_Types brush_type;
+	eGP_Sculpt_Types brush_type_old;
 	eGP_Sculpt_Flag  flag;
 
 	/* Space Conversion Data */
@@ -119,6 +113,7 @@ typedef struct tGP_BrushEditData {
 
 	/* Is the brush currently painting? */
 	bool is_painting;
+	bool is_weight_mode;
 
 	/* Start of new sculpt stroke */
 	bool first;
@@ -135,7 +130,7 @@ typedef struct tGP_BrushEditData {
 	/* - position and pressure
 	 * - the *_prev variants are the previous values
 	 */
-	int   mval[2], mval_prev[2];
+	float   mval[2], mval_prev[2];
 	float pressure, pressure_prev;
 
 	/* - effect vector (e.g. 2D/3D translation for grab brush) */
@@ -181,18 +176,54 @@ static void gpsculpt_compute_lock_axis(tGP_BrushEditData *gso, bGPDspoint *pt, c
 		return;
 	}
 
-	ToolSettings *ts = gso->scene->toolsettings;
-	int axis = ts->gp_sculpt.lock_axis;
+	const ToolSettings *ts = gso->scene->toolsettings;
+	const View3DCursor *cursor = &gso->scene->cursor;
+	const int axis = ts->gp_sculpt.lock_axis;
 
 	/* lock axis control */
-	if (axis == 1) {
-		pt->x = save_pt[0];
-	}
-	if (axis == 2) {
-		pt->y = save_pt[1];
-	}
-	if (axis == 3) {
-		pt->z = save_pt[2];
+	switch (axis) {
+		case GP_LOCKAXIS_X:
+		{
+			pt->x = save_pt[0];
+			break;
+		}
+		case GP_LOCKAXIS_Y:
+		{
+			pt->y = save_pt[1];
+			break;
+		}
+		case GP_LOCKAXIS_Z:
+		{
+			pt->z = save_pt[2];
+			break;
+		}
+		case GP_LOCKAXIS_CURSOR:
+		{
+			/* compute a plane with cursor normal and position of the point
+			   before do the sculpt */
+			const float scale[3] = { 1.0f, 1.0f, 1.0f };
+			float plane_normal[3] = { 0.0f, 0.0f, 1.0f };
+			float plane[4];
+			float mat[4][4];
+			float r_close[3];
+
+			loc_eul_size_to_mat4(mat,
+				cursor->location,
+				cursor->rotation_euler,
+				scale);
+
+			mul_mat3_m4_v3(mat, plane_normal);
+			plane_from_point_normal_v3(plane, save_pt, plane_normal);
+
+			/* find closest point to the plane with the new position */
+			closest_to_plane_v3(r_close, plane, &pt->x);
+			copy_v3_v3(&pt->x, r_close);
+			break;
+		}
+		default:
+		{
+			break;
+		}
 	}
 }
 
@@ -221,13 +252,13 @@ static GP_Sculpt_Data *gpsculpt_get_brush(Scene *scene, bool is_weight_mode)
 
 /* Brush Operations ------------------------------- */
 
-/* Invert behaviour of brush? */
+/* Invert behavior of brush? */
 static bool gp_brush_invert_check(tGP_BrushEditData *gso)
 {
 	/* The basic setting is the brush's setting (from the panel) */
 	bool invert = ((gso->gp_brush->flag & GP_SCULPT_FLAG_INVERT) != 0);
 
-	/* During runtime, the user can hold down the Ctrl key to invert the basic behaviour */
+	/* During runtime, the user can hold down the Ctrl key to invert the basic behavior */
 	if (gso->flag & GP_SCULPT_FLAG_INVERT) {
 		invert ^= true;
 	}
@@ -258,7 +289,9 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
 
 	/* distance fading */
 	if (gp_brush->flag & GP_SCULPT_FLAG_USE_FALLOFF) {
-		float distance = (float)len_v2v2_int(gso->mval, co);
+		int mval_i[2];
+		round_v2i_v2fl(mval_i, gso->mval);
+		float distance = (float)len_v2v2_int(mval_i, co);
 		float fac;
 
 		CLAMP(distance, 0.0f, (float)radius);
@@ -314,7 +347,7 @@ static bool gp_brush_smooth_apply(
 		BKE_gpencil_smooth_stroke_uv(gps, pt_index, inf);
 	}
 
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	return true;
 }
@@ -530,7 +563,7 @@ static void gp_brush_grab_apply_cached(
 		/* compute lock axis */
 		gpsculpt_compute_lock_axis(gso, pt, save_pt);
 	}
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 }
 
 /* free customdata used for handling this stroke */
@@ -570,7 +603,7 @@ static bool gp_brush_push_apply(
 	/* compute lock axis */
 	gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* done */
 	return true;
@@ -591,7 +624,7 @@ static void gp_brush_calc_midpoint(tGP_BrushEditData *gso)
 		float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
 
 		float mval_f[2];
-		copy_v2fl_v2i(mval_f, gso->mval);
+		copy_v2_v2(mval_f, gso->mval);
 		float mval_prj[2];
 		float dvec[3];
 
@@ -656,7 +689,7 @@ static bool gp_brush_pinch_apply(
 	/* compute lock axis */
 	gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* done */
 	return true;
@@ -702,7 +735,8 @@ static bool gp_brush_twist_apply(
 		axis_angle_normalized_to_mat3(rmat, axis, angle);
 
 		/* Rotate point (no matrix-space transforms needed, as GP points are in world space) */
-		sub_v3_v3v3(vec, &pt->x, gso->dvec); /* make relative to center (center is stored in dvec) */
+		sub_v3_v3v3(vec, &pt->x, gso->dvec); /* make relative to center
+		                                      * (center is stored in dvec) */
 		mul_m3_v3(rmat, vec);
 		add_v3_v3v3(&pt->x, vec, gso->dvec); /* restore */
 
@@ -738,7 +772,7 @@ static bool gp_brush_twist_apply(
 		}
 	}
 
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* done */
 	return true;
@@ -862,7 +896,7 @@ static bool gp_brush_randomize_apply(
 		CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
 	}
 
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* done */
 	return true;
@@ -909,7 +943,7 @@ static bool gp_brush_weight_apply(
 	}
 
 	/* verify target weight */
-	CLAMP_MAX(curweight, gso->gp_brush->target_weight);
+	CLAMP_MAX(curweight, gso->gp_brush->weight);
 
 	CLAMP(curweight, 0.0f, 1.0f);
 	if (dw) {
@@ -1067,14 +1101,10 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
 
 			/* Fix color references */
 			Material *ma = BLI_ghash_lookup(data->new_colors, &new_stroke->mat_nr);
-			if ((ma) && (BKE_gpencil_get_material_index(ob, ma) > 0)) {
-				gps->mat_nr = BKE_gpencil_get_material_index(ob, ma) - 1;
-				CLAMP_MIN(gps->mat_nr, 0);
+			gps->mat_nr = BKE_gpencil_get_material_index(ob, ma);
+			if (!ma || gps->mat_nr) {
+				gps->mat_nr = 0;
 			}
-			else {
-				gps->mat_nr = 0; /* only if the color is not found */
-			}
-
 			/* Adjust all the stroke's points, so that the strokes
 			 * get pasted relative to where the cursor is now
 			 */
@@ -1187,7 +1217,7 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 	ToolSettings *ts = CTX_data_tool_settings(C);
 	Object *ob = CTX_data_active_object(C);
 
-	const bool is_weight_mode = ob->mode == OB_MODE_GPENCIL_WEIGHT;
+	const bool is_weight_mode = ob->mode == OB_MODE_WEIGHT_GPENCIL;
 	/* set the brush using the tool */
 #if 0
 	GP_Sculpt_Settings *gset = &ts->gp_sculpt;
@@ -1203,6 +1233,7 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 	/* store state */
 	gso->settings = gpsculpt_get_settings(scene);
 	gso->gp_brush = gpsculpt_get_brush(scene, is_weight_mode);
+	gso->is_weight_mode = is_weight_mode;
 
 	if (is_weight_mode) {
 		gso->brush_type = gso->settings->weighttype;
@@ -1246,9 +1277,8 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 	gso->is_multiframe = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
 	gso->use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
 
-	/* init multiedit falloff curve data before doing anything,
-	 * so we won't have to do it again later
-	 */
+	/* Init multi-edit falloff curve data before doing anything,
+	 * so we won't have to do it again later. */
 	if (gso->is_multiframe) {
 		curvemapping_initialize(ts->gp_sculpt.cur_falloff);
 	}
@@ -1271,7 +1301,7 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 			if (found == false) {
 				/* STOP HERE! Nothing to paste! */
 				BKE_report(op->reports, RPT_ERROR,
-					   "Copy some strokes to the clipboard before using the Clone brush to paste copies of them");
+				           "Copy some strokes to the clipboard before using the Clone brush to paste copies of them");
 
 				MEM_freeN(gso);
 				op->customdata = NULL;
@@ -1431,7 +1461,9 @@ static bool gpsculpt_brush_do_stroke(
 		/* do boundbox check first */
 		if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) {
 			/* only check if point is inside */
-			if (len_v2v2_int(gso->mval, pc1) <= radius) {
+			int mval_i[2];
+			round_v2i_v2fl(mval_i, gso->mval);
+			if (len_v2v2_int(mval_i, pc1) <= radius) {
 				/* apply operation to this point */
 				changed = apply(gso, gps, 0, radius, pc1);
 			}
@@ -1601,7 +1633,7 @@ static bool gpsculpt_brush_do_frame(
 		}
 		/* Triangulation must be calculated if changed */
 		if (changed) {
-			gps->flag |= GP_STROKE_RECALC_CACHES;
+			gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 			gps->tot_triangles = 0;
 		}
 	}
@@ -1752,7 +1784,7 @@ static void gpsculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *itempt
 
 	/* Updates */
 	if (changed) {
-		DEG_id_tag_update(&gso->gpd->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 	}
 
@@ -1769,6 +1801,8 @@ static void gpsculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *itempt
 static void gpsculpt_brush_apply_event(bContext *C, wmOperator *op, const wmEvent *event)
 {
 	tGP_BrushEditData *gso = op->customdata;
+	ToolSettings *ts = CTX_data_tool_settings(C);
+	GP_Sculpt_Settings *gset = &ts->gp_sculpt;
 	PointerRNA itemptr;
 	float mouse[2];
 	int tablet = 0;
@@ -1800,6 +1834,22 @@ static void gpsculpt_brush_apply_event(bContext *C, wmOperator *op, const wmEven
 	}
 	else {
 		RNA_float_set(&itemptr, "pressure", 1.0f);
+	}
+
+	if (!gso->is_weight_mode) {
+		if (event->shift) {
+			gso->gp_brush_old = gso->gp_brush;
+			gso->brush_type_old = gso->brush_type;
+
+			gso->gp_brush = &gset->brush[GP_SCULPT_TYPE_SMOOTH];
+			gso->brush_type = GP_SCULPT_TYPE_SMOOTH;
+		}
+		else {
+			if (gso->gp_brush_old != NULL) {
+				gso->gp_brush = gso->gp_brush_old;
+				gso->brush_type = gso->brush_type_old;
+			}
+		}
 	}
 
 	/* apply */
@@ -1835,8 +1885,7 @@ static int gpsculpt_brush_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 
 	/* the operator cannot work while play animation */
 	if (is_playing) {
-		BKE_report(op->reports, RPT_ERROR,
-			"Cannot sculpt while play animation");
+		BKE_report(op->reports, RPT_ERROR, "Cannot sculpt while play animation");
 
 		return OPERATOR_CANCELLED;
 	}
@@ -2085,7 +2134,7 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 
 	/* Redraw toolsettings (brush settings)? */
 	if (redraw_toolsettings) {
-		DEG_id_tag_update(&gso->gpd->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
 	}
 

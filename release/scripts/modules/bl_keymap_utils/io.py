@@ -156,7 +156,7 @@ def keyconfig_export_as_data(wm, kc, filepath, *, all_keymaps=False):
         fw = fh.write
         fw("keyconfig_data = \\\n[")
 
-        for km, kc_x in export_keymaps:
+        for km, _kc_x in export_keymaps:
             km = km.active()
             fw("(")
             fw(f"\"{km.name:s}\",\n")
@@ -236,6 +236,7 @@ def keymap_init_from_data(km, km_items, is_modal=False):
             kmi_props_data = kmi_data.get("properties", None)
             if kmi_props_data is not None:
                 kmi_props = kmi.properties
+                assert type(kmi_props_data) is list
                 for attr, value in kmi_props_data:
                     _kmi_props_setattr(kmi_props, attr, value)
 
@@ -246,7 +247,14 @@ def keyconfig_init_from_data(kc, keyconfig_data):
     # Runs at load time, keep this fast!
     for (km_name, km_args, km_content) in keyconfig_data:
         km = kc.keymaps.new(km_name, **km_args)
-        keymap_init_from_data(km, km_content["items"], is_modal=km_args.get("modal", False))
+        km_items = km_content["items"]
+        # Check here instead of inside 'keymap_init_from_data'
+        # because we want to allow both tuple & list types in that case.
+        #
+        # For full keymaps, ensure these are always lists to allow for extending them
+        # in a generic way that doesn't have to check for the type each time.
+        assert type(km_items) is list
+        keymap_init_from_data(km, km_items, is_modal=km_args.get("modal", False))
 
 
 def keyconfig_import_from_data(name, keyconfig_data):

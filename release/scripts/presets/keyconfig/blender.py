@@ -20,37 +20,39 @@ class Prefs(bpy.types.KeyConfigPreferences):
         items=(
             ('LEFT', "Left",
              "Use left mouse button for selection. "
-             "The standard behavior that works well for all input devices"),
+             "The standard behavior that works well for mouse, trackpad and tablet devices"),
             ('RIGHT', "Right",
-             "Use right mouse button for selection."
-             "For efficiently working with keyboard and mouse"),
+             "Use right mouse button for selection, and left mouse button for actions. "
+             "This works well primarily for keyboard and mouse devices"),
         ),
         description=(
             "Mouse button used for selection"
         ),
-        default='RIGHT',
+        default='LEFT',
         update=update_fn,
     )
     spacebar_action: EnumProperty(
         name="Spacebar",
         items=(
-            ('TOOL', "Tool-Bar",
+            ('PLAY', "Play",
+             "Toggle animation playback "
+             "('Shift-Space' for Tools)",
+             1),
+            ('TOOL', "Tools",
              "Open the popup tool-bar\n"
              "When 'Space' is held and used as a modifier:\n"
              "\u2022 Pressing the tools binding key switches to it immediately.\n"
              "\u2022 Dragging the cursor over a tool and releasing activates it (like a pie menu).\n"
-            ),
-            ('PLAY', "Playback",
-             "Toggle animation playback"
-            ),
-            ('SEARCH', "Operator Search",
-             "Open the operator search popup"
-            ),
+             "For Play use 'Shift-Space'",
+             0),
+            ('SEARCH', "Search",
+             "Open the operator search popup",
+             2),
         ),
         description=(
-            "Action when 'Space' is pressed ('Shift-Space' is used for the other action)"
+            "Action when 'Space' is pressed"
         ),
-        default='TOOL',
+        default='PLAY',
         update=update_fn,
     )
     use_select_all_toggle: BoolProperty(
@@ -79,6 +81,20 @@ class Prefs(bpy.types.KeyConfigPreferences):
         default=False,
         update=update_fn,
     )
+    # Developer note, this is an experemental option.
+    use_pie_click_drag: BoolProperty(
+        name="Pie Menu on Drag",
+        description=(
+            "Activate some pie menus on drag,\n"
+            "allowing the tapping the same key to have a secondary action.\n"
+            "\n"
+             "\u2022 Tapping Tab in the 3D view toggles edit-mode, drag for mode menu.\n"
+             "\u2022 Tapping Z in the 3D view toggles wireframe, drag for draw modes.\n"
+             "\u2022 Tapping Tilde in the 3D view for first person navigation, drag for view axes"
+        ),
+        default=False,
+        update=update_fn,
+    )
 
     def draw(self, layout):
         split = layout.split()
@@ -95,6 +111,7 @@ class Prefs(bpy.types.KeyConfigPreferences):
         split = layout.split()
         col = split.column()
         col.prop(self, "use_v3d_tab_menu")
+        col.prop(self, "use_pie_click_drag")
         col = split.column()
         col.prop(self, "use_v3d_shade_ex_pie")
 
@@ -103,18 +120,22 @@ blender_default = bpy.utils.execfile(os.path.join(dirname, "keymap_data", "blend
 
 
 def load():
+    from bpy import context
     from bl_keymap_utils.io import keyconfig_init_from_data
 
-    kc = bpy.context.window_manager.keyconfigs.new(idname)
+    prefs = context.preferences
+    kc = context.window_manager.keyconfigs.new(idname)
     kc_prefs = kc.preferences
 
     keyconfig_data = blender_default.generate_keymaps(
         blender_default.Params(
             select_mouse=kc_prefs.select_mouse,
+            use_mouse_emulate_3_button=prefs.inputs.use_mouse_emulate_3_button,
             spacebar_action=kc_prefs.spacebar_action,
             use_select_all_toggle=kc_prefs.use_select_all_toggle,
             use_v3d_tab_menu=kc_prefs.use_v3d_tab_menu,
             use_v3d_shade_ex_pie=kc_prefs.use_v3d_shade_ex_pie,
+            use_pie_click_drag=kc_prefs.use_pie_click_drag,
         ),
     )
     keyconfig_init_from_data(kc, keyconfig_data)

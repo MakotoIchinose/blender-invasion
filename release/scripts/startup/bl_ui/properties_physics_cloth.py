@@ -18,11 +18,10 @@
 
 # <pep8 compliant>
 
-import bpy
 from bpy.types import (
     Panel,
 )
-from bl_operators.presets import PresetMenu
+from bl_ui.utils import PresetPanel
 
 from .properties_physics_common import (
     point_cache_ui,
@@ -34,7 +33,7 @@ def cloth_panel_enabled(md):
     return md.point_cache.is_baked is False
 
 
-class CLOTH_PT_presets(PresetMenu):
+class CLOTH_PT_presets(PresetPanel, Panel):
     bl_label = "Cloth Presets"
     preset_subdir = "cloth"
     preset_operator = "script.execute_preset"
@@ -273,7 +272,7 @@ class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
         col.prop(cloth, "impulse_clamp")
 
         col = flow.column()
-        col.prop(cloth, "group")
+        col.prop(cloth, "collection")
 
 
 class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):

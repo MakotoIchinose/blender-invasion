@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operators and API's for creating bones
  */
 
-/** \file blender/editors/armature/armature_add.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "DNA_armature_types.h"
@@ -238,7 +231,7 @@ static int armature_click_extrude_invoke(bContext *C, wmOperator *op, const wmEv
 
 	copy_v3_v3(oldcurs, cursor->location);
 
-	VECCOPY2D(mval_f, event->mval);
+	copy_v2fl_v2i(mval_f, event->mval);
 	ED_view3d_win_to_3d(v3d, ar, cursor->location, mval_f, tvec);
 	copy_v3_v3(cursor->location, tvec);
 
@@ -491,7 +484,9 @@ static int armature_duplicate_selected_exec(bContext *C, wmOperator *op)
 	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		EditBone *ebone_iter;
-		EditBone *ebone_first_dupe = NULL;  /* The beginning of the duplicated bones in the edbo list */
+		/* The beginning of the duplicated bones in the edbo list */
+		EditBone *ebone_first_dupe = NULL;
+
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
 
@@ -571,10 +566,10 @@ static int armature_duplicate_selected_exec(bContext *C, wmOperator *op)
 
 				/* Update custom handle links. */
 				if (ebone_iter->bbone_prev && ebone_iter->bbone_prev->temp.ebone) {
-					ebone_iter->bbone_prev = ebone_iter->bbone_prev->temp.ebone;
+					ebone->bbone_prev = ebone_iter->bbone_prev->temp.ebone;
 				}
 				if (ebone_iter->bbone_next && ebone_iter->bbone_next->temp.ebone) {
-					ebone_iter->bbone_next = ebone_iter->bbone_next->temp.ebone;
+					ebone->bbone_next = ebone_iter->bbone_next->temp.ebone;
 				}
 
 				/* Lets try to fix any constraint subtargets that might
@@ -627,6 +622,21 @@ void ARMATURE_OT_duplicate(wmOperatorType *ot)
 	        "Flip Names", "Try to flip names of the bones, if possible, instead of adding a number extension");
 }
 
+/* Get the duplicated or existing mirrored copy of the bone. */
+static EditBone *get_symmetrized_bone(bArmature *arm, EditBone *bone)
+{
+	if (bone == NULL) {
+		return NULL;
+	}
+	else if (bone->temp.ebone != NULL) {
+		return bone->temp.ebone;
+	}
+	else {
+		EditBone *mirror = ED_armature_ebone_get_mirrored(arm->edbo, bone);
+		return (mirror != NULL) ? mirror : bone;
+	}
+}
+
 /**
  * near duplicate of #armature_duplicate_selected_exec,
  * except for parenting part (keep in sync)
@@ -649,7 +659,8 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 		bArmature *arm = obedit->data;
 
 		EditBone *ebone_iter;
-		EditBone *ebone_first_dupe = NULL;  /* The beginning of the duplicated mirrored bones in the edbo list */
+		/* The beginning of the duplicated mirrored bones in the edbo list */
+		EditBone *ebone_first_dupe = NULL;
 
 		ED_armature_edit_sync_selection(arm->edbo); // XXX why is this needed?
 
@@ -757,17 +768,13 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 				}
 				else {
 					/* the parent may have been duplicated, if not lookup the mirror parent */
-					EditBone *ebone_parent = (
-					        ebone_iter->parent->temp.ebone ?
-					        ebone_iter->parent->temp.ebone :
-					        ED_armature_ebone_get_mirrored(arm->edbo, ebone_iter->parent));
+					EditBone *ebone_parent = get_symmetrized_bone(arm, ebone_iter->parent);
 
-					if (ebone_parent == NULL) {
+					if (ebone_parent == ebone_iter->parent) {
 						/* If the mirror lookup failed, (but the current bone has a parent)
 						 * then we can assume the parent has no L/R but is a center bone.
 						 * So just use the same parent for both.
 						 */
-						ebone_parent = ebone_iter->parent;
 						ebone->flag &= ~BONE_CONNECTED;
 					}
 
@@ -775,12 +782,8 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 				}
 
 				/* Update custom handle links. */
-				if (ebone_iter->bbone_prev && ebone_iter->bbone_prev->temp.ebone) {
-					ebone_iter->bbone_prev = ebone_iter->bbone_prev->temp.ebone;
-				}
-				if (ebone_iter->bbone_next && ebone_iter->bbone_next->temp.ebone) {
-					ebone_iter->bbone_next = ebone_iter->bbone_next->temp.ebone;
-				}
+				ebone->bbone_prev = get_symmetrized_bone(arm, ebone_iter->bbone_prev);
+				ebone->bbone_next = get_symmetrized_bone(arm, ebone_iter->bbone_next);
 
 				/* Lets try to fix any constraint subtargets that might
 				 * have been duplicated
@@ -838,7 +841,7 @@ void ARMATURE_OT_symmetrize(wmOperatorType *ot)
 	static const EnumPropertyItem arm_symmetrize_direction_items[] = {
 		{-1, "NEGATIVE_X", 0, "-X to +X", ""},
 		{+1, "POSITIVE_X", 0, "+X to -X", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 by Nicholas Bishop
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/paint.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdlib.h>
@@ -45,9 +37,7 @@
 #include "DNA_workspace_types.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_string_utils.h"
 #include "BLI_math_vector.h"
 #include "BLI_listbase.h"
 
@@ -61,7 +51,6 @@
 #include "BKE_main.h"
 #include "BKE_context.h"
 #include "BKE_crazyspace.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
@@ -226,7 +215,7 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
 					return &ts->wpaint->paint;
 				case OB_MODE_TEXTURE_PAINT:
 					return &ts->imapaint.paint;
-				case OB_MODE_GPENCIL_PAINT:
+				case OB_MODE_PAINT_GPENCIL:
 					return &ts->gp_paint->paint;
 				case OB_MODE_EDIT:
 					if (ts->use_uv_sculpt)
@@ -337,7 +326,7 @@ ePaintMode BKE_paintmode_get_from_tool(const struct bToolRef *tref)
 				return PAINT_MODE_VERTEX;
 			case CTX_MODE_PAINT_WEIGHT:
 				return PAINT_MODE_WEIGHT;
-			case CTX_MODE_GPENCIL_PAINT:
+			case CTX_MODE_PAINT_GPENCIL:
 				return PAINT_MODE_GPENCIL;
 			case CTX_MODE_PAINT_TEXTURE:
 				return PAINT_MODE_TEXTURE_3D;
@@ -389,7 +378,7 @@ void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
 	}
 	else if (paint == &ts->gp_paint->paint) {
 		paint->runtime.tool_offset = offsetof(Brush, gpencil_tool);
-		paint->runtime.ob_mode = OB_MODE_GPENCIL_PAINT;
+		paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL;
 	}
 	else if (paint == &ts->uvsculpt->paint) {
 		/* We don't use these yet. */
@@ -440,11 +429,11 @@ PaintCurve *BKE_paint_curve_add(Main *bmain, const char *name)
 
 /**
  * Only copy internal data of PaintCurve ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_paint_curve_copy_data(Main *UNUSED(bmain), PaintCurve *pc_dst, const PaintCurve *pc_src, const int UNUSED(flag))
 {
@@ -456,7 +445,7 @@ void BKE_paint_curve_copy_data(Main *UNUSED(bmain), PaintCurve *pc_dst, const Pa
 PaintCurve *BKE_paint_curve_copy(Main *bmain, const PaintCurve *pc)
 {
 	PaintCurve *pc_copy;
-	BKE_id_copy_ex(bmain, &pc->id, (ID **)&pc_copy, 0, false);
+	BKE_id_copy(bmain, &pc->id, (ID **)&pc_copy);
 	return pc_copy;
 }
 
@@ -523,11 +512,11 @@ Palette *BKE_palette_add(Main *bmain, const char *name)
 
 /**
  * Only copy internal data of Palette ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_palette_copy_data(Main *UNUSED(bmain), Palette *palette_dst, const Palette *palette_src, const int UNUSED(flag))
 {
@@ -537,7 +526,7 @@ void BKE_palette_copy_data(Main *UNUSED(bmain), Palette *palette_dst, const Pale
 Palette *BKE_palette_copy(Main *bmain, const Palette *palette)
 {
 	Palette *palette_copy;
-	BKE_id_copy_ex(bmain, &palette->id, (ID **)&palette_copy, 0, false);
+	BKE_id_copy(bmain, &palette->id, (ID **)&palette_copy);
 	return palette_copy;
 }
 
@@ -664,11 +653,13 @@ bool BKE_paint_ensure(const ToolSettings *ts, struct Paint **r_paint)
 		return true;
 	}
 
-	if (ELEM(*r_paint, &ts->vpaint->paint, &ts->wpaint->paint)) {
+	if (((VPaint **)r_paint == &ts->vpaint) ||
+	    ((VPaint **)r_paint == &ts->wpaint))
+	{
 		VPaint *data = MEM_callocN(sizeof(*data), __func__);
 		paint = &data->paint;
 	}
-	else if (*r_paint == &ts->sculpt->paint) {
+	else if ((Sculpt **)r_paint == &ts->sculpt) {
 		Sculpt *data = MEM_callocN(sizeof(*data), __func__);
 		paint = &data->paint;
 
@@ -678,11 +669,11 @@ bool BKE_paint_ensure(const ToolSettings *ts, struct Paint **r_paint)
 		/* Make sure at least dyntopo subdivision is enabled */
 		data->flags |= SCULPT_DYNTOPO_SUBDIVIDE | SCULPT_DYNTOPO_COLLAPSE;
 	}
-	else if (*r_paint == &ts->gp_paint->paint) {
+	else if ((GpPaint **)r_paint == &ts->gp_paint) {
 		GpPaint *data = MEM_callocN(sizeof(*data), __func__);
 		paint = &data->paint;
 	}
-	else if (*r_paint == &ts->uvsculpt->paint) {
+	else if ((UvSculpt **)r_paint == &ts->uvsculpt) {
 		UvSculpt *data = MEM_callocN(sizeof(*data), __func__);
 		paint = &data->paint;
 	}
@@ -908,7 +899,7 @@ static void sculptsession_bm_to_me_update_data_only(Object *ob, bool reorder)
 			}
 			if (reorder)
 				BM_log_mesh_elems_reorder(ss->bm, ss->bm_log);
-			BM_mesh_bm_to_me(NULL, ss->bm, ob->data, (&(struct BMeshToMeshParams){.calc_object_remap = false}));
+			BM_mesh_bm_to_me(NULL, ss->bm, ob->data, (&(struct BMeshToMeshParams){.calc_object_remap = false,}));
 		}
 	}
 }
@@ -919,7 +910,7 @@ void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
 		sculptsession_bm_to_me_update_data_only(ob, reorder);
 
 		/* ensure the objects evaluated mesh doesn't hold onto arrays now realloc'd in the mesh [#34473] */
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	}
 }
 
@@ -1056,7 +1047,7 @@ static bool sculpt_modifiers_active(Scene *scene, Sculpt *sd, Object *ob)
 }
 
 /**
- * \param need_mask So that the evaluated mesh that is returned has mask data.
+ * \param need_mask: So that the evaluated mesh that is returned has mask data.
  */
 void BKE_sculpt_update_mesh_elements(
         Depsgraph *depsgraph, Scene *scene, Sculpt *sd, Object *ob,
@@ -1096,7 +1087,7 @@ void BKE_sculpt_update_mesh_elements(
 #else			/* if we wanted to support adding mask data while multi-res painting, we would need to do this */
 				if ((ED_sculpt_mask_layers_ensure(ob, mmd) & ED_SCULPT_MASK_LAYER_CALC_LOOP)) {
 					/* remake the derived mesh */
-					ob->recalc |= OB_RECALC_DATA;
+					ob->recalc |= ID_RECALC_GEOMETRY;
 					BKE_object_handle_update(scene, ob);
 				}
 #endif
@@ -1109,7 +1100,7 @@ void BKE_sculpt_update_mesh_elements(
 
 	ss->kb = (mmd == NULL) ? BKE_keyblock_from_object(ob) : NULL;
 
-	Mesh *me_eval = mesh_get_eval_final(depsgraph, scene, ob_eval, CD_MASK_BAREMESH);
+	Mesh *me_eval = mesh_get_eval_final(depsgraph, scene, ob_eval, &CD_MASK_BAREMESH);
 
 	/* VWPaint require mesh info for loop lookup, so require sculpt mode here */
 	if (mmd && ob->mode & OB_MODE_SCULPT) {
@@ -1390,7 +1381,16 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 	}
 	PBVH *pbvh = ob->sculpt->pbvh;
 	if (pbvh != NULL) {
-		/* Nothing to do, PBVH is already up to date. */
+		/* NOTE: It is possible that grids were re-allocated due to modifier
+		 * stack. Need to update those pointers. */
+		if (BKE_pbvh_type(pbvh) == PBVH_GRIDS) {
+			Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+			Mesh *mesh_eval = object_eval->data;
+			SubdivCCG *subdiv_ccg = mesh_eval->runtime.subdiv_ccg;
+			if (subdiv_ccg != NULL) {
+				BKE_sculpt_bvh_update_from_ccg(pbvh, subdiv_ccg);
+			}
+		}
 		return pbvh;
 	}
 
@@ -1406,11 +1406,17 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 		}
 		else if (ob->type == OB_MESH) {
 			Mesh *me_eval_deform = mesh_get_eval_deform(
-			        depsgraph, DEG_get_evaluated_scene(depsgraph), ob, CD_MASK_BAREMESH);
+			        depsgraph, DEG_get_evaluated_scene(depsgraph), object_eval, &CD_MASK_BAREMESH);
 			pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
 		}
 	}
 
 	ob->sculpt->pbvh = pbvh;
 	return pbvh;
+}
+
+void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)
+{
+	BKE_pbvh_grids_update(pbvh, subdiv_ccg->grids, (void **)subdiv_ccg->grid_faces,
+	                      subdiv_ccg->grid_flag_mats, subdiv_ccg->grid_hidden);
 }
