@@ -91,7 +91,7 @@ struct GPU_PBVH_Buffers {
 };
 
 static struct {
-	uint pos, nor, msk;
+	uint pos, nor, msk, col;
 } g_vbo_id = {0};
 
 /** \} */
@@ -113,6 +113,7 @@ static bool gpu_pbvh_vert_buf_data_set(GPU_PBVH_Buffers *buffers, uint vert_len)
 			g_vbo_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 			g_vbo_id.nor = GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I16, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
 			g_vbo_id.msk = GPU_vertformat_attr_add(&format, "msk", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+			g_vbo_id.col = GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
 		}
 #if 0
 		buffers->vert_buf = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_DYNAMIC);
@@ -172,6 +173,7 @@ static void gpu_pbvh_batch_init(GPU_PBVH_Buffers *buffers, GPUPrimType prim)
 void GPU_pbvh_mesh_buffers_update(
         GPU_PBVH_Buffers *buffers, const MVert *mvert,
         const int *vert_indices, int totvert, const float *vmask,
+        const MVertCol *vcol,
         const int (*face_vert_indices)[3],
         const int update_flags)
 {
@@ -202,6 +204,24 @@ void GPU_pbvh_mesh_buffers_update(
 							float fmask = vmask[v_index];
 							GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.msk, vidx, &fmask);
 							empty_mask = empty_mask && (fmask == 0.0f);
+						}
+					}
+				}
+				if (vcol) {
+					for (uint i = 0; i < buffers->face_indices_len; i++) {
+						const MLoopTri *lt = &buffers->looptri[buffers->face_indices[i]];
+						for (uint j = 0; j < 3; j++) {
+							int vidx = face_vert_indices[i][j];
+							int v_index = buffers->mloop[lt->tri[j]].v;
+							char col[4];
+							if (vcol) {
+								col[0] = vcol[v_index].r;
+								col[1] = vcol[v_index].g;
+								col[2] = vcol[v_index].b;
+								col[3] = vcol[v_index].a;
+								GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vidx, &col);
+							}
+
 						}
 					}
 				}
@@ -237,12 +257,21 @@ void GPU_pbvh_mesh_buffers_update(
 						fmask = (vmask[vtri[0]] + vmask[vtri[1]] + vmask[vtri[2]]) / 3.0f;
 					}
 
+					char col[4];
+					if (vcol) {
+						col[0] = (vcol[vtri[0]].r + vcol[vtri[1]].r + vcol[vtri[2]].r) / 3.0f;
+						col[1] = (vcol[vtri[0]].g + vcol[vtri[1]].g + vcol[vtri[2]].g) / 3.0f;
+						col[2] = (vcol[vtri[0]].b + vcol[vtri[1]].b + vcol[vtri[2]].b) / 3.0f;
+						col[3] = (vcol[vtri[0]].a + vcol[vtri[1]].a + vcol[vtri[2]].a) / 3.0f;
+					}
+
 					for (uint j = 0; j < 3; j++) {
 						const MVert *v = &mvert[vtri[j]];
 
 						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.pos, vbo_index, v->co);
 						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.nor, vbo_index, no);
 						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.msk, vbo_index, &fmask);
+						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vbo_index, &col);
 
 						vbo_index++;
 					}
@@ -567,6 +596,9 @@ void GPU_pbvh_grid_buffers_update(
 							GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.msk, vbo_index, &fmask);
 							empty_mask = empty_mask && (fmask == 0.0f);
 						}
+						char col[4] = {255, 255, 255, 255};
+						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vbo_index, &col);
+
 						vbo_index += 1;
 					}
 				}
@@ -614,6 +646,11 @@ void GPU_pbvh_grid_buffers_update(
 							GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.msk, vbo_index + 3, &fmask);
 							empty_mask = empty_mask && (fmask == 0.0f);
 						}
+						char col[4] = {255, 255, 255, 255};
+						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vbo_index + 0, &col);
+						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vbo_index + 1, &col);
+						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vbo_index + 2, &col);
+						GPU_vertbuf_attr_set(buffers->vert_buf, g_vbo_id.col, vbo_index + 3, &col);
 						vbo_index += 4;
 					}
 				}
@@ -688,6 +725,8 @@ static void gpu_bmesh_vert_to_buffer_copy__gwn(
 			GPU_vertbuf_attr_set(vert_buf, g_vbo_id.msk, *v_index, &effective_mask);
 			*empty_mask = *empty_mask && (effective_mask == 0.0f);
 		}
+		char col[4] = {255, 255, 255, 255};
+		GPU_vertbuf_attr_set(vert_buf, g_vbo_id.col, *v_index, &col);
 
 		/* Assign index for use in the triangle index buffer */
 		/* note: caller must set:  bm->elem_index_dirty |= BM_VERT; */

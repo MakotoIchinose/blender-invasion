@@ -59,6 +59,7 @@ static const EnumPropertyItem sculpt_stroke_method_items[] = {
 
 
 const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
+	{SCULPT_TOOL_PAINT, "PAINT", ICON_BRUSH_SCULPT_DRAW, "Paint", ""},
 	{SCULPT_TOOL_DRAW, "DRAW", ICON_BRUSH_SCULPT_DRAW, "Draw", ""},
 	{SCULPT_TOOL_CLAY, "CLAY", ICON_BRUSH_CLAY, "Clay", ""},
 	{SCULPT_TOOL_CLAY_STRIPS, "CLAY_STRIPS", ICON_BRUSH_CLAY_STRIPS, "Clay Strips", ""},
@@ -1457,6 +1458,11 @@ static void rna_def_brush(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL},
 	};
 
+	static const EnumPropertyItem brush_sculpt_color_mix_mode_items[] = {
+		{BRUSH_SCULPT_COLOR_NONE, "NONE", 0, "Disabled", ""},
+		{BRUSH_SCULPT_COLOR_MIX, "MIX", 0, "Mix", ""},
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	static const EnumPropertyItem brush_size_unit_items[] = {
 		{0, "VIEW", 0, "View", "Measure brush size relateve to the view"},
@@ -1543,6 +1549,11 @@ static void rna_def_brush(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "automasking_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, brush_automasking_mode_items);
 	RNA_def_property_ui_text(prop, "Automasking", "");
+	RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+	prop = RNA_def_property(srna, "sculpt_color_mix_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, brush_sculpt_color_mix_mode_items);
+	RNA_def_property_ui_text(prop, "Color Mode", "");
 	RNA_def_property_update(prop, 0, "rna_Brush_update");
 
 	/* number values */

@@ -1155,6 +1155,7 @@ static void pbvh_update_draw_buffers(PBVH *bvh, PBVHNode **nodes, int totnode)
 					        node->uniq_verts +
 					        node->face_verts,
 					        CustomData_get_layer(bvh->vdata, CD_PAINT_MASK),
+					        CustomData_get_layer(bvh->vdata, CD_MVERTCOL),
 					        node->face_vert_indices,
 					        update_flags);
 					break;
@@ -2350,6 +2351,24 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node,
 	vi->mask = NULL;
 	if (bvh->type == PBVH_FACES)
 		vi->vmask = CustomData_get_layer(bvh->vdata, CD_PAINT_MASK);
+	vi->vcol = NULL;
+	if (bvh->type == PBVH_FACES)
+		vi->vcol = CustomData_get_layer(bvh->vdata, CD_MVERTCOL);
+}
+
+bool pbvh_has_color(PBVH *bvh)
+{
+	switch (bvh->type) {
+		case PBVH_GRIDS:
+			return false;
+		case PBVH_FACES:
+			return (bvh->vdata && CustomData_get_layer(bvh->vdata,
+			                      CD_MVERTCOL));
+		case PBVH_BMESH:
+			return false;
+	}
+
+	return false;
 }
 
 bool pbvh_has_mask(PBVH *bvh)

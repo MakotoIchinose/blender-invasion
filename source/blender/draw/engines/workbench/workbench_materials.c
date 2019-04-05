@@ -26,6 +26,8 @@
 
 #include "BKE_image.h"
 #include "BKE_node.h"
+#include "BKE_pbvh.h"
+#include "BKE_paint.h"
 
 #include "BLI_dynstr.h"
 #include "BLI_hash.h"
@@ -281,6 +283,10 @@ void workbench_material_shgroup_uniform(
 		DRW_shgroup_uniform_vec4(grp, "WorldClipPlanes", wpd->world_clip_planes[0], 6);
 		DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
 	}
+
+	int color_type = workbench_material_determine_color_type(wpd, material->ima, ob);
+	bool use_vertex_paint = ob->mode == OB_MODE_SCULPT && !(MATCAP_ENABLED(wpd) && color_type == V3D_SHADING_SINGLE_COLOR);
+	DRW_shgroup_uniform_bool_copy(grp, "useVertexPaint", use_vertex_paint);
 }
 
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material, const WORKBENCH_MaterialData *source_material)

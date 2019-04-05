@@ -229,8 +229,10 @@ class _draw_left_context_mode:
                 return
 
             from .properties_paint_common import (
+                UnifiedPaintPanel,
                 brush_basic_sculpt_settings,
             )
+            UnifiedPaintPanel.prop_unified_color(layout, context, brush, "color", text="")
             brush_basic_sculpt_settings(layout, context, brush, compact=True)
 
         @staticmethod

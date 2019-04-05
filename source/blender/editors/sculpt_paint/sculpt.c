@@ -1157,6 +1157,7 @@ static float brush_strength(
 		case SCULPT_TOOL_CLAY:
 		case SCULPT_TOOL_CLAY_STRIPS:
 		case SCULPT_TOOL_DRAW:
+		case SCULPT_TOOL_PAINT:
 		case SCULPT_TOOL_LAYER:
 			return alpha * flip * pressure * overlap * feather;
 		case SCULPT_TOOL_DAM:
@@ -2328,6 +2329,82 @@ static void do_mask_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 	}
 }
 
+static void apply_color(SculptSession *ss, PBVHVertexIter *vd, const Brush *brush, float fade) {
+		float factor = fade * fabs(ss->cache->bstrength);
+		factor *= 2;
+		CLAMP(factor, 0.0f, 1.0f);
+		char r = brush->rgb[0] * 255;
+		char g = brush->rgb[1] * 255;
+		char b = brush->rgb[2] * 255;
+
+		char brushColor[4] = {r, g, b, 0};
+		/* TODO (Pablo): Implement proper blend modes */
+		vd->col->r = vd->col->r * (1 - factor) + brushColor[0] * factor;
+		vd->col->g = vd->col->g * (1 - factor) + brushColor[1] * factor;
+		vd->col->b = vd->col->b * (1 - factor) + brushColor[2] * factor;
+}
+
+static void do_paint_brush_task_cb_ex(
+        void *__restrict userdata,
+        const int n,
+        const ParallelRangeTLS *__restrict tls)
+{
+	SculptThreadedTaskData *data = userdata;
+	SculptSession *ss = data->ob->sculpt;
+	const Brush *brush = data->brush;
+	const float *offset = data->offset;
+
+	PBVHVertexIter vd;
+	float (*proxy)[3];
+
+	proxy = BKE_pbvh_node_add_proxy(ss->pbvh, data->nodes[n])->co;
+
+	SculptBrushTest test;
+	SculptBrushTestFn sculpt_brush_test_sq_fn =
+	        sculpt_brush_test_init_with_falloff_shape(ss, &test, data->brush->falloff_shape);
+
+	BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
+	{
+		if (sculpt_brush_test_sq_fn(&test, vd.co)) {
+			/* offset vertex */
+			float fade = tex_strength(
+			        ss, brush, vd.co, sqrtf(test.dist),
+			        vd.no, vd.fno, vd.mask ? *vd.mask : 0.0f, tls->thread_id);
+
+			apply_color(ss, &vd, brush, fade);
+			if (vd.mvert)
+				vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+		}
+	}
+	BKE_pbvh_vertex_iter_end;
+}
+
+static void do_paint_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+{
+	SculptSession *ss = ob->sculpt;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	float offset[3];
+
+	/* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
+	 * initialize before threads so they can do curve mapping */
+	curvemapping_initialize(brush->curve);
+
+	/* threaded loop over nodes */
+	SculptThreadedTaskData data = {
+	    .sd = sd, .ob = ob, .brush = brush, .nodes = nodes,
+	    .offset = offset,
+	};
+
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+	BLI_task_parallel_range(
+	            0, totnode,
+	            &data,
+	            do_paint_brush_task_cb_ex,
+	            &settings);
+}
+
 static void do_draw_brush_task_cb_ex(
         void *__restrict userdata,
         const int n,
@@ -2357,6 +2434,10 @@ static void do_draw_brush_task_cb_ex(
 
 			if (sculpt_automasking_compatible(ss)){
 				fade *= sculpt_automasking_value_get(ss, brush, &ss->mvert[vd.vert_indices[vd.i]]);
+			}
+
+			if (brush->sculpt_color_mix_mode & BRUSH_SCULPT_COLOR_MIX) {
+				apply_color(ss, &vd, brush, fade);
 			}
 
 			mul_v3_v3fl(proxy[vd.i], offset, fade);
@@ -4111,8 +4192,26 @@ static void do_brush_action_task_cb(
 {
 	SculptThreadedTaskData *data = userdata;
 
-	sculpt_undo_push_node(data->ob, data->nodes[n],
-	                      data->brush->sculpt_tool == SCULPT_TOOL_MASK ? SCULPT_UNDO_MASK : SCULPT_UNDO_COORDS);
+	switch (data->brush->sculpt_tool){
+		case SCULPT_TOOL_MASK:
+			sculpt_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_MASK);
+			break;
+		case SCULPT_TOOL_PAINT:
+			sculpt_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_COLOR);
+			break;
+		case SCULPT_TOOL_DRAW:
+			if (data->brush->sculpt_color_mix_mode & BRUSH_SCULPT_COLOR_MIX){
+				sculpt_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_COORDS_COLOR);
+			}
+			else {
+				sculpt_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+			}
+			break;
+		default:
+			sculpt_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+			break;
+
+	}
 	BKE_pbvh_node_mark_update(data->nodes[n]);
 }
 
@@ -4120,6 +4219,11 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
 {
 	SculptSession *ss = ob->sculpt;
 	int totnode;
+
+	/* Check unsupported features */
+	PBVHType type = BKE_pbvh_type(ss->pbvh);
+	if (brush->sculpt_tool == SCULPT_TOOL_PAINT &&  type != PBVH_FACES) return;
+	if (brush->sculpt_color_mix_mode & BRUSH_SCULPT_COLOR_MIX && type != PBVH_FACES) return;
 
 	/* Build a list of all nodes that are potentially within the brush's area of influence */
 	const bool use_original = sculpt_tool_needs_original(brush->sculpt_tool) ? true : ss->cache->original;
@@ -4214,6 +4318,9 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
 				break;
 			case SCULPT_TOOL_MASK:
 				do_mask_brush(sd, ob, nodes, totnode);
+				break;
+			case SCULPT_TOOL_PAINT:
+				do_paint_brush(sd, ob, nodes, totnode);
 				break;
 		}
 
@@ -4715,6 +4822,8 @@ static const char *sculpt_tool_name(Sculpt *sd)
 			return "Dam Brush";
 		case SCULPT_TOOL_SIMPLIFY:
 			return "Simplify Brush";
+		case SCULPT_TOOL_PAINT:
+			return "Paint Brush";
 	}
 
 	return "Sculpting";
@@ -6346,6 +6455,20 @@ static void sculpt_init_session(Depsgraph *depsgraph, Scene *scene, Object *ob)
 
 	ob->sculpt = MEM_callocN(sizeof(SculptSession), "sculpt session");
 	ob->sculpt->mode_type = OB_MODE_SCULPT;
+
+	/* Create the customdalayer for vcol for testing */
+	Mesh *me = ob->data;
+	if (!CustomData_has_layer(&me->vdata, CD_MVERTCOL)){
+		ob->sculpt->vcol = CustomData_add_layer_named(&me->vdata, CD_MVERTCOL, CD_CALLOC, NULL, me->totvert, "vcols");
+		for (int i = 0; i < me->totvert; i++) {
+			ob->sculpt->vcol[i].r = 255;
+			ob->sculpt->vcol[i].g = 255;
+			ob->sculpt->vcol[i].b = 255;
+			ob->sculpt->vcol[i].a = 255;
+		}
+	} else {
+		ob->sculpt->vcol = CustomData_get_layer(&me->vdata, CD_MVERTCOL);
+	}
 	BKE_sculpt_update_mesh_elements(depsgraph, scene, scene->toolsettings->sculpt, ob, false, false);
 }
 
@@ -6775,6 +6898,33 @@ static void SCULPT_OT_sample_detail_size(wmOperatorType *ot)
 	                  "Location", "Screen Coordinates of sampling", 0, SHRT_MAX);
 }
 
+static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e))
+{
+	Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+	Object *ob = CTX_data_active_object(C);
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	SculptSession *ss = ob->sculpt;
+	int v_index = ss->active_vertex_mesh_index;
+	brush->rgb[0] = ss->vcol[v_index].r / 255.0f;
+	brush->rgb[1] = ss->vcol[v_index].g / 255.0f;
+	brush->rgb[2] = ss->vcol[v_index].b / 255.0f;
+	return OPERATOR_FINISHED;
+}
+
+static void SCULPT_OT_sample_color(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Sample color";
+	ot->idname = "SCULPT_OT_sample_color";
+	ot->description = "Sample the vertex color of the active vertex";
+
+	/* api callbacks */
+	ot->invoke = sculpt_sample_color_invoke;
+	ot->poll = sculpt_mode_poll;
+
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 
 /* Dynamic-topology detail size
  *
@@ -6841,4 +6991,5 @@ void ED_operatortypes_sculpt(void)
 	WM_operatortype_append(SCULPT_OT_detail_flood_fill);
 	WM_operatortype_append(SCULPT_OT_sample_detail_size);
 	WM_operatortype_append(SCULPT_OT_set_detail_size);
+	WM_operatortype_append(SCULPT_OT_sample_color);
 }

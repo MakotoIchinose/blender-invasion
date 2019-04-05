@@ -262,6 +262,8 @@ void ED_operatortypes_object(void)
 	WM_operatortype_append(OBJECT_OT_hide_collection);
 
 	WM_operatortype_append(OBJECT_OT_remesh);
+	WM_operatortype_append(OBJECT_OT_vertex_to_loop_colors);
+	WM_operatortype_append(OBJECT_OT_loop_to_vertex_colors);
 }
 
 void ED_operatormacros_object(void)

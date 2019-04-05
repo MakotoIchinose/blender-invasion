@@ -1119,6 +1119,7 @@ void BKE_sculpt_update_mesh_elements(
 		ss->mloop = me->mloop;
 		ss->multires = NULL;
 		ss->vmask = CustomData_get_layer(&me->vdata, CD_PAINT_MASK);
+		ss->vcol = CustomData_get_layer(&me->vdata, CD_MVERTCOL);
 	}
 
 	ss->subdiv_ccg = me_eval->runtime.subdiv_ccg;

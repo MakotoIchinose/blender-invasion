@@ -82,6 +82,8 @@
 #include "BKE_workspace.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_library.h"
+#include "BKE_customdata.h"
+#include "BKE_bvhutils.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -1767,6 +1769,8 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
 	if (ob->type == OB_MESH) {
 		Mesh *mesh = ob->data;
+		BVHTreeFromMesh bvhtree = {NULL};
+		Mesh *bvhMesh;
 		if (mesh->voxel_size <= 0.0f) {
 			return OPERATOR_CANCELLED;
 		}
@@ -1829,11 +1833,51 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		BKE_mesh_calc_edges_tessface(newMesh);
 		BKE_mesh_convert_mfaces_to_mpolys(newMesh);
 		BKE_mesh_calc_normals(newMesh);
+
+		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
+			bvhMesh = BKE_mesh_new_nomain_from_template(mesh, mesh->totvert, 0, 0, 0, 0);
+			CustomData_copy(&mesh->vdata, &bvhMesh->vdata, CD_MASK_MESH.vmask, CD_DUPLICATE, mesh->totvert);
+			for(int i = 0; i < mesh->totvert; i++) {
+				copy_v3_v3(bvhMesh->mvert[i].co, mesh->mvert[i].co);
+			}
+			BKE_bvhtree_from_mesh_get(&bvhtree, bvhMesh, BVHTREE_FROM_VERTS, 2);
+		}
+
 		BKE_mesh_nomain_to_mesh(newMesh, ob->data, ob, &CD_MASK_EVERYTHING, true);
+
+		Mesh *me = ob->data;
+		MVertCol *newMesh_color = CustomData_add_layer_named(&me->vdata, CD_MVERTCOL, CD_CALLOC, NULL, newMesh->totvert, "vcols");
+		for (int i = 0; i < me->totvert; i++) {
+			newMesh_color[i].r = 255;
+			newMesh_color[i].g = 255;
+			newMesh_color[i].b = 255;
+			newMesh_color[i].a = 255;
+		}
+
+		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
+			MVert *newMesh_verts =  CustomData_get_layer(&me->vdata, CD_MVERT);
+			MVertCol *oldMesh_color  = CustomData_get_layer(&bvhMesh->vdata, CD_MVERTCOL);
+			for(int i = 0; i < newMesh->totvert; i++) {
+				float from_co[3];
+				BVHTreeNearest nearest;
+				nearest.index = -1;
+				nearest.dist_sq = FLT_MAX;
+				copy_v3_v3(from_co, newMesh_verts[i].co);
+				BLI_bvhtree_find_nearest(bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
+				if (nearest.index != -1) {
+					newMesh_color[i].r = oldMesh_color[nearest.index].r;
+					newMesh_color[i].g = oldMesh_color[nearest.index].g;
+					newMesh_color[i].b = oldMesh_color[nearest.index].b;
+					newMesh_color[i].a = oldMesh_color[nearest.index].a;
+				}
+			}
+			BKE_mesh_free(bvhMesh);
+		}
 
 		if (mesh->flag & ME_REMESH_SMOOTH_NORMALS) {
 			BKE_mesh_smooth_flag_set(ob, true);
 		}
+
 		if (ob->mode == OB_MODE_SCULPT) {
 			sculpt_undo_push_end();
 		}
@@ -1844,6 +1888,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 
 		BKE_mesh_free(newMesh);
+		free_bvhtree_from_mesh(&bvhtree);
 		MEM_freeN(rmd.faces);
 		MEM_freeN(rmd.verts);
 		MEM_freeN(verttri);
@@ -1866,4 +1911,132 @@ void OBJECT_OT_remesh(wmOperatorType *ot)
 	ot->exec = remesh_exec;
 
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+}
+
+#define GET_CD_DATA(me, data) ((me)->edit_mesh ? &(me)->edit_mesh->bm->data : &(me)->data)
+static int vertex_to_loop_colors_exec(bContext *C, wmOperator *op) {
+	bool linked_data = false;
+
+	Object *ob = CTX_data_active_object(C);
+
+	ID *data;
+	data = ob->data;
+	if (data && ID_IS_LINKED(data)) {
+		linked_data = true;
+		return OPERATOR_CANCELLED;
+	}
+
+	if (ob->type == OB_MESH) {
+		Mesh *mesh = ob->data;
+		CustomData *ldata = GET_CD_DATA(mesh, ldata);
+		const int n = CustomData_get_active_layer(ldata, CD_MLOOPCOL);
+		if (n == -1) {
+			return OPERATOR_CANCELLED;
+		}
+		MLoopCol *loopcols = CustomData_get_layer_n(&mesh->ldata, CD_MLOOPCOL, n);
+		MVertCol *vertcols = CustomData_get_layer(&mesh->vdata, CD_MVERTCOL);
+		MLoop *loops = CustomData_get_layer(&mesh->ldata, CD_MLOOP);
+		MPoly *polys = CustomData_get_layer(&mesh->pdata, CD_MPOLY);
+
+		for (int i = 0; i < mesh->totpoly; i++) {
+			MPoly *c_poly = &polys[i];
+			for (int j = 0; j < c_poly->totloop; j++) {
+				int loop_index = c_poly->loopstart + j;
+				MLoop *c_loop = &loops[c_poly->loopstart + j];
+				loopcols[loop_index].r = vertcols[c_loop->v].r;
+				loopcols[loop_index].g = vertcols[c_loop->v].g;
+				loopcols[loop_index].b = vertcols[c_loop->v].b;
+				loopcols[loop_index].a = vertcols[c_loop->v].a;
+			}
+		}
+
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+
+		return OPERATOR_FINISHED;
+	}
+	return OPERATOR_CANCELLED;
+}
+
+void OBJECT_OT_vertex_to_loop_colors(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Vertex color to loop color";
+	ot->description = "Copy the vertex color to a regular color layer";
+	ot->idname = "OBJECT_OT_vertex_to_loop_colors";
+
+	/* api callbacks */
+	ot->poll = object_mode_set_poll;
+	ot->exec = vertex_to_loop_colors_exec;
+
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static int loop_to_vertex_colors_exec(bContext *C, wmOperator *op) {
+	bool linked_data = false;
+
+	Object *ob = CTX_data_active_object(C);
+
+	ID *data;
+	data = ob->data;
+	if (data && ID_IS_LINKED(data)) {
+		linked_data = true;
+		return OPERATOR_CANCELLED;
+	}
+
+	if (ob->type == OB_MESH) {
+		Mesh *mesh = ob->data;
+		CustomData *ldata = GET_CD_DATA(mesh, ldata);
+		const int n = CustomData_get_active_layer(ldata, CD_MLOOPCOL);
+		if (n == -1) {
+			return OPERATOR_CANCELLED;
+		}
+		MLoopCol *loopcols = CustomData_get_layer_n(&mesh->ldata, CD_MLOOPCOL, n);
+		MVertCol *vertcols;
+		if (!CustomData_has_layer(&mesh->vdata, CD_MVERTCOL)){
+			vertcols = CustomData_add_layer_named(&mesh->vdata, CD_MVERTCOL, CD_CALLOC, NULL, mesh->totvert, "vcols");
+			for (int i = 0; i < mesh->totvert; i++) {
+				ob->sculpt->vcol[i].r = 255;
+				ob->sculpt->vcol[i].g = 255;
+				ob->sculpt->vcol[i].b = 255;
+				ob->sculpt->vcol[i].a = 255;
+			}
+		} else {
+			vertcols = CustomData_get_layer(&mesh->vdata, CD_MVERTCOL);
+		}
+		MLoop *loops = CustomData_get_layer(&mesh->ldata, CD_MLOOP);
+		MPoly *polys = CustomData_get_layer(&mesh->pdata, CD_MPOLY);
+
+		for (int i = 0; i < mesh->totpoly; i++) {
+			MPoly *c_poly = &polys[i];
+			for (int j = 0; j < c_poly->totloop; j++) {
+				int loop_index = c_poly->loopstart + j;
+				MLoop *c_loop = &loops[c_poly->loopstart + j];
+				vertcols[c_loop->v].r = loopcols[loop_index].r;
+				vertcols[c_loop->v].g = loopcols[loop_index].g;
+				vertcols[c_loop->v].b = loopcols[loop_index].b;
+				vertcols[c_loop->v].a = loopcols[loop_index].a;
+			}
+		}
+
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+
+		return OPERATOR_FINISHED;
+	}
+	return OPERATOR_CANCELLED;
+}
+
+void OBJECT_OT_loop_to_vertex_colors(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Loop color to vertex color";
+	ot->description = "Copy the active loop color layer to the vertex color";
+	ot->idname = "OBJECT_OT_loop_to_vertex_colors";
+
+	/* api callbacks */
+	ot->poll = object_mode_set_poll;
+	ot->exec = loop_to_vertex_colors_exec;
+
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }

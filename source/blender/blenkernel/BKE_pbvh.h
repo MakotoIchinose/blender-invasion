@@ -296,6 +296,8 @@ typedef struct PBVHVertexIter {
 	short *no;
 	float *fno;
 	float *mask;
+	struct MVertCol *col;
+	struct MVertCol *vcol;
 } PBVHVertexIter;
 
 void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node,
@@ -337,6 +339,8 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node,
 					vi.no = vi.mvert->no; \
 					if (vi.vmask) \
 						vi.mask = &vi.vmask[vi.vert_indices[vi.gx]]; \
+					if (vi.vcol) \
+						vi.col = &vi.vcol[vi.vert_indices[vi.gx]]; \
 				} \
 				else { \
 					if (!BLI_gsetIterator_done(&vi.bm_unique_verts)) {\

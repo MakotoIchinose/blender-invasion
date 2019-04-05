@@ -8,6 +8,7 @@ uniform sampler2D image;
 uniform float ImageTransparencyCutoff = 0.1;
 uniform bool imageSrgb;
 uniform bool imageNearest;
+uniform bool useVertexPaint;
 
 #ifdef NORMAL_VIEWPORT_PASS_ENABLED
 in vec3 normal_viewport;
@@ -31,6 +32,8 @@ layout(location=1) out uint objectId;
 layout(location=2) out WB_Normal normalViewport;
 #endif
 
+in vec4 out_color;
+
 void main()
 {
 #ifdef MATDATA_PASS_ENABLED
@@ -44,6 +47,10 @@ void main()
 	}
 #  else
 	color.rgb = materialDiffuseColor;
+	if (useVertexPaint) {
+		color.rgb = vec3(out_color.r, out_color.g, out_color.b);
+		color = srgb_to_linearrgb(color);
+	}
 #  endif
 
 #  ifdef V3D_LIGHTING_MATCAP

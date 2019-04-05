@@ -199,6 +199,11 @@ typedef enum eAutomaskingMode {
 	BRUSH_AUTOMASKING_TOPOLOGY = 1,
 } eAutomaskingMode;
 
+typedef enum eSculptColorMode{
+	BRUSH_SCULPT_COLOR_NONE = 0,
+	BRUSH_SCULPT_COLOR_MIX = 1,
+} eSculptColorMode;
+
 typedef struct Brush {
 	ID id;
 
@@ -299,7 +304,7 @@ typedef struct Brush {
 	int curve_preset;
 
 	int automasking_mode;
-	char _pad1[4];
+	int sculpt_color_mix_mode;
 
 	float plane_trim;
 	/** Affectable height of brush (layer height for layer tool, i.e.). */
@@ -456,6 +461,7 @@ typedef enum eBrushSculptTool {
 	SCULPT_TOOL_CLAY_STRIPS = 18,
 	SCULPT_TOOL_MASK = 19,
 	SCULPT_TOOL_DAM = 20,
+	SCULPT_TOOL_PAINT = 21,
 } eBrushSculptTool;
 
 /** When #BRUSH_ACCUMULATE is used */
@@ -487,6 +493,7 @@ typedef enum eBrushSculptTool {
 	SCULPT_TOOL_THUMB, \
 	SCULPT_TOOL_LAYER, \
 	SCULPT_TOOL_DAM, \
+	SCULPT_TOOL_PAINT, \
 	\
 	/* These brushes could handle dynamic topology, \
 	 * but user feedback indicates it's better not to */ \

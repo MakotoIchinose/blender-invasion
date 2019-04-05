@@ -92,6 +92,8 @@ typedef enum {
 	SCULPT_UNDO_DYNTOPO_END,
 	SCULPT_UNDO_DYNTOPO_SYMMETRIZE,
 	SCULPT_UNDO_REMESH,
+	SCULPT_UNDO_COLOR,
+	SCULPT_UNDO_COORDS_COLOR,
 } SculptUndoType;
 
 typedef struct SculptUndoNode {
@@ -106,6 +108,7 @@ typedef struct SculptUndoNode {
 	float (*orig_co)[3];
 	short (*no)[3];
 	float *mask;
+	MVertCol *col;
 	int totvert;
 
 	/* non-multires */

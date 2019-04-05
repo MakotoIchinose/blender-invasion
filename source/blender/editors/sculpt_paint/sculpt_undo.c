@@ -287,6 +287,33 @@ static bool sculpt_undo_restore_hidden(
 	return 1;
 }
 
+static bool sculpt_undo_restore_color(bContext *C, SculptUndoNode *unode)
+{
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
+	SculptSession *ss = ob->sculpt;
+	SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
+	MVert *mvert;
+	MVertCol *vcol;
+	int *index, i, j;
+
+	if (unode->maxvert) {
+		/* regular mesh restore */
+		index = unode->index;
+		mvert = ss->mvert;
+		vcol = ss->vcol;
+
+		for (i = 0; i < unode->totvert; i++) {
+			vcol[index[i]].r = unode->col[i].r;
+			vcol[index[i]].g = unode->col[i].g;
+			vcol[index[i]].b = unode->col[i].b;
+			vcol[index[i]].a = unode->col[i].a;
+			mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
+		}
+	}
+	return true;
+}
+
 static bool sculpt_undo_restore_mask(bContext *C, SculptUndoNode *unode)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -566,7 +593,16 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 				if (sculpt_undo_restore_mask(C, unode))
 					update = true;
 				break;
-
+			case SCULPT_UNDO_COLOR:
+				if (sculpt_undo_restore_color(C, unode))
+					update = true;
+				break;
+			case SCULPT_UNDO_COORDS_COLOR:
+				if (sculpt_undo_restore_coords(C, unode))
+					update = true;
+				if (sculpt_undo_restore_color(C, unode))
+					update = true;
+				break;
 			case SCULPT_UNDO_DYNTOPO_BEGIN:
 			case SCULPT_UNDO_DYNTOPO_END:
 			case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
@@ -656,6 +692,8 @@ static void sculpt_undo_free_list(ListBase *lb)
 		}
 		if (unode->mask)
 			MEM_freeN(unode->mask);
+		if (unode->col)
+			MEM_freeN(unode->col);
 
 		if (unode->bm_entry) {
 			BM_log_entry_drop(unode->bm_entry);
@@ -788,6 +826,20 @@ static SculptUndoNode *sculpt_undo_alloc_node(
 			usculpt->undo_size += (sizeof(float) * sizeof(int)) * allvert;
 
 			break;
+		case SCULPT_UNDO_COLOR:
+			unode->col = MEM_mapallocN(sizeof(MVertCol) * allvert, "SculptUndoNode.col");
+
+			usculpt->undo_size += (sizeof(MVertCol) * sizeof(int)) * allvert;
+
+			break;
+		case SCULPT_UNDO_COORDS_COLOR:
+			unode->co = MEM_mapallocN(sizeof(float[3]) * allvert, "SculptUndoNode.co");
+			unode->no = MEM_mapallocN(sizeof(short[3]) * allvert, "SculptUndoNode.no");
+			unode->col = MEM_mapallocN(sizeof(MVertCol) * allvert, "SculptUndoNode.col");
+			usculpt->undo_size = (sizeof(float[3]) + sizeof(short[3]) + sizeof(int)) * allvert;
+			usculpt->undo_size += (sizeof(MVertCol) * sizeof(int)) * allvert;
+
+			break;
 		case SCULPT_UNDO_DYNTOPO_BEGIN:
 		case SCULPT_UNDO_DYNTOPO_END:
 		case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
@@ -854,6 +906,21 @@ static void sculpt_undo_store_hidden(Object *ob, SculptUndoNode *unode)
 			                  mvert[vert_indices[i]].flag & ME_HIDE);
 		}
 	}
+}
+
+static void sculpt_undo_store_color(Object *ob, SculptUndoNode *unode)
+{
+	SculptSession *ss = ob->sculpt;
+	PBVHVertexIter vd;
+
+	BKE_pbvh_vertex_iter_begin(ss->pbvh, unode->node, vd, PBVH_ITER_ALL)
+	{
+		unode->col[vd.i].r = vd.col->r;
+		unode->col[vd.i].g = vd.col->g;
+		unode->col[vd.i].b = vd.col->b;
+		unode->col[vd.i].a = vd.col->a;
+	}
+	BKE_pbvh_vertex_iter_end;
 }
 
 static void sculpt_undo_store_mask(Object *ob, SculptUndoNode *unode)
@@ -1031,6 +1098,13 @@ SculptUndoNode *sculpt_undo_push_node(
 			break;
 		case SCULPT_UNDO_MASK:
 			sculpt_undo_store_mask(ob, unode);
+			break;
+		case SCULPT_UNDO_COLOR:
+			sculpt_undo_store_color(ob, unode);
+			break;
+		case SCULPT_UNDO_COORDS_COLOR:
+			sculpt_undo_store_coords(ob, unode);
+			sculpt_undo_store_color(ob, unode);
 			break;
 		case SCULPT_UNDO_DYNTOPO_BEGIN:
 		case SCULPT_UNDO_DYNTOPO_END:

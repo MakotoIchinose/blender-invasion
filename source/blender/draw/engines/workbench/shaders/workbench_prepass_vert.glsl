@@ -26,6 +26,9 @@ out vec3 normal_viewport;
 out vec2 uv_interp;
 #endif
 
+in vec4 color;
+out vec4 out_color;
+
 /* From http://libnoise.sourceforge.net/noisegen/index.html */
 float integer_noise(int n)
 {
@@ -74,4 +77,5 @@ void main()
 	world_clip_planes_calc_clip_distance((ModelMatrix * vec4(pos, 1.0)).xyz);
 #endif
 
+	out_color = color;
 }

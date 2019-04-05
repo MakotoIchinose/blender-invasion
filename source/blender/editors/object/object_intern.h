@@ -279,5 +279,7 @@ void OBJECT_OT_data_transfer(struct wmOperatorType *ot);
 void OBJECT_OT_datalayout_transfer(struct wmOperatorType *ot);
 
 void OBJECT_OT_remesh(struct wmOperatorType *ot);
+void OBJECT_OT_vertex_to_loop_colors(struct wmOperatorType *ot);
+void OBJECT_OT_loop_to_vertex_colors(struct wmOperatorType *ot);
 
 #endif /* __OBJECT_INTERN_H__ */

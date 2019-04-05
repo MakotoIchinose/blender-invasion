@@ -247,6 +247,7 @@ enum {
 	ME_DS_EXPAND               = 1 << 9,
 	ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,
 	ME_REMESH_SMOOTH_NORMALS   = 1 << 11,
+	ME_REMESH_REPROJECT_VERTEX_PAINT   = 1 << 12,
 };
 
 /* me->cd_flag */

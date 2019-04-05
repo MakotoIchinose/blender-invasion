@@ -209,6 +209,7 @@ typedef struct SculptSession {
 	int totvert, totpoly;
 	struct KeyBlock *kb;
 	float *vmask;
+	struct MVertCol *vcol;
 
 	/* Mesh connectivity */
 	struct MeshElemMap *pmap;

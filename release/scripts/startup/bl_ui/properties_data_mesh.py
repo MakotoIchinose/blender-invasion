@@ -453,6 +453,10 @@ class DATA_PT_vertex_colors(MeshButtonsPanel, Panel):
         col.operator("mesh.vertex_color_add", icon='ADD', text="")
         col.operator("mesh.vertex_color_remove", icon='REMOVE', text="")
 
+        row = layout.row()
+        col = row.column()
+        col.operator("object.vertex_to_loop_colors", text="Store sculpt color")
+        col.operator("object.loop_to_vertex_colors", text="Load sculpt color")
 
 class DATA_PT_remesh(MeshButtonsPanel, Panel):
     bl_label = "Remesh"
@@ -467,6 +471,7 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         mesh = context.mesh
         col.prop(mesh, "voxel_size")
         col.prop(mesh, "smooth_normals")
+        col.prop(mesh, "reproject_vertex_paint")
         col.operator("object.remesh", text="Remesh")
 
 

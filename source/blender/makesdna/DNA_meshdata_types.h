@@ -211,6 +211,11 @@ typedef struct MLoopCol {
 	unsigned char r, g, b, a;
 } MLoopCol;
 
+/* Per vertex color data */
+typedef struct MVertCol {
+	unsigned char r, g, b, a;
+} MVertCol;
+
 #define MESH_MLOOPCOL_FROM_MCOL(_mloopcol, _mcol) \
 {                                                 \
 	MLoopCol   *mloopcol__tmp = _mloopcol;        \

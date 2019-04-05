@@ -1372,6 +1372,10 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
 	{sizeof(short[4][3]), "", 0, NULL, NULL, NULL, NULL, layerSwap_flnor, NULL},
 	/* 41: CD_CUSTOMLOOPNORMAL */
 	{sizeof(short[2]), "vec2s", 1, NULL, NULL, NULL, NULL, NULL, NULL},
+	/* 42: CD_MVERTCOL */
+	{sizeof(MVertCol), "MVertCol", 1, N_("Col"), NULL, NULL, layerInterp_mloopcol, NULL,
+	 layerDefault_mloopcol, NULL, layerEqual_mloopcol, layerMultiply_mloopcol, layerInitMinMax_mloopcol,
+	 layerAdd_mloopcol, layerDoMinMax_mloopcol, layerCopyValue_mloopcol, NULL, NULL, NULL, layerMaxNum_mloopcol},
 };
 
 
@@ -1387,7 +1391,7 @@ static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
 	/* 30-34 */ "CDSubSurfCrease", "CDOrigSpaceLoop", "CDPreviewLoopCol", "CDBMElemPyPtr", "CDPaintMask",
 	/* 35-36 */ "CDGridPaintMask", "CDMVertSkin",
 	/* 37-38 */ "CDFreestyleEdge", "CDFreestyleFace",
-	/* 39-41 */ "CDMLoopTangent", "CDTessLoopNormal", "CDCustomLoopNormal",
+	/* 39-42 */ "CDMLoopTangent", "CDTessLoopNormal", "CDCustomLoopNormal", "CDMVertCol"
 };
 
 
@@ -1406,7 +1410,7 @@ const CustomData_MeshMasks CD_MASK_BAREMESH_ORIGINDEX = {
     .pmask = CD_MASK_MPOLY | CD_MASK_FACEMAP | CD_MASK_ORIGINDEX,
 };
 const CustomData_MeshMasks CD_MASK_MESH = {
-    .vmask = (CD_MASK_MVERT | CD_MASK_MDEFORMVERT | CD_MASK_MVERT_SKIN | CD_MASK_PAINT_MASK | CD_MASK_GENERIC_DATA),
+    .vmask = (CD_MASK_MVERT | CD_MASK_MDEFORMVERT | CD_MASK_MVERT_SKIN | CD_MASK_PAINT_MASK | CD_MASK_GENERIC_DATA | CD_MASK_MVERTCOL),
     .emask = (CD_MASK_MEDGE | CD_MASK_FREESTYLE_EDGE | CD_MASK_GENERIC_DATA),
     .fmask = 0,
     .lmask = (CD_MASK_MLOOP | CD_MASK_MDISPS | CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL | CD_MASK_CUSTOMLOOPNORMAL |
@@ -1415,7 +1419,7 @@ const CustomData_MeshMasks CD_MASK_MESH = {
 };
 const CustomData_MeshMasks CD_MASK_EDITMESH = {
     .vmask = (CD_MASK_MDEFORMVERT | CD_MASK_PAINT_MASK | CD_MASK_MVERT_SKIN | CD_MASK_SHAPEKEY |
-              CD_MASK_SHAPE_KEYINDEX | CD_MASK_GENERIC_DATA),
+              CD_MASK_SHAPE_KEYINDEX | CD_MASK_GENERIC_DATA | CD_MASK_MVERTCOL),
     .emask = (CD_MASK_GENERIC_DATA),
     .fmask = 0,
     .lmask = (CD_MASK_MDISPS | CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL | CD_MASK_CUSTOMLOOPNORMAL |
@@ -1433,7 +1437,7 @@ const CustomData_MeshMasks CD_MASK_DERIVEDMESH = {
 };
 const CustomData_MeshMasks CD_MASK_BMESH = {
     .vmask = (CD_MASK_MDEFORMVERT | CD_MASK_BWEIGHT | CD_MASK_MVERT_SKIN | CD_MASK_SHAPEKEY |
-              CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_GENERIC_DATA),
+              CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_GENERIC_DATA | CD_MASK_MVERTCOL),
     .emask = (CD_MASK_BWEIGHT | CD_MASK_CREASE | CD_MASK_FREESTYLE_EDGE | CD_MASK_GENERIC_DATA),
     .fmask = 0,
     .lmask = (CD_MASK_MDISPS | CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL | CD_MASK_CUSTOMLOOPNORMAL |
@@ -1455,7 +1459,7 @@ const CustomData_MeshMasks CD_MASK_FACECORNERS = {
 const CustomData_MeshMasks CD_MASK_EVERYTHING = {
     .vmask = (CD_MASK_MVERT | CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_NORMAL | CD_MASK_MDEFORMVERT |
               CD_MASK_BWEIGHT | CD_MASK_MVERT_SKIN | CD_MASK_ORCO | CD_MASK_CLOTH_ORCO | CD_MASK_SHAPEKEY |
-              CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_GENERIC_DATA),
+              CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_GENERIC_DATA | CD_MASK_MVERTCOL),
     .emask = (CD_MASK_MEDGE | CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_BWEIGHT | CD_MASK_CREASE |
               CD_MASK_FREESTYLE_EDGE | CD_MASK_GENERIC_DATA),
     .fmask = (CD_MASK_MFACE | CD_MASK_ORIGINDEX | CD_MASK_NORMAL | CD_MASK_MTFACE | CD_MASK_MCOL |
