@@ -1381,8 +1381,7 @@ static void gp_stroke_soft_refine(bGPDstroke *gps)
 	for (i = 1; i < gps->totpoints - 1; i++, pt++) {
 		if (pt->flag & GP_SPOINT_TAG) {
 			pt2 = &gps->points[i + 1];
-			if (((pt2->flag & GP_SPOINT_TAG) == 0))
-			{
+			if ((pt2->flag & GP_SPOINT_TAG) == 0) {
 				pt->flag &= ~GP_SPOINT_TAG;
 			}
 		}
@@ -1393,8 +1392,7 @@ static void gp_stroke_soft_refine(bGPDstroke *gps)
 	for (i = gps->totpoints - 1; i > 0; i--, pt--) {
 		if (pt->flag & GP_SPOINT_TAG) {
 			pt2 = &gps->points[i - 1];
-			if (((pt2->flag & GP_SPOINT_TAG) == 0))
-			{
+			if ((pt2->flag & GP_SPOINT_TAG) == 0) {
 				pt->flag &= ~GP_SPOINT_TAG;
 			}
 		}
@@ -1712,6 +1710,9 @@ static void gp_session_validatebuffer(tGPsdata *p)
 	/* reset flags */
 	gpd->runtime.sbuffer_sflag = 0;
 
+	/* reset region */
+	gpd->runtime.ar = NULL;
+
 	/* reset inittime */
 	p->inittime = 0.0;
 
@@ -1788,11 +1789,12 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
 	ToolSettings *ts = CTX_data_tool_settings(C);
 
 	Paint *paint = &ts->gp_paint->paint;
-
+	bool changed = false;
 	/* if not exist, create a new one */
 	if (paint->brush == NULL) {
 		/* create new brushes */
 		BKE_brush_gpencil_presets(C);
+		changed = true;
 	}
 	/* be sure curves are initializated */
 	curvemapping_initialize(paint->brush->gpencil_settings->curve_sensitivity);
@@ -1817,7 +1819,9 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
 	 * Maybe this update can be removed when the new tool system
 	 * will be in place, but while, we need this to keep drawing working.
 	 */
-	DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+	if (changed) {
+		DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+	}
 }
 
 
@@ -1950,13 +1954,6 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 		p->gpd = *gpd_ptr;
 	}
 
-	if (ED_gpencil_session_active() == 0) {
-		/* initialize undo stack,
-		 * also, existing undo stack would make buffer drawn
-		 */
-		gpencil_undo_init(p->gpd);
-	}
-
 	/* clear out buffer (stored in gp-data), in case something contaminated it */
 	gp_session_validatebuffer(p);
 
@@ -1965,6 +1962,9 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 
 	/* setup active color */
 	if (curarea->spacetype == SPACE_VIEW3D) {
+		/* region where paint was originated */
+		p->gpd->runtime.ar = CTX_wm_region(C);
+
 		/* NOTE: This is only done for 3D view, as Materials aren't used for
 		 *       annotations in 2D editors
 		 */
@@ -1987,9 +1987,6 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 	else {
 		p->lock_axis = 0;
 	}
-
-	/* region where paint was originated */
-	p->gpd->runtime.ar = CTX_wm_region(C);
 
 	return 1;
 }
@@ -2138,8 +2135,6 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
 			add_frame_mode = GP_GETFRAME_ADD_NEW;
 
 		p->gpf = BKE_gpencil_layer_getframe(p->gpl, cfra_eval, add_frame_mode);
-		/* set as dirty draw manager cache */
-		gp_update_cache(p->gpd);
 
 		if (p->gpf == NULL) {
 			p->status = GP_STATUS_ERROR;
