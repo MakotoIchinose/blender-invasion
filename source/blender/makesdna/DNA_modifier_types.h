@@ -1489,6 +1489,9 @@ enum {
 typedef enum eRemeshModifierFlags {
 	MOD_REMESH_FLOOD_FILL     = (1 << 0),
 	MOD_REMESH_SMOOTH_SHADING = (1 << 1),
+	MOD_REMESH_SMOOTH_NORMALS = (1 << 2),
+	MOD_REMESH_RELAX_TRIANGLES = (1 << 3),
+	MOD_REMESH_REPROJECT_VPAINT = (1 << 4),
 } RemeshModifierFlags;
 
 typedef enum eRemeshModifierMode {
@@ -1498,7 +1501,28 @@ typedef enum eRemeshModifierMode {
 	MOD_REMESH_MASS_POINT     = 1,
 	/* keeps sharp edges */
 	MOD_REMESH_SHARP_FEATURES = 2,
+	/* OpenVDB voxel remesh */
+	MOD_REMESH_VOXEL          = 3,
 } eRemeshModifierMode;
+
+
+typedef enum eVoxelFilterType {
+	VOXEL_FILTER_NONE = 0,
+	VOXEL_FILTER_GAUSSIAN = 1,
+	VOXEL_FILTER_MEDIAN = 2,
+	VOXEL_FILTER_MEAN = 3,
+	VOXEL_FILTER_MEAN_CURVATURE = 4,
+	VOXEL_FILTER_LAPLACIAN = 5,
+} eVoxelFilterType;
+
+/*filter bias, aligned to openvdb */
+typedef enum eVoxelFilterBias{
+	VOXEL_BIAS_FIRST = 0,
+	VOXEL_BIAS_SECOND,
+	VOXEL_BIAS_THIRD,
+	VOXEL_BIAS_WENO5,
+	VOXEL_BIAS_HJWENO5,
+} eVoxelFilterBias;
 
 typedef struct RemeshModifierData {
 	ModifierData modifier;
@@ -1510,6 +1534,14 @@ typedef struct RemeshModifierData {
 	float scale;
 
 	float hermite_num;
+
+	/* for voxelremesher */
+	float voxel_size;
+	float isovalue;
+	float adaptivity;
+	int filter_type;
+	int filter_bias;
+	int filter_width;
 
 	/* octree depth */
 	char depth;

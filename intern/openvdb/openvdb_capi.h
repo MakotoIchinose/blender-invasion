@@ -24,6 +24,26 @@
 extern "C" {
 #endif
 
+/*filter_type */
+enum {
+	FILTER_NONE = 0,
+	FILTER_GAUSSIAN,
+	FILTER_MEAN,
+	FILTER_MEDIAN,
+	FILTER_CURVATURE,
+	FILTER_MEAN_CURVATURE,
+	FILTER_LAPLACIAN
+};
+
+/*filter bias, aligned to openvdb */
+enum {
+	FIRST_BIAS = 0,
+	SECOND_BIAS,
+	THIRD_BIAS,
+	WENO5_BIAS,
+	HJWENO5_BIAS,
+};
+
 struct OpenVDBReader;
 struct OpenVDBWriter;
 struct OpenVDBFloatGrid;
@@ -37,11 +57,18 @@ struct OpenVDBRemeshData {
 
 	float *out_verts;
 	unsigned int *out_faces;
+	unsigned int *out_tris;
 	int out_totverts;
 	int out_totfaces;
+	int out_tottris;
+	int filter_type;
+	int filter_bias;
+	int filter_width; /*parameter for gaussian, median, mean*/
 
 	float voxel_size;
 	float isovalue;
+	float adaptivity;
+	int relax_disoriented_triangles;
 };
 
 

@@ -1195,18 +1195,34 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         layout.prop(md, "mode")
 
-        row = layout.row()
-        row.prop(md, "octree_depth")
-        row.prop(md, "scale")
+        if md.mode != 'VOXEL':
+            row = layout.row()
+            row.prop(md, "octree_depth")
+            row.prop(md, "scale")
 
         if md.mode == 'SHARP':
             layout.prop(md, "sharpness")
 
-        layout.prop(md, "use_smooth_shade")
-        layout.prop(md, "use_remove_disconnected")
-        row = layout.row()
-        row.active = md.use_remove_disconnected
-        row.prop(md, "threshold")
+        if md.mode == 'VOXEL':
+            col = layout.column(align=True)
+            col.prop(md, "voxel_size")
+            col.prop(md, "isovalue")
+            col.prop(md, "adaptivity")
+            layout.prop(md, "filter_type")
+            if md.filter_type != "NONE":
+                layout.prop(md, "filter_bias")
+                if md.filter_type in {"GAUSSIAN", "MEDIAN", "MEAN"}:
+                    layout.prop(md, "filter_width")
+
+            layout.prop(md, "smooth_normals")
+            layout.prop(md, "relax_triangles")
+            layout.prop(md, "reproject_vertex_paint")
+        else:
+            layout.prop(md, "use_smooth_shade")
+            layout.prop(md, "use_remove_disconnected")
+            row = layout.row()
+            row.active = md.use_remove_disconnected
+            row.prop(md, "threshold")
 
     @staticmethod
     def vertex_weight_mask(layout, ob, md):

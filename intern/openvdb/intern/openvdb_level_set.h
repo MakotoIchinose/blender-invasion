@@ -21,8 +21,10 @@
 #define __OPENVDB_LEVEL_SET_H__
 
 #include <openvdb/openvdb.h>
+#include <openvdb/math/FiniteDifference.h>
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h>
+#include <openvdb/tools/LevelSetFilter.h>
 
 void OpenVDB_level_set_remesh(struct OpenVDBRemeshData *rmd);
 

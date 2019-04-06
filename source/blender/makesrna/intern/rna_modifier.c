@@ -4063,6 +4063,26 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 		{MOD_REMESH_MASS_POINT, "SMOOTH", 0, "Smooth", "Output a smooth surface with no sharp-features detection"},
 		{MOD_REMESH_SHARP_FEATURES, "SHARP", 0, "Sharp",
 		                            "Output a surface that reproduces sharp edges and corners from the input mesh"},
+		{MOD_REMESH_VOXEL, "VOXEL", 0, "Voxel", "Invokes the OpenVDB voxel remesher and generates quad only meshes"},
+		{0, NULL, 0, NULL, NULL},
+	};
+
+	static const EnumPropertyItem filter_type_items[] = {
+		{VOXEL_FILTER_NONE, "NONE", 0, "None", "No Filter"},
+		{VOXEL_FILTER_GAUSSIAN, "GAUSSIAN", 0, "Gaussian", "Gaussian Filter"},
+		{VOXEL_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median Filter"},
+		{VOXEL_FILTER_MEAN, "MEAN", 0, "Mean", "Mean Filter"},
+		{VOXEL_FILTER_MEAN_CURVATURE, "MEAN_CURVATURE", 0, "Mean Curvature", "Mean Curvature Filter"},
+		{VOXEL_FILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", "Laplacian Filter"},
+		{0, NULL, 0, NULL, NULL},
+	};
+
+	static const EnumPropertyItem filter_bias_items[] = {
+		{VOXEL_BIAS_FIRST, "FIRST", 0, "First", "First bias"},
+		{VOXEL_BIAS_SECOND, "SECOND", 0, "Second", "Second bias"},
+		{VOXEL_BIAS_THIRD, "THIRD", 0, "Third", "Third bias"},
+		{VOXEL_BIAS_WENO5, "WENO5", 0, "Weno5", "Weno5 bias"},
+		{VOXEL_BIAS_HJWENO5, "HJWENO5", 0, "HjWeno5", "HjWeno5 bias"},
 		{0, NULL, 0, NULL, NULL},
 	};
 
@@ -4117,6 +4137,58 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "use_smooth_shade", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_SMOOTH_SHADING);
 	RNA_def_property_ui_text(prop, "Smooth Shading", "Output faces with smooth shading rather than flat shaded");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "voxel_size", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_range(prop, 0.001, 1.0);
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_ui_range(prop, 0.0001, 1, 0.01, 4);
+	RNA_def_property_ui_text(prop, "Voxel Size", "Voxel size used for volume evaluation");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "smooth_normals", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_SMOOTH_NORMALS);
+	RNA_def_property_ui_text(prop, "Smooth Normals", "Smooth normals on the resulting mesh");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "isovalue", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_ui_range(prop, 0.0, 1, 0.01, 4);
+	RNA_def_property_ui_text(prop, "Isovalue", "Isovalue used for remesher");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "adaptivity", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_ui_range(prop, 0.0, 1, 0.01, 4);
+	RNA_def_property_ui_text(prop, "Adaptivity", "Voxel Adaptivity used for remesher");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "relax_triangles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_RELAX_TRIANGLES);
+	RNA_def_property_ui_text(prop, "Relax Triangles", "Relax disoriented Triangles on the resulting mesh");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "filter_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, filter_type_items);
+	RNA_def_property_ui_text(prop, "Filter Type", "OpenVDB Levelset Filter Type");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "filter_bias", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, filter_bias_items);
+	RNA_def_property_ui_text(prop, "Filter Bias", "OpenVDB Levelset Filter Bias");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "filter_width", PROP_INT, PROP_UNSIGNED);
+	RNA_def_property_int_sdna(prop, NULL, "filter_width");
+	RNA_def_property_range(prop, 0, INT_MAX);
+	RNA_def_property_ui_text(prop, "Filter Width", "OpenVDB Levelset Filter Width");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "reproject_vertex_paint", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_REPROJECT_VPAINT);
+	RNA_def_property_ui_text(prop, "Reproject Vertex Paint", "Keep the current vertex paint on the new mesh");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

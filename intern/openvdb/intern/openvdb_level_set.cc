@@ -30,6 +30,7 @@ void OpenVDB_level_set_remesh(struct OpenVDBRemeshData *rmd){
 	std::vector<openvdb::Vec4I > quads;
 	std::vector<openvdb::Vec3s> out_points;
 	std::vector<openvdb::Vec4I > out_quads;
+	std::vector<openvdb::Vec3I > out_tris;
 	const openvdb::math::Transform xform;
 
 	for(int i = 0; i < rmd->totverts; i++) {
@@ -45,10 +46,41 @@ void OpenVDB_level_set_remesh(struct OpenVDBRemeshData *rmd){
 	openvdb::initialize();
 	openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform((double)rmd->voxel_size);
 	const openvdb::FloatGrid::Ptr grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*transform, points, triangles, quads, 1);
-	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, out_points, out_quads, (double)rmd->isovalue);
+
+	if (rmd->filter_type != FILTER_NONE) {
+		openvdb::tools::LevelSetFilter<openvdb::FloatGrid> filter(*grid);
+		filter.setSpatialScheme((openvdb::math::BiasedGradientScheme)rmd->filter_bias);
+
+		switch (rmd->filter_type) {
+			case FILTER_GAUSSIAN:
+				filter.gaussian(rmd->filter_width);
+			break;
+			case FILTER_MEDIAN:
+				filter.median(rmd->filter_width);
+			break;
+			case FILTER_MEAN:
+				filter.mean(rmd->filter_width);
+			break;
+			case FILTER_MEAN_CURVATURE:
+				filter.meanCurvature();
+			break;
+			case FILTER_LAPLACIAN:
+				filter.laplacian();
+			break;
+		}
+	}
+
+	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, out_points, out_tris, out_quads, (double)rmd->isovalue,
+	                                                 (double)rmd->adaptivity, (bool)rmd->relax_disoriented_triangles);
 	rmd->out_verts = (float *)MEM_malloc_arrayN(out_points.size(), 3 * sizeof (float), "openvdb remesher out verts");
 	rmd->out_faces = (unsigned int*)MEM_malloc_arrayN(out_quads.size(), 4 * sizeof (unsigned int), "openvdb remesh out quads");
+	rmd->out_tris = NULL;
+	if (out_tris.size() > 0) {
+		rmd->out_tris = (unsigned int*)MEM_malloc_arrayN(out_tris.size(), 3 * sizeof (unsigned int), "openvdb remesh out tris");
+	}
+
 	rmd->out_totverts = out_points.size();
+	rmd->out_tottris = out_tris.size();
 	rmd->out_totfaces = out_quads.size();
 
 	for(int i = 0; i < out_points.size(); i++) {
@@ -62,5 +94,11 @@ void OpenVDB_level_set_remesh(struct OpenVDBRemeshData *rmd){
 		rmd->out_faces[i * 4 + 1] = out_quads[i].y();
 		rmd->out_faces[i * 4 + 2] = out_quads[i].z();
 		rmd->out_faces[i * 4 + 3] = out_quads[i].w();
+	}
+
+	for(int i = 0; i < rmd->out_tottris; i++) {
+		rmd->out_tris[i * 3] = out_tris[i].x();
+		rmd->out_tris[i * 3 + 1] = out_tris[i].y();
+		rmd->out_tris[i * 3 + 2] = out_tris[i].z();
 	}
 }

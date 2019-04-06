@@ -1751,7 +1751,6 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
-
 static int remesh_exec(bContext *C, wmOperator *op)
 {
 	bool linked_data = false;
