@@ -84,6 +84,7 @@
 #include "BKE_library.h"
 #include "BKE_customdata.h"
 #include "BKE_bvhutils.h"
+#include "BKE_remesh.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -1751,6 +1752,7 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+
 static int remesh_exec(bContext *C, wmOperator *op)
 {
 	bool linked_data = false;
@@ -1764,11 +1766,10 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		linked_data = true;
 		return OPERATOR_CANCELLED;
 	}
-
 	if (ob->type == OB_MESH) {
 		Mesh *mesh = ob->data;
-		BVHTreeFromMesh bvhtree = {NULL};
-		Mesh *bvhMesh;
+		Mesh *newMesh;
+
 		if (mesh->voxel_size <= 0.0f) {
 			return OPERATOR_CANCELLED;
 		}
@@ -1786,98 +1787,31 @@ static int remesh_exec(bContext *C, wmOperator *op)
 			sculpt_undo_push_begin("voxel remesh");
 			sculpt_undo_push_node(ob, nodes[0], SCULPT_UNDO_REMESH);
 		}
-		BKE_mesh_runtime_looptri_recalc(mesh);
-		const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
-		MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh), "remesh_looptri");
-		BKE_mesh_runtime_verttri_from_looptri(verttri, mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(mesh));
 
-		int totfaces = BKE_mesh_runtime_looptri_len(mesh);
-		int totverts = mesh->totvert;
-		float *verts = (float *)MEM_calloc_arrayN(totverts * 3, sizeof(float), "remesh_input_verts");
-		unsigned int *faces = (unsigned int *)MEM_calloc_arrayN(totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
-		float voxel_size = mesh->voxel_size;
-		float isovalue = 0.0f;
-
-		for(int i = 0; i < totverts; i++) {
-			MVert mvert = mesh->mvert[i];
-			verts[i * 3] = mvert.co[0];
-			verts[i * 3 + 1] = mvert.co[1];
-			verts[i * 3 + 2] = mvert.co[2];
-		}
-
-		for(int i = 0; i < totfaces; i++) {
-			MVertTri vt = verttri[i];
-			faces[i * 3] = vt.tri[0];
-			faces[i * 3 + 1] = vt.tri[1];
-			faces[i * 3 + 2] = vt.tri[2];
-		}
-
+		struct OpenVDBLevelSet *level_set;
 		struct OpenVDBTransform *xform = OpenVDBTransform_create();
-		OpenVDBTransform_create_linear_transform(xform, voxel_size);
-		struct OpenVDBLevelSet *level_set = OpenVDBLevelSet_create(false, NULL);
-		struct OpenVDBVolumeToMeshData output_mesh;
-		OpenVDBLevelSet_mesh_to_level_set(level_set, verts, faces, totverts, totfaces, xform);
-		OpenVDBLevelSet_volume_to_mesh(level_set, &output_mesh, isovalue, 0.0, false);
-
-		Mesh *newMesh = BKE_mesh_new_nomain(output_mesh.totvertices, 0, output_mesh.totquads, 0, 0);
-
-		for(int i = 0; i < output_mesh.totvertices; i++) {
-			float vco[3] = { output_mesh.vertices[i * 3], output_mesh.vertices[i * 3 + 1], output_mesh.vertices[i * 3 + 2]};
-			copy_v3_v3(newMesh->mvert[i].co, vco);
-
-		}
-		for(int i = 0; i < output_mesh.totquads; i++) {
-			newMesh->mface[i].v4 = output_mesh.quads[i * 4];
-			newMesh->mface[i].v3 = output_mesh.quads[i * 4 + 1];
-			newMesh->mface[i].v2 = output_mesh.quads[i * 4 + 2];
-			newMesh->mface[i].v1 = output_mesh.quads[i * 4 + 3];
-		}
-
+		OpenVDBTransform_create_linear_transform(xform, (double)mesh->voxel_size);
+		level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
+		newMesh = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(level_set, 0.0, 0.0, false);
 		OpenVDBLevelSet_free(level_set);
 		OpenVDBTransform_free(xform);
 
-		BKE_mesh_calc_edges_tessface(newMesh);
-		BKE_mesh_convert_mfaces_to_mpolys(newMesh);
-		BKE_mesh_calc_normals(newMesh);
-
+		Mesh *objMesh_copy;
 		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
-			bvhMesh = BKE_mesh_new_nomain_from_template(mesh, mesh->totvert, 0, 0, 0, 0);
-			CustomData_copy(&mesh->vdata, &bvhMesh->vdata, CD_MASK_MESH.vmask, CD_DUPLICATE, mesh->totvert);
+			objMesh_copy = BKE_mesh_new_nomain_from_template(mesh, mesh->totvert, 0, 0, 0, 0);
+			CustomData_copy(&mesh->vdata, &objMesh_copy->vdata, CD_MASK_MESH.vmask, CD_DUPLICATE, mesh->totvert);
 			for(int i = 0; i < mesh->totvert; i++) {
-				copy_v3_v3(bvhMesh->mvert[i].co, mesh->mvert[i].co);
+				copy_v3_v3(objMesh_copy->mvert[i].co, mesh->mvert[i].co);
 			}
-			BKE_bvhtree_from_mesh_get(&bvhtree, bvhMesh, BVHTREE_FROM_VERTS, 2);
 		}
 
-		BKE_mesh_nomain_to_mesh(newMesh, ob->data, ob, &CD_MASK_EVERYTHING, true);
+		BKE_mesh_nomain_to_mesh(newMesh, mesh, ob, &CD_MASK_EVERYTHING, true);
 
-		Mesh *me = ob->data;
-		MVertCol *newMesh_color = CustomData_add_layer_named(&me->vdata, CD_MVERTCOL, CD_CALLOC, NULL, newMesh->totvert, "vcols");
-		for (int i = 0; i < me->totvert; i++) {
-			newMesh_color[i].r = 255;
-			newMesh_color[i].g = 255;
-			newMesh_color[i].b = 255;
-			newMesh_color[i].a = 255;
-		}
+		BKE_remesh_voxel_init_empty_vertex_color_layer(mesh);
 
 		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
-			MVert *newMesh_verts =  CustomData_get_layer(&me->vdata, CD_MVERT);
-			MVertCol *oldMesh_color  = CustomData_get_layer(&bvhMesh->vdata, CD_MVERTCOL);
-			for(int i = 0; i < newMesh->totvert; i++) {
-				float from_co[3];
-				BVHTreeNearest nearest;
-				nearest.index = -1;
-				nearest.dist_sq = FLT_MAX;
-				copy_v3_v3(from_co, newMesh_verts[i].co);
-				BLI_bvhtree_find_nearest(bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
-				if (nearest.index != -1) {
-					newMesh_color[i].r = oldMesh_color[nearest.index].r;
-					newMesh_color[i].g = oldMesh_color[nearest.index].g;
-					newMesh_color[i].b = oldMesh_color[nearest.index].b;
-					newMesh_color[i].a = oldMesh_color[nearest.index].a;
-				}
-			}
-			BKE_mesh_free(bvhMesh);
+			BKE_remesh_voxel_reproject_vertex_paint(mesh, objMesh_copy);
+			BKE_mesh_free(objMesh_copy);
 		}
 
 		if (mesh->flag & ME_REMESH_SMOOTH_NORMALS) {
@@ -1894,14 +1828,9 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 
 		BKE_mesh_free(newMesh);
-		free_bvhtree_from_mesh(&bvhtree);
-		MEM_freeN(output_mesh.quads);
-		MEM_freeN(output_mesh.vertices);
-		MEM_freeN(verttri);
-		MEM_freeN(verts);
-		MEM_freeN(faces);
 		return OPERATOR_FINISHED;
 	}
+
 	return OPERATOR_CANCELLED;
 }
 
