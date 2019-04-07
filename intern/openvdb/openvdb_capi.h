@@ -24,7 +24,33 @@
 extern "C" {
 #endif
 
-/*filter_type */
+/* Level Set Filters */
+typedef enum OpenVDBLevelSet_FilterType {
+	OPENVDB_LEVELSET_FILTER_GAUSSIAN = 0,
+	OPENVDB_LEVELSET_FILTER_MEAN = 1,
+	OPENVDB_LEVELSET_FILTER_MEDIAN = 2,
+	OPENVDB_LEVELSET_FILTER_MEAN_CURVATURE = 3,
+	OPENVDB_LEVELSET_FILTER_LAPLACIAN = 4,
+	OPENVDB_LEVELSET_FILTER_DILATE = 5,
+	OPENVDB_LEVELSET_FILTER_ERODE = 6,
+} OpenVDBLevelSet_FilterType;
+
+typedef enum OpenVDBLevelSet_FilterBias{
+	OPENVDB_LEVELSET_FIRST_BIAS = 0,
+	OPENVDB_LEVELSET_SECOND_BIAS,
+	OPENVDB_LEVELSET_THIRD_BIAS,
+	OPENVDB_LEVELSET_WENO5_BIAS,
+	OPENVDB_LEVELSET_HJWENO5_BIAS,
+}OpenVDBLevelSet_FilterBias;
+
+
+/* Level Set CSG Operations */
+typedef enum OpenVDBLevelSet_CSGOperation {
+	OPENVDB_LEVELSET_CSG_UNION = 0,
+	OPENVDB_LEVELSET_CSG_DIFFERENCE = 1,
+	OPENVDB_LEVELSET_CSG_INTERSECTION = 2,
+} OpenVDBLevelSet_CSGOperation;
+
 enum {
 	FILTER_NONE = 0,
 	FILTER_GAUSSIAN,
@@ -46,9 +72,20 @@ enum {
 
 struct OpenVDBReader;
 struct OpenVDBWriter;
+struct OpenVDBLevelSet;
 struct OpenVDBFloatGrid;
 struct OpenVDBIntGrid;
 struct OpenVDBVectorGrid;
+struct OpenVDBVolumeToMeshData {
+	int tottriangles;
+	int totquads;
+	int totvertices;
+
+	float *vertices;
+	unsigned int *quads;
+	unsigned int *triangles;
+};
+
 struct OpenVDBRemeshData {
 	float *verts;
 	unsigned int *faces;
@@ -136,6 +173,17 @@ void OpenVDBReader_get_meta_v3_int(struct OpenVDBReader *reader, const char *nam
 void OpenVDBReader_get_meta_mat4(struct OpenVDBReader *reader, const char *name, float value[4][4]);
 
 void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd);
+
+struct OpenVDBLevelSet *OpenVDBLevelSet_create(void);
+void OpenVDBLevelSet_free(struct OpenVDBLevelSet *level_set);
+void OpenVDBLevelSet_mesh_to_level_set(struct OpenVDBLevelSet *level_set, const float *vertices, const unsigned int *faces,
+									   const unsigned int totvertices, const unsigned int totfaces, const double voxel_size);
+void OpenVDBLevelSet_volume_to_mesh(struct OpenVDBLevelSet *level_set, struct OpenVDBVolumeToMeshData *mesh,
+							const double isovalue, const double adaptivity, const bool relax_disoriented_triangles);
+void OpenVDBLevelSet_filter(struct OpenVDBLevelSet *level_set, OpenVDBLevelSet_FilterType filter_type, int width,
+							int iterations, OpenVDBLevelSet_FilterBias bias);
+void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLevelSet *gridA, struct OpenVDBLevelSet *gridB,
+								   OpenVDBLevelSet_CSGOperation operation);
 
 
 #ifdef __cplusplus

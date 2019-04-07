@@ -22,7 +22,6 @@
 #include "openvdb_util.h"
 #include "openvdb_level_set.h"
 
-struct OpenVDBFloatGrid { int unused; };
 struct OpenVDBIntGrid { int unused; };
 struct OpenVDBVectorGrid { int unused; };
 
@@ -237,6 +236,42 @@ void OpenVDBReader_get_meta_mat4(OpenVDBReader *reader, const char *name, float 
 }
 
 
-void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd){
+void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd)
+{
 	OpenVDB_level_set_remesh(rmd);
+}
+
+OpenVDBLevelSet *OpenVDBLevelSet_create()
+{
+	return new OpenVDBLevelSet();
+}
+
+void OpenVDBLevelSet_free(OpenVDBLevelSet *level_set)
+{
+	delete level_set;
+}
+
+void OpenVDBLevelSet_mesh_to_level_set(struct OpenVDBLevelSet *level_set, const float *vertices, const unsigned int *faces,
+									   const unsigned int totvertices, const unsigned int totfaces, const double voxel_size)
+{
+	level_set->OpenVDB_mesh_to_level_set(vertices, faces, totvertices, totfaces, voxel_size);
+}
+
+void OpenVDBLevelSet_volume_to_mesh(struct OpenVDBLevelSet *level_set, struct OpenVDBVolumeToMeshData *mesh,
+							const double isovalue, const double adaptivity, const bool relax_disoriented_triangles)
+{
+	level_set->OpenVDB_volume_to_mesh(mesh, isovalue, adaptivity, relax_disoriented_triangles);
+}
+
+void OpenVDBLevelSet_filter(struct OpenVDBLevelSet *level_set, OpenVDBLevelSet_FilterType filter_type, int width,
+							int iterations, OpenVDBLevelSet_FilterBias bias)
+{
+	level_set->OpenVDB_level_set_filter(filter_type, width, iterations, bias);
+}
+
+void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLevelSet *gridA, struct OpenVDBLevelSet *gridB,
+								   OpenVDBLevelSet_CSGOperation operation)
+{
+	out->OpenVDB_CSG_operation(out->OpenVDB_level_set_get_grid(), gridA->OpenVDB_level_set_get_grid(),
+							   gridB->OpenVDB_level_set_get_grid(), operation);
 }

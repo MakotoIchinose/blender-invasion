@@ -1757,7 +1757,6 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
 	Object *ob = CTX_data_active_object(C);
 	Main *bmain = CTX_data_main(C);
-	struct OpenVDBRemeshData rmd;
 
 	ID *data;
 	data = ob->data;
@@ -1792,42 +1791,47 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh), "remesh_looptri");
 		BKE_mesh_runtime_verttri_from_looptri(verttri, mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(mesh));
 
-		rmd.totfaces = BKE_mesh_runtime_looptri_len(mesh);
-		rmd.totverts = mesh->totvert;
-		rmd.verts = (float *)MEM_calloc_arrayN(rmd.totverts * 3, sizeof(float), "remesh_input_verts");
-		rmd.faces = (unsigned int *)MEM_calloc_arrayN(rmd.totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
-		rmd.voxel_size = mesh->voxel_size;
-		rmd.isovalue = 0.0f;
+		int totfaces = BKE_mesh_runtime_looptri_len(mesh);
+		int totverts = mesh->totvert;
+		float *verts = (float *)MEM_calloc_arrayN(totverts * 3, sizeof(float), "remesh_input_verts");
+		unsigned int *faces = (unsigned int *)MEM_calloc_arrayN(totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
+		float voxel_size = mesh->voxel_size;
+		float isovalue = 0.0f;
 
-		for(int i = 0; i < mesh->totvert; i++) {
+		for(int i = 0; i < totverts; i++) {
 			MVert mvert = mesh->mvert[i];
-			rmd.verts[i * 3] = mvert.co[0];
-			rmd.verts[i * 3 + 1] = mvert.co[1];
-			rmd.verts[i * 3 + 2] = mvert.co[2];
+			verts[i * 3] = mvert.co[0];
+			verts[i * 3 + 1] = mvert.co[1];
+			verts[i * 3 + 2] = mvert.co[2];
 		}
 
-		for(int i = 0; i < rmd.totfaces; i++) {
+		for(int i = 0; i < totfaces; i++) {
 			MVertTri vt = verttri[i];
-			rmd.faces[i * 3] = vt.tri[0];
-			rmd.faces[i * 3 + 1] = vt.tri[1];
-			rmd.faces[i * 3 + 2] = vt.tri[2];
+			faces[i * 3] = vt.tri[0];
+			faces[i * 3 + 1] = vt.tri[1];
+			faces[i * 3 + 2] = vt.tri[2];
 		}
 
-		OpenVDB_voxel_remesh(&rmd);
+		struct OpenVDBLevelSet *level_set = OpenVDBLevelSet_create();
+		struct OpenVDBVolumeToMeshData output_mesh;
+		OpenVDBLevelSet_mesh_to_level_set(level_set, verts, faces, totverts, totfaces, voxel_size);
+		OpenVDBLevelSet_volume_to_mesh(level_set, &output_mesh, isovalue, 0.0, false);
 
-		Mesh *newMesh = BKE_mesh_new_nomain(rmd.out_totverts, 0, rmd.out_totfaces, 0, 0);
+		Mesh *newMesh = BKE_mesh_new_nomain(output_mesh.totvertices, 0, output_mesh.totquads, 0, 0);
 
-		for(int i = 0; i < rmd.out_totverts; i++) {
-			float vco[3] = { rmd.out_verts[i * 3], rmd.out_verts[i * 3 + 1], rmd.out_verts[i * 3 + 2]};
+		for(int i = 0; i < output_mesh.totvertices; i++) {
+			float vco[3] = { output_mesh.vertices[i * 3], output_mesh.vertices[i * 3 + 1], output_mesh.vertices[i * 3 + 2]};
 			copy_v3_v3(newMesh->mvert[i].co, vco);
 
 		}
-		for(int i = 0; i < rmd.out_totfaces; i++) {
-			newMesh->mface[i].v4 = rmd.out_faces[i * 4];
-			newMesh->mface[i].v3 = rmd.out_faces[i * 4 + 1];
-			newMesh->mface[i].v2 = rmd.out_faces[i * 4 + 2];
-			newMesh->mface[i].v1 = rmd.out_faces[i * 4 + 3];
+		for(int i = 0; i < output_mesh.totquads; i++) {
+			newMesh->mface[i].v4 = output_mesh.quads[i * 4];
+			newMesh->mface[i].v3 = output_mesh.quads[i * 4 + 1];
+			newMesh->mface[i].v2 = output_mesh.quads[i * 4 + 2];
+			newMesh->mface[i].v1 = output_mesh.quads[i * 4 + 3];
 		}
+
+		OpenVDBLevelSet_free(level_set);
 
 		BKE_mesh_calc_edges_tessface(newMesh);
 		BKE_mesh_convert_mfaces_to_mpolys(newMesh);
@@ -1888,11 +1892,11 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
 		BKE_mesh_free(newMesh);
 		free_bvhtree_from_mesh(&bvhtree);
-		MEM_freeN(rmd.faces);
-		MEM_freeN(rmd.verts);
+		MEM_freeN(output_mesh.quads);
+		MEM_freeN(output_mesh.vertices);
 		MEM_freeN(verttri);
-		MEM_freeN(rmd.out_verts);
-		MEM_freeN(rmd.out_faces);
+		MEM_freeN(verts);
+		MEM_freeN(faces);
 		return OPERATOR_FINISHED;
 	}
 	return OPERATOR_CANCELLED;
