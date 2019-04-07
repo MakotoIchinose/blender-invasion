@@ -21,6 +21,7 @@
 #include "openvdb_dense_convert.h"
 #include "openvdb_util.h"
 #include "openvdb_level_set.h"
+#include "openvdb_transform.h"
 
 struct OpenVDBIntGrid { int unused; };
 struct OpenVDBVectorGrid { int unused; };
@@ -236,14 +237,33 @@ void OpenVDBReader_get_meta_mat4(OpenVDBReader *reader, const char *name, float 
 }
 
 
-void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd)
+OpenVDBLevelSet *OpenVDBLevelSet_create(bool initGrid, OpenVDBTransform *xform)
 {
-	OpenVDB_level_set_remesh(rmd);
+	OpenVDBLevelSet* level_set = new OpenVDBLevelSet();
+	if (initGrid) {
+		openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
+		grid->setGridClass(openvdb::GRID_LEVEL_SET);
+		if (xform) {
+			grid->setTransform(xform->OpenVDB_transform_get_transform());
+		}
+		level_set->OpenVDB_level_set_set_grid(grid);
+	}
+	return level_set;
 }
 
-OpenVDBLevelSet *OpenVDBLevelSet_create()
+OpenVDBTransform* OpenVDBTransform_create()
 {
-	return new OpenVDBLevelSet();
+	return new OpenVDBTransform();
+}
+
+void OpenVDBTransform_free(OpenVDBTransform *transform)
+{
+	delete transform;
+}
+
+void OpenVDBTransform_create_linear_transform(OpenVDBTransform *transform, double voxel_size)
+{
+	transform->OpenVDB_transform_create_linear_transform(voxel_size);
 }
 
 void OpenVDBLevelSet_free(OpenVDBLevelSet *level_set)
@@ -252,9 +272,15 @@ void OpenVDBLevelSet_free(OpenVDBLevelSet *level_set)
 }
 
 void OpenVDBLevelSet_mesh_to_level_set(struct OpenVDBLevelSet *level_set, const float *vertices, const unsigned int *faces,
-									   const unsigned int totvertices, const unsigned int totfaces, const double voxel_size)
+									   const unsigned int totvertices, const unsigned int totfaces, OpenVDBTransform *xform)
 {
-	level_set->OpenVDB_mesh_to_level_set(vertices, faces, totvertices, totfaces, voxel_size);
+	level_set->OpenVDB_mesh_to_level_set(vertices, faces, totvertices, totfaces, xform->OpenVDB_transform_get_transform());
+}
+
+void OpenVDBLevelSet_mesh_to_level_set_transform(struct OpenVDBLevelSet *level_set, const float *vertices, const unsigned int *faces,
+									   const unsigned int totvertices, const unsigned int totfaces, struct OpenVDBTransform *transform)
+{
+	level_set->OpenVDB_mesh_to_level_set(vertices, faces, totvertices, totfaces, transform->OpenVDB_transform_get_transform());
 }
 
 void OpenVDBLevelSet_volume_to_mesh(struct OpenVDBLevelSet *level_set, struct OpenVDBVolumeToMeshData *mesh,
@@ -274,4 +300,13 @@ void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLe
 {
 	out->OpenVDB_CSG_operation(out->OpenVDB_level_set_get_grid(), gridA->OpenVDB_level_set_get_grid(),
 							   gridB->OpenVDB_level_set_get_grid(), operation);
+}
+
+void OpenVDBLevelSet_set_transform(struct OpenVDBLevelSet *level_set, float* transform)
+{
+	openvdb::FloatGrid::Ptr grid = level_set->OpenVDB_level_set_get_grid();
+	openvdb::math::Mat4f mat(transform);
+	openvdb::math::Transform::Ptr trans = openvdb::math::Transform::createLinearTransform(mat);
+	grid->setTransform(trans);
+	openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*grid, *grid);
 }

@@ -33,15 +33,11 @@ OpenVDBLevelSet::~OpenVDBLevelSet()
 {}
 
 void OpenVDBLevelSet::OpenVDB_mesh_to_level_set(const float *vertices, const unsigned int *faces, const unsigned int totvertices,
-								   const unsigned int totfaces, const double voxel_size)
+								   const unsigned int totfaces, openvdb::math::Transform::Ptr xform)
 {
 	std::vector<openvdb::Vec3s> points;
 	std::vector<openvdb::Vec3I > triangles;
 	std::vector<openvdb::Vec4I > quads;
-	std::vector<openvdb::Vec3s> out_points;
-	std::vector<openvdb::Vec4I > out_quads;
-	std::vector<openvdb::Vec3I > out_tris;
-	const openvdb::math::Transform xform;
 
 	for(unsigned int i = 0; i < totvertices; i++) {
 		openvdb::Vec3s v(vertices[i * 3 ], vertices[i * 3 + 1], vertices[i * 3 + 2]);
@@ -53,8 +49,7 @@ void OpenVDBLevelSet::OpenVDB_mesh_to_level_set(const float *vertices, const uns
 		triangles.push_back(f);
 	}
 
-	openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(voxel_size);
-	this->grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*transform, points, triangles, quads, 1);
+	this->grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*xform, points, triangles, quads, 1);
 }
 
 void OpenVDBLevelSet::OpenVDB_volume_to_mesh(OpenVDBVolumeToMeshData *mesh,	const double isovalue, const double adaptivity, const bool relax_disoriented_triangles)
@@ -141,9 +136,9 @@ void OpenVDBLevelSet::OpenVDB_CSG_operation(openvdb::FloatGrid::Ptr gridOut, ope
 	}
 
 	gridOut = gridA->deepCopy();
-	gridA = gridA_copy ->deepCopy();
-	gridB = gridB_copy ->deepCopy();
-};
+	gridA = gridA_copy->deepCopy();
+	gridB = gridB_copy->deepCopy();
+}
 
 openvdb::FloatGrid::Ptr OpenVDBLevelSet::OpenVDB_level_set_get_grid(){
 	return this->grid;
@@ -151,84 +146,4 @@ openvdb::FloatGrid::Ptr OpenVDBLevelSet::OpenVDB_level_set_get_grid(){
 
 void OpenVDBLevelSet::OpenVDB_level_set_set_grid(openvdb::FloatGrid::Ptr grid){
 	this->grid = grid;
-}
-
-void OpenVDB_level_set_remesh(struct OpenVDBRemeshData *rmd){
-
-	std::vector<openvdb::Vec3s> points;
-	std::vector<openvdb::Vec3I > triangles;
-	std::vector<openvdb::Vec4I > quads;
-	std::vector<openvdb::Vec3s> out_points;
-	std::vector<openvdb::Vec4I > out_quads;
-	std::vector<openvdb::Vec3I > out_tris;
-	const openvdb::math::Transform xform;
-
-	for(int i = 0; i < rmd->totverts; i++) {
-		openvdb::Vec3s v(rmd->verts[i * 3 ], rmd->verts[i * 3 + 1], rmd->verts[i * 3 + 2]);
-		points.push_back(v);
-	}
-
-	for(int i = 0; i < rmd->totfaces; i++) {
-		openvdb::Vec3I f(rmd->faces[i * 3 ], rmd->faces[i * 3 + 1], rmd->faces[i * 3 + 2]);
-		triangles.push_back(f);
-	}
-
-	openvdb::initialize();
-	openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform((double)rmd->voxel_size);
-	const openvdb::FloatGrid::Ptr grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*transform, points, triangles, quads, 1);
-
-	if (rmd->filter_type != FILTER_NONE) {
-		openvdb::tools::LevelSetFilter<openvdb::FloatGrid> filter(*grid);
-		filter.setSpatialScheme((openvdb::math::BiasedGradientScheme)rmd->filter_bias);
-
-		switch (rmd->filter_type) {
-			case FILTER_GAUSSIAN:
-				filter.gaussian(rmd->filter_width);
-			break;
-			case FILTER_MEDIAN:
-				filter.median(rmd->filter_width);
-			break;
-			case FILTER_MEAN:
-				filter.mean(rmd->filter_width);
-			break;
-			case FILTER_MEAN_CURVATURE:
-				filter.meanCurvature();
-			break;
-			case FILTER_LAPLACIAN:
-				filter.laplacian();
-			break;
-		}
-	}
-
-	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, out_points, out_tris, out_quads, (double)rmd->isovalue,
-	                                                 (double)rmd->adaptivity, (bool)rmd->relax_disoriented_triangles);
-	rmd->out_verts = (float *)MEM_malloc_arrayN(out_points.size(), 3 * sizeof (float), "openvdb remesher out verts");
-	rmd->out_faces = (unsigned int*)MEM_malloc_arrayN(out_quads.size(), 4 * sizeof (unsigned int), "openvdb remesh out quads");
-	rmd->out_tris = NULL;
-	if (out_tris.size() > 0) {
-		rmd->out_tris = (unsigned int*)MEM_malloc_arrayN(out_tris.size(), 3 * sizeof (unsigned int), "openvdb remesh out tris");
-	}
-
-	rmd->out_totverts = out_points.size();
-	rmd->out_tottris = out_tris.size();
-	rmd->out_totfaces = out_quads.size();
-
-	for(int i = 0; i < out_points.size(); i++) {
-		rmd->out_verts[i * 3] = out_points[i].x();
-		rmd->out_verts[i * 3 + 1] = out_points[i].y();
-		rmd->out_verts[i * 3 + 2] = out_points[i].z();
-	}
-
-	for(int i = 0; i < out_quads.size(); i++) {
-		rmd->out_faces[i * 4] = out_quads[i].x();
-		rmd->out_faces[i * 4 + 1] = out_quads[i].y();
-		rmd->out_faces[i * 4 + 2] = out_quads[i].z();
-		rmd->out_faces[i * 4 + 3] = out_quads[i].w();
-	}
-
-	for(int i = 0; i < rmd->out_tottris; i++) {
-		rmd->out_tris[i * 3] = out_tris[i].x();
-		rmd->out_tris[i * 3 + 1] = out_tris[i].y();
-		rmd->out_tris[i * 3 + 2] = out_tris[i].z();
-	}
 }

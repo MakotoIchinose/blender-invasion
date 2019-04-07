@@ -25,10 +25,9 @@
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/tools/LevelSetFilter.h>
+#include <openvdb/tools/GridTransformer.h>
 #include "openvdb_capi.h"
 
-
-void OpenVDB_level_set_remesh(struct OpenVDBRemeshData *rmd);
 
 struct OpenVDBLevelSet {
 private:
@@ -41,6 +40,9 @@ public:
 	void OpenVDB_level_set_set_grid(openvdb::FloatGrid::Ptr);
 	void OpenVDB_mesh_to_level_set(const float *vertices, const unsigned int *faces, const unsigned int totvertices,
 								   const unsigned int totfaces, const double voxel_size);
+
+	void OpenVDB_mesh_to_level_set(const float *vertices, const unsigned int *faces, const unsigned int totvertices,
+								   const unsigned int totfaces, openvdb::math::Transform::Ptr transform);
 
 	void OpenVDB_volume_to_mesh(float *vertices, unsigned int *quads, unsigned int *triangles,
 							unsigned int *totvertices, unsigned int *totfaces, unsigned int *tottriangles,

@@ -1204,6 +1204,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             layout.prop(md, "sharpness")
 
         if md.mode == 'VOXEL':
+            layout.prop(md, "object")
+            layout.prop(md, "operation")
             col = layout.column(align=True)
             col.prop(md, "voxel_size")
             col.prop(md, "isovalue")

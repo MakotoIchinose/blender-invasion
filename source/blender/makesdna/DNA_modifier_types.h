@@ -1505,14 +1505,21 @@ typedef enum eRemeshModifierMode {
 	MOD_REMESH_VOXEL          = 3,
 } eRemeshModifierMode;
 
+typedef enum {
+	eRemeshModifierOp_Union      = 0,
+	eRemeshModifierOp_Difference = 1,
+	eRemeshModifierOp_Intersect  = 2,
+} RemeshModifierOp;
 
 typedef enum eVoxelFilterType {
 	VOXEL_FILTER_NONE = 0,
 	VOXEL_FILTER_GAUSSIAN = 1,
-	VOXEL_FILTER_MEDIAN = 2,
-	VOXEL_FILTER_MEAN = 3,
+	VOXEL_FILTER_MEAN = 2,
+	VOXEL_FILTER_MEDIAN = 3,
 	VOXEL_FILTER_MEAN_CURVATURE = 4,
 	VOXEL_FILTER_LAPLACIAN = 5,
+	VOXEL_FILTER_DILATE = 6,
+	VOXEL_FILTER_ERODE = 7,
 } eVoxelFilterType;
 
 /*filter bias, aligned to openvdb */
@@ -1542,6 +1549,12 @@ typedef struct RemeshModifierData {
 	int filter_type;
 	int filter_bias;
 	int filter_width;
+	int filter_iterations;
+
+	/* volume csg */
+	struct Object *object;
+	char operation;
+	char _pad1[3];
 
 	/* octree depth */
 	char depth;

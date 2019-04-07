@@ -1812,9 +1812,11 @@ static int remesh_exec(bContext *C, wmOperator *op)
 			faces[i * 3 + 2] = vt.tri[2];
 		}
 
-		struct OpenVDBLevelSet *level_set = OpenVDBLevelSet_create();
+		struct OpenVDBTransform *xform = OpenVDBTransform_create();
+		OpenVDBTransform_create_linear_transform(xform, voxel_size);
+		struct OpenVDBLevelSet *level_set = OpenVDBLevelSet_create(false, NULL);
 		struct OpenVDBVolumeToMeshData output_mesh;
-		OpenVDBLevelSet_mesh_to_level_set(level_set, verts, faces, totverts, totfaces, voxel_size);
+		OpenVDBLevelSet_mesh_to_level_set(level_set, verts, faces, totverts, totfaces, xform);
 		OpenVDBLevelSet_volume_to_mesh(level_set, &output_mesh, isovalue, 0.0, false);
 
 		Mesh *newMesh = BKE_mesh_new_nomain(output_mesh.totvertices, 0, output_mesh.totquads, 0, 0);
@@ -1832,6 +1834,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		}
 
 		OpenVDBLevelSet_free(level_set);
+		OpenVDBTransform_free(xform);
 
 		BKE_mesh_calc_edges_tessface(newMesh);
 		BKE_mesh_convert_mfaces_to_mpolys(newMesh);

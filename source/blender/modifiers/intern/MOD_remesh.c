@@ -35,7 +35,11 @@
 
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+#include "BKE_library_query.h"
 #include "BKE_bvhutils.h"
+#include "BKE_object.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -65,8 +69,9 @@ static void initData(ModifierData *md)
 	rmd->isovalue = 0.0f;
 	rmd->adaptivity = 0.0f;
 	rmd->filter_width = 1;
-	rmd->filter_bias = VOXEL_BIAS_FIRST;
-	rmd->filter_type = VOXEL_FILTER_NONE;
+	rmd->filter_bias = OPENVDB_LEVELSET_FIRST_BIAS;
+	rmd->filter_type = OPENVDB_LEVELSET_FILTER_NONE;
+	rmd->filter_iterations = 1;
 }
 
 #ifdef WITH_MOD_REMESH
@@ -145,16 +150,57 @@ static void dualcon_add_quad(void *output_v, const int vert_indices[4])
 	output->curface++;
 }
 
-#if WITH_OPENVDB
-static Mesh* voxel_remesh(Mesh* mesh, float voxel_size, bool smooth_normals, float isovalue,
-                          float adaptivity, bool relax_triangles, int filter_type,
-                          int filter_bias, int filter_width, bool reproject_vertex_paint)
+#if 1
+static struct OpenVDBLevelSet *mesh_to_levelset(Mesh* mesh, struct OpenVDBTransform *xform)
 {
-	struct OpenVDBRemeshData rmd;
+	float* verts;
+	unsigned int *faces;
+	int totfaces, totverts;
+
+	BKE_mesh_runtime_looptri_recalc(mesh);
+	const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
+	MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh), "remesh_looptri");
+	BKE_mesh_runtime_verttri_from_looptri(verttri, mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(mesh));
+
+	totfaces = BKE_mesh_runtime_looptri_len(mesh);
+	totverts = mesh->totvert;
+	verts = (float *)MEM_calloc_arrayN(totverts * 3, sizeof(float), "remesh_input_verts");
+	faces = (unsigned int *)MEM_calloc_arrayN(totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
+
+	for(int i = 0; i < totverts; i++) {
+		MVert mvert = mesh->mvert[i];
+		verts[i * 3] = mvert.co[0];
+		verts[i * 3 + 1] = mvert.co[1];
+		verts[i * 3 + 2] = mvert.co[2];
+	}
+
+	for(int i = 0; i < totfaces; i++) {
+		MVertTri vt = verttri[i];
+		faces[i * 3] = vt.tri[0];
+		faces[i * 3 + 1] = vt.tri[1];
+		faces[i * 3 + 2] = vt.tri[2];
+	}
+
+	struct OpenVDBLevelSet *level_set = OpenVDBLevelSet_create(false, NULL);
+	OpenVDBLevelSet_mesh_to_level_set(level_set, verts, faces, totverts, totfaces, xform);
+
+	MEM_freeN(verts);
+	MEM_freeN(faces);
+	MEM_freeN(verttri);
+
+	return level_set;
+}
+
+static Mesh* voxel_remesh(Mesh* mesh, Mesh* csg_operand, char operation, float voxel_size, float voxel_size_csg,
+                          bool smooth_normals, float isovalue, float adaptivity, bool relax_triangles, int filter_type,
+                          int filter_bias, int filter_width, int filter_iterations, bool reproject_vertex_paint,
+                          float *csg_transform)
+{
 	int f = 0;
 	BVHTreeFromMesh bvhtree = {NULL};
 	MLoopCol *oldMesh_col = CustomData_get_layer(&mesh->ldata, CD_MLOOPCOL);
 	MLoopCol *oldMesh_color = NULL;
+
 	if (reproject_vertex_paint && oldMesh_col)
 	{
 		int i = 0;
@@ -170,60 +216,53 @@ static Mesh* voxel_remesh(Mesh* mesh, float voxel_size, bool smooth_normals, flo
 		}
 	}
 
-	BKE_mesh_runtime_looptri_recalc(mesh);
-	const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
-	MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh), "remesh_looptri");
-	BKE_mesh_runtime_verttri_from_looptri(verttri, mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(mesh));
+	struct OpenVDBVolumeToMeshData output_mesh;
+	struct OpenVDBLevelSet *level_set;
+	struct OpenVDBLevelSet *level_setA;
+	struct OpenVDBLevelSet *level_setB;
+	struct OpenVDBTransform *xform = OpenVDBTransform_create();
+	OpenVDBTransform_create_linear_transform(xform, voxel_size);
 
-	rmd.totfaces = BKE_mesh_runtime_looptri_len(mesh);
-	rmd.totverts = mesh->totvert;
-	rmd.verts = (float *)MEM_calloc_arrayN(rmd.totverts * 3, sizeof(float), "remesh_input_verts");
-	rmd.faces = (unsigned int *)MEM_calloc_arrayN(rmd.totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
-	rmd.voxel_size = voxel_size;
-	rmd.isovalue = isovalue;
-	rmd.adaptivity = adaptivity;
-	rmd.relax_disoriented_triangles = relax_triangles;
-	rmd.filter_type = filter_type;
-	rmd.filter_bias = filter_bias;
-	rmd.filter_width = filter_width;
+	if (csg_operand) {
+		level_setA = mesh_to_levelset(mesh, xform);
+		level_setB = mesh_to_levelset(csg_operand, xform);
+		level_set = OpenVDBLevelSet_create(true, xform);
+		OpenVDBLevelSet_CSG_operation(level_set, level_setA, level_setB, (OpenVDBLevelSet_CSGOperation)operation );
 
-	for(int i = 0; i < mesh->totvert; i++) {
-		MVert mvert = mesh->mvert[i];
-		rmd.verts[i * 3] = mvert.co[0];
-		rmd.verts[i * 3 + 1] = mvert.co[1];
-		rmd.verts[i * 3 + 2] = mvert.co[2];
+		OpenVDBLevelSet_free(level_setA);
+		OpenVDBLevelSet_free(level_setB);
+	}
+	else {
+		level_set = mesh_to_levelset(mesh, xform);
 	}
 
-	for(int i = 0; i < rmd.totfaces; i++) {
-		MVertTri vt = verttri[i];
-		rmd.faces[i * 3] = vt.tri[0];
-		rmd.faces[i * 3 + 1] = vt.tri[1];
-		rmd.faces[i * 3 + 2] = vt.tri[2];
-	}
+	OpenVDBLevelSet_filter(level_set, filter_type, filter_width, filter_iterations, filter_bias);
+	OpenVDBLevelSet_volume_to_mesh(level_set, &output_mesh, isovalue, adaptivity, relax_triangles);
 
-	OpenVDB_voxel_remesh(&rmd);
+	Mesh *newMesh = BKE_mesh_new_nomain(output_mesh.totvertices, 0, output_mesh.totquads + output_mesh.tottriangles, 0, 0);
 
-	Mesh *newMesh = BKE_mesh_new_nomain(rmd.out_totverts, 0, rmd.out_totfaces + rmd.out_tottris, 0, 0);
-
-	for(int i = 0; i < rmd.out_totverts; i++) {
-		float vco[3] = { rmd.out_verts[i * 3], rmd.out_verts[i * 3 + 1], rmd.out_verts[i * 3 + 2]};
+	for(int i = 0; i < output_mesh.totvertices; i++) {
+		float vco[3] = { output_mesh.vertices[i * 3], output_mesh.vertices[i * 3 + 1], output_mesh.vertices[i * 3 + 2]};
 		copy_v3_v3(newMesh->mvert[i].co, vco);
 
 	}
-	for(int i = 0; i < rmd.out_totfaces; i++) {
-		newMesh->mface[i].v4 = rmd.out_faces[i * 4];
-		newMesh->mface[i].v3 = rmd.out_faces[i * 4 + 1];
-		newMesh->mface[i].v2 = rmd.out_faces[i * 4 + 2];
-		newMesh->mface[i].v1 = rmd.out_faces[i * 4 + 3];
+	for(int i = 0; i < output_mesh.totquads; i++) {
+		newMesh->mface[i].v4 = output_mesh.quads[i * 4];
+		newMesh->mface[i].v3 = output_mesh.quads[i * 4 + 1];
+		newMesh->mface[i].v2 = output_mesh.quads[i * 4 + 2];
+		newMesh->mface[i].v1 = output_mesh.quads[i * 4 + 3];
 	}
 
-	f = rmd.out_totfaces;
-	for(int i = 0; i < rmd.out_tottris; i++) {
-		newMesh->mface[i+f].v4 = rmd.out_tris[i * 3];
-		newMesh->mface[i+f].v3 = rmd.out_tris[i * 3];
-		newMesh->mface[i+f].v2 = rmd.out_tris[i * 3 + 1];
-		newMesh->mface[i+f].v1 = rmd.out_tris[i * 3 + 2];
+	f = output_mesh.totquads;
+	for(int i = 0; i < output_mesh.tottriangles; i++) {
+		newMesh->mface[i+f].v4 = 0; //output_mesh.triangles[i * 3];
+		newMesh->mface[i+f].v3 = output_mesh.triangles[i * 3];
+		newMesh->mface[i+f].v2 = output_mesh.triangles[i * 3 + 1];
+		newMesh->mface[i+f].v1 = output_mesh.triangles[i * 3 + 2];
 	}
+
+	OpenVDBLevelSet_free(level_set);
+	OpenVDBTransform_free(xform);
 
 	BKE_mesh_calc_edges_tessface(newMesh);
 	BKE_mesh_convert_mfaces_to_mpolys(newMesh);
@@ -272,13 +311,10 @@ static Mesh* voxel_remesh(Mesh* mesh, float voxel_size, bool smooth_normals, flo
 		}
 	}
 
-	MEM_freeN(rmd.faces);
-	MEM_freeN(rmd.verts);
-	MEM_freeN(verttri);
-	MEM_freeN(rmd.out_verts);
-	MEM_freeN(rmd.out_faces);
-	if (rmd.out_tottris > 0) {
-		MEM_freeN(rmd.out_tris);
+	MEM_freeN(output_mesh.quads);
+	MEM_freeN(output_mesh.vertices);
+	if (output_mesh.tottriangles > 0) {
+		MEM_freeN(output_mesh.triangles);
 	}
 
 	return newMesh;
@@ -287,7 +323,7 @@ static Mesh* voxel_remesh(Mesh* mesh, float voxel_size, bool smooth_normals, flo
 
 static Mesh *applyModifier(
         ModifierData *md,
-        const ModifierEvalContext *UNUSED(ctx),
+        const ModifierEvalContext *ctx,
         Mesh *mesh)
 {
 	RemeshModifierData *rmd;
@@ -304,10 +340,47 @@ static Mesh *applyModifier(
 #if WITH_OPENVDB
 		//invoke an operator ? nah, better make a function
 		if (rmd->voxel_size > 0.0f) {
-			return voxel_remesh(mesh, rmd->voxel_size, rmd->flag & MOD_REMESH_SMOOTH_NORMALS,
-			                    rmd->isovalue, rmd->adaptivity, rmd->flag & MOD_REMESH_RELAX_TRIANGLES,
-			                    rmd->filter_type, rmd->filter_bias, rmd->filter_width,
-			                    rmd->flag & MOD_REMESH_REPROJECT_VPAINT);
+			if (rmd->object)
+			{
+				Mesh *me = BKE_modifier_get_evaluated_mesh_from_evaluated_object(rmd->object, false);
+				Mesh *res = NULL;
+
+				float imat[4][4];
+				float omat[4][4];
+				float* transform = MEM_calloc_arrayN(16, sizeof(float), "transform");
+				int k = 0;
+
+				invert_m4_m4(imat, ctx->object->obmat);
+				mul_m4_m4m4(omat, imat, rmd->object->obmat);
+
+				for (int i = 0; i < me->totvert; i++)
+				{
+					mul_m4_v3(omat, me->mvert[i].co);
+				}
+
+				for (int i = 0; i < 4; i++) {
+					for (int j = 0; j < 4; j++) {
+						transform[k] = omat[i][j];
+						k++;
+					}
+				}
+
+				res = voxel_remesh(mesh, me, rmd->operation, rmd->voxel_size, rmd->voxel_size,
+									rmd->flag & MOD_REMESH_SMOOTH_NORMALS,
+									rmd->isovalue, rmd->adaptivity, rmd->flag & MOD_REMESH_RELAX_TRIANGLES,
+									rmd->filter_type, rmd->filter_bias, rmd->filter_width, rmd->filter_iterations,
+									rmd->flag & MOD_REMESH_REPROJECT_VPAINT, transform);
+
+				MEM_freeN(transform);
+				return res;
+			}
+			else {
+				return voxel_remesh(mesh, NULL, rmd->operation, rmd->voxel_size, rmd->voxel_size,
+									rmd->flag & MOD_REMESH_SMOOTH_NORMALS,
+									rmd->isovalue, rmd->adaptivity, rmd->flag & MOD_REMESH_RELAX_TRIANGLES,
+									rmd->filter_type, rmd->filter_bias, rmd->filter_width, rmd->filter_iterations,
+									rmd->flag & MOD_REMESH_REPROJECT_VPAINT, NULL);
+			}
 		}
 		else {
 			return mesh;
@@ -385,6 +458,26 @@ static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_Me
 	}
 }
 
+static void foreachObjectLink(
+        ModifierData *md, Object *ob,
+        ObjectWalkFunc walk, void *userData)
+{
+	RemeshModifierData *rmd = (RemeshModifierData *)md;
+
+	walk(userData, ob, &rmd->object, IDWALK_CB_NOP);
+}
+
+static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+{
+	RemeshModifierData *rmd = (RemeshModifierData *)md;
+	if (rmd->object != NULL) {
+		DEG_add_object_relation(ctx->node, rmd->object, DEG_OB_COMP_TRANSFORM, "Remesh Modifier");
+		DEG_add_object_relation(ctx->node, rmd->object, DEG_OB_COMP_GEOMETRY, "Remesh Modifier");
+	}
+	/* We need own transformation as well. */
+	DEG_add_modifier_to_transform_relation(ctx->node, "Remesh Modifier");
+}
+
 ModifierTypeInfo modifierType_Remesh = {
 	/* name */              "Remesh",
 	/* structName */        "RemeshModifierData",
@@ -407,10 +500,10 @@ ModifierTypeInfo modifierType_Remesh = {
 	/* requiredDataMask */  requiredDataMask,
 	/* freeData */          NULL,
 	/* isDisabled */        NULL,
-	/* updateDepsgraph */   NULL,
+	/* updateDepsgraph */   updateDepsgraph,
 	/* dependsOnTime */     NULL,
 	/* dependsOnNormals */	NULL,
-	/* foreachObjectLink */ NULL,
+	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* freeRuntimeData */   NULL,
 };

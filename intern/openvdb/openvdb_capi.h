@@ -26,13 +26,14 @@ extern "C" {
 
 /* Level Set Filters */
 typedef enum OpenVDBLevelSet_FilterType {
-	OPENVDB_LEVELSET_FILTER_GAUSSIAN = 0,
-	OPENVDB_LEVELSET_FILTER_MEAN = 1,
-	OPENVDB_LEVELSET_FILTER_MEDIAN = 2,
-	OPENVDB_LEVELSET_FILTER_MEAN_CURVATURE = 3,
-	OPENVDB_LEVELSET_FILTER_LAPLACIAN = 4,
-	OPENVDB_LEVELSET_FILTER_DILATE = 5,
-	OPENVDB_LEVELSET_FILTER_ERODE = 6,
+	OPENVDB_LEVELSET_FILTER_NONE = 0,
+	OPENVDB_LEVELSET_FILTER_GAUSSIAN = 1,
+	OPENVDB_LEVELSET_FILTER_MEAN = 2,
+	OPENVDB_LEVELSET_FILTER_MEDIAN = 3,
+	OPENVDB_LEVELSET_FILTER_MEAN_CURVATURE = 4,
+	OPENVDB_LEVELSET_FILTER_LAPLACIAN = 5,
+	OPENVDB_LEVELSET_FILTER_DILATE = 6,
+	OPENVDB_LEVELSET_FILTER_ERODE = 7,
 } OpenVDBLevelSet_FilterType;
 
 typedef enum OpenVDBLevelSet_FilterBias{
@@ -51,27 +52,9 @@ typedef enum OpenVDBLevelSet_CSGOperation {
 	OPENVDB_LEVELSET_CSG_INTERSECTION = 2,
 } OpenVDBLevelSet_CSGOperation;
 
-enum {
-	FILTER_NONE = 0,
-	FILTER_GAUSSIAN,
-	FILTER_MEAN,
-	FILTER_MEDIAN,
-	FILTER_CURVATURE,
-	FILTER_MEAN_CURVATURE,
-	FILTER_LAPLACIAN
-};
-
-/*filter bias, aligned to openvdb */
-enum {
-	FIRST_BIAS = 0,
-	SECOND_BIAS,
-	THIRD_BIAS,
-	WENO5_BIAS,
-	HJWENO5_BIAS,
-};
-
 struct OpenVDBReader;
 struct OpenVDBWriter;
+struct OpenVDBTransform;
 struct OpenVDBLevelSet;
 struct OpenVDBFloatGrid;
 struct OpenVDBIntGrid;
@@ -172,18 +155,24 @@ void OpenVDBReader_get_meta_v3(struct OpenVDBReader *reader, const char *name, f
 void OpenVDBReader_get_meta_v3_int(struct OpenVDBReader *reader, const char *name, int value[3]);
 void OpenVDBReader_get_meta_mat4(struct OpenVDBReader *reader, const char *name, float value[4][4]);
 
-void OpenVDB_voxel_remesh(struct OpenVDBRemeshData *rmd);
+struct OpenVDBTransform *OpenVDBTransform_create(void);
+void OpenVDBTransform_free(struct OpenVDBTransform *transform);
+void OpenVDBTransform_create_linear_transform(struct OpenVDBTransform *transform, double voxel_size);
 
-struct OpenVDBLevelSet *OpenVDBLevelSet_create(void);
+struct OpenVDBLevelSet *OpenVDBLevelSet_create(bool initGrid, struct OpenVDBTransform *xform);
 void OpenVDBLevelSet_free(struct OpenVDBLevelSet *level_set);
 void OpenVDBLevelSet_mesh_to_level_set(struct OpenVDBLevelSet *level_set, const float *vertices, const unsigned int *faces,
-									   const unsigned int totvertices, const unsigned int totfaces, const double voxel_size);
+									   const unsigned int totvertices, const unsigned int totfaces,
+                                       struct OpenVDBTransform *xform);
+void OpenVDBLevelSet_mesh_to_level_set_transform(struct OpenVDBLevelSet *level_set, const float *vertices, const unsigned int *faces,
+									   const unsigned int totvertices, const unsigned int totfaces, struct OpenVDBTransform *transform);
 void OpenVDBLevelSet_volume_to_mesh(struct OpenVDBLevelSet *level_set, struct OpenVDBVolumeToMeshData *mesh,
 							const double isovalue, const double adaptivity, const bool relax_disoriented_triangles);
 void OpenVDBLevelSet_filter(struct OpenVDBLevelSet *level_set, OpenVDBLevelSet_FilterType filter_type, int width,
 							int iterations, OpenVDBLevelSet_FilterBias bias);
 void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLevelSet *gridA, struct OpenVDBLevelSet *gridB,
 								   OpenVDBLevelSet_CSGOperation operation);
+void OpenVDBLevelSet_set_transform(struct OpenVDBLevelSet *level_set, float* transform);
 
 
 #ifdef __cplusplus

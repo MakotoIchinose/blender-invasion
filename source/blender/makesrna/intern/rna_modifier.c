@@ -596,6 +596,7 @@ RNA_MOD_OBJECT_SET(NormalEdit, target, OB_EMPTY);
 RNA_MOD_OBJECT_SET(Shrinkwrap, target, OB_MESH);
 RNA_MOD_OBJECT_SET(Shrinkwrap, auxTarget, OB_MESH);
 RNA_MOD_OBJECT_SET(SurfaceDeform, target, OB_MESH);
+RNA_MOD_OBJECT_SET(Remesh, object, OB_MESH);
 
 static void rna_HookModifier_object_set(PointerRNA *ptr, PointerRNA value)
 {
@@ -4070,10 +4071,12 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	static const EnumPropertyItem filter_type_items[] = {
 		{VOXEL_FILTER_NONE, "NONE", 0, "None", "No Filter"},
 		{VOXEL_FILTER_GAUSSIAN, "GAUSSIAN", 0, "Gaussian", "Gaussian Filter"},
-		{VOXEL_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median Filter"},
 		{VOXEL_FILTER_MEAN, "MEAN", 0, "Mean", "Mean Filter"},
+		{VOXEL_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median Filter"},
 		{VOXEL_FILTER_MEAN_CURVATURE, "MEAN_CURVATURE", 0, "Mean Curvature", "Mean Curvature Filter"},
 		{VOXEL_FILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", "Laplacian Filter"},
+		{VOXEL_FILTER_DILATE, "DILATE", 0, "Dilate", "Dilate Filter"},
+		{VOXEL_FILTER_ERODE, "ERODE", 0, "Erode", "Erode Filter"},
 		{0, NULL, 0, NULL, NULL},
 	};
 
@@ -4083,6 +4086,14 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 		{VOXEL_BIAS_THIRD, "THIRD", 0, "Third", "Third bias"},
 		{VOXEL_BIAS_WENO5, "WENO5", 0, "Weno5", "Weno5 bias"},
 		{VOXEL_BIAS_HJWENO5, "HJWENO5", 0, "HjWeno5", "HjWeno5 bias"},
+		{0, NULL, 0, NULL, NULL},
+	};
+
+	static const EnumPropertyItem prop_operation_items[] = {
+		{eRemeshModifierOp_Union, "UNION", 0, "Union", "Combine two meshes in an additive way"},
+		{eRemeshModifierOp_Difference, "DIFFERENCE", 0, "Difference", "Combine two meshes in a subtractive way"},
+	    {eRemeshModifierOp_Intersect, "INTERSECT", 0, "Intersect",
+		                               "Keep the part of the mesh that intersects with the other selected object"},
 		{0, NULL, 0, NULL, NULL},
 	};
 
@@ -4189,6 +4200,18 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "reproject_vertex_paint", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_REPROJECT_VPAINT);
 	RNA_def_property_ui_text(prop, "Reproject Vertex Paint", "Keep the current vertex paint on the new mesh");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
+	RNA_def_property_ui_text(prop, "Object", "Mesh object to use for Boolean operation");
+	RNA_def_property_pointer_funcs(prop, NULL, "rna_RemeshModifier_object_set", NULL, "rna_Mesh_object_poll");
+	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+	RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+	prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, prop_operation_items);
+	RNA_def_property_enum_default(prop, eBooleanModifierOp_Difference);
+	RNA_def_property_ui_text(prop, "Operation", "");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
