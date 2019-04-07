@@ -2880,8 +2880,12 @@ static void do_snake_hook_brush_task_cb_ex(
 			const float fade = bstrength * tex_strength(
 			        ss, brush, vd.co, sqrtf(test.dist),
 			        vd.no, vd.fno, vd.mask ? *vd.mask : 0.0f, tls->thread_id);
+			float automasking = 1.0f;
+			if (sculpt_automasking_compatible(ss)){
+				automasking = sculpt_automasking_value_get(ss, brush, &ss->mvert[vd.vert_indices[vd.i]]);
+			}
 
-			mul_v3_v3fl(proxy[vd.i], grab_delta, fade);
+			mul_v3_v3fl(proxy[vd.i], grab_delta, fade * automasking);
 
 			/* negative pinch will inflate, helps maintain volume */
 			if (do_pinch) {
@@ -2914,7 +2918,7 @@ static void do_snake_hook_brush_task_cb_ex(
 
 			if (do_rake_rotation) {
 				float delta_rotate[3];
-				sculpt_rake_rotate(ss, test.location, vd.co, fade, delta_rotate);
+				sculpt_rake_rotate(ss, test.location, vd.co, fade * automasking, delta_rotate);
 				add_v3_v3(proxy[vd.i], delta_rotate);
 			}
 
@@ -4041,7 +4045,7 @@ static bool find_connected_set(SculptSession *ss, int init_vert, GSet *influence
 }
 
 static bool sculpt_topology_automasking_needs_updates(const Brush *br) {
-	if (br->sculpt_tool == SCULPT_TOOL_GRAB) {
+	if (br->sculpt_tool == SCULPT_TOOL_GRAB || br->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK) {
 		return false;
 	}
 	return true;
