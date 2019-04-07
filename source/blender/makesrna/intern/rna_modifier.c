@@ -4075,8 +4075,8 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 		{VOXEL_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median Filter"},
 		{VOXEL_FILTER_MEAN_CURVATURE, "MEAN_CURVATURE", 0, "Mean Curvature", "Mean Curvature Filter"},
 		{VOXEL_FILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", "Laplacian Filter"},
-		{VOXEL_FILTER_DILATE, "DILATE", 0, "Dilate", "Dilate Filter"},
-		{VOXEL_FILTER_ERODE, "ERODE", 0, "Erode", "Erode Filter"},
+		//{VOXEL_FILTER_DILATE, "DILATE", 0, "Dilate", "Dilate Filter"},
+		//{VOXEL_FILTER_ERODE, "ERODE", 0, "Erode", "Erode Filter"},
 		{0, NULL, 0, NULL, NULL},
 	};
 
@@ -4195,6 +4195,12 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "filter_width");
 	RNA_def_property_range(prop, 0, INT_MAX);
 	RNA_def_property_ui_text(prop, "Filter Width", "OpenVDB Levelset Filter Width");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "filter_iterations", PROP_INT, PROP_UNSIGNED);
+	RNA_def_property_int_sdna(prop, NULL, "filter_iterations");
+	RNA_def_property_range(prop, 0, INT_MAX);
+	RNA_def_property_ui_text(prop, "Filter Iterations", "OpenVDB Levelset Filter Iterations");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
 	prop = RNA_def_property(srna, "reproject_vertex_paint", PROP_BOOLEAN, PROP_NONE);

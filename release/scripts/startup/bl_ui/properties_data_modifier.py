@@ -1204,8 +1204,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             layout.prop(md, "sharpness")
 
         if md.mode == 'VOXEL':
-           # layout.prop(md, "object")
-           # layout.prop(md, "operation")
+            #layout.prop(md, "object")
+            #layout.prop(md, "operation")
             col = layout.column(align=True)
             col.prop(md, "voxel_size")
             col.prop(md, "isovalue")
@@ -1215,6 +1215,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
                 layout.prop(md, "filter_bias")
                 if md.filter_type in {"GAUSSIAN", "MEDIAN", "MEAN"}:
                     layout.prop(md, "filter_width")
+                if md.filter_type in {"DILATE", "ERODE"}:
+                    layout.prop(md, "filter_iterations")
 
             layout.prop(md, "smooth_normals")
             layout.prop(md, "relax_triangles")
