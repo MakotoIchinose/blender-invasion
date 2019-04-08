@@ -6984,6 +6984,141 @@ static void SCULPT_OT_set_detail_size(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+typedef enum eSculptMaskFilterTypes {
+	MASK_FILTER_BLUR = 0,
+	MASK_FILTER_SHARPEN =1,
+} eObClearParentTypes;
+
+EnumPropertyItem prop_mask_filter_types[] = {
+	{MASK_FILTER_BLUR, "BLUR", 0, "Blur Mask", "Blur mask"},
+	{MASK_FILTER_SHARPEN, "SHARPEN", 0, "Sharpen Mask", "Sharpen mask"},
+	{0, NULL, 0, NULL, NULL},
+};
+
+static void smooth_flood_fill_task_cb(
+        void *__restrict userdata,
+        const int i,
+        const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+	SculptThreadedTaskData *data = userdata;
+	SculptSession *ss = data->ob->sculpt;
+	PBVHNode *node = data->nodes[i];
+
+	const int mode = data->smooth_mode;
+
+	PBVHVertexIter vd;
+
+	sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_MASK);
+
+	BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+		float val;
+		switch (mode) {
+			case MASK_FILTER_BLUR:
+				if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES){
+					val = neighbor_average_mask(ss, vd.vert_indices[vd.i]) - *vd.mask;
+				}
+				else {
+					val = bmesh_neighbor_average_mask(vd.bm_vert, vd.cd_vert_mask_offset) - *vd.mask;
+				}
+				*vd.mask += val;
+				CLAMP(*vd.mask, 0.0f, 1.0f);
+				break;
+			case MASK_FILTER_SHARPEN:
+				if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES){
+					val = neighbor_average_mask(ss, vd.vert_indices[vd.i]) - *vd.mask;
+				}
+				else {
+					val = bmesh_neighbor_average_mask(vd.bm_vert, vd.cd_vert_mask_offset) - *vd.mask;
+				}
+				if (*vd.mask > 0.5f) {
+					*vd.mask += 0.05f;
+				} else {
+					*vd.mask -= 0.05f;
+				}
+				*vd.mask += val/2;
+				CLAMP(*vd.mask, 0.0f, 1.0f);
+				break;
+		}
+		if (vd.mvert)
+			vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+	} BKE_pbvh_vertex_iter_end;
+
+	BKE_pbvh_node_mark_redraw(node);
+	if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS)
+		BKE_pbvh_node_mark_normals_update(node);
+}
+
+static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
+{
+	ARegion *ar = CTX_wm_region(C);
+	struct Scene *scene = CTX_data_scene(C);
+	Object *ob = CTX_data_active_object(C);
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
+	PBVH *pbvh = ob->sculpt->pbvh;
+	PBVHNode **nodes;
+	int totnode;
+	Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+	int mode = RNA_enum_get(op->ptr, "type");
+
+	/* Disable for multires for now */
+	if (BKE_pbvh_type(pbvh) == PBVH_GRIDS) {
+		return OPERATOR_CANCELLED;
+	}
+
+	BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, true, true);
+	if (BKE_pbvh_type(pbvh) == PBVH_FACES && !ob->sculpt->pmap) {
+		return OPERATOR_CANCELLED;
+	}
+
+	BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
+
+	sculpt_undo_push_begin("Mask blur fill");
+
+	SculptThreadedTaskData data = {
+	    .sd = sd, .ob = ob, .nodes = nodes,  .smooth_value = 0.5f, .smooth_mode = mode,
+	};
+
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+	BLI_task_parallel_range(
+	            0, totnode,
+	            &data,
+	            smooth_flood_fill_task_cb,
+	            &settings);
+
+	sculpt_undo_push_end();
+
+	if (nodes)
+		MEM_freeN(nodes);
+
+	ED_region_tag_redraw(ar);
+
+	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+
+	return OPERATOR_FINISHED;
+}
+
+
+void SCULPT_OT_mask_filter(struct wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Filter mask";
+	ot->idname = "SCULPT_OT_mask_filter";
+	ot->description = "Applies a filter to modify the current mask";
+
+	/* api callbacks */
+	ot->exec = sculpt_mask_filter_exec;
+	ot->poll = sculpt_mode_poll;
+
+	ot->flag = OPTYPE_REGISTER;
+
+	/* rna */
+	ot->prop = RNA_def_enum(ot->srna, "type", prop_mask_filter_types, MASK_FILTER_BLUR, "Type", "");
+}
+
+
+
 void ED_operatortypes_sculpt(void)
 {
 	WM_operatortype_append(SCULPT_OT_brush_stroke);
@@ -6996,4 +7131,5 @@ void ED_operatortypes_sculpt(void)
 	WM_operatortype_append(SCULPT_OT_sample_detail_size);
 	WM_operatortype_append(SCULPT_OT_set_detail_size);
 	WM_operatortype_append(SCULPT_OT_sample_color);
+	WM_operatortype_append(SCULPT_OT_mask_filter);
 }
