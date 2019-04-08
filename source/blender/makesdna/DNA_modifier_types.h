@@ -521,7 +521,6 @@ typedef struct UVProjectModifierData {
 } UVProjectModifierData;
 
 #define MOD_UVPROJECT_MAXPROJECTORS 10
-#define MOD_REMESH_MAX_CSG_OPERANDS 20
 
 /* UVProjectModifierData->flags */
 enum {
