@@ -2330,7 +2330,7 @@ static void do_mask_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 }
 
 static void apply_color(SculptSession *ss, PBVHVertexIter *vd, const Brush *brush, float fade) {
-		float factor = fade * fabs(ss->cache->bstrength);
+		float factor = ss->cache? fade * fabs(ss->cache->bstrength) : fade;
 		factor *= 2;
 		CLAMP(factor, 0.0f, 1.0f);
 		char r = brush->rgb[0] * 255;
@@ -7117,6 +7117,94 @@ void SCULPT_OT_mask_filter(struct wmOperatorType *ot)
 	ot->prop = RNA_def_enum(ot->srna, "type", prop_mask_filter_types, MASK_FILTER_BLUR, "Type", "");
 }
 
+static void do_color_fill_task_cb(
+        void *__restrict userdata,
+        const int i,
+        const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+	SculptThreadedTaskData *data = userdata;
+	SculptSession *ss = data->ob->sculpt;
+	PBVHNode *node = data->nodes[i];
+
+	PBVHVertexIter vd;
+
+	sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_COLOR);
+
+	BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+		float fade = vd.mask ? 1 - *vd.mask : 1.0f;
+		apply_color(ss, &vd, data->brush, fade);
+		if (vd.mvert)
+			vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+	} BKE_pbvh_vertex_iter_end;
+
+	BKE_pbvh_node_mark_redraw(node);
+}
+
+static int sculpt_color_fill_exec(bContext *C, wmOperator *op)
+{
+	ARegion *ar = CTX_wm_region(C);
+	struct Scene *scene = CTX_data_scene(C);
+	Object *ob = CTX_data_active_object(C);
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
+	PBVH *pbvh = ob->sculpt->pbvh;
+	PBVHNode **nodes;
+	int totnode;
+	Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+
+	/* Sculpt vertex colors only work with faces */
+	if (BKE_pbvh_type(pbvh) != PBVH_FACES) {
+		return OPERATOR_CANCELLED;
+	}
+	if (!brush){
+		return OPERATOR_CANCELLED;
+	}
+
+	BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, true);
+
+	BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
+
+	sculpt_undo_push_begin("Color fill");
+
+	SculptThreadedTaskData data = {
+	    .sd = sd, .ob = ob, .nodes = nodes, .brush = brush,
+	};
+
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+	BLI_task_parallel_range(
+	            0, totnode,
+	            &data,
+	            do_color_fill_task_cb,
+	            &settings);
+
+	sculpt_undo_push_end();
+
+	if (nodes)
+		MEM_freeN(nodes);
+
+	ED_region_tag_redraw(ar);
+
+	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+
+	return OPERATOR_FINISHED;
+}
+
+void SCULPT_OT_color_fill(struct wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Color fill";
+	ot->idname = "SCULPT_OT_color_fill";
+	ot->description = "Fills the mesh with the current brush color";
+
+	/* api callbacks */
+	ot->exec = sculpt_color_fill_exec;
+	ot->poll = sculpt_mode_poll;
+
+	ot->flag = OPTYPE_REGISTER;
+}
+
 
 
 void ED_operatortypes_sculpt(void)
@@ -7132,4 +7220,5 @@ void ED_operatortypes_sculpt(void)
 	WM_operatortype_append(SCULPT_OT_set_detail_size);
 	WM_operatortype_append(SCULPT_OT_sample_color);
 	WM_operatortype_append(SCULPT_OT_mask_filter);
+	WM_operatortype_append(SCULPT_OT_color_fill);
 }
