@@ -36,8 +36,8 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_library_query.h"
-#include "BKE_bvhutils.h"
 #include "BKE_object.h"
+#include "BKE_remesh.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -150,7 +150,7 @@ static void dualcon_add_quad(void *output_v, const int vert_indices[4])
 	output->curface++;
 }
 
-#if 1
+#if WITH_OPENVDB
 static struct OpenVDBLevelSet *mesh_to_levelset(Mesh* mesh, struct OpenVDBTransform *xform)
 {
 	float* verts;
@@ -196,27 +196,14 @@ static Mesh* voxel_remesh(Mesh* mesh, Mesh* csg_operand, char operation, float v
                           int filter_bias, int filter_width, int filter_iterations, bool reproject_vertex_paint,
                           float *csg_transform)
 {
-	int f = 0;
-	BVHTreeFromMesh bvhtree = {NULL};
-	MLoopCol *oldMesh_col = CustomData_get_layer(&mesh->ldata, CD_MLOOPCOL);
-	MLoopCol *oldMesh_color = NULL;
+	MLoopCol *remap = NULL;
+	Mesh* newMesh = NULL;
 
-	if (reproject_vertex_paint && oldMesh_col)
+	if (reproject_vertex_paint)
 	{
-		int i = 0;
-		BKE_bvhtree_from_mesh_get(&bvhtree, mesh, BVHTREE_FROM_VERTS, 2);
-		oldMesh_color = MEM_calloc_arrayN(mesh->totvert, sizeof(MLoopCol), "oldcolor");
-		for (i = 0; i < mesh->totloop; i++) {
-			MLoopCol c = oldMesh_col[i];
-			//printf("COLOR %d %d %d %d %d \n", mesh->mloop[i].v, c.r, c.g, c.b, c.a);
-			oldMesh_color[mesh->mloop[i].v].r = c.r;
-			oldMesh_color[mesh->mloop[i].v].g = c.g;
-			oldMesh_color[mesh->mloop[i].v].b = c.b;
-			oldMesh_color[mesh->mloop[i].v].a = c.a;
-		}
+		remap = BKE_remesh_remap_loop_vertex_color_layer(mesh);
 	}
 
-	struct OpenVDBVolumeToMeshData output_mesh;
 	struct OpenVDBLevelSet *level_set;
 	struct OpenVDBLevelSet *level_setA;
 	struct OpenVDBLevelSet *level_setB;
@@ -224,8 +211,8 @@ static Mesh* voxel_remesh(Mesh* mesh, Mesh* csg_operand, char operation, float v
 	OpenVDBTransform_create_linear_transform(xform, voxel_size);
 
 	if (csg_operand) {
-		level_setA = mesh_to_levelset(mesh, xform);
-		level_setB = mesh_to_levelset(csg_operand, xform);
+		level_setA = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
+		level_setB = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(csg_operand, xform);
 		level_set = OpenVDBLevelSet_create(true, xform);
 		OpenVDBLevelSet_CSG_operation(level_set, level_setA, level_setB, (OpenVDBLevelSet_CSGOperation)operation );
 
@@ -233,71 +220,22 @@ static Mesh* voxel_remesh(Mesh* mesh, Mesh* csg_operand, char operation, float v
 		OpenVDBLevelSet_free(level_setB);
 	}
 	else {
-		level_set = mesh_to_levelset(mesh, xform);
+		level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
 	}
 
 	OpenVDBLevelSet_filter(level_set, filter_type, filter_width, filter_iterations, filter_bias);
-	OpenVDBLevelSet_volume_to_mesh(level_set, &output_mesh, isovalue, adaptivity, relax_triangles);
-
-	Mesh *newMesh = BKE_mesh_new_nomain(output_mesh.totvertices, 0, output_mesh.totquads + output_mesh.tottriangles, 0, 0);
-
-	for(int i = 0; i < output_mesh.totvertices; i++) {
-		float vco[3] = { output_mesh.vertices[i * 3], output_mesh.vertices[i * 3 + 1], output_mesh.vertices[i * 3 + 2]};
-		copy_v3_v3(newMesh->mvert[i].co, vco);
-
-	}
-	for(int i = 0; i < output_mesh.totquads; i++) {
-		newMesh->mface[i].v4 = output_mesh.quads[i * 4];
-		newMesh->mface[i].v3 = output_mesh.quads[i * 4 + 1];
-		newMesh->mface[i].v2 = output_mesh.quads[i * 4 + 2];
-		newMesh->mface[i].v1 = output_mesh.quads[i * 4 + 3];
-	}
-
-	f = output_mesh.totquads;
-	for(int i = 0; i < output_mesh.tottriangles; i++) {
-		newMesh->mface[i+f].v4 = 0; //output_mesh.triangles[i * 3];
-		newMesh->mface[i+f].v3 = output_mesh.triangles[i * 3];
-		newMesh->mface[i+f].v2 = output_mesh.triangles[i * 3 + 1];
-		newMesh->mface[i+f].v1 = output_mesh.triangles[i * 3 + 2];
-	}
+	newMesh = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(level_set, isovalue, adaptivity, relax_triangles);
 
 	OpenVDBLevelSet_free(level_set);
 	OpenVDBTransform_free(xform);
 
-	BKE_mesh_calc_edges_tessface(newMesh);
-	BKE_mesh_convert_mfaces_to_mpolys(newMesh);
-	BKE_mesh_calc_normals(newMesh);
-
-	if (reproject_vertex_paint && oldMesh_color) {
-		MVert *newMesh_verts =  newMesh->mvert;
-		MLoop* loops = newMesh->mloop;
-		MLoopCol *newMesh_color = CustomData_add_layer(&newMesh->ldata, CD_MLOOPCOL, CD_CALLOC, NULL, newMesh->totloop);
-
-		for(int i = 0; i < newMesh->totloop; i++) {
-			float from_co[3];
-			BVHTreeNearest nearest;
-			nearest.index = -1;
-			nearest.dist_sq = FLT_MAX;
-			copy_v3_v3(from_co, newMesh_verts[loops[i].v].co);
-			BLI_bvhtree_find_nearest(bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
-
-			if (nearest.index != -1) {
-				MLoopCol c = oldMesh_color[nearest.index];
-				//printf("MAPPED %d %d %d %d %d %d \n", i, nearest.index, c.r, c.g, c.b, c.a);
-				newMesh_color[i].r = c.r;
-				newMesh_color[i].g = c.g;
-				newMesh_color[i].b = c.b;
-				newMesh_color[i].a = c.a;
-			}
-			else {
-				newMesh_color[i].r = 255;
-				newMesh_color[i].g = 255;
-				newMesh_color[i].b = 255;
-				newMesh_color[i].a = 255;
-			}
+	if (reproject_vertex_paint)
+	{
+		BKE_remesh_voxel_reproject_remapped_vertex_paint(newMesh, mesh, remap);
+		if (remap) {
+			MEM_freeN(remap);
 		}
 
-		MEM_freeN(oldMesh_color);
 		BKE_mesh_update_customdata_pointers(newMesh, false);
 	}
 
@@ -309,12 +247,6 @@ static Mesh* voxel_remesh(Mesh* mesh, Mesh* csg_operand, char operation, float v
 		for (i = 0; i < totpoly; i++) {
 			mpoly[i].flag |= ME_SMOOTH;
 		}
-	}
-
-	MEM_freeN(output_mesh.quads);
-	MEM_freeN(output_mesh.vertices);
-	if (output_mesh.tottriangles > 0) {
-		MEM_freeN(output_mesh.triangles);
 	}
 
 	return newMesh;

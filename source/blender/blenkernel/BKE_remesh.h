@@ -32,8 +32,12 @@ struct OpenVDBLevelSet *BKE_remesh_voxel_ovdb_mesh_to_level_set_create(Mesh *mes
 Mesh *BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLevelSet *level_set, double isovalue, double adaptivity,
 												  bool relax_disoriented_triangles);
 
-/* Reprojection */
+/* MVertCol based Reprojection for remesh operator */
 void BKE_remesh_voxel_init_empty_vertex_color_layer(Mesh *mesh);
 void BKE_remesh_voxel_reproject_vertex_paint(Mesh *target, Mesh *source);
+
+/* MLoopCol remapping based Reprojection for remesh modifier */
+MLoopCol* BKE_remesh_remap_loop_vertex_color_layer(Mesh *mesh);
+void BKE_remesh_voxel_reproject_remapped_vertex_paint(Mesh* target, Mesh* source, MLoopCol *remap);
 
 #endif /* __BKE_REMESH_H__ */
