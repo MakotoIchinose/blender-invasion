@@ -4075,8 +4075,8 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 		{VOXEL_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median Filter"},
 		{VOXEL_FILTER_MEAN_CURVATURE, "MEAN_CURVATURE", 0, "Mean Curvature", "Mean Curvature Filter"},
 		{VOXEL_FILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", "Laplacian Filter"},
-		//{VOXEL_FILTER_DILATE, "DILATE", 0, "Dilate", "Dilate Filter"},
-		//{VOXEL_FILTER_ERODE, "ERODE", 0, "Erode", "Erode Filter"},
+		{VOXEL_FILTER_DILATE, "DILATE", 0, "Dilate", "Dilate Filter"},
+		{VOXEL_FILTER_ERODE, "ERODE", 0, "Erode", "Erode Filter"},
 		{0, NULL, 0, NULL, NULL},
 	};
 

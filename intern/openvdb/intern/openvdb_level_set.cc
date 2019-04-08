@@ -110,10 +110,10 @@ void OpenVDBLevelSet::OpenVDB_level_set_filter(OpenVDBLevelSet_FilterType filter
 			filter.laplacian();
 		break;
 		case OPENVDB_LEVELSET_FILTER_DILATE:
-			filter.dilate(iterations);
+			filter.offset(-iterations/100.0);
 		break;
 		case OPENVDB_LEVELSET_FILTER_ERODE:
-			filter.erode(iterations);
+			filter.offset(iterations/100.0);
 		break;
 	}
 }
