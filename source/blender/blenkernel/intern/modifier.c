@@ -157,6 +157,18 @@ void modifier_free_ex(ModifierData *md, const int flag)
 			mti->foreachObjectLink(md, NULL, (ObjectWalkFunc)modifier_free_data_id_us_cb, NULL);
 		}
 	}
+#if 0
+	if (md->type == eModifierType_Remesh)
+	{
+		if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0){
+			/* is this a regular free ? */
+			RemeshModifierData *rmd = (RemeshModifierData*)md;
+			if (rmd->shared) {
+				//MEM_freeN(rmd->shared);
+			}
+		}
+	}
+#endif
 
 	if (mti->freeData) mti->freeData(md);
 	if (md->error) MEM_freeN(md->error);

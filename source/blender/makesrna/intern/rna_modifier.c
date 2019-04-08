@@ -297,6 +297,8 @@ const EnumPropertyItem rna_enum_axis_flag_xyz_items[] = {
 #include "DNA_curve_types.h"
 #include "DNA_smoke_types.h"
 
+#include "BLI_listbase.h"
+
 #include "BKE_cachefile.h"
 #include "BKE_context.h"
 #include "BKE_mesh_runtime.h"
@@ -311,6 +313,13 @@ const EnumPropertyItem rna_enum_axis_flag_xyz_items[] = {
 #ifdef WITH_ALEMBIC
 #  include "ABC_alembic.h"
 #endif
+
+
+static bool rna_CSG_object_poll(PointerRNA *UNUSED(ptr), PointerRNA value)
+{
+	int type = ((Object *)value.id.data)->type;
+	return type == OB_MESH; // || type == OB_CURVE;
+}
 
 static void rna_UVProject_projectors_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
@@ -596,7 +605,6 @@ RNA_MOD_OBJECT_SET(NormalEdit, target, OB_EMPTY);
 RNA_MOD_OBJECT_SET(Shrinkwrap, target, OB_MESH);
 RNA_MOD_OBJECT_SET(Shrinkwrap, auxTarget, OB_MESH);
 RNA_MOD_OBJECT_SET(SurfaceDeform, target, OB_MESH);
-RNA_MOD_OBJECT_SET(Remesh, object, OB_MESH);
 
 static void rna_HookModifier_object_set(PointerRNA *ptr, PointerRNA value)
 {
@@ -620,6 +628,21 @@ static void rna_UVProjector_object_set(PointerRNA *ptr, PointerRNA value)
 	Object *ob = (Object *)value.data;
 	id_lib_extern((ID *)ob);
 	*ob_p = ob;
+}
+
+
+static PointerRNA rna_CSGVolume_object_get(PointerRNA *ptr)
+{
+	CSGVolume_Object *vcob = (CSGVolume_Object *)ptr->data;
+	return rna_pointer_inherit_refine(ptr, &RNA_Object, vcob->object);
+}
+
+static void rna_CSGVolume_object_set(PointerRNA *ptr, PointerRNA value)
+{
+	CSGVolume_Object *vcob = (CSGVolume_Object *)ptr->data;
+	Object *ob = (Object *)value.data;
+	id_lib_extern((ID *)ob);
+	vcob->object = ob;
 }
 
 #undef RNA_MOD_OBJECT_SET
@@ -4208,16 +4231,40 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Reproject Vertex Paint", "Keep the current vertex paint on the new mesh");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+	prop = RNA_def_property(srna, "csg_operands", PROP_COLLECTION, PROP_NONE);
+	RNA_def_property_struct_type(prop, "CSGVolume_Object");
+	RNA_def_property_collection_sdna(prop, NULL, "csg_operands", NULL);
+	RNA_def_property_ui_text(prop, "CSG Volume Operands", "");
+
+	srna = RNA_def_struct(brna, "CSGVolume_Object", NULL);
+	RNA_def_struct_ui_text(srna, "CSG Volume Object", "CSG Volume Object used by the Voxel remesher modifier");
+
 	prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
-	RNA_def_property_ui_text(prop, "Object", "Mesh object to use for Boolean operation");
-	RNA_def_property_pointer_funcs(prop, NULL, "rna_RemeshModifier_object_set", NULL, "rna_Mesh_object_poll");
+	RNA_def_property_struct_type(prop, "Object");
+	RNA_def_property_pointer_funcs(prop, "rna_CSGVolume_object_get",
+	                                     "rna_CSGVolume_object_set",
+	                                     NULL,
+	                                     "rna_CSG_object_poll");
 	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+	RNA_def_property_ui_text(prop, "Object", "Object to use csg operand");
 	RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
 	prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, prop_operation_items);
 	RNA_def_property_enum_default(prop, eBooleanModifierOp_Difference);
 	RNA_def_property_ui_text(prop, "Operation", "");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "voxel_size", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_range(prop, 0.001, 1.0);
+	RNA_def_property_float_default(prop, 0.1f);
+	RNA_def_property_ui_range(prop, 0.0001, 1, 0.01, 4);
+	RNA_def_property_ui_text(prop, "Voxel Size", "Voxel size used for volume evaluation");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_OBJECT_ENABLED);
+	RNA_def_property_ui_text(prop, "Enabled", "Consider this object as part of the csg operations");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

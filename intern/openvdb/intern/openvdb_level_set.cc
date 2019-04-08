@@ -117,27 +117,24 @@ void OpenVDBLevelSet::OpenVDB_level_set_filter(OpenVDBLevelSet_FilterType filter
 		break;
 	}
 }
-void OpenVDBLevelSet::OpenVDB_CSG_operation(openvdb::FloatGrid::Ptr gridOut, openvdb::FloatGrid::Ptr gridA, openvdb::FloatGrid::Ptr gridB,
-						   OpenVDBLevelSet_CSGOperation operation)
+openvdb::FloatGrid::Ptr OpenVDBLevelSet::OpenVDB_CSG_operation(openvdb::FloatGrid::Ptr gridA, openvdb::FloatGrid::Ptr gridB, OpenVDBLevelSet_CSGOperation operation)
 {
 	openvdb::FloatGrid::Ptr gridA_copy = gridA->deepCopy();
 	openvdb::FloatGrid::Ptr gridB_copy = gridB->deepCopy();
 
 	switch (operation) {
 		case OPENVDB_LEVELSET_CSG_UNION:
-			openvdb::tools::csgUnion(*gridA, *gridB);
+			openvdb::tools::csgUnion(*gridA_copy, *gridB_copy);
 		break;
 		case OPENVDB_LEVELSET_CSG_DIFFERENCE:
-			openvdb::tools::csgDifference(*gridA, *gridB);
+			openvdb::tools::csgDifference(*gridA_copy, *gridB_copy);
 		break;
 		case OPENVDB_LEVELSET_CSG_INTERSECTION:
-			openvdb::tools::csgIntersection(*gridA, *gridB);
+			openvdb::tools::csgIntersection(*gridA_copy, *gridB_copy);
 		break;
 	}
 
-	gridOut = gridA->deepCopy();
-	gridA = gridA_copy->deepCopy();
-	gridB = gridB_copy->deepCopy();
+	return gridA_copy;
 }
 
 openvdb::FloatGrid::Ptr OpenVDBLevelSet::OpenVDB_level_set_get_grid(){

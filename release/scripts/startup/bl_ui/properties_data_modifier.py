@@ -1204,8 +1204,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             layout.prop(md, "sharpness")
 
         if md.mode == 'VOXEL':
-            #layout.prop(md, "object")
-            #layout.prop(md, "operation")
             col = layout.column(align=True)
             col.prop(md, "voxel_size")
             col.prop(md, "isovalue")
@@ -1221,6 +1219,19 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             layout.prop(md, "smooth_normals")
             layout.prop(md, "relax_triangles")
             layout.prop(md, "reproject_vertex_paint")
+            layout.label(text="CSG Operands")
+            layout.operator("remesh.csg_add", text="+")
+            for i,csg in enumerate(md.csg_operands):
+                box = layout.box()
+                row = box.row(align=True)
+                row.prop(csg, "enabled", text="")
+                row.prop(csg, "object", text="")
+                row.prop(csg, "operation", text="")
+                row = box.row(align=True)
+                row.prop(csg, "voxel_size")
+                row.operator("remesh.csg_remove", text="-").index = i
+                row.operator("remesh.csg_move_up", text="", icon="TRIA_UP").index = i
+                row.operator("remesh.csg_move_down", text="", icon="TRIA_DOWN").index = i
         else:
             layout.prop(md, "use_smooth_shade")
             layout.prop(md, "use_remove_disconnected")

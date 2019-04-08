@@ -298,8 +298,10 @@ void OpenVDBLevelSet_filter(struct OpenVDBLevelSet *level_set, OpenVDBLevelSet_F
 void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLevelSet *gridA, struct OpenVDBLevelSet *gridB,
 								   OpenVDBLevelSet_CSGOperation operation)
 {
-	out->OpenVDB_CSG_operation(out->OpenVDB_level_set_get_grid(), gridA->OpenVDB_level_set_get_grid(),
-							   gridB->OpenVDB_level_set_get_grid(), operation);
+	openvdb::FloatGrid::Ptr grid = out->OpenVDB_CSG_operation(gridA->OpenVDB_level_set_get_grid(),
+	                                                          gridB->OpenVDB_level_set_get_grid(),
+	                                                          operation);
+	out->OpenVDB_level_set_set_grid(grid);
 }
 
 void OpenVDBLevelSet_set_transform(struct OpenVDBLevelSet *level_set, float* transform)

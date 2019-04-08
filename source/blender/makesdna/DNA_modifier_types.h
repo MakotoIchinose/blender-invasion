@@ -521,6 +521,7 @@ typedef struct UVProjectModifierData {
 } UVProjectModifierData;
 
 #define MOD_UVPROJECT_MAXPROJECTORS 10
+#define MOD_REMESH_MAX_CSG_OPERANDS 20
 
 /* UVProjectModifierData->flags */
 enum {
@@ -1531,6 +1532,20 @@ typedef enum eVoxelFilterBias{
 	VOXEL_BIAS_HJWENO5,
 } eVoxelFilterBias;
 
+typedef enum eCSGVolumeOperandFlags {
+	MOD_REMESH_CSG_OBJECT_ENABLED = (1 << 0),
+} eCSGVolumeOperandFlags;
+
+typedef struct CSGVolume_Object {
+	struct CSGVolume_Object *next, *prev;
+	struct Object *object;
+	float voxel_size;
+	char operation;
+	char flag;
+	char _pad[2];
+
+} CSGVolume_Object;
+
 typedef struct RemeshModifierData {
 	ModifierData modifier;
 
@@ -1552,9 +1567,8 @@ typedef struct RemeshModifierData {
 	int filter_iterations;
 
 	/* volume csg */
-	struct Object *object;
-	char operation;
-	char _pad1[3];
+	struct ListBase csg_operands;
+	int _pad1;
 
 	/* octree depth */
 	char depth;

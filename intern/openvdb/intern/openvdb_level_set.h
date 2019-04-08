@@ -49,7 +49,7 @@ public:
 							const double isovalue, const double adaptivity, const bool relax_disoriented_triangles);
 	void OpenVDB_volume_to_mesh(struct OpenVDBVolumeToMeshData *mesh, const double isovalue, const double adaptivity, const bool relax_disoriented_triangles);
 	void OpenVDB_level_set_filter(OpenVDBLevelSet_FilterType filter_type, int width, int iterations, int filter_bias);
-	void OpenVDB_CSG_operation(openvdb::FloatGrid::Ptr gridOut, openvdb::FloatGrid::Ptr gridA, openvdb::FloatGrid::Ptr gridB,
+	openvdb::FloatGrid::Ptr OpenVDB_CSG_operation(openvdb::FloatGrid::Ptr gridA, openvdb::FloatGrid::Ptr gridB,
 						   OpenVDBLevelSet_CSGOperation operation);
 };
 
