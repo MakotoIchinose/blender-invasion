@@ -373,10 +373,7 @@ static void foreachObjectLink(
 
 	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
 	{
-		if (vcob->object)
-		{
-			walk(userData, ob, &vcob->object, IDWALK_CB_NOP);
-		}
+		walk(userData, ob, &vcob->object, IDWALK_CB_NOP);
 	}
 }
 
@@ -421,7 +418,7 @@ ModifierTypeInfo modifierType_Remesh = {
 	/* updateDepsgraph */   updateDepsgraph,
 	/* dependsOnTime */     NULL,
 	/* dependsOnNormals */	NULL,
-	/* foreachObjectLink */ NULL, //foreachObjectLink,
+	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* freeRuntimeData */   NULL,
 };

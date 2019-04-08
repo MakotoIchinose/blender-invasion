@@ -5790,6 +5790,10 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			MultiresModifierData *mmd = (MultiresModifierData *)md;
 			mmd->subdiv = NULL;
 		}
+		else if (md->type == eModifierType_Remesh) {
+			RemeshModifierData *rmd = (RemeshModifierData *)md;
+			link_list(fd, &rmd->csg_operands);
+		}
 	}
 }
 
