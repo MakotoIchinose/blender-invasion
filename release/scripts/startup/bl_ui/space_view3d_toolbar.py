@@ -1716,9 +1716,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
         layout.use_property_decorate = False
 
         brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
 
         if brush is not None:
+            gp_settings = brush.gpencil_settings
             col = layout.column(align=True)
             col.prop(gp_settings, "input_samples")
             col.separator()
@@ -1729,7 +1729,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
             col.prop(gp_settings, "angle", slider=True)
             col.prop(gp_settings, "angle_factor", text="Factor", slider=True)
 
-            ma = context.material
+            ob = context.object
+            if ob:
+                ma = ob.active_material
+                    
             if brush.gpencil_settings.material:
                 ma = brush.gpencil_settings.material
 
