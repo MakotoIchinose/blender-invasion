@@ -407,8 +407,6 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=True):
         row = layout.row(align=True)
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
-        row = layout.row(align=True)
-        row.prop(gp_settings, "gradient_factor", text="Opacity")
 
 
 def brush_basic_gpencil_sculpt_settings(layout, context, brush, *, compact=False):
