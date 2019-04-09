@@ -61,13 +61,14 @@ void main()
 		fragColor.a = min(text_color.a * mColor.a, mColor.a);
 	}
 	
-	if (gradient_f < 1.0) {
+	if ((mode == GPENCIL_MODE_DOTS) && (gradient_f < 1.0)) {
 		float dist = length(centered) * 2.0;
 		float ex = pow(dist, (-gradient_f * 2.0f));
 		float alpha = clamp(1.0 - abs((1.0f - ex) / 10.0f), 0.0f, 1.0f) * ellip;
 		fragColor.a = clamp(smoothstep(fragColor.a, 0.0, alpha), 0.01, 1.0);
 	}
 	
-	if(fragColor.a < 0.0035)
+	if(fragColor.a < 0.0035) {
 		discard;
+	}
 }
