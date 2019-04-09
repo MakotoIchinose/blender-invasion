@@ -385,13 +385,16 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 
 	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
 	{
-		if (vcob->object != NULL) {
+		if (vcob->object && (vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED)) {
 			DEG_add_object_relation(ctx->node, vcob->object, DEG_OB_COMP_TRANSFORM, "Remesh Modifier");
 			DEG_add_object_relation(ctx->node, vcob->object, DEG_OB_COMP_GEOMETRY, "Remesh Modifier");
 		}
 	}
-	/* We need own transformation as well. */
-	DEG_add_modifier_to_transform_relation(ctx->node, "Remesh Modifier");
+
+	if (rmd->csg_operands.first) {
+		/* We need own transformation as well in case we have operands */
+		DEG_add_modifier_to_transform_relation(ctx->node, "Remesh Modifier");
+	}
 }
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)

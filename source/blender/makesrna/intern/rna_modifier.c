@@ -4285,11 +4285,11 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_OBJECT_ENABLED);
 	RNA_def_property_ui_text(prop, "Enabled", "Consider this object as part of the csg operations");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+	RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
 	prop = RNA_def_property(srna, "sync_voxel_size", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_SYNC_VOXEL_SIZE);
-	RNA_def_property_ui_text(prop, "Sync Voxel Size", "Consider this object as part of the csg operations");
+	RNA_def_property_ui_text(prop, "Sync Voxel Size", "Keep voxel size in sync");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

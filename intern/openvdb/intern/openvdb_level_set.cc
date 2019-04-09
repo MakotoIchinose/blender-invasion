@@ -119,8 +119,8 @@ void OpenVDBLevelSet::OpenVDB_level_set_filter(OpenVDBLevelSet_FilterType filter
 }
 openvdb::FloatGrid::Ptr OpenVDBLevelSet::OpenVDB_CSG_operation(openvdb::FloatGrid::Ptr gridA, openvdb::FloatGrid::Ptr gridB, OpenVDBLevelSet_CSGOperation operation)
 {
-	openvdb::FloatGrid::Ptr gridA_copy = gridA->deepCopy();
-	openvdb::FloatGrid::Ptr gridB_copy = gridB->deepCopy();
+	openvdb::FloatGrid::Ptr gridA_copy = gridA;//->deepCopy();
+	openvdb::FloatGrid::Ptr gridB_copy = gridB;//->deepCopy();
 
 	switch (operation) {
 		case OPENVDB_LEVELSET_CSG_UNION:

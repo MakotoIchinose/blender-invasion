@@ -2413,6 +2413,7 @@ static bool remesh_csg_poll(bContext *C)
 static int remesh_csg_add_exec(bContext *C, wmOperator *op)
 {
 	Object *ob = ED_object_active_context(C);
+	Main *bmain = CTX_data_main(C);
 	RemeshModifierData *rmd = (RemeshModifierData *)edit_modifier_property_get(op, ob, eModifierType_Remesh);
 
 	if (rmd == NULL) {
@@ -2424,6 +2425,11 @@ static int remesh_csg_add_exec(bContext *C, wmOperator *op)
 	vcob->flag |= MOD_REMESH_CSG_OBJECT_ENABLED;
 	vcob->flag |= MOD_REMESH_CSG_SYNC_VOXEL_SIZE;
 	BLI_addtail(&rmd->csg_operands, vcob);
+
+	if (BLI_listbase_is_single(&rmd->csg_operands)) {
+		/*trigger update to detach modifier transform relation from modifier */
+		DEG_relations_tag_update(bmain);
+	}
 
 	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 	WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -2459,6 +2465,7 @@ void REMESH_OT_csg_add(wmOperatorType *ot)
 static int remesh_csg_remove_exec(bContext *C, wmOperator *op)
 {
 	Object *ob = ED_object_active_context(C);
+	Main *bmain = CTX_data_main(C);
 	RemeshModifierData *rmd = (RemeshModifierData *)edit_modifier_property_get(op, ob, eModifierType_Remesh);
 	int index = RNA_int_get(op->ptr, "index");
 
@@ -2469,6 +2476,11 @@ static int remesh_csg_remove_exec(bContext *C, wmOperator *op)
 	CSGVolume_Object* vcob = (CSGVolume_Object*)BLI_findlink(&rmd->csg_operands, index);
 	if (vcob) {
 		BLI_remlink(&rmd->csg_operands, vcob);
+	}
+
+	if (BLI_listbase_is_empty(&rmd->csg_operands)) {
+		/*trigger update to detach modifier transform relation from modifier */
+		DEG_relations_tag_update(bmain);
 	}
 
 	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
