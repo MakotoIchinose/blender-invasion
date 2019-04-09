@@ -2420,8 +2420,9 @@ static int remesh_csg_add_exec(bContext *C, wmOperator *op)
 	}
 
 	CSGVolume_Object *vcob = MEM_callocN(sizeof(CSGVolume_Object), "vcob");
-	vcob->voxel_size = 0.1f;
+	vcob->voxel_size = rmd->voxel_size;
 	vcob->flag |= MOD_REMESH_CSG_OBJECT_ENABLED;
+	vcob->flag |= MOD_REMESH_CSG_SYNC_VOXEL_SIZE;
 	BLI_addtail(&rmd->csg_operands, vcob);
 
 	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);

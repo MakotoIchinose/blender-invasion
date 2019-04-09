@@ -1533,10 +1533,12 @@ typedef enum eVoxelFilterBias{
 
 typedef enum eCSGVolumeOperandFlags {
 	MOD_REMESH_CSG_OBJECT_ENABLED = (1 << 0),
+	MOD_REMESH_CSG_SYNC_VOXEL_SIZE = (1 << 1),
 } eCSGVolumeOperandFlags;
 
 typedef struct CSGVolume_Object {
 	struct CSGVolume_Object *next, *prev;
+	struct RemeshModifierData *md; //modifier we belong to
 	struct Object *object;
 	float voxel_size;
 	char operation;

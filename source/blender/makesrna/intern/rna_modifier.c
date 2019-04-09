@@ -645,6 +645,19 @@ static void rna_CSGVolume_object_set(PointerRNA *ptr, PointerRNA value)
 	vcob->object = ob;
 }
 
+static void rna_RemeshModifier_voxel_size_set(PointerRNA *ptr, float value)
+{
+	RemeshModifierData *rmd = (RemeshModifierData *)ptr->data;
+	CSGVolume_Object *vcob;
+
+	rmd->voxel_size = value;
+	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
+		if (vcob->flag & MOD_REMESH_CSG_SYNC_VOXEL_SIZE) {
+			vcob->voxel_size = value;
+		}
+	}
+}
+
 #undef RNA_MOD_OBJECT_SET
 
 /* Other rna callbacks */
@@ -4174,6 +4187,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
 	prop = RNA_def_property(srna, "voxel_size", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_float_funcs(prop, NULL, "rna_RemeshModifier_voxel_size_set", NULL);
 	RNA_def_property_range(prop, 0.001, 1.0);
 	RNA_def_property_float_default(prop, 0.1f);
 	RNA_def_property_ui_range(prop, 0.0001, 1, 0.01, 4);
@@ -4265,6 +4279,11 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_OBJECT_ENABLED);
 	RNA_def_property_ui_text(prop, "Enabled", "Consider this object as part of the csg operations");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "sync_voxel_size", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_SYNC_VOXEL_SIZE);
+	RNA_def_property_ui_text(prop, "Sync Voxel Size", "Consider this object as part of the csg operations");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

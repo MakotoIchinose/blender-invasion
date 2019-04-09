@@ -1220,16 +1220,23 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             layout.prop(md, "relax_triangles")
             layout.prop(md, "reproject_vertex_paint")
             layout.label(text="CSG Operands")
-            layout.operator("remesh.csg_add", text="+")
+            layout.operator("remesh.csg_add", text="", icon="ADD")
             for i,csg in enumerate(md.csg_operands):
                 box = layout.box()
                 row = box.row(align=True)
-                row.prop(csg, "enabled", text="")
+                icon = "HIDE_ON"
+                if csg.enabled:
+                    icon = "HIDE_OFF"
+                row.prop(csg, "enabled", text="", icon=icon, emboss=True)
                 row.prop(csg, "object", text="")
                 row.prop(csg, "operation", text="")
                 row = box.row(align=True)
+                icon = "RESTRICT_VIEW_ON"
+                if csg.sync_voxel_size:
+                    icon = "RESTRICT_VIEW_OFF"
+                row.prop(csg, "sync_voxel_size", text="", icon=icon, emboss=True)
                 row.prop(csg, "voxel_size")
-                row.operator("remesh.csg_remove", text="-").index = i
+                row.operator("remesh.csg_remove", text="", icon="REMOVE").index = i
                 row.operator("remesh.csg_move_up", text="", icon="TRIA_UP").index = i
                 row.operator("remesh.csg_move_down", text="", icon="TRIA_DOWN").index = i
         else:
