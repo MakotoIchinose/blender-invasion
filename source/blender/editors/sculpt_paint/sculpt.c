@@ -6995,7 +6995,7 @@ EnumPropertyItem prop_mask_filter_types[] = {
 	{0, NULL, 0, NULL, NULL},
 };
 
-static void smooth_flood_fill_task_cb(
+static void mask_filter_task_cb(
         void *__restrict userdata,
         const int i,
         const ParallelRangeTLS *__restrict UNUSED(tls))
@@ -7084,7 +7084,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 	BLI_task_parallel_range(
 	            0, totnode,
 	            &data,
-	            smooth_flood_fill_task_cb,
+	            mask_filter_task_cb,
 	            &settings);
 
 	sculpt_undo_push_end();
