@@ -373,7 +373,10 @@ static void foreachObjectLink(
 
 	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
 	{
-		walk(userData, ob, &vcob->object, IDWALK_CB_NOP);
+		if (vcob->object)
+		{
+			walk(userData, ob, &vcob->object, IDWALK_CB_NOP);
+		}
 	}
 }
 
@@ -393,6 +396,15 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	DEG_add_modifier_to_transform_relation(ctx->node, "Remesh Modifier");
 }
 
+static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
+{
+	RemeshModifierData *rmd_src = (RemeshModifierData*)md_src;
+	RemeshModifierData *rmd_dst = (RemeshModifierData*)md_dst;
+
+	modifier_copyData_generic(md_src, md_dst, flag);
+	BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
+}
+
 ModifierTypeInfo modifierType_Remesh = {
 	/* name */              "Remesh",
 	/* structName */        "RemeshModifierData",
@@ -403,7 +415,7 @@ ModifierTypeInfo modifierType_Remesh = {
 	                        eModifierTypeFlag_SupportsEditmode |
 	                        eModifierTypeFlag_SupportsMapping,
 
-	/* copyData */          modifier_copyData_generic,
+	/* copyData */          copyData,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

@@ -643,6 +643,11 @@ static void rna_CSGVolume_object_set(PointerRNA *ptr, PointerRNA value)
 	Object *ob = (Object *)value.data;
 	id_lib_extern((ID *)ob);
 	vcob->object = ob;
+	if (ob) {
+		ob->dt = OB_WIRE;
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+		WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
+	}
 }
 
 static void rna_RemeshModifier_voxel_size_set(PointerRNA *ptr, float value)
@@ -4255,6 +4260,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Object");
+	RNA_def_property_pointer_sdna(prop, NULL, "object");
 	RNA_def_property_pointer_funcs(prop, "rna_CSGVolume_object_get",
 	                                     "rna_CSGVolume_object_set",
 	                                     NULL,
