@@ -402,7 +402,11 @@ static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int
 	RemeshModifierData *rmd_dst = (RemeshModifierData*)md_dst;
 
 	modifier_copyData_generic(md_src, md_dst, flag);
-	BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
+
+	//only for cow copy ?
+	if (flag & LIB_ID_CREATE_NO_MAIN) {
+		BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
+	}
 }
 
 ModifierTypeInfo modifierType_Remesh = {
