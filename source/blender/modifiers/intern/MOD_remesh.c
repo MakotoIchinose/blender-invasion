@@ -220,7 +220,11 @@ static Mesh* voxel_remesh(RemeshModifierData *rmd, Mesh* mesh, struct OpenVDBLev
 
 static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, CSGVolume_Object* vcob, Object* ob)
 {
-	Mesh *me = BKE_object_get_final_mesh(vcob->object);
+	Mesh *me_orig = BKE_object_get_final_mesh(vcob->object);
+	Mesh *me = BKE_mesh_new_nomain(me_orig->totvert, me_orig->totedge, me_orig->totface, me_orig->totloop, me_orig->totpoly);
+
+	BKE_mesh_nomain_to_mesh(me_orig, me, vcob->object, &CD_MASK_MESH, false);
+
 	float imat[4][4];
 	float omat[4][4];
 
@@ -240,13 +244,7 @@ static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, C
 
 	OpenVDBLevelSet_free(level_setB);
 	OpenVDBTransform_free(xform);
-
-	//restore transform
-	invert_m4_m4(imat, omat);
-	for (int i = 0; i < me->totvert; i++)
-	{
-		mul_m4_v3(imat, me->mvert[i].co);
-	}
+	BKE_mesh_free(me);
 
 	return level_set;
 }
