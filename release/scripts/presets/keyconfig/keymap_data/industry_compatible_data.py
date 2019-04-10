@@ -3388,7 +3388,7 @@ def km_object_non_modal(params):
         ("object.mode_set",{"type": 'ONE', "value": 'PRESS'},
          {"properties": [("mode", 'OBJECT')]}),
         ("ic_keymap.mesh_select_mode",{"type": 'TWO', "value": 'PRESS'},
-         {"properties": [("type", 'VERTEX')]}),
+         {"properties": [("type", 'VERT')]}),
         ("ic_keymap.mesh_select_mode",{"type": 'THREE', "value": 'PRESS'},
          {"properties": [("type", 'EDGE')]}),
         ("ic_keymap.mesh_select_mode",{"type": 'FOUR', "value": 'PRESS'},
