@@ -62,7 +62,9 @@ void main()
 	}
 	
 	if ((mode == GPENCIL_MODE_DOTS) && (gradient_f < 1.0)) {
-		fragColor.a = clamp(fragColor.a - (length(centered) * 2 * (1.0 - gradient_f)), 0.0, 1.0);
+		float dist = length(centered) * 2;
+		float decay = dist * (1.0 - gradient_f) * fragColor.a;
+		fragColor.a = clamp(fragColor.a - decay, 0.0, 1.0);
 		fragColor.a = fragColor.a * (1.0 - ellip);
 	}
 	
