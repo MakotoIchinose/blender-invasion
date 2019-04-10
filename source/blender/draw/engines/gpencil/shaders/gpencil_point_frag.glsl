@@ -62,10 +62,8 @@ void main()
 	}
 	
 	if ((mode == GPENCIL_MODE_DOTS) && (gradient_f < 1.0)) {
-		float dist = length(centered) * 2.0;
-		float ex = pow(dist, (-gradient_f * 2.0f));
-		float alpha = clamp(1.0 - abs((1.0f - ex) / 10.0f), 0.0f, 1.0f) * ellip;
-		fragColor.a = clamp(smoothstep(fragColor.a, 0.0, alpha), 0.01, 1.0);
+		fragColor.a = clamp(fragColor.a - (length(centered) * 2 * (1.0 - gradient_f)), 0.0, 1.0);
+		fragColor.a = fragColor.a * (1.0 - ellip);
 	}
 	
 	if(fragColor.a < 0.0035) {
