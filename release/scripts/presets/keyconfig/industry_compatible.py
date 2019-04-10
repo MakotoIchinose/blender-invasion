@@ -30,61 +30,9 @@ class IC_KEYMAP_OT_mesh_select_mode(bpy.types.Operator):
 
         return{'FINISHED'}
 
-# JKL controls for playback
-
-class IC_KEYMAP_OT_jkl_controls(bpy.types.Operator):
-    bl_idname = "ic_keymap.jkl_controls"
-    bl_label = "jkl Controls"
-    bl_description = "jkl Controls"
-
-    mode: bpy.props.EnumProperty(
-        name="JKL Mode",
-        items=(
-            ('J', "J", "Play Backwards"),
-            ('K', "K", "Pause"),
-            ('L', "L", "Play Forwards"),
-            ('KJ', "L", "Step Frame Back"),
-            ('KL', "L", "Step Frame Forward"),
-        ),
-    )
-
-    def execute(self, context):
-        scr = bpy.context.screen
-        scops = bpy.ops.screen
-
-        if self.mode == "J":
-            if scr.is_animation_playing == True:
-                scops.animation_play()
-                scops.animation_play(reverse=True)
-            else:
-                scops.animation_play(reverse=True)
-        elif self.mode == "L":
-            if scr.is_animation_playing == True:
-                scops.animation_play()
-                scops.animation_play()
-            else:
-                scops.animation_play()
-        elif self.mode == "K":
-            if scr.is_animation_playing == True:
-                scops.animation_play()
-        elif self.mode == "KJ":
-            if scr.is_animation_playing == True:
-                scops.animation_play()
-            bpy.context.scene.frame_set(bpy.context.scene.frame_current - 1)
-        elif self.mode == "KL":
-            if scr.is_animation_playing == True:
-                scops.animation_play()
-            bpy.context.scene.frame_set(bpy.context.scene.frame_current + 1)
-        else:
-            if scr.is_animation_playing == True:
-                scops.animation_play()
-
-        return {'FINISHED'}
-
 
 classes = (
     IC_KEYMAP_OT_mesh_select_mode,
-    IC_KEYMAP_OT_jkl_controls,
 )
 
 

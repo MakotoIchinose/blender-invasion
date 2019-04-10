@@ -2624,13 +2624,6 @@ def km_pose(params):
 
         ("anim.keyframe_delete_v3d", {"type": 'S', "value": 'PRESS', "alt": True}, None),
         ("anim.keying_set_active_set", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
-        # JKL
-        ("ic_keymap.jkl_controls", {"type": 'J', "value": 'PRESS'},
-         {"properties": [("mode", 'J')]}),
-        ("ic_keymap.jkl_controls", {"type": 'L', "value": 'PRESS'},
-         {"properties": [("mode", 'L')]}),
-        ("ic_keymap.jkl_controls", {"type": 'K', "value": 'PRESS'},
-         {"properties": [("mode", 'K')]}),
         op_menu("VIEW3D_MT_pose_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
         op_menu("VIEW3D_MT_pose_context_menu", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True}),
         # Tools
@@ -2700,14 +2693,6 @@ def km_object_mode(params):
          {"properties": [("type", 'Scaling')]}),
         ("anim.keyframe_delete_v3d", {"type": 'S', "value": 'PRESS', "alt": True}, None),
         ("anim.keying_set_active_set", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
-        # JKL
-        ("ic_keymap.jkl_controls", {"type": 'J', "value": 'PRESS'},
-         {"properties": [("mode", 'J')]}),
-        ("ic_keymap.jkl_controls", {"type": 'L', "value": 'PRESS'},
-         {"properties": [("mode", 'L')]}),
-        ("ic_keymap.jkl_controls", {"type": 'K', "value": 'PRESS'},
-         {"properties": [("mode", 'K')]}),
-
         op_menu("VIEW3D_MT_object_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
         op_menu("VIEW3D_MT_object_context_menu", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True}),
         ("object.move_to_collection", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
