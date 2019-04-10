@@ -82,41 +82,10 @@ class IC_KEYMAP_OT_jkl_controls(bpy.types.Operator):
         return {'FINISHED'}
 
 
-# Keyframe
-
-class IC_KEYMAP_OT_insert_key(bpy.types.Operator):
-    bl_idname = "ic_keymap.insert_key"
-    bl_label = "Insert Location Keyframe"
-    bl_options = {'UNDO'}
-
-    mode: bpy.props.EnumProperty(
-        name="Keyframe Mode",
-        items=(
-            ('LOCATION', "Location", "Set location keyframe"),
-            ('ROTATION', "Rotation", "Set rotation keyframe"),
-            ('SCALING', "Scaling", "Set scaling keyframe"),
-            ('LOCROTSCALE', "LocRotScale", "Set location, rotation and scaling keyframes"),
-        ),
-    )
-
-    def execute(self, context):
-        if self.mode == "LOCATION":
-            bpy.ops.anim.keyframe_insert_menu(type='Location')
-        elif self.mode == "ROTATION":
-            bpy.ops.anim.keyframe_insert_menu(type='Rotation')
-        elif self.mode == "SCALING":
-            bpy.ops.anim.keyframe_insert_menu(type='Scaling')
-        elif self.mode == "LOCROTSCALE":
-            bpy.ops.anim.keyframe_insert_menu(type='LocRotScale')
-        return{'FINISHED'}
-
-
 classes = (
     IC_KEYMAP_OT_mesh_select_mode,
-    IC_KEYMAP_OT_insert_key,
     IC_KEYMAP_OT_jkl_controls,
 )
-
 
 
 # ------------------------------------------------------------------------------
