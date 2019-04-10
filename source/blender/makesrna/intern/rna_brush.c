@@ -1197,14 +1197,14 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
-	/* gradient control along y */
+	/* gradient control */
 	prop = RNA_def_property(srna, "gradient_factor", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "gradient_f");
 	RNA_def_property_range(prop, 0.001f, 1.0f);
 	RNA_def_property_float_default(prop, 1.0f);
 	RNA_def_property_ui_text(
 		prop, "Border Opacity Factor",
-		"Amount of gradient along section of stroke (set to 1 for full solid)");
+		"Amount of gradient for Dot strokes (set to 1 for full solid)");
 	RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
 
 	/* gradient shape ratio */
