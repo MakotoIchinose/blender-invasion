@@ -11,10 +11,10 @@ class IC_KEYMAP_OT_mesh_select_mode(bpy.types.Operator):
     bl_label = "Switch to Vertex, Edge or Face Mode from any mode"
     bl_options = {'UNDO'}
 
-    mode: bpy.props.EnumProperty(
+    type: bpy.props.EnumProperty(
         name="Mode",
         items=(
-            ('VERTEX', "Vertex", "Switcth to Vertex Mode From any Mode"),
+            ('VERT', "Vertex", "Switcth to Vertex Mode From any Mode"),
             ('EDGE', "Edge", "Switcth to Edge Mode From any Mode"),
             ('FACE', "Face", "Switcth to Face Mode From any Mode"),
         ),
@@ -25,16 +25,8 @@ class IC_KEYMAP_OT_mesh_select_mode(bpy.types.Operator):
         return (context.active_object is not None) and (context.object.type == 'MESH')
 
     def execute(self, context):
-
-        if self.mode == "VERTEX":
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_mode(type='VERT')
-        elif self.mode == "EDGE":
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_mode(type='EDGE')
-        elif self.mode == "FACE":
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_mode(type='FACE')
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_mode(type=self.type)
 
         return{'FINISHED'}
 
