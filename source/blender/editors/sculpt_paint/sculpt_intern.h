@@ -209,6 +209,8 @@ typedef struct SculptThreadedTaskData {
 	float filter_strength;
 	int filter_type;
 
+	float *prev_mask;
+
 	float min_len;
 	bool use_automasking_brush_location;
 

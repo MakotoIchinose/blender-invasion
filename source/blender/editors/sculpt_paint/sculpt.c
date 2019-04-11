@@ -1659,6 +1659,54 @@ static float neighbor_average_mask(SculptSession *ss, unsigned vert)
 		return vmask[vert];
 }
 
+static float neighbor_min_mask(SculptSession *ss, const int vert, float *prev_mask)
+{
+	const MeshElemMap *vert_map = &ss->pmap[vert];
+	const float *vmask = prev_mask;
+
+	int i = 0;
+	float min = 1.0f;
+	for (i = 0; i < vert_map->count; i++) {
+		const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+		unsigned f_adj_v[2];
+
+		if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
+			int j;
+			for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
+				float vmask_f = vmask[f_adj_v[j]];
+				if (vmask_f < min) {
+					min = vmask_f;
+				}
+			}
+		}
+	}
+	return min;
+}
+
+static float neighbor_max_mask(SculptSession *ss, const int vert, float *prev_mask)
+{
+	const MeshElemMap *vert_map = &ss->pmap[vert];
+	const float *vmask = prev_mask;
+
+	int i = 0;
+	float max = 0.0f;
+	for (i = 0; i < vert_map->count; i++) {
+		const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+		unsigned f_adj_v[2];
+
+		if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
+			int j;
+			for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
+				float vmask_f = vmask[f_adj_v[j]];
+				if (vmask_f > max) {
+					max = vmask_f;
+				}
+			}
+		}
+	}
+	return max;
+}
+
 /* Same logic as neighbor_average(), but for bmesh rather than mesh */
 static void bmesh_neighbor_average(float avg[3], BMVert *v)
 {
@@ -7210,12 +7258,16 @@ void SCULPT_OT_mesh_filter(struct wmOperatorType *ot)
 
 typedef enum eSculptMaskFilterTypes {
 	MASK_FILTER_BLUR = 0,
-	MASK_FILTER_SHARPEN =1,
+	MASK_FILTER_SHARPEN = 1,
+	MASK_FILTER_GROW = 2,
+	MASK_FILTER_SHRINK = 3,
 } eSculptMaskFilterTypes;
 
 EnumPropertyItem prop_mask_filter_types[] = {
 	{MASK_FILTER_BLUR, "BLUR", 0, "Blur Mask", "Blur mask"},
 	{MASK_FILTER_SHARPEN, "SHARPEN", 0, "Sharpen Mask", "Sharpen mask"},
+	{MASK_FILTER_GROW, "GROW", 0, "Grow Mask", "Grow mask"},
+	{MASK_FILTER_SHRINK, "SHRINK", 0, "Shrink Mask", "Shrink mask"},
 	{0, NULL, 0, NULL, NULL},
 };
 
@@ -7262,6 +7314,20 @@ static void mask_filter_task_cb(
 				*vd.mask += val/2;
 				CLAMP(*vd.mask, 0.0f, 1.0f);
 				break;
+			case MASK_FILTER_GROW:
+				if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES){
+					val = neighbor_max_mask(ss, vd.vert_indices[vd.i], data->prev_mask);
+					*vd.mask = val;
+					CLAMP(*vd.mask, 0.0f, 1.0f);
+				}
+				break;
+			case MASK_FILTER_SHRINK:
+				if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES){
+					val = neighbor_min_mask(ss, vd.vert_indices[vd.i], data->prev_mask);
+					*vd.mask = val;
+					CLAMP(*vd.mask, 0.0f, 1.0f);
+				}
+				break;
 		}
 		if (vd.mvert)
 			vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
@@ -7277,6 +7343,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 	ARegion *ar = CTX_wm_region(C);
 	struct Scene *scene = CTX_data_scene(C);
 	Object *ob = CTX_data_active_object(C);
+	SculptSession *ss = ob->sculpt;
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	PBVH *pbvh = ob->sculpt->pbvh;
 	PBVHNode **nodes;
@@ -7298,8 +7365,14 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
 	sculpt_undo_push_begin("Mask blur fill");
 
+	float *prev_mask;
+	if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
+		prev_mask = MEM_dupallocN(ss->vmask);
+	}
+
 	SculptThreadedTaskData data = {
 	    .sd = sd, .ob = ob, .nodes = nodes,  .smooth_value = 0.5f, .filter_type = mode,
+	    .prev_mask = prev_mask,
 	};
 
 	ParallelRangeSettings settings;
@@ -7315,6 +7388,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
 	if (nodes)
 		MEM_freeN(nodes);
+
+	if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK))
+		MEM_freeN(prev_mask);
 
 	ED_region_tag_redraw(ar);
 
