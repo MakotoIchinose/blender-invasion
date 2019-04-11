@@ -47,31 +47,30 @@ vec2 rotateUV(vec2 uv, float angle)
 
 void main(void)
 {
-	/* receive 4 points */
+	/* receive point */
 	vec4 P0 = gl_in[0].gl_Position;
 	vec2 sp0 = toScreenSpace(P0);
 
 	float size = finalThickness[0];
-	float aspect = 1.0;
 	/* generate the triangle strip */
 	mTexCoord = rotateUV(vec2(0, 1), finaluvdata[0].y);
 	mColor = finalColor[0];
-	gl_Position = vec4(vec2(sp0.x - size, sp0.y + size * aspect) / Viewport, getZdepth(P0), 1.0);
+	gl_Position = vec4(vec2(sp0.x - size, sp0.y + size) / Viewport, getZdepth(P0), 1.0);
 	EmitVertex();
 
 	mTexCoord = rotateUV(vec2(0, 0), finaluvdata[0].y);
 	mColor = finalColor[0];
-	gl_Position = vec4(vec2(sp0.x - size, sp0.y - size * aspect) / Viewport, getZdepth(P0), 1.0);
+	gl_Position = vec4(vec2(sp0.x - size, sp0.y - size) / Viewport, getZdepth(P0), 1.0);
 	EmitVertex();
 
 	mTexCoord = rotateUV(vec2(1, 1), finaluvdata[0].y);
 	mColor = finalColor[0];
-	gl_Position = vec4(vec2(sp0.x + size, sp0.y + size * aspect) / Viewport, getZdepth(P0), 1.0);
+	gl_Position = vec4(vec2(sp0.x + size, sp0.y + size) / Viewport, getZdepth(P0), 1.0);
 	EmitVertex();
 
 	mTexCoord = rotateUV(vec2(1, 0), finaluvdata[0].y);
 	mColor = finalColor[0];
-	gl_Position = vec4(vec2(sp0.x + size, sp0.y - size * aspect) / Viewport, getZdepth(P0), 1.0);
+	gl_Position = vec4(vec2(sp0.x + size, sp0.y - size) / Viewport, getZdepth(P0), 1.0);
 	EmitVertex();
 
 	EndPrimitive();
