@@ -91,6 +91,15 @@ void OpenVDBLevelSet::OpenVDB_volume_to_mesh(OpenVDBVolumeToMeshData *mesh,	cons
 }
 
 void OpenVDBLevelSet::OpenVDB_level_set_filter(OpenVDBLevelSet_FilterType filter_type, int width, int iterations, int filter_bias){
+
+	if (!this->grid) {
+		return;
+	}
+
+	if (this->grid && this->grid->getGridClass() != openvdb::GRID_LEVEL_SET) {
+		return;
+	}
+
 	openvdb::tools::LevelSetFilter<openvdb::FloatGrid> filter(*this->grid);
 	filter.setSpatialScheme((openvdb::math::BiasedGradientScheme)filter_bias);
 	switch (filter_type) {
