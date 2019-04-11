@@ -976,6 +976,24 @@ class _defs_sculpt:
             keymap=(),
         )
 
+    @ToolDef.from_fn
+    def mesh_filter():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("sculpt.mesh_filter")
+            sub = layout.row()
+            sub.use_property_split = False
+            sub.prop(props, "type", expand=False)
+            sub.prop(props, "strength")
+
+        return dict(
+            idname="builtin.mesh_filter",
+            label="Mesh Filter",
+            icon="ops.sculpt.mesh_filter",
+            widget=None,
+            keymap= (),
+            draw_settings=draw_settings,
+        )
+
 
 class _defs_vertex_paint:
 
@@ -1856,6 +1874,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_sculpt.hide_border,
             _defs_sculpt.mask_border,
+            _defs_sculpt.mesh_filter,
         ],
         'PAINT_TEXTURE': [
             _defs_texture_paint.generate_from_brushes,

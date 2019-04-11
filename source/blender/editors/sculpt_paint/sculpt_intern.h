@@ -206,7 +206,8 @@ typedef struct SculptThreadedTaskData {
 	int vertex_count;
 
 	float smooth_value;
-	int smooth_mode;
+	float filter_strength;
+	int filter_type;
 
 	float min_len;
 	bool use_automasking_brush_location;

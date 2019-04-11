@@ -253,6 +253,7 @@ typedef struct SculptSession {
 	float cursor_location[3];
 	float cursor_view_normal[3];
 	float cursor_normal[3];
+	bool use_orco;
 
 	/* Automasking active vertex */
 	MVert *active_vertex_mesh;
