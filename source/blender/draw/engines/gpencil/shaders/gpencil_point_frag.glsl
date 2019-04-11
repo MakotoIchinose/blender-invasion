@@ -31,8 +31,6 @@ float checkpoint(vec2 pt, vec2 radius)
 void main()
 {
 	vec2 centered = mTexCoord - vec2(0.5);
-	float dist_squared = dot(centered, centered);
-	const float rad_squared = 0.25;
 	float ellip = checkpoint(centered, vec2(gradient_s / 2.0));
 
 	if (mode != GPENCIL_MODE_BOX) {
