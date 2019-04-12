@@ -52,6 +52,13 @@ typedef enum OpenVDBLevelSet_CSGOperation {
 	OPENVDB_LEVELSET_CSG_INTERSECTION = 2,
 } OpenVDBLevelSet_CSGOperation;
 
+typedef enum OpenVDBLevelSet_GridSampler {
+	OPENVDB_LEVELSET_GRIDSAMPLER_NONE = 0,
+	OPENVDB_LEVELSET_GRIDSAMPLER_POINT = 1,
+	OPENVDB_LEVELSET_GRIDSAMPLER_BOX = 2,
+	OPENVDB_LEVELSET_GRIDSAMPLER_QUADRATIC = 3,
+} OpenVDBLevelSet_Gridsampler;
+
 struct OpenVDBReader;
 struct OpenVDBWriter;
 struct OpenVDBTransform;
@@ -172,7 +179,10 @@ void OpenVDBLevelSet_filter(struct OpenVDBLevelSet *level_set, OpenVDBLevelSet_F
 							int iterations, OpenVDBLevelSet_FilterBias bias);
 void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLevelSet *gridA, struct OpenVDBLevelSet *gridB,
 								   OpenVDBLevelSet_CSGOperation operation);
-void OpenVDBLevelSet_set_transform(struct OpenVDBLevelSet *level_set, float* transform);
+
+struct OpenVDBLevelSet *OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *level_setA,
+                                                        struct OpenVDBLevelSet *level_setB,
+                                                        char sampler);
 
 
 #ifdef __cplusplus

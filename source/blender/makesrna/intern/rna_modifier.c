@@ -4158,6 +4158,15 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL},
 	};
 
+	static const EnumPropertyItem prop_sampler_items[] = {
+		{eRemeshModifierSampler_None, "None", 0, "None", "Do not resample to match grid transforms."},
+		{eRemeshModifierSampler_Point, "POINT", 0, "Point", "Use OpenVDBs point sampler to match grid transforms."},
+		{eRemeshModifierSampler_Box, "BOX", 0, "Box", "Use OpenVDBs box sampler to match grid transforms."},
+		{eRemeshModifierSampler_Quadratic, "QUADRATIC", 0, "Quadratic",
+		                               "Use OpenVDBs quadratic sampler to match grid transforms."},
+		{0, NULL, 0, NULL, NULL},
+	};
+
 	StructRNA *srna;
 	PropertyRNA *prop;
 
@@ -4297,7 +4306,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_items(prop, prop_operation_items);
-	RNA_def_property_enum_default(prop, eBooleanModifierOp_Difference);
+	RNA_def_property_enum_default(prop, eRemeshModifierOp_Difference);
 	RNA_def_property_ui_text(prop, "Operation", "");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -4308,14 +4317,32 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Voxel Size", "Voxel size used for volume evaluation");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+	prop = RNA_def_property(srna, "voxel_percentage", PROP_FLOAT, PROP_PERCENTAGE);
+	RNA_def_property_range(prop, 1.0, 100.0);
+	RNA_def_property_float_default(prop, 100.0);
+	RNA_def_property_ui_range(prop, 1.0, 100.0, 0.1, 1);
+	RNA_def_property_ui_text(prop, "Voxel Percentage", "Voxel percentage multiplier");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
 	prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_OBJECT_ENABLED);
 	RNA_def_property_ui_text(prop, "Enabled", "Consider this object as part of the csg operations");
 	RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
+	prop = RNA_def_property(srna, "use_voxel_percentage", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_VOXEL_PERCENTAGE);
+	RNA_def_property_ui_text(prop, "Percentage", "Use Voxel percentage multiplier");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
 	prop = RNA_def_property(srna, "sync_voxel_size", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_CSG_SYNC_VOXEL_SIZE);
 	RNA_def_property_ui_text(prop, "Sync Voxel Size", "Keep voxel size in sync");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "sampler", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_items(prop, prop_sampler_items);
+	RNA_def_property_enum_default(prop, eRemeshModifierSampler_Point);
+	RNA_def_property_ui_text(prop, "Sampler", "Method to resample grids to match the transforms");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

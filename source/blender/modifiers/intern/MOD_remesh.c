@@ -218,15 +218,23 @@ static Mesh* voxel_remesh(RemeshModifierData *rmd, Mesh* mesh, struct OpenVDBLev
 	return target;
 }
 
-static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, CSGVolume_Object* vcob, Object* ob)
+static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, CSGVolume_Object* vcob,
+                                            Object* ob, RemeshModifierData *rmd)
 {
 	Mesh *me_orig = BKE_object_get_final_mesh(vcob->object);
-	Mesh *me = BKE_mesh_new_nomain(me_orig->totvert, me_orig->totedge, me_orig->totface, me_orig->totloop, me_orig->totpoly);
+	Mesh *me = BKE_mesh_new_nomain(me_orig->totvert,
+	                               me_orig->totedge,
+	                               me_orig->totface,
+	                               me_orig->totloop,
+	                               me_orig->totpoly);
 
 	BKE_mesh_nomain_to_mesh(me_orig, me, vcob->object, &CD_MASK_MESH, false);
 
 	float imat[4][4];
 	float omat[4][4];
+	float size = (vcob->flag & MOD_REMESH_CSG_VOXEL_PERCENTAGE) ?
+	              rmd->voxel_size * vcob->voxel_percentage / 100.0f :
+	              vcob->voxel_size;
 
 	invert_m4_m4(imat, ob->obmat);
 	mul_m4_m4m4(omat, imat, vcob->object->obmat);
@@ -237,9 +245,15 @@ static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, C
 	}
 
 	struct OpenVDBTransform *xform = OpenVDBTransform_create();
-	OpenVDBTransform_create_linear_transform(xform, vcob->voxel_size);
+	OpenVDBTransform_create_linear_transform(xform, size);
 
 	struct OpenVDBLevelSet *level_setB = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(me, xform);
+
+	if (vcob->sampler != OPENVDB_LEVELSET_GRIDSAMPLER_NONE)
+	{
+		level_set = OpenVDBLevelSet_transform_and_resample(level_set, level_setB, vcob->sampler);
+	}
+
 	OpenVDBLevelSet_CSG_operation(level_set, level_set, level_setB, (OpenVDBLevelSet_CSGOperation)vcob->operation );
 
 	OpenVDBLevelSet_free(level_setB);
@@ -303,7 +317,7 @@ static Mesh *applyModifier(
 			{
 				if (vcob->object && (vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED))
 				{
-					level_set = csgOperation(level_set, vcob, ctx->object);
+					level_set = csgOperation(level_set, vcob, ctx->object, rmd);
 				}
 			}
 

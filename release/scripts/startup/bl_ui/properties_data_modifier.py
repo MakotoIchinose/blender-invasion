@@ -1236,8 +1236,13 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
                 icon = "RESTRICT_VIEW_ON"
                 if csg.sync_voxel_size:
                     icon = "RESTRICT_VIEW_OFF"
-                row.prop(csg, "sync_voxel_size", text="", icon=icon, emboss=True)
-                row.prop(csg, "voxel_size")
+                row.prop(csg, "use_voxel_percentage", text="", icon='CANCEL', emboss=True)
+                if not csg.use_voxel_percentage:
+                    row.prop(csg, "sync_voxel_size", text="", icon=icon, emboss=True)
+                    row.prop(csg, "voxel_size")
+                else:
+                    row.prop(csg, "voxel_percentage")
+                row.prop(csg, "sampler", text="")
                 row.operator("remesh.csg_remove", text="", icon="REMOVE").index = i
                 row.operator("remesh.csg_move_up", text="", icon="TRIA_UP").index = i
                 row.operator("remesh.csg_move_down", text="", icon="TRIA_DOWN").index = i

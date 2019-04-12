@@ -1512,6 +1512,13 @@ typedef enum {
 	eRemeshModifierOp_Intersect  = 2,
 } RemeshModifierOp;
 
+typedef enum {
+	eRemeshModifierSampler_None       = 0,
+	eRemeshModifierSampler_Point      = 1,
+	eRemeshModifierSampler_Box        = 2,
+	eRemeshModifierSampler_Quadratic  = 3,
+} RemeshModifierSampler;
+
 typedef enum eVoxelFilterType {
 	VOXEL_FILTER_NONE = 0,
 	VOXEL_FILTER_GAUSSIAN = 1,
@@ -1535,16 +1542,20 @@ typedef enum eVoxelFilterBias{
 typedef enum eCSGVolumeOperandFlags {
 	MOD_REMESH_CSG_OBJECT_ENABLED = (1 << 0),
 	MOD_REMESH_CSG_SYNC_VOXEL_SIZE = (1 << 1),
+	MOD_REMESH_CSG_VOXEL_PERCENTAGE = (1 << 2),
 } eCSGVolumeOperandFlags;
 
 typedef struct CSGVolume_Object {
 	struct CSGVolume_Object *next, *prev;
-	struct RemeshModifierData *md; //modifier we belong to
+	struct RemeshModifierData *md;
+	//modifier we belong to (currently unused, probably should be deprecated/removed ?)
 	struct Object *object;
 	float voxel_size;
+	float voxel_percentage;
 	char operation;
 	char flag;
-	char _pad[2];
+	char sampler;
+	char _pad[5];
 
 } CSGVolume_Object;
 

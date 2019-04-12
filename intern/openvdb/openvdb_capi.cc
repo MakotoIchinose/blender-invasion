@@ -304,11 +304,59 @@ void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLe
 	out->OpenVDB_level_set_set_grid(grid);
 }
 
-void OpenVDBLevelSet_set_transform(struct OpenVDBLevelSet *level_set, float* transform)
+OpenVDBLevelSet* OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *level_setA,
+                                                        struct OpenVDBLevelSet *level_setB,
+														char sampler)
 {
-	openvdb::FloatGrid::Ptr grid = level_set->OpenVDB_level_set_get_grid();
-	openvdb::math::Mat4f mat(transform);
-	openvdb::math::Transform::Ptr trans = openvdb::math::Transform::createLinearTransform(mat);
-	grid->setTransform(trans);
-	openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*grid, *grid);
+	openvdb::FloatGrid::Ptr sourceGrid = level_setA->OpenVDB_level_set_get_grid();
+	openvdb::FloatGrid::Ptr targetGrid = level_setB->OpenVDB_level_set_get_grid()->deepCopy();
+
+	const openvdb::math::Transform
+	    &sourceXform = sourceGrid->transform(),
+	    &targetXform = targetGrid->transform();
+
+	// Compute a source grid to target grid transform.
+	// (For this example, we assume that both grids' transforms are linear,
+	// so that they can be represented as 4 x 4 matrices.)
+	openvdb::Mat4R xform =
+	    sourceXform.baseMap()->getAffineMap()->getMat4()*
+	    targetXform.baseMap()->getAffineMap()->getMat4().inverse();
+
+	// Create the transformer.
+	openvdb::tools::GridTransformer transformer(xform);
+
+	switch (sampler) {
+		case OPENVDB_LEVELSET_GRIDSAMPLER_POINT:
+			// Resample using nearest-neighbor interpolation.
+			transformer.transformGrid<openvdb::tools::PointSampler, openvdb::FloatGrid>(
+				*sourceGrid, *targetGrid);
+			// Prune the target tree for optimal sparsity.
+			targetGrid->tree().prune();
+		break;
+
+		case OPENVDB_LEVELSET_GRIDSAMPLER_BOX:
+			// Resample using trilinear interpolation.
+			transformer.transformGrid<openvdb::tools::BoxSampler, openvdb::FloatGrid>(
+				*sourceGrid, *targetGrid);
+			// Prune the target tree for optimal sparsity.
+			targetGrid->tree().prune();
+		break;
+
+		case OPENVDB_LEVELSET_GRIDSAMPLER_QUADRATIC:
+			// Resample using triquadratic interpolation.
+			transformer.transformGrid<openvdb::tools::QuadraticSampler, openvdb::FloatGrid>(
+				*sourceGrid, *targetGrid);
+			// Prune the target tree for optimal sparsity.
+			targetGrid->tree().prune();
+		break;
+
+		case OPENVDB_LEVELSET_GRIDSAMPLER_NONE:
+			//targetGrid = sourceGrid->deepCopy();
+		break;
+	}
+
+	OpenVDBLevelSet* level_set = OpenVDBLevelSet_create(false, NULL);
+	level_set->OpenVDB_level_set_set_grid(targetGrid);
+
+	return level_set;
 }

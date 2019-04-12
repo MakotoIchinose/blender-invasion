@@ -2439,6 +2439,9 @@ static int remesh_csg_add_exec(bContext *C, wmOperator *op)
 	vcob->voxel_size = rmd->voxel_size;
 	vcob->flag |= MOD_REMESH_CSG_OBJECT_ENABLED;
 	vcob->flag |= MOD_REMESH_CSG_SYNC_VOXEL_SIZE;
+	vcob->sampler = eRemeshModifierSampler_None;
+	vcob->voxel_percentage = 100.0f;
+
 	BLI_addtail(&rmd->csg_operands, vcob);
 
 	if (remesh_update_check(C, op))
