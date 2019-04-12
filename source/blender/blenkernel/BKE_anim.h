@@ -19,8 +19,8 @@
 #ifndef __BKE_ANIM_H__
 #define __BKE_ANIM_H__
 
-/** \file BKE_anim.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 struct Depsgraph;
 struct ListBase;
@@ -66,7 +66,6 @@ int where_on_path(struct Object *ob, float ctime, float vec[4], float dir[3], fl
 
 struct ListBase *object_duplilist(struct Depsgraph *depsgraph, struct Scene *sce, struct Object *ob);
 void free_object_duplilist(struct ListBase *lb);
-int count_duplilist(struct Object *ob);
 
 typedef struct DupliObject {
 	struct DupliObject *next, *prev;

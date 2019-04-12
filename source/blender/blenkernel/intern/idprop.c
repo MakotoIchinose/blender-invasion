@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/idprop.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdio.h>

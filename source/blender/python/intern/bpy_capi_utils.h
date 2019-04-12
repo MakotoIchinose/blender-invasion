@@ -14,15 +14,15 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/python/intern/bpy_capi_utils.h
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  */
 
 #ifndef __BPY_CAPI_UTILS_H__
 #define __BPY_CAPI_UTILS_H__
 
-#if PY_VERSION_HEX <  0x03060000
-#  error "Python 3.6 or greater is required, you'll need to update your python."
+#if PY_VERSION_HEX < 0x03070000
+#  error "Python 3.7 or greater is required, you'll need to update your Python."
 #endif
 
 struct EnumPropertyItem;
@@ -34,6 +34,7 @@ char *BPy_enum_as_string(const struct EnumPropertyItem *item);
 
 /* error reporting */
 short BPy_reports_to_error(struct ReportList *reports, PyObject *exception, const bool clear);
+void BPy_reports_write_stdout(const struct ReportList *reports, const char *header);
 bool BPy_errors_to_report_ex(struct ReportList *reports, const bool use_full, const bool use_location);
 bool BPy_errors_to_report(struct ReportList *reports);
 

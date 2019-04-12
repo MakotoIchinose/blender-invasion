@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file iksolver/intern/IK_QJacobian.cpp
- *  \ingroup iksolver
+/** \file
+ * \ingroup iksolver
  */
 
 

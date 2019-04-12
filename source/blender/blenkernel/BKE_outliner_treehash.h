@@ -16,8 +16,8 @@
 #ifndef __BKE_OUTLINER_TREEHASH_H__
 #define __BKE_OUTLINER_TREEHASH_H__
 
-/** \file BKE_outliner_treehash.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 struct BLI_mempool;

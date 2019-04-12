@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_action/action_buttons.c
- *  \ingroup spaction
+/** \file
+ * \ingroup spaction
  */
 
 

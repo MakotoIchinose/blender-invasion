@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenkernel/intern/bpath.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 /* TODO,
@@ -211,7 +211,7 @@ static bool missing_files_find__recursive(
         char *filename_new,
         const char *dirname,
         const char *filename,
-        off_t *r_filesize,
+        int64_t *r_filesize,
         int *r_recur_depth)
 {
 	/* file searching stuff */
@@ -219,7 +219,7 @@ static bool missing_files_find__recursive(
 	struct dirent *de;
 	BLI_stat_t status;
 	char path[FILE_MAX];
-	off_t size;
+	int64_t size;
 	bool found = false;
 
 	dir = opendir(dirname);
@@ -275,7 +275,7 @@ static bool missing_files_find__visit_cb(void *userdata, char *path_dst, const c
 	BPathFind_Data *data = (BPathFind_Data *)userdata;
 	char filename_new[FILE_MAX];
 
-	off_t filesize = -1;
+	int64_t filesize = -1;
 	int recur_depth = 0;
 	bool found;
 
@@ -411,13 +411,6 @@ static bool rewrite_path_alloc(char **path, BPathVisitor visit_cb, const char *a
 	}
 }
 
-/* fix the image user "ok" tag after updating paths, so ImBufs get loaded */
-static void bpath_traverse_image_user_cb(Image *ima, ImageUser *iuser, void *customdata)
-{
-	if (ima == customdata)
-		iuser->ok = 1;
-}
-
 /* Run visitor function 'visit' on all paths contained in 'id'. */
 void BKE_bpath_traverse_id(Main *bmain, ID *id, BPathVisitor visit_cb, const int flag, void *bpath_user_data)
 {
@@ -441,7 +434,6 @@ void BKE_bpath_traverse_id(Main *bmain, ID *id, BPathVisitor visit_cb, const int
 							    !BKE_image_is_dirty(ima))
 							{
 								BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_RELOAD);
-								BKE_image_walk_all_users(bmain, ima, bpath_traverse_image_user_cb);
 							}
 						}
 					}

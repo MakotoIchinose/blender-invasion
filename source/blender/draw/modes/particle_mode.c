@@ -16,8 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/modes/particle_mode.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "DRW_render.h"
@@ -30,6 +30,7 @@
 #include "GPU_shader.h"
 
 #include "draw_common.h"
+#include "draw_mode_engines.h"
 
 #include "ED_particle.h"
 

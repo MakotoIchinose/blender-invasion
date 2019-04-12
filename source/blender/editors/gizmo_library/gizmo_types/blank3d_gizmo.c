@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blank3d_gizmo.c
- *  \ingroup edgizmolib
+/** \file
+ * \ingroup edgizmolib
  *
  * \name Blank Gizmo
  *

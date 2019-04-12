@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_STRING_UTILS_H__
 #define __FREESTYLE_STRING_UTILS_H__
 
-/** \file blender/freestyle/intern/system/StringUtils.h
- *  \ingroup freestyle
- *  \brief String utilities
+/** \file
+ * \ingroup freestyle
+ * \brief String utilities
  */
 
 #include <cstring>

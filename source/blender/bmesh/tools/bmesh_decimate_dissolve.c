@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/tools/bmesh_decimate_dissolve.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * BMesh decimator that dissolves flat areas into polygons (ngons).
  */
@@ -376,12 +376,16 @@ void BM_mesh_decimate_dissolve_ex(
 				BM_edge_kill(bm, e_iter);
 				if (v1->e == NULL) {
 					vidx_reverse = vert_reverse_lookup[BM_elem_index_get(v1)];
-					if (vidx_reverse != -1) vinput_arr[vidx_reverse] = NULL;
+					if (vidx_reverse != -1) {
+						vinput_arr[vidx_reverse] = NULL;
+					}
 					BM_vert_kill(bm, v1);
 				}
 				if (v2->e == NULL) {
 					vidx_reverse = vert_reverse_lookup[BM_elem_index_get(v2)];
-					if (vidx_reverse != -1) vinput_arr[vidx_reverse] = NULL;
+					if (vidx_reverse != -1) {
+						vinput_arr[vidx_reverse] = NULL;
+					}
 					BM_vert_kill(bm, v2);
 				}
 			}

@@ -17,9 +17,9 @@
 #ifndef __IMAGE_H__
 #define __IMAGE_H__
 
-/** \file blender/freestyle/intern/image/Image.h
- *  \ingroup freestyle
- *  \brief Class to encapsulate an array of RGB or Gray level values
+/** \file
+ * \ingroup freestyle
+ * \brief Class to encapsulate an array of RGB or Gray level values
  */
 
 #include <string.h> // for memcpy

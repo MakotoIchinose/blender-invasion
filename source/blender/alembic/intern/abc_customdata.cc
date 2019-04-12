@@ -17,6 +17,10 @@
  * All rights reserved.
  */
 
+/** \file
+ * \ingroup balembic
+ */
+
 #include "abc_customdata.h"
 
 #include <Alembic/AbcGeom/All.h>
@@ -153,9 +157,9 @@ static void write_uv(const OCompoundProperty &prop, const CDStreamConfig &config
 	OV2fGeomParam param(prop, name, true, kFacevaryingScope, 1);
 
 	OV2fGeomParam::Sample sample(
-		V2fArraySample(&uvs.front(), uvs.size()),
-		UInt32ArraySample(&indices.front(), indices.size()),
-		kFacevaryingScope);
+	        V2fArraySample(&uvs.front(), uvs.size()),
+	        UInt32ArraySample(&indices.front(), indices.size()),
+	        kFacevaryingScope);
 
 	param.set(sample);
 }
@@ -201,9 +205,9 @@ static void write_mcol(const OCompoundProperty &prop, const CDStreamConfig &conf
 	OC4fGeomParam param(prop, name, true, kFacevaryingScope, 1);
 
 	OC4fGeomParam::Sample sample(
-		C4fArraySample(&buffer.front(), buffer.size()),
-		UInt32ArraySample(&indices.front(), indices.size()),
-		kVertexScope);
+	        C4fArraySample(&buffer.front(), buffer.size()),
+	        UInt32ArraySample(&indices.front(), indices.size()),
+	        kVertexScope);
 
 	param.set(sample);
 }

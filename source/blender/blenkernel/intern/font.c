@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/font.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -297,7 +297,7 @@ VFont *BKE_vfont_load_exists_ex(struct Main *bmain, const char *filepath, bool *
 	BLI_path_abs(str, BKE_main_blendfile_path(bmain));
 
 	/* first search an identical filepath */
-	for (vfont = bmain->vfont.first; vfont; vfont = vfont->id.next) {
+	for (vfont = bmain->fonts.first; vfont; vfont = vfont->id.next) {
 		BLI_strncpy(strtest, vfont->name, sizeof(vfont->name));
 		BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &vfont->id));
 
@@ -342,7 +342,7 @@ VFont *BKE_vfont_builtin_get(void)
 {
 	VFont *vfont;
 
-	for (vfont = G_MAIN->vfont.first; vfont; vfont = vfont->id.next) {
+	for (vfont = G_MAIN->fonts.first; vfont; vfont = vfont->id.next) {
 		if (BKE_vfont_is_builtin(vfont)) {
 			return vfont;
 		}
@@ -430,17 +430,6 @@ static void buildchar(Curve *cu, ListBase *nubase, unsigned int character, CharI
 
 	vfd = vfont_get_data(which_vfont(cu, info));
 	if (!vfd) return;
-
-#if 0
-	if (cu->selend < cu->selstart) {
-		if ((charidx >= (cu->selend)) && (charidx <= (cu->selstart - 2)))
-			sel = 1;
-	}
-	else {
-		if ((charidx >= (cu->selstart - 1)) && (charidx <= (cu->selend - 1)))
-			sel = 1;
-	}
-#endif
 
 	/* make a copy at distance ofsx, ofsy with shear */
 	shear = cu->shear;
@@ -1262,7 +1251,6 @@ makebreak:
 					sb = &selboxes[i - selstart];
 					sb->rot = -ct->rot;
 				}
-				
 			}
 		}
 	}

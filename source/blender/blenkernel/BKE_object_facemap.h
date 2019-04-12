@@ -17,7 +17,7 @@
 #ifndef __BKE_OBJECT_FACEMAP_H__
 #define __BKE_OBJECT_FACEMAP_H__
 
-/** \file BKE_object_facemap.h
+/** \file
  * \ingroup bke
  * \brief Functions for dealing with object face-maps.
  */

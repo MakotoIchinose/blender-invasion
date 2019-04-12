@@ -20,8 +20,8 @@
 #ifndef __BLI_MATH_STATISTICS_H__
 #define __BLI_MATH_STATISTICS_H__
 
-/** \file BLI_math_statistics.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus

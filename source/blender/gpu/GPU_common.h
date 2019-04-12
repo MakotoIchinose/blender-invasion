@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/GPU_common.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #ifndef __GPU_COMMON_H__

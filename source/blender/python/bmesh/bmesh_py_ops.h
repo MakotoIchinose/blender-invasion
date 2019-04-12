@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/python/bmesh/bmesh_py_ops.h
- *  \ingroup pybmesh
+/** \file
+ * \ingroup pybmesh
  */
 
 #ifndef __BMESH_PY_OPS_H__

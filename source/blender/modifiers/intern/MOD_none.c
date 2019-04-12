@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_none.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stdio.h>
@@ -46,12 +46,6 @@ ModifierTypeInfo modifierType_None = {
 
 	/* copyData */          NULL,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -68,4 +62,5 @@ ModifierTypeInfo modifierType_None = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

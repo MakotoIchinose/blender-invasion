@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/makesrna/intern/rna_wm_gizmo.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -257,7 +257,7 @@ static wmGizmo *rna_GizmoProperties_find_operator(PointerRNA *ptr)
 #endif
 
 	/* We could try workaruond this lookup, but not trivial. */
-	for (bScreen *screen = G_MAIN->screen.first; screen; screen = screen->id.next) {
+	for (bScreen *screen = G_MAIN->screens.first; screen; screen = screen->id.next) {
 		IDProperty *properties = ptr->data;
 		for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 			for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
@@ -810,7 +810,7 @@ static StructRNA *rna_GizmoGroup_register(
 
 	wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&wmap_params);
 	if (gzmap_type == NULL) {
-		BKE_reportf(reports, RPT_ERROR, "Area type does not support gizmos");
+		BKE_report(reports, RPT_ERROR, "Area type does not support gizmos");
 		return NULL;
 	}
 
@@ -1015,7 +1015,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 	parm = RNA_def_int_array(func, "location", 2, NULL, INT_MIN, INT_MAX, "Location", "Region coordinates", INT_MIN, INT_MAX);
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-	parm = RNA_def_int(func, "intersect_id", 0, 0, INT_MAX, "", "", 0, INT_MAX);
+	parm = RNA_def_int(func, "intersect_id", -1, -1, INT_MAX, "", "Use -1 to skip this gizmo", -1, INT_MAX);
 	RNA_def_function_return(func, parm);
 
 	/* wmGizmo.handler */

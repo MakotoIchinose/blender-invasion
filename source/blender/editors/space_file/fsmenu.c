@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_file/fsmenu.c
- *  \ingroup spfile
+/** \file
+ * \ingroup spfile
  */
 
 

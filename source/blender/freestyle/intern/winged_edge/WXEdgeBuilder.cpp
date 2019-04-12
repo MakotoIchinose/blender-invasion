@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/winged_edge/WXEdgeBuilder.cpp
- *  \ingroup freestyle
- *  \brief Class inherited from WingedEdgeBuilder and designed to build a WX (WingedEdge + extended info
+/** \file
+ * \ingroup freestyle
+ * \brief Class inherited from WingedEdgeBuilder and designed to build a WX (WingedEdge + extended info
  *         (silhouette etc...)) structure from a polygonal model
  */
 

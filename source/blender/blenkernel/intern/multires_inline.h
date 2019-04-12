@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/multires_inline.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifndef __MULTIRES_INLINE_H__

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/python/bmesh/bmesh_py_ops.c
- *  \ingroup pybmesh
+/** \file
+ * \ingroup pybmesh
  *
  * This file defines the 'bmesh.ops' module.
  * Operators from 'opdefines' are wrapped.
@@ -351,11 +351,13 @@ PyObject *BPyInit_bmesh_ops(void)
 {
 	PyObject *submodule;
 
-	if (PyType_Ready(&bmesh_ops_fakemod_Type) < 0)
+	if (PyType_Ready(&bmesh_ops_fakemod_Type) < 0) {
 		return NULL;
+	}
 
-	if (PyType_Ready(&bmesh_op_Type) < 0)
+	if (PyType_Ready(&bmesh_op_Type) < 0) {
 		return NULL;
+	}
 
 	submodule = PyObject_New(PyObject, &bmesh_ops_fakemod_Type);
 

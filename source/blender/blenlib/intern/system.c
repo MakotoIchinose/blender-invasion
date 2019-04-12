@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenlib/intern/system.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include <stdio.h>
@@ -29,6 +29,7 @@
 
 /* for backtrace and gethostname/GetComputerName */
 #if defined(WIN32)
+#  include <intrin.h>
 #  include <windows.h>
 #  include <dbghelp.h>
 #else

@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/PIL_time.h
- *  \ingroup bli
- *  \brief Platform independent time functions.
+/** \file
+ * \ingroup bli
+ * \brief Platform independent time functions.
  */
 
 #ifndef __PIL_TIME_H__

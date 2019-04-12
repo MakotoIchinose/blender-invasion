@@ -18,8 +18,8 @@
  * Original author: Laurence
  */
 
-/** \file iksolver/intern/IK_QSegment.h
- *  \ingroup iksolver
+/** \file
+ * \ingroup iksolver
  */
 
 #pragma once

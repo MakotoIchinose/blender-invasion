@@ -13,9 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -55,7 +52,7 @@ set(SRC
 	view3d_gizmo_camera.c
 	view3d_gizmo_empty.c
 	view3d_gizmo_forcefield.c
-	view3d_gizmo_lamp.c
+	view3d_gizmo_light.c
 	view3d_gizmo_navigate.c
 	view3d_gizmo_navigate_type.c
 	view3d_gizmo_preselect.c

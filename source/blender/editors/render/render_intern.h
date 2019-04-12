@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/render/render_intern.h
- *  \ingroup edrend
+/** \file
+ * \ingroup edrend
  */
 
 

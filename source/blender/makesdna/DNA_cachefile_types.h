@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file DNA_cachefile_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_CACHEFILE_TYPES_H__
@@ -77,7 +77,7 @@ typedef struct CacheFile {
 	short flag;
 	short draw_flag;
 
-	char padding[4];
+	char _pad[4];
 } CacheFile;
 
 #ifdef __cplusplus

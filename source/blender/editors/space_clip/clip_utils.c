@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_clip/clip_utils.c
- *  \ingroup spclip
+/** \file
+ * \ingroup spclip
  */
 
 #include "DNA_scene_types.h"

@@ -17,9 +17,9 @@
 #ifndef __GRIDHELPERS_H__
 #define __GRIDHELPERS_H__
 
-/** \file blender/freestyle/intern/geometry/GridHelpers.h
- *  \ingroup freestyle
- *  \brief Class to define a cell grid surrounding the projected image of a scene
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define a cell grid surrounding the projected image of a scene
  */
 
 #include <vector>

@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_ORIENTED_LINE_REP_H__
 #define __FREESTYLE_ORIENTED_LINE_REP_H__
 
-/** \file blender/freestyle/intern/scene_graph/OrientedLineRep.h
- *  \ingroup freestyle
- *  \brief Class to display an oriented line representation.
+/** \file
+ * \ingroup freestyle
+ * \brief Class to display an oriented line representation.
  */
 
 #include "LineRep.h"

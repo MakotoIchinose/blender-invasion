@@ -16,14 +16,15 @@
  * The Original Code is Copyright (C) 2011 by Nicholas Bishop.
  */
 
-/** \file blender/modifiers/intern/MOD_remesh.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math_base.h"
 #include "BLI_utildefines.h"
+
+#include "BLI_math_base.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
@@ -215,12 +216,6 @@ ModifierTypeInfo modifierType_Remesh = {
 
 	/* copyData */          modifier_copyData_generic,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -236,4 +231,5 @@ ModifierTypeInfo modifierType_Remesh = {
 	/* dependsOnNormals */	NULL,
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
+	/* freeRuntimeData */   NULL,
 };

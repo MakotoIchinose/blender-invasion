@@ -20,8 +20,8 @@
 #ifndef __BLI_LISTBASE_H__
 #define __BLI_LISTBASE_H__
 
-/** \file BLI_listbase.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_compiler_attrs.h"
@@ -111,7 +111,7 @@ if ((lb)->first && (lb_init || (lb_init = (lb)->first))) { \
 #define LISTBASE_CIRCULAR_FORWARD_END(lb, lb_iter, lb_init) \
 	} while ((lb_iter  = (lb_iter)->next ? (lb_iter)->next : (lb)->first), \
 	         (lb_iter != lb_init)); \
-}
+} ((void)0)
 
 #define LISTBASE_CIRCULAR_BACKWARD_BEGIN(lb, lb_iter, lb_init) \
 if ((lb)->last && (lb_init || (lb_init = (lb)->last))) { \
@@ -120,12 +120,18 @@ if ((lb)->last && (lb_init || (lb_init = (lb)->last))) { \
 #define LISTBASE_CIRCULAR_BACKWARD_END(lb, lb_iter, lb_init) \
 	} while ((lb_iter  = (lb_iter)->prev ? (lb_iter)->prev : (lb)->last), \
 	         (lb_iter != lb_init)); \
-}
+} ((void)0)
 
 #define LISTBASE_FOREACH(type, var, list) \
 	for (type var = (type)((list)->first); \
 	     var != NULL; \
-	     var = (type)(((Link*)(var))->next))
+	     var = (type)(((Link *)(var))->next))
+
+/** A verion of #LISTBASE_FOREACH that supports removing the item we're looping over. */
+#define LISTBASE_FOREACH_MUTABLE(type, var, list) \
+	for (type var = (type)((list)->first), *var##_iter_next; \
+	     ((var != NULL) ? ((void)(var##_iter_next = (type)(((Link *)(var))->next)), 1) : 0); \
+	     var = var##_iter_next)
 
 #ifdef __cplusplus
 }

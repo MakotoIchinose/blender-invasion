@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenkernel/intern/context.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <string.h>
@@ -727,10 +727,10 @@ struct SpaceImage *CTX_wm_space_image(const bContext *C)
 	return NULL;
 }
 
-struct SpaceButs *CTX_wm_space_buts(const bContext *C)
+struct SpaceProperties *CTX_wm_space_properties(const bContext *C)
 {
 	ScrArea *sa = CTX_wm_area(C);
-	if (sa && sa->spacetype == SPACE_BUTS)
+	if (sa && sa->spacetype == SPACE_PROPERTIES)
 		return sa->spacedata.first;
 	return NULL;
 }
@@ -751,7 +751,7 @@ struct SpaceSeq *CTX_wm_space_seq(const bContext *C)
 	return NULL;
 }
 
-struct SpaceOops *CTX_wm_space_outliner(const bContext *C)
+struct SpaceOutliner *CTX_wm_space_outliner(const bContext *C)
 {
 	ScrArea *sa = CTX_wm_area(C);
 	if (sa && sa->spacetype == SPACE_OUTLINER)
@@ -775,10 +775,10 @@ struct SpaceNode *CTX_wm_space_node(const bContext *C)
 	return NULL;
 }
 
-struct SpaceIpo *CTX_wm_space_graph(const bContext *C)
+struct SpaceGraph *CTX_wm_space_graph(const bContext *C)
 {
 	ScrArea *sa = CTX_wm_area(C);
-	if (sa && sa->spacetype == SPACE_IPO)
+	if (sa && sa->spacetype == SPACE_GRAPH)
 		return sa->spacedata.first;
 	return NULL;
 }
@@ -975,7 +975,7 @@ Collection *CTX_data_collection(const bContext *C)
 	return BKE_collection_master(scene);
 }
 
-int CTX_data_mode_enum_ex(const Object *obedit, const Object *ob, const eObjectMode object_mode)
+enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit, const Object *ob, const eObjectMode object_mode)
 {
 	// Object *obedit = CTX_data_edit_object(C);
 	if (obedit) {
@@ -1015,7 +1015,7 @@ int CTX_data_mode_enum_ex(const Object *obedit, const Object *ob, const eObjectM
 	return CTX_MODE_OBJECT;
 }
 
-int CTX_data_mode_enum(const bContext *C)
+enum eContextObjectMode CTX_data_mode_enum(const bContext *C)
 {
 	Object *obedit = CTX_data_edit_object(C);
 	Object *obact = obedit ? NULL : CTX_data_active_object(C);

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/makesrna/intern/rna_boid.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <float.h>
@@ -207,8 +207,9 @@ static char *rna_BoidSettings_path(PointerRNA *ptr)
 	if (particle_id_check(ptr)) {
 		ParticleSettings *part = (ParticleSettings *)ptr->id.data;
 
-		if (part->boids == boids)
-			return BLI_sprintfN("boids");
+		if (part->boids == boids) {
+			return BLI_strdup("boids");
+		}
 	}
 	return NULL;
 }
@@ -381,7 +382,7 @@ static void rna_def_boidrule_average_speed(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Level", "How much velocity's z-component is kept constant");
 	RNA_def_property_update(prop, 0, "rna_Boids_reset");
 
-	prop = RNA_def_property(srna, "speed", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "speed", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_text(prop, "Speed", "Percentage of maximum speed");
 	RNA_def_property_update(prop, 0, "rna_Boids_reset");
@@ -441,6 +442,7 @@ static void rna_def_boidrule(BlenderRNA *brna)
 	RNA_def_property_update(prop, 0, "rna_Boids_reset");
 
 	/*prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE); */
+	/*RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);*/
 	/*RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Expanded); */
 	/*RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface"); */
 

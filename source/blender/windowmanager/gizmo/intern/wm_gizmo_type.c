@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/windowmanager/gizmo/intern/wm_gizmo_type.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 #include "BLI_utildefines.h"
@@ -136,7 +136,7 @@ static void gizmotype_unlink(
         bContext *C, Main *bmain, wmGizmoType *gzt)
 {
 	/* Free instances. */
-	for (bScreen *sc = bmain->screen.first; sc; sc = sc->id.next) {
+	for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
 		for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
 			for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 				ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;

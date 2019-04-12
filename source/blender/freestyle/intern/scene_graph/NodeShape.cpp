@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/scene_graph/NodeShape.cpp
- *  \ingroup freestyle
- *  \brief Class to build a shape node. It contains a Rep, which is the shape geometry
+/** \file
+ * \ingroup freestyle
+ * \brief Class to build a shape node. It contains a Rep, which is the shape geometry
  */
 
 #include "NodeShape.h"

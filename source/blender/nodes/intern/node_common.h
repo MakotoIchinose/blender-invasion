@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/intern/node_common.h
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 

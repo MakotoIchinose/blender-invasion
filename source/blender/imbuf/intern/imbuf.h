@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/imbuf.h
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 #ifndef __IMBUF_H__

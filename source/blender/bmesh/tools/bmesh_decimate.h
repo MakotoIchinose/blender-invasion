@@ -17,8 +17,8 @@
 #ifndef __BMESH_DECIMATE_H__
 #define __BMESH_DECIMATE_H__
 
-/** \file blender/bmesh/tools/bmesh_decimate.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 void BM_mesh_decimate_collapse(

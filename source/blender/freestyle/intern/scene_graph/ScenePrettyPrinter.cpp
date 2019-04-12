@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/scene_graph/ScenePrettyPrinter.cpp
- *  \ingroup freestyle
- *  \brief Class to display textual information about a scene graph.
+/** \file
+ * \ingroup freestyle
+ * \brief Class to display textual information about a scene graph.
  */
 
 #include <iomanip>

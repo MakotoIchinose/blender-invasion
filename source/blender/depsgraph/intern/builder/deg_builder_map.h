@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/builder/deg_builder_map.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #pragma once

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/GHOST_Types.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  */
 
 

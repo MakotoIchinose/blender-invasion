@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_clip/clip_draw.c
- *  \ingroup spclip
+/** \file
+ * \ingroup spclip
  */
 
 #include "DNA_gpencil_types.h"
@@ -321,14 +321,15 @@ static void draw_movieclip_buffer(const bContext *C, SpaceClip *sc, ARegion *ar,
 
 	glaDrawImBuf_glsl_ctx(C, ibuf, x, y, filter, zoomx * width / ibuf->x, zoomy * height / ibuf->y);
 
+	if (ibuf->planes == 32) {
+		GPU_blend(false);
+	}
+
 	if (sc->flag & SC_SHOW_METADATA) {
 		rctf frame;
 		BLI_rctf_init(&frame, 0.0f, ibuf->x, 0.0f, ibuf->y);
 		ED_region_image_metadata_draw(x, y, ibuf, &frame, zoomx * width / ibuf->x, zoomy * height / ibuf->y);
 	}
-
-	if (ibuf->planes == 32)
-		GPU_blend(false);
 }
 
 static void draw_stabilization_border(SpaceClip *sc, ARegion *ar, int width, int height, float zoomx, float zoomy)
@@ -1878,12 +1879,12 @@ void clip_draw_grease_pencil(bContext *C, int onlyv2d)
 				}
 			}
 
-			ED_gpencil_draw_2dimage(C);
+			ED_annotation_draw_2dimage(C);
 
 			GPU_matrix_pop();
 		}
 	}
 	else {
-		ED_gpencil_draw_view2d(C, 0);
+		ED_annotation_draw_view2d(C, 0);
 	}
 }

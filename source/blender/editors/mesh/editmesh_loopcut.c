@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/mesh/editmesh_loopcut.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "DNA_object_types.h"

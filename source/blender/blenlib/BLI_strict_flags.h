@@ -17,7 +17,7 @@
 #ifndef __BLI_STRICT_FLAGS_H__
 #define __BLI_STRICT_FLAGS_H__
 
-/** \file BLI_strict_flags.h
+/** \file
  * \ingroup bli
  * \brief Strict compiler flags for areas of code we want
  * to ensure don't do conversions without us knowing about it.

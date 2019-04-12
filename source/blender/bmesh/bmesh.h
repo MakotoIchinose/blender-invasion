@@ -17,8 +17,8 @@
 #ifndef __BMESH_H__
 #define __BMESH_H__
 
-/** \file blender/bmesh/bmesh.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * \addtogroup bmesh BMesh
  *

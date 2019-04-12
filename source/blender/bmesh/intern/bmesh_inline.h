@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/intern/bmesh_inline.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * BM Inline functions.
  */
@@ -58,8 +58,8 @@ BLI_INLINE void _bm_elem_flag_disable(BMHeader *head, const char hflag)
 
 BLI_INLINE void _bm_elem_flag_set(BMHeader *head, const char hflag, const int val)
 {
-	if (val)  _bm_elem_flag_enable(head,  hflag);
-	else      _bm_elem_flag_disable(head, hflag);
+	if (val)  { _bm_elem_flag_enable(head,  hflag); }
+	else      { _bm_elem_flag_disable(head, hflag); }
 }
 
 BLI_INLINE void _bm_elem_flag_toggle(BMHeader *head, const char hflag)

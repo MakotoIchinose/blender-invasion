@@ -18,8 +18,8 @@
  * util.c
  */
 
-/** \file blender/imbuf/intern/util.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 

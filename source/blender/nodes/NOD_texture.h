@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file NOD_texture.h
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 #ifndef __NOD_TEXTURE_H__

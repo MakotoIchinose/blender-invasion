@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/stroke/PSStrokeRenderer.cpp
- *  \ingroup freestyle
- *  \brief Class to define the Postscript rendering of a stroke
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define the Postscript rendering of a stroke
  */
 
 #include "Canvas.h"

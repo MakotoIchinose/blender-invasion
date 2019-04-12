@@ -17,8 +17,8 @@
 #ifndef __BKE_LAYER_H__
 #define __BKE_LAYER_H__
 
-/** \file blender/blenkernel/BKE_layer.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BKE_collection.h"
@@ -105,16 +105,16 @@ bool BKE_layer_collection_objects_select(
         struct ViewLayer *view_layer, struct LayerCollection *lc, bool deselect);
 bool BKE_layer_collection_has_selected_objects(
         struct ViewLayer *view_layer, struct LayerCollection *lc);
+bool BKE_layer_collection_has_layer_collection(
+        struct LayerCollection *lc_parent, struct LayerCollection *lc_child);
 
 void BKE_base_set_visible(struct Scene *scene, struct ViewLayer *view_layer, struct Base *base, bool extend);
-void BKE_layer_collection_set_visible(struct Scene *scene, struct ViewLayer *view_layer, struct LayerCollection *lc, bool extend);
+bool BKE_layer_collection_isolate(struct Scene *scene, struct ViewLayer *view_layer, struct LayerCollection *lc, bool extend);
+bool BKE_layer_collection_set_visible(struct ViewLayer *view_layer, struct LayerCollection *lc, const bool visible, const bool hierarchy);
 
 /* evaluation */
 
-void BKE_layer_eval_view_layer(
-        struct Depsgraph *depsgraph,
-        struct Scene *scene,
-        struct ViewLayer *view_layer);
+void BKE_base_eval_flags(struct Base *base);
 
 void BKE_layer_eval_view_layer_indexed(
         struct Depsgraph *depsgraph,
@@ -344,37 +344,37 @@ bool BKE_view_layer_filter_edit_mesh_has_edges(struct Object *ob, void *user_dat
 #define BKE_view_layer_array_from_objects_in_edit_mode(view_layer, v3d, r_len) \
 	BKE_view_layer_array_from_objects_in_mode( \
 	view_layer, v3d, r_len, { \
-		.object_mode = OB_MODE_EDIT});
+		.object_mode = OB_MODE_EDIT})
 
 #define BKE_view_layer_array_from_bases_in_edit_mode(view_layer, v3d, r_len) \
 	BKE_view_layer_array_from_bases_in_mode( \
 	view_layer, v3d, r_len, { \
-		.object_mode = OB_MODE_EDIT});
+		.object_mode = OB_MODE_EDIT})
 
 #define BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, v3d, r_len) \
 	BKE_view_layer_array_from_objects_in_mode( \
 	view_layer, v3d, r_len, { \
 		.object_mode = OB_MODE_EDIT, \
-		.no_dup_data = true});
+		.no_dup_data = true})
 
 #define BKE_view_layer_array_from_bases_in_edit_mode_unique_data(view_layer, v3d, r_len) \
 	BKE_view_layer_array_from_bases_in_mode( \
 	view_layer, v3d, r_len, { \
 		.object_mode = OB_MODE_EDIT, \
-		.no_dup_data = true});
+		.no_dup_data = true})
 
 #define BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(view_layer, v3d, r_len) \
 	BKE_view_layer_array_from_objects_in_mode( \
 	view_layer, v3d, r_len, { \
 		.object_mode = OB_MODE_EDIT, \
 		.no_dup_data = true, \
-		.filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs});
+		.filter_fn = BKE_view_layer_filter_edit_mesh_has_uvs})
 
 #define BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, v3d, r_len, mode) \
 	BKE_view_layer_array_from_objects_in_mode( \
 	view_layer, v3d, r_len, { \
 		.object_mode = mode, \
-		.no_dup_data = true});
+		.no_dup_data = true})
 
 #ifdef __cplusplus
 }

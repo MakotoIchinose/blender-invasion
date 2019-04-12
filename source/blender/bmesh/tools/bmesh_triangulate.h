@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/tools/bmesh_triangulate.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Triangulate.
  */
@@ -24,7 +24,8 @@
 #define __BMESH_TRIANGULATE_H__
 
 void BM_mesh_triangulate(
-        BMesh *bm, const int quad_method, const int ngon_method, const bool tag_only,
+        BMesh *bm, const int quad_method, const int ngon_method,
+        const int min_vertices, const bool tag_only,
         BMOperator *op, BMOpSlot *slot_facemap_out, BMOpSlot *slot_doubles_out);
 
 #endif  /* __BMESH_TRIANGULATE_H__ */

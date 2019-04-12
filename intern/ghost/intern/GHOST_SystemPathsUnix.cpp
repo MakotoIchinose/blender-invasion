@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_SystemPathsUnix.cpp
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  */
 
 #include "GHOST_SystemPathsUnix.h"

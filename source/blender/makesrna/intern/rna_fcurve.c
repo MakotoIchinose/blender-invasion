@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/makesrna/intern/rna_fcurve.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -495,7 +495,7 @@ static void rna_FCurve_update_eval(Main *UNUSED(bmain), Scene *UNUSED(scene), Po
 	IdAdtTemplate *iat = (IdAdtTemplate *)ptr->id.data;
 	if (iat && iat->adt && iat->adt->action) {
 		/* action is separate datablock, needs separate tag */
-		DEG_id_tag_update(&iat->adt->action->id, ID_RECALC_COPY_ON_WRITE);
+		DEG_id_tag_update(&iat->adt->action->id, ID_RECALC_ANIMATION);
 	}
 }
 
@@ -618,7 +618,7 @@ static void rna_FModifier_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
 	if (adt != NULL) {
 		if (adt->action != NULL) {
 			/* action is separate datablock, needs separate tag */
-			DEG_id_tag_update(&adt->action->id, ID_RECALC_COPY_ON_WRITE);
+			DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION);
 		}
 	}
 
@@ -942,6 +942,22 @@ static void rna_FModifierEnvelope_points_remove(FModifier *fmod, ReportList *rep
 		env->totvert = 0;
 	}
 	RNA_POINTER_INVALIDATE(point);
+}
+
+
+static void rna_Keyframe_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+{
+	ID *id = ptr->id.data;
+	AnimData *adt = BKE_animdata_from_id(id);
+
+	DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+
+	if (adt != NULL) {
+		if (adt->action != NULL) {
+			/* action is separate datablock, needs separate tag */
+			DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION);
+		}
+	}
 }
 
 #else
@@ -1389,6 +1405,7 @@ static void rna_def_fmodifier(BlenderRNA *brna)
 
 	/* settings */
 	prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", FMODIFIER_FLAG_EXPANDED);
 	RNA_def_property_ui_text(prop, "Expanded", "F-Curve Modifier's panel is expanded in UI");
 	RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
@@ -1747,13 +1764,13 @@ static void rna_def_fkeyframe(BlenderRNA *brna)
 	RNA_def_property_enum_sdna(prop, NULL, "h1");
 	RNA_def_property_enum_items(prop, rna_enum_keyframe_handle_type_items);
 	RNA_def_property_ui_text(prop, "Left Handle Type", "Handle types");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "handle_right_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "h2");
 	RNA_def_property_enum_items(prop, rna_enum_keyframe_handle_type_items);
 	RNA_def_property_ui_text(prop, "Right Handle Type", "Handle types");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "interpolation", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "ipo");
@@ -1761,13 +1778,13 @@ static void rna_def_fkeyframe(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Interpolation",
 	                         "Interpolation method to use for segment of the F-Curve from "
 	                         "this Keyframe until the next Keyframe");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "hide");
 	RNA_def_property_enum_items(prop, rna_enum_beztriple_keyframe_type_items);
 	RNA_def_property_ui_text(prop, "Type", "Type of keyframe (for visual purposes only)");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 
 	prop = RNA_def_property(srna, "easing", PROP_ENUM, PROP_NONE);
@@ -1776,42 +1793,42 @@ static void rna_def_fkeyframe(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Easing",
 	                         "Which ends of the segment between this and the next keyframe easing "
 	                         "interpolation is applied to");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "back", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "back");
 	RNA_def_property_ui_text(prop, "Back", "Amount of overshoot for 'back' easing");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "amplitude", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "amplitude");
 	RNA_def_property_range(prop, 0.0f, FLT_MAX); /* only positive values... */
 	RNA_def_property_ui_text(prop, "Amplitude", "Amount to boost elastic bounces for 'elastic' easing");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "period", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "period");
 	RNA_def_property_ui_text(prop, "Period", "Time between bounces for elastic easing");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, "rna_Keyframe_update");
 
 	/* Vector values */
 	prop = RNA_def_property(srna, "handle_left", PROP_FLOAT, PROP_COORDS); /* keyframes are dimensionless */
 	RNA_def_property_array(prop, 2);
 	RNA_def_property_float_funcs(prop, "rna_FKeyframe_handle1_get", "rna_FKeyframe_handle1_set", NULL);
 	RNA_def_property_ui_text(prop, "Left Handle", "Coordinates of the left handle (before the control point)");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "co", PROP_FLOAT, PROP_COORDS); /* keyframes are dimensionless */
 	RNA_def_property_array(prop, 2);
 	RNA_def_property_float_funcs(prop, "rna_FKeyframe_ctrlpoint_get", "rna_FKeyframe_ctrlpoint_set", NULL);
 	RNA_def_property_ui_text(prop, "Control Point", "Coordinates of the control point");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, "rna_Keyframe_update");
 
 	prop = RNA_def_property(srna, "handle_right", PROP_FLOAT, PROP_COORDS); /* keyframes are dimensionless */
 	RNA_def_property_array(prop, 2);
 	RNA_def_property_float_funcs(prop, "rna_FKeyframe_handle2_get", "rna_FKeyframe_handle2_set", NULL);
 	RNA_def_property_ui_text(prop, "Right Handle", "Coordinates of the right handle (after the control point)");
-	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+	RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, "rna_Keyframe_update");
 }
 
 static void rna_def_fcurve_modifiers(BlenderRNA *brna, PropertyRNA *cprop)

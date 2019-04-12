@@ -17,18 +17,18 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_cast.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
-
 
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
@@ -66,15 +66,14 @@ static bool isDisabled(const struct Scene *UNUSED(scene), ModifierData *md, bool
 	return false;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	CastModifierData *cmd = (CastModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (cmd->defgrp_name[0]) dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	if (cmd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static void foreachObjectLink(
@@ -91,12 +90,12 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	CastModifierData *cmd = (CastModifierData *)md;
 	if (cmd->object != NULL) {
 		DEG_add_object_relation(ctx->node, cmd->object, DEG_OB_COMP_TRANSFORM, "Cast Modifier");
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Cast Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "Cast Modifier");
 	}
 }
 
 static void sphere_do(
-        CastModifierData *cmd, const ModifierEvalContext *ctx,
+        CastModifierData *cmd, const ModifierEvalContext *UNUSED(ctx),
         Object *ob, Mesh *mesh,
         float (*vertexCos)[3], int numVerts)
 {
@@ -120,7 +119,7 @@ static void sphere_do(
 	if (type == MOD_CAST_TYPE_CYLINDER)
 		flag &= ~MOD_CAST_Z;
 
-	ctrl_ob = DEG_get_evaluated_object(ctx->depsgraph, cmd->object);
+	ctrl_ob = cmd->object;
 
 	/* spherify's center is {0, 0, 0} (the ob's own center in its local
 	 * space), by default, but if the user defined a control object,
@@ -218,7 +217,7 @@ static void sphere_do(
 }
 
 static void cuboid_do(
-        CastModifierData *cmd, const ModifierEvalContext *ctx,
+        CastModifierData *cmd, const ModifierEvalContext *UNUSED(ctx),
         Object *ob, Mesh *mesh,
         float (*vertexCos)[3], int numVerts)
 {
@@ -237,7 +236,7 @@ static void cuboid_do(
 
 	flag = cmd->flag;
 
-	ctrl_ob = DEG_get_evaluated_object(ctx->depsgraph, cmd->object);
+	ctrl_ob = cmd->object;
 
 	/* now we check which options the user wants */
 
@@ -475,12 +474,6 @@ ModifierTypeInfo modifierType_Cast = {
 
 	/* copyData */          modifier_copyData_generic,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       deformVerts,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     deformVertsEM,
@@ -497,4 +490,5 @@ ModifierTypeInfo modifierType_Cast = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

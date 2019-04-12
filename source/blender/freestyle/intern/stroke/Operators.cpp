@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/stroke/Operators.cpp
- *  \ingroup freestyle
- *  \brief Class gathering stroke creation algorithms
+/** \file
+ * \ingroup freestyle
+ * \brief Class gathering stroke creation algorithms
  */
 
 #include <algorithm>

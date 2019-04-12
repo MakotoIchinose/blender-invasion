@@ -16,8 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_mist.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Implementation of Blender Mist pass.
  * IMPORTANT: This is a "post process" of the Z depth so it will lack any transparent objects.
@@ -67,7 +67,7 @@ void EEVEE_mist_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 	}
 
 	/* Create FrameBuffer. */
-	DRW_texture_ensure_fullscreen_2D(&txl->mist_accum, GPU_R32F, 0); /* Should be enough precision for many samples. */
+	DRW_texture_ensure_fullscreen_2d(&txl->mist_accum, GPU_R32F, 0); /* Should be enough precision for many samples. */
 
 	GPU_framebuffer_ensure_config(&fbl->mist_accum_fb, {
 		GPU_ATTACHMENT_NONE,

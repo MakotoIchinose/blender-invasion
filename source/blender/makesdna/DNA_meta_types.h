@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file DNA_meta_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_META_TYPES_H__
@@ -41,7 +41,7 @@ typedef struct MetaElem {
 	struct BoundBox *bb;
 
 	short type, flag;
-	short pad[2];
+	char _pad[4];
 	/** Position of center of MetaElem. */
 	float x, y, z;
 	/** Rotation of MetaElem (MUST be kept normalized). */
@@ -81,7 +81,8 @@ typedef struct MetaBall {
 	char flag, flag2;
 	short totcol;
 	/** Used to store MB_AUTOSPACE. */
-	short texflag, pad;
+	short texflag;
+	char _pad[2];
 
 	/* texture space, copied as one block in editobject.c */
 	float loc[3];
@@ -115,7 +116,7 @@ typedef struct MetaBall {
 #define MB_UPDATE_NEVER		3
 
 /* mb->flag2 */
-#define MB_DS_EXPAND 	(1<<0)
+#define MB_DS_EXPAND 	(1 << 0)
 
 
 /* ml->type */

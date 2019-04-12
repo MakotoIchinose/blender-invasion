@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_file/filelist.h
- *  \ingroup spfile
+/** \file
+ * \ingroup spfile
  */
 
 

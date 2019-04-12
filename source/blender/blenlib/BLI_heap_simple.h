@@ -17,9 +17,9 @@
 #ifndef __BLI_HEAP_SIMPLE_H__
 #define __BLI_HEAP_SIMPLE_H__
 
-/** \file BLI_heap_simple.h
- *  \ingroup bli
- *  \brief A min-heap / priority queue ADT
+/** \file
+ * \ingroup bli
+ * \brief A min-heap / priority queue ADT
  */
 
 struct HeapSimple;

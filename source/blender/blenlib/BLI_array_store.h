@@ -17,9 +17,9 @@
 #ifndef __BLI_ARRAY_STORE_H__
 #define __BLI_ARRAY_STORE_H__
 
-/** \file BLI_array_store.h
- *  \ingroup bli
- *  \brief Efficient in-memory storage of multiple similar arrays.
+/** \file
+ * \ingroup bli
+ * \brief Efficient in-memory storage of multiple similar arrays.
  */
 
 typedef struct BArrayState BArrayState;

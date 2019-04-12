@@ -16,8 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file draw_instance_data.h
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #ifndef __DRAW_INSTANCE_DATA_H__

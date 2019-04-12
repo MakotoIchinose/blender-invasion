@@ -17,8 +17,8 @@
 #ifndef __BMESH_BEAUTIFY_H__
 #define __BMESH_BEAUTIFY_H__
 
-/** \file blender/bmesh/tools/bmesh_beautify.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 enum {

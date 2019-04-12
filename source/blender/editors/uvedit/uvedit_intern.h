@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/uvedit/uvedit_intern.h
- *  \ingroup eduv
+/** \file
+ * \ingroup eduv
  */
 
 

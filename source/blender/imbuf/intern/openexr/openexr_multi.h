@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/openexr/openexr_multi.h
- *  \ingroup openexr
+/** \file
+ * \ingroup openexr
  */
 
 

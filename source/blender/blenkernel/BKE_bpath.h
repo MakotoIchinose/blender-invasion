@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file BKE_bpath.h
- *  \ingroup bke
- *  \attention Based on ghash, difference is ghash is not a fixed size,
+/** \file
+ * \ingroup bke
+ * \attention Based on ghash, difference is ghash is not a fixed size,
  *   so for BPath we don't need to malloc
  */
 

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file memutil/intern/MEM_RefCountedC-Api.cpp
- *  \ingroup memutil
+/** \file
+ * \ingroup memutil
  */
 
 

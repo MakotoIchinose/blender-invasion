@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_ADVANCED_FUNCTIONS_1D_H__
 #define __FREESTYLE_ADVANCED_FUNCTIONS_1D_H__
 
-/** \file blender/freestyle/intern/stroke/AdvancedFunctions1D.h
- *  \ingroup freestyle
- *  \brief Functions taking 1D input
+/** \file
+ * \ingroup freestyle
+ * \brief Functions taking 1D input
  */
 
 #include "AdvancedFunctions0D.h"

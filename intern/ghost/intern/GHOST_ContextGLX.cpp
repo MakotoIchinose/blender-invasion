@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_ContextGLX.cpp
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  *
  * Definition of GHOST_ContextGLX class.
  */

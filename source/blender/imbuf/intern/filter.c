@@ -18,8 +18,8 @@
  * filter.c
  */
 
-/** \file blender/imbuf/intern/filter.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 #include "MEM_guardedalloc.h"

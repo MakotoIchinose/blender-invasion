@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_STROKE_REP_H__
 #define __FREESTYLE_STROKE_REP_H__
 
-/** \file blender/freestyle/intern/stroke/StrokeRep.h
- *  \ingroup freestyle
- *  \brief Class to define the representation of a stroke (for display purpose)
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define the representation of a stroke (for display purpose)
  */
 
 #include "Stroke.h"
@@ -144,7 +144,7 @@ protected:
 
 public:
 	Strip(const std::vector<StrokeVertex*>& iStrokeVertices, bool hasTex = false,
-			bool tipBegin = false, bool tipEnd = false, float texStep = 1.0);
+	      bool tipBegin = false, bool tipEnd = false, float texStep = 1.0);
 	Strip(const Strip& iBrother);
 	virtual ~Strip();
 

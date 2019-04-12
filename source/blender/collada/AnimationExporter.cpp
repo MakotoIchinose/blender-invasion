@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file AnimationExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #include "GeometryExporter.h"
@@ -92,11 +92,11 @@ bool AnimationExporter::exportAnimations()
 
 		try {
 			animation_sampler.sample_scene(
-				export_settings->sampling_rate,
-				/*keyframe_at_end = */ true,
-				export_settings->open_sim,
-				export_settings->keep_keyframes,
-				export_settings->export_animation_type
+			        export_settings->sampling_rate,
+			        /*keyframe_at_end = */ true,
+			        export_settings->open_sim,
+			        export_settings->keep_keyframes,
+			        export_settings->export_animation_type
 			);
 
 			openLibrary();
@@ -259,14 +259,14 @@ void AnimationExporter::export_bone_animations_recursive(Object *ob, Bone *bone,
 		export_bone_animations_recursive(ob, child, sampler);
 }
 
-/*
-* In some special cases the exported Curve needs to be replaced
-* by a modified curve (for collada purposes)
-* This method checks if a conversion is necessary and if applicable
-* returns a pointer to the modified BCAnimationCurve.
-* IMPORTANT: the modified curve must be deleted by the caller when no longer needed
-* if no conversion is needed this method returns a NULL;
-*/
+/**
+ * In some special cases the exported Curve needs to be replaced
+ * by a modified curve (for collada purposes)
+ * This method checks if a conversion is necessary and if applicable
+ * returns a pointer to the modified BCAnimationCurve.
+ * IMPORTANT: the modified curve must be deleted by the caller when no longer needed
+ * if no conversion is needed this method returns a NULL;
+ */
 BCAnimationCurve *AnimationExporter::get_modified_export_curve(Object *ob, BCAnimationCurve &curve, BCAnimationCurveMap &curves)
 {
 	std::string channel_target = curve.get_channel_target();
@@ -721,7 +721,7 @@ const std::string AnimationExporter::get_collada_name(std::string channel_target
 		{ "specular_hardness", "specular_hardness" },
 		{ "alpha", "alpha" },
 
-		/* Lamps */
+		/* Lights */
 		{ "color", "color" },
 		{ "fall_off_angle", "falloff_angle" },
 		{ "spot_size", "falloff_angle" },

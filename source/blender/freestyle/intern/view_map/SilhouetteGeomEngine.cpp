@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/view_map/SilhouetteGeomEngine.cpp
- *  \ingroup freestyle
- *  \brief Class to perform all geometric operations dedicated to silhouette. That, for example, implies that
+/** \file
+ * \ingroup freestyle
+ * \brief Class to perform all geometric operations dedicated to silhouette. That, for example, implies that
  *         this geom engine has as member data the viewpoint, transformations, projections...
  */
 

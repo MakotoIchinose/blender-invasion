@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_image/image_intern.h
- *  \ingroup spimage
+/** \file
+ * \ingroup spimage
  */
 
 

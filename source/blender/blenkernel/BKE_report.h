@@ -17,8 +17,8 @@
 #ifndef __BKE_REPORT_H__
 #define __BKE_REPORT_H__
 
-/** \file BKE_report.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus

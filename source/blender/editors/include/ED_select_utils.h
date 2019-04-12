@@ -14,14 +14,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file ED_select_utils.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_SELECT_UTILS_H__
 #define __ED_SELECT_UTILS_H__
 
-struct KDTree;
+struct KDTree_1d;
 
 enum {
 	SEL_TOGGLE		 = 0,
@@ -55,5 +55,8 @@ int ED_select_op_action(const eSelectOp sel_op, const bool is_select, const bool
 int ED_select_op_action_deselected(const eSelectOp sel_op, const bool is_select, const bool is_inside);
 
 int ED_select_similar_compare_float(const float delta, const float thresh, const int compare);
-bool ED_select_similar_compare_float_tree(const struct KDTree *tree, const float length, const float thresh, const int compare);
+bool ED_select_similar_compare_float_tree(const struct KDTree_1d *tree, const float length, const float thresh, const int compare);
+
+eSelectOp ED_select_op_modal(const eSelectOp sel_op, const bool is_first);
+
 #endif  /* __ED_SELECT_UTILS_H__ */

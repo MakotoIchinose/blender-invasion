@@ -17,8 +17,8 @@
 #ifndef __BKE_BRUSH_H__
 #define __BKE_BRUSH_H__
 
-/** \file BKE_brush.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * General operations for brushes.
  */
@@ -56,7 +56,6 @@ void BKE_brush_free(struct Brush *brush);
 
 void BKE_brush_sculpt_reset(struct Brush *brush);
 void BKE_brush_gpencil_presets(struct bContext *C);
-void BKE_brush_update_material(struct Main *bmain, struct Material *ma, struct Brush *exclude_brush);
 
 /* image icon function */
 struct ImBuf *get_brush_icon(struct Brush *brush);

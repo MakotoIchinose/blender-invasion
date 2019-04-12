@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/composite/nodes/node_composite_vecBlur.c
- *  \ingroup cmpnodes
+/** \file
+ * \ingroup cmpnodes
  */
 
 

@@ -16,8 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/modes/edit_mesh_mode_text.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "BLI_math.h"
@@ -52,7 +52,7 @@ void DRW_edit_mesh_mode_text_measure_stats(
 	struct DRWTextStore *dt = DRW_text_cache_ensure();
 	const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE | (unit->system ? 0 : DRW_TEXT_CACHE_ASCII);
 	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
+	BMEditMesh *em = me->edit_mesh;
 	float v1[3], v2[3], v3[3], vmid[3], fvec[3];
 	char numstr[32]; /* Stores the measurement display text here */
 	size_t numstr_len;
@@ -71,11 +71,11 @@ void DRW_edit_mesh_mode_text_measure_stats(
 
 	/* make the precision of the display value proportionate to the gridsize */
 
-	if (grid <= 0.01f) conv_float = "%.6g";
-	else if (grid <= 0.1f) conv_float = "%.5g";
-	else if (grid <= 1.0f) conv_float = "%.4g";
-	else if (grid <= 10.0f) conv_float = "%.3g";
-	else conv_float = "%.2g";
+	if      (grid <= 0.01f) { conv_float = "%.6g"; }
+	else if (grid <= 0.1f)  { conv_float = "%.5g"; }
+	else if (grid <= 1.0f)  { conv_float = "%.4g"; }
+	else if (grid <= 10.0f) { conv_float = "%.3g"; }
+	else                    { conv_float = "%.2g"; }
 
 	if (v3d->overlay.edit_flag & (V3D_OVERLAY_EDIT_EDGE_LEN | V3D_OVERLAY_EDIT_EDGE_ANG | V3D_OVERLAY_EDIT_INDICES)) {
 		BoundBox bb;

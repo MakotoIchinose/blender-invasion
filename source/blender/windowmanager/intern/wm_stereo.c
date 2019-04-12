@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/intern/wm_stereo.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 

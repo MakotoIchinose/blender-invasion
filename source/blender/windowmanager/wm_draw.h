@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/wm_draw.h
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 

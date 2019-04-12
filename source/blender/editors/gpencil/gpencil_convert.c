@@ -18,8 +18,8 @@
  * Operator for converting Grease Pencil data to geometry
  */
 
-/** \file blender/editors/gpencil/gpencil_convert.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 

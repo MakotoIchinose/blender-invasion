@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/report.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdarg.h>

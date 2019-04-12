@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/screen.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef WIN32
@@ -846,4 +846,28 @@ bool BKE_screen_is_fullscreen_area(const bScreen *screen)
 bool BKE_screen_is_used(const bScreen *screen)
 {
 	return (screen->winid != 0);
+}
+
+void BKE_screen_header_alignment_reset(bScreen *screen)
+{
+	int alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
+	for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+		for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
+			if (ar->regiontype == RGN_TYPE_HEADER) {
+				if (ELEM(sa->spacetype, SPACE_FILE, SPACE_USERPREF, SPACE_OUTLINER, SPACE_PROPERTIES)) {
+					ar->alignment = RGN_ALIGN_TOP;
+					continue;
+				}
+				ar->alignment = alignment;
+			}
+			if (ar->regiontype == RGN_TYPE_FOOTER) {
+				if (ELEM(sa->spacetype, SPACE_FILE, SPACE_USERPREF, SPACE_OUTLINER, SPACE_PROPERTIES)) {
+					ar->alignment = RGN_ALIGN_BOTTOM;
+					continue;
+				}
+				ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_TOP : RGN_ALIGN_BOTTOM;
+			}
+		}
+	}
+	screen->do_refresh = true;
 }

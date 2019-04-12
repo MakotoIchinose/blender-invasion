@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file BKE_rigidbody.h
- *  \ingroup blenkernel
- *  \brief API for Blender-side Rigid Body stuff
+/** \file
+ * \ingroup blenkernel
+ * \brief API for Blender-side Rigid Body stuff
  */
 
 

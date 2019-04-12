@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/editors/sculpt_paint/paint_curve_undo.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include <string.h>
@@ -84,6 +84,9 @@ typedef struct PaintCurveUndoStep {
 
 static bool paintcurve_undosys_poll(bContext *C)
 {
+	if (C == NULL || !paint_curve_poll(C)) {
+		return false;
+	}
 	Paint *p = BKE_paint_get_active_from_context(C);
 	return (p->brush && p->brush->paint_curve);
 }
@@ -96,6 +99,9 @@ static void paintcurve_undosys_step_encode_init(struct bContext *C, UndoStep *us
 
 static bool paintcurve_undosys_step_encode(struct bContext *C, struct Main *UNUSED(bmain), UndoStep *us_p)
 {
+	if (C == NULL || !paint_curve_poll(C)) {
+		return false;
+	}
 	Paint *p = BKE_paint_get_active_from_context(C);
 	PaintCurve *pc = p ? (p->brush ? p->brush->paint_curve : NULL) : NULL;
 	if (pc == NULL) {
@@ -134,7 +140,6 @@ void ED_paintcurve_undosys_type(UndoType *ut)
 	ut->step_decode = paintcurve_undosys_step_decode;
 	ut->step_free = paintcurve_undosys_step_free;
 
-	ut->mode = BKE_UNDOTYPE_MODE_STORE;
 	ut->use_context = false;
 
 	ut->step_size = sizeof(PaintCurveUndoStep);

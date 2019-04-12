@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/imbuf/intern/thumbs_blend.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 

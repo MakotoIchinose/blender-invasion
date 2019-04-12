@@ -17,8 +17,8 @@
 #ifndef __BMESH_ERROR_H__
 #define __BMESH_ERROR_H__
 
-/** \file blender/bmesh/intern/bmesh_error.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 /*----------- bmop error system ----------*/

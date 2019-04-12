@@ -18,10 +18,9 @@
  * Operators for creating new Grease Pencil primitives (boxes, circles, ...)
  */
 
- /** \file blender/editors/gpencil/gpencil_primitive.c
-  *  \ingroup edgpencil
-  */
-
+/** \file
+ * \ingroup edgpencil
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -138,29 +137,10 @@ static void gp_init_colors(tGPDprimitive *p)
 	bGPdata *gpd = p->gpd;
 	Brush *brush = p->brush;
 
-	Material *ma = NULL;
 	MaterialGPencilStyle *gp_style = NULL;
 
 	/* use brush material */
-	ma = BKE_gpencil_get_material_from_brush(brush);
-
-	/* if no brush defaults, get material and color info */
-	if ((ma == NULL) || (ma->gp_style == NULL)) {
-		BKE_gpencil_material_ensure(p->bmain, p->ob);
-
-		/* assign always the first material to the brush */
-		p->mat = give_current_material(p->ob, 1);
-		brush->gpencil_settings->material = p->mat;
-	}
-	else {
-		p->mat = ma;
-	}
-
-	/* check if the material is already on object material slots and add it if missing */
-	if (BKE_gpencil_get_material_index(p->ob, p->mat) == 0) {
-		BKE_object_material_slot_add(p->bmain, p->ob);
-		assign_material(p->bmain, p->ob, ma, p->ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-	}
+	p->mat = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
 
 	/* assign color information to temp data */
 	gp_style = p->mat->gp_style;
@@ -351,7 +331,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 
 	gps->flag |= GP_STROKE_3DSPACE;
 
-	gps->mat_nr = BKE_gpencil_get_material_index(tgpi->ob, tgpi->mat) - 1;
+	gps->mat_nr = BKE_gpencil_object_material_get_index(tgpi->ob, tgpi->mat);
 
 	/* allocate memory for storage points, but keep empty */
 	gps->totpoints = 0;
@@ -413,32 +393,33 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
 
 	if (tgpi->type == GP_STROKE_LINE) {
 		BLI_strncpy(
-			msg_str,
-			IFACE_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, Shift to align, Alt to center, E: extrude"),
-			UI_MAX_DRAW_STR);
+		        msg_str,
+		        IFACE_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, Shift to align, Alt to center, E: extrude"),
+		        UI_MAX_DRAW_STR);
 	}
 	else if (tgpi->type == GP_STROKE_BOX) {
 		BLI_strncpy(
-			msg_str,
-			IFACE_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, Shift to square, Alt to center"),
-			UI_MAX_DRAW_STR);
+		        msg_str,
+		        IFACE_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, Shift to square, Alt to center"),
+		        UI_MAX_DRAW_STR);
 	}
 	else if (tgpi->type == GP_STROKE_CIRCLE) {
 		BLI_strncpy(
-			msg_str,
-			IFACE_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, Shift to square, Alt to center"),
-			UI_MAX_DRAW_STR);
+		        msg_str,
+		        IFACE_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, Shift to square, Alt to center"),
+		        UI_MAX_DRAW_STR);
 	}
 	else if (tgpi->type == GP_STROKE_ARC) {
-		BLI_strncpy(msg_str,
-			IFACE_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, Shift to square, Alt to center, M: Flip, E: extrude"),
-			UI_MAX_DRAW_STR);
+		BLI_strncpy(
+		        msg_str,
+		        IFACE_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, Shift to square, Alt to center, M: Flip, E: extrude"),
+		        UI_MAX_DRAW_STR);
 	}
 	else if (tgpi->type == GP_STROKE_CURVE) {
 		BLI_strncpy(
-			msg_str,
-			IFACE_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, Shift to square, Alt to center, E: extrude"),
-			UI_MAX_DRAW_STR);
+		        msg_str,
+		        IFACE_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, Shift to square, Alt to center, E: extrude"),
+		        UI_MAX_DRAW_STR);
 	}
 
 	if (ELEM(tgpi->type, GP_STROKE_CIRCLE, GP_STROKE_ARC, GP_STROKE_LINE, GP_STROKE_BOX)) {
@@ -523,26 +504,16 @@ static void gp_primitive_rectangle(tGPDprimitive *tgpi, tGPspoint *points2D)
 /* create a line */
 static void gp_primitive_line(tGPDprimitive *tgpi, tGPspoint *points2D)
 {
-	if (tgpi->tot_edges == 2) {
-		int i = tgpi->tot_stored_edges;
+	const int totpoints = (tgpi->tot_edges + tgpi->tot_stored_edges);
+	const float step = 1.0f / (float)(tgpi->tot_edges - 1);
+	float a = tgpi->tot_stored_edges ? step : 0.0f;
 
-		points2D[i].x = tgpi->start[0];
-		points2D[i].y = tgpi->start[1];
-
-		points2D[i + 1].x = tgpi->end[0];
-		points2D[i + 1].y = tgpi->end[1];
+	for (int i = tgpi->tot_stored_edges; i < totpoints; i++) {
+		tGPspoint *p2d = &points2D[i];
+		interp_v2_v2v2(&p2d->x, tgpi->start, tgpi->end, a);
+		a += step;
 	}
-	else {
-		const int totpoints = (tgpi->tot_edges + tgpi->tot_stored_edges);
-		const float step = 1.0f / (float)(tgpi->tot_edges - 1);
-		float a = tgpi->tot_stored_edges ? step : 0.0f;
 
-		for (int i = tgpi->tot_stored_edges; i < totpoints; i++) {
-			tGPspoint *p2d = &points2D[i];
-			interp_v2_v2v2(&p2d->x, tgpi->start, tgpi->end, a);
-			a += step;
-		}
-	}
 	float color[4];
 	UI_GetThemeColor4fv(TH_GIZMO_PRIMARY, color);
 	gp_primitive_set_cp(tgpi, tgpi->end, color, BIG_SIZE_CTL);
@@ -863,7 +834,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 			const float fac = p2d->rnd[0] * exfactor * jitter;
 
 			/* vector */
-			float mvec[2], svec[2];;
+			float mvec[2], svec[2];
 			if (i > 0) {
 				mvec[0] = (p2d->x - (p2d - 1)->x);
 				mvec[1] = (p2d->y - (p2d - 1)->y);
@@ -935,15 +906,20 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
 			/* get origin to reproject point */
 			float origin[3];
-			ED_gp_get_drawing_reference(tgpi->scene, tgpi->ob, tgpi->gpl,
-				ts->gpencil_v3d_align, origin);
+			ED_gp_get_drawing_reference(
+			        tgpi->scene, tgpi->ob, tgpi->gpl,
+			        ts->gpencil_v3d_align, origin);
 			/* reproject current */
 			ED_gpencil_tpoint_to_point(tgpi->ar, origin, tpt, &spt);
-			ED_gp_project_point_to_plane(tgpi->ob, tgpi->rv3d, origin, tgpi->lock_axis - 1, &spt);
+			ED_gp_project_point_to_plane(
+			        tgpi->scene, tgpi->ob, tgpi->rv3d,
+			        origin, tgpi->lock_axis - 1, &spt);
 
 			/* reproject previous */
 			ED_gpencil_tpoint_to_point(tgpi->ar, origin, tptb, &spt2);
-			ED_gp_project_point_to_plane(tgpi->ob, tgpi->rv3d, origin, tgpi->lock_axis - 1, &spt2);
+			ED_gp_project_point_to_plane(
+			        tgpi->scene, tgpi->ob, tgpi->rv3d,
+			        origin, tgpi->lock_axis - 1, &spt2);
 			tgpi->totpixlen += len_v3v3(&spt.x, &spt2.x) / pixsize;
 			tpt->uv_fac = tgpi->totpixlen;
 			if ((gp_style) && (gp_style->sima)) {
@@ -998,10 +974,12 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 	/* reproject to plane */
 	if (!is_depth) {
 		float origin[3];
-		ED_gp_get_drawing_reference(tgpi->scene, tgpi->ob, tgpi->gpl,
-			ts->gpencil_v3d_align, origin);
+		ED_gp_get_drawing_reference(
+		        tgpi->scene, tgpi->ob, tgpi->gpl,
+		        ts->gpencil_v3d_align, origin);
 		ED_gp_project_stroke_to_plane(
-			tgpi->ob, tgpi->rv3d, gps, origin, ts->gp_sculpt.lock_axis - 1);
+		        tgpi->scene, tgpi->ob, tgpi->rv3d, gps,
+		        origin, ts->gp_sculpt.lock_axis - 1);
 	}
 
 	/* if parented change position relative to parent object */
@@ -1133,7 +1111,7 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
 	tgpi->gpd->runtime.tot_cp_points = 0;
 
 	/* getcolor info */
-	tgpi->mat = BKE_gpencil_material_ensure(bmain, tgpi->ob);
+	tgpi->mat = BKE_gpencil_object_material_ensure_from_active_input_toolsettings(bmain, tgpi->ob, ts);
 
 	/* set parameters */
 	tgpi->type = RNA_enum_get(op->ptr, "type");

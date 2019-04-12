@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/node/deg_node_operation.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #pragma once
@@ -27,8 +27,8 @@
 
 #include "intern/depsgraph_type.h"
 
-struct ID;
 struct Depsgraph;
+struct ID;
 
 namespace DEG {
 
@@ -47,11 +47,15 @@ enum class OperationCode {
 
 	/* Generic parameters evaluation. */
 	ID_PROPERTY,
+	PARAMETERS_ENTRY,
 	PARAMETERS_EVAL,
+	PARAMETERS_EXIT,
 
 	/* Animation, Drivers, etc. --------------------------------------------- */
 	/* NLA + Action */
-	ANIMATION,
+	ANIMATION_ENTRY,
+	ANIMATION_EVAL,
+	ANIMATION_EXIT,
 	/* Driver */
 	DRIVER,
 
@@ -62,16 +66,22 @@ enum class OperationCode {
 	OBJECT_BASE_FLAGS,
 
 	/* Transform. ----------------------------------------------------------- */
-	/* Transform entry point - local transforms only */
+	/* Transform entry point. */
+	TRANSFORM_INIT,
+	/* Local transforms only */
 	TRANSFORM_LOCAL,
 	/* Parenting */
 	TRANSFORM_PARENT,
 	/* Constraints */
 	TRANSFORM_CONSTRAINTS,
+	/* Handle object-level updates, mainly proxies hacks and recalc flags.  */
+	TRANSFORM_EVAL,
+	/* Initializes transformation for simulation.
+	 * For example, ensures point cache is properly reset before doing rigid
+	 * body simulation. */
+	TRANSFORM_SIMULATION_INIT,
 	/* Transform exit point */
 	TRANSFORM_FINAL,
-	/* Handle object-level updates, mainly proxies hacks and recalc flags.  */
-	TRANSFORM_OBJECT_UBEREVAL,
 
 	/* Rigid body. ---------------------------------------------------------- */
 	/* Perform Simulation */
@@ -170,6 +180,9 @@ enum class OperationCode {
 	/* Movie clips. --------------------------------------------------------- */
 	MOVIECLIP_EVAL,
 	MOVIECLIP_SELECT_UPDATE,
+
+	/* Images. -------------------------------------------------------------- */
+	IMAGE_ANIMATION,
 
 	/* Synchronization clips. ----------------------------------------------- */
 	SYNCHRONIZE_TO_ORIGINAL,

@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/scene_graph/TriangleRep.cpp
- *  \ingroup freestyle
- *  \brief Class to define the represenation of a triangle
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define the represenation of a triangle
  */
 
 #include "TriangleRep.h"

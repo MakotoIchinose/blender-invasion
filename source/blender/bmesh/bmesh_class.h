@@ -17,8 +17,8 @@
 #ifndef __BMESH_CLASS_H__
 #define __BMESH_CLASS_H__
 
-/** \file blender/bmesh/bmesh_class.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 /* bmesh data structures */

@@ -18,8 +18,8 @@
  * Pose Mode API's and Operators for Pose Mode armatures
  */
 
-/** \file blender/editors/armature/pose_edit.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "MEM_guardedalloc.h"
@@ -80,7 +80,7 @@ Object *ED_pose_object_from_context(bContext *C)
 	Object *ob;
 
 	/* since this call may also be used from the buttons window, we need to check for where to get the object */
-	if (sa && sa->spacetype == SPACE_BUTS) {
+	if (sa && sa->spacetype == SPACE_PROPERTIES) {
 		ob = ED_object_context(C);
 	}
 	else {

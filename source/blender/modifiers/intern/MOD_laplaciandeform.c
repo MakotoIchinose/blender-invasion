@@ -17,16 +17,20 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_laplaciandeform.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "BLI_utildefines.h"
-#include "BLI_utildefines_stack.h"
+
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_utildefines_stack.h"
 
 #include "MEM_guardedalloc.h"
+
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
@@ -34,9 +38,6 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_particle.h"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "MOD_util.h"
 
@@ -715,12 +716,13 @@ static bool isDisabled(const struct Scene *UNUSED(scene), ModifierData *md, bool
 	return 1;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	LaplacianDeformModifierData *lmd = (LaplacianDeformModifierData *)md;
-	CustomDataMask dataMask = 0;
-	if (lmd->anchor_grp_name[0]) dataMask |= CD_MASK_MDEFORMVERT;
-	return dataMask;
+
+	if (lmd->anchor_grp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static void deformVerts(
@@ -769,12 +771,6 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
 	/* flags */             eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
 	/* copyData */          copyData,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       deformVerts,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     deformVertsEM,
@@ -791,4 +787,5 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_script/script_ops.c
- *  \ingroup spscript
+/** \file
+ * \ingroup spscript
  */
 
 

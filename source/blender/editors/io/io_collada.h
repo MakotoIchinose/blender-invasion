@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/io/io_collada.h
- *  \ingroup editor/io
+/** \file
+ * \ingroup editor/io
  */
 
 #ifndef __IO_COLLADA_H__

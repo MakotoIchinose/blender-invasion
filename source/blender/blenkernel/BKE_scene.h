@@ -19,8 +19,8 @@
 #ifndef __BKE_SCENE_H__
 #define __BKE_SCENE_H__
 
-/** \file BKE_scene.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus
@@ -36,16 +36,16 @@ struct RenderData;
 struct Scene;
 struct TransformOrientation;
 struct UnitSettings;
+struct View3DCursor;
 struct ViewLayer;
 struct ViewRender;
 struct WorkSpace;
 
 typedef enum eSceneCopyMethod {
-	SCE_COPY_NEW       = 0,
-	SCE_COPY_EMPTY     = 1,
-	SCE_COPY_LINK_OB   = 2,
-	SCE_COPY_LINK_DATA = 3,
-	SCE_COPY_FULL      = 4,
+	SCE_COPY_NEW             = 0,
+	SCE_COPY_EMPTY           = 1,
+	SCE_COPY_LINK_COLLECTION = 2,
+	SCE_COPY_FULL            = 3,
 } eSceneCopyMethod;
 
 /* Use as the contents of a 'for' loop: for (SETLOOPER(...)) { ... */
@@ -200,6 +200,12 @@ struct TransformOrientation *BKE_scene_transform_orientation_find(
         const struct Scene *scene, const int index);
 int BKE_scene_transform_orientation_get_index(
         const struct Scene *scene, const struct TransformOrientation *orientation);
+
+void BKE_scene_cursor_rot_to_mat3(const struct View3DCursor *cursor, float mat[3][3]);
+void BKE_scene_cursor_mat3_to_rot(struct View3DCursor *cursor, const float mat[3][3], bool use_compat);
+
+void BKE_scene_cursor_rot_to_quat(const struct View3DCursor *cursor, float quat[4]);
+void BKE_scene_cursor_quat_to_rot(struct View3DCursor *cursor, const float quat[4], bool use_compat);
 
 #ifdef __cplusplus
 }

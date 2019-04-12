@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/stroke/AdvancedStrokeShaders.cpp
- *  \ingroup freestyle
- *  \brief Fredo's stroke shaders
+/** \file
+ * \ingroup freestyle
+ * \brief Fredo's stroke shaders
  */
 
 #include "AdvancedStrokeShaders.h"

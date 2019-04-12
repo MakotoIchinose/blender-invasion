@@ -17,10 +17,10 @@
 #ifndef __FREESTYLE_NODE_GROUP_H__
 #define __FREESTYLE_NODE_GROUP_H__
 
-/** \file blender/freestyle/intern/scene_graph/NodeGroup.h
- *  \ingroup freestyle
- *  \brief Class to represent a group node. This node can contains several children.
- *  \brief It also contains a transform matrix indicating the transform state of the underlying children.
+/** \file
+ * \ingroup freestyle
+ * \brief Class to represent a group node. This node can contains several children.
+ * \brief It also contains a transform matrix indicating the transform state of the underlying children.
  */
 
 #include <vector>

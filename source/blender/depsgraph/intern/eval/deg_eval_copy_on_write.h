@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/eval/deg_eval_copy_on_write.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #pragma once
@@ -44,7 +44,7 @@ struct Depsgraph;
 namespace DEG {
 
 struct Depsgraph;
-struct DepsgraphNodeBuilder;
+class DepsgraphNodeBuilder;
 struct IDNode;
 
 /* Get fully expanded (ready for use) copy-on-write datablock for the given

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/intern/wm_files.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * User level access for blend file read/write, file-history and userprefs (including relevant operators).
  */
@@ -405,7 +405,11 @@ static int wm_read_exotic(const char *name)
 				retval = BKE_READ_EXOTIC_OK_BLEND;
 			}
 			else {
-#if 0           /* historic stuff - no longer used */
+				/* We may want to support loading other file formats
+				 * from their header bytes or file extension.
+				 * This used to be supported in the code below and may be added
+				 * back at some point. */
+#if 0
 				WM_cursor_wait(true);
 
 				if (is_foo_format(name)) {
@@ -447,7 +451,7 @@ void wm_file_read_report(bContext *C, Main *bmain)
 	ReportList *reports = NULL;
 	Scene *sce;
 
-	for (sce = bmain->scene.first; sce; sce = sce->id.next) {
+	for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
 		if (sce->r.engine[0] &&
 		    BLI_findstring(&R_engines, sce->r.engine, offsetof(RenderEngineType, idname)) == NULL)
 		{
@@ -485,12 +489,6 @@ static void wm_file_read_post(
 
 	CTX_wm_window_set(C, wm->windows.first);
 
-	Main *bmain = CTX_data_main(C);
-	DEG_on_visible_update(bmain, true);
-	wm_event_do_depsgraph(C);
-
-	ED_editors_init(C);
-
 #ifdef WITH_PYTHON
 	if (is_startup_file) {
 		/* possible python hasn't been initialized */
@@ -523,11 +521,19 @@ static void wm_file_read_post(
 	WM_operatortype_last_properties_clear_all();
 
 	/* important to do before NULL'ing the context */
+	Main *bmain = CTX_data_main(C);
 	BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
 	BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
 	if (is_factory_startup) {
 		BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_STARTUP_POST);
 	}
+
+	/* After load post, so for example the driver namespace can be filled
+	 * before evaluating the depsgraph. */
+	DEG_on_visible_update(bmain, true);
+	wm_event_do_depsgraph(C);
+
+	ED_editors_init(C);
 
 #if 1
 	WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
@@ -1264,7 +1270,7 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
 	 * its handy for scripts to save to a predefined name without blender editing it */
 
 	/* send the OnSave event */
-	for (li = bmain->library.first; li; li = li->id.next) {
+	for (li = bmain->libraries.first; li; li = li->id.next) {
 		if (BLI_path_cmp(li->filepath, filepath) == 0) {
 			BKE_reportf(reports, RPT_ERROR, "Cannot overwrite used library '%.240s'", filepath);
 			return ok;
@@ -1358,10 +1364,10 @@ void wm_autosave_location(char *filepath)
 	if (G_MAIN && G.relbase_valid) {
 		const char *basename = BLI_path_basename(BKE_main_blendfile_path_from_global());
 		int len = strlen(basename) - 6;
-		BLI_snprintf(path, sizeof(path), "%.*s.blend", len, basename);
+		BLI_snprintf(path, sizeof(path), "%.*s (autosave).blend", len, basename);
 	}
 	else {
-		BLI_snprintf(path, sizeof(path), "%d.blend", pid);
+		BLI_snprintf(path, sizeof(path), "%d (autosave).blend", pid);
 	}
 
 #ifdef WIN32
@@ -1393,21 +1399,22 @@ void WM_autosave_init(wmWindowManager *wm)
 
 void wm_autosave_timer(const bContext *C, wmWindowManager *wm, wmTimer *UNUSED(wt))
 {
-	wmWindow *win;
-	wmEventHandler *handler;
 	char filepath[FILE_MAX];
 
 	WM_event_remove_timer(wm, NULL, wm->autosavetimer);
 
 	/* if a modal operator is running, don't autosave, but try again in 10 seconds */
-	for (win = wm->windows.first; win; win = win->next) {
-		for (handler = win->modalhandlers.first; handler; handler = handler->next) {
-			if (handler->op) {
-				wm->autosavetimer = WM_event_add_timer(wm, NULL, TIMERAUTOSAVE, 10.0);
-				if (G.debug) {
-					printf("Skipping auto-save, modal operator running, retrying in ten seconds...\n");
+	for (wmWindow *win = wm->windows.first; win; win = win->next) {
+		LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
+			if (handler_base->type == WM_HANDLER_TYPE_OP) {
+				wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
+				if (handler->op) {
+					wm->autosavetimer = WM_event_add_timer(wm, NULL, TIMERAUTOSAVE, 10.0);
+					if (G.debug) {
+						printf("Skipping auto-save, modal operator running, retrying in ten seconds...\n");
+					}
+					return;
 				}
-				return;
 			}
 		}
 	}
@@ -2296,7 +2303,7 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
 	        WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 	RNA_def_boolean(ot->srna, "compress", false, "Compress", "Write compressed .blend file");
 	RNA_def_boolean(ot->srna, "relative_remap", true, "Remap Relative",
-	                "Remap relative paths when saving in a different directory");
+	                "Make paths relative when saving to a different directory");
 	prop = RNA_def_boolean(ot->srna, "copy", false, "Save Copy",
 	                "Save a copy of the actual working state but does not make saved file active");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -2326,14 +2333,9 @@ static int wm_save_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent *U
 		char path[FILE_MAX];
 
 		RNA_string_get(op->ptr, "filepath", path);
-		if (RNA_boolean_get(op->ptr, "check_existing") && BLI_exists(path)) {
-			ret = WM_operator_confirm_message_ex(C, op, IFACE_("Save Over?"), ICON_QUESTION, path);
-		}
-		else {
-			ret = wm_save_as_mainfile_exec(C, op);
-			/* Without this there is no feedback the file was saved. */
-			BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", BLI_path_basename(path));
-		}
+		ret = wm_save_as_mainfile_exec(C, op);
+		/* Without this there is no feedback the file was saved. */
+		BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", BLI_path_basename(path));
 	}
 	else {
 		WM_event_add_fileselect(C, op);
@@ -2360,7 +2362,7 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
 	        WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 	RNA_def_boolean(ot->srna, "compress", false, "Compress", "Write compressed .blend file");
 	RNA_def_boolean(ot->srna, "relative_remap", false, "Remap Relative",
-	                "Remap relative paths when saving in a different directory");
+	                "Make paths relative when saving to a different directory");
 
 	prop = RNA_def_boolean(ot->srna, "exit", false, "Exit", "Exit Blender after saving");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);

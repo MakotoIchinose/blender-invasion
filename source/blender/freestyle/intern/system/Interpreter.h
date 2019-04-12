@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_INTERPRETER_H__
 #define __FREESTYLE_INTERPRETER_H__
 
-/** \file blender/freestyle/intern/system/Interpreter.h
- *  \ingroup freestyle
- *  \brief Base Class of all script interpreters
+/** \file
+ * \ingroup freestyle
+ * \brief Base Class of all script interpreters
  */
 
 #include <string>

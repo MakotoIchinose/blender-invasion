@@ -14,16 +14,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/editors/interface/interface_regions_intern.h
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  *
  * Share between interface_region_*.c files.
  */
 
 #ifndef __INTERFACE_REGIONS_INTERN_H__
 #define __INTERFACE_REGIONS_INTERN_H__
-
-#define MENU_PADDING (int)(0.2f * UI_UNIT_Y)
 
 /* interface_region_menu_popup.c */
 uint ui_popup_menu_hash(const char *str);

@@ -19,8 +19,8 @@
  * The Original Code is: some of this file.
 */
 
-/** \file ghost/intern/GHOST_ImeWin32.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  */
 
 #ifndef __GHOST_IME_H__

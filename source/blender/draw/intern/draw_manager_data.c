@@ -16,12 +16,13 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/intern/draw_manager_data.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "draw_manager.h"
 
+#include "BKE_anim.h"
 #include "BKE_curve.h"
 #include "BKE_global.h"
 #include "BKE_mesh.h"
@@ -40,8 +41,6 @@
 #include "intern/gpu_codegen.h"
 
 struct GPUVertFormat *g_pos_format = NULL;
-
-extern struct GPUUniformBuffer *view_ubo; /* draw_manager_exec.c */
 
 /* -------------------------------------------------------------------- */
 /** \name Uniform Buffer Object (DRW_uniformbuffer)
@@ -311,13 +310,40 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[3])
 	}
 }
 
+static void drw_call_state_update_matflag(DRWCallState *state, DRWShadingGroup *shgroup, Object *ob)
+{
+	uint16_t new_flags = ((state->matflag ^ shgroup->matflag) & shgroup->matflag);
+
+	/* HACK: Here we set the matflags bit to 1 when computing the value
+	 * so that it's not recomputed for other drawcalls.
+	 * This is the opposite of what draw_matrices_model_prepare() does. */
+	state->matflag |= shgroup->matflag;
+
+	/* Orco factors: We compute this at creation to not have to save the *ob_data */
+	if ((new_flags & DRW_CALL_ORCOTEXFAC) != 0) {
+		drw_call_calc_orco(ob, state->orcotexfac);
+	}
+
+	if ((new_flags & DRW_CALL_OBJECTINFO) != 0) {
+		state->objectinfo[0] = ob ? ob->index : 0;
+		uint random;
+		if (DST.dupli_source) {
+			random = DST.dupli_source->random_id;
+		}
+		else {
+			random = BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
+		}
+		state->objectinfo[1] = random * (1.0f / (float)0xFFFFFFFF);
+	}
+}
+
 static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obmat)[4], Object *ob)
 {
 	DRWCallState *state = BLI_mempool_alloc(DST.vmempool->states);
 	state->flag = 0;
 	state->cache_id = 0;
 	state->visibility_cb = NULL;
-	state->matflag = shgroup->matflag;
+	state->matflag = 0;
 
 	/* Matrices */
 	if (obmat != NULL) {
@@ -345,27 +371,7 @@ static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obm
 		state->bsphere.radius = -1.0f;
 	}
 
-	/* Orco factors: We compute this at creation to not have to save the *ob_data */
-	if ((state->matflag & DRW_CALL_ORCOTEXFAC) != 0) {
-		drw_call_calc_orco(ob, state->orcotexfac);
-		state->matflag &= ~DRW_CALL_ORCOTEXFAC;
-	}
-
-	if ((state->matflag & DRW_CALL_OBJECTINFO) != 0) {
-		state->objectinfo[0] = ob ? ob->index : 0;
-		uint random;
-#if 0 /* TODO(fclem) handle dupli objects */
-		if (GMS.dob) {
-			random = GMS.dob->random_id;
-		}
-		else
-#endif
-		{
-			random = BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
-		}
-		state->objectinfo[1] = random * (1.0f / (float)0xFFFFFFFF);
-		state->matflag &= ~DRW_CALL_OBJECTINFO;
-	}
+	drw_call_state_update_matflag(state, shgroup, ob);
 
 	return state;
 }
@@ -377,7 +383,7 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
 	}
 	else {
 		/* If the DRWCallState is reused, add necessary matrices. */
-		DST.ob_state->matflag |= shgroup->matflag;
+		drw_call_state_update_matflag(DST.ob_state, shgroup, ob);
 	}
 
 	return DST.ob_state;
@@ -581,7 +587,34 @@ static void sculpt_draw_cb(
 
 	if (pbvh) {
 		BKE_pbvh_draw_cb(
-		        pbvh, NULL, NULL, fast_mode, false,
+		        pbvh, NULL, NULL, fast_mode, false, false,
+		        (void (*)(void *, GPUBatch *))draw_fn, shgroup);
+	}
+}
+
+static void sculpt_draw_wires_cb(
+        DRWShadingGroup *shgroup,
+        void (*draw_fn)(DRWShadingGroup *shgroup, GPUBatch *geom),
+        void *user_data)
+{
+	Object *ob = user_data;
+
+	/* XXX should be ensured before but sometime it's not... go figure (see T57040). */
+	PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(DST.draw_ctx.depsgraph, ob);
+
+	const DRWContextState *drwctx = DRW_context_state_get();
+	int fast_mode = 0;
+
+	if (drwctx->evil_C != NULL) {
+		Paint *p = BKE_paint_get_active_from_context(drwctx->evil_C);
+		if (p && (p->flags & PAINT_FAST_NAVIGATE)) {
+			fast_mode = drwctx->rv3d->rflag & RV3D_NAVIGATING;
+		}
+	}
+
+	if (pbvh) {
+		BKE_pbvh_draw_cb(
+		        pbvh, NULL, NULL, fast_mode, true, false,
 		        (void (*)(void *, GPUBatch *))draw_fn, shgroup);
 	}
 }
@@ -589,6 +622,11 @@ static void sculpt_draw_cb(
 void DRW_shgroup_call_sculpt_add(DRWShadingGroup *shgroup, Object *ob, float (*obmat)[4])
 {
 	DRW_shgroup_call_generate_add(shgroup, sculpt_draw_cb, ob, obmat);
+}
+
+void DRW_shgroup_call_sculpt_wires_add(DRWShadingGroup *shgroup, Object *ob, float (*obmat)[4])
+{
+	DRW_shgroup_call_generate_add(shgroup, sculpt_draw_wires_cb, ob, obmat);
 }
 
 void DRW_shgroup_call_dynamic_add_array(DRWShadingGroup *shgroup, const void *attr[], uint attr_len)
@@ -638,7 +676,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 	int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");
 
 	if (view_ubo_location != -1) {
-		drw_shgroup_uniform_create_ex(shgroup, view_ubo_location, DRW_UNIFORM_BLOCK_PERSIST, view_ubo, 0, 1);
+		drw_shgroup_uniform_create_ex(shgroup, view_ubo_location, DRW_UNIFORM_BLOCK_PERSIST, G_draw.view_ubo, 0, 1);
 	}
 	else {
 		/* Only here to support builtin shaders. This should not be used by engines. */
@@ -657,6 +695,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 	shgroup->modelviewinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODELVIEW_INV);
 	shgroup->modelviewprojection = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MVP);
 	shgroup->normalview = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_NORMAL);
+	shgroup->normalviewinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_NORMAL_INV);
 	shgroup->normalworld = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_WORLDNORMAL);
 	shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
 	shgroup->objectinfo = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_INFO);
@@ -678,6 +717,9 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 	}
 	if (shgroup->normalview > -1) {
 		shgroup->matflag |= DRW_CALL_NORMALVIEW;
+	}
+	if (shgroup->normalviewinverse > -1) {
+		shgroup->matflag |= DRW_CALL_NORMALVIEWINVERSE;
 	}
 	if (shgroup->normalworld > -1) {
 		shgroup->matflag |= DRW_CALL_NORMALWORLD;
@@ -816,8 +858,7 @@ static DRWShadingGroup *drw_shgroup_material_inputs(DRWShadingGroup *grp, struct
 			GPUTexture *tex = NULL;
 
 			if (input->ima) {
-				double time = 0.0; /* TODO make time variable */
-				tex = GPU_texture_from_blender(input->ima, input->iuser, GL_TEXTURE_2D, input->image_isdata, time);
+				tex = GPU_texture_from_blender(input->ima, input->iuser, GL_TEXTURE_2D, input->image_isdata);
 			}
 			else {
 				/* Color Ramps */
@@ -1142,8 +1183,8 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 	const DRWCall *call_a = (DRWCall *)shgrp_a->calls.first;
 	const DRWCall *call_b = (DRWCall *)shgrp_b->calls.first;
 
-	if (call_a == NULL) return -1;
-	if (call_b == NULL) return -1;
+	if (call_a == NULL) { return -1; }
+	if (call_b == NULL) { return -1; }
 
 	float tmp[3];
 	sub_v3_v3v3(tmp, zsortdata->origin, call_a->state->model[3]);
@@ -1151,8 +1192,8 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 	sub_v3_v3v3(tmp, zsortdata->origin, call_b->state->model[3]);
 	const float b_sq = dot_v3v3(zsortdata->axis, tmp);
 
-	if      (a_sq < b_sq) return  1;
-	else if (a_sq > b_sq) return -1;
+	if      (a_sq < b_sq) { return  1; }
+	else if (a_sq > b_sq) { return -1; }
 	else {
 		/* If there is a depth prepass put it before */
 		if ((shgrp_a->state_extra & DRW_STATE_WRITE_DEPTH) != 0) {
@@ -1161,7 +1202,9 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 		else if ((shgrp_b->state_extra & DRW_STATE_WRITE_DEPTH) != 0) {
 			return  1;
 		}
-		else return  0;
+		else {
+			return  0;
+		}
 	}
 }
 
@@ -1180,7 +1223,7 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 /**
  * Sort Shading groups by decreasing Z of their first draw call.
  * This is useful for order dependent effect such as transparency.
- **/
+ */
 void DRW_pass_sort_shgroup_z(DRWPass *pass)
 {
 	float (*viewinv)[4];

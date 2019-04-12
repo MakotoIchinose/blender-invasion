@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/operators/bmo_normals.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * normal recalculation.
  */
@@ -51,7 +51,7 @@ static bool bmo_recalc_normal_loop_filter_cb(const BMLoop *l, void *UNUSED(user_
  * +
  * |\ <- face
  * + +
- *  \ \
+ * \ \
  *   \ \
  *    \ +--------------+
  *     \               |

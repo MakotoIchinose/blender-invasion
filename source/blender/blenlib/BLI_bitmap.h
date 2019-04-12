@@ -20,8 +20,8 @@
 #ifndef __BLI_BITMAP_H__
 #define __BLI_BITMAP_H__
 
-/** \file BLI_bitmap.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 typedef unsigned int BLI_bitmap;

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_WindowManager.cpp
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  */
 
 

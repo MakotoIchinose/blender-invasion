@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/subdiv_mesh.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BKE_subdiv_mesh.h"
@@ -32,6 +32,7 @@
 #include "BLI_alloca.h"
 #include "BLI_math_vector.h"
 
+#include "BKE_customdata.h"
 #include "BKE_mesh.h"
 #include "BKE_key.h"
 #include "BKE_subdiv.h"
@@ -224,7 +225,7 @@ static void vertex_interpolation_init(
 		/* Allocate storage for loops corresponding to ptex corners. */
 		CustomData_copy(&ctx->coarse_mesh->vdata,
 		                &vertex_interpolation->vertex_data_storage,
-		                CD_MASK_EVERYTHING,
+		                CD_MASK_EVERYTHING.vmask,
 		                CD_CALLOC,
 		                4);
 		/* Initialize indices. */
@@ -355,7 +356,7 @@ static void loop_interpolation_init(
 		/* Allocate storage for loops corresponding to ptex corners. */
 		CustomData_copy(&ctx->coarse_mesh->ldata,
 		                &loop_interpolation->loop_data_storage,
-		                CD_MASK_EVERYTHING,
+		                CD_MASK_EVERYTHING.lmask,
 		                CD_CALLOC,
 		                4);
 		/* Initialize indices. */
@@ -596,7 +597,7 @@ static void evaluate_vertex_and_apply_displacement_copy(
 	const float inv_num_accumulated =
 	        1.0f / ctx->accumulated_counters[subdiv_vertex_index];
 	/* Displacement is accumulated in subdiv vertex position.
-	 * Needs to to be backed up before copying data from original vertex. */
+	 * Needs to be backed up before copying data from original vertex. */
 	float D[3] = {0.0f, 0.0f, 0.0f};
 	if (ctx->have_displacement) {
 		copy_v3_v3(D, subdiv_vert->co);
@@ -628,7 +629,7 @@ static void evaluate_vertex_and_apply_displacement_interpolate(
 	const float inv_num_accumulated =
 	        1.0f / ctx->accumulated_counters[subdiv_vertex_index];
 	/* Displacement is accumulated in subdiv vertex position.
-	 * Needs to to be backed up before copying data from original vertex. */
+	 * Needs to be backed up before copying data from original vertex. */
 	float D[3] = {0.0f, 0.0f, 0.0f};
 	if (ctx->have_displacement) {
 		copy_v3_v3(D, subdiv_vert->co);

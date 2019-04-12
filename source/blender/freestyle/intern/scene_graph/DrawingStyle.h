@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_DRAWING_STYLE_H__
 #define __FREESTYLE_DRAWING_STYLE_H__
 
-/** \file blender/freestyle/intern/scene_graph/DrawingStyle.h
- *  \ingroup freestyle
- *  \brief Class to define the drawing style of a node
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define the drawing style of a node
  */
 
 #ifdef WITH_CXX_GUARDEDALLOC

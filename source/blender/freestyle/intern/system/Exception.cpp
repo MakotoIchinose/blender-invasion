@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/system/Exception.cpp
- *  \ingroup freestyle
- *  \brief Singleton to manage exceptions
+/** \file
+ * \ingroup freestyle
+ * \brief Singleton to manage exceptions
  */
 
 #include "Exception.h"

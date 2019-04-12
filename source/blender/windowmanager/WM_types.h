@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/WM_types.h
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 #ifndef __WM_TYPES_H__
@@ -246,7 +246,7 @@ typedef struct wmNotifier {
 #define	NC_GEOM				(16<<24)
 #define NC_NODE				(17<<24)
 #define NC_ID				(18<<24)
-/* (19<<24) is free */
+#define NC_PAINTCURVE		(19<<24)
 #define NC_MOVIECLIP			(20<<24)
 #define NC_MASK				(21<<24)
 #define NC_GPENCIL			(22<<24)
@@ -320,7 +320,7 @@ typedef struct wmNotifier {
 #define	ND_SHADING_LINKS	(32<<16)
 #define	ND_SHADING_PREVIEW	(33<<16)
 
-	/* NC_LAMP Lamp */
+	/* NC_LAMP Light */
 #define	ND_LIGHTING			(40<<16)
 #define	ND_LIGHTING_DRAW	(41<<16)
 #define ND_SKY				(42<<16)
@@ -427,6 +427,8 @@ typedef struct wmGesture {
 	/* For modal operators which may be running idle, waiting for an event to activate the gesture.
 	 * Typically this is set when the user is click-dragging the gesture (border and circle select for eg). */
 	uint is_active : 1;
+	/* Previous value of is-active (use to detect first run & edge cases). */
+	uint is_active_prev : 1;
 	/* Use for gestures that support both immediate or delayed activation. */
 	uint wait_for_input : 1;
 
@@ -487,6 +489,20 @@ typedef struct wmEvent {
 	void *customdata;	/* ascii, unicode, mouse coords, angles, vectors, dragdrop info */
 
 } wmEvent;
+
+/**
+ * Values below are considered a click, above are considered a drag.
+ */
+#define WM_EVENT_CURSOR_CLICK_DRAG_THRESHOLD (U.tweak_threshold * U.dpi_fac)
+
+/**
+ * Values below are ignored when detecting if the user interntionally moved the cursor.
+ * Keep this very small since it's used for selection cycling for eg,
+ * where we want intended adjustments to pass this threshold and select new items.
+ *
+ * Always check for <= this value since it may be zero.
+ */
+#define WM_EVENT_CURSOR_MOTION_THRESHOLD ((float)U.move_threshold * U.dpi_fac)
 
 /* ************** custom wmEvent data ************** */
 typedef struct wmTabletData {
@@ -595,8 +611,13 @@ typedef struct wmOperatorType {
 	/* previous settings - for initializing on re-use */
 	struct IDProperty *last_properties;
 
-	/* Default rna property to use for generic invoke functions.
-	 * menus, enum search... etc. Example: Enum 'type' for a Delete menu */
+	/**
+	 * Default rna property to use for generic invoke functions.
+	 * menus, enum search... etc. Example: Enum 'type' for a Delete menu.
+	 *
+	 * When assigned a string/number property,
+	 * immediately edit the value when used in a popup. see: #UI_BUT_ACTIVATE_ON_INIT.
+	 */
 	PropertyRNA *prop;
 
 	/* struct wmOperatorTypeMacro */

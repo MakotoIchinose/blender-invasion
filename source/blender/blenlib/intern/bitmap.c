@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/intern/bitmap.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * Utility functions for variable size bitmasks.
  */

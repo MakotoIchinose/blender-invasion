@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/GHOST_IWindow.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  * Declaration of GHOST_IWindow interface class.
  */
 

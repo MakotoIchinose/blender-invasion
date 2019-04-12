@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_VIEW_MAP_IO_H__
 #define __FREESTYLE_VIEW_MAP_IO_H__
 
-/** \file blender/freestyle/intern/view_map/ViewMapIO.h
- *  \ingroup freestyle
- *  \brief Functions to manage I/O for the view map
+/** \file
+ * \ingroup freestyle
+ * \brief Functions to manage I/O for the view map
  */
 
 #include <fstream>

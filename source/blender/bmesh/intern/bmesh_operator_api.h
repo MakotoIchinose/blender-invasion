@@ -17,8 +17,8 @@
 #ifndef __BMESH_OPERATOR_API_H__
 #define __BMESH_OPERATOR_API_H__
 
-/** \file blender/bmesh/intern/bmesh_operator_api.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 #ifdef __cplusplus
@@ -522,7 +522,7 @@ void BMO_slot_buffer_from_all(
  *
  *    f = BMO_iter_new(&oiter, some_operator, "slot_name", BM_FACE);
  *    for (; f; f = BMO_iter_step(&oiter)) {
- *        /do something with the face
+ *        // do something with the face
  *    }
  *
  * another example, iterating over a mapping:

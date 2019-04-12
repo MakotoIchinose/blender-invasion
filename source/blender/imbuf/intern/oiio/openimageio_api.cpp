@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/oiio/openimageio_api.cpp
- *  \ingroup openimageio
+/** \file
+ * \ingroup openimageio
  */
 
 #include <set>

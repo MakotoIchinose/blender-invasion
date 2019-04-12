@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_TIME_STAMP_H__
 #define __FREESTYLE_TIME_STAMP_H__
 
-/** \file blender/freestyle/intern/system/TimeStamp.h
- *  \ingroup freestyle
- *  \brief Class defining a singleton used as timestamp
+/** \file
+ * \ingroup freestyle
+ * \brief Class defining a singleton used as timestamp
  */
 
 #ifdef WITH_CXX_GUARDEDALLOC

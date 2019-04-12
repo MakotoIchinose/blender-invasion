@@ -17,8 +17,8 @@
 #ifndef __BMESH_WALKERS_PRIVATE_H__
 #define __BMESH_WALKERS_PRIVATE_H__
 
-/** \file blender/bmesh/intern/bmesh_walkers_private.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * BMesh walker API.
  */

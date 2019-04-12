@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_view3d/view3d_intern.h
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 #ifndef __VIEW3D_INTERN_H__
@@ -123,10 +123,12 @@ void VIEW3D_OT_fly(struct wmOperatorType *ot);
 void VIEW3D_OT_walk(struct wmOperatorType *ot);
 
 /* drawobject.c */
-void draw_object_backbufsel(
+void draw_object_select_id(
         struct Depsgraph *depsgraph, Scene *scene,
         View3D *v3d, RegionView3D *rv3d, struct Object *ob,
         short select_mode);
+
+void draw_object_depth(RegionView3D *rv3d, struct Object *ob);
 
 int view3d_effective_drawtype(const struct View3D *v3d);
 
@@ -245,9 +247,9 @@ struct ARegion *view3d_has_tools_region(struct ScrArea *sa);
 extern const char *view3d_context_dir[]; /* doc access */
 
 /* view3d_widgets.c */
-void VIEW3D_GGT_lamp_spot(struct wmGizmoGroupType *gzgt);
-void VIEW3D_GGT_lamp_area(struct wmGizmoGroupType *gzgt);
-void VIEW3D_GGT_lamp_target(struct wmGizmoGroupType *gzgt);
+void VIEW3D_GGT_light_spot(struct wmGizmoGroupType *gzgt);
+void VIEW3D_GGT_light_area(struct wmGizmoGroupType *gzgt);
+void VIEW3D_GGT_light_target(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_camera(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_camera_view(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_force_field(struct wmGizmoGroupType *gzgt);
@@ -260,6 +262,7 @@ void VIEW3D_GGT_mesh_preselect_edgering(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_ruler(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GT_ruler_item(struct wmGizmoType *gzt);
 void VIEW3D_OT_ruler_add(struct wmOperatorType *ot);
+void VIEW3D_OT_ruler_remove(struct wmOperatorType *ot);
 
 void VIEW3D_GT_navigate_rotate(struct wmGizmoType *gzt);
 
@@ -270,7 +273,7 @@ void VIEW3D_GT_navigate_rotate(struct wmGizmoType *gzt);
  * any direction it starts to fail */
 #define VIEW3D_CAMERA_BORDER_HACK
 #ifdef VIEW3D_CAMERA_BORDER_HACK
-extern unsigned char view3d_camera_border_hack_col[3];
+extern uchar view3d_camera_border_hack_col[3];
 extern bool view3d_camera_border_hack_test;
 #endif
 

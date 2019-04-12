@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/io/io_ops.c
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #include "io_ops.h"  /* own include */

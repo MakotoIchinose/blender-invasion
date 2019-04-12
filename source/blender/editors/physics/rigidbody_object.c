@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file rigidbody_object.c
- *  \ingroup editor_physics
- *  \brief Rigid Body object editing operators
+/** \file
+ * \ingroup editor_physics
+ * \brief Rigid Body object editing operators
  */
 
 #include <stdlib.h>

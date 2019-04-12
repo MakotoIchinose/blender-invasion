@@ -17,8 +17,7 @@
  * All rights reserved.
  */
 
-/**
- * \file IMB_allocimbuf.h
+/** \file
  * \ingroup imbuf
  * \brief Header file for allocimbuf.c
  */

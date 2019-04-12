@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/softbody.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -27,7 +27,7 @@
  * <pre>
  * float mediafrict;  friction to env
  * float nodemass;	  softbody mass of *vertex*
- * float grav;        softbody amount of gravitaion to apply
+ * float grav;        softbody amount of gravitation to apply
  *
  * float goalspring;  softbody goal springs
  * float goalfrict;   softbody goal springs friction
@@ -1443,13 +1443,14 @@ static void _scan_for_ext_spring_forces(Scene *scene, Object *ob, float timenow,
 			if (bs->springtype == SB_EDGE) {
 				/* +++ springs colliding */
 				if (ob->softflag & OB_SB_EDGECOLL) {
-					if ( sb_detect_edge_collisionCached (sb->bpoint[bs->v1].pos, sb->bpoint[bs->v2].pos,
-						&damp, feedback, ob, timenow)) {
-							add_v3_v3(bs->ext_force, feedback);
-							bs->flag |= BSF_INTERSECT;
-							//bs->cf=damp;
-							bs->cf=sb->choke*0.01f;
-
+					if (sb_detect_edge_collisionCached(
+					            sb->bpoint[bs->v1].pos, sb->bpoint[bs->v2].pos,
+					            &damp, feedback, ob, timenow))
+					{
+						add_v3_v3(bs->ext_force, feedback);
+						bs->flag |= BSF_INTERSECT;
+						//bs->cf=damp;
+						bs->cf=sb->choke*0.01f;
 					}
 				}
 				/* ---- springs colliding */
@@ -1564,7 +1565,7 @@ static void sb_sfesf_threads_run(struct Depsgraph *depsgraph, Scene *scene, stru
 
 /* --- the spring external section*/
 
-static int choose_winner(float*w, float* pos, float*a, float*b, float*c, float*ca, float*cb, float*cc)
+static int choose_winner(float *w, float *pos, float *a, float *b, float *c, float *ca, float *cb, float *cc)
 {
 	float mindist, cp;
 	int winner =1;
@@ -1862,7 +1863,6 @@ static void sb_spring_force(Object *ob, int bpi, BodySpring *bs, float iks, floa
 	}
 	else {
 		/* TODO make this debug option */
-		/**/
 		CLOG_WARN(&LOG, "bodypoint <bpi> is not attached to spring  <*bs>");
 		return;
 	}
@@ -1885,13 +1885,13 @@ static void sb_spring_force(Object *ob, int bpi, BodySpring *bs, float iks, floa
 	switch (bs->springtype) {
 		case SB_EDGE:
 		case SB_HANDLE:
-			forcefactor *=  kw;
+			forcefactor *= kw;
 			break;
 		case SB_BEND:
-			forcefactor *=sb->secondspring*kw;
+			forcefactor *= sb->secondspring * kw;
 			break;
 		case SB_STIFFQUAD:
-			forcefactor *=sb->shearstiff*sb->shearstiff* kw;
+			forcefactor *= sb->shearstiff * sb->shearstiff * kw;
 			break;
 		default:
 			break;
@@ -2043,11 +2043,11 @@ static int _softbody_calc_forces_slice_in_a_thread(Scene *scene, Object *ob, flo
 				BKE_effectors_apply(effectors, NULL, sb->effector_weights, &epoint, force, speed);
 
 				/* apply forcefield*/
-				mul_v3_fl(force, fieldfactor* eval_sb_fric_force_scale);
+				mul_v3_fl(force, fieldfactor * eval_sb_fric_force_scale);
 				add_v3_v3(bp->force, force);
 
 				/* BP friction in moving media */
-				kd= sb->mediafrict* eval_sb_fric_force_scale;
+				kd= sb->mediafrict * eval_sb_fric_force_scale;
 				bp->force[0] -= kd * (bp->vec[0] + windfactor*speed[0]/eval_sb_fric_force_scale);
 				bp->force[1] -= kd * (bp->vec[1] + windfactor*speed[1]/eval_sb_fric_force_scale);
 				bp->force[2] -= kd * (bp->vec[2] + windfactor*speed[2]/eval_sb_fric_force_scale);
@@ -2056,7 +2056,7 @@ static int _softbody_calc_forces_slice_in_a_thread(Scene *scene, Object *ob, flo
 			}
 			else {
 				/* BP friction in media (not) moving*/
-				float kd = sb->mediafrict* sb_fric_force_scale(ob);
+				float kd = sb->mediafrict * sb_fric_force_scale(ob);
 				/* assume it to be proportional to actual velocity */
 				bp->force[0]-= bp->vec[0]*kd;
 				bp->force[1]-= bp->vec[1]*kd;
@@ -3037,7 +3037,7 @@ void sbFree(Object *ob)
 
 	free_softbody_intern(sb);
 
-	if ((ob->id.tag & LIB_TAG_COPIED_ON_WRITE) == 0) {
+	if ((ob->id.tag & LIB_TAG_NO_MAIN) == 0) {
 		/* Only free shared data on non-CoW copies */
 		BKE_ptcache_free_list(&sb->shared->ptcaches);
 		sb->shared->pointcache = NULL;
@@ -3345,6 +3345,16 @@ static void softbody_step(struct Depsgraph *depsgraph, Scene *scene, Object *ob,
 	}
 }
 
+static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float framenr)
+{
+	if (!DEG_is_active(depsgraph)) {
+		return;
+	}
+	Object *object_orig = DEG_get_original_object(object);
+	object->soft->last_frame = framenr;
+	object_orig->soft->last_frame = framenr;
+}
+
 /* simulates one step. framenr is in frames */
 void sbObjectStep(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float cfra, float (*vertexCos)[3], int numVerts)
 {
@@ -3416,7 +3426,7 @@ void sbObjectStep(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float c
 		BKE_ptcache_validate(cache, framenr);
 		cache->flag &= ~PTCACHE_REDO_NEEDED;
 
-		sb->last_frame = framenr;
+		sbStoreLastFrame(depsgraph, ob, framenr);
 
 		return;
 	}
@@ -3437,7 +3447,7 @@ void sbObjectStep(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float c
 		if (cache_result == PTCACHE_READ_INTERPOLATED && cache->flag & PTCACHE_REDO_NEEDED && can_write_cache)
 			BKE_ptcache_write(&pid, framenr);
 
-		sb->last_frame = framenr;
+		sbStoreLastFrame(depsgraph, ob, framenr);
 
 		return;
 	}
@@ -3472,5 +3482,5 @@ void sbObjectStep(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float c
 	BKE_ptcache_validate(cache, framenr);
 	BKE_ptcache_write(&pid, framenr);
 
-	sb->last_frame = framenr;
+	sbStoreLastFrame(depsgraph, ob, framenr);
 }

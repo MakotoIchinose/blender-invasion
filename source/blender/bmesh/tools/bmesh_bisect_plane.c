@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/tools/bmesh_bisect_plane.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Cut the geometry in half using a plane.
  *
@@ -52,9 +52,9 @@ static short plane_point_test_v3(const float plane[4], const float co[3], const 
 	const float f = plane_point_side_v3(plane, co);
 	*r_depth = f;
 
-	if      (f <= -eps) return -1;
-	else if (f >=  eps) return  1;
-	else                return  0;
+	if      (f <= -eps) { return -1; }
+	else if (f >=  eps) { return  1; }
+	else                { return  0; }
 }
 
 
@@ -98,9 +98,9 @@ static int bm_vert_sortval_cb(const void *v_a_v, const void *v_b_v)
 	const float val_a = BM_VERT_SORTVAL(*((BMVert **)v_a_v));
 	const float val_b = BM_VERT_SORTVAL(*((BMVert **)v_b_v));
 
-	if      (val_a > val_b) return  1;
-	else if (val_a < val_b) return -1;
-	else                    return  0;
+	if      (val_a > val_b) { return  1; }
+	else if (val_a < val_b) { return -1; }
+	else                    { return  0; }
 }
 
 

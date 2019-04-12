@@ -20,8 +20,8 @@
 #ifndef __BLI_MEMPOOL_H__
 #define __BLI_MEMPOOL_H__
 
-/** \file BLI_mempool.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -57,7 +57,7 @@ void       *BLI_mempool_as_arrayN(BLI_mempool *pool, const char *allocstr) ATTR_
 void        BLI_mempool_set_memory_debug(void);
 #endif
 
-/** iteration stuff.  note: this may easy to produce bugs with **/
+/** iteration stuff.  note: this may easy to produce bugs with */
 /* private structure */
 typedef struct BLI_mempool_iter {
 	BLI_mempool *pool;

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/texture/nodes/node_texture_compose.c
- *  \ingroup texnodes
+/** \file
+ * \ingroup texnodes
  */
 
 

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/mesh_runtime.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "atomic_ops.h"
@@ -55,9 +55,10 @@ void BKE_mesh_runtime_reset(Mesh *mesh)
 /* Clear all pointers which we don't want to be shared on copying the datablock.
  * However, keep all the flags which defines what the mesh is (for example, that
  * it's deformed only, or that its custom data layers are out of date.) */
-void BKE_mesh_runtime_reset_on_copy(Mesh *mesh)
+void BKE_mesh_runtime_reset_on_copy(Mesh *mesh, const int UNUSED(flag))
 {
 	Mesh_Runtime *runtime = &mesh->runtime;
+
 	runtime->edit_data = NULL;
 	runtime->batch_cache = NULL;
 	runtime->subdiv_ccg = NULL;
@@ -77,7 +78,7 @@ void BKE_mesh_runtime_clear_cache(Mesh *mesh)
 /**
  * Ensure the array is large enough
  *
- * /note This function must always be thread-protected by caller. It should only be used by internal code.
+ * \note This function must always be thread-protected by caller. It should only be used by internal code.
  */
 static void mesh_ensure_looptri_data(Mesh *mesh)
 {
@@ -273,7 +274,7 @@ char *BKE_mesh_runtime_debug_info(Mesh *me_eval)
 	DynStr *dynstr = BLI_dynstr_new();
 	char *ret;
 
-	BLI_dynstr_appendf(dynstr, "{\n");
+	BLI_dynstr_append(dynstr, "{\n");
 	BLI_dynstr_appendf(dynstr, "    'ptr': '%p',\n", (void *)me_eval);
 #if 0
 	const char *tstr;
@@ -290,27 +291,27 @@ char *BKE_mesh_runtime_debug_info(Mesh *me_eval)
 	BLI_dynstr_appendf(dynstr, "    'totpoly': %d,\n", me_eval->totpoly);
 	BLI_dynstr_appendf(dynstr, "    'deformed_only': %d,\n", me_eval->runtime.deformed_only);
 
-	BLI_dynstr_appendf(dynstr, "    'vertexLayers': (\n");
+	BLI_dynstr_append(dynstr, "    'vertexLayers': (\n");
 	mesh_runtime_debug_info_layers(dynstr, &me_eval->vdata);
-	BLI_dynstr_appendf(dynstr, "    ),\n");
+	BLI_dynstr_append(dynstr, "    ),\n");
 
-	BLI_dynstr_appendf(dynstr, "    'edgeLayers': (\n");
+	BLI_dynstr_append(dynstr, "    'edgeLayers': (\n");
 	mesh_runtime_debug_info_layers(dynstr, &me_eval->edata);
-	BLI_dynstr_appendf(dynstr, "    ),\n");
+	BLI_dynstr_append(dynstr, "    ),\n");
 
-	BLI_dynstr_appendf(dynstr, "    'loopLayers': (\n");
+	BLI_dynstr_append(dynstr, "    'loopLayers': (\n");
 	mesh_runtime_debug_info_layers(dynstr, &me_eval->ldata);
-	BLI_dynstr_appendf(dynstr, "    ),\n");
+	BLI_dynstr_append(dynstr, "    ),\n");
 
-	BLI_dynstr_appendf(dynstr, "    'polyLayers': (\n");
+	BLI_dynstr_append(dynstr, "    'polyLayers': (\n");
 	mesh_runtime_debug_info_layers(dynstr, &me_eval->pdata);
-	BLI_dynstr_appendf(dynstr, "    ),\n");
+	BLI_dynstr_append(dynstr, "    ),\n");
 
-	BLI_dynstr_appendf(dynstr, "    'tessFaceLayers': (\n");
+	BLI_dynstr_append(dynstr, "    'tessFaceLayers': (\n");
 	mesh_runtime_debug_info_layers(dynstr, &me_eval->fdata);
-	BLI_dynstr_appendf(dynstr, "    ),\n");
+	BLI_dynstr_append(dynstr, "    ),\n");
 
-	BLI_dynstr_appendf(dynstr, "}\n");
+	BLI_dynstr_append(dynstr, "}\n");
 
 	ret = BLI_dynstr_get_cstring(dynstr);
 	BLI_dynstr_free(dynstr);

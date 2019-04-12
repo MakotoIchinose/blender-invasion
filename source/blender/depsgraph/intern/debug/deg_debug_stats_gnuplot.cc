@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/debug/deg_debug_stats_gnuplot.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #include "DEG_depsgraph_debug.h"

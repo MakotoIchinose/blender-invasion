@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/python/intern/bpy_app.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file defines a 'PyStructSequence' accessed via 'bpy.app', mostly
  * exposing static applications variables such as version and buildinfo
@@ -253,8 +253,12 @@ static int bpy_app_debug_set(PyObject *UNUSED(self), PyObject *value, void *clos
 		return -1;
 	}
 
-	if (param)  G.debug |=  flag;
-	else        G.debug &= ~flag;
+	if (param) {
+		G.debug |=  flag;
+	}
+	else {
+		G.debug &= ~flag;
+	}
 
 	return 0;
 }
@@ -278,8 +282,12 @@ static int bpy_app_global_flag_set(PyObject *UNUSED(self), PyObject *value, void
 		return -1;
 	}
 
-	if (param)  G.f |=  flag;
-	else        G.f &= ~flag;
+	if (param) {
+		G.f |=  flag;
+	}
+	else {
+		G.f &= ~flag;
+	}
 
 	return 0;
 }

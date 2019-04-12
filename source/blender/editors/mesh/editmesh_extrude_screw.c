@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/mesh/editmesh_extrude_screw.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"

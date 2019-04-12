@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_Q_INFORMATION_MAP_H__
 #define __FREESTYLE_Q_INFORMATION_MAP_H__
 
-/** \file blender/freestyle/intern/stroke/QInformationMap.h
- *  \ingroup freestyle
- *  \brief Class defining an information map using a QImage
+/** \file
+ * \ingroup freestyle
+ * \brief Class defining an information map using a QImage
  */
 
 #include <qimage.h>

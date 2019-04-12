@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_NODE_LIGHT_H__
 #define __FREESTYLE_NODE_LIGHT_H__
 
-/** \file blender/freestyle/intern/scene_graph/NodeLight.h
- *  \ingroup freestyle
- *  \brief Class to represent a light node
+/** \file
+ * \ingroup freestyle
+ * \brief Class to represent a light node
  */
 
 #include "Node.h"

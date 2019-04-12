@@ -192,13 +192,13 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     samples: IntProperty(
         name="Samples",
         description="Number of samples to render for each pixel",
-        min=1, max=2147483647,
+        min=1, max=(1 << 24),
         default=128,
     )
     preview_samples: IntProperty(
         name="Preview Samples",
         description="Number of samples to render in the viewport, unlimited if 0",
-        min=0, max=2147483647,
+        min=0, max=(1 << 24),
         default=32,
     )
     preview_pause: BoolProperty(
@@ -644,6 +644,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Scanline \"exposure\" time for the rolling shutter effect",
         default=0.1,
         min=0.0, max=1.0,
+        subtype='FACTOR',
     )
 
     texture_limit: EnumProperty(
@@ -721,11 +722,6 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         update=_devices_update_callback
     )
 
-    debug_opencl_kernel_single_program: BoolProperty(
-        name="Single Program",
-        default=True,
-        update=_devices_update_callback,
-    )
     del _devices_update_callback
 
     debug_use_opencl_debug: BoolProperty(name="Debug OpenCL", default=False)
@@ -1343,6 +1339,7 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         description="Size of the image area that's used to denoise a pixel (higher values are smoother, but might lose detail and are slower)",
         min=1, max=25,
         default=8,
+        subtype="PIXEL",
     )
     denoising_relative_pca: BoolProperty(
         name="Relative filter",
@@ -1354,6 +1351,12 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         description="Store the denoising feature passes and the noisy image",
         default=False,
         update=update_render_passes,
+    )
+    denoising_neighbor_frames: IntProperty(
+        name="Neighbor Frames",
+        description="Number of neighboring frames to use for denoising animations (more frames produce smoother results at the cost of performance)",
+        min=0, max=7,
+        default=0,
     )
     use_pass_crypto_object: BoolProperty(
         name="Cryptomatte Object",
@@ -1450,10 +1453,11 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 # Update name in case it changed
                 entry.name = device[0]
 
-    def get_devices(self):
+    # Gets all devices types by default.
+    def get_devices(self, compute_device_type=''):
         import _cycles
         # Layout of the device tuples: (Name, Type, Persistent ID)
-        device_list = _cycles.available_devices(self.compute_device_type)
+        device_list = _cycles.available_devices(compute_device_type)
         # Make sure device entries are up to date and not referenced before
         # we know we don't add new devices. This way we guarantee to not
         # hold pointers to a resized array.
@@ -1510,7 +1514,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         row = layout.row()
         row.prop(self, "compute_device_type", expand=True)
 
-        cuda_devices, opencl_devices = self.get_devices()
+        cuda_devices, opencl_devices = self.get_devices(self.compute_device_type)
         row = layout.row()
         if self.compute_device_type == 'CUDA':
             self._draw_devices(row, 'CUDA', cuda_devices)

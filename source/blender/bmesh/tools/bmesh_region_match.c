@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/tools/bmesh_region_match.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Given a contiguous region of faces,
  * find multiple matching regions (based on topology) and return them.
@@ -579,9 +579,9 @@ static int bm_face_len_cmp(const void *v1, const void *v2)
 {
 	const BMFace *f1 = v1, *f2 = v2;
 
-	if      (f1->len > f2->len) return  1;
-	else if (f1->len < f2->len) return -1;
-	else                        return  0;
+	if      (f1->len > f2->len) { return  1; }
+	else if (f1->len < f2->len) { return -1; }
+	else                        { return  0; }
 }
 
 static uint bm_uuidwalk_init_from_edge(

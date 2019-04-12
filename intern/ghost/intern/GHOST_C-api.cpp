@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_C-api.cpp
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  *
  * C Api for GHOST
  */

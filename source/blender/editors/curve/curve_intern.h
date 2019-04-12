@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/curve/curve_intern.h
- *  \ingroup edcurve
+/** \file
+ * \ingroup edcurve
  */
 
 

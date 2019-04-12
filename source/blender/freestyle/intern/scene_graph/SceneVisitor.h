@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_SCENE_VISITOR_H__
 #define __FREESTYLE_SCENE_VISITOR_H__
 
-/** \file blender/freestyle/intern/scene_graph/SceneVisitor.h
- *  \ingroup freestyle
- *  \brief Class to visit (without doing anything) a scene graph structure
+/** \file
+ * \ingroup freestyle
+ * \brief Class to visit (without doing anything) a scene graph structure
  */
 
 #include "../system/FreestyleConfig.h"

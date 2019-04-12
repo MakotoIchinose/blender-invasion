@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/particle_private.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifndef __PARTICLE_PRIVATE_H__

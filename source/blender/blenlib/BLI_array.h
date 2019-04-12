@@ -20,9 +20,9 @@
 #ifndef __BLI_ARRAY_H__
 #define __BLI_ARRAY_H__
 
-/** \file BLI_array.h
- *  \ingroup bli
- *  \brief A (mainly) macro array library.
+/** \file
+ * \ingroup bli
+ * \brief A (mainly) macro array library.
  */
 
 /* -------------------------------------------------------------------- */

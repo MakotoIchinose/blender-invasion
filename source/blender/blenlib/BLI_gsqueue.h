@@ -20,8 +20,8 @@
 #ifndef __BLI_GSQUEUE_H__
 #define __BLI_GSQUEUE_H__
 
-/** \file BLI_gsqueue.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 typedef struct _GSQueue GSQueue;

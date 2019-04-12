@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file BKE_subdiv.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifndef __BKE_SUBDIV_H__
@@ -58,6 +58,7 @@ typedef struct SubdivSettings {
 	bool is_simple;
 	bool is_adaptive;
 	int level;
+	bool use_creases;
 	eSubdivVtxBoundaryInterpolation vtx_boundary_interpolation;
 	eSubdivFVarLinearInterpolation fvar_linear_interpolation;
 } SubdivSettings;
@@ -145,8 +146,7 @@ typedef struct SubdivDisplacement {
 typedef struct Subdiv {
 	/* Settings this subdivision surface is created for.
 	 *
-	 * It is read-only after assignment in BKE_subdiv_new_from_FOO().
-	 */
+	 * It is read-only after assignment in BKE_subdiv_new_from_FOO(). */
 	SubdivSettings settings;
 	/* Topology refiner includes all the glue logic to feed Blender side
 	 * topology to OpenSubdiv. It can be shared by both evaluator and GL mesh
@@ -162,7 +162,7 @@ typedef struct Subdiv {
 	/* Cached values, are not supposed to be accessed directly. */
 	struct {
 		/* Indexed by base face index, element indicates total number of ptex
-		 *faces created for preceding base faces. */
+		 * faces created for preceding base faces. */
 		int *face_ptex_offset;
 	} cache_;
 } Subdiv;
@@ -241,7 +241,7 @@ BLI_INLINE void BKE_subdiv_ptex_face_uv_to_grid_uv(
         const float ptex_u, const float ptex_v,
         float *r_grid_u, float *r_grid_v);
 
-/* Onverse of above. */
+/* Inverse of above. */
 BLI_INLINE void BKE_subdiv_grid_uv_to_ptex_face_uv(
         const float grid_u, const float grid_v,
         float *r_ptex_u, float *r_ptex_v);

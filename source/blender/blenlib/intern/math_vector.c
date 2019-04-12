@@ -20,8 +20,8 @@
  *
  * */
 
-/** \file blender/blenlib/intern/math_vector.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_math.h"
@@ -755,7 +755,7 @@ void bisect_v3_v3v3v3(float out[3], const float v1[3], const float v2[3], const 
  * <pre>
  * v
  * +  ^
- *  \ |
+ * \ |
  *   \|
  *    + normal: axis of reflection
  *   /
@@ -925,22 +925,22 @@ void print_vn(const char *str, const float v[], const int n)
 
 void minmax_v3v3_v3(float min[3], float max[3], const float vec[3])
 {
-	if (min[0] > vec[0]) min[0] = vec[0];
-	if (min[1] > vec[1]) min[1] = vec[1];
-	if (min[2] > vec[2]) min[2] = vec[2];
+	if (min[0] > vec[0]) { min[0] = vec[0]; }
+	if (min[1] > vec[1]) { min[1] = vec[1]; }
+	if (min[2] > vec[2]) { min[2] = vec[2]; }
 
-	if (max[0] < vec[0]) max[0] = vec[0];
-	if (max[1] < vec[1]) max[1] = vec[1];
-	if (max[2] < vec[2]) max[2] = vec[2];
+	if (max[0] < vec[0]) { max[0] = vec[0]; }
+	if (max[1] < vec[1]) { max[1] = vec[1]; }
+	if (max[2] < vec[2]) { max[2] = vec[2]; }
 }
 
 void minmax_v2v2_v2(float min[2], float max[2], const float vec[2])
 {
-	if (min[0] > vec[0]) min[0] = vec[0];
-	if (min[1] > vec[1]) min[1] = vec[1];
+	if (min[0] > vec[0]) { min[0] = vec[0]; }
+	if (min[1] > vec[1]) { min[1] = vec[1]; }
 
-	if (max[0] < vec[0]) max[0] = vec[0];
-	if (max[1] < vec[1]) max[1] = vec[1];
+	if (max[0] < vec[0]) { max[0] = vec[0]; }
+	if (max[1] < vec[1]) { max[1] = vec[1]; }
 }
 
 void minmax_v3v3_v3_array(float r_min[3], float r_max[3], const float (*vec_arr)[3], int nbr)

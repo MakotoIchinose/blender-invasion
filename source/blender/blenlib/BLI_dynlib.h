@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/BLI_dynlib.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifndef __BLI_DYNLIB_H__

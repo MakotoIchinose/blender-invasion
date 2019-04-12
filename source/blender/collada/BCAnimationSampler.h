@@ -108,28 +108,28 @@ typedef std::map<int, BCSampleFrame> BCSampleFrameMap;
 class BCSampleFrameContainer {
 
 	/*
-	* The BCSampleFrameContainer stores a map of BCSampleFrame objects
-	* with the timeline frame as key.
-	*
-	* Some details on the purpose:
-	* An Animation is made of multiple FCurves where each FCurve can
-	* have multiple keyframes. When we want to export the animation we
-	* also can decide whether we want to export the keyframes or a set
-	* of sample frames at equidistant locations (sample period).
-	* In any case we must resample first need to resample it fully
-	* to resolve things like:
-	*
-	* - animations by constraints
-	* - animations by drivers
-	*
-	* For this purpose we need to step through the entire animation and
-	* then sample each frame that contains at least one keyFrame or
-	* sampleFrame. Then for each frame we have to store the transform
-	* information for all exported objects in a BCSampleframe
-	*
-	* The entire set of BCSampleframes is finally collected into
-	* a BCSampleframneContainer
-	*/
+	 * The BCSampleFrameContainer stores a map of BCSampleFrame objects
+	 * with the timeline frame as key.
+	 *
+	 * Some details on the purpose:
+	 * An Animation is made of multiple FCurves where each FCurve can
+	 * have multiple keyframes. When we want to export the animation we
+	 * also can decide whether we want to export the keyframes or a set
+	 * of sample frames at equidistant locations (sample period).
+	 * In any case we must resample first need to resample it fully
+	 * to resolve things like:
+	 *
+	 * - animations by constraints
+	 * - animations by drivers
+	 *
+	 * For this purpose we need to step through the entire animation and
+	 * then sample each frame that contains at least one keyFrame or
+	 * sampleFrame. Then for each frame we have to store the transform
+	 * information for all exported objects in a BCSampleframe
+	 *
+	 * The entire set of BCSampleframes is finally collected into
+	 * a BCSampleframneContainer
+	 */
 
 private:
 	BCSampleFrameMap sample_frames;
@@ -175,11 +175,11 @@ public:
 	void add_object(Object *ob);
 
 	void sample_scene(
-		int sampling_rate,
-		int keyframe_at_end,
-		bool for_opensim,
-		bool keep_keyframes,
-		BC_export_animation_type export_animation_type);
+	        int sampling_rate,
+	        int keyframe_at_end,
+	        bool for_opensim,
+	        bool keep_keyframes,
+	        BC_export_animation_type export_animation_type);
 
 	BCAnimationCurveMap *get_curves(Object *ob);
 	void get_object_frames(BCFrames &frames, Object *ob);

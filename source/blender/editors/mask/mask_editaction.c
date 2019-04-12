@@ -17,8 +17,8 @@
  * This is a new part of Blender
  */
 
-/** \file blender/editors/mask/mask_editaction.c
- *  \ingroup edmask
+/** \file
+ * \ingroup edmask
  */
 
 #include <stdio.h>

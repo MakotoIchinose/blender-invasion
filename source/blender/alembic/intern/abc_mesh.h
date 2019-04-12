@@ -14,6 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup balembic
+ */
+
 #ifndef __ABC_MESH_H__
 #define __ABC_MESH_H__
 
@@ -57,6 +61,7 @@ protected:
 	virtual void do_write();
 	virtual bool isAnimated() const;
 	virtual Mesh *getEvaluatedMesh(Scene *scene_eval, Object *ob_eval, bool &r_needsfree) = 0;
+	virtual void freeEvaluatedMesh(struct Mesh *mesh);
 
 	Mesh *getFinalMesh(bool &r_needsfree);
 

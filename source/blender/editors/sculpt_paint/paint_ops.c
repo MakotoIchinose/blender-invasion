@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/editors/sculpt_paint/paint_ops.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include "MEM_guardedalloc.h"
@@ -348,7 +348,7 @@ static Brush *brush_tool_cycle(Main *bmain, Paint *paint, Brush *brush_orig, con
 {
 	Brush *brush, *first_brush;
 
-	if (!brush_orig && !(brush_orig = bmain->brush.first)) {
+	if (!brush_orig && !(brush_orig = bmain->brushes.first)) {
 		return NULL;
 	}
 
@@ -362,7 +362,7 @@ static Brush *brush_tool_cycle(Main *bmain, Paint *paint, Brush *brush_orig, con
 		/* Try to tool-slot first. */
 		first_brush = BKE_paint_toolslots_brush_get(paint, tool);
 		if (first_brush == NULL) {
-			first_brush = bmain->brush.first;
+			first_brush = bmain->brushes.first;
 		}
 	}
 	else {
@@ -370,7 +370,7 @@ static Brush *brush_tool_cycle(Main *bmain, Paint *paint, Brush *brush_orig, con
 		 * currently active brush do a cycling via all possible
 		 * brushes with requested tool.
 		 */
-		first_brush = brush_orig->id.next ? brush_orig->id.next : bmain->brush.first;
+		first_brush = brush_orig->id.next ? brush_orig->id.next : bmain->brushes.first;
 	}
 
 	/* get the next brush with the active tool */
@@ -382,7 +382,7 @@ static Brush *brush_tool_cycle(Main *bmain, Paint *paint, Brush *brush_orig, con
 			return brush;
 		}
 
-		brush = brush->id.next ? brush->id.next : bmain->brush.first;
+		brush = brush->id.next ? brush->id.next : bmain->brushes.first;
 	} while (brush != first_brush);
 
 	return NULL;
@@ -815,8 +815,11 @@ static void BRUSH_OT_stencil_control(wmOperatorType *ot)
 	/* flags */
 	ot->flag = 0;
 
-	RNA_def_enum(ot->srna, "mode", stencil_control_items, STENCIL_TRANSLATE, "Tool", "");
-	RNA_def_enum(ot->srna, "texmode", stencil_texture_items, STENCIL_PRIMARY, "Tool", "");
+	PropertyRNA *prop;
+	prop = RNA_def_enum(ot->srna, "mode", stencil_control_items, STENCIL_TRANSLATE, "Tool", "");
+	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+	prop = RNA_def_enum(ot->srna, "texmode", stencil_texture_items, STENCIL_PRIMARY, "Tool", "");
+	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 

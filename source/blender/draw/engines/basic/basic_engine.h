@@ -16,8 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file basic_engine.h
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 
 #ifndef __BASIC_ENGINE_H__

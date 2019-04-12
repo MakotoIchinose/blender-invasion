@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/intern/bmesh_polygon.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * This file contains code for dealing
  * with polygons (normal/area calculation,
@@ -635,8 +635,9 @@ void BM_face_calc_center_median_weighted(const BMFace *f, float r_cent[3])
 		w_prev = w_curr;
 	} while ((l_iter = l_iter->next) != l_first);
 
-	if (totw != 0.0f)
+	if (totw != 0.0f) {
 		mul_v3_fl(r_cent, 1.0f / (float) totw);
+	}
 }
 
 /**

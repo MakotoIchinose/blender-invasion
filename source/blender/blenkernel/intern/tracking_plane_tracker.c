@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/tracking_plane_tracker.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * This file contains implementation of plane tracker.
  */

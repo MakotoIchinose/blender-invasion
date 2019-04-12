@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/mesh/editmesh_extrude.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "DNA_modifier_types.h"
@@ -307,9 +307,9 @@ static int edbm_extrude_repeat_exec(bContext *C, wmOperator *op)
 			edbm_extrude_ex(obedit, em, BM_ALL_NOLOOP, BM_ELEM_SELECT, false, false, false);
 
 			BMO_op_callf(
-				em->bm, BMO_FLAG_DEFAULTS,
-				"translate vec=%v verts=%hv",
-				dvec, BM_ELEM_SELECT);
+			        em->bm, BMO_FLAG_DEFAULTS,
+			        "translate vec=%v verts=%hv",
+			        dvec, BM_ELEM_SELECT);
 		}
 
 		EDBM_mesh_normals_update(em);

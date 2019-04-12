@@ -16,8 +16,8 @@
  * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_shaders.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 
 #include "DRW_render.h"

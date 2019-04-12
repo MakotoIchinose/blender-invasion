@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/intern/BLI_timer.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_timer.h"
@@ -112,8 +112,12 @@ static void execute_functions_if_necessary(void)
 	double current_time = GET_TIME();
 
 	LISTBASE_FOREACH(TimedFunction *, timed_func, &GlobalTimer.funcs) {
-		if (timed_func->tag_removal) continue;
-		if (timed_func->next_time > current_time) continue;
+		if (timed_func->tag_removal) {
+			continue;
+		}
+		if (timed_func->next_time > current_time) {
+			continue;
+		}
 
 		double ret = timed_func->func(timed_func->uuid, timed_func->user_data);
 
@@ -164,7 +168,7 @@ static void remove_non_persistent_functions(struct Main *UNUSED(_1), struct ID *
 	}
 }
 
-static bCallbackFuncStore load_post_callback = {
+static bCallbackFuncStore load_pre_callback = {
 	NULL, NULL, /* next, prev */
 	remove_non_persistent_functions, /* func */
 	NULL, /* arg */
@@ -174,7 +178,7 @@ static bCallbackFuncStore load_post_callback = {
 static void ensure_callback_is_registered()
 {
 	if (!GlobalTimer.file_load_cb_registered) {
-		BLI_callback_add(&load_post_callback, BLI_CB_EVT_LOAD_POST);
+		BLI_callback_add(&load_pre_callback, BLI_CB_EVT_LOAD_PRE);
 		GlobalTimer.file_load_cb_registered = true;
 	}
 }

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file source/blender/gpu/GPU_debug.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #ifndef __GPU_DEBUG_H__

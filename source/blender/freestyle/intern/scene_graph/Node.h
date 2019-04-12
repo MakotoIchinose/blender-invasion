@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_NODE_H__
 #define __FREESTYLE_NODE_H__
 
-/** \file blender/freestyle/intern/scene_graph/Node.h
- *  \ingroup freestyle
- *  \brief Abstract class for scene graph nodes. Inherits from BaseObject which defines the addRef release mechanism.
+/** \file
+ * \ingroup freestyle
+ * \brief Abstract class for scene graph nodes. Inherits from BaseObject which defines the addRef release mechanism.
  */
 
 #include "SceneVisitor.h"

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file UI_interface_icons.h
- *  \ingroup editorui
+/** \file
+ * \ingroup editorui
  */
 
 #ifndef __UI_INTERFACE_ICONS_H__

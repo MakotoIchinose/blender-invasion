@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/IMB_anim.h
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 

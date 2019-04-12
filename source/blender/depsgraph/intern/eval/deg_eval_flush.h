@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/eval/deg_eval_flush.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Core routines for how the Depsgraph works.
  */

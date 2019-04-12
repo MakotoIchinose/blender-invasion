@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/intern/wm_subwindow.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * OpenGL utilities for setting up 2D viewport for window and regions.
  */

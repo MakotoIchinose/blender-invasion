@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenfont/intern/blf_font.c
- *  \ingroup blf
+/** \file
+ * \ingroup blf
  *
  * Deals with drawing text to OpenGL or bitmap buffers.
  *
@@ -79,7 +79,7 @@ static SpinLock ft_lib_mutex;
  * Since most of the Text elems are not covered by other UI elements, we can
  * group some strings together and render them in one drawcall. This behavior
  * is on demand only, between BLF_batch_start() and BLF_batch_end().
- **/
+ */
 static void blf_batch_draw_init(void)
 {
 	GPUVertFormat format = {0};

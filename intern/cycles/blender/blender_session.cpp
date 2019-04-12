@@ -393,6 +393,51 @@ static void add_cryptomatte_layer(BL::RenderResult& b_rr, string name, string ma
 	render_add_metadata(b_rr, prefix+"manifest", manifest);
 }
 
+void BlenderSession::stamp_view_layer_metadata(Scene *scene, const string& view_layer_name)
+{
+	BL::RenderResult b_rr = b_engine.get_result();
+	string prefix = "cycles." + view_layer_name + ".";
+
+	/* Configured number of samples for the view layer. */
+	b_rr.stamp_data_add_field(
+		(prefix + "samples").c_str(),
+		to_string(session->params.samples).c_str());
+
+	/* Store ranged samples information. */
+	if(session->tile_manager.range_num_samples != -1) {
+		b_rr.stamp_data_add_field(
+		        (prefix + "range_start_sample").c_str(),
+		        to_string(session->tile_manager.range_start_sample).c_str());
+		b_rr.stamp_data_add_field(
+		        (prefix + "range_num_samples").c_str(),
+		        to_string(session->tile_manager.range_num_samples).c_str());
+	}
+
+	/* Write cryptomatte metadata. */
+	if(scene->film->cryptomatte_passes & CRYPT_OBJECT) {
+		add_cryptomatte_layer(b_rr, view_layer_name + ".CryptoObject",
+		                      scene->object_manager->get_cryptomatte_objects(scene));
+	}
+	if(scene->film->cryptomatte_passes & CRYPT_MATERIAL) {
+		add_cryptomatte_layer(b_rr, view_layer_name + ".CryptoMaterial",
+		                      scene->shader_manager->get_cryptomatte_materials(scene));
+	}
+	if(scene->film->cryptomatte_passes & CRYPT_ASSET) {
+		add_cryptomatte_layer(b_rr, view_layer_name + ".CryptoAsset",
+		                      scene->object_manager->get_cryptomatte_assets(scene));
+	}
+
+	/* Store synchronization and bare-render times. */
+	double total_time, render_time;
+	session->progress.get_time(total_time, render_time);
+	b_rr.stamp_data_add_field((prefix + "total_time").c_str(),
+	                          time_human_readable_from_seconds(total_time).c_str());
+	b_rr.stamp_data_add_field((prefix + "render_time").c_str(),
+	                          time_human_readable_from_seconds(render_time).c_str());
+	b_rr.stamp_data_add_field((prefix + "synchronization_time").c_str(),
+	                          time_human_readable_from_seconds(total_time - render_time).c_str());
+}
+
 void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 {
 	b_depsgraph = b_depsgraph_;
@@ -408,9 +453,6 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 	/* render each layer */
 	BL::ViewLayer b_view_layer = b_depsgraph.view_layer_eval();
 
-	/* We do some special meta attributes when we only have single layer. */
-	const bool is_single_layer = (b_scene.view_layers.length() == 1);
-
 	/* temporary render result to find needed passes and views */
 	BL::RenderResult b_rr = begin_render_result(b_engine, 0, 0, 1, 1, b_view_layer.name().c_str(), NULL);
 	BL::RenderResult::layers_iterator b_single_rlay;
@@ -419,30 +461,31 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 	b_rlay_name = b_view_layer.name();
 
 	/* add passes */
-	vector<Pass> passes = sync->sync_render_passes(b_rlay, b_view_layer, session_params);
+	vector<Pass> passes = sync->sync_render_passes(b_rlay, b_view_layer);
 	buffer_params.passes = passes;
 
 	PointerRNA crl = RNA_pointer_get(&b_view_layer.ptr, "cycles");
-	bool use_denoising = get_boolean(crl, "use_denoising");
-	bool denoising_passes = use_denoising || get_boolean(crl, "denoising_store_passes");
+	bool full_denoising = get_boolean(crl, "use_denoising");
+	bool write_denoising_passes = get_boolean(crl, "denoising_store_passes");
 
-	session->tile_manager.schedule_denoising = use_denoising;
-	buffer_params.denoising_data_pass = denoising_passes;
+	bool run_denoising = full_denoising || write_denoising_passes;
+
+	session->tile_manager.schedule_denoising = run_denoising;
+	buffer_params.denoising_data_pass = run_denoising;
 	buffer_params.denoising_clean_pass = (scene->film->denoising_flags & DENOISING_CLEAN_ALL_PASSES);
+	buffer_params.denoising_prefiltered_pass = write_denoising_passes;
 
-	session->params.use_denoising = use_denoising;
-	session->params.denoising_passes = denoising_passes;
-	session->params.denoising_radius = get_int(crl, "denoising_radius");
-	session->params.denoising_strength = get_float(crl, "denoising_strength");
-	session->params.denoising_feature_strength = get_float(crl, "denoising_feature_strength");
-	session->params.denoising_relative_pca = get_boolean(crl, "denoising_relative_pca");
+	session->params.run_denoising = run_denoising;
+	session->params.full_denoising = full_denoising;
+	session->params.write_denoising_passes = write_denoising_passes;
+	session->params.denoising.radius = get_int(crl, "denoising_radius");
+	session->params.denoising.strength = get_float(crl, "denoising_strength");
+	session->params.denoising.feature_strength = get_float(crl, "denoising_feature_strength");
+	session->params.denoising.relative_pca = get_boolean(crl, "denoising_relative_pca");
 
 	scene->film->denoising_data_pass = buffer_params.denoising_data_pass;
 	scene->film->denoising_clean_pass = buffer_params.denoising_clean_pass;
-	session->params.denoising_radius = get_int(crl, "denoising_radius");
-	session->params.denoising_strength = get_float(crl, "denoising_strength");
-	session->params.denoising_feature_strength = get_float(crl, "denoising_feature_strength");
-	session->params.denoising_relative_pca = get_boolean(crl, "denoising_relative_pca");
+	scene->film->denoising_prefiltered_pass = buffer_params.denoising_prefiltered_pass;
 
 	scene->film->pass_alpha_threshold = b_view_layer.pass_alpha_threshold();
 	scene->film->tag_passes_update(scene, passes);
@@ -520,28 +563,8 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 			break;
 	}
 
-	if(is_single_layer) {
-		BL::RenderResult b_rr = b_engine.get_result();
-		string num_aa_samples = string_printf("%d", session->params.samples);
-		b_rr.stamp_data_add_field("Cycles Samples", num_aa_samples.c_str());
-		/* TODO(sergey): Report whether we're doing resumable render
-		 * and also start/end sample if so.
-		 */
-	}
-
-	/* Write cryptomatte metadata. */
-	if(scene->film->cryptomatte_passes & CRYPT_OBJECT) {
-		add_cryptomatte_layer(b_rr, b_rlay_name+".CryptoObject",
-							  scene->object_manager->get_cryptomatte_objects(scene));
-	}
-	if(scene->film->cryptomatte_passes & CRYPT_MATERIAL) {
-		add_cryptomatte_layer(b_rr, b_rlay_name+".CryptoMaterial",
-							  scene->shader_manager->get_cryptomatte_materials(scene));
-	}
-	if(scene->film->cryptomatte_passes & CRYPT_ASSET) {
-		add_cryptomatte_layer(b_rr, b_rlay_name+".CryptoAsset",
-							  scene->object_manager->get_cryptomatte_assets(scene));
-	}
+	/* add metadata */
+	stamp_view_layer_metadata(scene, b_rlay_name);
 
 	/* free result without merging */
 	end_render_result(b_engine, b_rr, true, true, false);
@@ -955,6 +978,11 @@ void BlenderSession::get_status(string& status, string& substatus)
 	session->progress.get_status(status, substatus);
 }
 
+void BlenderSession::get_kernel_status(string& kernel_status)
+{
+	session->progress.get_kernel_status(kernel_status);
+}
+
 void BlenderSession::get_progress(float& progress, double& total_time, double& render_time)
 {
 	session->progress.get_time(total_time, render_time);
@@ -973,15 +1001,15 @@ void BlenderSession::update_bake_progress()
 
 void BlenderSession::update_status_progress()
 {
-	string timestatus, status, substatus;
+	string timestatus, status, substatus, kernel_status;
 	string scene_status = "";
 	float progress;
 	double total_time, remaining_time = 0, render_time;
-	char time_str[128];
 	float mem_used = (float)session->stats.mem_used / 1024.0f / 1024.0f;
 	float mem_peak = (float)session->stats.mem_peak / 1024.0f / 1024.0f;
 
 	get_status(status, substatus);
+	get_kernel_status(kernel_status);
 	get_progress(progress, total_time, render_time);
 
 	if(progress > 0)
@@ -996,8 +1024,7 @@ void BlenderSession::update_status_progress()
 			scene_status += ", " + b_rview_name;
 
 		if(remaining_time > 0) {
-			BLI_timecode_string_from_time_simple(time_str, sizeof(time_str), remaining_time);
-			timestatus += "Remaining:" + string(time_str) + " | ";
+			timestatus += "Remaining:" + time_human_readable_from_seconds(remaining_time) + " | ";
 		}
 
 		timestatus += string_printf("Mem:%.2fM, Peak:%.2fM", (double)mem_used, (double)mem_peak);
@@ -1006,6 +1033,8 @@ void BlenderSession::update_status_progress()
 			status = " | " + status;
 		if(substatus.size() > 0)
 			status += " | " + substatus;
+		if(kernel_status.size() > 0)
+			status += " | " + kernel_status;
 	}
 
 	double current_time = time_dt();

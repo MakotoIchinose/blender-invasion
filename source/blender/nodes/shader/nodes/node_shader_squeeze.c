@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/shader/nodes/node_shader_squeeze.c
- *  \ingroup shdnodes
+/** \file
+ * \ingroup shdnodes
  */
 
 

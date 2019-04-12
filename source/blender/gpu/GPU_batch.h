@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/GPU_batch.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU geometry batch
  * Contains VAOs + VBOs + Shader representing a drawable entity.
@@ -39,7 +39,7 @@ typedef enum {
 	GPU_BATCH_READY_TO_DRAW
 } GPUBatchPhase;
 
-#define GPU_BATCH_VBO_MAX_LEN 3
+#define GPU_BATCH_VBO_MAX_LEN 4
 #define GPU_BATCH_VAO_STATIC_LEN 3
 #define GPU_BATCH_VAO_DYN_ALLOC_COUNT 16
 
@@ -106,7 +106,7 @@ void GPU_batch_copy(GPUBatch *batch_dst, GPUBatch *batch_src);
 #define GPU_batch_init(batch, prim, verts, elem) \
 	GPU_batch_init_ex(batch, prim, verts, elem, 0)
 
-void GPU_batch_clear(GPUBatch *); /* Same as discard but does not free. */
+void GPU_batch_clear(GPUBatch *); /* Same as discard but does not free. (does not clal free callback) */
 void GPU_batch_discard(GPUBatch *); /* verts & elem are not discarded */
 
 void GPU_batch_vao_cache_clear(GPUBatch *);
@@ -122,7 +122,11 @@ int GPU_batch_vertbuf_add_ex(GPUBatch *, GPUVertBuf *, bool own_vbo);
 
 void GPU_batch_program_set_no_use(GPUBatch *, uint32_t program, const GPUShaderInterface *);
 void GPU_batch_program_set(GPUBatch *, uint32_t program, const GPUShaderInterface *);
-void GPU_batch_program_set_builtin(GPUBatch *batch, eGPUBuiltinShader shader_id);
+void GPU_batch_program_set_shader(GPUBatch *, GPUShader *shader);
+void GPU_batch_program_set_builtin(
+        GPUBatch *batch, eGPUBuiltinShader shader_id);
+void GPU_batch_program_set_builtin_with_config(
+        GPUBatch *batch, eGPUBuiltinShader shader_id, eGPUShaderConfig sh_cfg);
 /* Entire batch draws with one shader program, but can be redrawn later with another program. */
 /* Vertex shader's inputs must be compatible with the batch's vertex format. */
 

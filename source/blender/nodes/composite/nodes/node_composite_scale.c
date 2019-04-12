@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/composite/nodes/node_composite_scale.c
- *  \ingroup cmpnodes
+/** \file
+ * \ingroup cmpnodes
  */
 
 
@@ -44,7 +44,7 @@ static void node_composite_update_scale(bNodeTree *UNUSED(ntree), bNode *node)
 
 	/* Only show X/Y scale factor inputs for modes using them! */
 	for (sock = node->inputs.first; sock; sock = sock->next) {
-		if (STREQ(sock->name, "X") || STREQ(sock->name, "Y")) {
+		if (STR_ELEM(sock->name, "X", "Y")) {
 			if (use_xy_scale) {
 				sock->flag &= ~SOCK_UNAVAIL;
 			}

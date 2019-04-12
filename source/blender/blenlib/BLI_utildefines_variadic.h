@@ -17,8 +17,8 @@
 #ifndef __BLI_UTILDEFINES_VARIADIC_H__
 #define __BLI_UTILDEFINES_VARIADIC_H__
 
-/** \file BLI_utildefines_variadic.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 /* Over wrapped args. */

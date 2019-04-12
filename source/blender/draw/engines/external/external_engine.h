@@ -16,8 +16,8 @@
  * Copyright 2017, Blender Foundation.
  */
 
-/** \file external_engine.h
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 
 #ifndef __EXTERNAL_ENGINE_H__

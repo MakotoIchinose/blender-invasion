@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/editors/space_console/console_draw.c
- *  \ingroup spconsole
+/** \file
+ * \ingroup spconsole
  */
 
 #include <math.h>
@@ -132,8 +132,9 @@ static void console_cursor_wrap_offset(const char *str, int width, int *row, int
 			*column = 0;
 		}
 
-		if (end && str >= end)
+		if (end && str >= end) {
 			break;
+		}
 
 		*column += col;
 	}

@@ -19,8 +19,8 @@
 #ifndef __BKE_KEY_H__
 #define __BKE_KEY_H__
 
-/** \file BKE_key.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 struct Curve;
 struct ID;
@@ -60,8 +60,8 @@ bool BKE_key_idtype_support(const short id_type);
 
 struct Key     **BKE_key_from_id_p(struct ID *id);
 struct Key      *BKE_key_from_id(struct ID *id);
-struct Key     **BKE_key_from_object_p(struct Object *ob);
-struct Key      *BKE_key_from_object(struct Object *ob);
+struct Key     **BKE_key_from_object_p(const struct Object *ob);
+struct Key      *BKE_key_from_object(const struct Object *ob);
 struct KeyBlock *BKE_keyblock_from_object(struct Object *ob);
 struct KeyBlock *BKE_keyblock_from_object_reference(struct Object *ob);
 

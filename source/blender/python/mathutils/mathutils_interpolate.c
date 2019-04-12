@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/python/mathutils/mathutils_interpolate.c
- *  \ingroup pymathutils
+/** \file
+ * \ingroup pymathutils
  */
 
 
@@ -66,15 +66,19 @@ static PyObject *M_Interpolate_poly_3d_calc(PyObject *UNUSED(self), PyObject *ar
 		return NULL;
 	}
 
-	if (BaseMath_ReadCallback((VectorObject *)point) == -1)
+	if (BaseMath_ReadCallback((VectorObject *)point) == -1) {
 		return NULL;
+	}
 
 	fp[0] = ((VectorObject *)point)->vec[0];
 	fp[1] = ((VectorObject *)point)->vec[1];
-	if (((VectorObject *)point)->size > 2)
+	if (((VectorObject *)point)->size > 2) {
 		fp[2] = ((VectorObject *)point)->vec[2];
-	else
-		fp[2] = 0.0f;  /* if its a 2d vector then set the z to be zero */
+	}
+	else {
+		/* if its a 2d vector then set the z to be zero */
+		fp[2] = 0.0f;
+	}
 
 	len = mathutils_array_parse_alloc_v(((float **)&vecs), 3, veclist, __func__);
 	if (len == -1) {

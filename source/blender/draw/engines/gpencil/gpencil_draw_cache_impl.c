@@ -17,8 +17,8 @@
  * This is a new part of Blender
  */
 
-/** \file draw/engines/gpencil/gpencil_draw_cache_impl.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "BLI_polyfill_2d.h"
@@ -155,41 +155,41 @@ void DRW_gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be, bGPDstroke *g
 		if (i == 0) {
 			if (gps->flag & GP_STROKE_CYCLIC && totpoints > 2) {
 				gpencil_set_stroke_point(
-					be->vbo, &points[totpoints - 1], be->vbo_len,
-					be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
+				        be->vbo, &points[totpoints - 1], be->vbo_len,
+				        be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
 				be->vbo_len++;
 			}
 			else {
 				gpencil_set_stroke_point(
-					be->vbo, &points[1], be->vbo_len,
-					be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
+				        be->vbo, &points[1], be->vbo_len,
+				        be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
 				be->vbo_len++;
 			}
 		}
 		/* set point */
 		gpencil_set_stroke_point(
-			be->vbo, pt, be->vbo_len,
-			be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
+		        be->vbo, pt, be->vbo_len,
+		        be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
 		be->vbo_len++;
 	}
 
 	if (gps->flag & GP_STROKE_CYCLIC && totpoints > 2) {
 		/* draw line to first point to complete the cycle */
 		gpencil_set_stroke_point(
-			be->vbo, &points[0], be->vbo_len,
-			be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
+		        be->vbo, &points[0], be->vbo_len,
+		        be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
 		be->vbo_len++;
 		/* now add adjacency point (not drawn) */
 		gpencil_set_stroke_point(
-			be->vbo, &points[1], be->vbo_len,
-			be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
+		        be->vbo, &points[1], be->vbo_len,
+		        be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
 		be->vbo_len++;
 	}
 	/* last adjacency point (not drawn) */
 	else {
 		gpencil_set_stroke_point(
-			be->vbo, &points[totpoints - 2], be->vbo_len,
-			be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
+		        be->vbo, &points[totpoints - 2], be->vbo_len,
+		        be->pos_id, be->color_id, be->thickness_id, be->uvdata_id, thickness, ink);
 		be->vbo_len++;
 	}
 }
@@ -202,7 +202,6 @@ void DRW_gpencil_get_fill_geom(struct GpencilBatchCacheElem *be, Object *ob, bGP
 	/* Calculate triangles cache for filling area (must be done only after changes) */
 	if ((gps->flag & GP_STROKE_RECALC_GEOMETRY) || (gps->tot_triangles == 0) || (gps->triangles == NULL)) {
 		DRW_gpencil_triangulate_stroke_fill(ob, gps);
-		ED_gpencil_calc_stroke_uv(ob, gps);
 	}
 
 	BLI_assert(gps->tot_triangles >= 1);
@@ -224,8 +223,8 @@ void DRW_gpencil_get_fill_geom(struct GpencilBatchCacheElem *be, Object *ob, bGP
 	for (int i = 0; i < gps->tot_triangles; i++, stroke_triangle++) {
 		for (int j = 0; j < 3; j++) {
 			gpencil_set_fill_point(
-				be->vbo, be->vbo_len, &gps->points[stroke_triangle->verts[j]], color, stroke_triangle->uv[j],
-				be->pos_id, be->color_id, be->uvdata_id);
+			        be->vbo, be->vbo_len, &gps->points[stroke_triangle->verts[j]], color, stroke_triangle->uv[j],
+			        be->pos_id, be->color_id, be->uvdata_id);
 			be->vbo_len++;
 		}
 	}
@@ -271,22 +270,22 @@ GPUBatch *DRW_gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
 
 	for (int i = 0; i < totpoints; i++, tpt++) {
 		ED_gpencil_tpoint_to_point(ar, origin, tpt, &pt);
-		ED_gp_project_point_to_plane(ob, rv3d, origin, ts->gp_sculpt.lock_axis - 1, &pt);
+		ED_gp_project_point_to_plane(scene, ob, rv3d, origin, ts->gp_sculpt.lock_axis - 1, &pt);
 
 		/* first point for adjacency (not drawn) */
 		if (i == 0) {
 			if (gpd->runtime.sbuffer_sflag & GP_STROKE_CYCLIC && totpoints > 2) {
 				ED_gpencil_tpoint_to_point(ar, origin, &points[totpoints - 1], &pt2);
 				gpencil_set_stroke_point(
-					vbo, &pt2, idx,
-					pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+				        vbo, &pt2, idx,
+				        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
 				idx++;
 			}
 			else {
 				ED_gpencil_tpoint_to_point(ar, origin, &points[1], &pt2);
 				gpencil_set_stroke_point(
-					vbo, &pt2, idx,
-					pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+				        vbo, &pt2, idx,
+				        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
 				idx++;
 			}
 		}
@@ -303,22 +302,22 @@ GPUBatch *DRW_gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
 		/* draw line to first point to complete the cycle */
 		ED_gpencil_tpoint_to_point(ar, origin, &points[0], &pt2);
 		gpencil_set_stroke_point(
-			vbo, &pt2, idx,
-			pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+		        vbo, &pt2, idx,
+		        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
 		idx++;
 		/* now add adjacency point (not drawn) */
 		ED_gpencil_tpoint_to_point(ar, origin, &points[1], &pt3);
 		gpencil_set_stroke_point(
-			vbo, &pt3, idx,
-			pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+		        vbo, &pt3, idx,
+		        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
 		idx++;
 	}
 	/* last adjacency point (not drawn) */
 	else {
 		ED_gpencil_tpoint_to_point(ar, origin, &points[totpoints - 2], &pt2);
 		gpencil_set_stroke_point(
-			vbo, &pt2, idx,
-			pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+		        vbo, &pt2, idx,
+		        pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
 		idx++;
 	}
 
@@ -362,7 +361,7 @@ GPUBatch *DRW_gpencil_get_buffer_point_geom(bGPdata *gpd, short thickness)
 
 	for (int i = 0; i < totpoints; i++, tpt++) {
 		ED_gpencil_tpoint_to_point(ar, origin, tpt, &pt);
-		ED_gp_project_point_to_plane(ob, rv3d, origin, ts->gp_sculpt.lock_axis - 1, &pt);
+		ED_gp_project_point_to_plane(scene, ob, rv3d, origin, ts->gp_sculpt.lock_axis - 1, &pt);
 
 		/* set point */
 		gpencil_set_stroke_point(

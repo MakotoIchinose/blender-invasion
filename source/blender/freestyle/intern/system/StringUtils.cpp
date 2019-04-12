@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/system/StringUtils.cpp
- *  \ingroup freestyle
- *  \brief String utilities
+/** \file
+ * \ingroup freestyle
+ * \brief String utilities
  */
 
 //soc #include <qfileinfo.h>

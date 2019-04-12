@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file GPU_state.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #ifndef __GPU_STATE_H__
@@ -45,7 +45,6 @@ void GPU_depth_range(float near, float far);
 void GPU_depth_test(bool enable);
 bool GPU_depth_test_enabled(void);
 void GPU_line_smooth(bool enable);
-void GPU_line_stipple(bool enable);
 void GPU_line_width(float width);
 void GPU_point_size(float size);
 void GPU_polygon_smooth(bool enable);

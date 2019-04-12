@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_NODE_VIEW_LAYER_H__
 #define __FREESTYLE_NODE_VIEW_LAYER_H__
 
-/** \file blender/freestyle/intern/scene_graph/NodeViewLayer.h
- *  \ingroup freestyle
- *  \brief Class to represent a view layer in Blender.
+/** \file
+ * \ingroup freestyle
+ * \brief Class to represent a view layer in Blender.
  */
 
 #include "Node.h"

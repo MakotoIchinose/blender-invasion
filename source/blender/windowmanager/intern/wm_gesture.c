@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/intern/wm_gesture.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Gestures (cursor motions) creating, evaluating and drawing, shared between operators.
  */
@@ -116,6 +116,13 @@ void WM_gestures_remove(bContext *C)
 		WM_gesture_end(C, win->gesture.first);
 }
 
+bool WM_gesture_is_modal_first(const wmGesture *gesture)
+{
+	if (gesture == NULL) {
+		return true;
+	}
+	return (gesture->is_active_prev == false);
+}
 
 /* tweak and line gestures */
 int wm_gesture_evaluate(wmGesture *gesture)
@@ -190,7 +197,7 @@ static void wm_gesture_draw_rect(wmGesture *gt)
 
 	uint shdr_pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
 
-	glEnable(GL_BLEND);
+	GPU_blend(true);
 
 	immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 	immUniformColor4f(1.0f, 1.0f, 1.0f, 0.05f);
@@ -199,7 +206,7 @@ static void wm_gesture_draw_rect(wmGesture *gt)
 
 	immUnbindProgram();
 
-	glDisable(GL_BLEND);
+	GPU_blend(false);
 
 	shdr_pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
@@ -224,7 +231,7 @@ static void wm_gesture_draw_circle(wmGesture *gt)
 {
 	rcti *rect = (rcti *)gt->customdata;
 
-	glEnable(GL_BLEND);
+	GPU_blend(true);
 
 	const uint shdr_pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
@@ -235,7 +242,7 @@ static void wm_gesture_draw_circle(wmGesture *gt)
 
 	immUnbindProgram();
 
-	glDisable(GL_BLEND);
+	GPU_blend(false);
 
 	immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
 
@@ -297,7 +304,7 @@ static void draw_filled_lasso(wmGesture *gt)
 		       draw_filled_lasso_px_cb, &lasso_fill_data);
 
 		/* Additive Blending */
-		glEnable(GL_BLEND);
+		GPU_blend(true);
 		glBlendFunc(GL_ONE, GL_ONE);
 
 		GLint unpack_alignment;
@@ -317,7 +324,7 @@ static void draw_filled_lasso(wmGesture *gt)
 
 		MEM_freeN(pixel_buf);
 
-		glDisable(GL_BLEND);
+		GPU_blend(false);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 

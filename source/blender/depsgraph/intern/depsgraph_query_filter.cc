@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/depsgraph_query_filter.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Implementation of Graph Filtering API
  */

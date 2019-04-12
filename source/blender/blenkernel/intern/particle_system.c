@@ -20,8 +20,8 @@
  * Copyright 2011-2012 AutoCRC
  */
 
-/** \file blender/blenkernel/intern/particle_system.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -56,6 +56,7 @@
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_linklist.h"
+#include "BLI_string_utils.h"
 
 #include "BKE_animsys.h"
 #include "BKE_boids.h"
@@ -184,6 +185,12 @@ void psys_reset(ParticleSystem *psys, int mode)
 	}
 
 	psys->tot_fluidsprings = psys->alloc_fluidsprings = 0;
+}
+
+void psys_unique_name(Object *object, ParticleSystem *psys, const char *defname)
+{
+	BLI_uniquename(&object->particlesystem, psys, defname, '.',
+	    offsetof(ParticleSystem, name), sizeof(psys->name));
 }
 
 static void realloc_particles(ParticleSimulationData *sim, int new_totpart)
@@ -505,7 +512,7 @@ void psys_thread_context_free(ParticleThreadContext *ctx)
 	if (ctx->index) MEM_freeN(ctx->index);
 	if (ctx->seams) MEM_freeN(ctx->seams);
 	//if (ctx->vertpart) MEM_freeN(ctx->vertpart);
-	BLI_kdtree_free(ctx->tree);
+	BLI_kdtree_3d_free(ctx->tree);
 
 	if (ctx->clumpcurve != NULL) {
 		curvemapping_free(ctx->clumpcurve);
@@ -1273,18 +1280,18 @@ void psys_update_particle_tree(ParticleSystem *psys, float cfra)
 				totpart++;
 			}
 
-			BLI_kdtree_free(psys->tree);
-			psys->tree = BLI_kdtree_new(psys->totpart);
+			BLI_kdtree_3d_free(psys->tree);
+			psys->tree = BLI_kdtree_3d_new(psys->totpart);
 
 			LOOP_SHOWN_PARTICLES {
 				if (pa->alive == PARS_ALIVE) {
 					if (pa->state.time == cfra)
-						BLI_kdtree_insert(psys->tree, p, pa->prev_state.co);
+						BLI_kdtree_3d_insert(psys->tree, p, pa->prev_state.co);
 					else
-						BLI_kdtree_insert(psys->tree, p, pa->state.co);
+						BLI_kdtree_3d_insert(psys->tree, p, pa->state.co);
 				}
 			}
-			BLI_kdtree_balance(psys->tree);
+			BLI_kdtree_3d_balance(psys->tree);
 
 			psys->tree_frame = cfra;
 		}
@@ -1550,7 +1557,7 @@ typedef struct SPHRangeData {
 	SPHNeighbor neighbors[SPH_NEIGHBORS];
 	int tot_neighbors;
 
-	float* data;
+	float *data;
 
 	ParticleSystem *npsys;
 	ParticleData *pa;
@@ -1616,8 +1623,8 @@ static void sph_density_accum_cb(void *userdata, int index, const float co[3], f
 	if (pfr->use_size)
 		q *= npa->size;
 
-	pfr->data[0] += q*q;
-	pfr->data[1] += q*q*q;
+	pfr->data[0] += q * q;
+	pfr->data[1] += q * q * q;
 }
 
 /*
@@ -3195,13 +3202,7 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
 	clmd_effweights = psys->clmd->sim_parms->effector_weights;
 	psys->clmd->sim_parms->effector_weights = psys->part->effector_weights;
 
-	BKE_id_copy_ex(
-	            NULL, &psys->hair_in_mesh->id, (ID **)&psys->hair_out_mesh,
-	            LIB_ID_CREATE_NO_MAIN |
-	            LIB_ID_CREATE_NO_USER_REFCOUNT |
-	            LIB_ID_CREATE_NO_DEG_TAG |
-	            LIB_ID_COPY_NO_PREVIEW,
-	            false);
+	BKE_id_copy_ex(NULL, &psys->hair_in_mesh->id, (ID **)&psys->hair_out_mesh, LIB_ID_COPY_LOCALIZE);
 	deformedVerts = BKE_mesh_vertexCos_get(psys->hair_out_mesh, NULL);
 	clothModifier_do(psys->clmd, sim->depsgraph, sim->scene, sim->ob, psys->hair_in_mesh, deformedVerts);
 	BKE_mesh_apply_vert_coords(psys->hair_out_mesh, deformedVerts);
@@ -4189,6 +4190,23 @@ static int hair_needs_recalc(ParticleSystem *psys)
 	return 0;
 }
 
+static ParticleSettings *particle_settings_localize(ParticleSettings *particle_settings)
+{
+	ParticleSettings *particle_settings_local;
+	BKE_id_copy_ex(NULL,
+	               (ID *)&particle_settings->id,
+	               (ID **)&particle_settings_local,
+	               LIB_ID_COPY_LOCALIZE);
+	return particle_settings_local;
+}
+
+static void particle_settings_free_local(ParticleSettings *particle_settings)
+{
+	BKE_libblock_free_datablock(&particle_settings->id, 0);
+	BKE_libblock_free_data(&particle_settings->id, false);
+	MEM_freeN(particle_settings);
+}
+
 /* main particle update call, checks that things are ok on the large scale and
  * then advances in to actual particle calculations depending on particle type */
 void particle_system_update(struct Depsgraph *depsgraph, Scene *scene, Object *ob, ParticleSystem *psys, const bool use_render_params)
@@ -4262,14 +4280,25 @@ void particle_system_update(struct Depsgraph *depsgraph, Scene *scene, Object *o
 				/* first step is negative so particles get killed and reset */
 				psys->cfra= 1.0f;
 
+				ParticleSettings *part_local = part;
+				if ((part->flag & PART_HAIR_REGROW) == 0) {
+					part_local = particle_settings_localize(part);
+					psys->part = part_local;
+				}
+
 				for (i=0; i<=part->hair_step; i++) {
 					hcfra=100.0f*(float)i/(float)psys->part->hair_step;
 					if ((part->flag & PART_HAIR_REGROW)==0)
-						BKE_animsys_evaluate_animdata(depsgraph, scene, &part->id, part->adt, hcfra, ADT_RECALC_ANIM);
+						BKE_animsys_evaluate_animdata(depsgraph, scene, &part_local->id, part_local->adt, hcfra, ADT_RECALC_ANIM);
 					system_step(&sim, hcfra, use_render_params);
 					psys->cfra = hcfra;
 					psys->recalc = 0;
 					save_hair(&sim, hcfra);
+				}
+
+				if (part_local != part) {
+					particle_settings_free_local(part_local);
+					psys->part = part;
 				}
 
 				psys->flag |= PSYS_HAIR_DONE;

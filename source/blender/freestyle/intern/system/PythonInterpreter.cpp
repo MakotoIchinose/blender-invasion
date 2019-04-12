@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/system/PythonInterpreter.cpp
- *  \ingroup freestyle
- *  \brief Python Interpreter
+/** \file
+ * \ingroup freestyle
+ * \brief Python Interpreter
  */
 
 #include "PythonInterpreter.h"

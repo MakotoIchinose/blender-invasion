@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file string/intern/STR_String.cpp
- *  \ingroup string
+/** \file
+ * \ingroup string
  *
  * Copyright (C) 2001 NaN Technologies B.V.
  * This file was formerly known as: GEN_StdString.cpp.
@@ -550,8 +550,9 @@ STR_String& STR_String::TrimLeft()
 {
 	int skip;
 	assertd(this->m_data != NULL);
-	for (skip = 0; isSpace(this->m_data[skip]); skip++, this->m_len--)
-	{};
+	for (skip = 0; isSpace(this->m_data[skip]); skip++, this->m_len--) {
+		/* pass */
+	}
 	memmove(this->m_data, this->m_data + skip, this->m_len + 1);
 	return *this;
 }
@@ -590,8 +591,9 @@ STR_String& STR_String::TrimLeft(char *set)
 {
 	int skip;
 	assertd(this->m_data != NULL);
-	for (skip = 0; this->m_len && strchr(set, this->m_data[skip]); skip++, this->m_len--)
-	{};
+	for (skip = 0; this->m_len && strchr(set, this->m_data[skip]); skip++, this->m_len--) {
+		/* pass */
+	}
 	memmove(this->m_data, this->m_data + skip, this->m_len + 1);
 	return *this;
 }

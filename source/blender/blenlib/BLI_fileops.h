@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file BLI_fileops.h
- *  \ingroup bli
- *  \brief File and directory operations.
+/** \file
+ * \ingroup bli
+ * \brief File and directory operations.
  * */
 
 #ifndef __BLI_FILEOPS_H__

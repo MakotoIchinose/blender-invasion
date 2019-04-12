@@ -17,8 +17,8 @@
 #ifndef __BMESH_EDGESPLIT_H__
 #define __BMESH_EDGESPLIT_H__
 
-/** \file blender/bmesh/tools/bmesh_edgesplit.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 void BM_mesh_edgesplit(

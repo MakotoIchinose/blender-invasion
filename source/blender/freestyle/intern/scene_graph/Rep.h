@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_REP_H__
 #define __FREESTYLE_REP_H__
 
-/** \file blender/freestyle/intern/scene_graph/Rep.h
- *  \ingroup freestyle
- *  \brief Base class for all shapes. Inherits from BasicObjects for references counter management (addRef, release).
+/** \file
+ * \ingroup freestyle
+ * \brief Base class for all shapes. Inherits from BasicObjects for references counter management (addRef, release).
  */
 
 #include <string>

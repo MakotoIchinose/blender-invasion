@@ -17,8 +17,8 @@
  * This is a new part of Blender
  */
 
-/** \file blender/editors/armature/pose_lib.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include <string.h>
@@ -160,7 +160,7 @@ static Object *get_poselib_object(bContext *C)
 
 	sa = CTX_wm_area(C);
 
-	if (sa && (sa->spacetype == SPACE_BUTS))
+	if (sa && (sa->spacetype == SPACE_PROPERTIES))
 		return ED_object_context(C);
 	else
 		return BKE_object_pose_armature_get(CTX_data_active_object(C));
@@ -1118,7 +1118,7 @@ static void poselib_preview_apply(bContext *C, wmOperator *op)
 		else
 			RNA_int_set(op->ptr, "pose_index", -2);  /* -2 means don't apply any pose */
 
-		/* old optimize trick... this enforces to bypass the depgraph
+		/* old optimize trick... this enforces to bypass the depsgraph
 		 * - note: code copied from transform_generics.c -> recalcData()
 		 */
 		// FIXME: shouldn't this use the builtin stuff?

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/subsurf_ccg.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
@@ -577,6 +577,9 @@ static void set_subsurf_uv(CCGSubSurf *ss,
 }
 
 /* face weighting */
+#define SUB_ELEMS_FACE 50
+typedef float FaceVertWeight[SUB_ELEMS_FACE][SUB_ELEMS_FACE];
+
 typedef struct FaceVertWeightEntry {
 	FaceVertWeight *weight;
 	float *w;

@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_ARBITRARY_GRID_DENSITY_PROVIDER_H__
 #define __FREESTYLE_ARBITRARY_GRID_DENSITY_PROVIDER_H__
 
-/** \file blender/freestyle/intern/view_map/ArbitraryGridDensityProvider.h
- *  \ingroup freestyle
- *  \brief Class to define a cell grid surrounding the projected image of a scene
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define a cell grid surrounding the projected image of a scene
  */
 
 #include "GridDensityProvider.h"

@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2014, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Joshua Leung, Lukas Toenne
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -52,6 +47,7 @@ set(SRC
 	intern/builder/deg_builder_relations_keys.cc
 	intern/builder/deg_builder_relations_rig.cc
 	intern/builder/deg_builder_relations_view_layer.cc
+	intern/builder/deg_builder_rna.cc
 	intern/builder/deg_builder_transitive.cc
 	intern/debug/deg_debug.cc
 	intern/debug/deg_debug_relations_graphviz.cc
@@ -92,6 +88,7 @@ set(SRC
 	intern/builder/deg_builder_pchanmap.h
 	intern/builder/deg_builder_relations.h
 	intern/builder/deg_builder_relations_impl.h
+	intern/builder/deg_builder_rna.h
 	intern/builder/deg_builder_transitive.h
 	intern/debug/deg_debug.h
 	intern/eval/deg_eval.h

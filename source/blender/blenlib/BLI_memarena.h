@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file BLI_memarena.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifndef __BLI_MEMARENA_H__

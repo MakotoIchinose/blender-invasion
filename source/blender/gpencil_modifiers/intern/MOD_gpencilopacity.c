@@ -17,16 +17,17 @@
  * This is a new part of Blender
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpencilopacity.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stdio.h>
 
+#include "BLI_utildefines.h"
+
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/intern/wm_init_exit.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Manage initializing resources and correctly shutting down.
  */
@@ -152,7 +152,12 @@ static void wm_free_reports(bContext *C)
 	BKE_reports_clear(reports);
 }
 
-bool wm_start_with_console = false; /* used in creator.c */
+static bool wm_start_with_console = false;
+
+void WM_init_state_start_with_console_set(bool value)
+{
+	wm_start_with_console = value;
+}
 
 /**
  * Since we cannot know in advance if we will require the draw manager
@@ -160,7 +165,7 @@ bool wm_start_with_console = false; /* used in creator.c */
  * scripts) we deferre the ghost initialization the most as possible
  * so that it does not break anything that can run in headless mode (as in
  * without display server attached).
- **/
+ */
 static bool opengl_is_init = false;
 
 void WM_init_opengl(Main *bmain)
@@ -219,7 +224,6 @@ void WM_init(bContext *C, int argc, const char **argv)
 	BKE_region_callback_free_gizmomap_set(wm_gizmomap_remove); /* screen.c */
 	BKE_region_callback_refresh_tag_gizmomap_set(WM_gizmomap_tag_refresh);
 	BKE_library_callback_remap_editor_id_reference_set(WM_main_remap_editor_id_reference);   /* library.c */
-	BKE_blender_callback_test_break_set(wm_window_testbreak); /* blender.c */
 	BKE_spacedata_callback_id_remap_set(ED_spacedata_id_remap); /* screen.c */
 	DEG_editors_set_update_cb(ED_render_id_flush_update,
 	                          ED_render_scene_update);
@@ -264,8 +268,9 @@ void WM_init(bContext *C, int argc, const char **argv)
 		WM_init_opengl(G_MAIN);
 
 		UI_init();
-		BKE_studiolight_init();
 	}
+
+	BKE_studiolight_init();
 
 	ED_spacemacros_init();
 
@@ -312,12 +317,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 	}
 #endif
 
-	/* load last session, uses regular file reading so it has to be in end (after init py etc) */
-	if (U.uiflag2 & USER_KEEP_SESSION) {
-		/* calling WM_recover_last_session(C, NULL) has been moved to creator.c */
-		/* that prevents loading both the kept session, and the file on the command line */
-	}
-	else {
+	{
 		Main *bmain = CTX_data_main(C);
 		/* note, logic here is from wm_file_read_post,
 		 * call functions that depend on Python being initialized. */
@@ -430,7 +430,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 
 		if (!G.background) {
 			struct MemFile *undo_memfile = wm->undo_stack ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : NULL;
-			if ((U.uiflag2 & USER_KEEP_SESSION) || (undo_memfile != NULL)) {
+			if (undo_memfile != NULL) {
 				/* save the undo state as quit.blend */
 				Main *bmain = CTX_data_main(C);
 				char filename[FILE_MAX];
@@ -497,6 +497,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	BKE_tracking_clipboard_free();
 	BKE_mask_clipboard_free();
 	BKE_vfont_clipboard_free();
+	BKE_node_clipboard_free();
 
 #ifdef WITH_COMPOSITOR
 	COM_deinitialize();
@@ -518,7 +519,6 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	ANIM_fmodifiers_copybuf_free();
 	ED_gpencil_anim_copybuf_free();
 	ED_gpencil_strokes_copybuf_free();
-	BKE_node_clipboard_clear();
 
 	/* free gizmo-maps after freeing blender, so no deleted data get accessed during cleaning up of areas */
 	wm_gizmomaptypes_free();

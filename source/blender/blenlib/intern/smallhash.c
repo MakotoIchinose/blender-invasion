@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/intern/smallhash.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * A light stack-friendly hash library, it uses stack space for relatively small, fixed size hash tables
  * but falls back to heap memory once the stack limits reached (#SMSTACKSIZE).
@@ -79,7 +79,8 @@ BLI_INLINE bool smallhash_val_is_used(const void *val)
 #endif
 }
 
-extern const uint hashsizes[];
+extern const uint BLI_ghash_hash_sizes[];
+#define hashsizes BLI_ghash_hash_sizes
 
 BLI_INLINE uint smallhash_key(const uintptr_t key)
 {
@@ -404,8 +405,9 @@ double BLI_smallhash_calc_quality(SmallHash *sh)
 	uint64_t sum = 0;
 	uint i;
 
-	if (sh->nentries == 0)
+	if (sh->nentries == 0) {
 		return -1.0;
+	}
 
 	for (i = 0; i < sh->nbuckets; i++) {
 		if (sh->buckets[i].key != SMHASH_KEY_UNUSED) {

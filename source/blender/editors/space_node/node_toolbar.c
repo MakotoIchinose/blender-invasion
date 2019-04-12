@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_node/node_toolbar.c
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 #include "BLI_utildefines.h"
@@ -49,8 +49,9 @@ static int node_toolbar_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 	ScrArea *sa = CTX_wm_area(C);
 	ARegion *ar = node_has_tools_region(sa);
 
-	if (ar)
+	if (ar) {
 		ED_region_toggle_hidden(C, ar);
+	}
 
 	return OPERATOR_FINISHED;
 }

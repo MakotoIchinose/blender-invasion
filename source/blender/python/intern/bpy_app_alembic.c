@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/python/intern/bpy_app_alembic.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  */
 
 #include <Python.h>

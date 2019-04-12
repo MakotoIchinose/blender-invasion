@@ -14,19 +14,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/modifiers/intern/MOD_dynamicpaint.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stddef.h>
+
+#include "BLI_utildefines.h"
 
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_object_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_mesh_types.h"
-
-#include "BLI_utildefines.h"
 
 #include "BKE_dynamicpaint.h"
 #include "BKE_layer.h"
@@ -58,16 +58,24 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 	dynamicPaint_Modifier_copy(pmd, tpmd, flag);
 }
 
+static void freeRuntimeData(void *runtime_data_v)
+{
+	if (runtime_data_v == NULL) {
+		return;
+	}
+	DynamicPaintRuntime *runtime_data = (DynamicPaintRuntime *)runtime_data_v;
+	dynamicPaint_Modifier_free_runtime(runtime_data);
+}
+
 static void freeData(ModifierData *md)
 {
 	DynamicPaintModifierData *pmd = (DynamicPaintModifierData *) md;
 	dynamicPaint_Modifier_free(pmd);
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	if (pmd->canvas) {
 		DynamicPaintSurface *surface = pmd->canvas->surfaces.first;
@@ -76,21 +84,20 @@ static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
 			if (surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ ||
 			    surface->init_color_type == MOD_DPAINT_INITIAL_TEXTURE)
 			{
-				dataMask |= CD_MASK_MLOOPUV;
+				r_cddata_masks->lmask |= CD_MASK_MLOOPUV;
 			}
 			/* mcol */
 			if (surface->type == MOD_DPAINT_SURFACE_T_PAINT ||
 			    surface->init_color_type == MOD_DPAINT_INITIAL_VERTEXCOLOR)
 			{
-				dataMask |= CD_MASK_MLOOPCOL;
+				r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
 			}
 			/* CD_MDEFORMVERT */
 			if (surface->type == MOD_DPAINT_SURFACE_T_WEIGHT) {
-				dataMask |= CD_MASK_MDEFORMVERT;
+				r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 			}
 		}
 	}
-	return dataMask;
 }
 
 static Mesh *applyModifier(
@@ -172,12 +179,6 @@ ModifierTypeInfo modifierType_DynamicPaint = {
 
 	/* copyData */          copyData,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -194,4 +195,5 @@ ModifierTypeInfo modifierType_DynamicPaint = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    foreachTexLink,
+	/* freeRuntimeData */   freeRuntimeData,
 };

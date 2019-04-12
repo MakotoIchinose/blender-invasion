@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file BKE_subdiv_eval.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifndef __BKE_SUBDIV_EVAL_H__

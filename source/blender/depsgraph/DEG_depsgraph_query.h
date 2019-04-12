@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/DEG_depsgraph_query.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Public API for Querying and Filtering Depsgraph.
  */
@@ -33,6 +33,7 @@ struct ID;
 
 struct BLI_Iterator;
 struct Base;
+struct CustomData_MeshMasks;
 struct Depsgraph;
 struct DupliObject;
 struct ListBase;
@@ -66,9 +67,10 @@ bool DEG_id_type_any_updated(const struct Depsgraph *depsgraph);
 /* Get additional evaluation flags for the given ID. */
 uint32_t DEG_get_eval_flags_for_id(const struct Depsgraph *graph, struct ID *id);
 
-/* Get additional mesh CustomDataMask flags for the given object. */
-uint64_t DEG_get_customdata_mask_for_object(const struct Depsgraph *graph,
-                                            struct Object *object);
+/* Get additional mesh CustomData_MeshMasks flags for the given object. */
+void DEG_get_customdata_mask_for_object(const struct Depsgraph *graph,
+                                        struct Object *object,
+                                        struct CustomData_MeshMasks *r_mask);
 
 /* Get scene the despgraph is created for. */
 struct Scene *DEG_get_evaluated_scene(const struct Depsgraph *graph);
@@ -156,11 +158,11 @@ void DEG_iterator_objects_end(struct BLI_Iterator *iter);
 
 #define DEG_OBJECT_ITER_END                                                       \
 		ITER_END;                                                                 \
-	}
+	} ((void)0)
 
 /**
-  * Depsgraph objects iterator for draw manager and final render
-  */
+ * Depsgraph objects iterator for draw manager and final render
+ */
 #define DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN(graph_, instance_)        \
 	DEG_OBJECT_ITER_BEGIN(graph_, instance_,                              \
 	        DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |                        \

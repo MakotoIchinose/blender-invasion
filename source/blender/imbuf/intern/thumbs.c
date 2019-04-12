@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/thumbs.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 #include <stdio.h>

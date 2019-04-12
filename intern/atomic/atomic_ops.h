@@ -44,8 +44,7 @@
  * The Original Code is: adapted from jemalloc.
  */
 
-/**
- * \file atomic_ops.h
+/** \file
  * \ingroup Atomic
  *
  * \brief Provides wrapper around system-specific atomic primitives,

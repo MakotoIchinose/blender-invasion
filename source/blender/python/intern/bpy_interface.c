@@ -16,8 +16,8 @@
  * Chris Keith, Chris Want, Ken Hughes, Campbell Barton
  */
 
-/** \file blender/python/intern/bpy_interface.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file deals with embedding the python interpreter within blender,
  * starting and stopping python and exposing blender/python modules so they can
@@ -81,7 +81,6 @@ CLG_LOGREF_DECLARE_GLOBAL(BPY_LOG_RNA, "bpy.rna");
 
 /* in case a python script triggers another python call, stop bpy_context_clear from invalidating */
 static int py_call_level = 0;
-BPy_StructRNA *bpy_context_module = NULL; /* for fast access */
 
 // #define TIME_PY_RUN // simple python tests. prints on exit.
 
@@ -99,8 +98,9 @@ void BPY_context_update(bContext *C)
 	/* don't do this from a non-main (e.g. render) thread, it can cause a race
 	 * condition on C->data.recursion. ideal solution would be to disable
 	 * context entirely from non-main threads, but that's more complicated */
-	if (!BLI_thread_is_main())
+	if (!BLI_thread_is_main()) {
 		return;
+	}
 
 	BPy_SetContext(C);
 	bpy_import_main_set(CTX_data_main(C));
@@ -111,8 +111,9 @@ void bpy_context_set(bContext *C, PyGILState_STATE *gilstate)
 {
 	py_call_level++;
 
-	if (gilstate)
+	if (gilstate) {
 		*gilstate = PyGILState_Ensure();
+	}
 
 	if (py_call_level == 1) {
 		BPY_context_update(C);
@@ -136,8 +137,9 @@ void bpy_context_clear(bContext *UNUSED(C), PyGILState_STATE *gilstate)
 {
 	py_call_level--;
 
-	if (gilstate)
+	if (gilstate) {
 		PyGILState_Release(*gilstate);
+	}
 
 	if (py_call_level < 0) {
 		fprintf(stderr, "ERROR: Python context internal state bug. this should not happen!\n");
@@ -164,14 +166,16 @@ void BPY_text_free_code(Text *text)
 		PyGILState_STATE gilstate;
 		bool use_gil = !PyC_IsInterpreterActive();
 
-		if (use_gil)
+		if (use_gil) {
 			gilstate = PyGILState_Ensure();
+		}
 
 		Py_DECREF((PyObject *)text->compiled);
 		text->compiled = NULL;
 
-		if (use_gil)
+		if (use_gil) {
 			PyGILState_Release(gilstate);
+		}
 	}
 }
 
@@ -185,8 +189,9 @@ void BPY_modules_update(bContext *C)
 
 	/* refreshes the main struct */
 	BPY_update_rna_module();
-	if (bpy_context_module)
+	if (bpy_context_module) {
 		bpy_context_module->ptr.data = (void *)C;
+	}
 }
 
 void BPY_context_set(bContext *C)
@@ -372,11 +377,13 @@ void BPY_python_end(void)
 	printf("*bpy stats* - ");
 	printf("tot exec: %d,  ", bpy_timer_count);
 	printf("tot run: %.4fsec,  ", bpy_timer_run_tot);
-	if (bpy_timer_count > 0)
+	if (bpy_timer_count > 0) {
 		printf("average run: %.6fsec,  ", (bpy_timer_run_tot / bpy_timer_count));
+	}
 
-	if (bpy_timer > 0.0)
+	if (bpy_timer > 0.0) {
 		printf("tot usage %.4f%%", (bpy_timer_run_tot / bpy_timer) * 100.0);
+	}
 
 	printf("\n");
 
@@ -519,7 +526,7 @@ static bool python_script_exec(
 			if (do_jump) {
 				/* ensure text is valid before use, the script may have freed its self */
 				Main *bmain_new = CTX_data_main(C);
-				if ((bmain_old == bmain_new) && (BLI_findindex(&bmain_new->text, text) != -1)) {
+				if ((bmain_old == bmain_new) && (BLI_findindex(&bmain_new->texts, text) != -1)) {
 					python_script_error_jump_text(text);
 				}
 			}
@@ -751,8 +758,9 @@ void BPY_modules_load_user(bContext *C)
 	Text *text;
 
 	/* can happen on file load */
-	if (bmain == NULL)
+	if (bmain == NULL) {
 		return;
+	}
 
 	/* update pointers since this can run from a nested script
 	 * on file load */
@@ -762,7 +770,7 @@ void BPY_modules_load_user(bContext *C)
 
 	bpy_context_set(C, &gilstate);
 
-	for (text = bmain->text.first; text; text = text->id.next) {
+	for (text = bmain->texts.first; text; text = text->id.next) {
 		if (text->flags & TXT_ISSCRIPT && BLI_path_extension_check(text->id.name + 2, ".py")) {
 			if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
 				if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
@@ -803,8 +811,9 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 	PointerRNA *ptr = NULL;
 	bool done = false;
 
-	if (use_gil)
+	if (use_gil) {
 		gilstate = PyGILState_Ensure();
+	}
 
 	pyctx = (PyObject *)CTX_py_dict_get(C);
 	item = PyDict_GetItemString(pyctx, member);
@@ -871,8 +880,9 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 		CLOG_INFO(BPY_LOG_CONTEXT, 2, "'%s' found", member);
 	}
 
-	if (use_gil)
+	if (use_gil) {
 		PyGILState_Release(gilstate);
+	}
 
 	return done;
 }
@@ -972,8 +982,9 @@ PyInit_bpy(void)
 	dealloc_obj_Type.tp_dealloc = dealloc_obj_dealloc;
 	dealloc_obj_Type.tp_flags = Py_TPFLAGS_DEFAULT;
 
-	if (PyType_Ready(&dealloc_obj_Type) < 0)
+	if (PyType_Ready(&dealloc_obj_Type) < 0) {
 		return NULL;
+	}
 
 	dob = (dealloc_obj *) dealloc_obj_Type.tp_alloc(&dealloc_obj_Type, 0);
 	dob->mod = bpy_proxy; /* borrow */

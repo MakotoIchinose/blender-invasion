@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/avi/intern/avi_intern.h
- *  \ingroup avi
+/** \file
+ * \ingroup avi
  */
 
 #ifndef __AVI_INTERN_H__

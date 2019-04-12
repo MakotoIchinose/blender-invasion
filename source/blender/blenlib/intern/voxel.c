@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/intern/voxel.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_utildefines.h"

@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenlib/intern/array_store.c
- *  \ingroup bli
- *  \brief Array storage to minimize duplication.
+/** \file
+ * \ingroup bli
+ * \brief Array storage to minimize duplication.
  *
  * This is done by splitting arrays into chunks and using copy-on-write (COW),
  * to de-duplicate chunks,

@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/operators/bmo_fill_grid.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Fill 2 isolated, open edge loops with a grid of quads.
  */
@@ -89,7 +89,9 @@ static void quad_verts_to_barycentric_tri(
 		normalize_v3(no);
 	}
 
-	if (is_flip) negate_v3(no);
+	if (is_flip) {
+		negate_v3(no);
+	}
 	mul_v3_fl(no, len_v3v3(tri[0], tri[1]));
 
 	mid_v3_v3v3(tri[2], tri[0], tri[1]);

@@ -19,8 +19,8 @@
 #ifndef __BKE_IPO_H__
 #define __BKE_IPO_H__
 
-/** \file BKE_ipo.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus

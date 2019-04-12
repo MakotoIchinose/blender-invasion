@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_info/space_info.c
- *  \ingroup spinfo
+/** \file
+ * \ingroup spinfo
  */
 
 
@@ -151,8 +151,9 @@ static void info_main_region_draw(const bContext *C, ARegion *ar)
 	GPU_clear(GPU_COLOR_BIT);
 
 	/* quick way to avoid drawing if not bug enough */
-	if (ar->winy < 16)
+	if (ar->winy < 16) {
 		return;
+	}
 
 	info_textview_update_rect(C, ar);
 
@@ -187,7 +188,7 @@ static void info_operatortypes(void)
 
 	/* info_report.c */
 	WM_operatortype_append(INFO_OT_select_pick);
-	WM_operatortype_append(INFO_OT_select_all_toggle);
+	WM_operatortype_append(INFO_OT_select_all);
 	WM_operatortype_append(INFO_OT_select_box);
 
 	WM_operatortype_append(INFO_OT_report_replay);
@@ -241,20 +242,24 @@ static void info_header_listener(
 			}
 			break;
 		case NC_WM:
-			if (wmn->data == ND_JOB)
+			if (wmn->data == ND_JOB) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_SCENE:
-			if (wmn->data == ND_RENDER_RESULT)
+			if (wmn->data == ND_RENDER_RESULT) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_SPACE:
-			if (wmn->data == ND_SPACE_INFO)
+			if (wmn->data == ND_SPACE_INFO) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_ID:
-			if (wmn->action == NA_RENAME)
+			if (wmn->action == NA_RENAME) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 	}
 

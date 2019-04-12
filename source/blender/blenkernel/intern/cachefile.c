@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/cachefile.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_anim_types.h"
@@ -104,7 +104,7 @@ void BKE_cachefile_free(CacheFile *cache_file)
 
 /**
  * Only copy internal data of CacheFile ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -126,7 +126,7 @@ void BKE_cachefile_copy_data(
 CacheFile *BKE_cachefile_copy(Main *bmain, const CacheFile *cache_file)
 {
 	CacheFile *cache_file_copy;
-	BKE_id_copy_ex(bmain, &cache_file->id, (ID **)&cache_file_copy, 0, false);
+	BKE_id_copy(bmain, &cache_file->id, (ID **)&cache_file_copy);
 	return cache_file_copy;
 }
 
@@ -210,7 +210,7 @@ bool BKE_cachefile_filepath_get(
 
 	if (cache_file->is_sequence && BLI_path_frame_get(r_filepath, &fframe, &frame_len)) {
 		char ext[32];
-		BLI_path_frame_strip(r_filepath, true, ext);
+		BLI_path_frame_strip(r_filepath, ext);
 		BLI_path_frame(r_filepath, frame, frame_len);
 		BLI_path_extension_ensure(r_filepath, FILE_MAX, ext);
 
@@ -231,7 +231,7 @@ float BKE_cachefile_time_offset(CacheFile *cache_file, const float time, const f
 /* TODO(kevin): replace this with some depsgraph mechanism, or something similar. */
 void BKE_cachefile_clean(struct Main *bmain, CacheFile *cache_file)
 {
-	for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		ModifierData *md = modifiers_findByType(ob, eModifierType_MeshSequenceCache);
 
 		if (md) {

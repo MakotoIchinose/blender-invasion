@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/mesh/editmesh_rip.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"

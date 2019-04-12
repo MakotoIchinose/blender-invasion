@@ -18,8 +18,8 @@
  * Original author: Benoit Bolsee
  */
 
-/** \file blender/ikplugin/intern/iksolver_plugin.c
- *  \ingroup ikplugin
+/** \file
+ * \ingroup ikplugin
  */
 
 #include "MEM_guardedalloc.h"

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/depsgraph_debug.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Implementation of tools for debugging the depsgraph
  */

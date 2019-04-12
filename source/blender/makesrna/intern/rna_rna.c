@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/makesrna/intern/rna_rna.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -117,6 +117,7 @@ const EnumPropertyItem rna_enum_property_unit_items[] = {
 	{PROP_UNIT_ACCELERATION, "ACCELERATION", 0, "Acceleration", ""},
 	{PROP_UNIT_MASS, "MASS", 0, "Mass", ""},
 	{PROP_UNIT_CAMERA, "CAMERA", 0, "Camera", ""},
+	{PROP_UNIT_POWER, "POWER", 0, "Power", ""},
 	{0, NULL, 0, NULL, NULL},
 };
 

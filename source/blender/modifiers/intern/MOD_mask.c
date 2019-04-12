@@ -17,14 +17,15 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_mask.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
+
 #include "BLI_listbase.h"
 #include "BLI_ghash.h"
 
@@ -48,9 +49,9 @@
 
 #include "BLI_strict_flags.h"
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md))
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md), CustomData_MeshMasks *r_cddata_masks)
 {
-	return CD_MASK_MDEFORMVERT;
+	r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 }
 
 static void foreachObjectLink(
@@ -70,7 +71,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		/* TODO(sergey): Is it a proper relation here? */
 		DEG_add_object_relation(ctx->node, mmd->ob_arm, DEG_OB_COMP_TRANSFORM, "Mask Modifier");
 		arm->flag |= ARM_HAS_VIZ_DEPS;
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Mask Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "Mask Modifier");
 	}
 }
 
@@ -126,7 +127,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 	/* if mode is to use selected armature bones, aggregate the bone groups */
 	if (mmd->mode == MOD_MASK_MODE_ARM) { /* --- using selected bones --- */
-		Object *oba = DEG_get_evaluated_object(ctx->depsgraph, mmd->ob_arm);
+		Object *oba = mmd->ob_arm;
 		bPoseChannel *pchan;
 		bDeformGroup *def;
 		bool *bone_select_array;
@@ -356,12 +357,6 @@ ModifierTypeInfo modifierType_Mask = {
 
 	/* copyData */          modifier_copyData_generic,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -378,4 +373,5 @@ ModifierTypeInfo modifierType_Mask = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

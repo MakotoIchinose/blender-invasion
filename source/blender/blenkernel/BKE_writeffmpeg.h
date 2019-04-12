@@ -20,8 +20,8 @@
 #ifndef __BKE_WRITEFFMPEG_H__
 #define __BKE_WRITEFFMPEG_H__
 
-/** \file BKE_writeffmpeg.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef WITH_FFMPEG

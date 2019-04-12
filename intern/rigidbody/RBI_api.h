@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file RBI_api.h
- *  \ingroup RigidBody
- *  \brief Rigid Body API for interfacing with external Physics Engines
+/** \file
+ * \ingroup RigidBody
+ * \brief Rigid Body API for interfacing with external Physics Engines
  */
 
 #ifndef __RB_API_H__

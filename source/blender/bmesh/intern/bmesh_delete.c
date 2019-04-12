@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/bmesh/intern/bmesh_delete.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * BM remove functions.
  */

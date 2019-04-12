@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file creator/creator.c
- *  \ingroup creator
+/** \file
+ * \ingroup creator
  */
 
 #include <stdlib.h>
@@ -269,9 +269,7 @@ int main(
 	{
 		int i;
 		for (i = 0; i < argc; i++) {
-			if (STREQ(argv[i], "--debug") || STREQ(argv[i], "-d") ||
-			    STREQ(argv[i], "--debug-memory") || STREQ(argv[i], "--debug-all"))
-			{
+			if (STR_ELEM(argv[i], "-d", "--debug", "--debug-memory", "--debug-all")) {
 				printf("Switching to fully guarded memory allocator.\n");
 				MEM_use_guarded_allocator();
 				break;
@@ -468,13 +466,6 @@ int main(
 	/* OK we are ready for it */
 #ifndef WITH_PYTHON_MODULE
 	main_args_setup_post(C, ba);
-
-	if (G.background == 0) {
-		if (!G.file_loaded)
-			if (U.uiflag2 & USER_KEEP_SESSION)
-				WM_recover_last_session(C, NULL);
-	}
-
 #endif
 
 	/* Explicitly free data allocated for argument parsing:

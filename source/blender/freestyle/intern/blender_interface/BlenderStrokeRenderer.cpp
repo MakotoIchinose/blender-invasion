@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/blender_interface/BlenderStrokeRenderer.cpp
- *  \ingroup freestyle
+/** \file
+ * \ingroup freestyle
  */
 
 #include "BlenderStrokeRenderer.h"
@@ -148,11 +148,11 @@ BlenderStrokeRenderer::BlenderStrokeRenderer(Render *re, int render_count) : Str
 	Camera *camera = (Camera *)object_camera->data;
 	camera->type = CAM_ORTHO;
 	camera->ortho_scale = max(re->rectx, re->recty);
-	camera->clipsta = 0.1f;
-	camera->clipend = 100.0f;
+	camera->clip_start = 0.1f;
+	camera->clip_end = 100.0f;
 
 	_z_delta = 0.00001f;
-	_z = camera->clipsta + _z_delta;
+	_z = camera->clip_start + _z_delta;
 
 	object_camera->loc[0] = re->disprect.xmin + 0.5f * re->rectx;
 	object_camera->loc[1] = re->disprect.ymin + 0.5f * re->recty;
@@ -208,7 +208,7 @@ BlenderStrokeRenderer::~BlenderStrokeRenderer()
 	}
 
 	// release materials
-	Link *lnk = (Link *)freestyle_bmain->mat.first;
+	Link *lnk = (Link *)freestyle_bmain->materials.first;
 
 	while (lnk)
 	{
@@ -242,7 +242,7 @@ unsigned int BlenderStrokeRenderer::get_stroke_mesh_id(void) const
 	return mesh_id;
 }
 
-Material* BlenderStrokeRenderer::GetStrokeShader(Main *bmain, bNodeTree *iNodeTree, bool do_id_user)
+Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain, bNodeTree *iNodeTree, bool do_id_user)
 {
 	Material *ma = BKE_material_add(bmain, "stroke_shader");
 	bNodeTree *ntree;
@@ -873,11 +873,11 @@ Object *BlenderStrokeRenderer::NewMesh() const
 Render *BlenderStrokeRenderer::RenderScene(Render * /*re*/, bool render)
 {
 	Camera *camera = (Camera *)freestyle_scene->camera->data;
-	if (camera->clipend < _z)
-		camera->clipend = _z + _z_delta * 100.0f;
+	if (camera->clip_end < _z)
+		camera->clip_end = _z + _z_delta * 100.0f;
 #if 0
 	if (G.debug & G_DEBUG_FREESTYLE) {
-		cout << "clipsta " << camera->clipsta << ", clipend " << camera->clipend << endl;
+		cout << "clip_start " << camera->clip_start << ", clip_end " << camera->clip_end << endl;
 	}
 #endif
 

@@ -20,9 +20,9 @@
 #ifndef __BLI_WINSTUFF_H__
 #define __BLI_WINSTUFF_H__
 
-/** \file BLI_winstuff.h
- *  \ingroup bli
- *  \brief Compatibility-like things for windows.
+/** \file
+ * \ingroup bli
+ * \brief Compatibility-like things for windows.
  */
 
 #ifndef _WIN32
@@ -50,9 +50,6 @@
 #undef rect
 #undef rct1
 #undef rct2
-
-#define near clipsta
-#define far clipend
 
 #undef small
 

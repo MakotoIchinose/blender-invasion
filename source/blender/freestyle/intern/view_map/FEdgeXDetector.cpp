@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/view_map/FEdgeXDetector.cpp
- *  \ingroup freestyle
- *  \brief Detects/flags/builds extended features edges on the WXEdge structure
+/** \file
+ * \ingroup freestyle
+ * \brief Detects/flags/builds extended features edges on the WXEdge structure
  */
 
 #include <float.h>

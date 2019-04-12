@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_STROKE_RENDERER_H__
 #define __FREESTYLE_STROKE_RENDERER_H__
 
-/** \file blender/freestyle/intern/stroke/StrokeRenderer.h
- *  \ingroup freestyle
- *  \brief Classes to render a stroke with OpenGL
+/** \file
+ * \ingroup freestyle
+ * \brief Classes to render a stroke with OpenGL
  */
 
 #include <map>

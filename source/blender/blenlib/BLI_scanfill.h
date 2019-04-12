@@ -20,8 +20,8 @@
 #ifndef __BLI_SCANFILL_H__
 #define __BLI_SCANFILL_H__
 
-/** \file BLI_scanfill.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 struct ScanFillVert;

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_text/text_intern.h
- *  \ingroup sptext
+/** \file
+ * \ingroup sptext
  */
 
 #ifndef __TEXT_INTERN_H__

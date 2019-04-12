@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/python/intern/bpy_app_handlers.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file defines a 'PyStructSequence' accessed via 'bpy.app.handlers',
  * which exposes various lists that the script author can add callback
@@ -90,8 +90,9 @@ static PyObject *bpy_app_handlers_persistent_new(PyTypeObject *UNUSED(type), PyO
 {
 	PyObject *value;
 
-	if (!PyArg_ParseTuple(args, "O:bpy.app.handlers.persistent", &value))
+	if (!PyArg_ParseTuple(args, "O:bpy.app.handlers.persistent", &value)) {
 		return NULL;
+	}
 
 	if (PyFunction_Check(value)) {
 		PyObject **dict_ptr = _PyObject_GetDictPtr(value);

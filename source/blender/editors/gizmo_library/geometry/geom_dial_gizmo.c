@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file geom_dial_gizmo.c
- *  \ingroup edgizmolib
+/** \file
+ * \ingroup edgizmolib
  */
 
 #include "../gizmo_geometry.h"

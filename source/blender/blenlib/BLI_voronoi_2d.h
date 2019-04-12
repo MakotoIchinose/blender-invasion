@@ -22,8 +22,8 @@
 
 struct ListBase;
 
-/** \file BLI_voronoi_2d.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 typedef struct VoronoiSite {

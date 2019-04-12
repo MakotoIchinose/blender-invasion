@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file rna_rigidbody.c
- *  \ingroup rna
- *  \brief RNA property definitions for Rigid Body datatypes
+/** \file
+ * \ingroup rna
+ * \brief RNA property definitions for Rigid Body datatypes
  */
 
 #include <stdlib.h>
@@ -119,7 +119,7 @@ static void rna_RigidBodyWorld_reset(Main *UNUSED(bmain), Scene *UNUSED(scene), 
 
 static char *rna_RigidBodyWorld_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("rigidbody_world");
+	return BLI_strdup("rigidbody_world");
 }
 
 static void rna_RigidBodyWorld_num_solver_iterations_set(PointerRNA *ptr, int value)
@@ -193,7 +193,7 @@ static void rna_RigidBodyOb_shape_reset(Main *UNUSED(bmain), Scene *scene, Point
 static char *rna_RigidBodyOb_path(PointerRNA *UNUSED(ptr))
 {
 	/* NOTE: this hardcoded path should work as long as only Objects have this */
-	return BLI_sprintfN("rigid_body");
+	return BLI_strdup("rigid_body");
 }
 
 static void rna_RigidBodyOb_type_set(PointerRNA *ptr, int value)
@@ -383,7 +383,7 @@ static void rna_RigidBodyOb_angular_damping_set(PointerRNA *ptr, float value)
 static char *rna_RigidBodyCon_path(PointerRNA *UNUSED(ptr))
 {
 	/* NOTE: this hardcoded path should work as long as only Objects have this */
-	return BLI_sprintfN("rigid_body_constraint");
+	return BLI_strdup("rigid_body_constraint");
 }
 
 static void rna_RigidBodyCon_type_set(PointerRNA *ptr, int value)

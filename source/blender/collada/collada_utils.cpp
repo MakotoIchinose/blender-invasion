@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/collada/collada_utils.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -190,7 +190,7 @@ std::vector<bAction *> bc_getSceneActions(const bContext *C, Object *ob, bool al
 		Main *bmain = CTX_data_main(C);
 		ID *id;
 
-		for (id = (ID *)bmain->action.first; id; id = (ID *)(id->next)) {
+		for (id = (ID *)bmain->actions.first; id; id = (ID *)(id->next)) {
 			bAction *act = (bAction *)id;
 			/* XXX This currently creates too many actions.
 			   TODO Need to check if the action is compatible to the given object
@@ -236,7 +236,6 @@ Object *bc_add_object(Main *bmain, Scene *scene, ViewLayer *view_layer, int type
 	Object *ob = BKE_object_add_only_object(bmain, type, name);
 
 	ob->data = BKE_object_obdata_add_from_type(bmain, type, name);
-	ob->lay = scene->lay;
 	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
 
 	LayerCollection *layer_collection = BKE_layer_collection_get_active(view_layer);
@@ -256,19 +255,19 @@ Mesh *bc_get_mesh_copy(
 	bool apply_modifiers,
 	bool triangulate)
 {
-	CustomDataMask mask = CD_MASK_MESH;
+	CustomData_MeshMasks mask = CD_MASK_MESH;
 	Mesh *tmpmesh = NULL;
 	if (apply_modifiers) {
 #if 0  /* Not supported by new system currently... */
 		switch (export_mesh_type) {
 			case BC_MESH_TYPE_VIEW:
 			{
-				dm = mesh_create_derived_view(depsgraph, scene, ob, mask);
+				dm = mesh_create_derived_view(depsgraph, scene, ob, &mask);
 				break;
 			}
 			case BC_MESH_TYPE_RENDER:
 			{
-				dm = mesh_create_derived_render(depsgraph, scene, ob, mask);
+				dm = mesh_create_derived_render(depsgraph, scene, ob, &mask);
 				break;
 			}
 		}
@@ -276,19 +275,14 @@ Mesh *bc_get_mesh_copy(
 		Depsgraph *depsgraph = blender_context.get_depsgraph();
 		Scene *scene_eval = blender_context.get_evaluated_scene();
 		Object *ob_eval = blender_context.get_evaluated_object(ob);
-		tmpmesh = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, mask);
+		tmpmesh = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &mask);
 #endif
 	}
 	else {
 		tmpmesh = (Mesh *)ob->data;
 	}
 
-	BKE_id_copy_ex(NULL, &tmpmesh->id, (ID **)&tmpmesh,
-	               LIB_ID_CREATE_NO_MAIN |
-	               LIB_ID_CREATE_NO_USER_REFCOUNT |
-	               LIB_ID_CREATE_NO_DEG_TAG |
-	               LIB_ID_COPY_NO_PREVIEW,
-	               false);
+	BKE_id_copy_ex(NULL, &tmpmesh->id, (ID **)&tmpmesh, LIB_ID_COPY_LOCALIZE);
 
 	if (triangulate) {
 		bc_triangulate_mesh(tmpmesh);
@@ -316,12 +310,12 @@ Object *bc_get_assigned_armature(Object *ob)
 	return ob_arm;
 }
 
-/*
-* Returns the highest selected ancestor
-* returns NULL if no ancestor is selected
-* IMPORTANT: This function expects that all exported objects have set:
-* ob->id.tag & LIB_TAG_DOIT
-*/
+/**
+ * Returns the highest selected ancestor
+ * returns NULL if no ancestor is selected
+ * IMPORTANT: This function expects that all exported objects have set:
+ * ob->id.tag & LIB_TAG_DOIT
+ */
 Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob)
 
 {
@@ -552,7 +546,7 @@ void bc_triangulate_mesh(Mesh *me)
 	BMeshFromMeshParams bm_from_me_params = {0};
 	bm_from_me_params.calc_face_normal = true;
 	BM_mesh_bm_from_me(bm, me, &bm_from_me_params);
-	BM_mesh_triangulate(bm, quad_method, use_beauty, tag_only, NULL, NULL, NULL);
+	BM_mesh_triangulate(bm, quad_method, use_beauty, 4, tag_only, NULL, NULL, NULL);
 
 	BMeshToMeshParams bm_to_me_params = {0};
 	bm_to_me_params.calc_object_remap = false;
@@ -975,9 +969,8 @@ bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_open
 		copy_m4_m4(mat, pchan->pose_mat);
 
 	/* OPEN_SIM_COMPATIBILITY
-	* AFAIK animation to second life is via BVH, but no
-	* reason to not have the collada-animation be correct
-	*/
+	 * AFAIK animation to second life is via BVH, but no
+	 * reason to not have the collada-animation be correct */
 	if (for_opensim) {
 		float temp[4][4];
 		copy_m4_m4(temp, bone->arm_mat);
@@ -1022,9 +1015,9 @@ bool bc_is_animated(BCMatrixSampleMap &values)
 
 bool bc_has_animations(Object *ob)
 {
-	/* Check for object,lamp and camera transform animations */
+	/* Check for object, light and camera transform animations */
 	if ((bc_getSceneObjectAction(ob) && bc_getSceneObjectAction(ob)->curves.first) ||
-		(bc_getSceneLampAction(ob) && bc_getSceneLampAction(ob)->curves.first) ||
+		(bc_getSceneLightAction(ob) && bc_getSceneLightAction(ob)->curves.first) ||
 		(bc_getSceneCameraAction(ob) && bc_getSceneCameraAction(ob)->curves.first))
 		return true;
 
@@ -1360,25 +1353,11 @@ bc_node_add_link(ntree, nmap["main"], 0, nmap["out"], 0);
 COLLADASW::ColorOrTexture bc_get_base_color(Material *ma)
 {
 	bNode *master_shader = bc_get_master_shader(ma);
-	if (master_shader) {
+	if (ma->use_nodes && master_shader) {
 		return bc_get_base_color(master_shader);
 	}
 	else {
-		return bc_get_cot(ma->r, ma->g, ma->b, ma->alpha);
-	}
-}
-
-COLLADASW::ColorOrTexture bc_get_specular_color(Material *ma, bool use_fallback)
-{
-	bNode *master_shader = bc_get_master_shader(ma);
-	if (master_shader) {
-		return bc_get_specular_color(master_shader);
-	}
-	else if (use_fallback) {
-		return bc_get_cot(ma->specr * ma->spec, ma->specg * ma->spec, ma->specb * ma->spec, 1.0f);
-	}
-	else {
-		return bc_get_cot(0.0, 0.0, 0.0, 1.0); // no specular
+		return bc_get_cot(ma->r, ma->g, ma->b, ma->a);
 	}
 }
 
@@ -1396,18 +1375,25 @@ COLLADASW::ColorOrTexture bc_get_base_color(bNode *shader)
 	}
 }
 
-COLLADASW::ColorOrTexture bc_get_specular_color(bNode *shader)
+bool bc_get_reflectivity(bNode *shader, double &reflectivity)
 {
 	bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, "Specular");
-	if (socket)
-	{
-		bNodeSocketValueRGBA *dcol = (bNodeSocketValueRGBA *)socket->default_value;
-		float* col = dcol->value;
-		return bc_get_cot(col[0], col[1], col[2], col[3]);
+	if (socket) {
+		bNodeSocketValueFloat *ref = (bNodeSocketValueFloat *)socket->default_value;
+		reflectivity = (double)ref->value;
+		return true;
 	}
-	else {
-		return bc_get_cot(0.8, 0.8, 0.8, 1.0); //default white
+	return false;
+}
+
+double bc_get_reflectivity(Material *ma)
+{
+	double reflectivity = ma->spec; // fallback if no socket found
+	bNode *master_shader = bc_get_master_shader(ma);
+	if (ma->use_nodes && master_shader) {
+		bc_get_reflectivity(master_shader, reflectivity);
 	}
+	return reflectivity;
 }
 
 bNode *bc_get_master_shader(Material *ma)

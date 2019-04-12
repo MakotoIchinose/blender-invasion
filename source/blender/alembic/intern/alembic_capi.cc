@@ -14,6 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup balembic
+ */
+
 #include "../ABC_alembic.h"
 #include <boost/foreach.hpp>
 
@@ -287,6 +291,8 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
 static void export_endjob(void *customdata)
 {
 	ExportJobData *data = static_cast<ExportJobData *>(customdata);
+
+	DEG_graph_free(data->settings.depsgraph);
 
 	if (data->was_canceled && BLI_exists(data->filename)) {
 		BLI_delete(data->filename, false, false);

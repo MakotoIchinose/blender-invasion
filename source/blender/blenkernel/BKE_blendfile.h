@@ -16,8 +16,8 @@
 #ifndef __BKE_BLENDFILE_H__
 #define __BKE_BLENDFILE_H__
 
-/** \file BKE_blendfile.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus

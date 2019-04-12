@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_MODULE_H__
 #define __FREESTYLE_MODULE_H__
 
-/** \file blender/freestyle/intern/stroke/Module.h
- *  \ingroup freestyle
- *  \brief Set the type of the module
+/** \file
+ * \ingroup freestyle
+ * \brief Set the type of the module
  */
 
 #include "Canvas.h"

@@ -16,8 +16,8 @@
  * Copyright 2015, Blender Foundation.
  */
 
-/** \file blender/python/gpu/gpu_py_offscreen.c
- *  \ingroup bpygpu
+/** \file
+ * \ingroup bpygpu
  *
  * This file defines the offscreen functionalities of the 'gpu' module
  * used for off-screen OpenGL rendering.
@@ -52,10 +52,9 @@
 #include "gpu_py_offscreen.h" /* own include */
 
 
- /* -------------------------------------------------------------------- */
-
- /** \name GPUOffScreen Common Utilities
-  * \{ */
+/* -------------------------------------------------------------------- */
+/** \name GPUOffScreen Common Utilities
+ * \{ */
 
 static int bpygpu_offscreen_valid_check(BPyGPUOffScreen *bpygpu_ofs)
 {
@@ -260,6 +259,7 @@ static PyObject *bpygpu_offscreen_draw_view3d(BPyGPUOffScreen *self, PyObject *a
 	                         true,
 	                         "",
 	                         NULL,
+	                         true,
 	                         self->ofs,
 	                         NULL);
 
@@ -299,8 +299,9 @@ static PyObject *bpygpu_offscreen_bind_context_exit(BPyGPUOffScreen *self, PyObj
 
 static void BPyGPUOffScreen__tp_dealloc(BPyGPUOffScreen *self)
 {
-	if (self->ofs)
+	if (self->ofs) {
 		GPU_offscreen_free(self->ofs);
+	}
 	Py_TYPE(self)->tp_free((PyObject *)self);
 }
 

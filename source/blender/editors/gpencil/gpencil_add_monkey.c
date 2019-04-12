@@ -17,8 +17,8 @@
  * This is a new part of Blender
  */
 
-/** \file blender/editors/gpencil/gpencil_add_monkey.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 #include "BLI_math.h"
@@ -31,6 +31,7 @@
 #include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 
@@ -59,10 +60,10 @@ static int gpencil_monkey_color(
 		}
 	}
 
+	int idx;
+
 	/* create a new one */
-	BKE_object_material_slot_add(bmain, ob);
-	ma = BKE_material_add_gpencil(bmain, pct->name);
-	assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+	ma = BKE_gpencil_object_material_new(bmain, ob, pct->name, &idx);
 
 	copy_v4_v4(ma->gp_style->stroke_rgba, pct->line);
 	copy_v4_v4(ma->gp_style->fill_rgba, pct->fill);
@@ -74,8 +75,11 @@ static int gpencil_monkey_color(
 	if (!fill) {
 		ma->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
 	}
+	else {
+		ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+	}
 
-	return BKE_gpencil_get_material_index(ob, ma) - 1;
+	return idx;
 }
 
 /* ***************************************************************** */
@@ -1442,10 +1446,6 @@ void ED_gpencil_create_monkey(bContext *C, Object *ob, float mat[4][4])
 
 	/* set first color as active */
 	ob->actcol = color_Black + 1;
-	Material *ma = give_current_material(ob, ob->actcol);
-	if (ma != NULL) {
-		BKE_brush_update_material(bmain, ma, NULL);
-	}
 
 	/* layers */
 	/* NOTE: For now, we just add new layers, to make it easier to separate out old/new instances */

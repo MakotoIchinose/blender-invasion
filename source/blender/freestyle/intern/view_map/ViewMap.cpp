@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/view_map/ViewMap.cpp
- *  \ingroup freestyle
- *  \brief Classes to define a View Map (ViewVertex, ViewEdge, etc.)
+/** \file
+ * \ingroup freestyle
+ * \brief Classes to define a View Map (ViewVertex, ViewEdge, etc.)
  */
 
 #include <float.h>

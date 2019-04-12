@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/studiolight.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BKE_studiolight.h"
@@ -368,7 +368,7 @@ static void studiolight_create_equirect_radiance_gputexture(StudioLight *sl)
 			MEM_SAFE_FREE(gpu_matcap_3components);
 		}
 		else {
-			sl->equirect_radiance_gputexture = GPU_texture_create_2D(
+			sl->equirect_radiance_gputexture = GPU_texture_create_2d(
 			        ibuf->x, ibuf->y, GPU_RGBA16F, ibuf->rect_float, error);
 			GPUTexture *tex = sl->equirect_radiance_gputexture;
 			GPU_texture_bind(tex, 0);
@@ -386,7 +386,7 @@ static void studiolight_create_equirect_irradiance_gputexture(StudioLight *sl)
 		char error[256];
 		BKE_studiolight_ensure_flag(sl, STUDIOLIGHT_EQUIRECT_IRRADIANCE_IMAGE_CALCULATED);
 		ImBuf *ibuf = sl->equirect_irradiance_buffer;
-		sl->equirect_irradiance_gputexture = GPU_texture_create_2D(
+		sl->equirect_irradiance_gputexture = GPU_texture_create_2d(
 		        ibuf->x, ibuf->y, GPU_RGBA16F, ibuf->rect_float, error);
 		GPUTexture *tex = sl->equirect_irradiance_gputexture;
 		GPU_texture_bind(tex, 0);
@@ -851,7 +851,7 @@ static float blinn_specular(
 	gloss *= 1.0f - wrap;
 	float shininess = exp2(10.0f * gloss + 1.0f);
 
-	/* Pi is already divided in the lamp power.
+	/* Pi is already divided in the light power.
 	 * normalization_factor = (shininess + 8.0) / (8.0 * M_PI) */
 	float normalization_factor = shininess * 0.125f + 1.0f;
 	float spec_light = powf(spec_angle, shininess) * max_ff(NL, 0.0f) * normalization_factor;
@@ -1184,7 +1184,7 @@ void BKE_studiolight_init(void)
 	        STUDIOLIGHT_INTERNAL | STUDIOLIGHT_SPHERICAL_HARMONICS_COEFFICIENTS_CALCULATED | STUDIOLIGHT_TYPE_STUDIO);
 	BLI_strncpy(sl->name, "Default", FILE_MAXFILE);
 
-	copy_v4_fl4(sl->light_ambient, 0.025000, 0.025000, 0.025000, 1.000000);
+	copy_v3_fl3(sl->light_ambient, 0.025000, 0.025000, 0.025000);
 
 	copy_v4_fl4(sl->light[0].vec, -0.580952, 0.228571, 0.781185, 0.0);
 	copy_v4_fl4(sl->light[0].col, 0.900000, 0.900000, 0.900000, 1.000000);

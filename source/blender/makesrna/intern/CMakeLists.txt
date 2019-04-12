@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 if(CMAKE_COMPILER_IS_GNUCC)
@@ -53,9 +48,9 @@ set(DEFSRC
 	rna_gpencil_modifier.c
 	rna_image.c
 	rna_key.c
-	rna_lamp.c
 	rna_lattice.c
 	rna_layer.c
+	rna_light.c
 	rna_lightprobe.c
 	rna_linestyle.c
 	rna_main.c
@@ -164,6 +159,7 @@ set(SRC
 	rna_define.c
 	${DEFSRC}
 	${APISRC}
+	../../../../intern/clog/clog.c
 	../../../../intern/guardedalloc/intern/mallocn.c
 	../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
 	../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
@@ -171,7 +167,7 @@ set(SRC
 )
 
 set(INC
-
+    ../../../../intern/clog
 )
 
 set(INC_SYS

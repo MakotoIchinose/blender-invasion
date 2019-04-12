@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_nla/nla_edit.c
- *  \ingroup spnla
+/** \file
+ * \ingroup spnla
  */
 
 
@@ -602,7 +602,7 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 	cfra = (float)CFRA;
 
 	/* get action to use */
-	act = BLI_findlink(&CTX_data_main(C)->action, RNA_enum_get(op->ptr, "action"));
+	act = BLI_findlink(&CTX_data_main(C)->actions, RNA_enum_get(op->ptr, "action"));
 
 	if (act == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "No valid action to add");
@@ -1269,8 +1269,8 @@ static void nlaedit_split_strip_actclip(Main *bmain, AnimData *adt, NlaTrack *nl
 	nstrip = BKE_nlastrip_copy(bmain, strip, true, 0);
 	BLI_insertlinkafter(&nlt->strips, strip, nstrip);
 
-	/* set the endpoint of the first strip and the start of the new strip
-	 * to the splitframe values calculated above
+	/* Set the endpoint of the first strip and the start of the new strip
+	 * to the split-frame values calculated above.
 	 */
 	strip->end = splitframe;
 	nstrip->start = splitframe;

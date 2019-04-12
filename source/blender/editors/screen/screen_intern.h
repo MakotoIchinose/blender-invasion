@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/screen/screen_intern.h
- *  \ingroup edscr
+/** \file
+ * \ingroup edscr
  */
 
 #ifndef __SCREEN_INTERN_H__

@@ -20,8 +20,8 @@
 #ifndef __BKE_NODE_H__
 #define __BKE_NODE_H__
 
-/** \file BKE_node.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BLI_compiler_compat.h"
@@ -30,7 +30,7 @@
 #include "DNA_listBase.h"
 
 /* for FOREACH_NODETREE_BEGIN */
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
@@ -337,6 +337,7 @@ void              ntreeUserDecrefID(struct bNodeTree *ntree);
 struct bNodeTree *ntreeFromID(const struct ID *id);
 
 void              ntreeMakeLocal(struct Main *bmain, struct bNodeTree *ntree, bool id_in_mainlist, const bool lib_local);
+void              ntreeFreeLocalNode(struct bNodeTree *ntree, struct bNode *node);
 void              ntreeFreeLocalTree(struct bNodeTree *ntree);
 struct bNode     *ntreeFindType(const struct bNodeTree *ntree, int type);
 bool              ntreeHasType(const struct bNodeTree *ntree, int type);
@@ -445,13 +446,10 @@ struct bNode	*nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntre
 void            nodeUnlinkNode(struct bNodeTree *ntree, struct bNode *node);
 void            nodeUniqueName(struct bNodeTree *ntree, struct bNode *node);
 
-/* Frees the node itself, without affect to anything else. */
-void            nodeFreeNode(struct bNodeTree *ntree, struct bNode *node);
-/* Will additionally cleanup things like f-curves which uses this node. */
-void            nodeDeleteNode(struct Main *bmain, struct bNodeTree *ntree, struct bNode *node);
+/* Delete node, associated animation data and ID user count. */
+void            nodeRemoveNode(struct Main *bmain, struct bNodeTree *ntree, struct bNode *node, bool do_id_user);
 
 struct bNode    *BKE_node_copy_ex(struct bNodeTree *ntree, struct bNode *node_src, const int flag);
-struct bNode	*nodeCopyNode(struct bNodeTree *ntree, struct bNode *node);
 
 struct bNodeLink *nodeAddLink(struct bNodeTree *ntree, struct bNode *fromnode, struct bNodeSocket *fromsock, struct bNode *tonode, struct bNodeSocket *tosock);
 void            nodeRemLink(struct bNodeTree *ntree, struct bNodeLink *link);
@@ -503,6 +501,7 @@ void            ntreeTagUsedSockets(struct bNodeTree *ntree);
 /* Node Clipboard */
 void                   BKE_node_clipboard_init(struct bNodeTree *ntree);
 void                   BKE_node_clipboard_clear(void);
+void                   BKE_node_clipboard_free(void);
 bool                   BKE_node_clipboard_validate(void);
 void                   BKE_node_clipboard_add_node(struct bNode *node);
 void                   BKE_node_clipboard_add_link(struct bNodeLink *link);
@@ -619,6 +618,7 @@ bool BKE_node_is_connected_to_output(struct bNodeTree *ntree, struct bNode *node
 #define NODE_REROUTE	6
 #define NODE_GROUP_INPUT	7
 #define NODE_GROUP_OUTPUT	8
+#define NODE_CUSTOM_GROUP	9
 
 void BKE_node_tree_unlink_id(ID *id, struct bNodeTree *ntree);
 
@@ -663,7 +663,7 @@ struct NodeTreeIterStore {
 	Scene *scene;
 	Material *mat;
 	Tex *tex;
-	Lamp *lamp;
+	Light *light;
 	World *world;
 	FreestyleLineStyle *linestyle;
 };
@@ -1065,5 +1065,8 @@ struct Depsgraph;
 void BKE_nodetree_shading_params_eval(struct Depsgraph *depsgraph,
                                       struct bNodeTree *ntree_dst,
                                       const struct bNodeTree *ntree_src);
+
+extern struct bNodeType NodeTypeUndefined;
+extern struct bNodeSocketType NodeSocketTypeUndefined;
 
 #endif  /* __BKE_NODE_H__ */

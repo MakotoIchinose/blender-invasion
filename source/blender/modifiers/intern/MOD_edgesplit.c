@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_edgesplit.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  *
  * EdgeSplit modifier
  *
@@ -27,16 +27,17 @@
  */
 
 #include "BLI_utildefines.h"
+
 #include "BLI_math.h"
+
+#include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
 
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-
-#include "DNA_mesh_types.h"
-#include "DNA_object_types.h"
 
 #include "MOD_modifiertypes.h"
 
@@ -59,7 +60,7 @@ static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd)
 	            .add_key_index = false,
 	            .use_shapekey = false,
 	            .active_shapekey = 0,
-	            .cd_mask_extra = CD_MASK_ORIGINDEX,
+	            .cd_mask_extra = {.vmask = CD_MASK_ORIGINDEX, .emask = CD_MASK_ORIGINDEX, .pmask = CD_MASK_ORIGINDEX},
 	        });
 
 	if (do_split_angle) {
@@ -99,7 +100,7 @@ static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd)
 
 	/* BM_mesh_validate(bm); */ /* for troubleshooting */
 
-	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 	BM_mesh_free(bm);
 
 	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
@@ -145,12 +146,6 @@ ModifierTypeInfo modifierType_EdgeSplit = {
 
 	/* copyData */          modifier_copyData_generic,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -167,4 +162,5 @@ ModifierTypeInfo modifierType_EdgeSplit = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

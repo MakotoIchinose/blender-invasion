@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/avi/intern/avi_endian.h
- *  \ingroup avi
+/** \file
+ * \ingroup avi
  *
  * This is external code.
  */

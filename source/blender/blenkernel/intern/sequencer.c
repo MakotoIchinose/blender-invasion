@@ -20,8 +20,8 @@
  * - Peter Schlaile <peter [at] schlaile [dot] de> 2005/2006
  */
 
-/** \file blender/blenkernel/intern/sequencer.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stddef.h>
@@ -1070,7 +1070,7 @@ void BKE_sequencer_clear_scene_in_allseqs(Main *bmain, Scene *scene)
 	Scene *scene_iter;
 
 	/* when a scene is deleted: test all seqs */
-	for (scene_iter = bmain->scene.first; scene_iter; scene_iter = scene_iter->id.next) {
+	for (scene_iter = bmain->scenes.first; scene_iter; scene_iter = scene_iter->id.next) {
 		if (scene_iter != scene && scene_iter->ed) {
 			BKE_sequencer_base_recursive_apply(&scene_iter->ed->seqbase, clear_scene_in_allseqs_cb, scene);
 		}
@@ -3060,8 +3060,9 @@ static ImBuf *seq_render_movieclip_strip(const SeqRenderData *context, Sequence 
 
 	BKE_movieclip_user_set_frame(&user, nr + seq->anim_startofs + seq->clip->start_frame);
 
-	user.render_size = MCLIP_PROXY_RENDER_SIZE_FULL;
+	user.render_flag |= MCLIP_PROXY_RENDER_USE_FALLBACK_RENDER;
 
+	user.render_size = MCLIP_PROXY_RENDER_SIZE_FULL;
 	switch (seq_rendersize_to_proxysize(context->preview_render_size)) {
 		case IMB_PROXY_NONE:
 			user.render_size = MCLIP_PROXY_RENDER_SIZE_FULL;
@@ -3081,14 +3082,14 @@ static ImBuf *seq_render_movieclip_strip(const SeqRenderData *context, Sequence 
 	}
 
 	if (seq->clip_flag & SEQ_MOVIECLIP_RENDER_UNDISTORTED) {
-		user.render_flag = MCLIP_PROXY_RENDER_UNDISTORT;
+		user.render_flag |= MCLIP_PROXY_RENDER_UNDISTORT;
 	}
 
 	if (seq->clip_flag & SEQ_MOVIECLIP_RENDER_STABILIZED) {
 		ibuf = BKE_movieclip_get_stable_ibuf(seq->clip, &user, tloc, &tscale, &tangle, 0);
 	}
 	else {
-		ibuf = BKE_movieclip_get_ibuf_flag(seq->clip, &user, 0, MOVIECLIP_CACHE_SKIP);
+		ibuf = BKE_movieclip_get_ibuf_flag(seq->clip, &user, seq->clip->flag, MOVIECLIP_CACHE_SKIP);
 	}
 
 	return ibuf;
@@ -5716,7 +5717,7 @@ static void sequencer_all_free_anim_ibufs(ListBase *seqbase, int cfra)
 void BKE_sequencer_all_free_anim_ibufs(Main *bmain, int cfra)
 {
 	BKE_sequencer_cache_cleanup();
-	for (Scene *scene = bmain->scene.first;
+	for (Scene *scene = bmain->scenes.first;
 	     scene != NULL;
 	     scene = scene->id.next)
 	{

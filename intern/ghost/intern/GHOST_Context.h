@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_Context.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  * Declaration of GHOST_Context class.
  */
 
@@ -118,7 +118,7 @@ public:
 		return m_stereoVisual;
 	}
 
-	/** Number of samples used in anti-aliasing, set to 0 if no AA **/
+	/** Number of samples used in anti-aliasing, set to 0 if no AA */
 	inline GHOST_TUns16 getNumOfAASamples() const {
 		return m_numOfAASamples;
 	}

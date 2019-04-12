@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/allocimbuf.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 

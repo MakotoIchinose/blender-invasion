@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/geometry/HashGrid.cpp
- *  \ingroup freestyle
- *  \brief Class to define a cell grid surrounding the bounding box of the scene
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define a cell grid surrounding the bounding box of the scene
  */
 
 #include "HashGrid.h"

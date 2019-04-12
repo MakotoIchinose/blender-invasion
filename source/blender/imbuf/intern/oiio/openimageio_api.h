@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/imbuf/intern/oiio/openimageio_api.h
- *  \ingroup openimageio
+/** \file
+ * \ingroup openimageio
  */
 
 

@@ -14,12 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenkernel/intern/workspace.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
-
-/* allow accessing private members of DNA_workspace_types.h */
-#define DNA_PRIVATE_WORKSPACE_ALLOW
 
 #include <stdlib.h>
 #include <string.h>
@@ -331,7 +328,7 @@ WorkSpaceLayout *BKE_workspace_layout_iter_circular(
 				return iter_layout;
 			}
 		}
-		LISTBASE_CIRCULAR_FORWARD_END(&workspace->layouts, iter_layout, start)
+		LISTBASE_CIRCULAR_FORWARD_END(&workspace->layouts, iter_layout, start);
 	}
 
 	return NULL;

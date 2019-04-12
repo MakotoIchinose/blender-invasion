@@ -22,8 +22,7 @@
 
 #include "DNA_vec_types.h"  /* for rcti */
 
-/**
- * \file IMB_imbuf_types.h
+/** \file
  * \ingroup imbuf
  * \brief Contains defines and structs used throughout the imbuf module.
  * \todo Clean up includes.

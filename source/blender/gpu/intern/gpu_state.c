@@ -14,11 +14,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/gpu/intern/gpu_state.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #include "DNA_userdef_types.h"
+
+#include "BKE_global.h"
 
 #include "GPU_glew.h"
 #include "GPU_state.h"
@@ -92,21 +94,11 @@ bool GPU_depth_test_enabled()
 
 void GPU_line_smooth(bool enable)
 {
-	if (enable) {
+	if (enable && ((G.debug & G_DEBUG_GPU) == 0)) {
 		glEnable(GL_LINE_SMOOTH);
 	}
 	else {
 		glDisable(GL_LINE_SMOOTH);
-	}
-}
-
-void GPU_line_stipple(bool enable)
-{
-	if (enable) {
-		glEnable(GL_LINE_STIPPLE);
-	}
-	else {
-		glDisable(GL_LINE_STIPPLE);
 	}
 }
 
@@ -126,7 +118,7 @@ void GPU_point_size(float size)
 
 void GPU_polygon_smooth(bool enable)
 {
-	if (enable) {
+	if (enable && ((G.debug & G_DEBUG_GPU) == 0)) {
 		glEnable(GL_POLYGON_SMOOTH);
 	}
 	else {

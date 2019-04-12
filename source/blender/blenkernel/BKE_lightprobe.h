@@ -20,9 +20,9 @@
 #ifndef __BKE_LIGHTPROBE_H__
 #define __BKE_LIGHTPROBE_H__
 
-/** \file BKE_lightprobe.h
- *  \ingroup bke
- *  \brief General operations for probes.
+/** \file
+ * \ingroup bke
+ * \brief General operations for probes.
  */
 
 struct LightProbe;

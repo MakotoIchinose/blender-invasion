@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/texture/node_texture_tree.c
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 
@@ -118,7 +118,7 @@ static void localize(bNodeTree *localtree, bNodeTree *UNUSED(ntree))
 
 		if (node->flag & NODE_MUTED || node->type == NODE_REROUTE) {
 			nodeInternalRelink(localtree, node);
-			nodeFreeNode(localtree, node);
+			ntreeFreeLocalNode(localtree, node);
 		}
 	}
 }
@@ -156,9 +156,9 @@ void register_node_tree_type_tex(void)
 
 	tt->type = NTREE_TEXTURE;
 	strcpy(tt->idname, "TextureNodeTree");
-	strcpy(tt->ui_name, "Texture Node Editor");
+	strcpy(tt->ui_name, N_("Texture Node Editor"));
 	tt->ui_icon = 0;    /* defined in drawnode.c */
-	strcpy(tt->ui_description, "Texture nodes");
+	strcpy(tt->ui_description, N_("Texture nodes"));
 
 	tt->foreach_nodeclass = foreach_nodeclass;
 	tt->update = update;

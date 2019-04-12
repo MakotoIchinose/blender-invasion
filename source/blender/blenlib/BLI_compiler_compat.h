@@ -17,8 +17,8 @@
 #ifndef __BLI_COMPILER_COMPAT_H__
 #define __BLI_COMPILER_COMPAT_H__
 
-/** \file BLI_compiler_compat.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * Use to help with cross platform portability.
  */

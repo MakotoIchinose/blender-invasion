@@ -17,8 +17,8 @@
 #ifndef __BMESH_MARKING_H__
 #define __BMESH_MARKING_H__
 
-/** \file blender/bmesh/intern/bmesh_marking.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 typedef struct BMEditSelection {

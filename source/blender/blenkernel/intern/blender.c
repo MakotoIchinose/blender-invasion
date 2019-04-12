@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/blender.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Application level startup/shutdown functionality.
  */
@@ -275,7 +275,7 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
 		memcpy(&(userdef_tmp.id), &(userdef_a->id), sizeof(userdef_tmp.id)); \
 		memcpy(&(userdef_a->id), &(userdef_b->id), sizeof(userdef_tmp.id)); \
 		memcpy(&(userdef_b->id), &(userdef_tmp.id), sizeof(userdef_tmp.id)); \
-	}
+	} ((void)0)
 
 #define LIST_SWAP(id) { \
 	SWAP(ListBase, userdef_a->id, userdef_b->id); \
@@ -305,7 +305,7 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
 	DATA_SWAP(app_flag);
 
 	/* We could add others. */
-	FLAG_SWAP(uiflag, int, USER_QUIT_PROMPT);
+	FLAG_SWAP(uiflag, int, USER_SAVE_PROMPT);
 
 #undef SWAP_TYPELESS
 #undef DATA_SWAP
@@ -324,27 +324,6 @@ void BKE_blender_userdef_app_template_data_set_and_free(UserDef *userdef)
 	BKE_blender_userdef_app_template_data_set(userdef);
 	MEM_freeN(userdef);
 }
-
-/* *****************  testing for break ************* */
-
-static void (*blender_test_break_cb)(void) = NULL;
-
-void BKE_blender_callback_test_break_set(void (*func)(void))
-{
-	blender_test_break_cb = func;
-}
-
-
-int BKE_blender_test_break(void)
-{
-	if (!G.background) {
-		if (blender_test_break_cb)
-			blender_test_break_cb();
-	}
-
-	return (G.is_break == true);
-}
-
 
 /** \name Blender's AtExit
  *

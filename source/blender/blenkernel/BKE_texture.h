@@ -19,8 +19,8 @@
 #ifndef __BKE_TEXTURE_H__
 #define __BKE_TEXTURE_H__
 
-/** \file BKE_texture.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus
@@ -31,7 +31,7 @@ struct Brush;
 struct ColorBand;
 struct FreestyleLineStyle;
 struct ImagePool;
-struct Lamp;
+struct Light;
 struct MTex;
 struct Main;
 struct Material;

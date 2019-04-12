@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_FEDGE_X_DETECTOR_H__
 #define __FREESTYLE_FEDGE_X_DETECTOR_H__
 
-/** \file blender/freestyle/intern/view_map/FEdgeXDetector.h
- *  \ingroup freestyle
- *  \brief Detects/flags/builds extended features edges on the WXEdge structure
+/** \file
+ * \ingroup freestyle
+ * \brief Detects/flags/builds extended features edges on the WXEdge structure
  */
 
 #include <vector>

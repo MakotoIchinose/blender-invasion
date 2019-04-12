@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/intern/gpu_batch_presets.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #include "BLI_utildefines.h"

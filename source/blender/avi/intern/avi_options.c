@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/avi/intern/avi_options.c
- *  \ingroup avi
+/** \file
+ * \ingroup avi
  *
  * This is external code. Sets some compression related options
  * (width, height quality, framerate).

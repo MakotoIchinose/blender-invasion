@@ -1,6 +1,4 @@
 /*
- * Copyright 2013, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,6 +12,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * Copyright 2013, Blender Foundation.
  */
 
 #include <cstring>
@@ -128,7 +128,7 @@ void NodeGraph::add_bNode(const CompositorContext &context, bNodeTree *b_ntree, 
 	}
 
 	/* special node types */
-	if (b_node->type == NODE_GROUP) {
+	if (ELEM(b_node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
 		add_proxies_group(context, b_node, key);
 	}
 	else if (b_node->type == NODE_REROUTE) {

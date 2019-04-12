@@ -18,8 +18,8 @@
  * writeimage.c
  */
 
-/** \file blender/imbuf/intern/writeimage.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 

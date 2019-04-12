@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/operators/bmo_edgenet.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Edge-Net for filling in open edge-loops.
  */
@@ -44,8 +44,9 @@ void bmo_edgenet_fill_exec(BMesh *bm, BMOperator *op)
 	const bool use_smooth     = BMO_slot_bool_get(op->slots_in, "use_smooth");
 //	const int sides           = BMO_slot_int_get(op->slots_in,  "sides");
 
-	if (!bm->totvert || !bm->totedge)
+	if (!bm->totvert || !bm->totedge) {
 		return;
+	}
 
 	BM_mesh_elem_hflag_disable_all(bm, BM_EDGE, BM_ELEM_TAG, false);
 	BMO_slot_buffer_hflag_enable(bm, op->slots_in, "edges", BM_EDGE, BM_ELEM_TAG, false);

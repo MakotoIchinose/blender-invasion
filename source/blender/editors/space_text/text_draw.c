@@ -16,8 +16,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_text/text_draw.c
- *  \ingroup sptext
+/** \file
+ * \ingroup sptext
  */
 
 #include "MEM_guardedalloc.h"

@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/makesrna/intern/rna_ID.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -363,8 +363,10 @@ static ID *rna_ID_copy(ID *id, Main *bmain)
 {
 	ID *newid;
 
-	if (id_copy(bmain, id, &newid, false)) {
-		if (newid) id_us_min(newid);
+	if (BKE_id_copy(bmain, id, &newid)) {
+		if (newid != NULL) {
+			id_us_min(newid);
+		}
 		return newid;
 	}
 
@@ -847,6 +849,14 @@ static IDProperty *rna_IDPropertyWrapPtr_idprops(PointerRNA *ptr, bool UNUSED(cr
 	return ptr->data;
 }
 
+static void rna_Library_version_get(PointerRNA *ptr, int *value)
+{
+	Library *lib = (Library *)ptr->data;
+	value[0] = lib->versionfile / 100;
+	value[1] = lib->versionfile % 100;
+	value[2] = lib->subversionfile;
+}
+
 #else
 
 static void rna_def_ID_properties(BlenderRNA *brna)
@@ -1315,6 +1325,12 @@ static void rna_def_library(BlenderRNA *brna)
 	RNA_def_property_pointer_sdna(prop, NULL, "packedfile");
 	RNA_def_property_ui_text(prop, "Packed File", "");
 
+	prop = RNA_def_int_vector(srna, "version", 3, NULL, 0, INT_MAX,
+	                          "Version", "Version of Blender the library .blend was saved with", 0, INT_MAX);
+	RNA_def_property_int_funcs(prop, "rna_Library_version_get", NULL, NULL);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+	RNA_def_property_flag(prop, PROP_THICK_WRAP);
+
 	func = RNA_def_function(srna, "reload", "WM_lib_reload");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
 	RNA_def_function_ui_description(func, "Reload this library and all its linked data-blocks");
@@ -1323,7 +1339,7 @@ static void rna_def_library(BlenderRNA *brna)
 /**
  * \attention This is separate from the above. It allows for RNA functions to
  * return an IDProperty *. See MovieClip.metadata for a usage example.
- **/
+ */
 static void rna_def_idproperty_wrap_ptr(BlenderRNA *brna)
 {
 	StructRNA *srna;

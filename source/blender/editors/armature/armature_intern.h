@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/armature/armature_intern.h
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #ifndef __ARMATURE_INTERN_H__

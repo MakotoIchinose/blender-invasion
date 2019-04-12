@@ -17,14 +17,15 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_weightvg_util.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
+
+#include "BLI_utildefines.h"
 
 #include "BLI_math.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
-#include "BLI_utildefines.h"
 
 #include "DNA_color_types.h"      /* CurveMapping. */
 #include "DNA_mesh_types.h"
@@ -126,7 +127,6 @@ void weightvg_do_mask(
 
 	/* If we want to mask vgroup weights from a texture. */
 	if (texture != NULL) {
-		texture = (Tex *)DEG_get_evaluated_id(ctx->depsgraph, &texture->id);
 		/* The texture coordinates. */
 		float (*tex_co)[3];
 		/* See mapping note below... */

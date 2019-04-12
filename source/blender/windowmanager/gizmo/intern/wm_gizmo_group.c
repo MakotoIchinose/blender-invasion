@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/windowmanager/gizmo/intern/wm_gizmo_group.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * \name Gizmo-Group
  *
@@ -61,7 +61,6 @@
 /* Allow gizmo part's to be single click only,
  * dragging falls back to activating their 'drag_part' action. */
 #define USE_DRAG_DETECT
-#define DRAG_THRESHOLD (U.tweak_threshold * U.dpi_fac)
 
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoGroup
@@ -191,7 +190,7 @@ void wm_gizmogroup_intersectable_gizmos_to_list(const wmGizmoGroup *gzgroup, Lis
 	}
 }
 
-void wm_gizmogroup_ensure_initialized(wmGizmoGroup *gzgroup, const bContext *C)
+void WM_gizmogroup_ensure_init(const bContext *C, wmGizmoGroup *gzgroup)
 {
 	/* prepare for first draw */
 	if (UNLIKELY((gzgroup->init_flag & WM_GIZMOGROUP_INIT_SETUP) == 0)) {
@@ -440,7 +439,7 @@ static int gizmo_tweak_modal(bContext *C, wmOperator *op, const wmEvent *event)
 	wmGizmoMap *gzmap = mtweak->gzmap;
 	if (mtweak->drag_state == DRAG_DETECT) {
 		if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-			if (len_manhattan_v2v2_int(&event->x, gzmap->gzmap_context.event_xy) >= DRAG_THRESHOLD) {
+			if (len_manhattan_v2v2_int(&event->x, gzmap->gzmap_context.event_xy) >= WM_EVENT_CURSOR_CLICK_DRAG_THRESHOLD) {
 				mtweak->drag_state = DRAG_IDLE;
 				gz->highlight_part = gz->drag_part;
 			}
@@ -792,7 +791,7 @@ void WM_gizmomaptype_group_init_runtime(
 	}
 
 	/* now create a gizmo for all existing areas */
-	for (bScreen *sc = bmain->screen.first; sc; sc = sc->id.next) {
+	for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
 		for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
 			for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 				ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
@@ -807,7 +806,7 @@ void WM_gizmomaptype_group_init_runtime(
 	}
 }
 
-void WM_gizmomaptype_group_init_runtime_with_region(
+wmGizmoGroup *WM_gizmomaptype_group_init_runtime_with_region(
         wmGizmoMapType *gzmap_type,
         wmGizmoGroupType *gzgt, ARegion *ar)
 {
@@ -815,10 +814,13 @@ void WM_gizmomaptype_group_init_runtime_with_region(
 	BLI_assert(gzmap && gzmap->type == gzmap_type);
 	UNUSED_VARS_NDEBUG(gzmap_type);
 
-	wm_gizmogroup_new_from_type(gzmap, gzgt);
+	wmGizmoGroup *gzgroup = wm_gizmogroup_new_from_type(gzmap, gzgt);
 
 	wm_gizmomap_highlight_set(gzmap, NULL, NULL, 0);
+
 	ED_region_tag_redraw(ar);
+
+	return gzgroup;
 }
 
 /**
@@ -834,7 +836,7 @@ void WM_gizmomaptype_group_unlink(
         const wmGizmoGroupType *gzgt)
 {
 	/* Free instances. */
-	for (bScreen *sc = bmain->screen.first; sc; sc = sc->id.next) {
+	for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
 		for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
 			for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 				ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;

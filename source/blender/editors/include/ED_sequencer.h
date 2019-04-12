@@ -16,8 +16,8 @@
  * The Original Code is Copyright (C) 2009, Blender Foundation
  */
 
-/** \file ED_sequencer.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_SEQUENCER_H__

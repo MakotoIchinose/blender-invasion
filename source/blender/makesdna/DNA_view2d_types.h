@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file DNA_view2d_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_VIEW2D_TYPES_H__
@@ -78,7 +78,7 @@ typedef struct View2D {
 	/* Usually set externally (as in, not in view2d files). */
 	/** Alpha of vertical and horizontal scrollbars (range is [0, 255]). */
 	char alpha_vert, alpha_hor;
-	short pad[3];
+	char _pad[6];
 
 	/* animated smooth view */
 	struct SmoothView2DStore *sms;

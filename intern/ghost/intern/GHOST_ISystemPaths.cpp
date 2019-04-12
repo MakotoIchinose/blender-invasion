@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_ISystemPaths.cpp
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  */
 
 

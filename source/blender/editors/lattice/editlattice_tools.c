@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/lattice/editlattice_tools.c
- *  \ingroup edlattice
+/** \file
+ * \ingroup edlattice
  */
 
 

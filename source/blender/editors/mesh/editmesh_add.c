@@ -17,15 +17,16 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/mesh/editmesh_add.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
+
+#include "BLI_math.h"
+#include "BLI_sys_types.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-
-#include "BLI_math.h"
 
 #include "BLT_translation.h"
 

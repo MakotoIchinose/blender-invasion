@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/nla_private.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 

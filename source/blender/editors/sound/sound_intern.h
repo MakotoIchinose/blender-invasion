@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/sound/sound_intern.h
- *  \ingroup edsnd
+/** \file
+ * \ingroup edsnd
  */
 
 

@@ -16,8 +16,8 @@
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
  */
-/** \file DNA_sound_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_SOUND_TYPES_H__
@@ -66,7 +66,7 @@ typedef struct bSound {
 	short flags;
 	/** Runtime only, always reset in readfile. */
 	short tags;
-	int pad;
+	char _pad[4];
 
 	/* unused currently
 	int type;

@@ -17,8 +17,8 @@
 #ifndef __BKE_OCEAN_H__
 #define __BKE_OCEAN_H__
 
-/** \file BKE_ocean.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus

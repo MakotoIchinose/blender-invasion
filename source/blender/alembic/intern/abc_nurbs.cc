@@ -14,6 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup balembic
+ */
+
 #include "abc_nurbs.h"
 
 #include "abc_transform.h"
@@ -253,10 +257,10 @@ void AbcNurbsReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSele
 		}
 		catch(Alembic::Util::Exception &ex) {
 			printf("Alembic: error reading nurbs sample for '%s/%s' at time %f: %s\n",
-				   m_iobject.getFullName().c_str(),
-				   schema.getName().c_str(),
-				   sample_sel.getRequestedTime(),
-				   ex.what());
+			       m_iobject.getFullName().c_str(),
+			       schema.getName().c_str(),
+			       sample_sel.getRequestedTime(),
+			       ex.what());
 			return;
 		}
 

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/render/intern/include/renderpipeline.h
- *  \ingroup render
+/** \file
+ * \ingroup render
  */
 
 

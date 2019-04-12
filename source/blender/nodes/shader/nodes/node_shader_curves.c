@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/shader/nodes/node_shader_curves.c
- *  \ingroup shdnodes
+/** \file
+ * \ingroup shdnodes
  */
 
 
@@ -115,12 +115,63 @@ static int gpu_shader_curve_rgb(GPUMaterial *mat, bNode *node, bNodeExecData *UN
 {
 	float *array, layer;
 	int size;
+	bool use_opti = true;
 
-	curvemapping_initialize(node->storage);
-	curvemapping_table_RGBA(node->storage, &array, &size);
+	CurveMapping *cumap = node->storage;
+
+	curvemapping_initialize(cumap);
+	curvemapping_table_RGBA(cumap, &array, &size);
 	GPUNodeLink *tex = GPU_color_band(mat, size, array, &layer);
 
-	return GPU_stack_link(mat, node, "curves_rgb", in, out, tex, GPU_constant(&layer));
+	float ext_rgba[4][4];
+	float range_rgba[4];
+
+	for (int a = 0; a < CM_TOT; ++a) {
+		const CurveMap *cm = &cumap->cm[a];
+		ext_rgba[a][0] = cm->mintable;
+		ext_rgba[a][2] = cm->maxtable;
+		range_rgba[a] = 1.0f / max_ff(1e-8f, cm->maxtable - cm->mintable);
+		/* Compute extrapolation gradients. */
+		if ((cm->flag & CUMA_EXTEND_EXTRAPOLATE) != 0) {
+			ext_rgba[a][1] = (cm->ext_in[0] != 0.0f) ? (cm->ext_in[1] / (cm->ext_in[0] * range_rgba[a])) : 1e8f;
+			ext_rgba[a][3] = (cm->ext_out[0] != 0.0f) ? (cm->ext_out[1] / (cm->ext_out[0] * range_rgba[a])) : 1e8f;
+		}
+		else {
+			ext_rgba[a][1] = 0.0f;
+			ext_rgba[a][3] = 0.0f;
+		}
+
+		/* Check if rgb comps are just linear. */
+		if (a < 3) {
+			if (range_rgba[a] != 1.0f ||
+			    ext_rgba[a][1] != 1.0f ||
+			    ext_rgba[a][2] != 1.0f ||
+			    cm->totpoint != 2 ||
+			    cm->curve[0].x != 0.0f ||
+			    cm->curve[0].y != 0.0f ||
+			    cm->curve[1].x != 1.0f ||
+			    cm->curve[1].y != 1.0f)
+			{
+				use_opti = false;
+			}
+		}
+	}
+
+	if (use_opti) {
+		return GPU_stack_link(mat, node, "curves_rgb_opti", in, out, tex,
+		                                                    GPU_constant(&layer),
+		                                                    GPU_uniform(range_rgba),
+		                                                    GPU_uniform(ext_rgba[3]));
+	}
+	else {
+		return GPU_stack_link(mat, node, "curves_rgb", in, out, tex,
+		                                               GPU_constant(&layer),
+		                                               GPU_uniform(range_rgba),
+		                                               GPU_uniform(ext_rgba[0]),
+		                                               GPU_uniform(ext_rgba[1]),
+		                                               GPU_uniform(ext_rgba[2]),
+		                                               GPU_uniform(ext_rgba[3]));
+	}
 }
 
 void register_node_type_sh_curve_rgb(void)

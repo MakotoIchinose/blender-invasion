@@ -17,14 +17,15 @@
  * All rights reserved.
  */
 
-/** \file ED_curve.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_CURVE_H__
 #define __ED_CURVE_H__
 
 struct BPoint;
+struct Base;
 struct BezTriple;
 struct Curve;
 struct EditNurb;
@@ -56,17 +57,18 @@ struct Nurb *ED_curve_add_nurbs_primitive(struct bContext *C, struct Object *obe
 
 bool    ED_curve_nurb_select_check(struct View3D *v3d, struct Nurb *nu);
 int     ED_curve_nurb_select_count(struct View3D *v3d, struct Nurb *nu);
-void    ED_curve_nurb_select_all(struct Nurb *nu);
-void    ED_curve_nurb_deselect_all(struct Nurb *nu);
+bool    ED_curve_nurb_select_all(const struct Nurb *nu);
+bool    ED_curve_nurb_deselect_all(const struct Nurb *nu);
 
 int     join_curve_exec(struct bContext *C, struct wmOperator *op);
 
 /* editcurve_select.c */
 bool ED_curve_select_check(struct View3D *v3d, struct EditNurb *editnurb);
-void ED_curve_deselect_all(struct EditNurb *editnurb);
-void ED_curve_deselect_all_multi(struct Object **objects, int objects_len);
-void ED_curve_select_all(struct EditNurb *editnurb);
-void ED_curve_select_swap(struct EditNurb *editnurb, bool hide_handles);
+bool ED_curve_deselect_all(struct EditNurb *editnurb);
+bool ED_curve_deselect_all_multi_ex(struct Base **bases, int bases_len);
+bool ED_curve_deselect_all_multi(struct bContext *C);
+bool ED_curve_select_all(struct EditNurb *editnurb);
+bool ED_curve_select_swap(struct EditNurb *editnurb, bool hide_handles);
 int ED_curve_select_count(struct View3D *v3d, struct EditNurb *editnurb);
 
 /* editcurve_undo.c */
@@ -82,7 +84,7 @@ void    ED_text_to_object(struct bContext *C, struct Text *text, const bool spli
 void ED_curve_beztcpy(struct EditNurb *editnurb, struct BezTriple *dst, struct BezTriple *src, int count);
 void ED_curve_bpcpy(struct EditNurb *editnurb, struct BPoint *dst, struct BPoint *src, int count);
 
-int ED_curve_updateAnimPaths(struct Curve *cu);
+int ED_curve_updateAnimPaths(struct Main *bmain, struct Curve *cu);
 
 bool ED_curve_active_center(struct Curve *cu, float center[3]);
 

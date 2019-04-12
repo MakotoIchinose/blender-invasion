@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/makesrna/intern/rna_color.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -408,7 +408,7 @@ static const EnumPropertyItem *rna_ColorManagedDisplaySettings_display_device_it
 	return items;
 }
 
-static void rna_ColorManagedDisplaySettings_display_device_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_ColorManagedDisplaySettings_display_device_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	ID *id = ptr->id.data;
 
@@ -422,12 +422,17 @@ static void rna_ColorManagedDisplaySettings_display_device_update(Main *UNUSED(b
 
 		DEG_id_tag_update(id, 0);
 		WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
+
+		/* Color management can be baked into shaders, need to refresh. */
+		for (Material *ma = bmain->materials.first; ma; ma = ma->id.next) {
+			DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+		}
 	}
 }
 
 static char *rna_ColorManagedDisplaySettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("display_settings");
+	return BLI_strdup("display_settings");
 }
 
 static int rna_ColorManagedViewSettings_view_transform_get(PointerRNA *ptr)
@@ -513,7 +518,7 @@ static void rna_ColorManagedViewSettings_use_curves_set(PointerRNA *ptr, bool va
 
 static char *rna_ColorManagedViewSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("view_settings");
+	return BLI_strdup("view_settings");
 }
 
 
@@ -622,12 +627,12 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene 
 
 static char *rna_ColorManagedSequencerColorspaceSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("sequencer_colorspace_settings");
+	return BLI_strdup("sequencer_colorspace_settings");
 }
 
 static char *rna_ColorManagedInputColorspaceSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("colorspace_settings");
+	return BLI_strdup("colorspace_settings");
 }
 
 static void rna_ColorManagement_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)

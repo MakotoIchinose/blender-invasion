@@ -17,11 +17,15 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_cloth.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <string.h>
+
+#include "BLI_utildefines.h"
+
+#include "BLI_listbase.h"
 
 #include "DNA_cloth_types.h"
 #include "DNA_key_types.h"
@@ -30,9 +34,6 @@
 #include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
-
-#include "BLI_listbase.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_cloth.h"
 #include "BKE_effect.h"
@@ -87,13 +88,7 @@ static void deformVerts(
 	else {
 		/* Not possible to use get_mesh() in this case as we'll modify its vertices
 		 * and get_mesh() would return 'mesh' directly. */
-		BKE_id_copy_ex(
-		        NULL, (ID *)mesh, (ID **)&mesh_src,
-		        LIB_ID_CREATE_NO_MAIN |
-		        LIB_ID_CREATE_NO_USER_REFCOUNT |
-		        LIB_ID_CREATE_NO_DEG_TAG |
-		        LIB_ID_COPY_NO_PREVIEW,
-		        false);
+		BKE_id_copy_ex(NULL, (ID *)mesh, (ID **)&mesh_src, LIB_ID_COPY_LOCALIZE);
 	}
 
 	/* TODO(sergey): For now it actually duplicates logic from DerivedMesh.c
@@ -129,21 +124,20 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		DEG_add_collision_relations(ctx->node, ctx->object, clmd->coll_parms->group, eModifierType_Collision, NULL, "Cloth Collision");
 		DEG_add_forcefield_relations(ctx->node, ctx->object, clmd->sim_parms->effector_weights, true, 0, "Cloth Field");
 	}
-	DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Cloth Modifier");
+	DEG_add_modifier_to_transform_relation(ctx->node, "Cloth Modifier");
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
-	CustomDataMask dataMask = 0;
 	ClothModifierData *clmd = (ClothModifierData *)md;
 
-	if (cloth_uses_vgroup(clmd))
-		dataMask |= CD_MASK_MDEFORMVERT;
+	if (cloth_uses_vgroup(clmd)) {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 
-	if (clmd->sim_parms->shapekey_rest != 0)
-		dataMask |= CD_MASK_CLOTH_ORCO;
-
-	return dataMask;
+	if (clmd->sim_parms->shapekey_rest != 0) {
+		r_cddata_masks->vmask |= CD_MASK_CLOTH_ORCO;
+	}
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
@@ -247,12 +241,6 @@ ModifierTypeInfo modifierType_Cloth = {
 
 	/* copyData */          copyData,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       deformVerts,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -269,4 +257,5 @@ ModifierTypeInfo modifierType_Cloth = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

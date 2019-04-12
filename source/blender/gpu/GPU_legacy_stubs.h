@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file GPU_legacy_stubs.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * This is to mark the transition to OpenGL core profile
  * The idea is to allow Blender 2.8 to be built with OpenGL 3.3 even if it means breaking things
@@ -40,7 +40,7 @@
 #include "BLI_utildefines.h"
 
 /**
- * Empty function, use for breakpoint when a depreacated
+ * Empty function, use for breakpoint when a deprecated
  * OpenGL function is called.
  */
 static void gl_deprecated(void)

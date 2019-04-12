@@ -17,8 +17,8 @@
 #ifndef __BKE_IDPROP_H__
 #define __BKE_IDPROP_H__
 
-/** \file BKE_idprop.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_ID.h"

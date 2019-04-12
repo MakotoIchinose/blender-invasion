@@ -20,8 +20,8 @@
 #ifndef __BKE_CONTEXT_H__
 #define __BKE_CONTEXT_H__
 
-/** \file BKE_context.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_listBase.h"
@@ -162,13 +162,13 @@ struct RegionView3D *CTX_wm_region_view3d(const bContext *C);
 struct SpaceText *CTX_wm_space_text(const bContext *C);
 struct SpaceImage *CTX_wm_space_image(const bContext *C);
 struct SpaceConsole *CTX_wm_space_console(const bContext *C);
-struct SpaceButs *CTX_wm_space_buts(const bContext *C);
+struct SpaceProperties *CTX_wm_space_properties(const bContext *C);
 struct SpaceFile *CTX_wm_space_file(const bContext *C);
 struct SpaceSeq *CTX_wm_space_seq(const bContext *C);
-struct SpaceOops *CTX_wm_space_outliner(const bContext *C);
+struct SpaceOutliner *CTX_wm_space_outliner(const bContext *C);
 struct SpaceNla *CTX_wm_space_nla(const bContext *C);
 struct SpaceNode *CTX_wm_space_node(const bContext *C);
-struct SpaceIpo *CTX_wm_space_graph(const bContext *C);
+struct SpaceGraph *CTX_wm_space_graph(const bContext *C);
 struct SpaceAction *CTX_wm_space_action(const bContext *C);
 struct SpaceInfo *CTX_wm_space_info(const bContext *C);
 struct SpaceUserPref *CTX_wm_space_userpref(const bContext *C);
@@ -254,10 +254,10 @@ struct RenderEngineType *CTX_data_engine_type(const bContext *C);
 struct ToolSettings *CTX_data_tool_settings(const bContext *C);
 
 const char *CTX_data_mode_string(const bContext *C);
-int CTX_data_mode_enum_ex(
+enum eContextObjectMode CTX_data_mode_enum_ex(
         const struct Object *obedit, const struct Object *ob,
         const eObjectMode object_mode);
-int CTX_data_mode_enum(const bContext *C);
+enum eContextObjectMode CTX_data_mode_enum(const bContext *C);
 
 void CTX_data_main_set(bContext *C, struct Main *bmain);
 void CTX_data_scene_set(bContext *C, struct Scene *bmain);

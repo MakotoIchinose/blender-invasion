@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/render/render_opengl.c
- *  \ingroup edrend
+/** \file
+ * \ingroup edrend
  */
 
 
@@ -42,6 +42,7 @@
 
 #include "BKE_camera.h"
 #include "BKE_context.h"
+#include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
@@ -155,10 +156,10 @@ static bool screen_opengl_is_multiview(OGLRender *oglrender)
 	RegionView3D *rv3d = oglrender->rv3d;
 	RenderData *rd = &oglrender->scene->r;
 
-	if ((rd == NULL) || ((!oglrender->is_sequencer) && ((rv3d == NULL) || (v3d == NULL))))
+	if ((rd == NULL) || ((v3d != NULL) && (rv3d == NULL)))
 		return false;
 
-	return (rd->scemode & R_MULTIVIEW) && ((oglrender->is_sequencer) || (rv3d->persp == RV3D_CAMOB && v3d->camera));
+	return (rd->scemode & R_MULTIVIEW) && ((v3d == NULL) || (rv3d->persp == RV3D_CAMOB && v3d->camera));
 }
 
 static void screen_opengl_views_setup(OGLRender *oglrender)
@@ -202,8 +203,9 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 		}
 	}
 	else {
-		if (!oglrender->is_sequencer)
+		if (v3d) {
 			RE_SetOverrideCamera(oglrender->re, V3D_CAMERA_SCENE(oglrender->scene, v3d));
+		}
 
 		/* remove all the views that are not needed */
 		rv = rr->views.last;
@@ -264,7 +266,6 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, RenderResult *rr)
 {
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Scene *scene = oglrender->scene;
 	ARegion *ar = oglrender->ar;
 	View3D *v3d = oglrender->v3d;
@@ -325,8 +326,8 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 			GPU_matrix_translate_2f(sizex / 2, sizey / 2);
 
 			G.f |= G_FLAG_RENDER_VIEWPORT;
-			ED_gpencil_draw_ex(
-				view_layer, rv3d, scene, gpd, sizex, sizey, scene->r.cfra, SPACE_SEQ);
+			ED_annotation_draw_ex(
+			        scene, gpd, sizex, sizey, scene->r.cfra, SPACE_SEQ);
 			G.f &= ~G_FLAG_RENDER_VIEWPORT;
 
 			gp_rect = MEM_mallocN(sizex * sizey * sizeof(unsigned char) * 4, "offscreen rect");
@@ -603,11 +604,12 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
 		oglrender->rv3d = oglrender->ar->regiondata;
 
 		/* MUST be cleared on exit */
-		oglrender->scene->customdata_mask_modal = ED_view3d_datamask(C, oglrender->scene, oglrender->v3d);
+		memset(&oglrender->scene->customdata_mask_modal, 0, sizeof(oglrender->scene->customdata_mask_modal));
+		ED_view3d_datamask(C, oglrender->scene, oglrender->v3d, &oglrender->scene->customdata_mask_modal);
 
 		/* apply immediately in case we're rendering from a script,
 		 * running notifiers again will overwrite */
-		oglrender->scene->customdata_mask |= oglrender->scene->customdata_mask_modal;
+		CustomData_MeshMasks_update(&oglrender->scene->customdata_mask, &oglrender->scene->customdata_mask_modal);
 	}
 
 	/* create render */
@@ -738,7 +740,7 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
 		MEM_freeN(oglrender->seq_data.ibufs_arr);
 	}
 
-	oglrender->scene->customdata_mask_modal = 0;
+	memset(&oglrender->scene->customdata_mask_modal, 0, sizeof(oglrender->scene->customdata_mask_modal));
 
 	CTX_wm_area_set(C, oglrender->prevsa);
 	CTX_wm_region_set(C, oglrender->prevar);

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/GPU_init_exit.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #ifndef __GPU_INIT_EXIT_H__

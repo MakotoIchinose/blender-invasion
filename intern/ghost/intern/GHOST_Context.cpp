@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_Context.cpp
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  *
  * Definition of GHOST_Context class.
  */

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/depsgraph_eval.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Evaluation engine entrypoints for Depsgraph Engine.
  */

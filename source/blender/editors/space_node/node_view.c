@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/editors/space_node/node_view.c
- *  \ingroup spnode
+/** \file
+ * \ingroup spnode
  */
 
 #include "DNA_node_types.h"
@@ -581,8 +581,9 @@ static int sample_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	ARegion *ar = CTX_wm_region(C);
 	ImageSampleInfo *info;
 
-	if (!ED_node_is_compositor(snode) || !(snode->flag & SNODE_BACKDRAW))
+	if (!ED_node_is_compositor(snode) || !(snode->flag & SNODE_BACKDRAW)) {
 		return OPERATOR_CANCELLED;
+	}
 
 	info = MEM_callocN(sizeof(ImageSampleInfo), "ImageSampleInfo");
 	info->art = ar->type;

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/intern/gpu_attr_binding.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU vertex attribute binding
  */

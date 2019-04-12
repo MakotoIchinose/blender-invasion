@@ -14,9 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/freestyle/intern/scene_graph/IndexedFaceSet.cpp
- *  \ingroup freestyle
- *  \brief A Set of indexed faces to represent a surfacic object
+/** \file
+ * \ingroup freestyle
+ * \brief A Set of indexed faces to represent a surfacic object
  */
 
 #include "IndexedFaceSet.h"

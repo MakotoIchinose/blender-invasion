@@ -17,9 +17,9 @@
 #ifndef __FREESTYLE_MODIFIERS_H__
 #define __FREESTYLE_MODIFIERS_H__
 
-/** \file blender/freestyle/intern/stroke/Modifiers.h
- *  \ingroup freestyle
- *  \brief modifiers...
+/** \file
+ * \ingroup freestyle
+ * \brief modifiers...
  */
 
 #include "TimeStamp.h"

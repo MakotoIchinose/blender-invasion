@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/python/intern/bpy_app_translations.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file defines a singleton py object accessed via 'bpy.app.translations',
  * which exposes various data and functions useful in i18n work.
@@ -89,8 +89,9 @@ static bool _ghashutil_keycmp(const void *a, const void *b)
 	const GHashKey *B = b;
 
 	/* Note: comparing msgid first, most of the time it will be enough! */
-	if (BLI_ghashutil_strcmp(A->msgid, B->msgid) == false)
+	if (BLI_ghashutil_strcmp(A->msgid, B->msgid) == false) {
 		return BLI_ghashutil_strcmp(A->msgctxt, B->msgctxt);
+	}
 	return true;  /* true means they are not equal! */
 }
 
@@ -249,8 +250,9 @@ const char *BPY_app_translations_py_pgettext(const char *msgctxt, const char *ms
 	const char *tmp;
 
 	/* Just in case, should never happen! */
-	if (!_translations)
+	if (!_translations) {
 		return msgid;
+	}
 
 	tmp = BLT_lang_get();
 	if (!STREQ(tmp, locale) || !_translations_cache) {
@@ -458,8 +460,9 @@ static PyObject *app_translations_locales_get(PyObject *UNUSED(self), void *UNUS
 	if (items) {
 		/* This is not elegant, but simple! */
 		for (it = items; it->identifier; it++) {
-			if (it->value)
+			if (it->value) {
 				num_locales++;
+			}
 		}
 	}
 
@@ -467,8 +470,9 @@ static PyObject *app_translations_locales_get(PyObject *UNUSED(self), void *UNUS
 
 	if (items) {
 		for (it = items; it->identifier; it++) {
-			if (it->value)
+			if (it->value) {
 				PyTuple_SET_ITEM(ret, pos++, PyUnicode_FromString(it->description));
+			}
 		}
 	}
 
@@ -801,8 +805,9 @@ PyObject *BPY_app_translations_struct(void)
 		PyStructSequence_InitType(&BlenderAppTranslationsContextsType, &app_translations_contexts_desc);
 	}
 
-	if (PyType_Ready(&BlenderAppTranslationsType) < 0)
+	if (PyType_Ready(&BlenderAppTranslationsType) < 0) {
 		return NULL;
+	}
 
 	ret = PyObject_CallObject((PyObject *)&BlenderAppTranslationsType, NULL);
 

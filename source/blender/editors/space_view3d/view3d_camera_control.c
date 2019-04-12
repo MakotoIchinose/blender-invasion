@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/editors/space_view3d/view3d_camera_control.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  *
  * The purpose of View3DCameraControl is to allow editing \a rv3d manipulation
  * (mainly \a ofs and \a viewquat) for the purpose of view navigation
@@ -162,8 +162,9 @@ struct View3DCameraControl *ED_view3d_cameracontrol_acquire(
 	if (rv3d->persp == RV3D_CAMOB) {
 		Object *ob_back;
 		if (use_parent_root && (vctrl->root_parent = v3d->camera->parent)) {
-			while (vctrl->root_parent->parent)
+			while (vctrl->root_parent->parent) {
 				vctrl->root_parent = vctrl->root_parent->parent;
+			}
 			ob_back = vctrl->root_parent;
 		}
 		else {
@@ -251,21 +252,21 @@ void ED_view3d_cameracontrol_update(
 	}
 	else {
 		float view_mat[4][4];
-		float size_mat[4][4];
-		float size_back[3];
+		float scale_mat[4][4];
+		float scale_back[3];
 
-		/* even though we handle the size matrix, this still changes over time */
-		copy_v3_v3(size_back, v3d->camera->size);
+		/* even though we handle the scale matrix, this still changes over time */
+		copy_v3_v3(scale_back, v3d->camera->scale);
 
 		ED_view3d_to_m4(view_mat, rv3d->ofs, rv3d->viewquat, rv3d->dist);
-		size_to_mat4(size_mat, v3d->camera->size);
-		mul_m4_m4m4(view_mat, view_mat, size_mat);
+		size_to_mat4(scale_mat, v3d->camera->scale);
+		mul_m4_m4m4(view_mat, view_mat, scale_mat);
 
 		BKE_object_apply_mat4(v3d->camera, view_mat, true, true);
 
 		DEG_id_tag_update(&v3d->camera->id, ID_RECALC_TRANSFORM);
 
-		copy_v3_v3(v3d->camera->size, size_back);
+		copy_v3_v3(v3d->camera->scale, scale_back);
 
 		id_key = &v3d->camera->id;
 	}

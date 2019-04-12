@@ -17,8 +17,8 @@
  * This is a new part of Blender
  */
 
-/** \file blender/shader_fx/intern/FX_shader_util.c
- *  \ingroup shader_fx
+/** \file
+ * \ingroup shader_fx
  */
 
 

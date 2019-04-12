@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/intern/GHOST_ContextNone.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  *
  * Declaration of GHOST_Context class.
  */

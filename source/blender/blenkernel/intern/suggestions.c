@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/suggestions.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 

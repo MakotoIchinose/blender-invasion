@@ -18,8 +18,8 @@
  * allocimbuf.c
  */
 
-/** \file blender/imbuf/intern/scaling.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 

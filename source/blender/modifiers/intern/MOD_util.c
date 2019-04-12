@@ -17,12 +17,18 @@
  * All rights reserved.
  */
 
-/** \file blender/modifiers/intern/MOD_util.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 #include <string.h>
+
+#include "BLI_utildefines.h"
+
+#include "BLI_bitmap.h"
+#include "BLI_math_vector.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_image_types.h"
 #include "DNA_meshdata_types.h"
@@ -30,11 +36,6 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-
-#include "BLI_utildefines.h"
-#include "BLI_bitmap.h"
-#include "BLI_math_vector.h"
-#include "BLI_math_matrix.h"
 
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
@@ -58,7 +59,7 @@
 
 void MOD_init_texture(MappingInfoModifierData *dmd, const ModifierEvalContext *ctx)
 {
-	Tex *tex = (Tex *)DEG_get_evaluated_id(ctx->depsgraph, &dmd->texture->id);
+	Tex *tex = dmd->texture;
 
 	if (tex == NULL) {
 		return;
@@ -73,7 +74,7 @@ void MOD_init_texture(MappingInfoModifierData *dmd, const ModifierEvalContext *c
 /** \param cos: may be NULL, in which case we use directly mesh vertices' coordinates. */
 void MOD_get_texture_coords(
         MappingInfoModifierData *dmd,
-        const ModifierEvalContext *ctx,
+        const ModifierEvalContext *UNUSED(ctx),
         Object *ob,
         Mesh *mesh,
         float (*cos)[3],
@@ -86,7 +87,7 @@ void MOD_get_texture_coords(
 
 	if (texmapping == MOD_DISP_MAP_OBJECT) {
 		if (dmd->map_object != NULL) {
-			Object *map_object = DEG_get_evaluated_object(ctx->depsgraph, dmd->map_object);
+			Object *map_object = dmd->map_object;
 			invert_m4_m4(mapob_imat, map_object->obmat);
 		}
 		else {/* if there is no map object, default to local */
@@ -178,7 +179,7 @@ Mesh *MOD_deform_mesh_eval_get(
 	}
 	else if (ob->type == OB_MESH) {
 		if (em) {
-			mesh = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, 0);
+			mesh = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, NULL);
 		}
 		else {
 			/* TODO(sybren): after modifier conversion of DM to Mesh is done, check whether
@@ -186,12 +187,8 @@ Mesh *MOD_deform_mesh_eval_get(
 			Mesh *mesh_prior_modifiers = BKE_object_get_pre_modified_mesh(ob);
 			BKE_id_copy_ex(
 			        NULL, &mesh_prior_modifiers->id, (ID **)&mesh,
-			        (LIB_ID_CREATE_NO_MAIN |
-			         LIB_ID_CREATE_NO_USER_REFCOUNT |
-			         LIB_ID_CREATE_NO_DEG_TAG |
-			         LIB_ID_COPY_NO_PREVIEW |
-			         LIB_ID_COPY_CD_REFERENCE),
-			        false);
+			        (LIB_ID_COPY_LOCALIZE |
+			         LIB_ID_COPY_CD_REFERENCE));
 			mesh->runtime.deformed_only = 1;
 		}
 

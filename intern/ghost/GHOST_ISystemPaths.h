@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ghost/GHOST_ISystemPaths.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  */
 
 #ifndef __GHOST_ISYSTEMPATHS_H__

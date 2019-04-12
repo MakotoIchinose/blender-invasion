@@ -17,8 +17,8 @@
  * All rights reserved.
  * */
 
-/** \file blender/blenlib/intern/math_statistics.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "MEM_guardedalloc.h"
@@ -54,7 +54,7 @@ static void covariance_m_vn_ex_task_cb(
 
 	int k;
 
-	/* Covariance matrices are always symetrical, so we can compute only one half of it,
+	/* Covariance matrices are always symmetrical, so we can compute only one half of it,
 	 * and mirror it to the other half (at the end of the func).
 	 *
 	 * This allows using a flat loop of n*n with same results as imbricated one over half the matrix:
@@ -67,8 +67,9 @@ static void covariance_m_vn_ex_task_cb(
 	 */
 	const int i = a / n;
 	const int j = a % n;
-	if (j < i)
+	if (j < i) {
 		return;
+	}
 
 	if (center) {
 		for (k = 0; k < nbr_cos_vn; k++) {

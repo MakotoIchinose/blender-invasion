@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/GPU_shader_interface.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU shader interface (C --> GLSL)
  */
@@ -45,6 +45,7 @@ typedef enum {
 	GPU_UNIFORM_VIEWPROJECTION_INV,  /* mat4 ViewProjectionMatrixInverse */
 
 	GPU_UNIFORM_NORMAL,      /* mat3 NormalMatrix */
+	GPU_UNIFORM_NORMAL_INV,  /* mat3 NormalMatrixInverse */
 	GPU_UNIFORM_WORLDNORMAL, /* mat3 WorldNormalMatrix */
 	GPU_UNIFORM_CAMERATEXCO, /* vec4 CameraTexCoFactors */
 	GPU_UNIFORM_ORCO,        /* vec3 OrcoTexCoFactors[] */

@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/collada/SceneExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 extern "C" {
@@ -131,10 +131,10 @@ void SceneExporter::writeNodes(Object *ob)
 		}
 		else {
 			TransformWriter::add_node_transform_ob(
-				colladaNode,
-				ob,
-				this->export_settings->export_transformation_type,
-				this->export_settings->limit_precision
+			        colladaNode,
+			        ob,
+			        this->export_settings->export_transformation_type,
+			        this->export_settings->limit_precision
 			);
 		}
 
@@ -148,9 +148,10 @@ void SceneExporter::writeNodes(Object *ob)
 				COLLADASW::InstanceGeometry instGeom(mSW);
 				instGeom.setUrl(COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, get_geometry_id(ob, this->export_settings->use_object_instantiation)));
 				instGeom.setName(encode_xml(id_name(ob)));
-				InstanceWriter::add_material_bindings(instGeom.getBindMaterial(),
-					ob,
-					this->export_settings->active_uv_only);
+				InstanceWriter::add_material_bindings(
+				        instGeom.getBindMaterial(),
+				        ob,
+				        this->export_settings->active_uv_only);
 				instGeom.add();
 			}
 		}
@@ -174,8 +175,8 @@ void SceneExporter::writeNodes(Object *ob)
 
 		// empty object
 		else if (ob->type == OB_EMPTY) { // TODO: handle groups (OB_DUPLICOLLECTION
-			if ((ob->transflag & OB_DUPLICOLLECTION) == OB_DUPLICOLLECTION && ob->dup_group) {
-				Collection *collection = ob->dup_group;
+			if ((ob->transflag & OB_DUPLICOLLECTION) == OB_DUPLICOLLECTION && ob->instance_collection) {
+				Collection *collection = ob->instance_collection;
 				/* printf("group detected '%s'\n", group->id.name + 2); */
 				FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(collection, object)
 				{

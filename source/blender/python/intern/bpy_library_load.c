@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/python/intern/bpy_library_load.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file exposed blend file library appending/linking to python, typically
  * this would be done via RNA api but in this case a hand written python api
@@ -476,8 +476,9 @@ int BPY_library_load_module(PyObject *mod_par)
 	/* some compilers don't like accessing this directly, delay assignment */
 	bpy_lib_Type.tp_getattro = PyObject_GenericGetAttr;
 
-	if (PyType_Ready(&bpy_lib_Type) < 0)
+	if (PyType_Ready(&bpy_lib_Type) < 0) {
 		return -1;
+	}
 
 	return 0;
 }

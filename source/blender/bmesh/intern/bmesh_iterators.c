@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/bmesh/intern/bmesh_iterators.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Functions to abstract looping over bmesh data structures.
  *
@@ -584,8 +584,9 @@ void  bmiter__loop_of_loop_begin(struct BMIter__loop_of_loop *iter)
 	iter->l_first = iter->ldata;
 	iter->l_next = iter->l_first->radial_next;
 
-	if (iter->l_next == iter->l_first)
+	if (iter->l_next == iter->l_first) {
 		iter->l_next = NULL;
+	}
 }
 
 void  *bmiter__loop_of_loop_step(struct BMIter__loop_of_loop *iter)

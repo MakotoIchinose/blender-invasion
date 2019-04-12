@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/tracking_detect.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * This file contains blender-side implementation of feature detection.
  */

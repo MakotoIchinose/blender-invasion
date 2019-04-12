@@ -17,9 +17,9 @@
 #ifndef __BEZIER_H__
 #define __BEZIER_H__
 
-/** \file blender/freestyle/intern/geometry/Bezier.h
- *  \ingroup freestyle
- *  \brief Class to define a Bezier curve of order 4.
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define a Bezier curve of order 4.
  */
 
 #include <vector>

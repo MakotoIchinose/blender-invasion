@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file blender/blenlib/intern/BLI_array.c
- *  \ingroup bli
- *  \brief A (mainly) macro array library.
+/** \file
+ * \ingroup bli
+ * \brief A (mainly) macro array library.
  *
  * This is an array library, used to manage array (re)allocation.
  *

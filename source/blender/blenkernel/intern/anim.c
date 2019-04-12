@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/blenkernel/intern/anim.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "MEM_guardedalloc.h"
@@ -74,15 +74,6 @@ void animviz_settings_init(bAnimVizSettings *avs)
 	/* sanity check */
 	if (avs == NULL)
 		return;
-
-	/* ghosting settings */
-	avs->ghost_bc = avs->ghost_ac = 10;
-
-	avs->ghost_sf = 1; /* xxx - take from scene instead? */
-	avs->ghost_ef = 250; /* xxx - take from scene instead? */
-
-	avs->ghost_step = 1;
-
 
 	/* path settings */
 	avs->path_bc = avs->path_ac = 10;
@@ -385,6 +376,9 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
 		if (BLI_dlrbTree_search_exact(&mpt->keys, compare_ak_cfraPtr, &mframe)) {
 			mpv->flag |= MOTIONPATH_VERT_KEY;
 		}
+		else {
+			mpv->flag &= ~MOTIONPATH_VERT_KEY;
+		}
 
 		/* Incremental update on evaluated object if possible, for fast updating
 		 * while dragging in transform. */
@@ -653,7 +647,7 @@ void calc_curvepath(Object *ob, ListBase *nurbs)
 		}
 
 		interp_v3_v3v3(pp->vec, bevp->vec, bevpn->vec, fac2);
-		pp->vec[3] = fac1 * bevp->alfa   + fac2 * bevpn->alfa;
+		pp->vec[3] = fac1 * bevp->tilt   + fac2 * bevpn->tilt;
 		pp->radius = fac1 * bevp->radius + fac2 * bevpn->radius;
 		pp->weight = fac1 * bevp->weight + fac2 * bevpn->weight;
 		interp_qt_qtqt(pp->quat, bevp->quat, bevpn->quat, fac2);

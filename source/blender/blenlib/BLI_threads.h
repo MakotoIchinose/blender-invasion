@@ -20,8 +20,8 @@
 #ifndef __BLI_THREADS_H__
 #define __BLI_THREADS_H__
 
-/** \file BLI_threads.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 #ifdef __cplusplus
 extern "C" {

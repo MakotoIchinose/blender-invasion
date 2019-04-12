@@ -17,9 +17,9 @@
 #ifndef __BLI_MEMORY_UTILS_H__
 #define __BLI_MEMORY_UTILS_H__
 
-/** \file BLI_memory_utils.h
- *  \ingroup bli
- *  \brief Generic memory manipulation API.
+/** \file
+ * \ingroup bli
+ * \brief Generic memory manipulation API.
  */
 
 /* it may be defined already */

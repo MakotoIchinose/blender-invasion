@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/modifiers/intern/MOD_skin.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 /* Implementation based in part off the paper "B-Mesh: A Fast Modeling
@@ -52,17 +52,18 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_utildefines.h"
+
+#include "BLI_array.h"
+#include "BLI_bitmap.h"
+#include "BLI_heap_simple.h"
+#include "BLI_math.h"
+#include "BLI_stack.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_modifier_types.h"
-
-#include "BLI_utildefines.h"
-#include "BLI_array.h"
-#include "BLI_heap_simple.h"
-#include "BLI_math.h"
-#include "BLI_stack.h"
-#include "BLI_bitmap.h"
 
 #include "BKE_deform.h"
 #include "BKE_library.h"
@@ -1874,7 +1875,7 @@ static Mesh *base_skin(Mesh *origmesh,
 	if (!bm)
 		return NULL;
 
-	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 	BM_mesh_free(bm);
 
 	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
@@ -1925,10 +1926,9 @@ static Mesh *applyModifier(ModifierData *md,
 	return result;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob),
-                                       ModifierData *UNUSED(md))
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md), CustomData_MeshMasks *r_cddata_masks)
 {
-	return CD_MASK_MVERT_SKIN | CD_MASK_MDEFORMVERT;
+	r_cddata_masks->vmask |= CD_MASK_MVERT_SKIN | CD_MASK_MDEFORMVERT;
 }
 
 ModifierTypeInfo modifierType_Skin = {
@@ -1939,12 +1939,6 @@ ModifierTypeInfo modifierType_Skin = {
 	/* flags */             eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,
@@ -1961,4 +1955,5 @@ ModifierTypeInfo modifierType_Skin = {
 	/* dependsOnNormals */	NULL,
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
+	/* freeRuntimeData */   NULL,
 };

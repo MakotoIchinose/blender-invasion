@@ -17,8 +17,8 @@
 #ifndef __BLI_MEMITER_H__
 #define __BLI_MEMITER_H__
 
-/** \file BLI_memiter.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus

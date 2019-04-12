@@ -14,6 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup balembic
+ */
+
 #include "abc_mesh.h"
 
 #include <algorithm>
@@ -383,12 +387,17 @@ void AbcGenericMeshWriter::do_write()
 			writeMesh(mesh);
 		}
 
-		if (needsfree) BKE_id_free(NULL, mesh);
+		if (needsfree) freeEvaluatedMesh(mesh);
 	}
 	catch (...) {
-		if (needsfree) BKE_id_free(NULL, mesh);
+		if (needsfree) freeEvaluatedMesh(mesh);
 		throw;
 	}
+}
+
+void AbcGenericMeshWriter::freeEvaluatedMesh(struct Mesh *mesh)
+{
+	BKE_id_free(NULL, mesh);
 }
 
 void AbcGenericMeshWriter::writeMesh(struct Mesh *mesh)
@@ -548,9 +557,9 @@ Mesh *AbcGenericMeshWriter::getFinalMesh(bool &r_needsfree)
 		struct BMeshFromMeshParams bmfmp = {true, false, false, 0};
 		BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &bmcp, &bmfmp);
 
-		BM_mesh_triangulate(bm, quad_method, ngon_method, tag_only, NULL, NULL, NULL);
+		BM_mesh_triangulate(bm, quad_method, ngon_method, 4, tag_only, NULL, NULL, NULL);
 
-		Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+		Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 		BM_mesh_free(bm);
 
 		if (r_needsfree) {
@@ -667,7 +676,7 @@ AbcMeshWriter::~AbcMeshWriter()
 
 Mesh *AbcMeshWriter::getEvaluatedMesh(Scene *scene_eval, Object *ob_eval, bool &UNUSED(r_needsfree))
 {
-	return mesh_get_eval_final(m_settings.depsgraph, scene_eval, ob_eval, CD_MASK_MESH);
+	return mesh_get_eval_final(m_settings.depsgraph, scene_eval, ob_eval, &CD_MASK_MESH);
 }
 
 
@@ -678,7 +687,7 @@ namespace utils {
 
 static void build_mat_map(const Main *bmain, std::map<std::string, Material *> &mat_map)
 {
-	Material *material = static_cast<Material *>(bmain->mat.first);
+	Material *material = static_cast<Material *>(bmain->materials.first);
 
 	for (; material; material = static_cast<Material *>(material->id.next)) {
 		mat_map[material->id.name + 2] = material;
@@ -1015,7 +1024,7 @@ CDStreamConfig get_config(Mesh *mesh)
 {
 	CDStreamConfig config;
 
-	BLI_assert(mesh->mvert);
+	BLI_assert(mesh->mvert || mesh->totvert == 0);
 
 	config.user_data = mesh;
 	config.mvert = mesh->mvert;
@@ -1055,7 +1064,9 @@ void AbcMeshReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	m_object->data = mesh;
 
 	Mesh *read_mesh = this->read_mesh(mesh, sample_sel, MOD_MESHSEQ_READ_ALL, NULL);
-	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, CD_MASK_MESH, true);
+	if (read_mesh != mesh) {
+		BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
+	}
 
 	if (m_settings->validate_meshes) {
 		BKE_mesh_validate(mesh, false, false);
@@ -1097,10 +1108,10 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading mesh sample; more detail on the console";
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 
@@ -1338,7 +1349,9 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	m_object->data = mesh;
 
 	Mesh *read_mesh = this->read_mesh(mesh, sample_sel, MOD_MESHSEQ_READ_ALL, NULL);
-	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, CD_MASK_MESH, true);
+	if (read_mesh != mesh) {
+		BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
+	}
 
 	ISubDSchema::Sample sample;
 	try {
@@ -1346,10 +1359,10 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	}
 	catch(Alembic::Util::Exception &ex) {
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return;
 	}
 
@@ -1394,10 +1407,10 @@ Mesh *AbcSubDReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading mesh sample; more detail on the console";
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 

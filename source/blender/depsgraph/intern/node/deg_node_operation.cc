@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/depsgraph/intern/node/deg_node_operation.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #include "intern/node/deg_node_operation.h"
@@ -41,22 +41,28 @@ const char *operationCodeAsString(OperationCode opcode)
 		/* Generic Operations. */
 		case OperationCode::OPERATION: return "OPERATION";
 		case OperationCode::ID_PROPERTY: return "ID_PROPERTY";
+		case OperationCode::PARAMETERS_ENTRY: return "PARAMETERS_ENTRY";
 		case OperationCode::PARAMETERS_EVAL: return "PARAMETERS_EVAL";
+		case OperationCode::PARAMETERS_EXIT: return "PARAMETERS_EXIT";
 		/* Animation, Drivers, etc. */
-		case OperationCode::ANIMATION: return "ANIMATION";
+		case OperationCode::ANIMATION_ENTRY: return "ANIMATION_ENTRY";
+		case OperationCode::ANIMATION_EVAL: return "ANIMATION_EVAL";
+		case OperationCode::ANIMATION_EXIT: return "ANIMATION_EXIT";
 		case OperationCode::DRIVER: return "DRIVER";
 		/* Scene related. */
 		case OperationCode::SCENE_EVAL: return "SCENE_EVAL";
 		/* Object related. */
 		case OperationCode::OBJECT_BASE_FLAGS: return "OBJECT_BASE_FLAGS";
 		/* Transform. */
+		case OperationCode::TRANSFORM_INIT: return "TRANSFORM_INIT";
 		case OperationCode::TRANSFORM_LOCAL: return "TRANSFORM_LOCAL";
 		case OperationCode::TRANSFORM_PARENT: return "TRANSFORM_PARENT";
 		case OperationCode::TRANSFORM_CONSTRAINTS:
 			return "TRANSFORM_CONSTRAINTS";
 		case OperationCode::TRANSFORM_FINAL: return "TRANSFORM_FINAL";
-		case OperationCode::TRANSFORM_OBJECT_UBEREVAL:
-			return "TRANSFORM_OBJECT_UBEREVAL";
+		case OperationCode::TRANSFORM_EVAL: return "TRANSFORM_EVAL";
+		case OperationCode::TRANSFORM_SIMULATION_INIT:
+			return "TRANSFORM_SIMULATION_INIT";
 		/* Rigid body. */
 		case OperationCode::RIGIDBODY_REBUILD: return "RIGIDBODY_REBUILD";
 		case OperationCode::RIGIDBODY_SIM: return "RIGIDBODY_SIM";
@@ -119,6 +125,8 @@ const char *operationCodeAsString(OperationCode opcode)
 		case OperationCode::MOVIECLIP_EVAL: return "MOVIECLIP_EVAL";
 		case OperationCode::MOVIECLIP_SELECT_UPDATE:
 			return "MOVIECLIP_SELECT_UPDATE";
+		/* Image. */
+		case OperationCode::IMAGE_ANIMATION: return "IMAGE_ANIMATION";
 		/* Synchronization. */
 		case OperationCode::SYNCHRONIZE_TO_ORIGINAL:
 			return "SYNCHRONIZE_TO_ORIGINAL";

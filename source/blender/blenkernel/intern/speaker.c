@@ -14,8 +14,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/** \file blender/blenkernel/intern/speaker.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_object_types.h"
@@ -32,7 +32,7 @@
 
 void BKE_speaker_init(Speaker *spk)
 {
-	BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(spk, id));
+	BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(spk, id));
 
 	spk->attenuation = 1.0f;
 	spk->cone_angle_inner = 360.0f;
@@ -61,7 +61,7 @@ void *BKE_speaker_add(Main *bmain, const char *name)
 
 /**
  * Only copy internal data of Speaker ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -75,7 +75,7 @@ void BKE_speaker_copy_data(Main *UNUSED(bmain), Speaker *UNUSED(spk_dst), const 
 Speaker *BKE_speaker_copy(Main *bmain, const Speaker *spk)
 {
 	Speaker *spk_copy;
-	BKE_id_copy_ex(bmain, &spk->id, (ID **)&spk_copy, 0, false);
+	BKE_id_copy(bmain, &spk->id, (ID **)&spk_copy);
 	return spk_copy;
 }
 

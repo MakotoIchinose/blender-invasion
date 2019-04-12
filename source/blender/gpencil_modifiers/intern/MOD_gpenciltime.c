@@ -17,8 +17,8 @@
  * This is a new part of Blender
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpenciltime.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stdio.h>

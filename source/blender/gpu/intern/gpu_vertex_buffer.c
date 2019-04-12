@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/gpu/intern/gpu_vertex_buffer.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU vertex buffer
  */

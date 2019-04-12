@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file blender/nodes/shader/nodes/node_shader_vectMath.c
- *  \ingroup shdnodes
+/** \file
+ * \ingroup shdnodes
  */
 
 #include "node_shader_util.h"
@@ -93,9 +93,11 @@ static void node_shader_exec_vect_math(void *UNUSED(data), int UNUSED(thread), b
 
 static int gpu_shader_vect_math(GPUMaterial *mat, bNode *node, bNodeExecData *UNUSED(execdata), GPUNodeStack *in, GPUNodeStack *out)
 {
-	static const char *names[] = {"vec_math_add", "vec_math_sub",
+	static const char *names[] = {
+		"vec_math_add", "vec_math_sub",
 		"vec_math_average", "vec_math_dot", "vec_math_cross",
-		"vec_math_normalize"};
+		"vec_math_normalize",
+	};
 
 	switch (node->custom1) {
 		case 0:

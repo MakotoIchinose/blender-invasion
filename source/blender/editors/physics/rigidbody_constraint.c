@@ -17,9 +17,9 @@
  * All rights reserved.
  */
 
-/** \file rigidbody_constraint.c
- *  \ingroup editor_physics
- *  \brief Rigid Body constraint editing operators
+/** \file
+ * \ingroup editor_physics
+ * \brief Rigid Body constraint editing operators
  */
 
 #include <stdlib.h>

@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-/** \file ED_util.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_UTIL_H__

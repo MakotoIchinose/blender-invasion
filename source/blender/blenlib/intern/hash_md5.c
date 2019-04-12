@@ -17,8 +17,8 @@
  * Written by Ulrich Drepper <drepper@gnu.ai.mit.edu>.
  */
 
-/** \file blender/blenlib/intern/hash_md5.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  *  Functions to compute MD5 message digest of files or memory blocks
  *  according to the definition of MD5 in RFC 1321 from April 1992.
@@ -285,7 +285,7 @@ static void *md5_read_ctx(const struct md5_ctx *ctx, void *resbuf)
 
 /** Compute MD5 message digest for bytes read from 'stream'.
  *  The resulting message digest number will be written into the 16 bytes beginning at 'resblock'.
- *  \return Non-zero if an error occurred.
+ * \return Non-zero if an error occurred.
  */
 int BLI_hash_md5_stream(FILE *stream, void *resblock)
 {
@@ -316,19 +316,22 @@ int BLI_hash_md5_stream(FILE *stream, void *resblock)
 			sum += n;
 		} while (sum < BLOCKSIZE && n != 0);
 
-		if (n == 0 && ferror(stream))
+		if (n == 0 && ferror(stream)) {
 			return 1;
+		}
 
 		/* RFC 1321 specifies the possible length of the file up to 2^64 bits.
 		 * Here we only compute the number of bytes. Do a double word increment.
 		 */
 		len[0] += sum;
-		if (len[0] < sum)
+		if (len[0] < sum) {
 			++len[1];
+		}
 
 		/* If end of file is reached, end the loop.  */
-		if (n == 0)
+		if (n == 0) {
 			break;
+		}
 
 		/* Process buffer with BLOCKSIZE bytes. Note that BLOCKSIZE % 64 == 0. */
 		md5_process_block(buffer, BLOCKSIZE, &ctx);

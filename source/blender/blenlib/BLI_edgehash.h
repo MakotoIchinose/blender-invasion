@@ -17,8 +17,8 @@
 #ifndef __BLI_EDGEHASH_H__
 #define __BLI_EDGEHASH_H__
 
-/** \file BLI_edgehash.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_compiler_attrs.h"

@@ -17,9 +17,9 @@
 #ifndef __CONTROLLER_H__
 #define __CONTROLLER_H__
 
-/** \file blender/freestyle/intern/application/Controller.h
- *  \ingroup freestyle
- *  \brief The spinal tap of the system.
+/** \file
+ * \ingroup freestyle
+ * \brief The spinal tap of the system.
  */
 
 #include <string>
