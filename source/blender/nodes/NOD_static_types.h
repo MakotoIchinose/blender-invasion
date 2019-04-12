@@ -20,6 +20,8 @@
 
 /* intentionally no include guard */
 
+/* clang-format off */
+
 /* Empty definitions for undefined macros to avoid warnings */
 #ifndef DefNode
 #define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc)
@@ -249,3 +251,5 @@ DefNode(TextureNode,    TEX_NODE_PROC+TEX_DISTNOISE, 0,                  "TEX_DI
 
 /* undefine macros */
 #undef DefNode
+
+/* clang-format on */
