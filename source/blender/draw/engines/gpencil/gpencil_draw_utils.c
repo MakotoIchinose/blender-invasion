@@ -714,6 +714,11 @@ static DRWShadingGroup *DRW_gpencil_shgroup_point_create(
 		DRW_shgroup_uniform_int(grp, "xraymode", &stl->storage->xray, 1);
 	}
 
+	/* lock rotation of dots and boxes */
+	stl->shgroups[id].use_follow_path = (gp_style->flag & GP_STYLE_COLOR_LOCK_DOTS) ? 0 : 1;
+	DRW_shgroup_uniform_int(grp, "use_follow_path", &stl->shgroups[id].use_follow_path, 1);
+
+
 	/* image texture */
 	if ((gp_style) && (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) && (!onion)) {
 		ImBuf *ibuf;

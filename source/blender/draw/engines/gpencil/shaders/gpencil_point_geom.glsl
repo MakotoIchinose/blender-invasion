@@ -1,6 +1,7 @@
 uniform mat4 ModelViewProjectionMatrix;
 uniform vec2 Viewport;
 uniform int xraymode;
+uniform int use_follow_path;
 
 layout(points) in;
 layout(triangle_strip, max_vertices = 4) out;
@@ -18,6 +19,7 @@ out vec2 mTexCoord;
 
 #define M_PI        3.14159265358979323846  /* pi */
 #define M_2PI       6.28318530717958647692  /* 2*pi */
+#define FALSE       0
 
 /* project 3d point to 2d on screen space */
 vec2 toScreenSpace(vec4 vertex)
@@ -67,6 +69,10 @@ float getAngle(vec2 pt0, vec2 pt1)
 	if (pt0 == pt1) {
 		return 0.0;
 	}	
+
+	if (use_follow_path == FALSE) {
+		return 0.0;
+	}
 
 	/* default horizontal line (x-axis) in screen space */
 	vec2 v0 = vec2(1.0, 0.0);

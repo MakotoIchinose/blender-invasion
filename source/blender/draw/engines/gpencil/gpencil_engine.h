@@ -119,6 +119,7 @@ typedef struct GPENCIL_shgroup {
 	int caps_mode[2];
 	float obj_scale;
 	int xray_mode;
+	int use_follow_path;
 
 	float gradient_f;
 	float gradient_s[2];
