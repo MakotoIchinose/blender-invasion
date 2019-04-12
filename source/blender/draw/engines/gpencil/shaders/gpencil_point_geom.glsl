@@ -59,8 +59,8 @@ vec2 rotatePoint(vec2 center, vec2 point, float angle)
 	return rot_point + center;
 }
 
-/* calculate angle of the stroke using previous point as reference.
- * the angle is calculated using the x axis (1, 0) and 0 degrees */
+/* Calculate angle of the stroke using previous point as reference.
+ * The angle is calculated using the x axis (1, 0) as 0 degrees */
 float getAngle(vec2 pt0, vec2 pt1)
 {
 	/* do not rotate one point only (no reference to rotate) */
@@ -74,7 +74,7 @@ float getAngle(vec2 pt0, vec2 pt1)
 	/* vector of direction */
 	vec2 vn = vec2(normalize(pt1 - pt0));
 	
-	/* angle signed (funtion ported from angle_signed_v2v2) */
+	/* angle signed (function ported from angle_signed_v2v2) */
 	float perp_dot = (v0[1] * vn[0]) - (v0[0] * vn[1]);
 	float angle = atan(perp_dot, dot(v0, vn));
 	
