@@ -2754,6 +2754,13 @@ static void rna_def_mesh(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Reproject Vertex Paint",
 	                         "Keep the current vertex paint on the new mesh");
 	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
+
+	prop = RNA_def_property(srna, "reproject_paint_mask", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_REPROJECT_PAINT_MASK);
+	RNA_def_property_boolean_default(prop, false);
+	RNA_def_property_ui_text(prop, "Reproject Mask",
+	                         "Keep the current mask on the new mesh");
+	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
 	/* End remesher */
 
 	prop = RNA_def_property(srna, "use_auto_smooth", PROP_BOOLEAN, PROP_NONE);

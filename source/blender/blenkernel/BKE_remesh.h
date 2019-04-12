@@ -34,7 +34,9 @@ Mesh *BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLevelSet *level_
 
 /* MVertCol based Reprojection for remesh operator */
 void BKE_remesh_voxel_init_empty_vertex_color_layer(Mesh *mesh);
+void BKE_remesh_voxel_reproject(Mesh *target, Mesh *source, const int flag);
 void BKE_remesh_voxel_reproject_vertex_paint(Mesh *target, Mesh *source);
+void BKE_remesh_voxel_reproject_paint_mask(Mesh *target, Mesh *source);
 
 /* MLoopCol remapping based Reprojection for remesh modifier */
 MLoopCol* BKE_remesh_remap_loop_vertex_color_layer(Mesh *mesh);

@@ -472,6 +472,7 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         col.prop(mesh, "voxel_size")
         col.prop(mesh, "smooth_normals")
         col.prop(mesh, "reproject_vertex_paint")
+        col.prop(mesh, "reproject_paint_mask")
         col.operator("object.remesh", text="Remesh")
 
 

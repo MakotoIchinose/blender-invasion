@@ -163,6 +163,89 @@ void BKE_remesh_voxel_reproject_vertex_paint(Mesh *target, Mesh *source)
 	free_bvhtree_from_mesh(&bvhtree);
 }
 
+void BKE_remesh_voxel_reproject_paint_mask(Mesh *target, Mesh *source)
+{
+	BVHTreeFromMesh bvhtree = {NULL};
+	BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_VERTS, 2);
+	MVert *target_verts =  CustomData_get_layer(&target->vdata, CD_MVERT);
+
+	float *target_mask;
+	if (CustomData_has_layer(&target->vdata, CD_PAINT_MASK)) {
+		target_mask = CustomData_get_layer(&target->vdata, CD_PAINT_MASK);
+	}
+	else {
+		target_mask = CustomData_add_layer(&target->vdata, CD_PAINT_MASK, CD_CALLOC, NULL, target->totvert);
+	}
+
+	float *source_mask;
+	if (CustomData_has_layer(&source->vdata, CD_PAINT_MASK)) {
+		source_mask = CustomData_get_layer(&source->vdata, CD_PAINT_MASK);
+	}
+	else {
+		source_mask = CustomData_add_layer(&source->vdata, CD_PAINT_MASK, CD_CALLOC, NULL, source->totvert);
+	}
+
+	for(int i = 0; i < target->totvert; i++) {
+		float from_co[3];
+		BVHTreeNearest nearest;
+		nearest.index = -1;
+		nearest.dist_sq = FLT_MAX;
+		copy_v3_v3(from_co, target_verts[i].co);
+		BLI_bvhtree_find_nearest(bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
+		if (nearest.index != -1) {
+			target_mask[i] = source_mask[nearest.index];
+		}
+	}
+	free_bvhtree_from_mesh(&bvhtree);
+}
+
+void BKE_remesh_voxel_reproject(Mesh *target, Mesh *source, const int flag)
+{
+	BVHTreeFromMesh bvhtree = {NULL};
+	BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_VERTS, 2);
+	MVert *target_verts =  CustomData_get_layer(&target->vdata, CD_MVERT);
+
+	MVertCol *target_color = CustomData_get_layer(&target->vdata, CD_MVERTCOL);
+	MVertCol *source_color  = CustomData_get_layer(&source->vdata, CD_MVERTCOL);
+
+	float *target_mask;
+	if (CustomData_has_layer(&target->vdata, CD_PAINT_MASK)) {
+		target_mask = CustomData_get_layer(&target->vdata, CD_PAINT_MASK);
+	}
+	else {
+		target_mask = CustomData_add_layer(&target->vdata, CD_PAINT_MASK, CD_CALLOC, NULL, target->totvert);
+	}
+
+	float *source_mask;
+	if (CustomData_has_layer(&source->vdata, CD_PAINT_MASK)) {
+		source_mask = CustomData_get_layer(&source->vdata, CD_PAINT_MASK);
+	}
+	else {
+		source_mask = CustomData_add_layer(&source->vdata, CD_PAINT_MASK, CD_CALLOC, NULL, source->totvert);
+	}
+
+	for(int i = 0; i < target->totvert; i++) {
+		float from_co[3];
+		BVHTreeNearest nearest;
+		nearest.index = -1;
+		nearest.dist_sq = FLT_MAX;
+		copy_v3_v3(from_co, target_verts[i].co);
+		BLI_bvhtree_find_nearest(bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
+		if (nearest.index != -1) {
+			if (flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
+				target_color[i].r = source_color[nearest.index].r;
+				target_color[i].g = source_color[nearest.index].g;
+				target_color[i].b = source_color[nearest.index].b;
+				target_color[i].a = source_color[nearest.index].a;
+			}
+			if (flag & ME_REMESH_REPROJECT_PAINT_MASK) {
+				target_mask[i] = source_mask[nearest.index];
+			}
+		}
+	}
+	free_bvhtree_from_mesh(&bvhtree);
+}
+
 /*caller needs to free returned data */
 MLoopCol* BKE_remesh_remap_loop_vertex_color_layer(Mesh *mesh)
 {

@@ -1797,7 +1797,8 @@ static int remesh_exec(bContext *C, wmOperator *op)
 		OpenVDBTransform_free(xform);
 
 		Mesh *objMesh_copy;
-		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
+		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT ||
+			mesh->flag & ME_REMESH_REPROJECT_PAINT_MASK) {
 			objMesh_copy = BKE_mesh_new_nomain_from_template(mesh, mesh->totvert, 0, 0, 0, 0);
 			CustomData_copy(&mesh->vdata, &objMesh_copy->vdata, CD_MASK_MESH.vmask, CD_DUPLICATE, mesh->totvert);
 			for(int i = 0; i < mesh->totvert; i++) {
@@ -1809,8 +1810,9 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
 		BKE_remesh_voxel_init_empty_vertex_color_layer(mesh);
 
-		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT) {
-			BKE_remesh_voxel_reproject_vertex_paint(mesh, objMesh_copy);
+		if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_PAINT ||
+			mesh->flag & ME_REMESH_REPROJECT_PAINT_MASK) {
+			BKE_remesh_voxel_reproject(mesh, objMesh_copy, mesh->flag);
 			BKE_mesh_free(objMesh_copy);
 		}
 
