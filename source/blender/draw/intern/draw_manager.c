@@ -201,7 +201,7 @@ bool DRW_object_is_flat_normal(const Object *ob)
 bool DRW_object_use_hide_faces(const struct Object *ob)
 {
 	if (ob->type == OB_MESH) {
-		const Mesh *me = DEG_get_original_object((Object *)ob)->data;
+		const Mesh *me = ob->data;
 
 		switch (ob->mode) {
 			case OB_MODE_TEXTURE_PAINT:
@@ -645,18 +645,7 @@ static void drw_viewport_var_init(void)
 	}
 
 	/* Alloc array of texture reference. */
-	if (DST.RST.bound_texs == NULL) {
-		DST.RST.bound_texs = MEM_callocN(sizeof(GPUTexture *) * GPU_max_textures(), "Bound GPUTexture refs");
-	}
-	if (DST.RST.bound_tex_slots == NULL) {
-		DST.RST.bound_tex_slots = MEM_callocN(sizeof(char) * GPU_max_textures(), "Bound Texture Slots");
-	}
-	if (DST.RST.bound_ubos == NULL) {
-		DST.RST.bound_ubos = MEM_callocN(sizeof(GPUUniformBuffer *) * GPU_max_ubo_binds(), "Bound GPUUniformBuffer refs");
-	}
-	if (DST.RST.bound_ubo_slots == NULL) {
-		DST.RST.bound_ubo_slots = MEM_callocN(sizeof(char) * GPU_max_ubo_binds(), "Bound Ubo Slots");
-	}
+	memset(&DST.RST, 0x0, sizeof(DST.RST));
 
 	if (G_draw.view_ubo == NULL) {
 		G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(ViewUboStorage), NULL);
@@ -2797,11 +2786,6 @@ void DRW_engines_free(void)
 	DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
 	DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
 	MEM_SAFE_FREE(g_pos_format);
-
-	MEM_SAFE_FREE(DST.RST.bound_texs);
-	MEM_SAFE_FREE(DST.RST.bound_tex_slots);
-	MEM_SAFE_FREE(DST.RST.bound_ubos);
-	MEM_SAFE_FREE(DST.RST.bound_ubo_slots);
 
 	MEM_SAFE_FREE(DST.uniform_names.buffer);
 
