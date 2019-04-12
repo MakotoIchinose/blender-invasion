@@ -73,7 +73,7 @@ static void initData(ModifierData *md)
 	rmd->filter_bias = OPENVDB_LEVELSET_FIRST_BIAS;
 	rmd->filter_type = OPENVDB_LEVELSET_FILTER_NONE;
 	rmd->filter_iterations = 1;
-	//rmd->shared = MEM_callocN(sizeof(RemeshModifierData_Shared), "remesh shared");
+	rmd->flag |= MOD_REMESH_LIVE_REMESH;
 }
 
 #ifdef WITH_MOD_REMESH
@@ -248,6 +248,17 @@ static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, C
 
 	return level_set;
 }
+
+static Mesh* copy_mesh(Mesh *me) {
+	Mesh* result = BKE_mesh_new_nomain(me->totvert,
+									   me->totedge,
+									   me->totface,
+									   me->totloop,
+									   me->totpoly);
+
+	BKE_mesh_nomain_to_mesh(me, result, NULL, &CD_MASK_MESH, false);
+	return result;
+}
 #endif
 
 static Mesh *applyModifier(
@@ -270,7 +281,19 @@ static Mesh *applyModifier(
 		CSGVolume_Object *vcob;
 		struct OpenVDBLevelSet* level_set;
 
+		Object *ob_orig = DEG_get_original_object(ctx->object);
+		RemeshModifierData *rmd_orig = (RemeshModifierData*)modifiers_findByName(ob_orig, md->name);
+
+		if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0))
+		{
+			//access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
+			if (rmd_orig->mesh_cached) {
+				return copy_mesh(rmd_orig->mesh_cached);
+			}
+		}
+
 		if (rmd->voxel_size > 0.0f) {
+
 			struct OpenVDBTransform *xform = OpenVDBTransform_create();
 			OpenVDBTransform_create_linear_transform(xform, rmd->voxel_size);
 			level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
@@ -284,7 +307,21 @@ static Mesh *applyModifier(
 				}
 			}
 
-			return voxel_remesh(rmd, mesh, level_set);
+			result = voxel_remesh(rmd, mesh, level_set);
+
+			if (result)
+			{
+				//update cache
+				if (rmd_orig->mesh_cached) {
+					BKE_mesh_free(rmd_orig->mesh_cached);
+					rmd_orig->mesh_cached = NULL;
+				}
+
+				//save a copy
+				rmd_orig->mesh_cached = copy_mesh(result);
+			}
+
+			return result;
 		}
 		else {
 			return mesh;
@@ -369,6 +406,11 @@ static void foreachObjectLink(
 	RemeshModifierData *rmd = (RemeshModifierData *)md;
 	CSGVolume_Object *vcob;
 
+	if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached)
+	{
+		return;
+	}
+
 	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
 	{
 		if (vcob->object)
@@ -382,6 +424,11 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 {
 	RemeshModifierData *rmd = (RemeshModifierData *)md;
 	CSGVolume_Object *vcob;
+
+	if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached)
+	{
+		return;
+	}
 
 	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
 	{
@@ -401,12 +448,32 @@ static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int
 {
 	RemeshModifierData *rmd_src = (RemeshModifierData*)md_src;
 	RemeshModifierData *rmd_dst = (RemeshModifierData*)md_dst;
+	Mesh *me_src = rmd_src->mesh_cached;
 
 	modifier_copyData_generic(md_src, md_dst, flag);
-
-	//only for cow copy ?
+	//only for cow copy, because cow does shallow copy only
 	if (flag & LIB_ID_CREATE_NO_MAIN) {
 		BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
+	}
+
+	//here for both ?
+	if (me_src) {
+		Mesh *me_dst = BKE_mesh_new_nomain(me_src->totvert,
+										   me_src->totedge,
+										   me_src->totface,
+										   me_src->totloop,
+										   me_src->totpoly);
+
+		BKE_mesh_nomain_to_mesh(me_src, me_dst, NULL, &CD_MASK_MESH, false);
+		rmd_dst->mesh_cached = me_dst;
+	}
+}
+
+static void freeData(ModifierData *md) {
+	RemeshModifierData *rmd = (RemeshModifierData *)md;
+	if (rmd->mesh_cached) {
+		BKE_mesh_free(rmd->mesh_cached);
+		rmd->mesh_cached = NULL;
 	}
 }
 
@@ -430,7 +497,7 @@ ModifierTypeInfo modifierType_Remesh = {
 
 	/* initData */          initData,
 	/* requiredDataMask */  requiredDataMask,
-	/* freeData */          NULL,
+	/* freeData */          freeData,
 	/* isDisabled */        NULL,
 	/* updateDepsgraph */   updateDepsgraph,
 	/* dependsOnTime */     NULL,

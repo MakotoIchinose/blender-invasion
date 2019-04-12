@@ -2405,6 +2405,21 @@ void OBJECT_OT_surfacedeform_bind(wmOperatorType *ot)
 	edit_modifier_properties(ot);
 }
 
+static bool remesh_update_check(bContext *C, wmOperator *op)
+{
+	Object *ob = ED_object_active_context(C);
+	RemeshModifierData *rmd = (RemeshModifierData *)edit_modifier_property_get(op, ob, eModifierType_Remesh);
+	bool do_update = true;
+
+	if (rmd->mode == MOD_REMESH_VOXEL) {
+		if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached) {
+			do_update = false;
+		}
+	}
+
+	return do_update;
+}
+
 static bool remesh_csg_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_RemeshModifier, 0);
@@ -2426,13 +2441,16 @@ static int remesh_csg_add_exec(bContext *C, wmOperator *op)
 	vcob->flag |= MOD_REMESH_CSG_SYNC_VOXEL_SIZE;
 	BLI_addtail(&rmd->csg_operands, vcob);
 
-	if (BLI_listbase_is_single(&rmd->csg_operands)) {
-		/*trigger update to detach modifier transform relation from modifier */
-		DEG_relations_tag_update(bmain);
-	}
+	if (remesh_update_check(C, op))
+	{
+		if (BLI_listbase_is_single(&rmd->csg_operands)) {
+			/*trigger update to detach modifier transform relation from modifier */
+			DEG_relations_tag_update(bmain);
+		}
 
-	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-	WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+		WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -2478,13 +2496,16 @@ static int remesh_csg_remove_exec(bContext *C, wmOperator *op)
 		BLI_remlink(&rmd->csg_operands, vcob);
 	}
 
-	if (BLI_listbase_is_empty(&rmd->csg_operands)) {
-		/*trigger update to detach modifier transform relation from modifier */
-		DEG_relations_tag_update(bmain);
-	}
+	if (remesh_update_check(C, op))
+	{
+		if (BLI_listbase_is_empty(&rmd->csg_operands)) {
+			/*trigger update to detach modifier transform relation from modifier */
+			DEG_relations_tag_update(bmain);
+		}
 
-	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-	WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+		WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -2533,8 +2554,11 @@ static int remesh_csg_move_up_exec(bContext *C, wmOperator *op)
 		BLI_insertlinkbefore(&rmd->csg_operands, vcob->prev, vcob);
 	}
 
-	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-	WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+	if (remesh_update_check(C, op))
+	{
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+		WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -2583,8 +2607,11 @@ static int remesh_csg_move_down_exec(bContext *C, wmOperator *op)
 		BLI_insertlinkafter(&rmd->csg_operands, vcob->next, vcob);
 	}
 
-	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-	WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+	if (remesh_update_check(C, op))
+	{
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+		WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+	}
 
 	return OPERATOR_FINISHED;
 }

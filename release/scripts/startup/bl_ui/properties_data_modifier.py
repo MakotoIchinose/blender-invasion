@@ -1215,10 +1215,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
                     layout.prop(md, "filter_width")
                 if md.filter_type in {"DILATE", "ERODE"}:
                     layout.prop(md, "filter_iterations")
-
-            layout.prop(md, "smooth_normals")
-            layout.prop(md, "relax_triangles")
-            layout.prop(md, "reproject_vertex_paint")
+            row = layout.row()
+            row.prop(md, "live_remesh")
+            row.prop(md, "smooth_normals")
+            row = layout.row()
+            row.prop(md, "relax_triangles")
+            row.prop(md, "reproject_vertex_paint")
             layout.label(text="CSG Operands")
             layout.operator("remesh.csg_add", text="", icon="ADD")
             for i,csg in enumerate(md.csg_operands):

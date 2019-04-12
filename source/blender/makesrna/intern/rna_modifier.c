@@ -478,16 +478,36 @@ static char *rna_Modifier_path(PointerRNA *ptr)
 	return BLI_sprintfN("modifiers[\"%s\"]", name_esc);
 }
 
+static bool rna_Modifier_update_check(PointerRNA *ptr) {
+	ModifierData *md = ptr->data;
+	bool do_update = true;
+
+	if (md->type == eModifierType_Remesh) {
+		RemeshModifierData *rmd = (RemeshModifierData*)md;
+		if (rmd->mode == MOD_REMESH_VOXEL) {
+			if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached) {
+				do_update = false;
+			}
+		}
+	}
+
+	return do_update;
+}
+
 static void rna_Modifier_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
-	WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->id.data);
+	if (rna_Modifier_update_check(ptr)) {
+		DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
+		WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->id.data);
+	}
 }
 
 static void rna_Modifier_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-	rna_Modifier_update(bmain, scene, ptr);
-	DEG_relations_tag_update(bmain);
+	if (rna_Modifier_update_check(ptr)) {
+		rna_Modifier_update(bmain, scene, ptr);
+		DEG_relations_tag_update(bmain);
+	}
 }
 
 /* Vertex Groups */
@@ -4248,6 +4268,12 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "reproject_vertex_paint", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_REPROJECT_VPAINT);
 	RNA_def_property_ui_text(prop, "Reproject Vertex Paint", "Keep the current vertex paint on the new mesh");
+	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+	prop = RNA_def_property(srna, "live_remesh", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_LIVE_REMESH);
+	RNA_def_property_ui_text(prop, "Live Remesh",
+	                         "Perform remesh on every modifier update, otherwise return cached mesh");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
 	prop = RNA_def_property(srna, "csg_operands", PROP_COLLECTION, PROP_NONE);
