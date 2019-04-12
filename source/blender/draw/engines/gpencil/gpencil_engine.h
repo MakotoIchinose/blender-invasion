@@ -340,6 +340,7 @@ typedef struct GpencilBatchCacheElem {
 	uint color_id;
 	uint thickness_id;
 	uint uvdata_id;
+	uint prev_pos_id;
 
 	/* size for VBO alloc */
 	int tot_vertex;
