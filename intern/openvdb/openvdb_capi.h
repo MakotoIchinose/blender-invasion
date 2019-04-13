@@ -182,7 +182,7 @@ void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLe
 
 struct OpenVDBLevelSet *OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *level_setA,
                                                         struct OpenVDBLevelSet *level_setB,
-                                                        char sampler);
+                                                        char sampler, float isolevel);
 
 
 #ifdef __cplusplus

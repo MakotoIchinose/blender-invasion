@@ -251,7 +251,7 @@ static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, C
 
 	if (vcob->sampler != OPENVDB_LEVELSET_GRIDSAMPLER_NONE)
 	{
-		level_set = OpenVDBLevelSet_transform_and_resample(level_set, level_setB, vcob->sampler);
+		level_set = OpenVDBLevelSet_transform_and_resample(level_set, level_setB, vcob->sampler, rmd->isovalue);
 	}
 
 	OpenVDBLevelSet_CSG_operation(level_set, level_set, level_setB, (OpenVDBLevelSet_CSGOperation)vcob->operation );

@@ -306,7 +306,7 @@ void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out, struct OpenVDBLe
 
 OpenVDBLevelSet* OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *level_setA,
                                                         struct OpenVDBLevelSet *level_setB,
-														char sampler)
+														char sampler, float isolevel)
 {
 	openvdb::FloatGrid::Ptr sourceGrid = level_setA->OpenVDB_level_set_get_grid();
 	openvdb::FloatGrid::Ptr targetGrid = level_setB->OpenVDB_level_set_get_grid()->deepCopy();
@@ -354,6 +354,9 @@ OpenVDBLevelSet* OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *
 			//targetGrid = sourceGrid->deepCopy();
 		break;
 	}
+
+	targetGrid = openvdb::tools::levelSetRebuild(*targetGrid, isolevel, 1.0f);
+	openvdb::tools::pruneLevelSet(targetGrid->tree());
 
 	OpenVDBLevelSet* level_set = OpenVDBLevelSet_create(false, NULL);
 	level_set->OpenVDB_level_set_set_grid(targetGrid);
