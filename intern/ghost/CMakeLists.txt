@@ -85,6 +85,9 @@ set(SRC
 )
 
 set(LIB
+	bf_intern_glew_mx
+	bf_intern_string
+	${GLEW_LIBRARY}
 )
 
 if(WITH_GHOST_DEBUG)
