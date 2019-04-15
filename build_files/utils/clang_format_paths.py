@@ -21,11 +21,10 @@ ignore_files = {
 }
 
 
-def compute_paths(paths_arg):
+def compute_paths(paths):
     # Optionally pass in files to operate on.
-    paths = paths_arg
     if not paths:
-        paths.extend((
+        paths = (
             "intern/atomic",
             "intern/audaspace",
             "intern/clog",
@@ -47,7 +46,7 @@ def compute_paths(paths_arg):
             "intern/utfconv",
             "source",
             "tests/gtests",
-        ))
+        )
 
     if os.sep != "/":
         paths = [f.replace("/", os.sep) for f in paths]
@@ -140,7 +139,6 @@ def argparse_create():
     )
 
     return parser
-
 
 
 def main():
