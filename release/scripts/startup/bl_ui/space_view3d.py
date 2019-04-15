@@ -4775,6 +4775,7 @@ class VIEW3D_PT_gizmo_display(Panel):
     def draw(self, context):
         layout = self.layout
 
+        scene = context.scene
         view = context.space_data
         overlay = view.overlay
 
@@ -4784,8 +4785,27 @@ class VIEW3D_PT_gizmo_display(Panel):
         col.active = view.show_gizmo
         colsub = col.column()
         colsub.prop(view, "show_gizmo_navigate", text="Navigate")
-        colsub.prop(view, "show_gizmo_context", text="Active Object")
         colsub.prop(view, "show_gizmo_tool", text="Active Tools")
+        colsub.prop(view, "show_gizmo_context", text="Active Object")
+
+        colsub = col.column()
+        colsub.active = view.show_gizmo_context
+        colsub.label(text="Object Gizmos")
+        colsub.prop(scene.transform_orientation_slots[1], "type", text="")
+        colsub.prop(view, "show_gizmo_object_translate", text="Move")
+        colsub.prop(view, "show_gizmo_object_rotate", text="Rotate")
+        colsub.prop(view, "show_gizmo_object_scale", text="Scale")
+
+        # Match order of object type visibility
+        colsub.label(text="Empty")
+        colsub.prop(view, "show_gizmo_empty_image", text="Image")
+        colsub.prop(view, "show_gizmo_empty_force_field", text="Force Field")
+        colsub.label(text="Light")
+        colsub.prop(view, "show_gizmo_light_size", text="Size")
+        colsub.prop(view, "show_gizmo_light_look_at", text="Look At")
+        colsub.label(text="Camera")
+        colsub.prop(view, "show_gizmo_camera_lens", text="Lens")
+        colsub.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
 
 
 class VIEW3D_PT_overlay(Panel):

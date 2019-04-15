@@ -1830,12 +1830,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-			if (scene->toolsettings->gizmo_flag == 0) {
-				scene->toolsettings->gizmo_flag = SCE_GIZMO_SHOW_TRANSLATE | SCE_GIZMO_SHOW_ROTATE | SCE_GIZMO_SHOW_SCALE;
-			}
-		}
-
 		if (!DNA_struct_elem_find(fd->filesdna, "RigidBodyWorld", "RigidBodyWorld_Shared", "*shared")) {
 			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				RigidBodyWorld *rbw = scene->rigidbody_world;
@@ -3113,6 +3107,38 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 56)) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+				for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_VIEW3D) {
+						View3D *v3d = (View3D *)sl;
+						v3d->gizmo_show_armature = V3D_GIZMO_SHOW_ARMATURE_BBONE | V3D_GIZMO_SHOW_ARMATURE_ROLL;
+						v3d->gizmo_show_empty = V3D_GIZMO_SHOW_EMPTY_IMAGE | V3D_GIZMO_SHOW_EMPTY_FORCE_FIELD;
+						v3d->gizmo_show_light = V3D_GIZMO_SHOW_LIGHT_SIZE | V3D_GIZMO_SHOW_LIGHT_LOOK_AT;
+						v3d->gizmo_show_camera = V3D_GIZMO_SHOW_CAMERA_LENS | V3D_GIZMO_SHOW_CAMERA_DOF_DIST;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 57)) {
+		/* Enable Show Interpolation in dopesheet by default. */
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_ACTION) {
+						SpaceAction *saction = (SpaceAction *)sl;
+						if ((saction->flag & SACTION_SHOW_EXTREMES) == 0) {
+							saction->flag |= SACTION_SHOW_INTERPOLATION;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	{
