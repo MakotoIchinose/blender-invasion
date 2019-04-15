@@ -1,0 +1,6 @@
+
+# Ignore directories.
+extern/.*
+
+# Uses too much memory.
+intern/cycles/render/sobol.cpp
