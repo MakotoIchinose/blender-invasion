@@ -708,15 +708,19 @@ static DRWShadingGroup *DRW_gpencil_shgroup_point_create(
 	if ((gpd) && (id > -1)) {
 		stl->shgroups[id].xray_mode = (ob->dtx & OB_DRAWXRAY) ? GP_XRAY_FRONT : GP_XRAY_3DSPACE;
 		DRW_shgroup_uniform_int(grp, "xraymode", (const int *)&stl->shgroups[id].xray_mode, 1);
+
+		/* lock rotation of dots and boxes */
+		stl->shgroups[id].use_follow_path = (gp_style->flag & GP_STYLE_COLOR_LOCK_DOTS) ? 0 : 1;
+		DRW_shgroup_uniform_int(grp, "use_follow_path", &stl->shgroups[id].use_follow_path, 1);
 	}
 	else {
 		/* for drawing always on predefined z-depth */
 		DRW_shgroup_uniform_int(grp, "xraymode", &stl->storage->xray, 1);
+
+		/* lock rotation of dots and boxes */
+		DRW_shgroup_uniform_int(grp, "use_follow_path", &stl->storage->use_follow_path, 1);
 	}
 
-	/* lock rotation of dots and boxes */
-	stl->shgroups[id].use_follow_path = (gp_style->flag & GP_STYLE_COLOR_LOCK_DOTS) ? 0 : 1;
-	DRW_shgroup_uniform_int(grp, "use_follow_path", &stl->shgroups[id].use_follow_path, 1);
 
 
 	/* image texture */
@@ -1398,6 +1402,7 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data, void *vedata, T
 			/* save gradient info */
 			stl->storage->gradient_f = brush->gpencil_settings->gradient_f;
 			copy_v2_v2(stl->storage->gradient_s, brush->gpencil_settings->gradient_s);
+			stl->storage->use_follow_path = (gp_style->flag & GP_STYLE_COLOR_LOCK_DOTS) ? 0 : 1;
 
 			/* if only one point, don't need to draw buffer because the user has no time to see it */
 			if (gpd->runtime.sbuffer_size > 1) {

@@ -119,8 +119,8 @@ typedef struct GPENCIL_shgroup {
 	int caps_mode[2];
 	float obj_scale;
 	int xray_mode;
-	int use_follow_path;
 
+	int use_follow_path;
 	float gradient_f;
 	float gradient_s[2];
 
@@ -170,6 +170,7 @@ typedef struct GPENCIL_Storage {
 
 	float gradient_f;
 	float gradient_s[2];
+	int use_follow_path;
 
 	/* Render Matrices and data */
 	float persmat[4][4], persinv[4][4];
