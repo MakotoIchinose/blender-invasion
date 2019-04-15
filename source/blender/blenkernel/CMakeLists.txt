@@ -598,6 +598,9 @@ if(WITH_OPENVDB)
 	list(APPEND INC
 		 ../../../intern/openvdb
 	)
+	list(APPEND LIB
+		 bf_intern_openvdb
+	)
 	add_definitions(-DWITH_OPENVDB)
 
 	if(WITH_OPENVDB_BLOSC)

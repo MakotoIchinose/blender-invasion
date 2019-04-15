@@ -42,11 +42,13 @@ set(SRC
 set(LIB
 	bf_blenkernel
 	bf_blenlib
-	bf_intern_locale
 )
 
 if(WITH_INTERNATIONAL)
 	add_definitions(-DWITH_INTERNATIONAL)
+	list(APPEND LIB
+		bf_intern_locale
+	)
 endif()
 
 if(WITH_PYTHON)

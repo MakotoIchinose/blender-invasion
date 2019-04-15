@@ -198,6 +198,10 @@ elseif(WITH_X11)
 	if(WITH_GHOST_XDND)
 		add_definitions(-DWITH_XDND)
 
+		list(APPEND LIB
+			extern_xdnd
+		)
+
 		list(APPEND INC
 			../../extern/xdnd
 		)

@@ -77,6 +77,12 @@ set(LIB
 	cycles_bvh
 )
 
+if(WITH_CYCLES_OSL)
+	list(APPEND LIB
+		cycles_kernel_osl
+	)
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${RTTI_DISABLE_FLAGS}")
 
 include_directories(${INC})
