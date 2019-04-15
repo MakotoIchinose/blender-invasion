@@ -8,35 +8,6 @@ import subprocess
 CLANG_FORMAT_CMD = "clang-format"
 VERSION_MIN = (6, 0, 0)
 
-# Optionally pass in files to operate on.
-paths = sys.argv[1:]
-if not paths:
-    paths.extend((
-        "intern/atomic",
-        "intern/audaspace",
-        "intern/clog",
-        "intern/cycles",
-        "intern/dualcon",
-        "intern/eigen",
-        "intern/ffmpeg",
-        "intern/ghost",
-        "intern/glew-mx",
-        "intern/guardedalloc",
-        "intern/iksolver",
-        "intern/locale",
-        "intern/memutil",
-        "intern/mikktspace",
-        "intern/opencolorio",
-        "intern/openvdb",
-        "intern/rigidbody",
-        "intern/string",
-        "intern/utfconv",
-        "source",
-        "tests/gtests",
-    ))
-
-if os.sep != "/":
-    paths = [f.replace("/", os.sep) for f in paths]
 
 extensions = (
     ".c", ".cc", ".cpp", ".cxx",
@@ -49,11 +20,41 @@ ignore_files = {
     "intern/cycles/render/sobol.cpp",  # Too heavy for clang-format
 }
 
-print("Operating on:")
-for p in paths:
-    print(" ", p)
 
-def source_files_from_git():
+def compute_paths(paths_arg):
+    # Optionally pass in files to operate on.
+    paths = paths_arg
+    if not paths:
+        paths.extend((
+            "intern/atomic",
+            "intern/audaspace",
+            "intern/clog",
+            "intern/cycles",
+            "intern/dualcon",
+            "intern/eigen",
+            "intern/ffmpeg",
+            "intern/ghost",
+            "intern/glew-mx",
+            "intern/guardedalloc",
+            "intern/iksolver",
+            "intern/locale",
+            "intern/memutil",
+            "intern/mikktspace",
+            "intern/opencolorio",
+            "intern/openvdb",
+            "intern/rigidbody",
+            "intern/string",
+            "intern/utfconv",
+            "source",
+            "tests/gtests",
+        ))
+
+    if os.sep != "/":
+        paths = [f.replace("/", os.sep) for f in paths]
+    return paths
+
+
+def source_files_from_git(paths):
     cmd = ("git", "ls-tree", "-r", "HEAD", *paths, "--name-only", "-z")
     files = subprocess.check_output(cmd).split(b'\0')
     return [f.decode('ascii') for f in files]
@@ -116,6 +117,31 @@ def clang_format(files):
     pool.close()
     pool.join()
 
+def argparse_create():
+    import argparse
+
+    # When --help or no args are given, print this help
+    usage_text = "Format source code"
+    epilog = "This script runs clang-format on multiple files/directories"
+    parser = argparse.ArgumentParser(description=usage_text, epilog=epilog)
+    parser.add_argument(
+        "--expand-tabs",
+        dest="expand_tabs",
+        default=False,
+        action='store_true',
+        help="Run a pre-pass that expands tabs "
+        "(default=False)",
+        required=False,
+    )
+    parser.add_argument(
+        "paths",
+        nargs=argparse.REMAINDER,
+        help="All trailing arguments are treated as paths."
+    )
+
+    return parser
+
+
 
 def main():
     version = clang_format_version()
@@ -126,13 +152,21 @@ def main():
         print("Version of clang-format is too old:", version, "<", VERSION_MIN)
         sys.exit(1)
 
+    args = argparse_create().parse_args()
+
+    paths = compute_paths(args.paths)
+    print("Operating on:")
+    for p in paths:
+        print(" ", p)
+
     files = [
-        f for f in source_files_from_git()
+        f for f in source_files_from_git(paths)
         if f.endswith(extensions)
         if f not in ignore_files
     ]
 
-    convert_tabs_to_spaces(files)
+    if args.expand_tabs:
+        convert_tabs_to_spaces(files)
     clang_format(files)
 
 
