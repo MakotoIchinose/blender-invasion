@@ -105,9 +105,6 @@ endif()
 
 if(WITH_BINRELOC)
 	blender_include_dirs(${BINRELOC_INCLUDE_DIRS})
-	list(APPEND LIB
-		extern_binreloc
-	)
 	add_definitions(-DWITH_BINRELOC)
 endif()
 
@@ -1051,19 +1048,11 @@ install(
 # Setup link libs
 
 add_dependencies(blender makesdna)
-
-# Use for testing 'BLENDER_SORTED_LIBS' removal.
-if(NOT (DEFINED WITHOUT_SORTED_LIBS AND WITHOUT_SORTED_LIBS))
-	setup_blender_sorted_libs()
-	target_link_libraries(blender ${BLENDER_SORTED_LIBS})
-else()
-	target_link_libraries(blender ${LIB})
-endif()
-
+target_link_libraries(blender ${LIB})
+unset(LIB)
 
 setup_liblinks(blender)
 
-unset(LIB)
 
 # -----------------------------------------------------------------------------
 # Setup launcher
