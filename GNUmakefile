@@ -515,7 +515,7 @@ update: .FORCE
 
 format: .FORCE
 	PATH="../lib/${OS_NCASE}/llvm/bin/:$(PATH)" \
-		python3 build_files/utils/clang_format_paths.py --expand-tabs $(PATHS)
+		python3 source/tools/utils/clang_format_paths.py --expand-tabs $(PATHS)
 
 
 # -----------------------------------------------------------------------------
