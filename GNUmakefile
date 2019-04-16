@@ -124,7 +124,9 @@ Utilities
      updates git and all submodules
 
    * format
-     Format source code using clang (uses PATHS if passed in).
+     Format source code using clang (uses PATHS if passed in). For example::
+
+        make format PATHS="source/blender/blenlib source/blender/blenkernel"
 
 Environment Variables
 
