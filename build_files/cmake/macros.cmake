@@ -222,7 +222,7 @@ function(blender_add_lib__impl
 	sources
 	includes
 	includes_sys
-	libraries
+	library_deps
 	)
 
 	# message(STATUS "Configuring library ${name}")
@@ -236,8 +236,8 @@ function(blender_add_lib__impl
 
 	# Use for testing 'BLENDER_SORTED_LIBS' removal.
 	if(DEFINED WITHOUT_SORTED_LIBS AND WITHOUT_SORTED_LIBS)
-		if (NOT "${libraries}" STREQUAL "")
-			target_link_libraries(${name} "${libraries}")
+		if (NOT "${library_deps}" STREQUAL "")
+			target_link_libraries(${name} "${library_deps}")
 		endif()
 	endif()
 
@@ -265,12 +265,12 @@ function(blender_add_lib_nolist
 	sources
 	includes
 	includes_sys
-	libraries
+	library_deps
 	)
 
 	add_cc_flags_custom_test(${name} PARENT_SCOPE)
 
-	blender_add_lib__impl(${name} "${sources}" "${includes}" "${includes_sys}" "${libraries}")
+	blender_add_lib__impl(${name} "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
 endfunction()
 
 function(blender_add_lib
@@ -278,12 +278,12 @@ function(blender_add_lib
 	sources
 	includes
 	includes_sys
-	libraries
+	library_deps
 	)
 
 	add_cc_flags_custom_test(${name} PARENT_SCOPE)
 
-	blender_add_lib__impl(${name} "${sources}" "${includes}" "${includes_sys}" "${libraries}")
+	blender_add_lib__impl(${name} "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
 
 	set_property(GLOBAL APPEND PROPERTY BLENDER_LINK_LIBS ${name})
 endfunction()
@@ -427,8 +427,11 @@ function(setup_liblinks
 	if(WITH_SDL AND NOT WITH_SDL_DYNLOAD)
 		target_link_libraries(${target} ${SDL_LIBRARY})
 	endif()
-	if(WITH_IMAGE_TIFF)
-		target_link_libraries(${target} ${TIFF_LIBRARY})
+	if(WITH_CYCLES_OSL)
+		target_link_libraries(${target} ${OSL_LIBRARIES})
+	endif()
+	if(WITH_OPENVDB)
+		target_link_libraries(${target} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${BLOSC_LIBRARIES})
 	endif()
 	if(WITH_OPENIMAGEIO)
 		target_link_libraries(${target} ${OPENIMAGEIO_LIBRARIES})
@@ -438,12 +441,6 @@ function(setup_liblinks
 	endif()
 	if(WITH_OPENSUBDIV)
 			target_link_libraries(${target} ${OPENSUBDIV_LIBRARIES})
-	endif()
-	if(WITH_OPENVDB)
-		target_link_libraries(${target} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${BLOSC_LIBRARIES})
-	endif()
-	if(WITH_CYCLES_OSL)
-		target_link_libraries(${target} ${OSL_LIBRARIES})
 	endif()
 	if(WITH_CYCLES_EMBREE)
 		target_link_libraries(${target} ${EMBREE_LIBRARIES})
@@ -457,6 +454,9 @@ function(setup_liblinks
 	target_link_libraries(${target} ${JPEG_LIBRARIES})
 	if(WITH_ALEMBIC)
 		target_link_libraries(${target} ${ALEMBIC_LIBRARIES} ${HDF5_LIBRARIES})
+	endif()
+	if(WITH_IMAGE_TIFF)
+		target_link_libraries(${target} ${TIFF_LIBRARY})
 	endif()
 	if(WITH_IMAGE_OPENEXR)
 		target_link_libraries(${target} ${OPENEXR_LIBRARIES})
