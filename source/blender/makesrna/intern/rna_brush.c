@@ -1455,6 +1455,7 @@ static void rna_def_brush(BlenderRNA *brna)
 	static const EnumPropertyItem brush_automasking_mode_items[] = {
 		{BRUSH_AUTOMASKING_NONE, "NONE", 0, "Disabled", ""},
 		{BRUSH_AUTOMASKING_TOPOLOGY, "TOPOLOGY", 0, "Topology", ""},
+		{BRUSH_AUTOMASKING_EDGES, "EDGES", 0, "Edges", ""},
 		{0, NULL, 0, NULL, NULL},
 	};
 

@@ -1558,24 +1558,24 @@ static void calc_brush_local_mat(const Brush *brush, Object *ob,
 	invert_m4_m4(local_mat, tmat);
 }
 
-static bool sculpt_automasking_compatible(SculptSession *ss){
-	if (BKE_pbvh_type(ss->pbvh)==PBVH_FACES) {
+static bool sculpt_automasking_enabled(SculptSession *ss, const Brush *br){
+	if (!BKE_pbvh_type(ss->pbvh)==PBVH_FACES) {
+		return false;
+	}
+	if (br->automasking_mode != BRUSH_AUTOMASKING_NONE) {
 		return true;
 	}
 	return false;
 }
 
-static float sculpt_automasking_value_get(SculptSession *ss, const Brush *br, MVert *vert) {
-	if (!sculpt_automasking_compatible(ss)) return 1.0f;
-	if (br->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY) {
-		if (BLI_gset_haskey(ss->cache->topo_connected_set[ss->cache->mirror_symmetry_pass], vert)){
-			return 1.0f;
-		}
-		else {
-			return  0.0f;
-		}
+static float sculpt_automasking_value_get(SculptSession *ss, const Brush *br,int vert) {
+	if (!sculpt_automasking_enabled(ss, br)) return 1.0f;
+	if (ss->cache->automask[ss->cache->mirror_symmetry_pass]){
+		return ss->cache->automask[ss->cache->mirror_symmetry_pass][vert];
 	}
-	return 1.0f;
+	else {
+		return 1.0f;
+	}
 }
 
 static void update_brush_local_mat(Sculpt *sd, Object *ob)
@@ -2480,8 +2480,8 @@ static void do_draw_brush_task_cb_ex(
 			        ss, brush, vd.co, sqrtf(test.dist),
 			        vd.no, vd.fno, vd.mask ? *vd.mask : 0.0f, tls->thread_id);
 
-			if (sculpt_automasking_compatible(ss)){
-				fade *= sculpt_automasking_value_get(ss, brush, &ss->mvert[vd.vert_indices[vd.i]]);
+			if (sculpt_automasking_enabled(ss, brush)){
+				fade *= sculpt_automasking_value_get(ss, brush, vd.vert_indices[vd.i]);
 			}
 
 			if (brush->sculpt_color_mix_mode & BRUSH_SCULPT_COLOR_MIX) {
@@ -2794,8 +2794,8 @@ static void do_grab_brush_task_cb_ex(
 			float fade = bstrength * tex_strength(
 			        ss, brush, orig_data.co, sqrtf(test.dist),
 			        orig_data.no, NULL, vd.mask ? *vd.mask : 0.0f, tls->thread_id);
-			if (sculpt_automasking_compatible(ss)){
-				fade *= sculpt_automasking_value_get(ss, brush, &ss->mvert[vd.vert_indices[vd.i]]);
+			if (sculpt_automasking_enabled(ss, brush)){
+				fade *= sculpt_automasking_value_get(ss, brush, vd.vert_indices[vd.i]);
 			}
 
 			mul_v3_v3fl(proxy[vd.i], grab_delta, fade);
@@ -2929,8 +2929,8 @@ static void do_snake_hook_brush_task_cb_ex(
 			        ss, brush, vd.co, sqrtf(test.dist),
 			        vd.no, vd.fno, vd.mask ? *vd.mask : 0.0f, tls->thread_id);
 			float automasking = 1.0f;
-			if (sculpt_automasking_compatible(ss)){
-				automasking = sculpt_automasking_value_get(ss, brush, &ss->mvert[vd.vert_indices[vd.i]]);
+			if (sculpt_automasking_enabled(ss, brush)){
+				automasking = sculpt_automasking_value_get(ss, brush, vd.vert_indices[vd.i]);
 			}
 
 			mul_v3_v3fl(proxy[vd.i], grab_delta, fade * automasking);
@@ -4053,7 +4053,72 @@ static void sculpt_topology_update(Sculpt *sd, Object *ob, Brush *brush, Unified
 	}
 }
 
-static bool find_connected_set(SculptSession *ss, int init_vert, GSet *influence, GSet *topo_connected) {
+static void init_edge_automask_cb_exec(
+        void *__restrict userdata,
+        const int n,
+        const ParallelRangeTLS *__restrict tls)
+{
+	SculptThreadedTaskData *data = userdata;
+	SculptSession *ss = data->ob->sculpt;
+
+	PBVHVertexIter vd;
+	float (*proxy)[3];
+
+	proxy = BKE_pbvh_node_add_proxy(ss->pbvh, data->nodes[n])->co;
+
+	SculptBrushTest test;
+	SculptBrushTestFn sculpt_brush_test_sq_fn =
+	        sculpt_brush_test_init_with_falloff_shape(ss, &test, data->brush->falloff_shape);
+
+	const MVert *mvert = ss->mvert;
+	const int msp = ss->cache->mirror_symmetry_pass;
+
+	BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
+	{
+		if (sculpt_brush_test_sq_fn(&test, vd.co)) {
+			const MeshElemMap *vert_map = &ss->pmap[vd.vert_indices[vd.i]];
+			if (vert_map->count > 2) {
+				data->automask[vd.vert_indices[vd.i]] = 1.0f;
+			}
+		}
+ 	}
+ 	BKE_pbvh_vertex_iter_end;
+ }
+
+static void sculpt_edges_automasking_init(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode) {
+	SculptSession *ss = ob->sculpt;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	if (!sculpt_automasking_enabled(ss, brush)) return;
+	int msp = ss->cache->mirror_symmetry_pass;
+	PBVHType type = BKE_pbvh_type(ss->pbvh);
+
+	if (type == PBVH_FACES && !ss->pmap) {
+		BLI_assert(!"Edge masking: pmap missing");
+		return;
+	}
+
+	SculptThreadedTaskData data = {
+	    .sd = sd, .ob = ob, .brush = brush, .nodes = nodes, .min_len = FLT_MAX,
+		.automask = ss->cache->automask[msp],
+	};
+
+
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+	BLI_mutex_init(&data.mutex);
+	BLI_task_parallel_range(
+		    0, totnode,
+		    &data,
+		    init_edge_automask_cb_exec,
+		    &settings);
+	BLI_mutex_end(&data.mutex);
+
+
+}
+
+
+static bool find_connected_set(SculptSession *ss, int init_vert, GSet *influence, GSet *topo_connected, float *automask) {
 	BLI_Stack *stack;
 	const MVert *mvert = ss->mvert;
 
@@ -4079,6 +4144,9 @@ static bool find_connected_set(SculptSession *ss, int init_vert, GSet *influence
 						if(BLI_gset_haskey(influence, &mvert[f_adj_v[j]])){
 							BLI_gset_remove(influence, &mvert[f_adj_v[j]], NULL);
 							BLI_gset_add(topo_connected, &mvert[f_adj_v[j]]);
+							if (automask) {
+								automask[f_adj_v[j]] = 1.0f;
+							}
 							int new_entry = f_adj_v[j];
 							BLI_stack_push(stack, &new_entry);
 						}
@@ -4092,7 +4160,7 @@ static bool find_connected_set(SculptSession *ss, int init_vert, GSet *influence
 	return false;
 }
 
-static bool sculpt_topology_automasking_needs_updates(const Brush *br) {
+static bool sculpt_automasking_needs_updates(const Brush *br) {
 	if (br->sculpt_tool == SCULPT_TOOL_GRAB || br->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK) {
 		return false;
 	}
@@ -4139,7 +4207,7 @@ static void init_topology_automask_cb_exec(
 			if (sculpt_brush_test_sq_fn(&test, orig_data.co)) {
 				BLI_mutex_lock(&data->mutex);
 				BLI_gset_add(ss->cache->influence_set[ss->cache->mirror_symmetry_pass], &ss->mvert[vd.vert_indices[vd.i]]);
-				if(ss->cache->mirror_symmetry_pass != 0 || sculpt_topology_automasking_needs_updates(data->brush)){
+				if(ss->cache->mirror_symmetry_pass != 0 || sculpt_automasking_needs_updates(data->brush)){
 					float len = len_v3v3(active_vertex_co, ss->mvert[vd.vert_indices[vd.i]].co);
 					if(len < data->min_len ){
 						data->min_len = len;
@@ -4154,7 +4222,7 @@ static void init_topology_automask_cb_exec(
 			if (sculpt_brush_test_sq_fn(&test, vd.co)) {
 				BLI_mutex_lock(&data->mutex);
 				BLI_gset_add(ss->cache->influence_set[ss->cache->mirror_symmetry_pass], &ss->mvert[vd.vert_indices[vd.i]]);
-				if(ss->cache->mirror_symmetry_pass != 0 || sculpt_topology_automasking_needs_updates(data->brush)){
+				if(ss->cache->mirror_symmetry_pass != 0 || sculpt_automasking_needs_updates(data->brush)){
 					float len = len_v3v3(active_vertex_co,ss->mvert[vd.vert_indices[vd.i]].co);
 					if(len < data->min_len ){
 						data->min_len = len;
@@ -4172,7 +4240,8 @@ static void init_topology_automask_cb_exec(
 
 static void sculpt_topology_automasking_end(Sculpt *sd, Object *ob) {
 	SculptSession *ss = ob->sculpt;
-	if (!sculpt_automasking_compatible(ss)) return;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	if (!sculpt_automasking_enabled(ss, brush)) return;
 	for (int i = 0; i < 7; i++ ) {
 		if (ss->cache->influence_set[i] != NULL){
 			BLI_gset_free(ss->cache->influence_set[i] , NULL);
@@ -4180,18 +4249,27 @@ static void sculpt_topology_automasking_end(Sculpt *sd, Object *ob) {
 		if (ss->cache->topo_connected_set[i] != NULL){
 			BLI_gset_free(ss->cache->topo_connected_set[i] , NULL);
 		}
+		if (ss->cache->automask[i]) {
+			MEM_freeN(ss->cache->automask[i]);
+		}
 	}
 }
 
-static void sculpt_topology_automasking_clear(Sculpt *sd, Object *ob) {
+static void sculpt_automasking_clear(Sculpt *sd, Object *ob) {
 	SculptSession *ss = ob->sculpt;
-	if (!sculpt_automasking_compatible(ss)) return;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	if (!sculpt_automasking_enabled(ss, brush)) return;
 	for (int i = 0; i < 7; i++ ) {
 		if (ss->cache->influence_set[i] != NULL){
 			BLI_gset_clear(ss->cache->influence_set[i] , NULL);
 		}
 		if (ss->cache->topo_connected_set[i] != NULL){
 			BLI_gset_clear(ss->cache->topo_connected_set[i], NULL);
+		}
+		if (ss->cache->automask[i]) {
+			for (int j = 0; j < ss->totvert; j++) {
+				ss->cache->automask[i][j] = 0.0f;
+			}
 		}
 	}
 }
@@ -4200,8 +4278,8 @@ static void sculpt_topology_automasking_init(Sculpt *sd, Object *ob, PBVHNode **
 {
 
 	SculptSession *ss = ob->sculpt;
-	if (!sculpt_automasking_compatible(ss)) return;
 	Brush *brush = BKE_paint_brush(&sd->paint);
+	if (!sculpt_automasking_enabled(ss, brush)) return;
 	int msp = ss->cache->mirror_symmetry_pass;
 	PBVHType type = BKE_pbvh_type(ss->pbvh);
 
@@ -4221,7 +4299,7 @@ static void sculpt_topology_automasking_init(Sculpt *sd, Object *ob, PBVHNode **
 	    .sd = sd, .ob = ob, .brush = brush, .nodes = nodes, .min_len = FLT_MAX,
 	};
 
-	data.use_automasking_brush_location = sculpt_topology_automasking_needs_updates(brush);
+	data.use_automasking_brush_location = sculpt_automasking_needs_updates(brush);
 
 	ParallelRangeSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
@@ -4234,7 +4312,27 @@ static void sculpt_topology_automasking_init(Sculpt *sd, Object *ob, PBVHNode **
 		    &settings);
 	BLI_mutex_end(&data.mutex);
 
-	find_connected_set(ss, ss->cache->mirror_active_vertex[msp], ss->cache->influence_set[msp], ss->cache->topo_connected_set[msp]);
+	find_connected_set(ss, ss->cache->mirror_active_vertex[msp], ss->cache->influence_set[msp], ss->cache->topo_connected_set[msp],
+					   ss->cache->automask[msp]);
+}
+
+static void sculpt_automasking_init(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+{
+	SculptSession *ss = ob->sculpt;
+	Brush *brush = BKE_paint_brush(&sd->paint);
+	if (!sculpt_automasking_enabled(ss, brush)) return;
+	int msp = ss->cache->mirror_symmetry_pass;
+
+	ss->cache->automask[msp] = MEM_callocN(sizeof (float) * ss->totvert, "automask");
+
+	if (brush->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY) {
+		sculpt_topology_automasking_init(sd, ob, nodes, totnode);
+	}
+
+	if (brush->automasking_mode & BRUSH_AUTOMASKING_EDGES) {
+		sculpt_edges_automasking_init(sd, ob, nodes, totnode);
+	}
+
 }
 
 static void do_brush_action_task_cb(
@@ -4309,9 +4407,9 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
 			update_brush_local_mat(sd, ob);
 
 		/* Init topological automasking */
-		if (brush->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY) {
-			if (sculpt_topology_automasking_needs_updates(brush) || ss->cache->first_time) {
-				sculpt_topology_automasking_init(sd, ob, nodes, totnode);
+		if (sculpt_automasking_enabled(ss, brush)) {
+			if (sculpt_automasking_needs_updates(brush) || ss->cache->first_time) {
+				sculpt_automasking_init(sd, ob, nodes, totnode);
 			}
 		}
 
@@ -4397,9 +4495,9 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
 		if (ss->cache->supports_gravity)
 			do_gravity(sd, ob, nodes, totnode, sd->gravity_factor);
 
-		if (brush->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY){
-			if(sculpt_topology_automasking_needs_updates(brush)){
-				sculpt_topology_automasking_clear(sd, ob);
+		if (sculpt_automasking_enabled(ss, brush)) {
+			if(sculpt_automasking_needs_updates(brush)){
+				sculpt_automasking_clear(sd, ob);
 			}
 		}
 
@@ -5335,6 +5433,9 @@ static bool sculpt_any_smooth_mode(const Brush *brush,
                                    int stroke_mode)
 {
 	if (brush->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY) {
+		return true;
+	}
+	if (brush->automasking_mode & BRUSH_AUTOMASKING_EDGES) {
 		return true;
 	}
 	return ((stroke_mode == BRUSH_STROKE_SMOOTH) ||

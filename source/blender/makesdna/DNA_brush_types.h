@@ -197,6 +197,7 @@ typedef enum eBrushCurvePreset {
 typedef enum eAutomaskingMode {
 	BRUSH_AUTOMASKING_NONE = 0,
 	BRUSH_AUTOMASKING_TOPOLOGY = 1,
+	BRUSH_AUTOMASKING_EDGES = 2,
 } eAutomaskingMode;
 
 typedef enum eSculptColorMode{

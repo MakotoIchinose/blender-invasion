@@ -208,6 +208,8 @@ typedef struct SculptThreadedTaskData {
 	float smooth_value;
 	float filter_strength;
 	int filter_type;
+\
+	float *automask;
 
 	float *prev_mask;
 
@@ -383,6 +385,7 @@ typedef struct StrokeCache {
 	struct GSet *influence_set[8];
 	struct GSet *topo_connected_set[8];
 	int mirror_active_vertex[8];
+	float *automask[8];
 
 	rcti previous_r; /* previous redraw rectangle */
 	rcti current_r; /* current redraw rectangle */
