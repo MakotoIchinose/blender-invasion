@@ -2069,8 +2069,8 @@ static BMOpDefine bmo_symmetrize_def = {
 	 BMO_OPTYPE_FLAG_SELECT_FLUSH |
 	 BMO_OPTYPE_FLAG_SELECT_VALIDATE),
 };
-
-/* clang-format off */
+;
+/* clang-format on */
 
 const BMOpDefine *bmo_opdefines[] = {
 	&bmo_automerge_def,

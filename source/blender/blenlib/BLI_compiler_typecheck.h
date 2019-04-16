@@ -374,7 +374,7 @@
 	t1: 0, u1: 0, v1: 0, w1: 0, x1: 0, y1: 0, z1: 0, a2: 0, b2: 0, c2: 0, d2: 0, e2: 0, f2: 0, g2: 0, h2: 0, i2: 0, \
 	j2: 0, k2: 0))
 #  define CHECK_TYPE_ANY(...) VA_NARGS_CALL_OVERLOAD(_VA_CHECK_TYPE_ANY, __VA_ARGS__)
-/* clang-format off */
+/* clang-format on */
 #else
 #  define CHECK_TYPE_ANY(...) (void)0
 #endif
@@ -677,7 +677,7 @@
 	q0: r, r0: r, s0: r, t0: r, u0: r, v0: r, w0: r, x0: r, y0: r, z0: r, a1: r, b1: r, c1: r, d1: r, e1: r, f1: r, \
 	g1: r, h1: r, i1: r, j1: r, k1: r, l1: r, m1: r, n1: r, o1: r, p1: r, q1: r, r1: r, s1: r, t1: r, u1: r, v1: r, \
 	w1: r, x1: r, y1: r, z1: r, a2: r, b2: r, c2: r, d2: r, e2: r, f2: r, g2: r, h2: r, i2: r, j2: r, k2: r
-/* clang-format off */
+/* clang-format on */
 
 #  define GENERIC_TYPE_ANY(...) VA_NARGS_CALL_OVERLOAD(_VA_GENERIC_TYPE_ANY, __VA_ARGS__)
 

@@ -20,6 +20,7 @@
 
 /* intentionally no include guard */
 
+/* Keep aligned args for readability. */
 /* clang-format off */
 
 /* Empty definitions for undefined macros to avoid warnings */

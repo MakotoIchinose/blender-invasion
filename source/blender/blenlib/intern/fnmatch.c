@@ -241,7 +241,7 @@ fnmatch (const char *pattern, const char *string, int flags)
 
 #endif /* _LIBC or not __GNU_LIBRARY__.  */
 
-/* clang-format off */
+/* clang-format on */
 
 #else
 
