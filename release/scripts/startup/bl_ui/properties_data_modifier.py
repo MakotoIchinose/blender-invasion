@@ -1195,7 +1195,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         layout.prop(md, "mode")
 
-        if md.mode != 'VOXEL':
+        if md.mode not in {'VOXEL', 'QUAD'}:
             row = layout.row()
             row.prop(md, "octree_depth")
             row.prop(md, "scale")
@@ -1246,6 +1246,14 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
                 row.operator("remesh.csg_remove", text="", icon="REMOVE").index = i
                 row.operator("remesh.csg_move_up", text="", icon="TRIA_UP").index = i
                 row.operator("remesh.csg_move_down", text="", icon="TRIA_DOWN").index = i
+        elif md.mode == 'QUAD':
+            col = layout.column(align=True)
+            col.prop(md, "gradient_size")
+            col.prop(md, "stiffness")
+            col.prop(md, "iterations")
+            row = layout.row()
+            row.prop(md, "live_remesh")
+            row.prop(md, "direct_round")
         else:
             layout.prop(md, "use_smooth_shade")
             layout.prop(md, "use_remove_disconnected")

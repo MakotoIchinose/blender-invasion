@@ -4126,6 +4126,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 		{MOD_REMESH_SHARP_FEATURES, "SHARP", 0, "Sharp",
 		                            "Output a surface that reproduces sharp edges and corners from the input mesh"},
 		{MOD_REMESH_VOXEL, "VOXEL", 0, "Voxel", "Invokes the OpenVDB voxel remesher and generates quad only meshes"},
+        {MOD_REMESH_QUAD, "QUAD", 0, "Quad", "Invokes the igl mixed integer quadrangulator and QEx quad extractor"},
 		{0, NULL, 0, NULL, NULL},
 	};
 
@@ -4285,6 +4286,34 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	                         "Perform remesh on every modifier update, otherwise return cached mesh");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+    prop = RNA_def_property(srna, "gradient_size", PROP_FLOAT, PROP_UNSIGNED);
+    RNA_def_property_range(prop, 0.1, 100.0);
+    RNA_def_property_float_default(prop, 50.0);
+    RNA_def_property_ui_range(prop, 0.1, 100.0, 0.1, 1);
+    RNA_def_property_ui_text(prop, "Gradient Size", "Gradient size used for quad remeshing");
+    RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+    prop = RNA_def_property(srna, "stiffness", PROP_FLOAT, PROP_UNSIGNED);
+    RNA_def_property_range(prop, 0.1, 100.0);
+    RNA_def_property_float_default(prop, 5.0);
+    RNA_def_property_ui_range(prop, 0.1, 100.0, 0.1, 1);
+    RNA_def_property_ui_text(prop, "Stiffness", "Stiffness used for quad remeshing");
+    RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+    prop = RNA_def_property(srna, "iterations", PROP_INT, PROP_UNSIGNED);
+    RNA_def_property_range(prop, 0, 100);
+    RNA_def_property_int_default(prop, 0);
+    RNA_def_property_int_sdna(prop, NULL, "iter");
+   // RNA_def_property_ui_range(prop, 0, 100, 1, 1);
+    RNA_def_property_ui_text(prop, "Iterations", "Iterations used for quad remeshing");
+    RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+    prop = RNA_def_property(srna, "direct_round", PROP_BOOLEAN, PROP_NONE);
+    RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_DIRECT_ROUND);
+    RNA_def_property_ui_text(prop, "Direct Round", "Use Direct Round for quad remeshing");
+    RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+
 	prop = RNA_def_property(srna, "csg_operands", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_struct_type(prop, "CSGVolume_Object");
 	RNA_def_property_collection_sdna(prop, NULL, "csg_operands", NULL);
@@ -4344,6 +4373,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 	RNA_def_property_enum_default(prop, eRemeshModifierSampler_Point);
 	RNA_def_property_ui_text(prop, "Sampler", "Method to resample grids to match the transforms");
 	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
 }
 
 static void rna_def_modifier_ocean(BlenderRNA *brna)

@@ -151,6 +151,13 @@ if(WITH_OPENVDB)
 	endif()
 endif()
 
+if(WITH_QEX)
+        add_definitions(-DWITH_QEX)
+        list(APPEND INC
+                 ../../../intern/qex
+        )
+endif()
+
 # So we can have special tricks in modifier system.
 add_definitions(${GL_DEFINITIONS})
 

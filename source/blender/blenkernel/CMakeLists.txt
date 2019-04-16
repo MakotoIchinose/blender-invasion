@@ -221,6 +221,7 @@ set(SRC
 	intern/world.c
 	intern/writeavi.c
 	intern/remesh_voxel.c
+        intern/remesh_quad.c
 
 	BKE_DerivedMesh.h
 	BKE_action.h
@@ -561,6 +562,18 @@ if(WITH_OPENVDB)
 			-DWITH_OPENVDB_BLOSC
 		)
 	endif()
+endif()
+
+if(WITH_QEX)
+        add_definitions(-DWITH_QEX)
+        list(APPEND INC
+                 ../../../intern/qex
+        )
+        list(APPEND INC_SYS
+                ${IGL_INCLUDE_DIRS}
+                ${QEX_INCLUDE_DIRS}
+                ${OPENMESH_INCLUDE_DIRS}
+        )
 endif()
 
 ## Warnings as errors, this is too strict!

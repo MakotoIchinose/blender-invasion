@@ -1493,6 +1493,7 @@ typedef enum eRemeshModifierFlags {
 	MOD_REMESH_RELAX_TRIANGLES = (1 << 3),
 	MOD_REMESH_REPROJECT_VPAINT = (1 << 4),
 	MOD_REMESH_LIVE_REMESH     =  (1 << 5),
+    MOD_REMESH_DIRECT_ROUND    =  (1 << 6),
 } RemeshModifierFlags;
 
 typedef enum eRemeshModifierMode {
@@ -1504,6 +1505,8 @@ typedef enum eRemeshModifierMode {
 	MOD_REMESH_SHARP_FEATURES = 2,
 	/* OpenVDB voxel remesh */
 	MOD_REMESH_VOXEL          = 3,
+    /* topological quad remesh */
+    MOD_REMESH_QUAD           = 4,
 } eRemeshModifierMode;
 
 typedef enum {
@@ -1583,6 +1586,12 @@ typedef struct RemeshModifierData {
 	struct ListBase csg_operands;
 	struct Mesh *mesh_cached;
 	int _pad1;
+
+    /*quad remesher*/
+    float gradient_size;
+    float stiffness;
+    int iter;
+    int _pad2;
 
 	/* octree depth */
 	char depth;

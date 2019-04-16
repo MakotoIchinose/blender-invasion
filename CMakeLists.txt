@@ -396,6 +396,9 @@ endif()
 option(WITH_CPU_SSE              "Enable SIMD instruction if they're detected on the host machine" ON)
 mark_as_advanced(WITH_CPU_SSE)
 
+option(WITH_QEX			"Enable libQEx support" ON)
+
+
 # Cycles
 option(WITH_CYCLES					"Enable Cycles Render Engine" ON)
 option(WITH_CYCLES_STANDALONE		"Build Cycles standalone application" OFF)

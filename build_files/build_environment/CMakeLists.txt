@@ -151,4 +151,9 @@ if(UNIX)
 	include(cmake/sqlite.cmake)
 endif()
 
+include(cmake/openmesh.cmake)
+include(cmake/lapack.cmake)
+include(cmake/igl.cmake)
+include(cmake/qex.cmake)
+
 include(cmake/harvest.cmake)

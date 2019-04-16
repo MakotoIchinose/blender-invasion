@@ -302,3 +302,23 @@ set(SQLITE_HASH fb558c49ee21a837713c4f1e7e413309aabdd9c7)
 set(EMBREE_VERSION 3.2.4)
 set(EMBREE_URI https://github.com/embree/embree/archive/v${EMBREE_VERSION}.zip)
 set(EMBREE_HASH 3d4a1147002ff43939d45140aa9d6fb8)
+
+set(IGL_VERSION 2.0.0)
+set(IGL_URI https://github.com/libigl/libigl/archive/v${IGL_VERSION}.tar.gz)
+set(IGL_HASH 42518e6b106c7209c73435fd260ed5d34edeb254852495b4c95dce2d95401328)
+
+#should match qex, but what about comiso ?
+set(OPENMESH_VERSION 3.0)
+set(OPENMESH_URI http://www.openmesh.org/media/Releases/${OPENMESH_VERSION}/OpenMesh-${OPENMESH_VERSION}.tar.gz)
+set(OPENMESH_HASH 96c595c1683b1ad950e80464ae5fc1f3c8dc45c31c8a211122a23e16a076ab23)
+
+#latest uid in git as of 2016-10-25
+set(QEX_GIT_UID 1d33e0d6700dd3d00df984aad776d9537fcf16af)
+set(QEX_URI https://github.com/hcebke/libQEx/archive/${QEX_GIT_UID}.tar.gz)
+set(QEX_HASH a29cf440c7b83c9e803d1f55247cd18e9c277b3845edce5d381c4c91daa90452)
+
+#latest uid in release branch 3.8.0
+set(LAPACK_GIT_UID ba3779a6813d84d329b73aac86afc4e041170609)
+set(LAPACK_URI https://github.com/Reference-LAPACK/lapack-release/archive/${LAPACK_GIT_UID}.tar.gz)
+set(LAPACK_HASH 4bd7a3014ee2b5c7cdcdc8960c9476b689f21796715aa03fd719c92c43faee31)
+

@@ -407,6 +407,32 @@ if(WITH_OPENSUBDIV)
 	endif()
 endif()
 
+if(WITH_QEX)
+        find_package_wrapper(LAPACK)
+        if(NOT LAPACK_FOUND)
+                set(WITH_IGL OFF)
+                message(STATUS "LAPACK/BLAS not found, disabling WITH_QEX")
+        endif()
+
+        find_package_wrapper(OpenMesh)
+        if(NOT OPENMESH_FOUND)
+                set(WITH_IGL OFF)
+                message(STATUS "OpenMesh not found, disabling WITH_QEX")
+        endif()
+
+        find_package_wrapper(Igl)
+        if(NOT IGL_FOUND)
+                set(WITH_IGL OFF)
+                message(STATUS "IGL not found, disabling WITH_QEX")
+        endif()
+        find_package_wrapper(Qex)
+
+        if(NOT QEX_FOUND)
+                set(WITH_QEX OFF)
+                message(STATUS "QEx not found, disabling WITH_QEX")
+        endif()
+endif()
+
 # OpenSuse needs lutil, ArchLinux not, for now keep, can avoid by using --as-needed
 if(HAIKU)
 	list(APPEND PLATFORM_LINKLIBS -lnetwork)

@@ -517,7 +517,14 @@ function(setup_liblinks
 		else()
 			target_link_libraries(${target} ${CUDA_CUDA_LIBRARY})
 		endif()
-	endif()
+        endif()
+
+        if(WITH_QEX)
+                target_link_libraries(${target} ${LAPACK_LIBRARIES})
+                target_link_libraries(${target} ${OPENMESH_LIBRARIES})
+                target_link_libraries(${target} ${IGL_LIBRARIES})
+                target_link_libraries(${target} ${QEX_LIBRARIES})
+        endif()
 
 	target_link_libraries(
 		${target}
@@ -765,7 +772,11 @@ function(SETUP_BLENDER_SORTED_LIBS)
 
 	if(WITH_OPENVDB)
 		list(APPEND BLENDER_SORTED_LIBS bf_intern_openvdb)
-	endif()
+        endif()
+
+        if(WITH_QEX)
+                list(APPEND BLENDER_SORTED_LIBS bf_intern_qex)
+        endif()
 
 	foreach(SORTLIB ${BLENDER_SORTED_LIBS})
 		set(REMLIB ${SORTLIB})

@@ -76,3 +76,8 @@ endif()
 if(WITH_OPENVDB)
 	add_subdirectory(openvdb)
 endif()
+
+if(WITH_QEX)
+        add_definitions(-DWITH_QEX)
+        add_subdirectory(qex)
+endif()

@@ -198,4 +198,13 @@ harvest(xvidcore/lib ffmpeg/lib "*.a")
 harvest(embree/include embree/include "*.h")
 harvest(embree/lib embree/lib "*.a")
 
+harvest(openmesh/include openmesh/include "*")
+harvest(openmesh/lib openmesh/lib "*.a")
+harvest(lapack/lib lapack/lib "*.a")
+harvest(lapack/include lapack/include "*.h")
+harvest(igl/include igl/include "*")
+harvest(igl/lib igl/lib "*.a")
+harvest(qex/include qex/include "*.h")
+harvest(qex/lib qex/lib "*.a")
+
 endif()

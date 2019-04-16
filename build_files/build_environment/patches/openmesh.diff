@@ -1,0 +1,12 @@
+--- CMakeLists.txt	2019-04-13 21:03:18.119000842 +0200
++++ CMakeLists.txt	2019-04-13 20:59:01.521760285 +0200
+@@ -92,7 +92,7 @@
+ 	set (OPENMESH_LIBRARY_DIR "${_OPENMESH_LIBRARY_DIR}" CACHE PATH "The directory where the OpenMesh libraries can be found.")
+ endif()
+ 
+-add_subdirectory (Doc)
++#add_subdirectory (Doc)
+ 
+ # ========================================================================
+ # Bundle generation (Targets exist, now configure them)
+

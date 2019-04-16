@@ -74,6 +74,9 @@ static void initData(ModifierData *md)
 	rmd->filter_type = OPENVDB_LEVELSET_FILTER_NONE;
 	rmd->filter_iterations = 1;
 	rmd->flag |= MOD_REMESH_LIVE_REMESH;
+    rmd->gradient_size = 50.0f;
+    rmd->stiffness = 5.0f;
+    rmd->iter = 0;
 }
 
 #ifdef WITH_MOD_REMESH
@@ -152,7 +155,7 @@ static void dualcon_add_quad(void *output_v, const int vert_indices[4])
 	output->curface++;
 }
 
-#if WITH_OPENVDB
+#ifdef WITH_OPENVDB
 
 static Mesh* voxel_remesh(RemeshModifierData *rmd, Mesh* mesh, struct OpenVDBLevelSet *level_set)
 {
@@ -283,15 +286,48 @@ static Mesh *applyModifier(
 	RemeshModifierData *rmd;
 	DualConOutput *output;
 	DualConInput input;
-	Mesh *result;
+    Mesh *result = NULL;
 	DualConFlags flags = 0;
 	DualConMode mode = 0;
 
 	rmd = (RemeshModifierData *)md;
 
-	if (rmd->mode == MOD_REMESH_VOXEL)
+    if (rmd->mode == MOD_REMESH_QUAD) {
+#ifdef WITH_QEX
+        Object *ob_orig = DEG_get_original_object(ctx->object);
+        RemeshModifierData *rmd_orig = (RemeshModifierData*)modifiers_findByName(ob_orig, md->name);
+
+        if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0))
+        {
+            //access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
+            if (rmd_orig->mesh_cached) {
+                return copy_mesh(rmd_orig->mesh_cached);
+            }
+        }
+
+        result = BKE_remesh_quad(mesh, rmd->gradient_size, rmd->stiffness, rmd->iter, rmd->flag & MOD_REMESH_DIRECT_ROUND);
+
+        if (result)
+        {
+            //update cache
+            if (rmd_orig->mesh_cached) {
+                BKE_mesh_free(rmd_orig->mesh_cached);
+                rmd_orig->mesh_cached = NULL;
+            }
+
+            //save a copy
+            rmd_orig->mesh_cached = copy_mesh(result);
+        }
+
+        return result;
+#else
+        modifier_setError((ModifierData*)rmd, "Built without QEx support, cant execute quad remesh");
+        return mesh;
+#endif
+    }
+    else if (rmd->mode == MOD_REMESH_VOXEL)
 	{
-#if WITH_OPENVDB
+#if defined WITH_OPENVDB
 		CSGVolume_Object *vcob;
 		struct OpenVDBLevelSet* level_set;
 

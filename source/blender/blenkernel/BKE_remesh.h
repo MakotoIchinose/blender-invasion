@@ -42,4 +42,7 @@ void BKE_remesh_voxel_reproject_paint_mask(Mesh *target, Mesh *source);
 MLoopCol* BKE_remesh_remap_loop_vertex_color_layer(Mesh *mesh);
 void BKE_remesh_voxel_reproject_remapped_vertex_paint(Mesh* target, Mesh* source, MLoopCol *remap);
 
+/* Topological quad remesh */
+Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter, bool direct_round);
+
 #endif /* __BKE_REMESH_H__ */
