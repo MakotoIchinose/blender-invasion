@@ -82,6 +82,7 @@ set(SRC
 	# orphan include
 	../../../intern/ffmpeg/ffmpeg_compat.h
 )
+
 set(LIB
 	bf_blenkernel
 	bf_blenlib

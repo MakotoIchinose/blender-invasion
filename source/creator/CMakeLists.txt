@@ -105,6 +105,9 @@ endif()
 
 if(WITH_BINRELOC)
 	blender_include_dirs(${BINRELOC_INCLUDE_DIRS})
+	list(APPEND LIB
+		extern_binreloc
+	)
 	add_definitions(-DWITH_BINRELOC)
 endif()
 
