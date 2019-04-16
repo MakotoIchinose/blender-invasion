@@ -89,11 +89,11 @@ KerningCacheBLF *blf_kerning_cache_new(FontBLF *font)
 				FT_UInt glyph_index = FT_Get_Char_Index(font->face, i);
 				g = blf_glyph_add(font, glyph_index, i);
 			}
-			/* Cannot fail since it has been added just before. */
+			/* Can fail on certain fonts */
 			GlyphBLF *g_prev = blf_glyph_search(font->glyph_cache, j);
 
 			FT_Vector delta = { .x = 0, .y = 0, };
-			if (FT_Get_Kerning(font->face, g_prev->idx, g->idx, kc->mode, &delta) == 0) {
+			if (g_prev && FT_Get_Kerning(font->face, g_prev->idx, g->idx, kc->mode, &delta) == 0) {
 				kc->table[i][j] = (int)delta.x >> 6;
 			}
 			else {
@@ -439,11 +439,13 @@ static void blf_glyph_calc_rect(rctf *rect, GlyphBLF *g, float x, float y)
 
 static void blf_glyph_calc_rect_test(rctf *rect, GlyphBLF *g, float x, float y)
 {
-	/* intentionally check clipping without shadow offset and negative kerning */
-	rect->xmin = floorf(x + MAX2(0.0f, g->pos_x));
-	rect->xmax = rect->xmin + (float)g->width + MIN2(0.0f, g->pos_x);
-	rect->ymin = floorf(y + MAX2(0.0f, g->pos_y));
-	rect->ymax = rect->ymin - (float)g->height - MIN2(0.0f, g->pos_y);
+	/* Intentionally check with g->advance, because this is the
+	 * width used by BLF_width. This allows that the text slightly
+	 * overlaps the clipping border to achieve better alignment. */
+	rect->xmin = floorf(x);
+	rect->xmax = rect->xmin + MIN2(g->advance, (float)g->width);
+	rect->ymin = floorf(y);
+	rect->ymax = rect->ymin - (float)g->height;
 }
 
 static void blf_glyph_calc_rect_shadow(rctf *rect, GlyphBLF *g, float x, float y, FontBLF *font)

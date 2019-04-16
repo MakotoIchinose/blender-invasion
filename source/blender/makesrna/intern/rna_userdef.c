@@ -4056,7 +4056,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
 	};
 
 	static const EnumPropertyItem material_link_items[] = {
-		{0, "OBDATA", 0, "ObData", "Toggle whether the material is linked to object data or the object block"},
+		{0, "OBDATA", 0, "Object Data", "Toggle whether the material is linked to object data or the object block"},
 		{USER_MAT_ON_OB, "OBJECT", 0, "Object",
 		                 "Toggle whether the material is linked to object data or the object block"},
 		{0, NULL, 0, NULL, NULL},
@@ -4712,6 +4712,13 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Drag Threshold",
 	                         "Number of pixels you have to drag before a tweak/drag event is triggered "
 	                         "(otherwise click events are detected)");
+
+	prop = RNA_def_property(srna, "move_threshold", PROP_INT, PROP_PIXEL);
+	RNA_def_property_range(prop, 0, 255);
+	RNA_def_property_ui_range(prop, 0, 10, 1, -1);
+	RNA_def_property_ui_text(prop, "Motion Threshold",
+	                         "Number of pixels you have to before the cursor is considered to have moved "
+	                         "(used for cycling selected items on successive clicks)");
 
 	/* tablet pressure curve */
 	prop = RNA_def_property(srna, "pressure_threshold_max", PROP_FLOAT, PROP_FACTOR);

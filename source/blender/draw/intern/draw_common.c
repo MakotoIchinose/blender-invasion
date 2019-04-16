@@ -182,7 +182,7 @@ void DRW_globals_update(void)
 
 		BKE_colorband_evaluate_table_rgba(&ramp, &colors, &col_size);
 
-		G_draw.ramp = GPU_texture_create_1D(col_size, GPU_RGBA8, colors, NULL);
+		G_draw.ramp = GPU_texture_create_1d(col_size, GPU_RGBA8, colors, NULL);
 
 		MEM_freeN(colors);
 	}
@@ -1003,11 +1003,11 @@ int DRW_object_wire_theme_get(Object *ob, ViewLayer *view_layer, float **r_color
 			theme_id = (active) ? TH_ACTIVE : TH_SELECT;
 		}
 		else {
-			if (ob->type == OB_LAMP) theme_id = TH_LIGHT;
-			else if (ob->type == OB_SPEAKER) theme_id = TH_SPEAKER;
-			else if (ob->type == OB_CAMERA) theme_id = TH_CAMERA;
-			else if (ob->type == OB_EMPTY) theme_id = TH_EMPTY;
-			else if (ob->type == OB_LIGHTPROBE) theme_id = TH_EMPTY; /* TODO add lightprobe color */
+			if      (ob->type == OB_LAMP) { theme_id = TH_LIGHT; }
+			else if (ob->type == OB_SPEAKER) { theme_id = TH_SPEAKER; }
+			else if (ob->type == OB_CAMERA) { theme_id = TH_CAMERA; }
+			else if (ob->type == OB_EMPTY) { theme_id = TH_EMPTY; }
+			else if (ob->type == OB_LIGHTPROBE) { theme_id = TH_EMPTY; } /* TODO add lightprobe color */
 			/* fallback to TH_WIRE */
 		}
 	}
@@ -1133,5 +1133,5 @@ static GPUTexture *DRW_create_weight_colorramp_texture(void)
 		pixels[i][3] = 1.0f;
 	}
 
-	return GPU_texture_create_1D(256, GPU_RGBA8, pixels[0], error);
+	return GPU_texture_create_1d(256, GPU_RGBA8, pixels[0], error);
 }

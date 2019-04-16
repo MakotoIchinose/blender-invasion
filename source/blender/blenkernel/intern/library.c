@@ -1754,8 +1754,6 @@ void BKE_library_make_local(
         Main *bmain, const Library *lib, GHash *old_to_new_ids, const bool untagged_only, const bool set_fake)
 {
 	ListBase *lbarray[MAX_LIBARRAY];
-	ID *id;
-	int a;
 
 	LinkNode *todo_ids = NULL;
 	LinkNode *copied_ids = NULL;
@@ -1775,8 +1773,8 @@ void BKE_library_make_local(
 #endif
 
 	/* Step 1: Detect datablocks to make local. */
-	for (a = set_listbasepointers(bmain, lbarray); a--; ) {
-		id = lbarray[a]->first;
+	for (int a = set_listbasepointers(bmain, lbarray); a--; ) {
+		ID *id = lbarray[a]->first;
 
 		/* Do not explicitly make local non-linkable IDs (shapekeys, in fact), they are assumed to be handled
 		 * by real datablocks responsible of them. */
@@ -1850,7 +1848,7 @@ void BKE_library_make_local(
 	 * which involves more complex checks and might instead create a local copy of original linked ID. */
 	for (LinkNode *it = todo_ids, *it_next; it; it = it_next) {
 		it_next = it->next;
-		id = it->link;
+		ID *id = it->link;
 
 		if (id->tag & LIB_TAG_DOIT) {
 			/* We know all users of this object are local or will be made fully local, even if currently there are
@@ -1902,7 +1900,7 @@ void BKE_library_make_local(
 	 * using again main->relations mapping, but... this implies BKE_libblock_remap & co to be able to update
 	 * main->relations on the fly. Have to think about it a bit more, and see whether new code is OK first, anyway. */
 	for (LinkNode *it = copied_ids; it; it = it->next) {
-		id = it->link;
+		ID *id = it->link;
 
 		BLI_assert(id->newid != NULL);
 		BLI_assert(id->lib != NULL);
@@ -1926,6 +1924,8 @@ void BKE_library_make_local(
 
 	/* Step 5: proxy 'remapping' hack. */
 	for (LinkNode *it = copied_ids; it; it = it->next) {
+		ID *id = it->link;
+
 		/* Attempt to re-link copied proxy objects. This allows appending of an entire scene
 		 * from another blend file into this one, even when that blend file contains proxified
 		 * armatures that have local references. Since the proxified object needs to be linked
@@ -1977,20 +1977,27 @@ void BKE_library_make_local(
 	 * relationship), se we tag it to be fully recomputed, but this does not seems to be enough in some cases,
 	 * and evaluation code ends up trying to evaluate a not-yet-updated armature object's deformations.
 	 * Try "make all local" in 04_01_H.lighting.blend from Agent327 without this, e.g. */
-	/* Also, use this object loop to we handle rigid body resetting. */
 	for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if (ob->data != NULL && ob->type == OB_ARMATURE && ob->pose != NULL && ob->pose->flag & POSE_RECALC) {
 			BKE_pose_rebuild(bmain, ob, ob->data, true);
 		}
+	}
 
-		/* If there was ever any rigidbody settings in the object, we reset it. */
-		if (ob->rigidbody_object) {
-			for (Scene *scene_iter = bmain->scenes.first; scene_iter; scene_iter = scene_iter->id.next) {
-				if (scene_iter->rigidbody_world) {
-					BKE_rigidbody_remove_object(bmain, scene_iter, ob);
+	/* Reset rigid body objects. */
+	for (LinkNode *it = copied_ids; it; it = it->next) {
+		ID *id = it->link;
+		if (GS(id->name) == ID_OB) {
+			Object *ob = (Object *)id;
+
+			/* If there was ever any rigidbody settings in the object, we reset it. */
+			if (ob->rigidbody_object) {
+				for (Scene *scene_iter = bmain->scenes.first; scene_iter; scene_iter = scene_iter->id.next) {
+					if (scene_iter->rigidbody_world) {
+						BKE_rigidbody_remove_object(bmain, scene_iter, ob);
+					}
 				}
+				BKE_rigidbody_free_object(ob, NULL);
 			}
-			BKE_rigidbody_free_object(ob, NULL);
 		}
 	}
 

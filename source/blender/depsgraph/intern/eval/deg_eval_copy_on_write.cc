@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 20137Blender Foundation.
+ * The Original Code is Copyright (C) 2017 Blender Foundation.
  * All rights reserved.
  */
 
@@ -614,8 +614,8 @@ void update_edit_mode_pointers(const Depsgraph *depsgraph,
 }
 
 template <typename T>
-void update_list_orig_pointers(const ListBase* listbase_orig,
-                               ListBase* listbase,
+void update_list_orig_pointers(const ListBase *listbase_orig,
+                               ListBase *listbase,
                                T *T::*orig_field)
 {
 	T *element_orig = reinterpret_cast<T*>(listbase_orig->first);
@@ -697,6 +697,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
 					update_pose_orig_pointers(object_orig->pose,
 					                          object_cow->pose);
 				}
+				BKE_pose_pchan_index_rebuild(object_cow->pose);
 			}
 			update_particles_after_copy(object_orig, object_cow);
 			update_modifiers_orig_pointers(object_orig, object_cow);
@@ -934,7 +935,7 @@ void ObjectRuntimeBackup::init_from_object(Object *object)
 }
 
 inline ModifierDataBackupID create_modifier_data_id(
-        const ModifierData* modifier_data)
+        const ModifierData *modifier_data)
 {
 	return ModifierDataBackupID(modifier_data->orig_modifier_data,
 	                            static_cast<ModifierType>(modifier_data->type));
@@ -993,7 +994,8 @@ void ObjectRuntimeBackup::restore_to_object(Object *object)
 	restore_modifier_runtime_data(object);
 }
 
-void ObjectRuntimeBackup::restore_modifier_runtime_data(Object *object) {
+void ObjectRuntimeBackup::restore_modifier_runtime_data(Object *object)
+{
 	LISTBASE_FOREACH(ModifierData *, modifier_data, &object->modifiers) {
 		BLI_assert(modifier_data->orig_modifier_data != NULL);
 		ModifierDataBackupID modifier_data_id =

@@ -84,6 +84,9 @@ void main(void)
 	if (sp2.x < -area.x || sp2.x > area.x) return;
 	if (sp2.y < -area.y || sp2.y > area.y) return;
 
+	/* culling behind camera */
+	if (P1.w < 0 || P2.w < 0) return;
+
 	/* determine the direction of each of the 3 segments (previous, current, next) */
 	vec2 v0 = normalize(sp1 - sp0);
 	vec2 v1 = normalize(sp2 - sp1);
@@ -194,7 +197,7 @@ void main(void)
 				y_b = 0.0;
 			}
 		}
-	}	
+	}
 	/* generate the triangle strip */
 	uvfac = vec2(0.0, 0.0);
 	mTexCoord = (color_type == GPENCIL_COLOR_SOLID) ? vec2(0, 0) : vec2(finaluvdata[1].x, y_a);

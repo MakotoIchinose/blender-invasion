@@ -83,6 +83,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
+#include "ED_anim_api.h"
 #include "ED_armature.h"
 #include "ED_curve.h"
 #include "ED_mesh.h"
@@ -1711,6 +1712,7 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
 	prop = RNA_def_string(ot->srna, "new_collection_name", NULL, MAX_NAME, "Name",
 	                      "Name of the newly added collection");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+	ot->prop = prop;
 }
 
 void OBJECT_OT_link_to_collection(wmOperatorType *ot)

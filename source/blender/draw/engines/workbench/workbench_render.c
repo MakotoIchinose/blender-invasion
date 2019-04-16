@@ -28,6 +28,8 @@
 
 #include "DRW_render.h"
 
+#include "ED_view3d.h"
+
 #include "GPU_shader.h"
 
 #include "DEG_depsgraph.h"
@@ -86,8 +88,8 @@ static bool workbench_render_framebuffers_init(void)
 	const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
 
 	DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-	dtxl->color = GPU_texture_create_2D(size[0], size[1], GPU_RGBA16F, NULL, NULL);
-	dtxl->depth = GPU_texture_create_2D(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
+	dtxl->color = GPU_texture_create_2d(size[0], size[1], GPU_RGBA16F, NULL, NULL);
+	dtxl->depth = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
 
 	if (!(dtxl->depth && dtxl->color)) {
 		return false;
@@ -135,7 +137,7 @@ void workbench_render(WORKBENCH_Data *data, RenderEngine *engine, RenderLayer *r
 		return;
 	}
 
-	const bool deferred = (scene->display.shading.flag & XRAY_FLAG(&scene->display)) == 0;
+	const bool deferred = !XRAY_FLAG_ENABLED(&scene->display);
 
 	if (deferred) {
 		/* Init engine. */

@@ -167,7 +167,7 @@ void WM_init_state_start_with_console_set(bool value)
  * scripts) we deferre the ghost initialization the most as possible
  * so that it does not break anything that can run in headless mode (as in
  * without display server attached).
- **/
+ */
 static bool opengl_is_init = false;
 
 void WM_init_opengl(Main *bmain)
@@ -294,8 +294,9 @@ void WM_init(bContext *C, int argc, const char **argv)
 	(void)argv; /* unused */
 #endif
 
-	if (!G.background && !wm_start_with_console)
+	if (!G.background && !wm_start_with_console) {
 		GHOST_toggleConsole(3);
+	}
 
 	clear_matcopybuf();
 	ED_render_clear_mtex_copybuf();
@@ -364,8 +365,9 @@ static void free_openrecent(void)
 {
 	struct RecentFile *recent;
 
-	for (recent = G.recent_files.first; recent; recent = recent->next)
+	for (recent = G.recent_files.first; recent; recent = recent->next) {
 		MEM_freeN(recent->filepath);
+	}
 
 	BLI_freelistN(&(G.recent_files));
 }
@@ -403,7 +405,7 @@ static int wm_exit_handler(bContext *C, const wmEvent *event, void *userdata)
 }
 
 /**
- * Cause a delayed WM_exit() call to avoid leaking memory when trying to exit from within operators.
+ * Cause a delayed #WM_exit() call to avoid leaking memory when trying to exit from within operators.
  */
 void wm_exit_schedule_delayed(const bContext *C)
 {
@@ -494,8 +496,10 @@ void WM_exit_ext(bContext *C, const bool do_python)
 
 	ED_preview_free_dbase();  /* frees a Main dbase, before BKE_blender_free! */
 
-	if (C && wm)
-		wm_free_reports(C);  /* before BKE_blender_free! - since the ListBases get freed there */
+	if (C && wm) {
+		/* Before BKE_blender_free! - since the ListBases get freed there. */
+		wm_free_reports(C);
+	}
 
 	BKE_sequencer_free_clipboard(); /* sequencer.c */
 	BKE_tracking_clipboard_free();

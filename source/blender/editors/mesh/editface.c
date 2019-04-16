@@ -282,14 +282,16 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
 	paintface_flush_flags(C, ob, SELECT);
 }
 
-void paintface_deselect_all_visible(bContext *C, Object *ob, int action, bool flush_flags)
+bool paintface_deselect_all_visible(bContext *C, Object *ob, int action, bool flush_flags)
 {
 	Mesh *me;
 	MPoly *mpoly;
 	int a;
 
 	me = BKE_mesh_from_object(ob);
-	if (me == NULL) return;
+	if (me == NULL) {
+		return false;
+	}
 
 	if (action == SEL_TOGGLE) {
 		action = SEL_SELECT;
@@ -305,28 +307,40 @@ void paintface_deselect_all_visible(bContext *C, Object *ob, int action, bool fl
 		}
 	}
 
+	bool changed = false;
+
 	mpoly = me->mpoly;
 	a = me->totpoly;
 	while (a--) {
 		if ((mpoly->flag & ME_HIDE) == 0) {
 			switch (action) {
 				case SEL_SELECT:
-					mpoly->flag |= ME_FACE_SEL;
+					if ((mpoly->flag & ME_FACE_SEL) == 0) {
+						mpoly->flag |= ME_FACE_SEL;
+						changed = true;
+					}
 					break;
 				case SEL_DESELECT:
-					mpoly->flag &= ~ME_FACE_SEL;
+					if ((mpoly->flag & ME_FACE_SEL) != 0) {
+						mpoly->flag &= ~ME_FACE_SEL;
+						changed = true;
+					}
 					break;
 				case SEL_INVERT:
 					mpoly->flag ^= ME_FACE_SEL;
+					changed = true;
 					break;
 			}
 		}
 		mpoly++;
 	}
 
-	if (flush_flags) {
-		paintface_flush_flags(C, ob, SELECT);
+	if (changed) {
+		if (flush_flags) {
+			paintface_flush_flags(C, ob, SELECT);
+		}
 	}
+	return changed;
 }
 
 bool paintface_minmax(Object *ob, float r_min[3], float r_max[3])
@@ -368,8 +382,8 @@ bool paintface_minmax(Object *ob, float r_min[3], float r_max[3])
 bool paintface_mouse_select(struct bContext *C, Object *ob, const int mval[2], bool extend, bool deselect, bool toggle)
 {
 	Mesh *me;
-	MPoly *mpoly, *mpoly_sel;
-	unsigned int a, index;
+	MPoly *mpoly_sel;
+	uint index;
 
 	/* Get the face under the cursor */
 	me = BKE_mesh_from_object(ob);
@@ -386,13 +400,8 @@ bool paintface_mouse_select(struct bContext *C, Object *ob, const int mval[2], b
 	if (mpoly_sel->flag & ME_HIDE) return false;
 
 	/* clear flags */
-	mpoly = me->mpoly;
-	a = me->totpoly;
 	if (!extend && !deselect && !toggle) {
-		while (a--) {
-			mpoly->flag &= ~ME_FACE_SEL;
-			mpoly++;
-		}
+		paintface_deselect_all_visible(C, ob, SEL_DESELECT, false);
 	}
 
 	me->act_face = (int)index;
@@ -420,64 +429,72 @@ bool paintface_mouse_select(struct bContext *C, Object *ob, const int mval[2], b
 	return true;
 }
 
-int do_paintface_box_select(ViewContext *vc, const rcti *rect, int sel_op)
+bool do_paintface_box_select(ViewContext *vc, const rcti *rect, int sel_op)
 {
 	Object *ob = vc->obact;
 	Mesh *me;
-	MPoly *mpoly;
-	uint *rt;
-	char *selar;
-	int a, index;
 
 	me = BKE_mesh_from_object(ob);
-	if ((me == NULL) || (me->totpoly == 0) || BLI_rcti_is_empty(rect)) {
-		return OPERATOR_CANCELLED;
+	if ((me == NULL) || (me->totpoly == 0)) {
+		return false;
 	}
 
-	selar = MEM_callocN(me->totpoly + 1, "selar");
-
+	bool changed = false;
 	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
-		paintface_deselect_all_visible(vc->C, vc->obact, SEL_DESELECT, false);
+		changed |= paintface_deselect_all_visible(vc->C, vc->obact, SEL_DESELECT, false);
 	}
 
-	uint buf_len;
-	uint *buf = ED_view3d_select_id_read_rect(vc, rect, &buf_len);
+	if (BLI_rcti_is_empty(rect)) {
+		/* pass */
+	}
+	else {
+		MPoly *mpoly;
+		uint *rt;
+		int a, index;
 
-	rt = buf;
+		char *selar = MEM_callocN(me->totpoly + 1, "selar");
 
-	a = buf_len;
-	while (a--) {
-		if (*rt) {
-			index = *rt;
-			if (index <= me->totpoly) {
-				selar[index] = 1;
+		uint buf_len;
+		uint *buf = ED_view3d_select_id_read_rect(vc, rect, &buf_len);
+
+		rt = buf;
+
+		a = buf_len;
+		while (a--) {
+			if (*rt) {
+				index = *rt;
+				if (index <= me->totpoly) {
+					selar[index] = 1;
+				}
+			}
+			rt++;
+		}
+
+		mpoly = me->mpoly;
+		for (a = 1; a <= me->totpoly; a++, mpoly++) {
+			if ((mpoly->flag & ME_HIDE) == 0) {
+				const bool is_select = mpoly->flag & ME_FACE_SEL;
+				const bool is_inside = (selar[a] != 0);
+				const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
+				if (sel_op_result != -1) {
+					SET_FLAG_FROM_TEST(mpoly->flag, sel_op_result, ME_FACE_SEL);
+					changed = true;
+				}
 			}
 		}
-		rt++;
-	}
 
-	mpoly = me->mpoly;
-	for (a = 1; a <= me->totpoly; a++, mpoly++) {
-		if ((mpoly->flag & ME_HIDE) == 0) {
-			const bool is_select = mpoly->flag & ME_FACE_SEL;
-			const bool is_inside = (selar[a] != 0);
-			const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
-			if (sel_op_result != -1) {
-				SET_FLAG_FROM_TEST(mpoly->flag, sel_op_result, ME_FACE_SEL);
-			}
-		}
-	}
-
-	MEM_freeN(buf);
-	MEM_freeN(selar);
+		MEM_freeN(buf);
+		MEM_freeN(selar);
 
 #ifdef __APPLE__
-	glReadBuffer(GL_BACK);
+		glReadBuffer(GL_BACK);
 #endif
+	}
 
-	paintface_flush_flags(vc->C, vc->obact, SELECT);
-
-	return OPERATOR_FINISHED;
+	if (changed) {
+		paintface_flush_flags(vc->C, vc->obact, SELECT);
+	}
+	return changed;
 }
 
 
@@ -536,14 +553,16 @@ void paintvert_tag_select_update(struct bContext *C, struct Object *ob)
 
 /*  note: if the caller passes false to flush_flags,
  *  then they will need to run paintvert_flush_flags(ob) themselves */
-void paintvert_deselect_all_visible(Object *ob, int action, bool flush_flags)
+bool paintvert_deselect_all_visible(Object *ob, int action, bool flush_flags)
 {
 	Mesh *me;
 	MVert *mvert;
 	int a;
 
 	me = BKE_mesh_from_object(ob);
-	if (me == NULL) return;
+	if (me == NULL) {
+		return false;
+	}
 
 	if (action == SEL_TOGGLE) {
 		action = SEL_SELECT;
@@ -559,39 +578,50 @@ void paintvert_deselect_all_visible(Object *ob, int action, bool flush_flags)
 		}
 	}
 
+	bool changed = false;
 	mvert = me->mvert;
 	a = me->totvert;
 	while (a--) {
 		if ((mvert->flag & ME_HIDE) == 0) {
 			switch (action) {
 				case SEL_SELECT:
-					mvert->flag |= SELECT;
+					if ((mvert->flag & SELECT) == 0) {
+						mvert->flag |= SELECT;
+						changed = true;
+					}
 					break;
 				case SEL_DESELECT:
-					mvert->flag &= ~SELECT;
+					if ((mvert->flag & SELECT) != 0) {
+						mvert->flag &= ~SELECT;
+						changed = true;
+					}
 					break;
 				case SEL_INVERT:
 					mvert->flag ^= SELECT;
+					changed = true;
 					break;
 			}
 		}
 		mvert++;
 	}
 
-	/* handle mselect */
-	if (action == SEL_SELECT) {
-		/* pass */
-	}
-	else if (ELEM(action, SEL_DESELECT, SEL_INVERT)) {
-		BKE_mesh_mselect_clear(me);
-	}
-	else {
-		BKE_mesh_mselect_validate(me);
-	}
+	if (changed) {
+		/* handle mselect */
+		if (action == SEL_SELECT) {
+			/* pass */
+		}
+		else if (ELEM(action, SEL_DESELECT, SEL_INVERT)) {
+			BKE_mesh_mselect_clear(me);
+		}
+		else {
+			BKE_mesh_mselect_validate(me);
+		}
 
-	if (flush_flags) {
-		paintvert_flush_flags(ob);
+		if (flush_flags) {
+			paintvert_flush_flags(ob);
+		}
 	}
+	return changed;
 }
 
 void paintvert_select_ungrouped(Object *ob, bool extend, bool flush_flags)

@@ -1619,6 +1619,11 @@ static void rna_Node_name_set(PointerRNA *ptr, const char *value)
 
 static bNodeSocket *rna_Node_inputs_new(ID *id, bNode *node, Main *bmain, ReportList *reports, const char *type, const char *name, const char *identifier)
 {
+	/* Adding an input to a group node is not working, simpler to add it to its underlying nodetree. */
+	if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id != NULL) {
+		return rna_NodeTree_inputs_new((bNodeTree *)node->id, bmain, reports, type, name);
+	}
+
 	bNodeTree *ntree = (bNodeTree *)id;
 	bNodeSocket *sock;
 
@@ -1637,6 +1642,11 @@ static bNodeSocket *rna_Node_inputs_new(ID *id, bNode *node, Main *bmain, Report
 
 static bNodeSocket *rna_Node_outputs_new(ID *id, bNode *node, Main *bmain, ReportList *reports, const char *type, const char *name, const char *identifier)
 {
+	/* Adding an output to a group node is not working, simpler to add it to its underlying nodetree. */
+	if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id != NULL) {
+		return rna_NodeTree_outputs_new((bNodeTree *)node->id, bmain, reports, type, name);
+	}
+
 	bNodeTree *ntree = (bNodeTree *)id;
 	bNodeSocket *sock;
 
@@ -7192,6 +7202,7 @@ static void rna_def_node_socket(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Linked", "True if the socket is connected");
 
 	prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 	RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SOCK_COLLAPSED);
 	RNA_def_property_ui_text(prop, "Expanded", "Socket links are expanded in the user interface");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, NULL);

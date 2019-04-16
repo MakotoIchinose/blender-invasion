@@ -206,7 +206,7 @@ static void gpsculpt_compute_lock_axis(tGP_BrushEditData *gso, bGPDspoint *pt, c
 			float plane[4];
 			float mat[4][4];
 			float r_close[3];
-			
+
 			loc_eul_size_to_mat4(mat,
 				cursor->location,
 				cursor->rotation_euler,
@@ -811,7 +811,7 @@ static bool gp_brush_randomize_apply(
 		/* Jitter is applied perpendicular to the mouse movement vector
 		 * - We compute all effects in screenspace (since it's easier)
 		 *   and then project these to get the points/distances in
-		 *   viewspace as needed
+		 *   view-space as needed.
 		 */
 		float mvec[2], svec[2];
 
@@ -1029,8 +1029,8 @@ static void gp_brush_clone_init(bContext *C, tGP_BrushEditData *gso)
 		data->new_strokes = MEM_callocN(sizeof(bGPDstroke *) * data->totitems, "cloned strokes ptr array");
 	}
 
-	/* Init colormap for mapping between the pasted stroke's source colour(names)
-	 * and the final colours that will be used here instead...
+	/* Init colormap for mapping between the pasted stroke's source color (names)
+	 * and the final colours that will be used here instead.
 	 */
 	data->new_colors = gp_copybuf_validate_colormap(C);
 }
@@ -1101,14 +1101,10 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
 
 			/* Fix color references */
 			Material *ma = BLI_ghash_lookup(data->new_colors, &new_stroke->mat_nr);
-			if ((ma) && (BKE_gpencil_get_material_index(ob, ma) > 0)) {
-				gps->mat_nr = BKE_gpencil_get_material_index(ob, ma) - 1;
-				CLAMP_MIN(gps->mat_nr, 0);
+			gps->mat_nr = BKE_gpencil_object_material_get_index(ob, ma);
+			if (!ma || gps->mat_nr) {
+				gps->mat_nr = 0;
 			}
-			else {
-				gps->mat_nr = 0; /* only if the color is not found */
-			}
-
 			/* Adjust all the stroke's points, so that the strokes
 			 * get pasted relative to where the cursor is now
 			 */

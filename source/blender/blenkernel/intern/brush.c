@@ -304,6 +304,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 	brush->smooth_stroke_radius = SMOOTH_STROKE_RADIUS;
 	brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
+
 	/* Pen brush */
 	brush = BKE_brush_add_gpencil(bmain, ts, "Draw Pen");
 	deft = brush; /* save default brush */
@@ -336,6 +340,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 	brush->smooth_stroke_radius = SMOOTH_STROKE_RADIUS;
 	brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
+
 	/* Ink brush */
 	brush = BKE_brush_add_gpencil(bmain, ts, "Draw Ink");
 	brush->size = 60.0f;
@@ -364,6 +372,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 
 	brush->smooth_stroke_radius = SMOOTH_STROKE_RADIUS;
 	brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
+
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
 
 	/* Curve */
 	custom_curve = brush->gpencil_settings->curve_sensitivity;
@@ -408,6 +420,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 	curvemapping_initialize(custom_curve);
 	brush_gpencil_curvemap_reset(custom_curve->cm, 3, GPCURVE_PRESET_INKNOISE);
 
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
+
 	/* Block Basic brush */
 	brush = BKE_brush_add_gpencil(bmain, ts, "Draw Block");
 	brush->size = 150.0f;
@@ -435,6 +451,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 
 	brush->smooth_stroke_radius = SMOOTH_STROKE_RADIUS;
 	brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
+
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
 
 	/* Marker brush */
 	brush = BKE_brush_add_gpencil(bmain, ts, "Draw Marker");
@@ -472,6 +492,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 	curvemapping_initialize(custom_curve);
 	brush_gpencil_curvemap_reset(custom_curve->cm, 4, GPCURVE_PRESET_MARKER);
 
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
+
 	/* Fill brush */
 	brush = BKE_brush_add_gpencil(bmain, ts, "Fill Area");
 	brush->size = 1.0f;
@@ -494,6 +518,10 @@ void BKE_brush_gpencil_presets(bContext *C)
 	brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
 	brush->gpencil_settings->draw_strength = 1.0f;
+
+	brush->gpencil_settings->gradient_f = 1.0f;
+	brush->gpencil_settings->gradient_s[0] = 1.0f;
+	brush->gpencil_settings->gradient_s[1] = 1.0f;
 
 	/* Soft Eraser brush */
 	brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Soft");
@@ -538,24 +566,6 @@ void BKE_brush_gpencil_presets(bContext *C)
 	/* set default brush */
 	BKE_paint_brush_set(paint, deft);
 
-}
-
-void BKE_brush_update_material(Main *bmain, Material *ma, Brush *exclude_brush)
-{
-	for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
-		if ((exclude_brush != NULL) && (brush == exclude_brush)) {
-			continue;
-		}
-
-		if (brush->gpencil_settings != NULL) {
-			BrushGpencilSettings *gpencil_settings = brush->gpencil_settings;
-			if (((gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) == 0) &&
-			    (gpencil_settings->material != ma))
-			{
-				gpencil_settings->material = ma;
-			}
-		}
-	}
 }
 
 struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mode)

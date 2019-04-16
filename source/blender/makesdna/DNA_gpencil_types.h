@@ -199,8 +199,15 @@ typedef struct bGPDstroke {
 	/** Caps mode for each stroke extreme */
 	short caps[2];
 
+	/** gradient control along y for color */
+	float gradient_f;
+	/** factor xy of shape for dots gradients */
+	float gradient_s[2];
+	char _pad_3[4];
+
 	/** Vertex weight data. */
 	struct MDeformVert *dvert;
+	void *_pad3;
 
 	bGPDstroke_Runtime runtime;
 	char _pad2[4];
