@@ -45,8 +45,10 @@
 #include "BKE_bvhutils.h"
 #include "BKE_remesh.h"
 
+#ifdef WITH_QEX
 #include "igl_capi.h"
 #include "qex_capi.h"
+#endif
 
 Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter, bool direct_round) {
 
