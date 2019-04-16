@@ -24,11 +24,11 @@ set(OPENMESH_EXTRA_ARGS
 ExternalProject_Add(external_openmesh
 	URL ${OPENMESH_URI}
 	DOWNLOAD_DIR ${DOWNLOAD_DIR}
-        URL_HASH SHA256=${OPENMESH_HASH}
+	URL_HASH SHA256=${OPENMESH_HASH}
 	PREFIX ${BUILD_DIR}/openmesh
-        PATCH_COMMAND ${PATCH_CMD} -p 0 -d ${BUILD_DIR}/openmesh/src/external_openmesh < ${PATCH_DIR}/openmesh.diff
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openmesh -Wno-dev ${DEFAULT_CMAKE_FLAGS} ${OPENMESH_EXTRA_ARGS}
-        INSTALL_DIR ${LIBDIR}/openmesh
+	PATCH_COMMAND ${PATCH_CMD} -p 0 -d ${BUILD_DIR}/openmesh/src/external_openmesh < ${PATCH_DIR}/openmesh.diff
+	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openmesh -Wno-dev ${DEFAULT_CMAKE_FLAGS} ${OPENMESH_EXTRA_ARGS}
+	INSTALL_DIR ${LIBDIR}/openmesh
 )
 
 if (BUILD_MODE STREQUAL Debug)

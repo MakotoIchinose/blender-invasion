@@ -26,11 +26,11 @@ set(QEX_EXTRA_ARGS
 ExternalProject_Add(external_qex
 	URL ${QEX_URI}
 	DOWNLOAD_DIR ${DOWNLOAD_DIR}
-        URL_HASH SHA256=${QEX_HASH}
+	URL_HASH SHA256=${QEX_HASH}
 	PREFIX ${BUILD_DIR}/qex
-        PATCH_COMMAND ${PATCH_CMD} -p 0 -d ${BUILD_DIR}/qex/src/external_qex < ${PATCH_DIR}/qex.diff
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/qex -Wno-dev ${DEFAULT_CMAKE_FLAGS} ${QEX_EXTRA_ARGS}
-        INSTALL_DIR ${LIBDIR}/qex
+	PATCH_COMMAND ${PATCH_CMD} -p 0 -d ${BUILD_DIR}/qex/src/external_qex < ${PATCH_DIR}/qex.diff
+	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/qex -Wno-dev ${DEFAULT_CMAKE_FLAGS} ${QEX_EXTRA_ARGS}
+	INSTALL_DIR ${LIBDIR}/qex
 )
 
 #grr, INSTALL(TARGETS has no exclude pattern, so removing unnecessary empty dirs here
