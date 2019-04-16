@@ -70,7 +70,7 @@
 #       parameter_two,
 #       parameter_three);
 #
-AlignAfterOpenBracket: 'AlwaysBreak'
+AlignAfterOpenBracket: 'Align'
 
 # Disallow short functions on one line; break them up.
 AllowShortBlocksOnASingleLine: false
