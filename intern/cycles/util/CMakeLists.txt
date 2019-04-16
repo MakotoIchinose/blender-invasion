@@ -27,6 +27,10 @@ set(SRC
 	util_transform.cpp
 )
 
+set(LIB
+
+)
+
 if(WITH_CYCLES_STANDALONE)
 	if (WITH_CYCLES_STANDALONE_GUI)
 		list(APPEND SRC

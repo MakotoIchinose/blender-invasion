@@ -97,8 +97,8 @@ endif()
 
 if(WITH_SDL)
 	if(WITH_SDL_DYNLOAD)
-		add_definitions(-DWITH_SDL_DYNLOAD)
 		blender_include_dirs(../../extern/sdlew/include)
+		add_definitions(-DWITH_SDL_DYNLOAD)
 	endif()
 	add_definitions(-DWITH_SDL)
 endif()
@@ -112,11 +112,11 @@ if(WITH_BINRELOC)
 endif()
 
 if(WITH_FREESTYLE)
-	add_definitions(-DWITH_FREESTYLE)
 	blender_include_dirs(../blender/freestyle)
 	list(APPEND LIB
 		bf_freestyle
 	)
+	add_definitions(-DWITH_FREESTYLE)
 endif()
 
 # Setup the exe sources and buildinfo
