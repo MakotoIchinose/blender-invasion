@@ -64,7 +64,7 @@ size_t BKE_libblock_get_alloc_info(short type, const char **name);
 void *BKE_libblock_alloc_notest(short type) ATTR_WARN_UNUSED_RESULT;
 void *BKE_libblock_alloc(struct Main *bmain, short type, const char *name, const int flag)
     ATTR_WARN_UNUSED_RESULT;
-void  BKE_libblock_init_empty(struct ID *id) ATTR_NONNULL(1);
+void BKE_libblock_init_empty(struct ID *id) ATTR_NONNULL(1);
 
 void *BKE_id_new(struct Main *bmain, const short type, const char *name);
 void *BKE_id_new_nomain(const short type, const char *name);
@@ -73,45 +73,45 @@ void *BKE_id_new_nomain(const short type, const char *name);
  * New ID creation/copying options.
  */
 enum {
-	/* *** Generic options (should be handled by all ID types copying, ID creation, etc.). *** */
-	/* Create datablock outside of any main database - similar to 'localize' functions of materials etc. */
-	LIB_ID_CREATE_NO_MAIN            = 1 << 0,
-	/* Do not affect user refcount of datablocks used by new one (which also gets zero usercount then).
-	 * Implies LIB_ID_CREATE_NO_MAIN. */
-	LIB_ID_CREATE_NO_USER_REFCOUNT   = 1 << 1,
-	/* Assume given 'newid' already points to allocated memory for whole datablock (ID + data) - USE WITH CAUTION!
-	 * Implies LIB_ID_CREATE_NO_MAIN. */
-	LIB_ID_CREATE_NO_ALLOCATE        = 1 << 2,
+  /* *** Generic options (should be handled by all ID types copying, ID creation, etc.). *** */
+  /* Create datablock outside of any main database - similar to 'localize' functions of materials etc. */
+  LIB_ID_CREATE_NO_MAIN = 1 << 0,
+  /* Do not affect user refcount of datablocks used by new one (which also gets zero usercount then).
+   * Implies LIB_ID_CREATE_NO_MAIN. */
+  LIB_ID_CREATE_NO_USER_REFCOUNT = 1 << 1,
+  /* Assume given 'newid' already points to allocated memory for whole datablock (ID + data) - USE WITH CAUTION!
+   * Implies LIB_ID_CREATE_NO_MAIN. */
+  LIB_ID_CREATE_NO_ALLOCATE = 1 << 2,
 
-	/* Do not tag new ID for update in depsgraph. */
-	LIB_ID_CREATE_NO_DEG_TAG         = 1 << 8,
+  /* Do not tag new ID for update in depsgraph. */
+  LIB_ID_CREATE_NO_DEG_TAG = 1 << 8,
 
-	/* *** Specific options to some ID types or usages. *** */
-	/* *** May be ignored by unrelated ID copying functions. *** */
-	/* Object only, needed by make_local code. */
-	LIB_ID_COPY_NO_PROXY_CLEAR     = 1 << 16,
-	/* Do not copy preview data, when supported. */
-	LIB_ID_COPY_NO_PREVIEW         = 1 << 17,
-	/* Copy runtime data caches. */
-	LIB_ID_COPY_CACHES             = 1 << 18,
-	/* Don't copy id->adt, used by ID datablock localization routines. */
-	LIB_ID_COPY_NO_ANIMDATA        = 1 << 19,
-	/* Mesh: Reference CD data layers instead of doing real copy - USE WITH CAUTION! */
-	LIB_ID_COPY_CD_REFERENCE       = 1 << 20,
+  /* *** Specific options to some ID types or usages. *** */
+  /* *** May be ignored by unrelated ID copying functions. *** */
+  /* Object only, needed by make_local code. */
+  LIB_ID_COPY_NO_PROXY_CLEAR = 1 << 16,
+  /* Do not copy preview data, when supported. */
+  LIB_ID_COPY_NO_PREVIEW = 1 << 17,
+  /* Copy runtime data caches. */
+  LIB_ID_COPY_CACHES = 1 << 18,
+  /* Don't copy id->adt, used by ID datablock localization routines. */
+  LIB_ID_COPY_NO_ANIMDATA = 1 << 19,
+  /* Mesh: Reference CD data layers instead of doing real copy - USE WITH CAUTION! */
+  LIB_ID_COPY_CD_REFERENCE = 1 << 20,
 
-	/* *** XXX Hackish/not-so-nice specific behaviors needed for some corner cases. *** */
-	/* *** Ideally we should not have those, but we need them for now... *** */
-	/* EXCEPTION! Deep-copy actions used by animdata of copied ID. */
-	LIB_ID_COPY_ACTIONS            = 1 << 24,
-	/* Keep the library pointer when copying datablock outside of bmain. */
-	LIB_ID_COPY_KEEP_LIB           = 1 << 25,
-	/* EXCEPTION! Deep-copy shapekeys used by copied obdata ID. */
-	LIB_ID_COPY_SHAPEKEY           = 1 << 26,
+  /* *** XXX Hackish/not-so-nice specific behaviors needed for some corner cases. *** */
+  /* *** Ideally we should not have those, but we need them for now... *** */
+  /* EXCEPTION! Deep-copy actions used by animdata of copied ID. */
+  LIB_ID_COPY_ACTIONS = 1 << 24,
+  /* Keep the library pointer when copying datablock outside of bmain. */
+  LIB_ID_COPY_KEEP_LIB = 1 << 25,
+  /* EXCEPTION! Deep-copy shapekeys used by copied obdata ID. */
+  LIB_ID_COPY_SHAPEKEY = 1 << 26,
 
-	/* *** Helper 'defines' gathering most common flag sets. *** */
-	/* Shapekeys are not real ID's, more like local data to geometry IDs... */
-	LIB_ID_COPY_DEFAULT            = LIB_ID_COPY_SHAPEKEY,
-	/* Generate a local copy, outside of bmain, to work on (used by COW e.g.). */
+  /* *** Helper 'defines' gathering most common flag sets. *** */
+  /* Shapekeys are not real ID's, more like local data to geometry IDs... */
+  LIB_ID_COPY_DEFAULT = LIB_ID_COPY_SHAPEKEY,
+  /* Generate a local copy, outside of bmain, to work on (used by COW e.g.). */
   LIB_ID_COPY_LOCALIZE = LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_USER_REFCOUNT |
                          LIB_ID_CREATE_NO_DEG_TAG | LIB_ID_COPY_NO_PREVIEW | LIB_ID_COPY_CACHES,
 };
@@ -125,8 +125,8 @@ void *BKE_libblock_copy(struct Main *bmain, const struct ID *id) ATTR_WARN_UNUSE
 /* Special version. sued by datablock localization. */
 void *BKE_libblock_copy_for_localize(const struct ID *id);
 
-void  BKE_libblock_rename(struct Main *bmain, struct ID *id, const char *name) ATTR_NONNULL();
-void  BLI_libblock_ensure_unique_name(struct Main *bmain, const char *name) ATTR_NONNULL();
+void BKE_libblock_rename(struct Main *bmain, struct ID *id, const char *name) ATTR_NONNULL();
+void BLI_libblock_ensure_unique_name(struct Main *bmain, const char *name) ATTR_NONNULL();
 
 struct ID *BKE_libblock_find_name(struct Main *bmain,
                                   const short type,
@@ -137,18 +137,18 @@ struct ID *BKE_libblock_find_name(struct Main *bmain,
  * New freeing logic options.
  */
 enum {
-	/* *** Generic options (should be handled by all ID types freeing). *** */
-	/* Do not try to remove freed ID from given Main (passed Main may be NULL). */
-	LIB_ID_FREE_NO_MAIN            = 1 << 0,
-	/* Do not affect user refcount of datablocks used by freed one.
-	 * Implies LIB_ID_FREE_NO_MAIN. */
-	LIB_ID_FREE_NO_USER_REFCOUNT   = 1 << 1,
-	/* Assume freed ID datablock memory is managed elsewhere, do not free it
-	 * (still calls relevant ID type's freeing function though) - USE WITH CAUTION!
-	 * Implies LIB_ID_FREE_NO_MAIN. */
-	LIB_ID_FREE_NOT_ALLOCATED      = 1 << 2,
+  /* *** Generic options (should be handled by all ID types freeing). *** */
+  /* Do not try to remove freed ID from given Main (passed Main may be NULL). */
+  LIB_ID_FREE_NO_MAIN = 1 << 0,
+  /* Do not affect user refcount of datablocks used by freed one.
+   * Implies LIB_ID_FREE_NO_MAIN. */
+  LIB_ID_FREE_NO_USER_REFCOUNT = 1 << 1,
+  /* Assume freed ID datablock memory is managed elsewhere, do not free it
+   * (still calls relevant ID type's freeing function though) - USE WITH CAUTION!
+   * Implies LIB_ID_FREE_NO_MAIN. */
+  LIB_ID_FREE_NOT_ALLOCATED = 1 << 2,
 
-	LIB_ID_FREE_NO_DEG_TAG         = 1 << 8,  /* Do not tag freed ID for update in depsgraph. */
+  LIB_ID_FREE_NO_DEG_TAG = 1 << 8, /* Do not tag freed ID for update in depsgraph. */
   LIB_ID_FREE_NO_UI_USER =
       1 << 9, /* Do not attempt to remove freed ID from UI data/notifiers/... */
 };
@@ -222,8 +222,8 @@ void BKE_main_lib_objects_recalc_all(struct Main *bmain);
 /* Only for repairing files via versioning, avoid for general use. */
 void BKE_main_id_repair_duplicate_names_listbase(struct ListBase *lb);
 
-#define MAX_ID_FULL_NAME (64 + 64 + 3 + 1)  /* 64 is MAX_ID_NAME - 2 */
-#define MAX_ID_FULL_NAME_UI (MAX_ID_FULL_NAME + 3)  /* Adds 'keycode' two letters at begining. */
+#define MAX_ID_FULL_NAME (64 + 64 + 3 + 1)         /* 64 is MAX_ID_NAME - 2 */
+#define MAX_ID_FULL_NAME_UI (MAX_ID_FULL_NAME + 3) /* Adds 'keycode' two letters at begining. */
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const struct ID *id);
 void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI], const struct ID *id);
 
@@ -245,7 +245,9 @@ bool BKE_id_is_in_global_main(struct ID *id);
 void BKE_id_ordered_list(struct ListBase *ordered_lb, const struct ListBase *lb);
 void BKE_id_reorder(const struct ListBase *lb, struct ID *id, struct ID *relative, bool after);
 
-void BKE_library_asset_repository_init(struct Library *lib, const struct AssetEngineType *aet, const char *repo_root);
+void BKE_library_asset_repository_init(struct Library *lib,
+                                       const struct AssetEngineType *aet,
+                                       const char *repo_root);
 void BKE_library_asset_repository_clear(struct Library *lib);
 void BKE_library_asset_repository_free(struct Library *lib);
 struct AssetRef *BKE_library_asset_repository_asset_add(struct Library *lib, const void *idv);
@@ -257,8 +259,10 @@ void BKE_library_asset_repository_subdata_remove(struct AssetRef *aref, const vo
 void BKE_libraries_asset_subdata_remove(struct Main *bmain, const void *idv);
 void BKE_libraries_asset_repositories_clear(struct Main *bmain);
 void BKE_libraries_asset_repositories_rebuild(struct Main *bmain);
-struct AssetRef *BKE_libraries_asset_repository_uuid_find(struct Main *bmain, const struct AssetUUID *uuid);
-struct Library *BKE_library_asset_virtual_ensure(struct Main *bmain, const struct AssetEngineType *aet);
+struct AssetRef *BKE_libraries_asset_repository_uuid_find(struct Main *bmain,
+                                                          const struct AssetUUID *uuid);
+struct Library *BKE_library_asset_virtual_ensure(struct Main *bmain,
+                                                 const struct AssetEngineType *aet);
 
 #define IS_TAGGED(_id) ((_id) && (((ID *)_id)->tag & LIB_TAG_DOIT))
 
@@ -266,4 +270,4 @@ struct Library *BKE_library_asset_virtual_ensure(struct Main *bmain, const struc
 }
 #endif
 
-#endif  /* __BKE_LIBRARY_H__ */
+#endif /* __BKE_LIBRARY_H__ */

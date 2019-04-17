@@ -32,12 +32,12 @@
 
 void script_operatortypes(void)
 {
-	WM_operatortype_append(SCRIPT_OT_python_file_run);
-	WM_operatortype_append(SCRIPT_OT_reload);
-	WM_operatortype_append(SCRIPT_OT_assets_warn_clear);
+  WM_operatortype_append(SCRIPT_OT_python_file_run);
+  WM_operatortype_append(SCRIPT_OT_reload);
+  WM_operatortype_append(SCRIPT_OT_assets_warn_clear);
 }
 
 void script_keymap(wmKeyConfig *UNUSED(keyconf))
 {
-	/* Script space is deprecated, and doesn't need a keymap */
+  /* Script space is deprecated, and doesn't need a keymap */
 }

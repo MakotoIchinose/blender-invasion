@@ -46,76 +46,76 @@ struct ViewLayer;
 /* Data structures used during define */
 
 typedef struct ContainerDefRNA {
-	void *next, *prev;
+  void *next, *prev;
 
-	ContainerRNA *cont;
-	ListBase properties;
+  ContainerRNA *cont;
+  ListBase properties;
 } ContainerDefRNA;
 
 typedef struct FunctionDefRNA {
-	ContainerDefRNA cont;
+  ContainerDefRNA cont;
 
-	FunctionRNA *func;
-	const char *srna;
-	const char *call;
-	const char *gencall;
+  FunctionRNA *func;
+  const char *srna;
+  const char *call;
+  const char *gencall;
 } FunctionDefRNA;
 
 typedef struct PropertyDefRNA {
-	struct PropertyDefRNA *next, *prev;
+  struct PropertyDefRNA *next, *prev;
 
-	struct ContainerRNA *cont;
-	struct PropertyRNA *prop;
+  struct ContainerRNA *cont;
+  struct PropertyRNA *prop;
 
-	/* struct */
-	const char *dnastructname;
-	const char *dnastructfromname;
-	const char *dnastructfromprop;
+  /* struct */
+  const char *dnastructname;
+  const char *dnastructfromname;
+  const char *dnastructfromprop;
 
-	/* property */
-	const char *dnaname;
-	const char *dnatype;
-	int dnaarraylength;
-	int dnapointerlevel;
+  /* property */
+  const char *dnaname;
+  const char *dnatype;
+  int dnaarraylength;
+  int dnapointerlevel;
 
-	/* for finding length of array collections */
-	const char *dnalengthstructname;
-	const char *dnalengthname;
-	int dnalengthfixed;
+  /* for finding length of array collections */
+  const char *dnalengthstructname;
+  const char *dnalengthname;
+  int dnalengthfixed;
 
-	int booleanbit, booleannegative;
+  int booleanbit, booleannegative;
 
-	/* not to be confused with PROP_ENUM_FLAG
-	 * this only allows one of the flags to be set at a time, clearing all others */
-	int enumbitflags;
+  /* not to be confused with PROP_ENUM_FLAG
+   * this only allows one of the flags to be set at a time, clearing all others */
+  int enumbitflags;
 } PropertyDefRNA;
 
 typedef struct StructDefRNA {
-	ContainerDefRNA cont;
+  ContainerDefRNA cont;
 
-	struct StructRNA *srna;
-	const char *filename;
+  struct StructRNA *srna;
+  const char *filename;
 
-	const char *dnaname;
+  const char *dnaname;
 
-	/* for derived structs to find data in some property */
-	const char *dnafromname;
-	const char *dnafromprop;
+  /* for derived structs to find data in some property */
+  const char *dnafromname;
+  const char *dnafromprop;
 
-	ListBase functions;
+  ListBase functions;
 } StructDefRNA;
 
 typedef struct AllocDefRNA {
-	struct AllocDefRNA *next, *prev;
-	void *mem;
+  struct AllocDefRNA *next, *prev;
+  void *mem;
 } AllocDefRNA;
 
 typedef struct BlenderDefRNA {
-	struct SDNA *sdna;
-	ListBase structs;
-	ListBase allocs;
-	struct StructRNA *laststruct;
-	int error, silent, preprocess, verify, animate;
+  struct SDNA *sdna;
+  ListBase structs;
+  ListBase allocs;
+  struct StructRNA *laststruct;
+  int error, silent, preprocess, verify, animate;
 } BlenderDefRNA;
 
 extern BlenderDefRNA DefRNA;
@@ -212,7 +212,7 @@ bool rna_AnimaData_override_apply(struct Main *bmain,
                                   struct PointerRNA *ptr_item_local,
                                   struct PointerRNA *ptr_item_reference,
                                   struct PointerRNA *ptr_item_storage,
-        struct IDOverrideStaticPropertyOperation *opop);
+                                  struct IDOverrideStaticPropertyOperation *opop);
 
 void rna_def_animviz_common(struct StructRNA *srna);
 void rna_def_motionpath_common(struct StructRNA *srna);
@@ -289,7 +289,7 @@ void rna_FreestyleSettings_lineset_remove(struct ID *id,
                                           struct PointerRNA *lineset_ptr);
 struct PointerRNA rna_FreestyleSettings_active_lineset_get(struct PointerRNA *ptr);
 void rna_FreestyleSettings_active_lineset_index_range(
-        struct PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax);
+    struct PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax);
 int rna_FreestyleSettings_active_lineset_index_get(struct PointerRNA *ptr);
 void rna_FreestyleSettings_active_lineset_index_set(struct PointerRNA *ptr, int value);
 struct FreestyleModuleConfig *rna_FreestyleSettings_module_add(struct ID *id,
@@ -461,7 +461,7 @@ int rna_property_override_diff_default(struct Main *bmain,
                                        struct PropertyRNA *prop_b,
                                        const int len_a,
                                        const int len_b,
-        const int mode,
+                                       const int mode,
                                        struct IDOverrideStatic *override,
                                        const char *rna_path,
                                        const int flags,
@@ -477,7 +477,7 @@ bool rna_property_override_store_default(struct Main *bmain,
                                          const int len_local,
                                          const int len_reference,
                                          const int len_storage,
-        struct IDOverrideStaticPropertyOperation *opop);
+                                         struct IDOverrideStaticPropertyOperation *opop);
 
 bool rna_property_override_apply_default(struct Main *bmain,
                                          struct PointerRNA *ptr_dst,
@@ -492,7 +492,7 @@ bool rna_property_override_apply_default(struct Main *bmain,
                                          struct PointerRNA *ptr_item_dst,
                                          struct PointerRNA *ptr_item_src,
                                          struct PointerRNA *ptr_item_storage,
-        struct IDOverrideStaticPropertyOperation *opop);
+                                         struct IDOverrideStaticPropertyOperation *opop);
 
 /* Builtin Property Callbacks */
 
@@ -612,4 +612,4 @@ void rna_RenderPass_rect_set(PointerRNA *ptr, const float *values);
              : -DBL_MAX)
 #endif
 
-#endif  /* __RNA_INTERNAL_H__ */
+#endif /* __RNA_INTERNAL_H__ */

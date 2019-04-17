@@ -56,15 +56,13 @@ struct ReportList;
 struct uiLayout;
 
 enum {
-	AE_STATUS_VALID   = 1 << 0,  /* Asset engine is "OK" (if unset engine won't be used). */
-	AE_STATUS_RUNNING = 1 << 1,  /* Asset engine is performing some background tasks... */
+  AE_STATUS_VALID = 1 << 0,   /* Asset engine is "OK" (if unset engine won't be used). */
+  AE_STATUS_RUNNING = 1 << 1, /* Asset engine is performing some background tasks... */
 };
 
 #define AE_FAKE_ENGINE_ID "NONE"
 
 extern ListBase asset_engines;
-
-
 
 /**************************************************************************************/
 /* ***** Those callbacks help manage engine and its jobs.                       ***** */
@@ -78,8 +76,6 @@ typedef float (*ae_progress)(struct AssetEngine *engine, const int job_id);
 
 /* To force end of given job (e.g. because it was cancelled by user...). */
 typedef void (*ae_kill)(struct AssetEngine *engine, const int job_id);
-
-
 
 /**************************************************************************************/
 /* ***** All callbacks below shall be non-blocking (i.e. return immediately).   ***** */
@@ -105,12 +101,16 @@ typedef void (*ae_kill)(struct AssetEngine *engine, const int job_id);
 
 /* FILEBROWSER - List everything available at given root path - only returns numbers of entries!
  * Note that asset engine may change root_path here too. */
-typedef int (*ae_list_dir)(struct AssetEngine *engine, const int job_id, struct FileDirEntryArr *entries_r);
+typedef int (*ae_list_dir)(struct AssetEngine *engine,
+                           const int job_id,
+                           struct FileDirEntryArr *entries_r);
 
 /* FILEBROWSER - Get previews of given entries.
  * XXX WARNING! Currently, only asset part of uuids is valid here (because fileentries only store this one)...
  *              Think this makes more sense anyway, or do we want different previews per variants or revisions too? */
-typedef int (*ae_previews_get)(struct AssetEngine *engine, const int job_id, struct AssetUUIDList *uuids);
+typedef int (*ae_previews_get)(struct AssetEngine *engine,
+                               const int job_id,
+                               struct AssetUUIDList *uuids);
 
 /* 'update' hook, called to prepare updating of given entries (typically after a file (re)load).
  * Engine should check whether given assets are still valid, if they should be updated, etc.
@@ -119,14 +119,16 @@ typedef int (*ae_previews_get)(struct AssetEngine *engine, const int job_id, str
  * \warning This callback is expected to handle **real** UUIDS (not 'users' filebrowser ones),
  *          i.e. calling ae_load_pre with those shall **not** alter them in returned direntries
  *          (else 'link' between old IDs and reloaded ones would be broken). */
-typedef int (*ae_update_check)(struct AssetEngine *engine, const int job_id, struct AssetUUIDList *uuids);
+typedef int (*ae_update_check)(struct AssetEngine *engine,
+                               const int job_id,
+                               struct AssetUUIDList *uuids);
 
 /* Ensure given assets (uuids) are really available for append/link (some kind of 'anticipated loading'...).
  * Note: Engine should expect any kind of UUIDs it produced here
  *       (i.e. real ones as well as 'virtual' filebrowsing ones). */
-typedef int (*ae_ensure_uuids)(struct AssetEngine *engine, const int job_id, struct AssetUUIDList *uuids);
-
-
+typedef int (*ae_ensure_uuids)(struct AssetEngine *engine,
+                               const int job_id,
+                               struct AssetUUIDList *uuids);
 
 /**************************************************************************************/
 /* ***** All callbacks below are blocking. They shall be completed upon return. ***** */
@@ -136,15 +138,21 @@ typedef int (*ae_ensure_uuids)(struct AssetEngine *engine, const int job_id, str
  * Note that engine is assumed to feature its own sorting/filtering settings!
  * Number of available filtered entries is to be set in entries_r.
  */
-typedef bool (*ae_sort_filter)(struct AssetEngine *engine, const bool sort, const bool filter,
-                               struct FileSelectParams *params, struct FileDirEntryArr *entries_r);
+typedef bool (*ae_sort_filter)(struct AssetEngine *engine,
+                               const bool sort,
+                               const bool filter,
+                               struct FileSelectParams *params,
+                               struct FileDirEntryArr *entries_r);
 
 /* FILEBROWSER - Return specified block of entries in entries_r. */
-typedef bool (*ae_entries_block_get)(struct AssetEngine *engine, const int start_index, const int end_index,
+typedef bool (*ae_entries_block_get)(struct AssetEngine *engine,
+                                     const int start_index,
+                                     const int end_index,
                                      struct FileDirEntryArr *entries_r);
 
 /* FILEBROWSER - Return specified entries from their uuids, in entries_r. */
-typedef bool (*ae_entries_uuid_get)(struct AssetEngine *engine, struct AssetUUIDList *uuids,
+typedef bool (*ae_entries_uuid_get)(struct AssetEngine *engine,
+                                    struct AssetUUIDList *uuids,
                                     struct FileDirEntryArr *entries_r);
 
 /* 'pre-loading' hook, called before opening/appending/linking/updating given entries.
@@ -155,76 +163,75 @@ typedef bool (*ae_entries_uuid_get)(struct AssetEngine *engine, struct AssetUUID
  * active revision is used, no need to bother with variants, previews, etc.
  * This allows to present 'fake' entries to user, and then import actual data.
  */
-typedef bool (*ae_load_pre)(struct AssetEngine *engine, struct AssetUUIDList *uuids,
+typedef bool (*ae_load_pre)(struct AssetEngine *engine,
+                            struct AssetUUIDList *uuids,
                             struct FileDirEntryArr *entries_r);
 
 /* 'post-loading' hook, called after opening/appending/linking/updating given entries.
  * E.g. allows an advanced engine to make fancy scripted operations over loaded items. */
 /* TODO */
-typedef bool (*ae_load_post)(struct bContext *C, struct AssetEngine *engine,  struct AssetUUIDList *uuids);
+typedef bool (*ae_load_post)(struct bContext *C,
+                             struct AssetEngine *engine,
+                             struct AssetUUIDList *uuids);
 
 /* Check if given dirpath is valid for current asset engine, it can also modify it if do_change is true.
  * r_dir is assumed to be least FILE_MAX.
  * returns true if path in r_dir is valid. */
 typedef bool (*ae_check_dir)(struct AssetEngine *engine, char *r_dir, bool do_change);
 
-
-
 typedef struct AssetEngineType {
-	struct AssetEngineType *next, *prev;
+  struct AssetEngineType *next, *prev;
 
-	/* type info */
-	char idname[64]; /* best keep the same size as BKE_ST_MAXNAME */
-	int version;
+  /* type info */
+  char idname[64]; /* best keep the same size as BKE_ST_MAXNAME */
+  int version;
 
-	char name[64];
-	int flag;
+  char name[64];
+  int flag;
 
-	/* API */
-	ae_status status;
-	ae_progress progress;
+  /* API */
+  ae_status status;
+  ae_progress progress;
 
-	ae_kill kill;
+  ae_kill kill;
 
-	ae_list_dir list_dir;
-	ae_sort_filter sort_filter;
-	ae_entries_block_get entries_block_get;
-	ae_entries_uuid_get entries_uuid_get;
+  ae_list_dir list_dir;
+  ae_sort_filter sort_filter;
+  ae_entries_block_get entries_block_get;
+  ae_entries_uuid_get entries_uuid_get;
 
-	ae_previews_get previews_get;
+  ae_previews_get previews_get;
 
-	ae_ensure_uuids ensure_uuids;
+  ae_ensure_uuids ensure_uuids;
 
-	ae_load_pre load_pre;
-	ae_load_post load_post;
+  ae_load_pre load_pre;
+  ae_load_post load_post;
 
-	ae_update_check update_check;
+  ae_update_check update_check;
 
-	ae_check_dir check_dir;
+  ae_check_dir check_dir;
 
-	/* RNA integration */
-	struct ExtensionRNA ext;
+  /* RNA integration */
+  struct ExtensionRNA ext;
 } AssetEngineType;
 
 typedef struct AssetEngine {
-	AssetEngineType *type;
-	void *py_instance;
+  AssetEngineType *type;
+  void *py_instance;
 
-	/* Custom sub-classes properties. */
-	IDProperty *properties;
+  /* Custom sub-classes properties. */
+  IDProperty *properties;
 
-	int flag;
-	int refcount;
+  int flag;
+  int refcount;
 
-	struct ReportList *reports;
+  struct ReportList *reports;
 } AssetEngine;
-
-
 
 /* AssetEngine->flag */
 enum {
-	AE_DIRTY_FILTER  = 1 << 0,
-	AE_DIRTY_SORTING = 1 << 1,
+  AE_DIRTY_FILTER = 1 << 0,
+  AE_DIRTY_SORTING = 1 << 1,
 };
 
 /* Engine Types */
@@ -239,16 +246,18 @@ AssetEngine *BKE_asset_engine_create(AssetEngineType *type, struct ReportList *r
 AssetEngine *BKE_asset_engine_copy(AssetEngine *engine);
 void BKE_asset_engine_free(AssetEngine *engine);
 
-struct AssetUUIDList *BKE_asset_engine_entries_load_pre(AssetEngine *engine, struct FileDirEntryArr *r_entries);
-struct FileDirEntryArr *BKE_asset_engine_uuids_load_pre(AssetEngine *engine, struct AssetUUIDList *r_uuids);
+struct AssetUUIDList *BKE_asset_engine_entries_load_pre(AssetEngine *engine,
+                                                        struct FileDirEntryArr *r_entries);
+struct FileDirEntryArr *BKE_asset_engine_uuids_load_pre(AssetEngine *engine,
+                                                        struct AssetUUIDList *r_uuids);
 
 /* File listing utils... */
 
 typedef enum FileCheckType {
-	CHECK_NONE  = 0,
-	CHECK_DIRS  = 1 << 0,
-	CHECK_FILES = 1 << 1,
-	CHECK_ALL   = CHECK_DIRS | CHECK_FILES,
+  CHECK_NONE = 0,
+  CHECK_DIRS = 1 << 0,
+  CHECK_FILES = 1 << 1,
+  CHECK_ALL = CHECK_DIRS | CHECK_FILES,
 } FileCheckType;
 
 void BKE_filedir_view_free(struct FileDirEntryView *view);
@@ -264,14 +273,14 @@ struct FileDirEntry *BKE_filedir_entry_copy(struct FileDirEntry *entry);
 void BKE_filedir_entryarr_clear(struct FileDirEntryArr *array);
 
 #define ASSETUUID_SUB_EQUAL(_uuida, _uuidb, _member) \
-	(memcmp((_uuida)->_member, (_uuidb)->_member, sizeof((_uuida)->_member)) == 0)
+  (memcmp((_uuida)->_member, (_uuidb)->_member, sizeof((_uuida)->_member)) == 0)
 
 #define ASSETUUID_EQUAL(_uuida, _uuidb) \
-	(ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_repository) && \
-	 ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_asset) && \
-	 ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_variant) && \
-	 ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_revision) && \
-	 ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_view))
+  (ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_repository) && \
+   ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_asset) && \
+   ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_variant) && \
+   ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_revision) && \
+   ASSETUUID_SUB_EQUAL(_uuida, _uuidb, uuid_view))
 
 /* Various helpers */
 unsigned int BKE_asset_uuid_hash(const void *key);
