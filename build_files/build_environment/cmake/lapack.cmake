@@ -17,7 +17,6 @@
 # ***** END GPL LICENSE BLOCK *****
 
 set(LAPACK_EXTRA_ARGS
-        #-DOPENMESH_CORE_LIBRARY=${LIBDIR}/openmesh/lib/OpenMesh/libOpenMeshCore.a
 )
 
 ExternalProject_Add(external_lapack
@@ -25,7 +24,6 @@ ExternalProject_Add(external_lapack
         DOWNLOAD_DIR ${DOWNLOAD_DIR}
         URL_HASH SHA256=${LAPACK_HASH}
         PREFIX ${BUILD_DIR}/lapack
-       # PATCH_COMMAND ${PATCH_CMD} -p 0 -d ${BUILD_DIR}/qex/src/external_qex < ${PATCH_DIR}/qex.diff
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/lapack -Wno-dev ${DEFAULT_CMAKE_FLAGS} ${LAPACK_EXTRA_ARGS}
         INSTALL_DIR ${LIBDIR}/lapack
 )

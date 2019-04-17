@@ -60,7 +60,7 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     int num_tris = BKE_mesh_runtime_looptri_len(mesh);
     int num_verts = mesh->totvert;
     qex_TriMesh *trimesh =  MEM_callocN(sizeof(qex_TriMesh), "trimesh");
-    qex_QuadMesh *quadmesh = MEM_callocN(sizeof(qex_QuadMesh), "quadmesh");
+    qex_QuadMesh quadmesh; //= MEM_callocN(sizeof(qex_QuadMesh), "quadmesh");
     //qex_Valence *valence;
 
     MVertTri *verttri = MEM_callocN(sizeof(*verttri) * (size_t)num_tris, "remesh_looptri");
@@ -133,9 +133,6 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     }
 
     for (int i = 0; i < num_tris; i++) {
-        //printf("UVTri (%d %d) (%f %f)\n", i, 0, uv_tris[i][0][0],  uv_tris[i][0][1]);
-        //printf("UVTri (%d %d) (%f %f)\n", i, 1, uv_tris[i][1][0],  uv_tris[i][1][1]);
-        //printf("UVTri (%d %d) (%f %f)\n", i, 2, uv_tris[i][2][0],  uv_tris[i][2][1]);
 
         trimesh->uvTris[i].uvs[0].x[0] = uv_tris[i][0][0];
         trimesh->uvTris[i].uvs[0].x[1] = uv_tris[i][0][1];
@@ -148,22 +145,22 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     }
 
     //quad extraction
-    extractQuadMesh(trimesh, NULL, quadmesh);
+    extractQuadMesh(trimesh, NULL, &quadmesh);
 
     //rebuild mesh
-    if (quadmesh->quad_count > 0) {
-        result = BKE_mesh_new_nomain(quadmesh->vertex_count, 0, quadmesh->quad_count, 0, 0);
-        for (int i = 0; i < quadmesh->vertex_count; i++) {
-            result->mvert[i].co[0] = quadmesh->vertices[i].x[0];
-            result->mvert[i].co[1] = quadmesh->vertices[i].x[1];
-            result->mvert[i].co[2] = quadmesh->vertices[i].x[2];
+    if (quadmesh.quad_count > 0) {
+        result = BKE_mesh_new_nomain(quadmesh.vertex_count, 0, quadmesh.quad_count, 0, 0);
+        for (int i = 0; i < quadmesh.vertex_count; i++) {
+            result->mvert[i].co[0] = quadmesh.vertices[i].x[0];
+            result->mvert[i].co[1] = quadmesh.vertices[i].x[1];
+            result->mvert[i].co[2] = quadmesh.vertices[i].x[2];
         }
 
-        for (int i = 0; i < quadmesh->quad_count; i++) {
-            result->mface[i].v4 = quadmesh->quads[i].indices[0];
-            result->mface[i].v3 = quadmesh->quads[i].indices[1];
-            result->mface[i].v2 = quadmesh->quads[i].indices[2];
-            result->mface[i].v1 = quadmesh->quads[i].indices[3];
+        for (int i = 0; i < quadmesh.quad_count; i++) {
+            result->mface[i].v4 = quadmesh.quads[i].indices[0];
+            result->mface[i].v3 = quadmesh.quads[i].indices[1];
+            result->mface[i].v2 = quadmesh.quads[i].indices[2];
+            result->mface[i].v1 = quadmesh.quads[i].indices[3];
             result->mface->mat_nr = 0;
         }
 
@@ -185,11 +182,11 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     MEM_freeN(trimesh);
     MEM_freeN(verttri);
 
-    if (quadmesh->vertices)
-        free(quadmesh->vertices);
-    if (quadmesh->quads)
-        free(quadmesh->quads);
-    MEM_freeN(quadmesh);
+    //if (quadmesh->vertices)
+    //    free(quadmesh->vertices);
+    //if (quadmesh->quads)
+    //    free(quadmesh->quads);
+    //MEM_freeN(quadmesh);
 
     return result;
     //remap customdata (reproject)
