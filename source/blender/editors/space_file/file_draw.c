@@ -21,7 +21,6 @@
  * \ingroup spfile
  */
 
-
 #include <math.h>
 #include <string.h>
 #include <errno.h>
@@ -138,7 +137,6 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 
 	/* Is there enough space for the execute / cancel buttons? */
 
-
 	if (is_browse_only) {
 		loadbutton = 0;
 	}
@@ -167,16 +165,28 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 
 	/* Text input fields for directory and file. */
 	if (available_w > 0) {
-		const struct FileDirEntry *file = sfile->files ? filelist_file(sfile->files, params->active_file) : NULL;
+    const struct FileDirEntry *file = sfile->files ?
+                                          filelist_file(sfile->files, params->active_file) :
+                                          NULL;
 		int overwrite_alert = file_draw_check_exists(sfile);
 		const bool is_active_dir = file && (file->typeflag & FILE_TYPE_FOLDER);
 
 		/* callbacks for operator check functions */
 		UI_block_func_set(block, file_draw_check_cb, NULL, NULL);
 
-		but = uiDefBut(block, UI_BTYPE_TEXT, -1, "",
-		               min_x, line1_y, line1_w - chan_offs, btn_h,
-		               params->dir, 0.0, (float)FILE_MAX, 0, 0,
+    but = uiDefBut(block,
+                   UI_BTYPE_TEXT,
+                   -1,
+                   "",
+                   min_x,
+                   line1_y,
+                   line1_w - chan_offs,
+                   btn_h,
+                   params->dir,
+                   0.0,
+                   (float)FILE_MAX,
+                   0,
+                   0,
 		               TIP_("File path"));
 		UI_but_func_complete_set(but, autocomplete_directory, NULL);
 		UI_but_flag_enable(but, UI_BUT_NO_UTF8);
@@ -189,10 +199,20 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 			UI_but_flag_enable(but, UI_BUT_DISABLED);
 
 		if ((params->flag & FILE_DIRSEL_ONLY) == 0) {
-			but = uiDefBut(block, UI_BTYPE_TEXT, -1, "",
-			               min_x, line2_y, line2_w - chan_offs, btn_h,
+      but = uiDefBut(
+          block,
+          UI_BTYPE_TEXT,
+          -1,
+          "",
+          min_x,
+          line2_y,
+          line2_w - chan_offs,
+          btn_h,
 			               is_active_dir ? (char *)"" : params->file,
-			               0.0, (float)FILE_MAXFILE, 0, 0,
+          0.0,
+          (float)FILE_MAXFILE,
+          0,
+          0,
 			               TIP_(overwrite_alert ? N_("File name, overwrite existing") : N_("File name")));
 			UI_but_func_complete_set(but, autocomplete_file, NULL);
 			UI_but_flag_enable(but, UI_BUT_NO_UTF8);
@@ -214,15 +234,27 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 	/* Filename number increment / decrement buttons. */
 	if (fnumbuttons && (params->flag & FILE_DIRSEL_ONLY) == 0) {
 		UI_block_align_begin(block);
-		but = uiDefIconButO(block, UI_BTYPE_BUT, "FILE_OT_filenum", 0, ICON_REMOVE,
-		                    min_x + line2_w + separator - chan_offs, line2_y,
-		                    btn_fn_w, btn_h,
+    but = uiDefIconButO(block,
+                        UI_BTYPE_BUT,
+                        "FILE_OT_filenum",
+                        0,
+                        ICON_REMOVE,
+                        min_x + line2_w + separator - chan_offs,
+                        line2_y,
+                        btn_fn_w,
+                        btn_h,
 		                    TIP_("Decrement the filename number"));
 		RNA_int_set(UI_but_operator_ptr_get(but), "increment", -1);
 
-		but = uiDefIconButO(block, UI_BTYPE_BUT, "FILE_OT_filenum", 0, ICON_ADD,
-		                    min_x + line2_w + separator + btn_fn_w - chan_offs, line2_y,
-		                    btn_fn_w, btn_h,
+    but = uiDefIconButO(block,
+                        UI_BTYPE_BUT,
+                        "FILE_OT_filenum",
+                        0,
+                        ICON_ADD,
+                        min_x + line2_w + separator + btn_fn_w - chan_offs,
+                        line2_y,
+                        btn_fn_w,
+                        btn_h,
 		                    TIP_("Increment the filename number"));
 		RNA_int_set(UI_but_operator_ptr_get(but), "increment", 1);
 		UI_block_align_end(block);
@@ -230,7 +262,9 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 
 	/* Execute / cancel buttons. */
 	if (loadbutton) {
-		const struct FileDirEntry *file = sfile->files ? filelist_file(sfile->files, params->active_file) : NULL;
+    const struct FileDirEntry *file = sfile->files ?
+                                          filelist_file(sfile->files, params->active_file) :
+                                          NULL;
 		char const *str_exec;
 
 		if (file && FILENAME_IS_PARENT(file->relpath)) {
@@ -243,27 +277,42 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 			str_exec = params->title;  /* params->title is already translated! */
 		}
 
-		but = uiDefButO(
-		        block, UI_BTYPE_BUT, "FILE_OT_execute", WM_OP_EXEC_REGION_WIN, str_exec,
-		        max_x - loadbutton, line1_y, loadbutton, btn_h, "");
+    but = uiDefButO(block,
+                    UI_BTYPE_BUT,
+                    "FILE_OT_execute",
+                    WM_OP_EXEC_REGION_WIN,
+                    str_exec,
+                    max_x - loadbutton,
+                    line1_y,
+                    loadbutton,
+                    btn_h,
+                    "");
 		/* Just a display hint. */
 		UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 
-		uiDefButO(block, UI_BTYPE_BUT, "FILE_OT_cancel", WM_OP_EXEC_REGION_WIN, IFACE_("Cancel"),
-		          max_x - loadbutton, line2_y, loadbutton, btn_h, "");
+    uiDefButO(block,
+              UI_BTYPE_BUT,
+              "FILE_OT_cancel",
+              WM_OP_EXEC_REGION_WIN,
+              IFACE_("Cancel"),
+              max_x - loadbutton,
+              line2_y,
+              loadbutton,
+              btn_h,
+              "");
 	}
 
 	UI_block_end(C, block);
 	UI_block_draw(C, block);
 }
 
-
 static void draw_tile(int sx, int sy, int width, int height, int colorid, int shade)
 {
 	float color[4];
 	UI_GetThemeColorShade4fv(colorid, shade, color);
 	UI_draw_roundbox_corner_set(UI_CNR_ALL);
-	UI_draw_roundbox_aa(true, (float)sx, (float)(sy - height), (float)(sx + width), (float)sy, 5.0f, color);
+  UI_draw_roundbox_aa(
+      true, (float)sx, (float)(sy - height), (float)(sx + width), (float)sy, 5.0f, color);
 }
 
 
@@ -279,7 +328,8 @@ static void file_draw_icon(
 
 	/*if (icon == ICON_FILE_BLANK) alpha = 0.375f;*/
 
-	but = uiDefIconBut(block, UI_BTYPE_LABEL, 0, icon, x, y, width, height, NULL, 0.0f, 0.0f, 0.0f, 0.0f, NULL);
+  but = uiDefIconBut(
+      block, UI_BTYPE_LABEL, 0, icon, x, y, width, height, NULL, 0.0f, 0.0f, 0.0f, 0.0f, NULL);
 	UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path));
 
 	if (drag_data != NULL) {
@@ -288,9 +338,12 @@ static void file_draw_icon(
 	}
 }
 
-
-static void file_draw_string(
-        int sx, int sy, const char *string, float width, int height, eFontStyle_Align align,
+static void file_draw_string(int sx,
+                             int sy,
+                             const char *string,
+                             float width,
+                             int height,
+                             eFontStyle_Align align,
         const uchar col[4])
 {
 	uiStyle *style;
@@ -315,9 +368,13 @@ static void file_draw_string(
 	rect.ymin = sy - height;
 	rect.ymax = sy;
 
-	UI_fontstyle_draw(
-	        &fs, &rect, fname, col,
-	        &(struct uiFontStyleDraw_Params) { .align = align, });
+  UI_fontstyle_draw(&fs,
+                    &rect,
+                    fname,
+                    col,
+                    &(struct uiFontStyleDraw_Params){
+                        .align = align,
+                    });
 }
 
 void file_calc_previews(const bContext *C, ARegion *ar)
@@ -351,8 +408,7 @@ static void file_draw_preview(
 	ui_imby = imb->y * UI_DPI_FAC;
 	/* Unlike thumbnails, icons are not scaled up. */
 	if (((ui_imbx > layout->prv_w) || (ui_imby > layout->prv_h)) ||
-	    (!is_icon && ((ui_imbx < layout->prv_w) || (ui_imby < layout->prv_h))))
-	{
+      (!is_icon && ((ui_imbx < layout->prv_w) || (ui_imby < layout->prv_h)))) {
 		if (imb->x > imb->y) {
 			scaledx = (float)layout->prv_w;
 			scaledy = ((float)imb->y / (float)imb->x) * layout->prv_w;
@@ -393,14 +449,28 @@ static void file_draw_preview(
 
 	if (!is_icon && typeflags & FILE_TYPE_BLENDERLIB) {
 		/* Datablock preview images use premultiplied alpha. */
-		GPU_blend_set_func_separate(GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend_set_func_separate(
+        GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 	}
 
 	IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_COLOR);
-	immDrawPixelsTexScaled(&state, (float)xco, (float)yco, imb->x, imb->y, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST, imb->rect,
-	                       scale, scale, 1.0f, 1.0f, col);
+  immDrawPixelsTexScaled(&state,
+                         (float)xco,
+                         (float)yco,
+                         imb->x,
+                         imb->y,
+                         GL_RGBA,
+                         GL_UNSIGNED_BYTE,
+                         GL_NEAREST,
+                         imb->rect,
+                         scale,
+                         scale,
+                         1.0f,
+                         1.0f,
+                         col);
 
-	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
 	if (icon) {
 		UI_icon_draw_aspect((float)xco, (float)yco, icon, icon_aspect, 1.0f, NULL);
@@ -448,12 +518,8 @@ static void renamebutton_cb(bContext *C, void *UNUSED(arg1), char *oldname)
 	if (!STREQ(orgname, newname)) {
 		if (!BLI_exists(newname)) {
 			errno = 0;
-			if ((BLI_rename(orgname, newname) != 0) ||
-			    !BLI_exists(newname))
-			{
-				WM_reportf(RPT_ERROR,
-				           "Could not rename: %s",
-				           errno ? strerror(errno) : "unknown error");
+      if ((BLI_rename(orgname, newname) != 0) || !BLI_exists(newname)) {
+        WM_reportf(RPT_ERROR, "Could not rename: %s", errno ? strerror(errno) : "unknown error");
 				WM_report_banner_show();
 			}
 			else {
@@ -476,7 +542,6 @@ static void renamebutton_cb(bContext *C, void *UNUSED(arg1), char *oldname)
 	}
 }
 
-
 static void draw_background(FileLayout *layout, View2D *v2d)
 {
 	int i;
@@ -488,9 +553,14 @@ static void draw_background(FileLayout *layout, View2D *v2d)
 
 	/* alternating flat shade background */
 	for (i = 0; (i <= layout->rows); i += 2) {
-		sy = (int)v2d->cur.ymax - i * (layout->tile_h + 2 * layout->tile_border_y) - layout->tile_border_y;
+    sy = (int)v2d->cur.ymax - i * (layout->tile_h + 2 * layout->tile_border_y) -
+         layout->tile_border_y;
 
-		immRectf(pos, v2d->cur.xmin, (float)sy, v2d->cur.xmax, (float)(sy + layout->tile_h + 2 * layout->tile_border_y));
+    immRectf(pos,
+             v2d->cur.xmin,
+             (float)sy,
+             v2d->cur.xmax,
+             (float)(sy + layout->tile_h + 2 * layout->tile_border_y));
 	}
 
 	immUnbindProgram();
@@ -521,7 +591,8 @@ static void draw_dividers(FileLayout *layout, View2D *v2d)
 
 		GPUVertFormat *format = immVertexFormat();
 		uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
-		uint color = GPU_vertformat_attr_add(format, "color", GPU_COMP_U8, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    uint color = GPU_vertformat_attr_add(
+        format, "color", GPU_COMP_U8, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
 		immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
 		immBegin(GPU_PRIM_LINES, vertex_len);
@@ -584,7 +655,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
 	}
 
 	offset = ED_fileselect_layout_offset(layout, (int)ar->v2d.cur.xmin, (int)-ar->v2d.cur.ymax);
-	if (offset < 0) offset = 0;
+  if (offset < 0)
+    offset = 0;
 
 	numfiles_layout = ED_fileselect_layout_numfiles(layout, ar);
 
@@ -598,13 +670,15 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
 	filelist_file_cache_slidingwindow_set(files, numfiles_layout);
 
-	textwidth = (FILE_IMGDISPLAY == params->display) ? layout->tile_w : (int)layout->column_widths[COLUMN_NAME];
+  textwidth = (FILE_IMGDISPLAY == params->display) ? layout->tile_w :
+                                                     (int)layout->column_widths[COLUMN_NAME];
 	textheight = (int)(layout->textheight * 3.0 / 2.0 + 0.5);
 
 	align = (FILE_IMGDISPLAY == params->display) ? UI_STYLE_TEXT_CENTER : UI_STYLE_TEXT_LEFT;
 
 	if (numfiles > 0) {
-		const bool success = filelist_file_cache_block(files, min_ii(offset + (numfiles_layout / 2), numfiles - 1));
+    const bool success = filelist_file_cache_block(
+        files, min_ii(offset + (numfiles_layout / 2), numfiles - 1));
 		BLI_assert(success);
 		UNUSED_VARS_NDEBUG(success);
 
@@ -616,8 +690,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
 			const bool previews_running = filelist_cache_previews_running(files);
 //			printf("%s: preview task: %d\n", __func__, previews_running);
 			if (previews_running && !sfile->previews_timer) {
-				sfile->previews_timer = WM_event_add_timer_notifier(CTX_wm_manager(C), CTX_wm_window(C),
-				                                                    NC_SPACE | ND_SPACE_FILE_PREVIEW, 0.01);
+        sfile->previews_timer = WM_event_add_timer_notifier(
+            CTX_wm_manager(C), CTX_wm_window(C), NC_SPACE | ND_SPACE_FILE_PREVIEW, 0.01);
 			}
 			if (!previews_running && sfile->previews_timer) {
 				/* Preview is not running, no need to keep generating update events! */
@@ -644,14 +718,19 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
 		if (!(file_selflag & FILE_SEL_EDITING)) {
 			if ((params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ||
-			    (file_selflag & FILE_SEL_SELECTED))
-			{
+          (file_selflag & FILE_SEL_SELECTED)) {
 				int colorid = (file_selflag & FILE_SEL_SELECTED) ? TH_HILITE : TH_BACK;
-				int shade = (params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ? 35 : 0;
+        int shade = (params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ? 35 :
+                                                                                             0;
 
 				BLI_assert(i == 0 || !FILENAME_IS_CURRPAR(file->relpath));
 
-				draw_tile(sx, sy - 1, layout->tile_w + 4, sfile->layout->tile_h + layout->tile_border_y, colorid, shade);
+        draw_tile(sx,
+                  sy - 1,
+                  layout->tile_w + 4,
+                  sfile->layout->tile_h + layout->tile_border_y,
+                  colorid,
+                  shade);
 			}
 		}
 		UI_draw_roundbox_corner_set(UI_CNR_NONE);
@@ -716,9 +795,20 @@ void file_draw_list(const bContext *C, ARegion *ar)
 				width = textwidth;
 			}
 
-			but = uiDefBut(block, UI_BTYPE_TEXT, 1, "", sx, sy - layout->tile_h - 0.15f * UI_UNIT_X,
-			               width, textheight, sfile->params->renamefile, 1.0f,
-			               (float)sizeof(sfile->params->renamefile), 0, 0, "");
+      but = uiDefBut(block,
+                     UI_BTYPE_TEXT,
+                     1,
+                     "",
+                     sx,
+                     sy - layout->tile_h - 0.15f * UI_UNIT_X,
+                     width,
+                     textheight,
+                     sfile->params->renamefile,
+                     1.0f,
+                     (float)sizeof(sfile->params->renamefile),
+                     0,
+                     0,
+                     "");
 			UI_but_func_rename_set(but, renamebutton_cb, file);
 			UI_but_flag_enable(but, UI_BUT_NO_UTF8); /* allow non utf8 names */
 			UI_but_flag_disable(but, UI_BUT_UNDO);
@@ -729,21 +819,26 @@ void file_draw_list(const bContext *C, ARegion *ar)
 		}
 
 		if (!(file_selflag& FILE_SEL_EDITING)) {
-			int tpos = (FILE_IMGDISPLAY == params->display) ? sy - layout->tile_h + layout->textheight : sy;
+      int tpos = (FILE_IMGDISPLAY == params->display) ? sy - layout->tile_h + layout->textheight :
+                                                        sy;
 			file_draw_string(sx + 1, tpos, file->name, (float)textwidth, textheight, align, text_col);
 		}
 
 		sx += (int)layout->column_widths[COLUMN_NAME] + column_space;
 		if (params->display == FILE_SHORTDISPLAY) {
 			if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
-			    !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB)))
-			{
+          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB))) {
 				if ((file->entry->size_str[0] == '\0') || update_stat_strings) {
-					BLI_filelist_entry_size_to_string(NULL, file->entry->size, small_size, file->entry->size_str);
+          BLI_filelist_entry_size_to_string(
+              NULL, file->entry->size, small_size, file->entry->size_str);
 				}
-				file_draw_string(
-				            sx, sy, file->entry->size_str, layout->column_widths[COLUMN_SIZE], layout->tile_h,
-				            align, text_col);
+        file_draw_string(sx,
+                         sy,
+                         file->entry->size_str,
+                         layout->column_widths[COLUMN_SIZE],
+                         layout->tile_h,
+                         align,
+                         text_col);
 			}
 			sx += (int)layout->column_widths[COLUMN_SIZE] + column_space;
 		}
@@ -753,13 +848,21 @@ void file_draw_list(const bContext *C, ARegion *ar)
 					BLI_filelist_entry_datetime_to_string(
 					            NULL, file->entry->time, small_size, file->entry->time_str, file->entry->date_str);
 				}
-				file_draw_string(
-				            sx, sy, file->entry->date_str, layout->column_widths[COLUMN_DATE], layout->tile_h,
-				            align, text_col);
+        file_draw_string(sx,
+                         sy,
+                         file->entry->date_str,
+                         layout->column_widths[COLUMN_DATE],
+                         layout->tile_h,
+                         align,
+                         text_col);
 				sx += (int)layout->column_widths[COLUMN_DATE] + column_space;
-				file_draw_string(
-				            sx, sy, file->entry->time_str, layout->column_widths[COLUMN_TIME], layout->tile_h,
-				            align, text_col);
+        file_draw_string(sx,
+                         sy,
+                         file->entry->time_str,
+                         layout->column_widths[COLUMN_TIME],
+                         layout->tile_h,
+                         align,
+                         text_col);
 				sx += (int)layout->column_widths[COLUMN_TIME] + column_space;
 			}
 			else {
@@ -768,14 +871,18 @@ void file_draw_list(const bContext *C, ARegion *ar)
 			}
 
 			if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
-			    !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB)))
-			{
+          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB))) {
 				if ((file->entry->size_str[0] == '\0') || update_stat_strings) {
-					BLI_filelist_entry_size_to_string(NULL, file->entry->size, small_size, file->entry->size_str);
-				}
-				file_draw_string(
-				            sx, sy, file->entry->size_str, layout->column_widths[COLUMN_SIZE], layout->tile_h,
-				            align, text_col);
+          BLI_filelist_entry_size_to_string(
+              NULL, file->entry->size, small_size, file->entry->size_str);
+        }
+        file_draw_string(sx,
+                         sy,
+                         file->entry->size_str,
+                         layout->column_widths[COLUMN_SIZE],
+                         layout->tile_h,
+                         align,
+                         text_col);
 			}
 			sx += (int)layout->column_widths[COLUMN_SIZE] + column_space;
 		}

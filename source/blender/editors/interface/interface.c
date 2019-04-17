@@ -21,7 +21,6 @@
  * \ingroup edinterface
  */
 
-
 #include <float.h>
 #include <limits.h>
 #include <math.h>
@@ -83,7 +82,10 @@
 #include "interface_intern.h"
 
 /* prototypes. */
-static void ui_but_to_pixelrect(struct rcti *rect, const struct ARegion *ar, struct uiBlock *block, struct uiBut *but);
+static void ui_but_to_pixelrect(struct rcti *rect,
+                                const struct ARegion *ar,
+                                struct uiBlock *block,
+                                struct uiBut *but);
 static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *but_p);
 static void ui_def_but_rna__panel_type(bContext *UNUSED(C), uiLayout *layout, void *but_p);
 static void ui_def_but_rna__menu_type(bContext *UNUSED(C), uiLayout *layout, void *but_p);
@@ -93,7 +95,8 @@ static void ui_def_but_rna__menu_type(bContext *UNUSED(C), uiLayout *layout, voi
 #define UI_GET_BUT_VALUE_INIT(_but, _value) \
 	if (_value == DBL_MAX) { \
 		(_value) = ui_but_value_get(_but); \
-	} ((void)0)
+  } \
+  ((void)0)
 
 #define B_NOP -1
 
@@ -139,8 +142,12 @@ void ui_block_to_window_fl(const ARegion *ar, uiBlock *block, float *x, float *y
 		gy += block->panel->ofsy;
 	}
 
-	*x = ((float)sx) + ((float)getsizex) * (0.5f + 0.5f * (gx * block->winmat[0][0] + gy * block->winmat[1][0] + block->winmat[3][0]));
-	*y = ((float)sy) + ((float)getsizey) * (0.5f + 0.5f * (gx * block->winmat[0][1] + gy * block->winmat[1][1] + block->winmat[3][1]));
+  *x = ((float)sx) +
+       ((float)getsizex) * (0.5f + 0.5f * (gx * block->winmat[0][0] + gy * block->winmat[1][0] +
+                                           block->winmat[3][0]));
+  *y = ((float)sy) +
+       ((float)getsizey) * (0.5f + 0.5f * (gx * block->winmat[0][1] + gy * block->winmat[1][1] +
+                                           block->winmat[3][1]));
 }
 
 void ui_block_to_window(const ARegion *ar, uiBlock *block, int *x, int *y)
@@ -271,9 +278,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 		BLI_rctf_translate(&but->rect, offset, 0);
 		if (but->type == UI_BTYPE_SEPR_SPACER) {
 			/* How much the next block overlap with the current segment */
-			int overlap = (
-			        (i == sepr_flex_len - 1) ?
-			        buttons_width - spacers_pos[i] :
+      int overlap = ((i == sepr_flex_len - 1) ? buttons_width - spacers_pos[i] :
 			        (spacers_pos[i + 1] - spacers_pos[i]) / 2);
 			int segment_end = segment_width * (i + 1);
 			int spacer_end = segment_end - overlap;
@@ -387,8 +392,10 @@ void ui_block_bounds_calc(uiBlock *block)
 
 	if (BLI_listbase_is_empty(&block->buttons)) {
 		if (block->panel) {
-			block->rect.xmin = 0.0; block->rect.xmax = block->panel->sizex;
-			block->rect.ymin = 0.0; block->rect.ymax = block->panel->sizey;
+      block->rect.xmin = 0.0;
+      block->rect.xmax = block->panel->sizex;
+      block->rect.ymin = 0.0;
+      block->rect.ymax = block->panel->sizey;
 		}
 	}
 	else {
@@ -446,7 +453,6 @@ static void ui_block_bounds_calc_centered(wmWindow *window, uiBlock *block)
 
 	/* now recompute bounds and safety */
 	ui_block_bounds_calc(block);
-
 }
 
 static void ui_block_bounds_calc_centered_pie(uiBlock *block)
@@ -463,8 +469,7 @@ static void ui_block_bounds_calc_centered_pie(uiBlock *block)
 }
 
 static void ui_block_bounds_calc_popup(
-        wmWindow *window, uiBlock *block,
-        eBlockBoundsCalc bounds_calc, const int xy[2], int r_xy[2])
+    wmWindow *window, uiBlock *block, eBlockBoundsCalc bounds_calc, const int xy[2], int r_xy[2])
 {
 	int width, height, oldwidth, oldheight;
 	int oldbounds, xmax, ymax, raw_x, raw_y;
@@ -621,16 +626,34 @@ static bool ui_but_equals_old(const uiBut *but, const uiBut *oldbut)
 {
 	/* various properties are being compared here, hopefully sufficient
 	 * to catch all cases, but it is simple to add more checks later */
-	if (but->retval != oldbut->retval) { return false; }
-	if (but->rnapoin.data != oldbut->rnapoin.data) { return false; }
-	if (but->rnaprop != oldbut->rnaprop || but->rnaindex != oldbut->rnaindex) { return false; }
-	if (but->func != oldbut->func) { return false; }
-	if (but->funcN != oldbut->funcN) { return false; }
-	if (oldbut->func_arg1 != oldbut && but->func_arg1 != oldbut->func_arg1) { return false; }
-	if (oldbut->func_arg2 != oldbut && but->func_arg2 != oldbut->func_arg2) { return false; }
+  if (but->retval != oldbut->retval) {
+    return false;
+  }
+  if (but->rnapoin.data != oldbut->rnapoin.data) {
+    return false;
+  }
+  if (but->rnaprop != oldbut->rnaprop || but->rnaindex != oldbut->rnaindex) {
+    return false;
+  }
+  if (but->func != oldbut->func) {
+    return false;
+  }
+  if (but->funcN != oldbut->funcN) {
+    return false;
+  }
+  if (oldbut->func_arg1 != oldbut && but->func_arg1 != oldbut->func_arg1) {
+    return false;
+  }
+  if (oldbut->func_arg2 != oldbut && but->func_arg2 != oldbut->func_arg2) {
+    return false;
+  }
 	if (!but->funcN && ((but->poin != oldbut->poin && (uiBut *)oldbut->poin != oldbut) ||
-	                    (but->pointype != oldbut->pointype))) { return false; }
-	if (but->optype != oldbut->optype) { return false; }
+                      (but->pointype != oldbut->pointype))) {
+    return false;
+  }
+  if (but->optype != oldbut->optype) {
+    return false;
+  }
 
 	return true;
 }
@@ -659,14 +682,16 @@ uiBut *ui_but_find_new(uiBlock *block_new, const uiBut *but_old)
 /**
  * \return true when \a but_p is set (only done for active buttons).
  */
-static bool ui_but_update_from_old_block(const bContext *C, uiBlock *block, uiBut **but_p, uiBut **but_old_p)
+static bool ui_but_update_from_old_block(const bContext *C,
+                                         uiBlock *block,
+                                         uiBut **but_p,
+                                         uiBut **but_old_p)
 {
 	const int drawflag_copy = 0;  /* None currently. */
 
 	uiBlock *oldblock = block->oldblock;
 	uiBut *oldbut = NULL, *but = *but_p;
 	bool found_active = false;
-
 
 #if 0
 	/* simple/stupid - search every time */
@@ -686,7 +711,6 @@ static bool ui_but_update_from_old_block(const bContext *C, uiBlock *block, uiBu
 	}
 	(*but_old_p) = oldbut ? oldbut->next : NULL;
 #endif
-
 
 	if (!oldbut) {
 		return found_active;
@@ -853,8 +877,6 @@ bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *ar, uiBloc
 	return done;
 }
 
-
-
 /* simulate button click */
 void UI_but_execute(const bContext *C, uiBut *but)
 {
@@ -914,10 +936,10 @@ static void ui_menu_block_set_keyaccels(uiBlock *block)
 			if (!ELEM(but->type,
 			          UI_BTYPE_BUT,
 			          UI_BTYPE_BUT_MENU,
-			          UI_BTYPE_MENU, UI_BTYPE_BLOCK,
+                UI_BTYPE_MENU,
+                UI_BTYPE_BLOCK,
 			          UI_BTYPE_PULLDOWN) ||
-			    (but->flag & UI_HIDDEN))
-			{
+          (but->flag & UI_HIDDEN)) {
 				/* pass */
 			}
 			else if (but->menu_key == '\0') {
@@ -992,10 +1014,7 @@ void ui_but_add_shortcut(uiBut *but, const char *shortcut_str, const bool do_str
 			butstr_orig = BLI_strdup(but->str);
 		}
 		BLI_snprintf(
-		        but->strdata,
-		        sizeof(but->strdata),
-		        "%s" UI_SEP_CHAR_S "%s",
-		        butstr_orig, shortcut_str);
+        but->strdata, sizeof(but->strdata), "%s" UI_SEP_CHAR_S "%s", butstr_orig, shortcut_str);
 		MEM_freeN(butstr_orig);
 		but->str = but->strdata;
 		but->flag |= UI_BUT_HAS_SEP_CHAR;
@@ -1011,26 +1030,26 @@ void ui_but_add_shortcut(uiBut *but, const char *shortcut_str, const bool do_str
  * - #ui_but_event_property_operator_string
  * \{ */
 
-static bool ui_but_event_operator_string_from_operator(
-        const bContext *C, uiBut *but,
-        char *buf, const size_t buf_len)
+static bool ui_but_event_operator_string_from_operator(const bContext *C,
+                                                       uiBut *but,
+                                                       char *buf,
+                                                       const size_t buf_len)
 {
 	BLI_assert(but->optype != NULL);
 	bool found = false;
 	IDProperty *prop = (but->opptr) ? but->opptr->data : NULL;
 
 	if (WM_key_event_operator_string(
-	            C, but->optype->idname, but->opcontext, prop, true,
-	            buf, buf_len))
-	{
+          C, but->optype->idname, but->opcontext, prop, true, buf, buf_len)) {
 		found = true;
 	}
 	return found;
 }
 
-static bool ui_but_event_operator_string_from_menu(
-        const bContext *C, uiBut *but,
-        char *buf, const size_t buf_len)
+static bool ui_but_event_operator_string_from_menu(const bContext *C,
+                                                   uiBut *but,
+                                                   char *buf,
+                                                   const size_t buf_len)
 {
 	MenuType *mt = UI_but_menutype_get(but);
 	BLI_assert(mt != NULL);
@@ -1044,9 +1063,7 @@ static bool ui_but_event_operator_string_from_menu(
 	IDP_AddToGroup(prop_menu, IDP_NewString(mt->idname, "name", sizeof(mt->idname)));
 
 	if (WM_key_event_operator_string(
-	            C, "WM_OT_call_menu", WM_OP_INVOKE_REGION_WIN, prop_menu, true,
-	            buf, buf_len))
-	{
+          C, "WM_OT_call_menu", WM_OP_INVOKE_REGION_WIN, prop_menu, true, buf, buf_len)) {
 		found = true;
 	}
 
@@ -1055,9 +1072,10 @@ static bool ui_but_event_operator_string_from_menu(
 	return found;
 }
 
-static bool ui_but_event_operator_string_from_panel(
-        const bContext *C, uiBut *but,
-        char *buf, const size_t buf_len)
+static bool ui_but_event_operator_string_from_panel(const bContext *C,
+                                                    uiBut *but,
+                                                    char *buf,
+                                                    const size_t buf_len)
 {
 	/** Nearly exact copy of #ui_but_event_operator_string_from_menu */
 	PanelType *pt = UI_but_paneltype_get(but);
@@ -1070,16 +1088,29 @@ static bool ui_but_event_operator_string_from_panel(
 	IDPropertyTemplate val = {0};
 	prop_panel = IDP_New(IDP_GROUP, &val, __func__); /* dummy, name is unimportant  */
 	IDP_AddToGroup(prop_panel, IDP_NewString(pt->idname, "name", sizeof(pt->idname)));
-	IDP_AddToGroup(prop_panel, IDP_New(IDP_INT, &(IDPropertyTemplate){ .i = pt->space_type, }, "space_type"));
-	IDP_AddToGroup(prop_panel, IDP_New(IDP_INT, &(IDPropertyTemplate){ .i = pt->region_type, }, "region_type"));
+  IDP_AddToGroup(prop_panel,
+                 IDP_New(IDP_INT,
+                         &(IDPropertyTemplate){
+                             .i = pt->space_type,
+                         },
+                         "space_type"));
+  IDP_AddToGroup(prop_panel,
+                 IDP_New(IDP_INT,
+                         &(IDPropertyTemplate){
+                             .i = pt->region_type,
+                         },
+                         "region_type"));
 
 	for (int i = 0; i < 2; i++) {
 		/* FIXME(campbell): We can't reasonably search all configurations - long term. */
-		IDP_ReplaceInGroup(prop_panel, IDP_New(IDP_INT, &(IDPropertyTemplate){ .i = i, }, "keep_open"));
+    IDP_ReplaceInGroup(prop_panel,
+                       IDP_New(IDP_INT,
+                               &(IDPropertyTemplate){
+                                   .i = i,
+                               },
+                               "keep_open"));
 		if (WM_key_event_operator_string(
-		            C, "WM_OT_call_panel", WM_OP_INVOKE_REGION_WIN, prop_panel, true,
-		            buf, buf_len))
-		{
+            C, "WM_OT_call_panel", WM_OP_INVOKE_REGION_WIN, prop_panel, true, buf, buf_len)) {
 			found = true;
 			break;
 		}
@@ -1090,9 +1121,10 @@ static bool ui_but_event_operator_string_from_panel(
 	return found;
 }
 
-static bool ui_but_event_operator_string(
-        const bContext *C, uiBut *but,
-        char *buf, const size_t buf_len)
+static bool ui_but_event_operator_string(const bContext *C,
+                                         uiBut *but,
+                                         char *buf,
+                                         const size_t buf_len)
 {
 	bool found = false;
 
@@ -1109,9 +1141,10 @@ static bool ui_but_event_operator_string(
 	return found;
 }
 
-static bool ui_but_event_property_operator_string(
-        const bContext *C, uiBut *but,
-        char *buf, const size_t buf_len)
+static bool ui_but_event_property_operator_string(const bContext *C,
+                                                  uiBut *but,
+                                                  char *buf,
+                                                  const size_t buf_len)
 {
 	/* context toggle operator names to check... */
 
@@ -1142,7 +1175,6 @@ static bool ui_but_event_property_operator_string(
 	const char **opnames = ctx_toggle_opnames;
 	int          opnames_len = ARRAY_SIZE(ctx_toggle_opnames);
 
-
 	int  prop_enum_value = -1;
 	bool prop_enum_value_ok = false;
 	bool prop_enum_value_is_int = false;
@@ -1151,14 +1183,12 @@ static bool ui_but_event_property_operator_string(
 	PropertyRNA *prop = but->rnaprop;
 	if ((but->type == UI_BTYPE_BUT_MENU) && (but->block->handle != NULL)) {
 		uiBut *but_parent = but->block->handle->popup_create_vars.but;
-		if ((but->type == UI_BTYPE_BUT_MENU) &&
-		    (but_parent && but_parent->rnaprop) &&
+    if ((but->type == UI_BTYPE_BUT_MENU) && (but_parent && but_parent->rnaprop) &&
 		    (RNA_property_type(but_parent->rnaprop) == PROP_ENUM) &&
 		    ELEM(but_parent->menu_create_func,
 		         ui_def_but_rna__menu,
 		         ui_def_but_rna__panel_type,
-		         ui_def_but_rna__menu_type))
-		{
+             ui_def_but_rna__menu_type)) {
 			prop_enum_value = (int)but->hardmin;
 			ptr = &but_parent->rnapoin;
 			prop = but_parent->rnaprop;
@@ -1275,7 +1305,11 @@ static bool ui_but_event_property_operator_string(
 					IDProperty *prop_value;
 					if (prop_enum_value_is_int) {
 						int value = item[index].value;
-						prop_value = IDP_New(IDP_INT, &(IDPropertyTemplate){ .i = value, }, prop_enum_value_id);
+            prop_value = IDP_New(IDP_INT,
+                                 &(IDPropertyTemplate){
+                                     .i = value,
+                                 },
+                                 prop_enum_value_id);
 					}
 					else {
 						const char *id = item[index].identifier;
@@ -1295,9 +1329,7 @@ static bool ui_but_event_property_operator_string(
 
 			for (int i = 0; (i < opnames_len) && (opnames[i]); i++) {
 				if (WM_key_event_operator_string(
-				            C, opnames[i], WM_OP_INVOKE_REGION_WIN, prop_path, false,
-				            buf, buf_len))
-				{
+                C, opnames[i], WM_OP_INVOKE_REGION_WIN, prop_path, false, buf, buf_len)) {
 					found = true;
 					break;
 				}
@@ -1342,9 +1374,14 @@ static bool ui_but_event_property_operator_string(
  *
  * --Matt 07/2006
  */
-const char ui_radial_dir_order[8] = {
-    UI_RADIAL_W,  UI_RADIAL_E,  UI_RADIAL_S,  UI_RADIAL_N,
-    UI_RADIAL_NW, UI_RADIAL_NE, UI_RADIAL_SW, UI_RADIAL_SE};
+const char ui_radial_dir_order[8] = {UI_RADIAL_W,
+                                     UI_RADIAL_E,
+                                     UI_RADIAL_S,
+                                     UI_RADIAL_N,
+                                     UI_RADIAL_NW,
+                                     UI_RADIAL_NE,
+                                     UI_RADIAL_SW,
+                                     UI_RADIAL_SE};
 
 const char  ui_radial_dir_to_numpad[8] = {8, 9, 6, 3, 2, 1, 4, 7};
 const short ui_radial_dir_to_angle[8] =  {90, 45, 0, 315, 270, 225, 180, 135};
@@ -1407,7 +1444,8 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
 
 void ui_but_override_flag(uiBut *but)
 {
-	const int override_status = RNA_property_static_override_status(&but->rnapoin, but->rnaprop, but->rnaindex);
+  const int override_status = RNA_property_static_override_status(
+      &but->rnapoin, but->rnaprop, but->rnaindex);
 
 	if (override_status & RNA_OVERRIDE_STATUS_OVERRIDDEN) {
 		but->flag |= UI_BUT_OVERRIDEN;
@@ -1490,8 +1528,6 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
 			ui_but_anim_decorate_update_from_flag(but);
 		}
 	}
-
-
 
 	/* handle pending stuff */
 	if (block->layouts.first) {
@@ -1599,7 +1635,8 @@ void UI_block_draw(const bContext *C, uiBlock *block)
 	}
 
 	/* we set this only once */
-	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
 	/* scale fonts */
 	ui_fontscale(&style.paneltitle.points, block->aspect);
@@ -1629,9 +1666,7 @@ void UI_block_draw(const bContext *C, uiBlock *block)
 	}
 	else if (block->panel) {
 		bool show_background = ar->alignment != RGN_ALIGN_FLOAT;
-		ui_draw_aligned_panel(
-		        &style, block, &rect,
-		        UI_panel_category_is_visible(ar), show_background);
+    ui_draw_aligned_panel(&style, block, &rect, UI_panel_category_is_visible(ar), show_background);
 	}
 
 	BLF_batch_draw_begin();
@@ -1667,20 +1702,20 @@ static void ui_block_message_subscribe(ARegion *ar, struct wmMsgBus *mbus, uiBlo
 	for (uiBut *but = block->buttons.first; but; but = but->next) {
 		if (but->rnapoin.type && but->rnaprop) {
 			/* quick check to avoid adding buttons representing a vector, multiple times. */
-			if ((but_prev &&
-			     (but_prev->rnaprop == but->rnaprop) &&
+      if ((but_prev && (but_prev->rnaprop == but->rnaprop) &&
 			     (but_prev->rnapoin.type == but->rnapoin.type) &&
 			     (but_prev->rnapoin.data == but->rnapoin.data) &&
-			     (but_prev->rnapoin.id.data == but->rnapoin.id.data)) == false)
-			{
+           (but_prev->rnapoin.id.data == but->rnapoin.id.data)) == false) {
 				/* TODO: could make this into utility function. */
-				WM_msg_subscribe_rna(
-				        mbus, &but->rnapoin, but->rnaprop,
+        WM_msg_subscribe_rna(mbus,
+                             &but->rnapoin,
+                             but->rnaprop,
 				        &(const wmMsgSubscribeValue){
 				            .owner = ar,
 				            .user_data = ar,
 				            .notify = ED_region_do_msg_notify_tag_redraw,
-				        }, __func__);
+                             },
+                             __func__);
 				but_prev = but;
 			}
 		}
@@ -1706,7 +1741,8 @@ int ui_but_is_pushed_ex(uiBut *but, double *value)
 	int is_push = 0;
 
 	if (but->bit) {
-		const bool state = !ELEM(but->type, UI_BTYPE_TOGGLE_N, UI_BTYPE_ICON_TOGGLE_N, UI_BTYPE_CHECKBOX_N);
+    const bool state = !ELEM(
+        but->type, UI_BTYPE_TOGGLE_N, UI_BTYPE_ICON_TOGGLE_N, UI_BTYPE_CHECKBOX_N);
 		int lvalue;
 		UI_GET_BUT_VALUE_INIT(but, *value);
 		lvalue = (int)*value;
@@ -1927,7 +1963,12 @@ bool ui_but_is_float(const uiBut *but)
 
 bool ui_but_is_bool(const uiBut *but)
 {
-	if (ELEM(but->type, UI_BTYPE_TOGGLE, UI_BTYPE_TOGGLE_N, UI_BTYPE_ICON_TOGGLE, UI_BTYPE_ICON_TOGGLE_N, UI_BTYPE_TAB)) {
+  if (ELEM(but->type,
+           UI_BTYPE_TOGGLE,
+           UI_BTYPE_TOGGLE_N,
+           UI_BTYPE_ICON_TOGGLE,
+           UI_BTYPE_ICON_TOGGLE_N,
+           UI_BTYPE_TAB)) {
 		return true;
 	}
 
@@ -1935,13 +1976,13 @@ bool ui_but_is_bool(const uiBut *but)
 		return true;
 	}
 
-	if ((but->rnaprop && RNA_property_type(but->rnaprop) == PROP_ENUM) && (but->type == UI_BTYPE_ROW)) {
+  if ((but->rnaprop && RNA_property_type(but->rnaprop) == PROP_ENUM) &&
+      (but->type == UI_BTYPE_ROW)) {
 		return true;
 	}
 
 	return false;
 }
-
 
 bool ui_but_is_unit(const uiBut *but)
 {
@@ -2019,8 +2060,7 @@ bool ui_but_supports_cycling(const uiBut *but)
 {
 	return ((ELEM(but->type, UI_BTYPE_ROW, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER, UI_BTYPE_LISTBOX)) ||
 	        (but->type == UI_BTYPE_MENU && ui_but_menu_step_poll(but)) ||
-	        (but->type == UI_BTYPE_COLOR && but->a1 != -1) ||
-	        (but->menu_step_func != NULL));
+          (but->type == UI_BTYPE_COLOR && but->a1 != -1) || (but->menu_step_func != NULL));
 }
 
 double ui_but_value_get(uiBut *but)
@@ -2227,9 +2267,7 @@ static bool ui_but_icon_extra_is_visible_text_clear(const uiBut *but)
 static bool ui_but_icon_extra_is_visible_search_unlink(const uiBut *but)
 {
 	BLI_assert(ELEM(but->type, UI_BTYPE_SEARCH_MENU));
-	return ((but->editstr == NULL) &&
-	        (but->drawstr[0] != '\0') &&
-	        (but->flag & UI_BUT_VALUE_CLEAR));
+  return ((but->editstr == NULL) && (but->drawstr[0] != '\0') && (but->flag & UI_BUT_VALUE_CLEAR));
 }
 
 static bool ui_but_icon_extra_is_visible_search_eyedropper(uiBut *but)
@@ -2246,8 +2284,7 @@ static bool ui_but_icon_extra_is_visible_search_eyedropper(uiBut *but)
 	type = RNA_property_pointer_type(&but->rnapoin, but->rnaprop);
 	idcode = RNA_type_to_ID_code(type);
 
-	return ((but->editstr == NULL) &&
-	        (idcode == ID_OB || OB_DATA_SUPPORT_ID(idcode)));
+  return ((but->editstr == NULL) && (idcode == ID_OB || OB_DATA_SUPPORT_ID(idcode)));
 }
 
 uiButExtraIconType ui_but_icon_extra_get(uiBut *but)
@@ -2277,7 +2314,6 @@ uiButExtraIconType ui_but_icon_extra_get(uiBut *but)
 }
 
 /** \} */
-
 
 static double ui_get_but_scale_unit(uiBut *but, double value)
 {
@@ -2313,7 +2349,8 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen)
 /**
  * \param float_precision: Override the button precision.
  */
-static void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
+static void ui_get_but_string_unit(
+    uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
 {
 	UnitSettings *unit = but->block->unit;
 	int unit_type = UI_but_unit_type_get(but);
@@ -2338,9 +2375,13 @@ static void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double va
 		precision = float_precision;
 	}
 
-	bUnit_AsString2(
-	        str, len_max, ui_get_but_scale_unit(but, value), precision,
-	        RNA_SUBTYPE_UNIT_VALUE(unit_type), unit, pad);
+  bUnit_AsString2(str,
+                  len_max,
+                  ui_get_but_scale_unit(but, value),
+                  precision,
+                  RNA_SUBTYPE_UNIT_VALUE(unit_type),
+                  unit,
+                  pad);
 }
 
 static float ui_get_but_step_unit(uiBut *but, float step_default)
@@ -2383,7 +2424,12 @@ static float ui_get_but_step_unit(uiBut *but, float step_default)
  * \param float_precision: For number buttons the precision to use or -1 to fallback to the button default.
  * \param use_exp_float: Use exponent representation of floats when out of reasonable range (outside of 1e3/1e-3).
  */
-void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision, const bool use_exp_float, bool *r_use_exp_float)
+void ui_but_string_get_ex(uiBut *but,
+                          char *str,
+                          const size_t maxlen,
+                          const int float_precision,
+                          const bool use_exp_float,
+                          bool *r_use_exp_float)
 {
 	if (r_use_exp_float) {
 		*r_use_exp_float = false;
@@ -2461,7 +2507,8 @@ void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int 
 		}
 
 		if (ui_but_is_float(but)) {
-			int prec = (float_precision == -1) ? ui_but_calc_float_precision(but, value) : float_precision;
+      int prec = (float_precision == -1) ? ui_but_calc_float_precision(but, value) :
+                                           float_precision;
 
 			if (ui_but_is_unit(but)) {
 				ui_get_but_string_unit(but, str, maxlen, value, false, prec);
@@ -2473,7 +2520,6 @@ void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int 
 				else {
 					BLI_snprintf(str, maxlen, "%.*f", MAX2(0, prec - 2), value * 100);
 				}
-
 			}
 			else {
 				if (use_exp_float) {
@@ -2534,7 +2580,8 @@ char *ui_but_string_get_dynamic(uiBut *but, int *r_str_size)
 			/* RNA enum */
 			int value = RNA_property_enum_get(&but->rnapoin, but->rnaprop);
 			const char *value_id;
-			if (!RNA_property_enum_name(but->block->evil_C, &but->rnapoin, but->rnaprop, value, &value_id)) {
+      if (!RNA_property_enum_name(
+              but->block->evil_C, &but->rnapoin, but->rnaprop, value, &value_id)) {
 				value_id = "";
 			}
 
@@ -2560,13 +2607,15 @@ char *ui_but_string_get_dynamic(uiBut *but, int *r_str_size)
 		*r_str_size = 1;
 		str = BLI_strdup("");
 		BLI_assert(0);
-
 	}
 
 	return str;
 }
 
-static bool ui_set_but_string_eval_num_unit(bContext *C, uiBut *but, const char *str, double *r_value)
+static bool ui_set_but_string_eval_num_unit(bContext *C,
+                                            uiBut *but,
+                                            const char *str,
+                                            double *r_value)
 {
 	const UnitSettings *unit = but->block->unit;
 	int type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
@@ -2710,7 +2759,10 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 						RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
 					}
 					else if (but->func_arg2 != NULL) {
-						RNA_pointer_create(NULL, RNA_property_pointer_type(&but->rnapoin, but->rnaprop), but->func_arg2, &rptr);
+            RNA_pointer_create(NULL,
+                               RNA_property_pointer_type(&but->rnapoin, but->rnaprop),
+                               but->func_arg2,
+                               &rptr);
 						RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
 					}
 
@@ -2721,7 +2773,8 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 			}
 			else if (type == PROP_ENUM) {
 				int value;
-				if (RNA_property_enum_value(but->block->evil_C, &but->rnapoin, but->rnaprop, str, &value)) {
+        if (RNA_property_enum_value(
+                but->block->evil_C, &but->rnapoin, but->rnaprop, str, &value)) {
 					RNA_property_enum_set(&but->rnapoin, but->rnaprop, value);
 					return true;
 				}
@@ -2788,8 +2841,12 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 		}
 
 		/* not that we use hard limits here */
-		if (value < (double)but->hardmin) { value = but->hardmin; }
-		if (value > (double)but->hardmax) { value = but->hardmax; }
+    if (value < (double)but->hardmin) {
+      value = but->hardmin;
+    }
+    if (value > (double)but->hardmax) {
+      value = but->hardmax;
+    }
 
 		ui_but_value_set(but, value);
 		return true;
@@ -3244,9 +3301,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 
 	/* only update soft range while not editing */
 	if (!ui_but_is_editing(but)) {
-		if ((but->rnaprop != NULL) ||
-		    (but->poin && (but->pointype & UI_BUT_POIN_TYPES)))
-		{
+    if ((but->rnaprop != NULL) || (but->poin && (but->pointype & UI_BUT_POIN_TYPES))) {
 			ui_set_but_soft_range(but);
 		}
 	}
@@ -3266,8 +3321,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 				}
 
 				/* max must never be smaller than min! Both being equal is allowed though */
-				BLI_assert(but->softmin <= but->softmax &&
-				           but->hardmin <= but->hardmax);
+        BLI_assert(but->softmin <= but->softmax && but->hardmin <= but->hardmax);
 			}
 			break;
 
@@ -3287,7 +3341,6 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 			break;
 	}
 
-
 	/* safety is 4 to enable small number buttons (like 'users') */
 	// okwidth = -4 + (BLI_rcti_size_x(&but->rect)); // UNUSED
 
@@ -3303,9 +3356,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 
 						EnumPropertyItem item;
 						if (RNA_property_enum_item_from_value_gettexted(
-						            but->block->evil_C,
-						            &but->rnapoin, but->rnaprop, value_enum, &item))
-						{
+                    but->block->evil_C, &but->rnapoin, but->rnaprop, value_enum, &item)) {
 							size_t slen = strlen(item.name);
 							ui_but_string_free_internal(but);
 							ui_but_string_set_internal(but, item.name, slen);
@@ -3354,8 +3405,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 			}
 			break;
 
-		case UI_BTYPE_KEY_EVENT:
-		{
+    case UI_BTYPE_KEY_EVENT: {
 			const char *str;
 			if (but->flag & UI_SELECT) {
 				str = "Press a key";
@@ -3405,7 +3455,6 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 		default:
 			BLI_strncpy(but->drawstr, but->str, UI_MAX_DRAW_STR);
 			break;
-
 	}
 
 	/* if we are doing text editing, this will override the drawstr */
@@ -3477,10 +3526,20 @@ static uiBut *ui_but_alloc(const eButType type)
  * \param a2: Number of decimal point values to display. 0 defaults to 3 (0.000)
  * 1,2,3, and a maximum of 4, all greater values will be clamped to 4.
  */
-static uiBut *ui_def_but(
-        uiBlock *block, int type, int retval, const char *str,
-        int x, int y, short width, short height,
-        void *poin, float min, float max, float a1, float a2, const char *tip)
+static uiBut *ui_def_but(uiBlock *block,
+                         int type,
+                         int retval,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         void *poin,
+                         float min,
+                         float max,
+                         float a1,
+                         float a2,
+                         const char *tip)
 {
 	uiBut *but;
 	int slen;
@@ -3489,7 +3548,8 @@ static uiBut *ui_def_but(
 
 	/* we could do some more error checks here */
 	if ((type & BUTTYPE) == UI_BTYPE_LABEL) {
-		BLI_assert((poin != NULL || min != 0.0f || max != 0.0f || (a1 == 0.0f && a2 != 0.0f) || (a1 != 0.0f && a1 != 1.0f)) == false);
+    BLI_assert((poin != NULL || min != 0.0f || max != 0.0f || (a1 == 0.0f && a2 != 0.0f) ||
+                (a1 != 0.0f && a1 != 1.0f)) == false);
 	}
 
 	if (type & UI_BUT_POIN_TYPES) {  /* a pointer is required */
@@ -3564,10 +3624,14 @@ static uiBut *ui_def_but(
 	}
 	else if (((block->flag & UI_BLOCK_LOOP) && !ui_block_is_popover(block)) ||
 	         ELEM(but->type,
-	              UI_BTYPE_MENU, UI_BTYPE_TEXT, UI_BTYPE_LABEL,
-	              UI_BTYPE_BLOCK, UI_BTYPE_BUT_MENU, UI_BTYPE_SEARCH_MENU,
-	              UI_BTYPE_PROGRESS_BAR, UI_BTYPE_POPOVER))
-	{
+                UI_BTYPE_MENU,
+                UI_BTYPE_TEXT,
+                UI_BTYPE_LABEL,
+                UI_BTYPE_BLOCK,
+                UI_BTYPE_BUT_MENU,
+                UI_BTYPE_SEARCH_MENU,
+                UI_BTYPE_PROGRESS_BAR,
+                UI_BTYPE_POPOVER)) {
 		but->drawflag |= (UI_BUT_TEXT_LEFT | UI_BUT_ICON_LEFT);
 	}
 #ifdef USE_NUMBUTS_LR_ALIGN
@@ -3586,13 +3650,19 @@ static uiBut *ui_def_but(
 
 	/* keep track of UI_interface.h */
 	if (ELEM(but->type,
-	         UI_BTYPE_BLOCK, UI_BTYPE_BUT, UI_BTYPE_LABEL,
-	         UI_BTYPE_PULLDOWN, UI_BTYPE_ROUNDBOX, UI_BTYPE_LISTBOX,
-	         UI_BTYPE_BUT_MENU, UI_BTYPE_SCROLL, UI_BTYPE_GRIP,
-	         UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE,
+           UI_BTYPE_BLOCK,
+           UI_BTYPE_BUT,
+           UI_BTYPE_LABEL,
+           UI_BTYPE_PULLDOWN,
+           UI_BTYPE_ROUNDBOX,
+           UI_BTYPE_LISTBOX,
+           UI_BTYPE_BUT_MENU,
+           UI_BTYPE_SCROLL,
+           UI_BTYPE_GRIP,
+           UI_BTYPE_SEPR,
+           UI_BTYPE_SEPR_LINE,
 	         UI_BTYPE_SEPR_SPACER) ||
-	    (but->type >= UI_BTYPE_SEARCH_MENU))
-	{
+      (but->type >= UI_BTYPE_SEARCH_MENU)) {
 		/* pass */
 	}
 	else {
@@ -3653,8 +3723,8 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 
 	UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
 
-	RNA_property_enum_items_gettexted(block->evil_C, &but->rnapoin, but->rnaprop, &item_array, NULL, &free);
-
+  RNA_property_enum_items_gettexted(
+      block->evil_C, &but->rnapoin, but->rnaprop, &item_array, NULL, &free);
 
 	/* we dont want nested rows, cols in menus */
 	UI_block_layout_set_current(block, layout);
@@ -3691,8 +3761,20 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 
 	if (block->flag & UI_BLOCK_NO_FLIP) {
 		/* Title at the top for menus with categories. */
-		uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
-		         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
+    uiDefBut(block,
+             UI_BTYPE_LABEL,
+             0,
+             RNA_property_ui_name(but->rnaprop),
+             0,
+             0,
+             UI_UNIT_X * 5,
+             UI_UNIT_Y,
+             NULL,
+             0.0,
+             0.0,
+             0,
+             0,
+             "");
 		uiItemS(layout);
 	}
 
@@ -3730,7 +3812,20 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 				else {
 					/* Do not use uiItemL here, as our root layout is a menu one,
 					 * it will add a fake blank icon! */
-					uiDefBut(block, UI_BTYPE_LABEL, 0, item->name, 0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
+          uiDefBut(block,
+                   UI_BTYPE_LABEL,
+                   0,
+                   item->name,
+                   0,
+                   0,
+                   UI_UNIT_X * 5,
+                   UI_UNIT_Y,
+                   NULL,
+                   0.0,
+                   0.0,
+                   0,
+                   0,
+                   "");
 				}
 			}
 			else {
@@ -3739,14 +3834,37 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 		}
 		else {
 			if (item->icon) {
-				uiDefIconTextButI(
-				        block, UI_BTYPE_BUT_MENU, B_NOP, item->icon, item->name, 0, 0,
-				        UI_UNIT_X * 5, UI_UNIT_Y, &handle->retvalue, item->value, 0.0, 0, -1, item->description);
+        uiDefIconTextButI(block,
+                          UI_BTYPE_BUT_MENU,
+                          B_NOP,
+                          item->icon,
+                          item->name,
+                          0,
+                          0,
+                          UI_UNIT_X * 5,
+                          UI_UNIT_Y,
+                          &handle->retvalue,
+                          item->value,
+                          0.0,
+                          0,
+                          -1,
+                          item->description);
 			}
 			else {
-				uiDefButI(
-				        block, UI_BTYPE_BUT_MENU, B_NOP, item->name, 0, 0,
-				        UI_UNIT_X * 5, UI_UNIT_X, &handle->retvalue, item->value, 0.0, 0, -1, item->description);
+        uiDefButI(block,
+                  UI_BTYPE_BUT_MENU,
+                  B_NOP,
+                  item->name,
+                  0,
+                  0,
+                  UI_UNIT_X * 5,
+                  UI_UNIT_X,
+                  &handle->retvalue,
+                  item->value,
+                  0.0,
+                  0,
+                  -1,
+                  item->description);
 			}
 		}
 	}
@@ -3754,8 +3872,20 @@ static void ui_def_but_rna__menu(bContext *UNUSED(C), uiLayout *layout, void *bu
 	if (!(block->flag & UI_BLOCK_NO_FLIP)) {
 		/* Title at the bottom for menus without categories. */
 		uiItemS(layout);
-		uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_property_ui_name(but->rnaprop),
-		         0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
+    uiDefBut(block,
+             UI_BTYPE_LABEL,
+             0,
+             RNA_property_ui_name(but->rnaprop),
+             0,
+             0,
+             UI_UNIT_X * 5,
+             UI_UNIT_Y,
+             NULL,
+             0.0,
+             0.0,
+             0,
+             0,
+             "");
 	}
 
 	UI_block_layout_set_current(block, layout);
@@ -3834,11 +3964,22 @@ static void ui_but_submenu_enable(uiBlock *block, uiBut *but)
  * When this kind of change won't disrupt branches, best look into making more
  * of our UI functions take prop rather then propname.
  */
-static uiBut *ui_def_but_rna(
-        uiBlock *block, int type, int retval, const char *str,
-        int x, int y, short width, short height,
-        PointerRNA *ptr, PropertyRNA *prop, int index,
-        float min, float max, float a1, float a2,  const char *tip)
+static uiBut *ui_def_but_rna(uiBlock *block,
+                             int type,
+                             int retval,
+                             const char *str,
+                             int x,
+                             int y,
+                             short width,
+                             short height,
+                             PointerRNA *ptr,
+                             PropertyRNA *prop,
+                             int index,
+                             float min,
+                             float max,
+                             float a1,
+                             float a2,
+                             const char *tip)
 {
 	const PropertyType proptype = RNA_property_type(prop);
 	uiBut *but;
@@ -4001,16 +4142,33 @@ static uiBut *ui_def_but_rna(
 	return but;
 }
 
-static uiBut *ui_def_but_rna_propname(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, PointerRNA *ptr, const char *propname, int index, float min, float max, float a1, float a2,  const char *tip)
+static uiBut *ui_def_but_rna_propname(uiBlock *block,
+                                      int type,
+                                      int retval,
+                                      const char *str,
+                                      int x,
+                                      int y,
+                                      short width,
+                                      short height,
+                                      PointerRNA *ptr,
+                                      const char *propname,
+                                      int index,
+                                      float min,
+                                      float max,
+                                      float a1,
+                                      float a2,
+                                      const char *tip)
 {
 	PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
 	uiBut *but;
 
 	if (prop) {
-		but = ui_def_but_rna(block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2,  tip);
+    but = ui_def_but_rna(
+        block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
 	}
 	else {
-		but = ui_def_but(block, type, retval, propname, x, y, width, height, NULL, min, max, a1, a2, tip);
+    but = ui_def_but(
+        block, type, retval, propname, x, y, width, height, NULL, min, max, a1, a2, tip);
 
 		ui_def_but_rna__disable(but, "Unknown Property.");
 	}
@@ -4018,7 +4176,16 @@ static uiBut *ui_def_but_rna_propname(uiBlock *block, int type, int retval, cons
 	return but;
 }
 
-static uiBut *ui_def_but_operator_ptr(uiBlock *block, int type, wmOperatorType *ot, int opcontext, const char *str, int x, int y, short width, short height, const char *tip)
+static uiBut *ui_def_but_operator_ptr(uiBlock *block,
+                                      int type,
+                                      wmOperatorType *ot,
+                                      int opcontext,
+                                      const char *str,
+                                      int x,
+                                      int y,
+                                      short width,
+                                      short height,
+                                      const char *tip)
 {
 	uiBut *but;
 
@@ -4048,9 +4215,23 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block, int type, wmOperatorType *
 	return but;
 }
 
-uiBut *uiDefBut(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, void *poin, float min, float max, float a1, float a2, const char *tip)
+uiBut *uiDefBut(uiBlock *block,
+                int type,
+                int retval,
+                const char *str,
+                int x,
+                int y,
+                short width,
+                short height,
+                void *poin,
+                float min,
+                float max,
+                float a1,
+                float a2,
+                const char *tip)
 {
-	uiBut *but = ui_def_but(block, type, retval, str, x, y, width, height, poin, min, max, a1, a2, tip);
+  uiBut *but = ui_def_but(
+      block, type, retval, str, x, y, width, height, poin, min, max, a1, a2, tip);
 
 	ui_but_update(but);
 
@@ -4074,11 +4255,25 @@ static int findBitIndex(uint x)
 	else {
 		int idx = 0;
 
-		if (x & 0xFFFF0000) { idx += 16; x >>= 16; }
-		if (x & 0xFF00)     { idx +=  8; x >>=  8; }
-		if (x & 0xF0)       { idx +=  4; x >>=  4; }
-		if (x & 0xC)        { idx +=  2; x >>=  2; }
-		if (x & 0x2)        { idx +=  1; }
+    if (x & 0xFFFF0000) {
+      idx += 16;
+      x >>= 16;
+    }
+    if (x & 0xFF00) {
+      idx += 8;
+      x >>= 8;
+    }
+    if (x & 0xF0) {
+      idx += 4;
+      x >>= 4;
+    }
+    if (x & 0xC) {
+      idx += 2;
+      x >>= 2;
+    }
+    if (x & 0x2) {
+      idx += 1;
+    }
 
 		return idx;
 	}
@@ -4170,71 +4365,364 @@ static void ui_but_update_and_icon_set(uiBut *but, int icon)
 	ui_but_update(but);
 }
 
-static uiBut *uiDefButBit(uiBlock *block, int type, int bit, int retval, const char *str, int x, int y, short width, short height, void *poin, float min, float max, float a1, float a2,  const char *tip)
+static uiBut *uiDefButBit(uiBlock *block,
+                          int type,
+                          int bit,
+                          int retval,
+                          const char *str,
+                          int x,
+                          int y,
+                          short width,
+                          short height,
+                          void *poin,
+                          float min,
+                          float max,
+                          float a1,
+                          float a2,
+                          const char *tip)
 {
 	int bitIdx = findBitIndex(bit);
 	if (bitIdx == -1) {
 		return NULL;
 	}
 	else {
-		return uiDefBut(block, type | UI_BUT_POIN_BIT | bitIdx, retval, str, x, y, width, height, poin, min, max, a1, a2, tip);
-	}
+    return uiDefBut(block,
+                    type | UI_BUT_POIN_BIT | bitIdx,
+                    retval,
+                    str,
+                    x,
+                    y,
+                    width,
+                    height,
+                    poin,
+                    min,
+                    max,
+                    a1,
+                    a2,
+                    tip);
+  }
 }
-uiBut *uiDefButF(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, float *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButF(uiBlock *block,
+                 int type,
+                 int retval,
+                 const char *str,
+                 int x,
+                 int y,
+                 short width,
+                 short height,
+                 float *poin,
+                 float min,
+                 float max,
+                 float a1,
+                 float a2,
+                 const char *tip)
 {
-	return uiDefBut(block, type | UI_BUT_POIN_FLOAT, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefBut(block,
+                  type | UI_BUT_POIN_FLOAT,
+                  retval,
+                  str,
+                  x,
+                  y,
+                  width,
+                  height,
+                  (void *)poin,
+                  min,
+                  max,
+                  a1,
+                  a2,
+                  tip);
 }
-uiBut *uiDefButBitF(uiBlock *block, int type, int bit, int retval, const char *str, int x, int y, short width, short height, float *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButBitF(uiBlock *block,
+                    int type,
+                    int bit,
+                    int retval,
+                    const char *str,
+                    int x,
+                    int y,
+                    short width,
+                    short height,
+                    float *poin,
+                    float min,
+                    float max,
+                    float a1,
+                    float a2,
+                    const char *tip)
 {
-	return uiDefButBit(block, type | UI_BUT_POIN_FLOAT, bit, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefButBit(block,
+                     type | UI_BUT_POIN_FLOAT,
+                     bit,
+                     retval,
+                     str,
+                     x,
+                     y,
+                     width,
+                     height,
+                     (void *)poin,
+                     min,
+                     max,
+                     a1,
+                     a2,
+                     tip);
 }
-uiBut *uiDefButI(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, int *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButI(uiBlock *block,
+                 int type,
+                 int retval,
+                 const char *str,
+                 int x,
+                 int y,
+                 short width,
+                 short height,
+                 int *poin,
+                 float min,
+                 float max,
+                 float a1,
+                 float a2,
+                 const char *tip)
 {
-	return uiDefBut(block, type | UI_BUT_POIN_INT, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefBut(block,
+                  type | UI_BUT_POIN_INT,
+                  retval,
+                  str,
+                  x,
+                  y,
+                  width,
+                  height,
+                  (void *)poin,
+                  min,
+                  max,
+                  a1,
+                  a2,
+                  tip);
 }
-uiBut *uiDefButBitI(uiBlock *block, int type, int bit, int retval, const char *str, int x, int y, short width, short height, int *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButBitI(uiBlock *block,
+                    int type,
+                    int bit,
+                    int retval,
+                    const char *str,
+                    int x,
+                    int y,
+                    short width,
+                    short height,
+                    int *poin,
+                    float min,
+                    float max,
+                    float a1,
+                    float a2,
+                    const char *tip)
 {
-	return uiDefButBit(block, type | UI_BUT_POIN_INT, bit, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefButBit(block,
+                     type | UI_BUT_POIN_INT,
+                     bit,
+                     retval,
+                     str,
+                     x,
+                     y,
+                     width,
+                     height,
+                     (void *)poin,
+                     min,
+                     max,
+                     a1,
+                     a2,
+                     tip);
 }
-uiBut *uiDefButS(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, short *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButS(uiBlock *block,
+                 int type,
+                 int retval,
+                 const char *str,
+                 int x,
+                 int y,
+                 short width,
+                 short height,
+                 short *poin,
+                 float min,
+                 float max,
+                 float a1,
+                 float a2,
+                 const char *tip)
 {
-	return uiDefBut(block, type | UI_BUT_POIN_SHORT, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefBut(block,
+                  type | UI_BUT_POIN_SHORT,
+                  retval,
+                  str,
+                  x,
+                  y,
+                  width,
+                  height,
+                  (void *)poin,
+                  min,
+                  max,
+                  a1,
+                  a2,
+                  tip);
 }
-uiBut *uiDefButBitS(uiBlock *block, int type, int bit, int retval, const char *str, int x, int y, short width, short height, short *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButBitS(uiBlock *block,
+                    int type,
+                    int bit,
+                    int retval,
+                    const char *str,
+                    int x,
+                    int y,
+                    short width,
+                    short height,
+                    short *poin,
+                    float min,
+                    float max,
+                    float a1,
+                    float a2,
+                    const char *tip)
 {
-	return uiDefButBit(block, type | UI_BUT_POIN_SHORT, bit, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefButBit(block,
+                     type | UI_BUT_POIN_SHORT,
+                     bit,
+                     retval,
+                     str,
+                     x,
+                     y,
+                     width,
+                     height,
+                     (void *)poin,
+                     min,
+                     max,
+                     a1,
+                     a2,
+                     tip);
 }
-uiBut *uiDefButC(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, char *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButC(uiBlock *block,
+                 int type,
+                 int retval,
+                 const char *str,
+                 int x,
+                 int y,
+                 short width,
+                 short height,
+                 char *poin,
+                 float min,
+                 float max,
+                 float a1,
+                 float a2,
+                 const char *tip)
 {
-	return uiDefBut(block, type | UI_BUT_POIN_CHAR, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefBut(block,
+                  type | UI_BUT_POIN_CHAR,
+                  retval,
+                  str,
+                  x,
+                  y,
+                  width,
+                  height,
+                  (void *)poin,
+                  min,
+                  max,
+                  a1,
+                  a2,
+                  tip);
 }
-uiBut *uiDefButBitC(uiBlock *block, int type, int bit, int retval, const char *str, int x, int y, short width, short height, char *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButBitC(uiBlock *block,
+                    int type,
+                    int bit,
+                    int retval,
+                    const char *str,
+                    int x,
+                    int y,
+                    short width,
+                    short height,
+                    char *poin,
+                    float min,
+                    float max,
+                    float a1,
+                    float a2,
+                    const char *tip)
 {
-	return uiDefButBit(block, type | UI_BUT_POIN_CHAR, bit, retval, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefButBit(block,
+                     type | UI_BUT_POIN_CHAR,
+                     bit,
+                     retval,
+                     str,
+                     x,
+                     y,
+                     width,
+                     height,
+                     (void *)poin,
+                     min,
+                     max,
+                     a1,
+                     a2,
+                     tip);
 }
-uiBut *uiDefButR(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, PointerRNA *ptr, const char *propname, int index, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButR(uiBlock *block,
+                 int type,
+                 int retval,
+                 const char *str,
+                 int x,
+                 int y,
+                 short width,
+                 short height,
+                 PointerRNA *ptr,
+                 const char *propname,
+                 int index,
+                 float min,
+                 float max,
+                 float a1,
+                 float a2,
+                 const char *tip)
 {
 	uiBut *but;
-	but = ui_def_but_rna_propname(block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
+  but = ui_def_but_rna_propname(
+      block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
 	ui_but_update(but);
 	return but;
 }
-uiBut *uiDefButR_prop(uiBlock *block, int type, int retval, const char *str, int x, int y, short width, short height, PointerRNA *ptr, PropertyRNA *prop, int index, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefButR_prop(uiBlock *block,
+                      int type,
+                      int retval,
+                      const char *str,
+                      int x,
+                      int y,
+                      short width,
+                      short height,
+                      PointerRNA *ptr,
+                      PropertyRNA *prop,
+                      int index,
+                      float min,
+                      float max,
+                      float a1,
+                      float a2,
+                      const char *tip)
 {
 	uiBut *but;
-	but = ui_def_but_rna(block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+  but = ui_def_but_rna(
+      block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
 	ui_but_update(but);
 	return but;
 }
 
-uiBut *uiDefButO_ptr(uiBlock *block, int type, wmOperatorType *ot, int opcontext, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefButO_ptr(uiBlock *block,
+                     int type,
+                     wmOperatorType *ot,
+                     int opcontext,
+                     const char *str,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     const char *tip)
 {
 	uiBut *but;
 	but = ui_def_but_operator_ptr(block, type, ot, opcontext, str, x, y, width, height, tip);
 	ui_but_update(but);
 	return but;
 }
-uiBut *uiDefButO(uiBlock *block, int type, const char *opname, int opcontext, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefButO(uiBlock *block,
+                 int type,
+                 const char *opname,
+                 int opcontext,
+                 const char *str,
+                 int x,
+                 int y,
+                 short width,
+                 short height,
+                 const char *tip)
 {
 	wmOperatorType *ot = WM_operatortype_find(opname, 0);
 	if (str == NULL && ot == NULL) {
@@ -4244,151 +4732,778 @@ uiBut *uiDefButO(uiBlock *block, int type, const char *opname, int opcontext, co
 }
 
 /* if a1==1.0 then a2 is an extra icon blending factor (alpha 0.0 - 1.0) */
-uiBut *uiDefIconBut(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, void *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconBut(uiBlock *block,
+                    int type,
+                    int retval,
+                    int icon,
+                    int x,
+                    int y,
+                    short width,
+                    short height,
+                    void *poin,
+                    float min,
+                    float max,
+                    float a1,
+                    float a2,
+                    const char *tip)
 {
-	uiBut *but = ui_def_but(block, type, retval, "", x, y, width, height, poin, min, max, a1, a2, tip);
+  uiBut *but = ui_def_but(
+      block, type, retval, "", x, y, width, height, poin, min, max, a1, a2, tip);
 	ui_but_update_and_icon_set(but, icon);
 	return but;
 }
-static uiBut *uiDefIconButBit(uiBlock *block, int type, int bit, int retval, int icon, int x, int y, short width, short height, void *poin, float min, float max, float a1, float a2, const char *tip)
+static uiBut *uiDefIconButBit(uiBlock *block,
+                              int type,
+                              int bit,
+                              int retval,
+                              int icon,
+                              int x,
+                              int y,
+                              short width,
+                              short height,
+                              void *poin,
+                              float min,
+                              float max,
+                              float a1,
+                              float a2,
+                              const char *tip)
 {
 	int bitIdx = findBitIndex(bit);
 	if (bitIdx == -1) {
 		return NULL;
 	}
 	else {
-		return uiDefIconBut(block, type | UI_BUT_POIN_BIT | bitIdx, retval, icon, x, y, width, height, poin, min, max, a1, a2, tip);
-	}
+    return uiDefIconBut(block,
+                        type | UI_BUT_POIN_BIT | bitIdx,
+                        retval,
+                        icon,
+                        x,
+                        y,
+                        width,
+                        height,
+                        poin,
+                        min,
+                        max,
+                        a1,
+                        a2,
+                        tip);
+  }
 }
 
-uiBut *uiDefIconButF(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, float *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButF(uiBlock *block,
+                     int type,
+                     int retval,
+                     int icon,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     float *poin,
+                     float min,
+                     float max,
+                     float a1,
+                     float a2,
+                     const char *tip)
 {
-	return uiDefIconBut(block, type | UI_BUT_POIN_FLOAT, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconBut(block,
+                      type | UI_BUT_POIN_FLOAT,
+                      retval,
+                      icon,
+                      x,
+                      y,
+                      width,
+                      height,
+                      (void *)poin,
+                      min,
+                      max,
+                      a1,
+                      a2,
+                      tip);
 }
-uiBut *uiDefIconButBitF(uiBlock *block, int type, int bit, int retval, int icon, int x, int y, short width, short height, float *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButBitF(uiBlock *block,
+                        int type,
+                        int bit,
+                        int retval,
+                        int icon,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        float *poin,
+                        float min,
+                        float max,
+                        float a1,
+                        float a2,
+                        const char *tip)
 {
-	return uiDefIconButBit(block, type | UI_BUT_POIN_FLOAT, bit, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconButBit(block,
+                         type | UI_BUT_POIN_FLOAT,
+                         bit,
+                         retval,
+                         icon,
+                         x,
+                         y,
+                         width,
+                         height,
+                         (void *)poin,
+                         min,
+                         max,
+                         a1,
+                         a2,
+                         tip);
 }
-uiBut *uiDefIconButI(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, int *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButI(uiBlock *block,
+                     int type,
+                     int retval,
+                     int icon,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     int *poin,
+                     float min,
+                     float max,
+                     float a1,
+                     float a2,
+                     const char *tip)
 {
-	return uiDefIconBut(block, type | UI_BUT_POIN_INT, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconBut(block,
+                      type | UI_BUT_POIN_INT,
+                      retval,
+                      icon,
+                      x,
+                      y,
+                      width,
+                      height,
+                      (void *)poin,
+                      min,
+                      max,
+                      a1,
+                      a2,
+                      tip);
 }
-uiBut *uiDefIconButBitI(uiBlock *block, int type, int bit, int retval, int icon, int x, int y, short width, short height, int *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButBitI(uiBlock *block,
+                        int type,
+                        int bit,
+                        int retval,
+                        int icon,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        int *poin,
+                        float min,
+                        float max,
+                        float a1,
+                        float a2,
+                        const char *tip)
 {
-	return uiDefIconButBit(block, type | UI_BUT_POIN_INT, bit, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconButBit(block,
+                         type | UI_BUT_POIN_INT,
+                         bit,
+                         retval,
+                         icon,
+                         x,
+                         y,
+                         width,
+                         height,
+                         (void *)poin,
+                         min,
+                         max,
+                         a1,
+                         a2,
+                         tip);
 }
-uiBut *uiDefIconButS(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, short *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButS(uiBlock *block,
+                     int type,
+                     int retval,
+                     int icon,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     short *poin,
+                     float min,
+                     float max,
+                     float a1,
+                     float a2,
+                     const char *tip)
 {
-	return uiDefIconBut(block, type | UI_BUT_POIN_SHORT, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconBut(block,
+                      type | UI_BUT_POIN_SHORT,
+                      retval,
+                      icon,
+                      x,
+                      y,
+                      width,
+                      height,
+                      (void *)poin,
+                      min,
+                      max,
+                      a1,
+                      a2,
+                      tip);
 }
-uiBut *uiDefIconButBitS(uiBlock *block, int type, int bit, int retval, int icon, int x, int y, short width, short height, short *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButBitS(uiBlock *block,
+                        int type,
+                        int bit,
+                        int retval,
+                        int icon,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        short *poin,
+                        float min,
+                        float max,
+                        float a1,
+                        float a2,
+                        const char *tip)
 {
-	return uiDefIconButBit(block, type | UI_BUT_POIN_SHORT, bit, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconButBit(block,
+                         type | UI_BUT_POIN_SHORT,
+                         bit,
+                         retval,
+                         icon,
+                         x,
+                         y,
+                         width,
+                         height,
+                         (void *)poin,
+                         min,
+                         max,
+                         a1,
+                         a2,
+                         tip);
 }
-uiBut *uiDefIconButC(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, char *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButC(uiBlock *block,
+                     int type,
+                     int retval,
+                     int icon,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     char *poin,
+                     float min,
+                     float max,
+                     float a1,
+                     float a2,
+                     const char *tip)
 {
-	return uiDefIconBut(block, type | UI_BUT_POIN_CHAR, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconBut(block,
+                      type | UI_BUT_POIN_CHAR,
+                      retval,
+                      icon,
+                      x,
+                      y,
+                      width,
+                      height,
+                      (void *)poin,
+                      min,
+                      max,
+                      a1,
+                      a2,
+                      tip);
 }
-uiBut *uiDefIconButBitC(uiBlock *block, int type, int bit, int retval, int icon, int x, int y, short width, short height, char *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButBitC(uiBlock *block,
+                        int type,
+                        int bit,
+                        int retval,
+                        int icon,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        char *poin,
+                        float min,
+                        float max,
+                        float a1,
+                        float a2,
+                        const char *tip)
 {
-	return uiDefIconButBit(block, type | UI_BUT_POIN_CHAR, bit, retval, icon, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconButBit(block,
+                         type | UI_BUT_POIN_CHAR,
+                         bit,
+                         retval,
+                         icon,
+                         x,
+                         y,
+                         width,
+                         height,
+                         (void *)poin,
+                         min,
+                         max,
+                         a1,
+                         a2,
+                         tip);
 }
-uiBut *uiDefIconButR(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, PointerRNA *ptr, const char *propname, int index, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButR(uiBlock *block,
+                     int type,
+                     int retval,
+                     int icon,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     PointerRNA *ptr,
+                     const char *propname,
+                     int index,
+                     float min,
+                     float max,
+                     float a1,
+                     float a2,
+                     const char *tip)
 {
 	uiBut *but;
-	but = ui_def_but_rna_propname(block, type, retval, "", x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
+  but = ui_def_but_rna_propname(
+      block, type, retval, "", x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
 	ui_but_update_and_icon_set(but, icon);
 	return but;
 }
-uiBut *uiDefIconButR_prop(uiBlock *block, int type, int retval, int icon, int x, int y, short width, short height, PointerRNA *ptr, PropertyRNA *prop, int index, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconButR_prop(uiBlock *block,
+                          int type,
+                          int retval,
+                          int icon,
+                          int x,
+                          int y,
+                          short width,
+                          short height,
+                          PointerRNA *ptr,
+                          PropertyRNA *prop,
+                          int index,
+                          float min,
+                          float max,
+                          float a1,
+                          float a2,
+                          const char *tip)
 {
 	uiBut *but;
-	but = ui_def_but_rna(block, type, retval, "", x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+  but = ui_def_but_rna(
+      block, type, retval, "", x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
 	ui_but_update_and_icon_set(but, icon);
 	return but;
 }
 
-uiBut *uiDefIconButO_ptr(uiBlock *block, int type, wmOperatorType *ot, int opcontext, int icon, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconButO_ptr(uiBlock *block,
+                         int type,
+                         wmOperatorType *ot,
+                         int opcontext,
+                         int icon,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         const char *tip)
 {
 	uiBut *but;
 	but = ui_def_but_operator_ptr(block, type, ot, opcontext, "", x, y, width, height, tip);
 	ui_but_update_and_icon_set(but, icon);
 	return but;
 }
-uiBut *uiDefIconButO(uiBlock *block, int type, const char *opname, int opcontext, int icon, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconButO(uiBlock *block,
+                     int type,
+                     const char *opname,
+                     int opcontext,
+                     int icon,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     const char *tip)
 {
 	wmOperatorType *ot = WM_operatortype_find(opname, 0);
 	return uiDefIconButO_ptr(block, type, ot, opcontext, icon, x, y, width, height, tip);
 }
 
 /* Button containing both string label and icon */
-uiBut *uiDefIconTextBut(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, void *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextBut(uiBlock *block,
+                        int type,
+                        int retval,
+                        int icon,
+                        const char *str,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        void *poin,
+                        float min,
+                        float max,
+                        float a1,
+                        float a2,
+                        const char *tip)
 {
-	uiBut *but = ui_def_but(block, type, retval, str, x, y, width, height, poin, min, max, a1, a2, tip);
+  uiBut *but = ui_def_but(
+      block, type, retval, str, x, y, width, height, poin, min, max, a1, a2, tip);
 	ui_but_update_and_icon_set(but, icon);
 	but->drawflag |= UI_BUT_ICON_LEFT;
 	return but;
 }
-static uiBut *uiDefIconTextButBit(uiBlock *block, int type, int bit, int retval, int icon, const char *str, int x, int y, short width, short height, void *poin, float min, float max, float a1, float a2,  const char *tip)
+static uiBut *uiDefIconTextButBit(uiBlock *block,
+                                  int type,
+                                  int bit,
+                                  int retval,
+                                  int icon,
+                                  const char *str,
+                                  int x,
+                                  int y,
+                                  short width,
+                                  short height,
+                                  void *poin,
+                                  float min,
+                                  float max,
+                                  float a1,
+                                  float a2,
+                                  const char *tip)
 {
 	int bitIdx = findBitIndex(bit);
 	if (bitIdx == -1) {
 		return NULL;
 	}
 	else {
-		return uiDefIconTextBut(block, type | UI_BUT_POIN_BIT | bitIdx, retval, icon, str, x, y, width, height, poin, min, max, a1, a2, tip);
-	}
+    return uiDefIconTextBut(block,
+                            type | UI_BUT_POIN_BIT | bitIdx,
+                            retval,
+                            icon,
+                            str,
+                            x,
+                            y,
+                            width,
+                            height,
+                            poin,
+                            min,
+                            max,
+                            a1,
+                            a2,
+                            tip);
+  }
 }
 
-uiBut *uiDefIconTextButF(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, float *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButF(uiBlock *block,
+                         int type,
+                         int retval,
+                         int icon,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         float *poin,
+                         float min,
+                         float max,
+                         float a1,
+                         float a2,
+                         const char *tip)
 {
-	return uiDefIconTextBut(block, type | UI_BUT_POIN_FLOAT, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextBut(block,
+                          type | UI_BUT_POIN_FLOAT,
+                          retval,
+                          icon,
+                          str,
+                          x,
+                          y,
+                          width,
+                          height,
+                          (void *)poin,
+                          min,
+                          max,
+                          a1,
+                          a2,
+                          tip);
 }
-uiBut *uiDefIconTextButBitF(uiBlock *block, int type, int bit, int retval, int icon, const char *str, int x, int y, short width, short height, float *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButBitF(uiBlock *block,
+                            int type,
+                            int bit,
+                            int retval,
+                            int icon,
+                            const char *str,
+                            int x,
+                            int y,
+                            short width,
+                            short height,
+                            float *poin,
+                            float min,
+                            float max,
+                            float a1,
+                            float a2,
+                            const char *tip)
 {
-	return uiDefIconTextButBit(block, type | UI_BUT_POIN_FLOAT, bit, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextButBit(block,
+                             type | UI_BUT_POIN_FLOAT,
+                             bit,
+                             retval,
+                             icon,
+                             str,
+                             x,
+                             y,
+                             width,
+                             height,
+                             (void *)poin,
+                             min,
+                             max,
+                             a1,
+                             a2,
+                             tip);
 }
-uiBut *uiDefIconTextButI(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, int *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButI(uiBlock *block,
+                         int type,
+                         int retval,
+                         int icon,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         int *poin,
+                         float min,
+                         float max,
+                         float a1,
+                         float a2,
+                         const char *tip)
 {
-	return uiDefIconTextBut(block, type | UI_BUT_POIN_INT, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextBut(block,
+                          type | UI_BUT_POIN_INT,
+                          retval,
+                          icon,
+                          str,
+                          x,
+                          y,
+                          width,
+                          height,
+                          (void *)poin,
+                          min,
+                          max,
+                          a1,
+                          a2,
+                          tip);
 }
-uiBut *uiDefIconTextButBitI(uiBlock *block, int type, int bit, int retval, int icon, const char *str, int x, int y, short width, short height, int *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButBitI(uiBlock *block,
+                            int type,
+                            int bit,
+                            int retval,
+                            int icon,
+                            const char *str,
+                            int x,
+                            int y,
+                            short width,
+                            short height,
+                            int *poin,
+                            float min,
+                            float max,
+                            float a1,
+                            float a2,
+                            const char *tip)
 {
-	return uiDefIconTextButBit(block, type | UI_BUT_POIN_INT, bit, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextButBit(block,
+                             type | UI_BUT_POIN_INT,
+                             bit,
+                             retval,
+                             icon,
+                             str,
+                             x,
+                             y,
+                             width,
+                             height,
+                             (void *)poin,
+                             min,
+                             max,
+                             a1,
+                             a2,
+                             tip);
 }
-uiBut *uiDefIconTextButS(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, short *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButS(uiBlock *block,
+                         int type,
+                         int retval,
+                         int icon,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         short *poin,
+                         float min,
+                         float max,
+                         float a1,
+                         float a2,
+                         const char *tip)
 {
-	return uiDefIconTextBut(block, type | UI_BUT_POIN_SHORT, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextBut(block,
+                          type | UI_BUT_POIN_SHORT,
+                          retval,
+                          icon,
+                          str,
+                          x,
+                          y,
+                          width,
+                          height,
+                          (void *)poin,
+                          min,
+                          max,
+                          a1,
+                          a2,
+                          tip);
 }
-uiBut *uiDefIconTextButBitS(uiBlock *block, int type, int bit, int retval, int icon, const char *str, int x, int y, short width, short height, short *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButBitS(uiBlock *block,
+                            int type,
+                            int bit,
+                            int retval,
+                            int icon,
+                            const char *str,
+                            int x,
+                            int y,
+                            short width,
+                            short height,
+                            short *poin,
+                            float min,
+                            float max,
+                            float a1,
+                            float a2,
+                            const char *tip)
 {
-	return uiDefIconTextButBit(block, type | UI_BUT_POIN_SHORT, bit, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextButBit(block,
+                             type | UI_BUT_POIN_SHORT,
+                             bit,
+                             retval,
+                             icon,
+                             str,
+                             x,
+                             y,
+                             width,
+                             height,
+                             (void *)poin,
+                             min,
+                             max,
+                             a1,
+                             a2,
+                             tip);
 }
-uiBut *uiDefIconTextButC(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, char *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButC(uiBlock *block,
+                         int type,
+                         int retval,
+                         int icon,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         char *poin,
+                         float min,
+                         float max,
+                         float a1,
+                         float a2,
+                         const char *tip)
 {
-	return uiDefIconTextBut(block, type | UI_BUT_POIN_CHAR, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextBut(block,
+                          type | UI_BUT_POIN_CHAR,
+                          retval,
+                          icon,
+                          str,
+                          x,
+                          y,
+                          width,
+                          height,
+                          (void *)poin,
+                          min,
+                          max,
+                          a1,
+                          a2,
+                          tip);
 }
-uiBut *uiDefIconTextButBitC(uiBlock *block, int type, int bit, int retval, int icon, const char *str, int x, int y, short width, short height, char *poin, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButBitC(uiBlock *block,
+                            int type,
+                            int bit,
+                            int retval,
+                            int icon,
+                            const char *str,
+                            int x,
+                            int y,
+                            short width,
+                            short height,
+                            char *poin,
+                            float min,
+                            float max,
+                            float a1,
+                            float a2,
+                            const char *tip)
 {
-	return uiDefIconTextButBit(block, type | UI_BUT_POIN_CHAR, bit, retval, icon, str, x, y, width, height, (void *) poin, min, max, a1, a2, tip);
+  return uiDefIconTextButBit(block,
+                             type | UI_BUT_POIN_CHAR,
+                             bit,
+                             retval,
+                             icon,
+                             str,
+                             x,
+                             y,
+                             width,
+                             height,
+                             (void *)poin,
+                             min,
+                             max,
+                             a1,
+                             a2,
+                             tip);
 }
-uiBut *uiDefIconTextButR(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, PointerRNA *ptr, const char *propname, int index, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButR(uiBlock *block,
+                         int type,
+                         int retval,
+                         int icon,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         PointerRNA *ptr,
+                         const char *propname,
+                         int index,
+                         float min,
+                         float max,
+                         float a1,
+                         float a2,
+                         const char *tip)
 {
 	uiBut *but;
-	but = ui_def_but_rna_propname(block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
+  but = ui_def_but_rna_propname(
+      block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
 	ui_but_update_and_icon_set(but, icon);
 	but->drawflag |= UI_BUT_ICON_LEFT;
 	return but;
 }
-uiBut *uiDefIconTextButR_prop(uiBlock *block, int type, int retval, int icon, const char *str, int x, int y, short width, short height, PointerRNA *ptr, PropertyRNA *prop, int index, float min, float max, float a1, float a2,  const char *tip)
+uiBut *uiDefIconTextButR_prop(uiBlock *block,
+                              int type,
+                              int retval,
+                              int icon,
+                              const char *str,
+                              int x,
+                              int y,
+                              short width,
+                              short height,
+                              PointerRNA *ptr,
+                              PropertyRNA *prop,
+                              int index,
+                              float min,
+                              float max,
+                              float a1,
+                              float a2,
+                              const char *tip)
 {
 	uiBut *but;
-	but = ui_def_but_rna(block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+  but = ui_def_but_rna(
+      block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
 	ui_but_update_and_icon_set(but, icon);
 	but->drawflag |= UI_BUT_ICON_LEFT;
 	return but;
 }
-uiBut *uiDefIconTextButO_ptr(uiBlock *block, int type, wmOperatorType *ot, int opcontext, int icon, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconTextButO_ptr(uiBlock *block,
+                             int type,
+                             wmOperatorType *ot,
+                             int opcontext,
+                             int icon,
+                             const char *str,
+                             int x,
+                             int y,
+                             short width,
+                             short height,
+                             const char *tip)
 {
 	uiBut *but;
 	but = ui_def_but_operator_ptr(block, type, ot, opcontext, str, x, y, width, height, tip);
@@ -4396,7 +5511,17 @@ uiBut *uiDefIconTextButO_ptr(uiBlock *block, int type, wmOperatorType *ot, int o
 	but->drawflag |= UI_BUT_ICON_LEFT;
 	return but;
 }
-uiBut *uiDefIconTextButO(uiBlock *block, int type, const char *opname, int opcontext, int icon, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconTextButO(uiBlock *block,
+                         int type,
+                         const char *opname,
+                         int opcontext,
+                         int icon,
+                         const char *str,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         const char *tip)
 {
 	wmOperatorType *ot = WM_operatortype_find(opname, 0);
 	if (str && str[0] == '\0') {
@@ -4462,7 +5587,6 @@ void UI_block_order_flip(uiBlock *block)
 
 	block->flag ^= UI_BLOCK_IS_FLIP;
 }
-
 
 void UI_block_flag_enable(uiBlock *block, int flag)
 {
@@ -4561,7 +5685,8 @@ void UI_but_drag_set_value(uiBut *but)
 	but->dragtype = WM_DRAG_VALUE;
 }
 
-void UI_but_drag_set_image(uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale, const bool use_free)
+void UI_but_drag_set_image(
+    uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale, const bool use_free)
 {
 	but->dragtype = WM_DRAG_PATH;
 	ui_def_but_icon(but, icon, 0);  /* no flag UI_HAS_ICON, so icon doesn't draw in button */
@@ -4663,7 +5788,11 @@ void UI_but_func_rename_set(uiBut *but, uiButHandleRenameFunc func, void *arg1)
 	but->rename_arg1 = arg1;
 }
 
-void UI_but_func_drawextra_set(uiBlock *block, void (*func)(const bContext *C, void *idv, void *arg1, void *arg2, rcti *rect), void *arg1, void *arg2)
+void UI_but_func_drawextra_set(
+    uiBlock *block,
+    void (*func)(const bContext *C, void *idv, void *arg1, void *arg2, rcti *rect),
+    void *arg1,
+    void *arg2)
 {
 	block->drawextra = func;
 	block->drawextra_arg1 = arg1;
@@ -4714,17 +5843,35 @@ void UI_but_func_pushed_state_set(uiBut *but, uiButPushedStateFunc func, void *a
 	but->pushed_state_arg = arg;
 }
 
-uiBut *uiDefBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefBlockBut(uiBlock *block,
+                     uiBlockCreateFunc func,
+                     void *arg,
+                     const char *str,
+                     int x,
+                     int y,
+                     short width,
+                     short height,
+                     const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 	but->block_create_func = func;
 	ui_but_update(but);
 	return but;
 }
 
-uiBut *uiDefBlockButN(uiBlock *block, uiBlockCreateFunc func, void *argN, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefBlockButN(uiBlock *block,
+                      uiBlockCreateFunc func,
+                      void *argN,
+                      const char *str,
+                      int x,
+                      int y,
+                      short width,
+                      short height,
+                      const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, NULL, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, NULL, 0.0, 0.0, 0.0, 0.0, tip);
 	but->block_create_func = func;
 	if (but->func_argN) {
 		MEM_freeN(but->func_argN);
@@ -4734,26 +5881,53 @@ uiBut *uiDefBlockButN(uiBlock *block, uiBlockCreateFunc func, void *argN, const 
 	return but;
 }
 
-
-uiBut *uiDefPulldownBut(uiBlock *block, uiBlockCreateFunc func, void *arg, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefPulldownBut(uiBlock *block,
+                        uiBlockCreateFunc func,
+                        void *arg,
+                        const char *str,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 	but->block_create_func = func;
 	ui_but_update(but);
 	return but;
 }
 
-uiBut *uiDefMenuBut(uiBlock *block, uiMenuCreateFunc func, void *arg, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefMenuBut(uiBlock *block,
+                    uiMenuCreateFunc func,
+                    void *arg,
+                    const char *str,
+                    int x,
+                    int y,
+                    short width,
+                    short height,
+                    const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 	but->menu_create_func = func;
 	ui_but_update(but);
 	return but;
 }
 
-uiBut *uiDefIconTextMenuBut(uiBlock *block, uiMenuCreateFunc func, void *arg, int icon, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconTextMenuBut(uiBlock *block,
+                            uiMenuCreateFunc func,
+                            void *arg,
+                            int icon,
+                            const char *str,
+                            int x,
+                            int y,
+                            short width,
+                            short height,
+                            const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 
 	ui_def_but_icon(but, icon, UI_HAS_ICON);
 
@@ -4766,9 +5940,18 @@ uiBut *uiDefIconTextMenuBut(uiBlock *block, uiMenuCreateFunc func, void *arg, in
 	return but;
 }
 
-uiBut *uiDefIconMenuBut(uiBlock *block, uiMenuCreateFunc func, void *arg, int icon, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconMenuBut(uiBlock *block,
+                        uiMenuCreateFunc func,
+                        void *arg,
+                        int icon,
+                        int x,
+                        int y,
+                        short width,
+                        short height,
+                        const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_PULLDOWN, 0, "", x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_PULLDOWN, 0, "", x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 
 	ui_def_but_icon(but, icon, UI_HAS_ICON);
 	but->drawflag &= ~UI_BUT_ICON_LEFT;
@@ -4780,9 +5963,19 @@ uiBut *uiDefIconMenuBut(uiBlock *block, uiMenuCreateFunc func, void *arg, int ic
 }
 
 /* Block button containing both string label and icon */
-uiBut *uiDefIconTextBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, int icon, const char *str, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconTextBlockBut(uiBlock *block,
+                             uiBlockCreateFunc func,
+                             void *arg,
+                             int icon,
+                             const char *str,
+                             int x,
+                             int y,
+                             short width,
+                             short height,
+                             const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 
 	/* XXX temp, old menu calls pass on icon arrow, which is now UI_BUT_ICON_SUBMENU flag */
 	if (icon != ICON_RIGHTARROW_THIN) {
@@ -4799,9 +5992,19 @@ uiBut *uiDefIconTextBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, 
 }
 
 /* Block button containing icon */
-uiBut *uiDefIconBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, int retval, int icon, int x, int y, short width, short height, const char *tip)
+uiBut *uiDefIconBlockBut(uiBlock *block,
+                         uiBlockCreateFunc func,
+                         void *arg,
+                         int retval,
+                         int icon,
+                         int x,
+                         int y,
+                         short width,
+                         short height,
+                         const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_BLOCK, retval, "", x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_BLOCK, retval, "", x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
 
 	ui_def_but_icon(but, icon, UI_HAS_ICON);
 
@@ -4813,29 +6016,83 @@ uiBut *uiDefIconBlockBut(uiBlock *block, uiBlockCreateFunc func, void *arg, int 
 	return but;
 }
 
-uiBut *uiDefKeyevtButS(uiBlock *block, int retval, const char *str, int x, int y, short width, short height, short *spoin, const char *tip)
+uiBut *uiDefKeyevtButS(uiBlock *block,
+                       int retval,
+                       const char *str,
+                       int x,
+                       int y,
+                       short width,
+                       short height,
+                       short *spoin,
+                       const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_KEY_EVENT | UI_BUT_POIN_SHORT, retval, str, x, y, width, height, spoin, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(block,
+                          UI_BTYPE_KEY_EVENT | UI_BUT_POIN_SHORT,
+                          retval,
+                          str,
+                          x,
+                          y,
+                          width,
+                          height,
+                          spoin,
+                          0.0,
+                          0.0,
+                          0.0,
+                          0.0,
+                          tip);
 	ui_but_update(but);
 	return but;
 }
 
 /* short pointers hardcoded */
 /* modkeypoin will be set to KM_SHIFT, KM_ALT, KM_CTRL, KM_OSKEY bits */
-uiBut *uiDefHotKeyevtButS(uiBlock *block, int retval, const char *str, int x, int y, short width, short height, short *keypoin, short *modkeypoin, const char *tip)
+uiBut *uiDefHotKeyevtButS(uiBlock *block,
+                          int retval,
+                          const char *str,
+                          int x,
+                          int y,
+                          short width,
+                          short height,
+                          short *keypoin,
+                          short *modkeypoin,
+                          const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_HOTKEY_EVENT | UI_BUT_POIN_SHORT, retval, str, x, y, width, height, keypoin, 0.0, 0.0, 0.0, 0.0, tip);
+  uiBut *but = ui_def_but(block,
+                          UI_BTYPE_HOTKEY_EVENT | UI_BUT_POIN_SHORT,
+                          retval,
+                          str,
+                          x,
+                          y,
+                          width,
+                          height,
+                          keypoin,
+                          0.0,
+                          0.0,
+                          0.0,
+                          0.0,
+                          tip);
 	but->modifier_key = *modkeypoin;
 	ui_but_update(but);
 	return but;
 }
 
-
 /* arg is pointer to string/name, use UI_but_func_search_set() below to make this work */
 /* here a1 and a2, if set, control thumbnail preview rows/cols */
-uiBut *uiDefSearchBut(uiBlock *block, void *arg, int retval, int icon, int maxlen, int x, int y, short width, short height, float a1, float a2, const char *tip)
+uiBut *uiDefSearchBut(uiBlock *block,
+                      void *arg,
+                      int retval,
+                      int icon,
+                      int maxlen,
+                      int x,
+                      int y,
+                      short width,
+                      short height,
+                      float a1,
+                      float a2,
+                      const char *tip)
 {
-	uiBut *but = ui_def_but(block, UI_BTYPE_SEARCH_MENU, retval, "", x, y, width, height, arg, 0.0, maxlen, a1, a2, tip);
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_SEARCH_MENU, retval, "", x, y, width, height, arg, 0.0, maxlen, a1, a2, tip);
 
 	ui_def_but_icon(but, icon, UI_HAS_ICON);
 
@@ -4846,17 +6103,18 @@ uiBut *uiDefSearchBut(uiBlock *block, void *arg, int retval, int icon, int maxle
 	return but;
 }
 
-
 /**
  * \param search_func, bfunc: both get it as \a arg.
  * \param arg: user value,
  * \param  active: when set, button opens with this item visible and selected.
  */
-void UI_but_func_search_set(
-        uiBut *but,
+void UI_but_func_search_set(uiBut *but,
         uiButSearchCreateFunc search_create_func,
-        uiButSearchFunc search_func, void *arg, bool free_arg,
-        uiButHandleFunc bfunc, void *active)
+                            uiButSearchFunc search_func,
+                            void *arg,
+                            bool free_arg,
+                            uiButHandleFunc bfunc,
+                            void *active)
 {
 	/* needed since callers don't have access to internal functions
 	 * (as an alternative we could expose it) */
@@ -4877,7 +6135,8 @@ void UI_but_func_search_set(
 #ifdef DEBUG
 		if (but->func) {
 			/* watch this, can be cause of much confusion, see: T47691 */
-			printf("%s: warning, overwriting button callback with search function callback!\n", __func__);
+      printf("%s: warning, overwriting button callback with search function callback!\n",
+             __func__);
 		}
 #endif
 		UI_but_func_set(but, bfunc, arg, active);
@@ -4893,18 +6152,22 @@ void UI_but_func_search_set(
 }
 
 /* Callbacks for operator search button. */
-static void operator_enum_search_cb(const struct bContext *C, void *but, const char *str, uiSearchItems *items)
+static void operator_enum_search_cb(const struct bContext *C,
+                                    void *but,
+                                    const char *str,
+                                    uiSearchItems *items)
 {
 	wmOperatorType *ot = ((uiBut *)but)->optype;
 	PropertyRNA *prop = ot->prop;
 
 	if (prop == NULL) {
-		printf("%s: %s has no enum property set\n",
-		       __func__, ot->idname);
+    printf("%s: %s has no enum property set\n", __func__, ot->idname);
 	}
 	else if (RNA_property_type(prop) != PROP_ENUM) {
 		printf("%s: %s \"%s\" is not an enum property\n",
-		       __func__, ot->idname, RNA_property_identifier(prop));
+           __func__,
+           ot->idname,
+           RNA_property_identifier(prop));
 	}
 	else {
 		PointerRNA *ptr = UI_but_operator_ptr_get(but);  /* Will create it if needed! */
@@ -4917,7 +6180,8 @@ static void operator_enum_search_cb(const struct bContext *C, void *but, const c
 			/* note: need to give the index rather than the
 			 * identifier because the enum can be freed */
 			if (BLI_strcasestr(item->name, str)) {
-				if (false == UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon)) {
+        if (false ==
+            UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon)) {
 					break;
 				}
 			}
@@ -4952,17 +6216,31 @@ static void operator_enum_call_cb(struct bContext *UNUSED(C), void *but, void *a
  * Same parameters as for uiDefSearchBut, with additional operator type and properties, used by callback
  * to call again the right op with the right options (properties values).
  */
-uiBut *uiDefSearchButO_ptr(
-        uiBlock *block, wmOperatorType *ot, IDProperty *properties,
-        void *arg, int retval, int icon, int maxlen, int x, int y,
-        short width, short height, float a1, float a2, const char *tip)
+uiBut *uiDefSearchButO_ptr(uiBlock *block,
+                           wmOperatorType *ot,
+                           IDProperty *properties,
+                           void *arg,
+                           int retval,
+                           int icon,
+                           int maxlen,
+                           int x,
+                           int y,
+                           short width,
+                           short height,
+                           float a1,
+                           float a2,
+                           const char *tip)
 {
 	uiBut *but;
 
 	but = uiDefSearchBut(block, arg, retval, icon, maxlen, x, y, width, height, a1, a2, tip);
-	UI_but_func_search_set(
-	        but, ui_searchbox_create_generic, operator_enum_search_cb,
-	        but, false, operator_enum_call_cb, NULL);
+  UI_but_func_search_set(but,
+                         ui_searchbox_create_generic,
+                         operator_enum_search_cb,
+                         but,
+                         false,
+                         operator_enum_call_cb,
+                         NULL);
 
 	but->optype = ot;
 	but->opcontext = WM_OP_EXEC_DEFAULT;
@@ -5019,9 +6297,7 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
 				const char *str_sep;
 				size_t str_len;
 
-				if ((but->flag & UI_BUT_HAS_SEP_CHAR) &&
-				    (str_sep = strrchr(but->str, UI_SEP_CHAR)))
-				{
+        if ((but->flag & UI_BUT_HAS_SEP_CHAR) && (str_sep = strrchr(but->str, UI_SEP_CHAR))) {
 					str_len = (str_sep - but->str);
 				}
 				else {
@@ -5141,7 +6417,8 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
 				/* enum property */
 				ptr = &but->rnapoin;
 				prop = but->rnaprop;
-				value = (ELEM(but->type, UI_BTYPE_ROW, UI_BTYPE_TAB)) ? (int)but->hardmax : (int)ui_but_value_get(but);
+        value = (ELEM(but->type, UI_BTYPE_ROW, UI_BTYPE_TAB)) ? (int)but->hardmax :
+                                                                (int)ui_but_value_get(but);
 			}
 			else if (but->optype) {
 				PointerRNA *opptr = UI_but_operator_ptr_get(but);

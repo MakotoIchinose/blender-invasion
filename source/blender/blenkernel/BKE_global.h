@@ -146,9 +146,7 @@ enum {
 	G_DEBUG_DEPSGRAPH_TIME       = (1 << 11),  /* depsgraph timing statistics and messages */
 	G_DEBUG_DEPSGRAPH_NO_THREADS = (1 << 12),  /* single threaded depsgraph */
 	G_DEBUG_DEPSGRAPH_PRETTY     = (1 << 13),  /* use pretty colors in depsgraph messages */
-	G_DEBUG_DEPSGRAPH = (G_DEBUG_DEPSGRAPH_BUILD |
-	                     G_DEBUG_DEPSGRAPH_EVAL |
-	                     G_DEBUG_DEPSGRAPH_TAG |
+  G_DEBUG_DEPSGRAPH = (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_EVAL | G_DEBUG_DEPSGRAPH_TAG |
 	                     G_DEBUG_DEPSGRAPH_TIME),
 	G_DEBUG_SIMDATA =   (1 << 14),  /* sim debug data display */
 	G_DEBUG_GPU_MEM =   (1 << 15),  /* gpu memory in status bar */
@@ -161,7 +159,6 @@ enum {
 #define G_DEBUG_ALL \
 	(G_DEBUG | G_DEBUG_FFMPEG | G_DEBUG_PYTHON | G_DEBUG_EVENTS | G_DEBUG_WM | G_DEBUG_JOBS | \
 	 G_DEBUG_FREESTYLE | G_DEBUG_DEPSGRAPH | G_DEBUG_GPU_MEM | G_DEBUG_IO | G_DEBUG_GPU_SHADERS)
-
 
 /** #Global.fileflags */
 enum {
@@ -188,8 +185,7 @@ enum {
 };
 
 /** Don't overwrite these flags when reading a file. */
-#define G_FILE_FLAG_ALL_RUNTIME \
-	(G_FILE_NO_UI | G_FILE_RELATIVE_REMAP | G_FILE_SAVE_COPY)
+#define G_FILE_FLAG_ALL_RUNTIME (G_FILE_NO_UI | G_FILE_RELATIVE_REMAP | G_FILE_SAVE_COPY)
 
 /** ENDIAN_ORDER: indicates what endianness the platform where the file was written had. */
 #if !defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__)

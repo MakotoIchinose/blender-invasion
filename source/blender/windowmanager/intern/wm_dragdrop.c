@@ -95,10 +95,8 @@ ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid)
 	return &dm->dropboxes;
 }
 
-
-
-wmDropBox *WM_dropbox_add(
-        ListBase *lb, const char *idname,
+wmDropBox *WM_dropbox_add(ListBase *lb,
+                          const char *idname,
         bool (*poll)(bContext *, wmDrag *, const wmEvent *, const char **),
         void (*copy)(wmDrag *, wmDropBox *))
 {
@@ -143,7 +141,8 @@ void wm_dropbox_free(void)
 /* *********************************** */
 
 /* note that the pointer should be valid allocated and not on stack */
-wmDrag *WM_event_start_drag(struct bContext *C, int icon, int type, void *poin, double value, unsigned int flags)
+wmDrag *WM_event_start_drag(
+    struct bContext *C, int icon, int type, void *poin, double value, unsigned int flags)
 {
 	wmWindowManager *wm = CTX_wm_manager(C);
 	wmDrag *drag = MEM_callocN(sizeof(struct wmDrag), "new drag");
@@ -202,8 +201,10 @@ void WM_drag_free_list(struct ListBase *lb)
 	}
 }
 
-
-static const char *dropbox_active(bContext *C, ListBase *handlers, wmDrag *drag, const wmEvent *event)
+static const char *dropbox_active(bContext *C,
+                                  ListBase *handlers,
+                                  wmDrag *drag,
+                                  const wmEvent *event)
 {
 	LISTBASE_FOREACH (wmEventHandler *, handler_base, handlers) {
 		if (handler_base->type == WM_HANDLER_TYPE_DROPBOX) {
@@ -248,7 +249,6 @@ static const char *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *e
 
 	return NULL;
 }
-
 
 static void wm_drop_operator_options(bContext *C, wmDrag *drag, const wmEvent *event)
 {
@@ -329,7 +329,6 @@ ID *WM_drag_ID(const wmDrag *drag, short idcode)
 
 	ID *id = drag_id->id;
 	return (idcode == 0 || GS(id->name) == idcode) ? id : NULL;
-
 }
 
 ID *WM_drag_ID_from_event(const wmEvent *event, short idcode)
@@ -356,8 +355,7 @@ static void wm_drop_operator_draw(const char *name, int x, int y)
 static const char *wm_drag_name(wmDrag *drag)
 {
 	switch (drag->type) {
-		case WM_DRAG_ID:
-		{
+    case WM_DRAG_ID: {
 			ID *id = WM_drag_ID(drag, 0);
 			bool single = (BLI_listbase_count_at_most(&drag->ids, 2) == 1);
 
@@ -427,8 +425,20 @@ void wm_drags_draw(bContext *C, wmWindow *win, rcti *rect)
 			else {
 				float col[4] = {1.0f, 1.0f, 1.0f, 0.65f}; /* this blends texture */
 				IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_COLOR);
-				immDrawPixelsTexScaled(&state, x, y, drag->imb->x, drag->imb->y, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST,
-				                       drag->imb->rect, drag->scale, drag->scale, 1.0f, 1.0f, col);
+        immDrawPixelsTexScaled(&state,
+                               x,
+                               y,
+                               drag->imb->x,
+                               drag->imb->y,
+                               GL_RGBA,
+                               GL_UNSIGNED_BYTE,
+                               GL_NEAREST,
+                               drag->imb->rect,
+                               drag->scale,
+                               drag->scale,
+                               1.0f,
+                               1.0f,
+                               col);
 			}
 		}
 		else {
@@ -491,7 +501,6 @@ void wm_drags_draw(bContext *C, wmWindow *win, rcti *rect)
 			else {
 				wm_drop_operator_draw(drag->opname, x, y);
 			}
-
 		}
 	}
 	GPU_blend(false);

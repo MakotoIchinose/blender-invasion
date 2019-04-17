@@ -21,7 +21,6 @@
  * \ingroup spfile
  */
 
-
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -92,7 +91,11 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 	if (!sfile->params) {
 		sfile->params = MEM_callocN(sizeof(FileSelectParams), "fileselparams");
 		/* set path to most recently opened .blend */
-		BLI_split_dirfile(blendfile_path, sfile->params->dir, sfile->params->file, sizeof(sfile->params->dir), sizeof(sfile->params->file));
+    BLI_split_dirfile(blendfile_path,
+                      sfile->params->dir,
+                      sfile->params->file,
+                      sizeof(sfile->params->dir),
+                      sizeof(sfile->params->file));
 		sfile->params->filter_glob[0] = '\0';
 		/* set the default thumbnails size */
 		sfile->params->thumbnail_size = 128;
@@ -134,7 +137,11 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 				sfile->params->file[0] = '\0';
 			}
 			else {
-				BLI_split_dirfile(name, sfile->params->dir, sfile->params->file, sizeof(sfile->params->dir), sizeof(sfile->params->file));
+        BLI_split_dirfile(name,
+                          sfile->params->dir,
+                          sfile->params->file,
+                          sizeof(sfile->params->dir),
+                          sizeof(sfile->params->file));
 			}
 		}
 		else {
@@ -153,7 +160,8 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 			BLI_path_abs(params->dir, blendfile_path);
 		}
 
-		if (is_directory == true && is_filename == false && is_filepath == false && is_files == false) {
+    if (is_directory == true && is_filename == false && is_filepath == false &&
+        is_files == false) {
 			params->flag |= FILE_DIRSEL_ONLY;
 		}
 		else {
@@ -221,7 +229,6 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 			params->flag &= ~FILE_HIDE_DOT;
 		}
 
-
 		if (params->type == FILE_LOADLIB) {
 			params->flag |= RNA_boolean_get(op->ptr, "link") ? FILE_LINK : 0;
 			params->flag |= RNA_boolean_get(op->ptr, "autoselect") ? FILE_AUTOSELECT : 0;
@@ -280,7 +287,6 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 
 	/* operator has no setting for this */
 	params->active_file = -1;
-
 
 	/* initialize the list with previous folders */
 	if (!sfile->folders_prev)
@@ -377,8 +383,7 @@ FileSelection ED_fileselect_layout_offset_rect(FileLayout *layout, const rcti *r
 	rowmax = (rect->ymax) / (layout->tile_h + 2 * layout->tile_border_y);
 
 	if (is_inside(colmin, rowmin, layout->columns, layout->rows) ||
-	    is_inside(colmax, rowmax, layout->columns, layout->rows) )
-	{
+      is_inside(colmax, rowmax, layout->columns, layout->rows)) {
 		CLAMP(colmin, 0, layout->columns - 1);
 		CLAMP(rowmin, 0, layout->rows - 1);
 		CLAMP(colmax, 0, layout->columns - 1);
@@ -418,8 +423,10 @@ int ED_fileselect_layout_offset(FileLayout *layout, int x, int y)
 	offsetx = (x) / (layout->tile_w + 2 * layout->tile_border_x);
 	offsety = (y) / (layout->tile_h + 2 * layout->tile_border_y);
 
-	if (offsetx > layout->columns - 1) return -1;
-	if (offsety > layout->rows - 1) return -1;
+  if (offsetx > layout->columns - 1)
+    return -1;
+  if (offsety > layout->rows - 1)
+    return -1;
 
 	if (layout->flag & FILE_LAYOUT_HOR)
 		active_file = layout->rows * offsetx + offsety;
@@ -431,12 +438,16 @@ int ED_fileselect_layout_offset(FileLayout *layout, int x, int y)
 void ED_fileselect_layout_tilepos(FileLayout *layout, int tile, int *x, int *y)
 {
 	if (layout->flag == FILE_LAYOUT_HOR) {
-		*x = layout->tile_border_x + (tile / layout->rows) * (layout->tile_w + 2 * layout->tile_border_x);
-		*y = layout->tile_border_y + (tile % layout->rows) * (layout->tile_h + 2 * layout->tile_border_y);
+    *x = layout->tile_border_x +
+         (tile / layout->rows) * (layout->tile_w + 2 * layout->tile_border_x);
+    *y = layout->tile_border_y +
+         (tile % layout->rows) * (layout->tile_h + 2 * layout->tile_border_y);
 	}
 	else {
-		*x = layout->tile_border_x + ((tile) % layout->columns) * (layout->tile_w + 2 * layout->tile_border_x);
-		*y = layout->tile_border_y + ((tile) / layout->columns) * (layout->tile_h + 2 * layout->tile_border_y);
+    *x = layout->tile_border_x +
+         ((tile) % layout->columns) * (layout->tile_w + 2 * layout->tile_border_x);
+    *y = layout->tile_border_y +
+         ((tile) / layout->columns) * (layout->tile_h + 2 * layout->tile_border_y);
 	}
 }
 
@@ -530,7 +541,8 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
 			layout->columns = 1;
 			layout->rows = numfiles + 1; // XXX dirty, modulo is zero
 		}
-		layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) + layout->tile_border_y * 2;
+    layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) +
+                     layout->tile_border_y * 2;
 		layout->flag = FILE_LAYOUT_VER;
 	}
 	else {
@@ -570,7 +582,8 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
 			layout->rows = 1;
 			layout->columns = numfiles + 1; // XXX dirty, modulo is zero
 		}
-		layout->width = sfile->layout->columns * (layout->tile_w + 2 * layout->tile_border_x) + layout->tile_border_x * 2;
+    layout->width = sfile->layout->columns * (layout->tile_w + 2 * layout->tile_border_x) +
+                    layout->tile_border_x * 2;
 		layout->flag = FILE_LAYOUT_HOR;
 	}
 	params->display_previous = params->display;
@@ -725,7 +738,8 @@ void ED_fileselect_clear(wmWindowManager *wm, ScrArea *sa, SpaceFile *sfile)
 
 void ED_fileselect_exit(wmWindowManager *wm, ScrArea *sa, SpaceFile *sfile)
 {
-	if (!sfile) return;
+  if (!sfile)
+    return;
 	if (sfile->op) {
 		WM_event_fileselect_event(wm, sfile->op, EVT_FILESELECT_EXTERNAL_CANCEL);
 		sfile->op = NULL;
@@ -748,7 +762,8 @@ void file_params_renamefile_activate(SpaceFile *sfile, FileSelectParams *params)
 {
 	BLI_assert(params->rename_flag != 0);
 
-	if ((params->rename_flag & (FILE_PARAMS_RENAME_ACTIVE | FILE_PARAMS_RENAME_POSTSCROLL_ACTIVE)) != 0) {
+  if ((params->rename_flag & (FILE_PARAMS_RENAME_ACTIVE | FILE_PARAMS_RENAME_POSTSCROLL_ACTIVE)) !=
+      0) {
 		return;
 	}
 

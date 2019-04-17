@@ -61,7 +61,6 @@ struct wmTimer;
  * define to enable writing (should become the default in a bit). */
 //#define WITH_GLOBAL_AREA_WRITING
 
-
 /* -------------------------------------------------------------------- */
 /** \name SpaceLink (Base)
  * \{ */
@@ -257,7 +256,6 @@ typedef struct SpaceOutliner {
 	void *treehash;
 } SpaceOutliner;
 
-
 /* SpaceOutliner.flag */
 typedef enum eSpaceOutliner_Flag {
 	SO_TESTBLOCKS           = (1 << 0),
@@ -292,21 +290,15 @@ typedef enum eSpaceOutliner_Filter {
 	SO_FILTER_ID_TYPE           = (1 << 17),
 } eSpaceOutliner_Filter;
 
-#define SO_FILTER_OB_TYPE (SO_FILTER_NO_OB_MESH | \
-                           SO_FILTER_NO_OB_ARMATURE | \
-                           SO_FILTER_NO_OB_EMPTY | \
-                           SO_FILTER_NO_OB_LAMP | \
-                           SO_FILTER_NO_OB_CAMERA | \
-                           SO_FILTER_NO_OB_OTHERS)
+#define SO_FILTER_OB_TYPE \
+  (SO_FILTER_NO_OB_MESH | SO_FILTER_NO_OB_ARMATURE | SO_FILTER_NO_OB_EMPTY | \
+   SO_FILTER_NO_OB_LAMP | SO_FILTER_NO_OB_CAMERA | SO_FILTER_NO_OB_OTHERS)
 
-#define SO_FILTER_OB_STATE (SO_FILTER_OB_STATE_VISIBLE | \
-                            SO_FILTER_OB_STATE_SELECTED | \
-                            SO_FILTER_OB_STATE_ACTIVE)
+#define SO_FILTER_OB_STATE \
+  (SO_FILTER_OB_STATE_VISIBLE | SO_FILTER_OB_STATE_SELECTED | SO_FILTER_OB_STATE_ACTIVE)
 
-#define SO_FILTER_ANY (SO_FILTER_NO_OB_CONTENT | \
-                       SO_FILTER_NO_CHILDREN | \
-                       SO_FILTER_OB_TYPE | \
-                       SO_FILTER_OB_STATE | \
+#define SO_FILTER_ANY \
+  (SO_FILTER_NO_OB_CONTENT | SO_FILTER_NO_CHILDREN | SO_FILTER_OB_TYPE | SO_FILTER_OB_STATE | \
                        SO_FILTER_NO_COLLECTION)
 
 /* SpaceOutliner.filter_state */
@@ -405,7 +397,6 @@ typedef struct SpaceGraph {
 
 	SpaceGraph_Runtime runtime;
 } SpaceGraph;
-
 
 /* SpaceGraph.flag (Graph Editor Settings) */
 typedef enum eGraphEdit_Flag {
@@ -555,7 +546,6 @@ typedef struct SpaceSeq {
 	void *_pad3;
 } SpaceSeq;
 
-
 /* SpaceSeq.mainb */
 typedef enum eSpaceSeq_RegionType {
 	SEQ_DRAW_SEQUENCE = 0,
@@ -570,7 +560,6 @@ typedef enum eSpaceSeq_DrawFlag {
 	SEQ_DRAW_BACKDROP              = (1 << 0),
 	SEQ_DRAW_OFFSET_EXT            = (1 << 1),
 } eSpaceSeq_DrawFlag;
-
 
 /* SpaceSeq.flag */
 typedef enum eSpaceSeq_Flag {
@@ -1006,7 +995,6 @@ typedef struct SpaceImage {
 	MaskSpaceInfo mask_info;
 } SpaceImage;
 
-
 /* SpaceImage.dt_uv */
 typedef enum eSpaceImage_UVDT {
 	SI_UVDT_OUTLINE = 0,
@@ -1158,7 +1146,6 @@ typedef struct SpaceText {
 	float scroll_accum[2];
 } SpaceText;
 
-
 /* SpaceText flags (moved from DNA_text_types.h) */
 typedef enum eSpaceText_Flags {
 	/* scrollable */
@@ -1203,7 +1190,10 @@ typedef struct Script {
 	/** 1024 = FILE_MAX. */
 	char scriptarg[256];
 } Script;
-#define SCRIPT_SET_NULL(_script) _script->py_draw = _script->py_event = _script->py_button = _script->py_browsercallback = _script->py_globaldict = NULL; _script->flags = 0
+#define SCRIPT_SET_NULL(_script) \
+  _script->py_draw = _script->py_event = _script->py_button = _script->py_browsercallback = \
+      _script->py_globaldict = NULL; \
+  _script->flags = 0
 
 /* Script View - Obsolete (pre 2.5) */
 typedef struct SpaceScript {
@@ -1376,7 +1366,6 @@ typedef enum eConsoleLine_Type {
 	CONSOLE_LINE_ERROR = 3,
 } eConsoleLine_Type;
 
-
 /* Console View */
 typedef struct SpaceConsole {
 	SpaceLink *next, *prev;
@@ -1540,7 +1529,6 @@ typedef enum eSpaceClip_GPencil_Source {
 	SC_GPENCIL_SRC_CLIP = 0,
 	SC_GPENCIL_SRC_TRACK = 1,
 } eSpaceClip_GPencil_Source;
-
 
 /** \} */
 

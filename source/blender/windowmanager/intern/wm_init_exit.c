@@ -222,13 +222,14 @@ void WM_init(bContext *C, int argc, const char **argv)
 	ED_undosys_type_init();
 
 	BKE_library_callback_free_window_manager_set(wm_close_and_free);   /* library.c */
-	BKE_library_callback_free_notifier_reference_set(WM_main_remove_notifier_reference);   /* library.c */
+  BKE_library_callback_free_notifier_reference_set(
+      WM_main_remove_notifier_reference);                    /* library.c */
 	BKE_region_callback_free_gizmomap_set(wm_gizmomap_remove); /* screen.c */
 	BKE_region_callback_refresh_tag_gizmomap_set(WM_gizmomap_tag_refresh);
-	BKE_library_callback_remap_editor_id_reference_set(WM_main_remap_editor_id_reference);   /* library.c */
+  BKE_library_callback_remap_editor_id_reference_set(
+      WM_main_remap_editor_id_reference);                     /* library.c */
 	BKE_spacedata_callback_id_remap_set(ED_spacedata_id_remap); /* screen.c */
-	DEG_editors_set_update_cb(ED_render_id_flush_update,
-	                          ED_render_scene_update);
+  DEG_editors_set_update_cb(ED_render_id_flush_update, ED_render_scene_update);
 
 	ED_spacetypes_init();   /* editors/space_api/spacetype.c */
 
@@ -254,8 +255,13 @@ void WM_init(bContext *C, int argc, const char **argv)
 
 	/* get the default database, plus a wm */
 	bool is_factory_startup = true;
-	wm_homefile_read(
-	        C, NULL, G.factory_startup, false, true, NULL, WM_init_state_app_template_get(),
+  wm_homefile_read(C,
+                   NULL,
+                   G.factory_startup,
+                   false,
+                   true,
+                   NULL,
+                   WM_init_state_app_template_get(),
 	        &is_factory_startup);
 
 	/* Call again to set from userpreferences... */
@@ -372,7 +378,6 @@ static void free_openrecent(void)
 	BLI_freelistN(&(G.recent_files));
 }
 
-
 #ifdef WIN32
 /* Read console events until there is a key event.  Also returns on any error. */
 static void wait_for_console_key(void)
@@ -433,7 +438,9 @@ void WM_exit_ext(bContext *C, const bool do_python)
 		wmWindow *win;
 
 		if (!G.background) {
-			struct MemFile *undo_memfile = wm->undo_stack ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : NULL;
+      struct MemFile *undo_memfile = wm->undo_stack ?
+                                         ED_undosys_stack_memfile_get_active(wm->undo_stack) :
+                                         NULL;
 			if (undo_memfile != NULL) {
 				/* save the undo state as quit.blend */
 				Main *bmain = CTX_data_main(C);
@@ -446,8 +453,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 				has_edited = ED_editors_flush_edits(bmain, false);
 
 				if ((has_edited && BLO_write_file(bmain, filename, fileflags, NULL, NULL)) ||
-				    (undo_memfile && BLO_memfile_write_file(undo_memfile, filename)))
-				{
+            (undo_memfile && BLO_memfile_write_file(undo_memfile, filename))) {
 					printf("Saved session recovery to '%s'\n", filename);
 				}
 			}
@@ -552,7 +558,6 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	ANIM_keyingset_infos_exit();
 
 //	free_txt_data();
-
 
 #ifdef WITH_PYTHON
 	/* option not to close python so we can use 'atexit' */

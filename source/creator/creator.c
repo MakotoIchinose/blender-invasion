@@ -105,7 +105,6 @@
 
 #include "creator_intern.h"  /* own include */
 
-
 /*	Local Function prototypes */
 #ifdef WITH_PYTHON_MODULE
 int  main_python_enter(int argc, const char **argv);
@@ -114,11 +113,13 @@ void main_python_exit(void);
 
 /* written to by 'creator_args.c' */
 struct ApplicationState app_state = {
-	.signal = {
+    .signal =
+        {
 		.use_crash_handler = true,
 		.use_abort_handler = true,
 	},
-	.exit_code_on_error = {
+    .exit_code_on_error =
+        {
 		.python = 0,
 	},
 };
@@ -178,7 +179,6 @@ static void callback_clg_fatal(void *fp)
 
 /** \} */
 
-
 /* -------------------------------------------------------------------- */
 /** \name Main Function
  * \{ */
@@ -202,8 +202,7 @@ char **environ = NULL;
  * - run #WM_main() event loop,
  *   or exit immediately when running in background mode.
  */
-int main(
-        int argc,
+int main(int argc,
 #ifdef WIN32
         const char **UNUSED(argv_c)
 #else
@@ -316,8 +315,6 @@ int main(
 	evil_C = C;
 #endif
 
-
-
 #ifdef WITH_BINRELOC
 	br_init(NULL);
 #endif
@@ -369,7 +366,6 @@ int main(
 
 	BKE_brush_system_init();
 	RE_texture_rng_init();
-
 
 	BLI_callback_global_init();
 
@@ -453,7 +449,9 @@ int main(
 
 	/* TODO - U.pythondir */
 #else
-	printf("\n* WARNING * - Blender compiled without Python!\nthis is not intended for typical usage\n\n");
+  printf(
+      "\n* WARNING * - Blender compiled without Python!\nthis is not intended for typical "
+      "usage\n\n");
 #endif
 
 	CTX_py_init_set(C, 1);

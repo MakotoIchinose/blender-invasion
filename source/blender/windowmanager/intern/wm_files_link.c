@@ -82,7 +82,6 @@
 #include "ED_fileselect.h"
 #include "ED_view3d.h"
 
-
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -142,7 +141,8 @@ static short wm_link_append_flag(wmOperator *op)
 	if (RNA_boolean_get(op->ptr, "active_collection")) {
 		flag |= FILE_ACTIVE_COLLECTION;
 	}
-	if ((prop = RNA_struct_find_property(op->ptr, "relative_path")) && RNA_property_boolean_get(op->ptr, prop)) {
+  if ((prop = RNA_struct_find_property(op->ptr, "relative_path")) &&
+      RNA_property_boolean_get(op->ptr, prop)) {
 		flag |= FILE_RELPATH;
 	}
 	if (RNA_boolean_get(op->ptr, "link")) {
@@ -158,7 +158,8 @@ static short wm_link_append_flag(wmOperator *op)
 typedef struct WMLinkAppendDataItem {
 	AssetUUID *uuid;
 	char *name;
-	BLI_bitmap *libraries;  /* All libs (from WMLinkAppendData.libraries) to try to load this ID from. */
+  BLI_bitmap
+      *libraries; /* All libs (from WMLinkAppendData.libraries) to try to load this ID from. */
 	short idcode;
 
 	ID *new_id;
@@ -350,7 +351,8 @@ static void wm_link_do(
 
 	BLI_assert(lapp_data->num_items && lapp_data->num_libraries);
 
-	for (lib_idx = 0, liblink = lapp_data->libraries.list; liblink; lib_idx++, liblink = liblink->next) {
+  for (lib_idx = 0, liblink = lapp_data->libraries.list; liblink;
+       lib_idx++, liblink = liblink->next) {
 		char *libname = liblink->link;
 
 		if (libname[0] == '\0') {
@@ -379,15 +381,19 @@ static void wm_link_do(
 		UNUSED_VARS_NDEBUG(lib);
 
 		if (mainl->versionfile < 250) {
-			BKE_reportf(reports, RPT_WARNING,
-			            "Linking or appending from a very old .blend file format (%d.%d), no animation conversion will "
+      BKE_reportf(reports,
+                  RPT_WARNING,
+                  "Linking or appending from a very old .blend file format (%d.%d), no animation "
+                  "conversion will "
 			            "be done! You may want to re-save your lib file with current Blender",
-			            mainl->versionfile, mainl->subversionfile);
+                  mainl->versionfile,
+                  mainl->subversionfile);
 		}
 
 		/* For each lib file, we try to link all items belonging to that lib,
 		 * and tag those successful to not try to load them again with the other libs. */
-		for (item_idx = 0, itemlink = lapp_data->items.list; itemlink; item_idx++, itemlink = itemlink->next) {
+    for (item_idx = 0, itemlink = lapp_data->items.list; itemlink;
+         item_idx++, itemlink = itemlink->next) {
 			WMLinkAppendDataItem *item = itemlink->link;
 			ID *new_id;
 
@@ -416,8 +422,11 @@ static void wm_link_do(
  *
  * \param reports: Optionally report an error when an item can't be appended/linked.
  */
-static bool wm_link_append_item_poll(
-        ReportList *reports, const char *path, const char *group, const char *name, const bool do_append)
+static bool wm_link_append_item_poll(ReportList *reports,
+                                     const char *path,
+                                     const char *group,
+                                     const char *name,
+                                     const bool do_append)
 {
 	short idcode;
 
@@ -433,10 +442,18 @@ static bool wm_link_append_item_poll(
 	if (!BKE_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
 		if (reports) {
 			if (do_append) {
-				BKE_reportf(reports, RPT_ERROR_INVALID_INPUT, "Can't append data-block '%s' of type '%s'", name, group);
+        BKE_reportf(reports,
+                    RPT_ERROR_INVALID_INPUT,
+                    "Can't append data-block '%s' of type '%s'",
+                    name,
+                    group);
 			}
 			else {
-				BKE_reportf(reports, RPT_ERROR_INVALID_INPUT, "Can't link data-block '%s' of type '%s'", name, group);
+        BKE_reportf(reports,
+                    RPT_ERROR_INVALID_INPUT,
+                    "Can't link data-block '%s' of type '%s'",
+                    name,
+                    group);
 			}
 		}
 		return false;
@@ -505,8 +522,10 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 
 	/* sanity checks for flag */
 	if (scene && scene->id.lib) {
-		BKE_reportf(op->reports, RPT_WARNING,
-		            "Scene '%s' is linked, instantiation of objects & groups is disabled", scene->id.name + 2);
+    BKE_reportf(op->reports,
+                RPT_WARNING,
+                "Scene '%s' is linked, instantiation of objects & groups is disabled",
+                scene->id.name + 2);
 		flag &= ~FILE_GROUP_INSTANCE;
 		scene = NULL;
 	}
@@ -533,8 +552,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 		GHash *libraries = BLI_ghash_new(BLI_ghashutil_strhash_p, BLI_ghashutil_strcmp, __func__);
 		int lib_idx = 0;
 
-		RNA_BEGIN (op->ptr, itemptr, "files")
-		{
+    RNA_BEGIN (op->ptr, itemptr, "files") {
 			RNA_string_get(&itemptr, "name", relname);
 
 			BLI_join_dirfile(path, sizeof(path), root, relname);
@@ -686,8 +704,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 		}
 		else {
 			LinkNode *itemlink;
-			GSet *done_libraries = BLI_gset_new_ex(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp,
-			                                       __func__, lapp_data->num_libraries);
+      GSet *done_libraries = BLI_gset_new_ex(
+          BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__, lapp_data->num_libraries);
 
 			for (itemlink = lapp_data->items.list; itemlink; itemlink = itemlink->next) {
 				ID *new_id = ((WMLinkAppendDataItem *)(itemlink->link))->new_id;
@@ -746,14 +764,20 @@ static void wm_link_append_properties_common(wmOperatorType *ot, bool is_link)
 	prop = RNA_def_boolean(ot->srna, "link", is_link,
 	                       "Link", "Link the objects or data-blocks rather than appending");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
-	prop = RNA_def_boolean(ot->srna, "autoselect", true,
-	                       "Select", "Select new objects");
+  prop = RNA_def_boolean(ot->srna, "autoselect", true, "Select", "Select new objects");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "active_collection", true,
-	                       "Active Collection", "Put new objects on the active collection");
+  prop = RNA_def_boolean(ot->srna,
+                         "active_collection",
+                         true,
+                         "Active Collection",
+                         "Put new objects on the active collection");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "instance_collections", is_link,
-	                       "Instance Collections", "Create instances for collections, rather than adding them directly to the scene");
+  prop = RNA_def_boolean(
+      ot->srna,
+      "instance_collections",
+      is_link,
+      "Instance Collections",
+      "Create instances for collections, rather than adding them directly to the scene");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
 	prop = RNA_def_int_vector(ot->srna, "mouse_coordinates", 2, (const int [2]){0, 0}, INT_MIN, INT_MAX, "Mouse Coordinates",
@@ -774,10 +798,14 @@ void WM_OT_link(wmOperatorType *ot)
 
 	ot->flag |= OPTYPE_UNDO;
 
-	WM_operator_properties_filesel(
-	        ot, FILE_TYPE_FOLDER | FILE_TYPE_BLENDER | FILE_TYPE_BLENDERLIB, FILE_LOADLIB, FILE_OPENFILE,
-	        WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME | WM_FILESEL_RELPATH | WM_FILESEL_FILES,
-	        FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+  WM_operator_properties_filesel(ot,
+                                 FILE_TYPE_FOLDER | FILE_TYPE_BLENDER | FILE_TYPE_BLENDERLIB,
+                                 FILE_LOADLIB,
+                                 FILE_OPENFILE,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+                                     WM_FILESEL_RELPATH | WM_FILESEL_FILES,
+                                 FILE_DEFAULTDISPLAY,
+                                 FILE_SORT_ALPHA);
 
 	wm_link_append_properties_common(ot, true);
 }
@@ -794,15 +822,26 @@ void WM_OT_append(wmOperatorType *ot)
 
 	ot->flag |= OPTYPE_UNDO;
 
-	WM_operator_properties_filesel(
-	        ot, FILE_TYPE_FOLDER | FILE_TYPE_BLENDER | FILE_TYPE_BLENDERLIB, FILE_LOADLIB, FILE_OPENFILE,
-	        WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME | WM_FILESEL_FILES,
-	        FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+  WM_operator_properties_filesel(ot,
+                                 FILE_TYPE_FOLDER | FILE_TYPE_BLENDER | FILE_TYPE_BLENDERLIB,
+                                 FILE_LOADLIB,
+                                 FILE_OPENFILE,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+                                     WM_FILESEL_FILES,
+                                 FILE_DEFAULTDISPLAY,
+                                 FILE_SORT_ALPHA);
 
 	wm_link_append_properties_common(ot, false);
-	RNA_def_boolean(ot->srna, "set_fake", false, "Fake User",
+  RNA_def_boolean(ot->srna,
+                  "set_fake",
+                  false,
+                  "Fake User",
 	                "Set Fake User for appended items (except Objects and Groups)");
-	RNA_def_boolean(ot->srna, "use_recursive", true, "Localize All",
+  RNA_def_boolean(
+      ot->srna,
+      "use_recursive",
+      true,
+      "Localize All",
 	                "Localize all appended data, including those indirectly linked from other libraries");
 }
 
@@ -820,8 +859,10 @@ static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent *UN
 
 	if (lib) {
 		if (lib->parent) {
-			BKE_reportf(op->reports, RPT_ERROR_INVALID_INPUT,
-			            "Cannot relocate indirectly linked library '%s'", lib->filepath);
+      BKE_reportf(op->reports,
+                  RPT_ERROR_INVALID_INPUT,
+                  "Cannot relocate indirectly linked library '%s'",
+                  lib->filepath);
 			return OPERATOR_CANCELLED;
 		}
 		if (lib->flag & LIBRARY_FLAG_VIRTUAL) {
@@ -898,7 +939,8 @@ static void lib_relocate_do(
 	/* We add back old id to bmain.
 	 * We need to do this in a first, separated loop, otherwise some of those may not be handled by
 	 * ID remapping, which means they would still reference old data to be deleted... */
-	for (item_idx = 0, itemlink = lapp_data->items.list; itemlink; item_idx++, itemlink = itemlink->next) {
+  for (item_idx = 0, itemlink = lapp_data->items.list; itemlink;
+       item_idx++, itemlink = itemlink->next) {
 		WMLinkAppendDataItem *item = itemlink->link;
 		ID *old_id = item->customdata;
 
@@ -907,9 +949,11 @@ static void lib_relocate_do(
 	}
 
 	/* Note that in reload case, we also want to replace indirect usages. */
-	const short remap_flags = ID_REMAP_SKIP_NEVER_NULL_USAGE | ID_REMAP_NO_INDIRECT_PROXY_DATA_USAGE |
+  const short remap_flags = ID_REMAP_SKIP_NEVER_NULL_USAGE |
+                            ID_REMAP_NO_INDIRECT_PROXY_DATA_USAGE |
 	                          (do_reload ? 0 : ID_REMAP_SKIP_INDIRECT_USAGE);
-	for (item_idx = 0, itemlink = lapp_data->items.list; itemlink; item_idx++, itemlink = itemlink->next) {
+  for (item_idx = 0, itemlink = lapp_data->items.list; itemlink;
+       item_idx++, itemlink = itemlink->next) {
 		WMLinkAppendDataItem *item = itemlink->link;
 		ID *old_id = item->customdata;
 		ID *new_id = item->new_id;
@@ -974,16 +1018,21 @@ static void lib_relocate_do(
 
 			id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id);
 
-			BKE_reportf(reports, RPT_WARNING,
+      BKE_reportf(
+          reports,
+          RPT_WARNING,
 			            "Lib Reload: Replacing all references to old data-block '%s' by reloaded one failed, "
 			            "old one (%d remaining users) had to be kept and was renamed to '%s'",
-			            new_id->name, old_id->us, old_id->name);
+          new_id->name,
+          old_id->us,
+          old_id->name);
 		}
 	}
 
 	BKE_main_unlock(bmain);
 
-	for (item_idx = 0, itemlink = lapp_data->items.list; itemlink; item_idx++, itemlink = itemlink->next) {
+  for (item_idx = 0, itemlink = lapp_data->items.list; itemlink;
+       item_idx++, itemlink = itemlink->next) {
 		WMLinkAppendDataItem *item = itemlink->link;
 		ID *old_id = item->customdata;
 
@@ -1047,12 +1096,16 @@ void WM_lib_reload(Library *lib, bContext *C, ReportList *reports)
 	}
 
 	if (!BLI_exists(lib->filepath)) {
-		BKE_reportf(reports, RPT_ERROR,
-		            "Trying to reload library '%s' from invalid path '%s'", lib->id.name, lib->filepath);
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Trying to reload library '%s' from invalid path '%s'",
+                lib->id.name,
+                lib->filepath);
 		return;
 	}
 
-	WMLinkAppendData *lapp_data = wm_link_append_data_new(BLO_LIBLINK_USE_PLACEHOLDERS | BLO_LIBLINK_FORCE_INDIRECT);
+  WMLinkAppendData *lapp_data = wm_link_append_data_new(BLO_LIBLINK_USE_PLACEHOLDERS |
+                                                        BLO_LIBLINK_FORCE_INDIRECT);
 
 	wm_link_append_data_library_add(lapp_data, lib->filepath);
 
@@ -1084,8 +1137,10 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
 		}
 
 		if (lib->parent && !do_reload) {
-			BKE_reportf(op->reports, RPT_ERROR_INVALID_INPUT,
-			            "Cannot relocate indirectly linked library '%s'", lib->filepath);
+      BKE_reportf(op->reports,
+                  RPT_ERROR_INVALID_INPUT,
+                  "Cannot relocate indirectly linked library '%s'",
+                  lib->filepath);
 			return OPERATOR_CANCELLED;
 		}
 		if (lib->flag & LIBRARY_FLAG_VIRTUAL) {
@@ -1105,8 +1160,11 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
 		BLI_join_dirfile(path, sizeof(path), root, libname);
 
 		if (!BLI_exists(path)) {
-			BKE_reportf(op->reports, RPT_ERROR_INVALID_INPUT,
-			            "Trying to reload or relocate library '%s' to invalid path '%s'", lib->id.name, path);
+      BKE_reportf(op->reports,
+                  RPT_ERROR_INVALID_INPUT,
+                  "Trying to reload or relocate library '%s' to invalid path '%s'",
+                  lib->id.name,
+                  path);
 			return OPERATOR_CANCELLED;
 		}
 
@@ -1142,8 +1200,7 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
 			lapp_data = wm_link_append_data_new(flag);
 
 			if (totfiles) {
-				RNA_BEGIN (op->ptr, itemptr, "files")
-				{
+        RNA_BEGIN (op->ptr, itemptr, "files") {
 					RNA_string_get(&itemptr, "name", relname);
 
 					BLI_join_dirfile(path, sizeof(path), root, relname);
@@ -1207,10 +1264,14 @@ void WM_OT_lib_relocate(wmOperatorType *ot)
 	prop = RNA_def_string(ot->srna, "library", NULL, MAX_NAME, "Library", "Library to relocate");
 	RNA_def_property_flag(prop, PROP_HIDDEN);
 
-	WM_operator_properties_filesel(
-	            ot, FILE_TYPE_FOLDER | FILE_TYPE_BLENDER, FILE_BLENDER, FILE_OPENFILE,
-	            WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME | WM_FILESEL_FILES | WM_FILESEL_RELPATH,
-	            FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+  WM_operator_properties_filesel(ot,
+                                 FILE_TYPE_FOLDER | FILE_TYPE_BLENDER,
+                                 FILE_BLENDER,
+                                 FILE_OPENFILE,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+                                     WM_FILESEL_FILES | WM_FILESEL_RELPATH,
+                                 FILE_DEFAULTDISPLAY,
+                                 FILE_SORT_ALPHA);
 }
 
 static int wm_lib_reload_exec(bContext *C, wmOperator *op)
@@ -1233,10 +1294,14 @@ void WM_OT_lib_reload(wmOperatorType *ot)
 	prop = RNA_def_string(ot->srna, "library", NULL, MAX_NAME, "Library", "Library to reload");
 	RNA_def_property_flag(prop, PROP_HIDDEN);
 
-	WM_operator_properties_filesel(
-	            ot, FILE_TYPE_FOLDER | FILE_TYPE_BLENDER, FILE_BLENDER, FILE_OPENFILE,
-	            WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME | WM_FILESEL_RELPATH,
-	            FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+  WM_operator_properties_filesel(ot,
+                                 FILE_TYPE_FOLDER | FILE_TYPE_BLENDER,
+                                 FILE_BLENDER,
+                                 FILE_OPENFILE,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+                                     WM_FILESEL_RELPATH,
+                                 FILE_DEFAULTDISPLAY,
+                                 FILE_SORT_ALPHA);
 }
 
 /** \name Asset-related operators.

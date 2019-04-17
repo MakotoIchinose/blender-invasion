@@ -21,7 +21,6 @@
  * \ingroup spscript
  */
 
-
 #include <string.h>
 #include <stdio.h>
 
@@ -40,7 +39,6 @@
 #include "RNA_define.h"
 
 #include "ED_screen.h"
-
 
 #include "script_intern.h"  // own include
 
@@ -120,7 +118,8 @@ static int script_reload_exec(bContext *C, wmOperator *op)
 	/* TODO, this crashes on netrender and keying sets, need to look into why
 	 * disable for now unless running in debug mode */
 	WM_cursor_wait(1);
-	BPY_execute_string(C, (const char *[]){"bpy", NULL}, "bpy.utils.load_scripts(reload_scripts=True)");
+  BPY_execute_string(
+      C, (const char *[]){"bpy", NULL}, "bpy.utils.load_scripts(reload_scripts=True)");
 	WM_cursor_wait(0);
 	WM_event_add_notifier(C, NC_WINDOW, NULL);
 	return OPERATOR_FINISHED;

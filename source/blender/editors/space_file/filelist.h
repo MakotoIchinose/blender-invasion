@@ -21,7 +21,6 @@
  * \ingroup spfile
  */
 
-
 #ifndef __FILELIST_H__
 #define __FILELIST_H__
 
@@ -54,7 +53,6 @@ void                folderlist_popdir(struct ListBase *folderlist, char *dir);
 void                folderlist_pushdir(struct ListBase *folderlist, const char *dir);
 const char         *folderlist_peeklastdir(struct ListBase *folderdist);
 int                 folderlist_clear_next(struct SpaceFile *sfile);
-
 
 void                filelist_setsorting(struct FileList *filelist, const short sort);
 void                filelist_setfilter_options(struct FileList *filelist, const bool do_filter,

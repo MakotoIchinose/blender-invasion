@@ -24,7 +24,6 @@
  * as well as some generic operators and shared operator properties.
  */
 
-
 #include <float.h>
 #include <string.h>
 #include <ctype.h>
@@ -166,7 +165,9 @@ void WM_operator_bl_idname(char *to, const char *from)
  * Sanity check to ensure #WM_operator_bl_idname won't fail.
  * \returns true when there are no problems with \a idname, otherwise report an error.
  */
-bool WM_operator_py_idname_ok_or_report(ReportList *reports, const char *classname, const char *idname)
+bool WM_operator_py_idname_ok_or_report(ReportList *reports,
+                                        const char *classname,
+                                        const char *idname)
 {
 	const char *ch = idname;
 	int dot = 0;
@@ -179,24 +180,34 @@ bool WM_operator_py_idname_ok_or_report(ReportList *reports, const char *classna
 			dot++;
 		}
 		else {
-			BKE_reportf(reports, RPT_ERROR,
+      BKE_reportf(reports,
+                  RPT_ERROR,
 			            "Registering operator class: '%s', invalid bl_idname '%s', at position %d",
-			            classname, idname, i);
+                  classname,
+                  idname,
+                  i);
 			return false;
 		}
 	}
 
 	if (i > (MAX_NAME - 3)) {
-		BKE_reportf(reports, RPT_ERROR, "Registering operator class: '%s', invalid bl_idname '%s', "
-		            "is too long, maximum length is %d", classname, idname,
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Registering operator class: '%s', invalid bl_idname '%s', "
+                "is too long, maximum length is %d",
+                classname,
+                idname,
 		            MAX_NAME - 3);
 		return false;
 	}
 
 	if (dot != 1) {
-		BKE_reportf(reports, RPT_ERROR,
+    BKE_reportf(
+        reports,
+        RPT_ERROR,
 		            "Registering operator class: '%s', invalid bl_idname '%s', must contain 1 '.' character",
-		            classname, idname);
+        classname,
+        idname);
 		return false;
 	}
 	return true;
@@ -210,8 +221,12 @@ bool WM_operator_py_idname_ok_or_report(ReportList *reports, const char *classna
  *
  * \note Both \a op and \a opptr may be `NULL` (\a op is only used for macro operators).
  */
-char *WM_operator_pystring_ex(bContext *C, wmOperator *op, const bool all_args, const bool macro_args,
-                              wmOperatorType *ot, PointerRNA *opptr)
+char *WM_operator_pystring_ex(bContext *C,
+                              wmOperator *op,
+                              const bool all_args,
+                              const bool macro_args,
+                              wmOperatorType *ot,
+                              PointerRNA *opptr)
 {
 	char idname_py[OP_MAX_TYPENAME];
 
@@ -266,7 +281,8 @@ char *WM_operator_pystring_ex(bContext *C, wmOperator *op, const bool all_args, 
 			opptr = &opptr_default;
 		}
 
-		cstring_args = RNA_pointer_as_string_keywords(C, opptr, false, all_args, macro_args_test, max_prop_length);
+    cstring_args = RNA_pointer_as_string_keywords(
+        C, opptr, false, all_args, macro_args_test, max_prop_length);
 		BLI_dynstr_append(dynstr, cstring_args);
 		MEM_freeN(cstring_args);
 
@@ -282,12 +298,10 @@ char *WM_operator_pystring_ex(bContext *C, wmOperator *op, const bool all_args, 
 	return cstring;
 }
 
-char *WM_operator_pystring(bContext *C, wmOperator *op,
-                           const bool all_args, const bool macro_args)
+char *WM_operator_pystring(bContext *C, wmOperator *op, const bool all_args, const bool macro_args)
 {
 	return WM_operator_pystring_ex(C, op, all_args, macro_args, op->type, op->ptr);
 }
-
 
 /**
  * \return true if the string was shortened
@@ -400,7 +414,8 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 				member_id = ctx_member; \
 				break; \
 			} \
-		} (void)0
+    } \
+    (void)0
 
 #define CTX_TEST_PTR_ID_CAST(C, member, member_full, cast, idptr) \
 		{ \
@@ -411,7 +426,8 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 				member_id = ctx_member_full; \
 				break; \
 			} \
-		} (void)0
+    } \
+    (void)0
 
 #define CTX_TEST_PTR_DATA_TYPE(C, member, rna_type, rna_ptr, dataptr_cmp) \
 		{ \
@@ -420,7 +436,8 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 				member_id = ctx_member; \
 				break; \
 			} \
-		} (void)0
+    } \
+    (void)0
 
 #define CTX_TEST_SPACE_TYPE(space_data_type, member_full, dataptr_cmp) \
 		{ \
@@ -429,43 +446,40 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 				member_id = ctx_member_full; \
 				break; \
 			} \
-		} (void)0
+    } \
+    (void)0
 
 		switch (GS(((ID *)ptr->id.data)->name)) {
-			case ID_SCE:
-			{
+      case ID_SCE: {
 				CTX_TEST_PTR_ID(C, "scene", ptr->id.data);
 				break;
 			}
-			case ID_OB:
-			{
+      case ID_OB: {
 				CTX_TEST_PTR_ID(C, "object", ptr->id.data);
 				break;
 			}
 			/* from rna_Main_objects_new */
-			case OB_DATA_SUPPORT_ID_CASE:
-			{
+      case OB_DATA_SUPPORT_ID_CASE: {
 #define ID_CAST_OBDATA(id_pt) (((Object *)(id_pt))->data)
 				CTX_TEST_PTR_ID_CAST(C, "object", "object.data", ID_CAST_OBDATA, ptr->id.data);
 				break;
 #undef ID_CAST_OBDATA
 			}
-			case ID_MA:
-			{
-#define ID_CAST_OBMATACT(id_pt) (give_current_material(((Object *)id_pt), ((Object *)id_pt)->actcol))
-				CTX_TEST_PTR_ID_CAST(C, "object", "object.active_material", ID_CAST_OBMATACT, ptr->id.data);
+      case ID_MA: {
+#  define ID_CAST_OBMATACT(id_pt) \
+    (give_current_material(((Object *)id_pt), ((Object *)id_pt)->actcol))
+        CTX_TEST_PTR_ID_CAST(
+            C, "object", "object.active_material", ID_CAST_OBMATACT, ptr->id.data);
 				break;
 #undef ID_CAST_OBMATACT
 			}
-			case ID_WO:
-			{
+      case ID_WO: {
 #define ID_CAST_SCENEWORLD(id_pt) (((Scene *)(id_pt))->world)
 				CTX_TEST_PTR_ID_CAST(C, "scene", "scene.world", ID_CAST_SCENEWORLD, ptr->id.data);
 				break;
 #undef ID_CAST_SCENEWORLD
 			}
-			case ID_SCR:
-			{
+      case ID_SCR: {
 				CTX_TEST_PTR_ID(C, "screen", ptr->id.data);
 
 				SpaceLink *space_data = CTX_wm_space_data(C);
@@ -477,7 +491,8 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 				CTX_TEST_PTR_DATA_TYPE(C, "region", RNA_Region, ptr, CTX_wm_region(C));
 
 				CTX_TEST_SPACE_TYPE(SPACE_IMAGE, "space_data.uv_editor", space_data);
-				CTX_TEST_SPACE_TYPE(SPACE_VIEW3D, "space_data.fx_settings", &(CTX_wm_view3d(C)->fx_settings));
+        CTX_TEST_SPACE_TYPE(
+            SPACE_VIEW3D, "space_data.fx_settings", &(CTX_wm_view3d(C)->fx_settings));
 				CTX_TEST_SPACE_TYPE(SPACE_NLA, "space_data.dopesheet", CTX_wm_space_nla(C)->ads);
 				CTX_TEST_SPACE_TYPE(SPACE_GRAPH, "space_data.dopesheet", CTX_wm_space_graph(C)->ads);
 				CTX_TEST_SPACE_TYPE(SPACE_ACTION, "space_data.dopesheet", &(CTX_wm_space_action(C)->ads));
@@ -496,7 +511,10 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 }
 #endif
 
-static char *wm_prop_pystring_from_context(bContext *C, PointerRNA *ptr, PropertyRNA *prop, int index)
+static char *wm_prop_pystring_from_context(bContext *C,
+                                           PointerRNA *ptr,
+                                           PropertyRNA *prop,
+                                           int index)
 {
 	const char *member_id = wm_context_member_from_ptr(C, ptr);
 	char *ret = NULL;
@@ -574,13 +592,11 @@ void WM_operator_properties_alloc(PointerRNA **ptr, IDProperty **properties, con
 	}
 
 	(*ptr)->data = *properties;
-
 }
 
 void WM_operator_properties_sanitize(PointerRNA *ptr, const bool no_context)
 {
-	RNA_STRUCT_BEGIN (ptr, prop)
-	{
+  RNA_STRUCT_BEGIN (ptr, prop) {
 		switch (RNA_property_type(prop)) {
 			case PROP_ENUM:
 				if (no_context) {
@@ -590,8 +606,7 @@ void WM_operator_properties_sanitize(PointerRNA *ptr, const bool no_context)
 					RNA_def_property_clear_flag(prop, PROP_ENUM_NO_CONTEXT);
 				}
 				break;
-			case PROP_POINTER:
-			{
+      case PROP_POINTER: {
 				StructRNA *ptype = RNA_property_pointer_type(ptr, prop);
 
 				/* recurse into operator properties */
@@ -608,7 +623,6 @@ void WM_operator_properties_sanitize(PointerRNA *ptr, const bool no_context)
 	RNA_STRUCT_END;
 }
 
-
 /** set all props to their default,
  * \param do_update: Only update un-initialized props.
  *
@@ -618,11 +632,9 @@ void WM_operator_properties_sanitize(PointerRNA *ptr, const bool no_context)
 bool WM_operator_properties_default(PointerRNA *ptr, const bool do_update)
 {
 	bool changed = false;
-	RNA_STRUCT_BEGIN (ptr, prop)
-	{
+  RNA_STRUCT_BEGIN (ptr, prop) {
 		switch (RNA_property_type(prop)) {
-			case PROP_POINTER:
-			{
+      case PROP_POINTER: {
 				StructRNA *ptype = RNA_property_pointer_type(ptr, prop);
 				if (ptype != &RNA_Struct) {
 					PointerRNA opptr = RNA_property_pointer_get(ptr, prop);
@@ -651,8 +663,7 @@ void WM_operator_properties_reset(wmOperator *op)
 		PropertyRNA *iterprop;
 		iterprop = RNA_struct_iterator_property(op->type->srna);
 
-		RNA_PROP_BEGIN (op->ptr, itemptr, iterprop)
-		{
+    RNA_PROP_BEGIN (op->ptr, itemptr, iterprop) {
 			PropertyRNA *prop = itemptr.data;
 
 			if ((RNA_property_flag(prop) & PROP_SKIP_SAVE) == 0) {
@@ -692,12 +703,12 @@ void WM_operator_view3d_unit_defaults(struct bContext *C, struct wmOperator *op)
 		Scene *scene = CTX_data_scene(C);
 		View3D *v3d = CTX_wm_view3d(C);
 
-		const float dia = v3d ? ED_view3d_grid_scale(scene, v3d, NULL) : ED_scene_grid_scale(scene, NULL);
+    const float dia = v3d ? ED_view3d_grid_scale(scene, v3d, NULL) :
+                            ED_scene_grid_scale(scene, NULL);
 
 		/* always run, so the values are initialized,
 		 * otherwise we may get differ behavior when (dia != 1.0) */
-		RNA_STRUCT_BEGIN (op->ptr, prop)
-		{
+    RNA_STRUCT_BEGIN (op->ptr, prop) {
 			if (RNA_property_type(prop) == PROP_FLOAT) {
 				PropertySubType pstype = RNA_property_subtype(prop);
 				if (pstype == PROP_DISTANCE) {
@@ -728,14 +739,13 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, int opcontext)
 	uiLayout *layout;
 
 	if (prop == NULL) {
-		CLOG_ERROR(WM_LOG_OPERATORS,
-		           "'%s' has no enum property set",
-		           op->type->idname);
+    CLOG_ERROR(WM_LOG_OPERATORS, "'%s' has no enum property set", op->type->idname);
 	}
 	else if (RNA_property_type(prop) != PROP_ENUM) {
 		CLOG_ERROR(WM_LOG_OPERATORS,
 		           "'%s', '%s' is not an enum property",
-		           op->type->idname, RNA_property_identifier(prop));
+               op->type->idname,
+               RNA_property_identifier(prop));
 	}
 	else if (RNA_property_is_set(op->ptr, prop)) {
 		const int retval = op->type->exec(C, op);
@@ -747,7 +757,8 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, int opcontext)
 		layout = UI_popup_menu_layout(pup);
 		/* set this so the default execution context is the same as submenus */
 		uiLayoutSetOperatorContext(layout, opcontext);
-		uiItemsFullEnumO(layout, op->type->idname, RNA_property_identifier(prop), op->ptr->data, opcontext, 0);
+    uiItemsFullEnumO(
+        layout, op->type->idname, RNA_property_identifier(prop), op->ptr->data, opcontext, 0);
 		UI_popup_menu_end(C, pup);
 		return OPERATOR_INTERFACE;
 	}
@@ -774,8 +785,10 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
 	wmWindow *win = CTX_wm_window(C);
 	wmOperator *op = search_menu->op;
 	/* template_ID uses 4 * widget_unit for width, we use a bit more, some items may have a suffix to show */
-	const int width = search_menu->use_previews ? 5 * U.widget_unit * search_menu->prv_cols : UI_searchbox_size_x();
-	const int height = search_menu->use_previews ? 5 * U.widget_unit * search_menu->prv_rows : UI_searchbox_size_y();
+  const int width = search_menu->use_previews ? 5 * U.widget_unit * search_menu->prv_cols :
+                                                UI_searchbox_size_x();
+  const int height = search_menu->use_previews ? 5 * U.widget_unit * search_menu->prv_rows :
+                                                 UI_searchbox_size_y();
 	static char search[256] = "";
 	uiBlock *block;
 	uiBut *but;
@@ -785,15 +798,41 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
 	UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
 	search[0] = '\0';
-	BLI_assert(search_menu->use_previews || (search_menu->prv_cols == 0 && search_menu->prv_rows == 0));
+  BLI_assert(search_menu->use_previews ||
+             (search_menu->prv_cols == 0 && search_menu->prv_rows == 0));
 #if 0 /* ok, this isn't so easy... */
 	uiDefBut(block, UI_BTYPE_LABEL, 0, RNA_struct_ui_name(op->type->srna), 10, 10, UI_searchbox_size_x(), UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
 #endif
-	but = uiDefSearchButO_ptr(block, op->type, op->ptr->data, search, 0, ICON_VIEWZOOM, sizeof(search),
-	                          10, 10, width, UI_UNIT_Y, search_menu->prv_rows, search_menu->prv_cols, "");
+  but = uiDefSearchButO_ptr(block,
+                            op->type,
+                            op->ptr->data,
+                            search,
+                            0,
+                            ICON_VIEWZOOM,
+                            sizeof(search),
+                            10,
+                            10,
+                            width,
+                            UI_UNIT_Y,
+                            search_menu->prv_rows,
+                            search_menu->prv_cols,
+                            "");
 
 	/* fake button, it holds space for search items */
-	uiDefBut(block, UI_BTYPE_LABEL, 0, "", 10, 10 - UI_searchbox_size_y(), width, height, NULL, 0, 0, 0, 0, NULL);
+  uiDefBut(block,
+           UI_BTYPE_LABEL,
+           0,
+           "",
+           10,
+           10 - UI_searchbox_size_y(),
+           width,
+           height,
+           NULL,
+           0,
+           0,
+           0,
+           0,
+           NULL);
 
 	/* Move it downwards, mouse over button. */
 	UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
@@ -807,8 +846,7 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
  * Similar to #WM_enum_search_invoke, but draws previews. Also, this can't
  * be used as invoke callback directly since it needs additional info.
  */
-int WM_enum_search_invoke_previews(
-        bContext *C, wmOperator *op, short prv_cols, short prv_rows)
+int WM_enum_search_invoke_previews(bContext *C, wmOperator *op, short prv_cols, short prv_rows)
 {
 	static struct EnumSearchMenu search_menu;
 
@@ -831,9 +869,8 @@ int WM_enum_search_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(eve
 }
 
 /* Can't be used as an invoke directly, needs message arg (can be NULL) */
-int WM_operator_confirm_message_ex(bContext *C, wmOperator *op,
-                                   const char *title, const int icon,
-                                   const char *message)
+int WM_operator_confirm_message_ex(
+    bContext *C, wmOperator *op, const char *title, const int icon, const char *message)
 {
 	uiPopupMenu *pup;
 	uiLayout *layout;
@@ -848,7 +885,8 @@ int WM_operator_confirm_message_ex(bContext *C, wmOperator *op,
 
 	pup = UI_popup_menu_begin(C, title, icon);
 	layout = UI_popup_menu_layout(pup);
-	uiItemFullO_ptr(layout, op->type, message, ICON_NONE, properties, WM_OP_EXEC_REGION_WIN, 0, NULL);
+  uiItemFullO_ptr(
+      layout, op->type, message, ICON_NONE, properties, WM_OP_EXEC_REGION_WIN, 0, NULL);
 	UI_popup_menu_end(C, pup);
 
 	return OPERATOR_INTERFACE;
@@ -874,7 +912,6 @@ int WM_operator_confirm_or_exec(bContext *C, wmOperator *op, const wmEvent *UNUS
 		return op->type->exec(C, op);
 	}
 }
-
 
 /* op->invoke, opens fileselect if path property not set, otherwise executes */
 int WM_operator_filesel(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -977,8 +1014,11 @@ ID *WM_operator_drop_load_path(struct bContext *C, wmOperator *op, const short i
 		}
 
 		if (!id) {
-			BKE_reportf(op->reports, RPT_ERROR, "Cannot read %s '%s': %s",
-			            BKE_idcode_to_name(idcode), path,
+      BKE_reportf(op->reports,
+                  RPT_ERROR,
+                  "Cannot read %s '%s': %s",
+                  BKE_idcode_to_name(idcode),
+                  path,
 			            errno ? strerror(errno) : TIP_("unsupported format"));
 			return NULL;
 		}
@@ -999,8 +1039,7 @@ ID *WM_operator_drop_load_path(struct bContext *C, wmOperator *op, const short i
 		RNA_string_get(op->ptr, "name", name);
 		id = BKE_libblock_find_name(bmain, idcode, name);
 		if (!id) {
-			BKE_reportf(op->reports, RPT_ERROR, "%s '%s' not found",
-			            BKE_idcode_to_name(idcode), name);
+      BKE_reportf(op->reports, RPT_ERROR, "%s '%s' not found", BKE_idcode_to_name(idcode), name);
 			return NULL;
 		}
 		id_us_plus(id);
@@ -1056,7 +1095,8 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
 	assert(op->type->flag & OPTYPE_REGISTER);
 
 	UI_block_func_handle_set(block, wm_block_redo_cb, arg_op);
-	layout = UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, width, UI_UNIT_Y, 0, style);
+  layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, width, UI_UNIT_Y, 0, style);
 
 	if (op == WM_operator_last_redo(C)) {
 		if (!WM_operator_check_ui_enabled(C, op->type->name)) {
@@ -1067,8 +1107,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
 	if (op->type->flag & OPTYPE_MACRO) {
 		for (op = op->macro.first; op; op = op->next) {
 			uiTemplateOperatorPropertyButs(
-			        C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN,
-			        UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
+          C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
 			if (op->next) {
 				uiItemS(layout);
 			}
@@ -1076,8 +1115,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
 	}
 	else {
 		uiTemplateOperatorPropertyButs(
-		        C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN,
-		        UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
+        C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
 	}
 
 	UI_block_bounds_set_popup(block, 4, NULL);
@@ -1145,11 +1183,11 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *ar, void *userData)
 	 * where quitting by accident is very annoying */
 	UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
 
-	layout = UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, data->height, 0, style);
+  layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, data->height, 0, style);
 
 	uiTemplateOperatorPropertyButs(
-	        C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN,
-	        UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
+      C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
 
 	/* clear so the OK button is left alone */
 	UI_block_func_set(block, NULL, NULL, NULL);
@@ -1163,7 +1201,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *ar, void *userData)
 		col = uiLayoutColumn(layout, false);
 		col_block = uiLayoutGetBlock(col);
 		/* Create OK button, the callback of which will execute op */
-		btn = uiDefBut(col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, -30, 0, UI_UNIT_Y, NULL, 0, 0, 0, 0, "");
+    btn = uiDefBut(
+        col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, -30, 0, UI_UNIT_Y, NULL, 0, 0, 0, 0, "");
 		UI_but_flag_enable(btn, UI_BUT_ACTIVE_DEFAULT);
 		UI_but_func_set(btn, dialog_exec_cb, data, col_block);
 	}
@@ -1189,7 +1228,8 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *ar, void *userData)
 	UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_MOVEMOUSE_QUIT);
 	UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_REGULAR);
 
-	layout = UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, data->height, 0, style);
+  layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, data->height, 0, style);
 
 	/* since ui is defined the auto-layout args are not used */
 	uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_COLUMN, 0);
@@ -1248,19 +1288,25 @@ int WM_operator_ui_popup(bContext *C, wmOperator *op, int width, int height)
  * For use by #WM_operator_props_popup_call, #WM_operator_props_popup only.
  *
  * \note operator menu needs undo flag enabled, for redo callback */
-static int wm_operator_props_popup_ex(bContext *C, wmOperator *op,
-                                      const bool do_call, const bool do_redo)
+static int wm_operator_props_popup_ex(bContext *C,
+                                      wmOperator *op,
+                                      const bool do_call,
+                                      const bool do_redo)
 {
 	if ((op->type->flag & OPTYPE_REGISTER) == 0) {
-		BKE_reportf(op->reports, RPT_ERROR,
-		            "Operator '%s' does not have register enabled, incorrect invoke function", op->type->idname);
+    BKE_reportf(op->reports,
+                RPT_ERROR,
+                "Operator '%s' does not have register enabled, incorrect invoke function",
+                op->type->idname);
 		return OPERATOR_CANCELLED;
 	}
 
 	if (do_redo) {
 		if ((op->type->flag & OPTYPE_UNDO) == 0) {
-			BKE_reportf(op->reports, RPT_ERROR,
-			            "Operator '%s' does not have undo enabled, incorrect invoke function", op->type->idname);
+      BKE_reportf(op->reports,
+                  RPT_ERROR,
+                  "Operator '%s' does not have undo enabled, incorrect invoke function",
+                  op->type->idname);
 			return OPERATOR_CANCELLED;
 		}
 	}
@@ -1314,7 +1360,8 @@ int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width, int h
 	data->free_op = true; /* if this runs and gets registered we may want not to free it */
 
 	/* op is not executed until popup OK but is clicked */
-	UI_popup_block_ex(C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
+  UI_popup_block_ex(
+      C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
 
 	return OPERATOR_RUNNING_MODAL;
 }
@@ -1323,12 +1370,15 @@ int WM_operator_redo_popup(bContext *C, wmOperator *op)
 {
 	/* CTX_wm_reports(C) because operator is on stack, not active in event system */
 	if ((op->type->flag & OPTYPE_REGISTER) == 0) {
-		BKE_reportf(CTX_wm_reports(C), RPT_ERROR,
-		            "Operator redo '%s' does not have register enabled, incorrect invoke function", op->type->idname);
+    BKE_reportf(CTX_wm_reports(C),
+                RPT_ERROR,
+                "Operator redo '%s' does not have register enabled, incorrect invoke function",
+                op->type->idname);
 		return OPERATOR_CANCELLED;
 	}
 	if (op->type->poll && op->type->poll(C) == 0) {
-		BKE_reportf(CTX_wm_reports(C), RPT_ERROR, "Operator redo '%s': wrong context", op->type->idname);
+    BKE_reportf(
+        CTX_wm_reports(C), RPT_ERROR, "Operator redo '%s': wrong context", op->type->idname);
 		return OPERATOR_CANCELLED;
 	}
 
@@ -1439,18 +1489,26 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 	BLI_snprintf(date_buf, sizeof(date_buf), "Date: %s %s", build_commit_date, build_commit_time);
 
 	BLF_size(style->widgetlabel.uifont_id, style->widgetlabel.points, U.pixelsize * U.dpi);
-	hash_width = (int)BLF_width(style->widgetlabel.uifont_id, hash_buf, sizeof(hash_buf)) + U.widget_unit;
-	date_width = (int)BLF_width(style->widgetlabel.uifont_id, date_buf, sizeof(date_buf)) + U.widget_unit;
+  hash_width = (int)BLF_width(style->widgetlabel.uifont_id, hash_buf, sizeof(hash_buf)) +
+               U.widget_unit;
+  date_width = (int)BLF_width(style->widgetlabel.uifont_id, date_buf, sizeof(date_buf)) +
+               U.widget_unit;
 #endif  /* WITH_BUILDINFO */
 
 #ifndef WITH_HEADLESS
 	if (U.dpi_fac > 1.0) {
 		ibuf = IMB_ibImageFromMemory((const uchar *)datatoc_splash_2x_png,
-		                             datatoc_splash_2x_png_size, IB_rect, NULL, "<splash screen>");
+                                 datatoc_splash_2x_png_size,
+                                 IB_rect,
+                                 NULL,
+                                 "<splash screen>");
 	}
 	else {
 		ibuf = IMB_ibImageFromMemory((const uchar *)datatoc_splash_png,
-		                             datatoc_splash_png_size, IB_rect, NULL, "<splash screen>");
+                                 datatoc_splash_png_size,
+                                 IB_rect,
+                                 NULL,
+                                 "<splash screen>");
 	}
 
 	/* overwrite splash with template image */
@@ -1460,11 +1518,10 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 		char template_directory[FILE_MAX];
 
 		if (BKE_appdir_app_template_id_search(
-		        U.app_template,
-		        template_directory, sizeof(template_directory)))
-		{
-			BLI_join_dirfile(
-			        splash_filepath, sizeof(splash_filepath), template_directory,
+            U.app_template, template_directory, sizeof(template_directory))) {
+      BLI_join_dirfile(splash_filepath,
+                       sizeof(splash_filepath),
+                       template_directory,
 			        (U.pixelsize == 2) ? "splash_2x.png" : "splash.png");
 			ibuf_template = IMB_loadiffname(splash_filepath, IB_rect, NULL);
 			if (ibuf_template) {
@@ -1472,12 +1529,18 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 				const int y_expect = 250 * (int)U.dpi_fac;
 				/* don't cover the header text */
 				if (ibuf_template->x == x_expect && ibuf_template->y == y_expect) {
-					memcpy(ibuf->rect, ibuf_template->rect, ibuf_template->x * ibuf_template->y * sizeof(char[4]));
+          memcpy(ibuf->rect,
+                 ibuf_template->rect,
+                 ibuf_template->x * ibuf_template->y * sizeof(char[4]));
 				}
 				else {
 					CLOG_ERROR(WM_LOG_OPERATORS,
 					           "Splash expected %dx%d found %dx%d, ignoring: %s\n",
-					           x_expect, y_expect, ibuf_template->x, ibuf_template->y, splash_filepath);
+                     x_expect,
+                     y_expect,
+                     ibuf_template->x,
+                     ibuf_template->y,
+                     splash_filepath);
 				}
 				IMB_freeImBuf(ibuf_template);
 			}
@@ -1493,7 +1556,20 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 	UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP);
 	UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-	but = uiDefBut(block, UI_BTYPE_IMAGE, 0, "", 0, 0.5f * U.widget_unit, U.dpi_fac * 501, U.dpi_fac * 250, ibuf, 0.0, 0.0, 0, 0, ""); /* button owns the imbuf now */
+  but = uiDefBut(block,
+                 UI_BTYPE_IMAGE,
+                 0,
+                 "",
+                 0,
+                 0.5f * U.widget_unit,
+                 U.dpi_fac * 501,
+                 U.dpi_fac * 250,
+                 ibuf,
+                 0.0,
+                 0.0,
+                 0,
+                 0,
+                 ""); /* button owns the imbuf now */
 	UI_but_func_set(but, wm_block_splash_close, block, NULL);
 	UI_block_func_set(block, wm_block_splash_refreshmenu, block, NULL);
 
@@ -1514,7 +1590,8 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 		version_suffix = STRINGIFY(BLENDER_VERSION_CHAR);
 	}
 
-	char *version = BLI_sprintfN("Version %d.%d%s", BLENDER_VERSION / 100, BLENDER_VERSION % 100, version_suffix);
+  char *version = BLI_sprintfN(
+      "Version %d.%d%s", BLENDER_VERSION / 100, BLENDER_VERSION % 100, version_suffix);
 
 	if (version != NULL && version[0]) {
 		/* placed after the version number in the image,
@@ -1524,7 +1601,6 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 		int x = 202 * U.dpi_fac;
 		int y = 130 * U.dpi_fac;
 		int w = 240 * U.dpi_fac;
-
 
 		but = uiDefBut(block, UI_BTYPE_LABEL, 0, version, x, y, w, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
 		/* XXX, set internal flag - UI_SELECT */
@@ -1536,18 +1612,38 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 
 #ifdef WITH_BUILDINFO
 	if (build_commit_timestamp != 0) {
-		but = uiDefBut(
-		          block, UI_BTYPE_LABEL, 0, date_buf,
-		          U.dpi_fac * 502 - date_width, U.dpi_fac * 237,
-		          date_width, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
+    but = uiDefBut(block,
+                   UI_BTYPE_LABEL,
+                   0,
+                   date_buf,
+                   U.dpi_fac * 502 - date_width,
+                   U.dpi_fac * 237,
+                   date_width,
+                   UI_UNIT_Y,
+                   NULL,
+                   0,
+                   0,
+                   0,
+                   0,
+                   NULL);
 		/* XXX, set internal flag - UI_SELECT */
 		UI_but_flag_enable(but, 0);
 		label_delta = 12;
 	}
-	but = uiDefBut(
-	          block, UI_BTYPE_LABEL, 0, hash_buf,
-	          U.dpi_fac * 502 - hash_width, U.dpi_fac * (237 - label_delta),
-	          hash_width, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
+  but = uiDefBut(block,
+                 UI_BTYPE_LABEL,
+                 0,
+                 hash_buf,
+                 U.dpi_fac * 502 - hash_width,
+                 U.dpi_fac * (237 - label_delta),
+                 hash_width,
+                 UI_UNIT_Y,
+                 NULL,
+                 0,
+                 0,
+                 0,
+                 0,
+                 NULL);
 	/* XXX, set internal flag - UI_SELECT */
 	UI_but_flag_enable(but, 0);
 
@@ -1555,19 +1651,36 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 		char branch_buf[128] = "\0";
 		int branch_width;
 		BLI_snprintf(branch_buf, sizeof(branch_buf), "Branch: %s", build_branch);
-		branch_width = (int)BLF_width(style->widgetlabel.uifont_id, branch_buf, sizeof(branch_buf)) + U.widget_unit;
-		but = uiDefBut(
-		          block, UI_BTYPE_LABEL, 0, branch_buf,
-		          U.dpi_fac * 502 - branch_width, U.dpi_fac * (225 - label_delta),
-		          branch_width, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
+    branch_width = (int)BLF_width(style->widgetlabel.uifont_id, branch_buf, sizeof(branch_buf)) +
+                   U.widget_unit;
+    but = uiDefBut(block,
+                   UI_BTYPE_LABEL,
+                   0,
+                   branch_buf,
+                   U.dpi_fac * 502 - branch_width,
+                   U.dpi_fac * (225 - label_delta),
+                   branch_width,
+                   UI_UNIT_Y,
+                   NULL,
+                   0,
+                   0,
+                   0,
+                   0,
+                   NULL);
 		/* XXX, set internal flag - UI_SELECT */
 		UI_but_flag_enable(but, 0);
 	}
 #endif  /* WITH_BUILDINFO */
 
-	uiLayout *layout = UI_block_layout(
-	        block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, U.dpi_fac * 40, 0,
-	        U.dpi_fac * 450, U.dpi_fac * 110, 0, style);
+  uiLayout *layout = UI_block_layout(block,
+                                     UI_LAYOUT_VERTICAL,
+                                     UI_LAYOUT_PANEL,
+                                     U.dpi_fac * 40,
+                                     0,
+                                     U.dpi_fac * 450,
+                                     U.dpi_fac * 110,
+                                     0,
+                                     style);
 
 	MenuType *mt = WM_menutype_find("WM_MT_splash", true);
 	if (mt) {
@@ -1596,7 +1709,6 @@ static void WM_OT_splash(wmOperatorType *ot)
 	ot->poll = WM_operator_winactive;
 }
 
-
 /* ***************** Search menu ************************* */
 
 struct SearchPopupInit_Data {
@@ -1614,13 +1726,36 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *ar, void *userdata)
 	UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
 	UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-	but = uiDefSearchBut(block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, init_data->size[0], UI_UNIT_Y, 0, 0, "");
+  but = uiDefSearchBut(block,
+                       search,
+                       0,
+                       ICON_VIEWZOOM,
+                       sizeof(search),
+                       10,
+                       10,
+                       init_data->size[0],
+                       UI_UNIT_Y,
+                       0,
+                       0,
+                       "");
 	UI_but_func_operator_search(but);
 	UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
 	/* fake button, it holds space for search items */
-	uiDefBut(block, UI_BTYPE_LABEL, 0, "", 10, 10 - init_data->size[1],
-	         init_data->size[0], init_data->size[1], NULL, 0, 0, 0, 0, NULL);
+  uiDefBut(block,
+           UI_BTYPE_LABEL,
+           0,
+           "",
+           10,
+           10 - init_data->size[1],
+           init_data->size[0],
+           init_data->size[1],
+           NULL,
+           0,
+           0,
+           0,
+           0,
+           NULL);
 
 	/* Move it downwards, mouse over button. */
 	UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
@@ -1660,7 +1795,6 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *UNUSED(op), const wmEv
 			return OPERATOR_PASS_THROUGH;
 		}
 	}
-
 
 	static struct SearchPopupInit_Data data;
 	data.size[0] = UI_searchbox_size_x() * 2;
@@ -1829,7 +1963,9 @@ static int wm_exit_blender_exec(bContext *C, wmOperator *UNUSED(op))
 	return OPERATOR_FINISHED;
 }
 
-static int wm_exit_blender_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+static int wm_exit_blender_invoke(bContext *C,
+                                  wmOperator *UNUSED(op),
+                                  const wmEvent *UNUSED(event))
 {
 	if (U.uiflag & USER_SAVE_PROMPT) {
 		wm_quit_with_optional_confirmation_prompt(C, CTX_wm_window(C));
@@ -1880,11 +2016,12 @@ static void WM_OT_console_toggle(wmOperatorType *ot)
  * - draw(bContext): drawing callback for paint cursor
  */
 
-wmPaintCursor *WM_paint_cursor_activate(
-        wmWindowManager *wm,
-        short space_type, short region_type,
+wmPaintCursor *WM_paint_cursor_activate(wmWindowManager *wm,
+                                        short space_type,
+                                        short region_type,
         bool (*poll)(bContext *C),
-        wmPaintCursorDraw draw, void *customdata)
+                                        wmPaintCursorDraw draw,
+                                        void *customdata)
 {
 	wmPaintCursor *pc = MEM_callocN(sizeof(wmPaintCursor), "paint cursor");
 
@@ -1918,7 +2055,8 @@ bool WM_paint_cursor_end(wmWindowManager *wm, wmPaintCursor *handle)
 
 #define WM_RADIAL_CONTROL_DISPLAY_SIZE (200 * UI_DPI_FAC)
 #define WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE (35 * UI_DPI_FAC)
-#define WM_RADIAL_CONTROL_DISPLAY_WIDTH (WM_RADIAL_CONTROL_DISPLAY_SIZE - WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE)
+#define WM_RADIAL_CONTROL_DISPLAY_WIDTH \
+  (WM_RADIAL_CONTROL_DISPLAY_SIZE - WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE)
 #define WM_RADIAL_MAX_STR 10
 
 typedef struct {
@@ -1961,7 +2099,11 @@ static void radial_control_update_header(wmOperator *op, bContext *C)
 				BLI_snprintf(msg, sizeof(msg), "%s: %0.4f", ui_name, rc->current_value);
 				break;
 			case PROP_PIXEL:
-				BLI_snprintf(msg, sizeof(msg), "%s: %d", ui_name, (int)rc->current_value); /* XXX: round to nearest? */
+        BLI_snprintf(msg,
+                     sizeof(msg),
+                     "%s: %d",
+                     ui_name,
+                     (int)rc->current_value); /* XXX: round to nearest? */
 				break;
 			case PROP_PERCENTAGE:
 				BLI_snprintf(msg, sizeof(msg), "%s: %3.1f%%", ui_name, rc->current_value);
@@ -1996,10 +2138,12 @@ static void radial_control_set_initial_mouse(RadialControl *rc, const wmEvent *e
 			d[0] = rc->initial_value;
 			break;
 		case PROP_PERCENTAGE:
-			d[0] = (rc->initial_value) / 100.0f * WM_RADIAL_CONTROL_DISPLAY_WIDTH + WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
+      d[0] = (rc->initial_value) / 100.0f * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
+             WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
 			break;
 		case PROP_FACTOR:
-			d[0] = (1 - rc->initial_value) * WM_RADIAL_CONTROL_DISPLAY_WIDTH + WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
+      d[0] = (1 - rc->initial_value) * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
+             WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
 			break;
 		case PROP_ANGLE:
 			d[0] = WM_RADIAL_CONTROL_DISPLAY_SIZE * cosf(rc->initial_value);
@@ -2025,11 +2169,12 @@ static void radial_control_set_tex(RadialControl *rc)
 
 	switch (RNA_type_to_ID_code(rc->image_id_ptr.type)) {
 		case ID_BR:
-			if ((ibuf = BKE_brush_gen_radial_control_imbuf(rc->image_id_ptr.data, rc->use_secondary_tex))) {
+      if ((ibuf = BKE_brush_gen_radial_control_imbuf(rc->image_id_ptr.data,
+                                                     rc->use_secondary_tex))) {
 				glGenTextures(1, &rc->gltex);
 				glBindTexture(GL_TEXTURE_2D, rc->gltex);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, ibuf->x, ibuf->y, 0,
-				             GL_RED, GL_FLOAT, ibuf->rect_float);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_R8, ibuf->x, ibuf->y, 0, GL_RED, GL_FLOAT, ibuf->rect_float);
 				glBindTexture(GL_TEXTURE_2D, 0);
 				MEM_freeN(ibuf->rect_float);
 				MEM_freeN(ibuf);
@@ -2050,9 +2195,8 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
 		PointerRNA *fill_ptr;
 		PropertyRNA *fill_prop;
 
-		if (rc->fill_col_override_prop &&
-		    RNA_property_boolean_get(&rc->fill_col_override_test_ptr, rc->fill_col_override_test_prop))
-		{
+    if (rc->fill_col_override_prop && RNA_property_boolean_get(&rc->fill_col_override_test_ptr,
+                                                               rc->fill_col_override_test_prop)) {
 			fill_ptr = &rc->fill_col_override_ptr;
 			fill_prop = rc->fill_col_override_prop;
 		}
@@ -2147,7 +2291,8 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 			alpha = 0.75;
 			break;
 		case PROP_PERCENTAGE:
-			r1 = rc->current_value / 100.0f * WM_RADIAL_CONTROL_DISPLAY_WIDTH + WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
+      r1 = rc->current_value / 100.0f * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
+           WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
 			r2 = tex_radius = WM_RADIAL_CONTROL_DISPLAY_SIZE;
 			rmin = WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
 			BLI_snprintf(str, WM_RADIAL_MAX_STR, "%3.1f%%", rc->current_value);
@@ -2156,7 +2301,8 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 			alpha = 0.75;
 			break;
 		case PROP_FACTOR:
-			r1 = (1 - rc->current_value) * WM_RADIAL_CONTROL_DISPLAY_WIDTH + WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
+      r1 = (1 - rc->current_value) * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
+           WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
 			r2 = tex_radius = WM_RADIAL_CONTROL_DISPLAY_SIZE;
 			rmin = WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
 			alpha = rc->current_value / 2.0f + 0.5f;
@@ -2246,7 +2392,6 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 
 	GPU_blend(false);
 	GPU_line_smooth(false);
-
 }
 
 typedef enum {
@@ -2260,10 +2405,13 @@ typedef enum {
  *
  * \return 0 for failure, 1 for success, and also 1 if property is not set.
  */
-static int radial_control_get_path(
-        PointerRNA *ctx_ptr, wmOperator *op,
-        const char *name, PointerRNA *r_ptr,
-        PropertyRNA **r_prop, int req_length, RCPropFlags flags)
+static int radial_control_get_path(PointerRNA *ctx_ptr,
+                                   wmOperator *op,
+                                   const char *name,
+                                   PointerRNA *r_ptr,
+                                   PropertyRNA **r_prop,
+                                   int req_length,
+                                   RCPropFlags flags)
 {
 	PropertyRNA *unused_prop;
 	int len;
@@ -2309,8 +2457,7 @@ static int radial_control_get_path(
 		PropertyType prop_type = RNA_property_type(*r_prop);
 
 		if (((flags & RC_PROP_REQUIRE_BOOL) && (prop_type != PROP_BOOLEAN)) ||
-		    ((flags & RC_PROP_REQUIRE_FLOAT) && (prop_type != PROP_FLOAT)))
-		{
+        ((flags & RC_PROP_REQUIRE_FLOAT) && (prop_type != PROP_FLOAT))) {
 			MEM_freeN(str);
 			BKE_reportf(op->reports, RPT_ERROR, "Property from path '%s' is not a float", name);
 			return 0;
@@ -2320,8 +2467,12 @@ static int radial_control_get_path(
 	/* check property's array length */
 	if (*r_prop && (len = RNA_property_array_length(r_ptr, *r_prop)) != req_length) {
 		MEM_freeN(str);
-		BKE_reportf(op->reports, RPT_ERROR, "Property from path '%s' has length %d instead of %d",
-		            name, len, req_length);
+    BKE_reportf(op->reports,
+                RPT_ERROR,
+                "Property from path '%s' has length %d instead of %d",
+                name,
+                len,
+                req_length);
 		return 0;
 	}
 
@@ -2341,17 +2492,17 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
 	RNA_pointer_create(NULL, &RNA_Context, C, &ctx_ptr);
 
 	/* check if we use primary or secondary path */
-	if (!radial_control_get_path(&ctx_ptr, op, "use_secondary",
-	                             &use_secondary_ptr, &use_secondary_prop,
-	                             0, (RC_PROP_ALLOW_MISSING |
-	                                 RC_PROP_REQUIRE_BOOL)))
-	{
+  if (!radial_control_get_path(&ctx_ptr,
+                               op,
+                               "use_secondary",
+                               &use_secondary_ptr,
+                               &use_secondary_prop,
+                               0,
+                               (RC_PROP_ALLOW_MISSING | RC_PROP_REQUIRE_BOOL))) {
 		return 0;
 	}
 	else {
-		if (use_secondary_prop &&
-		    RNA_property_boolean_get(&use_secondary_ptr, use_secondary_prop))
-		{
+    if (use_secondary_prop && RNA_property_boolean_get(&use_secondary_ptr, use_secondary_prop)) {
 			data_path = "data_path_secondary";
 		}
 		else {
@@ -2368,40 +2519,55 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
 		return 0;
 	}
 
-	if (!radial_control_get_path(&ctx_ptr, op, "rotation_path", &rc->rot_ptr, &rc->rot_prop, 0, RC_PROP_REQUIRE_FLOAT)) {
+  if (!radial_control_get_path(
+          &ctx_ptr, op, "rotation_path", &rc->rot_ptr, &rc->rot_prop, 0, RC_PROP_REQUIRE_FLOAT)) {
 		return 0;
 	}
 
-	if (!radial_control_get_path(&ctx_ptr, op, "color_path", &rc->col_ptr, &rc->col_prop, 3, RC_PROP_REQUIRE_FLOAT)) {
+  if (!radial_control_get_path(
+          &ctx_ptr, op, "color_path", &rc->col_ptr, &rc->col_prop, 3, RC_PROP_REQUIRE_FLOAT)) {
 		return 0;
 	}
 
-	if (!radial_control_get_path(
-	        &ctx_ptr, op, "fill_color_path", &rc->fill_col_ptr, &rc->fill_col_prop, 3, RC_PROP_REQUIRE_FLOAT))
-	{
+  if (!radial_control_get_path(&ctx_ptr,
+                               op,
+                               "fill_color_path",
+                               &rc->fill_col_ptr,
+                               &rc->fill_col_prop,
+                               3,
+                               RC_PROP_REQUIRE_FLOAT)) {
 		return 0;
 	}
 
-	if (!radial_control_get_path(
-	        &ctx_ptr, op, "fill_color_override_path",
-	        &rc->fill_col_override_ptr, &rc->fill_col_override_prop, 3, RC_PROP_REQUIRE_FLOAT))
-	{
+  if (!radial_control_get_path(&ctx_ptr,
+                               op,
+                               "fill_color_override_path",
+                               &rc->fill_col_override_ptr,
+                               &rc->fill_col_override_prop,
+                               3,
+                               RC_PROP_REQUIRE_FLOAT)) {
 		return 0;
 	}
-	if (!radial_control_get_path(
-	        &ctx_ptr, op, "fill_color_override_test_path",
-	        &rc->fill_col_override_test_ptr, &rc->fill_col_override_test_prop, 0, RC_PROP_REQUIRE_BOOL))
-	{
+  if (!radial_control_get_path(&ctx_ptr,
+                               op,
+                               "fill_color_override_test_path",
+                               &rc->fill_col_override_test_ptr,
+                               &rc->fill_col_override_test_prop,
+                               0,
+                               RC_PROP_REQUIRE_BOOL)) {
 		return 0;
 	}
 
 	/* slightly ugly; allow this property to not resolve
 	 * correctly. needed because 3d texture paint shares the same
 	 * keymap as 2d image paint */
-	if (!radial_control_get_path(&ctx_ptr, op, "zoom_path",
-	                             &rc->zoom_ptr, &rc->zoom_prop, 2,
-	                             RC_PROP_REQUIRE_FLOAT | RC_PROP_ALLOW_MISSING))
-	{
+  if (!radial_control_get_path(&ctx_ptr,
+                               op,
+                               "zoom_path",
+                               &rc->zoom_ptr,
+                               &rc->zoom_prop,
+                               2,
+                               RC_PROP_REQUIRE_FLOAT | RC_PROP_ALLOW_MISSING)) {
 		return 0;
 	}
 
@@ -2426,7 +2592,6 @@ static int radial_control_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 	wmWindowManager *wm;
 	RadialControl *rc;
 
-
 	if (!(op->customdata = rc = MEM_callocN(sizeof(RadialControl), "RadialControl"))) {
 		return OPERATOR_CANCELLED;
 	}
@@ -2438,8 +2603,7 @@ static int radial_control_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 
 	/* get type, initial, min, and max values of the property */
 	switch ((rc->type = RNA_property_type(rc->prop))) {
-		case PROP_INT:
-		{
+    case PROP_INT: {
 			int value, min, max, step;
 
 			value = RNA_property_int_get(&rc->ptr, rc->prop);
@@ -2450,8 +2614,7 @@ static int radial_control_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 			rc->max_value = max_ii(value, max);
 			break;
 		}
-		case PROP_FLOAT:
-		{
+    case PROP_FLOAT: {
 			float value, min, max, step, precision;
 
 			value = RNA_property_float_get(&rc->ptr, rc->prop);
@@ -2477,8 +2640,16 @@ static int radial_control_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 
 	/* get subtype of property */
 	rc->subtype = RNA_property_subtype(rc->prop);
-	if (!ELEM(rc->subtype, PROP_NONE, PROP_DISTANCE, PROP_FACTOR, PROP_PERCENTAGE, PROP_ANGLE, PROP_PIXEL)) {
-		BKE_report(op->reports, RPT_ERROR, "Property must be a none, distance, factor, percentage, angle, or pixel");
+  if (!ELEM(rc->subtype,
+            PROP_NONE,
+            PROP_DISTANCE,
+            PROP_FACTOR,
+            PROP_PERCENTAGE,
+            PROP_ANGLE,
+            PROP_PIXEL)) {
+    BKE_report(op->reports,
+               RPT_ERROR,
+               "Property must be a none, distance, factor, percentage, angle, or pixel");
 		MEM_freeN(rc);
 		return OPERATOR_CANCELLED;
 	}
@@ -2494,10 +2665,7 @@ static int radial_control_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 
 	/* add radial control paint cursor */
 	rc->cursor = WM_paint_cursor_activate(
-	        wm,
-	        SPACE_TYPE_ANY, RGN_TYPE_ANY,
-	        op->type->poll,
-	        radial_control_paint_cursor, rc);
+      wm, SPACE_TYPE_ANY, RGN_TYPE_ANY, op->type->poll, radial_control_paint_cursor, rc);
 
 	WM_event_add_modal_handler(C, op);
 
@@ -2659,13 +2827,16 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
 							}
 							break;
 						case PROP_PERCENTAGE:
-							new_value = ((dist - WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE) / WM_RADIAL_CONTROL_DISPLAY_WIDTH) * 100.0f;
+              new_value = ((dist - WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE) /
+                           WM_RADIAL_CONTROL_DISPLAY_WIDTH) *
+                          100.0f;
 							if (snap) {
 								new_value = ((int)(new_value + 2.5f)) / 5 * 5;
 							}
 							break;
 						case PROP_FACTOR:
-							new_value = (WM_RADIAL_CONTROL_DISPLAY_SIZE - dist) / WM_RADIAL_CONTROL_DISPLAY_WIDTH;
+              new_value = (WM_RADIAL_CONTROL_DISPLAY_SIZE - dist) /
+                          WM_RADIAL_CONTROL_DISPLAY_WIDTH;
 							if (snap) {
 								new_value = ((int)ceil(new_value * 10.f) * 10.0f) / 100.f;
 							}
@@ -2695,8 +2866,7 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
 				break;
 
 			case LEFTSHIFTKEY:
-			case RIGHTSHIFTKEY:
-			{
+      case RIGHTSHIFTKEY: {
 				if (event->val == KM_PRESS) {
 					rc->slow_mouse[0] = event->x;
 					rc->slow_mouse[1] = event->y;
@@ -2769,36 +2939,79 @@ static void WM_OT_radial_control(wmOperatorType *ot)
 
 	/* all paths relative to the context */
 	PropertyRNA *prop;
-	prop = RNA_def_string(ot->srna, "data_path_primary", NULL, 0, "Primary Data Path", "Primary path of property to be set by the radial control");
+  prop = RNA_def_string(ot->srna,
+                        "data_path_primary",
+                        NULL,
+                        0,
+                        "Primary Data Path",
+                        "Primary path of property to be set by the radial control");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_string(ot->srna, "data_path_secondary", NULL, 0, "Secondary Data Path", "Secondary path of property to be set by the radial control");
+  prop = RNA_def_string(ot->srna,
+                        "data_path_secondary",
+                        NULL,
+                        0,
+                        "Secondary Data Path",
+                        "Secondary path of property to be set by the radial control");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_string(ot->srna, "use_secondary", NULL, 0, "Use Secondary", "Path of property to select between the primary and secondary data paths");
+  prop = RNA_def_string(ot->srna,
+                        "use_secondary",
+                        NULL,
+                        0,
+                        "Use Secondary",
+                        "Path of property to select between the primary and secondary data paths");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_string(ot->srna, "rotation_path", NULL, 0, "Rotation Path", "Path of property used to rotate the texture display");
+  prop = RNA_def_string(ot->srna,
+                        "rotation_path",
+                        NULL,
+                        0,
+                        "Rotation Path",
+                        "Path of property used to rotate the texture display");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_string(ot->srna, "color_path", NULL, 0, "Color Path", "Path of property used to set the color of the control");
+  prop = RNA_def_string(ot->srna,
+                        "color_path",
+                        NULL,
+                        0,
+                        "Color Path",
+                        "Path of property used to set the color of the control");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_string(ot->srna, "fill_color_path", NULL, 0, "Fill Color Path", "Path of property used to set the fill color of the control");
+  prop = RNA_def_string(ot->srna,
+                        "fill_color_path",
+                        NULL,
+                        0,
+                        "Fill Color Path",
+                        "Path of property used to set the fill color of the control");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_string(ot->srna, "fill_color_override_path", NULL, 0, "Fill Color Override Path", "");
+  prop = RNA_def_string(
+      ot->srna, "fill_color_override_path", NULL, 0, "Fill Color Override Path", "");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_string(ot->srna, "fill_color_override_test_path", NULL, 0, "Fill Color Override Test", "");
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-	prop = RNA_def_string(ot->srna, "zoom_path", NULL, 0, "Zoom Path", "Path of property used to set the zoom level for the control");
-	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-	prop = RNA_def_string(ot->srna, "image_id", NULL, 0, "Image ID", "Path of ID that is used to generate an image for the control");
+  prop = RNA_def_string(
+      ot->srna, "fill_color_override_test_path", NULL, 0, "Fill Color Override Test", "");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-	prop = RNA_def_boolean(ot->srna, "secondary_tex", false, "Secondary Texture", "Tweak brush secondary/mask texture");
+  prop = RNA_def_string(ot->srna,
+                        "zoom_path",
+                        NULL,
+                        0,
+                        "Zoom Path",
+                        "Path of property used to set the zoom level for the control");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_string(ot->srna,
+                        "image_id",
+                        NULL,
+                        0,
+                        "Image ID",
+                        "Path of ID that is used to generate an image for the control");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(
+      ot->srna, "secondary_tex", false, "Secondary Texture", "Tweak brush secondary/mask texture");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -2841,12 +3054,15 @@ static const EnumPropertyItem redraw_timer_type_items[] = {
 	{0, NULL, 0, NULL, NULL},
 };
 
-
-static void redraw_timer_step(
-        bContext *C, Main *bmain, Scene *scene,
+static void redraw_timer_step(bContext *C,
+                              Main *bmain,
+                              Scene *scene,
         struct Depsgraph *depsgraph,
-        wmWindow *win, ScrArea *sa, ARegion *ar,
-        const int type, const int cfra)
+                              wmWindow *win,
+                              ScrArea *sa,
+                              ARegion *ar,
+                              const int type,
+                              const int cfra)
 {
 	if (type == eRTDrawRegion) {
 		if (ar) {
@@ -2952,9 +3168,13 @@ static int redraw_timer_exec(bContext *C, wmOperator *op)
 
 	WM_cursor_wait(0);
 
-	BKE_reportf(op->reports, RPT_WARNING,
+  BKE_reportf(op->reports,
+              RPT_WARNING,
 	            "%d x %s: %.4f ms, average: %.8f ms",
-	            iter_steps, infostr, time_delta, time_delta / iter_steps);
+              iter_steps,
+              infostr,
+              time_delta,
+              time_delta / iter_steps);
 
 	return OPERATOR_FINISHED;
 }
@@ -2970,10 +3190,17 @@ static void WM_OT_redraw_timer(wmOperatorType *ot)
 	ot->poll = WM_operator_winactive;
 
 	ot->prop = RNA_def_enum(ot->srna, "type", redraw_timer_type_items, eRTDrawRegion, "Type", "");
-	RNA_def_int(ot->srna, "iterations", 10, 1, INT_MAX, "Iterations", "Number of times to redraw", 1, 1000);
-	RNA_def_float(ot->srna, "time_limit", 0.0, 0.0, FLT_MAX,
-	              "Time Limit", "Seconds to run the test for (override iterations)", 0.0, 60.0);
-
+  RNA_def_int(
+      ot->srna, "iterations", 10, 1, INT_MAX, "Iterations", "Number of times to redraw", 1, 1000);
+  RNA_def_float(ot->srna,
+                "time_limit",
+                0.0,
+                0.0,
+                FLT_MAX,
+                "Time Limit",
+                "Seconds to run the test for (override iterations)",
+                0.0,
+                60.0);
 }
 
 /* ************************** memory statistics for testing ***************** */
@@ -3012,7 +3239,10 @@ static void previews_id_ensure(bContext *C, Scene *scene, ID *id)
 	}
 }
 
-static int previews_id_ensure_callback(void *userdata, ID *UNUSED(self_id), ID **idptr, int cb_flag)
+static int previews_id_ensure_callback(void *userdata,
+                                       ID *UNUSED(self_id),
+                                       ID **idptr,
+                                       int cb_flag)
 {
 	if (cb_flag & IDWALK_CB_PRIVATE) {
 		return IDWALK_RET_NOP;
@@ -3033,7 +3263,8 @@ static int previews_id_ensure_callback(void *userdata, ID *UNUSED(self_id), ID *
 static int previews_ensure_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Main *bmain = CTX_data_main(C);
-	ListBase *lb[] = {&bmain->materials, &bmain->textures, &bmain->images, &bmain->worlds, &bmain->lights, NULL};
+  ListBase *lb[] = {
+      &bmain->materials, &bmain->textures, &bmain->images, &bmain->worlds, &bmain->lights, NULL};
 	PreviewsIDEnsureData preview_id_data;
 	Scene *scene;
 	ID *id;
@@ -3050,7 +3281,8 @@ static int previews_ensure_exec(bContext *C, wmOperator *UNUSED(op))
 		preview_id_data.scene = scene;
 		id = (ID *)scene;
 
-		BKE_library_foreach_ID_link(NULL, id, previews_id_ensure_callback, &preview_id_data, IDWALK_RECURSE);
+    BKE_library_foreach_ID_link(
+        NULL, id, previews_id_ensure_callback, &preview_id_data, IDWALK_RECURSE);
 	}
 
 	/* Check a last time for ID not used (fake users only, in theory), and
@@ -3071,7 +3303,8 @@ static void WM_OT_previews_ensure(wmOperatorType *ot)
 {
 	ot->name = "Refresh Data-Block Previews";
 	ot->idname = "WM_OT_previews_ensure";
-	ot->description = "Ensure data-block previews are available and up-to-date "
+  ot->description =
+      "Ensure data-block previews are available and up-to-date "
 	                  "(to be saved in .blend file, only for some types like materials, textures, etc.)";
 
 	ot->exec = previews_ensure_exec;
@@ -3098,8 +3331,14 @@ static const EnumPropertyItem preview_id_type_items[] = {
 static int previews_clear_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
-	ListBase *lb[] = {&bmain->objects, &bmain->collections,
-	                  &bmain->materials, &bmain->worlds, &bmain->lights, &bmain->textures, &bmain->images, NULL};
+  ListBase *lb[] = {&bmain->objects,
+                    &bmain->collections,
+                    &bmain->materials,
+                    &bmain->worlds,
+                    &bmain->lights,
+                    &bmain->textures,
+                    &bmain->images,
+                    NULL};
 	int i;
 
 	const int id_filters = RNA_enum_get(op->ptr, "id_type");
@@ -3131,15 +3370,19 @@ static void WM_OT_previews_clear(wmOperatorType *ot)
 {
 	ot->name = "Clear Data-Block Previews";
 	ot->idname = "WM_OT_previews_clear";
-	ot->description = "Clear data-block previews (only for some types like objects, materials, textures, etc.)";
+  ot->description =
+      "Clear data-block previews (only for some types like objects, materials, textures, etc.)";
 
 	ot->exec = previews_clear_exec;
 	ot->invoke = WM_menu_invoke;
 
-	ot->prop = RNA_def_enum_flag(ot->srna, "id_type", preview_id_type_items,
-	                             FILTER_ID_SCE | FILTER_ID_OB | FILTER_ID_GR |
-	                             FILTER_ID_MA | FILTER_ID_LA | FILTER_ID_WO | FILTER_ID_TE | FILTER_ID_IM,
-	                             "Data-Block Type", "Which data-block previews to clear");
+  ot->prop = RNA_def_enum_flag(ot->srna,
+                               "id_type",
+                               preview_id_type_items,
+                               FILTER_ID_SCE | FILTER_ID_OB | FILTER_ID_GR | FILTER_ID_MA |
+                                   FILTER_ID_LA | FILTER_ID_WO | FILTER_ID_TE | FILTER_ID_IM,
+                               "Data-Block Type",
+                               "Which data-block previews to clear");
 }
 
 /* *************************** Doc from UI ************* */
@@ -3155,8 +3398,7 @@ static int doc_view_manual_ui_context_exec(bContext *C, wmOperator *UNUSED(op))
 		RNA_string_set(&ptr_props, "doc_id", buf);
 
 		retval = WM_operator_name_call_ptr(
-		        C, WM_operatortype_find("WM_OT_doc_view_manual", false),
-		        WM_OP_EXEC_DEFAULT, &ptr_props);
+        C, WM_operatortype_find("WM_OT_doc_view_manual", false), WM_OP_EXEC_DEFAULT, &ptr_props);
 
 		WM_operator_properties_free(&ptr_props);
 	}
@@ -3193,16 +3435,37 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 	ot->check = wm_stereo3d_set_check;
 	ot->cancel = wm_stereo3d_set_cancel;
 
-	prop = RNA_def_enum(ot->srna, "display_mode", rna_enum_stereo3d_display_items, S3D_DISPLAY_ANAGLYPH, "Display Mode", "");
+  prop = RNA_def_enum(ot->srna,
+                      "display_mode",
+                      rna_enum_stereo3d_display_items,
+                      S3D_DISPLAY_ANAGLYPH,
+                      "Display Mode",
+                      "");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_enum(ot->srna, "anaglyph_type", rna_enum_stereo3d_anaglyph_type_items, S3D_ANAGLYPH_REDCYAN, "Anaglyph Type", "");
+  prop = RNA_def_enum(ot->srna,
+                      "anaglyph_type",
+                      rna_enum_stereo3d_anaglyph_type_items,
+                      S3D_ANAGLYPH_REDCYAN,
+                      "Anaglyph Type",
+                      "");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_enum(ot->srna, "interlace_type", rna_enum_stereo3d_interlace_type_items, S3D_INTERLACE_ROW, "Interlace Type", "");
+  prop = RNA_def_enum(ot->srna,
+                      "interlace_type",
+                      rna_enum_stereo3d_interlace_type_items,
+                      S3D_INTERLACE_ROW,
+                      "Interlace Type",
+                      "");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "use_interlace_swap", false, "Swap Left/Right",
+  prop = RNA_def_boolean(ot->srna,
+                         "use_interlace_swap",
+                         false,
+                         "Swap Left/Right",
 	                       "Swap left and right stereo channels");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "use_sidebyside_crosseyed", false, "Cross-Eyed",
+  prop = RNA_def_boolean(ot->srna,
+                         "use_sidebyside_crosseyed",
+                         false,
+                         "Cross-Eyed",
 	                       "Right eye should see left image and vice-versa");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
@@ -3319,7 +3582,6 @@ static void gesture_straightline_modal_keymap(wmKeyConfig *keyconf)
 	WM_modalkeymap_assign(keymap, "MESH_OT_bisect");
 }
 
-
 /* box_select-like modal operators */
 static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
 {
@@ -3364,7 +3626,9 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_clip_border");
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_render_border");
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_box");
-	WM_modalkeymap_assign(keymap, "VIEW3D_OT_zoom_border"); /* XXX TODO: zoom border should perhaps map rightmouse to zoom out instead of in+cancel */
+  WM_modalkeymap_assign(
+      keymap,
+      "VIEW3D_OT_zoom_border"); /* XXX TODO: zoom border should perhaps map rightmouse to zoom out instead of in+cancel */
 	WM_modalkeymap_assign(keymap, "IMAGE_OT_render_border");
 	WM_modalkeymap_assign(keymap, "IMAGE_OT_view_zoom_border");
 	WM_modalkeymap_assign(keymap, "GPENCIL_OT_select_box");
@@ -3420,10 +3684,13 @@ static bool rna_id_enum_filter_single(ID *id, void *user_data)
 }
 
 /* Generic itemf's for operators that take library args */
-static const EnumPropertyItem *rna_id_itemf(
-        bContext *UNUSED(C), PointerRNA *UNUSED(ptr),
-        bool *r_free, ID *id, bool local,
-        bool (*filter_ids)(ID *id, void *user_data), void *user_data)
+static const EnumPropertyItem *rna_id_itemf(bContext *UNUSED(C),
+                                            PointerRNA *UNUSED(ptr),
+                                            bool *r_free,
+                                            ID *id,
+                                            bool local,
+                                            bool (*filter_ids)(ID *id, void *user_data),
+                                            void *user_data)
 {
 	EnumPropertyItem item_tmp = {0}, *item = NULL;
 	int totitem = 0;
@@ -3448,9 +3715,13 @@ static const EnumPropertyItem *rna_id_itemf(
 }
 
 /* can add more as needed */
-const EnumPropertyItem *RNA_action_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_action_itemf(bContext *C,
+                                         PointerRNA *ptr,
+                                         PropertyRNA *UNUSED(prop),
+                                         bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->actions.first : NULL, false, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->actions.first : NULL, false, NULL, NULL);
 }
 #if 0 /* UNUSED */
 const EnumPropertyItem *RNA_action_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
@@ -3459,53 +3730,100 @@ const EnumPropertyItem *RNA_action_local_itemf(bContext *C, PointerRNA *ptr, Pro
 }
 #endif
 
-const EnumPropertyItem *RNA_collection_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_collection_itemf(bContext *C,
+                                             PointerRNA *ptr,
+                                             PropertyRNA *UNUSED(prop),
+                                             bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collections.first : NULL, false, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collections.first : NULL, false, NULL, NULL);
 }
-const EnumPropertyItem *RNA_collection_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_collection_local_itemf(bContext *C,
+                                                   PointerRNA *ptr,
+                                                   PropertyRNA *UNUSED(prop),
+                                                   bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collections.first : NULL, true, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collections.first : NULL, true, NULL, NULL);
 }
 
-const EnumPropertyItem *RNA_image_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_image_itemf(bContext *C,
+                                        PointerRNA *ptr,
+                                        PropertyRNA *UNUSED(prop),
+                                        bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->images.first : NULL, false, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->images.first : NULL, false, NULL, NULL);
 }
-const EnumPropertyItem *RNA_image_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_image_local_itemf(bContext *C,
+                                              PointerRNA *ptr,
+                                              PropertyRNA *UNUSED(prop),
+                                              bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->images.first : NULL, true, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->images.first : NULL, true, NULL, NULL);
 }
 
-const EnumPropertyItem *RNA_scene_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_scene_itemf(bContext *C,
+                                        PointerRNA *ptr,
+                                        PropertyRNA *UNUSED(prop),
+                                        bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, false, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, false, NULL, NULL);
 }
-const EnumPropertyItem *RNA_scene_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_scene_local_itemf(bContext *C,
+                                              PointerRNA *ptr,
+                                              PropertyRNA *UNUSED(prop),
+                                              bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, true, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, true, NULL, NULL);
 }
-const EnumPropertyItem *RNA_scene_without_active_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_scene_without_active_itemf(bContext *C,
+                                                       PointerRNA *ptr,
+                                                       PropertyRNA *UNUSED(prop),
+                                                       bool *r_free)
 {
 	Scene *scene_active = C ? CTX_data_scene(C) : NULL;
-	return rna_id_itemf(
-	        C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, true,
-	        rna_id_enum_filter_single, scene_active);
+  return rna_id_itemf(C,
+                      ptr,
+                      r_free,
+                      C ? (ID *)CTX_data_main(C)->scenes.first : NULL,
+                      true,
+                      rna_id_enum_filter_single,
+                      scene_active);
 }
-const EnumPropertyItem *RNA_movieclip_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_movieclip_itemf(bContext *C,
+                                            PointerRNA *ptr,
+                                            PropertyRNA *UNUSED(prop),
+                                            bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclips.first : NULL, false, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclips.first : NULL, false, NULL, NULL);
 }
-const EnumPropertyItem *RNA_movieclip_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_movieclip_local_itemf(bContext *C,
+                                                  PointerRNA *ptr,
+                                                  PropertyRNA *UNUSED(prop),
+                                                  bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclips.first : NULL, true, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclips.first : NULL, true, NULL, NULL);
 }
 
-const EnumPropertyItem *RNA_mask_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_mask_itemf(bContext *C,
+                                       PointerRNA *ptr,
+                                       PropertyRNA *UNUSED(prop),
+                                       bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->masks.first : NULL, false, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->masks.first : NULL, false, NULL, NULL);
 }
-const EnumPropertyItem *RNA_mask_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+const EnumPropertyItem *RNA_mask_local_itemf(bContext *C,
+                                             PointerRNA *ptr,
+                                             PropertyRNA *UNUSED(prop),
+                                             bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->masks.first : NULL, true, NULL, NULL);
+  return rna_id_itemf(
+      C, ptr, r_free, C ? (ID *)CTX_data_main(C)->masks.first : NULL, true, NULL, NULL);
 }

@@ -66,7 +66,6 @@
 
 #include "BLF_api.h"
 
-
 Global G;
 UserDef U;
 
@@ -105,12 +104,18 @@ void BKE_blender_free(void)
 	free_nodesystem();
 }
 
-void BKE_blender_version_string(char *version_str, size_t maxncpy, short version, short subversion, bool v_prefix, bool include_subversion)
+void BKE_blender_version_string(char *version_str,
+                                size_t maxncpy,
+                                short version,
+                                short subversion,
+                                bool v_prefix,
+                                bool include_subversion)
 {
 	const char *prefix = v_prefix ? "v" : "";
 
 	if (include_subversion && subversion > 0) {
-		BLI_snprintf(version_str, maxncpy, "%s%d.%02d.%d", prefix, version / 100, version % 100, subversion);
+    BLI_snprintf(
+        version_str, maxncpy, "%s%d.%02d.%d", prefix, version / 100, version % 100, subversion);
 	}
 	else {
 		BLI_snprintf(version_str, maxncpy, "%s%d.%02d", prefix, version / 100, version % 100);
@@ -127,7 +132,8 @@ void BKE_blender_globals_init(void)
 
 	strcpy(G.ima, "//");
 
-	BKE_blender_version_string(versionstr, sizeof(versionstr), BLENDER_VERSION, BLENDER_SUBVERSION, true, true);
+  BKE_blender_version_string(
+      versionstr, sizeof(versionstr), BLENDER_VERSION, BLENDER_SUBVERSION, true, true);
 
 #ifndef WITH_PYTHON_SECURITY /* default */
 	G.f |= G_FLAG_SCRIPT_AUTOEXEC;
@@ -203,7 +209,8 @@ static void userdef_free_keymaps(UserDef *userdef)
 
 static void userdef_free_keyconfig_prefs(UserDef *userdef)
 {
-	for (wmKeyConfigPref *kpt = userdef->user_keyconfig_prefs.first, *kpt_next; kpt; kpt = kpt_next) {
+  for (wmKeyConfigPref *kpt = userdef->user_keyconfig_prefs.first, *kpt_next; kpt;
+       kpt = kpt_next) {
 		kpt_next = kpt->next;
 		IDP_FreeProperty(kpt->prop);
 		MEM_freeN(kpt->prop);
@@ -258,7 +265,6 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
 	BLI_freelistN(&userdef->uifonts);
 	BLI_freelistN(&userdef->themes);
 
-
 #undef U
 }
 
@@ -278,21 +284,25 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
 		memcpy(&(userdef_tmp.id), &(userdef_a->id), sizeof(userdef_tmp.id)); \
 		memcpy(&(userdef_a->id), &(userdef_b->id), sizeof(userdef_tmp.id)); \
 		memcpy(&(userdef_b->id), &(userdef_tmp.id), sizeof(userdef_tmp.id)); \
-	} ((void)0)
+  } \
+  ((void)0)
 
-#define LIST_SWAP(id) { \
+#define LIST_SWAP(id) \
+  { \
 	SWAP(ListBase, userdef_a->id, userdef_b->id); \
-} ((void)0)
+  } \
+  ((void)0)
 
-#define FLAG_SWAP(id, ty, flags) { \
+#define FLAG_SWAP(id, ty, flags) \
+  { \
 	CHECK_TYPE(&(userdef_a->id), ty *); \
 	const ty f = flags; \
 	const ty a = userdef_a->id; \
 	const ty b = userdef_b->id; \
 	userdef_a->id = (userdef_a->id & ~f) | (b & f); \
 	userdef_b->id = (userdef_b->id & ~f) | (a & f); \
-} ((void)0)
-
+  } \
+  ((void)0)
 
 	LIST_SWAP(uistyles);
 	LIST_SWAP(uifonts);

@@ -86,19 +86,18 @@ typedef enum eBLOReadSkip {
 	BLO_READ_SKIP_USERDEF       = (1 << 0),
 	BLO_READ_SKIP_DATA          = (1 << 1),
 } eBLOReadSkip;
-#define BLO_READ_SKIP_ALL \
-	(BLO_READ_SKIP_USERDEF | BLO_READ_SKIP_DATA)
+#define BLO_READ_SKIP_ALL (BLO_READ_SKIP_USERDEF | BLO_READ_SKIP_DATA)
 
-BlendFileData *BLO_read_from_file(
-        const char *filepath,
+BlendFileData *BLO_read_from_file(const char *filepath,
         eBLOReadSkip skip_flags,
         struct ReportList *reports);
-BlendFileData *BLO_read_from_memory(
-        const void *mem, int memsize,
+BlendFileData *BLO_read_from_memory(const void *mem,
+                                    int memsize,
         eBLOReadSkip skip_flags,
         struct ReportList *reports);
-BlendFileData *BLO_read_from_memfile(
-        struct Main *oldmain, const char *filename, struct MemFile *memfile,
+BlendFileData *BLO_read_from_memfile(struct Main *oldmain,
+                                     const char *filename,
+                                     struct MemFile *memfile,
         eBLOReadSkip skip_flags,
         struct ReportList *reports);
 
@@ -107,7 +106,9 @@ void BLO_blendfiledata_free(BlendFileData *bfd);
 BlendHandle *BLO_blendhandle_from_file(const char *filepath, struct ReportList *reports);
 BlendHandle *BLO_blendhandle_from_memory(const void *mem, int memsize);
 
-struct LinkNode *BLO_blendhandle_get_datablock_names(BlendHandle *bh, int ofblocktype, int *tot_names);
+struct LinkNode *BLO_blendhandle_get_datablock_names(BlendHandle *bh,
+                                                     int ofblocktype,
+                                                     int *tot_names);
 struct LinkNode *BLO_blendhandle_get_previews(BlendHandle *bh, int ofblocktype, int *tot_prev);
 struct LinkNode *BLO_blendhandle_get_linkable_groups(BlendHandle *bh);
 
@@ -134,7 +135,10 @@ typedef enum BLO_LibLinkFlags {
 } BLO_LinkFlags;
 
 struct Main *BLO_library_link_begin(struct Main *mainvar, BlendHandle **bh, const char *filepath);
-struct ID *BLO_library_link_named_part(struct Main *mainl, BlendHandle **bh, const short idcode, const char *name);
+struct ID *BLO_library_link_named_part(struct Main *mainl,
+                                       BlendHandle **bh,
+                                       const short idcode,
+                                       const char *name);
 struct ID *BLO_library_link_named_part_ex(
         struct Main *mainl, BlendHandle **bh,
         const short idcode, const char *name, const int flag);
@@ -150,9 +154,11 @@ int BLO_library_link_copypaste(struct Main *mainl, BlendHandle *bh, const unsign
 void *BLO_library_read_struct(struct FileData *fd, struct BHead *bh, const char *blockname);
 
 /* internal function but we need to expose it */
-void blo_lib_link_restore(
-        struct Main *oldmain, struct Main *newmain, struct wmWindowManager *curwm,
-        struct Scene *curscene, struct ViewLayer *cur_render_layer);
+void blo_lib_link_restore(struct Main *oldmain,
+                          struct Main *newmain,
+                          struct wmWindowManager *curwm,
+                          struct Scene *curscene,
+                          struct ViewLayer *cur_render_layer);
 
 typedef void (*BLOExpandDoitCallback) (void *fdhandle, struct Main *mainvar, void *idv);
 

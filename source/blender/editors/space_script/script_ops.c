@@ -21,15 +21,12 @@
  * \ingroup spscript
  */
 
-
 #include <stdlib.h>
 #include <math.h>
 
 #include "WM_api.h"
 
-
 #include "script_intern.h"
-
 
 /* ************************** registration **********************************/
 

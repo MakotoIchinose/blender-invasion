@@ -80,9 +80,7 @@ short ED_fileselect_set_params(struct SpaceFile *sfile);
 
 void ED_fileselect_reset_params(struct SpaceFile *sfile);
 
-
 void ED_fileselect_init_layout(struct SpaceFile *sfile, struct ARegion *ar);
-
 
 FileLayout *ED_fileselect_get_layout(struct SpaceFile *sfile, struct ARegion *ar);
 
@@ -141,7 +139,9 @@ struct FSMenuEntry;
 
 struct FSMenu *ED_fsmenu_get(void);
 struct FSMenuEntry *ED_fsmenu_get_category(struct FSMenu *fsmenu, FSMenuCategory category);
-void ED_fsmenu_set_category(struct FSMenu *fsmenu, FSMenuCategory category, struct FSMenuEntry *fsm_head);
+void ED_fsmenu_set_category(struct FSMenu *fsmenu,
+                            FSMenuCategory category,
+                            struct FSMenuEntry *fsm_head);
 
 int ED_fsmenu_get_nentries(struct FSMenu *fsmenu, FSMenuCategory category);
 

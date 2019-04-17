@@ -57,7 +57,6 @@ typedef struct DrawDataList {
 	struct DrawData *first, *last;
 } DrawDataList;
 
-
 typedef struct IDPropertyData {
 	void *pointer;
 	ListBase group;
@@ -135,7 +134,6 @@ enum {
 };
 
 /* add any future new id property types here.*/
-
 
 /* Static ID override structs. */
 
@@ -431,7 +429,9 @@ typedef struct PreviewImage {
 } PreviewImage;
 
 #define PRV_DEFERRED_DATA(prv) \
-	(CHECK_TYPE_INLINE(prv, PreviewImage *), BLI_assert((prv)->tag & PRV_TAG_DEFFERED), (void *)((prv) + 1))
+  (CHECK_TYPE_INLINE(prv, PreviewImage *), \
+   BLI_assert((prv)->tag & PRV_TAG_DEFFERED), \
+   (void *)((prv) + 1))
 
 /**
  * Defines for working with IDs.
@@ -514,10 +514,13 @@ typedef enum ID_Type {
 #define ID_REAL_USERS(id) (((ID *)id)->us - ID_FAKE_USERS(id))
 #define ID_EXTRA_USERS(id) (((ID *)id)->tag & LIB_TAG_EXTRAUSER ? 1 : 0)
 
-#define ID_CHECK_UNDO(id) ((GS((id)->name) != ID_SCR) && (GS((id)->name) != ID_WM) && (GS((id)->name) != ID_WS))
+#define ID_CHECK_UNDO(id) \
+  ((GS((id)->name) != ID_SCR) && (GS((id)->name) != ID_WM) && (GS((id)->name) != ID_WS))
 
-#define ID_BLEND_PATH(_bmain, _id) ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path((_bmain)))
-#define ID_BLEND_PATH_FROM_GLOBAL(_id) ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path_from_global())
+#define ID_BLEND_PATH(_bmain, _id) \
+  ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path((_bmain)))
+#define ID_BLEND_PATH_FROM_GLOBAL(_id) \
+  ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path_from_global())
 
 #define ID_MISSING(_id) (((_id)->tag & LIB_TAG_MISSING) != 0)
 
@@ -526,29 +529,34 @@ typedef enum ID_Type {
 #define ID_IS_LINKED_DATABLOCK(_id) (ID_IS_LINKED(_id) && !LIB_IS_VIRTUAL(((ID *)(_id))->lib))
 #define ID_IS_LINKED_DATAPATH(_id) (ID_IS_LINKED(_id) && LIB_IS_VIRTUAL(((ID *)(_id))->lib))
 
-#define ID_IS_STATIC_OVERRIDE(_id) (((ID *)(_id))->override_static != NULL && \
-                                    ((ID *)(_id))->override_static->reference != NULL)
+#define ID_IS_STATIC_OVERRIDE(_id) \
+  (((ID *)(_id))->override_static != NULL && ((ID *)(_id))->override_static->reference != NULL)
 
-#define ID_IS_STATIC_OVERRIDE_TEMPLATE(_id) (((ID *)(_id))->override_static != NULL && \
-                                             ((ID *)(_id))->override_static->reference == NULL)
+#define ID_IS_STATIC_OVERRIDE_TEMPLATE(_id) \
+  (((ID *)(_id))->override_static != NULL && ((ID *)(_id))->override_static->reference == NULL)
 
-#define ID_IS_STATIC_OVERRIDE_AUTO(_id) (!ID_IS_LINKED((_id)) && \
-                                         ID_IS_STATIC_OVERRIDE((_id)) && \
+#define ID_IS_STATIC_OVERRIDE_AUTO(_id) \
+  (!ID_IS_LINKED((_id)) && ID_IS_STATIC_OVERRIDE((_id)) && \
                                          (((ID *)(_id))->override_static->flag & STATICOVERRIDE_AUTO))
 
 /* No copy-on-write for these types.
  * Keep in sync with check_datablocks_copy_on_writable and deg_copy_on_write_is_needed */
-#define ID_TYPE_IS_COW(_id_type) \
-	(!ELEM(_id_type, ID_BR, ID_LS, ID_PAL, ID_IM))
+#define ID_TYPE_IS_COW(_id_type) (!ELEM(_id_type, ID_BR, ID_LS, ID_PAL, ID_IM))
 
 #ifdef GS
 #  undef GS
 #endif
-#define GS(a)	(CHECK_TYPE_ANY(a, char *, const char *, char [66], const char[66]), (ID_Type)(*((const short *)(a))))
+#define GS(a) \
+  (CHECK_TYPE_ANY(a, char *, const char *, char[66], const char[66]), \
+   (ID_Type)(*((const short *)(a))))
 
 #define ID_NEW_SET(_id, _idn) \
-	(((ID *)(_id))->newid = (ID *)(_idn), ((ID *)(_id))->newid->tag |= LIB_TAG_NEW, (void *)((ID *)(_id))->newid)
-#define ID_NEW_REMAP(a) if ((a) && (a)->id.newid) (a) = (void *)(a)->id.newid
+  (((ID *)(_id))->newid = (ID *)(_idn), \
+   ((ID *)(_id))->newid->tag |= LIB_TAG_NEW, \
+   (void *)((ID *)(_id))->newid)
+#define ID_NEW_REMAP(a) \
+  if ((a) && (a)->id.newid) \
+  (a) = (void *)(a)->id.newid
 
 #define ID_VIRTUAL_LIBRARY_VALID(_id) (ELEM(GS((_id)->name), ID_IM, ID_VF, ID_TXT, ID_SO))
 
@@ -707,9 +715,7 @@ typedef enum IDRecalcFlag {
 	/* Identifies that SOMETHING has been changed in this ID. */
 	ID_RECALC_ALL = ~(0),
 	/* Identifies that something in particle system did change. */
-	ID_RECALC_PSYS_ALL    = (ID_RECALC_PSYS_REDO |
-	                         ID_RECALC_PSYS_RESET |
-	                         ID_RECALC_PSYS_CHILD |
+  ID_RECALC_PSYS_ALL = (ID_RECALC_PSYS_REDO | ID_RECALC_PSYS_RESET | ID_RECALC_PSYS_CHILD |
 	                         ID_RECALC_PSYS_PHYS),
 
 } IDRecalcFlag;

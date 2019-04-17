@@ -42,7 +42,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-
 void WM_operator_properties_confirm_or_exec(wmOperatorType *ot)
 {
 	PropertyRNA *prop;
@@ -52,16 +51,32 @@ void WM_operator_properties_confirm_or_exec(wmOperatorType *ot)
 }
 
 /* default properties for fileselect */
-void WM_operator_properties_filesel(
-        wmOperatorType *ot, int filter, short type, short action,
-        short flag, short display, short sort)
+void WM_operator_properties_filesel(wmOperatorType *ot,
+                                    int filter,
+                                    short type,
+                                    short action,
+                                    short flag,
+                                    short display,
+                                    short sort)
 {
 	PropertyRNA *prop;
 
 	static const EnumPropertyItem file_display_items[] = {
-		{FILE_DEFAULTDISPLAY, "DEFAULT", 0, "Default", "Automatically determine display type for files"},
-		{FILE_SHORTDISPLAY, "LIST_SHORT", ICON_SHORTDISPLAY, "Short List", "Display files as short list"},
-		{FILE_LONGDISPLAY, "LIST_LONG", ICON_LONGDISPLAY, "Long List", "Display files as a detailed list"},
+      {FILE_DEFAULTDISPLAY,
+       "DEFAULT",
+       0,
+       "Default",
+       "Automatically determine display type for files"},
+      {FILE_SHORTDISPLAY,
+       "LIST_SHORT",
+       ICON_SHORTDISPLAY,
+       "Short List",
+       "Display files as short list"},
+      {FILE_LONGDISPLAY,
+       "LIST_LONG",
+       ICON_LONGDISPLAY,
+       "Long List",
+       "Display files as a detailed list"},
 		{FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
 		{0, NULL, 0, NULL, NULL},
 	};
@@ -76,7 +91,8 @@ void WM_operator_properties_filesel(
 	}
 
 	if (flag & WM_FILESEL_FILENAME) {
-		RNA_def_string_file_name(ot->srna, "filename", NULL, FILE_MAX, "File Name", "Name of the file");
+    RNA_def_string_file_name(
+        ot->srna, "filename", NULL, FILE_MAX, "File Name", "Name of the file");
 	}
 
 	if (flag & WM_FILESEL_FILES) {
@@ -109,45 +125,75 @@ void WM_operator_properties_filesel(
 	if (action == FILE_SAVE) {
 		/* note, this is only used to check if we should highlight the filename area red when the
 		 * filepath is an existing file. */
-		prop = RNA_def_boolean(ot->srna, "check_existing", true, "Check Existing",
+    prop = RNA_def_boolean(ot->srna,
+                           "check_existing",
+                           true,
+                           "Check Existing",
 		                       "Check and warn on overwriting existing files");
 		RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 	}
 
-	prop = RNA_def_boolean(ot->srna, "filter_blender", (filter & FILE_TYPE_BLENDER) != 0, "Filter .blend files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_blender", (filter & FILE_TYPE_BLENDER) != 0, "Filter .blend files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_backup", (filter & FILE_TYPE_BLENDER_BACKUP) != 0, "Filter .blend files", "");
+  prop = RNA_def_boolean(ot->srna,
+                         "filter_backup",
+                         (filter & FILE_TYPE_BLENDER_BACKUP) != 0,
+                         "Filter .blend files",
+                         "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_image", (filter & FILE_TYPE_IMAGE) != 0, "Filter image files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_image", (filter & FILE_TYPE_IMAGE) != 0, "Filter image files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_movie", (filter & FILE_TYPE_MOVIE) != 0, "Filter movie files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_movie", (filter & FILE_TYPE_MOVIE) != 0, "Filter movie files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_python", (filter & FILE_TYPE_PYSCRIPT) != 0, "Filter python files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_python", (filter & FILE_TYPE_PYSCRIPT) != 0, "Filter python files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_font", (filter & FILE_TYPE_FTFONT) != 0, "Filter font files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_font", (filter & FILE_TYPE_FTFONT) != 0, "Filter font files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_sound", (filter & FILE_TYPE_SOUND) != 0, "Filter sound files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_sound", (filter & FILE_TYPE_SOUND) != 0, "Filter sound files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_text", (filter & FILE_TYPE_TEXT) != 0, "Filter text files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_text", (filter & FILE_TYPE_TEXT) != 0, "Filter text files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_btx", (filter & FILE_TYPE_BTX) != 0, "Filter btx files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_btx", (filter & FILE_TYPE_BTX) != 0, "Filter btx files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_collada", (filter & FILE_TYPE_COLLADA) != 0, "Filter COLLADA files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_collada", (filter & FILE_TYPE_COLLADA) != 0, "Filter COLLADA files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_alembic", (filter & FILE_TYPE_ALEMBIC) != 0, "Filter Alembic files", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_alembic", (filter & FILE_TYPE_ALEMBIC) != 0, "Filter Alembic files", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_folder", (filter & FILE_TYPE_FOLDER) != 0, "Filter folders", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_folder", (filter & FILE_TYPE_FOLDER) != 0, "Filter folders", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-	prop = RNA_def_boolean(ot->srna, "filter_blenlib", (filter & FILE_TYPE_BLENDERLIB) != 0, "Filter Blender IDs", "");
+  prop = RNA_def_boolean(
+      ot->srna, "filter_blenlib", (filter & FILE_TYPE_BLENDERLIB) != 0, "Filter Blender IDs", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-	prop = RNA_def_int(ot->srna, "filemode", type, FILE_LOADLIB, FILE_SPECIAL,
-	                   "File Browser Mode", "The setting for the file browser mode to load a .blend file, a library or a special file",
-	                   FILE_LOADLIB, FILE_SPECIAL);
+  prop = RNA_def_int(
+      ot->srna,
+      "filemode",
+      type,
+      FILE_LOADLIB,
+      FILE_SPECIAL,
+      "File Browser Mode",
+      "The setting for the file browser mode to load a .blend file, a library or a special file",
+      FILE_LOADLIB,
+      FILE_SPECIAL);
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
 	if (flag & WM_FILESEL_RELPATH) {
-		RNA_def_boolean(ot->srna, "relative_path", true, "Relative Path", "Select the file relative to the blend file");
+    RNA_def_boolean(ot->srna,
+                    "relative_path",
+                    true,
+                    "Relative Path",
+                    "Select the file relative to the blend file");
 	}
 
 	if ((filter & FILE_TYPE_IMAGE) || (filter & FILE_TYPE_MOVIE)) {
@@ -160,17 +206,19 @@ void WM_operator_properties_filesel(
 	prop = RNA_def_enum(ot->srna, "display_type", file_display_items, display, "Display Type", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-	prop = RNA_def_enum(ot->srna, "sort_method", rna_enum_file_sort_items, sort, "File sorting mode", "");
+  prop = RNA_def_enum(
+      ot->srna, "sort_method", rna_enum_file_sort_items, sort, "File sorting mode", "");
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-
 }
 
-static void wm_operator_properties_select_action_ex(wmOperatorType *ot, int default_action,
+static void wm_operator_properties_select_action_ex(wmOperatorType *ot,
+                                                    int default_action,
                                                     const EnumPropertyItem *select_actions,
 													bool hide_gui)
 {
 	PropertyRNA *prop;
-	prop = RNA_def_enum(ot->srna, "action", select_actions, default_action, "Action", "Selection action to execute");
+  prop = RNA_def_enum(
+      ot->srna, "action", select_actions, default_action, "Action", "Selection action to execute");
 
 	if (hide_gui) {
 		RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
@@ -193,7 +241,9 @@ void WM_operator_properties_select_action(wmOperatorType *ot, int default_action
 /**
  * only SELECT/DESELECT
  */
-void WM_operator_properties_select_action_simple(wmOperatorType *ot, int default_action, bool hide_gui)
+void WM_operator_properties_select_action_simple(wmOperatorType *ot,
+                                                 int default_action,
+                                                 bool hide_gui)
 {
 	static const EnumPropertyItem select_actions[] = {
 		{SEL_SELECT, "SELECT", 0, "Select", "Select all elements"},
@@ -210,12 +260,24 @@ void WM_operator_properties_select_action_simple(wmOperatorType *ot, int default
  */
 void WM_operator_properties_select_random(wmOperatorType *ot)
 {
-	RNA_def_float_percentage(
-	        ot->srna, "percent", 50.f, 0.0f, 100.0f,
-	        "Percent", "Percentage of objects to select randomly", 0.f, 100.0f);
-	RNA_def_int(
-	        ot->srna, "seed", 0, 0, INT_MAX,
-	        "Random Seed", "Seed for the random number generator", 0, 255);
+  RNA_def_float_percentage(ot->srna,
+                           "percent",
+                           50.f,
+                           0.0f,
+                           100.0f,
+                           "Percent",
+                           "Percentage of objects to select randomly",
+                           0.f,
+                           100.0f);
+  RNA_def_int(ot->srna,
+              "seed",
+              0,
+              0,
+              INT_MAX,
+              "Random Seed",
+              "Seed for the random number generator",
+              0,
+              255);
 
 	WM_operator_properties_select_action_simple(ot, SEL_SELECT, false);
 }
@@ -281,11 +343,16 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
 	WM_operator_properties_border(ot);
 
 	if (deselect) {
-		prop = RNA_def_boolean(ot->srna, "deselect", false, "Deselect", "Deselect rather than select items");
+    prop = RNA_def_boolean(
+        ot->srna, "deselect", false, "Deselect", "Deselect rather than select items");
 		RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 	}
 	if (extend) {
-		prop = RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection instead of deselecting everything first");
+    prop = RNA_def_boolean(ot->srna,
+                           "extend",
+                           true,
+                           "Extend",
+                           "Extend selection instead of deselecting everything first");
 		RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 	}
 }
@@ -362,8 +429,15 @@ void WM_operator_properties_gesture_straightline(wmOperatorType *ot, int cursor)
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
 	if (cursor) {
-		prop = RNA_def_int(ot->srna, "cursor", cursor, 0, INT_MAX,
-		                   "Cursor", "Mouse cursor style to use during the modal operator", 0, INT_MAX);
+    prop = RNA_def_int(ot->srna,
+                       "cursor",
+                       cursor,
+                       0,
+                       INT_MAX,
+                       "Cursor",
+                       "Mouse cursor style to use during the modal operator",
+                       0,
+                       INT_MAX);
 		RNA_def_property_flag(prop, PROP_HIDDEN);
 	}
 }
@@ -390,7 +464,10 @@ void WM_operator_properties_mouse_select(wmOperatorType *ot)
 {
 	PropertyRNA *prop;
 
-	prop = RNA_def_boolean(ot->srna, "extend", false, "Extend",
+  prop = RNA_def_boolean(ot->srna,
+                         "extend",
+                         false,
+                         "Extend",
 	                       "Extend selection instead of deselecting everything first");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 	prop = RNA_def_boolean(ot->srna, "deselect", false, "Deselect", "Remove from selection");
@@ -406,13 +483,30 @@ void WM_operator_properties_checker_interval(wmOperatorType *ot, bool nth_can_di
 {
 	const int nth_default = nth_can_disable ? 1 : 2;
 	const int nth_min =  min_ii(nth_default, 2);
-	RNA_def_int(ot->srna, "nth", nth_default, nth_min, INT_MAX, "Nth Element", "Skip every Nth element", nth_min, 100);
-	RNA_def_int(ot->srna, "skip", 1, 1, INT_MAX, "Skip", "Number of elements to skip at once", 1, 100);
-	RNA_def_int(ot->srna, "offset", 0, INT_MIN, INT_MAX, "Offset", "Offset from the starting point", -100, 100);
+  RNA_def_int(ot->srna,
+              "nth",
+              nth_default,
+              nth_min,
+              INT_MAX,
+              "Nth Element",
+              "Skip every Nth element",
+              nth_min,
+              100);
+  RNA_def_int(
+      ot->srna, "skip", 1, 1, INT_MAX, "Skip", "Number of elements to skip at once", 1, 100);
+  RNA_def_int(ot->srna,
+              "offset",
+              0,
+              INT_MIN,
+              INT_MAX,
+              "Offset",
+              "Offset from the starting point",
+              -100,
+              100);
 }
 
-void WM_operator_properties_checker_interval_from_op(
-        struct wmOperator *op, struct CheckerIntervalParams *op_params)
+void WM_operator_properties_checker_interval_from_op(struct wmOperator *op,
+                                                     struct CheckerIntervalParams *op_params)
 {
 	const int nth = RNA_int_get(op->ptr, "nth") - 1;
 	const int skip = RNA_int_get(op->ptr, "skip");
@@ -420,11 +514,12 @@ void WM_operator_properties_checker_interval_from_op(
 
 	op_params->nth = nth;
 	op_params->skip = skip;
-	op_params->offset = mod_i(offset, nth + skip);  /* so input of offset zero ends up being (nth - 1) */
+  op_params->offset = mod_i(offset,
+                            nth + skip); /* so input of offset zero ends up being (nth - 1) */
 }
 
-bool WM_operator_properties_checker_interval_test(
-        const struct CheckerIntervalParams *op_params, int depth)
+bool WM_operator_properties_checker_interval_test(const struct CheckerIntervalParams *op_params,
+                                                  int depth)
 {
 	return ((op_params->nth == 0) ||
 	        ((op_params->offset + depth) % (op_params->skip + op_params->nth) >= op_params->skip));

@@ -26,7 +26,6 @@
 
 #include "MEM_guardedalloc.h"
 
-
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
@@ -52,7 +51,6 @@
 
 #include "UI_resources.h"
 #include "UI_view2d.h"
-
 
 #include "file_intern.h"    // own include
 #include "fsmenu.h"
@@ -147,7 +145,6 @@ static void file_free(SpaceLink *sl)
 	}
 }
 
-
 /* spacetype; init callback, area size changes, screen set, etc */
 static void file_init(wmWindowManager *UNUSED(wm), ScrArea *sa)
 {
@@ -236,7 +233,8 @@ static void file_refresh(const bContext *C, ScrArea *sa)
 	filelist_setdir(sfile->files, params->dir);
 	filelist_setrecursion(sfile->files, params->recursion_level);
 	filelist_setsorting(sfile->files, params->sort);
-	filelist_setfilter_options(sfile->files, (params->flag & FILE_FILTER) != 0,
+  filelist_setfilter_options(sfile->files,
+                             (params->flag & FILE_FILTER) != 0,
 	                                         (params->flag & FILE_HIDE_DOT) != 0,
 	                                         false, /* TODO hide_parent, should be controllable? */
 	                                         params->filter,
@@ -246,7 +244,8 @@ static void file_refresh(const bContext *C, ScrArea *sa)
 
 	/* Update the active indices of bookmarks & co. */
 	sfile->systemnr = fsmenu_get_active_indices(fsmenu, FS_CATEGORY_SYSTEM, params->dir);
-	sfile->system_bookmarknr = fsmenu_get_active_indices(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, params->dir);
+  sfile->system_bookmarknr = fsmenu_get_active_indices(
+      fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, params->dir);
 	sfile->bookmarknr = fsmenu_get_active_indices(fsmenu, FS_CATEGORY_BOOKMARKS, params->dir);
 	sfile->recentnr = fsmenu_get_active_indices(fsmenu, FS_CATEGORY_RECENT, params->dir);
 
@@ -293,7 +292,10 @@ static void file_refresh(const bContext *C, ScrArea *sa)
 	ED_area_tag_redraw(sa);
 }
 
-static void file_listener(wmWindow *UNUSED(win), ScrArea *sa, wmNotifier *wmn, Scene *UNUSED(scene))
+static void file_listener(wmWindow *UNUSED(win),
+                          ScrArea *sa,
+                          wmNotifier *wmn,
+                          Scene *UNUSED(scene))
 {
 	SpaceFile *sfile = (SpaceFile *)sa->spacedata.first;
 
@@ -332,9 +334,11 @@ static void file_main_region_init(wmWindowManager *wm, ARegion *ar)
 	WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
 }
 
-static void file_main_region_listener(
-        wmWindow *UNUSED(win), ScrArea *UNUSED(sa), ARegion *ar,
-        wmNotifier *wmn, const Scene *UNUSED(scene))
+static void file_main_region_listener(wmWindow *UNUSED(win),
+                                      ScrArea *UNUSED(sa),
+                                      ARegion *ar,
+                                      wmNotifier *wmn,
+                                      const Scene *UNUSED(scene))
 {
 	/* context changes */
 	switch (wmn->category) {
@@ -351,10 +355,12 @@ static void file_main_region_listener(
 	}
 }
 
-static void file_main_region_message_subscribe(
-        const struct bContext *UNUSED(C),
-        struct WorkSpace *UNUSED(workspace), struct Scene *UNUSED(scene),
-        struct bScreen *screen, struct ScrArea *sa, struct ARegion *ar,
+static void file_main_region_message_subscribe(const struct bContext *UNUSED(C),
+                                               struct WorkSpace *UNUSED(workspace),
+                                               struct Scene *UNUSED(scene),
+                                               struct bScreen *screen,
+                                               struct ScrArea *sa,
+                                               struct ARegion *ar,
         struct wmMsgBus *mbus)
 {
 	SpaceFile *sfile = sa->spacedata.first;
@@ -446,10 +452,10 @@ static void file_main_region_draw(const bContext *C, ARegion *ar)
 	UI_view2d_view_restore(C);
 
 	/* scrollers */
-	scrollers = UI_view2d_scrollers_calc(C, v2d, NULL, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
+  scrollers = UI_view2d_scrollers_calc(
+      C, v2d, NULL, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
 	UI_view2d_scrollers_draw(C, v2d, scrollers);
 	UI_view2d_scrollers_free(scrollers);
-
 }
 
 static void file_operatortypes(void)
@@ -494,7 +500,6 @@ static void file_keymap(struct wmKeyConfig *keyconf)
 	WM_keymap_ensure(keyconf, "File Browser Buttons", SPACE_FILE, 0);
 }
 
-
 static void file_tools_region_init(wmWindowManager *wm, ARegion *ar)
 {
 	wmKeyMap *keymap;
@@ -512,9 +517,11 @@ static void file_tools_region_draw(const bContext *C, ARegion *ar)
 	ED_region_panels(C, ar);
 }
 
-static void file_tools_region_listener(
-        wmWindow *UNUSED(win), ScrArea *UNUSED(sa), ARegion *UNUSED(ar),
-        wmNotifier *UNUSED(wmn), const Scene *UNUSED(scene))
+static void file_tools_region_listener(wmWindow *UNUSED(win),
+                                       ScrArea *UNUSED(sa),
+                                       ARegion *UNUSED(ar),
+                                       wmNotifier *UNUSED(wmn),
+                                       const Scene *UNUSED(scene))
 {
 #if 0
 	/* context changes */
@@ -570,15 +577,16 @@ static void file_ui_region_draw(const bContext *C, ARegion *ar)
 	/* set view2d view matrix for scrolling (without scrollers) */
 	UI_view2d_view_ortho(&ar->v2d);
 
-
 	file_draw_buttons(C, ar);
 
 	UI_view2d_view_restore(C);
 }
 
-static void file_ui_region_listener(
-        wmWindow *UNUSED(win), ScrArea *UNUSED(sa), ARegion *ar,
-        wmNotifier *wmn, const Scene *UNUSED(scene))
+static void file_ui_region_listener(wmWindow *UNUSED(win),
+                                    ScrArea *UNUSED(sa),
+                                    ARegion *ar,
+                                    wmNotifier *wmn,
+                                    const Scene *UNUSED(scene))
 {
 	/* context changes */
 	switch (wmn->category) {
@@ -592,7 +600,10 @@ static void file_ui_region_listener(
 	}
 }
 
-static bool filepath_drop_poll(bContext *C, wmDrag *drag, const wmEvent *UNUSED(event), const char **UNUSED(tooltip))
+static bool filepath_drop_poll(bContext *C,
+                               wmDrag *drag,
+                               const wmEvent *UNUSED(event),
+                               const char **UNUSED(tooltip))
 {
 	if (drag->type == WM_DRAG_PATH) {
 		SpaceFile *sfile = CTX_wm_space_file(C);
@@ -690,7 +701,6 @@ void ED_spacetype_file(void)
 	file_panels_register(art);
 
 	BKE_spacetype_register(st);
-
 }
 
 void ED_file_init(void)

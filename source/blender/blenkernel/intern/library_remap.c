@@ -135,7 +135,8 @@ void BKE_library_callback_free_notifier_reference_set(BKE_library_free_notifier_
 
 static BKE_library_remap_editor_id_reference_cb remap_editor_id_reference_cb = NULL;
 
-void BKE_library_callback_remap_editor_id_reference_set(BKE_library_remap_editor_id_reference_cb func)
+void BKE_library_callback_remap_editor_id_reference_set(
+    BKE_library_remap_editor_id_reference_cb func)
 {
 	remap_editor_id_reference_cb = func;
 }
@@ -194,20 +195,29 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 		const bool is_obj = (GS(id->name) == ID_OB);
 		const bool is_obj_proxy = (is_obj && (((Object *)id)->proxy || ((Object *)id)->proxy_group));
 		const bool is_obj_editmode = (is_obj && BKE_object_is_in_editmode((Object *)id));
-		const bool is_never_null = ((cb_flag & IDWALK_CB_NEVER_NULL) &&
-		                            (new_id == NULL) &&
+    const bool is_never_null = ((cb_flag & IDWALK_CB_NEVER_NULL) && (new_id == NULL) &&
 		                            (id_remap_data->flag & ID_REMAP_FORCE_NEVER_NULL_USAGE) == 0);
 		const bool skip_reference = (id_remap_data->flag & ID_REMAP_SKIP_STATIC_OVERRIDE) != 0;
 		const bool skip_never_null = (id_remap_data->flag & ID_REMAP_SKIP_NEVER_NULL_USAGE) != 0;
 
 #ifdef DEBUG_PRINT
-		printf("In %s (lib %p): Remapping %s (%p) to %s (%p) "
+    printf(
+        "In %s (lib %p): Remapping %s (%p) to %s (%p) "
 		       "(is_indirect: %d, skip_indirect: %d, is_reference: %d, skip_reference: %d)\n",
-		       id->name, id->lib, old_id->name, old_id, new_id ? new_id->name : "<NONE>", new_id,
-		       is_indirect, skip_indirect, is_reference, skip_reference);
+        id->name,
+        id->lib,
+        old_id->name,
+        old_id,
+        new_id ? new_id->name : "<NONE>",
+        new_id,
+        is_indirect,
+        skip_indirect,
+        is_reference,
+        skip_reference);
 #endif
 
-		if ((id_remap_data->flag & ID_REMAP_FLAG_NEVER_NULL_USAGE) && (cb_flag & IDWALK_CB_NEVER_NULL)) {
+    if ((id_remap_data->flag & ID_REMAP_FLAG_NEVER_NULL_USAGE) &&
+        (cb_flag & IDWALK_CB_NEVER_NULL)) {
 			id->tag |= LIB_TAG_DOIT;
 		}
 
@@ -216,9 +226,7 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 		 * (skipped_indirect too). */
 		if ((is_never_null && skip_never_null) ||
 		    (is_obj_editmode && (((Object *)id)->data == *id_p) && new_id != NULL) ||
-		    (skip_indirect && is_indirect) ||
-		    (is_reference && skip_reference))
-		{
+        (skip_indirect && is_indirect) || (is_reference && skip_reference)) {
 			if (is_indirect) {
 				id_remap_data->skipped_indirect++;
 				if (is_obj) {
@@ -247,7 +255,8 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 		else {
 			if (!is_never_null) {
 				*id_p = new_id;
-				DEG_id_tag_update_ex(id_remap_data->bmain, id_self,
+        DEG_id_tag_update_ex(id_remap_data->bmain,
+                             id_self,
 				                     ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 			}
 			if (cb_flag & IDWALK_CB_USER) {
@@ -282,8 +291,7 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 static void libblock_remap_data_preprocess(IDRemap *r_id_remap_data)
 {
 	switch (GS(r_id_remap_data->id->name)) {
-		case ID_OB:
-		{
+    case ID_OB: {
 			ID *old_id = r_id_remap_data->old_id;
 			if (!old_id || GS(old_id->name) == ID_AR) {
 				Object *ob = (Object *)r_id_remap_data->id;
@@ -308,7 +316,9 @@ static void libblock_remap_data_preprocess(IDRemap *r_id_remap_data)
 }
 
 /* Can be called with both old_ob and new_ob being NULL, this means we have to check whole Main database then. */
-static void libblock_remap_data_postprocess_object_update(Main *bmain, Object *old_ob, Object *new_ob)
+static void libblock_remap_data_postprocess_object_update(Main *bmain,
+                                                          Object *old_ob,
+                                                          Object *new_ob)
 {
 	if (new_ob == NULL) {
 		/* In case we unlinked old_ob (new_ob is NULL), the object has already
@@ -338,8 +348,9 @@ static void libblock_remap_data_postprocess_object_update(Main *bmain, Object *o
 
 /* Can be called with both old_collection and new_collection being NULL,
  * this means we have to check whole Main database then. */
-static void libblock_remap_data_postprocess_collection_update(
-        Main *bmain, Collection *UNUSED(old_collection), Collection *new_collection)
+static void libblock_remap_data_postprocess_collection_update(Main *bmain,
+                                                              Collection *UNUSED(old_collection),
+                                                              Collection *new_collection)
 {
 	if (new_collection == NULL) {
 		/* XXX Complex cases can lead to NULL pointers in other collections than old_collection,
@@ -379,7 +390,8 @@ static void libblock_remap_data_postprocess_nodetree_update(Main *bmain, ID *new
 	FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 		/* make an update call for the tree */
 		ntreeUpdateTree(bmain, ntree);
-	} FOREACH_NODETREE_END;
+  }
+  FOREACH_NODETREE_END;
 }
 
 /**
@@ -400,11 +412,14 @@ static void libblock_remap_data_postprocess_nodetree_update(Main *bmain, ID *new
  * \param new_id: the new datablock to replace \a old_id references with (may be NULL).
  * \param r_id_remap_data: if non-NULL, the IDRemap struct to use (uselful to retrieve info about remapping process).
  */
-ATTR_NONNULL(1) static void libblock_remap_data(
+ATTR_NONNULL(1)
+static void libblock_remap_data(
         Main *bmain, ID *id, ID *old_id, ID *new_id, const short remap_flags, IDRemap *r_id_remap_data)
 {
 	IDRemap id_remap_data;
-	const int foreach_id_flags = (remap_flags & ID_REMAP_NO_INDIRECT_PROXY_DATA_USAGE) != 0 ? IDWALK_NO_INDIRECT_PROXY_DATA_USAGE : IDWALK_NOP;
+  const int foreach_id_flags = (remap_flags & ID_REMAP_NO_INDIRECT_PROXY_DATA_USAGE) != 0 ?
+                                   IDWALK_NO_INDIRECT_PROXY_DATA_USAGE :
+                                   IDWALK_NOP;
 
 	if (r_id_remap_data == NULL) {
 		r_id_remap_data = &id_remap_data;
@@ -425,7 +440,8 @@ ATTR_NONNULL(1) static void libblock_remap_data(
 #endif
 		r_id_remap_data->id = id;
 		libblock_remap_data_preprocess(r_id_remap_data);
-		BKE_library_foreach_ID_link(NULL, id, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
+    BKE_library_foreach_ID_link(
+        NULL, id, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
 	}
 	else {
 		/* Note that this is a very 'brute force' approach, maybe we could use some depsgraph to only process
@@ -440,8 +456,11 @@ ATTR_NONNULL(1) static void libblock_remap_data(
 				 * XXX No more true (except for debug usage of those skipping counters). */
 				r_id_remap_data->id = id_curr;
 				libblock_remap_data_preprocess(r_id_remap_data);
-				BKE_library_foreach_ID_link(
-				            NULL, id_curr, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
+        BKE_library_foreach_ID_link(NULL,
+                                    id_curr,
+                                    foreach_libblock_remap_callback,
+                                    (void *)r_id_remap_data,
+                                    foreach_id_flags);
 			}
 		}
 		FOREACH_MAIN_ID_END;
@@ -456,15 +475,18 @@ ATTR_NONNULL(1) static void libblock_remap_data(
 
 	id_us_clear_real(old_id);
 
-	if (new_id && (new_id->tag & LIB_TAG_INDIRECT) && (r_id_remap_data->status & ID_REMAP_IS_LINKED_DIRECT)) {
+  if (new_id && (new_id->tag & LIB_TAG_INDIRECT) &&
+      (r_id_remap_data->status & ID_REMAP_IS_LINKED_DIRECT)) {
 		new_id->tag &= ~LIB_TAG_INDIRECT;
 		new_id->tag |= LIB_TAG_EXTERN;
 	}
 
 #ifdef DEBUG_PRINT
-	printf("%s: %d occurrences skipped (%d direct and %d indirect ones)\n", __func__,
+  printf("%s: %d occurrences skipped (%d direct and %d indirect ones)\n",
+         __func__,
 	       r_id_remap_data->skipped_direct + r_id_remap_data->skipped_indirect,
-	       r_id_remap_data->skipped_direct, r_id_remap_data->skipped_indirect);
+         r_id_remap_data->skipped_direct,
+         r_id_remap_data->skipped_indirect);
 #endif
 }
 
@@ -472,9 +494,7 @@ ATTR_NONNULL(1) static void libblock_remap_data(
  * Replace all references in given Main to \a old_id by \a new_id
  * (if \a new_id is NULL, it unlinks \a old_id).
  */
-void BKE_libblock_remap_locked(
-        Main *bmain, void *old_idv, void *new_idv,
-        const short remap_flags)
+void BKE_libblock_remap_locked(Main *bmain, void *old_idv, void *new_idv, const short remap_flags)
 {
 	IDRemap id_remap_data;
 	ID *old_id = old_idv;
@@ -503,14 +523,20 @@ void BKE_libblock_remap_locked(
 	/* If old_id was used by some ugly 'user_one' stuff (like Image or Clip editors...), and user count has actually
 	 * been incremented for that, we have to decrease once more its user count... unless we had to skip
 	 * some 'user_one' cases. */
-	if ((old_id->tag & LIB_TAG_EXTRAUSER_SET) && !(id_remap_data.status & ID_REMAP_IS_USER_ONE_SKIPPED)) {
+  if ((old_id->tag & LIB_TAG_EXTRAUSER_SET) &&
+      !(id_remap_data.status & ID_REMAP_IS_USER_ONE_SKIPPED)) {
 		id_us_clear_real(old_id);
 	}
 
 	if (old_id->us - skipped_refcounted < 0) {
-		CLOG_ERROR(&LOG, "Error in remapping process from '%s' (%p) to '%s' (%p): "
+    CLOG_ERROR(&LOG,
+               "Error in remapping process from '%s' (%p) to '%s' (%p): "
 		           "wrong user count in old ID after process (summing up to %d)",
-		           old_id->name, old_id, new_id ? new_id->name : "<NULL>", new_id, old_id->us - skipped_refcounted);
+               old_id->name,
+               old_id,
+               new_id ? new_id->name : "<NULL>",
+               new_id,
+               old_id->us - skipped_refcounted);
 		BLI_assert(0);
 	}
 
@@ -530,7 +556,8 @@ void BKE_libblock_remap_locked(
 			libblock_remap_data_postprocess_object_update(bmain, (Object *)old_id, (Object *)new_id);
 			break;
 		case ID_GR:
-			libblock_remap_data_postprocess_collection_update(bmain, (Collection *)old_id, (Collection *)new_id);
+      libblock_remap_data_postprocess_collection_update(
+          bmain, (Collection *)old_id, (Collection *)new_id);
 			break;
 		case ID_ME:
 		case ID_CU:
@@ -572,7 +599,10 @@ void BKE_libblock_remap(Main *bmain, void *old_idv, void *new_idv, const short r
  * \param do_flag_never_null: If true, all IDs using \a idv in a 'non-NULL' way are flagged by \a LIB_TAG_DOIT flag
  * (quite obviously, 'non-NULL' usages can never be unlinked by this function...).
  */
-void BKE_libblock_unlink(Main *bmain, void *idv, const bool do_flag_never_null, const bool do_skip_indirect)
+void BKE_libblock_unlink(Main *bmain,
+                         void *idv,
+                         const bool do_flag_never_null,
+                         const bool do_skip_indirect)
 {
 	const short remap_flags = (do_skip_indirect ? ID_REMAP_SKIP_INDIRECT_USAGE : 0) |
 	                          (do_flag_never_null ? ID_REMAP_FLAG_NEVER_NULL_USAGE : 0);
@@ -625,15 +655,16 @@ void BKE_libblock_relink_ex(
 	 * This is a bit ugly, but cannot see a way to avoid it. Maybe we should do a per-ID callback for this instead?
 	 */
 	switch (GS(id->name)) {
-		case ID_SCE:
-		{
+    case ID_SCE: {
 			if (old_id) {
 				switch (GS(old_id->name)) {
 					case ID_OB:
-						libblock_remap_data_postprocess_object_update(bmain, (Object *)old_id, (Object *)new_id);
+            libblock_remap_data_postprocess_object_update(
+                bmain, (Object *)old_id, (Object *)new_id);
 						break;
 					case ID_GR:
-						libblock_remap_data_postprocess_collection_update(bmain, (Collection *)old_id, (Collection *)new_id);
+            libblock_remap_data_postprocess_collection_update(
+                bmain, (Collection *)old_id, (Collection *)new_id);
 						break;
 					default:
 						break;
@@ -656,7 +687,10 @@ void BKE_libblock_relink_ex(
 	}
 }
 
-static int id_relink_to_newid_looper(void *UNUSED(user_data), ID *UNUSED(self_id), ID **id_pointer, const int cb_flag)
+static int id_relink_to_newid_looper(void *UNUSED(user_data),
+                                     ID *UNUSED(self_id),
+                                     ID **id_pointer,
+                                     const int cb_flag)
 {
 	if (cb_flag & IDWALK_CB_PRIVATE) {
 		return IDWALK_RET_NOP;
@@ -973,7 +1007,8 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 	 * and has already properly unlinked its other IDs usages.
 	 * UI users are always cleared in BKE_libblock_remap_locked() call, so we can always skip it. */
 	const int free_flag = LIB_ID_FREE_NO_UI_USER |
-	                      (do_tagged_deletion ? LIB_ID_FREE_NO_MAIN | LIB_ID_FREE_NO_USER_REFCOUNT : 0);
+                        (do_tagged_deletion ? LIB_ID_FREE_NO_MAIN | LIB_ID_FREE_NO_USER_REFCOUNT :
+                                              0);
 	ListBase tagged_deleted_ids = {NULL};
 
 	base_count = set_listbasepointers(bmain, lbarray);
@@ -1023,8 +1058,7 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 				 * Also, this will also flag users of deleted data that cannot be unlinked
 				 * (object using deleted obdata, etc.), so that they also get deleted. */
 				BKE_libblock_remap_locked(
-				            bmain, id, NULL,
-				            ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
+            bmain, id, NULL, ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
 				/* Since we removed ID from Main, we also need to unlink its own other IDs usages ourself. */
 				BKE_libblock_relink_ex(bmain, id, NULL, NULL, true);
 				/* Now we can safely mark that ID as not being in Main database anymore. */
@@ -1054,8 +1088,7 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
 					 * Also, this will also flag users of deleted data that cannot be unlinked
 					 * (object using deleted obdata, etc.), so that they also get deleted. */
 					BKE_libblock_remap_locked(
-					            bmain, id, NULL,
-					            ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
+              bmain, id, NULL, ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
 				}
 			}
 		}

@@ -74,10 +74,7 @@ void BLO_update_defaults_userpref_blend(void)
 	BLI_addtail(&U.addons, bext);
 
 	/* Clear addon preferences. */
-	for (bAddon *addon = U.addons.first, *addon_next;
-	     addon != NULL;
-	     addon = addon_next)
-	{
+  for (bAddon *addon = U.addons.first, *addon_next; addon != NULL; addon = addon_next) {
 		addon_next = addon->next;
 
 		if (addon->prop) {
@@ -117,11 +114,13 @@ void BLO_update_defaults_userpref_blend(void)
 	BKE_keyconfig_pref_set_select_mouse(&U, 0, true);
 }
 
-
 /**
  * Rename if the ID doesn't exist.
  */
-static ID *rename_id_for_versioning(Main *bmain, const short id_type, const char *name_src, const char *name_dst)
+static ID *rename_id_for_versioning(Main *bmain,
+                                    const short id_type,
+                                    const char *name_src,
+                                    const char *name_dst)
 {
 	/* We can ignore libraries */
 	ListBase *lb = which_libbase(bmain, id_type);
@@ -165,8 +164,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
 			for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 				switch (sl->spacetype) {
-					case SPACE_VIEW3D:
-					{
+          case SPACE_VIEW3D: {
 						View3D *v3d = (View3D *)sl;
 						v3d->overlay.texture_paint_mode_opacity = 1.0f;
 						v3d->overlay.weight_paint_mode_opacity = 1.0f;
@@ -180,8 +178,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 						}
 						break;
 					}
-					case SPACE_FILE:
-					{
+          case SPACE_FILE: {
 						SpaceFile *sfile = (SpaceFile *)sl;
 						if (sfile->params) {
 							const char *dir_default = BKE_appdir_folder_default();
@@ -202,8 +199,10 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 		{
 			/* Default only has one window. */
 			wmWindow *win = ((wmWindowManager *)bmain->wm.first)->windows.first;
-			for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
-				WorkSpaceLayout *layout = BKE_workspace_hook_layout_for_workspace_get(win->workspace_hook, workspace);
+      for (WorkSpace *workspace = bmain->workspaces.first; workspace;
+           workspace = workspace->id.next) {
+        WorkSpaceLayout *layout = BKE_workspace_hook_layout_for_workspace_get(win->workspace_hook,
+                                                                              workspace);
 				bScreen *screen = layout->screen;
 				BLI_strncpy(screen->id.name + 2, workspace->id.name + 2, sizeof(screen->id.name) - 2);
 				BLI_libblock_ensure_unique_name(bmain, screen->id.name);
@@ -228,7 +227,8 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
 	/* For 2D animation template. */
 	if (app_template && STREQ(app_template, "2D_Animation")) {
-		for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+    for (WorkSpace *workspace = bmain->workspaces.first; workspace;
+         workspace = workspace->id.next) {
 			const char *name = workspace->id.name + 2;
 
 			if (STREQ(name, "Drawing")) {
@@ -252,8 +252,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 				ts->gp_sculpt.cur_falloff = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 				CurveMapping *gp_falloff_curve = ts->gp_sculpt.cur_falloff;
 				curvemapping_initialize(gp_falloff_curve);
-				curvemap_reset(
-				        gp_falloff_curve->cm,
+        curvemap_reset(gp_falloff_curve->cm,
 				        &gp_falloff_curve->clipr,
 				        CURVE_PRESET_GAUSS,
 				        CURVEMAP_SLOPE_POSITIVE);
@@ -262,8 +261,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 				ts->gp_sculpt.cur_primitive = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 				CurveMapping *gp_primitive_curve = ts->gp_sculpt.cur_primitive;
 				curvemapping_initialize(gp_primitive_curve);
-				curvemap_reset(
-				        gp_primitive_curve->cm,
+        curvemap_reset(gp_primitive_curve->cm,
 				        &gp_primitive_curve->clipr,
 				        CURVE_PRESET_BELL,
 				        CURVEMAP_SLOPE_POSITIVE);
@@ -272,16 +270,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 	}
 
 	/* For all builtin templates shipped with Blender. */
-	bool builtin_template = (
-	        !app_template ||
-	        STREQ(app_template, "2D_Animation") ||
-	        STREQ(app_template, "Sculpting") ||
-	        STREQ(app_template, "VFX") ||
+  bool builtin_template = (!app_template || STREQ(app_template, "2D_Animation") ||
+                           STREQ(app_template, "Sculpting") || STREQ(app_template, "VFX") ||
 	        STREQ(app_template, "Video_Editing"));
 
 	if (builtin_template) {
 		/* Clear all tools to use default options instead, ignore the tool saved in the file. */
-		for (WorkSpace *workspace = bmain->workspaces.first; workspace; workspace = workspace->id.next) {
+    for (WorkSpace *workspace = bmain->workspaces.first; workspace;
+         workspace = workspace->id.next) {
 			while (!BLI_listbase_is_empty(&workspace->tools)) {
 				BKE_workspace_tool_remove(workspace, workspace->tools.first);
 			}
