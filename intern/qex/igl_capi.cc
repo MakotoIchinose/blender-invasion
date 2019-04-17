@@ -38,7 +38,7 @@
 
 
 void igl_miq(float (*verts)[3] , int (*tris)[3], int num_verts, int num_tris, float (*uv_tris)[3][2],
-            double gradient_size, double iter, double stiffness, bool direct_round)
+            double gradient_size, double iter, double stiffness, bool direct_round, bool *hard_edges)
 {
 
     using namespace Eigen;
@@ -142,6 +142,26 @@ void igl_miq(float (*verts)[3] , int (*tris)[3], int num_verts, int num_tris, fl
     // Comb the frame-field accordingly
     igl::comb_frame_field(V, F, X1, X2, BIS1_combed, BIS2_combed, X1_combed, X2_combed);
 
+
+    //hard verts (optionally mark too)
+    std::vector<int> hverts;
+
+    //hard edges
+    std::vector<std::vector<int>> hedges;
+    for (int i = 0; i < num_tris; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            if (hard_edges[i * 3 + j])
+            {
+                 std::vector<int> hedge;
+                 hedge.push_back(i);
+                 hedge.push_back(j);
+                 hedges.push_back(hedge);
+            }
+        }
+    }
+
     // Global parametrization
     igl::copyleft::comiso::miq(V,
            F,
@@ -157,7 +177,7 @@ void igl_miq(float (*verts)[3] , int (*tris)[3], int num_verts, int num_tris, fl
            direct_round,
            iter,
            5,
-           true);
+           true, true, hverts, hedges);
 
     // Global parametrization (with seams, only for demonstration)
     /*igl::copyleft::comiso::miq(V,

@@ -86,7 +86,32 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     //double gradient_size = 50.0;
     //double iter = 0;
     //bool direct_round = false;
-    igl_miq(verts, tris, num_verts, num_tris, uv_tris, gradient_size, iter, stiffness, direct_round);
+
+    //find pairs of verts of original edges (= marked with seam)
+    bool *hard_edges = MEM_callocN(sizeof(bool) * 3 * num_tris, "hard edges");
+   // int *hard_verts = MEM_mallocN(sizeof(int) * mesh->totvert, "hard_verts");
+
+    for (int i = 0; i < num_tris; i++)
+    {
+        int r_edges[3];
+        BKE_mesh_looptri_get_real_edges(mesh, &looptri[i], r_edges);
+
+        for (int j = 0; j < 3; j++)
+        {
+            bool seam = (r_edges[j] > -1) && (mesh->medge[r_edges[j]].flag & ME_SHARP);
+
+            if (seam) {
+                hard_edges[i*3+j] = true;
+            }
+            else {
+                hard_edges[i*3+j] = false;
+            }
+        }
+    }
+
+
+    igl_miq(verts, tris, num_verts, num_tris, uv_tris, gradient_size, iter, stiffness, direct_round,
+            hard_edges);
 
     //build trimesh
     trimesh->tri_count = (unsigned int)num_tris;
@@ -108,6 +133,10 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     }
 
     for (int i = 0; i < num_tris; i++) {
+        //printf("UVTri (%d %d) (%f %f)\n", i, 0, uv_tris[i][0][0],  uv_tris[i][0][1]);
+        //printf("UVTri (%d %d) (%f %f)\n", i, 1, uv_tris[i][1][0],  uv_tris[i][1][1]);
+        //printf("UVTri (%d %d) (%f %f)\n", i, 2, uv_tris[i][2][0],  uv_tris[i][2][1]);
+
         trimesh->uvTris[i].uvs[0].x[0] = uv_tris[i][0][0];
         trimesh->uvTris[i].uvs[0].x[1] = uv_tris[i][0][1];
 
@@ -135,13 +164,14 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
             result->mface[i].v3 = quadmesh->quads[i].indices[1];
             result->mface[i].v2 = quadmesh->quads[i].indices[2];
             result->mface[i].v1 = quadmesh->quads[i].indices[3];
-            result->mface->mat_nr = 1;
+            result->mface->mat_nr = 0;
         }
 
         //build edges, tessfaces, normals
         BKE_mesh_calc_edges_tessface(result);
         BKE_mesh_convert_mfaces_to_mpolys(result);
         BKE_mesh_calc_normals(result);
+        BKE_mesh_update_customdata_pointers(result, true);
     }
 
     //free stuff
@@ -156,9 +186,9 @@ Mesh* BKE_remesh_quad(Mesh* mesh, float gradient_size, float stiffness, int iter
     MEM_freeN(verttri);
 
     if (quadmesh->vertices)
-        MEM_freeN(quadmesh->vertices);
+        free(quadmesh->vertices);
     if (quadmesh->quads)
-        MEM_freeN(quadmesh->quads);
+        free(quadmesh->quads);
     MEM_freeN(quadmesh);
 
     return result;

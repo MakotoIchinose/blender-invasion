@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 void igl_miq(float (*verts)[3] , int (*tris)[3], int num_verts, int num_tris, float (*uv_tris)[3][2],
-             double gradient_size, double iter, double stiffness, bool direct_round);
+             double gradient_size, double iter, double stiffness, bool direct_round, bool* hard_edges);
 
 
 #ifdef __cplusplus

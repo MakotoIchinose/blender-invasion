@@ -308,9 +308,10 @@ set(IGL_URI https://github.com/libigl/libigl/archive/v${IGL_VERSION}.tar.gz)
 set(IGL_HASH 42518e6b106c7209c73435fd260ed5d34edeb254852495b4c95dce2d95401328)
 
 #should match qex, but what about comiso ?
-set(OPENMESH_VERSION 3.0)
+set(OPENMESH_VERSION 8.0)
 set(OPENMESH_URI http://www.openmesh.org/media/Releases/${OPENMESH_VERSION}/OpenMesh-${OPENMESH_VERSION}.tar.gz)
-set(OPENMESH_HASH 96c595c1683b1ad950e80464ae5fc1f3c8dc45c31c8a211122a23e16a076ab23)
+#set(OPENMESH_HASH 96c595c1683b1ad950e80464ae5fc1f3c8dc45c31c8a211122a23e16a076ab23) #3.0
+set(OPENMESH_HASH 8974d44026cacaa37b171945b5c96a284bfd32c9df9d671d62931050d057ec82)
 
 #latest uid in git as of 2016-10-25
 set(QEX_GIT_UID 1d33e0d6700dd3d00df984aad776d9537fcf16af)
