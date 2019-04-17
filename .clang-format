@@ -140,7 +140,7 @@ SortIncludes: false
 # Don't right align escaped newlines to the right because we have a wide default
 AlignEscapedNewlines: DontAlign
 
-# Always break ...
+# Always break:
 #
 #   const char *foo =
 #       "multi"
@@ -154,7 +154,7 @@ AlignEscapedNewlines: DontAlign
 AlwaysBreakBeforeMultilineStrings: true
 
 # We don't want literal strings to break,
-# however clang-format seems to ignore this :(.
+# however clang-format seems to ignore this (sigh).
 PenaltyBreakString: 1000000
 
 # There are macros in Blender for custom for loops; tell Clang to treat them
