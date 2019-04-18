@@ -4721,11 +4721,12 @@ static void SCREEN_OT_delete(wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 /** \name Region Alpha Blending Operator
+ *
+ * Implementation note: a disappearing region needs at least 1 last draw with
+ * 100% backbuffer texture over it - then triple buffer will clear it entirely.
+ * This because flag #RGN_FLAG_HIDDEN is set in end - region doesn't draw at all then.
+ *
  * \{ */
-
-/* implementation note: a disappearing region needs at least 1 last draw with 100% backbuffer
- * texture over it- then triple buffer will clear it entirely.
- * This because flag RGN_HIDDEN is set in end - region doesn't draw at all then */
 
 typedef struct RegionAlphaInfo {
   ScrArea *sa;
@@ -4785,7 +4786,7 @@ static void region_blend_end(bContext *C, ARegion *ar, const bool is_running)
   ar->regiontimer = NULL;
 }
 /* assumes that *ar itself is not a splitted version from previous region */
-void region_blend_start(bContext *C, ScrArea *sa, ARegion *ar)
+void ED_region_visibility_change_update_animated(bContext *C, ScrArea *sa, ARegion *ar)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = CTX_wm_window(C);

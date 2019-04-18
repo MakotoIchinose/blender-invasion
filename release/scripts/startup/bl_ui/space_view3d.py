@@ -580,8 +580,9 @@ class VIEW3D_MT_view(Menu):
         layout = self.layout
         view = context.space_data
 
-        layout.operator("view3d.toolshelf", icon='MENU_PANEL')
-        layout.operator("view3d.properties", icon='MENU_PANEL')
+        layout.prop(view, "show_region_toolbar")
+        layout.prop(view, "show_region_ui")
+        layout.prop(view, "show_region_hud")
 
         layout.separator()
 
@@ -4617,7 +4618,7 @@ class VIEW3D_PT_shading_color(Panel):
         layout = self.layout
         shading = VIEW3D_PT_shading.get_shading(context)
 
-        layout.row().prop(shading, "color_type", expand=True)
+        layout.grid_flow(columns=3, align=True).prop(shading, "color_type", expand=True)
         if shading.color_type == 'SINGLE':
             layout.row().prop(shading, "single_color", text="")
 
@@ -4836,15 +4837,19 @@ class VIEW3D_PT_overlay_guides(Panel):
 
         split = col.split()
         sub = split.column()
-        sub.prop(overlay, "show_floor", text="Grid")
 
-        if overlay.show_floor:
-            sub = col.column(align=True)
-            sub.active = bool(overlay.show_floor or view.region_quadviews or not view.region_3d.is_perspective)
-            subsub = sub.row(align=True)
-            subsub.active = overlay.show_floor
-            subsub.prop(overlay, "grid_scale", text="Scale")
-            subsub.prop(overlay, "grid_subdivisions", text="Subdivisions")
+        row = sub.row()
+        row_el = row.column()
+        row_el.prop(overlay, "show_ortho_grid", text="Grid")
+        grid_active = view.region_quadviews or (view.region_3d.is_orthographic_side_view and not view.region_3d.is_perspective)
+        row_el.active = grid_active
+        row.prop(overlay, "show_floor", text="Floor")
+
+        if overlay.show_floor or overlay.show_ortho_grid:
+            sub = col.row(align=True)
+            sub.active = (overlay.show_floor and not view.region_3d.is_orthographic_side_view) or (overlay.show_ortho_grid and grid_active)
+            sub.prop(overlay, "grid_scale", text="Scale")
+            sub.prop(overlay, "grid_subdivisions", text="Subdivisions")
 
         sub = split.column()
         row = sub.row()
