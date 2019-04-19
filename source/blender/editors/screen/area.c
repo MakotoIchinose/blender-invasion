@@ -21,7 +21,6 @@
  * \ingroup edscr
  */
 
-
 #include <string.h>
 #include <stdio.h>
 
@@ -77,7 +76,8 @@ enum RegionEmbossSide {
 	REGION_EMBOSS_TOP    = (1 << 1),
 	REGION_EMBOSS_BOTTOM = (1 << 2),
 	REGION_EMBOSS_RIGHT  = (1 << 3),
-	REGION_EMBOSS_ALL    = REGION_EMBOSS_LEFT | REGION_EMBOSS_TOP | REGION_EMBOSS_RIGHT | REGION_EMBOSS_BOTTOM,
+  REGION_EMBOSS_ALL = REGION_EMBOSS_LEFT | REGION_EMBOSS_TOP | REGION_EMBOSS_RIGHT |
+                      REGION_EMBOSS_BOTTOM,
 };
 
 /* general area and region code */
@@ -94,7 +94,8 @@ static void region_draw_emboss(const ARegion *ar, const rcti *scirct, int sides)
 
 	/* set transp line */
 	GPU_blend(true);
-	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
 	float color[4] = {0.0f, 0.0f, 0.0f, 0.25f};
 	UI_GetThemeColor3fv(TH_EDITOR_OUTLINE, color);
@@ -144,7 +145,8 @@ void ED_region_pixelspace(ARegion *ar)
 }
 
 /* only exported for WM */
-void ED_region_do_listen(wmWindow *win, ScrArea *sa, ARegion *ar, wmNotifier *note, const Scene *scene)
+void ED_region_do_listen(
+    wmWindow *win, ScrArea *sa, ARegion *ar, wmNotifier *note, const Scene *scene)
 {
 	/* generic notes first */
 	switch (note->category) {
@@ -247,7 +249,8 @@ static void draw_azone_arrow(float x1, float y1, float x2, float y2, AZEdge edge
 	const float l = 1.0f;     /* arrow length */
 	const float s = 0.25f;    /* arrow thickness */
 	const float hl = l / 2.0f;
-	const float points[6][2] = {{0, -hl}, {l, hl}, {l - s, hl + s}, {0, s + s - hl}, {s - l, hl + s}, {-l, hl}};
+  const float points[6][2] = {
+      {0, -hl}, {l, hl}, {l - s, hl + s}, {0, s + s - hl}, {s - l, hl + s}, {-l, hl}};
 	const float center[2] = {(x1 + x2) / 2, (y1 + y2) / 2};
 
 	int axis;
@@ -317,7 +320,8 @@ static void region_draw_azone_tab_arrow(AZone *az)
 	}
 
 	float color[4] = {0.05f, 0.05f, 0.05f, 0.4f};
-	UI_draw_roundbox_aa(true, (float)az->x1, (float)az->y1, (float)az->x2, (float)az->y2, 4.0f, color);
+  UI_draw_roundbox_aa(
+      true, (float)az->x1, (float)az->y1, (float)az->x2, (float)az->y2, 4.0f, color);
 
 	draw_azone_arrow((float)az->x1, (float)az->y1, (float)az->x2, (float)az->y2, az->edge);
 }
@@ -336,7 +340,8 @@ static void region_draw_azones(ScrArea *sa, ARegion *ar)
 
 	GPU_line_width(1.0f);
 	GPU_blend(true);
-	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
 	GPU_matrix_push();
 	GPU_matrix_translate_2f(-ar->winrct.xmin, -ar->winrct.ymin);
@@ -398,7 +403,8 @@ static void region_draw_status_text(ScrArea *sa, ARegion *ar)
 		const float y1 = pad;
 		const float y2 = ar->winy - pad;
 
-		GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend_set_func_separate(
+        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
 		float color[4] = {0.0f, 0.0f, 0.0f, 0.5f};
 		UI_GetThemeColor3fv(TH_BACK, color);
@@ -416,8 +422,9 @@ static void region_draw_status_text(ScrArea *sa, ARegion *ar)
 }
 
 /* Follow wmMsgNotifyFn spec */
-void ED_region_do_msg_notify_tag_redraw(
-        bContext *UNUSED(C), wmMsgSubscribeKey *UNUSED(msg_key), wmMsgSubscribeValue *msg_val)
+void ED_region_do_msg_notify_tag_redraw(bContext *UNUSED(C),
+                                        wmMsgSubscribeKey *UNUSED(msg_key),
+                                        wmMsgSubscribeValue *msg_val)
 {
 	ARegion *ar = msg_val->owner;
 	ED_region_tag_redraw(ar);
@@ -436,8 +443,9 @@ void ED_region_do_msg_notify_tag_redraw(
 	}
 }
 /* Follow wmMsgNotifyFn spec */
-void ED_area_do_msg_notify_tag_refresh(
-        bContext *UNUSED(C), wmMsgSubscribeKey *UNUSED(msg_key), wmMsgSubscribeValue *msg_val)
+void ED_area_do_msg_notify_tag_refresh(bContext *UNUSED(C),
+                                       wmMsgSubscribeKey *UNUSED(msg_key),
+                                       wmMsgSubscribeValue *msg_val)
 {
 	ScrArea *sa = msg_val->user_data;
 	ED_area_tag_refresh(sa);
@@ -550,7 +558,8 @@ void ED_region_do_draw(bContext *C, ARegion *ar)
 			immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 			immUniformColor4fv(color);
 			GPU_line_width(1.0f);
-			imm_draw_box_wire_2d(pos, 0, 0, ar->winrct.xmax - ar->winrct.xmin + 1, ar->winrct.ymax - ar->winrct.ymin + 1);
+      imm_draw_box_wire_2d(
+          pos, 0, 0, ar->winrct.xmax - ar->winrct.xmin + 1, ar->winrct.ymax - ar->winrct.ymin + 1);
 			immUnbindProgram();
 		}
 	}
@@ -741,7 +750,6 @@ void ED_workspace_status_text(bContext *C, const char *str)
 
 /* ************************************************************ */
 
-
 static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea *sa)
 {
 	AZone *az;
@@ -765,8 +773,7 @@ static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea 
 		return;
 	}
 
-	float coords[4][4] = {
-	    /* Bottom-left. */
+  float coords[4][4] = {/* Bottom-left. */
 	    {sa->totrct.xmin - U.pixelsize,
 	     sa->totrct.ymin - U.pixelsize,
 	     sa->totrct.xmin + AZONESPOTW,
@@ -792,8 +799,7 @@ static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea 
 #ifdef __APPLE__
 		if (!WM_window_is_fullscreen(win) &&
 		    ((coords[i][0] == 0 && coords[i][1] == 0) ||
-		     (coords[i][0] == WM_window_pixels_x(win) && coords[i][1] == 0)))
-		{
+         (coords[i][0] == WM_window_pixels_x(win) && coords[i][1] == 0))) {
 			continue;
 		}
 #else
@@ -877,9 +883,9 @@ static void region_azone_tab_plus(ScrArea *sa, AZone *az, ARegion *ar)
 	const float tab_size_x = 0.7f * U.widget_unit;
 	const float tab_size_y = 0.4f * U.widget_unit;
 
-
 	for (azt = sa->actionzones.first; azt; azt = azt->next) {
-		if (azt->edge == az->edge) tot++;
+    if (azt->edge == az->edge)
+      tot++;
 	}
 
 	switch (az->edge) {
@@ -927,7 +933,10 @@ static bool region_azone_edge_poll(const ARegion *ar, const bool is_fullscreen)
 	return true;
 }
 
-static void region_azone_edge_initialize(ScrArea *sa, ARegion *ar, AZEdge edge, const bool is_fullscreen)
+static void region_azone_edge_initialize(ScrArea *sa,
+                                         ARegion *ar,
+                                         AZEdge edge,
+                                         const bool is_fullscreen)
 {
 	AZone *az = NULL;
 	const bool is_hidden = (ar->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL));
@@ -950,7 +959,9 @@ static void region_azone_edge_initialize(ScrArea *sa, ARegion *ar, AZEdge edge, 
 	}
 }
 
-static void region_azone_scrollbar_initialize(ScrArea *sa, ARegion *ar, AZScrollDirection direction)
+static void region_azone_scrollbar_initialize(ScrArea *sa,
+                                              ARegion *ar,
+                                              AZScrollDirection direction)
 {
 	rcti scroller_vert = (direction == AZ_SCROLL_VERT) ? ar->v2d.vert : ar->v2d.hor;
 	AZone *az = MEM_callocN(sizeof(*az), __func__);
@@ -983,11 +994,11 @@ static void region_azones_scrollbars_initialize(ScrArea *sa, ARegion *ar)
 	if ((v2d->scroll & V2D_SCROLL_VERTICAL)   && ((v2d->scroll & V2D_SCROLL_SCALE_VERTICAL)   == 0)) {
 		region_azone_scrollbar_initialize(sa, ar, AZ_SCROLL_VERT);
 	}
-	if ((v2d->scroll & V2D_SCROLL_HORIZONTAL) && ((v2d->scroll & V2D_SCROLL_SCALE_HORIZONTAL) == 0)) {
+  if ((v2d->scroll & V2D_SCROLL_HORIZONTAL) &&
+      ((v2d->scroll & V2D_SCROLL_SCALE_HORIZONTAL) == 0)) {
 		region_azone_scrollbar_initialize(sa, ar, AZ_SCROLL_HOR);
 	}
 }
-
 
 /* *************************************************************** */
 
@@ -1111,7 +1122,12 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
 			}
 		}
 		else if (ELEM(spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
-			if (ELEM(regiontype, RGN_TYPE_TOOLS, RGN_TYPE_UI, RGN_TYPE_TOOL_PROPS, RGN_TYPE_HEADER, RGN_TYPE_FOOTER)) {
+      if (ELEM(regiontype,
+               RGN_TYPE_TOOLS,
+               RGN_TYPE_UI,
+               RGN_TYPE_TOOL_PROPS,
+               RGN_TYPE_HEADER,
+               RGN_TYPE_FOOTER)) {
 				return true;
 			}
 		}
@@ -1120,7 +1136,8 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
 	return false;
 }
 
-static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rcti *overlap_remainder, int quad)
+static void region_rect_recursive(
+    ScrArea *sa, ARegion *ar, rcti *remainder, rcti *overlap_remainder, int quad)
 {
 	rcti *remainder_prev = remainder;
 
@@ -1171,7 +1188,6 @@ static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rct
 		prefsizey = UI_DPI_FAC * (ar->sizey > 1 ? ar->sizey + 0.5f : ar->type->prefsizey);
 	}
 
-
 	if (ar->flag & RGN_FLAG_HIDDEN) {
 		/* hidden is user flag */
 	}
@@ -1184,8 +1200,7 @@ static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rct
 		 */
 		const int size_min[2] = {UI_UNIT_X, UI_UNIT_Y};
 		rcti overlap_remainder_margin = *overlap_remainder;
-		BLI_rcti_resize(
-		        &overlap_remainder_margin,
+    BLI_rcti_resize(&overlap_remainder_margin,
 		        max_ii(0, BLI_rcti_size_x(overlap_remainder) - UI_UNIT_X / 2),
 		        max_ii(0, BLI_rcti_size_y(overlap_remainder) - UI_UNIT_Y / 2));
 		ar->winrct.xmin = overlap_remainder_margin.xmin;
@@ -1211,8 +1226,7 @@ static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rct
 		};
 		BLI_rcti_isect(&winrct_test, &overlap_remainder_margin, &winrct_test);
 		if (BLI_rcti_size_x(&winrct_test) < size_min[0] ||
-		    BLI_rcti_size_y(&winrct_test) < size_min[1])
-		{
+        BLI_rcti_size_y(&winrct_test) < size_min[1]) {
 			ar->flag |= RGN_FLAG_TOO_SMALL;
 		}
 	}
@@ -1349,8 +1363,10 @@ static void region_rect_recursive(ScrArea *sa, ARegion *ar, rcti *remainder, rct
 
 	/* if region opened normally, we store this for hide/reveal usage */
 	/* prevent rounding errors for UI_DPI_FAC mult and divide */
-	if (ar->winx > 1) ar->sizex = (ar->winx + 0.5f) /  UI_DPI_FAC;
-	if (ar->winy > 1) ar->sizey = (ar->winy + 0.5f) /  UI_DPI_FAC;
+  if (ar->winx > 1)
+    ar->sizex = (ar->winx + 0.5f) / UI_DPI_FAC;
+  if (ar->winy > 1)
+    ar->sizey = (ar->winy + 0.5f) / UI_DPI_FAC;
 
 	/* exception for multiple overlapping regions on same spot */
 	if (ar->overlap && (alignment != RGN_ALIGN_FLOAT)) {
@@ -1439,7 +1455,6 @@ static void area_calc_totrct(ScrArea *sa, const rcti *window_rect)
 	sa->winy = BLI_rcti_size_y(&sa->totrct) + 1;
 }
 
-
 /* used for area initialize below */
 static void region_subwindow(ARegion *ar)
 {
@@ -1454,7 +1469,8 @@ static void region_subwindow(ARegion *ar)
 /**
  * \param ar: Region, may be NULL when adding handlers for \a sa.
  */
-static void ed_default_handlers(wmWindowManager *wm, ScrArea *sa, ARegion *ar, ListBase *handlers, int flag)
+static void ed_default_handlers(
+    wmWindowManager *wm, ScrArea *sa, ARegion *ar, ListBase *handlers, int flag)
 {
 	BLI_assert(ar ? (&ar->handlers == handlers) : (&sa->handlers == handlers));
 
@@ -1532,22 +1548,28 @@ static void ed_default_handlers(wmWindowManager *wm, ScrArea *sa, ARegion *ar, L
 		wmKeyMap *keymap_general = WM_keymap_ensure(wm->defaultconf, "Grease Pencil", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_general);
 
-		wmKeyMap *keymap_edit = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Stroke Edit Mode", 0, 0);
+    wmKeyMap *keymap_edit = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Edit Mode", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_edit);
 
-		wmKeyMap *keymap_paint = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Stroke Paint Mode", 0, 0);
+    wmKeyMap *keymap_paint = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Paint Mode", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_paint);
 
-		wmKeyMap *keymap_paint_draw = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Stroke Paint (Draw brush)", 0, 0);
+    wmKeyMap *keymap_paint_draw = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Paint (Draw brush)", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_paint_draw);
 
-		wmKeyMap *keymap_paint_erase = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Stroke Paint (Erase)", 0, 0);
+    wmKeyMap *keymap_paint_erase = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Paint (Erase)", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_paint_erase);
 
-		wmKeyMap *keymap_paint_fill = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Stroke Paint (Fill)", 0, 0);
+    wmKeyMap *keymap_paint_fill = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Paint (Fill)", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_paint_fill);
 
-		wmKeyMap *keymap_sculpt = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Stroke Sculpt Mode", 0, 0);
+    wmKeyMap *keymap_sculpt = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt Mode", 0, 0);
 		WM_event_add_keymap_handler(handlers, keymap_sculpt);
 	}
 }
@@ -1653,7 +1675,6 @@ void ED_area_initialize(wmWindowManager *wm, wmWindow *win, ScrArea *sa)
 		/* Some AZones use View2D data which is only updated in region init, so call that first! */
 		region_azones_add(screen, sa, ar, ar->alignment & ~RGN_SPLIT_PREV);
 	}
-
 
 	/* Avoid re-initializing tools while resizing the window. */
 	if ((G.moving & G_TRANSFORM_WM) == 0) {
@@ -1783,7 +1804,6 @@ void ED_area_data_swap(ScrArea *sa_dst, ScrArea *sa_src)
 	SWAP(char, sa_dst->spacetype, sa_src->spacetype);
 	SWAP(SpaceType *, sa_dst->type, sa_src->type);
 
-
 	SWAP(ListBase, sa_dst->spacedata, sa_src->spacedata);
 	SWAP(ListBase, sa_dst->regionbase, sa_src->regionbase);
 }
@@ -1839,8 +1859,7 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
 		 * (needed for preferences to have space-type on bottom).
 		 */
 		int header_alignment = ED_area_header_alignment_or_fallback(sa, -1);
-		const bool sync_header_alignment = (
-		        (header_alignment != -1) &&
+    const bool sync_header_alignment = ((header_alignment != -1) &&
 		        (sa->flag & AREA_FLAG_TEMP_TYPE) == 0);
 
 		/* in some cases (opening temp space) we don't want to
@@ -1916,7 +1935,8 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
 						ar->alignment = header_alignment;
 					}
 					if (ar->regiontype == RGN_TYPE_FOOTER) {
-						int footer_alignment = (header_alignment == RGN_ALIGN_BOTTOM) ? RGN_ALIGN_TOP : RGN_ALIGN_BOTTOM;
+            int footer_alignment = (header_alignment == RGN_ALIGN_BOTTOM) ? RGN_ALIGN_TOP :
+                                                                            RGN_ALIGN_BOTTOM;
 						ar->alignment = footer_alignment;
 						break;
 					}
@@ -1981,8 +2001,22 @@ int ED_area_header_switchbutton(const bContext *C, uiBlock *block, int yco)
 
 	RNA_pointer_create(&(scr->id), &RNA_Area, sa, &areaptr);
 
-	uiDefButR(block, UI_BTYPE_MENU, 0, "", xco, yco, 1.6 * U.widget_unit, U.widget_unit,
-	          &areaptr, "ui_type", 0, 0.0f, 0.0f, 0.0f, 0.0f, "");
+  uiDefButR(block,
+            UI_BTYPE_MENU,
+            0,
+            "",
+            xco,
+            yco,
+            1.6 * U.widget_unit,
+            U.widget_unit,
+            &areaptr,
+            "ui_type",
+            0,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            "");
 
 	return xco + 1.7 * U.widget_unit;
 }
@@ -2038,8 +2072,7 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
 	return false;
 }
 
-static void ed_panel_draw(
-        const bContext *C,
+static void ed_panel_draw(const bContext *C,
         ScrArea *sa,
         ARegion *ar,
         ListBase *lb,
@@ -2062,9 +2095,15 @@ static void ed_panel_draw(
 
 	if (pt->draw_header_preset && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
 		/* for preset menu */
-		panel->layout = UI_block_layout(
-		        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER,
-		        0, (UI_UNIT_Y * 1.1f) + style->panelspace, UI_UNIT_Y, 1, 0, style);
+    panel->layout = UI_block_layout(block,
+                                    UI_LAYOUT_HORIZONTAL,
+                                    UI_LAYOUT_HEADER,
+                                    0,
+                                    (UI_UNIT_Y * 1.1f) + style->panelspace,
+                                    UI_UNIT_Y,
+                                    1,
+                                    0,
+                                    style);
 
 		pt->draw_header_preset(C, panel);
 
@@ -2081,8 +2120,7 @@ static void ed_panel_draw(
 
 		/* for enabled buttons */
 		panel->layout = UI_block_layout(
-		        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER,
-		        labelx, labely, UI_UNIT_Y, 1, 0, style);
+        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
 
 		pt->draw_header(C, panel);
 
@@ -2108,11 +2146,16 @@ static void ed_panel_draw(
 			panelContext = UI_LAYOUT_PANEL;
 		}
 
-		panel->layout = UI_block_layout(
-		        block, UI_LAYOUT_VERTICAL, panelContext,
-		        (pt->flag & PNL_LAYOUT_VERT_BAR) ? 0 : style->panelspace, 0,
-		        (pt->flag & PNL_LAYOUT_VERT_BAR) ? 0 : w - 2 * style->panelspace,
-		        em, 0, style);
+    panel->layout = UI_block_layout(block,
+                                    UI_LAYOUT_VERTICAL,
+                                    panelContext,
+                                    (pt->flag & PNL_LAYOUT_VERT_BAR) ? 0 : style->panelspace,
+                                    0,
+                                    (pt->flag & PNL_LAYOUT_VERT_BAR) ? 0 :
+                                                                       w - 2 * style->panelspace,
+                                    em,
+                                    0,
+                                    style);
 
 		pt->draw(C, panel);
 
@@ -2147,8 +2190,7 @@ static void ed_panel_draw(
  * Can be NULL to skip context checks.
  */
 void ED_region_panels_layout_ex(
-        const bContext *C, ARegion *ar,
-        const char *contexts[], int contextnr, const bool vertical)
+    const bContext *C, ARegion *ar, const char *contexts[], int contextnr, const bool vertical)
 {
 	ar->runtime.category = NULL;
 
@@ -2194,7 +2236,6 @@ void ED_region_panels_layout_ex(
 
 	scroll = v2d->scroll;
 
-
 	/* collect panels to draw */
 	for (pt = ar->type->paneltypes.last; pt; pt = pt->prev) {
 		/* Only draw top level panels. */
@@ -2218,14 +2259,12 @@ void ED_region_panels_layout_ex(
 		}
 	}
 
-
 	/* collect categories */
 	if (use_category_tabs) {
 		UI_panel_category_clear_all(ar);
 
 		/* gather unique categories */
-		BLI_SMALLSTACK_ITER_BEGIN(pt_stack, pt)
-		{
+    BLI_SMALLSTACK_ITER_BEGIN (pt_stack, pt) {
 			if (pt->category[0]) {
 				if (!UI_panel_category_find(ar, pt->category)) {
 					UI_panel_category_add(ar, pt->category);
@@ -2242,7 +2281,6 @@ void ED_region_panels_layout_ex(
 			margin_x = category_tabs_width;
 		}
 	}
-
 
 	if (vertical) {
 		w = BLI_rctf_size_x(&v2d->cur);
@@ -2261,8 +2299,7 @@ void ED_region_panels_layout_ex(
 	/* set view2d view matrix  - UI_block_begin() stores it */
 	UI_view2d_view_ortho(v2d);
 
-	BLI_SMALLSTACK_ITER_BEGIN(pt_stack, pt)
-	{
+  BLI_SMALLSTACK_ITER_BEGIN (pt_stack, pt) {
 		Panel *panel = UI_panel_find_by_type(&ar->panels, pt);
 
 		if (use_category_tabs && pt->category[0] && !STREQ(category, pt->category)) {
@@ -2290,9 +2327,7 @@ void ED_region_panels_layout_ex(
 				UI_panel_size_y(panel) / UI_DPI_FAC,
 			};
 			/* region size is layout based and needs to be updated */
-			if ((ar->sizex != size_dyn[0]) ||
-			    (ar->sizey != size_dyn[1]))
-			{
+      if ((ar->sizex != size_dyn[0]) || (ar->sizey != size_dyn[1])) {
 				ar->sizex = size_dyn[0];
 				ar->sizey = size_dyn[1];
 				sa->flag |= AREA_FLAG_REGION_SIZE_UPDATE;
@@ -2355,7 +2390,8 @@ void ED_region_panels_draw(const bContext *C, ARegion *ar)
 	View2D *v2d = &ar->v2d;
 
 	if (ar->alignment != RGN_ALIGN_FLOAT) {
-		region_clear_color(C, ar, (ar->type->regionid == RGN_TYPE_PREVIEW) ? TH_PREVIEW_BACK : TH_BACK);
+    region_clear_color(
+        C, ar, (ar->type->regionid == RGN_TYPE_PREVIEW) ? TH_PREVIEW_BACK : TH_BACK);
 	}
 
 	/* reset line width for drawing tabs */
@@ -2393,8 +2429,7 @@ void ED_region_panels_draw(const bContext *C, ARegion *ar)
 }
 
 void ED_region_panels_ex(
-        const bContext *C, ARegion *ar,
-        const char *contexts[], int contextnr, const bool vertical)
+    const bContext *C, ARegion *ar, const char *contexts[], int contextnr, const bool vertical)
 {
 	/* TODO: remove? */
 	ED_region_panels_layout_ex(C, ar, contexts, contextnr, vertical);
@@ -2451,7 +2486,8 @@ void ED_region_header_layout(const bContext *C, ARegion *ar)
 		}
 
 		block = UI_block_begin(C, ar, ht->idname, UI_EMBOSS);
-		layout = UI_block_layout(block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, xco, yco, buttony, 1, 0, style);
+    layout = UI_block_layout(
+        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, xco, yco, buttony, 1, 0, style);
 
 		if (buttony_scale != 1.0f) {
 			uiLayoutSetScaleY(layout, buttony_scale);
@@ -2636,7 +2672,10 @@ int ED_region_global_size_y(void)
 	return ED_area_headersize(); /* same size as header */
 }
 
-void ED_region_info_draw_multiline(ARegion *ar, const char *text_array[], float fill_color[4], const bool full_redraw)
+void ED_region_info_draw_multiline(ARegion *ar,
+                                   const char *text_array[],
+                                   float fill_color[4],
+                                   const bool full_redraw)
 {
 	const int header_height = UI_UNIT_Y;
 	uiStyle *style = UI_style_get_dpi();
@@ -2652,7 +2691,9 @@ void ED_region_info_draw_multiline(ARegion *ar, const char *text_array[], float 
 	if (!full_redraw) {
 		const char **text = &text_array[0];
 		while (*text) {
-			rect.xmax = min_ii(rect.xmax, rect.xmin + BLF_width(fontid, *text, BLF_DRAW_STR_DUMMY_MAX) + 1.2f * U.widget_unit);
+      rect.xmax = min_ii(rect.xmax,
+                         rect.xmin + BLF_width(fontid, *text, BLF_DRAW_STR_DUMMY_MAX) +
+                             1.2f * U.widget_unit);
 			text++;
 			num_lines++;
 		}
@@ -2670,11 +2711,11 @@ void ED_region_info_draw_multiline(ARegion *ar, const char *text_array[], float 
 
 	/* setup scissor */
 	GPU_scissor_get_i(scissor);
-	GPU_scissor(rect.xmin, rect.ymin,
-	          BLI_rcti_size_x(&rect) + 1, BLI_rcti_size_y(&rect) + 1);
+  GPU_scissor(rect.xmin, rect.ymin, BLI_rcti_size_x(&rect) + 1, BLI_rcti_size_y(&rect) + 1);
 
 	GPU_blend(true);
-	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 	GPUVertFormat *format = immVertexFormat();
 	uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
 	immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
@@ -2691,7 +2732,10 @@ void ED_region_info_draw_multiline(ARegion *ar, const char *text_array[], float 
 	{
 		const char **text = &text_array[0];
 		while (*text) {
-			BLF_position(fontid, rect.xmin + 0.6f * U.widget_unit, rect.ymin + 0.3f * U.widget_unit + offset * header_height, 0.0f);
+      BLF_position(fontid,
+                   rect.xmin + 0.6f * U.widget_unit,
+                   rect.ymin + 0.3f * U.widget_unit + offset * header_height,
+                   0.0f);
 			BLF_draw(fontid, *text, BLF_DRAW_STR_DUMMY_MAX);
 			text++;
 			offset--;
@@ -2704,15 +2748,17 @@ void ED_region_info_draw_multiline(ARegion *ar, const char *text_array[], float 
 	GPU_scissor(scissor[0], scissor[1], scissor[2], scissor[3]);
 }
 
-void ED_region_info_draw(ARegion *ar, const char *text, float fill_color[4], const bool full_redraw)
+void ED_region_info_draw(ARegion *ar,
+                         const char *text,
+                         float fill_color[4],
+                         const bool full_redraw)
 {
 	ED_region_info_draw_multiline(ar, (const char *[2]){text, NULL}, fill_color, full_redraw);
 }
 
 #define MAX_METADATA_STR    1024
 
-static const char *meta_data_list[] =
-{
+static const char *meta_data_list[] = {
 	"File",
 	"Strip",
 	"Date",
@@ -2727,7 +2773,9 @@ static const char *meta_data_list[] =
 
 BLI_INLINE bool metadata_is_valid(ImBuf *ibuf, char *r_str, short index, int offset)
 {
-	return (IMB_metadata_get_field(ibuf->metadata, meta_data_list[index], r_str + offset, MAX_METADATA_STR - offset) && r_str[0]);
+  return (IMB_metadata_get_field(
+              ibuf->metadata, meta_data_list[index], r_str + offset, MAX_METADATA_STR - offset) &&
+          r_str[0]);
 }
 
 BLI_INLINE bool metadata_is_custom_drawable(const char *field)
@@ -2753,10 +2801,7 @@ typedef struct MetadataCustomDrawContext {
 	int current_y;
 } MetadataCustomDrawContext;
 
-static void metadata_custom_draw_fields(
-        const char *field,
-        const char *value,
-        void *ctx_v)
+static void metadata_custom_draw_fields(const char *field, const char *value, void *ctx_v)
 {
 	if (!metadata_is_custom_drawable(field)) {
 		return;
@@ -2869,10 +2914,7 @@ typedef struct MetadataCustomCountContext {
 	int count;
 } MetadataCustomCountContext;
 
-static void metadata_custom_count_fields(
-        const char *field,
-        const char *UNUSED(value),
-        void *ctx_v)
+static void metadata_custom_count_fields(const char *field, const char *UNUSED(value), void *ctx_v)
 {
 	if (!metadata_is_custom_drawable(field)) {
 		return;
@@ -2880,7 +2922,6 @@ static void metadata_custom_count_fields(
 	MetadataCustomCountContext *ctx = (MetadataCustomCountContext *)ctx_v;
 	ctx->count++;
 }
-
 
 static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
 {
@@ -2937,7 +2978,8 @@ static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
 
 #undef MAX_METADATA_STR
 
-void ED_region_image_metadata_draw(int x, int y, ImBuf *ibuf, const rctf *frame, float zoomx, float zoomy)
+void ED_region_image_metadata_draw(
+    int x, int y, ImBuf *ibuf, const rctf *frame, float zoomx, float zoomy)
 {
 	float box_y;
 	rctf rect;
@@ -2980,7 +3022,6 @@ void ED_region_image_metadata_draw(int x, int y, ImBuf *ibuf, const rctf *frame,
 		BLF_disable(blf_mono_font, BLF_CLIPPING);
 	}
 
-
 	/* *** lower box*** */
 
 	box_y = metadata_box_height_get(ibuf, blf_mono_font, false);
@@ -3012,10 +3053,7 @@ typedef struct MetadataPanelDrawContext {
 	uiLayout *layout;
 } MetadataPanelDrawContext;
 
-static void metadata_panel_draw_field(
-        const char *field,
-        const char *value,
-        void *ctx_v)
+static void metadata_panel_draw_field(const char *field, const char *value, void *ctx_v)
 {
 	MetadataPanelDrawContext *ctx = (MetadataPanelDrawContext *)ctx_v;
 	uiLayout *row = uiLayoutRow(ctx->layout, false);
@@ -3172,7 +3210,8 @@ void ED_region_visible_rect(ARegion *ar, rcti *rect)
 
 void ED_region_cache_draw_background(const ARegion *ar)
 {
-	uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+  uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
 	immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 	immUniformColor4ub(128, 128, 255, 64);
 	immRecti(pos, 0, 0, ar->winx, 8 * UI_DPI_FAC);
@@ -3192,7 +3231,8 @@ void ED_region_cache_draw_curfra_label(const int framenr, const float x, const f
 
 	BLF_width_and_height(fontid, numstr, sizeof(numstr), &font_dims[0], &font_dims[1]);
 
-	uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+  uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
 	immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 	immUniformThemeColor(TH_CFRAME);
 	immRecti(pos, x, y, x + font_dims[0] + 6.0f, y + font_dims[1] + 4.0f);
@@ -3203,10 +3243,12 @@ void ED_region_cache_draw_curfra_label(const int framenr, const float x, const f
 	BLF_draw(fontid, numstr, sizeof(numstr));
 }
 
-void ED_region_cache_draw_cached_segments(const ARegion *ar, const int num_segments, const int *points, const int sfra, const int efra)
+void ED_region_cache_draw_cached_segments(
+    const ARegion *ar, const int num_segments, const int *points, const int sfra, const int efra)
 {
 	if (num_segments) {
-		uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+    uint pos = GPU_vertformat_attr_add(
+        immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
 		immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 		immUniformColor4ub(128, 128, 255, 128);
 
@@ -3225,10 +3267,12 @@ void ED_region_cache_draw_cached_segments(const ARegion *ar, const int num_segme
 /**
  * Generate subscriptions for this region.
  */
-void ED_region_message_subscribe(
-        bContext *C,
-        struct WorkSpace *workspace, struct Scene *scene,
-        struct bScreen *screen, struct ScrArea *sa, struct ARegion *ar,
+void ED_region_message_subscribe(bContext *C,
+                                 struct WorkSpace *workspace,
+                                 struct Scene *scene,
+                                 struct bScreen *screen,
+                                 struct ScrArea *sa,
+                                 struct ARegion *ar,
         struct wmMsgBus *mbus)
 {
 	if (ar->gizmo_map != NULL) {

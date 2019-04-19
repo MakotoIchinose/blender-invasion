@@ -42,7 +42,6 @@
 /* Disallow access to global userdef. */
 #define U (_error_)
 
-
 static void do_versions_theme(UserDef *userdef, bTheme *btheme)
 {
 
@@ -51,8 +50,7 @@ static void do_versions_theme(UserDef *userdef, bTheme *btheme)
 		memcpy(btheme, &U_theme_default, sizeof(*btheme));
 	}
 
-#define FROM_DEFAULT_V4_UCHAR(member) \
-	copy_v4_v4_char(btheme->member, U_theme_default.member)
+#define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_char(btheme->member, U_theme_default.member)
 
 	if (!USER_VERSION_ATLEAST(280, 25)) {
 		copy_v4_v4_char(btheme->space_action.anim_preview_range, btheme->space_action.anim_active);
@@ -103,7 +101,8 @@ static void do_versions_theme(UserDef *userdef, bTheme *btheme)
 
 	if (!USER_VERSION_ATLEAST(280, 40)) {
 		FROM_DEFAULT_V4_UCHAR(space_preferences.navigation_bar);
-		copy_v4_v4_char(btheme->space_preferences.execution_buts, btheme->space_preferences.navigation_bar);
+    copy_v4_v4_char(btheme->space_preferences.execution_buts,
+                    btheme->space_preferences.navigation_bar);
 	}
 
 	if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -138,11 +137,20 @@ static void do_version_select_mouse(UserDef *userdef, wmKeyMapItem *kmi)
 	const bool left = (userdef->flag & USER_LMOUSESELECT) != 0;
 
 	switch (kmi->type) {
-		case SELECTMOUSE: kmi->type = (left) ? LEFTMOUSE : RIGHTMOUSE; break;
-		case ACTIONMOUSE: kmi->type = (left) ? RIGHTMOUSE : LEFTMOUSE; break;
-		case EVT_TWEAK_S: kmi->type = (left) ? EVT_TWEAK_L : EVT_TWEAK_R; break;
-		case EVT_TWEAK_A: kmi->type = (left) ? EVT_TWEAK_R : EVT_TWEAK_L; break;
-		default: break;
+    case SELECTMOUSE:
+      kmi->type = (left) ? LEFTMOUSE : RIGHTMOUSE;
+      break;
+    case ACTIONMOUSE:
+      kmi->type = (left) ? RIGHTMOUSE : LEFTMOUSE;
+      break;
+    case EVT_TWEAK_S:
+      kmi->type = (left) ? EVT_TWEAK_L : EVT_TWEAK_R;
+      break;
+    case EVT_TWEAK_A:
+      kmi->type = (left) ? EVT_TWEAK_R : EVT_TWEAK_L;
+      break;
+    default:
+      break;
 	}
 }
 
@@ -153,12 +161,14 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 #define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_ATLEAST(bmain, ver, subver)
 
 	/* the UserDef struct is not corrected with do_versions() .... ugh! */
-	if (userdef->wheellinescroll == 0) userdef->wheellinescroll = 3;
+  if (userdef->wheellinescroll == 0)
+    userdef->wheellinescroll = 3;
 	if (userdef->menuthreshold1 == 0) {
 		userdef->menuthreshold1 = 5;
 		userdef->menuthreshold2 = 2;
 	}
-	if (userdef->mixbufsize == 0) userdef->mixbufsize = 2048;
+  if (userdef->mixbufsize == 0)
+    userdef->mixbufsize = 2048;
 	if (userdef->autokey_mode == 0) {
 		/* 'add/replace' but not on */
 		userdef->autokey_mode = 2;
@@ -191,7 +201,8 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 	/* added seam, normal color, undo */
 	if (!USER_VERSION_ATLEAST(235, 0)) {
 		userdef->uiflag |= USER_GLOBALUNDO;
-		if (userdef->undosteps == 0) userdef->undosteps = 32;
+    if (userdef->undosteps == 0)
+      userdef->undosteps = 32;
 	}
 	if (!USER_VERSION_ATLEAST(236, 0)) {
 		/* illegal combo... */
@@ -200,7 +211,8 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 	}
 	if (!USER_VERSION_ATLEAST(240, 0)) {
 		userdef->uiflag |= USER_PLAINMENUS;
-		if (userdef->obcenter_dia == 0) userdef->obcenter_dia = 6;
+    if (userdef->obcenter_dia == 0)
+      userdef->obcenter_dia = 6;
 	}
 	if (!USER_VERSION_ATLEAST(242, 0)) {
 		/* set defaults for 3D View rotating axis indicator */
@@ -210,11 +222,11 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 			userdef->rvibright = 8;
 			userdef->uiflag |= USER_SHOW_GIZMO_AXIS;
 		}
-
 	}
 	if (!USER_VERSION_ATLEAST(244, 0)) {
 		/* set default number of recently-used files (if not set) */
-		if (userdef->recent_files == 0) userdef->recent_files = 10;
+    if (userdef->recent_files == 0)
+      userdef->recent_files = 10;
 	}
 	if (!USER_VERSION_ATLEAST(245, 3)) {
 		if (userdef->coba_weight.tot == 0)
@@ -330,7 +342,8 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 
 		if (userdef->ndof_sensitivity == 0.0f) {
 			userdef->ndof_sensitivity = 1.0f;
-			userdef->ndof_flag = (NDOF_LOCK_HORIZON | NDOF_SHOULD_PAN | NDOF_SHOULD_ZOOM | NDOF_SHOULD_ROTATE);
+      userdef->ndof_flag = (NDOF_LOCK_HORIZON | NDOF_SHOULD_PAN | NDOF_SHOULD_ZOOM |
+                            NDOF_SHOULD_ROTATE);
 		}
 
 		if (userdef->ndof_orbit_sensitivity == 0.0f) {
@@ -363,19 +376,15 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 
 	if (!USER_VERSION_ATLEAST(278, 6)) {
 		/* Clear preference flags for re-use. */
-		userdef->flag &= ~(
-		    USER_FLAG_NUMINPUT_ADVANCED | USER_FLAG_UNUSED_2 | USER_FLAG_UNUSED_3 |
-		    USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 |
-		    USER_FLAG_UNUSED_9 | USER_DEVELOPER_UI);
-		userdef->uiflag &= ~(
-		    USER_HEADER_BOTTOM);
-		userdef->transopts &= ~(
-		    USER_TR_UNUSED_2 | USER_TR_UNUSED_3 | USER_TR_UNUSED_4 |
+    userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | USER_FLAG_UNUSED_2 | USER_FLAG_UNUSED_3 |
+                       USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_FLAG_UNUSED_9 |
+                       USER_DEVELOPER_UI);
+    userdef->uiflag &= ~(USER_HEADER_BOTTOM);
+    userdef->transopts &= ~(USER_TR_UNUSED_2 | USER_TR_UNUSED_3 | USER_TR_UNUSED_4 |
 		    USER_TR_UNUSED_6 | USER_TR_UNUSED_7);
 
 		userdef->uiflag |= USER_LOCK_CURSOR_ADJUST;
 	}
-
 
 	if (!USER_VERSION_ATLEAST(280, 20)) {
 		userdef->gpu_viewport_quality = 0.6f;
@@ -458,13 +467,9 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 
 		copy_v3_fl3(userdef->light_ambient, 0.025000, 0.025000, 0.025000);
 
-		userdef->flag &= ~(
-		        USER_FLAG_UNUSED_4);
+    userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-		userdef->uiflag &= ~(
-		        USER_HEADER_FROM_PREF |
-		        USER_UIFLAG_UNUSED_12 |
-		        USER_UIFLAG_UNUSED_22);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_UIFLAG_UNUSED_22);
 	}
 
 	if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -476,12 +481,9 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 	}
 
 	if (!USER_VERSION_ATLEAST(280, 44)) {
-		userdef->uiflag &= ~(
-		        USER_UIFLAG_UNUSED_0 | USER_UIFLAG_UNUSED_1);
-		userdef->uiflag2 &= ~(
-		        USER_UIFLAG2_UNUSED_0);
-		userdef->gp_settings &= ~(
-		        GP_PAINT_UNUSED_0);
+    userdef->uiflag &= ~(USER_UIFLAG_UNUSED_0 | USER_UIFLAG_UNUSED_1);
+    userdef->uiflag2 &= ~(USER_UIFLAG2_UNUSED_0);
+    userdef->gp_settings &= ~(GP_PAINT_UNUSED_0);
 	}
 
 	if (!USER_VERSION_ATLEAST(280, 50)) {
@@ -510,7 +512,6 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
 		do_versions_theme(userdef, btheme);
 	}
 #undef USER_VERSION_ATLEAST
-
 }
 
 #undef USER_LMOUSESELECT
