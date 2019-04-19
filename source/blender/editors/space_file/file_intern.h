@@ -42,7 +42,7 @@ struct ARegion *file_tools_region(struct ScrArea *sa);
 #define IMASEL_BUTTONS_HEIGHT (UI_UNIT_Y * 2)
 #define IMASEL_BUTTONS_MARGIN (UI_UNIT_Y / 6)
 
-#define SMALL_SIZE_CHECK(_size) ((_size) < 64)  /* Related to FileSelectParams.thumbnail_size. */
+#define SMALL_SIZE_CHECK(_size) ((_size) < 64) /* Related to FileSelectParams.thumbnail_size. */
 
 #if 0
 void file_draw_filepath_buttons(const bContext *C, ARegion *ar);
@@ -60,10 +60,10 @@ struct wmOperator;
 struct wmOperatorType;
 
 typedef enum WalkSelectDirection {
-	FILE_SELECT_WALK_UP,
-	FILE_SELECT_WALK_DOWN,
-	FILE_SELECT_WALK_LEFT,
-	FILE_SELECT_WALK_RIGHT,
+  FILE_SELECT_WALK_UP,
+  FILE_SELECT_WALK_DOWN,
+  FILE_SELECT_WALK_LEFT,
+  FILE_SELECT_WALK_RIGHT,
 } WalkSelectDirections;
 
 void FILE_OT_highlight(struct wmOperatorType *ot);
