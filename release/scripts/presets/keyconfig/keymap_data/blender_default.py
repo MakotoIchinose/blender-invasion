@@ -472,7 +472,11 @@ def km_screen(params):
         ("render.play_rendered_anim", {"type": 'F11', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.legacy:
+    if not params.legacy:
+        items.extend([
+            ("screen.redo_last", {"type": 'F9', "value": 'PRESS'}, None),
+        ])
+    else:
         # Old keymap
         items.extend([
             ("ed.undo_history", {"type": 'Z', "value": 'PRESS', "ctrl": True, "alt": True}, None),
@@ -1462,6 +1466,8 @@ def km_graph_editor(params):
         op_menu_pie("GRAPH_MT_pivot_pie", {"type": 'PERIOD', "value": 'PRESS'}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
         ("marker.rename", {"type": 'M', "value": 'PRESS', "ctrl": True}, None),
+        ("anim.start_frame_set", {"type": 'HOME', "value": 'PRESS', "ctrl": True}, None),
+        ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     if params.apple:
@@ -1892,6 +1898,8 @@ def km_dopesheet_generic(_params):
             toolbar_key={"type": 'T', "value": 'PRESS'},
             sidebar_key={"type": 'N', "value": 'PRESS'},
         ),
+        ("wm.context_set_enum", {"type": 'TAB', "value": 'PRESS', "ctrl": True},
+         {"properties": [("data_path", 'area.type'), ("value", 'GRAPH_EDITOR')]})
     ])
 
     return keymap
