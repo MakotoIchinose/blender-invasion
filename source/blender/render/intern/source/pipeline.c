@@ -1108,7 +1108,6 @@ void *RE_gpu_context_get(Render *re)
 #if 0
 void RE_AddObject(Render *UNUSED(re), Object *UNUSED(ob))
 {
-
 }
 #endif
 
@@ -1446,7 +1445,6 @@ static void do_render_composite(Render *re)
 
     if (ntree) {
       ntreeCompositTagRender(re->scene);
-      ntreeCompositTagAnimated(ntree);
     }
 
     if (ntree && re->scene->use_nodes && re->r.scemode & R_DOCOMP) {

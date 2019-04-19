@@ -82,14 +82,13 @@
 
 //#define DEBUG_TIME
 
+#include "smoke_API.h"
+
 #ifdef DEBUG_TIME
 #  include "PIL_time.h"
 #endif
 
 #ifdef WITH_SMOKE
-
-#  include "smoke_API.h"
-
 #  include "BLI_task.h"
 #  include "BLI_kdtree.h"
 #  include "BLI_voxel.h"
@@ -1777,7 +1776,10 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
         const int index = smoke_get_index(
             x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
         const float ray_start[3] = {
-            lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
+            lx + 0.5f * data->hr,
+            ly + 0.5f * data->hr,
+            lz + 0.5f * data->hr,
+        };
 
         sample_mesh(data->sfs,
                     data->mvert,
@@ -2453,7 +2455,7 @@ static void update_flowsfluids(
           EmissionMap em_temp = {NULL};
           float sample_size = 1.0f / (float)(subframes + 1);
 #  if 0
-          float prev_frame_pos = sample_size * (float)(subframe+1);
+          float prev_frame_pos = sample_size * (float)(subframe + 1);
 #  endif
           float sdt = dt * sample_size;
           int hires_multiplier = 1;

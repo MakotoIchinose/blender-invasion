@@ -1143,14 +1143,16 @@ static void rna_ImageFormatSettings_file_format_set(PointerRNA *ptr, int value)
     const int depth_ok = BKE_imtype_valid_depths(imf->imtype);
     if ((imf->depth & depth_ok) == 0) {
       /* set first available depth */
-      char depth_ls[] = {R_IMF_CHAN_DEPTH_32,
-                         R_IMF_CHAN_DEPTH_24,
-                         R_IMF_CHAN_DEPTH_16,
-                         R_IMF_CHAN_DEPTH_12,
-                         R_IMF_CHAN_DEPTH_10,
-                         R_IMF_CHAN_DEPTH_8,
-                         R_IMF_CHAN_DEPTH_1,
-                         0};
+      char depth_ls[] = {
+          R_IMF_CHAN_DEPTH_32,
+          R_IMF_CHAN_DEPTH_24,
+          R_IMF_CHAN_DEPTH_16,
+          R_IMF_CHAN_DEPTH_12,
+          R_IMF_CHAN_DEPTH_10,
+          R_IMF_CHAN_DEPTH_8,
+          R_IMF_CHAN_DEPTH_1,
+          0,
+      };
       int i;
 
       for (i = 0; depth_ls[i]; i++) {
@@ -2686,11 +2688,8 @@ static void rna_def_tool_settings(BlenderRNA *brna)
        ICON_PIVOT_CURSOR,
        "3D Cursor",
        "Draw stroke at 3D cursor location"},
-      {0,
-       "VIEW",
-       ICON_RESTRICT_VIEW_ON,
-       "View",
-       "Stick stroke to the view "}, /* weird, GP_PROJECT_VIEWALIGN is inverted */
+      /* Weird, GP_PROJECT_VIEWALIGN is inverted. */
+      {0, "VIEW", ICON_RESTRICT_VIEW_ON, "View", "Stick stroke to the view "},
       {GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW,
        "SURFACE",
        ICON_FACESEL,
@@ -6080,7 +6079,8 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "seq_rend_type");
   RNA_def_property_enum_items(prop, rna_enum_shading_type_items);
   /* XXX Label and tooltips are obviously wrong! */
-  RNA_def_property_ui_text(prop, "Sequencer Preview Shading", "Method to draw in the sequencer view");
+  RNA_def_property_ui_text(
+      prop, "Sequencer Preview Shading", "Method to draw in the sequencer view");
 #  endif
 
   prop = RNA_def_property(srna, "use_sequencer_gl_textured_solid", PROP_BOOLEAN, PROP_NONE);
@@ -7314,7 +7314,8 @@ void RNA_def_scene(BlenderRNA *brna)
 #  if 0 /* XXX: Is this actually needed? */
   prop = RNA_def_property(srna, "use_frame_drop", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SCE_FRAME_DROP);
-  RNA_def_property_ui_text(prop, "Frame Dropping", "Play back dropping frames if frame display is too slow");
+  RNA_def_property_ui_text(
+      prop, "Frame Dropping", "Play back dropping frames if frame display is too slow");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 #  endif
 
@@ -7455,8 +7456,10 @@ void RNA_def_scene(BlenderRNA *brna)
 #  if 0 /* XXX: Is this actually needed? */
   prop = RNA_def_property(srna, "use_audio_sync", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "audio.flag", AUDIO_SYNC);
-  RNA_def_property_ui_text(prop, "Audio Sync",
-                           "Play back and sync with audio clock, dropping frames if frame display is too slow");
+  RNA_def_property_ui_text(
+      prop,
+      "Audio Sync",
+      "Play back and sync with audio clock, dropping frames if frame display is too slow");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 #  endif
 

@@ -60,34 +60,6 @@
 
 #include "graph_intern.h"  // own include
 
-/* ******************** manage regions ********************* */
-
-ARegion *graph_has_buttons_region(ScrArea *sa)
-{
-  ARegion *ar, *arnew;
-
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_UI);
-  if (ar)
-    return ar;
-
-  /* add subdiv level; after main */
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_WINDOW);
-
-  /* is error! */
-  if (ar == NULL)
-    return NULL;
-
-  arnew = MEM_callocN(sizeof(ARegion), "buttons for graph");
-
-  BLI_insertlinkafter(&sa->regionbase, ar, arnew);
-  arnew->regiontype = RGN_TYPE_UI;
-  arnew->alignment = RGN_ALIGN_RIGHT;
-
-  arnew->flag = RGN_FLAG_HIDDEN;
-
-  return arnew;
-}
-
 /* ******************** default callbacks for ipo space ***************** */
 
 static SpaceLink *graph_new(const ScrArea *UNUSED(sa), const Scene *scene)
@@ -599,8 +571,8 @@ static void graph_listener(wmWindow *UNUSED(win),
       break;
     case NC_SCENE:
       switch (wmn->data) {
-        case ND_OB_ACTIVE: /* selection changed, so force refresh to flush
-                             * (needs flag set to do syncing)  */
+        case ND_OB_ACTIVE: /* Selection changed, so force refresh to flush
+                            * (needs flag set to do syncing). */
         case ND_OB_SELECT:
           sipo->runtime.flag |= SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC;
           ED_area_tag_refresh(sa);
@@ -613,8 +585,8 @@ static void graph_listener(wmWindow *UNUSED(win),
       break;
     case NC_OBJECT:
       switch (wmn->data) {
-        case ND_BONE_SELECT: /* selection changed, so force refresh to flush
-                                 * (needs flag set to do syncing) */
+        case ND_BONE_SELECT: /* Selection changed, so force refresh to flush
+                              * (needs flag set to do syncing). */
         case ND_BONE_ACTIVE:
           sipo->runtime.flag |= SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC;
           ED_area_tag_refresh(sa);

@@ -375,7 +375,7 @@ static int gp_set_filling_texture(Image *image, short flag)
   ImBuf *ibuf;
   uint *bind = &image->bindcode[TEXTARGET_TEXTURE_2D];
   int error = GL_NO_ERROR;
-  ImageUser iuser = { NULL };
+  ImageUser iuser = {NULL};
   void *lock;
 
   iuser.ok = true;
@@ -388,8 +388,7 @@ static int gp_set_filling_texture(Image *image, short flag)
   }
 
   GPU_create_gl_tex(
-          bind, ibuf->rect, ibuf->rect_float, ibuf->x, ibuf->y, GL_TEXTURE_2D,
-          false, false, image);
+      bind, ibuf->rect, ibuf->rect_float, ibuf->x, ibuf->y, GL_TEXTURE_2D, false, false, image);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -448,11 +447,12 @@ static void gp_draw_stroke_fill(bGPdata *gpd,
   immUniform2fv("texture_scale", gp_style->texture_scale);
   immUniform2fv("texture_offset", gp_style->texture_offset);
   immUniform1f("texture_opacity", gp_style->texture_opacity);
-  immUniform1i("t_mix", (gp_style->flag & GP_STYLE_COLOR_TEX_MIX) != 0);
+  immUniform1i("t_mix", (gp_style->flag & GP_STYLE_FILL_TEX_MIX) != 0);
   immUniform1i("t_flip", (gp_style->flag & GP_STYLE_COLOR_FLIP_FILL) != 0);
 #if 0 /* GPXX disabled, not used in annotations */
   /* image texture */
-  if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) || (gp_style->flag & GP_STYLE_COLOR_TEX_MIX)) {
+  if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) ||
+      (gp_style->flag & GP_STYLE_COLOR_TEX_MIX)) {
     gp_set_filling_texture(gp_style->ima, gp_style->flag);
   }
 #endif

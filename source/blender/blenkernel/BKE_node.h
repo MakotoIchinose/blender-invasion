@@ -1144,8 +1144,6 @@ void ntreeCompositExecTree(struct Scene *scene,
                            const struct ColorManagedDisplaySettings *display_settings,
                            const char *view_name);
 void ntreeCompositTagRender(struct Scene *sce);
-int ntreeCompositTagAnimated(struct bNodeTree *ntree);
-void ntreeCompositTagGenerators(struct bNodeTree *ntree);
 void ntreeCompositUpdateRLayers(struct bNodeTree *ntree);
 void ntreeCompositRegisterPass(struct bNodeTree *ntree,
                                struct Scene *scene,
@@ -1220,7 +1218,6 @@ struct TexResult;
 #define TEX_NODE_PROC_MAX 600
 
 /* API */
-int ntreeTexTagAnimated(struct bNodeTree *ntree);
 void ntreeTexCheckCyclics(struct bNodeTree *ntree);
 
 struct bNodeTreeExec *ntreeTexBeginExecTree(struct bNodeTree *ntree);

@@ -510,9 +510,11 @@ static bool key_test_depth(const PEData *data, const float co[3], const int scre
 
     /* used to calculate here but all callers have  the screen_co already, so pass as arg */
 #if 0
-  if (ED_view3d_project_int_global(data->vc.ar, co, screen_co,
-                                   V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_WIN | V3D_PROJ_TEST_CLIP_NEAR) != V3D_PROJ_RET_OK)
-  {
+  if (ED_view3d_project_int_global(data->vc.ar,
+                                   co,
+                                   screen_co,
+                                   V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_WIN |
+                                       V3D_PROJ_TEST_CLIP_NEAR) != V3D_PROJ_RET_OK) {
     return 0;
   }
 #endif
@@ -2726,7 +2728,7 @@ static int remove_tagged_particles(Object *ob, ParticleSystem *psys, int mirror)
   return removed;
 }
 
-static void remove_tagged_keys(Object *ob, ParticleSystem *psys)
+static void remove_tagged_keys(Depsgraph *depsgraph, Object *ob, ParticleSystem *psys)
 {
   PTCacheEdit *edit = psys->edit;
   ParticleData *pa;
@@ -2734,12 +2736,13 @@ static void remove_tagged_keys(Object *ob, ParticleSystem *psys)
   POINT_P;
   KEY_K;
   PTCacheEditKey *nkey, *new_keys;
-  ParticleSystemModifierData *psmd_eval;
   short new_totkey;
 
   if (pe_x_mirror(ob)) {
     /* mirror key tags */
-    psmd_eval = psys_get_modifier(ob, psys);
+    ParticleSystemModifierData *psmd = psys_get_modifier(ob, psys);
+    ParticleSystemModifierData *psmd_eval = (ParticleSystemModifierData *)modifier_get_evaluated(
+        depsgraph, ob, &psmd->modifier);
 
     LOOP_POINTS
     {
@@ -3185,7 +3188,7 @@ static int delete_exec(bContext *C, wmOperator *op)
 
   if (type == DEL_KEY) {
     foreach_selected_key(&data, set_delete_particle_key);
-    remove_tagged_keys(data.ob, data.edit->psys);
+    remove_tagged_keys(data.depsgraph, data.ob, data.edit->psys);
     recalc_lengths(data.edit);
   }
   else if (type == DEL_PARTICLE) {

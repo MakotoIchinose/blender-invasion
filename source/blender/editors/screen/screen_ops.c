@@ -1324,7 +1324,7 @@ static void area_move_set_limits(
       int size_max = ED_area_global_max_size_y(area) - 1;
 
       size_min = max_ii(size_min, 0);
-      BLI_assert(size_min < size_max);
+      BLI_assert(size_min <= size_max);
 
       /* logic here is only tested for lower edge :) */
       /* left edge */
@@ -2338,12 +2338,12 @@ static int area_max_regionsize(ScrArea *sa, ARegion *scalear, AZEdge edge)
       }
       else if (scalear->alignment == RGN_ALIGN_TOP &&
                (ar->alignment == RGN_ALIGN_BOTTOM ||
-                ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_FOOTER))) {
+                ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER))) {
         dist -= ar->winy;
       }
       else if (scalear->alignment == RGN_ALIGN_BOTTOM &&
                (ar->alignment == RGN_ALIGN_TOP ||
-                ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_FOOTER))) {
+                ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER))) {
         dist -= ar->winy;
       }
     }
@@ -2430,6 +2430,18 @@ static void region_scale_toggle_hidden(bContext *C, RegionMoveData *rmd)
 
   region_toggle_hidden(C, rmd->ar, 0);
   region_scale_validate_size(rmd);
+
+  if ((rmd->ar->flag & RGN_FLAG_HIDDEN) == 0) {
+    if (rmd->ar->regiontype == RGN_TYPE_HEADER) {
+      ARegion *ar_tool_header = BKE_area_find_region_type(rmd->sa, RGN_TYPE_TOOL_HEADER);
+      if (ar_tool_header != NULL) {
+        if ((ar_tool_header->flag & RGN_FLAG_HIDDEN_BY_USER) == 0 &&
+            (ar_tool_header->flag & RGN_FLAG_HIDDEN) != 0) {
+          region_toggle_hidden(C, ar_tool_header, 0);
+        }
+      }
+    }
+  }
 }
 
 static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -3660,8 +3672,10 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
                                 RV3D_ORTHO);
       /* forcing camera is distracting */
 #if 0
-      if (v3d->camera) region_quadview_init_rv3d(sa, (ar = ar->next), 0, RV3D_VIEW_CAMERA, RV3D_CAMOB);
-      else             region_quadview_init_rv3d(sa, (ar = ar->next), 0, RV3D_VIEW_USER,   RV3D_PERSP);
+      if (v3d->camera)
+        region_quadview_init_rv3d(sa, (ar = ar->next), 0, RV3D_VIEW_CAMERA, RV3D_CAMOB);
+      else
+        region_quadview_init_rv3d(sa, (ar = ar->next), 0, RV3D_VIEW_USER, RV3D_PERSP);
 #else
       (void)v3d;
 #endif
@@ -3745,40 +3759,6 @@ static void SCREEN_OT_region_flip(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Header Toggle Operator
- * \{ */
-
-static int header_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  ARegion *ar = screen_find_region_type(C, RGN_TYPE_HEADER);
-
-  if (ar == NULL) {
-    return OPERATOR_CANCELLED;
-  }
-
-  ar->flag ^= RGN_FLAG_HIDDEN;
-
-  ED_area_tag_redraw(CTX_wm_area(C));
-
-  WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, NULL);
-
-  return OPERATOR_FINISHED;
-}
-
-static void SCREEN_OT_header(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Toggle Header";
-  ot->description = "Toggle header display";
-  ot->idname = "SCREEN_OT_header";
-
-  /* api callbacks */
-  ot->exec = header_exec;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Header Toggle Menu Operator
  * \{ */
 
@@ -3826,9 +3806,25 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UN
   ARegion *ar = CTX_wm_region(C);
   const char *but_flip_str = (ar->alignment == RGN_ALIGN_TOP) ? IFACE_("Flip to Bottom") :
                                                                 IFACE_("Flip to Top");
+  {
+    PointerRNA ptr;
+    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, sa->spacedata.first, &ptr);
+    uiItemR(layout, &ptr, "show_region_header", 0, IFACE_("Show Header"), ICON_NONE);
 
-  if (!ELEM(sa->spacetype, SPACE_TOPBAR)) {
-    uiItemO(layout, IFACE_("Toggle Header"), ICON_NONE, "SCREEN_OT_header");
+    ARegion *ar_header = BKE_area_find_region_type(sa, RGN_TYPE_HEADER);
+    uiLayout *col = uiLayoutColumn(layout, 0);
+    uiLayoutSetActive(col, (ar_header->flag & RGN_FLAG_HIDDEN) == 0);
+
+    if (BKE_area_find_region_type(sa, RGN_TYPE_TOOL_HEADER)) {
+      uiItemR(col, &ptr, "show_region_tool_header", 0, IFACE_("Show Tool Settings"), ICON_NONE);
+    }
+
+    uiItemO(col,
+            IFACE_("Show Menus"),
+            (sa->flag & HEADER_NO_PULLDOWN) ? ICON_CHECKBOX_DEHLT : ICON_CHECKBOX_HLT,
+            "SCREEN_OT_header_toggle_menus");
+
+    uiItemS(layout);
   }
 
   /* default is WM_OP_INVOKE_REGION_WIN, which we don't want here. */
@@ -3837,11 +3833,6 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UN
   if (!ELEM(sa->spacetype, SPACE_TOPBAR)) {
     uiItemO(layout, but_flip_str, ICON_NONE, "SCREEN_OT_region_flip");
   }
-
-  uiItemO(layout,
-          IFACE_("Collapse Menus"),
-          (sa->flag & HEADER_NO_PULLDOWN) ? ICON_CHECKBOX_HLT : ICON_CHECKBOX_DEHLT,
-          "SCREEN_OT_header_toggle_menus");
 
   /* File browser should be fullscreen all the time, top-bar should
    * never be. But other regions can be maximized/restored. */
@@ -4088,7 +4079,7 @@ static int match_region_with_redraws(int spacetype,
     if (redraws & TIME_ALL_BUTS_WIN)
       return 1;
   }
-  else if (regiontype == RGN_TYPE_HEADER) {
+  else if (ELEM(regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
     if (spacetype == SPACE_ACTION)
       return 1;
   }
@@ -4719,11 +4710,12 @@ static void SCREEN_OT_delete(wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 /** \name Region Alpha Blending Operator
+ *
+ * Implementation note: a disappearing region needs at least 1 last draw with
+ * 100% backbuffer texture over it - then triple buffer will clear it entirely.
+ * This because flag #RGN_FLAG_HIDDEN is set in end - region doesn't draw at all then.
+ *
  * \{ */
-
-/* implementation note: a disappearing region needs at least 1 last draw with 100% backbuffer
- * texture over it- then triple buffer will clear it entirely.
- * This because flag RGN_HIDDEN is set in end - region doesn't draw at all then */
 
 typedef struct RegionAlphaInfo {
   ScrArea *sa;
@@ -4783,7 +4775,7 @@ static void region_blend_end(bContext *C, ARegion *ar, const bool is_running)
   ar->regiontimer = NULL;
 }
 /* assumes that *ar itself is not a splitted version from previous region */
-void region_blend_start(bContext *C, ScrArea *sa, ARegion *ar)
+void ED_region_visibility_change_update_animated(bContext *C, ScrArea *sa, ARegion *ar)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = CTX_wm_window(C);
@@ -5107,7 +5099,6 @@ void ED_operatortypes_screen(void)
   WM_operatortype_append(SCREEN_OT_region_quadview);
   WM_operatortype_append(SCREEN_OT_region_scale);
   WM_operatortype_append(SCREEN_OT_region_flip);
-  WM_operatortype_append(SCREEN_OT_header);
   WM_operatortype_append(SCREEN_OT_header_toggle_menus);
   WM_operatortype_append(SCREEN_OT_header_context_menu);
   WM_operatortype_append(SCREEN_OT_footer);

@@ -952,10 +952,12 @@ static void add_poly(SkinOutput *so, BMVert *v1, BMVert *v2, BMVert *v3, BMVert 
 
 static void connect_frames(SkinOutput *so, BMVert *frame1[4], BMVert *frame2[4])
 {
-  BMVert *q[4][4] = {{frame2[0], frame2[1], frame1[1], frame1[0]},
-                     {frame2[1], frame2[2], frame1[2], frame1[1]},
-                     {frame2[2], frame2[3], frame1[3], frame1[2]},
-                     {frame2[3], frame2[0], frame1[0], frame1[3]}};
+  BMVert *q[4][4] = {
+      {frame2[0], frame2[1], frame1[1], frame1[0]},
+      {frame2[1], frame2[2], frame1[2], frame1[1]},
+      {frame2[2], frame2[3], frame1[3], frame1[2]},
+      {frame2[3], frame2[0], frame1[0], frame1[3]},
+  };
   int i;
   bool swap;
 
@@ -965,9 +967,7 @@ static void connect_frames(SkinOutput *so, BMVert *frame1[4], BMVert *frame2[4])
     /* simple method, works mostly */
     float p[3], no[3];
     sub_v3_v3v3(p, q[3][0]->co, q[0][0]->co);
-    normal_quad_v3(no,
-            q[0][0]->co, q[0][1]->co,
-            q[0][2]->co, q[0][3]->co);
+    normal_quad_v3(no, q[0][0]->co, q[0][1]->co, q[0][2]->co, q[0][3]->co);
     swap = dot_v3v3(no, p) > 0;
   }
 #else
@@ -1180,7 +1180,7 @@ static BMFace *skin_hole_target_face(BMesh *bm, Frame *frame)
     f = center_target_face;
 
     /* This case is unlikely now, but could still happen. Should look
-   * into splitting edges to make new faces. */
+     * into splitting edges to make new faces. */
 #if PRINT_HOLE_INFO
   if (!f) {
     printf("no good face found\n");

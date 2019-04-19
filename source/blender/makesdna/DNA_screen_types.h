@@ -344,7 +344,7 @@ typedef struct ScrArea {
    * runtime variable, updated by executing operators.
    */
   short region_active_win;
-  char temp, _pad;
+  char _pad[2];
 
   /** Callbacks for this space type. */
   struct SpaceType *type;
@@ -471,7 +471,7 @@ enum {
 
 /** #bScreen.flag */
 enum {
-  SCREEN_COLLAPSE_TOPBAR = 1,
+  SCREEN_DEPRECATED = 1,
   SCREEN_COLLAPSE_STATUSBAR = 2,
 };
 
@@ -589,6 +589,7 @@ enum {
   /* A place for buttons to trigger execution of something that was set up in other regions. */
   RGN_TYPE_EXECUTE = 10,
   RGN_TYPE_FOOTER = 11,
+  RGN_TYPE_TOOL_HEADER = 12,
 };
 /* use for function args */
 #define RGN_TYPE_ANY -1
@@ -625,6 +626,9 @@ enum {
   /** Size has been clamped (floating regions only). */
   RGN_FLAG_SIZE_CLAMP_X = (1 << 5),
   RGN_FLAG_SIZE_CLAMP_Y = (1 << 6),
+  /** When the user sets the region is hidden,
+   * needed for floating regions that may be hidden for other reasons. */
+  RGN_FLAG_HIDDEN_BY_USER = (1 << 7),
 };
 
 /** #ARegion.do_draw */

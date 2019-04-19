@@ -3724,7 +3724,8 @@ static void direct_link_nodetree(FileData *fd, bNodeTree *ntree)
     bNodeInstanceHash *new_previews = BKE_node_instance_hash_new("node previews");
     bNodeInstanceHashIterator iter;
 
-    NODE_INSTANCE_HASH_ITER(iter, ntree->previews) {
+    NODE_INSTANCE_HASH_ITER(iter, ntree->previews)
+    {
       bNodePreview *preview = BKE_node_instance_hash_iterator_get_value(&iter);
       if (preview) {
         bNodePreview *new_preview = newimaadr(fd, preview);
@@ -5501,7 +5502,7 @@ static void direct_link_pose(FileData *fd, bPose *pose)
     CLAMP(pchan->rotmode, ROT_MODE_MIN, ROT_MODE_MAX);
 
     pchan->draw_data = NULL;
-    memset(&pchan->runtime, 0, sizeof(pchan->runtime));
+    BKE_pose_channel_runtime_reset(&pchan->runtime);
   }
   pose->ikdata = NULL;
   if (pose->ikparam != NULL) {

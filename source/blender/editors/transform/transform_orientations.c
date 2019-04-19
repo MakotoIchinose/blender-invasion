@@ -587,8 +587,7 @@ static unsigned int bm_mesh_edges_select_get_n(BMesh *bm, BMEdge **elems, const 
 static unsigned int bm_mesh_faces_select_get_n(BMesh *bm, BMVert **elems, const unsigned int n)
 {
   return bm_mesh_elems_select_get_n__internal(
-          bm, (BMElem **)elems, min_ii(n, bm->totfacesel),
-          BM_FACES_OF_MESH, BM_FACE);
+      bm, (BMElem **)elems, min_ii(n, bm->totfacesel), BM_FACES_OF_MESH, BM_FACE);
 }
 #endif
 
@@ -781,8 +780,10 @@ int getTransformOrientation_ex(const bContext *C,
 
             if (BM_vert_edge_pair(v, &e_pair[0], &e_pair[1])) {
               bool v_pair_swap = false;
-              BMVert *v_pair[2] = {BM_edge_other_vert(e_pair[0], v),
-                                   BM_edge_other_vert(e_pair[1], v)};
+              BMVert *v_pair[2] = {
+                  BM_edge_other_vert(e_pair[0], v),
+                  BM_edge_other_vert(e_pair[1], v),
+              };
               float dir_pair[2][3];
 
               if (BM_edge_is_boundary(e_pair[0])) {

@@ -100,7 +100,14 @@ void ED_region_header_draw(const struct bContext *C, struct ARegion *ar);
 
 void ED_region_cursor_set(struct wmWindow *win, struct ScrArea *sa, struct ARegion *ar);
 void ED_region_toggle_hidden(struct bContext *C, struct ARegion *ar);
-void ED_region_visibility_change_update(struct bContext *C, struct ARegion *ar);
+void ED_region_visibility_change_update(struct bContext *C,
+                                        struct ScrArea *sa,
+                                        struct ARegion *ar);
+/* screen_ops.c */
+void ED_region_visibility_change_update_animated(struct bContext *C,
+                                                 struct ScrArea *sa,
+                                                 struct ARegion *ar);
+
 void ED_region_info_draw(struct ARegion *ar,
                          const char *text,
                          float fill_color[4],
@@ -127,6 +134,14 @@ void ED_region_do_msg_notify_tag_redraw(struct bContext *C,
 void ED_area_do_msg_notify_tag_refresh(struct bContext *C,
                                        struct wmMsgSubscribeKey *msg_key,
                                        struct wmMsgSubscribeValue *msg_val);
+
+void ED_area_do_mgs_subscribe_for_tool_header(const struct bContext *C,
+                                              struct WorkSpace *workspace,
+                                              struct Scene *scene,
+                                              struct bScreen *screen,
+                                              struct ScrArea *sa,
+                                              struct ARegion *ar,
+                                              struct wmMsgBus *mbus);
 
 /* message bus */
 void ED_region_message_subscribe(struct bContext *C,

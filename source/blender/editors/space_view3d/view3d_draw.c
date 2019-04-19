@@ -967,7 +967,7 @@ static void draw_rotation_guide(const RegionView3D *rv3d)
     immVertex3fv(pos, end);
 
 #  if 0
-    color[3] = 0.2f + fabsf(rv3d->rot_angle);  /* modulate opacity with angle */
+    color[3] = 0.2f + fabsf(rv3d->rot_angle); /* modulate opacity with angle */
     /* ^^ neat idea, but angle is frame-rate dependent, so it's usually close to 0.2 */
 #  endif
 
@@ -1450,6 +1450,7 @@ void view3d_main_region_draw(const bContext *C, ARegion *ar)
 
   view3d_draw_view(C, ar);
 
+  DRW_cache_free_old_batches(bmain);
   GPU_free_images_old(bmain);
   GPU_pass_cache_garbage_collect();
 
