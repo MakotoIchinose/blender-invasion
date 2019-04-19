@@ -750,6 +750,14 @@ static void rna_def_sculpt(BlenderRNA  *brna)
 	RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Sculpt_ShowMask_update");
 
+	prop = RNA_def_property(srna, "mask_opacity", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_float_sdna(prop, NULL, "mask_opacity");
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 2);
+	RNA_def_property_float_default(prop, 1.0f);
+	RNA_def_property_ui_text(prop, "Mask Opacity", "Opacitiy of the sculpt mask");
+	RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Sculpt_update");
+
 	prop = RNA_def_property(srna, "detail_size", PROP_FLOAT, PROP_PIXEL);
 	RNA_def_property_ui_range(prop, 0.5, 40.0, 10, 2);
 	RNA_def_property_ui_text(prop, "Detail Size", "Maximum edge length for dynamic topology sculpting (in pixels)");

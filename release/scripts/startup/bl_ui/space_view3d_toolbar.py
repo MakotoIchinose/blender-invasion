@@ -1139,6 +1139,8 @@ class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
         col.prop(sculpt, "show_diffuse_color")
         col = flow.column()
         col.prop(sculpt, "show_mask")
+        col = flow.column()
+        col.prop(sculpt, "mask_opacity")
 
 
 class VIEW3D_PT_sculpt_options_unified(Panel, View3DPaintPanel):

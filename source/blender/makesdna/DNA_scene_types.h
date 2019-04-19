@@ -987,11 +987,13 @@ typedef struct Sculpt {
 	/* gravity factor for sculpting */
 	float gravity_factor;
 
+	/* mask opacity */
+	float mask_opacity;
+
 	/* scale for constant detail size */
 	/** Constant detail resolution (Blender unit / constant_detail). */
 	float constant_detail;
 	float detail_percent;
-	char _pad[4];
 
 	struct Object *gravity_object;
 } Sculpt;

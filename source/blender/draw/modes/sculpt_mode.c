@@ -138,6 +138,9 @@ static void SCULPT_cache_init(void *vedata)
 		DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_MULTIPLY;
 		psl->pass = DRW_pass_create("Sculpt Pass", state);
 		stl->g_data->group_smooth = DRW_shgroup_create(e_data.shader_smooth, psl->pass);
+		const DRWContextState *drwctx = DRW_context_state_get();
+		Sculpt *sd = drwctx->scene->toolsettings->sculpt;
+		DRW_shgroup_uniform_float_copy(stl->g_data->group_smooth, "maskOpacity", sd->mask_opacity);
 	}
 }
 
