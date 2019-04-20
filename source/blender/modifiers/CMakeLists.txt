@@ -19,23 +19,23 @@
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
-	.
-	intern
-	../blenkernel
-	../blenlib
-	../blenfont
-	../depsgraph
-	../makesdna
-	../makesrna
-	../bmesh
-	../render/extern/include
-	../../../intern/elbeem/extern
-	../../../intern/guardedalloc
-	../../../intern/eigen
+  .
+  intern
+  ../blenkernel
+  ../blenlib
+  ../blenfont
+  ../depsgraph
+  ../makesdna
+  ../makesrna
+  ../bmesh
+  ../render/extern/include
+  ../../../intern/elbeem/extern
+  ../../../intern/guardedalloc
+  ../../../intern/eigen
 )
 
 set(INC_SYS
-	${ZLIB_INCLUDE_DIRS}
+  ${ZLIB_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -109,37 +109,51 @@ set(SRC
 	intern/MOD_weightvg_util.h
 )
 
+set(LIB
+  bf_blenkernel
+  bf_blenlib
+)
+
 if(WITH_ALEMBIC)
-	add_definitions(-DWITH_ALEMBIC)
-	list(APPEND INC
-		../alembic
-	)
+  add_definitions(-DWITH_ALEMBIC)
+  list(APPEND INC
+    ../alembic
+  )
+  list(APPEND LIB
+    bf_alembic
+  )
 endif()
 
 if(WITH_MOD_REMESH)
-	add_definitions(-DWITH_MOD_REMESH)
-	list(APPEND INC
-		../../../intern/dualcon
-	)
+  list(APPEND INC
+    ../../../intern/dualcon
+  )
+  list(APPEND LIB
+    bf_intern_dualcon
+  )
+  add_definitions(-DWITH_MOD_REMESH)
 endif()
 
 if(WITH_MOD_FLUID)
-	add_definitions(-DWITH_MOD_FLUID)
+  add_definitions(-DWITH_MOD_FLUID)
 endif()
 
 if(WITH_MOD_OCEANSIM)
-	add_definitions(-DWITH_OCEANSIM)
+  add_definitions(-DWITH_OCEANSIM)
 endif()
 
 if(WITH_BULLET)
-	add_definitions(-DWITH_BULLET)
+  list(APPEND LIB
+    extern_bullet
+  )
+  add_definitions(-DWITH_BULLET)
 endif()
 
 if(WITH_INTERNATIONAL)
-	add_definitions(-DWITH_INTERNATIONAL)
+  add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
 # So we can have special tricks in modifier system.
 add_definitions(${GL_DEFINITIONS})
 
-blender_add_lib(bf_modifiers "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_modifiers "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
