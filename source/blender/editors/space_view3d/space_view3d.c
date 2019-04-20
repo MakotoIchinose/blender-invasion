@@ -979,6 +979,95 @@ static void view3d_main_region_message_subscribe(const struct bContext *C,
                                                  struct ARegion *ar,
                                                  struct wmMsgBus *mbus)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	/* Developer note: there are many properties that impact 3D view drawing,
+	 * so instead of subscribing to individual properties, just subscribe to types
+	 * accepting some redundant redraws.
+	 *
+	 * For other space types we might try avoid this, keep the 3D view as an exceptional case! */
+	wmMsgParams_RNA msg_key_params = {{{0}}};
+
+	/* Only subscribe to types. */
+	StructRNA *type_array[] = {
+		&RNA_Window,
+
+		/* These object have properties that impact drawing. */
+		&RNA_AreaLight,
+		&RNA_Camera,
+		&RNA_Light,
+		&RNA_Speaker,
+		&RNA_SunLight,
+
+		/* General types the 3D view depends on. */
+		&RNA_Object,
+		&RNA_UnitSettings,  /* grid-floor */
+
+		&RNA_View3DOverlay,
+		&RNA_View3DShading,
+		&RNA_World,
+	};
+
+	wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
+		.owner = ar,
+		.user_data = ar,
+		.notify = ED_region_do_msg_notify_tag_redraw,
+	};
+
+	for (int i = 0; i < ARRAY_SIZE(type_array); i++) {
+		msg_key_params.ptr.type = type_array[i];
+		WM_msg_subscribe_rna_params(
+		        mbus,
+		        &msg_key_params,
+		        &msg_sub_value_region_tag_redraw,
+		        __func__);
+	}
+
+	/* Subscribe to a handful of other properties. */
+	RegionView3D *rv3d = ar->regiondata;
+
+	WM_msg_subscribe_rna_anon_prop(mbus, RenderSettings, engine, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_prop(mbus, RenderSettings, resolution_x, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_prop(mbus, RenderSettings, resolution_y, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_prop(mbus, RenderSettings, pixel_aspect_x, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_prop(mbus, RenderSettings, pixel_aspect_y, &msg_sub_value_region_tag_redraw);
+	if (rv3d->persp == RV3D_CAMOB) {
+		WM_msg_subscribe_rna_anon_prop(mbus, RenderSettings, use_border, &msg_sub_value_region_tag_redraw);
+	}
+
+	WM_msg_subscribe_rna_anon_type(mbus, SceneEEVEE, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_type(mbus, SceneLANPR, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_type(mbus, SceneDisplay, &msg_sub_value_region_tag_redraw);
+	WM_msg_subscribe_rna_anon_type(mbus, ObjectDisplay, &msg_sub_value_region_tag_redraw);
+
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *obact = OBACT(view_layer);
+	if (obact != NULL) {
+		switch (obact->mode) {
+			case OB_MODE_PARTICLE_EDIT:
+				WM_msg_subscribe_rna_anon_type(mbus, ParticleEdit, &msg_sub_value_region_tag_redraw);
+				break;
+			default:
+				break;
+		}
+	}
+
+	{
+		wmMsgSubscribeValue msg_sub_value_region_tag_refresh = {
+			.owner = ar,
+			.user_data = sa,
+			.notify = WM_toolsystem_do_msg_notify_tag_refresh,
+		};
+		WM_msg_subscribe_rna_anon_prop(
+		        mbus, Object, mode,
+		        &msg_sub_value_region_tag_refresh);
+		WM_msg_subscribe_rna_anon_prop(
+		        mbus, LayerObjects, active,
+		        &msg_sub_value_region_tag_refresh);
+	}
+=======
+>>>>>>> origin/soc-2018-npr
   /* Developer note: there are many properties that impact 3D view drawing,
    * so instead of subscribing to individual properties, just subscribe to types
    * accepting some redundant redraws.
@@ -1060,6 +1149,10 @@ static void view3d_main_region_message_subscribe(const struct bContext *C,
     WM_msg_subscribe_rna_anon_prop(mbus, Object, mode, &msg_sub_value_region_tag_refresh);
     WM_msg_subscribe_rna_anon_prop(mbus, LayerObjects, active, &msg_sub_value_region_tag_refresh);
   }
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 }
 
 /* concept is to retrieve cursor type context-less */

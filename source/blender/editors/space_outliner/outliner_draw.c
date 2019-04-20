@@ -1234,6 +1234,511 @@ static void outliner_buttons(const bContext *C, uiBlock *block, ARegion *ar, Tre
 
 TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	TreeElementIcon data = {0};
+
+	if (tselem->type) {
+		switch (tselem->type) {
+			case TSE_ANIM_DATA:
+				data.icon = ICON_ANIM_DATA; /* XXX */
+				break;
+			case TSE_NLA:
+				data.icon = ICON_NLA;
+				break;
+			case TSE_NLA_TRACK:
+				data.icon = ICON_NLA; /* XXX */
+				break;
+			case TSE_NLA_ACTION:
+				data.icon = ICON_ACTION;
+				break;
+			case TSE_DRIVER_BASE:
+				data.icon = ICON_DRIVER;
+				break;
+			case TSE_DEFGROUP_BASE:
+				data.icon = ICON_GROUP_VERTEX;
+				break;
+			case TSE_BONE:
+			case TSE_EBONE:
+				data.icon = ICON_BONE_DATA;
+				break;
+			case TSE_CONSTRAINT_BASE:
+				data.icon = ICON_CONSTRAINT;
+				break;
+			case TSE_MODIFIER_BASE:
+				data.icon = ICON_MODIFIER_DATA;
+				break;
+			case TSE_LINKED_OB:
+				data.icon = ICON_OBJECT_DATA;
+				break;
+			case TSE_LINKED_PSYS:
+				data.icon = ICON_PARTICLES;
+				break;
+			case TSE_MODIFIER:
+			{
+				Object *ob = (Object *)tselem->id;
+				if (ob->type != OB_GPENCIL) {
+					ModifierData *md = BLI_findlink(&ob->modifiers, tselem->nr);
+					switch ((ModifierType)md->type) {
+						case eModifierType_Subsurf:
+							data.icon = ICON_MOD_SUBSURF;
+							break;
+						case eModifierType_Armature:
+							data.icon = ICON_MOD_ARMATURE;
+							break;
+						case eModifierType_Lattice:
+							data.icon = ICON_MOD_LATTICE;
+							break;
+						case eModifierType_Curve:
+							data.icon = ICON_MOD_CURVE;
+							break;
+						case eModifierType_Build:
+							data.icon = ICON_MOD_BUILD;
+							break;
+						case eModifierType_Mirror:
+							data.icon = ICON_MOD_MIRROR;
+							break;
+						case eModifierType_Decimate:
+							data.icon = ICON_MOD_DECIM;
+							break;
+						case eModifierType_Wave:
+							data.icon = ICON_MOD_WAVE;
+							break;
+						case eModifierType_Hook:
+							data.icon = ICON_HOOK;
+							break;
+						case eModifierType_Softbody:
+							data.icon = ICON_MOD_SOFT;
+							break;
+						case eModifierType_Boolean:
+							data.icon = ICON_MOD_BOOLEAN;
+							break;
+						case eModifierType_ParticleSystem:
+							data.icon = ICON_MOD_PARTICLES;
+							break;
+						case eModifierType_ParticleInstance:
+							data.icon = ICON_MOD_PARTICLES;
+							break;
+						case eModifierType_EdgeSplit:
+							data.icon = ICON_MOD_EDGESPLIT;
+							break;
+						case eModifierType_Array:
+							data.icon = ICON_MOD_ARRAY;
+							break;
+						case eModifierType_UVProject:
+						case eModifierType_UVWarp:  /* TODO, get own icon */
+							data.icon = ICON_MOD_UVPROJECT;
+							break;
+						case eModifierType_Displace:
+							data.icon = ICON_MOD_DISPLACE;
+							break;
+						case eModifierType_Shrinkwrap:
+							data.icon = ICON_MOD_SHRINKWRAP;
+							break;
+						case eModifierType_Cast:
+							data.icon = ICON_MOD_CAST;
+							break;
+						case eModifierType_MeshDeform:
+						case eModifierType_SurfaceDeform:
+							data.icon = ICON_MOD_MESHDEFORM;
+							break;
+						case eModifierType_Bevel:
+							data.icon = ICON_MOD_BEVEL;
+							break;
+						case eModifierType_Smooth:
+						case eModifierType_LaplacianSmooth:
+						case eModifierType_CorrectiveSmooth:
+							data.icon = ICON_MOD_SMOOTH;
+							break;
+						case eModifierType_SimpleDeform:
+							data.icon = ICON_MOD_SIMPLEDEFORM;
+							break;
+						case eModifierType_Mask:
+							data.icon = ICON_MOD_MASK;
+							break;
+						case eModifierType_Cloth:
+							data.icon = ICON_MOD_CLOTH;
+							break;
+						case eModifierType_Explode:
+							data.icon = ICON_MOD_EXPLODE;
+							break;
+						case eModifierType_Collision:
+						case eModifierType_Surface:
+							data.icon = ICON_MOD_PHYSICS;
+							break;
+						case eModifierType_Fluidsim:
+							data.icon = ICON_MOD_FLUIDSIM;
+							break;
+						case eModifierType_Multires:
+							data.icon = ICON_MOD_MULTIRES;
+							break;
+						case eModifierType_Smoke:
+							data.icon = ICON_MOD_SMOKE;
+							break;
+						case eModifierType_Solidify:
+							data.icon = ICON_MOD_SOLIDIFY;
+							break;
+						case eModifierType_Screw:
+							data.icon = ICON_MOD_SCREW;
+							break;
+						case eModifierType_Remesh:
+							data.icon = ICON_MOD_REMESH;
+							break;
+						case eModifierType_WeightVGEdit:
+						case eModifierType_WeightVGMix:
+						case eModifierType_WeightVGProximity:
+							data.icon = ICON_MOD_VERTEX_WEIGHT;
+							break;
+						case eModifierType_DynamicPaint:
+							data.icon = ICON_MOD_DYNAMICPAINT;
+							break;
+						case eModifierType_Ocean:
+							data.icon = ICON_MOD_OCEAN;
+							break;
+						case eModifierType_Warp:
+							data.icon = ICON_MOD_WARP;
+							break;
+						case eModifierType_Skin:
+							data.icon = ICON_MOD_SKIN;
+							break;
+						case eModifierType_Triangulate:
+							data.icon = ICON_MOD_TRIANGULATE;
+							break;
+						case eModifierType_MeshCache:
+							data.icon = ICON_MOD_MESHDEFORM; /* XXX, needs own icon */
+							break;
+						case eModifierType_MeshSequenceCache:
+							data.icon = ICON_MOD_MESHDEFORM; /* XXX, needs own icon */
+							break;
+						case eModifierType_Wireframe:
+							data.icon = ICON_MOD_WIREFRAME;
+							break;
+						case eModifierType_MyBMesh:
+							data.icon = ICON_MOD_MESHDEFORM; /* XXX, needs own icon */
+							break;
+						case eModifierType_LaplacianDeform:
+							data.icon = ICON_MOD_MESHDEFORM; /* XXX, needs own icon */
+							break;
+						case eModifierType_DataTransfer:
+							data.icon = ICON_MOD_DATA_TRANSFER;
+							break;
+						case eModifierType_NormalEdit:
+						case eModifierType_WeightedNormal:
+							data.icon = ICON_MOD_NORMALEDIT;
+							break;
+							/* Default */
+						case eModifierType_None:
+						case eModifierType_ShapeKey:
+
+						case NUM_MODIFIER_TYPES:
+							data.icon = ICON_DOT;
+							break;
+					}
+				}
+				else {
+					/* grease pencil modifiers */
+					GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, tselem->nr);
+					switch ((GpencilModifierType)md->type) {
+						case eGpencilModifierType_Noise:
+							data.icon = ICON_RNDCURVE;
+							break;
+						case eGpencilModifierType_Subdiv:
+							data.icon = ICON_MOD_SUBSURF;
+							break;
+						case eGpencilModifierType_Thick:
+							data.icon = ICON_MOD_THICKNESS;
+							break;
+						case eGpencilModifierType_Tint:
+							data.icon = ICON_MOD_TINT;
+							break;
+						case eGpencilModifierType_Array:
+							data.icon = ICON_MOD_ARRAY;
+							break;
+						case eGpencilModifierType_Build:
+							data.icon = ICON_MOD_BUILD;
+							break;
+						case eGpencilModifierType_Opacity:
+							data.icon = ICON_MOD_MASK;
+							break;
+						case eGpencilModifierType_Color:
+							data.icon = ICON_MOD_HUE_SATURATION;
+							break;
+						case eGpencilModifierType_Lattice:
+							data.icon = ICON_MOD_LATTICE;
+							break;
+						case eGpencilModifierType_Mirror:
+							data.icon = ICON_MOD_MIRROR;
+							break;
+						case eGpencilModifierType_Simplify:
+							data.icon = ICON_MOD_SIMPLIFY;
+							break;
+						case eGpencilModifierType_Smooth:
+							data.icon = ICON_MOD_SMOOTH;
+							break;
+						case eGpencilModifierType_Hook:
+							data.icon = ICON_HOOK;
+							break;
+						case eGpencilModifierType_Offset:
+							data.icon = ICON_MOD_OFFSET;
+							break;
+						case eGpencilModifierType_Armature:
+							data.icon = ICON_MOD_ARMATURE;
+							break;
+
+							/* Default */
+						default:
+							data.icon = ICON_DOT;
+							break;
+					}
+				}
+				break;
+			}
+			case TSE_POSE_BASE:
+				data.icon = ICON_ARMATURE_DATA;
+				break;
+			case TSE_POSE_CHANNEL:
+				data.icon = ICON_BONE_DATA;
+				break;
+			case TSE_PROXY:
+				data.icon = ICON_GHOST_ENABLED;
+				break;
+			case TSE_R_LAYER_BASE:
+				data.icon = ICON_RENDERLAYERS;
+				break;
+			case TSE_SCENE_OBJECTS_BASE:
+				data.icon = ICON_OUTLINER_OB_GROUP_INSTANCE;
+				break;
+			case TSE_R_LAYER:
+				data.icon = ICON_RENDER_RESULT;
+				break;
+			case TSE_LINKED_LAMP:
+				data.icon = ICON_LIGHT_DATA;
+				break;
+			case TSE_LINKED_MAT:
+				data.icon = ICON_MATERIAL_DATA;
+				break;
+			case TSE_POSEGRP_BASE:
+				data.icon = ICON_GROUP_BONE;
+				break;
+			case TSE_SEQUENCE:
+				if (te->idcode == SEQ_TYPE_MOVIE) {
+					data.icon = ICON_SEQUENCE;
+				}
+				else if (te->idcode == SEQ_TYPE_META) {
+					data.icon = ICON_DOT;
+				}
+				else if (te->idcode == SEQ_TYPE_SCENE) {
+					data.icon = ICON_SCENE;
+				}
+				else if (te->idcode == SEQ_TYPE_SOUND_RAM) {
+					data.icon = ICON_SOUND;
+				}
+				else if (te->idcode == SEQ_TYPE_IMAGE) {
+					data.icon = ICON_IMAGE;
+				}
+				else {
+					data.icon = ICON_PARTICLES;
+				}
+				break;
+			case TSE_SEQ_STRIP:
+				data.icon = ICON_LIBRARY_DATA_DIRECT;
+				break;
+			case TSE_SEQUENCE_DUP:
+				data.icon = ICON_OBJECT_DATA;
+				break;
+			case TSE_RNA_STRUCT:
+				if (RNA_struct_is_ID(te->rnaptr.type)) {
+					data.drag_id = (ID *)te->rnaptr.data;
+					data.icon = RNA_struct_ui_icon(te->rnaptr.type);
+				}
+				else {
+					data.icon = RNA_struct_ui_icon(te->rnaptr.type);
+				}
+				break;
+			case TSE_LAYER_COLLECTION:
+			case TSE_SCENE_COLLECTION_BASE:
+			case TSE_VIEW_COLLECTION_BASE:
+			{
+				Collection *collection = outliner_collection_from_tree_element(te);
+				if (collection && !(collection->flag & COLLECTION_IS_MASTER)) {
+					data.drag_id = tselem->id;
+					data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : NULL;
+				}
+
+				data.icon = ICON_GROUP;
+				break;
+			}
+			/* Removed the icons from outliner. Need a better structure with Layers, Palettes and Colors */
+			case TSE_GP_LAYER:
+			{
+				/* indicate whether layer is active */
+				bGPDlayer *gpl = te->directdata;
+				if (gpl->flag & GP_LAYER_ACTIVE) {
+					data.icon = ICON_GREASEPENCIL;
+				}
+				else {
+					data.icon = ICON_DOT;
+				}
+				break;
+			}
+			default:
+				data.icon = ICON_DOT;
+				break;
+		}
+	}
+	else if (tselem->id) {
+		data.drag_id = tselem->id;
+		data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : NULL;
+
+		if (GS(tselem->id->name) == ID_OB) {
+			Object *ob = (Object *)tselem->id;
+			switch (ob->type) {
+				case OB_LAMP:
+					data.icon = ICON_OUTLINER_OB_LIGHT; break;
+				case OB_MESH:
+					data.icon = ICON_OUTLINER_OB_MESH; break;
+				case OB_CAMERA:
+					data.icon = ICON_OUTLINER_OB_CAMERA; break;
+				case OB_CURVE:
+					data.icon = ICON_OUTLINER_OB_CURVE; break;
+				case OB_MBALL:
+					data.icon = ICON_OUTLINER_OB_META; break;
+				case OB_LATTICE:
+					data.icon = ICON_OUTLINER_OB_LATTICE; break;
+				case OB_ARMATURE:
+					data.icon = ICON_OUTLINER_OB_ARMATURE; break;
+				case OB_FONT:
+					data.icon = ICON_OUTLINER_OB_FONT; break;
+				case OB_SURF:
+					data.icon = ICON_OUTLINER_OB_SURFACE; break;
+				case OB_SPEAKER:
+					data.icon = ICON_OUTLINER_OB_SPEAKER; break;
+				case OB_LIGHTPROBE:
+					data.icon = ICON_OUTLINER_OB_LIGHTPROBE; break;
+				case OB_EMPTY:
+					if (ob->instance_collection) {
+						data.icon = ICON_OUTLINER_OB_GROUP_INSTANCE;
+					}
+					else if (ob->empty_drawtype == OB_EMPTY_IMAGE) {
+						data.icon = ICON_OUTLINER_OB_IMAGE;
+					}
+					else {
+						data.icon = ICON_OUTLINER_OB_EMPTY;
+					}
+					break;
+				case OB_GPENCIL:
+					data.icon = ICON_OUTLINER_OB_GREASEPENCIL; break;
+					break;
+			}
+		}
+		else {
+			/* TODO(sergey): Casting to short here just to handle ID_NLA which is
+			 * NOT inside of IDType enum.
+			 */
+			switch ((short)GS(tselem->id->name)) {
+				case ID_SCE:
+					data.icon = ICON_SCENE_DATA; break;
+				case ID_ME:
+					data.icon = ICON_OUTLINER_DATA_MESH; break;
+				case ID_CU:
+					data.icon = ICON_OUTLINER_DATA_CURVE; break;
+				case ID_MB:
+					data.icon = ICON_OUTLINER_DATA_META; break;
+				case ID_LT:
+					data.icon = ICON_OUTLINER_DATA_LATTICE; break;
+				case ID_LA:
+				{
+					Light *la = (Light *)tselem->id;
+					switch (la->type) {
+						case LA_LOCAL:
+							data.icon = ICON_LIGHT_POINT; break;
+						case LA_SUN:
+							data.icon = ICON_LIGHT_SUN; break;
+						case LA_SPOT:
+							data.icon = ICON_LIGHT_SPOT; break;
+						case LA_AREA:
+							data.icon = ICON_LIGHT_AREA; break;
+						default:
+							data.icon = ICON_OUTLINER_DATA_LIGHT; break;
+					}
+					break;
+				}
+				case ID_MA:
+					data.icon = ICON_MATERIAL_DATA; break;
+				case ID_TE:
+					data.icon = ICON_TEXTURE_DATA; break;
+				case ID_IM:
+					data.icon = ICON_IMAGE_DATA; break;
+				case ID_SPK:
+				case ID_SO:
+					data.icon = ICON_OUTLINER_DATA_SPEAKER; break;
+				case ID_AR:
+					data.icon = ICON_OUTLINER_DATA_ARMATURE; break;
+				case ID_CA:
+					data.icon = ICON_OUTLINER_DATA_CAMERA; break;
+				case ID_KE:
+					data.icon = ICON_SHAPEKEY_DATA; break;
+				case ID_WO:
+					data.icon = ICON_WORLD_DATA; break;
+				case ID_AC:
+					data.icon = ICON_ACTION; break;
+				case ID_NLA:
+					data.icon = ICON_NLA; break;
+				case ID_TXT:
+					data.icon = ICON_SCRIPT; break;
+				case ID_GR:
+					data.icon = ICON_GROUP; break;
+				case ID_LI:
+					if (tselem->id->tag & LIB_TAG_MISSING) {
+						data.icon = ICON_LIBRARY_DATA_BROKEN;
+					}
+					else if (((Library *)tselem->id)->parent) {
+						data.icon = ICON_LIBRARY_DATA_INDIRECT;
+					}
+					else {
+						data.icon = ICON_LIBRARY_DATA_DIRECT;
+					}
+					break;
+				case ID_LS:
+					data.icon = ICON_LINE_DATA; break;
+				case ID_GD:
+					data.icon = ICON_OUTLINER_DATA_GREASEPENCIL; break;
+				case ID_LP:
+				{
+					LightProbe *lp = (LightProbe *)tselem->id;
+					switch (lp->type) {
+						case LIGHTPROBE_TYPE_CUBE:
+							data.icon = ICON_LIGHTPROBE_CUBEMAP; break;
+						case LIGHTPROBE_TYPE_PLANAR:
+							data.icon = ICON_LIGHTPROBE_PLANAR; break;
+						case LIGHTPROBE_TYPE_GRID:
+							data.icon = ICON_LIGHTPROBE_GRID; break;
+						default:
+							data.icon = ICON_LIGHTPROBE_CUBEMAP; break;
+					}
+					break;
+				}
+				case ID_BR:
+					data.icon = ICON_BRUSH_DATA; break;
+				case ID_SCR:
+				case ID_WS:
+					data.icon = ICON_WORKSPACE; break;
+				case ID_MSK:
+					data.icon = ICON_MOD_MASK; break;
+				case ID_MC:
+					data.icon = ICON_SEQUENCE; break;
+				case ID_PC:
+					data.icon = ICON_CURVE_BEZCURVE; break;
+				default:
+					break;
+			}
+		}
+	}
+
+	return data;
+=======
+>>>>>>> origin/soc-2018-npr
   TreeElementIcon data = {0};
 
   if (tselem->type) {
@@ -1771,6 +2276,10 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
   }
 
   return data;
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 }
 
 static void tselem_draw_icon(uiBlock *block,

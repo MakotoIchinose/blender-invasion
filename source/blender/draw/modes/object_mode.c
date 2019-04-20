@@ -3549,6 +3549,24 @@ struct LANPR_Data;
 void lanpr_id_update(struct LANPR_Data *vedata, ID *id);
 
 DrawEngineType draw_engine_object_type = {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	NULL, NULL,
+	N_("ObjectMode"),
+	&OBJECT_data_size,
+	&OBJECT_engine_init,
+	&OBJECT_engine_free,
+	&OBJECT_cache_init,
+	&OBJECT_cache_populate,
+	&OBJECT_cache_finish,
+	NULL,
+	&OBJECT_draw_scene,
+	NULL,
+	&lanpr_id_update,
+	NULL,
+=======
+>>>>>>> origin/soc-2018-npr
     NULL,
     NULL,
     N_("ObjectMode"),
@@ -3562,4 +3580,8 @@ DrawEngineType draw_engine_object_type = {
     &OBJECT_draw_scene,
     NULL,
     NULL,
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 };

@@ -1622,8 +1622,14 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 #undef EEVEE_GET_FLOAT
 #undef EEVEE_GET_INT
 #undef EEVEE_GET_BOOL
+<<<<<<< HEAD
       }
     }
+=======
+<<<<<<< HEAD
+			}
+		}
+>>>>>>> origin/soc-2018-npr
 
 		if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
 			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
@@ -1651,6 +1657,734 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
+<<<<<<< HEAD
+=======
+
+		if (!MAIN_VERSION_ATLEAST(bmain, 280, 15)) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->display.matcap_ssao_distance = 0.2f;
+				scene->display.matcap_ssao_attenuation = 1.0f;
+				scene->display.matcap_ssao_samples = 16;
+			}
+
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_OUTLINER) {
+							SpaceOutliner *soops = (SpaceOutliner *)sl;
+							soops->filter_id_type = ID_GR;
+							soops->outlinevis = SO_VIEW_LAYER;
+						}
+					}
+				}
+			}
+
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				switch (scene->toolsettings->snap_mode) {
+					case 0: scene->toolsettings->snap_mode = SCE_SNAP_MODE_INCREMENT; break;
+					case 1: scene->toolsettings->snap_mode = SCE_SNAP_MODE_VERTEX   ; break;
+					case 2: scene->toolsettings->snap_mode = SCE_SNAP_MODE_EDGE     ; break;
+					case 3: scene->toolsettings->snap_mode = SCE_SNAP_MODE_FACE     ; break;
+					case 4: scene->toolsettings->snap_mode = SCE_SNAP_MODE_VOLUME   ; break;
+				}
+				switch (scene->toolsettings->snap_node_mode) {
+					case 5: scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_NODE_X; break;
+					case 6: scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_NODE_Y; break;
+					case 7: scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_NODE_X | SCE_SNAP_MODE_NODE_Y; break;
+					case 8: scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_GRID  ; break;
+				}
+				switch (scene->toolsettings->snap_uv_mode) {
+					case 0: scene->toolsettings->snap_uv_mode = SCE_SNAP_MODE_INCREMENT; break;
+					case 1: scene->toolsettings->snap_uv_mode = SCE_SNAP_MODE_VERTEX   ; break;
+				}
+			}
+
+			ParticleSettings *part;
+			for (part = bmain->particles.first; part; part = part->id.next) {
+				part->shape_flag = PART_SHAPE_CLOSE_TIP;
+				part->shape = 0.0f;
+				part->rad_root = 1.0f;
+				part->rad_tip = 0.0f;
+				part->rad_scale = 0.01f;
+			}
+		}
+
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 18)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "Material", "float", "roughness")) {
+			for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
+				if (mat->use_nodes) {
+					if (MAIN_VERSION_ATLEAST(bmain, 280, 0)) {
+						mat->roughness = mat->gloss_mir;
+					}
+					else {
+						mat->roughness = 0.25f;
+					}
+				}
+				else {
+					mat->roughness = 1.0f - mat->gloss_mir;
+				}
+				mat->metallic = mat->ray_mirror;
+			}
+
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->shading.flag |= V3D_SHADING_SPECULAR_HIGHLIGHT;
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "xray_alpha")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->shading.xray_alpha = 0.5f;
+						}
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "char", "matcap[256]")) {
+			StudioLight *default_matcap = BKE_studiolight_find_default(STUDIOLIGHT_TYPE_MATCAP);
+			/* when loading the internal file is loaded before the matcaps */
+			if (default_matcap) {
+				for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+					for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+						for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+							if (sl->spacetype == SPACE_VIEW3D) {
+								View3D *v3d = (View3D *)sl;
+								BLI_strncpy(v3d->shading.matcap, default_matcap->name, FILE_MAXFILE);
+							}
+						}
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "wireframe_threshold")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->overlay.wireframe_threshold = 0.5f;
+						}
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "cavity_valley_factor")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->shading.cavity_valley_factor = 1.0f;
+							v3d->shading.cavity_ridge_factor = 1.0f;
+						}
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "xray_alpha_bone")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->overlay.xray_alpha_bone = 0.5f;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 19)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "Image", "ListBase", "renderslot")) {
+			for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
+				if (ima->type == IMA_TYPE_R_RESULT) {
+					for (int i = 0; i < 8; i++) {
+						RenderSlot *slot = MEM_callocN(sizeof(RenderSlot), "Image Render Slot Init");
+						BLI_snprintf(slot->name, sizeof(slot->name), "Slot %d", i + 1);
+						BLI_addtail(&ima->renderslots, slot);
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "SpaceAction", "char", "mode_prev")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_ACTION) {
+							SpaceAction *saction = (SpaceAction *)sl;
+							/* "Dopesheet" should be default here, unless it looks like the Action Editor was active instead */
+							if ((saction->mode_prev == 0) && (saction->action == NULL)) {
+								saction->mode_prev = SACTCONT_DOPESHEET;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_VIEW3D) {
+						View3D *v3d = (View3D *)sl;
+						if (v3d->drawtype == OB_TEXTURE) {
+							v3d->drawtype = OB_SOLID;
+							v3d->shading.light = V3D_LIGHTING_STUDIO;
+							v3d->shading.color_type = V3D_SHADING_TEXTURE_COLOR;
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 21)) {
+		for (Scene *sce = bmain->scenes.first; sce != NULL; sce = sce->id.next) {
+			if (sce->ed != NULL && sce->ed->seqbase.first != NULL) {
+				do_versions_seq_unique_name_all_strips(sce, &sce->ed->seqbase);
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "texture_paint_mode_opacity")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							enum { V3D_SHOW_MODE_SHADE_OVERRIDE = (1 << 15), };
+							View3D *v3d = (View3D *)sl;
+							float alpha = v3d->flag2 & V3D_SHOW_MODE_SHADE_OVERRIDE ? 0.0f : 1.0f;
+							v3d->overlay.texture_paint_mode_opacity = alpha;
+							v3d->overlay.vertex_paint_mode_opacity = alpha;
+							v3d->overlay.weight_paint_mode_opacity = alpha;
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "char", "background_type")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							copy_v3_fl(v3d->shading.background_color, 0.05f);
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "gi_cubemap_draw_size")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->eevee.gi_irradiance_draw_size = 0.1f;
+				scene->eevee.gi_cubemap_draw_size = 0.3f;
+			}
+		}
+
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+			if (scene->toolsettings->gizmo_flag == 0) {
+				scene->toolsettings->gizmo_flag = SCE_GIZMO_SHOW_TRANSLATE | SCE_GIZMO_SHOW_ROTATE | SCE_GIZMO_SHOW_SCALE;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "RigidBodyWorld", "RigidBodyWorld_Shared", "*shared")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				RigidBodyWorld *rbw = scene->rigidbody_world;
+
+				if (rbw == NULL) {
+					continue;
+				}
+
+				if (rbw->shared == NULL) {
+					rbw->shared = MEM_callocN(sizeof(*rbw->shared), "RigidBodyWorld_Shared");
+				}
+
+				/* Move shared pointers from deprecated location to current location */
+				rbw->shared->pointcache = rbw->pointcache;
+				rbw->shared->ptcaches = rbw->ptcaches;
+
+				rbw->pointcache = NULL;
+				BLI_listbase_clear(&rbw->ptcaches);
+
+				if (rbw->shared->pointcache == NULL) {
+					rbw->shared->pointcache = BKE_ptcache_add(&(rbw->shared->ptcaches));
+				}
+
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SoftBody", "SoftBody_Shared", "*shared")) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+				SoftBody *sb = ob->soft;
+				if (sb == NULL) {
+					continue;
+				}
+				if (sb->shared == NULL) {
+					sb->shared = MEM_callocN(sizeof(*sb->shared), "SoftBody_Shared");
+				}
+
+				/* Move shared pointers from deprecated location to current location */
+				sb->shared->pointcache = sb->pointcache;
+				sb->shared->ptcaches = sb->ptcaches;
+
+				sb->pointcache = NULL;
+				BLI_listbase_clear(&sb->ptcaches);
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "short", "type")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							if (v3d->drawtype == OB_RENDER) {
+								v3d->drawtype = OB_SOLID;
+							}
+							v3d->shading.type = v3d->drawtype;
+							v3d->shading.prev_type = OB_SOLID;
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneDisplay", "View3DShading", "shading")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				BKE_screen_view3d_shading_init(&scene->display.shading);
+			}
+		}
+		/* initialize grease pencil view data */
+		if (!DNA_struct_elem_find(fd->filesdna, "SpaceView3D", "float", "vertex_opacity")) {
+			for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
+				for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->vertex_opacity = 1.0f;
+							v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 22)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "ToolSettings", "char", "annotate_v3d_align")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->toolsettings->annotate_v3d_align = GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR;
+				scene->toolsettings->annotate_thickness = 3;
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "short", "line_change")) {
+			for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+				for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+					gpl->line_change = gpl->thickness;
+					if ((gpl->thickness < 1) || (gpl->thickness > 10)) {
+						gpl->thickness = 3;
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_paper_opacity")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->overlay.gpencil_paper_opacity = 0.5f;
+						}
+					}
+				}
+			}
+		}
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_grid_opacity")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->overlay.gpencil_grid_opacity = 0.5f;
+						}
+					}
+				}
+			}
+		}
+
+		/* default loc axis */
+		if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "lock_axis")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				/* lock axis */
+				GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
+				if (gset) {
+					gset->lock_axis = GP_LOCKAXIS_Y;
+				}
+			}
+		}
+
+		/* Versioning code for Subsurf modifier. */
+		if (!DNA_struct_elem_find(fd->filesdna, "SubsurfModifier", "short", "uv_smooth")) {
+			for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+				for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Subsurf) {
+						SubsurfModifierData *smd = (SubsurfModifierData *)md;
+						if (smd->flags & eSubsurfModifierFlag_SubsurfUv_DEPRECATED) {
+							smd->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_CORNERS;
+						}
+						else {
+							smd->uv_smooth = SUBSURF_UV_SMOOTH_NONE;
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SubsurfModifier", "short", "quality")) {
+			for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+				for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Subsurf) {
+						SubsurfModifierData *smd = (SubsurfModifierData *)md;
+						smd->quality = min_ii(smd->renderLevels, 3);
+					}
+				}
+			}
+		}
+		/* Versioning code for Multires modifier. */
+		if (!DNA_struct_elem_find(fd->filesdna, "MultiresModifier", "short", "quality")) {
+			for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+				for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Multires) {
+						MultiresModifierData *mmd = (MultiresModifierData *)md;
+						mmd->quality = 3;
+						if (mmd->flags & eMultiresModifierFlag_PlainUv_DEPRECATED) {
+							mmd->uv_smooth = SUBSURF_UV_SMOOTH_NONE;
+						}
+						else {
+							mmd->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_CORNERS;
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "ClothSimSettings", "short", "bending_model")) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+					ClothModifierData *clmd = NULL;
+					if (md->type == eModifierType_Cloth) {
+						clmd = (ClothModifierData *)md;
+					}
+					else if (md->type == eModifierType_ParticleSystem) {
+						ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
+						ParticleSystem *psys = psmd->psys;
+						clmd = psys->clmd;
+					}
+					if (clmd != NULL) {
+						clmd->sim_parms->bending_model = CLOTH_BENDING_LINEAR;
+						clmd->sim_parms->tension = clmd->sim_parms->structural;
+						clmd->sim_parms->compression = clmd->sim_parms->structural;
+						clmd->sim_parms->shear = clmd->sim_parms->structural;
+						clmd->sim_parms->max_tension = clmd->sim_parms->max_struct;
+						clmd->sim_parms->max_compression = clmd->sim_parms->max_struct;
+						clmd->sim_parms->max_shear = clmd->sim_parms->max_struct;
+						clmd->sim_parms->vgroup_shear = clmd->sim_parms->vgroup_struct;
+						clmd->sim_parms->tension_damp = clmd->sim_parms->Cdis;
+						clmd->sim_parms->compression_damp = clmd->sim_parms->Cdis;
+						clmd->sim_parms->shear_damp = clmd->sim_parms->Cdis;
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "BrushGpencilSettings", "float", "era_strength_f")) {
+			for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+				if (brush->gpencil_settings != NULL) {
+					BrushGpencilSettings *gp = brush->gpencil_settings;
+					if (gp->brush_type == GPAINT_TOOL_ERASE) {
+						gp->era_strength_f = 100.0f;
+						gp->era_thickness_f = 10.0f;
+					}
+				}
+			}
+		}
+
+		for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+			for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+				if (md->type == eModifierType_Cloth) {
+					ClothModifierData *clmd = (ClothModifierData *)md;
+
+					if (!(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_GOAL)) {
+						clmd->sim_parms->vgroup_mass = 0;
+					}
+
+					if (!(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SCALING)) {
+						clmd->sim_parms->vgroup_struct = 0;
+						clmd->sim_parms->vgroup_shear = 0;
+						clmd->sim_parms->vgroup_bend = 0;
+					}
+
+					if (!(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW)) {
+						clmd->sim_parms->shrink_min = 0.0f;
+						clmd->sim_parms->vgroup_shrink = 0;
+					}
+
+					if (!(clmd->coll_parms->flags & CLOTH_COLLSETTINGS_FLAG_ENABLED)) {
+						clmd->coll_parms->flags &= ~CLOTH_COLLSETTINGS_FLAG_SELF;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 24)) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_VIEW3D) {
+						View3D *v3d = (View3D *)sl;
+						v3d->overlay.edit_flag |= V3D_OVERLAY_EDIT_FACES |
+						                          V3D_OVERLAY_EDIT_SEAMS |
+						                          V3D_OVERLAY_EDIT_SHARP |
+						                          V3D_OVERLAY_EDIT_FREESTYLE_EDGE |
+						                          V3D_OVERLAY_EDIT_FREESTYLE_FACE |
+						                          V3D_OVERLAY_EDIT_EDGES |
+						                          V3D_OVERLAY_EDIT_CREASES |
+						                          V3D_OVERLAY_EDIT_BWEIGHTS |
+						                          V3D_OVERLAY_EDIT_CU_HANDLES |
+						                          V3D_OVERLAY_EDIT_CU_NORMALS;
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "ShrinkwrapModifierData", "char", "shrinkMode")) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Shrinkwrap) {
+						ShrinkwrapModifierData *smd = (ShrinkwrapModifierData *)md;
+						if (smd->shrinkOpts & MOD_SHRINKWRAP_KEEP_ABOVE_SURFACE) {
+							smd->shrinkMode = MOD_SHRINKWRAP_ABOVE_SURFACE;
+							smd->shrinkOpts &= ~MOD_SHRINKWRAP_KEEP_ABOVE_SURFACE;
+						}
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "PartDeflect", "float", "pdef_cfrict")) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+				if (ob->pd) {
+					ob->pd->pdef_cfrict = 5.0f;
+				}
+
+				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Cloth) {
+						ClothModifierData *clmd = (ClothModifierData *)md;
+
+						clmd->coll_parms->selfepsilon = 0.015f;
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "xray_alpha_wire")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->shading.xray_alpha_wire = 0.5f;
+						}
+					}
+				}
+			}
+
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->shading.flag |= V3D_SHADING_XRAY_BONE;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 25)) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+			UnitSettings *unit = &scene->unit;
+			if (unit->system != USER_UNIT_NONE) {
+				unit->length_unit = bUnit_GetBaseUnitOfType(scene->unit.system, B_UNIT_LENGTH);
+				unit->mass_unit = bUnit_GetBaseUnitOfType(scene->unit.system, B_UNIT_MASS);
+			}
+			unit->time_unit = bUnit_GetBaseUnitOfType(USER_UNIT_NONE, B_UNIT_TIME);
+		}
+
+		/* gpencil grid settings */
+		for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+			ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f); // Color
+			ARRAY_SET_ITEMS(gpd->grid.scale, 1.0f, 1.0f); // Scale
+			gpd->grid.lines = GP_DEFAULT_GRID_LINES; // Number of lines
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 28)) {
+		for (Mesh *mesh = bmain->meshes.first; mesh; mesh = mesh->id.next) {
+			BKE_mesh_calc_edges_loose(mesh);
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 29)) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_VIEW3D) {
+						enum { V3D_OCCLUDE_WIRE = (1 << 14) };
+						View3D *v3d = (View3D *)sl;
+						if (v3d->flag2 & V3D_OCCLUDE_WIRE) {
+							v3d->overlay.edit_flag |= V3D_OVERLAY_EDIT_OCCLUDE_WIRE;
+							v3d->flag2 &= ~V3D_OCCLUDE_WIRE;
+						}
+					}
+				}
+			}
+		}
+
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_PROPERTIES) {
+						ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+						ARegion *ar = MEM_callocN(sizeof(ARegion), "navigation bar for properties");
+						ARegion *ar_header = NULL;
+
+						for (ar_header = regionbase->first; ar_header; ar_header = ar_header->next) {
+							if (ar_header->regiontype == RGN_TYPE_HEADER) {
+								break;
+							}
+						}
+						BLI_assert(ar_header);
+
+						BLI_insertlinkafter(regionbase, ar_header, ar);
+
+						ar->regiontype = RGN_TYPE_NAV_BAR;
+						ar->alignment = RGN_ALIGN_LEFT;
+					}
+				}
+			}
+		}
+
+		/* grease pencil fade layer opacity */
+		if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_fade_layer")) {
+			for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+				for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+					for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+						if (sl->spacetype == SPACE_VIEW3D) {
+							View3D *v3d = (View3D *)sl;
+							v3d->overlay.gpencil_fade_layer = 0.5f;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 30)) {
+		/* grease pencil main material show switches */
+		for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
+			if (mat->gp_style) {
+				mat->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+				mat->gp_style->flag |= GP_STYLE_FILL_SHOW;
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 33)) {
+		/* Grease pencil reset sculpt brushes after struct rename  */
+		if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "weighttype")) {
+			float curcolor_add[3], curcolor_sub[3];
+			ARRAY_SET_ITEMS(curcolor_add, 1.0f, 0.6f, 0.6f);
+			ARRAY_SET_ITEMS(curcolor_sub, 0.6f, 0.6f, 1.0f);
+
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				/* sculpt brushes */
+				GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
+				if (gset) {
+					for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
+						GP_Sculpt_Data *gp_brush = &gset->brush[i];
+						gp_brush->size = 30;
+						gp_brush->strength = 0.5f;
+						gp_brush->flag = GP_SCULPT_FLAG_USE_FALLOFF | GP_SCULPT_FLAG_ENABLE_CURSOR;
+						copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
+						copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
+					}
+				}
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "overscan")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->eevee.overscan = 3.0f;
+			}
+		}
+
+		for (Light *la = bmain->lights.first; la; la = la->id.next) {
+			/* Removed Hemi lights. */
+			if (!ELEM(la->type, LA_LOCAL, LA_SUN, LA_SPOT, LA_AREA)) {
+				la->type = LA_SUN;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "light_threshold")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->eevee.light_threshold = 0.01f;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "gi_irradiance_smoothing")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->eevee.gi_irradiance_smoothing = 0.1f;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "gi_filter_quality")) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				scene->eevee.gi_filter_quality = 1.0f;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "Light", "float", "att_dist")) {
+			for (Light *la = bmain->lights.first; la; la = la->id.next) {
+				la->att_dist = la->clipend;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "Brush", "char", "weightpaint_tool")) {
+			/* Magic defines from old files (2.7x) */
+=======
+      }
+    }
+
+>>>>>>> origin/soc-2018-npr
     if (!MAIN_VERSION_ATLEAST(bmain, 280, 15)) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         scene->display.matcap_ssao_distance = 0.2f;
@@ -2382,6 +3116,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "Brush", "char", "weightpaint_tool")) {
       /* Magic defines from old files (2.7x) */
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 #define PAINT_BLEND_MIX 0
 #define PAINT_BLEND_ADD 1

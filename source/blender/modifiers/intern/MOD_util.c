@@ -246,6 +246,67 @@ void MOD_get_vgroup(
 void modifier_type_init(ModifierTypeInfo *types[])
 {
 #define INIT_TYPE(typeName) (types[eModifierType_##typeName] = &modifierType_##typeName)
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	INIT_TYPE(None);
+	INIT_TYPE(Curve);
+	INIT_TYPE(Lattice);
+	INIT_TYPE(Subsurf);
+	INIT_TYPE(Build);
+	INIT_TYPE(Array);
+	INIT_TYPE(Mirror);
+	INIT_TYPE(EdgeSplit);
+	INIT_TYPE(Bevel);
+	INIT_TYPE(Displace);
+	INIT_TYPE(UVProject);
+	INIT_TYPE(Decimate);
+	INIT_TYPE(Smooth);
+	INIT_TYPE(Cast);
+	INIT_TYPE(Wave);
+	INIT_TYPE(Armature);
+	INIT_TYPE(Hook);
+	INIT_TYPE(Softbody);
+	INIT_TYPE(Cloth);
+	INIT_TYPE(Collision);
+	INIT_TYPE(Boolean);
+	INIT_TYPE(MeshDeform);
+	INIT_TYPE(Ocean);
+	INIT_TYPE(ParticleSystem);
+	INIT_TYPE(ParticleInstance);
+	INIT_TYPE(Explode);
+	INIT_TYPE(Shrinkwrap);
+	INIT_TYPE(Fluidsim);
+	INIT_TYPE(Mask);
+	INIT_TYPE(SimpleDeform);
+	INIT_TYPE(Multires);
+	INIT_TYPE(Surface);
+	INIT_TYPE(Smoke);
+	INIT_TYPE(ShapeKey);
+	INIT_TYPE(Solidify);
+	INIT_TYPE(Screw);
+	INIT_TYPE(Warp);
+	INIT_TYPE(WeightVGEdit);
+	INIT_TYPE(WeightVGMix);
+	INIT_TYPE(WeightVGProximity);
+	INIT_TYPE(DynamicPaint);
+	INIT_TYPE(Remesh);
+	INIT_TYPE(Skin);
+	INIT_TYPE(LaplacianSmooth);
+	INIT_TYPE(Triangulate);
+	INIT_TYPE(UVWarp);
+	INIT_TYPE(MeshCache);
+	INIT_TYPE(LaplacianDeform);
+	INIT_TYPE(Wireframe);
+	INIT_TYPE(DataTransfer);
+	INIT_TYPE(NormalEdit);
+	INIT_TYPE(CorrectiveSmooth);
+	INIT_TYPE(MeshSequenceCache);
+	INIT_TYPE(SurfaceDeform);
+	INIT_TYPE(MyBMesh);
+	INIT_TYPE(WeightedNormal);
+=======
+>>>>>>> origin/soc-2018-npr
   INIT_TYPE(None);
   INIT_TYPE(Curve);
   INIT_TYPE(Lattice);
@@ -302,5 +363,9 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(SurfaceDeform);
   INIT_TYPE(MyBMesh);
   INIT_TYPE(WeightedNormal);
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 #undef INIT_TYPE
 }

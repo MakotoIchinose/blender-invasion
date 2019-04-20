@@ -74,6 +74,10 @@ void SCENE_OT_freestyle_modifier_copy(struct wmOperatorType *ot);
 void SCENE_OT_freestyle_stroke_material_create(struct wmOperatorType *ot);
 #endif
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
 /* lanpr: lanpr_software_render.c */
 void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType* ot);
 void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType* ot);
@@ -86,6 +90,11 @@ void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
 
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 void TEXTURE_OT_slot_copy(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_paste(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_move(struct wmOperatorType *ot);

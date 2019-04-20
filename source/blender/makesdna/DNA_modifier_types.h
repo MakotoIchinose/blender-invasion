@@ -33,6 +33,68 @@ struct Scene;
 struct Subdiv;
 
 typedef enum ModifierType {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	eModifierType_None              = 0,
+	eModifierType_Subsurf           = 1,
+	eModifierType_Lattice           = 2,
+	eModifierType_Curve             = 3,
+	eModifierType_Build             = 4,
+	eModifierType_Mirror            = 5,
+	eModifierType_Decimate          = 6,
+	eModifierType_Wave              = 7,
+	eModifierType_Armature          = 8,
+	eModifierType_Hook              = 9,
+	eModifierType_Softbody          = 10,
+	eModifierType_Boolean           = 11,
+	eModifierType_Array             = 12,
+	eModifierType_EdgeSplit         = 13,
+	eModifierType_Displace          = 14,
+	eModifierType_UVProject         = 15,
+	eModifierType_Smooth            = 16,
+	eModifierType_Cast              = 17,
+	eModifierType_MeshDeform        = 18,
+	eModifierType_ParticleSystem    = 19,
+	eModifierType_ParticleInstance  = 20,
+	eModifierType_Explode           = 21,
+	eModifierType_Cloth             = 22,
+	eModifierType_Collision         = 23,
+	eModifierType_Bevel             = 24,
+	eModifierType_Shrinkwrap        = 25,
+	eModifierType_Fluidsim          = 26,
+	eModifierType_Mask              = 27,
+	eModifierType_SimpleDeform      = 28,
+	eModifierType_Multires          = 29,
+	eModifierType_Surface           = 30,
+	eModifierType_Smoke             = 31,
+	eModifierType_ShapeKey          = 32,
+	eModifierType_Solidify          = 33,
+	eModifierType_Screw             = 34,
+	eModifierType_Warp              = 35,
+	eModifierType_WeightVGEdit      = 36,
+	eModifierType_WeightVGMix       = 37,
+	eModifierType_WeightVGProximity = 38,
+	eModifierType_Ocean             = 39,
+	eModifierType_DynamicPaint      = 40,
+	eModifierType_Remesh            = 41,
+	eModifierType_Skin              = 42,
+	eModifierType_LaplacianSmooth   = 43,
+	eModifierType_Triangulate       = 44,
+	eModifierType_UVWarp            = 45,
+	eModifierType_MeshCache         = 46,
+	eModifierType_LaplacianDeform   = 47,
+	eModifierType_Wireframe         = 48,
+	eModifierType_DataTransfer      = 49,
+	eModifierType_NormalEdit        = 50,
+	eModifierType_CorrectiveSmooth  = 51,
+	eModifierType_MeshSequenceCache = 52,
+	eModifierType_SurfaceDeform     = 53,
+	eModifierType_WeightedNormal	= 54,
+	eModifierType_MyBMesh           = 55,
+	NUM_MODIFIER_TYPES
+=======
+>>>>>>> origin/soc-2018-npr
   eModifierType_None = 0,
   eModifierType_Subsurf = 1,
   eModifierType_Lattice = 2,
@@ -90,6 +152,10 @@ typedef enum ModifierType {
   eModifierType_WeightedNormal = 54,
 	eModifierType_MyBMesh           = 55,
   NUM_MODIFIER_TYPES,
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 } ModifierType;
 
 typedef enum ModifierMode {
@@ -1764,6 +1830,10 @@ enum {
   MOD_WIREFRAME_CREASE = (1 << 5),
 };
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
 /* Modifier data stored in the blend file */
 typedef struct MyBMeshModifierData {
 	ModifierData modifier;
@@ -1773,6 +1843,11 @@ typedef struct MyBMeshModifierData {
 	short _pad[2];
 } MyBMeshModifierData;
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 typedef struct DataTransferModifierData {
   ModifierData modifier;
 
@@ -1953,6 +2028,10 @@ enum {
 #define MOD_MESHSEQ_READ_ALL \
 	(MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
 enum {
 	MOD_MYBMESH_TRIANG = (1 << 0),
 	MOD_MYBMESH_FF_SPLIT = (1 << 1),
@@ -1965,3 +2044,9 @@ enum {
 };
 
 #endif  /* __DNA_MODIFIER_TYPES_H__ */
+<<<<<<< HEAD
+=======
+=======
+#endif /* __DNA_MODIFIER_TYPES_H__ */
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr

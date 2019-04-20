@@ -2519,6 +2519,221 @@ static void write_lightcache(WriteData *wd, LightCache *cache)
 
 static void write_scene(WriteData *wd, Scene *sce)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	/* write LibData */
+	writestruct(wd, ID_SCE, Scene, 1, sce);
+	write_iddata(wd, &sce->id);
+
+	if (sce->adt) {
+		write_animdata(wd, sce->adt);
+	}
+	write_keyingsets(wd, &sce->keyingsets);
+
+	/* direct data */
+	ToolSettings *tos = sce->toolsettings;
+	writestruct(wd, DATA, ToolSettings, 1, tos);
+	if (tos->vpaint) {
+		writestruct(wd, DATA, VPaint, 1, tos->vpaint);
+		write_paint(wd, &tos->vpaint->paint);
+	}
+	if (tos->wpaint) {
+		writestruct(wd, DATA, VPaint, 1, tos->wpaint);
+		write_paint(wd, &tos->wpaint->paint);
+	}
+	if (tos->sculpt) {
+		writestruct(wd, DATA, Sculpt, 1, tos->sculpt);
+		write_paint(wd, &tos->sculpt->paint);
+	}
+	if (tos->uvsculpt) {
+		writestruct(wd, DATA, UvSculpt, 1, tos->uvsculpt);
+		write_paint(wd, &tos->uvsculpt->paint);
+	}
+	if (tos->gp_paint) {
+		writestruct(wd, DATA, GpPaint, 1, tos->gp_paint);
+		write_paint(wd, &tos->gp_paint->paint);
+	}
+	/* write grease-pencil custom ipo curve to file */
+	if (tos->gp_interpolate.custom_ipo) {
+		write_curvemapping(wd, tos->gp_interpolate.custom_ipo);
+	}
+	/* write grease-pencil multiframe falloff curve to file */
+	if (tos->gp_sculpt.cur_falloff) {
+		write_curvemapping(wd, tos->gp_sculpt.cur_falloff);
+	}
+	/* write grease-pencil primitive curve to file */
+	if (tos->gp_sculpt.cur_primitive) {
+		write_curvemapping(wd, tos->gp_sculpt.cur_primitive);
+	}
+
+	write_paint(wd, &tos->imapaint.paint);
+
+	Editing *ed = sce->ed;
+	if (ed) {
+		Sequence *seq;
+
+		writestruct(wd, DATA, Editing, 1, ed);
+
+		/* reset write flags too */
+
+		SEQ_BEGIN(ed, seq)
+		{
+			if (seq->strip) {
+				seq->strip->done = false;
+			}
+			writestruct(wd, DATA, Sequence, 1, seq);
+		} SEQ_END;
+
+		SEQ_BEGIN(ed, seq)
+		{
+			if (seq->strip && seq->strip->done == 0) {
+				/* write strip with 'done' at 0 because readfile */
+
+				if (seq->effectdata) {
+					switch (seq->type) {
+						case SEQ_TYPE_COLOR:
+							writestruct(wd, DATA, SolidColorVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_SPEED:
+							writestruct(wd, DATA, SpeedControlVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_WIPE:
+							writestruct(wd, DATA, WipeVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_GLOW:
+							writestruct(wd, DATA, GlowVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_TRANSFORM:
+							writestruct(wd, DATA, TransformVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_GAUSSIAN_BLUR:
+							writestruct(wd, DATA, GaussianBlurVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_TEXT:
+							writestruct(wd, DATA, TextVars, 1, seq->effectdata);
+							break;
+						case SEQ_TYPE_COLORMIX:
+							writestruct(wd, DATA, ColorMixVars, 1, seq->effectdata);
+							break;
+					}
+				}
+
+				writestruct(wd, DATA, Stereo3dFormat, 1, seq->stereo3d_format);
+
+				Strip *strip = seq->strip;
+				writestruct(wd, DATA, Strip, 1, strip);
+				if (seq->flag & SEQ_USE_CROP && strip->crop) {
+					writestruct(wd, DATA, StripCrop, 1, strip->crop);
+				}
+				if (seq->flag & SEQ_USE_TRANSFORM && strip->transform) {
+					writestruct(wd, DATA, StripTransform, 1, strip->transform);
+				}
+				if (seq->flag & SEQ_USE_PROXY && strip->proxy) {
+					writestruct(wd, DATA, StripProxy, 1, strip->proxy);
+				}
+				if (seq->type == SEQ_TYPE_IMAGE) {
+					writestruct(wd, DATA, StripElem,
+					            MEM_allocN_len(strip->stripdata) / sizeof(struct StripElem),
+					            strip->stripdata);
+				}
+				else if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+					writestruct(wd, DATA, StripElem, 1, strip->stripdata);
+				}
+
+				strip->done = true;
+			}
+
+			if (seq->prop) {
+				IDP_WriteProperty(seq->prop, wd);
+			}
+
+			write_sequence_modifiers(wd, &seq->modifiers);
+		} SEQ_END;
+
+		/* new; meta stack too, even when its nasty restore code */
+		for (MetaStack *ms = ed->metastack.first; ms; ms = ms->next) {
+			writestruct(wd, DATA, MetaStack, 1, ms);
+		}
+	}
+
+	if (sce->r.avicodecdata) {
+		writestruct(wd, DATA, AviCodecData, 1, sce->r.avicodecdata);
+		if (sce->r.avicodecdata->lpFormat) {
+			writedata(wd, DATA, sce->r.avicodecdata->cbFormat, sce->r.avicodecdata->lpFormat);
+		}
+		if (sce->r.avicodecdata->lpParms) {
+			writedata(wd, DATA, sce->r.avicodecdata->cbParms, sce->r.avicodecdata->lpParms);
+		}
+	}
+	if (sce->r.ffcodecdata.properties) {
+		IDP_WriteProperty(sce->r.ffcodecdata.properties, wd);
+	}
+
+	/* writing dynamic list of TimeMarkers to the blend file */
+	for (TimeMarker *marker = sce->markers.first; marker; marker = marker->next) {
+		writestruct(wd, DATA, TimeMarker, 1, marker);
+	}
+
+	/* writing dynamic list of TransformOrientations to the blend file */
+	for (TransformOrientation *ts = sce->transform_spaces.first; ts; ts = ts->next) {
+		writestruct(wd, DATA, TransformOrientation, 1, ts);
+	}
+
+	/* writing MultiView to the blend file */
+	for (SceneRenderView *srv = sce->r.views.first; srv; srv = srv->next) {
+		writestruct(wd, DATA, SceneRenderView, 1, srv);
+	}
+
+	if (sce->nodetree) {
+		writestruct(wd, DATA, bNodeTree, 1, sce->nodetree);
+		write_nodetree_nolib(wd, sce->nodetree);
+	}
+
+	write_view_settings(wd, &sce->view_settings);
+
+	/* writing RigidBodyWorld data to the blend file */
+	if (sce->rigidbody_world) {
+		/* Set deprecated pointers to prevent crashes of older Blenders */
+		sce->rigidbody_world->pointcache = sce->rigidbody_world->shared->pointcache;
+		sce->rigidbody_world->ptcaches = sce->rigidbody_world->shared->ptcaches;
+		writestruct(wd, DATA, RigidBodyWorld, 1, sce->rigidbody_world);
+
+		writestruct(wd, DATA, RigidBodyWorld_Shared, 1, sce->rigidbody_world->shared);
+		writestruct(wd, DATA, EffectorWeights, 1, sce->rigidbody_world->effector_weights);
+		write_pointcaches(wd, &(sce->rigidbody_world->shared->ptcaches));
+	}
+
+	write_previews(wd, sce->preview);
+	write_curvemapping_curves(wd, &sce->r.mblur_shutter_curve);
+
+	for (ViewLayer *view_layer = sce->view_layers.first; view_layer; view_layer = view_layer->next) {
+		write_view_layer(wd, view_layer);
+	}
+
+	if (sce->master_collection) {
+		writestruct(wd, DATA, Collection, 1, sce->master_collection);
+		write_collection_nolib(wd, sce->master_collection);
+	}
+
+	/* Eevee Lightcache */
+	if (sce->eevee.light_cache && !wd->use_memfile) {
+		writestruct(wd, DATA, LightCache, 1, sce->eevee.light_cache);
+		write_lightcache(wd, sce->eevee.light_cache);
+	}
+
+	/* LANPR Line Layers */
+	for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+		writestruct(wd, DATA, LANPR_LineLayer, 1, ll);
+		for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
+			writestruct(wd, DATA, LANPR_LineLayerComponent, 1, llc);
+		}
+	}
+
+	/* Freed on doversion. */
+	BLI_assert(sce->layer_properties == NULL);
+=======
+>>>>>>> origin/soc-2018-npr
   /* write LibData */
   writestruct(wd, ID_SCE, Scene, 1, sce);
   write_iddata(wd, &sce->id);
@@ -2731,6 +2946,10 @@ static void write_scene(WriteData *wd, Scene *sce)
 
   /* Freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 }
 
 static void write_gpencil(WriteData *wd, bGPdata *gpd)

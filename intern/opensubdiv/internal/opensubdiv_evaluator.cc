@@ -108,6 +108,10 @@ void evaluateLimit(OpenSubdiv_Evaluator* evaluator,
                                                   P, dPdu, dPdv);
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
 void evaluateLimit2(OpenSubdiv_Evaluator* evaluator,
                    const int ptex_face_index,
                    const float face_u, const float face_v,
@@ -124,6 +128,12 @@ void evaluateLimit2(OpenSubdiv_Evaluator* evaluator,
 }
 
 void evaluateVarying(OpenSubdiv_Evaluator* evaluator,
+<<<<<<< HEAD
+=======
+=======
+void evaluateVarying(OpenSubdiv_Evaluator *evaluator,
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
                      const int ptex_face_index,
                      float face_u, float face_v,
                      float varying[3]) {

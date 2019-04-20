@@ -458,6 +458,10 @@ class VolatileEvalOutput {
     }
   }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
   void evalPatchesWithDerivatives2(const PatchCoord& patch_coord,
 		  float P[3],
 		  float dPdu[3],
@@ -522,6 +526,13 @@ class VolatileEvalOutput {
   }
 
   void evalPatchVarying(const PatchCoord& patch_coord, float varying[3]) {
+<<<<<<< HEAD
+=======
+=======
+  void evalPatchVarying(const PatchCoord &patch_coord, float varying[3])
+  {
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
     StackAllocatedBuffer<6, 1> varying_data;
     BufferDescriptor varying_desc(3, 3, 6);
     SinglePatchCoordBuffer patch_coord_buffer(patch_coord);

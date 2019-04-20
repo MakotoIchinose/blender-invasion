@@ -673,6 +673,10 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             row.operator("object.multires_external_save", text="Save External...")
             row.label()
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
     def MY_BMESH(self, layout, ob, md):
         split = layout.split(factor=0.25)
 
@@ -699,6 +703,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "camera_object", text="")
 
     def OCEAN(self, layout, ob, md):
+<<<<<<< HEAD
+=======
+=======
+    def OCEAN(self, layout, _ob, md):
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
         if not bpy.app.build_options.mod_oceansim:
             layout.label(text="Built without OceanSim modifier")
             return

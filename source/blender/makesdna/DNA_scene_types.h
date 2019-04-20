@@ -399,6 +399,58 @@ typedef enum eStereo3dInterlaceType {
  *  RNA ensures these enum's are only selectable for render output.
  */
 typedef struct ImageFormatData {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	/**
+	 * R_IMF_IMTYPE_PNG, R_...
+	 * \note, video types should only ever be set from this structure when used from RenderData.
+	 */
+	char imtype;
+	/**
+	 * bits per channel, R_IMF_CHAN_DEPTH_8 -> 32,
+	 * not a flag, only set 1 at a time. */
+	char depth;
+
+	/** R_IMF_PLANES_BW, R_IMF_PLANES_RGB, R_IMF_PLANES_RGBA. */
+	char planes;
+	/** Generic options for all image types, alpha zbuffer. */
+	char flag;
+
+	/** (0 - 100), eg: jpeg quality. */
+	char quality;
+	/** (0 - 100), eg: png compression. */
+	char compress;
+
+
+	/* --- format specific --- */
+
+	/* OpenEXR */
+	char exr_codec;
+
+	/* Cineon */
+	char cineon_flag;
+	short cineon_white, cineon_black;
+	float cineon_gamma;
+
+	/* Jpeg2000 */
+	char jp2_flag;
+	char jp2_codec;
+
+	/* TIFF */
+	char tiff_codec;
+
+	char _pad[4];
+
+	/* Multiview */
+	char views_format;
+	Stereo3dFormat stereo3d_format;
+
+	/* color management */
+	ColorManagedViewSettings view_settings;
+	ColorManagedDisplaySettings display_settings;
+=======
+>>>>>>> origin/soc-2018-npr
   /**
    * R_IMF_IMTYPE_PNG, R_...
    * \note, video types should only ever be set from this structure when used from RenderData.
@@ -445,6 +497,10 @@ typedef struct ImageFormatData {
   /* color management */
   ColorManagedViewSettings view_settings;
   ColorManagedDisplaySettings display_settings;
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 } ImageFormatData;
 
 /* ImageFormatData.imtype */
@@ -593,6 +649,192 @@ typedef enum ClayFlagSettings {
 /* Render Data */
 
 typedef struct RenderData {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	struct ImageFormatData im_format;
+
+	struct AviCodecData *avicodecdata;
+	struct FFMpegCodecData ffcodecdata;
+
+	/** Frames as in 'images'. */
+	int cfra, sfra, efra;
+	/** Subframe offset from cfra, in 0.0-1.0. */
+	float subframe;
+	/** Start+end frames of preview range. */
+	int psfra, pefra;
+
+	int images, framapto;
+	short flag, threads;
+
+	float framelen, blurfac;
+
+	/** Frames to jump during render/playback. */
+	int frame_step;
+
+	/** Standalone player stereo settings */  //  XXX deprecated since .2.5
+	short stereomode  DNA_DEPRECATED;
+
+	/** For the dimensions presets menu. */
+	short dimensionspreset;
+
+	/** Size in %. */
+	short size;
+
+	char _pad6[2];
+
+	/* from buttons: */
+	/**
+	 * The desired number of pixels in the x direction
+	 */
+	int xsch;
+	/**
+	 * The desired number of pixels in the y direction
+	 */
+	int ysch;
+
+	/**
+	 * render tile dimensions
+	 */
+	int tilex, tiley;
+
+	short planes DNA_DEPRECATED;
+	short imtype DNA_DEPRECATED;
+	short subimtype  DNA_DEPRECATED;
+	short quality  DNA_DEPRECATED;
+
+	/**
+	 * Render to image editor, fullscreen or to new window.
+	 */
+	short displaymode;
+	char use_lock_interface;
+	char _pad7;
+
+	/**
+	 * Flags for render settings. Use bit-masking to access the settings.
+	 */
+	int scemode;
+
+	/**
+	 * Flags for render settings. Use bit-masking to access the settings.
+	 */
+	int mode;
+
+	/**
+	 * What to do with the sky/background.
+	 * Picks sky/premul blending for the background.
+	 */
+	short alphamode;
+
+	/**
+	 * The number of samples to use per pixel.
+	 */
+	short osa;
+
+	short frs_sec;
+	char _pad[6];
+
+
+	/* safety, border and display rect */
+	rctf safety, border;
+	rcti disprect;
+
+	/* information on different layers to be rendered */
+	/** Converted to Scene->view_layers. */
+	ListBase layers DNA_DEPRECATED;
+	/** Converted to Scene->active_layer. */
+	short actlay DNA_DEPRECATED;
+	char _pad1[2];
+
+	/**
+	 * Adjustment factors for the aspect ratio in the x direction, was a short in 2.45
+	 */
+	float xasp, yasp;
+
+	float frs_sec_base;
+
+	/**
+	 * Value used to define filter size for all filter options  */
+	float gauss;
+
+
+	/* color management settings - color profiles, gamma correction, etc */
+	int color_mgt_flag;
+
+	/* Dither noise intensity */
+	float dither_intensity;
+
+	/* Bake Render options */
+	short bake_mode, bake_flag;
+	short bake_filter, bake_samples;
+	float bake_biasdist, bake_user_scale;
+
+	/* path to render output */
+	/** 1024 = FILE_MAX. */
+	char pic[1024];
+
+	/* stamps flags. */
+	int stamp;
+	/** Select one of blenders bitmap fonts. */
+	short stamp_font_id;
+	char _pad3[2];
+
+	/* stamp info user data. */
+	char stamp_udata[768];
+
+	/* foreground/background color. */
+	float fg_stamp[4];
+	float bg_stamp[4];
+
+	/* sequencer options */
+	char seq_prev_type;
+	/** UNUSED!. */
+	char seq_rend_type;
+	/** Flag use for sequence render/draw. */
+	char seq_flag;
+	char _pad5[5];
+
+	/* render simplify */
+	short simplify_subsurf;
+	short simplify_subsurf_render;
+	short simplify_gpencil;
+	short simplify_smoke_ignore_highres;
+	float simplify_particles;
+	float simplify_particles_render;
+
+	/* Freestyle line thickness options */
+	int line_thickness_mode;
+	/** In pixels. */
+	float unit_line_thickness;
+
+	/* render engine */
+	char engine[32];
+	char _pad2[4];
+
+	/* Cycles baking */
+	struct BakeData bake;
+
+	int preview_start_resolution;
+	short preview_pixel_size;
+
+	/* Type of the debug pass to use.
+	 * Only used when built with debug passes support.
+	 */
+	short debug_pass_type;
+
+	/* MultiView */
+	/** SceneRenderView. */
+	ListBase views;
+	short actview;
+	short views_format;
+
+	/* Hair Display */
+	short hair_type, hair_subdiv;
+
+	/* Motion blur shutter */
+	struct CurveMapping mblur_shutter_curve;
+=======
+>>>>>>> origin/soc-2018-npr
   struct ImageFormatData im_format;
 
   struct AviCodecData *avicodecdata;
@@ -772,6 +1014,10 @@ typedef struct RenderData {
 
   /* Motion blur shutter */
   struct CurveMapping mblur_shutter_curve;
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 } RenderData;
 
 /* RenderData.hair_type */
@@ -800,6 +1046,22 @@ typedef struct RenderProfile {
 
 /* UV Paint */
 /* ToolSettings.uv_sculpt_settings */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define UV_SCULPT_LOCK_BORDERS              1
+#define UV_SCULPT_ALL_ISLANDS               2
+
+/* ToolSettings.uv_sculpt_tool */
+#define UV_SCULPT_TOOL_PINCH                1
+#define UV_SCULPT_TOOL_RELAX                2
+#define UV_SCULPT_TOOL_GRAB                 3
+
+/* ToolSettings.uv_relax_method */
+#define UV_SCULPT_TOOL_RELAX_LAPLACIAN  1
+#define UV_SCULPT_TOOL_RELAX_HC         2
+=======
+>>>>>>> origin/soc-2018-npr
 #define UV_SCULPT_LOCK_BORDERS 1
 #define UV_SCULPT_ALL_ISLANDS 2
 
@@ -811,6 +1073,10 @@ typedef struct RenderProfile {
 /* ToolSettings.uv_relax_method */
 #define UV_SCULPT_TOOL_RELAX_LAPLACIAN 1
 #define UV_SCULPT_TOOL_RELAX_HC 2
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* Stereo Flags */
 #define STEREO_RIGHT_NAME "right"
@@ -1348,9 +1614,21 @@ typedef struct MeshStatVis {
   char type;
   char _pad1[2];
 
+<<<<<<< HEAD
   /* overhang */
   char overhang_axis;
   float overhang_min, overhang_max;
+=======
+<<<<<<< HEAD
+	/* overhang */
+	char overhang_axis;
+	float overhang_min, overhang_max;
+=======
+  /* overhang */
+  char overhang_axis;
+  float overhang_min, overhang_max;
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
   /* thickness */
   float thickness_min, thickness_max;
@@ -1831,11 +2109,24 @@ typedef struct Scene {
   /** Settings to be override by workspaces. */
   IDProperty *layer_properties;
 
+<<<<<<< HEAD
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
 
 	/* LANPR stuff */
 	struct SceneLANPR lanpr;
+=======
+<<<<<<< HEAD
+	struct SceneDisplay display;
+	struct SceneEEVEE eevee;
+
+	/* LANPR stuff */
+	struct SceneLANPR lanpr;
+=======
+  struct SceneDisplay display;
+  struct SceneEEVEE eevee;
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 } Scene;
 
 /* **************** RENDERDATA ********************* */
@@ -1891,10 +2182,23 @@ enum {
 
 /* RenderData.displaymode */
 #define R_OUTPUT_SCREEN 0
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define R_OUTPUT_AREA   1
+#define R_OUTPUT_WINDOW 2
+#define R_OUTPUT_NONE   3
+/*#define R_OUTPUT_FORKED	4*/
+=======
+>>>>>>> origin/soc-2018-npr
 #define R_OUTPUT_AREA 1
 #define R_OUTPUT_WINDOW 2
 #define R_OUTPUT_NONE 3
 /*#define R_OUTPUT_FORKED   4*/
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* RenderData.filtertype (used for nodes) */
 #define R_FILTER_BOX 0
@@ -2000,9 +2304,21 @@ enum {
 #define R_BAKE_AUTO_NAME (1 << 10)
 
 /* RenderData.bake_normal_space */
+<<<<<<< HEAD
 #define R_BAKE_SPACE_CAMERA 0
 #define R_BAKE_SPACE_WORLD 1
 #define R_BAKE_SPACE_OBJECT 2
+=======
+<<<<<<< HEAD
+#define R_BAKE_SPACE_CAMERA  0
+#define R_BAKE_SPACE_WORLD   1
+#define R_BAKE_SPACE_OBJECT  2
+=======
+#define R_BAKE_SPACE_CAMERA 0
+#define R_BAKE_SPACE_WORLD 1
+#define R_BAKE_SPACE_OBJECT 2
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 #define R_BAKE_SPACE_TANGENT 3
 
 /* RenderData.line_thickness_mode */
@@ -2022,6 +2338,33 @@ extern const char *RE_engine_id_CYCLES;
 /* Current precision is 16 for the sub-frames closer to MAXFRAME. */
 
 /* for general use */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define MAXFRAME    1048574
+#define MAXFRAMEF   1048574.0f
+
+#define MINFRAME    0
+#define MINFRAMEF   0.0f
+
+/* (minimum frame number for current-frame) */
+#define MINAFRAME   -1048574
+#define MINAFRAMEF  -1048574.0f
+
+#define BASE_VISIBLE(v3d, base) (                                                                        \
+	((v3d == NULL) || ((v3d)->localvd == NULL) || ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
+	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) &&     \
+	(((base)->flag & BASE_VISIBLE) != 0))
+#define BASE_SELECTABLE(v3d, base) (                                                               \
+	BASE_VISIBLE(v3d, base) &&                                                                     \
+	((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0)) && \
+	(((base)->flag & BASE_SELECTABLE) != 0))
+#define BASE_SELECTED(v3d, base) \
+	(BASE_VISIBLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
+#define BASE_EDITABLE(v3d, base) \
+	(BASE_VISIBLE(v3d, base) && ((base)->object->id.lib == NULL))
+=======
+>>>>>>> origin/soc-2018-npr
 #define MAXFRAME 1048574
 #define MAXFRAMEF 1048574.0f
 
@@ -2044,14 +2387,31 @@ extern const char *RE_engine_id_CYCLES;
    (((base)->flag & BASE_SELECTABLE) != 0))
 #define BASE_SELECTED(v3d, base) (BASE_VISIBLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 #define BASE_EDITABLE(v3d, base) (BASE_VISIBLE(v3d, base) && ((base)->object->id.lib == NULL))
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 #define BASE_SELECTED_EDITABLE(v3d, base) \
   (BASE_EDITABLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 
 /* deprecate this! */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define FIRSTBASE(_view_layer)  ((_view_layer)->object_bases.first)
+#define LASTBASE(_view_layer)   ((_view_layer)->object_bases.last)
+#define BASACT(_view_layer)     ((_view_layer)->basact)
+#define OBACT(_view_layer)      (BASACT(_view_layer) ? BASACT(_view_layer)->object : NULL)
+=======
+>>>>>>> origin/soc-2018-npr
 #define FIRSTBASE(_view_layer) ((_view_layer)->object_bases.first)
 #define LASTBASE(_view_layer) ((_view_layer)->object_bases.last)
 #define BASACT(_view_layer) ((_view_layer)->basact)
 #define OBACT(_view_layer) (BASACT(_view_layer) ? BASACT(_view_layer)->object : NULL)
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 #define OBEDIT_FROM_WORKSPACE(workspace, _view_layer) \
   (((workspace)->object_mode & OD_MODE_EDIT) ? OBACT(_view_layer) : NULL)
@@ -2060,6 +2420,23 @@ extern const char *RE_engine_id_CYCLES;
 #define OBEDIT_FROM_VIEW_LAYER(view_layer) OBEDIT_FROM_OBACT(OBACT(view_layer))
 
 #define V3D_CAMERA_LOCAL(v3d) ((!(v3d)->scenelock && (v3d)->camera) ? (v3d)->camera : NULL)
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define V3D_CAMERA_SCENE(scene, v3d) ((!(v3d)->scenelock && (v3d)->camera) ? (v3d)->camera : (scene)->camera)
+
+#define CFRA            (scene->r.cfra)
+#define SUBFRA          (scene->r.subframe)
+#define SFRA            (scene->r.sfra)
+#define EFRA            (scene->r.efra)
+#define PRVRANGEON      (scene->r.flag & SCER_PRV_RANGE)
+#define PSFRA           ((PRVRANGEON) ? (scene->r.psfra) : (scene->r.sfra))
+#define PEFRA           ((PRVRANGEON) ? (scene->r.pefra) : (scene->r.efra))
+#define FRA2TIME(a)     ((((double)scene->r.frs_sec_base) * (double)(a)) / (double)scene->r.frs_sec)
+#define TIME2FRA(a)     ((((double)scene->r.frs_sec) * (double)(a)) / (double)scene->r.frs_sec_base)
+#define FPS              (((double)scene->r.frs_sec) / (double)scene->r.frs_sec_base)
+=======
+>>>>>>> origin/soc-2018-npr
 #define V3D_CAMERA_SCENE(scene, v3d) \
   ((!(v3d)->scenelock && (v3d)->camera) ? (v3d)->camera : (scene)->camera)
 
@@ -2073,6 +2450,10 @@ extern const char *RE_engine_id_CYCLES;
 #define FRA2TIME(a) ((((double)scene->r.frs_sec_base) * (double)(a)) / (double)scene->r.frs_sec)
 #define TIME2FRA(a) ((((double)scene->r.frs_sec) * (double)(a)) / (double)scene->r.frs_sec_base)
 #define FPS (((double)scene->r.frs_sec) / (double)scene->r.frs_sec_base)
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* Base.flag is in DNA_object_types.h */
 
@@ -2096,9 +2477,21 @@ enum {
 
 /* ToolSettings.snap_target */
 #define SCE_SNAP_TARGET_CLOSEST 0
+<<<<<<< HEAD
 #define SCE_SNAP_TARGET_CENTER 1
 #define SCE_SNAP_TARGET_MEDIAN 2
 #define SCE_SNAP_TARGET_ACTIVE 3
+=======
+<<<<<<< HEAD
+#define SCE_SNAP_TARGET_CENTER  1
+#define SCE_SNAP_TARGET_MEDIAN  2
+#define SCE_SNAP_TARGET_ACTIVE  3
+=======
+#define SCE_SNAP_TARGET_CENTER 1
+#define SCE_SNAP_TARGET_MEDIAN 2
+#define SCE_SNAP_TARGET_ACTIVE 3
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* ToolSettings.snap_mode */
 #define SCE_SNAP_MODE_VERTEX (1 << 0)
@@ -2125,11 +2518,25 @@ enum {
 #define SCE_SELECT_FACE (1 << 2)
 
 /* MeshStatVis.type */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define SCE_STATVIS_OVERHANG    0
+#define SCE_STATVIS_THICKNESS   1
+#define SCE_STATVIS_INTERSECT   2
+#define SCE_STATVIS_DISTORT     3
+#define SCE_STATVIS_SHARP       4
+=======
+>>>>>>> origin/soc-2018-npr
 #define SCE_STATVIS_OVERHANG 0
 #define SCE_STATVIS_THICKNESS 1
 #define SCE_STATVIS_INTERSECT 2
 #define SCE_STATVIS_DISTORT 3
 #define SCE_STATVIS_SHARP 4
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* ParticleEditSettings.selectmode for particles */
 #define SCE_SELECT_PATH (1 << 0)
@@ -2148,10 +2555,23 @@ enum {
 #define PROP_MODE_MAX 8
 
 /* ToolSettings.proportional */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define PROP_EDIT_OFF           0
+#define PROP_EDIT_ON            1
+#define PROP_EDIT_CONNECTED     2
+#define PROP_EDIT_PROJECTED     3
+=======
+>>>>>>> origin/soc-2018-npr
 #define PROP_EDIT_OFF 0
 #define PROP_EDIT_ON 1
 #define PROP_EDIT_CONNECTED 2
 #define PROP_EDIT_PROJECTED 3
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* ToolSettings.weightuser */
 enum {
@@ -2182,6 +2602,22 @@ typedef enum eVGroupSelect {
    (1 << WT_VGROUP_BONE_DEFORM_OFF) | (1 << WT_VGROUP_ALL))
 
 /* Scene.flag */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define SCE_DS_SELECTED			(1 << 0)
+#define SCE_DS_COLLAPSED		(1 << 1)
+#define SCE_NLA_EDIT_ON			(1 << 2)
+#define SCE_FRAME_DROP			(1 << 3)
+#define SCE_KEYS_NO_SELONLY	    (1 << 4)
+
+/* return flag BKE_scene_base_iter_next functions */
+/* #define F_ERROR			-1 */  /* UNUSED */
+#define F_START         0
+#define F_SCENE         1
+#define F_DUPLI         3
+=======
+>>>>>>> origin/soc-2018-npr
 #define SCE_DS_SELECTED (1 << 0)
 #define SCE_DS_COLLAPSED (1 << 1)
 #define SCE_NLA_EDIT_ON (1 << 2)
@@ -2193,6 +2629,10 @@ typedef enum eVGroupSelect {
 #define F_START 0
 #define F_SCENE 1
 #define F_DUPLI 3
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* AudioData.flag */
 #define AUDIO_MUTE (1 << 0)
@@ -2286,12 +2726,27 @@ enum {
 
 /* projection painting only */
 /* ImagePaintSettings.flag */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define IMAGEPAINT_PROJECT_XRAY         (1 << 4)
+#define IMAGEPAINT_PROJECT_BACKFACE     (1 << 5)
+#define IMAGEPAINT_PROJECT_FLAT         (1 << 6)
+#define IMAGEPAINT_PROJECT_LAYER_CLONE  (1 << 7)
+#define IMAGEPAINT_PROJECT_LAYER_STENCIL    (1 << 8)
+#define IMAGEPAINT_PROJECT_LAYER_STENCIL_INV    (1 << 9)
+=======
+>>>>>>> origin/soc-2018-npr
 #define IMAGEPAINT_PROJECT_XRAY (1 << 4)
 #define IMAGEPAINT_PROJECT_BACKFACE (1 << 5)
 #define IMAGEPAINT_PROJECT_FLAT (1 << 6)
 #define IMAGEPAINT_PROJECT_LAYER_CLONE (1 << 7)
 #define IMAGEPAINT_PROJECT_LAYER_STENCIL (1 << 8)
 #define IMAGEPAINT_PROJECT_LAYER_STENCIL_INV (1 << 9)
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* ImagePaintSettings.missing_data */
 #define IMAGEPAINT_MISSING_UVS (1 << 0)
@@ -2309,6 +2764,34 @@ enum {
 #define UVCALC_USESUBSURF (1 << 3)
 
 /* ToolSettings.uv_flag */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define UV_SYNC_SELECTION   1
+#define UV_SHOW_SAME_IMAGE  2
+
+/* ToolSettings.uv_selectmode */
+#define UV_SELECT_VERTEX    1
+#define UV_SELECT_EDGE      2
+#define UV_SELECT_FACE      4
+#define UV_SELECT_ISLAND    8
+
+/* ToolSettings.edge_mode */
+#define EDGE_MODE_SELECT                0
+#define EDGE_MODE_TAG_SEAM              1
+#define EDGE_MODE_TAG_SHARP             2
+#define EDGE_MODE_TAG_CREASE            3
+#define EDGE_MODE_TAG_BEVEL             4
+#define EDGE_MODE_TAG_FREESTYLE         5
+
+/* ToolSettings.gizmo_flag */
+enum {
+	SCE_GIZMO_SHOW_TRANSLATE = (1 << 0),
+	SCE_GIZMO_SHOW_ROTATE    = (1 << 1),
+	SCE_GIZMO_SHOW_SCALE     = (1 << 2),
+};
+=======
+>>>>>>> origin/soc-2018-npr
 #define UV_SYNC_SELECTION 1
 #define UV_SHOW_SAME_IMAGE 2
 
@@ -2325,6 +2808,10 @@ enum {
 #define EDGE_MODE_TAG_CREASE 3
 #define EDGE_MODE_TAG_BEVEL 4
 #define EDGE_MODE_TAG_FREESTYLE 5
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* ToolSettings.gpencil_flags */
 typedef enum eGPencil_Flags {
@@ -2364,9 +2851,21 @@ typedef enum eGPencil_Placement_Flags {
   /* Viewport space, but relative to render canvas (Sequencer Preview Only) */
   GP_PROJECT_CANVAS = (1 << 1),
 
+<<<<<<< HEAD
   /* Project into the screen's Z values */
   GP_PROJECT_DEPTH_VIEW = (1 << 2),
   GP_PROJECT_DEPTH_STROKE = (1 << 3),
+=======
+<<<<<<< HEAD
+	/* Project into the screen's Z values */
+	GP_PROJECT_DEPTH_VIEW   = (1 << 2),
+	GP_PROJECT_DEPTH_STROKE = (1 << 3),
+=======
+  /* Project into the screen's Z values */
+  GP_PROJECT_DEPTH_VIEW = (1 << 2),
+  GP_PROJECT_DEPTH_STROKE = (1 << 3),
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
   /* "Use Endpoints" */
   GP_PROJECT_DEPTH_STROKE_ENDPOINTS = (1 << 4),
@@ -2407,6 +2906,19 @@ typedef enum eGPencil_Guide_Reference {
 #define PE_AUTO_VELOCITY (1 << 8)
 
 /* ParticleEditSettings.brushtype */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define PE_BRUSH_NONE       -1
+#define PE_BRUSH_COMB       0
+#define PE_BRUSH_CUT        1
+#define PE_BRUSH_LENGTH     2
+#define PE_BRUSH_PUFF       3
+#define PE_BRUSH_ADD        4
+#define PE_BRUSH_SMOOTH     5
+#define PE_BRUSH_WEIGHT     6
+=======
+>>>>>>> origin/soc-2018-npr
 #define PE_BRUSH_NONE -1
 #define PE_BRUSH_COMB 0
 #define PE_BRUSH_CUT 1
@@ -2415,22 +2927,77 @@ typedef enum eGPencil_Guide_Reference {
 #define PE_BRUSH_ADD 4
 #define PE_BRUSH_SMOOTH 5
 #define PE_BRUSH_WEIGHT 6
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* ParticleBrushData.flag */
 #define PE_BRUSH_DATA_PUFF_VOLUME 1
 
 /* ParticleBrushData.edittype */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define PE_TYPE_PARTICLES   0
+#define PE_TYPE_SOFTBODY    1
+#define PE_TYPE_CLOTH       2
+
+/* PhysicsSettings.flag */
+#define PHYS_GLOBAL_GRAVITY     1
+=======
+>>>>>>> origin/soc-2018-npr
 #define PE_TYPE_PARTICLES 0
 #define PE_TYPE_SOFTBODY 1
 #define PE_TYPE_CLOTH 2
 
 /* PhysicsSettings.flag */
 #define PHYS_GLOBAL_GRAVITY 1
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* UnitSettings */
 
 #define USER_UNIT_ADAPTIVE 0xFF
 /* UnitSettings.system */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define USER_UNIT_NONE          0
+#define USER_UNIT_METRIC        1
+#define USER_UNIT_IMPERIAL      2
+/* UnitSettings.flag */
+#define USER_UNIT_OPT_SPLIT     1
+#define USER_UNIT_ROT_RADIANS   2
+
+/* SceneEEVEE->flag */
+enum {
+	SCE_EEVEE_VOLUMETRIC_ENABLED    = (1 << 0),
+	SCE_EEVEE_VOLUMETRIC_LIGHTS     = (1 << 1),
+	SCE_EEVEE_VOLUMETRIC_SHADOWS    = (1 << 2),
+//	SCE_EEVEE_VOLUMETRIC_COLORED	= (1 << 3), /* Unused */
+	SCE_EEVEE_GTAO_ENABLED          = (1 << 4),
+	SCE_EEVEE_GTAO_BENT_NORMALS     = (1 << 5),
+	SCE_EEVEE_GTAO_BOUNCE           = (1 << 6),
+	SCE_EEVEE_DOF_ENABLED           = (1 << 7),
+	SCE_EEVEE_BLOOM_ENABLED         = (1 << 8),
+	SCE_EEVEE_MOTION_BLUR_ENABLED   = (1 << 9),
+	SCE_EEVEE_SHADOW_HIGH_BITDEPTH  = (1 << 10),
+	SCE_EEVEE_TAA_REPROJECTION      = (1 << 11),
+	SCE_EEVEE_SSS_ENABLED           = (1 << 12),
+	SCE_EEVEE_SSS_SEPARATE_ALBEDO   = (1 << 13),
+	SCE_EEVEE_SSR_ENABLED           = (1 << 14),
+	SCE_EEVEE_SSR_REFRACTION        = (1 << 15),
+	SCE_EEVEE_SSR_HALF_RESOLUTION   = (1 << 16),
+	SCE_EEVEE_SHOW_IRRADIANCE       = (1 << 17),
+	SCE_EEVEE_SHOW_CUBEMAPS         = (1 << 18),
+	SCE_EEVEE_GI_AUTOBAKE           = (1 << 19),
+	SCE_EEVEE_SHADOW_SOFT			= (1 << 20),
+	SCE_EEVEE_OVERSCAN				= (1 << 21),
+=======
+>>>>>>> origin/soc-2018-npr
 #define USER_UNIT_NONE 0
 #define USER_UNIT_METRIC 1
 #define USER_UNIT_IMPERIAL 2
@@ -2462,6 +3029,10 @@ enum {
   SCE_EEVEE_GI_AUTOBAKE = (1 << 19),
   SCE_EEVEE_SHADOW_SOFT = (1 << 20),
   SCE_EEVEE_OVERSCAN = (1 << 21),
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 };
 
 /* SceneEEVEE->shadow_method */

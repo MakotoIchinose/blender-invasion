@@ -28,7 +28,15 @@
 #include "DNA_ID.h"
 
 #ifndef MAX_MTEX
+<<<<<<< HEAD
 #  define MAX_MTEX 18
+=======
+<<<<<<< HEAD
+#define MAX_MTEX    18
+=======
+#  define MAX_MTEX 18
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 #endif
 
 struct AnimData;
@@ -101,6 +109,38 @@ typedef struct Light {
 #define LA_DS_SHOW_TEXS (1 << 2)
 
 /* type */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define LA_LOCAL        0
+#define LA_SUN          1
+#define LA_SPOT         2
+/* #define LA_HEMI			3 */ /* not used anymore */
+#define LA_AREA         4
+
+/* mode */
+#define LA_SHADOW       (1 << 0)
+/* #define LA_HALO		(1 << 1) */ /* not used anymore */
+/* #define LA_LAYER		(1 << 2) */ /* not used anymore */
+/* #define LA_QUAD		(1 << 3) */ /* not used anymore */
+/* #define LA_NEG		(1 << 4) */ /* not used anymore */
+/* #define LA_ONLYSHADOW(1 << 5) */ /* not used anymore */
+/* #define LA_SPHERE	(1 << 6) */ /* not used anymore */
+#define LA_SQUARE       (1 << 7)
+/* #define LA_TEXTURE	(1 << 8) */ /* not used anymore */
+/* #define LA_OSATEX	(1 << 9) */ /* not used anymore */
+/* #define LA_DEEP_SHADOW	(1 << 10) */ /* not used anywhere */
+/* #define LA_NO_DIFF		(1 << 11) */ /* not used anywhere */
+/* #define LA_NO_SPEC		(1 << 12) */ /* not used anywhere */
+/* #define LA_SHAD_RAY		(1 << 13) */ /* not used anywhere - cleaned */
+/* yafray: light  shadowbuffer flag, softlight */
+/* Since it is used with LOCAL light, can't use LA_SHAD */
+/* #define LA_YF_SOFT		(1 << 14) */ /* not used anymore */
+/* #define LA_LAYER_SHADOW	(1 << 15) */ /* not used anymore */
+/* #define LA_SHAD_TEX      (1 << 16) */ /* not used anymore */
+#define LA_SHOW_CONE    (1 << 17)
+=======
+>>>>>>> origin/soc-2018-npr
 #define LA_LOCAL 0
 #define LA_SUN 1
 #define LA_SPOT 2
@@ -128,17 +168,36 @@ typedef struct Light {
 /* #define LA_LAYER_SHADOW  (1 << 15) */ /* not used anymore */
 /* #define LA_SHAD_TEX      (1 << 16) */ /* not used anymore */
 #define LA_SHOW_CONE (1 << 17)
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 /* #define LA_SHOW_SHADOW_BOX (1 << 18) */
 #define LA_SHAD_CONTACT (1 << 19)
 #define LA_CUSTOM_ATTENUATION (1 << 20)
 
 /* falloff_type */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#define LA_FALLOFF_CONSTANT         0
+#define LA_FALLOFF_INVLINEAR        1
+#define LA_FALLOFF_INVSQUARE        2
+#define LA_FALLOFF_CURVE            3
+#define LA_FALLOFF_SLIDERS          4
+#define LA_FALLOFF_INVCOEFFICIENTS  5
+=======
+>>>>>>> origin/soc-2018-npr
 #define LA_FALLOFF_CONSTANT 0
 #define LA_FALLOFF_INVLINEAR 1
 #define LA_FALLOFF_INVSQUARE 2
 #define LA_FALLOFF_CURVE 3
 #define LA_FALLOFF_SLIDERS 4
 #define LA_FALLOFF_INVCOEFFICIENTS 5
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /* area shape */
 #define LA_AREA_SQUARE 0

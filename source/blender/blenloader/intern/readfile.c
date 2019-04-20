@@ -6440,6 +6440,159 @@ static void lib_link_scene(FileData *fd, Main *main)
   int totscene = 0;
 #endif
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	for (Scene *sce = main->scenes.first; sce; sce = sce->id.next) {
+		if (sce->id.tag & LIB_TAG_NEED_LINK) {
+			/* Link ID Properties -- and copy this comment EXACTLY for easy finding
+			 * of library blocks that implement this.*/
+			IDP_LibLinkProperty(sce->id.properties, fd);
+			lib_link_animdata(fd, &sce->id, sce->adt);
+
+			lib_link_keyingsets(fd, &sce->id, &sce->keyingsets);
+
+			sce->camera = newlibadr(fd, sce->id.lib, sce->camera);
+			sce->world = newlibadr_us(fd, sce->id.lib, sce->world);
+			sce->set = newlibadr(fd, sce->id.lib, sce->set);
+			sce->gpd = newlibadr_us(fd, sce->id.lib, sce->gpd);
+
+			link_paint(fd, sce, &sce->toolsettings->sculpt->paint);
+			link_paint(fd, sce, &sce->toolsettings->vpaint->paint);
+			link_paint(fd, sce, &sce->toolsettings->wpaint->paint);
+			link_paint(fd, sce, &sce->toolsettings->imapaint.paint);
+			link_paint(fd, sce, &sce->toolsettings->uvsculpt->paint);
+			link_paint(fd, sce, &sce->toolsettings->gp_paint->paint);
+
+			if (sce->toolsettings->sculpt)
+				sce->toolsettings->sculpt->gravity_object =
+				        newlibadr(fd, sce->id.lib, sce->toolsettings->sculpt->gravity_object);
+
+			if (sce->toolsettings->imapaint.stencil)
+				sce->toolsettings->imapaint.stencil =
+				        newlibadr_us(fd, sce->id.lib, sce->toolsettings->imapaint.stencil);
+
+			if (sce->toolsettings->imapaint.clone)
+				sce->toolsettings->imapaint.clone =
+				        newlibadr_us(fd, sce->id.lib, sce->toolsettings->imapaint.clone);
+
+			if (sce->toolsettings->imapaint.canvas)
+				sce->toolsettings->imapaint.canvas =
+				        newlibadr_us(fd, sce->id.lib, sce->toolsettings->imapaint.canvas);
+
+			sce->toolsettings->particle.shape_object = newlibadr(fd, sce->id.lib, sce->toolsettings->particle.shape_object);
+
+			sce->toolsettings->gp_sculpt.guide.reference_object = newlibadr(fd, sce->id.lib, sce->toolsettings->gp_sculpt.guide.reference_object);
+
+			for (Base *base_legacy_next, *base_legacy = sce->base.first; base_legacy; base_legacy = base_legacy_next) {
+				base_legacy_next = base_legacy->next;
+
+				base_legacy->object = newlibadr_us(fd, sce->id.lib, base_legacy->object);
+
+				if (base_legacy->object == NULL) {
+					blo_reportf_wrap(fd->reports, RPT_WARNING, TIP_("LIB: object lost from scene: '%s'"),
+					                 sce->id.name + 2);
+					BLI_remlink(&sce->base, base_legacy);
+					if (base_legacy == sce->basact) sce->basact = NULL;
+					MEM_freeN(base_legacy);
+				}
+			}
+
+			Sequence *seq;
+			SEQ_BEGIN (sce->ed, seq)
+			{
+				IDP_LibLinkProperty(seq->prop, fd);
+
+				if (seq->ipo) seq->ipo = newlibadr_us(fd, sce->id.lib, seq->ipo);  // XXX deprecated - old animation system
+				seq->scene_sound = NULL;
+				if (seq->scene) {
+					seq->scene = newlibadr(fd, sce->id.lib, seq->scene);
+					if (seq->scene) {
+						seq->scene_sound = BKE_sound_scene_add_scene_sound_defaults(sce, seq);
+					}
+				}
+				if (seq->clip) {
+					seq->clip = newlibadr_us(fd, sce->id.lib, seq->clip);
+				}
+				if (seq->mask) {
+					seq->mask = newlibadr_us(fd, sce->id.lib, seq->mask);
+				}
+				if (seq->scene_camera) {
+					seq->scene_camera = newlibadr(fd, sce->id.lib, seq->scene_camera);
+				}
+				if (seq->sound) {
+					seq->scene_sound = NULL;
+					if (seq->type == SEQ_TYPE_SOUND_HD) {
+						seq->type = SEQ_TYPE_SOUND_RAM;
+					}
+					else {
+						seq->sound = newlibadr(fd, sce->id.lib, seq->sound);
+					}
+					if (seq->sound) {
+						id_us_plus_no_lib((ID *)seq->sound);
+						seq->scene_sound = BKE_sound_add_scene_sound_defaults(sce, seq);
+					}
+				}
+				if (seq->type == SEQ_TYPE_TEXT) {
+					TextVars *t = seq->effectdata;
+					t->text_font = newlibadr_us(fd, sce->id.lib, t->text_font);
+				}
+				BLI_listbase_clear(&seq->anims);
+
+				lib_link_sequence_modifiers(fd, sce, &seq->modifiers);
+			} SEQ_END;
+
+			for (TimeMarker *marker = sce->markers.first; marker; marker = marker->next) {
+				if (marker->camera) {
+					marker->camera = newlibadr(fd, sce->id.lib, marker->camera);
+				}
+			}
+
+			BKE_sequencer_update_muting(sce->ed);
+			BKE_sequencer_update_sound_bounds_all(sce);
+
+
+			/* rigidbody world relies on it's linked collections */
+			if (sce->rigidbody_world) {
+				RigidBodyWorld *rbw = sce->rigidbody_world;
+				if (rbw->group)
+					rbw->group = newlibadr(fd, sce->id.lib, rbw->group);
+				if (rbw->constraints)
+					rbw->constraints = newlibadr(fd, sce->id.lib, rbw->constraints);
+				if (rbw->effector_weights)
+					rbw->effector_weights->group = newlibadr(fd, sce->id.lib, rbw->effector_weights->group);
+			}
+
+			if (sce->nodetree) {
+				lib_link_ntree(fd, &sce->id, sce->nodetree);
+				sce->nodetree->id.lib = sce->id.lib;
+				composite_patch(sce->nodetree, sce);
+			}
+
+			for (SceneRenderLayer *srl = sce->r.layers.first; srl; srl = srl->next) {
+				srl->mat_override = newlibadr_us(fd, sce->id.lib, srl->mat_override);
+				for (FreestyleModuleConfig *fmc = srl->freestyleConfig.modules.first; fmc; fmc = fmc->next) {
+					fmc->script = newlibadr(fd, sce->id.lib, fmc->script);
+				}
+				for (FreestyleLineSet *fls = srl->freestyleConfig.linesets.first; fls; fls = fls->next) {
+					fls->linestyle = newlibadr_us(fd, sce->id.lib, fls->linestyle);
+					fls->group = newlibadr_us(fd, sce->id.lib, fls->group);
+				}
+			}
+
+			for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+				for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
+					llc->object_select = newlibadr_us(fd, sce->id.lib, llc->object_select);
+					llc->material_select = newlibadr_us(fd, sce->id.lib, llc->material_select);
+					llc->collection_select = newlibadr_us(fd, sce->id.lib, llc->collection_select);
+				}
+				ll->normal_control_object = newlibadr_us(fd, sce->id.lib, ll->normal_control_object);
+			}
+
+			/* Motion Tracking */
+			sce->clip = newlibadr_us(fd, sce->id.lib, sce->clip);
+=======
+>>>>>>> origin/soc-2018-npr
   for (Scene *sce = main->scenes.first; sce; sce = sce->id.next) {
     if (sce->id.tag & LIB_TAG_NEED_LINK) {
       /* Link ID Properties -- and copy this comment EXACTLY for easy finding
@@ -6596,6 +6749,10 @@ static void lib_link_scene(FileData *fd, Main *main)
 
       /* Motion Tracking */
       sce->clip = newlibadr_us(fd, sce->id.lib, sce->clip);
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 #ifdef USE_COLLECTION_COMPAT_28
       if (sce->collection) {
@@ -6989,6 +7146,55 @@ static void direct_link_scene(FileData *fd, Scene *sce)
   }
 #endif
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	if (sce->master_collection) {
+		sce->master_collection = newdataadr(fd, sce->master_collection);
+		/* Needed because this is an ID outside of Main. */
+		direct_link_id(fd, &sce->master_collection->id);
+		direct_link_collection(fd, sce->master_collection);
+	}
+
+	/* insert into global old-new map for reading without UI (link_global accesses it again) */
+	link_glob_list(fd, &sce->view_layers);
+	for (view_layer = sce->view_layers.first; view_layer; view_layer = view_layer->next) {
+		direct_link_view_layer(fd, view_layer);
+	}
+
+	if (fd->memfile) {
+		/* If it's undo try to recover the cache. */
+		if (fd->scenemap) sce->eevee.light_cache = newsceadr(fd, sce->eevee.light_cache);
+		else sce->eevee.light_cache = NULL;
+	}
+	else {
+		/* else try to read the cache from file. */
+		sce->eevee.light_cache = newdataadr(fd, sce->eevee.light_cache);
+		if (sce->eevee.light_cache) {
+			direct_link_lightcache(fd, sce->eevee.light_cache);
+		}
+	}
+
+	/* LANPR things */
+	sce->lanpr.active_layer = newdataadr(fd, sce->lanpr.active_layer);
+	sce->lanpr.render_buffer = NULL;
+	link_list(fd, &sce->lanpr.line_layers);
+	for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+		link_list(fd, &ll->components);
+		for(LANPR_LineLayerComponent *llc = ll->components.first; llc;llc=llc->next){
+			//llc->object_select = newlibadr(fd, sce->id.lib, llc->object_select);
+			//llc->material_select = newlibadr(fd, sce->id.lib, llc->material_select);
+			//llc->collection_select = newlibadr(fd, sce->id.lib, llc->collection_select);
+		}
+		ll->batch = NULL;
+		ll->shgrp = NULL;
+		//ll->normal_control_object = newlibadr(fd, sce->id.lib, ll->normal_control_object);
+	}
+
+	sce->layer_properties = newdataadr(fd, sce->layer_properties);
+	IDP_DirectLinkGroup_OrFree(&sce->layer_properties, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
+=======
+>>>>>>> origin/soc-2018-npr
   if (sce->master_collection) {
     sce->master_collection = newdataadr(fd, sce->master_collection);
     /* Needed because this is an ID outside of Main. */
@@ -7035,6 +7241,10 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 
   sce->layer_properties = newdataadr(fd, sce->layer_properties);
   IDP_DirectLinkGroup_OrFree(&sce->layer_properties, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 }
 
 /** \} */
@@ -10581,6 +10791,107 @@ static void expand_scene_collection(FileData *fd, Main *mainvar, SceneCollection
 
 static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	SceneRenderLayer *srl;
+	FreestyleModuleConfig *module;
+	FreestyleLineSet *lineset;
+	LANPR_LineLayer* ll;
+	LANPR_LineLayerComponent* llc;
+
+	for (Base *base_legacy = sce->base.first; base_legacy; base_legacy = base_legacy->next) {
+		expand_doit(fd, mainvar, base_legacy->object);
+	}
+	expand_doit(fd, mainvar, sce->camera);
+	expand_doit(fd, mainvar, sce->world);
+
+	if (sce->adt)
+		expand_animdata(fd, mainvar, sce->adt);
+	expand_keyingsets(fd, mainvar, &sce->keyingsets);
+
+	if (sce->set)
+		expand_doit(fd, mainvar, sce->set);
+
+	if (sce->nodetree)
+		expand_nodetree(fd, mainvar, sce->nodetree);
+
+	for (srl = sce->r.layers.first; srl; srl = srl->next) {
+		expand_doit(fd, mainvar, srl->mat_override);
+		for (module = srl->freestyleConfig.modules.first; module; module = module->next) {
+			if (module->script)
+				expand_doit(fd, mainvar, module->script);
+		}
+		for (lineset = srl->freestyleConfig.linesets.first; lineset; lineset = lineset->next) {
+			if (lineset->group)
+				expand_doit(fd, mainvar, lineset->group);
+			expand_doit(fd, mainvar, lineset->linestyle);
+		}
+	}
+
+	for (ViewLayer *view_layer = sce->view_layers.first; view_layer; view_layer = view_layer->next) {
+		expand_idprops(fd, mainvar, view_layer->id_properties);
+
+		for (module = view_layer->freestyle_config.modules.first; module; module = module->next) {
+			if (module->script) {
+				expand_doit(fd, mainvar, module->script);
+			}
+		}
+
+		for (lineset = view_layer->freestyle_config.linesets.first; lineset; lineset = lineset->next) {
+			if (lineset->group) {
+				expand_doit(fd, mainvar, lineset->group);
+			}
+			expand_doit(fd, mainvar, lineset->linestyle);
+		}
+	}
+
+	for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+		for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
+			if (llc->object_select) expand_doit(fd, mainvar, llc->object_select);
+			if (llc->material_select) expand_doit(fd, mainvar, llc->material_select);
+			if (llc->collection_select) expand_doit(fd, mainvar, llc->collection_select);
+		}
+		if (ll->normal_control_object) expand_doit(fd, mainvar, ll->normal_control_object);
+	}
+
+	if (sce->gpd)
+		expand_doit(fd, mainvar, sce->gpd);
+
+	if (sce->ed) {
+		Sequence *seq;
+
+		SEQ_BEGIN(sce->ed, seq)
+		{
+			expand_idprops(fd, mainvar, seq->prop);
+
+			if (seq->scene) expand_doit(fd, mainvar, seq->scene);
+			if (seq->scene_camera) expand_doit(fd, mainvar, seq->scene_camera);
+			if (seq->clip) expand_doit(fd, mainvar, seq->clip);
+			if (seq->mask) expand_doit(fd, mainvar, seq->mask);
+			if (seq->sound) expand_doit(fd, mainvar, seq->sound);
+
+			if (seq->type == SEQ_TYPE_TEXT && seq->effectdata) {
+				TextVars *data = seq->effectdata;
+				expand_doit(fd, mainvar, data->text_font);
+			}
+		} SEQ_END;
+	}
+
+	if (sce->rigidbody_world) {
+		expand_doit(fd, mainvar, sce->rigidbody_world->group);
+		expand_doit(fd, mainvar, sce->rigidbody_world->constraints);
+	}
+
+	for (TimeMarker *marker = sce->markers.first; marker; marker = marker->next) {
+		if (marker->camera) {
+			expand_doit(fd, mainvar, marker->camera);
+		}
+	}
+
+	expand_doit(fd, mainvar, sce->clip);
+=======
+>>>>>>> origin/soc-2018-npr
   SceneRenderLayer *srl;
   FreestyleModuleConfig *module;
   FreestyleLineSet *lineset;
@@ -10682,6 +10993,10 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
   }
 
   expand_doit(fd, mainvar, sce->clip);
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 #ifdef USE_COLLECTION_COMPAT_28
   if (sce->collection) {

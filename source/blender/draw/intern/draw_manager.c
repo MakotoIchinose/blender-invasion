@@ -2753,9 +2753,20 @@ void DRW_engine_register(DrawEngineType *draw_engine_type)
 
 void DRW_engines_register(void)
 {
+<<<<<<< HEAD
 	RE_engines_register(&DRW_engine_viewport_eevee_type);
 	RE_engines_register(&DRW_engine_viewport_workbench_type);
 	RE_engines_register(&DRW_engine_viewport_lanpr_type);
+=======
+<<<<<<< HEAD
+	RE_engines_register(&DRW_engine_viewport_eevee_type);
+	RE_engines_register(&DRW_engine_viewport_workbench_type);
+	RE_engines_register(&DRW_engine_viewport_lanpr_type);
+=======
+  RE_engines_register(&DRW_engine_viewport_eevee_type);
+  RE_engines_register(&DRW_engine_viewport_workbench_type);
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
   DRW_engine_register(&draw_engine_workbench_solid);
   DRW_engine_register(&draw_engine_workbench_transparent);

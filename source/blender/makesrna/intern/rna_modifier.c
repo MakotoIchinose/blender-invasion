@@ -56,6 +56,71 @@
 #include "WM_types.h"
 
 const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	{0, "", 0, N_("Modify"), ""},
+	{eModifierType_DataTransfer, "DATA_TRANSFER", ICON_MOD_DATA_TRANSFER, "Data Transfer", ""},
+	{eModifierType_MeshCache, "MESH_CACHE", ICON_MOD_MESHDEFORM, "Mesh Cache", ""},
+	{eModifierType_MeshSequenceCache, "MESH_SEQUENCE_CACHE", ICON_MOD_MESHDEFORM, "Mesh Sequence Cache", ""},
+	{eModifierType_NormalEdit, "NORMAL_EDIT", ICON_MOD_NORMALEDIT, "Normal Edit", ""},
+	{eModifierType_WeightedNormal, "WEIGHTED_NORMAL", ICON_MOD_NORMALEDIT, "Weighted Normal", ""},
+	{eModifierType_UVProject, "UV_PROJECT", ICON_MOD_UVPROJECT, "UV Project", ""},
+	{eModifierType_UVWarp, "UV_WARP", ICON_MOD_UVPROJECT, "UV Warp", ""},
+	{eModifierType_WeightVGEdit, "VERTEX_WEIGHT_EDIT", ICON_MOD_VERTEX_WEIGHT, "Vertex Weight Edit", ""},
+	{eModifierType_WeightVGMix, "VERTEX_WEIGHT_MIX", ICON_MOD_VERTEX_WEIGHT, "Vertex Weight Mix", ""},
+	{eModifierType_WeightVGProximity, "VERTEX_WEIGHT_PROXIMITY", ICON_MOD_VERTEX_WEIGHT,
+	                                  "Vertex Weight Proximity", ""},
+	{0, "", 0, N_("Generate"), ""},
+	{eModifierType_Array, "ARRAY", ICON_MOD_ARRAY, "Array", ""},
+	{eModifierType_Bevel, "BEVEL", ICON_MOD_BEVEL, "Bevel", ""},
+	{eModifierType_Boolean, "BOOLEAN", ICON_MOD_BOOLEAN, "Boolean", ""},
+	{eModifierType_Build, "BUILD", ICON_MOD_BUILD, "Build", ""},
+	{eModifierType_Decimate, "DECIMATE", ICON_MOD_DECIM, "Decimate", ""},
+	{eModifierType_EdgeSplit, "EDGE_SPLIT", ICON_MOD_EDGESPLIT, "Edge Split", ""},
+	{eModifierType_Mask, "MASK", ICON_MOD_MASK, "Mask", ""},
+	{eModifierType_Mirror, "MIRROR", ICON_MOD_MIRROR, "Mirror", ""},
+	{eModifierType_Multires, "MULTIRES", ICON_MOD_MULTIRES, "Multiresolution", ""},
+	{eModifierType_Remesh, "REMESH", ICON_MOD_REMESH, "Remesh", ""},
+	{eModifierType_Screw, "SCREW", ICON_MOD_SCREW, "Screw", ""},
+	{eModifierType_Skin, "SKIN", ICON_MOD_SKIN, "Skin", ""},
+	{eModifierType_Solidify, "SOLIDIFY", ICON_MOD_SOLIDIFY, "Solidify", ""},
+	{eModifierType_Subsurf, "SUBSURF", ICON_MOD_SUBSURF, "Subdivision Surface", ""},
+	{eModifierType_Triangulate, "TRIANGULATE", ICON_MOD_TRIANGULATE, "Triangulate", ""},
+	{eModifierType_Wireframe, "WIREFRAME", ICON_MOD_WIREFRAME, "Wireframe", "Generate a wireframe on the edges of a mesh"},
+	{eModifierType_MyBMesh, "MY_BMESH", ICON_DOT /* dummy! */, "My BMesh", ""},
+	{0, "", 0, N_("Deform"), ""},
+	{eModifierType_Armature, "ARMATURE", ICON_MOD_ARMATURE, "Armature", ""},
+	{eModifierType_Cast, "CAST", ICON_MOD_CAST, "Cast", ""},
+	{eModifierType_Curve, "CURVE", ICON_MOD_CURVE, "Curve", ""},
+	{eModifierType_Displace, "DISPLACE", ICON_MOD_DISPLACE, "Displace", ""},
+	{eModifierType_Hook, "HOOK", ICON_HOOK, "Hook", ""},
+	{eModifierType_LaplacianDeform, "LAPLACIANDEFORM", ICON_MOD_MESHDEFORM, "Laplacian Deform", ""},
+	{eModifierType_Lattice, "LATTICE", ICON_MOD_LATTICE, "Lattice", ""},
+	{eModifierType_MeshDeform, "MESH_DEFORM", ICON_MOD_MESHDEFORM, "Mesh Deform", ""},
+	{eModifierType_Shrinkwrap, "SHRINKWRAP", ICON_MOD_SHRINKWRAP, "Shrinkwrap", ""},
+	{eModifierType_SimpleDeform, "SIMPLE_DEFORM", ICON_MOD_SIMPLEDEFORM, "Simple Deform", ""},
+	{eModifierType_Smooth, "SMOOTH", ICON_MOD_SMOOTH, "Smooth", ""},
+	{eModifierType_CorrectiveSmooth, "CORRECTIVE_SMOOTH", ICON_MOD_SMOOTH, "Smooth Corrective", ""},
+	{eModifierType_LaplacianSmooth, "LAPLACIANSMOOTH", ICON_MOD_SMOOTH, "Smooth Laplacian", ""},
+	{eModifierType_SurfaceDeform, "SURFACE_DEFORM", ICON_MOD_MESHDEFORM, "Surface Deform", ""},
+	{eModifierType_Warp, "WARP", ICON_MOD_WARP, "Warp", ""},
+	{eModifierType_Wave, "WAVE", ICON_MOD_WAVE, "Wave", ""},
+	{0, "", 0, N_("Simulate"), ""},
+	{eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
+	{eModifierType_Collision, "COLLISION", ICON_MOD_PHYSICS, "Collision", ""},
+	{eModifierType_DynamicPaint, "DYNAMIC_PAINT", ICON_MOD_DYNAMICPAINT, "Dynamic Paint", ""},
+	{eModifierType_Explode, "EXPLODE", ICON_MOD_EXPLODE, "Explode", ""},
+	{eModifierType_Fluidsim, "FLUID_SIMULATION", ICON_MOD_FLUIDSIM, "Fluid Simulation", ""},
+	{eModifierType_Ocean, "OCEAN", ICON_MOD_OCEAN, "Ocean", ""},
+	{eModifierType_ParticleInstance, "PARTICLE_INSTANCE", ICON_MOD_PARTICLE_INSTANCE, "Particle Instance", ""},
+	{eModifierType_ParticleSystem, "PARTICLE_SYSTEM", ICON_MOD_PARTICLES, "Particle System", ""},
+	{eModifierType_Smoke, "SMOKE", ICON_MOD_SMOKE, "Smoke", ""},
+	{eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
+	{eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
+	{0, NULL, 0, NULL, NULL},
+=======
+>>>>>>> origin/soc-2018-npr
     {0, "", 0, N_("Modify"), ""},
     {eModifierType_DataTransfer, "DATA_TRANSFER", ICON_MOD_DATA_TRANSFER, "Data Transfer", ""},
     {eModifierType_MeshCache, "MESH_CACHE", ICON_MOD_MESHDEFORM, "Mesh Cache", ""},
@@ -146,6 +211,10 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     {eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
     {eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
     {0, NULL, 0, NULL, NULL},
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 };
 
 const EnumPropertyItem rna_enum_modifier_triangulate_quad_method_items[] = {
@@ -462,6 +531,130 @@ static void rna_UVProject_projectors_begin(CollectionPropertyIterator *iter, Poi
 
 static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	ModifierData *md = (ModifierData *)ptr->data;
+
+	switch ((ModifierType)md->type) {
+		case eModifierType_Subsurf:
+			return &RNA_SubsurfModifier;
+		case eModifierType_Lattice:
+			return &RNA_LatticeModifier;
+		case eModifierType_Curve:
+			return &RNA_CurveModifier;
+		case eModifierType_Build:
+			return &RNA_BuildModifier;
+		case eModifierType_Mirror:
+			return &RNA_MirrorModifier;
+		case eModifierType_Decimate:
+			return &RNA_DecimateModifier;
+		case eModifierType_Wave:
+			return &RNA_WaveModifier;
+		case eModifierType_Armature:
+			return &RNA_ArmatureModifier;
+		case eModifierType_Hook:
+			return &RNA_HookModifier;
+		case eModifierType_Softbody:
+			return &RNA_SoftBodyModifier;
+		case eModifierType_Boolean:
+			return &RNA_BooleanModifier;
+		case eModifierType_Array:
+			return &RNA_ArrayModifier;
+		case eModifierType_EdgeSplit:
+			return &RNA_EdgeSplitModifier;
+		case eModifierType_Displace:
+			return &RNA_DisplaceModifier;
+		case eModifierType_UVProject:
+			return &RNA_UVProjectModifier;
+		case eModifierType_Smooth:
+			return &RNA_SmoothModifier;
+		case eModifierType_Cast:
+			return &RNA_CastModifier;
+		case eModifierType_MeshDeform:
+			return &RNA_MeshDeformModifier;
+		case eModifierType_ParticleSystem:
+			return &RNA_ParticleSystemModifier;
+		case eModifierType_ParticleInstance:
+			return &RNA_ParticleInstanceModifier;
+		case eModifierType_Explode:
+			return &RNA_ExplodeModifier;
+		case eModifierType_Cloth:
+			return &RNA_ClothModifier;
+		case eModifierType_Collision:
+			return &RNA_CollisionModifier;
+		case eModifierType_Bevel:
+			return &RNA_BevelModifier;
+		case eModifierType_Shrinkwrap:
+			return &RNA_ShrinkwrapModifier;
+		case eModifierType_Fluidsim:
+			return &RNA_FluidSimulationModifier;
+		case eModifierType_Mask:
+			return &RNA_MaskModifier;
+		case eModifierType_SimpleDeform:
+			return &RNA_SimpleDeformModifier;
+		case eModifierType_Multires:
+			return &RNA_MultiresModifier;
+		case eModifierType_Surface:
+			return &RNA_SurfaceModifier;
+		case eModifierType_Smoke:
+			return &RNA_SmokeModifier;
+		case eModifierType_Solidify:
+			return &RNA_SolidifyModifier;
+		case eModifierType_Screw:
+			return &RNA_ScrewModifier;
+		case eModifierType_Ocean:
+			return &RNA_OceanModifier;
+		case eModifierType_Warp:
+			return &RNA_WarpModifier;
+		case eModifierType_WeightVGEdit:
+			return &RNA_VertexWeightEditModifier;
+		case eModifierType_WeightVGMix:
+			return &RNA_VertexWeightMixModifier;
+		case eModifierType_WeightVGProximity:
+			return &RNA_VertexWeightProximityModifier;
+		case eModifierType_DynamicPaint:
+			return &RNA_DynamicPaintModifier;
+		case eModifierType_Remesh:
+			return &RNA_RemeshModifier;
+		case eModifierType_Skin:
+			return &RNA_SkinModifier;
+		case eModifierType_LaplacianSmooth:
+			return &RNA_LaplacianSmoothModifier;
+		case eModifierType_Triangulate:
+			return &RNA_TriangulateModifier;
+		case eModifierType_UVWarp:
+			return &RNA_UVWarpModifier;
+		case eModifierType_MeshCache:
+			return &RNA_MeshCacheModifier;
+		case eModifierType_LaplacianDeform:
+			return &RNA_LaplacianDeformModifier;
+		case eModifierType_Wireframe:
+			return &RNA_WireframeModifier;
+		case eModifierType_DataTransfer:
+			return &RNA_DataTransferModifier;
+		case eModifierType_NormalEdit:
+			return &RNA_NormalEditModifier;
+		case eModifierType_CorrectiveSmooth:
+			return &RNA_CorrectiveSmoothModifier;
+		case eModifierType_MeshSequenceCache:
+			return &RNA_MeshSequenceCacheModifier;
+		case eModifierType_SurfaceDeform:
+			return &RNA_SurfaceDeformModifier;
+		case eModifierType_WeightedNormal:
+			return &RNA_WeightedNormalModifier;
+		case eModifierType_MyBMesh:
+			return &RNA_MyBMeshModifier;
+		/* Default */
+		case eModifierType_None:
+		case eModifierType_ShapeKey:
+		case NUM_MODIFIER_TYPES:
+			return &RNA_Modifier;
+	}
+
+	return &RNA_Modifier;
+=======
+>>>>>>> origin/soc-2018-npr
   ModifierData *md = (ModifierData *)ptr->data;
 
   switch ((ModifierType)md->type) {
@@ -581,6 +774,10 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
   }
 
   return &RNA_Modifier;
+<<<<<<< HEAD
+=======
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 }
 
 static void rna_Modifier_name_set(PointerRNA *ptr, const char *value)
@@ -5880,6 +6077,10 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
 
 void RNA_def_modifier(BlenderRNA *brna)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
 	StructRNA *srna;
 	PropertyRNA *prop;
 
@@ -6002,6 +6203,134 @@ void RNA_def_modifier(BlenderRNA *brna)
 	rna_def_modifier_surfacedeform(brna);
 	rna_def_modifier_mybmesh(brna);
 	rna_def_modifier_weightednormal(brna);
+<<<<<<< HEAD
+=======
+=======
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  /* data */
+  srna = RNA_def_struct(brna, "Modifier", NULL);
+  RNA_def_struct_ui_text(srna, "Modifier", "Modifier affecting the geometry data of an object");
+  RNA_def_struct_refine_func(srna, "rna_Modifier_refine");
+  RNA_def_struct_path_func(srna, "rna_Modifier_path");
+  RNA_def_struct_sdna(srna, "ModifierData");
+
+  /* strings */
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Modifier_name_set");
+  RNA_def_property_ui_text(prop, "Name", "Modifier name");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, NULL);
+  RNA_def_struct_name_property(srna, prop);
+
+  /* enums */
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_enum_sdna(prop, NULL, "type");
+  RNA_def_property_enum_items(prop, rna_enum_object_modifier_type_items);
+  RNA_def_property_ui_text(prop, "Type", "");
+
+  /* flags */
+  prop = RNA_def_property(srna, "show_viewport", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Realtime);
+  RNA_def_property_ui_text(prop, "Realtime", "Display modifier in viewport");
+  RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_ON, 1);
+
+  prop = RNA_def_property(srna, "show_render", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Render);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_ui_text(prop, "Render", "Use modifier during render");
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_ON, 1);
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+  prop = RNA_def_property(srna, "show_in_editmode", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Editmode);
+  RNA_def_property_ui_text(prop, "Edit Mode", "Display modifier in Edit mode");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_ui_icon(prop, ICON_EDITMODE_HLT, 0);
+
+  prop = RNA_def_property(srna, "show_on_cage", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_OnCage);
+  RNA_def_property_ui_text(prop, "On Cage", "Adjust edit cage to modifier result");
+  RNA_def_property_ui_icon(prop, ICON_MESH_DATA, 0);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Expanded);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
+  RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
+
+  prop = RNA_def_property(srna, "use_apply_on_spline", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_ApplyOnSpline);
+  RNA_def_property_ui_text(
+      prop,
+      "Apply on spline",
+      "Apply this and all preceding deformation modifiers on splines' points rather than "
+      "on filled curve/surface");
+  RNA_def_property_ui_icon(prop, ICON_SURFACE_DATA, 0);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  /* types */
+  rna_def_modifier_subsurf(brna);
+  rna_def_modifier_lattice(brna);
+  rna_def_modifier_curve(brna);
+  rna_def_modifier_build(brna);
+  rna_def_modifier_mirror(brna);
+  rna_def_modifier_decimate(brna);
+  rna_def_modifier_wave(brna);
+  rna_def_modifier_armature(brna);
+  rna_def_modifier_hook(brna);
+  rna_def_modifier_softbody(brna);
+  rna_def_modifier_boolean(brna);
+  rna_def_modifier_array(brna);
+  rna_def_modifier_edgesplit(brna);
+  rna_def_modifier_displace(brna);
+  rna_def_modifier_uvproject(brna);
+  rna_def_modifier_smooth(brna);
+  rna_def_modifier_correctivesmooth(brna);
+  rna_def_modifier_cast(brna);
+  rna_def_modifier_meshdeform(brna);
+  rna_def_modifier_particlesystem(brna);
+  rna_def_modifier_particleinstance(brna);
+  rna_def_modifier_explode(brna);
+  rna_def_modifier_cloth(brna);
+  rna_def_modifier_collision(brna);
+  rna_def_modifier_bevel(brna);
+  rna_def_modifier_shrinkwrap(brna);
+  rna_def_modifier_fluidsim(brna);
+  rna_def_modifier_mask(brna);
+  rna_def_modifier_simpledeform(brna);
+  rna_def_modifier_warp(brna);
+  rna_def_modifier_multires(brna);
+  rna_def_modifier_surface(brna);
+  rna_def_modifier_smoke(brna);
+  rna_def_modifier_solidify(brna);
+  rna_def_modifier_screw(brna);
+  rna_def_modifier_uvwarp(brna);
+  rna_def_modifier_weightvgedit(brna);
+  rna_def_modifier_weightvgmix(brna);
+  rna_def_modifier_weightvgproximity(brna);
+  rna_def_modifier_dynamic_paint(brna);
+  rna_def_modifier_ocean(brna);
+  rna_def_modifier_remesh(brna);
+  rna_def_modifier_skin(brna);
+  rna_def_modifier_laplaciansmooth(brna);
+  rna_def_modifier_triangulate(brna);
+  rna_def_modifier_meshcache(brna);
+  rna_def_modifier_laplaciandeform(brna);
+  rna_def_modifier_wireframe(brna);
+  rna_def_modifier_datatransfer(brna);
+  rna_def_modifier_normaledit(brna);
+  rna_def_modifier_meshseqcache(brna);
+  rna_def_modifier_surfacedeform(brna);
+  rna_def_modifier_weightednormal(brna);
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 }
 
 #endif

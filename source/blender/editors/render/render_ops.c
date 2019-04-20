@@ -79,6 +79,10 @@ void ED_operatortypes_render(void)
   WM_operatortype_append(SCENE_OT_freestyle_stroke_material_create);
 #endif
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/soc-2018-npr
     /* lanpr:  */
     WM_operatortype_append(SCENE_OT_lanpr_calculate_feature_lines);
     WM_operatortype_append(SCENE_OT_lanpr_add_line_layer);
@@ -94,6 +98,14 @@ void ED_operatortypes_render(void)
 	WM_operatortype_append(TEXTURE_OT_slot_copy);
 	WM_operatortype_append(TEXTURE_OT_slot_paste);
 	WM_operatortype_append(TEXTURE_OT_slot_move);
+<<<<<<< HEAD
+=======
+=======
+  WM_operatortype_append(TEXTURE_OT_slot_copy);
+  WM_operatortype_append(TEXTURE_OT_slot_paste);
+  WM_operatortype_append(TEXTURE_OT_slot_move);
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
   /* render_internal.c */
   WM_operatortype_append(RENDER_OT_view_show);

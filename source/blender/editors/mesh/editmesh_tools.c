@@ -7521,7 +7521,15 @@ void MESH_OT_mark_freestyle_face(wmOperatorType *ot)
 
 /** \} */
 
+<<<<<<< HEAD
 //#endif  /* WITH_FREESTYLE */
+=======
+<<<<<<< HEAD
+//#endif  /* WITH_FREESTYLE */
+=======
+#endif /* WITH_FREESTYLE */
+>>>>>>> master
+>>>>>>> origin/soc-2018-npr
 
 /********************** Loop normals editing tools modal map. **********************/
 
