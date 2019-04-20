@@ -206,9 +206,8 @@ static void buttons_main_region_layout_tool(const bContext *C, ARegion *ar)
   const WorkSpace *workspace = CTX_wm_workspace(C);
   const enum eContextObjectMode mode = CTX_data_mode_enum(C);
 
-  const char *contexts_base[5] = {NULL};
-  contexts_base[0] = ".active_tool";
-  const char **contexts = &contexts_base[1];
+  const char *contexts_base[4] = {NULL};
+  const char **contexts = &contexts_base[0];
 
   if (workspace->tools_space_type == SPACE_VIEW3D) {
     switch (mode) {

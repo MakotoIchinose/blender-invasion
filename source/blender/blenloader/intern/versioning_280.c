@@ -3153,6 +3153,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
             ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
             BLI_insertlinkbefore(regionbase, ar_header, ar);
+            /* Hide by default, enable for painting workspaces (startup only). */
+            ar->flag |= RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER;
           }
         }
       }
