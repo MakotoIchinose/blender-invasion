@@ -21,7 +21,6 @@
  * \ingroup edrend
  */
 
-
 #ifndef __RENDER_INTERN_H__
 #define __RENDER_INTERN_H__
 
@@ -75,6 +74,7 @@ void SCENE_OT_freestyle_modifier_copy(struct wmOperatorType *ot);
 void SCENE_OT_freestyle_stroke_material_create(struct wmOperatorType *ot);
 #endif
 
+<<<<<<< HEAD
 /* lanpr: lanpr_software_render.c */
 void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType* ot);
 void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType* ot);
@@ -87,6 +87,8 @@ void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
 
 
+=======
+>>>>>>> master
 void TEXTURE_OT_slot_copy(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_paste(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_move(struct wmOperatorType *ot);
