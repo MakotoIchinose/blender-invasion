@@ -914,17 +914,6 @@ static void rna_3DViewShading_type_update(Main *bmain, Scene *scene, PointerRNA 
     return;
   }
 
-  for (Material *ma = bmain->materials.first; ma; ma = ma->id.next) {
-    /* XXX Dependency graph does not support CD mask tracking,
-     * so we trigger  materials shading for until it's properly supported.
-     * This is to ensure material batches are all recreated when switching
-     * shading type. In the future DEG should replace this and just tag
-     * the meshes itself.
-     * This hack just tag BKE_MESH_BATCH_DIRTY_SHADING for every mesh that
-     * have a material. (see T55059) */
-    DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
-  }
-
   View3DShading *shading = ptr->data;
   if (shading->type == OB_MATERIAL ||
       (shading->type == OB_RENDER &&
@@ -3479,6 +3468,13 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
+  prop = RNA_def_property(srna, "sculpt_mode_mask_opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "overlay.sculpt_mode_mask_opacity");
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Sculpt Mask Opacity", "");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
   /* grease pencil paper settings */
   prop = RNA_def_property(srna, "show_annotation", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag2", V3D_SHOW_ANNOTATION);
@@ -4090,8 +4086,9 @@ static void rna_def_space_image(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceImage");
   RNA_def_struct_ui_text(srna, "Space Image Editor", "Image and UV editor space data");
 
-  rna_def_space_generic_show_region_toggles(
-      srna, (1 << RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(srna,
+                                            ((1 << RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_TOOLS) |
+                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD)));
 
   /* image */
   prop = RNA_def_property(srna, "image", PROP_POINTER, PROP_NONE);

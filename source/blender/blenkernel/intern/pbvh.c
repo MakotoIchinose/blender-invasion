@@ -505,8 +505,8 @@ static void pbvh_build(PBVH *bvh, BB *cb, BBC *prim_bbc, int totprim)
 /**
  * Do a full rebuild with on Mesh data structure.
  *
- * \note Unlike mpoly/mloop/verts, looptri is **totally owned** by PBVH (which means it may rewrite it if needed,
- * see #BKE_pbvh_apply_vertCos().
+ * \note Unlike mpoly/mloop/verts, looptri is **totally owned** by PBVH
+ * (which means it may rewrite it if needed, see #BKE_pbvh_apply_vertCos().
  */
 void BKE_pbvh_build_mesh(PBVH *bvh,
                          const MPoly *mpoly,
@@ -1287,8 +1287,7 @@ void BKE_pbvh_get_grid_updates(PBVH *bvh, bool clear, void ***r_gridfaces, int *
 
   GSetIterator gs_iter;
   int i;
-  GSET_ITER_INDEX(gs_iter, face_set, i)
-  {
+  GSET_ITER_INDEX (gs_iter, face_set, i) {
     faces[i] = BLI_gsetIterator_getKey(&gs_iter);
   }
 

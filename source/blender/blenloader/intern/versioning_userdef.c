@@ -491,18 +491,25 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
     userdef->move_threshold = 2;
   }
 
+  if (!USER_VERSION_ATLEAST(280, 58)) {
+    if (userdef->image_draw_method != IMAGE_DRAW_METHOD_GLSL) {
+      userdef->image_draw_method = IMAGE_DRAW_METHOD_AUTO;
+    }
+  }
+
   /**
    * Include next version bump.
    */
   {
     /* (keep this block even if it becomes empty). */
+    if (userdef->vbotimeout == 0) {
+      userdef->vbocollectrate = 60;
+      userdef->vbotimeout = 120;
+    }
   }
 
   if (userdef->pixelsize == 0.0f)
     userdef->pixelsize = 1.0f;
-
-  if (userdef->image_draw_method == 0)
-    userdef->image_draw_method = IMAGE_DRAW_METHOD_2DTEXTURE;
 
   for (bTheme *btheme = userdef->themes.first; btheme; btheme = btheme->next) {
     do_versions_theme(userdef, btheme);

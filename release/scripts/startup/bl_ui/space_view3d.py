@@ -409,7 +409,6 @@ class _draw_tool_settings_context_mode:
             else:
                 txt_ma = ""
 
-            row.label(text="Material:")
             sub = row.row()
             sub.ui_units_x = 8
             sub.popover(
@@ -5008,7 +5007,7 @@ class VIEW3D_PT_shading_options(Panel):
         if shading.type != 'WIREFRAME':
             col.prop(shading, "show_backface_culling")
 
-        row = col.row()
+        row = col.row(align=True)
 
         if shading.type == 'WIREFRAME':
             row.prop(shading, "show_xray_wireframe", text="")
@@ -5023,7 +5022,7 @@ class VIEW3D_PT_shading_options(Panel):
             #X-ray mode is off when alpha is 1.0
             xray_active = shading.show_xray and shading.xray_alpha != 1
 
-            row = col.row()
+            row = col.row(align=True)
             row.prop(shading, "show_shadows", text="")
             row.active = not xray_active
             sub = row.row(align=True)
@@ -5129,24 +5128,29 @@ class VIEW3D_PT_gizmo_display(Panel):
         colsub.prop(view, "show_gizmo_tool", text="Active Tools")
         colsub.prop(view, "show_gizmo_context", text="Active Object")
 
-        colsub = col.column()
-        colsub.active = view.show_gizmo_context
-        colsub.label(text="Object Gizmos")
-        colsub.prop(scene.transform_orientation_slots[1], "type", text="")
-        colsub.prop(view, "show_gizmo_object_translate", text="Move")
-        colsub.prop(view, "show_gizmo_object_rotate", text="Rotate")
-        colsub.prop(view, "show_gizmo_object_scale", text="Scale")
+        layout.separator()
+
+        col = layout.column()
+        col.active = view.show_gizmo_context
+        col.label(text="Object Gizmos")
+        col.prop(scene.transform_orientation_slots[1], "type", text="")
+        col.prop(view, "show_gizmo_object_translate", text="Move")
+        col.prop(view, "show_gizmo_object_rotate", text="Rotate")
+        col.prop(view, "show_gizmo_object_scale", text="Scale")
+
+        layout.separator()
 
         # Match order of object type visibility
-        colsub.label(text="Empty")
-        colsub.prop(view, "show_gizmo_empty_image", text="Image")
-        colsub.prop(view, "show_gizmo_empty_force_field", text="Force Field")
-        colsub.label(text="Light")
-        colsub.prop(view, "show_gizmo_light_size", text="Size")
-        colsub.prop(view, "show_gizmo_light_look_at", text="Look At")
-        colsub.label(text="Camera")
-        colsub.prop(view, "show_gizmo_camera_lens", text="Lens")
-        colsub.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
+        col = layout.column()
+        col.label(text="Empty")
+        col.prop(view, "show_gizmo_empty_image", text="Image")
+        col.prop(view, "show_gizmo_empty_force_field", text="Force Field")
+        col.label(text="Light")
+        col.prop(view, "show_gizmo_light_size", text="Size")
+        col.prop(view, "show_gizmo_light_look_at", text="Look At")
+        col.label(text="Camera")
+        col.prop(view, "show_gizmo_camera_lens", text="Lens")
+        col.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
 
 
 class VIEW3D_PT_overlay(Panel):
@@ -5261,7 +5265,7 @@ class VIEW3D_PT_overlay_geometry(Panel):
         col = layout.column()
         col.active = display_all
 
-        row = col.row()
+        row = col.row(align=True)
         if not is_wireframes:
             row.prop(overlay, "show_wireframes", text="")
         sub = row.row()
@@ -5568,8 +5572,16 @@ class VIEW3D_PT_overlay_sculpt(Panel):
         tool_settings = context.tool_settings
         sculpt = tool_settings.sculpt
 
+        view = context.space_data
+        overlay = view.overlay
+
         layout.prop(sculpt, "show_diffuse_color")
-        layout.prop(sculpt, "show_mask")
+
+        row = layout.row(align=True)
+        row.prop(sculpt, "show_mask", text="")
+        sub = row.row()
+        sub.active = sculpt.show_mask
+        sub.prop(overlay, "sculpt_mode_mask_opacity", text="Mask")
 
 
 class VIEW3D_PT_overlay_pose(Panel):
