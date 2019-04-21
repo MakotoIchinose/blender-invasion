@@ -7606,6 +7606,134 @@ void SCULPT_OT_color_fill(struct wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER;
 }
 
+static int sculpt_mask_by_normal_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e))
+{
+	Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+	Object *ob = CTX_data_active_object(C);
+	SculptSession *ss = ob->sculpt;
+	ARegion *ar = CTX_wm_region(C);
+	PBVH *pbvh = ob->sculpt->pbvh;
+	struct Scene *scene = CTX_data_scene(C);
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
+	PBVHNode **nodes;
+	int totnode;
+
+	/* Disable for multires and dyntopo for now */
+	if (BKE_pbvh_type(pbvh) != PBVH_FACES) {
+		ss->use_orco = false;
+		return OPERATOR_CANCELLED;
+	}
+
+	/* Initial setup */
+	BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, true, true);
+
+	BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
+	sculpt_undo_push_begin("Mask Coplanar");
+	for (int i = 0; i < totnode; i++) {
+		sculpt_undo_push_node(ob, nodes[i], SCULPT_UNDO_MASK);
+		BKE_pbvh_node_mark_redraw(nodes[i]);
+	}
+
+	/* Mask generation */
+	int init_vert = ss->active_vertex_mesh_index;
+
+	BLI_Stack *stack;
+	MVert *mvert = ss->mvert;
+	float threshold;
+	int *mvert_visited = MEM_callocN(ss->totvert * sizeof (int), "visited vertices");
+
+	threshold = RNA_float_get(op->ptr, "threshold");
+
+	stack = BLI_stack_new(sizeof(int), "verts stack");
+	BLI_stack_push(stack, &init_vert);
+
+	while(!BLI_stack_is_empty(stack)){
+		int vert;
+		BLI_stack_pop(stack, &vert);
+		MeshElemMap *vert_map = &ss->pmap[vert];
+		if(mvert_visited[vert] == 0) {
+			ss->vmask[vert] = 1.0f;
+			mvert[vert].flag |= ME_VERT_PBVH_UPDATE;
+			mvert_visited[vert] = 1;
+		}
+		int i = 0;
+		for (i = 0; i < ss->pmap[vert].count; i++) {
+			const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+			unsigned f_adj_v[2];
+			if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
+				int j;
+				for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
+					if (vert_map->count != 2 || ss->pmap[f_adj_v[j]].count <= 2) {
+						if(mvert_visited[f_adj_v[j]] == 0){
+							mvert_visited[f_adj_v[j]] = 1;
+							float original_normal[3];
+							float new_normal[3];
+							normal_short_to_float_v3(original_normal, mvert[vert].no);
+							normal_short_to_float_v3(new_normal, mvert[f_adj_v[j]].no);
+							if (dot_v3v3(original_normal, new_normal) > threshold) {
+								ss->vmask[f_adj_v[j]] = dot_v3v3(original_normal, new_normal);
+								mvert[f_adj_v[j]].flag |= ME_VERT_PBVH_UPDATE;
+								BLI_stack_push(stack, &f_adj_v[j]);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	MEM_freeN(mvert_visited);
+
+	/* Smooth iterations */
+	SculptThreadedTaskData data = {
+	    .sd = sd, .ob = ob, .nodes = nodes,  .smooth_value = 0.5f, .filter_type = MASK_FILTER_BLUR,
+	};
+
+	int smooth_iterations = RNA_int_get(op->ptr, "smooth_iterations");
+	for (int i = 0; i < smooth_iterations; i++) {
+		ParallelRangeSettings settings;
+		BLI_parallel_range_settings_defaults(&settings);
+		settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+		BLI_task_parallel_range(
+			    0, totnode,
+			    &data,
+			    mask_filter_task_cb,
+			    &settings);
+	}
+
+	/* Invert mask */
+	if (RNA_boolean_get(op->ptr, "invert")) {
+		for (int i = 0; i < ss->totvert; i++) {
+			ss->vmask[i] = 1.0f - ss->vmask[i];
+		}
+	}
+
+	sculpt_undo_push_end();
+	ED_region_tag_redraw(ar);
+
+	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+	return OPERATOR_FINISHED;
+}
+
+static void SCULPT_OT_mask_by_normal(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Mask by normal";
+	ot->idname = "SCULPT_OT_mask_by_normal";
+	ot->description = "Creates a mask limited by the normal difference of the vertices";
+
+	/* api callbacks */
+	ot->invoke = sculpt_mask_by_normal_invoke;
+	ot->poll = sculpt_mode_poll;
+
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+	ot->prop = RNA_def_float(ot->srna, "threshold", 0.9993f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+	ot->prop = RNA_def_int(ot->srna, "smooth_iterations", 2, 0, 10, "Smooth iterations", "", 0, 10);
+	ot->prop = RNA_def_boolean(ot->srna, "invert", false, "Invert", "");
+}
+
+
 
 
 void ED_operatortypes_sculpt(void)
@@ -7623,4 +7751,5 @@ void ED_operatortypes_sculpt(void)
 	WM_operatortype_append(SCULPT_OT_mesh_filter);
 	WM_operatortype_append(SCULPT_OT_mask_filter);
 	WM_operatortype_append(SCULPT_OT_color_fill);
+	WM_operatortype_append(SCULPT_OT_mask_by_normal);
 }
