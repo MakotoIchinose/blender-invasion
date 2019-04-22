@@ -59,6 +59,7 @@
 #include "IMB_imbuf_types.h"
 
 #include "paint_intern.h"
+#include "sculpt_intern.h"
 
 #include <float.h>
 #include <math.h>
@@ -686,22 +687,39 @@ static int paint_space_stroke(bContext *C, wmOperator *op, const float final_mou
 
 	float pressure, dpressure;
 	float mouse[2], dmouse[2];
+	float p_final_mouse[3], p_dmouse[3], p_last_mouse_position[3];
 	float length;
 	float no_pressure_spacing = paint_space_stroke_spacing(scene, stroke, 1.0f, 1.0f);
-
-	sub_v2_v2v2(dmouse, final_mouse, stroke->last_mouse_position);
-
 	pressure = stroke->last_pressure;
 	dpressure = final_pressure - stroke->last_pressure;
-
+	sub_v2_v2v2(dmouse, final_mouse, stroke->last_mouse_position);
 	length = normalize_v2(dmouse);
+
+	if (stroke->brush->flag2 & BRUSH_WORLD_SPACING) {
+		sculpt_stroke_get_location(C, p_last_mouse_position, stroke->last_mouse_position);
+		bool hit = sculpt_stroke_get_location(C, p_final_mouse, final_mouse);
+		if (hit) {
+			sub_v3_v3v3(p_dmouse, p_final_mouse, p_last_mouse_position);
+			length = len_v3(p_dmouse);
+			length = length * 400;
+		}
+		else {
+			length = 0.0f;
+		}
+	}
 
 	while (length > 0.0f) {
 		float spacing = paint_space_stroke_spacing_variable(scene, stroke, pressure, dpressure, length);
 
 		if (length >= spacing) {
-			mouse[0] = stroke->last_mouse_position[0] + dmouse[0] * spacing;
-			mouse[1] = stroke->last_mouse_position[1] + dmouse[1] * spacing;
+			if (stroke->brush->flag2 & BRUSH_WORLD_SPACING) {
+				mouse[0] = final_mouse[0];
+				mouse[1] = final_mouse[1];
+			}
+			else {
+				mouse[0] = stroke->last_mouse_position[0] + dmouse[0] * spacing;
+				mouse[1] = stroke->last_mouse_position[1] + dmouse[1] * spacing;
+			}
 			pressure = stroke->last_pressure + (spacing / length) * dpressure;
 
 			ups->overlap_factor = paint_stroke_integrate_overlap(stroke->brush, spacing / no_pressure_spacing);

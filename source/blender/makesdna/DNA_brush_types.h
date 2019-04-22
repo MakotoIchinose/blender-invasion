@@ -239,6 +239,7 @@ typedef struct Brush {
 	int size;
 	/** General purpose flag. */
 	int flag;
+	int flag2;
 	/** Pressure influence for mask. */
 	int mask_pressure;
 	/** Jitter the position of the brush. */
@@ -292,7 +293,7 @@ typedef struct Brush {
 	char mask_tool;
 	/** Active grease pencil tool. */
 	char gpencil_tool;
-	char _pad0[2];
+	char _pad0[6];
 
 	float autosmooth_factor;
 
@@ -420,6 +421,10 @@ typedef enum eBrushFlags {
 	BRUSH_ABSOLUTE_JITTER = (1 << 30),
 	BRUSH_CURVE = (1u << 31),
 } eBrushFlags;
+
+typedef enum eBrushFlags2 {
+	BRUSH_WORLD_SPACING = (1 << 0),
+} eBrushFlags2;
 
 typedef enum {
 	BRUSH_MASK_PRESSURE_RAMP = (1 << 1),
