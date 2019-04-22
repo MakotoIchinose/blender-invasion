@@ -756,8 +756,7 @@ bool uv_find_nearest_edge(
     if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
       continue;
     }
-    BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-    {
+    BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
       luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
       luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
 
@@ -901,8 +900,7 @@ bool uv_find_nearest_vert(Scene *scene,
       BMIter liter;
       BMLoop *l;
       int i;
-      BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-      {
+      BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
         float dist_test_sq;
         MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
         if (penalty_dist != 0.0f && uvedit_uv_select_test(scene, l, cd_loop_uv_offset)) {
@@ -1306,8 +1304,7 @@ static void uv_select_linked_multi(Scene *scene,
 
       efa = BM_face_at_index(em->bm, a);
 
-      BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-      {
+      BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
 
         /* make_uv_vert_map_EM sets verts tmp.l to the indices */
         vlist = BM_uv_vert_map_at_index(vmap, BM_elem_index_get(l->v));
@@ -2513,8 +2510,7 @@ static int uv_mouse_select_multi(
 
     hitv = BLI_array_alloca(hitv, hit.efa->len);
     hituv = BLI_array_alloca(hituv, hit.efa->len);
-    BM_ITER_ELEM_INDEX(l, &liter, hit.efa, BM_LOOPS_OF_FACE, i)
-    {
+    BM_ITER_ELEM_INDEX (l, &liter, hit.efa, BM_LOOPS_OF_FACE, i) {
       luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
       hituv[i] = luv->uv;
       hitv[i] = BM_elem_index_get(l->v);
@@ -2977,8 +2973,8 @@ static void UV_OT_select_linked_pick(wmOperatorType *ot)
 /**
  * \note This is based on similar use case to #MESH_OT_split(), which has a similar effect
  * but in this case they are not joined to begin with (only having the behavior of being joined)
- * so its best to call this #uv_select_split() instead of just split(), but assigned to the same key
- * as #MESH_OT_split - Campbell.
+ * so its best to call this #uv_select_split() instead of just split(), but assigned to the same
+ * key as #MESH_OT_split - Campbell.
  */
 static int uv_select_split_exec(bContext *C, wmOperator *op)
 {
@@ -3163,10 +3159,12 @@ static void uv_select_flush_from_tag_sticky_loc_internal(Scene *scene,
 /**
  * Flush the selection from face tags based on sticky and selection modes.
  *
- * needed because settings the selection a face is done in a number of places but it also needs to respect
- * the sticky modes for the UV verts, so dealing with the sticky modes is best done in a separate function.
+ * needed because settings the selection a face is done in a number of places but it also
+ * needs to respect the sticky modes for the UV verts, so dealing with the sticky modes
+ * is best done in a separate function.
  *
- * \note! This function is very similar to #uv_select_flush_from_tag_loop, be sure to update both upon changing.
+ * \note This function is very similar to #uv_select_flush_from_tag_loop,
+ * be sure to update both upon changing.
  */
 static void uv_select_flush_from_tag_face(SpaceImage *sima,
                                           Scene *scene,
@@ -3247,10 +3245,12 @@ static void uv_select_flush_from_tag_face(SpaceImage *sima,
 /**
  * Flush the selection from loop tags based on sticky and selection modes.
  *
- * needed because settings the selection a face is done in a number of places but it also needs to respect
- * the sticky modes for the UV verts, so dealing with the sticky modes is best done in a separate function.
+ * needed because settings the selection a face is done in a number of places but it also needs
+ * to respect the sticky modes for the UV verts, so dealing with the sticky modes is best done
+ * in a separate function.
  *
- * \note! This function is very similar to #uv_select_flush_from_tag_loop, be sure to update both upon changing.
+ * \note This function is very similar to #uv_select_flush_from_tag_loop,
+ * be sure to update both upon changing.
  */
 static void uv_select_flush_from_tag_loop(SpaceImage *sima,
                                           Scene *scene,

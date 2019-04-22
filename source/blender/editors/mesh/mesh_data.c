@@ -183,8 +183,7 @@ static void mesh_uv_reset_bmface(BMFace *f, const int cd_loop_uv_offset)
   BMLoop *l;
   int i;
 
-  BM_ITER_ELEM_INDEX(l, &liter, f, BM_LOOPS_OF_FACE, i)
-  {
+  BM_ITER_ELEM_INDEX (l, &liter, f, BM_LOOPS_OF_FACE, i) {
     fuv[i] = ((MLoopUV *)BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset))->uv;
   }
 
@@ -785,7 +784,8 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
     CustomData *data = GET_CD_DATA(me, ldata);
 
     if (me->edit_mesh) {
-      /* Tag edges as sharp according to smooth threshold if needed, to preserve autosmooth shading. */
+      /* Tag edges as sharp according to smooth threshold if needed,
+       * to preserve autosmooth shading. */
       if (me->flag & ME_AUTOSMOOTH) {
         BM_edges_sharp_from_angle_set(me->edit_mesh->bm, me->smoothresh);
       }
@@ -793,7 +793,8 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
       BM_data_layer_add(me->edit_mesh->bm, data, CD_CUSTOMLOOPNORMAL);
     }
     else {
-      /* Tag edges as sharp according to smooth threshold if needed, to preserve autosmooth shading. */
+      /* Tag edges as sharp according to smooth threshold if needed,
+       * to preserve autosmooth shading. */
       if (me->flag & ME_AUTOSMOOTH) {
         float(*polynors)[3] = MEM_mallocN(sizeof(*polynors) * (size_t)me->totpoly, __func__);
 

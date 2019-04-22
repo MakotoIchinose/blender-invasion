@@ -1136,8 +1136,7 @@ static int armature_subdivide_exec(bContext *C, wmOperator *op)
 
   /* loop over all editable bones */
   // XXX the old code did this in reverse order though!
-  CTX_DATA_BEGIN_WITH_ID(C, EditBone *, ebone, selected_editable_bones, bArmature *, arm)
-  {
+  CTX_DATA_BEGIN_WITH_ID (C, EditBone *, ebone, selected_editable_bones, bArmature *, arm) {
     for (i = cuts + 1; i > 1; i--) {
       /* compute cut ratio first */
       float cutratio = 1.0f / (float)i;
@@ -1207,6 +1206,7 @@ void ARMATURE_OT_subdivide(wmOperatorType *ot)
 
   /* Properties */
   prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 1000, "Number of Cuts", "", 1, 10);
-  /* avoid re-using last var because it can cause _very_ high poly meshes and annoy users (or worse crash) */
+  /* Avoid re-using last var because it can cause
+   * _very_ high poly meshes and annoy users (or worse crash) */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

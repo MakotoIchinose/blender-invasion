@@ -251,8 +251,7 @@ static void construct_param_handle_face_add(
 
   /* let parametrizer split the ngon, it can make better decisions
    * about which split is best for unwrapping than scanfill */
-  BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-  {
+  BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
     MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
 
     vkeys[i] = (ParamKey)BM_elem_index_get(l->v);
@@ -447,8 +446,11 @@ static void texface_from_original_index(BMFace *efa,
   }
 }
 
-/* unwrap handle initialization for subsurf aware-unwrapper. The many modifications required to make the original function(see above)
- * work justified the existence of a new function. */
+/**
+ * Unwrap handle initialization for subsurf aware-unwrapper.
+ * The many modifications required to make the original function(see above)
+ * work justified the existence of a new function.
+ */
 static ParamHandle *construct_param_handle_subsurfed(Scene *scene,
                                                      Object *ob,
                                                      BMEditMesh *em,
@@ -576,7 +578,8 @@ static ParamHandle *construct_param_handle_subsurfed(Scene *scene,
     co[2] = subsurfedVerts[mloop[2].v].co;
     co[3] = subsurfedVerts[mloop[3].v].co;
 
-    /* This is where all the magic is done. If the vertex exists in the, we pass the original uv pointer to the solver, thus
+    /* This is where all the magic is done.
+     * If the vertex exists in the, we pass the original uv pointer to the solver, thus
      * flushing the solution to the edit mesh. */
     texface_from_original_index(origFace,
                                 origVertIndices[mloop[0].v],
@@ -1992,8 +1995,7 @@ static void uv_map_mirror(BMEditMesh *em, BMFace *efa)
 
   const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
-  BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-  {
+  BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
     luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
     uvs[i] = luv->uv;
   }

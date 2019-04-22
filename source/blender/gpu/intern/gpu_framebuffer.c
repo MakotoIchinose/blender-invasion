@@ -562,7 +562,8 @@ bool GPU_framebuffer_check_valid(GPUFrameBuffer *fb, char err_out[256])
 
 #define CHECK_FRAMEBUFFER_IS_BOUND(_fb) \
   BLI_assert(GPU_framebuffer_bound(_fb)); \
-  UNUSED_VARS_NDEBUG(_fb);
+  UNUSED_VARS_NDEBUG(_fb); \
+  ((void)0)
 
 /* Needs to be done after binding. */
 void GPU_framebuffer_viewport_set(GPUFrameBuffer *fb, int x, int y, int w, int h)
@@ -716,7 +717,8 @@ void GPU_framebuffer_blit(GPUFrameBuffer *fb_read,
 
 /**
  * Use this if you need to custom downsample your texture and use the previous mip level as input.
- * This function only takes care of the correct texture handling. It execute the callback for each texture level.
+ * This function only takes care of the correct texture handling.
+ * It execute the callback for each texture level.
  */
 void GPU_framebuffer_recursive_downsample(GPUFrameBuffer *fb,
                                           int max_lvl,

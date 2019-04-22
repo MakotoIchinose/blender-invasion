@@ -573,8 +573,7 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm,
         tf_uv = (float(*)[2])BLI_buffer_reinit_data(&tf_uv_buf, vec2f, efa->len);
       }
 
-      BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-      {
+      BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
         buf->loop_of_poly_index = i;
         buf->poly_index = a;
         buf->separate = 0;
@@ -723,8 +722,7 @@ UvElementMap *BM_uv_element_map_create(BMesh *bm,
         tf_uv = (float(*)[2])BLI_buffer_reinit_data(&tf_uv_buf, vec2f, efa->len);
       }
 
-      BM_ITER_ELEM_INDEX(l, &liter, efa, BM_LOOPS_OF_FACE, i)
-      {
+      BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
         buf->l = l;
         buf->separate = 0;
         buf->island = INVALID_ISLAND;
@@ -1019,7 +1017,8 @@ static BMVert *cache_mirr_intptr_as_bmvert(intptr_t *index_lookup, int index)
  * \param use_select: Restrict to selected verts.
  * \param use_topology: Use topology mirror.
  * \param maxdist: Distance for close point test.
- * \param r_index: Optional array to write into, as an alternative to a customdata layer (length of total verts).
+ * \param r_index: Optional array to write into, as an alternative to a customdata layer
+ * (length of total verts).
  */
 void EDBM_verts_mirror_cache_begin_ex(BMEditMesh *em,
                                       const int axis,

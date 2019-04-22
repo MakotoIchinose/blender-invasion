@@ -102,7 +102,8 @@ FCurve *verify_driver_fcurve(ID *id, const char rna_path[], const int array_inde
     fcu->rna_path = BLI_strdup(rna_path);
     fcu->array_index = array_index;
 
-    /* if add is negative, don't init this data yet, since it will be filled in by the pasted driver */
+    /* If add is negative, don't init this data yet,
+     * since it will be filled in by the pasted driver. */
     if (add > 0) {
       BezTriple *bezt;
       size_t i;
@@ -629,8 +630,9 @@ bool ANIM_copy_driver(
 
   /* copy this to the copy/paste buf if it exists */
   if (fcu && fcu->driver) {
-    /* make copies of some info such as the rna_path, then clear this info from the F-Curve temporarily
-     * so that we don't end up wasting memory storing the path which won't get used ever...
+    /* Make copies of some info such as the rna_path, then clear this info from the
+     * F-Curve temporarily so that we don't end up wasting memory storing the path
+     * which won't get used ever.
      */
     char *tmp_path = fcu->rna_path;
     fcu->rna_path = NULL;
@@ -899,13 +901,25 @@ static bool add_driver_button_poll(bContext *C)
   PointerRNA ptr = {{NULL}};
   PropertyRNA *prop = NULL;
   int index;
+  bool driven, special;
 
   /* this operator can only run if there's a property button active, and it can be animated */
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
-  return (ptr.id.data && ptr.data && prop && RNA_property_animateable(&ptr, prop));
+
+  if (!(ptr.id.data && ptr.data && prop)) {
+    return false;
+  }
+  if (!RNA_property_animateable(&ptr, prop)) {
+    return false;
+  }
+
+  /* Don't do anything if there is an fcurve for animation without a driver. */
+  FCurve *fcu = rna_get_fcurve_context_ui(C, &ptr, prop, index, NULL, NULL, &driven, &special);
+  return (fcu == NULL || fcu->driver);
 }
 
-/* Wrapper for creating a driver without knowing what the targets will be yet (i.e. "manual/add later") */
+/* Wrapper for creating a driver without knowing what the targets will be yet
+ * (i.e. "manual/add later"). */
 static int add_driver_button_none(bContext *C, wmOperator *op, short mapping_type)
 {
   PointerRNA ptr = {{NULL}};
@@ -952,7 +966,8 @@ static int add_driver_button_menu_exec(bContext *C, wmOperator *op)
     /* Create Driver using Eyedropper */
     wmOperatorType *ot = WM_operatortype_find("UI_OT_eyedropper_driver", true);
 
-    /* XXX: We assume that it's fine to use the same set of properties, since they're actually the same... */
+    /* XXX: We assume that it's fine to use the same set of properties,
+     * since they're actually the same. */
     WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, op->ptr);
 
     return OPERATOR_FINISHED;

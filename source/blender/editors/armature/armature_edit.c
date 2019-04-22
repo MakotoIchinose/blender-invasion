@@ -688,8 +688,7 @@ static int armature_fill_bones_exec(bContext *C, wmOperator *op)
 
   /* loop over all bones, and only consider if visible */
   bArmature *arm = NULL;
-  CTX_DATA_BEGIN_WITH_ID(C, EditBone *, ebone, visible_bones, bArmature *, arm_iter)
-  {
+  CTX_DATA_BEGIN_WITH_ID (C, EditBone *, ebone, visible_bones, bArmature *, arm_iter) {
     bool check = false;
     if (!(ebone->flag & BONE_CONNECTED) && (ebone->flag & BONE_ROOTSEL)) {
       fill_add_joint(ebone, 0, &points);
@@ -918,17 +917,17 @@ static void bones_merge(
   newbone->flag = start->flag & (BONE_HINGE | BONE_NO_DEFORM | BONE_NO_SCALE |
                                  BONE_NO_CYCLICOFFSET | BONE_NO_LOCAL_LOCATION | BONE_DONE);
 
-  /* step 2a: reparent any side chains which may be parented to any bone in the chain of bones to merge
-   * - potentially several tips for side chains leading to some tree exist...
+  /* Step 2a: reparent any side chains which may be parented to any bone in the chain
+   * of bones to merge - potentially several tips for side chains leading to some tree exist.
    */
   for (chain = chains->first; chain; chain = chain->next) {
-    /* traverse down chain until we hit the bottom or if we run into the tip of the chain of bones we're
-     * merging (need to stop in this case to avoid corrupting this chain too!)
+    /* Traverse down chain until we hit the bottom or if we run into the tip of the chain of bones
+     * we're merging (need to stop in this case to avoid corrupting this chain too!).
      */
     for (ebone = chain->data; (ebone) && (ebone != end); ebone = ebone->parent) {
       short found = 0;
 
-      /* check if this bone is parented to one in the merging chain
+      /* Check if this bone is parented to one in the merging chain
        * ! WATCHIT: must only go check until end of checking chain
        */
       for (ebo = end; (ebo) && (ebo != start->parent); ebo = ebo->parent) {

@@ -714,8 +714,8 @@ static void rna_GPencilInterpolateSettings_type_set(PointerRNA *ptr, int value)
 {
   GP_Interpolate_Settings *settings = (GP_Interpolate_Settings *)ptr->data;
 
-  /* NOTE: This cast should be fine, as we have a small + finite set of values (eGP_Interpolate_Type)
-   * that should fit well within a char
+  /* NOTE: This cast should be fine, as we have a small + finite set of values
+   * (#eGP_Interpolate_Type) that should fit well within a char.
    */
   settings->type = (char)value;
 
@@ -1010,7 +1010,8 @@ static void rna_Scene_all_keyingsets_next(CollectionPropertyIterator *iter)
   ListBaseIterator *internal = &iter->internal.listbase;
   KeyingSet *ks = (KeyingSet *)internal->link;
 
-  /* if we've run out of links in Scene list, jump over to the builtins list unless we're there already */
+  /* If we've run out of links in Scene list,
+   * jump over to the builtins list unless we're there already. */
   if ((ks->next == NULL) && (ks != builtin_keyingsets.last))
     internal->link = (Link *)builtin_keyingsets.first;
   else
@@ -1840,6 +1841,11 @@ static void rna_View3DCursor_rotation_axis_angle_set(PointerRNA *ptr, const floa
   copy_v3_v3(cursor->rotation_axis, &value[1]);
 }
 
+static char *rna_View3DCursor_path(PointerRNA *UNUSED(ptr))
+{
+  return BLI_strdup("cursor");
+}
+
 static TimeMarker *rna_TimeLine_add(Scene *scene, const char name[], int frame)
 {
   TimeMarker *marker = MEM_callocN(sizeof(TimeMarker), "TimeMarker");
@@ -2581,6 +2587,7 @@ static void rna_def_view3d_cursor(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "View3DCursor", NULL);
   RNA_def_struct_sdna(srna, "View3DCursor");
+  RNA_def_struct_path_func(srna, "rna_View3DCursor_path");
   RNA_def_struct_ui_text(srna, "3D Cursor", "");
 
   prop = RNA_def_property(srna, "location", PROP_FLOAT, PROP_XYZ_LENGTH);
