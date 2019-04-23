@@ -78,6 +78,6 @@ if(WITH_OPENVDB)
 endif()
 
 if(WITH_QEX)
-        add_definitions(-DWITH_QEX)
-        add_subdirectory(qex)
+  add_definitions(-DWITH_QEX)
+  add_subdirectory(qex)
 endif()

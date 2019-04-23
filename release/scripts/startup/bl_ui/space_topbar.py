@@ -232,7 +232,6 @@ class _draw_left_context_mode:
                 UnifiedPaintPanel,
                 brush_basic_sculpt_settings,
             )
-            UnifiedPaintPanel.prop_unified_color(layout, context, brush, "color", text="")
             brush_basic_sculpt_settings(layout, context, brush, compact=True)
 
         @staticmethod
@@ -551,7 +550,7 @@ class TOPBAR_MT_editor_menus(Menu):
     bl_idname = "TOPBAR_MT_editor_menus"
     bl_label = ""
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         layout.menu("TOPBAR_MT_file")
         layout.menu("TOPBAR_MT_edit")
@@ -655,7 +654,8 @@ class TOPBAR_MT_file_new(Menu):
 
         return sorted(app_templates)
 
-    def draw_ex(layout, context, *, use_splash=False, use_more=False):
+    @staticmethod
+    def draw_ex(layout, _context, *, use_splash=False, use_more=False):
         layout.operator_context = 'EXEC_DEFAULT'
 
         # Limit number of templates in splash screen, spill over into more menu.
@@ -706,7 +706,7 @@ class TOPBAR_MT_file_import(Menu):
     bl_idname = "TOPBAR_MT_file_import"
     bl_label = "Import"
 
-    def draw(self, context):
+    def draw(self, _context):
         if bpy.app.build_options.collada:
             self.layout.operator("wm.collada_import", text="Collada (Default) (.dae)")
         if bpy.app.build_options.alembic:
@@ -717,7 +717,7 @@ class TOPBAR_MT_file_export(Menu):
     bl_idname = "TOPBAR_MT_file_export"
     bl_label = "Export"
 
-    def draw(self, context):
+    def draw(self, _context):
         if bpy.app.build_options.collada:
             self.layout.operator("wm.collada_export", text="Collada (Default) (.dae)")
         if bpy.app.build_options.alembic:
@@ -727,7 +727,7 @@ class TOPBAR_MT_file_export(Menu):
 class TOPBAR_MT_file_external_data(Menu):
     bl_label = "External Data"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         icon = 'CHECKBOX_HLT' if bpy.data.use_autopack else 'CHECKBOX_DEHLT'
@@ -754,7 +754,7 @@ class TOPBAR_MT_file_external_data(Menu):
 class TOPBAR_MT_file_previews(Menu):
     bl_label = "Data Previews"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("wm.previews_ensure")
@@ -860,7 +860,6 @@ class TOPBAR_MT_window(Menu):
 
         layout.separator()
 
-        layout.prop(context.screen, "show_topbar")
         layout.prop(context.screen, "show_statusbar")
 
         layout.separator()
@@ -948,7 +947,7 @@ class TOPBAR_MT_help(Menu):
 class TOPBAR_MT_file_context_menu(Menu):
     bl_label = "File Context Menu"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_AREA'
@@ -973,7 +972,7 @@ class TOPBAR_MT_file_context_menu(Menu):
 class TOPBAR_MT_workspace_menu(Menu):
     bl_label = "Workspace"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("workspace.duplicate", text="Duplicate", icon='DUPLICATE')
@@ -1035,7 +1034,6 @@ class TOPBAR_PT_gpencil_fill(Panel):
     bl_region_type = 'HEADER'
     bl_label = "Advanced"
 
-    @staticmethod
     def draw(self, context):
         paint = context.tool_settings.gpencil_paint
         brush = paint.brush
@@ -1055,13 +1053,9 @@ class TOPBAR_PT_gpencil_fill(Panel):
 # Only a popover
 class TOPBAR_PT_name(Panel):
     bl_space_type = 'TOPBAR'  # dummy
-    bl_region_type = 'WINDOW'
+    bl_region_type = 'HEADER'
     bl_label = "Rename Active Item"
     bl_ui_units_x = 14
-
-    @classmethod
-    def poll(cls, context):
-        return True
 
     def draw(self, context):
         layout = self.layout
@@ -1122,7 +1116,6 @@ class TOPBAR_PT_name(Panel):
 
 classes = (
     TOPBAR_HT_upper_bar,
-    TOPBAR_HT_lower_bar,
     TOPBAR_MT_file_context_menu,
     TOPBAR_MT_workspace_menu,
     TOPBAR_MT_editor_menus,

@@ -134,6 +134,7 @@ struct PBVH {
   const MLoop *mloop;
   const MLoopTri *looptri;
   CustomData *vdata;
+  CustomData *ldata;
 
   /* Grid Data */
   CCGKey gridkey;
