@@ -31,6 +31,9 @@ set(SRC
 	openvdb_capi.h
 )
 
+set(LIB
+)
+
 if(WITH_OPENVDB)
 	add_definitions(
 		-DWITH_OPENVDB
@@ -74,4 +77,4 @@ if(WITH_OPENVDB)
 	endif()
 endif()
 
-blender_add_lib(bf_intern_openvdb "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_intern_openvdb "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

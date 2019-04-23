@@ -346,7 +346,7 @@ class _draw_left_context_mode:
             settings = tool_settings.gpencil_paint
             row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
-            if brush.gpencil_tool in {'FILL', 'DRAW'}:
+            if context.object and brush.gpencil_tool in {'FILL', 'DRAW'}:
                 draw_color_selector()
 
             from .properties_paint_common import (
@@ -363,7 +363,7 @@ class _draw_left_context_mode:
                 sub.active = settings.use_thickness_curve
                 sub.popover(
                     panel="TOPBAR_PT_gpencil_primitive",
-                    text="Thickness Profile"
+                    text="Thickness Profile",
                 )
 
             if brush.gpencil_tool == 'FILL':
@@ -372,7 +372,7 @@ class _draw_left_context_mode:
                 sub = row.row(align=True)
                 sub.popover(
                     panel="TOPBAR_PT_gpencil_fill",
-                    text="Fill Options"
+                    text="Fill Options",
                 )
 
         @staticmethod
@@ -923,7 +923,7 @@ class TOPBAR_MT_help(Menu):
             "wm.url_open", text="Blender Store", icon='URL',
         ).url = "https://store.blender.org"
         layout.operator(
-            "wm.url_open", text="Development Fund", icon='URL'
+            "wm.url_open", text="Development Fund", icon='URL',
         ).url = "https://fund.blender.org"
         layout.operator(
             "wm.url_open", text="Donate", icon='URL',
@@ -1086,11 +1086,11 @@ class TOPBAR_PT_name(Panel):
                 row.prop(item, "name", text="")
                 found = True
         elif space_type == 'NODE_EDITOR':
-            layout.label(text="Node Name")
+            layout.label(text="Node Label")
             item = context.active_node
             if item:
                 row = row_with_icon(layout, 'NODE')
-                row.prop(item, "name", text="")
+                row.prop(item, "label", text="")
                 found = True
         else:
             if mode == 'POSE' or (mode == 'WEIGHT_PAINT' and context.pose_object):

@@ -3227,7 +3227,8 @@ GPUBatch *DRW_cache_mball_surface_get(Object *ob)
 	return DRW_metaball_batch_cache_get_triangles_with_normals(ob);
 }
 
-GPUBatch *DRW_cache_mball_edge_detection_get(Object *ob, bool *r_is_manifold) {
+GPUBatch *DRW_cache_mball_edge_detection_get(Object *ob, bool *r_is_manifold)
+{
 	BLI_assert(ob->type == OB_MBALL);
 	return DRW_metaball_batch_cache_get_edge_detection(ob, r_is_manifold);
 }
@@ -3807,10 +3808,11 @@ void drw_batch_cache_generate_requested(Object *ob)
 	const enum eContextObjectMode mode = CTX_data_mode_enum_ex(
 	        draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
 	const bool is_paint_mode = ELEM(mode, CTX_MODE_PAINT_TEXTURE, CTX_MODE_PAINT_VERTEX, CTX_MODE_PAINT_WEIGHT);
+
 	const bool use_hide = (
 	        (ob->type == OB_MESH) &&
 	        ((is_paint_mode && (ob == draw_ctx->obact) &&
-	          (BKE_paint_select_face_test(ob) || BKE_paint_select_vert_test(ob))) ||
+	          DRW_object_use_hide_faces(ob)) ||
 	         ((mode == CTX_MODE_EDIT_MESH) && BKE_object_is_in_editmode(ob))));
 
 	struct Mesh *mesh_eval = ob->runtime.mesh_eval;

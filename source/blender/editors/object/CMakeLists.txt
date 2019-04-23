@@ -69,6 +69,12 @@ set(SRC
 	object_intern.h
 )
 
+set(LIB
+	bf_blenkernel
+	bf_blenlib
+	bf_render
+)
+
 add_definitions(${GL_DEFINITIONS})
 
 if(WITH_PYTHON)
@@ -92,4 +98,4 @@ if(WITH_OPENVDB)
 	endif()
 endif()
 
-blender_add_lib(bf_editor_object "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_editor_object "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
