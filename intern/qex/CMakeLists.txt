@@ -19,8 +19,8 @@
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
-	.
-	../guardedalloc
+  .
+  ../guardedalloc
 )
 
 set(INC_SYS
@@ -32,10 +32,10 @@ set(SRC
 )
 
 if(WITH_QEX)
-	add_definitions(
-		-DWITH_QEX
+  add_definitions(
+    -DWITH_QEX
                 -DIGL_STATIC_LIBRARY=ON
-	)
+  )
 
         list(APPEND INC_SYS
                 ${QEX_INCLUDE_DIRS}

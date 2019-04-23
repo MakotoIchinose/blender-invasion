@@ -17,22 +17,21 @@
  * All rights reserved.
  */
 
- #ifndef OPENVDB_TRANSFORM_H
- #define OPENVDB_TRANSFORM_H
- 
+#ifndef OPENVDB_TRANSFORM_H
+#define OPENVDB_TRANSFORM_H
+
 #include <openvdb/openvdb.h>
 
 struct OpenVDBTransform {
-private:
-	openvdb::math::Transform::Ptr transform;
+ private:
+  openvdb::math::Transform::Ptr transform;
 
-public:
-	OpenVDBTransform();
-	~OpenVDBTransform();
-	void OpenVDB_transform_create_linear_transform(double voxel_size);
-	openvdb::math::Transform::Ptr OpenVDB_transform_get_transform();
-	void OpenVDB_transform_set_transform(openvdb::math::Transform::Ptr transform);
+ public:
+  OpenVDBTransform();
+  ~OpenVDBTransform();
+  void OpenVDB_transform_create_linear_transform(double voxel_size);
+  openvdb::math::Transform::Ptr OpenVDB_transform_get_transform();
+  void OpenVDB_transform_set_transform(openvdb::math::Transform::Ptr transform);
 };
 
-
- #endif // OPENVDB_TRANSFORM_H
+#endif  // OPENVDB_TRANSFORM_H

@@ -53,506 +53,481 @@
 #endif
 
 #ifdef WITH_OPENVDB
-	#include "openvdb_capi.h"
+#  include "openvdb_capi.h"
 #endif
 
 static void initData(ModifierData *md)
 {
-	RemeshModifierData *rmd = (RemeshModifierData *) md;
+  RemeshModifierData *rmd = (RemeshModifierData *)md;
 
-	rmd->scale = 0.9;
-	rmd->depth = 4;
-	rmd->hermite_num = 1;
-	rmd->flag = MOD_REMESH_FLOOD_FILL;
-	rmd->mode = MOD_REMESH_SHARP_FEATURES;
-	rmd->threshold = 1;
-	rmd->voxel_size = 0.1f;
-	rmd->isovalue = 0.0f;
-	rmd->adaptivity = 0.0f;
-	rmd->filter_width = 1;
-	rmd->filter_bias = OPENVDB_LEVELSET_FIRST_BIAS;
-	rmd->filter_type = OPENVDB_LEVELSET_FILTER_NONE;
-	rmd->filter_iterations = 1;
-	rmd->flag |= MOD_REMESH_LIVE_REMESH;
-    rmd->gradient_size = 50.0f;
-    rmd->stiffness = 5.0f;
-    rmd->iter = 0;
+  rmd->scale = 0.9;
+  rmd->depth = 4;
+  rmd->hermite_num = 1;
+  rmd->flag = MOD_REMESH_FLOOD_FILL;
+  rmd->mode = MOD_REMESH_SHARP_FEATURES;
+  rmd->threshold = 1;
+  rmd->voxel_size = 0.1f;
+  rmd->isovalue = 0.0f;
+  rmd->adaptivity = 0.0f;
+  rmd->filter_width = 1;
+  rmd->filter_bias = OPENVDB_LEVELSET_FIRST_BIAS;
+  rmd->filter_type = OPENVDB_LEVELSET_FILTER_NONE;
+  rmd->filter_iterations = 1;
+  rmd->flag |= MOD_REMESH_LIVE_REMESH;
+  rmd->gradient_size = 50.0f;
+  rmd->stiffness = 5.0f;
+  rmd->iter = 0;
 }
 
 #ifdef WITH_MOD_REMESH
 
 static void init_dualcon_mesh(DualConInput *input, Mesh *mesh)
 {
-	memset(input, 0, sizeof(DualConInput));
+  memset(input, 0, sizeof(DualConInput));
 
-	input->co = (void *)mesh->mvert;
-	input->co_stride = sizeof(MVert);
-	input->totco = mesh->totvert;
+  input->co = (void *)mesh->mvert;
+  input->co_stride = sizeof(MVert);
+  input->totco = mesh->totvert;
 
-	input->mloop = (void *)mesh->mloop;
-	input->loop_stride = sizeof(MLoop);
+  input->mloop = (void *)mesh->mloop;
+  input->loop_stride = sizeof(MLoop);
 
-	BKE_mesh_runtime_looptri_ensure(mesh);
-	input->looptri = (void *)mesh->runtime.looptris.array;
-	input->tri_stride = sizeof(MLoopTri);
-	input->tottri = mesh->runtime.looptris.len;
+  BKE_mesh_runtime_looptri_ensure(mesh);
+  input->looptri = (void *)mesh->runtime.looptris.array;
+  input->tri_stride = sizeof(MLoopTri);
+  input->tottri = mesh->runtime.looptris.len;
 
-	INIT_MINMAX(input->min, input->max);
-	BKE_mesh_minmax(mesh, input->min, input->max);
+  INIT_MINMAX(input->min, input->max);
+  BKE_mesh_minmax(mesh, input->min, input->max);
 }
 
 /* simple structure to hold the output: a CDDM and two counters to
  * keep track of the current elements */
 typedef struct {
-	Mesh *mesh;
-	int curvert, curface;
+  Mesh *mesh;
+  int curvert, curface;
 } DualConOutput;
 
 /* allocate and initialize a DualConOutput */
 static void *dualcon_alloc_output(int totvert, int totquad)
 {
-	DualConOutput *output;
+  DualConOutput *output;
 
-	if (!(output = MEM_callocN(sizeof(DualConOutput),
-	                           "DualConOutput")))
-	{
-		return NULL;
-	}
+  if (!(output = MEM_callocN(sizeof(DualConOutput), "DualConOutput"))) {
+    return NULL;
+  }
 
-	output->mesh = BKE_mesh_new_nomain(totvert, 0, 0, 4 * totquad, totquad);
-	return output;
+  output->mesh = BKE_mesh_new_nomain(totvert, 0, 0, 4 * totquad, totquad);
+  return output;
 }
 
 static void dualcon_add_vert(void *output_v, const float co[3])
 {
-	DualConOutput *output = output_v;
-	Mesh *mesh = output->mesh;
+  DualConOutput *output = output_v;
+  Mesh *mesh = output->mesh;
 
-	assert(output->curvert < mesh->totvert);
+  assert(output->curvert < mesh->totvert);
 
-	copy_v3_v3(mesh->mvert[output->curvert].co, co);
-	output->curvert++;
+  copy_v3_v3(mesh->mvert[output->curvert].co, co);
+  output->curvert++;
 }
 
 static void dualcon_add_quad(void *output_v, const int vert_indices[4])
 {
-	DualConOutput *output = output_v;
-	Mesh *mesh = output->mesh;
-	MLoop *mloop;
-	MPoly *cur_poly;
-	int i;
+  DualConOutput *output = output_v;
+  Mesh *mesh = output->mesh;
+  MLoop *mloop;
+  MPoly *cur_poly;
+  int i;
 
-	assert(output->curface < mesh->totpoly);
+  assert(output->curface < mesh->totpoly);
 
-	mloop = mesh->mloop;
-	cur_poly = &mesh->mpoly[output->curface];
+  mloop = mesh->mloop;
+  cur_poly = &mesh->mpoly[output->curface];
 
-	cur_poly->loopstart = output->curface * 4;
-	cur_poly->totloop = 4;
-	for (i = 0; i < 4; i++)
-		mloop[output->curface * 4 + i].v = vert_indices[i];
+  cur_poly->loopstart = output->curface * 4;
+  cur_poly->totloop = 4;
+  for (i = 0; i < 4; i++)
+    mloop[output->curface * 4 + i].v = vert_indices[i];
 
-	output->curface++;
+  output->curface++;
 }
 
-#ifdef WITH_OPENVDB
+#  ifdef WITH_OPENVDB
 
-static Mesh* voxel_remesh(RemeshModifierData *rmd, Mesh* mesh, struct OpenVDBLevelSet *level_set)
+static Mesh *voxel_remesh(RemeshModifierData *rmd, Mesh *mesh, struct OpenVDBLevelSet *level_set)
 {
-	MLoopCol** remap = NULL;
-	Mesh* target = NULL;
+  MLoopCol **remap = NULL;
+  Mesh *target = NULL;
 
-	if (rmd->flag & MOD_REMESH_REPROJECT_VPAINT)
-	{
-		CSGVolume_Object *vcob;
-		int i = 1;
-		remap = MEM_calloc_arrayN(BLI_listbase_count(&rmd->csg_operands) + 1, sizeof(MLoopCol*), "remap");
-		remap[0] = BKE_remesh_remap_loop_vertex_color_layer(mesh);
-		for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
-			if (vcob->object && vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED)
-			{
-				Mesh* me = BKE_object_get_final_mesh(vcob->object);
-				remap[i] = BKE_remesh_remap_loop_vertex_color_layer(me);
-				i++;
-			}
-		}
-	}
-
-	OpenVDBLevelSet_filter(level_set, rmd->filter_type, rmd->filter_width, rmd->filter_iterations, rmd->filter_bias);
-	target = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(level_set, rmd->isovalue, rmd->adaptivity,
-	                                                     rmd->flag & MOD_REMESH_RELAX_TRIANGLES);
-	OpenVDBLevelSet_free(level_set);
-
-	if (rmd->flag & MOD_REMESH_REPROJECT_VPAINT)
-	{
-		int i = 1;
-		CSGVolume_Object *vcob;
-
-		if (remap[0]) {
-			BKE_remesh_voxel_reproject_remapped_vertex_paint(target, mesh, remap[0]);
-			MEM_freeN(remap[0]);
-		}
-
-		for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
-			if (vcob->object && vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED && remap && remap[i])
-			{
-				Mesh* me = BKE_object_get_final_mesh(vcob->object);
-				BKE_remesh_voxel_reproject_remapped_vertex_paint(target, me, remap[i]);
-				if (remap[i])
-					MEM_freeN(remap[i]);
-				i++;
-			}
-		}
-
-		MEM_freeN(remap);
-		BKE_mesh_update_customdata_pointers(target, false);
-	}
-
-	if (rmd->flag & MOD_REMESH_SMOOTH_NORMALS) {
-		MPoly *mpoly = target->mpoly;
-		int i, totpoly = target->totpoly;
-
-		/* Apply smooth shading to output faces */
-		for (i = 0; i < totpoly; i++) {
-			mpoly[i].flag |= ME_SMOOTH;
-		}
-	}
-
-	return target;
-}
-
-static struct OpenVDBLevelSet* csgOperation(struct OpenVDBLevelSet* level_set, CSGVolume_Object* vcob,
-                                            Object* ob, RemeshModifierData *rmd)
-{
-	Mesh *me_orig = BKE_object_get_final_mesh(vcob->object);
-	Mesh *me = BKE_mesh_new_nomain(me_orig->totvert,
-	                               me_orig->totedge,
-	                               me_orig->totface,
-	                               me_orig->totloop,
-	                               me_orig->totpoly);
-
-	BKE_mesh_nomain_to_mesh(me_orig, me, vcob->object, &CD_MASK_MESH, false);
-
-	float imat[4][4];
-	float omat[4][4];
-	float size = (vcob->flag & MOD_REMESH_CSG_VOXEL_PERCENTAGE) ?
-	              rmd->voxel_size * vcob->voxel_percentage / 100.0f :
-	              vcob->voxel_size;
-
-	invert_m4_m4(imat, ob->obmat);
-	mul_m4_m4m4(omat, imat, vcob->object->obmat);
-
-	for (int i = 0; i < me->totvert; i++)
-	{
-		mul_m4_v3(omat, me->mvert[i].co);
-	}
-
-	struct OpenVDBTransform *xform = OpenVDBTransform_create();
-	OpenVDBTransform_create_linear_transform(xform, size);
-
-	struct OpenVDBLevelSet *level_setB = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(me, xform);
-
-	if (vcob->sampler != OPENVDB_LEVELSET_GRIDSAMPLER_NONE)
-	{
-		level_set = OpenVDBLevelSet_transform_and_resample(level_set, level_setB, vcob->sampler, rmd->isovalue);
-	}
-
-	OpenVDBLevelSet_CSG_operation(level_set, level_set, level_setB, (OpenVDBLevelSet_CSGOperation)vcob->operation );
-
-	OpenVDBLevelSet_free(level_setB);
-	OpenVDBTransform_free(xform);
-	BKE_mesh_free(me);
-
-	return level_set;
-}
-
-static Mesh* copy_mesh(Mesh *me) {
-	Mesh* result = BKE_mesh_new_nomain(me->totvert,
-									   me->totedge,
-									   me->totface,
-									   me->totloop,
-									   me->totpoly);
-
-	BKE_mesh_nomain_to_mesh(me, result, NULL, &CD_MASK_MESH, false);
-	return result;
-}
-#endif
-
-static Mesh *applyModifier(
-        ModifierData *md,
-        const ModifierEvalContext *ctx,
-        Mesh *mesh)
-{
-	RemeshModifierData *rmd;
-	DualConOutput *output;
-	DualConInput input;
-    Mesh *result = NULL;
-	DualConFlags flags = 0;
-	DualConMode mode = 0;
-
-	rmd = (RemeshModifierData *)md;
-
-    if (rmd->mode == MOD_REMESH_QUAD) {
-#ifdef WITH_QEX
-        Object *ob_orig = DEG_get_original_object(ctx->object);
-        RemeshModifierData *rmd_orig = (RemeshModifierData*)modifiers_findByName(ob_orig, md->name);
-
-        if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0))
-        {
-            //access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
-            if (rmd_orig->mesh_cached) {
-                return copy_mesh(rmd_orig->mesh_cached);
-            }
-        }
-
-        result = BKE_remesh_quad(mesh, rmd->gradient_size, rmd->stiffness, rmd->iter, rmd->flag & MOD_REMESH_DIRECT_ROUND);
-
-        if (result)
-        {
-            //update cache
-            if (rmd_orig->mesh_cached) {
-                BKE_mesh_free(rmd_orig->mesh_cached);
-                rmd_orig->mesh_cached = NULL;
-            }
-
-            //save a copy
-            rmd_orig->mesh_cached = copy_mesh(result);
-        }
-
-        return result;
-#else
-        modifier_setError((ModifierData*)rmd, "Built without QEx support, cant execute quad remesh");
-        return mesh;
-#endif
+  if (rmd->flag & MOD_REMESH_REPROJECT_VPAINT) {
+    CSGVolume_Object *vcob;
+    int i = 1;
+    remap = MEM_calloc_arrayN(
+        BLI_listbase_count(&rmd->csg_operands) + 1, sizeof(MLoopCol *), "remap");
+    remap[0] = BKE_remesh_remap_loop_vertex_color_layer(mesh);
+    for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
+      if (vcob->object && vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED) {
+        Mesh *me = BKE_object_get_final_mesh(vcob->object);
+        remap[i] = BKE_remesh_remap_loop_vertex_color_layer(me);
+        i++;
+      }
     }
-    else if (rmd->mode == MOD_REMESH_VOXEL)
-	{
-#if defined WITH_OPENVDB
-		CSGVolume_Object *vcob;
-		struct OpenVDBLevelSet* level_set;
+  }
 
-		Object *ob_orig = DEG_get_original_object(ctx->object);
-		RemeshModifierData *rmd_orig = (RemeshModifierData*)modifiers_findByName(ob_orig, md->name);
+  OpenVDBLevelSet_filter(
+      level_set, rmd->filter_type, rmd->filter_width, rmd->filter_iterations, rmd->filter_bias);
+  target = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(
+      level_set, rmd->isovalue, rmd->adaptivity, rmd->flag & MOD_REMESH_RELAX_TRIANGLES);
+  OpenVDBLevelSet_free(level_set);
 
-		if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0))
-		{
-			//access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
-			if (rmd_orig->mesh_cached) {
-				return copy_mesh(rmd_orig->mesh_cached);
-			}
-		}
+  if (rmd->flag & MOD_REMESH_REPROJECT_VPAINT) {
+    int i = 1;
+    CSGVolume_Object *vcob;
 
-		if (rmd->voxel_size > 0.0f) {
+    if (remap[0]) {
+      BKE_remesh_voxel_reproject_remapped_vertex_paint(target, mesh, remap[0]);
+      MEM_freeN(remap[0]);
+    }
 
-			struct OpenVDBTransform *xform = OpenVDBTransform_create();
-			OpenVDBTransform_create_linear_transform(xform, rmd->voxel_size);
-			level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
-			OpenVDBTransform_free(xform);
+    for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
+      if (vcob->object && vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED && remap && remap[i]) {
+        Mesh *me = BKE_object_get_final_mesh(vcob->object);
+        BKE_remesh_voxel_reproject_remapped_vertex_paint(target, me, remap[i]);
+        if (remap[i])
+          MEM_freeN(remap[i]);
+        i++;
+      }
+    }
 
-			for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
-			{
-				if (vcob->object && (vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED))
-				{
-					level_set = csgOperation(level_set, vcob, ctx->object, rmd);
-				}
-			}
+    MEM_freeN(remap);
+    BKE_mesh_update_customdata_pointers(target, false);
+  }
 
-			result = voxel_remesh(rmd, mesh, level_set);
+  if (rmd->flag & MOD_REMESH_SMOOTH_NORMALS) {
+    MPoly *mpoly = target->mpoly;
+    int i, totpoly = target->totpoly;
 
-			if (result)
-			{
-				//update cache
-				if (rmd_orig->mesh_cached) {
-					BKE_mesh_free(rmd_orig->mesh_cached);
-					rmd_orig->mesh_cached = NULL;
-				}
+    /* Apply smooth shading to output faces */
+    for (i = 0; i < totpoly; i++) {
+      mpoly[i].flag |= ME_SMOOTH;
+    }
+  }
 
-				//save a copy
-				rmd_orig->mesh_cached = copy_mesh(result);
-			}
+  return target;
+}
 
-			return result;
-		}
-		else {
-			return mesh;
-		}
-#else
-		modifier_setError((ModifierData*)rmd, "Built without OpenVDB support, cant execute voxel remesh");
-		return mesh;
-#endif
-	}
+static struct OpenVDBLevelSet *csgOperation(struct OpenVDBLevelSet *level_set,
+                                            CSGVolume_Object *vcob,
+                                            Object *ob,
+                                            RemeshModifierData *rmd)
+{
+  Mesh *me_orig = BKE_object_get_final_mesh(vcob->object);
+  Mesh *me = BKE_mesh_new_nomain(
+      me_orig->totvert, me_orig->totedge, me_orig->totface, me_orig->totloop, me_orig->totpoly);
 
-	init_dualcon_mesh(&input, mesh);
+  BKE_mesh_nomain_to_mesh(me_orig, me, vcob->object, &CD_MASK_MESH, false);
 
-	if (rmd->flag & MOD_REMESH_FLOOD_FILL)
-		flags |= DUALCON_FLOOD_FILL;
+  float imat[4][4];
+  float omat[4][4];
+  float size = (vcob->flag & MOD_REMESH_CSG_VOXEL_PERCENTAGE) ?
+                   rmd->voxel_size * vcob->voxel_percentage / 100.0f :
+                   vcob->voxel_size;
 
-	switch (rmd->mode) {
-		case MOD_REMESH_CENTROID:
-			mode = DUALCON_CENTROID;
-			break;
-		case MOD_REMESH_MASS_POINT:
-			mode = DUALCON_MASS_POINT;
-			break;
-		case MOD_REMESH_SHARP_FEATURES:
-			mode = DUALCON_SHARP_FEATURES;
-			break;
-	}
+  invert_m4_m4(imat, ob->obmat);
+  mul_m4_m4m4(omat, imat, vcob->object->obmat);
 
-	output = dualcon(&input,
-	                 dualcon_alloc_output,
-	                 dualcon_add_vert,
-	                 dualcon_add_quad,
-	                 flags,
-	                 mode,
-	                 rmd->threshold,
-	                 rmd->hermite_num,
-	                 rmd->scale,
-	                 rmd->depth);
-	result = output->mesh;
-	MEM_freeN(output);
+  for (int i = 0; i < me->totvert; i++) {
+    mul_m4_v3(omat, me->mvert[i].co);
+  }
 
-	if (rmd->flag & MOD_REMESH_SMOOTH_SHADING) {
-		MPoly *mpoly = result->mpoly;
-		int i, totpoly = result->totpoly;
+  struct OpenVDBTransform *xform = OpenVDBTransform_create();
+  OpenVDBTransform_create_linear_transform(xform, size);
 
-		/* Apply smooth shading to output faces */
-		for (i = 0; i < totpoly; i++) {
-			mpoly[i].flag |= ME_SMOOTH;
-		}
-	}
+  struct OpenVDBLevelSet *level_setB = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(me, xform);
 
-	BKE_mesh_calc_edges(result, true, false);
-	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
-	return result;
+  if (vcob->sampler != OPENVDB_LEVELSET_GRIDSAMPLER_NONE) {
+    level_set = OpenVDBLevelSet_transform_and_resample(
+        level_set, level_setB, vcob->sampler, rmd->isovalue);
+  }
+
+  OpenVDBLevelSet_CSG_operation(
+      level_set, level_set, level_setB, (OpenVDBLevelSet_CSGOperation)vcob->operation);
+
+  OpenVDBLevelSet_free(level_setB);
+  OpenVDBTransform_free(xform);
+  BKE_mesh_free(me);
+
+  return level_set;
+}
+
+static Mesh *copy_mesh(Mesh *me)
+{
+  Mesh *result = BKE_mesh_new_nomain(
+      me->totvert, me->totedge, me->totface, me->totloop, me->totpoly);
+
+  BKE_mesh_nomain_to_mesh(me, result, NULL, &CD_MASK_MESH, false);
+  return result;
+}
+#  endif
+
+static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+{
+  RemeshModifierData *rmd;
+  DualConOutput *output;
+  DualConInput input;
+  Mesh *result = NULL;
+  DualConFlags flags = 0;
+  DualConMode mode = 0;
+
+  rmd = (RemeshModifierData *)md;
+
+  if (rmd->mode == MOD_REMESH_QUAD) {
+#  ifdef WITH_QEX
+    Object *ob_orig = DEG_get_original_object(ctx->object);
+    RemeshModifierData *rmd_orig = (RemeshModifierData *)modifiers_findByName(ob_orig, md->name);
+
+    if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0)) {
+      //access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
+      if (rmd_orig->mesh_cached) {
+        return copy_mesh(rmd_orig->mesh_cached);
+      }
+    }
+
+    result = BKE_remesh_quad(
+        mesh, rmd->gradient_size, rmd->stiffness, rmd->iter, rmd->flag & MOD_REMESH_DIRECT_ROUND);
+
+    if (result) {
+      //update cache
+      if (rmd_orig->mesh_cached) {
+        BKE_mesh_free(rmd_orig->mesh_cached);
+        rmd_orig->mesh_cached = NULL;
+      }
+
+      //save a copy
+      rmd_orig->mesh_cached = copy_mesh(result);
+    }
+
+    return result;
+#  else
+    modifier_setError((ModifierData *)rmd, "Built without QEx support, cant execute quad remesh");
+    return mesh;
+#  endif
+  }
+  else if (rmd->mode == MOD_REMESH_VOXEL) {
+#  if defined WITH_OPENVDB
+    CSGVolume_Object *vcob;
+    struct OpenVDBLevelSet *level_set;
+
+    Object *ob_orig = DEG_get_original_object(ctx->object);
+    RemeshModifierData *rmd_orig = (RemeshModifierData *)modifiers_findByName(ob_orig, md->name);
+
+    if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0)) {
+      //access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
+      if (rmd_orig->mesh_cached) {
+        return copy_mesh(rmd_orig->mesh_cached);
+      }
+    }
+
+    if (rmd->voxel_size > 0.0f) {
+
+      struct OpenVDBTransform *xform = OpenVDBTransform_create();
+      OpenVDBTransform_create_linear_transform(xform, rmd->voxel_size);
+      level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
+      OpenVDBTransform_free(xform);
+
+      for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
+        if (vcob->object && (vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED)) {
+          level_set = csgOperation(level_set, vcob, ctx->object, rmd);
+        }
+      }
+
+      result = voxel_remesh(rmd, mesh, level_set);
+
+      if (result) {
+        //update cache
+        if (rmd_orig->mesh_cached) {
+          BKE_mesh_free(rmd_orig->mesh_cached);
+          rmd_orig->mesh_cached = NULL;
+        }
+
+        //save a copy
+        rmd_orig->mesh_cached = copy_mesh(result);
+      }
+
+      return result;
+    }
+    else {
+      return mesh;
+    }
+#  else
+    modifier_setError((ModifierData *)rmd,
+                      "Built without OpenVDB support, cant execute voxel remesh");
+    return mesh;
+#  endif
+  }
+
+  init_dualcon_mesh(&input, mesh);
+
+  if (rmd->flag & MOD_REMESH_FLOOD_FILL)
+    flags |= DUALCON_FLOOD_FILL;
+
+  switch (rmd->mode) {
+    case MOD_REMESH_CENTROID:
+      mode = DUALCON_CENTROID;
+      break;
+    case MOD_REMESH_MASS_POINT:
+      mode = DUALCON_MASS_POINT;
+      break;
+    case MOD_REMESH_SHARP_FEATURES:
+      mode = DUALCON_SHARP_FEATURES;
+      break;
+  }
+
+  output = dualcon(&input,
+                   dualcon_alloc_output,
+                   dualcon_add_vert,
+                   dualcon_add_quad,
+                   flags,
+                   mode,
+                   rmd->threshold,
+                   rmd->hermite_num,
+                   rmd->scale,
+                   rmd->depth);
+  result = output->mesh;
+  MEM_freeN(output);
+
+  if (rmd->flag & MOD_REMESH_SMOOTH_SHADING) {
+    MPoly *mpoly = result->mpoly;
+    int i, totpoly = result->totpoly;
+
+    /* Apply smooth shading to output faces */
+    for (i = 0; i < totpoly; i++) {
+      mpoly[i].flag |= ME_SMOOTH;
+    }
+  }
+
+  BKE_mesh_calc_edges(result, true, false);
+  result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
+  return result;
 }
 
 #else /* !WITH_MOD_REMESH */
 
-static Mesh *applyModifier(
-        ModifierData *UNUSED(md),
-        const ModifierEvalContext *UNUSED(ctx),
-        Mesh *mesh)
+static Mesh *applyModifier(ModifierData *UNUSED(md),
+                           const ModifierEvalContext *UNUSED(ctx),
+                           Mesh *mesh)
 {
-	return mesh;
+  return mesh;
 }
 
 #endif /* !WITH_MOD_REMESH */
 
-static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
+static void requiredDataMask(Object *UNUSED(ob),
+                             ModifierData *md,
+                             CustomData_MeshMasks *r_cddata_masks)
 {
-	RemeshModifierData *rmd = (RemeshModifierData *)md;
+  RemeshModifierData *rmd = (RemeshModifierData *)md;
 
-	/* ask for vertexcolors if we need them */
-	if (rmd->mode == MOD_REMESH_VOXEL) {
-		r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
-	}
+  /* ask for vertexcolors if we need them */
+  if (rmd->mode == MOD_REMESH_VOXEL) {
+    r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
+  }
 }
 
-static void foreachObjectLink(
-        ModifierData *md, Object *ob,
-        ObjectWalkFunc walk, void *userData)
+static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk, void *userData)
 {
-	RemeshModifierData *rmd = (RemeshModifierData *)md;
-	CSGVolume_Object *vcob;
+  RemeshModifierData *rmd = (RemeshModifierData *)md;
+  CSGVolume_Object *vcob;
 
-	if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached)
-	{
-		return;
-	}
+  if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached) {
+    return;
+  }
 
-	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
-	{
-		if (vcob->object)
-		{
-			walk(userData, ob, &vcob->object, IDWALK_CB_NOP);
-		}
-	}
+  for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
+    if (vcob->object) {
+      walk(userData, ob, &vcob->object, IDWALK_CB_NOP);
+    }
+  }
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-	RemeshModifierData *rmd = (RemeshModifierData *)md;
-	CSGVolume_Object *vcob;
+  RemeshModifierData *rmd = (RemeshModifierData *)md;
+  CSGVolume_Object *vcob;
 
-	if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached)
-	{
-		return;
-	}
+  if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0) && rmd->mesh_cached) {
+    return;
+  }
 
-	for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next)
-	{
-		if (vcob->object && (vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED)) {
-			DEG_add_object_relation(ctx->node, vcob->object, DEG_OB_COMP_TRANSFORM, "Remesh Modifier");
-			DEG_add_object_relation(ctx->node, vcob->object, DEG_OB_COMP_GEOMETRY, "Remesh Modifier");
-		}
-	}
+  for (vcob = rmd->csg_operands.first; vcob; vcob = vcob->next) {
+    if (vcob->object && (vcob->flag & MOD_REMESH_CSG_OBJECT_ENABLED)) {
+      DEG_add_object_relation(ctx->node, vcob->object, DEG_OB_COMP_TRANSFORM, "Remesh Modifier");
+      DEG_add_object_relation(ctx->node, vcob->object, DEG_OB_COMP_GEOMETRY, "Remesh Modifier");
+    }
+  }
 
-	if (rmd->csg_operands.first) {
-		/* We need own transformation as well in case we have operands */
-		DEG_add_modifier_to_transform_relation(ctx->node, "Remesh Modifier");
-	}
+  if (rmd->csg_operands.first) {
+    /* We need own transformation as well in case we have operands */
+    DEG_add_modifier_to_transform_relation(ctx->node, "Remesh Modifier");
+  }
 }
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
-	RemeshModifierData *rmd_src = (RemeshModifierData*)md_src;
-	RemeshModifierData *rmd_dst = (RemeshModifierData*)md_dst;
-	Mesh *me_src = rmd_src->mesh_cached;
+  RemeshModifierData *rmd_src = (RemeshModifierData *)md_src;
+  RemeshModifierData *rmd_dst = (RemeshModifierData *)md_dst;
+  Mesh *me_src = rmd_src->mesh_cached;
 
-	modifier_copyData_generic(md_src, md_dst, flag);
-	//only for cow copy, because cow does shallow copy only
-	if (flag & LIB_ID_CREATE_NO_MAIN) {
-		BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
-	}
+  modifier_copyData_generic(md_src, md_dst, flag);
+  //only for cow copy, because cow does shallow copy only
+  if (flag & LIB_ID_CREATE_NO_MAIN) {
+    BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
+  }
 
-	//here for both ?
-	if (me_src) {
-		Mesh *me_dst = BKE_mesh_new_nomain(me_src->totvert,
-										   me_src->totedge,
-										   me_src->totface,
-										   me_src->totloop,
-										   me_src->totpoly);
+  //here for both ?
+  if (me_src) {
+    Mesh *me_dst = BKE_mesh_new_nomain(
+        me_src->totvert, me_src->totedge, me_src->totface, me_src->totloop, me_src->totpoly);
 
-		BKE_mesh_nomain_to_mesh(me_src, me_dst, NULL, &CD_MASK_MESH, false);
-		rmd_dst->mesh_cached = me_dst;
-	}
+    BKE_mesh_nomain_to_mesh(me_src, me_dst, NULL, &CD_MASK_MESH, false);
+    rmd_dst->mesh_cached = me_dst;
+  }
 }
 
-static void freeData(ModifierData *md) {
-	RemeshModifierData *rmd = (RemeshModifierData *)md;
-	if (rmd->mesh_cached) {
-		BKE_mesh_free(rmd->mesh_cached);
-		rmd->mesh_cached = NULL;
-	}
+static void freeData(ModifierData *md)
+{
+  RemeshModifierData *rmd = (RemeshModifierData *)md;
+  if (rmd->mesh_cached) {
+    BKE_mesh_free(rmd->mesh_cached);
+    rmd->mesh_cached = NULL;
+  }
 }
 
 ModifierTypeInfo modifierType_Remesh = {
-	/* name */              "Remesh",
-	/* structName */        "RemeshModifierData",
-	/* structSize */        sizeof(RemeshModifierData),
-	/* type */              eModifierTypeType_Constructive,
-	/* flags */             eModifierTypeFlag_AcceptsMesh |
-	                        eModifierTypeFlag_AcceptsCVs |
-	                        eModifierTypeFlag_SupportsEditmode |
-	                        eModifierTypeFlag_SupportsMapping,
+    /* name */ "Remesh",
+    /* structName */ "RemeshModifierData",
+    /* structSize */ sizeof(RemeshModifierData),
+    /* type */ eModifierTypeType_Constructive,
+    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
+        eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_SupportsMapping,
 
-	/* copyData */          copyData,
+    /* copyData */ copyData,
 
-	/* deformVerts */       NULL,
-	/* deformMatrices */    NULL,
-	/* deformVertsEM */     NULL,
-	/* deformMatricesEM */  NULL,
-	/* applyModifier */     applyModifier,
+    /* deformVerts */ NULL,
+    /* deformMatrices */ NULL,
+    /* deformVertsEM */ NULL,
+    /* deformMatricesEM */ NULL,
+    /* applyModifier */ applyModifier,
 
-	/* initData */          initData,
-	/* requiredDataMask */  requiredDataMask,
-	/* freeData */          freeData,
-	/* isDisabled */        NULL,
-	/* updateDepsgraph */   updateDepsgraph,
-	/* dependsOnTime */     NULL,
-	/* dependsOnNormals */	NULL,
-	/* foreachObjectLink */ foreachObjectLink,
-	/* foreachIDLink */     NULL,
-	/* freeRuntimeData */   NULL,
+    /* initData */ initData,
+    /* requiredDataMask */ requiredDataMask,
+    /* freeData */ freeData,
+    /* isDisabled */ NULL,
+    /* updateDepsgraph */ updateDepsgraph,
+    /* dependsOnTime */ NULL,
+    /* dependsOnNormals */ NULL,
+    /* foreachObjectLink */ foreachObjectLink,
+    /* foreachIDLink */ NULL,
+    /* freeRuntimeData */ NULL,
 };

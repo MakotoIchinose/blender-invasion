@@ -20,22 +20,24 @@
 #include "openvdb_transform.h"
 
 OpenVDBTransform::OpenVDBTransform()
-{}
+{
+}
 
 OpenVDBTransform::~OpenVDBTransform()
-{}
+{
+}
 
 void OpenVDBTransform::OpenVDB_transform_create_linear_transform(double voxel_size)
 {
-	this->transform = openvdb::math::Transform::createLinearTransform(voxel_size);
+  this->transform = openvdb::math::Transform::createLinearTransform(voxel_size);
 }
 
 openvdb::math::Transform::Ptr OpenVDBTransform::OpenVDB_transform_get_transform()
 {
-	return this->transform;
+  return this->transform;
 }
 
 void OpenVDBTransform::OpenVDB_transform_set_transform(openvdb::math::Transform::Ptr transform)
 {
-	this->transform = transform;
+  this->transform = transform;
 }
