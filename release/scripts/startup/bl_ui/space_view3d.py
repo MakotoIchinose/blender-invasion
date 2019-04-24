@@ -5007,7 +5007,7 @@ class VIEW3D_PT_shading_options(Panel):
         if shading.type != 'WIREFRAME':
             col.prop(shading, "show_backface_culling")
 
-        row = col.row()
+        row = col.row(align=True)
 
         if shading.type == 'WIREFRAME':
             row.prop(shading, "show_xray_wireframe", text="")
@@ -5022,7 +5022,7 @@ class VIEW3D_PT_shading_options(Panel):
             #X-ray mode is off when alpha is 1.0
             xray_active = shading.show_xray and shading.xray_alpha != 1
 
-            row = col.row()
+            row = col.row(align=True)
             row.prop(shading, "show_shadows", text="")
             row.active = not xray_active
             sub = row.row(align=True)
@@ -5265,7 +5265,7 @@ class VIEW3D_PT_overlay_geometry(Panel):
         col = layout.column()
         col.active = display_all
 
-        row = col.row()
+        row = col.row(align=True)
         if not is_wireframes:
             row.prop(overlay, "show_wireframes", text="")
         sub = row.row()
@@ -5572,8 +5572,16 @@ class VIEW3D_PT_overlay_sculpt(Panel):
         tool_settings = context.tool_settings
         sculpt = tool_settings.sculpt
 
+        view = context.space_data
+        overlay = view.overlay
+
         layout.prop(sculpt, "show_diffuse_color")
-        layout.prop(sculpt, "show_mask")
+
+        row = layout.row(align=True)
+        row.prop(sculpt, "show_mask", text="")
+        sub = row.row()
+        sub.active = sculpt.show_mask
+        sub.prop(overlay, "sculpt_mode_mask_opacity", text="Mask")
 
 
 class VIEW3D_PT_overlay_pose(Panel):

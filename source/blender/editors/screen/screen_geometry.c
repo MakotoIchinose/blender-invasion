@@ -84,7 +84,8 @@ bool screen_geom_edge_is_horizontal(ScrEdge *se)
 }
 
 /**
- * \param bounds_rect: Either window or screen bounds. Used to exclude edges along window/screen edges.
+ * \param bounds_rect: Either window or screen bounds.
+ * Used to exclude edges along window/screen edges.
  */
 ScrEdge *screen_geom_area_map_find_active_scredge(const ScrAreaMap *area_map,
                                                   const rcti *bounds_rect,
@@ -102,8 +103,9 @@ ScrEdge *screen_geom_area_map_find_active_scredge(const ScrAreaMap *area_map,
         min = MIN2(se->v1->vec.x, se->v2->vec.x);
         max = MAX2(se->v1->vec.x, se->v2->vec.x);
 
-        if (abs(my - se->v1->vec.y) <= safety && mx >= min && mx <= max)
+        if (abs(my - se->v1->vec.y) <= safety && mx >= min && mx <= max) {
           return se;
+        }
       }
     }
     else {
@@ -112,8 +114,9 @@ ScrEdge *screen_geom_area_map_find_active_scredge(const ScrAreaMap *area_map,
         min = MIN2(se->v1->vec.y, se->v2->vec.y);
         max = MAX2(se->v1->vec.y, se->v2->vec.y);
 
-        if (abs(mx - se->v1->vec.x) <= safety && my >= min && my <= max)
+        if (abs(mx - se->v1->vec.x) <= safety && my >= min && my <= max) {
           return se;
+        }
       }
     }
   }
@@ -199,10 +202,12 @@ void screen_geom_vertices_scale(const wmWindow *win, bScreen *sc)
     int headery = headery_init;
 
     /* adjust headery if verts are along the edge of window */
-    if (sa->v1->vec.y > window_rect.ymin)
+    if (sa->v1->vec.y > window_rect.ymin) {
       headery += U.pixelsize;
-    if (sa->v2->vec.y < (window_rect.ymax - 1))
+    }
+    if (sa->v2->vec.y < (window_rect.ymax - 1)) {
       headery += U.pixelsize;
+    }
 
     if (screen_geom_area_height(sa) < headery) {
       /* lower edge */
@@ -225,7 +230,8 @@ void screen_geom_vertices_scale(const wmWindow *win, bScreen *sc)
     }
   }
 
-  /* Global areas have a fixed size that only changes with the DPI. Here we ensure that exactly this size is set. */
+  /* Global areas have a fixed size that only changes with the DPI.
+   * Here we ensure that exactly this size is set. */
   for (ScrArea *area = win->global_areas.areabase.first; area; area = area->next) {
     if (area->global->flag & GLOBAL_AREA_IS_HIDDEN) {
       continue;

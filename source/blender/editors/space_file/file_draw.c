@@ -194,8 +194,9 @@ void file_draw_filepath_buttons(const bContext *C, ARegion *ar)
 
     /* TODO, directory editing is non-functional while a library is loaded
      * until this is properly supported just disable it. */
-    if (sfile->files && filelist_lib(sfile->files))
+    if (sfile->files && filelist_lib(sfile->files)) {
       UI_but_flag_enable(but, UI_BUT_DISABLED);
+    }
 
     /* clear func */
     UI_block_func_set(block, NULL, NULL, NULL);
@@ -713,8 +714,9 @@ void file_draw_list(const bContext *C, ARegion *ar)
   }
 
   offset = ED_fileselect_layout_offset(layout, (int)ar->v2d.cur.xmin, (int)-ar->v2d.cur.ymax);
-  if (offset < 0)
+  if (offset < 0) {
     offset = 0;
+  }
 
   numfiles_layout = ED_fileselect_layout_numfiles(layout, ar);
 
@@ -742,7 +744,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
     filelist_cache_previews_update(files);
 
-    /* Handle preview timer here, since it's filelist_file_cache_block() and filelist_cache_previews_update()
+    /* Handle preview timer here,
+     * since it's filelist_file_cache_block() and filelist_cache_previews_update()
      * which controls previews task. */
     {
       const bool previews_running = filelist_cache_previews_running(files);

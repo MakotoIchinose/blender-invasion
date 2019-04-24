@@ -54,20 +54,21 @@
 #include "bpy_rna.h"
 
 typedef struct IDUserMapData {
-  /* place-holder key only used for lookups to avoid creating new data only for lookups
+  /** Place-holder key only used for lookups to avoid creating new data only for lookups
    * (never return its contents) */
   PyObject *py_id_key_lookup_only;
 
-  /* we loop over data-blocks that this ID points to (do build a reverse lookup table) */
+  /** We loop over data-blocks that this ID points to (do build a reverse lookup table) */
   PyObject *py_id_curr;
   ID *id_curr;
 
-  /* filter the values we add into the set */
+  /** Filter the values we add into the set. */
   BLI_bitmap *types_bitmap;
 
-  PyObject *user_map; /* set to fill in as we iterate */
-  bool
-      is_subset; /* true when we're only mapping a subset of all the ID's (subset arg is passed) */
+  /** Set to fill in as we iterate. */
+  PyObject *user_map;
+  /** true when we're only mapping a subset of all the ID's (subset arg is passed). */
+  bool is_subset;
 } IDUserMapData;
 
 static int id_code_as_index(const short idcode)
@@ -225,10 +226,8 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
 
   data_cb.types_bitmap = key_types_bitmap;
 
-  FOREACH_MAIN_LISTBASE_BEGIN(bmain, lb)
-  {
-    FOREACH_MAIN_LISTBASE_ID_BEGIN(lb, id)
-    {
+  FOREACH_MAIN_LISTBASE_BEGIN (bmain, lb) {
+    FOREACH_MAIN_LISTBASE_ID_BEGIN (lb, id) {
       /* We cannot skip here in case we have some filter on key types... */
       if (key_types_bitmap == NULL && val_types_bitmap != NULL) {
         if (!id_check_type(id, val_types_bitmap)) {
