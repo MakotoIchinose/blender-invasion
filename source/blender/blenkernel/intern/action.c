@@ -458,7 +458,8 @@ bPoseChannel *BKE_pose_channel_verify(bPose *pose, const char *name)
   unit_axis_angle(chan->rotAxis, &chan->rotAngle);
   chan->size[0] = chan->size[1] = chan->size[2] = 1.0f;
 
-  chan->scaleIn = chan->scaleOut = 1.0f;
+  chan->scale_in_x = chan->scale_in_y = 1.0f;
+  chan->scale_out_x = chan->scale_out_y = 1.0f;
 
   chan->limitmin[0] = chan->limitmin[1] = chan->limitmin[2] = -M_PI;
   chan->limitmax[0] = chan->limitmax[1] = chan->limitmax[2] = M_PI;
@@ -1407,10 +1408,11 @@ void BKE_pose_rest(bPose *pose)
     pchan->size[0] = pchan->size[1] = pchan->size[2] = 1.0f;
 
     pchan->roll1 = pchan->roll2 = 0.0f;
-    pchan->curveInX = pchan->curveInY = 0.0f;
-    pchan->curveOutX = pchan->curveOutY = 0.0f;
+    pchan->curve_in_x = pchan->curve_in_y = 0.0f;
+    pchan->curve_out_x = pchan->curve_out_y = 0.0f;
     pchan->ease1 = pchan->ease2 = 0.0f;
-    pchan->scaleIn = pchan->scaleOut = 1.0f;
+    pchan->scale_in_x = pchan->scale_in_y = 1.0f;
+    pchan->scale_out_x = pchan->scale_out_y = 1.0f;
 
     pchan->flag &= ~(POSE_LOC | POSE_ROT | POSE_SIZE | POSE_BBONE_SHAPE);
   }
@@ -1432,14 +1434,16 @@ void BKE_pose_copyesult_pchan_result(bPoseChannel *pchanto, const bPoseChannel *
 
   pchanto->roll1 = pchanfrom->roll1;
   pchanto->roll2 = pchanfrom->roll2;
-  pchanto->curveInX = pchanfrom->curveInX;
-  pchanto->curveInY = pchanfrom->curveInY;
-  pchanto->curveOutX = pchanfrom->curveOutX;
-  pchanto->curveOutY = pchanfrom->curveOutY;
+  pchanto->curve_in_x = pchanfrom->curve_in_x;
+  pchanto->curve_in_y = pchanfrom->curve_in_y;
+  pchanto->curve_out_x = pchanfrom->curve_out_x;
+  pchanto->curve_out_y = pchanfrom->curve_out_y;
   pchanto->ease1 = pchanfrom->ease1;
   pchanto->ease2 = pchanfrom->ease2;
-  pchanto->scaleIn = pchanfrom->scaleIn;
-  pchanto->scaleOut = pchanfrom->scaleOut;
+  pchanto->scale_in_x = pchanfrom->scale_in_x;
+  pchanto->scale_in_y = pchanfrom->scale_in_y;
+  pchanto->scale_out_x = pchanfrom->scale_out_x;
+  pchanto->scale_out_y = pchanfrom->scale_out_y;
 
   pchanto->rotmode = pchanfrom->rotmode;
   pchanto->flag = pchanfrom->flag;

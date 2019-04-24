@@ -927,7 +927,6 @@ static void region_azone_edge(AZone *az, ARegion *ar)
       az->y2 = ar->winrct.ymax;
       break;
   }
-
   BLI_rcti_init(&az->rect, az->x1, az->x2, az->y1, az->y2);
 }
 
