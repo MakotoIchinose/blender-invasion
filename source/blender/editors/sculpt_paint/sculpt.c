@@ -5740,6 +5740,13 @@ bool sculpt_stroke_get_geometry_info(bContext *C, StrokeGeometryInfo *out, const
   ob = vc.obact;
   ss = ob->sculpt;
 
+  if (!ss->pbvh) {
+    copy_v3_fl(out->location, 0.0f);
+    copy_v3_fl(out->normal, 0.0f);
+    copy_v3_fl(out->nearest_vertex_co, 0.0f);
+    return false;
+  }
+
   depth = sculpt_raycast_init(&vc, mouse, ray_start, ray_end, ray_normal, original);
   sculpt_stroke_modifiers_check(C, ob, brush);
 
