@@ -500,8 +500,9 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 {
   DefaultFramebufferList *dfbl = viewport->fbl;
 
-  if (dfbl->default_fb == NULL)
+  if (dfbl->default_fb == NULL) {
     return;
+  }
 
   DefaultTextureList *dtxl = viewport->txl;
 
@@ -630,6 +631,15 @@ void GPU_viewport_free(GPUViewport *viewport)
   }
   if (viewport->vmempool.passes != NULL) {
     BLI_mempool_destroy(viewport->vmempool.passes);
+  }
+  if (viewport->vmempool.images != NULL) {
+    BLI_mempool_iter iter;
+    GPUTexture **tex;
+    BLI_mempool_iternew(viewport->vmempool.images, &iter);
+    while ((tex = BLI_mempool_iterstep(&iter))) {
+      GPU_texture_free(*tex);
+    }
+    BLI_mempool_destroy(viewport->vmempool.images);
   }
 
   DRW_instance_data_list_free(viewport->idatalist);
