@@ -34,14 +34,7 @@ class FILEBROWSER_HT_header(Header):
 
         layout.menu("FILEBROWSER_MT_view")
 
-        row = layout.row(align=True)
-        row.operator("file.previous", text="", icon='BACK')
-        row.operator("file.next", text="", icon='FORWARD')
-        row.operator("file.parent", text="", icon='FILE_PARENT')
-        row.operator("file.refresh", text="", icon='FILE_REFRESH')
-
         layout.operator_context = 'EXEC_DEFAULT'
-        layout.operator("file.directory_new", icon='NEWFOLDER', text="")
 
         layout.operator_context = 'INVOKE_DEFAULT'
 
@@ -49,7 +42,6 @@ class FILEBROWSER_HT_header(Header):
         if params:
             is_lib_browser = params.use_library_browsing
 
-            layout.prop(params, "display_type", expand=True, text="")
             layout.prop(params, "sort_method", expand=True, text="")
             layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
 
@@ -257,8 +249,23 @@ class FILEBROWSER_PT_directory_path(Panel):
         layout.scale_y = 1.3
 
         row = layout.row()
+
+        subrow = row.row(align=True)
+        subrow.operator("file.previous", text="", icon='BACK')
+        subrow.operator("file.next", text="", icon='FORWARD')
+        subrow.operator("file.parent", text="", icon='FILE_PARENT')
+        subrow.operator("file.refresh", text="", icon='FILE_REFRESH')
         # TODO proper directory input text field
-        row.prop(params, "directory", text="")
+
+        subrow = row.row()
+        subrow.prop(params, "directory", text="")
+
+        subrow = row.row(align=True)
+        subrow.prop(params, "display_type", expand=True, text="")
+
+        subrow = row.row(align=True)
+        subrow.operator("file.directory_new", icon='NEWFOLDER', text="")
+
 
 
 class FILEBROWSER_PT_file_operation(Panel):
