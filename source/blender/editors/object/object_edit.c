@@ -1807,6 +1807,17 @@ static int remesh_exec(bContext *C, wmOperator *op)
     linked_data = true;
     return OPERATOR_CANCELLED;
   }
+
+  if (ID_REAL_USERS(data) != 1) {
+    BKE_report(op->reports, RPT_ERROR, "Remesh cannot run on mesh data with multiple users");
+    return OPERATOR_CANCELLED;
+  }
+
+  if (BKE_object_is_in_editmode(ob)) {
+    BKE_report(op->reports, RPT_ERROR, "Remesh cannot run from edit mode");
+    return OPERATOR_CANCELLED;
+  }
+
   if (ob->type == OB_MESH) {
     Mesh *mesh = ob->data;
     Mesh *newMesh;
