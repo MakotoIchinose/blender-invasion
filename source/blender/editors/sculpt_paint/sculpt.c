@@ -7476,7 +7476,6 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, mode == MESH_FILTER_SMOOTH, true);
-  sculpt_restore_mesh(sd, ob);
   if (BKE_pbvh_type(pbvh) == PBVH_FACES && mode == MESH_FILTER_SMOOTH && !ob->sculpt->pmap) {
     ss->use_orco = false;
     return OPERATOR_CANCELLED;
@@ -7493,6 +7492,8 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   if (ss->use_orco == false) {
     sculpt_undo_push_begin("mesh filter fill");
   }
+
+  paint_mesh_restore_co(sd, ob);
 
   float len = event->prevclickx - event->mval[0];
   filter_strength = filter_strength * -len * 0.001f;
