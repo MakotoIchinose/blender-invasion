@@ -969,7 +969,7 @@ typedef struct tGPSB_CloneBrushData {
   /* for "stamp" mode, the currently pasted brushes */
   bGPDstroke **new_strokes;
 
-  /* mapping from colors referenced per stroke, to the new colours in the "pasted" strokes */
+  /** Mapping from colors referenced per stroke, to the new colors in the "pasted" strokes. */
   GHash *new_colors;
 } tGPSB_CloneBrushData;
 
@@ -1017,7 +1017,7 @@ static void gp_brush_clone_init(bContext *C, tGP_BrushEditData *gso)
   }
 
   /* Init colormap for mapping between the pasted stroke's source color (names)
-   * and the final colours that will be used here instead.
+   * and the final colors that will be used here instead.
    */
   data->new_colors = gp_copybuf_validate_colormap(C);
 }
@@ -1167,7 +1167,8 @@ static bool gpsculpt_brush_apply_clone(bContext *C, tGP_BrushEditData *gso)
     }
     else {
       /* Continuous - Just keep pasting everytime we move */
-      /* TODO: The spacing of repeat should be controlled using a "stepsize" or similar property? */
+      /* TODO: The spacing of repeat should be controlled using a
+       * "stepsize" or similar property? */
       gp_brush_clone_add(C, gso);
     }
   }
@@ -1406,9 +1407,10 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
     if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
 
-      /* Make a new frame to work on if the layer's frame and the current scene frame don't match up
+      /* Make a new frame to work on if the layer's frame
+       * and the current scene frame don't match up:
        * - This is useful when animating as it saves that "uh-oh" moment when you realize you've
-       *   spent too much time editing the wrong frame...
+       *   spent too much time editing the wrong frame.
        */
       // XXX: should this be allowed when framelock is enabled?
       if (gpf->framenum != cfra_eval) {

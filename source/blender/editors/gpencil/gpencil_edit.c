@@ -1069,7 +1069,8 @@ void ED_gpencil_strokes_copybuf_free(void)
   gp_strokes_copypastebuf.first = gp_strokes_copypastebuf.last = NULL;
 }
 
-/* Ensure that destination datablock has all the colours the pasted strokes need
+/**
+ * Ensure that destination datablock has all the colors the pasted strokes need.
  * Helper function for copy-pasting strokes
  */
 GHash *gp_copybuf_validate_colormap(bContext *C)
@@ -2211,7 +2212,8 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf,
 
   /* Watch out for special case where No islands = All points selected = Delete Stroke only */
   if (num_islands) {
-    /* there are islands, so create a series of new strokes, adding them before the "next" stroke */
+    /* There are islands, so create a series of new strokes,
+     * adding them before the "next" stroke. */
     int idx;
     bGPDstroke *new_stroke = NULL;
 
