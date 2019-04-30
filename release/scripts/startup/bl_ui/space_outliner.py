@@ -32,8 +32,7 @@ class OUTLINER_HT_header(Header):
         scene = context.scene
         ks = context.scene.keying_sets.active
 
-        row = layout.row(align=True)
-        row.template_header()
+        layout.template_header()
 
         layout.prop(space, "display_mode", icon_only=True)
 
@@ -100,7 +99,7 @@ class OUTLINER_MT_editor_menus(Menu):
 class OUTLINER_MT_context(Menu):
     bl_label = "Outliner"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.menu("OUTLINER_MT_context_view")
@@ -113,7 +112,7 @@ class OUTLINER_MT_context(Menu):
 class OUTLINER_MT_context_view(Menu):
     bl_label = "View"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("outliner.show_active")
@@ -128,7 +127,7 @@ class OUTLINER_MT_context_view(Menu):
 class OUTLINER_MT_edit_datablocks(Menu):
     bl_label = "Edit"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("outliner.keyingset_add_selected")
@@ -160,7 +159,7 @@ class OUTLINER_MT_collection_view_layer(Menu):
 class OUTLINER_MT_collection_visibility(Menu):
     bl_label = "Visibility"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("outliner.collection_isolate", text="Isolate")
@@ -192,7 +191,10 @@ class OUTLINER_MT_collection(Menu):
         space = context.space_data
 
         layout.operator("outliner.collection_new", text="New").nested = True
-        layout.operator("outliner.collection_duplicate", text="Duplicate")
+        layout.operator("outliner.collection_duplicate", text="Duplicate Collection")
+        layout.operator("outliner.collection_duplicate_linked", text="Duplicate Linked")
+        layout.operator("outliner.id_copy", text="Copy", icon='COPYDOWN')
+        layout.operator("outliner.id_paste", text="Paste", icon='PASTEDOWN')
 
         layout.separator()
 
@@ -218,7 +220,7 @@ class OUTLINER_MT_collection(Menu):
 
         if space.display_mode == 'VIEW_LAYER':
             layout.separator()
-            layout.menu("OUTLINER_MT_collection_view_layer", icon="RENDERLAYERS")
+            layout.menu("OUTLINER_MT_collection_view_layer", icon='RENDERLAYERS')
 
         layout.separator()
 
@@ -236,6 +238,7 @@ class OUTLINER_MT_collection_new(Menu):
         layout = self.layout
 
         layout.operator("outliner.collection_new", text="New").nested = False
+        layout.operator("outliner.id_paste", text="Paste", icon='PASTEDOWN')
 
         layout.separator()
 
@@ -251,6 +254,11 @@ class OUTLINER_MT_object(Menu):
         space = context.space_data
         obj = context.active_object
         object_mode = 'OBJECT' if obj is None else obj.mode
+
+        layout.operator("outliner.id_copy", text="Copy", icon='COPYDOWN')
+        layout.operator("outliner.id_paste", text="Paste", icon='PASTEDOWN')
+
+        layout.separator()
 
         layout.operator("outliner.object_operation", text="Delete", icon="X").type = 'DELETE'
 

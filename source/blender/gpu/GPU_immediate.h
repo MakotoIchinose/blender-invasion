@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 
-/** \file \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU immediate mode work-alike
  */
@@ -46,9 +47,10 @@ void immBegin(GPUPrimType, uint vertex_len);
 void immBeginAtMost(GPUPrimType, uint max_vertex_len);
 void immEnd(void); /* finishes and draws. */
 
-/* ImmBegin a batch, then use standard immFunctions as usual. */
-/* ImmEnd will finalize the batch instead of drawing. */
-/* Then you can draw it as many times as you like! Partially replaces the need for display lists. */
+/* immBegin a batch, then use standard immFunctions as usual. */
+/* immEnd will finalize the batch instead of drawing. */
+/* Then you can draw it as many times as you like!
+ * Partially replaces the need for display lists. */
 GPUBatch *immBeginBatch(GPUPrimType, uint vertex_len);
 GPUBatch *immBeginBatchAtMost(GPUPrimType, uint vertex_len);
 
@@ -123,8 +125,10 @@ void immUniformColor3ubv(const unsigned char rgb[3]);
 void immUniformColor3ubvAlpha(const unsigned char rgb[3], unsigned char a);
 void immUniformColor4ubv(const unsigned char rgba[4]);
 
-/* Extend immBindProgram to use Blender’s library of built-in shader programs.
- * Use immUnbindProgram() when done. */
+/**
+ * Extend #immBindProgram to use Blender’s library of built-in shader programs.
+ * Use #immUnbindProgram() when done.
+ */
 void immBindBuiltinProgram(eGPUBuiltinShader shader_id);
 
 /* Extend immUniformColor to take Blender's themes */
@@ -142,4 +146,4 @@ void immActivate(void);
 void immDeactivate(void);
 void immDestroy(void);
 
-#endif  /* __GPU_IMMEDIATE_H__ */
+#endif /* __GPU_IMMEDIATE_H__ */

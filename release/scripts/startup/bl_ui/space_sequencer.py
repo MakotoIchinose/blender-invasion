@@ -37,7 +37,7 @@ def act_strip(context):
 
 def selected_sequences_len(context):
     selected_sequences = getattr(context, "selected_sequences", None)
-    if not selected_sequences:
+    if selected_sequences is None:
         return 0
     return len(selected_sequences)
 
@@ -83,8 +83,7 @@ class SEQUENCER_HT_header(Header):
         st = context.space_data
         scene = context.scene
 
-        row = layout.row(align=True)
-        row.template_header()
+        layout.template_header()
 
         layout.prop(st, "view_type", text="")
 
@@ -126,8 +125,8 @@ class SEQUENCER_HT_header(Header):
             # Proportional editing
             if gpd and gpd.use_stroke_edit_mode:
                 row = layout.row(align=True)
-                row.prop(tool_settings, "proportional_edit", icon_only=True)
-                if tool_settings.proportional_edit != 'DISABLED':
+                row.prop(tool_settings, "use_proportional_edit", icon_only=True)
+                if tool_settings.use_proportional_edit:
                     row.prop(tool_settings, "proportional_edit_falloff", icon_only=True)
 
 
@@ -152,12 +151,31 @@ class SEQUENCER_MT_editor_menus(Menu):
 class SEQUENCER_MT_view_toggle(Menu):
     bl_label = "View Type"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("sequencer.view_toggle").type = 'SEQUENCER'
         layout.operator("sequencer.view_toggle").type = 'PREVIEW'
         layout.operator("sequencer.view_toggle").type = 'SEQUENCER_PREVIEW'
+
+
+class SEQUENCER_MT_view_cache(Menu):
+    bl_label = "Cache"
+
+    def draw(self, context):
+        layout = self.layout
+
+        ed = context.scene.sequence_editor
+        layout.prop(ed, "show_cache")
+        layout.separator()
+
+        col = layout.column()
+        col.enabled = ed.show_cache
+
+        col.prop(ed, "show_cache_final_out")
+        col.prop(ed, "show_cache_raw")
+        col.prop(ed, "show_cache_preprocessed")
+        col.prop(ed, "show_cache_composite")
 
 
 class SEQUENCER_MT_view(Menu):
@@ -175,7 +193,7 @@ class SEQUENCER_MT_view(Menu):
             # mode, else the lookup for the shortcut will fail in
             # wm_keymap_item_find_props() (see #32595).
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
-        layout.operator("sequencer.properties", icon='MENU_PANEL')
+        layout.prop(st, "show_region_ui")
         layout.operator_context = 'INVOKE_DEFAULT'
 
         layout.separator()
@@ -212,6 +230,8 @@ class SEQUENCER_MT_view(Menu):
             layout.prop(st, "show_seconds")
             layout.prop(st, "show_frame_indicator")
             layout.prop(st, "show_strip_offset")
+            layout.prop(st, "show_marker_lines")
+            layout.menu("SEQUENCER_MT_view_cache")
 
             layout.prop_menu_enum(st, "waveform_display_type")
 
@@ -224,7 +244,7 @@ class SEQUENCER_MT_view(Menu):
 
         layout.separator()
 
-        layout.operator("render.opengl", text="Sequence Render", icon='RENDER_STILL').sequencer = True
+        layout.operator("render.opengl", text="Sequence Render Image", icon='RENDER_STILL').sequencer = True
         props = layout.operator("render.opengl", text="Sequence Render Animation", icon='RENDER_ANIMATION')
         props.animation = True
         props.sequencer = True
@@ -237,7 +257,7 @@ class SEQUENCER_MT_view(Menu):
 class SEQUENCER_MT_select(Menu):
     bl_label = "Select"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("sequencer.select_all", text="All").action = 'SELECT'
@@ -276,7 +296,7 @@ class SEQUENCER_MT_marker(Menu):
         is_sequencer_view = st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}
 
         from .space_time import marker_menu_generic
-        marker_menu_generic(layout)
+        marker_menu_generic(layout, context)
 
         if is_sequencer_view:
             layout.prop(st, "use_marker_sync")
@@ -309,7 +329,7 @@ class SEQUENCER_MT_change(Menu):
 class SEQUENCER_MT_frame(Menu):
     bl_label = "Frame"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("anim.previewrange_clear")
@@ -399,7 +419,7 @@ class SEQUENCER_MT_add(Menu):
 class SEQUENCER_MT_add_empty(Menu):
     bl_label = "Empty"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.label(text="No Items Available")
@@ -460,7 +480,7 @@ class SEQUENCER_MT_add_effect(Menu):
 class SEQUENCER_MT_strip_transform(Menu):
     bl_label = "Transform"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("transform.transform", text="Move").mode = 'TRANSLATION'
@@ -501,7 +521,7 @@ class SEQUENCER_MT_strip_input(Menu):
 class SEQUENCER_MT_strip_lock_mute(Menu):
     bl_label = "Lock/Mute"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("sequencer.lock", icon='LOCKED')
@@ -657,7 +677,7 @@ class SEQUENCER_PT_edit(SequencerButtonsPanel, Panel):
         row.label(text=iface_("Final Length: %s") % bpy.utils.smpte_from_frame(strip.frame_final_duration),
                   translate=False)
         row = col.row(align=True)
-        row.active = (frame_current >= strip.frame_start and frame_current <= strip.frame_start + strip.frame_duration)
+        row.active = strip.frame_start <= frame_current <= strip.frame_start + strip.frame_duration
         row.label(text=iface_("Playhead: %d") % (frame_current - strip.frame_start), translate=False)
 
         col.label(text=iface_("Frame Offset %d:%d") % (strip.frame_offset_start, strip.frame_offset_end),
@@ -742,7 +762,7 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
                     layout.prop(strip, "speed_factor")
                 else:
                     layout.prop(strip, "speed_factor", text="Frame Number")
-                    layout.prop(strip, "scale_to_length")
+                    layout.prop(strip, "use_scale_to_length")
 
         elif strip.type == 'TRANSFORM':
             layout = self.layout
@@ -1145,9 +1165,51 @@ class SEQUENCER_PT_filter(SequencerButtonsPanel, Panel):
         layout.prop(strip, "use_float", text="Convert to Float")
 
 
-class SEQUENCER_PT_proxy(SequencerButtonsPanel, Panel):
-    bl_label = "Proxy/Timecode"
-    bl_category = "Strip"
+class SEQUENCER_PT_cache_settings(SequencerButtonsPanel, Panel):
+    bl_label = "Cache Settings"
+    bl_category = "Proxy & Cache"
+
+    @classmethod
+    def poll(cls, context):
+        return cls.has_sequencer(context)
+
+    def draw(self, context):
+        layout = self.layout
+        ed = context.scene.sequence_editor
+
+        layout.prop(ed, "use_cache_raw")
+        layout.prop(ed, "use_cache_preprocessed")
+        layout.prop(ed, "use_cache_composite")
+        layout.prop(ed, "use_cache_final")
+        layout.separator()
+        layout.prop(ed, "recycle_max_cost")
+
+
+class SEQUENCER_PT_proxy_settings(SequencerButtonsPanel, Panel):
+    bl_label = "Proxy Settings"
+    bl_category = "Proxy & Cache"
+    @classmethod
+    def poll(cls, context):
+        return cls.has_sequencer(context)
+
+    def draw(self, context):
+        layout = self.layout
+
+        ed = context.scene.sequence_editor
+
+        flow = layout.column_flow()
+        flow.prop(ed, "proxy_storage", text="Storage")
+        if ed.proxy_storage == 'PROJECT':
+            flow.prop(ed, "proxy_dir", text="Directory")
+
+        col = layout.column()
+        col.operator("sequencer.enable_proxies")
+        col.operator("sequencer.rebuild_proxy")
+
+
+class SEQUENCER_PT_strip_proxy(SequencerButtonsPanel, Panel):
+    bl_label = "Strip Proxy & Timecode"
+    bl_category = "Proxy & Cache"
 
     @classmethod
     def poll(cls, context):
@@ -1158,7 +1220,7 @@ class SEQUENCER_PT_proxy(SequencerButtonsPanel, Panel):
         if not strip:
             return False
 
-        return strip.type in {'MOVIE', 'IMAGE', 'SCENE', 'META', 'MULTICAM'}
+        return strip.type in {'MOVIE', 'IMAGE', 'META'}
 
     def draw_header(self, context):
         strip = act_strip(context)
@@ -1176,10 +1238,7 @@ class SEQUENCER_PT_proxy(SequencerButtonsPanel, Panel):
             proxy = strip.proxy
 
             flow = layout.column_flow()
-            flow.prop(ed, "proxy_storage", text="Storage")
-            if ed.proxy_storage == 'PROJECT':
-                flow.prop(ed, "proxy_dir", text="Directory")
-            else:
+            if ed.proxy_storage == 'PER_STRIP':
                 flow.prop(proxy, "use_proxy_custom_directory")
                 flow.prop(proxy, "use_proxy_custom_file")
 
@@ -1205,13 +1264,34 @@ class SEQUENCER_PT_proxy(SequencerButtonsPanel, Panel):
 
                 col.prop(proxy, "timecode")
 
-        col = layout.column()
-        col.operator("sequencer.enable_proxies")
-        col.operator("sequencer.rebuild_proxy")
+
+class SEQUENCER_PT_strip_cache(SequencerButtonsPanel, Panel):
+    bl_label = "Strip Cache"
+    bl_category = "Proxy & Cache"
+
+    @classmethod
+    def poll(cls, context):
+        if not cls.has_sequencer(context):
+            return False
+        if act_strip(context) is not None:
+            return True
+
+    def draw_header(self, context):
+        strip = act_strip(context)
+        self.layout.prop(strip, "override_cache_settings", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        strip = act_strip(context)
+        layout.active = strip.override_cache_settings
+
+        layout.prop(strip, "use_cache_raw")
+        layout.prop(strip, "use_cache_preprocessed")
+        layout.prop(strip, "use_cache_composite")
 
 
 class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):
-    bl_label = "Scene Preview/Render"
+    bl_label = "Scene Shading"
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Strip"
@@ -1224,11 +1304,8 @@ class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):
         col = layout.column()
         col.prop(render, "sequencer_gl_preview", text="")
 
-        row = col.row()
-        row.active = render.sequencer_gl_preview == 'SOLID'
-        row.prop(render, "use_sequencer_gl_textured_solid")
-
-        col.prop(render, "use_sequencer_gl_dof")
+        if render.sequencer_gl_preview in ['SOLID', 'WIREFRAME']:
+            col.prop(render, "use_sequencer_override_scene_strip")
 
 
 class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
@@ -1396,6 +1473,7 @@ classes = (
     SEQUENCER_HT_header,
     SEQUENCER_MT_editor_menus,
     SEQUENCER_MT_view,
+    SEQUENCER_MT_view_cache,
     SEQUENCER_MT_view_toggle,
     SEQUENCER_MT_select,
     SEQUENCER_MT_marker,
@@ -1415,7 +1493,10 @@ classes = (
     SEQUENCER_PT_scene,
     SEQUENCER_PT_mask,
     SEQUENCER_PT_filter,
-    SEQUENCER_PT_proxy,
+    SEQUENCER_PT_cache_settings,
+    SEQUENCER_PT_proxy_settings,
+    SEQUENCER_PT_strip_proxy,
+    SEQUENCER_PT_strip_cache,
     SEQUENCER_PT_preview,
     SEQUENCER_PT_view,
     SEQUENCER_PT_view_safe_areas,
