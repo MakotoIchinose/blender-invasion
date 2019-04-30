@@ -1467,7 +1467,7 @@ typedef struct ToolSettings {
   char snap_target;
   char snap_transform_mode_flag;
 
-  char proportional, prop_mode;
+  char proportional_edit, prop_mode;
   /** Proportional edit, object mode. */
   char proportional_objects;
   /** Proportional edit, mask editing. */
@@ -1816,8 +1816,9 @@ enum {
   R_SEQ_UNUSED_0 = (1 << 0), /* cleared */
   R_SEQ_UNUSED_1 = (1 << 1), /* cleared */
   R_SEQ_UNUSED_2 = (1 << 2), /* cleared */
-  R_SEQ_SOLID_TEX = (1 << 3),
-  R_SEQ_CAMERA_DOF = (1 << 4),
+  R_SEQ_UNUSED_3 = (1 << 3), /* cleared */
+  R_SEQ_UNUSED_4 = (1 << 4), /* cleared */
+  R_SEQ_OVERRIDE_SCENE_SETTINGS = (1 << 5),
 };
 
 /* RenderData.displaymode */
@@ -2078,11 +2079,12 @@ enum {
 #define PROP_INVSQUARE 7
 #define PROP_MODE_MAX 8
 
-/* ToolSettings.proportional */
-#define PROP_EDIT_OFF 0
-#define PROP_EDIT_ON 1
-#define PROP_EDIT_CONNECTED 2
-#define PROP_EDIT_PROJECTED 3
+/** #ToolSettings.proportional_edit & similarly named members. */
+enum {
+  PROP_EDIT_USE = (1 << 0),
+  PROP_EDIT_CONNECTED = (1 << 1),
+  PROP_EDIT_PROJECTED = (1 << 2),
+};
 
 /* ToolSettings.weightuser */
 enum {
