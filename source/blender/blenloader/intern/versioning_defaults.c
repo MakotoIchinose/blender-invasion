@@ -293,6 +293,39 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       }
     }
 
+    /* Show toopbar for sculpt/paint modes. */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      bool show_tool_header = false;
+      if (app_template == NULL) {
+        if (STR_ELEM(screen->id.name + 2, "Sculpting", "Texture Paint")) {
+          show_tool_header = true;
+        }
+      }
+      else if (STREQ(app_template, "2D_Animation")) {
+        if (STR_ELEM(screen->id.name + 2, "2D Animation", "2D Full Canvas")) {
+          show_tool_header = true;
+        }
+      }
+      else if (STREQ(app_template, "Sculpting")) {
+        if (STR_ELEM(screen->id.name + 2, "Sculpting")) {
+          show_tool_header = true;
+        }
+      }
+
+      if (show_tool_header) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
+              if (ar->regiontype == RGN_TYPE_TOOL_HEADER) {
+                ar->flag &= ~(RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER);
+              }
+            }
+          }
+        }
+      }
+    }
+
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
       BLI_strncpy(scene->r.engine, RE_engine_id_BLENDER_EEVEE, sizeof(scene->r.engine));
 
@@ -352,6 +385,13 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     copy_v3_v3(scene->display.light_direction, (float[3]){M_SQRT1_3, M_SQRT1_3, M_SQRT1_3});
     copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
     copy_v2_fl2(scene->safe_areas.action, 0.035f, 0.035f);
+  }
+
+  if (app_template == NULL) {
+    /* Enable for UV sculpt (other brush types will be created as needed),
+     * without this the grab brush will be active but not selectable from the list. */
+    Brush *brush = BLI_findstring(&bmain->brushes, "Grab", offsetof(ID, name) + 2);
+    brush->ob_mode |= OB_MODE_EDIT;
   }
 
   for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {

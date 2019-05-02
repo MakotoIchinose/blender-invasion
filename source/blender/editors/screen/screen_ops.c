@@ -728,7 +728,9 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   const ARegion *ar = az->ar;
   *r_rect_clip = az->rect;
   if (az->type == AZONE_REGION) {
-    if (ar->overlap && (ar->v2d.keeptot != V2D_KEEPTOT_STRICT)) {
+    if (ar->overlap && (ar->v2d.keeptot != V2D_KEEPTOT_STRICT) &&
+        /* Only when this isn't hidden (where it's displayed as an button that expands). */
+        ((az->ar->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) == 0)) {
       /* A floating region to be resized, clip by the visible region. */
       switch (az->edge) {
         case AE_TOP_TO_BOTTOMRIGHT:
@@ -988,7 +990,8 @@ static int actionzone_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   AZone *az = screen_actionzone_find_xy(sc, &event->x);
   sActionzoneData *sad;
 
-  /* quick escape - Scroll azones only hide/unhide the scroll-bars, they have their own handling. */
+  /* Quick escape - Scroll azones only hide/unhide the scroll-bars,
+   * they have their own handling. */
   if (az == NULL || ELEM(az->type, AZONE_REGION_SCROLL)) {
     return OPERATOR_PASS_THROUGH;
   }

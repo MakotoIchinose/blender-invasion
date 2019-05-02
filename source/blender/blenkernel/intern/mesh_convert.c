@@ -656,7 +656,8 @@ void BKE_mesh_from_nurbs_displist(Main *bmain,
   cu->mat = NULL;
   cu->totcol = 0;
 
-  /* Do not decrement ob->data usercount here, it's done at end of func with BKE_id_free_us() call. */
+  /* Do not decrement ob->data usercount here,
+   * it's done at end of func with BKE_id_free_us() call. */
   ob->data = me;
   ob->type = OB_MESH;
 
@@ -1036,9 +1037,10 @@ Mesh *BKE_mesh_new_from_object(Depsgraph *depsgraph,
 
       BKE_id_free(NULL, tmpobj);
 
-      /* XXX The curve to mesh conversion is convoluted... But essentially, BKE_mesh_from_nurbs_displist()
-       *     already transfers the ownership of materials from the temp copy of the Curve ID to the new
-       *     Mesh ID, so we do not want to increase materials' usercount later. */
+      /* XXX The curve to mesh conversion is convoluted...
+       *     But essentially, BKE_mesh_from_nurbs_displist()
+       *     already transfers the ownership of materials from the temp copy of the Curve ID to the
+       *     new Mesh ID, so we do not want to increase materials' usercount later. */
       do_mat_id_data_us = false;
 
       break;
@@ -1236,25 +1238,26 @@ static void add_shapekey_layers(Mesh *mesh_dest, Mesh *mesh_src)
 
 Mesh *BKE_mesh_create_derived_for_modifier(struct Depsgraph *depsgraph,
                                            Scene *scene,
-                                           Object *ob,
-                                           ModifierData *md,
+                                           Object *ob_eval,
+                                           ModifierData *md_eval,
                                            int build_shapekey_layers)
 {
-  Mesh *me = ob->runtime.mesh_orig ? ob->runtime.mesh_orig : ob->data;
-  const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+  Mesh *me = ob_eval->runtime.mesh_orig ? ob_eval->runtime.mesh_orig : ob_eval->data;
+  const ModifierTypeInfo *mti = modifierType_getInfo(md_eval->type);
   Mesh *result;
   KeyBlock *kb;
-  ModifierEvalContext mectx = {depsgraph, ob, 0};
+  ModifierEvalContext mectx = {depsgraph, ob_eval, 0};
 
-  if (!(md->mode & eModifierMode_Realtime)) {
+  if (!(md_eval->mode & eModifierMode_Realtime)) {
     return NULL;
   }
 
-  if (mti->isDisabled && mti->isDisabled(scene, md, 0)) {
+  if (mti->isDisabled && mti->isDisabled(scene, md_eval, 0)) {
     return NULL;
   }
 
-  if (build_shapekey_layers && me->key && (kb = BLI_findlink(&me->key->block, ob->shapenr - 1))) {
+  if (build_shapekey_layers && me->key &&
+      (kb = BLI_findlink(&me->key->block, ob_eval->shapenr - 1))) {
     BKE_keyblock_convert_to_mesh(kb, me);
   }
 
@@ -1262,8 +1265,8 @@ Mesh *BKE_mesh_create_derived_for_modifier(struct Depsgraph *depsgraph,
     int numVerts;
     float(*deformedVerts)[3] = BKE_mesh_vertexCos_get(me, &numVerts);
 
-    mti->deformVerts(md, &mectx, NULL, deformedVerts, numVerts);
     BKE_id_copy_ex(NULL, &me->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
+    mti->deformVerts(md_eval, &mectx, result, deformedVerts, numVerts);
     BKE_mesh_apply_vert_coords(result, deformedVerts);
 
     if (build_shapekey_layers) {
@@ -1280,7 +1283,7 @@ Mesh *BKE_mesh_create_derived_for_modifier(struct Depsgraph *depsgraph,
       add_shapekey_layers(mesh_temp, me);
     }
 
-    result = mti->applyModifier(md, &mectx, mesh_temp);
+    result = mti->applyModifier(md_eval, &mectx, mesh_temp);
     ASSERT_IS_VALID_MESH(result);
 
     if (mesh_temp != result) {
@@ -1361,7 +1364,8 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src,
                              bool take_ownership)
 {
   /* mesh_src might depend on mesh_dst, so we need to do everything with a local copy */
-  /* TODO(Sybren): the above claim came from DM_to_mesh(); check whether it is still true with Mesh */
+  /* TODO(Sybren): the above claim came from DM_to_mesh();
+   * check whether it is still true with Mesh */
   Mesh tmp = *mesh_dst;
   int totvert, totedge /*, totface */ /* UNUSED */, totloop, totpoly;
   int did_shapekeys = 0;
@@ -1429,8 +1433,8 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src,
 
   /* not all DerivedMeshes store their verts/edges/faces in CustomData, so
    * we set them here in case they are missing */
-  /* TODO(Sybren): we could probably replace CD_ASSIGN with alloctype and always directly pass mesh_src->mxxx,
-   * instead of using a ternary operator. */
+  /* TODO(Sybren): we could probably replace CD_ASSIGN with alloctype and
+   * always directly pass mesh_src->mxxx, instead of using a ternary operator. */
   if (!CustomData_has_layer(&tmp.vdata, CD_MVERT)) {
     CustomData_add_layer(&tmp.vdata,
                          CD_MVERT,

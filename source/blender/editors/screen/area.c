@@ -1521,7 +1521,8 @@ static void area_calc_totrct(ScrArea *sa, const rcti *window_rect)
     sa->totrct.ymax -= px;
   }
   /* Although the following asserts are correct they lead to a very unstable Blender.
-   * And the asserts would fail even in 2.7x (they were added in 2.8x as part of the top-bar commit).
+   * And the asserts would fail even in 2.7x
+   * (they were added in 2.8x as part of the top-bar commit).
    * For more details see T54864. */
 #if 0
   BLI_assert(sa->totrct.xmin >= 0);
@@ -1545,6 +1546,13 @@ static void region_subwindow(ARegion *ar)
   }
 
   ar->visible = !hidden;
+}
+
+static bool event_in_markers_region(const ARegion *ar, const wmEvent *event)
+{
+  rcti rect = ar->winrct;
+  rect.ymax = rect.ymin + UI_MARKER_MARGIN_Y;
+  return BLI_rcti_isect_pt(&rect, event->x, event->y);
 }
 
 /**
@@ -1588,13 +1596,7 @@ static void ed_default_handlers(
   if (flag & ED_KEYMAP_MARKERS) {
     /* time-markers */
     wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "Markers", 0, 0);
-
-    /* use a boundbox restricted map */
-    /* same local check for all areas */
-    static rcti rect = {0, 10000, 0, -1};
-    rect.ymax = UI_MARKER_MARGIN_Y;
-    BLI_assert(ar->type->regionid == RGN_TYPE_WINDOW);
-    WM_event_add_keymap_handler_bb(handlers, keymap, &rect, &ar->winrct);
+    WM_event_add_keymap_handler_poll(handlers, keymap, event_in_markers_region);
   }
   if (flag & ED_KEYMAP_ANIMATION) {
     /* frame changing and timeline operators (for time spaces) */
@@ -2511,9 +2513,8 @@ void ED_region_panels_draw(const bContext *C, ARegion *ar)
     mask_buf.xmax -= UI_PANEL_CATEGORY_MARGIN_WIDTH;
     mask = &mask_buf;
   }
-  View2DScrollers *scrollers = UI_view2d_scrollers_calc(
-      C, v2d, mask, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
-  UI_view2d_scrollers_draw(C, v2d, scrollers);
+  View2DScrollers *scrollers = UI_view2d_scrollers_calc(v2d, mask);
+  UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
 }
 

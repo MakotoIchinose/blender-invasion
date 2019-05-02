@@ -493,20 +493,18 @@ static void draw_fcurve_samples(SpaceGraph *sipo, ARegion *ar, FCurve *fcu)
 /* Helper func - just draw the F-Curve by sampling the visible region
  * (for drawing curves with modifiers). */
 static void draw_fcurve_curve(
-    bAnimContext *ac, ID *id, FCurve *fcu_, View2D *v2d, View2DGrid *grid, unsigned int pos)
+    bAnimContext *ac, ID *id, FCurve *fcu_, View2D *v2d, unsigned int pos)
 {
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
   float samplefreq;
   float stime, etime;
   float unitFac, offset;
-  float dx, dy;
   short mapping_flag = ANIM_get_normalization_flags(ac);
   int i, n;
 
   /* when opening a blend file on a different sized screen or while dragging the toolbar this can
    * happen best just bail out in this case. */
-  UI_view2d_grid_size(grid, &dx, &dy);
-  if (dx <= 0.0f) {
+  if (UI_view2d_scale_get_x(v2d) <= 0.0f) {
     return;
   }
 
@@ -529,11 +527,11 @@ static void draw_fcurve_curve(
    * loop (i.e. too close to 0), then clamp it to a determined "safe" value. The value
    *  chosen here is just the coarsest value which still looks reasonable...
    */
-  /* grid->dx represents the number of 'frames' between gridlines,
-   * but we divide by U.v2d_min_gridsize to get pixels-steps */
+
   /* TODO: perhaps we should have 1.0 frames
    * as upper limit so that curves don't get too distorted? */
-  samplefreq = dx / (U.v2d_min_gridsize * U.pixelsize);
+  float pixels_per_sample = 1.5f;
+  samplefreq = pixels_per_sample / UI_view2d_scale_get_x(v2d);
 
   if (sipo->flag & SIPO_BEAUTYDRAW_OFF) {
     /* Low Precision = coarse lower-bound clamping
@@ -883,7 +881,7 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
   float unitfac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
 
   /* for now, only show when debugging driver... */
-  //if ((driver->flag & DRIVER_FLAG_SHOWDEBUG) == 0)
+  // if ((driver->flag & DRIVER_FLAG_SHOWDEBUG) == 0)
   //  return;
 
   const uint shdr_pos = GPU_vertformat_attr_add(
@@ -1043,8 +1041,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar)
 /* This is called twice from space_graph.c -> graph_main_region_draw()
  * Unselected then selected F-Curves are drawn so that they do not occlude each other.
  */
-void graph_draw_curves(
-    bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, View2DGrid *grid, short sel)
+void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, short sel)
 {
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
@@ -1131,7 +1128,7 @@ void graph_draw_curves(
         /* draw a curve affected by modifiers or only allowed to have integer values
          * by sampling it at various small-intervals over the visible region
          */
-        draw_fcurve_curve(ac, ale->id, fcu, &ar->v2d, grid, shdr_pos);
+        draw_fcurve_curve(ac, ale->id, fcu, &ar->v2d, shdr_pos);
       }
       else if (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert)) {
         /* just draw curve based on defined data (i.e. no modifiers) */
@@ -1140,7 +1137,7 @@ void graph_draw_curves(
             draw_fcurve_curve_bezts(ac, ale->id, fcu, &ar->v2d, shdr_pos);
           }
           else {
-            draw_fcurve_curve(ac, ale->id, fcu, &ar->v2d, grid, shdr_pos);
+            draw_fcurve_curve(ac, ale->id, fcu, &ar->v2d, shdr_pos);
           }
         }
         else if (fcu->fpt) {
@@ -1157,7 +1154,8 @@ void graph_draw_curves(
     }
 
     /* 2) draw handles and vertices as appropriate based on active
-     * - if the option to only show controls if the F-Curve is selected is enabled, we must obey this
+     * - If the option to only show controls if the F-Curve is selected is enabled,
+     *   we must obey this.
      */
     if (!(sipo->flag & SIPO_SELCUVERTSONLY) || (fcu->flag & FCURVE_SELECTED)) {
       if (!fcurve_are_keyframes_usable(fcu) && !(fcu->fpt && fcu->totvert)) {
@@ -1181,7 +1179,8 @@ void graph_draw_curves(
         GPU_matrix_scale_2f(1.0f, unit_scale);
         GPU_matrix_translate_2f(0.0f, offset);
 
-        /* set this once and for all - all handles and handle-verts should use the same thickness */
+        /* Set this once and for all -
+         * all handles and handle-verts should use the same thickness. */
         GPU_line_width(1.0);
 
         if (fcu->bezt) {

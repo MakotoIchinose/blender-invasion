@@ -1223,6 +1223,7 @@ static ImBuf *blend_file_thumb(const bContext *C,
   if (scene->camera) {
     ibuf = ED_view3d_draw_offscreen_imbuf_simple(depsgraph,
                                                  scene,
+                                                 NULL,
                                                  OB_SOLID,
                                                  scene->camera,
                                                  BLEN_THUMB_SIZE * 2,
@@ -1846,6 +1847,17 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int wm_homefile_read_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  if (U.uiflag & USER_SAVE_PROMPT && !wm->file_saved) {
+    return WM_operator_confirm_message(C, op, "Changes in current file will be lost. Continue?");
+  }
+  else {
+    return wm_homefile_read_exec(C, op);
+  }
+}
+
 void WM_OT_read_homefile(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -1853,6 +1865,7 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   ot->idname = "WM_OT_read_homefile";
   ot->description = "Open the default file (doesn't save the current file)";
 
+  ot->invoke = wm_homefile_read_invoke;
   ot->exec = wm_homefile_read_exec;
 
   prop = RNA_def_string_file_path(

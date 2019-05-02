@@ -474,7 +474,8 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
   for (ale = anim_data->first; ale; ale = ale->next) {
     /* compare data, and type as main way of identifying the channel */
     if ((ale->data == ale_setting->data) && (ale->type == ale_setting->type)) {
-      /* we also have to check the ID, this is assigned to, since a block may have multiple users */
+      /* We also have to check the ID, this is assigned to,
+       * since a block may have multiple users. */
       /* TODO: is the owner-data more revealing? */
       if (ale->id == ale_setting->id) {
         match = ale;
@@ -549,8 +550,8 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
         if (prevLevel == 0) {
           break;
           /* otherwise, this level weaves into another sibling hierarchy to the previous one just
-         * finished, so skip until we get to the parent of this level
-         */
+           * finished, so skip until we get to the parent of this level
+           */
         }
         else {
           continue;
@@ -582,9 +583,10 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
       if (level > matchLevel) {
         ANIM_channel_setting_set(ac, ale, setting, mode);
         /* however, if the level is 'less than or equal to' the channel that was changed,
-       * (i.e. the current channel is as important if not more important than the changed channel)
-       * then we should stop, since we've found the last one of the children we should flush
-       */
+         * (i.e. the current channel is as important if not more important than the changed
+         * channel) then we should stop, since we've found the last one of the children we should
+         * flush
+         */
       }
       else {
         break;
@@ -647,14 +649,28 @@ void ANIM_fcurve_delete_from_animdata(bAnimContext *ac, AnimData *adt, FCurve *f
      * channel list that are empty, and linger around long after the data they
      * are for has disappeared (and probably won't come back).
      */
-    if (BLI_listbase_is_empty(&act->curves) && (adt->flag & ADT_NLA_EDIT_ON) == 0) {
-      id_us_min(&act->id);
-      adt->action = NULL;
-    }
+    ANIM_remove_empty_action_from_animdata(adt);
   }
 
   /* free the F-Curve itself */
   free_fcurve(fcu);
+}
+
+/* If the action has no F-Curves, unlink it from AnimData if it did not
+ * come from a NLA Strip being tweaked. */
+bool ANIM_remove_empty_action_from_animdata(struct AnimData *adt)
+{
+  if (adt->action != NULL) {
+    bAction *act = adt->action;
+
+    if (BLI_listbase_is_empty(&act->curves) && (adt->flag & ADT_NLA_EDIT_ON) == 0) {
+      id_us_min(&act->id);
+      adt->action = NULL;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /* ************************************************************************** */
@@ -1233,9 +1249,10 @@ static void rearrange_action_channels(bAnimContext *ac, bAction *act, eRearrange
   /* Filter visible data. */
   rearrange_animchannels_filter_visible(&anim_data_visible, ac, ANIMTYPE_GROUP);
 
-  /* rearrange groups first
-   * - the group's channels will only get considered if nothing happened when rearranging the groups
-   *   i.e. the rearrange function returned 0
+  /* Rearrange groups first:
+   * - The group's channels will only get considered
+   *   if nothing happened when rearranging the groups
+   *   i.e. the rearrange function returned 0.
    */
   do_channels = (rearrange_animchannel_islands(
                      &act->groups, rearrange_func, mode, ANIMTYPE_GROUP, &anim_data_visible) == 0);
@@ -2858,7 +2875,6 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
         if (selectmode == SELECT_INVERT) {
           /* swap select */
           ED_object_base_select(base, BA_INVERT);
-          BKE_scene_object_base_flag_sync_from_base(base);
 
           if (adt) {
             adt->flag ^= ADT_UI_SELECTED;
@@ -2871,7 +2887,6 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
           /* TODO: should this deselect all other types of channels too? */
           for (b = view_layer->object_bases.first; b; b = b->next) {
             ED_object_base_select(b, BA_DESELECT);
-            BKE_scene_object_base_flag_sync_from_base(b);
             if (b->object->adt) {
               b->object->adt->flag &= ~(ADT_UI_SELECTED | ADT_UI_ACTIVE);
             }
@@ -2879,7 +2894,6 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
 
           /* select object now */
           ED_object_base_select(base, BA_SELECT);
-          BKE_scene_object_base_flag_sync_from_base(base);
           if (adt) {
             adt->flag |= ADT_UI_SELECTED;
           }

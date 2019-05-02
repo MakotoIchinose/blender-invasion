@@ -617,7 +617,7 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 
   if (act == NULL) {
     BKE_report(op->reports, RPT_ERROR, "No valid action to add");
-    //printf("Add strip - actname = '%s'\n", actname);
+    // printf("Add strip - actname = '%s'\n", actname);
     return OPERATOR_CANCELLED;
   }
   else if (act->idroot == 0) {
@@ -657,8 +657,9 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
     AnimData *adt = ale->adt;
     NlaStrip *strip = NULL;
 
-    /* sanity check: only apply actions of the right type for this ID
-     * NOTE: in the case that this hasn't been set, we've already warned the user about this already
+    /* Sanity check: only apply actions of the right type for this ID.
+     * NOTE: in the case that this hasn't been set,
+     * we've already warned the user about this already
      */
     if ((act->idroot) && (act->idroot != GS(ale->id->name))) {
       BKE_reportf(

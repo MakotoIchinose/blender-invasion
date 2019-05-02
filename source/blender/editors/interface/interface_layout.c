@@ -840,7 +840,7 @@ static void ui_item_enum_expand_exec(uiLayout *layout,
       /* Separate items, potentially with a label. */
       if (next_item->identifier) {
         /* Item without identifier but with name:
-        * Add group label for the following items. */
+         * Add group label for the following items. */
         if (item->name) {
           if (!is_first) {
             uiItemS(block->curlayout);
@@ -2968,6 +2968,9 @@ void uiItemS_ex(uiLayout *layout, float factor)
 {
   uiBlock *block = layout->root->block;
   bool is_menu = ui_block_is_menu(block);
+  if (is_menu && !UI_block_can_add_separator(block)) {
+    return;
+  }
   int space = (is_menu) ? 0.45f * UI_UNIT_X : 0.3f * UI_UNIT_X;
   space *= factor;
 
