@@ -886,6 +886,16 @@ class GreasePencilMaterialsPanel:
             space = context.space_data
             row.template_ID(space, "pin_id")
 
+        # stroke color
+        ma = context.material
+        if ma is not None and ma.grease_pencil is not None:
+            gpcolor = ma.grease_pencil
+            if gpcolor.stroke_style == 'SOLID' or \
+                gpcolor.use_stroke_pattern is True or \
+                gpcolor.use_stroke_texture_mix is True:
+                row = layout.row()
+                row.prop(gpcolor, "color", text="Color")
+
 
 class GPENCIL_UL_layer(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
