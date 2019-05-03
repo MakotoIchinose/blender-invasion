@@ -131,7 +131,6 @@ string ComponentNode::identifier() const
   const string typebuf = "" + to_string(static_cast<int>(type)) + ")";
   return typebuf + name + " : " + idname +
          "( affects_directly_visible: " + (affects_directly_visible ? "true" : "false") + ")";
-  ;
 }
 
 OperationNode *ComponentNode::find_operation(OperationIDKey key) const
@@ -335,7 +334,7 @@ void BoneComponentNode::init(const ID *id, const char *subdata)
   /* name of component comes is bone name */
   /* TODO(sergey): This sets name to an empty string because subdata is
    * empty. Is it a bug? */
-  //this->name = subdata;
+  // this->name = subdata;
 
   /* bone-specific node data */
   Object *object = (Object *)id;

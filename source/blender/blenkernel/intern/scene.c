@@ -566,7 +566,7 @@ void BKE_scene_init(Scene *sce)
   sce->cursor.rotation_quaternion[0] = 1.0f;
   sce->cursor.rotation_axis[1] = 1.0f;
 
-  sce->r.mode = R_OSA;
+  sce->r.mode = 0;
   sce->r.cfra = 1;
   sce->r.sfra = 1;
   sce->r.efra = 250;
@@ -767,7 +767,6 @@ void BKE_scene_init(Scene *sce)
   BLI_strncpy(sce->r.pic, U.renderdir, sizeof(sce->r.pic));
 
   BLI_rctf_init(&sce->r.safety, 0.1f, 0.9f, 0.1f, 0.9f);
-  sce->r.osa = 8;
 
   /* Note; in header_info.c the scene copy happens...,
    * if you add more to renderdata it has to be checked there. */
@@ -904,6 +903,9 @@ void BKE_scene_init(Scene *sce)
   sce->display.matcap_ssao_distance = 0.2f;
   sce->display.matcap_ssao_attenuation = 1.0f;
   sce->display.matcap_ssao_samples = 16;
+
+  sce->display.render_aa = SCE_DISPLAY_AA_SAMPLES_8;
+  sce->display.viewport_aa = SCE_DISPLAY_AA_FXAA;
 
   /* OpenGL Render. */
   BKE_screen_view3d_shading_init(&sce->display.shading);
@@ -1565,15 +1567,6 @@ void BKE_scene_graph_update_for_newframe(Depsgraph *depsgraph, Main *bmain)
   BKE_image_editors_update_frame(bmain, scene->r.cfra);
   BKE_sound_set_cfra(scene->r.cfra);
   DEG_graph_relations_update(depsgraph, bmain, scene, view_layer);
-  /* Update animated cache files for modifiers.
-   *
-   * TODO(sergey): Make this a depsgraph node?
-   */
-  BKE_cachefile_update_frame(bmain,
-                             depsgraph,
-                             scene,
-                             ctime,
-                             (((double)scene->r.frs_sec) / (double)scene->r.frs_sec_base));
 #ifdef POSE_ANIMATION_WORKAROUND
   scene_armature_depsgraph_workaround(bmain, depsgraph);
 #endif
@@ -1751,31 +1744,20 @@ void BKE_scene_base_flag_to_objects(ViewLayer *view_layer)
   }
 }
 
+/**
+ * Synchronize object base flags
+ *
+ * This is usually handled by the depsgraph.
+ * However, in rare occasions we need to use the latest object flags
+ * before depsgraph is fully updated.
+ *
+ * It should (ideally) only run for copy-on-written objects since this is
+ * runtime data generated per-viewlayer.
+ */
 void BKE_scene_object_base_flag_sync_from_base(Base *base)
 {
   Object *ob = base->object;
-
-  ob->flag = base->flag;
-
-  if ((base->flag & BASE_SELECTED) != 0) {
-    ob->flag |= SELECT;
-  }
-  else {
-    ob->flag &= ~SELECT;
-  }
-}
-
-void BKE_scene_object_base_flag_sync_from_object(Base *base)
-{
-  Object *ob = base->object;
-  base->flag = ob->flag;
-
-  if ((ob->flag & SELECT) != 0 && (base->flag & BASE_SELECTABLE) != 0) {
-    base->flag |= BASE_SELECTED;
-  }
-  else {
-    base->flag &= ~BASE_SELECTED;
-  }
+  ob->base_flag = base->flag;
 }
 
 void BKE_scene_disable_color_management(Scene *scene)

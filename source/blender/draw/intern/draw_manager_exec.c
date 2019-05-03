@@ -205,7 +205,7 @@ void drw_state_set(DRWState state)
     int test;
     if (CHANGED_ANY_STORE_VAR(DRW_STATE_BLEND | DRW_STATE_BLEND_PREMUL | DRW_STATE_ADDITIVE |
                                   DRW_STATE_MULTIPLY | DRW_STATE_ADDITIVE_FULL |
-                                  DRW_STATE_BLEND_OIT,
+                                  DRW_STATE_BLEND_OIT | DRW_STATE_BLEND_PREMUL_UNDER,
                               test)) {
       if (test) {
         glEnable(GL_BLEND);
@@ -215,6 +215,9 @@ void drw_state_set(DRWState state)
                               GL_ONE_MINUS_SRC_ALPHA, /* RGB */
                               GL_ONE,
                               GL_ONE_MINUS_SRC_ALPHA); /* Alpha */
+        }
+        else if ((state & DRW_STATE_BLEND_PREMUL_UNDER) != 0) {
+          glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
         }
         else if ((state & DRW_STATE_BLEND_PREMUL) != 0) {
           glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -401,13 +404,6 @@ void DRW_state_reset(void)
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-/* NOTE : Make sure to reset after use! */
-void DRW_state_invert_facing(void)
-{
-  SWAP(GLenum, DST.backface, DST.frontface);
-  glFrontFace(DST.frontface);
-}
-
 /**
  * This only works if DRWPasses have been tagged with DRW_STATE_CLIP_PLANES,
  * and if the shaders have support for it (see usage of gl_ClipDistance).
@@ -445,8 +441,9 @@ void DRW_state_clip_planes_set_from_rv3d(RegionView3D *rv3d)
 
 /* Extract the 8 corners from a Projection Matrix.
  * Although less accurate, this solution can be simplified as follows:
- * BKE_boundbox_init_from_minmax(&bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const float[3]){1.0f, 1.0f, 1.0f});
- * for (int i = 0; i < 8; i++) {mul_project_m4_v3(projinv, bbox.vec[i]);}
+ * BKE_boundbox_init_from_minmax(&bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const
+ * float[3]){1.0f, 1.0f, 1.0f}); for (int i = 0; i < 8; i++) {mul_project_m4_v3(projinv,
+ * bbox.vec[i]);}
  */
 static void draw_frustum_boundbox_calc(const float (*projmat)[4], BoundBox *r_bbox)
 {

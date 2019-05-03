@@ -65,6 +65,7 @@
 #include "DEG_depsgraph.h"
 
 #include "GPU_draw.h"
+#include "GPU_state.h"
 #include "GPU_immediate.h"
 
 #include "IMB_colormanagement.h"
@@ -580,7 +581,7 @@ static void image_zoom_apply(ViewZoomData *vpd,
     zfac = 1.0f + ((fac / 20.0f) * time_step);
     vpd->timer_lastdraw = time;
     /* this is the final zoom, but instead make it into a factor */
-    //zoom = vpd->sima->zoom * zfac;
+    // zoom = vpd->sima->zoom * zfac;
     factor = (vpd->sima->zoom * zfac) / vpd->zoom;
   }
   else {
@@ -1735,7 +1736,7 @@ static int image_save_options_init(Main *bmain,
     }
 
     ///* XXX - this is lame, we need to make these available too! */
-    //opts->subimtype = scene->r.subimtype;
+    // opts->subimtype = scene->r.subimtype;
 
     BLI_strncpy(opts->filepath, ibuf->name, sizeof(opts->filepath));
 
@@ -2760,6 +2761,7 @@ static void image_sample_draw(const bContext *C, ARegion *ar, void *arg_info)
 
     glEnable(GL_COLOR_LOGIC_OP);
     glLogicOp(GL_XOR);
+    GPU_line_width(1.0f);
     imm_draw_box_wire_2d(pos,
                          (float)sample_rect_fl.xmin,
                          (float)sample_rect_fl.ymin,

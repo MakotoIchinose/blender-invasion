@@ -635,8 +635,6 @@ void BKE_sequencer_new_render_data(Main *bmain,
   r_context->is_proxy_render = false;
   r_context->view_id = 0;
   r_context->gpu_offscreen = NULL;
-  r_context->gpu_samples = (scene->r.mode & R_OSA) ? scene->r.osa : 0;
-  r_context->gpu_full_samples = (r_context->gpu_samples) && (scene->r.scemode & R_FULL_SAMPLE);
 }
 
 /* ************************* iterator ************************** */
@@ -1312,7 +1310,7 @@ ListBase *BKE_sequence_seqbase_get(Sequence *seq, int *r_offset)
       break;
     }
     case SEQ_TYPE_SCENE: {
-      if (seq->flag & SEQ_SCENE_STRIPS) {
+      if (seq->flag & SEQ_SCENE_STRIPS && seq->scene) {
         Editing *ed = BKE_sequencer_editing_get(seq->scene, false);
         if (ed) {
           seqbase = &ed->seqbase;
@@ -2347,7 +2345,7 @@ static void color_balance_byte_byte(StripColorBalance *cb_,
                                     int height,
                                     float mul)
 {
-  //unsigned char cb_tab[3][256];
+  // unsigned char cb_tab[3][256];
   unsigned char *cp = rect;
   unsigned char *e = cp + width * 4 * height;
   unsigned char *m = mask_rect;
@@ -2792,7 +2790,7 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
   }
 
   if (ibuf->x != context->rectx || ibuf->y != context->recty) {
-    if (scene->r.mode & R_OSA) {
+    if (scene->display.render_aa > SCE_DISPLAY_AA_FXAA) {
       IMB_scaleImBuf(ibuf, (short)context->rectx, (short)context->recty);
     }
     else {
@@ -3523,7 +3521,6 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
 
     unsigned int draw_flags = V3D_OFSDRAW_NONE;
     draw_flags |= (use_gpencil) ? V3D_OFSDRAW_SHOW_ANNOTATION : 0;
-    draw_flags |= (context->gpu_full_samples) ? V3D_OFSDRAW_USE_FULL_SAMPLE : 0;
     draw_flags |= (context->scene->r.seq_flag & R_SEQ_OVERRIDE_SCENE_SETTINGS) ?
                       V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS :
                       0;
@@ -3549,7 +3546,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         IB_rect,
         draw_flags,
         scene->r.alphamode,
-        context->gpu_samples,
+        0, /* no aa samples */
         viewname,
         context->gpu_offscreen,
         err_out);
@@ -3640,7 +3637,7 @@ finally:
 
 #ifdef DURIAN_CAMERA_SWITCH
   /* stooping to new low's in hackyness :( */
-  scene->r.mode &= ~(orig_data.mode & R_NO_CAMERA_SWITCH);
+  scene->r.mode &= orig_data.mode | ~R_NO_CAMERA_SWITCH;
 #endif
 
   return ibuf;
@@ -3662,6 +3659,12 @@ static ImBuf *do_render_strip_seqbase(const SeqRenderData *context,
   seqbase = BKE_sequence_seqbase_get(seq, &offset);
 
   if (seqbase && !BLI_listbase_is_empty(seqbase)) {
+
+    if (seq->flag & SEQ_SCENE_STRIPS && seq->scene) {
+      BKE_animsys_evaluate_all_animation(
+          context->bmain, context->depsgraph, seq->scene, nr + offset);
+    }
+
     meta_ibuf = seq_render_strip_stack(context,
                                        state,
                                        seqbase,
@@ -3720,6 +3723,7 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
            */
           SeqRenderData local_context = *context;
           local_context.scene = seq->scene;
+          local_context.skip_cache = true;
 
           ibuf = do_render_strip_seqbase(&local_context, state, seq, nr, use_preprocess);
 
@@ -3730,11 +3734,11 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
       else {
         /* scene can be NULL after deletions */
         ibuf = seq_render_scene_strip(context, seq, nr, cfra);
-
-        /* Scene strips update all animation, so we need to restore original state.*/
-        BKE_animsys_evaluate_all_animation(
-            context->bmain, context->depsgraph, context->scene, cfra);
       }
+
+      /* Scene strips update all animation, so we need to restore original state.*/
+      BKE_animsys_evaluate_all_animation(context->bmain, context->depsgraph, context->scene, cfra);
+
       break;
     }
 
@@ -4134,8 +4138,8 @@ static pthread_mutex_t queue_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t wakeup_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t wakeup_cond = PTHREAD_COND_INITIALIZER;
 
-//static pthread_mutex_t prefetch_ready_lock = PTHREAD_MUTEX_INITIALIZER;
-//static pthread_cond_t  prefetch_ready_cond = PTHREAD_COND_INITIALIZER;
+// static pthread_mutex_t prefetch_ready_lock = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_cond_t  prefetch_ready_cond = PTHREAD_COND_INITIALIZER;
 
 static pthread_mutex_t frame_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t frame_done_cond = PTHREAD_COND_INITIALIZER;
@@ -5999,15 +6003,12 @@ static void sequencer_all_free_anim_ibufs(ListBase *seqbase, int cfra)
   }
 }
 
-void BKE_sequencer_all_free_anim_ibufs(Main *bmain, int cfra)
+void BKE_sequencer_all_free_anim_ibufs(Scene *scene, int cfra)
 {
-  for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
-    Editing *ed = BKE_sequencer_editing_get(scene, false);
-    if (ed == NULL) {
-      /* Ignore scenes without sequencer. */
-      continue;
-    }
-    sequencer_all_free_anim_ibufs(&ed->seqbase, cfra);
-    BKE_sequencer_cache_cleanup(scene);
+  Editing *ed = BKE_sequencer_editing_get(scene, false);
+  if (ed == NULL) {
+    return;
   }
+  sequencer_all_free_anim_ibufs(&ed->seqbase, cfra);
+  BKE_sequencer_cache_cleanup(scene);
 }

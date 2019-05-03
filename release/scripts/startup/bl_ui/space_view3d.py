@@ -2651,6 +2651,7 @@ class VIEW3D_MT_brush_paint_modes(Menu):
         brush = settings.brush
 
         layout.prop(brush, "use_paint_sculpt", text="Sculpt")
+        layout.prop(brush, "use_paint_uv_sculpt", text="UV Sculpt")
         layout.prop(brush, "use_paint_vertex", text="Vertex Paint")
         layout.prop(brush, "use_paint_weight", text="Weight Paint")
         layout.prop(brush, "use_paint_image", text="Texture Paint")
@@ -3357,8 +3358,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
             # Removal Operators
             if selected_verts_len > 1:
-                col.operator("mesh.merge", text="Merge Vertices...")
-                col.operator("mesh.remove_doubles", text="Remove Double Vertices")
+                col.menu("VIEW3D_MT_edit_mesh_merge", text="Merge Vertices")
             col.operator("mesh.dissolve_verts")
             col.operator("mesh.delete", text="Delete Vertices").type = 'VERT'
 
@@ -3561,8 +3561,7 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
 
         layout.separator()
 
-        layout.operator("mesh.merge", text="Merge Vertices")
-        layout.operator("mesh.remove_doubles", text="Remove Double Vertices")
+        layout.menu("VIEW3D_MT_edit_mesh_merge", text="Merge Vertices")
 
         layout.separator()
 
@@ -3750,32 +3749,28 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
 
         layout.separator()
 
-        layout.operator("mesh.flip_normals")
+        layout.operator("mesh.flip_normals", text="Flip")
         layout.operator("mesh.set_normals_from_faces", text="Set From Faces")
-
-        layout.operator("transform.rotate_normal", text="Rotate Normal")
-        layout.operator("mesh.point_normals", text="Point normals to target")
-
+        layout.operator("transform.rotate_normal", text="Rotate")
+        layout.operator("mesh.point_normals", text="Point to Target")
         layout.operator("mesh.merge_normals", text="Merge")
         layout.operator("mesh.split_normals", text="Split")
+        layout.operator("mesh.average_normals", text="Average")
 
-        layout.operator("mesh.average_normals", text="Average Normals")
+        layout.separator()
 
-        layout.label(text="Normal Vector")
+        layout.operator("mesh.normals_tools", text="Copy Vectors").mode = 'COPY'
+        layout.operator("mesh.normals_tools", text="Paste Vectors").mode = 'PASTE'
+        layout.operator("mesh.normals_tools", text="Add Vectors").mode = 'ADD'
+        layout.operator("mesh.normals_tools", text="Multiply Vectors").mode = 'MULTIPLY'
 
-        layout.operator("mesh.normals_tools", text="Copy").mode = 'COPY'
-        layout.operator("mesh.normals_tools", text="Paste").mode = 'PASTE'
+        layout.operator("mesh.smoothen_normals", text="Smoothen Vectors")
+        layout.operator("mesh.normals_tools", text="Reset Vectors").mode = 'RESET'
 
-        layout.operator("mesh.normals_tools", text="Multiply").mode = 'MULTIPLY'
-        layout.operator("mesh.normals_tools", text="Add").mode = 'ADD'
+        layout.separator()
 
-        layout.operator("mesh.normals_tools", text="Reset").mode = 'RESET'
-
-        layout.operator("mesh.smoothen_normals", text="Smoothen")
-
-        layout.label(text="Face Strength")
-        layout.operator("mesh.mod_weighted_strength", text="Face Select", icon='FACESEL').set = False
-        layout.operator("mesh.mod_weighted_strength", text="Set Strength", icon='ADD').set = True
+        layout.operator("mesh.mod_weighted_strength", text="Get Face Strength").set = False
+        layout.operator("mesh.mod_weighted_strength", text="Set Face Strength").set = True
 
 
 class VIEW3D_MT_edit_mesh_shading(Menu):
@@ -3853,6 +3848,19 @@ class VIEW3D_MT_edit_mesh_delete(Menu):
 
         layout.operator("mesh.edge_collapse")
         layout.operator("mesh.delete_edgeloop", text="Edge Loops")
+
+
+class VIEW3D_MT_edit_mesh_merge(Menu):
+    bl_label = "Merge"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator_enum("mesh.merge", "type")
+
+        layout.separator()
+
+        layout.operator("mesh.remove_doubles", text="By Distance")
 
 
 class VIEW3D_MT_edit_mesh_showhide(ShowHideMenu, Menu):
@@ -4766,7 +4774,7 @@ class VIEW3D_PT_collections(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "View"
-    bl_label = "Collections Visibility"
+    bl_label = "Collections"
     bl_options = {'DEFAULT_CLOSED'}
 
     def _draw_collection(self, layout, view_layer, collection, index):
@@ -4816,9 +4824,6 @@ class VIEW3D_PT_collections(Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = False
-
-        layout.label(text="Collections Visibility")
-        layout.column()
 
         view_layer = context.view_layer
         # We pass index 0 here beause the index is increased
@@ -6425,6 +6430,7 @@ classes = (
     VIEW3D_MT_edit_mesh_weights,
     VIEW3D_MT_edit_mesh_clean,
     VIEW3D_MT_edit_mesh_delete,
+    VIEW3D_MT_edit_mesh_merge,
     VIEW3D_MT_edit_mesh_showhide,
     VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_assign_material,
