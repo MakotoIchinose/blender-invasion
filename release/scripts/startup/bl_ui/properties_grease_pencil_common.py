@@ -896,7 +896,7 @@ class GreasePencilMaterialsPanel:
                     gpcolor.use_stroke_pattern is True or \
                     gpcolor.use_stroke_texture_mix is True:
                     row = layout.row()
-                    row.prop(gpcolor, "color", text="Stroke")
+                    row.prop(gpcolor, "color", text="Stroke Color")
 
 
 class GPENCIL_UL_layer(UIList):
