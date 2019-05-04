@@ -2209,7 +2209,7 @@ static int edbm_normals_make_consistent_exec(bContext *C, wmOperator *op)
 void MESH_OT_normals_make_consistent(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Make Normals Consistent";
+  ot->name = "Recalculate Normals";
   ot->description = "Make face and vertex normals point either outside or inside the mesh";
   ot->idname = "MESH_OT_normals_make_consistent";
 
@@ -2774,7 +2774,7 @@ void MESH_OT_uvs_reverse(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  //RNA_def_enum(ot->srna, "axis", axis_items, DIRECTION_CW, "Axis", "Axis to mirror UVs around");
+  // RNA_def_enum(ot->srna, "axis", axis_items, DIRECTION_CW, "Axis", "Axis to mirror UVs around");
 }
 
 void MESH_OT_colors_rotate(wmOperatorType *ot)
@@ -3169,8 +3169,8 @@ static int edbm_remove_doubles_exec(bContext *C, wmOperator *op)
 void MESH_OT_remove_doubles(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Remove Doubles";
-  ot->description = "Remove duplicate vertices";
+  ot->name = "Merge by Distance";
+  ot->description = "Merge vertices based on their proximity";
   ot->idname = "MESH_OT_remove_doubles";
 
   /* api callbacks */
@@ -3573,7 +3573,7 @@ static float bm_edge_seg_isect(const float sco_a[2],
   float threshold = 0.0;
   int i;
 
-  //threshold = 0.000001; /* tolerance for vertex intersection */
+  // threshold = 0.000001; /* tolerance for vertex intersection */
   // XXX threshold = scene->toolsettings->select_thresh / 100;
 
   /* Get screen coords of verts */
@@ -3715,7 +3715,7 @@ static float bm_edge_seg_isect(const float sco_a[2],
         else {
           perc = (yi - y21) / (y22 - y21); /* lower slope more accurate */
         }
-        //isect = 32768.0 * (perc + 0.0000153); /* Percentage in 1 / 32768ths */
+        // isect = 32768.0 * (perc + 0.0000153); /* Percentage in 1 / 32768ths */
 
         break;
       }
@@ -8927,7 +8927,7 @@ static int edbm_smoothen_normals_exec(bContext *C, wmOperator *op)
 void MESH_OT_smoothen_normals(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Smoothen Normals";
+  ot->name = "Smooth Normals Vectors";
   ot->description = "Smoothen custom normals based on adjacent vertex normals";
   ot->idname = "MESH_OT_smoothen_normals";
 
@@ -9004,7 +9004,7 @@ static int edbm_mod_weighted_strength_exec(bContext *C, wmOperator *op)
 void MESH_OT_mod_weighted_strength(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Face Strength";
+  ot->name = "Face Normals Strength";
   ot->description = "Set/Get strength of face (used in Weighted Normal modifier)";
   ot->idname = "MESH_OT_mod_weighted_strength";
 

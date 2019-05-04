@@ -329,7 +329,7 @@ typedef enum {
   DRW_STATE_BLEND = (1 << 15),
   DRW_STATE_ADDITIVE = (1 << 16),
   DRW_STATE_MULTIPLY = (1 << 17),
-  /* DRW_STATE_TRANSMISSION  = (1 << 18), */ /* Not used */
+  DRW_STATE_BLEND_PREMUL_UNDER = (1 << 18),
   DRW_STATE_CLIP_PLANES = (1 << 19),
   /** Same as DRW_STATE_ADDITIVE but let alpha accumulate without premult. */
   DRW_STATE_ADDITIVE_FULL = (1 << 20),
@@ -641,6 +641,7 @@ bool DRW_object_is_renderable(const struct Object *ob);
 int DRW_object_visibility_in_active_context(const struct Object *ob);
 bool DRW_object_is_flat_normal(const struct Object *ob);
 bool DRW_object_use_hide_faces(const struct Object *ob);
+bool DRW_object_use_pbvh_drawing(const struct Object *ob);
 
 bool DRW_object_is_visible_psys_in_active_context(const struct Object *object,
                                                   const struct ParticleSystem *psys);
@@ -658,8 +659,6 @@ void DRW_draw_callbacks_post_scene(void);
 void DRW_state_reset_ex(DRWState state);
 void DRW_state_reset(void);
 void DRW_state_lock(DRWState state);
-
-void DRW_state_invert_facing(void);
 
 void DRW_state_clip_planes_len_set(uint plane_len);
 void DRW_state_clip_planes_reset(void);

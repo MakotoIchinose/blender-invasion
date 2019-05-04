@@ -550,8 +550,8 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
         if (prevLevel == 0) {
           break;
           /* otherwise, this level weaves into another sibling hierarchy to the previous one just
-         * finished, so skip until we get to the parent of this level
-         */
+           * finished, so skip until we get to the parent of this level
+           */
         }
         else {
           continue;
@@ -583,9 +583,10 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
       if (level > matchLevel) {
         ANIM_channel_setting_set(ac, ale, setting, mode);
         /* however, if the level is 'less than or equal to' the channel that was changed,
-       * (i.e. the current channel is as important if not more important than the changed channel)
-       * then we should stop, since we've found the last one of the children we should flush
-       */
+         * (i.e. the current channel is as important if not more important than the changed
+         * channel) then we should stop, since we've found the last one of the children we should
+         * flush
+         */
       }
       else {
         break;
@@ -648,14 +649,28 @@ void ANIM_fcurve_delete_from_animdata(bAnimContext *ac, AnimData *adt, FCurve *f
      * channel list that are empty, and linger around long after the data they
      * are for has disappeared (and probably won't come back).
      */
-    if (BLI_listbase_is_empty(&act->curves) && (adt->flag & ADT_NLA_EDIT_ON) == 0) {
-      id_us_min(&act->id);
-      adt->action = NULL;
-    }
+    ANIM_remove_empty_action_from_animdata(adt);
   }
 
   /* free the F-Curve itself */
   free_fcurve(fcu);
+}
+
+/* If the action has no F-Curves, unlink it from AnimData if it did not
+ * come from a NLA Strip being tweaked. */
+bool ANIM_remove_empty_action_from_animdata(struct AnimData *adt)
+{
+  if (adt->action != NULL) {
+    bAction *act = adt->action;
+
+    if (BLI_listbase_is_empty(&act->curves) && (adt->flag & ADT_NLA_EDIT_ON) == 0) {
+      id_us_min(&act->id);
+      adt->action = NULL;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /* ************************************************************************** */
@@ -2516,17 +2531,6 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
   SpaceNla *snla = (SpaceNla *)ac->sl;
   View2D *v2d = &ac->ar->v2d;
   rctf rectf;
-  float ymin, ymax;
-
-  /* set initial y extents */
-  if (ac->datatype == ANIMCONT_NLA) {
-    ymin = (float)(-NLACHANNEL_HEIGHT(snla));
-    ymax = 0.0f;
-  }
-  else {
-    ymin = 0.0f;
-    ymax = (float)(-ACHANNEL_HEIGHT(ac));
-  }
 
   /* convert border-region to view coordinates */
   UI_view2d_region_to_view(v2d, rect->xmin, rect->ymin + 2, &rectf.xmin, &rectf.ymin);
@@ -2536,8 +2540,17 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS);
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
+  float ymax;
+  if (ac->datatype == ANIMCONT_NLA) {
+    ymax = NLACHANNEL_FIRST_TOP(snla);
+  }
+  else {
+    ymax = ACHANNEL_FIRST_TOP(ac);
+  }
+
   /* loop over data, doing box select */
   for (ale = anim_data.first; ale; ale = ale->next) {
+    float ymin;
     if (ac->datatype == ANIMCONT_NLA) {
       ymin = ymax - NLACHANNEL_STEP(snla);
     }
@@ -2714,32 +2727,25 @@ static int animchannels_channel_get(bAnimContext *ac, const int mval[2])
   ar = ac->ar;
   v2d = &ar->v2d;
 
-  /* Figure out which channel user clicked in.
-   *
-   * Note: although channels technically start at (y = ACHANNEL_FIRST),
-   * we need to adjust by half a channel's height so that the tops of channels get caught ok.
-   * Since ACHANNEL_FIRST is really ACHANNEL_HEIGHT, we simply use ACHANNEL_HEIGHT_HALF.
-   */
+  /* Figure out which channel user clicked in. */
   UI_view2d_region_to_view(v2d, mval[0], mval[1], &x, &y);
 
   if (ac->datatype == ANIMCONT_NLA) {
     SpaceNla *snla = (SpaceNla *)ac->sl;
-    UI_view2d_listview_view_to_cell(v2d,
-                                    NLACHANNEL_NAMEWIDTH,
+    UI_view2d_listview_view_to_cell(NLACHANNEL_NAMEWIDTH,
                                     NLACHANNEL_STEP(snla),
                                     0,
-                                    (float)NLACHANNEL_HEIGHT_HALF(snla),
+                                    NLACHANNEL_FIRST_TOP(snla),
                                     x,
                                     y,
                                     NULL,
                                     &channel_index);
   }
   else {
-    UI_view2d_listview_view_to_cell(v2d,
-                                    ACHANNEL_NAMEWIDTH,
+    UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
                                     ACHANNEL_STEP(ac),
                                     0,
-                                    (float)ACHANNEL_HEIGHT_HALF(ac),
+                                    ACHANNEL_FIRST_TOP(ac),
                                     x,
                                     y,
                                     NULL,
@@ -2860,7 +2866,6 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
         if (selectmode == SELECT_INVERT) {
           /* swap select */
           ED_object_base_select(base, BA_INVERT);
-          BKE_scene_object_base_flag_sync_from_base(base);
 
           if (adt) {
             adt->flag ^= ADT_UI_SELECTED;
@@ -2873,7 +2878,6 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
           /* TODO: should this deselect all other types of channels too? */
           for (b = view_layer->object_bases.first; b; b = b->next) {
             ED_object_base_select(b, BA_DESELECT);
-            BKE_scene_object_base_flag_sync_from_base(b);
             if (b->object->adt) {
               b->object->adt->flag &= ~(ADT_UI_SELECTED | ADT_UI_ACTIVE);
             }
@@ -2881,7 +2885,6 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
 
           /* select object now */
           ED_object_base_select(base, BA_SELECT);
-          BKE_scene_object_base_flag_sync_from_base(base);
           if (adt) {
             adt->flag |= ADT_UI_SELECTED;
           }
@@ -3194,19 +3197,12 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
     selectmode = SELECT_REPLACE;
   }
 
-  /* figure out which channel user clicked in
-   *
-   * Note:
-   * although channels technically start at (y = ACHANNEL_FIRST),
-   * we need to adjust by half a channel's height so that the tops of channels get caught ok.
-   * Since ACHANNEL_FIRST is really ACHANNEL_HEIGHT, we simply use ACHANNEL_HEIGHT_HALF.
-   */
+  /* figure out which channel user clicked in */
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &x, &y);
-  UI_view2d_listview_view_to_cell(v2d,
-                                  ACHANNEL_NAMEWIDTH,
+  UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
                                   ACHANNEL_STEP(&ac),
                                   0,
-                                  (float)ACHANNEL_HEIGHT_HALF(&ac),
+                                  ACHANNEL_FIRST_TOP(&ac),
                                   x,
                                   y,
                                   NULL,

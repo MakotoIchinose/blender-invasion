@@ -106,13 +106,6 @@ static const EnumPropertyItem uv_sculpt_relaxation_items[] = {
 };
 #endif
 
-const EnumPropertyItem rna_enum_uv_sculpt_tool_items[] = {
-    {UV_SCULPT_TOOL_PINCH, "PINCH", 0, "Pinch", "Pinch UVs"},
-    {UV_SCULPT_TOOL_RELAX, "RELAX", 0, "Relax", "Relax UVs"},
-    {UV_SCULPT_TOOL_GRAB, "GRAB", 0, "Grab", "Grab UVs"},
-    {0, NULL, 0, NULL, NULL},
-};
-
 const EnumPropertyItem rna_enum_snap_target_items[] = {
     {SCE_SNAP_TARGET_CLOSEST, "CLOSEST", 0, "Closest", "Snap closest point onto target"},
     {SCE_SNAP_TARGET_CENTER, "CENTER", 0, "Center", "Snap transformation center onto target"},
@@ -197,6 +190,45 @@ static const EnumPropertyItem snap_uv_element_items[] = {
      "Increment",
      "Snap to increments of grid"},
     {SCE_SNAP_MODE_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static const EnumPropertyItem rna_enum_scene_display_aa_methods[] = {
+    {SCE_DISPLAY_AA_OFF,
+     "OFF",
+     0,
+     "No Anti-Aliasing",
+     "Scene will be rendering without any anti-aliasing"},
+    {SCE_DISPLAY_AA_FXAA,
+     "FXAA",
+     0,
+     "Single Pass Anti-Aliasing",
+     "Scene will be rendered using a single pass anti-aliasing method (FXAA)"},
+    {SCE_DISPLAY_AA_SAMPLES_5,
+     "5",
+     0,
+     "5 Samples",
+     "Scene will be rendered using 5 anti-aliasing samples"},
+    {SCE_DISPLAY_AA_SAMPLES_8,
+     "8",
+     0,
+     "8 Samples",
+     "Scene will be rendered using 8 anti-aliasing samples"},
+    {SCE_DISPLAY_AA_SAMPLES_11,
+     "11",
+     0,
+     "11 Samples",
+     "Scene will be rendered using 11 anti-aliasing samples"},
+    {SCE_DISPLAY_AA_SAMPLES_16,
+     "16",
+     0,
+     "16 Samples",
+     "Scene will be rendered using 16 anti-aliasing samples"},
+    {SCE_DISPLAY_AA_SAMPLES_32,
+     "32",
+     0,
+     "32 Samples",
+     "Scene will be rendered using 32 anti-aliasing samples"},
     {0, NULL, 0, NULL, NULL},
 };
 #endif
@@ -706,13 +738,6 @@ static void rna_GPencilInterpolateSettings_type_set(PointerRNA *ptr, int value)
   if ((settings->type == GP_IPO_CURVEMAP) && (settings->custom_ipo == NULL)) {
     settings->custom_ipo = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
   }
-}
-
-static void rna_SpaceImageEditor_uv_sculpt_update(Main *bmain,
-                                                  Scene *scene,
-                                                  PointerRNA *UNUSED(ptr))
-{
-  ED_space_image_uv_sculpt_update(bmain, bmain->wm.first, scene);
 }
 
 /* Read-only Iterator of all the scene objects. */
@@ -2751,13 +2776,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "particle");
   RNA_def_property_ui_text(prop, "Particle Edit", "");
 
-  prop = RNA_def_property(srna, "use_uv_sculpt", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "use_uv_sculpt", 1);
-  RNA_def_property_ui_text(prop, "UV Sculpt", "Enable brush for UV sculpting");
-  RNA_def_property_ui_icon(prop, ICON_TPAINT_HLT, 0);
-  RNA_def_property_update(
-      prop, NC_SPACE | ND_SPACE_IMAGE, "rna_SpaceImageEditor_uv_sculpt_update");
-
   prop = RNA_def_property(srna, "uv_sculpt_lock_borders", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "uv_sculpt_settings", UV_SCULPT_LOCK_BORDERS);
   RNA_def_property_ui_text(prop, "Lock Borders", "Disable editing of boundary edges");
@@ -2765,11 +2783,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "uv_sculpt_all_islands", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "uv_sculpt_settings", UV_SCULPT_ALL_ISLANDS);
   RNA_def_property_ui_text(prop, "Sculpt All Islands", "Brush operates on all islands");
-
-  prop = RNA_def_property(srna, "uv_sculpt_tool", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "uv_sculpt_tool");
-  RNA_def_property_enum_items(prop, rna_enum_uv_sculpt_tool_items);
-  RNA_def_property_ui_text(prop, "UV Sculpt Tools", "Select Tools for the UV sculpt brushes");
 
   prop = RNA_def_property(srna, "uv_relax_method", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "uv_relax_method");
@@ -5503,14 +5516,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem fixed_oversample_items[] = {
-      {5, "5", 0, "5", ""},
-      {8, "8", 0, "8", ""},
-      {11, "11", 0, "11", ""},
-      {16, "16", 0, "16", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   static const EnumPropertyItem threads_mode_items[] = {
       {0,
        "AUTO",
@@ -5711,21 +5716,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Alpha Mode", "Representation of alpha information in the RGBA pixels");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_glsl_update");
-
-  prop = RNA_def_property(srna, "use_antialiasing", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "mode", R_OSA);
-  RNA_def_property_ui_text(
-      prop,
-      "Anti-Aliasing",
-      "Render and combine multiple samples per pixel to prevent jagged edges");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
-
-  prop = RNA_def_property(srna, "antialiasing_samples", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "osa");
-  RNA_def_property_enum_items(prop, fixed_oversample_items);
-  RNA_def_property_ui_text(
-      prop, "Anti-Aliasing Samples", "Amount of anti-aliasing samples per pixel");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
   prop = RNA_def_property(srna, "use_freestyle", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -6598,6 +6588,17 @@ static void rna_def_scene_display(BlenderRNA *brna)
   RNA_def_property_int_default(prop, 16);
   RNA_def_property_ui_text(prop, "Samples", "Number of samples");
   RNA_def_property_range(prop, 1, 500);
+
+  prop = RNA_def_property(srna, "render_aa", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_scene_display_aa_methods);
+  RNA_def_property_ui_text(prop, "Render Anti-Aliasing", "Method of anti-aliasing when rendering");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "viewport_aa", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_scene_display_aa_methods);
+  RNA_def_property_ui_text(
+      prop, "Viewport Anti-Aliasing", "Method of anti-aliasing in 3d viewport");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /* OpenGL render engine settings. */
   prop = RNA_def_property(srna, "shading", PROP_POINTER, PROP_NONE);
