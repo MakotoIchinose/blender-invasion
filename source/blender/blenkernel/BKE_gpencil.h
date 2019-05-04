@@ -71,6 +71,24 @@ typedef struct GpencilBatchCacheElem {
   int tot_vertex;
 } GpencilBatchCacheElem;
 
+/* Defines each batch group to define later the shgroup */
+typedef struct GpencilBatchGroup {
+  struct bGPDlayer *gpl;  /* reference to original layer */
+  struct bGPDframe *gpf;  /* reference to original frame */
+  struct bGPDstroke *gps; /* reference to original stroke */
+  short type;             /* type of element */
+  bool onion;             /* the group is part of onion skin */
+  int vertex_idx;         /* index of vertex data */
+} GpencilBatchGroup;
+
+typedef enum GpencilBatchGroup_Type {
+  eGpencilBatchGroupType_Stroke = 1,
+  eGpencilBatchGroupType_Point = 2,
+  eGpencilBatchGroupType_Fill = 3,
+  eGpencilBatchGroupType_Edit = 4,
+  eGpencilBatchGroupType_Edlin = 5,
+} GpencilBatchGroup_Type;
+
 /* Runtime data for GPU and derived frames after applying modifiers */
 typedef struct GpencilBatchCache {
   struct GpencilBatchCacheElem b_stroke;

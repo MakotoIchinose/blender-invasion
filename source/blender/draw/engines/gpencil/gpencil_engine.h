@@ -36,6 +36,7 @@ struct bGPDstroke;
 struct tGPspoint;
 struct GpencilBatchCache;
 struct GpencilBatchCacheElem;
+struct GpencilBatchGroup;
 
 #define GPENCIL_CACHE_BLOCK_SIZE 8
 #define GPENCIL_MAX_SHGROUPS 65536
@@ -346,23 +347,6 @@ typedef struct GPENCIL_e_data {
   GPUBatch *batch_grid;
 
 } GPENCIL_e_data; /* Engine data */
-
-typedef struct GpencilBatchGroup {
-  bGPDlayer *gpl;  /* reference to original layer */
-  bGPDframe *gpf;  /* reference to original frame */
-  bGPDstroke *gps; /* reference to original stroke */
-  short type;      /* type of element */
-  bool onion;      /* the group is part of onion skin */
-  int vertex_idx;  /* index of vertex data */
-} GpencilBatchGroup;
-
-typedef enum GpencilBatchGroup_Type {
-  eGpencilBatchGroupType_Stroke = 1,
-  eGpencilBatchGroupType_Point = 2,
-  eGpencilBatchGroupType_Fill = 3,
-  eGpencilBatchGroupType_Edit = 4,
-  eGpencilBatchGroupType_Edlin = 5,
-} GpencilBatchGroup_Type;
 
 /* general drawing functions */
 struct DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,
