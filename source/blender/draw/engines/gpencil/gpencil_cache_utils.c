@@ -301,6 +301,13 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
   MEM_SAFE_FREE(cache->b_edit.batch);
   MEM_SAFE_FREE(cache->b_edlin.batch);
 
+  /* internal format data */
+  MEM_SAFE_FREE(cache->b_stroke.format);
+  MEM_SAFE_FREE(cache->b_point.format);
+  MEM_SAFE_FREE(cache->b_fill.format);
+  MEM_SAFE_FREE(cache->b_edit.format);
+  MEM_SAFE_FREE(cache->b_edlin.format);
+
   MEM_SAFE_FREE(cache->grp_cache);
   cache->grp_size = 0;
   cache->grp_used = 0;
