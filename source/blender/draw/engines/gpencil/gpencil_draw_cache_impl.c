@@ -129,6 +129,13 @@ static void gpencil_vbo_ensure_size(GpencilBatchCacheElem *be, int totvertex)
   }
 }
 
+static void gpencil_elem_format_ensure(GpencilBatchCacheElem *be)
+{
+  if (be->format == NULL) {
+    be->format = MEM_callocN(sizeof(GPUVertFormat), __func__);
+  }
+}
+
 /* create batch geometry data for points stroke shader */
 void DRW_gpencil_get_point_geom(GpencilBatchCacheElem *be,
                                 bGPDstroke *gps,
@@ -137,16 +144,17 @@ void DRW_gpencil_get_point_geom(GpencilBatchCacheElem *be,
 {
   int totvertex = gps->totpoints;
   if (be->vbo == NULL) {
-    be->pos_id = GPU_vertformat_attr_add(&be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    be->color_id = GPU_vertformat_attr_add(&be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    gpencil_elem_format_ensure(be);
+    be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    be->color_id = GPU_vertformat_attr_add(be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     be->thickness_id = GPU_vertformat_attr_add(
-        &be->format, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+        be->format, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
     be->uvdata_id = GPU_vertformat_attr_add(
-        &be->format, "uvdata", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+        be->format, "uvdata", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     be->prev_pos_id = GPU_vertformat_attr_add(
-        &be->format, "prev_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+        be->format, "prev_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-    be->vbo = GPU_vertbuf_create_with_format(&be->format);
+    be->vbo = GPU_vertbuf_create_with_format(be->format);
     GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
     be->vbo_len = 0;
   }
@@ -214,14 +222,15 @@ void DRW_gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
   int totvertex = totpoints + cyclic_add + 2;
 
   if (be->vbo == NULL) {
-    be->pos_id = GPU_vertformat_attr_add(&be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    be->color_id = GPU_vertformat_attr_add(&be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    gpencil_elem_format_ensure(be);
+    be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    be->color_id = GPU_vertformat_attr_add(be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     be->thickness_id = GPU_vertformat_attr_add(
-        &be->format, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+        be->format, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
     be->uvdata_id = GPU_vertformat_attr_add(
-        &be->format, "uvdata", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+        be->format, "uvdata", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-    be->vbo = GPU_vertbuf_create_with_format(&be->format);
+    be->vbo = GPU_vertbuf_create_with_format(be->format);
     GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
     be->vbo_len = 0;
   }
@@ -327,12 +336,13 @@ void DRW_gpencil_get_fill_geom(struct GpencilBatchCacheElem *be,
   int totvertex = gps->tot_triangles * 3;
 
   if (be->vbo == NULL) {
-    be->pos_id = GPU_vertformat_attr_add(&be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    be->color_id = GPU_vertformat_attr_add(&be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    gpencil_elem_format_ensure(be);
+    be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    be->color_id = GPU_vertformat_attr_add(be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     be->uvdata_id = GPU_vertformat_attr_add(
-        &be->format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+        be->format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-    be->vbo = GPU_vertbuf_create_with_format(&be->format);
+    be->vbo = GPU_vertbuf_create_with_format(be->format);
     GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
     be->vbo_len = 0;
   }
@@ -725,12 +735,13 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
   unselectColor[3] = alpha;
 
   if (be->vbo == NULL) {
-    be->pos_id = GPU_vertformat_attr_add(&be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    be->color_id = GPU_vertformat_attr_add(&be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    gpencil_elem_format_ensure(be);
+    be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    be->color_id = GPU_vertformat_attr_add(be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     be->thickness_id = GPU_vertformat_attr_add(
-        &be->format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+        be->format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
 
-    be->vbo = GPU_vertbuf_create_with_format(&be->format);
+    be->vbo = GPU_vertbuf_create_with_format(be->format);
     GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
     be->vbo_len = 0;
   }
@@ -810,10 +821,11 @@ void DRW_gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
   copy_v4_v4(linecolor, gpd->line_color);
 
   if (be->vbo == NULL) {
-    be->pos_id = GPU_vertformat_attr_add(&be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    be->color_id = GPU_vertformat_attr_add(&be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    gpencil_elem_format_ensure(be);
+    be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    be->color_id = GPU_vertformat_attr_add(be->format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
-    be->vbo = GPU_vertbuf_create_with_format(&be->format);
+    be->vbo = GPU_vertbuf_create_with_format(be->format);
     GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
     be->vbo_len = 0;
   }

@@ -34,6 +34,9 @@ struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
 struct tGPspoint;
+struct GpencilBatchCache;
+struct GpencilBatchCacheElem;
+struct GpencilBatchGroup;
 
 #define GPENCIL_CACHE_BLOCK_SIZE 8
 #define GPENCIL_MAX_SHGROUPS 65536
@@ -344,61 +347,6 @@ typedef struct GPENCIL_e_data {
   GPUBatch *batch_grid;
 
 } GPENCIL_e_data; /* Engine data */
-
-/* GPUBatch Cache */
-typedef struct GpencilBatchCacheElem {
-  GPUBatch *batch;
-  GPUVertBuf *vbo;
-  int vbo_len;
-  /* attr ids */
-  GPUVertFormat format;
-  uint pos_id;
-  uint color_id;
-  uint thickness_id;
-  uint uvdata_id;
-  uint prev_pos_id;
-
-  /* size for VBO alloc */
-  int tot_vertex;
-} GpencilBatchCacheElem;
-
-typedef struct GpencilBatchGroup {
-  bGPDlayer *gpl;  /* reference to original layer */
-  bGPDframe *gpf;  /* reference to original frame */
-  bGPDstroke *gps; /* reference to original stroke */
-  short type;      /* type of element */
-  bool onion;      /* the group is part of onion skin */
-  int vertex_idx;  /* index of vertex data */
-} GpencilBatchGroup;
-
-typedef enum GpencilBatchGroup_Type {
-  eGpencilBatchGroupType_Stroke = 1,
-  eGpencilBatchGroupType_Point = 2,
-  eGpencilBatchGroupType_Fill = 3,
-  eGpencilBatchGroupType_Edit = 4,
-  eGpencilBatchGroupType_Edlin = 5,
-} GpencilBatchGroup_Type;
-
-typedef struct GpencilBatchCache {
-  GpencilBatchCacheElem b_stroke;
-  GpencilBatchCacheElem b_point;
-  GpencilBatchCacheElem b_fill;
-  GpencilBatchCacheElem b_edit;
-  GpencilBatchCacheElem b_edlin;
-
-  /* settings to determine if cache is invalid */
-  bool is_dirty;
-  bool is_editmode;
-  int cache_frame;
-
-  /* data with the shading groups */
-  int grp_used;                        /* total groups in arrays */
-  int grp_size;                        /* max size of the array */
-  struct GpencilBatchGroup *grp_cache; /* array of elements */
-
-  int tot_layers;
-  struct bGPDframe *derived_array; /* runtime data created by modifiers */
-} GpencilBatchCache;
 
 /* general drawing functions */
 struct DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,

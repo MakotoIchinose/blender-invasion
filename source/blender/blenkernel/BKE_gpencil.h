@@ -49,6 +49,68 @@ struct bGPdata;
 struct MDeformVert;
 struct MDeformWeight;
 
+struct GPUBatch;
+struct GPUVertBuf;
+struct GPUVertFormat;
+struct GpencilBatchGroup;
+
+/* GPUBatch Cache Element */
+typedef struct GpencilBatchCacheElem {
+  struct GPUBatch *batch;
+  struct GPUVertBuf *vbo;
+  int vbo_len;
+  /* attr ids */
+  struct GPUVertFormat *format;
+  uint pos_id;
+  uint color_id;
+  uint thickness_id;
+  uint uvdata_id;
+  uint prev_pos_id;
+
+  /* size for VBO alloc */
+  int tot_vertex;
+} GpencilBatchCacheElem;
+
+/* Defines each batch group to define later the shgroup */
+typedef struct GpencilBatchGroup {
+  struct bGPDlayer *gpl;  /* reference to original layer */
+  struct bGPDframe *gpf;  /* reference to original frame */
+  struct bGPDstroke *gps; /* reference to original stroke */
+  short type;             /* type of element */
+  bool onion;             /* the group is part of onion skin */
+  int vertex_idx;         /* index of vertex data */
+} GpencilBatchGroup;
+
+typedef enum GpencilBatchGroup_Type {
+  eGpencilBatchGroupType_Stroke = 1,
+  eGpencilBatchGroupType_Point = 2,
+  eGpencilBatchGroupType_Fill = 3,
+  eGpencilBatchGroupType_Edit = 4,
+  eGpencilBatchGroupType_Edlin = 5,
+} GpencilBatchGroup_Type;
+
+/* Runtime data for GPU and derived frames after applying modifiers */
+typedef struct GpencilBatchCache {
+  struct GpencilBatchCacheElem b_stroke;
+  struct GpencilBatchCacheElem b_point;
+  struct GpencilBatchCacheElem b_fill;
+  struct GpencilBatchCacheElem b_edit;
+  struct GpencilBatchCacheElem b_edlin;
+
+  /* settings to determine if cache is invalid */
+  bool is_dirty;
+  bool is_editmode;
+  int cache_frame;
+
+  /* data with the shading groups */
+  int grp_used;                        /* total groups in arrays */
+  int grp_size;                        /* max size of the array */
+  struct GpencilBatchGroup *grp_cache; /* array of elements */
+
+  int tot_layers;
+  struct bGPDframe *derived_array; /* runtime data created by modifiers */
+} GpencilBatchCache;
+
 /* ------------ Grease-Pencil API ------------------ */
 
 void BKE_gpencil_free_point_weights(struct MDeformVert *dvert);
