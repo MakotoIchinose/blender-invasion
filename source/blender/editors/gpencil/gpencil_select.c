@@ -1328,7 +1328,8 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
 
   /* First Pass: Find stroke point which gets hit */
   /* XXX: maybe we should go from the top of the stack down instead... */
-  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+  GP_DERIVED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
+  {
     bGPDspoint *pt;
     int i;
 
@@ -1357,7 +1358,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
       }
     }
   }
-  GP_EDITABLE_STROKES_END(gpstroke_iter);
+  GP_DERIVED_STROKES_END(gpstroke_iter);
 
   /* Abort if nothing hit... */
   if (ELEM(NULL, hit_stroke, hit_point)) {

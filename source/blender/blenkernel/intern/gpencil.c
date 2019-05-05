@@ -1970,3 +1970,23 @@ bool BKE_gpencil_trim_stroke(bGPDstroke *gps)
   }
   return intersect;
 }
+
+/** Get derived frame with modifiers applied */
+bGPDframe *BKE_gpencil_derivedframe_get(Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+{
+  GpencilBatchCache *cache = ob->runtime.gpencil_cache;
+  bGPdata *gpd = (bGPdata *)ob->data;
+  if (cache == NULL) {
+    return gpf;
+  }
+  int derived_idx = BLI_findindex(&gpd->layers, gpl);
+
+  /* if not derived data return original data */
+  if (derived_idx < 0) {
+    return gpf;
+  }
+
+  bGPDframe *derived_gpf = &cache->derived_array[derived_idx];
+
+  return derived_gpf;
+}

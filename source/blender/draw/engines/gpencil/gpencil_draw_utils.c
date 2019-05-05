@@ -1123,8 +1123,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
     }
 
     /* edit points (only in edit mode and not play animation not render) */
-    if ((draw_ctx->obact == ob) && (src_gps) && (!playing) && (!is_render) &&
-        (!cache_ob->is_dup_ob)) {
+    if ((draw_ctx->obact == ob) && (!playing) && (!is_render) && (!cache_ob->is_dup_ob)) {
       if ((gpl->flag & GP_LAYER_LOCKED) == 0) {
         if (!stl->g_data->shgrps_edit_line) {
           stl->g_data->shgrps_edit_line = DRW_shgroup_create(e_data->gpencil_line_sh,
@@ -1137,7 +1136,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
           DRW_shgroup_uniform_vec2(stl->g_data->shgrps_edit_point, "Viewport", viewport_size, 1);
         }
 
-        gpencil_add_editpoints_vertexdata(cache, ob, gpd, gpl, derived_gpf, src_gps);
+        gpencil_add_editpoints_vertexdata(cache, ob, gpd, gpl, derived_gpf, gps);
       }
     }
 
@@ -1364,6 +1363,15 @@ static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
   for (bGPDstroke *gps_src = gpf->strokes.first; gps_src; gps_src = gps_src->next) {
     /* make copy of source stroke */
     bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
+
+    /* Save original pointers for using in edit and select operators. */
+    gps_dst->runtime.gps_orig = gps_src;
+    bGPDspoint *pt_src = gps_src->points;
+    bGPDspoint *pt_dst = gps_dst->points;
+    for (int i = 0; i < gps_src->totpoints; i++, pt_dst++, pt_src++) {
+      pt_dst->runtime.pt_orig = pt_src;
+    }
+
     BLI_addtail(&derived_gpf->strokes, gps_dst);
   }
 }
@@ -1945,7 +1953,9 @@ void DRW_gpencil_populate_datablock(GPENCIL_e_data *e_data,
   const ViewLayer *view_layer = DEG_get_evaluated_view_layer(draw_ctx->depsgraph);
   Scene *scene = draw_ctx->scene;
 
-  bGPdata *gpd = (bGPdata *)ob->data;
+  /* Use original data to shared in edit/transform operators */
+  bGPdata *gpd_eval = (bGPdata *)ob->data;
+  bGPdata *gpd = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
 
   View3D *v3d = draw_ctx->v3d;
   int cfra_eval = (int)DEG_get_ctime(draw_ctx->depsgraph);

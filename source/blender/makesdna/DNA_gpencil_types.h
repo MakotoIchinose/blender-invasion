@@ -51,6 +51,11 @@ typedef struct bGPDcontrolpoint {
   int size;
 } bGPDcontrolpoint;
 
+typedef struct bGPDspoint_Runtime {
+  /** Original point (used to dereference evaluated data) */
+  struct bGPDspoint *pt_orig;
+} bGPDspoint_Runtime;
+
 /* Grease-Pencil Annotations - 'Stroke Point'
  * -> Coordinates may either be 2d or 3d depending on settings at the time
  * -> Coordinates of point on stroke, in proportions of window size
@@ -72,6 +77,10 @@ typedef struct bGPDspoint {
   float uv_fac;
   /** Uv rotation for dot mode. */
   float uv_rot;
+
+  /** Runtime data */
+  char _pad2[4];
+  bGPDspoint_Runtime runtime;
 } bGPDspoint;
 
 /* bGPDspoint->flag */
@@ -157,15 +166,21 @@ typedef enum eGPDpalette_Flag {
 
 /* Runtime temp data for bGPDstroke */
 typedef struct bGPDstroke_Runtime {
-  /* runtime final colors (result of original colors and modifiers) */
+  /** runtime final colors (result of original colors and modifiers) */
   float tmp_stroke_rgba[4];
+
+  /** runtime final fill colors (result of original colors and modifiers) */
   float tmp_fill_rgba[4];
 
-  /* temporary layer name only used during copy/paste to put the stroke in the original layer */
+  /** temporary layer name only used during copy/paste to put the stroke in the original layer */
   char tmp_layerinfo[128];
 
   /** Runtime falloff factor (only for transform). */
   float multi_frame_falloff;
+  char _pad[4];
+
+  /** Original stroke (used to dereference evaluated data) */
+  struct bGPDstroke *gps_orig;
 } bGPDstroke_Runtime;
 
 /* Grease-Pencil Annotations - 'Stroke'
@@ -211,7 +226,6 @@ typedef struct bGPDstroke {
   void *_pad3;
 
   bGPDstroke_Runtime runtime;
-  char _pad2[4];
 } bGPDstroke;
 
 /* bGPDstroke->flag */

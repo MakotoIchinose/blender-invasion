@@ -285,4 +285,9 @@ float BKE_gpencil_multiframe_falloff_calc(
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
 
+/* derived data functions */
+struct bGPDframe *BKE_gpencil_derivedframe_get(struct Object *ob,
+                                               struct bGPDlayer *gpl,
+                                               struct bGPDframe *gpf);
+
 #endif /*  __BKE_GPENCIL_H__ */

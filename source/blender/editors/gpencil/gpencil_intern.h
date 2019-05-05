@@ -632,6 +632,55 @@ struct GP_EditableStrokes_Iter {
   } \
   (void)0
 
+/**
+ * Iterate over all editable strokes using derived data in the current context,
+ * stopping on each usable layer + stroke pair (i.e. gpl and gps)
+ * to perform some operations on the stroke.
+ *
+ * \param gpl: The identifier to use for the layer of the stroke being processed.
+ *                    Choose a suitable value to avoid name clashes.
+ * \param gps: The identifier to use for current stroke being processed.
+ *                    Choose a suitable value to avoid name clashes.
+ */
+#define GP_DERIVED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps) \
+  { \
+    struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}}; \
+    Depsgraph *depsgraph_ = CTX_data_depsgraph(C); \
+    Object *obact_ = CTX_data_active_object(C); \
+    bGPdata *gpd_ = CTX_data_gpencil_data(C); \
+    const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
+    CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) { \
+      bGPDframe *init_gpf_ = gpl->actframe; \
+      if (is_multiedit_) { \
+        init_gpf_ = gpl->frames.first; \
+      } \
+      for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
+        if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
+          ED_gpencil_parent_location(depsgraph_, obact_, gpd_, gpl, gpstroke_iter.diff_mat); \
+          /* get derived frame with modifiers applied */ \
+          bGPDframe *derived_gpf_ = BKE_gpencil_derivedframe_get(obact_, gpl, gpl->actframe); \
+          /* loop over strokes */ \
+          for (bGPDstroke *gps = derived_gpf_->strokes.first; gps; gps = gps->next) { \
+            /* skip strokes that are invalid for current view */ \
+            if (ED_gpencil_stroke_can_use(C, gps) == false) \
+              continue; \
+            /* check if the color is editable */ \
+            if (ED_gpencil_stroke_color_use(obact_, gpl, gps) == false) \
+              continue; \
+    /* ... Do Stuff With Strokes ...  */
+
+#define GP_DERIVED_STROKES_END(gpstroke_iter) \
+  } \
+  } \
+  if (!is_multiedit_) { \
+    break; \
+  } \
+  } \
+  } \
+  CTX_DATA_END; \
+  } \
+  (void)0
+
 /* ****************************************************** */
 
 #endif /* __GPENCIL_INTERN_H__ */
