@@ -123,10 +123,12 @@ struct Mesh *BKE_mesh_new_nomain_from_template(const struct Mesh *me_src,
                                                int loops_len,
                                                int polys_len);
 
-/* Performs copy for use during evaluation, optional referencing original arrays to reduce memory. */
+/* Performs copy for use during evaluation,
+ * optional referencing original arrays to reduce memory. */
 struct Mesh *BKE_mesh_copy_for_eval(struct Mesh *source, bool reference);
 
-/* These functions construct a new Mesh, contrary to BKE_mesh_from_nurbs which modifies ob itself. */
+/* These functions construct a new Mesh,
+ * contrary to BKE_mesh_from_nurbs which modifies ob itself. */
 struct Mesh *BKE_mesh_new_nomain_from_curve(struct Object *ob);
 struct Mesh *BKE_mesh_new_nomain_from_curve_displist(struct Object *ob, struct ListBase *dispbase);
 
@@ -214,8 +216,8 @@ struct Mesh *BKE_mesh_new_from_object(struct Depsgraph *depsgraph,
                                       const bool calc_undeformed);
 struct Mesh *BKE_mesh_create_derived_for_modifier(struct Depsgraph *depsgraph,
                                                   struct Scene *scene,
-                                                  struct Object *ob,
-                                                  struct ModifierData *md,
+                                                  struct Object *ob_eval,
+                                                  struct ModifierData *md_eval,
                                                   int build_shapekey_layers);
 
 /* Copies a nomain-Mesh into an existing Mesh. */
@@ -671,6 +673,7 @@ enum {
   BKE_MESH_BATCH_DIRTY_ALL = 0,
   BKE_MESH_BATCH_DIRTY_MAYBE_ALL,
   BKE_MESH_BATCH_DIRTY_SELECT,
+  BKE_MESH_BATCH_DIRTY_SELECT_PAINT,
   BKE_MESH_BATCH_DIRTY_SHADING,
   BKE_MESH_BATCH_DIRTY_SCULPT_COORDS,
   BKE_MESH_BATCH_DIRTY_UVEDIT_ALL,

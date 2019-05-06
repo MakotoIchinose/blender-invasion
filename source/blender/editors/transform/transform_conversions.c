@@ -500,7 +500,7 @@ static void createTransEdge(TransInfo *t)
       BM_mesh_cd_flag_ensure(em->bm, BKE_mesh_from_object(tc->obedit), ME_CDFLAG_EDGE_BWEIGHT);
       cd_edge_float_offset = CustomData_get_offset(&em->bm->edata, CD_BWEIGHT);
     }
-    else {  //if (t->mode == TFM_CREASE) {
+    else {  // if (t->mode == TFM_CREASE) {
       BLI_assert(t->mode == TFM_CREASE);
       BM_mesh_cd_flag_ensure(em->bm, BKE_mesh_from_object(tc->obedit), ME_CDFLAG_EDGE_CREASE);
       cd_edge_float_offset = CustomData_get_offset(&em->bm->edata, CD_CREASE);
@@ -611,38 +611,19 @@ static short apply_targetless_ik(Object *ob)
         /* apply and decompose, doesn't work for constraints or non-uniform scale well */
         {
           float rmat3[3][3], qrmat[3][3], imat3[3][3], smat[3][3];
-
           copy_m3_m4(rmat3, rmat);
 
           /* rotation */
           /* [#22409] is partially caused by this, as slight numeric error introduced during
            * the solving process leads to locked-axis values changing. However, we cannot modify
            * the values here, or else there are huge discrepancies between IK-solver (interactive)
-           * and applied poses.
-           */
-          if (parchan->rotmode > 0) {
-            mat3_to_eulO(parchan->eul, parchan->rotmode, rmat3);
-          }
-          else if (parchan->rotmode == ROT_MODE_AXISANGLE) {
-            mat3_to_axis_angle(parchan->rotAxis, &parchan->rotAngle, rmat3);
-          }
-          else {
-            mat3_to_quat(parchan->quat, rmat3);
-          }
+           * and applied poses. */
+          BKE_pchan_mat3_to_rot(parchan, rmat3, false);
 
           /* for size, remove rotation */
           /* causes problems with some constraints (so apply only if needed) */
           if (data->flag & CONSTRAINT_IK_STRETCH) {
-            if (parchan->rotmode > 0) {
-              eulO_to_mat3(qrmat, parchan->eul, parchan->rotmode);
-            }
-            else if (parchan->rotmode == ROT_MODE_AXISANGLE) {
-              axis_angle_to_mat3(qrmat, parchan->rotAxis, parchan->rotAngle);
-            }
-            else {
-              quat_to_mat3(qrmat, parchan->quat);
-            }
-
+            BKE_pchan_rot_to_mat3(parchan, qrmat);
             invert_m3_m3(imat3, qrmat);
             mul_m3_m3m3(smat, rmat3, imat3);
             mat3_to_size(parchan->size, smat);
@@ -1220,6 +1201,74 @@ static short pose_grab_with_ik(Main *bmain, Object *ob)
   return (tot_ik) ? 1 : 0;
 }
 
+static void pose_mirror_info_init(PoseInitData_Mirror *pid,
+                                  bPoseChannel *pchan,
+                                  bPoseChannel *pchan_orig,
+                                  bool is_mirror_relative)
+{
+  pid->pchan = pchan;
+  copy_v3_v3(pid->orig.loc, pchan->loc);
+  copy_v3_v3(pid->orig.size, pchan->size);
+  pid->orig.curve_in_x = pchan->curve_in_x;
+  pid->orig.curve_out_x = pchan->curve_out_x;
+  pid->orig.roll1 = pchan->roll1;
+  pid->orig.roll2 = pchan->roll2;
+
+  if (pchan->rotmode > 0) {
+    copy_v3_v3(pid->orig.eul, pchan->eul);
+  }
+  else if (pchan->rotmode == ROT_MODE_AXISANGLE) {
+    copy_v3_v3(pid->orig.axis_angle, pchan->rotAxis);
+    pid->orig.axis_angle[3] = pchan->rotAngle;
+  }
+  else {
+    copy_qt_qt(pid->orig.quat, pchan->quat);
+  }
+
+  if (is_mirror_relative) {
+    float pchan_mtx[4][4];
+    float pchan_mtx_mirror[4][4];
+
+    float flip_mtx[4][4];
+    unit_m4(flip_mtx);
+    flip_mtx[0][0] = -1;
+
+    BKE_pchan_to_mat4(pchan_orig, pchan_mtx_mirror);
+    BKE_pchan_to_mat4(pchan, pchan_mtx);
+
+    mul_m4_m4m4(pchan_mtx_mirror, pchan_mtx_mirror, flip_mtx);
+    mul_m4_m4m4(pchan_mtx_mirror, flip_mtx, pchan_mtx_mirror);
+
+    invert_m4(pchan_mtx_mirror);
+    mul_m4_m4m4(pid->offset_mtx, pchan_mtx, pchan_mtx_mirror);
+  }
+  else {
+    unit_m4(pid->offset_mtx);
+  }
+}
+
+static void pose_mirror_info_restore(const PoseInitData_Mirror *pid)
+{
+  bPoseChannel *pchan = pid->pchan;
+  copy_v3_v3(pchan->loc, pid->orig.loc);
+  copy_v3_v3(pchan->size, pid->orig.size);
+  pchan->curve_in_x = pid->orig.curve_in_x;
+  pchan->curve_out_x = pid->orig.curve_out_x;
+  pchan->roll1 = pid->orig.roll1;
+  pchan->roll2 = pid->orig.roll2;
+
+  if (pchan->rotmode > 0) {
+    copy_v3_v3(pchan->eul, pid->orig.eul);
+  }
+  else if (pchan->rotmode == ROT_MODE_AXISANGLE) {
+    copy_v3_v3(pchan->rotAxis, pid->orig.axis_angle);
+    pchan->rotAngle = pid->orig.axis_angle[3];
+  }
+  else {
+    copy_qt_qt(pchan->quat, pid->orig.quat);
+  }
+}
+
 /**
  * When objects array is NULL, use 't->data_container' as is.
  */
@@ -1244,6 +1293,8 @@ static void createTransPose(TransInfo *t)
       continue;
     }
 
+    const bool mirror = ((arm->flag & ARM_MIRROR_EDIT) != 0);
+
     /* set flags and count total */
     tc->data_len = count_set_pose_transflags(ob, t->mode, t->around, has_translate_rotate);
     if (tc->data_len == 0) {
@@ -1265,6 +1316,25 @@ static void createTransPose(TransInfo *t)
         t->flag |= T_AUTOIK;
         has_translate_rotate[0] = true;
       }
+    }
+
+    if (mirror) {
+      int total_mirrored = 0;
+      for (bPoseChannel *pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+        if ((pchan->bone->flag & BONE_TRANSFORM) &&
+            BKE_pose_channel_get_mirrored(ob->pose, pchan->name)) {
+          total_mirrored++;
+        }
+      }
+
+      PoseInitData_Mirror *pid = MEM_mallocN((total_mirrored + 1) * sizeof(PoseInitData_Mirror),
+                                            "PoseInitData_Mirror");
+
+      /* Trick to terminate iteration. */
+      pid[total_mirrored].pchan = NULL;
+
+      tc->custom.type.data = pid;
+      tc->custom.type.use_free = true;
     }
   }
 
@@ -1288,6 +1358,19 @@ static void createTransPose(TransInfo *t)
     short ik_on = 0;
     int i;
 
+    PoseInitData_Mirror *pid = tc->custom.type.data;
+    int pid_index = 0;
+    bArmature *arm;
+
+    /* check validity of state */
+    arm = BKE_armature_from_object(tc->poseobj);
+    if ((arm == NULL) || (ob->pose == NULL)) {
+      continue;
+    }
+
+    const bool mirror = ((arm->flag & ARM_MIRROR_EDIT) != 0);
+    const bool is_mirror_relative = ((arm->flag & ARM_MIRROR_RELATIVE) != 0);
+
     tc->poseobj = ob; /* we also allow non-active objects to be transformed, in weightpaint */
 
     /* init trans data */
@@ -1304,6 +1387,15 @@ static void createTransPose(TransInfo *t)
     for (bPoseChannel *pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
       if (pchan->bone->flag & BONE_TRANSFORM) {
         add_pose_transdata(t, pchan, ob, tc, td);
+
+        if (mirror) {
+          bPoseChannel *pchan_mirror = BKE_pose_channel_get_mirrored(ob->pose, pchan->name);
+          if (pchan_mirror) {
+            pose_mirror_info_init(&pid[pid_index], pchan_mirror, pchan, is_mirror_relative);
+            pid_index++;
+          }
+        }
+
         td++;
       }
     }
@@ -1323,11 +1415,40 @@ static void createTransPose(TransInfo *t)
   t->flag &= ~T_PROP_EDIT_ALL;
 }
 
+void restoreMirrorPoseBones(TransDataContainer *tc)
+{
+  bArmature *arm;
+
+  if (tc->obedit) {
+    arm = tc->obedit->data;
+  }
+  else {
+    BLI_assert(tc->poseobj != NULL);
+    arm = tc->poseobj->data;
+  }
+
+  if (!(arm->flag & ARM_MIRROR_EDIT)) {
+    return;
+  }
+
+  for (PoseInitData_Mirror *pid = tc->custom.type.data; pid->pchan; pid++) {
+    pose_mirror_info_restore(pid);
+  }
+}
+
 void restoreBones(TransDataContainer *tc)
 {
-  bArmature *arm = tc->obedit->data;
+  bArmature *arm;
   BoneInitData *bid = tc->custom.type.data;
   EditBone *ebo;
+
+  if (tc->obedit) {
+    arm = tc->obedit->data;
+  }
+  else {
+    BLI_assert(tc->poseobj != NULL);
+    arm = tc->poseobj->data;
+  }
 
   while (bid->bone) {
     ebo = bid->bone;
@@ -2764,9 +2885,9 @@ static void VertsToTransData(TransInfo *t,
   BLI_assert(BM_elem_flag_test(eve, BM_ELEM_HIDDEN) == 0);
 
   td->flag = 0;
-  //if (key)
+  // if (key)
   //  td->loc = key->co;
-  //else
+  // else
   td->loc = eve->co;
   copy_v3_v3(td->iloc, td->loc);
 
@@ -3052,7 +3173,7 @@ static void createTransEditVerts(TransInfo *t)
 
           /* Mirror? */
           if ((mirror > 0 && tob->iloc[0] > 0.0f) || (mirror < 0 && tob->iloc[0] < 0.0f)) {
-            BMVert *vmir = EDBM_verts_mirror_get(em, eve);  //t->obedit, em, eve, tob->iloc, a);
+            BMVert *vmir = EDBM_verts_mirror_get(em, eve);  // t->obedit, em, eve, tob->iloc, a);
             if (vmir && vmir != eve) {
               tob->extra = vmir;
             }
@@ -6471,7 +6592,7 @@ static void clear_trans_object_base_flags(TransInfo *t)
 
   for (base = view_layer->object_bases.first; base; base = base->next) {
     if (base->flag_legacy & BA_WAS_SEL) {
-      base->flag |= BASE_SELECTED;
+      ED_object_base_select(base, BA_SELECT);
     }
 
     base->flag_legacy &= ~(BA_WAS_SEL | BA_SNAP_FIX_DEPS_FIASCO | BA_TEMP_TAG |
@@ -6851,7 +6972,7 @@ static void special_aftertrans_update__mask(bContext *C, TransInfo *t)
   if (t->scene->nodetree) {
     /* tracks can be used for stabilization nodes,
      * flush update for such nodes */
-    //if (nodeUpdateID(t->scene->nodetree, &mask->id))
+    // if (nodeUpdateID(t->scene->nodetree, &mask->id))
     {
       WM_event_add_notifier(C, NC_MASK | ND_DATA, &mask->id);
     }
@@ -7740,7 +7861,7 @@ static void markerToTransDataInit(TransData *td,
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
 
-  //copy_v3_v3(td->center, td->loc);
+  // copy_v3_v3(td->center, td->loc);
   td->flag |= TD_INDIVIDUAL_SCALE;
   td->center[0] = marker->pos[0] * aspect[0];
   td->center[1] = marker->pos[1] * aspect[1];
@@ -9334,7 +9455,7 @@ void createTransData(bContext *C, TransInfo *t)
     if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
       sort_trans_data(t);  // makes selected become first in array
       /* don't do that, distance has been set in createTransActionData already */
-      //set_prop_dist(t, false);
+      // set_prop_dist(t, false);
       sort_trans_data_dist(t);
     }
   }

@@ -41,6 +41,7 @@ struct MPoly;
 struct MVert;
 struct PBVH;
 struct PBVHNode;
+struct GPU_PBVH_Buffers;
 
 typedef struct PBVH PBVH;
 typedef struct PBVHNode PBVHNode;
@@ -55,6 +56,21 @@ typedef struct {
   MVert *active_vertex_mesh;
   int active_vertex_mesh_index;
 } RaycastOutputData;
+
+typedef enum {
+  PBVH_Leaf = 1,
+
+  PBVH_UpdateNormals = 2,
+  PBVH_UpdateBB = 4,
+  PBVH_UpdateOriginalBB = 8,
+  PBVH_UpdateDrawBuffers = 16,
+  PBVH_UpdateRedraw = 32,
+
+  PBVH_RebuildDrawBuffers = 64,
+  PBVH_FullyHidden = 128,
+
+  PBVH_UpdateTopology = 256,
+} PBVHNodeFlags;
 
 /* Callbacks */
 
@@ -160,12 +176,14 @@ bool BKE_pbvh_node_find_nearest_to_ray(PBVH *bvh,
 void BKE_pbvh_draw_cb(PBVH *bvh,
                       float (*planes)[4],
                       float (*fnors)[3],
-                      bool fast,
-                      bool wires,
-                      bool only_mask,
                       bool show_vcol,
-                      void (*draw_fn)(void *user_data, struct GPUBatch *batch),
+                      void (*draw_fn)(void *user_data, struct GPU_PBVH_Buffers *buffers),
                       void *user_data);
+
+void BKE_pbvh_draw_debug_cb(
+    PBVH *bvh,
+    void (*draw_fn)(void *user_data, const float bmin[3], const float bmax[3], PBVHNodeFlags flag),
+    void *user_data);
 
 /* PBVH Access */
 typedef enum {
@@ -210,21 +228,6 @@ bool BKE_pbvh_bmesh_update_topology(PBVH *bvh,
                                     const bool use_projected);
 
 /* Node Access */
-
-typedef enum {
-  PBVH_Leaf = 1,
-
-  PBVH_UpdateNormals = 2,
-  PBVH_UpdateBB = 4,
-  PBVH_UpdateOriginalBB = 8,
-  PBVH_UpdateDrawBuffers = 16,
-  PBVH_UpdateRedraw = 32,
-
-  PBVH_RebuildDrawBuffers = 64,
-  PBVH_FullyHidden = 128,
-
-  PBVH_UpdateTopology = 256,
-} PBVHNodeFlags;
 
 void BKE_pbvh_node_mark_update(PBVHNode *node);
 void BKE_pbvh_node_mark_rebuild_draw(PBVHNode *node);
@@ -413,8 +416,8 @@ void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
 
 bool BKE_pbvh_node_vert_update_check_any(PBVH *bvh, PBVHNode *node);
 
-//void BKE_pbvh_node_BB_reset(PBVHNode *node);
-//void BKE_pbvh_node_BB_expand(PBVHNode *node, float co[3]);
+// void BKE_pbvh_node_BB_reset(PBVHNode *node);
+// void BKE_pbvh_node_BB_expand(PBVHNode *node, float co[3]);
 
 bool pbvh_has_mask(PBVH *bvh);
 void pbvh_show_diffuse_color_set(PBVH *bvh, bool show_diffuse_color);

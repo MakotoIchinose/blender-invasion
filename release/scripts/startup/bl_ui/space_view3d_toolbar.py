@@ -192,9 +192,13 @@ class VIEW3D_PT_tools_posemode_options(View3DPanel, Panel):
 
     def draw(self, context):
         arm = context.active_object.data
+        layout = self.layout
 
-        self.layout.prop(arm, "use_auto_ik")
-        self.layout.prop(arm, "use_mirror_x")
+        layout.prop(arm, "use_auto_ik")
+        layout.prop(arm, "use_mirror_x")
+        col = layout.column()
+        col.active = arm.use_mirror_x
+        col.prop(arm, "use_mirror_relative")
 
 # ********** default tools for paint modes ****************
 
@@ -1507,7 +1511,8 @@ class VIEW3D_PT_tools_imagepaint_options_cavity(View3DPaintPanel, Panel):
 
         layout.active = ipaint.use_cavity
 
-        layout.template_curve_mapping(ipaint, "cavity_curve", brush=True)
+        layout.template_curve_mapping(ipaint, "cavity_curve", brush=True,
+                                      use_negative_slope=True)
 
 
 # TODO, move to space_view3d.py
@@ -1750,7 +1755,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
 
             col.separator()
             subcol = col.column(align=True)
-            if ma and ma.grease_pencil.mode != 'DOTS':
+            if ma and ma.grease_pencil.mode == 'LINE':
                 subcol.enabled = False
             subcol.prop(gp_settings, "gradient_factor", slider=True)
             subcol.prop(gp_settings, "gradient_shape")
@@ -1887,7 +1892,8 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
         brush = context.tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
 
-        layout.template_curve_mapping(gp_settings, "curve_sensitivity", brush=True)
+        layout.template_curve_mapping(gp_settings, "curve_sensitivity", brush=True,
+                                      use_negative_slope=True)
 
 
 class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
@@ -1902,7 +1908,8 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
         brush = context.tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
 
-        layout.template_curve_mapping(gp_settings, "curve_strength", brush=True)
+        layout.template_curve_mapping(gp_settings, "curve_strength", brush=True,
+                                      use_negative_slope=True)
 
 
 class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
@@ -1917,7 +1924,8 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
         brush = context.tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
 
-        layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True)
+        layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
+                                      use_negative_slope=True)
 
 
 # Grease Pencil stroke editing tools
@@ -1959,7 +1967,8 @@ class VIEW3D_PT_tools_grease_pencil_interpolate(Panel):
         col.prop(settings, "type")
         if settings.type == 'CUSTOM':
             # TODO: Options for loading/saving curve presets?
-            col.template_curve_mapping(settings, "interpolation_curve", brush=True)
+            col.template_curve_mapping(settings, "interpolation_curve", brush=True,
+                                       use_negative_slope=True)
         elif settings.type != 'LINEAR':
             col.prop(settings, "easing")
 

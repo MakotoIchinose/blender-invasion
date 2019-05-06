@@ -40,6 +40,7 @@
 #include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
+#include "BKE_paint.h"
 #include "BKE_pointcache.h"
 
 #include "draw_manager.h"
@@ -210,6 +211,11 @@ bool DRW_object_use_hide_faces(const struct Object *ob)
   }
 
   return false;
+}
+
+bool DRW_object_use_pbvh_drawing(const struct Object *ob)
+{
+  return ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT);
 }
 
 bool DRW_object_is_visible_psys_in_active_context(const Object *object, const ParticleSystem *psys)
@@ -519,11 +525,20 @@ static void drw_viewport_cache_resize(void)
   GPU_viewport_cache_release(DST.viewport);
 
   if (DST.vmempool != NULL) {
+    /* Release Image textures. */
+    BLI_mempool_iter iter;
+    GPUTexture **tex;
+    BLI_mempool_iternew(DST.vmempool->images, &iter);
+    while ((tex = BLI_mempool_iterstep(&iter))) {
+      GPU_texture_free(*tex);
+    }
+
     BLI_mempool_clear_ex(DST.vmempool->calls, BLI_mempool_len(DST.vmempool->calls));
     BLI_mempool_clear_ex(DST.vmempool->states, BLI_mempool_len(DST.vmempool->states));
     BLI_mempool_clear_ex(DST.vmempool->shgroups, BLI_mempool_len(DST.vmempool->shgroups));
     BLI_mempool_clear_ex(DST.vmempool->uniforms, BLI_mempool_len(DST.vmempool->uniforms));
     BLI_mempool_clear_ex(DST.vmempool->passes, BLI_mempool_len(DST.vmempool->passes));
+    BLI_mempool_clear_ex(DST.vmempool->images, BLI_mempool_len(DST.vmempool->images));
   }
 
   DRW_instance_data_list_free_unused(DST.idatalist);
@@ -602,6 +617,10 @@ static void drw_viewport_var_init(void)
     }
     if (DST.vmempool->passes == NULL) {
       DST.vmempool->passes = BLI_mempool_create(sizeof(DRWPass), 0, 64, 0);
+    }
+    if (DST.vmempool->images == NULL) {
+      DST.vmempool->images = BLI_mempool_create(
+          sizeof(GPUTexture *), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
     }
 
     DST.idatalist = GPU_viewport_instance_data_list_get(DST.viewport);
@@ -1123,9 +1142,8 @@ static void drw_engines_draw_background(void)
   }
 
   /* No draw_background found, doing default background */
-  if (DRW_state_draw_background()) {
-    DRW_draw_background();
-  }
+  const bool do_alpha_checker = !DRW_state_draw_background();
+  DRW_draw_background(do_alpha_checker);
 }
 
 static void drw_engines_draw_scene(void)
@@ -1474,6 +1492,7 @@ void DRW_draw_view(const bContext *C)
   drw_state_prepare_clean_for_draw(&DST);
   DST.options.draw_text = ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0 &&
                            (v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) != 0);
+  DST.options.draw_background = scene->r.alphamode == R_ADDSKY;
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
@@ -1540,11 +1559,10 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
     drw_engines_world_update(scene);
 
     const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
-    DEG_OBJECT_ITER_BEGIN (depsgraph,
-                           ob,
-                           DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                               DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                               DEG_ITER_OBJECT_FLAG_DUPLI) {
+    const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                          DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                          DEG_ITER_OBJECT_FLAG_DUPLI;
+    DEG_OBJECT_ITER_BEGIN (depsgraph, ob, iter_flag) {
       if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
         continue;
       }
@@ -1991,11 +2009,10 @@ void DRW_render_object_iter(
   const int object_type_exclude_viewport = draw_ctx->v3d ?
                                                draw_ctx->v3d->object_type_exclude_viewport :
                                                0;
-  DEG_OBJECT_ITER_BEGIN (depsgraph,
-                         ob,
-                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                             DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                             DEG_ITER_OBJECT_FLAG_DUPLI) {
+  const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                        DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                        DEG_ITER_OBJECT_FLAG_DUPLI;
+  DEG_OBJECT_ITER_BEGIN (depsgraph, ob, iter_flag) {
     if ((object_type_exclude_viewport & (1 << ob->type)) == 0) {
       DST.dupli_parent = data_.dupli_parent;
       DST.dupli_source = data_.dupli_object_current;
@@ -2245,14 +2262,13 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
 #  endif
     }
     else {
+      const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                            DEG_ITER_OBJECT_FLAG_DUPLI;
       const int object_type_exclude_select = (v3d->object_type_exclude_viewport |
                                               v3d->object_type_exclude_select);
       bool filter_exclude = false;
-      DEG_OBJECT_ITER_BEGIN (depsgraph,
-                             ob,
-                             DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                                 DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET |
-                                 DEG_ITER_OBJECT_FLAG_VISIBLE | DEG_ITER_OBJECT_FLAG_DUPLI) {
+      DEG_OBJECT_ITER_BEGIN (depsgraph, ob, iter_flag) {
         if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
           continue;
         }
@@ -2364,11 +2380,10 @@ static void drw_draw_depth_loop_imp(void)
 
     View3D *v3d = DST.draw_ctx.v3d;
     const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
-    DEG_OBJECT_ITER_BEGIN (DST.draw_ctx.depsgraph,
-                           ob,
-                           DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                               DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                               DEG_ITER_OBJECT_FLAG_DUPLI) {
+    const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                          DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                          DEG_ITER_OBJECT_FLAG_DUPLI;
+    DEG_OBJECT_ITER_BEGIN (DST.draw_ctx.depsgraph, ob, iter_flag) {
       if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
         continue;
       }
@@ -2721,9 +2736,6 @@ bool DRW_state_draw_support(void)
  */
 bool DRW_state_draw_background(void)
 {
-  if (DRW_state_is_image_render() == false) {
-    return true;
-  }
   return DST.options.draw_background;
 }
 

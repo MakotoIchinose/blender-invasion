@@ -67,6 +67,7 @@
 #include "WM_types.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_anim_api.h"
 #include "ED_armature.h"
@@ -723,12 +724,56 @@ static void fullscreen_click_rcti_init(
   BLI_rcti_init(rect, x, x + icon_size, y, y + icon_size);
 }
 
+static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
+{
+  const ARegion *ar = az->ar;
+  *r_rect_clip = az->rect;
+  if (az->type == AZONE_REGION) {
+    if (ar->overlap && (ar->v2d.keeptot != V2D_KEEPTOT_STRICT) &&
+        /* Only when this isn't hidden (where it's displayed as an button that expands). */
+        ((az->ar->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) == 0)) {
+      /* A floating region to be resized, clip by the visible region. */
+      switch (az->edge) {
+        case AE_TOP_TO_BOTTOMRIGHT:
+        case AE_BOTTOM_TO_TOPLEFT: {
+          r_rect_clip->xmin = max_ii(
+              r_rect_clip->xmin,
+              (ar->winrct.xmin + UI_view2d_view_to_region_x(&ar->v2d, ar->v2d.tot.xmin)) -
+                  UI_REGION_OVERLAP_MARGIN);
+          r_rect_clip->xmax = min_ii(
+              r_rect_clip->xmax,
+              (ar->winrct.xmin + UI_view2d_view_to_region_x(&ar->v2d, ar->v2d.tot.xmax)) +
+                  UI_REGION_OVERLAP_MARGIN);
+          return true;
+        }
+        case AE_LEFT_TO_TOPRIGHT:
+        case AE_RIGHT_TO_TOPLEFT: {
+          r_rect_clip->ymin = max_ii(
+              r_rect_clip->ymin,
+              (ar->winrct.ymin + UI_view2d_view_to_region_y(&ar->v2d, ar->v2d.tot.ymin)) -
+                  UI_REGION_OVERLAP_MARGIN);
+          r_rect_clip->ymax = min_ii(
+              r_rect_clip->ymax,
+              (ar->winrct.ymin + UI_view2d_view_to_region_y(&ar->v2d, ar->v2d.tot.ymax)) +
+                  UI_REGION_OVERLAP_MARGIN);
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 static AZone *area_actionzone_refresh_xy(ScrArea *sa, const int xy[2], const bool test_only)
 {
   AZone *az = NULL;
 
   for (az = sa->actionzones.first; az; az = az->next) {
-    if (BLI_rcti_isect_pt_v(&az->rect, xy)) {
+    rcti az_rect_clip;
+    if (BLI_rcti_isect_pt_v(&az->rect, xy) &&
+        /* Check clipping if this is clipped */
+        (!azone_clipped_rect_calc(az, &az_rect_clip) || BLI_rcti_isect_pt_v(&az_rect_clip, xy))) {
+
       if (az->type == AZONE_AREA) {
         break;
       }
@@ -946,7 +991,8 @@ static int actionzone_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   AZone *az = screen_actionzone_find_xy(sc, &event->x);
   sActionzoneData *sad;
 
-  /* quick escape - Scroll azones only hide/unhide the scroll-bars, they have their own handling. */
+  /* Quick escape - Scroll azones only hide/unhide the scroll-bars,
+   * they have their own handling. */
   if (az == NULL || ELEM(az->type, AZONE_REGION_SCROLL)) {
     return OPERATOR_PASS_THROUGH;
   }
@@ -2386,7 +2432,7 @@ static int area_max_regionsize(ScrArea *sa, ARegion *scalear, AZEdge edge)
 
   /* regions in regions. */
   if (scalear->alignment & RGN_SPLIT_PREV) {
-    const int align = scalear->alignment & RGN_ALIGN_ENUM_MASK;
+    const int align = RGN_ALIGN_ENUM_FROM_MASK(scalear->alignment);
 
     if (ELEM(align, RGN_ALIGN_TOP, RGN_ALIGN_BOTTOM)) {
       ARegion *ar = scalear->prev;
@@ -2713,7 +2759,6 @@ static void areas_do_frame_follow(bContext *C, bool middle)
 /* function to be called outside UI context, or for redo */
 static int frame_offset_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   int delta;
 
@@ -2725,7 +2770,7 @@ static int frame_offset_exec(bContext *C, wmOperator *op)
 
   areas_do_frame_follow(C, false);
 
-  BKE_sound_seek_scene(bmain, scene);
+  DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -2757,7 +2802,6 @@ static void SCREEN_OT_frame_offset(wmOperatorType *ot)
 /* function to be called outside UI context, or for redo */
 static int frame_jump_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   wmTimer *animtimer = CTX_wm_screen(C)->animtimer;
 
@@ -2787,7 +2831,7 @@ static int frame_jump_exec(bContext *C, wmOperator *op)
 
     areas_do_frame_follow(C, true);
 
-    BKE_sound_seek_scene(bmain, scene);
+    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -2820,7 +2864,6 @@ static void SCREEN_OT_frame_jump(wmOperatorType *ot)
 /* function to be called outside UI context, or for redo */
 static int keyframe_jump_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   bDopeSheet ads = {NULL};
@@ -2903,7 +2946,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   else {
     areas_do_frame_follow(C, true);
 
-    BKE_sound_seek_scene(bmain, scene);
+    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -2936,7 +2979,6 @@ static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 /* function to be called outside UI context, or for redo */
 static int marker_jump_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   TimeMarker *marker;
   int closest = CFRA;
@@ -2970,7 +3012,7 @@ static int marker_jump_exec(bContext *C, wmOperator *op)
 
     areas_do_frame_follow(C, true);
 
-    BKE_sound_seek_scene(bmain, scene);
+    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -4242,7 +4284,8 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
   if (screen->animtimer && screen->animtimer == event->customdata) {
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
-    struct Depsgraph *depsgraph = CTX_data_depsgraph(C);
+    Depsgraph *depsgraph = CTX_data_depsgraph(C);
+    Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
     wmTimer *wt = screen->animtimer;
     ScreenAnimData *sad = wt->customdata;
     wmWindowManager *wm = CTX_wm_manager(C);
@@ -4263,7 +4306,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     if ((scene->audio.flag & AUDIO_SYNC) && (sad->flag & ANIMPLAY_FLAG_REVERSE) == false &&
-        isfinite(time = BKE_sound_sync_scene(scene))) {
+        isfinite(time = BKE_sound_sync_scene(scene_eval))) {
       double newfra = (double)time * FPS;
 
       /* give some space here to avoid jumps */
@@ -4356,7 +4399,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     if (sad->flag & ANIMPLAY_FLAG_JUMPED) {
-      BKE_sound_seek_scene(bmain, scene);
+      DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 #ifdef PROFILE_AUDIO_SYNCH
       old_frame = CFRA;
 #endif
@@ -4478,11 +4521,12 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 {
   bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
+  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_depsgraph(C));
 
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0, 0);
-    BKE_sound_stop_scene(scene);
+    BKE_sound_stop_scene(scene_eval);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -4491,7 +4535,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     int refresh = SPACE_ACTION;
 
     if (mode == 1) { /* XXX only play audio forwards!? */
-      BKE_sound_play_scene(scene);
+      BKE_sound_play_scene(scene_eval);
     }
 
     ED_screen_animation_timer(C, screen->redraws_flag, refresh, sync, mode);

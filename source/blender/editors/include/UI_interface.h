@@ -520,6 +520,7 @@ bool UI_but_is_tool(const uiBut *but);
 #define UI_but_is_decorator(but) ((but)->func == ui_but_anim_decorate_cb)
 
 bool UI_block_is_empty(const uiBlock *block);
+bool UI_block_can_add_separator(const uiBlock *block);
 
 /* interface_region_menu_popup.c */
 /**
@@ -1622,7 +1623,7 @@ void UI_panels_scale(struct ARegion *ar, float new_width);
 void UI_panel_label_offset(struct uiBlock *block, int *r_x, int *r_y);
 int UI_panel_size_y(const struct Panel *pa);
 
-bool UI_panel_category_is_visible(struct ARegion *ar);
+bool UI_panel_category_is_visible(const struct ARegion *ar);
 void UI_panel_category_add(struct ARegion *ar, const char *name);
 struct PanelCategoryDyn *UI_panel_category_find(struct ARegion *ar, const char *idname);
 struct PanelCategoryStack *UI_panel_category_active_find(struct ARegion *ar, const char *idname);

@@ -75,6 +75,8 @@ const EnumPropertyItem rna_enum_sequence_modifier_type_items[] = {
 
 #  include "WM_api.h"
 
+#  include "DEG_depsgraph.h"
+
 #  include "IMB_imbuf.h"
 
 typedef struct SequenceSearchData {
@@ -691,34 +693,9 @@ static int rna_Sequence_proxy_filepath_length(PointerRNA *ptr)
   return strlen(path);
 }
 
-static void rna_Sequence_volume_set(PointerRNA *ptr, float value)
+static void rna_Sequence_audio_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
 {
-  Sequence *seq = (Sequence *)(ptr->data);
-
-  seq->volume = value;
-  if (seq->scene_sound)
-    BKE_sound_set_scene_sound_volume(
-        seq->scene_sound, value, (seq->flag & SEQ_AUDIO_VOLUME_ANIMATED) != 0);
-}
-
-static void rna_Sequence_pitch_set(PointerRNA *ptr, float value)
-{
-  Sequence *seq = (Sequence *)(ptr->data);
-
-  seq->pitch = value;
-  if (seq->scene_sound)
-    BKE_sound_set_scene_sound_pitch(
-        seq->scene_sound, value, (seq->flag & SEQ_AUDIO_PITCH_ANIMATED) != 0);
-}
-
-static void rna_Sequence_pan_set(PointerRNA *ptr, float value)
-{
-  Sequence *seq = (Sequence *)(ptr->data);
-
-  seq->pan = value;
-  if (seq->scene_sound)
-    BKE_sound_set_scene_sound_pan(
-        seq->scene_sound, value, (seq->flag & SEQ_AUDIO_PAN_ANIMATED) != 0);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
 }
 
 static int rna_Sequence_input_count_get(PointerRNA *ptr)
@@ -762,9 +739,8 @@ static void rna_Sequence_update_reopen_files(Main *UNUSED(bmain),
 static void rna_Sequence_mute_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->id.data;
-  Editing *ed = BKE_sequencer_editing_get(scene, false);
 
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   rna_Sequence_update(bmain, scene, ptr);
 }
 
@@ -1726,6 +1702,31 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Modifiers", "Modifiers affecting this strip");
   rna_def_sequence_modifiers(brna, prop);
 
+  prop = RNA_def_property(srna, "use_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_RAW);
+  RNA_def_property_ui_text(prop,
+                           "Cache Raw",
+                           "Cache raw images read from disk, for faster tweaking of strip "
+                           "parameters at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_PREPROCESSED);
+  RNA_def_property_ui_text(
+      prop,
+      "Cache Rreprocessed",
+      "Cache preprocessed images, for faster tweaking of effects at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_COMPOSITE);
+  RNA_def_property_ui_text(prop,
+                           "Cache Composite",
+                           "Cache intermediate composited images, for faster tweaking of stacked "
+                           "strips at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "override_cache_settings", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_OVERRIDE);
+  RNA_def_property_ui_text(prop, "Override Cache Settings", "Override global cache settings");
+
   RNA_api_sequence_strip(srna);
 }
 
@@ -1809,6 +1810,65 @@ static void rna_def_editor(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "proxy_dir");
   RNA_def_property_ui_text(prop, "Proxy Directory", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
+
+  /* cache flags */
+
+  prop = RNA_def_property(srna, "show_cache", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_ENABLE);
+  RNA_def_property_ui_text(prop, "Show Cache", "Visualize cached images on the timeline");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_final_out", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_FINAL_OUT);
+  RNA_def_property_ui_text(prop, "Final Images", "Visualize cached complete frames");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_RAW);
+  RNA_def_property_ui_text(prop, "Raw Images", "Visualize cached raw images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_PREPROCESSED);
+  RNA_def_property_ui_text(prop, "Preprocessed Images", "Visualize cached preprocessed images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_COMPOSITE);
+  RNA_def_property_ui_text(prop, "Composite Images", "Visualize cached composite images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "use_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_RAW);
+  RNA_def_property_ui_text(prop,
+                           "Cache Raw",
+                           "Cache raw images read from disk, for faster tweaking of strip "
+                           "parameters at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_PREPROCESSED);
+  RNA_def_property_ui_text(
+      prop,
+      "Cache Preprocessed",
+      "Cache preprocessed images, for faster tweaking of effects at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_COMPOSITE);
+  RNA_def_property_ui_text(prop,
+                           "Cache Composite",
+                           "Cache intermediate composited images, for faster tweaking of stacked "
+                           "strips at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_final", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_FINAL_OUT);
+  RNA_def_property_ui_text(prop, "Cache Final", "Cache final image for each frame");
+
+  prop = RNA_def_property(srna, "recycle_max_cost", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, SEQ_CACHE_COST_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, SEQ_CACHE_COST_MAX, 0.1f, 1);
+  RNA_def_property_float_sdna(prop, NULL, "recycle_max_cost");
+  RNA_def_property_ui_text(
+      prop, "Recycle Up To Cost", "Only frames with cost lower than this value will be recycled");
 }
 
 static void rna_def_filter_video(StructRNA *srna)
@@ -2250,23 +2310,20 @@ static void rna_def_sound(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 100.0f);
   RNA_def_property_ui_text(prop, "Volume", "Playback volume of the sound");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
-  RNA_def_property_float_funcs(prop, NULL, "rna_Sequence_volume_set", NULL);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "pitch", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "pitch");
   RNA_def_property_range(prop, 0.1f, 10.0f);
   RNA_def_property_ui_text(prop, "Pitch", "Playback pitch of the sound");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
-  RNA_def_property_float_funcs(prop, NULL, "rna_Sequence_pitch_set", NULL);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "pan", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "pan");
   RNA_def_property_range(prop, -2.0f, 2.0f);
   RNA_def_property_ui_text(prop, "Pan", "Playback panning of the sound (only for Mono sources)");
-  RNA_def_property_float_funcs(prop, NULL, "rna_Sequence_pan_set", NULL);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "show_waveform", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_AUDIO_DRAW_WAVEFORM);

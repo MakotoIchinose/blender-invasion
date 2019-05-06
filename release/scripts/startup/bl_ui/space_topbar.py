@@ -656,7 +656,7 @@ class TOPBAR_MT_file_new(Menu):
 
     @staticmethod
     def draw_ex(layout, _context, *, use_splash=False, use_more=False):
-        layout.operator_context = 'EXEC_DEFAULT'
+        layout.operator_context = 'INVOKE_DEFAULT'
 
         # Limit number of templates in splash screen, spill over into more menu.
         paths = TOPBAR_MT_file_new.app_template_paths()
@@ -687,6 +687,8 @@ class TOPBAR_MT_file_new(Menu):
                 icon=icon,
             )
             props.app_template = d
+
+        layout.operator_context = 'EXEC_DEFAULT'
 
         if show_more:
             layout.menu("TOPBAR_MT_templates_more", text="...")
@@ -823,7 +825,7 @@ class TOPBAR_MT_edit(Menu):
         layout.separator()
 
         # Mainly to expose shortcut since this depends on the context.
-        props = layout.operator("wm.call_panel", text="Rename Active Item...", icon='OUTLINER_DATA_FONT')
+        props = layout.operator("wm.call_panel", text="Rename Active Item...")
         props.name = "TOPBAR_PT_name"
         props.keep_open = False
 
@@ -951,7 +953,7 @@ class TOPBAR_MT_file_context_menu(Menu):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_AREA'
-        layout.operator("wm.read_homefile", text="New", icon='FILE_NEW')
+        layout.menu("TOPBAR_MT_file_new", text="New", icon='FILE_NEW')
         layout.operator("wm.open_mainfile", text="Open...", icon='FILE_FOLDER')
 
         layout.separator()
@@ -1003,6 +1005,7 @@ class TOPBAR_PT_active_tool(Panel):
 
     def draw(self, context):
         layout = self.layout
+        tool_mode = context.mode
 
         # Panel display of topbar tool settings.
         # currently displays in tool settings, keep here since the same functionality is used for the topbar.
@@ -1011,7 +1014,12 @@ class TOPBAR_PT_active_tool(Panel):
         layout.use_property_decorate = False
 
         from .space_toolsystem_common import ToolSelectPanelHelper
-        ToolSelectPanelHelper.draw_active_tool_header(context, layout, show_tool_name=True)
+        ToolSelectPanelHelper.draw_active_tool_header(
+            context,
+            layout,
+            show_tool_name=True,
+            tool_key=('VIEW_3D', tool_mode),
+        )
 
 
 # Grease Pencil Object - Primitive curve

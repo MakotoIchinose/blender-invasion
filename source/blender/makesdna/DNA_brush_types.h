@@ -287,6 +287,8 @@ typedef struct Brush {
 
   /** Active sculpt tool. */
   char sculpt_tool;
+  /** Active sculpt tool. */
+  char uv_sculpt_tool;
   /** Active vertex paint. */
   char vertexpaint_tool;
   /** Active weight paint. */
@@ -297,7 +299,8 @@ typedef struct Brush {
   char mask_tool;
   /** Active grease pencil tool. */
   char gpencil_tool;
-  char _pad0[6];
+
+  char _pad0[5];
 
   float autosmooth_factor;
 
@@ -355,7 +358,7 @@ typedef struct PaletteColor {
 typedef struct Palette {
   ID id;
 
-  /* pointer to individual colours */
+  /** Pointer to individual colors. */
   ListBase colors;
 
   int active_color;
@@ -473,6 +476,13 @@ typedef enum eBrushSculptTool {
   SCULPT_TOOL_DAM = 20,
   SCULPT_TOOL_PAINT = 21,
 } eBrushSculptTool;
+
+/* Brush.uv_sculpt_tool */
+typedef enum eBrushUVSculptTool {
+  UV_SCULPT_TOOL_GRAB = 0,
+  UV_SCULPT_TOOL_RELAX = 1,
+  UV_SCULPT_TOOL_PINCH = 2,
+} eBrushUVSculptTool;
 
 /** When #BRUSH_ACCUMULATE is used */
 #define SCULPT_TOOL_HAS_ACCUMULATE(t) \

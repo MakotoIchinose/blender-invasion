@@ -714,8 +714,6 @@ static int editmode_toggle_exec(bContext *C, wmOperator *op)
     }
   }
 
-  ED_space_image_uv_sculpt_update(bmain, CTX_wm_manager(C), scene);
-
   WM_msg_publish_rna_prop(mbus, &obact->id, obact, Object, mode);
 
   if (G.background == false) {
@@ -1431,7 +1429,7 @@ void OBJECT_OT_mode_set(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = object_mode_set_exec;
 
-  ot->poll = object_mode_set_poll;  //ED_operator_object_active_editable;
+  ot->poll = object_mode_set_poll;  // ED_operator_object_active_editable;
 
   /* flags */
   ot->flag = 0; /* no register/undo here, leave it to operators being called */
@@ -1457,7 +1455,7 @@ void OBJECT_OT_mode_set_or_submode(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = object_mode_set_exec;
 
-  ot->poll = object_mode_set_poll;  //ED_operator_object_active_editable;
+  ot->poll = object_mode_set_poll;  // ED_operator_object_active_editable;
 
   /* flags */
   ot->flag = 0; /* no register/undo here, leave it to operators being called */

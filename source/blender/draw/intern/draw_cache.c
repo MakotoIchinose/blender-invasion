@@ -3017,7 +3017,8 @@ GPUBatch *DRW_cache_bone_dof_lines_get(void)
  * We could make these more generic functions.
  * although filling 1d lines is not common.
  *
- * \note Use x coordinate to identify the vertex the vertex shader take care to place it appropriately.
+ * \note Use x coordinate to identify the vertex the vertex shader take care to place it
+ * appropriately.
  */
 
 static const float camera_coords_frame_bounds[5] = {
@@ -3283,12 +3284,10 @@ GPUBatch *DRW_cache_mesh_face_wireframe_get(Object *ob)
   return DRW_mesh_batch_cache_get_wireframes_face(ob->data);
 }
 
-void DRW_cache_mesh_sculpt_coords_ensure(Object *ob)
+GPUBatch *DRW_cache_mesh_surface_mesh_analysis_get(Object *ob)
 {
   BLI_assert(ob->type == OB_MESH);
-
-  Mesh *me = ob->data;
-  DRW_mesh_cache_sculpt_coords_ensure(me);
+  return DRW_mesh_batch_cache_get_edit_mesh_analysis(ob->data);
 }
 
 /** \} */
@@ -3302,7 +3301,13 @@ GPUBatch *DRW_cache_curve_edge_wire_get(Object *ob)
   BLI_assert(ob->type == OB_CURVE);
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_wire_edge(cu);
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+  if (mesh_eval != NULL) {
+    return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+  }
+  else {
+    return DRW_curve_batch_cache_get_wire_edge(cu);
+  }
 }
 
 GPUBatch *DRW_cache_curve_edge_normal_get(Object *ob)
@@ -3448,7 +3453,13 @@ GPUBatch *DRW_cache_text_edge_wire_get(Object *ob)
   BLI_assert(ob->type == OB_FONT);
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_wire_edge(cu);
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+  if (mesh_eval != NULL) {
+    return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+  }
+  else {
+    return DRW_curve_batch_cache_get_wire_edge(cu);
+  }
 }
 
 GPUBatch *DRW_cache_text_surface_get(Object *ob)
@@ -3560,7 +3571,13 @@ GPUBatch *DRW_cache_surf_edge_wire_get(Object *ob)
   BLI_assert(ob->type == OB_SURF);
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_wire_edge(cu);
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+  if (mesh_eval != NULL) {
+    return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+  }
+  else {
+    return DRW_curve_batch_cache_get_wire_edge(cu);
+  }
 }
 
 GPUBatch *DRW_cache_surf_face_wireframe_get(Object *ob)

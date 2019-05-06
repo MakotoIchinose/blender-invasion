@@ -1143,7 +1143,7 @@ static void rna_def_edit_bone(BlenderRNA *brna)
   prop = RNA_def_property(srna, "matrix", PROP_FLOAT, PROP_MATRIX);
   /*RNA_def_property_float_sdna(prop, NULL, "");  */ /* doesn't access any real data */
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
-  //RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  // RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_flag(prop, PROP_THICK_WRAP); /* no reference to original data */
   RNA_def_property_ui_text(
       prop,
@@ -1359,6 +1359,13 @@ static void rna_def_armature(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
 
+  prop = RNA_def_property(srna, "use_mirror_relative", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ARM_MIRROR_RELATIVE);
+  RNA_def_property_ui_text(
+      prop, "Relative Mirror", "Apply relative transformations in X-mirror mode");
+  RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
+
+  RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
   prop = RNA_def_property(srna, "use_auto_ik", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ARM_AUTO_IK);
   RNA_def_property_ui_text(

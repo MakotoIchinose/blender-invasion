@@ -1158,8 +1158,8 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
   WM_operator_call_ex(C, data->op, true);
 
   /* let execute handle freeing it */
-  //data->free_op = false;
-  //data->op = NULL;
+  // data->free_op = false;
+  // data->op = NULL;
 
   /* in this case, wm_operator_ui_popup_cancel wont run */
   MEM_freeN(data);
@@ -3814,7 +3814,7 @@ const EnumPropertyItem *RNA_scene_without_active_itemf(bContext *C,
                       ptr,
                       r_free,
                       C ? (ID *)CTX_data_main(C)->scenes.first : NULL,
-                      true,
+                      false,
                       rna_id_enum_filter_single,
                       scene_active);
 }

@@ -3777,8 +3777,9 @@ static void do_clay_strips_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int t
     return;
   }
 
-  if (is_zero_v3(ss->cache->grab_delta_symmetry))
+  if (is_zero_v3(ss->cache->grab_delta_symmetry)) {
     return;
+  }
 
   mul_v3_v3v3(temp, area_no_sp, ss->cache->scale);
   mul_v3_fl(temp, displace);
