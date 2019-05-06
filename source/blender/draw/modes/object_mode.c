@@ -53,6 +53,8 @@
 #include "BKE_particle.h"
 #include "BKE_tracking.h"
 
+#include "BLI_ghash.h"
+
 #include "ED_view3d.h"
 
 #include "GPU_batch.h"
@@ -272,6 +274,8 @@ typedef struct OBJECT_ShadingGroupList {
 typedef struct OBJECT_PrivateData {
   OBJECT_ShadingGroupList sgl;
   OBJECT_ShadingGroupList sgl_ghost;
+
+  GHash *custom_shapes;
 
   /* Outlines */
   DRWShadingGroup *outlines_active;
@@ -949,7 +953,8 @@ static void DRW_shgroup_empty_image(OBJECT_Shaders *sh_data,
     return;
   }
 
-  /* Calling 'BKE_image_get_size' may free the texture. Get the size from 'tex' instead, see: T59347 */
+  /* Calling 'BKE_image_get_size' may free the texture. Get the size from 'tex' instead,
+   * see: T59347 */
   int size[2] = {0};
 
   const bool use_alpha_blend = (ob->empty_image_flag & OB_EMPTY_IMAGE_USE_ALPHA_BLEND) != 0;
@@ -1039,6 +1044,8 @@ static void OBJECT_cache_init(void *vedata)
   g_data->xray_enabled = XRAY_ACTIVE(draw_ctx->v3d);
   g_data->xray_enabled_and_not_wire = g_data->xray_enabled &&
                                       draw_ctx->v3d->shading.type > OB_WIRE;
+
+  g_data->custom_shapes = BLI_ghash_ptr_new(__func__);
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
@@ -1495,7 +1502,7 @@ static void OBJECT_cache_init(void *vedata)
     psl->ob_center = DRW_pass_create("Obj Center Pass", state);
 
     outlineWidth = 1.0f * U.pixelsize;
-    size = U.obcenter_dia * U.pixelsize + outlineWidth;
+    size = UI_GetThemeValuef(TH_OBCENTER_DIA) * U.pixelsize + outlineWidth;
 
     GPUShader *sh = GPU_shader_get_builtin_shader_with_config(
         GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA, draw_ctx->sh_cfg);
@@ -3288,6 +3295,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
               .bone_envelope = sgl->bone_envelope,
               .bone_axes = sgl->bone_axes,
               .relationship_lines = NULL, /* Don't draw relationship lines */
+              .custom_shapes = stl->g_data->custom_shapes,
           };
           DRW_shgroup_armature_object(ob, view_layer, passes, is_wire);
         }
@@ -3395,6 +3403,11 @@ static void OBJECT_cache_finish(void *vedata)
 
   DRW_pass_sort_shgroup_z(stl->g_data->sgl.image_empties);
   DRW_pass_sort_shgroup_z(stl->g_data->sgl_ghost.image_empties);
+
+  if (stl->g_data->custom_shapes) {
+    /* TODO(fclem): Do not free it for each frame but reuse it. Avoiding alloc cost. */
+    BLI_ghash_free(stl->g_data->custom_shapes, NULL, NULL);
+  }
 }
 
 static void OBJECT_draw_scene(void *vedata)

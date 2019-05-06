@@ -692,7 +692,8 @@ static float studiolight_spherical_harmonics_geomerics_eval(
     const float normal[3], float sh0, float sh1, float sh2, float sh3)
 {
   /* Use Geomerics non-linear SH. */
-  /* http://www.geomerics.com/wp-content/uploads/2015/08/CEDEC_Geomerics_ReconstructingDiffuseLighting1.pdf */
+  /* http://www.geomerics.com/wp-content/uploads/2015/08/CEDEC_Geomerics_ReconstructingDiffuseLighting1.pdf
+   */
   float R0 = sh0 * M_1_PI;
 
   float R1[3] = {-sh3, sh2, -sh1};
@@ -1283,7 +1284,8 @@ void BKE_studiolight_init(void)
   BLI_addtail(&studiolights, sl);
 
   /* go over the preset folder and add a studiolight for every image with its path */
-  /* for portable installs (where USER and SYSTEM paths are the same), only go over LOCAL datafiles once */
+  /* for portable installs (where USER and SYSTEM paths are the same),
+   * only go over LOCAL datafiles once */
   /* Also reserve icon space for it. */
   if (!BKE_appdir_app_is_portable_install()) {
     studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,

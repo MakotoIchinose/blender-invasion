@@ -155,7 +155,6 @@
 
 #include "DEG_depsgraph.h"
 
-#include "NOD_common.h"
 #include "NOD_socket.h"
 
 #include "BLO_blend_defs.h"
@@ -3307,7 +3306,8 @@ static void direct_link_cachefile(FileData *fd, CacheFile *cache_file)
 {
   BLI_listbase_clear(&cache_file->object_paths);
   cache_file->handle = NULL;
-  cache_file->handle_mutex = NULL;
+  cache_file->handle_filepath[0] = '\0';
+  cache_file->handle_readers = NULL;
 
   /* relink animdata */
   cache_file->adt = newdataadr(fd, cache_file->adt);
@@ -3401,34 +3401,45 @@ static void lib_link_workspace_instance_hook(FileData *fd, WorkSpaceInstanceHook
 /* Single node tree (also used for material/scene trees), ntree is not NULL */
 static void lib_link_ntree(FileData *fd, ID *id, bNodeTree *ntree)
 {
-  bNode *node;
-  bNodeSocket *sock;
-
   IDP_LibLinkProperty(ntree->id.properties, fd);
   lib_link_animdata(fd, &ntree->id, ntree->adt);
 
   ntree->gpd = newlibadr_us(fd, id->lib, ntree->gpd);
 
-  for (node = ntree->nodes.first; node; node = node->next) {
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
     /* Link ID Properties -- and copy this comment EXACTLY for easy finding
      * of library blocks that implement this.*/
     IDP_LibLinkProperty(node->prop, fd);
 
     node->id = newlibadr_us(fd, id->lib, node->id);
 
-    for (sock = node->inputs.first; sock; sock = sock->next) {
+    for (bNodeSocket *sock = node->inputs.first; sock; sock = sock->next) {
       IDP_LibLinkProperty(sock->prop, fd);
     }
-    for (sock = node->outputs.first; sock; sock = sock->next) {
+    for (bNodeSocket *sock = node->outputs.first; sock; sock = sock->next) {
       IDP_LibLinkProperty(sock->prop, fd);
     }
   }
 
-  for (sock = ntree->inputs.first; sock; sock = sock->next) {
+  for (bNodeSocket *sock = ntree->inputs.first; sock; sock = sock->next) {
     IDP_LibLinkProperty(sock->prop, fd);
   }
-  for (sock = ntree->outputs.first; sock; sock = sock->next) {
+  for (bNodeSocket *sock = ntree->outputs.first; sock; sock = sock->next) {
     IDP_LibLinkProperty(sock->prop, fd);
+  }
+
+  /* Set node->typeinfo pointers. This is done in lib linking, after the
+   * first versioning that can change types still without functions that
+   * update the typeinfo pointers. Versioning after lib linking needs
+   * these top be valid. */
+  ntreeSetTypes(NULL, ntree);
+
+  /* For nodes with static socket layout, add/remove sockets as needed
+   * to match the static layout. */
+  if (fd->memfile == NULL) {
+    for (bNode *node = ntree->nodes.first; node; node = node->next) {
+      node_verify_socket_templates(ntree, node);
+    }
   }
 }
 
@@ -3442,229 +3453,6 @@ static void lib_link_nodetree(FileData *fd, Main *main)
 
       ntree->id.tag &= ~LIB_TAG_NEED_LINK;
     }
-  }
-}
-
-/* updates group node socket identifier so that
- * external links to/from the group node are preserved.
- */
-static void lib_node_do_versions_group_indices(bNode *gnode)
-{
-  bNodeTree *ngroup = (bNodeTree *)gnode->id;
-  bNodeSocket *sock;
-  bNodeLink *link;
-
-  for (sock = gnode->outputs.first; sock; sock = sock->next) {
-    int old_index = sock->to_index;
-
-    for (link = ngroup->links.first; link; link = link->next) {
-      if (link->tonode == NULL && link->fromsock->own_index == old_index) {
-        strcpy(sock->identifier, link->fromsock->identifier);
-        /* deprecated */
-        sock->own_index = link->fromsock->own_index;
-        sock->to_index = 0;
-        sock->groupsock = NULL;
-      }
-    }
-  }
-  for (sock = gnode->inputs.first; sock; sock = sock->next) {
-    int old_index = sock->to_index;
-
-    for (link = ngroup->links.first; link; link = link->next) {
-      if (link->fromnode == NULL && link->tosock->own_index == old_index) {
-        strcpy(sock->identifier, link->tosock->identifier);
-        /* deprecated */
-        sock->own_index = link->tosock->own_index;
-        sock->to_index = 0;
-        sock->groupsock = NULL;
-      }
-    }
-  }
-}
-
-/* verify types for nodes and groups, all data has to be read */
-/* open = 0: appending/linking, open = 1: open new file (need to clean out dynamic
- * typedefs */
-static void lib_verify_nodetree(Main *main, int UNUSED(open))
-{
-  /* this crashes blender on undo/redo */
-#if 0
-  if (open == 1) {
-    reinit_nodesystem();
-  }
-#endif
-
-  /* set node->typeinfo pointers */
-  FOREACH_NODETREE_BEGIN (main, ntree, id) {
-    ntreeSetTypes(NULL, ntree);
-  }
-  FOREACH_NODETREE_END;
-
-  /* verify static socket templates */
-  FOREACH_NODETREE_BEGIN (main, ntree, id) {
-    bNode *node;
-    for (node = ntree->nodes.first; node; node = node->next) {
-      node_verify_socket_templates(ntree, node);
-    }
-  }
-  FOREACH_NODETREE_END;
-
-  {
-    bool has_old_groups = false;
-    /* XXX this should actually be part of do_versions, but since we need
-     * finished library linking, it is not possible there. Instead in do_versions
-     * we have set the NTREE_DO_VERSIONS_GROUP_EXPOSE_2_56_2 flag, so at this point we can do the
-     * actual group node updates.
-     */
-    for (bNodeTree *ntree = main->nodetrees.first; ntree; ntree = ntree->id.next) {
-      if (ntree->flag & NTREE_DO_VERSIONS_GROUP_EXPOSE_2_56_2) {
-        has_old_groups = 1;
-      }
-    }
-
-    if (has_old_groups) {
-      FOREACH_NODETREE_BEGIN (main, ntree, id) {
-        /* updates external links for all group nodes in a tree */
-        bNode *node;
-        for (node = ntree->nodes.first; node; node = node->next) {
-          if (node->type == NODE_GROUP) {
-            bNodeTree *ngroup = (bNodeTree *)node->id;
-            if (ngroup && (ngroup->flag & NTREE_DO_VERSIONS_GROUP_EXPOSE_2_56_2)) {
-              lib_node_do_versions_group_indices(node);
-            }
-          }
-        }
-      }
-      FOREACH_NODETREE_END;
-    }
-
-    for (bNodeTree *ntree = main->nodetrees.first; ntree; ntree = ntree->id.next) {
-      ntree->flag &= ~NTREE_DO_VERSIONS_GROUP_EXPOSE_2_56_2;
-    }
-  }
-
-  {
-    /* Convert the previously used ntree->inputs/ntree->outputs lists to interface nodes.
-     * Pre 2.56.2 node trees automatically have all unlinked sockets exposed already
-     * (see NTREE_DO_VERSIONS_GROUP_EXPOSE_2_56_2).
-     *
-     * XXX this should actually be part of do_versions,
-     * but needs valid typeinfo pointers to create interface nodes.
-     *
-     * Note: theoretically only needed in node groups (main->nodetree),
-     * but due to a temporary bug such links could have been added in all trees,
-     * so have to clean up all of them ...
-     */
-
-    FOREACH_NODETREE_BEGIN (main, ntree, id) {
-      if (ntree->flag & NTREE_DO_VERSIONS_CUSTOMNODES_GROUP) {
-        bNode *input_node = NULL, *output_node = NULL;
-        int num_inputs = 0, num_outputs = 0;
-        bNodeLink *link, *next_link;
-        /* Only create new interface nodes for actual older files.
-         * New file versions already have input/output nodes with duplicate links,
-         * in that case just remove the invalid links.
-         */
-        const bool create_io_nodes = (ntree->flag &
-                                      NTREE_DO_VERSIONS_CUSTOMNODES_GROUP_CREATE_INTERFACE) != 0;
-
-        float input_locx = 1000000.0f, input_locy = 0.0f;
-        float output_locx = -1000000.0f, output_locy = 0.0f;
-        /* rough guess, not nice but we don't have access to UI constants here ... */
-        static const float offsetx = 42 + 3 * 20 + 20;
-        /*static const float offsety = 0.0f;*/
-
-        if (create_io_nodes) {
-          if (ntree->inputs.first) {
-            input_node = nodeAddStaticNode(NULL, ntree, NODE_GROUP_INPUT);
-          }
-
-          if (ntree->outputs.first) {
-            output_node = nodeAddStaticNode(NULL, ntree, NODE_GROUP_OUTPUT);
-          }
-        }
-
-        /* Redirect links from/to the node tree interface to input/output node.
-         * If the fromnode/tonode pointers are NULL, this means a link from/to
-         * the ntree interface sockets, which need to be redirected to new interface nodes.
-         */
-        for (link = ntree->links.first; link; link = next_link) {
-          bool free_link = false;
-          next_link = link->next;
-
-          if (link->fromnode == NULL) {
-            if (input_node) {
-              link->fromnode = input_node;
-              link->fromsock = node_group_input_find_socket(input_node,
-                                                            link->fromsock->identifier);
-              ++num_inputs;
-
-              if (link->tonode) {
-                if (input_locx > link->tonode->locx - offsetx) {
-                  input_locx = link->tonode->locx - offsetx;
-                }
-                input_locy += link->tonode->locy;
-              }
-            }
-            else {
-              free_link = true;
-            }
-          }
-
-          if (link->tonode == NULL) {
-            if (output_node) {
-              link->tonode = output_node;
-              link->tosock = node_group_output_find_socket(output_node, link->tosock->identifier);
-              ++num_outputs;
-
-              if (link->fromnode) {
-                if (output_locx < link->fromnode->locx + offsetx) {
-                  output_locx = link->fromnode->locx + offsetx;
-                }
-                output_locy += link->fromnode->locy;
-              }
-            }
-            else {
-              free_link = true;
-            }
-          }
-
-          if (free_link) {
-            nodeRemLink(ntree, link);
-          }
-        }
-
-        if (num_inputs > 0) {
-          input_locy /= num_inputs;
-          input_node->locx = input_locx;
-          input_node->locy = input_locy;
-        }
-        if (num_outputs > 0) {
-          output_locy /= num_outputs;
-          output_node->locx = output_locx;
-          output_node->locy = output_locy;
-        }
-
-        /* clear do_versions flags */
-        ntree->flag &= ~(NTREE_DO_VERSIONS_CUSTOMNODES_GROUP |
-                         NTREE_DO_VERSIONS_CUSTOMNODES_GROUP_CREATE_INTERFACE);
-      }
-    }
-    FOREACH_NODETREE_END;
-  }
-
-  /* verify all group user nodes */
-  for (bNodeTree *ntree = main->nodetrees.first; ntree; ntree = ntree->id.next) {
-    ntreeVerifyNodes(main, &ntree->id);
-  }
-
-  /* make update calls where necessary */
-  {
-    FOREACH_NODETREE_BEGIN (main, ntree, id) {
-      /* make an update call for the tree */
-      ntreeUpdateTree(main, ntree);
-    }
-    FOREACH_NODETREE_END;
   }
 }
 
@@ -3953,6 +3741,7 @@ static void direct_link_constraints(FileData *fd, ListBase *lb)
       case CONSTRAINT_TYPE_TRANSFORM_CACHE: {
         bTransformCacheConstraint *data = con->data;
         data->reader = NULL;
+        data->reader_object_path[0] = '\0';
       }
     }
   }
@@ -5959,6 +5748,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
     else if (md->type == eModifierType_MeshSequenceCache) {
       MeshSeqCacheModifierData *msmcd = (MeshSeqCacheModifierData *)md;
       msmcd->reader = NULL;
+      msmcd->reader_object_path[0] = '\0';
     }
     else if (md->type == eModifierType_SurfaceDeform) {
       SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)md;
@@ -6676,9 +6466,7 @@ static void lib_link_scene(FileData *fd, Main *main)
         seq->scene_sound = NULL;
         if (seq->scene) {
           seq->scene = newlibadr(fd, sce->id.lib, seq->scene);
-          if (seq->scene) {
-            seq->scene_sound = BKE_sound_scene_add_scene_sound_defaults(sce, seq);
-          }
+          seq->scene_sound = NULL;
         }
         if (seq->clip) {
           seq->clip = newlibadr_us(fd, sce->id.lib, seq->clip);
@@ -6699,7 +6487,7 @@ static void lib_link_scene(FileData *fd, Main *main)
           }
           if (seq->sound) {
             id_us_plus_no_lib((ID *)seq->sound);
-            seq->scene_sound = BKE_sound_add_scene_sound_defaults(sce, seq);
+            seq->scene_sound = NULL;
           }
         }
         if (seq->type == SEQ_TYPE_TEXT) {
@@ -6717,9 +6505,6 @@ static void lib_link_scene(FileData *fd, Main *main)
           marker->camera = newlibadr(fd, sce->id.lib, marker->camera);
         }
       }
-
-      BKE_sequencer_update_muting(sce->ed);
-      BKE_sequencer_update_sound_bounds_all(sce);
 
       /* rigidbody world relies on it's linked collections */
       if (sce->rigidbody_world) {
@@ -6902,7 +6687,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
   memset(&sce->customdata_mask, 0, sizeof(sce->customdata_mask));
   memset(&sce->customdata_mask_modal, 0, sizeof(sce->customdata_mask_modal));
 
-  BKE_sound_create_scene(sce);
+  BKE_sound_reset_scene_runtime(sce);
 
   /* set users to one by default, not in lib-link, this will increase it for compo nodes */
   id_us_ensure_real(&sce->id);
@@ -6959,6 +6744,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     ed = sce->ed = newdataadr(fd, sce->ed);
 
     ed->act_seq = newdataadr(fd, ed->act_seq);
+    ed->cache = NULL;
 
     /* recursive link sequences, lb will be correctly initialized */
     link_recurs_seq(fd, &ed->seqbase);
@@ -7086,6 +6872,11 @@ static void direct_link_scene(FileData *fd, Scene *sce)
       }
     }
   }
+
+#ifdef DURIAN_CAMERA_SWITCH
+  /* Runtime */
+  sce->r.mode &= ~R_NO_CAMERA_SWITCH;
+#endif
 
   sce->r.avicodecdata = newdataadr(fd, sce->r.avicodecdata);
   if (sce->r.avicodecdata) {
@@ -7601,7 +7392,7 @@ static void direct_link_area(FileData *fd, ScrArea *area)
       link_list(fd, &sconsole->scrollback);
       link_list(fd, &sconsole->history);
 
-      //for (cl= sconsole->scrollback.first; cl; cl= cl->next)
+      // for (cl= sconsole->scrollback.first; cl; cl= cl->next)
       //  cl->line= newdataadr(fd, cl->line);
 
       /* comma expressions, (e.g. expr1, expr2, expr3) evaluate each expression,
@@ -8289,7 +8080,8 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
 
             BLI_mempool_iternew(so->treestore, &iter);
             while ((tselem = BLI_mempool_iterstep(&iter))) {
-              /* Do not try to restore pointers to drivers/sequence/etc., can crash in undo case! */
+              /* Do not try to restore pointers to drivers/sequence/etc.,
+               * can crash in undo case! */
               if (TSE_IS_REAL_ID(tselem)) {
                 tselem->id = restore_pointer_by_name(id_map, tselem->id, USER_IGNORE);
               }
@@ -8636,10 +8428,9 @@ static void direct_link_sound(FileData *fd, bSound *sound)
     sound->waveform = NULL;
   }
 
-  if (sound->spinlock) {
-    sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
-    BLI_spin_init(sound->spinlock);
-  }
+  sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
+  BLI_spin_init(sound->spinlock);
+
   /* clear waveform loading flag */
   sound->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
 
@@ -8656,7 +8447,7 @@ static void lib_link_sound(FileData *fd, Main *main)
       sound->ipo = newlibadr_us(
           fd, sound->id.lib, sound->ipo);  // XXX deprecated - old animation system
 
-      BKE_sound_load(main, sound);
+      BKE_sound_reset_runtime(sound);
 
       sound->id.tag &= ~LIB_TAG_NEED_LINK;
     }
@@ -9660,6 +9451,7 @@ static void do_versions(FileData *fd, Library *lib, Main *main)
   blo_do_versions_260(fd, lib, main);
   blo_do_versions_270(fd, lib, main);
   blo_do_versions_280(fd, lib, main);
+  blo_do_versions_cycles(fd, lib, main);
 
   /* WATCH IT!!!: pointers from libdata have not been converted yet here! */
   /* WATCH IT 2!: Userdef struct init see do_versions_userdef() above! */
@@ -9672,8 +9464,11 @@ static void do_versions_after_linking(Main *main)
   //  printf("%s for %s (%s), %d.%d\n", __func__, main->curlib ? main->curlib->name : main->name,
   //         main->curlib ? "LIB" : "MAIN", main->versionfile, main->subversionfile);
 
+  do_versions_after_linking_250(main);
+  do_versions_after_linking_260(main);
   do_versions_after_linking_270(main);
   do_versions_after_linking_280(main);
+  do_versions_after_linking_cycles(main);
 }
 
 /** \} */
@@ -9952,14 +9747,15 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
       do_versions_after_linking(mainvar);
     }
     blo_join_main(&mainlist);
+
+    /* After all data has been read and versioned, uses LIB_TAG_NEW. */
+    ntreeUpdateAllNew(bfd->main);
   }
 
   BKE_main_id_tag_all(bfd->main, LIB_TAG_NEW, false);
 
-  /* Before static overrides, which needs typeinfo. */
-  lib_verify_nodetree(bfd->main, true);
-
-  /* Now that all our data-blocks are loaded, we can re-generate overrides from their references. */
+  /* Now that all our data-blocks are loaded,
+   * we can re-generate overrides from their references. */
   if (fd->memfile == NULL) {
     /* Do not apply in undo case! */
     BKE_main_override_static_update(bfd->main);
@@ -11736,9 +11532,11 @@ static void library_link_end(Main *mainl,
   mainvar = (*fd)->mainlist->first;
   MEM_freeN((*fd)->mainlist);
 
+  /* After all data has been read and versioned, uses LIB_TAG_NEW. */
+  ntreeUpdateAllNew(mainvar);
+
   BKE_main_id_tag_all(mainvar, LIB_TAG_NEW, false);
 
-  lib_verify_nodetree(mainvar, false);
   fix_relpaths_library(BKE_main_blendfile_path(mainvar),
                        mainvar); /* make all relative paths, relative to the open blend file */
 

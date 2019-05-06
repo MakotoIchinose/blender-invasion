@@ -303,6 +303,7 @@ static SpaceLink *view3d_new(const ScrArea *UNUSED(sa), const Scene *scene)
   BLI_addtail(&v3d->regionbase, ar);
   ar->regiontype = RGN_TYPE_TOOL_HEADER;
   ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
+  ar->flag = RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER;
 
   /* header */
   ar = MEM_callocN(sizeof(ARegion), "header for view3d");
@@ -1510,6 +1511,7 @@ void ED_spacetype_view3d(void)
   art->prefsizex = 180; /* XXX */
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->listener = view3d_buttons_region_listener;
+  art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_ui;
   art->init = view3d_buttons_region_init;
   art->draw = view3d_buttons_region_draw;
   BLI_addhead(&st->regiontypes, art);
@@ -1535,9 +1537,9 @@ void ED_spacetype_view3d(void)
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
   art->listener = view3d_header_region_listener;
+  art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_header;
   art->init = view3d_header_region_init;
   art->draw = view3d_header_region_draw;
-  art->message_subscribe = view3d_header_region_message_subscribe;
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */
@@ -1546,9 +1548,9 @@ void ED_spacetype_view3d(void)
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
   art->listener = view3d_header_region_listener;
+  art->message_subscribe = view3d_header_region_message_subscribe;
   art->init = view3d_header_region_init;
   art->draw = view3d_header_region_draw;
-  art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_header;
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: hud */

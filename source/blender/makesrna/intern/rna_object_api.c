@@ -106,12 +106,7 @@ static void rna_Object_select_set(
     return;
   }
 
-  if (select) {
-    BKE_view_layer_base_select(base);
-  }
-  else {
-    base->flag &= ~BASE_SELECTED;
-  }
+  ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
 
   Scene *scene = CTX_data_scene(C);
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
@@ -436,6 +431,14 @@ static void rna_Object_shape_key_remove(Object *ob,
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 
   RNA_POINTER_INVALIDATE(kb_ptr);
+}
+
+static void rna_Object_shape_key_clear(Object *ob, Main *bmain)
+{
+  BKE_object_shapekey_free(bmain, ob);
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 }
 
 #  if 0
@@ -925,6 +928,10 @@ void RNA_api_object(StructRNA *srna)
   parm = RNA_def_pointer(func, "key", "ShapeKey", "", "Keyblock to be removed");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+
+  func = RNA_def_function(srna, "shape_key_clear", "rna_Object_shape_key_clear");
+  RNA_def_function_ui_description(func, "Remove all Shape Keys from this object");
+  RNA_def_function_flag(func, FUNC_USE_MAIN);
 
   /* Ray Cast */
   func = RNA_def_function(srna, "ray_cast", "rna_Object_ray_cast");

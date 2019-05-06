@@ -112,12 +112,7 @@ const EnumPropertyItem rna_enum_space_type_items[] = {
      "Python Console",
      "Interactive programmatic console for "
      "advanced editing and script development"},
-    {SPACE_INFO,
-     "INFO",
-     ICON_INFO,
-     "Info",
-     "Main menu bar and list of error messages "
-     "(drag down to expand and display)"},
+    {SPACE_INFO, "INFO", ICON_INFO, "Info", "Log of operations, warnings and error messages"},
     /* Special case: Top-bar and Status-bar aren't supposed to be a regular editor for the user. */
     {SPACE_TOPBAR,
      "TOPBAR",
@@ -2613,7 +2608,7 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   prop = RNA_def_property(srna, "edge_display_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "dt_uv");
   RNA_def_property_enum_items(prop, dt_uv_items);
-  RNA_def_property_ui_text(prop, "Edge Display Type", "Display type for drawing UV edges");
+  RNA_def_property_ui_text(prop, "Display As", "Display style for UV edges");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
 
   prop = RNA_def_property(srna, "show_smooth_edges", PROP_BOOLEAN, PROP_NONE);
