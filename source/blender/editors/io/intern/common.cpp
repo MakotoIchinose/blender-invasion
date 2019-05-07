@@ -113,7 +113,7 @@ namespace common {
 			;               /* TODO someone flip normals */
 
 		/* Object *eob = DEG_get_evaluated_object(settings->depsgraph, ob); */
-		*mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene, (Object *)eob, CD_MASK_MESH);
+		*mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene, (Object *)eob, &CD_MASK_MESH);
 
 		if (!settings->apply_subdiv)
 			for (ModifierData *md = (ModifierData *) eob->modifiers.first; md; md = md->next)
@@ -125,7 +125,7 @@ namespace common {
 			struct BMeshFromMeshParams bmfmp = {true, false, false, 0};
 			BMesh *bm = BKE_mesh_to_bmesh_ex(*mesh, &bmcp, &bmfmp);
 
-			BM_mesh_triangulate(bm, settings->quad_method, settings->ngon_method,
+			BM_mesh_triangulate(bm, settings->quad_method, settings->ngon_method, 4,
 			                    false /* tag_only */, NULL, NULL, NULL);
 
 			Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
@@ -140,184 +140,10 @@ namespace common {
 		return false;
 	}
 
-	std::string&& get_object_name(const Object *eob, const Mesh *mesh) {
+	std::string get_object_name(const Object *eob, const Mesh *mesh) {
 		std::string name{eob->id.name + 2};
 		std::string mesh_name{mesh->id.name + 2};
 		name_compat(name /* modifies */, mesh_name);
-		return std::move(name);
+		return name;
 	}
-
-        	// template<typename func>
-	void for_each_vertex(const Mesh *mesh, void (*f)(int, const MVert)) {
-		// TODO someone Should this use iterators? Unsure if those are only for BMesh
-		for (int i = 0, e = mesh->totvert; i < e; ++i)
-			f(i, mesh->mvert[i]);
-	}
-
-	// template<typename func>
-	void for_each_uv(Mesh *mesh, void (*f)(int, const std::array<float, 2>)) {
-		for (int i = 0, e = mesh->totloop; i < e; ++i) {
-			const float (&uv)[2] = mesh->mloopuv[i].uv;
-			f(i, std::array<float, 2>{uv[0], uv[1]});
-		}
-	}
-
-	// template<typename func>
-	void for_each_normal(Mesh *mesh, void (*f)(int, const std::array<float, 3>)) {
-		const float (*loop_no)[3] = static_cast<float(*)[3]>
-			(CustomData_get_layer(&mesh->ldata,
-			                      CD_NORMAL));
-		unsigned loop_index = 0;
-		MVert *verts = mesh->mvert;
-		MPoly *mp = mesh->mpoly;
-		MLoop *mloop = mesh->mloop;
-		MLoop *ml = mloop;
-
-		// TODO someone Should -0 be converted to 0?
-		if (loop_no) {
-			for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
-				ml = mesh->mloop + mp->loopstart + (mp->totloop - 1);
-				for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
-					const float (&no)[3] = loop_no[ml->v];
-					f(i, std::array<float, 3>{no[0], no[1], no[2]});
-				}
-			}
-		} else {
-			float no[3];
-			for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
-				ml = mloop + mp->loopstart + (mp->totloop - 1);
-
-				/* Flat shaded, use common normal for all verts. */
-				if ((mp->flag & ME_SMOOTH) == 0) {
-					BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1),
-					                          verts, no);
-					f(i, std::array<float, 3>{no[0], no[1], no[2]});
-					ml -= mp->totloop;
-					loop_index += mp->totloop;
-				} else {
-					/* Smooth shaded, use individual vert normals. */
-					for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
-						normal_short_to_float_v3(no, verts[ml->v].no);
-						f(i, std::array<float, 3>{no[0], no[1], no[2]});
-					}
-				}
-			}
-		}
-	}
-
-
-	// template<typename func>
-	// void for_each_vertex(const Mesh *mesh, func f) {
-	// 	// TODO someone Should this use iterators? Unsure if those are only for BMesh
-	// 	for (int i = 0, e = mesh->totvert; i < e; ++i)
-	// 		f(i, mesh->mvert[i]);
-	// }
-
-	// template<typename func>
-	// void for_each_uv(Mesh *mesh, func f) {
-	// 	for (int i = 0, e = mesh->totloop; i < e; ++i) {
-	// 		f(i, mesh->mloopuv[i].uv);
-	// 	}
-	// }
-
-	// template<typename func>
-	// void for_each_normal(Mesh *mesh, func f) {
-	// 	const float (*loop_no)[3] = static_cast<float(*)[3]>
-	// 		(CustomData_get_layer(&mesh->ldata,
-	// 		                      CD_NORMAL));
-	// 	unsigned loop_index = 0;
-	// 	MVert *verts = mesh->mvert;
-	// 	MPoly *mp = mesh->mpoly;
-	// 	MLoop *mloop = mesh->mloop;
-	// 	MLoop *ml = mloop;
-
-	// 	// TODO someone Should -0 be converted to 0?
-	// 	if (loop_no) {
-	// 		for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
-	// 			ml = mesh->mloop + mp->loopstart + (mp->totloop - 1);
-	// 			for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
-	// 				f(i, loop_no[ml->v]);
-	// 			}
-	// 		}
-	// 	} else {
-	// 		float no[3];
-	// 		for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
-	// 			ml = mloop + mp->loopstart + (mp->totloop - 1);
-
-	// 			/* Flat shaded, use common normal for all verts. */
-	// 			if ((mp->flag & ME_SMOOTH) == 0) {
-	// 				BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1),
-	// 				                          verts, no);
-	// 				f(i, no);
-	// 				ml -= mp->totloop;
-	// 				loop_index += mp->totloop;
-	// 			} else {
-	// 				/* Smooth shaded, use individual vert normals. */
-	// 				for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
-	// 					normal_short_to_float_v3(no, verts[ml->v].no);
-	// 					f(i, no);
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// template<typename dedup_set_mapping_t, typename for_each_t, typename for_each_do_t, typename on_insert_t>
-	// void deduplicate(ulong &total, ulong reserve, Mesh *mesh,
-	//                  dedup_set_mapping_t &p, for_each_t for_each, for_each_do_t for_each_do,
-	//                  on_insert_t on_insert) {
-	// 	auto &set = p.first;
-	// 	auto &set_mapping = p.second;
-
-	// 	// Reserve approximate space to reduce allocations inside loop
-	// 	set_mapping.reserve(reserve);
-
-	// 	// C++14/17 would help here...
-	// 	for_each(mesh, [&](ulong i,
-	// 	                   typename dedup_set_mapping_t::first_type::first_type v) {
-	// 		               auto p = set.insert({v, total});
-	// 		               set_mapping.push_back(p.first);
-	// 		               if (p.second) {
-	// 			               on_insert(i, p.first);
-	// 			               ++total;
-	// 		               }
-	// 	               });
-	// }
-
-	// // Again, C++14/17 would be really useful here...
-	// template<typename key_t>
-	// dedup_pair_t<key_t>&& make_deduplicate_set() {
-	// 	auto cmp = [](key_t lhs, key_t rhs) -> bool { return lhs.first < rhs.first; };
-	// 	return std::move({{cmp} /* set */, {} /* set_mapping */});
-	// }
-
-	// template<typename func>
-	// void for_each_deduplicated_uv(Mesh *mesh, ulong &total, dedup_pair_t<uv_key_t>& p, func f) {
-	// 	deduplicate(/* modifies  */ total,
-	// 	            /* reserve   */ total + mesh->totloop,
-	// 	            /* modifies  */ p,
-	// 	            /* for_each  */ &for_each_uv,
-	// 	            /* on_insert */ f);
-	// }
-
-	// template<typename func>
-	// void for_each_deduplicated_normal(Mesh *mesh, ulong &total, dedup_pair_t<no_key_t>& p, func f) {
-	// 	deduplicate(/* modifies  */ total,
-	// 	            /* Assume 4 verts per face, doesn't break anything if not true */
-	// 	            total + mesh->totpoly * 4,
-	// 	            /* modifies  */ p,
-	// 	            /* for_each  */ &for_each_normal,
-	// 	            /* on_insert */
-	// 	            [&p, &f, &mesh](ulong i, typename set_t<no_key_t>::iterator it){
-	// 		            // Call callee function
-	// 		            f(i, it);
-
-	// 		            // If the face is flat shaded, f is only invoked once, but we need to
-	// 		            // add the value to the map an additional totloop - 1 times
-	// 		            MPoly *mp = mesh->mpoly[i];
-	// 		            if ((mp->flag & ME_SMOOTH) == 0)
-	// 			            for (int j = 0; j < (mp->totloop - 1); ++j)
-	// 				            p.second.push_back(it);
-	// 	            });
-	// }
 }

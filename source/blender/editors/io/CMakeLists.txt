@@ -52,8 +52,8 @@ set(SRC
 
   intern/obj.cpp
   intern/obj.h
-  intern/common.c
-  intern/common.h
+  intern/common.cpp
+  intern/common.hpp
 )
 
 set(LIB
