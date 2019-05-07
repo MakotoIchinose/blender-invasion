@@ -56,8 +56,8 @@ class ImageMetaData {
         width(0),
         height(0),
         depth(0),
-        builtin_free_cache(NULL),
-        type(IMAGE_DATA_NUM_TYPES),
+        builtin_free_cache(false),
+        type((ImageDataType)0),
         colorspace(u_colorspace_raw),
         compress_as_srgb(false)
   {

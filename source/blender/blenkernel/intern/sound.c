@@ -57,7 +57,6 @@
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
 
 #ifdef WITH_AUDASPACE
 /* evil globals ;-) */
@@ -102,6 +101,9 @@ bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
   sound = BKE_libblock_alloc(bmain, ID_SO, BLI_path_basename(filepath), 0);
   BLI_strncpy(sound->name, filepath, FILE_MAX);
   /* sound->type = SOUND_TYPE_FILE; */ /* XXX unused currently */
+
+  sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
+  BLI_spin_init(sound->spinlock);
 
   BKE_sound_reset_runtime(sound);
 
@@ -152,6 +154,7 @@ void BKE_sound_free(bSound *sound)
   }
 
   BKE_sound_free_audio(sound);
+  BKE_sound_free_waveform(sound);
 
   if (sound->spinlock) {
     BLI_spin_end(sound->spinlock);
@@ -173,9 +176,8 @@ void BKE_sound_free_audio(bSound *sound)
     AUD_Sound_free(sound->cache);
     sound->cache = NULL;
   }
-
-  BKE_sound_free_waveform(sound);
-
+#else
+  UNUSED_VARS(sound);
 #endif /* WITH_AUDASPACE */
 }
 
@@ -198,8 +200,8 @@ void BKE_sound_copy_data(Main *UNUSED(bmain),
   sound_dst->cache = NULL;
   sound_dst->waveform = NULL;
   sound_dst->playback_handle = NULL;
-  sound_dst->spinlock =
-      NULL; /* Think this is OK? Otherwise, easy to create new spinlock here... */
+  sound_dst->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
+  BLI_spin_init(sound_dst->spinlock);
 
   /* Just to be sure, should not have any value actually after reading time. */
   sound_dst->ipo = NULL;
@@ -313,7 +315,7 @@ void BKE_sound_init_main(Main *bmain)
     AUD_setSynchronizerCallback(sound_sync_callback, bmain);
   }
 #  else
-  (void)bmain; /* unused */
+  UNUSED_VARS(bmain);
 #  endif
 }
 
@@ -532,12 +534,14 @@ void BKE_sound_reset_scene_specs(Scene *scene)
 {
   sound_verify_evaluated_id(&scene->id);
 
-  AUD_Specs specs;
+  if (scene->sound_scene) {
+    AUD_Specs specs;
 
-  specs.channels = AUD_Device_getChannels(sound_device);
-  specs.rate = AUD_Device_getRate(sound_device);
+    specs.channels = AUD_Device_getChannels(sound_device);
+    specs.rate = AUD_Device_getRate(sound_device);
 
-  AUD_Sequence_setSpecs(scene->sound_scene, specs);
+    AUD_Sequence_setSpecs(scene->sound_scene, specs);
+  }
 }
 
 void BKE_sound_mute_scene(Scene *scene, int muted)
@@ -684,7 +688,6 @@ void BKE_sound_set_scene_sound_pitch(void *handle, float pitch, char animated)
 
 void BKE_sound_set_scene_sound_pan(void *handle, float pan, char animated)
 {
-  printf("%s\n", __func__);
   AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PANNING, sound_cfra, &pan, animated);
 }
 
@@ -793,10 +796,9 @@ void BKE_sound_seek_scene(Main *bmain, Scene *scene)
     }
   }
 
-  Scene *scene_orig = (Scene *)DEG_get_original_id(&scene->id);
-  if (scene_orig->audio.flag & AUDIO_SCRUB && !animation_playing) {
+  if (scene->audio.flag & AUDIO_SCRUB && !animation_playing) {
     AUD_Handle_setPosition(scene->playback_handle, cur_time);
-    if (scene_orig->audio.flag & AUDIO_SYNC) {
+    if (scene->audio.flag & AUDIO_SYNC) {
       AUD_seekSynchronizer(scene->playback_handle, cur_time);
     }
     AUD_Handle_resume(scene->playback_handle);
@@ -812,7 +814,7 @@ void BKE_sound_seek_scene(Main *bmain, Scene *scene)
     }
   }
   else {
-    if (scene_orig->audio.flag & AUDIO_SYNC) {
+    if (scene->audio.flag & AUDIO_SYNC) {
       AUD_seekSynchronizer(scene->playback_handle, cur_time);
     }
     else {
@@ -879,10 +881,11 @@ void BKE_sound_free_waveform(bSound *sound)
   sound->tags &= ~SOUND_TAGS_WAVEFORM_NO_RELOAD;
 }
 
+/* TODO(sergey): Consider mamakinging this function fully autonomous, as in, not require having
+ * an existing playback handle. That would make it easy to read waveforms, which doesn't seem to
+ * be affected by evaluated scene (waveworm comes from file). */
 void BKE_sound_read_waveform(bSound *sound, short *stop)
 {
-  sound_verify_evaluated_id(&sound->id);
-
   AUD_SoundInfo info = AUD_getInfo(sound->playback_handle);
   SoundWaveform *waveform = MEM_mallocN(sizeof(SoundWaveform), "SoundWaveform");
 
@@ -1211,20 +1214,15 @@ char **BKE_sound_get_device_names(void)
   return names;
 }
 
-#endif /* WITH_AUDASPACE */
-
-void BKE_sound_update_and_seek(Main *bmain, Depsgraph *depsgraph)
+void BKE_sound_free_waveform(bSound *UNUSED(sound))
 {
-  Scene *scene_orig = DEG_get_input_scene(depsgraph);
-  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
-  /* NOTE: We don't do copy-on-write or anything like that here because we need to know scene's
-   * flags like "scrubbing" in the BKE_sound_seek_scene(). So we simply update frame to which
-   * seek needs to happen.
-   *
-   * TODO(sergey): Might change API so the frame is passes explicitly. */
-  scene_eval->r.cfra = scene_orig->r.cfra;
-  BKE_sound_seek_scene(bmain, scene_eval);
 }
+
+void BKE_sound_load_audio(Main *UNUSED(bmain), bSound *UNUSED(sound))
+{
+}
+
+#endif /* WITH_AUDASPACE */
 
 void BKE_sound_reset_scene_runtime(Scene *scene)
 {
@@ -1261,7 +1259,7 @@ void BKE_sound_jack_sync_callback_set(SoundJackSyncCallback callback)
 #if defined(WITH_AUDASPACE) && defined(WITH_JACK)
   sound_jack_sync_callback = callback;
 #else
-  (void)callback;
+  UNUSED_VARS(callback);
 #endif
 }
 
@@ -1284,6 +1282,8 @@ void BKE_sound_jack_scene_update(Scene *scene, int mode, float time)
   if (scene->playback_handle != NULL) {
     AUD_Handle_setPosition(scene->playback_handle, time);
   }
+#else
+  UNUSED_VARS(time);
 #endif
 }
 
