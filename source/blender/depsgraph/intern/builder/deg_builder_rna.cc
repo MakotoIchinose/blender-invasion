@@ -211,6 +211,12 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
      * bone components, instead of using this generic code. */
     node_identifier.type = NodeType::PARAMETERS;
     node_identifier.operation_code = OperationCode::ARMATURE_EVAL;
+    /* If trying to look up via an Object, e.g. due to lookup via
+     * obj.pose.bones[].bone in a driver attached to the Object,
+     * redirect to its data. */
+    if (GS(node_identifier.id->name) == ID_OB) {
+      node_identifier.id = (ID *)((Object *)node_identifier.id)->data;
+    }
     return node_identifier;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Constraint)) {
@@ -303,10 +309,8 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
     return node_identifier;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Sequence)) {
-    const Sequence *seq = static_cast<Sequence *>(ptr->data);
     /* Sequencer strip */
     node_identifier.type = NodeType::SEQUENCER;
-    node_identifier.component_name = seq->name;
     return node_identifier;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {

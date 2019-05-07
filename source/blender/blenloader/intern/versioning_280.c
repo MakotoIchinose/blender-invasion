@@ -692,6 +692,16 @@ static void do_version_bbone_scale_animdata_cb(ID *UNUSED(id),
   }
 }
 
+static void do_version_constraints_maintain_volume_mode_uniform(ListBase *lb)
+{
+  for (bConstraint *con = lb->first; con; con = con->next) {
+    if (con->type == CONSTRAINT_TYPE_SAMEVOL) {
+      bSameVolumeConstraint *data = (bSameVolumeConstraint *)con->data;
+      data->mode = SAMEVOL_UNIFORM;
+    }
+  }
+}
+
 void do_versions_after_linking_280(Main *bmain)
 {
   bool use_collection_compat_28 = true;
@@ -1287,6 +1297,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                            CURVE_PRESET_GAUSS,
                            CURVEMAP_SLOPE_POSITIVE);
           }
+        }
+      }
+    }
+
+    /* 2.79 style Maintain Volume mode. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      do_version_constraints_maintain_volume_mode_uniform(&ob->constraints);
+      if (ob->pose) {
+        LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+          do_version_constraints_maintain_volume_mode_uniform(&pchan->constraints);
         }
       }
     }
@@ -3009,7 +3029,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
-      arm->flag &= ~(ARM_FLAG_UNUSED_1 | ARM_FLAG_UNUSED_5 | ARM_FLAG_UNUSED_7 |
+      arm->flag &= ~(ARM_FLAG_UNUSED_1 | ARM_FLAG_UNUSED_5 | ARM_MIRROR_RELATIVE |
                      ARM_FLAG_UNUSED_12);
     }
 
