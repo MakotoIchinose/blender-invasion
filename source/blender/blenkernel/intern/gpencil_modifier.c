@@ -781,6 +781,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       pt_final->strength = pt->strength;
       pt_final->time = pt->time;
       pt_final->flag = pt->flag;
+      pt_final->runtime.pt_orig = pt->runtime.pt_orig;
 
       if (gps->dvert != NULL) {
         dvert = &temp_dverts[i];
@@ -868,10 +869,9 @@ static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
 
     /* Save original pointers for using in edit and select operators. */
     gps_dst->runtime.gps_orig = gps_src;
-    bGPDspoint *pt_src = gps_src->points;
-    bGPDspoint *pt_dst = gps_dst->points;
-    for (int i = 0; i < gps_src->totpoints; i++, pt_dst++, pt_src++) {
-      pt_dst->runtime.pt_orig = pt_src;
+    for (int i = 0; i < gps_src->totpoints; i++) {
+      bGPDspoint *pt_dst = &gps_dst->points[i];
+      pt_dst->runtime.pt_orig = &gps_src->points[i];
     }
 
     BLI_addtail(&derived_gpf->strokes, gps_dst);
