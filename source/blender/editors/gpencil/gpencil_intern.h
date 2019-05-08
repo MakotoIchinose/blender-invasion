@@ -647,26 +647,29 @@ struct GP_EditableStrokes_Iter {
     struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}}; \
     Depsgraph *depsgraph_ = CTX_data_depsgraph(C); \
     Object *obact_ = CTX_data_active_object(C); \
+    Object *obeval_ = DEG_get_evaluated_object(depsgraph_, obact_); \
     bGPdata *gpd_ = CTX_data_gpencil_data(C); \
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
-    CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) { \
-      bGPDframe *init_gpf_ = gpl->actframe; \
-      if (is_multiedit_) { \
-        init_gpf_ = gpl->frames.first; \
-      } \
-      for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
-        if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
-          ED_gpencil_parent_location(depsgraph_, obact_, gpd_, gpl, gpstroke_iter.diff_mat); \
-          /* get derived frame with modifiers applied */ \
-          bGPDframe *derived_gpf_ = BKE_gpencil_derivedframe_get(obact_, gpl, gpl->actframe); \
-          /* loop over strokes */ \
-          for (bGPDstroke *gps = derived_gpf_->strokes.first; gps; gps = gps->next) { \
-            /* skip strokes that are invalid for current view */ \
-            if (ED_gpencil_stroke_can_use(C, gps) == false) \
-              continue; \
-            /* check if the color is editable */ \
-            if (ED_gpencil_stroke_color_use(obact_, gpl, gps) == false) \
-              continue; \
+    int derived_idx = 0; \
+    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) { \
+      if (gpencil_layer_is_editable(gpl)) { \
+        bGPDframe *init_gpf_ = gpl->actframe; \
+        if (is_multiedit_) { \
+          init_gpf_ = gpl->frames.first; \
+        } \
+        for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
+          if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
+            ED_gpencil_parent_location(depsgraph_, obact_, gpd_, gpl, gpstroke_iter.diff_mat); \
+            /* get derived frame with modifiers applied */ \
+            bGPDframe *derived_gpf_ = &obeval_->runtime.derived_frames[derived_idx]; \
+            /* loop over strokes */ \
+            for (bGPDstroke *gps = derived_gpf_->strokes.first; gps; gps = gps->next) { \
+              /* skip strokes that are invalid for current view */ \
+              if (ED_gpencil_stroke_can_use(C, gps) == false) \
+                continue; \
+              /* check if the color is editable */ \
+              if (ED_gpencil_stroke_color_use(obact_, gpl, gps) == false) \
+                continue; \
     /* ... Do Stuff With Strokes ...  */
 
 #define GP_DERIVED_STROKES_END(gpstroke_iter) \
@@ -677,7 +680,8 @@ struct GP_EditableStrokes_Iter {
   } \
   } \
   } \
-  CTX_DATA_END; \
+  derived_idx++; \
+  } \
   } \
   (void)0
 
