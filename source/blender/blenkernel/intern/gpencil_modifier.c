@@ -804,6 +804,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       pt_final->strength = interpf(pt->strength, next->strength, 0.5f);
       CLAMP(pt_final->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt_final->time = interpf(pt->time, next->time, 0.5f);
+      pt_final->runtime.pt_orig = NULL;
 
       if (gps->dvert != NULL) {
         dvert = &temp_dverts[i];
