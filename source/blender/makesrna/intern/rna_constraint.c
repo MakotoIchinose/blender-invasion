@@ -1327,6 +1327,13 @@ static void rna_def_constraint_size_like(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Copy Z", "Copy the target's Z scale");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
+  prop = RNA_def_property(srna, "power", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "power");
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
+  RNA_def_property_ui_text(prop, "Power", "Raise the target's scale to the specified power");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
   prop = RNA_def_property(srna, "use_offset", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SIZELIKE_OFFSET);
   RNA_def_property_ui_text(prop, "Offset", "Combine original scale with copied scale");
@@ -2602,6 +2609,13 @@ static void rna_def_constraint_spline_ik(BlenderRNA *brna)
                            "Y Scale Mode",
                            "Method used for determining the scaling of the Y axis of the bones, "
                            "on top of the shape and scaling of the curve itself");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  /* take original scaling of the bone into account in volume preservation */
+  prop = RNA_def_property(srna, "use_original_scale", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_SPLINEIK_USE_ORIGINAL_SCALE);
+  RNA_def_property_ui_text(
+      prop, "Use Original Scale", "Apply volume preservation over the original scaling");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   /* volume presevation for "volumetric" scale mode */

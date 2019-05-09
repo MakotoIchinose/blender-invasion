@@ -35,6 +35,7 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 #include "BKE_report.h"
+#include "BKE_sound.h"
 
 #include "DEG_depsgraph.h"
 
@@ -1298,6 +1299,12 @@ void CLIP_OT_hide_tracks_clear(wmOperatorType *ot)
 
 /********************** frame jump operator *********************/
 
+static bool frame_jump_poll(bContext *C)
+{
+  SpaceClip *space_clip = CTX_wm_space_clip(C);
+  return space_clip != NULL;
+}
+
 static int frame_jump_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -1349,7 +1356,7 @@ static int frame_jump_exec(bContext *C, wmOperator *op)
 
   if (CFRA != sc->user.framenr) {
     CFRA = sc->user.framenr;
-    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+    BKE_sound_seek_scene(CTX_data_main(C), scene);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -1376,7 +1383,7 @@ void CLIP_OT_frame_jump(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = frame_jump_exec;
-  ot->poll = ED_space_clip_poll;
+  ot->poll = frame_jump_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
