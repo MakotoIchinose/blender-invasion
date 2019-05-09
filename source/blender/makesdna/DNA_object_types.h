@@ -136,6 +136,10 @@ typedef struct Object_Runtime {
   /** Only used for drawing the parent/child help-line. */
   float parent_display_origin[3];
 
+  /** Selection id of this object; only available in the original object */
+  int select_id;
+  char _pad1[4];
+
   /** Axis aligned boundbox (in localspace). */
   struct BoundBox *bb;
 
@@ -161,9 +165,10 @@ typedef struct Object_Runtime {
 
   /** Runtime grease pencil drawing data */
   struct GpencilBatchCache *gpencil_cache;
-  /** Runtime grease pencil derived data created by modifiers */
+  /** Runtime grease pencil total layers used for derived data created by modifiers */
   int tot_layers;
-  char _pad1[4];
+  char _pad2[4];
+  /** Runtime grease pencil derived data created by modifiers */
   struct bGPDframe *derived_frames;
 } Object_Runtime;
 
@@ -369,9 +374,7 @@ typedef struct Object {
   char empty_image_visibility_flag;
   char empty_image_depth;
   char empty_image_flag;
-  char _pad8[1];
-
-  int select_id;
+  char _pad8[5];
 
   /** Contains data for levels of detail. */
   ListBase lodlevels;
