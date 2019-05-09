@@ -440,8 +440,9 @@ enum {
   ED_KEYMAP_ANIMATION = (1 << 6),
   ED_KEYMAP_FRAMES = (1 << 7),
   ED_KEYMAP_HEADER = (1 << 8),
-  ED_KEYMAP_GPENCIL = (1 << 9),
-  ED_KEYMAP_FOOTER = (1 << 10),
+  ED_KEYMAP_FOOTER = (1 << 9),
+  ED_KEYMAP_GPENCIL = (1 << 10),
+  ED_KEYMAP_NAVBAR = (1 << 11),
 };
 
 /* SCREEN_OT_space_context_cycle direction */

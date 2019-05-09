@@ -1030,11 +1030,12 @@ static void recalcData_objects(TransInfo *t)
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       Object *ob = tc->poseobj;
       bArmature *arm = ob->data;
+      bPose *pose = ob->pose;
 
-      if (arm->flag & ARM_MIRROR_EDIT) {
+      if (pose->flag & POSE_MIRROR_EDIT) {
         if (t->state != TRANS_CANCEL) {
           PoseInitData_Mirror *pid = NULL;
-          if (arm->flag & ARM_MIRROR_RELATIVE) {
+          if (pose->flag & POSE_MIRROR_RELATIVE) {
             pid = tc->custom.type.data;
           }
           pose_transform_mirror_update(ob, pid);
@@ -1172,8 +1173,6 @@ static void recalcData_sequencer(TransInfo *t)
 
     seq_prev = seq;
   }
-
-  DEG_id_tag_update(&t->scene->id, ID_RECALC_SEQUENCER_STRIPS);
 
   flushTransSeq(t);
 }
@@ -1363,7 +1362,9 @@ void initTransDataContainers_FromObjectData(TransInfo *t,
         BLI_assert((t->flag & T_2D_EDIT) == 0);
         copy_m4_m4(tc->mat, objects[i]->obmat);
         copy_m3_m4(tc->mat3, tc->mat);
-        invert_m4_m4(tc->imat, tc->mat);
+        /* for non-invertible scale matrices, invert_m4_m4_fallback()
+         * can still provide a valid pivot */
+        invert_m4_m4_fallback(tc->imat, tc->mat);
         invert_m3_m3(tc->imat3, tc->mat3);
         normalize_m3_m3(tc->mat3_unit, tc->mat3);
       }

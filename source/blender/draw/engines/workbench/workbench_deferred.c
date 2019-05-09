@@ -91,6 +91,7 @@ static struct {
 
 /* Shaders */
 extern char datatoc_common_hair_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
 extern char datatoc_workbench_prepass_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
@@ -119,6 +120,7 @@ static char *workbench_build_composite_frag(WORKBENCH_PrivateData *wpd)
 {
   DynStr *ds = BLI_dynstr_new();
 
+  BLI_dynstr_append(ds, datatoc_common_view_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_data_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_common_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_background_lib_glsl);
@@ -159,6 +161,7 @@ static char *workbench_build_prepass_vert(bool is_hair)
   if (is_hair) {
     BLI_dynstr_append(ds, datatoc_common_hair_lib_glsl);
   }
+  BLI_dynstr_append(ds, datatoc_common_view_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_prepass_vert_glsl);
   char *str = BLI_dynstr_get_cstring(ds);
   BLI_dynstr_free(ds);
@@ -1072,7 +1075,6 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 
           if (studiolight_object_cast_visible_shadow(wpd, ob, engine_object_data)) {
 
-            invert_m4_m4(ob->imat, ob->obmat);
             mul_v3_mat3_m4v3(
                 engine_object_data->shadow_dir, ob->imat, e_data.display.light_direction);
 

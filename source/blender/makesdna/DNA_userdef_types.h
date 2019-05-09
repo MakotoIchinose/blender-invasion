@@ -38,11 +38,6 @@ struct ColorBand;
 
 #define MAX_STYLE_NAME 64
 
-#define GPU_VIEWPORT_QUALITY_FXAA 0.10f
-#define GPU_VIEWPORT_QUALITY_TAA8 0.25f
-#define GPU_VIEWPORT_QUALITY_TAA16 0.6f
-#define GPU_VIEWPORT_QUALITY_TAA32 0.8f
-
 /** default offered by Blender.
  * #uiFont.uifont_id */
 typedef enum eUIFont_ID {
@@ -283,6 +278,8 @@ typedef struct ThemeSpace {
   char cframe[4];
   char time_keyframe[4], time_gp_keyframe[4];
   char freestyle_edge_mark[4], freestyle_face_mark[4];
+  char scrubbing_background[4];
+  char _pad5[4];
 
   char nurb_uline[4], nurb_vline[4];
   char act_spline[4], nurb_sel_uline[4], nurb_sel_vline[4], lastsel_point[4];
@@ -633,7 +630,7 @@ typedef struct UserDef {
   short undosteps;
   char _pad1[2];
   int undomemory;
-  float gpu_viewport_quality;
+  float gpu_viewport_quality DNA_DEPRECATED;
   short gp_manhattendist, gp_euclideandist, gp_eraser;
   /** #eGP_UserdefSettings. */
   short gp_settings;
@@ -643,7 +640,7 @@ typedef struct UserDef {
   char _pad3[4];
   short gizmo_flag, gizmo_size;
   short edit_studio_light;
-  short lookdev_ball_size;
+  short lookdev_sphere_size;
   short vbotimeout, vbocollectrate;
   short textimeout, texcollectrate;
   int memcachelimit;
@@ -761,7 +758,9 @@ typedef struct UserDef {
 
   char factor_display_type;
 
-  char _pad5[3];
+  char viewport_aa;
+
+  char _pad5[2];
 } UserDef;
 
 /* from blenkernel blender.c */

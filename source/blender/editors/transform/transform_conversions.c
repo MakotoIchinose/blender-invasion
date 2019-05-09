@@ -198,7 +198,10 @@ void sort_trans_data_dist(TransInfo *t)
   }
 }
 
-static void sort_trans_data_container(TransDataContainer *tc)
+/**
+ * Make #TD_SELECTED first in the array.
+ */
+static void sort_trans_data_selected_first_container(TransDataContainer *tc)
 {
   TransData *sel, *unsel;
   TransData temp;
@@ -225,10 +228,10 @@ static void sort_trans_data_container(TransDataContainer *tc)
     unsel++;
   }
 }
-static void sort_trans_data(TransInfo *t)
+static void sort_trans_data_selected_first(TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    sort_trans_data_container(tc);
+    sort_trans_data_selected_first_container(tc);
   }
 }
 
@@ -1283,17 +1286,18 @@ static void createTransPose(TransInfo *t)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     Object *ob = tc->poseobj;
+    bPose *pose = ob->pose;
 
     bArmature *arm;
     short ik_on = 0;
 
     /* check validity of state */
     arm = BKE_armature_from_object(tc->poseobj);
-    if ((arm == NULL) || (ob->pose == NULL)) {
+    if ((arm == NULL) || (pose == NULL)) {
       continue;
     }
 
-    const bool mirror = ((arm->flag & ARM_MIRROR_EDIT) != 0);
+    const bool mirror = ((pose->flag & POSE_MIRROR_EDIT) != 0);
 
     /* set flags and count total */
     tc->data_len = count_set_pose_transflags(ob, t->mode, t->around, has_translate_rotate);
@@ -1310,7 +1314,7 @@ static void createTransPose(TransInfo *t)
     }
 
     /* do we need to add temporal IK chains? */
-    if ((arm->flag & ARM_AUTO_IK) && t->mode == TFM_TRANSLATION) {
+    if ((pose->flag & POSE_AUTO_IK) && t->mode == TFM_TRANSLATION) {
       ik_on = pose_grab_with_ik(bmain, ob);
       if (ik_on) {
         t->flag |= T_AUTOIK;
@@ -1328,7 +1332,7 @@ static void createTransPose(TransInfo *t)
       }
 
       PoseInitData_Mirror *pid = MEM_mallocN((total_mirrored + 1) * sizeof(PoseInitData_Mirror),
-                                            "PoseInitData_Mirror");
+                                             "PoseInitData_Mirror");
 
       /* Trick to terminate iteration. */
       pid[total_mirrored].pchan = NULL;
@@ -1360,16 +1364,14 @@ static void createTransPose(TransInfo *t)
 
     PoseInitData_Mirror *pid = tc->custom.type.data;
     int pid_index = 0;
-    bArmature *arm;
+    bPose *pose = ob->pose;
 
-    /* check validity of state */
-    arm = BKE_armature_from_object(tc->poseobj);
-    if ((arm == NULL) || (ob->pose == NULL)) {
+    if (pose == NULL) {
       continue;
     }
 
-    const bool mirror = ((arm->flag & ARM_MIRROR_EDIT) != 0);
-    const bool is_mirror_relative = ((arm->flag & ARM_MIRROR_RELATIVE) != 0);
+    const bool mirror = ((pose->flag & POSE_MIRROR_EDIT) != 0);
+    const bool is_mirror_relative = ((pose->flag & POSE_MIRROR_RELATIVE) != 0);
 
     tc->poseobj = ob; /* we also allow non-active objects to be transformed, in weightpaint */
 
@@ -1417,17 +1419,9 @@ static void createTransPose(TransInfo *t)
 
 void restoreMirrorPoseBones(TransDataContainer *tc)
 {
-  bArmature *arm;
+  bPose *pose = tc->poseobj->pose;
 
-  if (tc->obedit) {
-    arm = tc->obedit->data;
-  }
-  else {
-    BLI_assert(tc->poseobj != NULL);
-    arm = tc->poseobj->data;
-  }
-
-  if (!(arm->flag & ARM_MIRROR_EDIT)) {
+  if (!(pose->flag & POSE_MIRROR_EDIT)) {
     return;
   }
 
@@ -9385,7 +9379,7 @@ void createTransData(bContext *C, TransInfo *t)
     countAndCleanTransDataContainer(t);
 
     if (t->data_len_all && t->flag & T_PROP_EDIT) {
-      sort_trans_data(t);  // makes selected become first in array
+      sort_trans_data_selected_first(t);
       set_prop_dist(t, 1);
       sort_trans_data_dist(t);
     }
@@ -9399,7 +9393,7 @@ void createTransData(bContext *C, TransInfo *t)
     countAndCleanTransDataContainer(t);
 
     if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
-      sort_trans_data(t);  // makes selected become first in array
+      sort_trans_data_selected_first(t);
       set_prop_dist(t, 1);
       sort_trans_data_dist(t);
     }
@@ -9413,7 +9407,7 @@ void createTransData(bContext *C, TransInfo *t)
       countAndCleanTransDataContainer(t);
 
       if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
-        sort_trans_data(t);  // makes selected become first in array
+        sort_trans_data_selected_first(t);
         set_prop_dist(t, true);
         sort_trans_data_dist(t);
       }
@@ -9436,7 +9430,7 @@ void createTransData(bContext *C, TransInfo *t)
       t->flag |= T_EDIT;
 
       if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
-        sort_trans_data(t);  // makes selected become first in array
+        sort_trans_data_selected_first(t);
         set_prop_dist(t, 1);
         sort_trans_data_dist(t);
       }
@@ -9453,7 +9447,7 @@ void createTransData(bContext *C, TransInfo *t)
     countAndCleanTransDataContainer(t);
 
     if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
-      sort_trans_data(t);  // makes selected become first in array
+      sort_trans_data_selected_first(t);
       /* don't do that, distance has been set in createTransActionData already */
       // set_prop_dist(t, false);
       sort_trans_data_dist(t);
@@ -9483,7 +9477,7 @@ void createTransData(bContext *C, TransInfo *t)
 
     if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
       /* makes selected become first in array */
-      sort_trans_data(t);
+      sort_trans_data_selected_first(t);
 
       /* don't do that, distance has been set in createTransGraphEditData already */
       set_prop_dist(t, false);
@@ -9499,7 +9493,7 @@ void createTransData(bContext *C, TransInfo *t)
     countAndCleanTransDataContainer(t);
 
     if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
-      sort_trans_data(t);  // makes selected become first in array
+      sort_trans_data_selected_first(t);
       set_prop_dist(t, 1);
       sort_trans_data_dist(t);
     }
@@ -9518,7 +9512,7 @@ void createTransData(bContext *C, TransInfo *t)
       countAndCleanTransDataContainer(t);
 
       if (t->data_len_all && (t->flag & T_PROP_EDIT)) {
-        sort_trans_data(t);  // makes selected become first in array
+        sort_trans_data_selected_first(t);
         set_prop_dist(t, true);
         sort_trans_data_dist(t);
       }
@@ -9558,21 +9552,30 @@ void createTransData(bContext *C, TransInfo *t)
 
     t->flag |= T_EDIT | T_POINTS;
 
-    if (t->data_len_all && t->flag & T_PROP_EDIT) {
-      if (ELEM(t->obedit_type, OB_CURVE, OB_MESH)) {
-        sort_trans_data(t);  // makes selected become first in array
-        if ((t->obedit_type == OB_MESH) && (t->flag & T_PROP_CONNECTED)) {
-          /* already calculated by editmesh_set_connectivity_distance */
+    if (t->data_len_all) {
+      if (t->flag & T_PROP_EDIT) {
+        if (ELEM(t->obedit_type, OB_CURVE, OB_MESH)) {
+          sort_trans_data_selected_first(t);
+          if ((t->obedit_type == OB_MESH) && (t->flag & T_PROP_CONNECTED)) {
+            /* already calculated by editmesh_set_connectivity_distance */
+          }
+          else {
+            set_prop_dist(t, 0);
+          }
+          sort_trans_data_dist(t);
         }
         else {
-          set_prop_dist(t, 0);
+          sort_trans_data_selected_first(t);
+          set_prop_dist(t, 1);
+          sort_trans_data_dist(t);
         }
-        sort_trans_data_dist(t);
       }
       else {
-        sort_trans_data(t);  // makes selected become first in array
-        set_prop_dist(t, 1);
-        sort_trans_data_dist(t);
+        if (ELEM(t->obedit_type, OB_CURVE)) {
+          /* Needed because bezier handles can be partially selected
+           * and are still added into transform data. */
+          sort_trans_data_selected_first(t);
+        }
       }
     }
 
@@ -9626,7 +9629,7 @@ void createTransData(bContext *C, TransInfo *t)
     t->flag |= T_POINTS;
 
     if (t->data_len_all && t->flag & T_PROP_EDIT) {
-      sort_trans_data(t);  // makes selected become first in array
+      sort_trans_data_selected_first(t);
       set_prop_dist(t, 1);
       sort_trans_data_dist(t);
     }
