@@ -734,6 +734,9 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
   UI_GetThemeColor3fv(TH_GP_VERTEX, unselectColor);
   unselectColor[3] = alpha;
 
+  float linecolor[4];
+  copy_v4_v4(linecolor, gpd->line_color);
+
   if (be->vbo == NULL) {
     gpencil_elem_format_ensure(be);
     be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -777,6 +780,12 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
         /* end point in red smaller */
         ARRAY_SET_ITEMS(fcolor, 1.0f, 0.0f, 0.0f, 1.0f);
         fsize = vsize + 1;
+      }
+      else if (pt->runtime.pt_orig == NULL) {
+        ARRAY_SET_ITEMS(fcolor, linecolor[0], linecolor[1], linecolor[2], selectColor[3]);
+        mul_v4_fl(fcolor, 0.9f);
+        copy_v4_v4(fcolor, fcolor);
+        fsize = vsize * 0.8f;
       }
       else if (pt->flag & GP_SPOINT_SELECT) {
         copy_v4_v4(fcolor, selectColor);

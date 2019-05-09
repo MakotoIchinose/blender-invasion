@@ -54,6 +54,23 @@ struct GPUVertBuf;
 struct GPUVertFormat;
 struct GpencilBatchGroup;
 
+#define GP_SIMPLIFY(scene) ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ENABLE))
+#define GP_SIMPLIFY_ONPLAY(playing) \
+  (((playing == true) && (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ON_PLAY)) || \
+   ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ON_PLAY) == 0))
+#define GP_SIMPLIFY_FILL(scene, playing) \
+  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
+    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FILL)))
+#define GP_SIMPLIFY_MODIF(scene, playing) \
+  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
+    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_MODIFIER)))
+#define GP_SIMPLIFY_FX(scene, playing) \
+  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
+    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FX)))
+#define GP_SIMPLIFY_BLEND(scene, playing) \
+  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
+    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_BLEND)))
+
 /* GPUBatch Cache Element */
 typedef struct GpencilBatchCacheElem {
   struct GPUBatch *batch;
@@ -106,9 +123,6 @@ typedef struct GpencilBatchCache {
   int grp_used;                        /* total groups in arrays */
   int grp_size;                        /* max size of the array */
   struct GpencilBatchGroup *grp_cache; /* array of elements */
-
-  int tot_layers;
-  struct bGPDframe *derived_array; /* runtime data created by modifiers */
 } GpencilBatchCache;
 
 /* ------------ Grease-Pencil API ------------------ */
