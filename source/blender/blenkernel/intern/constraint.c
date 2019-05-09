@@ -1882,6 +1882,7 @@ static void sizelike_new_data(void *cdata)
   bSizeLikeConstraint *data = (bSizeLikeConstraint *)cdata;
 
   data->flag = SIZELIKE_X | SIZELIKE_Y | SIZELIKE_Z | SIZELIKE_MULTIPLY;
+  data->power = 1.0f;
 }
 
 static void sizelike_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
@@ -1928,6 +1929,10 @@ static void sizelike_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *ta
 
     mat4_to_size(size, ct->matrix);
     mat4_to_size(obsize, cob->matrix);
+
+    for (int i = 0; i < 3; i++) {
+      size[i] = powf(size[i], data->power);
+    }
 
     if (data->flag & SIZELIKE_OFFSET) {
       /* Scale is a multiplicative quantity, so adding it makes no sense.
@@ -4235,6 +4240,7 @@ static void splineik_new_data(void *cdata)
   data->bulge_min = 1.0f;
 
   data->yScaleMode = CONSTRAINT_SPLINEIK_YS_FIT_CURVE;
+  data->flag = CONSTRAINT_SPLINEIK_USE_ORIGINAL_SCALE;
 }
 
 static void splineik_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)

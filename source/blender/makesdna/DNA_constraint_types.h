@@ -289,7 +289,7 @@ typedef struct bLocateLikeConstraint {
 typedef struct bSizeLikeConstraint {
   struct Object *tar;
   int flag;
-  int reserved1;
+  float power;
   /** MAX_ID_NAME-2. */
   char subtarget[64];
 } bSizeLikeConstraint;
@@ -906,6 +906,9 @@ typedef enum eSplineIK_Flags {
   /* for "volumetric" xz scale mode, limit the minimum or maximum scale values */
   CONSTRAINT_SPLINEIK_USE_BULGE_MIN = (1 << 5),
   CONSTRAINT_SPLINEIK_USE_BULGE_MAX = (1 << 6),
+
+  /* apply volume preservation over original scaling of the bone */
+  CONSTRAINT_SPLINEIK_USE_ORIGINAL_SCALE = (1 << 7),
 } eSplineIK_Flags;
 
 /* bSplineIKConstraint->xzScaleMode */
