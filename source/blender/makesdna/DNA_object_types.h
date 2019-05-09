@@ -165,9 +165,10 @@ typedef struct Object_Runtime {
 
   /** Runtime grease pencil drawing data */
   struct GpencilBatchCache *gpencil_cache;
-  /** Runtime grease pencil derived data created by modifiers */
+  /** Runtime grease pencil total layers used for derived data created by modifiers */
   int tot_layers;
-  char _pad1[4];
+  char _pad2[4];
+  /** Runtime grease pencil derived data created by modifiers */
   struct bGPDframe *derived_frames;
 } Object_Runtime;
 
