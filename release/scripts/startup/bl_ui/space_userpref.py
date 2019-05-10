@@ -81,7 +81,13 @@ class USERPREF_PT_save_preferences(Panel):
         layout.scale_x = 1.3
         layout.scale_y = 1.3
 
-        layout.operator("wm.save_userpref")
+        col = layout.column(align=True)
+        col.operator("wm.save_userpref")
+        col.operator("wm.read_userpref")
+        col.operator(
+            "wm.read_userpref",
+            text="Load Factory Preferences",
+        ).use_factory_settings = True
 
 
 # Panel mix-in.
