@@ -368,7 +368,7 @@ OpenVDBLevelSet *OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *
       break;
 
     case OPENVDB_LEVELSET_GRIDSAMPLER_NONE:
-      //targetGrid = sourceGrid->deepCopy();
+      // targetGrid = sourceGrid->deepCopy();
       break;
   }
 

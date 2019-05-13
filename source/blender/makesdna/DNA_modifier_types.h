@@ -1552,7 +1552,7 @@ typedef enum eCSGVolumeOperandFlags {
 typedef struct CSGVolume_Object {
   struct CSGVolume_Object *next, *prev;
   struct RemeshModifierData *md;
-  //modifier we belong to (currently unused, probably should be deprecated/removed ?)
+  // modifier we belong to (currently unused, probably should be deprecated/removed ?)
   struct Object *object;
   float voxel_size;
   float voxel_percentage;

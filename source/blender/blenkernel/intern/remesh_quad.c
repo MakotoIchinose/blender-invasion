@@ -63,7 +63,7 @@ Mesh *BKE_remesh_quad(
   int num_verts = mesh->totvert;
   qex_TriMesh *trimesh = MEM_callocN(sizeof(qex_TriMesh), "trimesh");
   qex_QuadMesh quadmesh;  //= MEM_callocN(sizeof(qex_QuadMesh), "quadmesh");
-  //qex_Valence *valence;
+  // qex_Valence *valence;
 
   MVertTri *verttri = MEM_callocN(sizeof(*verttri) * (size_t)num_tris, "remesh_looptri");
   BKE_mesh_runtime_verttri_from_looptri(
@@ -73,7 +73,7 @@ Mesh *BKE_remesh_quad(
   int(*tris)[3] = MEM_calloc_arrayN((size_t)num_tris, sizeof(int) * 3, "tris");
   float(*uv_tris)[3][2] = MEM_calloc_arrayN((size_t)num_tris, sizeof(float) * 3 * 2, "uv_tris");
 
-  //fill data
+  // fill data
   for (int i = 0; i < num_verts; i++) {
     copy_v3_v3(verts[i], mesh->mvert[i].co);
   }
@@ -84,13 +84,13 @@ Mesh *BKE_remesh_quad(
     tris[i][2] = verttri[i].tri[2];
   }
 
-  //mixed integer quadrangulation
-  //double stiffness = 5.0;
-  //double gradient_size = 50.0;
-  //double iter = 0;
-  //bool direct_round = false;
+  // mixed integer quadrangulation
+  // double stiffness = 5.0;
+  // double gradient_size = 50.0;
+  // double iter = 0;
+  // bool direct_round = false;
 
-  //find pairs of verts of original edges (= marked with seam)
+  // find pairs of verts of original edges (= marked with seam)
   bool *hard_edges = MEM_callocN(sizeof(bool) * 3 * num_tris, "hard edges");
   // int *hard_verts = MEM_mallocN(sizeof(int) * mesh->totvert, "hard_verts");
 
@@ -121,7 +121,7 @@ Mesh *BKE_remesh_quad(
           direct_round,
           hard_edges);
 
-  //build trimesh
+  // build trimesh
   trimesh->tri_count = (unsigned int)num_tris;
   trimesh->vertex_count = (unsigned int)num_verts;
   trimesh->vertices = MEM_calloc_arrayN(sizeof(qex_Point3), (size_t)num_verts, "trimesh vertices");
@@ -152,10 +152,10 @@ Mesh *BKE_remesh_quad(
     trimesh->uvTris[i].uvs[2].x[1] = uv_tris[i][2][1];
   }
 
-  //quad extraction
+  // quad extraction
   extractQuadMesh(trimesh, NULL, &quadmesh);
 
-  //rebuild mesh
+  // rebuild mesh
   if (quadmesh.quad_count > 0) {
     result = BKE_mesh_new_nomain(quadmesh.vertex_count, 0, quadmesh.quad_count, 0, 0);
     for (int i = 0; i < quadmesh.vertex_count; i++) {
@@ -172,14 +172,14 @@ Mesh *BKE_remesh_quad(
       result->mface->mat_nr = 0;
     }
 
-    //build edges, tessfaces, normals
+    // build edges, tessfaces, normals
     BKE_mesh_calc_edges_tessface(result);
     BKE_mesh_convert_mfaces_to_mpolys(result);
     BKE_mesh_calc_normals(result);
     BKE_mesh_update_customdata_pointers(result, true);
   }
 
-  //free stuff
+  // free stuff
   MEM_freeN(verts);
   MEM_freeN(tris);
   MEM_freeN(uv_tris);
@@ -190,14 +190,14 @@ Mesh *BKE_remesh_quad(
   MEM_freeN(trimesh);
   MEM_freeN(verttri);
 
-  //if (quadmesh->vertices)
+  // if (quadmesh->vertices)
   //    free(quadmesh->vertices);
-  //if (quadmesh->quads)
+  // if (quadmesh->quads)
   //    free(quadmesh->quads);
-  //MEM_freeN(quadmesh);
+  // MEM_freeN(quadmesh);
 
   return result;
-  //remap customdata (reproject)
+  // remap customdata (reproject)
   // BVH...
 #else
   return mesh;

@@ -288,7 +288,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
     RemeshModifierData *rmd_orig = (RemeshModifierData *)modifiers_findByName(ob_orig, md->name);
 
     if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0)) {
-      //access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
+      // access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
       if (rmd_orig->mesh_cached) {
         return copy_mesh(rmd_orig->mesh_cached);
       }
@@ -298,13 +298,13 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         mesh, rmd->gradient_size, rmd->stiffness, rmd->iter, rmd->flag & MOD_REMESH_DIRECT_ROUND);
 
     if (result) {
-      //update cache
+      // update cache
       if (rmd_orig->mesh_cached) {
         BKE_mesh_free(rmd_orig->mesh_cached);
         rmd_orig->mesh_cached = NULL;
       }
 
-      //save a copy
+      // save a copy
       rmd_orig->mesh_cached = copy_mesh(result);
     }
 
@@ -323,7 +323,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
     RemeshModifierData *rmd_orig = (RemeshModifierData *)modifiers_findByName(ob_orig, md->name);
 
     if (((rmd->flag & MOD_REMESH_LIVE_REMESH) == 0)) {
-      //access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
+      // access mesh cache on ORIGINAL object, cow should not copy / free this over and over again
       if (rmd_orig->mesh_cached) {
         return copy_mesh(rmd_orig->mesh_cached);
       }
@@ -345,13 +345,13 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
       result = voxel_remesh(rmd, mesh, level_set);
 
       if (result) {
-        //update cache
+        // update cache
         if (rmd_orig->mesh_cached) {
           BKE_mesh_free(rmd_orig->mesh_cached);
           rmd_orig->mesh_cached = NULL;
         }
 
-        //save a copy
+        // save a copy
         rmd_orig->mesh_cached = copy_mesh(result);
       }
 
@@ -480,12 +480,12 @@ static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int
   Mesh *me_src = rmd_src->mesh_cached;
 
   modifier_copyData_generic(md_src, md_dst, flag);
-  //only for cow copy, because cow does shallow copy only
+  // only for cow copy, because cow does shallow copy only
   if (flag & LIB_ID_CREATE_NO_MAIN) {
     BLI_duplicatelist(&rmd_dst->csg_operands, &rmd_src->csg_operands);
   }
 
-  //here for both ?
+  // here for both ?
   if (me_src) {
     Mesh *me_dst = BKE_mesh_new_nomain(
         me_src->totvert, me_src->totedge, me_src->totface, me_src->totloop, me_src->totpoly);

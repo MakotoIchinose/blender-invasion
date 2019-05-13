@@ -99,7 +99,7 @@ static void make_prim_finish(bContext *C,
   /* userdef */
   if (exit_editmode) {
     ED_object_editmode_exit(C, EM_FREEDATA);
-    //TODO: Find a better place to init this
+    // TODO: Find a better place to init this
     Mesh *me;
     me = obedit->data;
     me->voxel_size = 0.1f;

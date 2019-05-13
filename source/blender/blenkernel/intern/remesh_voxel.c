@@ -271,7 +271,7 @@ MLoopCol *BKE_remesh_remap_loop_vertex_color_layer(Mesh *mesh)
     /*map loopbased storage onto vertices*/
     for (i = 0; i < mesh->totloop; i++) {
       MLoopCol c = source_color[i];
-      //printf("COLOR %d %d %d %d %d \n", mesh->mloop[i].v, c.r, c.g, c.b, c.a);
+      // printf("COLOR %d %d %d %d %d \n", mesh->mloop[i].v, c.r, c.g, c.b, c.a);
       remap[mesh->mloop[i].v].r = c.r;
       remap[mesh->mloop[i].v].g = c.g;
       remap[mesh->mloop[i].v].b = c.b;
@@ -304,7 +304,7 @@ void BKE_remesh_voxel_reproject_remapped_vertex_paint(Mesh *target, Mesh *source
 
       if (nearest.index != -1) {
         MLoopCol c = remap[nearest.index];
-        //printf("MAPPED %d %d %d %d %d %d \n", i, nearest.index, c.r, c.g, c.b, c.a);
+        // printf("MAPPED %d %d %d %d %d %d \n", i, nearest.index, c.r, c.g, c.b, c.a);
         target_color[i].r = c.r;
         target_color[i].g = c.g;
         target_color[i].b = c.b;
