@@ -126,7 +126,7 @@ static bool sculpt_tool_needs_original(const char sculpt_tool)
 
 static bool sculpt_tool_is_proxy_used(const char sculpt_tool)
 {
-  return ELEM(sculpt_tool, SCULPT_TOOL_SMOOTH, SCULPT_TOOL_LAYER);
+  return ELEM(sculpt_tool, SCULPT_TOOL_SMOOTH, SCULPT_TOOL_LAYER, SCULPT_TOOL_RELAX);
 }
 
 static bool sculpt_brush_use_topology_rake(const SculptSession *ss, const Brush *brush)
@@ -1197,6 +1197,8 @@ static float brush_strength(const Sculpt *sd,
       }
 
     case SCULPT_TOOL_SMOOTH:
+      return alpha * pressure * feather;
+    case SCULPT_TOOL_RELAX:
       return alpha * pressure * feather;
 
     case SCULPT_TOOL_PINCH:
@@ -2334,6 +2336,184 @@ static void do_smooth_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnod
 {
   SculptSession *ss = ob->sculpt;
   smooth(sd, ob, nodes, totnode, ss->cache->bstrength, false);
+}
+
+static void do_relax_brush_task_cb_ex(void *__restrict userdata,
+                                      const int n,
+                                      const ParallelRangeTLS *__restrict tls)
+{
+  SculptThreadedTaskData *data = userdata;
+  SculptSession *ss = data->ob->sculpt;
+  Sculpt *sd = data->sd;
+  const Brush *brush = data->brush;
+  const bool smooth_mask = data->smooth_mask;
+  float bstrength = data->strength;
+
+  PBVHVertexIter vd;
+
+  CLAMP(bstrength, 0.0f, 1.0f);
+
+  SculptBrushTest test;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = sculpt_brush_test_init_with_falloff_shape(
+      ss, &test, data->brush->falloff_shape);
+
+  MVert *mvert = ss->mvert;
+  BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
+  {
+
+    if (sculpt_brush_test_sq_fn(&test, vd.co)) {
+      float fade = bstrength * tex_strength(ss,
+                                            brush,
+                                            vd.co,
+                                            sqrtf(test.dist),
+                                            vd.no,
+                                            vd.fno,
+                                            smooth_mask ? 0.0f : (vd.mask ? *vd.mask : 0.0f),
+                                            tls->thread_id);
+
+      float final_disp[2][3];
+      float final_pos[3];
+      int vert = vd.vert_indices[vd.i];
+      const MeshElemMap *vert_map = &ss->pmap[vert];
+      GSet *vert_gset[2];
+      vert_gset[0] = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "verts sets");
+      vert_gset[1] = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "verts sets");
+      BLI_gset_clear(vert_gset[0], NULL);
+      BLI_gset_clear(vert_gset[1], NULL);
+      float len_avg[2] = {0.0f};
+
+      for (int i = 0; i < vert_map->count; i++) {
+        const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+        unsigned f_adj_v[2];
+        if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
+          if (vert_map->count > 1) {
+            if (i == 0) {
+              BLI_gset_add(vert_gset[0], &mvert[f_adj_v[0]]);
+              BLI_gset_add(vert_gset[1], &mvert[f_adj_v[1]]);
+            }
+            else if (BLI_gset_haskey(vert_gset[0], &mvert[f_adj_v[0]])) {
+              BLI_gset_add(vert_gset[1], &mvert[f_adj_v[1]]);
+            }
+            else if (BLI_gset_haskey(vert_gset[1], &mvert[f_adj_v[0]])) {
+              BLI_gset_add(vert_gset[0], &mvert[f_adj_v[1]]);
+            }
+            else if (BLI_gset_haskey(vert_gset[0], &mvert[f_adj_v[1]])) {
+              BLI_gset_add(vert_gset[1], &mvert[f_adj_v[0]]);
+            }
+            else if (BLI_gset_haskey(vert_gset[1], &mvert[f_adj_v[1]])) {
+              BLI_gset_add(vert_gset[0], &mvert[f_adj_v[0]]);
+            }
+          }
+        }
+      }
+
+      for (int vs = 0; vs < 2; vs++) {
+        int total = 0;
+        GSetIterator *gsi = BLI_gsetIterator_new(vert_gset[vs]);
+
+        for (BLI_gsetIterator_init(gsi, (GHash *)vert_gset[vs]); !BLI_gsetIterator_done(gsi);
+             BLI_gsetIterator_step(gsi)) {
+          MVert *c_vert = BLI_gsetIterator_getKey(gsi);
+          float connected_vert_co[3];
+          copy_v3_v3(connected_vert_co, c_vert->co);
+          len_avg[vs] += len_v3v3(vd.co, connected_vert_co);
+          total++;
+        }
+
+        BLI_gsetIterator_free(gsi);
+        if (total > 0) {
+          len_avg[vs] = len_avg[vs] / (float)total;
+        }
+        zero_v3(final_disp[vs]);
+
+        gsi = BLI_gsetIterator_new(vert_gset[vs]);
+
+        for (BLI_gsetIterator_init(gsi, (GHash *)vert_gset[vs]); !BLI_gsetIterator_done(gsi);
+             BLI_gsetIterator_step(gsi)) {
+          MVert *c_vert = BLI_gsetIterator_getKey(gsi);
+          float connected_vert_co[3];
+          float connected_vert_disp[3];
+          copy_v3_v3(connected_vert_co, c_vert->co);
+          float len = len_v3v3(vd.co, connected_vert_co);
+          float len_difference = len_avg[vs] - len;
+          sub_v3_v3v3(connected_vert_disp, vd.co, connected_vert_co);
+          normalize_v3(connected_vert_disp);
+          mul_v3_fl(connected_vert_disp, len_difference);
+          add_v3_v3(final_disp[vs], connected_vert_disp);
+        }
+        BLI_gsetIterator_free(gsi);
+        if (total > 0) {
+          mul_v3_fl(final_disp[vs], 1.0f / total);
+        }
+      }
+
+      BLI_gset_free(vert_gset[0], NULL);
+      BLI_gset_free(vert_gset[1], NULL);
+
+      float smooth_co[3];
+      float smooth_disp[3];
+      neighbor_average(ss, smooth_co, vert);
+      sub_v3_v3v3(smooth_disp, smooth_co, vd.co);
+      add_v3_v3v3(final_disp[0], final_disp[0], final_disp[1]);
+      madd_v3_v3v3fl(final_pos, vd.co, final_disp[0], fade);
+      if (vert_map->count != 4) {
+        mul_v3_fl(final_disp[0], 0.5f);
+        mul_v3_fl(smooth_disp, 0.3f);
+        add_v3_v3(final_disp[0], smooth_disp);
+        madd_v3_v3v3fl(final_pos, vd.co, smooth_disp, fade);
+      }
+
+      sculpt_clip(sd, ss, vd.co, final_pos);
+
+      if (vd.mvert) {
+        vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+      }
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+}
+
+static void do_relax_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+{
+  SculptSession *ss = ob->sculpt;
+  Brush *brush = BKE_paint_brush(&sd->paint);
+  float bstrength = ss->cache->bstrength;
+
+  const int max_iterations = 4;
+  const float fract = 1.0f / max_iterations;
+  PBVHType type = BKE_pbvh_type(ss->pbvh);
+  int iteration, count;
+  float last;
+
+  CLAMP(bstrength, 0.0f, 1.0f);
+
+  count = (int)(bstrength * max_iterations);
+  last = max_iterations * (bstrength - count * fract);
+
+  if (type == PBVH_FACES && !ss->pmap) {
+    BLI_assert(!"sculpt relax: pmap missing");
+    return;
+  }
+
+  if (type != PBVH_FACES) {
+    return;
+  }
+
+  for (iteration = 0; iteration <= count; ++iteration) {
+    const float strength = (iteration != count) ? 1.0f : last;
+    SculptThreadedTaskData data = {
+        .sd = sd,
+        .ob = ob,
+        .brush = brush,
+        .nodes = nodes,
+        .strength = strength,
+    };
+
+    ParallelRangeSettings settings;
+    BLI_parallel_range_settings_defaults(&settings);
+    settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+    BLI_task_parallel_range(0, totnode, &data, do_relax_brush_task_cb_ex, &settings);
+  }
 }
 
 static void do_mask_brush_draw_task_cb_ex(void *__restrict userdata,
@@ -4564,6 +4744,9 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
       case SCULPT_TOOL_SMOOTH:
         do_smooth_brush(sd, ob, nodes, totnode);
         break;
+      case SCULPT_TOOL_RELAX:
+        do_relax_brush(sd, ob, nodes, totnode);
+        break;
       case SCULPT_TOOL_CREASE:
         do_crease_brush(sd, ob, nodes, totnode);
         break;
@@ -5135,6 +5318,8 @@ static const char *sculpt_tool_name(Sculpt *sd)
       return "Simplify Brush";
     case SCULPT_TOOL_PAINT:
       return "Paint Brush";
+    case SCULPT_TOOL_RELAX:
+      return "Relax Brush";
   }
 
   return "Sculpting";
@@ -5592,7 +5777,8 @@ static bool sculpt_any_smooth_mode(const Brush *brush, StrokeCache *cache, int s
   }
   return ((stroke_mode == BRUSH_STROKE_SMOOTH) || (cache && cache->alt_smooth) ||
           (brush->sculpt_tool == SCULPT_TOOL_SMOOTH) || (brush->autosmooth_factor > 0) ||
-          ((brush->sculpt_tool == SCULPT_TOOL_MASK) && (brush->mask_tool == BRUSH_MASK_SMOOTH)));
+          ((brush->sculpt_tool == SCULPT_TOOL_MASK) && (brush->mask_tool == BRUSH_MASK_SMOOTH)) ||
+          (brush->sculpt_tool == SCULPT_TOOL_RELAX));
 }
 
 static void sculpt_stroke_modifiers_check(const bContext *C, Object *ob, const Brush *brush)
