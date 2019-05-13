@@ -184,10 +184,11 @@ static void rna_userdef_version_get(PointerRNA *ptr, int *value)
   value[2] = userdef->subversionfile;
 }
 
-static void rna_userdef_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_userdef_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
 {
-  UserDef *userdef = (UserDef *)ptr->data;
-  userdef->runtime.is_dirty = true;
+  /* We can't use 'ptr->data' because this update function
+   * is used for themes and other nested data. */
+  U.runtime.is_dirty = true;
 
   WM_main_add_notifier(NC_WINDOW, NULL);
 }
@@ -451,6 +452,7 @@ static bAddon *rna_userdef_addon_new(void)
   ListBase *addons_list = &U.addons;
   bAddon *addon = BKE_addon_new();
   BLI_addtail(addons_list, addon);
+  U.runtime.is_dirty = true;
   return addon;
 }
 
@@ -465,12 +467,14 @@ static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
   BLI_remlink(addons_list, addon);
   BKE_addon_free(addon);
   RNA_POINTER_INVALIDATE(addon_ptr);
+  U.runtime.is_dirty = true;
 }
 
 static bPathCompare *rna_userdef_pathcompare_new(void)
 {
   bPathCompare *path_cmp = MEM_callocN(sizeof(bPathCompare), "bPathCompare");
   BLI_addtail(&U.autoexec_paths, path_cmp);
+  U.runtime.is_dirty = true;
   return path_cmp;
 }
 
@@ -484,6 +488,7 @@ static void rna_userdef_pathcompare_remove(ReportList *reports, PointerRNA *path
 
   BLI_freelinkN(&U.autoexec_paths, path_cmp);
   RNA_POINTER_INVALIDATE(path_cmp_ptr);
+  U.runtime.is_dirty = true;
 }
 
 static void rna_userdef_temp_update(Main *UNUSED(bmain),
@@ -5681,6 +5686,11 @@ void RNA_def_userdef(BlenderRNA *brna)
                                     NULL,
                                     NULL);
   RNA_def_property_ui_text(prop, "Studio Lights", "");
+
+  /* Preferences Flags */
+  prop = RNA_def_property(srna, "use_preferences_save", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "pref_flag", USER_PREF_FLAG_SAVE);
+  RNA_def_property_ui_text(prop, "Save on Exit", "Save modified preferences on exit");
 
   rna_def_userdef_view(brna);
   rna_def_userdef_edit(brna);
