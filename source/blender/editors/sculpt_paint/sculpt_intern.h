@@ -209,6 +209,7 @@ typedef struct SculptThreadedTaskData {
   float smooth_value;
   float filter_strength;
   int filter_type;
+  float *random_disp;
 
   float *automask;
 

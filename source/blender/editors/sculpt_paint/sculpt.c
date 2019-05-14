@@ -7566,6 +7566,10 @@ EnumPropertyItem prop_mesh_filter_types[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+typedef struct MeshFilterData {
+  float *random_disp;
+} MeshFilterData;
+
 static void mesh_filter_task_cb(void *__restrict userdata,
                                 const int i,
                                 const ParallelRangeTLS *__restrict UNUSED(tls))
@@ -7643,8 +7647,7 @@ static void mesh_filter_task_cb(void *__restrict userdata,
         break;
       case MESH_FILTER_RANDOM:
         normal_short_to_float_v3(normal, vd.no);
-        float random = (float)rand() / (float)(RAND_MAX);
-        mul_v3_fl(normal, random - 0.5f);
+        mul_v3_fl(normal, data->random_disp[vd.vert_indices[vd.i]] - 0.5f);
         mul_v3_v3fl(disp, normal, fade);
         add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
         break;
@@ -7668,6 +7671,7 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   int mode = RNA_enum_get(op->ptr, "type");
   float filter_strength = RNA_float_get(op->ptr, "strength");
+  MeshFilterData *mfd = op->customdata;
 
   SculptSearchSphereData searchdata = {
       .ss = ss,
@@ -7686,6 +7690,7 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
       .smooth_value = 0.5f,
       .filter_type = mode,
       .filter_strength = filter_strength,
+      .random_disp = mfd->random_disp,
   };
 
   ParallelRangeSettings settings;
@@ -7714,6 +7719,10 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   if (event->type == 1 && event->val == 2) {
     sculpt_undo_push_end();
+    if (mfd->random_disp) {
+      MEM_freeN(mfd->random_disp);
+    }
+    MEM_freeN(mfd);
     return OPERATOR_FINISHED;
   }
 
@@ -7740,12 +7749,24 @@ int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   if (BKE_pbvh_type(pbvh) == PBVH_FACES && needs_pmap && !ob->sculpt->pmap) {
     return OPERATOR_CANCELLED;
   }
+
+  MeshFilterData *mfd = MEM_callocN(sizeof(MeshFilterData), "mesh filter data");
   if (ss->orco == NULL) {
     ss->orco = MEM_mallocN(3 * ss->totvert * sizeof(float), "orco");
   }
+
+  if (mode == MESH_FILTER_RANDOM && mfd->random_disp == NULL) {
+    mfd->random_disp = MEM_mallocN(ss->totvert * sizeof(float), "random_disp");
+  }
+
   for (int i = 0; i < ss->totvert; i++) {
     copy_v3_v3(ss->orco[i], ss->mvert[i].co);
+    if (mode == MESH_FILTER_RANDOM) {
+      mfd->random_disp[i] = (float)rand() / (float)(RAND_MAX);
+    }
   }
+
+  op->customdata = mfd;
 
   sculpt_undo_push_begin("mesh filter fill");
 
