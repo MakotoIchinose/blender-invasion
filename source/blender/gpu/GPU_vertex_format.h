@@ -28,6 +28,7 @@
 
 #include "GPU_common.h"
 #include "BLI_compiler_compat.h"
+#include "BLI_assert.h"
 
 #define GPU_VERT_ATTR_MAX_LEN 16
 #define GPU_VERT_ATTR_MAX_NAMES 4
@@ -55,8 +56,8 @@ typedef enum {
 } GPUVertFetchMode;
 
 typedef struct GPUVertAttr {
-  GPUVertFetchMode fetch_mode : 2;
-  GPUVertCompType comp_type : 3;
+  uint fetch_mode : 2;
+  uint comp_type : 3;
   /* 1 to 4 or 8 or 12 or 16 */
   uint comp_len : 5;
   /* size in bytes, 1 to 64 */
@@ -69,6 +70,12 @@ typedef struct GPUVertAttr {
   /* -- 8 Bytes -- */
   uchar names[GPU_VERT_ATTR_MAX_NAMES];
 } GPUVertAttr;
+
+BLI_STATIC_ASSERT(GPU_VERT_ATTR_NAMES_BUF_LEN <= 256,
+                  "We use uchar as index inside the name buffer "
+                  "so GPU_VERT_ATTR_NAMES_BUF_LEN needs to be be "
+                  "smaller than GPUVertFormat->name_offset and "
+                  "GPUVertAttr->names maximum value");
 
 typedef struct GPUVertFormat {
   /** 0 to 16 (GPU_VERT_ATTR_MAX_LEN). */
