@@ -7568,7 +7568,11 @@ EnumPropertyItem prop_mesh_filter_types[] = {
 
 typedef struct MeshFilterData {
   float *random_disp;
+  PBVHNode **nodes;
+  int totnode;
 } MeshFilterData;
+
+#define MESH_FILTER_RANDOM_MOD 50
 
 static void mesh_filter_task_cb(void *__restrict userdata,
                                 const int i,
@@ -7581,8 +7585,6 @@ static void mesh_filter_task_cb(void *__restrict userdata,
   const int mode = data->filter_type;
 
   PBVHVertexIter vd;
-  sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_COORDS);
-
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
     float orig_co[3], val[3], avg[3], normal[3], disp[3], disp2[3], transform[3][3];
@@ -7647,7 +7649,8 @@ static void mesh_filter_task_cb(void *__restrict userdata,
         break;
       case MESH_FILTER_RANDOM:
         normal_short_to_float_v3(normal, vd.no);
-        mul_v3_fl(normal, data->random_disp[vd.vert_indices[vd.i]] - 0.5f);
+        mul_v3_fl(normal,
+                  data->random_disp[vd.vert_indices[vd.i] % MESH_FILTER_RANDOM_MOD] - 0.5f);
         mul_v3_v3fl(disp, normal, fade);
         add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
         break;
@@ -7664,21 +7667,11 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion *ar = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
-  PBVH *pbvh = ob->sculpt->pbvh;
   SculptSession *ss = ob->sculpt;
-  PBVHNode **nodes;
-  int totnode;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   int mode = RNA_enum_get(op->ptr, "type");
   float filter_strength = RNA_float_get(op->ptr, "strength");
   MeshFilterData *mfd = op->customdata;
-
-  SculptSearchSphereData searchdata = {
-      .ss = ss,
-      .sd = sd,
-      .radius_squared = FLT_MAX,
-  };
-  BKE_pbvh_search_gather(pbvh, sculpt_search_sphere_cb, &searchdata, &nodes, &totnode);
 
   float len = event->prevclickx - event->mval[0];
   filter_strength = filter_strength * -len * 0.001f;
@@ -7686,7 +7679,7 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   SculptThreadedTaskData data = {
       .sd = sd,
       .ob = ob,
-      .nodes = nodes,
+      .nodes = mfd->nodes,
       .smooth_value = 0.5f,
       .filter_type = mode,
       .filter_strength = filter_strength,
@@ -7695,8 +7688,9 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   ParallelRangeSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
-  BLI_task_parallel_range(0, totnode, &data, mesh_filter_task_cb, &settings);
+  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
+                            mfd->totnode > SCULPT_THREADED_LIMIT);
+  BLI_task_parallel_range(0, mfd->totnode, &data, mesh_filter_task_cb, &settings);
 
   if (mode == MESH_FILTER_RELAX) {
     for (int i = 0; i < ss->totvert; i++) {
@@ -7711,9 +7705,6 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
     sculpt_update_keyblock(ob);
   }
 
-  if (nodes)
-    MEM_freeN(nodes);
-
   ED_region_tag_redraw(ar);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
@@ -7722,11 +7713,41 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
     if (mfd->random_disp) {
       MEM_freeN(mfd->random_disp);
     }
+    if (mfd->nodes) {
+      MEM_freeN(mfd->nodes);
+    }
     MEM_freeN(mfd);
     return OPERATOR_FINISHED;
   }
 
   return OPERATOR_RUNNING_MODAL;
+}
+
+static void mesh_filter_init_task_cb(void *__restrict userdata,
+                                     const int i,
+                                     const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+  SculptThreadedTaskData *data = userdata;
+  SculptSession *ss = data->ob->sculpt;
+  PBVHNode *node = data->nodes[i];
+
+  PBVHVertexIter vd;
+  BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
+  {
+    int vi = vd.vert_indices[vd.i];
+    if (vd.mask && (*vd.mask) < 1.0f) {
+      data->node_mask[i] = 1;
+    }
+    copy_v3_v3(ss->orco[vi], ss->mvert[vi].co);
+    if (data->filter_type == MESH_FILTER_RANDOM && vi < MESH_FILTER_RANDOM_MOD) {
+      data->random_disp[vi % MESH_FILTER_RANDOM_MOD] = (float)rand() / (float)(RAND_MAX);
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+
+  if (data->node_mask[i] == 1) {
+    sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_COORDS);
+  }
 }
 
 int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -7738,10 +7759,22 @@ int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   struct Scene *scene = CTX_data_scene(C);
   int mode = RNA_enum_get(op->ptr, "type");
   PBVH *pbvh = ob->sculpt->pbvh;
+  PBVHNode **nodes;
+  int totnode;
 
   /* Disable for multires and dyntopo for now */
   if (BKE_pbvh_type(pbvh) != PBVH_FACES) {
     return OPERATOR_CANCELLED;
+  }
+
+  MeshFilterData *mfd = MEM_callocN(sizeof(MeshFilterData), "mesh filter data");
+
+  if (ss->orco == NULL) {
+    ss->orco = MEM_mallocN(3 * ss->totvert * sizeof(float), "orco");
+  }
+
+  if (mode == MESH_FILTER_RANDOM && mfd->random_disp == NULL) {
+    mfd->random_disp = MEM_mallocN(MESH_FILTER_RANDOM_MOD * sizeof(float), "random_disp");
   }
 
   bool needs_pmap = (mode == MESH_FILTER_SMOOTH) || (mode == MESH_FILTER_RELAX);
@@ -7750,25 +7783,61 @@ int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  MeshFilterData *mfd = MEM_callocN(sizeof(MeshFilterData), "mesh filter data");
-  if (ss->orco == NULL) {
-    ss->orco = MEM_mallocN(3 * ss->totvert * sizeof(float), "orco");
+  SculptSearchSphereData searchdata = {
+      .ss = ss,
+      .sd = sd,
+      .radius_squared = FLT_MAX,
+  };
+  BKE_pbvh_search_gather(pbvh, sculpt_search_sphere_cb, &searchdata, &nodes, &totnode);
+
+  int *node_mask = MEM_callocN(totnode * sizeof(int), "node mask");
+  for (int i = 0; i < totnode; i++) {
+    node_mask[i] = 0;
   }
 
-  if (mode == MESH_FILTER_RANDOM && mfd->random_disp == NULL) {
-    mfd->random_disp = MEM_mallocN(ss->totvert * sizeof(float), "random_disp");
-  }
+  sculpt_undo_push_begin("mesh filter fill");
 
-  for (int i = 0; i < ss->totvert; i++) {
-    copy_v3_v3(ss->orco[i], ss->mvert[i].co);
-    if (mode == MESH_FILTER_RANDOM) {
-      mfd->random_disp[i] = (float)rand() / (float)(RAND_MAX);
+  SculptThreadedTaskData data = {
+      .sd = sd,
+      .ob = ob,
+      .nodes = nodes,
+      .filter_type = mode,
+      .random_disp = mfd->random_disp,
+      .node_mask = node_mask,
+  };
+
+  ParallelRangeSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+  BLI_task_parallel_range(0, totnode, &data, mesh_filter_init_task_cb, &settings);
+
+  int tot_active_nodes = 0;
+  int active_node_index = 0;
+  PBVHNode **active_nodes;
+
+  for (int i = 0; i < totnode; i++) {
+    if (node_mask[i] == 1) {
+      tot_active_nodes++;
     }
   }
 
-  op->customdata = mfd;
+  active_nodes = MEM_callocN(tot_active_nodes * sizeof(PBVHNode *), "active nodes");
 
-  sculpt_undo_push_begin("mesh filter fill");
+  for (int i = 0; i < totnode; i++) {
+    if (node_mask[i] == 1) {
+      active_nodes[active_node_index] = nodes[i];
+      active_node_index++;
+    }
+  }
+
+  if (nodes) {
+    MEM_freeN(nodes);
+  }
+
+  mfd->nodes = active_nodes;
+  mfd->totnode = tot_active_nodes;
+
+  op->customdata = mfd;
 
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;

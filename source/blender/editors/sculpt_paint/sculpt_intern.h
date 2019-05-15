@@ -210,6 +210,7 @@ typedef struct SculptThreadedTaskData {
   float filter_strength;
   int filter_type;
   float *random_disp;
+  int *node_mask;
 
   float *automask;
 
