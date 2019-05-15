@@ -8240,6 +8240,88 @@ static void SCULPT_OT_mask_by_normal(wmOperatorType *ot)
   ot->prop = RNA_def_boolean(ot->srna, "invert", false, "Invert", "");
 }
 
+static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e))
+{
+  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  ARegion *ar = CTX_wm_region(C);
+  PBVH *pbvh = ob->sculpt->pbvh;
+  struct Scene *scene = CTX_data_scene(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  PBVHNode **nodes;
+  int totnode;
+
+  /* Disable for multires and dyntopo for now */
+  if (BKE_pbvh_type(pbvh) != PBVH_FACES) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (!ss->vcol) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Initial setup */
+  BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, true);
+
+  BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
+  sculpt_undo_push_begin("Mask by color");
+  for (int i = 0; i < totnode; i++) {
+    sculpt_undo_push_node(ob, nodes[i], SCULPT_UNDO_MASK);
+    BKE_pbvh_node_mark_redraw(nodes[i]);
+  }
+
+  bool invert = RNA_boolean_get(op->ptr, "invert");
+
+  float active_col[3] = {
+      (float)ss->vcol[ss->active_vertex_mesh_index].r / 255.0f,
+      (float)ss->vcol[ss->active_vertex_mesh_index].g / 255.0f,
+      (float)ss->vcol[ss->active_vertex_mesh_index].b / 255.0f,
+  };
+
+  /* Mask generation */
+  float threshold = RNA_float_get(op->ptr, "threshold");
+  for (int i = 0; i < ss->totvert; i++) {
+    float col[3] = {
+        (float)ss->vcol[i].r / 255.0f,
+        (float)ss->vcol[i].g / 255.0f,
+        (float)ss->vcol[i].b / 255.0f,
+    };
+    float len = len_v3v3(active_col, col);
+    if (len < threshold) {
+      len = len / 1.73205f;
+      ss->vmask[i] = 1.0f - len;
+      ss->mvert[i].flag |= ME_VERT_PBVH_UPDATE;
+    }
+    if (invert) {
+      ss->vmask[i] = 1.0f - ss->vmask[i];
+    }
+  }
+
+  sculpt_undo_push_end();
+  ED_region_tag_redraw(ar);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+  return OPERATOR_FINISHED;
+}
+
+static void SCULPT_OT_mask_by_color(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Mask by color";
+  ot->idname = "SCULPT_OT_mask_by_color";
+  ot->description = "Creates a mask based on the color of the active vertex";
+
+  /* api callbacks */
+  ot->invoke = sculpt_mask_by_color_invoke;
+  ot->poll = sculpt_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_float(ot->srna, "threshold", 0.5f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  ot->prop = RNA_def_boolean(ot->srna, "invert", false, "Invert", "");
+}
+
 void ED_operatortypes_sculpt(void)
 {
   WM_operatortype_append(SCULPT_OT_brush_stroke);
@@ -8256,4 +8338,5 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_mask_filter);
   WM_operatortype_append(SCULPT_OT_color_fill);
   WM_operatortype_append(SCULPT_OT_mask_by_normal);
+  WM_operatortype_append(SCULPT_OT_mask_by_color);
 }
