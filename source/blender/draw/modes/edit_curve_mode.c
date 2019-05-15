@@ -39,6 +39,7 @@
  * Not needed for constant color. */
 
 extern char datatoc_common_globals_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_edit_curve_overlay_loosevert_vert_glsl[];
 extern char datatoc_edit_curve_overlay_normals_vert_glsl[];
 extern char datatoc_edit_curve_overlay_handle_vert_glsl[];
@@ -124,8 +125,10 @@ static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
 
   if (!sh_data->wire_normals_sh) {
     sh_data->wire_normals_sh = GPU_shader_create_from_arrays({
-        .vert =
-            (const char *[]){sh_cfg_data->lib, datatoc_edit_curve_overlay_normals_vert_glsl, NULL},
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_curve_overlay_normals_vert_glsl,
+                                 NULL},
         .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
@@ -133,8 +136,10 @@ static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
 
   if (!sh_data->overlay_edge_sh) {
     sh_data->overlay_edge_sh = GPU_shader_create_from_arrays({
-        .vert =
-            (const char *[]){sh_cfg_data->lib, datatoc_edit_curve_overlay_handle_vert_glsl, NULL},
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_curve_overlay_handle_vert_glsl,
+                                 NULL},
         .geom = (const char *[]){sh_cfg_data->lib,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_edit_curve_overlay_handle_geom_glsl,
@@ -148,6 +153,7 @@ static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
     sh_data->overlay_vert_sh = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
                                  datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
                                  datatoc_edit_curve_overlay_loosevert_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
@@ -270,31 +276,30 @@ static void EDIT_CURVE_cache_populate(void *vedata, Object *ob)
       }
 
       geom = DRW_cache_curve_edge_wire_get(ob);
-      DRW_shgroup_call_add(wire_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(wire_shgrp, geom, ob->obmat);
 
       if ((cu->flag & CU_3D) && (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_NORMALS) != 0) {
-        static uint instance_len = 2;
         geom = DRW_cache_curve_edge_normal_get(ob);
-        DRW_shgroup_call_instances_add(wire_normals_shgrp, geom, ob->obmat, &instance_len);
+        DRW_shgroup_call_instances(wire_normals_shgrp, geom, ob->obmat, 2);
       }
 
       geom = DRW_cache_curve_edge_overlay_get(ob);
       if (geom) {
-        DRW_shgroup_call_add(stl->g_data->overlay_edge_shgrp, geom, ob->obmat);
+        DRW_shgroup_call(stl->g_data->overlay_edge_shgrp, geom, ob->obmat);
       }
 
       geom = DRW_cache_curve_vert_overlay_get(ob, stl->g_data->show_handles);
-      DRW_shgroup_call_add(stl->g_data->overlay_vert_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->overlay_vert_shgrp, geom, ob->obmat);
     }
   }
 
   if (ob->type == OB_SURF) {
     if (BKE_object_is_in_editmode(ob)) {
       struct GPUBatch *geom = DRW_cache_curve_edge_overlay_get(ob);
-      DRW_shgroup_call_add(stl->g_data->overlay_edge_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->overlay_edge_shgrp, geom, ob->obmat);
 
       geom = DRW_cache_curve_vert_overlay_get(ob, false);
-      DRW_shgroup_call_add(stl->g_data->overlay_vert_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->overlay_vert_shgrp, geom, ob->obmat);
     }
   }
 }

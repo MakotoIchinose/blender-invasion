@@ -48,6 +48,7 @@
 static struct {
   char *frag_shader_lib;
   char *vert_shader_str;
+  char *vert_shadow_shader_str;
   char *volume_shader_lib;
 
   struct GPUShader *default_prepass_sh;
@@ -133,7 +134,7 @@ static struct GPUTexture *create_ggx_lut_texture(int UNUSED(w), int UNUSED(h))
   DRW_shgroup_uniform_texture(grp, "texJitter", e_data.jitter);
 
   struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-  DRW_shgroup_call_add(grp, geom, NULL);
+  DRW_shgroup_call(grp, geom, NULL);
 
   float *texels = MEM_mallocN(sizeof(float[2]) * w * h, "lut");
 
@@ -196,7 +197,7 @@ static struct GPUTexture *create_ggx_refraction_lut_texture(int w, int h)
   DRW_shgroup_uniform_texture(grp, "utilTex", e_data.util_tex);
 
   struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-  DRW_shgroup_call_add(grp, geom, NULL);
+  DRW_shgroup_call(grp, geom, NULL);
 
   float *texels = MEM_mallocN(sizeof(float[2]) * w * h, "lut");
 
@@ -609,17 +610,19 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
     e_data.vert_shader_str = BLI_string_joinN(
         datatoc_common_view_lib_glsl, datatoc_common_hair_lib_glsl, datatoc_lit_surface_vert_glsl);
 
+    e_data.vert_shadow_shader_str = BLI_string_joinN(
+        datatoc_common_view_lib_glsl, datatoc_common_hair_lib_glsl, datatoc_shadow_vert_glsl);
+
     e_data.default_background = DRW_shader_create(
         datatoc_background_vert_glsl, NULL, datatoc_default_world_frag_glsl, NULL);
 
-    e_data.default_prepass_sh = DRW_shader_create(
-        datatoc_prepass_vert_glsl, NULL, datatoc_prepass_frag_glsl, NULL);
-
-    e_data.default_prepass_clip_sh = DRW_shader_create(
-        datatoc_prepass_vert_glsl, NULL, datatoc_prepass_frag_glsl, "#define CLIP_PLANES\n");
-
     char *vert_str = BLI_string_joinN(
         datatoc_common_view_lib_glsl, datatoc_common_hair_lib_glsl, datatoc_prepass_vert_glsl);
+
+    e_data.default_prepass_sh = DRW_shader_create(vert_str, NULL, datatoc_prepass_frag_glsl, NULL);
+
+    e_data.default_prepass_clip_sh = DRW_shader_create(
+        vert_str, NULL, datatoc_prepass_frag_glsl, "#define CLIP_PLANES\n");
 
     e_data.default_hair_prepass_sh = DRW_shader_create(
         vert_str, NULL, datatoc_prepass_frag_glsl, "#define HAIR_SHADER\n");
@@ -853,7 +856,7 @@ struct GPUMaterial *EEVEE_material_mesh_depth_get(struct Scene *scene,
                                         ma,
                                         engine,
                                         options,
-                                        (is_shadow) ? datatoc_shadow_vert_glsl :
+                                        (is_shadow) ? e_data.vert_shadow_shader_str :
                                                       e_data.vert_shader_str,
                                         NULL,
                                         frag_str,
@@ -1032,7 +1035,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
             DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
             DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
             DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
-            DRW_shgroup_call_add(grp, geom, NULL);
+            DRW_shgroup_call(grp, geom, NULL);
             break;
           case GPU_MAT_QUEUED:
             /* TODO Bypass probe compilation. */
@@ -1051,7 +1054,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
       grp = DRW_shgroup_create(e_data.default_background, psl->background_pass);
       DRW_shgroup_uniform_vec3(grp, "color", col, 1);
       DRW_shgroup_uniform_float(grp, "backgroundAlpha", &stl->g_data->background_alpha, 1);
-      DRW_shgroup_call_add(grp, geom, NULL);
+      DRW_shgroup_call(grp, geom, NULL);
     }
   }
 
@@ -1140,7 +1143,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRWShadingGroup *grp = DRW_shgroup_create(e_data.update_noise_sh, psl->update_noise_pass);
     DRW_shgroup_uniform_texture(grp, "blueNoise", e_data.noise_tex);
     DRW_shgroup_uniform_vec3(grp, "offsets", e_data.noise_offsets, 1);
-    DRW_shgroup_call_add(grp, DRW_cache_fullscreen_quad_get(), NULL);
+    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
   }
 
   if (LOOK_DEV_OVERLAY_ENABLED(draw_ctx->v3d)) {
@@ -1165,7 +1168,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_float_copy(shgrp, "metallic", 0.0f);
     DRW_shgroup_uniform_float_copy(shgrp, "specular", 0.5f);
     DRW_shgroup_uniform_float_copy(shgrp, "roughness", 1.0f);
-    DRW_shgroup_call_add(shgrp, sphere, NULL);
+    DRW_shgroup_call(shgrp, sphere, NULL);
 
     psl->lookdev_glossy_pass = DRW_pass_create("LookDev Glossy Pass", state);
     shgrp = DRW_shgroup_create(e_data.default_lit[options], psl->lookdev_glossy_pass);
@@ -1173,25 +1176,25 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_vec3(shgrp, "basecol", color_chrome, 1);
     DRW_shgroup_uniform_float_copy(shgrp, "metallic", 1.0f);
     DRW_shgroup_uniform_float_copy(shgrp, "roughness", 0.0f);
-    DRW_shgroup_call_add(shgrp, sphere, NULL);
+    DRW_shgroup_call(shgrp, sphere, NULL);
   }
 }
 
-#define ADD_SHGROUP_CALL(shgrp, ob, ma, geom, oedata) \
+#define ADD_SHGROUP_CALL(shgrp, ob, geom, oedata) \
   do { \
     if (oedata) { \
-      DRW_shgroup_call_object_add_with_callback( \
-          shgrp, geom, ob, ma, EEVEE_lightprobes_obj_visibility_cb, oedata); \
+      DRW_shgroup_call_object_with_callback( \
+          shgrp, geom, ob, EEVEE_lightprobes_obj_visibility_cb, oedata); \
     } \
     else { \
-      DRW_shgroup_call_object_add_ex(shgrp, geom, ob, ma, false); \
+      DRW_shgroup_call_object_ex(shgrp, geom, ob, false); \
     } \
   } while (0)
 
-#define ADD_SHGROUP_CALL_SAFE(shgrp, ob, ma, geom, oedata) \
+#define ADD_SHGROUP_CALL_SAFE(shgrp, ob, geom, oedata) \
   do { \
     if (shgrp) { \
-      ADD_SHGROUP_CALL(shgrp, ob, ma, geom, oedata); \
+      ADD_SHGROUP_CALL(shgrp, ob, geom, oedata); \
     } \
   } while (0)
 
@@ -1205,7 +1208,6 @@ static void material_opaque(Material *ma,
                             GHash *material_hash,
                             EEVEE_ViewLayerData *sldata,
                             EEVEE_Data *vedata,
-                            bool do_cull,
                             struct GPUMaterial **gpumat,
                             struct GPUMaterial **gpumat_depth,
                             struct DRWShadingGroup **shgrp,
@@ -1225,6 +1227,7 @@ static void material_opaque(Material *ma,
   float *spec_p = &ma->spec;
   float *rough_p = &ma->roughness;
 
+  const bool do_cull = (ma->blend_flag & MA_BL_CULL_BACKFACE) != 0;
   const bool use_gpumat = (ma->use_nodes && ma->nodetree);
   const bool use_ssrefract = ((ma->blend_flag & MA_BL_SS_REFRACTION) != 0) &&
                              ((effects->enabled_effects & EFFECT_REFRACT) != 0);
@@ -1457,7 +1460,6 @@ static void material_opaque(Material *ma,
 static void material_transparent(Material *ma,
                                  EEVEE_ViewLayerData *sldata,
                                  EEVEE_Data *vedata,
-                                 bool do_cull,
                                  struct GPUMaterial **gpumat,
                                  struct DRWShadingGroup **shgrp,
                                  struct DRWShadingGroup **shgrp_depth)
@@ -1468,6 +1470,7 @@ static void material_transparent(Material *ma,
   EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
   EEVEE_LightsInfo *linfo = sldata->lights;
 
+  const bool do_cull = (ma->blend_flag & MA_BL_CULL_BACKFACE) != 0;
   const bool use_ssrefract = (((ma->blend_flag & MA_BL_SS_REFRACTION) != 0) &&
                               ((stl->effects->enabled_effects & EFFECT_REFRACT) != 0));
   float *color_p = &ma->r;
@@ -1601,8 +1604,6 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
   Scene *scene = draw_ctx->scene;
   GHash *material_hash = stl->g_data->material_hash;
 
-  const bool do_cull = (draw_ctx->v3d &&
-                        (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING));
   bool is_sculpt_mode = DRW_object_use_pbvh_drawing(ob);
   /* For now just force fully shaded with eevee when supported. */
   is_sculpt_mode = is_sculpt_mode &&
@@ -1638,7 +1639,6 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
                           material_hash,
                           sldata,
                           vedata,
-                          do_cull,
                           &gpumat_array[i],
                           &gpumat_depth_array[i],
                           &shgrp_array[i],
@@ -1651,7 +1651,6 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
           material_transparent(ma_array[i],
                                sldata,
                                vedata,
-                               do_cull,
                                &gpumat_array[i],
                                &shgrp_array[i],
                                &shgrp_depth_array[i]);
@@ -1688,9 +1687,9 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
       if (is_sculpt_mode) {
         /* Vcol is not supported in the modes that require PBVH drawing. */
         bool use_vcol = false;
-        DRW_shgroup_call_sculpt_with_materials_add(shgrp_array, ma_array, ob, use_vcol);
-        DRW_shgroup_call_sculpt_with_materials_add(shgrp_depth_array, ma_array, ob, use_vcol);
-        DRW_shgroup_call_sculpt_with_materials_add(shgrp_depth_clip_array, ma_array, ob, use_vcol);
+        DRW_shgroup_call_sculpt_with_materials(shgrp_array, ob, use_vcol);
+        DRW_shgroup_call_sculpt_with_materials(shgrp_depth_array, ob, use_vcol);
+        DRW_shgroup_call_sculpt_with_materials(shgrp_depth_clip_array, ob, use_vcol);
         /* TODO(fclem): Support shadows in sculpt mode. */
       }
       else if (mat_geom) {
@@ -1715,9 +1714,9 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
             oedata->test_data = &sldata->probes->vis_data;
           }
 
-          ADD_SHGROUP_CALL(shgrp_array[i], ob, ma_array[i], mat_geom[i], oedata);
-          ADD_SHGROUP_CALL_SAFE(shgrp_depth_array[i], ob, ma_array[i], mat_geom[i], oedata);
-          ADD_SHGROUP_CALL_SAFE(shgrp_depth_clip_array[i], ob, ma_array[i], mat_geom[i], oedata);
+          ADD_SHGROUP_CALL(shgrp_array[i], ob, mat_geom[i], oedata);
+          ADD_SHGROUP_CALL_SAFE(shgrp_depth_array[i], ob, mat_geom[i], oedata);
+          ADD_SHGROUP_CALL_SAFE(shgrp_depth_clip_array[i], ob, mat_geom[i], oedata);
 
           char *name = auto_layer_names;
           for (int j = 0; j < auto_layer_count; ++j) {
@@ -1896,6 +1895,7 @@ void EEVEE_materials_free(void)
   }
   MEM_SAFE_FREE(e_data.frag_shader_lib);
   MEM_SAFE_FREE(e_data.vert_shader_str);
+  MEM_SAFE_FREE(e_data.vert_shadow_shader_str);
   MEM_SAFE_FREE(e_data.volume_shader_lib);
   DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_sh);
   DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_clip_sh);

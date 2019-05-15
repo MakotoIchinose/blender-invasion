@@ -762,7 +762,7 @@ static void image_buttons_region_layout(const bContext *C, ARegion *ar)
   }
 
   const bool vertical = true;
-  ED_region_panels_layout_ex(C, ar, contexts_base, -1, vertical);
+  ED_region_panels_layout_ex(C, ar, &ar->type->paneltypes, contexts_base, -1, vertical, NULL);
 }
 
 static void image_buttons_region_draw(const bContext *C, ARegion *ar)
@@ -1033,7 +1033,7 @@ void ED_spacetype_image(void)
   /* regions: listview/buttons/scopes */
   art = MEM_callocN(sizeof(ARegionType), "spacetype image region");
   art->regionid = RGN_TYPE_UI;
-  art->prefsizex = 220;  // XXX
+  art->prefsizex = UI_SIDEBAR_PANEL_WIDTH;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->listener = image_buttons_region_listener;
   art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_ui;

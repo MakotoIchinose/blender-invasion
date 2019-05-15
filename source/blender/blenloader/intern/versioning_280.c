@@ -421,10 +421,13 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 
           Collection *collection = BKE_collection_add(bmain, collection_master, name);
           collection->id.lib = scene->id.lib;
+          if (collection->id.lib != NULL) {
+            collection->id.tag |= LIB_TAG_INDIRECT;
+          }
           collections[layer] = collection;
 
           if (!(scene->lay & (1 << layer))) {
-            collection->flag |= COLLECTION_RESTRICT_VIEW | COLLECTION_RESTRICT_RENDER;
+            collection->flag |= COLLECTION_RESTRICT_VIEWPORT | COLLECTION_RESTRICT_RENDER;
           }
         }
 
@@ -725,7 +728,7 @@ void do_versions_after_linking_280(Main *bmain)
       /* Add fake user for all existing groups. */
       id_fake_user_set(&collection->id);
 
-      if (collection->flag & (COLLECTION_RESTRICT_VIEW | COLLECTION_RESTRICT_RENDER)) {
+      if (collection->flag & (COLLECTION_RESTRICT_VIEWPORT | COLLECTION_RESTRICT_RENDER)) {
         continue;
       }
 
@@ -751,7 +754,8 @@ void do_versions_after_linking_280(Main *bmain)
             char name[MAX_ID_NAME];
             BLI_snprintf(name, sizeof(name), DATA_("Hidden %d"), coll_idx + 1);
             *collection_hidden = BKE_collection_add(bmain, collection, name);
-            (*collection_hidden)->flag |= COLLECTION_RESTRICT_VIEW | COLLECTION_RESTRICT_RENDER;
+            (*collection_hidden)->flag |= COLLECTION_RESTRICT_VIEWPORT |
+                                          COLLECTION_RESTRICT_RENDER;
           }
 
           BKE_collection_object_add(bmain, *collection_hidden, ob);
@@ -2846,7 +2850,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
-      mat->blend_flag &= ~(MA_BL_FLAG_UNUSED_2);
+      mat->blend_flag &= ~(1 << 2); /* UNUSED */
     }
   }
 
@@ -3357,7 +3361,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  {
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 61)) {
     /* Added a power option to Copy Scale. */
     if (!DNA_struct_elem_find(fd->filesdna, "bSizeLikeConstraint", "float", "power")) {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
@@ -3372,12 +3376,12 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        if (ELEM(sa->spacetype, SPACE_CLIP, SPACE_GRAPH, SPACE_SEQ)) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (ELEM(sl->spacetype, SPACE_CLIP, SPACE_GRAPH, SPACE_SEQ)) {
             ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
 
             ARegion *ar = NULL;
-            if (sa->spacetype == SPACE_CLIP) {
+            if (sl->spacetype == SPACE_CLIP) {
               if (((SpaceClip *)sl)->view == SC_VIEW_GRAPH) {
                 ar = do_versions_find_region(regionbase, RGN_TYPE_PREVIEW);
               }
@@ -3395,9 +3399,31 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype != SPACE_OUTLINER) {
+            continue;
+          }
+          SpaceOutliner *so = (SpaceOutliner *)sl;
+          so->filter &= ~SO_FLAG_UNUSED_1;
+          so->show_restrict_flags = SO_RESTRICT_ENABLE | SO_RESTRICT_SELECT | SO_RESTRICT_HIDE;
+        }
+      }
+    }
+  }
+
+  {
     /* Versioning code until next subversion bump goes here. */
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
       arm->flag &= ~(ARM_FLAG_UNUSED_7 | ARM_FLAG_UNUSED_9);
+    }
+
+    /* Initializes sun lights with the new angular diameter property */
+    if (!DNA_struct_elem_find(fd->filesdna, "Light", "float", "sun_angle")) {
+      LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+        light->sun_angle = 2.0f * atanf(light->area_size);
+      }
     }
   }
 }

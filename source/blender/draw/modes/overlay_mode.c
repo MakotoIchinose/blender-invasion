@@ -126,8 +126,10 @@ static void overlay_engine_init(void *vedata)
   if (!sh_data->face_orientation) {
     /* Face orientation */
     sh_data->face_orientation = GPU_shader_create_from_arrays({
-        .vert =
-            (const char *[]){sh_cfg_data->lib, datatoc_overlay_face_orientation_vert_glsl, NULL},
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_overlay_face_orientation_vert_glsl,
+                                 NULL},
         .frag = (const char *[]){datatoc_overlay_face_orientation_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
@@ -353,7 +355,7 @@ static void overlay_cache_populate(void *vedata, Object *ob)
   if (DRW_object_is_renderable(ob) && pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION) {
     struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
-      DRW_shgroup_call_object_add(pd->face_orientation_shgrp, geom, ob);
+      DRW_shgroup_call_object(pd->face_orientation_shgrp, geom, ob);
     }
   }
 
@@ -368,7 +370,7 @@ static void overlay_cache_populate(void *vedata, Object *ob)
       }
       else {
         if ((*dupli_data)->shgrp && (*dupli_data)->geom) {
-          DRW_shgroup_call_object_add((*dupli_data)->shgrp, (*dupli_data)->geom, ob);
+          DRW_shgroup_call_object((*dupli_data)->shgrp, (*dupli_data)->geom, ob);
         }
         return;
       }
@@ -420,10 +422,10 @@ static void overlay_cache_populate(void *vedata, Object *ob)
         }
 
         if (is_sculpt_mode) {
-          DRW_shgroup_call_sculpt_add(shgrp, ob, true, false, false);
+          DRW_shgroup_call_sculpt(shgrp, ob, true, false, false);
         }
         else {
-          DRW_shgroup_call_object_add(shgrp, geom, ob);
+          DRW_shgroup_call_object(shgrp, geom, ob);
         }
       }
 
