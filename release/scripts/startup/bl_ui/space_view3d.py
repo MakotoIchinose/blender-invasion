@@ -2312,11 +2312,18 @@ class VIEW3D_MT_object_context_menu(Menu):
                     props.data_path_item = "data.size_y"
                     props.header_text = "Light Size Y: %.3f"
 
-            elif light.type in {'SPOT', 'POINT', 'SUN'}:
+            elif light.type in {'SPOT', 'POINT'}:
                 props = layout.operator("wm.context_modal_mouse", text="Radius")
                 props.data_path_iter = "selected_editable_objects"
                 props.data_path_item = "data.shadow_soft_size"
                 props.header_text = "Light Radius: %.3f"
+
+            elif light.type == 'SUN':
+                props = layout.operator("wm.context_modal_mouse", text="Angle")
+                props.data_path_iter = "selected_editable_objects"
+                props.data_path_item = "data.angle"
+                props.header_text = "Light Angle: %.3f"
+
 
             if light.type == 'SPOT':
                 layout.separator()
@@ -4719,6 +4726,27 @@ class VIEW3D_PT_active_tool(Panel, ToolActivePanelHelper):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Tool"
+    # See comment below.
+    # bl_options = {'HIDE_HEADER'}
+
+    # Don't show in properties editor.
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == 'VIEW_3D'
+
+
+# FIXME(campbell): remove this second panel once 'HIDE_HEADER' works with category tabs,
+# Currently pinning allows ordering headerless panels below panels with headers.
+class VIEW3D_PT_active_tool_duplicate(Panel, ToolActivePanelHelper):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Tool"
+    bl_options = {'HIDE_HEADER'}
+
+    # Only show in properties editor.
+    @classmethod
+    def poll(cls, context):
+        return context.area.type != 'VIEW_3D'
 
 
 class VIEW3D_PT_view3d_properties(Panel):
@@ -5082,6 +5110,11 @@ class VIEW3D_PT_shading_options(Panel):
     bl_label = "Options"
     bl_parent_id = 'VIEW3D_PT_shading'
 
+    @classmethod
+    def poll(cls, context):
+        shading = VIEW3D_PT_shading.get_shading(context)
+        return shading.type in {'WIREFRAME', 'SOLID'}
+
     def draw(self, context):
         layout = self.layout
 
@@ -5089,7 +5122,7 @@ class VIEW3D_PT_shading_options(Panel):
 
         col = layout.column()
 
-        if shading.type != 'WIREFRAME':
+        if shading.type == 'SOLID':
             col.prop(shading, "show_backface_culling")
 
         row = col.row(align=True)
@@ -6538,6 +6571,7 @@ classes = (
     VIEW3D_MT_orientations_pie,
     VIEW3D_MT_proportional_editing_falloff_pie,
     VIEW3D_PT_active_tool,
+    VIEW3D_PT_active_tool_duplicate,
     VIEW3D_PT_view3d_properties,
     VIEW3D_PT_view3d_lock,
     VIEW3D_PT_view3d_cursor,
