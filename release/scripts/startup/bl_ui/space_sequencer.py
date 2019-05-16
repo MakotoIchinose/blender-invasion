@@ -206,15 +206,15 @@ class SEQUENCER_MT_view(Menu):
         layout.operator_context = 'INVOKE_DEFAULT'
         
         if st.view_type == 'SEQUENCER':
-            layout.prop(st, "show_backdrop", text="Backdrop")
+            layout.prop(st, "show_backdrop", text="Preview as Backdrop")
 
         layout.separator()
 
         if is_sequencer_view:
             layout.operator_context = 'INVOKE_REGION_WIN'
-            layout.operator("sequencer.view_all", text="View all Sequences")
-            layout.operator("sequencer.view_selected")
-            layout.operator("sequencer.view_frame")
+            layout.operator("sequencer.view_all", text="Frame All")
+            layout.operator("sequencer.view_selected", text="Frame Selected")
+            layout.operator("sequencer.view_frame", text="Go to Playhead")
             layout.operator_context = 'INVOKE_DEFAULT'
         if is_preview:
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
@@ -722,6 +722,7 @@ class SEQUENCER_PT_adjust_offset(SequencerButtonsPanel, Panel):
     bl_label = "Offset"
     bl_parent_id = "SEQUENCER_PT_adjust"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_category = "Strip"
 
     @classmethod
     def poll(cls, context):
@@ -751,6 +752,7 @@ class SEQUENCER_PT_adjust_crop(SequencerButtonsPanel, Panel):
     bl_label = "Crop"
     bl_parent_id = "SEQUENCER_PT_adjust"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_category = "Strip"
 
     @classmethod
     def poll(cls, context):
@@ -1289,6 +1291,7 @@ class SEQUENCER_PT_adjust(SequencerButtonsPanel, Panel):
 class SEQUENCER_PT_adjust_sound(SequencerButtonsPanel, Panel):
     bl_label = "Sound"
     bl_parent_id = "SEQUENCER_PT_adjust"
+    bl_category = "Strip"
 
     @classmethod
     def poll(cls, context):
@@ -1327,6 +1330,7 @@ class SEQUENCER_PT_adjust_sound(SequencerButtonsPanel, Panel):
 class SEQUENCER_PT_adjust_comp(SequencerButtonsPanel, Panel):
     bl_label = "Compositing"
     bl_parent_id = "SEQUENCER_PT_adjust"
+    bl_category = "Strip"
 
     @classmethod
     def poll(cls, context):
@@ -1514,6 +1518,7 @@ class SEQUENCER_PT_proxy(SequencerButtonsPanel, Panel):
 class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):
     bl_label = "Scene Preview/Render"
     bl_space_type = 'SEQUENCE_EDITOR'
+    bl_category = "View"
     bl_region_type = 'UI'
 
     def draw(self, context):
@@ -1531,6 +1536,7 @@ class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):
 
 class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
     bl_label = "View Settings"
+    bl_category = "View"
 
     def draw(self, context):
         layout = self.layout
@@ -1554,6 +1560,7 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
 
 class SEQUENCER_PT_view_safe_areas(SequencerButtonsPanel_Output, Panel):
     bl_label = "Safe Areas"
+    bl_category = "View"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1568,14 +1575,42 @@ class SEQUENCER_PT_view_safe_areas(SequencerButtonsPanel_Output, Panel):
         self.layout.prop(st, "show_safe_areas", text="")
 
     def draw(self, context):
-        from .properties_data_camera import draw_display_safe_settings
-
         layout = self.layout
-
+        layout.use_property_split = True
         st = context.space_data
         safe_data = context.scene.safe_areas
 
-        draw_display_safe_settings(layout, safe_data, st)
+        layout.active = st.show_safe_areas
+
+        col = layout.column()
+
+        sub = col.column()
+        sub.prop(safe_data, "title", slider=True)
+        sub.prop(safe_data, "action", slider=True)
+
+
+class SEQUENCER_PT_view_safe_areas_center_cut(SequencerButtonsPanel_Output, Panel):
+    bl_label = "Center-Cut Safe Areas"
+    bl_parent_id = "SEQUENCER_PT_view_safe_areas"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_header(self, context):
+        st = context.space_data
+
+        layout = self.layout
+        layout.active = st.show_safe_areas
+        layout.prop(st, "show_safe_center", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        safe_data = context.scene.safe_areas
+        st = context.space_data
+
+        layout.active = st.show_safe_areas and st.show_safe_center
+
+        col = layout.column()
+        col.prop(safe_data, "title_center", slider=True)
 
 
 class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
@@ -1659,6 +1694,7 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
 class SEQUENCER_PT_grease_pencil(AnnotationDataPanel, SequencerButtonsPanel_Output, Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
+    bl_category = "View"
 
     # NOTE: this is just a wrapper around the generic GP Panel
     # But, it should only show up when there are images in the preview region
@@ -1667,6 +1703,7 @@ class SEQUENCER_PT_grease_pencil(AnnotationDataPanel, SequencerButtonsPanel_Outp
 class SEQUENCER_PT_grease_pencil_tools(GreasePencilToolsPanel, SequencerButtonsPanel_Output, Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
+    bl_category = "View"
 
     # NOTE: this is just a wrapper around the generic GP tools panel
     # It contains access to some essential tools usually found only in
@@ -1716,6 +1753,7 @@ classes = (
     SEQUENCER_PT_preview,
     SEQUENCER_PT_view,
     SEQUENCER_PT_view_safe_areas,
+    SEQUENCER_PT_view_safe_areas_center_cut,
     SEQUENCER_PT_modifiers,
     
     SEQUENCER_PT_info,
