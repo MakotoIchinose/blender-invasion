@@ -916,8 +916,8 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
                                              __func__);
   }
   else {
-    ob->runtime.derived_frames = MEM_reallocN(ob->runtime.derived_frames,
-                                              sizeof(struct bGPDframe) * ob->runtime.tot_layers);
+    ob->runtime.derived_frames = MEM_recallocN(ob->runtime.derived_frames,
+                                               sizeof(struct bGPDframe) * ob->runtime.tot_layers);
   }
 
   /* Init general modifiers data. */
