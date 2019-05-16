@@ -258,6 +258,7 @@ class DATA_PT_gpencil_onion_skinning(DataButtonsPanel, Panel):
         col = layout.column()
         col.prop(gpd, "onion_mode")
         col.prop(gpd, "onion_factor", text="Opacity", slider=True)
+        col.prop(gpd, "onion_keyframe_type")
 
         if gpd.onion_mode == 'ABSOLUTE':
             col = layout.column(align=True)
@@ -267,7 +268,6 @@ class DATA_PT_gpencil_onion_skinning(DataButtonsPanel, Panel):
             col = layout.column(align=True)
             col.prop(gpd, "ghost_before_range", text="Keyframes Before")
             col.prop(gpd, "ghost_after_range", text="Keyframes After")
-            col.prop(gpd, "onion_keyframe_type")
  
 
 class DATA_PT_gpencil_onion_skinning_custom_colors(DataButtonsPanel, Panel):

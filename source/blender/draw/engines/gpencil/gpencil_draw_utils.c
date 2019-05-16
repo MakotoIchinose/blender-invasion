@@ -1208,10 +1208,8 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
       continue;
     }
     /* verify keyframe type */
-    if ((mode == GP_ONION_MODE_RELATIVE) && (onion_keytype > -1)) {
-      if (gf->key_type != onion_keytype) {
-        continue;
-      }
+    if ((onion_keytype > -1) && (gf->key_type != onion_keytype)) {
+      continue;
     }
     /* absolute range */
     if (mode == GP_ONION_MODE_ABSOLUTE) {
@@ -1270,10 +1268,8 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
       continue;
     }
     /* verify keyframe type */
-    if ((mode == GP_ONION_MODE_RELATIVE) && (onion_keytype > -1)) {
-      if (gf->key_type != onion_keytype) {
-        continue;
-      }
+    if ((onion_keytype > -1) && (gf->key_type != onion_keytype)) {
+      continue;
     }
     /* absolute range */
     if (mode == GP_ONION_MODE_ABSOLUTE) {
