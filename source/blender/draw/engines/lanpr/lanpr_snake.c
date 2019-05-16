@@ -470,7 +470,7 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, 
 	DRW_shgroup_uniform_float(pd->snake_shgrp, "taper_r_strength", lanpr->use_same_taper ? tls : trs, 1);
 	DRW_shgroup_uniform_vec4(pd->snake_shgrp, "line_color", lanpr->line_color, 1);
 
-	DRW_shgroup_call_add(pd->snake_shgrp, snake_batch, NULL);
+	DRW_shgroup_call(pd->snake_shgrp, snake_batch, NULL);
 	GPU_framebuffer_bind(fbl->edge_intermediate);
 
 	DRW_draw_pass(psl->snake_pass);

@@ -241,13 +241,13 @@ static void lanpr_cache_init(void *vedata){
 		DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp, "normal_strength", &stl->g_data->normal_strength, 1);// normal strength
 		DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp, "depth_clamp", &stl->g_data->depth_clamp, 1);// depth clamp
 		DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp, "depth_strength", &stl->g_data->depth_strength, 1);// depth strength
-		DRW_shgroup_call_add(stl->g_data->edge_detect_shgrp, quad, NULL);
+		DRW_shgroup_call(stl->g_data->edge_detect_shgrp, quad, NULL);
 
 		psl->edge_thinning = DRW_pass_create("Edge Thinning Stage 1", DRW_STATE_WRITE_COLOR);
 		stl->g_data->edge_thinning_shgrp = DRW_shgroup_create(lanpr_share.edge_thinning_shader, psl->edge_thinning);
 		DRW_shgroup_uniform_texture_ref(stl->g_data->edge_thinning_shgrp, "tex_sample_0", &dtxl->color);
 		DRW_shgroup_uniform_int(stl->g_data->edge_thinning_shgrp, "stage", &stl->g_data->stage, 1);
-		DRW_shgroup_call_add(stl->g_data->edge_thinning_shgrp, quad, NULL);
+		DRW_shgroup_call(stl->g_data->edge_thinning_shgrp, quad, NULL);
 
 	}
 	elif(lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer)
@@ -345,7 +345,7 @@ static void lanpr_cache_populate(void *vedata, Object *ob){
 
 	struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
 	if (geom) {
-		DRW_shgroup_call_object_add_no_cull(stl->g_data->multipass_shgrp, geom, ob);
+		DRW_shgroup_call_object_no_cull(stl->g_data->multipass_shgrp, geom, ob);
 	}
 
 	if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {
@@ -393,13 +393,13 @@ static void lanpr_cache_finish(void *vedata){
 
 		LANPR_BatchItem *bi;
 		for (bi = pd->dpix_batch_list.first; bi; bi = (void *)bi->Item.next) {
-			DRW_shgroup_call_add(pd->dpix_transform_shgrp, bi->dpix_transform_batch, bi->ob->obmat);
-			DRW_shgroup_call_add(pd->dpix_preview_shgrp, bi->dpix_preview_batch, 0);
+			DRW_shgroup_call(pd->dpix_transform_shgrp, bi->dpix_transform_batch, bi->ob->obmat);
+			DRW_shgroup_call(pd->dpix_preview_shgrp, bi->dpix_preview_batch, 0);
 		}
 
 		if (lanpr->render_buffer && lanpr->render_buffer->DPIXIntersectionBatch) {
-			DRW_shgroup_call_add(pd->dpix_transform_shgrp, lanpr->render_buffer->DPIXIntersectionTransformBatch, 0);
-			DRW_shgroup_call_add(pd->dpix_preview_shgrp, lanpr->render_buffer->DPIXIntersectionBatch, 0);
+			DRW_shgroup_call(pd->dpix_transform_shgrp, lanpr->render_buffer->DPIXIntersectionTransformBatch, 0);
+			DRW_shgroup_call(pd->dpix_preview_shgrp, lanpr->render_buffer->DPIXIntersectionBatch, 0);
 		}
 	}
 }

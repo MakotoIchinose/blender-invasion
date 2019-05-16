@@ -3308,7 +3308,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 				DRW_shgroup_uniform_float(rb->ChainShgrp, "taper_r_strength", lanpr->use_same_taper ? tls : trs, 1);
 
 				//need to add component enable/disable option.
-				DRW_shgroup_call_add(rb->ChainShgrp, lanpr->render_buffer->ChainDrawBatch, NULL);
+				DRW_shgroup_call(rb->ChainShgrp, lanpr->render_buffer->ChainDrawBatch, NULL);
 				// debug purpose
 				//DRW_draw_pass(psl->color_pass);
 				//DRW_draw_pass(psl->color_pass);
@@ -3344,7 +3344,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 					DRW_shgroup_uniform_float(ll->shgrp, "normal_thickness_end", &ll->normal_thickness_end, 1);
 					DRW_shgroup_uniform_vec3(ll->shgrp, "normal_direction", normal_object_direction, 1);
 
-					DRW_shgroup_call_add(ll->shgrp, ll->batch, NULL);
+					DRW_shgroup_call(ll->shgrp, ll->batch, NULL);
 					DRW_draw_pass(psl->software_pass);
 				}
 			}
