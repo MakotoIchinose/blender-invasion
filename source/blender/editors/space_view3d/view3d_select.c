@@ -57,6 +57,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
 #include "BKE_global.h"
+#include "BKE_main.h"
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
@@ -134,9 +135,6 @@ void ED_view3d_viewcontext_init_object(ViewContext *vc, Object *obact)
   if (vc->obedit) {
     BLI_assert(BKE_object_is_in_editmode(obact));
     vc->obedit = obact;
-    /* previous selections are now invalid. */
-    vc->v3d->flag |= V3D_INVALID_BACKBUF;
-
     if (vc->em) {
       vc->em = BKE_editmesh_from_object(vc->obedit);
     }
@@ -1170,6 +1168,7 @@ static int view3d_lasso_select_exec(bContext *C, wmOperator *op)
 
   if (mcords) {
     view3d_operator_needs_opengl(C);
+    BKE_object_update_select_id(CTX_data_main(C));
 
     /* setup view context for argument to callbacks */
     ED_view3d_viewcontext_init(C, &vc);
@@ -1337,7 +1336,7 @@ static Base *object_mouse_select_menu(
     if (buffer) {
       for (int a = 0; a < hits; a++) {
         /* index was converted */
-        if (base->object->select_id == (buffer[(4 * a) + 3] & ~0xFFFF0000)) {
+        if (base->object->runtime.select_id == (buffer[(4 * a) + 3] & ~0xFFFF0000)) {
           ok = true;
           break;
         }
@@ -1609,7 +1608,7 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
     else {
       /* only exclude active object when it is selected... */
       if (BASACT(view_layer) && (BASACT(view_layer)->flag & BASE_SELECTED) && hits > 1) {
-        notcol = BASACT(view_layer)->object->select_id;
+        notcol = BASACT(view_layer)->object->runtime.select_id;
       }
 
       for (a = 0; a < hits; a++) {
@@ -1623,7 +1622,7 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
     base = FIRSTBASE(view_layer);
     while (base) {
       if (BASE_SELECTABLE(v3d, base)) {
-        if (base->object->select_id == selcol) {
+        if (base->object->runtime.select_id == selcol) {
           break;
         }
       }
@@ -1654,13 +1653,13 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
           if (has_bones) {
             /* skip non-bone objects */
             if ((buffer[4 * a + 3] & 0xFFFF0000)) {
-              if (base->object->select_id == (buffer[(4 * a) + 3] & 0xFFFF)) {
+              if (base->object->runtime.select_id == (buffer[(4 * a) + 3] & 0xFFFF)) {
                 basact = base;
               }
             }
           }
           else {
-            if (base->object->select_id == (buffer[(4 * a) + 3] & 0xFFFF)) {
+            if (base->object->runtime.select_id == (buffer[(4 * a) + 3] & 0xFFFF)) {
               basact = base;
             }
           }
@@ -1693,6 +1692,7 @@ Base *ED_view3d_give_base_under_cursor(bContext *C, const int mval[2])
 
   /* setup view context for argument to callbacks */
   view3d_operator_needs_opengl(C);
+  BKE_object_update_select_id(CTX_data_main(C));
 
   ED_view3d_viewcontext_init(C, &vc);
 
@@ -1878,7 +1878,7 @@ static bool ed_object_select_pick(bContext *C,
 
               /* if there's bundles in buffer select bundles first,
                * so non-camera elements should be ignored in buffer */
-              if (basact->object->select_id != (hitresult & 0xFFFF)) {
+              if (basact->object->runtime.select_id != (hitresult & 0xFFFF)) {
                 continue;
               }
 
@@ -2129,6 +2129,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   RNA_int_get_array(op->ptr, "location", location);
 
   view3d_operator_needs_opengl(C);
+  BKE_object_update_select_id(CTX_data_main(C));
 
   if (object) {
     obedit = NULL;
@@ -2355,14 +2356,14 @@ static bool do_paintvert_box_select(ViewContext *vc, const rcti *rect, const eSe
   }
   else if (use_zbuf) {
     MVert *mvert;
-    unsigned int *rt;
+    uint *rt, *buf, buf_len;
     int a, index;
     char *selar;
 
     selar = MEM_callocN(me->totvert + 1, "selar");
 
-    uint buf_len;
-    uint *buf = ED_view3d_select_id_read_rect(vc, rect, &buf_len);
+    ED_view3d_select_id_validate(vc);
+    buf = ED_view3d_select_id_read_rect(vc, rect, &buf_len);
 
     rt = buf;
 
@@ -2652,7 +2653,7 @@ static bool do_meta_box_select(ViewContext *vc, const rcti *rect, const eSelectO
       }
 
       const uint hit_object = hitresult & 0xFFFF;
-      if (vc->obedit->select_id != hit_object) {
+      if (vc->obedit->runtime.select_id != hit_object) {
         continue;
       }
 
@@ -2803,7 +2804,7 @@ static bool do_object_box_select(bContext *C, ViewContext *vc, rcti *rect, const
 
   for (Base *base = vc->view_layer->object_bases.first; base; base = base->next) {
     if (BASE_SELECTABLE(v3d, base)) {
-      if ((base->object->select_id & 0x0000FFFF) != 0) {
+      if ((base->object->runtime.select_id & 0x0000FFFF) != 0) {
         BLI_array_append(bases, base);
       }
     }
@@ -2893,7 +2894,7 @@ static bool do_pose_box_select(bContext *C, ViewContext *vc, rcti *rect, const e
 
         /* Select the next bone if we're not switching bases. */
         if (col + 4 != col_end) {
-          if ((base->object->select_id & 0x0000FFFF) != (col[4] & 0x0000FFFF)) {
+          if ((base->object->runtime.select_id & 0x0000FFFF) != (col[4] & 0x0000FFFF)) {
             break;
           }
           if (base->object->pose != NULL) {
@@ -2930,6 +2931,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
   bool changed_multi = false;
 
   view3d_operator_needs_opengl(C);
+  BKE_object_update_select_id(CTX_data_main(C));
 
   /* setup view context for argument to callbacks */
   ED_view3d_viewcontext_init(C, &vc);
@@ -3670,6 +3672,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
 
   if (obedit || BKE_paint_select_elem_test(obact) || (obact && (obact->mode & OB_MODE_POSE))) {
     view3d_operator_needs_opengl(C);
+    BKE_object_update_select_id(CTX_data_main(C));
 
     FOREACH_OBJECT_IN_MODE_BEGIN (vc.view_layer, vc.v3d, obact->type, obact->mode, ob_iter) {
       ED_view3d_viewcontext_init_object(&vc, ob_iter);

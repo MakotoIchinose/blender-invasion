@@ -3764,9 +3764,6 @@ static void lib_link_pose(FileData *fd, Main *bmain, Object *ob, bPose *pose)
     }
   }
 
-  /* avoid string */
-  GHash *bone_hash = BKE_armature_bone_from_name_map(arm);
-
   if (ob->proxy) {
     /* sync proxy layer */
     if (pose->proxy_layer) {
@@ -3775,7 +3772,7 @@ static void lib_link_pose(FileData *fd, Main *bmain, Object *ob, bPose *pose)
 
     /* sync proxy active bone */
     if (pose->proxy_act_bone[0]) {
-      Bone *bone = BLI_ghash_lookup(bone_hash, pose->proxy_act_bone);
+      Bone *bone = BKE_armature_find_bone_name(arm, pose->proxy_act_bone);
       if (bone) {
         arm->act_bone = bone;
       }
@@ -3785,7 +3782,7 @@ static void lib_link_pose(FileData *fd, Main *bmain, Object *ob, bPose *pose)
   for (bPoseChannel *pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
     lib_link_constraints(fd, (ID *)ob, &pchan->constraints);
 
-    pchan->bone = BLI_ghash_lookup(bone_hash, pchan->name);
+    pchan->bone = BKE_armature_find_bone_name(arm, pchan->name);
 
     IDP_LibLinkProperty(pchan->prop, fd);
 
@@ -3799,8 +3796,6 @@ static void lib_link_pose(FileData *fd, Main *bmain, Object *ob, bPose *pose)
       pchan->bone->flag |= pchan->selectflag;
     }
   }
-
-  BLI_ghash_free(bone_hash, NULL, NULL);
 
   if (rebuild) {
     DEG_id_tag_update_ex(
@@ -3859,6 +3854,7 @@ static void direct_link_armature(FileData *fd, bArmature *arm)
   Bone *bone;
 
   link_list(fd, &arm->bonebase);
+  arm->bonehash = NULL;
   arm->edbo = NULL;
 
   arm->adt = newdataadr(fd, arm->adt);
@@ -3870,6 +3866,8 @@ static void direct_link_armature(FileData *fd, bArmature *arm)
 
   arm->act_bone = newdataadr(fd, arm->act_bone);
   arm->act_edbone = NULL;
+
+  BKE_armature_bone_hash_make(arm);
 }
 
 /** \} */
@@ -6466,7 +6464,9 @@ static void lib_link_scene(FileData *fd, Main *main)
         seq->scene_sound = NULL;
         if (seq->scene) {
           seq->scene = newlibadr(fd, sce->id.lib, seq->scene);
-          seq->scene_sound = NULL;
+          if (seq->scene) {
+            seq->scene_sound = BKE_sound_scene_add_scene_sound_defaults(sce, seq);
+          }
         }
         if (seq->clip) {
           seq->clip = newlibadr_us(fd, sce->id.lib, seq->clip);
@@ -6487,7 +6487,7 @@ static void lib_link_scene(FileData *fd, Main *main)
           }
           if (seq->sound) {
             id_us_plus_no_lib((ID *)seq->sound);
-            seq->scene_sound = NULL;
+            seq->scene_sound = BKE_sound_add_scene_sound_defaults(sce, seq);
           }
         }
         if (seq->type == SEQ_TYPE_TEXT) {
@@ -6505,6 +6505,9 @@ static void lib_link_scene(FileData *fd, Main *main)
           marker->camera = newlibadr(fd, sce->id.lib, marker->camera);
         }
       }
+
+      BKE_sequencer_update_muting(sce->ed);
+      BKE_sequencer_update_sound_bounds_all(sce);
 
       /* rigidbody world relies on it's linked collections */
       if (sce->rigidbody_world) {
@@ -6635,6 +6638,13 @@ static void direct_link_paint(FileData *fd, const Scene *scene, Paint *p)
 
   p->tool_slots = newdataadr(fd, p->tool_slots);
 
+  /* Workaround for invalid data written in older versions. */
+  const size_t expected_size = sizeof(PaintToolSlot) * p->tool_slots_len;
+  if (p->tool_slots && MEM_allocN_len(p->tool_slots) < expected_size) {
+    MEM_freeN(p->tool_slots);
+    p->tool_slots = MEM_callocN(expected_size, "PaintToolSlot");
+  }
+
   BKE_paint_runtime_init(scene->toolsettings, p);
 }
 
@@ -6687,7 +6697,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
   memset(&sce->customdata_mask, 0, sizeof(sce->customdata_mask));
   memset(&sce->customdata_mask_modal, 0, sizeof(sce->customdata_mask_modal));
 
-  BKE_sound_reset_scene_runtime(sce);
+  BKE_sound_create_scene(sce);
 
   /* set users to one by default, not in lib-link, this will increase it for compo nodes */
   id_us_ensure_real(&sce->id);
@@ -7123,7 +7133,6 @@ static void direct_link_panel_list(FileData *fd, ListBase *lb)
   link_list(fd, lb);
 
   for (Panel *pa = lb->first; pa; pa = pa->next) {
-    pa->paneltab = newdataadr(fd, pa->paneltab);
     pa->runtime_flag = 0;
     pa->activedata = NULL;
     pa->type = NULL;
@@ -8428,9 +8437,10 @@ static void direct_link_sound(FileData *fd, bSound *sound)
     sound->waveform = NULL;
   }
 
-  sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
-  BLI_spin_init(sound->spinlock);
-
+  if (sound->spinlock) {
+    sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
+    BLI_spin_init(sound->spinlock);
+  }
   /* clear waveform loading flag */
   sound->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
 
@@ -8447,7 +8457,7 @@ static void lib_link_sound(FileData *fd, Main *main)
       sound->ipo = newlibadr_us(
           fd, sound->id.lib, sound->ipo);  // XXX deprecated - old animation system
 
-      BKE_sound_reset_runtime(sound);
+      BKE_sound_load(main, sound);
 
       sound->id.tag &= ~LIB_TAG_NEED_LINK;
     }
@@ -9623,6 +9633,9 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   /* Don't read the active app template, use the default one. */
   user->app_template[0] = '\0';
 
+  /* Clear runtime data. */
+  user->runtime.is_dirty = false;
+
   /* free fd->datamap again */
   oldnewmap_free_unused(fd->datamap);
   oldnewmap_clear(fd->datamap);
@@ -9643,14 +9656,17 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
   ListBase mainlist = {NULL, NULL};
 
   bfd = MEM_callocN(sizeof(BlendFileData), "blendfiledata");
-  bfd->main = BKE_main_new();
-  BLI_addtail(&mainlist, bfd->main);
-  fd->mainlist = &mainlist;
 
+  bfd->main = BKE_main_new();
   bfd->main->versionfile = fd->fileversion;
 
   bfd->type = BLENFILETYPE_BLEND;
-  BLI_strncpy(bfd->main->name, filepath, sizeof(bfd->main->name));
+
+  if ((fd->skip_flags & BLO_READ_SKIP_DATA) == 0) {
+    BLI_addtail(&mainlist, bfd->main);
+    fd->mainlist = &mainlist;
+    BLI_strncpy(bfd->main->name, filepath, sizeof(bfd->main->name));
+  }
 
   if (G.background) {
     /* We only read & store .blend thumbnail in background mode
@@ -9728,45 +9744,52 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 
   /* do before read_libraries, but skip undo case */
   if (fd->memfile == NULL) {
-    do_versions(fd, NULL, bfd->main);
-    do_versions_userdef(fd, bfd);
+    if ((fd->skip_flags & BLO_READ_SKIP_DATA) == 0) {
+      do_versions(fd, NULL, bfd->main);
+    }
+
+    if ((fd->skip_flags & BLO_READ_SKIP_USERDEF) == 0) {
+      do_versions_userdef(fd, bfd);
+    }
   }
 
-  read_libraries(fd, &mainlist);
+  if ((fd->skip_flags & BLO_READ_SKIP_DATA) == 0) {
+    read_libraries(fd, &mainlist);
 
-  blo_join_main(&mainlist);
-
-  lib_link_all(fd, bfd->main);
-
-  /* Skip in undo case. */
-  if (fd->memfile == NULL) {
-    /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
-    blo_split_main(&mainlist, bfd->main);
-    for (Main *mainvar = mainlist.first; mainvar; mainvar = mainvar->next) {
-      BLI_assert(mainvar->versionfile != 0);
-      do_versions_after_linking(mainvar);
-    }
     blo_join_main(&mainlist);
 
-    /* After all data has been read and versioned, uses LIB_TAG_NEW. */
-    ntreeUpdateAllNew(bfd->main);
+    lib_link_all(fd, bfd->main);
+
+    /* Skip in undo case. */
+    if (fd->memfile == NULL) {
+      /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
+      blo_split_main(&mainlist, bfd->main);
+      for (Main *mainvar = mainlist.first; mainvar; mainvar = mainvar->next) {
+        BLI_assert(mainvar->versionfile != 0);
+        do_versions_after_linking(mainvar);
+      }
+      blo_join_main(&mainlist);
+
+      /* After all data has been read and versioned, uses LIB_TAG_NEW. */
+      ntreeUpdateAllNew(bfd->main);
+    }
+
+    BKE_main_id_tag_all(bfd->main, LIB_TAG_NEW, false);
+
+    /* Now that all our data-blocks are loaded,
+     * we can re-generate overrides from their references. */
+    if (fd->memfile == NULL) {
+      /* Do not apply in undo case! */
+      BKE_main_override_static_update(bfd->main);
+    }
+
+    BKE_collections_after_lib_link(bfd->main);
+
+    /* Make all relative paths, relative to the open blend file. */
+    fix_relpaths_library(fd->relabase, bfd->main);
+
+    link_global(fd, bfd); /* as last */
   }
-
-  BKE_main_id_tag_all(bfd->main, LIB_TAG_NEW, false);
-
-  /* Now that all our data-blocks are loaded,
-   * we can re-generate overrides from their references. */
-  if (fd->memfile == NULL) {
-    /* Do not apply in undo case! */
-    BKE_main_override_static_update(bfd->main);
-  }
-
-  BKE_collections_after_lib_link(bfd->main);
-
-  fix_relpaths_library(fd->relabase,
-                       bfd->main); /* make all relative paths, relative to the open blend file */
-
-  link_global(fd, bfd); /* as last */
 
   fd->mainlist = NULL; /* Safety, this is local variable, shall not be used afterward. */
 

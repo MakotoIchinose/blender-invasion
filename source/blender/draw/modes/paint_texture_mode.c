@@ -27,6 +27,8 @@
 
 #include "BKE_node.h"
 
+#include "BLI_string_utils.h"
+
 /* If builtin shaders are needed */
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -39,6 +41,7 @@
 #include "DEG_depsgraph_query.h"
 
 extern char datatoc_common_globals_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_paint_texture_vert_glsl[];
 extern char datatoc_paint_texture_frag_glsl[];
 extern char datatoc_paint_wire_vert_glsl[];
@@ -132,26 +135,31 @@ static void PAINT_TEXTURE_engine_init(void *UNUSED(vedata))
   if (!e_data.fallback_sh) {
     e_data.fallback_sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_UNIFORM_COLOR);
 
-    e_data.image_sh = DRW_shader_create_with_lib(datatoc_paint_texture_vert_glsl,
-                                                 NULL,
-                                                 datatoc_paint_texture_frag_glsl,
-                                                 datatoc_common_globals_lib_glsl,
-                                                 NULL);
+    char *lib = BLI_string_joinN(datatoc_common_globals_lib_glsl, datatoc_common_view_lib_glsl);
+
+    e_data.image_sh = DRW_shader_create_with_lib(
+        datatoc_paint_texture_vert_glsl, NULL, datatoc_paint_texture_frag_glsl, lib, NULL);
 
     e_data.image_masking_sh = DRW_shader_create_with_lib(datatoc_paint_texture_vert_glsl,
                                                          NULL,
                                                          datatoc_paint_texture_frag_glsl,
-                                                         datatoc_common_globals_lib_glsl,
+                                                         lib,
                                                          "#define TEXTURE_PAINT_MASK\n");
 
     e_data.wire_overlay_shader = DRW_shader_create_with_lib(datatoc_paint_wire_vert_glsl,
                                                             NULL,
                                                             datatoc_paint_wire_frag_glsl,
-                                                            datatoc_common_globals_lib_glsl,
+                                                            lib,
                                                             "#define VERTEX_MODE\n");
 
-    e_data.face_overlay_shader = DRW_shader_create(
-        datatoc_paint_face_vert_glsl, NULL, datatoc_gpu_shader_uniform_color_frag_glsl, NULL);
+    e_data.face_overlay_shader = DRW_shader_create_with_lib(
+        datatoc_paint_face_vert_glsl,
+        NULL,
+        datatoc_gpu_shader_uniform_color_frag_glsl,
+        datatoc_common_view_lib_glsl,
+        NULL);
+
+    MEM_freeN(lib);
   }
 }
 
@@ -174,7 +182,7 @@ static DRWShadingGroup *create_texture_paint_shading_group(PAINT_TEXTURE_PassLis
 
   if (masking_enabled) {
     const bool masking_inverted = (imapaint->flag & IMAGEPAINT_PROJECT_LAYER_STENCIL_INV) > 0;
-    GPUTexture *stencil = GPU_texture_from_blender(imapaint->stencil, NULL, GL_TEXTURE_2D, false);
+    GPUTexture *stencil = GPU_texture_from_blender(imapaint->stencil, NULL, GL_TEXTURE_2D);
     DRW_shgroup_uniform_texture(grp, "maskingImage", stencil);
     DRW_shgroup_uniform_vec3(grp, "maskingColor", imapaint->stencil_col, 1);
     DRW_shgroup_uniform_bool_copy(grp, "maskingInvertStencil", masking_inverted);
@@ -228,7 +236,7 @@ static void PAINT_TEXTURE_cache_init(void *vedata)
                                                   NULL;
           int interp = (ma && ma->texpaintslot) ? ma->texpaintslot[ma->paint_active_slot].interp :
                                                   0;
-          GPUTexture *tex = GPU_texture_from_blender(ima, NULL, GL_TEXTURE_2D, false);
+          GPUTexture *tex = GPU_texture_from_blender(ima, NULL, GL_TEXTURE_2D);
 
           if (tex) {
             DRWShadingGroup *grp = create_texture_paint_shading_group(
@@ -242,7 +250,7 @@ static void PAINT_TEXTURE_cache_init(void *vedata)
       }
       else {
         Image *ima = imapaint->canvas;
-        GPUTexture *tex = GPU_texture_from_blender(ima, NULL, GL_TEXTURE_2D, false);
+        GPUTexture *tex = GPU_texture_from_blender(ima, NULL, GL_TEXTURE_2D);
 
         if (tex) {
           DRWShadingGroup *grp = create_texture_paint_shading_group(
@@ -308,24 +316,23 @@ static void PAINT_TEXTURE_cache_populate(void *vedata, Object *ob)
           for (int i = 0; i < mat_nr; i++) {
             const int index = use_material_slots ? i : 0;
             if ((i < me->totcol) && stl->g_data->shgroup_image_array[index]) {
-              DRW_shgroup_call_add(
-                  stl->g_data->shgroup_image_array[index], geom_array[i], ob->obmat);
+              DRW_shgroup_call(stl->g_data->shgroup_image_array[index], geom_array[i], ob->obmat);
             }
             else {
-              DRW_shgroup_call_add(stl->g_data->shgroup_fallback, geom_array[i], ob->obmat);
+              DRW_shgroup_call(stl->g_data->shgroup_fallback, geom_array[i], ob->obmat);
             }
           }
         }
         else {
           if (stl->g_data->shgroup_image_array[0]) {
             struct GPUBatch *geom = DRW_cache_mesh_surface_texpaint_single_get(ob);
-            DRW_shgroup_call_add(stl->g_data->shgroup_image_array[0], geom, ob->obmat);
+            DRW_shgroup_call(stl->g_data->shgroup_image_array[0], geom, ob->obmat);
           }
         }
       }
       else {
         struct GPUBatch *geom = DRW_cache_mesh_surface_get(ob);
-        DRW_shgroup_call_add(stl->g_data->shgroup_fallback, geom, ob->obmat);
+        DRW_shgroup_call(stl->g_data->shgroup_fallback, geom, ob->obmat);
       }
     }
 
@@ -333,10 +340,10 @@ static void PAINT_TEXTURE_cache_populate(void *vedata, Object *ob)
     if (use_face_sel) {
       struct GPUBatch *geom;
       geom = DRW_cache_mesh_surface_edges_get(ob);
-      DRW_shgroup_call_add(stl->g_data->lwire_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->lwire_shgrp, geom, ob->obmat);
 
       geom = DRW_cache_mesh_surface_get(ob);
-      DRW_shgroup_call_add(stl->g_data->face_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->face_shgrp, geom, ob->obmat);
     }
   }
 }

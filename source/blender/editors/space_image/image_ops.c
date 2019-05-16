@@ -2494,7 +2494,8 @@ static int image_invert_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ibuf->userflags |= IB_BITMAPDIRTY | IB_DISPLAY_BUFFER_INVALID;
+  ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
+  BKE_image_mark_dirty(ima, ibuf);
 
   if (ibuf->mipmap[0]) {
     ibuf->userflags |= IB_MIPMAP_INVALID;
@@ -3542,7 +3543,7 @@ static void change_frame_apply(bContext *C, wmOperator *op)
   SUBFRA = 0.0f;
 
   /* do updates */
-  BKE_sound_update_and_seek(CTX_data_main(C), CTX_data_depsgraph(C));
+  BKE_sound_seek_scene(CTX_data_main(C), scene);
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 }
 

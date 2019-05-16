@@ -606,7 +606,7 @@ typedef struct EEVEE_EffectsInfo {
   /* Other */
   float prev_persmat[4][4];
   /* Lookdev */
-  int ball_size;
+  int sphere_size;
   int anchor[2];
   /* Bloom */
   int bloom_iteration_len;
@@ -816,8 +816,7 @@ typedef struct EEVEE_PrivateData {
   struct DRWShadingGroup *refract_depth_shgrp_cull;
   struct DRWShadingGroup *refract_depth_shgrp_clip;
   struct DRWShadingGroup *refract_depth_shgrp_clip_cull;
-  struct DRWShadingGroup *cube_display_shgrp;
-  struct DRWShadingGroup *planar_display_shgrp;
+  struct DRWCallBuffer *planar_display_shgrp;
   struct GHash *material_hash;
   float background_alpha; /* TODO find a better place for this. */
   /* Chosen lightcache: can come from Lookdev or the viewlayer. */
