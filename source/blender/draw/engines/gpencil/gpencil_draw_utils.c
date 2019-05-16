@@ -1208,7 +1208,7 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
       continue;
     }
     /* verify keyframe type */
-    if ((mode == GP_ONION_MODE_SELECTED) && (onion_keytype > -1)) {
+    if ((mode == GP_ONION_MODE_RELATIVE) && (onion_keytype > -1)) {
       if (gf->key_type != onion_keytype) {
         continue;
       }
@@ -1270,7 +1270,7 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
       continue;
     }
     /* verify keyframe type */
-    if ((mode == GP_ONION_MODE_SELECTED) && (onion_keytype > -1)) {
+    if ((mode == GP_ONION_MODE_RELATIVE) && (onion_keytype > -1)) {
       if (gf->key_type != onion_keytype) {
         continue;
       }

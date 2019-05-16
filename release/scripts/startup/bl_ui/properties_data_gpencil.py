@@ -267,7 +267,6 @@ class DATA_PT_gpencil_onion_skinning(DataButtonsPanel, Panel):
             col = layout.column(align=True)
             col.prop(gpd, "ghost_before_range", text="Keyframes Before")
             col.prop(gpd, "ghost_after_range", text="Keyframes After")
-        elif gpd.onion_mode == 'SELECTED':
             col.prop(gpd, "onion_keyframe_type")
  
 

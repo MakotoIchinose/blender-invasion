@@ -1767,6 +1767,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "gstep");
   RNA_def_property_range(prop, 0, 120);
   RNA_def_property_int_default(prop, 1);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
   RNA_def_property_ui_text(prop,
                            "Frames Before",
                            "Maximum number of frames to show before current frame "
@@ -1777,6 +1778,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "gstep_next");
   RNA_def_property_range(prop, 0, 120);
   RNA_def_property_int_default(prop, 1);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
   RNA_def_property_ui_text(prop,
                            "Frames After",
                            "Maximum number of frames to show after current frame "
