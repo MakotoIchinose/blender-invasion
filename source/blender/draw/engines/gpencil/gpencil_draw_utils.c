@@ -1186,6 +1186,7 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
   int last = gpf->framenum;
 
   colflag = (bool)gpd->onion_flag & GP_ONION_GHOST_PREVCOL;
+  const short onion_keytype = gpd->onion_keytype;
 
   /* -------------------------------
    * 1) Draw Previous Frames First
@@ -1205,6 +1206,12 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
     /* only selected frames */
     if ((mode == GP_ONION_MODE_SELECTED) && ((gf->flag & GP_FRAME_SELECT) == 0)) {
       continue;
+    }
+    /* verify keyframe type */
+    if ((mode == GP_ONION_MODE_SELECTED) && (onion_keytype > -1)) {
+      if (gf->key_type != onion_keytype) {
+        continue;
+      }
     }
     /* absolute range */
     if (mode == GP_ONION_MODE_ABSOLUTE) {
@@ -1261,6 +1268,12 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
     /* only selected frames */
     if ((mode == GP_ONION_MODE_SELECTED) && ((gf->flag & GP_FRAME_SELECT) == 0)) {
       continue;
+    }
+    /* verify keyframe type */
+    if ((mode == GP_ONION_MODE_SELECTED) && (onion_keytype > -1)) {
+      if (gf->key_type != onion_keytype) {
+        continue;
+      }
     }
     /* absolute range */
     if (mode == GP_ONION_MODE_ABSOLUTE) {
