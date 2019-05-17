@@ -111,8 +111,11 @@ void io_common_default_declare_export(struct wmOperatorType *ot,
 	                "Export as Groups named like Blender Objects",
 	                "Export Blender Objects as named groups");
 
-	RNA_def_boolean(ot->srna, "apply_subdiv", 0,
-	                "Apply Subsurf", "Export subdivision surfaces as meshes");
+	RNA_def_boolean(ot->srna, "apply_modifiers", 0,
+	                "Apply Modifiers", "Apply modifiers before exporting");
+
+	RNA_def_boolean(ot->srna, "render_modifiers", 0,
+	                "Use Render Modifiers", "Whether to use Render or View modifier stettings");
 
 	RNA_def_boolean(ot->srna, "curves_as_mesh", false,
 	                "Curves as Mesh", "Export curves and NURBS surfaces as meshes");
@@ -147,11 +150,18 @@ ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
                                                             struct wmOperator *op) {
 	ExportSettings *settings = MEM_mallocN(sizeof(ExportSettings), "ExportSettings");
 
-	settings->scene               = CTX_data_scene(C);
-	settings->view_layer          = CTX_data_view_layer(C);
-	settings->depsgraph           = DEG_graph_new(settings->scene, settings->view_layer,
-	                                              DAG_EVAL_RENDER);
-	settings->main                = CTX_data_main(C);
+	settings->scene            = CTX_data_scene(C);
+	settings->view_layer       = CTX_data_view_layer(C);
+
+	settings->apply_modifiers  = RNA_boolean_get(op->ptr, "apply_modifiers");
+	settings->render_modifiers = RNA_boolean_get(op->ptr, "render_modifiers");
+
+	// If render_modifiers use render depsgraph, to get render modifiers
+	settings->depsgraph        = DEG_graph_new(settings->scene, settings->view_layer,
+	                                           settings->render_modifiers ?
+	                                           DAG_EVAL_RENDER : DAG_EVAL_VIEWPORT);
+
+	settings->main             = CTX_data_main(C);
 
 	RNA_string_get(op->ptr, "filepath", settings->filepath);
 
@@ -181,8 +191,6 @@ ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
 	settings->export_objects_as_objects= RNA_boolean_get(op->ptr, "export_objects_as_objects");
 	settings->export_objects_as_groups = RNA_boolean_get(op->ptr, "export_objects_as_groups");
 
-
-	settings->apply_subdiv             = RNA_boolean_get(op->ptr, "apply_subdiv");
 	settings->curves_as_mesh           = RNA_boolean_get(op->ptr, "curves_as_mesh");
 	settings->pack_uv                  = RNA_boolean_get(op->ptr, "pack_uv");
 	settings->triangulate              = RNA_boolean_get(op->ptr, "triangulate");
@@ -317,7 +325,10 @@ void io_common_export_draw(bContext *C, wmOperator *op) {
 	uiItemR(row, &ptr, "export_face_sets", 0, NULL, ICON_NONE);
 
 	row = uiLayoutRow(box, false);
-	uiItemR(row, &ptr, "apply_subdiv", 0, NULL, ICON_NONE);
+	uiItemR(row, &ptr, "apply_modifiers", 1, NULL, ICON_NONE);
+
+	row = uiLayoutRow(box, false);
+	uiItemR(row, &ptr, "render_modifiers", 1, NULL, ICON_NONE);
 
 	row = uiLayoutRow(box, false);
 	uiItemR(row, &ptr, "curves_as_mesh", 0, NULL, ICON_NONE);

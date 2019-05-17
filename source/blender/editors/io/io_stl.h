@@ -1,6 +1,5 @@
 
-/*
- * ***** BEGIN GPL LICENSE BLOCK *****
+/* * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -13,32 +12,34 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
+ * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Hugo Sales
+ * The Original Code is Copyright (C) 2016 Blender Foundation.
+ * All rights reserved.
  *
  * ***** END GPL LICENSE BLOCK *****
+ *
  */
 
-/* #ifndef __IO_OBJ_H__ */
-/* #define __IO_OBJ_H__ */
+#ifndef __IO_STL_H__
+#define __IO_STL_H__
+
+struct wmOperatorType;
+
+/* #include "WM_types.h" */
+
+#include "io_common.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif  /* __cplusplus */
+#endif
 
-#include "../io_common.h"
-
-
-struct bContext;
-
-bool OBJ_export(bContext *C, ExportSettings *settings);
-bool OBJ_export_start(bContext *C, ExportSettings *settings);
-bool OBJ_export_end(bContext *C, ExportSettings *settings);
+void WM_OT_stl_export(struct wmOperatorType *ot);
+void WM_OT_stl_import(struct wmOperatorType *ot);
 
 #ifdef __cplusplus
 }
-#endif  /* __cplusplus */
+#endif
 
-/* #endif  /\* __IO_OBJ_H__ *\/ */
+#endif /* __IO_STL_H__ */

@@ -42,18 +42,24 @@ namespace common {
 	bool get_final_mesh(const ExportSettings * const settings, const Scene * const escene,
 	                    const Object *eob, Mesh **mesh);
 
-	std::string get_object_name(const Object *eob, const Mesh *mesh);
+	std::string get_object_name(const Object * const eob, const Mesh * const mesh);
 
 	template<typename func>
-	void for_each_vertex(const Mesh *mesh, func f) {
+	void for_each_vertex(const Mesh * const mesh, func f) {
 		// TODO someone Should this use iterators? Unsure if those are only for BMesh
 		for (int i = 0, e = mesh->totvert; i < e; ++i)
 			f(i, mesh->mvert[i]);
 	}
 
+	template<typename func>
+	void for_each_edge(const Mesh * const mesh, func f) {
+		for (int i = 0, e = mesh->totedge; i < e; ++i)
+			f(i, mesh->medge[i]);
+	}
+
 	struct for_each_uv_t {
 		template<typename func>
-		void operator()(Mesh *mesh, func f) {
+		void operator()(const Mesh * const mesh, func f) {
 			for (int i = 0, e = mesh->totloop; i < e; ++i) {
 				const float (&uv)[2] = mesh->mloopuv[i].uv;
 				f(i, std::array<float, 2>{uv[0], uv[1]});
@@ -62,13 +68,13 @@ namespace common {
 	};
 
 	template<typename func>
-	void for_each_uv(Mesh *mesh, func f) {
+	void for_each_uv(const Mesh * const mesh, func f) {
 		for_each_uv_t{}(mesh, f);
 	}
 
 	struct for_each_normal_t {
 		template<typename func>
-		void operator()(Mesh *mesh, func f) {
+		void operator()(const Mesh * const mesh, func f) {
 			const float (*loop_no)[3] = static_cast<float(*)[3]>
 				(CustomData_get_layer(&mesh->ldata,
 				                      CD_NORMAL));
@@ -112,12 +118,12 @@ namespace common {
 	};
 
 	template<typename func>
-	void for_each_normal(Mesh *mesh, func f) {
+	void for_each_normal(const Mesh * const mesh, func f) {
 		for_each_normal_t{}(mesh, f);
 	}
 
 	template<typename key_t>
-	using set_t = std::set<key_t, bool (*)(key_t, key_t)>;
+	using set_t = std::set<key_t, bool (*)(const key_t &, const key_t &)>;
 
 	template<typename key_t>
 	using set_mapping_t = std::vector<typename set_t<key_t>::iterator>;
@@ -128,37 +134,9 @@ namespace common {
 	using uv_key_t = std::pair<std::array<float, 2>, ulong>;
 	using no_key_t = std::pair<std::array<float, 3>, ulong>;
 
-	// template<typename func>
-	// void for_each_deduplicated_uv(Mesh *mesh, ulong &total, dedup_pair_t<uv_key_t>& p, func f);
-
-	// template<typename func>
-	// void for_each_deduplicated_normal(Mesh *mesh, ulong &total, dedup_pair_t<no_key_t>& p, func f);
-
-	// template <class F>
-	// struct lambda_traits : lambda_traits<decltype(&F::operator())> {};
-
-	// template <typename F, typename R, typename... Args>
-	// struct lambda_traits<R(F::*)(Args...)> : lambda_traits<R(F::*)(Args...) const> {};
-
-	// template <class F, class R, class... Args>
-	// struct lambda_traits<R(F::*)(Args...) const> {
-	// 	using pointer = typename std::add_pointer<R(Args...)>::type;
-
-	// 	static pointer stateful_lambda_to_pointer(F&& f) {
-	// 		static F fn = std::forward<F>(f);
-	// 		return [](Args... args) {
-	// 			       return fn(std::forward<Args>(args)...);
-	// 		       };
-	// 	}
-	// };
-
-	// template <class F>
-	// inline typename lambda_traits<F>::pointer stateful_lambda_to_pointer(F&& f) {
-	// 	return lambda_traits<F>::stateful_lambda_to_pointer(std::forward<F>(f));
-	// }
-
+	// TODO someone Benchmark the performance wth iterators and normal deduplication
 	template<typename for_each_t, typename dedup_set_mapping_t, typename on_insert_t>
-	void deduplicate(ulong &total, ulong reserve, Mesh *mesh,
+	void deduplicate(ulong &total, ulong reserve, const Mesh * const mesh,
 	                 dedup_set_mapping_t &p,
 	                 for_each_t for_each,
 	                 on_insert_t on_insert) {
@@ -181,15 +159,16 @@ namespace common {
 		               });
 	}
 
-	// Again, C++14/17 would be really useful here...
+	// Again, C++14/17 would be really useful here...rmal
 	template<typename key_t>
 	dedup_pair_t<key_t> make_deduplicate_set() {
-		auto cmp = [](key_t lhs, key_t rhs) -> bool { return lhs.first < rhs.first; };
+		auto cmp = [](const key_t &lhs, const key_t &rhs) -> bool
+		           { return lhs.first < rhs.first; };
 		return {set_t<key_t>{cmp} /* set */, {} /* set_mapping */};
 	}
 
 	template<typename func>
-	void for_each_deduplicated_uv(Mesh *mesh, ulong &total,
+	void for_each_deduplicated_uv(const Mesh *mesh, ulong &total,
 	                              dedup_pair_t<uv_key_t>& p, func f) {
 		deduplicate(/* modifies  */ total,
 		            /* reserve   */ total + mesh->totloop,
@@ -200,11 +179,10 @@ namespace common {
 	}
 
 	template<typename func>
-	void for_each_deduplicated_normal(Mesh *mesh, ulong &total,
+	void for_each_deduplicated_normal(const Mesh *mesh, ulong &total,
 	                                  dedup_pair_t<no_key_t>& p, func f) {
 		deduplicate(/* modifies  */ total,
-		            /* Assume 4 verts per face, doesn't break anything if not true */
-		            total + mesh->totpoly * 4, // TODO someone There's probably a better way to do this
+		            total + mesh->totvert,
 		            mesh,
 		            /* modifies  */ p,
 		            /* for_each  */ for_each_normal_t{},
@@ -223,4 +201,4 @@ namespace common {
 	}
 }
 
-#endif // __io_intern_common__
+#endif // __io_intern_common_

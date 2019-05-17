@@ -25,10 +25,6 @@
 #ifndef __IO_OBJ_H__
 #define __IO_OBJ_H__
 
-/** \file blender/editors/io/io_obj.h
- *  \ingroup editor/io
- */
-
 struct wmOperatorType;
 
 /* #include "WM_types.h" */

@@ -1,4 +1,3 @@
-
 /*
  * ***** BEGIN GPL LICENSE BLOCK *****
  *
@@ -21,8 +20,8 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/* #ifndef __IO_OBJ_H__ */
-/* #define __IO_OBJ_H__ */
+#ifndef __IO_STL_H__
+#define __IO_STL_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,12 +32,12 @@ extern "C" {
 
 struct bContext;
 
-bool OBJ_export(bContext *C, ExportSettings *settings);
-bool OBJ_export_start(bContext *C, ExportSettings *settings);
-bool OBJ_export_end(bContext *C, ExportSettings *settings);
+bool STL_export(bContext *C, ExportSettings *settings);
+bool STL_export_start(bContext *C, ExportSettings *settings);
+bool STL_export_end(bContext *C, ExportSettings *settings);
 
 #ifdef __cplusplus
 }
 #endif  /* __cplusplus */
 
-/* #endif  /\* __IO_OBJ_H__ *\/ */
+#endif  /* __IO_STL_H__ */

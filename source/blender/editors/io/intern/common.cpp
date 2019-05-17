@@ -24,7 +24,7 @@ extern "C" {
 
 // Anonymous namespace for internal functions
 namespace {
-	void name_compat(std::string& ob_name, std::string& mesh_name) {
+	void name_compat(std::string& ob_name, const std::string& mesh_name) {
 		if(ob_name.compare(mesh_name) != 0) {
 			ob_name += "_" + mesh_name;
 		}
@@ -36,7 +36,7 @@ namespace {
 
 namespace common {
 
-	static bool object_is_smoke_sim(const Object * const ob) {
+	bool object_is_smoke_sim(const Object * const ob) {
 		ModifierData *md = modifiers_findByType((Object *) ob, eModifierType_Smoke);
 		if (md) {
 			SmokeModifierData *smd = (SmokeModifierData *) md;
@@ -50,16 +50,11 @@ namespace common {
 	 *
 	 * \param settings: export settings, used for options like 'selected only'.
 	 * \param ob: the object's base in question.
-	 * \param is_duplicated: Normally false; true when the object is instanced
-	 * into the scene by a dupli-object (e.g. part of a dupligroup).
-	 * This ignores selection and layer visibility,
+	 * This ignores layer visibility,
 	 * and assumes that the dupli-object itself (e.g. the group-instantiating empty) is exported.
 	 */
 	bool should_export_object(const ExportSettings * const settings, const Object * const eob) {
-
-		/* From alembic */
-
-		// TODO someone Currently ignoring all dupli objects; unsure if expected behavior
+		// If the object is a dupli, it's export satus depends on the parent
 		if (!(eob->flag & BASE_FROM_DUPLI)) {
 			/* !(eob->parent != NULL && eob->parent->transflag & OB_DUPLI) */
 
@@ -97,10 +92,11 @@ namespace common {
 		/* From abc_mesh.cc */
 
 		/* Temporarily disable subdivs if we shouldn't apply them */
-		if (!settings->apply_subdiv)
-			for (ModifierData *md = (ModifierData *) eob->modifiers.first; md; md = md->next)
-				if (md->type == eModifierType_Subsurf)
-					md->mode |= eModifierMode_DisableTemporary;
+		if (!settings->apply_modifiers)
+			for (ModifierData *md = (ModifierData *) eob->modifiers.first;
+			     md; md = md->next)
+				// if (md->type == eModifierType_Subsurf)
+				md->mode |= eModifierMode_DisableTemporary;
 
 		float scale_mat[4][4];
 		scale_m4_fl(scale_mat, settings->global_scale);
@@ -113,12 +109,21 @@ namespace common {
 			;               /* TODO someone flip normals */
 
 		/* Object *eob = DEG_get_evaluated_object(settings->depsgraph, ob); */
-		*mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene, (Object *)eob, &CD_MASK_MESH);
+		//*mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene,
+		//                            (Object *)eob, &CD_MASK_MESH);
 
-		if (!settings->apply_subdiv)
-			for (ModifierData *md = (ModifierData *) eob->modifiers.first; md; md = md->next)
-				if (md->type == eModifierType_Subsurf)
-					md->mode &= ~eModifierMode_DisableTemporary;
+		if (settings->render_modifiers) // vv Depends on depsgraph type
+			*mesh = mesh_create_eval_final_render(settings->depsgraph, (Scene *) escene,
+			                                 (Object *) eob, &CD_MASK_MESH);
+		else
+			*mesh = mesh_create_eval_final_view(settings->depsgraph, (Scene *) escene,
+			                               (Object *) eob, &CD_MASK_MESH);
+
+		if (!settings->apply_modifiers)
+			for (ModifierData *md = (ModifierData *) eob->modifiers.first;
+			     md; md = md->next)
+				// if (md->type == eModifierType_Subsurf)
+				md->mode &= ~eModifierMode_DisableTemporary;
 
 		if (settings->triangulate) {
 			struct BMeshCreateParams bmcp = {false};
@@ -135,12 +140,11 @@ namespace common {
 			/* Needs to free? */
 			return true;
 		}
-
 		/* Needs to free? */
 		return false;
 	}
 
-	std::string get_object_name(const Object *eob, const Mesh *mesh) {
+	std::string get_object_name(const Object * const eob, const Mesh * const mesh) {
 		std::string name{eob->id.name + 2};
 		std::string mesh_name{mesh->id.name + 2};
 		name_compat(name /* modifies */, mesh_name);

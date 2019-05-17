@@ -42,6 +42,7 @@ set(SRC
   io_ops.c
   io_common.c
   io_obj.c
+  io_stl.c
 
   io_alembic.h
   io_cache.h
@@ -49,11 +50,14 @@ set(SRC
   io_ops.h
   io_common.h
   io_obj.h
+  io_stl.h
 
   intern/obj.cpp
   intern/obj.h
   intern/common.cpp
   intern/common.hpp
+  intern/stl.cpp
+  intern/stl.h
 )
 
 set(LIB

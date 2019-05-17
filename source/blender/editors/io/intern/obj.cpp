@@ -14,11 +14,12 @@ extern "C" {
 #include "BKE_screen.h"
 #undef new
 
-#include "DNA_space_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
 #include "DNA_ID.h"
+#include "DNA_material_types.h"
+#include "DNA_meshdata_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
+#include "DNA_space_types.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -42,25 +43,64 @@ extern "C" {
 #include "../io_common.h"
 }
 
-#include <iostream>
+#include <array>
+#include <chrono>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <set>
-#include <array>
+#include <unordered_map>
 #include <vector>
-#include <chrono>
 
 #include "common.hpp"
+
+/*
+  TODO someone: () not done, -- done, # maybe add, ? unsure
+  presets
+  axis remap
+  --selection only
+  animation - partly
+  --apply modifiers
+  --render modifiers -- mesh_create_derived_{view,render}, deg_get_mode
+  --edges
+  smooth groups
+  bitflag smooth groups?
+  --normals
+  --uvs
+  materials
+  --triangulate
+  nurbs
+  polygroups?
+  --obj objects
+  --obj groups
+  material groups
+  -?vertex order
+  --scale
+  path mode -- python repr
+  # units?
+
+  TODO someone filter_glob : StringProp weird Python syntax
+
+ */
 
 namespace {
 
 	using namespace common;
 
+	bool OBJ_export_material(bContext *UNUSED(C), ExportSettings *settings, std::fstream &fs,
+	                         std::unordered_map<std::string, const Material *> materials) {
+
+		fs << "# Blender MTL File\n"; /*TODO someone Filename necessary? */
+		fs << "# Material Count: " << materials.size() << '\n';
+
+		return true;
+	}
+
 	bool OBJ_export_mesh(bContext *UNUSED(C), ExportSettings *settings, std::fstream &fs,
 	                     Object *eob, Mesh *mesh,
 	                     ulong &vertex_total, ulong &uv_total, ulong &no_total,
-	                     dedup_pair_t<uv_key_t> &uv_mapping_pair,
-	                     dedup_pair_t<no_key_t> &no_mapping_pair) {
+	                     dedup_pair_t<uv_key_t> &uv_mapping_pair /* IN OUT */,
+	                     dedup_pair_t<no_key_t> &no_mapping_pair /* IN OUT */) {
 
 		auto &uv_mapping = uv_mapping_pair.second;
 		auto &no_mapping = no_mapping_pair.second;
@@ -80,7 +120,7 @@ namespace {
 		}
 
 		fs << std::fixed << std::setprecision(6);
-		common::for_each_vertex(mesh, [&fs](ulong UNUSED(i), MVert v) {
+		common::for_each_vertex(mesh, [&fs](ulong UNUSED(i), const MVert &v) {
 			                              fs << "v "
 			                                 << v.co[0] << ' '
 			                                 << v.co[1] << ' '
@@ -92,7 +132,8 @@ namespace {
 			common::for_each_deduplicated_uv(mesh, /* modifies */ uv_total,
 			                                 /* modifies */ uv_mapping_pair,
 			                                 [&fs](ulong UNUSED(i),
-			                                       typename set_t<uv_key_t>::iterator v) {
+			                                       const typename set_t<uv_key_t>::
+			                                       iterator &v) {
 				                                 fs << "vt " << v->first[0]
 				                                    << ' '   << v->first[1] << '\n';
 			                                 });
@@ -100,19 +141,26 @@ namespace {
 
 		if (settings->export_normals) {
 			fs << std::fixed << std::setprecision(4);
-
-			// TODO someone Should deduplicate normals?
 			common::for_each_deduplicated_normal(mesh, /* modifies */ no_total,
-			                             /* modifies */ no_mapping_pair,
-			                             [&fs](ulong UNUSED(i),
-			                                   typename set_t<no_key_t>::iterator v) {
-				                             fs << "vn " << v->first[0]
-				                                << ' '   << v->first[1]
-				                                << ' '   << v->first[2] << '\n';
-			                             });
+			                                     /* modifies */ no_mapping_pair,
+			                                     [&fs](ulong UNUSED(i),
+			                                           const typename set_t<no_key_t>::
+			                                           iterator &v) {
+				                                     fs << "vn " << v->first[0]
+				                                        << ' '   << v->first[1]
+				                                        << ' '   << v->first[2] << '\n';
+			                                     });
 		}
 
-		std::cout << "Totals: "  << uv_total << " " << no_total
+		if (settings->export_edges) {
+			common::for_each_edge(mesh, [&fs](ulong UNUSED(i), const MEdge &e){
+				                            if (e->flag & ME_LOOSEEDGE)
+					                            fs << "l " << e->v1
+					                               << ' '  << e->v2 << '\n';
+			                            });
+		}
+
+		std::cerr << "Totals: "  << uv_total << " " << no_total
 		          << "\nSizes: " << uv_mapping.size() << " " << no_mapping.size()  << '\n';
 
 		for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
@@ -192,8 +240,8 @@ bool OBJ_export_start(bContext *C, ExportSettings *settings) {
 		BKE_scene_frame_set(scene, frame);
 		BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
 
-		auto uv_mapping_pair = make_deduplicate_set<common::uv_key_t>();
-		auto no_mapping_pair = make_deduplicate_set<common::no_key_t>();
+		auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>();
+		auto no_mapping_pair = common::make_deduplicate_set<no_key_t>();
 
 		// TODO someone if not exporting as objects, do they need to all be merged?
 
