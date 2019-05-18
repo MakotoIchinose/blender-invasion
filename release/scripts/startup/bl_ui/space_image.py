@@ -230,19 +230,21 @@ class IMAGE_MT_image(Menu):
         if ima and ima.source == 'SEQUENCE':
             layout.operator("image.save_sequence")
 
-        layout.operator("image.save_dirty", text="Save All Images")
+        layout.operator("image.save_all_modified", text="Save All Images")
 
         if ima:
             layout.separator()
 
             layout.menu("IMAGE_MT_image_invert")
 
-            if not show_render:
+        if ima and not show_render:
+            if ima.packed_file:
+                if len(ima.filepath):
+                    layout.separator()
+                    layout.operator("image.unpack", text="Unpack")
+            else:
                 layout.separator()
-                if ima.packed_file:
-                    layout.operator("image.pack", text="Repack")
-                else:
-                    layout.operator("image.pack", text="Pack")
+                layout.operator("image.pack", text="Pack")
 
 
 class IMAGE_MT_image_invert(Menu):

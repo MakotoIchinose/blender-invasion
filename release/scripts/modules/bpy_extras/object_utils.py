@@ -80,7 +80,8 @@ def add_object_align_init(context, operator):
             rotation.resize_4x4()
             properties.rotation = rotation.to_euler()
         elif properties.align == 'CURSOR':
-            rotation = context.scene.cursor.rotation_euler.to_matrix().to_4x4()
+            rotation = context.scene.cursor.matrix
+            rotation.col[3][0:3] = 0.0, 0.0, 0.0
             properties.rotation = rotation.to_euler()
         else:
             rotation = properties.rotation.to_matrix().to_4x4()
@@ -140,7 +141,7 @@ def object_data_add(context, obdata, operator=None, name=None):
         bpy.ops.object.mode_set(mode='OBJECT')
 
         obj_act.select_set(True)
-        scene.update()  # apply location
+        layer.update()  # apply location
         # layer.objects.active = obj_new
 
         # Match up UV layers, this is needed so adding an object with UV's

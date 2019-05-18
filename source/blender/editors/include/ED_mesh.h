@@ -142,6 +142,16 @@ bool BMBVH_EdgeVisible(struct BMBVHTree *tree,
 void ED_mesh_undosys_type(struct UndoType *ut);
 
 /* editmesh_select.c */
+struct EDBMSelectID_Context;
+struct EDBMSelectID_Context *EDBM_select_id_context_create(struct ViewContext *vc,
+                                                           struct Base **bases,
+                                                           const uint bases_len,
+                                                           short select_mode);
+void EDBM_select_id_context_destroy(struct EDBMSelectID_Context *sel_id_ctx);
+struct BMElem *EDBM_select_id_bm_elem_get(struct EDBMSelectID_Context *sel_id_ctx,
+                                          const uint sel_id,
+                                          uint *r_base_index);
+
 void EDBM_select_mirrored(
     struct BMEditMesh *em, const int axis, const bool extend, int *r_totmirr, int *r_totfail);
 void EDBM_automerge(struct Scene *scene, struct Object *ob, bool update, const char hflag);
@@ -173,7 +183,7 @@ struct BMEdge *EDBM_edge_find_nearest_ex(struct ViewContext *vc,
                                          float *r_dist,
                                          float *r_dist_center,
                                          const bool use_select_bias,
-                                         const bool use_cycle,
+                                         bool use_cycle,
                                          struct BMEdge **r_eed_zbuf,
                                          struct Base **bases,
                                          uint bases_len,
@@ -184,7 +194,7 @@ struct BMFace *EDBM_face_find_nearest_ex(struct ViewContext *vc,
                                          float *r_dist,
                                          float *r_dist_center,
                                          const bool use_select_bias,
-                                         const bool use_cycle,
+                                         bool use_cycle,
                                          struct BMFace **r_efa_zbuf,
                                          struct Base **bases,
                                          uint bases_len,

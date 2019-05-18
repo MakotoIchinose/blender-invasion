@@ -982,7 +982,11 @@
     <outliner>
       <ThemeOutliner
         match="#337f33"
-        selected_highlight="#314e78"
+        selected_highlight="#7a8e99"
+        selected_object="#ffddb3"
+        active_object="#ffffff"
+        edited_object="#0080624d"
+        row_alternate="#ffffff0f"
         >
         <space>
           <ThemeSpaceGeneric

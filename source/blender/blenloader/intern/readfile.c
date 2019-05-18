@@ -2538,7 +2538,7 @@ static void _IDP_DirectLinkGroup_OrFree(IDProperty **prop,
       /* corrupt file! */
       printf("%s: found non group data, freeing type %d!\n", caller_func_id, (*prop)->type);
       /* don't risk id, data's likely corrupt. */
-      // IDP_FreeProperty(*prop);
+      // IDP_FreePropertyContent(*prop);
       *prop = NULL;
     }
   }
@@ -3883,9 +3883,10 @@ static void lib_link_camera(FileData *fd, Main *main)
       IDP_LibLinkProperty(ca->id.properties, fd);
       lib_link_animdata(fd, &ca->id, ca->adt);
 
-      ca->ipo = newlibadr_us(fd, ca->id.lib, ca->ipo);  // XXX deprecated - old animation system
+      ca->ipo = newlibadr_us(fd, ca->id.lib, ca->ipo); /* deprecated, for versioning */
 
-      ca->dof_ob = newlibadr(fd, ca->id.lib, ca->dof_ob);
+      ca->dof_ob = newlibadr(fd, ca->id.lib, ca->dof_ob); /* deprecated, for versioning */
+      ca->dof.focus_object = newlibadr(fd, ca->id.lib, ca->dof.focus_object);
 
       for (CameraBGImage *bgpic = ca->bg_images.first; bgpic; bgpic = bgpic->next) {
         bgpic->ima = newlibadr_us(fd, ca->id.lib, bgpic->ima);
