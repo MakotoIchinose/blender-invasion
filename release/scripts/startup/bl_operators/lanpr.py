@@ -221,7 +221,8 @@ class LANPR_render_composited(bpy.types.Operator):
         
         while True :
         
-            lanpr_render_backdrop_first(bpy.context.scene)
+            #Seems that backdrop is now rendered ever time?
+            #lanpr_render_backdrop_first(bpy.context.scene)
             
             lanpr_render_this_scene_next(bpy.context.scene)
             
