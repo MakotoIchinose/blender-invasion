@@ -434,9 +434,9 @@ typedef struct LANPR_RenderElementLinkNode {
 
 typedef struct LANPR_RenderLineSegment {
 	nListItem Item;
-	//real     Begin, End;  // 0->At[L] 1->At[R]
-	real at;
-	u8bit OcclusionLevel;    //after
+	real at;                 // at==0: left    at==1: right
+	u8bit OcclusionLevel;    // after "at" point
+	short MaterialMaskMark;  // e.g. to determine lines beind a glass window material.
 }LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
@@ -469,7 +469,7 @@ typedef struct LANPR_RenderLine {
 	struct LANPR_RenderTriangle *TL, *TR;
 	ListBase Segments;
 	//tnsEdge*       Edge;//should be edge material
-	//tnsRenderTriangle* Testing;//Should Be tRT** Testing[NumOfThreads]
+	//tnsRenderTriangle* Testing;//Should Be tRT** Testing[NumOfThreads]	struct Materil *MaterialRef;
 	char MinOcclude;
 	char Flags; // also for line type determination on chainning
 	struct Object *ObjectRef;
