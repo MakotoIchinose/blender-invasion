@@ -34,6 +34,7 @@
 
 #include "BKE_pbvh.h"
 #include "BKE_mesh.h"
+#include "BKE_paint.h"
 
 struct KeyBlock;
 struct Object;
@@ -148,6 +149,9 @@ typedef struct SculptUndoNode {
   int remesh_totedge;
   int remesh_totloop;
   int remesh_totpoly;
+
+  float pivot_pos[3];
+  float pivot_rot[4];
 
   size_t undo_size;
 } SculptUndoNode;
@@ -299,6 +303,15 @@ void sculpt_pbvh_calc_area_normal(const struct Brush *brush,
  *
  * For descriptions of these settings, check the operator properties.
  */
+
+typedef struct FilterCache {
+  float (*orco)[3];
+  float *random_disp;
+
+  /* unmasked nodes */
+  PBVHNode **nodes;
+  int totnode;
+} FilterCache;
 
 typedef struct StrokeCache {
   /* Invariants */

@@ -79,6 +79,7 @@
 #include "ED_clip.h"
 #include "ED_node.h"
 #include "ED_gpencil.h"
+#include "ED_sculpt.h"
 
 #include "WM_types.h"
 #include "WM_api.h"
@@ -2088,6 +2089,10 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     RNA_property_enum_set(op->ptr, prop, t->mode);
   }
 
+  if (t->options & CTX_SCULPT) {
+    ED_sculpt_end_transform(C, t->options & CTX_SCULPT_PIVOT);
+  }
+
   if ((prop = RNA_struct_find_property(op->ptr, "value"))) {
     float values[4];
 
@@ -2346,6 +2351,16 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     }
   }
 
+  Object *ob = CTX_data_active_object(C);
+  if (ob && ob->mode == OB_MODE_SCULPT) {
+    options |= CTX_SCULPT;
+    if ((prop = RNA_struct_find_property(op->ptr, "move_pivot_only"))) {
+      if (RNA_property_boolean_get(op->ptr, prop)) {
+        options |= CTX_SCULPT_PIVOT;
+      }
+    }
+  }
+
   t->options = options;
 
   t->mode = mode;
@@ -2407,6 +2422,10 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   }
 
   createTransData(C, t);  // make TransData structs from selection
+
+  if (t->options & CTX_SCULPT) {
+    ED_sculpt_init_transform(C, t->options & CTX_SCULPT_PIVOT);
+  }
 
   if (t->data_len_all == 0) {
     postTrans(C, t);

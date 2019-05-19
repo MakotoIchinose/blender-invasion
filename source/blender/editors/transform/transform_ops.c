@@ -689,6 +689,15 @@ void Transform_Properties(struct wmOperatorType *ot, int flags)
     RNA_def_property_ui_text(prop, "Center Override", "Force using this center value (when set)");
   }
 
+  if (flags & P_SCULPT_EDIT) {
+    prop = RNA_def_boolean(ot->srna,
+                           "move_pivot_only",
+                           0,
+                           "Move pivot only",
+                           "Moves the pivot without affecting the sculpt.");
+    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  }
+
   if ((flags & P_NO_DEFAULTS) == 0) {
     prop = RNA_def_boolean(ot->srna,
                            "release_confirm",
@@ -725,7 +734,7 @@ static void TRANSFORM_OT_translate(struct wmOperatorType *ot)
 
   Transform_Properties(ot,
                        P_ORIENT_MATRIX | P_CONSTRAINT | P_PROPORTIONAL | P_MIRROR | P_ALIGN_SNAP |
-                           P_OPTIONS | P_GPENCIL_EDIT | P_CURSOR_EDIT);
+                           P_OPTIONS | P_GPENCIL_EDIT | P_CURSOR_EDIT | P_SCULPT_EDIT);
 }
 
 static void TRANSFORM_OT_resize(struct wmOperatorType *ot)

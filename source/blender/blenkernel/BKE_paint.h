@@ -264,17 +264,24 @@ typedef struct SculptSession {
   float (*layer_co)[3]; /* Copy of the mesh vertices' locations */
 
   struct StrokeCache *cache;
+  struct FilterCache *filter_cache;
 
   float cursor_radius;
   float cursor_location[3];
   float cursor_view_normal[3];
   float cursor_normal[3];
 
-  float (*orco)[3];
-
   /* Automasking active vertex */
   MVert *active_vertex_mesh;
   int active_vertex_mesh_index;
+
+  float pivot_pos[3];
+  float pivot_rot[4];
+  float pivot_scale[3];
+
+  float init_pivot_pos[3];
+  float init_pivot_rot[4];
+  float init_pivot_scale[3];
 
   RegionView3D *rv3d;
 

@@ -391,6 +391,54 @@ static void createTransCursor_image(TransInfo *t)
   copy_v3_v3(td->iloc, cursor_location);
 }
 
+static void createTransSculpt(TransInfo *t)
+{
+  TransData *td;
+
+  Scene *scene = t->scene;
+  if (ID_IS_LINKED(scene)) {
+    BKE_report(t->reports, RPT_ERROR, "Linked data can't text-space transform");
+    return;
+  }
+
+  Object *ob = CTX_data_active_object(t->context);
+  SculptSession *ss = ob->sculpt;
+
+  {
+    BLI_assert(t->data_container_len == 1);
+    TransDataContainer *tc = t->data_container;
+    tc->data_len = 1;
+    tc->is_active = 1;
+    td = tc->data = MEM_callocN(sizeof(TransData), "TransTexspace");
+    td->ext = tc->data_ext = MEM_callocN(sizeof(TransDataExtension), "TransTexspace");
+  }
+
+  td->flag = TD_SELECTED;
+  copy_v3_v3(td->center, ss->pivot_pos);
+  td->ob = NULL;
+
+  float tquat[4];
+  normalize_qt_qt(tquat, ss->pivot_rot);
+  quat_to_mat3(td->axismtx, tquat);
+
+  td->loc = ss->pivot_pos;
+  copy_v3_v3(td->iloc, ss->pivot_pos);
+
+  td->ext->rot = NULL;
+  td->ext->rotAxis = NULL;
+  td->ext->rotAngle = NULL;
+  td->ext->quat = ss->pivot_rot;
+
+  copy_qt_qt(td->ext->iquat, ss->pivot_rot);
+  td->ext->rotOrder = ROT_MODE_QUAT;
+
+  float obmat_inv[3][3];
+  copy_m3_m4(obmat_inv, ob->obmat);
+  invert_m3(obmat_inv);
+  copy_m3_m3(td->smtx, obmat_inv);
+  copy_m3_m4(td->mtx, ob->obmat);
+}
+
 static void createTransCursor_view3d(TransInfo *t)
 {
   TransData *td;
@@ -7502,6 +7550,9 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
   else if (t->options & CTX_PAINT_CURVE) {
     /* pass */
   }
+  else if (t->options & CTX_SCULPT) {
+    /* pass */
+  }
   else if ((t->view_layer->basact) && (ob = t->view_layer->basact->object) &&
            (ob->mode & OB_MODE_PARTICLE_EDIT) && PE_get_current(t->scene, ob)) {
     /* do nothing */
@@ -9364,6 +9415,10 @@ void createTransData(bContext *C, TransInfo *t)
     else {
       createTransCursor_view3d(t);
     }
+    countAndCleanTransDataContainer(t);
+  }
+  else if (t->options & CTX_SCULPT) {
+    createTransSculpt(t);
     countAndCleanTransDataContainer(t);
   }
   else if (t->options & CTX_TEXTURE) {

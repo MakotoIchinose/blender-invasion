@@ -98,6 +98,7 @@
 #include "ED_clip.h"
 #include "ED_screen.h"
 #include "ED_gpencil.h"
+#include "ED_sculpt.h"
 
 #include "WM_types.h"
 #include "WM_api.h"
@@ -1142,6 +1143,10 @@ static void recalcData_objects(TransInfo *t)
     }
   }
 }
+static void recalcData_sculpt(TransInfo *t)
+{
+  ED_sculpt_update_modal_transform(t->context, t->options & CTX_SCULPT_PIVOT);
+}
 
 static void recalcData_cursor(TransInfo *t)
 {
@@ -1198,6 +1203,9 @@ void recalcData(TransInfo *t)
   /* if tests must match createTransData for correct updates */
   if (t->options & CTX_CURSOR) {
     recalcData_cursor(t);
+  }
+  if (t->options & CTX_SCULPT) {
+    recalcData_sculpt(t);
   }
   else if (t->options & CTX_TEXTURE) {
     recalcData_objects(t);

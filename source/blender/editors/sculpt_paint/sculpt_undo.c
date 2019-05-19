@@ -539,6 +539,8 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
   bool remesh_update = false;
 
   for (unode = lb->first; unode; unode = unode->next) {
+    /* restore pivot */
+    copy_v3_v3(ss->pivot_pos, unode->pivot_pos);
     if (unode->type == SCULPT_UNDO_REMESH) {
       remesh_update = true;
     }
@@ -1133,6 +1135,9 @@ SculptUndoNode *sculpt_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
     case SCULPT_UNDO_REMESH:
       break;
   }
+
+  /* store sculpt pivot */
+  copy_v3_v3(unode->pivot_pos, ss->pivot_pos);
 
   /* store active shape key */
   if (ss->kb) {

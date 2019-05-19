@@ -97,6 +97,8 @@ enum TfmMode {
 #define CTX_PAINT_CURVE (1 << 8)
 #define CTX_GPENCIL_STROKES (1 << 9)
 #define CTX_CURSOR (1 << 10)
+#define CTX_SCULPT (1 << 11)
+#define CTX_SCULPT_PIVOT (1 << 12)
 
 /* Standalone call to get the transformation center corresponding to the current situation
  * returns 1 if successful, 0 otherwise (usually means there's no selection)
@@ -158,6 +160,7 @@ int BIF_countTransformOrientation(const struct bContext *C);
 #define P_GPENCIL_EDIT (1 << 13)
 #define P_CURSOR_EDIT (1 << 14)
 #define P_CLNOR_INVALIDATE (1 << 15)
+#define P_SCULPT_EDIT (1 << 16)
 
 void Transform_Properties(struct wmOperatorType *ot, int flags);
 

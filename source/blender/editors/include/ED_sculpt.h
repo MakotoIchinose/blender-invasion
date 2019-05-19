@@ -42,6 +42,11 @@ bool ED_sculpt_mask_box_select(struct bContext *C,
                                const struct rcti *rect,
                                bool select);
 
+/* transform */
+void ED_sculpt_update_modal_transform(const struct bContext *C, bool transform_pivot_only);
+void ED_sculpt_init_transform(const struct bContext *C, bool transform_pivot_only);
+void ED_sculpt_end_transform(const struct bContext *C, bool transform_pivot_only);
+
 /* sculpt_undo.c */
 void ED_sculpt_undosys_type(struct UndoType *ut);
 

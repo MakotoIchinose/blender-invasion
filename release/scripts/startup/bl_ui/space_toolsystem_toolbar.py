@@ -966,6 +966,25 @@ class _defs_sculpt:
             draw_settings=draw_settings,
         )
 
+    @ToolDef.from_fn
+    def translate():
+        def draw_settings(context, layout, tool):
+            _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 1)
+            props = tool.operator_properties("transform.translate")
+            sub = layout.row()
+            sub.prop(props, "move_pivot_only")
+        return dict(
+            idname="builtin.move",
+            label="Move",
+            # cursor='SCROLL_XY',
+            icon="ops.transform.translate",
+            widget="VIEW3D_GGT_xform_gizmo",
+            operator="transform.translate",
+            keymap="3D View Tool: Move",
+            draw_settings=draw_settings,
+        )
+
+
 
 class _defs_vertex_paint:
 
@@ -1868,6 +1887,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_sculpt.hide_border,
             _defs_sculpt.mask_border,
             _defs_sculpt.mesh_filter,
+            _defs_sculpt.translate,
+            _defs_transform.rotate,
             *_tools_annotate,
             None,
         ],

@@ -18,6 +18,7 @@
 set(INC
   ../include
   ../uvedit
+  ../transform
   ../../blenkernel
   ../../blenlib
   ../../blentranslation
