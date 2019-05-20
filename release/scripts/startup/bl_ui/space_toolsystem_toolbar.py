@@ -949,6 +949,24 @@ class _defs_sculpt:
         )
 
     @ToolDef.from_fn
+    def mask_filter():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("sculpt.mask_filter")
+            sub = layout.row()
+            sub.use_property_split = False
+            sub.prop(props, "type", expand=False)
+            sub.prop(props, "iterations")
+
+        return dict(
+            idname="builtin.mask_filter",
+            label="Mask Filter",
+            icon="ops.sculpt.mask_filter",
+            widget=None,
+            keymap= (),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def mesh_filter():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("sculpt.mesh_filter")
@@ -1887,6 +1905,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_sculpt.hide_border,
             _defs_sculpt.mask_border,
             _defs_sculpt.mesh_filter,
+            _defs_sculpt.mask_filter,
             _defs_sculpt.translate,
             _defs_transform.rotate,
             *_tools_annotate,

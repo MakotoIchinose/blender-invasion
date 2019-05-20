@@ -7911,8 +7911,6 @@ static void mask_filter_task_cb(void *__restrict userdata,
 
   PBVHVertexIter vd;
 
-  sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_MASK);
-
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
     float val;
@@ -7995,27 +7993,35 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   sculpt_undo_push_begin("Mask blur fill");
 
-  float *prev_mask;
-  if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-    prev_mask = MEM_dupallocN(ss->vmask);
+  float *prev_mask = NULL;
+  int iterations = RNA_int_get(op->ptr, "iterations");
+
+  for (int i = 0; i < totnode; i++) {
+    sculpt_undo_push_node(ob, nodes[i], SCULPT_UNDO_MASK);
   }
 
-  SculptThreadedTaskData data = {
-      .sd = sd,
-      .ob = ob,
-      .nodes = nodes,
-      .smooth_value = 0.5f,
-      .filter_type = mode,
-      .prev_mask = prev_mask,
-  };
+  for (int i = 0; i < iterations; i++) {
+    if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
+      prev_mask = MEM_dupallocN(ss->vmask);
+    }
 
-  ParallelRangeSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
-  BLI_task_parallel_range(0, totnode, &data, mask_filter_task_cb, &settings);
+    SculptThreadedTaskData data = {
+        .sd = sd,
+        .ob = ob,
+        .nodes = nodes,
+        .smooth_value = 0.5f,
+        .filter_type = mode,
+        .prev_mask = prev_mask,
+    };
 
-  if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK))
-    MEM_freeN(prev_mask);
+    ParallelRangeSettings settings;
+    BLI_parallel_range_settings_defaults(&settings);
+    settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+    BLI_task_parallel_range(0, totnode, &data, mask_filter_task_cb, &settings);
+
+    if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK))
+      MEM_freeN(prev_mask);
+  }
 
   sculpt_undo_push_end();
 
@@ -8044,6 +8050,7 @@ void SCULPT_OT_mask_filter(struct wmOperatorType *ot)
 
   /* rna */
   ot->prop = RNA_def_enum(ot->srna, "type", prop_mask_filter_types, MASK_FILTER_BLUR, "Type", "");
+  ot->prop = RNA_def_int(ot->srna, "iterations", 1, 1, 100, "Iterations", "", 1, 50);
 }
 
 static void do_color_fill_task_cb(void *__restrict userdata,
