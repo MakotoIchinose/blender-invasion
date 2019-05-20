@@ -2380,7 +2380,7 @@ static void relax_vertex(float final_dp[3], PBVHVertexIter vd, SculptSession *ss
     int total = 0;
     GSetIterator *gsi = BLI_gsetIterator_new(vert_gset[vs]);
 
-    for (BLI_gsetIterator_init(gsi, (GHash *)vert_gset[vs]); !BLI_gsetIterator_done(gsi);
+    for (BLI_gsetIterator_init(gsi, vert_gset[vs]); !BLI_gsetIterator_done(gsi);
          BLI_gsetIterator_step(gsi)) {
       int vin = BLI_gsetIterator_getKey(gsi);
       MVert *c_vert = &ss->mvert[vin];
@@ -2403,7 +2403,7 @@ static void relax_vertex(float final_dp[3], PBVHVertexIter vd, SculptSession *ss
 
     gsi = BLI_gsetIterator_new(vert_gset[vs]);
 
-    for (BLI_gsetIterator_init(gsi, (GHash *)vert_gset[vs]); !BLI_gsetIterator_done(gsi);
+    for (BLI_gsetIterator_init(gsi, vert_gset[vs]); !BLI_gsetIterator_done(gsi);
          BLI_gsetIterator_step(gsi)) {
       int vin = BLI_gsetIterator_getKey(gsi);
       MVert *c_vert = &ss->mvert[vin];
