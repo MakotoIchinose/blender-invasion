@@ -139,6 +139,7 @@ void GPU_batch_clear(GPUBatch *batch)
     }
   }
   GPU_batch_vao_cache_clear(batch);
+  batch->phase = GPU_BATCH_UNUSED;
 }
 
 void GPU_batch_discard(GPUBatch *batch)
@@ -369,7 +370,8 @@ static void create_bindings(GPUVertBuf *verts,
     const GLvoid *pointer = (const GLubyte *)0 + a->offset + v_first * stride;
 
     for (uint n_idx = 0; n_idx < a->name_len; ++n_idx) {
-      const GPUShaderInput *input = GPU_shaderinterface_attr(interface, a->name[n_idx]);
+      const char *name = GPU_vertformat_attr_name_get(format, a, n_idx);
+      const GPUShaderInput *input = GPU_shaderinterface_attr(interface, name);
 
       if (input == NULL) {
         continue;
@@ -459,7 +461,7 @@ void GPU_batch_program_use_end(GPUBatch *batch)
     const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(batch->interface, name);
 #endif
 
-void GPU_batch_uniform_1ui(GPUBatch *batch, const char *name, int value)
+void GPU_batch_uniform_1ui(GPUBatch *batch, const char *name, uint value)
 {
   GET_UNIFORM
   glUniform1ui(uniform->location, value);

@@ -228,6 +228,7 @@ enum {
 
 #define UI_PANEL_WIDTH 340
 #define UI_COMPACT_PANEL_WIDTH 160
+#define UI_SIDEBAR_PANEL_WIDTH 220
 #define UI_NAVIGATION_REGION_WIDTH UI_COMPACT_PANEL_WIDTH
 #define UI_NARROW_NAVIGATION_REGION_WIDTH 100
 
@@ -280,6 +281,9 @@ enum {
 
   /** Value is animated, but the current value differs from the animated one. */
   UI_BUT_ANIMATED_CHANGED = 1 << 25,
+
+  /* Draw the checkbox buttons inverted. */
+  UI_BUT_CHECKBOX_INVERT = 1 << 26,
 };
 
 /* scale fixed button widths by this to account for DPI */
@@ -594,9 +598,16 @@ struct uiLayout *UI_pie_menu_layout(struct uiPieMenu *pie);
 typedef uiBlock *(*uiBlockCreateFunc)(struct bContext *C, struct ARegion *ar, void *arg1);
 typedef void (*uiBlockCancelFunc)(struct bContext *C, void *arg1);
 
-void UI_popup_block_invoke(struct bContext *C, uiBlockCreateFunc func, void *arg);
-void UI_popup_block_invoke_ex(
-    struct bContext *C, uiBlockCreateFunc func, void *arg, const char *opname, int opcontext);
+void UI_popup_block_invoke(struct bContext *C,
+                           uiBlockCreateFunc func,
+                           void *arg,
+                           void (*arg_free)(void *arg));
+void UI_popup_block_invoke_ex(struct bContext *C,
+                              uiBlockCreateFunc func,
+                              void *arg,
+                              void (*arg_free)(void *arg),
+                              const char *opname,
+                              int opcontext);
 void UI_popup_block_ex(struct bContext *C,
                        uiBlockCreateFunc func,
                        uiBlockHandleFunc popup_func,
@@ -641,6 +652,7 @@ enum {
   UI_BLOCK_THEME_STYLE_POPUP = 1,
 };
 void UI_block_theme_style_set(uiBlock *block, char theme_style);
+char UI_block_emboss_get(uiBlock *block);
 void UI_block_emboss_set(uiBlock *block, char dt);
 
 void UI_block_free(const struct bContext *C, uiBlock *block);
@@ -1710,6 +1722,7 @@ enum {
   UI_ITEM_R_IMMEDIATE = 1 << 8,
   UI_ITEM_O_DEPRESS = 1 << 9,
   UI_ITEM_R_COMPACT = 1 << 10,
+  UI_ITEM_R_CHECKBOX_INVERT = 1 << 11,
 };
 
 #define UI_HEADER_OFFSET ((void)0, 0.4f * UI_UNIT_X)

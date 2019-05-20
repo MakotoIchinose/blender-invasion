@@ -1501,7 +1501,7 @@ typedef struct ToolSettings {
 
   /* Normal Editing */
   float normal_vector[3];
-  int face_strength;
+  char _pad6[4];
 } ToolSettings;
 
 /* *************************************************************** */
@@ -2091,13 +2091,6 @@ enum {
   OB_DRAW_GROUPUSER_ALL = 2,
 };
 
-/* toolsettings->face_strength */
-enum {
-  FACE_STRENGTH_WEAK = -16384,
-  FACE_STRENGTH_MEDIUM = 0,
-  FACE_STRENGTH_STRONG = 16384,
-};
-
 /* object_vgroup.c */
 /* ToolSettings.vgroupsubset */
 typedef enum eVGroupSelect {
@@ -2371,19 +2364,19 @@ typedef enum eGPencil_Guide_Reference {
 
 /* SceneEEVEE->flag */
 enum {
-  SCE_EEVEE_VOLUMETRIC_ENABLED = (1 << 0),
+  // SCE_EEVEE_VOLUMETRIC_ENABLED = (1 << 0), /* Unused */
   SCE_EEVEE_VOLUMETRIC_LIGHTS = (1 << 1),
   SCE_EEVEE_VOLUMETRIC_SHADOWS = (1 << 2),
   //  SCE_EEVEE_VOLUMETRIC_COLORED    = (1 << 3), /* Unused */
   SCE_EEVEE_GTAO_ENABLED = (1 << 4),
   SCE_EEVEE_GTAO_BENT_NORMALS = (1 << 5),
   SCE_EEVEE_GTAO_BOUNCE = (1 << 6),
-  SCE_EEVEE_DOF_ENABLED = (1 << 7),
+  // SCE_EEVEE_DOF_ENABLED = (1 << 7), /* Moved to camera->dof.flag */
   SCE_EEVEE_BLOOM_ENABLED = (1 << 8),
   SCE_EEVEE_MOTION_BLUR_ENABLED = (1 << 9),
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
-  SCE_EEVEE_SSS_ENABLED = (1 << 12),
+  // SCE_EEVEE_SSS_ENABLED = (1 << 12), /* Unused */
   SCE_EEVEE_SSS_SEPARATE_ALBEDO = (1 << 13),
   SCE_EEVEE_SSR_ENABLED = (1 << 14),
   SCE_EEVEE_SSR_REFRACTION = (1 << 15),

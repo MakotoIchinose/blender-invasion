@@ -38,7 +38,8 @@ ustring u_colorspace_srgb("__builtin_srgb");
 
 /* Cached data. */
 #ifdef WITH_OCIO
-static thread_mutex cache_mutex;
+static thread_mutex cache_colorspaces_mutex;
+static thread_mutex cache_processors_mutex;
 static unordered_map<ustring, ustring, ustringHash> cached_colorspaces;
 static unordered_map<ustring, OCIO::ConstProcessorRcPtr, ustringHash> cached_processors;
 #endif
@@ -60,7 +61,7 @@ ColorSpaceProcessor *ColorSpaceManager::get_processor(ustring colorspace)
 
   /* Cache processor until free_memory(), memory overhead is expected to be
    * small and the processor is likely to be reused. */
-  thread_scoped_lock cache_lock(cache_mutex);
+  thread_scoped_lock cache_processors_lock(cache_processors_mutex);
   if (cached_processors.find(colorspace) == cached_processors.end()) {
     try {
       cached_processors[colorspace] = config->getProcessor(colorspace.c_str(), "scene_linear");
@@ -78,6 +79,31 @@ ColorSpaceProcessor *ColorSpaceManager::get_processor(ustring colorspace)
   /* No OpenColorIO. */
   (void)colorspace;
   return NULL;
+#endif
+}
+
+bool ColorSpaceManager::colorspace_is_data(ustring colorspace)
+{
+  if (colorspace == u_colorspace_auto || colorspace == u_colorspace_raw ||
+      colorspace == u_colorspace_srgb) {
+    return false;
+  }
+
+#ifdef WITH_OCIO
+  OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+  if (!config) {
+    return false;
+  }
+
+  try {
+    OCIO::ConstColorSpaceRcPtr space = config->getColorSpace(colorspace.c_str());
+    return space && space->isData();
+  }
+  catch (OCIO::Exception &exception) {
+    return false;
+  }
+#else
+  return false;
 #endif
 }
 
@@ -106,7 +132,7 @@ ustring ColorSpaceManager::detect_known_colorspace(ustring colorspace,
     /* Use OpenColorIO. */
 #ifdef WITH_OCIO
     {
-      thread_scoped_lock cache_lock(cache_mutex);
+      thread_scoped_lock cache_lock(cache_colorspaces_mutex);
       /* Cached lookup. */
       if (cached_colorspaces.find(colorspace) != cached_colorspaces.end()) {
         return cached_colorspaces[colorspace];
@@ -117,7 +143,7 @@ ustring ColorSpaceManager::detect_known_colorspace(ustring colorspace,
     bool is_scene_linear, is_srgb;
     is_builtin_colorspace(colorspace, is_scene_linear, is_srgb);
 
-    thread_scoped_lock cache_lock(cache_mutex);
+    thread_scoped_lock cache_lock(cache_colorspaces_mutex);
     if (is_scene_linear) {
       VLOG(1) << "Colorspace " << colorspace.string() << " is no-op";
       cached_colorspaces[colorspace] = u_colorspace_raw;
@@ -241,6 +267,10 @@ inline void processor_apply_pixels(const OCIO::Processor *processor,
                                    size_t width,
                                    size_t height)
 {
+  /* TODO: implement faster version for when we know the conversion
+   * is a simple matrix transform between linear spaces. In that case
+   * unpremultiply is not needed. */
+
   /* Process large images in chunks to keep temporary memory requirement down. */
   size_t y_chunk_size = max(1, 16 * 1024 * 1024 / (sizeof(float4) * width));
   vector<float4> float_pixels(y_chunk_size * width);
@@ -251,7 +281,16 @@ inline void processor_apply_pixels(const OCIO::Processor *processor,
 
     for (size_t y = y0; y < y1; y++) {
       for (size_t x = 0; x < width; x++, i++) {
-        float_pixels[i] = cast_to_float4(pixels + 4 * (y * width + x));
+        float4 value = cast_to_float4(pixels + 4 * (y * width + x));
+
+        if (!(value.w == 0.0f || value.w == 1.0f)) {
+          float inv_alpha = 1.0f / value.w;
+          value.x *= inv_alpha;
+          value.y *= inv_alpha;
+          value.z *= inv_alpha;
+        }
+
+        float_pixels[i] = value;
       }
     }
 
@@ -262,24 +301,19 @@ inline void processor_apply_pixels(const OCIO::Processor *processor,
     for (size_t y = y0; y < y1; y++) {
       for (size_t x = 0; x < width; x++, i++) {
         float4 value = float_pixels[i];
+
+        value.x *= value.w;
+        value.y *= value.w;
+        value.z *= value.w;
+
         if (compress_as_srgb) {
           value = color_linear_to_srgb_v4(value);
         }
+
         cast_from_float4(pixels + 4 * (y * width + x), value);
       }
     }
   }
-}
-
-/* Fast version for float images, which OpenColorIO can handle natively. */
-template<>
-inline void processor_apply_pixels(const OCIO::Processor *processor,
-                                   float *pixels,
-                                   size_t width,
-                                   size_t height)
-{
-  OCIO::PackedImageDesc desc(pixels, width, height, 4);
-  processor->apply(desc);
 }
 #endif
 

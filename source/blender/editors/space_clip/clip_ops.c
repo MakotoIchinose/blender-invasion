@@ -52,6 +52,7 @@
 #include "BKE_main.h"
 #include "BKE_movieclip.h"
 #include "BKE_report.h"
+#include "BKE_sound.h"
 #include "BKE_tracking.h"
 
 #include "WM_api.h"
@@ -73,7 +74,6 @@
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
 #include "clip_intern.h"  // own include
@@ -245,7 +245,7 @@ static int open_exec(bContext *C, wmOperator *op)
     id_us_min(&clip->id);
 
     RNA_id_pointer_create(&clip->id, &idptr);
-    RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr);
+    RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, NULL);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
   else if (sc) {
@@ -955,10 +955,10 @@ static bool change_frame_poll(bContext *C)
 {
   /* prevent changes during render */
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
-
-  return ED_space_clip_poll(C);
+  SpaceClip *space_clip = CTX_wm_space_clip(C);
+  return space_clip != NULL;
 }
 
 static void change_frame_apply(bContext *C, wmOperator *op)
@@ -971,7 +971,7 @@ static void change_frame_apply(bContext *C, wmOperator *op)
   SUBFRA = 0.0f;
 
   /* do updates */
-  DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+  BKE_sound_seek_scene(CTX_data_main(C), scene);
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 }
 

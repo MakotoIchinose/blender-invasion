@@ -764,7 +764,8 @@ static void ui_item_enum_expand_elem_exec(uiLayout *layout,
 
   if (RNA_property_flag(prop) & PROP_ENUM_FLAG) {
     /* If this is set, assert since we're clobbering someone elses callback. */
-    BLI_assert(but->func == NULL);
+    /* Buttons get their block's func by default, so we cannot assert in that case either. */
+    BLI_assert(ELEM(but->func, NULL, block->func));
     UI_but_func_set(but, ui_item_enum_expand_handle, but, POINTER_FROM_INT(value));
   }
 
@@ -1454,7 +1455,6 @@ void uiItemsFullEnumO_items(uiLayout *layout,
       if (properties) {
         if (tptr.data) {
           IDP_FreeProperty(tptr.data);
-          MEM_freeN(tptr.data);
         }
         tptr.data = IDP_CopyProperty(properties);
       }
@@ -1904,6 +1904,10 @@ void uiItemFullR(uiLayout *layout,
     }
   }
 
+  if (type != PROP_BOOLEAN) {
+    flag &= ~UI_ITEM_R_CHECKBOX_INVERT;
+  }
+
   if (icon == ICON_NONE) {
     icon = RNA_property_ui_icon(prop);
   }
@@ -2154,6 +2158,12 @@ void uiItemFullR(uiLayout *layout,
 
     if (slider && but->type == UI_BTYPE_NUM) {
       but->type = UI_BTYPE_NUM_SLIDER;
+    }
+
+    if (flag & UI_ITEM_R_CHECKBOX_INVERT) {
+      if (ELEM(but->type, UI_BTYPE_CHECKBOX, UI_BTYPE_CHECKBOX_N)) {
+        but->drawflag |= UI_BUT_CHECKBOX_INVERT;
+      }
     }
 
     if (toggle && but->type == UI_BTYPE_CHECKBOX) {

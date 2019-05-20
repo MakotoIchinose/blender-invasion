@@ -325,7 +325,7 @@ void ED_collection_hide_menu_draw(const bContext *C, uiLayout *layout)
       continue;
     }
 
-    if (lc->collection->flag & COLLECTION_RESTRICT_VIEW) {
+    if (lc->collection->flag & COLLECTION_RESTRICT_VIEWPORT) {
       continue;
     }
 
@@ -733,7 +733,7 @@ static bool editmode_toggle_poll(bContext *C)
   }
 
   /* if hidden but in edit mode, we still display */
-  if ((ob->restrictflag & OB_RESTRICT_VIEW) && !(ob->mode & OB_MODE_EDIT)) {
+  if ((ob->restrictflag & OB_RESTRICT_VIEWPORT) && !(ob->mode & OB_MODE_EDIT)) {
     return 0;
   }
 
@@ -1790,6 +1790,7 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
                         "Name",
                         "Name of the newly added collection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  ot->prop = prop;
 }
 
 static int remesh_exec(bContext *C, wmOperator *op)

@@ -67,7 +67,6 @@
 #include "WM_types.h"
 
 #include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
 
 #include "ED_anim_api.h"
 #include "ED_armature.h"
@@ -343,7 +342,7 @@ bool ED_operator_console_active(bContext *C)
 static bool ed_object_hidden(Object *ob)
 {
   /* if hidden but in edit mode, we still display, can happen with animation */
-  return ((ob->restrictflag & OB_RESTRICT_VIEW) && !(ob->mode & OB_MODE_EDIT));
+  return ((ob->restrictflag & OB_RESTRICT_VIEWPORT) && !(ob->mode & OB_MODE_EDIT));
 }
 
 bool ED_operator_object_active(bContext *C)
@@ -630,24 +629,6 @@ static bool screen_active_editable(bContext *C)
     return 1;
   }
   return 0;
-}
-
-static ARegion *screen_find_region_type(bContext *C, int type)
-{
-  ARegion *ar = CTX_wm_region(C);
-
-  /* find the header region
-   * - try context first, but upon failing, search all regions in area...
-   */
-  if ((ar == NULL) || (ar->regiontype != type)) {
-    ScrArea *sa = CTX_wm_area(C);
-    ar = BKE_area_find_region_type(sa, type);
-  }
-  else {
-    ar = NULL;
-  }
-
-  return ar;
 }
 
 /** \} */
@@ -2759,6 +2740,7 @@ static void areas_do_frame_follow(bContext *C, bool middle)
 /* function to be called outside UI context, or for redo */
 static int frame_offset_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   int delta;
 
@@ -2770,7 +2752,7 @@ static int frame_offset_exec(bContext *C, wmOperator *op)
 
   areas_do_frame_follow(C, false);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+  BKE_sound_seek_scene(bmain, scene);
 
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -2802,6 +2784,7 @@ static void SCREEN_OT_frame_offset(wmOperatorType *ot)
 /* function to be called outside UI context, or for redo */
 static int frame_jump_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   wmTimer *animtimer = CTX_wm_screen(C)->animtimer;
 
@@ -2831,7 +2814,7 @@ static int frame_jump_exec(bContext *C, wmOperator *op)
 
     areas_do_frame_follow(C, true);
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+    BKE_sound_seek_scene(bmain, scene);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -2864,6 +2847,7 @@ static void SCREEN_OT_frame_jump(wmOperatorType *ot)
 /* function to be called outside UI context, or for redo */
 static int keyframe_jump_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   bDopeSheet ads = {NULL};
@@ -2946,7 +2930,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   else {
     areas_do_frame_follow(C, true);
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+    BKE_sound_seek_scene(bmain, scene);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -2979,6 +2963,7 @@ static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 /* function to be called outside UI context, or for redo */
 static int marker_jump_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   TimeMarker *marker;
   int closest = CFRA;
@@ -3012,7 +2997,7 @@ static int marker_jump_exec(bContext *C, wmOperator *op)
 
     areas_do_frame_follow(C, true);
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+    BKE_sound_seek_scene(bmain, scene);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -3579,6 +3564,12 @@ static int repeat_last_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_CANCELLED;
 }
 
+static bool repeat_last_poll(bContext *C)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  return ED_operator_screenactive(C) && !BLI_listbase_is_empty(&wm->operators);
+}
+
 static void SCREEN_OT_repeat_last(wmOperatorType *ot)
 {
   /* identifiers */
@@ -3589,7 +3580,7 @@ static void SCREEN_OT_repeat_last(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = repeat_last_exec;
 
-  ot->poll = ED_operator_screenactive;
+  ot->poll = repeat_last_poll;
 }
 
 /** \} */
@@ -3642,6 +3633,12 @@ static int repeat_history_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool repeat_history_poll(bContext *C)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  return ED_operator_screenactive(C) && !BLI_listbase_is_empty(&wm->operators);
+}
+
 static void SCREEN_OT_repeat_history(wmOperatorType *ot)
 {
   /* identifiers */
@@ -3653,7 +3650,7 @@ static void SCREEN_OT_repeat_history(wmOperatorType *ot)
   ot->invoke = repeat_history_invoke;
   ot->exec = repeat_history_exec;
 
-  ot->poll = ED_operator_screenactive;
+  ot->poll = repeat_history_poll;
 
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "", 0, 1000);
 }
@@ -3675,6 +3672,12 @@ static int redo_last_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *
   return OPERATOR_CANCELLED;
 }
 
+static bool redo_last_poll(bContext *C)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  return ED_operator_screenactive(C) && !BLI_listbase_is_empty(&wm->operators);
+}
+
 static void SCREEN_OT_redo_last(wmOperatorType *ot)
 {
   /* identifiers */
@@ -3685,7 +3688,7 @@ static void SCREEN_OT_redo_last(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = redo_last_invoke;
 
-  ot->poll = ED_operator_screenactive;
+  ot->poll = redo_last_poll;
 }
 
 /** \} */
@@ -3952,10 +3955,10 @@ static void SCREEN_OT_header_toggle_menus(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Header Tools Operator
+/** \name Region Context Menu Operator (Header/Footer/Navbar)
  * \{ */
 
-static bool header_context_menu_poll(bContext *C)
+static bool screen_region_context_menu_poll(bContext *C)
 {
   ScrArea *sa = CTX_wm_area(C);
   return (sa && sa->spacetype != SPACE_STATUSBAR);
@@ -4005,89 +4008,17 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UN
   }
 }
 
-static int header_context_menu_invoke(bContext *C,
-                                      wmOperator *UNUSED(op),
-                                      const wmEvent *UNUSED(event))
-{
-  uiPopupMenu *pup;
-  uiLayout *layout;
-
-  pup = UI_popup_menu_begin(C, IFACE_("Header"), ICON_NONE);
-  layout = UI_popup_menu_layout(pup);
-
-  ED_screens_header_tools_menu_create(C, layout, NULL);
-
-  UI_popup_menu_end(C, pup);
-
-  return OPERATOR_INTERFACE;
-}
-
-static void SCREEN_OT_header_context_menu(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Header Context Menu";
-  ot->description = "Display header region context menu";
-  ot->idname = "SCREEN_OT_header_context_menu";
-
-  /* api callbacks */
-  ot->poll = header_context_menu_poll;
-  ot->invoke = header_context_menu_invoke;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Footer Toggle Operator
- * \{ */
-
-static int footer_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  ARegion *ar = screen_find_region_type(C, RGN_TYPE_FOOTER);
-
-  if (ar == NULL) {
-    return OPERATOR_CANCELLED;
-  }
-
-  ar->flag ^= RGN_FLAG_HIDDEN;
-
-  ED_area_tag_redraw(CTX_wm_area(C));
-
-  WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, NULL);
-
-  return OPERATOR_FINISHED;
-}
-
-static void SCREEN_OT_footer(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Toggle Footer";
-  ot->description = "Toggle footer display";
-  ot->idname = "SCREEN_OT_footer";
-
-  /* api callbacks */
-  ot->exec = footer_exec;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Footer Tools Operator
- * \{ */
-
-static bool footer_context_menu_poll(bContext *C)
-{
-  ScrArea *sa = CTX_wm_area(C);
-  return sa;
-}
-
 void ED_screens_footer_tools_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
   ScrArea *sa = CTX_wm_area(C);
   ARegion *ar = CTX_wm_region(C);
   const char *but_flip_str = (ar->alignment == RGN_ALIGN_TOP) ? IFACE_("Flip to Bottom") :
                                                                 IFACE_("Flip to Top");
-
-  uiItemO(layout, IFACE_("Toggle Footer"), ICON_NONE, "SCREEN_OT_footer");
+  {
+    PointerRNA ptr;
+    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, sa->spacedata.first, &ptr);
+    uiItemR(layout, &ptr, "show_region_footer", 0, IFACE_("Show Footer"), ICON_NONE);
+  }
 
   /* default is WM_OP_INVOKE_REGION_WIN, which we don't want here. */
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
@@ -4104,41 +4035,6 @@ void ED_screens_footer_tools_menu_create(bContext *C, uiLayout *layout, void *UN
   }
 }
 
-static int footer_context_menu_invoke(bContext *C,
-                                      wmOperator *UNUSED(op),
-                                      const wmEvent *UNUSED(event))
-{
-  uiPopupMenu *pup;
-  uiLayout *layout;
-
-  pup = UI_popup_menu_begin(C, IFACE_("Footer"), ICON_NONE);
-  layout = UI_popup_menu_layout(pup);
-
-  ED_screens_footer_tools_menu_create(C, layout, NULL);
-
-  UI_popup_menu_end(C, pup);
-
-  return OPERATOR_INTERFACE;
-}
-
-static void SCREEN_OT_footer_context_menu(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Footer Context Menu";
-  ot->description = "Display footer region context menu";
-  ot->idname = "SCREEN_OT_footer_context_menu";
-
-  /* api callbacks */
-  ot->poll = footer_context_menu_poll;
-  ot->invoke = footer_context_menu_invoke;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Navigation Bar Tools Menu
- * \{ */
-
 void ED_screens_navigation_bar_tools_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
   const ARegion *ar = CTX_wm_region(C);
@@ -4149,6 +4045,48 @@ void ED_screens_navigation_bar_tools_menu_create(bContext *C, uiLayout *layout, 
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
   uiItemO(layout, but_flip_str, ICON_NONE, "SCREEN_OT_region_flip");
+}
+
+static int screen_context_menu_invoke(bContext *C,
+                                      wmOperator *UNUSED(op),
+                                      const wmEvent *UNUSED(event))
+{
+  uiPopupMenu *pup;
+  uiLayout *layout;
+  const ARegion *ar = CTX_wm_region(C);
+
+  if (ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
+    pup = UI_popup_menu_begin(C, IFACE_("Header"), ICON_NONE);
+    layout = UI_popup_menu_layout(pup);
+    ED_screens_header_tools_menu_create(C, layout, NULL);
+    UI_popup_menu_end(C, pup);
+  }
+  else if (ar->regiontype == RGN_TYPE_FOOTER) {
+    pup = UI_popup_menu_begin(C, IFACE_("Footer"), ICON_NONE);
+    layout = UI_popup_menu_layout(pup);
+    ED_screens_footer_tools_menu_create(C, layout, NULL);
+    UI_popup_menu_end(C, pup);
+  }
+  else if (ar->regiontype == RGN_TYPE_NAV_BAR) {
+    pup = UI_popup_menu_begin(C, IFACE_("Navigation Bar"), ICON_NONE);
+    layout = UI_popup_menu_layout(pup);
+    ED_screens_navigation_bar_tools_menu_create(C, layout, NULL);
+    UI_popup_menu_end(C, pup);
+  }
+
+  return OPERATOR_INTERFACE;
+}
+
+static void SCREEN_OT_region_context_menu(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Region Context Menu";
+  ot->description = "Display region context menu";
+  ot->idname = "SCREEN_OT_region_context_menu";
+
+  /* api callbacks */
+  ot->poll = screen_region_context_menu_poll;
+  ot->invoke = screen_context_menu_invoke;
 }
 
 /** \} */
@@ -4284,8 +4222,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
   if (screen->animtimer && screen->animtimer == event->customdata) {
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
-    Depsgraph *depsgraph = CTX_data_depsgraph(C);
-    Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+    struct Depsgraph *depsgraph = CTX_data_depsgraph(C);
     wmTimer *wt = screen->animtimer;
     ScreenAnimData *sad = wt->customdata;
     wmWindowManager *wm = CTX_wm_manager(C);
@@ -4306,7 +4243,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     if ((scene->audio.flag & AUDIO_SYNC) && (sad->flag & ANIMPLAY_FLAG_REVERSE) == false &&
-        isfinite(time = BKE_sound_sync_scene(scene_eval))) {
+        isfinite(time = BKE_sound_sync_scene(scene))) {
       double newfra = (double)time * FPS;
 
       /* give some space here to avoid jumps */
@@ -4399,7 +4336,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     if (sad->flag & ANIMPLAY_FLAG_JUMPED) {
-      DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
+      BKE_sound_seek_scene(bmain, scene);
 #ifdef PROFILE_AUDIO_SYNCH
       old_frame = CFRA;
 #endif
@@ -4521,12 +4458,11 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 {
   bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
-  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_depsgraph(C));
 
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0, 0);
-    BKE_sound_stop_scene(scene_eval);
+    BKE_sound_stop_scene(scene);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -4535,7 +4471,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     int refresh = SPACE_ACTION;
 
     if (mode == 1) { /* XXX only play audio forwards!? */
-      BKE_sound_play_scene(scene_eval);
+      BKE_sound_play_scene(scene);
     }
 
     ED_screen_animation_timer(C, screen->redraws_flag, refresh, sync, mode);
@@ -5298,9 +5234,7 @@ void ED_operatortypes_screen(void)
   WM_operatortype_append(SCREEN_OT_region_scale);
   WM_operatortype_append(SCREEN_OT_region_flip);
   WM_operatortype_append(SCREEN_OT_header_toggle_menus);
-  WM_operatortype_append(SCREEN_OT_header_context_menu);
-  WM_operatortype_append(SCREEN_OT_footer);
-  WM_operatortype_append(SCREEN_OT_footer_context_menu);
+  WM_operatortype_append(SCREEN_OT_region_context_menu);
   WM_operatortype_append(SCREEN_OT_screen_set);
   WM_operatortype_append(SCREEN_OT_screen_full_area);
   WM_operatortype_append(SCREEN_OT_back_to_previous);
