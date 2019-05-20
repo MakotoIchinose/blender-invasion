@@ -1041,7 +1041,8 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
 
     /* be sure recalc all cache in source stroke to avoid recalculation when frame change
      * and improve fps */
-    DRW_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps->runtime.gps_orig);
+    DRW_gpencil_recalc_geometry_caches(
+        ob, gpl, gp_style, (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps);
 
     /* if the fill has any value, it's considered a fill and is not drawn if simplify fill is
      * enabled */

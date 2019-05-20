@@ -713,6 +713,7 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = ob->data;
   const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   int vgindex = ob->actdef - 1;
   if (!BLI_findlink(&ob->defbase, vgindex)) {
@@ -790,7 +791,7 @@ void DRW_gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
         ARRAY_SET_ITEMS(fcolor, 1.0f, 0.0f, 0.0f, 1.0f);
         fsize = vsize + 1;
       }
-      else if (pt->runtime.pt_orig == NULL) {
+      else if ((!is_multiedit) && (pt->runtime.pt_orig == NULL)) {
         ARRAY_SET_ITEMS(fcolor, linecolor[0], linecolor[1], linecolor[2], selectColor[3]);
         mul_v4_fl(fcolor, 0.9f);
         copy_v4_v4(fcolor, fcolor);
