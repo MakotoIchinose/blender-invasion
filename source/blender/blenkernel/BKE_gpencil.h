@@ -299,4 +299,7 @@ float BKE_gpencil_multiframe_falloff_calc(
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
 
+/** Get matrix for transformation between original and derived point */
+void BKE_gpencil_derived_matrix_get(struct bGPDspoint *pt, float r_mat[4][4]);
+
 #endif /*  __BKE_GPENCIL_H__ */
