@@ -1442,6 +1442,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
                          gso->gp_brush->size;
 
   bGPDspoint *pt1, *pt2;
+  bGPDspoint *pt = NULL;
   int pc1[2] = {0};
   int pc2[2] = {0};
   int i;
@@ -1450,6 +1451,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
 
   if (gps->totpoints == 1) {
     bGPDspoint pt_temp;
+    pt = &gps->points[0];
     gp_point_to_parent_space(gps->points, diff_mat, &pt_temp);
     gp_point_to_xy(gsc, gps, &pt_temp, &pc1[0], &pc1[1]);
 
@@ -1460,7 +1462,9 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
       round_v2i_v2fl(mval_i, gso->mval);
       if (len_v2v2_int(mval_i, pc1) <= radius) {
         /* apply operation to this point */
-        changed = apply(gso, gps, 0, radius, pc1);
+        if (pt->runtime.pt_orig != NULL) {
+          changed = apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc1);
+        }
       }
     }
   }
@@ -1501,7 +1505,10 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
           bool ok = false;
 
           /* To each point individually... */
-          ok = apply(gso, gps, i, radius, pc1);
+          pt = &gps->points[i];
+          if (pt->runtime.pt_orig != NULL) {
+            ok = apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc1);
+          }
 
           /* Only do the second point if this is the last segment,
            * and it is unlikely that the point will get handled
@@ -1512,8 +1519,11 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
            *       the line linking the points was!
            */
           if (i + 1 == gps->totpoints - 1) {
-            ok |= apply(gso, gps, i + 1, radius, pc2);
-            include_last = false;
+            pt = &gps->points[i + 1];
+            if (pt->runtime.pt_orig != NULL) {
+              ok |= apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc2);
+              include_last = false;
+            }
           }
           else {
             include_last = true;
@@ -1527,8 +1537,11 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
            * but it would've qualified since it did with the previous step
            * (but wasn't added then, to avoid double-ups).
            */
-          changed |= apply(gso, gps, i, radius, pc1);
-          include_last = false;
+          pt = &gps->points[i];
+          if (pt->runtime.pt_orig != NULL) {
+            changed |= apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc1);
+            include_last = false;
+          }
         }
       }
     }
@@ -1575,18 +1588,20 @@ static bool gpsculpt_brush_do_frame(
 
       case GP_SCULPT_TYPE_GRAB: /* Grab points */
       {
-        if (gso->first) {
-          /* First time this brush stroke is being applied:
-           * 1) Prepare data buffers (init/clear) for this stroke
-           * 2) Use the points now under the cursor
-           */
-          gp_brush_grab_stroke_init(gso, gps);
-          changed |= gpsculpt_brush_do_stroke(gso, gps, diff_mat, gp_brush_grab_store_points);
-        }
-        else {
-          /* Apply effect to the stored points */
-          gp_brush_grab_apply_cached(gso, gps, diff_mat);
-          changed |= true;
+        if (gps->runtime.gps_orig != NULL) {
+          if (gso->first) {
+            /* First time this brush stroke is being applied:
+             * 1) Prepare data buffers (init/clear) for this stroke
+             * 2) Use the points now under the cursor
+             */
+            gp_brush_grab_stroke_init(gso, gps->runtime.gps_orig);
+            changed |= gpsculpt_brush_do_stroke(gso, gps, diff_mat, gp_brush_grab_store_points);
+          }
+          else {
+            /* Apply effect to the stored points */
+            gp_brush_grab_apply_cached(gso, gps->runtime.gps_orig, diff_mat);
+            changed |= true;
+          }
         }
         break;
       }
@@ -1716,14 +1731,15 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
           }
 
           /* affect strokes in this frame */
-          changed |= gpsculpt_brush_do_frame(C, gso, gpl, gpf, diff_mat);
+          changed |= gpsculpt_brush_do_frame(
+              C, gso, gpl, (gpf == gpl->actframe) ? derived_gpf : gpf, diff_mat);
         }
       }
     }
     else {
       /* Apply to active frame's strokes */
       gso->mf_falloff = 1.0f;
-      changed |= gpsculpt_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
+      changed |= gpsculpt_brush_do_frame(C, gso, gpl, derived_gpf, diff_mat);
     }
   }
   CTX_DATA_END;
