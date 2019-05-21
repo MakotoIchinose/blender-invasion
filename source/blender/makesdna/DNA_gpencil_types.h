@@ -54,6 +54,9 @@ typedef struct bGPDcontrolpoint {
 typedef struct bGPDspoint_Runtime {
   /** Original point (used to dereference evaluated data) */
   struct bGPDspoint *pt_orig;
+  /** Original index array position */
+  int idx_orig;
+  char _pad0[4];
 } bGPDspoint_Runtime;
 
 /* Grease-Pencil Annotations - 'Stroke Point'

@@ -782,6 +782,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       pt_final->time = pt->time;
       pt_final->flag = pt->flag;
       pt_final->runtime.pt_orig = pt->runtime.pt_orig;
+      pt_final->runtime.idx_orig = pt->runtime.idx_orig;
 
       if (gps->dvert != NULL) {
         dvert = &temp_dverts[i];
@@ -873,6 +874,7 @@ static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
     for (int i = 0; i < gps_src->totpoints; i++) {
       bGPDspoint *pt_dst = &gps_dst->points[i];
       pt_dst->runtime.pt_orig = &gps_src->points[i];
+      pt_dst->runtime.idx_orig = i;
     }
 
     BLI_addtail(&derived_gpf->strokes, gps_dst);

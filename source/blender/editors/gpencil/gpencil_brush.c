@@ -1641,6 +1641,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Object *obact = gso->object;
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
   bGPdata *gpd = gso->gpd;
   bool changed = false;
 
@@ -1677,6 +1678,12 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     /* If no active frame, don't do anything... */
     if (gpl->actframe == NULL) {
+      continue;
+    }
+    /* Get derived frames array data */
+    int derived_idx = BLI_findindex(&gpd->layers, gpl);
+    bGPDframe *derived_gpf = &ob_eval->runtime.derived_frames[derived_idx];
+    if (derived_gpf == NULL) {
       continue;
     }
 
