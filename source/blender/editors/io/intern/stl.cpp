@@ -40,11 +40,40 @@ extern "C" {
 
 #include "stl.h"
 #include "../io_common.h"
-
-bool STL_export(bContext *C, ExportSettings *settings) { return true; }
-
 }
 
+#include <chrono>
+#include <iostream>
+#include <fstream>
 
-bool STL_export_start(bContext *C, ExportSettings *settings) { return true; }
-bool STL_export_end(bContext *C, ExportSettings *settings) { return true; }
+#include "common.hpp"
+
+extern "C" {
+bool STL_export(bContext *C, ExportSettings *settings) {
+	auto f = std::chrono::steady_clock::now();
+	STL_export_start(C, settings);
+	auto ret = STL_export_end(C, settings);
+	std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
+	return ret;
+}
+} // extern
+
+
+bool STL_export_start(bContext *C, ExportSettings *settings) {
+	common::export_start(C, settings);
+
+	std::fstream fs;
+	fs.open(settings->filepath, std::ios::out);
+
+	Scene *scene  = DEG_get_evaluated_scene(settings->depsgraph);
+
+	common::for_each_base(settings->view_layer,
+	                      [](Base *base) {
+
+	                      });
+	return true;
+}
+
+bool STL_export_end(bContext *C, ExportSettings *settings) {
+	return common::export_end(C, settings);
+}

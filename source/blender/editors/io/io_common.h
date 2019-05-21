@@ -12,6 +12,8 @@
 struct bContext;
 struct Depsgraph;
 
+enum axis_remap { AXIS_X, AXIS_Y, AXIS_Z, AXIS_NEG_X, AXIS_NEG_Y, AXIS_NEG_Z };
+
 typedef struct ExportSettings {
 
 	/* Mostly From Alembic */
@@ -23,6 +25,9 @@ typedef struct ExportSettings {
 	/* SimpleLogger logger; */
 
 	char filepath[FILE_MAX];
+
+	enum axis_remap axis_forward;
+	enum axis_remap axis_up;
 
 	bool selected_only;
 	bool visible_only;
@@ -40,6 +45,7 @@ typedef struct ExportSettings {
 	bool export_animations;
 	bool export_normals;
 	bool export_uvs;
+	bool export_edges;
 	bool export_materials;
 	bool export_vcolors;
 	bool export_face_sets;

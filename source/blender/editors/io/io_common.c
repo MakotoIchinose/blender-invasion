@@ -27,6 +27,14 @@
 
 #include "MEM_guardedalloc.h"
 
+const EnumPropertyItem axis_remap[] = { {AXIS_X,     "AXIS_X",     ICON_NONE, "X axis",  ""},
+                                        {AXIS_Y,     "AXIS_Y",     ICON_NONE, "Y axis",  ""},
+                                        {AXIS_Z,     "AXIS_Z",     ICON_NONE, "Z axis",  ""},
+                                        {AXIS_NEG_X, "AXIS_NEG_X", ICON_NONE, "-X axis", ""},
+                                        {AXIS_NEG_Y, "AXIS_NEG_Y", ICON_NONE, "-Y axis", ""},
+                                        {AXIS_NEG_Z, "AXIS_NEG_Z", ICON_NONE, "-Z axis", ""},
+                                        {0,          NULL,         0,         NULL,      NULL}};
+
 void io_common_default_declare_export(struct wmOperatorType *ot,
                                       eFileSel_File_Types file_type) {
 
@@ -82,6 +90,8 @@ void io_common_default_declare_export(struct wmOperatorType *ot,
 	                "Export normals");
 
 	RNA_def_boolean(ot->srna, "export_uvs", 1, "UVs", "Export UVs");
+
+	RNA_def_boolean(ot->srna, "export_edges", 0, "Edges", "Export Edges");
 
 	RNA_def_boolean(ot->srna, "export_materials", 0, "Materials", "Export Materials");
 
@@ -139,6 +149,11 @@ void io_common_default_declare_export(struct wmOperatorType *ot,
 	              "respect to the world's origin",
 	              0.0001f, 1000.0f);
 
+	RNA_def_enum(ot->srna, "axis_forward", axis_remap, AXIS_NEG_Z, // From orientation helper, not sure why
+	             "Forward", "The axis to remap the forward axis to");
+	RNA_def_enum(ot->srna, "axis_up", axis_remap, AXIS_Y, // From orientation helper, not sure why
+	             "Up", "The axis to remap the up axis to");
+
 	/* This dummy prop is used to check whether we need to init the start and
 	 * end frame values to that of the scene's, otherwise they are reset at
 	 * every change, draw update. */
@@ -165,39 +180,37 @@ ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
 
 	RNA_string_get(op->ptr, "filepath", settings->filepath);
 
-	settings->selected_only            = RNA_boolean_get(op->ptr, "selected_only");
-	settings->visible_only             = RNA_boolean_get(op->ptr, "visible_only");
-	settings->renderable_only          = RNA_boolean_get(op->ptr, "renderable_only");
-
-	settings->frame_start              = RNA_int_get(op->ptr, "start");
-	settings->frame_end                = RNA_int_get(op->ptr, "end");
-	settings->frame_samples_xform      = RNA_int_get(op->ptr, "xsamples");
-	settings->frame_samples_shape      = RNA_int_get(op->ptr, "gsamples");
-	settings->shutter_open             = RNA_float_get(op->ptr, "sh_open");
-	settings->shutter_close            = RNA_float_get(op->ptr, "sh_close");
-
-	settings->flatten_hierarchy        = RNA_boolean_get(op->ptr, "flatten_hierarchy");
-
-	settings->export_animations        = RNA_boolean_get(op->ptr, "export_animations");
-	settings->export_normals           = RNA_boolean_get(op->ptr, "export_normals");
-	settings->export_uvs               = RNA_boolean_get(op->ptr, "export_uvs");
-	settings->export_materials         = RNA_boolean_get(op->ptr, "export_materials");
-	settings->export_vcolors           = RNA_boolean_get(op->ptr, "export_vcolors");
-	settings->export_face_sets         = RNA_boolean_get(op->ptr, "export_face_sets");
-	settings->export_vweights          = RNA_boolean_get(op->ptr, "export_vweights");
-	settings->export_particles         = RNA_boolean_get(op->ptr, "export_particles");
-	settings->export_hair              = RNA_boolean_get(op->ptr, "export_hair");
-	settings->export_child_hairs       = RNA_boolean_get(op->ptr, "export_child_hairs");
-	settings->export_objects_as_objects= RNA_boolean_get(op->ptr, "export_objects_as_objects");
-	settings->export_objects_as_groups = RNA_boolean_get(op->ptr, "export_objects_as_groups");
-
-	settings->curves_as_mesh           = RNA_boolean_get(op->ptr, "curves_as_mesh");
-	settings->pack_uv                  = RNA_boolean_get(op->ptr, "pack_uv");
-	settings->triangulate              = RNA_boolean_get(op->ptr, "triangulate");
-	settings->quad_method              = RNA_enum_get(op->ptr, "quad_method");
-	settings->ngon_method              = RNA_enum_get(op->ptr, "ngon_method");
-
-	settings->global_scale             = RNA_float_get(op->ptr, "global_scale");
+	settings->axis_forward              = RNA_enum_get(op->ptr, "axis_forward");
+	settings->axis_up                   = RNA_enum_get(op->ptr, "axis_up");
+	settings->selected_only             = RNA_boolean_get(op->ptr, "selected_only");
+	settings->visible_only              = RNA_boolean_get(op->ptr, "visible_only");
+	settings->renderable_only           = RNA_boolean_get(op->ptr, "renderable_only");
+	settings->frame_start               = RNA_int_get(op->ptr, "start");
+	settings->frame_end                 = RNA_int_get(op->ptr, "end");
+	settings->frame_samples_xform       = RNA_int_get(op->ptr, "xsamples");
+	settings->frame_samples_shape       = RNA_int_get(op->ptr, "gsamples");
+	settings->shutter_open              = RNA_float_get(op->ptr, "sh_open");
+	settings->shutter_close             = RNA_float_get(op->ptr, "sh_close");
+	settings->flatten_hierarchy         = RNA_boolean_get(op->ptr, "flatten_hierarchy");
+	settings->export_animations         = RNA_boolean_get(op->ptr, "export_animations");
+	settings->export_normals            = RNA_boolean_get(op->ptr, "export_normals");
+	settings->export_uvs                = RNA_boolean_get(op->ptr, "export_uvs");
+	settings->export_edges              = RNA_boolean_get(op->ptr, "export_edges");
+	settings->export_materials          = RNA_boolean_get(op->ptr, "export_materials");
+	settings->export_vcolors            = RNA_boolean_get(op->ptr, "export_vcolors");
+	settings->export_face_sets          = RNA_boolean_get(op->ptr, "export_face_sets");
+	settings->export_vweights           = RNA_boolean_get(op->ptr, "export_vweights");
+	settings->export_particles          = RNA_boolean_get(op->ptr, "export_particles");
+	settings->export_hair               = RNA_boolean_get(op->ptr, "export_hair");
+	settings->export_child_hairs        = RNA_boolean_get(op->ptr, "export_child_hairs");
+	settings->export_objects_as_objects = RNA_boolean_get(op->ptr, "export_objects_as_objects");
+	settings->export_objects_as_groups  = RNA_boolean_get(op->ptr, "export_objects_as_groups");
+	settings->curves_as_mesh            = RNA_boolean_get(op->ptr, "curves_as_mesh");
+	settings->pack_uv                   = RNA_boolean_get(op->ptr, "pack_uv");
+	settings->triangulate               = RNA_boolean_get(op->ptr, "triangulate");
+	settings->quad_method               = RNA_enum_get(op->ptr, "quad_method");
+	settings->ngon_method               = RNA_enum_get(op->ptr,  "ngon_method");
+	settings->global_scale              = RNA_float_get(op->ptr, "global_scale");
 
 	if(!settings->export_animations) {
 		settings->frame_start = BKE_scene_frame_get(CTX_data_scene(C));;
@@ -272,6 +285,12 @@ void io_common_export_draw(bContext *C, wmOperator *op) {
 	uiItemL(row, IFACE_("Scene Options:"), ICON_SCENE_DATA);
 
 	row = uiLayoutRow(box, false);
+	uiItemR(row, &ptr, "axis_forward", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(box, false);
+	uiItemR(row, &ptr, "axis_up",      0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(box, false);
 	uiItemR(row, &ptr, "export_animations", 0, NULL, ICON_NONE);
 
 	const bool animations = RNA_boolean_get(&ptr, "export_animations");
@@ -314,6 +333,9 @@ void io_common_export_draw(bContext *C, wmOperator *op) {
 	row = uiLayoutRow(box, false);
 	uiItemR(row, &ptr, "pack_uv", 0, NULL, ICON_NONE);
 	uiLayoutSetEnabled(row, RNA_boolean_get(&ptr, "export_uvs"));
+
+	row = uiLayoutRow(box, false);
+	uiItemR(row, &ptr, "export_edges", 0, NULL, ICON_NONE);
 
 	row = uiLayoutRow(box, false);
 	uiItemR(row, &ptr, "export_materials", 0, NULL, ICON_NONE);

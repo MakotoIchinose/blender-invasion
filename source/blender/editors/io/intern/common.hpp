@@ -8,19 +8,37 @@
 
 extern "C" {
 
+#include "BKE_global.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
+#include "BKE_library.h"
+#include "BKE_customdata.h"
+#include "BKE_scene.h"
+
+#include "MEM_guardedalloc.h"
+
+/* SpaceType struct has a member called 'new' which obviously conflicts with C++
+ * so temporarily redefining the new keyword to make it compile. */
+#define new extern_new
+#include "BKE_screen.h"
+#undef new
+
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+
 #include "bmesh.h"
 #include "bmesh_tools.h"
+
 #include "DNA_layer_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+
+#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "../io_common.h"
 
@@ -34,15 +52,37 @@ extern "C" {
 namespace common {
 	using ulong = unsigned long;
 
+	bool object_is_smoke_sim(const Object * const ob);
+
 	bool should_export_object(const ExportSettings * const settings, const Object * const eob);
 
-
 	bool object_type_is_exportable(const Object * const ob);
+
+	void change_orientation(float (&mat)[4][4], int forward, int up);
 
 	bool get_final_mesh(const ExportSettings * const settings, const Scene * const escene,
 	                    const Object *eob, Mesh **mesh);
 
 	std::string get_object_name(const Object * const eob, const Mesh * const mesh);
+
+	void export_start(bContext *C, const ExportSettings * const settings);
+	bool export_end(bContext *C, ExportSettings * const settings);
+
+	template<typename func>
+	void for_each_modifier(const Object * const ob, func f) {
+		for (ModifierData *md = (ModifierData *) ob->modifiers.first;
+		     md; md = md->next)
+			f(md);
+	}
+
+	template<typename func>
+	void for_each_base(ViewLayer * const view_layer, func f) {
+		for (Base *base = static_cast<Base *>(view_layer->object_bases.first);
+		     base; base = base->next)
+			if (!G.is_break)
+				f(base);
+		G.is_break = false;
+	}
 
 	template<typename func>
 	void for_each_vertex(const Mesh * const mesh, func f) {
@@ -57,6 +97,7 @@ namespace common {
 			f(i, mesh->medge[i]);
 	}
 
+	// Meeded for the templated call operator, for deduping
 	struct for_each_uv_t {
 		template<typename func>
 		void operator()(const Mesh * const mesh, func f) {

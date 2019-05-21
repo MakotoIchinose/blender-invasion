@@ -20,17 +20,41 @@ extern "C" {
 #include <stdio.h>
 }
 
+#include <iostream>
+
 #include "common.hpp"
 
 // Anonymous namespace for internal functions
 namespace {
-	void name_compat(std::string& ob_name, const std::string& mesh_name) {
+	inline void name_compat(std::string& ob_name, const std::string& mesh_name) {
 		if(ob_name.compare(mesh_name) != 0) {
 			ob_name += "_" + mesh_name;
 		}
 		size_t start_pos;
 		while((start_pos = ob_name.find(" ")) != std::string::npos)
 			ob_name.replace(start_pos, 1, "_");
+	}
+
+	inline void change_single_axis_orientation(float (&mat)[4][4],
+	                                     int axis_from, int axis_to) {
+		bool negate = false;
+		switch (axis_to) {
+		case AXIS_X: // Fallthrough
+		case AXIS_Y: // Fallthrough
+		case AXIS_Z:
+			break; // Just swap
+		case AXIS_NEG_X: // Fallthrough
+		case AXIS_NEG_Y: // Fallthrough
+		case AXIS_NEG_Z:
+			axis_to -= AXIS_NEG_X; // Transform the enum into an index
+			negate = true;         // Swap and negate
+			break;
+		}
+		for (size_t i = 0; i < 4; ++i) {
+			float t = mat[i][axis_to];
+			mat[i][axis_to] = (negate ? -1 : 1) * mat[i][axis_from];
+			mat[i][axis_from] = t;
+		}
 	}
 }
 
@@ -82,48 +106,56 @@ namespace common {
 			/* case OB_CAMERA: */
 			/* return false; */
 		default:
-			printf("Export for this object type not defined %s\n", ob->id.name);
+			printf("Export for this object type is not defined %s\n", ob->id.name);
 			return false;
 		}
 	}
 
-	bool get_final_mesh(const ExportSettings * const settings, const Scene * const escene,
-	                    const Object *eob, Mesh **mesh /* out */) {
-		/* From abc_mesh.cc */
+	void change_orientation(float (&mat)[4][4], int forward, int up) {
+		change_single_axis_orientation(mat, AXIS_X, forward);
+		change_single_axis_orientation(mat, AXIS_Z, up);
+	}
 
-		/* Temporarily disable subdivs if we shouldn't apply them */
+	bool get_final_mesh(const ExportSettings * const settings, const Scene * const escene,
+	                    const Object *ob, Mesh **mesh /* out */) {
+		/* Based on abc_mesh.cc */
+
+		/* Temporarily disable modifiers if we shouldn't apply them */
 		if (!settings->apply_modifiers)
-			for (ModifierData *md = (ModifierData *) eob->modifiers.first;
-			     md; md = md->next)
-				// if (md->type == eModifierType_Subsurf)
-				md->mode |= eModifierMode_DisableTemporary;
+			for_each_modifier(ob, [](ModifierData *md){
+				                      md->mode |= eModifierMode_DisableTemporary;
+			                      });
 
 		float scale_mat[4][4];
 		scale_m4_fl(scale_mat, settings->global_scale);
+
+		change_orientation(scale_mat, settings->axis_forward, settings->axis_up);
+
 		// TODO someone Unsure if necessary
 		// scale_mat[3][3] = m_settings.global_scale;  /* also scale translation */
-		mul_m4_m4m4((float (*)[4]) eob->obmat, eob->obmat, scale_mat);
+
+		// TODO someone Doesn't seem to do anyhing. Is it necessary to update the object somehow?
+		mul_m4_m4m4((float (*)[4]) ob->obmat, ob->obmat, scale_mat);
 		// yup_mat[3][3] /= m_settings.global_scale;  /* normalise the homogeneous component */
 
-		if (determinant_m4(eob->obmat) < 0.0)
+		if (determinant_m4(ob->obmat) < 0.0)
 			;               /* TODO someone flip normals */
 
-		/* Object *eob = DEG_get_evaluated_object(settings->depsgraph, ob); */
-		//*mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene,
-		//                            (Object *)eob, &CD_MASK_MESH);
+		/* Object *ob = DEG_get_evaluated_object(settings->depsgraph, ob); */
+		// *mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene,
+		//                             (Object *) ob, &CD_MASK_MESH);
 
 		if (settings->render_modifiers) // vv Depends on depsgraph type
 			*mesh = mesh_create_eval_final_render(settings->depsgraph, (Scene *) escene,
-			                                 (Object *) eob, &CD_MASK_MESH);
+			                                      (Object *) ob, &CD_MASK_MESH);
 		else
 			*mesh = mesh_create_eval_final_view(settings->depsgraph, (Scene *) escene,
-			                               (Object *) eob, &CD_MASK_MESH);
+			                                    (Object *) ob, &CD_MASK_MESH);
 
 		if (!settings->apply_modifiers)
-			for (ModifierData *md = (ModifierData *) eob->modifiers.first;
-			     md; md = md->next)
-				// if (md->type == eModifierType_Subsurf)
-				md->mode &= ~eModifierMode_DisableTemporary;
+			for_each_modifier(ob, [](ModifierData *md){
+				                      md->mode &= ~eModifierMode_DisableTemporary;
+			                      });
 
 		if (settings->triangulate) {
 			struct BMeshCreateParams bmcp = {false};
@@ -150,4 +182,27 @@ namespace common {
 		name_compat(name /* modifies */, mesh_name);
 		return name;
 	}
+
+	void export_start(bContext *UNUSED(C), const ExportSettings * const settings) {
+		/* From alembic_capi.cc
+		 * XXX annoying hack: needed to prevent data corruption when changing
+		 * scene frame in separate threads
+		 */
+		G.is_rendering = true; // TODO someone Should use BKE_main_lock(bmain);?
+		BKE_spacedata_draw_locks(true);
+		DEG_graph_build_from_view_layer(settings->depsgraph,
+		                                settings->main,
+		                                settings->scene,
+		                                settings->view_layer);
+		BKE_scene_graph_update_tagged(settings->depsgraph, settings->main);
+	}
+
+	bool export_end(bContext *UNUSED(C), ExportSettings * const settings) {
+		G.is_rendering = false;
+		BKE_spacedata_draw_locks(false);
+		DEG_graph_free(settings->depsgraph);
+		MEM_freeN(settings);
+		return true;
+	}
+
 }
