@@ -1,5 +1,9 @@
 extern "C" {
 
+#include "BLI_sys_types.h"
+#include "BLI_math.h"
+#include "BLT_translation.h"
+
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_global.h"
@@ -19,10 +23,6 @@ extern "C" {
 
 #include "WM_api.h"
 #include "WM_types.h"
-
-#include "BLI_math.h"
-
-#include "BLT_translation.h"
 
 #include "ED_object.h"
 #include "bmesh.h"
