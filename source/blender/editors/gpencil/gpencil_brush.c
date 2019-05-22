@@ -157,8 +157,12 @@ typedef struct tGP_BrushEditData {
 } tGP_BrushEditData;
 
 /* Callback for performing some brush operation on a single point */
-typedef bool (*GP_BrushApplyCb)(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2]);
+typedef bool (*GP_BrushApplyCb)(tGP_BrushEditData *gso,
+                                bGPDstroke *gps,
+                                bGPDspoint *UNUSED(pt_derived),
+                                int pt_index,
+                                const int radius,
+                                const int co[2]);
 
 /* ************************************************ */
 /* Utility Functions */
@@ -305,8 +309,12 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
 
 /* A simple (but slower + inaccurate)
  * smooth-brush implementation to test the algorithm for stroke smoothing. */
-static bool gp_brush_smooth_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
+                                  bGPDstroke *gps,
+                                  bGPDspoint *UNUSED(pt_derived),
+                                  int pt_index,
+                                  const int radius,
+                                  const int co[2])
 {
   // GP_Sculpt_Data *gp_brush = gso->brush;
   float inf = gp_brush_influence_calc(gso, radius, co);
@@ -340,8 +348,12 @@ static bool gp_brush_smooth_apply(
 /* Line Thickness Brush */
 
 /* Make lines thicker or thinner by the specified amounts */
-static bool gp_brush_thickness_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_thickness_apply(tGP_BrushEditData *gso,
+                                     bGPDstroke *gps,
+                                     bGPDspoint *UNUSED(pt_derived),
+                                     int pt_index,
+                                     const int radius,
+                                     const int co[2])
 {
   bGPDspoint *pt = gps->points + pt_index;
   float inf;
@@ -380,8 +392,12 @@ static bool gp_brush_thickness_apply(
 /* Color Strength Brush */
 
 /* Make color more or less transparent by the specified amounts */
-static bool gp_brush_strength_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_strength_apply(tGP_BrushEditData *gso,
+                                    bGPDstroke *gps,
+                                    bGPDspoint *UNUSED(pt_derived),
+                                    int pt_index,
+                                    const int radius,
+                                    const int co[2])
 {
   bGPDspoint *pt = gps->points + pt_index;
   float inf;
@@ -424,6 +440,8 @@ typedef struct tGPSB_Grab_StrokeData {
   int *points;
   /* array of influence weights for each of the included points */
   float *weights;
+  /* array of derived points to calc transformation */
+  struct bGPDspoint **derived_points;
 
   /* capacity of the arrays */
   int capacity;
@@ -451,6 +469,7 @@ static void gp_brush_grab_stroke_init(tGP_BrushEditData *gso, bGPDstroke *gps)
 
     memset(data->points, 0, sizeof(int) * data->capacity);
     memset(data->weights, 0, sizeof(float) * data->capacity);
+    memset(data->derived_points, 0, sizeof(bGPDspoint *) * data->capacity);
   }
   else {
     /* Create new instance */
@@ -461,6 +480,8 @@ static void gp_brush_grab_stroke_init(tGP_BrushEditData *gso, bGPDstroke *gps)
 
     data->points = MEM_callocN(sizeof(int) * data->capacity, "GP Stroke Grab Indices");
     data->weights = MEM_callocN(sizeof(float) * data->capacity, "GP Stroke Grab Weights");
+    data->derived_points = MEM_callocN(sizeof(bGPDspoint) * data->capacity,
+                                       "GP Stroke Grab Derived");
 
     /* hook up to the cache */
     BLI_ghash_insert(gso->stroke_customdata, gps, data);
@@ -468,8 +489,12 @@ static void gp_brush_grab_stroke_init(tGP_BrushEditData *gso, bGPDstroke *gps)
 }
 
 /* store references to stroke points in the initial stage */
-static bool gp_brush_grab_store_points(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_grab_store_points(tGP_BrushEditData *gso,
+                                       bGPDstroke *gps,
+                                       bGPDspoint *pt_derived,
+                                       int pt_index,
+                                       const int radius,
+                                       const int co[2])
 {
   tGPSB_Grab_StrokeData *data = BLI_ghash_lookup(gso->stroke_customdata, gps);
   float inf = gp_brush_influence_calc(gso, radius, co);
@@ -480,6 +505,7 @@ static bool gp_brush_grab_store_points(
   /* insert this point into the set of affected points */
   data->points[data->size] = pt_index;
   data->weights[data->size] = inf;
+  data->derived_points[data->size] = pt_derived;
   data->size++;
 
   /* done */
@@ -525,6 +551,7 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
   /* Apply dvec to all of the stored points */
   for (i = 0; i < data->size; i++) {
     bGPDspoint *pt = &gps->points[data->points[i]];
+    bGPDspoint *pt_derived = data->derived_points[i];
     float delta[3] = {0.0f};
 
     /* adjust the amount of displacement to apply */
@@ -554,8 +581,9 @@ static void gp_brush_grab_stroke_free(void *ptr)
   tGPSB_Grab_StrokeData *data = (tGPSB_Grab_StrokeData *)ptr;
 
   /* free arrays */
-  MEM_freeN(data->points);
-  MEM_freeN(data->weights);
+  MEM_SAFE_FREE(data->points);
+  MEM_SAFE_FREE(data->weights);
+  MEM_SAFE_FREE(data->derived_points);
 
   /* ... and this item itself, since it was also allocated */
   MEM_freeN(data);
@@ -564,9 +592,12 @@ static void gp_brush_grab_stroke_free(void *ptr)
 /* ----------------------------------------------- */
 /* Push Brush */
 /* NOTE: Depends on gp_brush_grab_calc_dvec() */
-
-static bool gp_brush_push_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_push_apply(tGP_BrushEditData *gso,
+                                bGPDstroke *gps,
+                                bGPDspoint *UNUSED(pt_derived),
+                                int pt_index,
+                                const int radius,
+                                const int co[2])
 {
   bGPDspoint *pt = gps->points + pt_index;
   float save_pt[3];
@@ -592,7 +623,6 @@ static bool gp_brush_push_apply(
 
 /* ----------------------------------------------- */
 /* Pinch Brush */
-
 /* Compute reference midpoint for the brush - this is what we'll be moving towards */
 static void gp_brush_calc_midpoint(tGP_BrushEditData *gso)
 {
@@ -629,8 +659,12 @@ static void gp_brush_calc_midpoint(tGP_BrushEditData *gso)
 }
 
 /* Shrink distance between midpoint and this point... */
-static bool gp_brush_pinch_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_pinch_apply(tGP_BrushEditData *gso,
+                                 bGPDstroke *gps,
+                                 bGPDspoint *UNUSED(pt_derived),
+                                 int pt_index,
+                                 const int radius,
+                                 const int co[2])
 {
   bGPDspoint *pt = gps->points + pt_index;
   float fac, inf;
@@ -677,13 +711,16 @@ static bool gp_brush_pinch_apply(
 
 /* ----------------------------------------------- */
 /* Twist Brush - Rotate Around midpoint */
-
 /* Take the screenspace coordinates of the point, rotate this around the brush midpoint,
  * convert the rotated point and convert it into "data" space
  */
 
-static bool gp_brush_twist_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_twist_apply(tGP_BrushEditData *gso,
+                                 bGPDstroke *gps,
+                                 bGPDspoint *UNUSED(pt_derived),
+                                 int pt_index,
+                                 const int radius,
+                                 const int co[2])
 {
   bGPDspoint *pt = gps->points + pt_index;
   float angle, inf;
@@ -759,10 +796,13 @@ static bool gp_brush_twist_apply(
 
 /* ----------------------------------------------- */
 /* Randomize Brush */
-
 /* Apply some random jitter to the point */
-static bool gp_brush_randomize_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
+                                     bGPDstroke *gps,
+                                     bGPDspoint *UNUSED(pt_derived),
+                                     int pt_index,
+                                     const int radius,
+                                     const int co[2])
 {
   bGPDspoint *pt = gps->points + pt_index;
   float save_pt[3];
@@ -886,10 +926,13 @@ static bool gp_brush_randomize_apply(
 }
 
 /* Weight Paint Brush */
-
 /* Change weight paint for vertex groups */
-static bool gp_brush_weight_apply(
-    tGP_BrushEditData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool gp_brush_weight_apply(tGP_BrushEditData *gso,
+                                  bGPDstroke *gps,
+                                  bGPDspoint *UNUSED(pt_derived),
+                                  int pt_index,
+                                  const int radius,
+                                  const int co[2])
 {
   /* create dvert */
   BKE_gpencil_dvert_ensure(gps);
@@ -949,7 +992,6 @@ static bool gp_brush_weight_apply(
 
 /* ************************************************ */
 /* Non Callback-Based Brushes */
-
 /* Clone Brush ------------------------------------- */
 /* How this brush currently works:
  * - If this is start of the brush stroke, paste immediately under the cursor
@@ -1463,7 +1505,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
       if (len_v2v2_int(mval_i, pc1) <= radius) {
         /* apply operation to this point */
         if (pt->runtime.pt_orig != NULL) {
-          changed = apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc1);
+          changed = apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc1);
         }
       }
     }
@@ -1507,7 +1549,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
           /* To each point individually... */
           pt = &gps->points[i];
           if (pt->runtime.pt_orig != NULL) {
-            ok = apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc1);
+            ok = apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc1);
           }
 
           /* Only do the second point if this is the last segment,
@@ -1521,7 +1563,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
           if (i + 1 == gps->totpoints - 1) {
             pt = &gps->points[i + 1];
             if (pt->runtime.pt_orig != NULL) {
-              ok |= apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc2);
+              ok |= apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc2);
               include_last = false;
             }
           }
@@ -1539,7 +1581,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
            */
           pt = &gps->points[i];
           if (pt->runtime.pt_orig != NULL) {
-            changed |= apply(gso, gps->runtime.gps_orig, pt->runtime.idx_orig, radius, pc1);
+            changed |= apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc1);
             include_last = false;
           }
         }
