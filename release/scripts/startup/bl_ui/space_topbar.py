@@ -38,8 +38,6 @@ class TOPBAR_HT_upper_bar(Header):
         window = context.window
         screen = context.screen
 
-        layout.menu("TOPBAR_MT_app", text="", icon='BLENDER')
-
         TOPBAR_MT_editor_menus.draw_collapsible(context, layout)
 
         layout.separator()
@@ -158,6 +156,9 @@ class TOPBAR_MT_editor_menus(Menu):
 
     def draw(self, _context):
         layout = self.layout
+
+        layout.menu("TOPBAR_MT_app", text="", icon='BLENDER')
+
         layout.menu("TOPBAR_MT_file")
         layout.menu("TOPBAR_MT_edit")
 
@@ -168,54 +169,25 @@ class TOPBAR_MT_editor_menus(Menu):
 
 
 class TOPBAR_MT_app(Menu):
-    bl_label = "Application"
+    bl_label = "Blender"
 
     def draw(self, context):
         layout = self.layout
         prefs = context.preferences
 
-        layout.operator("wm.splash", icon='BLENDER')
+        layout.operator("wm.splash")
 
         layout.separator()
 
-        layout.operator_context = 'INVOKE_AREA'
+        layout.menu("TOPBAR_MT_app_support")
 
-        if any(bpy.utils.app_template_paths()):
-            app_template = prefs.app_template
-        else:
-            app_template = None
+        layout.separator()
 
-        if app_template:
-            layout.label(text=bpy.path.display_name(app_template, has_ext=False))
-
-        layout.operator("wm.save_homefile")
-        props = layout.operator("wm.read_factory_settings")
-        if app_template:
-            props.app_template = app_template
-
-        if prefs.use_preferences_save:
-            props = layout.operator(
-                "wm.read_factory_settings",
-                text="Load Factory Settings (Temporary)"
-            )
-            if app_template:
-                props.app_template = app_template
-            props.use_temporary_preferences = True
+        layout.menu("TOPBAR_MT_app_about")
 
         layout.separator()
 
         layout.operator("preferences.app_template_install", text="Install Application Template...")
-
-        layout.separator()
-
-        layout.operator("screen.userpref_show", text="Preferences...", icon='PREFERENCES')
-
-        layout.separator()
-
-        layout.operator_context = 'EXEC_AREA'
-        if bpy.data.is_dirty:
-            layout.operator_context = 'INVOKE_SCREEN'  # quit dialog
-        layout.operator("wm.quit_blender", text="Quit", icon='QUIT')
 
 
 class TOPBAR_MT_file(Menu):
@@ -229,8 +201,7 @@ class TOPBAR_MT_file(Menu):
         layout.operator("wm.open_mainfile", text="Open...", icon='FILE_FOLDER')
         layout.menu("TOPBAR_MT_file_open_recent")
         layout.operator("wm.revert_mainfile")
-        layout.operator("wm.recover_last_session")
-        layout.operator("wm.recover_auto_save", text="Recover Auto Save...")
+        layout.menu("TOPBAR_MT_file_recover")
 
         layout.separator()
 
@@ -257,6 +228,17 @@ class TOPBAR_MT_file(Menu):
         layout.separator()
 
         layout.menu("TOPBAR_MT_file_external_data")
+
+        layout.separator()
+
+        layout.menu("TOPBAR_MT_file_defaults")
+
+        layout.separator()
+
+        layout.operator_context = 'EXEC_AREA'
+        if bpy.data.is_dirty:
+            layout.operator_context = 'INVOKE_SCREEN'  # quit dialog
+        layout.operator("wm.quit_blender", text="Quit", icon='QUIT')
 
 
 class TOPBAR_MT_file_new(Menu):
@@ -322,6 +304,91 @@ class TOPBAR_MT_file_new(Menu):
 
     def draw(self, context):
         TOPBAR_MT_file_new.draw_ex(self.layout, context)
+
+
+class TOPBAR_MT_file_recover(Menu):
+    bl_label = "Recover"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("wm.recover_last_session", text="Last Session")
+        layout.operator("wm.recover_auto_save", text="Auto Save...")
+
+
+class TOPBAR_MT_file_defaults(Menu):
+    bl_label = "Defaults"
+
+    def draw(self, context):
+        layout = self.layout
+        prefs = context.preferences
+
+        layout.operator_context = 'INVOKE_AREA'
+
+        if any(bpy.utils.app_template_paths()):
+            app_template = prefs.app_template
+        else:
+            app_template = None
+
+        if app_template:
+            layout.label(text=bpy.path.display_name(app_template, has_ext=False))
+
+        layout.operator("wm.save_homefile")
+        props = layout.operator("wm.read_factory_settings")
+        if app_template:
+            props.app_template = app_template
+
+        if prefs.use_preferences_save:
+            props = layout.operator(
+                "wm.read_factory_settings",
+                text="Load Factory Settings (Temporary)"
+            )
+            if app_template:
+                props.app_template = app_template
+            props.use_temporary_preferences = True
+
+
+class TOPBAR_MT_app_about(Menu):
+    bl_label = "About"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator(
+            "wm.url_open", text="Release Notes", icon='URL',
+        ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
+
+        layout.separator()
+
+        layout.operator(
+            "wm.url_open", text="Blender Website", icon='URL',
+        ).url = "https://www.blender.org/"
+        layout.operator(
+            "wm.url_open", text="Credits", icon='URL',
+        ).url = "https://www.blender.org/about/credits/"
+
+        layout.separator()
+
+        layout.operator(
+            "wm.url_open", text="License", icon='URL',
+        ).url = "https://www.blender.org/about/license/"
+
+
+class TOPBAR_MT_app_support(Menu):
+    bl_label = "Support Blender"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator(
+            "wm.url_open", text="Development Fund", icon='URL',
+        ).url = "https://fund.blender.org"
+
+        layout.separator()
+
+        layout.operator(
+            "wm.url_open", text="Blender Store", icon='URL',
+        ).url = "https://store.blender.org"
 
 
 class TOPBAR_MT_templates_more(Menu):
@@ -462,6 +529,10 @@ class TOPBAR_MT_edit(Menu):
         tool_settings = context.tool_settings
         layout.prop(tool_settings, "lock_object_mode")
 
+        layout.separator()
+
+        layout.operator("screen.userpref_show", text="Preferences...", icon='PREFERENCES')
+
 
 class TOPBAR_MT_window(Menu):
     bl_label = "Window"
@@ -515,10 +586,12 @@ class TOPBAR_MT_help(Menu):
         layout.operator(
             "wm.url_open", text="Manual", icon='HELP',
         ).url = "https://docs.blender.org/manual/en/dev/"
-
         layout.operator(
-            "wm.url_open", text="Report a Bug", icon='URL',
-        ).url = url_prefill_from_blender()
+            "wm.url_open", text="Tutorials", icon='URL',
+        ).url = "https://www.blender.org/tutorials"
+        layout.operator(
+            "wm.url_open", text="Support", icon='URL',
+        ).url = "https://www.blender.org/support"
 
         layout.separator()
 
@@ -527,42 +600,28 @@ class TOPBAR_MT_help(Menu):
         ).url = "https://www.blender.org/community/"
         layout.operator(
             "wm.url_open", text="Developer Community", icon='URL',
-        ).url = "https://www.blender.org/get-involved/developers/"
+        ).url = "https://devtalk.blender.org"
 
         layout.separator()
 
         layout.operator(
-            "wm.url_open", text="Blender Website", icon='URL',
-        ).url = "https://www.blender.org"
-        layout.operator(
-            "wm.url_open", text="Release Notes", icon='URL',
-        ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
-        layout.operator(
-            "wm.url_open", text="Credits", icon='URL',
-        ).url = "https://www.blender.org/about/credits/"
-
-        layout.separator()
-
-        layout.operator(
-            "wm.url_open", text="Blender Store", icon='URL',
-        ).url = "https://store.blender.org"
-        layout.operator(
-            "wm.url_open", text="Development Fund", icon='URL',
-        ).url = "https://fund.blender.org"
-        layout.operator(
-            "wm.url_open", text="Donate", icon='URL',
-        ).url = "https://www.blender.org/foundation/donation-payment/"
-
-        layout.separator()
+            "wm.url_open", text="Python API Reference", icon='URL',
+        ).url = bpy.types.WM_OT_doc_view._prefix
 
         if show_developer:
             layout.operator(
-                "wm.url_open", text="Python API Reference", icon='URL',
-            ).url = bpy.types.WM_OT_doc_view._prefix
+                "wm.url_open", text="Developer Documentation", icon='URL',
+            ).url = "https://wiki.blender.org/wiki/Main_Page"
 
             layout.operator("wm.operator_cheat_sheet", icon='TEXT')
 
-            layout.separator()
+        layout.separator()
+
+        layout.operator(
+            "wm.url_open", text="Report a Bug", icon='URL',
+        ).url = url_prefill_from_blender()
+
+        layout.separator()
 
         layout.operator("wm.sysinfo")
 
@@ -722,8 +781,12 @@ classes = (
     TOPBAR_MT_workspace_menu,
     TOPBAR_MT_editor_menus,
     TOPBAR_MT_app,
+    TOPBAR_MT_app_about,
+    TOPBAR_MT_app_support,
     TOPBAR_MT_file,
     TOPBAR_MT_file_new,
+    TOPBAR_MT_file_recover,
+    TOPBAR_MT_file_defaults,
     TOPBAR_MT_templates_more,
     TOPBAR_MT_file_import,
     TOPBAR_MT_file_export,

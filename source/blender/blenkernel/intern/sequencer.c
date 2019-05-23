@@ -262,7 +262,7 @@ static void BKE_sequence_free_ex(Scene *scene,
   }
 
   if (seq->prop) {
-    IDP_FreeProperty_ex(seq->prop, do_id_user);
+    IDP_FreePropertyContent_ex(seq->prop, do_id_user);
     MEM_freeN(seq->prop);
   }
 
@@ -3546,7 +3546,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         IB_rect,
         draw_flags,
         scene->r.alphamode,
-        0, /* no aa samples */
+        U.ogl_multisamples,
         viewname,
         context->gpu_offscreen,
         err_out);
@@ -5668,12 +5668,12 @@ Sequence *BKE_sequencer_add_movie_strip(bContext *C, ListBase *seqbasep, SeqLoad
 
   if (seq_load->flag & SEQ_LOAD_MOVIE_SOUND) {
     int start_frame_back = seq_load->start_frame;
-    seq_load->channel++;
+    seq_load->channel--;
 
     seq_load->seq_sound = BKE_sequencer_add_sound_strip(C, seqbasep, seq_load);
 
     seq_load->start_frame = start_frame_back;
-    seq_load->channel--;
+    seq_load->channel++;
   }
 
   /* can be NULL */

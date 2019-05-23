@@ -24,7 +24,9 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_system.h"
 
+#include "DNA_camera_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -79,7 +81,6 @@ void BLO_update_defaults_userpref_blend(void)
 
     if (addon->prop) {
       IDP_FreeProperty(addon->prop);
-      MEM_freeN(addon->prop);
       addon->prop = NULL;
     }
   }
@@ -94,10 +95,13 @@ void BLO_update_defaults_userpref_blend(void)
   /* Leave temp directory empty, will then get appropriate value per OS. */
   U.tempdir[0] = '\0';
 
+  /* System-specific fonts directory. */
+  BKE_appdir_font_folder_default(U.fontdir);
+
   /* Only enable tooltips translation by default,
    * without actually enabling translation itself, for now. */
   U.transopts = USER_TR_TOOLTIPS;
-  U.memcachelimit = 4096;
+  U.memcachelimit = min_ii(BLI_system_memory_max_in_megabytes_int() / 2, 4096);
 
   /* Auto perspective. */
   U.uiflag |= USER_AUTOPERSP;
@@ -110,6 +114,9 @@ void BLO_update_defaults_userpref_blend(void)
 
   /* Default to left click select. */
   BKE_keyconfig_pref_set_select_mouse(&U, 0, true);
+
+  /* Increase a little for new scrubbing area. */
+  U.v2d_min_gridsize = 45;
 }
 
 /**
@@ -155,9 +162,16 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
       for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
-        /* Remove all stored panels, we want to use defaults
-         * (order, open/closed) as defined by UI code here! */
-        BKE_area_region_panels_free(&ar->panels);
+        if (builtin_template) {
+          /* Remove all stored panels, we want to use defaults
+           * (order, open/closed) as defined by UI code here! */
+          BKE_area_region_panels_free(&ar->panels);
+          BLI_freelistN(&ar->panels_category_active);
+
+          /* Reset size so it uses consistent defaults from the region types. */
+          ar->sizex = 0;
+          ar->sizey = 0;
+        }
 
         /* some toolbars have been saved as initialized,
          * we don't want them to have odd zoom-level or scrolling set, see: T47047 */
@@ -315,6 +329,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
           /* Screen space cavity by default for faster performance. */
           View3D *v3d = sa->spacedata.first;
           v3d->shading.cavity_type = V3D_SHADING_CAVITY_CURVATURE;
+          v3d->shading.light = V3D_LIGHTING_MATCAP;
         }
         else if (sa->spacetype == SPACE_CLIP) {
           SpaceClip *sclip = sa->spacedata.first;
@@ -363,8 +378,8 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       scene->r.displaymode = R_OUTPUT_WINDOW;
 
       if (app_template && STREQ(app_template, "Video_Editing")) {
-        /* Filmic is too slow, use default until it is optimized. */
-        STRNCPY(scene->view_settings.view_transform, "Default");
+        /* Filmic is too slow, use standard until it is optimized. */
+        STRNCPY(scene->view_settings.view_transform, "Standard");
         STRNCPY(scene->view_settings.look, "None");
       }
       else {
@@ -397,6 +412,12 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     for (Mesh *mesh = bmain->meshes.first; mesh; mesh = mesh->id.next) {
       /* Match default for new meshes. */
       mesh->smoothresh = DEG2RADF(30);
+    }
+
+    for (Camera *camera = bmain->cameras.first; camera; camera = camera->id.next) {
+      /* Initialize to a useful value. */
+      camera->dof.focus_distance = 10.0f;
+      camera->dof.aperture_fstop = 2.8f;
     }
   }
 

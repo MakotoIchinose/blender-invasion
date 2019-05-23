@@ -112,10 +112,6 @@ static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
   const DRWContextState *draw_ctx = DRW_context_state_get();
   EDIT_CURVE_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
 
-  if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
-  }
-
   const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
 
   if (!sh_data->wire_sh) {
@@ -207,9 +203,8 @@ static void EDIT_CURVE_cache_init(void *vedata)
     DRWShadingGroup *grp;
 
     /* Center-Line (wire) */
-    psl->wire_pass = DRW_pass_create("Curve Wire",
-                                     DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WIRE);
+    psl->wire_pass = DRW_pass_create(
+        "Curve Wire", DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL);
     EDIT_CURVE_wire_shgrp_create(sh_data,
                                  v3d,
                                  rv3d,
@@ -217,9 +212,8 @@ static void EDIT_CURVE_cache_init(void *vedata)
                                  &stl->g_data->wire_shgrp,
                                  &stl->g_data->wire_normals_shgrp);
 
-    psl->wire_pass_xray = DRW_pass_create("Curve Wire Xray",
-                                          DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                              DRW_STATE_DEPTH_ALWAYS | DRW_STATE_WIRE);
+    psl->wire_pass_xray = DRW_pass_create(
+        "Curve Wire Xray", DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
     EDIT_CURVE_wire_shgrp_create(sh_data,
                                  v3d,
                                  rv3d,
@@ -239,8 +233,7 @@ static void EDIT_CURVE_cache_init(void *vedata)
     }
     stl->g_data->overlay_edge_shgrp = grp;
 
-    psl->overlay_vert_pass = DRW_pass_create("Curve Vert Overlay",
-                                             DRW_STATE_WRITE_COLOR | DRW_STATE_POINT);
+    psl->overlay_vert_pass = DRW_pass_create("Curve Vert Overlay", DRW_STATE_WRITE_COLOR);
 
     grp = DRW_shgroup_create(sh_data->overlay_vert_sh, psl->overlay_vert_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
@@ -337,8 +330,6 @@ static void EDIT_CURVE_draw_scene(void *vedata)
   /* Thoses passes don't write to depth and are AA'ed using other tricks. */
   DRW_draw_pass(psl->overlay_edge_pass);
   DRW_draw_pass(psl->overlay_vert_pass);
-
-  DRW_state_clip_planes_reset();
 }
 
 /* Cleanup when destroying the engine.

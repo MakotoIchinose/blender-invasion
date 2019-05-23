@@ -127,7 +127,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
 
       /* Viewport Matrix */
       /* Note: This does not have TAA jitter applied. */
-      DRW_viewport_matrix_get(persmat, DRW_MAT_PERS);
+      DRW_view_persmat_get(NULL, persmat, false);
 
       bool view_is_valid = (stl->g_data->view_updated == false);
 
@@ -195,7 +195,7 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
 
   if ((effects->enabled_effects & EFFECT_MOTION_BLUR) != 0) {
-    psl->motion_blur = DRW_pass_create("Motion Blur", DRW_STATE_WRITE_COLOR);
+    DRW_PASS_CREATE(psl->motion_blur, DRW_STATE_WRITE_COLOR);
 
     DRWShadingGroup *grp = DRW_shgroup_create(e_data.motion_blur_sh, psl->motion_blur);
     DRW_shgroup_uniform_int(grp, "samples", &effects->motion_blur_samples, 1);

@@ -113,6 +113,10 @@
 
 #include "object_intern.h"
 
+/* -------------------------------------------------------------------- */
+/** \name Local Enum Declarations
+ * \{ */
+
 /* this is an exact copy of the define in rna_light.c
  * kept here because of linking order.
  * Icons are only defined here */
@@ -161,19 +165,25 @@ static EnumPropertyItem lightprobe_type_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-enum ObjectAlign {
-  ALIGN_WORLD,
+enum {
+  ALIGN_WORLD = 0,
   ALIGN_VIEW,
   ALIGN_CURSOR,
-} ALIGN_OPTIONS;
+};
 
 static const EnumPropertyItem align_options[] = {
     {ALIGN_WORLD, "WORLD", 0, "World", "Align the new object to the world"},
     {ALIGN_VIEW, "VIEW", 0, "View", "Align the new object to the view"},
     {ALIGN_CURSOR, "CURSOR", 0, "3D Cursor", "Use the 3D cursor orientation for the new object"},
-    {0, NULL, 0, NULL, NULL}};
+    {0, NULL, 0, NULL, NULL},
+};
 
-/************************** Exported *****************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Public Add Object API
+ *
+ * \{ */
 
 void ED_object_location_from_view(bContext *C, float loc[3])
 {
@@ -278,7 +288,11 @@ float ED_object_new_primitive_matrix(
   // return 1.0f;
 }
 
-/********************* Add Object Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Object Operator
+ * \{ */
 
 static void view_align_update(struct Main *UNUSED(main),
                               struct Scene *UNUSED(scene),
@@ -435,7 +449,9 @@ bool ED_object_add_generic_get_opts(bContext *C,
         break;
       case ALIGN_CURSOR: {
         const Scene *scene = CTX_data_scene(C);
-        copy_v3_v3(rot, scene->cursor.rotation_euler);
+        float tmat[3][3];
+        BKE_scene_cursor_rot_to_mat3(&scene->cursor, tmat);
+        mat3_normalized_to_eul(rot, tmat);
         RNA_float_set_array(op->ptr, "rotation", rot);
         break;
       }
@@ -546,7 +562,11 @@ void OBJECT_OT_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/********************** Add Probe Operator **********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Probe Operator
+ * \{ */
 
 /* for object add operator */
 static const char *get_lightprobe_defname(int type)
@@ -634,7 +654,11 @@ void OBJECT_OT_lightprobe_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/********************* Add Effector Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Effector Operator
+ * \{ */
 
 /* for object add operator */
 static int effector_add_exec(bContext *C, wmOperator *op)
@@ -707,7 +731,11 @@ void OBJECT_OT_effector_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/********************* Add Camera Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Camera Operator
+ * \{ */
 
 static int object_camera_add_exec(bContext *C, wmOperator *op)
 {
@@ -766,7 +794,11 @@ void OBJECT_OT_camera_add(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-/********************* Add Metaball Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Metaball Operator
+ * \{ */
 
 static int object_metaball_add_exec(bContext *C, wmOperator *op)
 {
@@ -827,7 +859,11 @@ void OBJECT_OT_metaball_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/********************* Add Text Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Text Operator
+ * \{ */
 
 static int object_add_text_exec(bContext *C, wmOperator *op)
 {
@@ -872,7 +908,11 @@ void OBJECT_OT_text_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/********************* Add Armature Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Armature Operator
+ * \{ */
 
 static int object_armature_add_exec(bContext *C, wmOperator *op)
 {
@@ -935,7 +975,11 @@ void OBJECT_OT_armature_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/********************* Add Empty Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Empty Operator
+ * \{ */
 
 static int object_empty_add_exec(bContext *C, wmOperator *op)
 {
@@ -1055,7 +1099,12 @@ void OBJECT_OT_drop_named_image(wmOperatorType *ot)
   ED_object_add_generic_props(ot, false);
 }
 
-/********************* Add Gpencil Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Gpencil Operator
+ * \{ */
+
 static bool object_gpencil_add_poll(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
@@ -1186,7 +1235,11 @@ void OBJECT_OT_gpencil_add(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_object_gpencil_type_items, 0, "Type", "");
 }
 
-/********************* Add Light Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Light Operator
+ * \{ */
 
 static const char *get_light_defname(int type)
 {
@@ -1266,7 +1319,11 @@ void OBJECT_OT_light_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, false);
 }
 
-/********************* Add Collection Instance Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Collection Instance Operator
+ * \{ */
 
 static int collection_instance_add_exec(bContext *C, wmOperator *op)
 {
@@ -1352,7 +1409,11 @@ void OBJECT_OT_collection_instance_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, false);
 }
 
-/********************* Add Speaker Operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Speaker Operator
+ * \{ */
 
 static int object_speaker_add_exec(bContext *C, wmOperator *op)
 {
@@ -1407,7 +1468,11 @@ void OBJECT_OT_speaker_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, true);
 }
 
-/**************************** Delete Object *************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Delete Object Operator
+ * \{ */
 
 /* remove base from a specific scene */
 /* note: now unlinks constraints as well */
@@ -1565,7 +1630,11 @@ void OBJECT_OT_delete(wmOperatorType *ot)
   WM_operator_properties_confirm_or_exec(ot);
 }
 
-/**************************** Copy Utilities ******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Copy Object Utilities
+ * \{ */
 
 /* after copying objects, copied data should get new pointers */
 static void copy_object_set_idnew(bContext *C)
@@ -1580,7 +1649,11 @@ static void copy_object_set_idnew(bContext *C)
   BKE_main_id_clear_newpoins(bmain);
 }
 
-/********************* Make Duplicates Real ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Make Instanced Objects Real Operator
+ * \{ */
 
 /**
  * \note regarding hashing dupli-objects when using OB_DUPLICOLLECTION,
@@ -1866,7 +1939,11 @@ void OBJECT_OT_duplicates_make_real(wmOperatorType *ot)
       ot->srna, "use_hierarchy", 0, "Keep Hierarchy", "Maintain parent child relationships");
 }
 
-/**************************** Convert **************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Data Convert Operator
+ * \{ */
 
 static const EnumPropertyItem convert_target_items[] = {
     {OB_CURVE, "CURVE", ICON_OUTLINER_OB_CURVE, "Curve from Mesh/Text", ""},
@@ -1885,7 +1962,7 @@ static void convert_ensure_curve_cache(Depsgraph *depsgraph, Scene *scene, Objec
     if (ELEM(ob->type, OB_SURF, OB_CURVE, OB_FONT)) {
       /* We need 'for render' ON here, to enable computing bevel dipslist if needed.
        * Also makes sense anyway, we would not want e.g. to loose hidden parts etc. */
-      BKE_displist_make_curveTypes(depsgraph, scene, ob, true, false, NULL);
+      BKE_displist_make_curveTypes(depsgraph, scene, ob, true, false);
     }
     else if (ob->type == OB_MBALL) {
       BKE_displist_make_mball(depsgraph, scene, ob);
@@ -1975,7 +2052,8 @@ static int convert_exec(bContext *C, wmOperator *op)
     FOREACH_SCENE_OBJECT_END;
   }
 
-  ListBase selected_editable_bases = CTX_data_collection_get(C, "selected_editable_bases");
+  ListBase selected_editable_bases;
+  CTX_data_selected_editable_bases(C, &selected_editable_bases);
 
   /* Ensure we get all meshes calculated with a sufficient data-mask,
    * needed since re-evaluating single modifiers causes bugs if they depend
@@ -2321,7 +2399,11 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                   "Keep original objects instead of replacing them");
 }
 
-/**************************** Duplicate ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Duplicate Object Operator
+ * \{ */
 
 /*
  * dupflag: a flag made from constants declared in DNA_userdef_types.h
@@ -2477,7 +2559,13 @@ void OBJECT_OT_duplicate(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-/* **************** add named object, for dragdrop ************* */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Named Object Operator
+ *
+ * Use for for drag & drop.
+ * \{ */
 
 static int add_named_exec(bContext *C, wmOperator *op)
 {
@@ -2555,7 +2643,12 @@ void OBJECT_OT_add_named(wmOperatorType *ot)
   RNA_def_string(ot->srna, "name", NULL, MAX_ID_NAME - 2, "Name", "Object name to add");
 }
 
-/**************************** Join *************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Join Object Operator
+ *
+ * \{ */
 
 static bool join_poll(bContext *C)
 {
@@ -2624,7 +2717,11 @@ void OBJECT_OT_join(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-/**************************** Join as Shape Key*************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Join as Shape Key Operator
+ * \{ */
 
 static bool join_shapes_poll(bContext *C)
 {
@@ -2677,3 +2774,5 @@ void OBJECT_OT_join_shapes(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+/** \} */

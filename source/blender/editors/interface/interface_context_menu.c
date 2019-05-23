@@ -92,7 +92,7 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
 {
   if (but->optype) {
     /* Operator */
-    *prop = (but->opptr) ? IDP_CopyProperty(but->opptr->data) : NULL;
+    *prop = (but->opptr && but->opptr->data) ? IDP_CopyProperty(but->opptr->data) : NULL;
     return but->optype->idname;
   }
   else if (but->rnaprop) {
@@ -116,7 +116,6 @@ static void shortcut_free_operator_property(IDProperty *prop)
 {
   if (prop) {
     IDP_FreeProperty(prop);
-    MEM_freeN(prop);
   }
 }
 

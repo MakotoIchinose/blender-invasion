@@ -139,9 +139,7 @@ static void EDIT_LATTICE_engine_init(void *vedata)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   EDIT_LATTICE_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
-  }
+
   const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
 
   if (!sh_data->wire) {
@@ -183,14 +181,14 @@ static void EDIT_LATTICE_cache_init(void *vedata)
   {
     psl->wire_pass = DRW_pass_create("Lattice Wire",
                                      DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WIRE);
+                                         DRW_STATE_DEPTH_LESS_EQUAL);
     stl->g_data->wire_shgrp = DRW_shgroup_create(sh_data->wire, psl->wire_pass);
     if (rv3d->rflag & RV3D_CLIPPING) {
       DRW_shgroup_world_clip_planes_from_rv3d(stl->g_data->wire_shgrp, rv3d);
     }
 
-    psl->vert_pass = DRW_pass_create(
-        "Lattice Verts", DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_POINT);
+    psl->vert_pass = DRW_pass_create("Lattice Verts",
+                                     DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH);
     stl->g_data->vert_shgrp = DRW_shgroup_create(sh_data->overlay_vert, psl->vert_pass);
     DRW_shgroup_uniform_block(stl->g_data->vert_shgrp, "globalsBlock", G_draw.block_ubo);
     if (rv3d->rflag & RV3D_CLIPPING) {

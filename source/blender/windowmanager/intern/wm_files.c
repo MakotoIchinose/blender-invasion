@@ -76,6 +76,7 @@
 #include "BKE_blender_undo.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_idprop.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
@@ -98,6 +99,7 @@
 
 #include "ED_datafiles.h"
 #include "ED_fileselect.h"
+#include "ED_image.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
 #include "ED_util.h"
@@ -488,17 +490,20 @@ void wm_file_read_report(bContext *C, Main *bmain)
 static void wm_file_read_post(bContext *C,
                               const bool is_startup_file,
                               const bool is_factory_startup,
+                              const bool use_data,
+                              const bool use_userdef,
                               const bool reset_app_template)
 {
   bool addons_loaded = false;
   wmWindowManager *wm = CTX_wm_manager(C);
 
-  if (!G.background) {
-    /* remove windows which failed to be added via WM_check */
-    wm_window_ghostwindows_remove_invalid(C, wm);
+  if (use_data) {
+    if (!G.background) {
+      /* remove windows which failed to be added via WM_check */
+      wm_window_ghostwindows_remove_invalid(C, wm);
+    }
+    CTX_wm_window_set(C, wm->windows.first);
   }
-
-  CTX_wm_window_set(C, wm->windows.first);
 
 #ifdef WITH_PYTHON
   if (is_startup_file) {
@@ -513,41 +518,56 @@ static void wm_file_read_post(bContext *C,
         /* sync addons, these may have changed from the defaults */
         BPY_execute_string(C, (const char *[]){"addon_utils", NULL}, "addon_utils.reset_all()");
       }
-      BPY_python_reset(C);
+      if (use_data) {
+        BPY_python_reset(C);
+      }
       addons_loaded = true;
     }
   }
   else {
     /* run any texts that were loaded in and flagged as modules */
-    BPY_python_reset(C);
+    if (use_data) {
+      BPY_python_reset(C);
+    }
     addons_loaded = true;
   }
 #else
   UNUSED_VARS(is_startup_file, reset_app_template);
 #endif /* WITH_PYTHON */
 
-  WM_operatortype_last_properties_clear_all();
-
-  /* important to do before NULL'ing the context */
   Main *bmain = CTX_data_main(C);
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
-  if (is_factory_startup) {
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_STARTUP_POST);
+
+  if (use_userdef) {
+    if (is_factory_startup) {
+      BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_USERDEF_POST);
+    }
   }
 
-  /* After load post, so for example the driver namespace can be filled
-   * before evaluating the depsgraph. */
-  DEG_on_visible_update(bmain, true);
-  wm_event_do_depsgraph(C);
+  if (use_data) {
+    /* important to do before NULL'ing the context */
+    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
+    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
+    if (is_factory_startup) {
+      BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_STARTUP_POST);
+    }
+  }
 
-  ED_editors_init(C);
+  if (use_data) {
+    WM_operatortype_last_properties_clear_all();
+
+    /* After load post, so for example the driver namespace can be filled
+     * before evaluating the depsgraph. */
+    DEG_on_visible_update(bmain, true);
+    wm_event_do_depsgraph(C);
+
+    ED_editors_init(C);
 
 #if 1
-  WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
+    WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
 #else
-  WM_msg_publish_static(CTX_wm_message_bus(C), WM_MSG_STATICTYPE_FILE_READ);
+    WM_msg_publish_static(CTX_wm_message_bus(C), WM_MSG_STATICTYPE_FILE_READ);
 #endif
+  }
 
   /* report any errors.
    * currently disabled if addons aren't yet loaded */
@@ -555,25 +575,29 @@ static void wm_file_read_post(bContext *C,
     wm_file_read_report(C, bmain);
   }
 
-  if (!G.background) {
-    if (wm->undo_stack == NULL) {
-      wm->undo_stack = BKE_undosys_stack_create();
+  if (use_data) {
+    if (!G.background) {
+      if (wm->undo_stack == NULL) {
+        wm->undo_stack = BKE_undosys_stack_create();
+      }
+      else {
+        BKE_undosys_stack_clear(wm->undo_stack);
+      }
+      BKE_undosys_stack_init_from_main(wm->undo_stack, bmain);
+      BKE_undosys_stack_init_from_context(wm->undo_stack, C);
     }
-    else {
-      BKE_undosys_stack_clear(wm->undo_stack);
-    }
-    BKE_undosys_stack_init_from_main(wm->undo_stack, bmain);
-    BKE_undosys_stack_init_from_context(wm->undo_stack, C);
   }
 
-  if (!G.background) {
-    /* in background mode this makes it hard to load
-     * a blend file and do anything since the screen
-     * won't be set to a valid value again */
-    CTX_wm_window_set(C, NULL); /* exits queues */
+  if (use_data) {
+    if (!G.background) {
+      /* in background mode this makes it hard to load
+       * a blend file and do anything since the screen
+       * won't be set to a valid value again */
+      CTX_wm_window_set(C, NULL); /* exits queues */
 
-    /* Ensure tools are registered. */
-    WM_toolsystem_init(C);
+      /* Ensure tools are registered. */
+      WM_toolsystem_init(C);
+    }
   }
 }
 
@@ -600,6 +624,8 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
   /* we didn't succeed, now try to read Blender file */
   if (retval == BKE_READ_EXOTIC_OK_BLEND) {
+    bool use_data = true;
+    bool use_userdef = false;
     const int G_f_orig = G.f;
     ListBase wmbase;
 
@@ -638,6 +664,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     if (retval == BKE_BLENDFILE_READ_OK_USERPREFS) {
       /* in case a userdef is read from regular .blend */
       wm_init_userdef(bmain, false);
+      use_userdef = true;
     }
 
     if (retval != BKE_BLENDFILE_READ_FAIL) {
@@ -646,7 +673,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       }
     }
 
-    wm_file_read_post(C, false, false, false);
+    wm_file_read_post(C, false, false, use_data, use_userdef, false);
 
     success = true;
   }
@@ -1039,9 +1066,9 @@ void wm_homefile_read(bContext *C,
 
     /* start with save preference untitled.blend */
     G.save_over = 0;
-
-    wm_file_read_post(C, true, is_factory_startup, reset_app_template);
   }
+
+  wm_file_read_post(C, true, is_factory_startup, use_data, use_userdef, reset_app_template);
 
   if (r_is_factory_startup) {
     *r_is_factory_startup = is_factory_startup;
@@ -1243,7 +1270,6 @@ static ImBuf *blend_file_thumb(const bContext *C,
                                           BLEN_THUMB_SIZE * 2,
                                           BLEN_THUMB_SIZE * 2,
                                           IB_rect,
-                                          V3D_OFSDRAW_NONE,
                                           R_ALPHAPREMUL,
                                           0,
                                           NULL,
@@ -1651,6 +1677,7 @@ static int wm_userpref_autoexec_add_exec(bContext *UNUSED(C), wmOperator *UNUSED
 {
   bPathCompare *path_cmp = MEM_callocN(sizeof(bPathCompare), "bPathCompare");
   BLI_addtail(&U.autoexec_paths, path_cmp);
+  U.runtime.is_dirty = true;
   return OPERATOR_FINISHED;
 }
 
@@ -1671,6 +1698,7 @@ static int wm_userpref_autoexec_remove_exec(bContext *UNUSED(C), wmOperator *op)
   bPathCompare *path_cmp = BLI_findlink(&U.autoexec_paths, index);
   if (path_cmp) {
     BLI_freelinkN(&U.autoexec_paths, path_cmp);
+    U.runtime.is_dirty = true;
   }
   return OPERATOR_FINISHED;
 }
@@ -1801,6 +1829,9 @@ static int wm_userpref_read_exec(bContext *C, wmOperator *op)
     U.runtime.is_dirty = true;
   }
 
+  /* Needed to recalculate UI scaling values (eg, #UserDef.inv_dpi_fac). */
+  wm_window_clear_drawable(bmain->wm.first);
+
   WM_event_add_notifier(C, NC_WINDOW, NULL);
 
   return OPERATOR_FINISHED;
@@ -1919,11 +1950,27 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void wm_homefile_read_after_dialog_callback(bContext *C, void *user_data)
+{
+  WM_operator_name_call_with_properties(
+      C, "WM_OT_read_homefile", WM_OP_EXEC_DEFAULT, (IDProperty *)user_data);
+}
+
+static void wm_free_operator_properties_callback(void *user_data)
+{
+  IDProperty *properties = (IDProperty *)user_data;
+  IDP_FreeProperty(properties);
+}
+
 static int wm_homefile_read_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
-  if (U.uiflag & USER_SAVE_PROMPT && !wm->file_saved) {
-    return WM_operator_confirm_message(C, op, "Changes in current file will be lost. Continue?");
+  if (U.uiflag & USER_SAVE_PROMPT && wm_file_or_image_is_modified(C)) {
+    wmGenericCallback *callback = MEM_callocN(sizeof(*callback), __func__);
+    callback->exec = wm_homefile_read_after_dialog_callback;
+    callback->user_data = IDP_CopyProperty(op->properties);
+    callback->free_user_data = wm_free_operator_properties_callback;
+    wm_close_file_dialog(C, callback);
+    return OPERATOR_INTERFACE;
   }
   else {
     return wm_homefile_read_exec(C, op);
@@ -2068,6 +2115,12 @@ enum {
 
 static int wm_open_mainfile_dispatch(bContext *C, wmOperator *op);
 
+static void wm_open_mainfile_after_dialog_callback(bContext *C, void *user_data)
+{
+  WM_operator_name_call_with_properties(
+      C, "WM_OT_open_mainfile", WM_OP_INVOKE_DEFAULT, (IDProperty *)user_data);
+}
+
 static int wm_open_mainfile__discard_changes(bContext *C, wmOperator *op)
 {
   if (RNA_boolean_get(op->ptr, "display_file_selector")) {
@@ -2077,14 +2130,13 @@ static int wm_open_mainfile__discard_changes(bContext *C, wmOperator *op)
     set_next_operator_state(op, OPEN_MAINFILE_STATE_OPEN);
   }
 
-  wmWindowManager *wm = CTX_wm_manager(C);
-  if (U.uiflag & USER_SAVE_PROMPT && !wm->file_saved) {
-    return WM_operator_confirm_message_ex(C,
-                                          op,
-                                          "Warning",
-                                          ICON_INFO,
-                                          "Changes in current file will be lost. Continue?",
-                                          WM_OP_INVOKE_DEFAULT);
+  if (U.uiflag & USER_SAVE_PROMPT && wm_file_or_image_is_modified(C)) {
+    wmGenericCallback *callback = MEM_callocN(sizeof(*callback), __func__);
+    callback->exec = wm_open_mainfile_after_dialog_callback;
+    callback->user_data = IDP_CopyProperty(op->properties);
+    callback->free_user_data = wm_free_operator_properties_callback;
+    wm_close_file_dialog(C, callback);
+    return OPERATOR_INTERFACE;
   }
   else {
     return wm_open_mainfile_dispatch(C, op);
@@ -2814,6 +2866,225 @@ void wm_test_autorun_warning(bContext *C)
     UI_popup_block_invoke(C, block_create_autorun_warning, NULL, NULL);
     CTX_wm_window_set(C, prevwin);
   }
+}
+
+/* Close File Dialog
+ *************************************/
+
+static char save_images_when_file_is_closed = true;
+
+static void wm_block_file_close_cancel(bContext *C, void *arg_block, void *UNUSED(arg_data))
+{
+  wmWindow *win = CTX_wm_window(C);
+  UI_popup_block_close(C, win, arg_block);
+}
+
+static void wm_block_file_close_discard(bContext *C, void *arg_block, void *arg_data)
+{
+  wmGenericCallback *callback = WM_generic_callback_steal((wmGenericCallback *)arg_data);
+
+  /* Close the popup before executing the callback. Otherwise
+   * the popup might be closed by the callback, which will lead
+   * to a crash. */
+  wmWindow *win = CTX_wm_window(C);
+  UI_popup_block_close(C, win, arg_block);
+
+  callback->exec(C, callback->user_data);
+  WM_generic_callback_free(callback);
+}
+
+static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_data)
+{
+  wmGenericCallback *callback = WM_generic_callback_steal((wmGenericCallback *)arg_data);
+  bool execute_callback = true;
+
+  wmWindow *win = CTX_wm_window(C);
+  UI_popup_block_close(C, win, arg_block);
+
+  if (save_images_when_file_is_closed) {
+    ReportList *reports = CTX_wm_reports(C);
+    if (!ED_image_save_all_modified(C, reports)) {
+      execute_callback = false;
+    }
+    WM_report_banner_show();
+  }
+
+  Main *bmain = CTX_data_main(C);
+  bool file_has_been_saved_before = BKE_main_blendfile_path(bmain)[0] != '\0';
+
+  if (file_has_been_saved_before) {
+    WM_operator_name_call(C, "WM_OT_save_mainfile", WM_OP_EXEC_DEFAULT, NULL);
+  }
+  else {
+    WM_operator_name_call(C, "WM_OT_save_mainfile", WM_OP_INVOKE_DEFAULT, NULL);
+    execute_callback = false;
+  }
+
+  if (execute_callback) {
+    callback->exec(C, callback->user_data);
+  }
+  WM_generic_callback_free(callback);
+}
+
+static void wm_block_file_close_cancel_button(uiBlock *block, wmGenericCallback *post_action)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_file_close_cancel, block, post_action);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+}
+
+static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback *post_action)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Discard Changes"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_file_close_discard, block, post_action);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+}
+
+static void wm_block_file_close_save_button(uiBlock *block, wmGenericCallback *post_action)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Save"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_file_close_save, block, post_action);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+  UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+}
+
+static const char *close_file_dialog_name = "file_close_popup";
+
+static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegion *ar, void *arg1)
+{
+  wmGenericCallback *post_action = (wmGenericCallback *)arg1;
+  Main *bmain = CTX_data_main(C);
+
+  uiStyle *style = UI_style_get();
+  uiBlock *block = UI_block_begin(C, ar, close_file_dialog_name, UI_EMBOSS);
+
+  UI_block_flag_enable(
+      block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_emboss_set(block, UI_EMBOSS);
+
+  uiLayout *layout = UI_block_layout(block,
+                                     UI_LAYOUT_VERTICAL,
+                                     UI_LAYOUT_PANEL,
+                                     10,
+                                     2,
+                                     U.widget_unit * 24,
+                                     U.widget_unit * 6,
+                                     0,
+                                     style);
+
+  /* Title */
+  bool blend_file_is_saved = BKE_main_blendfile_path(bmain)[0] != '\0';
+  if (blend_file_is_saved) {
+    uiItemL(layout, "This file has unsaved changes.", ICON_INFO);
+  }
+  else {
+    uiItemL(layout, "This file has not been saved yet.", ICON_INFO);
+  }
+
+  /* Image Saving */
+  ReportList reports;
+  BKE_reports_init(&reports, RPT_STORE);
+  uint modified_images_count = ED_image_save_all_modified_info(C, &reports);
+
+  if (modified_images_count > 0) {
+    char message[64];
+    BLI_snprintf(message,
+                 sizeof(message),
+                 (modified_images_count == 1) ? "Save %u modified image" :
+                                                "Save %u modified images",
+                 modified_images_count);
+    uiDefButBitC(block,
+                 UI_BTYPE_CHECKBOX,
+                 1,
+                 0,
+                 message,
+                 0,
+                 0,
+                 0,
+                 UI_UNIT_Y,
+                 &save_images_when_file_is_closed,
+                 0,
+                 0,
+                 0,
+                 0,
+                 "");
+
+    LISTBASE_FOREACH (Report *, report, &reports.list) {
+      uiItemL(layout, report->message, ICON_ERROR);
+    }
+  }
+
+  BKE_reports_clear(&reports);
+
+  uiItemL(layout, "", ICON_NONE);
+
+  /* Buttons */
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
+
+  uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
+
+  if (windows_layout) {
+    /* Windows standard layout. */
+    uiLayout *col = uiLayoutColumn(split, false);
+    uiItemS(col);
+
+    col = uiLayoutColumn(split, false);
+    wm_block_file_close_save_button(block, post_action);
+
+    col = uiLayoutColumn(split, false);
+    wm_block_file_close_discard_button(block, post_action);
+
+    col = uiLayoutColumn(split, false);
+    wm_block_file_close_cancel_button(block, post_action);
+  }
+  else {
+    /* macOS and Linux standard layout. */
+    uiLayout *col = uiLayoutColumn(split, false);
+    wm_block_file_close_discard_button(block, post_action);
+
+    col = uiLayoutColumn(split, false);
+    uiItemS(col);
+
+    col = uiLayoutColumn(split, false);
+    wm_block_file_close_cancel_button(block, post_action);
+
+    col = uiLayoutColumn(split, false);
+    wm_block_file_close_save_button(block, post_action);
+  }
+
+  UI_block_bounds_set_centered(block, 10);
+  return block;
+}
+
+static void free_post_file_close_action(void *arg)
+{
+  wmGenericCallback *action = (wmGenericCallback *)arg;
+  WM_generic_callback_free(action);
+}
+
+void wm_close_file_dialog(bContext *C, wmGenericCallback *post_action)
+{
+  if (!UI_popup_block_name_exists(C, close_file_dialog_name)) {
+    UI_popup_block_invoke(
+        C, block_create__close_file_dialog, post_action, free_post_file_close_action);
+  }
+  else {
+    WM_generic_callback_free(post_action);
+  }
+}
+
+bool wm_file_or_image_is_modified(const bContext *C)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  return !wm->file_saved || ED_image_should_save_modified(C);
 }
 
 /** \} */

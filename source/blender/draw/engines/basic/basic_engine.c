@@ -96,18 +96,14 @@ static void basic_cache_init(void *vedata)
   BASIC_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   const RegionView3D *rv3d = draw_ctx->rv3d;
 
-  if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
-  }
-
   if (!stl->g_data) {
     /* Alloc transient pointers */
     stl->g_data = MEM_mallocN(sizeof(*stl->g_data), __func__);
   }
 
   {
-    psl->depth_pass = DRW_pass_create(
-        "Depth Pass", DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WIRE);
+    psl->depth_pass = DRW_pass_create("Depth Pass",
+                                      DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL);
     stl->g_data->depth_shgrp = DRW_shgroup_create(sh_data->depth, psl->depth_pass);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
       DRW_shgroup_world_clip_planes_from_rv3d(stl->g_data->depth_shgrp, rv3d);
