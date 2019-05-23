@@ -159,7 +159,7 @@ typedef struct tGP_BrushEditData {
 /* Callback for performing some brush operation on a single point */
 typedef bool (*GP_BrushApplyCb)(tGP_BrushEditData *gso,
                                 bGPDstroke *gps,
-                                bGPDspoint *UNUSED(pt_derived),
+                                float rotation[3],
                                 int pt_index,
                                 const int radius,
                                 const int co[2]);
@@ -311,7 +311,7 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
  * smooth-brush implementation to test the algorithm for stroke smoothing. */
 static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
                                   bGPDstroke *gps,
-                                  bGPDspoint *UNUSED(pt_derived),
+                                  float UNUSED(rot[3]),
                                   int pt_index,
                                   const int radius,
                                   const int co[2])
@@ -350,7 +350,7 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
 /* Make lines thicker or thinner by the specified amounts */
 static bool gp_brush_thickness_apply(tGP_BrushEditData *gso,
                                      bGPDstroke *gps,
-                                     bGPDspoint *UNUSED(pt_derived),
+                                     float UNUSED(rot[3]),
                                      int pt_index,
                                      const int radius,
                                      const int co[2])
@@ -394,7 +394,7 @@ static bool gp_brush_thickness_apply(tGP_BrushEditData *gso,
 /* Make color more or less transparent by the specified amounts */
 static bool gp_brush_strength_apply(tGP_BrushEditData *gso,
                                     bGPDstroke *gps,
-                                    bGPDspoint *UNUSED(pt_derived),
+                                    float UNUSED(rot[3]),
                                     int pt_index,
                                     const int radius,
                                     const int co[2])
@@ -440,8 +440,10 @@ typedef struct tGPSB_Grab_StrokeData {
   int *points;
   /* array of influence weights for each of the included points */
   float *weights;
-  /* array of derived points to calc transformation */
-  struct bGPDspoint **derived_points;
+  /* angles to calc transformation */
+  float *rot_x;
+  float *rot_y;
+  float *rot_z;
 
   /* capacity of the arrays */
   int capacity;
@@ -469,7 +471,9 @@ static void gp_brush_grab_stroke_init(tGP_BrushEditData *gso, bGPDstroke *gps)
 
     memset(data->points, 0, sizeof(int) * data->capacity);
     memset(data->weights, 0, sizeof(float) * data->capacity);
-    memset(data->derived_points, 0, sizeof(bGPDspoint *) * data->capacity);
+    memset(data->rot_x, 0, sizeof(float) * data->capacity);
+    memset(data->rot_y, 0, sizeof(float) * data->capacity);
+    memset(data->rot_z, 0, sizeof(float) * data->capacity);
   }
   else {
     /* Create new instance */
@@ -480,8 +484,9 @@ static void gp_brush_grab_stroke_init(tGP_BrushEditData *gso, bGPDstroke *gps)
 
     data->points = MEM_callocN(sizeof(int) * data->capacity, "GP Stroke Grab Indices");
     data->weights = MEM_callocN(sizeof(float) * data->capacity, "GP Stroke Grab Weights");
-    data->derived_points = MEM_callocN(sizeof(bGPDspoint) * data->capacity,
-                                       "GP Stroke Grab Derived");
+    data->rot_x = MEM_callocN(sizeof(float) * data->capacity, "GP Stroke Grab X");
+    data->rot_y = MEM_callocN(sizeof(float) * data->capacity, "GP Stroke Grab Y");
+    data->rot_z = MEM_callocN(sizeof(float) * data->capacity, "GP Stroke Grab Z");
 
     /* hook up to the cache */
     BLI_ghash_insert(gso->stroke_customdata, gps, data);
@@ -491,7 +496,7 @@ static void gp_brush_grab_stroke_init(tGP_BrushEditData *gso, bGPDstroke *gps)
 /* store references to stroke points in the initial stage */
 static bool gp_brush_grab_store_points(tGP_BrushEditData *gso,
                                        bGPDstroke *gps,
-                                       bGPDspoint *pt_derived,
+                                       float rot[3],
                                        int pt_index,
                                        const int radius,
                                        const int co[2])
@@ -505,7 +510,9 @@ static bool gp_brush_grab_store_points(tGP_BrushEditData *gso,
   /* insert this point into the set of affected points */
   data->points[data->size] = pt_index;
   data->weights[data->size] = inf;
-  data->derived_points[data->size] = pt_derived;
+  data->rot_x[data->size] = rot[0];
+  data->rot_y[data->size] = rot[1];
+  data->rot_z[data->size] = rot[2];
   data->size++;
 
   /* done */
@@ -547,15 +554,32 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
 {
   tGPSB_Grab_StrokeData *data = BLI_ghash_lookup(gso->stroke_customdata, gps);
   int i;
+  float loc[3], scale[3];
+  float derived_mat[4][4];
+  zero_v3(loc);
+  ARRAY_SET_ITEMS(scale, 1.0f, 1.0f, 1.0f);
 
   /* Apply dvec to all of the stored points */
   for (i = 0; i < data->size; i++) {
     bGPDspoint *pt = &gps->points[data->points[i]];
-    bGPDspoint *pt_derived = data->derived_points[i];
     float delta[3] = {0.0f};
 
+    /* get derived transformation */
+    float rot[3];
+    float transform[3];
+    rot[0] = data->rot_x[i];
+    rot[1] = data->rot_y[i];
+    rot[2] = data->rot_z[i];
+    printf("%f, %f, %f\n", RAD2DEG(rot[0]), RAD2DEG(rot[1]), RAD2DEG(rot[2]));
+
+    loc_eul_size_to_mat4(derived_mat, loc, rot, scale);
+    gp_brush_grab_calc_dvec(gso);
+    mul_v3_mat3_m4v3(transform, derived_mat, gso->dvec);
+    print_v3("Dvec", gso->dvec);
+    print_v3("Transf", transform);
+
     /* adjust the amount of displacement to apply */
-    mul_v3_v3fl(delta, gso->dvec, data->weights[i]);
+    mul_v3_v3fl(delta, transform, data->weights[i]);
 
     float fpt[3];
     float save_pt[3];
@@ -583,7 +607,9 @@ static void gp_brush_grab_stroke_free(void *ptr)
   /* free arrays */
   MEM_SAFE_FREE(data->points);
   MEM_SAFE_FREE(data->weights);
-  MEM_SAFE_FREE(data->derived_points);
+  MEM_SAFE_FREE(data->rot_x);
+  MEM_SAFE_FREE(data->rot_y);
+  MEM_SAFE_FREE(data->rot_z);
 
   /* ... and this item itself, since it was also allocated */
   MEM_freeN(data);
@@ -594,7 +620,7 @@ static void gp_brush_grab_stroke_free(void *ptr)
 /* NOTE: Depends on gp_brush_grab_calc_dvec() */
 static bool gp_brush_push_apply(tGP_BrushEditData *gso,
                                 bGPDstroke *gps,
-                                bGPDspoint *UNUSED(pt_derived),
+                                float UNUSED(rot[3]),
                                 int pt_index,
                                 const int radius,
                                 const int co[2])
@@ -661,7 +687,7 @@ static void gp_brush_calc_midpoint(tGP_BrushEditData *gso)
 /* Shrink distance between midpoint and this point... */
 static bool gp_brush_pinch_apply(tGP_BrushEditData *gso,
                                  bGPDstroke *gps,
-                                 bGPDspoint *UNUSED(pt_derived),
+                                 float UNUSED(rot[3]),
                                  int pt_index,
                                  const int radius,
                                  const int co[2])
@@ -717,7 +743,7 @@ static bool gp_brush_pinch_apply(tGP_BrushEditData *gso,
 
 static bool gp_brush_twist_apply(tGP_BrushEditData *gso,
                                  bGPDstroke *gps,
-                                 bGPDspoint *UNUSED(pt_derived),
+                                 float UNUSED(rot[3]),
                                  int pt_index,
                                  const int radius,
                                  const int co[2])
@@ -799,7 +825,7 @@ static bool gp_brush_twist_apply(tGP_BrushEditData *gso,
 /* Apply some random jitter to the point */
 static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
                                      bGPDstroke *gps,
-                                     bGPDspoint *UNUSED(pt_derived),
+                                     float UNUSED(rot[3]),
                                      int pt_index,
                                      const int radius,
                                      const int co[2])
@@ -844,17 +870,6 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     else {
       mul_v2_fl(svec, fac);
     }
-
-#if 0
-    printf("%f %f (%f), nco = {%f %f}, co = %d %d\n",
-           svec[0],
-           svec[1],
-           fac,
-           nco[0],
-           nco[1],
-           co[0],
-           co[1]);
-#endif
 
     /* convert to dataspace */
     if (gps->flag & GP_STROKE_3DSPACE) {
@@ -929,7 +944,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
 /* Change weight paint for vertex groups */
 static bool gp_brush_weight_apply(tGP_BrushEditData *gso,
                                   bGPDstroke *gps,
-                                  bGPDspoint *UNUSED(pt_derived),
+                                  float UNUSED(rot[3]),
                                   int pt_index,
                                   const int radius,
                                   const int co[2])
@@ -1469,6 +1484,42 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
 }
 
 /* Apply ----------------------------------------------- */
+static void gpsculpt_transform_rot_get(bGPDstroke *gps_derived,
+                                       bGPDspoint *pt_derived,
+                                       int idx_derived,
+                                       float rot[3])
+{
+  bGPDstroke *gps_orig = gps_derived->runtime.gps_orig;
+
+  bGPDspoint *pt_orig = &gps_orig->points[pt_derived->runtime.idx_orig];
+  bGPDspoint *pt_derived_prev = &gps_derived->points[idx_derived - 1];
+  bGPDspoint *pt_orig_prev = &gps_orig->points[pt_derived->runtime.idx_orig - 1];
+
+  float loc[3];
+  sub_v3_v3v3(loc, &pt_orig->x, &pt_derived->x);
+
+  /* create vectors of the stroke segment */
+  float v1[3], v2[3];
+  sub_v3_v3v3(v1, &pt_derived->x, &pt_derived_prev->x);
+  sub_v3_v3v3(v2, &pt_orig->x, &pt_orig_prev->x);
+  normalize_v3(v1);
+  normalize_v3(v2);
+
+  float v1o[2], v2o[2], v3o[2];
+  float v1d[2], v2d[2], v3d[2];
+
+  ARRAY_SET_ITEMS(v1d, v1[1], v1[2]); /* X axis */
+  ARRAY_SET_ITEMS(v2d, v1[0], v1[2]); /* Y axis */
+  ARRAY_SET_ITEMS(v3d, v1[0], v1[1]); /* Z axis */
+
+  ARRAY_SET_ITEMS(v1o, v2[1], v2[2]); /* X axis */
+  ARRAY_SET_ITEMS(v2o, v2[0], v2[2]); /* Y axis */
+  ARRAY_SET_ITEMS(v3o, v2[0], v2[1]); /* Z axis */
+
+  rot[0] = angle_signed_v2v2(v1o, v1d);
+  rot[1] = angle_signed_v2v2(v2o, v2d);
+  rot[2] = angle_signed_v2v2(v3o, v3d);
+}
 
 /* Apply brush operation to points in this stroke */
 static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
@@ -1490,7 +1541,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
   int i;
   bool include_last = false;
   bool changed = false;
-
+  float rot[3];
   if (gps->totpoints == 1) {
     bGPDspoint pt_temp;
     pt = &gps->points[0];
@@ -1505,7 +1556,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
       if (len_v2v2_int(mval_i, pc1) <= radius) {
         /* apply operation to this point */
         if (pt->runtime.pt_orig != NULL) {
-          changed = apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc1);
+          gpsculpt_transform_rot_get(gps, pt, 0, rot);
+          changed = apply(gso, gps->runtime.gps_orig, rot, pt->runtime.idx_orig, radius, pc1);
         }
       }
     }
@@ -1549,7 +1601,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
           /* To each point individually... */
           pt = &gps->points[i];
           if (pt->runtime.pt_orig != NULL) {
-            ok = apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc1);
+            gpsculpt_transform_rot_get(gps, pt, i, rot);
+            ok = apply(gso, gps->runtime.gps_orig, rot, pt->runtime.idx_orig, radius, pc1);
           }
 
           /* Only do the second point if this is the last segment,
@@ -1563,7 +1616,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
           if (i + 1 == gps->totpoints - 1) {
             pt = &gps->points[i + 1];
             if (pt->runtime.pt_orig != NULL) {
-              ok |= apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc2);
+              gpsculpt_transform_rot_get(gps, pt, i + 1, rot);
+              ok |= apply(gso, gps->runtime.gps_orig, rot, pt->runtime.idx_orig, radius, pc2);
               include_last = false;
             }
           }
@@ -1581,7 +1635,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
            */
           pt = &gps->points[i];
           if (pt->runtime.pt_orig != NULL) {
-            changed |= apply(gso, gps->runtime.gps_orig, pt, pt->runtime.idx_orig, radius, pc1);
+            gpsculpt_transform_rot_get(gps, pt, i, rot);
+            changed |= apply(gso, gps->runtime.gps_orig, rot, pt->runtime.idx_orig, radius, pc1);
             include_last = false;
           }
         }

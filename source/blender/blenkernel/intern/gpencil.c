@@ -1971,34 +1971,3 @@ bool BKE_gpencil_trim_stroke(bGPDstroke *gps)
   }
   return intersect;
 }
-
-void BKE_gpencil_derived_matrix_get(bGPDspoint *pt, float r_mat[4][4])
-{
-  float loc[3], scale[3];
-  float v1o[2], v2o[2], v3o[2];
-  float v1d[2], v2d[2], v3d[2];
-  float angle[3];
-
-  if (pt->runtime.pt_orig == NULL) {
-    unit_m4(r_mat);
-    return;
-  }
-
-  bGPDspoint *pt_orig = pt->runtime.pt_orig;
-
-  ARRAY_SET_ITEMS(loc, pt_orig->x - pt->x, pt_orig->y - pt->y, pt_orig->z - pt->z);
-  ARRAY_SET_ITEMS(scale, 1.0f, 1.0f, 1.0f);
-
-  ARRAY_SET_ITEMS(v1d, pt->y, pt->z); /* X axis */
-  ARRAY_SET_ITEMS(v2d, pt->x, pt->z); /* Y axis */
-  ARRAY_SET_ITEMS(v3d, pt->x, pt->y); /* Z axis */
-
-  ARRAY_SET_ITEMS(v1o, pt_orig->y, pt_orig->z); /* X axis */
-  ARRAY_SET_ITEMS(v2o, pt_orig->x, pt_orig->z); /* Y axis */
-  ARRAY_SET_ITEMS(v3o, pt_orig->x, pt_orig->y); /* Z axis */
-
-  angle[0] = angle_signed_v2v2(v1d, v1o);
-  angle[1] = angle_signed_v2v2(v2d, v2o);
-  angle[2] = angle_signed_v2v2(v3d, v3o);
-  loc_eul_size_to_mat4(r_mat, loc, angle, scale);
-}
