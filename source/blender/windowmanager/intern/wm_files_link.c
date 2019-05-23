@@ -257,7 +257,11 @@ static bool wm_asset_engine_load_post_from_append_data(bContext *C,
       uuid->id = lapp_item->new_id;
     }
 
-    return ae->type->load_post(C, ae, &uuids);
+    const bool ret_value = ae->type->load_post(C, ae, &uuids);
+
+    MEM_freeN(uuids.uuids);
+
+    return ret_value;
   }
   return true;
 }
@@ -745,6 +749,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
   if (aet != NULL && aet->load_post != NULL) {
     AssetEngine *ae = BKE_asset_engine_create(aet, NULL);
     wm_asset_engine_load_post_from_append_data(C, ae, lapp_data);
+    BKE_asset_engine_free(ae);
   }
 
   wm_link_append_data_free(lapp_data);
