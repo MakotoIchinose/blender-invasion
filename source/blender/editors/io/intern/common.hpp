@@ -43,14 +43,18 @@ extern "C" {
 #include "../io_common.h"
 
 }
+
 #include <utility>
 #include <string>
 #include <vector>
 #include <set>
 #include <array>
+#include <typeinfo>
 
 namespace common {
 	using ulong = unsigned long;
+
+	// --- PROTOTYPES ---
 
 	bool object_is_smoke_sim(const Object * const ob);
 
@@ -65,8 +69,15 @@ namespace common {
 
 	std::string get_object_name(const Object * const eob, const Mesh * const mesh);
 
-	void export_start(bContext *C, const ExportSettings * const settings);
+	void export_start(bContext *C, ExportSettings * const settings);
 	bool export_end(bContext *C, ExportSettings * const settings);
+
+	// Execute `start` and `end` and time it. Those functions should be specific to each exportter,
+	// but have the same signature as the two above
+	bool time_export(bContext *C, ExportSettings * const settings,
+	                 typeof(export_start) start, typeof(export_end) end);
+
+	// --- TEMPLATES ---
 
 	template<typename func>
 	void for_each_modifier(const Object * const ob, func f) {
@@ -79,8 +90,8 @@ namespace common {
 	void for_each_base(ViewLayer * const view_layer, func f) {
 		for (Base *base = static_cast<Base *>(view_layer->object_bases.first);
 		     base; base = base->next)
-			if (!G.is_break)
-				f(base);
+			if (!G.is_break && !f(base)) // If we should break, or f return false (error)
+				break;
 		G.is_break = false;
 	}
 
@@ -172,7 +183,7 @@ namespace common {
 	template<typename key_t>
 	using dedup_pair_t = std::pair<set_t<key_t>, set_mapping_t<key_t> >;
 
-	using uv_key_t = std::pair<std::array<float, 2>, ulong>;
+	using uv_key_t = std::pair<std::array<float, 2>, ulong>; // ulong is the original index
 	using no_key_t = std::pair<std::array<float, 3>, ulong>;
 
 	// TODO someone Benchmark the performance wth iterators and normal deduplication
@@ -184,7 +195,7 @@ namespace common {
 		auto &set = p.first;
 		auto &set_mapping = p.second;
 
-		// Reserve approximate space to reduce allocations inside loop
+		// Reserve space to reduce allocations inside loop
 		set_mapping.reserve(reserve);
 
 		// C++14/17 would help here...
@@ -194,6 +205,11 @@ namespace common {
 			               auto p = set.insert(std::make_pair(v, total));
 			               set_mapping.push_back(p.first);
 			               if (p.second) {
+				               // "Unfortunately" normals need the actual iterator, but everything
+				               // else just needs the value. Therefore on_insert must always
+				               // recieve an iterator, but caller to this function should wrap
+				               // it's caller's function on a function, to get the first
+				               // field of the iterator
 				               on_insert(i, p.first);
 				               ++total;
 			               }
@@ -216,7 +232,11 @@ namespace common {
 		            mesh,
 		            /* modifies  */ p,
 		            /* for_each */  for_each_uv_t{},
-		            /* on_insert */ f);
+		            /* on_insert */
+		            [&f](ulong i, typename set_t<uv_key_t>::iterator it) {
+			            // As said in the deduplicate function, unwrap the iterator
+			            f(i, it->first);
+		            });
 	}
 
 	template<typename func>
@@ -229,8 +249,8 @@ namespace common {
 		            /* for_each  */ for_each_normal_t{},
 		            /* on_insert */
 		            [&p, &f, &mesh](ulong i, typename set_t<no_key_t>::iterator it){
-			            // Call callee function
-			            f(i, it);
+			            // Call caller's function
+			            f(i, it->first);
 
 			            // If the face is flat shaded, f is only invoked once, but we need to
 			            // add the value to the map an additional totloop - 1 times

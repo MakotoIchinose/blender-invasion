@@ -33,9 +33,7 @@ extern "C" {
 
 struct bContext;
 
-bool OBJ_export(bContext *C, ExportSettings *settings);
-bool OBJ_export_start(bContext *C, ExportSettings *settings);
-bool OBJ_export_end(bContext *C, ExportSettings *settings);
+bool OBJ_export(bContext *C, ExportSettings * const settings);
 
 #ifdef __cplusplus
 }

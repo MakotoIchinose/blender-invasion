@@ -48,32 +48,33 @@ extern "C" {
 
 #include "common.hpp"
 
+namespace {
+	bool STL_export_mesh(bContext *UNUSED(C), ExportSettings * const settings, std::fstream &fs,
+	                     Scene *scene, Object *ob) {
+		return true;
+	}
+
+	void STL_export_start(bContext *C, ExportSettings * const settings) {
+		common::export_start(C, settings);
+
+		std::fstream fs;
+		fs.open(settings->filepath, std::ios::out);
+
+		Scene *scene  = DEG_get_evaluated_scene(settings->depsgraph);
+
+		common::for_each_base(settings->view_layer,
+		                      [&](Base *base) {
+			                      return STL_export_mesh(C, settings, fs, scene, base->object);
+		                      });
+	}
+
+	bool STL_export_end(bContext *C, ExportSettings * const settings) {
+		return common::export_end(C, settings);
+	}
+}
+
 extern "C" {
-bool STL_export(bContext *C, ExportSettings *settings) {
-	auto f = std::chrono::steady_clock::now();
-	STL_export_start(C, settings);
-	auto ret = STL_export_end(C, settings);
-	std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
-	return ret;
+bool STL_export(bContext *C, ExportSettings * const settings) {
+	return common::time_export(C, settings, &STL_export_start, &STL_export_end);
 }
 } // extern
-
-
-bool STL_export_start(bContext *C, ExportSettings *settings) {
-	common::export_start(C, settings);
-
-	std::fstream fs;
-	fs.open(settings->filepath, std::ios::out);
-
-	Scene *scene  = DEG_get_evaluated_scene(settings->depsgraph);
-
-	common::for_each_base(settings->view_layer,
-	                      [](Base *base) {
-
-	                      });
-	return true;
-}
-
-bool STL_export_end(bContext *C, ExportSettings *settings) {
-	return common::export_end(C, settings);
-}

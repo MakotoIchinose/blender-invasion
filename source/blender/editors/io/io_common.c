@@ -89,7 +89,25 @@ void io_common_default_declare_export(struct wmOperatorType *ot,
 	RNA_def_boolean(ot->srna, "export_normals", 1, "Normals",
 	                "Export normals");
 
+	RNA_def_boolean(ot->srna, "dedup_normals", 1, "Deduplicate Normals",
+	                "Remove duplicate normals"); // TODO someone add a threshold
+
+	// The UI seems to make it so the minimum softlimit can't be smaller than 0.001,
+	// but normals are only printed with four decimal places, so it doesn't matter too much
+	RNA_def_float(ot->srna, "dedup_normals_threshold", 0.001, FLT_MIN, FLT_MAX,
+	              "Threshold for deduplication of Normals",
+	              "The minimum difference so two Normals are considered different",
+	              0.001, 10.0);
+
 	RNA_def_boolean(ot->srna, "export_uvs", 1, "UVs", "Export UVs");
+
+	RNA_def_boolean(ot->srna, "dedup_uvs", 1, "Deduplicate UVs",
+	                "Remove duplicate UVs"); // TODO someone add a threshold
+
+	RNA_def_float(ot->srna, "dedup_uvs_threshold", 0.001, FLT_MIN, FLT_MAX,
+	              "Threshold for deduplication of UVs",
+	              "The minimum difference so two UVs are considered different",
+	              0.001, 10.0);
 
 	RNA_def_boolean(ot->srna, "export_edges", 0, "Edges", "Export Edges");
 
@@ -194,7 +212,11 @@ ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
 	settings->flatten_hierarchy         = RNA_boolean_get(op->ptr, "flatten_hierarchy");
 	settings->export_animations         = RNA_boolean_get(op->ptr, "export_animations");
 	settings->export_normals            = RNA_boolean_get(op->ptr, "export_normals");
+	settings->dedup_normals             = RNA_boolean_get(op->ptr, "dedup_normals");
+	settings->dedup_normals_threshold   = RNA_boolean_get(op->ptr, "dedup_normals_threshold");
 	settings->export_uvs                = RNA_boolean_get(op->ptr, "export_uvs");
+	settings->dedup_uvs                 = RNA_boolean_get(op->ptr, "dedup_uvs");
+	settings->dedup_uvs_threshold       = RNA_boolean_get(op->ptr, "dedup_uvs_threshold");
 	settings->export_edges              = RNA_boolean_get(op->ptr, "export_edges");
 	settings->export_materials          = RNA_boolean_get(op->ptr, "export_materials");
 	settings->export_vcolors            = RNA_boolean_get(op->ptr, "export_vcolors");
@@ -276,8 +298,8 @@ void io_common_export_draw(bContext *C, wmOperator *op) {
 	/* ui_alembic_export_settings(op->layout, &&ptr); */
 
 	uiLayout *box;
+	uiLayout *sub_box;
 	uiLayout *row;
-	/* uiLayout *col; */
 
 	/* Scene Options */
 	box = uiLayoutBox(op->layout);
@@ -325,14 +347,36 @@ void io_common_export_draw(bContext *C, wmOperator *op) {
 	uiItemL(row, IFACE_("Object Options:"), ICON_OBJECT_DATA);
 
 	row = uiLayoutRow(box, false);
-	uiItemR(row, &ptr, "export_normals", 0, NULL, ICON_NONE);
+	sub_box = uiLayoutBox(row);
+	uiItemR(sub_box, &ptr, "export_normals", 0, NULL, ICON_NONE);
+
+	const bool normals = RNA_boolean_get(&ptr, "export_normals");
+	row = uiLayoutRow(sub_box, false);
+	uiLayoutSetEnabled(row, normals);
+	uiItemR(row, &ptr, "dedup_normals", 0, NULL, ICON_NONE);
+
+	const bool dedup_normals = RNA_boolean_get(&ptr, "dedup_normals");
+	row = uiLayoutRow(sub_box, false);
+	uiLayoutSetEnabled(row, normals && dedup_normals);
+	uiItemR(row, &ptr, "dedup_normals_threshold", 0, NULL, ICON_NONE);
 
 	row = uiLayoutRow(box, false);
-	uiItemR(row, &ptr, "export_uvs", 0, NULL, ICON_NONE);
+	sub_box = uiLayoutBox(row);
+	uiItemR(sub_box, &ptr, "export_uvs", 0, NULL, ICON_NONE);
 
-	row = uiLayoutRow(box, false);
+	const bool uvs = RNA_boolean_get(&ptr, "export_uvs");
+	row = uiLayoutRow(sub_box, false);
+	uiLayoutSetEnabled(row, uvs);
+	uiItemR(row, &ptr, "dedup_uvs", 0, NULL, ICON_NONE);
+
+	const bool dedup_uvs = RNA_boolean_get(&ptr, "dedup_uvs");
+	row = uiLayoutRow(sub_box, false);
+	uiLayoutSetEnabled(row, uvs && dedup_uvs);
+	uiItemR(row, &ptr, "dedup_uvs_threshold", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(sub_box, false);
+	uiLayoutSetEnabled(row, uvs);
 	uiItemR(row, &ptr, "pack_uv", 0, NULL, ICON_NONE);
-	uiLayoutSetEnabled(row, RNA_boolean_get(&ptr, "export_uvs"));
 
 	row = uiLayoutRow(box, false);
 	uiItemR(row, &ptr, "export_edges", 0, NULL, ICON_NONE);

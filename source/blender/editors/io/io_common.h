@@ -44,7 +44,11 @@ typedef struct ExportSettings {
 
 	bool export_animations;
 	bool export_normals;
+	bool dedup_normals;
+	float dedup_normals_threshold;
 	bool export_uvs;
+	bool dedup_uvs;
+	float dedup_uvs_threshold;
 	bool export_edges;
 	bool export_materials;
 	bool export_vcolors;

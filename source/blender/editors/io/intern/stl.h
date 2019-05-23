@@ -32,9 +32,7 @@ extern "C" {
 
 struct bContext;
 
-bool STL_export(bContext *C, ExportSettings *settings);
-bool STL_export_start(bContext *C, ExportSettings *settings);
-bool STL_export_end(bContext *C, ExportSettings *settings);
+bool STL_export(bContext *C, ExportSettings * const settings);
 
 #ifdef __cplusplus
 }

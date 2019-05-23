@@ -69,20 +69,10 @@ extern "C" {
   -?vertex order
   --scale
   # units?
-
+  # removing duplicates with a threshold and as an option
   TODO someone filter_glob : StringProp weird Python syntax
 
  */
-
-extern "C" {
-bool OBJ_export(bContext *C, ExportSettings *settings) {
-	auto f = std::chrono::steady_clock::now();
-	OBJ_export_start(C, settings);
-	auto ret = OBJ_export_end(C, settings);
-	std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
-	return ret;
-}
-} // extern
 
 namespace {
 
@@ -143,28 +133,31 @@ namespace {
 		                              });
 
 		if (settings->export_uvs) {
+			auto uv_writer = [&fs](ulong UNUSED(i), const std::array<float, 2> &v) {
+				                 fs << "vt " << v[0] << ' ' << v[1] << '\n';
+			                 };
+
 			// TODO someone Is T47010 still relevant?
-			common::for_each_deduplicated_uv(mesh, /* modifies */ uv_total,
-			                                 /* modifies */ uv_mapping_pair,
-			                                 [&fs](ulong UNUSED(i),
-			                                       const typename set_t<uv_key_t>::
-			                                       iterator &v) {
-				                                 fs << "vt " << v->first[0]
-				                                    << ' '   << v->first[1] << '\n';
-			                                 });
+			if (settings->dedup_uvs)
+				common::for_each_deduplicated_uv(mesh, /* modifies */ uv_total,
+				                                 /* modifies */ uv_mapping_pair,
+				                                 uv_writer);
+			else
+				common::for_each_uv(mesh, uv_writer);
 		}
 
 		if (settings->export_normals) {
+			auto normal_writer = [&fs](ulong UNUSED(i), const std::array<float, 3> &v) {
+				                     fs << "vn " << v[0] << ' ' << v[1] << ' ' << v[2] << '\n';
+			                     };
+
 			fs << std::fixed << std::setprecision(4);
-			common::for_each_deduplicated_normal(mesh, /* modifies */ no_total,
-			                                     /* modifies */ no_mapping_pair,
-			                                     [&fs](ulong UNUSED(i),
-			                                           const typename set_t<no_key_t>::
-			                                           iterator &v) {
-				                                     fs << "vn " << v->first[0]
-				                                        << ' '   << v->first[1]
-				                                        << ' '   << v->first[2] << '\n';
-			                                     });
+			if (settings->dedup_normals)
+				common::for_each_deduplicated_normal(mesh, /* modifies */ no_total,
+				                                     /* modifies */ no_mapping_pair,
+				                                     normal_writer);
+			else
+				common::for_each_normal(mesh, normal_writer);
 		}
 
 		if (settings->export_edges) {
@@ -242,40 +235,44 @@ namespace {
 			return false;
 		}
 	}
-}
 
-bool OBJ_export_start(bContext *C, ExportSettings *settings) {
-	common::export_start(C, settings);
 
-	std::fstream fs;
-	fs.open(settings->filepath, std::ios::out);
-	fs << "# Blender v2.8\n# www.blender.org\n"; // TODO someone add proper version
-	// TODO someone add material export
+	void OBJ_export_start(bContext *C, ExportSettings * const settings) {
+		common::export_start(C, settings);
 
-	// If not exporting animattions, the start and end are the same
-	for (int frame = settings->frame_start; frame <= settings->frame_end; ++frame) {
-		BKE_scene_frame_set(settings->scene, frame);
-		BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
-		Scene *escene  = DEG_get_evaluated_scene(settings->depsgraph);
-		ulong vertex_total = 0, uv_total = 0, no_total = 0;
+		std::fstream fs;
+		fs.open(settings->filepath, std::ios::out);
+		fs << "# Blender v2.8\n# www.blender.org\n"; // TODO someone add proper version
+		// TODO someone add material export
 
-		auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>();
-		auto no_mapping_pair = common::make_deduplicate_set<no_key_t>();
+		// If not exporting animattions, the start and end are the same
+		for (int frame = settings->frame_start; frame <= settings->frame_end; ++frame) {
+			BKE_scene_frame_set(settings->scene, frame);
+			BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
+			Scene *escene  = DEG_get_evaluated_scene(settings->depsgraph);
+			ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
-		// TODO someone if not exporting as objects, do they need to all be merged?
-		common::for_each_base(settings->view_layer,
-		                      [&](Base *base){ OBJ_export_object(C, settings, escene, base, fs,
-		                                                         vertex_total, uv_total, no_total,
-		                                                         uv_mapping_pair, no_mapping_pair); });
+			auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>();
+			auto no_mapping_pair = common::make_deduplicate_set<no_key_t>();
 
+			// TODO someone if not exporting as objects, do they need to all be merged?
+			common::for_each_base(settings->view_layer,
+			                      [&](Base *base){
+				                      return OBJ_export_object(C, settings, escene, base, fs,
+				                                               vertex_total, uv_total, no_total,
+				                                               uv_mapping_pair, no_mapping_pair);
+			                      });
+
+		}
 	}
-	return true;
+
+	bool OBJ_export_end(bContext *C, ExportSettings * const settings) {
+		return common::export_end(C, settings);
+	}
 }
 
-bool OBJ_export_end(bContext *C, ExportSettings *settings) {
-	return common::export_end(C, settings);
+extern "C" {
+bool OBJ_export(bContext *C, ExportSettings * const settings) {
+	return common::time_export(C, settings, &OBJ_export_start, &OBJ_export_end);
 }
-
-// void io_obj_write_object() {
-
-// }
+} // extern

@@ -21,6 +21,7 @@ extern "C" {
 }
 
 #include <iostream>
+#include <chrono>
 
 #include "common.hpp"
 
@@ -183,7 +184,7 @@ namespace common {
 		return name;
 	}
 
-	void export_start(bContext *UNUSED(C), const ExportSettings * const settings) {
+	void export_start(bContext *UNUSED(C), ExportSettings * const settings) {
 		/* From alembic_capi.cc
 		 * XXX annoying hack: needed to prevent data corruption when changing
 		 * scene frame in separate threads
@@ -205,4 +206,12 @@ namespace common {
 		return true;
 	}
 
+	bool time_export(bContext *C, ExportSettings * const settings,
+	                 typeof(export_start) start, typeof(export_end) end) {
+		auto f = std::chrono::steady_clock::now();
+		start(C, settings);
+		auto ret = end(C, settings);
+		std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
+		return ret;
+	}
 }
