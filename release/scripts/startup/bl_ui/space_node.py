@@ -21,10 +21,14 @@ import bpy
 import nodeitems_utils
 from bpy.types import Header, Menu, Panel
 from bpy.app.translations import pgettext_iface as iface_
+from bpy.app.translations import contexts as i18n_contexts
 from bl_ui.utils import PresetPanel
 from .properties_grease_pencil_common import (
     AnnotationDataPanel,
     GreasePencilToolsPanel,
+)
+from .space_toolsystem_common import (
+    ToolActivePanelHelper,
 )
 from .properties_material import (
     EEVEE_MATERIAL_PT_settings,
@@ -51,8 +55,7 @@ class NODE_HT_header(Header):
         id_from = snode.id_from
         tool_settings = context.tool_settings
 
-        row = layout.row(align=True)
-        row.template_header()
+        layout.template_header()
 
         # Now expanded via the 'ui_type'
         # layout.prop(snode, "tree_type", text="")
@@ -180,7 +183,7 @@ class NODE_MT_editor_menus(Menu):
     bl_idname = "NODE_MT_editor_menus"
     bl_label = ""
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         layout.menu("NODE_MT_view")
         layout.menu("NODE_MT_select")
@@ -191,6 +194,7 @@ class NODE_MT_editor_menus(Menu):
 class NODE_MT_add(bpy.types.Menu):
     bl_space_type = 'NODE_EDITOR'
     bl_label = "Add"
+    bl_translation_context = i18n_contexts.operator_default
 
     def draw(self, context):
         layout = self.layout
@@ -213,8 +217,8 @@ class NODE_MT_view(Menu):
 
         snode = context.space_data
 
-        layout.operator("node.properties", icon='MENU_PANEL')
-        layout.operator("node.toolbar", icon='MENU_PANEL')
+        layout.prop(snode, "show_region_toolbar")
+        layout.prop(snode, "show_region_ui")
 
         layout.separator()
 
@@ -247,7 +251,7 @@ class NODE_MT_view(Menu):
 class NODE_MT_select(Menu):
     bl_label = "Select"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("node.select_box").tweak = False
@@ -273,7 +277,7 @@ class NODE_MT_select(Menu):
 class NODE_MT_node(Menu):
     bl_label = "Node"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("transform.translate")
@@ -320,8 +324,14 @@ class NODE_MT_node(Menu):
         layout.operator("node.read_viewlayers")
 
 
+class NODE_PT_active_tool(ToolActivePanelHelper, Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Tool"
+
+
 class NODE_PT_material_slots(Panel):
-    bl_space_type = "NODE_EDITOR"
+    bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Slot"
     bl_ui_units_x = 8
@@ -368,7 +378,7 @@ class NODE_PT_node_color_presets(PresetPanel, Panel):
 class NODE_MT_node_color_context_menu(Menu):
     bl_label = "Node Color Specials"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("node.node_copy_color", icon='COPY_ID')
@@ -429,7 +439,7 @@ class NODE_MT_context_menu(Menu):
 class NODE_PT_active_node_generic(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "Item"
     bl_label = "Node"
 
     @classmethod
@@ -447,7 +457,7 @@ class NODE_PT_active_node_generic(Panel):
 class NODE_PT_active_node_color(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "Item"
     bl_label = "Color"
     bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = 'NODE_PT_active_node_generic'
@@ -460,7 +470,7 @@ class NODE_PT_active_node_color(Panel):
         node = context.active_node
         self.layout.prop(node, "use_custom_color", text="")
 
-    def draw_header_preset(self, context):
+    def draw_header_preset(self, _context):
         NODE_PT_node_color_presets.draw_panel_header(self.layout)
 
     def draw(self, context):
@@ -477,10 +487,9 @@ class NODE_PT_active_node_color(Panel):
 class NODE_PT_active_node_properties(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "Item"
     bl_label = "Properties"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_parent_id = 'NODE_PT_active_node_generic'
 
     @classmethod
     def poll(cls, context):
@@ -511,7 +520,7 @@ class NODE_PT_active_node_properties(Panel):
 class NODE_PT_texture_mapping(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "Item"
     bl_label = "Texture Mapping"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
@@ -549,7 +558,7 @@ class NODE_PT_texture_mapping(Panel):
 class NODE_PT_backdrop(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "View"
     bl_label = "Backdrop"
 
     @classmethod
@@ -584,7 +593,7 @@ class NODE_PT_backdrop(Panel):
 class NODE_PT_quality(bpy.types.Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "Options"
     bl_label = "Performance"
 
     @classmethod
@@ -612,7 +621,7 @@ class NODE_PT_quality(bpy.types.Panel):
 
 
 class NODE_UL_interface_sockets(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
         socket = item
         color = socket.draw_color(context)
 
@@ -638,7 +647,7 @@ class NODE_UL_interface_sockets(bpy.types.UIList):
 class NODE_PT_grease_pencil(AnnotationDataPanel, Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "View"
     bl_options = {'DEFAULT_CLOSED'}
 
     # NOTE: this is just a wrapper around the generic GP Panel
@@ -652,7 +661,7 @@ class NODE_PT_grease_pencil(AnnotationDataPanel, Panel):
 class NODE_PT_grease_pencil_tools(GreasePencilToolsPanel, Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Node"
+    bl_category = "View"
     bl_options = {'DEFAULT_CLOSED'}
 
     # NOTE: this is just a wrapper around the generic GP tools panel
@@ -660,7 +669,7 @@ class NODE_PT_grease_pencil_tools(GreasePencilToolsPanel, Panel):
     # toolbar, but which may not necessarily be open
 
 
-def node_draw_tree_view(layout, context):
+def node_draw_tree_view(_layout, _context):
     pass
 
 
@@ -671,7 +680,7 @@ def node_panel(cls):
 
     node_cls.bl_space_type = 'NODE_EDITOR'
     node_cls.bl_region_type = 'UI'
-    node_cls.bl_category = "Node"
+    node_cls.bl_category = "Options"
     if hasattr(node_cls, 'bl_parent_id'):
         node_cls.bl_parent_id = 'NODE_' + node_cls.bl_parent_id
 
@@ -693,6 +702,7 @@ classes = (
     NODE_PT_active_node_color,
     NODE_PT_active_node_properties,
     NODE_PT_texture_mapping,
+    NODE_PT_active_tool,
     NODE_PT_backdrop,
     NODE_PT_quality,
     NODE_PT_grease_pencil,

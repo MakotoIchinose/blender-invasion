@@ -50,6 +50,7 @@ class Params:
         "use_v3d_shade_ex_pie",
         # Experemental option.
         "use_pie_click_drag",
+        "v3d_tilde_action",
     )
 
     def __init__(
@@ -65,6 +66,7 @@ class Params:
             use_v3d_tab_menu=False,
             use_v3d_shade_ex_pie=False,
             use_pie_click_drag=False,
+            v3d_tilde_action='VIEW',
     ):
         from sys import platform
         self.apple = (platform == 'darwin')
@@ -109,6 +111,7 @@ class Params:
         self.use_select_all_toggle = use_select_all_toggle
         self.use_v3d_tab_menu = use_v3d_tab_menu
         self.use_v3d_shade_ex_pie = use_v3d_shade_ex_pie
+        self.v3d_tilde_action = v3d_tilde_action
 
         self.use_pie_click_drag = use_pie_click_drag
         if not use_pie_click_drag:
@@ -152,6 +155,21 @@ def op_tool_cycle(tool, kmi_args):
 
 # ------------------------------------------------------------------------------
 # Keymap Templates
+
+def _template_space_region_type_toggle(*, toolbar_key=None, sidebar_key=None):
+    items = []
+    if toolbar_key is not None:
+        items.append(
+            ("wm.context_toggle", toolbar_key,
+             {"properties": [("data_path", 'space_data.show_region_toolbar')]})
+        )
+    if sidebar_key is not None:
+        items.append(
+            ("wm.context_toggle", sidebar_key,
+             {"properties": [("data_path", 'space_data.show_region_ui')]}),
+        )
+    return items
+
 
 def _template_items_select_actions(params, operator):
     if not params.use_select_all_toggle:
@@ -246,11 +264,11 @@ def _template_items_uv_select_mode(params):
 def _template_items_proportional_editing(*, connected=False):
     return [
         op_menu_pie("VIEW3D_MT_proportional_editing_falloff_pie", {"type": 'O', "value": 'PRESS', "shift": True}),
-        ("wm.context_toggle_enum", {"type": 'O', "value": 'PRESS'},
-         {"properties": [("data_path", 'tool_settings.proportional_edit'), ("value_1", 'DISABLED'), ("value_2", 'ENABLED')]}),
+        ("wm.context_toggle", {"type": 'O', "value": 'PRESS'},
+         {"properties": [("data_path", 'tool_settings.use_proportional_edit')]}),
         *(() if not connected else (
-            ("wm.context_toggle_enum", {"type": 'O', "value": 'PRESS', "alt": True},
-             {"properties": [("data_path", 'tool_settings.proportional_edit'), ("value_1", 'DISABLED'), ("value_2", 'CONNECTED')]}),
+            ("wm.context_toggle", {"type": 'O', "value": 'PRESS', "alt": True},
+             {"properties": [("data_path", 'tool_settings.use_proportional_connected')]}),
         ))
     ]
 
@@ -308,18 +326,6 @@ def km_window(params):
         {"items": items},
     )
 
-    if params.apple:
-        # Apple standard shortcuts. Cmd+F for search since F-keys are not easy to use.
-        items.extend([
-            ("wm.read_homefile", {"type": 'N', "value": 'PRESS', "oskey": True}, None),
-            op_menu("TOPBAR_MT_file_open_recent", {"type": 'O', "value": 'PRESS', "shift": True, "oskey": True}),
-            ("wm.open_mainfile", {"type": 'O', "value": 'PRESS', "oskey": True}, None),
-            ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "oskey": True}, None),
-            ("wm.save_as_mainfile", {"type": 'S', "value": 'PRESS', "shift": True, "oskey": True}, None),
-            ("wm.quit_blender", {"type": 'Q', "value": 'PRESS', "oskey": True}, None),
-            ("wm.search_menu", {"type": 'F', "value": 'PRESS', "oskey": True}, None),
-        ])
-
     if params.legacy:
         # Old shorctus
         items.extend([
@@ -341,7 +347,7 @@ def km_window(params):
 
     items.extend([
         # File operations
-        ("wm.read_homefile", {"type": 'N', "value": 'PRESS', "ctrl": True}, None),
+        op_menu("TOPBAR_MT_file_new", {"type": 'N', "value": 'PRESS', "ctrl": True}),
         op_menu("TOPBAR_MT_file_open_recent", {"type": 'O', "value": 'PRESS', "shift": True, "ctrl": True}),
         ("wm.open_mainfile", {"type": 'O', "value": 'PRESS', "ctrl": True}, None),
         ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "ctrl": True}, None),
@@ -457,7 +463,11 @@ def km_screen(params):
         ("render.play_rendered_anim", {"type": 'F11', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.legacy:
+    if not params.legacy:
+        items.extend([
+            ("screen.redo_last", {"type": 'F9', "value": 'PRESS'}, None),
+        ])
+    else:
         # Old keymap
         items.extend([
             ("ed.undo_history", {"type": 'Z', "value": 'PRESS', "ctrl": True, "alt": True}, None),
@@ -476,9 +486,6 @@ def km_screen(params):
     if params.apple:
         # Apple undo and user prefs
         items.extend([
-            ("ed.undo", {"type": 'Z', "value": 'PRESS', "oskey": True}, None),
-            ("ed.redo", {"type": 'Z', "value": 'PRESS', "shift": True, "oskey": True}, None),
-            ("ed.undo_history", {"type": 'Z', "value": 'PRESS', "alt": True, "oskey": True}, None),
             ("screen.userpref_show", {"type": 'COMMA', "value": 'PRESS', "oskey": True}, None),
         ])
 
@@ -514,37 +521,23 @@ def km_screen_editing(params):
 
     if params.legacy:
         items.extend([
-            ("screen.header", {"type": 'F9', "value": 'PRESS', "alt": True}, None),
+            ("wm.context_toggle", {"type": 'F9', "value": 'PRESS', "alt": True},
+             {"properties": [("data_path", 'space_data.show_region_header')]})
         ])
 
     return keymap
 
 
-def km_header(_params):
+def km_screen_region_context_menu(_params):
     items = []
     keymap = (
-        "Header",
+        "Region Context Menu",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": items},
     )
 
     items.extend([
-        ("screen.header_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
-    ])
-
-    return keymap
-
-
-def km_footer(_params):
-    items = []
-    keymap = (
-        "Footer",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
-        {"items": items},
-    )
-
-    items.extend([
-        ("screen.footer_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("screen.region_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -693,7 +686,7 @@ def km_outliner(params):
         ("outliner.highlight_update", {"type": 'MOUSEMOVE', "value": 'ANY', "any": True}, None),
         ("outliner.item_rename", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK'}, None),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK'},
-         {"properties": [("extend", False), ("recursive", False)]}),
+         {"properties": [("extend", False), ("recursive", False), ("deselect_all", not params.legacy)]}),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
          {"properties": [("extend", True), ("recursive", False)]}),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
@@ -741,12 +734,6 @@ def km_outliner(params):
         ("outliner.id_paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.apple:
-        items.extend([
-            ("outliner.id_copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("outliner.id_paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-    ])
-
     return keymap
 
 
@@ -763,7 +750,7 @@ def km_uv_editor(params):
         *_template_items_uv_select_mode(params),
         ("uv.mark_seam", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
         ("uv.select", {"type": params.select_mouse, "value": params.select_mouse_value},
-         {"properties": [("extend", False)]}),
+         {"properties": [("extend", False), ("deselect_all", not params.legacy)]}),
         ("uv.select", {"type": params.select_mouse, "value": params.select_mouse_value, "shift": True},
          {"properties": [("extend", True)]}),
         ("uv.select_loop", {"type": params.select_mouse, "value": params.select_mouse_value, "alt": True},
@@ -843,8 +830,6 @@ def km_uv_editor(params):
             ("uv.minimize_stretch", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
             ("uv.pack_islands", {"type": 'P', "value": 'PRESS', "ctrl": True}, None),
             ("uv.average_islands_scale", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
-            ("wm.context_toggle", {"type": 'Q', "value": 'PRESS'},
-             {"properties": [("data_path", 'tool_settings.use_uv_sculpt')]}),
         ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
@@ -853,39 +838,6 @@ def km_uv_editor(params):
         items.extend([
             op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
-
-    return keymap
-
-
-def km_uv_sculpt(_params):
-    items = []
-    keymap = (
-        "UV Sculpt",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
-        {"items": items},
-    )
-
-    items.extend([
-        ("wm.context_toggle", {"type": 'Q', "value": 'PRESS'},
-         {"properties": [("data_path", 'tool_settings.use_uv_sculpt')]}),
-        ("sculpt.uv_sculpt_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("mode", 'NORMAL')]}),
-        ("sculpt.uv_sculpt_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("mode", 'INVERT')]}),
-        ("sculpt.uv_sculpt_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-         {"properties": [("mode", 'RELAX')]}),
-        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
-         {"properties": [("scalar", 0.9)]}),
-        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
-         {"properties": [("scalar", 1.0 / 0.9)]}),
-        *_template_paint_radial_control("uv_sculpt"),
-        ("brush.uv_sculpt_tool_set", {"type": 'S', "value": 'PRESS'},
-         {"properties": [("tool", 'RELAX')]}),
-        ("brush.uv_sculpt_tool_set", {"type": 'P', "value": 'PRESS'},
-         {"properties": [("tool", 'PINCH')]}),
-        ("brush.uv_sculpt_tool_set", {"type": 'G', "value": 'PRESS'},
-         {"properties": [("tool", 'GRAB')]}),
-    ])
 
     return keymap
 
@@ -900,8 +852,10 @@ def km_view3d_generic(_params):
     )
 
     items.extend([
-        ("view3d.properties", {"type": 'N', "value": 'PRESS'}, None),
-        ("view3d.toolshelf", {"type": 'T', "value": 'PRESS'}, None),
+        *_template_space_region_type_toggle(
+            toolbar_key={"type": 'T', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        )
     ])
 
     return keymap
@@ -976,7 +930,10 @@ def km_view3d(params):
          {"properties": [("use_all_regions", True), ("center", False)]}),
         ("view3d.view_all", {"type": 'C', "value": 'PRESS', "shift": True},
          {"properties": [("center", True)]}),
-        op_menu_pie("VIEW3D_MT_view_pie", {"type": 'ACCENT_GRAVE', "value": params.pie_value}),
+        op_menu_pie(
+            "VIEW3D_MT_view_pie" if params.v3d_tilde_action == 'VIEW' else "VIEW3D_MT_transform_gizmo_pie",
+            {"type": 'ACCENT_GRAVE', "value": params.pie_value},
+        ),
         *(() if not params.use_pie_click_drag else
           (("view3d.navigate", {"type": 'ACCENT_GRAVE', "value": 'CLICK'}, None),)),
         ("view3d.navigate", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "shift": True}, None),
@@ -1097,8 +1054,6 @@ def km_view3d(params):
         # Copy/paste.
         ("view3d.copybuffer", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("view3d.pastebuffer", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
-        # Menus.
-        op_menu_pie("VIEW3D_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
         # Transform.
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
         ("transform.translate", {"type": params.select_tweak, "value": 'ANY'}, None),
@@ -1115,15 +1070,10 @@ def km_view3d(params):
         ("transform.skin_resize", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.apple:
-        items.extend([
-            ("view3d.copybuffer", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("view3d.pastebuffer", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-        ])
-
     if not params.legacy:
         # New pie menus.
         items.extend([
+            op_menu_pie("VIEW3D_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
             ("wm.context_toggle", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True},
              {"properties": [("data_path", 'space_data.show_gizmo_context')]}),
             op_menu_pie("VIEW3D_MT_pivot_pie", {"type": 'PERIOD', "value": 'PRESS'}),
@@ -1144,6 +1094,7 @@ def km_view3d(params):
     else:
         items.extend([
             # Old navigation.
+            op_menu("VIEW3D_MT_snap", {"type": 'S', "value": 'PRESS', "shift": True}),
             ("view3d.view_lock_to_active", {"type": 'NUMPAD_PERIOD', "value": 'PRESS', "shift": True}, None),
             ("view3d.view_lock_clear", {"type": 'NUMPAD_PERIOD', "value": 'PRESS', "alt": True}, None),
             ("view3d.navigate", {"type": 'F', "value": 'PRESS', "shift": True}, None),
@@ -1229,7 +1180,8 @@ def km_mask_editing(params):
         ("mask.delete", {"type": 'X', "value": 'PRESS'}, None),
         ("mask.delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("mask.select", {"type": params.select_mouse, "value": params.select_mouse_value},
-         {"properties": [("extend", False), ("deselect", False), ("toggle", False)]}),
+         {"properties": [("extend", False), ("deselect", False), ("toggle", False),
+                         ("deselect_all", not params.legacy)]}),
         ("mask.select", {"type": params.select_mouse, "value": params.select_mouse_value, "shift": True},
          {"properties": [("extend", False), ("deselect", False), ("toggle", True)]}),
         *_template_items_select_actions(params, "mask.select_all"),
@@ -1319,6 +1271,36 @@ def km_markers(params):
     return keymap
 
 
+def km_scrubbing(params):
+    items = []
+    keymap = (
+        "Scrubbing",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("anim.change_frame", {"type": "LEFTMOUSE", "value": 'PRESS'}, None),
+        ("graph.cursor_set", {"type": "LEFTMOUSE", "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+def km_scrubbing_clip(params):
+    items = []
+    keymap = (
+        "Clip Scrubbing",
+        {"space_type": 'CLIP_EDITOR', "region_type": 'PREVIEW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("clip.change_frame", {"type": "LEFTMOUSE", "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
 def km_graph_editor_generic(_params):
     items = []
     keymap = (
@@ -1328,7 +1310,9 @@ def km_graph_editor_generic(_params):
     )
 
     items.extend([
-        ("graph.properties", {"type": 'N', "value": 'PRESS'}, None),
+        *_template_space_region_type_toggle(
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
         ("graph.extrapolation_type", {"type": 'E', "value": 'PRESS', "shift": True}, None),
         ("anim.channels_find", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         ("graph.hide", {"type": 'H', "value": 'PRESS'},
@@ -1354,12 +1338,12 @@ def km_graph_editor(params):
     items.extend([
         ("wm.context_toggle", {"type": 'H', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'space_data.show_handles')]}),
-        ("graph.cursor_set", {"type": params.action_mouse, "value": 'PRESS'}, None),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS'},
-         {"properties": [("extend", False), ("column", False), ("curves", False)]}),
+         {"properties": [("extend", False), ("deselect_all", not params.legacy),
+                         ("column", False), ("curves", False)]}),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
          {"properties": [("extend", False), ("column", True), ("curves", False)]}),
-        ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
+        ("graph.clickselect", {"type": params.select_mouse, "value": 'CLICK', "shift": True},
          {"properties": [("extend", True), ("column", False), ("curves", False)]}),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("extend", True), ("column", True), ("curves", False)]}),
@@ -1367,7 +1351,7 @@ def km_graph_editor(params):
          {"properties": [("extend", False), ("column", False), ("curves", True)]}),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("extend", True), ("column", False), ("curves", True)]}),
-        ("graph.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "ctrl": True},
+        ("graph.select_leftright", {"type": params.select_mouse, "value": 'CLICK', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("graph.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
@@ -1384,6 +1368,12 @@ def km_graph_editor(params):
          {"properties": [("axis_range", False), ("include_handles", True)]}),
         ("graph.select_box", {"type": 'B', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("axis_range", True), ("include_handles", True)]}),
+        ("graph.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties":[("axis_range", False), ("include_handles", False), ("wait_for_input", False), ("mode", 'SET')]}),
+        ("graph.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
+         {"properties":[("axis_range", False), ("include_handles", False), ("wait_for_input", False), ("mode", 'ADD')]}),
+        ("graph.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
+         {"properties":[("axis_range", False),("include_handles", False), ("wait_for_input", False), ("mode", 'SUB')]}),
         ("graph.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True},
          {"properties": [("mode", 'ADD')]}),
         ("graph.select_lasso", {"type": params.action_tweak, "value": 'ANY', "shift": True, "ctrl": True},
@@ -1431,7 +1421,7 @@ def km_graph_editor(params):
          {"properties": [("only_active", False)]}),
         ("anim.channels_editable_toggle", {"type": 'TAB', "value": 'PRESS'}, None),
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
-        ("transform.translate", {"type": params.select_tweak, "value": 'ANY'}, None),
+        ("transform.translate", {"type": params.select_mouse, "value": 'PRESS'}, None),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("transform.rotate", {"type": 'R', "value": 'PRESS'}, None),
@@ -1442,14 +1432,17 @@ def km_graph_editor(params):
         op_menu_pie("GRAPH_MT_pivot_pie", {"type": 'PERIOD', "value": 'PRESS'}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
         ("marker.rename", {"type": 'M', "value": 'PRESS', "ctrl": True}, None),
+        ("anim.start_frame_set", {"type": 'HOME', "value": 'PRESS', "ctrl": True}, None),
+        ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.apple:
+    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
         items.extend([
-            ("graph.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("graph.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-            ("graph.paste", {"type": 'V', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("flipped", True)]}),
+            ("graph.cursor_set", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}, None),
+        ])
+    else:
+        items.extend([
+            ("graph.cursor_set", {"type": params.action_mouse, "value": 'PRESS'}, None),
         ])
 
     return keymap
@@ -1464,14 +1457,16 @@ def km_image_generic(_params):
     )
 
     items.extend([
+        *_template_space_region_type_toggle(
+            toolbar_key={"type": 'T', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
         ("image.new", {"type": 'N', "value": 'PRESS', "alt": True}, None),
         ("image.open", {"type": 'O', "value": 'PRESS', "alt": True}, None),
         ("image.reload", {"type": 'R', "value": 'PRESS', "alt": True}, None),
         ("image.read_viewlayers", {"type": 'R', "value": 'PRESS', "ctrl": True}, None),
         ("image.save", {"type": 'S', "value": 'PRESS', "alt": True}, None),
         ("image.save_as", {"type": 'S', "value": 'PRESS', "shift": True}, None),
-        ("image.properties", {"type": 'N', "value": 'PRESS'}, None),
-        ("image.toolshelf", {"type": 'T', "value": 'PRESS'}, None),
         ("image.cycle_render_slot", {"type": 'J', "value": 'PRESS'}, None),
         ("image.cycle_render_slot", {"type": 'J', "value": 'PRESS', "alt": True},
          {"properties": [("reverse", True)]}),
@@ -1558,8 +1553,10 @@ def km_node_generic(_params):
     )
 
     items.extend([
-        ("node.properties", {"type": 'N', "value": 'PRESS'}, None),
-        ("node.toolbar", {"type": 'T', "value": 'PRESS'}, None),
+        *_template_space_region_type_toggle(
+            toolbar_key={"type": 'T', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
     ])
 
     return keymap
@@ -1608,11 +1605,11 @@ def km_node_editor(params):
         ("node.select_lasso", {"type": 'EVT_TWEAK_L', "value": 'ANY', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("mode", 'SUB')]}),
         ("node.select_circle", {"type": 'C', "value": 'PRESS'}, None),
-        ("node.link", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("node.link", {"type": 'EVT_TWEAK_L', "value": 'ANY'},
          {"properties": [("detach", False)]}),
-        ("node.link", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        ("node.link", {"type": 'EVT_TWEAK_L', "value": 'ANY', "ctrl": True},
          {"properties": [("detach", True)]}),
-        ("node.resize", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("node.resize", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, None),
         ("node.add_reroute", {"type": params.action_tweak, "value": 'ANY', "shift": True}, None),
         ("node.links_cut", {"type": params.action_tweak, "value": 'ANY', "ctrl": True}, None),
         ("node.select_link_viewer", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True}, None),
@@ -1692,12 +1689,6 @@ def km_node_editor(params):
          {"properties": [("data_path", 'tool_settings.snap_node_element')]}),
     ])
 
-    if params.apple:
-        items.extend([
-            ("node.clipboard_copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("node.clipboard_paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-        ])
-
     return keymap
 
 
@@ -1710,7 +1701,11 @@ def km_info(params):
     )
 
     items.extend([
-        ("info.select_pick", {"type": params.select_mouse, "value": 'PRESS'}, None),
+        ("info.select_pick", {"type": 'LEFTMOUSE', "value": 'CLICK'}, None),
+        ("info.select_pick", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
+         {"properties": [("extend", True)]}),
+        ("info.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY'},
+         {"properties": [("wait_for_input", False)]}),
         *_template_items_select_actions(params, "info.select_all"),
         ("info.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("info.report_replay", {"type": 'R', "value": 'PRESS'}, None),
@@ -1718,11 +1713,6 @@ def km_info(params):
         ("info.report_delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("info.report_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
     ])
-
-    if params.apple:
-        items.extend([
-            ("info.report_copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-        ])
 
     return keymap
 
@@ -1746,8 +1736,6 @@ def km_file_browser(_params):
         ("wm.context_toggle", {"type": 'H', "value": 'PRESS'},
          {"properties": [("data_path", 'space_data.params.show_hidden')]}),
         ("file.directory_new", {"type": 'I', "value": 'PRESS'}, None),
-        ("file.delete", {"type": 'X', "value": 'PRESS'}, None),
-        ("file.delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("file.smoothscroll", {"type": 'TIMER1', "value": 'ANY', "any": True}, None),
         ("file.bookmark_toggle", {"type": 'T', "value": 'PRESS'}, None),
         ("file.bookmark_add", {"type": 'B', "value": 'PRESS', "ctrl": True}, None),
@@ -1864,7 +1852,9 @@ def km_dopesheet_generic(_params):
     )
 
     items.extend([
-        ("action.properties", {"type": 'N', "value": 'PRESS'}, None),
+        *_template_space_region_type_toggle(
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
         ("wm.context_set_enum", {"type": 'TAB', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'area.type'), ("value", 'GRAPH_EDITOR')]})
     ])
@@ -1882,10 +1872,11 @@ def km_dopesheet(params):
 
     items.extend([
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS'},
-         {"properties": [("extend", False), ("column", False), ("channel", False)]}),
+         {"properties": [("extend", False), ("deselect_all", not params.legacy),
+                         ("column", False), ("channel", False)]}),
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
          {"properties": [("extend", False), ("column", True), ("channel", False)]}),
-        ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
+        ("action.clickselect", {"type": params.select_mouse, "value": 'CLICK', "shift": True},
          {"properties": [("extend", True), ("column", False), ("channel", False)]}),
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("extend", True), ("column", True), ("channel", False)]}),
@@ -1893,7 +1884,7 @@ def km_dopesheet(params):
          {"properties": [("extend", False), ("column", False), ("channel", True)]}),
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("extend", True), ("column", False), ("channel", True)]}),
-        ("action.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "ctrl": True},
+        ("action.select_leftright", {"type": params.select_mouse, "value": 'CLICK', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("action.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
@@ -1906,6 +1897,12 @@ def km_dopesheet(params):
          {"properties": [("axis_range", False)]}),
         ("action.select_box", {"type": 'B', "value": 'PRESS', "alt": True},
          {"properties": [("axis_range", True)]}),
+        ("action.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties":[("axis_range", False), ("wait_for_input", False), ("mode", 'SET')]}),
+        ("action.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
+         {"properties":[("axis_range", False), ("wait_for_input", False), ("mode", 'ADD')]}),
+        ("action.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
+         {"properties":[("axis_range", False), ("wait_for_input", False), ("mode", 'SUB')]}),
         ("action.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True},
          {"properties": [("mode", 'ADD')]}),
         ("action.select_lasso", {"type": params.action_tweak, "value": 'ANY', "shift": True, "ctrl": True},
@@ -1948,7 +1945,7 @@ def km_dopesheet(params):
         ("anim.channels_find", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         ("transform.transform", {"type": 'G', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_TRANSLATE')]}),
-        ("transform.transform", {"type": params.select_tweak, "value": 'ANY'},
+        ("transform.transform", {"type": params.select_mouse, "value": 'PRESS'},
          {"properties": [("mode", 'TIME_TRANSLATE')]}),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
@@ -1965,14 +1962,6 @@ def km_dopesheet(params):
         ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.apple:
-        items.extend([
-            ("action.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("action.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-            ("action.paste", {"type": 'V', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("flipped", True)]}),
-        ])
-
     return keymap
 
 
@@ -1985,7 +1974,9 @@ def km_nla_generic(_params):
     )
 
     items.extend([
-        ("nla.properties", {"type": 'N', "value": 'PRESS'}, None),
+        *_template_space_region_type_toggle(
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
         ("nla.tweakmode_enter", {"type": 'TAB', "value": 'PRESS'}, None),
         ("nla.tweakmode_exit", {"type": 'TAB', "value": 'PRESS'}, None),
         ("nla.tweakmode_enter", {"type": 'TAB', "value": 'PRESS', "shift": True},
@@ -1998,7 +1989,7 @@ def km_nla_generic(_params):
     return keymap
 
 
-def km_nla_channels(_params):
+def km_nla_channels(params):
     items = []
     keymap = (
         "NLA Channels",
@@ -2017,6 +2008,7 @@ def km_nla_channels(_params):
          {"properties": [("above_selected", True)]}),
         ("nla.tracks_delete", {"type": 'X', "value": 'PRESS'}, None),
         ("nla.tracks_delete", {"type": 'DEL', "value": 'PRESS'}, None),
+        op_menu("NLA_MT_channel_context_menu", params.context_menu_event),
     ])
 
     return keymap
@@ -2032,10 +2024,10 @@ def km_nla_editor(params):
 
     items.extend([
         ("nla.click_select", {"type": params.select_mouse, "value": 'PRESS'},
-         {"properties": [("extend", False)]}),
+         {"properties": [("extend", False), ("deselect_all", not params.legacy)]}),
         ("nla.click_select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True)]}),
-        ("nla.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "ctrl": True},
+        ("nla.select_leftright", {"type": params.select_mouse, "value": 'CLICK', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("nla.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
@@ -2048,6 +2040,12 @@ def km_nla_editor(params):
          {"properties": [("axis_range", False)]}),
         ("nla.select_box", {"type": 'B', "value": 'PRESS', "alt": True},
          {"properties": [("axis_range", True)]}),
+        ("nla.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties":[("wait_for_input", False), ("mode", 'SET')]}),
+        ("nla.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
+         {"properties":[("wait_for_input", False), ("mode", 'ADD')]}),
+        ("nla.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
+         {"properties":[("wait_for_input", False), ("mode", 'SUB')]}),
         ("nla.previewrange_set", {"type": 'P', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         ("nla.view_all", {"type": 'HOME', "value": 'PRESS'}, None),
         ("nla.view_all", {"type": 'NDOF_BUTTON_FIT', "value": 'PRESS'}, None),
@@ -2073,10 +2071,11 @@ def km_nla_editor(params):
         ("nla.apply_scale", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
         ("nla.clear_scale", {"type": 'S', "value": 'PRESS', "alt": True}, None),
         op_menu_pie("NLA_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
+        op_menu("NLA_MT_context_menu", params.context_menu_event),
         ("nla.fmodifier_add", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ("transform.transform", {"type": 'G', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("transform.transform", {"type": params.select_tweak, "value": 'ANY'},
+        ("transform.transform", {"type": params.select_mouse, "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
@@ -2098,17 +2097,14 @@ def km_text_generic(params):
     )
 
     items.extend([
+        *_template_space_region_type_toggle(
+            sidebar_key={"type": 'T', "value": 'PRESS', "ctrl": True},
+        ),
         ("text.start_find", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         ("text.jump", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
         ("text.find", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
         ("text.replace", {"type": 'H', "value": 'PRESS', "ctrl": True}, None),
-        ("text.properties", {"type": 'T', "value": 'PRESS', "ctrl": True}, None),
     ])
-
-    if params.apple:
-        items.extend([
-            ("text.start_find", {"type": 'F', "value": 'PRESS', "oskey": True}, None),
-        ])
 
     return keymap
 
@@ -2120,40 +2116,6 @@ def km_text(params):
         {"space_type": 'TEXT_EDITOR', "region_type": 'WINDOW'},
         {"items": items},
     )
-
-    if params.apple:
-        items.extend([
-            ("text.move", {"type": 'LEFT_ARROW', "value": 'PRESS', "oskey": True},
-             {"properties": [("type", 'LINE_BEGIN')]}),
-            ("text.move", {"type": 'RIGHT_ARROW', "value": 'PRESS', "oskey": True},
-             {"properties": [("type", 'LINE_END')]}),
-            ("text.move", {"type": 'UP_ARROW', "value": 'PRESS', "oskey": True},
-             {"properties": [("type", 'FILE_TOP')]}),
-            ("text.move", {"type": 'DOWN_ARROW', "value": 'PRESS', "oskey": True},
-             {"properties": [("type", 'FILE_BOTTOM')]}),
-            ("text.move_select", {"type": 'LEFT_ARROW', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("type", 'LINE_BEGIN')]}),
-            ("text.move_select", {"type": 'RIGHT_ARROW', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("type", 'LINE_END')]}),
-            ("text.move_select", {"type": 'LEFT_ARROW', "value": 'PRESS', "shift": True, "alt": True},
-             {"properties": [("type", 'PREVIOUS_WORD')]}),
-            ("text.move_select", {"type": 'RIGHT_ARROW', "value": 'PRESS', "shift": True, "alt": True},
-             {"properties": [("type", 'NEXT_WORD')]}),
-            ("text.move_select", {"type": 'UP_ARROW', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("type", 'FILE_TOP')]}),
-            ("text.move_select", {"type": 'DOWN_ARROW', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("type", 'FILE_BOTTOM')]}),
-            ("text.delete", {"type": 'BACK_SPACE', "value": 'PRESS', "alt": True},
-             {"properties": [("type", 'PREVIOUS_WORD')]}),
-            ("text.save", {"type": 'S', "value": 'PRESS', "alt": True, "oskey": True}, None),
-            ("text.save_as", {"type": 'S', "value": 'PRESS', "shift": True, "alt": True, "oskey": True}, None),
-            ("text.cut", {"type": 'X', "value": 'PRESS', "oskey": True}, None),
-            ("text.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("text.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-            ("text.find_set_selected", {"type": 'E', "value": 'PRESS', "oskey": True}, None),
-            ("text.select_all", {"type": 'A', "value": 'PRESS', "oskey": True}, None),
-            ("text.select_line", {"type": 'A', "value": 'PRESS', "shift": True, "oskey": True}, None),
-        ])
 
     items.extend([
         ("text.move", {"type": 'LEFT_ARROW', "value": 'PRESS', "alt": True},
@@ -2297,7 +2259,9 @@ def km_sequencercommon(_params):
     )
 
     items.extend([
-        ("sequencer.properties", {"type": 'N', "value": 'PRESS'}, None),
+        *_template_space_region_type_toggle(
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
         ("wm.context_toggle", {"type": 'O', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'scene.sequence_editor.show_overlay')]}),
         ("sequencer.view_toggle", {"type": 'TAB', "value": 'PRESS', "ctrl": True}, None),
@@ -2375,8 +2339,9 @@ def km_sequencer(params):
              )
         ),
         ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS'},
-         {"properties": [("extend", False), ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
-        ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
+         {"properties": [("extend", False), ("deselect_all", True),
+                         ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
+        ("sequencer.select", {"type": params.select_mouse, "value": 'CLICK', "shift": True},
          {"properties": [("extend", True), ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
         ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
          {"properties": [("extend", False), ("linked_handle", True), ("left_right", 'NONE'), ("linked_time", False)]}),
@@ -2394,25 +2359,26 @@ def km_sequencer(params):
          {"properties": [("extend", True)]}),
         ("sequencer.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.select_box", {"type": 'B', "value": 'PRESS'}, None),
+        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties":[("wait_for_input", False), ("mode", 'SET')]}),
+        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
+         {"properties":[("wait_for_input", False), ("mode", 'ADD')]}),
+        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
+         {"properties":[("wait_for_input", False), ("mode", 'SUB')]}),
         ("sequencer.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         op_menu("SEQUENCER_MT_add", {"type": 'A', "value": 'PRESS', "shift": True}),
         op_menu("SEQUENCER_MT_change", {"type": 'C', "value": 'PRESS'}),
+        op_menu("SEQUENCER_MT_context_menu", params.context_menu_event),
         ("sequencer.slip", {"type": 'S', "value": 'PRESS'}, None),
         ("wm.context_set_int", {"type": 'O', "value": 'PRESS'},
          {"properties": [("data_path", 'scene.sequence_editor.overlay_frame'), ("value", 0)]}),
         ("transform.seq_slide", {"type": 'G', "value": 'PRESS'}, None),
-        ("transform.seq_slide", {"type": params.select_tweak, "value": 'ANY'}, None),
+        ("transform.seq_slide", {"type": params.select_mouse, "value": 'PRESS'}, None),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
         ("marker.rename", {"type": 'M', "value": 'PRESS', "ctrl": True}, None),
     ])
-
-    if params.apple:
-        items.extend([
-            ("sequencer.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("sequencer.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-        ])
 
     return keymap
 
@@ -2444,16 +2410,6 @@ def km_console(params):
         {"space_type": 'CONSOLE', "region_type": 'WINDOW'},
         {"items": items},
     )
-
-    if params.apple:
-        items.extend([
-            ("console.move", {"type": 'LEFT_ARROW', "value": 'PRESS', "oskey": True},
-             {"properties": [("type", 'LINE_BEGIN')]}),
-            ("console.move", {"type": 'RIGHT_ARROW', "value": 'PRESS', "oskey": True},
-             {"properties": [("type", 'LINE_END')]}),
-            ("console.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("console.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-        ])
 
     items.extend([
         ("console.move", {"type": 'LEFT_ARROW', "value": 'PRESS', "ctrl": True},
@@ -2521,9 +2477,11 @@ def km_clip(_params):
     )
 
     items.extend([
+        *_template_space_region_type_toggle(
+            toolbar_key={"type": 'T', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'PRESS'},
+        ),
         ("clip.open", {"type": 'O', "value": 'PRESS', "alt": True}, None),
-        ("clip.tools", {"type": 'T', "value": 'PRESS'}, None),
-        ("clip.properties", {"type": 'N', "value": 'PRESS'}, None),
         ("clip.track_markers", {"type": 'LEFT_ARROW', "value": 'PRESS', "alt": True},
          {"properties": [("backwards", True), ("sequence", False)]}),
         ("clip.track_markers", {"type": 'RIGHT_ARROW', "value": 'PRESS', "alt": True},
@@ -2534,8 +2492,11 @@ def km_clip(_params):
          {"properties": [("backwards", True), ("sequence", True)]}),
         ("wm.context_toggle_enum", {"type": 'TAB', "value": 'PRESS'},
          {"properties": [("data_path", 'space_data.mode'), ("value_1", 'TRACKING'), ("value_2", 'MASK')]}),
-        ("clip.solve_camera", {"type": 'S', "value": 'PRESS', "shift": True}, None),
         ("clip.prefetch", {"type": 'P', "value": 'PRESS'}, None),
+        op_menu_pie("CLIP_MT_tracking_pie", {"type": 'E', "value": 'PRESS'}),
+        op_menu_pie("CLIP_MT_solving_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
+        op_menu_pie("CLIP_MT_marker_pie", {"type": 'E', "value": 'PRESS', "shift": True}),
+        op_menu_pie("CLIP_MT_reconstruction_pie", {"type": 'W', "value": 'PRESS', "shift": True}),
     ])
 
     return keymap
@@ -2596,7 +2557,7 @@ def km_clip_editor(params):
          {"properties": [("position", 'PATHSTART')]}),
         ("clip.change_frame", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("clip.select", {"type": params.select_mouse, "value": 'PRESS'},
-         {"properties": [("extend", False)]}),
+         {"properties": [("extend", False), ("deselect_all", not params.legacy)]}),
         ("clip.select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True)]}),
         *_template_items_select_actions(params, "clip.select_all"),
@@ -2665,7 +2626,6 @@ def km_clip_graph_editor(params):
     )
 
     items.extend([
-        ("clip.change_frame", {"type": params.action_mouse, "value": 'PRESS'}, None),
         ("clip.graph_select", {"type": params.select_mouse, "value": 'PRESS'},
          {"properties": [("extend", False)]}),
         ("clip.graph_select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
@@ -2694,6 +2654,15 @@ def km_clip_graph_editor(params):
         ("transform.resize", {"type": 'S', "value": 'PRESS'}, None),
         ("transform.rotate", {"type": 'R', "value": 'PRESS'}, None),
     ])
+
+    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        items.extend([
+            ("clip.change_frame", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}, None),
+        ])
+    else:
+        items.extend([
+            ("clip.change_frame", {"type": params.action_mouse, "value": 'PRESS'}, None),
+        ])
 
     return keymap
 
@@ -2746,6 +2715,10 @@ def km_frames(params):
          {"properties": [("next", True)]}),
         ("screen.keyframe_jump", {"type": 'MEDIA_FIRST', "value": 'PRESS'},
          {"properties": [("next", False)]}),
+        ("screen.frame_offset", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS', "alt": True},
+         {"properties": [("delta", 1)]}),
+        ("screen.frame_offset", {"type": 'WHEELUPMOUSE', "value": 'PRESS', "alt": True},
+         {"properties": [("delta", -1)]}),
     ])
 
     if not params.legacy:
@@ -2772,10 +2745,6 @@ def km_frames(params):
              {"properties": [("delta", 10)]}),
             ("screen.frame_offset", {"type": 'DOWN_ARROW', "value": 'PRESS', "shift": True},
              {"properties": [("delta", -10)]}),
-            ("screen.frame_offset", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("delta", 1)]}),
-            ("screen.frame_offset", {"type": 'WHEELUPMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("delta", -1)]}),
             ("screen.frame_jump", {"type": 'UP_ARROW', "value": 'PRESS', "shift": True, "ctrl": True},
              {"properties": [("end", True)]}),
             ("screen.frame_jump", {"type": 'DOWN_ARROW', "value": 'PRESS', "shift": True, "ctrl": True},
@@ -2804,13 +2773,22 @@ def km_animation(params):
 
     items.extend([
         # Frame management.
-        ("anim.change_frame", {"type": params.action_mouse, "value": 'PRESS'}, None),
         ("wm.context_toggle", {"type": 'T', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'space_data.show_seconds')]}),
         # Preview range.
         ("anim.previewrange_set", {"type": 'P', "value": 'PRESS'}, None),
         ("anim.previewrange_clear", {"type": 'P', "value": 'PRESS', "alt": True}, None),
     ])
+
+    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        items.extend([
+            ("anim.change_frame", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}, None),
+            ("anim.change_frame", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True}, None),
+        ])
+    else:
+        items.extend([
+            ("anim.change_frame", {"type": params.action_mouse, "value": 'PRESS'}, None),
+        ])
 
     return keymap
 
@@ -2978,7 +2956,8 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         ("gpencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Normal select
-        ("gpencil.select", {"type": params.select_mouse, "value": params.select_mouse_value}, None),
+        ("gpencil.select", {"type": params.select_mouse, "value": params.select_mouse_value},
+         {"properties": [("deselect_all", not params.legacy)]}),
         # Selection
         *_grease_pencil_selection(params),
         # Duplicate and move selected points
@@ -3046,13 +3025,6 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.selectmode_toggle", {"type": 'THREE', "value": 'PRESS'},
          {"properties": [("mode", 2)]}),
     ])
-
-    if params.apple:
-        # Apple copy + paste
-        items.extend([
-            ("gpencil.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("gpencil.paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-        ])
 
     if params.legacy:
         items.extend([
@@ -3375,15 +3347,6 @@ def km_pose(params):
              )
         ),
     ])
-
-    if params.apple:
-        items.extend([
-            ("pose.copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("pose.paste", {"type": 'V', "value": 'PRESS', "oskey": True},
-             {"properties": [("flipped", False)]}),
-            ("pose.paste", {"type": 'V', "value": 'PRESS', "shift": True, "oskey": True},
-             {"properties": [("flipped", True)]}),
-        ])
 
     return keymap
 
@@ -3902,7 +3865,6 @@ def km_mesh(params):
          {"properties": [("inside", False)]}),
         ("mesh.normals_make_consistent", {"type": 'N', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("inside", True)]}),
-        ("mesh.flip_normals", {"type": 'N', "value": 'PRESS', "alt": True}, None),
         ("view3d.edit_mesh_extrude_move_normal", {"type": 'E', "value": 'PRESS'}, None),
         op_menu("VIEW3D_MT_edit_mesh_extrude", {"type": 'E', "value": 'PRESS', "alt": True}),
         ("transform.edge_crease", {"type": 'E', "value": 'PRESS', "shift": True}, None),
@@ -3917,7 +3879,7 @@ def km_mesh(params):
         ("mesh.rip_move", {"type": 'V', "value": 'PRESS', "alt": True},
          {"properties": [("MESH_OT_rip", [("use_fill", True), ],)]}),
         ("mesh.rip_edge_move", {"type": 'D', "value": 'PRESS', "alt": True}, None),
-        ("mesh.merge", {"type": 'M', "value": 'PRESS', "alt": True}, None),
+        op_menu("VIEW3D_MT_edit_mesh_merge", {"type": 'M', "value": 'PRESS', "alt": True}),
         ("transform.shrink_fatten", {"type": 'S', "value": 'PRESS', "alt": True}, None),
         ("mesh.edge_face_add", {"type": 'F', "value": 'PRESS'}, None),
         ("mesh.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
@@ -3946,6 +3908,7 @@ def km_mesh(params):
         op_menu("VIEW3D_MT_hook", {"type": 'H', "value": 'PRESS', "ctrl": True}),
         op_menu("VIEW3D_MT_uv_map", {"type": 'U', "value": 'PRESS'}),
         op_menu("VIEW3D_MT_vertex_group", {"type": 'G', "value": 'PRESS', "ctrl": True}),
+        op_menu("VIEW3D_MT_edit_mesh_normals", {"type": 'N', "value": 'PRESS', "alt" : True}),
         ("object.vertex_group_remove_from", {"type": 'G', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         *_template_items_proportional_editing(connected=True),
     ])
@@ -4236,14 +4199,6 @@ def km_font(params):
         op_menu("VIEW3D_MT_edit_text_context_menu", params.context_menu_event),
     ])
 
-    if params.apple:
-        items.extend([
-            ("font.select_all", {"type": 'A', "value": 'PRESS', "oskey": True}, None),
-            ("font.text_copy", {"type": 'C', "value": 'PRESS', "oskey": True}, None),
-            ("font.text_cut", {"type": 'X', "value": 'PRESS', "oskey": True}, None),
-            ("font.text_paste", {"type": 'V', "value": 'PRESS', "oskey": True}, None),
-        ])
-
     return keymap
 
 
@@ -4271,6 +4226,7 @@ def km_object_non_modal(params):
             ("object.mode_set", {"type": 'TAB', "value": 'CLICK'},
              {"properties": [("mode", 'EDIT'), ("toggle", True)]}),
             op_menu_pie("VIEW3D_MT_object_mode_pie", {"type": 'TAB', "value": 'CLICK_DRAG'}),
+            ("view3d.object_mode_pie_or_toggle", {"type": 'TAB', "value": 'PRESS', "ctrl": True}, None),
         ])
     elif not params.use_v3d_tab_menu:
         items.extend([
@@ -4803,7 +4759,7 @@ def km_knife_tool_modal_map(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("PANNING", {"type": 'MIDDLEMOUSE', "value": 'ANY', "any": True}, None),
-        ("CANCEL", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "any": True}, None),
+        ("ADD_CUT_CLOSED", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "any": True}, None),
         ("ADD_CUT", {"type": 'LEFTMOUSE', "value": 'ANY', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
@@ -5103,6 +5059,7 @@ def km_popup_toolbar(_params):
         {"space_type": 'EMPTY', "region_type": 'TEMPORARY'},
         {"items": [
             op_tool("builtin.select", {"type": 'W', "value": 'PRESS'}),
+            op_tool("builtin.select_lasso", {"type": 'L', "value": 'PRESS'}),
             op_tool("builtin.transform", {"type": 'T', "value": 'PRESS'}),
             op_tool("builtin.measure", {"type": 'M', "value": 'PRESS'}),
         ]},
@@ -5224,13 +5181,32 @@ def km_image_editor_tool_uv_select_lasso(params):
     )
 
 
+def km_image_editor_tool_uv_sculpt_stroke(params):
+    return (
+        "Image Editor Tool: Uv, Sculpt Stroke",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("mode", 'INVERT')]}),
+            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS', "shift": True},
+             {"properties": [("mode", 'RELAX')]}),
+            ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
+             {"properties": [("scalar", 0.9)]}),
+            ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
+             {"properties": [("scalar", 1.0 / 0.9)]}),
+            *_template_paint_radial_control("uv_sculpt"),
+        ]},
+    )
+
+
 def km_node_editor_tool_select(params):
     return (
         "Node Tool: Select",
         {"space_type": 'NODE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("node.select", {"type": params.select_mouse, "value": 'PRESS'},
-             {"properties": [("extend", False)]}),
+             {"properties": [("extend", False), ("deselect_all", not params.legacy)]}),
         ]},
     )
 
@@ -6064,8 +6040,7 @@ def generate_keymaps(params=None):
         km_window(params),
         km_screen(params),
         km_screen_editing(params),
-        km_header(params),
-        km_footer(params),
+        km_screen_region_context_menu(params),
         km_view2d(params),
         km_view2d_buttons_list(params),
         km_user_interface(params),
@@ -6074,11 +6049,12 @@ def generate_keymaps(params=None):
         # Editors.
         km_outliner(params),
         km_uv_editor(params),
-        km_uv_sculpt(params),
         km_view3d_generic(params),
         km_view3d(params),
         km_mask_editing(params),
         km_markers(params),
+        km_scrubbing(params),
+        km_scrubbing_clip(params),
         km_graph_editor_generic(params),
         km_graph_editor(params),
         km_image_generic(params),
@@ -6202,6 +6178,7 @@ def generate_keymaps(params=None):
         km_image_editor_tool_uv_select_box(params),
         km_image_editor_tool_uv_select_circle(params),
         km_image_editor_tool_uv_select_lasso(params),
+        km_image_editor_tool_uv_sculpt_stroke(params),
         km_node_editor_tool_select(params),
         km_node_editor_tool_select_box(params),
         km_node_editor_tool_select_lasso(params),

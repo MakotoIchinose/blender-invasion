@@ -60,6 +60,7 @@ struct wmEvent;
 struct wmEventHandler;
 struct wmEventHandler_Keymap;
 struct wmEventHandler_UI;
+struct wmGenericUserData;
 struct wmGesture;
 struct wmJob;
 struct wmMsgSubscribeKey;
@@ -208,12 +209,13 @@ int WM_userdef_event_type_from_keymap_type(int kmitype);
 
 /* handlers */
 
+typedef bool (*EventHandlerPoll)(const ARegion *ar, const struct wmEvent *event);
 struct wmEventHandler_Keymap *WM_event_add_keymap_handler(ListBase *handlers, wmKeyMap *keymap);
-/* boundbox, optional subwindow boundbox for offset */
-struct wmEventHandler_Keymap *WM_event_add_keymap_handler_bb(ListBase *handlers,
-                                                             wmKeyMap *keymap,
-                                                             const rcti *bb,
-                                                             const rcti *swinbb);
+struct wmEventHandler_Keymap *WM_event_add_keymap_handler_poll(ListBase *handlers,
+                                                               wmKeyMap *keymap,
+                                                               EventHandlerPoll poll);
+struct wmEventHandler_Keymap *WM_event_add_keymap_handler_v2d_mask(ListBase *handlers,
+                                                                   wmKeyMap *keymap);
 /* priority not implemented, it adds in begin */
 struct wmEventHandler_Keymap *WM_event_add_keymap_handler_priority(ListBase *handlers,
                                                                    wmKeyMap *keymap,
@@ -372,7 +374,8 @@ int WM_operator_confirm_message_ex(struct bContext *C,
                                    struct wmOperator *op,
                                    const char *title,
                                    const int icon,
-                                   const char *message);
+                                   const char *message,
+                                   const short opcontext);
 int WM_operator_confirm_message(struct bContext *C, struct wmOperator *op, const char *message);
 
 /* operator api */
@@ -399,6 +402,10 @@ int WM_operator_name_call(struct bContext *C,
                           const char *opstring,
                           short context,
                           struct PointerRNA *properties);
+int WM_operator_name_call_with_properties(struct bContext *C,
+                                          const char *opstring,
+                                          short context,
+                                          struct IDProperty *properties);
 int WM_operator_call_py(struct bContext *C,
                         struct wmOperatorType *ot,
                         short context,
@@ -635,7 +642,8 @@ enum {
   WM_JOB_SUSPEND = (1 << 3),
 };
 
-/* identifying jobs by owner alone is unreliable, this isnt saved, order can change (keep 0 for 'any') */
+/** Identifying jobs by owner alone is unreliable, this isnt saved,
+ * order can change (keep 0 for 'any'). */
 enum {
   WM_JOB_TYPE_ANY = 0,
   WM_JOB_TYPE_COMPOSITE,
@@ -658,6 +666,7 @@ enum {
   WM_JOB_TYPE_SHADER_COMPILATION,
   WM_JOB_TYPE_STUDIOLIGHT,
   WM_JOB_TYPE_LIGHT_BAKE,
+  WM_JOB_TYPE_FSMENU_BOOKMARK_VALIDATE,
   WM_JOB_TYPE_ASSET_UPDATECHECK,
   /* add as needed, screencast, seq proxy build
    * if having hard coded values is a problem */
@@ -787,6 +796,12 @@ void WM_tooltip_clear(struct bContext *C, struct wmWindow *win);
 void WM_tooltip_init(struct bContext *C, struct wmWindow *win);
 void WM_tooltip_refresh(struct bContext *C, struct wmWindow *win);
 double WM_tooltip_time_closed(void);
+
+/* wm_utils.c */
+struct wmGenericCallback *WM_generic_callback_steal(struct wmGenericCallback *callback);
+void WM_generic_callback_free(struct wmGenericCallback *callback);
+
+void WM_generic_user_data_free(struct wmGenericUserData *user_data);
 
 #ifdef __cplusplus
 }

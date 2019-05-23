@@ -611,13 +611,6 @@ GHOST_TSuccess GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle, int *inter
   return window->getSwapInterval(*intervalOut);
 }
 
-GHOST_TUns16 GHOST_GetNumOfAASamples(GHOST_WindowHandle windowhandle)
-{
-  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-
-  return window->getNumOfAASamples();
-}
-
 GHOST_TSuccess GHOST_ActivateWindowDrawingContext(GHOST_WindowHandle windowhandle)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
@@ -793,18 +786,6 @@ int GHOST_toggleConsole(int action)
 {
   GHOST_ISystem *system = GHOST_ISystem::getSystem();
   return system->toggleConsole(action);
-}
-
-int GHOST_SupportsNativeDialogs(void)
-{
-  GHOST_ISystem *system = GHOST_ISystem::getSystem();
-  return system->supportsNativeDialogs();
-}
-
-int GHOST_confirmQuit(GHOST_WindowHandle windowhandle)
-{
-  GHOST_ISystem *system = GHOST_ISystem::getSystem();
-  return system->confirmQuit((GHOST_IWindow *)windowhandle);
 }
 
 int GHOST_UseNativePixels(void)

@@ -31,6 +31,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_buffer.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_math.h"
@@ -188,16 +189,18 @@ wmGizmo *wm_gizmogroup_find_intersected_gizmo(const wmGizmoGroup *gzgroup,
 }
 
 /**
- * Adds all gizmos of \a gzgroup that can be selected to the head of \a listbase. Added items need freeing!
+ * Adds all gizmos of \a gzgroup that can be selected to the head of \a listbase.
+ * Added items need freeing!
  */
-void wm_gizmogroup_intersectable_gizmos_to_list(const wmGizmoGroup *gzgroup, ListBase *listbase)
+void wm_gizmogroup_intersectable_gizmos_to_list(const wmGizmoGroup *gzgroup,
+                                                BLI_Buffer *visible_gizmos)
 {
-  for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
+  for (wmGizmo *gz = gzgroup->gizmos.last; gz; gz = gz->prev) {
     if ((gz->flag & (WM_GIZMO_HIDDEN | WM_GIZMO_HIDDEN_SELECT)) == 0) {
       if (((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) &&
            (gz->type->draw_select || gz->type->test_select)) ||
           ((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) == 0 && gz->type->test_select)) {
-        BLI_addhead(listbase, BLI_genericNodeN(gz));
+        BLI_buffer_append(visible_gizmos, wmGizmo *, gz);
       }
     }
   }
@@ -219,7 +222,8 @@ void WM_gizmogroup_ensure_init(const bContext *C, wmGizmoGroup *gzgroup)
     gzgroup->init_flag |= WM_GIZMOGROUP_INIT_SETUP;
   }
 
-  /* refresh may be called multiple times, this just ensures its called at least once before we draw. */
+  /* Refresh may be called multiple times,
+   * this just ensures its called at least once before we draw. */
   if (UNLIKELY((gzgroup->init_flag & WM_GIZMOGROUP_INIT_REFRESH) == 0)) {
     if (gzgroup->type->refresh) {
       gzgroup->type->refresh(C, gzgroup);
@@ -237,7 +241,8 @@ bool WM_gizmo_group_type_poll(const bContext *C, const struct wmGizmoGroupType *
       return false;
     }
   }
-  /* Check for poll function, if gizmo-group belongs to an operator, also check if the operator is running. */
+  /* Check for poll function, if gizmo-group belongs to an operator,
+   * also check if the operator is running. */
   return (!gzgt->poll || gzgt->poll(C, (wmGizmoGroupType *)gzgt));
 }
 
@@ -679,7 +684,8 @@ static wmKeyMap *gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf, const char 
  */
 wmKeyMap *WM_gizmogroup_keymap_common(const wmGizmoGroupType *gzgt, wmKeyConfig *config)
 {
-  /* Use area and region id since we might have multiple gizmos with the same name in different areas/regions */
+  /* Use area and region id since we might have multiple gizmos
+   * with the same name in different areas/regions. */
   wmKeyMap *km = WM_keymap_ensure(
       config, gzgt->name, gzgt->gzmap_params.spaceid, gzgt->gzmap_params.regionid);
 
@@ -694,7 +700,8 @@ wmKeyMap *WM_gizmogroup_keymap_common(const wmGizmoGroupType *gzgt, wmKeyConfig 
  */
 wmKeyMap *WM_gizmogroup_keymap_common_select(const wmGizmoGroupType *gzgt, wmKeyConfig *config)
 {
-  /* Use area and region id since we might have multiple gizmos with the same name in different areas/regions */
+  /* Use area and region id since we might have multiple gizmos
+   * with the same name in different areas/regions. */
   wmKeyMap *km = WM_keymap_ensure(
       config, gzgt->name, gzgt->gzmap_params.spaceid, gzgt->gzmap_params.regionid);
   /* FIXME(campbell) */
@@ -759,7 +766,8 @@ struct wmGizmoGroupTypeRef *WM_gizmomaptype_group_find(struct wmGizmoMapType *gz
 }
 
 /**
- * Use this for registering gizmos on startup. For runtime, use #WM_gizmomaptype_group_link_runtime.
+ * Use this for registering gizmos on startup.
+ * For runtime, use #WM_gizmomaptype_group_link_runtime.
  */
 wmGizmoGroupTypeRef *WM_gizmomaptype_group_link(wmGizmoMapType *gzmap_type, const char *idname)
 {

@@ -453,13 +453,8 @@ void ED_node_shader_default(const bContext *C, ID *id)
       output_type = SH_NODE_OUTPUT_LIGHT;
       shader_type = SH_NODE_EMISSION;
 
-      copy_v3_v3(color, &la->r);
-      if (la->type == LA_LOCAL || la->type == LA_SPOT || la->type == LA_AREA) {
-        strength = 100.0f;
-      }
-      else {
-        strength = 1.0f;
-      }
+      copy_v3_fl3(color, 1.0f, 1.0f, 1.0f);
+      strength = 1.0f;
       break;
     }
     default:
@@ -2032,7 +2027,8 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (node = ntree->nodes.first; node; node = node->next) {
     if (node->flag & SELECT) {
-      /* No ID refcounting, this node is virtual, detached from any actual Blender data currently. */
+      /* No ID refcounting, this node is virtual,
+       * detached from any actual Blender data currently. */
       bNode *new_node = BKE_node_copy_ex(NULL, node, LIB_ID_CREATE_NO_USER_REFCOUNT);
       BKE_node_clipboard_add_node(new_node);
     }

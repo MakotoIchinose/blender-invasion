@@ -44,8 +44,8 @@ extern "C" {
 static std::string EMPTY_STRING;
 static BCAnimationCurveMap BCEmptyAnimationCurves;
 
-BCAnimationSampler::BCAnimationSampler(BlenderContext &blender_context, BCObjectSet &object_set)
-    : blender_context(blender_context)
+BCAnimationSampler::BCAnimationSampler(BCExportSettings &export_settings, BCObjectSet &object_set)
+    : export_settings(export_settings)
 {
   BCObjectSet::iterator it;
   for (it = object_set.begin(); it != object_set.end(); ++it) {
@@ -65,6 +65,7 @@ BCAnimationSampler::~BCAnimationSampler()
 
 void BCAnimationSampler::add_object(Object *ob)
 {
+  BlenderContext blender_context = export_settings.get_blender_context();
   BCAnimation *animation = new BCAnimation(blender_context.get_context(), ob);
   objects[ob] = animation;
 
@@ -156,6 +157,10 @@ void BCAnimationSampler::update_animation_curves(BCAnimation &animation,
 BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool for_opensim)
 {
   BCSample &ob_sample = sample_data.add(ob, frame_index);
+  //if (export_settings.get_apply_global_orientation()) {
+  //  const BCMatrix &global_transform = export_settings.get_global_transform();
+  //  ob_sample.get_matrix(global_transform);
+  //}
 
   if (ob->type == OB_ARMATURE) {
     bPoseChannel *pchan;
@@ -163,6 +168,7 @@ BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool fo
       Bone *bone = pchan->bone;
       Matrix bmat;
       if (bc_bone_matrix_local_get(ob, bone, bmat, for_opensim)) {
+
         ob_sample.add_bone_matrix(bone, bmat);
       }
     }
@@ -170,12 +176,14 @@ BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool fo
   return ob_sample;
 }
 
-void BCAnimationSampler::sample_scene(int sampling_rate,
-                                      int keyframe_at_end,
-                                      bool for_opensim,
-                                      bool keep_keyframes,
-                                      BC_export_animation_type export_animation_type)
+void BCAnimationSampler::sample_scene(BCExportSettings &export_settings, bool keyframe_at_end)
 {
+  BlenderContext blender_context = export_settings.get_blender_context();
+  int sampling_rate = export_settings.get_sampling_rate();
+  bool for_opensim = export_settings.get_open_sim();
+  bool keep_keyframes = export_settings.get_keep_keyframes();
+  BC_export_animation_type export_animation_type = export_settings.get_export_animation_type();
+
   Scene *scene = blender_context.get_scene();
   BCFrameSet scene_sample_frames;
   get_sample_frames(scene_sample_frames, sampling_rate, keyframe_at_end, scene);
@@ -271,12 +279,11 @@ void BCAnimationSampler::find_depending_animated(std::set<Object *> &animated_ob
 void BCAnimationSampler::get_animated_from_export_set(std::set<Object *> &animated_objects,
                                                       LinkNode &export_set)
 {
-  /*
-  Check if this object is animated. That is: Check if it has its own action, or
-
-  - Check if it has constraints to other objects
-  - at least one of the other objects is animated as well
-  */
+  /* Check if this object is animated. That is: Check if it has its own action, or:
+   *
+   * - Check if it has constraints to other objects.
+   * - at least one of the other objects is animated as well.
+   */
 
   animated_objects.clear();
   std::set<Object *> static_objects;
@@ -320,18 +327,17 @@ bool BCAnimationSampler::get_object_samples(BCMatrixSampleMap &samples, Object *
 }
 
 #if 0
-/*
-   Add sampled values to FCurve
-   If no FCurve exists, create a temporary FCurve;
-   Note: The temporary FCurve will later be removed when the
-   BCAnimationSampler is removed (by its destructor)
-
-   curve: The curve to whioch the data is added
-   matrices: The set of matrix values from where the data is taken
-   animation_type BC_ANIMATION_EXPORT_SAMPLES: Use all matrix data
-   animation_type BC_ANIMATION_EXPORT_KEYS: Only take data from matrices for keyframes
-*/
-
+/**
+ * Add sampled values to FCurve
+ * If no FCurve exists, create a temporary FCurve;
+ * Note: The temporary FCurve will later be removed when the
+ * BCAnimationSampler is removed (by its destructor)
+ *
+ * curve: The curve to whioch the data is added
+ * matrices: The set of matrix values from where the data is taken
+ * animation_type BC_ANIMATION_EXPORT_SAMPLES: Use all matrix data
+ * animation_type BC_ANIMATION_EXPORT_KEYS: Only take data from matrices for keyframes
+ */
 void BCAnimationSampler::add_value_set(BCAnimationCurve &curve,
                                        BCFrameSampleMap &samples,
                                        BC_export_animation_type animation_type)

@@ -55,6 +55,7 @@
 #include "RNA_define.h"
 
 #include "ED_node.h"
+#include "ED_space_api.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -707,6 +708,16 @@ static void node_buts_image_user(uiLayout *layout,
     col = uiLayoutColumn(layout, false);
     uiItemR(col, ptr, "layer", 0, NULL, ICON_NONE);
   }
+
+  uiLayout *split = uiLayoutSplit(layout, 0.5f, true);
+  PointerRNA colorspace_settings_ptr = RNA_pointer_get(imaptr, "colorspace_settings");
+  uiItemL(split, IFACE_("Color Space"), ICON_NONE);
+  uiItemR(split, &colorspace_settings_ptr, "name", 0, "", ICON_NONE);
+
+  /* Avoid losing changes image is painted. */
+  if (BKE_image_is_dirty(imaptr->data)) {
+    uiLayoutSetEnabled(split, false);
+  }
 }
 
 static void node_shader_buts_mapping(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -781,7 +792,6 @@ static void node_shader_buts_tex_image(uiLayout *layout, bContext *C, PointerRNA
                NULL,
                UI_TEMPLATE_ID_FILTER_ALL,
                false);
-  uiItemR(layout, ptr, "color_space", 0, "", ICON_NONE);
   uiItemR(layout, ptr, "interpolation", 0, "", ICON_NONE);
   uiItemR(layout, ptr, "projection", 0, "", ICON_NONE);
 
@@ -819,11 +829,10 @@ static void node_shader_buts_tex_environment(uiLayout *layout, bContext *C, Poin
                UI_TEMPLATE_ID_FILTER_ALL,
                false);
 
-  node_buts_image_user(layout, C, &iuserptr, &imaptr, &iuserptr, false);
-
-  uiItemR(layout, ptr, "color_space", 0, "", ICON_NONE);
   uiItemR(layout, ptr, "interpolation", 0, "", ICON_NONE);
   uiItemR(layout, ptr, "projection", 0, "", ICON_NONE);
+
+  node_buts_image_user(layout, C, &iuserptr, &imaptr, &iuserptr, false);
 }
 
 static void node_shader_buts_tex_environment_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -874,7 +883,6 @@ static void node_shader_buts_tex_environment_ex(uiLayout *layout, bContext *C, P
     uiTemplateImageInfo(layout, C, ima, iuserptr.data);
   }
 
-  uiItemR(layout, ptr, "color_space", 0, IFACE_("Color Space"), ICON_NONE);
   uiItemR(layout, ptr, "interpolation", 0, IFACE_("Interpolation"), ICON_NONE);
   uiItemR(layout, ptr, "projection", 0, IFACE_("Projection"), ICON_NONE);
 }
@@ -3414,6 +3422,14 @@ void draw_nodespace_back_pix(const bContext *C,
   void *lock;
   ImBuf *ibuf;
 
+  GPU_matrix_push_projection();
+  GPU_matrix_push();
+  wmOrtho2_region_pixelspace(ar);
+  GPU_matrix_identity_set();
+  ED_region_draw_cb_draw(C, ar, REGION_DRAW_BACKDROP);
+  GPU_matrix_pop_projection();
+  GPU_matrix_pop();
+
   if (!(snode->flag & SNODE_BACKDRAW) || !ED_node_is_compositor(snode)) {
     return;
   }
@@ -3481,12 +3497,12 @@ void draw_nodespace_back_pix(const bContext *C,
         GPU_blend_set_func_separate(
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
-        glaDrawImBuf_glsl_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
+        ED_draw_imbuf_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
 
         GPU_blend(false);
       }
       else {
-        glaDrawImBuf_glsl_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
+        ED_draw_imbuf_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
       }
 
       if (cache_handle) {

@@ -113,13 +113,20 @@ enum {
 
 /* IDP_GROUP */
 enum {
-  IDP_GROUP_SUB_NONE = 0,              /* default */
-  IDP_GROUP_SUB_MODE_OBJECT = 1,       /* object mode settings */
-  IDP_GROUP_SUB_MODE_EDIT = 2,         /* mesh edit mode settings */
-  IDP_GROUP_SUB_ENGINE_RENDER = 3,     /* render engine settings */
-  IDP_GROUP_SUB_OVERRIDE = 4,          /* data override */
-  IDP_GROUP_SUB_MODE_PAINT_WEIGHT = 5, /* weight paint mode settings */
-  IDP_GROUP_SUB_MODE_PAINT_VERTEX = 6, /* vertex paint mode settings */
+  /** Default. */
+  IDP_GROUP_SUB_NONE = 0,
+  /** Object mode settings. */
+  IDP_GROUP_SUB_MODE_OBJECT = 1,
+  /** Mesh edit mode settings. */
+  IDP_GROUP_SUB_MODE_EDIT = 2,
+  /** Render engine settings. */
+  IDP_GROUP_SUB_ENGINE_RENDER = 3,
+  /** Data override. */
+  IDP_GROUP_SUB_OVERRIDE = 4,
+  /** Weight paint mode settings. */
+  IDP_GROUP_SUB_MODE_PAINT_WEIGHT = 5,
+  /** Vertex paint mode settings. */
+  IDP_GROUP_SUB_MODE_PAINT_VERTEX = 6,
 };
 
 /*->flag*/
@@ -146,7 +153,8 @@ typedef struct IDOverrideStaticPropertyOperation {
   char _pad0[4];
 
   /* Sub-item references, if needed (for arrays or collections only).
-   * We need both reference and local values to allow e.g. insertion into collections (constraints, modifiers...).
+   * We need both reference and local values to allow e.g. insertion into collections
+   * (constraints, modifiers...).
    * In collection case, if names are defined, they are used in priority.
    * Names are pointers (instead of char[64]) to save some space, NULL when unset.
    * Indices are -1 when unset. */
@@ -218,10 +226,14 @@ enum eStaticOverride_Flag {
   STATICOVERRIDE_AUTO = 1 << 0, /* Allow automatic generation of overriding rules. */
 };
 
-/* About Unique identifier.
- * Each engine is free to use it as it likes - it will be the only thing passed to it by blender to identify
- * repository/asset/variant/version/view.
- * Assumed to be 128bits (16 bytes) each, handled as four integers due to lack of real bytes proptype in RNA :|.
+/**
+ * About Unique identifier.
+ *
+ * Stored in a CustomProps once imported.
+ * Each engine is free to use it as it likes - it will be the only thing passed to it by blender to
+ * identify repository/asset/variant/version/view.
+ * Assumed to be 128bits (16 bytes) each, handled as four integers due to lack of real
+ * bytes proptype in RNA :|.
  */
 #define ASSET_UUID_LENGTH 16
 
@@ -339,8 +351,8 @@ typedef struct AssetRef {
 } AssetRef;
 
 /**
- * An asset repository reference, storing all that's needed to find the repo, and a list of loaded assets.
- * WARNING: this is per library, **not** per asset repo.
+ * An asset repository reference, storing all that's needed to find the repo, and a list of loaded
+ * assets. WARNING: this is per library, **not** per asset repo.
  */
 typedef struct AssetRepositoryRef {
   char asset_engine[64]; /* MAX_ST_NAME */
@@ -545,7 +557,9 @@ typedef enum ID_Type {
 
 /* No copy-on-write for these types.
  * Keep in sync with check_datablocks_copy_on_writable and deg_copy_on_write_is_needed */
-#define ID_TYPE_IS_COW(_id_type) (!ELEM(_id_type, ID_BR, ID_LS, ID_PAL, ID_IM))
+/* TODO(sergey): Make Sound copyable. It is here only because the code for dependency graph is
+ * being work in progress. */
+#define ID_TYPE_IS_COW(_id_type) (!ELEM(_id_type, ID_BR, ID_LS, ID_PAL, ID_IM, ID_SO))
 
 #ifdef GS
 #  undef GS
@@ -574,7 +588,8 @@ enum {
 /**
  * id->tag (runtime-only).
  *
- * Those flags belong to three different categories, which have different expected handling in code:
+ * Those flags belong to three different categories,
+ * which have different expected handling in code:
  *
  * - RESET_BEFORE_USE: piece of code that wants to use such flag
  *   has to ensure they are properly 'reset' first.

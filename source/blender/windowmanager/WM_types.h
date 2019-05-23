@@ -121,6 +121,19 @@ struct wmWindowManager;
 /* Include external gizmo API's */
 #include "gizmo/WM_gizmo_api.h"
 
+typedef struct wmGenericUserData {
+  void *data;
+  /** When NULL, use #MEM_freeN. */
+  void (*free_fn)(void *data);
+  bool use_free;
+} wmGenericUserData;
+
+typedef struct wmGenericCallback {
+  void (*exec)(struct bContext *C, void *user_data);
+  void *user_data;
+  void (*free_user_data)(void *user_data);
+} wmGenericCallback;
+
 /* ************** wmOperatorType ************************ */
 
 /* flag */
@@ -428,7 +441,8 @@ typedef struct wmGesture {
   int modal_state;
 
   /* For modal operators which may be running idle, waiting for an event to activate the gesture.
-   * Typically this is set when the user is click-dragging the gesture (border and circle select for eg). */
+   * Typically this is set when the user is click-dragging the gesture
+   * (border and circle select for eg). */
   uint is_active : 1;
   /* Previous value of is-active (use to detect first run & edge cases). */
   uint is_active_prev : 1;
@@ -442,8 +456,7 @@ typedef struct wmGesture {
   /* customdata for straight line is a recti: (xmin,ymin) is start, (xmax, ymax) is end */
 
   /* free pointer to use for operator allocs (if set, its freed on exit)*/
-  void *userdata;
-  bool userdata_free;
+  wmGenericUserData user_data;
 } wmGesture;
 
 /* ************** wmEvent ************************ */
@@ -458,8 +471,8 @@ typedef struct wmEvent {
   int x, y;         /* mouse pointer position, screen coord */
   int mval[2];      /* region mouse position, name convention pre 2.5 :) */
   char utf8_buf[6]; /* from, ghost if utf8 is enabled for the platform,
-             * BLI_str_utf8_size() must _always_ be valid, check
-             * when assigning s we don't need to check on every access after */
+                     * BLI_str_utf8_size() must _always_ be valid, check
+                     * when assigning s we don't need to check on every access after */
   char ascii;       /* from ghost, fallback if utf8 isn't set */
   char pad;
 
@@ -527,7 +540,8 @@ typedef enum { /* motion progress, for modal handlers */
 typedef struct wmNDOFMotionData {
   /* awfully similar to GHOST_TEventNDOFMotionData... */
   /* Each component normally ranges from -1 to +1, but can exceed that.
-   * These use blender standard view coordinates, with positive rotations being CCW about the axis. */
+   * These use blender standard view coordinates,
+   * with positive rotations being CCW about the axis. */
   float tvec[3]; /* translation */
   float rvec[3]; /* rotation: */
   /* axis = (rx,ry,rz).normalized */
@@ -604,7 +618,7 @@ typedef struct wmOperatorType {
    * that the operator might still fail to execute even if this return true */
   bool (*poll)(struct bContext *) ATTR_WARN_UNUSED_RESULT;
 
-  /* Use to check of properties should be displayed in auto-generated UI.
+  /* Use to check if properties should be displayed in auto-generated UI.
    * Use 'check' callback to enforce refreshing. */
   bool (*poll_property)(const struct bContext *C,
                         struct wmOperator *op,

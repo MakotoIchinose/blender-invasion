@@ -175,7 +175,8 @@ static int rna_SequenceEditor_elements_length(PointerRNA *ptr)
   /* Hack? copied from sequencer.c::reload_sequence_new_file() */
   size_t olen = MEM_allocN_len(seq->strip->stripdata) / sizeof(struct StripElem);
 
-  /* the problem with seq->strip->len and seq->len is that it's discounted from the offset (hard cut trim) */
+  /* The problem with seq->strip->len and seq->len is that it's discounted from the offset
+   * (hard cut trim). */
   return (int)olen;
 }
 
@@ -464,7 +465,9 @@ static void rna_SequenceCrop_update(Main *UNUSED(bmain), Scene *UNUSED(scene), P
   BKE_sequence_invalidate_cache(scene, seq);
 }
 
-static void rna_Sequence_text_font_set(PointerRNA *ptr, PointerRNA ptr_value)
+static void rna_Sequence_text_font_set(PointerRNA *ptr,
+                                       PointerRNA ptr_value,
+                                       struct ReportList *UNUSED(reports))
 {
   Sequence *seq = ptr->data;
   TextVars *data = seq->effectdata;
@@ -508,8 +511,10 @@ static void rna_Sequence_name_set(PointerRNA *ptr, const char *value)
 
   /* fix all the animation data which may link to this */
 
-  /* don't rename everywhere because these are per scene */
-  /* BKE_animdata_fix_paths_rename_all(NULL, "sequence_editor.sequences_all", oldname, seq->name + 2); */
+  /* Don't rename everywhere because these are per scene. */
+#  if 0
+  BKE_animdata_fix_paths_rename_all(NULL, "sequence_editor.sequences_all", oldname, seq->name + 2);
+#  endif
   adt = BKE_animdata_from_id(&scene->id);
   if (adt)
     BKE_animdata_fix_paths_rename(
@@ -1186,25 +1191,25 @@ static void rna_def_strip_crop(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Sequence Crop", "Cropping parameters for a sequence strip");
   RNA_def_struct_sdna(srna, "StripCrop");
 
-  prop = RNA_def_property(srna, "max_y", PROP_INT, PROP_UNSIGNED);
+  prop = RNA_def_property(srna, "max_y", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "top");
   RNA_def_property_ui_text(prop, "Top", "Number of pixels to crop from the top");
   RNA_def_property_ui_range(prop, 0, 4096, 1, -1);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceCrop_update");
 
-  prop = RNA_def_property(srna, "min_y", PROP_INT, PROP_UNSIGNED);
+  prop = RNA_def_property(srna, "min_y", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "bottom");
   RNA_def_property_ui_text(prop, "Bottom", "Number of pixels to crop from the bottom");
   RNA_def_property_ui_range(prop, 0, 4096, 1, -1);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceCrop_update");
 
-  prop = RNA_def_property(srna, "min_x", PROP_INT, PROP_UNSIGNED);
+  prop = RNA_def_property(srna, "min_x", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "left");
   RNA_def_property_ui_text(prop, "Left", "Number of pixels to crop from the left side");
   RNA_def_property_ui_range(prop, 0, 4096, 1, -1);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceCrop_update");
 
-  prop = RNA_def_property(srna, "max_x", PROP_INT, PROP_UNSIGNED);
+  prop = RNA_def_property(srna, "max_x", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "right");
   RNA_def_property_ui_text(prop, "Right", "Number of pixels to crop from the right side");
   RNA_def_property_ui_range(prop, 0, 4096, 1, -1);
@@ -1222,14 +1227,14 @@ static void rna_def_strip_transform(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Sequence Transform", "Transform parameters for a sequence strip");
   RNA_def_struct_sdna(srna, "StripTransform");
 
-  prop = RNA_def_property(srna, "offset_x", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "offset_x", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "xofs");
   RNA_def_property_ui_text(
       prop, "Offset X", "Amount to move the input on the X axis within its boundaries");
   RNA_def_property_ui_range(prop, -4096, 4096, 1, -1);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceTransform_update");
 
-  prop = RNA_def_property(srna, "offset_y", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "offset_y", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "yofs");
   RNA_def_property_ui_text(
       prop, "Offset Y", "Amount to move the input on the Y axis within its boundaries");
@@ -1723,6 +1728,31 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Modifiers", "Modifiers affecting this strip");
   rna_def_sequence_modifiers(brna, prop);
 
+  prop = RNA_def_property(srna, "use_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_RAW);
+  RNA_def_property_ui_text(prop,
+                           "Cache Raw",
+                           "Cache raw images read from disk, for faster tweaking of strip "
+                           "parameters at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_PREPROCESSED);
+  RNA_def_property_ui_text(
+      prop,
+      "Cache Rreprocessed",
+      "Cache preprocessed images, for faster tweaking of effects at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_COMPOSITE);
+  RNA_def_property_ui_text(prop,
+                           "Cache Composite",
+                           "Cache intermediate composited images, for faster tweaking of stacked "
+                           "strips at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "override_cache_settings", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_OVERRIDE);
+  RNA_def_property_ui_text(prop, "Override Cache Settings", "Override global cache settings");
+
   RNA_api_sequence_strip(srna);
 }
 
@@ -1806,6 +1836,65 @@ static void rna_def_editor(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "proxy_dir");
   RNA_def_property_ui_text(prop, "Proxy Directory", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
+
+  /* cache flags */
+
+  prop = RNA_def_property(srna, "show_cache", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_ENABLE);
+  RNA_def_property_ui_text(prop, "Show Cache", "Visualize cached images on the timeline");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_final_out", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_FINAL_OUT);
+  RNA_def_property_ui_text(prop, "Final Images", "Visualize cached complete frames");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_RAW);
+  RNA_def_property_ui_text(prop, "Raw Images", "Visualize cached raw images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_PREPROCESSED);
+  RNA_def_property_ui_text(prop, "Preprocessed Images", "Visualize cached preprocessed images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "show_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_VIEW_COMPOSITE);
+  RNA_def_property_ui_text(prop, "Composite Images", "Visualize cached composite images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+
+  prop = RNA_def_property(srna, "use_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_RAW);
+  RNA_def_property_ui_text(prop,
+                           "Cache Raw",
+                           "Cache raw images read from disk, for faster tweaking of strip "
+                           "parameters at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_PREPROCESSED);
+  RNA_def_property_ui_text(
+      prop,
+      "Cache Preprocessed",
+      "Cache preprocessed images, for faster tweaking of effects at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_COMPOSITE);
+  RNA_def_property_ui_text(prop,
+                           "Cache Composite",
+                           "Cache intermediate composited images, for faster tweaking of stacked "
+                           "strips at the cost of memory usage");
+
+  prop = RNA_def_property(srna, "use_cache_final", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_FINAL_OUT);
+  RNA_def_property_ui_text(prop, "Cache Final", "Cache final image for each frame");
+
+  prop = RNA_def_property(srna, "recycle_max_cost", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, SEQ_CACHE_COST_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, SEQ_CACHE_COST_MAX, 0.1f, 1);
+  RNA_def_property_float_sdna(prop, NULL, "recycle_max_cost");
+  RNA_def_property_ui_text(
+      prop, "Recycle Up To Cost", "Only frames with cost lower than this value will be recycled");
 }
 
 static void rna_def_filter_video(StructRNA *srna)
@@ -2701,8 +2790,9 @@ static void rna_def_effects(BlenderRNA *brna)
 
     rna_def_effect_inputs(srna, effect->inputs);
 
-    if (effect->func)
+    if (effect->func) {
       effect->func(srna);
+    }
   }
 }
 

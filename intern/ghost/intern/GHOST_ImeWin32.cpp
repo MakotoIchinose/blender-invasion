@@ -178,7 +178,7 @@ void GHOST_ImeWin32::CleanupComposition(HWND window_handle)
   /**
    * Notify the IMM attached to the given window to complete the ongoing
    * composition, (this case happens when the given window is de-activated
-   * while composing a text and re-activated), and reset the omposition status.
+   * while composing a text and re-activated), and reset the composition status.
    */
   if (is_composing_) {
     HIMC imm_context = ::ImmGetContext(window_handle);
@@ -271,11 +271,11 @@ void GHOST_ImeWin32::GetCaret(HIMC imm_context, LPARAM lparam, ImeComposition *c
     case LANG_JAPANESE:
 
       /**
-     * For Japanese IMEs, the robustest way to retrieve the caret
-     * is scanning the attribute of the latest composition string and
-     * retrieving the begining and the end of the target clause, i.e.
-     * a clause being converted.
-     */
+       * For Japanese IMEs, the robustest way to retrieve the caret
+       * is scanning the attribute of the latest composition string and
+       * retrieving the beginning and the end of the target clause, i.e.
+       * a clause being converted.
+       */
       if (lparam & GCS_COMPATTR) {
         int attribute_size = ::ImmGetCompositionStringW(imm_context, GCS_COMPATTR, NULL, 0);
         if (attribute_size > 0) {
@@ -292,10 +292,10 @@ void GHOST_ImeWin32::GetCaret(HIMC imm_context, LPARAM lparam, ImeComposition *c
             }
             if (target_start == attribute_size) {
               /**
-             * This composition clause does not contain any target clauses,
-             * i.e. this clauses is an input clause.
-             * We treat whole this clause as a target clause.
-             */
+               * This composition clause does not contain any target clauses,
+               * i.e. this clauses is an input clause.
+               * We treat whole this clause as a target clause.
+               */
               target_end = target_start;
               target_start = 0;
             }

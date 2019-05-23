@@ -152,8 +152,8 @@ static bool rna_Collection_objects_override_apply(Main *bmain,
     return false;
   }
 
-  /* XXX TODO We most certainly rather want to have a 'swap object pointer in collection' util in BKE_collection...
-   * This is only temp auick dirty test! */
+  /* XXX TODO We most certainly rather want to have a 'swap object pointer in collection'
+   * util in BKE_collection. This is only temp quick dirty test! */
   id_us_min(&cob_dst->ob->id);
   cob_dst->ob = ob_src;
   id_us_plus(&cob_dst->ob->id);
@@ -255,8 +255,8 @@ static bool rna_Collection_children_override_apply(Main *bmain,
     return false;
   }
 
-  /* XXX TODO We most certainly rather want to have a 'swap object pointer in collection' util in BKE_collection...
-   * This is only temp auick dirty test! */
+  /* XXX TODO We most certainly rather want to have a 'swap object pointer in collection'
+   * util in BKE_collection. This is only temp quick dirty test! */
   id_us_min(&collchild_dst->collection->id);
   collchild_dst->collection = subcoll_src;
   id_us_plus(&collchild_dst->collection->id);
@@ -342,7 +342,8 @@ void RNA_def_collections(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "Collection", "ID");
   RNA_def_struct_ui_text(srna, "Collection", "Collection of Object data-blocks");
   RNA_def_struct_ui_icon(srna, ICON_GROUP);
-  /* this is done on save/load in readfile.c, removed if no objects are in the collection and not in a scene */
+  /* This is done on save/load in readfile.c,
+   * removed if no objects are in the collection and not in a scene. */
   RNA_def_struct_clear_flag(srna, STRUCT_ID_REFCOUNT);
 
   prop = RNA_def_property(srna, "instance_offset", PROP_FLOAT, PROP_TRANSLATION);
@@ -404,15 +405,15 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, -1);
-  RNA_def_property_ui_text(prop, "Disable Select", "Disable collection for viewport selection");
+  RNA_def_property_ui_text(prop, "Disable Selection", "Disable selection in viewport");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", COLLECTION_RESTRICT_VIEW);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", COLLECTION_RESTRICT_VIEWPORT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
-  RNA_def_property_ui_text(prop, "Disable Viewport", "Disable collection in viewport");
+  RNA_def_property_ui_text(prop, "Disable in Viewports", "Globally disable in viewports");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
   prop = RNA_def_property(srna, "hide_render", PROP_BOOLEAN, PROP_NONE);
@@ -420,7 +421,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
-  RNA_def_property_ui_text(prop, "Disable Render", "Disable collection in renders");
+  RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 }
 

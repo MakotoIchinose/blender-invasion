@@ -281,7 +281,10 @@ static void rna_Particle_uv_on_emitter(ParticleData *particle,
                                        ParticleSystemModifierData *modifier,
                                        float r_uv[2])
 {
-  /*psys_particle_on_emitter(psmd, part->from, pa->num, pa->num_dmcache, pa->fuv, pa->foffset, co, nor, 0, 0, sd.orco, 0);*/
+#  if 0
+  psys_particle_on_emitter(
+      psmd, part->from, pa->num, pa->num_dmcache, pa->fuv, pa->foffset, co, nor, 0, 0, sd.orco, 0);
+#  endif
 
   /* get uvco & mcol */
   int num = particle->num_dmcache;
@@ -789,7 +792,9 @@ static PointerRNA rna_particle_settings_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ParticleSettings, part);
 }
 
-static void rna_particle_settings_set(PointerRNA *ptr, PointerRNA value)
+static void rna_particle_settings_set(PointerRNA *ptr,
+                                      PointerRNA value,
+                                      struct ReportList *UNUSED(reports))
 {
   Object *ob = ptr->id.data;
   ParticleSystem *psys = (ParticleSystem *)ptr->data;
@@ -1315,7 +1320,9 @@ static PointerRNA rna_ParticleSettings_active_texture_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_Texture, tex);
 }
 
-static void rna_ParticleSettings_active_texture_set(PointerRNA *ptr, PointerRNA value)
+static void rna_ParticleSettings_active_texture_set(PointerRNA *ptr,
+                                                    PointerRNA value,
+                                                    struct ReportList *UNUSED(reports))
 {
   ParticleSettings *part = (ParticleSettings *)ptr->data;
 
@@ -2279,7 +2286,8 @@ static void rna_def_particle_settings(BlenderRNA *brna)
                       "rna_Particle_reset",
                       NULL);
 
-  /* fluid particle type can't be checked from the type value in rna as it's not shown in the menu */
+  /* Fluid particle type can't be checked from the type value in RNA
+   * as it's not shown in the menu. */
   prop = RNA_def_property(srna, "is_fluid", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_PartSettings_is_fluid_get", NULL);
@@ -2790,7 +2798,8 @@ static void rna_def_particle_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Particle_reset");
 
   prop = RNA_def_property(srna, "effector_amount", PROP_INT, PROP_UNSIGNED);
-  /* in theory PROP_ANIMATABLE perhaps should be cleared, but animating this can give some interesting results! */
+  /* In theory PROP_ANIMATABLE perhaps should be cleared,
+   * but animating this can give some interesting results! */
   RNA_def_property_range(prop, 0, 10000); /* 10000 effectors will bel SLOW, but who knows */
   RNA_def_property_ui_range(prop, 0, 100, 1, -1);
   RNA_def_property_ui_text(

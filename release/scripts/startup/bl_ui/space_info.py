@@ -23,12 +23,11 @@ from bpy.types import Header, Menu
 class INFO_HT_header(Header):
     bl_space_type = 'INFO'
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         layout.template_header()
 
         # Empty for now until info editor gets turned into log editor
-        pass
 
 """
         if (bpy.app.assets_fail or bpy.app.assets_need_reload) and not bpy.app.assets_quiet:
@@ -63,7 +62,11 @@ class INFO_MT_area(Menu):
         layout.separator()
 
         layout.operator("screen.screen_full_area")
-        layout.operator("screen.screen_full_area", text="Toggle Fullscreen Area", icon='FULLSCREEN_ENTER').use_hide_panels = True
+        layout.operator(
+            "screen.screen_full_area",
+            text="Toggle Fullscreen Area",
+            icon='FULLSCREEN_ENTER',
+        ).use_hide_panels = True
 
 
 classes = (

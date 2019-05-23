@@ -161,7 +161,6 @@ void BKE_asset_engine_free(AssetEngine *engine)
 
     if (engine->properties) {
       IDP_FreeProperty(engine->properties);
-      MEM_freeN(engine->properties);
     }
 
     if (engine->reports && (engine->reports->flag & RPT_FREE)) {
@@ -333,7 +332,8 @@ void BKE_filedir_entry_clear(FileDirEntry *entry)
   if (entry->image) {
     IMB_freeImBuf(entry->image);
   }
-  /* For now, consider FileDirEntryRevision::poin as not owned here, so no need to do anything about it */
+  /* For now, consider FileDirEntryRevision::poin as not owned here, so no need to do anything
+   * about it */
 
   if (!BLI_listbase_is_empty(&entry->variants)) {
     FileDirEntryVariant *var, *var_next;
@@ -375,7 +375,8 @@ FileDirEntry *BKE_filedir_entry_copy(FileDirEntry *entry)
   if (entry->image) {
     entry_new->image = IMB_dupImBuf(entry->image);
   }
-  /* For now, consider FileDirEntryRevision::poin as not owned here, so no need to do anything about it */
+  /* For now, consider FileDirEntryRevision::poin as not owned here, so no need to do anything
+   * about it */
 
   entry_new->entry = NULL;
   if (!BLI_listbase_is_empty(&entry->variants)) {

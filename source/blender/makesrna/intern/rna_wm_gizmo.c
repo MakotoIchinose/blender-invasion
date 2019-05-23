@@ -384,6 +384,7 @@ static void rna_Gizmo_matrix_world_get(PointerRNA *ptr, float value[16])
 
 RNA_GIZMO_GENERIC_FLOAT_RW_DEF(scale_basis, scale_basis);
 RNA_GIZMO_GENERIC_FLOAT_RW_DEF(line_width, line_width);
+RNA_GIZMO_GENERIC_FLOAT_RW_DEF(select_bias, select_bias);
 
 RNA_GIZMO_GENERIC_FLAG_RW_DEF(flag_use_draw_hover, flag, WM_GIZMO_DRAW_HOVER);
 RNA_GIZMO_GENERIC_FLAG_RW_DEF(flag_use_draw_modal, flag, WM_GIZMO_DRAW_MODAL);
@@ -752,8 +753,8 @@ static void rna_gizmogroup_invoke_prepare_cb(const bContext *C, wmGizmoGroup *gz
   FunctionRNA *func;
 
   RNA_pointer_create(NULL, gzgroup->type->ext.srna, gzgroup, &gzgroup_ptr);
-  func =
-      &rna_GizmoGroup_invoke_prepare_func; /* RNA_struct_find_function(&wgroupr, "invoke_prepare"); */
+  /* RNA_struct_find_function(&wgroupr, "invoke_prepare"); */
+  func = &rna_GizmoGroup_invoke_prepare_func;
 
   RNA_parameter_list_create(&list, &gzgroup_ptr, func);
   RNA_parameter_set_lookup(&list, "context", &C);
@@ -1158,6 +1159,12 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_float_funcs(prop, "rna_Gizmo_line_width_get", "rna_Gizmo_line_width_set", NULL);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_update(prop, NC_SCREEN | NA_EDITED, NULL);
+
+  prop = RNA_def_property(srna, "select_bias", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Select Bias", "Depth bias used for selection");
+  RNA_def_property_float_funcs(
+      prop, "rna_Gizmo_select_bias_get", "rna_Gizmo_select_bias_set", NULL);
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
 
   /* wmGizmo.flag */
   /* WM_GIZMO_HIDDEN */

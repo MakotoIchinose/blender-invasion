@@ -392,6 +392,15 @@ static bool ed_undo_redo_poll(bContext *C)
           WM_operator_check_ui_enabled(C, last_op->type->name));
 }
 
+static bool ed_undo_poll(bContext *C)
+{
+  if (!ed_undo_is_init_and_screenactive_poll(C)) {
+    return false;
+  }
+  UndoStack *undo_stack = CTX_wm_manager(C)->undo_stack;
+  return (undo_stack->step_active != NULL) && (undo_stack->step_active->prev != NULL);
+}
+
 void ED_OT_undo(wmOperatorType *ot)
 {
   /* identifiers */
@@ -401,7 +410,7 @@ void ED_OT_undo(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = ed_undo_exec;
-  ot->poll = ed_undo_is_init_and_screenactive_poll;
+  ot->poll = ed_undo_poll;
 }
 
 void ED_OT_undo_push(wmOperatorType *ot)
@@ -426,6 +435,15 @@ void ED_OT_undo_push(wmOperatorType *ot)
                  "");
 }
 
+static bool ed_redo_poll(bContext *C)
+{
+  if (!ed_undo_is_init_and_screenactive_poll(C)) {
+    return false;
+  }
+  UndoStack *undo_stack = CTX_wm_manager(C)->undo_stack;
+  return (undo_stack->step_active != NULL) && (undo_stack->step_active->next != NULL);
+}
+
 void ED_OT_redo(wmOperatorType *ot)
 {
   /* identifiers */
@@ -435,7 +453,7 @@ void ED_OT_redo(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = ed_redo_exec;
-  ot->poll = ed_undo_is_init_and_screenactive_poll;
+  ot->poll = ed_redo_poll;
 }
 
 void ED_OT_undo_redo(wmOperatorType *ot)
@@ -476,15 +494,16 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
 
     if ((WM_operator_repeat_check(C, op)) && (WM_operator_poll(C, op->type)) &&
         /* note, undo/redo cant run if there are jobs active,
-          * check for screen jobs only so jobs like material/texture/world preview
-          * (which copy their data), wont stop redo, see [#29579]],
-          *
-          * note, - WM_operator_check_ui_enabled() jobs test _must_ stay in sync with this */
+         * check for screen jobs only so jobs like material/texture/world preview
+         * (which copy their data), wont stop redo, see [#29579]],
+         *
+         * note, - WM_operator_check_ui_enabled() jobs test _must_ stay in sync with this */
         (WM_jobs_test(wm, scene, WM_JOB_TYPE_ANY) == 0)) {
       int retval;
 
-      if (G.debug & G_DEBUG)
+      if (G.debug & G_DEBUG) {
         printf("redo_cb: operator redo %s\n", op->type->name);
+      }
 
       WM_operator_free_all_after(wm, op);
 
@@ -511,8 +530,9 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
 
       retval = WM_operator_repeat(C, op);
       if ((retval & OPERATOR_FINISHED) == 0) {
-        if (G.debug & G_DEBUG)
+        if (G.debug & G_DEBUG) {
           printf("redo_cb: operator redo failed: %s, return %d\n", op->type->name, retval);
+        }
         ED_undo_redo(C);
       }
       else {
@@ -567,7 +587,7 @@ static const EnumPropertyItem *rna_undo_itemf(bContext *C, int *totitem)
       item_tmp.identifier = us->name;
       item_tmp.name = IFACE_(us->name);
       if (us == wm->undo_stack->step_active) {
-        item_tmp.icon = ICON_HIDE_OFF;
+        item_tmp.icon = ICON_LAYER_ACTIVE;
       }
       else {
         item_tmp.icon = ICON_NONE;
@@ -631,6 +651,16 @@ static int undo_history_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
+static bool undo_history_poll(bContext *C)
+{
+  if (!ed_undo_is_init_and_screenactive_poll(C)) {
+    return false;
+  }
+  UndoStack *undo_stack = CTX_wm_manager(C)->undo_stack;
+  /* more than just original state entry */
+  return BLI_listbase_count_at_most(&undo_stack->steps, 2) > 1;
+}
+
 void ED_OT_undo_history(wmOperatorType *ot)
 {
   /* identifiers */
@@ -641,7 +671,7 @@ void ED_OT_undo_history(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = undo_history_invoke;
   ot->exec = undo_history_exec;
-  ot->poll = ed_undo_is_init_and_screenactive_poll;
+  ot->poll = undo_history_poll;
 
   RNA_def_int(ot->srna, "item", 0, 0, INT_MAX, "Item", "", 0, INT_MAX);
 }

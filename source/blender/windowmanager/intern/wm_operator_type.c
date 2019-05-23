@@ -156,7 +156,6 @@ void WM_operatortype_remove_ptr(wmOperatorType *ot)
 
   if (ot->last_properties) {
     IDP_FreeProperty(ot->last_properties);
-    MEM_freeN(ot->last_properties);
   }
 
   if (ot->macro.first) {
@@ -194,7 +193,6 @@ static void operatortype_ghash_free_cb(wmOperatorType *ot)
 {
   if (ot->last_properties) {
     IDP_FreeProperty(ot->last_properties);
-    MEM_freeN(ot->last_properties);
   }
 
   if (ot->macro.first) {
@@ -236,9 +234,11 @@ void WM_operatortype_props_advanced_begin(wmOperatorType *ot)
 }
 
 /**
- * Tags all operator-properties of \ot defined since the first #WM_operatortype_props_advanced_begin
- * call, or the last #WM_operatortype_props_advanced_end call, with #OP_PROP_TAG_ADVANCED.
- * Note that this is called for all operators during registration (see #wm_operatortype_append__end).
+ * Tags all operator-properties of \a ot defined since the first
+ * #WM_operatortype_props_advanced_begin call,
+ * or the last #WM_operatortype_props_advanced_end call, with #OP_PROP_TAG_ADVANCED.
+ *
+ * \note This is called for all operators during registration (see #wm_operatortype_append__end).
  * So it does not need to be explicitly called in operator-type definition.
  */
 void WM_operatortype_props_advanced_end(wmOperatorType *ot)
@@ -277,7 +277,6 @@ void WM_operatortype_last_properties_clear_all(void)
 
     if (ot->last_properties) {
       IDP_FreeProperty(ot->last_properties);
-      MEM_freeN(ot->last_properties);
       ot->last_properties = NULL;
     }
   }

@@ -195,7 +195,9 @@ static PointerRNA rna_AssetRevision_active_view_get(PointerRNA *ptr)
       ptr, &RNA_AssetView, BLI_findlink(&revision->views, revision->act_view));
 }
 
-static void rna_AssetRevision_active_view_set(PointerRNA *ptr, PointerRNA value)
+static void rna_AssetRevision_active_view_set(PointerRNA *ptr,
+                                              PointerRNA value,
+                                              struct ReportList *UNUSED(reports))
 {
   FileDirEntryRevision *revision = ptr->data;
   FileDirEntryView *view = value.data;
@@ -260,7 +262,9 @@ static PointerRNA rna_AssetVariant_active_revision_get(PointerRNA *ptr)
       ptr, &RNA_AssetRevision, BLI_findlink(&variant->revisions, variant->act_revision));
 }
 
-static void rna_AssetVariant_active_revision_set(PointerRNA *ptr, PointerRNA value)
+static void rna_AssetVariant_active_revision_set(PointerRNA *ptr,
+                                                 PointerRNA value,
+                                                 struct ReportList *UNUSED(reports))
 {
   FileDirEntryVariant *variant = ptr->data;
   FileDirEntryRevision *revision = value.data;
@@ -328,7 +332,9 @@ static PointerRNA rna_AssetEntry_active_variant_get(PointerRNA *ptr)
       ptr, &RNA_AssetVariant, BLI_findlink(&entry->variants, entry->act_variant));
 }
 
-static void rna_AssetEntry_active_variant_set(PointerRNA *ptr, PointerRNA value)
+static void rna_AssetEntry_active_variant_set(PointerRNA *ptr,
+                                              PointerRNA value,
+                                              struct ReportList *UNUSED(reports))
 {
   FileDirEntry *entry = ptr->data;
   FileDirEntryVariant *variant = value.data;
@@ -433,7 +439,9 @@ static PointerRNA rna_AssetList_active_entry_get(PointerRNA *ptr)
       ptr, &RNA_AssetEntry, arr->entries.first /* BLI_findlink(&arr->entries, 0) */);
 }
 
-static void rna_AssetList_active_entry_set(PointerRNA *ptr, PointerRNA value)
+static void rna_AssetList_active_entry_set(PointerRNA *ptr,
+                                           PointerRNA value,
+                                           struct ReportList *UNUSED(reports))
 {
   FileDirEntryArr *arr = ptr->data;
   FileDirEntry *entry = value.data;
@@ -749,7 +757,8 @@ static bool rna_ae_check_dir(AssetEngine *engine, char *r_dir, bool do_change)
   void *ret;
   bool ret_is_valid;
 
-  /* XXX Hacking around bpyrna incapacity to handle strings as return values... To be fixed... some day... */
+  /* XXX Hacking around bpyrna incapacity to handle strings as return values... To be fixed... some
+   * day... */
   FileDirEntryArr entries = {0};
   FileDirEntryArr *entries_p = &entries;
   BLI_strncpy(entries.root, r_dir, FILE_MAX);

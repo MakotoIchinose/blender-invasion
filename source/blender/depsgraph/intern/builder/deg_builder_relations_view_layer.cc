@@ -61,7 +61,7 @@ namespace DEG {
 
 void DepsgraphRelationBuilder::build_layer_collections(ListBase *lb)
 {
-  const int restrict_flag = (graph_->mode == DAG_EVAL_VIEWPORT) ? COLLECTION_RESTRICT_VIEW :
+  const int restrict_flag = (graph_->mode == DAG_EVAL_VIEWPORT) ? COLLECTION_RESTRICT_VIEWPORT :
                                                                   COLLECTION_RESTRICT_RENDER;
 
   for (LayerCollection *lc = (LayerCollection *)lb->first; lc; lc = lc->next) {
@@ -106,10 +106,6 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene, ViewLayer *view_la
   if (scene->world != NULL) {
     build_world(scene->world);
   }
-  /* Compositor nodes. */
-  if (scene->nodetree != NULL) {
-    build_compositor(scene);
-  }
   /* Masks. */
   LISTBASE_FOREACH (Mask *, mask, &bmain_->masks) {
     build_mask(mask);
@@ -128,6 +124,9 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene, ViewLayer *view_la
       build_collection(NULL, NULL, fls->group);
     }
   }
+  /* Scene parameters, compositor and such. */
+  build_scene_compositor(scene);
+  build_scene_parameters(scene);
   /* Build all set scenes. */
   if (scene->set != NULL) {
     ViewLayer *set_view_layer = BKE_view_layer_default_render(scene->set);

@@ -172,7 +172,9 @@ typedef struct WMLinkAppendData {
   LinkNodePair items;
   int num_libraries;
   int num_items;
-  int flag; /* Combines eFileSel_Params_Flag from DNA_space_types.h and BLO_LibLinkFlags from BLO_readfile.h */
+  /** Combines #eFileSel_Params_Flag from DNA_space_types.h and
+   * BLO_LibLinkFlags from BLO_readfile.h */
+  int flag;
 
   /* Internal 'private' data */
   MemArena *memarena;
@@ -308,7 +310,8 @@ static void wm_link_virtual_lib(WMLinkAppendData *lapp_data,
         new_id = (ID *)BKE_image_load_exists_ex(bmain, item->name, &id_exists);
         if (id_exists) {
           if (!new_id->uuid || !ASSETUUID_EQUAL(new_id->uuid, item->uuid)) {
-            /* Fake 'same ID' (same path, but different uuid or whatever), force loading into new ID. */
+            /* Fake 'same ID' (same path, but different uuid or whatever), force loading into new
+             * ID. */
             BLI_assert(new_id->lib != virtlib);
             new_id = (ID *)BKE_image_load(bmain, item->name);
             id_exists = false;
@@ -329,8 +332,8 @@ static void wm_link_virtual_lib(WMLinkAppendData *lapp_data,
       }
 
       if (generate_overrides) {
-        /* Create local override of virtually linked datablock, since we nearly always want to be able
-         * to edit pretty much everything about it. */
+        /* Create local override of virtually linked datablock, since we nearly always want to be
+         * able to edit pretty much everything about it. */
         new_id = BKE_override_static_create_from_id(bmain, new_id);
         /* TODO: will need to protect some fields on type-by-type case (path field). */
       }
@@ -619,8 +622,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
             lapp_data, name, BKE_idcode_from_name(group), &uuid, NULL);
         BLI_BITMAP_ENABLE(item->libraries, lib_idx);
       }
-      else if (
-          aet) { /* Non-blend paths are only valid in asset engine context (virtual libraries). */
+      else if (aet) { /* Non-blend paths are only valid in asset engine context (virtual
+                         libraries). */
         const int idcode = path_to_idcode(path);
 
         if (idcode != 0) {
@@ -651,8 +654,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
           lapp_data, name, BKE_idcode_from_name(group), &uuid, NULL);
       BLI_BITMAP_ENABLE(item->libraries, 0);
     }
-    else if (
-        aet) { /* Non-blend paths are only valid in asset engine context (virtual libraries). */
+    else if (aet) { /* Non-blend paths are only valid in asset engine context (virtual libraries).
+                     */
       const int idcode = path_to_idcode(path);
 
       if (idcode != 0) {
@@ -671,7 +674,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 
   if (!do_append) {
     /* XXX Currently this only applies to virtual libs ('linking' mere image files...).
-     *     However, we may want to make this a general option at link time when importing assets... */
+     *     However, we may want to make this a general option at link time when importing assets...
+     */
     lapp_data->flag |= BLO_LIBLINK_GENERATE_OVERRIDE;
   }
 
@@ -682,7 +686,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 
   /* BKE_main_unlock(bmain); */
 
-  /* Try to do smart things from context in some cases (like drag'n'drop of material over object...) */
+  /* Try to do smart things from context in some cases (like drag'n'drop of material over
+   * object...) */
   prop = RNA_struct_find_property(op->ptr, "mouse_coordinates");
   if (prop && RNA_property_is_set(op->ptr, prop)) {
     int mval[2];
@@ -751,10 +756,11 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
   /* TODO(sergey): Use proper flag for tagging here. */
 
   /* TODO (dalai): Temporary solution!
-   * Ideally we only need to tag the new objects themselves, not the scene. This way we'll avoid flush of
-   * collection properties to all objects and limit update to the particular object only.
-   * But afraid first we need to change collection evaluation in DEG according to depsgraph manifesto.
-   */
+   * Ideally we only need to tag the new objects themselves, not the scene.
+   * This way we'll avoid flush of collection properties
+   * to all objects and limit update to the particular object only.
+   * But afraid first we need to change collection evaluation in DEG
+   * according to depsgraph manifesto. */
   DEG_id_tag_update(&scene->id, 0);
 
   /* recreate dependency graph to include new objects */
@@ -912,8 +918,8 @@ static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent *UN
 }
 
 /**
- * \param library if given, all IDs from that library will be removed and reloaded. Otherwise, IDs must have already
- *                been removed from \a bmain, and added to \a lapp_data.
+ * \param library if given, all IDs from that library will be removed and reloaded. Otherwise, IDs
+ * must have already been removed from \a bmain, and added to \a lapp_data.
  */
 static void lib_relocate_do(Main *bmain,
                             Library *library,
@@ -936,7 +942,8 @@ static void lib_relocate_do(Main *bmain,
       const short idcode = id ? GS(id->name) : 0;
 
       if (!id || !BKE_idcode_is_linkable(idcode)) {
-        /* No need to reload non-linkable datatypes, those will get relinked with their 'users ID'. */
+        /* No need to reload non-linkable datatypes,
+         * those will get relinked with their 'users ID'. */
         continue;
       }
 
@@ -945,7 +952,8 @@ static void lib_relocate_do(Main *bmain,
           WMLinkAppendDataItem *item;
 
           /* We remove it from current Main, and add it to items to link... */
-          /* Note that non-linkable IDs (like e.g. shapekeys) are also explicitely linked here... */
+          /* Note that non-linkable IDs (like e.g. shapekeys) are also explicitely
+           * linked here... */
           BLI_remlink(lbarray[lba_idx], id);
           item = wm_link_append_data_item_add(lapp_data, id->name + 2, idcode, NULL, id);
           BLI_bitmap_set_all(item->libraries, true, lapp_data->num_libraries);
@@ -994,12 +1002,16 @@ static void lib_relocate_do(Main *bmain,
 
     BLI_assert(old_id);
     if (do_reload) {
-      /* Since we asked for placeholders in case of missing IDs, we expect to always get a valid one. */
+      /* Since we asked for placeholders in case of missing IDs,
+       * we expect to always get a valid one. */
       BLI_assert(new_id);
     }
     if (new_id) {
 #ifdef PRINT_DEBUG
-      printf("before remap, old_id users: %d, new_id users: %d\n", old_id->us, new_id->us);
+      printf("before remap of %s, old_id users: %d, new_id users: %d\n",
+             old_id->name,
+             old_id->us,
+             new_id->us);
 #endif
       BKE_libblock_remap_locked(bmain, old_id, new_id, remap_flags);
 
@@ -1009,7 +1021,10 @@ static void lib_relocate_do(Main *bmain,
       }
 
 #ifdef PRINT_DEBUG
-      printf("after remap, old_id users: %d, new_id users: %d\n", old_id->us, new_id->us);
+      printf("after remap of %s, old_id users: %d, new_id users: %d\n",
+             old_id->name,
+             old_id->us,
+             new_id->us);
 #endif
 
       /* In some cases, new_id might become direct link, remove parent of library in this case. */
@@ -1022,9 +1037,10 @@ static void lib_relocate_do(Main *bmain,
     }
 
     if (old_id->us > 0 && new_id && old_id->lib == new_id->lib) {
-      /* Note that this *should* not happen - but better be safe than sorry in this area, at least until we are
-       * 100% sure this cannot ever happen.
-       * Also, we can safely assume names were unique so far, so just replacing '.' by '~' should work,
+      /* Note that this *should* not happen - but better be safe than sorry in this area,
+       * at least until we are 100% sure this cannot ever happen.
+       * Also, we can safely assume names were unique so far,
+       * so just replacing '.' by '~' should work,
        * but this does not totally rules out the possibility of name collision. */
       size_t len = strlen(old_id->name);
       size_t dot_pos;
@@ -1075,8 +1091,8 @@ static void lib_relocate_do(Main *bmain,
     }
   }
 
-  /* Some datablocks can get reloaded/replaced 'silently' because they are not linkable (shape keys e.g.),
-   * so we need another loop here to clear old ones if possible. */
+  /* Some datablocks can get reloaded/replaced 'silently' because they are not linkable
+   * (shape keys e.g.), so we need another loop here to clear old ones if possible. */
   lba_idx = set_listbasepointers(bmain, lbarray);
   while (lba_idx--) {
     ID *id, *id_next;
@@ -1348,9 +1364,9 @@ typedef struct AssetUpdateCheckEngine {
   struct AssetUpdateCheckEngine *next, *prev;
   AssetEngine *ae;
 
-  /* Note: We cannot store IDs themselves in non-locking async task... so we'll have to check again for
-   *       UUID/IDs mapping on each update call... Not ideal, but don't think it will be that big of a bottleneck
-   *       in practice. */
+  /* Note: We cannot store IDs themselves in non-locking async task... so we'll have to check again
+   * for UUID/IDs mapping on each update call... Not ideal, but don't think it will be that big of
+   * a bottleneck in practice. */
   AssetUUIDList uuids;
   int allocated_uuids;
   int ae_job_id;
@@ -1435,8 +1451,8 @@ static void asset_update_engines_uuids_fetch(ListBase *engines,
           for (auce = engines->first; auce; auce = auce->next) {
             if (auce->ae->type == ae_type) {
               /* In case we have several engine versions for the same engine, we create several
-               * AssetUpdateCheckEngine structs (since an uuid list can only handle one ae version), using
-               * the same (shallow) copy of the actual asset engine. */
+               * AssetUpdateCheckEngine structs (since an uuid list can only handle one ae
+               * version), using the same (shallow) copy of the actual asset engine. */
               copy_engine = (auce->uuids.asset_engine_version !=
                              lib->asset_repository->asset_engine_version);
               break;
@@ -1499,8 +1515,8 @@ static void asset_updatecheck_update(void *aucjv)
 
   *aucj->progress = 0.0f;
 
-  /* TODO need to take care of 'broken' engines that error - in this case we probably want to cancel the whole
-   * update process over effected libraries' data... */
+  /* TODO need to take care of 'broken' engines that error - in this case we probably want to
+   * cancel the whole update process over effected libraries' data... */
   for (AssetUpdateCheckEngine *auce = aucj->engines.first; auce;
        auce = auce->next, nbr_engines++) {
     AssetEngine *ae = auce->ae;
@@ -1530,8 +1546,8 @@ static void asset_updatecheck_update(void *aucjv)
             continue;
           }
 
-          /* UUIDs returned by update_check are assumed to be valid (one way or the other) in current
-           * asset engine version. */
+          /* UUIDs returned by update_check are assumed to be valid (one way or the other) in
+           * current asset engine version. */
           lib->asset_repository->asset_engine_version = ae_type->version;
 
           int i = auce->uuids.nbr_uuids;
@@ -1643,7 +1659,10 @@ static void asset_updatecheck_start(const bContext *C)
       wm_job,
       0.1,
       0,
-      0 /*NC_SPACE | ND_SPACE_FILE_LIST, NC_SPACE | ND_SPACE_FILE_LIST*/); /* TODO probably outliner stuff once UI is defined for this! */
+      0 /*NC_SPACE | ND_SPACE_FILE_LIST, NC_SPACE | ND_SPACE_FILE_LIST*/); /* TODO probably
+                                                                              outliner stuff once
+                                                                              UI is defined for
+                                                                              this! */
   WM_jobs_callbacks(wm_job,
                     asset_updatecheck_startjob,
                     NULL,
@@ -1673,7 +1692,8 @@ void WM_OT_assets_update_check(wmOperatorType *ot)
 static int wm_assets_reload_exec(bContext *C, wmOperator *op)
 {
   /* We need to:
-   *   - get list of all asset IDs to reload (either via given uuids, or their tag), and regroup them by asset engine.
+   *   - get list of all asset IDs to reload (either via given uuids, or their tag), and regroup
+   * them by asset engine.
    *   - tag somehow all their indirect 'dependencies' IDs.
    *   - call load_pre to get actual filepaths.
    *   - do reload/relocate and remap as in lib_reload.
