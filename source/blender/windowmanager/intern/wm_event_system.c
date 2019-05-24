@@ -2309,7 +2309,9 @@ static int wm_handler_fileselect_do(bContext *C,
       const int sizex = 1020 * UI_DPI_FAC;
       const int sizey = 600 * UI_DPI_FAC;
 
-      if (WM_window_open_temp(C, win->eventstate->x, win->eventstate->y, sizex, sizey, WM_WINDOW_FILESEL) != NULL) {
+      if (WM_window_open_temp(
+              C, win->eventstate->x, win->eventstate->y, sizex, sizey, WM_WINDOW_FILESEL) !=
+          NULL) {
         BLI_assert(CTX_wm_area(C)->spacetype == SPACE_FILE);
 
         /* settings for filebrowser, sfile is not operator owner but sends events */
@@ -2344,7 +2346,7 @@ static int wm_handler_fileselect_do(bContext *C,
             if (BLI_listbase_is_single(&file_sa->spacedata)) {
               wmWindow *ctx_win = CTX_wm_window(C);
               wm_window_close(C, wm, win);
-              CTX_wm_window_set(C, ctx_win); // wm_window_close() NULLs.
+              CTX_wm_window_set(C, ctx_win);  // wm_window_close() NULLs.
             }
             else if (file_sa->full) {
               ED_screen_full_prevspace(C, file_sa);

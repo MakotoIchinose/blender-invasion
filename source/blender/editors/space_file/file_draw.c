@@ -280,7 +280,7 @@ void file_draw_execute_buttons(const bContext *C, ARegion *ar)
     }
   }
 
-#if 0
+#  if 0
   /* Filename number increment / decrement buttons. */
   if (fnumbuttons && (params->flag & FILE_DIRSEL_ONLY) == 0) {
     UI_block_align_begin(block);
@@ -309,7 +309,7 @@ void file_draw_execute_buttons(const bContext *C, ARegion *ar)
     RNA_int_set(UI_but_operator_ptr_get(but), "increment", 1);
     UI_block_align_end(block);
   }
-#endif
+#  endif
 
   /* Execute / cancel buttons. */
   if (loadbutton) {
