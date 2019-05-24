@@ -808,8 +808,8 @@ class SequencerButtonsPanel_Output:
         return cls.has_preview(context)
 
 
-class SEQUENCER_PT_data(SequencerButtonsPanel, Panel):
-    bl_label = "Data"
+class SEQUENCER_PT_info(SequencerButtonsPanel, Panel):
+    bl_label = "Info"
     bl_options = {'DEFAULT_CLOSED'}
     bl_category = "Strip"
 
@@ -847,13 +847,10 @@ class SEQUENCER_PT_adjust_offset(SequencerButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        if strip.use_translation:
-            col = layout.column(align=True)
-            col.prop(strip.transform, "offset_x", text="Position X")
-            col.prop(strip.transform, "offset_y", text="Y")
-            col.active = strip.use_translation
-        else:
-            layout.separator()
+        col = layout.column(align=True)
+        col.prop(strip.transform, "offset_x", text="Position X")
+        col.prop(strip.transform, "offset_y", text="Position Y")
+        col.active = strip.use_translation
 
 
 class SEQUENCER_PT_adjust_crop(SequencerButtonsPanel, Panel):
@@ -877,14 +874,12 @@ class SEQUENCER_PT_adjust_crop(SequencerButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        if strip.use_crop:
-            col = layout.column(align=True)
-            col.prop(strip.crop, "min_x")
-            col.prop(strip.crop, "max_x")
-            col.prop(strip.crop, "max_y")
-            col.prop(strip.crop, "min_y")
-        else:
-            layout.separator()
+        col = layout.column(align=True)
+        col.prop(strip.crop, "min_x")
+        col.prop(strip.crop, "max_x")
+        col.prop(strip.crop, "max_y")
+        col.prop(strip.crop, "min_y")
+        col.active = strip.use_crop
 
 
 class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
@@ -1053,9 +1048,9 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
             row.prop(strip, "factor", slider=True)
 
 
-class SEQUENCER_PT_data_input(SequencerButtonsPanel, Panel):
+class SEQUENCER_PT_info_input(SequencerButtonsPanel, Panel):
     bl_label = "Input"
-    bl_parent_id = "SEQUENCER_PT_data"
+    bl_parent_id = "SEQUENCER_PT_info"
     bl_options = {'DEFAULT_CLOSED'}
     bl_category = "Strip"
 
@@ -1270,10 +1265,10 @@ class SEQUENCER_PT_mask(SequencerButtonsPanel, Panel):
             layout.label(text=iface_("Original frame range: %d-%d (%d)") % (sta, end, end - sta + 1), translate=False)
 
 
-class SEQUENCER_PT_data_info(SequencerButtonsPanel, Panel):
-    bl_label = "Info"
+class SEQUENCER_PT_info_timecodes(SequencerButtonsPanel, Panel):
+    bl_label = "Timecodes"
     bl_category = "Strip"
-    bl_parent_id = "SEQUENCER_PT_data"
+    bl_parent_id = "SEQUENCER_PT_info"
 
     @classmethod
     def poll(cls, context):
@@ -1964,9 +1959,9 @@ classes = (
     SEQUENCER_PT_adjust_color,
     SEQUENCER_PT_adjust_sound,
 
-    SEQUENCER_PT_data,
-    SEQUENCER_PT_data_input,
-    SEQUENCER_PT_data_info,
+    SEQUENCER_PT_info,
+    SEQUENCER_PT_info_input,
+    SEQUENCER_PT_info_timecodes,
 
     SEQUENCER_PT_effect,
     SEQUENCER_PT_scene,
