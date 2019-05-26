@@ -81,7 +81,7 @@ class IMAGE_MT_view(Menu):
 
         layout.prop(sima, "show_region_toolbar")
         layout.prop(sima, "show_region_ui")
-        layout.prop(view, "show_region_tool_header")
+        layout.prop(sima, "show_region_tool_header")
         layout.prop(sima, "show_region_hud")
 
         layout.separator()
@@ -706,7 +706,7 @@ class IMAGE_HT_header(Header):
             row.template_ID(sima, "mask", new="mask.new")
 
         if not show_render:
-            layout.prop(sima, "use_image_pin", text="")
+            layout.prop(sima, "use_image_pin", text="", emboss=False)
 
         layout.separator_spacer()
 

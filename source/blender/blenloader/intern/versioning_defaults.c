@@ -49,6 +49,7 @@
 #include "BKE_node.h"
 #include "BKE_paint.h"
 #include "BKE_screen.h"
+#include "BKE_studiolight.h"
 #include "BKE_workspace.h"
 
 #include "BLO_readfile.h"
@@ -114,6 +115,12 @@ void BLO_update_defaults_userpref_blend(void)
 
   /* Default to left click select. */
   BKE_keyconfig_pref_set_select_mouse(&U, 0, true);
+
+  /* Increase a little for new scrubbing area. */
+  U.v2d_min_gridsize = 45;
+
+  /* Default studio light. */
+  BKE_studiolight_default(U.light_param, U.light_ambient);
 }
 
 /**
@@ -159,13 +166,16 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
       for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
-        /* Remove all stored panels, we want to use defaults
-         * (order, open/closed) as defined by UI code here! */
-        BKE_area_region_panels_free(&ar->panels);
+        if (builtin_template) {
+          /* Remove all stored panels, we want to use defaults
+           * (order, open/closed) as defined by UI code here! */
+          BKE_area_region_panels_free(&ar->panels);
+          BLI_freelistN(&ar->panels_category_active);
 
-        /* Reset size so it uses consistent defaults from the region types. */
-        ar->sizex = 0;
-        ar->sizey = 0;
+          /* Reset size so it uses consistent defaults from the region types. */
+          ar->sizex = 0;
+          ar->sizey = 0;
+        }
 
         /* some toolbars have been saved as initialized,
          * we don't want them to have odd zoom-level or scrolling set, see: T47047 */
@@ -181,6 +191,8 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
             v3d->overlay.texture_paint_mode_opacity = 1.0f;
             v3d->overlay.weight_paint_mode_opacity = 1.0f;
             v3d->overlay.vertex_paint_mode_opacity = 1.0f;
+            /* Use dimmed selected edges. */
+            v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_EDGES;
             /* grease pencil settings */
             v3d->vertex_opacity = 1.0f;
             v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
@@ -323,7 +335,6 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
           /* Screen space cavity by default for faster performance. */
           View3D *v3d = sa->spacedata.first;
           v3d->shading.cavity_type = V3D_SHADING_CAVITY_CURVATURE;
-          v3d->shading.light = V3D_LIGHTING_MATCAP;
         }
         else if (sa->spacetype == SPACE_CLIP) {
           SpaceClip *sclip = sa->spacedata.first;
@@ -412,6 +423,21 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       /* Initialize to a useful value. */
       camera->dof.focus_distance = 10.0f;
       camera->dof.aperture_fstop = 2.8f;
+    }
+
+    for (Material *ma = bmain->materials.first; ma; ma = ma->id.next) {
+      /* Update default material to be a bit more rough. */
+      ma->roughness = 0.4f;
+
+      if (ma->nodetree) {
+        for (bNode *node = ma->nodetree->nodes.first; node; node = node->next) {
+          if (node->type == SH_NODE_BSDF_PRINCIPLED) {
+            bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+            bNodeSocketValueFloat *roughness_data = roughness_socket->default_value;
+            roughness_data->value = 0.4f;
+          }
+        }
+      }
     }
   }
 
