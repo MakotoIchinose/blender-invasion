@@ -505,6 +505,7 @@ static void ptcache_particle_extra_read(void *psys_v, PTCacheMem *pm, float UNUS
   }
 }
 
+#if USE_CLOTH_CACHE
 /* Cloth functions */
 static int ptcache_cloth_write(int index, void *cloth_v, void **data, int UNUSED(cfra))
 {
@@ -586,6 +587,7 @@ static void ptcache_cloth_error(void *cloth_v, const char *message)
   ClothModifierData *clmd = cloth_v;
   modifier_setError(&clmd->modifier, "%s", message);
 }
+#endif
 
 #ifdef WITH_SMOKE
 /* Smoke functions */
@@ -1659,6 +1661,7 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
   pid->max_step = 20;
   pid->file_type = PTCACHE_FILE_PTCACHE;
 }
+#if USE_CLOTH_CACHE
 void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *clmd)
 {
   memset(pid, 0, sizeof(PTCacheID));
@@ -1698,6 +1701,7 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
   pid->max_step = 1;
   pid->file_type = PTCACHE_FILE_PTCACHE;
 }
+#endif
 void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeModifierData *smd)
 {
   SmokeDomainSettings *sds = smd->domain;
@@ -1898,6 +1902,7 @@ static bool foreach_object_modifier_ptcache(Object *object,
 {
   PTCacheID pid;
   for (ModifierData *md = object->modifiers.first; md != NULL; md = md->next) {
+#if USE_CLOTH_CACHE
     if (md->type == eModifierType_Cloth) {
       BKE_ptcache_id_from_cloth(&pid, object, (ClothModifierData *)md);
       if (!callback(&pid, callback_user_data)) {
@@ -1913,6 +1918,17 @@ static bool foreach_object_modifier_ptcache(Object *object,
         }
       }
     }
+#else
+    if (md->type == eModifierType_Smoke) {
+      SmokeModifierData *smd = (SmokeModifierData *)md;
+      if (smd->type & MOD_SMOKE_TYPE_DOMAIN) {
+        BKE_ptcache_id_from_smoke(&pid, object, (SmokeModifierData *)md);
+        if (!callback(&pid, callback_user_data)) {
+          return false;
+        }
+      }
+    }
+#endif
     else if (md->type == eModifierType_DynamicPaint) {
       DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
       if (pmd->canvas) {
@@ -2561,9 +2577,11 @@ static int ptcache_old_elemsize(PTCacheID *pid)
   else if (pid->type == PTCACHE_TYPE_PARTICLES) {
     return sizeof(ParticleKey);
   }
+#if USE_CLOTH_CACHE
   else if (pid->type == PTCACHE_TYPE_CLOTH) {
     return 9 * sizeof(float);
   }
+#endif
 
   return 0;
 }
@@ -3672,12 +3690,18 @@ int BKE_ptcache_id_reset(Scene *scene, PTCacheID *pid, int mode)
     BKE_ptcache_invalidate(cache);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
 
+#if USE_CLOTH_CACHE
     if (pid->type == PTCACHE_TYPE_CLOTH) {
       cloth_free_modifier(pid->calldata);
     }
     else if (pid->type == PTCACHE_TYPE_SOFTBODY) {
       sbFreeSimulation(pid->calldata);
     }
+#else
+    if (pid->type == PTCACHE_TYPE_SOFTBODY) {
+      sbFreeSimulation(pid->calldata);
+    }
+#endif
     else if (pid->type == PTCACHE_TYPE_PARTICLES) {
       psys_reset(pid->calldata, PSYS_RESET_DEPSGRAPH);
     }
@@ -3716,6 +3740,7 @@ int BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
       /* Baked cloth hair has to be checked too, because we don't want to reset */
       /* particles or cloth in that case -jahka */
     }
+#if USE_CLOTH_CACHE
     else if (psys->clmd) {
       BKE_ptcache_id_from_cloth(&pid, ob, psys->clmd);
       if (mode == PSYS_RESET_ALL ||
@@ -3726,6 +3751,7 @@ int BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
         skip = 1;
       }
     }
+#endif
 
     if (skip == 0 && psys->part) {
       BKE_ptcache_id_from_particles(&pid, ob, psys);
@@ -3734,10 +3760,12 @@ int BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
   }
 
   for (md = ob->modifiers.first; md; md = md->next) {
+#if USE_CLOTH_CACHE
     if (md->type == eModifierType_Cloth) {
       BKE_ptcache_id_from_cloth(&pid, ob, (ClothModifierData *)md);
       reset |= BKE_ptcache_id_reset(scene, &pid, mode);
     }
+#endif
     if (md->type == eModifierType_Smoke) {
       SmokeModifierData *smd = (SmokeModifierData *)md;
       if (smd->type & MOD_SMOKE_TYPE_DOMAIN) {

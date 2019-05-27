@@ -24,13 +24,12 @@ from bpy.types import (
 from bl_ui.utils import PresetPanel
 
 from .properties_physics_common import (
-    point_cache_ui,
+#point_cache_ui,
     effector_weights_ui,
 )
 
-
-def cloth_panel_enabled(md):
-    return md.point_cache.is_baked is False
+#def cloth_panel_enabled(md):
+#return md.point_cache.is_baked is False
 
 
 class CLOTH_PT_presets(PresetPanel, Panel):
@@ -65,7 +64,7 @@ class PHYSICS_PT_cloth(PhysicButtonsPanel, Panel):
         md = context.cloth
         cloth = md.settings
 
-        layout.active = cloth_panel_enabled(md)
+#layout.active = cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -87,7 +86,7 @@ class PHYSICS_PT_cloth_physical_properties(PhysicButtonsPanel, Panel):
         md = context.cloth
         cloth = md.settings
 
-        layout.active = cloth_panel_enabled(md)
+#layout.active = cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -111,7 +110,7 @@ class PHYSICS_PT_cloth_stiffness(PhysicButtonsPanel, Panel):
         md = context.cloth
         cloth = md.settings
 
-        layout.active = cloth_panel_enabled(md)
+#layout.active = cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -142,7 +141,7 @@ class PHYSICS_PT_cloth_damping(PhysicButtonsPanel, Panel):
         md = context.cloth
         cloth = md.settings
 
-        layout.active = cloth_panel_enabled(md)
+#layout.active = cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -160,16 +159,15 @@ class PHYSICS_PT_cloth_damping(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.prop(cloth, "bending_damping", text="Bending")
 
+#class PHYSICS_PT_cloth_cache(PhysicButtonsPanel, Panel):
+#bl_label = "Cache"
+#bl_parent_id = 'PHYSICS_PT_cloth'
+#bl_options = {'DEFAULT_CLOSED' }
+#COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH' }
 
-class PHYSICS_PT_cloth_cache(PhysicButtonsPanel, Panel):
-    bl_label = "Cache"
-    bl_parent_id = 'PHYSICS_PT_cloth'
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
-
-    def draw(self, context):
-        md = context.cloth
-        point_cache_ui(self, md.point_cache, cloth_panel_enabled(md), 'CLOTH')
+#def draw(self, context):
+#md = context.cloth
+#point_cache_ui(self, md.point_cache, cloth_panel_enabled(md), 'CLOTH')
 
 
 class PHYSICS_PT_cloth_shape(PhysicButtonsPanel, Panel):
@@ -186,7 +184,7 @@ class PHYSICS_PT_cloth_shape(PhysicButtonsPanel, Panel):
         ob = context.object
         cloth = md.settings
 
-        layout.active = cloth_panel_enabled(md)
+#layout.active = cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -235,7 +233,7 @@ class PHYSICS_PT_cloth_collision(PhysicButtonsPanel, Panel):
         cloth = context.cloth.collision_settings
         md = context.cloth
 
-        layout.active = (cloth.use_collision or cloth.use_self_collision) and cloth_panel_enabled(md)
+        layout.active = (cloth.use_collision or cloth.use_self_collision)# and cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -251,7 +249,7 @@ class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         cloth = context.cloth.collision_settings
 
-        self.layout.active = cloth_panel_enabled(context.cloth)
+#self.layout.active = cloth_panel_enabled(context.cloth)
         self.layout.prop(cloth, "use_collision", text="")
 
     def draw(self, context):
@@ -261,7 +259,7 @@ class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
         cloth = context.cloth.collision_settings
         md = context.cloth
 
-        layout.active = cloth.use_collision and cloth_panel_enabled(md)
+        layout.active = cloth.use_collision# and cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -283,7 +281,7 @@ class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         cloth = context.cloth.collision_settings
 
-        self.layout.active = cloth_panel_enabled(context.cloth)
+#self.layout.active = cloth_panel_enabled(context.cloth)
         self.layout.prop(cloth, "use_self_collision", text="")
 
     def draw(self, context):
@@ -294,7 +292,7 @@ class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):
         md = context.cloth
         ob = context.object
 
-        layout.active = cloth.use_self_collision and cloth_panel_enabled(md)
+        layout.active = cloth.use_self_collision# and cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -325,7 +323,7 @@ class PHYSICS_PT_cloth_property_weights(PhysicButtonsPanel, Panel):
         ob = context.object
         cloth = context.cloth.settings
 
-        layout.active = cloth_panel_enabled(md)
+#layout.active = cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -382,7 +380,7 @@ classes = (
     PHYSICS_PT_cloth_physical_properties,
     PHYSICS_PT_cloth_stiffness,
     PHYSICS_PT_cloth_damping,
-    PHYSICS_PT_cloth_cache,
+#PHYSICS_PT_cloth_cache,
     PHYSICS_PT_cloth_shape,
     PHYSICS_PT_cloth_collision,
     PHYSICS_PT_cloth_object_collision,

@@ -43,7 +43,9 @@
 #include "BKE_global.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
-#include "BKE_pointcache.h"
+#if USE_CLOTH_CACHE
+#  include "BKE_pointcache.h"
+#endif
 
 #include "BPH_mass_spring.h"
 
@@ -144,9 +146,11 @@ void cloth_init(ClothModifierData *clmd)
     clmd->sim_parms->effector_weights = BKE_effector_add_weights(NULL);
   }
 
+#if USE_CLOTH_CACHE
   if (clmd->point_cache) {
     clmd->point_cache->step = 1;
   }
+#endif
 }
 
 static BVHTree *bvhtree_build_from_cloth(ClothModifierData *clmd, float epsilon)
@@ -253,6 +257,7 @@ void bvhtree_update_from_cloth(ClothModifierData *clmd, bool moving, bool self)
   }
 }
 
+#if USE_CLOTH_CACHE
 void cloth_clear_cache(Object *ob, ClothModifierData *clmd, float framenr)
 {
   PTCacheID pid;
@@ -266,23 +271,30 @@ void cloth_clear_cache(Object *ob, ClothModifierData *clmd, float framenr)
 
   BKE_ptcache_id_clear(&pid, PTCACHE_CLEAR_AFTER, framenr);
 }
+#endif
 
 static int do_init_cloth(Object *ob, ClothModifierData *clmd, Mesh *result, int framenr)
 {
+#if USE_CLOTH_CACHE
   PointCache *cache;
 
   cache = clmd->point_cache;
+#endif
 
   /* initialize simulation data if it didn't exist already */
   if (clmd->clothObject == NULL) {
     if (!cloth_from_object(ob, clmd, result, framenr, 1)) {
+#if USE_CLOTH_CACHE
       BKE_ptcache_invalidate(cache);
+#endif
       modifier_setError(&(clmd->modifier), "Can't initialize cloth");
       return 0;
     }
 
     if (clmd->clothObject == NULL) {
+#if USE_CLOTH_CACHE
       BKE_ptcache_invalidate(cache);
+#endif
       modifier_setError(&(clmd->modifier), "Null cloth object");
       return 0;
     }
@@ -362,6 +374,7 @@ void clothModifier_do(ClothModifierData *clmd,
                       Mesh *mesh,
                       float (*vertexCos)[3])
 {
+#if USE_CLOTH_CACHE
   PointCache *cache;
   PTCacheID pid;
   float timescale;
@@ -374,20 +387,30 @@ void clothModifier_do(ClothModifierData *clmd,
   BKE_ptcache_id_from_cloth(&pid, ob, clmd);
   BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
   clmd->sim_parms->timescale = timescale * clmd->sim_parms->time_scale;
+#else
+  int framenr = DEG_get_ctime(depsgraph);
+  int startframe = scene->r.sfra;
+  int endframe = scene->r.efra;
+  clmd->sim_parms->timescale = 1.0f;
+#endif
 
   if (clmd->sim_parms->reset ||
       (clmd->clothObject && mesh->totvert != clmd->clothObject->mvert_num)) {
     clmd->sim_parms->reset = 0;
+#if USE_CLOTH_CACHE
     cache->flag |= PTCACHE_OUTDATED;
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
     BKE_ptcache_validate(cache, 0);
     cache->last_exact = 0;
     cache->flag &= ~PTCACHE_REDO_NEEDED;
+#endif
   }
 
   /* simulation is only active during a specific period */
   if (framenr < startframe) {
+#if USE_CLOTH_CACHE
     BKE_ptcache_invalidate(cache);
+#endif
     return;
   }
   else if (framenr > endframe) {
@@ -400,8 +423,11 @@ void clothModifier_do(ClothModifierData *clmd,
   }
 
   if (framenr == startframe) {
+#if USE_CLOTH_CACHE
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
+#endif
     do_init_cloth(ob, clmd, mesh, framenr);
+#if USE_CLOTH_CACHE
     BKE_ptcache_validate(cache, framenr);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
     clmd->clothObject->last_frame = framenr;
@@ -425,7 +451,9 @@ void clothModifier_do(ClothModifierData *clmd,
       BKE_ptcache_write(&pid, framenr);
     }
 
+#endif
     clmd->clothObject->last_frame = framenr;
+#if USE_CLOTH_CACHE
 
     return;
   }
@@ -437,9 +465,11 @@ void clothModifier_do(ClothModifierData *clmd,
       /*ob->id.lib ||*/ (cache->flag & PTCACHE_BAKED)) {
     /* if baked and nothing in cache, do nothing */
     BKE_ptcache_invalidate(cache);
+#endif
     return;
   }
 
+#if USE_CLOTH_CACHE
   /* if on second frame, write cache for first frame */
   if (cache->simframe == startframe &&
       (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0)) {
@@ -447,8 +477,18 @@ void clothModifier_do(ClothModifierData *clmd,
   }
 
   clmd->sim_parms->timescale *= framenr - cache->simframe;
+#endif
+
+#if USE_CLOTH_CACHE
+#else
+  if (framenr != clmd->clothObject->last_frame + 1) {
+    return;
+  }
+#endif
 
   /* do simulation */
+
+#if USE_CLOTH_CACHE
   BKE_ptcache_validate(cache, framenr);
 
   if (!do_step_cloth(depsgraph, ob, clmd, mesh, framenr)) {
@@ -457,6 +497,9 @@ void clothModifier_do(ClothModifierData *clmd,
   else {
     BKE_ptcache_write(&pid, framenr);
   }
+#else
+  do_step_cloth(depsgraph, ob, clmd, mesh, framenr);
+#endif
 
   cloth_to_object(ob, clmd, vertexCos);
   clmd->clothObject->last_frame = framenr;

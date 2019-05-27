@@ -43,6 +43,9 @@ struct Scene;
  * represented by a float, given its precision. */
 #define ALMOST_ZERO FLT_EPSILON
 
+/* Toggle Cloth Cache */
+#define USE_CLOTH_CACHE 0
+
 /* Bits to or into the ClothVertex.flags. */
 typedef enum eClothVertexFlag {
   CLOTH_VERT_FLAG_PINNED = 1,
@@ -279,8 +282,10 @@ int cloth_uses_vgroup(struct ClothModifierData *clmd);
 // needed for collision.c
 void bvhtree_update_from_cloth(struct ClothModifierData *clmd, bool moving, bool self);
 
+#if USE_CLOTH_CACHE
 // needed for button_object.c
 void cloth_clear_cache(struct Object *ob, struct ClothModifierData *clmd, float framenr);
+#endif
 
 void cloth_parallel_transport_hair_frame(float mat[3][3],
                                          const float dir_old[3],

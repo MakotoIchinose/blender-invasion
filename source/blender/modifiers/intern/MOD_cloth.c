@@ -31,6 +31,11 @@
 #include "DNA_key_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
+#if USE_CLOTH_CACHE
+#else
+#  include "DNA_object_force_types.h"
+#  include "DNA_collection_types.h"
+#endif
 #include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
@@ -43,7 +48,9 @@
 #include "BKE_library_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
-#include "BKE_pointcache.h"
+#if USE_CLOTH_CACHE
+#  include "BKE_pointcache.h"
+#endif
 
 #include "DEG_depsgraph_physics.h"
 #include "DEG_depsgraph_query.h"
@@ -56,10 +63,16 @@ static void initData(ModifierData *md)
 
   clmd->sim_parms = MEM_callocN(sizeof(ClothSimSettings), "cloth sim parms");
   clmd->coll_parms = MEM_callocN(sizeof(ClothCollSettings), "cloth coll parms");
+#if USE_CLOTH_CACHE
   clmd->point_cache = BKE_ptcache_add(&clmd->ptcaches);
+#endif
 
-  /* check for alloc failing */
+/* check for alloc failing */
+#if USE_CLOTH_CACHE
   if (!clmd->sim_parms || !clmd->coll_parms || !clmd->point_cache) {
+#else
+  if (!clmd->sim_parms || !clmd->coll_parms) {
+#endif
     return;
   }
 
@@ -168,6 +181,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
     MEM_freeN(tclmd->coll_parms);
   }
 
+#if USE_CLOTH_CACHE
   BKE_ptcache_free_list(&tclmd->ptcaches);
   if (flag & LIB_ID_CREATE_NO_MAIN) {
     /* Share the cache with the original object's modifier. */
@@ -179,6 +193,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
     tclmd->point_cache = BKE_ptcache_add(&tclmd->ptcaches);
     tclmd->point_cache->step = 1;
   }
+#endif
 
   tclmd->sim_parms = MEM_dupallocN(clmd->sim_parms);
   if (clmd->sim_parms->effector_weights) {
@@ -216,6 +231,7 @@ static void freeData(ModifierData *md)
       MEM_freeN(clmd->coll_parms);
     }
 
+#if USE_CLOTH_CACHE
     if (md->flag & eModifierFlag_SharedCaches) {
       BLI_listbase_clear(&clmd->ptcaches);
     }
@@ -223,6 +239,7 @@ static void freeData(ModifierData *md)
       BKE_ptcache_free_list(&clmd->ptcaches);
     }
     clmd->point_cache = NULL;
+#endif
 
     if (clmd->hairdata) {
       MEM_freeN(clmd->hairdata);
