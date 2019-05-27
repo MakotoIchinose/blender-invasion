@@ -173,4 +173,17 @@ if(WITH_COMPOSITOR)
   add_definitions(-DWITH_COMPOSITOR)
 endif()
 
+if(WITH_OPENXR)
+  list(APPEND INC
+    ../../../extern/openxr/include
+  )
+
+  add_definitions(-DWITH_OPENXR)
+endif()
+
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_OPENXR)
+  add_dependencies(bf_windowmanager generate_openxr_header)
+  target_link_libraries(bf_windowmanager openxr_loader-0_90)
+endif()
