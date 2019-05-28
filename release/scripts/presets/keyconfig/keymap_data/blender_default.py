@@ -208,6 +208,13 @@ def _template_items_gizmo_tweak_value():
     ]
 
 
+def _template_items_gizmo_tweak_value_click_drag():
+    return [
+        ("gizmogroup.gizmo_tweak", {"type": 'LEFTMOUSE', "value": 'CLICK', "any": True}, None),
+        ("gizmogroup.gizmo_tweak", {"type": 'EVT_TWEAK_L', "value": 'ANY', "any": True}, None),
+    ]
+
+
 def _template_items_gizmo_tweak_modal():
     return [
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
@@ -1343,7 +1350,7 @@ def km_graph_editor(params):
                          ("column", False), ("curves", False)]}),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
          {"properties": [("extend", False), ("column", True), ("curves", False)]}),
-        ("graph.clickselect", {"type": params.select_mouse, "value": 'CLICK', "shift": True},
+        ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True), ("column", False), ("curves", False)]}),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("extend", True), ("column", True), ("curves", False)]}),
@@ -1351,7 +1358,7 @@ def km_graph_editor(params):
          {"properties": [("extend", False), ("column", False), ("curves", True)]}),
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("extend", True), ("column", False), ("curves", True)]}),
-        ("graph.select_leftright", {"type": params.select_mouse, "value": 'CLICK', "ctrl": True},
+        ("graph.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("graph.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
@@ -1368,12 +1375,6 @@ def km_graph_editor(params):
          {"properties": [("axis_range", False), ("include_handles", True)]}),
         ("graph.select_box", {"type": 'B', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("axis_range", True), ("include_handles", True)]}),
-        ("graph.select_box", {"type": params.select_tweak, "value": 'ANY'},
-         {"properties":[("axis_range", False), ("include_handles", False), ("wait_for_input", False), ("mode", 'SET')]}),
-        ("graph.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
-         {"properties":[("axis_range", False), ("include_handles", False), ("wait_for_input", False), ("mode", 'ADD')]}),
-        ("graph.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
-         {"properties":[("axis_range", False),("include_handles", False), ("wait_for_input", False), ("mode", 'SUB')]}),
         ("graph.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True},
          {"properties": [("mode", 'ADD')]}),
         ("graph.select_lasso", {"type": params.action_tweak, "value": 'ANY', "shift": True, "ctrl": True},
@@ -1421,7 +1422,7 @@ def km_graph_editor(params):
          {"properties": [("only_active", False)]}),
         ("anim.channels_editable_toggle", {"type": 'TAB', "value": 'PRESS'}, None),
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
-        ("transform.translate", {"type": params.select_mouse, "value": 'PRESS'}, None),
+        ("transform.translate", {"type": params.select_tweak, "value": 'ANY'}, None),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("transform.rotate", {"type": 'R', "value": 'PRESS'}, None),
@@ -1876,7 +1877,7 @@ def km_dopesheet(params):
                          ("column", False), ("channel", False)]}),
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
          {"properties": [("extend", False), ("column", True), ("channel", False)]}),
-        ("action.clickselect", {"type": params.select_mouse, "value": 'CLICK', "shift": True},
+        ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True), ("column", False), ("channel", False)]}),
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("extend", True), ("column", True), ("channel", False)]}),
@@ -1884,7 +1885,7 @@ def km_dopesheet(params):
          {"properties": [("extend", False), ("column", False), ("channel", True)]}),
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("extend", True), ("column", False), ("channel", True)]}),
-        ("action.select_leftright", {"type": params.select_mouse, "value": 'CLICK', "ctrl": True},
+        ("action.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("action.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
@@ -1897,12 +1898,6 @@ def km_dopesheet(params):
          {"properties": [("axis_range", False)]}),
         ("action.select_box", {"type": 'B', "value": 'PRESS', "alt": True},
          {"properties": [("axis_range", True)]}),
-        ("action.select_box", {"type": params.select_tweak, "value": 'ANY'},
-         {"properties":[("axis_range", False), ("wait_for_input", False), ("mode", 'SET')]}),
-        ("action.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
-         {"properties":[("axis_range", False), ("wait_for_input", False), ("mode", 'ADD')]}),
-        ("action.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
-         {"properties":[("axis_range", False), ("wait_for_input", False), ("mode", 'SUB')]}),
         ("action.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True},
          {"properties": [("mode", 'ADD')]}),
         ("action.select_lasso", {"type": params.action_tweak, "value": 'ANY', "shift": True, "ctrl": True},
@@ -1945,7 +1940,7 @@ def km_dopesheet(params):
         ("anim.channels_find", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         ("transform.transform", {"type": 'G', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_TRANSLATE')]}),
-        ("transform.transform", {"type": params.select_mouse, "value": 'PRESS'},
+        ("transform.transform", {"type": params.select_tweak, "value": 'ANY'},
          {"properties": [("mode", 'TIME_TRANSLATE')]}),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
@@ -2027,7 +2022,7 @@ def km_nla_editor(params):
          {"properties": [("extend", False), ("deselect_all", not params.legacy)]}),
         ("nla.click_select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True)]}),
-        ("nla.select_leftright", {"type": params.select_mouse, "value": 'CLICK', "ctrl": True},
+        ("nla.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("nla.select_leftright", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
@@ -2040,12 +2035,6 @@ def km_nla_editor(params):
          {"properties": [("axis_range", False)]}),
         ("nla.select_box", {"type": 'B', "value": 'PRESS', "alt": True},
          {"properties": [("axis_range", True)]}),
-        ("nla.select_box", {"type": params.select_tweak, "value": 'ANY'},
-         {"properties":[("wait_for_input", False), ("mode", 'SET')]}),
-        ("nla.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
-         {"properties":[("wait_for_input", False), ("mode", 'ADD')]}),
-        ("nla.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
-         {"properties":[("wait_for_input", False), ("mode", 'SUB')]}),
         ("nla.previewrange_set", {"type": 'P', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         ("nla.view_all", {"type": 'HOME', "value": 'PRESS'}, None),
         ("nla.view_all", {"type": 'NDOF_BUTTON_FIT', "value": 'PRESS'}, None),
@@ -2075,7 +2064,7 @@ def km_nla_editor(params):
         ("nla.fmodifier_add", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ("transform.transform", {"type": 'G', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("transform.transform", {"type": params.select_mouse, "value": 'PRESS'},
+        ("transform.transform", {"type": params.select_tweak, "value": 'ANY'},
          {"properties": [("mode", 'TRANSLATION')]}),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
@@ -2341,7 +2330,7 @@ def km_sequencer(params):
         ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS'},
          {"properties": [("extend", False), ("deselect_all", True),
                          ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
-        ("sequencer.select", {"type": params.select_mouse, "value": 'CLICK', "shift": True},
+        ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True), ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
         ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
          {"properties": [("extend", False), ("linked_handle", True), ("left_right", 'NONE'), ("linked_time", False)]}),
@@ -2359,12 +2348,6 @@ def km_sequencer(params):
          {"properties": [("extend", True)]}),
         ("sequencer.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.select_box", {"type": 'B', "value": 'PRESS'}, None),
-        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY'},
-         {"properties":[("wait_for_input", False), ("mode", 'SET')]}),
-        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
-         {"properties":[("wait_for_input", False), ("mode", 'ADD')]}),
-        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY', "ctrl": True},
-         {"properties":[("wait_for_input", False), ("mode", 'SUB')]}),
         ("sequencer.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         op_menu("SEQUENCER_MT_add", {"type": 'A', "value": 'PRESS', "shift": True}),
         op_menu("SEQUENCER_MT_change", {"type": 'C', "value": 'PRESS'}),
@@ -2373,7 +2356,7 @@ def km_sequencer(params):
         ("wm.context_set_int", {"type": 'O', "value": 'PRESS'},
          {"properties": [("data_path", 'scene.sequence_editor.overlay_frame'), ("value", 0)]}),
         ("transform.seq_slide", {"type": 'G', "value": 'PRESS'}, None),
-        ("transform.seq_slide", {"type": params.select_mouse, "value": 'PRESS'}, None),
+        ("transform.seq_slide", {"type": params.select_tweak, "value": 'ANY'}, None),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
@@ -4748,6 +4731,15 @@ def km_generic_gizmos(_params):
     return keymap
 
 
+def km_generic_gizmos_click_drag(_params):
+    keymap = (
+        "Generic Gizmos Click Drag",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": _template_items_gizmo_tweak_value_click_drag()},
+    )
+
+    return keymap
+
 def km_generic_gizmos_tweak_modal_map(_params):
     keymap = (
         "Generic Gizmos Tweak Modal Map",
@@ -5862,6 +5854,7 @@ def generate_keymaps(params=None):
 
         # Gizmos.
         km_generic_gizmos(params),
+        km_generic_gizmos_click_drag(params),
         km_generic_gizmos_tweak_modal_map(params),
         km_generic_gizmos_select(params),
         km_generic_gizmos_select_tweak_modal_map(params),
