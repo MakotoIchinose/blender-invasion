@@ -200,7 +200,7 @@ int lanpr_feed_atlas_data_obj(void *vedata,
       AtlasFaceNormalR[idx + 3] = 1;
 
       if (f2->mat_nr != f1->mat_nr)
-        AtlasEdgeMask[idx] = 1;  // channel R
+        AtlasEdgeMask[idx] = 1;  // channel r
     }
     else {
       AtlasFaceNormalR[idx + 0] = 0;
@@ -243,14 +243,14 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
     idx = (begin_index + i) * 4;
     AtlasEdgeMask[idx + 2] = 1;  // channel B
 
-    AtlasPointsL[idx + 0] = rl->L->GLocation[0];
-    AtlasPointsL[idx + 1] = rl->L->GLocation[1];
-    AtlasPointsL[idx + 2] = rl->L->GLocation[2];
+    AtlasPointsL[idx + 0] = rl->l->gloc[0];
+    AtlasPointsL[idx + 1] = rl->l->gloc[1];
+    AtlasPointsL[idx + 2] = rl->l->gloc[2];
     AtlasPointsL[idx + 3] = 1;
 
-    AtlasPointsR[idx + 0] = rl->R->GLocation[0];
-    AtlasPointsR[idx + 1] = rl->R->GLocation[1];
-    AtlasPointsR[idx + 2] = rl->R->GLocation[2];
+    AtlasPointsR[idx + 0] = rl->r->gloc[0];
+    AtlasPointsR[idx + 1] = rl->r->gloc[1];
+    AtlasPointsR[idx + 2] = rl->r->gloc[2];
     AtlasPointsR[idx + 3] = 1;
 
     AtlasFaceNormalL[idx + 0] = 0;

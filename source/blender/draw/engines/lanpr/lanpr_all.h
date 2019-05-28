@@ -44,7 +44,7 @@
 #define tMatDist2v(p1, p2) \
   sqrt(((p1)[0] - (p2)[0]) * ((p1)[0] - (p2)[0]) + ((p1)[1] - (p2)[1]) * ((p1)[1] - (p2)[1]))
 
-#define tnsLinearItp(L, R, T) ((L) * (1.0f - (T)) + (R) * (T))
+#define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
 
 typedef struct LANPR_RenderBuffer LANPR_RenderBuffer;
 
@@ -82,18 +82,18 @@ typedef struct LANPR_SharedResource {
 #define TNS_DPIX_TEXTURE_SIZE 2048
 
 typedef struct LANPR_TextureSample {
-  Link Item;
+  Link item;
   int X, Y;
   float Z;  // for future usage
 } LANPR_TextureSample;
 
 typedef struct LANPR_LineStripPoint {
-  Link Item;
+  Link item;
   float P[3];
 } LANPR_LineStripPoint;
 
 typedef struct LANPR_LineStrip {
-  Link Item;
+  Link item;
   ListBase points;
   int point_count;
   float total_length;
@@ -140,11 +140,11 @@ typedef struct LANPR_TextureList {
   struct GPUTexture *depth;
   struct GPUTexture *edge_intermediate;
 
-  struct GPUTexture *dpix_in_pl;        /* point L */
-  struct GPUTexture *dpix_in_pr;        /* point R */
-  struct GPUTexture *dpix_in_nl;        /* normal L */
-  struct GPUTexture *dpix_in_nr;        /* normal R */
-  struct GPUTexture *dpix_in_edge_mask; /* RGBA, R:Material, G: Freestyle Edge Mark, BA:Reserved
+  struct GPUTexture *dpix_in_pl;        /* point l */
+  struct GPUTexture *dpix_in_pr;        /* point r */
+  struct GPUTexture *dpix_in_nl;        /* normal l */
+  struct GPUTexture *dpix_in_nr;        /* normal r */
+  struct GPUTexture *dpix_in_edge_mask; /* RGBA, r:Material, G: Freestyle Edge Mark, BA:Reserved
                                            for future usage */
 
   struct GPUTexture *dpix_out_pl;
@@ -232,7 +232,7 @@ typedef struct LANPR_StorageList {
 } LANPR_StorageList;
 
 typedef struct LANPR_BatchItem {
-  Link Item;
+  Link item;
   GPUBatch *dpix_transform_batch;
   GPUBatch *dpix_preview_batch;
   Object *ob;
@@ -383,9 +383,9 @@ typedef struct LANPR_RenderBuffer {
 #define TNS_CULL_USED 1
 
 typedef struct LANPR_RenderTriangle {
-  Link Item;
-  struct LANPR_RenderVert *V[3];
-  struct LANPR_RenderLine *RL[3];
+  Link item;
+  struct LANPR_RenderVert *v[3];
+  struct LANPR_RenderLine *rl[3];
   real gn[3];
   real gc[3];
   // struct BMFace *F;
@@ -396,37 +396,37 @@ typedef struct LANPR_RenderTriangle {
 } LANPR_RenderTriangle;
 
 typedef struct LANPR_RenderTriangleThread {
-  struct LANPR_RenderTriangle Base;
+  struct LANPR_RenderTriangle base;
   struct LANPR_RenderLine *testing[127];  // max thread support;
 } LANPR_RenderTriangleThread;
 
 typedef struct LANPR_RenderElementLinkNode {
-  Link Item;
-  void *Pointer;
-  int ElementCount;
-  void *ObjectRef;
-  char Additional;
+  Link item;
+  void *pointer;
+  int element_count;
+  void *object_ref;
+  char additional;
 } LANPR_RenderElementLinkNode;
 
 typedef struct LANPR_RenderLineSegment {
-  Link Item;
-  real at;                 // at==0: left    at==1: right
-  u8bit OcclusionLevel;    // after "at" point
-  short MaterialMaskMark;  // e.g. to determine lines beind a glass window material.
+  Link item;
+  real at;                   // at==0: left    at==1: right
+  u8bit occlusion;           // after "at" point
+  short material_mask_mark;  // e.g. to determine lines beind a glass window material.
 } LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
-  Link Item;
-  real GLocation[4];
-  real FrameBufferCoord[4];
-  int FrameBufferCoordi[2];
-  struct BMVert *V;  // Used As R When Intersecting
-  struct LANPR_RenderLine *IntersectingLine;
-  struct LANPR_RenderLine *IntersectintLine2;
-  struct LANPR_RenderTriangle *IntersectWith;  //   Positive 1         Negative 0
+  Link item;
+  real gloc[4];
+  real fbcoord[4];
+  int fbcoordi[2];
+  struct BMVert *v;  // Used As r When Intersecting
+  struct LANPR_RenderLine *intersecting_line;
+  struct LANPR_RenderLine *intersecting_line2;
+  struct LANPR_RenderTriangle *intersecting_with;  //   positive 1         Negative 0
   // tnsRenderTriangle* IntersectingOnFace;       //         <|               |>
-  char Positive;  //                 L---->|----->R	 L---->|----->R
-  char EdgeUsed;  //                      <|		       |>
+  char positive;   //                 l---->|----->r	l---->|----->r
+  char edge_used;  //                      <|		          |>
 } LANPR_RenderVert;
 
 #define LANPR_EDGE_FLAG_EDGE_MARK 1
@@ -440,48 +440,48 @@ typedef struct LANPR_RenderVert {
 #define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
 
 typedef struct LANPR_RenderLine {
-  Link Item;
-  struct LANPR_RenderVert *L, *R;
-  struct LANPR_RenderTriangle *TL, *TR;
-  ListBase Segments;
+  Link item;
+  struct LANPR_RenderVert *l, *r;
+  struct LANPR_RenderTriangle *tl, *tr;
+  ListBase segments;
   // tnsEdge*       Edge;//should be edge material
   // tnsRenderTriangle* testing;//Should Be tRT** testing[NumOfThreads]	struct Materil
   // *MaterialRef;
-  char MinOcclude;
-  char Flags;  // also for line type determination on chainning
-  struct Object *ObjectRef;
+  char min_occ;
+  char flags;  // also for line type determination on chainning
+  struct Object *object_ref;
 } LANPR_RenderLine;
 
 typedef struct LANPR_RenderLineChain {
-  Link Item;
-  ListBase Chain;
+  Link item;
+  ListBase chain;
   // int         SegmentCount;  // we count before draw cmd.
-  float Length;  // calculated before draw cmd.
+  float length;  // calculated before draw cmd.
 } LANPR_RenderLineChain;
 
 typedef struct LANPR_RenderLineChainItem {
-  Link Item;
+  Link item;
   float pos[3];  // need z value for fading
   float normal[3];
-  char LineType;        //      style of [1]       style of [2]
-  char OcclusionLevel;  // [1]--------------->[2]---------------->[3]--....
+  char line_type;  //      style of [1]       style of [2]
+  char occlusion;  // [1]--------------->[2]---------------->[3]--....
 } LANPR_RenderLineChainItem;
 
 typedef struct LANPR_BoundingArea {
-  real L, R, U, B;
-  real CX, CY;
+  real l, r, u, b;
+  real cx, cy;
 
-  struct LANPR_BoundingArea *Child;  // 1,2,3,4 quadrant
+  struct LANPR_BoundingArea *child;  // 1,2,3,4 quadrant
 
-  ListBase LP;
-  ListBase RP;
-  ListBase UP;
-  ListBase BP;
+  ListBase lp;
+  ListBase rp;
+  ListBase up;
+  ListBase bp;
 
-  int TriangleCount;
-  ListBase LinkedTriangles;
-  ListBase LinkedLines;
-  ListBase LinkedChains;  // reserved for multithread chainning
+  int triangle_count;
+  ListBase linked_triangles;
+  ListBase linked_lines;
+  ListBase linked_chains;  // reserved for multithread chainning
 } LANPR_BoundingArea;
 
 #define TNS_COMMAND_LINE 0
@@ -499,7 +499,7 @@ typedef struct LANPR_BoundingArea {
 
 extern RenderEngineType DRW_engine_viewport_lanpr_type;
 
-#define tnsLinearItp(L, R, T) ((L) * (1.0f - (T)) + (R) * (T))
+#define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
 
 #define TNS_TILE(tile, r, c, CCount) tile[r * CCount + c]
 
@@ -555,35 +555,25 @@ BLI_INLINE void tMatConvert44df(tnsMatrix44d from, tnsMatrix44f to)
 
 BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
 {
-  if (MAX3(rt->V[0]->FrameBufferCoord[2],
-           rt->V[1]->FrameBufferCoord[2],
-           rt->V[2]->FrameBufferCoord[2]) >
-      MIN2(rl->L->FrameBufferCoord[2], rl->R->FrameBufferCoord[2]))
+  if (MAX3(rt->v[0]->fbcoord[2], rt->v[1]->fbcoord[2], rt->v[2]->fbcoord[2]) >
+      MIN2(rl->l->fbcoord[2], rl->r->fbcoord[2]))
     return 0;
-  if (MAX3(rt->V[0]->FrameBufferCoord[0],
-           rt->V[1]->FrameBufferCoord[0],
-           rt->V[2]->FrameBufferCoord[0]) <
-      MIN2(rl->L->FrameBufferCoord[0], rl->R->FrameBufferCoord[0]))
+  if (MAX3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]) <
+      MIN2(rl->l->fbcoord[0], rl->r->fbcoord[0]))
     return 0;
-  if (MIN3(rt->V[0]->FrameBufferCoord[0],
-           rt->V[1]->FrameBufferCoord[0],
-           rt->V[2]->FrameBufferCoord[0]) >
-      MAX2(rl->L->FrameBufferCoord[0], rl->R->FrameBufferCoord[0]))
+  if (MIN3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]) >
+      MAX2(rl->l->fbcoord[0], rl->r->fbcoord[0]))
     return 0;
-  if (MAX3(rt->V[0]->FrameBufferCoord[1],
-           rt->V[1]->FrameBufferCoord[1],
-           rt->V[2]->FrameBufferCoord[1]) <
-      MIN2(rl->L->FrameBufferCoord[1], rl->R->FrameBufferCoord[1]))
+  if (MAX3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]) <
+      MIN2(rl->l->fbcoord[1], rl->r->fbcoord[1]))
     return 0;
-  if (MIN3(rt->V[0]->FrameBufferCoord[1],
-           rt->V[1]->FrameBufferCoord[1],
-           rt->V[2]->FrameBufferCoord[1]) >
-      MAX2(rl->L->FrameBufferCoord[1], rl->R->FrameBufferCoord[1]))
+  if (MIN3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]) >
+      MAX2(rl->l->fbcoord[1], rl->r->fbcoord[1]))
     return 0;
   return 1;
 }
 
-BLI_INLINE double tMatGetLinearRatio(real L, real R, real FromL);
+BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL);
 BLI_INLINE int lanpr_LineIntersectTest2d(
     const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
 {
@@ -637,28 +627,28 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
 
   return 1;
 }
-BLI_INLINE double lanpr_GetLineZ(tnsVector3d L, tnsVector3d R, real Ratio)
+BLI_INLINE double lanpr_GetLineZ(tnsVector3d l, tnsVector3d r, real Ratio)
 {
-  // double z = 1 / tnsLinearItp(1 / L[2], 1 / R[2], Ratio);
-  double z = tnsLinearItp(L[2], R[2], Ratio);
+  // double z = 1 / tnsLinearItp(1 / l[2], 1 / r[2], Ratio);
+  double z = tnsLinearItp(l[2], r[2], Ratio);
   return z;
 }
-BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d L, tnsVector3d R, tnsVector3d FromL)
+BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
 {
-  double r = (FromL[0] - L[0]) / (R[0] - L[0]);
-  return tnsLinearItp(L[2], R[2], r);
-  // return 1 / tnsLinearItp(1 / L[2], 1 / R[2], r);
+  double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
+  return tnsLinearItp(l[2], r[2], ra);
+  // return 1 / tnsLinearItp(1 / l[2], 1 / r[2], r);
 }
-BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d L, tnsVector3d R, tnsVector3d FromL)
+BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
 {
-  double r = (FromL[0] - L[0]) / (R[0] - L[0]);
-  return r;
+  double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
+  return ra;
 }
 
-BLI_INLINE double tMatGetLinearRatio(real L, real R, real FromL)
+BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL)
 {
-  double r = (FromL - L) / (R - L);
-  return r;
+  double ra = (FromL - l) / (r - l);
+  return ra;
 }
 BLI_INLINE void tMatVectorMinus2d(tnsVector2d result, tnsVector2d l, tnsVector2d r)
 {
@@ -779,9 +769,9 @@ BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to)
 }
 
 int lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
-real lanpr_LinearInterpolate(real L, real R, real T);
-void lanpr_LinearInterpolate2dv(real *L, real *R, real T, real *Result);
-void lanpr_LinearInterpolate3dv(real *L, real *R, real T, real *Result);
+real lanpr_LinearInterpolate(real l, real r, real T);
+void lanpr_LinearInterpolate2dv(real *l, real *r, real T, real *Result);
+void lanpr_LinearInterpolate3dv(real *l, real *r, real T, real *Result);
 
 // functions
 

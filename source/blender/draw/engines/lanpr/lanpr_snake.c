@@ -146,8 +146,8 @@ void lanpr_remove_sample(LANPR_PrivateData *pd, int row, int col)
   pd->sample_table[row * pd->width + col] = NULL;
 
   BLI_remlink(&pd->pending_samples, ts);
-  ts->Item.prev = NULL;
-  ts->Item.next = NULL;
+  ts->item.prev = NULL;
+  ts->item.next = NULL;
   BLI_addtail(&pd->erased_samples, ts);
 }
 
@@ -263,7 +263,7 @@ void lanpr_count_drawing_elements(LANPR_PrivateData *pd,
   int e_count = 0;
   LANPR_LineStrip *ls;
   for (ls = (LANPR_LineStrip *)(pd->line_strips.first); ls;
-       ls = (LANPR_LineStrip *)(ls->Item.next)) {
+       ls = (LANPR_LineStrip *)(ls->item.next)) {
     v_count += (ls->point_count);
     e_count += ((ls->point_count - 1) * 4);
   }
@@ -292,7 +292,7 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
   int vert_offset = 0;
 
   for (ls = (LANPR_LineStrip *)(pd->line_strips.first); ls;
-       ls = (LANPR_LineStrip *)(ls->Item.next)) {
+       ls = (LANPR_LineStrip *)(ls->item.next)) {
     for (i = 0; i < ls->point_count - 1; i++) {
       int v1 = i + vert_offset - 1;
       int v2 = i + vert_offset;
@@ -309,11 +309,11 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
     float xf, yf;
     TotalLength = 0;
     for (lsp = (LANPR_LineStripPoint *)(ls->points.first); lsp;
-         lsp = (LANPR_LineStripPoint *)(lsp->Item.next)) {
+         lsp = (LANPR_LineStripPoint *)(lsp->item.next)) {
       lanpr_texture_to_ndc(lsp->P[0], lsp->P[1], pd->width, pd->height, &xf, &yf);
       Verts[vert_offset * 2 + i * 2 + 0] = xf;
       Verts[vert_offset * 2 + i * 2 + 1] = yf;
-      if (plsp = (LANPR_LineStripPoint *)(lsp->Item.prev)) {
+      if (plsp = (LANPR_LineStripPoint *)(lsp->item.prev)) {
         TotalLength += tMatDist2v(plsp->P, lsp->P);
         Lengths[(vert_offset + i) * 2] = TotalLength;
       }
@@ -323,8 +323,8 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
     ls->total_length = TotalLength;
     i = 0;
     for (lsp = (LANPR_LineStripPoint *)(ls->points.first); lsp;
-         lsp = (LANPR_LineStripPoint *)(lsp->Item.next)) {
-      if (plsp = (LANPR_LineStripPoint *)(lsp->Item.prev)) {
+         lsp = (LANPR_LineStripPoint *)(lsp->item.next)) {
+      if (plsp = (LANPR_LineStripPoint *)(lsp->item.prev)) {
         Lengths[(vert_offset + i) * 2 + 1] = ls->total_length - Lengths[(vert_offset + i) * 2];
       }
       i++;

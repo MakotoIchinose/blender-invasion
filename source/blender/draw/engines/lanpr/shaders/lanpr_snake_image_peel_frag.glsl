@@ -322,7 +322,7 @@ void main()
   // PickPixel(sp+ivec2(+1,-1))*4
   //         + PickPixel(sp+ivec2(-1, 0))*8 + PickPixel(sp+ivec2(+1, 0))*16
   //		 + PickPixel(sp+ivec2(-1,+1))*32 + PickPixel(sp+ivec2( 0,+1))*64 +
-  //PickPixel(sp+ivec2(+1,+1))*128;
+  // PickPixel(sp+ivec2(+1,+1))*128;
 
   // if(decisions[test]==1) gl_FragColor=vec4(1,0,0,1);
   // else gl_FragColor=texelFetch(tex_sample_0, sp, 0);//vec4(1,1,1,1);
