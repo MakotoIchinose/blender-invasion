@@ -267,32 +267,32 @@ typedef struct LANPR_RenderTaskInfo {
 	struct LANPR_RenderBuffer *render_buffer;
 	int thread_id;
 
-	struct nListItemPointer *contour;
-	ListBase contour_pointers;
+	LinkData *contour;
+	ListBase  contour_pointers;
 
-	struct nListItemPointer *intersection;
-	ListBase intersection_pointers;
+	LinkData *intersection;
+	ListBase  intersection_pointers;
 
-	struct nListItemPointer *crease;
-	ListBase crease_pointers;
+	LinkData *crease;
+	ListBase  crease_pointers;
 
-	struct nListItemPointer *material;
-	ListBase material_pointers;
+	LinkData *material;
+	ListBase  material_pointers;
 
-	struct nListItemPointer *edge_mark;
-	ListBase edge_mark_pointers;
+	LinkData *edge_mark;
+	ListBase  edge_mark_pointers;
 
 } LANPR_RenderTaskInfo;
 
 typedef struct LANPR_RenderBuffer {
 	struct LANPR_RenderBuffer *prev, *next;
 
-	int              w, h;
-	int              tile_size_w, tile_size_h;
-	int              tile_count_x, tile_count_y;
-	real             width_per_tile, height_per_tile;
-	tnsMatrix44d     view_projection;
-	tnsMatrix44d     vp_inverse;
+	int               w, h;
+	int               tile_size_w, tile_size_h;
+	int               tile_count_x, tile_count_y;
+	real              width_per_tile, height_per_tile;
+	tnsMatrix44d      view_projection;
+	tnsMatrix44d      vp_inverse;
 
 	int              output_mode;
 	int              output_aa_level;
@@ -300,52 +300,52 @@ typedef struct LANPR_RenderBuffer {
 	struct LANPR_BoundingArea *initial_bounding_areas;
 	u32bit                     bounding_area_count;
 
-	ListBase         vertex_buffer_pointers;
-	ListBase         line_buffer_pointers;
-	ListBase         triangle_buffer_pointers;
-	ListBase         all_render_lines;
+	ListBase          vertex_buffer_pointers;
+	ListBase          line_buffer_pointers;
+	ListBase          triangle_buffer_pointers;
+	ListBase          all_render_lines;
 
-	ListBase         intersecting_vertex_buffer;
+	ListBase          intersecting_vertex_buffer;
 
-	struct GPUBatch *DPIXIntersectionTransformBatch;
-	struct GPUBatch *DPIXIntersectionBatch;
+	struct GPUBatch  *DPIXIntersectionTransformBatch;
+	struct GPUBatch  *DPIXIntersectionBatch;
 
 	/* use own-implemented one */
 	nStaticMemoryPool render_data_pool;
 
-	Material        *material_pointers[2048];
+	Material         *material_pointers[2048];
 
 	//render status
 
-	int              cached_for_frame;
+	int               cached_for_frame;
 
-	real             view_vector[3];
+	real              view_vector[3];
 
-	int              triangle_size;
+	int               triangle_size;
 
 	u32bit            contour_count;
 	u32bit            contour_processed;
-	nListItemPointer *contour_managed;
+	LinkData *contour_managed;
 	ListBase contours;
 
 	u32bit            intersection_count;
 	u32bit            intersection_processed;
-	nListItemPointer *intersection_managed;
+	LinkData *intersection_managed;
 	ListBase intersection_lines;
 
 	u32bit            crease_count;
 	u32bit            crease_processed;
-	nListItemPointer *crease_managed;
+	LinkData *crease_managed;
 	ListBase          crease_lines;
 
 	u32bit            material_line_count;
 	u32bit            material_processed;
-	nListItemPointer *material_managed;
+	LinkData *material_managed;
 	ListBase          material_lines;
 
 	u32bit            edge_mark_count;
 	u32bit            edge_mark_processed;
-	nListItemPointer *edge_mark_managed;
+	LinkData *edge_mark_managed;
 	ListBase          edge_marks;
 
 	ListBase          chains;
@@ -388,25 +388,25 @@ typedef struct LANPR_RenderBuffer {
 #define TNS_CULL_USED    1
 
 typedef struct LANPR_RenderTriangle {
-	nListItem Item;
+	Link Item;
 	struct LANPR_RenderVert *V[3];
 	struct LANPR_RenderLine *RL[3];
-	real GN[3];
-	real GC[3];
+	real gn[3];
+	real gc[3];
 	//struct BMFace *F;
-	short MaterialID;
-	ListBase IntersectingVerts;
-	char CullStatus;
-	struct LANPR_RenderTriangle *Testing;   //Should Be tRT** Testing[NumOfThreads]
+	short material_id;
+	ListBase intersecting_verts;
+	char cull_status;
+	struct LANPR_RenderTriangle *testing;   //Should Be tRT** testing[NumOfThreads]
 }LANPR_RenderTriangle;
 
 typedef struct LANPR_RenderTriangleThread {
 	struct LANPR_RenderTriangle Base;
-	struct LANPR_RenderLine *Testing[127];    //max thread support;
+	struct LANPR_RenderLine *testing[127];    //max thread support;
 }LANPR_RenderTriangleThread;
 
 typedef struct LANPR_RenderElementLinkNode {
-	nListItem Item;
+	Link Item;
 	void *Pointer;
 	int ElementCount;
 	void *ObjectRef;
@@ -414,14 +414,14 @@ typedef struct LANPR_RenderElementLinkNode {
 }LANPR_RenderElementLinkNode;
 
 typedef struct LANPR_RenderLineSegment {
-	nListItem Item;
+	Link Item;
 	real at;                 // at==0: left    at==1: right
 	u8bit OcclusionLevel;    // after "at" point
 	short MaterialMaskMark;  // e.g. to determine lines beind a glass window material.
 }LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
-	nListItem Item;
+	Link Item;
 	real GLocation[4];
 	real FrameBufferCoord[4];
 	int FrameBufferCoordi[2];
@@ -445,26 +445,26 @@ typedef struct LANPR_RenderVert {
 #define LANPR_EDGE_FLAG_ALL_TYPE     0x3f
 
 typedef struct LANPR_RenderLine {
-	nListItem Item;
+	Link Item;
 	struct LANPR_RenderVert *L, *R;
 	struct LANPR_RenderTriangle *TL, *TR;
 	ListBase Segments;
 	//tnsEdge*       Edge;//should be edge material
-	//tnsRenderTriangle* Testing;//Should Be tRT** Testing[NumOfThreads]	struct Materil *MaterialRef;
+	//tnsRenderTriangle* testing;//Should Be tRT** testing[NumOfThreads]	struct Materil *MaterialRef;
 	char MinOcclude;
 	char Flags; // also for line type determination on chainning
 	struct Object *ObjectRef;
 }LANPR_RenderLine;
 
 typedef struct LANPR_RenderLineChain {
-	nListItem Item;
+	Link Item;
 	ListBase Chain;
 	//int         SegmentCount;  // we count before draw cmd.
 	float Length;                // calculated before draw cmd.
 }LANPR_RenderLineChain;
 
 typedef struct LANPR_RenderLineChainItem {
-	nListItem Item;
+	Link Item;
 	float pos[3];       // need z value for fading
 	float normal[3];
 	char LineType;             //      style of [1]       style of [2]
