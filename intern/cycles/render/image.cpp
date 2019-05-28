@@ -299,12 +299,12 @@ static bool image_equals(ImageManager::Image *image,
                          void *builtin_data,
                          InterpolationType interpolation,
                          ExtensionType extension,
-                         bool use_alpha,
+                         ImageAlphaType alpha_type,
                          ustring colorspace)
 {
   return image->filename == filename && image->builtin_data == builtin_data &&
          image->interpolation == interpolation && image->extension == extension &&
-         image->use_alpha == use_alpha && image->colorspace == colorspace;
+         image->alpha_type == alpha_type && image->colorspace == colorspace;
 }
 
 int ImageManager::add_image(const string &filename,
@@ -313,7 +313,7 @@ int ImageManager::add_image(const string &filename,
                             float frame,
                             InterpolationType interpolation,
                             ExtensionType extension,
-                            bool use_alpha,
+                            ImageAlphaType alpha_type,
                             ustring colorspace,
                             ImageMetaData &metadata)
 {
@@ -338,14 +338,15 @@ int ImageManager::add_image(const string &filename,
   /* Fnd existing image. */
   for (slot = 0; slot < images[type].size(); slot++) {
     img = images[type][slot];
-    if (img && image_equals(
-                   img, filename, builtin_data, interpolation, extension, use_alpha, colorspace)) {
+    if (img &&
+        image_equals(
+            img, filename, builtin_data, interpolation, extension, alpha_type, colorspace)) {
       if (img->frame != frame) {
         img->frame = frame;
         img->need_load = true;
       }
-      if (img->use_alpha != use_alpha) {
-        img->use_alpha = use_alpha;
+      if (img->alpha_type != alpha_type) {
+        img->alpha_type = alpha_type;
         img->need_load = true;
       }
       if (img->colorspace != colorspace) {
@@ -399,7 +400,7 @@ int ImageManager::add_image(const string &filename,
   img->interpolation = interpolation;
   img->extension = extension;
   img->users = 1;
-  img->use_alpha = use_alpha;
+  img->alpha_type = alpha_type;
   img->colorspace = colorspace;
   img->mem = NULL;
 
@@ -445,7 +446,7 @@ void ImageManager::remove_image(const string &filename,
                                 void *builtin_data,
                                 InterpolationType interpolation,
                                 ExtensionType extension,
-                                bool use_alpha,
+                                ImageAlphaType alpha_type,
                                 ustring colorspace)
 {
   size_t slot;
@@ -457,7 +458,7 @@ void ImageManager::remove_image(const string &filename,
                                              builtin_data,
                                              interpolation,
                                              extension,
-                                             use_alpha,
+                                             alpha_type,
                                              colorspace)) {
         remove_image(type_index_to_flattened_slot(slot, (ImageDataType)type));
         return;
@@ -474,7 +475,7 @@ void ImageManager::tag_reload_image(const string &filename,
                                     void *builtin_data,
                                     InterpolationType interpolation,
                                     ExtensionType extension,
-                                    bool use_alpha,
+                                    ImageAlphaType alpha_type,
                                     ustring colorspace)
 {
   for (size_t type = 0; type < IMAGE_DATA_NUM_TYPES; type++) {
@@ -484,13 +485,21 @@ void ImageManager::tag_reload_image(const string &filename,
                                              builtin_data,
                                              interpolation,
                                              extension,
-                                             use_alpha,
+                                             alpha_type,
                                              colorspace)) {
         images[type][slot]->need_load = true;
         break;
       }
     }
   }
+}
+
+static bool image_associate_alpha(ImageManager::Image *img)
+{
+  /* For typical RGBA images we let OIIO convert to associated alpha,
+   * but some types we want to leave the RGB channels untouched. */
+  return !(ColorSpaceManager::colorspace_is_data(img->colorspace) ||
+           img->alpha_type == IMAGE_ALPHA_IGNORE || img->alpha_type == IMAGE_ALPHA_CHANNEL_PACKED);
 }
 
 bool ImageManager::file_load_image_generic(Image *img, unique_ptr<ImageInput> *in)
@@ -513,8 +522,9 @@ bool ImageManager::file_load_image_generic(Image *img, unique_ptr<ImageInput> *i
     ImageSpec spec = ImageSpec();
     ImageSpec config = ImageSpec();
 
-    if (img->use_alpha == false)
+    if (!image_associate_alpha(img)) {
       config.attribute("oiio:UnassociatedAlpha", 1);
+    }
 
     if (!(*in)->open(img->filename, spec, config)) {
       return false;
@@ -622,6 +632,7 @@ bool ImageManager::file_load_image(Image *img,
                                     img->builtin_data,
                                     (float *)&pixels[0],
                                     num_pixels * components,
+                                    image_associate_alpha(img),
                                     img->metadata.builtin_free_cache);
     }
     else if (FileFormat == TypeDesc::UINT8) {
@@ -629,6 +640,7 @@ bool ImageManager::file_load_image(Image *img,
                               img->builtin_data,
                               (uchar *)&pixels[0],
                               num_pixels * components,
+                              image_associate_alpha(img),
                               img->metadata.builtin_free_cache);
     }
     else {
@@ -686,7 +698,7 @@ bool ImageManager::file_load_image(Image *img,
     }
 
     /* Disable alpha if requested by the user. */
-    if (img->use_alpha == false) {
+    if (img->alpha_type == IMAGE_ALPHA_IGNORE) {
       for (size_t i = num_pixels - 1, pixel = 0; pixel < num_pixels; pixel++, i--) {
         pixels[i * 4 + 3] = one;
       }

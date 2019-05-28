@@ -60,6 +60,7 @@ struct wmEvent;
 struct wmEventHandler;
 struct wmEventHandler_Keymap;
 struct wmEventHandler_UI;
+struct wmGenericUserData;
 struct wmGesture;
 struct wmJob;
 struct wmMsgSubscribeKey;
@@ -598,6 +599,7 @@ bool WM_gesture_is_modal_first(const struct wmGesture *gesture);
 /* fileselecting support */
 void WM_event_add_fileselect(struct bContext *C, struct wmOperator *op);
 void WM_event_fileselect_event(struct wmWindowManager *wm, void *ophandle, int eventval);
+int WM_event_modifier_flag(const struct wmEvent *event);
 void WM_event_print(const struct wmEvent *event);
 
 void WM_operator_region_active_win_set(struct bContext *C);
@@ -794,6 +796,12 @@ void WM_tooltip_clear(struct bContext *C, struct wmWindow *win);
 void WM_tooltip_init(struct bContext *C, struct wmWindow *win);
 void WM_tooltip_refresh(struct bContext *C, struct wmWindow *win);
 double WM_tooltip_time_closed(void);
+
+/* wm_utils.c */
+struct wmGenericCallback *WM_generic_callback_steal(struct wmGenericCallback *callback);
+void WM_generic_callback_free(struct wmGenericCallback *callback);
+
+void WM_generic_user_data_free(struct wmGenericUserData *user_data);
 
 #ifdef __cplusplus
 }

@@ -47,6 +47,8 @@
 
 #include "RNA_access.h"
 
+#include "BPY_extern.h"
+
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -92,7 +94,7 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
 {
   if (but->optype) {
     /* Operator */
-    *prop = (but->opptr) ? IDP_CopyProperty(but->opptr->data) : NULL;
+    *prop = (but->opptr && but->opptr->data) ? IDP_CopyProperty(but->opptr->data) : NULL;
     return but->optype->idname;
   }
   else if (but->rnaprop) {
@@ -358,7 +360,31 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
     if (drawstr[0] == '\0') {
       /* Hard code overrides for generic operators. */
       if (UI_but_is_tool(but)) {
-        RNA_string_get(but->opptr, "name", drawstr);
+        char idname[64];
+        RNA_string_get(but->opptr, "name", idname);
+#ifdef WITH_PYTHON
+        {
+          const char *expr_imports[] = {"bpy", "bl_ui", NULL};
+          char expr[256];
+          SNPRINTF(expr,
+                   "bl_ui.space_toolsystem_common.item_from_id("
+                   "bpy.context, "
+                   "bpy.context.space_data.type, "
+                   "'%s').label",
+                   idname);
+          char *expr_result = NULL;
+          if (BPY_execute_string_as_string(C, expr_imports, expr, true, &expr_result)) {
+            STRNCPY(drawstr, expr_result);
+            MEM_freeN(expr_result);
+          }
+          else {
+            BLI_assert(0);
+            STRNCPY(drawstr, idname);
+          }
+        }
+#else
+        STRNCPY(drawstr, idname);
+#endif
       }
     }
     ED_screen_user_menu_item_add_operator(

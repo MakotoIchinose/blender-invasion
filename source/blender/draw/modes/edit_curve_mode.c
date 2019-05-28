@@ -112,10 +112,6 @@ static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
   const DRWContextState *draw_ctx = DRW_context_state_get();
   EDIT_CURVE_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
 
-  if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
-  }
-
   const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
 
   if (!sh_data->wire_sh) {
@@ -172,7 +168,7 @@ static void EDIT_CURVE_wire_shgrp_create(EDIT_CURVE_Shaders *sh_data,
   DRWShadingGroup *grp = DRW_shgroup_create(sh_data->wire_sh, pass);
   DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorWireEdit, 1);
   if (rv3d->rflag & RV3D_CLIPPING) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   *wire_shgrp = grp;
 
@@ -180,7 +176,7 @@ static void EDIT_CURVE_wire_shgrp_create(EDIT_CURVE_Shaders *sh_data,
   DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorWireEdit, 1);
   DRW_shgroup_uniform_float_copy(grp, "normalSize", v3d->overlay.normals_length);
   if (rv3d->rflag & RV3D_CLIPPING) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   *wire_normals_shgrp = grp;
 }
@@ -233,7 +229,7 @@ static void EDIT_CURVE_cache_init(void *vedata)
     DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
     DRW_shgroup_uniform_bool(grp, "showCurveHandles", &stl->g_data->show_handles, 1);
     if (rv3d->rflag & RV3D_CLIPPING) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     stl->g_data->overlay_edge_shgrp = grp;
 
@@ -242,7 +238,7 @@ static void EDIT_CURVE_cache_init(void *vedata)
     grp = DRW_shgroup_create(sh_data->overlay_vert_sh, psl->overlay_vert_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     if (rv3d->rflag & RV3D_CLIPPING) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     stl->g_data->overlay_vert_shgrp = grp;
   }
@@ -334,8 +330,6 @@ static void EDIT_CURVE_draw_scene(void *vedata)
   /* Thoses passes don't write to depth and are AA'ed using other tricks. */
   DRW_draw_pass(psl->overlay_edge_pass);
   DRW_draw_pass(psl->overlay_vert_pass);
-
-  DRW_state_clip_planes_reset();
 }
 
 /* Cleanup when destroying the engine.

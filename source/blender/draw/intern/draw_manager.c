@@ -366,7 +366,8 @@ void DRW_transform_none(GPUTexture *tex)
   GPU_batch_uniform_mat4(geom, "ModelViewProjectionMatrix", mat);
 
   GPU_batch_program_use_begin(geom);
-  GPU_batch_draw_range_ex(geom, 0, 0, false);
+  GPU_batch_bind(geom);
+  GPU_batch_draw_advanced(geom, 0, 0, 0, 0);
   GPU_batch_program_use_end(geom);
 
   GPU_texture_unbind(tex);
@@ -457,7 +458,8 @@ void DRW_multisamples_resolve(GPUTexture *src_depth, GPUTexture *src_color, bool
 
   /* avoid gpuMatrix calls */
   GPU_batch_program_use_begin(geom);
-  GPU_batch_draw_range_ex(geom, 0, 0, false);
+  GPU_batch_bind(geom);
+  GPU_batch_draw_advanced(geom, 0, 0, 0, 0);
   GPU_batch_program_use_end(geom);
 }
 
@@ -539,9 +541,11 @@ static void drw_viewport_cache_resize(void)
 
     BLI_memblock_clear(DST.vmempool->calls, NULL);
     BLI_memblock_clear(DST.vmempool->states, NULL);
+    BLI_memblock_clear(DST.vmempool->cullstates, NULL);
     BLI_memblock_clear(DST.vmempool->shgroups, NULL);
     BLI_memblock_clear(DST.vmempool->uniforms, NULL);
     BLI_memblock_clear(DST.vmempool->passes, NULL);
+    BLI_memblock_clear(DST.vmempool->views, NULL);
     BLI_memblock_clear(DST.vmempool->images, NULL);
   }
 
@@ -607,22 +611,28 @@ static void drw_viewport_var_init(void)
     DST.vmempool = GPU_viewport_mempool_get(DST.viewport);
 
     if (DST.vmempool->calls == NULL) {
-      DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCall), false);
+      DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCall));
     }
     if (DST.vmempool->states == NULL) {
-      DST.vmempool->states = BLI_memblock_create(sizeof(DRWCallState), false);
+      DST.vmempool->states = BLI_memblock_create(sizeof(DRWCallState));
+    }
+    if (DST.vmempool->cullstates == NULL) {
+      DST.vmempool->cullstates = BLI_memblock_create(sizeof(DRWCullingState));
     }
     if (DST.vmempool->shgroups == NULL) {
-      DST.vmempool->shgroups = BLI_memblock_create(sizeof(DRWShadingGroup), false);
+      DST.vmempool->shgroups = BLI_memblock_create(sizeof(DRWShadingGroup));
     }
     if (DST.vmempool->uniforms == NULL) {
-      DST.vmempool->uniforms = BLI_memblock_create(sizeof(DRWUniform), false);
+      DST.vmempool->uniforms = BLI_memblock_create(sizeof(DRWUniform));
+    }
+    if (DST.vmempool->views == NULL) {
+      DST.vmempool->views = BLI_memblock_create(sizeof(DRWView));
     }
     if (DST.vmempool->passes == NULL) {
-      DST.vmempool->passes = BLI_memblock_create(sizeof(DRWPass), false);
+      DST.vmempool->passes = BLI_memblock_create(sizeof(DRWPass));
     }
     if (DST.vmempool->images == NULL) {
-      DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *), false);
+      DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *));
     }
 
     DST.idatalist = GPU_viewport_instance_data_list_get(DST.viewport);
@@ -639,36 +649,35 @@ static void drw_viewport_var_init(void)
     DST.vmempool = NULL;
   }
 
+  DST.primary_view_ct = 0;
+
   if (rv3d != NULL) {
-    /* Refresh DST.screenvecs */
-    copy_v3_v3(DST.screenvecs[0], rv3d->viewinv[0]);
-    copy_v3_v3(DST.screenvecs[1], rv3d->viewinv[1]);
-    normalize_v3(DST.screenvecs[0]);
-    normalize_v3(DST.screenvecs[1]);
+    normalize_v3_v3(DST.screenvecs[0], rv3d->viewinv[0]);
+    normalize_v3_v3(DST.screenvecs[1], rv3d->viewinv[1]);
 
-    /* Refresh DST.pixelsize */
     DST.pixsize = rv3d->pixsize;
+    DST.view_default = DRW_view_create(rv3d->viewmat, rv3d->winmat, NULL, NULL, NULL);
+    DRW_view_camtexco_set(DST.view_default, rv3d->viewcamtexcofac);
 
-    copy_m4_m4(DST.original_mat.mat[DRW_MAT_PERS], rv3d->persmat);
-    copy_m4_m4(DST.original_mat.mat[DRW_MAT_PERSINV], rv3d->persinv);
-    copy_m4_m4(DST.original_mat.mat[DRW_MAT_VIEW], rv3d->viewmat);
-    copy_m4_m4(DST.original_mat.mat[DRW_MAT_VIEWINV], rv3d->viewinv);
-    copy_m4_m4(DST.original_mat.mat[DRW_MAT_WIN], rv3d->winmat);
-    invert_m4_m4(DST.original_mat.mat[DRW_MAT_WININV], rv3d->winmat);
+    if (DST.draw_ctx.sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+      int plane_len = (rv3d->viewlock & RV3D_BOXCLIP) ? 4 : 6;
+      DRW_view_clip_planes_set(DST.view_default, rv3d->clip, plane_len);
+    }
 
-    memcpy(DST.view_data.matstate.mat, DST.original_mat.mat, sizeof(DST.original_mat.mat));
-
-    copy_v4_v4(DST.view_data.viewcamtexcofac, rv3d->viewcamtexcofac);
+    DST.view_active = DST.view_default;
+    DST.view_previous = NULL;
   }
   else {
-    copy_v4_fl4(DST.view_data.viewcamtexcofac, 1.0f, 1.0f, 0.0f, 0.0f);
+    zero_v3(DST.screenvecs[0]);
+    zero_v3(DST.screenvecs[1]);
+
+    DST.pixsize = 1.0f;
+    DST.view_default = NULL;
+    DST.view_active = NULL;
+    DST.view_previous = NULL;
   }
 
-  /* Reset facing */
-  DST.frontface = GL_CCW;
-  DST.backface = GL_CW;
-  glFrontFace(DST.frontface);
-
+  /* fclem: Is this still needed ? */
   if (DST.draw_ctx.object_edit) {
     ED_view3d_init_mats_rv3d(DST.draw_ctx.object_edit, rv3d);
   }
@@ -677,101 +686,10 @@ static void drw_viewport_var_init(void)
   memset(&DST.RST, 0x0, sizeof(DST.RST));
 
   if (G_draw.view_ubo == NULL) {
-    G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(ViewUboStorage), NULL);
+    G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(DRWViewUboStorage), NULL);
   }
-
-  DST.override_mat = 0;
-  DST.dirty_mat = true;
-  DST.state_cache_id = 1;
-
-  DST.clipping.updated = false;
 
   memset(DST.object_instance_data, 0x0, sizeof(DST.object_instance_data));
-}
-
-void DRW_viewport_matrix_get(float mat[4][4], DRWViewportMatrixType type)
-{
-  BLI_assert(type >= 0 && type < DRW_MAT_COUNT);
-  /* Can't use this in render mode. */
-  BLI_assert(((DST.override_mat & (1 << type)) != 0) || DST.draw_ctx.rv3d != NULL);
-
-  copy_m4_m4(mat, DST.view_data.matstate.mat[type]);
-}
-
-void DRW_viewport_matrix_get_all(DRWMatrixState *state)
-{
-  memcpy(state, DST.view_data.matstate.mat, sizeof(DRWMatrixState));
-}
-
-void DRW_viewport_matrix_override_set(const float mat[4][4], DRWViewportMatrixType type)
-{
-  BLI_assert(type < DRW_MAT_COUNT);
-  copy_m4_m4(DST.view_data.matstate.mat[type], mat);
-  DST.override_mat |= (1 << type);
-  DST.dirty_mat = true;
-  DST.clipping.updated = false;
-}
-
-void DRW_viewport_matrix_override_unset(DRWViewportMatrixType type)
-{
-  BLI_assert(type < DRW_MAT_COUNT);
-  copy_m4_m4(DST.view_data.matstate.mat[type], DST.original_mat.mat[type]);
-  DST.override_mat &= ~(1 << type);
-  DST.dirty_mat = true;
-  DST.clipping.updated = false;
-}
-
-void DRW_viewport_matrix_override_set_all(DRWMatrixState *state)
-{
-  memcpy(DST.view_data.matstate.mat, state, sizeof(DRWMatrixState));
-  DST.override_mat = 0xFFFFFF;
-  DST.dirty_mat = true;
-  DST.clipping.updated = false;
-}
-
-void DRW_viewport_matrix_override_unset_all(void)
-{
-  memcpy(DST.view_data.matstate.mat, DST.original_mat.mat, sizeof(DRWMatrixState));
-  DST.override_mat = 0;
-  DST.dirty_mat = true;
-  DST.clipping.updated = false;
-}
-
-bool DRW_viewport_is_persp_get(void)
-{
-  RegionView3D *rv3d = DST.draw_ctx.rv3d;
-  if (rv3d) {
-    return rv3d->is_persp;
-  }
-  else {
-    return DST.view_data.matstate.mat[DRW_MAT_WIN][3][3] == 0.0f;
-  }
-}
-
-float DRW_viewport_near_distance_get(void)
-{
-  float projmat[4][4];
-  DRW_viewport_matrix_get(projmat, DRW_MAT_WIN);
-
-  if (DRW_viewport_is_persp_get()) {
-    return -projmat[3][2] / (projmat[2][2] - 1.0f);
-  }
-  else {
-    return -(projmat[3][2] + 1.0f) / projmat[2][2];
-  }
-}
-
-float DRW_viewport_far_distance_get(void)
-{
-  float projmat[4][4];
-  DRW_viewport_matrix_get(projmat, DRW_MAT_WIN);
-
-  if (DRW_viewport_is_persp_get()) {
-    return -projmat[3][2] / (projmat[2][2] + 1.0f);
-  }
-  else {
-    return -(projmat[3][2] - 1.0f) / projmat[2][2];
-  }
 }
 
 DefaultFramebufferList *DRW_viewport_framebuffer_list_get(void)
@@ -1580,7 +1498,8 @@ void DRW_draw_view(const bContext *C)
   drw_state_prepare_clean_for_draw(&DST);
   DST.options.draw_text = ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0 &&
                            (v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) != 0);
-  DST.options.draw_background = scene->r.alphamode == R_ADDSKY;
+  DST.options.draw_background = (scene->r.alphamode == R_ADDSKY) ||
+                                (v3d->shading.type != OB_RENDER);
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
@@ -2058,6 +1977,11 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
     /* grease pencil: render result is merged in the previous render result. */
     if (DRW_render_check_grease_pencil(depsgraph)) {
       DRW_state_reset();
+      /* HACK: this is just for sanity and not trigger asserts. */
+      DST.view_default = NULL;
+      DST.view_active = NULL;
+      DST.view_previous = NULL;
+
       DRW_render_gpencil_to_image(engine, render_layer, &render_rect);
     }
     DST.buffer_finish_called = false;
@@ -2619,7 +2543,7 @@ void DRW_draw_depth_loop_gpencil(struct Depsgraph *depsgraph,
 /** See #DRW_shgroup_world_clip_planes_from_rv3d. */
 static void draw_world_clip_planes_from_rv3d(GPUBatch *batch, const float world_clip_planes[6][4])
 {
-  GPU_batch_uniform_4fv_array(batch, "WorldClipPlanes", 6, world_clip_planes[0]);
+  GPU_batch_uniform_4fv_array(batch, "clipPlanes", 6, world_clip_planes[0]);
 }
 
 /**
@@ -2685,7 +2609,7 @@ void DRW_draw_depth_object(ARegion *ar, GPUViewport *viewport, Object *object)
   DRW_opengl_context_disable();
 }
 
-static void draw_mesh_verts(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+static void draw_mesh_verts(GPUBatch *batch, uint offset, const float world_clip_planes[6][4])
 {
   GPU_point_size(UI_GetThemeValuef(TH_VERTEX_SIZE));
 
@@ -2699,7 +2623,7 @@ static void draw_mesh_verts(GPUBatch *batch, int offset, const float world_clip_
   GPU_batch_draw(batch);
 }
 
-static void draw_mesh_edges(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+static void draw_mesh_edges(GPUBatch *batch, uint offset, const float world_clip_planes[6][4])
 {
   GPU_line_width(1.0f);
   glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
@@ -2718,7 +2642,7 @@ static void draw_mesh_edges(GPUBatch *batch, int offset, const float world_clip_
 
 /* two options, facecolors or black */
 static void draw_mesh_face(GPUBatch *batch,
-                           int offset,
+                           uint offset,
                            const bool use_select,
                            const float world_clip_planes[6][4])
 {
@@ -2744,7 +2668,7 @@ static void draw_mesh_face(GPUBatch *batch,
   }
 }
 
-static void draw_mesh_face_dot(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+static void draw_mesh_face_dot(GPUBatch *batch, uint offset, const float world_clip_planes[6][4])
 {
   const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
                                                       GPU_SHADER_CFG_DEFAULT;
@@ -2772,7 +2696,6 @@ void DRW_draw_select_id_object(Scene *scene,
   }
 
   GPU_matrix_mul(ob->obmat);
-  GPU_depth_test(true);
 
   const float(*world_clip_planes)[4] = NULL;
   if (rv3d->rflag & RV3D_CLIPPING) {
@@ -2780,7 +2703,7 @@ void DRW_draw_select_id_object(Scene *scene,
     world_clip_planes = rv3d->clip_local;
   }
 
-  initial_offset += 1;
+  BLI_assert(initial_offset > 0);
 
   switch (ob->type) {
     case OB_MESH:
@@ -2862,6 +2785,7 @@ void DRW_draw_select_id_object(Scene *scene,
           draw_mesh_face(geom_faces, 0, false, world_clip_planes);
           draw_mesh_verts(geom_verts, 1, world_clip_planes);
 
+          *r_face_offset = *r_edge_offset = initial_offset;
           *r_vert_offset = me_eval->totvert + 1;
         }
         else {
@@ -2870,7 +2794,8 @@ void DRW_draw_select_id_object(Scene *scene,
 
           draw_mesh_face(geom_faces, initial_offset, true, world_clip_planes);
 
-          *r_face_offset = initial_offset + me_eval->totface;
+          *r_face_offset = initial_offset + me_eval->totpoly;
+          *r_edge_offset = *r_vert_offset = *r_face_offset;
         }
       }
       break;
@@ -2898,7 +2823,7 @@ void DRW_framebuffer_select_id_setup(ARegion *ar, const bool clear)
   glDisable(GL_DITHER);
 
   GPU_depth_test(true);
-  glDisable(GL_SCISSOR_TEST);
+  GPU_disable_program_point_size();
 
   if (clear) {
     GPU_framebuffer_clear_color_depth(

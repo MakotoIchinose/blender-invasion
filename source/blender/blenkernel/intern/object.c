@@ -1468,7 +1468,7 @@ Object *BKE_object_copy(Main *bmain, const Object *ob)
 
 /** Perform deep-copy of object and its 'children' data-blocks (obdata, materials, actions, etc.).
  *
- * \param dupflag Controls which sub-data are also duplicated
+ * \param dupflag: Controls which sub-data are also duplicated
  * (see #eDupli_ID_Flags in DNA_userdef_types.h).
  *
  * \note This function does not do any remapping to new IDs, caller must do it
@@ -4499,11 +4499,11 @@ void BKE_object_update_select_id(struct Main *bmain)
   }
 }
 
-Mesh *BKE_object_to_mesh(Object *object)
+Mesh *BKE_object_to_mesh(Depsgraph *depsgraph, Object *object, bool preserve_all_data_layers)
 {
   BKE_object_to_mesh_clear(object);
 
-  Mesh *mesh = BKE_mesh_new_from_object(object);
+  Mesh *mesh = BKE_mesh_new_from_object(depsgraph, object, preserve_all_data_layers);
   object->runtime.object_as_temp_mesh = mesh;
   return mesh;
 }
