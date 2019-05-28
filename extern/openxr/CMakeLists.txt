@@ -19,21 +19,18 @@
 
 set(MAJOR 0)
 set(MINOR 90)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Several files use these compile-time OS switches
 if(WIN32)
-    add_definitions(-DXR_OS_WINDOWS)
+  add_definitions(-DXR_OS_WINDOWS)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_definitions(-DXR_OS_LINUX)
+  add_definitions(-DXR_OS_LINUX)
 endif()
 
-set(INC
-  include
-  common
-  loader
-)
+include(CheckFunctionExists)
+CHECK_FUNCTION_EXISTS(secure_getenv HAVE_SECURE_GETENV)
+CHECK_FUNCTION_EXISTS(__secure_getenv HAVE___SECURE_GETENV)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/common_cmake_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/common_cmake_config.h)
 
 add_custom_target(
   generate_openxr_header

@@ -22,6 +22,7 @@
 include(GenerateExportHeader)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS false)
 
+# TODO loader name is needed for lib linking in source/, so better define this higher up the source tree.
 set(LOADER_NAME openxr_loader)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -40,6 +41,8 @@ set(INC
   ../common
   ../include
   ../../jsoncpp/include
+  # For generated/configured common_cmake_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/..
 )
 
 # List of all files externally generated outside of the loader that the loader
@@ -81,3 +84,14 @@ add_dependencies(
     loader_gen_files
 #   jsoncppAmalgamatedFiles
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_compile_definitions(
+    ${LOADER_NAME}
+      PRIVATE FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}"
+      PRIVATE FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}"
+      PRIVATE SYSCONFDIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}"
+  )
+
+  target_link_libraries(${LOADER_NAME} -lstdc++fs -ldl -lpthread -lm)
+endif()
