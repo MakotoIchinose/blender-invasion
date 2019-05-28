@@ -264,142 +264,123 @@ typedef struct LANPR_Data {
 typedef struct LANPR_RenderTaskInfo {
 	//thrd_t           ThreadHandle;
 
-	struct LANPR_RenderBuffer *RenderBuffer;
-	int ThreadID;
+	struct LANPR_RenderBuffer *render_buffer;
+	int thread_id;
 
-	struct nListItemPointer *Contour;
-	ListBase ContourPointers;
+	struct nListItemPointer *contour;
+	ListBase contour_pointers;
 
-	struct nListItemPointer *Intersection;
-	ListBase IntersectionPointers;
+	struct nListItemPointer *intersection;
+	ListBase intersection_pointers;
 
-	struct nListItemPointer *Crease;
-	ListBase CreasePointers;
+	struct nListItemPointer *crease;
+	ListBase crease_pointers;
 
-	struct nListItemPointer *Material;
-	ListBase MaterialPointers;
+	struct nListItemPointer *material;
+	ListBase material_pointers;
 
-	struct nListItemPointer *EdgeMark;
-	ListBase EdgeMarkPointers;
+	struct nListItemPointer *edge_mark;
+	ListBase edge_mark_pointers;
 
 } LANPR_RenderTaskInfo;
 
 typedef struct LANPR_RenderBuffer {
 	struct LANPR_RenderBuffer *prev, *next;
 
-	//nSafeString*       Name;
+	int              w, h;
+	int              tile_size_w, tile_size_h;
+	int              tile_count_x, tile_count_y;
+	real             width_per_tile, height_per_tile;
+	tnsMatrix44d     view_projection;
+	tnsMatrix44d     vp_inverse;
 
-	//tnsFrameBuffer*    FrameBuffer;
-	//now we move frame buffer content here
-	int W, H;
-	int SubPixelSample;//1,2,3,4, Use Squared Value.
-	int TileSizeW, TileSizeH;
-	int TileCountX, TileCountY;
-	real WidthPerTile, HeightPerTile;
-	tnsMatrix44d ViewProjection;
-	tnsMatrix44d VPInverse;
+	int              output_mode;
+	int              output_aa_level;
 
-	nSafeString *OutputFolder;   //end with a slash;
-	nSafeString *ImagePrefix;
-	nSafeString *ImageNameConnector;
+	struct LANPR_BoundingArea *initial_bounding_areas;
+	u32bit                     bounding_area_count;
 
-	int OutputMode;
-	int OutputAALevel;
+	ListBase         vertex_buffer_pointers;
+	ListBase         line_buffer_pointers;
+	ListBase         triangle_buffer_pointers;
+	ListBase         all_render_lines;
 
-	struct LANPR_BoundingArea *InitialBoundingAreas;
-	u32bit BoundingAreaCount;
-	//u32bit             BaVBO;
-	//u32bit           BaFillVBO;
-
-	ListBase VertexBufferPointers;
-	ListBase LineBufferPointers;
-	ListBase TriangleBufferPointers;
-	ListBase AllRenderLines;
-
-	ListBase IntersectingVertexBuffer;
+	ListBase         intersecting_vertex_buffer;
 
 	struct GPUBatch *DPIXIntersectionTransformBatch;
 	struct GPUBatch *DPIXIntersectionBatch;
 
 	/* use own-implemented one */
-	nStaticMemoryPool RenderDataPool;
+	nStaticMemoryPool render_data_pool;
 
-	Material           *MaterialPointers[2048];
+	Material        *material_pointers[2048];
 
 	//render status
 
-	int cached_for_frame;
+	int              cached_for_frame;
 
-	real ViewVector[3];
+	real             view_vector[3];
 
-	int TriangleSize;
+	int              triangle_size;
 
-	u32bit ContourCount;
-	u32bit ContourProcessed;
-	nListItemPointer *ContourManaged;
-	ListBase Contours;
+	u32bit            contour_count;
+	u32bit            contour_processed;
+	nListItemPointer *contour_managed;
+	ListBase contours;
 
-	u32bit IntersectionCount;
-	u32bit IntersectionProcessed;
-	nListItemPointer *IntersectionManaged;
-	ListBase IntersectionLines;
+	u32bit            intersection_count;
+	u32bit            intersection_processed;
+	nListItemPointer *intersection_managed;
+	ListBase intersection_lines;
 
-	u32bit CreaseCount;
-	u32bit CreaseProcessed;
-	nListItemPointer *CreaseManaged;
-	ListBase CreaseLines;
+	u32bit            crease_count;
+	u32bit            crease_processed;
+	nListItemPointer *crease_managed;
+	ListBase          crease_lines;
 
-	u32bit MaterialLineCount;
-	u32bit MaterialProcessed;
-	nListItemPointer *MaterialManaged;
-	ListBase MaterialLines;
+	u32bit            material_line_count;
+	u32bit            material_processed;
+	nListItemPointer *material_managed;
+	ListBase          material_lines;
 
-	u32bit EdgeMarkCount;
-	u32bit EdgeMarkProcessed;
-	nListItemPointer *EdgeMarkManaged;
-	ListBase EdgeMarks;
+	u32bit            edge_mark_count;
+	u32bit            edge_mark_processed;
+	nListItemPointer *edge_mark_managed;
+	ListBase          edge_marks;
 
-	ListBase Chains;
-	GPUBatch *ChainDrawBatch;
-	DRWShadingGroup *ChainShgrp;
+	ListBase          chains;
+	GPUBatch         *chain_draw_batch;
 
-	SpinLock csInfo;
-	SpinLock csData;
-	SpinLock csManagement;
+	DRWShadingGroup  *ChainShgrp;
+
+	SpinLock          cs_info;
+	SpinLock          cs_data;
+	SpinLock          cs_management;
 
 	//settings
 
-	//int             OutputTransparent;
-	//real            Backgroundcolor[4];
+	int               max_occlusion_level;
+	real              crease_angle;
+	real              crease_cos;
+	int               thread_count;
 
-	int MaxOccludeLevel;
-	real CreaseAngle;
-	real CreaseCos;
-	int CreaseAllowOverride;
-	int ThreadCount;
+	real              overall_progress;
+	int               calculation_status;
 
-	real OverallProgress;
-	int CalculationStatus;
+	int               draw_material_preview;
+	real              material_transparency;
 
-	int DrawMaterialPreview;
-	real MaterialTransparency;
+	int               show_line;
+	int               show_fast;
+	int               show_material;
+	int               override_display;
 
-	int ShowLine;
-	int ShowFast;
-	int ShowMaterial;
-	int OverrideDisplay;
+	struct Scene     *scene;
+	struct Object    *camera;
 
-	//nListHandle DrawCommands; /* not used now */
-
-	//tnsRenderBufferPreviewNode RenderPreview[32];
-
-	struct Scene *Scene;
-	struct Object *Camera;
-
-	int enable_intersections;
-	int size;
-
-	//tnsRenderTriangles are in mesh object.
+	int               enable_intersections;
+	int               _pad;
+	
 }LANPR_RenderBuffer;
 
 

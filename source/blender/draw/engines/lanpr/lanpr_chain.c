@@ -73,16 +73,16 @@ int lanpr_get_nearby_render_line(LANPR_BoundingArea *ba, LANPR_RenderLine *rl){
 
 LANPR_RenderLineChain *lanpr_create_render_line_chain(LANPR_RenderBuffer *rb){
 	LANPR_RenderLineChain *rlc;
-	rlc = mem_static_aquire(&rb->RenderDataPool, sizeof(LANPR_RenderLineChain));
+	rlc = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChain));
 
-	BLI_addtail(&rb->Chains, rlc);
+	BLI_addtail(&rb->chains, rlc);
 
 	return rlc;
 }
 
 LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuffer *rb, LANPR_RenderLineChain *rlc, float x, float y, float* normal, char type, int level){
 	LANPR_RenderLineChainItem *rlci;
-	rlci = mem_static_aquire(&rb->RenderDataPool, sizeof(LANPR_RenderLineChainItem));
+	rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
 
 	rlci->pos[0] = x;
 	rlci->pos[1] = y;
@@ -98,7 +98,7 @@ LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuff
 
 LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_RenderBuffer *rb, LANPR_RenderLineChain *rlc, float x, float y, float* normal, char type, int level){
 	LANPR_RenderLineChainItem *rlci;
-	rlci = mem_static_aquire(&rb->RenderDataPool, sizeof(LANPR_RenderLineChainItem));
+	rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
 
 	rlci->pos[0] = x;
 	rlci->pos[1] = y;
@@ -152,7 +152,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
 	LANPR_BoundingArea *ba;
 	LANPR_RenderLineSegment *rls;
 
-	for (rl = rb->AllRenderLines.first; rl; rl = rl->Item.pNext) {
+	for (rl = rb->all_render_lines.first; rl; rl = rl->Item.pNext) {
 
 		if ((!(rl->Flags & LANPR_EDGE_FLAG_ALL_TYPE)) || (rl->Flags & LANPR_EDGE_FLAG_CHAIN_PICKED)) continue;
 
@@ -355,7 +355,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb){
 
 	GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
 
-	for (rlc = rb->Chains.first; rlc; rlc = rlc->Item.pNext) {
+	for (rlc = rb->chains.first; rlc; rlc = rlc->Item.pNext) {
 		int count = lanpr_count_chain(rlc);
 		//printf("seg contains %d verts\n", count);
 		vert_count += count;
@@ -368,7 +368,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb){
 	GPUIndexBufBuilder elb;
 	GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINES_ADJ, vert_count * 4, vert_count, true);// elem count will not exceed vert_count
 
-	for (rlc = rb->Chains.first; rlc; rlc = rlc->Item.pNext) {
+	for (rlc = rb->chains.first; rlc; rlc = rlc->Item.pNext) {
 
 		total_length = lanpr_compute_chain_length(rlc, lengths, i);
 
@@ -415,7 +415,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb){
 
 	MEM_freeN(lengths);
 
-	if (rb->ChainDrawBatch) GPU_batch_discard(rb->ChainDrawBatch);
-	rb->ChainDrawBatch = GPU_batch_create_ex(GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
+	if (rb->chain_draw_batch) GPU_batch_discard(rb->chain_draw_batch);
+	rb->chain_draw_batch = GPU_batch_create_ex(GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 
 }

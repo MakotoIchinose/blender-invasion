@@ -212,7 +212,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
 
 	if (!rb) return 0;
 
-	for (lip = rb->IntersectionLines.first; lip; lip = lip->pNext) {
+	for (lip = rb->intersection_lines.first; lip; lip = lip->pNext) {
 		rl = lip->p;
 
 		idx = (begin_index + i) * 4;
@@ -313,7 +313,7 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index) {
 	if (rb->DPIXIntersectionBatch) GPU_batch_discard(rb->DPIXIntersectionBatch);
 	rb->DPIXIntersectionBatch = 0;
 
-	if (!rb->IntersectionCount) return;
+	if (!rb->intersection_count) return;
 
 	static GPUVertFormat format = { 0 };
 	static struct { uint pos, uvs; } attr_id;
@@ -327,12 +327,12 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index) {
 	}
 
 	GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-	GPU_vertbuf_data_alloc(vbo, rb->IntersectionCount);
+	GPU_vertbuf_data_alloc(vbo, rb->intersection_count);
 
 	GPUVertBuf *vbo2 = GPU_vertbuf_create_with_format(&format2);
-	GPU_vertbuf_data_alloc(vbo2, rb->IntersectionCount);
+	GPU_vertbuf_data_alloc(vbo2, rb->intersection_count);
 
-	for (i = 0; i < rb->IntersectionCount; i++) {
+	for (i = 0; i < rb->intersection_count; i++) {
 		lanpr_dpix_index_to_coord(i + begin_index, &co[0], &co[1]);
 		GPU_vertbuf_attr_set(vbo, attr_id.pos, i, co);
 		lanpr_dpix_index_to_coord_absolute(i + begin_index, &co[0], &co[1]);
