@@ -477,7 +477,7 @@ void LANPR_render_cache(
 
 }
 
-static void workbench_render_matrices_init(RenderEngine *engine, Depsgraph *depsgraph)
+static void lanpr_render_matrices_init(RenderEngine *engine, Depsgraph *depsgraph)
 {
 	/* TODO(sergey): Shall render hold pointer to an evaluated camera instead? */
 	Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -500,12 +500,9 @@ static void workbench_render_matrices_init(RenderEngine *engine, Depsgraph *deps
 
 	unit_m4(unitmat);
 
-	DRW_viewport_matrix_override_set(persmat, DRW_MAT_PERS);
-	DRW_viewport_matrix_override_set(persinv, DRW_MAT_PERSINV);
-	DRW_viewport_matrix_override_set(winmat, DRW_MAT_WIN);
-	DRW_viewport_matrix_override_set(wininv, DRW_MAT_WININV);
-	DRW_viewport_matrix_override_set(viewmat, DRW_MAT_VIEW);
-	DRW_viewport_matrix_override_set(viewinv, DRW_MAT_VIEWINV);
+	DRWView *view = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+ 	DRW_view_default_set(view);
+  	DRW_view_set_active(view);
 }
 
 int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr, Scene *scene);
@@ -550,7 +547,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata, RenderEngine *engine, stru
 		}
 	}
 
-	workbench_render_matrices_init(engine, draw_ctx->depsgraph);
+	lanpr_render_matrices_init(engine, draw_ctx->depsgraph);
 
 	/* refered to eevee's code */
 

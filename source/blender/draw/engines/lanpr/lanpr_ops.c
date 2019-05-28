@@ -3252,13 +3252,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 		pd->dpix_viewport[3] = texh;
 
 		unit_m4(indentity_mat);
-
-		DRW_viewport_matrix_override_set(indentity_mat, DRW_MAT_PERS);
-		DRW_viewport_matrix_override_set(indentity_mat, DRW_MAT_PERSINV);
-		DRW_viewport_matrix_override_set(indentity_mat, DRW_MAT_WIN);
-		DRW_viewport_matrix_override_set(indentity_mat, DRW_MAT_WININV);
-		DRW_viewport_matrix_override_set(indentity_mat, DRW_MAT_VIEW);
-		DRW_viewport_matrix_override_set(indentity_mat, DRW_MAT_VIEWINV);
+		
+		DRWView *view = DRW_view_create(indentity_mat, indentity_mat, NULL, NULL, NULL);
+		DRW_view_default_set(view);
+		DRW_view_set_active(view);
 
 		if (lanpr->enable_chaining && lanpr->render_buffer->ChainDrawBatch) {
 			for (ll = lanpr->line_layers.last; ll; ll = ll->prev) {
