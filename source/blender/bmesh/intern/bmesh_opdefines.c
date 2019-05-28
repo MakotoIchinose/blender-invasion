@@ -1775,6 +1775,8 @@ static BMOpDefine bmo_bevel_def = {
     bmo_enum_bevel_miter_type},         /* outer miter kind */
    {"spread", BMO_OP_SLOT_FLT},           /* amount to offset beveled edge */
    {"smoothresh", BMO_OP_SLOT_FLT},       /* for passing mesh's smoothresh, used in hardening */
+   {"use_custom_profiles", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
+   {"profile_curve", BMO_OP_SLOT_INT}, /* the CurveMapping struct thing for the profile shape */ // HANS-TODO: figure out how to get the struct through here
    {{'\0'}},
   },
   /* slots_out */

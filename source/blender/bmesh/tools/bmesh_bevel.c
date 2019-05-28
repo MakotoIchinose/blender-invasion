@@ -38,6 +38,8 @@
 
 #include "eigen_capi.h"
 
+#include "BKE_colortools.h"
+
 #include "bmesh.h"
 #include "bmesh_bevel.h" /* own include */
 
@@ -217,6 +219,30 @@ typedef enum {
   F_RECON,
 } FKind;
 
+
+
+
+/* THIS IS HOW I WOULD WANT TO HAVE THE DATA FOR THE CUSTOM CURVE STORED. WE'LL SEE HOW CLOSE CURVEMAPPING ACTUALLY IS TO THAT
+ * THIS IS MOSTLY JUST AN AID FOR ME SO I CAN KNOW THE KIND OF DATA I NEED TO FIND FROM THE CURVEMAPPING STRUCT */
+
+typedef struct ProfileCurve {
+  /** A list of all of the nodes that make up the curve */
+  struct ProfileNode *curve_nodes;
+} ProfileCurve;
+
+typedef struct ProfileNode {
+  /** X and Y locations of the node from 0f to 1f */
+  float x;
+  float y;
+  /** Whether the point is interpolated to with a curve or a straight line */
+  bool sharp;
+} ProfileNode;
+
+
+
+
+
+
 #if 0
 static const char* fkind_names[] = {"F_NONE", "F_ORIG", "F_VERT", "F_EDGE", "F_RECON"}; /* DEBUG */
 #endif
@@ -258,6 +284,10 @@ typedef struct BevelParams {
   bool mark_sharp;
   /** Should we harden normals? */
   bool harden_normals;
+  /** Should we use the custom profiles feature? */
+  bool use_custom_profiles;
+  /** The curve mapping struct used to store the custom profile*/
+  const struct CurveMapping *profile_curve;
   /** Vertex group array, maybe set if vertex_only. */
   const struct MDeformVert *dvert;
   /** Vertex group index, maybe set if vertex_only. */
@@ -6561,7 +6591,9 @@ void BM_mesh_bevel(BMesh *bm,
                    const int miter_outer,
                    const int miter_inner,
                    const float spread,
-                   const float smoothresh)
+                   const float smoothresh,
+                   const bool use_custom_profile,
+                   const struct CurveMapping *profile_curve)
 {
   BMIter iter, liter;
   BMVert *v, *v_next;
@@ -6593,6 +6625,8 @@ void BM_mesh_bevel(BMesh *bm,
   bp.spread = spread;
   bp.smoothresh = smoothresh;
   bp.face_hash = NULL;
+  bp.use_custom_profiles = use_custom_profile;
+  bp.profile_curve = profile_curve;
 
   if (profile >= 0.950f) { /* r ~ 692, so PRO_SQUARE_R is 1e4 */
     bp.pro_super_r = PRO_SQUARE_R;

@@ -21,6 +21,8 @@
  * \ingroup bmesh
  */
 
+#include "BKE_colortools.h"
+
 struct MDeformVert;
 
 void BM_mesh_bevel(BMesh *bm,
@@ -42,6 +44,8 @@ void BM_mesh_bevel(BMesh *bm,
                    const int miter_outer,
                    const int miter_inner,
                    const float spread,
-                   const float smoothresh);
+                   const float smoothresh,
+                   const bool use_custom_profile,
+                   const struct CurveMapping *profile_curve);
 
 #endif /* __BMESH_BEVEL_H__ */

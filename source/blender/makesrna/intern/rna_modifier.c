@@ -3644,6 +3644,16 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 4);
   RNA_def_property_ui_text(prop, "Spread", "Spread distance for inner miter arcs");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_custom_profile", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_CUSTOM_PROFILE);
+  RNA_def_property_ui_text(prop, "Custom Profile", "Whether to use a user inputed curve for the bevel's profile");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "profile_curve", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "profile_curve");
+  RNA_def_property_ui_text(prop, "Custom Profile Curve", "The curve for the custom profile if it is used");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update"); // Maybe actually "rna_Modifier_dependency_update", we'll see
 }
 
 static void rna_def_modifier_shrinkwrap(BlenderRNA *brna)

@@ -40,6 +40,7 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
+#include "BKE_colortools.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -62,6 +63,7 @@ static void initData(ModifierData *md)
   bmd->profile = 0.5f;
   bmd->bevel_angle = DEG2RADF(30.0f);
   bmd->defgrp_name[0] = '\0';
+  bmd->profile_curve = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 }
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
@@ -109,6 +111,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   const int miter_outer = bmd->miter_outer;
   const int miter_inner = bmd->miter_inner;
   const float spread = bmd->spread;
+  const bool use_custom_profile = (bmd->flags & MOD_BEVEL_CUSTOM_PROFILE);
 
   bm = BKE_mesh_to_bmesh_ex(mesh,
                             &(struct BMeshCreateParams){0},
@@ -211,7 +214,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                 miter_outer,
                 miter_inner,
                 spread,
-                mesh->smoothresh);
+                mesh->smoothresh,
+                use_custom_profile,
+                bmd->profile_curve);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 
@@ -220,6 +225,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   BM_mesh_free(bm);
 
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
+
+  // HANS-TODO: Should the Curve be removed here or will it free itself elsewhere. I should test...
 
   return result;
 }

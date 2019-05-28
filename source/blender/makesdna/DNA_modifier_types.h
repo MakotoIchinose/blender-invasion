@@ -392,6 +392,10 @@ typedef struct BevelModifierData {
   /** if the MOD_BEVEL_VWEIGHT option is set,
    * this will be the name of the vert group, MAX_VGROUP_NAME */
   char defgrp_name[64];
+
+  /** Curve info for the custom profile */
+  struct CurveMapping *profile_curve;
+
 } BevelModifierData;
 
 /* BevelModifierData->flags and BevelModifierData->lim_flags */
@@ -401,7 +405,7 @@ enum {
   MOD_BEVEL_ANGLE = (1 << 3),
   MOD_BEVEL_WEIGHT = (1 << 4),
   MOD_BEVEL_VGROUP = (1 << 5),
-  /*  unused                  = (1 << 7), */
+  MOD_BEVEL_CUSTOM_PROFILE = (1 << 7),
   /*  unused                  = (1 << 8), */
   /*  unused                  = (1 << 9), */
   /*  unused                  = (1 << 10), */

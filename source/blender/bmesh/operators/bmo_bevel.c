@@ -24,6 +24,7 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
+#include "BKE_colortools.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
 
@@ -45,6 +46,8 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const int miter_inner = BMO_slot_int_get(op->slots_in, "miter_inner");
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
+  const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
+  const struct CurveMapping *profile_curve = NULL; // HANS-TODO: This probably shouldn't be NULL? More figuring out how to get this through
 
   if (offset > 0) {
     BMOIter siter;
@@ -87,7 +90,9 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
                   miter_outer,
                   miter_inner,
                   spread,
-                  smoothresh);
+                  smoothresh,
+                  use_custom_profile,
+                  profile_curve);
 
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "faces.out", BM_FACE, BM_ELEM_TAG);
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "edges.out", BM_EDGE, BM_ELEM_TAG);
