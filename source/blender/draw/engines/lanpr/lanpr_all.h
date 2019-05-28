@@ -35,8 +35,6 @@
 #include "WM_types.h"
 #include "WM_api.h"
 
-
-
 #define LANPR_ENGINE "BLENDER_LANPR"
 
 #define TNS_PI 3.1415926535897932384626433832795
@@ -44,728 +42,746 @@
 #define rad(d) d *TNS_PI / 180.0
 
 #define tMatDist2v(p1, p2) \
-	sqrt(((p1)[0] - (p2)[0]) * ((p1)[0] - (p2)[0]) + ((p1)[1] - (p2)[1]) * ((p1)[1] - (p2)[1]))
+  sqrt(((p1)[0] - (p2)[0]) * ((p1)[0] - (p2)[0]) + ((p1)[1] - (p2)[1]) * ((p1)[1] - (p2)[1]))
 
-#define tnsLinearItp(L, R, T) \
-	((L) * (1.0f - (T)) + (R)*(T))
+#define tnsLinearItp(L, R, T) ((L) * (1.0f - (T)) + (R) * (T))
 
 typedef struct LANPR_RenderBuffer LANPR_RenderBuffer;
 
 typedef struct LANPR_SharedResource {
 
-	/* We only allocate once for all */
-	LANPR_RenderBuffer *render_buffer_shared;
+  /* We only allocate once for all */
+  LANPR_RenderBuffer *render_buffer_shared;
 
-	/* Snake */
-	GPUShader *multichannel_shader;
-	GPUShader *edge_detect_shader;
-	GPUShader *edge_thinning_shader;
-	GPUShader *snake_connection_shader;
+  /* Snake */
+  GPUShader *multichannel_shader;
+  GPUShader *edge_detect_shader;
+  GPUShader *edge_thinning_shader;
+  GPUShader *snake_connection_shader;
 
-	/* DPIX */
-	GPUShader *dpix_transform_shader;
-	GPUShader *dpix_preview_shader;
+  /* DPIX */
+  GPUShader *dpix_transform_shader;
+  GPUShader *dpix_preview_shader;
 
-	/* Software */
-	GPUShader *software_shader;
-	GPUShader *software_chaining_shader;
+  /* Software */
+  GPUShader *software_shader;
+  GPUShader *software_chaining_shader;
 
-	void *ved_viewport;
-	void *ved_render;
+  void *ved_viewport;
+  void *ved_render;
 
+  int init_complete;
 
-	int init_complete;
-
-	SpinLock render_flag_lock;
-	int during_render;        // get/set using access funcion which uses render_flag_lock to lock.
-	                          // this prevents duplicate too much resource. (no render preview in viewport while rendering)
+  SpinLock render_flag_lock;
+  int during_render;  // get/set using access funcion which uses render_flag_lock to lock.
+                      // this prevents duplicate too much resource. (no render preview in viewport
+                      // while rendering)
 
 } LANPR_SharedResource;
 
 #define TNS_DPIX_TEXTURE_SIZE 2048
 
 typedef struct LANPR_TextureSample {
-	Link Item;
-	int X, Y;
-	float Z;    // for future usage
+  Link Item;
+  int X, Y;
+  float Z;  // for future usage
 } LANPR_TextureSample;
 
 typedef struct LANPR_LineStripPoint {
-	Link Item;
-	float P[3];
+  Link Item;
+  float P[3];
 } LANPR_LineStripPoint;
 
 typedef struct LANPR_LineStrip {
-	Link Item;
-	ListBase points;
-	int point_count;
-	float total_length;
-}LANPR_LineStrip;
+  Link Item;
+  ListBase points;
+  int point_count;
+  float total_length;
+} LANPR_LineStrip;
 
 typedef struct LANPR_PassList {
-	/* Snake */
-	struct DRWPass *depth_pass;
-	struct DRWPass *color_pass;
-	struct DRWPass *normal_pass;
-	struct DRWPass *edge_intermediate;
-	struct DRWPass *edge_thinning;
-	struct DRWPass *snake_pass;
+  /* Snake */
+  struct DRWPass *depth_pass;
+  struct DRWPass *color_pass;
+  struct DRWPass *normal_pass;
+  struct DRWPass *edge_intermediate;
+  struct DRWPass *edge_thinning;
+  struct DRWPass *snake_pass;
 
-	/* DPIX */
-	struct DRWPass *dpix_transform_pass;
-	struct DRWPass *dpix_preview_pass;
+  /* DPIX */
+  struct DRWPass *dpix_transform_pass;
+  struct DRWPass *dpix_preview_pass;
 
-	/* SOFTWARE */
-	struct DRWPass *software_pass;
+  /* SOFTWARE */
+  struct DRWPass *software_pass;
 
 } LANPR_PassList;
 
 typedef struct LANPR_FramebufferList {
 
-	/* Snake */
-	struct GPUFrameBuffer *passes;
-	struct GPUFrameBuffer *edge_intermediate;
-	struct GPUFrameBuffer *edge_thinning;
+  /* Snake */
+  struct GPUFrameBuffer *passes;
+  struct GPUFrameBuffer *edge_intermediate;
+  struct GPUFrameBuffer *edge_thinning;
 
-	/* DPIX */
-	struct GPUFrameBuffer *dpix_transform;
-	struct GPUFrameBuffer *dpix_preview;
+  /* DPIX */
+  struct GPUFrameBuffer *dpix_transform;
+  struct GPUFrameBuffer *dpix_preview;
 
-	/* Software */
-	struct GPUFrameBuffer *software_ms;
+  /* Software */
+  struct GPUFrameBuffer *software_ms;
 
 } LANPR_FramebufferList;
 
 typedef struct LANPR_TextureList {
 
-	struct GPUTexture *color;
-	struct GPUTexture *normal;
-	struct GPUTexture *depth;
-	struct GPUTexture *edge_intermediate;
+  struct GPUTexture *color;
+  struct GPUTexture *normal;
+  struct GPUTexture *depth;
+  struct GPUTexture *edge_intermediate;
 
-	struct GPUTexture *dpix_in_pl;/* point L */
-	struct GPUTexture *dpix_in_pr;/* point R */
-	struct GPUTexture *dpix_in_nl;/* normal L */
-	struct GPUTexture *dpix_in_nr;/* normal R */
-	struct GPUTexture *dpix_in_edge_mask;/* RGBA, R:Material, G: Freestyle Edge Mark, BA:Reserved for future usage */
+  struct GPUTexture *dpix_in_pl;        /* point L */
+  struct GPUTexture *dpix_in_pr;        /* point R */
+  struct GPUTexture *dpix_in_nl;        /* normal L */
+  struct GPUTexture *dpix_in_nr;        /* normal R */
+  struct GPUTexture *dpix_in_edge_mask; /* RGBA, R:Material, G: Freestyle Edge Mark, BA:Reserved
+                                           for future usage */
 
-	struct GPUTexture *dpix_out_pl;
-	struct GPUTexture *dpix_out_pr;
-	struct GPUTexture *dpix_out_length;
+  struct GPUTexture *dpix_out_pl;
+  struct GPUTexture *dpix_out_pr;
+  struct GPUTexture *dpix_out_length;
 
-	/* multisample resolve */
-	struct GPUTexture *ms_resolve_depth;
-	struct GPUTexture *ms_resolve_color;
+  /* multisample resolve */
+  struct GPUTexture *ms_resolve_depth;
+  struct GPUTexture *ms_resolve_color;
 
 } LANPR_TextureList;
 
 typedef struct LANPR_PrivateData {
-	DRWShadingGroup *multipass_shgrp;
-	DRWShadingGroup *edge_detect_shgrp;
-	DRWShadingGroup *edge_thinning_shgrp;
-	DRWShadingGroup *snake_shgrp;
+  DRWShadingGroup *multipass_shgrp;
+  DRWShadingGroup *edge_detect_shgrp;
+  DRWShadingGroup *edge_thinning_shgrp;
+  DRWShadingGroup *snake_shgrp;
 
-	DRWShadingGroup *dpix_transform_shgrp;
-	DRWShadingGroup *dpix_preview_shgrp;
+  DRWShadingGroup *dpix_transform_shgrp;
+  DRWShadingGroup *dpix_preview_shgrp;
 
-	DRWShadingGroup *debug_shgrp;
+  DRWShadingGroup *debug_shgrp;
 
-	//snake
+  // snake
 
-	float normal_clamp;
-	float normal_strength;
-	float depth_clamp;
-	float depth_strength;
+  float normal_clamp;
+  float normal_strength;
+  float depth_clamp;
+  float depth_strength;
 
-	float zfar;
-	float znear;
+  float zfar;
+  float znear;
 
-	int stage;//thinning
+  int stage;  // thinning
 
-	float         *line_result;
-	unsigned char *line_result_8bit;
-	int width, height;          // if not match recreate buffer.
-	void         **sample_table;
+  float *line_result;
+  unsigned char *line_result_8bit;
+  int width, height;  // if not match recreate buffer.
+  void **sample_table;
 
-	BLI_mempool *mp_sample;
-	BLI_mempool *mp_line_strip;
-	BLI_mempool *mp_line_strip_point;
-	BLI_mempool *mp_batch_list;
+  BLI_mempool *mp_sample;
+  BLI_mempool *mp_line_strip;
+  BLI_mempool *mp_line_strip_point;
+  BLI_mempool *mp_batch_list;
 
-	ListBase pending_samples;
-	ListBase erased_samples;
-	ListBase line_strips;
+  ListBase pending_samples;
+  ListBase erased_samples;
+  ListBase line_strips;
 
-	// dpix data
+  // dpix data
 
-	void *atlas_pl;
-	void *atlas_pr;
-	void *atlas_nl;
-	void *atlas_nr;
-	void *atlas_edge_mask;
+  void *atlas_pl;
+  void *atlas_pr;
+  void *atlas_nl;
+  void *atlas_nr;
+  void *atlas_edge_mask;
 
-	int begin_index;
+  int begin_index;
 
-	int dpix_sample_step;
-	int dpix_is_perspective;
-	float dpix_viewport[4];
-	float output_viewport[4];
-	int dpix_buffer_width;
-	float dpix_depth_offset;
+  int dpix_sample_step;
+  int dpix_is_perspective;
+  float dpix_viewport[4];
+  float output_viewport[4];
+  int dpix_buffer_width;
+  float dpix_depth_offset;
 
-	float dpix_znear;
-	float dpix_zfar;
+  float dpix_znear;
+  float dpix_zfar;
 
-	// drawing
+  // drawing
 
-	unsigned v_buf;
-	unsigned i_buf;
-	unsigned l_buf;
+  unsigned v_buf;
+  unsigned i_buf;
+  unsigned l_buf;
 
-	GPUVertFormat snake_gwn_format;
-	GPUBatch *snake_batch;
+  GPUVertFormat snake_gwn_format;
+  GPUBatch *snake_batch;
 
-	ListBase dpix_batch_list;
+  ListBase dpix_batch_list;
 
 } LANPR_PrivateData;
 
 typedef struct LANPR_StorageList {
-	LANPR_PrivateData *g_data;
+  LANPR_PrivateData *g_data;
 } LANPR_StorageList;
 
 typedef struct LANPR_BatchItem {
-	Link Item;
-	GPUBatch *dpix_transform_batch;
-	GPUBatch *dpix_preview_batch;
-	Object *ob;
+  Link Item;
+  GPUBatch *dpix_transform_batch;
+  GPUBatch *dpix_preview_batch;
+  Object *ob;
 } LANPR_BatchItem;
 
 typedef struct LANPR_Data {
-	void *engine_type;
-	LANPR_FramebufferList *fbl;
-	LANPR_TextureList *txl;
-	LANPR_PassList *psl;
-	LANPR_StorageList *stl;
+  void *engine_type;
+  LANPR_FramebufferList *fbl;
+  LANPR_TextureList *txl;
+  LANPR_PassList *psl;
+  LANPR_StorageList *stl;
 } LANPR_Data;
-
-
 
 /* Below ported from NUL_TNS.h */
 
 #define TNS_THREAD_LINE_COUNT 10000
 
-#define TNS_CALCULATION_IDLE         0
-#define TNS_CALCULATION_GEOMETRY     1
-#define TNS_CALCULATION_CONTOUR      2
+#define TNS_CALCULATION_IDLE 0
+#define TNS_CALCULATION_GEOMETRY 1
+#define TNS_CALCULATION_CONTOUR 2
 #define TNS_CALCULATION_INTERSECTION 3
-#define TNS_CALCULATION_OCCLUTION    4
-#define TNS_CALCULATION_FINISHED     100
+#define TNS_CALCULATION_OCCLUTION 4
+#define TNS_CALCULATION_FINISHED 100
 
 typedef struct LANPR_RenderTaskInfo {
-	//thrd_t           ThreadHandle;
+  // thrd_t           ThreadHandle;
 
-	struct LANPR_RenderBuffer *render_buffer;
-	int thread_id;
+  struct LANPR_RenderBuffer *render_buffer;
+  int thread_id;
 
-	LinkData *contour;
-	ListBase  contour_pointers;
+  LinkData *contour;
+  ListBase contour_pointers;
 
-	LinkData *intersection;
-	ListBase  intersection_pointers;
+  LinkData *intersection;
+  ListBase intersection_pointers;
 
-	LinkData *crease;
-	ListBase  crease_pointers;
+  LinkData *crease;
+  ListBase crease_pointers;
 
-	LinkData *material;
-	ListBase  material_pointers;
+  LinkData *material;
+  ListBase material_pointers;
 
-	LinkData *edge_mark;
-	ListBase  edge_mark_pointers;
+  LinkData *edge_mark;
+  ListBase edge_mark_pointers;
 
 } LANPR_RenderTaskInfo;
 
 typedef struct LANPR_RenderBuffer {
-	struct LANPR_RenderBuffer *prev, *next;
+  struct LANPR_RenderBuffer *prev, *next;
 
-	int               w, h;
-	int               tile_size_w, tile_size_h;
-	int               tile_count_x, tile_count_y;
-	real              width_per_tile, height_per_tile;
-	tnsMatrix44d      view_projection;
-	tnsMatrix44d      vp_inverse;
+  int w, h;
+  int tile_size_w, tile_size_h;
+  int tile_count_x, tile_count_y;
+  real width_per_tile, height_per_tile;
+  tnsMatrix44d view_projection;
+  tnsMatrix44d vp_inverse;
 
-	int              output_mode;
-	int              output_aa_level;
+  int output_mode;
+  int output_aa_level;
 
-	struct LANPR_BoundingArea *initial_bounding_areas;
-	u32bit                     bounding_area_count;
+  struct LANPR_BoundingArea *initial_bounding_areas;
+  u32bit bounding_area_count;
 
-	ListBase          vertex_buffer_pointers;
-	ListBase          line_buffer_pointers;
-	ListBase          triangle_buffer_pointers;
-	ListBase          all_render_lines;
+  ListBase vertex_buffer_pointers;
+  ListBase line_buffer_pointers;
+  ListBase triangle_buffer_pointers;
+  ListBase all_render_lines;
 
-	ListBase          intersecting_vertex_buffer;
+  ListBase intersecting_vertex_buffer;
 
-	struct GPUBatch  *DPIXIntersectionTransformBatch;
-	struct GPUBatch  *DPIXIntersectionBatch;
+  struct GPUBatch *DPIXIntersectionTransformBatch;
+  struct GPUBatch *DPIXIntersectionBatch;
 
-	/* use own-implemented one */
-	nStaticMemoryPool render_data_pool;
+  /* use own-implemented one */
+  nStaticMemoryPool render_data_pool;
 
-	Material         *material_pointers[2048];
+  Material *material_pointers[2048];
 
-	//render status
+  // render status
 
-	int               cached_for_frame;
+  int cached_for_frame;
 
-	real              view_vector[3];
+  real view_vector[3];
 
-	int               triangle_size;
+  int triangle_size;
 
-	u32bit            contour_count;
-	u32bit            contour_processed;
-	LinkData *contour_managed;
-	ListBase contours;
+  u32bit contour_count;
+  u32bit contour_processed;
+  LinkData *contour_managed;
+  ListBase contours;
 
-	u32bit            intersection_count;
-	u32bit            intersection_processed;
-	LinkData *intersection_managed;
-	ListBase intersection_lines;
+  u32bit intersection_count;
+  u32bit intersection_processed;
+  LinkData *intersection_managed;
+  ListBase intersection_lines;
 
-	u32bit            crease_count;
-	u32bit            crease_processed;
-	LinkData *crease_managed;
-	ListBase          crease_lines;
+  u32bit crease_count;
+  u32bit crease_processed;
+  LinkData *crease_managed;
+  ListBase crease_lines;
 
-	u32bit            material_line_count;
-	u32bit            material_processed;
-	LinkData *material_managed;
-	ListBase          material_lines;
+  u32bit material_line_count;
+  u32bit material_processed;
+  LinkData *material_managed;
+  ListBase material_lines;
 
-	u32bit            edge_mark_count;
-	u32bit            edge_mark_processed;
-	LinkData *edge_mark_managed;
-	ListBase          edge_marks;
+  u32bit edge_mark_count;
+  u32bit edge_mark_processed;
+  LinkData *edge_mark_managed;
+  ListBase edge_marks;
 
-	ListBase          chains;
-	GPUBatch         *chain_draw_batch;
+  ListBase chains;
+  GPUBatch *chain_draw_batch;
 
-	DRWShadingGroup  *ChainShgrp;
+  DRWShadingGroup *ChainShgrp;
 
-	SpinLock          cs_info;
-	SpinLock          cs_data;
-	SpinLock          cs_management;
+  SpinLock cs_info;
+  SpinLock cs_data;
+  SpinLock cs_management;
 
-	//settings
+  // settings
 
-	int               max_occlusion_level;
-	real              crease_angle;
-	real              crease_cos;
-	int               thread_count;
+  int max_occlusion_level;
+  real crease_angle;
+  real crease_cos;
+  int thread_count;
 
-	real              overall_progress;
-	int               calculation_status;
+  real overall_progress;
+  int calculation_status;
 
-	int               draw_material_preview;
-	real              material_transparency;
+  int draw_material_preview;
+  real material_transparency;
 
-	int               show_line;
-	int               show_fast;
-	int               show_material;
-	int               override_display;
+  int show_line;
+  int show_fast;
+  int show_material;
+  int override_display;
 
-	struct Scene     *scene;
-	struct Object    *camera;
+  struct Scene *scene;
+  struct Object *camera;
 
-	int               enable_intersections;
-	int               _pad;
-	
-}LANPR_RenderBuffer;
+  int enable_intersections;
+  int _pad;
 
+} LANPR_RenderBuffer;
 
 #define TNS_CULL_DISCARD 2
-#define TNS_CULL_USED    1
+#define TNS_CULL_USED 1
 
 typedef struct LANPR_RenderTriangle {
-	Link Item;
-	struct LANPR_RenderVert *V[3];
-	struct LANPR_RenderLine *RL[3];
-	real gn[3];
-	real gc[3];
-	//struct BMFace *F;
-	short material_id;
-	ListBase intersecting_verts;
-	char cull_status;
-	struct LANPR_RenderTriangle *testing;   //Should Be tRT** testing[NumOfThreads]
-}LANPR_RenderTriangle;
+  Link Item;
+  struct LANPR_RenderVert *V[3];
+  struct LANPR_RenderLine *RL[3];
+  real gn[3];
+  real gc[3];
+  // struct BMFace *F;
+  short material_id;
+  ListBase intersecting_verts;
+  char cull_status;
+  struct LANPR_RenderTriangle *testing;  // Should Be tRT** testing[NumOfThreads]
+} LANPR_RenderTriangle;
 
 typedef struct LANPR_RenderTriangleThread {
-	struct LANPR_RenderTriangle Base;
-	struct LANPR_RenderLine *testing[127];    //max thread support;
-}LANPR_RenderTriangleThread;
+  struct LANPR_RenderTriangle Base;
+  struct LANPR_RenderLine *testing[127];  // max thread support;
+} LANPR_RenderTriangleThread;
 
 typedef struct LANPR_RenderElementLinkNode {
-	Link Item;
-	void *Pointer;
-	int ElementCount;
-	void *ObjectRef;
-	char Additional;
-}LANPR_RenderElementLinkNode;
+  Link Item;
+  void *Pointer;
+  int ElementCount;
+  void *ObjectRef;
+  char Additional;
+} LANPR_RenderElementLinkNode;
 
 typedef struct LANPR_RenderLineSegment {
-	Link Item;
-	real at;                 // at==0: left    at==1: right
-	u8bit OcclusionLevel;    // after "at" point
-	short MaterialMaskMark;  // e.g. to determine lines beind a glass window material.
-}LANPR_RenderLineSegment;
+  Link Item;
+  real at;                 // at==0: left    at==1: right
+  u8bit OcclusionLevel;    // after "at" point
+  short MaterialMaskMark;  // e.g. to determine lines beind a glass window material.
+} LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
-	Link Item;
-	real GLocation[4];
-	real FrameBufferCoord[4];
-	int FrameBufferCoordi[2];
-	struct BMVert *V;              //Used As R When Intersecting
-	struct LANPR_RenderLine *IntersectingLine;
-	struct LANPR_RenderLine *IntersectintLine2;
-	struct LANPR_RenderTriangle *IntersectWith;     //   Positive 1         Negative 0
-	//tnsRenderTriangle* IntersectingOnFace;       //         <|               |>
-	char Positive;                    //                 L---->|----->R	 L---->|----->R
-	char EdgeUsed;                    //                      <|		       |>
-}LANPR_RenderVert;
+  Link Item;
+  real GLocation[4];
+  real FrameBufferCoord[4];
+  int FrameBufferCoordi[2];
+  struct BMVert *V;  // Used As R When Intersecting
+  struct LANPR_RenderLine *IntersectingLine;
+  struct LANPR_RenderLine *IntersectintLine2;
+  struct LANPR_RenderTriangle *IntersectWith;  //   Positive 1         Negative 0
+  // tnsRenderTriangle* IntersectingOnFace;       //         <|               |>
+  char Positive;  //                 L---->|----->R	 L---->|----->R
+  char EdgeUsed;  //                      <|		       |>
+} LANPR_RenderVert;
 
-#define LANPR_EDGE_FLAG_EDGE_MARK    1
-#define LANPR_EDGE_FLAG_CONTOUR      2
-#define LANPR_EDGE_FLAG_CREASE       4
-#define LANPR_EDGE_FLAG_MATERIAL     8
+#define LANPR_EDGE_FLAG_EDGE_MARK 1
+#define LANPR_EDGE_FLAG_CONTOUR 2
+#define LANPR_EDGE_FLAG_CREASE 4
+#define LANPR_EDGE_FLAG_MATERIAL 8
 #define LANPR_EDGE_FLAG_INTERSECTION 16
-#define LANPR_EDGE_FLAG_FLOATING     32 // floating edge, unimplemented yet
+#define LANPR_EDGE_FLAG_FLOATING 32  // floating edge, unimplemented yet
 #define LANPR_EDGE_FLAG_CHAIN_PICKED 64
 
-#define LANPR_EDGE_FLAG_ALL_TYPE     0x3f
+#define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
 
 typedef struct LANPR_RenderLine {
-	Link Item;
-	struct LANPR_RenderVert *L, *R;
-	struct LANPR_RenderTriangle *TL, *TR;
-	ListBase Segments;
-	//tnsEdge*       Edge;//should be edge material
-	//tnsRenderTriangle* testing;//Should Be tRT** testing[NumOfThreads]	struct Materil *MaterialRef;
-	char MinOcclude;
-	char Flags; // also for line type determination on chainning
-	struct Object *ObjectRef;
-}LANPR_RenderLine;
+  Link Item;
+  struct LANPR_RenderVert *L, *R;
+  struct LANPR_RenderTriangle *TL, *TR;
+  ListBase Segments;
+  // tnsEdge*       Edge;//should be edge material
+  // tnsRenderTriangle* testing;//Should Be tRT** testing[NumOfThreads]	struct Materil
+  // *MaterialRef;
+  char MinOcclude;
+  char Flags;  // also for line type determination on chainning
+  struct Object *ObjectRef;
+} LANPR_RenderLine;
 
 typedef struct LANPR_RenderLineChain {
-	Link Item;
-	ListBase Chain;
-	//int         SegmentCount;  // we count before draw cmd.
-	float Length;                // calculated before draw cmd.
-}LANPR_RenderLineChain;
+  Link Item;
+  ListBase Chain;
+  // int         SegmentCount;  // we count before draw cmd.
+  float Length;  // calculated before draw cmd.
+} LANPR_RenderLineChain;
 
 typedef struct LANPR_RenderLineChainItem {
-	Link Item;
-	float pos[3];       // need z value for fading
-	float normal[3];
-	char LineType;             //      style of [1]       style of [2]
-	char OcclusionLevel;         // [1]--------------->[2]---------------->[3]--....
-}LANPR_RenderLineChainItem;
+  Link Item;
+  float pos[3];  // need z value for fading
+  float normal[3];
+  char LineType;        //      style of [1]       style of [2]
+  char OcclusionLevel;  // [1]--------------->[2]---------------->[3]--....
+} LANPR_RenderLineChainItem;
 
 typedef struct LANPR_BoundingArea {
-	real L, R, U, B;
-	real CX, CY;
+  real L, R, U, B;
+  real CX, CY;
 
-	struct LANPR_BoundingArea *Child;//1,2,3,4 quadrant
+  struct LANPR_BoundingArea *Child;  // 1,2,3,4 quadrant
 
-	ListBase LP;
-	ListBase RP;
-	ListBase UP;
-	ListBase BP;
+  ListBase LP;
+  ListBase RP;
+  ListBase UP;
+  ListBase BP;
 
-	int TriangleCount;
-	ListBase LinkedTriangles;
-	ListBase LinkedLines;
-	ListBase LinkedChains;//reserved for multithread chainning
-}LANPR_BoundingArea;
+  int TriangleCount;
+  ListBase LinkedTriangles;
+  ListBase LinkedLines;
+  ListBase LinkedChains;  // reserved for multithread chainning
+} LANPR_BoundingArea;
 
-
-#define TNS_COMMAND_LINE     0
+#define TNS_COMMAND_LINE 0
 #define TNS_COMMAND_MATERIAL 1
-#define TNS_COMMAND_EDGE     2
+#define TNS_COMMAND_EDGE 2
 
-#define TNS_TRANSPARENCY_DRAW_SIMPLE  0
+#define TNS_TRANSPARENCY_DRAW_SIMPLE 0
 #define TNS_TRANSPARENCY_DRAW_LAYERED 1
 
-#define TNS_OVERRIDE_ONLY                     0
-#define TNS_OVERRIDE_EXCLUDE                  1
+#define TNS_OVERRIDE_ONLY 0
+#define TNS_OVERRIDE_EXCLUDE 1
 //#define TNS_OVERRIDE_ALL_OTHERS_OUTSIDE_GROUP 2
 //#define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3
 //#define TNS_OVERRIDE_ALL_OTHERS               4
 
 extern RenderEngineType DRW_engine_viewport_lanpr_type;
 
+#define tnsLinearItp(L, R, T) ((L) * (1.0f - (T)) + (R) * (T))
 
+#define TNS_TILE(tile, r, c, CCount) tile[r * CCount + c]
 
-#define tnsLinearItp(L, R, T) \
-	((L) * (1.0f - (T)) + (R)*(T))
+#define TNS_CLAMP(a, Min, Max) a = a < Min ? Min : (a > Max ? Max : a)
 
+#define TNS_MAX2_INDEX(a, b) (a > b ? 0 : 1)
 
-#define TNS_TILE(tile, r, c, CCount) \
-	tile[r * CCount + c]
+#define TNS_MIN2_INDEX(a, b) (a < b ? 0 : 1)
 
-#define TNS_CLAMP(a, Min, Max) \
-	a = a < Min ? Min : (a > Max ? Max : a)
+#define TNS_MAX3_INDEX(a, b, c) (a > b ? (a > c ? 0 : (b > c ? 1 : 2)) : (b > c ? 1 : 2))
 
-#define TNS_MAX2_INDEX(a, b) \
-	(a > b ? 0 : 1)
+#define TNS_MIN3_INDEX(a, b, c) (a < b ? (a < c ? 0 : (b < c ? 1 : 2)) : (b < c ? 1 : 2))
 
-#define TNS_MIN2_INDEX(a, b) \
-	(a < b ? 0 : 1)
+#define TNS_MAX3_INDEX_ABC(x, y, z) (x > y ? (x > z ? a : (y > z ? b : c)) : (y > z ? b : c))
 
-#define TNS_MAX3_INDEX(a, b, c) \
-	(a > b ? (a > c ? 0 : (b > c ? 1 : 2)) : (b > c ? 1 : 2))
+#define TNS_MIN3_INDEX_ABC(x, y, z) (x < y ? (x < z ? a : (y < z ? b : c)) : (y < z ? b : c))
 
-#define TNS_MIN3_INDEX(a, b, c) \
-	(a < b ? (a < c ? 0 : (b < c ? 1 : 2)) : (b < c ? 1 : 2))
+#define TNS_ABC(index) (index == 0 ? a : (index == 1 ? b : c))
 
-#define TNS_MAX3_INDEX_ABC(x, y, z) \
-	(x > y ? (x > z ? a : (y > z ? b : c)) : (y > z ? b : c))
-
-#define TNS_MIN3_INDEX_ABC(x, y, z) \
-	(x < y ? (x < z ? a : (y < z ? b : c)) : (y < z ? b : c))
-
-#define TNS_ABC(index) \
-	(index == 0 ? a : (index == 1 ? b : c))
-
-
-#define TNS_DOUBLE_CLOSE_ENOUGH(a, b) \
-	(((a) + DBL_EDGE_LIM) >= (b) && ((a) - DBL_EDGE_LIM) <= (b))
+#define TNS_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
 
 //#define TNS_DOUBLE_CLOSE_ENOUGH(a,b)\
 // //(((a)+0.00000000001)>=(b) && ((a)-0.0000000001)<=(b))
 
+#define TNS_FLOAT_CLOSE_ENOUGH_WIDER(a, b) (((a) + 0.0000001) >= (b) && ((a)-0.0000001) <= (b))
 
-#define TNS_FLOAT_CLOSE_ENOUGH_WIDER(a, b) \
-	(((a) + 0.0000001) >= (b) && ((a) - 0.0000001) <= (b))
+#define TNS_IN_TILE_X(RenderTile, Fx) (RenderTile->FX <= Fx && RenderTile->FXLim >= Fx)
 
-#define TNS_IN_TILE_X(RenderTile, Fx) \
-	(RenderTile->FX <= Fx && RenderTile->FXLim >= Fx)
-
-#define TNS_IN_TILE_Y(RenderTile, Fy) \
-	(RenderTile->FY <= Fy && RenderTile->FYLim >= Fy)
-
+#define TNS_IN_TILE_Y(RenderTile, Fy) (RenderTile->FY <= Fy && RenderTile->FYLim >= Fy)
 
 #define TNS_IN_TILE(RenderTile, Fx, Fy) \
-	(TNS_IN_TILE_X(RenderTile, Fx) && TNS_IN_TILE_Y(RenderTile, Fy))
+  (TNS_IN_TILE_X(RenderTile, Fx) && TNS_IN_TILE_Y(RenderTile, Fy))
 
-BLI_INLINE void tMatConvert44df(tnsMatrix44d from, tnsMatrix44f to) {
-	to[0] = from[0];
-	to[1] = from[1];
-	to[2] = from[2];
-	to[3] = from[3];
-	to[4] = from[4];
-	to[5] = from[5];
-	to[6] = from[6];
-	to[7] = from[7];
-	to[8] = from[8];
-	to[9] = from[9];
-	to[10] = from[10];
-	to[11] = from[11];
-	to[12] = from[12];
-	to[13] = from[13];
-	to[14] = from[14];
-	to[15] = from[15];
+BLI_INLINE void tMatConvert44df(tnsMatrix44d from, tnsMatrix44f to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+  to[3] = from[3];
+  to[4] = from[4];
+  to[5] = from[5];
+  to[6] = from[6];
+  to[7] = from[7];
+  to[8] = from[8];
+  to[9] = from[9];
+  to[10] = from[10];
+  to[11] = from[11];
+  to[12] = from[12];
+  to[13] = from[13];
+  to[14] = from[14];
+  to[15] = from[15];
 }
 
-BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl) {
-	if (MAX3(rt->V[0]->FrameBufferCoord[2], rt->V[1]->FrameBufferCoord[2], rt->V[2]->FrameBufferCoord[2]) > MIN2(rl->L->FrameBufferCoord[2], rl->R->FrameBufferCoord[2])) return 0;
-	if (MAX3(rt->V[0]->FrameBufferCoord[0], rt->V[1]->FrameBufferCoord[0], rt->V[2]->FrameBufferCoord[0]) < MIN2(rl->L->FrameBufferCoord[0], rl->R->FrameBufferCoord[0])) return 0;
-	if (MIN3(rt->V[0]->FrameBufferCoord[0], rt->V[1]->FrameBufferCoord[0], rt->V[2]->FrameBufferCoord[0]) > MAX2(rl->L->FrameBufferCoord[0], rl->R->FrameBufferCoord[0])) return 0;
-	if (MAX3(rt->V[0]->FrameBufferCoord[1], rt->V[1]->FrameBufferCoord[1], rt->V[2]->FrameBufferCoord[1]) < MIN2(rl->L->FrameBufferCoord[1], rl->R->FrameBufferCoord[1])) return 0;
-	if (MIN3(rt->V[0]->FrameBufferCoord[1], rt->V[1]->FrameBufferCoord[1], rt->V[2]->FrameBufferCoord[1]) > MAX2(rl->L->FrameBufferCoord[1], rl->R->FrameBufferCoord[1])) return 0;
-	return 1;
+BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
+{
+  if (MAX3(rt->V[0]->FrameBufferCoord[2],
+           rt->V[1]->FrameBufferCoord[2],
+           rt->V[2]->FrameBufferCoord[2]) >
+      MIN2(rl->L->FrameBufferCoord[2], rl->R->FrameBufferCoord[2]))
+    return 0;
+  if (MAX3(rt->V[0]->FrameBufferCoord[0],
+           rt->V[1]->FrameBufferCoord[0],
+           rt->V[2]->FrameBufferCoord[0]) <
+      MIN2(rl->L->FrameBufferCoord[0], rl->R->FrameBufferCoord[0]))
+    return 0;
+  if (MIN3(rt->V[0]->FrameBufferCoord[0],
+           rt->V[1]->FrameBufferCoord[0],
+           rt->V[2]->FrameBufferCoord[0]) >
+      MAX2(rl->L->FrameBufferCoord[0], rl->R->FrameBufferCoord[0]))
+    return 0;
+  if (MAX3(rt->V[0]->FrameBufferCoord[1],
+           rt->V[1]->FrameBufferCoord[1],
+           rt->V[2]->FrameBufferCoord[1]) <
+      MIN2(rl->L->FrameBufferCoord[1], rl->R->FrameBufferCoord[1]))
+    return 0;
+  if (MIN3(rt->V[0]->FrameBufferCoord[1],
+           rt->V[1]->FrameBufferCoord[1],
+           rt->V[2]->FrameBufferCoord[1]) >
+      MAX2(rl->L->FrameBufferCoord[1], rl->R->FrameBufferCoord[1]))
+    return 0;
+  return 1;
 }
 
 BLI_INLINE double tMatGetLinearRatio(real L, real R, real FromL);
-BLI_INLINE int lanpr_LineIntersectTest2d(const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio) {
-	double k1, k2;
-	double x;
-	double y;
-	double Ratio;
-	double xDiff = (a2[0] - a1[0]);// +DBL_EPSILON;
-	double xDiff2 = (b2[0] - b1[0]);
+BLI_INLINE int lanpr_LineIntersectTest2d(
+    const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
+{
+  double k1, k2;
+  double x;
+  double y;
+  double Ratio;
+  double xDiff = (a2[0] - a1[0]);  // +DBL_EPSILON;
+  double xDiff2 = (b2[0] - b1[0]);
 
-	if (xDiff == 0) {
-		if (xDiff2 == 0) {
-			*aRatio = 0;
-			return 0;
-		}
-		double r2 = tMatGetLinearRatio(b1[0], b2[0], a1[0]);
-		x = tnsLinearItp(b1[0], b2[0], r2);
-		y = tnsLinearItp(b1[1], b2[1], r2);
-		*aRatio = Ratio = tMatGetLinearRatio(a1[1], a2[1], y);
-	}
-	else {
-		if (xDiff2 == 0) {
-			Ratio = tMatGetLinearRatio(a1[0], a2[0], b1[0]);
-			x = tnsLinearItp(a1[0], a2[0], Ratio);
-			*aRatio = Ratio;
-		}
-		else {
-			k1 = (a2[1] - a1[1]) / xDiff;
-			k2 = (b2[1] - b1[1]) / xDiff2;
+  if (xDiff == 0) {
+    if (xDiff2 == 0) {
+      *aRatio = 0;
+      return 0;
+    }
+    double r2 = tMatGetLinearRatio(b1[0], b2[0], a1[0]);
+    x = tnsLinearItp(b1[0], b2[0], r2);
+    y = tnsLinearItp(b1[1], b2[1], r2);
+    *aRatio = Ratio = tMatGetLinearRatio(a1[1], a2[1], y);
+  }
+  else {
+    if (xDiff2 == 0) {
+      Ratio = tMatGetLinearRatio(a1[0], a2[0], b1[0]);
+      x = tnsLinearItp(a1[0], a2[0], Ratio);
+      *aRatio = Ratio;
+    }
+    else {
+      k1 = (a2[1] - a1[1]) / xDiff;
+      k2 = (b2[1] - b1[1]) / xDiff2;
 
-			if ((k1 == k2))
-				return 0;
+      if ((k1 == k2))
+        return 0;
 
-			x = (a1[1] - b1[1] - k1 * a1[0] + k2 * b1[0]) / (k2 - k1);
+      x = (a1[1] - b1[1] - k1 * a1[0] + k2 * b1[0]) / (k2 - k1);
 
-			Ratio = (x - a1[0]) / xDiff;
+      Ratio = (x - a1[0]) / xDiff;
 
-			*aRatio = Ratio;
-		}
-	}
+      *aRatio = Ratio;
+    }
+  }
 
+  if (b1[0] == b2[0]) {
+    y = tnsLinearItp(a1[1], a2[1], Ratio);
+    if (y > MAX2(b1[1], b2[1]) || y < MIN2(b1[1], b2[1]))
+      return 0;
+  }
+  else if (Ratio <= 0 || Ratio > 1 || (b1[0] > b2[0] && x > b1[0]) ||
+           (b1[0] < b2[0] && x < b1[0]) || (b2[0] > b1[0] && x > b2[0]) ||
+           (b2[0] < b1[0] && x < b2[0]))
+    return 0;
 
-
-	if (b1[0] == b2[0]) {
-		y = tnsLinearItp(a1[1], a2[1], Ratio);
-		if (y > MAX2(b1[1], b2[1]) || y < MIN2(b1[1], b2[1])) return 0;
-	}
-	else
-	if (Ratio <= 0 || Ratio > 1 ||
-	    (b1[0] > b2[0] && x > b1[0]) ||
-	    (b1[0] < b2[0] && x < b1[0]) ||
-	    (b2[0] > b1[0] && x > b2[0]) ||
-	    (b2[0] < b1[0] && x < b2[0]))
-		return 0;
-
-	return 1;
+  return 1;
 }
-BLI_INLINE double lanpr_GetLineZ(tnsVector3d L, tnsVector3d R, real Ratio) {
-	//double z = 1 / tnsLinearItp(1 / L[2], 1 / R[2], Ratio);
-	double z = tnsLinearItp(L[2], R[2], Ratio);
-	return z;
+BLI_INLINE double lanpr_GetLineZ(tnsVector3d L, tnsVector3d R, real Ratio)
+{
+  // double z = 1 / tnsLinearItp(1 / L[2], 1 / R[2], Ratio);
+  double z = tnsLinearItp(L[2], R[2], Ratio);
+  return z;
 }
-BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d L, tnsVector3d R, tnsVector3d FromL) {
-	double r = (FromL[0] - L[0]) / (R[0] - L[0]);
-	return tnsLinearItp(L[2], R[2], r);
-	//return 1 / tnsLinearItp(1 / L[2], 1 / R[2], r);
+BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d L, tnsVector3d R, tnsVector3d FromL)
+{
+  double r = (FromL[0] - L[0]) / (R[0] - L[0]);
+  return tnsLinearItp(L[2], R[2], r);
+  // return 1 / tnsLinearItp(1 / L[2], 1 / R[2], r);
 }
-BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d L, tnsVector3d R, tnsVector3d FromL) {
-	double r = (FromL[0] - L[0]) / (R[0] - L[0]);
-	return r;
-}
-
-BLI_INLINE double tMatGetLinearRatio(real L, real R, real FromL) {
-	double r = (FromL - L) / (R - L);
-	return r;
-}
-BLI_INLINE void tMatVectorMinus2d(tnsVector2d result, tnsVector2d l, tnsVector2d r) {
-	result[0] = l[0] - r[0];
-	result[1] = l[1] - r[1];
+BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d L, tnsVector3d R, tnsVector3d FromL)
+{
+  double r = (FromL[0] - L[0]) / (R[0] - L[0]);
+  return r;
 }
 
-BLI_INLINE void tMatVectorMinus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r) {
-	result[0] = l[0] - r[0];
-	result[1] = l[1] - r[1];
-	result[2] = l[2] - r[2];
+BLI_INLINE double tMatGetLinearRatio(real L, real R, real FromL)
+{
+  double r = (FromL - L) / (R - L);
+  return r;
 }
-BLI_INLINE void tMatVectorSubtract3d(tnsVector3d l, tnsVector3d r) {
-	l[0] = l[0] - r[0];
-	l[1] = l[1] - r[1];
-	l[2] = l[2] - r[2];
-}
-BLI_INLINE void tMatVectorPlus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r) {
-	result[0] = l[0] + r[0];
-	result[1] = l[1] + r[1];
-	result[2] = l[2] + r[2];
-}
-BLI_INLINE void tMatVectorAccum3d(tnsVector3d l, tnsVector3d r) {
-	l[0] = l[0] + r[0];
-	l[1] = l[1] + r[1];
-	l[2] = l[2] + r[2];
-}
-BLI_INLINE void tMatVectorAccum2d(tnsVector2d l, tnsVector2d r) {
-	l[0] = l[0] + r[0];
-	l[1] = l[1] + r[1];
-}
-BLI_INLINE void tMatVectorNegate3d(tnsVector3d result, tnsVector3d l) {
-	result[0] = -l[0];
-	result[1] = -l[1];
-	result[2] = -l[2];
-}
-BLI_INLINE void tMatVectorNegateSelf3d(tnsVector3d l) {
-	l[0] = -l[0];
-	l[1] = -l[1];
-	l[2] = -l[2];
-}
-BLI_INLINE void tMatVectorCopy2d(tnsVector2d from, tnsVector2d to) {
-	to[0] = from[0];
-	to[1] = from[1];
-}
-BLI_INLINE void tMatVectorCopy3d(tnsVector3d from, tnsVector3d to) {
-	to[0] = from[0];
-	to[1] = from[1];
-	to[2] = from[2];
-}
-BLI_INLINE void tMatVectorCopy4d(tnsVector4d from, tnsVector4d to) {
-	to[0] = from[0];
-	to[1] = from[1];
-	to[2] = from[2];
-	to[3] = from[3];
-}
-BLI_INLINE void tMatVectorMultiSelf4d(tnsVector3d from, real num) {
-	from[0] *= num;
-	from[1] *= num;
-	from[2] *= num;
-	from[3] *= num;
-}
-BLI_INLINE void tMatVectorMultiSelf3d(tnsVector3d from, real num) {
-	from[0] *= num;
-	from[1] *= num;
-	from[2] *= num;
-}
-BLI_INLINE void tMatVectorMultiSelf2d(tnsVector3d from, real num) {
-	from[0] *= num;
-	from[1] *= num;
+BLI_INLINE void tMatVectorMinus2d(tnsVector2d result, tnsVector2d l, tnsVector2d r)
+{
+  result[0] = l[0] - r[0];
+  result[1] = l[1] - r[1];
 }
 
-BLI_INLINE real tMatDirectionToRad(tnsVector2d Dir) {
-	real arcc = acos(Dir[0]);
-	real arcs = asin(Dir[1]);
-
-	if (Dir[0] >= 0) {
-		if (Dir[1] >= 0) return arcc;
-		else return TNS_PI * 2 - arcc;
-	}
-	else {
-		if (Dir[1] >= 0) return arcs + TNS_PI / 2;
-		else return TNS_PI + arcs;
-	}
+BLI_INLINE void tMatVectorMinus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
+{
+  result[0] = l[0] - r[0];
+  result[1] = l[1] - r[1];
+  result[2] = l[2] - r[2];
+}
+BLI_INLINE void tMatVectorSubtract3d(tnsVector3d l, tnsVector3d r)
+{
+  l[0] = l[0] - r[0];
+  l[1] = l[1] - r[1];
+  l[2] = l[2] - r[2];
+}
+BLI_INLINE void tMatVectorPlus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
+{
+  result[0] = l[0] + r[0];
+  result[1] = l[1] + r[1];
+  result[2] = l[2] + r[2];
+}
+BLI_INLINE void tMatVectorAccum3d(tnsVector3d l, tnsVector3d r)
+{
+  l[0] = l[0] + r[0];
+  l[1] = l[1] + r[1];
+  l[2] = l[2] + r[2];
+}
+BLI_INLINE void tMatVectorAccum2d(tnsVector2d l, tnsVector2d r)
+{
+  l[0] = l[0] + r[0];
+  l[1] = l[1] + r[1];
+}
+BLI_INLINE void tMatVectorNegate3d(tnsVector3d result, tnsVector3d l)
+{
+  result[0] = -l[0];
+  result[1] = -l[1];
+  result[2] = -l[2];
+}
+BLI_INLINE void tMatVectorNegateSelf3d(tnsVector3d l)
+{
+  l[0] = -l[0];
+  l[1] = -l[1];
+  l[2] = -l[2];
+}
+BLI_INLINE void tMatVectorCopy2d(tnsVector2d from, tnsVector2d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+}
+BLI_INLINE void tMatVectorCopy3d(tnsVector3d from, tnsVector3d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+}
+BLI_INLINE void tMatVectorCopy4d(tnsVector4d from, tnsVector4d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+  to[3] = from[3];
+}
+BLI_INLINE void tMatVectorMultiSelf4d(tnsVector3d from, real num)
+{
+  from[0] *= num;
+  from[1] *= num;
+  from[2] *= num;
+  from[3] *= num;
+}
+BLI_INLINE void tMatVectorMultiSelf3d(tnsVector3d from, real num)
+{
+  from[0] *= num;
+  from[1] *= num;
+  from[2] *= num;
+}
+BLI_INLINE void tMatVectorMultiSelf2d(tnsVector3d from, real num)
+{
+  from[0] *= num;
+  from[1] *= num;
 }
 
+BLI_INLINE real tMatDirectionToRad(tnsVector2d Dir)
+{
+  real arcc = acos(Dir[0]);
+  real arcs = asin(Dir[1]);
 
-BLI_INLINE void tMatVectorConvert4fd(tnsVector4f from, tnsVector4d to) {
-	to[0] = from[0];
-	to[1] = from[1];
-	to[2] = from[2];
-	to[3] = from[3];
+  if (Dir[0] >= 0) {
+    if (Dir[1] >= 0)
+      return arcc;
+    else
+      return TNS_PI * 2 - arcc;
+  }
+  else {
+    if (Dir[1] >= 0)
+      return arcs + TNS_PI / 2;
+    else
+      return TNS_PI + arcs;
+  }
 }
 
-BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to) {
-	to[0] = from[0];
-	to[1] = from[1];
-	to[2] = from[2];
+BLI_INLINE void tMatVectorConvert4fd(tnsVector4f from, tnsVector4d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+  to[3] = from[3];
 }
 
+BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+}
 
 int lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
 real lanpr_LinearInterpolate(real L, real R, real T);
 void lanpr_LinearInterpolate2dv(real *L, real *R, real T, real *Result);
 void lanpr_LinearInterpolate3dv(real *L, real *R, real T, real *Result);
-
-
 
 // functions
 
@@ -774,27 +790,43 @@ void lanpr_LinearInterpolate3dv(real *L, real *R, real T, real *Result);
 void lanpr_init_atlas_inputs(void *ved);
 void lanpr_destroy_atlas(void *ved);
 int lanpr_feed_atlas_data_obj(void *vedata,
-                              float *AtlasPointsL, float *AtlasPointsR,
-                              float *AtlasFaceNormalL, float *AtlasFaceNormalR,
+                              float *AtlasPointsL,
+                              float *AtlasPointsR,
+                              float *AtlasFaceNormalL,
+                              float *AtlasFaceNormalR,
                               float *AtlasEdgeMask,
-                              Object *ob, int begin_index);
+                              Object *ob,
+                              int begin_index);
 
 int lanpr_feed_atlas_data_intersection_cache(void *vedata,
-                                             float *AtlasPointsL, float *AtlasPointsR,
-                                             float *AtlasFaceNormalL, float *AtlasFaceNormalR,
+                                             float *AtlasPointsL,
+                                             float *AtlasPointsR,
+                                             float *AtlasFaceNormalL,
+                                             float *AtlasFaceNormalR,
                                              float *AtlasEdgeMask,
                                              int begin_index);
 
 int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_index);
 void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index);
 
-void lanpr_dpix_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, LANPR_PassList *psl, LANPR_PrivateData *pd, SceneLANPR *lanpr, GPUFrameBuffer *DefaultFB, int is_render);
+void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
+                           LANPR_FramebufferList *fbl,
+                           LANPR_PassList *psl,
+                           LANPR_PrivateData *pd,
+                           SceneLANPR *lanpr,
+                           GPUFrameBuffer *DefaultFB,
+                           int is_render);
 
-void lanpr_snake_draw_scene(LANPR_TextureList *txl, LANPR_FramebufferList *fbl, LANPR_PassList *psl, LANPR_PrivateData *pd, SceneLANPR *lanpr, GPUFrameBuffer *DefaultFB, int is_render);
+void lanpr_snake_draw_scene(LANPR_TextureList *txl,
+                            LANPR_FramebufferList *fbl,
+                            LANPR_PassList *psl,
+                            LANPR_PrivateData *pd,
+                            SceneLANPR *lanpr,
+                            GPUFrameBuffer *DefaultFB,
+                            int is_render);
 
 void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render);
 
 void lanpr_set_render_flag();
 void lanpr_clear_render_flag();
 int lanpr_during_render();
-

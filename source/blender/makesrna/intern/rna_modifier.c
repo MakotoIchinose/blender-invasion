@@ -573,8 +573,8 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_SurfaceDeformModifier;
     case eModifierType_WeightedNormal:
       return &RNA_WeightedNormalModifier;
-		case eModifierType_MyBMesh:
-			return &RNA_MyBMeshModifier;
+    case eModifierType_MyBMesh:
+      return &RNA_MyBMeshModifier;
     /* Default */
     case eModifierType_None:
     case eModifierType_ShapeKey:
@@ -5837,59 +5837,59 @@ static void rna_def_modifier_surfacedeform(BlenderRNA *brna)
 
 static void rna_def_modifier_mybmesh(BlenderRNA *brna)
 {
-	StructRNA *srna;
-	PropertyRNA *prop;
+  StructRNA *srna;
+  PropertyRNA *prop;
 
-	srna = RNA_def_struct(brna, "MyBMeshModifier", "Modifier");
-	RNA_def_struct_ui_text(srna, "Wireframe Modifier", "Wireframe effect modifier");
-	RNA_def_struct_sdna(srna, "MyBMeshModifierData");
-	RNA_def_struct_ui_icon(srna, ICON_MOD_MESHDEFORM);
+  srna = RNA_def_struct(brna, "MyBMeshModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Wireframe Modifier", "Wireframe effect modifier");
+  RNA_def_struct_sdna(srna, "MyBMeshModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_MESHDEFORM);
 
-	prop = RNA_def_property(srna, "do_tri", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_TRIANG);
-	RNA_def_property_ui_text(prop, "b)", "Triangulate the mesh");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_tri", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_TRIANG);
+  RNA_def_property_ui_text(prop, "b)", "Triangulate the mesh");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_ff_bb_split", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_FF_SPLIT);
-	RNA_def_property_ui_text(prop, "Split", "Split inconsitent FF/BB edges");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_ff_bb_split", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_FF_SPLIT);
+  RNA_def_property_ui_text(prop, "Split", "Split inconsitent FF/BB edges");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_cusp_dect", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_CUSP_D);
-	RNA_def_property_ui_text(prop, "Cusp detetion", "Detect cusps and insert new edges");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_cusp_dect", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_CUSP_D);
+  RNA_def_property_ui_text(prop, "Cusp detetion", "Detect cusps and insert new edges");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_insert", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_FB_SPLIT);
-	RNA_def_property_ui_text(prop, "FB split", "Split FB edges");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_insert", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_FB_SPLIT);
+  RNA_def_property_ui_text(prop, "FB split", "Split FB edges");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_cusp_insert", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_CUSP_I);
-	RNA_def_property_ui_text(prop, "Cusp insertion", "Insert cusps from detection stage");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_cusp_insert", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_CUSP_I);
+  RNA_def_property_ui_text(prop, "Cusp insertion", "Insert cusps from detection stage");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_rad_insert", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_RAD_I);
-	RNA_def_property_ui_text(prop, "Radial edge insert", "Insert radial edges");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_rad_insert", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_RAD_I);
+  RNA_def_property_ui_text(prop, "Radial edge insert", "Insert radial edges");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_rad_flip", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_RAD_FLIP);
-	RNA_def_property_ui_text(prop, "Radial edge flip", "Do radial edge flipping");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_rad_flip", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_RAD_FLIP);
+  RNA_def_property_ui_text(prop, "Radial edge flip", "Do radial edge flipping");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "do_opti", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_OPTI);
-	RNA_def_property_ui_text(prop, "Mesh optimization", "Try to eliminate inconsistent faces");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "do_opti", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_MYBMESH_OPTI);
+  RNA_def_property_ui_text(prop, "Mesh optimization", "Try to eliminate inconsistent faces");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "camera_object", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "camera_ob");
-	RNA_def_property_ui_text(prop, "Camera Object", "Object to use as camera location");
-	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
-	RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+  prop = RNA_def_property(srna, "camera_object", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "camera_ob");
+  RNA_def_property_ui_text(prop, "Camera Object", "Object to use as camera location");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 }
 
 static void rna_def_modifier_weightednormal(BlenderRNA *brna)
@@ -5971,128 +5971,130 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
 
 void RNA_def_modifier(BlenderRNA *brna)
 {
-	StructRNA *srna;
-	PropertyRNA *prop;
+  StructRNA *srna;
+  PropertyRNA *prop;
 
-	/* data */
-	srna = RNA_def_struct(brna, "Modifier", NULL);
-	RNA_def_struct_ui_text(srna, "Modifier", "Modifier affecting the geometry data of an object");
-	RNA_def_struct_refine_func(srna, "rna_Modifier_refine");
-	RNA_def_struct_path_func(srna, "rna_Modifier_path");
-	RNA_def_struct_sdna(srna, "ModifierData");
+  /* data */
+  srna = RNA_def_struct(brna, "Modifier", NULL);
+  RNA_def_struct_ui_text(srna, "Modifier", "Modifier affecting the geometry data of an object");
+  RNA_def_struct_refine_func(srna, "rna_Modifier_refine");
+  RNA_def_struct_path_func(srna, "rna_Modifier_path");
+  RNA_def_struct_sdna(srna, "ModifierData");
 
-	/* strings */
-	prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Modifier_name_set");
-	RNA_def_property_ui_text(prop, "Name", "Modifier name");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, NULL);
-	RNA_def_struct_name_property(srna, prop);
+  /* strings */
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Modifier_name_set");
+  RNA_def_property_ui_text(prop, "Name", "Modifier name");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, NULL);
+  RNA_def_struct_name_property(srna, prop);
 
-	/* enums */
-	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
-	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-	RNA_def_property_enum_sdna(prop, NULL, "type");
-	RNA_def_property_enum_items(prop, rna_enum_object_modifier_type_items);
-	RNA_def_property_ui_text(prop, "Type", "");
+  /* enums */
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_enum_sdna(prop, NULL, "type");
+  RNA_def_property_enum_items(prop, rna_enum_object_modifier_type_items);
+  RNA_def_property_ui_text(prop, "Type", "");
 
-	/* flags */
-	prop = RNA_def_property(srna, "show_viewport", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Realtime);
-	RNA_def_property_ui_text(prop, "Realtime", "Display modifier in viewport");
-	RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
-	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
-	RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_ON, 1);
+  /* flags */
+  prop = RNA_def_property(srna, "show_viewport", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Realtime);
+  RNA_def_property_ui_text(prop, "Realtime", "Display modifier in viewport");
+  RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_ON, 1);
 
-	prop = RNA_def_property(srna, "show_render", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Render);
-	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
-	RNA_def_property_ui_text(prop, "Render", "Use modifier during render");
-	RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_ON, 1);
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+  prop = RNA_def_property(srna, "show_render", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Render);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_ui_text(prop, "Render", "Use modifier during render");
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_ON, 1);
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
-	prop = RNA_def_property(srna, "show_in_editmode", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Editmode);
-	RNA_def_property_ui_text(prop, "Edit Mode", "Display modifier in Edit mode");
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
-	RNA_def_property_ui_icon(prop, ICON_EDITMODE_HLT, 0);
+  prop = RNA_def_property(srna, "show_in_editmode", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Editmode);
+  RNA_def_property_ui_text(prop, "Edit Mode", "Display modifier in Edit mode");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_ui_icon(prop, ICON_EDITMODE_HLT, 0);
 
-	prop = RNA_def_property(srna, "show_on_cage", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_OnCage);
-	RNA_def_property_ui_text(prop, "On Cage", "Adjust edit cage to modifier result");
-	RNA_def_property_ui_icon(prop, ICON_MESH_DATA, 0);
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "show_on_cage", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_OnCage);
+  RNA_def_property_ui_text(prop, "On Cage", "Adjust edit cage to modifier result");
+  RNA_def_property_ui_icon(prop, ICON_MESH_DATA, 0);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-	RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Expanded);
-	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
-	RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
-	RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
+  prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Expanded);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
+  RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 
-	prop = RNA_def_property(srna, "use_apply_on_spline", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_ApplyOnSpline);
-	RNA_def_property_ui_text(prop, "Apply on spline",
-	                         "Apply this and all preceding deformation modifiers on splines' points rather than "
-	                         "on filled curve/surface");
-	RNA_def_property_ui_icon(prop, ICON_SURFACE_DATA, 0);
-	RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "use_apply_on_spline", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_ApplyOnSpline);
+  RNA_def_property_ui_text(
+      prop,
+      "Apply on spline",
+      "Apply this and all preceding deformation modifiers on splines' points rather than "
+      "on filled curve/surface");
+  RNA_def_property_ui_icon(prop, ICON_SURFACE_DATA, 0);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-	/* types */
-	rna_def_modifier_subsurf(brna);
-	rna_def_modifier_lattice(brna);
-	rna_def_modifier_curve(brna);
-	rna_def_modifier_build(brna);
-	rna_def_modifier_mirror(brna);
-	rna_def_modifier_decimate(brna);
-	rna_def_modifier_wave(brna);
-	rna_def_modifier_armature(brna);
-	rna_def_modifier_hook(brna);
-	rna_def_modifier_softbody(brna);
-	rna_def_modifier_boolean(brna);
-	rna_def_modifier_array(brna);
-	rna_def_modifier_edgesplit(brna);
-	rna_def_modifier_displace(brna);
-	rna_def_modifier_uvproject(brna);
-	rna_def_modifier_smooth(brna);
-	rna_def_modifier_correctivesmooth(brna);
-	rna_def_modifier_cast(brna);
-	rna_def_modifier_meshdeform(brna);
-	rna_def_modifier_particlesystem(brna);
-	rna_def_modifier_particleinstance(brna);
-	rna_def_modifier_explode(brna);
-	rna_def_modifier_cloth(brna);
-	rna_def_modifier_collision(brna);
-	rna_def_modifier_bevel(brna);
-	rna_def_modifier_shrinkwrap(brna);
-	rna_def_modifier_fluidsim(brna);
-	rna_def_modifier_mask(brna);
-	rna_def_modifier_simpledeform(brna);
-	rna_def_modifier_warp(brna);
-	rna_def_modifier_multires(brna);
-	rna_def_modifier_surface(brna);
-	rna_def_modifier_smoke(brna);
-	rna_def_modifier_solidify(brna);
-	rna_def_modifier_screw(brna);
-	rna_def_modifier_uvwarp(brna);
-	rna_def_modifier_weightvgedit(brna);
-	rna_def_modifier_weightvgmix(brna);
-	rna_def_modifier_weightvgproximity(brna);
-	rna_def_modifier_dynamic_paint(brna);
-	rna_def_modifier_ocean(brna);
-	rna_def_modifier_remesh(brna);
-	rna_def_modifier_skin(brna);
-	rna_def_modifier_laplaciansmooth(brna);
-	rna_def_modifier_triangulate(brna);
-	rna_def_modifier_meshcache(brna);
-	rna_def_modifier_laplaciandeform(brna);
-	rna_def_modifier_wireframe(brna);
-	rna_def_modifier_datatransfer(brna);
-	rna_def_modifier_normaledit(brna);
-	rna_def_modifier_meshseqcache(brna);
-	rna_def_modifier_surfacedeform(brna);
-	rna_def_modifier_mybmesh(brna);
-	rna_def_modifier_weightednormal(brna);
+  /* types */
+  rna_def_modifier_subsurf(brna);
+  rna_def_modifier_lattice(brna);
+  rna_def_modifier_curve(brna);
+  rna_def_modifier_build(brna);
+  rna_def_modifier_mirror(brna);
+  rna_def_modifier_decimate(brna);
+  rna_def_modifier_wave(brna);
+  rna_def_modifier_armature(brna);
+  rna_def_modifier_hook(brna);
+  rna_def_modifier_softbody(brna);
+  rna_def_modifier_boolean(brna);
+  rna_def_modifier_array(brna);
+  rna_def_modifier_edgesplit(brna);
+  rna_def_modifier_displace(brna);
+  rna_def_modifier_uvproject(brna);
+  rna_def_modifier_smooth(brna);
+  rna_def_modifier_correctivesmooth(brna);
+  rna_def_modifier_cast(brna);
+  rna_def_modifier_meshdeform(brna);
+  rna_def_modifier_particlesystem(brna);
+  rna_def_modifier_particleinstance(brna);
+  rna_def_modifier_explode(brna);
+  rna_def_modifier_cloth(brna);
+  rna_def_modifier_collision(brna);
+  rna_def_modifier_bevel(brna);
+  rna_def_modifier_shrinkwrap(brna);
+  rna_def_modifier_fluidsim(brna);
+  rna_def_modifier_mask(brna);
+  rna_def_modifier_simpledeform(brna);
+  rna_def_modifier_warp(brna);
+  rna_def_modifier_multires(brna);
+  rna_def_modifier_surface(brna);
+  rna_def_modifier_smoke(brna);
+  rna_def_modifier_solidify(brna);
+  rna_def_modifier_screw(brna);
+  rna_def_modifier_uvwarp(brna);
+  rna_def_modifier_weightvgedit(brna);
+  rna_def_modifier_weightvgmix(brna);
+  rna_def_modifier_weightvgproximity(brna);
+  rna_def_modifier_dynamic_paint(brna);
+  rna_def_modifier_ocean(brna);
+  rna_def_modifier_remesh(brna);
+  rna_def_modifier_skin(brna);
+  rna_def_modifier_laplaciansmooth(brna);
+  rna_def_modifier_triangulate(brna);
+  rna_def_modifier_meshcache(brna);
+  rna_def_modifier_laplaciandeform(brna);
+  rna_def_modifier_wireframe(brna);
+  rna_def_modifier_datatransfer(brna);
+  rna_def_modifier_normaledit(brna);
+  rna_def_modifier_meshseqcache(brna);
+  rna_def_modifier_surfacedeform(brna);
+  rna_def_modifier_mybmesh(brna);
+  rna_def_modifier_weightednormal(brna);
 }
 
 #endif

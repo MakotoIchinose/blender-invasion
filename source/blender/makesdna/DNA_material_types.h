@@ -139,10 +139,10 @@ typedef enum eMaterialGPencilStyle_Mode {
 
 typedef enum eMaterialLANPRMaskLayerCount {
   LANPR_MASK_NONE = 0,
-  LANPR_MASK_ONE  = 1,
-  LANPR_MASK_TWO  = 2,
+  LANPR_MASK_ONE = 1,
+  LANPR_MASK_TWO = 2,
   LANPR_MASK_THREE = 3,
-  LANPR_MASK_FOUR =4,
+  LANPR_MASK_FOUR = 4,
 } eMaterialLANPRMaskLayerCount;
 
 typedef struct Material {
@@ -186,13 +186,13 @@ typedef struct Material {
   short vcol_alpha;
 
   /* lanpr settings */
-  char                    mask_layers_count;
-  char                    exclude_line_display;
-  char                    exclude_line_geometry;
-  char                   _pad5;
+  char mask_layers_count;
+  char exclude_line_display;
+  char exclude_line_geometry;
+  char _pad5;
   struct LANPR_LineLayer *active_layer;
-  ListBase                line_layers;
-  
+  ListBase line_layers;
+
   /* Texture painting slots. */
   short paint_active_slot;
   short paint_clone_slot;
@@ -211,7 +211,7 @@ typedef struct Material {
    * Cached slots for texture painting, must be refreshed in
    * refresh_texpaint_image_cache before using.
    */
-  char                     _pad4[4];
+  char _pad4[4];
   struct TexPaintSlot *texpaintslot;
 
   /** Runtime cache for GLSL materials. */

@@ -39,158 +39,150 @@ typedef int tnsVector2i[2];
 #define deg(r) r / TNS_PI * 180.0
 #define rad(d) d *TNS_PI / 180.0
 
-#define NEED_STRUCTURE(a) \
-	typedef struct _##a a;
+#define NEED_STRUCTURE(a) typedef struct _##a a;
 
 #define STRUCTURE(a) \
-	typedef struct _##a a; \
-	struct _##a
+  typedef struct _##a a; \
+  struct _##a
 
 #define DBL_TRIANGLE_LIM 1e-8
 #define DBL_EDGE_LIM 1e-9
 
-
 typedef struct _nListItem nListItem;
 struct _nListItem {
-	void *pNext;
-	void *pPrev;
+  void *pNext;
+  void *pPrev;
 };
 
 typedef struct _nListItem2 nListItem2;
 struct _nListItem2 {
-	void *O1;
-	void *O2;
-	void *pNext;
-	void *pPrev;
+  void *O1;
+  void *O2;
+  void *pNext;
+  void *pPrev;
 };
 
 typedef struct _nListItemPointer nListItemPointer;
 struct _nListItemPointer {
-	void *pNext;
-	void *pPrev;
-	void *p;
+  void *pNext;
+  void *pPrev;
+  void *p;
 };
 
 typedef struct _nHash256 nHash256;
 struct _nHash256 {
-	ListBase Entries[256];
+  ListBase Entries[256];
 };
 
 typedef struct _nHash65536 nHash65536;
 struct _nHash65536 {
-	ListBase Entries[65536];
-	//nHash256 HashHandles[256];
+  ListBase Entries[65536];
+  // nHash256 HashHandles[256];
 };
 
 typedef struct _nHash16M nHash16M;
 struct _nHash16M {
-	ListBase Entries[16777216];
+  ListBase Entries[16777216];
 };
 
 typedef struct _nSafeString nSafeString;
 struct _nSafeString {
-	nListItem Item;
-	char *Ptr;
+  nListItem Item;
+  char *Ptr;
 };
 
 typedef struct _nSafeStringCollection nSafeStringCollection;
 struct _nSafeStringCollection {
-	ListBase SafeStrings;
+  ListBase SafeStrings;
 };
 
 typedef struct _nStringSplitor nStringSplitor;
 struct _nStringSplitor {
-	int NumberParts;
-	ListBase parts;
+  int NumberParts;
+  ListBase parts;
 };
 
 typedef struct _nStringPart nStringPart;
 struct _nStringPart {
-	nListItem Item;
-	char *Content;
-	int IntValue;
-	real FloatValue;
-	char Type;
+  nListItem Item;
+  char *Content;
+  int IntValue;
+  real FloatValue;
+  char Type;
 };
 
 STRUCTURE(nStringLine)
 {
-	nListItem Item;
-	char Buf[1024];
+  nListItem Item;
+  char Buf[1024];
 };
 
 STRUCTURE(nStringEdit)
 {
-	ListBase Lines;
-	int CusorLine, CusorBefore;
-	int BeginLine, BeginBefore;
-	int EndLine, EndBefore;
+  ListBase Lines;
+  int CusorLine, CusorBefore;
+  int BeginLine, BeginBefore;
+  int EndLine, EndBefore;
 };
 
-
-#define NUL_MEMORY_POOL_1MB   1048576
+#define NUL_MEMORY_POOL_1MB 1048576
 #define NUL_MEMORY_POOL_128MB 134217728
 #define NUL_MEMORY_POOL_256MB 268435456
 #define NUL_MEMORY_POOL_512MB 536870912
 
 STRUCTURE(nMemoryPool)
 {
-	nListItem Item;
-	int NodeSize;
-	int CountPerPool;
-	ListBase Pools;
+  nListItem Item;
+  int NodeSize;
+  int CountPerPool;
+  ListBase Pools;
 };
 
 STRUCTURE(nMemoryPoolPart)
 {
-	nListItem Item;
-	ListBase MemoryNodes;
-	ListBase FreeMemoryNodes;
-	nMemoryPool *PoolRoot;
-	//  <------Mem Begin Here.
+  nListItem Item;
+  ListBase MemoryNodes;
+  ListBase FreeMemoryNodes;
+  nMemoryPool *PoolRoot;
+  //  <------Mem Begin Here.
 };
 
 NEED_STRUCTURE(nDBInst);
 
 STRUCTURE(nMemoryPoolNode)
 {
-	nListItem Item;
-	nMemoryPoolPart *InPool;
-	nDBInst *DBInst;
-	//  <------User Mem Begin Here
+  nListItem Item;
+  nMemoryPoolPart *InPool;
+  nDBInst *DBInst;
+  //  <------User Mem Begin Here
 };
 
 STRUCTURE(nStaticMemoryPoolNode)
 {
-	nListItem Item;
-	int UsedByte;
-	//  <----------- User Mem Start Here
+  nListItem Item;
+  int UsedByte;
+  //  <----------- User Mem Start Here
 };
 
 STRUCTURE(nStaticMemoryPool)
 {
-	int EachSize;
-	ListBase Pools;
-	SpinLock csMem;
+  int EachSize;
+  ListBase Pools;
+  SpinLock csMem;
 };
 
-#define CreateNew(Type) \
-	MEM_callocN(sizeof(Type), "VOID")//nutCalloc(sizeof(Type),1)
+#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  // nutCalloc(sizeof(Type),1)
 
-#define CreateNew_Size(size) \
-	nutCalloc(size, 1)
+#define CreateNew_Size(size) nutCalloc(size, 1)
 
 #define CreateNewBuffer(Type, Num) \
-	MEM_callocN(sizeof(Type) *Num, "VOID BUFFER")//nutCalloc(sizeof(Type),Num);
+  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER")  // nutCalloc(sizeof(Type),Num);
 
-#define FreeMem(ptr) \
-	MEM_freeN(ptr)//nutFreeMem((&ptr))
+#define FreeMem(ptr) MEM_freeN(ptr)  // nutFreeMem((&ptr))
 
 #ifndef elif
-#define elif \
-	else if
+#  define elif else if
 #endif
-
 
 void *nutCalloc(int size, int num);
 
@@ -200,18 +192,19 @@ int nutFloatCompare(real l, real r);
 
 int nutSameAddress(void *l, void *r);
 
-
 void list_handle_empty(ListBase *h);
 
 void list_clear_prev_next(nListItem *li);
 
 void list_insert_item_before(ListBase *Handle, nListItem *toIns, nListItem *pivot);
 void list_insert_item_after(ListBase *Handle, nListItem *toIns, nListItem *pivot);
-void list_insert_segment_before(ListBase *Handle, nListItem *Begin, nListItem *End, nListItem *pivot);
+void list_insert_segment_before(ListBase *Handle,
+                                nListItem *Begin,
+                                nListItem *End,
+                                nListItem *pivot);
 void lstInsertSegmentAfter(ListBase *Handle, nListItem *Begin, nListItem *End, nListItem *pivot);
-int   lstHaveItemInList(ListBase *Handle);
+int lstHaveItemInList(ListBase *Handle);
 void *lst_get_top(ListBase *Handle);
-
 
 void *list_append_pointer_only(ListBase *h, void *p);
 void *list_append_pointer_sized_only(ListBase *h, void *p, int size);
@@ -256,10 +249,9 @@ void mem_init_pool(nMemoryPool *mph, int NodeSize);
 void mem_init_pool_small(nMemoryPool *mph, int NodeSize);
 nMemoryPoolPart *mem_new_pool_part(nMemoryPool *mph);
 
-#define memAquireOnly(a) \
-	MEM_callocN(a, "NONE")
+#define memAquireOnly(a) MEM_callocN(a, "NONE")
 
-#define memAquire  memAquireOnly
+#define memAquire memAquireOnly
 
 void mem_free(void *Data);
 void mem_destroy_pool(nMemoryPool *Handle);
@@ -275,7 +267,8 @@ real tmat_dist_idv2(real x1, real y1, real x2, real y2);
 real tmat_dist_3dv(tnsVector3d l, tnsVector3d r);
 real tmat_dist_2dv(tnsVector2d l, tnsVector2d r);
 
-real tmat_length_3d(tnsVector3d l); real tmat_length_2d(tnsVector3d l);
+real tmat_length_3d(tnsVector3d l);
+real tmat_length_2d(tnsVector3d l);
 void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
 void tmat_normalize_3f(tnsVector3f result, tnsVector3f l);
 void tmat_normalize_self_3d(tnsVector3d result);
@@ -294,10 +287,11 @@ void tmat_apply_transform_44d(tnsVector4d result, tnsMatrix44d mat, tnsVector4d 
 void tmat_apply_transform_43df(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
 void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
 
-
 void tmat_load_identity_44d(tnsMatrix44d m);
-void tmat_make_ortho_matrix_44d(tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
-void tmat_make_perspective_matrix_44d(tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax);
+void tmat_make_ortho_matrix_44d(
+    tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
+void tmat_make_perspective_matrix_44d(
+    tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax);
 void tmat_make_translation_matrix_44d(tnsMatrix44d mTrans, real x, real y, real z);
 void tmat_make_rotation_matrix_44d(tnsMatrix44d m, real angle_rad, real x, real y, real z);
 void tmat_make_scale_matrix_44d(tnsMatrix44d m, real x, real y, real z);
@@ -318,4 +312,3 @@ void tmat_normalize_self_3d(tnsVector3d result);
 real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
 real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-

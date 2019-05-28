@@ -368,53 +368,53 @@ static void rna_lanpr_enable_lines_set(PointerRNA *ptr, const bool value)
 }
 
 void rna_lanpr_material_active_line_layer_index_range(
-	PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+    PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
 {
-	Material *mat = (Material *)ptr->data;
-	*min = 0;
-	*max = max_ii(0, BLI_listbase_count(&mat->line_layers) - 1);
+  Material *mat = (Material *)ptr->data;
+  *min = 0;
+  *max = max_ii(0, BLI_listbase_count(&mat->line_layers) - 1);
 }
 
 int rna_lanpr_material_active_line_layer_index_get(PointerRNA *ptr)
 {
-	Material *mat = (Material *)ptr->data;
-	LANPR_LineLayer *ls;
-	int i = 0;
-	for (ls = mat->line_layers.first; ls; ls = ls->next) {
-		if (ls == mat->active_layer) return i;
-		i++;
-	}
-	return 0;
+  Material *mat = (Material *)ptr->data;
+  LANPR_LineLayer *ls;
+  int i = 0;
+  for (ls = mat->line_layers.first; ls; ls = ls->next) {
+    if (ls == mat->active_layer)
+      return i;
+    i++;
+  }
+  return 0;
 }
 
 void rna_lanpr_material_active_line_layer_index_set(PointerRNA *ptr, int value)
 {
-	Material *mat = (Material *)ptr->data;
-	LANPR_LineLayer *ls;
-	int i = 0;
-	for (ls = mat->line_layers.first; ls; ls = ls->next) {
-		if (i == value) {
-			mat->active_layer = ls;
-			return;
-		}
-		i++;
-	}
-	mat->active_layer = 0;
+  Material *mat = (Material *)ptr->data;
+  LANPR_LineLayer *ls;
+  int i = 0;
+  for (ls = mat->line_layers.first; ls; ls = ls->next) {
+    if (i == value) {
+      mat->active_layer = ls;
+      return;
+    }
+    i++;
+  }
+  mat->active_layer = 0;
 }
 
 PointerRNA rna_lanpr_material_active_line_layer_get(PointerRNA *ptr)
 {
-	Material *mat = (Material *)ptr->data;
-	LANPR_LineLayer *ls = mat->active_layer;
-	return rna_pointer_inherit_refine(ptr, &RNA_LANPR_LineLayer, ls);
+  Material *mat = (Material *)ptr->data;
+  LANPR_LineLayer *ls = mat->active_layer;
+  return rna_pointer_inherit_refine(ptr, &RNA_LANPR_LineLayer, ls);
 }
 
 void rna_lanpr_material_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
 {
-	Material *mat = (Material *)ptr->data;
-	mat->active_layer = value.data;
+  Material *mat = (Material *)ptr->data;
+  mat->active_layer = value.data;
 }
-
 
 #else
 
@@ -469,7 +469,7 @@ static void rna_def_material_display(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_Material_update");
 }
 
-static void rna_def_material_lanpr(struct StructRNA *srna,struct BlenerRNA *brna)
+static void rna_def_material_lanpr(struct StructRNA *srna, struct BlenerRNA *brna)
 {
   PropertyRNA *prop;
 
@@ -480,41 +480,47 @@ static void rna_def_material_lanpr(struct StructRNA *srna,struct BlenerRNA *brna
       {0, NULL, 0, NULL, NULL},
   };
 
-  
   prop = RNA_def_property(srna, "enable_lines", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Enable Lines", "Enable feature line calculation");
   RNA_def_property_boolean_funcs(prop, "rna_lanpr_enable_lines_get", "rna_lanpr_enable_lines_set");
 
   prop = RNA_def_property(srna, "exclude_line_geometry", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Exclude Line Geometry", "Remove geometry from this material from feature line calculation.");
+  RNA_def_property_ui_text(prop,
+                           "Exclude Line Geometry",
+                           "Remove geometry from this material from feature line calculation.");
 
   prop = RNA_def_property(srna, "mask_layers_count", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_items(prop, lanpr_material_mask_layer_count);
-	RNA_def_property_enum_default(prop, 0);
-	RNA_def_property_ui_text(prop, "Mask Layers", "Reduce occlusion level by layers");
+  RNA_def_property_enum_items(prop, lanpr_material_mask_layer_count);
+  RNA_def_property_enum_default(prop, 0);
+  RNA_def_property_ui_text(prop, "Mask Layers", "Reduce occlusion level by layers");
 
   prop = RNA_def_property(srna, "line_layers", PROP_COLLECTION, PROP_NONE);
-	RNA_def_property_collection_sdna(prop, NULL, "line_layers", NULL);
-	RNA_def_property_struct_type(prop, "LANPR_LineLayer");
-	RNA_def_property_ui_text(prop, "Line Layers", "LANPR Line Layers");
+  RNA_def_property_collection_sdna(prop, NULL, "line_layers", NULL);
+  RNA_def_property_struct_type(prop, "LANPR_LineLayer");
+  RNA_def_property_ui_text(prop, "Line Layers", "LANPR Line Layers");
 
   RNA_def_property_srna(prop, "MaterialLineLayers");
-	srna = RNA_def_struct(brna, "MaterialLineLayers", NULL);
-	RNA_def_struct_sdna(srna, "Material");
-	RNA_def_struct_ui_text(srna, "Override Line Layers", "");
+  srna = RNA_def_struct(brna, "MaterialLineLayers", NULL);
+  RNA_def_struct_sdna(srna, "Material");
+  RNA_def_struct_ui_text(srna, "Override Line Layers", "");
 
-	prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
-	RNA_def_property_struct_type(prop, "LANPR_LineLayer");
-	RNA_def_property_pointer_funcs(prop, "rna_lanpr_material_active_line_layer_get", "rna_lanpr_material_active_line_layer_set", NULL, NULL);
-	RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
-	RNA_def_property_update(prop, NC_MATERIAL, NULL);
+  prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "LANPR_LineLayer");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_lanpr_material_active_line_layer_get",
+                                 "rna_lanpr_material_active_line_layer_set",
+                                 NULL,
+                                 NULL);
+  RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
+  RNA_def_property_update(prop, NC_MATERIAL, NULL);
 
-	prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
-	RNA_def_property_int_funcs(prop, "rna_lanpr_material_active_line_layer_index_get",
-	                           "rna_lanpr_material_active_line_layer_index_set",
-	                           "rna_lanpr_material_active_line_layer_index_range");
-	RNA_def_property_ui_text(prop, "Active Line Layer Index", "Index of active line layer slot");
-	RNA_def_property_update(prop, NC_MATERIAL, NULL);
+  prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(prop,
+                             "rna_lanpr_material_active_line_layer_index_get",
+                             "rna_lanpr_material_active_line_layer_index_set",
+                             "rna_lanpr_material_active_line_layer_index_range");
+  RNA_def_property_ui_text(prop, "Active Line Layer Index", "Index of active line layer slot");
+  RNA_def_property_update(prop, NC_MATERIAL, NULL);
 }
 
 static void rna_def_material_greasepencil(BlenderRNA *brna)

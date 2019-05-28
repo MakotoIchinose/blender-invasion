@@ -40,97 +40,97 @@ struct Object;
 struct Material;
 struct Collection;
 
-#define LANPR_MASTER_MODE_SOFTWARE     0
-#define LANPR_MASTER_MODE_DPIX         1
-#define LANPR_MASTER_MODE_SNAKE        2
+#define LANPR_MASTER_MODE_SOFTWARE 0
+#define LANPR_MASTER_MODE_DPIX 1
+#define LANPR_MASTER_MODE_SNAKE 2
 
 #define LANPR_POST_PROCESSING_DISABLED 0
-#define LANPR_POST_PROCESSING_ENABLED  1
+#define LANPR_POST_PROCESSING_ENABLED 1
 
-#define LANPR_USE_DIFFERENT_TAPER      0
-#define LANPR_USE_SAME_TAPER           1
+#define LANPR_USE_DIFFERENT_TAPER 0
+#define LANPR_USE_SAME_TAPER 1
 
-#define LANPR_DISABLE_TIP_EXTEND       0
-#define LANPR_ENABLE_TIP_EXTEND        1
+#define LANPR_DISABLE_TIP_EXTEND 0
+#define LANPR_ENABLE_TIP_EXTEND 1
 
-#define LANPR_NORMAL_DONT_CARE         0
-#define LANPR_NORMAL_DIRECTIONAL       1
-#define LANPR_NORMAL_POINT             2
-#define LANPR_NORMAL_2D                3
+#define LANPR_NORMAL_DONT_CARE 0
+#define LANPR_NORMAL_DIRECTIONAL 1
+#define LANPR_NORMAL_POINT 2
+#define LANPR_NORMAL_2D 3
 
-#define LANPR_COMPONENT_MODE_ALL          0
-#define LANPR_COMPONENT_MODE_OBJECT       1
-#define LANPR_COMPONENT_MODE_MATERIAL     2
-#define LANPR_COMPONENT_MODE_COLLECTION   3
+#define LANPR_COMPONENT_MODE_ALL 0
+#define LANPR_COMPONENT_MODE_OBJECT 1
+#define LANPR_COMPONENT_MODE_MATERIAL 2
+#define LANPR_COMPONENT_MODE_COLLECTION 3
 //#define LANPR_COMPONENT_MODE_REST         4 // use _ALL
 
-#define LANPR_COMPONENT_INCLUSIVE         0
-#define LANPR_COMPONENT_EXCLUSIVE         1
+#define LANPR_COMPONENT_INCLUSIVE 0
+#define LANPR_COMPONENT_EXCLUSIVE 1
 
-#define LANPR_COMPONENT_LOGIG_OR          0
-#define LANPR_COMPONENT_LOGIC_AND         1
+#define LANPR_COMPONENT_LOGIG_OR 0
+#define LANPR_COMPONENT_LOGIC_AND 1
 
 struct DRWShadingGroup;
 
 typedef struct LANPR_LineLayerComponent {
-	struct LANPR_LineLayerComponent *next, *prev;
+  struct LANPR_LineLayerComponent *next, *prev;
 
-	struct Object     *object_select;
-	struct Material   *material_select;
-	struct Collection *collection_select;
+  struct Object *object_select;
+  struct Material *material_select;
+  struct Collection *collection_select;
 
-	int component_mode;
-	int what;
+  int component_mode;
+  int what;
 
-}LANPR_LineLayerComponent;
+} LANPR_LineLayerComponent;
 
 typedef struct LANPR_LineLayer {
-	struct LANPR_LineLayer *next, *prev;
+  struct LANPR_LineLayer *next, *prev;
 
-	int type;
+  int type;
 
-	int use_qi_range;
+  int use_qi_range;
 
-	int qi_begin;
-	int qi_end;        /* these are for QI Range thing... just occlusion levels */
+  int qi_begin;
+  int qi_end; /* these are for QI Range thing... just occlusion levels */
 
-	int enable_contour;
-	int enable_crease;
-	int enable_edge_mark;
-	int enable_material_seperate;
-	int enable_intersection;
+  int enable_contour;
+  int enable_crease;
+  int enable_edge_mark;
+  int enable_material_seperate;
+  int enable_intersection;
 
-	float thickness;    /* default is for contour */
-	float thickness_crease;
-	float thickness_material;
-	float thickness_edge_mark;
-	float thickness_intersection;
+  float thickness; /* default is for contour */
+  float thickness_crease;
+  float thickness_material;
+  float thickness_edge_mark;
+  float thickness_intersection;
 
-	float color[4];    /* default is for contour */
-	float crease_color[4];
-	float material_color[4];
-	float edge_mark_color[4];
-	float intersection_color[4];
+  float color[4]; /* default is for contour */
+  float crease_color[4];
+  float material_color[4];
+  float edge_mark_color[4];
+  float intersection_color[4];
 
-	int normal_mode;
-	int normal_effect_inverse;
-    float normal_ramp_begin;
-    float normal_ramp_end;
-    float normal_thickness_begin;
-    float normal_thickness_end;
-	struct Object *normal_control_object;
+  int normal_mode;
+  int normal_effect_inverse;
+  float normal_ramp_begin;
+  float normal_ramp_end;
+  float normal_thickness_begin;
+  float normal_thickness_end;
+  struct Object *normal_control_object;
 
-	int logic_mode;      /* for component evaluation */
+  int logic_mode; /* for component evaluation */
 
-	int a;
+  int a;
 
-	ListBase components;
+  ListBase components;
 
-	// still need legacy mode
-	// should use runtime pointer
-	struct DRWShadingGroup *shgrp;
-	struct GPUBatch  *batch;
+  // still need legacy mode
+  // should use runtime pointer
+  struct DRWShadingGroup *shgrp;
+  struct GPUBatch *batch;
 
-}LANPR_LineLayer;
+} LANPR_LineLayer;
 
 #endif

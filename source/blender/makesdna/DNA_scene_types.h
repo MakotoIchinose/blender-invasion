@@ -33,8 +33,8 @@
 extern "C" {
 #endif
 
-#include "DNA_color_types.h"  /* color management */
-#include "DNA_customdata_types.h"  /* Scene's runtime cddata masks. */
+#include "DNA_color_types.h"      /* color management */
+#include "DNA_customdata_types.h" /* Scene's runtime cddata masks. */
 #include "DNA_vec_types.h"
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
@@ -1632,7 +1632,6 @@ typedef struct SceneEEVEE {
   float light_threshold;
 } SceneEEVEE;
 
-
 /* LANPR Global Config */
 
 struct LANPR_RenderBuffer;
@@ -1640,61 +1639,61 @@ struct LANPR_LineLayer;
 
 typedef struct SceneLANPR {
 
-	int master_mode;
+  int master_mode;
 
-	int enable_vector_trace;
-	int display_thinning_result;
+  int enable_vector_trace;
+  int display_thinning_result;
 
-	//int SizeCompensate;
+  // int SizeCompensate;
 
-	float depth_clamp;
-	float depth_strength;
-	float normal_clamp;
-	float normal_strength;
+  float depth_clamp;
+  float depth_strength;
+  float normal_clamp;
+  float normal_strength;
 
-	float line_thickness;
+  float line_thickness;
 
-	int use_same_taper;
-	float taper_left_distance;
-	float taper_left_strength;
-	float taper_right_distance;
-	float taper_right_strength;
+  int use_same_taper;
+  float taper_left_distance;
+  float taper_left_strength;
+  float taper_right_distance;
+  float taper_right_strength;
 
-	int enable_tip_extend;
-	float extend_length;
+  int enable_tip_extend;
+  float extend_length;
 
-	int snake_sensitivity;
+  int snake_sensitivity;
 
-	/* shared */
+  /* shared */
 
-	float contour_fade;          /* for dpix contour fading,reserved for future usage */
-	float crease_threshold;      /* 0-1 range for cosine angle */
-	float crease_fade_threshold; /* for dpix crease fading */
+  float contour_fade;          /* for dpix contour fading,reserved for future usage */
+  float crease_threshold;      /* 0-1 range for cosine angle */
+  float crease_fade_threshold; /* for dpix crease fading */
 
-	float line_color[4];
-	float background_color[4];
+  float line_color[4];
+  float background_color[4];
 
-	float depth_width_influence;
-	float depth_width_curve;
-	float depth_alpha_influence;
-	float depth_alpha_curve;
+  float depth_width_influence;
+  float depth_width_curve;
+  float depth_alpha_influence;
+  float depth_alpha_curve;
 
-	/* states (needs optimization) */
+  /* states (needs optimization) */
 
-	int reloaded;
+  int reloaded;
 
-	/* offline render */
+  /* offline render */
 
-	struct LANPR_RenderBuffer *render_buffer;      /* created when needed. for offline rendering */
-	ListBase line_layers;                    /* now here!!! */
-	struct LANPR_LineLayer    *active_layer;
+  struct LANPR_RenderBuffer *render_buffer; /* created when needed. for offline rendering */
+  ListBase line_layers;                     /* now here!!! */
+  struct LANPR_LineLayer *active_layer;
 
-	int enable_intersections;
-	int enable_chaining;
+  int enable_intersections;
+  int enable_chaining;
 
-	/* composite utility */
-	int composite_render_animation;
-	int what;
+  /* composite utility */
+  int composite_render_animation;
+  int what;
 
 } SceneLANPR;
 
@@ -1829,8 +1828,8 @@ typedef struct Scene {
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
 
-	/* LANPR stuff */
-	struct SceneLANPR lanpr;
+  /* LANPR stuff */
+  struct SceneLANPR lanpr;
 } Scene;
 
 /* **************** RENDERDATA ********************* */
