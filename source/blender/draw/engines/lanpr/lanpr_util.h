@@ -39,137 +39,62 @@ typedef int tnsVector2i[2];
 #define deg(r) r / TNS_PI * 180.0
 #define rad(d) d *TNS_PI / 180.0
 
-#define NEED_STRUCTURE(a) typedef struct _##a a;
-
-#define STRUCTURE(a) \
-  typedef struct _##a a; \
-  struct _##a
 
 #define DBL_TRIANGLE_LIM 1e-8
 #define DBL_EDGE_LIM 1e-9
 
-typedef struct _nListItem nListItem;
-struct _nListItem {
-  void *pNext;
-  void *pPrev;
-};
-
-typedef struct _nListItem2 nListItem2;
-struct _nListItem2 {
-  void *O1;
-  void *O2;
-  void *pNext;
-  void *pPrev;
-};
-
-typedef struct _nListItemPointer nListItemPointer;
-struct _nListItemPointer {
-  void *pNext;
-  void *pPrev;
-  void *p;
-};
-
-typedef struct _nHash256 nHash256;
-struct _nHash256 {
-  ListBase Entries[256];
-};
-
-typedef struct _nHash65536 nHash65536;
-struct _nHash65536 {
-  ListBase Entries[65536];
-  // nHash256 HashHandles[256];
-};
-
-typedef struct _nHash16M nHash16M;
-struct _nHash16M {
-  ListBase Entries[16777216];
-};
-
-typedef struct _nSafeString nSafeString;
-struct _nSafeString {
-  nListItem Item;
-  char *Ptr;
-};
-
-typedef struct _nSafeStringCollection nSafeStringCollection;
-struct _nSafeStringCollection {
-  ListBase SafeStrings;
-};
-
-typedef struct _nStringSplitor nStringSplitor;
-struct _nStringSplitor {
-  int NumberParts;
-  ListBase parts;
-};
-
-typedef struct _nStringPart nStringPart;
-struct _nStringPart {
-  nListItem Item;
-  char *Content;
-  int IntValue;
-  real FloatValue;
-  char Type;
-};
-
-STRUCTURE(nStringLine)
-{
-  nListItem Item;
-  char Buf[1024];
-};
-
-STRUCTURE(nStringEdit)
-{
-  ListBase Lines;
-  int CusorLine, CusorBefore;
-  int BeginLine, BeginBefore;
-  int EndLine, EndBefore;
-};
 
 #define NUL_MEMORY_POOL_1MB 1048576
 #define NUL_MEMORY_POOL_128MB 134217728
 #define NUL_MEMORY_POOL_256MB 268435456
 #define NUL_MEMORY_POOL_512MB 536870912
 
-STRUCTURE(nMemoryPool)
+typedef struct _Link2 
 {
-  nListItem Item;
+  void *O1;
+  void *O2;
+  void *pNext;
+  void *pPrev;
+}_Link2;
+
+typedef struct nMemoryPool
+{
+  Link Item;
   int NodeSize;
   int CountPerPool;
   ListBase Pools;
-};
+}nMemoryPool;
 
-STRUCTURE(nMemoryPoolPart)
+typedef struct nMemoryPoolPart
 {
-  nListItem Item;
+  Link Item;
   ListBase MemoryNodes;
   ListBase FreeMemoryNodes;
   nMemoryPool *PoolRoot;
   //  <------Mem Begin Here.
-};
+}nMemoryPoolPart;
 
-NEED_STRUCTURE(nDBInst);
-
-STRUCTURE(nMemoryPoolNode)
+typedef struct nMemoryPoolNode
 {
-  nListItem Item;
+  Link Item;
   nMemoryPoolPart *InPool;
-  nDBInst *DBInst;
+  void *DBInst;
   //  <------User Mem Begin Here
-};
+}nMemoryPoolNode;
 
-STRUCTURE(nStaticMemoryPoolNode)
+typedef struct nStaticMemoryPoolNode
 {
-  nListItem Item;
+  Link Item;
   int UsedByte;
   //  <----------- User Mem Start Here
-};
+}nStaticMemoryPoolNode;
 
-STRUCTURE(nStaticMemoryPool)
+typedef struct nStaticMemoryPool
 {
   int EachSize;
   ListBase Pools;
   SpinLock csMem;
-};
+}nStaticMemoryPool;
 
 #define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  // nutCalloc(sizeof(Type),1)
 
@@ -178,31 +103,18 @@ STRUCTURE(nStaticMemoryPool)
 #define CreateNewBuffer(Type, Num) \
   MEM_callocN(sizeof(Type) * Num, "VOID BUFFER")  // nutCalloc(sizeof(Type),Num);
 
-#define FreeMem(ptr) MEM_freeN(ptr)  // nutFreeMem((&ptr))
-
-#ifndef elif
-#  define elif else if
-#endif
-
-void *nutCalloc(int size, int num);
-
-void *nutCallocHyper(int size, int num);
-void nutFreeMem(void **ptr);
-int nutFloatCompare(real l, real r);
-
-int nutSameAddress(void *l, void *r);
 
 void list_handle_empty(ListBase *h);
 
-void list_clear_prev_next(nListItem *li);
+void list_clear_prev_next(Link *li);
 
-void list_insert_item_before(ListBase *Handle, nListItem *toIns, nListItem *pivot);
-void list_insert_item_after(ListBase *Handle, nListItem *toIns, nListItem *pivot);
+void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot);
+void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot);
 void list_insert_segment_before(ListBase *Handle,
-                                nListItem *Begin,
-                                nListItem *End,
-                                nListItem *pivot);
-void lstInsertSegmentAfter(ListBase *Handle, nListItem *Begin, nListItem *End, nListItem *pivot);
+                                Link *Begin,
+                                Link *End,
+                                Link *pivot);
+void lstInsertSegmentAfter(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
 int lstHaveItemInList(ListBase *Handle);
 void *lst_get_top(ListBase *Handle);
 
@@ -222,13 +134,13 @@ void *list_push_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *p);
 void *list_push_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *p, int size);
 
 void *list_pop_pointer_only(ListBase *h);
-void list_remove_pointer_item_only(ListBase *h, nListItemPointer *lip);
+void list_remove_pointer_item_only(ListBase *h, LinkData *lip);
 void list_remove_pointer_only(ListBase *h, void *p);
 void list_clear_pointer_only(ListBase *h);
 void list_generate_pointer_list_only(ListBase *from1, ListBase *from2, ListBase *to);
 
 void *list_pop_pointer(ListBase *h);
-void list_remove_pointer_item(ListBase *h, nListItemPointer *lip);
+void list_remove_pointer_item(ListBase *h, LinkData *lip);
 void list_remove_pointer(ListBase *h, void *p);
 void list_clear_pointer(ListBase *h);
 void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to);
@@ -237,24 +149,13 @@ void list_copy_handle(ListBase *target, ListBase *src);
 
 void *list_append_pointer_static_pool(nStaticMemoryPool *mph, ListBase *h, void *p);
 void *list_pop_pointer_no_free(ListBase *h);
-void list_remove_pointer_item_no_free(ListBase *h, nListItemPointer *lip);
+void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
 
-void list_move_up(ListBase *h, nListItem *li);
-void list_move_down(ListBase *h, nListItem *li);
+void list_move_up(ListBase *h, Link *li);
+void list_move_down(ListBase *h, Link *li);
 
 void lstAddElement(ListBase *hlst, void *ext);
 void lstDestroyElementList(ListBase *hlst);
-
-void mem_init_pool(nMemoryPool *mph, int NodeSize);
-void mem_init_pool_small(nMemoryPool *mph, int NodeSize);
-nMemoryPoolPart *mem_new_pool_part(nMemoryPool *mph);
-
-#define memAquireOnly(a) MEM_callocN(a, "NONE")
-
-#define memAquire memAquireOnly
-
-void mem_free(void *Data);
-void mem_destroy_pool(nMemoryPool *Handle);
 
 nStaticMemoryPoolNode *mem_new_static_pool(nStaticMemoryPool *smp);
 void *mem_static_aquire(nStaticMemoryPool *smp, int size);

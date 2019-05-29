@@ -25,204 +25,204 @@ void *lst_get_top(ListBase *Handle)
   return Handle->first;
 };
 
-int list_remove_segment(ListBase *Handle, nListItem *Begin, nListItem *End)
+int list_remove_segment(ListBase *Handle, Link *Begin, Link *End)
 {
-  if (!Begin->pPrev)
-    Handle->first = End->pNext;
+  if (!Begin->prev)
+    Handle->first = End->next;
   else
-    ((nListItem *)Begin->pPrev)->pNext = End->pNext;
+    ((Link *)Begin->prev)->next = End->next;
 
-  if (!End->pNext)
-    Handle->last = Begin->pPrev;
+  if (!End->next)
+    Handle->last = Begin->prev;
   else
-    ((nListItem *)End->pNext)->pPrev = Begin->pPrev;
+    ((Link *)End->next)->prev = Begin->prev;
 
-  End->pNext = Begin->pPrev = 0;
+  End->next = Begin->prev = 0;
 
   return 1;
 };
-void list_insert_item_before(ListBase *Handle, nListItem *toIns, nListItem *pivot)
+void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot)
 {
   if (!pivot) {
     BLI_addhead(Handle, toIns);
     return;
   }
 
-  if (pivot->pPrev) {
-    ((nListItem *)pivot->pPrev)->pNext = toIns;
-    toIns->pPrev = pivot->pPrev;
+  if (pivot->prev) {
+    ((Link *)pivot->prev)->next = toIns;
+    toIns->prev = pivot->prev;
   }
   else {
     Handle->first = toIns;
   }
 
-  toIns->pNext = pivot;
-  pivot->pPrev = toIns;
+  toIns->next = pivot;
+  pivot->prev = toIns;
 };
-void list_insert_item_after(ListBase *Handle, nListItem *toIns, nListItem *pivot)
+void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot)
 {
   if (!pivot) {
     BLI_addtail(Handle, toIns);
     return;
   }
 
-  if (pivot->pNext) {
-    ((nListItem *)pivot->pNext)->pPrev = toIns;
-    toIns->pNext = pivot->pNext;
+  if (pivot->next) {
+    ((Link *)pivot->next)->prev = toIns;
+    toIns->next = pivot->next;
   }
   else {
     Handle->last = toIns;
   }
 
-  toIns->pPrev = pivot;
-  pivot->pNext = toIns;
+  toIns->prev = pivot;
+  pivot->next = toIns;
 }
 
-void *list_append_pointer_only(ListBase *h, void *p)
+void *list_append_pointer_only(ListBase *h, void *data)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
-  lip = CreateNew(nListItemPointer);
-  lip->p = p;
+  lip = CreateNew(LinkData);
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_append_pointer_sized_only(ListBase *h, void *p, int size)
+void *list_append_pointer_sized_only(ListBase *h, void *data, int size)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
   lip = calloc(1, size);
-  lip->p = p;
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_push_pointer_only(ListBase *h, void *p)
+void *list_push_pointer_only(ListBase *h, void *data)
 {
-  nListItemPointer *lip = 0;
+  LinkData *lip = 0;
   if (!h)
     return 0;
-  lip = CreateNew(nListItemPointer);
-  lip->p = p;
+  lip = CreateNew(LinkData);
+  lip->data = data;
   BLI_addhead(h, lip);
   return lip;
 }
-void *list_push_pointer_sized_only(ListBase *h, void *p, int size)
+void *list_push_pointer_sized_only(ListBase *h, void *data, int size)
 {
-  nListItemPointer *lip = 0;
+  LinkData *lip = 0;
   if (!h)
     return 0;
   lip = calloc(1, size);
-  lip->p = p;
+  lip->data = data;
   BLI_addhead(h, lip);
   return lip;
 }
 
-void *list_append_pointer(ListBase *h, void *p)
+void *list_append_pointer(ListBase *h, void *data)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
-  lip = memAquireOnly(sizeof(nListItemPointer));
-  lip->p = p;
+  lip = MEM_callocN(sizeof(LinkData),"LinkNode");
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_append_pointer_sized(ListBase *h, void *p, int size)
+void *list_append_pointer_sized(ListBase *h, void *data, int size)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
-  lip = memAquireOnly(size);
-  lip->p = p;
+  lip = MEM_callocN(sizeof(LinkData),"LinkNode");
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_push_pointer(ListBase *h, void *p)
+void *list_push_pointer(ListBase *h, void *data)
 {
-  nListItemPointer *lip = 0;
+  LinkData *lip = 0;
   if (!h)
     return 0;
-  lip = memAquireOnly(sizeof(nListItemPointer));
-  lip->p = p;
+  lip = MEM_callocN(sizeof(LinkData),"LinkNode");
+  lip->data = data;
   BLI_addhead(h, lip);
   return lip;
 }
-void *list_push_pointer_sized(ListBase *h, void *p, int size)
+void *list_push_pointer_sized(ListBase *h, void *data, int size)
 {
-  nListItemPointer *lip = 0;
+  LinkData *lip = 0;
   if (!h)
     return 0;
-  lip = memAquireOnly(size);
-  lip->p = p;
+  lip = MEM_callocN(sizeof(LinkData),"LinkNodeSized");
+  lip->data = data;
   BLI_addhead(h, lip);
   return lip;
 }
 
-void *list_append_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *p)
+void *list_append_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *data)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
-  lip = mem_static_aquire(smp, sizeof(nListItemPointer));
-  lip->p = p;
+  lip = mem_static_aquire(smp, sizeof(LinkData));
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_append_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *p, int size)
+void *list_append_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *data, int size)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
   lip = mem_static_aquire(smp, size);
-  lip->p = p;
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_push_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *p)
+void *list_push_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *data)
 {
-  nListItemPointer *lip = 0;
+  LinkData *lip = 0;
   if (!h)
     return 0;
-  lip = mem_static_aquire(smp, sizeof(nListItemPointer));
-  lip->p = p;
+  lip = mem_static_aquire(smp, sizeof(LinkData));
+  lip->data = data;
   BLI_addhead(h, lip);
   return lip;
 }
-void *list_push_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *p, int size)
+void *list_push_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *data, int size)
 {
-  nListItemPointer *lip = 0;
+  LinkData *lip = 0;
   if (!h)
     return 0;
   lip = mem_static_aquire(smp, size);
-  lip->p = p;
+  lip->data = data;
   BLI_addhead(h, lip);
   return lip;
 }
 
 void *list_pop_pointer_only(ListBase *h)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   void *rev = 0;
   if (!h)
     return 0;
   lip = BLI_pophead(h);
   BLI_remlink(h, h->first);
-  rev = lip ? lip->p : 0;
-  FreeMem(lip);
+  rev = lip ? lip->data : 0;
+  MEM_freeN(lip);
   return rev;
 }
-void list_remove_pointer_item_only(ListBase *h, nListItemPointer *lip)
+void list_remove_pointer_item_only(ListBase *h, LinkData *lip)
 {
   BLI_remlink(h, (void *)lip);
-  FreeMem(lip);
+  MEM_freeN(lip);
 }
-void list_remove_pointer_only(ListBase *h, void *p)
+void list_remove_pointer_only(ListBase *h, void *data)
 {
-  nListItemPointer *i;
-  for (i = h->first; i; i = i->pNext) {
-    if (i->p == p) {
+  LinkData *i;
+  for (i = h->first; i; i = i->next) {
+    if (i->data == data) {
       list_remove_pointer_item(h, i);
       break;
     }
@@ -236,42 +236,42 @@ void list_clear_pointer_only(ListBase *h)
 }
 void list_generate_pointer_list_only(ListBase *from1, ListBase *from2, ListBase *to)
 {
-  nListItemPointer *lip = from2 ? from2->last : 0;
+  LinkData *lip = from2 ? from2->last : 0;
 
   while (lip) {
-    list_push_pointer(to, lip->p);
-    lip = lip->pPrev;
+    list_push_pointer(to, lip->data);
+    lip = lip->prev;
   }
 
   lip = from1 ? from1->last : 0;
 
   while (lip) {
-    list_push_pointer(to, lip->p);
-    lip = lip->pPrev;
+    list_push_pointer(to, lip->data);
+    lip = lip->prev;
   }
 }
 
 void *list_pop_pointer(ListBase *h)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   void *rev = 0;
   if (!h)
     return 0;
   lip = BLI_pophead(h);
-  rev = lip ? lip->p : 0;
-  mem_free(lip);
+  rev = lip ? lip->data : 0;
+  MEM_freeN(lip);
   return rev;
 }
-void list_remove_pointer_item(ListBase *h, nListItemPointer *lip)
+void list_remove_pointer_item(ListBase *h, LinkData *lip)
 {
   BLI_remlink(h, (void *)lip);
-  mem_free(lip);
+  MEM_freeN(lip);
 }
-void list_remove_pointer(ListBase *h, void *p)
+void list_remove_pointer(ListBase *h, void *data)
 {
-  nListItemPointer *i;
-  for (i = h->first; i; i = i->pNext) {
-    if (i->p == p) {
+  LinkData *i;
+  for (i = h->first; i; i = i->next) {
+    if (i->data == data) {
       list_remove_pointer_item(h, i);
       break;
     }
@@ -279,49 +279,49 @@ void list_remove_pointer(ListBase *h, void *p)
 }
 void list_clear_pointer(ListBase *h)
 {
-  nListItemPointer *i;
+  LinkData *i;
   while (h && h->first) {
     list_pop_pointer(h);
   }
 }
 void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to)
 {
-  nListItemPointer *lip = from2 ? from2->last : 0;
+  LinkData *lip = from2 ? from2->last : 0;
 
   while (lip) {
-    list_push_pointer(to, lip->p);
-    lip = lip->pPrev;
+    list_push_pointer(to, lip->data);
+    lip = lip->prev;
   }
 
   lip = from1 ? from1->last : 0;
 
   while (lip) {
-    list_push_pointer(to, lip->p);
-    lip = lip->pPrev;
+    list_push_pointer(to, lip->data);
+    lip = lip->prev;
   }
 }
 
-void *list_append_pointer_static_pool(nStaticMemoryPool *mph, ListBase *h, void *p)
+void *list_append_pointer_static_pool(nStaticMemoryPool *mph, ListBase *h, void *data)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   if (!h)
     return 0;
-  lip = mem_static_aquire(mph, sizeof(nListItemPointer));
-  lip->p = p;
+  lip = mem_static_aquire(mph, sizeof(LinkData));
+  lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
 void *list_pop_pointer_no_free(ListBase *h)
 {
-  nListItemPointer *lip;
+  LinkData *lip;
   void *rev = 0;
   if (!h)
     return 0;
   lip = BLI_pophead(h);
-  rev = lip ? lip->p : 0;
+  rev = lip ? lip->data : 0;
   return rev;
 }
-void list_remove_pointer_item_no_free(ListBase *h, nListItemPointer *lip)
+void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
 {
   BLI_remlink(h, (void *)lip);
 }
@@ -336,138 +336,55 @@ void list_clear_handle(ListBase *h)
   h->first = 0;
   h->last = 0;
 }
-void list_clear_prev_next(nListItem *li)
+void list_clear_prev_next(Link *li)
 {
-  li->pNext = 0;
-  li->pPrev = 0;
+  li->next = 0;
+  li->prev = 0;
 }
 
-void list_move_up(ListBase *h, nListItem *li)
+void list_move_up(ListBase *h, Link *li)
 {
-  void *pprev = li->pPrev ? ((nListItem *)li->pPrev)->pPrev : 0;
+  void *pprev = li->prev ? ((Link *)li->prev)->prev : 0;
   if (!h || !li)
     return;
   if (li == h->first)
     return;
   else {
     if (li == h->last)
-      h->last = li->pPrev;
-    ((nListItem *)li->pPrev)->pNext = li->pNext;
-    ((nListItem *)li->pPrev)->pPrev = li;
-    if (li->pNext)
-      ((nListItem *)li->pNext)->pPrev = li->pPrev;
-    li->pNext = li->pPrev;
-    li->pPrev = pprev;
+      h->last = li->prev;
+    ((Link *)li->prev)->next = li->next;
+    ((Link *)li->prev)->prev = li;
+    if (li->next)
+      ((Link *)li->next)->prev = li->prev;
+    li->next = li->prev;
+    li->prev = pprev;
     if (pprev)
-      ((nListItem *)pprev)->pNext = li;
+      ((Link *)pprev)->next = li;
   }
-  if (!li->pPrev)
+  if (!li->prev)
     h->first = li;
 }
-void list_move_down(ListBase *h, nListItem *li)
+void list_move_down(ListBase *h, Link *li)
 {
-  void *ppnext = li->pNext ? ((nListItem *)li->pNext)->pNext : 0;
+  void *ppnext = li->next ? ((Link *)li->next)->next : 0;
   if (!h || !li)
     return;
   if (li == h->last)
     return;
   else {
     if (li == h->first)
-      h->first = li->pNext;
-    ((nListItem *)li->pNext)->pPrev = li->pPrev;
-    ((nListItem *)li->pNext)->pNext = li;
-    if (li->pPrev)
-      ((nListItem *)li->pPrev)->pNext = li->pNext;
-    li->pPrev = li->pNext;
-    li->pNext = ppnext;
+      h->first = li->next;
+    ((Link *)li->next)->prev = li->prev;
+    ((Link *)li->next)->next = li;
+    if (li->prev)
+      ((Link *)li->prev)->next = li->next;
+    li->prev = li->next;
+    li->next = ppnext;
     if (ppnext)
-      ((nListItem *)ppnext)->pPrev = li;
+      ((Link *)ppnext)->prev = li;
   }
-  if (!li->pNext)
+  if (!li->next)
     h->last = li;
-}
-
-void mem_init_pool(nMemoryPool *mph, int NodeSize)
-{
-  int Count = 4096;
-
-  if (mph->NodeSize)
-    return;
-
-  mph->NodeSize = NodeSize;
-  mph->CountPerPool = Count;
-
-  return;
-}
-void mem_init_pool_small(nMemoryPool *mph, int NodeSize)
-{
-  int Count = 16;
-
-  if (mph->NodeSize)
-    return;
-
-  mph->NodeSize = NodeSize;
-  mph->CountPerPool = Count;
-
-  return;
-}
-inline nMemoryPoolPart *mem_new_pool_part(nMemoryPool *mph)
-{
-
-  if (!mph->NodeSize)
-    return 0;
-
-  int RealNodeSize = mph->NodeSize + sizeof(nMemoryPoolNode);
-  int NodeCount = mph->CountPerPool;
-  int TotalSize = sizeof(nMemoryPoolPart) + NodeCount * RealNodeSize;
-  int i;
-  nMemoryPoolPart *mp = calloc(1, TotalSize);
-
-  void *BeginMem = ((BYTE *)mp) + sizeof(nMemoryPoolPart);
-
-  mp->PoolRoot = mph;
-
-  nMemoryPoolNode *mpn;
-
-  mp->FreeMemoryNodes.first = mp->FreeMemoryNodes.last = BeginMem;
-
-  mpn = (void *)((BYTE *)BeginMem);
-  mpn->InPool = mp;
-
-  for (i = 1; i < NodeCount; i++) {
-    mpn = (void *)(((BYTE *)BeginMem) + RealNodeSize * i);
-    mpn->InPool = mp;
-    BLI_addtail(&mp->FreeMemoryNodes, mpn);
-  }
-  BLI_addhead(&mph->Pools, mp);
-
-  return mp;
-}
-void mem_free(void *Data)
-{
-  if (!Data)
-    return;
-  nMemoryPoolNode *mpn = (void *)(((BYTE *)Data) - sizeof(nMemoryPoolNode));
-  nMemoryPoolPart *mp = mpn->InPool;
-  nMemoryPool *mph = mp->PoolRoot;
-  BLI_remlink(&mp->MemoryNodes, (void *)mpn);
-  BLI_addtail(&mp->FreeMemoryNodes, (void *)mpn);
-  memset(Data, 0, mph->NodeSize);
-  if (!mp->MemoryNodes.first) {
-    BLI_remlink(&mph->Pools, (void *)mp);
-    FreeMem(mp);
-  }
-  // if (!mph->Pools.first) {
-  //	mph->CountPerPool = 0;
-  //	mph->NodeSize = 0;
-  //}
-}
-void mem_destroy_pool(nMemoryPool *Handle)
-{
-  nMemoryPool *mp;
-  while ((mp = BLI_pophead(&Handle->Pools))) {
-    FreeMem(mp);
-  }
 }
 
 nStaticMemoryPoolNode *mem_new_static_pool(nStaticMemoryPool *smp)
@@ -515,7 +432,7 @@ void *mem_static_destroy(nStaticMemoryPool *smp)
   void *ret = 0;
 
   while (smpn = BLI_pophead(&smp->Pools)) {
-    FreeMem(smpn);
+    MEM_freeN(smpn);
   }
 
   smp->EachSize = 0;

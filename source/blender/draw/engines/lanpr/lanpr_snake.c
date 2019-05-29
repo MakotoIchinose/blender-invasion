@@ -175,7 +175,7 @@ void lanpr_grow_snake_r(LANPR_PrivateData *pd,
     if (Deviate < 2) {
       lanpr_remove_sample(pd, TY, TX);
     }
-    elif (Deviate < 3)
+    else if (Deviate < 3)
     {
       lanpr_remove_sample(pd, TY, TX);
       AddPoint = 1;
@@ -220,7 +220,7 @@ void lanpr_grow_snake_l(LANPR_PrivateData *pd,
     if (Deviate < 2) {
       lanpr_remove_sample(pd, TY, TX);
     }
-    elif (Deviate < 4)
+    else if (Deviate < 4)
     {
       lanpr_remove_sample(pd, TY, TX);
       AddPoint = 1;

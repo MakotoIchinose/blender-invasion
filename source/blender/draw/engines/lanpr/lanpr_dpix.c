@@ -228,7 +228,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
   LANPR_RenderBuffer *rb = lanpr->render_buffer;
-  nListItemPointer *lip;
+  LinkData *lip;
   LANPR_RenderLine *rl;
   int i, idx;
 
@@ -237,8 +237,8 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
   if (!rb)
     return 0;
 
-  for (lip = rb->intersection_lines.first; lip; lip = lip->pNext) {
-    rl = lip->p;
+  for (lip = rb->intersection_lines.first; lip; lip = lip->next) {
+    rl = lip->data;
 
     idx = (begin_index + i) * 4;
     AtlasEdgeMask[idx + 2] = 1;  // channel B
