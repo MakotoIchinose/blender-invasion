@@ -215,6 +215,12 @@ def _template_items_gizmo_tweak_value_click_drag():
     ]
 
 
+def _template_items_gizmo_tweak_value_drag():
+    return [
+        ("gizmogroup.gizmo_tweak", {"type": 'EVT_TWEAK_L', "value": 'ANY', "any": True}, None),
+    ]
+
+
 def _template_items_editmode_mesh_select_mode(params):
     if params.legacy:
         return [
@@ -2330,6 +2336,8 @@ def km_sequencer(params):
         ("sequencer.select_linked_pick", {"type": 'L', "value": 'PRESS', "shift": True},
          {"properties": [("extend", True)]}),
         ("sequencer.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
+        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties": [("tweak", True)]}),
         ("sequencer.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("sequencer.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         op_menu("SEQUENCER_MT_add", {"type": 'A', "value": 'PRESS', "shift": True}),
@@ -4714,6 +4722,16 @@ def km_generic_gizmo(_params):
     return keymap
 
 
+def km_generic_gizmo_drag(_params):
+    keymap = (
+        "Generic Gizmo Drag",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": _template_items_gizmo_tweak_value_drag()},
+    )
+
+    return keymap
+
+
 def km_generic_gizmo_click_drag(_params):
     keymap = (
         "Generic Gizmo Click Drag",
@@ -5842,6 +5860,7 @@ def generate_keymaps(params=None):
 
         # Gizmos.
         km_generic_gizmo(params),
+        km_generic_gizmo_drag(params),
         km_generic_gizmo_click_drag(params),
         km_generic_gizmo_select(params),
         km_generic_gizmo_tweak_modal_map(params),

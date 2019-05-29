@@ -386,7 +386,7 @@ void DRW_transform_none(GPUTexture *tex)
  */
 void DRW_multisamples_resolve(GPUTexture *src_depth, GPUTexture *src_color, bool use_depth)
 {
-  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_PREMUL;
+  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
 
   if (use_depth) {
     state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
@@ -2823,7 +2823,7 @@ void DRW_framebuffer_select_id_setup(ARegion *ar, const bool clear)
   glDisable(GL_DITHER);
 
   GPU_depth_test(true);
-  GPU_disable_program_point_size();
+  GPU_program_point_size(false);
 
   if (clear) {
     GPU_framebuffer_clear_color_depth(
@@ -2864,7 +2864,19 @@ void DRW_framebuffer_select_id_read(const rcti *rect, uint *r_buf)
 
   rcti rect_clamp = *rect;
   if (BLI_rcti_isect(&r, &rect_clamp, &rect_clamp)) {
-    GPU_texture_read_rect(g_select_buffer.texture_u32, GPU_DATA_UNSIGNED_INT, &rect_clamp, r_buf);
+    DRW_opengl_context_enable();
+    GPU_framebuffer_bind(g_select_buffer.framebuffer_select_id);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glReadPixels(rect_clamp.xmin,
+                 rect_clamp.ymin,
+                 BLI_rcti_size_x(&rect_clamp),
+                 BLI_rcti_size_y(&rect_clamp),
+                 GL_RED_INTEGER,
+                 GL_UNSIGNED_INT,
+                 r_buf);
+
+    GPU_framebuffer_restore();
+    DRW_opengl_context_disable();
 
     if (!BLI_rcti_compare(rect, &rect_clamp)) {
       GPU_select_buffer_stride_realign(rect, &rect_clamp, r_buf);
