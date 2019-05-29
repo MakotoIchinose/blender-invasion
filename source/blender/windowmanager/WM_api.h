@@ -184,7 +184,7 @@ bool WM_cursor_set_from_tool(struct wmWindow *win, const ScrArea *sa, const AReg
 void WM_cursor_modal_set(struct wmWindow *win, int curs);
 void WM_cursor_modal_restore(struct wmWindow *win);
 void WM_cursor_wait(bool val);
-void WM_cursor_grab_enable(struct wmWindow *win, bool wrap, bool hide, int bounds[4]);
+void WM_cursor_grab_enable(struct wmWindow *win, int wrap, bool hide, int bounds[4]);
 void WM_cursor_grab_disable(struct wmWindow *win, const int mouse_ungrab_xy[2]);
 void WM_cursor_time(struct wmWindow *win, int nr);
 
@@ -599,6 +599,7 @@ bool WM_gesture_is_modal_first(const struct wmGesture *gesture);
 /* fileselecting support */
 void WM_event_add_fileselect(struct bContext *C, struct wmOperator *op);
 void WM_event_fileselect_event(struct wmWindowManager *wm, void *ophandle, int eventval);
+int WM_event_modifier_flag(const struct wmEvent *event);
 void WM_event_print(const struct wmEvent *event);
 
 void WM_operator_region_active_win_set(struct bContext *C);

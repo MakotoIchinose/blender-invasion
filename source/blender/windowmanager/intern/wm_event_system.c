@@ -732,6 +732,24 @@ void WM_operator_region_active_win_set(bContext *C)
   }
 }
 
+int WM_event_modifier_flag(const wmEvent *event)
+{
+  int flag = 0;
+  if (event->ctrl) {
+    flag |= KM_CTRL;
+  }
+  if (event->alt) {
+    flag |= KM_ALT;
+  }
+  if (event->shift) {
+    flag |= KM_SHIFT;
+  }
+  if (event->oskey) {
+    flag |= KM_OSKEY;
+  }
+  return flag;
+}
+
 /* for debugging only, getting inspecting events manually is tedious */
 void WM_event_print(const wmEvent *event)
 {
@@ -1451,26 +1469,20 @@ static int wm_operator_invoke(bContext *C,
        */
       if (ot->flag & OPTYPE_BLOCKING || (op->opm && op->opm->type->flag & OPTYPE_BLOCKING)) {
         int bounds[4] = {-1, -1, -1, -1};
-        bool wrap;
+        int wrap = WM_CURSOR_WRAP_NONE;
 
-        if (event == NULL) {
-          wrap = false;
-        }
-        else if (op->opm) {
-          wrap = (U.uiflag & USER_CONTINUOUS_MOUSE) &&
-                 ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
-                  (op->opm->type->flag & OPTYPE_GRAB_CURSOR));
-        }
-        else {
-          wrap = (U.uiflag & USER_CONTINUOUS_MOUSE) &&
-                 ((op->flag & OP_IS_MODAL_GRAB_CURSOR) || (ot->flag & OPTYPE_GRAB_CURSOR));
-        }
-
-        /* exception, cont. grab in header is annoying */
-        if (wrap) {
-          ARegion *ar = CTX_wm_region(C);
-          if (ar && ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER)) {
-            wrap = false;
+        if (event && (U.uiflag & USER_CONTINUOUS_MOUSE)) {
+          const wmOperator *op_test = op->opm ? op->opm : op;
+          const wmOperatorType *ot_test = op_test->type;
+          if ((ot_test->flag & OPTYPE_GRAB_CURSOR_XY) ||
+              (op_test->flag & OP_IS_MODAL_GRAB_CURSOR)) {
+            wrap = WM_CURSOR_WRAP_XY;
+          }
+          else if (ot_test->flag & OPTYPE_GRAB_CURSOR_X) {
+            wrap = WM_CURSOR_WRAP_X;
+          }
+          else if (ot_test->flag & OPTYPE_GRAB_CURSOR_Y) {
+            wrap = WM_CURSOR_WRAP_Y;
           }
         }
 
@@ -1478,6 +1490,11 @@ static int wm_operator_invoke(bContext *C,
           const rcti *winrect = NULL;
           ARegion *ar = CTX_wm_region(C);
           ScrArea *sa = CTX_wm_area(C);
+
+          /* Wrap only in X for header. */
+          if (ar && ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER)) {
+            wrap = WM_CURSOR_WRAP_X;
+          }
 
           if (ar && ar->regiontype == RGN_TYPE_WINDOW &&
               BLI_rcti_isect_pt_v(&ar->winrct, &event->x)) {
@@ -2724,14 +2741,16 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
         /* Drag events use the previous click location to highlight the gizmos,
          * Get the highlight again in case the user dragged off the gizmo. */
         const bool is_event_drag = ISTWEAK(event->type) || (event->val == KM_CLICK_DRAG);
+        const bool is_event_modifier = ISKEYMODIFIER(event->type);
 
         bool handle_highlight = false;
         bool handle_keymap = false;
 
         /* handle gizmo highlighting */
-        if (!wm_gizmomap_modal_get(gzmap) && ((event->type == MOUSEMOVE) || is_event_drag)) {
+        if (!wm_gizmomap_modal_get(gzmap) &&
+            ((event->type == MOUSEMOVE) || is_event_modifier || is_event_drag)) {
           handle_highlight = true;
-          if (is_event_drag) {
+          if (is_event_modifier || is_event_drag) {
             handle_keymap = true;
           }
         }
