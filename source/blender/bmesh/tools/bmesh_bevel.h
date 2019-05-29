@@ -46,6 +46,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct CurveMapping *profile_curve);
+                   const struct CurveMapping *profile_curve,
+                   const bool sample_points);
 
 #endif /* __BMESH_BEVEL_H__ */

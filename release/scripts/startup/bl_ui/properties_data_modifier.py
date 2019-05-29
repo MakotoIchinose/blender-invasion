@@ -174,6 +174,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.row().prop(md, "use_custom_profile")
         if md.use_custom_profile:
             layout.template_curve_mapping(md, "profile_curve")
+            layout.row().prop(md, "sample_points")
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()

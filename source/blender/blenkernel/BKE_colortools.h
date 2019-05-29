@@ -46,6 +46,18 @@ void curvemapping_set_black_white(struct CurveMapping *cumap,
                                   const float black[3],
                                   const float white[3]);
 
+
+/* Used for a path where the curve isn't necessarily a function. */
+/* Initialized with the number of segments to fill the table with */
+void curvemapping_path_initialize(struct CurveMapping *cumap, int nsegments); // HANS-TODO: Hmm, this assumes there is only one curve
+/* Evaluates along the length of the path rather than with X coord */
+void curvemapping_path_evaluate(const struct CurveMapping *cumap, int segment, float vecout[2]);
+
+void curvemap_path_evaluate(const struct CurveMap *cuma, float length_portion, float vecout[2]);
+
+float curvemap_path_total_length(const struct CurveMap *cuma);
+
+
 enum {
   CURVEMAP_SLOPE_NEGATIVE = 0,
   CURVEMAP_SLOPE_POSITIVE = 1,

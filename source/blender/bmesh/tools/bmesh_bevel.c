@@ -285,7 +285,9 @@ typedef struct BevelParams {
   /** Should we harden normals? */
   bool harden_normals;
   /** Should we use the custom profiles feature? */
-  bool use_custom_profiles;
+  bool use_custom_profile;
+  /** Should we just sample the points on the plot */
+  bool sample_points;
   /** The curve mapping struct used to store the custom profile*/
   const struct CurveMapping *profile_curve;
   /** Vertex group array, maybe set if vertex_only. */
@@ -6593,7 +6595,8 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct CurveMapping *profile_curve)
+                   const struct CurveMapping *profile_curve,
+                   const bool sample_points)
 {
   BMIter iter, liter;
   BMVert *v, *v_next;
@@ -6625,8 +6628,21 @@ void BM_mesh_bevel(BMesh *bm,
   bp.spread = spread;
   bp.smoothresh = smoothresh;
   bp.face_hash = NULL;
-  bp.use_custom_profiles = use_custom_profile;
+  bp.use_custom_profile = use_custom_profile;
   bp.profile_curve = profile_curve;
+  bp.sample_points = sample_points;
+
+  // HANS-TODO: Only resample points along curve (rebuild the nseg long table actually) when the curve was changed
+
+  /* TEST PROFILE CURVE */
+  if (bp.use_custom_profile && bp.profile_curve != NULL) {
+    //curvemapping_initialize(profile_curve); /* Must call before evaluation functions (At least before modification */
+    curvemapping_path_initialize(profile_curve, 10); /* For now this does nothing, but it will be necessary to fill a table */
+    float position[2];
+    curvemapping_path_evaluate(profile_curve, 5, position);
+    printf("The position for this segment is (%f, %f)\n", position[0], position[1]);
+  }
+
 
   if (profile >= 0.950f) { /* r ~ 692, so PRO_SQUARE_R is 1e4 */
     bp.pro_super_r = PRO_SQUARE_R;

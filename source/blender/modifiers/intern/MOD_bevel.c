@@ -112,6 +112,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   const int miter_inner = bmd->miter_inner;
   const float spread = bmd->spread;
   const bool use_custom_profile = (bmd->flags & MOD_BEVEL_CUSTOM_PROFILE);
+  const bool sample_points = (bmd->flags & MOD_BEVEL_SAMPLE_POINTS);
 
   bm = BKE_mesh_to_bmesh_ex(mesh,
                             &(struct BMeshCreateParams){0},
@@ -216,7 +217,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                 spread,
                 mesh->smoothresh,
                 use_custom_profile,
-                bmd->profile_curve);
+                bmd->profile_curve,
+                sample_points);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 
@@ -226,7 +228,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 
-  // HANS-TODO: Should the Curve be removed here or will it free itself elsewhere. I should test...
+  // curvemapping_free(bmd->profile_curve);
+  // HANS-TODO: I need to gree the CurveMapping data somewhere, but this is apparently not the place, as it causes a crash
 
   return result;
 }
