@@ -106,7 +106,7 @@ if(WITH_AUDASPACE AND NOT WITH_SYSTEM_AUDASPACE)
   add_subdirectory(audaspace)
 endif()
 
-if(WITH_OPENXR)
+if(WITH_OPENXR AND OPENXR_USE_BUNDLED_SRC)
   add_subdirectory(jsoncpp)
   add_subdirectory(openxr)
 endif()
