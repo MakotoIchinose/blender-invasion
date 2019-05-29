@@ -172,10 +172,10 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   use_blender_profile = RNA_boolean_get(op->ptr, "use_blender_profile");
   sort_by_name = RNA_boolean_get(op->ptr, "sort_by_name");
 
-  export_object_transformation_type = RNA_enum_get(
-    op->ptr, "export_object_transformation_type_selection");
+  export_object_transformation_type = RNA_enum_get(op->ptr,
+                                                   "export_object_transformation_type_selection");
   export_animation_transformation_type = RNA_enum_get(
-    op->ptr, "export_animation_transformation_type_selection");
+      op->ptr, "export_animation_transformation_type_selection");
 
   open_sim = RNA_boolean_get(op->ptr, "open_sim");
   limit_precision = RNA_boolean_get(op->ptr, "limit_precision");
@@ -223,10 +223,10 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 
   if (export_animation_type != BC_ANIMATION_EXPORT_SAMPLES) {
     // When curves are exported then we can not export as matrix
-    export_settings.animation_transformation_type = BC_TRANSFORMATION_TYPE_TRANSROTLOC;
+    export_settings.animation_transformation_type = BC_TRANSFORMATION_TYPE_DECOMPOSED;
   }
 
-  if (export_settings.animation_transformation_type != BC_TRANSFORMATION_TYPE_TRANSROTLOC) {
+  if (export_settings.animation_transformation_type != BC_TRANSFORMATION_TYPE_DECOMPOSED) {
     // Can not export smooth curves when Matrix export is enabled.
     export_settings.keep_smooth_curves = false;
   }
@@ -271,11 +271,11 @@ static void uiCollada_exportSettings(uiLayout *layout, PointerRNA *imfptr)
   bool include_animations = RNA_boolean_get(imfptr, "include_animations");
   int ui_section = RNA_enum_get(imfptr, "prop_bc_export_ui_section");
 
-  BC_export_animation_type animation_type = RNA_enum_get(
-    imfptr, "export_animation_type_selection");
+  BC_export_animation_type animation_type = RNA_enum_get(imfptr,
+                                                         "export_animation_type_selection");
 
   BC_export_transformation_type animation_transformation_type = RNA_enum_get(
-    imfptr, "export_animation_transformation_type_selection");
+      imfptr, "export_animation_transformation_type_selection");
 
   bool sampling = animation_type == BC_ANIMATION_EXPORT_SAMPLES;
 
@@ -397,7 +397,7 @@ static void uiCollada_exportSettings(uiLayout *layout, PointerRNA *imfptr)
     uiItemR(row, imfptr, "keep_smooth_curves", 0, NULL, ICON_NONE);
     uiLayoutSetEnabled(row,
                        include_animations &&
-                           (animation_transformation_type == BC_TRANSFORMATION_TYPE_TRANSROTLOC ||
+                           (animation_transformation_type == BC_TRANSFORMATION_TYPE_DECOMPOSED ||
                             animation_type == BC_ANIMATION_EXPORT_KEYS));
 
     row = uiLayoutColumn(box, false);
@@ -496,11 +496,11 @@ void WM_OT_collada_export(wmOperatorType *ot)
        0,
        "Matrix",
        "Use <matrix> representation for exported transformations"},
-      {BC_TRANSFORMATION_TYPE_TRANSROTLOC,
-       "transrotloc",
+      {BC_TRANSFORMATION_TYPE_DECOMPOSED,
+       "decomposed",
        0,
-       "TransRotLoc",
-       "Use <translate>, <rotate>, <scale> representation for exported transformations"},
+       "Decomposed",
+       "Use <rotate>, <translate> and <scale> representation for exported transformations"},
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem prop_bc_export_animation_type[] = {
@@ -727,7 +727,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
               INT_MAX,
               "Transform",
               "Transformation type for translation, scale and rotation\n"
-              "Note: The Animation transformation type in the Anim Tab\n"\
+              "Note: The Animation transformation type in the Anim Tab\n"
               "is always equal to the Object transformation type in the Geom tab",
               INT_MIN,
               INT_MAX);

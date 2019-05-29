@@ -3307,7 +3307,8 @@ static int reveal_exec(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      DEG_id_tag_update(obedit->data, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT | ID_RECALC_GEOMETRY);
+      DEG_id_tag_update(obedit->data,
+                        ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT | ID_RECALC_GEOMETRY);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
       changed_multi = true;
     }
@@ -4894,7 +4895,7 @@ bool ED_curve_editnurb_select_pick(
 
         ED_curve_deselect_all(((Curve *)ob_iter->data)->editnurb);
 
-        DEG_id_tag_update(ob_iter->data, ID_RECALC_SELECT);
+        DEG_id_tag_update(ob_iter->data, ID_RECALC_SELECT | ID_RECALC_COPY_ON_WRITE);
         WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
       }
       MEM_freeN(objects);
@@ -5009,7 +5010,7 @@ bool ED_curve_editnurb_select_pick(
       ED_object_base_activate(C, basact);
     }
 
-    DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(obedit->data, ID_RECALC_SELECT | ID_RECALC_COPY_ON_WRITE);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
 
     return true;

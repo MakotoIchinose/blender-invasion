@@ -208,20 +208,16 @@ def _template_items_gizmo_tweak_value():
     ]
 
 
-def _template_items_gizmo_tweak_modal():
+def _template_items_gizmo_tweak_value_click_drag():
     return [
-        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
-        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_ON", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_OFF", {"type": 'RIGHT_SHIFT', "value": 'RELEASE', "any": True}, None),
-        ("PRECISION_ON", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_OFF", {"type": 'LEFT_SHIFT', "value": 'RELEASE', "any": True}, None),
-        ("SNAP_ON", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("SNAP_OFF", {"type": 'RIGHT_CTRL', "value": 'RELEASE', "any": True}, None),
-        ("SNAP_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("SNAP_OFF", {"type": 'LEFT_CTRL', "value": 'RELEASE', "any": True}, None),
+        ("gizmogroup.gizmo_tweak", {"type": 'LEFTMOUSE', "value": 'CLICK', "any": True}, None),
+        ("gizmogroup.gizmo_tweak", {"type": 'EVT_TWEAK_L', "value": 'ANY', "any": True}, None),
+    ]
+
+
+def _template_items_gizmo_tweak_value_drag():
+    return [
+        ("gizmogroup.gizmo_tweak", {"type": 'EVT_TWEAK_L', "value": 'ANY', "any": True}, None),
     ]
 
 
@@ -1271,10 +1267,10 @@ def km_markers(params):
     return keymap
 
 
-def km_scrubbing(params):
+def km_time_scrub(_params):
     items = []
     keymap = (
-        "Scrubbing",
+        "Time Scrub",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": items},
     )
@@ -1286,10 +1282,10 @@ def km_scrubbing(params):
 
     return keymap
 
-def km_scrubbing_clip(params):
+def km_time_scrub_clip(_params):
     items = []
     keymap = (
-        "Clip Scrubbing",
+        "Clip Time Scrub",
         {"space_type": 'CLIP_EDITOR', "region_type": 'PREVIEW'},
         {"items": items},
     )
@@ -2070,7 +2066,7 @@ def km_nla_editor(params):
     return keymap
 
 
-def km_text_generic(params):
+def km_text_generic(_params):
     items = []
     keymap = (
         "Text Generic",
@@ -2340,6 +2336,8 @@ def km_sequencer(params):
         ("sequencer.select_linked_pick", {"type": 'L', "value": 'PRESS', "shift": True},
          {"properties": [("extend", True)]}),
         ("sequencer.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
+        ("sequencer.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties": [("tweak", True)]}),
         ("sequencer.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("sequencer.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         op_menu("SEQUENCER_MT_add", {"type": 'A', "value": 'PRESS', "shift": True}),
@@ -2379,7 +2377,7 @@ def km_sequencerpreview(params):
     return keymap
 
 
-def km_console(params):
+def km_console(_params):
     items = []
     keymap = (
         "Console",
@@ -4714,9 +4712,9 @@ def km_paint_stroke_modal(_params):
 
 
 # Fallback for gizmos that don't have custom a custom key-map.
-def km_generic_gizmos(_params):
+def km_generic_gizmo(_params):
     keymap = (
-        "Generic Gizmos",
+        "Generic Gizmo",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": _template_items_gizmo_tweak_value()},
     )
@@ -4724,18 +4722,29 @@ def km_generic_gizmos(_params):
     return keymap
 
 
-def km_generic_gizmos_tweak_modal_map(_params):
+def km_generic_gizmo_drag(_params):
     keymap = (
-        "Generic Gizmos Tweak Modal Map",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
-        {"items": _template_items_gizmo_tweak_modal()},
+        "Generic Gizmo Drag",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": _template_items_gizmo_tweak_value_drag()},
     )
+
     return keymap
 
 
-def km_generic_gizmos_select(_params):
+def km_generic_gizmo_click_drag(_params):
     keymap = (
-        "Generic Gizmos Select",
+        "Generic Gizmo Click Drag",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": _template_items_gizmo_tweak_value_click_drag()},
+    )
+
+    return keymap
+
+
+def km_generic_gizmo_select(_params):
+    keymap = (
+        "Generic Gizmo Select",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         # TODO, currently in C code.
         {"items": _template_items_gizmo_tweak_value()},
@@ -4744,11 +4753,24 @@ def km_generic_gizmos_select(_params):
     return keymap
 
 
-def km_generic_gizmos_select_tweak_modal_map(_params):
+def km_generic_gizmo_tweak_modal_map(_params):
     keymap = (
-        "Generic Gizmos Select Tweak Modal Map",
+        "Generic Gizmo Tweak Modal Map",
         {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
-        {"items": _template_items_gizmo_tweak_modal()},
+        {"items": [
+            ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+            ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+            ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+            ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
+            ("PRECISION_ON", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
+            ("PRECISION_OFF", {"type": 'RIGHT_SHIFT', "value": 'RELEASE', "any": True}, None),
+            ("PRECISION_ON", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
+            ("PRECISION_OFF", {"type": 'LEFT_SHIFT', "value": 'RELEASE', "any": True}, None),
+            ("SNAP_ON", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
+            ("SNAP_OFF", {"type": 'RIGHT_CTRL', "value": 'RELEASE', "any": True}, None),
+            ("SNAP_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
+            ("SNAP_OFF", {"type": 'LEFT_CTRL', "value": 'RELEASE', "any": True}, None),
+        ]},
     )
     return keymap
 
@@ -5756,8 +5778,8 @@ def generate_keymaps(params=None):
         km_view3d(params),
         km_mask_editing(params),
         km_markers(params),
-        km_scrubbing(params),
-        km_scrubbing_clip(params),
+        km_time_scrub(params),
+        km_time_scrub_clip(params),
         km_graph_editor_generic(params),
         km_graph_editor(params),
         km_image_generic(params),
@@ -5837,10 +5859,11 @@ def generate_keymaps(params=None):
         km_paint_stroke_modal(params),
 
         # Gizmos.
-        km_generic_gizmos(params),
-        km_generic_gizmos_tweak_modal_map(params),
-        km_generic_gizmos_select(params),
-        km_generic_gizmos_select_tweak_modal_map(params),
+        km_generic_gizmo(params),
+        km_generic_gizmo_drag(params),
+        km_generic_gizmo_click_drag(params),
+        km_generic_gizmo_select(params),
+        km_generic_gizmo_tweak_modal_map(params),
 
         # Pop-Up Keymaps.
         km_popup_toolbar(params),

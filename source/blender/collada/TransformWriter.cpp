@@ -26,11 +26,10 @@
 #include "TransformWriter.h"
 
 void TransformWriter::add_joint_transform(COLLADASW::Node &node,
-                                         float mat[4][4],
-                                         float parent_mat[4][4],
-                                         BCExportSettings &export_settings,
-                                         bool has_restmat
-	)
+                                          float mat[4][4],
+                                          float parent_mat[4][4],
+                                          BCExportSettings &export_settings,
+                                          bool has_restmat)
 {
   float local[4][4];
 
@@ -92,7 +91,7 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node &node,
       node.addMatrix("transform", d_obmat);
       break;
     }
-    case BC_TRANSFORMATION_TYPE_TRANSROTLOC: {
+    case BC_TRANSFORMATION_TYPE_DECOMPOSED: {
       float loc[3], rot[3], scale[3];
       bc_decompose(f_obmat, loc, rot, NULL, scale);
       if (limit_precision) {
@@ -106,9 +105,8 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node &node,
   }
 }
 
-void TransformWriter::add_node_transform_identity(
-	COLLADASW::Node &node,
-	BCExportSettings &export_settings)
+void TransformWriter::add_node_transform_identity(COLLADASW::Node &node,
+                                                  BCExportSettings &export_settings)
 {
   BC_export_transformation_type transformation_type =
       export_settings.get_object_transformation_type();
