@@ -448,5 +448,6 @@ bool outliner_tree_traverse(const SpaceOutliner *soops,
                             TreeTraversalFunc func,
                             void *customdata);
 float outliner_restrict_columns_width(const struct SpaceOutliner *soops);
+TreeElement *outliner_find_active_element(const ListBase *lb);
 
 #endif /* __OUTLINER_INTERN_H__ */

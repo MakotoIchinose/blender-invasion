@@ -300,3 +300,18 @@ float outliner_restrict_columns_width(const SpaceOutliner *soops)
   }
   return (num_columns * UI_UNIT_X + V2D_SCROLL_WIDTH);
 }
+
+/* Find active element in tree */
+TreeElement *outliner_find_active_element(const ListBase *lb)
+{
+  for (TreeElement *te = lb->first; te; te = te->next) {
+    if (TREESTORE(te)->flag & TSE_ACTIVE) {
+      return te;
+    }
+    TreeElement *active_element = outliner_find_active_element(&te->subtree);
+    if (active_element) {
+      return active_element;
+    }
+  }
+  return NULL;
+}
