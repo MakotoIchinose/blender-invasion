@@ -757,7 +757,7 @@ void GPU_create_gl_tex_compressed(unsigned int *bind, int textarget, Image *ima,
 
   if (textarget == GL_TEXTURE_2D && GPU_upload_dxt_texture(ibuf, use_srgb) == 0) {
     glDeleteTextures(1, (GLuint *)bind);
-    GPU_create_gl_tex(bind, ibuf->rect, NULL, ibuf->x, ibuf->x, textarget, mipmap, use_srgb, ima);
+    GPU_create_gl_tex(bind, ibuf->rect, NULL, ibuf->x, ibuf->y, textarget, mipmap, use_srgb, ima);
   }
 
   glBindTexture(textarget, 0);
@@ -1354,7 +1354,7 @@ static void gpu_disable_multisample(void)
 
 void GPU_state_init(void)
 {
-  GPU_disable_program_point_size();
+  GPU_program_point_size(false);
 
   glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
@@ -1372,16 +1372,6 @@ void GPU_state_init(void)
   glDisable(GL_CULL_FACE);
 
   gpu_disable_multisample();
-}
-
-void GPU_enable_program_point_size(void)
-{
-  glEnable(GL_PROGRAM_POINT_SIZE);
-}
-
-void GPU_disable_program_point_size(void)
-{
-  glDisable(GL_PROGRAM_POINT_SIZE);
 }
 
 /** \name Framebuffer color depth, for selection codes

@@ -111,7 +111,7 @@ void workbench_volume_engine_free(void)
 void workbench_volume_cache_init(WORKBENCH_Data *vedata)
 {
   vedata->psl->volume_pass = DRW_pass_create(
-      "Volumes", DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_PREMUL | DRW_STATE_CULL_FRONT);
+      "Volumes", DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
 }
 
 void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
@@ -154,7 +154,7 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
 
   if (use_slice) {
     float invviewmat[4][4];
-    DRW_viewport_matrix_get(invviewmat, DRW_MAT_VIEWINV);
+    DRW_view_viewmat_get(NULL, invviewmat, true);
 
     const int axis = (sds->slice_axis == SLICE_AXIS_AUTO) ?
                          axis_dominant_v3_single(invviewmat[2]) :

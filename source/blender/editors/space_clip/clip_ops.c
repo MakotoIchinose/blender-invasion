@@ -245,7 +245,7 @@ static int open_exec(bContext *C, wmOperator *op)
     id_us_min(&clip->id);
 
     RNA_id_pointer_create(&clip->id, &idptr);
-    RNA_property_pointer_set(NULL, &pprop->ptr, pprop->prop, idptr);
+    RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, NULL);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
   else if (sc) {
@@ -495,7 +495,7 @@ void CLIP_OT_view_pan(wmOperatorType *ot)
   ot->poll = ED_space_clip_view_clip_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
 
   /* properties */
   RNA_def_float_vector(ot->srna,
@@ -685,7 +685,7 @@ void CLIP_OT_view_zoom(wmOperatorType *ot)
   ot->poll = ED_space_clip_view_clip_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
 
   /* properties */
   prop = RNA_def_float(ot->srna,

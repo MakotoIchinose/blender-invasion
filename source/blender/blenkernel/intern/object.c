@@ -361,6 +361,13 @@ static void object_update_from_subsurf_ccg(Object *object)
   if (object->type != OB_MESH) {
     return;
   }
+  /* If object does not own evaluated mesh we can not access it since it might be freed already
+   * (happens on dependency graph free where order of CoW-ed IDs free is undefined).
+   *
+   * Good news is: such mesh does not have modifiers applied, so no need to worry about CCG. */
+  if (!object->runtime.is_mesh_eval_owned) {
+    return;
+  }
   /* Object was never evaluated, so can not have CCG subdivision surface. */
   Mesh *mesh_eval = object->runtime.mesh_eval;
   if (mesh_eval == NULL) {
@@ -448,12 +455,13 @@ void BKE_object_free_derived_caches(Object *ob)
   object_update_from_subsurf_ccg(ob);
   BKE_object_free_derived_mesh_caches(ob);
 
-  if (ob->runtime.mesh_eval != NULL) {
+  /* Restore initial pointer. */
+  if (ob->runtime.mesh_orig != NULL) {
+    ob->data = ob->runtime.mesh_orig;
+  }
+
+  if ((ob->runtime.mesh_eval != NULL && ob->runtime.is_mesh_eval_owned)) {
     Mesh *mesh_eval = ob->runtime.mesh_eval;
-    /* Restore initial pointer. */
-    if (ob->data == mesh_eval) {
-      ob->data = ob->runtime.mesh_orig;
-    }
     /* Evaluated mesh points to edit mesh, but does not own it. */
     mesh_eval->edit_mesh = NULL;
     BKE_mesh_free(mesh_eval);
@@ -1468,7 +1476,7 @@ Object *BKE_object_copy(Main *bmain, const Object *ob)
 
 /** Perform deep-copy of object and its 'children' data-blocks (obdata, materials, actions, etc.).
  *
- * \param dupflag Controls which sub-data are also duplicated
+ * \param dupflag: Controls which sub-data are also duplicated
  * (see #eDupli_ID_Flags in DNA_userdef_types.h).
  *
  * \note This function does not do any remapping to new IDs, caller must do it
@@ -1512,12 +1520,11 @@ Object *BKE_object_duplicate(Main *bmain, const Object *ob, const int dupflag)
         else
         {
           obn->mat[a] = ID_NEW_SET(obn->mat[a], BKE_material_copy(bmain, obn->mat[a]));
+          if (dupflag & USER_DUP_ACT) {
+            BKE_animdata_copy_id_action(bmain, &obn->mat[a]->id, true);
+          }
         }
         id_us_min(id);
-
-        if (dupflag & USER_DUP_ACT) {
-          BKE_animdata_copy_id_action(bmain, &obn->mat[a]->id, true);
-        }
       }
     }
   }
@@ -1530,12 +1537,10 @@ Object *BKE_object_duplicate(Main *bmain, const Object *ob, const int dupflag)
         else
         {
           psys->part = ID_NEW_SET(psys->part, BKE_particlesettings_copy(bmain, psys->part));
+          if (dupflag & USER_DUP_ACT) {
+            BKE_animdata_copy_id_action(bmain, &psys->part->id, true);
+          }
         }
-
-        if (dupflag & USER_DUP_ACT) {
-          BKE_animdata_copy_id_action(bmain, &psys->part->id, true);
-        }
-
         id_us_min(id);
       }
     }
@@ -1712,6 +1717,9 @@ Object *BKE_object_duplicate(Main *bmain, const Object *ob, const int dupflag)
             else
             {
               (*matarar)[a] = ID_NEW_SET((*matarar)[a], BKE_material_copy(bmain, (*matarar)[a]));
+              if (dupflag & USER_DUP_ACT) {
+                BKE_animdata_copy_id_action(bmain, &(*matarar)[a]->id, true);
+              }
             }
             id_us_min(id);
           }
@@ -4499,11 +4507,11 @@ void BKE_object_update_select_id(struct Main *bmain)
   }
 }
 
-Mesh *BKE_object_to_mesh(Object *object)
+Mesh *BKE_object_to_mesh(Depsgraph *depsgraph, Object *object, bool preserve_all_data_layers)
 {
   BKE_object_to_mesh_clear(object);
 
-  Mesh *mesh = BKE_mesh_new_from_object(object);
+  Mesh *mesh = BKE_mesh_new_from_object(depsgraph, object, preserve_all_data_layers);
   object->runtime.object_as_temp_mesh = mesh;
   return mesh;
 }

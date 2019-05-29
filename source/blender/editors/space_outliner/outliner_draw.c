@@ -1441,7 +1441,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                   block,
                   UI_BTYPE_ICON_TOGGLE,
                   0,
-                  (layer_collection->flag & LAYER_COLLECTION_INDIRECT_ONLY) != 0 ? 0 : ICON_REMOVE,
+                  0,
                   (int)(ar->v2d.cur.xmax - restrict_offsets.indirect_only),
                   te->ys,
                   UI_UNIT_X,
@@ -2802,7 +2802,11 @@ static void outliner_draw_tree_element(bContext *C,
                                         BKE_view_layer_base_find(view_layer, ob);
         const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
 
-        if (ob == obact || is_selected) {
+        if (ob == obact) {
+          active = OL_DRAWSEL_ACTIVE;
+        }
+
+        if (is_selected) {
           if (ob == obact) {
             /* active selected object */
             UI_GetThemeColor3ubv(TH_ACTIVE_OBJECT, text_color);

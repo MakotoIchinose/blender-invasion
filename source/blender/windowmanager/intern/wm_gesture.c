@@ -62,7 +62,7 @@ wmGesture *WM_gesture_new(bContext *C, const wmEvent *event, int type)
   gesture->type = type;
   gesture->event_type = event->type;
   gesture->winrct = ar->winrct;
-  gesture->userdata_free = true; /* Free if userdata is set. */
+  gesture->user_data.use_free = true; /* Free if userdata is set. */
   gesture->modal_state = GESTURE_MODAL_NOP;
 
   if (ELEM(type,
@@ -106,9 +106,7 @@ void WM_gesture_end(bContext *C, wmGesture *gesture)
   }
   BLI_remlink(&win->gesture, gesture);
   MEM_freeN(gesture->customdata);
-  if (gesture->userdata && gesture->userdata_free) {
-    MEM_freeN(gesture->userdata);
-  }
+  WM_generic_user_data_free(&gesture->user_data);
   MEM_freeN(gesture);
 }
 
@@ -136,8 +134,8 @@ int wm_gesture_evaluate(wmGesture *gesture)
     rcti *rect = gesture->customdata;
     int dx = BLI_rcti_size_x(rect);
     int dy = BLI_rcti_size_y(rect);
-    float tweak_threshold = U.tweak_threshold * U.dpi_fac;
-    if (abs(dx) + abs(dy) > tweak_threshold) {
+    const int drag_threshold = WM_EVENT_CURSOR_CLICK_DRAG_THRESHOLD;
+    if (abs(dx) >= drag_threshold || abs(dy) >= drag_threshold) {
       int theta = round_fl_to_int(4.0f * atan2f((float)dy, (float)dx) / (float)M_PI);
       int val = EVT_GESTURE_W;
 

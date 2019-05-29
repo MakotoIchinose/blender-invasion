@@ -755,9 +755,9 @@ void workbench_deferred_cache_init(WORKBENCH_Data *vedata)
       /* Stencil Shadow passes. */
 #ifdef DEBUG_SHADOW_VOLUME
       DRWState depth_pass_state = DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_COLOR |
-                                  DRW_STATE_ADDITIVE;
+                                  DRW_STATE_BLEND_ADD;
       DRWState depth_fail_state = DRW_STATE_DEPTH_GREATER_EQUAL | DRW_STATE_WRITE_COLOR |
-                                  DRW_STATE_ADDITIVE;
+                                  DRW_STATE_BLEND_ADD;
 #else
       DRWState depth_pass_state = DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_STENCIL_SHADOW_PASS;
       DRWState depth_fail_state = DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_STENCIL_SHADOW_FAIL;
@@ -830,7 +830,7 @@ void workbench_deferred_cache_init(WORKBENCH_Data *vedata)
     }
     /* OIT Composite */
     {
-      int state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND;
+      int state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
       psl->oit_composite_pass = DRW_pass_create("OIT Composite", state);
 
       grp = DRW_shgroup_create(e_data.oit_resolve_sh, psl->oit_composite_pass);
@@ -983,6 +983,8 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
           workbench_material_get_image_and_mat(ob, i + 1, &image, &iuser, &interp, &mat);
           int color_type = workbench_material_determine_color_type(wpd, image, ob, is_sculpt_mode);
           if (color_type == V3D_SHADING_MATERIAL_COLOR && mat && mat->a < 1.0) {
+            /* Hack */
+            wpd->shading.xray_alpha = mat->a;
             material = workbench_forward_get_or_create_material_data(
                 vedata, ob, mat, image, iuser, color_type, 0, is_sculpt_mode);
             has_transp_mat = true;

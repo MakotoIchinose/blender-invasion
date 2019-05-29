@@ -63,6 +63,7 @@ class RENDER_PT_context(Panel):
 class RENDER_PT_color_management(RenderButtonsPanel, Panel):
     bl_label = "Color Management"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 100
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
@@ -389,9 +390,11 @@ class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
         scene = context.scene
         props = scene.eevee
 
-        col = layout.column()
+        col = layout.column(align=True)
         col.prop(props, "taa_render_samples", text="Render")
         col.prop(props, "taa_samples", text="Viewport")
+
+        col = layout.column()
         col.prop(props, "use_taa_reprojection")
 
 

@@ -247,7 +247,7 @@ static int text_new_exec(bContext *C, wmOperator *UNUSED(op))
 
   if (prop) {
     RNA_id_pointer_create(&text->id, &idptr);
-    RNA_property_pointer_set(NULL, &ptr, prop, idptr);
+    RNA_property_pointer_set(&ptr, prop, idptr, NULL);
     RNA_property_update(C, &ptr, prop);
   }
   else if (st) {
@@ -326,7 +326,7 @@ static int text_open_exec(bContext *C, wmOperator *op)
 
   if (pprop->prop) {
     RNA_id_pointer_create(&text->id, &idptr);
-    RNA_property_pointer_set(NULL, &pprop->ptr, pprop->prop, idptr);
+    RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, NULL);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
   else if (st) {
@@ -2562,7 +2562,7 @@ void TEXT_OT_scroll(wmOperatorType *ot)
   ot->poll = text_scroll_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_INTERNAL;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_INTERNAL;
 
   /* properties */
   RNA_def_int(

@@ -140,14 +140,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata),
     float focus_dist = BKE_camera_object_dof_distance(camera);
     float focal_len = cam->lens;
 
-    /* this is factor that converts to the scene scale. focal length and sensor are expressed in
-     * mm unit.scale_length is how many meters per blender unit we have. We want to convert to
-     * blender units though because the shader reads coordinates in world space, which is in
-     * blender units.
-     * Note however that focus_distance is already in blender units and shall not be scaled here
-     * (see T48157). */
-    float scale = (scene_eval->unit.system) ? scene_eval->unit.scale_length : 1.0f;
-    float scale_camera = 0.001f / scale;
+    const float scale_camera = 0.001f;
     /* we want radius here for the aperture number  */
     float aperture = 0.5f * scale_camera * focal_len / fstop;
     float focal_len_scaled = scale_camera * focal_len;
@@ -211,7 +204,7 @@ void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_
     DRW_shgroup_uniform_vec2(grp, "dofParams", effects->dof_params, 1);
     DRW_shgroup_call(grp, quad, NULL);
 
-    DRW_PASS_CREATE(psl->dof_scatter, DRW_STATE_WRITE_COLOR | DRW_STATE_ADDITIVE_FULL);
+    DRW_PASS_CREATE(psl->dof_scatter, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
 
     /* This create an empty batch of N triangles to be positioned
      * by the vertex shader 0.4ms against 6ms with instancing */

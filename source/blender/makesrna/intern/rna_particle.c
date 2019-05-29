@@ -534,6 +534,11 @@ static void rna_ParticleSystem_uv_on_emitter(ParticleSystem *particlesystem,
                                              int uv_no,
                                              float r_uv[2])
 {
+  if (modifier->mesh_final == NULL) {
+    BKE_report(reports, RPT_ERROR, "Object was not yet evaluated");
+    zero_v2(r_uv);
+    return;
+  }
   if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_MLOOPUV)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     zero_v2(r_uv);
@@ -792,9 +797,9 @@ static PointerRNA rna_particle_settings_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ParticleSettings, part);
 }
 
-static void rna_particle_settings_set(struct ReportList *UNUSED(reports),
-                                      PointerRNA *ptr,
-                                      PointerRNA value)
+static void rna_particle_settings_set(PointerRNA *ptr,
+                                      PointerRNA value,
+                                      struct ReportList *UNUSED(reports))
 {
   Object *ob = ptr->id.data;
   ParticleSystem *psys = (ParticleSystem *)ptr->data;
@@ -1320,9 +1325,9 @@ static PointerRNA rna_ParticleSettings_active_texture_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_Texture, tex);
 }
 
-static void rna_ParticleSettings_active_texture_set(struct ReportList *UNUSED(reports),
-                                                    PointerRNA *ptr,
-                                                    PointerRNA value)
+static void rna_ParticleSettings_active_texture_set(PointerRNA *ptr,
+                                                    PointerRNA value,
+                                                    struct ReportList *UNUSED(reports))
 {
   ParticleSettings *part = (ParticleSettings *)ptr->data;
 
@@ -2900,7 +2905,7 @@ static void rna_def_particle_settings(BlenderRNA *brna)
       prop, "Random Phase", "Randomize rotation around the chosen orientation axis");
   RNA_def_property_update(prop, 0, "rna_Particle_reset");
 
-  prop = RNA_def_property(srna, "hair_length", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "hair_length", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_funcs(
       prop, "rna_PartSetting_hairlength_get", "rna_PartSetting_hairlength_set", NULL);
   RNA_def_property_range(prop, 0.0f, 1000.0f);

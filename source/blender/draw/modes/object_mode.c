@@ -531,7 +531,7 @@ static void OBJECT_engine_init(void *vedata)
 
   {
     /* Grid precompute */
-    float invviewmat[4][4], invwinmat[4][4];
+    float viewinv[4][4], wininv[4][4];
     float viewmat[4][4], winmat[4][4];
     View3D *v3d = draw_ctx->v3d;
     Scene *scene = draw_ctx->scene;
@@ -546,10 +546,10 @@ static void OBJECT_engine_init(void *vedata)
     const bool show_ortho_grid = (v3d->gridflag & V3D_SHOW_ORTHO_GRID) != 0;
     e_data.draw_grid = show_axis_x || show_axis_y || show_axis_z || show_floor;
 
-    DRW_viewport_matrix_get(winmat, DRW_MAT_WIN);
-    DRW_viewport_matrix_get(viewmat, DRW_MAT_VIEW);
-    DRW_viewport_matrix_get(invwinmat, DRW_MAT_WININV);
-    DRW_viewport_matrix_get(invviewmat, DRW_MAT_VIEWINV);
+    DRW_view_winmat_get(NULL, winmat, false);
+    DRW_view_winmat_get(NULL, wininv, true);
+    DRW_view_viewmat_get(NULL, viewmat, false);
+    DRW_view_viewmat_get(NULL, viewinv, true);
 
     /* if perps */
     if (winmat[3][3] == 0.0f) {
@@ -561,7 +561,7 @@ static void OBJECT_engine_init(void *vedata)
 
       /* convert the view vectors to view space */
       for (int i = 0; i < 2; i++) {
-        mul_m4_v4(invwinmat, viewvecs[i]);
+        mul_m4_v4(wininv, viewvecs[i]);
         mul_v3_fl(viewvecs[i], 1.0f / viewvecs[i][2]); /* perspective divide */
       }
 
@@ -623,8 +623,8 @@ static void OBJECT_engine_init(void *vedata)
       e_data.zpos_flag = SHOW_AXIS_Z;
 
       float zvec[3], campos[3];
-      negate_v3_v3(zvec, invviewmat[2]);
-      copy_v3_v3(campos, invviewmat[3]);
+      negate_v3_v3(zvec, viewinv[2]);
+      copy_v3_v3(campos, viewinv[3]);
 
       /* z axis : chose the most facing plane */
       if (fabsf(zvec[0]) < fabsf(zvec[1])) {
@@ -708,7 +708,7 @@ static DRWShadingGroup *shgroup_outline(DRWPass *pass,
   DRW_shgroup_uniform_int(grp, "baseId", ofs, 1);
 
   if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   return grp;
 }
@@ -723,7 +723,7 @@ static DRWShadingGroup *shgroup_wire(DRWPass *pass,
   DRW_shgroup_uniform_vec4(grp, "color", col, 1);
 
   if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   return grp;
 }
@@ -739,7 +739,7 @@ static DRWShadingGroup *shgroup_points(DRWPass *pass,
   DRW_shgroup_uniform_vec4(grp, "innerColor", G_draw.block.colorEditMeshMiddle, 1);
 
   if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   return grp;
 }
@@ -1016,7 +1016,7 @@ static void DRW_shgroup_empty_image(OBJECT_Shaders *sh_data,
     DRW_shgroup_uniform_vec2(grp, "offset", ob->ima_ofs, 1);
     DRW_shgroup_uniform_vec3(grp, "color", color, 1);
     if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     DRW_shgroup_call(grp, DRW_cache_image_plane_wire_get(), ob->obmat);
   }
@@ -1036,7 +1036,7 @@ static void DRW_shgroup_empty_image(OBJECT_Shaders *sh_data,
     DRW_shgroup_uniform_vec4(grp, "objectColor", ob->color, 1);
     DRW_shgroup_uniform_bool_copy(grp, "useAlphaTest", !use_alpha_blend);
     if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     DRW_shgroup_call(grp, DRW_cache_image_plane_get(), ob->obmat);
   }
@@ -1165,7 +1165,7 @@ static void OBJECT_cache_init(void *vedata)
   }
 
   {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
     psl->outlines_resolve = DRW_pass_create("Outlines Resolve Pass", state);
 
     struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
@@ -1180,7 +1180,7 @@ static void OBJECT_cache_init(void *vedata)
 
   {
     /* Grid pass */
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
     psl->grid = DRW_pass_create("Infinite Grid Pass", state);
 
     struct GPUBatch *geom = DRW_cache_grid_get();
@@ -1225,11 +1225,11 @@ static void OBJECT_cache_init(void *vedata)
 
     /* Wire bones */
     state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-            DRW_STATE_BLEND;
+            DRW_STATE_BLEND_ALPHA;
     sgl->bone_wire = psl->bone_wire[i] = DRW_pass_create("Bone Wire Pass", state);
 
     /* distance outline around envelope bones */
-    state = DRW_STATE_ADDITIVE | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+    state = DRW_STATE_BLEND_ADD | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
             DRW_STATE_CULL_FRONT;
     sgl->bone_envelope = psl->bone_envelope[i] = DRW_pass_create("Bone Envelope Outline Pass",
                                                                  state);
@@ -1246,10 +1246,10 @@ static void OBJECT_cache_init(void *vedata)
     struct GPUShader *sh;
 
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                     DRW_STATE_BLEND;
+                     DRW_STATE_BLEND_ALPHA;
     sgl->non_meshes = psl->non_meshes[i] = DRW_pass_create("Non Meshes Pass", state);
 
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND;
+    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
     sgl->image_empties = psl->image_empties[i] = DRW_pass_create("Image Empties", state);
 
     /* Empties */
@@ -1382,12 +1382,12 @@ static void OBJECT_cache_init(void *vedata)
     sgl->points_dupli = shgroup_points(sgl->non_meshes, gb->colorDupli, sh, draw_ctx->sh_cfg);
     sgl->points_dupli_select = shgroup_points(
         sgl->non_meshes, gb->colorDupliSelect, sh, draw_ctx->sh_cfg);
-    DRW_shgroup_state_disable(sgl->points, DRW_STATE_BLEND);
-    DRW_shgroup_state_disable(sgl->points_select, DRW_STATE_BLEND);
-    DRW_shgroup_state_disable(sgl->points_transform, DRW_STATE_BLEND);
-    DRW_shgroup_state_disable(sgl->points_active, DRW_STATE_BLEND);
-    DRW_shgroup_state_disable(sgl->points_dupli, DRW_STATE_BLEND);
-    DRW_shgroup_state_disable(sgl->points_dupli_select, DRW_STATE_BLEND);
+    DRW_shgroup_state_disable(sgl->points, DRW_STATE_BLEND_ALPHA);
+    DRW_shgroup_state_disable(sgl->points_select, DRW_STATE_BLEND_ALPHA);
+    DRW_shgroup_state_disable(sgl->points_transform, DRW_STATE_BLEND_ALPHA);
+    DRW_shgroup_state_disable(sgl->points_active, DRW_STATE_BLEND_ALPHA);
+    DRW_shgroup_state_disable(sgl->points_dupli, DRW_STATE_BLEND_ALPHA);
+    DRW_shgroup_state_disable(sgl->points_dupli_select, DRW_STATE_BLEND_ALPHA);
 
     /* Metaballs Handles */
     sgl->mball_handle = buffer_instance_mball_handles(sgl->non_meshes, draw_ctx->sh_cfg);
@@ -1404,7 +1404,7 @@ static void OBJECT_cache_init(void *vedata)
     DRW_shgroup_uniform_vec4(grp, "color", gb->colorLightNoAlpha, 1);
     DRW_shgroup_uniform_float(grp, "size", &gb->sizeLightCenter, 1);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, DRW_context_state_get()->rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
 
     sgl->light_center = buffer_dynpoints_uniform_color(grp);
@@ -1483,7 +1483,7 @@ static void OBJECT_cache_init(void *vedata)
     sgl->field_cone_limit = buffer_instance_scaled(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 
     /* Transparent Shapes */
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND |
+    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
             DRW_STATE_CULL_FRONT;
     sgl->transp_shapes = psl->transp_shapes[i] = DRW_pass_create("Transparent Shapes", state);
 
@@ -1492,7 +1492,7 @@ static void OBJECT_cache_init(void *vedata)
 
     DRWShadingGroup *grp_transp = DRW_shgroup_create(sh, sgl->transp_shapes);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp_transp, DRW_context_state_get()->rv3d);
+      DRW_shgroup_state_enable(grp_transp, DRW_STATE_CLIP_PLANES);
     }
 
     DRWShadingGroup *grp_cull_back = DRW_shgroup_create_sub(grp_transp);
@@ -1528,7 +1528,7 @@ static void OBJECT_cache_init(void *vedata)
     DRWShadingGroup *grp;
     static float outlineWidth, size;
 
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
     psl->ob_center = DRW_pass_create("Obj Center Pass", state);
 
     outlineWidth = 1.0f * U.pixelsize;
@@ -1544,7 +1544,7 @@ static void OBJECT_cache_init(void *vedata)
     DRW_shgroup_uniform_vec4(grp, "color", gb->colorActive, 1);
     DRW_shgroup_uniform_vec4(grp, "outlineColor", gb->colorOutline, 1);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, draw_ctx->rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     /* TODO find better name. */
     stl->g_data->center_active = buffer_dynpoints_uniform_color(grp);
@@ -1572,9 +1572,9 @@ static void OBJECT_cache_init(void *vedata)
 
   {
     /* Particle Pass */
-    psl->particle = DRW_pass_create("Particle Pass",
-                                    DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                        DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND);
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+                     DRW_STATE_BLEND_ALPHA;
+    psl->particle = DRW_pass_create("Particle Pass", state);
   }
 }
 
@@ -2134,29 +2134,31 @@ static void DRW_shgroup_camera(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLay
   cam->runtime.drw_tria[1][1] = shift[1] + ((1.1f * drawsize * (asp[1] + 0.7f)) * scale[1]);
 
   if (look_through) {
-    /* Only draw the frame. */
-    float mat[4][4];
-    if (is_multiview) {
-      const bool is_left = v3d->multiview_eye == STEREO_LEFT_ID;
-      const char *view_name = is_left ? STEREO_LEFT_NAME : STEREO_RIGHT_NAME;
-      BKE_camera_multiview_model_matrix(&scene->r, ob, view_name, mat);
-      const float shiftx = BKE_camera_multiview_shift_x(&scene->r, ob, view_name);
-      const float delta_shiftx = shiftx - cam->shiftx;
-      const float width = cam->runtime.drw_corners[0][2][0] - cam->runtime.drw_corners[0][0][0];
-      for (int i = 0; i < 4; i++) {
-        cam->runtime.drw_corners[0][i][0] -= delta_shiftx * width;
+    if (!DRW_state_is_image_render()) {
+      /* Only draw the frame. */
+      float mat[4][4];
+      if (is_multiview) {
+        const bool is_left = v3d->multiview_eye == STEREO_LEFT_ID;
+        const char *view_name = is_left ? STEREO_LEFT_NAME : STEREO_RIGHT_NAME;
+        BKE_camera_multiview_model_matrix(&scene->r, ob, view_name, mat);
+        const float shiftx = BKE_camera_multiview_shift_x(&scene->r, ob, view_name);
+        const float delta_shiftx = shiftx - cam->shiftx;
+        const float width = cam->runtime.drw_corners[0][2][0] - cam->runtime.drw_corners[0][0][0];
+        for (int i = 0; i < 4; i++) {
+          cam->runtime.drw_corners[0][i][0] -= delta_shiftx * width;
+        }
       }
-    }
-    else {
-      copy_m4_m4(mat, ob->obmat);
-    }
+      else {
+        copy_m4_m4(mat, ob->obmat);
+      }
 
-    DRW_buffer_add_entry(sgl->camera_frame,
-                         color,
-                         cam->runtime.drw_corners[0],
-                         &cam->runtime.drw_depth[0],
-                         cam->runtime.drw_tria,
-                         mat);
+      DRW_buffer_add_entry(sgl->camera_frame,
+                           color,
+                           cam->runtime.drw_corners[0],
+                           &cam->runtime.drw_depth[0],
+                           cam->runtime.drw_tria,
+                           mat);
+    }
   }
   else {
     if (!is_stereo3d_cameras) {
@@ -2437,12 +2439,11 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
 
   if (sds->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
       sds->axis_slice_method == AXIS_SLICE_SINGLE) {
-    float invviewmat[4][4];
-    DRW_viewport_matrix_get(invviewmat, DRW_MAT_VIEWINV);
+    float viewinv[4][4];
+    DRW_view_viewmat_get(NULL, viewinv, true);
 
-    const int axis = (sds->slice_axis == SLICE_AXIS_AUTO) ?
-                         axis_dominant_v3_single(invviewmat[2]) :
-                         sds->slice_axis - 1;
+    const int axis = (sds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewinv[2]) :
+                                                            sds->slice_axis - 1;
     slice_axis = axis;
     line_count /= sds->res[axis];
   }

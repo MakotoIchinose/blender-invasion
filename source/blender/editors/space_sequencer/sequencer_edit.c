@@ -231,23 +231,12 @@ static void seq_proxy_build_job(const bContext *C)
 
 /* ********************************************************************** */
 
-void seq_rectf(Sequence *seq, rctf *rectf)
+void seq_rectf(Sequence *seq, rctf *rect)
 {
-  if (seq->startstill) {
-    rectf->xmin = seq->start;
-  }
-  else {
-    rectf->xmin = seq->startdisp;
-  }
-
-  rectf->ymin = seq->machine + SEQ_STRIP_OFSBOTTOM;
-  if (seq->endstill) {
-    rectf->xmax = seq->start + seq->len;
-  }
-  else {
-    rectf->xmax = seq->enddisp;
-  }
-  rectf->ymax = seq->machine + SEQ_STRIP_OFSTOP;
+  rect->xmin = seq->startdisp;
+  rect->xmax = seq->enddisp;
+  rect->ymin = seq->machine + SEQ_STRIP_OFSBOTTOM;
+  rect->ymax = seq->machine + SEQ_STRIP_OFSTOP;
 }
 
 void boundbox_seq(Scene *scene, rctf *rect)
@@ -1343,7 +1332,7 @@ static int sequencer_snap_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
 void SEQUENCER_OT_snap(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Snap Strips to Frame";
+  ot->name = "Snap Strips to Playhead";
   ot->idname = "SEQUENCER_OT_snap";
   ot->description = "Frame where selected strips will be snapped";
 
@@ -2680,7 +2669,7 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
   while (seq) {
     next = seq->next;
     if (seq != seqm && (seq->flag & SELECT)) {
-      BKE_sequence_invalidate_cache(scene, seq);
+      BKE_sequence_invalidate_dependent(scene, seq);
       channel_max = max_ii(seq->machine, channel_max);
       BLI_remlink(ed->seqbasep, seq);
       BLI_addtail(&seqm->seqbase, seq);
@@ -2755,7 +2744,7 @@ static int sequencer_meta_separate_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   for (seq = last_seq->seqbase.first; seq != NULL; seq = seq->next) {
-    BKE_sequence_invalidate_cache(scene, seq);
+    BKE_sequence_invalidate_dependent(scene, seq);
   }
 
   BLI_movelisttolist(ed->seqbasep, &last_seq->seqbase);
@@ -3518,8 +3507,8 @@ static int sequencer_swap_data_exec(bContext *C, wmOperator *op)
     BKE_sound_add_scene_sound_defaults(scene, seq_other);
   }
 
-  BKE_sequence_invalidate_cache(scene, seq_act);
-  BKE_sequence_invalidate_cache(scene, seq_other);
+  BKE_sequence_invalidate_cache_raw(scene, seq_act);
+  BKE_sequence_invalidate_cache_raw(scene, seq_other);
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
