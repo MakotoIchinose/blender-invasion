@@ -1213,10 +1213,13 @@ void outliner_item_select(SpaceOutliner *soops,
   TreeStoreElem *tselem = TREESTORE(te);
   const short new_flag = toggle ? (tselem->flag ^ TSE_SELECTED) : (tselem->flag | TSE_SELECTED);
 
+  // Change active element
+  outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
+
   if (extend == false) {
     outliner_flag_set(&soops->tree, TSE_SELECTED, false);
   }
-  tselem->flag = new_flag;
+  tselem->flag = new_flag | TSE_ACTIVE;
 }
 
 static void outliner_item_toggle_closed(TreeElement *te, const bool toggle_children)

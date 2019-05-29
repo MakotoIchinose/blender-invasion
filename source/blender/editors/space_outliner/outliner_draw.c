@@ -3181,6 +3181,7 @@ static void outliner_draw_highlights_recursive(unsigned pos,
                                                const SpaceOutliner *soops,
                                                const ListBase *lb,
                                                const float col_selection[4],
+                                               const float col_active[4],
                                                const float col_highlight[4],
                                                const float col_searchmatch[4],
                                                int start_x,
@@ -3194,7 +3195,11 @@ static void outliner_draw_highlights_recursive(unsigned pos,
     const int start_y = *io_start_y;
 
     /* selection status */
-    if (tselem->flag & TSE_SELECTED) {
+    if ((tselem->flag & TSE_ACTIVE) && (tselem->flag & TSE_SELECTED)) {
+      immUniformColor4fv(col_active);
+      immRecti(pos, 0, start_y, (int)ar->v2d.cur.xmax, start_y + UI_UNIT_Y);
+    }
+    else if (tselem->flag & TSE_SELECTED) {
       immUniformColor4fv(col_selection);
       immRecti(pos, 0, start_y, (int)ar->v2d.cur.xmax, start_y + UI_UNIT_Y);
     }
@@ -3248,6 +3253,7 @@ static void outliner_draw_highlights_recursive(unsigned pos,
                                          soops,
                                          &te->subtree,
                                          col_selection,
+                                         col_active,
                                          col_highlight,
                                          col_searchmatch,
                                          start_x + UI_UNIT_X,
@@ -3259,10 +3265,12 @@ static void outliner_draw_highlights_recursive(unsigned pos,
 static void outliner_draw_highlights(ARegion *ar, SpaceOutliner *soops, int startx, int *starty)
 {
   const float col_highlight[4] = {1.0f, 1.0f, 1.0f, 0.13f};
-  float col_selection[4], col_searchmatch[4];
+  float col_selection[4], col_active[4], col_searchmatch[4];
 
   UI_GetThemeColor3fv(TH_SELECT_HIGHLIGHT, col_selection);
   col_selection[3] = 1.0f; /* no alpha */
+  UI_GetThemeColor3fv(TH_SELECT_ACTIVE, col_active);
+  col_active[3] = 1.0f; /* no alpha */
   UI_GetThemeColor4fv(TH_MATCH, col_searchmatch);
   col_searchmatch[3] = 0.5f;
 
@@ -3270,8 +3278,16 @@ static void outliner_draw_highlights(ARegion *ar, SpaceOutliner *soops, int star
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  outliner_draw_highlights_recursive(
-      pos, ar, soops, &soops->tree, col_selection, col_highlight, col_searchmatch, startx, starty);
+  outliner_draw_highlights_recursive(pos,
+                                     ar,
+                                     soops,
+                                     &soops->tree,
+                                     col_selection,
+                                     col_active,
+                                     col_highlight,
+                                     col_searchmatch,
+                                     startx,
+                                     starty);
   immUnbindProgram();
   GPU_blend(false);
 }
