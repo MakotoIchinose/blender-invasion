@@ -409,7 +409,7 @@ void IMAGE_OT_view_pan(wmOperatorType *ot)
   ot->poll = space_image_main_region_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_LOCK_BYPASS;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_LOCK_BYPASS;
 
   /* properties */
   RNA_def_float_vector(ot->srna,
@@ -633,7 +633,7 @@ void IMAGE_OT_view_zoom(wmOperatorType *ot)
   ot->poll = space_image_main_region_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_LOCK_BYPASS;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_LOCK_BYPASS;
 
   /* properties */
   prop = RNA_def_float(ot->srna,
@@ -1869,8 +1869,7 @@ static int image_save_as_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
   Scene *scene = CTX_data_scene(C);
   ImageSaveOptions opts;
   PropertyRNA *prop;
-  const bool save_as_render = ((ima->source == IMA_SRC_VIEWER) ||
-                               (ima->flag & IMA_VIEW_AS_RENDER));
+  const bool save_as_render = (ima->source == IMA_SRC_VIEWER);
 
   if (RNA_struct_property_is_set(op->ptr, "filepath")) {
     return image_save_as_exec(C, op);

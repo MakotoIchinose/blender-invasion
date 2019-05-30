@@ -242,7 +242,7 @@ static void DRW_gpencil_recalc_geometry_caches(Object *ob,
     if ((gps->tot_triangles == 0) || (gps->triangles == NULL)) {
       if ((gps->totpoints > 2) &&
           ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
-           (gpl->blend_mode != eGplBlendMode_Normal))) {
+           (gpl->blend_mode != eGplBlendMode_Regular))) {
         DRW_gpencil_triangulate_stroke_fill(ob, gps);
       }
     }
@@ -819,7 +819,7 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
     interp_v3_v3v3(tfill, gps->runtime.tmp_fill_rgba, tintcolor, tintcolor[3]);
     tfill[3] = gps->runtime.tmp_fill_rgba[3] * opacity;
     if ((tfill[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
-        (gpl->blend_mode != eGplBlendMode_Normal)) {
+        (gpl->blend_mode != eGplBlendMode_Regular)) {
       if (cache->is_dirty) {
         const float *color;
         if (!onion) {
@@ -1021,7 +1021,6 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
   Scene *scene = draw_ctx->scene;
   View3D *v3d = draw_ctx->v3d;
   bGPDstroke *gps, *src_gps;
-  float viewmatrix[4][4];
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool playing = stl->storage->is_playing;
   const bool is_render = (bool)stl->storage->is_render;
@@ -1035,11 +1034,11 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
   Depsgraph *depsgraph = DRW_context_state_get()->depsgraph;
 
   /* get parent matrix and save as static data */
-  ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, viewmatrix);
-  copy_m4_m4(derived_gpf->runtime.viewmatrix, viewmatrix);
-
   if ((cache_ob != NULL) && (cache_ob->is_dup_ob)) {
-    copy_m4_m4(derived_gpf->runtime.viewmatrix, cache_ob->obmat);
+    copy_m4_m4(derived_gpf->runtime.parent_obmat, cache_ob->obmat);
+  }
+  else {
+    ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, derived_gpf->runtime.parent_obmat);
   }
 
   /* apply geometry modifiers */
@@ -1079,7 +1078,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
         (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_REMOVE_FILL_LINE)) {
       if ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) ||
           (gp_style->fill_style > GP_STYLE_FILL_STYLE_SOLID) ||
-          (gpl->blend_mode != eGplBlendMode_Normal)) {
+          (gpl->blend_mode != eGplBlendMode_Regular)) {
         GP_SET_SRC_GPS(src_gps);
         continue;
       }
@@ -1100,7 +1099,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
       }
 
       /* hide any blend layer */
-      if ((!stl->storage->simplify_blend) || (gpl->blend_mode == eGplBlendMode_Normal)) {
+      if ((!stl->storage->simplify_blend) || (gpl->blend_mode == eGplBlendMode_Regular)) {
         /* fill */
         if ((gp_style->flag & GP_STYLE_FILL_SHOW) && (!stl->storage->simplify_fill) &&
             ((gps->flag & GP_STROKE_NOFILL) == 0)) {
@@ -1111,7 +1110,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
         /* No fill strokes, must show stroke always */
         if (((gp_style->flag & GP_STYLE_STROKE_SHOW) || (gps->flag & GP_STROKE_NOFILL)) &&
             ((gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) ||
-             (gpl->blend_mode == eGplBlendMode_Normal))) {
+             (gpl->blend_mode == eGplBlendMode_Regular))) {
           /* recalc strokes uv (geometry can be changed by modifiers) */
           if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
             ED_gpencil_calc_stroke_uv(ob, gps);
@@ -1177,11 +1176,8 @@ static void gpencil_draw_onion_strokes(GpencilBatchCache *cache,
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   Depsgraph *depsgraph = DRW_context_state_get()->depsgraph;
 
-  float viewmatrix[4][4];
-
   /* get parent matrix and save as static data */
-  ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, viewmatrix);
-  copy_m4_m4(gpf->runtime.viewmatrix, viewmatrix);
+  ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, gpf->runtime.parent_obmat);
 
   for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
     MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
@@ -1367,7 +1363,7 @@ static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
   derived_gpf->flag = gpf->flag;
   derived_gpf->key_type = gpf->key_type;
   derived_gpf->runtime = gpf->runtime;
-  copy_m4_m4(derived_gpf->runtime.viewmatrix, gpf->runtime.viewmatrix);
+  copy_m4_m4(derived_gpf->runtime.parent_obmat, gpf->runtime.parent_obmat);
 
   /* copy strokes */
   BLI_listbase_clear(&derived_gpf->strokes);
@@ -1690,7 +1686,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
     else {
       if (elm->gpl != gpl_prev) {
         /* first layer is always blend Normal */
-        array_elm->mode = idx == 0 ? eGplBlendMode_Normal : gpl->blend_mode;
+        array_elm->mode = idx == 0 ? eGplBlendMode_Regular : gpl->blend_mode;
         array_elm->end_shgrp = shgrp;
         gpl_prev = elm->gpl;
         tag_first = true;
@@ -1733,7 +1729,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         if ((do_onion) || (elm->onion == false)) {
           DRW_shgroup_call_range(shgrp,
                                  cache->b_stroke.batch,
-                                 (!cache_ob->is_dup_ob) ? gpf->runtime.viewmatrix :
+                                 (!cache_ob->is_dup_ob) ? gpf->runtime.parent_obmat :
                                                           cache_ob->obmat,
                                  start_stroke,
                                  len);
@@ -1762,7 +1758,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         if ((do_onion) || (elm->onion == false)) {
           DRW_shgroup_call_range(shgrp,
                                  cache->b_point.batch,
-                                 (!cache_ob->is_dup_ob) ? gpf->runtime.viewmatrix :
+                                 (!cache_ob->is_dup_ob) ? gpf->runtime.parent_obmat :
                                                           cache_ob->obmat,
                                  start_point,
                                  len);
@@ -1788,7 +1784,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         if ((do_onion) || (elm->onion == false)) {
           DRW_shgroup_call_range(shgrp,
                                  cache->b_fill.batch,
-                                 (!cache_ob->is_dup_ob) ? gpf->runtime.viewmatrix :
+                                 (!cache_ob->is_dup_ob) ? gpf->runtime.parent_obmat :
                                                           cache_ob->obmat,
                                  start_fill,
                                  len);
@@ -1803,7 +1799,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
           /* use always the same group */
           DRW_shgroup_call_range(stl->g_data->shgrps_edit_point,
                                  cache->b_edit.batch,
-                                 (!cache_ob->is_dup_ob) ? gpf->runtime.viewmatrix :
+                                 (!cache_ob->is_dup_ob) ? gpf->runtime.parent_obmat :
                                                           cache_ob->obmat,
                                  start_edit,
                                  len);
@@ -1818,7 +1814,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
           /* use always the same group */
           DRW_shgroup_call_range(stl->g_data->shgrps_edit_line,
                                  cache->b_edlin.batch,
-                                 (!cache_ob->is_dup_ob) ? gpf->runtime.viewmatrix :
+                                 (!cache_ob->is_dup_ob) ? gpf->runtime.parent_obmat :
                                                           cache_ob->obmat,
                                  start_edlin,
                                  len);
@@ -1834,7 +1830,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
     /* save first group */
     if ((shgrp != NULL) && (tag_first)) {
       array_elm = &cache_ob->shgrp_array[idx];
-      array_elm->mode = idx == 0 ? eGplBlendMode_Normal : gpl->blend_mode;
+      array_elm->mode = idx == 0 ? eGplBlendMode_Regular : gpl->blend_mode;
       array_elm->clamp_layer = gpl->flag & GP_LAYER_USE_MASK;
       array_elm->blend_opacity = gpl->opacity;
       array_elm->init_shgrp = shgrp;
@@ -1846,7 +1842,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
 
   /* save last group */
   if (shgrp != NULL) {
-    array_elm->mode = idx == 0 ? eGplBlendMode_Normal : gpl->blend_mode;
+    array_elm->mode = idx == 0 ? eGplBlendMode_Regular : gpl->blend_mode;
     array_elm->end_shgrp = shgrp;
   }
 }

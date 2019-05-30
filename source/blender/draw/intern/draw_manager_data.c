@@ -874,6 +874,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
     drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_VIEWPROJECTION_INV, storage->persinv, 16, 1);
     drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_PROJECTION, storage->winmat, 16, 1);
     drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_PROJECTION_INV, storage->wininv, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_CLIPPLANES, storage->clipplanes, 4, 6);
   }
 
   /* Not supported. */
@@ -1048,7 +1049,6 @@ bool DRW_shgroup_is_empty(DRWShadingGroup *shgroup)
 
 DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
 {
-  /* Remove this assertion if needed but implement the other cases first! */
   DRWShadingGroup *shgroup_new = BLI_memblock_alloc(DST.vmempool->shgroups);
 
   *shgroup_new = *shgroup;
@@ -1292,8 +1292,11 @@ static void draw_view_matrix_state_update(DRWViewUboStorage *storage,
                                           const float winmat[4][4])
 {
   /* If only one the matrices is negative, then the
-   * polygon winding changes and we don't want that. */
-  BLI_assert(is_negative_m4(viewmat) != is_negative_m4(winmat));
+   * polygon winding changes and we don't want that.
+   * By convention, the winmat is negative because
+   * looking through the -Z axis. So this inverse the
+   * changes the test for the winmat. */
+  BLI_assert(is_negative_m4(viewmat) == !is_negative_m4(winmat));
 
   copy_m4_m4(storage->viewmat, viewmat);
   invert_m4_m4(storage->viewinv, storage->viewmat);
@@ -1541,7 +1544,7 @@ void DRW_view_persmat_get(const DRWView *view, float mat[4][4], bool inverse)
 DRWPass *DRW_pass_create(const char *name, DRWState state)
 {
   DRWPass *pass = BLI_memblock_alloc(DST.vmempool->passes);
-  pass->state = state;
+  pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
   if (((G.debug_value > 20) && (G.debug_value < 30)) || (G.debug & G_DEBUG)) {
     BLI_strncpy(pass->name, name, MAX_PASS_NAME);
   }
@@ -1564,7 +1567,7 @@ bool DRW_pass_is_empty(DRWPass *pass)
 
 void DRW_pass_state_set(DRWPass *pass, DRWState state)
 {
-  pass->state = state;
+  pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
 }
 
 void DRW_pass_state_add(DRWPass *pass, DRWState state)

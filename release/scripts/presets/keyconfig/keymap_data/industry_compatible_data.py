@@ -90,12 +90,6 @@ def _template_items_object_subdivision_set():
     ]
 
 
-def _template_items_gizmo_tweak_value():
-    return [
-        ("gizmogroup.gizmo_tweak", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": False}, None),
-    ]
-
-
 def _template_items_animation():
     return [
         ("screen.frame_offset", {"type": 'LEFT_ARROW', "value": 'PRESS'},
@@ -109,22 +103,6 @@ def _template_items_animation():
 
     ]
 
-
-def _template_items_gizmo_tweak_modal():
-    return [
-        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
-        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_ON", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_OFF", {"type": 'RIGHT_SHIFT', "value": 'RELEASE', "any": True}, None),
-        ("PRECISION_ON", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_OFF", {"type": 'LEFT_SHIFT', "value": 'RELEASE', "any": True}, None),
-        ("SNAP_ON", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("SNAP_OFF", {"type": 'RIGHT_CTRL', "value": 'RELEASE', "any": True}, None),
-        ("SNAP_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("SNAP_OFF", {"type": 'LEFT_CTRL', "value": 'RELEASE', "any": True}, None),
-    ]
 
 # Tool System Templates
 
@@ -2574,8 +2552,8 @@ def km_pose(params):
         ("pose.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("pose.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True, "shift": True}, {"properties": [("action", 'DESELECT')]}),
         ("pose.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
-        ("pose.select_parent", {"type": 'UP_ARROW', "value": 'PRESS'}, None),
-        ("pose.select_hierarchy", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
+        ("pose.select_parent", {"type": 'UP_ARROW', "value": 'PRESS', "ctrl": True}, None),
+        ("pose.select_hierarchy", {"type": 'UP_ARROW', "value": 'PRESS'},
          {"properties": [("direction", 'PARENT'), ("extend", False)]}),
         ("pose.select_hierarchy", {"type": 'UP_ARROW', "value": 'PRESS', "shift": True},
          {"properties": [("direction", 'PARENT'), ("extend", True)]}),
@@ -3532,49 +3510,6 @@ def km_transform_modal_map(_params):
 
 
 # ------------------------------------------------------------------------------
-# Gizmo System Keymaps
-
-# Fallback for gizmos that don't have custom a custom key-map.
-def km_generic_gizmos(_params):
-    keymap = (
-        "Generic Gizmos",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
-        {"items": _template_items_gizmo_tweak_value()},
-    )
-
-    return keymap
-
-
-def km_generic_gizmos_tweak_modal_map(_params):
-    keymap = (
-        "Generic Gizmos Tweak Modal Map",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
-        {"items": _template_items_gizmo_tweak_modal()},
-    )
-    return keymap
-
-
-def km_generic_gizmos_select(_params):
-    keymap = (
-        "Generic Gizmos Select",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
-        # TODO, currently in C code.
-        {"items": _template_items_gizmo_tweak_value()},
-    )
-
-    return keymap
-
-
-def km_generic_gizmos_select_tweak_modal_map(_params):
-    keymap = (
-        "Generic Gizmos Select Tweak Modal Map",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
-        {"items": _template_items_gizmo_tweak_modal()},
-    )
-    return keymap
-
-
-# ------------------------------------------------------------------------------
 # Tool System Keymaps
 
 
@@ -3684,6 +3619,18 @@ def km_3d_view_tool_edit_curve_extrude(params):
     )
 
 
+def km_3d_view_tool_edit_armature_extrude(params):
+    return (
+        "3D View Tool: Edit Armature, Extrude",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("armature.extrude_move", {"type": 'MIDDLEMOUSE', "value": 'ANY'},
+             {"properties": [("TRANSFORM_OT_translate", [("release_confirm", True)])]}),
+            *_template_items_tool_select_actions("view3d.select_box", type=params.tool_tweak, value='ANY'),
+        ]},
+    )
+
+
 # ------------------------------------------------------------------------------
 # Full Configuration
 
@@ -3772,12 +3719,6 @@ def generate_keymaps(params=None):
         km_eyedropper_colorramp_pointsampling_map(params),
         km_transform_modal_map(params),
 
-        # Gizmos.
-        km_generic_gizmos(params),
-        km_generic_gizmos_tweak_modal_map(params),
-        km_generic_gizmos_select(params),
-        km_generic_gizmos_select_tweak_modal_map(params),
-
         # Tool System.
         km_3d_view_tool_transform(params),
         km_3d_view_tool_move(params),
@@ -3788,4 +3729,5 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_mesh_spin(params),
         km_3d_view_tool_edit_mesh_spin_duplicate(params),
         km_3d_view_tool_edit_curve_extrude(params),
+        km_3d_view_tool_edit_armature_extrude(params),
     ]
