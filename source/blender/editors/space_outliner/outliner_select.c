@@ -45,6 +45,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
+#include "BKE_report.h"
 #include "BKE_paint.h"
 #include "BKE_scene.h"
 #include "BKE_sequencer.h"
@@ -1211,7 +1212,8 @@ void outliner_item_select(SpaceOutliner *soops,
                           const bool toggle)
 {
   TreeStoreElem *tselem = TREESTORE(te);
-  const short new_flag = toggle ? (tselem->flag ^ TSE_SELECTED) : (tselem->flag | TSE_SELECTED);
+  const short new_flag = (toggle && (tselem->flag & TSE_ACTIVE)) ? (tselem->flag ^ TSE_SELECTED) :
+                                                                   (tselem->flag | TSE_SELECTED);
 
   // Change active element
   outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
@@ -1220,6 +1222,55 @@ void outliner_item_select(SpaceOutliner *soops,
     outliner_flag_set(&soops->tree, TSE_SELECTED, false);
   }
   tselem->flag = new_flag | TSE_ACTIVE;
+}
+
+static void do_outliner_range_select_recursive(ListBase *lb,
+                                               TreeElement *active,
+                                               TreeElement *cursor,
+                                               bool *selecting)
+{
+  for (TreeElement *te = lb->first; te; te = te->next) {
+    if (*selecting) {
+      TREESTORE(te)->flag |= TSE_SELECTED;
+    }
+
+    /* Set state for selection */
+    if (te == active || te == cursor) {
+      *selecting = !*selecting;
+    }
+
+    if (*selecting) {
+      TREESTORE(te)->flag |= TSE_SELECTED;
+    }
+
+    /* Don't look at closed elements */
+    if (!(TREESTORE(te)->flag & TSE_CLOSED)) {
+      do_outliner_range_select_recursive(&te->subtree, active, cursor, selecting);
+    }
+  }
+}
+
+/* Select a range of items between cursor and active element */
+static bool do_outliner_range_select(SpaceOutliner *soops, const TreeElement *cursor_element)
+{
+  TreeElement *active_element = outliner_find_active_element(&soops->tree);
+
+  /* Once synced selection is implemented this check may not be needed */
+  if (!active_element) {
+    return false;
+  }
+
+  /* Range select requires the active element to be visible */
+  if (!outliner_is_element_visible(&soops->tree, active_element)) {
+    return false;
+  }
+
+  outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+
+  bool selecting = false;
+  do_outliner_range_select_recursive(&soops->tree, active_element, cursor_element, &selecting);
+
+  return true;
 }
 
 static void outliner_item_toggle_closed(TreeElement *te, const bool toggle_children)
@@ -1272,8 +1323,10 @@ void outliner_item_do_activate_from_tree_element(
  * May expend/collapse branches or activate items.
  * */
 static int outliner_item_do_activate_from_cursor(bContext *C,
+                                                 wmOperator *op,
                                                  const int mval[2],
                                                  const bool extend,
+                                                 const bool range,
                                                  const bool recursive,
                                                  const bool deselect_all)
 {
@@ -1307,9 +1360,18 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     TreeElement *activate_te = outliner_find_item_at_x_in_row(soops, te, view_mval[0]);
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
-    outliner_item_select(soops, activate_te, extend, extend);
-    do_outliner_item_activate_tree_element(
-        C, scene, view_layer, soops, activate_te, activate_tselem, extend, recursive);
+    if (range) {
+      if (!do_outliner_range_select(soops, activate_te)) {
+        BKE_report(op->reports, RPT_ERROR, "Range select requires a visible active element");
+        return OPERATOR_CANCELLED;
+      }
+    }
+    else {
+      outliner_item_select(soops, activate_te, extend, extend);
+      do_outliner_item_activate_tree_element(
+          C, scene, view_layer, soops, activate_te, activate_tselem, extend, recursive);
+    }
+
     changed = true;
   }
 
@@ -1330,9 +1392,11 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool range = RNA_boolean_get(op->ptr, "range");
   const bool recursive = RNA_boolean_get(op->ptr, "recursive");
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
-  return outliner_item_do_activate_from_cursor(C, event->mval, extend, recursive, deselect_all);
+  return outliner_item_do_activate_from_cursor(
+      C, op, event->mval, extend, range, recursive, deselect_all);
 }
 
 void OUTLINER_OT_item_activate(wmOperatorType *ot)
@@ -1347,6 +1411,7 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
 
   PropertyRNA *prop;
   RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection for activation");
+  RNA_def_boolean(ot->srna, "range", false, "Range", "Select a range from active element");
   RNA_def_boolean(ot->srna, "recursive", false, "Recursive", "Select Objects and their children");
   prop = RNA_def_boolean(ot->srna,
                          "deselect_all",

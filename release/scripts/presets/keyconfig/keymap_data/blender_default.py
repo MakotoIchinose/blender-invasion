@@ -687,7 +687,7 @@ def km_outliner(params):
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
          {"properties": [("extend", True), ("range", False), ("recursive", False)]}),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
-         {"properties": [("extend", True), ("range", True), ("recursive", False)]}),
+         {"properties": [("extend", False), ("range", True), ("recursive", False)]}),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "alt": True},
          {"properties": [("extend", False), ("range", False), ("recursive", True)]}),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True, "alt": True},
