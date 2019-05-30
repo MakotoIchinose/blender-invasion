@@ -1000,7 +1000,7 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
         /* NOTE : Replicate changes to mesh_render_data_create() in draw_cache_impl_mesh.c */
         if (input->attr_type == CD_ORCO) {
           /* OPTI : orco is computed from local positions, but only if no modifier is present. */
-          BLI_dynstr_append(ds, "uniform vec3 OrcoTexCoFactors[2];\n");
+          BLI_dynstr_append(ds, "uniform vec4 OrcoTexCoFactors[2];\n");
           BLI_dynstr_append(ds, "DEFINE_ATTR(vec4, orco);\n");
         }
         else if (input->attr_name[0] == '\0') {
@@ -1128,8 +1128,8 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
         }
         else if (input->attr_type == CD_ORCO) {
           BLI_dynstr_appendf(ds,
-                             "\tvar%d%s = OrcoTexCoFactors[0] + (ModelMatrixInverse * "
-                             "vec4(hair_get_strand_pos(), 1.0)).xyz * OrcoTexCoFactors[1];\n",
+                             "\tvar%d%s = OrcoTexCoFactors[0].xyz + (ModelMatrixInverse * "
+                             "vec4(hair_get_strand_pos(), 1.0)).xyz * OrcoTexCoFactors[1].xyz;\n",
                              input->attr_id,
                              use_geom ? "g" : "");
           /* TODO: fix ORCO with modifiers. */
@@ -1184,7 +1184,8 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
         }
         else if (input->attr_type == CD_ORCO) {
           BLI_dynstr_appendf(ds,
-                             "\tvar%d%s = OrcoTexCoFactors[0] + position * OrcoTexCoFactors[1];\n",
+                             "\tvar%d%s = OrcoTexCoFactors[0].xyz + position *"
+                             " OrcoTexCoFactors[1].xyz;\n",
                              input->attr_id,
                              use_geom ? "g" : "");
           /* See mesh_create_loop_orco() for explanation. */

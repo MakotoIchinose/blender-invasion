@@ -393,7 +393,7 @@ void DRW_state_reset(void)
 
 static bool draw_call_is_culled(DRWCall *call, DRWView *view)
 {
-  return (call->state->culling->mask & view->culling_mask) != 0;
+  return (!call->state->culling) || (call->state->culling->mask & view->culling_mask) != 0;
 }
 
 /* Set active view for rendering. */
@@ -578,29 +578,26 @@ static void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
   DRWCallState *state = call->state;
 
   if (shgroup->model != -1) {
-    GPU_shader_uniform_vector(shgroup->shader, shgroup->model, 16, 1, (float *)state->model);
+    GPU_shader_uniform_vector(
+        shgroup->shader, shgroup->model, 16, 1, (float *)state->ob_mats->model);
   }
   if (shgroup->modelinverse != -1) {
     GPU_shader_uniform_vector(
-        shgroup->shader, shgroup->modelinverse, 16, 1, (float *)state->modelinverse);
+        shgroup->shader, shgroup->modelinverse, 16, 1, (float *)state->ob_mats->modelinverse);
   }
   if (shgroup->objectinfo != -1) {
-    float infos[4];
-    infos[0] = state->ob_index;
-    // infos[1]; /* UNUSED. */
-    infos[2] = state->ob_random;
-    infos[3] = (state->flag & DRW_CALL_NEGSCALE) ? -1.0f : 1.0f;
-    GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 4, 1, (float *)infos);
+    GPU_shader_uniform_vector(
+        shgroup->shader, shgroup->objectinfo, 4, 1, &state->ob_infos->ob_index);
   }
   if (shgroup->orcotexfac != -1) {
     GPU_shader_uniform_vector(
-        shgroup->shader, shgroup->orcotexfac, 3, 2, (float *)state->orcotexfac);
+        shgroup->shader, shgroup->orcotexfac, 4, 2, (float *)state->ob_infos->orcotexfac);
   }
   /* Still supported for compatibility with gpu_shader_* but should be forbidden
    * and is slow (since it does not cache the result). */
   if (shgroup->modelviewprojection != -1) {
     float mvp[4][4];
-    mul_m4_m4m4(mvp, DST.view_active->storage.persmat, state->model);
+    mul_m4_m4m4(mvp, DST.view_active->storage.persmat, state->ob_mats->model);
     GPU_shader_uniform_vector(shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)mvp);
   }
 }

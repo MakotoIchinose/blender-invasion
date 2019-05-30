@@ -28,6 +28,7 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "BLI_assert.h"
 #include "BLI_linklist.h"
 #include "BLI_threads.h"
 
@@ -95,14 +96,6 @@ enum {
   DRW_CALL_NEGSCALE = (1 << 1),
 };
 
-/* Used by DRWCallState.matflag */
-enum {
-  DRW_CALL_MODELINVERSE = (1 << 0),
-  DRW_CALL_MODELVIEWPROJECTION = (1 << 1),
-  DRW_CALL_ORCOTEXFAC = (1 << 2),
-  DRW_CALL_OBJECTINFO = (1 << 3),
-};
-
 typedef struct DRWCullingState {
   uint32_t mask;
   /* Culling: Using Bounding Sphere for now for faster culling.
@@ -112,16 +105,27 @@ typedef struct DRWCullingState {
   void *user_data;
 } DRWCullingState;
 
+typedef struct DRWObjectMatrix {
+  float model[4][4];
+  float modelinverse[4][4];
+} DRWObjectMatrix;
+
+typedef struct DRWObjectInfos {
+  float orcotexfac[2][4];
+  float ob_index;
+  float pad; /* UNUSED*/
+  float ob_random;
+  float ob_neg_scale;
+} DRWObjectInfos;
+
+BLI_STATIC_ASSERT_ALIGN(DRWObjectMatrix, 16)
+BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
+
 typedef struct DRWCallState {
   DRWCullingState *culling;
   uchar flag;
-  uchar matflag; /* Which matrices to compute. */
-  short ob_index;
-  /* Matrices */
-  float model[4][4];
-  float modelinverse[4][4];
-  float orcotexfac[2][3];
-  float ob_random;
+  DRWObjectMatrix *ob_mats;
+  DRWObjectInfos *ob_infos;
 } DRWCallState;
 
 typedef struct DRWCall {
@@ -196,7 +200,6 @@ struct DRWShadingGroup {
   int orcotexfac;
   int callid;
   int objectinfo;
-  uchar matflag; /* Matrices needed, same as DRWCall.flag */
 
   DRWPass *pass_parent; /* backlink to pass we're in */
 };
@@ -228,6 +231,8 @@ typedef struct DRWViewUboStorage {
   /* Should not be here. Not view dependent (only main view). */
   float viewcamtexcofac[4];
 } DRWViewUboStorage;
+
+BLI_STATIC_ASSERT_ALIGN(DRWViewUboStorage, 16)
 
 #define MAX_CULLED_VIEWS 32
 

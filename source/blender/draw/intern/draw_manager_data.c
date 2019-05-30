@@ -308,7 +308,7 @@ void DRW_shgroup_uniform_vec2_copy(DRWShadingGroup *shgroup, const char *name, c
 /** \name Draw Call (DRW_calls)
  * \{ */
 
-static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[3])
+static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[4])
 {
   ID *ob_data = (ob) ? ob->data : NULL;
   float *texcoloc = NULL;
@@ -351,77 +351,66 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[3])
   }
 }
 
-static void drw_call_state_update_matflag(DRWCallState *state,
-                                          DRWShadingGroup *shgroup,
-                                          Object *ob)
+static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
 {
-  uchar new_flags = ((state->matflag ^ shgroup->matflag) & shgroup->matflag);
-
-  /* HACK: Here we set the matflags bit to 1 when computing the value
-   * so that it's not recomputed for other drawcalls.
-   * This is the opposite of what draw_matrices_model_prepare() does. */
-  state->matflag |= shgroup->matflag;
-
-  if (new_flags & DRW_CALL_MODELINVERSE) {
-    if (ob) {
-      copy_m4_m4(state->modelinverse, ob->imat);
-    }
-    else {
-      invert_m4_m4(state->modelinverse, state->model);
-    }
-  }
-
-  /* Orco factors: We compute this at creation to not have to save the *ob_data */
-  if (new_flags & DRW_CALL_ORCOTEXFAC) {
-    drw_call_calc_orco(ob, state->orcotexfac);
-  }
-
-  if (new_flags & DRW_CALL_OBJECTINFO) {
-    state->ob_index = ob ? ob->index : 0;
-    uint random;
-    if (DST.dupli_source) {
-      random = DST.dupli_source->random_id;
-    }
-    else {
-      random = BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
-    }
-    state->ob_random = random * (1.0f / (float)0xFFFFFFFF);
-  }
+  BLI_assert(ob);
+  DRWObjectInfos *ob_infos = state->ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
+  /* Index. */
+  ob_infos->ob_index = ob->index;
+  /* Orco factors. */
+  drw_call_calc_orco(ob, ob_infos->orcotexfac);
+  /* Random float value. */
+  uint random = (DST.dupli_source) ?
+                    DST.dupli_source->random_id :
+                    /* TODO(fclem) this is rather costly to do at runtime. Maybe we can
+                     * put it in ob->runtime and make depsgraph ensure it is up to date. */
+                    BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
+  ob_infos->ob_random = random * (1.0f / (float)0xFFFFFFFF);
+  /* Negative scalling. */
+  ob_infos->ob_neg_scale = (ob->transflag & OB_NEG_SCALE) ? -1.0f : 1.0f;
 }
 
-static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obmat)[4], Object *ob)
+static void drw_call_culling_create(DRWCallState *state, Object *ob)
 {
-  DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
-  state->flag = 0;
-  state->matflag = 0;
-
-  /* Matrices */
-  copy_m4_m4(state->model, obmat);
-
-  if (ob && (ob->transflag & OB_NEG_SCALE)) {
-    state->flag |= DRW_CALL_NEGSCALE;
-  }
-
-  drw_call_state_update_matflag(state, shgroup, ob);
-
-  DRWCullingState *cull = BLI_memblock_alloc(DST.vmempool->cullstates);
-  state->culling = cull;
+  DRWCullingState *cull = state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
 
   BoundBox *bbox;
   if (ob != NULL && (bbox = BKE_object_boundbox_get(ob))) {
     float corner[3];
     /* Get BoundSphere center and radius from the BoundBox. */
     mid_v3_v3v3(cull->bsphere.center, bbox->vec[0], bbox->vec[6]);
-    mul_v3_m4v3(corner, obmat, bbox->vec[0]);
-    mul_m4_v3(obmat, cull->bsphere.center);
+    mul_v3_m4v3(corner, ob->obmat, bbox->vec[0]);
+    mul_m4_v3(ob->obmat, cull->bsphere.center);
     cull->bsphere.radius = len_v3v3(cull->bsphere.center, corner);
   }
   else {
-    /* TODO(fclem) Bypass alloc if we can (see if eevee's
-     * probe visibility collection still works). */
     /* Bypass test. */
     cull->bsphere.radius = -1.0f;
   }
+}
+
+static DRWCallState *drw_call_state_create(float (*obmat)[4], Object *ob)
+{
+  DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
+  state->ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
+  state->ob_infos = NULL;
+  state->flag = 0;
+
+  if (ob && (ob->transflag & OB_NEG_SCALE)) {
+    state->flag |= DRW_CALL_NEGSCALE;
+  }
+
+  /* Matrices */
+  copy_m4_m4(state->ob_mats->model, obmat);
+  if (ob) {
+    copy_m4_m4(state->ob_mats->modelinverse, ob->imat);
+  }
+  else {
+    /* WATCH: Can be costly. */
+    invert_m4_m4(state->ob_mats->modelinverse, state->ob_mats->model);
+  }
+
+  drw_call_culling_create(state, ob);
 
   return state;
 }
@@ -434,16 +423,16 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
       return DST.unit_state;
     }
     else {
-      return drw_call_state_create(shgroup, obmat, ob);
+      return drw_call_state_create(obmat, NULL);
     }
   }
   else {
     if (DST.ob_state == NULL) {
-      DST.ob_state = drw_call_state_create(shgroup, obmat, ob);
+      DST.ob_state = drw_call_state_create(obmat, ob);
     }
-    else {
-      /* If the DRWCallState is reused, add necessary matrices. */
-      drw_call_state_update_matflag(DST.ob_state, shgroup, ob);
+
+    if (!DST.ob_state->ob_infos && (shgroup->objectinfo != -1 || shgroup->orcotexfac != -1)) {
+      drw_call_obinfos_create(DST.ob_state, ob);
     }
 
     return DST.ob_state;
@@ -837,20 +826,6 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
   shgroup->objectinfo = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_INFO);
   shgroup->callid = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_CALLID);
-
-  shgroup->matflag = 0;
-  if (shgroup->modelinverse > -1) {
-    shgroup->matflag |= DRW_CALL_MODELINVERSE;
-  }
-  if (shgroup->modelviewprojection > -1) {
-    shgroup->matflag |= DRW_CALL_MODELVIEWPROJECTION;
-  }
-  if (shgroup->orcotexfac > -1) {
-    shgroup->matflag |= DRW_CALL_ORCOTEXFAC;
-  }
-  if (shgroup->objectinfo > -1) {
-    shgroup->matflag |= DRW_CALL_OBJECTINFO;
-  }
 }
 
 static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass *pass)
@@ -1574,9 +1549,9 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
   }
 
   float tmp[3];
-  sub_v3_v3v3(tmp, zsortdata->origin, call_a->state->model[3]);
+  sub_v3_v3v3(tmp, zsortdata->origin, call_a->state->ob_mats->model[3]);
   const float a_sq = dot_v3v3(zsortdata->axis, tmp);
-  sub_v3_v3v3(tmp, zsortdata->origin, call_b->state->model[3]);
+  sub_v3_v3v3(tmp, zsortdata->origin, call_b->state->ob_mats->model[3]);
   const float b_sq = dot_v3v3(zsortdata->axis, tmp);
 
   if (a_sq < b_sq) {

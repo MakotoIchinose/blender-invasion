@@ -542,6 +542,8 @@ static void drw_viewport_cache_resize(void)
 
     BLI_memblock_clear(DST.vmempool->calls, NULL);
     BLI_memblock_clear(DST.vmempool->states, NULL);
+    BLI_memblock_clear(DST.vmempool->obmats, NULL);
+    BLI_memblock_clear(DST.vmempool->obinfos, NULL);
     BLI_memblock_clear(DST.vmempool->cullstates, NULL);
     BLI_memblock_clear(DST.vmempool->shgroups, NULL);
     BLI_memblock_clear(DST.vmempool->uniforms, NULL);
@@ -592,22 +594,24 @@ static void drw_context_state_init(void)
 static DRWCallState *draw_unit_state_create(void)
 {
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
+  DRWObjectInfos *infos = state->ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
+  DRWObjectMatrix *mats = state->ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
+  DRWCullingState *culling = state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   state->flag = 0;
-  state->matflag = 0;
 
-  unit_m4(state->model);
-  unit_m4(state->modelinverse);
+  unit_m4(mats->model);
+  unit_m4(mats->modelinverse);
 
-  copy_v3_fl(state->orcotexfac[0], 0.0f);
-  copy_v3_fl(state->orcotexfac[1], 1.0f);
+  copy_v3_fl(infos->orcotexfac[0], 0.0f);
+  copy_v3_fl(infos->orcotexfac[1], 1.0f);
 
-  state->ob_index = 0;
-  state->ob_random = 0.0f;
+  infos->ob_index = 0;
+  infos->ob_random = 0.0f;
+  infos->ob_neg_scale = 1.0f;
 
   /* TODO(fclem) get rid of this. */
-  state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
-  state->culling->bsphere.radius = -1.0f;
-  state->culling->user_data = NULL;
+  culling->bsphere.radius = -1.0f;
+  culling->user_data = NULL;
 
   return state;
 }
@@ -639,6 +643,12 @@ static void drw_viewport_var_init(void)
     }
     if (DST.vmempool->states == NULL) {
       DST.vmempool->states = BLI_memblock_create(sizeof(DRWCallState));
+    }
+    if (DST.vmempool->obmats == NULL) {
+      DST.vmempool->obmats = BLI_memblock_create(sizeof(DRWObjectMatrix));
+    }
+    if (DST.vmempool->obinfos == NULL) {
+      DST.vmempool->obinfos = BLI_memblock_create(sizeof(DRWObjectInfos));
     }
     if (DST.vmempool->cullstates == NULL) {
       DST.vmempool->cullstates = BLI_memblock_create(sizeof(DRWCullingState));
