@@ -134,6 +134,21 @@ static void deformVerts(ModifierData *md,
   BKE_id_free(NULL, mesh_src);
 }
 
+static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+{
+  Mesh *result;
+  int numVerts;
+  float(*deformedVerts)[3] = BKE_mesh_vertexCos_get(mesh, &numVerts);
+
+  BKE_id_copy_ex(NULL, &mesh->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
+  deformVerts(md, ctx, result, deformedVerts, numVerts);
+  BKE_mesh_apply_vert_coords(result, deformedVerts);
+
+  MEM_freeN(deformedVerts);
+
+  return result;
+}
+
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   ClothModifierData *clmd = (ClothModifierData *)md;
@@ -268,17 +283,17 @@ ModifierTypeInfo modifierType_Cloth = {
     /* name */ "Cloth",
     /* structName */ "ClothModifierData",
     /* structSize */ sizeof(ClothModifierData),
-    /* type */ eModifierTypeType_OnlyDeform,
+    /* type */ eModifierTypeType_Nonconstructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_UsesPointCache |
         eModifierTypeFlag_Single,
 
     /* copyData */ copyData,
 
-    /* deformVerts */ deformVerts,
+    /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ NULL,
+    /* applyModifier */ applyModifier,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
