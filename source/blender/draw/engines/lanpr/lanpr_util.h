@@ -10,7 +10,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #ifndef BYTE
-#define BYTE unsigned char
+#  define BYTE unsigned char
 #endif
 
 typedef double real;
@@ -42,19 +42,17 @@ typedef int tnsVector2i[2];
 #define NUL_MEMORY_POOL_256MB 268435456
 #define NUL_MEMORY_POOL_512MB 536870912
 
-typedef struct LANPR_StaticMemPoolNode
-{
+typedef struct LANPR_StaticMemPoolNode {
   Link item;
   int used_byte;
   //  <----------- User Mem Start Here
-}LANPR_StaticMemPoolNode;
+} LANPR_StaticMemPoolNode;
 
-typedef struct LANPR_StaticMemPool
-{
+typedef struct LANPR_StaticMemPool {
   int each_size;
   ListBase pools;
   SpinLock cs_mem;
-}LANPR_StaticMemPool;
+} LANPR_StaticMemPool;
 
 #define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  // nutCalloc(sizeof(Type),1)
 
@@ -63,17 +61,13 @@ typedef struct LANPR_StaticMemPool
 #define CreateNewBuffer(Type, Num) \
   MEM_callocN(sizeof(Type) * Num, "VOID BUFFER")  // nutCalloc(sizeof(Type),Num);
 
-
 void list_handle_empty(ListBase *h);
 
 void list_clear_prev_next(Link *li);
 
 void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot);
 void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot);
-void list_insert_segment_before(ListBase *Handle,
-                                Link *Begin,
-                                Link *End,
-                                Link *pivot);
+void list_insert_segment_before(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
 void lstInsertSegmentAfter(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
 int lstHaveItemInList(ListBase *Handle);
 void *lst_get_top(ListBase *Handle);
@@ -173,6 +167,5 @@ void tmat_normalize_self_3d(tnsVector3d result);
 real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
 real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-
 
 #endif

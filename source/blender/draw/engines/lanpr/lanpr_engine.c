@@ -248,8 +248,7 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_int(stl->g_data->edge_thinning_shgrp, "stage", &stl->g_data->stage, 1);
     DRW_shgroup_call(stl->g_data->edge_thinning_shgrp, quad, NULL);
   }
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer)
-  {
+  else if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {
     LANPR_LineLayer *ll = lanpr->line_layers.first;
     psl->dpix_transform_pass = DRW_pass_create("DPIX Transform Stage", DRW_STATE_WRITE_COLOR);
     stl->g_data->dpix_transform_shgrp = DRW_shgroup_create(lanpr_share.dpix_transform_shader,
@@ -378,8 +377,7 @@ static void lanpr_cache_init(void *vedata)
       BLI_mempool_clear(pd->mp_batch_list);
     }
   }
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE)
-  {
+  else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {
     ;
   }
 }
@@ -525,13 +523,11 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     DRW_draw_pass(psl->color_pass);
     lanpr_dpix_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_SNAKE)
-  {
+  else if (lanpr->master_mode == LANPR_MASTER_MODE_SNAKE) {
     DRW_draw_pass(psl->color_pass);
     lanpr_snake_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE)
-  {
+  else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {
     // should isolate these into a seperate function.
     lanpr_software_draw_scene(vedata, dfb, is_render);
   }

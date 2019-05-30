@@ -132,7 +132,7 @@ set(SRC
 	engines/lanpr/lanpr_ops.c
 	engines/lanpr/lanpr_util.c
 	engines/lanpr/lanpr_chain.c
-
+  engines/lanpr/lanpr_access.c
 
   DRW_engine.h
   intern/DRW_render.h
@@ -159,6 +159,8 @@ set(SRC
   engines/workbench/workbench_private.h
 	engines/lanpr/lanpr_util.h
 	engines/lanpr/lanpr_all.h
+  engines/lanpr/lanpr_access.h
+  engines/lanpr/lanpr_data_types.h
 )
 
 set(LIB

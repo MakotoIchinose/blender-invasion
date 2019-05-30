@@ -14,6 +14,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
+ *
+ * Contributor(s): Yiming Wu
+ *
  */
 
 /** \file
@@ -24,6 +27,7 @@
 #define __LANPR_ALL_H__
 
 #include "lanpr_util.h"
+#include "lanpr_data_types.h"
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
 //#include "GPU_framebuffer.h"
@@ -48,11 +52,6 @@
 
 #include "BLI_threads.h"
 
-#include "GPU_batch.h"
-#include "GPU_framebuffer.h"
-#include "GPU_shader.h"
-#include "GPU_uniformbuffer.h"
-#include "GPU_viewport.h"
 #include "bmesh.h"
 
 #include "WM_types.h"
@@ -103,24 +102,6 @@ typedef struct LANPR_SharedResource {
 } LANPR_SharedResource;
 
 #define TNS_DPIX_TEXTURE_SIZE 2048
-
-typedef struct LANPR_TextureSample {
-  Link item;
-  int X, Y;
-  float Z;  // for future usage
-} LANPR_TextureSample;
-
-typedef struct LANPR_LineStripPoint {
-  Link item;
-  float P[3];
-} LANPR_LineStripPoint;
-
-typedef struct LANPR_LineStrip {
-  Link item;
-  ListBase points;
-  int point_count;
-  float total_length;
-} LANPR_LineStrip;
 
 typedef struct LANPR_PassList {
   /* Snake */
@@ -404,91 +385,6 @@ typedef struct LANPR_RenderBuffer {
 
 #define TNS_CULL_DISCARD 2
 #define TNS_CULL_USED 1
-
-typedef struct LANPR_RenderTriangle {
-  Link item;
-  struct LANPR_RenderVert *v[3];
-  struct LANPR_RenderLine *rl[3];
-  real gn[3];
-  real gc[3];
-  // struct BMFace *F;
-  short material_id;
-  ListBase intersecting_verts;
-  char cull_status;
-  struct LANPR_RenderTriangle *testing;  // Should Be tRT** testing[NumOfThreads]
-} LANPR_RenderTriangle;
-
-typedef struct LANPR_RenderTriangleThread {
-  struct LANPR_RenderTriangle base;
-  struct LANPR_RenderLine *testing[127];  // max thread support;
-} LANPR_RenderTriangleThread;
-
-typedef struct LANPR_RenderElementLinkNode {
-  Link item;
-  void *pointer;
-  int element_count;
-  void *object_ref;
-  char additional;
-} LANPR_RenderElementLinkNode;
-
-typedef struct LANPR_RenderLineSegment {
-  Link item;
-  real at;                   // at==0: left    at==1: right
-  u8bit occlusion;           // after "at" point
-  short material_mask_mark;  // e.g. to determine lines beind a glass window material.
-} LANPR_RenderLineSegment;
-
-typedef struct LANPR_RenderVert {
-  Link item;
-  real gloc[4];
-  real fbcoord[4];
-  int fbcoordi[2];
-  struct BMVert *v;  // Used As r When Intersecting
-  struct LANPR_RenderLine *intersecting_line;
-  struct LANPR_RenderLine *intersecting_line2;
-  struct LANPR_RenderTriangle *intersecting_with;  //   positive 1         Negative 0
-  // tnsRenderTriangle* IntersectingOnFace;       //         <|               |>
-  char positive;   //                 l---->|----->r	l---->|----->r
-  char edge_used;  //                      <|		          |>
-} LANPR_RenderVert;
-
-#define LANPR_EDGE_FLAG_EDGE_MARK 1
-#define LANPR_EDGE_FLAG_CONTOUR 2
-#define LANPR_EDGE_FLAG_CREASE 4
-#define LANPR_EDGE_FLAG_MATERIAL 8
-#define LANPR_EDGE_FLAG_INTERSECTION 16
-#define LANPR_EDGE_FLAG_FLOATING 32  // floating edge, unimplemented yet
-#define LANPR_EDGE_FLAG_CHAIN_PICKED 64
-
-#define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
-
-typedef struct LANPR_RenderLine {
-  Link item;
-  struct LANPR_RenderVert *l, *r;
-  struct LANPR_RenderTriangle *tl, *tr;
-  ListBase segments;
-  // tnsEdge*       Edge;//should be edge material
-  // tnsRenderTriangle* testing;//Should Be tRT** testing[NumOfThreads]	struct Materil
-  // *MaterialRef;
-  char min_occ;
-  char flags;  // also for line type determination on chainning
-  struct Object *object_ref;
-} LANPR_RenderLine;
-
-typedef struct LANPR_RenderLineChain {
-  Link item;
-  ListBase chain;
-  // int         SegmentCount;  // we count before draw cmd.
-  float length;  // calculated before draw cmd.
-} LANPR_RenderLineChain;
-
-typedef struct LANPR_RenderLineChainItem {
-  Link item;
-  float pos[3];  // need z value for fading
-  float normal[3];
-  char line_type;  //      style of [1]       style of [2]
-  char occlusion;  // [1]--------------->[2]---------------->[3]--....
-} LANPR_RenderLineChainItem;
 
 typedef struct LANPR_BoundingArea {
   real l, r, u, b;
@@ -843,6 +739,5 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 void lanpr_set_render_flag();
 void lanpr_clear_render_flag();
 int lanpr_during_render();
-
 
 #endif

@@ -124,7 +124,7 @@ void *list_append_pointer(ListBase *h, void *data)
   LinkData *lip;
   if (!h)
     return 0;
-  lip = MEM_callocN(sizeof(LinkData),"LinkNode");
+  lip = MEM_callocN(sizeof(LinkData), "LinkNode");
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
@@ -134,7 +134,7 @@ void *list_append_pointer_sized(ListBase *h, void *data, int size)
   LinkData *lip;
   if (!h)
     return 0;
-  lip = MEM_callocN(sizeof(LinkData),"LinkNode");
+  lip = MEM_callocN(size, "LinkNode");
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
@@ -144,7 +144,7 @@ void *list_push_pointer(ListBase *h, void *data)
   LinkData *lip = 0;
   if (!h)
     return 0;
-  lip = MEM_callocN(sizeof(LinkData),"LinkNode");
+  lip = MEM_callocN(sizeof(LinkData), "LinkNode");
   lip->data = data;
   BLI_addhead(h, lip);
   return lip;
@@ -154,7 +154,7 @@ void *list_push_pointer_sized(ListBase *h, void *data, int size)
   LinkData *lip = 0;
   if (!h)
     return 0;
-  lip = MEM_callocN(sizeof(LinkData),"LinkNodeSized");
+  lip = MEM_callocN(size, "LinkNodeSized");
   lip->data = data;
   BLI_addhead(h, lip);
   return lip;

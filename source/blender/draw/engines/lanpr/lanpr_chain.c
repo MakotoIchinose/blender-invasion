@@ -60,8 +60,7 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
           *new_rv = LANPR_OTHER_RV(nrl, nrl->l);
           return nrl;
         }
-        else if (rv->fbcoord[0] == nrl->r->fbcoord[0] && rv->fbcoord[1] == nrl->r->fbcoord[1])
-        {
+        else if (rv->fbcoord[0] == nrl->r->fbcoord[0] && rv->fbcoord[1] == nrl->r->fbcoord[1]) {
           *new_rv = LANPR_OTHER_RV(nrl, nrl->r);
           return nrl;
         }
@@ -254,8 +253,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
           lanpr_push_render_line_chain_point(rb, rlc, px, py, N, new_rl->flags, rls->occlusion);
         }
       }
-      else if (new_rv == new_rl->r)
-      {
+      else if (new_rv == new_rl->r) {
         rls = new_rl->segments.first;
         last_occlusion = rls->occlusion;
         rls = rls->item.next;
@@ -319,8 +317,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
           lanpr_append_render_line_chain_point(rb, rlc, px, py, N, new_rl->flags, last_occlusion);
         }
       }
-      else if (new_rv == new_rl->r)
-      {
+      else if (new_rv == new_rl->r) {
         rls = new_rl->segments.first;
         last_occlusion = rls->occlusion;
         rlci->occlusion = last_occlusion;
