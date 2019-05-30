@@ -75,13 +75,13 @@ void lanpr_generate_gpencil_geometry(
 	//Split countour lines at occlution points and deselect occluded segment
 	LANPR_RenderLine *rl;
 	LANPR_RenderLineSegment *rls, *irls;
-	for (rl = rb->all_render_lines.first; rl; rl = rl->item.next) {
+	for (rl = rb->all_render_lines.first; rl; rl = (LANPR_RenderLine*)rl->item.next) {
 		BMEdge *e = BM_edge_at_index_find(bm, rl->edge_idx);
 		BMVert *v1 = e->v1; //Segment goes from v1 to v2
 		BMVert *v2 = e->v2;
 
 		BMVert *cur_vert = v1;
-		for (rls = rl->segments.first; rls; rls = rls->item.next) {
+		for (rls = rl->segments.first; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
 			irls = rls->item.next;
 
 			if (rls->occlusion != 0) {
@@ -260,7 +260,7 @@ void lanpr_generate_gpencil_from_chain(
 
 	LANPR_RenderLineChain* rlc;
 	LANPR_RenderLineChainItem* rlci;
-	for (rlc = rb->chains.first;rlc;rlc=rlc->item.next){
+	for (rlc = rb->chains.first;rlc;rlc=(LANPR_RenderLineChain*)rlc->item.next){
 
 		int array_idx = 0;
 		int count = lanpr_count_chain(rlc);
@@ -268,7 +268,7 @@ void lanpr_generate_gpencil_from_chain(
 
 		float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
-		for(rlci = rlc->chain.first;rlci;rlci=rlci->item.next){
+		for(rlci = rlc->chain.first;rlci;rlci=(LANPR_RenderLineChainItem*)rlci->item.next){
 			float opatity=rlci->occlusion?0.1f:1.0f;
 			stroke_data[array_idx] = rlci->pos[0];
 			stroke_data[array_idx + 1] = rlci->pos[1];

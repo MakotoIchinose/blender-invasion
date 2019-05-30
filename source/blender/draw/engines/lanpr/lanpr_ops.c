@@ -550,7 +550,7 @@ void lanpr_add_triangles(LANPR_RenderBuffer *rb)
   rb->calculation_status = TNS_CALCULATION_INTERSECTION;
   // nulThreadNotifyUsers("tns.render_buffer_list.calculation_status");
 
-  for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->item.next) {
+  for (reln = rb->triangle_buffer_pointers.first; reln; reln = (LANPR_RenderElementLinkNode*)reln->item.next) {
     rt = reln->pointer;
     lim = reln->element_count;
     for (i = 0; i < lim; i++) {
@@ -856,7 +856,7 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
     End = t;
   }
 
-  for (rls = rl->segments.first; rls; rls = rls->item.next) {
+  for (rls = rl->segments.first; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
     if (TNS_DOUBLE_CLOSE_ENOUGH(rls->at, Begin)) {
       begin_segment = rls;
       ns = begin_segment;
@@ -875,7 +875,7 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
   if (!begin_segment && TNS_DOUBLE_CLOSE_ENOUGH(1, End)) {
     untouched = 1;
   }
-  for (rls = begin_segment; rls; rls = rls->item.next) {
+  for (rls = begin_segment; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
     if (TNS_DOUBLE_CLOSE_ENOUGH(rls->at, End)) {
       end_segment = rls;
       ns2 = end_segment;
@@ -909,7 +909,7 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
 
   if (begin_segment) {
     if (begin_segment != ns) {
-      ns->occlusion = begin_segment->item.prev ? (irls = begin_segment->item.prev)->occlusion : 0;
+      ns->occlusion = begin_segment->item.prev ? (irls = (LANPR_RenderLineSegment*)begin_segment->item.prev)->occlusion : 0;
       list_insert_item_before(&rl->segments, (void *)ns, (void *)begin_segment);
     }
   }
@@ -919,7 +919,7 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
   }
   if (end_segment) {
     if (end_segment != ns2) {
-      ns2->occlusion = end_segment->item.prev ? (irls = end_segment->item.prev)->occlusion : 0;
+      ns2->occlusion = end_segment->item.prev ? (irls = (LANPR_RenderLineSegment*)end_segment->item.prev)->occlusion : 0;
       list_insert_item_before(&rl->segments, (void *)ns2, (void *)end_segment);
     }
   }
@@ -932,9 +932,9 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
   if (!untouched)
     ns2->at = End;
   else
-    ns2 = ns2->item.next;
+    ns2 = (LANPR_RenderLineSegment*)ns2->item.next;
 
-  for (rls = ns; rls && rls != ns2; rls = rls->item.next) {
+  for (rls = ns; rls && rls != ns2; rls = (LANPR_RenderLineSegment*)rls->item.next) {
     rls->occlusion++;
   }
 }
@@ -1445,7 +1445,7 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
   rv = &((LANPR_RenderVert *)veln->pointer)[v_count];
   rt1 = (void *)(((BYTE *)teln->pointer) + rb->triangle_size * t_count);
 
-  for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->item.next) {
+  for (reln = rb->triangle_buffer_pointers.first; reln; reln = (LANPR_RenderElementLinkNode*)reln->item.next) {
     i = 0;
     if (reln->additional)
       continue;
@@ -1971,7 +1971,7 @@ void lanpr_perspective_division(LANPR_RenderBuffer *rb)
   if (cam->type != CAM_PERSP)
     return;
 
-  for (reln = rb->vertex_buffer_pointers.first; reln; reln = reln->item.next) {
+  for (reln = rb->vertex_buffer_pointers.first; reln; reln = (LANPR_RenderElementLinkNode*)reln->item.next) {
     rv = reln->pointer;
     for (i = 0; i < reln->element_count; i++) {
       // if (rv->fbcoord[2] < -DBL_EPSILON) continue;
@@ -2847,7 +2847,7 @@ LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffer *rb,
 
   int i;
 
-  for (rv = testing->intersecting_verts.first; rv; rv = rv->item.next) {
+  for (rv = testing->intersecting_verts.first; rv; rv = (LANPR_RenderVert*)rv->item.next) {
     if (rv->intersecting_with == rt && rv->intersecting_line == rl)
       return rv;
   }
@@ -3170,7 +3170,7 @@ void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold)
     lanpr_compute_view_Vector(rb);
   }
 
-  for (rl = rb->all_render_lines.first; rl; rl = rl->item.next) {
+  for (rl = rb->all_render_lines.first; rl; rl = (LANPR_RenderLine*)rl->item.next) {
     // if(rl->testing)
     // if (!lanpr_line_crosses_frame(rl->l->fbcoord, rl->r->fbcoord))
     //	continue;
@@ -3502,7 +3502,7 @@ long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer 
     if (!lanpr_count_this_line(rl, ll))
       continue;
 
-    for (rls = rl->segments.first; rls; rls = rls->item.next) {
+    for (rls = rl->segments.first; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
 
       if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end)
         Count++;
@@ -3515,7 +3515,7 @@ long lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
   LANPR_RenderLine *rl;
   LANPR_RenderLineSegment *rls;
   long Count = 0;
-  for (rl = rb->intersection_lines.first; rl; rl = rl->item.next) {
+  for (rl = rb->intersection_lines.first; rl; rl = (LANPR_RenderLine*)rl->item.next) {
     Count++;
   }
   return Count;
@@ -3561,7 +3561,7 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
         N += 6;
 
         CLAMP(rls->at, 0, 1);
-        if (irls = rls->item.next)
+        if (irls = (LANPR_RenderLineSegment*)rls->item.next)
           CLAMP(irls->at, 0, 1);
 
         *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], rls->at);
