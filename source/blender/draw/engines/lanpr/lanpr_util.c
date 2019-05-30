@@ -160,7 +160,7 @@ void *list_push_pointer_sized(ListBase *h, void *data, int size)
   return lip;
 }
 
-void *list_append_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *data)
+void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
 {
   LinkData *lip;
   if (!h)
@@ -170,7 +170,7 @@ void *list_append_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *data
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_append_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *data, int size)
+void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
 {
   LinkData *lip;
   if (!h)
@@ -180,7 +180,7 @@ void *list_append_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_push_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *data)
+void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
 {
   LinkData *lip = 0;
   if (!h)
@@ -190,7 +190,7 @@ void *list_push_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *data)
   BLI_addhead(h, lip);
   return lip;
 }
-void *list_push_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *data, int size)
+void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
 {
   LinkData *lip = 0;
   if (!h)
@@ -301,7 +301,7 @@ void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to)
   }
 }
 
-void *list_append_pointer_static_pool(nStaticMemoryPool *mph, ListBase *h, void *data)
+void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *data)
 {
   LinkData *lip;
   if (!h)
@@ -387,55 +387,55 @@ void list_move_down(ListBase *h, Link *li)
     h->last = li;
 }
 
-nStaticMemoryPoolNode *mem_new_static_pool(nStaticMemoryPool *smp)
+LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp)
 {
-  nStaticMemoryPoolNode *smpn = MEM_callocN(NUL_MEMORY_POOL_128MB, "mempool");
-  smpn->UsedByte = sizeof(nStaticMemoryPoolNode);
-  BLI_addhead(&smp->Pools, smpn);
+  LANPR_StaticMemPoolNode *smpn = MEM_callocN(NUL_MEMORY_POOL_128MB, "mempool");
+  smpn->used_byte = sizeof(LANPR_StaticMemPoolNode);
+  BLI_addhead(&smp->pools, smpn);
   return smpn;
 }
-void *mem_static_aquire(nStaticMemoryPool *smp, int size)
+void *mem_static_aquire(LANPR_StaticMemPool *smp, int size)
 {
-  nStaticMemoryPoolNode *smpn = smp->Pools.first;
+  LANPR_StaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  if (!smpn || (smpn->UsedByte + size) > NUL_MEMORY_POOL_128MB)
+  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB)
     smpn = mem_new_static_pool(smp);
 
-  ret = ((BYTE *)smpn) + smpn->UsedByte;
+  ret = ((BYTE *)smpn) + smpn->used_byte;
 
-  smpn->UsedByte += size;
+  smpn->used_byte += size;
 
   return ret;
 }
-void *mem_static_aquire_thread(nStaticMemoryPool *smp, int size)
+void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
 {
-  nStaticMemoryPoolNode *smpn = smp->Pools.first;
+  LANPR_StaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  BLI_spin_lock(&smp->csMem);
+  BLI_spin_lock(&smp->cs_mem);
 
-  if (!smpn || (smpn->UsedByte + size) > NUL_MEMORY_POOL_128MB)
+  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB)
     smpn = mem_new_static_pool(smp);
 
-  ret = ((BYTE *)smpn) + smpn->UsedByte;
+  ret = ((BYTE *)smpn) + smpn->used_byte;
 
-  smpn->UsedByte += size;
+  smpn->used_byte += size;
 
-  BLI_spin_unlock(&smp->csMem);
+  BLI_spin_unlock(&smp->cs_mem);
 
   return ret;
 }
-void *mem_static_destroy(nStaticMemoryPool *smp)
+void *mem_static_destroy(LANPR_StaticMemPool *smp)
 {
-  nStaticMemoryPoolNode *smpn;
+  LANPR_StaticMemPoolNode *smpn;
   void *ret = 0;
 
-  while (smpn = BLI_pophead(&smp->Pools)) {
+  while (smpn = BLI_pophead(&smp->pools)) {
     MEM_freeN(smpn);
   }
 
-  smp->EachSize = 0;
+  smp->each_size = 0;
 
   return ret;
 }

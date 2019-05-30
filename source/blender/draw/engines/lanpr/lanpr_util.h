@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __LANPR_UTIL_H__
+#define __LANPR_UTIL_H__
 
 #include <string.h>
 //#include "lanpr_all.h"
@@ -6,16 +7,11 @@
 #include "BLI_linklist.h"
 #include "BLI_threads.h"
 
-/*
-
-   Ported from NUL4.0
-
-   Author(s):WuYiming - xp8110@outlook.com
-
- */
-
 #define _CRT_SECURE_NO_WARNINGS
+
+#ifndef BYTE
 #define BYTE unsigned char
+#endif
 
 typedef double real;
 typedef unsigned long long u64bit;
@@ -35,66 +31,30 @@ typedef float tnsVector3f[3];
 typedef float tnsVector4f[4];
 typedef int tnsVector2i[2];
 
-#define TNS_PI 3.1415926535897932384626433832795
-#define deg(r) r / TNS_PI * 180.0
-#define rad(d) d *TNS_PI / 180.0
-
+#define deg(r) r / M_PI * 180.0
+#define rad(d) d *M_PI / 180.0
 
 #define DBL_TRIANGLE_LIM 1e-8
 #define DBL_EDGE_LIM 1e-9
-
 
 #define NUL_MEMORY_POOL_1MB 1048576
 #define NUL_MEMORY_POOL_128MB 134217728
 #define NUL_MEMORY_POOL_256MB 268435456
 #define NUL_MEMORY_POOL_512MB 536870912
 
-typedef struct _Link2 
+typedef struct LANPR_StaticMemPoolNode
 {
-  void *O1;
-  void *O2;
-  void *pNext;
-  void *pPrev;
-}_Link2;
-
-typedef struct nMemoryPool
-{
-  Link Item;
-  int NodeSize;
-  int CountPerPool;
-  ListBase Pools;
-}nMemoryPool;
-
-typedef struct nMemoryPoolPart
-{
-  Link Item;
-  ListBase MemoryNodes;
-  ListBase FreeMemoryNodes;
-  nMemoryPool *PoolRoot;
-  //  <------Mem Begin Here.
-}nMemoryPoolPart;
-
-typedef struct nMemoryPoolNode
-{
-  Link Item;
-  nMemoryPoolPart *InPool;
-  void *DBInst;
-  //  <------User Mem Begin Here
-}nMemoryPoolNode;
-
-typedef struct nStaticMemoryPoolNode
-{
-  Link Item;
-  int UsedByte;
+  Link item;
+  int used_byte;
   //  <----------- User Mem Start Here
-}nStaticMemoryPoolNode;
+}LANPR_StaticMemPoolNode;
 
-typedef struct nStaticMemoryPool
+typedef struct LANPR_StaticMemPool
 {
-  int EachSize;
-  ListBase Pools;
-  SpinLock csMem;
-}nStaticMemoryPool;
+  int each_size;
+  ListBase pools;
+  SpinLock cs_mem;
+}LANPR_StaticMemPool;
 
 #define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  // nutCalloc(sizeof(Type),1)
 
@@ -128,10 +88,10 @@ void *list_append_pointer_sized(ListBase *h, void *p, int size);
 void *list_push_pointer(ListBase *h, void *p);
 void *list_push_pointer_sized(ListBase *h, void *p, int size);
 
-void *list_append_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *p);
-void *list_append_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *p, int size);
-void *list_push_pointer_static(ListBase *h, nStaticMemoryPool *smp, void *p);
-void *list_push_pointer_static_sized(ListBase *h, nStaticMemoryPool *smp, void *p, int size);
+void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
+void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
+void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
+void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
 
 void *list_pop_pointer_only(ListBase *h);
 void list_remove_pointer_item_only(ListBase *h, LinkData *lip);
@@ -147,7 +107,7 @@ void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to);
 
 void list_copy_handle(ListBase *target, ListBase *src);
 
-void *list_append_pointer_static_pool(nStaticMemoryPool *mph, ListBase *h, void *p);
+void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *p);
 void *list_pop_pointer_no_free(ListBase *h);
 void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
 
@@ -157,10 +117,10 @@ void list_move_down(ListBase *h, Link *li);
 void lstAddElement(ListBase *hlst, void *ext);
 void lstDestroyElementList(ListBase *hlst);
 
-nStaticMemoryPoolNode *mem_new_static_pool(nStaticMemoryPool *smp);
-void *mem_static_aquire(nStaticMemoryPool *smp, int size);
-void *mem_static_aquire_thread(nStaticMemoryPool *smp, int size);
-void *mem_static_destroy(nStaticMemoryPool *smp);
+LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp);
+void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
+void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
+void *mem_static_destroy(LANPR_StaticMemPool *smp);
 
 void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out);
 
@@ -213,3 +173,6 @@ void tmat_normalize_self_3d(tnsVector3d result);
 real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
 real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
+
+
+#endif

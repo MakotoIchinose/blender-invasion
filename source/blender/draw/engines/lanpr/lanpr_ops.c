@@ -123,7 +123,7 @@ void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_BoundingArea
 {
   LANPR_BoundingArea *ba = Root->child, *tba;
   LinkData *lip, *lip2, *next_lip;
-  nStaticMemoryPool *mph = &rb->render_data_pool;
+  LANPR_StaticMemPool *mph = &rb->render_data_pool;
 
   list_append_pointer_static_pool(mph, &ba[1].rp, &ba[0]);
   list_append_pointer_static_pool(mph, &ba[0].lp, &ba[1]);
@@ -3316,7 +3316,7 @@ void lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   BLI_spin_end(&rb->cs_data);
   BLI_spin_end(&rb->cs_info);
   BLI_spin_end(&rb->cs_management);
-  BLI_spin_end(&rb->render_data_pool.csMem);
+  BLI_spin_end(&rb->render_data_pool.cs_mem);
 
   mem_static_destroy(&rb->render_data_pool);
 }
@@ -3341,7 +3341,7 @@ LANPR_RenderBuffer *lanpr_create_render_buffer(SceneLANPR *lanpr)
   BLI_spin_init(&rb->cs_data);
   BLI_spin_init(&rb->cs_info);
   BLI_spin_init(&rb->cs_management);
-  BLI_spin_init(&rb->render_data_pool.csMem);
+  BLI_spin_init(&rb->render_data_pool.cs_mem);
 
   return rb;
 }
