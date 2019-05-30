@@ -1,3 +1,5 @@
+#ifndef __LANPR_DATA_TYPES_H__
+#define __LANPR_DATA_TYPES_H__
 /*
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -130,3 +132,5 @@ typedef struct LANPR_RenderLineChainItem {
 } LANPR_RenderLineChainItem;
 
 
+
+#endif

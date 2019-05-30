@@ -4,6 +4,8 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
+#include "DEG_depsgraph.h"
+
 #include "BKE_gpencil.h"
 
 void lanpr_generate_gpencil_geometry(

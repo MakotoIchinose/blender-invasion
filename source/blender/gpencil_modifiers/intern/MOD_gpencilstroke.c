@@ -150,4 +150,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Stroke = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* getDuplicationFactor */ NULL,
 };
