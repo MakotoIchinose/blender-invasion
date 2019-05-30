@@ -315,3 +315,22 @@ TreeElement *outliner_find_active_element(const ListBase *lb)
   }
   return NULL;
 }
+
+/* Find if element is visible in the outliner tree */
+bool outliner_is_element_visible(const ListBase *lb, const TreeElement *search_te)
+{
+  for (TreeElement *te = lb->first; te; te = te->next) {
+    if (te == search_te) {
+      return true;
+    }
+
+    /* Search the next layer if the element is open */
+    if (!(TREESTORE(te)->flag & TSE_CLOSED)) {
+      bool element = outliner_is_element_visible(&te->subtree, search_te);
+      if (element) {
+        return element;
+      }
+    }
+  }
+  return false;
+}

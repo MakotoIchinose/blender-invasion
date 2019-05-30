@@ -449,5 +449,6 @@ bool outliner_tree_traverse(const SpaceOutliner *soops,
                             void *customdata);
 float outliner_restrict_columns_width(const struct SpaceOutliner *soops);
 TreeElement *outliner_find_active_element(const ListBase *lb);
+bool outliner_is_element_visible(const ListBase *lb, const TreeElement *te);
 
 #endif /* __OUTLINER_INTERN_H__ */
