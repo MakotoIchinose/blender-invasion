@@ -50,7 +50,7 @@ typedef struct wmXRContext {
   } oxr;
 } wmXRContext;
 
-wmXRContext *wm_xr_context_init(void)
+wmXRContext *wm_xr_context_create(void)
 {
   XrInstanceCreateInfo create_info = {.type = XR_TYPE_INSTANCE_CREATE_INFO};
   XrInstance instance = {0};

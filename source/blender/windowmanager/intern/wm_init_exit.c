@@ -218,13 +218,6 @@ void WM_init(bContext *C, int argc, const char **argv)
   wm_operatortype_init();
   wm_operatortypes_register();
 
-#ifdef WITH_OPENXR
-  /* Just to test OpenXR loader linking */
-  XrInstance xr_instance;
-  XrInstanceCreateInfo xr_inst_createi = {0};
-  xrCreateInstance(&xr_inst_createi, &xr_instance);
-#endif
-
   WM_paneltype_init(); /* Lookup table only. */
   WM_menutype_init();
   WM_uilisttype_init();

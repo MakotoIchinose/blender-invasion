@@ -292,7 +292,7 @@ void WM_check(bContext *C)
 
 #ifdef WITH_OPENXR
   if (wm->xr_context == NULL) {
-    wm->xr_context = wm_xr_context_init();
+    wm->xr_context = wm_xr_context_create();
   }
 #endif
 
