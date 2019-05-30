@@ -60,7 +60,7 @@ int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                    double *To);
 void lanpr_compute_view_Vector(LANPR_RenderBuffer *rb);
 
-int use_smooth_contour_modifier_contour = 1;  // debug purpose
+int use_smooth_contour_modifier_contour = 0;  // debug purpose
 
 /* ====================================== base structures
  * =========================================== */

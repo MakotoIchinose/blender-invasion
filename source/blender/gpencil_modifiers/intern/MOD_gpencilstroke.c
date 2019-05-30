@@ -92,7 +92,7 @@ static void bakeModifier(
 
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-			lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
+			//lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
 			return;
 		}
 	}
@@ -105,7 +105,8 @@ static void generateStrokes(
         GpencilModifierData *md, Depsgraph *depsgraph,
         Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-	lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
+	//lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
+	lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)

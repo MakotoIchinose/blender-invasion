@@ -8,8 +8,16 @@
 
 #include "BKE_gpencil.h"
 
+typedef struct LANPR_RenderLineChain LANPR_RenderLineChain;
+
 void lanpr_generate_gpencil_geometry(
         GpencilModifierData *md, Depsgraph *depsgraph,
         Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
+
+void lanpr_generate_gpencil_from_chain(
+        GpencilModifierData *md, Depsgraph *depsgraph,
+        Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
+
+int lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
 #endif

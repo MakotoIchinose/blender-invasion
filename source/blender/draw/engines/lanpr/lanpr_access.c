@@ -23,6 +23,7 @@
 #include "BKE_mesh_mapping.h"
 
 #include "lanpr_all.h"
+#include "lanpr_access.h"
 
 static BMVert* split_edge_and_move(BMesh *bm, BMEdge *edge, const float new_pos[3]){
 	//Split edge one time and move the created vert to new_pos
@@ -119,9 +120,9 @@ void lanpr_generate_gpencil_geometry(
 	BM_ITER_MESH (vert, &iter, bm, BM_VERTS_OF_MESH) {
 
         //Have we already used this vert?
-		if(!BM_elem_flag_test(vert, BM_ELEM_SELECT)){
-			continue;
-		}
+		//if(!BM_elem_flag_test(vert, BM_ELEM_SELECT)){
+		//	continue;
+		//}
 
 		BMVert *prepend_vert = NULL;
 		BMVert *next_vert = vert;
@@ -231,3 +232,55 @@ void lanpr_generate_gpencil_geometry(
 
 	BM_mesh_free(bm);
 }
+
+void lanpr_generate_gpencil_from_chain(
+        GpencilModifierData *md, Depsgraph *depsgraph,
+        Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+{
+	StrokeGpencilModifierData *gpmd = (StrokeGpencilModifierData *)md;
+	Scene *scene = DEG_get_evaluated_scene(depsgraph);
+	LANPR_RenderBuffer *rb = scene->lanpr.render_buffer;
+
+	if( rb == NULL ){
+		printf("NULL LANPR rb!\n");
+		return;
+	}
+
+	int color_idx = 0;
+	int tot_points = 0;
+	short thickness = 1;
+
+	float mat[4][4];
+
+	unit_m4(mat);
+
+	//Split countour lines at occlution points and deselect occluded segment
+	LANPR_RenderLine *rl;
+	LANPR_RenderLineSegment *rls, *irls;
+
+	LANPR_RenderLineChain* rlc;
+	LANPR_RenderLineChainItem* rlci;
+	for (rlc = rb->chains.first;rlc;rlc=rlc->item.next){
+
+		int array_idx = 0;
+		int count = lanpr_count_chain(rlc);
+		bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, color_idx, count, thickness);
+
+		float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
+
+		for(rlci = rlc->chain.first;rlci;rlci=rlci->item.next){
+			float opatity=rlci->occlusion?0.1f:1.0f;
+			stroke_data[array_idx] = rlci->pos[0];
+			stroke_data[array_idx + 1] = rlci->pos[1];
+			stroke_data[array_idx + 2] = rlci->pos[2];
+			stroke_data[array_idx + 3] = opatity; //thickness
+			stroke_data[array_idx + 4] = opatity; //hardness?
+			array_idx+=5;
+		}
+
+		BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
+
+	}
+
+}
+
