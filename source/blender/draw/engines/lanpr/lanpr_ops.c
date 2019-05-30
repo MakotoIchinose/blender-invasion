@@ -865,7 +865,7 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
     if (!rls->item.next) {
       break;
     }
-    irls = rls->item.next;
+    irls = (LANPR_RenderLineSegment *) rls->item.next;
     if (irls->at > Begin + 1e-09 && Begin > rls->at) {
       begin_segment = irls;
       ns = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
@@ -3541,7 +3541,7 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
     if (!lanpr_count_this_line(rl, ll))
       continue;
 
-    for (rls = rl->segments.first; rls; rls = rls->item.next) {
+    for (rls = rl->segments.first; rls; rls = (LANPR_RenderLineSegment *)rls->item.next) {
       if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
 
         if (rl->tl) {

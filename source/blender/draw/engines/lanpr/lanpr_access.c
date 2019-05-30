@@ -82,7 +82,7 @@ void lanpr_generate_gpencil_geometry(
 
 		BMVert *cur_vert = v1;
 		for (rls = rl->segments.first; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
-			irls = rls->item.next;
+			irls = (LANPR_RenderLineSegment *)rls->item.next;
 
 			if (rls->occlusion != 0) {
 				BM_elem_flag_disable(cur_vert, BM_ELEM_SELECT);

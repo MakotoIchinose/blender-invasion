@@ -165,7 +165,7 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
   }
 
   if (!max_rlci) {
-    if (from->item.next == to)
+    if ((LANPR_RenderLineChainItem *)from->item.next == to)
       return;
     for (rlci = (LANPR_RenderLineChainItem*)from->item.next; rlci != to; rlci = next_rlci) {
       next_rlci = (LANPR_RenderLineChainItem*)rlci->item.next;
@@ -176,9 +176,9 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
     }
   }
   else {
-    if (from->item.next != max_rlci)
+    if ((LANPR_RenderLineChainItem *)from->item.next != max_rlci)
       lanpr_reduce_render_line_chain_recursive(rlc, from, max_rlci, dist_threshold);
-    if (to->item.prev != max_rlci)
+    if ((LANPR_RenderLineChainItem *)to->item.prev != max_rlci)
       lanpr_reduce_render_line_chain_recursive(rlc, max_rlci, to, dist_threshold);
   }
 }
@@ -441,7 +441,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
     total_length = lanpr_compute_chain_length(rlc, lengths, i);
 
-    for (rlci = rlc->chain.first; rlci; rlci = (LANPR_RenderLineChain*)rlci->item.next) {
+    for (rlci = rlc->chain.first; rlci; rlci = (LANPR_RenderLineChainItem*)rlci->item.next) {
 
       length_target[0] = lengths[i];
       length_target[1] = total_length - lengths[i];
