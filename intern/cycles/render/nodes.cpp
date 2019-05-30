@@ -5346,14 +5346,31 @@ NODE_DEFINE(VectorMathNode)
   static NodeEnum type_enum;
   type_enum.insert("add", NODE_VECTOR_MATH_ADD);
   type_enum.insert("subtract", NODE_VECTOR_MATH_SUBTRACT);
-  type_enum.insert("average", NODE_VECTOR_MATH_AVERAGE);
-  type_enum.insert("dot_product", NODE_VECTOR_MATH_DOT_PRODUCT);
+  type_enum.insert("multiply", NODE_VECTOR_MATH_MULTIPLY);
+  type_enum.insert("divide", NODE_VECTOR_MATH_DIVIDE);
+
   type_enum.insert("cross_product", NODE_VECTOR_MATH_CROSS_PRODUCT);
+  type_enum.insert("project", NODE_VECTOR_MATH_PROJECT);
+  type_enum.insert("reflect", NODE_VECTOR_MATH_REFLECT);
+  type_enum.insert("average", NODE_VECTOR_MATH_AVERAGE);
+
+  type_enum.insert("dot_product", NODE_VECTOR_MATH_DOT_PRODUCT);
+  type_enum.insert("distance", NODE_VECTOR_MATH_DISTANCE);
+  type_enum.insert("length", NODE_VECTOR_MATH_LENGTH);
+  type_enum.insert("scale", NODE_VECTOR_MATH_SCALE);
   type_enum.insert("normalize", NODE_VECTOR_MATH_NORMALIZE);
+
+  type_enum.insert("snap", NODE_VECTOR_MATH_SNAP);
+  type_enum.insert("modulo", NODE_VECTOR_MATH_MOD);
+  type_enum.insert("absolute", NODE_VECTOR_MATH_ABS);
+  type_enum.insert("minimum", NODE_VECTOR_MATH_MIN);
+  type_enum.insert("maximum", NODE_VECTOR_MATH_MAX);
+
   SOCKET_ENUM(type, "Type", type_enum, NODE_VECTOR_MATH_ADD);
 
   SOCKET_IN_VECTOR(vector1, "Vector1", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_VECTOR(vector2, "Vector2", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_FLOAT(factor, "Factor", 1.0f);
 
   SOCKET_OUT_FLOAT(value, "Value");
   SOCKET_OUT_VECTOR(vector, "Vector");
@@ -5371,7 +5388,7 @@ void VectorMathNode::constant_fold(const ConstantFolder &folder)
   float3 vector;
 
   if (folder.all_inputs_constant()) {
-    svm_vector_math(&value, &vector, type, vector1, vector2);
+    svm_vector_math(&value, &vector, type, vector1, vector2, factor);
 
     if (folder.output == output("Value")) {
       folder.make_constant(value);
@@ -5389,6 +5406,8 @@ void VectorMathNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector1_in = input("Vector1");
   ShaderInput *vector2_in = input("Vector2");
+  ShaderInput *factor_in = input("Factor");
+
   ShaderOutput *value_out = output("Value");
   ShaderOutput *vector_out = output("Vector");
 
@@ -5396,8 +5415,10 @@ void VectorMathNode::compile(SVMCompiler &compiler)
                     type,
                     compiler.stack_assign(vector1_in),
                     compiler.stack_assign(vector2_in));
-  compiler.add_node(
-      NODE_VECTOR_MATH, compiler.stack_assign(value_out), compiler.stack_assign(vector_out));
+  compiler.add_node(NODE_VECTOR_MATH,
+                    compiler.stack_assign(factor_in),
+                    compiler.stack_assign(value_out),
+                    compiler.stack_assign(vector_out));
 }
 
 void VectorMathNode::compile(OSLCompiler &compiler)

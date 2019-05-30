@@ -684,6 +684,20 @@ MINLINE void mul_v3_v3v3(float r[3], const float v1[3], const float v2[3])
   r[2] = v1[2] * v2[2];
 }
 
+MINLINE void div_v3_v3v3(float r[3], const float v1[3], const float v2[3])
+{
+  r[0] = v1[0] / v2[0];
+  r[1] = v1[1] / v2[1];
+  r[2] = v1[2] / v2[2];
+}
+
+MINLINE void div_v3_v3v3_safe(float r[3], const float v1[3], const float v2[3])
+{
+  r[0] = (v2[0] != 0.0f) ? v1[0] / v2[0] : 0.0f;
+  r[1] = (v2[1] != 0.0f) ? v1[1] / v2[1] : 0.0f;
+  r[2] = (v2[2] != 0.0f) ? v1[2] / v2[2] : 0.0f;
+}
+
 MINLINE void mul_v2_v2v2(float r[2], const float a[2], const float b[2])
 {
   r[0] = a[0] * b[0];

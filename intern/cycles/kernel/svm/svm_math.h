@@ -44,20 +44,21 @@ ccl_device void svm_node_vector_math(KernelGlobals *kg,
                                      uint v2_offset,
                                      int *offset)
 {
+  uint4 node1 = read_node(kg, offset);
+
   NodeVectorMath type = (NodeVectorMath)itype;
   float3 v1 = stack_load_float3(stack, v1_offset);
   float3 v2 = stack_load_float3(stack, v2_offset);
+  float fac = stack_load_float(stack, node1.y);
   float f;
   float3 v;
 
-  svm_vector_math(&f, &v, type, v1, v2);
+  svm_vector_math(&f, &v, type, v1, v2, fac);
 
-  uint4 node1 = read_node(kg, offset);
-
-  if (stack_valid(node1.y))
-    stack_store_float(stack, node1.y, f);
   if (stack_valid(node1.z))
-    stack_store_float3(stack, node1.z, v);
+    stack_store_float(stack, node1.z, f);
+  if (stack_valid(node1.w))
+    stack_store_float3(stack, node1.w, v);
 }
 
 CCL_NAMESPACE_END

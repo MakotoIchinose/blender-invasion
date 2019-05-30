@@ -395,43 +395,120 @@ void squeeze(float val, float width, float center, out float outval)
 void vec_math_add(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = v1 + v2;
-  outval = (abs(outvec[0]) + abs(outvec[1]) + abs(outvec[2])) * 0.333333;
+  outval = 0.0;
 }
 
 void vec_math_sub(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = v1 - v2;
-  outval = (abs(outvec[0]) + abs(outvec[1]) + abs(outvec[2])) * 0.333333;
+  outval = 0.0;
 }
 
-void vec_math_average(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_mul(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
-  outvec = v1 + v2;
-  outval = length(outvec);
-  outvec = normalize(outvec);
-}
-void vec_math_mix(float strength, vec3 v1, vec3 v2, out vec3 outvec)
-{
-  outvec = strength * v1 + (1 - strength) * v2;
+  outvec = v1 * v2;
+  outval = 0.0;
 }
 
-void vec_math_dot(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_div(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
-  outvec = vec3(0);
-  outval = dot(v1, v2);
+  outvec.x = (v2.x != 0.0) ? v1.x / v2.x : 0.0;
+  outvec.y = (v2.y != 0.0) ? v1.y / v2.y : 0.0;
+  outvec.z = (v2.z != 0.0) ? v1.z / v2.z : 0.0;
+  outval = 0.0;
 }
 
 void vec_math_cross(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = cross(v1, v2);
-  outval = length(outvec);
-  outvec /= outval;
+  outval = 0.0;
+}
+
+void vec_math_project(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  float lenSquared = dot(v2, v2);
+  outvec = (lenSquared != 0.0) ? (dot(v1, v2) / lenSquared) * v2 : vec3(0.0);
+  outval = 0.0;
+}
+
+void vec_math_reflect(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = reflect(v1, v2);
+  outval = 0.0;
+}
+
+void vec_math_average(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = normalize(v1 + v2);
+  outval = 0.0;
+}
+
+void vec_math_dot(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = vec3(0.0);
+  outval = dot(v1, v2);
+}
+
+void vec_math_distance(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = vec3(0.0);
+  outval = distance(v1, v2);
+}
+
+void vec_math_length(vec3 v, out vec3 outvec, out float outval)
+{
+  outvec = vec3(0.0);
+  outval = length(v);
+}
+
+// temp has to be passed for some reason, see node_shader_vectMath.c
+void vec_math_scale(vec3 v, vec3 temp, float scale, out vec3 outvec, out float outval)
+{
+  outvec = v * scale;
+  outval = 0.0;
 }
 
 void vec_math_normalize(vec3 v, out vec3 outvec, out float outval)
 {
-  outval = length(v);
   outvec = normalize(v);
+  outval = 0.0;
+}
+
+void vec_math_snap(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec.x = (v2.x != 0.0) ? floor(v1.x / v2.x) * v2.x : 0.0;
+  outvec.y = (v2.y != 0.0) ? floor(v1.y / v2.y) * v2.y : 0.0;
+  outvec.z = (v2.z != 0.0) ? floor(v1.z / v2.z) * v2.z : 0.0;
+  outval = 0.0;
+}
+
+void vec_math_mod(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = mod(v1, v2);
+  outval = 0.0;
+}
+
+void vec_math_abs(vec3 v, out vec3 outvec, out float outval)
+{
+  outvec = abs(v);
+  outval = 0.0;
+}
+
+void vec_math_min(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = min(v1, v2);
+  outval = 0.0;
+}
+
+void vec_math_max(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+{
+  outvec = max(v1, v2);
+  outval = 0.0;
+}
+
+void vec_math_mix(float strength, vec3 v1, vec3 v2, out vec3 outvec)
+{
+  outvec = strength * v1 + (1 - strength) * v2;
 }
 
 void vec_math_negate(vec3 v, out vec3 outv)
