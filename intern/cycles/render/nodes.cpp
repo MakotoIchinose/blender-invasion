@@ -5411,12 +5411,14 @@ void VectorMathNode::compile(SVMCompiler &compiler)
   ShaderOutput *value_out = output("Value");
   ShaderOutput *vector_out = output("Vector");
 
+  int fac_stack = compiler.stack_assign(factor_in);
+
   compiler.add_node(NODE_VECTOR_MATH,
                     type,
                     compiler.stack_assign(vector1_in),
                     compiler.stack_assign(vector2_in));
   compiler.add_node(NODE_VECTOR_MATH,
-                    compiler.stack_assign(factor_in),
+                    fac_stack,
                     compiler.stack_assign(value_out),
                     compiler.stack_assign(vector_out));
 }
