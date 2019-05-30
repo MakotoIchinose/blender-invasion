@@ -44,7 +44,6 @@ static void node_shader_exec_math(void *UNUSED(data),
   nodestack_get_vec(&b, SOCK_FLOAT, in[1]);
 
   switch (node->custom1) {
-
     case NODE_MATH_ADD:
       r = a + b;
       break;
@@ -55,186 +54,59 @@ static void node_shader_exec_math(void *UNUSED(data),
       r = a * b;
       break;
     case NODE_MATH_DIVIDE: {
-      if (b == 0) { /* We don't want to divide by zero. */
-        r = 0.0;
-      }
-      else {
-        r = a / b;
-      }
+      r = (b != 0.0f) ? a / b : 0.0f;
       break;
     }
     case NODE_MATH_SIN: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = sinf(a);
-      }
-      else {
-        r = sinf(b);
-      }
+      r = sinf(a);
       break;
     }
     case NODE_MATH_COS: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = cosf(a);
-      }
-      else {
-        r = cosf(b);
-      }
+      r = cosf(a);
       break;
     }
     case NODE_MATH_TAN: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = tanf(a);
-      }
-      else {
-        r = tanf(b);
-      }
+      r = tanf(a);
       break;
     }
     case NODE_MATH_ASIN: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) { /* This one only takes one input, so we've got to choose. */
-        /* Can't do the impossible... */
-        if (a <= 1 && a >= -1) {
-          r = asinf(a);
-        }
-        else {
-          r = 0.0;
-        }
-      }
-      else {
-        /* Can't do the impossible... */
-        if (b <= 1 && b >= -1) {
-          r = asinf(b);
-        }
-        else {
-          r = 0.0;
-        }
-      }
+      r = (a <= 1.0f && a >= -1.0f) ? asinf(a) : 0.0f;
       break;
     }
     case NODE_MATH_ACOS: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) { /* This one only takes one input, so we've got to choose. */
-        /* Can't do the impossible... */
-        if (a <= 1 && a >= -1) {
-          r = acosf(a);
-        }
-        else {
-          r = 0.0;
-        }
-      }
-      else {
-        /* Can't do the impossible... */
-        if (b <= 1 && b >= -1) {
-          r = acosf(b);
-        }
-        else {
-          r = 0.0;
-        }
-      }
+      r = (a <= 1.0f && a >= -1.0f) ? acosf(a) : 0.0f;
       break;
     }
     case NODE_MATH_ATAN: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = atan(a);
-      }
-      else {
-        r = atan(b);
-      }
-      break;
-    }
-    case NODE_MATH_POW: {
-      /* Only raise negative numbers by full integers */
-      if (a >= 0) {
-        r = pow(a, b);
-      }
-      else {
-        float y_mod_1 = fabsf(fmodf(b, 1.0f));
-
-        /* if input value is not nearly an integer,
-         * fall back to zero, nicer than straight rounding. */
-        if (y_mod_1 > 0.999f || y_mod_1 < 0.001f) {
-          r = powf(a, floorf(b + 0.5f));
-        }
-        else {
-          r = 0.0f;
-        }
-      }
-
+      r = atan(a);
       break;
     }
     case NODE_MATH_LOG: {
-      /* Don't want any imaginary numbers... */
-      if (a > 0 && b > 0) {
-        r = log(a) / log(b);
-      }
-      else {
-        r = 0.0;
-      }
+      r = (a > 0.0f && b > 0.0f) ? log(a) / log(b) : 0.0f;
       break;
     }
     case NODE_MATH_MIN: {
-      if (a < b) {
-        r = a;
-      }
-      else {
-        r = b;
-      }
+      r = (a < b) ? a : b;
       break;
     }
     case NODE_MATH_MAX: {
-      if (a > b) {
-        r = a;
-      }
-      else {
-        r = b;
-      }
+      r = (a > b) ? a : b;
       break;
     }
     case NODE_MATH_ROUND: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = (a < 0) ? (int)(a - 0.5f) : (int)(a + 0.5f);
-      }
-      else {
-        r = (b < 0) ? (int)(b - 0.5f) : (int)(b + 0.5f);
-      }
+      r = (a < 0.0f) ? (int)(a - 0.5f) : (int)(a + 0.5f);
       break;
     }
     case NODE_MATH_LESS: {
-      if (a < b) {
-        r = 1.0f;
-      }
-      else {
-        r = 0.0f;
-      }
+      r = (a < b) ? 1.0f : 0.0f;
       break;
     }
     case NODE_MATH_GREATER: {
-      if (a > b) {
-        r = 1.0f;
-      }
-      else {
-        r = 0.0f;
-      }
+      r = (a > b) ? 1.0f : 0.0f;
       break;
     }
     case NODE_MATH_MOD: {
-      if (b == 0.0f) {
-        r = 0.0f;
-      }
-      else {
-        r = fmod(a, b);
-      }
+      r = (b != 0.0f) ? fmod(a, b) : 0.0f;
       break;
     }
     case NODE_MATH_ABS: {
@@ -246,59 +118,41 @@ static void node_shader_exec_math(void *UNUSED(data),
       break;
     }
     case NODE_MATH_FLOOR: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = floorf(a);
-      }
-      else {
-        r = floorf(b);
-      }
+      r = floorf(a);
       break;
     }
     case NODE_MATH_CEIL: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = ceilf(a);
-      }
-      else {
-        r = ceilf(b);
-      }
+      r = ceilf(a);
       break;
     }
     case NODE_MATH_FRACT: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        r = a - floorf(a);
-      }
-      else {
-        r = b - floorf(b);
-      }
+      r = a - floorf(a);
       break;
     }
     case NODE_MATH_SQRT: {
-      if (in[0]->hasinput ||
-          !in[1]->hasinput) /* This one only takes one input, so we've got to choose. */
-      {
-        if (a > 0) {
-          r = sqrt(a);
-        }
-        else {
-          r = 0.0;
-        }
+      r = (a > 0.0f) ? sqrt(a) : 0.0f;
+      break;
+    }
+    case NODE_MATH_POW: {
+      /* Only raise negative numbers by full integers */
+      if (a >= 0.0f) {
+        r = pow(a, b);
       }
       else {
-        if (b > 0) {
-          r = sqrt(b);
+        float y_mod_1 = fabsf(fmodf(b, 1.0f));
+        /* If input value is not nearly an integer, fall back to zero, nicer than straight rounding
+         */
+        if (y_mod_1 > 0.999f || y_mod_1 < 0.001f) {
+          r = powf(a, floorf(b + 0.5f));
         }
         else {
-          r = 0.0;
+          r = 0.0f;
         }
       }
       break;
     }
+    default:
+      r = 0.0f;
   }
   if (node->custom2 & SHD_MATH_CLAMP) {
     CLAMP(r, 0.0f, 1.0f);
@@ -313,28 +167,70 @@ static int gpu_shader_math(GPUMaterial *mat,
                            GPUNodeStack *out)
 {
   static const char *names[] = {
-      "math_add",       "math_subtract",     "math_multiply", "math_divide", "math_sine",
-      "math_cosine",    "math_tangent",      "math_asin",     "math_acos",   "math_atan",
-      "math_pow",       "math_log",          "math_min",      "math_max",    "math_round",
-      "math_less_than", "math_greater_than", "math_modulo",   "math_abs",    "math_atan2",
-      "math_floor",     "math_ceil",         "math_fract",    "math_sqrt",
+      [NODE_MATH_ADD] = "math_add",
+      [NODE_MATH_SUB] = "math_subtract",
+      [NODE_MATH_MUL] = "math_multiply",
+      [NODE_MATH_DIVIDE] = "math_divide",
+      [NODE_MATH_SIN] = "math_sine",
+      [NODE_MATH_COS] = "math_cosine",
+      [NODE_MATH_TAN] = "math_tangent",
+      [NODE_MATH_ASIN] = "math_asin",
+      [NODE_MATH_ACOS] = "math_acos",
+      [NODE_MATH_ATAN] = "math_atan",
+      [NODE_MATH_POW] = "math_pow",
+      [NODE_MATH_LOG] = "math_log",
+      [NODE_MATH_MIN] = "math_min",
+      [NODE_MATH_MAX] = "math_max",
+      [NODE_MATH_ROUND] = "math_round",
+      [NODE_MATH_LESS] = "math_less_than",
+      [NODE_MATH_GREATER] = "math_greater_than",
+      [NODE_MATH_MOD] = "math_modulo",
+      [NODE_MATH_ABS] = "math_abs",
+      [NODE_MATH_ATAN2] = "math_atan2",
+      [NODE_MATH_FLOOR] = "math_floor",
+      [NODE_MATH_CEIL] = "math_ceil",
+      [NODE_MATH_FRACT] = "math_fract",
+      [NODE_MATH_SQRT] = "math_sqrt",
   };
 
   switch (node->custom1) {
-    case NODE_MATH_ADD:
-    case NODE_MATH_SUB:
-    case NODE_MATH_MUL:
-    case NODE_MATH_DIVIDE:
-    case NODE_MATH_POW:
-    case NODE_MATH_LOG:
-    case NODE_MATH_MIN:
-    case NODE_MATH_MAX:
-    case NODE_MATH_LESS:
-    case NODE_MATH_GREATER:
-    case NODE_MATH_MOD:
-    case NODE_MATH_ATAN2:
-      GPU_stack_link(mat, node, names[node->custom1], in, out);
+    case NODE_MATH_SIN:
+    case NODE_MATH_COS:
+    case NODE_MATH_TAN:
+    case NODE_MATH_ASIN:
+    case NODE_MATH_ACOS:
+    case NODE_MATH_ATAN:
+    case NODE_MATH_ROUND:
+    case NODE_MATH_ABS:
+    case NODE_MATH_FLOOR:
+    case NODE_MATH_FRACT:
+    case NODE_MATH_CEIL:
+    case NODE_MATH_SQRT: {
+      /* use only first item and terminator */
+      GPUNodeStack tmp_in[2];
+      memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
+      memcpy(&tmp_in[1], &in[2], sizeof(GPUNodeStack));
+      GPU_stack_link(mat, node, names[node->custom1], tmp_in, out);
       break;
+    }
+    default:
+      GPU_stack_link(mat, node, names[node->custom1], in, out);
+  }
+
+  if (node->custom2 & SHD_MATH_CLAMP) {
+    float min[3] = {0.0f, 0.0f, 0.0f};
+    float max[3] = {1.0f, 1.0f, 1.0f};
+    GPU_link(mat, "clamp_val", out[0].link, GPU_constant(min), GPU_constant(max), &out[0].link);
+  }
+
+  return 1;
+}
+
+static void node_shader_update_math(bNodeTree *UNUSED(ntree), bNode *node)
+{
+  bNodeSocket *sock = BLI_findlink(&node->inputs, 1);
+
+  switch (node->custom1) {
     case NODE_MATH_SIN:
     case NODE_MATH_COS:
     case NODE_MATH_TAN:
@@ -347,32 +243,11 @@ static int gpu_shader_math(GPUMaterial *mat,
     case NODE_MATH_FRACT:
     case NODE_MATH_CEIL:
     case NODE_MATH_SQRT:
-      if (in[0].hasinput || !in[1].hasinput) {
-        /* use only first item and terminator */
-        GPUNodeStack tmp_in[2];
-        memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
-        memcpy(&tmp_in[1], &in[2], sizeof(GPUNodeStack));
-        GPU_stack_link(mat, node, names[node->custom1], tmp_in, out);
-      }
-      else {
-        /* use only second item and terminator */
-        GPUNodeStack tmp_in[2];
-        memcpy(&tmp_in[0], &in[1], sizeof(GPUNodeStack));
-        memcpy(&tmp_in[1], &in[2], sizeof(GPUNodeStack));
-        GPU_stack_link(mat, node, names[node->custom1], tmp_in, out);
-      }
+      sock->flag |= SOCK_UNAVAIL;
       break;
     default:
-      return 0;
+      sock->flag &= ~SOCK_UNAVAIL;
   }
-
-  if (node->custom2 & SHD_MATH_CLAMP) {
-    float min[3] = {0.0f, 0.0f, 0.0f};
-    float max[3] = {1.0f, 1.0f, 1.0f};
-    GPU_link(mat, "clamp_val", out[0].link, GPU_constant(min), GPU_constant(max), &out[0].link);
-  }
-
-  return 1;
 }
 
 void register_node_type_sh_math(void)
@@ -385,6 +260,7 @@ void register_node_type_sh_math(void)
   node_type_storage(&ntype, "", NULL, NULL);
   node_type_exec(&ntype, NULL, NULL, node_shader_exec_math);
   node_type_gpu(&ntype, gpu_shader_math);
+  node_type_update(&ntype, node_shader_update_math);
 
   nodeRegisterType(&ntype);
 }
