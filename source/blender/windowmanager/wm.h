@@ -95,4 +95,10 @@ void wm_stereo3d_set_cancel(bContext *C, wmOperator *op);
 void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
+#ifdef WITH_OPENXR
+/* wm_xr.c */
+struct wmXRContext *wm_xr_context_init(void) ATTR_WARN_UNUSED_RESULT;
+void wm_xr_context_destroy(struct wmXRContext *xr_context);
+#endif
+
 #endif /* __WM_H__ */

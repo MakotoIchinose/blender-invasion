@@ -128,6 +128,8 @@
 #  include "openxr/openxr.h"
 #endif
 
+#include "wm.h"
+
 #include "DRW_engine.h"
 
 #ifdef WITH_OPENSUBDIV

@@ -742,6 +742,13 @@ struct ReportList *CTX_wm_reports(const bContext *C)
   return NULL;
 }
 
+#ifdef WITH_OPENXR
+struct wmXRContext *CTX_wm_xr_context(const bContext *C)
+{
+  return C->wm.manager ? C->wm.manager->xr_context : NULL;
+}
+#endif
+
 View3D *CTX_wm_view3d(const bContext *C)
 {
   ScrArea *sa = CTX_wm_area(C);

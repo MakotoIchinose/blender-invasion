@@ -290,6 +290,12 @@ void WM_check(bContext *C)
     wm->message_bus = WM_msgbus_create();
   }
 
+#ifdef WITH_OPENXR
+  if (wm->xr_context == NULL) {
+    wm->xr_context = wm_xr_context_init();
+  }
+#endif
+
   /* case: fileread */
   /* note: this runs in bg mode to set the screen context cb */
   if ((wm->initialized & WM_WINDOW_IS_INITIALIZED) == 0) {
@@ -373,6 +379,12 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
   if (wm->message_bus != NULL) {
     WM_msgbus_destroy(wm->message_bus);
   }
+
+#ifdef WITH_OPENXR
+  if (wm->xr_context != NULL) {
+    wm_xr_context_destroy(wm->xr_context);
+  }
+#endif
 
   BLI_freelistN(&wm->paintcursors);
 

@@ -175,9 +175,13 @@ if(WITH_COMPOSITOR)
 endif()
 
 if(WITH_OPENXR)
+  list(APPEND SRC
+    intern/wm_xr.c
+  )
   list(APPEND INC_SYS
     ${OPENXR_SDK_INCLUDES}
   )
+
   add_definitions(-DWITH_OPENXR)
 endif()
 
