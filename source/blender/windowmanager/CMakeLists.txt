@@ -181,21 +181,18 @@ if(WITH_OPENXR)
   list(APPEND INC_SYS
     ${OPENXR_SDK_INCLUDES}
   )
-
   add_definitions(-DWITH_OPENXR)
 endif()
 
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-if(WITH_OPENXR)
-  if(OPENXR_USE_BUNDLED_SRC)
-    if(WIN32)
-        set(OPENXR_LOADER_NAME openxr_loader-0_90)
-    else()
-        set(OPENXR_LOADER_NAME openxr_loader)
-    endif()
-
-    add_dependencies(bf_windowmanager generate_openxr_header)
-    target_link_libraries(bf_windowmanager ${OPENXR_LOADER_NAME})
+if(WITH_OPENXR AND OPENXR_USE_BUNDLED_SRC)
+  if(WIN32)
+    set(OPENXR_LOADER_NAME openxr_loader-0_90)
+  else()
+    set(OPENXR_LOADER_NAME openxr_loader)
   endif()
+
+  add_dependencies(bf_windowmanager generate_openxr_header)
+  target_link_libraries(bf_windowmanager ${OPENXR_LOADER_NAME})
 endif()

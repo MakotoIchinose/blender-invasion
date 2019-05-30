@@ -124,10 +124,6 @@
 
 #include "DEG_depsgraph.h"
 
-#ifdef WITH_OPENXR
-#  include "openxr/openxr.h"
-#endif
-
 #include "wm.h"
 
 #include "DRW_engine.h"

@@ -32,12 +32,14 @@ CHECK_FUNCTION_EXISTS(secure_getenv HAVE_SECURE_GETENV)
 CHECK_FUNCTION_EXISTS(__secure_getenv HAVE___SECURE_GETENV)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/common_cmake_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/common_cmake_config.h)
 
+set(OPENXR_SDK_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/include CACHE INTERNAL "")
+
 add_custom_target(
   generate_openxr_header
   DEPENDS
-    include/openxr/openxr_platform_defines.h
-    include/openxr/openxr.h
-    include/openxr/openxr_platform.h
+    ${OPENXR_SDK_INCLUDES}/openxr/openxr_platform_defines.h
+    ${OPENXR_SDK_INCLUDES}/openxr/openxr.h
+    ${OPENXR_SDK_INCLUDES}/openxr/openxr_platform.h
 )
 
 add_custom_target(
