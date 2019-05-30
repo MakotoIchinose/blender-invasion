@@ -469,7 +469,7 @@ static void rna_def_material_display(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_Material_update");
 }
 
-static void rna_def_material_lanpr(struct StructRNA *srna, struct BlenerRNA *brna)
+static void rna_def_material_lanpr(struct StructRNA *srna, struct BlenderRNA *brna)
 {
   PropertyRNA *prop;
 
