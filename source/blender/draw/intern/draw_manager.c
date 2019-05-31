@@ -613,6 +613,8 @@ static DRWCallState *draw_unit_state_create(void)
   culling->bsphere.radius = -1.0f;
   culling->user_data = NULL;
 
+  DRW_NEXT_RESOURCE_HANDLE(DST.resource_handle);
+
   return state;
 }
 
@@ -645,10 +647,12 @@ static void drw_viewport_var_init(void)
       DST.vmempool->states = BLI_memblock_create(sizeof(DRWCallState));
     }
     if (DST.vmempool->obmats == NULL) {
-      DST.vmempool->obmats = BLI_memblock_create(sizeof(DRWObjectMatrix));
+      uint chunk_len = sizeof(DRWObjectMatrix) * DRW_RESOURCE_CHUNK_LEN;
+      DST.vmempool->obmats = BLI_memblock_create_ex(sizeof(DRWObjectMatrix), chunk_len);
     }
     if (DST.vmempool->obinfos == NULL) {
-      DST.vmempool->obinfos = BLI_memblock_create(sizeof(DRWObjectInfos));
+      uint chunk_len = sizeof(DRWObjectInfos) * DRW_RESOURCE_CHUNK_LEN;
+      DST.vmempool->obinfos = BLI_memblock_create_ex(sizeof(DRWObjectInfos), chunk_len);
     }
     if (DST.vmempool->cullstates == NULL) {
       DST.vmempool->cullstates = BLI_memblock_create(sizeof(DRWCullingState));
@@ -669,7 +673,9 @@ static void drw_viewport_var_init(void)
       DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *));
     }
 
-    /* Alloc default unit state */
+    DST.resource_handle.id = 0;
+    DST.resource_handle.chunk = 0;
+
     DST.unit_state = draw_unit_state_create();
 
     DST.idatalist = GPU_viewport_instance_data_list_get(DST.viewport);
@@ -2182,6 +2188,7 @@ void DRW_render_instance_buffer_finish(void)
   BLI_assert(!DST.buffer_finish_called && "DRW_render_instance_buffer_finish called twice!");
   DST.buffer_finish_called = true;
   DRW_instance_buffer_finish(DST.idatalist);
+  drw_resource_buffer_finish(DST.vmempool);
 }
 
 /**

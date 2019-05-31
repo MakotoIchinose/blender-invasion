@@ -40,6 +40,7 @@
 #include "GPU_texture.h"
 #include "GPU_viewport.h"
 #include "GPU_draw.h"
+#include "GPU_uniformbuffer.h"
 
 #include "DRW_engine.h"
 
@@ -656,6 +657,13 @@ void GPU_viewport_free(GPUViewport *viewport)
     }
     BLI_memblock_destroy(viewport->vmempool.images, NULL);
   }
+
+  for (int i = 0; i < viewport->vmempool.ubo_len; i++) {
+    GPU_uniformbuffer_free(viewport->vmempool.matrices_ubo[i]);
+    GPU_uniformbuffer_free(viewport->vmempool.obinfos_ubo[i]);
+  }
+  MEM_freeN(viewport->vmempool.matrices_ubo);
+  MEM_freeN(viewport->vmempool.obinfos_ubo);
 
   DRW_instance_data_list_free(viewport->idatalist);
   MEM_freeN(viewport->idatalist);

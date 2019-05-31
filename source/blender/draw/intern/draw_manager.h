@@ -105,6 +105,23 @@ typedef struct DRWCullingState {
   void *user_data;
 } DRWCullingState;
 
+/* We count on the fact that unsigned integers wrap around whe overflowing. */
+#define DRW_NEXT_RESOURCE_HANDLE(handle) \
+  do { \
+    if ((handle).id++ == 511) { \
+      (handle).chunk++; \
+    } \
+  } while (0)
+
+/* Minimum max UBO size is 64KiB. We take the largest
+ * UBO struct and alloc the max number. */
+#define DRW_RESOURCE_CHUNK_LEN ((1 << 16) / sizeof(DRWObjectMatrix))
+
+typedef struct DRWResourceHandle {
+  uint32_t id : 9;
+  uint32_t chunk : 23;
+} DRWResourceHandle;
+
 typedef struct DRWObjectMatrix {
   float model[4][4];
   float modelinverse[4][4];
@@ -287,16 +304,23 @@ typedef struct DRWManager {
   /* Cache generation */
   ViewportMemoryPool *vmempool;
   DRWInstanceDataList *idatalist;
-  DRWInstanceData *object_instance_data[MAX_INSTANCE_DATA_SIZE];
   /* Default Unit model matrix state without culling. */
   DRWCallState *unit_state;
   /* State of the object being evaluated if already allocated. */
   DRWCallState *ob_state;
+  /** Handle of current object resource in object resource arrays (DRWObjectMatrices/Infos). */
+  DRWResourceHandle resource_handle;
+
+  /** Dupli state. NULL if not dupli. */
   struct DupliObject *dupli_source;
   struct Object *dupli_parent;
   struct Object *dupli_origin;
+  /** Ghash containing original objects. */
   struct GHash *dupli_ghash;
-  void **dupli_datas; /* Array of dupli_data (one for each enabled engine) to handle duplis. */
+  /** TODO(fclem) try to remove usage of this. */
+  DRWInstanceData *object_instance_data[MAX_INSTANCE_DATA_SIZE];
+  /* Array of dupli_data (one for each enabled engine) to handle duplis. */
+  void **dupli_datas;
 
   /* Rendering state */
   GPUShader *shader;
@@ -401,6 +425,8 @@ void drw_debug_init(void);
 
 void drw_batch_cache_validate(Object *ob);
 void drw_batch_cache_generate_requested(struct Object *ob);
+
+void drw_resource_buffer_finish(ViewportMemoryPool *vmempool);
 
 /* Procedural Drawing */
 GPUBatch *drw_cache_procedural_points_get(void);

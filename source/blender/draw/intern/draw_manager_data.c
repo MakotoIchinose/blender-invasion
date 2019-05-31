@@ -66,6 +66,49 @@ void DRW_uniformbuffer_free(GPUUniformBuffer *ubo)
   GPU_uniformbuffer_free(ubo);
 }
 
+void drw_resource_buffer_finish(ViewportMemoryPool *vmempool)
+{
+  int ubo_len = 1 + DST.resource_handle.chunk - ((DST.resource_handle.id == 0) ? 1 : 0);
+  size_t list_size = sizeof(GPUUniformBuffer *) * ubo_len;
+
+  /* TODO find a better system. currently a lot of obinfos UBO are going to be unused
+   * if not rendering with Eevee. */
+
+  if (vmempool->matrices_ubo == NULL) {
+    vmempool->matrices_ubo = MEM_callocN(list_size, __func__);
+    vmempool->obinfos_ubo = MEM_callocN(list_size, __func__);
+    vmempool->ubo_len = ubo_len;
+  }
+
+  /* Remove unecessary buffers */
+  for (int i = ubo_len; i < vmempool->ubo_len; i++) {
+    GPU_uniformbuffer_free(vmempool->matrices_ubo[i]);
+    GPU_uniformbuffer_free(vmempool->obinfos_ubo[i]);
+  }
+
+  if (ubo_len != vmempool->ubo_len) {
+    vmempool->matrices_ubo = MEM_recallocN(vmempool->matrices_ubo, list_size);
+    vmempool->obinfos_ubo = MEM_recallocN(vmempool->obinfos_ubo, list_size);
+    vmempool->ubo_len = ubo_len;
+  }
+
+  /* Create/Update buffers. */
+  for (int i = 0; i < ubo_len; i++) {
+    void *data_obmat = BLI_memblock_elem_get(vmempool->obmats, i, 0);
+    void *data_infos = BLI_memblock_elem_get(vmempool->obinfos, i, 0);
+    if (vmempool->matrices_ubo[i] == NULL) {
+      vmempool->matrices_ubo[i] = GPU_uniformbuffer_create(
+          sizeof(DRWObjectMatrix) * DRW_RESOURCE_CHUNK_LEN, data_obmat, NULL);
+      vmempool->obinfos_ubo[i] = GPU_uniformbuffer_create(
+          sizeof(DRWObjectInfos) * DRW_RESOURCE_CHUNK_LEN, data_infos, NULL);
+    }
+    else {
+      GPU_uniformbuffer_update(vmempool->matrices_ubo[i], data_obmat);
+      GPU_uniformbuffer_update(vmempool->obinfos_ubo[i], data_infos);
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -354,7 +397,7 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[4])
 static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
 {
   BLI_assert(ob);
-  DRWObjectInfos *ob_infos = state->ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
+  DRWObjectInfos *ob_infos = state->ob_infos;
   /* Index. */
   ob_infos->ob_index = ob->index;
   /* Orco factors. */
@@ -372,7 +415,7 @@ static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
 
 static void drw_call_culling_create(DRWCallState *state, Object *ob)
 {
-  DRWCullingState *cull = state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
+  DRWCullingState *cull = state->culling;
 
   BoundBox *bbox;
   if (ob != NULL && (bbox = BKE_object_boundbox_get(ob))) {
@@ -392,13 +435,18 @@ static void drw_call_culling_create(DRWCallState *state, Object *ob)
 static DRWCallState *drw_call_state_create(float (*obmat)[4], Object *ob)
 {
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
+  state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   state->ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
-  state->ob_infos = NULL;
-  state->flag = 0;
+  /* FIXME Meh, not always needed byt can be accessed after creation.
+   * Also it needs to have the same resource handle. */
+  state->ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
 
-  if (ob && (ob->transflag & OB_NEG_SCALE)) {
-    state->flag |= DRW_CALL_NEGSCALE;
-  }
+  SET_FLAG_FROM_TEST(state->flag, (ob && (ob->transflag & OB_NEG_SCALE)), DRW_CALL_NEGSCALE);
+
+  /* TODO(fclem reference resources by handle) */
+  // state->resource_handle = DST.resource_handle;
+
+  DRW_NEXT_RESOURCE_HANDLE(DST.resource_handle);
 
   /* Matrices */
   copy_m4_m4(state->ob_mats->model, obmat);
@@ -431,7 +479,8 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
       DST.ob_state = drw_call_state_create(obmat, ob);
     }
 
-    if (!DST.ob_state->ob_infos && (shgroup->objectinfo != -1 || shgroup->orcotexfac != -1)) {
+    if ((shgroup->objectinfo != -1 || shgroup->orcotexfac != -1) &&
+        DST.ob_state->ob_infos->ob_index == -1.0f) {
       drw_call_obinfos_create(DST.ob_state, ob);
     }
 
