@@ -44,6 +44,7 @@
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_paint.h"
+#include "BKE_pbvh.h"
 #include "BKE_pointcache.h"
 
 #include "draw_manager.h"
@@ -216,11 +217,6 @@ bool DRW_object_use_hide_faces(const struct Object *ob)
   return false;
 }
 
-bool DRW_object_use_pbvh_drawing(const struct Object *ob)
-{
-  return ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT);
-}
-
 bool DRW_object_is_visible_psys_in_active_context(const Object *object, const ParticleSystem *psys)
 {
   const bool for_render = DRW_state_is_image_render();
@@ -280,8 +276,8 @@ void DRW_transform_to_display(GPUTexture *tex, bool use_view_transform, bool use
 
   bool use_ocio = false;
 
-  /* View transform is already applied for offscreen, don't apply again, see: T52046 */
-  if (!(DST.options.is_image_render && !DST.options.is_scene_render)) {
+  /* Should we apply the view transform */
+  if (DRW_state_do_color_management()) {
     Scene *scene = DST.draw_ctx.scene;
     ColorManagedDisplaySettings *display_settings = &scene->display_settings;
     ColorManagedViewSettings view_settings;
@@ -1540,6 +1536,7 @@ void DRW_draw_view(const bContext *C)
                            (v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) != 0);
   DST.options.draw_background = (scene->r.alphamode == R_ADDSKY) ||
                                 (v3d->shading.type != OB_RENDER);
+  DST.options.do_color_management = true;
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
@@ -1801,9 +1798,8 @@ void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
-  /* WATCH: Force color management to output CManaged byte buffer by
-   * forcing is_image_render to false. */
-  DST.options.is_image_render = !do_color_management;
+  DST.options.is_image_render = true;
+  DST.options.do_color_management = do_color_management;
   DST.options.draw_background = draw_background;
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, render_viewport, NULL);
 
@@ -2966,6 +2962,14 @@ bool DRW_state_is_depth(void)
 bool DRW_state_is_image_render(void)
 {
   return DST.options.is_image_render;
+}
+
+/**
+ * Whether the view transform should be applied.
+ */
+bool DRW_state_do_color_management(void)
+{
+  return DST.options.do_color_management;
 }
 
 /**
