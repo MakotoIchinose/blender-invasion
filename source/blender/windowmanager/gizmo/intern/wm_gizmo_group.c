@@ -651,9 +651,15 @@ wmKeyMap *wm_gizmogroup_tweak_modal_keymap(wmKeyConfig *kc)
  *
  * \{ */
 
-wmKeyMap *WM_gizmogroup_keymap_generic(const wmGizmoGroupType *UNUSED(gzgt), wmKeyConfig *kc)
+wmKeyMap *WM_gizmogroup_setup_keymap_generic(const wmGizmoGroupType *UNUSED(gzgt), wmKeyConfig *kc)
 {
   return WM_gizmo_keymap_generic_with_keyconfig(kc);
+}
+
+wmKeyMap *WM_gizmogroup_setup_keymap_generic_drag(const wmGizmoGroupType *UNUSED(gzgt),
+                                                  wmKeyConfig *kc)
+{
+  return WM_gizmo_keymap_generic_drag_with_keyconfig(kc);
 }
 
 /**
@@ -704,8 +710,8 @@ static wmKeyMap *WM_gizmogroup_keymap_template_select_ex(
   return km;
 }
 
-wmKeyMap *WM_gizmogroup_keymap_generic_select(const wmGizmoGroupType *UNUSED(gzgt),
-                                              wmKeyConfig *kc)
+wmKeyMap *WM_gizmogroup_setup_keymap_generic_select(const wmGizmoGroupType *UNUSED(gzgt),
+                                                    wmKeyConfig *kc)
 {
   struct wmGizmoMapType_Params params = {
       .spaceid = SPACE_EMPTY,
@@ -739,6 +745,16 @@ struct wmKeyMap *WM_gizmo_keymap_generic_select_with_keyconfig(wmKeyConfig *kc)
 struct wmKeyMap *WM_gizmo_keymap_generic_select(wmWindowManager *wm)
 {
   return WM_gizmo_keymap_generic_select_with_keyconfig(wm->defaultconf);
+}
+
+struct wmKeyMap *WM_gizmo_keymap_generic_drag_with_keyconfig(wmKeyConfig *kc)
+{
+  const char *idname = "Generic Gizmo Drag";
+  return WM_keymap_ensure(kc, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
+}
+struct wmKeyMap *WM_gizmo_keymap_generic_drag(wmWindowManager *wm)
+{
+  return WM_gizmo_keymap_generic_drag_with_keyconfig(wm->defaultconf);
 }
 
 struct wmKeyMap *WM_gizmo_keymap_generic_click_drag_with_keyconfig(wmKeyConfig *kc)

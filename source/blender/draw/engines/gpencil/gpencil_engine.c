@@ -244,9 +244,6 @@ void GPENCIL_engine_init(void *vedata)
   /* init storage */
   if (!stl->storage) {
     stl->storage = MEM_callocN(sizeof(GPENCIL_Storage), "GPENCIL_Storage");
-
-    /* unit matrix */
-    unit_m4(stl->storage->unit_matrix);
     stl->storage->shade_render[0] = OB_RENDER;
     stl->storage->shade_render[1] = 0;
   }
@@ -591,6 +588,7 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
   ToolSettings *ts = scene->toolsettings;
   View3D *v3d = draw_ctx->v3d;
   const View3DCursor *cursor = &scene->cursor;
+  float grid_matrix[4][4];
 
   if (ob->type == OB_GPENCIL && ob->data) {
     bGPdata *gpd = (bGPdata *)ob->data;
@@ -658,32 +656,31 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
       switch (ts->gp_sculpt.lock_axis) {
         case GP_LOCKAXIS_VIEW: {
           /* align always to view */
-          invert_m4_m4(stl->storage->grid_matrix, draw_ctx->rv3d->viewmat);
+          invert_m4_m4(grid_matrix, draw_ctx->rv3d->viewmat);
           /* copy ob location */
-          copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+          copy_v3_v3(grid_matrix[3], ob->obmat[3]);
           break;
         }
         case GP_LOCKAXIS_CURSOR: {
           float scale[3] = {1.0f, 1.0f, 1.0f};
-          loc_eul_size_to_mat4(
-              stl->storage->grid_matrix, cursor->location, cursor->rotation_euler, scale);
+          loc_eul_size_to_mat4(grid_matrix, cursor->location, cursor->rotation_euler, scale);
           break;
         }
         default: {
-          copy_m4_m4(stl->storage->grid_matrix, ob->obmat);
+          copy_m4_m4(grid_matrix, ob->obmat);
           break;
         }
       }
 
       /* Move the origin to Object or Cursor */
       if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
-        copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
+        copy_v3_v3(grid_matrix[3], cursor->location);
       }
       else {
-        copy_v3_v3(stl->storage->grid_matrix[3], ob->obmat[3]);
+        copy_v3_v3(grid_matrix[3], ob->obmat[3]);
       }
 
-      DRW_shgroup_call(stl->g_data->shgrps_grid, e_data.batch_grid, stl->storage->grid_matrix);
+      DRW_shgroup_call_obmat(stl->g_data->shgrps_grid, e_data.batch_grid, grid_matrix);
     }
   }
 }
@@ -950,7 +947,7 @@ void GPENCIL_draw_scene(void *ved)
             bool is_last = (e == cache_ob->tot_layers - 1) ? true : false;
             array_elm = &cache_ob->shgrp_array[e];
 
-            if (((array_elm->mode == eGplBlendMode_Normal) && (!use_blend) &&
+            if (((array_elm->mode == eGplBlendMode_Regular) && (!use_blend) &&
                  (!array_elm->clamp_layer)) ||
                 (e == 0)) {
               if (init_shgrp == NULL) {

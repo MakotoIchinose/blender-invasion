@@ -231,23 +231,12 @@ static void seq_proxy_build_job(const bContext *C)
 
 /* ********************************************************************** */
 
-void seq_rectf(Sequence *seq, rctf *rectf)
+void seq_rectf(Sequence *seq, rctf *rect)
 {
-  if (seq->startstill) {
-    rectf->xmin = seq->start;
-  }
-  else {
-    rectf->xmin = seq->startdisp;
-  }
-
-  rectf->ymin = seq->machine + SEQ_STRIP_OFSBOTTOM;
-  if (seq->endstill) {
-    rectf->xmax = seq->start + seq->len;
-  }
-  else {
-    rectf->xmax = seq->enddisp;
-  }
-  rectf->ymax = seq->machine + SEQ_STRIP_OFSTOP;
+  rect->xmin = seq->startdisp;
+  rect->xmax = seq->enddisp;
+  rect->ymin = seq->machine + SEQ_STRIP_OFSBOTTOM;
+  rect->ymax = seq->machine + SEQ_STRIP_OFSTOP;
 }
 
 void boundbox_seq(Scene *scene, rctf *rect)
@@ -2671,9 +2660,8 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
 
   /* remove all selected from main list, and put in meta */
 
-  seqm = BKE_sequence_alloc(ed->seqbasep, 1, 1); /* channel number set later */
+  seqm = BKE_sequence_alloc(ed->seqbasep, 1, 1, SEQ_TYPE_META); /* channel number set later */
   strcpy(seqm->name + 2, "MetaStrip");
-  seqm->type = SEQ_TYPE_META;
   seqm->flag = SELECT;
 
   seq = ed->seqbasep->first;
@@ -2689,9 +2677,6 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
   }
   seqm->machine = last_seq ? last_seq->machine : channel_max;
   BKE_sequence_calc(scene, seqm);
-
-  seqm->strip = MEM_callocN(sizeof(Strip), "metastrip");
-  seqm->strip->us = 1;
 
   BKE_sequencer_active_set(scene, seqm);
 
