@@ -56,6 +56,10 @@
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
+
+#define DEBUG_CUSTOM_PROFILE 1
+
+
 /* happens far too often, uncomment for development */
 // #define BEVEL_ASSERT_PROJECT
 
@@ -66,7 +70,7 @@
 typedef struct NewVert {
   BMVert *v;
   float co[3];
-  //  int _pad;
+  char _pad[4];
 } NewVert;
 
 struct BoundVert;
@@ -89,7 +93,17 @@ typedef struct EdgeHalf {
   bool is_rev;                  /* is e->v2 the vertex at this end? */
   bool is_seam;                 /* is e a seam for custom loopdata (e.g., UVs)? */
   //  int _pad;
+  char _pad[5]; //HANS-TODO: Delete these pads
 } EdgeHalf;
+
+/* This is the custom profile data after it has been sampled and received by bmesh_bevel
+ * We only need to store an array of the point's locations
+ * whether they are interpolated with curves or lines */
+typedef struct CustomProfile {
+  /** A list of all of the nodes that make up the curve */
+  float *xvals;
+  float *yvals;
+} CustomProfile;
 
 /* Profile specification.
  * Many interesting profiles are in family of superellipses:
@@ -112,8 +126,10 @@ typedef struct Profile {
   float plane_no[3]; /* normal of plane to project to */
   float plane_co[3]; /* coordinate on plane to project to */
   float proj_dir[3]; /* direction of projection line */
+  int _pad;
   float *prof_co;    /* seg+1 profile coordinates (triples of floats) */
   float *prof_co_2;  /* like prof_co, but for seg power of 2 >= seg */
+  struct CustomProfile custom_profile; /* The sampled locations on the custom profile */
 } Profile;
 #define PRO_SQUARE_R 1e4f
 #define PRO_CIRCLE_R 2.0f
@@ -129,6 +145,11 @@ typedef struct ProfileSpacing {
   double *yvals;   /* seg+1 y values */
   double *yvals_2; /* seg_2+1 y values, seg_2 = power of 2 >= seg */
   int seg_2;       /* the seg_2 value */
+  int _pad;
+  double *xvals_custom; /* HANS-TODO: These will eventually be merged with the original */
+  double *yvals_custom; /* value list as everything is converted to custom profile locations */
+  double *xvals_2_custom; /* HANS-TODO: These will eventually be merged with the original */
+  double *yvals_2_custom; /* value list as everything is converted to custom profile locations */
 } ProfileSpacing;
 
 /* An element in a cyclic boundary of a Vertex Mesh (VMesh) */
@@ -163,7 +184,8 @@ typedef struct BoundVert {
   int seam_len;
   /** Same as seam_len but defines length of sharp edges */
   int sharp_len;
-  //  int _pad;
+
+  int _pad;
 } BoundVert;
 
 /* Mesh structure replacing a vertex */
@@ -178,7 +200,8 @@ typedef struct VMesh {
     M_ADJ,     /* "adjacent edges" mesh pattern */
     M_TRI_FAN, /* a simple polygon - fan filled */
   } mesh_kind;
-  //  int _pad;
+
+  int _pad;
 } VMesh;
 
 /* Data for a vertex involved in a bevel */
@@ -218,30 +241,6 @@ typedef enum {
   /** Reconstructed original face with some new verts */
   F_RECON,
 } FKind;
-
-
-
-
-/* THIS IS HOW I WOULD WANT TO HAVE THE DATA FOR THE CUSTOM CURVE STORED. WE'LL SEE HOW CLOSE CURVEMAPPING ACTUALLY IS TO THAT
- * THIS IS MOSTLY JUST AN AID FOR ME SO I CAN KNOW THE KIND OF DATA I NEED TO FIND FROM THE CURVEMAPPING STRUCT */
-
-typedef struct ProfileCurve {
-  /** A list of all of the nodes that make up the curve */
-  struct ProfileNode *curve_nodes;
-} ProfileCurve;
-
-typedef struct ProfileNode {
-  /** X and Y locations of the node from 0f to 1f */
-  float x;
-  float y;
-  /** Whether the point is interpolated to with a curve or a straight line */
-  bool sharp;
-} ProfileNode;
-
-
-
-
-
 
 #if 0
 static const char* fkind_names[] = {"F_NONE", "F_ORIG", "F_VERT", "F_EDGE", "F_RECON"}; /* DEBUG */
@@ -286,9 +285,9 @@ typedef struct BevelParams {
   bool harden_normals;
   /** Should we use the custom profiles feature? */
   bool use_custom_profile;
-  /** Should we just sample the points on the plot */
+  /** Should we just sample the points on the plot and disregard nseg*/
   bool sample_points;
-  /** The curve mapping struct used to store the custom profile*/
+  /** The curve mapping struct used to store the custom profile input */
   const struct CurveMapping *profile_curve;
   /** Vertex group array, maybe set if vertex_only. */
   const struct MDeformVert *dvert;
@@ -1648,6 +1647,13 @@ static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n,
   }
 }
 
+
+static void calculate_custom_profile(BevelParams *bp, BoundVert *bndv)
+{
+
+}
+
+
 /* Calculate the actual coordinate values for bndv's profile.
  * This is only needed if bp->seg > 1.
  * Allocate the space for them if that hasn't been done already.
@@ -1664,6 +1670,17 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
   float r;
   bool need_2, map_ok;
   Profile *pro = &bndv->profile;
+
+  /* HANS-TODO: If the goal of this function is to translate the 2D coords of the profile spacing
+   * into 3D for the actual placement of the profile verts, I'm not sure that this function will
+   * actually have to be changed, because that process should be the same for different vert locations.
+   * So figure out if that's what this function does. */
+  /*
+  if (bp->use_custom_profile) {
+    calculate_custom_profile(bp, bndv);
+    return;
+  }
+  */
 
   if (bp->seg == 1) {
     return;
@@ -6296,6 +6313,44 @@ static void find_even_superellipse_chords(int n, float r, double *xvals, double 
   find_even_superellipse_chords_general(n, r, xvals, yvals);
 }
 
+/* This is for the sample points option where only the points locations are used for the profile */
+static void copy_profile_point_locations(BevelParams *bp, double *xvals, double *yvals) {
+  float x_temp, y_temp;
+  for (int i = 0; i < bp->seg; i++) {
+    x_temp = bp->profile_curve->cm[0].curve[i].x;
+    y_temp = bp->profile_curve->cm[0].curve[i].y;
+    xvals[i] = x_temp;
+    yvals[i] = y_temp;
+  }
+}
+
+
+/* What I think I need to be doing here is getting the 2D coords of the profile curve,
+ * but I'm not positive that pro_spacing is the right place to store these. We'll see.
+ * HANS-TODO: Verify this */
+static void set_custom_profile_spacing(BevelParams *bp, int segments, double *xvals, double *yvals)
+{
+  int seg = bp->seg;
+  float x_temp, y_temp; /* Need temporary floats to convert to doubles */
+
+  curvemapping_path_initialize(bp->profile_curve, seg);
+  if (!bp->sample_points) {
+    for (int i = 0; i < seg; i++) {
+      curvemapping_path_evaluate(bp->profile_curve, i, &x_temp, &y_temp);
+      xvals[i] = (double)x_temp;
+      yvals[i] = (double)y_temp;
+    }
+  } else {
+    /* Get locations from  points on plot */
+    for (int i = 0; i < bp->seg; i++) {
+      x_temp = bp->profile_curve->cm[0].curve[i].x;
+      y_temp = bp->profile_curve->cm[0].curve[i].y;
+      xvals[i] = (double)x_temp;
+      yvals[i] = (double)y_temp;
+    }
+  }
+}
+
 /* The superellipse used for multisegment profiles does not
  * have a closed-form way to generate evenly spaced points
  * along an arc. We use an expensive search procedure to find
@@ -6310,12 +6365,27 @@ static void set_profile_spacing(BevelParams *bp)
 
   seg = bp->seg;
   if (seg > 1) {
+
+    if (bp->use_custom_profile) {
+      /* HANS-TODO: This should be merged with the original arrays eventually, but for now allocate separate arrays */
+      bp->pro_spacing.xvals_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
+      bp->pro_spacing.yvals_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
+
+      if (!bp->sample_points) {
+        set_custom_profile_spacing(bp, seg, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
+      }
+      else {
+        copy_profile_point_locations(bp, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
+      }
+    }
+
     bp->pro_spacing.xvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (seg + 1) * sizeof(double));
     bp->pro_spacing.yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (seg + 1) * sizeof(double));
     find_even_superellipse_chords(
         seg, bp->pro_super_r, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
+
     seg_2 = power_of_2_max_i(bp->seg);
     if (seg_2 == 2) {
       seg_2 = 4;
@@ -6324,8 +6394,21 @@ static void set_profile_spacing(BevelParams *bp)
     if (seg_2 == seg) {
       bp->pro_spacing.xvals_2 = bp->pro_spacing.xvals;
       bp->pro_spacing.yvals_2 = bp->pro_spacing.yvals;
+
+      bp->pro_spacing.xvals_2_custom = bp->pro_spacing.xvals_custom;
+      bp->pro_spacing.yvals_2_custom = bp->pro_spacing.yvals_custom;
     }
     else {
+
+      if (bp->use_custom_profile) {
+        bp->pro_spacing.xvals_2_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
+        bp->pro_spacing.yvals_2_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
+
+        /* Don't use the special function to just sample the coords of the points here
+         * because we need more samples than that */
+        set_custom_profile_spacing(bp, seg_2, bp->pro_spacing.xvals_2_custom, bp->pro_spacing.yvals_2_custom);
+      }
+
       bp->pro_spacing.xvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                              (seg_2 + 1) * sizeof(double));
       bp->pro_spacing.yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
@@ -6339,6 +6422,10 @@ static void set_profile_spacing(BevelParams *bp)
     bp->pro_spacing.yvals = NULL;
     bp->pro_spacing.xvals_2 = NULL;
     bp->pro_spacing.yvals_2 = NULL;
+    bp->pro_spacing.xvals_custom = NULL;
+    bp->pro_spacing.yvals_custom  = NULL;
+    bp->pro_spacing.xvals_2_custom  = NULL;
+    bp->pro_spacing.yvals_2_custom  = NULL;
     bp->pro_spacing.seg_2 = 0;
   }
 }
@@ -6634,14 +6721,35 @@ void BM_mesh_bevel(BMesh *bm,
 
   // HANS-TODO: Only resample points along curve (rebuild the nseg long table actually) when the curve was changed
 
-  /* TEST PROFILE CURVE */
-  if (bp.use_custom_profile && bp.profile_curve != NULL) {
-    //curvemapping_initialize(profile_curve); /* Must call before evaluation functions (At least before modification */
-    curvemapping_path_initialize(profile_curve, 10); /* For now this does nothing, but it will be necessary to fill a table */
-    float position[2];
-    curvemapping_path_evaluate(profile_curve, 5, position);
-    printf("The position for this segment is (%f, %f)\n", position[0], position[1]);
+  if (bp.use_custom_profile && bp.sample_points) {
+    /* We are sampling the segments from the points on the graph */
+    bp.seg = profile_curve->cm->totpoint;
   }
+
+  /* TEST PROFILE CURVE */
+#if DEBUG_CUSTOM_PROFILE
+  printf("=========== NEW BEVEL CALL ===========\n\n");
+  if (bp.use_custom_profile && bp.profile_curve != NULL) {
+    curvemapping_path_initialize(profile_curve, bp.seg); /* will be necessary to fill a table */
+
+    if (!sample_points) {
+      printf("Sampling portions along the path of the profile graph:\n");
+      for (int i = 0; i <= bp.seg; i++) {
+        float x, y;
+        curvemapping_path_evaluate(profile_curve, i, &x, &y);
+        printf("Segment %d position is (%f, %f)\n", i, x, y);
+      }
+    } else {
+      printf("Sampling just the points on the graph");
+      for (int i = 0; i < bp.seg; i++) {
+        float x, y;
+        x = bp.profile_curve->cm[0].curve[i].x;
+        y = bp.profile_curve->cm[0].curve[i].y;
+        printf("Segmend %d position is (%f, %f\n", i, x, y);
+      }
+    }
+  }
+#endif
 
 
   if (profile >= 0.950f) { /* r ~ 692, so PRO_SQUARE_R is 1e4 */
@@ -6763,6 +6871,30 @@ void BM_mesh_bevel(BMesh *bm,
         BM_elem_flag_disable(l, BM_ELEM_LONG_TAG);
       }
     }
+
+#if DEBUG_CUSTOM_PROFILE
+    printf("Checking the normal spacings in the profile spacing struct:\n");
+    /* Figure out what's already in the ProfileSpacing struct to see if I should put the 2D custom profile sampling there */
+    if (bp.pro_spacing.xvals != NULL) {
+      for (int i = 0; i < bp.seg; i++) {
+        printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals[i], bp.pro_spacing.yvals[i]);
+      }
+      printf("\n");
+    } else {
+      printf("Profile spacing values don't exist\n");
+    }
+    if (bp.use_custom_profile) {
+      if (bp.pro_spacing.xvals != NULL) {
+        printf("Checking the custom spacings in the profile spacing struct:\n");
+        for (int i = 0; i < bp.pro_spacing.seg_2; i++) {
+          printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals_custom[i], bp.pro_spacing.yvals_custom[i]);
+        }
+        printf("\n");
+      } else {
+        printf("Custom profile spacing values don't exist\n");
+      }
+    }
+#endif
 
     /* primary free */
     BLI_ghash_free(bp.vert_hash, NULL, NULL);

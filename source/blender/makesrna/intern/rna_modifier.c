@@ -3651,6 +3651,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "profile_curve", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CurveMapping");
   RNA_def_property_pointer_sdna(prop, NULL, "profile_curve");
   RNA_def_property_ui_text(prop, "Custom Profile Curve", "The curve for the custom profile if it is used");
   RNA_def_property_update(prop, 0, "rna_Modifier_update"); // Maybe actually "rna_Modifier_dependency_update", we'll see
