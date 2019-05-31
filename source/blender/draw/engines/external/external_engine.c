@@ -90,8 +90,7 @@ typedef struct EXTERNAL_PrivateData {
   bool update_depth;
   bool view_updated;
 
-  float last_mat[4][4];
-  float curr_mat[4][4];
+  float last_persmat[4][4];
 } EXTERNAL_PrivateData; /* Transient data */
 
 /* Functions */
@@ -126,13 +125,11 @@ static void external_engine_init(void *vedata)
   }
 
   {
-    float view[4][4];
-    float win[4][4];
-    DRW_viewport_matrix_get(view, DRW_MAT_VIEW);
-    DRW_viewport_matrix_get(win, DRW_MAT_WIN);
-    mul_m4_m4m4(stl->g_data->curr_mat, view, win);
-    if (!equals_m4m4(stl->g_data->curr_mat, stl->g_data->last_mat)) {
+    float persmat[4][4];
+    DRW_view_persmat_get(NULL, persmat, false);
+    if (!equals_m4m4(persmat, stl->g_data->last_persmat)) {
       stl->g_data->update_depth = true;
+      copy_m4_m4(stl->g_data->last_persmat, persmat);
     }
   }
 }
@@ -191,7 +188,7 @@ static void external_cache_populate(void *vedata, Object *ob)
     struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       /* Depth Prepass */
-      DRW_shgroup_call(stl->g_data->depth_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->depth_shgrp, geom, ob);
     }
   }
 }
@@ -227,12 +224,14 @@ static void external_draw_scene_do(void *vedata)
 
   /* Rendered draw. */
   GPU_matrix_push_projection();
+  GPU_matrix_push();
   ED_region_pixelspace(ar);
 
   /* Render result draw. */
   type = rv3d->render_engine->type;
   type->view_draw(rv3d->render_engine, draw_ctx->evil_C, draw_ctx->depsgraph);
 
+  GPU_matrix_pop();
   GPU_matrix_pop_projection();
 
   /* Set render info. */
@@ -270,8 +269,6 @@ static void external_draw_scene(void *vedata)
     // copy tmp buffer to default
     GPU_framebuffer_blit(fbl->depth_buffer_fb, 0, dfbl->depth_only_fb, 0, GPU_DEPTH_BIT);
   }
-
-  copy_m4_m4(stl->g_data->last_mat, stl->g_data->curr_mat);
 }
 
 static void external_view_update(void *vedata)

@@ -332,7 +332,10 @@ static int rna_Image_frame_duration_get(PointerRNA *ptr)
   int duration = 1;
 
   if (BKE_image_has_anim(ima)) {
-    duration = IMB_anim_get_duration(((ImageAnim *)ima->anims.first)->anim, IMB_TC_RECORD_RUN);
+    struct anim *anim = ((ImageAnim *)ima->anims.first)->anim;
+    if (anim) {
+      duration = IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN);
+    }
   }
   else {
     /* acquire ensures ima->anim is set, if possible! */
@@ -915,8 +918,10 @@ static void rna_def_image(BlenderRNA *brna)
   prop = RNA_def_property(srna, "alpha_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
   RNA_def_property_enum_items(prop, alpha_mode_items);
-  RNA_def_property_ui_text(
-      prop, "Alpha Mode", "Representation of alpha information in the RGBA pixels");
+  RNA_def_property_ui_text(prop,
+                           "Alpha Mode",
+                           "Representation of alpha in the image file, to convert to and from "
+                           "when saving and loading the image");
   RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, "rna_Image_colormanage_update");
 
   /* multiview */

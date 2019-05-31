@@ -40,12 +40,14 @@ std::string AnimationExporter::get_axis_name(std::string channel, int id)
 
   std::map<std::string, std::vector<std::string>>::const_iterator it;
   it = BC_COLLADA_AXIS_FROM_TYPE.find(channel);
-  if (it == BC_COLLADA_AXIS_FROM_TYPE.end())
+  if (it == BC_COLLADA_AXIS_FROM_TYPE.end()) {
     return "";
+  }
 
   const std::vector<std::string> &subchannel = it->second;
-  if (id >= subchannel.size())
+  if (id >= subchannel.size()) {
     return "";
+  }
   return subchannel[id];
 }
 
@@ -71,30 +73,27 @@ void AnimationExporter::openAnimationWithClip(std::string action_id, std::string
 
 void AnimationExporter::close_animation_container(bool has_container)
 {
-  if (has_container)
+  if (has_container) {
     closeAnimation();
+  }
 }
 
 bool AnimationExporter::exportAnimations()
 {
-  Scene *sce = blender_context.get_scene();
+  Scene *sce = export_settings.get_scene();
 
-  LinkNode &export_set = *this->export_settings->export_set;
+  LinkNode *export_set = this->export_settings.get_export_set();
   bool has_anim_data = bc_has_animations(sce, export_set);
   int animation_count = 0;
   if (has_anim_data) {
 
     BCObjectSet animated_subset;
-    BCAnimationSampler::get_animated_from_export_set(animated_subset, export_set);
+    BCAnimationSampler::get_animated_from_export_set(animated_subset, *export_set);
     animation_count = animated_subset.size();
-    BCAnimationSampler animation_sampler(blender_context, animated_subset);
+    BCAnimationSampler animation_sampler(export_settings, animated_subset);
 
     try {
-      animation_sampler.sample_scene(export_settings->sampling_rate,
-                                     /*keyframe_at_end = */ true,
-                                     export_settings->open_sim,
-                                     export_settings->keep_keyframes,
-                                     export_settings->export_animation_type);
+      animation_sampler.sample_scene(export_settings, /*keyframe_at_end = */ true);
 
       openLibrary();
 
@@ -137,7 +136,7 @@ void AnimationExporter::exportAnimation(Object *ob, BCAnimationSampler &sampler)
    * Note: For Armatures the skeletal animation has already been exported (see above)
    * However Armatures also can have Object animation.
    */
-  bool export_as_matrix = this->export_settings->export_transformation_type ==
+  bool export_as_matrix = this->export_settings.get_animation_transformation_type() ==
                           BC_TRANSFORMATION_TYPE_MATRIX;
 
   if (export_as_matrix) {
@@ -156,8 +155,9 @@ void AnimationExporter::exportAnimation(Object *ob, BCAnimationSampler &sampler)
 
     /* Export skeletal animation (if any) */
     bArmature *arm = (bArmature *)ob->data;
-    for (Bone *root_bone = (Bone *)arm->bonebase.first; root_bone; root_bone = root_bone->next)
+    for (Bone *root_bone = (Bone *)arm->bonebase.first; root_bone; root_bone = root_bone->next) {
       export_bone_animations_recursive(ob, root_bone, sampler);
+    }
   }
 
   close_animation_container(container_is_open);
@@ -178,7 +178,7 @@ void AnimationExporter::export_curve_animation_set(Object *ob,
                                                    bool export_as_matrix)
 {
   BCAnimationCurveMap *curves = sampler.get_curves(ob);
-  bool keep_flat_curves = this->export_settings->keep_flat_curves;
+  bool keep_flat_curves = this->export_settings.get_keep_flat_curves();
 
   BCAnimationCurveMap::iterator it;
   for (it = curves->begin(); it != curves->end(); ++it) {
@@ -215,7 +215,7 @@ void AnimationExporter::export_curve_animation_set(Object *ob,
 
 void AnimationExporter::export_matrix_animation(Object *ob, BCAnimationSampler &sampler)
 {
-  bool keep_flat_curves = this->export_settings->keep_flat_curves;
+  bool keep_flat_curves = this->export_settings.get_keep_flat_curves();
 
   std::vector<float> frames;
   sampler.get_object_frames(frames, ob);
@@ -232,9 +232,23 @@ void AnimationExporter::export_matrix_animation(Object *ob, BCAnimationSampler &
 
       std::string target = translate_id(name) + '/' + channel_type;
 
-      export_collada_matrix_animation(id, name, target, frames, samples);
+      BC_global_rotation_type global_rotation_type = get_global_rotation_type(ob);
+      export_collada_matrix_animation(
+          id, name, target, frames, samples, global_rotation_type, ob->parentinv);
     }
   }
+}
+
+BC_global_rotation_type AnimationExporter::get_global_rotation_type(Object *ob)
+{
+  bool is_export_root = this->export_settings.is_export_root(ob);
+  if (!is_export_root) {
+    return BC_NO_ROTATION;
+  }
+
+  bool apply_global_rotation = this->export_settings.get_apply_global_orientation();
+
+  return (apply_global_rotation) ? BC_DATA_ROTATION : BC_OBJECT_ROTATION;
 }
 
 /* Write bone animations in transform matrix sources. */
@@ -242,7 +256,7 @@ void AnimationExporter::export_bone_animations_recursive(Object *ob,
                                                          Bone *bone,
                                                          BCAnimationSampler &sampler)
 {
-  bool keep_flat_curves = this->export_settings->keep_flat_curves;
+  bool keep_flat_curves = this->export_settings.get_keep_flat_curves();
 
   std::vector<float> frames;
   sampler.get_bone_frames(frames, ob, bone);
@@ -255,8 +269,9 @@ void AnimationExporter::export_bone_animations_recursive(Object *ob,
     }
   }
 
-  for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next)
+  for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
     export_bone_animations_recursive(ob, child, sampler);
+  }
 }
 
 /**
@@ -347,7 +362,9 @@ void AnimationExporter::export_curve_animation(Object *ob, BCAnimationCurve &cur
     collada_target += "/" + get_collada_sid(curve, axis);
   }
 
-  export_collada_curve_animation(id, curve_name, collada_target, axis, curve);
+  BC_global_rotation_type global_rotation_type = get_global_rotation_type(ob);
+  export_collada_curve_animation(
+      id, curve_name, collada_target, axis, curve, global_rotation_type);
 }
 
 void AnimationExporter::export_bone_animation(Object *ob,
@@ -361,33 +378,39 @@ void AnimationExporter::export_bone_animation(Object *ob,
   std::string id = bc_get_action_id(id_name(action), name, bone_name, "pose_matrix");
   std::string target = translate_id(id_name(ob) + "_" + bone_name) + "/transform";
 
-  export_collada_matrix_animation(id, name, target, frames, samples);
+  BC_global_rotation_type global_rotation_type = get_global_rotation_type(ob);
+  export_collada_matrix_animation(
+      id, name, target, frames, samples, global_rotation_type, ob->parentinv);
 }
 
 bool AnimationExporter::is_bone_deform_group(Bone *bone)
 {
   bool is_def;
   /* Check if current bone is deform */
-  if ((bone->flag & BONE_NO_DEFORM) == 0)
+  if ((bone->flag & BONE_NO_DEFORM) == 0) {
     return true;
+  }
   /* Check child bones */
   else {
     for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
       /* loop through all the children until deform bone is found, and then return */
       is_def = is_bone_deform_group(child);
-      if (is_def)
+      if (is_def) {
         return true;
+      }
     }
   }
   /* no deform bone found in children also */
   return false;
 }
 
-void AnimationExporter::export_collada_curve_animation(std::string id,
-                                                       std::string name,
-                                                       std::string collada_target,
-                                                       std::string axis,
-                                                       BCAnimationCurve &curve)
+void AnimationExporter::export_collada_curve_animation(
+    std::string id,
+    std::string name,
+    std::string collada_target,
+    std::string axis,
+    BCAnimationCurve &curve,
+    BC_global_rotation_type global_rotation_type)
 {
   BCFrames frames;
   BCValues values;
@@ -408,10 +431,12 @@ void AnimationExporter::export_collada_curve_animation(std::string id,
 
   bool has_tangents = false;
   std::string interpolation_id;
-  if (this->export_settings->keep_smooth_curves)
+  if (this->export_settings.get_keep_smooth_curves()) {
     interpolation_id = collada_interpolation_source(curve, id, axis, &has_tangents);
-  else
+  }
+  else {
     interpolation_id = collada_linear_interpolation_source(frames.size(), id);
+  }
 
   std::string intangent_id;
   std::string outtangent_id;
@@ -444,11 +469,14 @@ void AnimationExporter::export_collada_curve_animation(std::string id,
   closeAnimation();
 }
 
-void AnimationExporter::export_collada_matrix_animation(std::string id,
-                                                        std::string name,
-                                                        std::string target,
-                                                        BCFrames &frames,
-                                                        BCMatrixSampleMap &samples)
+void AnimationExporter::export_collada_matrix_animation(
+    std::string id,
+    std::string name,
+    std::string target,
+    BCFrames &frames,
+    BCMatrixSampleMap &samples,
+    BC_global_rotation_type global_rotation_type,
+    Matrix &parentinv)
 {
   fprintf(
       stdout, "Export animation matrix %s (%d control points)\n", id.c_str(), int(frames.size()));
@@ -457,7 +485,7 @@ void AnimationExporter::export_collada_matrix_animation(std::string id,
 
   std::string input_id = collada_source_from_values(
       BC_SOURCE_TYPE_TIMEFRAME, COLLADASW::InputSemantic::INPUT, frames, id, "");
-  std::string output_id = collada_source_from_values(samples, id);
+  std::string output_id = collada_source_from_values(samples, id, global_rotation_type, parentinv);
   std::string interpolation_id = collada_linear_interpolation_source(frames.size(), id);
 
   std::string sampler_id = std::string(id) + SAMPLER_ID_SUFFIX;
@@ -540,7 +568,8 @@ std::string AnimationExporter::collada_tangent_from_curve(
     const std::string &anim_id,
     std::string axis_name)
 {
-  Scene *scene = blender_context.get_scene();
+  Scene *scene = this->export_settings.get_scene();
+
   std::string channel = curve.get_channel_target();
 
   const std::string source_id = anim_id + get_semantic_suffix(semantic);
@@ -585,6 +614,7 @@ std::string AnimationExporter::collada_source_from_values(
     const std::string &anim_id,
     const std::string axis_name)
 {
+  BlenderContext &blender_context = this->export_settings.get_blender_context();
   Scene *scene = blender_context.get_scene();
   /* T can be float, int or double */
 
@@ -623,11 +653,14 @@ std::string AnimationExporter::collada_source_from_values(
   return source_id;
 }
 
-/**
- * Create a collada matrix source for a set of samples.
+/*
+ * Create a collada matrix source for a set of samples
  */
-std::string AnimationExporter::collada_source_from_values(BCMatrixSampleMap &samples,
-                                                          const std::string &anim_id)
+std::string AnimationExporter::collada_source_from_values(
+    BCMatrixSampleMap &samples,
+    const std::string &anim_id,
+    BC_global_rotation_type global_rotation_type,
+    Matrix &parentinv)
 {
   COLLADASW::InputSemantic::Semantics semantic = COLLADASW::InputSemantic::OUTPUT;
   std::string source_id = anim_id + get_semantic_suffix(semantic);
@@ -645,11 +678,18 @@ std::string AnimationExporter::collada_source_from_values(BCMatrixSampleMap &sam
 
   BCMatrixSampleMap::iterator it;
   /* could be made configurable */
-  int precision = (this->export_settings->limit_precision) ? 6 : -1;
+  int precision = (this->export_settings.get_limit_precision()) ? 6 : -1;
   for (it = samples.begin(); it != samples.end(); it++) {
-    const BCMatrix *sample = it->second;
-    double daemat[4][4];
-    sample->get_matrix(daemat, true, precision);
+    BCMatrix sample = BCMatrix(*it->second);
+    BCMatrix global_transform = this->export_settings.get_global_transform();
+    DMatrix daemat;
+    if (this->export_settings.get_apply_global_orientation()) {
+      sample.apply_transform(global_transform);
+    }
+    else {
+      sample.add_transform(global_transform);
+    }
+    sample.get_matrix(daemat, true, precision);
     source.appendValues(daemat);
   }
 
@@ -772,8 +812,9 @@ const std::string AnimationExporter::get_collada_name(std::string channel_target
 
   std::map<std::string, std::string>::iterator name_it = BC_CHANNEL_BLENDER_TO_COLLADA.find(
       channel_target);
-  if (name_it == BC_CHANNEL_BLENDER_TO_COLLADA.end())
+  if (name_it == BC_CHANNEL_BLENDER_TO_COLLADA.end()) {
     return "";
+  }
 
   std::string tm_name = name_it->second;
   return tm_name;
@@ -792,12 +833,15 @@ std::string AnimationExporter::get_collada_sid(const BCAnimationCurve &curve,
   bool is_angle = curve.is_rotation_curve();
 
   if (tm_name.size()) {
-    if (is_angle)
+    if (is_angle) {
       return tm_name + std::string(axis_name) + ".ANGLE";
-    else if (axis_name != "")
+    }
+    else if (axis_name != "") {
       return tm_name + "." + std::string(axis_name);
-    else
+    }
+    else {
       return tm_name;
+    }
   }
 
   return tm_name;
@@ -810,8 +854,9 @@ void AnimationExporter::export_morph_animation(Object *ob, BCAnimationSampler &s
 {
   FCurve *fcu;
   Key *key = BKE_key_from_object(ob);
-  if (!key)
+  if (!key) {
     return;
+  }
 
   if (key->adt && key->adt->action) {
     fcu = (FCurve *)key->adt->action->curves.first;

@@ -61,6 +61,7 @@
 #include "BKE_pbvh.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_subsurf.h"
 
@@ -5087,8 +5088,9 @@ void sculpt_cache_calc_brushdata_symm(StrokeCache *cache,
 
     printf("feather: %f frac: %f reduce: %f\n", feather, frac, reduce);
 
-    if (frac < 1)
+    if (frac < 1) {
       mul_v3_fl(cache->grab_delta_symmetry, reduce);
+    }
   }
 #endif
 
@@ -6668,10 +6670,8 @@ void sculpt_dynamic_topology_enable_ex(Depsgraph *depsgraph, Scene *scene, Objec
  *
  * If 'unode' is given, the BMesh's data is copied out to the unode
  * before the BMesh is deleted so that it can be restored from */
-void sculpt_dynamic_topology_disable_ex(Depsgraph *depsgraph,
-                                        Scene *scene,
-                                        Object *ob,
-                                        SculptUndoNode *unode)
+void sculpt_dynamic_topology_disable_ex(
+    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, SculptUndoNode *unode)
 {
   SculptSession *ss = ob->sculpt;
   Mesh *me = ob->data;
@@ -6735,19 +6735,24 @@ void sculpt_dynamic_topology_disable_ex(Depsgraph *depsgraph,
   BKE_particlesystem_reset_all(ob);
   BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_OUTDATED);
 
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  BKE_scene_graph_update_tagged(depsgraph, bmain);
+
   /* Refresh */
   sculpt_update_after_dynamic_topology_toggle(depsgraph, scene, ob);
 }
 
 void sculpt_dynamic_topology_disable(bContext *C, SculptUndoNode *unode)
 {
+  Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
-  sculpt_dynamic_topology_disable_ex(depsgraph, scene, ob, unode);
+  sculpt_dynamic_topology_disable_ex(bmain, depsgraph, scene, ob, unode);
 }
 
-static void sculpt_dynamic_topology_disable_with_undo(Depsgraph *depsgraph,
+static void sculpt_dynamic_topology_disable_with_undo(Main *bmain,
+                                                      Depsgraph *depsgraph,
                                                       Scene *scene,
                                                       Object *ob)
 {
@@ -6755,7 +6760,7 @@ static void sculpt_dynamic_topology_disable_with_undo(Depsgraph *depsgraph,
   if (ss->bm) {
     sculpt_undo_push_begin("Dynamic topology disable");
     sculpt_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_END);
-    sculpt_dynamic_topology_disable_ex(depsgraph, scene, ob, NULL);
+    sculpt_dynamic_topology_disable_ex(bmain, depsgraph, scene, ob, NULL);
     sculpt_undo_push_end();
   }
 }
@@ -6775,6 +6780,7 @@ static void sculpt_dynamic_topology_enable_with_undo(Depsgraph *depsgraph,
 
 static int sculpt_dynamic_topology_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
+  Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -6783,7 +6789,7 @@ static int sculpt_dynamic_topology_toggle_exec(bContext *C, wmOperator *UNUSED(o
   WM_cursor_wait(1);
 
   if (ss->bm) {
-    sculpt_dynamic_topology_disable_with_undo(depsgraph, scene, ob);
+    sculpt_dynamic_topology_disable_with_undo(bmain, depsgraph, scene, ob);
   }
   else {
     sculpt_dynamic_topology_enable_with_undo(depsgraph, scene, ob);
@@ -7173,7 +7179,7 @@ void ED_object_sculptmode_enter(struct bContext *C, ReportList *reports)
   ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, reports);
 }
 
-void ED_object_sculptmode_exit_ex(Depsgraph *depsgraph, Scene *scene, Object *ob)
+void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   const int mode_flag = OB_MODE_SCULPT;
   Mesh *me = BKE_mesh_from_object(ob);
@@ -7199,7 +7205,7 @@ void ED_object_sculptmode_exit_ex(Depsgraph *depsgraph, Scene *scene, Object *ob
     /* Dynamic topology must be disabled before exiting sculpt
      * mode to ensure the undo stack stays in a consistent
      * state */
-    sculpt_dynamic_topology_disable_with_undo(depsgraph, scene, ob);
+    sculpt_dynamic_topology_disable_with_undo(bmain, depsgraph, scene, ob);
 
     /* store so we know to re-enable when entering sculpt mode */
     me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
@@ -7221,11 +7227,12 @@ void ED_object_sculptmode_exit_ex(Depsgraph *depsgraph, Scene *scene, Object *ob
 
 void ED_object_sculptmode_exit(bContext *C)
 {
+  Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = OBACT(view_layer);
-  ED_object_sculptmode_exit_ex(depsgraph, scene, ob);
+  ED_object_sculptmode_exit_ex(bmain, depsgraph, scene, ob);
 }
 
 static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
@@ -7247,7 +7254,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   }
 
   if (is_mode_set) {
-    ED_object_sculptmode_exit_ex(depsgraph, scene, ob);
+    ED_object_sculptmode_exit_ex(bmain, depsgraph, scene, ob);
   }
   else {
     ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, op->reports);

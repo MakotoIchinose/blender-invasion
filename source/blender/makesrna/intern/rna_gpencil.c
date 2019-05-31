@@ -76,7 +76,7 @@ static EnumPropertyItem rna_enum_gpencil_onion_modes_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
+static const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
     {-1, "ALL", ICON_ACTION, "All Types", "Include all Keyframe types"},
     {BEZT_KEYTYPE_KEYFRAME,
      "KEYFRAME",
@@ -113,7 +113,7 @@ static const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {
 };
 
 static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
-    {eGplBlendMode_Normal, "NORMAL", 0, "Regular", ""},
+    {eGplBlendMode_Regular, "REGULAR", 0, "Regular", ""},
     {eGplBlendMode_Overlay, "OVERLAY", 0, "Overlay", ""},
     {eGplBlendMode_Add, "ADD", 0, "Add", ""},
     {eGplBlendMode_Subtract, "SUBTRACT", 0, "Subtract", ""},
@@ -652,6 +652,8 @@ static void rna_GPencil_stroke_point_pop(ID *id,
 static bGPDstroke *rna_GPencil_stroke_new(bGPDframe *frame)
 {
   bGPDstroke *stroke = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
+  stroke->gradient_f = 1.0f;
+  ARRAY_SET_ITEMS(stroke->gradient_s, 1.0f, 1.0f);
   BLI_addtail(&frame->strokes, stroke);
 
   return stroke;
@@ -844,7 +846,7 @@ static void rna_def_gpencil_stroke_point(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "pressure", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "pressure");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop, "Pressure", "Pressure of tablet at point when drawing it");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
@@ -895,11 +897,11 @@ static void rna_def_gpencil_stroke_points_api(BlenderRNA *brna, PropertyRNA *cpr
                 "pressure",
                 1.0f,
                 0.0f,
-                1.0f,
+                FLT_MAX,
                 "Pressure",
                 "Pressure for newly created points",
                 0.0f,
-                1.0f);
+                FLT_MAX);
   RNA_def_float(func,
                 "strength",
                 1.0f,
@@ -1422,7 +1424,7 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
       prop, "Clamp Layer", "Clamp any pixel outside underlying layers drawing");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   /* solo mode: Only display frames with keyframe */
   prop = RNA_def_property(srna, "use_solo_mode", PROP_BOOLEAN, PROP_NONE);

@@ -36,6 +36,7 @@
 #include "BKE_mesh.h"
 #include "BKE_paint.h"
 
+struct Main;
 struct KeyBlock;
 struct Object;
 struct SculptOrigVertData;
@@ -77,7 +78,8 @@ void sculpt_dynamic_topology_enable_ex(struct Depsgraph *depsgraph,
                                        struct Scene *scene,
                                        struct Object *ob);
 
-void sculpt_dynamic_topology_disable_ex(struct Depsgraph *depsgraph,
+void sculpt_dynamic_topology_disable_ex(struct Main *bmain,
+                                        struct Depsgraph *depsgraph,
                                         struct Scene *scene,
                                         struct Object *ob,
                                         struct SculptUndoNode *unode);

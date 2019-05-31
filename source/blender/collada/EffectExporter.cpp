@@ -46,14 +46,15 @@ static std::string getActiveUVLayerName(Object *ob)
   Mesh *me = (Mesh *)ob->data;
 
   int num_layers = CustomData_number_of_layers(&me->ldata, CD_MLOOPUV);
-  if (num_layers)
+  if (num_layers) {
     return std::string(bc_CustomData_get_active_layer_name(&me->ldata, CD_MLOOPUV));
+  }
 
   return "";
 }
 
 EffectsExporter::EffectsExporter(COLLADASW::StreamWriter *sw,
-                                 const ExportSettings *export_settings,
+                                 BCExportSettings &export_settings,
                                  KeyImageMap &key_image_map)
     : COLLADASW::LibraryEffects(sw), export_settings(export_settings), key_image_map(key_image_map)
 {
@@ -67,8 +68,9 @@ bool EffectsExporter::hasEffects(Scene *sce)
       Material *ma = give_current_material(ob, a + 1);
 
       // no material, but check all of the slots
-      if (!ma)
+      if (!ma) {
         continue;
+      }
 
       return true;
     }
@@ -84,7 +86,8 @@ void EffectsExporter::exportEffects(bContext *C, Scene *sce)
     this->scene = sce;
     openLibrary();
     MaterialFunctor mf;
-    mf.forEachMaterialInExportSet<EffectsExporter>(sce, *this, this->export_settings->export_set);
+    mf.forEachMaterialInExportSet<EffectsExporter>(
+        sce, *this, this->export_settings.get_export_set());
 
     closeLibrary();
   }
@@ -198,8 +201,9 @@ void EffectsExporter::operator()(Material *ma, Object *ob)
     Image *ima = t->tex->ima;
 
     // Image not set for texture
-    if (!ima)
+    if (!ima) {
       continue;
+    }
 
     std::string key(id_name(ima));
     key = translate_id(key);

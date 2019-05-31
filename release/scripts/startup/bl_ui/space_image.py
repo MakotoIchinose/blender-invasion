@@ -81,7 +81,7 @@ class IMAGE_MT_view(Menu):
 
         layout.prop(sima, "show_region_toolbar")
         layout.prop(sima, "show_region_ui")
-        layout.prop(view, "show_region_tool_header")
+        layout.prop(sima, "show_region_tool_header")
         layout.prop(sima, "show_region_hud")
 
         layout.separator()
@@ -347,7 +347,6 @@ class IMAGE_MT_uvs(Menu):
 
         sima = context.space_data
         uv = sima.uv_editor
-        tool_settings = context.tool_settings
 
         layout.menu("IMAGE_MT_uvs_transform")
         layout.menu("IMAGE_MT_uvs_mirror")
@@ -493,17 +492,41 @@ class IMAGE_MT_uvs_snap_pie(Menu):
 
         layout.operator_context = 'EXEC_REGION_WIN'
 
-        pie.operator("uv.snap_selected", text="Selected to Pixels", icon='RESTRICT_SELECT_OFF').target = 'PIXELS'
-        pie.operator("uv.snap_cursor", text="Cursor to Pixels", icon='PIVOT_CURSOR').target = 'PIXELS'
-        pie.operator("uv.snap_cursor", text="Cursor to Selected", icon='PIVOT_CURSOR').target = 'SELECTED'
-        pie.operator("uv.snap_selected", text="Selected to Cursor", icon='RESTRICT_SELECT_OFF').target = 'CURSOR'
-        pie.operator("uv.snap_selected", text="Selected to Cursor (Offset)", icon='RESTRICT_SELECT_OFF').target = 'CURSOR_OFFSET'
-        pie.operator("uv.snap_selected", text="Selected to Adjacent Unselected", icon='RESTRICT_SELECT_OFF').target = 'ADJACENT_UNSELECTED'
+        pie.operator(
+            "uv.snap_selected",
+            text="Selected to Pixels",
+            icon='RESTRICT_SELECT_OFF',
+        ).target = 'PIXELS'
+        pie.operator(
+            "uv.snap_cursor",
+            text="Cursor to Pixels",
+            icon='PIVOT_CURSOR',
+        ).target = 'PIXELS'
+        pie.operator(
+            "uv.snap_cursor",
+            text="Cursor to Selected",
+            icon='PIVOT_CURSOR',
+        ).target = 'SELECTED'
+        pie.operator(
+            "uv.snap_selected",
+            text="Selected to Cursor",
+            icon='RESTRICT_SELECT_OFF',
+        ).target = 'CURSOR'
+        pie.operator(
+            "uv.snap_selected",
+            text="Selected to Cursor (Offset)",
+            icon='RESTRICT_SELECT_OFF',
+        ).target = 'CURSOR_OFFSET'
+        pie.operator(
+            "uv.snap_selected",
+            text="Selected to Adjacent Unselected",
+            icon='RESTRICT_SELECT_OFF',
+        ).target = 'ADJACENT_UNSELECTED'
 
 
 class IMAGE_HT_tool_header(Header):
     bl_space_type = 'IMAGE_EDITOR'
-    bl_region_type = "TOOL_HEADER"
+    bl_region_type = 'TOOL_HEADER'
 
     def draw(self, context):
         layout = self.layout
@@ -511,8 +534,6 @@ class IMAGE_HT_tool_header(Header):
         layout.template_header()
 
         self.draw_tool_settings(context)
-
-        sima = context.space_data
 
         layout.separator_spacer()
 
@@ -544,7 +565,12 @@ class IMAGE_HT_tool_header(Header):
 
         if tool_mode == 'PAINT':
             if (tool is not None) and tool.has_datablock:
-                layout.popover_group(space_type='IMAGE_EDITOR', region_type='UI', context=".paint_common_2d", category="")
+                layout.popover_group(
+                    space_type='IMAGE_EDITOR',
+                    region_type='UI',
+                    context=".paint_common_2d",
+                    category="",
+                )
         elif tool_mode == 'UV':
             if (tool is not None) and tool.has_datablock:
                 layout.popover_group(space_type='IMAGE_EDITOR', region_type='UI', context=".uv_sculpt", category="")
@@ -677,7 +703,7 @@ class IMAGE_HT_header(Header):
             row.template_ID(sima, "mask", new="mask.new")
 
         if not show_render:
-            layout.prop(sima, "use_image_pin", text="")
+            layout.prop(sima, "use_image_pin", text="", emboss=False)
 
         layout.separator_spacer()
 
@@ -1448,7 +1474,6 @@ class IMAGE_PT_uv_sculpt_curve(Panel):
             row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
             row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
             row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
-
 
 
 class ImageScopesPanel:

@@ -246,6 +246,7 @@ static void draw_uvs_texpaint(Scene *scene, Object *ob, Depsgraph *depsgraph)
     bool prev_ma_match = (mpoly->mat_nr == (eval_ob->actcol - 1));
 
     GPU_matrix_bind(geom->interface);
+    GPU_batch_bind(geom);
 
     /* TODO(fclem): If drawcall count becomes a problem in the future
      * we can use multi draw indirect drawcalls for this.
@@ -254,7 +255,7 @@ static void draw_uvs_texpaint(Scene *scene, Object *ob, Depsgraph *depsgraph)
       bool ma_match = (mpoly->mat_nr == (eval_ob->actcol - 1));
       if (ma_match != prev_ma_match) {
         if (ma_match == false) {
-          GPU_batch_draw_range_ex(geom, draw_start, idx - draw_start, false);
+          GPU_batch_draw_advanced(geom, draw_start, idx - draw_start, 0, 0);
         }
         else {
           draw_start = idx;
@@ -264,7 +265,7 @@ static void draw_uvs_texpaint(Scene *scene, Object *ob, Depsgraph *depsgraph)
       prev_ma_match = ma_match;
     }
     if (prev_ma_match == true) {
-      GPU_batch_draw_range_ex(geom, draw_start, idx - draw_start, false);
+      GPU_batch_draw_advanced(geom, draw_start, idx - draw_start, 0, 0);
     }
 
     GPU_batch_program_use_end(geom);
@@ -424,7 +425,7 @@ static void draw_uvs(SpaceImage *sima, Scene *scene, Object *obedit, Depsgraph *
       float pinned_col[4] = {1.0f, 0.0f, 0.0f, 1.0f}; /* TODO Theme? */
       UI_GetThemeColor4fv(TH_VERTEX, col1);
       GPU_blend(true);
-      GPU_enable_program_point_size();
+      GPU_program_point_size(true);
 
       GPU_batch_program_set_builtin(verts, GPU_SHADER_2D_UV_VERTS);
       GPU_batch_uniform_4f(verts, "vertColor", col1[0], col1[1], col1[2], 1.0f);
@@ -449,7 +450,7 @@ static void draw_uvs(SpaceImage *sima, Scene *scene, Object *obedit, Depsgraph *
       }
 
       GPU_blend(false);
-      GPU_disable_program_point_size();
+      GPU_program_point_size(false);
     }
     if (facedots) {
       GPU_point_size(pointsize);

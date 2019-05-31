@@ -762,22 +762,7 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const STR_String &title,
  */
 GHOST_IContext *GHOST_SystemCocoa::createOffscreenContext()
 {
-  GHOST_Context *context = new GHOST_ContextCGL(false,
-                                                NULL,
-                                                NULL,
-
-#if defined(WITH_GL_PROFILE_CORE)
-                                                GL_CONTEXT_CORE_PROFILE_BIT,
-                                                3,
-                                                3,
-#else
-                                                0,  // no profile bit
-                                                2,
-                                                1,
-#endif
-                                                GHOST_OPENGL_CGL_CONTEXT_FLAGS,
-                                                GHOST_OPENGL_CGL_RESET_NOTIFICATION_STRATEGY);
-
+  GHOST_Context *context = new GHOST_ContextCGL(false, NULL);
   if (context->initializeDrawingContext())
     return context;
   else
@@ -1605,7 +1590,9 @@ GHOST_TSuccess GHOST_SystemCocoa::handleMouseEvent(void *eventPtr)
           // Warp mouse cursor if needed
           GHOST_TInt32 warped_x_mouse = x_mouse;
           GHOST_TInt32 warped_y_mouse = y_mouse;
-          correctedBounds.wrapPoint(warped_x_mouse, warped_y_mouse, 4);
+
+          correctedBounds.wrapPoint(
+              warped_x_mouse, warped_y_mouse, 4, window->getCursorGrabAxis());
 
           // Set new cursor position
           if (x_mouse != warped_x_mouse || y_mouse != warped_y_mouse) {

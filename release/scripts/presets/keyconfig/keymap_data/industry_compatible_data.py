@@ -90,12 +90,6 @@ def _template_items_object_subdivision_set():
     ]
 
 
-def _template_items_gizmo_tweak_value():
-    return [
-        ("gizmogroup.gizmo_tweak", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": False}, None),
-    ]
-
-
 def _template_items_animation():
     return [
         ("screen.frame_offset", {"type": 'LEFT_ARROW', "value": 'PRESS'},
@@ -110,22 +104,6 @@ def _template_items_animation():
     ]
 
 
-def _template_items_gizmo_tweak_modal():
-    return [
-        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
-        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_ON", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_OFF", {"type": 'RIGHT_SHIFT', "value": 'RELEASE', "any": True}, None),
-        ("PRECISION_ON", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION_OFF", {"type": 'LEFT_SHIFT', "value": 'RELEASE', "any": True}, None),
-        ("SNAP_ON", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("SNAP_OFF", {"type": 'RIGHT_CTRL', "value": 'RELEASE', "any": True}, None),
-        ("SNAP_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("SNAP_OFF", {"type": 'LEFT_CTRL', "value": 'RELEASE', "any": True}, None),
-    ]
-
 # Tool System Templates
 
 def _template_items_basic_tools(*, connected=False):
@@ -134,6 +112,7 @@ def _template_items_basic_tools(*, connected=False):
         op_tool("builtin.move", {"type": 'W', "value": 'PRESS'}),
         op_tool("builtin.rotate", {"type": 'E', "value": 'PRESS'}),
         op_tool("builtin.scale", {"type": 'R', "value": 'PRESS'}),
+        op_tool("builtin.transform", {"type": 'T', "value": 'PRESS'}),
         op_tool("builtin.scale_cage", {"type": 'R', "value": 'PRESS', "shift": True}),
         op_tool("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
         op_tool("builtin.measure", {"type": 'M', "value": 'PRESS'}),
@@ -511,8 +490,10 @@ def km_uv_editor(params):
         op_panel("TOPBAR_PT_name", {"type": 'RET', "value": 'PRESS'}, [("keep_open", False)]),
         ("wm.search_menu", {"type": 'TAB', "value": 'PRESS'}, None),
         # Selection modes.
-        ("uv.select", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("uv.select", {"type": 'LEFTMOUSE', "value": 'CLICK'},
          {"properties": [("extend", False), ("deselect_all", True)]}),
+        ("uv.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         {"properties": [("extend", True), ("deselect_all", False)]}),
         ("uv.select_loop", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "shift": True},
          {"properties": [("extend", True)]}),
         ("uv.select_loop", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK'},
@@ -539,9 +520,7 @@ def km_uv_editor(params):
          {"properties": [("data_path", 'tool_settings.use_proportional_edit')]}),
         # Tools
         op_tool("builtin.select_box", {"type": 'Q', "value": 'PRESS'}),
-        op_tool("builtin.transform", {"type": 'W', "value": 'PRESS'}),
-        op_tool("builtin.transform", {"type": 'E', "value": 'PRESS'}),
-        op_tool("builtin.transform", {"type": 'R', "value": 'PRESS'}),
+        op_tool("builtin.transform", {"type": 'T', "value": 'PRESS'}),
         op_tool("builtin.cursor", {"type": 'C', "value": 'PRESS'}),
         op_tool("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
     ])
@@ -2573,8 +2552,8 @@ def km_pose(params):
         ("pose.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("pose.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True, "shift": True}, {"properties": [("action", 'DESELECT')]}),
         ("pose.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
-        ("pose.select_parent", {"type": 'UP_ARROW', "value": 'PRESS'}, None),
-        ("pose.select_hierarchy", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
+        ("pose.select_parent", {"type": 'UP_ARROW', "value": 'PRESS', "ctrl": True}, None),
+        ("pose.select_hierarchy", {"type": 'UP_ARROW', "value": 'PRESS'},
          {"properties": [("direction", 'PARENT'), ("extend", False)]}),
         ("pose.select_hierarchy", {"type": 'UP_ARROW', "value": 'PRESS', "shift": True},
          {"properties": [("direction", 'PARENT'), ("extend", True)]}),
@@ -3531,41 +3510,18 @@ def km_transform_modal_map(_params):
 
 
 # ------------------------------------------------------------------------------
-# Gizmo System Keymaps
-
-def km_gizmos(_params):
-    items = []
-    keymap = (
-        "Gizmos",
-        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
-        {"items": items},
-    )
-
-    return keymap
-
-
-def km_transform_gizmo(_params):
-    keymap = (
-        "Transform Gizmo",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": _template_items_gizmo_tweak_value()},
-    )
-
-    return keymap
-
-
-def km_transform_gizmo_context(_params):
-    keymap = (
-        "Transform Gizmo Context",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": _template_items_gizmo_tweak_value()},
-    )
-
-    return keymap
-
-
-# ------------------------------------------------------------------------------
 # Tool System Keymaps
+
+
+def km_3d_view_tool_transform(params):
+    return (
+        "3D View Tool: Transform",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.from_gizmo", {"type": 'MIDDLEMOUSE', "value": 'ANY'}, None),
+            *_template_items_tool_select_actions("view3d.select_box", type=params.tool_tweak, value='ANY'),
+        ]},
+    )
 
 
 def km_3d_view_tool_move(params):
@@ -3663,6 +3619,18 @@ def km_3d_view_tool_edit_curve_extrude(params):
     )
 
 
+def km_3d_view_tool_edit_armature_extrude(params):
+    return (
+        "3D View Tool: Edit Armature, Extrude",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("armature.extrude_move", {"type": 'MIDDLEMOUSE', "value": 'ANY'},
+             {"properties": [("TRANSFORM_OT_translate", [("release_confirm", True)])]}),
+            *_template_items_tool_select_actions("view3d.select_box", type=params.tool_tweak, value='ANY'),
+        ]},
+    )
+
+
 # ------------------------------------------------------------------------------
 # Full Configuration
 
@@ -3751,12 +3719,8 @@ def generate_keymaps(params=None):
         km_eyedropper_colorramp_pointsampling_map(params),
         km_transform_modal_map(params),
 
-        # Gizmos.
-        km_gizmos(params),
-        km_transform_gizmo(params),
-        km_transform_gizmo_context(params),
-
         # Tool System.
+        km_3d_view_tool_transform(params),
         km_3d_view_tool_move(params),
         km_3d_view_tool_rotate(params),
         km_3d_view_tool_scale(params),
@@ -3765,4 +3729,5 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_mesh_spin(params),
         km_3d_view_tool_edit_mesh_spin_duplicate(params),
         km_3d_view_tool_edit_curve_extrude(params),
+        km_3d_view_tool_edit_armature_extrude(params),
     ]

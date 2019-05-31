@@ -1155,25 +1155,24 @@ void uiTemplateImageFormatViews(uiLayout *layout, PointerRNA *imfptr, PointerRNA
 {
   ImageFormatData *imf = imfptr->data;
 
-  if (ptr == NULL) {
-    return;
+  if (ptr != NULL) {
+    uiItemR(layout, ptr, "use_multiview", 0, NULL, ICON_NONE);
+    if (!RNA_boolean_get(ptr, "use_multiview")) {
+      return;
+    }
   }
 
-  uiItemR(layout, ptr, "use_multiview", 0, NULL, ICON_NONE);
+  if (imf->imtype != R_IMF_IMTYPE_MULTILAYER) {
+    PropertyRNA *prop;
+    PointerRNA stereo3d_format_ptr;
 
-  if (RNA_boolean_get(ptr, "use_multiview")) {
-    if (imf->imtype != R_IMF_IMTYPE_MULTILAYER) {
-      PropertyRNA *prop;
-      PointerRNA stereo3d_format_ptr;
+    prop = RNA_struct_find_property(imfptr, "stereo_3d_format");
+    stereo3d_format_ptr = RNA_property_pointer_get(imfptr, prop);
 
-      prop = RNA_struct_find_property(imfptr, "stereo_3d_format");
-      stereo3d_format_ptr = RNA_property_pointer_get(imfptr, prop);
-
-      uiTemplateViewsFormat(layout, imfptr, &stereo3d_format_ptr);
-    }
-    else {
-      uiTemplateViewsFormat(layout, imfptr, NULL);
-    }
+    uiTemplateViewsFormat(layout, imfptr, &stereo3d_format_ptr);
+  }
+  else {
+    uiTemplateViewsFormat(layout, imfptr, NULL);
   }
 }
 
@@ -1254,7 +1253,10 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
     int duration = 0;
 
     if (ima->source == IMA_SRC_MOVIE && BKE_image_has_anim(ima)) {
-      duration = IMB_anim_get_duration(((ImageAnim *)ima->anims.first)->anim, IMB_TC_RECORD_RUN);
+      struct anim *anim = ((ImageAnim *)ima->anims.first)->anim;
+      if (anim) {
+        duration = IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN);
+      }
     }
 
     if (duration > 0) {

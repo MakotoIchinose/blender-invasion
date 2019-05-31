@@ -82,6 +82,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     bl_category = "Tool"
     bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
     bl_label = "Options"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -94,8 +95,6 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         layout.use_property_decorate = False
 
         ob = context.active_object
-
-        tool_settings = context.tool_settings
         mesh = ob.data
 
         col = layout.column(align=True)
@@ -105,11 +104,33 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row.active = ob.data.use_mirror_x
         row.prop(mesh, "use_mirror_topology")
 
-        layout.prop(tool_settings, "use_edge_path_live_unwrap")
-        layout.prop(tool_settings, "use_mesh_automerge")
 
-        layout.prop(tool_settings, "double_threshold")
-        layout.prop(tool_settings, "edge_path_mode")
+class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
+    bl_label = "Auto Merge"
+    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object
+
+    def draw_header(self, context):
+        tool_settings = context.tool_settings
+
+        self.layout.prop(tool_settings, "use_mesh_automerge", text="", toggle=False)
+
+    def draw(self, context):
+        layout = self.layout
+
+        tool_settings = context.tool_settings
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        layout.active = tool_settings.use_mesh_automerge
+        layout.prop(tool_settings, "double_threshold", text="Threshold")
 
 # ********** default tools for editmode_curve ****************
 
@@ -1191,7 +1212,11 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
 
     @classmethod
     def poll(cls, context):
-        return (context.sculpt_object and context.tool_settings.sculpt)
+        return (
+            (context.sculpt_object and context.tool_settings.sculpt) and
+            # When used in the tool header, this is explicitly included next to the XYZ symmetry buttons.
+            (context.region.type != 'TOOL_HEADER')
+        )
 
     def draw(self, context):
         layout = self.layout
@@ -1243,6 +1268,14 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
         layout.prop(sculpt, "use_symmetry_feather", text="Feather")
         layout.column().prop(sculpt, "radial_symmetry", text="Radial")
         layout.column().prop(sculpt, "tile_offset", text="Tile Offset")
+
+
+class VIEW3D_PT_sculpt_symmetry_for_topbar(Panel):
+    bl_space_type = 'TOPBAR'
+    bl_region_type = 'HEADER'
+    bl_label = "Symmetry"
+
+    draw = VIEW3D_PT_sculpt_symmetry.draw
 
 
 class VIEW3D_PT_tools_brush_display_show_brush(Panel, View3DPaintPanel):
@@ -1312,11 +1345,24 @@ class VIEW3D_PT_tools_weightpaint_symmetry(Panel, View3DPaintPanel):
     bl_options = {'DEFAULT_CLOSED'}
     bl_label = "Symmetry"
 
+    @classmethod
+    def poll(cls, context):
+        # When used in the tool header, this is explicitly included next to the XYZ symmetry buttons.
+        return (context.region.type != 'TOOL_HEADER')
+
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
         wpaint = tool_settings.weight_paint
         draw_vpaint_symmetry(layout, wpaint)
+
+
+class VIEW3D_PT_tools_weightpaint_symmetry_for_topbar(Panel):
+    bl_space_type = 'TOPBAR'
+    bl_region_type = 'HEADER'
+    bl_label = "Symmetry"
+
+    draw = VIEW3D_PT_tools_weightpaint_symmetry.draw
 
 
 # TODO, move to space_view3d.py
@@ -1385,11 +1431,24 @@ class VIEW3D_PT_tools_vertexpaint_symmetry(Panel, View3DPaintPanel):
     bl_options = {'DEFAULT_CLOSED'}
     bl_label = "Symmetry"
 
+    @classmethod
+    def poll(cls, context):
+        # When used in the tool header, this is explicitly included next to the XYZ symmetry buttons.
+        return (context.region.type != 'TOOL_HEADER')
+
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
         vpaint = tool_settings.vertex_paint
         draw_vpaint_symmetry(layout, vpaint)
+
+
+class VIEW3D_PT_tools_vertexpaint_symmetry_for_topbar(Panel):
+    bl_space_type = 'TOPBAR'
+    bl_region_type = 'HEADER'
+    bl_label = "Symmetry"
+
+    draw = VIEW3D_PT_tools_vertexpaint_symmetry.draw
 
 
 # ********** default tools for texture-paint ****************
@@ -1428,6 +1487,11 @@ class VIEW3D_PT_tools_imagepaint_symmetry(Panel, View3DPaintPanel):
     bl_context = ".imagepaint"  # dot on purpose (access from topbar)
     bl_label = "Symmetry"
     bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        # When used in the tool header, this is explicitly included next to the XYZ symmetry buttons.
+        return (context.region.type != 'TOOL_HEADER')
 
     def draw(self, context):
         layout = self.layout
@@ -2050,6 +2114,7 @@ class VIEW3D_PT_gpencil_brush_presets(PresetPanel, Panel):
 
 classes = (
     VIEW3D_PT_tools_meshedit_options,
+    VIEW3D_PT_tools_meshedit_options_automerge,
     VIEW3D_PT_tools_curveedit_options_stroke,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,
@@ -2076,13 +2141,16 @@ classes = (
     VIEW3D_PT_sculpt_dyntopo,
     VIEW3D_PT_sculpt_dyntopo_remesh,
     VIEW3D_PT_sculpt_symmetry,
+    VIEW3D_PT_sculpt_symmetry_for_topbar,
     VIEW3D_PT_sculpt_options,
     VIEW3D_PT_sculpt_options_unified,
     VIEW3D_PT_sculpt_options_gravity,
     VIEW3D_PT_tools_weightpaint_symmetry,
+    VIEW3D_PT_tools_weightpaint_symmetry_for_topbar,
     VIEW3D_PT_tools_weightpaint_options,
     VIEW3D_PT_tools_weightpaint_options_unified,
     VIEW3D_PT_tools_vertexpaint_symmetry,
+    VIEW3D_PT_tools_vertexpaint_symmetry_for_topbar,
     VIEW3D_PT_tools_vertexpaint_options,
     VIEW3D_PT_tools_imagepaint_symmetry,
     VIEW3D_PT_tools_imagepaint_options,
