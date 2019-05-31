@@ -244,9 +244,6 @@ void GPENCIL_engine_init(void *vedata)
   /* init storage */
   if (!stl->storage) {
     stl->storage = MEM_callocN(sizeof(GPENCIL_Storage), "GPENCIL_Storage");
-
-    /* unit matrix */
-    unit_m4(stl->storage->unit_matrix);
     stl->storage->shade_render[0] = OB_RENDER;
     stl->storage->shade_render[1] = 0;
   }
@@ -683,7 +680,7 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
         copy_v3_v3(grid_matrix[3], ob->obmat[3]);
       }
 
-      DRW_shgroup_call(stl->g_data->shgrps_grid, e_data.batch_grid, grid_matrix);
+      DRW_shgroup_call_obmat(stl->g_data->shgrps_grid, e_data.batch_grid, grid_matrix);
     }
   }
 }
@@ -979,7 +976,7 @@ void GPENCIL_draw_scene(void *ved)
               stl->storage->blend_mode = array_elm->mode;
               stl->storage->clamp_layer = (int)array_elm->clamp_layer;
               stl->storage->blend_opacity = array_elm->blend_opacity;
-              stl->storage->tonemapping = stl->storage->is_render ? 1 : 0;
+              stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
               DRW_draw_pass(psl->blend_pass);
               stl->storage->tonemapping = 0;
 
@@ -1021,7 +1018,8 @@ void GPENCIL_draw_scene(void *ved)
           GPU_framebuffer_bind(fbl->main);
         }
         /* tonemapping */
-        stl->storage->tonemapping = is_render ? 1 : 0;
+        stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
+
         /* active select flag and selection color */
         if (!is_render) {
           UI_GetThemeColorShadeAlpha4fv(

@@ -156,7 +156,7 @@ void DRW_globals_update(void)
   gb->sizeEdgeFix = U.pixelsize * (0.5f + 2.0f * (2.0f * (gb->sizeEdge * (float)M_SQRT1_2)));
 
   /* Color management. */
-  if (DRW_state_is_image_render()) {
+  if (!DRW_state_do_color_management()) {
     float *color = gb->UBO_FIRST_COLOR;
     do {
       /* TODO more accurate transform. */
@@ -979,6 +979,49 @@ struct DRWCallBuffer *buffer_instance_bone_dof(struct DRWPass *pass,
     DRW_shgroup_state_disable(grp, DRW_STATE_CULL_FRONT);
   }
   return DRW_shgroup_call_buffer_instance(grp, g_formats.instance_bone_dof, geom);
+}
+
+void empties_callbuffers_create(struct DRWPass *pass,
+                                DRWEmptiesBufferList *buffers,
+                                eGPUShaderConfig sh_cfg)
+{
+  struct GPUBatch *geom;
+
+  geom = DRW_cache_plain_axes_get();
+  buffers->plain_axes = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_empty_cube_get();
+  buffers->cube = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_circle_get();
+  buffers->circle = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_empty_sphere_get();
+  buffers->sphere = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_sphere_get();
+  buffers->sphere_solid = buffer_instance_solid(pass, geom);
+
+  geom = DRW_cache_empty_cylinder_get();
+  buffers->cylinder = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_empty_capsule_cap_get();
+  buffers->capsule_cap = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_empty_capsule_body_get();
+  buffers->capsule_body = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_empty_cone_get();
+  buffers->cone = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_single_arrow_get();
+  buffers->single_arrow = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_single_line_get();
+  buffers->single_arrow_line = buffer_instance(pass, geom, sh_cfg);
+
+  geom = DRW_cache_bone_arrows_get();
+  buffers->empty_axes = buffer_instance_empty_axes(pass, geom, sh_cfg);
 }
 
 struct GPUShader *mpath_line_shader_get(void)
