@@ -186,7 +186,9 @@ void BVHEmbreeGPU::build(Progress& progress, Stats *stats_)
         UserParams *userParams = static_cast<UserParams*>(user_ptr);
         void* ptr = rtcThreadLocalAlloc(alloc, sizeof(LeafNode), 16);
 
-        int min = 999999,
+        if(numPrims == 0) return new (ptr) LeafNode(BoundBox::empty, 0, 0, 0);
+
+        int min = std::numeric_limits<int>::max(),
                 max = 0;
         uint visibility = 0;
         BoundBox bounds = BoundBox::empty;
