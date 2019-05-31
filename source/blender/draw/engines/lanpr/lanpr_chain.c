@@ -95,6 +95,7 @@ LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuff
                                                                 LANPR_RenderLineChain *rlc,
                                                                 float x,
                                                                 float y,
+                                                                float gx, float gy, float gz,
                                                                 float *normal,
                                                                 char type,
                                                                 int level)
@@ -104,6 +105,9 @@ LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuff
 
   rlci->pos[0] = x;
   rlci->pos[1] = y;
+  rlci->gpos[0] = gx;
+  rlci->gpos[1] = gy;
+  rlci->gpos[2] = gz;
   copy_v3_v3(rlci->normal, normal);
   rlci->line_type = type & LANPR_EDGE_FLAG_ALL_TYPE;
   rlci->occlusion = level;
@@ -118,6 +122,7 @@ LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_RenderBuffer
                                                               LANPR_RenderLineChain *rlc,
                                                               float x,
                                                               float y,
+                                                              float gx, float gy, float gz,
                                                               float *normal,
                                                               char type,
                                                               int level)
@@ -127,6 +132,9 @@ LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_RenderBuffer
 
   rlci->pos[0] = x;
   rlci->pos[1] = y;
+  rlci->gpos[0] = gx;
+  rlci->gpos[1] = gy;
+  rlci->gpos[2] = gz;
   copy_v3_v3(rlci->normal, normal);
   rlci->line_type = type & LANPR_EDGE_FLAG_ALL_TYPE;
   rlci->occlusion = level;
@@ -190,6 +198,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
   LANPR_RenderLine *rl;
   LANPR_BoundingArea *ba;
   LANPR_RenderLineSegment *rls;
+  real* inv = rb->vp_inverse;
 
   for (rl = rb->all_render_lines.first; rl; rl = (LANPR_RenderLine*)rl->item.next) {
 
@@ -224,7 +233,11 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
     new_rv = rl->l;
     rls = rl->segments.first;
     lanpr_push_render_line_chain_point(
-        rb, rlc, new_rv->fbcoord[0], new_rv->fbcoord[1], N, rl->flags, rls->occlusion);
+        rb, rlc, new_rv->fbcoord[0], new_rv->fbcoord[1],
+        new_rv->gloc[0],
+        new_rv->gloc[1],
+        new_rv->gloc[2],
+         N, rl->flags, rls->occlusion);
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
@@ -247,10 +260,14 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
 
       if (new_rv == new_rl->l) {
         for (rls = new_rl->segments.last; rls; rls = (LANPR_RenderLineSegment*)rls->item.prev) {
-          float px, py;
-          px = tnsLinearItp(new_rl->l->fbcoord[0], new_rl->r->fbcoord[0], rls->at);
-          py = tnsLinearItp(new_rl->l->fbcoord[1], new_rl->r->fbcoord[1], rls->at);
-          lanpr_push_render_line_chain_point(rb, rlc, px, py, N, new_rl->flags, rls->occlusion);
+          double gpos[3],lpos[3];
+          lanpr_LinearInterpolate3dv(new_rl->l->fbcoord,new_rl->r->fbcoord,rls->at,lpos);
+          lanpr_LinearInterpolate3dv(new_rl->l->gloc,new_rl->r->gloc,rls->at,gpos);
+          lanpr_push_render_line_chain_point(rb, rlc, lpos[0], lpos[1],
+            gpos[0],
+            gpos[1],
+            gpos[2],
+            N, new_rl->flags, rls->occlusion);
         }
       }
       else if (new_rv == new_rl->r) {
@@ -258,16 +275,23 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
         last_occlusion = rls->occlusion;
         rls = (LANPR_RenderLineSegment*)rls->item.next;
         for (rls; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
-          float px, py;
-          px = tnsLinearItp(new_rl->l->fbcoord[0], new_rl->r->fbcoord[0], rls->at);
-          py = tnsLinearItp(new_rl->l->fbcoord[1], new_rl->r->fbcoord[1], rls->at);
-          lanpr_push_render_line_chain_point(rb, rlc, px, py, N, new_rl->flags, last_occlusion);
+          double gpos[3],lpos[3];
+          lanpr_LinearInterpolate3dv(new_rl->l->fbcoord,new_rl->r->fbcoord,rls->at,lpos);
+          lanpr_LinearInterpolate3dv(new_rl->l->gloc,new_rl->r->gloc,rls->at,gpos);
+          lanpr_push_render_line_chain_point(rb, rlc, lpos[0], lpos[1],
+            gpos[0],
+            gpos[1],
+            gpos[2],
+            N, new_rl->flags, rls->occlusion);
           last_occlusion = rls->occlusion;
         }
         lanpr_push_render_line_chain_point(rb,
                                            rlc,
                                            new_rl->r->fbcoord[0],
                                            new_rl->r->fbcoord[1],
+                                           new_rl->r->gloc[0],
+                                           new_rl->r->gloc[1],
+                                           new_rl->r->gloc[2],
                                            N,
                                            new_rl->flags,
                                            last_occlusion);
@@ -278,13 +302,19 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
     // step 2: this line
     rls = rl->segments.first;
     for (rls = (LANPR_RenderLineSegment*)rls->item.next; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
-      float px, py;
-      px = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], rls->at);
-      py = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], rls->at);
-      lanpr_append_render_line_chain_point(rb, rlc, px, py, N, rl->flags, rls->occlusion);
+      double gpos[3],lpos[3];
+      lanpr_LinearInterpolate3dv(rl->l->fbcoord,rl->r->fbcoord,rls->at,lpos);
+      lanpr_LinearInterpolate3dv(rl->l->gloc,rl->r->gloc,rls->at,gpos);
+      lanpr_append_render_line_chain_point(rb, rlc,
+        lpos[0], lpos[1],
+        gpos[0], gpos[1],gpos[2],
+        N, rl->flags, rls->occlusion);
     }
     lanpr_append_render_line_chain_point(
-        rb, rlc, rl->r->fbcoord[0], rl->r->fbcoord[1], N, rl->flags, 0);
+        rb, rlc,
+        rl->r->fbcoord[0], rl->r->fbcoord[1],
+        rl->r->gloc[0], rl->r->gloc[1], rl->r->gloc[2],
+        N, rl->flags, 0);
 
     // step 3: grow right
     ba = lanpr_get_point_bounding_area(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
@@ -308,13 +338,16 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
         if (rls)
           last_occlusion = rls->occlusion;
         for (rls = new_rl->segments.last; rls; rls = (LANPR_RenderLineSegment*)rls->item.prev) {
-          float px, py;
-          px = tnsLinearItp(new_rl->l->fbcoord[0], new_rl->r->fbcoord[0], rls->at);
-          py = tnsLinearItp(new_rl->l->fbcoord[1], new_rl->r->fbcoord[1], rls->at);
+          double gpos[3],lpos[3];
+          lanpr_LinearInterpolate3dv(new_rl->l->fbcoord,new_rl->r->fbcoord,rls->at,lpos);
+          lanpr_LinearInterpolate3dv(new_rl->l->gloc,new_rl->r->gloc,rls->at,gpos);
           last_occlusion = (LANPR_RenderLineSegment*)rls->item.prev ?
                                ((LANPR_RenderLineSegment *)rls->item.prev)->occlusion :
                                0;
-          lanpr_append_render_line_chain_point(rb, rlc, px, py, N, new_rl->flags, last_occlusion);
+          lanpr_append_render_line_chain_point(rb, rlc, 
+                lpos[0],lpos[1],
+                gpos[0],gpos[1],gpos[2],
+                N, new_rl->flags, last_occlusion);
         }
       }
       else if (new_rv == new_rl->r) {
@@ -323,14 +356,19 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
         rlci->occlusion = last_occlusion;
         rls = (LANPR_RenderLineSegment*)rls->item.next;
         for (rls; rls; rls = (LANPR_RenderLineSegment*)rls->item.next) {
-          float px, py;
-          px = tnsLinearItp(new_rl->l->fbcoord[0], new_rl->r->fbcoord[0], rls->at);
-          py = tnsLinearItp(new_rl->l->fbcoord[1], new_rl->r->fbcoord[1], rls->at);
-          lanpr_append_render_line_chain_point(rb, rlc, px, py, N, new_rl->flags, rls->occlusion);
-          // last_occlusion = rls->occlusion;
+          double gpos[3],lpos[3];
+          lanpr_LinearInterpolate3dv(new_rl->l->fbcoord,new_rl->r->fbcoord,rls->at,lpos);
+          lanpr_LinearInterpolate3dv(new_rl->l->gloc,new_rl->r->gloc,rls->at,gpos);
+          lanpr_append_render_line_chain_point(rb, rlc, 
+                lpos[0],lpos[1],
+                gpos[0],gpos[1],gpos[2],
+                N, new_rl->flags, last_occlusion);
         }
         lanpr_append_render_line_chain_point(
-            rb, rlc, new_rl->r->fbcoord[0], new_rl->r->fbcoord[1], N, new_rl->flags, 0);
+            rb, rlc,
+            new_rl->r->fbcoord[0], new_rl->r->fbcoord[1],
+            new_rl->r->gloc[0],new_rl->r->gloc[1],new_rl->r->gloc[2],
+            N, new_rl->flags, 0);
       }
       ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
@@ -434,8 +472,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
   GPU_indexbuf_init_ex(&elb,
                        GPU_PRIM_LINES_ADJ,
                        vert_count * 4,
-                       vert_count,
-                       true);  // elem count will not exceed vert_count
+                       vert_count);
 
   for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain*)rlc->item.next) {
 

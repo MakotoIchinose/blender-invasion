@@ -400,7 +400,7 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
 
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
-    DRW_shgroup_call_object_no_cull(stl->g_data->multipass_shgrp, geom, ob);
+    DRW_shgroup_call_no_cull(stl->g_data->multipass_shgrp, geom, ob);
   }
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {

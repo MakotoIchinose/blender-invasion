@@ -73,7 +73,8 @@ typedef struct LANPR_RenderElementLinkNode {
 
 typedef struct LANPR_RenderLineSegment {
   Link item;
-  real at;                   // at==0: left    at==1: right
+  real at;                   // at==0: left    at==1: right  (this is in 2D projected space)
+  real at_global;            // to reconstruct 3d stroke     (XXX: implement global space?)
   u8bit occlusion;           // after "at" point
   short material_mask_mark;  // e.g. to determine lines beind a glass window material.
 } LANPR_RenderLineSegment;
@@ -126,6 +127,7 @@ typedef struct LANPR_RenderLineChain {
 typedef struct LANPR_RenderLineChainItem {
   Link item;
   float pos[3];  // need z value for fading
+  float gpos[3]; // for restore position to 3d space
   float normal[3];
   char line_type;  //      style of [1]       style of [2]
   char occlusion;  // [1]--------------->[2]---------------->[3]--....

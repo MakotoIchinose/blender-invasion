@@ -270,9 +270,9 @@ void lanpr_generate_gpencil_from_chain(
 
 		for(rlci = rlc->chain.first;rlci;rlci=(LANPR_RenderLineChainItem*)rlci->item.next){
 			float opatity=rlci->occlusion?0.1f:1.0f;
-			stroke_data[array_idx] = rlci->pos[0];
-			stroke_data[array_idx + 1] = rlci->pos[1];
-			stroke_data[array_idx + 2] = rlci->pos[2];
+			stroke_data[array_idx] = rlci->gpos[0];
+			stroke_data[array_idx + 1] = rlci->gpos[1];
+			stroke_data[array_idx + 2] = rlci->gpos[2];
 			stroke_data[array_idx + 3] = opatity; //thickness
 			stroke_data[array_idx + 4] = opatity; //hardness?
 			array_idx+=5;

@@ -283,7 +283,7 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
   Lengths = MEM_callocN(sizeof(float) * v_count * 2, "Length buffer pre alloc");
 
   GPUIndexBufBuilder elb;
-  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINES_ADJ, e_count, v_count, true);
+  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINES_ADJ, e_count, v_count);
 
   int vert_offset = 0;
 
