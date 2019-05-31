@@ -431,9 +431,9 @@ void vec_math_project(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
   outval = 0.0;
 }
 
-void vec_math_reflect(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_reflect(vec3 i, vec3 n, out vec3 outvec, out float outval)
 {
-  outvec = reflect(v1, v2);
+  outvec = reflect(i, normalize(n));
   outval = 0.0;
 }
 
