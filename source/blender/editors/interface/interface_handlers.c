@@ -556,22 +556,9 @@ static void ui_but_update_preferences_dirty(uiBut *but)
   /* Not very elegant, but ensures preference changes force re-save. */
   bool tag = false;
   if (but->rnaprop) {
-    if (but->rnapoin.data == &U) {
-      /* Exclude navigation from setting dirty. */
-      extern PropertyRNA rna_Preferences_active_section;
-      if (!ELEM(but->rnaprop, &rna_Preferences_active_section)) {
-        tag = true;
-      }
-    }
-    else {
-      StructRNA *base = RNA_struct_base(but->rnapoin.type);
-      if (ELEM(base,
-               &RNA_AddonPreferences,
-               &RNA_KeyConfigPreferences,
-               &RNA_KeyMapItem,
-               &RNA_WalkNavigation)) {
-        tag = true;
-      }
+    StructRNA *base = RNA_struct_base(but->rnapoin.type);
+    if (ELEM(base, &RNA_AddonPreferences, &RNA_KeyConfigPreferences, &RNA_KeyMapItem)) {
+      tag = true;
     }
   }
 
@@ -1775,7 +1762,7 @@ static bool ui_but_drag_init(bContext *C,
   /* Clamp the maximum to half the UI unit size so a high user preference
    * doesn't require the user to drag more then half the default button height. */
   const int drag_threshold = min_ii(
-      U.tweak_threshold * U.dpi_fac,
+      WM_event_drag_threshold(event),
       (int)((UI_UNIT_Y / 2) * ui_block_to_window_scale(data->region, but->block)));
 
   if (ABS(data->dragstartx - event->x) + ABS(data->dragstarty - event->y) > drag_threshold) {
@@ -5576,9 +5563,7 @@ static int ui_do_but_COLOR(bContext *C, uiBut *but, uiHandleButtonData *data, co
       if ((int)(but->a1) == UI_PALETTE_COLOR) {
         if (!event->ctrl) {
           float color[3];
-          Scene *scene = CTX_data_scene(C);
-          ViewLayer *view_layer = CTX_data_view_layer(C);
-          Paint *paint = BKE_paint_get_active(scene, view_layer);
+          Paint *paint = BKE_paint_get_active_from_context(C);
           Brush *brush = BKE_paint_brush(paint);
 
           if (brush->flag & BRUSH_USE_GRADIENT) {
@@ -5593,6 +5578,8 @@ static int ui_do_but_COLOR(bContext *C, uiBut *but, uiHandleButtonData *data, co
             }
           }
           else {
+            Scene *scene = CTX_data_scene(C);
+
             if (but->rnaprop && RNA_property_subtype(but->rnaprop) == PROP_COLOR_GAMMA) {
               RNA_property_float_get_array(&but->rnapoin, but->rnaprop, color);
               BKE_brush_color_set(scene, brush, color);
@@ -7333,7 +7320,7 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
   /* number editing */
   if (state == BUTTON_STATE_NUM_EDITING) {
     if (ui_but_is_cursor_warp(but)) {
-      WM_cursor_grab_enable(CTX_wm_window(C), true, true, NULL);
+      WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, true, NULL);
     }
     ui_numedit_begin(but, data);
   }

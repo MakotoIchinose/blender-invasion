@@ -212,7 +212,7 @@ WORKBENCH_MaterialData *workbench_forward_get_or_create_material_data(WORKBENCH_
     material->object_id = engine_object_data->object_id;
     DRW_shgroup_uniform_int(material->shgrp_object_outline, "object_id", &material->object_id, 1);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(material->shgrp_object_outline, draw_ctx->rv3d);
+      DRW_shgroup_state_enable(material->shgrp_object_outline, DRW_STATE_CLIP_PLANES);
     }
     BLI_ghash_insert(wpd->material_transp_hash, POINTER_FROM_UINT(hash), material);
   }
@@ -431,7 +431,7 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
       noise_offset = fmodf(noise_offset + 1.0f / 8.0f, 1.0f);
     }
 
-    if (XRAY_FLAG_ENABLED(wpd)) {
+    if (XRAY_ENABLED(wpd)) {
       blend_threshold = 1.0f - XRAY_ALPHA(wpd) * 0.9f;
     }
 
@@ -582,8 +582,8 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
         int color_type = workbench_material_determine_color_type(wpd, image, ob, is_sculpt_mode);
         material = workbench_forward_get_or_create_material_data(
             vedata, ob, mat, image, iuser, color_type, interp, is_sculpt_mode);
-        DRW_shgroup_call_object(material->shgrp_object_outline, geom_array[i], ob);
-        DRW_shgroup_call_object(material->shgrp, geom_array[i], ob);
+        DRW_shgroup_call(material->shgrp_object_outline, geom_array[i], ob);
+        DRW_shgroup_call(material->shgrp, geom_array[i], ob);
       }
     }
     else if (ELEM(wpd->shading.color_type,
@@ -612,9 +612,9 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
           material = workbench_forward_get_or_create_material_data(
               vedata, ob, NULL, NULL, NULL, color_type, 0, is_sculpt_mode);
           /* TODO(fclem) make this call optional */
-          DRW_shgroup_call_object(material->shgrp_object_outline, geom, ob);
+          DRW_shgroup_call(material->shgrp_object_outline, geom, ob);
           if (!is_wire) {
-            DRW_shgroup_call_object(material->shgrp, geom, ob);
+            DRW_shgroup_call(material->shgrp, geom, ob);
           }
         }
       }
@@ -652,9 +652,9 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
             material = workbench_forward_get_or_create_material_data(
                 vedata, ob, mat, NULL, NULL, V3D_SHADING_MATERIAL_COLOR, 0, is_sculpt_mode);
             /* TODO(fclem) make this call optional */
-            DRW_shgroup_call_object(material->shgrp_object_outline, mat_geom[i], ob);
+            DRW_shgroup_call(material->shgrp_object_outline, mat_geom[i], ob);
             if (!is_wire) {
-              DRW_shgroup_call_object(material->shgrp, mat_geom[i], ob);
+              DRW_shgroup_call(material->shgrp, mat_geom[i], ob);
             }
           }
         }
