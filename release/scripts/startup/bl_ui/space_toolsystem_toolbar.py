@@ -1008,6 +1008,24 @@ class _defs_sculpt:
         )
 
     @ToolDef.from_fn
+    def color_filter():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("sculpt.color_filter")
+            sub = layout.row()
+            sub.use_property_split = False
+            sub.prop(props, "type", expand=False)
+            sub.prop(props, "strength")
+
+        return dict(
+            idname="builtin.color_filter",
+            label="Color Filter",
+            icon="ops.sculpt.color_filter",
+            widget=None,
+            keymap= (),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def translate():
         def draw_settings(context, layout, tool):
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 1)
@@ -1950,8 +1968,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_sculpt.hide_border,
             _defs_sculpt.mask_border,
+            None,
             _defs_sculpt.mesh_filter,
+            _defs_sculpt.color_filter,
             _defs_sculpt.mask_filter,
+            None,
             _defs_sculpt.translate,
             _defs_transform.rotate,
             *_tools_annotate,

@@ -215,6 +215,7 @@ typedef struct SculptThreadedTaskData {
   float smooth_value;
   float filter_strength;
   int filter_type;
+  int init_colors;
   float *random_disp;
   int *node_mask;
 
@@ -308,8 +309,9 @@ void sculpt_pbvh_calc_area_normal(const struct Brush *brush,
 
 typedef struct FilterCache {
   float (*orco)[3];
-  float *random_disp;
+  struct MVertCol *orvcol;
 
+  float *random_disp;
   /* unmasked nodes */
   PBVHNode **nodes;
   int totnode;

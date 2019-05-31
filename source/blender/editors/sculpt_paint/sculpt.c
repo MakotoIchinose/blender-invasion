@@ -1722,6 +1722,43 @@ static float neighbor_max_mask(SculptSession *ss, const int vert, float *prev_ma
   return max;
 }
 
+static void neighbor_average_color(SculptSession *ss, float avg[3], unsigned vert)
+{
+  const MeshElemMap *vert_map = &ss->pmap[vert];
+  const MVert *mvert = ss->mvert;
+  const float f = 0.00392156862;
+
+  /* Don't modify corner vertices */
+  if (vert_map->count > 1) {
+    int i, total = 0;
+
+    zero_v3(avg);
+
+    for (i = 0; i < vert_map->count; i++) {
+      const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+      unsigned f_adj_v[2];
+
+      if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
+        int j;
+        for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
+          if (vert_map->count != 2 || ss->pmap[f_adj_v[j]].count <= 2) {
+            float orig_color[3];
+            orig_color[0] = ss->filter_cache->orvcol[f_adj_v[j]].r * f;
+            orig_color[1] = ss->filter_cache->orvcol[f_adj_v[j]].g * f;
+            orig_color[2] = ss->filter_cache->orvcol[f_adj_v[j]].b * f;
+            add_v3_v3(avg, orig_color);
+            total++;
+          }
+        }
+      }
+    }
+
+    if (total > 0) {
+      mul_v3_fl(avg, 1.0f / total);
+      return;
+    }
+  }
+}
 /* Same logic as neighbor_average(), but for bmesh rather than mesh */
 static void bmesh_neighbor_average(float avg[3], BMVert *v)
 {
@@ -7587,11 +7624,16 @@ static void filter_cache_init_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 
   if (data->node_mask[i] == 1) {
-    sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_COORDS);
+    if (data->init_colors) {
+      sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_COLOR);
+    }
+    else {
+      sculpt_undo_push_node(data->ob, node, SCULPT_UNDO_COORDS);
+    }
   }
 }
 
-static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random)
+static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random, bool init_colors)
 {
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ob->sculpt->pbvh;
@@ -7603,6 +7645,10 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random)
   if (init_random) {
     ss->filter_cache->random_disp = MEM_mallocN(MESH_FILTER_RANDOM_MOD * sizeof(float),
                                                 "random_disp");
+  }
+
+  if (init_colors && ss->vcol) {
+    ss->filter_cache->orvcol = MEM_dupallocN(ss->vcol);
   }
 
   SculptSearchSphereData searchdata = {
@@ -7630,6 +7676,7 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random)
       .ob = ob,
       .nodes = nodes,
       .filter_type = filter_type,
+      .init_colors = init_colors,
       .random_disp = ss->filter_cache->random_disp,
       .node_mask = node_mask,
   };
@@ -7676,6 +7723,9 @@ static void sculpt_filter_cache_free(SculptSession *ss)
   MEM_freeN(ss->filter_cache->nodes);
   if (ss->filter_cache->random_disp) {
     MEM_freeN(ss->filter_cache->random_disp);
+  }
+  if (ss->filter_cache->orvcol) {
+    MEM_freeN(ss->filter_cache->orvcol);
   }
   MEM_freeN(ss->filter_cache);
 }
@@ -7865,7 +7915,7 @@ int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   sculpt_undo_push_begin("mesh filter fill");
 
-  sculpt_filter_cache_init(ob, sd, mode == MESH_FILTER_RANDOM);
+  sculpt_filter_cache_init(ob, sd, mode == MESH_FILTER_RANDOM, false);
 
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
@@ -7887,6 +7937,279 @@ void SCULPT_OT_mesh_filter(struct wmOperatorType *ot)
 
   /* rna */
   RNA_def_enum(ot->srna, "type", prop_mesh_filter_types, MESH_FILTER_DILATE, "Filter type", "");
+  RNA_def_float(
+      ot->srna, "strength", 1.0f, -10.0f, 10.0f, "Strength", "Filter Strength", -10.0f, 10.0f);
+}
+
+typedef enum eSculptColorFilterTypes {
+  COLOR_FILTER_HUE = 0,
+  COLOR_FILTER_SATURATION = 1,
+  COLOR_FILTER_VALUE = 2,
+  COLOR_FILTER_RED = 3,
+  COLOR_FILTER_GREEN = 4,
+  COLOR_FILTER_BLUE = 5,
+  COLOR_FILTER_SMOOTH = 6,
+  COLOR_FILTER_RANDOM_HUE = 7,
+  COLOR_FILTER_RANDOM_SATURATION = 8,
+  COLOR_FILTER_RANDOM_VALUE = 9,
+  COLOR_FILTER_BRIGHTNESS = 10,
+  COLOR_FILTER_CONTRAST = 11,
+} eSculptColorFilterTypes;
+
+EnumPropertyItem prop_color_filter_types[] = {
+    {COLOR_FILTER_HUE, "HUE", 0, "Hue", "Change hue"},
+    {COLOR_FILTER_SATURATION, "SATURATION", 0, "Saturation", "Change saturation"},
+    {COLOR_FILTER_VALUE, "VALUE", 0, "Value", "Change value"},
+
+    {COLOR_FILTER_BRIGHTNESS, "BRIGTHNESS", 0, "Brightness", "Change brightness"},
+    {COLOR_FILTER_CONTRAST, "CONTRAST", 0, "Contrast", "Change contrast"},
+
+    {COLOR_FILTER_SMOOTH, "SMOOTH", 0, "Smooth", "Smooth colors"},
+
+    {COLOR_FILTER_RED, "RED", 0, "Red", "Change red"},
+    {COLOR_FILTER_GREEN, "GREEN", 0, "Green", "Change green"},
+    {COLOR_FILTER_BLUE, "BLUE", 0, "Blue", "Change blue"},
+
+    {COLOR_FILTER_RANDOM_HUE, "RANDOM_HUE", 0, "Random hue", "Change hue"},
+    {COLOR_FILTER_RANDOM_SATURATION,
+     "RANDOM_SATURATION",
+     0,
+     "Random saturation",
+     "Change saturation"},
+    {COLOR_FILTER_RANDOM_VALUE, "RANDOM_VALUE", 0, "Random Value", "Change value"},
+
+    {0, NULL, 0, NULL, NULL},
+};
+
+static void color_filter_task_cb(void *__restrict userdata,
+                                 const int i,
+                                 const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+  SculptThreadedTaskData *data = userdata;
+  SculptSession *ss = data->ob->sculpt;
+  PBVHNode *node = data->nodes[i];
+
+  const int mode = data->filter_type;
+
+  PBVHVertexIter vd;
+  BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
+  {
+    float orig_color[3], final_color[3], hsv_color[3], rgb_color[3], d[3];
+    int hue;
+    float brightness, contrast, gain, delta, offset;
+    float fade = vd.mask ? *vd.mask : 1.0f;
+    fade = 1 - fade;
+    fade *= data->filter_strength;
+    // 1/255
+    const float f = 0.00392156862;
+
+    orig_color[0] = ss->filter_cache->orvcol[vd.vert_indices[vd.i]].r * f;
+    orig_color[1] = ss->filter_cache->orvcol[vd.vert_indices[vd.i]].g * f;
+    orig_color[2] = ss->filter_cache->orvcol[vd.vert_indices[vd.i]].b * f;
+
+    switch (mode) {
+      case COLOR_FILTER_HUE:
+        rgb_to_hsv_v(orig_color, hsv_color);
+        hue = hsv_color[0] + fade;
+        hsv_color[0] = fabs((hsv_color[0] + fade) - hue);
+        hsv_to_rgb_v(hsv_color, final_color);
+        break;
+      case COLOR_FILTER_SATURATION:
+        rgb_to_hsv_v(orig_color, hsv_color);
+        hsv_color[1] = hsv_color[1] + fade;
+        CLAMP(hsv_color[1], 0.0f, 1.0f);
+        hsv_to_rgb_v(hsv_color, final_color);
+        break;
+      case COLOR_FILTER_VALUE:
+        rgb_to_hsv_v(orig_color, hsv_color);
+        hsv_color[2] = hsv_color[2] + fade;
+        CLAMP(hsv_color[2], 0.0f, 1.0f);
+        hsv_to_rgb_v(hsv_color, final_color);
+        break;
+      case COLOR_FILTER_RED:
+        orig_color[0] = orig_color[0] + fade;
+        CLAMP(orig_color[0], 0.0f, 1.0f);
+        copy_v3_v3(final_color, orig_color);
+        break;
+      case COLOR_FILTER_GREEN:
+        orig_color[1] = orig_color[1] + fade;
+        CLAMP(orig_color[1], 0.0f, 1.0f);
+        copy_v3_v3(final_color, orig_color);
+        break;
+      case COLOR_FILTER_BLUE:
+        orig_color[2] = orig_color[2] + fade;
+        CLAMP(orig_color[2], 0.0f, 1.0f);
+        copy_v3_v3(final_color, orig_color);
+        break;
+      case COLOR_FILTER_RANDOM_HUE:
+        fade = fade * (data->random_disp[vd.vert_indices[vd.i] % MESH_FILTER_RANDOM_MOD] - 0.5f);
+        rgb_to_hsv_v(orig_color, hsv_color);
+        hue = hsv_color[0] + fade;
+        hsv_color[0] = fabs((hsv_color[0] + fade) - hue);
+        hsv_to_rgb_v(hsv_color, final_color);
+        break;
+      case COLOR_FILTER_RANDOM_SATURATION:
+        fade = fade * (data->random_disp[vd.vert_indices[vd.i] % MESH_FILTER_RANDOM_MOD] - 0.5f);
+        rgb_to_hsv_v(orig_color, hsv_color);
+        hsv_color[1] = hsv_color[1] + fade;
+        CLAMP(hsv_color[1], 0.0f, 1.0f);
+        hsv_to_rgb_v(hsv_color, final_color);
+        break;
+      case COLOR_FILTER_RANDOM_VALUE:
+        fade = fade * (data->random_disp[vd.vert_indices[vd.i] % MESH_FILTER_RANDOM_MOD] - 0.5f);
+        rgb_to_hsv_v(orig_color, hsv_color);
+        hsv_color[2] = hsv_color[2] + fade;
+        CLAMP(hsv_color[2], 0.0f, 1.0f);
+        hsv_to_rgb_v(hsv_color, final_color);
+        break;
+      case COLOR_FILTER_BRIGHTNESS:
+        CLAMP(fade, -1.0f, 1.0f);
+        brightness = fade;
+        contrast = 0;
+        delta = contrast / 2.0f;
+        gain = 1.0f - delta * 2.0f;
+        delta *= -1;
+        offset = gain * (brightness + delta);
+        for (int i = 0; i < 3; i++) {
+          final_color[i] = gain * orig_color[i] + offset;
+          CLAMP(final_color[i], 0.0f, 1.0f);
+        }
+        break;
+      case COLOR_FILTER_CONTRAST:
+        CLAMP(fade, -1.0f, 1.0f);
+        brightness = 0;
+        contrast = fade;
+        delta = contrast / 2.0f;
+        gain = 1.0f - delta * 2.0f;
+        if (contrast > 0) {
+          gain = 1.0f / ((gain != 0.0f) ? gain : FLT_EPSILON);
+          offset = gain * (brightness - delta);
+        }
+        else {
+          delta *= -1;
+          offset = gain * (brightness + delta);
+        }
+        for (int i = 0; i < 3; i++) {
+          final_color[i] = gain * orig_color[i] + offset;
+          CLAMP(final_color[i], 0.0f, 1.0f);
+        }
+        break;
+      case COLOR_FILTER_SMOOTH:
+        neighbor_average_color(ss, rgb_color, vd.vert_indices[vd.i]);
+        sub_v3_v3v3(d, rgb_color, orig_color);
+        mul_v3_fl(d, fade);
+        add_v3_v3v3(final_color, orig_color, d);
+        for (int i = 0; i < 3; i++) {
+          CLAMP(final_color[i], 0.0f, 1.0f);
+        }
+        break;
+    }
+
+    vd.col->r = final_color[0] * 255;
+    vd.col->g = final_color[1] * 255;
+    vd.col->b = final_color[2] * 255;
+
+    if (vd.mvert)
+      vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+  }
+  BKE_pbvh_vertex_iter_end;
+
+  BKE_pbvh_node_mark_redraw(node);
+}
+
+int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ARegion *ar = CTX_wm_region(C);
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+  int mode = RNA_enum_get(op->ptr, "type");
+  float filter_strength = RNA_float_get(op->ptr, "strength");
+
+  float len = event->prevclickx - event->mval[0];
+  filter_strength = filter_strength * -len * 0.001f;
+
+  if (event->type == 1 && event->val == 2) {
+    sculpt_undo_push_end();
+    sculpt_filter_cache_free(ss);
+    return OPERATOR_FINISHED;
+  }
+
+  SculptThreadedTaskData data = {
+      .sd = sd,
+      .ob = ob,
+      .nodes = ss->filter_cache->nodes,
+      .filter_type = mode,
+      .filter_strength = filter_strength,
+      .random_disp = ss->filter_cache->random_disp,
+  };
+
+  ParallelRangeSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
+                            ss->filter_cache->totnode > SCULPT_THREADED_LIMIT);
+  BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, color_filter_task_cb, &settings);
+
+  ED_region_tag_redraw(ar);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+int sculpt_color_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Object *ob = CTX_data_active_object(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+  SculptSession *ss = ob->sculpt;
+  struct Scene *scene = CTX_data_scene(C);
+  int mode = RNA_enum_get(op->ptr, "type");
+  PBVH *pbvh = ob->sculpt->pbvh;
+
+  /* Disable for multires and dyntopo for now */
+  if (!ss->pbvh) {
+    return OPERATOR_CANCELLED;
+  }
+  if (BKE_pbvh_type(pbvh) != PBVH_FACES) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (!ss->vcol) {
+    return OPERATOR_CANCELLED;
+  }
+
+  sculpt_undo_push_begin("mesh filter fill");
+
+  bool needs_pmap = mode == COLOR_FILTER_SMOOTH;
+  BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, needs_pmap, true);
+  if (BKE_pbvh_type(pbvh) == PBVH_FACES && needs_pmap && !ob->sculpt->pmap) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bool needs_random = ELEM(
+      mode, COLOR_FILTER_RANDOM_HUE, COLOR_FILTER_RANDOM_SATURATION, COLOR_FILTER_RANDOM_VALUE);
+  sculpt_filter_cache_init(ob, sd, needs_random, true);
+
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+void SCULPT_OT_color_filter(struct wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Filter color";
+  ot->idname = "SCULPT_OT_color_filter";
+  ot->description = "Applies a filter to modify the current sculpt vertex color";
+
+  /* api callbacks */
+  ot->invoke = sculpt_color_filter_invoke;
+  ot->modal = sculpt_color_filter_modal;
+  ot->poll = sculpt_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* rna */
+  RNA_def_enum(ot->srna, "type", prop_color_filter_types, COLOR_FILTER_HUE, "Filter type", "");
   RNA_def_float(
       ot->srna, "strength", 1.0f, -10.0f, 10.0f, "Strength", "Filter Strength", -10.0f, 10.0f);
 }
@@ -8375,7 +8698,7 @@ void ED_sculpt_init_transform(const struct bContext *C, bool transform_pivot_onl
   sculpt_undo_push_begin("transform");
   BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, true);
 
-  sculpt_filter_cache_init(ob, sd, false);
+  sculpt_filter_cache_init(ob, sd, false, false);
 }
 
 typedef enum paintSymmAreas {
@@ -8719,6 +9042,7 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_set_detail_size);
   WM_operatortype_append(SCULPT_OT_sample_color);
   WM_operatortype_append(SCULPT_OT_mesh_filter);
+  WM_operatortype_append(SCULPT_OT_color_filter);
   WM_operatortype_append(SCULPT_OT_mask_filter);
   WM_operatortype_append(SCULPT_OT_color_fill);
   WM_operatortype_append(SCULPT_OT_mask_by_normal);

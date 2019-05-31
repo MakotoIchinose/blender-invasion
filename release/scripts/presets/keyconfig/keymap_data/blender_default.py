@@ -5531,6 +5531,16 @@ def km_3d_view_tool_sculpt_mesh_filter(params):
         ]},
     )
 
+def km_3d_view_tool_sculpt_color_filter(params):
+    return (
+        "3D View Tool: Sculpt, Color Filter",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.color_filter", {"type": params.tool_tweak, "value": 'ANY'},
+             None)
+        ]},
+    )
+
 
 def km_3d_view_tool_sculpt_mask_filter(params):
     return (
@@ -5963,6 +5973,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_sculpt_box_hide(params),
         km_3d_view_tool_sculpt_box_mask(params),
         km_3d_view_tool_sculpt_mesh_filter(params),
+        km_3d_view_tool_sculpt_color_filter(params),
         km_3d_view_tool_sculpt_mask_filter(params),
         km_3d_view_tool_paint_weight_sample_weight(params),
         km_3d_view_tool_paint_weight_sample_vertex_group(params),
