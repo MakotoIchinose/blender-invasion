@@ -397,7 +397,8 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[4])
 static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
 {
   BLI_assert(ob);
-  DRWObjectInfos *ob_infos = state->ob_infos;
+  DRWResourceHandle handle = state->handle;
+  DRWObjectInfos *ob_infos = BLI_memblock_elem_get(DST.vmempool->obinfos, handle.chunk, handle.id);
   /* Index. */
   ob_infos->ob_index = ob->index;
   /* Orco factors. */
@@ -411,6 +412,8 @@ static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
   ob_infos->ob_random = random * (1.0f / (float)0xFFFFFFFF);
   /* Negative scalling. */
   ob_infos->ob_neg_scale = (ob->transflag & OB_NEG_SCALE) ? -1.0f : 1.0f;
+
+  state->flag |= DRW_CALL_OBINFOS;
 }
 
 static void drw_call_culling_create(DRWCallState *state, Object *ob)
@@ -436,26 +439,25 @@ static DRWCallState *drw_call_state_create(float (*obmat)[4], Object *ob)
 {
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
   state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
-  state->ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
+  DRWObjectMatrix *ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
   /* FIXME Meh, not always needed byt can be accessed after creation.
    * Also it needs to have the same resource handle. */
-  state->ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
+  DRWObjectInfos *ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
+  UNUSED_VARS(ob_infos);
 
   SET_FLAG_FROM_TEST(state->flag, (ob && (ob->transflag & OB_NEG_SCALE)), DRW_CALL_NEGSCALE);
 
-  /* TODO(fclem reference resources by handle) */
-  // state->resource_handle = DST.resource_handle;
-
-  DRW_NEXT_RESOURCE_HANDLE(DST.resource_handle);
+  state->handle = DST.resource_handle;
+  INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
 
   /* Matrices */
-  copy_m4_m4(state->ob_mats->model, obmat);
+  copy_m4_m4(ob_mats->model, obmat);
   if (ob) {
-    copy_m4_m4(state->ob_mats->modelinverse, ob->imat);
+    copy_m4_m4(ob_mats->modelinverse, ob->imat);
   }
   else {
     /* WATCH: Can be costly. */
-    invert_m4_m4(state->ob_mats->modelinverse, state->ob_mats->model);
+    invert_m4_m4(ob_mats->modelinverse, ob_mats->model);
   }
 
   drw_call_culling_create(state, ob);
@@ -479,9 +481,10 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
       DST.ob_state = drw_call_state_create(obmat, ob);
     }
 
-    if ((shgroup->objectinfo != -1 || shgroup->orcotexfac != -1) &&
-        DST.ob_state->ob_infos->ob_index == -1.0f) {
-      drw_call_obinfos_create(DST.ob_state, ob);
+    if (shgroup->objectinfo != -1 || shgroup->orcotexfac != -1) {
+      if ((DST.ob_state->flag & DRW_CALL_OBINFOS) == 0) {
+        drw_call_obinfos_create(DST.ob_state, ob);
+      }
     }
 
     return DST.ob_state;
@@ -845,7 +848,42 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 {
   shgroup->uniforms = NULL;
 
+  /* TODO(fclem) make them builtin. */
   int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");
+  int model_ubo_location = GPU_shader_get_uniform_block(shader, "modelBlock");
+  int info_ubo_location = GPU_shader_get_uniform_block(shader, "infoBlock");
+  int drawid_location = GPU_shader_get_uniform_ensure(shader, "drawID");
+
+  if (drawid_location != -1) {
+    drw_shgroup_uniform_create_ex(shgroup, drawid_location, DRW_UNIFORM_DRAWID, NULL, 0, 1);
+  }
+
+  if (model_ubo_location != -1) {
+    drw_shgroup_uniform_create_ex(
+        shgroup, model_ubo_location, DRW_UNIFORM_BLOCK_OBMATS, NULL, 0, 1);
+
+    shgroup->model = -1;
+    shgroup->modelinverse = -1;
+    shgroup->modelviewprojection = -1;
+  }
+  else {
+    shgroup->model = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL);
+    shgroup->modelinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL_INV);
+    shgroup->modelviewprojection = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MVP);
+  }
+
+  if (info_ubo_location != -1) {
+    drw_shgroup_uniform_create_ex(
+        shgroup, info_ubo_location, DRW_UNIFORM_BLOCK_OBINFOS, NULL, 0, 1);
+
+    shgroup->orcotexfac = -1;
+    shgroup->objectinfo = -1;
+  }
+  else {
+    /* TODO remove */
+    shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
+    shgroup->objectinfo = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_INFO);
+  }
 
   if (view_ubo_location != -1) {
     drw_shgroup_uniform_create_ex(
@@ -869,11 +907,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   BLI_assert(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODELVIEW) == -1);
   BLI_assert(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_NORMAL) == -1);
 
-  shgroup->model = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL);
-  shgroup->modelinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL_INV);
-  shgroup->modelviewprojection = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MVP);
-  shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
-  shgroup->objectinfo = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_INFO);
+  /* TODO remove or promote to uniform type. */
   shgroup->callid = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_CALLID);
 }
 
@@ -1597,10 +1631,16 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
     return -1;
   }
 
+  /** XXX(fclem) This is extremely inefficient. To revisit. */
+  DRWObjectMatrix *a_ob_mats = BLI_memblock_elem_get(
+      DST.vmempool->obmats, call_a->state->handle.chunk, call_a->state->handle.id);
+  DRWObjectMatrix *b_ob_mats = BLI_memblock_elem_get(
+      DST.vmempool->obmats, call_a->state->handle.chunk, call_b->state->handle.id);
+
   float tmp[3];
-  sub_v3_v3v3(tmp, zsortdata->origin, call_a->state->ob_mats->model[3]);
+  sub_v3_v3v3(tmp, zsortdata->origin, a_ob_mats->model[3]);
   const float a_sq = dot_v3v3(zsortdata->axis, tmp);
-  sub_v3_v3v3(tmp, zsortdata->origin, call_b->state->ob_mats->model[3]);
+  sub_v3_v3v3(tmp, zsortdata->origin, b_ob_mats->model[3]);
   const float b_sq = dot_v3v3(zsortdata->axis, tmp);
 
   if (a_sq < b_sq) {

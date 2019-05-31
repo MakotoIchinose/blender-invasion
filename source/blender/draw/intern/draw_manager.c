@@ -594,8 +594,8 @@ static void drw_context_state_init(void)
 static DRWCallState *draw_unit_state_create(void)
 {
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
-  DRWObjectInfos *infos = state->ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
-  DRWObjectMatrix *mats = state->ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
+  DRWObjectInfos *infos = BLI_memblock_alloc(DST.vmempool->obinfos);
+  DRWObjectMatrix *mats = BLI_memblock_alloc(DST.vmempool->obmats);
   DRWCullingState *culling = state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   state->flag = 0;
 
@@ -613,7 +613,7 @@ static DRWCallState *draw_unit_state_create(void)
   culling->bsphere.radius = -1.0f;
   culling->user_data = NULL;
 
-  DRW_NEXT_RESOURCE_HANDLE(DST.resource_handle);
+  INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
 
   return state;
 }

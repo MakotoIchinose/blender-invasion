@@ -93,7 +93,8 @@
 
 /* Used by DRWCallState.flag */
 enum {
-  DRW_CALL_NEGSCALE = (1 << 1),
+  DRW_CALL_NEGSCALE = (1 << 0),
+  DRW_CALL_OBINFOS = (1 << 1),
 };
 
 typedef struct DRWCullingState {
@@ -106,7 +107,7 @@ typedef struct DRWCullingState {
 } DRWCullingState;
 
 /* We count on the fact that unsigned integers wrap around whe overflowing. */
-#define DRW_NEXT_RESOURCE_HANDLE(handle) \
+#define INCREMENT_RESOURCE_HANDLE(handle) \
   do { \
     if ((handle).id++ == 511) { \
       (handle).chunk++; \
@@ -141,8 +142,7 @@ BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
 typedef struct DRWCallState {
   DRWCullingState *culling;
   uchar flag;
-  DRWObjectMatrix *ob_mats;
-  DRWObjectInfos *ob_infos;
+  DRWResourceHandle handle;
 } DRWCallState;
 
 typedef struct DRWCall {
@@ -172,6 +172,10 @@ typedef enum {
   DRW_UNIFORM_TEXTURE_REF,
   DRW_UNIFORM_BLOCK,
   DRW_UNIFORM_BLOCK_PERSIST,
+  /** Per drawcall uniforms/UBO */
+  DRW_UNIFORM_BLOCK_OBMATS,
+  DRW_UNIFORM_BLOCK_OBINFOS,
+  DRW_UNIFORM_DRAWID,
 } DRWUniformType;
 
 struct DRWUniform {
@@ -210,13 +214,14 @@ struct DRWShadingGroup {
   /** Stencil mask to use for stencil test / write operations */
   uint stencil_mask;
 
-  /* Builtin matrices locations */
+  /* Builtin uniforms locations
+   * (here for backward compatibilities with builtin shaders) */
   int model;
   int modelinverse;
   int modelviewprojection;
   int orcotexfac;
-  int callid;
   int objectinfo;
+  int callid;
 
   DRWPass *pass_parent; /* backlink to pass we're in */
 };

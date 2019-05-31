@@ -572,33 +572,40 @@ static void draw_compute_culling(DRWView *view)
 /** \name Draw (DRW_draw)
  * \{ */
 
-static void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
+BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
 {
   BLI_assert(call);
-  DRWCallState *state = call->state;
+  DRWResourceHandle handle = call->state->handle;
 
-  if (shgroup->model != -1) {
-    GPU_shader_uniform_vector(
-        shgroup->shader, shgroup->model, 16, 1, (float *)state->ob_mats->model);
+  if (shgroup->model != -1 || shgroup->modelinverse != -1) {
+    DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(
+        DST.vmempool->obmats, handle.chunk, handle.id);
+    if (shgroup->model != -1) {
+      GPU_shader_uniform_vector(shgroup->shader, shgroup->model, 16, 1, (float *)ob_mats->model);
+    }
+    if (shgroup->modelinverse != -1) {
+      GPU_shader_uniform_vector(
+          shgroup->shader, shgroup->modelinverse, 16, 1, (float *)ob_mats->modelinverse);
+    }
+    /* Still supported for compatibility with gpu_shader_* but should be forbidden
+     * and is slow (since it does not cache the result). */
+    if (shgroup->modelviewprojection != -1) {
+      float mvp[4][4];
+      mul_m4_m4m4(mvp, DST.view_active->storage.persmat, ob_mats->model);
+      GPU_shader_uniform_vector(
+          shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)mvp);
+    }
   }
-  if (shgroup->modelinverse != -1) {
-    GPU_shader_uniform_vector(
-        shgroup->shader, shgroup->modelinverse, 16, 1, (float *)state->ob_mats->modelinverse);
-  }
-  if (shgroup->objectinfo != -1) {
-    GPU_shader_uniform_vector(
-        shgroup->shader, shgroup->objectinfo, 4, 1, &state->ob_infos->ob_index);
-  }
-  if (shgroup->orcotexfac != -1) {
-    GPU_shader_uniform_vector(
-        shgroup->shader, shgroup->orcotexfac, 4, 2, (float *)state->ob_infos->orcotexfac);
-  }
-  /* Still supported for compatibility with gpu_shader_* but should be forbidden
-   * and is slow (since it does not cache the result). */
-  if (shgroup->modelviewprojection != -1) {
-    float mvp[4][4];
-    mul_m4_m4m4(mvp, DST.view_active->storage.persmat, state->ob_mats->model);
-    GPU_shader_uniform_vector(shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)mvp);
+  if (shgroup->objectinfo != -1 && shgroup->orcotexfac != -1) {
+    DRWObjectInfos *ob_infos = BLI_memblock_elem_get(
+        DST.vmempool->obmats, handle.chunk, handle.id);
+    if (shgroup->objectinfo != -1) {
+      GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 4, 1, &ob_infos->ob_index);
+    }
+    if (shgroup->orcotexfac != -1) {
+      GPU_shader_uniform_vector(
+          shgroup->shader, shgroup->orcotexfac, 4, 2, (float *)ob_infos->orcotexfac);
+    }
   }
 }
 
@@ -795,7 +802,10 @@ static void release_ubo_slots(bool with_persist)
   }
 }
 
-static void draw_update_uniforms(DRWShadingGroup *shgroup)
+static void draw_update_uniforms(DRWShadingGroup *shgroup,
+                                 int *obmats_loc,
+                                 int *obinfos_loc,
+                                 int *drawid_loc)
 {
   for (DRWUniform *uni = shgroup->uniforms; uni; uni = uni->next) {
     GPUTexture *tex;
@@ -850,10 +860,21 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup)
         bind_ubo(ubo, BIND_PERSIST);
         GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
         break;
+      case DRW_UNIFORM_BLOCK_OBMATS:
+        *obmats_loc = uni->location;
+        /* TODO add UBO binding here to avoid assert bellow. */
+        break;
+      case DRW_UNIFORM_BLOCK_OBINFOS:
+        *obinfos_loc = uni->location;
+        /* TODO add UBO binding here to avoid assert bellow. */
+        break;
+      case DRW_UNIFORM_DRAWID:
+        *drawid_loc = uni->location;
+        break;
     }
   }
 
-  BLI_assert(ubo_bindings_validate(shgroup));
+  // BLI_assert(ubo_bindings_validate(shgroup));
 }
 
 BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call)
@@ -910,6 +931,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 
   const bool shader_changed = (DST.shader != shgroup->shader);
   bool use_tfeedback = false;
+  int obmats_loc = -1;
+  int obinfos_loc = -1;
+  int drawid_loc = -1;
 
   if (shader_changed) {
     if (DST.shader) {
@@ -931,7 +955,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   drw_state_set((pass_state & shgroup->state_extra_disable) | shgroup->state_extra);
   drw_stencil_set(shgroup->stencil_mask);
 
-  draw_update_uniforms(shgroup);
+  draw_update_uniforms(shgroup, &obmats_loc, &obinfos_loc, &drawid_loc);
 
   /* Rendering Calls */
   {
@@ -956,7 +980,16 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         prev_neg_scale = neg_scale;
       }
 
-      draw_geometry_prepare(shgroup, call);
+      /* Fallback if ARB_shader_draw_parameters is not supported. */
+      if (drawid_loc != -1) {
+        int id = call->state->handle.id;
+        GPU_shader_uniform_vector_int(shgroup->shader, drawid_loc, 1, 1, &id);
+      }
+
+      if (obmats_loc == -1 || obinfos_loc == -1) {
+        /* TODO This is Legacy. Need to be removed. */
+        draw_geometry_prepare(shgroup, call);
+      }
 
       if (draw_select_do_call(shgroup, call)) {
         continue;
