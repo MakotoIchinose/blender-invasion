@@ -1332,6 +1332,7 @@ typedef enum KernelBVHLayout {
   BVH_LAYOUT_BVH4 = (1 << 1),
   BVH_LAYOUT_BVH8 = (1 << 2),
   BVH_LAYOUT_EMBREE = (1 << 3),
+  BVH_LAYOUT_EMBREE_GPU = (1 << 4),
   BVH_LAYOUT_DEFAULT = BVH_LAYOUT_BVH8,
   BVH_LAYOUT_ALL = (unsigned int)(-1),
 } KernelBVHLayout;

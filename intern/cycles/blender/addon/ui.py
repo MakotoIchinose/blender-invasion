@@ -650,6 +650,10 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
             row = col.row()
             row.active = use_cpu(context)
             row.prop(cscene, "use_bvh_embree")
+        if _cycles.with_embree:
+            row = col.row()
+            row.active = use_cuda(context)
+            row.prop(cscene, "use_bvh_embree_gpu")
         col.prop(cscene, "debug_use_spatial_splits")
         sub = col.column()
         sub.active = not cscene.use_bvh_embree or not _cycles.with_embree

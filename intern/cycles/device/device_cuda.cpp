@@ -184,7 +184,7 @@ class CUDADevice : public Device {
 
   virtual BVHLayoutMask get_bvh_layout_mask() const
   {
-    return BVH_LAYOUT_BVH2;
+    return BVH_LAYOUT_BVH2 | BVH_LAYOUT_EMBREE_GPU;
   }
 
   /*#ifdef NDEBUG

@@ -1980,6 +1980,9 @@ void MeshManager::device_update_bvh(Device *device,
   dscene->data.bvh.use_bvh_steps = (scene->params.num_bvh_time_steps != 0);
 
 #ifdef WITH_EMBREE
+  if(bparams.bvh_layout == BVH_LAYOUT_EMBREE_GPU) {
+      dscene->data.bvh.bvh_layout = BVH_LAYOUT_BVH2;
+  }
   if (bparams.bvh_layout == BVH_LAYOUT_EMBREE) {
     dscene->data.bvh.scene = ((BVHEmbree *)bvh)->scene;
   }

@@ -527,6 +527,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Use Embree as ray accelerator",
         default=False,
     )
+    use_bvh_embree_gpu: BoolProperty(
+        name="Use Embree on GPU (experimental)",
+        description="Use Embree as ray accelerator",
+        default=False,
+    )
     debug_use_spatial_splits: BoolProperty(
         name="Use Spatial Splits",
         description="Use BVH spatial splits: longer builder time, faster render",

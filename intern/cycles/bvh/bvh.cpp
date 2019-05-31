@@ -28,6 +28,7 @@
 
 #ifdef WITH_EMBREE
 #  include "bvh/bvh_embree.h"
+#  include "bvh/bvh_embree_gpu.h"
 #endif
 
 #include "util/util_foreach.h"
@@ -107,6 +108,10 @@ BVH *BVH::create(const BVHParams &params, const vector<Object *> &objects)
     case BVH_LAYOUT_EMBREE:
 #ifdef WITH_EMBREE
       return new BVHEmbree(params, objects);
+#endif
+    case BVH_LAYOUT_EMBREE_GPU:
+#ifdef WITH_EMBREE
+      return new BVHEmbreeGPU(params, objects);
 #endif
     case BVH_LAYOUT_NONE:
     case BVH_LAYOUT_ALL:

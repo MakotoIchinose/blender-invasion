@@ -14,6 +14,7 @@ set(SRC
   bvh_binning.cpp
   bvh_build.cpp
   bvh_embree.cpp
+  bvh_embree_gpu.cpp
   bvh_node.cpp
   bvh_sort.cpp
   bvh_split.cpp
@@ -28,6 +29,7 @@ set(SRC_HEADERS
   bvh_binning.h
   bvh_build.h
   bvh_embree.h
+  bvh_embree_gpu.h
   bvh_node.h
   bvh_params.h
   bvh_sort.h
