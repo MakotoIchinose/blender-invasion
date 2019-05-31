@@ -587,6 +587,29 @@ static void drw_context_state_init(void)
   }
 }
 
+static DRWCallState *draw_unit_state_create(void)
+{
+  DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
+  state->flag = 0;
+  state->matflag = 0;
+
+  unit_m4(state->model);
+  unit_m4(state->modelinverse);
+
+  copy_v3_fl(state->orcotexfac[0], 0.0f);
+  copy_v3_fl(state->orcotexfac[1], 1.0f);
+
+  state->ob_index = 0;
+  state->ob_random = 0.0f;
+
+  /* TODO(fclem) get rid of this. */
+  state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
+  state->culling->bsphere.radius = -1.0f;
+  state->culling->user_data = NULL;
+
+  return state;
+}
+
 /* It also stores viewport variable to an immutable place: DST
  * This is because a cache uniform only store reference
  * to its value. And we don't want to invalidate the cache
@@ -634,6 +657,9 @@ static void drw_viewport_var_init(void)
       DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *));
     }
 
+    /* Alloc default unit state */
+    DST.unit_state = draw_unit_state_create();
+
     DST.idatalist = GPU_viewport_instance_data_list_get(DST.viewport);
     DRW_instance_data_list_reset(DST.idatalist);
   }
@@ -646,6 +672,8 @@ static void drw_viewport_var_init(void)
 
     DST.default_framebuffer = NULL;
     DST.vmempool = NULL;
+
+    DST.unit_state = NULL;
   }
 
   DST.primary_view_ct = 0;
@@ -2552,7 +2580,7 @@ void DRW_draw_depth_loop_gpencil(struct Depsgraph *depsgraph,
 /** See #DRW_shgroup_world_clip_planes_from_rv3d. */
 static void draw_world_clip_planes_from_rv3d(GPUBatch *batch, const float world_clip_planes[6][4])
 {
-  GPU_batch_uniform_4fv_array(batch, "clipPlanes", 6, world_clip_planes[0]);
+  GPU_batch_uniform_4fv_array(batch, "WorldClipPlanes", 6, world_clip_planes[0]);
 }
 
 /**
