@@ -50,9 +50,6 @@ ccl_device_inline bool operator!=(const float3 &a, const float3 &b);
 ccl_device_inline float dot(const float3 &a, const float3 &b);
 ccl_device_inline float dot_xy(const float3 &a, const float3 &b);
 ccl_device_inline float3 cross(const float3 &a, const float3 &b);
-ccl_device_inline float3 safe_divide(const float3 &a, const float3 &b);
-ccl_device_inline float3 project(const float3 &v, const float3 &v_proj);
-ccl_device_inline float3 reflect(const float3 &i, const float3 &n);
 ccl_device_inline float3 normalize(const float3 &a);
 ccl_device_inline float3 min(const float3 &a, const float3 &b);
 ccl_device_inline float3 max(const float3 &a, const float3 &b);
@@ -67,6 +64,9 @@ ccl_device_inline float min3(float3 a);
 ccl_device_inline float max3(float3 a);
 ccl_device_inline float len(const float3 a);
 ccl_device_inline float len_squared(const float3 a);
+
+ccl_device_inline float3 reflect(const float3 i, const float3 n);
+ccl_device_inline float3 project(const float3 v, const float3 v_proj);
 
 ccl_device_inline float3 saturate3(float3 a);
 ccl_device_inline float3 safe_normalize(const float3 a);
@@ -216,25 +216,6 @@ ccl_device_inline float dot(const float3 &a, const float3 &b)
 #  endif
 }
 
-ccl_device_inline float3 safe_divide(const float3 &a, const float3 &b)
-{
-  return make_float3((b.x != 0.0f) ? a.x / b.x : 0.0f,
-                     (b.y != 0.0f) ? a.y / b.y : 0.0f,
-                     (b.z != 0.0f) ? a.z / b.z : 0.0f);
-}
-
-ccl_device_inline float3 project(const float3 &v, const float3 &v_proj)
-{
-  float lenSquared = dot(v_proj, v_proj);
-  return (lenSquared != 0.0f) ? (dot(v, v_proj) / lenSquared) * v_proj : make_float3(0.0f);
-}
-
-ccl_device_inline float3 reflect(const float3 &i, const float3 &n)
-{
-  float3 normal = normalize(n);
-  return i - 2 * normal * dot(i, normal);
-}
-
 ccl_device_inline float dot_xy(const float3 &a, const float3 &b)
 {
 #  if defined(__KERNEL_SSE41__) && defined(__KERNEL_SSE__)
@@ -340,6 +321,19 @@ ccl_device_inline float len(const float3 a)
 ccl_device_inline float len_squared(const float3 a)
 {
   return dot(a, a);
+}
+
+ccl_device_inline float3 reflect(const float3 i, const float3 n)
+{
+  float3 normal = normalize(n);
+  return i - 2 * normal * dot(i, normal);
+}
+
+ccl_device_inline float3 project(const float3 v, const float3 v_proj)
+{
+  float lenSquared = dot(v_proj, v_proj);
+  return (lenSquared != 0.0f) ? (dot(v, v_proj) / lenSquared) * v_proj :
+                                make_float3(0.0f, 0.0f, 0.0f);
 }
 
 ccl_device_inline float3 saturate3(float3 a)
