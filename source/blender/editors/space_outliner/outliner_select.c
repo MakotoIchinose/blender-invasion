@@ -1342,7 +1342,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
+  if (view_mval[0] < UI_UNIT_X ||
+      !(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
     if (deselect_all) {
       outliner_flag_set(&soops->tree, TSE_SELECTED, false);
       changed = true;
@@ -1462,6 +1463,12 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   WM_operator_properties_border_to_rctf(op, &rectf);
   UI_view2d_region_to_view_rctf(&ar->v2d, &rectf, &rectf);
 
+  /* Ensure one item is active (remove when sync selection) */
+  if (!outliner_find_active_element(&soops->tree)) {
+    TreeElement *te = soops->tree.first;
+    TREESTORE(te)->flag |= TSE_ACTIVE;
+  }
+
   for (TreeElement *te = soops->tree.first; te; te = te->next) {
     outliner_item_box_select(soops, scene, &rectf, te, select);
   }
@@ -1473,6 +1480,22 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int outliner_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ARegion *ar = CTX_wm_region(C);
+  float view_mval[2];
+  const bool tweak = RNA_boolean_get(op->ptr, "tweak");
+
+  UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &view_mval[0], &view_mval[1]);
+
+  /* Pass through if click is outside of left gutter */
+  if (tweak && view_mval[0] > UI_UNIT_X) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
+  return WM_gesture_box_invoke(C, op, event);
+}
+
 void OUTLINER_OT_select_box(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1481,7 +1504,7 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
   ot->description = "Use box selection to select tree elements";
 
   /* api callbacks */
-  ot->invoke = WM_gesture_box_invoke;
+  ot->invoke = outliner_box_select_invoke;
   ot->exec = outliner_box_select_exec;
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
@@ -1492,6 +1515,8 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
+  RNA_def_boolean(
+      ot->srna, "tweak", true, "Tweak", "Click and drag from the gutter for box selection");
   WM_operator_properties_gesture_box(ot);
   WM_operator_properties_select_operation_simple(ot);
 }
