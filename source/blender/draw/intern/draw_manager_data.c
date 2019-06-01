@@ -115,14 +115,23 @@ void drw_resource_buffer_finish(ViewportMemoryPool *vmempool)
 /** \name Uniforms (DRW_shgroup_uniform)
  * \{ */
 
-static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
-                                          int loc,
-                                          DRWUniformType type,
-                                          const void *value,
-                                          int length,
-                                          int arraysize)
+static DRWUniform *drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
+                                                 int loc,
+                                                 DRWUniformType type,
+                                                 const void *value,
+                                                 int length,
+                                                 int arraysize)
 {
-  DRWUniform *uni = BLI_memblock_alloc(DST.vmempool->uniforms);
+  /* Happens on first uniform or if chunk is full. */
+  if (shgroup->uniform_count == 0) {
+    DRWUniformChunk *unichunk = BLI_memblock_alloc(DST.vmempool->uniforms);
+    BLI_LINKS_PREPEND(shgroup->uniforms, unichunk);
+  }
+
+  DRWUniform *uni = &shgroup->uniforms->uniforms[shgroup->uniform_count];
+
+  shgroup->uniform_count = (shgroup->uniform_count + 1) % ARRAY_SIZE(shgroup->uniforms->uniforms);
+
   uni->location = loc;
   uni->type = type;
   uni->length = length;
@@ -130,11 +139,11 @@ static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
 
   switch (type) {
     case DRW_UNIFORM_INT_COPY:
-      BLI_assert(length <= 2);
+      BLI_assert(length <= 4);
       memcpy(uni->ivalue, value, sizeof(int) * length);
       break;
     case DRW_UNIFORM_FLOAT_COPY:
-      BLI_assert(length <= 2);
+      BLI_assert(length <= 4);
       memcpy(uni->fvalue, value, sizeof(float) * length);
       break;
     default:
@@ -142,7 +151,7 @@ static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
       break;
   }
 
-  BLI_LINKS_PREPEND(shgroup->uniforms, uni);
+  return uni;
 }
 
 static void drw_shgroup_builtin_uniform(
@@ -179,7 +188,8 @@ static void drw_shgroup_uniform(DRWShadingGroup *shgroup,
   BLI_assert(arraysize > 0 && arraysize <= 16);
   BLI_assert(length >= 0 && length <= 16);
 
-  drw_shgroup_uniform_create_ex(shgroup, location, type, value, length, arraysize);
+  DRWUniform *uni = drw_shgroup_uniform_create_ex(
+      shgroup, location, type, value, length, arraysize);
 
   /* If location is -2, the uniform has not yet been queried.
    * We save the name for query just before drawing. */
@@ -198,7 +208,7 @@ static void drw_shgroup_uniform(DRWShadingGroup *shgroup,
     memcpy(dst, name, len); /* Copies NULL terminator. */
 
     DST.uniform_names.buffer_ofs += len;
-    shgroup->uniforms->name_ofs = ofs;
+    uni->name_ofs = ofs;
   }
 }
 
@@ -860,6 +870,7 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint
 static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 {
   shgroup->uniforms = NULL;
+  shgroup->uniform_count = 0;
 
   /* TODO(fclem) make them builtin. */
   int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");
@@ -1084,7 +1095,7 @@ DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
   DRWShadingGroup *shgroup_new = BLI_memblock_alloc(DST.vmempool->shgroups);
 
   *shgroup_new = *shgroup;
-  shgroup_new->uniforms = NULL;
+  drw_shgroup_init(shgroup_new, shgroup_new->shader);
   shgroup_new->calls.first = NULL;
   shgroup_new->calls.last = NULL;
 

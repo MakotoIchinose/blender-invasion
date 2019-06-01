@@ -802,74 +802,81 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
                                  int *obinfos_loc,
                                  int *baseinst_loc)
 {
-  for (DRWUniform *uni = shgroup->uniforms; uni; uni = uni->next) {
-    GPUTexture *tex;
-    GPUUniformBuffer *ubo;
-    if (uni->location == -2) {
-      uni->location = GPU_shader_get_uniform_ensure(shgroup->shader,
-                                                    DST.uniform_names.buffer + uni->name_ofs);
-      if (uni->location == -1) {
-        continue;
+  for (DRWUniformChunk *unichunk = shgroup->uniforms; unichunk; unichunk = unichunk->next) {
+    DRWUniform *uni = unichunk->uniforms;
+    /* shgroup->uniform_count is 0 if the first chunk is full. */
+    int uniform_count = ((unichunk == shgroup->uniforms) && shgroup->uniform_count > 0) ?
+                            shgroup->uniform_count :
+                            ARRAY_SIZE(shgroup->uniforms->uniforms);
+    for (int i = 0; i < uniform_count; i++, uni++) {
+      GPUTexture *tex;
+      GPUUniformBuffer *ubo;
+      if (uni->location == -2) {
+        uni->location = GPU_shader_get_uniform_ensure(shgroup->shader,
+                                                      DST.uniform_names.buffer + uni->name_ofs);
+        if (uni->location == -1) {
+          continue;
+        }
       }
-    }
-    const void *data = uni->pvalue;
-    if (ELEM(uni->type, DRW_UNIFORM_INT_COPY, DRW_UNIFORM_FLOAT_COPY)) {
-      data = uni->fvalue;
-    }
-    switch (uni->type) {
-      case DRW_UNIFORM_INT_COPY:
-      case DRW_UNIFORM_INT:
-        GPU_shader_uniform_vector_int(
-            shgroup->shader, uni->location, uni->length, uni->arraysize, data);
-        break;
-      case DRW_UNIFORM_FLOAT_COPY:
-      case DRW_UNIFORM_FLOAT:
-        GPU_shader_uniform_vector(
-            shgroup->shader, uni->location, uni->length, uni->arraysize, data);
-        break;
-      case DRW_UNIFORM_TEXTURE:
-        tex = (GPUTexture *)uni->pvalue;
-        BLI_assert(tex);
-        bind_texture(tex, BIND_TEMP);
-        GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
-        break;
-      case DRW_UNIFORM_TEXTURE_PERSIST:
-        tex = (GPUTexture *)uni->pvalue;
-        BLI_assert(tex);
-        bind_texture(tex, BIND_PERSIST);
-        GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
-        break;
-      case DRW_UNIFORM_TEXTURE_REF:
-        tex = *((GPUTexture **)uni->pvalue);
-        BLI_assert(tex);
-        bind_texture(tex, BIND_TEMP);
-        GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
-        break;
-      case DRW_UNIFORM_BLOCK:
-        ubo = (GPUUniformBuffer *)uni->pvalue;
-        bind_ubo(ubo, BIND_TEMP);
-        GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
-        break;
-      case DRW_UNIFORM_BLOCK_PERSIST:
-        ubo = (GPUUniformBuffer *)uni->pvalue;
-        bind_ubo(ubo, BIND_PERSIST);
-        GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
-        break;
-      case DRW_UNIFORM_BLOCK_OBMATS:
-        *obmats_loc = uni->location;
-        ubo = DST.vmempool->matrices_ubo[0];
-        GPU_uniformbuffer_bind(ubo, 0);
-        GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
-        break;
-      case DRW_UNIFORM_BLOCK_OBINFOS:
-        *obinfos_loc = uni->location;
-        ubo = DST.vmempool->obinfos_ubo[0];
-        GPU_uniformbuffer_bind(ubo, 1);
-        GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
-        break;
-      case DRW_UNIFORM_BASE_INSTANCE:
-        *baseinst_loc = uni->location;
-        break;
+      const void *data = uni->pvalue;
+      if (ELEM(uni->type, DRW_UNIFORM_INT_COPY, DRW_UNIFORM_FLOAT_COPY)) {
+        data = uni->fvalue;
+      }
+      switch (uni->type) {
+        case DRW_UNIFORM_INT_COPY:
+        case DRW_UNIFORM_INT:
+          GPU_shader_uniform_vector_int(
+              shgroup->shader, uni->location, uni->length, uni->arraysize, data);
+          break;
+        case DRW_UNIFORM_FLOAT_COPY:
+        case DRW_UNIFORM_FLOAT:
+          GPU_shader_uniform_vector(
+              shgroup->shader, uni->location, uni->length, uni->arraysize, data);
+          break;
+        case DRW_UNIFORM_TEXTURE:
+          tex = (GPUTexture *)uni->pvalue;
+          BLI_assert(tex);
+          bind_texture(tex, BIND_TEMP);
+          GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
+          break;
+        case DRW_UNIFORM_TEXTURE_PERSIST:
+          tex = (GPUTexture *)uni->pvalue;
+          BLI_assert(tex);
+          bind_texture(tex, BIND_PERSIST);
+          GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
+          break;
+        case DRW_UNIFORM_TEXTURE_REF:
+          tex = *((GPUTexture **)uni->pvalue);
+          BLI_assert(tex);
+          bind_texture(tex, BIND_TEMP);
+          GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
+          break;
+        case DRW_UNIFORM_BLOCK:
+          ubo = (GPUUniformBuffer *)uni->pvalue;
+          bind_ubo(ubo, BIND_TEMP);
+          GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
+          break;
+        case DRW_UNIFORM_BLOCK_PERSIST:
+          ubo = (GPUUniformBuffer *)uni->pvalue;
+          bind_ubo(ubo, BIND_PERSIST);
+          GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
+          break;
+        case DRW_UNIFORM_BLOCK_OBMATS:
+          *obmats_loc = uni->location;
+          ubo = DST.vmempool->matrices_ubo[0];
+          GPU_uniformbuffer_bind(ubo, 0);
+          GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
+          break;
+        case DRW_UNIFORM_BLOCK_OBINFOS:
+          *obinfos_loc = uni->location;
+          ubo = DST.vmempool->obinfos_ubo[0];
+          GPU_uniformbuffer_bind(ubo, 1);
+          GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
+          break;
+        case DRW_UNIFORM_BASE_INSTANCE:
+          *baseinst_loc = uni->location;
+          break;
+      }
     }
   }
 
@@ -986,13 +993,12 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         if (obmats_loc != -1) {
           GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
           GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
-          resource_chunk = handle.chunk;
         }
         if (obinfos_loc != -1) {
           GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[resource_chunk]);
           GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 0);
-          resource_chunk = handle.chunk;
         }
+        resource_chunk = handle.chunk;
       }
 
       if (baseinst_loc != -1) {

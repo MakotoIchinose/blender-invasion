@@ -184,26 +184,27 @@ typedef enum {
 } DRWUniformType;
 
 struct DRWUniform {
-  DRWUniform *next; /* single-linked list */
   union {
     /* For reference or array/vector types. */
     const void *pvalue;
     /* Single values. */
-    float fvalue[2];
-    int ivalue[2];
+    float fvalue[4];
+    int ivalue[4];
   };
   int location;
   uint32_t type : 4;      /* DRWUniformType */
-  uint32_t length : 4;    /* cannot be more than 16 */
-  uint32_t arraysize : 4; /* cannot be more than 16 too */
-  uint32_t name_ofs : 20; /* name offset in name buffer. */
+  uint32_t length : 5;    /* cannot be more than 16 */
+  uint32_t arraysize : 5; /* cannot be more than 16 too */
+  uint32_t name_ofs : 18; /* name offset in name buffer. */
 };
 
 struct DRWShadingGroup {
   DRWShadingGroup *next;
 
-  GPUShader *shader;    /* Shader to bind */
-  DRWUniform *uniforms; /* Uniforms pointers */
+  GPUShader *shader;                /* Shader to bind */
+  struct DRWUniformChunk *uniforms; /* Uniforms pointers */
+
+  uint32_t uniform_count;
 
   struct {
     DRWCall *first, *last; /* Linked list of DRWCall */
@@ -288,6 +289,21 @@ typedef struct ModelUboStorage {
   float modelinverse[4][4];
 } ModelUboStorage;
 #endif
+
+/* ------------ Data Chunks --------------- */
+/**
+ * In order to keep a cache friendly data structure,
+ * we alloc most of our little data into chunks of multiple item.
+ * Iteration, allocation and memory usage are better.
+ * We loose a bit of memory by allocating more than what we need
+ * but it's counterbalanced by not needing the linked-list pointers
+ * for each item.
+ **/
+
+typedef struct DRWUniformChunk {
+  struct DRWUniformChunk *next; /* single-linked list */
+  DRWUniform uniforms[5];
+} DRWUniformChunk;
 
 /* ------------- DRAW DEBUG ------------ */
 

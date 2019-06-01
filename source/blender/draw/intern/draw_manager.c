@@ -654,7 +654,7 @@ static void drw_viewport_var_init(void)
       DST.vmempool->shgroups = BLI_memblock_create(sizeof(DRWShadingGroup));
     }
     if (DST.vmempool->uniforms == NULL) {
-      DST.vmempool->uniforms = BLI_memblock_create(sizeof(DRWUniform));
+      DST.vmempool->uniforms = BLI_memblock_create(sizeof(DRWUniformChunk));
     }
     if (DST.vmempool->views == NULL) {
       DST.vmempool->views = BLI_memblock_create(sizeof(DRWView));
