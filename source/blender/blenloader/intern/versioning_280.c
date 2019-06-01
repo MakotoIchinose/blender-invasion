@@ -3495,7 +3495,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 280, 72)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 74)) {
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
       if (scene->ed != NULL) {
         do_versions_seq_alloc_transform_and_crop(&scene->ed->seqbase);
@@ -3505,5 +3505,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   {
     /* Versioning code until next subversion bump goes here. */
+
+    for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      if (scene->master_collection != NULL) {
+        scene->master_collection->flag &= ~(COLLECTION_RESTRICT_VIEWPORT |
+                                            COLLECTION_RESTRICT_SELECT |
+                                            COLLECTION_RESTRICT_RENDER);
+      }
+    }
   }
 }
