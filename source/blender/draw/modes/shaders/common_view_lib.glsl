@@ -23,7 +23,11 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
+#ifdef GL_ARB_shader_draw_parameters
+#  define drawID gl_BaseInstanceARB
+#else
 uniform int drawID = 0;
+#endif
 
 struct ObjectMatrices {
   mat4 drw_modelMatrix;

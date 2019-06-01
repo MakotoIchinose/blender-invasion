@@ -852,7 +852,11 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");
   int model_ubo_location = GPU_shader_get_uniform_block(shader, "modelBlock");
   int info_ubo_location = GPU_shader_get_uniform_block(shader, "infoBlock");
-  int drawid_location = GPU_shader_get_uniform_ensure(shader, "drawID");
+  int drawid_location = -1;
+
+  if (!GLEW_ARB_shader_draw_parameters) {
+    drawid_location = GPU_shader_get_uniform_ensure(shader, "drawID");
+  }
 
   if (drawid_location != -1) {
     drw_shgroup_uniform_create_ex(shgroup, drawid_location, DRW_UNIFORM_DRAWID, NULL, 0, 1);
