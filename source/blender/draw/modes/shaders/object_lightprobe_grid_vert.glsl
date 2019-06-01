@@ -1,6 +1,4 @@
 
-uniform mat4 ViewProjectionMatrix;
-
 uniform float sphere_size;
 uniform ivec3 grid_resolution;
 uniform vec3 corner;

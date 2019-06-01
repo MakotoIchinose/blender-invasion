@@ -537,6 +537,7 @@ static void OBJECT_engine_init(void *vedata)
     /* Lightprobes */
     sh_data->lightprobe_grid = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_object_lightprobe_grid_vert_glsl,
                                  NULL},
@@ -2781,15 +2782,6 @@ static void DRW_shgroup_speaker(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLa
   DRW_buffer_add_entry(sgl->speaker, color, &one, ob->obmat);
 }
 
-typedef struct OBJECT_LightProbeEngineData {
-  DrawData dd;
-
-  float increment_x[3];
-  float increment_y[3];
-  float increment_z[3];
-  float corner[3];
-} OBJECT_LightProbeEngineData;
-
 static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
                                    OBJECT_StorageList *stl,
                                    OBJECT_PassList *psl,
@@ -2806,13 +2798,12 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
   OBJECT_ShadingGroupList *sgl = (ob->dtx & OB_DRAWXRAY) ? &stl->g_data->sgl_ghost :
                                                            &stl->g_data->sgl;
 
-  OBJECT_LightProbeEngineData *prb_data = (OBJECT_LightProbeEngineData *)DRW_drawdata_ensure(
-      &ob->id, &draw_engine_object_type, sizeof(OBJECT_LightProbeEngineData), NULL, NULL);
-
   if (DRW_state_is_select() || do_outlines) {
     int *call_id = shgroup_theme_id_to_probe_outline_counter(stl, theme_id, ob->base_flag);
 
     if (prb->type == LIGHTPROBE_TYPE_GRID) {
+      float corner[3];
+      float increment[3][3];
       /* Update transforms */
       float cell_dim[3], half_cell_dim[3];
       cell_dim[0] = 2.0f / (float)(prb->grid_resolution_x);
@@ -2822,38 +2813,31 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
       mul_v3_v3fl(half_cell_dim, cell_dim, 0.5f);
 
       /* First cell. */
-      copy_v3_fl(prb_data->corner, -1.0f);
-      add_v3_v3(prb_data->corner, half_cell_dim);
-      mul_m4_v3(ob->obmat, prb_data->corner);
+      copy_v3_fl(corner, -1.0f);
+      add_v3_v3(corner, half_cell_dim);
+      mul_m4_v3(ob->obmat, corner);
 
       /* Opposite neighbor cell. */
-      copy_v3_fl3(prb_data->increment_x, cell_dim[0], 0.0f, 0.0f);
-      add_v3_v3(prb_data->increment_x, half_cell_dim);
-      add_v3_fl(prb_data->increment_x, -1.0f);
-      mul_m4_v3(ob->obmat, prb_data->increment_x);
-      sub_v3_v3(prb_data->increment_x, prb_data->corner);
+      copy_v3_fl3(increment[0], cell_dim[0], 0.0f, 0.0f);
+      copy_v3_fl3(increment[1], 0.0f, cell_dim[1], 0.0f);
+      copy_v3_fl3(increment[2], 0.0f, 0.0f, cell_dim[2]);
 
-      copy_v3_fl3(prb_data->increment_y, 0.0f, cell_dim[1], 0.0f);
-      add_v3_v3(prb_data->increment_y, half_cell_dim);
-      add_v3_fl(prb_data->increment_y, -1.0f);
-      mul_m4_v3(ob->obmat, prb_data->increment_y);
-      sub_v3_v3(prb_data->increment_y, prb_data->corner);
-
-      copy_v3_fl3(prb_data->increment_z, 0.0f, 0.0f, cell_dim[2]);
-      add_v3_v3(prb_data->increment_z, half_cell_dim);
-      add_v3_fl(prb_data->increment_z, -1.0f);
-      mul_m4_v3(ob->obmat, prb_data->increment_z);
-      sub_v3_v3(prb_data->increment_z, prb_data->corner);
+      for (int i = 0; i < 3; i++) {
+        add_v3_v3(increment[i], half_cell_dim);
+        add_v3_fl(increment[i], -1.0f);
+        mul_m4_v3(ob->obmat, increment[i]);
+        sub_v3_v3(increment[i], corner);
+      }
 
       uint cell_count = prb->grid_resolution_x * prb->grid_resolution_y * prb->grid_resolution_z;
       DRWShadingGroup *grp = DRW_shgroup_create(sh_data->lightprobe_grid, psl->lightprobes);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_int_copy(grp, "call_id", *call_id);
       DRW_shgroup_uniform_int(grp, "baseId", call_id, 1); /* that's correct */
-      DRW_shgroup_uniform_vec3(grp, "corner", prb_data->corner, 1);
-      DRW_shgroup_uniform_vec3(grp, "increment_x", prb_data->increment_x, 1);
-      DRW_shgroup_uniform_vec3(grp, "increment_y", prb_data->increment_y, 1);
-      DRW_shgroup_uniform_vec3(grp, "increment_z", prb_data->increment_z, 1);
+      DRW_shgroup_uniform_vec3_copy(grp, "corner", corner);
+      DRW_shgroup_uniform_vec3_copy(grp, "increment_x", increment[0]);
+      DRW_shgroup_uniform_vec3_copy(grp, "increment_y", increment[1]);
+      DRW_shgroup_uniform_vec3_copy(grp, "increment_z", increment[2]);
       DRW_shgroup_uniform_ivec3(grp, "grid_resolution", &prb->grid_resolution_x, 1);
       if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
         DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
