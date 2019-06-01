@@ -479,11 +479,12 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
   else {
     if (DST.ob_state == NULL) {
       DST.ob_state = drw_call_state_create(obmat, ob);
+      DST.ob_state_obinfo_init = false;
     }
 
     if (shgroup->objectinfo != -1 || shgroup->orcotexfac != -1) {
-      if ((DST.ob_state->flag & DRW_CALL_OBINFOS) == 0) {
-        DST.ob_state->flag |= DRW_CALL_OBINFOS;
+      if (!DST.ob_state_obinfo_init) {
+        DST.ob_state_obinfo_init = true;
 
         DRWObjectInfos *ob_infos = BLI_memblock_elem_get(
             DST.vmempool->obinfos, DST.ob_state->handle.chunk, DST.ob_state->handle.id);

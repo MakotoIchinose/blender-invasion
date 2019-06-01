@@ -94,7 +94,6 @@
 /* Used by DRWCallState.flag */
 enum {
   DRW_CALL_NEGSCALE = (1 << 0),
-  DRW_CALL_OBINFOS = (1 << 1),
 };
 
 typedef struct DRWCullingState {
@@ -312,6 +311,8 @@ typedef struct DRWManager {
   DRWCallState *unit_state;
   /* State of the object being evaluated if already allocated. */
   DRWCallState *ob_state;
+  /** True if current DST.ob_state has its matching DRWObjectInfos init. */
+  bool ob_state_obinfo_init;
   /** Handle of current object resource in object resource arrays (DRWObjectMatrices/Infos). */
   DRWResourceHandle resource_handle;
 
