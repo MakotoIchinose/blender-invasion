@@ -662,8 +662,8 @@ void GPU_viewport_free(GPUViewport *viewport)
     GPU_uniformbuffer_free(viewport->vmempool.matrices_ubo[i]);
     GPU_uniformbuffer_free(viewport->vmempool.obinfos_ubo[i]);
   }
-  MEM_freeN(viewport->vmempool.matrices_ubo);
-  MEM_freeN(viewport->vmempool.obinfos_ubo);
+  MEM_SAFE_FREE(viewport->vmempool.matrices_ubo);
+  MEM_SAFE_FREE(viewport->vmempool.obinfos_ubo);
 
   DRW_instance_data_list_free(viewport->idatalist);
   MEM_freeN(viewport->idatalist);

@@ -813,7 +813,7 @@ static void release_ubo_slots(bool with_persist)
 static void draw_update_uniforms(DRWShadingGroup *shgroup,
                                  int *obmats_loc,
                                  int *obinfos_loc,
-                                 int *drawid_loc)
+                                 int *baseinst_loc)
 {
   for (DRWUniform *uni = shgroup->uniforms; uni; uni = uni->next) {
     GPUTexture *tex;
@@ -881,7 +881,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
         GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
         break;
       case DRW_UNIFORM_BASE_INSTANCE:
-        *drawid_loc = uni->location;
+        *baseinst_loc = uni->location;
         break;
     }
   }
@@ -945,7 +945,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   bool use_tfeedback = false;
   int obmats_loc = -1;
   int obinfos_loc = -1;
-  int drawid_loc = -1;
+  int baseinst_loc = -1;
 
   if (shader_changed) {
     if (DST.shader) {
@@ -967,7 +967,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   drw_state_set((pass_state & shgroup->state_extra_disable) | shgroup->state_extra);
   drw_stencil_set(shgroup->stencil_mask);
 
-  draw_update_uniforms(shgroup, &obmats_loc, &obinfos_loc, &drawid_loc);
+  draw_update_uniforms(shgroup, &obmats_loc, &obinfos_loc, &baseinst_loc);
 
   /* Rendering Calls */
   {
@@ -1001,10 +1001,13 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         resource_chunk = handle.chunk;
       }
 
-      if (drawid_loc != -1) {
+      if (baseinst_loc != -1) {
         /* Fallback when ARB_shader_draw_parameters is not supported. */
         int id = handle.id;
-        GPU_shader_uniform_vector_int(shgroup->shader, drawid_loc, 1, 1, &id);
+        GPU_shader_uniform_vector_int(shgroup->shader, baseinst_loc, 1, 1, &id);
+      }
+
+      if (!GLEW_ARB_shader_draw_parameters) {
         base_inst = 0;
       }
       else {
