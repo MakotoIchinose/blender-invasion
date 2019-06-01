@@ -1335,14 +1335,15 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  if (view_mval[0] < UI_UNIT_X ||
-      !(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
-    if (deselect_all) {
-      outliner_flag_set(&soops->tree, TSE_SELECTED, false);
-      changed = true;
-    }
+  te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
+
+  if (!te && deselect_all) {
+    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+    changed = true;
   }
-  else if (outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
+  /* Don't allow toggle on scene collection */
+  else if ((TREESTORE(te)->type != TSE_VIEW_COLLECTION_BASE) &&
+           outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
     outliner_item_toggle_closed(te, extend);
     changed = true;
     rebuild_tree = true;
@@ -1470,16 +1471,31 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+/* Find if x coordinate of TreeElement is over an icon or name */
+static bool outliner_item_is_co_over_name_icons(TreeElement *te, float view_co_x)
+{
+  /* Special case: count area left of Scene Collection as empty space */
+  bool outside_left = (TREESTORE(te)->type == TSE_VIEW_COLLECTION_BASE) ?
+                          (view_co_x > te->xs + UI_UNIT_X) :
+                          (view_co_x > te->xs);
+
+  return outside_left && (view_co_x < te->xend);
+}
+
 static int outliner_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
   ARegion *ar = CTX_wm_region(C);
   float view_mval[2];
   const bool tweak = RNA_boolean_get(op->ptr, "tweak");
 
   UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &view_mval[0], &view_mval[1]);
 
-  /* Pass through if click is outside of left gutter */
-  if (tweak && view_mval[0] > UI_UNIT_X) {
+  /* Find element clicked on */
+  TreeElement *te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
+
+  /* Pass through if click is over name or icons, or not tweak event */
+  if (te && tweak && outliner_item_is_co_over_name_icons(te, view_mval[0])) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
