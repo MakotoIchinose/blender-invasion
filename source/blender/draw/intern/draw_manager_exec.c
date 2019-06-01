@@ -577,7 +577,7 @@ BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
   BLI_assert(call);
   DRWResourceHandle handle = call->state->handle;
 
-  if (shgroup->model != -1 || shgroup->modelinverse != -1) {
+  if (shgroup->model != -1 || shgroup->modelinverse != -1 || shgroup->modelviewprojection != -1) {
     DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(
         DST.vmempool->obmats, handle.chunk, handle.id);
     if (shgroup->model != -1) {
@@ -703,6 +703,9 @@ static void bind_ubo(GPUUniformBuffer *ubo, char bind_type)
     /* UBO isn't bound yet. Find an empty slot and bind it. */
     idx = get_empty_slot_index(DST.RST.bound_ubo_slots);
 
+    /* [0..1] are reserved ubo slots. */
+    idx += 2;
+
     if (idx < GPU_max_ubo_binds()) {
       GPUUniformBuffer **gpu_ubo_slot = &DST.RST.bound_ubos[idx];
       /* Unbind any previous UBO. */
@@ -722,10 +725,13 @@ static void bind_ubo(GPUUniformBuffer *ubo, char bind_type)
     }
   }
   else {
+    BLI_assert(idx < 64);
     /* This UBO slot was released but the UBO is
      * still bound here. Just flag the slot again. */
     BLI_assert(DST.RST.bound_ubos[idx] == ubo);
   }
+  /* Remove offset for flag bitfield. */
+  idx -= 2;
   set_bound_flags(&DST.RST.bound_ubo_slots, &DST.RST.bound_ubo_slots_persist, idx, bind_type);
 }
 
@@ -862,11 +868,15 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
         break;
       case DRW_UNIFORM_BLOCK_OBMATS:
         *obmats_loc = uni->location;
-        /* TODO add UBO binding here to avoid assert bellow. */
+        ubo = DST.vmempool->matrices_ubo[0];
+        GPU_uniformbuffer_bind(ubo, 0);
+        GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
         break;
       case DRW_UNIFORM_BLOCK_OBINFOS:
         *obinfos_loc = uni->location;
-        /* TODO add UBO binding here to avoid assert bellow. */
+        ubo = DST.vmempool->obinfos_ubo[0];
+        GPU_uniformbuffer_bind(ubo, 1);
+        GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
         break;
       case DRW_UNIFORM_DRAWID:
         *drawid_loc = uni->location;
@@ -874,10 +884,10 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
     }
   }
 
-  // BLI_assert(ubo_bindings_validate(shgroup));
+  BLI_assert(ubo_bindings_validate(shgroup));
 }
 
-BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call)
+BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, uint base_inst)
 {
 #ifdef USE_GPU_SELECT
   if ((G.f & G_FLAG_PICKSEL) == 0) {
@@ -910,7 +920,7 @@ BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call)
         draw_geometry_execute(shgroup, call->batch, 0, 0, start, count);
       }
       else {
-        draw_geometry_execute(shgroup, call->batch, start, count, 0, 0);
+        draw_geometry_execute(shgroup, call->batch, start, count, base_inst, 0);
       }
       start += count;
     }
@@ -960,8 +970,11 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   /* Rendering Calls */
   {
     bool prev_neg_scale = false;
+    uint resource_chunk = 0;
+    uint base_inst = 0;
     int callid = 0;
     for (DRWCall *call = shgroup->calls.first; call; call = call->next) {
+      DRWResourceHandle handle = call->state->handle;
 
       if (draw_call_is_culled(call, DST.view_active)) {
         continue;
@@ -980,10 +993,16 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         prev_neg_scale = neg_scale;
       }
 
-      /* Fallback if ARB_shader_draw_parameters is not supported. */
+      if ((obmats_loc != -1) && (resource_chunk != handle.chunk)) {
+        GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
+        GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
+        resource_chunk = handle.chunk;
+      }
+
       if (drawid_loc != -1) {
-        int id = call->state->handle.id;
+        int id = handle.id;
         GPU_shader_uniform_vector_int(shgroup->shader, drawid_loc, 1, 1, &id);
+        base_inst = 0;
       }
 
       if (obmats_loc == -1 || obinfos_loc == -1) {
@@ -991,15 +1010,19 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         draw_geometry_prepare(shgroup, call);
       }
 
-      if (draw_select_do_call(shgroup, call)) {
+      if (draw_select_do_call(shgroup, call, base_inst)) {
         continue;
       }
 
       draw_geometry_execute(
-          shgroup, call->batch, call->vert_first, call->vert_count, 0, call->inst_count);
+          shgroup, call->batch, call->vert_first, call->vert_count, base_inst, call->inst_count);
     }
     /* Reset state */
     glFrontFace(GL_CCW);
+
+    if (obmats_loc != -1) {
+      GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
+    }
   }
 
   if (use_tfeedback) {

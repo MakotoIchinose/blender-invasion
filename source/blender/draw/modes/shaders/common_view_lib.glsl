@@ -23,8 +23,20 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
-uniform mat4 ModelMatrix;
-uniform mat4 ModelMatrixInverse;
+uniform int drawID = 0;
+
+struct ObjectMatrices {
+  mat4 drw_modelMatrix;
+  mat4 drw_modelMatrixInverse;
+};
+
+layout(std140) uniform modelBlock
+{
+  ObjectMatrices drw_matrices[512];
+};
+
+#define ModelMatrix (drw_matrices[drawID + gl_InstanceID].drw_modelMatrix)
+#define ModelMatrixInverse (drw_matrices[drawID + gl_InstanceID].drw_modelMatrixInverse)
 
 /** Transform shortcuts. */
 /* Rule of thumb: Try to reuse world positions and normals because converting though viewspace
