@@ -880,7 +880,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
         GPU_uniformbuffer_bind(ubo, 1);
         GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
         break;
-      case DRW_UNIFORM_DRAWID:
+      case DRW_UNIFORM_BASE_INSTANCE:
         *drawid_loc = uni->location;
         break;
     }

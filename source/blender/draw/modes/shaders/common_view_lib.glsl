@@ -1,4 +1,5 @@
 #define COMMON_VIEW_LIB
+#define DRW_RESOURCE_CHUNK_LEN 512
 
 /* keep in sync with DRWManager.view_data */
 layout(std140) uniform viewBlock
@@ -23,10 +24,18 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
-#ifdef GL_ARB_shader_draw_parameters
-#  define drawID gl_BaseInstanceARB
+#if defined(GL_ARB_shader_draw_parameters) && defined(GPU_VERTEX_SHADER)
+#  define resource_id (gl_BaseInstanceARB + gl_InstanceID)
 #else
-uniform int drawID = 0;
+uniform int baseInstance = 0;
+#  ifdef GPU_VERTEX_SHADER
+#    define resource_id (baseInstance + gl_InstanceID)
+#  else
+/* This is a fallback when using it in a fragement/geometry shader.
+ * In this case, we cannot do drawcall merging and we must disable
+ * it explicitly in the shading group. */
+#    define resource_id baseInstance
+#  endif
 #endif
 
 struct ObjectMatrices {
@@ -36,11 +45,11 @@ struct ObjectMatrices {
 
 layout(std140) uniform modelBlock
 {
-  ObjectMatrices drw_matrices[512];
+  ObjectMatrices drw_matrices[DRW_RESOURCE_CHUNK_LEN];
 };
 
-#define ModelMatrix (drw_matrices[drawID + gl_InstanceID].drw_modelMatrix)
-#define ModelMatrixInverse (drw_matrices[drawID + gl_InstanceID].drw_modelMatrixInverse)
+#define ModelMatrix (drw_matrices[resource_id].drw_modelMatrix)
+#define ModelMatrixInverse (drw_matrices[resource_id].drw_modelMatrixInverse)
 
 /** Transform shortcuts. */
 /* Rule of thumb: Try to reuse world positions and normals because converting though viewspace

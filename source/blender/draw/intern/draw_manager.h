@@ -114,8 +114,10 @@ typedef struct DRWCullingState {
   } while (0)
 
 /* Minimum max UBO size is 64KiB. We take the largest
- * UBO struct and alloc the max number. */
-#define DRW_RESOURCE_CHUNK_LEN ((1 << 16) / sizeof(DRWObjectMatrix))
+ * UBO struct and alloc the max number.
+ * ((1 << 16) / sizeof(DRWObjectMatrix)) = 512
+ * Keep in sync with common_view_lib.glsl */
+#define DRW_RESOURCE_CHUNK_LEN 512
 
 typedef struct DRWResourceHandle {
   uint32_t id : 9;
@@ -173,7 +175,7 @@ typedef enum {
   /** Per drawcall uniforms/UBO */
   DRW_UNIFORM_BLOCK_OBMATS,
   DRW_UNIFORM_BLOCK_OBINFOS,
-  DRW_UNIFORM_DRAWID,
+  DRW_UNIFORM_BASE_INSTANCE,
 } DRWUniformType;
 
 struct DRWUniform {
