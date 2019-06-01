@@ -1,5 +1,4 @@
 
-uniform vec4 OrcoTexCoFactors[2];
 uniform float slicePosition;
 uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 

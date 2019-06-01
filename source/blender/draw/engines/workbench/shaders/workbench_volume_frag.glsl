@@ -1,6 +1,4 @@
 
-uniform vec4 OrcoTexCoFactors[2];
-
 uniform sampler2D depthBuffer;
 
 uniform sampler3D densityTexture;
