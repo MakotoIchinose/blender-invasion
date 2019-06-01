@@ -73,6 +73,9 @@ typedef struct CurveMap {
   float total_length;
   /** Number of segments for sampled path HANS-TODO: This should probably move to the CurveMapping Struct*/
   int nsegments;
+  /** Segment point location table */
+  float *x_segment_vals;
+  float *y_segment_vals; /* HANS-TODO: Make sure these get freed too */
 
 } CurveMap;
 

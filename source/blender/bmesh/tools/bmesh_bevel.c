@@ -56,9 +56,8 @@
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
-
+#define DEBUG_CUSTOM_PROFILE_SAMPLE 0
 #define DEBUG_CUSTOM_PROFILE 1
-
 
 /* happens far too often, uncomment for development */
 // #define BEVEL_ASSERT_PROJECT
@@ -1648,11 +1647,104 @@ static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n,
 }
 
 
-static void calculate_custom_profile(BevelParams *bp, BoundVert *bndv)
-{
+/* This does the same thing as the regular calculate profile function, but it uses the
+ * custom profile points instead of the normal ones. Eventually, when the custom and normal
+ * profile spacings are merged, this function will be redundant, but for now, I will call this
+ * function in certain cases where I am working on the custom profile
+ * HANS-TODO: Get rid of this function when all custom profile cases are completed */
+static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv) {
+  int i, k, ns;
+  const double *xvals, *yvals;
+  float co[3], co2[3], p[3], m[4][4];
+  float *prof_co, *prof_co_k;
+  float r;
+  bool need_2, map_ok;
+  Profile *pro = &bndv->profile;
 
+  /* HANS-TODO: If the goal of this function is to translate the 2D coords of the profile spacing
+   * into 3D for the actual placement of the profile verts, I'm not sure that this function will
+   * actually have to be changed, because that process should be the same for different vert locations.
+   * So figure out if that's what this function does. */
+
+  /* This function should do the exact same thing for the custom profiles, so it shouldn't need to be changed */
+
+  if (bp->seg == 1) {
+    return;
+  }
+
+  need_2 = bp->seg != bp->pro_spacing.seg_2;
+  if (!pro->prof_co) {
+    pro->prof_co = (float *)BLI_memarena_alloc(bp->mem_arena, ((size_t)bp->seg + 1) * 3 * sizeof(float));
+    if (need_2) {
+      pro->prof_co_2 = (float *)BLI_memarena_alloc(
+          bp->mem_arena, ((size_t)bp->pro_spacing.seg_2 + 1) * 3 * sizeof(float));
+    }
+    else {
+      pro->prof_co_2 = pro->prof_co;
+    }
+  }
+  r = pro->super_r;
+  if (r == PRO_LINE_R) {
+    map_ok = false;
+  }
+  else {
+    map_ok = make_unit_square_map(pro->coa, pro->midco, pro->cob, m);
+  }
+  /* The first iteration is the nseg case, the second is the seg_2 case if it's needed */
+  for (i = 0; i < 2; i++) {
+    if (i == 0) {
+      ns = bp->seg;
+      xvals = bp->pro_spacing.xvals_custom;
+      yvals = bp->pro_spacing.yvals_custom;
+      prof_co = pro->prof_co;
+    }
+    else {
+      if (!need_2) {
+        break; /* shares coords with pro->prof_co */
+      }
+      ns = bp->pro_spacing.seg_2;
+      xvals = bp->pro_spacing.xvals_2_custom;
+      yvals = bp->pro_spacing.yvals_2_custom;
+      prof_co = pro->prof_co_2;
+    }
+    /* HANS-TODO: Why this assert? */
+    BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
+
+    /* Iterate over the vertices along the boundary arc */
+    for (k = 0; k <= ns; k++) {
+      if (k == 0) {
+        copy_v3_v3(co, pro->coa);
+      }
+      else if (k == ns) {
+        copy_v3_v3(co, pro->cob);
+      }
+      else {
+        if (map_ok) {
+          p[0] = (float)xvals[k];
+          p[1] = (float)yvals[k];
+          p[2] = 0.0f;
+          mul_v3_m4v3(co, m, p); /* HANS-QUESTION: What's the reason to have this and the final projection? */
+        }
+        else {
+          interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
+        }
+      }
+      /* project co onto final profile plane */
+      prof_co_k = prof_co + 3 * k; /* 3 times deeper because each coord takes up 3 spaces */
+      if (!is_zero_v3(pro->proj_dir)) {
+        add_v3_v3v3(co2, co, pro->proj_dir);
+        /* pro->plane_co and pro->plane_no are build in "set_profile_params" */
+        if (!isect_line_plane_v3(prof_co_k, co, co2, pro->plane_co, pro->plane_no)) {
+          /* shouldn't happen */
+          copy_v3_v3(prof_co_k, co);
+        }
+      }
+      else {
+        copy_v3_v3(prof_co_k, co);
+      }
+    }
+  }
 }
-
 
 /* Calculate the actual coordinate values for bndv's profile.
  * This is only needed if bp->seg > 1.
@@ -1675,12 +1767,8 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
    * into 3D for the actual placement of the profile verts, I'm not sure that this function will
    * actually have to be changed, because that process should be the same for different vert locations.
    * So figure out if that's what this function does. */
-  /*
-  if (bp->use_custom_profile) {
-    calculate_custom_profile(bp, bndv);
-    return;
-  }
-  */
+
+  /* This function should do the exact same thing for the custom profiles, so it shouldn't need to be changed */
 
   if (bp->seg == 1) {
     return;
@@ -1688,10 +1776,10 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
 
   need_2 = bp->seg != bp->pro_spacing.seg_2;
   if (!pro->prof_co) {
-    pro->prof_co = (float *)BLI_memarena_alloc(bp->mem_arena, (bp->seg + 1) * 3 * sizeof(float));
+    pro->prof_co = (float *)BLI_memarena_alloc(bp->mem_arena, ((size_t)bp->seg + 1) * 3 * sizeof(float));
     if (need_2) {
       pro->prof_co_2 = (float *)BLI_memarena_alloc(
-          bp->mem_arena, (bp->pro_spacing.seg_2 + 1) * 3 * sizeof(float));
+          bp->mem_arena, ((size_t)bp->pro_spacing.seg_2 + 1) * 3 * sizeof(float));
     }
     else {
       pro->prof_co_2 = pro->prof_co;
@@ -1704,6 +1792,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
   else {
     map_ok = make_unit_square_map(pro->coa, pro->midco, pro->cob, m);
   }
+  /* The first iteration is the nseg case, the second is the seg_2 case if it's needed */
   for (i = 0; i < 2; i++) {
     if (i == 0) {
       ns = bp->seg;
@@ -1720,7 +1809,10 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
       yvals = bp->pro_spacing.yvals_2;
       prof_co = pro->prof_co_2;
     }
+    /* HANS-TODO: Why this assert? */
     BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
+
+    /* Iterate over the vertices along the boundary arc */
     for (k = 0; k <= ns; k++) {
       if (k == 0) {
         copy_v3_v3(co, pro->coa);
@@ -1730,19 +1822,20 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
       }
       else {
         if (map_ok) {
-          p[0] = xvals[k];
-          p[1] = yvals[k];
+          p[0] = (float)xvals[k];
+          p[1] = (float)yvals[k];
           p[2] = 0.0f;
-          mul_v3_m4v3(co, m, p);
+          mul_v3_m4v3(co, m, p); /* HANS-QUESTION: What's the reason to have this and the final projection? */
         }
         else {
           interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
         }
       }
       /* project co onto final profile plane */
-      prof_co_k = prof_co + 3 * k;
+      prof_co_k = prof_co + 3 * k; /* 3 times deeper because each coord takes up 3 spaces */
       if (!is_zero_v3(pro->proj_dir)) {
         add_v3_v3v3(co2, co, pro->proj_dir);
+        /* pro->plane_co and pro->plane_no are build in "set_profile_params" */
         if (!isect_line_plane_v3(prof_co_k, co, co2, pro->plane_co, pro->plane_no)) {
           /* shouldn't happen */
           copy_v3_v3(prof_co_k, co);
@@ -3800,6 +3893,7 @@ static VMesh *make_cube_corner_square_in(MemArena *mem_arena, int nseg)
  * This has BoundVerts at (1,0,0), (0,1,0) and (0,0,1), with quarter circle arcs
  * on the faces for the orthogonal planes through the origin.
  */
+/* HANS-QUESTION: Is this a special case where you're bevelling the corner of a cube? */
 static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
 {
   MemArena *mem_arena = bp->mem_arena;
@@ -4980,8 +5074,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     for (k = 1; k < ns; k++) {
       va = mesh_vert(vm, weld1->index, 0, k)->co;
       vb = mesh_vert(vm, weld2->index, 0, ns - k)->co;
-      /* if one of the profiles is on a flat plane,
-       * just use the boundary point of the other */
+      /* if one of the profiles is on a flat plane, just use the boundary point of the other */
       if (weld1->profile.super_r == PRO_LINE_R && weld2->profile.super_r != PRO_LINE_R) {
         copy_v3_v3(co, vb);
       }
@@ -5001,6 +5094,8 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
 
   switch (vm->mesh_kind) {
     case M_NONE:
+      /* HANS-QUESTION: How is the purpose here different than
+       * the purpose of the code in the "if (weld)" section? */
       if (n == 2 && bp->vertex_only) {
         bevel_vert_two_edges(bp, bm, bv);
       }
@@ -6338,15 +6433,15 @@ static void set_custom_profile_spacing(BevelParams *bp, int segments, double *xv
     for (int i = 0; i < seg; i++) {
       curvemapping_path_evaluate(bp->profile_curve, i, &x_temp, &y_temp);
       xvals[i] = (double)x_temp;
-      yvals[i] = (double)y_temp;
+      yvals[i] = 1.0 - (double)y_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
     }
   } else {
-    /* Get locations from  points on plot */
+    /* Sample Only Points: Get locations from  points on plot */
     for (int i = 0; i < bp->seg; i++) {
       x_temp = bp->profile_curve->cm[0].curve[i].x;
       y_temp = bp->profile_curve->cm[0].curve[i].y;
       xvals[i] = (double)x_temp;
-      yvals[i] = (double)y_temp;
+      yvals[i] = 1.0 - (double)y_temp;
     }
   }
 }
@@ -6405,7 +6500,7 @@ static void set_profile_spacing(BevelParams *bp)
         bp->pro_spacing.yvals_2_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
 
         /* Don't use the special function to just sample the coords of the points here
-         * because we need more samples than that */
+         * because we need more samples than the number of points on the plot */
         set_custom_profile_spacing(bp, seg_2, bp->pro_spacing.xvals_2_custom, bp->pro_spacing.yvals_2_custom);
       }
 
@@ -6727,8 +6822,9 @@ void BM_mesh_bevel(BMesh *bm,
   }
 
   /* TEST PROFILE CURVE */
-#if DEBUG_CUSTOM_PROFILE
-  printf("=========== NEW BEVEL CALL ===========\n\n");
+#if DEBUG_CUSTOM_PROFILE_SAMPLE
+  printf("\n=========== NEW BEVEL CALL ===========\n");
+  printf("%d segments\n", bp.seg);
   if (bp.use_custom_profile && bp.profile_curve != NULL) {
     curvemapping_path_initialize(profile_curve, bp.seg); /* will be necessary to fill a table */
 
@@ -6740,12 +6836,12 @@ void BM_mesh_bevel(BMesh *bm,
         printf("Segment %d position is (%f, %f)\n", i, x, y);
       }
     } else {
-      printf("Sampling just the points on the graph");
+      printf("Sampling just the points on the graph\n");
       for (int i = 0; i < bp.seg; i++) {
         float x, y;
         x = bp.profile_curve->cm[0].curve[i].x;
         y = bp.profile_curve->cm[0].curve[i].y;
-        printf("Segmend %d position is (%f, %f\n", i, x, y);
+        printf("Segment %d position is (%f, %f\n", i, x, y);
       }
     }
   }
@@ -6873,7 +6969,7 @@ void BM_mesh_bevel(BMesh *bm,
     }
 
 #if DEBUG_CUSTOM_PROFILE
-    printf("Checking the normal spacings in the profile spacing struct:\n");
+    printf("The normal spacings in the profile spacing struct:\n");
     /* Figure out what's already in the ProfileSpacing struct to see if I should put the 2D custom profile sampling there */
     if (bp.pro_spacing.xvals != NULL) {
       for (int i = 0; i < bp.seg; i++) {
@@ -6885,8 +6981,8 @@ void BM_mesh_bevel(BMesh *bm,
     }
     if (bp.use_custom_profile) {
       if (bp.pro_spacing.xvals != NULL) {
-        printf("Checking the custom spacings in the profile spacing struct:\n");
-        for (int i = 0; i < bp.pro_spacing.seg_2; i++) {
+        printf("The custom spacings in the profile spacing struct:\n");
+        for (int i = 0; i < bp.seg; i++) {
           printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals_custom[i], bp.pro_spacing.yvals_custom[i]);
         }
         printf("\n");

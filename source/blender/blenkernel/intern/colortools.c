@@ -904,7 +904,8 @@ void curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
     }
   }
 
-//  qsort(cmp, cuma->totpoint, sizeof(CurveMapPoint), sort_curvepoints);
+  /* HANS-TODO: Reenable this for other curves! */
+  /* qsort(cmp, cuma->totpoint, sizeof(CurveMapPoint), sort_curvepoints); */
 
   /* remove doubles, threshold set on 1% of default range */
   if (rem_doubles && cuma->totpoint > 2) {
@@ -1291,8 +1292,46 @@ void curvemap_path_evaluate(const struct CurveMap *cuma, float length_portion, f
   *y_out = lerp(cuma->curve[i].y, cuma->curve[i+1].y, lerp_factor);
 }
 
-static void curvemap_path_make_table(const struct CurveMap *cuma) {
+
+/* HANS-TODO: Fix this, it can't be the right method, because it doesn't generalize well to
+ * small distances between points. There could be a lot of points inside one segment length,
+ * but this code assumes that there's only 1. I need to think harder about what method to use here.
+ * But really it might not be worth pursuing this much because there might be a more general solution
+ * that includes curves and the small speedup it would give isn't a high priority right now */
+static void curvemap_path_make_table(struct CurveMap *cuma) {
   /* Fill table with values for the position of the graph at each of the segments */
+  float segment_length = cuma->total_length / cuma->nsegments;
+  float length_travelled = 0.0f;
+  float distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, 0);
+  float distance_to_previous_point = 0.0f;
+  float f;
+  int i_point = 0;
+
+  cuma->x_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table x");
+  cuma->y_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table y"); /* HANS-TODO: Free these!! Where?? */
+
+  /* Travel along the path, recording locations of segments as we pass where they should be */
+  for (int i = 0; i < cuma->nsegments; i++) {
+    if (segment_length < distance_to_next_point) {
+      /* There is room for the next segment before the next point */
+      f = (distance_to_previous_point + segment_length) / (distance_to_previous_point + distance_to_next_point);
+      cuma->x_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+      cuma->y_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+      distance_to_next_point -= segment_length;
+      distance_to_previous_point += segment_length;
+    }
+    else {
+      /* We have to pass over a CurveMapPoint to get to the next segment */
+      float left_after_pass = segment_length - distance_to_next_point;
+      i_point++;
+      distance_to_previous_point = segment_length - distance_to_next_point;
+      distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, i_point);
+      f = left_after_pass / (distance_to_previous_point + distance_to_next_point);
+      cuma->x_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+      cuma->y_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+    }
+    length_travelled += segment_length;
+  }
 
 }
 
