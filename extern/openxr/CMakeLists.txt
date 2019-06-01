@@ -40,6 +40,7 @@ add_custom_target(
     ${OPENXR_SDK_INCLUDES}/openxr/openxr_platform_defines.h
     ${OPENXR_SDK_INCLUDES}/openxr/openxr.h
     ${OPENXR_SDK_INCLUDES}/openxr/openxr_platform.h
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 add_custom_target(
