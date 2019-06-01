@@ -355,6 +355,16 @@ void DRW_shgroup_uniform_vec2_copy(DRWShadingGroup *shgroup, const char *name, c
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_FLOAT_COPY, value, 2, 1);
 }
 
+void DRW_shgroup_uniform_vec3_copy(DRWShadingGroup *shgroup, const char *name, const float *value)
+{
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_FLOAT_COPY, value, 3, 1);
+}
+
+void DRW_shgroup_uniform_vec4_copy(DRWShadingGroup *shgroup, const char *name, const float *value)
+{
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_FLOAT_COPY, value, 4, 1);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
