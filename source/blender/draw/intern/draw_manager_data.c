@@ -890,12 +890,13 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
         shgroup, info_ubo_location, DRW_UNIFORM_BLOCK_OBINFOS, NULL, 0, 1);
 
     shgroup->orcotexfac = -1;
-    shgroup->objectinfo = -1;
+    /* Abusing this loc. */
+    shgroup->objectinfo = 1;
   }
   else {
     /* TODO remove */
     shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
-    shgroup->objectinfo = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_INFO);
+    shgroup->objectinfo = -1;
   }
 
   if (view_ubo_location != -1) {

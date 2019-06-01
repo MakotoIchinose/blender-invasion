@@ -58,6 +58,8 @@
 extern char datatoc_gpu_shader_material_glsl[];
 extern char datatoc_gpu_shader_geometry_glsl[];
 
+extern char datatoc_gpu_shader_common_obinfos_lib_glsl[];
+
 static char *glsl_material_library = NULL;
 
 /* -------------------- GPUPass Cache ------------------ */
@@ -790,6 +792,9 @@ static void codegen_call_functions(DynStr *ds, ListBase *nodes, GPUOutput *final
         else if (input->builtin == GPU_OBJECT_MATRIX) {
           BLI_dynstr_append(ds, "objmat");
         }
+        else if (input->builtin == GPU_OBJECT_INFO) {
+          BLI_dynstr_append(ds, "ObjectInfo");
+        }
         else if (input->builtin == GPU_INVERSE_OBJECT_MATRIX) {
           BLI_dynstr_append(ds, "objinv");
         }
@@ -851,6 +856,10 @@ static char *code_generate_fragment(GPUMaterial *material,
 
   codegen_set_unique_ids(nodes);
   *rbuiltins = builtins = codegen_process_uniforms_functions(material, ds, nodes);
+
+  if (builtins & GPU_OBJECT_INFO) {
+    BLI_dynstr_append(ds, datatoc_gpu_shader_common_obinfos_lib_glsl);
+  }
 
   if (builtins & GPU_BARYCENTRIC_TEXCO) {
     BLI_dynstr_append(ds, "in vec2 barycentricTexCo;\n");
@@ -1000,7 +1009,7 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
         /* NOTE : Replicate changes to mesh_render_data_create() in draw_cache_impl_mesh.c */
         if (input->attr_type == CD_ORCO) {
           /* OPTI : orco is computed from local positions, but only if no modifier is present. */
-          BLI_dynstr_append(ds, "uniform vec4 OrcoTexCoFactors[2];\n");
+          BLI_dynstr_append(ds, datatoc_gpu_shader_common_obinfos_lib_glsl);
           BLI_dynstr_append(ds, "DEFINE_ATTR(vec4, orco);\n");
         }
         else if (input->attr_name[0] == '\0') {

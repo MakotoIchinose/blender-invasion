@@ -48,6 +48,8 @@ static struct {
   char *frag_shader_lib;
   char *vert_shader_str;
   char *vert_shadow_shader_str;
+  char *vert_background_shader_str;
+  char *vert_volume_shader_str;
   char *volume_shader_lib;
 
   struct GPUShader *default_prepass_sh;
@@ -602,6 +604,12 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
     e_data.vert_shadow_shader_str = BLI_string_joinN(
         datatoc_common_view_lib_glsl, datatoc_common_hair_lib_glsl, datatoc_shadow_vert_glsl);
 
+    e_data.vert_background_shader_str = BLI_string_joinN(datatoc_common_view_lib_glsl,
+                                                         datatoc_background_vert_glsl);
+
+    e_data.vert_volume_shader_str = BLI_string_joinN(datatoc_common_view_lib_glsl,
+                                                     datatoc_volumetric_vert_glsl);
+
     e_data.default_background = DRW_shader_create_with_lib(datatoc_background_vert_glsl,
                                                            NULL,
                                                            datatoc_default_world_frag_glsl,
@@ -675,7 +683,7 @@ struct GPUMaterial *EEVEE_material_world_lightprobe_get(struct Scene *scene, Wor
                                       wo,
                                       engine,
                                       options,
-                                      datatoc_background_vert_glsl,
+                                      e_data.vert_background_shader_str,
                                       NULL,
                                       e_data.frag_shader_lib,
                                       SHADER_DEFINES "#define PROBE_CAPTURE\n",
@@ -695,7 +703,7 @@ struct GPUMaterial *EEVEE_material_world_background_get(struct Scene *scene, Wor
                                       wo,
                                       engine,
                                       options,
-                                      datatoc_background_vert_glsl,
+                                      e_data.vert_background_shader_str,
                                       NULL,
                                       e_data.frag_shader_lib,
                                       SHADER_DEFINES "#define WORLD_BACKGROUND\n",
@@ -718,7 +726,7 @@ struct GPUMaterial *EEVEE_material_world_volume_get(struct Scene *scene, World *
                                      wo,
                                      engine,
                                      options,
-                                     datatoc_volumetric_vert_glsl,
+                                     e_data.vert_volume_shader_str,
                                      datatoc_volumetric_geom_glsl,
                                      e_data.volume_shader_lib,
                                      defines,
@@ -786,7 +794,7 @@ struct GPUMaterial *EEVEE_material_mesh_volume_get(struct Scene *scene, Material
                                         ma,
                                         engine,
                                         options,
-                                        datatoc_volumetric_vert_glsl,
+                                        e_data.vert_volume_shader_str,
                                         datatoc_volumetric_geom_glsl,
                                         e_data.volume_shader_lib,
                                         defines,
@@ -1810,6 +1818,8 @@ void EEVEE_materials_free(void)
   MEM_SAFE_FREE(e_data.frag_shader_lib);
   MEM_SAFE_FREE(e_data.vert_shader_str);
   MEM_SAFE_FREE(e_data.vert_shadow_shader_str);
+  MEM_SAFE_FREE(e_data.vert_background_shader_str);
+  MEM_SAFE_FREE(e_data.vert_volume_shader_str);
   MEM_SAFE_FREE(e_data.volume_shader_lib);
   DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_sh);
   DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_clip_sh);

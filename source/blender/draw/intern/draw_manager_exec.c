@@ -574,11 +574,8 @@ static void draw_compute_culling(DRWView *view)
 /** \name Draw (DRW_draw)
  * \{ */
 
-BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
+BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWResourceHandle handle)
 {
-  BLI_assert(call);
-  DRWResourceHandle handle = call->handle;
-
   if (shgroup->model != -1 || shgroup->modelinverse != -1 || shgroup->modelviewprojection != -1) {
     DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(
         DST.vmempool->obmats, handle.chunk, handle.id);
@@ -995,10 +992,17 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         prev_neg_scale = neg_scale;
       }
 
-      if ((obmats_loc != -1) && (resource_chunk != handle.chunk)) {
-        GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
-        GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
-        resource_chunk = handle.chunk;
+      if (resource_chunk != handle.chunk) {
+        if (obmats_loc != -1) {
+          GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
+          GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
+          resource_chunk = handle.chunk;
+        }
+        if (obinfos_loc != -1) {
+          GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[resource_chunk]);
+          GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 0);
+          resource_chunk = handle.chunk;
+        }
       }
 
       if (baseinst_loc != -1) {
@@ -1016,7 +1020,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 
       if (obmats_loc == -1 || obinfos_loc == -1) {
         /* TODO This is Legacy. Need to be removed. */
-        draw_geometry_prepare(shgroup, call);
+        draw_geometry_prepare(shgroup, handle);
       }
 
       if (draw_select_do_call(shgroup, call, base_inst)) {
@@ -1031,6 +1035,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 
     if (obmats_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
+    }
+    if (obinfos_loc != -1) {
+      GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[resource_chunk]);
     }
   }
 
