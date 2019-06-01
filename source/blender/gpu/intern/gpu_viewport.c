@@ -624,9 +624,6 @@ void GPU_viewport_free(GPUViewport *viewport)
   if (viewport->vmempool.calls != NULL) {
     BLI_memblock_destroy(viewport->vmempool.calls, NULL);
   }
-  if (viewport->vmempool.states != NULL) {
-    BLI_memblock_destroy(viewport->vmempool.states, NULL);
-  }
   if (viewport->vmempool.obmats != NULL) {
     BLI_memblock_destroy(viewport->vmempool.obmats, NULL);
   }

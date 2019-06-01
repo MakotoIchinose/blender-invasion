@@ -394,7 +394,7 @@ void DRW_state_reset(void)
 static bool draw_call_is_culled(DRWCall *call, DRWView *view)
 {
   DRWCullingState *culling = BLI_memblock_elem_get(
-      DST.vmempool->cullstates, call->state->handle.chunk, call->state->handle.id);
+      DST.vmempool->cullstates, call->handle.chunk, call->handle.id);
   return (culling->mask & view->culling_mask) != 0;
 }
 
@@ -577,7 +577,7 @@ static void draw_compute_culling(DRWView *view)
 BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
 {
   BLI_assert(call);
-  DRWResourceHandle handle = call->state->handle;
+  DRWResourceHandle handle = call->handle;
 
   if (shgroup->model != -1 || shgroup->modelinverse != -1 || shgroup->modelviewprojection != -1) {
     DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(
@@ -976,7 +976,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     uint base_inst = 0;
     int callid = 0;
     for (DRWCall *call = shgroup->calls.first; call; call = call->next) {
-      DRWResourceHandle handle = call->state->handle;
+      DRWResourceHandle handle = call->handle;
 
       if (draw_call_is_culled(call, DST.view_active)) {
         continue;
@@ -989,7 +989,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       }
 
       /* Negative scale objects */
-      bool neg_scale = call->state->flag & DRW_CALL_NEGSCALE;
+      bool neg_scale = call->handle.negative_scale;
       if (neg_scale != prev_neg_scale) {
         glFrontFace((neg_scale) ? GL_CW : GL_CCW);
         prev_neg_scale = neg_scale;

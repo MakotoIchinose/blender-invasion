@@ -443,42 +443,43 @@ static void drw_call_culling_init(DRWCullingState *cull, Object *ob)
   cull->user_data = NULL;
 }
 
-static DRWCallState *drw_call_state_create(float (*obmat)[4], Object *ob)
+static DRWResourceHandle drw_call_state_create(float (*obmat)[4], Object *ob)
 {
-  DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
   DRWCullingState *culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   DRWObjectMatrix *ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
-  /* FIXME Meh, not always needed byt can be accessed after creation.
+  /* FIXME Meh, not always needed but can be accessed after creation.
    * Also it needs to have the same resource handle. */
   DRWObjectInfos *ob_infos = BLI_memblock_alloc(DST.vmempool->obinfos);
   UNUSED_VARS(ob_infos);
 
-  SET_FLAG_FROM_TEST(state->flag, (ob && (ob->transflag & OB_NEG_SCALE)), DRW_CALL_NEGSCALE);
-
-  state->handle = DST.resource_handle;
+  DRWResourceHandle handle = DST.resource_handle;
   INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
+
+  handle.negative_scale = (ob && (ob->transflag & OB_NEG_SCALE)) ? 1 : 0;
 
   drw_call_matrix_init(ob_mats, ob, obmat);
   drw_call_culling_init(culling, ob);
   /* ob_infos is init only if needed. */
 
-  return state;
+  return handle;
 }
 
-static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obmat)[4], Object *ob)
+static DRWResourceHandle drw_call_handle_object(DRWShadingGroup *shgroup,
+                                                float (*obmat)[4],
+                                                Object *ob)
 {
   if (ob == NULL) {
     if (obmat == NULL) {
-      BLI_assert(DST.unit_state);
-      return DST.unit_state;
+      DRWResourceHandle handle = {.value = 0};
+      return handle;
     }
     else {
       return drw_call_state_create(obmat, NULL);
     }
   }
   else {
-    if (DST.ob_state == NULL) {
-      DST.ob_state = drw_call_state_create(obmat, ob);
+    if (DST.ob_handle.value == 0) {
+      DST.ob_handle = drw_call_state_create(obmat, ob);
       DST.ob_state_obinfo_init = false;
     }
 
@@ -487,13 +488,13 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
         DST.ob_state_obinfo_init = true;
 
         DRWObjectInfos *ob_infos = BLI_memblock_elem_get(
-            DST.vmempool->obinfos, DST.ob_state->handle.chunk, DST.ob_state->handle.id);
+            DST.vmempool->obinfos, DST.ob_handle.chunk, DST.ob_handle.id);
 
         drw_call_obinfos_init(ob_infos, ob);
       }
     }
 
-    return DST.ob_state;
+    return DST.ob_handle;
   }
 }
 
@@ -511,7 +512,7 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : obmat, ob);
+  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : obmat, ob);
   call->batch = geom;
   call->vert_first = v_sta;
   call->vert_count = v_ct; /* 0 means auto from batch. */
@@ -523,7 +524,7 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   /* Culling data. */
   if (user_data || bypass_culling) {
     DRWCullingState *culling = BLI_memblock_elem_get(
-        DST.vmempool->cullstates, call->state->handle.chunk, call->state->handle.id);
+        DST.vmempool->cullstates, call->handle.chunk, call->handle.id);
 
     if (user_data) {
       culling->user_data = user_data;
@@ -544,7 +545,7 @@ static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : NULL, ob);
+  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
   call->vert_first = 0;
   call->vert_count = vert_count;
@@ -583,7 +584,7 @@ void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : NULL, ob);
+  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
   call->vert_first = 0;
   call->vert_count = 0; /* Auto from batch. */
@@ -607,7 +608,7 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : NULL, ob);
+  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, geom);
   call->vert_first = 0;
   call->vert_count = 0; /* Auto from batch. */
@@ -771,7 +772,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, NULL, NULL);
+  call->handle = drw_call_handle_object(shgroup, NULL, NULL);
   GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->vert_count);
   call->batch = DRW_temp_batch_request(DST.idatalist, buf, prim_type);
   call->vert_first = 0;
@@ -801,7 +802,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, NULL, NULL);
+  call->handle = drw_call_handle_object(shgroup, NULL, NULL);
   GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->inst_count);
   call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf, geom);
   call->vert_first = 0;
@@ -1645,9 +1646,9 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 
   /** XXX(fclem) This is extremely inefficient. To revisit. */
   DRWObjectMatrix *a_ob_mats = BLI_memblock_elem_get(
-      DST.vmempool->obmats, call_a->state->handle.chunk, call_a->state->handle.id);
+      DST.vmempool->obmats, call_a->handle.chunk, call_a->handle.id);
   DRWObjectMatrix *b_ob_mats = BLI_memblock_elem_get(
-      DST.vmempool->obmats, call_a->state->handle.chunk, call_b->state->handle.id);
+      DST.vmempool->obmats, call_a->handle.chunk, call_b->handle.id);
 
   float tmp[3];
   sub_v3_v3v3(tmp, zsortdata->origin, a_ob_mats->model[3]);

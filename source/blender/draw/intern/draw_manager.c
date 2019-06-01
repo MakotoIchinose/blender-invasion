@@ -541,7 +541,6 @@ static void drw_viewport_cache_resize(void)
     }
 
     BLI_memblock_clear(DST.vmempool->calls, NULL);
-    BLI_memblock_clear(DST.vmempool->states, NULL);
     BLI_memblock_clear(DST.vmempool->obmats, NULL);
     BLI_memblock_clear(DST.vmempool->obinfos, NULL);
     BLI_memblock_clear(DST.vmempool->cullstates, NULL);
@@ -591,13 +590,11 @@ static void drw_context_state_init(void)
   }
 }
 
-static DRWCallState *draw_unit_state_create(void)
+static void draw_unit_state_create(void)
 {
-  DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
   DRWObjectInfos *infos = BLI_memblock_alloc(DST.vmempool->obinfos);
   DRWObjectMatrix *mats = BLI_memblock_alloc(DST.vmempool->obmats);
   DRWCullingState *culling = BLI_memblock_alloc(DST.vmempool->cullstates);
-  state->flag = 0;
 
   unit_m4(mats->model);
   unit_m4(mats->modelinverse);
@@ -614,8 +611,6 @@ static DRWCallState *draw_unit_state_create(void)
   culling->user_data = NULL;
 
   INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
-
-  return state;
 }
 
 /* It also stores viewport variable to an immutable place: DST
@@ -642,9 +637,6 @@ static void drw_viewport_var_init(void)
 
     if (DST.vmempool->calls == NULL) {
       DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCall));
-    }
-    if (DST.vmempool->states == NULL) {
-      DST.vmempool->states = BLI_memblock_create(sizeof(DRWCallState));
     }
     if (DST.vmempool->obmats == NULL) {
       uint chunk_len = sizeof(DRWObjectMatrix) * DRW_RESOURCE_CHUNK_LEN;
@@ -674,10 +666,9 @@ static void drw_viewport_var_init(void)
       DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *));
     }
 
-    DST.resource_handle.id = 0;
-    DST.resource_handle.chunk = 0;
+    DST.resource_handle.value = 0;
 
-    DST.unit_state = draw_unit_state_create();
+    draw_unit_state_create();
 
     DST.idatalist = GPU_viewport_instance_data_list_get(DST.viewport);
     DRW_instance_data_list_reset(DST.idatalist);
@@ -691,8 +682,6 @@ static void drw_viewport_var_init(void)
 
     DST.default_framebuffer = NULL;
     DST.vmempool = NULL;
-
-    DST.unit_state = NULL;
   }
 
   DST.primary_view_ct = 0;
@@ -1118,7 +1107,7 @@ static void drw_engines_world_update(Scene *scene)
 
 static void drw_engines_cache_populate(Object *ob)
 {
-  DST.ob_state = NULL;
+  DST.ob_handle.value = 0;
 
   /* HACK: DrawData is copied by COW from the duplicated object.
    * This is valid for IDs that cannot be instantiated but this
@@ -2082,7 +2071,7 @@ void DRW_render_object_iter(
     if ((object_type_exclude_viewport & (1 << ob->type)) == 0) {
       DST.dupli_parent = data_.dupli_parent;
       DST.dupli_source = data_.dupli_object_current;
-      DST.ob_state = NULL;
+      DST.ob_handle.value = 0;
       drw_duplidata_load(DST.dupli_source);
 
       if (!DST.dupli_source) {

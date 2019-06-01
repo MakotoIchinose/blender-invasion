@@ -120,8 +120,17 @@ typedef struct DRWCullingState {
 #define DRW_RESOURCE_CHUNK_LEN 512
 
 typedef struct DRWResourceHandle {
-  uint32_t id : 9;
-  uint32_t chunk : 23;
+  union {
+    struct {
+      uint32_t negative_scale : 1;
+      uint32_t id : 9;
+      uint32_t chunk : 22;
+    };
+    /** Use this to read the whole handle value as one 32bit uint.
+     *  Useful for sorting and test.
+     */
+    uint32_t value;
+  };
 } DRWResourceHandle;
 
 typedef struct DRWObjectMatrix {
@@ -140,19 +149,15 @@ typedef struct DRWObjectInfos {
 BLI_STATIC_ASSERT_ALIGN(DRWObjectMatrix, 16)
 BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
 
-typedef struct DRWCallState {
-  uchar flag;
-  DRWResourceHandle handle;
-} DRWCallState;
-
 typedef struct DRWCall {
   struct DRWCall *next;
-  DRWCallState *state;
 
   GPUBatch *batch;
   uint vert_first;
   uint vert_count;
   uint inst_count;
+
+  DRWResourceHandle handle;
 
 #ifdef USE_GPU_SELECT
   /* TODO(fclem) remove once we have a dedicated selection engine. */
@@ -309,10 +314,8 @@ typedef struct DRWManager {
   /* Cache generation */
   ViewportMemoryPool *vmempool;
   DRWInstanceDataList *idatalist;
-  /* Default Unit model matrix state without culling. */
-  DRWCallState *unit_state;
   /* State of the object being evaluated if already allocated. */
-  DRWCallState *ob_state;
+  DRWResourceHandle ob_handle;
   /** True if current DST.ob_state has its matching DRWObjectInfos init. */
   bool ob_state_obinfo_init;
   /** Handle of current object resource in object resource arrays (DRWObjectMatrices/Infos). */
