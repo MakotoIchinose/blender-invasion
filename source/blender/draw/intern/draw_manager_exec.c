@@ -576,6 +576,7 @@ static void draw_compute_culling(DRWView *view)
 
 BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWResourceHandle handle)
 {
+  /* Still supported for compatibility with gpu_shader_* but should be forbidden. */
   if (shgroup->model != -1 || shgroup->modelinverse != -1 || shgroup->modelviewprojection != -1) {
     DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(
         DST.vmempool->obmats, handle.chunk, handle.id);
@@ -593,17 +594,6 @@ BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWResourceHandl
       mul_m4_m4m4(mvp, DST.view_active->storage.persmat, ob_mats->model);
       GPU_shader_uniform_vector(
           shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)mvp);
-    }
-  }
-  if (shgroup->objectinfo != -1 && shgroup->orcotexfac != -1) {
-    DRWObjectInfos *ob_infos = BLI_memblock_elem_get(
-        DST.vmempool->obmats, handle.chunk, handle.id);
-    if (shgroup->objectinfo != -1) {
-      GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 4, 1, &ob_infos->ob_index);
-    }
-    if (shgroup->orcotexfac != -1) {
-      GPU_shader_uniform_vector(
-          shgroup->shader, shgroup->orcotexfac, 4, 2, (float *)ob_infos->orcotexfac);
     }
   }
 }

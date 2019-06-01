@@ -483,7 +483,7 @@ static DRWResourceHandle drw_call_handle_object(DRWShadingGroup *shgroup,
       DST.ob_state_obinfo_init = false;
     }
 
-    if (shgroup->objectinfo != -1 || shgroup->orcotexfac != -1) {
+    if (shgroup->objectinfo != -1) {
       if (!DST.ob_state_obinfo_init) {
         DST.ob_state_obinfo_init = true;
 
@@ -889,13 +889,10 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
     drw_shgroup_uniform_create_ex(
         shgroup, info_ubo_location, DRW_UNIFORM_BLOCK_OBINFOS, NULL, 0, 1);
 
-    shgroup->orcotexfac = -1;
-    /* Abusing this loc. */
+    /* Abusing this loc to tell shgroup we need the obinfos. */
     shgroup->objectinfo = 1;
   }
   else {
-    /* TODO remove */
-    shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
     shgroup->objectinfo = -1;
   }
 

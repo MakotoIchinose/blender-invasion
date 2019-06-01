@@ -168,7 +168,7 @@ typedef struct DRWCall {
 
 /* Used by DRWUniform.type */
 typedef enum {
-  DRW_UNIFORM_INT,
+  DRW_UNIFORM_INT = 0,
   DRW_UNIFORM_INT_COPY,
   DRW_UNIFORM_FLOAT,
   DRW_UNIFORM_FLOAT_COPY,
@@ -192,11 +192,11 @@ struct DRWUniform {
     float fvalue[2];
     int ivalue[2];
   };
-  int name_ofs; /* name offset in name buffer. */
   int location;
-  char type;      /* DRWUniformType */
-  char length;    /* cannot be more than 16 */
-  char arraysize; /* cannot be more than 16 too */
+  uint32_t type : 4;      /* DRWUniformType */
+  uint32_t length : 4;    /* cannot be more than 16 */
+  uint32_t arraysize : 4; /* cannot be more than 16 too */
+  uint32_t name_ofs : 20; /* name offset in name buffer. */
 };
 
 struct DRWShadingGroup {
@@ -224,7 +224,6 @@ struct DRWShadingGroup {
   int model;
   int modelinverse;
   int modelviewprojection;
-  int orcotexfac;
   int objectinfo;
   int callid;
 
