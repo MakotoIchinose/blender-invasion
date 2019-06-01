@@ -164,7 +164,7 @@ void TextureMapping::compile(SVMCompiler &compiler, int offset_in, int offset_ou
 
   if (type == NORMAL) {
     compiler.add_node(NODE_VECTOR_MATH, NODE_VECTOR_MATH_NORMALIZE, offset_out, offset_out);
-    compiler.add_node(NODE_VECTOR_MATH, SVM_STACK_INVALID, offset_out);
+    compiler.add_node(NODE_VECTOR_MATH, offset_out, SVM_STACK_INVALID, offset_out);
   }
 }
 
