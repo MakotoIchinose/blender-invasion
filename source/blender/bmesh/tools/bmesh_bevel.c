@@ -1286,8 +1286,9 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
     pro->super_r = bp->pro_super_r;
     /* projection direction is direction of the edge */
     sub_v3_v3v3(pro->proj_dir, e->e->v1->co, e->e->v2->co);
-    if (e->is_rev)
+    if (e->is_rev) {
       negate_v3(pro->proj_dir);
+    }
     normalize_v3(pro->proj_dir);
     project_to_edge(e->e, co1, co2, pro->midco);
     if (DEBUG_OLD_PROJ_TO_PERP_PLANE) {
@@ -1974,8 +1975,9 @@ static void bevel_extend_edge_data(BevVert *bv)
 {
   VMesh *vm = bv->vmesh;
 
-  if (vm->mesh_kind == M_TRI_FAN)
+  if (vm->mesh_kind == M_TRI_FAN) {
     return;
+  }
 
   BoundVert *bcur = bv->vmesh->boundstart, *start = bcur;
 
@@ -2322,10 +2324,11 @@ static int count_bound_vert_seams(BevVert *bv)
   }
 
   ans = 0;
-  for (i = 0; i < bv->edgecount; i++)
+  for (i = 0; i < bv->edgecount; i++) {
     if (bv->edges[i].is_seam) {
       ans++;
     }
+  }
   return ans;
 }
 
