@@ -394,11 +394,21 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[4])
   }
 }
 
-static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
+BLI_INLINE void drw_call_matrix_init(DRWObjectMatrix *ob_mats, Object *ob, float (*obmat)[4])
+{
+  copy_m4_m4(ob_mats->model, obmat);
+  if (ob) {
+    copy_m4_m4(ob_mats->modelinverse, ob->imat);
+  }
+  else {
+    /* WATCH: Can be costly. */
+    invert_m4_m4(ob_mats->modelinverse, ob_mats->model);
+  }
+}
+
+static void drw_call_obinfos_init(DRWObjectInfos *ob_infos, Object *ob)
 {
   BLI_assert(ob);
-  DRWResourceHandle handle = state->handle;
-  DRWObjectInfos *ob_infos = BLI_memblock_elem_get(DST.vmempool->obinfos, handle.chunk, handle.id);
   /* Index. */
   ob_infos->ob_index = ob->index;
   /* Orco factors. */
@@ -412,14 +422,10 @@ static void drw_call_obinfos_create(DRWCallState *state, Object *ob)
   ob_infos->ob_random = random * (1.0f / (float)0xFFFFFFFF);
   /* Negative scalling. */
   ob_infos->ob_neg_scale = (ob->transflag & OB_NEG_SCALE) ? -1.0f : 1.0f;
-
-  state->flag |= DRW_CALL_OBINFOS;
 }
 
-static void drw_call_culling_create(DRWCallState *state, Object *ob)
+static void drw_call_culling_init(DRWCullingState *cull, Object *ob)
 {
-  DRWCullingState *cull = state->culling;
-
   BoundBox *bbox;
   if (ob != NULL && (bbox = BKE_object_boundbox_get(ob))) {
     float corner[3];
@@ -433,12 +439,14 @@ static void drw_call_culling_create(DRWCallState *state, Object *ob)
     /* Bypass test. */
     cull->bsphere.radius = -1.0f;
   }
+  /* Reset user data */
+  cull->user_data = NULL;
 }
 
 static DRWCallState *drw_call_state_create(float (*obmat)[4], Object *ob)
 {
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
-  state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
+  DRWCullingState *culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   DRWObjectMatrix *ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
   /* FIXME Meh, not always needed byt can be accessed after creation.
    * Also it needs to have the same resource handle. */
@@ -450,17 +458,9 @@ static DRWCallState *drw_call_state_create(float (*obmat)[4], Object *ob)
   state->handle = DST.resource_handle;
   INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
 
-  /* Matrices */
-  copy_m4_m4(ob_mats->model, obmat);
-  if (ob) {
-    copy_m4_m4(ob_mats->modelinverse, ob->imat);
-  }
-  else {
-    /* WATCH: Can be costly. */
-    invert_m4_m4(ob_mats->modelinverse, ob_mats->model);
-  }
-
-  drw_call_culling_create(state, ob);
+  drw_call_matrix_init(ob_mats, ob, obmat);
+  drw_call_culling_init(culling, ob);
+  /* ob_infos is init only if needed. */
 
   return state;
 }
@@ -483,7 +483,12 @@ static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obm
 
     if (shgroup->objectinfo != -1 || shgroup->orcotexfac != -1) {
       if ((DST.ob_state->flag & DRW_CALL_OBINFOS) == 0) {
-        drw_call_obinfos_create(DST.ob_state, ob);
+        DST.ob_state->flag |= DRW_CALL_OBINFOS;
+
+        DRWObjectInfos *ob_infos = BLI_memblock_elem_get(
+            DST.vmempool->obinfos, DST.ob_state->handle.chunk, DST.ob_state->handle.id);
+
+        drw_call_obinfos_init(ob_infos, ob);
       }
     }
 
@@ -514,11 +519,17 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   call->select_id = DST.select_id;
   call->inst_selectid = NULL;
 #endif
-  if (call->state->culling) {
-    call->state->culling->user_data = user_data;
+  /* Culling data. */
+  if (user_data || bypass_culling) {
+    DRWCullingState *culling = BLI_memblock_elem_get(
+        DST.vmempool->cullstates, call->state->handle.chunk, call->state->handle.id);
+
+    if (user_data) {
+      culling->user_data = user_data;
+    }
     if (bypass_culling) {
       /* NOTE this will disable culling for the whole object. */
-      call->state->culling->bsphere.radius = -1.0f;
+      culling->bsphere.radius = -1.0f;
     }
   }
 }

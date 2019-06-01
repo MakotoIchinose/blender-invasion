@@ -140,7 +140,6 @@ BLI_STATIC_ASSERT_ALIGN(DRWObjectMatrix, 16)
 BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
 
 typedef struct DRWCallState {
-  DRWCullingState *culling;
   uchar flag;
   DRWResourceHandle handle;
 } DRWCallState;

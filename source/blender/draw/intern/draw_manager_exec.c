@@ -393,7 +393,9 @@ void DRW_state_reset(void)
 
 static bool draw_call_is_culled(DRWCall *call, DRWView *view)
 {
-  return (!call->state->culling) || (call->state->culling->mask & view->culling_mask) != 0;
+  DRWCullingState *culling = BLI_memblock_elem_get(
+      DST.vmempool->cullstates, call->state->handle.chunk, call->state->handle.id);
+  return (culling->mask & view->culling_mask) != 0;
 }
 
 /* Set active view for rendering. */

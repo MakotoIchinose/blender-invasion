@@ -596,7 +596,7 @@ static DRWCallState *draw_unit_state_create(void)
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
   DRWObjectInfos *infos = BLI_memblock_alloc(DST.vmempool->obinfos);
   DRWObjectMatrix *mats = BLI_memblock_alloc(DST.vmempool->obmats);
-  DRWCullingState *culling = state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
+  DRWCullingState *culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   state->flag = 0;
 
   unit_m4(mats->model);
@@ -655,7 +655,8 @@ static void drw_viewport_var_init(void)
       DST.vmempool->obinfos = BLI_memblock_create_ex(sizeof(DRWObjectInfos), chunk_len);
     }
     if (DST.vmempool->cullstates == NULL) {
-      DST.vmempool->cullstates = BLI_memblock_create(sizeof(DRWCullingState));
+      uint chunk_len = sizeof(DRWCullingState) * DRW_RESOURCE_CHUNK_LEN;
+      DST.vmempool->cullstates = BLI_memblock_create_ex(sizeof(DRWCullingState), chunk_len);
     }
     if (DST.vmempool->shgroups == NULL) {
       DST.vmempool->shgroups = BLI_memblock_create(sizeof(DRWShadingGroup));
