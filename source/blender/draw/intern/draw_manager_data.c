@@ -896,24 +896,37 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");
   int model_ubo_location = GPU_shader_get_uniform_block(shader, "modelBlock");
   int info_ubo_location = GPU_shader_get_uniform_block(shader, "infoBlock");
-  int drawid_location = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_BASE_INSTANCE);
+  int baseinst_location = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_BASE_INSTANCE);
+  int callid_location = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_CALLID);
 
-  if (drawid_location != -1) {
-    drw_shgroup_uniform_create_ex(shgroup, drawid_location, DRW_UNIFORM_BASE_INSTANCE, NULL, 0, 1);
+  if (callid_location != -1) {
+    drw_shgroup_uniform_create_ex(shgroup, callid_location, DRW_UNIFORM_CALLID, NULL, 0, 1);
+  }
+
+  if (baseinst_location != -1) {
+    drw_shgroup_uniform_create_ex(
+        shgroup, baseinst_location, DRW_UNIFORM_BASE_INSTANCE, NULL, 0, 1);
   }
 
   if (model_ubo_location != -1) {
     drw_shgroup_uniform_create_ex(
         shgroup, model_ubo_location, DRW_UNIFORM_BLOCK_OBMATS, NULL, 0, 1);
-
-    shgroup->model = -1;
-    shgroup->modelinverse = -1;
-    shgroup->modelviewprojection = -1;
   }
   else {
-    shgroup->model = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL);
-    shgroup->modelinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL_INV);
-    shgroup->modelviewprojection = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MVP);
+    int model = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL);
+    int modelinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL_INV);
+    int modelviewprojection = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MVP);
+    if (model != -1) {
+      drw_shgroup_uniform_create_ex(shgroup, model, DRW_UNIFORM_MODEL_MATRIX, NULL, 0, 1);
+    }
+    if (modelinverse != -1) {
+      drw_shgroup_uniform_create_ex(
+          shgroup, modelinverse, DRW_UNIFORM_MODEL_MATRIX_INVERSE, NULL, 0, 1);
+    }
+    if (modelviewprojection != -1) {
+      drw_shgroup_uniform_create_ex(
+          shgroup, modelviewprojection, DRW_UNIFORM_MODELVIEWPROJECTION_MATRIX, NULL, 0, 1);
+    }
   }
 
   if (info_ubo_location != -1) {
@@ -948,9 +961,6 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   BLI_assert(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODELVIEW_INV) == -1);
   BLI_assert(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODELVIEW) == -1);
   BLI_assert(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_NORMAL) == -1);
-
-  /* TODO remove or promote to uniform type. */
-  shgroup->callid = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_CALLID);
 }
 
 static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass *pass)

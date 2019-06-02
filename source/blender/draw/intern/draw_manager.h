@@ -178,7 +178,14 @@ typedef enum {
   /** Per drawcall uniforms/UBO */
   DRW_UNIFORM_BLOCK_OBMATS,
   DRW_UNIFORM_BLOCK_OBINFOS,
+  DRW_UNIFORM_CALLID,
+  /** Legacy / Fallback */
   DRW_UNIFORM_BASE_INSTANCE,
+  DRW_UNIFORM_MODEL_MATRIX,
+  DRW_UNIFORM_MODEL_MATRIX_INVERSE,
+  DRW_UNIFORM_MODELVIEWPROJECTION_MATRIX,
+  /* WARNING: set DRWUniform->type
+   * bit length accordingly. */
 } DRWUniformType;
 
 struct DRWUniform {
@@ -218,13 +225,7 @@ struct DRWShadingGroup {
   /** Stencil mask to use for stencil test / write operations */
   uint stencil_mask;
 
-  /* Builtin uniforms locations
-   * (here for backward compatibilities with builtin shaders) */
-  int model;
-  int modelinverse;
-  int modelviewprojection;
   int objectinfo;
-  int callid;
 
   DRWPass *pass_parent; /* backlink to pass we're in */
 };

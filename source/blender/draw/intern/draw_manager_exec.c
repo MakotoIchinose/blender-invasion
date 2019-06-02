@@ -574,27 +574,26 @@ static void draw_compute_culling(DRWView *view)
 /** \name Draw (DRW_draw)
  * \{ */
 
-BLI_INLINE void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWResourceHandle handle)
+BLI_INLINE void draw_legacy_matrix_update(DRWShadingGroup *shgroup,
+                                          DRWResourceHandle handle,
+                                          float obmat_loc,
+                                          float obinv_loc,
+                                          float mvp_loc)
 {
   /* Still supported for compatibility with gpu_shader_* but should be forbidden. */
-  if (shgroup->model != -1 || shgroup->modelinverse != -1 || shgroup->modelviewprojection != -1) {
-    DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(
-        DST.vmempool->obmats, handle.chunk, handle.id);
-    if (shgroup->model != -1) {
-      GPU_shader_uniform_vector(shgroup->shader, shgroup->model, 16, 1, (float *)ob_mats->model);
-    }
-    if (shgroup->modelinverse != -1) {
-      GPU_shader_uniform_vector(
-          shgroup->shader, shgroup->modelinverse, 16, 1, (float *)ob_mats->modelinverse);
-    }
-    /* Still supported for compatibility with gpu_shader_* but should be forbidden
-     * and is slow (since it does not cache the result). */
-    if (shgroup->modelviewprojection != -1) {
-      float mvp[4][4];
-      mul_m4_m4m4(mvp, DST.view_active->storage.persmat, ob_mats->model);
-      GPU_shader_uniform_vector(
-          shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)mvp);
-    }
+  DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(DST.vmempool->obmats, handle.chunk, handle.id);
+  if (obmat_loc != -1) {
+    GPU_shader_uniform_vector(shgroup->shader, obmat_loc, 16, 1, (float *)ob_mats->model);
+  }
+  if (obinv_loc != -1) {
+    GPU_shader_uniform_vector(shgroup->shader, obinv_loc, 16, 1, (float *)ob_mats->modelinverse);
+  }
+  /* Still supported for compatibility with gpu_shader_* but should be forbidden
+   * and is slow (since it does not cache the result). */
+  if (mvp_loc != -1) {
+    float mvp[4][4];
+    mul_m4_m4m4(mvp, DST.view_active->storage.persmat, ob_mats->model);
+    GPU_shader_uniform_vector(shgroup->shader, mvp_loc, 16, 1, (float *)mvp);
   }
 }
 
@@ -800,7 +799,11 @@ static void release_ubo_slots(bool with_persist)
 static void draw_update_uniforms(DRWShadingGroup *shgroup,
                                  int *obmats_loc,
                                  int *obinfos_loc,
-                                 int *baseinst_loc)
+                                 int *baseinst_loc,
+                                 int *callid_loc,
+                                 int *obmat_loc,
+                                 int *obinv_loc,
+                                 int *mvp_loc)
 {
   for (DRWUniformChunk *unichunk = shgroup->uniforms; unichunk; unichunk = unichunk->next) {
     DRWUniform *uni = unichunk->uniforms;
@@ -873,8 +876,21 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           GPU_uniformbuffer_bind(ubo, 1);
           GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
           break;
+        case DRW_UNIFORM_CALLID:
+          *callid_loc = uni->location;
+          break;
+          /* Legacy/Fallback support. */
         case DRW_UNIFORM_BASE_INSTANCE:
           *baseinst_loc = uni->location;
+          break;
+        case DRW_UNIFORM_MODEL_MATRIX:
+          *obmat_loc = uni->location;
+          break;
+        case DRW_UNIFORM_MODEL_MATRIX_INVERSE:
+          *obinv_loc = uni->location;
+          break;
+        case DRW_UNIFORM_MODELVIEWPROJECTION_MATRIX:
+          *mvp_loc = uni->location;
           break;
       }
     }
@@ -967,6 +983,11 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   int obmats_loc = -1;
   int obinfos_loc = -1;
   int baseinst_loc = -1;
+  int callid_loc = -1;
+  /* Legacy matrix support. */
+  int obmat_loc = -1;
+  int obinv_loc = -1;
+  int mvp_loc = -1;
 
   if (shader_changed) {
     if (DST.shader) {
@@ -988,7 +1009,14 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   drw_state_set((pass_state & shgroup->state_extra_disable) | shgroup->state_extra);
   drw_stencil_set(shgroup->stencil_mask);
 
-  draw_update_uniforms(shgroup, &obmats_loc, &obinfos_loc, &baseinst_loc);
+  draw_update_uniforms(shgroup,
+                       &obmats_loc,
+                       &obinfos_loc,
+                       &baseinst_loc,
+                       &callid_loc,
+                       &obmat_loc,
+                       &obinv_loc,
+                       &mvp_loc);
 
   /* Rendering Calls */
   {
@@ -1009,8 +1037,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       }
 
       /* XXX small exception/optimisation for outline rendering. */
-      if (shgroup->callid != -1) {
-        GPU_shader_uniform_vector_int(shgroup->shader, shgroup->callid, 1, 1, &callid);
+      if (callid_loc != -1) {
+        GPU_shader_uniform_vector_int(shgroup->shader, callid_loc, 1, 1, &callid);
         callid += 1;
       }
 
@@ -1043,9 +1071,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         base_inst = handle.id;
       }
 
-      if (obmats_loc == -1 || obinfos_loc == -1) {
+      if (obmats_loc == -1 && (obmat_loc != -1 || obinv_loc != -1 || mvp_loc != -1)) {
         /* TODO This is Legacy. Need to be removed. */
-        draw_geometry_prepare(shgroup, handle);
+        draw_legacy_matrix_update(shgroup, handle, obmat_loc, obinv_loc, mvp_loc);
       }
 
       if (draw_select_do_call(shgroup, call, base_inst)) {
