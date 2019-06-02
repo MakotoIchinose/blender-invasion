@@ -196,6 +196,8 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
             /* grease pencil settings */
             v3d->vertex_opacity = 1.0f;
             v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
+            /* Remove dither pattern in wireframe mode. */
+            v3d->shading.xray_alpha_wire = 0.0f;
             /* Skip startups that use the viewport color by default. */
             if (v3d->shading.background_type != V3D_SHADING_BACKGROUND_VIEWPORT) {
               copy_v3_fl(v3d->shading.background_color, 0.05f);
@@ -335,7 +337,6 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
           /* Screen space cavity by default for faster performance. */
           View3D *v3d = sa->spacedata.first;
           v3d->shading.cavity_type = V3D_SHADING_CAVITY_CURVATURE;
-          v3d->shading.light = V3D_LIGHTING_STUDIO;
         }
         else if (sa->spacetype == SPACE_CLIP) {
           SpaceClip *sclip = sa->spacedata.first;
@@ -457,6 +458,15 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     copy_v3_v3(scene->display.light_direction, (float[3]){M_SQRT1_3, M_SQRT1_3, M_SQRT1_3});
     copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
     copy_v2_fl2(scene->safe_areas.action, 0.035f, 0.035f);
+
+    /* Change default cubemap quality. */
+    scene->eevee.gi_filter_quality = 3.0f;
+  }
+
+  for (Light *light = bmain->lights.first; light; light = light->id.next) {
+    /* Fix lights defaults. */
+    light->clipsta = 0.05f;
+    light->att_dist = 40.0f;
   }
 
   if (app_template == NULL) {
