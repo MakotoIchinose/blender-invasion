@@ -37,13 +37,13 @@
 #  include "GPU_select.h"
 #endif
 
-#ifdef USE_GPU_SELECT
 void DRW_select_load_id(uint id)
 {
+#ifdef USE_GPU_SELECT
   BLI_assert(G.f & G_FLAG_PICKSEL);
   DST.select_id = id;
-}
 #endif
+}
 
 #define DEBUG_UBO_BINDING
 
@@ -931,6 +931,33 @@ BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, uin
 #endif
 }
 
+typedef struct DRWCallIterator {
+  int call_index;
+  DRWCallChunk *curr_chunk;
+} DRWCallIterator;
+
+static void draw_call_iter_begin(DRWCallIterator *iter, DRWShadingGroup *shgroup)
+{
+  iter->curr_chunk = shgroup->calls.first;
+  iter->call_index = 0;
+}
+
+static DRWCall *draw_call_iter_step(DRWCallIterator *iter)
+{
+  if (iter->curr_chunk) {
+    if (iter->call_index == iter->curr_chunk->chunk_len) {
+      iter->curr_chunk = iter->curr_chunk->next;
+      iter->call_index = 0;
+    }
+    if (iter->curr_chunk) {
+      if (iter->call_index < iter->curr_chunk->call_used) {
+        return iter->curr_chunk->calls + iter->call_index++;
+      }
+    }
+  }
+  return NULL;
+}
+
 static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 {
   BLI_assert(shgroup->shader);
@@ -969,7 +996,12 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     uint resource_chunk = 0;
     uint base_inst = 0;
     int callid = 0;
-    for (DRWCall *call = shgroup->calls.first; call; call = call->next) {
+
+    DRWCallIterator iter;
+    draw_call_iter_begin(&iter, shgroup);
+    DRWCall *call;
+
+    while ((call = draw_call_iter_step(&iter))) {
       DRWResourceHandle handle = call->handle;
 
       if (draw_call_is_culled(call, DST.view_active)) {
@@ -996,7 +1028,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         }
         if (obinfos_loc != -1) {
           GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[resource_chunk]);
-          GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 0);
+          GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 1);
         }
         resource_chunk = handle.chunk;
       }

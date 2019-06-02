@@ -150,8 +150,6 @@ BLI_STATIC_ASSERT_ALIGN(DRWObjectMatrix, 16)
 BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
 
 typedef struct DRWCall {
-  struct DRWCall *next;
-
   GPUBatch *batch;
   uint vert_first;
   uint vert_count;
@@ -203,11 +201,11 @@ struct DRWShadingGroup {
 
   GPUShader *shader;                /* Shader to bind */
   struct DRWUniformChunk *uniforms; /* Uniforms pointers */
-
-  uint32_t uniform_count;
+  uint32_t uniform_count;           /* Index of next uniform inside DRWUniformChunk. */
 
   struct {
-    DRWCall *first, *last; /* Linked list of DRWCall */
+    /* Chunks of draw calls. */
+    struct DRWCallChunk *first, *last;
   } calls;
 
   /** TODO Maybe remove from here */
@@ -304,6 +302,22 @@ typedef struct DRWUniformChunk {
   struct DRWUniformChunk *next; /* single-linked list */
   DRWUniform uniforms[5];
 } DRWUniformChunk;
+
+typedef struct DRWCallChunk {
+  struct DRWCallChunk *next; /* single-linked list */
+  uchar chunk_len;
+  uchar call_used;
+  DRWCall calls[63];
+} DRWCallChunk;
+
+typedef struct DRWCallSmallChunk {
+  struct DRWCallChunk *next; /* single-linked list */
+  uchar chunk_len;
+  uchar call_used;
+  /* Small chunk to avoid wasting too much memory
+   * on small shading groups. */
+  DRWCall calls[5];
+} DRWCallSmallChunk;
 
 /* ------------- DRAW DEBUG ------------ */
 

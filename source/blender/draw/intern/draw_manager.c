@@ -636,7 +636,7 @@ static void drw_viewport_var_init(void)
     DST.vmempool = GPU_viewport_mempool_get(DST.viewport);
 
     if (DST.vmempool->calls == NULL) {
-      DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCall));
+      DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCallChunk));
     }
     if (DST.vmempool->obmats == NULL) {
       uint chunk_len = sizeof(DRWObjectMatrix) * DRW_RESOURCE_CHUNK_LEN;
@@ -2202,7 +2202,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
   Object *obact = OBACT(view_layer);
   Object *obedit = OBEDIT_FROM_OBACT(obact);
 #ifndef USE_GPU_SELECT
-  UNUSED_VARS(vc, scene, view_layer, v3d, ar, rect);
+  UNUSED_VARS(scene, view_layer, v3d, ar, rect);
 #else
   RegionView3D *rv3d = ar->regiondata;
 

@@ -518,6 +518,28 @@ static DRWResourceHandle drw_call_handle_object(DRWShadingGroup *shgroup,
   }
 }
 
+static DRWCall *drw_call_create(DRWShadingGroup *shgroup)
+{
+  DRWCallChunk *chunk = shgroup->calls.last;
+
+  if (chunk == NULL) {
+    /* TODO Create another pool to reduce memory usage of the first chunk. */
+    DRWCallSmallChunk *smallchunk = BLI_memblock_alloc(DST.vmempool->calls);
+    smallchunk->chunk_len = ARRAY_SIZE(smallchunk->calls);
+    smallchunk->call_used = 0;
+    chunk = (DRWCallChunk *)smallchunk;
+    BLI_LINKS_APPEND(&shgroup->calls, chunk);
+  }
+  else if (chunk->call_used == chunk->chunk_len) {
+    chunk = BLI_memblock_alloc(DST.vmempool->calls);
+    chunk->chunk_len = ARRAY_SIZE(chunk->calls);
+    chunk->call_used = 0;
+    BLI_LINKS_APPEND(&shgroup->calls, chunk);
+  }
+
+  return chunk->calls + chunk->call_used++;
+}
+
 void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          Object *ob,
                          float (*obmat)[4],
@@ -529,9 +551,7 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
 {
   BLI_assert(geom != NULL);
 
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
+  DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : obmat, ob);
   call->batch = geom;
   call->vert_first = v_sta;
@@ -562,9 +582,7 @@ static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
                                                uint vert_count)
 {
 
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
+  DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
   call->vert_first = 0;
@@ -601,9 +619,7 @@ void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
 {
   BLI_assert(geom != NULL);
 
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
+  DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
   call->vert_first = 0;
@@ -625,9 +641,7 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
 
   GPUVertBuf *buf_inst = inst_attributes->verts[0];
 
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
+  DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, geom);
   call->vert_first = 0;
@@ -789,9 +803,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer(DRWShadingGroup *shgroup,
   BLI_assert(ELEM(prim_type, GPU_PRIM_POINTS, GPU_PRIM_LINES, GPU_PRIM_TRI_FAN));
   BLI_assert(format != NULL);
 
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
+  DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, NULL, NULL);
   GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->vert_count);
   call->batch = DRW_temp_batch_request(DST.idatalist, buf, prim_type);
@@ -819,9 +831,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
   BLI_assert(geom != NULL);
   BLI_assert(format != NULL);
 
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
+  DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, NULL, NULL);
   GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->inst_count);
   call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf, geom);
@@ -1653,8 +1663,8 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
   const DRWShadingGroup *shgrp_a = (const DRWShadingGroup *)a;
   const DRWShadingGroup *shgrp_b = (const DRWShadingGroup *)b;
 
-  const DRWCall *call_a = (DRWCall *)shgrp_a->calls.first;
-  const DRWCall *call_b = (DRWCall *)shgrp_b->calls.first;
+  const DRWCall *call_a = &((DRWCallChunk *)shgrp_a->calls.first)->calls[0];
+  const DRWCall *call_b = &((DRWCallChunk *)shgrp_b->calls.first)->calls[0];
 
   if (call_a == NULL) {
     return -1;
