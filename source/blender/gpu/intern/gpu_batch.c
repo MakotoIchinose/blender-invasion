@@ -632,6 +632,11 @@ void GPU_batch_draw_advanced(GPUBatch *batch, int v_first, int v_count, int i_fi
     i_count = (batch->inst) ? batch->inst->vertex_len : 1;
   }
 
+  if (v_count == 0 || i_count == 0) {
+    /* Nothing to draw. */
+    return;
+  }
+
   if (!GPU_arb_base_instance_is_supported()) {
     if (i_first > 0 && i_count > 0) {
       /* If using offset drawing with instancing, we must
