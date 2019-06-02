@@ -28,9 +28,8 @@
 #include "BLI_rand.h"
 #include "BLI_string_utils.h"
 
-#include "BKE_particle.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_particle.h"
 
 #include "DNA_world_types.h"
 #include "DNA_modifier_types.h"
@@ -1126,10 +1125,10 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 #define ADD_SHGROUP_CALL(shgrp, ob, geom, oedata) \
   do { \
     if (oedata) { \
-      DRW_shgroup_call_object_with_callback(shgrp, geom, ob, oedata); \
+      DRW_shgroup_call_with_callback(shgrp, geom, ob, oedata); \
     } \
     else { \
-      DRW_shgroup_call_object(shgrp, geom, ob); \
+      DRW_shgroup_call(shgrp, geom, ob); \
     } \
   } while (0)
 
@@ -1535,10 +1534,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
   Scene *scene = draw_ctx->scene;
   GHash *material_hash = stl->g_data->material_hash;
 
-  bool is_sculpt_mode = DRW_object_use_pbvh_drawing(ob);
-  /* For now just force fully shaded with eevee when supported. */
-  is_sculpt_mode = is_sculpt_mode &&
-                   !(ob->sculpt->pbvh && BKE_pbvh_type(ob->sculpt->pbvh) == PBVH_FACES);
+  bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->v3d);
 
   /* First get materials for this mesh. */
   if (ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL)) {
@@ -1606,7 +1602,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
       int auto_layer_count;
       struct GPUBatch **mat_geom = NULL;
 
-      if (!is_sculpt_mode) {
+      if (!use_sculpt_pbvh) {
         mat_geom = DRW_cache_object_surface_material_get(ob,
                                                          gpumat_array,
                                                          materials_len,
@@ -1615,7 +1611,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
                                                          &auto_layer_count);
       }
 
-      if (is_sculpt_mode) {
+      if (use_sculpt_pbvh) {
         /* Vcol is not supported in the modes that require PBVH drawing. */
         bool use_vcol = false;
         DRW_shgroup_call_sculpt_with_materials(shgrp_array, ob, use_vcol);

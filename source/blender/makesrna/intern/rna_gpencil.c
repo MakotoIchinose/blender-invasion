@@ -76,7 +76,7 @@ static EnumPropertyItem rna_enum_gpencil_onion_modes_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
+static const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
     {-1, "ALL", ICON_ACTION, "All Types", "Include all Keyframe types"},
     {BEZT_KEYTYPE_KEYFRAME,
      "KEYFRAME",
@@ -113,7 +113,7 @@ static const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {
 };
 
 static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
-    {eGplBlendMode_Normal, "NORMAL", 0, "Regular", ""},
+    {eGplBlendMode_Regular, "REGULAR", 0, "Regular", ""},
     {eGplBlendMode_Overlay, "OVERLAY", 0, "Overlay", ""},
     {eGplBlendMode_Add, "ADD", 0, "Add", ""},
     {eGplBlendMode_Subtract, "SUBTRACT", 0, "Subtract", ""},
