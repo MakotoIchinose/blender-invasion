@@ -65,7 +65,7 @@ typedef struct wmXRContext {
  */
 static void openxr_gather_extensions_ex(wmXRContext *context, const char *layer_name)
 {
-  uint32_t extension_count;
+  uint32_t extension_count = 0;
 
   context->oxr.extensions = NULL;
 
@@ -79,7 +79,7 @@ static void openxr_gather_extensions_ex(wmXRContext *context, const char *layer_
 
   context->oxr.extensions = MEM_calloc_arrayN(
       extension_count, sizeof(*context->oxr.extensions), "xrExtensionProperties");
-  for (int i = 0; i < extension_count; i++) {
+  for (uint i = 0; i < extension_count; i++) {
     context->oxr.extensions[i].type = XR_TYPE_EXTENSION_PROPERTIES;
   }
 
@@ -92,7 +92,7 @@ static void openxr_gather_extensions_ex(wmXRContext *context, const char *layer_
   xrEnumerateInstanceExtensionProperties(
       layer_name, extension_count, &extension_count, context->oxr.extensions);
 #ifdef USE_EXT_LAYER_PRINTS
-  for (int i = 0; i < extension_count; i++) {
+  for (uint i = 0; i < extension_count; i++) {
     printf("Extension: %s\n", context->oxr.extensions[i].extensionName);
   }
 #endif
@@ -104,7 +104,7 @@ static void openxr_gather_extensions(wmXRContext *context)
 
 static void openxr_gather_api_layers(wmXRContext *context)
 {
-  uint32_t layer_count;
+  uint32_t layer_count = 0;
 
   /* Get count for array creation/init first. */
   xrEnumerateApiLayerProperties(0, &layer_count, NULL);
@@ -116,13 +116,13 @@ static void openxr_gather_api_layers(wmXRContext *context)
 
   context->oxr.layers = MEM_calloc_arrayN(
       layer_count, sizeof(*context->oxr.layers), "XrApiLayerProperties");
-  for (int i = 0; i < layer_count; i++) {
+  for (uint i = 0; i < layer_count; i++) {
     context->oxr.layers[i].type = XR_TYPE_API_LAYER_PROPERTIES;
   }
 
   /* Actually get the layers. */
   xrEnumerateApiLayerProperties(layer_count, &layer_count, context->oxr.layers);
-  for (int i = 0; i < layer_count; i++) {
+  for (uint i = 0; i < layer_count; i++) {
 #ifdef USE_EXT_LAYER_PRINTS
     printf("Layer: %s\n", context->oxr.layers[i].layerName);
 #endif
@@ -131,7 +131,8 @@ static void openxr_gather_api_layers(wmXRContext *context)
   }
 }
 
-static bool openxr_instance_setup(wmXRContext *context) ATTR_NONNULL()
+ATTR_NONNULL()
+static bool openxr_instance_setup(wmXRContext *context)
 {
   XrInstanceCreateInfo create_info = {.type = XR_TYPE_INSTANCE_CREATE_INFO};
 
@@ -149,7 +150,7 @@ static bool openxr_instance_setup(wmXRContext *context) ATTR_NONNULL()
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
   // create_info.enabledExtensionCount = 1;
   create_info.enabledExtensionCount = 0;
-  static const uchar *enabled_extensions[] = {// "XR_KHR_D3D11_enable",
+  static const char *enabled_extensions[] = {// "XR_KHR_D3D11_enable",
                                               // "XR_KHR_opengl_enable"
                                               ""};
   create_info.enabledExtensionNames = enabled_extensions;
