@@ -1528,3 +1528,95 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
 }
 
 /* ****************************************************** */
+
+/* **************** Walk Select Tool ****************** */
+
+static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, const int direction)
+{
+  TreeStoreElem *tselem = TREESTORE(active);
+
+  outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  tselem->flag &= ~TSE_ACTIVE;
+
+  if (direction == OUTLINER_SELECT_WALK_DOWN) {
+    if (TSELEM_OPEN(tselem, soops)) {
+      active = active->subtree.first;
+    }
+    else if (active->next) {
+      active = active->next;
+    }
+    else if (active->parent->next) {
+      active = active->parent->next;
+    }
+  }
+  else if (direction == OUTLINER_SELECT_WALK_UP) {
+    if (active->prev) {
+      tselem = TREESTORE(active->prev);
+      if (TSELEM_OPEN(tselem, soops)) {
+        active = active->prev->subtree.first;
+      }
+      else {
+        active = active->prev;
+      }
+    }
+    else if (active->parent) {
+      active = active->parent;
+    }
+  }
+
+  tselem = TREESTORE(active);
+  tselem->flag |= TSE_SELECTED | TSE_ACTIVE;
+}
+
+static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  ARegion *ar = CTX_wm_region(C);
+  const int direction = RNA_enum_get(op->ptr, "direction");
+
+  TreeElement *active = outliner_find_active_element(&soops->tree);
+
+  /* Set root to active if no active exists */
+  if (!active) {
+    active = soops->tree.first;
+    TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
+  }
+  else {
+    do_outliner_select_walk(soops, active, direction);
+  }
+
+  ED_region_tag_redraw(ar);
+
+  return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_select_walk(wmOperatorType *ot)
+{
+  static const EnumPropertyItem direction_items[] = {
+      {OUTLINER_SELECT_WALK_UP, "UP", 0, "Up", ""},
+      {OUTLINER_SELECT_WALK_DOWN, "DOWN", 0, "Down", ""},
+      {OUTLINER_SELECT_WALK_LEFT, "LEFT", 0, "Left", ""},
+      {OUTLINER_SELECT_WALK_RIGHT, "RIGHT", 0, "Right", ""},
+  };
+
+  /* identifiers */
+  ot->name = "Walk Select";
+  ot->idname = "OUTLINER_OT_select_walk";
+  ot->description = "Use walk selection to select tree elements";
+
+  /* api callbacks */
+  ot->invoke = outliner_walk_select_invoke;
+  ot->poll = ED_operator_outliner_active;
+
+  /* properties */
+  PropertyRNA *prop;
+  prop = RNA_def_enum(ot->srna,
+                      "direction",
+                      direction_items,
+                      0,
+                      "Walk Direction",
+                      "Select file in this direction");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/* ****************************************************** */

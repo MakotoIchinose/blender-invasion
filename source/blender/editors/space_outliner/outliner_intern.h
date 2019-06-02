@@ -50,6 +50,14 @@ typedef enum TreeElementInsertType {
   TE_INSERT_INTO,
 } TreeElementInsertType;
 
+/* Use generic walk select after D4771 is committed */
+typedef enum WalkSelectDirection {
+  OUTLINER_SELECT_WALK_UP,
+  OUTLINER_SELECT_WALK_DOWN,
+  OUTLINER_SELECT_WALK_LEFT,
+  OUTLINER_SELECT_WALK_RIGHT,
+} WalkSelectDirection;
+
 typedef enum TreeTraversalAction {
   /* Continue traversal regularly, don't skip children. */
   TRAVERSE_CONTINUE = 0,
@@ -364,6 +372,7 @@ void OUTLINER_OT_show_active(struct wmOperatorType *ot);
 void OUTLINER_OT_show_hierarchy(struct wmOperatorType *ot);
 
 void OUTLINER_OT_select_box(struct wmOperatorType *ot);
+void OUTLINER_OT_select_walk(struct wmOperatorType *ot);
 
 void OUTLINER_OT_select_all(struct wmOperatorType *ot);
 void OUTLINER_OT_expanded_toggle(struct wmOperatorType *ot);
