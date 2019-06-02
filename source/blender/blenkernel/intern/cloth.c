@@ -41,8 +41,10 @@
 #include "BKE_cloth.h"
 #include "BKE_effect.h"
 #include "BKE_global.h"
+#include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
+#include "BKE_library.h"
 #if USE_CLOTH_CACHE
 #  include "BKE_pointcache.h"
 #endif
@@ -55,6 +57,7 @@
 /* Prototypes for internal functions.
  */
 static void cloth_to_object(Object *ob, ClothModifierData *clmd, float (*vertexCos)[3]);
+static void cloth_to_mesh(Object *ob, ClothModifierData *clmd, Mesh *r_mesh);
 static void cloth_from_mesh(ClothModifierData *clmd, Mesh *mesh);
 static int cloth_from_object(
     Object *ob, ClothModifierData *clmd, Mesh *mesh, float framenr, int first);
@@ -367,13 +370,11 @@ static int do_step_cloth(
 /************************************************
  * clothModifier_do - main simulation function
  ************************************************/
-void clothModifier_do(ClothModifierData *clmd,
-                      Depsgraph *depsgraph,
-                      Scene *scene,
-                      Object *ob,
-                      Mesh *mesh,
-                      float (*vertexCos)[3])
+Mesh *clothModifier_do(
+    ClothModifierData *clmd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *mesh)
 {
+  Mesh *mesh_result = mesh;
+  BKE_id_copy_ex(NULL, (ID *)mesh, (ID **)&mesh_result, LIB_ID_COPY_LOCALIZE);
 #if USE_CLOTH_CACHE
   PointCache *cache;
   PTCacheID pid;
@@ -411,7 +412,7 @@ void clothModifier_do(ClothModifierData *clmd,
 #if USE_CLOTH_CACHE
     BKE_ptcache_invalidate(cache);
 #endif
-    return;
+    return mesh_result;
   }
   else if (framenr > endframe) {
     framenr = endframe;
@@ -419,7 +420,7 @@ void clothModifier_do(ClothModifierData *clmd,
 
   /* initialize simulation data if it didn't exist already */
   if (!do_init_cloth(ob, clmd, mesh, framenr)) {
-    return;
+    return mesh_result;
   }
 
   if (framenr == startframe) {
@@ -431,7 +432,7 @@ void clothModifier_do(ClothModifierData *clmd,
     BKE_ptcache_validate(cache, framenr);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
     clmd->clothObject->last_frame = framenr;
-    return;
+    return mesh_result;
   }
 
   /* try to read from cache */
@@ -443,7 +444,7 @@ void clothModifier_do(ClothModifierData *clmd,
   if (cache_result == PTCACHE_READ_EXACT || cache_result == PTCACHE_READ_INTERPOLATED ||
       (!can_simulate && cache_result == PTCACHE_READ_OLD)) {
     BKE_cloth_solver_set_positions(clmd);
-    cloth_to_object(ob, clmd, vertexCos);
+    cloth_to_mesh(ob, clmd, mesh_result);
 
     BKE_ptcache_validate(cache, framenr);
 
@@ -455,7 +456,7 @@ void clothModifier_do(ClothModifierData *clmd,
     clmd->clothObject->last_frame = framenr;
 #if USE_CLOTH_CACHE
 
-    return;
+    return mesh_result;
   }
   else if (cache_result == PTCACHE_READ_OLD) {
     BKE_cloth_solver_set_positions(clmd);
@@ -466,7 +467,7 @@ void clothModifier_do(ClothModifierData *clmd,
     /* if baked and nothing in cache, do nothing */
     BKE_ptcache_invalidate(cache);
 #endif
-    return;
+    return mesh_result;
   }
 
 #if USE_CLOTH_CACHE
@@ -482,7 +483,7 @@ void clothModifier_do(ClothModifierData *clmd,
 #if USE_CLOTH_CACHE
 #else
   if (framenr != clmd->clothObject->last_frame + 1) {
-    return;
+    return mesh_result;
   }
 #endif
 
@@ -500,9 +501,10 @@ void clothModifier_do(ClothModifierData *clmd,
 #else
   do_step_cloth(depsgraph, ob, clmd, mesh, framenr);
 #endif
-
-  cloth_to_object(ob, clmd, vertexCos);
+  cloth_to_mesh(ob, clmd, mesh_result);
   clmd->clothObject->last_frame = framenr;
+
+  return mesh_result;
 }
 
 /* frees all */
@@ -674,6 +676,25 @@ static void cloth_to_object(Object *ob, ClothModifierData *clmd, float (*vertexC
       copy_v3_v3(vertexCos[i], cloth->verts[i].x);
       mul_m4_v3(ob->imat, vertexCos[i]); /* cloth is in global coords */
     }
+  }
+}
+
+/**
+ * Copies deformed vertices to Mesh
+ */
+
+static void cloth_to_mesh(Object *ob, ClothModifierData *clmd, Mesh *r_mesh)
+{
+  int numVerts;
+  float(*vertexCos)[3] = BKE_mesh_vertexCos_get(r_mesh, &numVerts);
+
+  cloth_to_object(ob, clmd, vertexCos);
+
+  BKE_mesh_apply_vert_coords(r_mesh, vertexCos);
+
+  if (vertexCos) {
+    MEM_freeN(vertexCos);
+    vertexCos = NULL;
   }
 }
 

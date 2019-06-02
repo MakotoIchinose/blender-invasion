@@ -31,11 +31,13 @@
 #include "DNA_key_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
+#define USE_CLOTH_CACHE 0
 #if USE_CLOTH_CACHE
 #else
 #  include "DNA_object_force_types.h"
 #  include "DNA_collection_types.h"
 #endif
+#undef USE_CLOTH_CACHE
 #include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
@@ -79,13 +81,12 @@ static void initData(ModifierData *md)
   cloth_init(clmd);
 }
 
-static void deformVerts(ModifierData *md,
-                        const ModifierEvalContext *ctx,
-                        Mesh *mesh,
-                        float (*vertexCos)[3],
-                        int numVerts)
+static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
+  Mesh *mesh_result;
+
   Mesh *mesh_src;
+  int numVerts = mesh->totvert;
   ClothModifierData *clmd = (ClothModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
 
@@ -94,7 +95,7 @@ static void deformVerts(ModifierData *md,
     initData(md);
 
     if (!clmd->sim_parms || !clmd->coll_parms) {
-      return;
+      return mesh;
     }
   }
 
@@ -127,26 +128,15 @@ static void deformVerts(ModifierData *md,
     }
   }
 
+  float(*vertexCos)[3] = BKE_mesh_vertexCos_get(mesh_src, &numVerts);
   BKE_mesh_apply_vert_coords(mesh_src, vertexCos);
 
-  clothModifier_do(clmd, ctx->depsgraph, scene, ctx->object, mesh_src, vertexCos);
+  mesh_result = clothModifier_do(clmd, ctx->depsgraph, scene, ctx->object, mesh_src);
 
   BKE_id_free(NULL, mesh_src);
-}
+  MEM_freeN(vertexCos);
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
-{
-  Mesh *result;
-  int numVerts;
-  float(*deformedVerts)[3] = BKE_mesh_vertexCos_get(mesh, &numVerts);
-
-  BKE_id_copy_ex(NULL, &mesh->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
-  deformVerts(md, ctx, result, deformedVerts, numVerts);
-  BKE_mesh_apply_vert_coords(result, deformedVerts);
-
-  MEM_freeN(deformedVerts);
-
-  return result;
+  return mesh_result;
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)

@@ -3491,9 +3491,11 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
 
   BKE_id_copy_ex(NULL, &psys->hair_in_mesh->id, (ID **)&psys->hair_out_mesh, LIB_ID_COPY_LOCALIZE);
   deformedVerts = BKE_mesh_vertexCos_get(psys->hair_out_mesh, NULL);
-  clothModifier_do(
-      psys->clmd, sim->depsgraph, sim->scene, sim->ob, psys->hair_in_mesh, deformedVerts);
-  BKE_mesh_apply_vert_coords(psys->hair_out_mesh, deformedVerts);
+  /* TODO(Ish): Due to change in the cloth simulation code, clothModifier_do now is returning a
+   * mesh, this change needs to be reflected in the hair simulation code */
+  /* clothModifier_do( */
+  /*     psys->clmd, sim->depsgraph, sim->scene, sim->ob, psys->hair_in_mesh, deformedVerts); */
+  /* BKE_mesh_apply_vert_coords(psys->hair_out_mesh, deformedVerts); */
 
   MEM_freeN(deformedVerts);
 
