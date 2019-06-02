@@ -622,7 +622,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
     BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_OUTDATED);
     DEG_relations_tag_update(bmain);
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-    BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, false);
+    BKE_sculpt_update_object_for_edit(depsgraph, ob, false, true);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
     WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
   }

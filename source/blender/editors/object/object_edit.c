@@ -1827,9 +1827,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
     if (ob->mode == OB_MODE_SCULPT) {
       Depsgraph *depsgraph = CTX_data_depsgraph(C);
-      struct Scene *scene = CTX_data_scene(C);
-      Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-      BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, true, true);
+      BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
       PBVH *pbvh;
       PBVHNode **nodes;
       int totnode;
