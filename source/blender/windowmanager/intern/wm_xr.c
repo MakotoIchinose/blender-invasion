@@ -124,7 +124,7 @@ static void openxr_gather_api_layers(wmXRContext *context)
   xrEnumerateApiLayerProperties(layer_count, &layer_count, context->oxr.layers);
   for (int i = 0; i < layer_count; i++) {
 #ifdef USE_EXT_LAYER_PRINTS
-    printf("Layer: %s\n", context->oxr.layers[i]);
+    printf("Layer: %s\n", context->oxr.layers[i].layerName);
 #endif
     /* Each layer may have own extensions */
     openxr_gather_extensions_ex(context, context->oxr.layers[i].layerName);
