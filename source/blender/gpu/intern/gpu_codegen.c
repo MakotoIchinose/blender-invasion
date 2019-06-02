@@ -59,6 +59,7 @@ extern char datatoc_gpu_shader_material_glsl[];
 extern char datatoc_gpu_shader_geometry_glsl[];
 
 extern char datatoc_gpu_shader_common_obinfos_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
 static char *glsl_material_library = NULL;
 
@@ -1091,6 +1092,8 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
 
   BLI_dynstr_append(ds, "\n");
 
+  BLI_dynstr_append(ds, use_geom ? "RESOURCE_ID_VARYING_GEOM\n" : "RESOURCE_ID_VARYING\n");
+
   BLI_dynstr_append(ds,
                     "#define USE_ATTR\n"
                     "vec3 srgb_to_linear_attr(vec3 c) {\n"
@@ -1110,6 +1113,8 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
                     "\n");
 
   BLI_dynstr_append(ds, "void pass_attr(in vec3 position) {\n");
+
+  BLI_dynstr_append(ds, use_geom ? "\tPASS_RESOURCE_ID_GEOM\n" : "\tPASS_RESOURCE_ID\n");
 
   BLI_dynstr_append(ds, "#ifdef HAIR_SHADER\n");
 
@@ -1309,6 +1314,8 @@ static char *code_generate_geometry(ListBase *nodes, const char *geom_code, cons
       BLI_dynstr_append(ds, "out vec3 worldNormal;\n");
       BLI_dynstr_append(ds, "out vec3 viewNormal;\n");
 
+      BLI_dynstr_append(ds, datatoc_common_view_lib_glsl);
+
       BLI_dynstr_append(ds, "void main(){\n");
 
       if (builtins & GPU_BARYCENTRIC_DIST) {
@@ -1353,8 +1360,12 @@ static char *code_generate_geometry(ListBase *nodes, const char *geom_code, cons
     BLI_dynstr_append(ds, "}\n");
   }
 
+  BLI_dynstr_append(ds, "RESOURCE_ID_VARYING\n");
+
   /* Generate varying assignments. */
   BLI_dynstr_append(ds, "void pass_attr(in int vert) {\n");
+
+  BLI_dynstr_append(ds, "\tPASS_RESOURCE_ID(vert)\n");
 
   /* XXX HACK: Eevee specific. */
   if (geom_code == NULL) {

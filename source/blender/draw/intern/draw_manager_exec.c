@@ -1037,9 +1037,6 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         /* Fallback when ARB_shader_draw_parameters is not supported. */
         int id = handle.id;
         GPU_shader_uniform_vector_int(shgroup->shader, baseinst_loc, 1, 1, &id);
-      }
-
-      if (!GLEW_ARB_shader_draw_parameters) {
         base_inst = 0;
       }
       else {

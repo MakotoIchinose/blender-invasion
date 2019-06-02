@@ -50,6 +50,7 @@ static struct {
   char *vert_shadow_shader_str;
   char *vert_background_shader_str;
   char *vert_volume_shader_str;
+  char *geom_volume_shader_str;
   char *volume_shader_lib;
 
   struct GPUShader *default_prepass_sh;
@@ -610,6 +611,9 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
     e_data.vert_volume_shader_str = BLI_string_joinN(datatoc_common_view_lib_glsl,
                                                      datatoc_volumetric_vert_glsl);
 
+    e_data.geom_volume_shader_str = BLI_string_joinN(datatoc_common_view_lib_glsl,
+                                                     datatoc_volumetric_geom_glsl);
+
     e_data.default_background = DRW_shader_create_with_lib(datatoc_background_vert_glsl,
                                                            NULL,
                                                            datatoc_default_world_frag_glsl,
@@ -727,7 +731,7 @@ struct GPUMaterial *EEVEE_material_world_volume_get(struct Scene *scene, World *
                                      engine,
                                      options,
                                      e_data.vert_volume_shader_str,
-                                     datatoc_volumetric_geom_glsl,
+                                     e_data.geom_volume_shader_str,
                                      e_data.volume_shader_lib,
                                      defines,
                                      true);
@@ -795,7 +799,7 @@ struct GPUMaterial *EEVEE_material_mesh_volume_get(struct Scene *scene, Material
                                         engine,
                                         options,
                                         e_data.vert_volume_shader_str,
-                                        datatoc_volumetric_geom_glsl,
+                                        e_data.geom_volume_shader_str,
                                         e_data.volume_shader_lib,
                                         defines,
                                         true);
@@ -1820,6 +1824,7 @@ void EEVEE_materials_free(void)
   MEM_SAFE_FREE(e_data.vert_shadow_shader_str);
   MEM_SAFE_FREE(e_data.vert_background_shader_str);
   MEM_SAFE_FREE(e_data.vert_volume_shader_str);
+  MEM_SAFE_FREE(e_data.geom_volume_shader_str);
   MEM_SAFE_FREE(e_data.volume_shader_lib);
   DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_sh);
   DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_clip_sh);

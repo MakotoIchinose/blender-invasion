@@ -24,18 +24,37 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
-#if defined(GL_ARB_shader_draw_parameters) && defined(GPU_VERTEX_SHADER)
-#  define resource_id (gl_BaseInstanceARB + gl_InstanceID)
-#else
+#ifdef GPU_VERTEX_SHADER
+#  ifdef GL_ARB_shader_draw_parameters
+#    define resource_id (gl_BaseInstanceARB + gl_InstanceID)
+
+#  else /* no ARB_shader_draw_parameters */
 uniform int baseInstance = 0;
-#  ifdef GPU_VERTEX_SHADER
 #    define resource_id (baseInstance + gl_InstanceID)
-#  else
-/* This is a fallback when using it in a fragement/geometry shader.
- * In this case, we cannot do drawcall merging and we must disable
- * it explicitly in the shading group. */
-#    define resource_id baseInstance
+
 #  endif
+/* Use this to declare and pass the value if
+ * the fragment shader uses the resource_id. */
+#  define RESOURCE_ID_VARYING flat out int resourceIDFrag;
+#  define RESOURCE_ID_VARYING_GEOM flat out int resourceIDGeom;
+#  define PASS_RESOURCE_ID resourceIDFrag = resource_id;
+#  define PASS_RESOURCE_ID_GEOM resourceIDGeom = resource_id;
+#endif
+
+/* If used in a fragment / geometry shader, we pass
+ * resource_id as varying. */
+#ifdef GPU_GEOMETRY_SHADER
+#  define RESOURCE_ID_VARYING \
+    flat out int resourceIDFrag; \
+    flat in int resourceIDGeom[];
+
+#  define resource_id resourceIDGeom
+#  define PASS_RESOURCE_ID(i) resourceIDFrag = resource_id[i];
+#endif
+
+#ifdef GPU_FRAGMENT_SHADER
+flat in int resourceIDFrag;
+#  define resource_id resourceIDFrag
 #endif
 
 struct ObjectMatrices {

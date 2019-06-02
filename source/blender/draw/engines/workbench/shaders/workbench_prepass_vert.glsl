@@ -91,9 +91,11 @@ void main()
 #endif
 
 #ifdef NORMAL_VIEWPORT_PASS_ENABLED
-  normal_viewport = normal_object_to_view(nor);
 #  ifndef HAIR_SHADER
+  normal_viewport = normal_object_to_view(nor);
   normal_viewport = normalize(normal_viewport);
+#  else
+  normal_viewport = normal_world_to_view(nor);
 #  endif
 #endif
 
