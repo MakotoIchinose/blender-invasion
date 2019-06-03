@@ -1597,6 +1597,7 @@ void OUTLINER_OT_select_walk(wmOperatorType *ot)
       {OUTLINER_SELECT_WALK_DOWN, "DOWN", 0, "Down", ""},
       {OUTLINER_SELECT_WALK_LEFT, "LEFT", 0, "Left", ""},
       {OUTLINER_SELECT_WALK_RIGHT, "RIGHT", 0, "Right", ""},
+      {0, NULL, 0, NULL, NULL},
   };
 
   /* identifiers */
