@@ -571,10 +571,12 @@ static StructRNA *rna_NodeTree_refine(struct PointerRNA *ptr)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->data;
 
-  if (ntree->typeinfo->ext.srna)
+  if (ntree->typeinfo->ext.srna) {
     return ntree->typeinfo->ext.srna;
-  else
+  }
+  else {
     return &RNA_NodeTree;
+  }
 }
 
 static bool rna_NodeTree_poll(const bContext *C, bNodeTreeType *ntreetype)
@@ -651,8 +653,9 @@ static void rna_NodeTree_unregister(Main *UNUSED(bmain), StructRNA *type)
 {
   bNodeTreeType *nt = RNA_struct_blender_type_get(type);
 
-  if (!nt)
+  if (!nt) {
     return;
+  }
 
   RNA_struct_free_extension(type, &nt->ext);
   RNA_struct_free(&BLENDER_RNA, type);
@@ -683,8 +686,9 @@ static StructRNA *rna_NodeTree_register(Main *bmain,
   RNA_pointer_create(NULL, &RNA_NodeTree, &dummyntree, &dummyptr);
 
   /* validate the python class */
-  if (validate(&dummyptr, data, have_function) != 0)
+  if (validate(&dummyptr, data, have_function) != 0) {
     return NULL;
+  }
 
   if (strlen(identifier) >= sizeof(dummynt.idname)) {
     BKE_reportf(reports,
@@ -731,17 +735,18 @@ static StructRNA *rna_NodeTree_register(Main *bmain,
 static bool rna_NodeTree_check(bNodeTree *ntree, ReportList *reports)
 {
   if (!ntreeIsRegistered(ntree)) {
-    if (reports)
+    if (reports) {
       BKE_reportf(reports,
                   RPT_ERROR,
                   "Node tree '%s' has undefined type %s",
                   ntree->id.name + 2,
                   ntree->idname);
-
+    }
     return false;
   }
-  else
+  else {
     return true;
+  }
 }
 
 static void rna_NodeTree_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -763,8 +768,9 @@ static bNode *rna_NodeTree_node_new(bNodeTree *ntree,
   bNodeType *ntype;
   bNode *node;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return NULL;
+  }
 
   ntype = nodeTypeFind(type);
   if (!ntype) {
@@ -802,8 +808,9 @@ static void rna_NodeTree_node_remove(bNodeTree *ntree,
 {
   bNode *node = node_ptr->data;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   if (BLI_findindex(&ntree->nodes, node) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate node '%s' in node tree", node->name);
@@ -822,8 +829,9 @@ static void rna_NodeTree_node_clear(bNodeTree *ntree, Main *bmain, ReportList *r
 {
   bNode *node = ntree->nodes.first;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   while (node) {
     bNode *next_node = node->next;
@@ -852,10 +860,12 @@ static void rna_NodeTree_active_node_set(PointerRNA *ptr,
   bNodeTree *ntree = (bNodeTree *)ptr->data;
   bNode *node = (bNode *)value.data;
 
-  if (node && BLI_findindex(&ntree->nodes, node) != -1)
+  if (node && BLI_findindex(&ntree->nodes, node) != -1) {
     nodeSetActive(ntree, node);
-  else
+  }
+  else {
     nodeClearActive(ntree);
+  }
 }
 
 static bNodeLink *rna_NodeTree_link_new(bNodeTree *ntree,
@@ -868,16 +878,18 @@ static bNodeLink *rna_NodeTree_link_new(bNodeTree *ntree,
   bNodeLink *ret;
   bNode *fromnode = NULL, *tonode = NULL;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return NULL;
+  }
 
   nodeFindNode(ntree, fromsock, &fromnode, NULL);
   nodeFindNode(ntree, tosock, &tonode, NULL);
   /* check validity of the sockets:
    * if sockets from different trees are passed in this will fail!
    */
-  if (!fromnode || !tonode)
+  if (!fromnode || !tonode) {
     return NULL;
+  }
 
   if (&fromsock->in_out == &tosock->in_out) {
     BKE_report(reports, RPT_ERROR, "Same input/output direction of sockets");
@@ -886,10 +898,12 @@ static bNodeLink *rna_NodeTree_link_new(bNodeTree *ntree,
 
   if (verify_limits) {
     /* remove other socket links if limit is exceeded */
-    if (nodeCountSocketLinks(ntree, fromsock) + 1 > fromsock->limit)
+    if (nodeCountSocketLinks(ntree, fromsock) + 1 > fromsock->limit) {
       nodeRemSocketLinks(ntree, fromsock);
-    if (nodeCountSocketLinks(ntree, tosock) + 1 > tosock->limit)
+    }
+    if (nodeCountSocketLinks(ntree, tosock) + 1 > tosock->limit) {
       nodeRemSocketLinks(ntree, tosock);
+    }
   }
 
   ret = nodeAddLink(ntree, fromnode, fromsock, tonode, tosock);
@@ -900,8 +914,9 @@ static bNodeLink *rna_NodeTree_link_new(bNodeTree *ntree,
     fromsock->flag &= ~SOCK_HIDDEN;
     tosock->flag &= ~SOCK_HIDDEN;
 
-    if (tonode)
+    if (tonode) {
       nodeUpdate(ntree, tonode);
+    }
 
     ntreeUpdateTree(bmain, ntree);
 
@@ -918,8 +933,9 @@ static void rna_NodeTree_link_remove(bNodeTree *ntree,
 {
   bNodeLink *link = link_ptr->data;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   if (BLI_findindex(&ntree->links, link) == -1) {
     BKE_report(reports, RPT_ERROR, "Unable to locate link in node tree");
@@ -937,8 +953,9 @@ static void rna_NodeTree_link_clear(bNodeTree *ntree, Main *bmain, ReportList *r
 {
   bNodeLink *link = ntree->links.first;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   while (link) {
     bNodeLink *next_link = link->next;
@@ -958,9 +975,11 @@ static int rna_NodeTree_active_input_get(PointerRNA *ptr)
   bNodeSocket *gsock;
   int index;
 
-  for (gsock = ntree->inputs.first, index = 0; gsock; gsock = gsock->next, ++index)
-    if (gsock->flag & SELECT)
+  for (gsock = ntree->inputs.first, index = 0; gsock; gsock = gsock->next, index++) {
+    if (gsock->flag & SELECT) {
       return index;
+    }
+  }
   return -1;
 }
 
@@ -970,11 +989,13 @@ static void rna_NodeTree_active_input_set(PointerRNA *ptr, int value)
   bNodeSocket *gsock;
   int index;
 
-  for (gsock = ntree->inputs.first, index = 0; gsock; gsock = gsock->next, ++index) {
-    if (index == value)
+  for (gsock = ntree->inputs.first, index = 0; gsock; gsock = gsock->next, index++) {
+    if (index == value) {
       gsock->flag |= SELECT;
-    else
+    }
+    else {
       gsock->flag &= ~SELECT;
+    }
   }
   for (gsock = ntree->outputs.first; gsock; gsock = gsock->next) {
     gsock->flag &= ~SELECT;
@@ -987,9 +1008,11 @@ static int rna_NodeTree_active_output_get(PointerRNA *ptr)
   bNodeSocket *gsock;
   int index;
 
-  for (gsock = ntree->outputs.first, index = 0; gsock; gsock = gsock->next, ++index)
-    if (gsock->flag & SELECT)
+  for (gsock = ntree->outputs.first, index = 0; gsock; gsock = gsock->next, index++) {
+    if (gsock->flag & SELECT) {
       return index;
+    }
+  }
   return -1;
 }
 
@@ -1002,11 +1025,13 @@ static void rna_NodeTree_active_output_set(PointerRNA *ptr, int value)
   for (gsock = ntree->inputs.first; gsock; gsock = gsock->next) {
     gsock->flag &= ~SELECT;
   }
-  for (gsock = ntree->outputs.first, index = 0; gsock; gsock = gsock->next, ++index) {
-    if (index == value)
+  for (gsock = ntree->outputs.first, index = 0; gsock; gsock = gsock->next, index++) {
+    if (index == value) {
       gsock->flag |= SELECT;
-    else
+    }
+    else {
       gsock->flag &= ~SELECT;
+    }
   }
 }
 
@@ -1015,8 +1040,9 @@ static bNodeSocket *rna_NodeTree_inputs_new(
 {
   bNodeSocket *sock;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return NULL;
+  }
 
   sock = ntreeAddSocketInterface(ntree, SOCK_IN, type, name);
 
@@ -1031,8 +1057,9 @@ static bNodeSocket *rna_NodeTree_outputs_new(
 {
   bNodeSocket *sock;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return NULL;
+  }
 
   sock = ntreeAddSocketInterface(ntree, SOCK_OUT, type, name);
 
@@ -1047,8 +1074,9 @@ static void rna_NodeTree_socket_remove(bNodeTree *ntree,
                                        ReportList *reports,
                                        bNodeSocket *sock)
 {
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   if (BLI_findindex(&ntree->inputs, sock) == -1 && BLI_findindex(&ntree->outputs, sock) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate socket '%s' in node", sock->identifier);
@@ -1065,8 +1093,9 @@ static void rna_NodeTree_inputs_clear(bNodeTree *ntree, Main *bmain, ReportList 
 {
   bNodeSocket *sock, *nextsock;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   for (sock = ntree->inputs.first; sock; sock = nextsock) {
     nextsock = sock->next;
@@ -1081,8 +1110,9 @@ static void rna_NodeTree_outputs_clear(bNodeTree *ntree, Main *bmain, ReportList
 {
   bNodeSocket *sock, *nextsock;
 
-  if (!rna_NodeTree_check(ntree, reports))
+  if (!rna_NodeTree_check(ntree, reports)) {
     return;
+  }
 
   for (sock = ntree->outputs.first; sock; sock = nextsock) {
     nextsock = sock->next;
@@ -1097,10 +1127,12 @@ static void rna_NodeTree_inputs_move(bNodeTree *ntree, Main *bmain, int from_ind
 {
   bNodeSocket *sock;
 
-  if (from_index == to_index)
+  if (from_index == to_index) {
     return;
-  if (from_index < 0 || to_index < 0)
+  }
+  if (from_index < 0 || to_index < 0) {
     return;
+  }
 
   sock = BLI_findlink(&ntree->inputs, from_index);
   if (to_index < from_index) {
@@ -1128,10 +1160,12 @@ static void rna_NodeTree_outputs_move(bNodeTree *ntree, Main *bmain, int from_in
 {
   bNodeSocket *sock;
 
-  if (from_index == to_index)
+  if (from_index == to_index) {
     return;
-  if (from_index < 0 || to_index < 0)
+  }
+  if (from_index < 0 || to_index < 0) {
     return;
+  }
 
   sock = BLI_findlink(&ntree->outputs, from_index);
   if (to_index < from_index) {
@@ -1179,10 +1213,12 @@ static StructRNA *rna_Node_refine(struct PointerRNA *ptr)
 {
   bNode *node = (bNode *)ptr->data;
 
-  if (node->typeinfo->ext.srna)
+  if (node->typeinfo->ext.srna) {
     return node->typeinfo->ext.srna;
-  else
+  }
+  else {
     return ptr->type;
+  }
 }
 
 static char *rna_Node_path(PointerRNA *ptr)
@@ -1203,16 +1239,19 @@ char *rna_Node_ImageUser_path(PointerRNA *ptr)
   for (node = ntree->nodes.first; node; node = node->next) {
     if (node->type == SH_NODE_TEX_ENVIRONMENT) {
       NodeTexEnvironment *data = node->storage;
-      if (&data->iuser != ptr->data)
+      if (&data->iuser != ptr->data) {
         continue;
+      }
     }
     else if (node->type == SH_NODE_TEX_IMAGE) {
       NodeTexImage *data = node->storage;
-      if (&data->iuser != ptr->data)
+      if (&data->iuser != ptr->data) {
         continue;
+      }
     }
-    else
+    else {
       continue;
+    }
 
     BLI_strescape(name_esc, node->name, sizeof(name_esc));
     return BLI_sprintfN("nodes[\"%s\"].image_user", name_esc);
@@ -1438,8 +1477,9 @@ static void rna_Node_unregister(Main *UNUSED(bmain), StructRNA *type)
 {
   bNodeType *nt = RNA_struct_blender_type_get(type);
 
-  if (!nt)
+  if (!nt) {
     return;
+  }
 
   RNA_struct_free_extension(type, &nt->ext);
   RNA_struct_free(&BLENDER_RNA, type);
@@ -1480,8 +1520,9 @@ static bNodeType *rna_Node_register_base(Main *bmain,
   RNA_pointer_create(NULL, basetype, &dummynode, &dummyptr);
 
   /* validate the python class */
-  if (validate(&dummyptr, data, have_function) != 0)
+  if (validate(&dummyptr, data, have_function) != 0) {
     return NULL;
+  }
 
   if (strlen(identifier) >= sizeof(dummynt.idname)) {
     BKE_reportf(reports,
@@ -1535,10 +1576,12 @@ static bNodeType *rna_Node_register_base(Main *bmain,
   nt->labelfunc = (have_function[9]) ? rna_Node_draw_label : NULL;
 
   /* sanitize size values in case not all have been registered */
-  if (nt->maxwidth < nt->minwidth)
+  if (nt->maxwidth < nt->minwidth) {
     nt->maxwidth = nt->minwidth;
-  if (nt->maxheight < nt->minheight)
+  }
+  if (nt->maxheight < nt->minheight) {
     nt->maxheight = nt->minheight;
+  }
   CLAMP(nt->width, nt->minwidth, nt->maxwidth);
   CLAMP(nt->height, nt->minheight, nt->maxheight);
 
@@ -1555,8 +1598,9 @@ static StructRNA *rna_Node_register(Main *bmain,
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_Node, data, identifier, validate, call, free);
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   nodeRegisterType(nt);
 
@@ -1576,8 +1620,9 @@ static StructRNA *rna_ShaderNode_register(Main *bmain,
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_ShaderNode, data, identifier, validate, call, free);
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   nodeRegisterType(nt);
 
@@ -1597,8 +1642,9 @@ static StructRNA *rna_CompositorNode_register(Main *bmain,
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_CompositorNode, data, identifier, validate, call, free);
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   nodeRegisterType(nt);
 
@@ -1618,8 +1664,9 @@ static StructRNA *rna_TextureNode_register(Main *bmain,
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_TextureNode, data, identifier, validate, call, free);
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   nodeRegisterType(nt);
 
@@ -1652,12 +1699,14 @@ static void rna_Node_parent_set(PointerRNA *ptr,
     /* XXX only Frame node allowed for now,
      * in the future should have a poll function or so to test possible attachment.
      */
-    if (parent->type != NODE_FRAME)
+    if (parent->type != NODE_FRAME) {
       return;
+    }
 
     /* make sure parent is not attached to the node */
-    if (nodeAttachNodeCheck(parent, node))
+    if (nodeAttachNodeCheck(parent, node)) {
       return;
+    }
   }
 
   nodeDetachNode(node);
@@ -1674,12 +1723,14 @@ static bool rna_Node_parent_poll(PointerRNA *ptr, PointerRNA value)
   /* XXX only Frame node allowed for now,
    * in the future should have a poll function or so to test possible attachment.
    */
-  if (parent->type != NODE_FRAME)
+  if (parent->type != NODE_FRAME) {
     return false;
+  }
 
   /* make sure parent is not attached to the node */
-  if (nodeAttachNodeCheck(parent, node))
+  if (nodeAttachNodeCheck(parent, node)) {
     return false;
+  }
 
   return true;
 }
@@ -1828,10 +1879,12 @@ static void rna_Node_inputs_move(ID *id, bNode *node, Main *bmain, int from_inde
   bNodeTree *ntree = (bNodeTree *)id;
   bNodeSocket *sock;
 
-  if (from_index == to_index)
+  if (from_index == to_index) {
     return;
-  if (from_index < 0 || to_index < 0)
+  }
+  if (from_index < 0 || to_index < 0) {
     return;
+  }
 
   sock = BLI_findlink(&node->inputs, from_index);
   if (to_index < from_index) {
@@ -1858,10 +1911,12 @@ static void rna_Node_outputs_move(ID *id, bNode *node, Main *bmain, int from_ind
   bNodeTree *ntree = (bNodeTree *)id;
   bNodeSocket *sock;
 
-  if (from_index == to_index)
+  if (from_index == to_index) {
     return;
-  if (from_index < 0 || to_index < 0)
+  }
+  if (from_index < 0 || to_index < 0) {
     return;
+  }
 
   sock = BLI_findlink(&node->outputs, from_index);
   if (to_index < from_index) {
@@ -1957,8 +2012,9 @@ static void rna_NodeSocket_draw_color(bContext *C,
 static void rna_NodeSocket_unregister(Main *UNUSED(bmain), StructRNA *type)
 {
   bNodeSocketType *st = RNA_struct_blender_type_get(type);
-  if (!st)
+  if (!st) {
     return;
+  }
 
   RNA_struct_free_extension(type, &st->ext_socket);
   RNA_struct_free(&BLENDER_RNA, type);
@@ -1990,8 +2046,9 @@ static StructRNA *rna_NodeSocket_register(Main *UNUSED(bmain),
   RNA_pointer_create(NULL, &RNA_NodeSocket, &dummysock, &dummyptr);
 
   /* validate the python class */
-  if (validate(&dummyptr, data, have_function) != 0)
+  if (validate(&dummyptr, data, have_function) != 0) {
     return NULL;
+  }
 
   if (strlen(identifier) >= sizeof(dummyst.idname)) {
     BKE_reportf(reports,
@@ -2040,10 +2097,12 @@ static StructRNA *rna_NodeSocket_refine(PointerRNA *ptr)
 {
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
 
-  if (sock->typeinfo->ext_socket.srna)
+  if (sock->typeinfo->ext_socket.srna) {
     return sock->typeinfo->ext_socket.srna;
-  else
+  }
+  else {
     return &RNA_NodeSocket;
+  }
 }
 
 static char *rna_NodeSocket_path(PointerRNA *ptr)
@@ -2054,8 +2113,9 @@ static char *rna_NodeSocket_path(PointerRNA *ptr)
   int socketindex;
   char name_esc[sizeof(node->name) * 2];
 
-  if (!nodeFindNode(ntree, sock, &node, &socketindex))
+  if (!nodeFindNode(ntree, sock, &node, &socketindex)) {
     return NULL;
+  }
 
   BLI_strescape(name_esc, node->name, sizeof(name_esc));
 
@@ -2119,13 +2179,16 @@ static void rna_NodeSocket_hide_set(PointerRNA *ptr, bool value)
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
 
   /* don't hide linked sockets */
-  if (sock->flag & SOCK_IN_USE)
+  if (sock->flag & SOCK_IN_USE) {
     return;
+  }
 
-  if (value)
+  if (value) {
     sock->flag |= SOCK_HIDDEN;
-  else
+  }
+  else {
     sock->flag &= ~SOCK_HIDDEN;
+  }
 }
 
 static void rna_NodeSocketInterface_draw(bContext *C, struct uiLayout *layout, PointerRNA *ptr)
@@ -2136,8 +2199,9 @@ static void rna_NodeSocketInterface_draw(bContext *C, struct uiLayout *layout, P
   ParameterList list;
   FunctionRNA *func;
 
-  if (!stemp->typeinfo)
+  if (!stemp->typeinfo) {
     return;
+  }
 
   func = &rna_NodeSocketInterface_draw_func; /* RNA_struct_find_function(&ptr, "draw"); */
 
@@ -2158,8 +2222,9 @@ static void rna_NodeSocketInterface_draw_color(bContext *C, PointerRNA *ptr, flo
   FunctionRNA *func;
   void *ret;
 
-  if (!sock->typeinfo)
+  if (!sock->typeinfo) {
     return;
+  }
 
   func =
       &rna_NodeSocketInterface_draw_color_func; /* RNA_struct_find_function(&ptr, "draw_color"); */
@@ -2184,8 +2249,9 @@ static void rna_NodeSocketInterface_register_properties(bNodeTree *ntree,
   ParameterList list;
   FunctionRNA *func;
 
-  if (!stemp->typeinfo)
+  if (!stemp->typeinfo) {
     return;
+  }
 
   RNA_pointer_create((ID *)ntree, &RNA_NodeSocketInterface, stemp, &ptr);
   /* RNA_struct_find_function(&ptr, "register_properties"); */
@@ -2207,8 +2273,9 @@ static void rna_NodeSocketInterface_init_socket(
   ParameterList list;
   FunctionRNA *func;
 
-  if (!stemp->typeinfo)
+  if (!stemp->typeinfo) {
     return;
+  }
 
   RNA_pointer_create((ID *)ntree, &RNA_NodeSocketInterface, stemp, &ptr);
   RNA_pointer_create((ID *)ntree, &RNA_Node, node, &node_ptr);
@@ -2236,8 +2303,9 @@ static void rna_NodeSocketInterface_from_socket(bNodeTree *ntree,
   ParameterList list;
   FunctionRNA *func;
 
-  if (!stemp->typeinfo)
+  if (!stemp->typeinfo) {
     return;
+  }
 
   RNA_pointer_create((ID *)ntree, &RNA_NodeSocketInterface, stemp, &ptr);
   RNA_pointer_create((ID *)ntree, &RNA_Node, node, &node_ptr);
@@ -2256,8 +2324,9 @@ static void rna_NodeSocketInterface_from_socket(bNodeTree *ntree,
 static void rna_NodeSocketInterface_unregister(Main *UNUSED(bmain), StructRNA *type)
 {
   bNodeSocketType *st = RNA_struct_blender_type_get(type);
-  if (!st)
+  if (!st) {
     return;
+  }
 
   RNA_struct_free_extension(type, &st->ext_interface);
 
@@ -2288,8 +2357,9 @@ static StructRNA *rna_NodeSocketInterface_register(Main *UNUSED(bmain),
   RNA_pointer_create(NULL, &RNA_NodeSocketInterface, &dummysock, &dummyptr);
 
   /* validate the python class */
-  if (validate(&dummyptr, data, have_function) != 0)
+  if (validate(&dummyptr, data, have_function) != 0) {
     return NULL;
+  }
 
   /* check if we have registered this socket type before */
   st = nodeSocketTypeFind(dummyst.idname);
@@ -2334,10 +2404,12 @@ static StructRNA *rna_NodeSocketInterface_refine(PointerRNA *ptr)
 {
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
 
-  if (sock->typeinfo && sock->typeinfo->ext_interface.srna)
+  if (sock->typeinfo && sock->typeinfo->ext_interface.srna) {
     return sock->typeinfo->ext_interface.srna;
-  else
+  }
+  else {
     return &RNA_NodeSocketInterface;
+  }
 }
 
 static char *rna_NodeSocketInterface_path(PointerRNA *ptr)
@@ -2347,12 +2419,14 @@ static char *rna_NodeSocketInterface_path(PointerRNA *ptr)
   int socketindex;
 
   socketindex = BLI_findindex(&ntree->inputs, sock);
-  if (socketindex != -1)
+  if (socketindex != -1) {
     return BLI_sprintfN("inputs[%d]", socketindex);
+  }
 
   socketindex = BLI_findindex(&ntree->outputs, sock);
-  if (socketindex != -1)
+  if (socketindex != -1) {
     return BLI_sprintfN("outputs[%d]", socketindex);
+  }
 
   return NULL;
 }
@@ -2374,8 +2448,9 @@ static void rna_NodeSocketInterface_update(Main *bmain, Scene *UNUSED(scene), Po
   bNodeTree *ntree = ptr->id.data;
   bNodeSocket *stemp = ptr->data;
 
-  if (!stemp->typeinfo)
+  if (!stemp->typeinfo) {
     return;
+  }
 
   ntree->update |= NTREE_UPDATE_GROUP;
   ntreeUpdateTree(bmain, ntree);
@@ -2585,8 +2660,9 @@ static bool rna_NodeInternal_poll_instance(bNode *node, bNodeTree *ntree)
 static void rna_NodeInternal_update(ID *id, bNode *node)
 {
   bNodeTree *ntree = (bNodeTree *)id;
-  if (node->typeinfo->updatefunc)
+  if (node->typeinfo->updatefunc) {
     node->typeinfo->updatefunc(ntree, node);
+  }
 }
 
 static void rna_NodeInternal_draw_buttons(ID *id,
@@ -2628,8 +2704,9 @@ static StructRNA *rna_NodeCustomGroup_register(Main *bmain,
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_NodeCustomGroup, data, identifier, validate, call, free);
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   /* this updates the group node instance from the tree's interface */
   nt->group_update_func = node_group_update;
@@ -2653,8 +2730,9 @@ static StructRNA *rna_ShaderNodeCustomGroup_register(Main *bmain,
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_ShaderNodeCustomGroup, data, identifier, validate, call, free);
 
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   nt->group_update_func = node_group_update;
   nt->type = NODE_CUSTOM_GROUP;
@@ -2678,8 +2756,9 @@ static StructRNA *rna_CompositorNodeCustomGroup_register(Main *bmain,
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_CompositorNodeCustomGroup, data, identifier, validate, call, free);
-  if (!nt)
+  if (!nt) {
     return NULL;
+  }
 
   nt->group_update_func = node_group_update;
   nt->type = NODE_CUSTOM_GROUP;
@@ -2712,8 +2791,9 @@ static void rna_NodeGroup_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *
   bNodeTree *ntree = (bNodeTree *)ptr->id.data;
   bNode *node = (bNode *)ptr->data;
 
-  if (node->id)
+  if (node->id) {
     ntreeUpdateTree(bmain, (bNodeTree *)node->id);
+  }
 
   ED_node_tag_update_nodetree(bmain, ntree, node);
 }
@@ -2727,10 +2807,12 @@ static void rna_NodeGroup_node_tree_set(PointerRNA *ptr,
   bNodeTree *ngroup = value.data;
 
   if (nodeGroupPoll(ntree, ngroup)) {
-    if (node->id)
+    if (node->id) {
       id_us_min(node->id);
-    if (ngroup)
+    }
+    if (ngroup) {
       id_us_plus(&ngroup->id);
+    }
 
     node->id = &ngroup->id;
   }
@@ -2742,8 +2824,9 @@ static bool rna_NodeGroup_node_tree_poll(PointerRNA *ptr, const PointerRNA value
   bNodeTree *ngroup = value.data;
 
   /* only allow node trees of the same type as the group node's tree */
-  if (ngroup->type != ntree->type)
+  if (ngroup->type != ntree->type) {
     return false;
+  }
 
   return nodeGroupPoll(ntree, ngroup);
 }
@@ -2755,8 +2838,9 @@ static StructRNA *rna_NodeGroup_interface_typef(PointerRNA *ptr)
 
   if (ngroup) {
     StructRNA *srna = ntreeInterfaceTypeGet(ngroup, true);
-    if (srna)
+    if (srna) {
       return srna;
+    }
   }
   return &RNA_PropertyGroup;
 }
@@ -2767,8 +2851,9 @@ static StructRNA *rna_NodeGroupInputOutput_interface_typef(PointerRNA *ptr)
 
   if (ntree) {
     StructRNA *srna = ntreeInterfaceTypeGet(ntree, true);
-    if (srna)
+    if (srna) {
       return srna;
+    }
   }
   return &RNA_PropertyGroup;
 }
@@ -2813,8 +2898,9 @@ static void rna_Matte_t1_set(PointerRNA *ptr, float value)
 
   chroma->t1 = value;
 
-  if (value < chroma->t2)
+  if (value < chroma->t2) {
     chroma->t2 = value;
+  }
 }
 
 static void rna_Matte_t2_set(PointerRNA *ptr, float value)
@@ -2822,8 +2908,9 @@ static void rna_Matte_t2_set(PointerRNA *ptr, float value)
   bNode *node = (bNode *)ptr->data;
   NodeChroma *chroma = node->storage;
 
-  if (value > chroma->t1)
+  if (value > chroma->t1) {
     value = chroma->t1;
+  }
 
   chroma->t2 = value;
 }
@@ -2870,10 +2957,12 @@ static const EnumPropertyItem *renderresult_layers_add_enum(RenderLayer *rl)
     tmp.identifier = rl->name;
     /* Little trick: using space char instead empty string
      * makes the item selectable in the dropdown. */
-    if (rl->name[0] == '\0')
+    if (rl->name[0] == '\0') {
       tmp.name = " ";
-    else
+    }
+    else {
       tmp.name = rl->name;
+    }
     tmp.value = i++;
     RNA_enum_item_add(&item, &totitem, &tmp);
     rl = rl->next;
@@ -2912,8 +3001,9 @@ static bool rna_Node_image_has_layers_get(PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
   Image *ima = (Image *)node->id;
 
-  if (!ima || !(ima->rr))
+  if (!ima || !(ima->rr)) {
     return 0;
+  }
 
   return RE_layers_have_name(ima->rr);
 }
@@ -2923,8 +3013,9 @@ static bool rna_Node_image_has_views_get(PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
   Image *ima = (Image *)node->id;
 
-  if (!ima || !(ima->rr))
+  if (!ima || !(ima->rr)) {
     return 0;
+  }
 
   return BLI_listbase_count_at_most(&ima->rr->views, 2) > 1;
 }
@@ -2942,10 +3033,12 @@ static const EnumPropertyItem *renderresult_views_add_enum(RenderView *rv)
     tmp.identifier = rv->name;
     /* Little trick: using space char instead empty string
      * makes the item selectable in the dropdown. */
-    if (rv->name[0] == '\0')
+    if (rv->name[0] == '\0') {
       tmp.name = " ";
-    else
+    }
+    else {
       tmp.name = rv->name;
+    }
     tmp.value = i++;
     RNA_enum_item_add(&item, &totitem, &tmp);
     rv = rv->next;
@@ -3143,13 +3236,16 @@ static void rna_NodeCryptomatte_matte_set(PointerRNA *ptr, const char *value)
   bNode *node = (bNode *)ptr->data;
   NodeCryptomatte *nc = node->storage;
 
-  if (nc->matte_id)
+  if (nc->matte_id) {
     MEM_freeN(nc->matte_id);
+  }
 
-  if (value && value[0])
+  if (value && value[0]) {
     nc->matte_id = BLI_strdup(value);
-  else
+  }
+  else {
     nc->matte_id = NULL;
+  }
 }
 
 static void rna_NodeCryptomatte_update_add(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -3229,8 +3325,9 @@ static bNodeSocket *rna_NodeOutputFile_slots_new(
   Scene *scene = CTX_data_scene(C);
   ImageFormatData *im_format = NULL;
   bNodeSocket *sock;
-  if (scene)
+  if (scene) {
     im_format = &scene->r.im_format;
+  }
 
   sock = ntreeCompositOutputFileAddSocket(ntree, node, name, im_format);
 
@@ -3318,13 +3415,16 @@ static void rna_ShaderNodeScript_bytecode_set(PointerRNA *ptr, const char *value
   bNode *node = (bNode *)ptr->data;
   NodeShaderScript *nss = node->storage;
 
-  if (nss->bytecode)
+  if (nss->bytecode) {
     MEM_freeN(nss->bytecode);
+  }
 
-  if (value && value[0])
+  if (value && value[0]) {
     nss->bytecode = BLI_strdup(value);
-  else
+  }
+  else {
     nss->bytecode = NULL;
+  }
 }
 
 static void rna_ShaderNodeScript_update(Main *bmain, Scene *scene, PointerRNA *ptr)
