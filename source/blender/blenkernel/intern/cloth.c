@@ -28,6 +28,8 @@
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_customdata_types.h"
 
 #include "BLI_utildefines.h"
 #include "BLI_math.h"
@@ -49,6 +51,9 @@
 #  include "BKE_pointcache.h"
 #endif
 
+#include "bmesh.h"
+#include "bmesh_tools.h"
+
 #include "BPH_mass_spring.h"
 
 // #include "PIL_time.h"  /* timing for debug prints */
@@ -66,6 +71,7 @@ static void cloth_update_verts(Object *ob, ClothModifierData *clmd, Mesh *mesh);
 static void cloth_update_spring_lengths(ClothModifierData *clmd, Mesh *mesh);
 static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh);
 static void cloth_apply_vgroup(ClothModifierData *clmd, Mesh *mesh);
+static Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh);
 
 typedef struct BendSpringRef {
   int index;
@@ -311,7 +317,7 @@ static int do_init_cloth(Object *ob, ClothModifierData *clmd, Mesh *result, int 
   return 1;
 }
 
-static int do_step_cloth(
+static Mesh *do_step_cloth(
     Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, Mesh *result, int framenr)
 {
   ClothVertex *verts = NULL;
@@ -364,7 +370,66 @@ static int do_step_cloth(
 
   // printf ( "%f\n", ( float ) tval() );
 
-  return ret;
+  Mesh *mesh_result = cloth_remeshing_step(ob, clmd, result);
+
+  if (!ret) {
+    return NULL;
+  }
+  return mesh_result;
+}
+
+/******************************************************************************
+ * cloth_remeshing_step - remeshing function for adaptive cloth modifier
+ * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
+ ******************************************************************************/
+
+static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
+{
+  CustomData_MeshMasks cddata_masks = {
+      .vmask = CD_MASK_ORIGINDEX, .emask = CD_MASK_ORIGINDEX, .pmask = CD_MASK_ORIGINDEX};
+  return cddata_masks;
+}
+
+static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh *mesh)
+{
+  cloth_to_mesh(ob, clmd, mesh);
+
+  CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
+  clmd->clothObject->bm = BKE_mesh_to_bmesh_ex(mesh,
+                                               &((struct BMeshCreateParams){0}),
+                                               &((struct BMeshFromMeshParams){
+                                                   .calc_face_normal = true,
+                                                   .cd_mask_extra = cddata_masks,
+                                               }));
+
+  BM_mesh_triangulate(clmd->clothObject->bm,
+                      MOD_TRIANGULATE_QUAD_SHORTEDGE,
+                      MOD_TRIANGULATE_NGON_BEAUTY,
+                      4,
+                      false,
+                      NULL,
+                      NULL,
+                      NULL);
+}
+
+static Mesh *cloth_remeshing_update_cloth_object(Object *ob, ClothModifierData *clmd)
+{
+  Mesh *mesh_result = NULL;
+  CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
+  mesh_result = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
+  BM_mesh_free(clmd->clothObject->bm);
+
+  do_init_cloth(ob, clmd, mesh_result, 0);
+  /* cloth_from_object(ob, clmd, mesh_result, 0, 0); */
+  return mesh_result;
+}
+
+Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
+{
+  cloth_remeshing_init_bmesh(ob, clmd, mesh);
+
+  BKE_mesh_free(mesh);
+  return cloth_remeshing_update_cloth_object(ob, clmd);
 }
 
 /************************************************
@@ -373,7 +438,7 @@ static int do_step_cloth(
 Mesh *clothModifier_do(
     ClothModifierData *clmd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *mesh)
 {
-  Mesh *mesh_result = mesh;
+  Mesh *mesh_result = NULL;
   BKE_id_copy_ex(NULL, (ID *)mesh, (ID **)&mesh_result, LIB_ID_COPY_LOCALIZE);
 #if USE_CLOTH_CACHE
   PointCache *cache;
@@ -396,7 +461,7 @@ Mesh *clothModifier_do(
 #endif
 
   if (clmd->sim_parms->reset ||
-      (clmd->clothObject && mesh->totvert != clmd->clothObject->mvert_num)) {
+      (clmd->clothObject && mesh_result->totvert != clmd->clothObject->mvert_num)) {
     clmd->sim_parms->reset = 0;
 #if USE_CLOTH_CACHE
     cache->flag |= PTCACHE_OUTDATED;
@@ -419,7 +484,7 @@ Mesh *clothModifier_do(
   }
 
   /* initialize simulation data if it didn't exist already */
-  if (!do_init_cloth(ob, clmd, mesh, framenr)) {
+  if (!do_init_cloth(ob, clmd, mesh_result, framenr)) {
     return mesh_result;
   }
 
@@ -427,7 +492,7 @@ Mesh *clothModifier_do(
 #if USE_CLOTH_CACHE
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
 #endif
-    do_init_cloth(ob, clmd, mesh, framenr);
+    do_init_cloth(ob, clmd, mesh_result, framenr);
 #if USE_CLOTH_CACHE
     BKE_ptcache_validate(cache, framenr);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
@@ -492,14 +557,23 @@ Mesh *clothModifier_do(
 #if USE_CLOTH_CACHE
   BKE_ptcache_validate(cache, framenr);
 
-  if (!do_step_cloth(depsgraph, ob, clmd, mesh, framenr)) {
+  Mesh *mesh_next = do_step_cloth(depsgraph, ob, clmd, mesh_result, framenr);
+
+  if (!mesh_next) {
     BKE_ptcache_invalidate(cache);
   }
   else {
+    BKE_mesh_free(mesh_result);
+    mesh_result = mesh_next;
     BKE_ptcache_write(&pid, framenr);
   }
 #else
-  do_step_cloth(depsgraph, ob, clmd, mesh, framenr);
+  Mesh *mesh_next = do_step_cloth(depsgraph, ob, clmd, mesh_result, framenr);
+
+  if (mesh_next) {
+    BKE_mesh_free(mesh_result);
+    mesh_result = mesh_next;
+  }
 #endif
   cloth_to_mesh(ob, clmd, mesh_result);
   clmd->clothObject->last_frame = framenr;
@@ -680,7 +754,7 @@ static void cloth_to_object(Object *ob, ClothModifierData *clmd, float (*vertexC
 }
 
 /**
- * Copies deformed vertices to Mesh
+ * Copies deformed vertices to already existing Mesh
  */
 
 static void cloth_to_mesh(Object *ob, ClothModifierData *clmd, Mesh *r_mesh)

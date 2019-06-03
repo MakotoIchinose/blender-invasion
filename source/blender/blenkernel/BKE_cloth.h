@@ -84,6 +84,7 @@ typedef struct Cloth {
   unsigned int mvert_num;    /* The number of verts == m * n. */
   unsigned int tri_num;
   unsigned char old_solver_type; /* unused, only 1 solver here */
+  struct BMesh *bm; /* Used for remeshing step, initialized and deleted then and there */
   unsigned char pad2;
   short pad3;
   struct BVHTree *bvhtree;     /* collision tree for this cloth object */
@@ -91,7 +92,7 @@ typedef struct Cloth {
   struct MVertTri *tri;
   struct Implicit_Data *implicit; /* our implicit solver connects to this pointer */
   struct EdgeSet *edgeset;        /* used for selfcollisions */
-  int last_frame, pad4;
+  int last_frame;
 } Cloth;
 
 /**
