@@ -121,6 +121,8 @@ typedef struct DRWCullingState {
 
 typedef struct DRWResourceHandle {
   union {
+    /* TODO order correctly and make sure
+     * endianness does not change anything. */
     struct {
       uint32_t negative_scale : 1;
       uint32_t id : 9;

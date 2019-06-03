@@ -602,8 +602,16 @@ BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
                                       uint vert_first,
                                       uint vert_count,
                                       uint inst_first,
-                                      uint inst_count)
+                                      uint inst_count,
+                                      int baseinst_loc)
 {
+  if (baseinst_loc != -1) {
+    /* Fallback when ARB_shader_draw_parameters is not supported. */
+    GPU_shader_uniform_vector_int(shgroup->shader, baseinst_loc, 1, 1, (int *)&inst_first);
+    /* Avoids VAO reconfiguration on older hardware. (see GPU_batch_draw_advanced) */
+    inst_first = 0;
+  }
+
   /* bind vertex array */
   if (DST.batch != geom) {
     DST.batch = geom;
@@ -899,7 +907,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
   BLI_assert(ubo_bindings_validate(shgroup));
 }
 
-BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, uint base_inst)
+BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, int baseinst_loc)
 {
 #ifdef USE_GPU_SELECT
   if ((G.f & G_FLAG_PICKSEL) == 0) {
@@ -929,10 +937,11 @@ BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, uin
     while (start < tot) {
       GPU_select_load_id(select_id[start]);
       if (is_instancing) {
-        draw_geometry_execute(shgroup, call->batch, 0, 0, start, count);
+        draw_geometry_execute(shgroup, call->batch, 0, 0, start, count, baseinst_loc);
       }
       else {
-        draw_geometry_execute(shgroup, call->batch, start, count, base_inst, 0);
+        draw_geometry_execute(
+            shgroup, call->batch, start, count, call->handle.id, 0, baseinst_loc);
       }
       start += count;
     }
@@ -972,6 +981,36 @@ static DRWCall *draw_call_iter_step(DRWCallIterator *iter)
     }
   }
   return NULL;
+}
+
+typedef struct DRWCommandsState {
+  int callid;
+  uint resource_chunk;
+  bool neg_scale;
+} DRWCommandsState;
+
+static void draw_call_resource_bind(DRWCommandsState *state,
+                                    DRWResourceHandle handle,
+                                    int obmats_loc,
+                                    int obinfos_loc)
+{
+  /* Front face is not a resource but it is inside the resource handle. */
+  if (handle.negative_scale != state->neg_scale) {
+    glFrontFace((handle.negative_scale) ? GL_CW : GL_CCW);
+    state->neg_scale = handle.negative_scale;
+  }
+
+  if (state->resource_chunk != handle.chunk) {
+    if (obmats_loc != -1) {
+      GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state->resource_chunk]);
+      GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
+    }
+    if (obinfos_loc != -1) {
+      GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[state->resource_chunk]);
+      GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 1);
+    }
+    state->resource_chunk = handle.chunk;
+  }
 }
 
 static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
@@ -1020,77 +1059,55 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 
   /* Rendering Calls */
   {
-    bool prev_neg_scale = false;
-    uint resource_chunk = 0;
-    uint base_inst = 0;
-    int callid = 0;
-
     DRWCallIterator iter;
     draw_call_iter_begin(&iter, shgroup);
     DRWCall *call;
 
+    DRWCommandsState state = {
+        .neg_scale = false,
+        .resource_chunk = 0,
+        .callid = 0,
+    };
     while ((call = draw_call_iter_step(&iter))) {
-      DRWResourceHandle handle = call->handle;
 
       if (draw_call_is_culled(call, DST.view_active)) {
         continue;
       }
 
+      draw_call_resource_bind(&state, call->handle, obmats_loc, obinfos_loc);
+
       /* XXX small exception/optimisation for outline rendering. */
       if (callid_loc != -1) {
-        GPU_shader_uniform_vector_int(shgroup->shader, callid_loc, 1, 1, &callid);
-        callid += 1;
-      }
-
-      /* Negative scale objects */
-      bool neg_scale = call->handle.negative_scale;
-      if (neg_scale != prev_neg_scale) {
-        glFrontFace((neg_scale) ? GL_CW : GL_CCW);
-        prev_neg_scale = neg_scale;
-      }
-
-      if (resource_chunk != handle.chunk) {
-        if (obmats_loc != -1) {
-          GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
-          GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
-        }
-        if (obinfos_loc != -1) {
-          GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[resource_chunk]);
-          GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 1);
-        }
-        resource_chunk = handle.chunk;
-      }
-
-      if (baseinst_loc != -1) {
-        /* Fallback when ARB_shader_draw_parameters is not supported. */
-        int id = handle.id;
-        GPU_shader_uniform_vector_int(shgroup->shader, baseinst_loc, 1, 1, &id);
-        base_inst = 0;
-      }
-      else {
-        base_inst = handle.id;
+        GPU_shader_uniform_vector_int(shgroup->shader, callid_loc, 1, 1, &state.callid);
+        state.callid += 1;
       }
 
       if (obmats_loc == -1 && (obmat_loc != -1 || obinv_loc != -1 || mvp_loc != -1)) {
         /* TODO This is Legacy. Need to be removed. */
-        draw_legacy_matrix_update(shgroup, handle, obmat_loc, obinv_loc, mvp_loc);
+        draw_legacy_matrix_update(shgroup, call->handle, obmat_loc, obinv_loc, mvp_loc);
       }
 
-      if (draw_select_do_call(shgroup, call, base_inst)) {
+      if (draw_select_do_call(shgroup, call, baseinst_loc)) {
         continue;
       }
 
-      draw_geometry_execute(
-          shgroup, call->batch, call->vert_first, call->vert_count, base_inst, call->inst_count);
+      draw_geometry_execute(shgroup,
+                            call->batch,
+                            call->vert_first,
+                            call->vert_count,
+                            call->handle.id,
+                            call->inst_count,
+                            baseinst_loc);
     }
+
     /* Reset state */
     glFrontFace(GL_CCW);
 
     if (obmats_loc != -1) {
-      GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[resource_chunk]);
+      GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state.resource_chunk]);
     }
     if (obinfos_loc != -1) {
-      GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[resource_chunk]);
+      GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[state.resource_chunk]);
     }
   }
 
