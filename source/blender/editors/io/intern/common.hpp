@@ -99,6 +99,7 @@ namespace common {
 		pointer_iterator(pointer_iterator<SourceT, Tag> &&) = default;
 		explicit pointer_iterator(SourceT *p) : it(p), first(p), size(0) {}
 		explicit pointer_iterator(SourceT *p, size_t size) : it(p), first(p), size(size) {}
+		operator SourceT *() const { return it; }
 		pointer_iterator operator=(const pointer_iterator<SourceT, Tag> &p) {
 			return pointer_iterator<SourceT, Tag>(p);
 		}
@@ -173,8 +174,6 @@ namespace common {
 
 	struct poly_iter : pointer_iterator<MPoly> {
 		poly_iter(const Mesh * const m) : pointer_iterator(m->mpoly, m->totpoly) {}
-		poly_iter(const poly_iter &) = default;
-		poly_iter(poly_iter &&) = default;
 		poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
 		poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 	};
@@ -194,10 +193,6 @@ namespace common {
 	struct uv_iter : public dereference_iterator<MLoopUV, const std::array<float, 2>, uv_iter> {
 		explicit uv_iter(const Mesh * const m)
 			: dereference_iterator(m->mloopuv, m->totloop, this) {}
-		// uv_iter begin() const { return uv_iter{this->base().begin(), crtp}; }
-		// uv_iter end()   const { return {this->base().end(), crtp}; }
-		// uv_iter(const uv_iter &uv) : dereference_iterator(uv) {}
-		// uv_iter(uv_iter &&uv) : dereference_iterator(uv) {}
 		uv_iter(const dereference_iterator_ &di)
 			: dereference_iterator(di, this) {}
 		uv_iter(dereference_iterator_ &&di)
@@ -233,41 +228,49 @@ namespace common {
 			: list_iterator((ModifierData *) ob->modifiers.first) {}
 	};
 
+	struct loop_of_poly_iter : pointer_iterator<MLoop> {
+		explicit loop_of_poly_iter(const Mesh * const mesh, const poly_iter &poly)
+			: pointer_iterator(mesh->mloop + poly->loopstart, poly->totloop) {}
+		loop_of_poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
+		loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
+	};
+
 	struct normal_iter :
 		public boost::iterator_facade<normal_iter, std::array<float, 3>,
-		                              std::bidirectional_iterator_tag, const std::array<float, 3> &> {
-		using T = std::array<float, 3>;
+		                              std::bidirectional_iterator_tag, const std::array<float, 3>> {
+		using ResT = const std::array<float, 3>;
 		normal_iter() = default;
 		normal_iter(const normal_iter &) = default;
 		normal_iter(normal_iter &&) = default;
-		explicit normal_iter(const Mesh * const mesh, const poly_iter &poly, const pointer_iterator<MLoop> &loop)
-			: mesh(mesh), poly(poly), loop(loop) {}
-		explicit normal_iter(const Mesh * const mesh)
-			: mesh(mesh), poly(mesh), loop(mesh->mloop + poly->loopstart, poly->totloop) {
+		explicit normal_iter(const Mesh * const mesh, const poly_iter poly, const loop_of_poly_iter loop)
+			: mesh(mesh), poly(poly), loop(loop) {
 			loop_no = static_cast<float(*)[3]>(CustomData_get_layer(&mesh->ldata, CD_NORMAL));
 		}
+		explicit normal_iter(const Mesh * const mesh)
+			: normal_iter(mesh, poly_iter(mesh), loop_of_poly_iter(mesh, poly_iter(mesh))) {}
 		normal_iter begin() const { return normal_iter{mesh}; }
-		normal_iter end() const { return normal_iter(mesh, poly.end(), loop.end()); }
+		normal_iter end()   const { return normal_iter(mesh, poly.end(), loop.end()); }
 		friend class boost::iterator_core_access;
 		void increment() {
-			if ((loop != (loop.end() - 1)) && ((poly->flag & ME_SMOOTH) != 0)) {
+			// If not in the last loop and face is smooth shaded, each vertex has it's
+			// own normal, so increment loop, otherwise go to the next poly
+			if ((loop != loop.end()) && ((poly->flag & ME_SMOOTH) == 0)) {
 				++loop;
-			} else {
+			} else if (poly != poly.end()) {
 				++poly;
-				loop = pointer_iterator<MLoop>(mesh->mloop + poly->loopstart, poly->totloop);
+				loop = loop_of_poly_iter(mesh, poly);
 			}
 		}
 		void decrement() {
-			if ((loop != (loop.begin() + 1)) && ((poly->flag & ME_SMOOTH) != 0)) {
+			if ((loop != loop.begin()) && ((poly->flag & ME_SMOOTH) == 0)) {
 				--loop;
-			} else {
+			} else if (poly != poly.begin()) {
 				--poly;
-				loop = pointer_iterator<MLoop>(mesh->mloop + poly->loopstart + poly->totloop - 1,
-				                               poly->totloop);
+				loop = loop_of_poly_iter(mesh, poly);
 			}
 		}
 		bool equal(const normal_iter &other) const { return poly == other.poly && loop == other.loop; }
-		const T dereference() const {
+		ResT dereference() const {
 			if (loop_no) {
 				const float (&no)[3] = loop_no[loop->v];
 				return {no[0], no[1], no[2]};
@@ -282,7 +285,7 @@ namespace common {
 		}
 		const Mesh * const mesh;
 		poly_iter poly;
-		pointer_iterator<MLoop> loop;
+		loop_of_poly_iter loop;
 		const float (*loop_no)[3];
 	};
 
@@ -348,7 +351,7 @@ namespace common {
 		}
 		friend class boost::iterator_core_access;
 		void increment() {
-			while(true) {
+			while(this->base() != this->base().end()) {
 				++this->base_reference();
 				auto p = dedup_pair.first.insert(std::make_pair(*this->base_reference(), total));
 				dedup_pair.second.push_back(p.first);
@@ -358,48 +361,11 @@ namespace common {
 				}
 			}
 		}
-		ResT dereference() const { return dedup_pair.second.back()->first; }
+		const ResT dereference() const { return dedup_pair.second.back()->first; }
 		const Mesh * const mesh;
 		dedup_pair_t<KeyT> &dedup_pair;
 		ulong &total;
 	};
-
-	// template<typename KeyT, typename SourceIter>
-	// struct deduplicated_iterator :
-	// 	public boost::iterator_facade<SourceIter, typename KeyT::first_type, std::forward_iterator_tag, const typename KeyT::first_type &> {
-	// 	deduplicated_iterator() = default;
-	// 	explicit deduplicated_iterator(const Mesh * const mesh, dedup_pair_t<KeyT> &dp,
-	// 	                               ulong &total, ulong reserve)
-	// 		: mesh(mesh), source(mesh), dedup_pair(dp), total(total) {
-	// 		dedup_pair.second.reserve(reserve);
-	// 	}
-	// 	explicit deduplicated_iterator(const Mesh * const mesh, dedup_pair_t<KeyT> &dp,
-	// 	                               ulong &total, ulong reserve, const SourceIter &s)
-	// 		: mesh(mesh), source(s), dedup_pair(dp), total(total) {
-	// 		dedup_pair.second.reserve(reserve);
-	// 	}
-	// 	deduplicated_iterator begin() { return deduplicated_iterator{mesh, dedup_pair, total, total}; }
-	// 	deduplicated_iterator end() { return deduplicated_iterator{mesh, dedup_pair, total, total, source.end()}; }
-	// protected:
-	// 	friend class boost::iterator_core_access;
-	// 	void increment() {
-	// 		++source;
-	// 		auto p = dedup_pair.first.insert(std::make_pair(*source, total));
-	// 		dedup_pair.second.push_back(p.first);
-	// 		if (p.second)
-	// 			++total;
-	// 	}
-	// 	bool equal(const deduplicated_iterator<KeyT, SourceIter> &other) const {
-	// 		return source == other.source && dedup_pair.second.back() == other.second.back();
-	// 	}
-	// 	const typename KeyT::first_type & dereference() const {
-	// 		return *dedup_pair.second.back().first;
-	// 	}
-	// 	const Mesh * const mesh;
-	// 	SourceIter source;
-	// 	dedup_pair_t<KeyT> &dedup_pair;
-	// 	ulong &total;
-	// };
 
 	struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, normal_iter> {
 		deduplicated_normal_iter(const Mesh * const mesh, ulong &total, dedup_pair_t<no_key_t> &dp)
