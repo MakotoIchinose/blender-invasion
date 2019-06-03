@@ -104,7 +104,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Generate a wireframe on the edges of a mesh"},
-     {eModifierType_MyBMesh,
+    {eModifierType_MyBMesh,
      "MY_BMESH",
      ICON_MOD_SMOOTH,
      "Smooth Contour",

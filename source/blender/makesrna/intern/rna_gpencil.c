@@ -1661,7 +1661,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
 
   /* composition Depth */
   prop = RNA_def_property(srna, "disable_depth_composition", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "no_depth",0);
+  RNA_def_property_boolean_sdna(prop, NULL, "no_depth", 0);
   RNA_def_property_ui_text(
       prop, "Disable Depth Composition", "Do not use depth when rendering GPencil to 3D scene.");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");

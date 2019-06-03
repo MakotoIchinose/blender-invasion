@@ -16,9 +16,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2016, Blender Foundation.
- * 
+ *
  * Contributor(s): Yiming Wu
- * 
+ *
  */
 
 /** \file
@@ -114,7 +114,7 @@ typedef struct LANPR_RenderLine {
   char min_occ;
   char flags;  // also for line type determination on chainning
   struct Object *object_ref;
-  int  edge_idx; // for gpencil stroke modifier
+  int edge_idx;  // for gpencil stroke modifier
 } LANPR_RenderLine;
 
 typedef struct LANPR_RenderLineChain {
@@ -126,13 +126,11 @@ typedef struct LANPR_RenderLineChain {
 
 typedef struct LANPR_RenderLineChainItem {
   Link item;
-  float pos[3];  // need z value for fading
-  float gpos[3]; // for restore position to 3d space
+  float pos[3];   // need z value for fading
+  float gpos[3];  // for restore position to 3d space
   float normal[3];
   char line_type;  //      style of [1]       style of [2]
   char occlusion;  // [1]--------------->[2]---------------->[3]--....
 } LANPR_RenderLineChainItem;
-
-
 
 #endif

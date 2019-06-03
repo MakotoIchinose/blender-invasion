@@ -229,7 +229,7 @@ typedef struct LANPR_PrivateData {
 
   ListBase dpix_batch_list;
 
-  LANPR_RenderBuffer* rb_ref;
+  LANPR_RenderBuffer *rb_ref;
 
 } LANPR_PrivateData;
 

@@ -657,7 +657,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   lanpr_cache_init(vedata);
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, LANPR_render_cache);
   lanpr_cache_finish(vedata);
-  
+
   /* get ref for destroy data */
   stl->g_data->rb_ref = lanpr->render_buffer;
 

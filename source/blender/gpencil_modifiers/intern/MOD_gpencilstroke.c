@@ -72,84 +72,82 @@
 
 static void initData(GpencilModifierData *md)
 {
-	StrokeGpencilModifierData *gpmd = (StrokeGpencilModifierData *)md;
-	gpmd->object = NULL;
+  StrokeGpencilModifierData *gpmd = (StrokeGpencilModifierData *)md;
+  gpmd->object = NULL;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
-	BKE_gpencil_modifier_copyData_generic(md, target);
+  BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-
-
-static void bakeModifier(
-        Main *UNUSED(bmain), Depsgraph *depsgraph,
-        GpencilModifierData *md, Object *ob)
+static void bakeModifier(Main *UNUSED(bmain),
+                         Depsgraph *depsgraph,
+                         GpencilModifierData *md,
+                         Object *ob)
 {
 
-	bGPdata *gpd = ob->data;
+  bGPdata *gpd = ob->data;
 
-	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-		for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-			//lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
-			return;
-		}
-	}
+  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
+      return;
+    }
+  }
 }
 
 /* -------------------------------- */
 
 /* Generic "generateStrokes" callback */
 static void generateStrokes(
-        GpencilModifierData *md, Depsgraph *depsgraph,
-        Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-	//lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
-	lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
+  // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
+  lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-	StrokeGpencilModifierData *lmd = (StrokeGpencilModifierData *)md;
-	if (lmd->object != NULL) {
-		DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Stroke Modifier");
-		DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Stroke Modifier");
-	}
-	DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Stroke Modifier");
+  StrokeGpencilModifierData *lmd = (StrokeGpencilModifierData *)md;
+  if (lmd->object != NULL) {
+    DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Stroke Modifier");
+    DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Stroke Modifier");
+  }
+  DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Stroke Modifier");
 }
 
-static void foreachObjectLink(
-	GpencilModifierData *md, Object *ob,
-	ObjectWalkFunc walk, void *userData)
+static void foreachObjectLink(GpencilModifierData *md,
+                              Object *ob,
+                              ObjectWalkFunc walk,
+                              void *userData)
 {
-	StrokeGpencilModifierData *mmd = (StrokeGpencilModifierData *)md;
+  StrokeGpencilModifierData *mmd = (StrokeGpencilModifierData *)md;
 
-	walk(userData, ob, &mmd->object, IDWALK_CB_NOP);
+  walk(userData, ob, &mmd->object, IDWALK_CB_NOP);
 }
-
 
 GpencilModifierTypeInfo modifierType_Gpencil_Stroke = {
-	/* name */              "Stroke",
-	/* structName */        "StrokeGpencilModifierData",
-	/* structSize */        sizeof(StrokeGpencilModifierData),
-	/* type */              eGpencilModifierTypeType_Gpencil,
-	/* flags */             0,
+    /* name */ "Stroke",
+    /* structName */ "StrokeGpencilModifierData",
+    /* structSize */ sizeof(StrokeGpencilModifierData),
+    /* type */ eGpencilModifierTypeType_Gpencil,
+    /* flags */ 0,
 
-	/* copyData */          copyData,
+    /* copyData */ copyData,
 
-	/* deformStroke */      NULL,
-	/* generateStrokes */   generateStrokes,
-	/* bakeModifier */      bakeModifier,
-	/* remapTime */         NULL,
+    /* deformStroke */ NULL,
+    /* generateStrokes */ generateStrokes,
+    /* bakeModifier */ bakeModifier,
+    /* remapTime */ NULL,
 
-	/* initData */          initData,
-	/* freeData */          NULL,
-	/* isDisabled */        NULL,
-	/* updateDepsgraph */   updateDepsgraph,
-	/* dependsOnTime */     NULL,
-	/* foreachObjectLink */ foreachObjectLink,
-	/* foreachIDLink */     NULL,
-	/* foreachTexLink */    NULL,
-	/* getDuplicationFactor */ NULL,
+    /* initData */ initData,
+    /* freeData */ NULL,
+    /* isDisabled */ NULL,
+    /* updateDepsgraph */ updateDepsgraph,
+    /* dependsOnTime */ NULL,
+    /* foreachObjectLink */ foreachObjectLink,
+    /* foreachIDLink */ NULL,
+    /* foreachTexLink */ NULL,
+    /* getDuplicationFactor */ NULL,
 };

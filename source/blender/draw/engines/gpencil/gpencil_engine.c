@@ -1038,15 +1038,15 @@ void GPENCIL_draw_scene(void *ved)
         stl->storage->no_depth_composition = gpd->no_depth;
 
         /* draw mix pass */
-        if(gpd->no_depth){
-            DRW_pass_state_remove(psl->mix_pass,DRW_STATE_WRITE_DEPTH|DRW_STATE_DEPTH_LESS);
-          }
+        if (gpd->no_depth) {
+          DRW_pass_state_remove(psl->mix_pass, DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+        }
 
         DRW_draw_pass(psl->mix_pass);
 
         /* restore */
-        if(gpd->no_depth){
-          DRW_pass_state_add(psl->mix_pass,DRW_STATE_WRITE_DEPTH|DRW_STATE_DEPTH_LESS);
+        if (gpd->no_depth) {
+          DRW_pass_state_add(psl->mix_pass, DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
         }
 
         /* disable select flag */
