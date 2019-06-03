@@ -20,4 +20,6 @@ void lanpr_generate_gpencil_from_chain(
 
 int lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
+void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
+
 #endif

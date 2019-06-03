@@ -4,6 +4,7 @@
 #include "BLI_linklist.h"
 #include "BLI_math_matrix.h"
 #include "lanpr_all.h"
+#include "lanpr_access.h"
 #include "DRW_render.h"
 #include "BKE_object.h"
 #include "DNA_mesh_types.h"
@@ -167,6 +168,8 @@ static void lanpr_engine_free(void)
   BLI_mempool_destroy(stl->g_data->mp_batch_list);
 
   lanpr_destroy_atlas(vedata);
+
+  lanpr_destroy_render_data(stl->g_data->rb_ref);
 
   stl->g_data = 0;
 }
@@ -531,6 +534,9 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     // should isolate these into a seperate function.
     lanpr_software_draw_scene(vedata, dfb, is_render);
   }
+
+  // Draw can create stuff there.
+  pd->rb_ref = lanpr->render_buffer;
 }
 
 static void lanpr_draw_scene(void *vedata)
@@ -651,6 +657,9 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   lanpr_cache_init(vedata);
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, LANPR_render_cache);
   lanpr_cache_finish(vedata);
+  
+  /* get ref for destroy data */
+  stl->g_data->rb_ref = lanpr->render_buffer;
 
   DRW_render_instance_buffer_finish();
 
