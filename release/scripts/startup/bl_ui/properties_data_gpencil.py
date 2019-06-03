@@ -397,9 +397,6 @@ class DATA_PT_gpencil_strokes(DataButtonsPanel, Panel):
         gpd = context.gpencil
 
         col = layout.column(align=True)
-        col.prop(gpd, "disable_depth_composition", expand=True, icon='IMAGE_ZDEPTH')
-
-        col = layout.column(align=True)
         col.prop(gpd, "stroke_depth_order")
 
         if ob:

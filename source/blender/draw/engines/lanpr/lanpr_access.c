@@ -268,7 +268,7 @@ void lanpr_generate_gpencil_from_chain(
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
     for (rlci = rlc->chain.first; rlci; rlci = (LANPR_RenderLineChainItem *)rlci->item.next) {
-      float opatity = rlci->occlusion ? 0.1f : 1.0f;
+      float opatity = rlci->occlusion ? 0.0f : 1.0f;
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];

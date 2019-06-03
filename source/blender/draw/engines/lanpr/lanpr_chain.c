@@ -407,7 +407,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
                                              new_rl->r->gloc[2],
                                              N,
                                              new_rl->flags,
-                                             0);
+                                             100);
       }
       ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }

@@ -2250,6 +2250,8 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column()
         col.prop(md, "offset_object", text="Object")
 
+        col.prop(ob,"show_in_front", text='Overlay', expand=True)
+
         col = layout.column()
         col.separator()
         col.label(text="Material:")
