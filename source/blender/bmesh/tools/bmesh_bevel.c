@@ -58,6 +58,7 @@
 
 #define DEBUG_CUSTOM_PROFILE_SAMPLE 0
 #define DEBUG_CUSTOM_PROFILE 1
+#define DEBUG_CUSTOM_PROFILE_WELD 1
 
 /* happens far too often, uncomment for development */
 // #define BEVEL_ASSERT_PROJECT
@@ -129,6 +130,9 @@ typedef struct Profile {
   float *prof_co;    /* seg+1 profile coordinates (triples of floats) */
   float *prof_co_2;  /* like prof_co, but for seg power of 2 >= seg */
   struct CustomProfile custom_profile; /* The sampled locations on the custom profile */
+  /* HANS-TODO: I shouldn't actually need this, because the Profile struct
+   * just stores the locations of the verts. I may need to put some extra information in here,
+   * but I doubt I will need to a whole separate struct for it */
 } Profile;
 #define PRO_SQUARE_R 1e4f
 #define PRO_CIRCLE_R 2.0f
@@ -1708,7 +1712,7 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv) {
       yvals = bp->pro_spacing.yvals_2_custom;
       prof_co = pro->prof_co_2;
     }
-    /* HANS-TODO: Why this assert? */
+    /* HANS-TODO: Why this assert? BECAUSE IT SIGABRTs IF YOU DON'T!!!! */
     BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
 
     /* Iterate over the vertices along the boundary arc */
@@ -1763,11 +1767,6 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
   float r;
   bool need_2, map_ok;
   Profile *pro = &bndv->profile;
-
-  /* HANS-TODO: If the goal of this function is to translate the 2D coords of the profile spacing
-   * into 3D for the actual placement of the profile verts, I'm not sure that this function will
-   * actually have to be changed, because that process should be the same for different vert locations.
-   * So figure out if that's what this function does. */
 
   /* This function should do the exact same thing for the custom profiles, so it shouldn't need to be changed */
 
@@ -4958,6 +4957,8 @@ static void bevel_build_trifan(BevelParams *bp, BMesh *bm, BevVert *bv)
  * we have to make it here. */
 static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
+  /* HANS-TODO: Figure out where there are symmetry assumptions are and REMOVE them! */
+
   VMesh *vm = bv->vmesh;
   BMVert *v1, *v2;
   BMEdge *e_eg, *bme;
@@ -4984,7 +4985,12 @@ static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
     zero_v3(pro->plane_co);
     zero_v3(pro->plane_no);
     zero_v3(pro->proj_dir);
+
     calculate_profile(bp, bndv);
+    /* HANS-QUESTION: Why is this calculated again here? I thought this was done in build_vmesh.
+     * This seems like a lot of extra work in this case.  I would think if we're not
+     * going to use prohjection anyway we wouldn't bother calculating it in the first place */
+
     for (k = 1; k < ns; k++) {
       get_profile_point(bp, pro, k, ns, co);
       copy_v3_v3(mesh_vert(vm, 0, 0, k)->co, co);
@@ -5029,6 +5035,11 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
 
   /* special case: two beveled ends welded together */
   weld = (bv->selcount == 2) && (vm->count == 2);
+#if DEBUG_CUSTOM_PROFILE_WELD
+  if (weld) {
+    printf("We are in the weld case!\n");
+  }
+#endif
   weld1 = weld2 = NULL; /* will hold two BoundVerts involved in weld */
 
   /* make (i, 0, 0) mesh verts for all i */
@@ -5045,23 +5056,33 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       else {
         weld2 = v;
         move_weld_profile_planes(bv, weld1, weld2);
-        calculate_profile(bp, weld1);
-        calculate_profile(bp, weld2);
+        if (!bp->use_custom_profile) {
+          calculate_profile(bp, weld1);
+          calculate_profile(bp, weld2);
+        }
+        else {
+          calculate_profile_custom(bp, weld1);
+          calculate_profile_custom(bp, weld2);
+        }
       }
     }
   } while ((v = v->next) != vm->boundstart);
 
+
+  /* Create new vertices and place them based on the profiles HANS-QUESTION: Right? */
   /* copy other ends to (i, 0, ns) for all i, and fill in profiles for edges */
   v = vm->boundstart;
   do {
     i = v->index;
     copy_mesh_vert(vm, i, 0, ns, v->next->index, 0, 0);
+    /* HANS-QUESTION:   Couldn't you optimise this by checking if not M_ADJ out here only once instead? */
     for (k = 1; k < ns; k++) {
       if (v->ebev && vm->mesh_kind != M_ADJ) {
         get_profile_point(bp, &v->profile, k, ns, co);
-        copy_v3_v3(mesh_vert(vm, i, 0, k)->co, co);
+        copy_v3_v3(mesh_vert(vm, i, 0, k)->co, co); /* Get NewVert location from profile coord */
         if (!weld) {
           create_mesh_bmvert(bm, vm, i, 0, k, bv->v);
+          /* This is done in the loop after this with (possibly) better positions for the weld case */
         }
       }
       else if (n == 2 && !v->ebev && vm->mesh_kind != M_ADJ) {
@@ -5086,19 +5107,22 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       }
       else {
         mid_v3_v3v3(co, va, vb);
+        /* HANS-TODO: Why would you do that? Isn't this the general case when the profile points are defined by profile spacing? */
       }
       copy_v3_v3(mesh_vert(vm, weld1->index, 0, k)->co, co);
       create_mesh_bmvert(bm, vm, weld1->index, 0, k, bv->v);
     }
     for (k = 1; k < ns; k++) {
+      /* HANS-QUESTION: Will I have to disable this? Is this where the symmetry is created?
+       * It looks like the purpose is to make the index loop back down as it goes past halway,
+       * so I probably will have to actually.
+       * HANS-TODO: Disable this possibly! */
       copy_mesh_vert(vm, weld2->index, 0, ns - k, weld1->index, 0, k);
     }
   }
 
   switch (vm->mesh_kind) {
     case M_NONE:
-      /* HANS-QUESTION: How is the purpose here different than
-       * the purpose of the code in the "if (weld)" section? */
       if (n == 2 && bp->vertex_only) {
         bevel_vert_two_edges(bp, bm, bv);
       }
@@ -6426,9 +6450,8 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
 /* What I think I need to be doing here is getting the 2D coords of the profile curve,
  * but I'm not positive that pro_spacing is the right place to store these. We'll see.
  * HANS-TODO: Verify this */
-static void set_custom_profile_spacing(BevelParams *bp, int segments, double *xvals, double *yvals)
+static void set_profile_spacing_custom(BevelParams *bp, int seg, double *xvals, double *yvals)
 {
-  int seg = bp->seg;
   float x_temp, y_temp; /* Need temporary floats to convert to doubles */
 
   curvemapping_path_initialize(bp->profile_curve, seg);
@@ -6470,7 +6493,7 @@ static void set_profile_spacing(BevelParams *bp)
       bp->pro_spacing.yvals_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
 
       if (!bp->sample_points) {
-        set_custom_profile_spacing(bp, seg, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
+        set_profile_spacing_custom(bp, seg, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
       }
       else {
         copy_profile_point_locations(bp, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
@@ -6504,7 +6527,7 @@ static void set_profile_spacing(BevelParams *bp)
 
         /* Don't use the special function to just sample the coords of the points here
          * because we need more samples than the number of points on the plot */
-        set_custom_profile_spacing(bp, seg_2, bp->pro_spacing.xvals_2_custom, bp->pro_spacing.yvals_2_custom);
+        set_profile_spacing_custom(bp, seg_2, bp->pro_spacing.xvals_2_custom, bp->pro_spacing.yvals_2_custom);
       }
 
       bp->pro_spacing.xvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,

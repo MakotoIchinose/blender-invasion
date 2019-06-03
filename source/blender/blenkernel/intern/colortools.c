@@ -1296,39 +1296,39 @@ void curvemap_path_evaluate(const struct CurveMap *cuma, float length_portion, f
 /* HANS-TODO: Test this! (And start using it) */
 static void curvemap_path_make_table(struct CurveMap *cuma) {
   /* Fill table with values for the position of the graph at each of the segments */
-  const float segment_length = cuma->total_length / cuma->nsegments;
-  float length_travelled = 0.0f;
-  float distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, 0);
-  float distance_to_previous_point = 0.0f;
-  float travelled_since_last_point = 0.0f;
-  float segment_left = segment_length;
-  float f;
-  int i_point = 0;
+//  const float segment_length = cuma->total_length / cuma->nsegments;
+//  float length_travelled = 0.0f;
+//  float distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, 0);
+//  float distance_to_previous_point = 0.0f;
+//  float travelled_since_last_point = 0.0f;
+//  float segment_left = segment_length;
+//  float f;
+//  int i_point = 0;
 
-  cuma->x_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table x");
-  cuma->y_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table y"); /* HANS-TODO: Free these!! Where?? */
+//  cuma->x_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table x");
+//  cuma->y_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table y"); /* HANS-TODO: Free these!! Where?? */
 
-  /* Travel along the path, recording locations of segments as we pass where they should be */
-  for (int i = 0; i < cuma->nsegments; i++) {
-    /* Travel over all of the points that could be inside this segment */
-    while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {
-      length_travelled += distance_to_next_point;
-      segment_left -= distance_to_next_point;
-      travelled_since_last_point += distance_to_next_point;
-      i_point++;
-      distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, i_point);
-      distance_to_previous_point = 0.0f;
-    }
-    /* We're now at the last point that fits inside the current segment */
+//  /* Travel along the path, recording locations of segments as we pass where they should be */
+//  for (int i = 0; i < cuma->nsegments; i++) {
+//    /* Travel over all of the points that could be inside this segment */
+//    while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {
+//      length_travelled += distance_to_next_point;
+//      segment_left -= distance_to_next_point;
+//      travelled_since_last_point += distance_to_next_point;
+//      i_point++;
+//      distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, i_point);
+//      distance_to_previous_point = 0.0f;
+//    }
+//    /* We're now at the last point that fits inside the current segment */
 
-    f = segment_left / (distance_to_previous_point + distance_to_next_point);
-    cuma->x_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
-    cuma->y_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
-    distance_to_next_point -= segment_left;
-    distance_to_previous_point += segment_left;
+//    f = segment_left / (distance_to_previous_point + distance_to_next_point);
+//    cuma->x_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+//    cuma->y_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+//    distance_to_next_point -= segment_left;
+//    distance_to_previous_point += segment_left;
 
-    length_travelled += segment_left;
-  }
+//    length_travelled += segment_left;
+//  }
 
 }
 
