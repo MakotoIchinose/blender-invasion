@@ -204,16 +204,28 @@ namespace common {
 
 	struct edge_iter : pointer_iterator<MEdge> {
 		edge_iter(const Mesh * const m) : pointer_iterator(m->medge, m->totedge) {}
+		edge_iter(const pointer_iterator<MEdge> &pi) : pointer_iterator(pi) {}
+		edge_iter(pointer_iterator<MEdge> &&pi) : pointer_iterator(pi) {}
 	};
 
-	// TODO someone This can't work. Merge dereference_iterator and pointer_iterator
-	struct loose_edge_iter : edge_iter {
-		using edge_iter::edge_iter;
-		MEdge dereference() {
-			while(this->it->flag & ME_LOOSEEDGE)
-				++this->it;
-			return *(this->it);
+	struct loose_edge_iter : public boost::iterator_adaptor<loose_edge_iter, edge_iter,
+	                                                        MEdge, std::bidirectional_iterator_tag> {
+		explicit loose_edge_iter(const Mesh * const m, const edge_iter &e)
+			: loose_edge_iter::iterator_adaptor_(e), mesh(m) {}
+		explicit loose_edge_iter(const Mesh * const m) : loose_edge_iter(m, edge_iter(m)) {}
+		loose_edge_iter begin() const { return loose_edge_iter(mesh); }
+		loose_edge_iter end()   const { return loose_edge_iter(mesh, this->base().end()); }
+		void increment() {
+			do {
+				++this->base_reference();
+			} while(!(this->base()->flag & ME_LOOSEEDGE));
 		}
+		void decrement() {
+			do {
+				--this->base_reference();
+			} while(!(this->base()->flag & ME_LOOSEEDGE));
+		}
+		const Mesh * const mesh;
 	};
 
 	// TODO someone G.is_break
