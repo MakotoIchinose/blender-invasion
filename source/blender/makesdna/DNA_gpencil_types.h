@@ -468,7 +468,10 @@ typedef struct bGPdata {
   /** Settings for this datablock. */
   int flag;
 
-  char _pad1[4];
+  /** Not composite depth when drawing the layer*/
+  int no_depth;
+  
+  //char _pad1[4];
 
   /* Palettes */
   /** List of bGPDpalette's   - Deprecated (2.78 - 2.79 only). */

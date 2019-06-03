@@ -1036,6 +1036,10 @@ void GPENCIL_draw_scene(void *ved)
         }
 
         /* draw mix pass */
+        if(gpd->no_depth){
+              DRW_pass_state_remove(psl->mix_pass,        DRW_STATE_WRITE_DEPTH|DRW_STATE_DEPTH_LESS);
+              //DRW_pass_state_remove(psl->mix_pass_noblend,DRW_STATE_WRITE_DEPTH|DRW_STATE_DEPTH_LESS);
+            }
         DRW_draw_pass(psl->mix_pass);
 
         /* disable select flag */
