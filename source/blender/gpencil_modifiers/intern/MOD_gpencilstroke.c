@@ -104,6 +104,7 @@ static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
+  lanpr_update_data_for_external(depsgraph);
   lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
 }
 

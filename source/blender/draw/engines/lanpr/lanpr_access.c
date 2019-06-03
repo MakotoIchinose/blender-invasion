@@ -243,6 +243,7 @@ void lanpr_generate_gpencil_from_chain(
     printf("NULL LANPR rb!\n");
     return;
   }
+  if (scene->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE) return;
 
   int color_idx = 0;
   int tot_points = 0;
@@ -277,5 +278,14 @@ void lanpr_generate_gpencil_from_chain(
     }
 
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
+  }
+}
+
+void lanpr_update_data_for_external(Depsgraph *depsgraph){
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  SceneLANPR *lanpr = &scene->lanpr;
+  if (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE) return;
+  if (lanpr->render_buffer && lanpr->render_buffer->cached_for_frame !=  scene->r.cfra){
+    lanpr_compute_feature_lines_internal(depsgraph, lanpr, scene);
   }
 }
