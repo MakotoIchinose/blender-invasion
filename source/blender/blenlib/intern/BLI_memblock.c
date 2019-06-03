@@ -71,7 +71,8 @@ BLI_memblock *BLI_memblock_create_ex(uint elem_size, uint chunk_size)
   mblk->chunk_size = (int)chunk_size;
   mblk->chunk_len = CHUNK_LIST_SIZE;
   mblk->chunk_list = MEM_callocN(sizeof(void *) * (uint)mblk->chunk_len, "chunk list");
-  mblk->chunk_list[0] = MEM_callocN((uint)mblk->chunk_size, "BLI_memblock chunk");
+  mblk->chunk_list[0] = MEM_mallocN_aligned((uint)mblk->chunk_size, 32, "BLI_memblock chunk");
+  memset(mblk->chunk_list[0], 0x0, (uint)mblk->chunk_size);
   mblk->chunk_max_ofs = (mblk->chunk_size / mblk->elem_size) * mblk->elem_size;
   mblk->elem_next_ofs = 0;
   mblk->chunk_next = 0;
@@ -142,8 +143,9 @@ void *BLI_memblock_alloc(BLI_memblock *mblk)
     }
 
     if (UNLIKELY(mblk->chunk_list[mblk->chunk_next] == NULL)) {
-      mblk->chunk_list[mblk->chunk_next] = MEM_callocN((uint)mblk->chunk_size,
-                                                       "BLI_memblock chunk");
+      mblk->chunk_list[mblk->chunk_next] = MEM_mallocN_aligned(
+          (uint)mblk->chunk_size, 32, "BLI_memblock chunk");
+      memset(mblk->chunk_list[mblk->chunk_next], 0x0, (uint)mblk->chunk_size);
     }
   }
   return ptr;
