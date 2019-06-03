@@ -68,6 +68,9 @@
 
 #define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
 
+extern struct RenderEngineType DRW_engine_viewport_lanpr_type;
+extern struct DrawEngineType draw_engine_lanpr_type;
+
 typedef struct LANPR_RenderBuffer LANPR_RenderBuffer;
 
 typedef struct LANPR_SharedResource {
@@ -417,8 +420,6 @@ typedef struct LANPR_BoundingArea {
 //#define TNS_OVERRIDE_ALL_OTHERS_OUTSIDE_GROUP 2
 //#define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3
 //#define TNS_OVERRIDE_ALL_OTHERS               4
-
-extern RenderEngineType DRW_engine_viewport_lanpr_type;
 
 #define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
 

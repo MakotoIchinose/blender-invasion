@@ -1123,8 +1123,7 @@ void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict pool,
 void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
 {
   int thread_count = rb->thread_count;
-  LANPR_RenderTaskInfo *rti = MEM_callocN(sizeof(LANPR_RenderTaskInfo) * thread_count,
-                                          "render task info");
+  LANPR_RenderTaskInfo *rti = MEM_callocN(sizeof(LANPR_RenderTaskInfo) * thread_count,"Task Pool");
   TaskScheduler *scheduler = BLI_task_scheduler_get();
   int i;
 
@@ -1142,7 +1141,8 @@ void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
     BLI_task_pool_push(tp, lanpr_THREAD_calculate_line_occlusion, &rti[i], 0, TASK_PRIORITY_HIGH);
   }
   BLI_task_pool_work_and_wait(tp);
-
+  BLI_task_pool_free(tp);
+  
   MEM_freeN(rti);
 }
 
@@ -1356,9 +1356,7 @@ LANPR_RenderElementLinkNode *lanpr_new_cull_triangle_space64(LANPR_RenderBuffer 
 {
   LANPR_RenderElementLinkNode *reln;
 
-  LANPR_RenderTriangle *RenderTriangles = MEM_callocN(
-      64 * rb->triangle_size,
-      "render triangle space");  // CreateNewBuffer(LANPR_RenderTriangle, 64);
+  LANPR_RenderTriangle *RenderTriangles = mem_static_aquire(&rb->render_data_pool, 64 * rb->triangle_size);  // CreateNewBuffer(LANPR_RenderTriangle, 64);
 
   reln = list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
                                           &rb->render_data_pool,
@@ -1373,9 +1371,7 @@ LANPR_RenderElementLinkNode *lanpr_new_cull_point_space64(LANPR_RenderBuffer *rb
 {
   LANPR_RenderElementLinkNode *reln;
 
-  LANPR_RenderVert *Rendervertices = MEM_callocN(
-      sizeof(LANPR_RenderVert) * 64,
-      "render vert space");  // CreateNewBuffer(LANPR_RenderVert, 64);
+  LANPR_RenderVert *Rendervertices = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderVert) * 64);  // CreateNewBuffer(LANPR_RenderVert, 64);
 
   reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
                                           &rb->render_data_pool,
@@ -2073,11 +2069,9 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
       CanFindFreestyle = 1;
     }
 
-    orv = MEM_callocN(sizeof(LANPR_RenderVert) * bm->totvert, "object render verts");
-    ort = MEM_callocN(
-        bm->totface * rb->triangle_size,
-        "object render triangles");  // CreateNewBuffer(LANPR_RenderTriangle, mo->triangle_count);
-    orl = MEM_callocN(sizeof(LANPR_RenderLine) * bm->totedge, "object render edge");
+    orv = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderVert) * bm->totvert);
+    ort = mem_static_aquire(&rb->render_data_pool, bm->totface * rb->triangle_size);
+    orl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine) * bm->totedge);
 
     reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
                                             &rb->render_data_pool,
@@ -2206,10 +2200,8 @@ void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
   tmat_inverse_44d(rb->vp_inverse, rb->view_projection);
 
   void *a;
-  while (a = BLI_pophead(&rb->triangle_buffer_pointers))
-    MEM_freeN(a);
-  while (a = BLI_pophead(&rb->vertex_buffer_pointers))
-    MEM_freeN(a);
+  list_handle_empty(&rb->triangle_buffer_pointers);
+  list_handle_empty(&rb->vertex_buffer_pointers);
 
   DEG_OBJECT_ITER_BEGIN (depsgraph,
                          o,
@@ -3292,17 +3284,9 @@ void lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   list_handle_empty(&rb->all_render_lines);
   list_handle_empty(&rb->chains);
 
-  while (reln = BLI_pophead(&rb->vertex_buffer_pointers)) {
-    MEM_freeN(reln->pointer);
-  }
-
-  while (reln = BLI_pophead(&rb->line_buffer_pointers)) {
-    MEM_freeN(reln->pointer);
-  }
-
-  while (reln = BLI_pophead(&rb->triangle_buffer_pointers)) {
-    MEM_freeN(reln->pointer);
-  }
+  list_handle_empty(&rb->vertex_buffer_pointers);
+  list_handle_empty(&rb->line_buffer_pointers);
+  list_handle_empty(&rb->triangle_buffer_pointers);
 
   BLI_spin_end(&rb->cs_data);
   BLI_spin_end(&rb->cs_info);
@@ -3322,7 +3306,7 @@ LANPR_RenderBuffer *lanpr_create_render_buffer(SceneLANPR *lanpr)
     // MEM_freeN(lanpr->render_buffer);
   }
 
-  LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "creating LANPR render buffer");
+  LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "LANPR render buffer");
 
   lanpr->render_buffer = rb;
   lanpr_share.render_buffer_shared = rb;
