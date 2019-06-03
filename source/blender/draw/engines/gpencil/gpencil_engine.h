@@ -172,6 +172,8 @@ typedef struct GPENCIL_Storage {
 
   short framebuffer_flag; /* flag what framebuffer need to create */
 
+  int no_depth_composition;
+
   int blend_mode;
   int clamp_layer;
   float blend_opacity;
