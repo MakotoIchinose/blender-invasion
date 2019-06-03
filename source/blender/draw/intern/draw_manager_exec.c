@@ -986,6 +986,9 @@ static DRWCall *draw_call_iter_step(DRWCallIterator *iter)
 typedef struct DRWCommandsState {
   int callid;
   uint resource_chunk;
+  uint base_inst;
+  uint inst_count;
+  GPUBatch *batch;
   bool neg_scale;
 } DRWCommandsState;
 
@@ -1012,6 +1015,56 @@ static void draw_call_resource_bind(DRWCommandsState *state,
     state->resource_chunk = handle.chunk;
   }
 }
+
+#ifdef USE_BATCHING
+/* Return true if the given drawcall can be batched with following calls. */
+static bool draw_call_do_batching(DRWShadingGroup *shgroup,
+                                  DRWCommandsState *state,
+                                  DRWCall *call,
+                                  int obmats_loc,
+                                  int obinfos_loc,
+                                  int baseinst_loc,
+                                  int callid_loc)
+{
+  if (call->inst_count > 0 || call->vert_first > 0 || call->vert_count > 0 || callid_loc != -1 ||
+      obmats_loc == -1 || G.f & G_FLAG_PICKSEL) {
+    /* Safety guard. Batching should not happen in a shgroup
+     * where any if the above condition are true. */
+    BLI_assert(state->inst_count == 0);
+    if (state->inst_count > 0) {
+      draw_geometry_execute(
+          shgroup, state->batch, 0, 0, state->base_inst, state->inst_count, baseinst_loc);
+    }
+    /* We cannot pack in this situation. */
+    state->inst_count = 0;
+    state->base_inst = 0;
+    state->batch = call->batch;
+    return false;
+  }
+  else {
+    /* See if any condition requires to interupt the packing. */
+    if ((call->handle.id != state->base_inst + state->inst_count) || /* Is the id consecutive? */
+        (call->handle.negative_scale != state->neg_scale) ||         /* */
+        (call->handle.chunk != state->resource_chunk) ||             /* */
+        (call->batch != state->batch)                                /* */
+    ) {
+      /* We need to draw the pending instances. */
+      if (state->inst_count > 0) {
+        draw_geometry_execute(
+            shgroup, state->batch, 0, 0, state->base_inst, state->inst_count, baseinst_loc);
+      }
+      state->inst_count = 1;
+      state->base_inst = call->handle.id;
+      state->batch = call->batch;
+      draw_call_resource_bind(state, call->handle, obmats_loc, obinfos_loc);
+    }
+    else {
+      state->inst_count++;
+    }
+    return true;
+  }
+}
+#endif
 
 static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 {
@@ -1059,6 +1112,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 
   /* Rendering Calls */
   {
+    GPUBatch *first_batch = (shgroup->calls.first) ? shgroup->calls.first->calls[0].batch : NULL;
+
     DRWCallIterator iter;
     draw_call_iter_begin(&iter, shgroup);
     DRWCall *call;
@@ -1066,13 +1121,24 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     DRWCommandsState state = {
         .neg_scale = false,
         .resource_chunk = 0,
+        .base_inst = 0,
+        .inst_count = 0,
         .callid = 0,
+        .batch = first_batch,
     };
     while ((call = draw_call_iter_step(&iter))) {
 
       if (draw_call_is_culled(call, DST.view_active)) {
         continue;
       }
+
+#ifdef USE_BATCHING
+      /* Pack calls together if their handle.id are consecutive. */
+      if (draw_call_do_batching(
+              shgroup, &state, call, obmats_loc, obinfos_loc, baseinst_loc, callid_loc)) {
+        continue;
+      }
+#endif
 
       draw_call_resource_bind(&state, call->handle, obmats_loc, obinfos_loc);
 
@@ -1099,6 +1165,14 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                             call->inst_count,
                             baseinst_loc);
     }
+
+#ifdef USE_BATCHING
+    /* Flush the last pending drawcall batched together. */
+    if (state.inst_count > 0) {
+      draw_geometry_execute(
+          shgroup, state.batch, 0, 0, state.base_inst, state.inst_count, baseinst_loc);
+    }
+#endif
 
     /* Reset state */
     glFrontFace(GL_CCW);
