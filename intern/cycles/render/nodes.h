@@ -378,8 +378,8 @@ class MappingNode : public ShaderNode {
     return NODE_GROUP_LEVEL_2;
   }
 
-  float3 vector;
-  TextureMapping tex_mapping;
+  float3 vector, location, rotation, scale;
+  NodeMappingType vector_type;
 };
 
 class RGBToBWNode : public ShaderNode {

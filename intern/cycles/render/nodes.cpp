@@ -149,7 +149,7 @@ bool TextureMapping::skip()
 
 void TextureMapping::compile(SVMCompiler &compiler, int offset_in, int offset_out)
 {
-  compiler.add_node(NODE_MAPPING, offset_in, offset_out);
+  compiler.add_node(NODE_TEXTURE_MAPPING, offset_in, offset_out);
 
   Transform tfm = compute_transform();
   compiler.add_node(tfm.x);
@@ -1659,9 +1659,18 @@ NODE_DEFINE(MappingNode)
 {
   NodeType *type = NodeType::add("mapping", create, NodeType::SHADER);
 
-  TEXTURE_MAPPING_DEFINE(MappingNode);
+  static NodeEnum type_enum;
+  type_enum.insert("point", NODE_MAPPING_TYPE_POINT);
+  type_enum.insert("texture", NODE_MAPPING_TYPE_TEXTURE);
+  type_enum.insert("vector", NODE_MAPPING_TYPE_VECTOR);
+  type_enum.insert("normal", NODE_MAPPING_TYPE_NORMAL);
+  SOCKET_ENUM(vector_type, "Type", type_enum, NODE_MAPPING_TYPE_TEXTURE);
 
   SOCKET_IN_POINT(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(location, "Location", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(rotation, "Rotation", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(scale, "Scale", make_float3(1.0f, 1.0f, 1.0f));
+
   SOCKET_OUT_POINT(vector, "Vector");
 
   return type;
@@ -1674,19 +1683,25 @@ MappingNode::MappingNode() : ShaderNode(node_type)
 void MappingNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
+  ShaderInput *location = input("Location");
+  ShaderInput *rotation = input("Rotation");
+  ShaderInput *scale = input("Scale");
+
   ShaderOutput *vector_out = output("Vector");
 
-  tex_mapping.compile(
-      compiler, compiler.stack_assign(vector_in), compiler.stack_assign(vector_out));
+  int rotation_stack = compiler.stack_assign(rotation);
+  int scale_stack = compiler.stack_assign(scale);
+
+  compiler.add_node(NODE_MAPPING,
+                    vector_type,
+                    compiler.stack_assign(vector_in),
+                    compiler.stack_assign(location));
+  compiler.add_node(NODE_MAPPING, rotation_stack, scale_stack, compiler.stack_assign(vector_out));
 }
 
 void MappingNode::compile(OSLCompiler &compiler)
 {
-  compiler.parameter("Matrix", tex_mapping.compute_transform());
-  compiler.parameter_point("mapping_min", tex_mapping.min);
-  compiler.parameter_point("mapping_max", tex_mapping.max);
-  compiler.parameter("use_minmax", tex_mapping.use_minmax);
-
+  compiler.parameter(this, "vector_type");
   compiler.add(this, "node_mapping");
 }
 

@@ -18,7 +18,7 @@ CCL_NAMESPACE_BEGIN
 
 /* Mapping Node */
 
-ccl_device void svm_node_mapping(
+ccl_device void svm_node_texture_mapping(
     KernelGlobals *kg, ShaderData *sd, float *stack, uint vec_offset, uint out_offset, int *offset)
 {
   float3 v = stack_load_float3(stack, vec_offset);
@@ -30,6 +30,50 @@ ccl_device void svm_node_mapping(
 
   float3 r = transform_point(&tfm, v);
   stack_store_float3(stack, out_offset, r);
+}
+
+ccl_device void svm_node_mapping(KernelGlobals *kg,
+                                 ShaderData *sd,
+                                 float *stack,
+                                 uint vector_type,
+                                 uint vec_offset,
+                                 uint loc_offset,
+                                 int *offset)
+{
+  uint4 node1 = read_node(kg, offset);
+
+  NodeMappingType vec_type = (NodeMappingType)vector_type;
+  float3 vec = stack_load_float3(stack, vec_offset);
+  float3 loc = stack_load_float3(stack, loc_offset);
+  float3 rot = stack_load_float3(stack, node1.y);
+  float3 size = stack_load_float3(stack, node1.z);
+
+  float3 r;
+  Transform rot_t;
+  if (vec_type == NODE_MAPPING_TYPE_TEXTURE) {
+    rot_t = euler_to_transform(-rot);
+  }
+  else {
+    rot_t = euler_to_transform(rot);
+  }
+
+  switch (vec_type) {
+    case NODE_MAPPING_TYPE_POINT:
+      r = transform_direction(&rot_t, (vec * size)) + loc;
+      break;
+    case NODE_MAPPING_TYPE_TEXTURE:
+      r = safe_divide_float3(transform_direction(&rot_t, (vec - loc)), size);
+      break;
+    case NODE_MAPPING_TYPE_VECTOR:
+      r = transform_direction(&rot_t, (vec * size));
+      break;
+    case NODE_MAPPING_TYPE_NORMAL:
+      r = safe_normalize(transform_direction(&rot_t, safe_divide_float3(vec, size)));
+      break;
+    default:
+      r = make_float3(0.0f, 0.0f, 0.0f);
+  }
+  stack_store_float3(stack, node1.w, r);
 }
 
 ccl_device void svm_node_min_max(

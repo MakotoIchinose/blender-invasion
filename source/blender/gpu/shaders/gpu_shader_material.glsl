@@ -214,12 +214,66 @@ void point_map_to_tube(vec3 vin, out vec3 vout)
   vout = vec3(u, v, 0.0);
 }
 
-void mapping(
+void mapping_mat4(
     vec3 vec, vec4 m0, vec4 m1, vec4 m2, vec4 m3, vec3 minvec, vec3 maxvec, out vec3 outvec)
 {
   mat4 mat = mat4(m0, m1, m2, m3);
   outvec = (mat * vec4(vec, 1.0)).xyz;
   outvec = clamp(outvec, minvec, maxvec);
+}
+
+vec3 safe_divide_vec3(vec3 a, vec3 b)
+{
+  return vec3((b.x != 0.0) ? a.x / b.x : 0.0,
+              (b.y != 0.0) ? a.y / b.y : 0.0,
+              (b.z != 0.0) ? a.z / b.z : 0.0);
+}
+
+mat3 euler_to_mat3(vec3 euler)
+{
+  mat3 mat;
+  float c1, c2, c3, s1, s2, s3;
+
+  c1 = cos(euler.x);
+  c2 = cos(euler.y);
+  c3 = cos(euler.z);
+  s1 = sin(euler.x);
+  s2 = sin(euler.y);
+  s3 = sin(euler.z);
+
+  mat[0][0] = c2 * c3;
+  mat[0][1] = c1 * s3 + c3 * s1 * s2;
+  mat[0][2] = s1 * s3 - c1 * c3 * s2;
+
+  mat[1][0] = -c2 * s3;
+  mat[1][1] = c1 * c3 - s1 * s2 * s3;
+  mat[1][2] = c3 * s1 + c1 * s2 * s3;
+
+  mat[2][0] = s2;
+  mat[2][1] = -c2 * s1;
+  mat[2][2] = c1 * c2;
+
+  return mat;
+}
+
+void mapping_texture(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+{
+  outvec = safe_divide_vec3(euler_to_mat3(-rot) * (vec - loc), size);
+}
+
+void mapping_point(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+{
+  outvec = (euler_to_mat3(rot) * (vec * size)) + loc;
+}
+
+void mapping_vector(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+{
+  outvec = euler_to_mat3(rot) * (vec * size);
+}
+
+void mapping_normal(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+{
+  outvec = normalize(euler_to_mat3(rot) * safe_divide_vec3(vec, size));
 }
 
 void camera(vec3 co, out vec3 outview, out float outdepth, out float outdist)
@@ -412,9 +466,7 @@ void vec_math_mul(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 
 void vec_math_div(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
-  outvec.x = (v2.x != 0.0) ? v1.x / v2.x : 0.0;
-  outvec.y = (v2.y != 0.0) ? v1.y / v2.y : 0.0;
-  outvec.z = (v2.z != 0.0) ? v1.z / v2.z : 0.0;
+  outvec = safe_divide_vec3(v1, v2);
   outval = 0.0;
 }
 

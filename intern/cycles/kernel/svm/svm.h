@@ -393,8 +393,11 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg,
 #endif       /* NODES_GROUP(NODE_GROUP_LEVEL_1) */
 
 #if NODES_GROUP(NODE_GROUP_LEVEL_2)
+      case NODE_TEXTURE_MAPPING:
+        svm_node_texture_mapping(kg, sd, stack, node.y, node.z, &offset);
+        break;
       case NODE_MAPPING:
-        svm_node_mapping(kg, sd, stack, node.y, node.z, &offset);
+        svm_node_mapping(kg, sd, stack, node.y, node.z, node.w, &offset);
         break;
       case NODE_MIN_MAX:
         svm_node_min_max(kg, sd, stack, node.y, node.z, &offset);

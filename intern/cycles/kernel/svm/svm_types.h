@@ -138,6 +138,7 @@ typedef enum ShaderNodeType {
   NODE_VECTOR_DISPLACEMENT,
   NODE_PRINCIPLED_VOLUME,
   NODE_IES,
+  NODE_TEXTURE_MAPPING,
 } ShaderNodeType;
 
 typedef enum NodeAttributeType {
@@ -294,6 +295,13 @@ typedef enum NodeVectorMath {
   NODE_VECTOR_MATH_MIN,
   NODE_VECTOR_MATH_MAX,
 } NodeVectorMath;
+
+typedef enum NodeMappingType {
+  NODE_MAPPING_TYPE_POINT,
+  NODE_MAPPING_TYPE_TEXTURE,
+  NODE_MAPPING_TYPE_VECTOR,
+  NODE_MAPPING_TYPE_NORMAL
+} NodeMappingType;
 
 typedef enum NodeVectorTransformType {
   NODE_VECTOR_TRANSFORM_TYPE_VECTOR,

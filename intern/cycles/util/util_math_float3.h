@@ -72,6 +72,7 @@ ccl_device_inline float3 saturate3(float3 a);
 ccl_device_inline float3 safe_normalize(const float3 a);
 ccl_device_inline float3 normalize_len(const float3 a, float *t);
 ccl_device_inline float3 safe_normalize_len(const float3 a, float *t);
+ccl_device_inline float3 safe_divide_float3(const float3 a, const float3 b);
 ccl_device_inline float3 interp(float3 a, float3 b, float t);
 ccl_device_inline float3 sqr3(float3 a);
 
@@ -359,6 +360,13 @@ ccl_device_inline float3 safe_normalize_len(const float3 a, float *t)
 {
   *t = len(a);
   return (*t != 0.0f) ? a / (*t) : a;
+}
+
+ccl_device_inline float3 safe_divide_float3(const float3 a, const float3 b)
+{
+  return make_float3((b.x != 0.0f) ? a.x / b.x : 0.0f,
+                     (b.y != 0.0f) ? a.y / b.y : 0.0f,
+                     (b.z != 0.0f) ? a.z / b.z : 0.0f);
 }
 
 ccl_device_inline float3 interp(float3 a, float3 b, float t)
