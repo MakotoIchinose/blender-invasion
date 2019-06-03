@@ -20,15 +20,14 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-#ifndef __IO_STL_H__
-#define __IO_STL_H__
+/* #ifndef __IO_STL_H__ */
+/* #define __IO_STL_H__ */
 
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
 
 #include "../io_common.h"
-
 
 struct bContext;
 
@@ -38,4 +37,4 @@ bool STL_export(bContext *C, ExportSettings * const settings);
 }
 #endif  /* __cplusplus */
 
-#endif  /* __IO_STL_H__ */
+/* #endif  /\* __IO_STL_H__ *\/ */

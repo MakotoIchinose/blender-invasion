@@ -213,10 +213,10 @@ ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
 	settings->export_animations         = RNA_boolean_get(op->ptr, "export_animations");
 	settings->export_normals            = RNA_boolean_get(op->ptr, "export_normals");
 	settings->dedup_normals             = RNA_boolean_get(op->ptr, "dedup_normals");
-	settings->dedup_normals_threshold   = RNA_boolean_get(op->ptr, "dedup_normals_threshold");
+	settings->dedup_normals_threshold   = RNA_float_get(op->ptr, "dedup_normals_threshold");
 	settings->export_uvs                = RNA_boolean_get(op->ptr, "export_uvs");
 	settings->dedup_uvs                 = RNA_boolean_get(op->ptr, "dedup_uvs");
-	settings->dedup_uvs_threshold       = RNA_boolean_get(op->ptr, "dedup_uvs_threshold");
+	settings->dedup_uvs_threshold       = RNA_float_get(op->ptr, "dedup_uvs_threshold");
 	settings->export_edges              = RNA_boolean_get(op->ptr, "export_edges");
 	settings->export_materials          = RNA_boolean_get(op->ptr, "export_materials");
 	settings->export_vcolors            = RNA_boolean_get(op->ptr, "export_vcolors");

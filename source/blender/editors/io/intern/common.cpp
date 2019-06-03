@@ -123,9 +123,8 @@ namespace common {
 
 		/* Temporarily disable modifiers if we shouldn't apply them */
 		if (!settings->apply_modifiers)
-			for_each_modifier(ob, [](ModifierData *md){
-				                      md->mode |= eModifierMode_DisableTemporary;
-			                      });
+			for(ModifierData &md : common::modifier_iter{ob})
+				md.mode |= eModifierMode_DisableTemporary;
 
 		float scale_mat[4][4];
 		scale_m4_fl(scale_mat, settings->global_scale);
@@ -154,9 +153,8 @@ namespace common {
 			                                    (Object *) ob, &CD_MASK_MESH);
 
 		if (!settings->apply_modifiers)
-			for_each_modifier(ob, [](ModifierData *md){
-				                      md->mode &= ~eModifierMode_DisableTemporary;
-			                      });
+			for(ModifierData &md : common::modifier_iter{ob})
+				md.mode &= ~eModifierMode_DisableTemporary;
 
 		if (settings->triangulate) {
 			struct BMeshCreateParams bmcp = {false};
@@ -177,11 +175,20 @@ namespace common {
 		return false;
 	}
 
+	void free_mesh(Mesh *mesh, bool needs_free) {
+		if (needs_free)
+			BKE_id_free(NULL, mesh); // TODO someoene null? (alembic)
+	}
+
 	std::string get_object_name(const Object * const eob, const Mesh * const mesh) {
 		std::string name{eob->id.name + 2};
 		std::string mesh_name{mesh->id.name + 2};
 		name_compat(name /* modifies */, mesh_name);
 		return name;
+	}
+
+	std::string get_version_string() {
+		return ""; // TODO someone implement
 	}
 
 	void export_start(bContext *UNUSED(C), ExportSettings * const settings) {
@@ -213,5 +220,13 @@ namespace common {
 		auto ret = end(C, settings);
 		std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
 		return ret;
+	}
+
+	const std::array<float, 3> calculate_normal(const Mesh * const mesh,
+	                                            const MPoly &mp) {
+		float no[3];
+		BKE_mesh_calc_poly_normal(&mp, mesh->mloop + mp.loopstart,
+		                          mesh->mvert, no);
+		return std::array<float, 3>{no[0], no[1], no[2]};
 	}
 }

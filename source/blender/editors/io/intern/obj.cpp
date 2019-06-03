@@ -125,51 +125,45 @@ namespace {
 		}
 
 		fs << std::fixed << std::setprecision(6);
-		common::for_each_vertex(mesh, [&fs](ulong UNUSED(i), const MVert &v) {
-			                              fs << "v "
-			                                 << v.co[0] << ' '
-			                                 << v.co[1] << ' '
-			                                 << v.co[2] << '\n';
-		                              });
+		for (const MVert &v : common::vert_iter{mesh})
+			fs << "v "
+			   << v.co[0] << ' '
+			   << v.co[1] << ' '
+			   << v.co[2] << '\n';
 
 		if (settings->export_uvs) {
-			auto uv_writer = [&fs](ulong UNUSED(i), const std::array<float, 2> &v) {
-				                 fs << "vt " << v[0] << ' ' << v[1] << '\n';
-			                 };
-
 			// TODO someone Is T47010 still relevant?
 			if (settings->dedup_uvs)
-				common::for_each_deduplicated_uv(mesh, /* modifies */ uv_total,
-				                                 /* modifies */ uv_mapping_pair,
-				                                 uv_writer);
+				for (const std::array<float, 2> &uv :
+					     common::deduplicated_uv_iter(mesh, uv_total, uv_mapping_pair))
+					fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
 			else
-				common::for_each_uv(mesh, uv_writer);
+				for (const std::array<float, 2> &uv : common::uv_iter{mesh})
+					fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
 		}
 
 		if (settings->export_normals) {
-			auto normal_writer = [&fs](ulong UNUSED(i), const std::array<float, 3> &v) {
-				                     fs << "vn " << v[0] << ' ' << v[1] << ' ' << v[2] << '\n';
-			                     };
-
 			fs << std::fixed << std::setprecision(4);
 			if (settings->dedup_normals)
-				common::for_each_deduplicated_normal(mesh, /* modifies */ no_total,
-				                                     /* modifies */ no_mapping_pair,
-				                                     normal_writer);
+				for (const std::array<float, 3> &no :
+					     common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
+					fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
 			else
-				common::for_each_normal(mesh, normal_writer);
+				for (const std::array<float, 3> &no : common::normal_iter{mesh})
+					fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
 		}
 
 		if (settings->export_edges) {
-			common::for_each_edge(mesh, [&fs](ulong UNUSED(i), const MEdge &e){
-				                            if (e.flag & ME_LOOSEEDGE)
-					                            fs << "l " << e.v1
-					                               << ' '  << e.v2 << '\n';
-			                            });
+			for (const MEdge &e : common::loose_edge_iter{mesh})
+				fs << "l " << e.v1
+                                   << ' '  << e.v2 << '\n';
 		}
 
 		std::cerr << "Totals: "  << uv_total << " " << no_total
 		          << "\nSizes: " << uv_mapping.size() << " " << no_mapping.size()  << '\n';
+
+		char c;
+		std::cin >> c;
 
 		for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
 			fs << 'f';
@@ -203,10 +197,9 @@ namespace {
 		return true;
 	}
 
-	bool OBJ_export_object(bContext *C, ExportSettings * const settings, Scene *scene, Base *base,
+	bool OBJ_export_object(bContext *C, ExportSettings * const settings, Scene *scene, Object *ob,
 	                       std::fstream &fs, ulong &vertex_total, ulong &uv_total, ulong &no_total,
 	                       dedup_pair_t<uv_key_t> &uv_mapping_pair, dedup_pair_t<no_key_t> &no_mapping_pair) {
-		Object * ob = base->object;
 		// TODO someone Should it be evaluated first? Is this expensive? Breaks mesh_create_eval_final
 		// Object *eob = DEG_get_evaluated_object(settings->depsgraph, base->object);
 		if (!common::should_export_object(settings, ob) ||
@@ -225,8 +218,7 @@ namespace {
 			                     uv_mapping_pair, no_mapping_pair))
 				return false;
 
-			if (needs_free)
-				BKE_id_free(NULL, mesh); // TODO someoene null? (alembic)
+			common::free_mesh(mesh, needs_free);
 			return true;
 		default:
 			// TODO someone Probably abort, it shouldn't be possible to get here
@@ -242,7 +234,8 @@ namespace {
 
 		std::fstream fs;
 		fs.open(settings->filepath, std::ios::out);
-		fs << "# Blender v2.8\n# www.blender.org\n"; // TODO someone add proper version
+		fs << "# " << common::get_version_string()
+		   << "# www.blender.org\n";
 		// TODO someone add material export
 
 		// If not exporting animattions, the start and end are the same
@@ -252,17 +245,17 @@ namespace {
 			Scene *escene  = DEG_get_evaluated_scene(settings->depsgraph);
 			ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
-			auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>();
-			auto no_mapping_pair = common::make_deduplicate_set<no_key_t>();
+			auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>
+				(settings->dedup_uvs_threshold);
+			auto no_mapping_pair = common::make_deduplicate_set<no_key_t>
+				(settings->dedup_normals_threshold);
 
 			// TODO someone if not exporting as objects, do they need to all be merged?
-			common::for_each_base(settings->view_layer,
-			                      [&](Base *base){
-				                      return OBJ_export_object(C, settings, escene, base, fs,
-				                                               vertex_total, uv_total, no_total,
-				                                               uv_mapping_pair, no_mapping_pair);
-			                      });
-
+			for (Object *ob : common::object_iter{settings->view_layer})
+				if (!OBJ_export_object(C, settings, escene, ob, fs,
+				                       vertex_total, uv_total, no_total,
+				                       uv_mapping_pair, no_mapping_pair))
+					return;
 		}
 	}
 

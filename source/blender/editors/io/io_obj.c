@@ -38,7 +38,7 @@ static bool wm_obj_import_check(bContext *C, wmOperator *op) { return false; } /
 void WM_OT_obj_export(struct wmOperatorType *ot) {
 	ot->name = "Export Wavefront (.obj)";
 	ot->description = "Export current scene in an .obj archive";
-	ot->idname = "WM_OT_obj_export";
+	ot->idname = "WM_OT_obj_export_c";
 
 	ot->invoke = wm_obj_export_invoke;
 	ot->exec = wm_obj_export_exec;
@@ -51,7 +51,7 @@ void WM_OT_obj_export(struct wmOperatorType *ot) {
 void WM_OT_obj_import(struct wmOperatorType *ot) {
 	ot->name = "Import Wavefront (.obj)";
 	ot->description = "Import an .obj archive";
-	ot->idname = "WM_OT_obj_import";
+	ot->idname = "WM_OT_obj_import_c";
 
 	ot->invoke = wm_obj_import_invoke;
 	ot->exec = wm_obj_import_exec;

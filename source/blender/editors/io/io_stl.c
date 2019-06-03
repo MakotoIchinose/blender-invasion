@@ -11,12 +11,13 @@
 #include "io_stl.h"
 #include "intern/stl.h"
 
+/* bool STL_export(bContext *C, ExportSettings * const settings); */
+
 static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent *event) {
 	return io_common_export_invoke(C, op, event, ".stl");
 }
 static int wm_stl_export_exec(bContext *C, wmOperator *op) {
-	/* return io_common_export_exec(C, op, &STL_export /\* export function *\/); */
-	return true;
+	return io_common_export_exec(C, op, &STL_export /* export function */);
 }
 static void wm_stl_export_draw(bContext *C, wmOperator *op) {
 	io_common_export_draw(C, op);
@@ -39,7 +40,7 @@ static bool wm_stl_import_check(bContext *C, wmOperator *op) { return false; } /
 void WM_OT_stl_export(struct wmOperatorType *ot) {
 	ot->name = "Export STL (.stl)";
 	ot->description = "Export current scene in a .stl archive";
-	ot->idname = "WM_OT_stl_export_new"; // TODO someone
+	ot->idname = "WM_OT_stl_export_c"; // TODO someone
 
 	ot->invoke = wm_stl_export_invoke;
 	ot->exec = wm_stl_export_exec;
@@ -52,7 +53,7 @@ void WM_OT_stl_export(struct wmOperatorType *ot) {
 void WM_OT_stl_import(struct wmOperatorType *ot) {
 	ot->name = "Import STL (.stl)";
 	ot->description = "Import a .stl archive";
-	ot->idname = "WM_OT_stl_import_new";
+	ot->idname = "WM_OT_stl_import_c";
 
 	ot->invoke = wm_stl_import_invoke;
 	ot->exec = wm_stl_import_exec;
