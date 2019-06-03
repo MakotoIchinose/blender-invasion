@@ -1256,7 +1256,8 @@ def km_markers(params):
 
     items.extend([
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
-        ("marker.move", {"type": params.select_tweak, "value": 'ANY'}, None),
+        ("marker.move", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties": [("tweak", True)]}),
         ("marker.duplicate", {"type": 'D', "value": 'PRESS', "shift": True}, None),
         ("marker.select", {"type": params.select_mouse, "value": 'PRESS'}, None),
         ("marker.select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
@@ -1265,6 +1266,8 @@ def km_markers(params):
          {"properties": [("extend", False), ("camera", True)]}),
         ("marker.select", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("extend", True), ("camera", True)]}),
+        ("marker.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties": [("tweak", True)]}),
         ("marker.select_box", {"type": 'B', "value": 'PRESS'}, None),
         *_template_items_select_actions(params, "marker.select_all"),
         ("marker.delete", {"type": 'X', "value": 'PRESS'}, None),
