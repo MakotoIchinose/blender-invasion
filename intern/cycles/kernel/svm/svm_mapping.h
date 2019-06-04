@@ -49,30 +49,7 @@ ccl_device void svm_node_mapping(KernelGlobals *kg,
   float3 size = stack_load_float3(stack, node1.z);
 
   float3 r;
-  Transform rot_t;
-  if (vec_type == NODE_MAPPING_TYPE_TEXTURE) {
-    rot_t = euler_to_transform(-rot);
-  }
-  else {
-    rot_t = euler_to_transform(rot);
-  }
-
-  switch (vec_type) {
-    case NODE_MAPPING_TYPE_POINT:
-      r = transform_direction(&rot_t, (vec * size)) + loc;
-      break;
-    case NODE_MAPPING_TYPE_TEXTURE:
-      r = safe_divide_float3(transform_direction(&rot_t, (vec - loc)), size);
-      break;
-    case NODE_MAPPING_TYPE_VECTOR:
-      r = transform_direction(&rot_t, (vec * size));
-      break;
-    case NODE_MAPPING_TYPE_NORMAL:
-      r = safe_normalize(transform_direction(&rot_t, safe_divide_float3(vec, size)));
-      break;
-    default:
-      r = make_float3(0.0f, 0.0f, 0.0f);
-  }
+  svm_mapping(&r, vec_type, vec, loc, rot, size);
   stack_store_float3(stack, node1.w, r);
 }
 

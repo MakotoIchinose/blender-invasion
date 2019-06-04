@@ -429,4 +429,21 @@ void ConstantFolder::fold_vector_math(NodeVectorMath type) const
   }
 }
 
+void ConstantFolder::fold_mapping(NodeMappingType type) const
+{
+  ShaderInput *vec_in = node->input("Vector");
+  ShaderInput *loc_in = node->input("Location");
+  ShaderInput *rot_in = node->input("Rotation");
+  ShaderInput *size_in = node->input("Scale");
+
+  if (is_zero(size_in)) {
+    make_zero();
+  }
+  else if ((is_zero(loc_in) || type == NODE_MAPPING_TYPE_VECTOR ||
+            type == NODE_MAPPING_TYPE_NORMAL) &&
+           is_zero(rot_in) && is_one(size_in)) {
+    try_bypass_or_make_constant(vec_in);
+  }
+}
+
 CCL_NAMESPACE_END

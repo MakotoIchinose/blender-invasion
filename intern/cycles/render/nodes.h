@@ -377,8 +377,9 @@ class MappingNode : public ShaderNode {
   {
     return NODE_GROUP_LEVEL_2;
   }
+  void constant_fold(const ConstantFolder &folder);
 
-  float3 vector, location, rotation, scale;
+  float3 vector_in, location, rotation, scale;
   NodeMappingType vector_type;
 };
 

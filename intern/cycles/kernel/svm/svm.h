@@ -153,6 +153,7 @@ CCL_NAMESPACE_END
 
 #include "kernel/svm/svm_color_util.h"
 #include "kernel/svm/svm_math_util.h"
+#include "kernel/svm/svm_mapping_util.h"
 
 #include "kernel/svm/svm_attribute.h"
 #include "kernel/svm/svm_gradient.h"

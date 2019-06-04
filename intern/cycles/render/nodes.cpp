@@ -25,6 +25,7 @@
 #include "kernel/svm/svm_color_util.h"
 #include "kernel/svm/svm_ramp_util.h"
 #include "kernel/svm/svm_math_util.h"
+#include "kernel/svm/svm_mapping_util.h"
 #include "render/osl.h"
 #include "render/constant_fold.h"
 
@@ -1666,18 +1667,31 @@ NODE_DEFINE(MappingNode)
   type_enum.insert("normal", NODE_MAPPING_TYPE_NORMAL);
   SOCKET_ENUM(vector_type, "Type", type_enum, NODE_MAPPING_TYPE_TEXTURE);
 
-  SOCKET_IN_POINT(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(vector_in, "Vector", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_POINT(location, "Location", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_POINT(rotation, "Rotation", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_POINT(scale, "Scale", make_float3(1.0f, 1.0f, 1.0f));
 
-  SOCKET_OUT_POINT(vector, "Vector");
+  SOCKET_OUT_POINT(vector_out, "Vector");
 
   return type;
 }
 
 MappingNode::MappingNode() : ShaderNode(node_type)
 {
+}
+
+void MappingNode::constant_fold(const ConstantFolder &folder)
+{
+  float3 vector_out;
+
+  if (folder.all_inputs_constant()) {
+    svm_mapping(&vector_out, vector_type, vector_in, location, rotation, scale);
+    folder.make_constant(vector_out);
+  }
+  else {
+    folder.fold_mapping((NodeMappingType)vector_type);
+  }
 }
 
 void MappingNode::compile(SVMCompiler &compiler)
