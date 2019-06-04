@@ -319,8 +319,8 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
     }
 
     // step 2: this line
-    int last_occlusion;
     rls = rl->segments.first;
+    int last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
     for (rls = (LANPR_RenderLineSegment *)rls->item.next; rls;
          rls = (LANPR_RenderLineSegment *)rls->item.next) {
       double gpos[3], lpos[3];
