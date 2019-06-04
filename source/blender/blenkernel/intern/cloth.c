@@ -122,7 +122,8 @@ void cloth_init(ClothModifierData *clmd)
   clmd->sim_parms->presets = 2;       /* cotton as start setting */
   clmd->sim_parms->timescale = 1.0f;  /* speed factor, describes how fast cloth moves */
   clmd->sim_parms->time_scale = 1.0f; /* multiplies cloth speed */
-  clmd->sim_parms->reset = 0;
+  clmd->sim_parms->reset = 1;
+  clmd->sim_parms->remeshing_reset = 1;
 
   clmd->coll_parms->self_friction = 5.0;
   clmd->coll_parms->friction = 5.0;
@@ -392,24 +393,38 @@ static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 
 static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
-  cloth_to_mesh(ob, clmd, mesh);
+  if (clmd->sim_parms->remeshing_reset || !clmd->clothObject->bm_prev) {
+    cloth_to_mesh(ob, clmd, mesh);
 
-  CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
-  clmd->clothObject->bm = BKE_mesh_to_bmesh_ex(mesh,
-                                               &((struct BMeshCreateParams){0}),
-                                               &((struct BMeshFromMeshParams){
-                                                   .calc_face_normal = true,
-                                                   .cd_mask_extra = cddata_masks,
-                                               }));
+    CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
+    if (clmd->clothObject->bm_prev) {
+      BM_mesh_free(clmd->clothObject->bm_prev);
+      clmd->clothObject->bm_prev = NULL;
+    }
+    clmd->clothObject->bm_prev = BKE_mesh_to_bmesh_ex(mesh,
+                                                      &((struct BMeshCreateParams){0}),
+                                                      &((struct BMeshFromMeshParams){
+                                                          .calc_face_normal = true,
+                                                          .cd_mask_extra = cddata_masks,
+                                                      }));
 
-  BM_mesh_triangulate(clmd->clothObject->bm,
-                      MOD_TRIANGULATE_QUAD_SHORTEDGE,
-                      MOD_TRIANGULATE_NGON_BEAUTY,
-                      4,
-                      false,
-                      NULL,
-                      NULL,
-                      NULL);
+    BM_mesh_triangulate(clmd->clothObject->bm_prev,
+                        MOD_TRIANGULATE_QUAD_SHORTEDGE,
+                        MOD_TRIANGULATE_NGON_BEAUTY,
+                        4,
+                        false,
+                        NULL,
+                        NULL,
+                        NULL);
+  }
+  clmd->clothObject->bm = clmd->clothObject->bm_prev;
+
+  /* BMesh *bm = clmd->clothObject->bm; */
+  /* BM_mesh_elem_table_init(bm, BM_FACE); */
+  /* if (bm->totface > 1) { */
+  /*   BMFace *face = BM_face_at_index(bm, 0); */
+  /*   BM_face_kill_loose(bm, face); */
+  /* } */
 }
 
 static Mesh *cloth_remeshing_update_cloth_object(Object *ob, ClothModifierData *clmd)
@@ -417,7 +432,9 @@ static Mesh *cloth_remeshing_update_cloth_object(Object *ob, ClothModifierData *
   Mesh *mesh_result = NULL;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
   mesh_result = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
+  clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
   BM_mesh_free(clmd->clothObject->bm);
+  clmd->clothObject->bm = NULL;
 
   do_init_cloth(ob, clmd, mesh_result, 0);
   /* cloth_from_object(ob, clmd, mesh_result, 0, 0); */
@@ -428,7 +445,6 @@ Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  BKE_mesh_free(mesh);
   return cloth_remeshing_update_cloth_object(ob, clmd);
 }
 
@@ -463,6 +479,7 @@ Mesh *clothModifier_do(
   if (clmd->sim_parms->reset ||
       (clmd->clothObject && mesh_result->totvert != clmd->clothObject->mvert_num)) {
     clmd->sim_parms->reset = 0;
+    clmd->sim_parms->remeshing_reset = 1;
 #if USE_CLOTH_CACHE
     cache->flag |= PTCACHE_OUTDATED;
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
@@ -470,6 +487,9 @@ Mesh *clothModifier_do(
     cache->last_exact = 0;
     cache->flag &= ~PTCACHE_REDO_NEEDED;
 #endif
+  }
+  else {
+    clmd->sim_parms->remeshing_reset = 0;
   }
 
   /* simulation is only active during a specific period */
@@ -595,6 +615,15 @@ void cloth_free_modifier(ClothModifierData *clmd)
   if (cloth) {
     BPH_cloth_solver_free(clmd);
 
+    if (cloth->bm) {
+      BM_mesh_free(cloth->bm);
+      cloth->bm = NULL;
+    }
+    if (cloth->bm_prev) {
+      BM_mesh_free(cloth->bm_prev);
+      cloth->bm_prev = NULL;
+    }
+
     // Free the verts.
     if (cloth->verts != NULL) {
       MEM_freeN(cloth->verts);
@@ -668,6 +697,15 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
   if (cloth) {
     if (G.debug & G_DEBUG_SIMDATA) {
       printf("cloth_free_modifier_extern in\n");
+    }
+
+    if (cloth->bm) {
+      BM_mesh_free(cloth->bm);
+      cloth->bm = NULL;
+    }
+    if (cloth->bm_prev) {
+      BM_mesh_free(cloth->bm_prev);
+      cloth->bm_prev = NULL;
     }
 
     BPH_cloth_solver_free(clmd);

@@ -130,8 +130,9 @@ typedef struct ClothSimSettings {
   /** Used for presets on GUI. */
   short presets;
   short reset;
+  short remeshing_reset;
 
-  char _pad0[4];
+  char _pad0[2];
   struct EffectorWeights *effector_weights;
 
   short bending_model;
