@@ -430,10 +430,10 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb){
   LANPR_RenderLineChainItem *rlci,*next_rlci;
   ListBase swap={0};
 
-  while (rlc = BLI_pophead(&rb->chains)){
-    rlc->item.next=rlc->item.prev=NULL;
-    BLI_addtail(&swap,rlc);
-  }
+  swap.first = rb->chains.first;
+  swap.last = rb->chains.last;
+
+  rb->chains.last = rb->chains.first = NULL;
 
   while (rlc = BLI_pophead(&swap)){
     rlc->item.next=rlc->item.prev=NULL;
@@ -449,6 +449,12 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb){
         rlc->chain.last=rlci->item.prev;
         ((LANPR_RenderLineChainItem*)rlc->chain.last)->item.next=0;
         rlci->item.prev=0;
+
+        //end the previous one
+        lanpr_append_render_line_chain_point(rb,rlc,rlci->pos[0],rlci->pos[1],
+                rlci->gpos[0],rlci->gpos[1],rlci->gpos[2],
+                rlci->normal,rlci->line_type,fixed_occ);
+
         rlc=new_rlc;
         fixed_occ = rlci->occlusion;
       }
