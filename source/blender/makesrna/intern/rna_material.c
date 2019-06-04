@@ -103,8 +103,9 @@ static void rna_Material_update_previews(Main *UNUSED(bmain),
 {
   Material *ma = ptr->id.data;
 
-  if (ma->nodetree)
+  if (ma->nodetree) {
     BKE_node_preview_clear_tree(ma->nodetree);
+  }
 
   WM_main_add_notifier(NC_MATERIAL | ND_SHADING_PREVIEW, ma);
 }
@@ -158,8 +159,9 @@ static void rna_Material_active_paint_texture_index_update(Main *bmain,
         }
       }
     }
-    if (node)
+    if (node) {
       nodeSetActive(ma->nodetree, node);
+    }
   }
 
   if (ma->texpaintslot) {
@@ -200,8 +202,9 @@ static void rna_Material_use_nodes_update(bContext *C, PointerRNA *ptr)
   Material *ma = (Material *)ptr->data;
   Main *bmain = CTX_data_main(C);
 
-  if (ma->use_nodes && ma->nodetree == NULL)
+  if (ma->use_nodes && ma->nodetree == NULL) {
     ED_node_shader_default(C, &ma->id);
+  }
 
   DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
   DEG_relations_tag_update(bmain);
@@ -300,8 +303,9 @@ static void rna_TexPaintSlot_uv_layer_set(PointerRNA *ptr, const char *value)
 static bool rna_is_grease_pencil_get(PointerRNA *ptr)
 {
   Material *ma = (Material *)ptr->data;
-  if (ma->gp_style != NULL)
+  if (ma->gp_style != NULL) {
     return true;
+  }
 
   return false;
 }
