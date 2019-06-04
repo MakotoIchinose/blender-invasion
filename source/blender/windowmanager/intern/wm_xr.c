@@ -137,9 +137,50 @@ static void openxr_gather_api_layers(wmXRContext *context)
 }
 
 ATTR_NONNULL()
+ATTR_WARN_UNUSED_RESULT
+static bool openxr_extension_is_available(const wmXRContext *context, const char *extension_name)
+{
+  for (uint i = 0; i < context->oxr.extension_count; i++) {
+    if (STREQ(context->oxr.extensions[i].extensionName, extension_name)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Gather an array of names for the extensions to enable.
+ */
+static void openxr_extensions_to_enable_get(const wmXRContext *context,
+                                            char ***r_ext_names,
+                                            uint *r_ext_count)
+{
+  const static char *try_ext[] = {
+      "XR_KHR_opengl_enable",
+#ifdef WIN32
+      "XR_KHR_D3D11_enable",
+#endif
+  };
+  const uint try_ext_count = ARRAY_SIZE(try_ext);
+
+  BLI_assert(r_ext_names != NULL);
+  BLI_assert(r_ext_count != NULL);
+
+  *r_ext_names = MEM_malloc_arrayN(try_ext_count, sizeof(char *), __func__);
+
+  for (uint i = 0, j = 0; j < try_ext_count; j++) {
+    if (openxr_extension_is_available(context, try_ext[j])) {
+      *r_ext_names[i++] = try_ext[j];
+    }
+  }
+}
+
+ATTR_NONNULL()
 static bool openxr_instance_setup(wmXRContext *context)
 {
   XrInstanceCreateInfo create_info = {.type = XR_TYPE_INSTANCE_CREATE_INFO};
+  const char *enable_extensions = NULL;
 
 #ifdef USE_EXT_LAYER_PRINTS
   puts("Available OpenXR layers/extensions:");
@@ -153,12 +194,9 @@ static bool openxr_instance_setup(wmXRContext *context)
   BLI_strncpy(
       create_info.applicationInfo.applicationName, "Blender", XR_MAX_APPLICATION_NAME_SIZE);
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
-  // create_info.enabledExtensionCount = 1;
-  create_info.enabledExtensionCount = 0;
-  static const char *enabled_extensions[] = {// "XR_KHR_D3D11_enable",
-                                             // "XR_KHR_opengl_enable"
-                                             ""};
-  create_info.enabledExtensionNames = enabled_extensions;
+
+  openxr_extensions_to_enable_get(
+      context, &create_info.enabledExtensionNames, &create_info.enabledExtensionCount);
 
   xrCreateInstance(&create_info, &context->oxr.instance);
 
@@ -166,7 +204,7 @@ static bool openxr_instance_setup(wmXRContext *context)
 }
 
 ATTR_NONNULL()
-static bool openxr_instance_log_print(wmXRContext *context)
+static void openxr_instance_log_print(wmXRContext *context)
 {
   BLI_assert(context->oxr.instance != XR_NULL_HANDLE);
 
