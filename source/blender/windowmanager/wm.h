@@ -95,10 +95,16 @@ void wm_stereo3d_set_cancel(bContext *C, wmOperator *op);
 void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
-#ifdef WITH_OPENXR
 /* wm_xr.c */
+#ifdef WITH_OPENXR
+/* xr-context */
 struct wmXRContext *wm_xr_context_create(void) ATTR_WARN_UNUSED_RESULT;
 void wm_xr_context_destroy(struct wmXRContext *xr_context);
+
+/* sessions */
+bool wm_xr_session_is_running(const struct wmXRContext *xr_context) ATTR_WARN_UNUSED_RESULT;
+void wm_xr_session_start(struct wmXRContext *xr_context) ATTR_NONNULL();
+void wm_xr_session_end(struct wmXRContext *xr_context) ATTR_NONNULL();
 #endif
 
 #endif /* __WM_H__ */

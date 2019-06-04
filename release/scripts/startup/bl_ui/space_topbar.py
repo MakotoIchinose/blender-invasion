@@ -561,11 +561,14 @@ class TOPBAR_MT_window(Menu):
         if sys.platform[:3] == "win":
             layout.separator()
             layout.operator("wm.console_toggle", icon='CONSOLE')
+            layout.separator()
 
         if context.scene.render.use_multiview:
             layout.separator()
             layout.operator("wm.set_stereo_3d")
 
+        # TODO WITH_OPENXR
+        layout.operator("wm.xr_session_toggle")
 
 class TOPBAR_MT_help(Menu):
     bl_label = "Help"

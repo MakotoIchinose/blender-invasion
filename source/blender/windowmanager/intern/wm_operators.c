@@ -3498,6 +3498,34 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+#ifdef WITH_OPENXR
+static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  struct wmXRContext *xr_context = CTX_wm_xr_context(C);
+
+  if (wm_xr_session_is_running(xr_context)) {
+    wm_xr_session_end(xr_context);
+  }
+  else {
+    wm_xr_session_start(xr_context);
+  }
+  return OPERATOR_FINISHED;
+}
+
+static void WM_OT_xr_session_toggle(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Toggle VR Session";
+  ot->idname = "WM_OT_xr_session_toggle";
+  ot->description =
+      "Attempt to open a view for use with virtual reality headsets, or close it if already "
+      "opened";
+
+  /* callbacks */
+  ot->exec = xr_session_toggle_exec;
+}
+#endif /* WITH_OPENXR */
+
 void wm_operatortypes_register(void)
 {
   WM_operatortype_append(WM_OT_window_close);
@@ -3535,6 +3563,9 @@ void wm_operatortypes_register(void)
   WM_operatortype_append(WM_OT_call_panel);
   WM_operatortype_append(WM_OT_radial_control);
   WM_operatortype_append(WM_OT_stereo3d_set);
+#ifdef WITH_OPENXR
+  WM_operatortype_append(WM_OT_xr_session_toggle);
+#endif
 #if defined(WIN32)
   WM_operatortype_append(WM_OT_console_toggle);
 #endif

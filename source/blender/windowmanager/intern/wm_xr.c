@@ -57,6 +57,9 @@ typedef struct wmXRContext {
 
     XrApiLayerProperties *layers;
     uint32_t layer_count;
+
+    XrSystemId system_id;
+    XrSession session;
   } oxr;
 } wmXRContext;
 
@@ -151,8 +154,8 @@ static bool openxr_instance_setup(wmXRContext *context)
   // create_info.enabledExtensionCount = 1;
   create_info.enabledExtensionCount = 0;
   static const char *enabled_extensions[] = {// "XR_KHR_D3D11_enable",
-                                              // "XR_KHR_opengl_enable"
-                                              ""};
+                                             // "XR_KHR_opengl_enable"
+                                             ""};
   create_info.enabledExtensionNames = enabled_extensions;
 
   xrCreateInstance(&create_info, &context->oxr.instance);
@@ -172,8 +175,49 @@ wmXRContext *wm_xr_context_create(void)
 
 void wm_xr_context_destroy(wmXRContext *wm_context)
 {
+  xrDestroySession(wm_context->oxr.session);
   xrDestroyInstance(wm_context->oxr.instance);
+
   MEM_SAFE_FREE(wm_context->oxr.extensions);
   MEM_SAFE_FREE(wm_context->oxr.layers);
+
   MEM_SAFE_FREE(wm_context);
+}
+
+bool wm_xr_session_is_running(const wmXRContext *xr_context)
+{
+  return xr_context->oxr.session != XR_NULL_HANDLE;
+}
+
+/**
+ * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
+ * devices are managed through OpenXR. So this attempts to init the HMD and the other devices.
+ */
+static void wm_xr_system_init(wmXRContext *xr_context)
+{
+  BLI_assert(xr_context->oxr.instance != XR_NULL_HANDLE);
+  BLI_assert(xr_context->oxr.system_id == XR_NULL_SYSTEM_ID);
+
+  XrSystemGetInfo system_info = {.type = XR_TYPE_SYSTEM_GET_INFO};
+  system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+
+  xrGetSystem(xr_context->oxr.instance, &system_info, &xr_context->oxr.system_id);
+}
+
+void wm_xr_session_start(wmXRContext *xr_context)
+{
+  BLI_assert(xr_context->oxr.instance != XR_NULL_HANDLE);
+  BLI_assert(xr_context->oxr.session == XR_NULL_HANDLE);
+
+  wm_xr_system_init(xr_context);
+
+  XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
+  create_info.systemId = xr_context->oxr.system_id;
+  xrCreateSession(xr_context->oxr.instance, &create_info, &xr_context->oxr.session);
+}
+
+void wm_xr_session_end(wmXRContext *xr_context)
+{
+  xrEndSession(xr_context->oxr.session);
+  xrDestroySession(xr_context->oxr.session);
 }
