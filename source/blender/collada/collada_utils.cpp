@@ -1085,35 +1085,12 @@ void bc_create_restpose_mat(BCExportSettings &export_settings,
   loc_eulO_size_to_mat4(to_mat, loc, rot, scale, 6);
 }
 
-/*
- * Make 4*4 matrices better readable
- */
-void bc_sanitize_mat(float mat[4][4], int precision)
-{
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      double val = (double)mat[i][j];
-      val = double_round(val, precision);
-      mat[i][j] = (float)val;
-    }
-  }
-}
-
 void bc_sanitize_v3(float v[3], int precision)
 {
   for (int i = 0; i < 3; i++) {
     double val = (double)v[i];
     val = double_round(val, precision);
     v[i] = (float)val;
-  }
-}
-
-void bc_sanitize_mat(double mat[4][4], int precision)
-{
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      mat[i][j] = double_round(mat[i][j], precision);
-    }
   }
 }
 
@@ -1366,12 +1343,57 @@ COLLADASW::ColorOrTexture bc_get_base_color(bNode *shader)
   }
 }
 
+COLLADASW::ColorOrTexture bc_get_emission(Material *ma)
+{
+  bNode *master_shader = bc_get_master_shader(ma);
+  if (ma->use_nodes && master_shader) {
+    return bc_get_emission(master_shader);
+  }
+  else {
+    return bc_get_cot(0, 0, 0, 1); /* default black */
+  }
+}
+
+COLLADASW::ColorOrTexture bc_get_emission(bNode *shader)
+{
+  bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, "Emission");
+  if (socket) {
+    bNodeSocketValueRGBA *dcol = (bNodeSocketValueRGBA *)socket->default_value;
+    float *col = dcol->value;
+    return bc_get_cot(col[0], col[1], col[2], col[3]);
+  }
+  else {
+    return bc_get_cot(0, 0, 0, 1); /* default black */
+  }
+}
+
 bool bc_get_reflectivity(bNode *shader, double &reflectivity)
 {
   bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, "Specular");
   if (socket) {
     bNodeSocketValueFloat *ref = (bNodeSocketValueFloat *)socket->default_value;
     reflectivity = (double)ref->value;
+    return true;
+  }
+  return false;
+}
+
+double bc_get_alpha(Material *ma)
+{
+  double alpha = ma->a; /* fallback if no socket found */
+  bNode *master_shader = bc_get_master_shader(ma);
+  if (ma->use_nodes && master_shader) {
+    bc_get_alpha(master_shader, alpha);
+  }
+  return alpha;
+}
+
+bool bc_get_alpha(bNode *shader, double &alpha)
+{
+  bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, "Alpha");
+  if (socket) {
+    bNodeSocketValueFloat *ref = (bNodeSocketValueFloat *)socket->default_value;
+    alpha = (double)ref->value;
     return true;
   }
   return false;
