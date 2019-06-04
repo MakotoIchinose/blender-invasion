@@ -617,44 +617,50 @@ class SCENE_PT_lanpr(SceneButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer 
-        
-        sc = lanpr_get_composition_scene(scene)
-        
-        if sc is not None:
-            layout.label(text = 'You are adjusting values for LANPR compostion scene.')
-            row = layout.row()
-            row.scale_y=1.5
-            row.operator("lanpr.goto_composition_scene")
-            layout.operator("lanpr.remove_composition_scene")
-            scene = sc
-            lanpr = scene.lanpr
-            active_layer = lanpr.layers.active_layer
-            return
-        elif scene.render.engine!='BLENDER_LANPR':
-            layout.label(text = 'Select LANPR engine or use composition scene.')
-            layout.operator("lanpr.make_composition_scene")
-            return
 
-        if lanpr_is_composition_scene(scene):
-            row = layout.row()
-            row.scale_y=1.5
-            row.operator("lanpr.goto_original_scene") 
-            
-            layout.label(text='LANPR Composition')
-            row = layout.row()
-            row.scale_y=1.5
-            row.scale_x=4
-            row.operator("lanpr.render_composited", icon = 'RENDER_STILL')
-            row.scale_x=1
-            row.prop(lanpr,"composite_render_animation", toggle=True, icon = 'RENDER_ANIMATION')
+        # make LANPR main panel now visible under all engines.
+        # composition method yet to be deteremined.
         
-        layout.label(text='Mode:')
+        #sc = lanpr_get_composition_scene(scene)
         
-        layout.prop(lanpr, "master_mode", expand=True) 
+        #if sc is not None:
+        #    layout.label(text = 'You are adjusting values for LANPR compostion scene.')
+        #    row = layout.row()
+        #    row.scale_y=1.5
+        #    row.operator("lanpr.goto_composition_scene")
+        #    layout.operator("lanpr.remove_composition_scene")
+        #    scene = sc
+        #    lanpr = scene.lanpr
+        #    active_layer = lanpr.layers.active_layer
+        #    return
+        #elif scene.render.engine!='BLENDER_LANPR':
+        #    layout.label(text = 'Select LANPR engine or use composition scene.')
+        #    layout.operator("lanpr.make_composition_scene")
+        #    return
+
+        #if lanpr_is_composition_scene(scene):
+        #   row = layout.row()
+        #    row.scale_y=1.5
+        #    row.operator("lanpr.goto_original_scene") 
+        #    
+        #    layout.label(text='LANPR Composition')
+        #    row = layout.row()
+        #    row.scale_y=1.5
+        #    row.scale_x=4
+        #    row.operator("lanpr.render_composited", icon = 'RENDER_STILL')
+        #    row.scale_x=1
+        #    row.prop(lanpr,"composite_render_animation", toggle=True, icon = 'RENDER_ANIMATION')
+        
+        if scene.render.engine!='BLENDER_LANPR':
+            layout.label(text='Mode:')
+            layout.prop(lanpr, "master_mode", expand=True) 
+        else:
+            layout.label(text='Only Software mode result is used to generate GP stroke.')
 
         if lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE":
             
             layout.prop(lanpr, "background_color")
+            layout.prop(lanpr, "crease_threshold")
 
             if lanpr.master_mode == "SOFTWARE":
                 layout.label(text="Enable On Demand:")

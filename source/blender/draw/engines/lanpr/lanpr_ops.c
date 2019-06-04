@@ -4237,7 +4237,7 @@ void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot)
 void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot)
 {
   static const EnumPropertyItem line_layer_move[] = {
-      {1, "up", 0, "Up", ""}, {-1, "DOWN", 0, "Down", ""}, {0, NULL, 0, NULL, NULL}};
+      {1, "UP", 0, "Up", ""}, {-1, "DOWN", 0, "Down", ""}, {0, NULL, 0, NULL, NULL}};
 
   ot->name = "Move Line Layer";
   ot->description = "Move LANPR line layer up and down";
