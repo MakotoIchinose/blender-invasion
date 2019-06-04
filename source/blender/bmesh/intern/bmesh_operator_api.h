@@ -294,8 +294,8 @@ typedef struct BMOpSlot {
   BLI_assert(((slot >= (op)->slots_in) && (slot < &(op)->slots_in[BMO_OP_MAX_SLOTS])) || \
              ((slot >= (op)->slots_out) && (slot < &(op)->slots_out[BMO_OP_MAX_SLOTS])))
 
-/* way more than probably needed, compiler complains if limit hit */
-#define BMO_OP_MAX_SLOTS 20
+/* Limit hit and, so expanded for bevel operator, compler complains if limit hit */
+#define BMO_OP_MAX_SLOTS 21
 
 /* BMOpDefine->type_flag */
 typedef enum {
