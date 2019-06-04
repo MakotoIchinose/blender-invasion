@@ -90,7 +90,11 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-        //stuff
+        SampleGpencilModifierData *lmd = (SampleGpencilModifierData *)md;
+        bGPDstroke* gps;
+        for(gps=gpf->strokes.first;gps;gps=gps->next){
+          BKE_gpencil_sample_stroke(gps,lmd->length);
+        }
       return;
     }
   }
@@ -98,11 +102,17 @@ static void bakeModifier(Main *UNUSED(bmain),
 
 /* -------------------------------- */
 
+
+
 /* Generic "generateStrokes" callback */
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  //stuff
+  SampleGpencilModifierData *lmd = (SampleGpencilModifierData *)md;
+  bGPDstroke* gps;
+  for(gps=gpf->strokes.first;gps;gps=gps->next){
+    BKE_gpencil_sample_stroke(gps,lmd->length);
+  }
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)

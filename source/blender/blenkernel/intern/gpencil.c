@@ -1397,6 +1397,111 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 
 /* ************************************************** */
 
+static int stroke_march_next_point(bGPDstroke *gps, int next_point_index, float* current, float dist, float *result, float* pressure, float* strength){
+  float remaining_till_next=0.0f;
+  float remaining_march = dist;
+  float step_start[3];
+  float point[3];
+
+  if(!(next_point_index<gps->totpoints)) return -1;
+
+  copy_v3_v3(step_start,current);
+
+  point[0] = gps->points[next_point_index].x;
+  point[1] = gps->points[next_point_index].y;
+  point[2] = gps->points[next_point_index].z;
+  remaining_till_next = len_v3v3(point,step_start);
+
+  while(remaining_till_next < remaining_march){
+    remaining_march -= remaining_till_next;
+    point[0] = gps->points[next_point_index].x;
+    point[1] = gps->points[next_point_index].y;
+    point[2] = gps->points[next_point_index].z;
+    copy_v3_v3(step_start,point);
+    next_point_index++;
+    if(!(next_point_index<gps->totpoints)){
+      next_point_index=gps->totpoints-1;
+      break;
+    }
+    point[0] = gps->points[next_point_index].x;
+    point[1] = gps->points[next_point_index].y;
+    point[2] = gps->points[next_point_index].z;
+    remaining_till_next = len_v3v3(point,step_start);
+  }
+  if(remaining_till_next < remaining_march){
+    result[0] = gps->points[next_point_index].x;
+    result[1] = gps->points[next_point_index].y;
+    result[2] = gps->points[next_point_index].z;
+    *pressure = gps->points[next_point_index].pressure;
+    *strength = gps->points[next_point_index].strength;
+    return 0;
+  }else{
+    float ratio = remaining_march/remaining_till_next;
+    interp_v3_v3v3(result,step_start,point,ratio);
+    *pressure = interpf(gps->points[next_point_index-1].pressure,gps->points[next_point_index].pressure,ratio);
+    *strength = interpf(gps->points[next_point_index-1].strength,gps->points[next_point_index].strength,ratio);
+    return next_point_index;
+  }
+}
+
+/**
+ * Resample a stroke
+ * \param gps: Stroke to sample
+ * \param dist: Distance of one segment
+ */
+bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
+{
+  bGPDspoint *pt = gps->points;
+  int i;
+
+  if(gps->totpoints < 2 || dist < FLT_EPSILON) return false;
+
+  for (i=0;i<gps->totpoints;i++){
+    pt[i].flag &= ~GP_SPOINT_TAG_FEATURE; // feature point preservation not implemented yet
+  }
+
+  float length=0.0f;
+  float last_coord[3], this_coord[3];
+  last_coord[0]=pt[0].x; last_coord[1]=pt[0].y; last_coord[2]=pt[0].z;
+  for (i=1;i<gps->totpoints;i++){
+    this_coord[0]=pt[i].x; this_coord[1]=pt[i].y; this_coord[2]=pt[i].z;
+    length+=len_v3v3(last_coord,this_coord);
+  }
+
+  int count = (int)(length/dist)+3; // preserve some extra in case
+
+  bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint)*count,"gp_stroke_points_sampled");
+
+  int next_point_index=1; i=0;
+  float pressure,strength;
+  last_coord[0]=pt[0].x; last_coord[1]=pt[0].y; last_coord[2]=pt[0].z;
+  // 1st point
+  new_pt[i].x = last_coord[0]; new_pt[i].y = last_coord[1]; new_pt[i].z = last_coord[2];
+  new_pt[i].pressure = pt[0].pressure;
+  new_pt[i].strength = pt[0].strength;
+  i++;
+  while((next_point_index=stroke_march_next_point(gps,next_point_index,last_coord,dist,last_coord,&pressure,&strength))>-1){
+    new_pt[i].x = last_coord[0];
+    new_pt[i].y = last_coord[1];
+    new_pt[i].z = last_coord[2];
+    new_pt[i].pressure = pressure;
+    new_pt[i].strength = strength;
+    i++;
+    if(next_point_index == 0) break; // last point finished
+  }
+
+  gps->points = new_pt;
+
+  gps->totpoints = i;
+  
+  MEM_freeN(pt);//original
+
+  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gps->tot_triangles = 0;
+
+  return true;
+}
+
 /**
  * Apply smooth to stroke point
  * \param gps: Stroke to smooth
