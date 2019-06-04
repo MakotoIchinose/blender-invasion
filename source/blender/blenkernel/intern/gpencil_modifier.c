@@ -861,7 +861,7 @@ static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
   derived_gpf->flag = gpf->flag;
   derived_gpf->key_type = gpf->key_type;
   derived_gpf->runtime = gpf->runtime;
-  copy_m4_m4(derived_gpf->runtime.viewmatrix, gpf->runtime.viewmatrix);
+  copy_m4_m4(derived_gpf->runtime.parent_obmat, gpf->runtime.parent_obmat);
 
   /* copy strokes */
   BLI_listbase_clear(&derived_gpf->strokes);
