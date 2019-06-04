@@ -2345,6 +2345,19 @@ static bool eh_on_plane(EdgeHalf *e)
   return false;
 }
 
+/* Same thing as below, but the profiles are calculated with the custom profile spacing data
+ * HANS-TODO: Remove this when all of the cases are resolved */
+static void calculate_vm_profiles_custom(BevelParams *bp, BevVert *bv, VMesh *vm)
+{
+  BoundVert *v;
+
+  v = vm->boundstart;
+  do {
+    set_profile_params(bp, bv, v);
+    calculate_profile_custom(bp, v);
+  } while ((v = v->next) != vm->boundstart);
+}
+
 /* Calculate the profiles for all the BoundVerts of VMesh vm */
 static void calculate_vm_profiles(BevelParams *bp, BevVert *bv, VMesh *vm)
 {
@@ -2492,14 +2505,24 @@ static void build_boundary_terminal_edge(BevelParams *bp,
       }
     }
   }
-  calculate_vm_profiles(bp, bv, vm);
+  if (!bp->use_custom_profile) {
+    calculate_vm_profiles(bp, bv, vm);
+  }
+  else {
+    calculate_vm_profiles_custom(bp, bv, vm); /* HANS-TODO: Change back when all cases are converted */
+  }
 
   if (bv->edgecount >= 3) {
     /* special case: snap profile to plane of adjacent two edges */
     v = vm->boundstart;
     BLI_assert(v->ebev != NULL);
     move_profile_plane(v, bv->v);
-    calculate_profile(bp, v);
+    if (!bp->use_custom_profile) {
+      calculate_profile(bp, v);
+    }
+    else {
+      calculate_profile_custom(bp, v); /* HANS-TODO: Change back when all cases are converted */
+    }
   }
 
   if (construct) {
@@ -4957,7 +4980,6 @@ static void bevel_build_trifan(BevelParams *bp, BMesh *bm, BevVert *bv)
  * we have to make it here. */
 static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
-  /* HANS-TODO: Figure out where there are symmetry assumptions are and REMOVE them! */
 
   VMesh *vm = bv->vmesh;
   BMVert *v1, *v2;
@@ -4987,9 +5009,6 @@ static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
     zero_v3(pro->proj_dir);
 
     calculate_profile(bp, bndv);
-    /* HANS-QUESTION: Why is this calculated again here? I thought this was done in build_vmesh.
-     * This seems like a lot of extra work in this case.  I would think if we're not
-     * going to use prohjection anyway we wouldn't bother calculating it in the first place */
 
     for (k = 1; k < ns; k++) {
       get_profile_point(bp, pro, k, ns, co);
@@ -5099,25 +5118,35 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       va = mesh_vert(vm, weld1->index, 0, k)->co;
       vb = mesh_vert(vm, weld2->index, 0, ns - k)->co;
       /* if one of the profiles is on a flat plane, just use the boundary point of the other */
-      if (weld1->profile.super_r == PRO_LINE_R && weld2->profile.super_r != PRO_LINE_R) {
-        copy_v3_v3(co, vb);
-      }
-      else if (weld2->profile.super_r == PRO_LINE_R && weld1->profile.super_r != PRO_LINE_R) {
-        copy_v3_v3(co, va);
-      }
-      else {
-        mid_v3_v3v3(co, va, vb);
-        /* HANS-TODO: Why would you do that? Isn't this the general case when the profile points are defined by profile spacing? */
+      if (!bp->use_custom_profile) {
+        if (weld1->profile.super_r == PRO_LINE_R && weld2->profile.super_r != PRO_LINE_R) {
+          copy_v3_v3(co, vb);
+        }
+        else if (weld2->profile.super_r == PRO_LINE_R && weld1->profile.super_r != PRO_LINE_R) {
+          copy_v3_v3(co, va);
+        }
+        else {
+          mid_v3_v3v3(co, va, vb);
+          /* HANS-TODO: Why would you do that? Isn't this the general case when the profile points are defined by profile spacing? */
+        }
       }
       copy_v3_v3(mesh_vert(vm, weld1->index, 0, k)->co, co);
       create_mesh_bmvert(bm, vm, weld1->index, 0, k, bv->v);
     }
-    for (k = 1; k < ns; k++) {
-      /* HANS-QUESTION: Will I have to disable this? Is this where the symmetry is created?
-       * It looks like the purpose is to make the index loop back down as it goes past halway,
-       * so I probably will have to actually.
-       * HANS-TODO: Disable this possibly! */
-      copy_mesh_vert(vm, weld2->index, 0, ns - k, weld1->index, 0, k);
+    if (!bp->use_custom_profile) {
+      for (k = 1; k < ns; k++) {
+        /* HANS-QUESTION: Will I have to disable this? Is this where the symmetry is created?
+         * It looks like the purpose is to make the index loop back down as it goes past halway,
+         * so I probably will have to actually. Also would this not move the verts on top of each other?
+         * HANS-TODO: Disable this possibly!
+         * NO, this disabling this causes a segfault. */
+        copy_mesh_vert(vm, weld2->index, 0, ns - k, weld1->index, 0, k);
+      }
+    }
+    else {
+      for (k = 1; k < ns; k++) {
+        copy_mesh_vert(vm, weld2->index, 0, k, weld1->index, 0, k);
+      }
     }
   }
 
@@ -6441,7 +6470,7 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
   for (int i = 0; i < bp->seg; i++) {
     x_temp = bp->profile_curve->cm[0].curve[i].x;
     y_temp = bp->profile_curve->cm[0].curve[i].y;
-    xvals[i] = x_temp;
+    xvals[i] = 1.0 - x_temp;
     yvals[i] = y_temp;
   }
 }
@@ -6458,16 +6487,8 @@ static void set_profile_spacing_custom(BevelParams *bp, int seg, double *xvals, 
   if (!bp->sample_points) {
     for (int i = 0; i < seg; i++) {
       curvemapping_path_evaluate(bp->profile_curve, i, &x_temp, &y_temp);
-      xvals[i] = (double)x_temp;
-      yvals[i] = 1.0 - (double)y_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
-    }
-  } else {
-    /* Sample Only Points: Get locations from  points on plot */
-    for (int i = 0; i < bp->seg; i++) {
-      x_temp = bp->profile_curve->cm[0].curve[i].x;
-      y_temp = bp->profile_curve->cm[0].curve[i].y;
-      xvals[i] = (double)x_temp;
-      yvals[i] = 1.0 - (double)y_temp;
+      xvals[i] = 1.0 - (double)x_temp;
+      yvals[i] = (double)y_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
     }
   }
 }
@@ -6525,8 +6546,8 @@ static void set_profile_spacing(BevelParams *bp)
         bp->pro_spacing.xvals_2_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
         bp->pro_spacing.yvals_2_custom = (double *)BLI_memarena_alloc(bp->mem_arena, (size_t)(seg + 1) * sizeof (double));
 
-        /* Don't use the special function to just sample the coords of the points here
-         * because we need more samples than the number of points on the plot */
+        /* Don't use the special function to just sample the coords of the points,
+         * we may need more samples than the number of points on the plot */
         set_profile_spacing_custom(bp, seg_2, bp->pro_spacing.xvals_2_custom, bp->pro_spacing.yvals_2_custom);
       }
 
