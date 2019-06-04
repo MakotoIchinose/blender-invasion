@@ -82,6 +82,7 @@ static void openxr_gather_extensions_ex(wmXRContext *context, const char *layer_
 
   context->oxr.extensions = MEM_calloc_arrayN(
       extension_count, sizeof(*context->oxr.extensions), "xrExtensionProperties");
+  context->oxr.extension_count = extension_count;
   for (uint i = 0; i < extension_count; i++) {
     context->oxr.extensions[i].type = XR_TYPE_EXTENSION_PROPERTIES;
   }
@@ -119,6 +120,7 @@ static void openxr_gather_api_layers(wmXRContext *context)
 
   context->oxr.layers = MEM_calloc_arrayN(
       layer_count, sizeof(*context->oxr.layers), "XrApiLayerProperties");
+  context->oxr.layer_count = layer_count;
   for (uint i = 0; i < layer_count; i++) {
     context->oxr.layers[i].type = XR_TYPE_API_LAYER_PROPERTIES;
   }
