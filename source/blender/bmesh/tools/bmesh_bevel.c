@@ -5112,6 +5112,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     }
   } while ((v = v->next) != vm->boundstart);
 
+  /* Build the profile for the weld (the connection between the two boundverts) */
   if (weld) {
     vm->mesh_kind = M_NONE;
     for (k = 1; k < ns; k++) {
@@ -5127,7 +5128,9 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         }
         else {
           mid_v3_v3v3(co, va, vb);
-          /* HANS-TODO: Why would you do that? Isn't this the general case when the profile points are defined by profile spacing? */
+          /* HANS-QUESTION: Why would you do that? Isn't this the general case when
+           * the profile points are defined by profile spacing? Will I need this
+           * in the custom case?*/
         }
       }
       copy_v3_v3(mesh_vert(vm, weld1->index, 0, k)->co, co);
@@ -5138,8 +5141,8 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         /* HANS-QUESTION: Will I have to disable this? Is this where the symmetry is created?
          * It looks like the purpose is to make the index loop back down as it goes past halway,
          * so I probably will have to actually. Also would this not move the verts on top of each other?
-         * HANS-TODO: Disable this possibly!
-         * NO, this disabling this causes a segfault. */
+         *
+         * NO, this disabling this causes a segfault, better to just not flip the index. */
         copy_mesh_vert(vm, weld2->index, 0, ns - k, weld1->index, 0, k);
       }
     }
@@ -6470,8 +6473,10 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
   for (int i = 0; i < bp->seg; i++) {
     x_temp = bp->profile_curve->cm[0].curve[i].x;
     y_temp = bp->profile_curve->cm[0].curve[i].y;
-    xvals[i] = 1.0 - x_temp;
-    yvals[i] = y_temp;
+//    xvals[i] = 1.0 - x_temp;
+//    yvals[i] = y_temp;
+    xvals[i] = y_temp;
+    yvals[i] = 1.0 - x_temp;
   }
 }
 
@@ -6487,8 +6492,10 @@ static void set_profile_spacing_custom(BevelParams *bp, int seg, double *xvals, 
   if (!bp->sample_points) {
     for (int i = 0; i < seg; i++) {
       curvemapping_path_evaluate(bp->profile_curve, i, &x_temp, &y_temp);
-      xvals[i] = 1.0 - (double)x_temp;
-      yvals[i] = (double)y_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
+//      xvals[i] = 1.0 - (double)x_temp;
+//      yvals[i] = (double)y_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
+      xvals[i] = (double)y_temp;
+      yvals[i] = 1.0 - (double)x_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
     }
   }
 }
