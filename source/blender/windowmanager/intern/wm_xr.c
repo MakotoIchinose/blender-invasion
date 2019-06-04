@@ -178,24 +178,24 @@ static bool openxr_instance_log_print(wmXRContext *context)
 
 wmXRContext *wm_xr_context_create(void)
 {
-  wmXRContext *wm_context = MEM_callocN(sizeof(*wm_context), "wmXRContext");
+  wmXRContext *xr_context = MEM_callocN(sizeof(*xr_context), "wmXRContext");
 
-  BLI_assert(wm_context->oxr.instance == XR_NULL_HANDLE);
-  openxr_instance_setup(wm_context);
-  openxr_instance_log_print(wm_context);
+  BLI_assert(xr_context->oxr.instance == XR_NULL_HANDLE);
+  openxr_instance_setup(xr_context);
+  openxr_instance_log_print(xr_context);
 
-  return wm_context;
+  return xr_context;
 }
 
-void wm_xr_context_destroy(wmXRContext *wm_context)
+void wm_xr_context_destroy(wmXRContext *xr_context)
 {
-  xrDestroySession(wm_context->oxr.session);
-  xrDestroyInstance(wm_context->oxr.instance);
+  xrDestroySession(xr_context->oxr.session);
+  xrDestroyInstance(xr_context->oxr.instance);
 
-  MEM_SAFE_FREE(wm_context->oxr.extensions);
-  MEM_SAFE_FREE(wm_context->oxr.layers);
+  MEM_SAFE_FREE(xr_context->oxr.extensions);
+  MEM_SAFE_FREE(xr_context->oxr.layers);
 
-  MEM_SAFE_FREE(wm_context);
+  MEM_SAFE_FREE(xr_context);
 }
 
 bool wm_xr_session_is_running(const wmXRContext *xr_context)
