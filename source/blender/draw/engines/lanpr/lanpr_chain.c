@@ -203,6 +203,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
   LANPR_BoundingArea *ba;
   LANPR_RenderLineSegment *rls;
   real *inv = rb->vp_inverse;
+  int last_occlusion;
 
   for (rl = rb->all_render_lines.first; rl; rl = (LANPR_RenderLine *)rl->item.next) {
 
@@ -248,8 +249,6 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
                                        rls->occlusion);
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
-
-      int last_occlusion;
 
       N[0] = N[1] = N[2] = 0;
       if (new_rl->tl) {
@@ -320,7 +319,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
 
     // step 2: this line
     rls = rl->segments.first;
-    int last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
+    last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
     for (rls = (LANPR_RenderLineSegment *)rls->item.next; rls;
          rls = (LANPR_RenderLineSegment *)rls->item.next) {
       double gpos[3], lpos[3];
@@ -348,8 +347,6 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
     // lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
-
-      int last_occlusion;
 
       // fix leading vertex type
       rlci = rlc->chain.last;
@@ -426,6 +423,39 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
     // lanpr_reduce_render_line_chain_recursive(rlc,rlc->chain.first, rlc->chain.last,
     // dist_threshold);
   }
+}
+
+void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb){
+  LANPR_RenderLineChain *rlc,*new_rlc;
+  LANPR_RenderLineChainItem *rlci,*next_rlci;
+  ListBase swap={0};
+
+  while (rlc = BLI_pophead(&rb->chains)){
+    rlc->item.next=rlc->item.prev=NULL;
+    BLI_addtail(&swap,rlc);
+  }
+
+  while (rlc = BLI_pophead(&swap)){
+    rlc->item.next=rlc->item.prev=NULL;
+    BLI_addtail(&rb->chains,rlc);
+    LANPR_RenderLineChainItem* first_rlci = (LANPR_RenderLineChainItem*)rlc->chain.first;
+    int fixed_occ = first_rlci->occlusion;
+    for(rlci = (LANPR_RenderLineChainItem*)first_rlci->item.next;rlci;rlci = next_rlci){
+      next_rlci = (LANPR_RenderLineChainItem*)rlci->item.next;
+      if(rlci->occlusion != fixed_occ){
+        new_rlc = lanpr_create_render_line_chain(rb);
+        new_rlc->chain.first = rlci;
+        new_rlc->chain.last = rlc->chain.last;
+        rlc->chain.last=rlci->item.prev;
+        ((LANPR_RenderLineChainItem*)rlc->chain.last)->item.next=0;
+        rlci->item.prev=0;
+        rlc=new_rlc;
+        fixed_occ = rlci->occlusion;
+      }
+    }
+  }
+
+  
 }
 
 int lanpr_count_chain(LANPR_RenderLineChain *rlc)

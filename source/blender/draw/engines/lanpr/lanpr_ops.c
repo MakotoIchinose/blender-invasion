@@ -3713,6 +3713,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
 }
 
 void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_threshold);
+void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
 {
@@ -3959,6 +3960,7 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr
 
   if (lanpr->enable_chaining) {
     lanpr_NO_THREAD_chain_feature_lines(rb, 0.00001);  // should use user_adjustable value
+    lanpr_split_chains_for_fixed_occlusion(rb);
   }
 
   rb->cached_for_frame = scene->r.cfra;
