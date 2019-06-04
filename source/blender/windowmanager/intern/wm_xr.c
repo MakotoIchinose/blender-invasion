@@ -163,12 +163,24 @@ static bool openxr_instance_setup(wmXRContext *context)
   return true;
 }
 
+ATTR_NONNULL()
+static bool openxr_instance_log_print(wmXRContext *context)
+{
+  BLI_assert(context->oxr.instance != XR_NULL_HANDLE);
+
+  XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
+  xrGetInstanceProperties(context->oxr.instance, &instanceProperties);
+
+  printf("Connected to OpenXR runtime: %s\n", instanceProperties.runtimeName);
+}
+
 wmXRContext *wm_xr_context_create(void)
 {
   wmXRContext *wm_context = MEM_callocN(sizeof(*wm_context), "wmXRContext");
 
   BLI_assert(wm_context->oxr.instance == XR_NULL_HANDLE);
   openxr_instance_setup(wm_context);
+  openxr_instance_log_print(wm_context);
 
   return wm_context;
 }
