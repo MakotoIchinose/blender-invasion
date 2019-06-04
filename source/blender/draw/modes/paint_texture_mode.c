@@ -244,7 +244,7 @@ static void PAINT_TEXTURE_cache_init(void *vedata)
 
     /* Uniforms need a pointer to it's value so be sure it's accessible at
      * any given time (i.e. use static vars) */
-    static float color[4] = {1.0f, 0.0f, 1.0f, 1.0};
+    static const float color[4] = {1.0f, 0.0f, 1.0f, 1.0};
     DRW_shgroup_uniform_vec4(shgrp, "color", color, 1);
 
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
@@ -319,7 +319,7 @@ static void PAINT_TEXTURE_cache_init(void *vedata)
                      DRW_STATE_BLEND_ALPHA;
     DRWPass *pass = DRW_pass_create("Face Mask Pass", state);
     DRWShadingGroup *shgrp = DRW_shgroup_create(sh_data->face_select_overlay, pass);
-    static float col[4] = {1.0f, 1.0f, 1.0f, 0.2f};
+    static const float col[4] = {1.0f, 1.0f, 1.0f, 0.2f};
     DRW_shgroup_uniform_vec4(shgrp, "color", col, 1);
 
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
@@ -359,23 +359,23 @@ static void PAINT_TEXTURE_cache_populate(void *vedata, Object *ob)
           for (int i = 0; i < mat_nr; i++) {
             const int index = use_material_slots ? i : 0;
             if ((i < me->totcol) && stl->g_data->shgroup_image_array[index]) {
-              DRW_shgroup_call(stl->g_data->shgroup_image_array[index], geom_array[i], ob->obmat);
+              DRW_shgroup_call(stl->g_data->shgroup_image_array[index], geom_array[i], ob);
             }
             else {
-              DRW_shgroup_call(stl->g_data->shgroup_fallback, geom_array[i], ob->obmat);
+              DRW_shgroup_call(stl->g_data->shgroup_fallback, geom_array[i], ob);
             }
           }
         }
         else {
           if (stl->g_data->shgroup_image_array[0]) {
             struct GPUBatch *geom = DRW_cache_mesh_surface_texpaint_single_get(ob);
-            DRW_shgroup_call(stl->g_data->shgroup_image_array[0], geom, ob->obmat);
+            DRW_shgroup_call(stl->g_data->shgroup_image_array[0], geom, ob);
           }
         }
       }
       else {
         struct GPUBatch *geom = DRW_cache_mesh_surface_get(ob);
-        DRW_shgroup_call(stl->g_data->shgroup_fallback, geom, ob->obmat);
+        DRW_shgroup_call(stl->g_data->shgroup_fallback, geom, ob);
       }
     }
 
@@ -383,10 +383,10 @@ static void PAINT_TEXTURE_cache_populate(void *vedata, Object *ob)
     if (use_face_sel) {
       struct GPUBatch *geom;
       geom = DRW_cache_mesh_surface_edges_get(ob);
-      DRW_shgroup_call(stl->g_data->lwire_select_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->lwire_select_shgrp, geom, ob);
 
       geom = DRW_cache_mesh_surface_get(ob);
-      DRW_shgroup_call(stl->g_data->face_select_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->face_select_shgrp, geom, ob);
     }
   }
 }

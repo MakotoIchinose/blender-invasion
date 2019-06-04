@@ -183,6 +183,10 @@ static void WIDGETGROUP_navigate_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
     wmOperatorType *ot = WM_operatortype_find(info->opname, true);
     WM_gizmo_operator_set(gz, 0, ot, NULL);
+
+    /* We only need this for rotation so click/drag events aren't stolen
+     * by paint mode press events, however it's strange if only rotation has this behavior. */
+    WM_gizmo_set_flag(gz, WM_GIZMO_EVENT_HANDLE_ALL, true);
   }
 
   {
@@ -205,7 +209,7 @@ static void WIDGETGROUP_navigate_setup(const bContext *C, wmGizmoGroup *gzgroup)
     for (int i = 0; i < ARRAY_SIZE(gz_ids); i++) {
       wmGizmo *gz = navgroup->gz_array[gz_ids[i]];
       wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
-      RNA_boolean_set(&gzop->ptr, "use_mouse_init", false);
+      RNA_boolean_set(&gzop->ptr, "use_cursor_init", false);
     }
   }
 

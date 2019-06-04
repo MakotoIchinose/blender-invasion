@@ -445,6 +445,7 @@ void WM_operator_properties_filesel(struct wmOperatorType *ot,
                                     short flag,
                                     short display,
                                     short sort);
+void WM_operator_properties_use_cursor_init(struct wmOperatorType *ot);
 void WM_operator_properties_border(struct wmOperatorType *ot);
 void WM_operator_properties_border_to_rcti(struct wmOperator *op, struct rcti *rect);
 void WM_operator_properties_border_to_rctf(struct wmOperator *op, rctf *rect);
@@ -603,6 +604,10 @@ int WM_event_modifier_flag(const struct wmEvent *event);
 void WM_event_print(const struct wmEvent *event);
 
 void WM_operator_region_active_win_set(struct bContext *C);
+
+int WM_event_drag_threshold(const struct wmEvent *event);
+bool WM_event_drag_test(const struct wmEvent *event, const int prev_xy[2]);
+bool WM_event_drag_test_with_delta(const struct wmEvent *event, const int delta[2]);
 
 /* drag and drop */
 struct wmDrag *WM_event_start_drag(

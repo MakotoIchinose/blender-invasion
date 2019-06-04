@@ -76,13 +76,14 @@ enum eViewProj {
 };
 
 typedef struct SnapData {
-  short snap_to_flag;
   float mval[2];
   float pmat[4][4];  /* perspective matrix */
   float win_size[2]; /* win x and y */
   enum eViewProj view_proj;
   float clip_plane[MAX_CLIPPLANE_LEN][4];
   short clip_plane_len;
+  short snap_to_flag;
+  bool has_occlusion_plane; /* Ignore plane of occlusion in curves. */
 } SnapData;
 
 typedef struct SnapObjectData {
@@ -712,22 +713,21 @@ static bool raycastObj(SnapObjectContext *sctx,
                        ListBase *r_hit_list)
 {
   bool retval = false;
+  if (use_occlusion_test) {
+    if (use_obedit && sctx->use_v3d && XRAY_ENABLED(sctx->v3d_data.v3d)) {
+      /* Use of occlude geometry in editing mode disabled. */
+      return false;
+    }
+
+    if (ELEM(ob->dt, OB_BOUNDBOX, OB_WIRE)) {
+      /* Do not hit objects that are in wire or bounding box
+       * display mode. */
+      return false;
+    }
+  }
 
   switch (ob->type) {
     case OB_MESH: {
-      if (use_occlusion_test) {
-        if (use_obedit && sctx->use_v3d && XRAY_ENABLED(sctx->v3d_data.v3d)) {
-          /* Use of occlude geometry in editing mode disabled. */
-          return false;
-        }
-
-        if (ELEM(ob->dt, OB_BOUNDBOX, OB_WIRE)) {
-          /* Do not hit objects that are in wire or bounding box
-           * display mode. */
-          return false;
-        }
-      }
-
       Mesh *me = ob->data;
       bool use_hide = false;
       if (BKE_object_is_in_editmode(ob)) {
@@ -766,6 +766,26 @@ static bool raycastObj(SnapObjectContext *sctx,
                            r_index,
                            r_hit_list);
       break;
+    }
+    case OB_CURVE:
+    case OB_SURF:
+    case OB_FONT: {
+      if (ob->runtime.mesh_eval) {
+        retval = raycastMesh(sctx,
+                             ray_start,
+                             ray_dir,
+                             ob,
+                             ob->runtime.mesh_eval,
+                             obmat,
+                             ob_index,
+                             false,
+                             ray_depth,
+                             r_loc,
+                             r_no,
+                             r_index,
+                             r_hit_list);
+        break;
+      }
     }
   }
 
@@ -1614,10 +1634,21 @@ static short snapCurve(SnapData *snapdata,
     }
   }
 
-  float tobmat[4][4], clip_planes_local[MAX_CLIPPLANE_LEN][4];
+  float tobmat[4][4];
   transpose_m4_m4(tobmat, obmat);
-  for (int i = snapdata->clip_plane_len; i--;) {
-    mul_v4_m4v4(clip_planes_local[i], tobmat, snapdata->clip_plane[i]);
+
+  float(*clip_planes)[4] = snapdata->clip_plane;
+  int clip_plane_len = snapdata->clip_plane_len;
+
+  if (use_obedit && snapdata->has_occlusion_plane) {
+    /* In editing mode nurbs are not occluded. */
+    clip_planes++;
+    clip_plane_len--;
+  }
+
+  float clip_planes_local[MAX_CLIPPLANE_LEN][4];
+  for (int i = clip_plane_len; i--;) {
+    mul_v4_m4v4(clip_planes_local[i], tobmat, clip_planes[i]);
   }
 
   bool is_persp = snapdata->view_proj == VIEW_PROJ_PERSP;
@@ -1633,7 +1664,7 @@ static short snapCurve(SnapData *snapdata,
             }
             has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                  clip_planes_local,
-                                                 snapdata->clip_plane_len,
+                                                 clip_plane_len,
                                                  is_persp,
                                                  nu->bezt[u].vec[1],
                                                  &dist_px_sq,
@@ -1644,7 +1675,7 @@ static short snapCurve(SnapData *snapdata,
                 !(nu->bezt[u].h1 & HD_ALIGN && nu->bezt[u].f3 & SELECT)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
-                                                   snapdata->clip_plane_len,
+                                                   clip_plane_len,
                                                    is_persp,
                                                    nu->bezt[u].vec[0],
                                                    &dist_px_sq,
@@ -1654,7 +1685,7 @@ static short snapCurve(SnapData *snapdata,
                 !(nu->bezt[u].h2 & HD_ALIGN && nu->bezt[u].f1 & SELECT)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
-                                                   snapdata->clip_plane_len,
+                                                   clip_plane_len,
                                                    is_persp,
                                                    nu->bezt[u].vec[2],
                                                    &dist_px_sq,
@@ -1668,7 +1699,7 @@ static short snapCurve(SnapData *snapdata,
             }
             has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                  clip_planes_local,
-                                                 snapdata->clip_plane_len,
+                                                 clip_plane_len,
                                                  is_persp,
                                                  nu->bp[u].vec,
                                                  &dist_px_sq,
@@ -1681,7 +1712,7 @@ static short snapCurve(SnapData *snapdata,
             if (nu->bezt) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
-                                                   snapdata->clip_plane_len,
+                                                   clip_plane_len,
                                                    is_persp,
                                                    nu->bezt[u].vec[1],
                                                    &dist_px_sq,
@@ -1690,7 +1721,7 @@ static short snapCurve(SnapData *snapdata,
             else {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
-                                                   snapdata->clip_plane_len,
+                                                   clip_plane_len,
                                                    is_persp,
                                                    nu->bp[u].vec,
                                                    &dist_px_sq,
@@ -2351,11 +2382,17 @@ static short snapObject(SnapObjectContext *sctx,
     case OB_ARMATURE:
       retval = snapArmature(snapdata, ob, obmat, use_obedit, dist_px, r_loc, r_no, r_index);
       break;
-
     case OB_CURVE:
       retval = snapCurve(snapdata, ob, obmat, use_obedit, dist_px, r_loc, r_no, r_index);
+      ATTR_FALLTHROUGH;
+    case OB_SURF:
+    case OB_FONT: {
+      if (ob->runtime.mesh_eval) {
+        retval |= snapMesh(
+            sctx, snapdata, ob, ob->runtime.mesh_eval, obmat, dist_px, r_loc, r_no, r_index);
+      }
       break;
-
+    }
     case OB_EMPTY:
       retval = snapEmpty(snapdata, ob, obmat, dist_px, r_loc, r_no, r_index);
       break;
@@ -2718,6 +2755,7 @@ static short transform_snap_context_project_view3d_mixed_impl(
         snapdata.pmat, NULL, NULL, NULL, NULL, snapdata.clip_plane[0], snapdata.clip_plane[1]);
 
     snapdata.clip_plane_len = 2;
+    snapdata.has_occlusion_plane = false;
 
     if (has_hit) {
       /* Compute the new clip_pane but do not add it yet. */
@@ -2744,6 +2782,7 @@ static short transform_snap_context_project_view3d_mixed_impl(
       }
       copy_v4_v4(snapdata.clip_plane[0], new_clipplane);
       snapdata.clip_plane_len++;
+      snapdata.has_occlusion_plane = true;
     }
 
     elem = snapObjectsRay(sctx, &snapdata, params, &dist_px_tmp, loc, no, &index, &ob, obmat);

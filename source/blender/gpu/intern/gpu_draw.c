@@ -1044,8 +1044,9 @@ static GPUTexture *create_flame_texture(SmokeDomainSettings *sds, int highres)
                                     smoke_has_fuel(sds->fluid);
   int *dim = (highres) ? sds->res_wt : sds->res;
 
-  if (!has_fuel)
+  if (!has_fuel) {
     return NULL;
+  }
 
   if (highres) {
     source = smoke_turbulence_get_flame(sds->wt);
@@ -1372,6 +1373,16 @@ void GPU_state_init(void)
   glDisable(GL_CULL_FACE);
 
   gpu_disable_multisample();
+
+  /* This is a bit dangerous since addons could change this. */
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex((GLuint)0xFFFFFFFF);
+
+  /* TODO: Should become default. But needs at least GL 4.3 */
+  if (GLEW_ARB_ES3_compatibility) {
+    /* Takes predecence over GL_PRIMITIVE_RESTART */
+    glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+  }
 }
 
 /** \name Framebuffer color depth, for selection codes

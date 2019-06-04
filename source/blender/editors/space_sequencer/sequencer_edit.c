@@ -1025,11 +1025,13 @@ static void set_filter_seq(Scene *scene)
   Sequence *seq;
   Editing *ed = BKE_sequencer_editing_get(scene, false);
 
-  if (ed == NULL)
+  if (ed == NULL) {
     return;
+  }
 
-  if (okee("Set Deinterlace") == 0)
+  if (okee("Set Deinterlace") == 0) {
     return;
+  }
 
   SEQP_BEGIN (ed, seq) {
     if (seq->flag & SELECT) {
@@ -2660,9 +2662,8 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
 
   /* remove all selected from main list, and put in meta */
 
-  seqm = BKE_sequence_alloc(ed->seqbasep, 1, 1); /* channel number set later */
+  seqm = BKE_sequence_alloc(ed->seqbasep, 1, 1, SEQ_TYPE_META); /* channel number set later */
   strcpy(seqm->name + 2, "MetaStrip");
-  seqm->type = SEQ_TYPE_META;
   seqm->flag = SELECT;
 
   seq = ed->seqbasep->first;
@@ -2678,9 +2679,6 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
   }
   seqm->machine = last_seq ? last_seq->machine : channel_max;
   BKE_sequence_calc(scene, seqm);
-
-  seqm->strip = MEM_callocN(sizeof(Strip), "metastrip");
-  seqm->strip->us = 1;
 
   BKE_sequencer_active_set(scene, seqm);
 
@@ -3163,8 +3161,9 @@ static Sequence *sequence_find_parent(Scene *scene, Sequence *child)
   Sequence *parent = NULL;
   Sequence *seq;
 
-  if (ed == NULL)
+  if (ed == NULL) {
     return NULL;
+  }
 
   for (seq = ed->seqbasep->first; seq; seq = seq->next) {
     if ((seq != child) && seq_is_parent(seq, child)) {

@@ -745,10 +745,11 @@ void ED_node_set_active(Main *bmain, bNodeTree *ntree, bNode *node)
     else if (ntree->type == NTREE_TEXTURE) {
       // XXX
 #if 0
-      if (node->id)
-        ;  // XXX BIF_preview_changed(-1);
-           // allqueue(REDRAWBUTSSHADING, 1);
-           // allqueue(REDRAWIPO, 0);
+      if (node->id) {
+        // XXX BIF_preview_changed(-1);
+        // allqueue(REDRAWBUTSSHADING, 1);
+        // allqueue(REDRAWIPO, 0);
+      }
 #endif
     }
   }
@@ -784,17 +785,21 @@ static int edit_node_invoke_properties(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set(op->ptr, "node")) {
     bNode *node = CTX_data_pointer_get_type(C, "node", &RNA_Node).data;
-    if (!node)
+    if (!node) {
       return 0;
-    else
+    }
+    else {
       RNA_string_set(op->ptr, "node", node->name);
+    }
   }
 
-  if (!RNA_struct_property_is_set(op->ptr, "in_out"))
+  if (!RNA_struct_property_is_set(op->ptr, "in_out")) {
     RNA_enum_set(op->ptr, "in_out", SOCK_IN);
+  }
 
-  if (!RNA_struct_property_is_set(op->ptr, "socket"))
+  if (!RNA_struct_property_is_set(op->ptr, "socket")) {
     RNA_int_set(op->ptr, "socket", 0);
+  }
 
   return 1;
 }
@@ -823,12 +828,15 @@ static void edit_node_properties_get(
       break;
   }
 
-  if (rnode)
+  if (rnode) {
     *rnode = node;
-  if (rsock)
+  }
+  if (rsock) {
     *rsock = sock;
-  if (rin_out)
+  }
+  if (rin_out) {
     *rin_out = in_out;
+  }
 }
 #endif
 
@@ -1174,7 +1182,7 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   lastnode = ntree->nodes.last;
   for (node = ntree->nodes.first; node; node = node->next) {
     if (node->flag & SELECT) {
-      newnode = BKE_node_copy_ex(ntree, node, LIB_ID_COPY_DEFAULT);
+      newnode = BKE_node_copy_store_new_pointers(ntree, node, LIB_ID_COPY_DEFAULT);
 
       /* to ensure redraws or rerenders happen */
       ED_node_tag_update_id(snode->id);
@@ -2029,7 +2037,8 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator *UNUSED(op))
     if (node->flag & SELECT) {
       /* No ID refcounting, this node is virtual,
        * detached from any actual Blender data currently. */
-      bNode *new_node = BKE_node_copy_ex(NULL, node, LIB_ID_CREATE_NO_USER_REFCOUNT);
+      bNode *new_node = BKE_node_copy_store_new_pointers(
+          NULL, node, LIB_ID_CREATE_NO_USER_REFCOUNT);
       BKE_node_clipboard_add_node(new_node);
     }
   }
@@ -2155,7 +2164,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 
   /* copy nodes from clipboard */
   for (node = clipboard_nodes_lb->first; node; node = node->next) {
-    bNode *new_node = BKE_node_copy_ex(ntree, node, LIB_ID_COPY_DEFAULT);
+    bNode *new_node = BKE_node_copy_store_new_pointers(ntree, node, LIB_ID_COPY_DEFAULT);
 
     /* pasted nodes are selected */
     nodeSetSelected(new_node, true);

@@ -53,8 +53,11 @@ struct GpencilBatchGroup;
 
 /* *********** OBJECTS CACHE *********** */
 typedef struct tGPencilObjectCache_shgrp {
+  /** type of blend (regular, add, mult, etc...) */
   int mode;
+  /** flag to enable the layer clamping */
   bool clamp_layer;
+  /** factor to define the opacity of the layer */
   float blend_opacity;
   DRWShadingGroup *init_shgrp;
   DRWShadingGroup *end_shgrp;
@@ -131,7 +134,6 @@ typedef struct GPENCIL_shgroup {
 
 typedef struct GPENCIL_Storage {
   int shgroup_id; /* total elements */
-  float unit_matrix[4][4];
   int stroke_style;
   int color_type;
   int mode;
@@ -176,7 +178,6 @@ typedef struct GPENCIL_Storage {
   DRWView *view;
   float view_vecs[2][4]; /* vec4[2] */
 
-  float grid_matrix[4][4];
   int shade_render[2];
 
   Object *camera; /* camera pointer for render mode */
