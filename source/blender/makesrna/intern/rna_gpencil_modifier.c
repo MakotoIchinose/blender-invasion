@@ -86,6 +86,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_ARRAY,
      "Stoke",
      "Create strokes from mesh elements"},
+    {eGpencilModifierType_Sample,
+     "GP_SAMPLE",
+     ICON_MOD_MULTIRES,
+     "Sample",
+     "Resamples strokes"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
      "GP_ARMATURE",
@@ -214,6 +219,8 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_ArmatureGpencilModifier;
     case eGpencilModifierType_Stroke:
       return &RNA_StrokeGpencilModifier;
+    case eGpencilModifierType_Sample:
+      return &RNA_SampleGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -1767,6 +1774,23 @@ static void rna_def_modifier_gpencilstroke(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
+static void rna_def_modifier_gpencilsample(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "SampleGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Sample Modifier", "Re-samples the stroke");
+  RNA_def_struct_sdna(srna, "SampleGpencilModifierData"); 
+  RNA_def_struct_ui_icon(srna, ICON_MOD_MULTIRES);
+
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+}
+
 void RNA_def_greasepencil_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1827,6 +1851,7 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencilsmooth(brna);
   rna_def_modifier_gpencilsubdiv(brna);
   rna_def_modifier_gpencilstroke(brna);
+  rna_def_modifier_gpencilsample(brna);
   rna_def_modifier_gpencilsimplify(brna);
   rna_def_modifier_gpencilthick(brna);
   rna_def_modifier_gpenciloffset(brna);

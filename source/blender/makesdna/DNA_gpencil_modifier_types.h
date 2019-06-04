@@ -49,6 +49,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Armature = 15,
   eGpencilModifierType_Time = 16,
   eGpencilModifierType_Stroke = 17,
+  eGpencilModifierType_Sample = 18,
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
 
@@ -609,5 +610,11 @@ typedef enum eStrokeGpencil_Flag { /* emm what are these for */
                                    GP_STROKE_KEEP_ONTOP = (1 << 2),
                                    GP_STROKE_INVERT_LAYERPASS = (1 << 3),
 } eStrokeGpencil_Flag;
+
+typedef struct SampleGpencilModifierData {
+  GpencilModifierData modifier;
+  float length;
+  char _pad[4];
+} SampleGpencilModifierData;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

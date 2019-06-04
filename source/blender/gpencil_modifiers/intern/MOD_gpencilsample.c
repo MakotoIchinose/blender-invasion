@@ -72,8 +72,7 @@
 
 static void initData(GpencilModifierData *md)
 {
-  StrokeGpencilModifierData *gpmd = (StrokeGpencilModifierData *)md;
-  gpmd->object = NULL;
+  SampleGpencilModifierData *gpmd = (SampleGpencilModifierData *)md;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -91,9 +90,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
-      lanpr_update_data_for_external(depsgraph);
-      lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
+        //stuff
       return;
     }
   }
@@ -105,19 +102,12 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
-  lanpr_update_data_for_external(depsgraph);
-  lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
+  //stuff
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  StrokeGpencilModifierData *lmd = (StrokeGpencilModifierData *)md;
-  if (lmd->object != NULL) {
-    DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Stroke Modifier");
-    DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Stroke Modifier");
-  }
-  DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Stroke Modifier");
+  SampleGpencilModifierData *lmd = (SampleGpencilModifierData *)md;
 }
 
 static void foreachObjectLink(GpencilModifierData *md,
@@ -125,15 +115,13 @@ static void foreachObjectLink(GpencilModifierData *md,
                               ObjectWalkFunc walk,
                               void *userData)
 {
-  StrokeGpencilModifierData *mmd = (StrokeGpencilModifierData *)md;
-
-  walk(userData, ob, &mmd->object, IDWALK_CB_NOP);
+  SampleGpencilModifierData *mmd = (SampleGpencilModifierData *)md;
 }
 
-GpencilModifierTypeInfo modifierType_Gpencil_Stroke = {
-    /* name */ "Stroke",
-    /* structName */ "StrokeGpencilModifierData",
-    /* structSize */ sizeof(StrokeGpencilModifierData),
+GpencilModifierTypeInfo modifierType_Gpencil_Sample = {
+    /* name */ "Sample",
+    /* structName */ "SampleGpencilModifierData",
+    /* structSize */ sizeof(SampleGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
     /* flags */ 0,
 

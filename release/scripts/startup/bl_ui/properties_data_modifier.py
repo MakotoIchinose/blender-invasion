@@ -2267,6 +2267,10 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "layer_pass", text="Pass")
         row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
 
+    def GP_SAMPLE(self, layout, ob, md):
+        col = layout.column()
+        col.prop(md, "length")
+
 
 classes = (
     DATA_PT_modifiers,
