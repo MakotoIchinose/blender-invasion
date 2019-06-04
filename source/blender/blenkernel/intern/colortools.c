@@ -1214,26 +1214,25 @@ void curvemapping_table_RGBA(const CurveMapping *cumap, float **array, int *size
 
 #define DEBUG_CUMAP 0
 
-
-
 /* *********** Curvemapping for paths /non-functions (Bevel) *************/
 
 /* HANS-TODO: Maybe this should check index out of bound */
 /* HANS-TODO: This falls back to linear interpolation for all points for now */
 /* This might be a little less efficient because it has to get fetch x and y */
 /*   rather than carrying them over from the last point while travelling */
-float curvemap_path_linear_distance_to_next_point(const struct CurveMap *cuma, int i) {
+float curvemap_path_linear_distance_to_next_point(const struct CurveMap *cuma, int i)
+{
   float x = cuma->curve[i].x;
   float y = cuma->curve[i].y;
-  float x_next = cuma->curve[i+1].x;
-  float y_next = cuma->curve[i+1].y;
+  float x_next = cuma->curve[i + 1].x;
+  float y_next = cuma->curve[i + 1].y;
 
   return sqrtf(powf(y_next - y, 2) + powf(x_next - x, 2));
 }
 
-
 /* Calculate the total length of the path (between all of the nodes and the ends at 0 and 1 */
-float curvemap_path_total_length(const struct CurveMap *cuma) {
+float curvemap_path_total_length(const struct CurveMap *cuma)
+{
   float total_length = 0;
   /*printf("Here are the locations of all of %d points in the list:\n", cuma->totpoint);
   for (int i = 0; i < cuma->totpoint; i++) {
@@ -1247,12 +1246,17 @@ float curvemap_path_total_length(const struct CurveMap *cuma) {
   return total_length;
 }
 
-static inline float lerp(float a, float b, float f) {
+static inline float lerp(float a, float b, float f)
+{
   return a + (b - a) * f;
 }
 
 /* CurveMap should have already been initialized */
-void curvemap_path_evaluate(const struct CurveMap *cuma, float length_portion, float *x_out, float *y_out) {
+void curvemap_path_evaluate(const struct CurveMap *cuma,
+                            float length_portion,
+                            float *x_out,
+                            float *y_out)
+{
   /* HANS-TODO: For now I'm skipping the table and doing the evaluation here, */
   /*   but it should be moved later on so I don't have to travel down node list every call */
   float total_length = cuma->total_length;
@@ -1274,7 +1278,8 @@ void curvemap_path_evaluate(const struct CurveMap *cuma, float length_portion, f
     i++;
   }
 
-  /* Now travel the rest of the length portion down the path to the next point and find the location there */
+  /* Now travel the rest of the length portion down the path to the next point and find the
+   * location there */
   float distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, i);
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
@@ -1285,56 +1290,57 @@ void curvemap_path_evaluate(const struct CurveMap *cuma, float length_portion, f
   printf("  length travelled: %f\n", length_travelled);
   printf("  lerp-factor: %f\n", lerp_factor);
   printf("  ith point  (%f, %f)\n", cuma->curve[i].x, cuma->curve[i].y);
-  printf("  next point (%f, %f)\n", cuma->curve[i+1].x, cuma->curve[i+1].y);
+  printf("  next point (%f, %f)\n", cuma->curve[i + 1].x, cuma->curve[i + 1].y);
 #endif
 
-  *x_out = lerp(cuma->curve[i].x, cuma->curve[i+1].x, lerp_factor);
-  *y_out = lerp(cuma->curve[i].y, cuma->curve[i+1].y, lerp_factor);
+  *x_out = lerp(cuma->curve[i].x, cuma->curve[i + 1].x, lerp_factor);
+  *y_out = lerp(cuma->curve[i].y, cuma->curve[i + 1].y, lerp_factor);
 }
 
-
 /* HANS-TODO: Test this! (And start using it) */
-static void curvemap_path_make_table(struct CurveMap *cuma) {
+static void curvemap_path_make_table(struct CurveMap *cuma)
+{
   /* Fill table with values for the position of the graph at each of the segments */
-//  const float segment_length = cuma->total_length / cuma->nsegments;
-//  float length_travelled = 0.0f;
-//  float distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, 0);
-//  float distance_to_previous_point = 0.0f;
-//  float travelled_since_last_point = 0.0f;
-//  float segment_left = segment_length;
-//  float f;
-//  int i_point = 0;
+  //  const float segment_length = cuma->total_length / cuma->nsegments;
+  //  float length_travelled = 0.0f;
+  //  float distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, 0);
+  //  float distance_to_previous_point = 0.0f;
+  //  float travelled_since_last_point = 0.0f;
+  //  float segment_left = segment_length;
+  //  float f;
+  //  int i_point = 0;
 
-//  cuma->x_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table x");
-//  cuma->y_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table y"); /* HANS-TODO: Free these!! Where?? */
+  //  cuma->x_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment table
+  //  x"); cuma->y_segment_vals = MEM_callocN((size_t)cuma->nsegments * sizeof(float), "segment
+  //  table y"); /* HANS-TODO: Free these!! Where?? */
 
-//  /* Travel along the path, recording locations of segments as we pass where they should be */
-//  for (int i = 0; i < cuma->nsegments; i++) {
-//    /* Travel over all of the points that could be inside this segment */
-//    while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {
-//      length_travelled += distance_to_next_point;
-//      segment_left -= distance_to_next_point;
-//      travelled_since_last_point += distance_to_next_point;
-//      i_point++;
-//      distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, i_point);
-//      distance_to_previous_point = 0.0f;
-//    }
-//    /* We're now at the last point that fits inside the current segment */
+  //  /* Travel along the path, recording locations of segments as we pass where they should be */
+  //  for (int i = 0; i < cuma->nsegments; i++) {
+  //    /* Travel over all of the points that could be inside this segment */
+  //    while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {
+  //      length_travelled += distance_to_next_point;
+  //      segment_left -= distance_to_next_point;
+  //      travelled_since_last_point += distance_to_next_point;
+  //      i_point++;
+  //      distance_to_next_point = curvemap_path_linear_distance_to_next_point(cuma, i_point);
+  //      distance_to_previous_point = 0.0f;
+  //    }
+  //    /* We're now at the last point that fits inside the current segment */
 
-//    f = segment_left / (distance_to_previous_point + distance_to_next_point);
-//    cuma->x_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
-//    cuma->y_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
-//    distance_to_next_point -= segment_left;
-//    distance_to_previous_point += segment_left;
+  //    f = segment_left / (distance_to_previous_point + distance_to_next_point);
+  //    cuma->x_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+  //    cuma->y_segment_vals[i] = lerp(cuma->curve[i_point].x, cuma->curve[i_point+1].x, f);
+  //    distance_to_next_point -= segment_left;
+  //    distance_to_previous_point += segment_left;
 
-//    length_travelled += segment_left;
-//  }
-
+  //    length_travelled += segment_left;
+  //  }
 }
 
 /* Used for a path where the curve isn't necessarily a function. */
 /* Initialized with the number of segments to fill the table with */
-void curvemapping_path_initialize(struct CurveMapping *cumap, int nsegments) {
+void curvemapping_path_initialize(struct CurveMapping *cumap, int nsegments)
+{
   CurveMap *cuma = cumap->cm;
 
   cuma->nsegments = nsegments;
@@ -1349,11 +1355,13 @@ void curvemapping_path_initialize(struct CurveMapping *cumap, int nsegments) {
   curvemap_path_make_table(cumap->cm);
 }
 
-
-
 /* Evaluates along the length of the path rather than with X coord */
 /* Must initialize the table with the right amount of segments first! */
-void curvemapping_path_evaluate(const struct CurveMapping *cumap, int segment, float *x_out, float *y_out) {
+void curvemapping_path_evaluate(const struct CurveMapping *cumap,
+                                int segment,
+                                float *x_out,
+                                float *y_out)
+{
   /* Return the location in the table of the input segment */
 
   const CurveMap *cuma = cumap->cm;
@@ -1375,9 +1383,6 @@ void curvemapping_path_evaluate(const struct CurveMapping *cumap, int segment, f
     }
   }
 }
-
-
-
 
 /* ***************** Histogram **************** */
 

@@ -47,7 +47,9 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
-  const struct CurveMapping *profile_curve = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f); // HANS-TODO: This probably shouldn't be NULL? More figuring out how to get this through
+  const struct CurveMapping *profile_curve = curvemapping_add(
+      1, 0.0f, 0.0f, 1.0f, 1.0f);  // HANS-TODO: This probably shouldn't be NULL? More figuring out
+                                   // how to get this through
   const bool sample_points = BMO_slot_bool_get(op->slots_in, "sample_points");
 
   if (offset > 0) {
