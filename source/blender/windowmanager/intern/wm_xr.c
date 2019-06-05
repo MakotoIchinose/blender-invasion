@@ -60,6 +60,7 @@ typedef struct wmXRContext {
 
     XrSystemId system_id;
     XrSession session;
+    XrSessionState session_state;
   } oxr;
 } wmXRContext;
 
@@ -217,6 +218,8 @@ wmXRContext *wm_xr_context_create(void)
 {
   wmXRContext *xr_context = MEM_callocN(sizeof(*xr_context), "wmXRContext");
 
+  xr_context->oxr.session_state = XR_SESSION_STATE_UNKNOWN;
+
   BLI_assert(xr_context->oxr.instance == XR_NULL_HANDLE);
   openxr_instance_setup(xr_context);
   openxr_instance_log_print(xr_context);
@@ -237,7 +240,14 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
 
 bool wm_xr_session_is_running(const wmXRContext *xr_context)
 {
-  return xr_context->oxr.session != XR_NULL_HANDLE;
+  if (xr_context->oxr.session == XR_NULL_HANDLE) {
+    return false;
+  }
+
+  return ELEM(xr_context->oxr.session_state,
+              XR_SESSION_STATE_RUNNING,
+              XR_SESSION_STATE_VISIBLE,
+              XR_SESSION_STATE_FOCUSED);
 }
 
 /**
@@ -264,6 +274,9 @@ void wm_xr_session_start(wmXRContext *xr_context)
 
   XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
   create_info.systemId = xr_context->oxr.system_id;
+  /* TODO .next needs to point to graphics extension structure  XrGraphicsBindingFoo */
+  // create_info.next = ;
+
   xrCreateSession(xr_context->oxr.instance, &create_info, &xr_context->oxr.session);
 }
 
@@ -276,9 +289,19 @@ void wm_xr_session_end(wmXRContext *xr_context)
 static void wm_xr_session_state_change(wmXRContext *xr_context,
                                        const XrEventDataSessionStateChanged *lifecycle)
 {
+  xr_context->oxr.session_state = lifecycle->type;
+
   switch (lifecycle->type) {
     case XR_SESSION_STATE_READY: {
+      XrSessionBeginInfo begin_info = {
+          .type = XR_TYPE_SESSION_BEGIN_INFO,
+          .primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
+      xrBeginSession(xr_context->oxr.session, &begin_info);
       break;
+    }
+    case XR_SESSION_STATE_STOPPING: {
+      BLI_assert(xr_context->oxr.session != XR_NULL_HANDLE);
+      xrEndSession(xr_context->oxr.session);
     }
   }
 }
@@ -295,6 +318,10 @@ static bool wm_xr_event_poll_next(wmXRContext *xr_context, XrEventDataBuffer *r_
 bool wm_xr_events_handle(wmXRContext *xr_context)
 {
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
+
+  if (!wm_xr_session_is_running(xr_context)) {
+    return false;
+  }
 
   while (wm_xr_event_poll_next(xr_context, &event_buffer)) {
     XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
