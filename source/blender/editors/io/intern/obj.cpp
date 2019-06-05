@@ -144,13 +144,16 @@ namespace {
 
 		if (settings->export_normals) {
 			fs << std::fixed << std::setprecision(4);
-			if (settings->dedup_normals)
-				for (const std::array<float, 3> &no :
-					     common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
-					fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
-			else
-				for (const std::array<float, 3> &no : common::normal_iter{mesh})
-					fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+			// if (settings->dedup_normals)
+			// 	for (const std::array<float, 3> &no :
+			// 		     common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
+			// 		fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+			// else
+			for (const std::array<float, 3> &no : common::normal_iter{mesh}) {
+				++no_total;
+				std::cerr << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+				fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+			}
 		}
 
 		if (settings->export_edges) {
@@ -161,9 +164,6 @@ namespace {
 
 		std::cerr << "Totals: "  << uv_total << " " << no_total
 		          << "\nSizes: " << uv_mapping.size() << " " << no_mapping.size()  << '\n';
-
-		char c;
-		std::cin >> c;
 
 		for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
 			fs << 'f';

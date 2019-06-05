@@ -309,13 +309,23 @@ namespace common {
 		return f;
 	}
 
+	template<size_t N>
+	inline float too_similar(const std::array<float, N> &lhs, const std::array<float, N> &rhs,
+	                         const float th) {
+		bool b = true;
+		for(int i = 0; i < N; ++i)
+			b &= (lhs[i] - rhs[i]) < th;
+		return b;
+	}
+
 	struct threshold_comparator {
-		threshold_comparator(const float th) : thsq(th * th) {}
+		threshold_comparator(const float th) : th(th) {}
 		template<typename key_t>
 		bool operator()(const key_t &lhs, const key_t &rhs) const {
-			return len_sq(lhs.first, rhs.first) < thsq && lhs.first < rhs.first;
+			return // too_similar(lhs.first, rhs.first, th) &&
+				lhs.first < rhs.first;
 		}
-		const float thsq;
+		const float th;
 	};
 
 	template<typename key_t>
@@ -337,35 +347,28 @@ namespace common {
 		                                 SourceIter, ResT, Tag, ResT> {
 		deduplicated_iterator() = default;
 		explicit deduplicated_iterator(const Mesh * const mesh, dedup_pair_t<KeyT> &dp,
-		                               ulong &total, ulong reserve, SourceIter &&it)
+		                               ulong &total, SourceIter it)
 			: deduplicated_iterator::iterator_adaptor_(it), mesh(mesh),
-			  dedup_pair(dp), total(total) {
+			  dedup_pair(dp), total(total) {}
+		explicit deduplicated_iterator(const Mesh * const mesh, dedup_pair_t<KeyT> &dp,
+		                               ulong &total, ulong reserve)
+			: deduplicated_iterator(mesh, dp, total, SourceIter{mesh}) {
 			// Reserve space so we don't constantly allocate
 			dedup_pair.second.reserve(reserve);
 			// Need to insert the first element, because we need to dereference before incrementing
-			auto p = dedup_pair.first.insert(std::make_pair(*it, total));
+			auto p = dedup_pair.first.insert(std::make_pair(*this->base(), total++));
 			dedup_pair.second.push_back(p.first);
+			++this->base_reference();
 		}
-		explicit deduplicated_iterator(const Mesh * const mesh, dedup_pair_t<KeyT> &dp,
-		                               ulong &total, ulong reserve)
-			: deduplicated_iterator(mesh, dp, total, reserve, SourceIter{mesh}) {}
-		deduplicated_iterator begin() const {
-			return deduplicated_iterator(mesh, dedup_pair, total, total);
-		}
+		deduplicated_iterator begin() const { return *this; }
 		deduplicated_iterator end() const {
-			return deduplicated_iterator(mesh, dedup_pair, total, total, this->base().end());
-		}
-		const deduplicated_iterator cbegin() const {
-			return deduplicated_iterator(mesh, dedup_pair, total, total);
-		}
-		const deduplicated_iterator cend() const {
-			return deduplicated_iterator(mesh, dedup_pair, total, total, this->base().end());
-		}
+			return deduplicated_iterator(mesh, dedup_pair, total, this->base().end()); }
 		friend class boost::iterator_core_access;
 		void increment() {
+			// Handle everything until the next different element
 			while(this->base() != this->base().end()) {
+				auto p = dedup_pair.first.insert(std::make_pair(*this->base(), total));
 				++this->base_reference();
-				auto p = dedup_pair.first.insert(std::make_pair(*this->base_reference(), total));
 				dedup_pair.second.push_back(p.first);
 				if (p.second) {
 					++total;
@@ -387,8 +390,7 @@ namespace common {
 
 	struct deduplicated_uv_iter : deduplicated_iterator<uv_key_t, uv_iter> {
 		deduplicated_uv_iter(const Mesh * const mesh, ulong &total, dedup_pair_t<uv_key_t> &dp)
-			: deduplicated_iterator<uv_key_t, uv_iter>
-			(mesh, dp, total, total + mesh->totloop) {}
+			: deduplicated_iterator<uv_key_t, uv_iter>(mesh, dp, total, total + mesh->totloop) {}
 	};
 
 	// C++14/17 would be useful here...
