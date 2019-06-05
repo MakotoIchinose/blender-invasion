@@ -897,10 +897,11 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   int model_ubo_location = GPU_shader_get_uniform_block(shader, "modelBlock");
   int info_ubo_location = GPU_shader_get_uniform_block(shader, "infoBlock");
   int baseinst_location = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_BASE_INSTANCE);
-  int callid_location = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_CALLID);
+  int chunkid_location = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_RESOURCE_CHUNK);
 
-  if (callid_location != -1) {
-    drw_shgroup_uniform_create_ex(shgroup, callid_location, DRW_UNIFORM_CALLID, NULL, 0, 1);
+  if (chunkid_location != -1) {
+    drw_shgroup_uniform_create_ex(
+        shgroup, chunkid_location, DRW_UNIFORM_RESOURCE_CHUNK, NULL, 0, 1);
   }
 
   if (baseinst_location != -1) {

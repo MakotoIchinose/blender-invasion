@@ -808,7 +808,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
                                  int *obmats_loc,
                                  int *obinfos_loc,
                                  int *baseinst_loc,
-                                 int *callid_loc,
+                                 int *chunkid_loc,
                                  int *obmat_loc,
                                  int *obinv_loc,
                                  int *mvp_loc)
@@ -884,8 +884,9 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           GPU_uniformbuffer_bind(ubo, 1);
           GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
           break;
-        case DRW_UNIFORM_CALLID:
-          *callid_loc = uni->location;
+        case DRW_UNIFORM_RESOURCE_CHUNK:
+          *chunkid_loc = uni->location;
+          GPU_shader_uniform_int(shgroup->shader, uni->location, 0);
           break;
           /* Legacy/Fallback support. */
         case DRW_UNIFORM_BASE_INSTANCE:
@@ -995,7 +996,8 @@ typedef struct DRWCommandsState {
 static void draw_call_resource_bind(DRWCommandsState *state,
                                     DRWResourceHandle handle,
                                     int obmats_loc,
-                                    int obinfos_loc)
+                                    int obinfos_loc,
+                                    int chunkid_loc)
 {
   /* Front face is not a resource but it is inside the resource handle. */
   if (handle.negative_scale != state->neg_scale) {
@@ -1004,6 +1006,9 @@ static void draw_call_resource_bind(DRWCommandsState *state,
   }
 
   if (state->resource_chunk != handle.chunk) {
+    if (chunkid_loc != -1) {
+      GPU_shader_uniform_int(NULL, chunkid_loc, handle.chunk);
+    }
     if (obmats_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state->resource_chunk]);
       GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
@@ -1024,10 +1029,10 @@ static bool draw_call_do_batching(DRWShadingGroup *shgroup,
                                   int obmats_loc,
                                   int obinfos_loc,
                                   int baseinst_loc,
-                                  int callid_loc)
+                                  int chunkid_loc)
 {
-  if (call->inst_count > 0 || call->vert_first > 0 || call->vert_count > 0 || callid_loc != -1 ||
-      obmats_loc == -1 || G.f & G_FLAG_PICKSEL) {
+  if (call->inst_count > 0 || call->vert_first > 0 || call->vert_count > 0 || obmats_loc == -1 ||
+      G.f & G_FLAG_PICKSEL) {
     /* Safety guard. Batching should not happen in a shgroup
      * where any if the above condition are true. */
     BLI_assert(state->inst_count == 0);
@@ -1056,7 +1061,7 @@ static bool draw_call_do_batching(DRWShadingGroup *shgroup,
       state->inst_count = 1;
       state->base_inst = call->handle.id;
       state->batch = call->batch;
-      draw_call_resource_bind(state, call->handle, obmats_loc, obinfos_loc);
+      draw_call_resource_bind(state, call->handle, obmats_loc, obinfos_loc, chunkid_loc);
     }
     else {
       state->inst_count++;
@@ -1075,7 +1080,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   int obmats_loc = -1;
   int obinfos_loc = -1;
   int baseinst_loc = -1;
-  int callid_loc = -1;
+  int chunkid_loc = -1;
   /* Legacy matrix support. */
   int obmat_loc = -1;
   int obinv_loc = -1;
@@ -1105,7 +1110,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                        &obmats_loc,
                        &obinfos_loc,
                        &baseinst_loc,
-                       &callid_loc,
+                       &chunkid_loc,
                        &obmat_loc,
                        &obinv_loc,
                        &mvp_loc);
@@ -1135,18 +1140,12 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 #ifdef USE_BATCHING
       /* Pack calls together if their handle.id are consecutive. */
       if (draw_call_do_batching(
-              shgroup, &state, call, obmats_loc, obinfos_loc, baseinst_loc, callid_loc)) {
+              shgroup, &state, call, obmats_loc, obinfos_loc, baseinst_loc, chunkid_loc)) {
         continue;
       }
 #endif
 
-      draw_call_resource_bind(&state, call->handle, obmats_loc, obinfos_loc);
-
-      /* XXX small exception/optimisation for outline rendering. */
-      if (callid_loc != -1) {
-        GPU_shader_uniform_vector_int(shgroup->shader, callid_loc, 1, 1, &state.callid);
-        state.callid += 1;
-      }
+      draw_call_resource_bind(&state, call->handle, obmats_loc, obinfos_loc, chunkid_loc);
 
       if (obmats_loc == -1 && (obmat_loc != -1 || obinv_loc != -1 || mvp_loc != -1)) {
         /* TODO This is Legacy. Need to be removed. */

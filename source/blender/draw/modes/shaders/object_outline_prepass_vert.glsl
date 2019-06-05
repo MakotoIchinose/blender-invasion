@@ -1,8 +1,4 @@
 
-/* Needed to recover the full call resource handle.
- * Here used to have the unique ID of the drawcall. */
-// uniform int resPoolID;
-
 in vec3 pos;
 
 #ifdef USE_GEOM
@@ -25,7 +21,7 @@ void main()
   gl_Position.z -= 1e-3;
 
   /* ID 0 is nothing (background) */
-  objectId = resource_id + 1;
+  objectId = resource_handle + 1;
 
 #ifdef USE_WORLD_CLIP_PLANES
   world_clip_planes_calc_clip_distance(world_pos);

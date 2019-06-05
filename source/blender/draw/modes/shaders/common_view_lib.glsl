@@ -24,6 +24,8 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
+uniform int resourceChunk = 0;
+
 #ifdef GPU_VERTEX_SHADER
 #  ifdef GL_ARB_shader_draw_parameters
 #    define resource_id (gl_BaseInstanceARB + gl_InstanceID)
@@ -69,6 +71,8 @@ layout(std140) uniform modelBlock
 
 #define ModelMatrix (drw_matrices[resource_id].drw_modelMatrix)
 #define ModelMatrixInverse (drw_matrices[resource_id].drw_modelMatrixInverse)
+
+#define resource_handle (resourceChunk * DRW_RESOURCE_CHUNK_LEN + resource_id)
 
 /** Transform shortcuts. */
 /* Rule of thumb: Try to reuse world positions and normals because converting though viewspace
