@@ -339,6 +339,21 @@ void DRW_shgroup_uniform_int_copy(DRWShadingGroup *shgroup, const char *name, co
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_INT_COPY, &value, 1, 1);
 }
 
+void DRW_shgroup_uniform_ivec2_copy(DRWShadingGroup *shgroup, const char *name, const int *value)
+{
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_INT_COPY, value, 2, 1);
+}
+
+void DRW_shgroup_uniform_ivec3_copy(DRWShadingGroup *shgroup, const char *name, const int *value)
+{
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_INT_COPY, value, 3, 1);
+}
+
+void DRW_shgroup_uniform_ivec4_copy(DRWShadingGroup *shgroup, const char *name, const int *value)
+{
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_INT_COPY, value, 4, 1);
+}
+
 void DRW_shgroup_uniform_bool_copy(DRWShadingGroup *shgroup, const char *name, const bool value)
 {
   int ival = value;

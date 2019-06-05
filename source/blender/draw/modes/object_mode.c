@@ -285,15 +285,10 @@ typedef struct OBJECT_PrivateData {
   DRWShadingGroup *outlines_transform;
 
   /* Lightprobes */
-  // DRWCallBuffer *lightprobes_cube_select;
-  // DRWCallBuffer *lightprobes_cube_select_dupli;
-  // DRWCallBuffer *lightprobes_cube_active;
-  // DRWCallBuffer *lightprobes_cube_transform;
-
-  // DRWCallBuffer *lightprobes_planar_select;
-  // DRWCallBuffer *lightprobes_planar_select_dupli;
-  // DRWCallBuffer *lightprobes_planar_active;
-  // DRWCallBuffer *lightprobes_planar_transform;
+  DRWShadingGroup *probe_outlines_transform;
+  DRWShadingGroup *probe_outlines_select;
+  DRWShadingGroup *probe_outlines_select_dupli;
+  DRWShadingGroup *probe_outlines_active;
 
   /* Objects Centers */
   DRWCallBuffer *center_active;
@@ -533,7 +528,7 @@ static void OBJECT_engine_init(void *vedata)
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_object_lightprobe_grid_vert_glsl,
                                  NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_flat_id_frag_glsl, NULL},
+        .frag = (const char *[]){datatoc_object_outline_prepass_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
 
@@ -785,6 +780,64 @@ static DRWShadingGroup *shgroup_theme_id_to_outline_or_null(OBJECT_StorageList *
       return stl->g_data->outlines_transform;
     default:
       return NULL;
+  }
+}
+
+static DRWShadingGroup *shgroup_theme_id_to_probe_outline_or_null(OBJECT_StorageList *stl,
+                                                                  int theme_id,
+                                                                  const int base_flag)
+{
+  if (UNLIKELY(DRW_state_is_select())) {
+    return stl->g_data->probe_outlines_select;
+  }
+
+  if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
+    switch (theme_id) {
+      case TH_ACTIVE:
+      case TH_SELECT:
+        return stl->g_data->probe_outlines_select_dupli;
+      case TH_TRANSFORM:
+        return stl->g_data->probe_outlines_transform;
+      default:
+        return NULL;
+    }
+  }
+
+  switch (theme_id) {
+    case TH_ACTIVE:
+      return stl->g_data->probe_outlines_active;
+    case TH_SELECT:
+      return stl->g_data->probe_outlines_select;
+    case TH_TRANSFORM:
+      return stl->g_data->probe_outlines_transform;
+    default:
+      return NULL;
+  }
+}
+
+static int shgroup_theme_id_to_outline_id(int theme_id, const int base_flag)
+{
+  if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
+    switch (theme_id) {
+      case TH_ACTIVE:
+      case TH_SELECT:
+        return 2;
+      case TH_TRANSFORM:
+        return 0;
+      default:
+        return -1;
+    }
+  }
+
+  switch (theme_id) {
+    case TH_ACTIVE:
+      return 3;
+    case TH_SELECT:
+      return 1;
+    case TH_TRANSFORM:
+      return 0;
+    default:
+      return -1;
   }
 }
 
@@ -1268,7 +1321,8 @@ static void OBJECT_cache_init(void *vedata)
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   OBJECT_PrivateData *g_data;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  OBJECT_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  eGPUShaderConfig cfg = draw_ctx->sh_cfg;
+  OBJECT_Shaders *sh_data = &e_data.sh_data[cfg];
 
   const float outline_width = UI_GetThemeValuef(TH_OUTLINE_WIDTH);
   const bool do_outline_expand = (U.pixelsize > 1.0) || (outline_width > 2.0f);
@@ -1289,45 +1343,25 @@ static void OBJECT_cache_init(void *vedata)
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    psl->outlines = DRW_pass_create("Outlines Depth Pass", state);
+    psl->lightprobes = DRW_pass_create("Outlines Probe Pass", state);
 
     GPUShader *sh = sh_data->outline_prepass;
+
+    g_data->probe_outlines_transform = shgroup_outline(psl->lightprobes, 0, sh, cfg);
+    g_data->probe_outlines_select = shgroup_outline(psl->lightprobes, 1, sh, cfg);
+    g_data->probe_outlines_select_dupli = shgroup_outline(psl->lightprobes, 2, sh, cfg);
+    g_data->probe_outlines_active = shgroup_outline(psl->lightprobes, 3, sh, cfg);
+
+    psl->outlines = DRW_pass_create("Outlines Depth Pass", state);
 
     if (g_data->xray_enabled_and_not_wire) {
       sh = sh_data->outline_prepass_wire;
     }
 
-    g_data->outlines_transform = shgroup_outline(psl->outlines, 0, sh, draw_ctx->sh_cfg);
-    g_data->outlines_select = shgroup_outline(psl->outlines, 1, sh, draw_ctx->sh_cfg);
-    g_data->outlines_select_dupli = shgroup_outline(psl->outlines, 2, sh, draw_ctx->sh_cfg);
-    g_data->outlines_active = shgroup_outline(psl->outlines, 3, sh, draw_ctx->sh_cfg);
-  }
-
-  {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    DRWPass *pass = psl->lightprobes = DRW_pass_create("Object Probe Pass", state);
-    struct GPUBatch *sphere = DRW_cache_sphere_get();
-    struct GPUBatch *quad = DRW_cache_quad_get();
-
-    /* Cubemap */
-    // g_data->lightprobes_cube_select = buffer_instance_outline(
-    //     pass, sphere, &g_data->id_ofs_prb_select, draw_ctx->sh_cfg);
-    // g_data->lightprobes_cube_select_dupli = buffer_instance_outline(
-    //     pass, sphere, &g_data->id_ofs_prb_select_dupli, draw_ctx->sh_cfg);
-    // g_data->lightprobes_cube_active = buffer_instance_outline(
-    //     pass, sphere, &g_data->id_ofs_prb_active, draw_ctx->sh_cfg);
-    // g_data->lightprobes_cube_transform = buffer_instance_outline(
-    //     pass, sphere, &g_data->id_ofs_prb_transform, draw_ctx->sh_cfg);
-
-    /* Planar */
-    // g_data->lightprobes_planar_select = buffer_instance_outline(
-    //     pass, quad, &g_data->id_ofs_prb_select, draw_ctx->sh_cfg);
-    // g_data->lightprobes_planar_select_dupli = buffer_instance_outline(
-    //     pass, quad, &g_data->id_ofs_prb_select_dupli, draw_ctx->sh_cfg);
-    // g_data->lightprobes_planar_active = buffer_instance_outline(
-    //     pass, quad, &g_data->id_ofs_prb_active, draw_ctx->sh_cfg);
-    // g_data->lightprobes_planar_transform = buffer_instance_outline(
-    //     pass, quad, &g_data->id_ofs_prb_transform, draw_ctx->sh_cfg);
+    g_data->outlines_transform = shgroup_outline(psl->outlines, 0, sh, cfg);
+    g_data->outlines_select = shgroup_outline(psl->outlines, 1, sh, cfg);
+    g_data->outlines_select_dupli = shgroup_outline(psl->outlines, 2, sh, cfg);
+    g_data->outlines_active = shgroup_outline(psl->outlines, 3, sh, cfg);
   }
 
   {
@@ -2707,41 +2741,24 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
         sub_v3_v3(increment[i], corner);
       }
 
-      /* TODO */
-      // uint cell_count = prb->grid_resolution_x * prb->grid_resolution_y *
-      // prb->grid_resolution_z; DRWShadingGroup *grp =
-      // DRW_shgroup_create(sh_data->lightprobe_grid, psl->lightprobes);
-      // DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-      // DRW_shgroup_uniform_int_copy(grp, "call_id", *call_id);
-      // DRW_shgroup_uniform_int(grp, "baseId", call_id, 1); /* that's correct */
-      // DRW_shgroup_uniform_vec3_copy(grp, "corner", corner);
-      // DRW_shgroup_uniform_vec3_copy(grp, "increment_x", increment[0]);
-      // DRW_shgroup_uniform_vec3_copy(grp, "increment_y", increment[1]);
-      // DRW_shgroup_uniform_vec3_copy(grp, "increment_z", increment[2]);
-      // DRW_shgroup_uniform_ivec3(grp, "grid_resolution", &prb->grid_resolution_x, 1);
-      // if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      //   DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
-      // }
-      // DRW_shgroup_call_procedural_points(grp, NULL, cell_count);
+      int outline_id = shgroup_theme_id_to_outline_id(theme_id, ob->base_flag);
+      uint cell_count = prb->grid_resolution_x * prb->grid_resolution_y * prb->grid_resolution_z;
+      DRWShadingGroup *grp = DRW_shgroup_create(sh_data->lightprobe_grid, psl->lightprobes);
+      DRW_shgroup_uniform_int_copy(grp, "outlineId", outline_id);
+      DRW_shgroup_uniform_vec3_copy(grp, "corner", corner);
+      DRW_shgroup_uniform_vec3_copy(grp, "increment_x", increment[0]);
+      DRW_shgroup_uniform_vec3_copy(grp, "increment_y", increment[1]);
+      DRW_shgroup_uniform_vec3_copy(grp, "increment_z", increment[2]);
+      DRW_shgroup_uniform_ivec3_copy(grp, "grid_resolution", &prb->grid_resolution_x);
+      if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+        DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
+      }
+      DRW_shgroup_call_procedural_points(grp, NULL, cell_count);
     }
-    else if (prb->type == LIGHTPROBE_TYPE_CUBE) {
-      float draw_size = 1.0f;
-      float probe_cube_mat[4][4];
-      // prb_data->draw_size = prb->data_draw_size * 0.1f;
-      // unit_m4(prb_data->probe_cube_mat);
-      // copy_v3_v3(prb_data->probe_cube_mat[3], ob->obmat[3]);
-
-      // DRWCallBuffer *buf = buffer_theme_id_to_probe_cube_outline_shgrp(
-      //     stl, theme_id, ob->base_flag);
-      /* TODO remove or change the drawing of the cube probes. This line draws nothing on purpose
-       * to keep the call ids correct. */
-      // zero_m4(probe_cube_mat);
-      // DRW_buffer_add_entry(buf, call_id, &draw_size, probe_cube_mat);
-    }
-    else if (prb->flag & LIGHTPROBE_FLAG_SHOW_DATA) {
-      float draw_size = 1.0f;
-      // DRWCallBuffer *buf = buffer_theme_id_to_probe_planar_outline_shgrp(stl, theme_id);
-      // DRW_buffer_add_entry(buf, call_id, &draw_size, ob->obmat);
+    else if (prb->type == LIGHTPROBE_TYPE_PLANAR && (prb->flag & LIGHTPROBE_FLAG_SHOW_DATA)) {
+      DRWShadingGroup *grp = shgroup_theme_id_to_probe_outline_or_null(
+          stl, theme_id, ob->base_flag);
+      DRW_shgroup_call_no_cull(grp, DRW_cache_quad_get(), ob);
     }
   }
 
@@ -3645,7 +3662,7 @@ static void OBJECT_draw_scene(void *vedata)
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
-  int do_outlines = !DRW_pass_is_empty(psl->outlines);
+  int do_outlines = !DRW_pass_is_empty(psl->outlines) || !DRW_pass_is_empty(psl->lightprobes);
 
   float clearcol[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -3653,20 +3670,20 @@ static void OBJECT_draw_scene(void *vedata)
 
   /* Don't draw Transparent passes in MSAA buffer. */
   //  DRW_draw_pass(psl->bone_envelope);  /* Never drawn in Object mode currently. */
-  DRW_draw_pass(stl->g_data->sgl.transp_shapes);
+  DRW_draw_pass(g_data->sgl.transp_shapes);
 
   MULTISAMPLE_SYNC_ENABLE(dfbl, dtxl);
 
-  DRW_draw_pass(stl->g_data->sgl.bone_solid);
-  DRW_draw_pass(stl->g_data->sgl.bone_wire);
-  DRW_draw_pass(stl->g_data->sgl.bone_outline);
-  DRW_draw_pass(stl->g_data->sgl.non_meshes);
+  DRW_draw_pass(g_data->sgl.bone_solid);
+  DRW_draw_pass(g_data->sgl.bone_wire);
+  DRW_draw_pass(g_data->sgl.bone_outline);
+  DRW_draw_pass(g_data->sgl.non_meshes);
   DRW_draw_pass(psl->particle);
-  DRW_draw_pass(stl->g_data->sgl.bone_axes);
+  DRW_draw_pass(g_data->sgl.bone_axes);
 
   MULTISAMPLE_SYNC_DISABLE(dfbl, dtxl);
 
-  DRW_draw_pass(stl->g_data->sgl.image_empties);
+  DRW_draw_pass(g_data->sgl.image_empties);
 
   if (DRW_state_is_fbo() && do_outlines) {
     DRW_stats_group_start("Outlines");
