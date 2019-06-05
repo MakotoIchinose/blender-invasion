@@ -139,6 +139,7 @@ typedef enum ShaderNodeType {
   NODE_PRINCIPLED_VOLUME,
   NODE_IES,
   NODE_TEXTURE_MAPPING,
+  NODE_MAP_RANGE,
 } ShaderNodeType;
 
 typedef enum NodeAttributeType {

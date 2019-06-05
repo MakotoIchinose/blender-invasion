@@ -201,6 +201,7 @@ set(SRC
   shader/nodes/node_shader_uvmap.c
   shader/nodes/node_shader_valToRgb.c
   shader/nodes/node_shader_value.c
+  shader/nodes/node_shader_mapRange.c
   shader/nodes/node_shader_vectMath.c
   shader/nodes/node_shader_vectTransform.c
   shader/nodes/node_shader_vector_displacement.c

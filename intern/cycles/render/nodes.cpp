@@ -5286,6 +5286,66 @@ void OutputNode::compile(OSLCompiler &compiler)
     compiler.add(this, "node_output_displacement");
 }
 
+/* Blackbody */
+
+NODE_DEFINE(MapRangeNode)
+{
+  NodeType *type = NodeType::add("map_range", create, NodeType::SHADER);
+
+  SOCKET_IN_FLOAT(value_in, "Value", 0.0f);
+  SOCKET_IN_FLOAT(fromMin, "From Min", 0.0f);
+  SOCKET_IN_FLOAT(fromMax, "From Max", 1.0f);
+  SOCKET_IN_FLOAT(toMin, "To Min", 0.0f);
+  SOCKET_IN_FLOAT(toMax, "To Max", 1.0f);
+
+  SOCKET_OUT_FLOAT(value_out, "Value");
+
+  return type;
+}
+
+MapRangeNode::MapRangeNode() : ShaderNode(node_type)
+{
+}
+
+void MapRangeNode::constant_fold(const ConstantFolder &folder)
+{
+  if (folder.all_inputs_constant()) {
+    float r;
+    if (fromMax != fromMin && toMax != toMin) {
+      r = toMin + ((value_in - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
+    }
+    else {
+      r = 0.0f;
+    }
+    folder.make_constant(r);
+  }
+}
+
+void MapRangeNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *value_in = input("Value");
+  ShaderInput *fromMin_in = input("From Min");
+  ShaderInput *fromMax_in = input("From Max");
+  ShaderInput *toMin_in = input("To Min");
+  ShaderInput *toMax_in = input("To Max");
+
+  ShaderOutput *value_out = output("Value");
+
+  int toMin_stack = compiler.stack_assign(toMin_in);
+  int toMax_stack = compiler.stack_assign(toMax_in);
+
+  compiler.add_node(NODE_MAP_RANGE,
+                    compiler.stack_assign(value_in),
+                    compiler.stack_assign(fromMin_in),
+                    compiler.stack_assign(fromMax_in));
+  compiler.add_node(NODE_MAP_RANGE, toMin_stack, toMax_stack, compiler.stack_assign(value_out));
+}
+
+void MapRangeNode::compile(OSLCompiler &compiler)
+{
+  compiler.add(this, "node_map_range");
+}
+
 /* Math */
 
 NODE_DEFINE(MathNode)
