@@ -62,6 +62,9 @@ typedef struct wmXRContext {
     XrSession session;
     XrSessionState session_state;
   } oxr;
+
+  /** Names of enabled extensions */
+  const char **enabled_extensions;
 } wmXRContext;
 
 /**
@@ -154,7 +157,7 @@ static bool openxr_extension_is_available(const wmXRContext *context, const char
  * Gather an array of names for the extensions to enable.
  */
 static void openxr_extensions_to_enable_get(const wmXRContext *context,
-                                            char ***r_ext_names,
+                                            const char ***r_ext_names,
                                             uint *r_ext_count)
 {
   const static char *try_ext[] = {
@@ -196,7 +199,8 @@ static bool openxr_instance_setup(wmXRContext *context)
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 
   openxr_extensions_to_enable_get(
-      context, &create_info.enabledExtensionNames, &create_info.enabledExtensionCount);
+      context, &context->enabled_extensions, &create_info.enabledExtensionCount);
+  create_info.enabledExtensionNames = context->enabled_extensions;
 
   xrCreateInstance(&create_info, &context->oxr.instance);
 
@@ -229,11 +233,15 @@ wmXRContext *wm_xr_context_create(void)
 
 void wm_xr_context_destroy(wmXRContext *xr_context)
 {
-  xrDestroySession(xr_context->oxr.session);
+  if (xr_context->oxr.session != XR_NULL_HANDLE) {
+    xrDestroySession(xr_context->oxr.session);
+  }
   xrDestroyInstance(xr_context->oxr.instance);
 
   MEM_SAFE_FREE(xr_context->oxr.extensions);
   MEM_SAFE_FREE(xr_context->oxr.layers);
+
+  MEM_SAFE_FREE(xr_context->enabled_extensions);
 
   MEM_SAFE_FREE(xr_context);
 }
@@ -283,7 +291,6 @@ void wm_xr_session_start(wmXRContext *xr_context)
 void wm_xr_session_end(wmXRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
-  xrDestroySession(xr_context->oxr.session);
 }
 
 static void wm_xr_session_state_change(wmXRContext *xr_context,
