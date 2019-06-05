@@ -154,12 +154,6 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
       break;
     }
     case NODE_VECTOR_MATH_SCALE: {
-      // GPUNodeStack tmp_in[3];
-      // memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
-      // memcpy(&tmp_in[1], &in[2], sizeof(GPUNodeStack));
-      // memcpy(&tmp_in[2], &in[3], sizeof(GPUNodeStack));
-
-      // tmp_in doesn't work if not linked, use `in` for now.
       GPU_stack_link(mat, node, names[node->custom1], in, out);
       break;
     }

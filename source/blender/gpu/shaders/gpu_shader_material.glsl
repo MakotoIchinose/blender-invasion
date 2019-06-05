@@ -552,7 +552,6 @@ void vec_math_length(vec3 v, out vec3 outvec, out float outval)
   outval = length(v);
 }
 
-// temp has to be passed for some reason, see node_shader_vectMath.c
 void vec_math_scale(vec3 v, vec3 temp, float scale, out vec3 outvec, out float outval)
 {
   outvec = v * scale;
