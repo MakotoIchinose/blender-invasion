@@ -7842,7 +7842,6 @@ static void mesh_filter_task_cb(void *__restrict userdata,
 
 int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  ARegion *ar = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
@@ -7851,6 +7850,10 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   float len = event->prevclickx - event->mval[0];
   filter_strength = filter_strength * -len * 0.001f;
+
+  if (!ss->pbvh) {
+    return OPERATOR_RUNNING_MODAL;
+  }
 
   SculptThreadedTaskData data = {
       .sd = sd,
@@ -7881,11 +7884,11 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
     sculpt_update_keyblock(ob);
   }
 
-  ED_region_tag_redraw(ar);
+  sculpt_flush_update_step(C);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   if (event->type == 1 && event->val == 2) {
     sculpt_undo_push_end();
+    sculpt_flush_update_done(C, ob);
     sculpt_filter_cache_free(ss);
     return OPERATOR_FINISHED;
   }
@@ -7898,7 +7901,6 @@ int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  struct Scene *scene = CTX_data_scene(C);
   int mode = RNA_enum_get(op->ptr, "type");
   PBVH *pbvh = ob->sculpt->pbvh;
 
@@ -8864,10 +8866,7 @@ void ED_sculpt_update_modal_transform(const struct bContext *C, bool transform_p
   else if (ss->kb) {
     sculpt_update_keyblock(ob);
   }
-
-  ED_region_tag_redraw(ar);
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+  sculpt_flush_update_step(C);
 }
 
 void ED_sculpt_end_transform(const struct bContext *C, bool transform_pivot_only)
@@ -8875,6 +8874,7 @@ void ED_sculpt_end_transform(const struct bContext *C, bool transform_pivot_only
   sculpt_undo_push_end();
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
+  sculpt_flush_update_done(C, ob);
   if (ss->filter_cache) {
     sculpt_filter_cache_free(ss);
   }
