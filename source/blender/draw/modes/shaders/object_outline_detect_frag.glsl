@@ -7,26 +7,27 @@ uniform usampler2D outlineId;
 uniform sampler2D outlineDepth;
 uniform sampler2D sceneDepth;
 
-uniform int idOffsets[4];
-
 uniform float alphaOcclu;
 uniform vec2 viewportSize;
 
-vec4 convert_id_to_color(int id)
+vec4 convert_id_to_color(uint id)
 {
-  if (id == 0) {
+  if (id == 0u) {
     return vec4(0.0);
   }
-  if (id < idOffsets[1]) {
-    return colorActive;
-  }
-  else if (id < idOffsets[2]) {
+
+  /* WATCH: Keep in sync with outlineId of the prepass. */
+  uint color_id = id >> 14u;
+  if (color_id == 1u) {
     return colorSelect;
   }
-  else if (id < idOffsets[3]) {
+  else if (color_id == 2u) {
     return colorDupliSelect;
   }
-  else {
+  else if (color_id == 3u) {
+    return colorActive;
+  }
+  else { /* color_id == 0u */
     return colorTransform;
   }
 }
@@ -85,7 +86,7 @@ void main()
   const float epsilon = 3.0 / 8388608.0;
   bool occluded = (ref_depth > scene_depth + epsilon);
 
-  FragColor = convert_id_to_color(int(ref_id));
+  FragColor = convert_id_to_color(ref_id);
   FragColor.a *= (occluded) ? alphaOcclu : 1.0;
   FragColor.a = (outline) ? FragColor.a : 0.0;
 }
