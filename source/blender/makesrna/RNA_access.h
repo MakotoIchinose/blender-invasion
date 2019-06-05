@@ -630,6 +630,7 @@ extern StructRNA RNA_StretchToConstraint;
 extern StructRNA RNA_StringProperty;
 extern StructRNA RNA_StrokeGpencilModifier;
 extern StructRNA RNA_SampleGpencilModifier;
+extern StructRNA RNA_BackboneGpencilModifier;
 extern StructRNA RNA_Struct;
 extern StructRNA RNA_StucciTexture;
 extern StructRNA RNA_StudioLight;

@@ -2270,6 +2270,10 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     def GP_SAMPLE(self, layout, ob, md):
         col = layout.column()
         col.prop(md, "length")
+    
+    def GP_BACKBONE(self, layout, ob, md):
+        col = layout.column()
+        col.prop(md, "length")
 
 
 classes = (

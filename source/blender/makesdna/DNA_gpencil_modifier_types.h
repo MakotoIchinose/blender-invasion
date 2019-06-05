@@ -50,6 +50,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Time = 16,
   eGpencilModifierType_Stroke = 17,
   eGpencilModifierType_Sample = 18,
+  eGpencilModifierType_Backbone = 19,
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
 
@@ -616,5 +617,11 @@ typedef struct SampleGpencilModifierData {
   float length;
   char _pad[4];
 } SampleGpencilModifierData;
+
+typedef struct BackboneGpencilModifierData {
+  GpencilModifierData modifier;
+  float length;
+  char _pad[4];
+} BackboneGpencilModifierData;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

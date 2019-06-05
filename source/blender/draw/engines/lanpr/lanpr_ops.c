@@ -1123,7 +1123,8 @@ void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict pool,
 void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
 {
   int thread_count = rb->thread_count;
-  LANPR_RenderTaskInfo *rti = MEM_callocN(sizeof(LANPR_RenderTaskInfo) * thread_count,"Task Pool");
+  LANPR_RenderTaskInfo *rti = MEM_callocN(sizeof(LANPR_RenderTaskInfo) * thread_count,
+                                          "Task Pool");
   TaskScheduler *scheduler = BLI_task_scheduler_get();
   int i;
 
@@ -1142,7 +1143,7 @@ void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
   }
   BLI_task_pool_work_and_wait(tp);
   BLI_task_pool_free(tp);
-  
+
   MEM_freeN(rti);
 }
 
@@ -1356,7 +1357,9 @@ LANPR_RenderElementLinkNode *lanpr_new_cull_triangle_space64(LANPR_RenderBuffer 
 {
   LANPR_RenderElementLinkNode *reln;
 
-  LANPR_RenderTriangle *RenderTriangles = mem_static_aquire(&rb->render_data_pool, 64 * rb->triangle_size);  // CreateNewBuffer(LANPR_RenderTriangle, 64);
+  LANPR_RenderTriangle *RenderTriangles = mem_static_aquire(
+      &rb->render_data_pool,
+      64 * rb->triangle_size);  // CreateNewBuffer(LANPR_RenderTriangle, 64);
 
   reln = list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
                                           &rb->render_data_pool,
@@ -1371,7 +1374,9 @@ LANPR_RenderElementLinkNode *lanpr_new_cull_point_space64(LANPR_RenderBuffer *rb
 {
   LANPR_RenderElementLinkNode *reln;
 
-  LANPR_RenderVert *Rendervertices = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderVert) * 64);  // CreateNewBuffer(LANPR_RenderVert, 64);
+  LANPR_RenderVert *Rendervertices = mem_static_aquire(
+      &rb->render_data_pool,
+      sizeof(LANPR_RenderVert) * 64);  // CreateNewBuffer(LANPR_RenderVert, 64);
 
   reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
                                           &rb->render_data_pool,

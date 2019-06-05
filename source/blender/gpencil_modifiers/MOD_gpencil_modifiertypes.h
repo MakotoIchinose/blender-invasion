@@ -44,6 +44,7 @@ extern GpencilModifierTypeInfo modifierType_Gpencil_Armature;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Time;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Stroke;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Sample;
+extern GpencilModifierTypeInfo modifierType_Gpencil_Backbone;
 
 /* MOD_gpencil_util.c */
 void gpencil_modifier_type_init(GpencilModifierTypeInfo *types[]);

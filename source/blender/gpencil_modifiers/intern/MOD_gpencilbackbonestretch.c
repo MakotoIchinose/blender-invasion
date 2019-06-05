@@ -70,7 +70,7 @@
 
 static void initData(GpencilModifierData *md)
 {
-  SampleGpencilModifierData *gpmd = (SampleGpencilModifierData *)md;
+  BackboneGpencilModifierData *gpmd = (BackboneGpencilModifierData *)md;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -88,11 +88,11 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      SampleGpencilModifierData *lmd = (SampleGpencilModifierData *)md;
-      bGPDstroke *gps;
-      for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        BKE_gpencil_sample_stroke(gps, lmd->length);
-      }
+        BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
+        bGPDstroke* gps;
+        for(gps=gpf->strokes.first;gps;gps=gps->next){
+          BKE_gpencil_stretch_stroke(gps,lmd->length);
+        }
       return;
     }
   }
@@ -100,20 +100,22 @@ static void bakeModifier(Main *UNUSED(bmain),
 
 /* -------------------------------- */
 
+
+
 /* Generic "generateStrokes" callback */
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  SampleGpencilModifierData *lmd = (SampleGpencilModifierData *)md;
-  bGPDstroke *gps;
-  for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    BKE_gpencil_sample_stroke(gps, lmd->length);
+  BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
+  bGPDstroke* gps;
+  for(gps=gpf->strokes.first;gps;gps=gps->next){
+    BKE_gpencil_stretch_stroke(gps,lmd->length);
   }
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  SampleGpencilModifierData *lmd = (SampleGpencilModifierData *)md;
+  BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
 }
 
 static void foreachObjectLink(GpencilModifierData *md,
@@ -121,13 +123,13 @@ static void foreachObjectLink(GpencilModifierData *md,
                               ObjectWalkFunc walk,
                               void *userData)
 {
-  SampleGpencilModifierData *mmd = (SampleGpencilModifierData *)md;
+  BackboneGpencilModifierData *mmd = (BackboneGpencilModifierData *)md;
 }
 
-GpencilModifierTypeInfo modifierType_Gpencil_Sample = {
-    /* name */ "Sample",
-    /* structName */ "SampleGpencilModifierData",
-    /* structSize */ sizeof(SampleGpencilModifierData),
+GpencilModifierTypeInfo modifierType_Gpencil_Backbone = {
+    /* name */ "Backbone Stretch",
+    /* structName */ "BackboneGpencilModifierData",
+    /* structSize */ sizeof(BackboneGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
     /* flags */ 0,
 

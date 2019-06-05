@@ -84,7 +84,7 @@ typedef enum eGPDspoint_Flag {
   /* stroke point is temp tagged (for some editing operation) */
   GP_SPOINT_TEMP_TAG = (1 << 2),
   /* stroke tag for feature point when resampling */
-  GP_SPOINT_TAG_FEATURE = (1<<3),
+  GP_SPOINT_TAG_FEATURE = (1 << 3),
 } eGPSPoint_Flag;
 
 /* ***************************************** */

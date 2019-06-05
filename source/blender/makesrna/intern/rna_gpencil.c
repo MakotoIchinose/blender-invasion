@@ -1673,7 +1673,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
   RNA_def_property_collection_funcs(
       prop, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "rna_IDMaterials_assign_int");
-      
+
   /* Depth */
   prop = RNA_def_property(srna, "stroke_depth_order", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "draw_mode");

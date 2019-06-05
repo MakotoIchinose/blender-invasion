@@ -86,11 +86,7 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_ARRAY,
      "Stoke",
      "Create strokes from mesh elements"},
-    {eGpencilModifierType_Sample,
-     "GP_SAMPLE",
-     ICON_MOD_MULTIRES,
-     "Sample",
-     "Resamples strokes"},
+    {eGpencilModifierType_Sample, "GP_SAMPLE", ICON_MOD_MULTIRES, "Sample", "Resamples strokes"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
      "GP_ARMATURE",
@@ -120,6 +116,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      "Thickness",
      "Change stroke thickness"},
     {eGpencilModifierType_Time, "GP_TIME", ICON_MOD_TIME, "Time Offset", "Offset keyframes"},
+    {eGpencilModifierType_Backbone,
+     "GP_BACKBONE",
+     ICON_MOD_EDGESPLIT,
+     "Backbone Stretch",
+     "Extend the end points of a stroke to a specific length"},
     {0, "", 0, N_("Color"), ""},
     {eGpencilModifierType_Color,
      "GP_COLOR",
@@ -221,6 +222,8 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_StrokeGpencilModifier;
     case eGpencilModifierType_Sample:
       return &RNA_SampleGpencilModifier;
+    case eGpencilModifierType_Backbone:
+      return &RNA_BackboneGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -1781,8 +1784,25 @@ static void rna_def_modifier_gpencilsample(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "SampleGpencilModifier", "GpencilModifier");
   RNA_def_struct_ui_text(srna, "Sample Modifier", "Re-samples the stroke");
-  RNA_def_struct_sdna(srna, "SampleGpencilModifierData"); 
+  RNA_def_struct_sdna(srna, "SampleGpencilModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_MULTIRES);
+
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+}
+
+static void rna_def_modifier_gpencilbackbone(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "BackboneGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Backbone Stretch Modifier", "Stretch the end points of strokes");
+  RNA_def_struct_sdna(srna, "BackboneGpencilModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_EDGESPLIT);
 
   prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "length");
@@ -1865,6 +1885,7 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencilmirror(brna);
   rna_def_modifier_gpencilhook(brna);
   rna_def_modifier_gpencilarmature(brna);
+  rna_def_modifier_gpencilbackbone(brna);
 }
 
 #endif
