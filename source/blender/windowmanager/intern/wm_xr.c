@@ -180,7 +180,6 @@ ATTR_NONNULL()
 static bool openxr_instance_setup(wmXRContext *context)
 {
   XrInstanceCreateInfo create_info = {.type = XR_TYPE_INSTANCE_CREATE_INFO};
-  const char *enable_extensions = NULL;
 
 #ifdef USE_EXT_LAYER_PRINTS
   puts("Available OpenXR layers/extensions:");
@@ -272,4 +271,44 @@ void wm_xr_session_end(wmXRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
   xrDestroySession(xr_context->oxr.session);
+}
+
+static void wm_xr_session_state_change(wmXRContext *xr_context,
+                                       const XrEventDataSessionStateChanged *lifecycle)
+{
+  switch (lifecycle->type) {
+    case XR_SESSION_STATE_READY: {
+      break;
+    }
+  }
+}
+
+static bool wm_xr_event_poll_next(wmXRContext *xr_context, XrEventDataBuffer *r_event_data)
+{
+  /* (Re-)initialize as required by specification */
+  r_event_data->type = XR_TYPE_EVENT_DATA_BUFFER;
+  r_event_data->next = NULL;
+
+  return (xrPollEvent(xr_context->oxr.instance, r_event_data) == XR_SUCCESS);
+}
+
+bool wm_xr_events_handle(wmXRContext *xr_context)
+{
+  XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
+
+  while (wm_xr_event_poll_next(xr_context, &event_buffer)) {
+    XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
+
+    switch (event->type) {
+      case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
+        wm_xr_session_state_change(xr_context, (XrEventDataSessionStateChanged *)&event);
+        return true;
+
+      default:
+        printf("Unhandled event: %i\n", event->type);
+        return false;
+    }
+  }
+
+  return false;
 }

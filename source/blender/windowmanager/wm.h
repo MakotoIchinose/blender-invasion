@@ -105,6 +105,9 @@ void wm_xr_context_destroy(struct wmXRContext *xr_context);
 bool wm_xr_session_is_running(const struct wmXRContext *xr_context) ATTR_WARN_UNUSED_RESULT;
 void wm_xr_session_start(struct wmXRContext *xr_context) ATTR_NONNULL();
 void wm_xr_session_end(struct wmXRContext *xr_context) ATTR_NONNULL();
+
+/* events */
+bool wm_xr_events_handle(struct wmXRContext *xr_context) ATTR_NONNULL();
 #endif
 
 #endif /* __WM_H__ */
