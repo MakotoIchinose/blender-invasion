@@ -445,6 +445,7 @@ void WM_operator_properties_filesel(struct wmOperatorType *ot,
                                     short flag,
                                     short display,
                                     short sort);
+void WM_operator_properties_use_cursor_init(struct wmOperatorType *ot);
 void WM_operator_properties_border(struct wmOperatorType *ot);
 void WM_operator_properties_border_to_rcti(struct wmOperator *op, struct rcti *rect);
 void WM_operator_properties_border_to_rctf(struct wmOperator *op, rctf *rect);
@@ -535,6 +536,8 @@ struct wmOperatorType *WM_operatortype_append_macro(const char *idname,
                                                     int flag);
 struct wmOperatorTypeMacro *WM_operatortype_macro_define(struct wmOperatorType *ot,
                                                          const char *idname);
+
+const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *properties);
 
 /* wm_uilist_type.c */
 void WM_uilisttype_init(void);

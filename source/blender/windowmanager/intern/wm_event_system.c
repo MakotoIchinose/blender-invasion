@@ -1736,14 +1736,16 @@ int WM_operator_call_py(bContext *C,
   op = wm_operator_create(wm, ot, properties, reports);
 
   if (op->type->exec) {
-    if (is_undo && op->type->flag & OPTYPE_UNDO)
+    if (is_undo && op->type->flag & OPTYPE_UNDO) {
       wm->op_undo_depth++;
+    }
 
     retval = op->type->exec(C, op);
     OPERATOR_RETVAL_CHECK(retval);
 
-    if (is_undo && op->type->flag & OPTYPE_UNDO && CTX_wm_manager(C) == wm)
+    if (is_undo && op->type->flag & OPTYPE_UNDO && CTX_wm_manager(C) == wm) {
       wm->op_undo_depth--;
+    }
   }
   else {
     CLOG_WARN(WM_LOG_OPERATORS,
@@ -2562,7 +2564,7 @@ static int wm_handlers_do_keymap_with_keymap_handler(
   return action;
 }
 
-static bool wm_handlers_do_keymap_with_gizmo_handler(
+static int wm_handlers_do_keymap_with_gizmo_handler(
     /* From 'wm_handlers_do_intern' */
     bContext *C,
     wmEvent *event,
@@ -2764,6 +2766,9 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
           }
         }
 
+        /* Don't use from now on. */
+        const bool is_event_handle_all = gz && (gz->flag & WM_GIZMO_EVENT_HANDLE_ALL);
+
         if (handle_keymap) {
           /* Handle highlight gizmo. */
           if (gz != NULL) {
@@ -2792,6 +2797,12 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
                 }
               }
             }
+          }
+        }
+
+        if (is_event_handle_all) {
+          if (action == WM_HANDLER_CONTINUE) {
+            action |= WM_HANDLER_BREAK | WM_HANDLER_MODAL;
           }
         }
 
@@ -3062,7 +3073,7 @@ static void wm_paintcursor_test(bContext *C, const wmEvent *event)
   }
 }
 
-static void wm_event_drag_test(wmWindowManager *wm, wmWindow *win, wmEvent *event)
+static void wm_event_drag_and_drop_test(wmWindowManager *wm, wmWindow *win, wmEvent *event)
 {
   bScreen *screen = WM_window_get_active_screen(win);
 
@@ -3237,7 +3248,7 @@ void wm_event_do_handlers(bContext *C)
       }
 
       /* check dragging, creates new event or frees, adds draw tag */
-      wm_event_drag_test(wm, win, event);
+      wm_event_drag_and_drop_test(wm, win, event);
 
       /* builtin tweak, if action is break it removes tweak */
       wm_tweakevent_test(C, event, action);
@@ -4287,8 +4298,7 @@ static wmEvent *wm_event_add_mousemove(wmWindow *win, const wmEvent *event)
 
 /* windows store own event queues, no bContext here */
 /* time is in 1000s of seconds, from ghost */
-void wm_event_add_ghostevent(
-    wmWindowManager *wm, wmWindow *win, int type, int UNUSED(time), void *customdata)
+void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, int type, void *customdata)
 {
   wmWindow *owin;
 
@@ -4319,6 +4329,8 @@ void wm_event_add_ghostevent(
       copy_v2_v2_int(&event.x, &cd->x);
       wm_stereo3d_mouse_offset_apply(win, &event.x);
 
+      event.prevtype = event.type;
+      event.prevval = event.val;
       event.type = MOUSEMOVE;
       {
         wmEvent *event_new = wm_event_add_mousemove(win, &event);
@@ -4335,6 +4347,8 @@ void wm_event_add_ghostevent(
         oevent = *oevt;
 
         copy_v2_v2_int(&oevent.x, &event.x);
+        oevent.prevtype = oevent.type;
+        oevent.prevval = oevent.val;
         oevent.type = MOUSEMOVE;
         {
           wmEvent *event_new = wm_event_add_mousemove(owin, &oevent);
@@ -5085,7 +5099,8 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
     }
     if (kmi) {
       wmOperatorType *ot = WM_operatortype_find(kmi->idname, 0);
-      STRNCPY(cd->text[button_index][type_index], ot ? ot->name : kmi->idname);
+      const char *name = (ot) ? WM_operatortype_name(ot, kmi->ptr) : kmi->idname;
+      STRNCPY(cd->text[button_index][type_index], name);
     }
   }
 

@@ -3457,7 +3457,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
-  pup = UI_popup_menu_begin(C, RNA_struct_ui_name(op->type->srna), ICON_NONE);
+  pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
   layout = UI_popup_menu_layout(pup);
 
   uiItemFullO(
@@ -3596,13 +3596,13 @@ static int repeat_history_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
     return OPERATOR_CANCELLED;
   }
 
-  pup = UI_popup_menu_begin(C, RNA_struct_ui_name(op->type->srna), ICON_NONE);
+  pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
   layout = UI_popup_menu_layout(pup);
 
   for (i = items - 1, lastop = wm->operators.last; lastop; lastop = lastop->prev, i--) {
     if ((lastop->type->flag & OPTYPE_REGISTER) && WM_operator_repeat_check(C, lastop)) {
       uiItemIntO(
-          layout, RNA_struct_ui_name(lastop->type->srna), ICON_NONE, op->type->idname, "index", i);
+          layout, WM_operatortype_name(lastop->type, lastop->ptr), ICON_NONE, op->type->idname, "index", i);
     }
   }
 
@@ -3813,10 +3813,12 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
                                 RV3D_ORTHO);
       /* forcing camera is distracting */
 #if 0
-      if (v3d->camera)
+      if (v3d->camera) {
         region_quadview_init_rv3d(sa, (ar = ar->next), 0, RV3D_VIEW_CAMERA, RV3D_CAMOB);
-      else
+      }
+      else {
         region_quadview_init_rv3d(sa, (ar = ar->next), 0, RV3D_VIEW_USER, RV3D_PERSP);
+      }
 #else
       (void)v3d;
 #endif
@@ -4580,12 +4582,15 @@ static int box_select_exec(bContext *C, wmOperator *op)
 {
   int event_type = RNA_int_get(op->ptr, "event_type");
 
-  if (event_type == LEFTMOUSE)
+  if (event_type == LEFTMOUSE) {
     printf("box select do select\n");
-  else if (event_type == RIGHTMOUSE)
+  }
+  else if (event_type == RIGHTMOUSE) {
     printf("box select deselect\n");
-  else
+  }
+  else {
     printf("box select do something\n");
+  }
 
   return 1;
 }

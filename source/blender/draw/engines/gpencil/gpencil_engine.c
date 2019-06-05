@@ -961,7 +961,7 @@ void GPENCIL_draw_scene(void *ved)
               gpencil_draw_pass_range(
                   fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, is_last);
 
-              /* draw current group in separated texture */
+              /* Draw current group in separated texture to blend later */
               init_shgrp = array_elm->init_shgrp;
               end_shgrp = array_elm->end_shgrp;
 
@@ -976,7 +976,7 @@ void GPENCIL_draw_scene(void *ved)
               stl->storage->blend_mode = array_elm->mode;
               stl->storage->clamp_layer = (int)array_elm->clamp_layer;
               stl->storage->blend_opacity = array_elm->blend_opacity;
-              stl->storage->tonemapping = stl->storage->is_render ? 1 : 0;
+              stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
               DRW_draw_pass(psl->blend_pass);
               stl->storage->tonemapping = 0;
 
@@ -1018,7 +1018,8 @@ void GPENCIL_draw_scene(void *ved)
           GPU_framebuffer_bind(fbl->main);
         }
         /* tonemapping */
-        stl->storage->tonemapping = is_render ? 1 : 0;
+        stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
+
         /* active select flag and selection color */
         if (!is_render) {
           UI_GetThemeColorShadeAlpha4fv(
