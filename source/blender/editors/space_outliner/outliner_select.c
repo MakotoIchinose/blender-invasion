@@ -1531,6 +1531,66 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
 
 /* **************** Walk Select Tool ****************** */
 
+static TreeElement *outliner_find_rightmost_child(SpaceOutliner *soops, TreeElement *te)
+{
+  while (te->subtree.last) {
+    if (TSELEM_OPEN(TREESTORE(te), soops)) {
+      te = te->subtree.last;
+    }
+    else {
+      break;
+    }
+  }
+  return te;
+}
+
+static TreeElement *do_outliner_select_walk_up(SpaceOutliner *soops, TreeElement *active)
+{
+  if (active->prev) {
+    TreeStoreElem *tselem = TREESTORE(active->prev);
+
+    if (TSELEM_OPEN(tselem, soops)) {
+      active = outliner_find_rightmost_child(soops, active->prev);
+    }
+    else {
+      active = active->prev;
+    }
+  }
+  else if (active->parent) {
+    active = active->parent;
+  }
+  else {
+    active = outliner_find_rightmost_child(soops, active);
+  }
+
+  return active;
+}
+
+static TreeElement *do_outliner_select_walk_down(SpaceOutliner *soops, TreeElement *active)
+{
+  TreeStoreElem *tselem = TREESTORE(active);
+
+  if (TSELEM_OPEN(tselem, soops)) {
+    active = active->subtree.first;
+  }
+  else if (active->next) {
+    active = active->next;
+  }
+  else {
+    while (active->parent) {
+      if (active->parent->next) {
+        active = active->parent->next;
+        break;
+      }
+      else {
+        active = active->parent;
+      }
+    }
+  }
+
+  return active;
+}
+
 static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, const int direction)
 {
   TreeStoreElem *tselem = TREESTORE(active);
@@ -1538,29 +1598,25 @@ static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, c
   outliner_flag_set(&soops->tree, TSE_SELECTED, false);
   tselem->flag &= ~TSE_ACTIVE;
 
-  if (direction == OUTLINER_SELECT_WALK_DOWN) {
+  if (direction == OUTLINER_SELECT_WALK_UP) {
+    active = do_outliner_select_walk_up(soops, active);
+  }
+  else if (direction == OUTLINER_SELECT_WALK_DOWN) {
+    active = do_outliner_select_walk_down(soops, active);
+  }
+  else if (direction == OUTLINER_SELECT_WALK_LEFT) {
     if (TSELEM_OPEN(tselem, soops)) {
-      active = active->subtree.first;
+      tselem->flag |= TSE_CLOSED;
     }
-    else if (active->next) {
-      active = active->next;
-    }
-    else if (active->parent->next) {
-      active = active->parent->next;
+    else {
+      /* Jummp active to parent */
+      active = active->parent;
     }
   }
-  else if (direction == OUTLINER_SELECT_WALK_UP) {
-    if (active->prev) {
-      tselem = TREESTORE(active->prev);
-      if (TSELEM_OPEN(tselem, soops)) {
-        active = active->prev->subtree.first;
-      }
-      else {
-        active = active->prev;
-      }
-    }
-    else if (active->parent) {
-      active = active->parent;
+  else if (direction == OUTLINER_SELECT_WALK_RIGHT) {
+    if (!TSELEM_OPEN(tselem, soops) && active->subtree.first) {
+      printf("not open\n");
+      tselem->flag &= ~TSE_CLOSED;
     }
   }
 
