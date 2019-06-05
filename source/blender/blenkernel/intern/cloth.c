@@ -416,6 +416,7 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
                         NULL,
                         NULL,
                         NULL);
+    printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
   clmd->clothObject->bm = clmd->clothObject->bm_prev;
 
@@ -436,8 +437,6 @@ static Mesh *cloth_remeshing_update_cloth_object(Object *ob, ClothModifierData *
   BM_mesh_free(clmd->clothObject->bm);
   clmd->clothObject->bm = NULL;
 
-  do_init_cloth(ob, clmd, mesh_result, 0);
-  /* cloth_from_object(ob, clmd, mesh_result, 0, 0); */
   return mesh_result;
 }
 
@@ -583,7 +582,7 @@ Mesh *clothModifier_do(
     BKE_ptcache_invalidate(cache);
   }
   else {
-    BKE_mesh_free(mesh_result);
+    BKE_id_free(NULL, (ID *)mesh_result);
     mesh_result = mesh_next;
     BKE_ptcache_write(&pid, framenr);
   }
@@ -591,7 +590,7 @@ Mesh *clothModifier_do(
   Mesh *mesh_next = do_step_cloth(depsgraph, ob, clmd, mesh_result, framenr);
 
   if (mesh_next) {
-    BKE_mesh_free(mesh_result);
+    BKE_id_free(NULL, (ID *)mesh_result);
     mesh_result = mesh_next;
   }
 #endif
