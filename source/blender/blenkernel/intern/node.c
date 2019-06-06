@@ -322,7 +322,6 @@ void ntreeSetTypes(const struct bContext *C, bNodeTree *ntree)
 static GHash *nodetreetypes_hash = NULL;
 static GHash *nodetypes_hash = NULL;
 static GHash *nodesockettypes_hash = NULL;
-static SpinLock spin;
 
 bNodeTreeType *ntreeTypeFind(const char *idname)
 {
@@ -1426,8 +1425,6 @@ void BKE_node_tree_copy_data(Main *UNUSED(bmain),
   /* in case a running nodetree is copied */
   ntree_dst->execdata = NULL;
 
-  ntree_dst->duplilock = NULL;
-
   BLI_listbase_clear(&ntree_dst->nodes);
   BLI_listbase_clear(&ntree_dst->links);
 
@@ -1468,8 +1465,6 @@ void BKE_node_tree_copy_data(Main *UNUSED(bmain),
     }
   }
 
-  BLI_ghash_free(new_pointers, NULL, NULL);
-
   /* copy interface sockets */
   BLI_duplicatelist(&ntree_dst->inputs, &ntree_src->inputs);
   for (sock_dst = ntree_dst->inputs.first, sock_src = ntree_src->inputs.first; sock_dst != NULL;
@@ -1503,9 +1498,11 @@ void BKE_node_tree_copy_data(Main *UNUSED(bmain),
   for (bNode *node_dst = ntree_dst->nodes.first, *node_src = ntree_src->nodes.first; node_dst;
        node_dst = node_dst->next, node_src = node_src->next) {
     if (node_dst->parent) {
-      node_dst->parent = node_dst->parent->new_node;
+      node_dst->parent = BLI_ghash_lookup_default(new_pointers, node_dst->parent, NULL);
     }
   }
+
+  BLI_ghash_free(new_pointers, NULL, NULL);
 
   /* node tree will generate its own interface type */
   ntree_dst->interface_type = NULL;
@@ -2046,10 +2043,6 @@ void ntreeFreeTree(bNodeTree *ntree)
     BKE_node_instance_hash_free(ntree->previews, (bNodeInstanceValueFP)BKE_node_preview_free);
   }
 
-  if (ntree->duplilock) {
-    BLI_mutex_free(ntree->duplilock);
-  }
-
   if (ntree->id.tag & LIB_TAG_LOCALIZED) {
     BKE_libblock_free_data(&ntree->id, true);
   }
@@ -2227,14 +2220,6 @@ bNodeTree *ntreeLocalize(bNodeTree *ntree)
     bNodeTree *ltree;
     bNode *node;
 
-    BLI_spin_lock(&spin);
-    if (!ntree->duplilock) {
-      ntree->duplilock = BLI_mutex_alloc();
-    }
-    BLI_spin_unlock(&spin);
-
-    BLI_mutex_lock(ntree->duplilock);
-
     /* Make full copy outside of Main database.
      * Note: previews are not copied here.
      */
@@ -2263,8 +2248,6 @@ bNodeTree *ntreeLocalize(bNodeTree *ntree)
     if (ntree->typeinfo->localize) {
       ntree->typeinfo->localize(ltree, ntree);
     }
-
-    BLI_mutex_unlock(ntree->duplilock);
 
     return ltree;
   }
@@ -3979,7 +3962,6 @@ void init_nodesystem(void)
   nodetreetypes_hash = BLI_ghash_str_new("nodetreetypes_hash gh");
   nodetypes_hash = BLI_ghash_str_new("nodetypes_hash gh");
   nodesockettypes_hash = BLI_ghash_str_new("nodesockettypes_hash gh");
-  BLI_spin_init(&spin);
 
   register_undefined_types();
 
