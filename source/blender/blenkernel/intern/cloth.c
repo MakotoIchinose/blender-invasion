@@ -443,6 +443,96 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   return mesh_result;
 }
 
+static float cloth_remeshing_edge_size(BMEdge *edge, ClothSizing *sizing)
+{
+  BMVert v1 = edge->v1;
+  BMVert v2 = edge->v2;
+  float u1[2], u2[2];
+
+  /**
+   * Get UV Coordinates of v1 and v2
+   */
+  BMLoop *l;
+  BMIter liter;
+  MLoopUV *luv;
+  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+  BM_ITER_ELEM (l, &liter, v1, BM_LOOPS_OF_VERT) {
+    luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+    copy_v2_v2(u1, luv->uv);
+  }
+  BM_ITER_ELEM (l, &liter, v2, BM_LOOPS_OF_VERT) {
+    luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+    copy_v2_v2(u2, luv->uv);
+  }
+
+  /**
+   *TODO(Ish): Need to add functionality when the vertex is on a seam
+   */
+
+  float u12[2];
+  copy_v2_v2(u12, u1);
+  sub_v2_v2(u12, u2);
+  float u21[2];
+  copy_v2_v2(u21, u2);
+  sub_v2_v2(u21, u1);
+  float value = 0.0;
+  float temp_v2[2];
+  int index = BM_elem_index_get(v1);
+  mul_v2_m2v2(temp_v2, sizing[index], u12);
+  value += dot_v2v2(u12, temp_v2);
+  index = BM_elem_index_get(v2);
+  mul_v2_m2v2(temp_v2, sizing[index], u21);
+  value += dot_v2v2(u21, temp_v2);
+
+  return sqrtf(max(value * 0.5f, 0.0f));
+}
+
+static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
+{
+  if (a->size < b->size) {
+    return -1;
+  }
+  if (a->size > b->size) {
+    return 1;
+  }
+  return 0;
+}
+
+static BMEdge *cloth_remeshing_find_bad_edges(BMesh *bm, ClothSizing *sizing)
+{
+  typedef struct Edge_Pair {
+    float size;
+    BMEdge edge;
+  } Edge_Pair;
+  Edge_Pair *edge_pairs = NULL;
+  BLI_array_declare(edge_pairs);
+
+  BMVert *v;
+  BMIter iter;
+  BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
+    BMEdge *e;
+    BMIter eiter;
+    BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
+      float size = cloth_remeshing_edge_size(e, sizing);
+      if (size > 1.0f) {
+        Edge_Pair pair = {size, *e};
+        BLI_array_append(edge_pairs, pair);
+      }
+    }
+  }
+
+  int numEdges = BLI_array_len(edge_pairs);
+  /* sort the list based on the size */
+  qsort(edge_pairs, numEdges, sizeof(Edge_Pair), cloth_remeshing_edge_pair_compare);
+
+  BMEdge *edges = BLI_array_alloca(edges, sizeof(BMEdge) * numEdges);
+  for (int i = 0; i < numEdges; i++) {
+    edges[i] = edge_pairs[i].edge;
+  }
+
+  return edges;
+}
+
 static void cloth_remeshing_static(ClothModifierData *clmd)
 {
   int numVerts = clmd->clothObject->bm->totvert;
