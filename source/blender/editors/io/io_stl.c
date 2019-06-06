@@ -20,7 +20,7 @@ static int wm_stl_export_exec(bContext *C, wmOperator *op) {
 	return io_common_export_exec(C, op, &STL_export /* export function */);
 }
 static void wm_stl_export_draw(bContext *C, wmOperator *op) {
-	io_common_export_draw(C, op);
+	/* io_common_export_draw(C, op); */
 }
 static bool wm_stl_export_check(bContext *C, wmOperator *op) {
 	return io_common_export_check(C, op, ".stl");

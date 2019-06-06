@@ -232,9 +232,9 @@ namespace {
 	                       dedup_pair_t<uv_key_t> &uv_mapping_pair, dedup_pair_t<no_key_t> &no_mapping_pair) {
 		// TODO someone Should it be evaluated first? Is this expensive? Breaks mesh_create_eval_final
 		// Object *eob = DEG_get_evaluated_object(settings->depsgraph, base->object);
-		if (!common::should_export_object(settings, ob) ||
-		    !common::object_type_is_exportable(ob))
-			return false;
+		// if (!common::should_export_object(settings, ob) ||
+		//     !common::object_type_is_exportable(ob))
+		// 	return false;
 
 		struct Mesh *mesh = nullptr;
 		bool needs_free = false;
@@ -252,8 +252,9 @@ namespace {
 			return true;
 		default:
 			// TODO someone Probably abort, it shouldn't be possible to get here
-			std::cerr << "OBJ Export for this Object Type not implemented"
-			          << ob->id.name << '\n';
+			std::string s{"OBJ Export for the object \""};
+			(s += ob->id.name) += "\" not implemented";
+			BLI_assert(!s.c_str());
 			return false;
 		}
 	}
@@ -263,7 +264,7 @@ namespace {
 		common::export_start(C, settings);
 
 		std::fstream fs;
-		fs.open(settings->filepath, std::ios::out);
+		fs.open(settings->filepath, std::ios::out | std::ios::trunc);
 		fs << "# " << common::get_version_string()
 		   << "# www.blender.org\n";
 		// TODO someone add material export
@@ -281,7 +282,7 @@ namespace {
 				(settings->dedup_normals_threshold);
 
 			// TODO someone if not exporting as objects, do they need to all be merged?
-			for (Object *ob : common::object_iter{settings->view_layer})
+			for (Object *ob : common::exportable_object_iter{settings})
 				if (!OBJ_export_object(C, settings, escene, ob, fs,
 				                       vertex_total, uv_total, no_total,
 				                       uv_mapping_pair, no_mapping_pair))

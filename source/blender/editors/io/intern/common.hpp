@@ -63,9 +63,9 @@ namespace common {
 
 	bool object_is_smoke_sim(const Object * const ob);
 
-	bool should_export_object(const ExportSettings * const settings, const Object * const eob);
-
 	bool object_type_is_exportable(const Object * const ob);
+
+	bool should_export_object(const ExportSettings * const settings, const Object * const ob);
 
 	void change_orientation(float (&mat)[4][4], int forward, int up);
 
@@ -97,7 +97,7 @@ namespace common {
 	template<typename SourceT, typename Tag = std::random_access_iterator_tag>
 	struct pointer_iterator :
 		public boost::iterator_facade<pointer_iterator<SourceT, Tag>, SourceT &, Tag> {
-		pointer_iterator() = default;
+		pointer_iterator() : first(nullptr) {}
 		pointer_iterator(const pointer_iterator<SourceT, Tag> &) = default;
 		pointer_iterator(pointer_iterator<SourceT, Tag> &&) = default;
 		explicit pointer_iterator(SourceT *p) : it(p), first(p), size(0) {}
@@ -166,7 +166,7 @@ namespace common {
 	         typename Tag = std::bidirectional_iterator_tag>
 	struct list_iterator : public boost::iterator_adaptor<list_iterator<SourceT, ResT, Tag>,
 	                                                      pointer_iterator<SourceT, Tag>, ResT, Tag, ResT> {
-		list_iterator() : list_iterator::iterator_adaptor_() {}
+		list_iterator() : list_iterator::iterator_adaptor_(), first(nullptr) {}
 		list_iterator(const pointer_iterator<SourceT, Tag> &other)
 			: list_iterator::iterator_adaptor_(other), first(other.first) {}
 		explicit list_iterator(SourceT *first)
@@ -203,19 +203,6 @@ namespace common {
 		const Mesh * const mesh;
 	};
 
-	// Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
-	struct uv_iter : public dereference_iterator<MLoopUV, const std::array<float, 2>, uv_iter> {
-		explicit uv_iter(const Mesh * const m)
-			: dereference_iterator(m->mloopuv, m->totloop, this) {}
-		uv_iter(const dereference_iterator_ &di)
-			: dereference_iterator(di, this) {}
-		uv_iter(dereference_iterator_ &&di)
-			: dereference_iterator(di, this) {}
-		inline const std::array<float, 2> dereference(const pointer_iterator<MLoopUV> &b) {
-			return {b->uv[0], b->uv[1]};
-		}
-	};
-
 	// Iterator over all the edges of a mesh
 	struct edge_iter : pointer_iterator<MEdge> {
 		edge_iter(const Mesh * const m) : pointer_iterator(m->medge, m->totedge) {}
@@ -247,9 +234,38 @@ namespace common {
 	// Iterator over all the objects in a `ViewLayer`
 	// TODO someone G.is_break
 	struct object_iter : dereference_iterator<Base, Object *, object_iter, list_iterator<Base>> {
-		explicit object_iter(const ViewLayer * const vl)
+		object_iter(const ViewLayer * const vl)
 			: dereference_iterator((Base *) vl->object_bases.first, this) {}
+		object_iter(Base *b)
+			: dereference_iterator(b, this) {}
 		inline static Object * dereference(const list_iterator<Base> &b) { return b->object; }
+	};
+
+	struct exportable_object_iter
+		: public boost::iterator_adaptor<exportable_object_iter, object_iter> {
+		explicit exportable_object_iter(const ExportSettings * const settings)
+			: exportable_object_iter::iterator_adaptor_(settings->view_layer),
+			  settings(settings) {}
+		exportable_object_iter(const ExportSettings * const settings, Base *base)
+			: exportable_object_iter::iterator_adaptor_(base),
+			  settings(settings) {}
+		friend class boost::iterator_core_access;
+		exportable_object_iter begin() const { return { settings, (Base *) settings->view_layer->
+		                                                                   object_bases.first}; }
+		exportable_object_iter end()   const { return { settings, (Base *) nullptr}; }
+		void increment() {
+			do {
+				++this->base_reference();
+			} while (this->base() != this->base().end() &&
+			         !should_export_object(settings, *this->base()));
+		}
+		void decrement() {
+			do {
+				--this->base_reference();
+			} while (this->base() != this->base().begin() &&
+			         !should_export_object(settings, *this->base()));
+		}
+		const ExportSettings * const settings;
 	};
 
 	// Iterator over the modifiers of an `Object`
@@ -258,7 +274,7 @@ namespace common {
 			: list_iterator((ModifierData *) ob->modifiers.first) {}
 	};
 
-	// Iterator over the `MLoop` if a `MPoly` of a mesh
+	// Iterator over the `MLoop` of a `MPoly` of a mesh
 	struct loop_of_poly_iter : pointer_iterator<MLoop> {
 		explicit loop_of_poly_iter(const Mesh * const mesh, const poly_iter &poly)
 			: pointer_iterator(mesh->mloop + poly->loopstart, poly->totloop - 1) {}
@@ -266,6 +282,19 @@ namespace common {
 			: pointer_iterator(mesh->mloop + poly.loopstart, poly.totloop - 1) {}
 		loop_of_poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
 		loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
+	};
+
+	// Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
+	struct uv_iter : public dereference_iterator<MLoopUV, const std::array<float, 2>, uv_iter> {
+		explicit uv_iter(const Mesh * const m)
+			: dereference_iterator(m->mloopuv, m->totloop, this) {}
+		uv_iter(const dereference_iterator_ &di)
+			: dereference_iterator(di, this) {}
+		uv_iter(dereference_iterator_ &&di)
+			: dereference_iterator(di, this) {}
+		inline const std::array<float, 2> dereference(const pointer_iterator<MLoopUV> &b) {
+			return {b->uv[0], b->uv[1]};
+		}
 	};
 
 	// Iterator over the normals of mesh

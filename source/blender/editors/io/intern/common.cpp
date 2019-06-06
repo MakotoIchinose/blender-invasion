@@ -9,6 +9,7 @@ extern "C" {
 #include "DNA_modifier_types.h"
 
 #include "BKE_modifier.h"
+#include "BKE_modifier.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 
@@ -70,44 +71,41 @@ namespace common {
 		return false;
 	}
 
-	/**
-	 * Returns whether this object should be exported into the Alembic file.
-	 *
-	 * \param settings: export settings, used for options like 'selected only'.
-	 * \param ob: the object's base in question.
-	 * This ignores layer visibility,
-	 * and assumes that the dupli-object itself (e.g. the group-instantiating empty) is exported.
-	 */
-	bool should_export_object(const ExportSettings * const settings, const Object * const eob) {
-		// If the object is a dupli, it's export satus depends on the parent
-		if (!(eob->flag & BASE_FROM_DUPLI)) {
-			/* !(eob->parent != NULL && eob->parent->transflag & OB_DUPLI) */
-
-			/* These tests only make sense when the object isn't being instanced
-			 * into the scene. When it is, its exportability is determined by
-			 * its dupli-object and the DupliObject::no_draw property. */
-			return  (settings->selected_only && (eob->flag & BASE_SELECTED) != 0) ||
-				// FIXME Sybren: handle these cleanly (maybe just remove code),
-				// now using active scene layer instead.
-				(settings->visible_only && (eob->flag & BASE_VISIBLE) != 0) ||
-				(settings->renderable_only && (eob->flag & BASE_ENABLED_RENDER) != 0);
-		}
-
-		return should_export_object(settings, eob->parent);
-	}
-
-
 	bool object_type_is_exportable(const Object * const ob) {
 		switch (ob->type) {
 		case OB_MESH:
 			return !object_is_smoke_sim(ob);
-			/* case OB_EMPTY: */
 			/* case OB_CURVE: */
 			/* case OB_SURF: */
-			/* case OB_CAMERA: */
-			/* return false; */
+		case OB_LAMP:
+		case OB_EMPTY:
+		case OB_CAMERA:
+			return false;
 		default:
-			printf("Export for this object type is not defined %s\n", ob->id.name);
+			// TODO someone Print in debug only
+			fprintf(stderr, "Export for this object type is not yet defined %s\n", ob->id.name);
+			return false;
+		}
+	}
+
+	// Whether the object should be exported
+	bool should_export_object(const ExportSettings * const settings, const Object * const ob) {
+		if (!object_type_is_exportable(ob))
+			return false;
+		// If the object is a dupli, it's export satus depends on the parent
+		if (!(ob->flag & BASE_FROM_DUPLI)) {
+			/* These tests only make sense when the object isn't being instanced
+			 * into the scene. When it is, its exportability is determined by
+			 * its dupli-object and the DupliObject::no_draw property. */
+			return  (settings->selected_only && (ob->flag & BASE_SELECTED) != 0) ||
+				// FIXME Sybren: handle these cleanly (maybe just remove code),
+				// now using active scene layer instead.
+				(settings->visible_only && (ob->flag & BASE_VISIBLE) != 0) ||
+				(settings->renderable_only && (ob->flag & BASE_ENABLED_RENDER) != 0);
+		} else if (!(ob->parent != NULL && ob->parent->transflag & OB_DUPLI))
+			return should_export_object(settings, ob->parent);
+		else {
+			BLI_assert(!"should_export_object");
 			return false;
 		}
 	}

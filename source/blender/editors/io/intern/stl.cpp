@@ -46,28 +46,29 @@ extern "C" {
 
 #include <chrono>
 #include <iostream>
+#include <ios>
 #include <fstream>
 
 #include "common.hpp"
 
 namespace {
-	bool STL_export_object(bContext *UNUSED(C), ExportSettings * const settings, std::fstream &fs,
-	                     Scene *escene, const Object *ob) {
+	bool STL_export_object_ascii(bContext *UNUSED(C), ExportSettings * const settings, std::fstream &fs,
+	                             Scene *escene, const Object *ob) {
 		Mesh *mesh;
 		settings->triangulate = true; // STL only really works with triangles
 		bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh);
 		// TODO someone Is it ok to add the version info after a # in STL?
 		const std::string name = common::get_object_name(ob, mesh) + " # " + common::get_version_string();
 
+		fs << std::scientific;
 		fs << "solid " << name;
 
 		for (const MPoly &mp : common::poly_iter{mesh}) {
 			const std::array<float, 3> no = common::calculate_normal(mesh, mp);
-			fs << "facet normal " << no[0] << no[1] << no[2]
-			   << "\nouter loop\n";
+			fs << "facet normal " << no[0] << ' ' << no[1] << ' ' << no[2]
+			   << "\nouter loop";
 			for (const MVert &v : common::vert_of_poly_iter{mesh, mp})
-				fs << "vertex " << v.co[0]
-				   << v.co[1]   << v.co[2];
+				fs << "\nvertex " << v.co[0] << ' ' << v.co[1] << ' ' << v.co[2];
 			fs << "\nendloop\nendfacet\n";
 		}
 
@@ -79,14 +80,11 @@ namespace {
 
 	void STL_export_start(bContext *C, ExportSettings * const settings) {
 		common::export_start(C, settings);
-
 		std::fstream fs;
-		fs.open(settings->filepath, std::ios::out);
-
+		fs.open(settings->filepath, std::ios::out | std::ios::trunc);
 		Scene *escene  = DEG_get_evaluated_scene(settings->depsgraph);
-
-		for (const Object *ob : common::object_iter{settings->view_layer})
-			if (!STL_export_object(C, settings, fs, escene, ob))
+		for (const Object *ob : common::exportable_object_iter{settings})
+			if (!STL_export_object_ascii(C, settings, fs, escene, ob))
 				return;
 	}
 
