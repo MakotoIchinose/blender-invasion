@@ -148,6 +148,14 @@ typedef struct ClothSimSettings {
   float compression_damp;
   /** Mechanical damping of shear springs. */
   float shear_damp;
+
+  /** Remeshing parameters **/
+  float refine_angle;
+  float refine_compression;
+  float refine_velocity;
+  float size_min;
+  float size_max;
+  float aspect_min;
 } ClothSimSettings;
 
 typedef struct ClothCollSettings {

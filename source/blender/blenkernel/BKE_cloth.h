@@ -123,6 +123,13 @@ typedef struct ClothVertex {
 } ClothVertex;
 
 /**
+ *The definition of sizing used for remeshing
+ */
+typedef struct ClothSizing {
+  float m[2][2];
+} ClothSizing;
+
+/**
  * The definition of a spring.
  */
 typedef struct ClothSpring {

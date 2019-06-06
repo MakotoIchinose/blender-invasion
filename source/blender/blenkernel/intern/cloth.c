@@ -152,6 +152,16 @@ void cloth_init(ClothModifierData *clmd)
 
   clmd->sim_parms->bending_model = CLOTH_BENDING_ANGULAR;
 
+  /**
+   *remeshing parameters
+   */
+  clmd->sim_parms->refine_angle = 0.3f;
+  clmd->sim_parms->refine_compression = 0.005f;
+  clmd->sim_parms->refine_velocity = 0.5f;
+  clmd->sim_parms->size_min = 10e-3f;
+  clmd->sim_parms->size_max = 200e-3f;
+  clmd->sim_parms->aspect_min = 0.2f;
+
   if (!clmd->sim_parms->effector_weights) {
     clmd->sim_parms->effector_weights = BKE_effector_add_weights(NULL);
   }
@@ -419,16 +429,9 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
     printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
   clmd->clothObject->bm = clmd->clothObject->bm_prev;
-
-  /* BMesh *bm = clmd->clothObject->bm; */
-  /* BM_mesh_elem_table_init(bm, BM_FACE); */
-  /* if (bm->totface > 1) { */
-  /*   BMFace *face = BM_face_at_index(bm, 0); */
-  /*   BM_face_kill_loose(bm, face); */
-  /* } */
 }
 
-static Mesh *cloth_remeshing_update_cloth_object(Object *ob, ClothModifierData *clmd)
+static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifierData *clmd)
 {
   Mesh *mesh_result = NULL;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
@@ -440,11 +443,44 @@ static Mesh *cloth_remeshing_update_cloth_object(Object *ob, ClothModifierData *
   return mesh_result;
 }
 
+static void cloth_remeshing_static(ClothModifierData *clmd)
+{
+  int numVerts = clmd->clothObject->bm->totvert;
+  ClothSizing *sizing = MEM_mallocN(numVerts * sizeof(ClothSizing), "ClothSizing");
+
+  /**
+   * Define sizing staticly
+   */
+  for (int i = 0; i < numVerts; i++) {
+    unit_m2(sizing[i].m);
+    mul_m2_fl(sizing[i].m, 1.0f / clmd->sim_parms->size_min);
+  }
+
+  /**
+   * Split edges
+   */
+
+  /**
+   * Collapse edges
+   */
+
+  /**
+   * Split edges
+   */
+
+  /**
+   * Delete sizing
+   */
+  MEM_freeN(sizing);
+}
+
 Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  return cloth_remeshing_update_cloth_object(ob, clmd);
+  cloth_remeshing_static(clmd);
+
+  return cloth_remeshing_update_cloth_object_bmesh(ob, clmd);
 }
 
 /************************************************

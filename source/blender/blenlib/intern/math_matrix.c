@@ -782,6 +782,17 @@ void mul_transposed_mat3_m4_v3(const float mat[4][4], float vec[3])
   vec[2] = x * mat[2][0] + y * mat[2][1] + mat[2][2] * vec[2];
 }
 
+void mul_m2_fl(float m[2][2], float f)
+{
+  int i, j;
+
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < 2; j++) {
+      m[i][j] *= f;
+    }
+  }
+}
+
 void mul_m3_fl(float m[3][3], float f)
 {
   int i, j;
