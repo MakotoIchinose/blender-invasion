@@ -68,7 +68,23 @@ set(LIB
   jsoncpp_lib
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND LIB
+    -lstdc++fs -ldl -lpthread -lm
+  )
+endif()
+
 blender_add_lib(${LOADER_NAME} "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_compile_definitions(
+    ${LOADER_NAME}
+      PRIVATE FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}"
+      PRIVATE FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}"
+      PRIVATE SYSCONFDIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}"
+  )
+endif()
+
 
 add_custom_target(
   loader_gen_files
@@ -84,14 +100,3 @@ add_dependencies(
     loader_gen_files
 #   jsoncppAmalgamatedFiles
 )
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_compile_definitions(
-    ${LOADER_NAME}
-      PRIVATE FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}"
-      PRIVATE FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}"
-      PRIVATE SYSCONFDIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}"
-  )
-
-  target_link_libraries(${LOADER_NAME} -lstdc++fs -ldl -lpthread -lm)
-endif()
