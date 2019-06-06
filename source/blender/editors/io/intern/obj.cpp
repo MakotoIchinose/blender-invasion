@@ -163,32 +163,64 @@ namespace {
 		std::cerr << "Totals: "  << uv_total << " " << no_total
 		          << "\nSizes: " << uv_mapping.size() << " " << no_mapping.size()  << '\n';
 
-		for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
+		for (const MPoly &p : common::poly_iter(mesh)) {
 			fs << 'f';
-			MPoly *p = mesh->mpoly + p_i;
-			for (int l_i = p->loopstart, l_e = p->loopstart + p->totloop;
-			     l_i < l_e; ++l_i) {
-				MLoop *vxl = mesh->mloop + l_i;
-				if (settings->export_uvs && settings->export_normals) {
-					fs << ' '
-					   << vertex_total + vxl->v << '/'
-					   << uv_mapping[uv_initial_count + l_i]->second << '/'
-					   << no_mapping[no_initial_count + vxl->v]->second;
-				} else if (settings->export_uvs) {
-					fs << ' '
-					   << vertex_total + vxl->v << '/'
-					   << uv_mapping[uv_initial_count + l_i]->second;
-				} else if (settings->export_normals) {
-					fs << ' '
-					   << vertex_total + vxl->v << "//"
-					   << no_mapping[no_initial_count + vxl->v]->second;
-				} else {
-					fs << ' '
-					   << vertex_total + vxl->v;
+			// Loop index
+			int li = p.loopstart;
+			for (const MLoop &l : common::loop_of_poly_iter(mesh, p)) {
+				ulong vx = vertex_total + l.v;
+				ulong uv = 0;
+				ulong no = 0;
+				if (settings->export_uvs) {
+					if (settings->dedup_uvs)
+						uv = uv_mapping[uv_initial_count + li]->second;
+					else
+						uv = uv_initial_count + li;
 				}
+				if (settings->export_normals) {
+					if (settings->dedup_normals)
+						no = no_mapping[no_initial_count + l.v]->second;
+					else
+						no = no_initial_count + l.v;
+				}
+				if (settings->export_uvs && settings->export_normals)
+					fs << ' ' << vx << '/' << uv << '/' << no;
+				else if (settings->export_uvs)
+					fs << ' ' << vx << '/' << uv;
+				else if (settings->export_normals)
+					fs << ' ' << vx << "//" << no;
+				else
+					fs << ' ' << vx;
 			}
 			fs << '\n';
 		}
+
+		// for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
+		// 	fs << 'f';
+		// 	MPoly *p = mesh->mpoly + p_i;
+		// 	for (int l_i = p->loopstart, l_e = p->loopstart + p->totloop;
+		// 	     l_i < l_e; ++l_i) {
+		// 		MLoop *vxl = mesh->mloop + l_i;
+		// 		if (settings->export_uvs && settings->export_normals) {
+		// 			fs << ' '
+		// 			   << vertex_total + vxl->v << '/'
+		// 			   << uv_mapping[uv_initial_count + l_i]->second << '/'
+		// 			   << no_mapping[no_initial_count + vxl->v]->second;
+		// 		} else if (settings->export_uvs) {
+		// 			fs << ' '
+		// 			   << vertex_total + vxl->v << '/'
+		// 			   << uv_mapping[uv_initial_count + l_i]->second;
+		// 		} else if (settings->export_normals) {
+		// 			fs << ' '
+		// 			   << vertex_total + vxl->v << "//"
+		// 			   << no_mapping[no_initial_count + vxl->v]->second;
+		// 		} else {
+		// 			fs << ' '
+		// 			   << vertex_total + vxl->v;
+		// 		}
+		// 	}
+		// 	fs << '\n';
+		// }
 		vertex_total += mesh->totvert;
 		uv_total += mesh->totloop;
 		no_total += mesh->totvert;
