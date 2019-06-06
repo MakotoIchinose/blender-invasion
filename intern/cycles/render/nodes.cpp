@@ -5346,6 +5346,52 @@ void MapRangeNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_map_range");
 }
 
+/* Clamp Node */
+
+NODE_DEFINE(ClampNode)
+{
+  NodeType *type = NodeType::add("clamp", create, NodeType::SHADER);
+
+  SOCKET_IN_FLOAT(valueIn, "Value", 1.0f);
+  SOCKET_IN_FLOAT(min, "Min", 0.0f);
+  SOCKET_IN_FLOAT(max, "Max", 1.0f);
+
+  SOCKET_OUT_FLOAT(valueOut, "Value");
+
+  return type;
+}
+
+ClampNode::ClampNode() : ShaderNode(node_type)
+{
+}
+
+void ClampNode::constant_fold(const ConstantFolder &folder)
+{
+  if (folder.all_inputs_constant()) {
+    folder.make_constant(clamp(valueIn, min, max));
+  }
+}
+
+void ClampNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *value_in = input("Value");
+  ShaderInput *min_in = input("Min");
+  ShaderInput *max_in = input("Max");
+
+  ShaderOutput *value_out = output("Value");
+
+  compiler.add_node(NODE_CLAMP,
+                    compiler.stack_assign(value_in),
+                    compiler.stack_assign(min_in),
+                    compiler.stack_assign(max_in));
+  compiler.add_node(NODE_CLAMP, compiler.stack_assign(value_out));
+}
+
+void ClampNode::compile(OSLCompiler &compiler)
+{
+  compiler.add(this, "node_clamp");
+}
+
 /* Math */
 
 NODE_DEFINE(MathNode)

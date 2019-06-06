@@ -1240,6 +1240,17 @@ class MapRangeNode : public ShaderNode {
   float valueIn, fromMin, fromMax, toMin, toMax;
 };
 
+class ClampNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(ClampNode)
+  void constant_fold(const ConstantFolder &folder);
+  virtual int get_group()
+  {
+    return NODE_GROUP_LEVEL_3;
+  }
+  float valueIn, min, max;
+};
+
 class MathNode : public ShaderNode {
  public:
   SHADER_NODE_CLASS(MathNode)

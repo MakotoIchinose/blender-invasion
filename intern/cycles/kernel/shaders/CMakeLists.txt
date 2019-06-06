@@ -90,6 +90,7 @@ set(SRC_OSL
   node_principled_bsdf.osl
   node_rgb_to_bw.osl
   node_map_range.osl
+  node_clamp.osl
 )
 
 set(SRC_OSL_HEADERS
