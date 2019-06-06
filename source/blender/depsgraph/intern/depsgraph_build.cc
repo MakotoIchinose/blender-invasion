@@ -237,7 +237,7 @@ static void graph_build_finalize_common(DEG::Depsgraph *deg_graph, Main *bmain)
   deg_graph->scene_cow = (Scene *)deg_graph->get_cow_id(&deg_graph->scene->id);
   /* Flush visibility layer and re-schedule nodes for update. */
   DEG::deg_graph_build_finalize(bmain, deg_graph);
-  DEG_graph_on_visible_update(bmain, reinterpret_cast<::Depsgraph *>(deg_graph));
+  DEG_graph_on_visible_update(bmain, reinterpret_cast<::Depsgraph *>(deg_graph), false);
 #if 0
   if (!DEG_debug_consistency_check(deg_graph)) {
     printf("Consistency validation failed, ABORTING!\n");
@@ -272,7 +272,7 @@ void DEG_graph_build_from_view_layer(Depsgraph *graph,
   /* Hook up relationships between operations - to determine evaluation order. */
   DEG::DepsgraphRelationBuilder relation_builder(bmain, deg_graph, &builder_cache);
   relation_builder.begin_build();
-  relation_builder.build_view_layer(scene, view_layer);
+  relation_builder.build_view_layer(scene, view_layer, DEG::DEG_ID_LINKED_DIRECTLY);
   relation_builder.build_copy_on_write_relations();
   /* Finalize building. */
   graph_build_finalize_common(deg_graph, bmain);
