@@ -35,7 +35,7 @@ ccl_device void svm_node_map_range(KernelGlobals *kg,
   float toMax = stack_load_float(stack, node1.z);
 
   float r;
-  if (fromMax != fromMin && toMax != toMin) {
+  if (fromMax != fromMin) {
     r = toMin + ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
   }
   else {

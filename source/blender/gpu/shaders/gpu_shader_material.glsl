@@ -488,7 +488,7 @@ void squeeze(float val, float width, float center, out float outval)
 void map_range(
     float value, float fromMin, float fromMax, float toMin, float toMax, out float outval)
 {
-  if (fromMax != fromMin && toMax != toMin) {
+  if (fromMax != fromMin) {
     outval = toMin + ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
   }
   else {

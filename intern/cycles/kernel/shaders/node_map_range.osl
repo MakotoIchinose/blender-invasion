@@ -19,7 +19,7 @@
 shader node_map_range(float ValueIn = 0.0, float FromMin = 0.0, float FromMax = 1.0,
                       float ToMin = 0.0, float ToMax = 1.0, output float ValueOut = 0.0)
 {
-  if (FromMax != FromMin && ToMax != ToMin) {
+  if (FromMax != FromMin) {
     ValueOut = ToMin + ((ValueIn - FromMin) / (FromMax - FromMin)) * (ToMax - ToMin);
   }
   else {

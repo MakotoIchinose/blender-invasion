@@ -1237,7 +1237,7 @@ class MapRangeNode : public ShaderNode {
   {
     return NODE_GROUP_LEVEL_3;
   }
-  float value_in, fromMin, fromMax, toMin, toMax;
+  float valueIn, fromMin, fromMax, toMin, toMax;
 };
 
 class MathNode : public ShaderNode {

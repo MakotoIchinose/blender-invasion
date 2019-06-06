@@ -5286,19 +5286,19 @@ void OutputNode::compile(OSLCompiler &compiler)
     compiler.add(this, "node_output_displacement");
 }
 
-/* Blackbody */
+/* Map Range Node */
 
 NODE_DEFINE(MapRangeNode)
 {
   NodeType *type = NodeType::add("map_range", create, NodeType::SHADER);
 
-  SOCKET_IN_FLOAT(value_in, "Value", 0.0f);
+  SOCKET_IN_FLOAT(valueIn, "Value", 0.0f);
   SOCKET_IN_FLOAT(fromMin, "From Min", 0.0f);
   SOCKET_IN_FLOAT(fromMax, "From Max", 1.0f);
   SOCKET_IN_FLOAT(toMin, "To Min", 0.0f);
   SOCKET_IN_FLOAT(toMax, "To Max", 1.0f);
 
-  SOCKET_OUT_FLOAT(value_out, "Value");
+  SOCKET_OUT_FLOAT(valueOut, "Value");
 
   return type;
 }
@@ -5311,8 +5311,8 @@ void MapRangeNode::constant_fold(const ConstantFolder &folder)
 {
   if (folder.all_inputs_constant()) {
     float r;
-    if (fromMax != fromMin && toMax != toMin) {
-      r = toMin + ((value_in - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
+    if (fromMax != fromMin) {
+      r = toMin + ((valueIn - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
     }
     else {
       r = 0.0f;

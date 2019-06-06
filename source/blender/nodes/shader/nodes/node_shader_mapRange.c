@@ -52,7 +52,7 @@ static void node_shader_exec_map_range(void *UNUSED(data),
   nodestack_get_vec(&toMin, SOCK_FLOAT, in[3]);
   nodestack_get_vec(&toMax, SOCK_FLOAT, in[4]);
 
-  if (fromMax != fromMin && toMax != toMin) {
+  if (fromMax != fromMin) {
     out[0]->vec[0] = toMin + ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
   }
   else {
