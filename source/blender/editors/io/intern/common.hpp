@@ -100,12 +100,15 @@ namespace common {
 		explicit pointer_iterator(SourceT *p) : it(p), first(p), size(0) {}
 		explicit pointer_iterator(SourceT *p, size_t size) : it(p), first(p), size(size) {}
 		operator SourceT *() const { return it; }
-		pointer_iterator operator=(const pointer_iterator<SourceT, Tag> &p) {
-			return pointer_iterator<SourceT, Tag>(p);
+		pointer_iterator & operator=(const pointer_iterator<SourceT, Tag> &p) {
+			this->it = p.it;
+			this->first = p.first;
+			this->size = p.size;
+			return *this;
 		}
-		pointer_iterator operator=(pointer_iterator<SourceT, Tag> &&p) {
-			return pointer_iterator<SourceT, Tag>(p);
-		}
+		// pointer_iterator & operator=(pointer_iterator<SourceT, Tag> &&p) = default;//  {
+		// 	return pointer_iterator<SourceT, Tag>(p);
+		// }
 		pointer_iterator       begin()  const { return pointer_iterator{first, size}; }
 		const pointer_iterator cbegin() const { return pointer_iterator{first, size}; }
 		pointer_iterator       end()    const { return pointer_iterator{first + size, size}; }
@@ -118,7 +121,7 @@ namespace common {
 		bool equal(const pointer_iterator &other) const { return it == other.it; }
 		SourceT & dereference() const { return *this->it; }
 		SourceT *it;
-		SourceT * const first;
+		SourceT *first;
 		size_t size;
 	};
 
@@ -242,7 +245,7 @@ namespace common {
 
 	struct loop_of_poly_iter : pointer_iterator<MLoop> {
 		explicit loop_of_poly_iter(const Mesh * const mesh, const poly_iter &poly)
-			: pointer_iterator(mesh->mloop + poly->loopstart, poly->totloop) {}
+			: pointer_iterator(mesh->mloop + poly->loopstart, poly->totloop - 1) {}
 		loop_of_poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
 		loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 	};
@@ -257,31 +260,57 @@ namespace common {
 		explicit normal_iter(const Mesh * const mesh, const poly_iter poly, const loop_of_poly_iter loop)
 			: mesh(mesh), poly(poly), loop(loop) {
 			loop_no = static_cast<float(*)[3]>(CustomData_get_layer(&mesh->ldata, CD_NORMAL));
+			// ++this->loop;
 		}
 		explicit normal_iter(const Mesh * const mesh)
 			: normal_iter(mesh, poly_iter(mesh), loop_of_poly_iter(mesh, poly_iter(mesh))) {}
-		normal_iter begin() const { return normal_iter{mesh}; }
+		normal_iter begin() const { return *this; }
 		normal_iter end()   const { return normal_iter(mesh, poly.end(), loop.end()); }
 		friend class boost::iterator_core_access;
 		void increment() {
-			// If not in the last loop and face is smooth shaded, each vertex has it's
+			// if (loop != loop.end()) {
+			// 	if (poly->flag & ME_SMOOTH)
+			// 		++loop;
+			// } else {
+			// 	loop = loop_of_poly_iter{mesh, poly};
+			// }
+
+			// if (poly != poly.end()) {
+			// 	++poly;
+			// 	loop = loop_of_poly_iter{mesh, poly};
+
+			// } else {
+			// 	loop = loop.end();
+			// }
+			// If not in the last of the loop and face is smooth shaded, each vertex has it's
 			// own normal, so increment loop, otherwise go to the next poly
-			if ((loop != loop.end()) && ((poly->flag & ME_SMOOTH) == 0)) {
+			//  && (loop_no != nullptr || (poly->flag & ME_SMOOTH) != 0)
+			if (loop != loop.end()) {
 				++loop;
 			} else if (poly != poly.end()) {
 				++poly;
-				loop = loop_of_poly_iter(mesh, poly);
+				if (poly != poly.end())
+					loop = loop_of_poly_iter{mesh, poly};
 			}
+			//  else {
+			// 	loop = loop.end();
+			// 	poly = poly.end();
+			// }
 		}
 		void decrement() {
-			if ((loop != loop.begin()) && ((poly->flag & ME_SMOOTH) == 0)) {
+			if ((loop != loop.begin()) && ((poly->flag & ME_SMOOTH) != 0)) {
 				--loop;
 			} else if (poly != poly.begin()) {
 				--poly;
 				loop = loop_of_poly_iter(mesh, poly);
+			} else {
+				loop = loop.end();
+				poly = poly.end();
 			}
 		}
-		bool equal(const normal_iter &other) const { return poly == other.poly && loop == other.loop; }
+		bool equal(const normal_iter &other) const {
+			return poly == other.poly && ((poly->flag & ME_SMOOTH) == 0 || loop == other.loop);
+		}
 		ResT dereference() const {
 			if (loop_no) {
 				const float (&no)[3] = loop_no[loop->v];
@@ -289,7 +318,7 @@ namespace common {
 			} else {
 				float no[3];
 				if ((poly->flag & ME_SMOOTH) == 0)
-					BKE_mesh_calc_poly_normal(&(*poly), &(*loop), mesh->mvert, no);
+					BKE_mesh_calc_poly_normal(poly, loop.first, mesh->mvert, no);
 				else
 					normal_short_to_float_v3(no, mesh->mvert[loop->v].no);
 				return {no[0], no[1], no[2]};
