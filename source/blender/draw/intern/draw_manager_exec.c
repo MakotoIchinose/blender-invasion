@@ -599,12 +599,15 @@ BLI_INLINE void draw_legacy_matrix_update(DRWShadingGroup *shgroup,
 
 BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
                                       GPUBatch *geom,
-                                      uint vert_first,
-                                      uint vert_count,
-                                      uint inst_first,
-                                      uint inst_count,
+                                      int vert_first,
+                                      int vert_count,
+                                      int inst_first,
+                                      int inst_count,
                                       int baseinst_loc)
 {
+  /* inst_count can be -1. */
+  inst_count = max_ii(0, inst_count);
+
   if (baseinst_loc != -1) {
     /* Fallback when ARB_shader_draw_parameters is not supported. */
     GPU_shader_uniform_vector_int(shgroup->shader, baseinst_loc, 1, 1, (int *)&inst_first);
@@ -915,10 +918,10 @@ BLI_INLINE bool draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, int
     return false;
   }
   if (call->inst_selectid != NULL) {
-    const bool is_instancing = (call->inst_count != 0);
-    uint start = 0;
-    uint count = 1;
-    uint tot = is_instancing ? call->inst_count : call->vert_count;
+    const bool is_instancing = (call->inst_count != -1);
+    int start = 0;
+    int count = 1;
+    int tot = is_instancing ? max_ii(0, call->inst_count) : call->vert_count;
     /* Hack : get vbo data without actually drawing. */
     GPUVertBufRaw raw;
     GPU_vertbuf_attr_get_raw_data(call->inst_selectid, 0, &raw);
@@ -986,9 +989,9 @@ static DRWCall *draw_call_iter_step(DRWCallIterator *iter)
 
 typedef struct DRWCommandsState {
   int callid;
-  uint resource_chunk;
-  uint base_inst;
-  uint inst_count;
+  int resource_chunk;
+  int base_inst;
+  int inst_count;
   GPUBatch *batch;
   bool neg_scale;
 } DRWCommandsState;
@@ -1031,7 +1034,7 @@ static bool draw_call_do_batching(DRWShadingGroup *shgroup,
                                   int baseinst_loc,
                                   int chunkid_loc)
 {
-  if (call->inst_count > 0 || call->vert_first > 0 || call->vert_count > 0 || obmats_loc == -1 ||
+  if (call->inst_count != -1 || call->vert_first > 0 || call->vert_count > 0 || obmats_loc == -1 ||
       G.f & G_FLAG_PICKSEL) {
     /* Safety guard. Batching should not happen in a shgroup
      * where any if the above condition are true. */
@@ -1174,8 +1177,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 #endif
 
     /* Reset state */
-    glFrontFace(GL_CCW);
-
+    if (state.neg_scale) {
+      glFrontFace(GL_CCW);
+    }
     if (obmats_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state.resource_chunk]);
     }

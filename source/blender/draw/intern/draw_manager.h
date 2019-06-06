@@ -156,9 +156,9 @@ BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
 
 typedef struct DRWCall {
   GPUBatch *batch;
-  uint vert_first;
-  uint vert_count;
-  uint inst_count;
+  int vert_first;
+  int vert_count;
+  int inst_count;
 
   DRWResourceHandle handle;
 

@@ -571,7 +571,7 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   call->batch = geom;
   call->vert_first = v_sta;
   call->vert_count = v_ct; /* 0 means auto from batch. */
-  call->inst_count = 0;
+  call->inst_count = -1;   /* -1 means no instances. */
 #ifdef USE_GPU_SELECT
   call->select_id = DST.select_id;
   call->inst_selectid = NULL;
@@ -602,7 +602,7 @@ static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
   call->batch = geom;
   call->vert_first = 0;
   call->vert_count = vert_count;
-  call->inst_count = 0;
+  call->inst_count = -1; /* -1 means no instances. */
 #ifdef USE_GPU_SELECT
   call->select_id = DST.select_id;
   call->inst_selectid = NULL;
@@ -824,7 +824,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer(DRWShadingGroup *shgroup,
   call->batch = DRW_temp_batch_request(DST.idatalist, buf, prim_type);
   call->vert_first = 0;
   call->vert_count = 0;
-  call->inst_count = 0;
+  call->inst_count = -1; /* -1 means no instances. */
 
 #ifdef USE_GPU_SELECT
   if (G.f & G_FLAG_PICKSEL) {
