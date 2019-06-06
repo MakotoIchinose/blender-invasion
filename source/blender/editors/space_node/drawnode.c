@@ -252,7 +252,6 @@ static void node_buts_texture(uiLayout *layout, bContext *UNUSED(C), PointerRNA 
 static void node_buts_math(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "operation", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "use_clamp", 0, NULL, ICON_NONE);
 }
 
 static int node_resize_area_default(bNode *node, int x, int y)

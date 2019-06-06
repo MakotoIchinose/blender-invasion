@@ -5425,8 +5425,6 @@ NODE_DEFINE(MathNode)
   type_enum.insert("sqrt", NODE_MATH_SQRT);
   SOCKET_ENUM(type, "Type", type_enum, NODE_MATH_ADD);
 
-  SOCKET_BOOLEAN(use_clamp, "Use Clamp", false);
-
   SOCKET_IN_FLOAT(value1, "Value1", 0.0f);
   SOCKET_IN_FLOAT(value2, "Value2", 0.0f);
 
@@ -5442,10 +5440,10 @@ MathNode::MathNode() : ShaderNode(node_type)
 void MathNode::constant_fold(const ConstantFolder &folder)
 {
   if (folder.all_inputs_constant()) {
-    folder.make_constant_clamp(svm_math(type, value1, value2), use_clamp);
+    folder.make_constant(svm_math(type, value1, value2));
   }
   else {
-    folder.fold_math(type, use_clamp);
+    folder.fold_math(type);
   }
 }
 
@@ -5458,17 +5456,11 @@ void MathNode::compile(SVMCompiler &compiler)
   compiler.add_node(
       NODE_MATH, type, compiler.stack_assign(value1_in), compiler.stack_assign(value2_in));
   compiler.add_node(NODE_MATH, compiler.stack_assign(value_out));
-
-  if (use_clamp) {
-    compiler.add_node(NODE_MATH, NODE_MATH_CLAMP, compiler.stack_assign(value_out));
-    compiler.add_node(NODE_MATH, compiler.stack_assign(value_out));
-  }
 }
 
 void MathNode::compile(OSLCompiler &compiler)
 {
   compiler.parameter(this, "type");
-  compiler.parameter(this, "use_clamp");
   compiler.add(this, "node_math");
 }
 

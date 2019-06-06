@@ -1263,7 +1263,6 @@ class MathNode : public ShaderNode {
   float value1;
   float value2;
   NodeMath type;
-  bool use_clamp;
 };
 
 class NormalNode : public ShaderNode {

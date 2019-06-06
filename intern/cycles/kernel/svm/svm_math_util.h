@@ -154,8 +154,6 @@ ccl_device float svm_math(NodeMath type, float Fac1, float Fac2)
     Fac = Fac1 - floorf(Fac1);
   else if (type == NODE_MATH_SQRT)
     Fac = safe_sqrtf(Fac1);
-  else if (type == NODE_MATH_CLAMP)
-    Fac = saturate(Fac1);
   else
     Fac = 0.0f;
 

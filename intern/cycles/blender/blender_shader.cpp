@@ -307,7 +307,6 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeMath b_math_node(b_node);
     MathNode *math = new MathNode();
     math->type = (NodeMath)b_math_node.operation();
-    math->use_clamp = b_math_node.use_clamp();
     node = math;
   }
   else if (b_node.is_a(&RNA_ShaderNodeVectorMath)) {

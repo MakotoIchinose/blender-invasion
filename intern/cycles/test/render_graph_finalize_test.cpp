@@ -961,7 +961,7 @@ TEST_F(RenderGraph, constant_fold_blackbody)
 }
 
 /*
- * Tests: Math with all constant inputs (clamp false).
+ * Tests: Math with all constant inputs.
  */
 TEST_F(RenderGraph, constant_fold_math)
 {
@@ -971,26 +971,6 @@ TEST_F(RenderGraph, constant_fold_math)
   builder
       .add_node(ShaderNodeBuilder<MathNode>("Math")
                     .set(&MathNode::type, NODE_MATH_ADD)
-                    .set(&MathNode::use_clamp, false)
-                    .set("Value1", 0.7f)
-                    .set("Value2", 0.9f))
-      .output_value("Math::Value");
-
-  graph.finalize(scene);
-}
-
-/*
- * Tests: Math with all constant inputs (clamp true).
- */
-TEST_F(RenderGraph, constant_fold_math_clamp)
-{
-  EXPECT_ANY_MESSAGE(log);
-  CORRECT_INFO_MESSAGE(log, "Folding Math::Value to constant (1).");
-
-  builder
-      .add_node(ShaderNodeBuilder<MathNode>("Math")
-                    .set(&MathNode::type, NODE_MATH_ADD)
-                    .set(&MathNode::use_clamp, true)
                     .set("Value1", 0.7f)
                     .set("Value2", 0.9f))
       .output_value("Math::Value");
@@ -1011,19 +991,15 @@ static void build_math_partial_test_graph(ShaderGraphBuilder &builder,
       /* constant on the left */
       .add_node(ShaderNodeBuilder<MathNode>("Math_Cx")
                     .set(&MathNode::type, type)
-                    .set(&MathNode::use_clamp, false)
                     .set("Value1", constval))
       .add_connection("Attribute::Fac", "Math_Cx::Value2")
       /* constant on the right */
       .add_node(ShaderNodeBuilder<MathNode>("Math_xC")
                     .set(&MathNode::type, type)
-                    .set(&MathNode::use_clamp, false)
                     .set("Value2", constval))
       .add_connection("Attribute::Fac", "Math_xC::Value1")
       /* output sum */
-      .add_node(ShaderNodeBuilder<MathNode>("Out")
-                    .set(&MathNode::type, NODE_MATH_ADD)
-                    .set(&MathNode::use_clamp, true))
+      .add_node(ShaderNodeBuilder<MathNode>("Out").set(&MathNode::type, NODE_MATH_ADD))
       .add_connection("Math_Cx::Value", "Out::Value1")
       .add_connection("Math_xC::Value", "Out::Value2")
       .output_value("Out::Value");

@@ -270,7 +270,6 @@ typedef enum NodeMath {
   NODE_MATH_CEIL,
   NODE_MATH_FRACT,
   NODE_MATH_SQRT,
-  NODE_MATH_CLAMP /* used for the clamp UI option */
 } NodeMath;
 
 typedef enum NodeVectorMath {
