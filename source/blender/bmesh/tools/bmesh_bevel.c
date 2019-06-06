@@ -59,7 +59,7 @@
 #define DEBUG_CUSTOM_PROFILE_SAMPLE 0
 #define DEBUG_CUSTOM_PROFILE 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
-#define BEBUG_CUSTOM_PROFILE_ORIENTATION 1
+#define DEBUG_CUSTOM_PROFILE_ORIENTATION 1
 
 /* happens far too often, uncomment for development */
 // #define BEVEL_ASSERT_PROJECT
@@ -93,13 +93,15 @@ typedef struct EdgeHalf {
   bool is_bev;                  /* is this edge beveled? */
   bool is_rev;                  /* is e->v2 the vertex at this end? */
   bool is_seam;                 /* is e a seam for custom loopdata (e.g., UVs)? */
+  /** Used during the custom profile orientation pass */
+  bool visited_custom;
   //  int _pad;
   char _pad[5];  // HANS-TODO: Delete these pads
 } EdgeHalf;
 
 /* This is the custom profile data after it has been sampled and received by bmesh_bevel
  * We only need to store an array of the point's locations
- * whether they are interpolated with curves or lines */
+ * whether they are interpolated with curves or lines HANS-TODO: Probably don't need this */
 typedef struct CustomProfile {
   /** A list of all of the nodes that make up the curve */
   float *xvals;
@@ -170,12 +172,14 @@ typedef struct BoundVert {
   EdgeHalf *ebev;
   /** Used for vmesh indexing. */
   int index;
-  /** When eon set, ratio of sines of angles to eon edge. */
+  /** When eon set, ratio of sines of angles to eon edge. */ /* HANS-QUESTION: What is the "eon edge?" */
   float sinratio;
   /** Adjustment chain or cycle link pointer. */
   struct BoundVert *adjchain;
   /** Edge profile between this and next BoundVert. */
   Profile profile;
+  /* HANS-QUESTION: Why is the profile stored in the BoundVert?
+   * There are two boundverts for every beveled EdgeHalf, so it seems that there would be duplicate information */
   /** Are any of the edges attached here seams? */
   bool any_seam;
   /** Used during delta adjust pass */
@@ -184,6 +188,8 @@ typedef struct BoundVert {
   bool is_arc_start;
   /** This boundvert begins a patch profile */
   bool is_patch_start;
+  /** Is this boundvert the side of the custom profile's start */
+  bool is_profile_start; /* HANS-TODO: Make sure that storing this in the BoundVert is the best option */
   /** Length of seam starting from current boundvert to next boundvert with ccw ordering */
   int seam_len;
   /** Same as seam_len but defines length of sharp edges */
@@ -5479,9 +5485,88 @@ static void find_bevel_edge_order(BMesh *bm, BevVert *bv, BMEdge *first_bme)
   }
 }
 
-/*
- * Construction around the vertex
- */
+/* Helper function to return the next Beveled EdgeHalf along a path. This will also
+ * update the BevVert to the next one if we are moving to the other EdgeHald of an edge */
+/* HANS-TODO: Maybe move (rename?) this function to the top with the other helpers? */
+static EdgeHalf * next_edgehalf_bev(BevelParams *bp, EdgeHalf *cur, bool toward_bv, BevVert **bv) {
+  EdgeHalf * next;
+
+  /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf */
+  if (toward_bv) {
+    /* Find the other beveled edges coming out of the BevVert */
+
+    /* Find the best choice for the next EdgeHalf, return NULL if no next beveled edge
+     * First choice is the beveled edge that's the most parallel with the current edge */
+
+  } /* Case 2: The next EdgeHalf is the other side of the BMEdge */
+  else {
+    /* Because it's part of the same BMEdge, we know the other edge half will also be beveled */
+    next = find_other_end_edge_half(bp, cur, bv);
+  }
+
+  return next;
+}
+
+/* The custom profiles are not necessarily symmetrical, so along beveled edges
+ * the profiles can start from opposite sides of the edge. In order to fix this we
+ * need to travel along the beveled edges marking consistent boundverts for the
+ * bevels to start from. */
+static void regularize_profile_orientation(BevelParams * bp, BMesh *bm) /* HANS-TODO: Possible relocate this function */
+{
+  BMIter iter;
+  BMEdge *bme;
+  BevVert *bv;
+  BevVert *r_next_bv;
+  EdgeHalf *e;
+  bool toward_bv;
+
+  /* Start at the first EdgeHalf. Once the travelling is finished for that EdgeHalf,
+   * go to the next non-visited one and start the travel process from there. */
+  BM_ITER_MESH (bme, &iter, bm, BM_EDGES_OF_MESH) { /* HANS-TODO: Move loop to bm_mesh_bevel maybe? */
+    if (BM_elem_flag_test(bme, BM_ELEM_TAG) && e->is_bev && ! e->visited_custom) {
+      bv = find_bevvert(bp, bme->v1);
+      e = find_edge_half(bv, bme);
+
+      /* Pick a BoundVert on one side of the profile to use for the first side of the profile */
+      e->rightv->is_profile_start = true; /* HANS-TODO: Possibly use a more advanced metric here */
+      e->leftv->is_profile_start = false;
+
+      /* Travel to the next BevVert(s) in both directions if there are more than two, pick the
+       * two best directions to follow, because we lose continuity at >2 way intersections anyway */
+
+      /* Towards the BevVert */
+      toward_bv = true;
+      while (next_edgehalf_bev(bp, e, toward_bv, &r_next_bv)) {
+        /* Stop if this EdgeHalf was already visited */
+        if (e->visited_custom) {
+          break;
+        }
+
+        /* Mark the correct BoundVert as the start of the newly visited profile */
+        /* The correct boundvert will be the one that's connected to the old is_profile_start boundvert
+         * BUT! The edges that connect the boundverts might not have been generated at this point.
+         * I will need to check that */
+
+        /* The next jump will in the opposite direction relative to the BevVert*/
+        toward_bv = !toward_bv;
+      }
+      /* Now the other direction, away from the BoundVert */
+      while (next_edgehalf_bev(bp, e, e, &r_next_bv)) {
+        /* Stop if this EdgeHalf was already visited */
+        if (e->visited_custom) {
+          break;
+        }
+
+        /* Mark the correct BoundVert as the start of the newly visited profile */
+
+        /* The next jump will in the opposite direction relative to the BevVert*/
+        toward_bv = !toward_bv;
+      }
+    }
+  }
+}
+
+/* Construction around the vertex */
 static BevVert *bevel_vert_construct(BMesh *bm, BevelParams *bp, BMVert *v)
 {
   BMEdge *bme;
@@ -6999,6 +7084,11 @@ void BM_mesh_bevel(BMesh *bm,
     /* Perhaps do a pass to try to even out widths */
     if (!bp.vertex_only && bp.offset_adjust && bp.offset_type != BEVEL_AMT_PERCENT) {
       adjust_offsets(&bp, bm);
+    }
+
+    /* Maintain consistent orientations for the unsymmetrical custom profiles */
+    if (bp.use_custom_profile) {
+//      regularize_profile_orientation(&bp, bm);
     }
 
     /* Build the meshes around vertices, now that positions are final */
