@@ -296,9 +296,9 @@ void wm_xr_session_end(wmXRContext *xr_context)
 static void wm_xr_session_state_change(wmXRContext *xr_context,
                                        const XrEventDataSessionStateChanged *lifecycle)
 {
-  xr_context->oxr.session_state = lifecycle->type;
+  xr_context->oxr.session_state = lifecycle->state;
 
-  switch (lifecycle->type) {
+  switch (lifecycle->state) {
     case XR_SESSION_STATE_READY: {
       XrSessionBeginInfo begin_info = {
           .type = XR_TYPE_SESSION_BEGIN_INFO,
@@ -310,6 +310,8 @@ static void wm_xr_session_state_change(wmXRContext *xr_context,
       BLI_assert(xr_context->oxr.session != XR_NULL_HANDLE);
       xrEndSession(xr_context->oxr.session);
     }
+    default:
+      break;
   }
 }
 
@@ -339,7 +341,7 @@ bool wm_xr_events_handle(wmXRContext *xr_context)
         return true;
 
       default:
-        printf("Unhandled event: %i\n", event->type);
+        printf("Unhandled event: %u\n", event->type);
         return false;
     }
   }
