@@ -47,6 +47,7 @@ extern char datatoc_paint_texture_frag_glsl[];
 extern char datatoc_paint_wire_vert_glsl[];
 extern char datatoc_paint_wire_frag_glsl[];
 extern char datatoc_paint_face_vert_glsl[];
+extern char datatoc_paint_face_selection_vert_glsl[];
 
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 
@@ -144,8 +145,14 @@ static void PAINT_TEXTURE_engine_init(void *vedata)
 
   if (!sh_data->fallback) {
     const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
-    sh_data->fallback = GPU_shader_get_builtin_shader_with_config(GPU_SHADER_3D_UNIFORM_COLOR,
-                                                                  draw_ctx->sh_cfg);
+    sh_data->fallback = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_paint_face_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg_data->def, NULL},
+    });
 
     sh_data->image = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
@@ -180,7 +187,7 @@ static void PAINT_TEXTURE_engine_init(void *vedata)
     sh_data->face_select_overlay = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
                                  datatoc_common_view_lib_glsl,
-                                 datatoc_paint_face_vert_glsl,
+                                 datatoc_paint_face_selection_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_common_view_lib_glsl,
                                  datatoc_gpu_shader_uniform_color_frag_glsl,
@@ -244,7 +251,7 @@ static void PAINT_TEXTURE_cache_init(void *vedata)
 
     /* Uniforms need a pointer to it's value so be sure it's accessible at
      * any given time (i.e. use static vars) */
-    static float color[4] = {1.0f, 0.0f, 1.0f, 1.0};
+    static const float color[4] = {1.0f, 0.0f, 1.0f, 1.0};
     DRW_shgroup_uniform_vec4(shgrp, "color", color, 1);
 
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
@@ -319,7 +326,7 @@ static void PAINT_TEXTURE_cache_init(void *vedata)
                      DRW_STATE_BLEND_ALPHA;
     DRWPass *pass = DRW_pass_create("Face Mask Pass", state);
     DRWShadingGroup *shgrp = DRW_shgroup_create(sh_data->face_select_overlay, pass);
-    static float col[4] = {1.0f, 1.0f, 1.0f, 0.2f};
+    static const float col[4] = {1.0f, 1.0f, 1.0f, 0.2f};
     DRW_shgroup_uniform_vec4(shgrp, "color", col, 1);
 
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
@@ -433,8 +440,6 @@ static void PAINT_TEXTURE_engine_free(void)
 {
   for (int sh_data_index = 0; sh_data_index < ARRAY_SIZE(e_data.sh_data); sh_data_index++) {
     PAINT_TEXTURE_Shaders *sh_data = &e_data.sh_data[sh_data_index];
-    /* Don't free builtins. */
-    sh_data->fallback = NULL;
     GPUShader **sh_data_as_array = (GPUShader **)sh_data;
     for (int i = 0; i < (sizeof(PAINT_TEXTURE_Shaders) / sizeof(GPUShader *)); i++) {
       DRW_SHADER_FREE_SAFE(sh_data_as_array[i]);
