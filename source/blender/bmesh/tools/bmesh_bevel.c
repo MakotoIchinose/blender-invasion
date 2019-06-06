@@ -57,8 +57,9 @@
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
 #define DEBUG_CUSTOM_PROFILE_SAMPLE 0
-#define DEBUG_CUSTOM_PROFILE 1
-#define DEBUG_CUSTOM_PROFILE_WELD 1
+#define DEBUG_CUSTOM_PROFILE 0
+#define DEBUG_CUSTOM_PROFILE_WELD 0
+#define BEBUG_CUSTOM_PROFILE_ORIENTATION 1
 
 /* happens far too often, uncomment for development */
 // #define BEVEL_ASSERT_PROJECT
@@ -312,7 +313,7 @@ typedef struct BevelParams {
 
 // #pragma GCC diagnostic ignored "-Wpadded"
 
-// #include "bevdebug.c"
+// #include "bevdebug.c" /* HANS-TODO: Comment this back out before commit! */
 
 /* Some flags to re-enable old behavior for a while,
  * in case fixes broke things not caught by regression tests. */
@@ -2549,6 +2550,17 @@ static void build_boundary_terminal_edge(BevelParams *bp,
       vm->mesh_kind = M_POLY;
     }
   }
+#ifdef DEBUG_CUSTOM_PROFILE_WELD
+  /* HANS-TODO: Get the locations for the profie that it calculates */
+  if (bp->seg > 1) {
+    printf("Terminal Edge Profile Coordinates:\n");
+    for (int k = 0; k < bp->seg; k++) {
+      printf("%0.4f, %0.4f, %0.4f\n", (double)vm->boundstart->profile.prof_co[3 * k],
+                                      (double)vm->boundstart->profile.prof_co[3 * k + 1],
+                                      (double)vm->boundstart->profile.prof_co[3 * k + 2]);
+    }
+  }
+#endif
 }
 
 /* Helper for build_boundary to handle special miters */
@@ -5067,7 +5079,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
   weld = (bv->selcount == 2) && (vm->count == 2);
 #if DEBUG_CUSTOM_PROFILE_WELD
   if (weld) {
-    printf("We are in the weld case!\n");
+    printf("Build VMesh Weld Case:\n");
   }
 #endif
   weld1 = weld2 = NULL; /* will hold two BoundVerts involved in weld */
@@ -5108,7 +5120,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
      * instead? */
     for (k = 1; k < ns; k++) {
       if (v->ebev && vm->mesh_kind != M_ADJ) {
-        get_profile_point(bp, &v->profile, k, ns, co);
+        get_profile_point(bp, &v->profile, k, ns, co); /* HANS-QUESTION: When/why does it use this function instead of the calculated profile */
         copy_v3_v3(mesh_vert(vm, i, 0, k)->co, co); /* Get NewVert location from profile coord */
         if (!weld) {
           create_mesh_bmvert(bm, vm, i, 0, k, bv->v);
@@ -5145,6 +5157,10 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
            * in the custom case?*/
         }
       }
+      else {
+        /* Just get the profile coord from the Profile struct in the custom profile case */
+        copy_v3_v3(co, (const float *)(weld1->profile.prof_co + 3 * k));
+      }
       copy_v3_v3(mesh_vert(vm, weld1->index, 0, k)->co, co);
       create_mesh_bmvert(bm, vm, weld1->index, 0, k, bv->v);
     }
@@ -5165,6 +5181,29 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       }
     }
   }
+#ifdef BEBUG_CUSTOM_PROFILE_ORIENTATION
+  if (weld) {
+//    dump_vm(bv->vmesh);
+  }
+#endif
+
+#ifdef DEBUG_CUSTOM_PROFILE_WELD
+  /* HANS-TODO: Get the locations for the profie that it calculates */
+  if (weld && ns > 1) {
+    printf("Weld1 profile coordinates:\n");
+    for (k = 0; k < ns; k++) {
+      printf("%0.4f, %0.4f, %0.4f\n", (double)weld1->profile.prof_co[3 * k],
+                                      (double)weld1->profile.prof_co[3 * k + 1],
+                                      (double)weld1->profile.prof_co[3 * k + 2]);
+    }
+    printf("Weld2 profile coordinates\n");
+    for (k = 0; k < ns; k++) {
+      printf("%0.4f, %0.4f, %0.4f\n", (double)weld2->profile.prof_co[3 * k],
+                                      (double)weld2->profile.prof_co[3 * k + 1],
+                                      (double)weld2->profile.prof_co[3 * k + 2]);
+    }
+  }
+#endif
 
   switch (vm->mesh_kind) {
     case M_NONE:
@@ -6487,8 +6526,6 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
   for (int i = 0; i < bp->seg; i++) {
     x_temp = bp->profile_curve->cm[0].curve[i].x;
     y_temp = bp->profile_curve->cm[0].curve[i].y;
-    //    xvals[i] = 1.0 - x_temp;
-    //    yvals[i] = y_temp;
     xvals[i] = y_temp;
     yvals[i] = 1.0 - x_temp;
   }
@@ -6505,8 +6542,6 @@ static void set_profile_spacing_custom(BevelParams *bp, int seg, double *xvals, 
   if (!bp->sample_points) {
     for (int i = 0; i < seg; i++) {
       curvemapping_path_evaluate(bp->profile_curve, i, &x_temp, &y_temp);
-      //      xvals[i] = 1.0 - (double)x_temp;
-      //      yvals[i] = (double)y_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
       xvals[i] = (double)y_temp;
       yvals[i] = 1.0 - (double)x_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
     }
@@ -6889,26 +6924,24 @@ void BM_mesh_bevel(BMesh *bm,
   bp.profile_curve = profile_curve;
   bp.sample_points = sample_points;
 
-  // HANS-TODO: Only resample points along curve (rebuild the nseg long table actually) when the
-  // curve was changed
+  printf("\n=========== NEW BEVEL CALL ===========\n");
 
   if (bp.use_custom_profile && bp.sample_points) {
     /* We are sampling the segments from the points on the graph */
-    bp.seg = profile_curve->cm->totpoint;
+    bp.seg = profile_curve->cm->totpoint - 1;
   }
 
   /* TEST PROFILE CURVE */
 #if DEBUG_CUSTOM_PROFILE_SAMPLE
-  printf("\n=========== NEW BEVEL CALL ===========\n");
   printf("%d segments\n", bp.seg);
   if (bp.use_custom_profile && bp.profile_curve != NULL) {
-    curvemapping_path_initialize(profile_curve, bp.seg); /* will be necessary to fill a table */
+    curvemapping_path_initialize((const CurveMapping *)profile_curve, bp.seg); /* will be necessary to fill a table */
 
     if (!sample_points) {
       printf("Sampling portions along the path of the profile graph:\n");
       for (int i = 0; i <= bp.seg; i++) {
         float x, y;
-        curvemapping_path_evaluate(profile_curve, i, &x, &y);
+        curvemapping_path_evaluate((const CurveMapping *)profile_curve, i, &x, &y);
         printf("Segment %d position is (%f, %f)\n", i, x, y);
       }
     }
@@ -6918,7 +6951,7 @@ void BM_mesh_bevel(BMesh *bm,
         float x, y;
         x = bp.profile_curve->cm[0].curve[i].x;
         y = bp.profile_curve->cm[0].curve[i].y;
-        printf("Segment %d position is (%f, %f\n", i, x, y);
+        printf("Segment %d position is (%f, %f)\n", i, x, y);
       }
     }
   }

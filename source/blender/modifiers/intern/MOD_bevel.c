@@ -229,7 +229,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 
   // curvemapping_free(bmd->profile_curve);
-  // HANS-TODO: I need to gree the CurveMapping data somewhere, but this is apparently not the
+  // HANS-TODO: I need to free the CurveMapping data somewhere, but this is apparently not the
   // place, as it causes a crash
 
   return result;
