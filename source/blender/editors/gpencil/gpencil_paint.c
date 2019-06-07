@@ -2418,10 +2418,6 @@ static void gpencil_draw_exit(bContext *C, wmOperator *op)
       WM_cursor_modal_restore(CTX_wm_window(C));
     }
     else {
-      /* or restore paint if 3D view */
-      if ((p) && (p->paintmode == GP_PAINTMODE_ERASER)) {
-        WM_cursor_modal_set(p->win, CURSOR_STD);
-      }
 
       /* drawing batch cache is dirty now */
       bGPdata *gpd = CTX_data_gpencil_data(C);
@@ -2435,8 +2431,6 @@ static void gpencil_draw_exit(bContext *C, wmOperator *op)
     gpencil_undo_finish();
 
     /* cleanup */
-    WM_cursor_modal_set(p->win, CURSOR_STD);
-
     gp_paint_cleanup(p);
     gp_session_cleanup(p);
     ED_gpencil_toggle_brush_cursor(C, true, NULL);
@@ -2504,6 +2498,9 @@ static int gpencil_draw_init(bContext *C, wmOperator *op, const wmEvent *event)
 /* ensure that the correct cursor icon is set */
 static void gpencil_draw_cursor_set(tGPsdata *p)
 {
+  return;
+  /* Disable while we get a better cursor handling for direct input devices (Cintiq/Ipad)*/
+#if 0
   Brush *brush = p->brush;
   if ((p->paintmode == GP_PAINTMODE_ERASER) || (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
     WM_cursor_modal_set(p->win, BC_CROSSCURSOR); /* XXX need a better cursor */
@@ -2511,6 +2508,7 @@ static void gpencil_draw_cursor_set(tGPsdata *p)
   else {
     WM_cursor_modal_set(p->win, CURSOR_NONE);
   }
+#endif
 }
 
 /* update UI indicators of status, including cursor and header prints */
