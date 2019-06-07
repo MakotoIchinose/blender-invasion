@@ -979,6 +979,7 @@ class _defs_sculpt:
             sub.use_property_split = False
             sub.prop(props, "type", expand=False)
             sub.prop(props, "iterations")
+            sub.prop(props, "dirty_only")
 
         return dict(
             idname="builtin.mask_filter",

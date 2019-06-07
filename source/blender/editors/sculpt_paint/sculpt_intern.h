@@ -303,6 +303,8 @@ typedef struct FilterCache {
   /* unmasked nodes */
   PBVHNode **nodes;
   int totnode;
+
+  float *dirty_mask;
 } FilterCache;
 
 typedef struct StrokeCache {

@@ -1674,6 +1674,43 @@ static float neighbor_average_mask(SculptSession *ss, unsigned vert)
   }
 }
 
+static float neighbor_dirty_mask(SculptSession *ss, const int vert)
+{
+  const MeshElemMap *vert_map = &ss->pmap[vert];
+  const MVert *mvert = ss->mvert;
+
+  int i = 0;
+  int total = 0;
+  float avg[3];
+  zero_v3(avg);
+  for (i = 0; i < vert_map->count; i++) {
+    const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+    unsigned f_adj_v[2];
+    if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
+      int j;
+      for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
+        float normalized[3];
+        sub_v3_v3v3(normalized, mvert[f_adj_v[j]].co, mvert[vert].co);
+        normalize_v3(normalized);
+        add_v3_v3(avg, normalized);
+        total++;
+      }
+    }
+  }
+  if (total > 0) {
+    mul_v3_fl(avg, 1.0f / total);
+    float normal[3];
+    normal_short_to_float_v3(normal, mvert[vert].no);
+    float dot = dot_v3v3(avg, normal);
+    float ang = acos(dot);
+    if (ang < DEG2RAD(0)) {
+      ang = DEG2RAD(0);
+    }
+    return ang;
+  }
+  return 0;
+}
+
 static float neighbor_min_mask(SculptSession *ss, const int vert, float *prev_mask)
 {
   const MeshElemMap *vert_map = &ss->pmap[vert];
@@ -8221,6 +8258,8 @@ typedef enum eSculptMaskFilterTypes {
   MASK_FILTER_SHARPEN = 1,
   MASK_FILTER_GROW = 2,
   MASK_FILTER_SHRINK = 3,
+  MASK_FILTER_DIRTY = 4,
+  MASK_FILTER_CONTRAST = 5,
 } eSculptMaskFilterTypes;
 
 EnumPropertyItem prop_mask_filter_types[] = {
@@ -8228,6 +8267,8 @@ EnumPropertyItem prop_mask_filter_types[] = {
     {MASK_FILTER_SHARPEN, "SHARPEN", 0, "Sharpen Mask", "Sharpen mask"},
     {MASK_FILTER_GROW, "GROW", 0, "Grow Mask", "Grow mask"},
     {MASK_FILTER_SHRINK, "SHRINK", 0, "Shrink Mask", "Shrink mask"},
+    {MASK_FILTER_DIRTY, "DIRTY", 0, "Dirty Mask", "Dirty mask"},
+    {MASK_FILTER_CONTRAST, "CONTRAST", 0, "Contrast Mask", "Contrast mask"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -8246,6 +8287,7 @@ static void mask_filter_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
     float val;
+    float contrast, delta, gain, offset;
     switch (mode) {
       case MASK_FILTER_BLUR:
         if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
@@ -8285,6 +8327,28 @@ static void mask_filter_task_cb(void *__restrict userdata,
           val = neighbor_min_mask(ss, vd.vert_indices[vd.i], data->prev_mask);
           *vd.mask = val;
           CLAMP(*vd.mask, 0.0f, 1.0f);
+        }
+        break;
+      case MASK_FILTER_DIRTY:
+        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+          val = neighbor_dirty_mask(ss, vd.vert_indices[vd.i]);
+          data->prev_mask[vd.vert_indices[vd.i]] = val;
+        }
+        break;
+      case MASK_FILTER_CONTRAST:
+        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+          contrast = 0.1;
+          delta = contrast / 2.0f;
+          gain = 1.0f - delta * 2.0f;
+          if (contrast > 0) {
+            gain = 1.0f / ((gain != 0.0f) ? gain : FLT_EPSILON);
+            offset = gain * (-delta);
+          }
+          else {
+            delta *= -1;
+            offset = gain * (delta);
+          }
+          *vd.mask = gain * (*vd.mask) + offset;
         }
         break;
     }
@@ -8332,8 +8396,12 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     sculpt_undo_push_node(ob, nodes[i], SCULPT_UNDO_MASK);
   }
 
+  if (mode == MASK_FILTER_DIRTY) {
+    iterations = 1;
+  }
+
   for (int i = 0; i < iterations; i++) {
-    if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
+    if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK, MASK_FILTER_DIRTY)) {
       prev_mask = MEM_dupallocN(ss->vmask);
     }
 
@@ -8353,6 +8421,38 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
     if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK))
       MEM_freeN(prev_mask);
+  }
+
+  if (mode == MASK_FILTER_DIRTY) {
+    float min = FLT_MAX;
+    float max = FLT_MIN;
+    for (int i = 0; i < ss->totvert; i++) {
+      float val = prev_mask[i];
+      if (val < min) {
+        min = val;
+      }
+      if (val > max) {
+        max = val;
+      }
+    }
+
+    float range = max - min;
+    if (range < 0.0001f) {
+      range = 0;
+    }
+    else {
+      range = 1.0f / range;
+    }
+
+    bool dirty_only = RNA_boolean_get(op->ptr, "dirty_only");
+    for (int i = 0; i < ss->totvert; i++) {
+      ss->vmask[i] += 1 - ((prev_mask[i] - min) * range);
+      if (dirty_only) {
+        ss->vmask[i] = fmin(ss->vmask[i], 0.5) * 2.0f;
+      }
+      CLAMP(ss->vmask[i], 0.0f, 1.0f);
+    }
+    MEM_freeN(prev_mask);
   }
 
   sculpt_undo_push_end();
@@ -8383,6 +8483,7 @@ void SCULPT_OT_mask_filter(struct wmOperatorType *ot)
   /* rna */
   ot->prop = RNA_def_enum(ot->srna, "type", prop_mask_filter_types, MASK_FILTER_BLUR, "Type", "");
   ot->prop = RNA_def_int(ot->srna, "iterations", 1, 1, 100, "Iterations", "", 1, 50);
+  ot->prop = RNA_def_boolean(ot->srna, "dirty_only", false, "Dirty Only", "");
 }
 
 static void do_color_fill_task_cb(void *__restrict userdata,
