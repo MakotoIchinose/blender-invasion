@@ -1334,11 +1334,11 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
-
-  if (!te && deselect_all) {
-    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
-    changed = true;
+  if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
+    if (deselect_all) {
+      outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+      changed = true;
+    }
   }
   /* Don't allow toggle on scene collection */
   else if ((TREESTORE(te)->type != TSE_VIEW_COLLECTION_BASE) &&
