@@ -1318,7 +1318,7 @@ void outliner_item_do_activate_from_tree_element(
 static int outliner_item_do_activate_from_cursor(bContext *C,
                                                  const int mval[2],
                                                  const bool extend,
-                                                 const bool range,
+                                                 const bool use_range,
                                                  const bool recursive,
                                                  const bool deselect_all)
 {
@@ -1354,7 +1354,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     TreeElement *activate_te = outliner_find_item_at_x_in_row(soops, te, view_mval[0]);
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
-    if (range) {
+    if (use_range) {
       do_outliner_range_select(soops, activate_te);
     }
     else {
@@ -1383,11 +1383,11 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool extend = RNA_boolean_get(op->ptr, "extend");
-  const bool range = RNA_boolean_get(op->ptr, "range");
+  const bool use_range = RNA_boolean_get(op->ptr, "range");
   const bool recursive = RNA_boolean_get(op->ptr, "recursive");
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
   return outliner_item_do_activate_from_cursor(
-      C, event->mval, extend, range, recursive, deselect_all);
+      C, event->mval, extend, use_range, recursive, deselect_all);
 }
 
 void OUTLINER_OT_item_activate(wmOperatorType *ot)
@@ -1402,7 +1402,9 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
 
   PropertyRNA *prop;
   RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection for activation");
-  RNA_def_boolean(ot->srna, "range", false, "Range", "Select a range from active element");
+  prop = RNA_def_boolean(ot->srna, "range", false, "Range", "Select a range from active element");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   RNA_def_boolean(ot->srna, "recursive", false, "Recursive", "Select Objects and their children");
   prop = RNA_def_boolean(ot->srna,
                          "deselect_all",
@@ -1514,8 +1516,12 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(
-      ot->srna, "tweak", true, "Tweak", "Click and drag from the gutter for box selection");
+  PropertyRNA *prop;
+
+  prop = RNA_def_boolean(
+      ot->srna, "tweak", false, "Tweak", "Tweak gesture from empty space for box selection");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   WM_operator_properties_gesture_box(ot);
   WM_operator_properties_select_operation_simple(ot);
 }
