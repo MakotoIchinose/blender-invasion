@@ -1569,7 +1569,7 @@ static TreeElement *do_outliner_select_walk_down(SpaceOutliner *soops, TreeEleme
 {
   TreeStoreElem *tselem = TREESTORE(active);
 
-  if (TSELEM_OPEN(tselem, soops)) {
+  if (TSELEM_OPEN(tselem, soops) && active->subtree.first) {
     active = active->subtree.first;
   }
   else if (active->next) {
