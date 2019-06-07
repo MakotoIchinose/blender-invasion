@@ -33,7 +33,7 @@ typedef struct {
 
 
 BVHEmbreeGPU::BVHEmbreeGPU(const BVHParams& params_, const vector<Object*>& objects_)
-    : BVH(params_, objects_), stats(nullptr)
+    : BVH2(params_, objects_), stats(nullptr)
 {
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
@@ -74,6 +74,20 @@ void CCLBoundBoxToRTC(const ccl::BoundBox &bb, RTCBounds *bound) {
     bound->upper_z = bb.max.z;
 }
 
+RTCBuildPrimitive makeBuildPrimitive(const BoundBox &bb, unsigned int geomId, unsigned int primId = -1) {
+    RTCBuildPrimitive prim;
+    prim.lower_x = bb.min.x;
+    prim.lower_y = bb.min.y;
+    prim.lower_z = bb.min.z;
+    prim.upper_x = bb.max.x;
+    prim.upper_y = bb.max.y;
+    prim.upper_z = bb.max.z;
+    prim.geomID = geomId;
+    prim.primID = primId;
+
+    return prim;
+}
+
 void BVHEmbreeGPU::build(Progress& progress, Stats *stats_)
 {
     this->stats = stats_;
@@ -100,13 +114,17 @@ void BVHEmbreeGPU::build(Progress& progress, Stats *stats_)
 
     args.buildFlags = (dynamic ? RTC_BUILD_FLAG_DYNAMIC : RTC_BUILD_FLAG_NONE);
     args.buildQuality = dynamic ? RTC_BUILD_QUALITY_LOW :
-                                  (params.use_spatial_split ? RTC_BUILD_QUALITY_HIGH : RTC_BUILD_QUALITY_MEDIUM);
+                                  ((params.use_spatial_split && !params.top_level) ? RTC_BUILD_QUALITY_HIGH : RTC_BUILD_QUALITY_MEDIUM);
 
     /* Count triangles first so we can reserve arrays once. */
     size_t prim_count = 0;
 
     foreach(Object *ob, objects) {
-        prim_count += ob->mesh->num_triangles();
+        if(params.top_level && ob->mesh->is_instanced()) {
+            prim_count += 1;
+        } else {
+            prim_count += ob->mesh->num_triangles();
+        }
     }
 
     pack.prim_object.reserve(prim_count);
@@ -122,23 +140,49 @@ void BVHEmbreeGPU::build(Progress& progress, Stats *stats_)
     vector<RTCBuildPrimitive> prims;
     prims.reserve(objects.size() * 3);
     foreach(Object *ob, objects) {
-        add_object(ob, i);
+        if (params.top_level && !ob->is_traceable())
+            continue;
 
-        const float3 *mesh_verts = ob->mesh->verts.data();
-        for(size_t tri = 0; tri < ob->mesh->num_triangles(); ++tri) {
-            BoundBox bb = BoundBox::empty;
-            ob->mesh->get_triangle(tri).bounds_grow(mesh_verts, bb);
-            RTCBuildPrimitive prim;
-            prim.lower_x = bb.min.x;
-            prim.lower_y = bb.min.y;
-            prim.lower_z = bb.min.z;
-            prim.upper_x = bb.max.x;
-            prim.upper_y = bb.max.y;
-            prim.upper_z = bb.max.z;
-            prim.geomID = i;
-            prim.primID = tri;
+        if (params.top_level && ob->mesh->is_instanced()) {
+            args.maxLeafSize = 1;
+            const auto offset = pack.prim_index.size();
+            this->offset[i] = offset;
 
-            prims.push_back(prim);
+            pack.prim_type.push_back_reserved(0);
+            pack.prim_index.push_back_reserved(-1);
+            pack.prim_object.push_back_reserved(i);
+
+            prims.push_back(makeBuildPrimitive(ob->bounds, i));
+        } else {
+            add_object(ob, i);
+
+            const float3 *mesh_verts = ob->mesh->verts.data();
+            const float3 *mesh_vert_steps = NULL;
+            size_t motion_steps = 1;
+
+            if (ob->mesh->has_motion_blur()) {
+                const Attribute *attr_motion_vertex = ob->mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+                if (attr_motion_vertex) {
+                    mesh_vert_steps = attr_motion_vertex->data_float3();
+                    motion_steps = ob->mesh->motion_steps;
+                }
+            }
+
+            for(size_t tri = 0; tri < ob->mesh->num_triangles(); ++tri) {
+                BoundBox bb = BoundBox::empty;
+                Mesh::Triangle t = ob->mesh->get_triangle(tri);
+
+                for (uint step = 0; step < motion_steps; ++step) {
+                    float3 verts[3];
+                    t.verts_for_step(mesh_verts, mesh_vert_steps, ob->mesh->num_triangles(), motion_steps, step, verts);
+
+                    bb.grow(verts[0]);
+                    bb.grow(verts[1]);
+                    bb.grow(verts[2]);
+                }
+
+                prims.push_back(makeBuildPrimitive(bb, i, tri));
+            }
         }
 
         ++i;
@@ -195,7 +239,7 @@ void BVHEmbreeGPU::build(Progress& progress, Stats *stats_)
 
         for(size_t i = 0; i < numPrims; i++) {
             const Object *ob = userParams->bvhBldr->objects.at(prims[i].geomID);
-            const int idx = userParams->bvhBldr->offset[prims[i].geomID] + prims[i].primID;
+            const int idx = userParams->bvhBldr->offset[prims[i].geomID] + (prims[i].primID == -1 ? 0 : prims[i].primID);
 
             if(idx < min) min = idx;
             if(idx > max) max = idx;
@@ -315,144 +359,17 @@ void BVHEmbreeGPU::add_object(const Object *ob, const unsigned int i)
 
     size_t prim_index_size = pack.prim_index.size();
     pack.prim_index.resize(prim_index_size + num_triangles);
-    pack.prim_tri_index.resize(prim_index_size + num_triangles);
 
     for(size_t j = 0; j < num_triangles; ++j) {
         pack.prim_object[prim_object_size + j] = static_cast<int>(i);
         pack.prim_type[prim_type_size + j] = PRIMITIVE_TRIANGLE;
         pack.prim_index[prim_index_size + j] = static_cast<int>(j);
-        pack.prim_tri_index[prim_index_size + j] = static_cast<unsigned int>(j);
     }
 }
 
-void BVHEmbreeGPU::pack_leaf(size_t idx, const LeafNode *leaf)
-{
-    float4 data;
-    memset(&data, 0, sizeof(data));
-
-    data.x = __int_as_float(leaf->lo);
-    data.y = __int_as_float(leaf->hi);
-    data.z = __uint_as_float(leaf->visibility);
-    if(leaf->num_triangles() != 0) {
-        data.w = __uint_as_float(static_cast<uint>(pack.prim_type[static_cast<size_t>(leaf->lo)]));
-    }
-
-    memcpy(&pack.leaf_nodes[idx], &data, sizeof(float4));
-}
-
-void BVHEmbreeGPU::pack_inner(size_t idx, const BVHNode *e0, int idx0, const BVHNode *e1, int idx1)
-{
-    const BoundBox b0 = e0->bounds,
-            b1 = e1->bounds;
-    int visibility0 = static_cast<int>(e0->visibility),
-            visibility1 = static_cast<int>(e1->visibility);
-
-    int4 data[4] = {
-        make_int4(visibility0 & ~PATH_RAY_NODE_UNALIGNED,
-        visibility1 & ~PATH_RAY_NODE_UNALIGNED,
-        idx0,
-        idx1),
-
-        make_int4(__float_as_int(b0.min.x),
-        __float_as_int(b1.min.x),
-        __float_as_int(b0.max.x),
-        __float_as_int(b1.max.x)),
-
-        make_int4(__float_as_int(b0.min.y),
-        __float_as_int(b1.min.y),
-        __float_as_int(b0.max.y),
-        __float_as_int(b1.max.y)),
-
-        make_int4(__float_as_int(b0.min.z),
-        __float_as_int(b1.min.z),
-        __float_as_int(b0.max.z),
-        __float_as_int(b1.max.z)),
-    };
-
-    memcpy(&pack.nodes[idx], data, sizeof(int4)*4);
-}
-
-void BVHEmbreeGPU::pack_nodes(const BVHNode *root)
-{
-    const size_t num_nodes = static_cast<size_t>(root->getSubtreeSize(BVH_STAT_NODE_COUNT));
-    const size_t num_leaf_nodes = static_cast<size_t>(root->getSubtreeSize(BVH_STAT_LEAF_COUNT));
-
-    CHECK_LE(num_leaf_nodes, num_nodes);
-    const size_t num_inner_nodes = num_nodes - num_leaf_nodes;
-    size_t node_size = num_inner_nodes * 4;
-    /* Resize arrays */
-    pack.nodes.clear();
-    pack.leaf_nodes.clear();
-
-    pack_instances(node_size, num_leaf_nodes);
-
-    size_t nextNodeIdx = 0, nextLeafNodeIdx = 0;
-
-    vector<BVHStackEntry> stack;
-    stack.reserve(BVHParams::MAX_DEPTH*2);
-    if(root->is_leaf()) {
-        stack.push_back(BVHStackEntry(root, static_cast<int>(nextLeafNodeIdx++)));
-    }
-    else {
-        stack.push_back(BVHStackEntry(root, static_cast<int>(nextNodeIdx)));
-        nextNodeIdx += 4;
-    }
-
-    while(stack.size()) {
-        BVHStackEntry e = stack.back();
-        stack.pop_back();
-
-        if(e.node->is_leaf()) {
-            /* leaf node */
-            const LeafNode *leaf = reinterpret_cast<const LeafNode*>(e.node);
-            CHECK_NOTNULL(leaf);
-            CHECK_LE(e.idx + 1, static_cast<int>(pack.leaf_nodes.size()));
-
-            pack_leaf(static_cast<size_t>(e.idx), leaf);
-        }
-        else {
-            /* inner node */
-            size_t idx[2];
-            for(int i = 0; i < 2; ++i) {
-                if(e.node->get_child(i)->is_leaf()) {
-                    idx[i] = nextLeafNodeIdx++;
-                }
-                else {
-                    idx[i] = nextNodeIdx;
-                    nextNodeIdx += 4;
-                }
-            }
-
-            stack.push_back(BVHStackEntry(e.node->get_child(0), static_cast<int>(idx[0])));
-            stack.push_back(BVHStackEntry(e.node->get_child(1), static_cast<int>(idx[1])));
-
-            BVHStackEntry *e0 = &stack[stack.size()-2],
-                    *e1 = &stack[stack.size()-1];
-
-            int c0 = e0->encodeIdx(),
-                    c1 = e1->encodeIdx();
-
-            CHECK_LE(e.idx + 4, pack.nodes.size());
-            CHECK(c0 < 0 || c0 < static_cast<int>(pack.nodes.size()));
-            CHECK(c1 < 0 || c1 < static_cast<int>(pack.nodes.size()));
-
-            pack_inner(static_cast<size_t>(e.idx), e0->node, c0, e1->node, c1);
-        }
-    }
-    CHECK_EQ(node_size, nextNodeIdx) << "Should have handled all node";
-    /* root index to start traversal at, to handle case of single leaf node */
-    pack.root_index = (root->is_leaf())? -1: 0;
-}
-
-BVHNode *BVHEmbreeGPU::widen_children_nodes(const BVHNode * /*root*/)
-{
+BVHNode *BVHEmbreeGPU::widen_children_nodes(const BVHNode * /*root*/) {
     DLOG(FATAL) << "Must not be called";
     return NULL;
-}
-
-void BVHEmbreeGPU::refit_nodes()
-{
-    DLOG(FATAL) << "Must not be called";
 }
 
 CCL_NAMESPACE_END

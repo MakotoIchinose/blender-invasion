@@ -22,6 +22,7 @@
 #include <embree3/rtcore.h>
 
 #include "bvh/bvh.h"
+#include "bvh/bvh2.h"
 #include "bvh/bvh_params.h"
 #include "bvh/bvh_node.h"
 
@@ -33,7 +34,7 @@ CCL_NAMESPACE_BEGIN
 
 class Mesh;
 
-class BVHEmbreeGPU : public BVH
+class BVHEmbreeGPU : public BVH2
 {
 public:
     virtual void build(Progress& progress, Stats *stats) override;
@@ -45,14 +46,8 @@ protected:
     friend class BVH;
     BVHEmbreeGPU(const BVHParams& params, const vector<Object*>& objects);
 
-    virtual void pack_nodes(const BVHNode *root) override;
-    virtual void refit_nodes() override;
-
     void add_object(const Object *ob, const unsigned int i);
 private:
-    void pack_leaf(size_t idx, const LeafNode *leaf);
-    void pack_inner(size_t idx, const BVHNode *e0, int idx0, const BVHNode *e1, int idx1);
-
     RTCDevice rtc_device;
     vector<size_t> offset;
     double progress_start_time = 0;

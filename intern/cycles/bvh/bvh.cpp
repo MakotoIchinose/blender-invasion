@@ -52,6 +52,8 @@ const char *bvh_layout_name(BVHLayout layout)
       return "NONE";
     case BVH_LAYOUT_EMBREE:
       return "EMBREE";
+    case BVH_LAYOUT_EMBREE_GPU:
+      return "EMBREE_GPU";
     case BVH_LAYOUT_ALL:
       return "ALL";
   }
