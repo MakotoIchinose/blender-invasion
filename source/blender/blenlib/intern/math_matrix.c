@@ -869,6 +869,17 @@ void mul_m3_v3_double(const float mat[3][3], double vec[3])
   vec[2] = x * (double)mat[0][2] + y * (double)mat[1][2] + (double)mat[2][2] * vec[2];
 }
 
+void add_m2_m2m2(float m1[2][2], const float m2[2][2], const float m3[2][2])
+{
+  int i, j;
+
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < 2; j++) {
+      m1[i][j] = m2[i][j] + m3[i][j];
+    }
+  }
+}
+
 void add_m3_m3m3(float m1[3][3], const float m2[3][3], const float m3[3][3])
 {
   int i, j;

@@ -56,6 +56,7 @@ void swap_m4m4(float A[4][4], float B[4][4]);
 
 /******************************** Arithmetic *********************************/
 
+void add_m2_m2m2(float m1[2][2], const float m2[2][2], const float m3[2][2]);
 void add_m3_m3m3(float R[3][3], const float A[3][3], const float B[3][3]);
 void add_m4_m4m4(float R[4][4], const float A[4][4], const float B[4][4]);
 

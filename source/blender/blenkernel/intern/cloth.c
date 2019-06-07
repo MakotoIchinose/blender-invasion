@@ -158,7 +158,7 @@ void cloth_init(ClothModifierData *clmd)
   clmd->sim_parms->refine_angle = 0.3f;
   clmd->sim_parms->refine_compression = 0.005f;
   clmd->sim_parms->refine_velocity = 0.5f;
-  clmd->sim_parms->size_min = 10e-3f;
+  clmd->sim_parms->size_min = 100e-3f;
   clmd->sim_parms->size_max = 200e-3f;
   clmd->sim_parms->aspect_min = 0.2f;
 
@@ -443,10 +443,10 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   return mesh_result;
 }
 
-static float cloth_remeshing_edge_size(BMEdge *edge, ClothSizing *sizing)
+static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *sizing)
 {
-  BMVert v1 = edge->v1;
-  BMVert v2 = edge->v2;
+  BMVert v1 = *edge->v1;
+  BMVert v2 = *edge->v2;
   float u1[2], u2[2];
 
   /**
@@ -456,11 +456,12 @@ static float cloth_remeshing_edge_size(BMEdge *edge, ClothSizing *sizing)
   BMIter liter;
   MLoopUV *luv;
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
-  BM_ITER_ELEM (l, &liter, v1, BM_LOOPS_OF_VERT) {
+
+  BM_ITER_ELEM (l, &liter, edge->v1, BM_LOOPS_OF_VERT) {
     luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
     copy_v2_v2(u1, luv->uv);
   }
-  BM_ITER_ELEM (l, &liter, v2, BM_LOOPS_OF_VERT) {
+  BM_ITER_ELEM (l, &liter, edge->v2, BM_LOOPS_OF_VERT) {
     luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
     copy_v2_v2(u2, luv->uv);
   }
@@ -472,83 +473,107 @@ static float cloth_remeshing_edge_size(BMEdge *edge, ClothSizing *sizing)
   float u12[2];
   copy_v2_v2(u12, u1);
   sub_v2_v2(u12, u2);
-  float u21[2];
-  copy_v2_v2(u21, u2);
-  sub_v2_v2(u21, u1);
   float value = 0.0;
   float temp_v2[2];
-  int index = BM_elem_index_get(v1);
-  mul_v2_m2v2(temp_v2, sizing[index], u12);
+  int index = BM_elem_index_get(&v1);
+  ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, index)->link;
+  /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't matter
+   * since all sizing are same */
+  mul_v2_m2v2(temp_v2, sizing_temp->m, u12);
   value += dot_v2v2(u12, temp_v2);
-  index = BM_elem_index_get(v2);
-  mul_v2_m2v2(temp_v2, sizing[index], u21);
-  value += dot_v2v2(u21, temp_v2);
 
-  return sqrtf(max(value * 0.5f, 0.0f));
+  return sqrtf(fmax(value, 0.0f));
 }
 
-static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
+static int cloth_remeshing_find_bad_edges(BMesh *bm, LinkNodePair *sizing)
 {
-  if (a->size < b->size) {
-    return -1;
-  }
-  if (a->size > b->size) {
-    return 1;
-  }
-  return 0;
-}
-
-static BMEdge *cloth_remeshing_find_bad_edges(BMesh *bm, ClothSizing *sizing)
-{
-  typedef struct Edge_Pair {
-    float size;
-    BMEdge edge;
-  } Edge_Pair;
-  Edge_Pair *edge_pairs = NULL;
-  BLI_array_declare(edge_pairs);
-
+  int tagged = 0;
   BMVert *v;
   BMIter iter;
-  BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-    BMEdge *e;
-    BMIter eiter;
-    BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
-      float size = cloth_remeshing_edge_size(e, sizing);
-      if (size > 1.0f) {
-        Edge_Pair pair = {size, *e};
-        BLI_array_append(edge_pairs, pair);
-      }
+  BMEdge *e;
+  BMIter eiter;
+  /* clearing out the tags */
+  BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
+    BM_elem_flag_disable(e, BM_ELEM_TAG);
+  }
+  BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
+    float size = cloth_remeshing_edge_size(bm, e, sizing);
+    if (size > 1.0f) {
+      BM_elem_flag_enable(e, BM_ELEM_TAG);
+      tagged++;
     }
   }
 
-  int numEdges = BLI_array_len(edge_pairs);
-  /* sort the list based on the size */
-  qsort(edge_pairs, numEdges, sizeof(Edge_Pair), cloth_remeshing_edge_pair_compare);
+  return tagged;
+}
 
-  BMEdge *edges = BLI_array_alloca(edges, sizeof(BMEdge) * numEdges);
-  for (int i = 0; i < numEdges; i++) {
-    edges[i] = edge_pairs[i].edge;
+static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *sizing)
+{
+  BMesh *bm = clmd->clothObject->bm;
+  int tagged = cloth_remeshing_find_bad_edges(bm, sizing);
+  printf("tagged: %d\n", tagged);
+  if (tagged == 0) {
+    return false;
   }
+  BMEdge *e;
+  BMIter iter;
+  BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
+    if (BM_elem_flag_test_bool(e, BM_ELEM_TAG)) {
+      int v1_index = BM_elem_index_get(e->v1);
+      int v2_index = BM_elem_index_get(e->v2);
+      BMEdge *new_e;
+      BMVert *new_v = BM_edge_split(bm, e, e->v1, &new_e, 0.5);
+      ClothSizing *sizing_mean = MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single");
 
-  return edges;
+      /* average of the sizing of the other 2 vertices */
+      ClothSizing *sizing_01 = (ClothSizing *)BLI_linklist_find(sizing->list, v1_index)->link;
+      ClothSizing *sizing_02 = (ClothSizing *)BLI_linklist_find(sizing->list, v2_index)->link;
+      add_m2_m2m2(sizing_mean->m,
+                  /* first vertex sizing */
+                  sizing_01->m,
+                  /* second vertex sizing */
+                  sizing_02->m);
+      mul_m2_fl(sizing_mean->m, 0.5f);
+
+      /* TODO(Ish): need to figure out the indexing between sizing and the vertices */
+      BLI_linklist_append(sizing, sizing_mean);
+      BM_elem_flag_disable(new_e, BM_ELEM_TAG);
+      BM_elem_flag_disable(e, BM_ELEM_TAG);
+    }
+  }
+  BM_mesh_normals_update(bm);
+  BM_mesh_triangulate(
+      bm, MOD_TRIANGULATE_QUAD_SHORTEDGE, MOD_TRIANGULATE_NGON_BEAUTY, 4, false, NULL, NULL, NULL);
+  return true;
 }
 
 static void cloth_remeshing_static(ClothModifierData *clmd)
 {
+  /**
+   * sizing indices match vertex indices
+   * while appending new verticies ensure sizing is added at same index
+   */
+  LinkNodePair sizing;
+  sizing.list = NULL;
+  sizing.last_node = NULL;
   int numVerts = clmd->clothObject->bm->totvert;
-  ClothSizing *sizing = MEM_mallocN(numVerts * sizeof(ClothSizing), "ClothSizing");
 
   /**
    * Define sizing staticly
    */
   for (int i = 0; i < numVerts; i++) {
-    unit_m2(sizing[i].m);
-    mul_m2_fl(sizing[i].m, 1.0f / clmd->sim_parms->size_min);
+    ClothSizing *size = MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single");
+    unit_m2(size->m);
+    mul_m2_fl(size->m, 1.0f / clmd->sim_parms->size_min);
+    BLI_linklist_append(&sizing, size);
   }
 
   /**
    * Split edges
    */
+  while (cloth_remeshing_split_edges(clmd, &sizing)) {
+    /* empty while */
+  }
 
   /**
    * Collapse edges
@@ -561,7 +586,7 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Delete sizing
    */
-  MEM_freeN(sizing);
+  BLI_linklist_freeN(sizing.list);
 }
 
 Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
