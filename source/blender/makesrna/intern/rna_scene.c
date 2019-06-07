@@ -2052,7 +2052,7 @@ static void rna_SceneCamera_update(Main *bmain, Scene *UNUSED(scene), PointerRNA
   Scene *scene = (Scene *)ptr->id.data;
   Object *camera = scene->camera;
 
-  BKE_sequencer_cache_cleanup_all(bmain);
+  BKE_sequence_invalidate_scene_strips(bmain, scene);
 
   if (camera && (camera->type == OB_CAMERA)) {
     DEG_id_tag_update(&camera->id, ID_RECALC_GEOMETRY);
@@ -7220,8 +7220,7 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Use Preview Range",
-      "Use an alternative start/end frame range for animation playback and "
-      "OpenGL renders instead of the Render properties start/end frame range");
+      "Use an alternative start/end frame range for animation playback and view renders");
   RNA_def_property_update(prop, NC_SCENE | ND_FRAME, NULL);
   RNA_def_property_ui_icon(prop, ICON_PREVIEW_RANGE, 0);
 

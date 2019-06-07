@@ -971,6 +971,16 @@ class _defs_sculpt:
             keymap=(),
         )
 
+    @ToolDef.from_fn
+    def mask_lasso():
+        return dict(
+            idname="builtin.lasso_mask",
+            label="Lasso Mask",
+            icon="ops.sculpt.lasso_mask",
+            widget=None,
+            keymap=(),
+        )
+
 
 class _defs_vertex_paint:
 
@@ -1466,6 +1476,10 @@ class _defs_gpencil_sculpt:
             icon_prefix="ops.gpencil.sculpt_",
             type=bpy.types.GPencilSculptSettings,
             attr="sculpt_tool",
+            tooldef_keywords=dict(
+                operator="gpencil.sculpt_paint",
+                keymap="3D View Tool: Sculpt Gpencil, Paint",
+            ),
         )
 
 
@@ -1893,8 +1907,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'SCULPT': [
             _defs_sculpt.generate_from_brushes,
             None,
+            (
+                _defs_sculpt.mask_border,
+                _defs_sculpt.mask_lasso,
+            ),
             _defs_sculpt.hide_border,
-            _defs_sculpt.mask_border,
             None,
             *_tools_annotate,
         ],

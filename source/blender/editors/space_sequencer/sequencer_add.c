@@ -344,14 +344,12 @@ static int sequencer_add_scene_strip_exec(bContext *C, wmOperator *op)
   BLI_strncpy(seq->name + 2, sce_seq->id.name + 2, sizeof(seq->name) - 2);
   BKE_sequence_base_unique_name_recursive(&ed->seqbase, seq);
 
-  seq->scene_sound = BKE_sound_scene_add_scene_sound(
-      scene, seq, start_frame, start_frame + seq->len, 0);
-
   BKE_sequence_calc_disp(scene, seq);
   BKE_sequencer_sort(scene);
 
   sequencer_add_apply_replace_sel(C, op, seq);
   sequencer_add_apply_overlap(C, op, seq);
+  BKE_sequence_invalidate_cache_composite(scene, seq);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -435,6 +433,7 @@ static int sequencer_add_movieclip_strip_exec(bContext *C, wmOperator *op)
 
   sequencer_add_apply_replace_sel(C, op, seq);
   sequencer_add_apply_overlap(C, op, seq);
+  BKE_sequence_invalidate_cache_composite(scene, seq);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -518,6 +517,7 @@ static int sequencer_add_mask_strip_exec(bContext *C, wmOperator *op)
 
   sequencer_add_apply_replace_sel(C, op, seq);
   sequencer_add_apply_overlap(C, op, seq);
+  BKE_sequence_invalidate_cache_composite(scene, seq);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -960,6 +960,7 @@ static int sequencer_add_image_strip_exec(bContext *C, wmOperator *op)
   if (op->customdata) {
     MEM_freeN(op->customdata);
   }
+  BKE_sequence_invalidate_cache_composite(scene, seq);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -1110,6 +1111,7 @@ static int sequencer_add_effect_strip_exec(bContext *C, wmOperator *op)
   /* not sure if this is needed with update_changed_seq_and_deps.
    * it was NOT called in blender 2.4x, but wont hurt */
   BKE_sequencer_sort(scene);
+  BKE_sequence_invalidate_cache_composite(scene, seq);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
