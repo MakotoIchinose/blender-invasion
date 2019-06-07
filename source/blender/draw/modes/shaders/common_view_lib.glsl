@@ -28,13 +28,20 @@ uniform int resourceChunk;
 
 #ifdef GPU_VERTEX_SHADER
 #  ifdef GL_ARB_shader_draw_parameters
-#    define resource_id (gl_BaseInstanceARB + gl_InstanceID)
-
+#    define baseInstance gl_BaseInstanceARB
 #  else /* no ARB_shader_draw_parameters */
 uniform int baseInstance;
-#    define resource_id (baseInstance + gl_InstanceID)
-
 #  endif
+
+#  ifdef IN_PLACE_INSTANCES
+/* When drawing instances of an object at the same position. */
+#    define instanceId 0
+#  else
+#    define instanceId gl_InstanceID
+#  endif
+
+#  define resource_id (baseInstance + instanceId)
+
 /* Use this to declare and pass the value if
  * the fragment shader uses the resource_id. */
 #  define RESOURCE_ID_VARYING flat out int resourceIDFrag;
