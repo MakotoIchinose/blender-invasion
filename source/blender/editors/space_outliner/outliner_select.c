@@ -1256,9 +1256,8 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 
   outliner_flag_set(&soops->tree, TSE_SELECTED, false);
 
-  /* Once synced selection is implemented this check for active may not be needed */
   /* Range select requires the active element to be visible, so select if not visible */
-  if (!active || !outliner_is_element_visible(&soops->tree, active)) {
+  if (!outliner_is_element_visible(&soops->tree, active)) {
     TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
     return;
   }
@@ -1453,12 +1452,6 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
 
   WM_operator_properties_border_to_rctf(op, &rectf);
   UI_view2d_region_to_view_rctf(&ar->v2d, &rectf, &rectf);
-
-  /* Ensure one item is active (remove when sync selection) */
-  if (!outliner_find_active_element(&soops->tree)) {
-    TreeElement *te = soops->tree.first;
-    TREESTORE(te)->flag |= TSE_ACTIVE;
-  }
 
   for (TreeElement *te = soops->tree.first; te; te = te->next) {
     outliner_item_box_select(soops, scene, &rectf, te, select);
