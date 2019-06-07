@@ -24,14 +24,14 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
-uniform int resourceChunk = 0;
+uniform int resourceChunk;
 
 #ifdef GPU_VERTEX_SHADER
 #  ifdef GL_ARB_shader_draw_parameters
 #    define resource_id (gl_BaseInstanceARB + gl_InstanceID)
 
 #  else /* no ARB_shader_draw_parameters */
-uniform int baseInstance = 0;
+uniform int baseInstance;
 #    define resource_id (baseInstance + gl_InstanceID)
 
 #  endif
