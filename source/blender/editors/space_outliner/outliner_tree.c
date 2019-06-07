@@ -2301,7 +2301,7 @@ void outliner_build_tree(
       tselem = TREESTORE(te);
 
       /* New scene elements open by default */
-      if (!tselem->used) {
+      if ((sce == scene && show_opened) || !tselem->used) {
         tselem->flag &= ~TSE_CLOSED;
       }
 
