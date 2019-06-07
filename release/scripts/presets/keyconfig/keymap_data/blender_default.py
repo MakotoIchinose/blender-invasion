@@ -44,6 +44,8 @@ class Params:
         "spacebar_action",
         # Key toggles selection with 'A'.
         "use_select_all_toggle",
+        # Activate gizmo on drag (which support it).
+        "use_gizmo_drag",
         # Use pie menu for tab by default (swap 'Tab/Ctrl-Tab').
         "use_v3d_tab_menu",
         # Use extended pie menu for shading.
@@ -63,6 +65,7 @@ class Params:
             # User preferences.
             spacebar_action='TOOL',
             use_select_all_toggle=False,
+            use_gizmo_drag=True,
             use_v3d_tab_menu=False,
             use_v3d_shade_ex_pie=False,
             use_pie_click_drag=False,
@@ -108,6 +111,8 @@ class Params:
 
         # User preferences
         self.spacebar_action = spacebar_action
+
+        self.use_gizmo_drag = use_gizmo_drag
         self.use_select_all_toggle = use_select_all_toggle
         self.use_v3d_tab_menu = use_v3d_tab_menu
         self.use_v3d_shade_ex_pie = use_v3d_shade_ex_pie
@@ -1902,6 +1907,10 @@ def km_dopesheet(params):
          {"properties": [("axis_range", False)]}),
         ("action.select_box", {"type": 'B', "value": 'PRESS', "alt": True},
          {"properties": [("axis_range", True)]}),
+        ("action.select_box", {"type": params.select_tweak, "value": 'ANY'},
+         {"properties": [("tweak", True), ("mode", 'SET')]}),
+        ("action.select_box", {"type": params.select_tweak, "value": 'ANY', "shift": True},
+         {"properties": [("tweak", True), ("mode", 'ADD')]}),
         ("action.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True},
          {"properties": [("mode", 'ADD')]}),
         ("action.select_lasso", {"type": params.action_tweak, "value": 'ANY', "shift": True, "ctrl": True},
@@ -3174,13 +3183,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params),
-        # Painting
-        ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("wait_for_input", False)]}),
-        ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("wait_for_input", False)]}),
-        ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-         {"properties": [("wait_for_input", False)]}),
+
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt.brush.strength')]}),
@@ -4765,6 +4768,20 @@ def km_generic_gizmo_click_drag(_params):
     return keymap
 
 
+def km_generic_gizmo_maybe_drag(params):
+    keymap = (
+        "Generic Gizmo Maybe Drag",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items":
+         _template_items_gizmo_tweak_value_drag()
+         if params.use_gizmo_drag else
+         _template_items_gizmo_tweak_value()
+        },
+    )
+
+    return keymap
+
+
 def km_generic_gizmo_select(_params):
     keymap = (
         "Generic Gizmo Select",
@@ -5742,6 +5759,21 @@ def km_3d_view_tool_edit_gpencil_to_sphere(params):
     )
 
 
+def km_3d_view_tool_sculpt_gpencil_paint(params):
+    return (
+        "3D View Tool: Sculpt Gpencil, Paint",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+             {"properties": [("wait_for_input", False)]}),
+            ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+             {"properties": [("wait_for_input", False)]}),
+            ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+             {"properties": [("wait_for_input", False)]}),
+        ]},
+    )
+
+
 def km_3d_view_tool_sculpt_gpencil_select(params):
     return (
         "3D View Tool: Sculpt Gpencil, Select",
@@ -5884,6 +5916,7 @@ def generate_keymaps(params=None):
         # Gizmos.
         km_generic_gizmo(params),
         km_generic_gizmo_drag(params),
+        km_generic_gizmo_maybe_drag(params),
         km_generic_gizmo_click_drag(params),
         km_generic_gizmo_select(params),
         km_generic_gizmo_tweak_modal_map(params),
@@ -5976,6 +6009,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_gpencil_bend(params),
         km_3d_view_tool_edit_gpencil_shear(params),
         km_3d_view_tool_edit_gpencil_to_sphere(params),
+        km_3d_view_tool_sculpt_gpencil_paint(params),
         km_3d_view_tool_sculpt_gpencil_select(params),
         km_3d_view_tool_sculpt_gpencil_select_box(params),
         km_3d_view_tool_sculpt_gpencil_select_circle(params),

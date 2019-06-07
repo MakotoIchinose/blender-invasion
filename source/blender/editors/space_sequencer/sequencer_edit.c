@@ -64,6 +64,8 @@
 #include "UI_view2d.h"
 #include "UI_interface.h"
 
+#include "DEG_depsgraph.h"
+
 /* own include */
 #include "sequencer_intern.h"
 
@@ -1809,7 +1811,7 @@ static int sequencer_mute_exec(bContext *C, wmOperator *op)
     }
   }
 
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   return OPERATOR_FINISHED;
@@ -1860,7 +1862,7 @@ static int sequencer_unmute_exec(bContext *C, wmOperator *op)
     }
   }
 
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   return OPERATOR_FINISHED;
@@ -2370,6 +2372,7 @@ static int sequencer_delete_exec(bContext *C, wmOperator *UNUSED(op))
     ms = ms->prev;
   }
 
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   return OPERATOR_FINISHED;
@@ -2625,7 +2628,7 @@ static int sequencer_meta_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     MEM_freeN(ms);
   }
 
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   return OPERATOR_FINISHED;
@@ -2670,7 +2673,7 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
   while (seq) {
     next = seq->next;
     if (seq != seqm && (seq->flag & SELECT)) {
-      BKE_sequence_invalidate_dependent(scene, seq);
+      BKE_sequence_invalidate_cache_composite(scene, seq);
       channel_max = max_ii(seq->machine, channel_max);
       BLI_remlink(ed->seqbasep, seq);
       BLI_addtail(&seqm->seqbase, seq);
@@ -2686,10 +2689,10 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
     BKE_sequence_base_shuffle(ed->seqbasep, seqm, scene);
   }
 
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
 
   BKE_sequence_base_unique_name_recursive(&scene->ed->seqbase, seqm);
-
+  BKE_sequence_invalidate_cache_composite(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   return OPERATOR_FINISHED;
@@ -2742,7 +2745,7 @@ static int sequencer_meta_separate_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   for (seq = last_seq->seqbase.first; seq != NULL; seq = seq->next) {
-    BKE_sequence_invalidate_dependent(scene, seq);
+    BKE_sequence_invalidate_cache_composite(scene, seq);
   }
 
   BLI_movelisttolist(ed->seqbasep, &last_seq->seqbase);
@@ -2773,7 +2776,7 @@ static int sequencer_meta_separate_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   BKE_sequencer_sort(scene);
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
