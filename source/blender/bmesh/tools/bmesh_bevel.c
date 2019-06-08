@@ -167,19 +167,19 @@ typedef struct BoundVert {
   EdgeHalf *efirst;
   EdgeHalf *elast;
   /** The "edge between" that this is on, in offset_on_edge_between case. */
-  EdgeHalf *eon;
+  EdgeHalf *eon; /* HANS-QUESTION: What is the "eon edge?" */
   /** Beveled edge whose left side is attached here, if any. */
   EdgeHalf *ebev;
   /** Used for vmesh indexing. */
   int index;
-  /** When eon set, ratio of sines of angles to eon edge. */ /* HANS-QUESTION: What is the "eon edge?" */
+  /** When eon set, ratio of sines of angles to eon edge. */
   float sinratio;
   /** Adjustment chain or cycle link pointer. */
   struct BoundVert *adjchain;
   /** Edge profile between this and next BoundVert. */
   Profile profile;
-  /* HANS-QUESTION: Why is the profile stored in the BoundVert?
-   * There are two boundverts for every beveled EdgeHalf, so it seems that there would be duplicate information */
+  /* HANS-QUESTION: Why is the profile stored in the BoundVert? There are two boundverts
+   * for every beveled EdgeHalf, so it seems that there would be duplicate information */
   /** Are any of the edges attached here seams? */
   bool any_seam;
   /** Used during delta adjust pass */
@@ -189,7 +189,9 @@ typedef struct BoundVert {
   /** This boundvert begins a patch profile */
   bool is_patch_start;
   /** Is this boundvert the side of the custom profile's start */
-  bool is_profile_start; /* HANS-TODO: Make sure that storing this in the BoundVert is the best option */
+  /* HANS-TODO: It's possible that I could just switch which BoundVert is left and which is
+   * right instead of storing this extra boolean.*/
+  bool is_profile_start;
   /** Length of seam starting from current boundvert to next boundvert with ccw ordering */
   int seam_len;
   /** Same as seam_len but defines length of sharp edges */
@@ -5485,84 +5487,158 @@ static void find_bevel_edge_order(BMesh *bm, BevVert *bv, BMEdge *first_bme)
   }
 }
 
-/* Helper function to return the next Beveled EdgeHalf along a path. This will also
- * update the BevVert to the next one if we are moving to the other EdgeHald of an edge */
-/* HANS-TODO: Maybe move (rename?) this function to the top with the other helpers? */
-static EdgeHalf * next_edgehalf_bev(BevelParams *bp, EdgeHalf *cur, bool toward_bv, BevVert **bv) {
-  EdgeHalf * next;
+/* HANS-TODO: Maybe move (and rename?) this function to the top with the other helpers? */
+/** Helper function to return the next Beveled EdgeHalf along a path.
+ *
+ * \note Right now this returns the most parallel edge if it's the most parallel by
+ * at least 10 degrees. This is a somewhat arbitrary choice, and we may find it's not even
+ * worth it to continue the path across a BevVert with 3 or more connected beveled edges
+ *
+ * \param toward_bv Whether the direction to travel points toward or away from the BevVert
+ *        connected to the current EdgeHalf
+ * \param r_bv The BevVert conencted to the EdgeHalf which is updated if the we switch
+          EdgeHalves in the current edge */
+static EdgeHalf * next_edgehalf_bev(BevelParams *bp,
+                                    EdgeHalf *cur_edge,
+                                    bool toward_bv,
+                                    BevVert **r_bv)
+{
+  EdgeHalf *new_edge;
+  EdgeHalf *next_edge;
+  float d_cur[3];
+  float d_other[3];
+  float v1_dist_to_bv;
+  float v2_dist_to_bv;
+  float new_angle;
+  float best_angle = (float)M_PI; /* Initialized to the LEAST parallel angle */
+  float second_best_angle;
+
 
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf */
   if (toward_bv) {
-    /* Find the other beveled edges coming out of the BevVert */
+    /* Find the direction vector of the current edge (pointing INTO the BevVert) .
+     * v1 and v2 don't necessarily have an order, so we need to check which is closer to bv */
+    v1_dist_to_bv = fabsf(len_v3v3(cur_edge->e->v1->co, (*r_bv)->v->co));
+    v2_dist_to_bv = fabsf(len_v3v3(cur_edge->e->v2->co, (*r_bv)->v->co));
+    /* HANS-TODO: Helper function for this comparison? */
+    if (v1_dist_to_bv < v2_dist_to_bv) {
+      sub_v3_v3v3(d_cur, cur_edge->e->v1->co, cur_edge->e->v2->co);
+    }
+    else {
+      sub_v3_v3v3(d_cur, cur_edge->e->v2->co, cur_edge->e->v1->co);
+    }
 
-    /* Find the best choice for the next EdgeHalf, return NULL if no next beveled edge
-     * First choice is the beveled edge that's the most parallel with the current edge */
+    /* Find the beveled edge coming out of the BevVert most parallel to the current edge */
+    new_edge = cur_edge;
+    while ((new_edge = next_bev(*r_bv, new_edge)) != cur_edge) {
+      /* Find direction vector of the possible next edge (pointing OUT of the BevVert) */
+      v1_dist_to_bv = fabsf(len_v3v3(new_edge->e->v1->co, (*r_bv)->v->co));
+      v2_dist_to_bv = fabsf(len_v3v3(new_edge->e->v2->co, (*r_bv)->v->co));
+      if (v1_dist_to_bv > v2_dist_to_bv) {
+        sub_v3_v3v3(d_other, new_edge->e->v1->co, new_edge->e->v2->co);
+      }
+      else {
+        sub_v3_v3v3(d_other, new_edge->e->v2->co, new_edge->e->v1->co);
+      }
 
-  } /* Case 2: The next EdgeHalf is the other side of the BMEdge */
-  else {
-    /* Because it's part of the same BMEdge, we know the other edge half will also be beveled */
-    next = find_other_end_edge_half(bp, cur, bv);
+      /* Use this edge if it is the most parallel to the orignial so far */
+      new_angle = angle_v3v3(d_cur, d_other);
+      if (new_angle < best_angle) {
+        second_best_angle = best_angle; /* To remember if the choice was too close */
+        best_angle = new_angle;
+        next_edge = new_edge;
+      }
+    }
+
+    /* Only return a new Edge if the choice of next edge was not too close */
+    if (second_best_angle < best_angle + DEG2RADF(10.0f) ||
+        second_best_angle > best_angle - DEG2RADF(10.0f)) { /* HANS-TODO: Macro for this? */
+      return NULL;
+    }
+    else {
+      return (next_edge->is_bev) ? next_edge : NULL; /* And only if the next edge is beveled */
+    }
+#ifdef DEBUG_CUSTOM_PROFILE_ORIENTATION
+    printf("We shouldn't be here!\n");
+#endif
   }
 
-  return next;
+  /* Case 2: The next EdgeHalf is the other side of the BMEdge.
+   * Because it's part of the same BMEdge, we know the other edge half will also be beveled */
+  next_edge = find_other_end_edge_half(bp, cur_edge, r_bv);
+  return next_edge;
 }
 
 /* The custom profiles are not necessarily symmetrical, so along beveled edges
  * the profiles can start from opposite sides of the edge. In order to fix this we
  * need to travel along the beveled edges marking consistent boundverts for the
  * bevels to start from. */
-static void regularize_profile_orientation(BevelParams * bp, BMesh *bm) /* HANS-TODO: Possible relocate this function */
+static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme) /* HANS-TODO: Possible relocate this function */
 {
-  BMIter iter;
-  BMEdge *bme;
   BevVert *bv;
   BevVert *r_next_bv;
-  EdgeHalf *e;
+  EdgeHalf *start_edge;
+  EdgeHalf *edge;
   bool toward_bv;
+  BoundVert *last_bndv;
+  BoundVert *bndv;
 
   /* Start at the first EdgeHalf. Once the travelling is finished for that EdgeHalf,
    * go to the next non-visited one and start the travel process from there. */
-  BM_ITER_MESH (bme, &iter, bm, BM_EDGES_OF_MESH) { /* HANS-TODO: Move loop to bm_mesh_bevel maybe? */
-    if (BM_elem_flag_test(bme, BM_ELEM_TAG) && e->is_bev && ! e->visited_custom) {
-      bv = find_bevvert(bp, bme->v1);
-      e = find_edge_half(bv, bme);
-
-      /* Pick a BoundVert on one side of the profile to use for the first side of the profile */
-      e->rightv->is_profile_start = true; /* HANS-TODO: Possibly use a more advanced metric here */
-      e->leftv->is_profile_start = false;
-
-      /* Travel to the next BevVert(s) in both directions if there are more than two, pick the
-       * two best directions to follow, because we lose continuity at >2 way intersections anyway */
-
-      /* Towards the BevVert */
-      toward_bv = true;
-      while (next_edgehalf_bev(bp, e, toward_bv, &r_next_bv)) {
-        /* Stop if this EdgeHalf was already visited */
-        if (e->visited_custom) {
-          break;
-        }
-
-        /* Mark the correct BoundVert as the start of the newly visited profile */
-        /* The correct boundvert will be the one that's connected to the old is_profile_start boundvert
-         * BUT! The edges that connect the boundverts might not have been generated at this point.
-         * I will need to check that */
-
-        /* The next jump will in the opposite direction relative to the BevVert*/
-        toward_bv = !toward_bv;
-      }
-      /* Now the other direction, away from the BoundVert */
-      while (next_edgehalf_bev(bp, e, e, &r_next_bv)) {
-        /* Stop if this EdgeHalf was already visited */
-        if (e->visited_custom) {
-          break;
-        }
-
-        /* Mark the correct BoundVert as the start of the newly visited profile */
-
-        /* The next jump will in the opposite direction relative to the BevVert*/
-        toward_bv = !toward_bv;
-      }
+  bv = find_bevvert(bp, bme->v1); /* HANS-TODO: This could be wrong because it might matter which vert it gets */
+  start_edge = find_edge_half(bv, bme);
+  if (!start_edge->is_bev || start_edge->visited_custom) {
+#ifdef DEBUG_CUSTOM_PROFILE_ORIENTATION
+    if (!start_edge->is_bev) {
+      printf("If it gets to this point the BM_ELEM_TAG check is not an 'is_bev' check\n");
     }
+#endif
+    return;
+  }
+
+  /* Pick a BoundVert on one side of the profile to use for the start of the profile */
+  start_edge->rightv->is_profile_start = true;
+  start_edge->leftv->is_profile_start = false; /* HANS-TODO: Possibly use a more advanced metric here for the start edge */
+  last_bndv = start_edge->rightv;
+
+  /* Continue the path in the direction of the BevVert the EdgeHalf is attached to */
+  edge = start_edge;
+  toward_bv = true;
+  while ((edge = next_edgehalf_bev(bp, edge, toward_bv, &r_next_bv))) {
+    /* Stop if this EdgeHalf was already visited */
+    if (edge->visited_custom) {
+      break;
+    }
+
+    /* Mark the correct BoundVert as the start of the newly visited profile */
+    /* THIS SITUATION IS DESCRIBED IN THE NOTES DOCUMENT: "Passing Along the Choice of BoundVert for Profile Start" */
+    /* Case 1: Travelling into bv, last start vert back along the edge */
+    if (toward_bv) {
+      bndv = edge->rightv;
+      //for ()...
+    }
+    /* Case 2: Travelling out of a bv, last start vert across the BevVert*/
+    else {
+
+    }
+
+
+    /* The next jump will in the opposite direction relative to the BevVert */
+    toward_bv = !toward_bv;
+  }
+  /* Now continue the path in the other direction, away from the BevVert */
+  edge = start_edge;
+  toward_bv = false;
+  while ((edge = next_edgehalf_bev(bp, edge, toward_bv, &r_next_bv))) {
+    /* Stop if this EdgeHalf was already visited */
+    if (edge->visited_custom) {
+      break;
+    }
+
+    /* Mark the correct BoundVert as the start of the newly visited profile */
+
+    /* The next jump will in the opposite direction relative to the BevVert */
+    toward_bv = !toward_bv;
   }
 }
 
@@ -6611,8 +6687,8 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
   for (int i = 0; i < bp->seg; i++) {
     x_temp = bp->profile_curve->cm[0].curve[i].x;
     y_temp = bp->profile_curve->cm[0].curve[i].y;
-    xvals[i] = y_temp;
-    yvals[i] = 1.0 - x_temp;
+    xvals[i] = (double)y_temp;
+    yvals[i] = 1.0 - (double)x_temp;
   }
 }
 
@@ -6667,9 +6743,9 @@ static void set_profile_spacing(BevelParams *bp)
     }
 
     bp->pro_spacing.xvals = (double *)BLI_memarena_alloc(bp->mem_arena,
-                                                         (seg + 1) * sizeof(double));
+                                                         (size_t)(seg + 1) * sizeof(double));
     bp->pro_spacing.yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
-                                                         (seg + 1) * sizeof(double));
+                                                         (size_t)(seg + 1) * sizeof(double));
     find_even_superellipse_chords(
         seg, bp->pro_super_r, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
 
@@ -6700,9 +6776,9 @@ static void set_profile_spacing(BevelParams *bp)
       }
 
       bp->pro_spacing.xvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
-                                                             (seg_2 + 1) * sizeof(double));
+                                                             (size_t)(seg_2 + 1) * sizeof(double));
       bp->pro_spacing.yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
-                                                             (seg_2 + 1) * sizeof(double));
+                                                             (size_t)(seg_2 + 1) * sizeof(double));
       find_even_superellipse_chords(
           seg_2, bp->pro_super_r, bp->pro_spacing.xvals_2, bp->pro_spacing.yvals_2);
     }
@@ -7088,7 +7164,12 @@ void BM_mesh_bevel(BMesh *bm,
 
     /* Maintain consistent orientations for the unsymmetrical custom profiles */
     if (bp.use_custom_profile) {
-//      regularize_profile_orientation(&bp, bm);
+      BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
+        if (BM_elem_flag_test(e, BM_ELEM_TAG)) { /* HANS-QUESTION: Is this a check if the edge is going to be beveled? Is it necessary here? */
+          regularize_profile_orientation(&bp, e);
+        }
+      }
+
     }
 
     /* Build the meshes around vertices, now that positions are final */
