@@ -47,6 +47,9 @@ class OUTLINER_HT_header(Header):
         layout.separator_spacer()
 
         row = layout.row(align=True)
+        row.prop(space, "use_sync_selection", text="")
+
+        row = layout.row(align=True)
         if display_mode in {'SCENES', 'VIEW_LAYER'}:
             row.popover(
                 panel="OUTLINER_PT_filter",
