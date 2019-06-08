@@ -11,6 +11,10 @@
 #include "io_stl.h"
 #include "intern/stl.h"
 
+#include "RNA_access.h"
+#include "UI_interface.h"
+#include "UI_resources.h"
+
 /* bool STL_export(bContext *C, ExportSettings * const settings); */
 
 static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent *event) {
@@ -20,7 +24,47 @@ static int wm_stl_export_exec(bContext *C, wmOperator *op) {
 	return io_common_export_exec(C, op, &STL_export /* export function */);
 }
 static void wm_stl_export_draw(bContext *C, wmOperator *op) {
-	/* io_common_export_draw(C, op); */
+	PointerRNA ptr;
+	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+
+	/* uiLayout *box; */
+	/* uiLayout *sub_box; */
+	uiLayout *row;
+
+	/* box = uiLayoutBox(op->layout); */
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "axis_forward", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "axis_up", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "selected_only", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "visible_only", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "renderable_only", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "use_ascii", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "global_scale", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "use_scene_units", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(op->layout, false);
+	uiItemR(row, &ptr, "apply_modifiers", 0, NULL, ICON_NONE);
+
+	const bool modifiers = RNA_boolean_get(&ptr, "apply_modifiers");
+
+	row = uiLayoutRow(op->layout, false);
+	uiLayoutSetEnabled(row, modifiers);
+	uiItemR(row, &ptr, "render_modifiers", 0, NULL, ICON_NONE);
 }
 static bool wm_stl_export_check(bContext *C, wmOperator *op) {
 	return io_common_export_check(C, op, ".stl");

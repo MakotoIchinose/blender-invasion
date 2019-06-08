@@ -1,4 +1,3 @@
-
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -131,10 +130,13 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op) {
 	uiItemR(row, &ptr, "export_face_sets", 0, NULL, ICON_NONE);
 
 	row = uiLayoutRow(box, false);
-	uiItemR(row, &ptr, "apply_modifiers", 1, NULL, ICON_NONE);
+	uiItemR(row, &ptr, "apply_modifiers", 0, NULL, ICON_NONE);
+
+	const bool modifiers = RNA_boolean_get(&ptr, "apply_modifiers");
 
 	row = uiLayoutRow(box, false);
-	uiItemR(row, &ptr, "render_modifiers", 1, NULL, ICON_NONE);
+	uiLayoutSetEnabled(row, modifiers);
+	uiItemR(row, &ptr, "render_modifiers", 0, NULL, ICON_NONE);
 
 	row = uiLayoutRow(box, false);
 	uiItemR(row, &ptr, "curves_as_mesh", 0, NULL, ICON_NONE);

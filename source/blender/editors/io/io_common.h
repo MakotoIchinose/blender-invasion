@@ -68,6 +68,8 @@ typedef struct ExportSettings {
 	int quad_method;
 	int ngon_method;
 
+	bool use_ascii;
+	bool use_scene_units;
 	float global_scale;
 
 	/* bool (*should_export_object)(const ExportSettings * const settings, const Object * const eob); */

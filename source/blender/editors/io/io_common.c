@@ -160,6 +160,12 @@ void io_common_default_declare_export(struct wmOperatorType *ot,
 	             MOD_TRIANGULATE_NGON_BEAUTY, "Polygon Method",
 	             "Method for splitting the polygons into triangles");
 
+	RNA_def_boolean(ot->srna, "use_ascii", 0, "Use ASCII format",
+	                "Whether to use the ASCII or the binary variant");
+
+	RNA_def_boolean(ot->srna, "use_scene_units", 0, "Use scene units",
+	                "Whether to use the scene's units as a scaling factor");
+
 	RNA_def_float(ot->srna, "global_scale", 1.0f, 0.0001f, 1000.0f, "Scale",
 	              "Value by which to enlarge or shrink the objects with"
 	              "respect to the world's origin",
@@ -231,6 +237,8 @@ ExportSettings * io_common_construct_default_export_settings(struct bContext *C,
 	settings->quad_method               = RNA_enum_get(op->ptr, "quad_method");
 	settings->ngon_method               = RNA_enum_get(op->ptr,  "ngon_method");
 	settings->global_scale              = RNA_float_get(op->ptr, "global_scale");
+	settings->use_ascii                 = RNA_boolean_get(op->ptr, "use_ascii");
+	settings->use_scene_units           = RNA_boolean_get(op->ptr, "use_scene_units");
 
 	if(!settings->export_animations) {
 		settings->frame_start = BKE_scene_frame_get(CTX_data_scene(C));;
