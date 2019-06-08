@@ -31,6 +31,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_constraint_types.h"
 
 #include "BLI_math.h"
 #include "BLI_blenlib.h"
@@ -1847,6 +1848,100 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       case TSE_CONSTRAINT_BASE:
         data.icon = ICON_CONSTRAINT;
         break;
+      case TSE_CONSTRAINT: {
+        bConstraint *con = te->directdata;
+        switch ((eBConstraint_Types)con->type) {
+          case CONSTRAINT_TYPE_CAMERASOLVER:
+            data.icon = ICON_CON_CAMERASOLVER;
+            break;
+          case CONSTRAINT_TYPE_FOLLOWTRACK:
+            data.icon = ICON_CON_FOLLOWTRACK;
+            break;
+          case CONSTRAINT_TYPE_OBJECTSOLVER:
+            data.icon = ICON_CON_OBJECTSOLVER;
+            break;
+          case CONSTRAINT_TYPE_LOCLIKE:
+            data.icon = ICON_CON_LOCLIKE;
+            break;
+          case CONSTRAINT_TYPE_ROTLIKE:
+            data.icon = ICON_CON_ROTLIKE;
+            break;
+          case CONSTRAINT_TYPE_SIZELIKE:
+            data.icon = ICON_CON_SIZELIKE;
+            break;
+          case CONSTRAINT_TYPE_TRANSLIKE:
+            data.icon = ICON_CON_TRANSLIKE;
+            break;
+          case CONSTRAINT_TYPE_DISTLIMIT:
+            data.icon = ICON_CON_DISTLIMIT;
+            break;
+          case CONSTRAINT_TYPE_LOCLIMIT:
+            data.icon = ICON_CON_LOCLIMIT;
+            break;
+          case CONSTRAINT_TYPE_ROTLIMIT:
+            data.icon = ICON_CON_ROTLIMIT;
+            break;
+          case CONSTRAINT_TYPE_SIZELIMIT:
+            data.icon = ICON_CON_SIZELIMIT;
+            break;
+          case CONSTRAINT_TYPE_SAMEVOL:
+            data.icon = ICON_CON_SAMEVOL;
+            break;
+          case CONSTRAINT_TYPE_TRANSFORM:
+            data.icon = ICON_CON_TRANSFORM;
+            break;
+          case CONSTRAINT_TYPE_TRANSFORM_CACHE:
+            data.icon = ICON_CON_TRANSFORM_CACHE;
+            break;
+          case CONSTRAINT_TYPE_CLAMPTO:
+            data.icon = ICON_CON_CLAMPTO;
+            break;
+          case CONSTRAINT_TYPE_DAMPTRACK:
+            data.icon = ICON_CON_TRACKTO;
+            break;
+          case CONSTRAINT_TYPE_KINEMATIC:
+            data.icon = ICON_CON_KINEMATIC;
+            break;
+          case CONSTRAINT_TYPE_LOCKTRACK:
+            data.icon = ICON_CON_LOCKTRACK;
+            break;
+          case CONSTRAINT_TYPE_SPLINEIK:
+            data.icon = ICON_CON_SPLINEIK;
+            break;
+          case CONSTRAINT_TYPE_STRETCHTO:
+            data.icon = ICON_CON_STRETCHTO;
+            break;
+          case CONSTRAINT_TYPE_TRACKTO:
+            data.icon = ICON_CON_TRACKTO;
+            break;
+          case CONSTRAINT_TYPE_ACTION:
+            data.icon = ICON_ACTION;
+            break;
+          case CONSTRAINT_TYPE_ARMATURE:
+            data.icon = ICON_CON_ARMATURE;
+            break;
+          case CONSTRAINT_TYPE_CHILDOF:
+            data.icon = ICON_CON_CHILDOF;
+            break;
+          case CONSTRAINT_TYPE_MINMAX:
+            data.icon = ICON_CON_FLOOR;
+            break;
+          case CONSTRAINT_TYPE_FOLLOWPATH:
+            data.icon = ICON_CON_FOLLOWPATH;
+            break;
+          case CONSTRAINT_TYPE_PIVOT:
+            data.icon = ICON_CON_PIVOT;
+            break;
+          case CONSTRAINT_TYPE_SHRINKWRAP:
+            data.icon = ICON_CON_SHRINKWRAP;
+            break;
+
+          default:
+            data.icon = ICON_DOT;
+            break;
+        }
+        break;
+      }
       case TSE_MODIFIER_BASE:
         data.icon = ICON_MODIFIER_DATA;
         break;
