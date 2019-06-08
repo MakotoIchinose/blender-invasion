@@ -1009,7 +1009,7 @@ static void rna_def_constraint_armature_deform(BlenderRNA *brna)
   RNA_def_struct_ui_text(
       srna, "Armature Constraint", "Applies transformations done by the Armature modifier");
   RNA_def_struct_sdna_from(srna, "bArmatureConstraint", "data");
-  RNA_def_struct_ui_icon(srna, ICON_MOD_ARMATURE);
+  RNA_def_struct_ui_icon(srna, ICON_CON_ARMATURE);
 
   prop = RNA_def_property(srna, "targets", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "targets", NULL);
