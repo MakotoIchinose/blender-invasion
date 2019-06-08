@@ -1,5 +1,3 @@
-
-
 extern "C" {
 
 #include "BLI_math.h"
@@ -48,21 +46,17 @@ extern "C" {
 #include <iostream>
 #include <ios>
 #include <fstream>
+#include <cstdint>
 
 #include "common.hpp"
 
 namespace {
-	bool STL_export_object_ascii(bContext *UNUSED(C), ExportSettings * const settings, std::fstream &fs,
-	                             Scene *escene, const Object *ob) {
-		Mesh *mesh;
-		settings->triangulate = true; // STL only really works with triangles
-		bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh);
+	bool STL_export_mesh_ascii(bContext *UNUSED(C), ExportSettings * const settings, std::fstream &fs,
+	                             const Object * const ob, const Mesh * const mesh) {
 		// TODO someone Is it ok to add the version info after a # in STL?
 		const std::string name = common::get_object_name(ob, mesh) + " # " + common::get_version_string();
-
 		fs << std::scientific;
 		fs << "solid " << name;
-
 		for (const MPoly &mp : common::poly_iter{mesh}) {
 			const std::array<float, 3> no = common::calculate_normal(mesh, mp);
 			fs << "facet normal " << no[0] << ' ' << no[1] << ' ' << no[2]
@@ -71,10 +65,42 @@ namespace {
 				fs << "\nvertex " << v.co[0] << ' ' << v.co[1] << ' ' << v.co[2];
 			fs << "\nendloop\nendfacet\n";
 		}
-
 		fs << "endsolid " << name;
+		return true;
+	}
 
-		common::free_mesh(mesh, needs_free);
+	const int __one__ = 1;
+	// CPU endianness
+	const bool little_endian = 1 == *(char*)(&__one__);
+
+	template<typename T, size_t size = sizeof(T)>
+	std::fstream & operator<<(std::fstream &fs, const T &v) {
+		if (little_endian) {
+			std::cerr << std::scientific << " ";
+			std::cerr << v;
+			fs.write((char *)&v, size);
+		} else {
+			char bytes[8], *pv = (char *)&v;
+			for (int i = 0; i < size; ++i)
+				bytes[i] = pv[size - 1 - i];
+			fs.write(bytes, size);
+		}
+		return fs;
+	}
+
+	bool STL_export_mesh_bin(bContext *UNUSED(C), ExportSettings * const settings, std::fstream &fs,
+	                         const Object * const ob, const Mesh * const mesh) {
+		char header[80] = { '\0' };
+		std::uint32_t tri = mesh->totpoly;
+		std::uint16_t attribute = 0;
+		fs << header << tri;
+		for (const MPoly &mp : common::poly_iter{mesh}) {
+			const std::array<float, 3> no = common::calculate_normal(mesh, mp);
+			fs << no[0] << no[1] << no[2];
+			for (const MVert &v : common::vert_of_poly_iter{mesh, mp})
+				fs << v.co[0] << v.co[1] << v.co[2];
+			fs << attribute;
+		}
 		return true;
 	}
 
@@ -83,9 +109,19 @@ namespace {
 		std::fstream fs;
 		fs.open(settings->filepath, std::ios::out | std::ios::trunc);
 		Scene *escene  = DEG_get_evaluated_scene(settings->depsgraph);
-		for (const Object *ob : common::exportable_object_iter{settings})
-			if (!STL_export_object_ascii(C, settings, fs, escene, ob))
-				return;
+		for (const Object *ob : common::exportable_object_iter{settings}) {
+			Mesh *mesh;
+			settings->triangulate = true; // STL only really works with triangles
+			bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh);
+			if (settings->use_ascii) {
+				if (!STL_export_mesh_ascii(C, settings, fs, ob, mesh))
+					return;
+			} else {
+				if (!STL_export_mesh_bin(C, settings, fs, ob, mesh))
+					return;
+			}
+			common::free_mesh(mesh, needs_free);
+		}
 	}
 
 	bool STL_export_end(bContext *C, ExportSettings * const settings) {
