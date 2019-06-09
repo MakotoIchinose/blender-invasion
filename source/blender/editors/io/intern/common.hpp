@@ -83,7 +83,8 @@ namespace common {
 	// Execute `start` and `end` and time it. Those functions should be
 	// specific to each exportter, but have the same signature as the two above
 	bool time_export(bContext *C, ExportSettings * const settings,
-	                 typeof(export_start) start, typeof(export_end) end);
+	                 void (*start)(bContext *C, ExportSettings * const settings),
+	                 void (*end)(bContext *C, ExportSettings * const settings);
 
 	const std::array<float, 3> calculate_normal(const Mesh * const mesh,
 	                                            const MPoly &mp);

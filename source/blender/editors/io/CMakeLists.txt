@@ -32,7 +32,7 @@ set(INC
 )
 
 set(INC_SYS
-
+  ${BOOST_INCLUDE_DIR}
 )
 
 set(SRC
