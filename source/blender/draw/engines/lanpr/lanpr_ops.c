@@ -1714,24 +1714,24 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
         case 1:
           rt->cull_status = TNS_CULL_USED;
           if (In1) {
-            tMatVectorMinus3d(vv1, rt->v[0]->gloc, cam_pos);
-            tMatVectorMinus3d(vv2, cam_pos, rt->v[2]->gloc);
+            tMatVectorMinus3d(vv1, rt->v[1]->gloc, cam_pos);
+            tMatVectorMinus3d(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[2]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[2]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[2]->gloc[2];
+            rv[0].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[1]->gloc[0];
+            rv[0].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[1]->gloc[1];
+            rv[0].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[1]->gloc[2];
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
-            tMatVectorMinus3d(vv1, rt->v[0]->gloc, cam_pos);
-            tMatVectorMinus3d(vv2, cam_pos, rt->v[1]->gloc);
+            tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
+            tMatVectorMinus3d(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[1]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[1]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[1]->gloc[2];
+            rv[1].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[2]->gloc[0];
+            rv[1].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[2]->gloc[1];
+            rv[1].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[2]->gloc[2];
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1755,9 +1755,8 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rl->l = &rv[0];
             rl->r = rt->v[1];
             rl->tl = rt1;
-            rl->tr = rt2;
+            rl->tr = rt->rl[0]->tr == rt ? rt->rl[0]->tl : rt->rl[0]->tr;
             rt1->rl[2] = rl;
-            rt2->rl[0] = rl;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
@@ -1765,9 +1764,10 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
             rl->r = &rv[1];
-            rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
-            rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
+            rl->tl = rt1;
+            rl->tr = rt2;
             rt1->rl[0] = rl;
+            rt2->rl[0] = rl;
 
             rt1->v[0] = rt->v[1];
             rt1->v[1] = &rv[1];
@@ -1778,13 +1778,13 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
-            rl->r = &rv[0];
-            rl->tl = rt->rl[2]->tl == rt ? rt1 : rt->rl[2]->tl;
-            rl->tr = rt->rl[2]->tr == rt ? rt1 : rt->rl[2]->tr;
+            rl->r = &rv[1];
+            rl->tl = rt2;
+            rl->tr = rt->rl[2]->tr == rt ? rt->rl[2]->tl : rt->rl[2]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[1];
 
-            rt2->v[0] = &rv[0];
+            rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[1];
             rt2->v[2] = rt->v[2];
 
@@ -1838,9 +1838,8 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rl->l = &rv[0];
             rl->r = rt->v[2];
             rl->tl = rt1;
-            rl->tr = rt2;
+            rl->tr = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
             rt1->rl[2] = rl;
-            rt2->rl[0] = rl;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
@@ -1848,9 +1847,10 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
             rl->r = &rv[1];
-            rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
-            rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
+            rl->tl = rt1;
+            rl->tr = rt2;
             rt1->rl[0] = rl;
+            rt2->rl[0] = rl;
 
             rt1->v[0] = rt->v[2];
             rt1->v[1] = &rv[1];
@@ -1861,13 +1861,13 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
-            rl->r = &rv[0];
-            rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
-            rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
+            rl->r = &rv[1];
+            rl->tl = rt2;
+            rl->tr = rt->rl[0]->tr == rt ? rt->rl[0]->tl : rt->rl[0]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[2];
 
-            rt2->v[0] = &rv[0];
+            rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[2];
             rt2->v[2] = rt->v[0];
 
@@ -1921,9 +1921,8 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rl->l = &rv[0];
             rl->r = rt->v[0];
             rl->tl = rt1;
-            rl->tr = rt2;
+            rl->tr = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
             rt1->rl[2] = rl;
-            rt2->rl[0] = rl;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
@@ -1931,9 +1930,10 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
             rl->r = &rv[1];
-            rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
-            rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
+            rl->tl = rt1;
+            rl->tr = rt2;
             rt1->rl[0] = rl;
+            rt2->rl[0] = rl;
 
             rt1->v[0] = rt->v[0];
             rt1->v[1] = &rv[1];
@@ -1944,13 +1944,13 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
-            rl->r = &rv[0];
-            rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
-            rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
+            rl->r = &rv[1];
+            rl->tl = rt2;
+            rl->tr = rt->rl[1]->tr == rt ? rt->rl[1]->tl : rt->rl[1]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[0];
 
-            rt2->v[0] = &rv[0];
+            rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[0];
             rt2->v[2] = rt->v[1];
 
