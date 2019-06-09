@@ -462,7 +462,7 @@ static void lanpr_cache_finish(void *vedata)
 
     LANPR_BatchItem *bi;
     for (bi = pd->dpix_batch_list.first; bi; bi = (void *)bi->item.next) {
-      DRW_shgroup_call(pd->dpix_transform_shgrp, bi->dpix_transform_batch, bi->ob->obmat);
+      DRW_shgroup_call_ex(pd->dpix_transform_shgrp, 0, bi->ob->obmat, bi->dpix_transform_batch, 0, 0, true, NULL);
       DRW_shgroup_call(pd->dpix_preview_shgrp, bi->dpix_preview_batch, 0);
     }
 
