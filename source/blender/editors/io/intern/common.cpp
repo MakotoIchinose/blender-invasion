@@ -212,7 +212,8 @@ namespace common {
 	}
 
 	bool time_export(bContext *C, ExportSettings * const settings,
-	                 typeof(export_start) start, typeof(export_end) end) {
+	                 void (*start)(bContext *C, ExportSettings * const settings),
+	                 void (*end)(bContext *C, ExportSettings * const settings) {
 		auto f = std::chrono::steady_clock::now();
 		start(C, settings);
 		auto ret = end(C, settings);
