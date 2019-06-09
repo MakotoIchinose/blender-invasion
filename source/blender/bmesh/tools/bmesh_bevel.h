@@ -21,7 +21,7 @@
  * \ingroup bmesh
  */
 
-#include "BKE_colortools.h"
+#include "BKE_profile_path.h"
 
 struct MDeformVert;
 

@@ -24,7 +24,7 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "BKE_colortools.h"
+#include "BKE_profile_path.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
 
