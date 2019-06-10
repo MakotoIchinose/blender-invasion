@@ -1080,7 +1080,7 @@ void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict pool,
                                            LANPR_RenderTaskInfo *rti,
                                            int threadid)
 {
-  LANPR_RenderBuffer *rb = rti->render_buffer;
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   int thread_id = rti->thread_id;
   LinkData *lip;
   int count = 0;
@@ -1131,7 +1131,6 @@ void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
 
   for (i = 0; i < thread_count; i++) {
     rti[i].thread_id = i;
-    rti[i].render_buffer = rb;
     BLI_task_pool_push(tp, lanpr_THREAD_calculate_line_occlusion, &rti[i], 0, TASK_PRIORITY_HIGH);
   }
   BLI_task_pool_work_and_wait(tp);
@@ -3261,6 +3260,8 @@ extern LANPR_SharedResource lanpr_share;
 void lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderElementLinkNode *reln;
+  
+  if(!rb) return;
 
   rb->contour_count = 0;
   rb->contour_managed = 0;
@@ -3297,16 +3298,12 @@ void lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 LANPR_RenderBuffer *lanpr_create_render_buffer(SceneLANPR *lanpr)
 {
   if (lanpr_share.render_buffer_shared) {
-    lanpr->render_buffer = lanpr_share.render_buffer_shared;
-    lanpr_destroy_render_data(lanpr->render_buffer);
-    return lanpr->render_buffer;
-    // lanpr_destroy_render_data(lanpr->render_buffer);
-    // MEM_freeN(lanpr->render_buffer);
+    lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
+    return lanpr_share.render_buffer_shared;;
   }
 
   LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "LANPR render buffer");
 
-  lanpr->render_buffer = rb;
   lanpr_share.render_buffer_shared = rb;
 
   rb->cached_for_frame = -1;
@@ -3652,17 +3649,17 @@ void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *
 void lanpr_rebuild_all_command(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *ll;
-  if (!lanpr || !lanpr->render_buffer)
+  if (!lanpr || !lanpr_share.render_buffer_shared)
     return;
 
   if (lanpr->enable_chaining) {
-    lanpr_chain_generate_draw_command(lanpr->render_buffer);
+    lanpr_chain_generate_draw_command(lanpr_share.render_buffer_shared);
   }
   else {
     for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
       if (ll->batch)
         GPU_batch_discard(ll->batch);
-      lanpr_rebuild_render_draw_command(lanpr->render_buffer, ll);
+      lanpr_rebuild_render_draw_command(lanpr_share.render_buffer_shared, ll);
     }
   }
 }
@@ -3795,7 +3792,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   GPU_framebuffer_clear(
       fbl->software_ms, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
 
-  if (lanpr->render_buffer) {
+  if (lanpr_share.render_buffer_shared) {
 
     int texw = GPU_texture_width(txl->ms_resolve_color),
         texh = GPU_texture_height(txl->ms_resolve_color);
@@ -3811,13 +3808,13 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     DRW_view_default_set(view);
     DRW_view_set_active(view);
 
-    if (lanpr->enable_chaining && lanpr->render_buffer->chain_draw_batch) {
+    if (lanpr->enable_chaining && lanpr_share.render_buffer_shared->chain_draw_batch) {
       for (ll = lanpr->line_layers.last; ll; ll = ll->prev) {
         LANPR_RenderBuffer *rb;
         psl->software_pass = DRW_pass_create("Software Render Preview",
                                              DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                                                  DRW_STATE_DEPTH_LESS_EQUAL);
-        rb = lanpr->render_buffer;
+        rb = lanpr_share.render_buffer_shared;
         rb->ChainShgrp = DRW_shgroup_create(lanpr_share.software_chaining_shader,
                                             psl->software_pass);
 
@@ -3874,7 +3871,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
             rb->ChainShgrp, "taper_r_strength", lanpr->use_same_taper ? tls : trs, 1);
 
         // need to add component enable/disable option.
-        DRW_shgroup_call(rb->ChainShgrp, lanpr->render_buffer->chain_draw_batch, NULL);
+        DRW_shgroup_call(rb->ChainShgrp, lanpr_share.render_buffer_shared->chain_draw_batch, NULL);
         // debug purpose
         // DRW_draw_pass(psl->color_pass);
         // DRW_draw_pass(psl->color_pass);
@@ -3935,7 +3932,7 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr
 
   rb = lanpr_create_render_buffer(lanpr);
 
-  lanpr_share.rb_ref = rb;
+  lanpr_share.render_buffer_shared = rb;
 
   rb->scene = scene;
   rb->w = scene->r.xsch;
@@ -3977,7 +3974,7 @@ static int lanpr_clear_render_buffer_exec(struct bContext *C, struct wmOperator 
   LANPR_RenderBuffer *rb;
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
 
-  lanpr_destroy_render_data(lanpr->render_buffer);
+  lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
 
   return OPERATOR_FINISHED;
 }

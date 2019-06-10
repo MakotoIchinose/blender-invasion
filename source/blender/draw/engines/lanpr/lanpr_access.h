@@ -24,4 +24,8 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr
 
 void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
+void lanpr_copy_data(Scene* from, Scene* to);
+
+void lanpr_free_everything(Scene* s);
+
 #endif

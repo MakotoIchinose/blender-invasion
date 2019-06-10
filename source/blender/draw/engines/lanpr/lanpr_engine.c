@@ -173,8 +173,9 @@ static void lanpr_engine_free(void)
     stl->g_data = 0;
   }
 
-  lanpr_destroy_render_data(lanpr_share.rb_ref);
-
+  lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
+  MEM_freeN(lanpr_share.render_buffer_shared);//no longer needed.
+  lanpr_share.render_buffer_shared=NULL;
 }
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
@@ -438,7 +439,7 @@ static void lanpr_cache_finish(void *vedata)
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {
     if (lanpr->reloaded) {
-      if (lanpr->render_buffer) {
+      if (lanpr_share.render_buffer_shared) {
         lanpr_feed_atlas_data_intersection_cache(vedata,
                                                  pd->atlas_pl,
                                                  pd->atlas_pr,
@@ -469,10 +470,10 @@ static void lanpr_cache_finish(void *vedata)
       DRW_shgroup_call(pd->dpix_preview_shgrp, bi->dpix_preview_batch, 0);
     }
 
-    if (lanpr->render_buffer && lanpr->render_buffer->DPIXIntersectionBatch) {
+    if (lanpr_share.render_buffer_shared && lanpr_share.render_buffer_shared->DPIXIntersectionBatch) {
       DRW_shgroup_call(
-          pd->dpix_transform_shgrp, lanpr->render_buffer->DPIXIntersectionTransformBatch, 0);
-      DRW_shgroup_call(pd->dpix_preview_shgrp, lanpr->render_buffer->DPIXIntersectionBatch, 0);
+          pd->dpix_transform_shgrp, lanpr_share.render_buffer_shared->DPIXIntersectionTransformBatch, 0);
+      DRW_shgroup_call(pd->dpix_preview_shgrp, lanpr_share.render_buffer_shared->DPIXIntersectionBatch, 0);
     }
   }
 }
@@ -537,9 +538,6 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     // should isolate these into a seperate function.
     lanpr_software_draw_scene(vedata, dfb, is_render);
   }
-
-  // Draw can create stuff there.
-  lanpr_share.rb_ref = lanpr->render_buffer;
 }
 
 static void lanpr_draw_scene(void *vedata)
@@ -625,9 +623,9 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
-    if (!lanpr->render_buffer)
+    if (!lanpr_share.render_buffer_shared)
       lanpr_create_render_buffer(lanpr);
-    if (lanpr->render_buffer->cached_for_frame != scene->r.cfra || LANPR_GLOBAL_update_tag) {
+    if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra || LANPR_GLOBAL_update_tag) {
       lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, lanpr, scene);
     }
   }
@@ -662,7 +660,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   lanpr_cache_finish(vedata);
 
   /* get ref for destroy data */
-  lanpr_share.rb_ref = lanpr->render_buffer;
+  //lanpr_share.rb_ref = lanpr->render_buffer;
 
   DRW_render_instance_buffer_finish();
 

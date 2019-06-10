@@ -227,7 +227,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
   LANPR_PrivateData *pd = stl->g_data;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
-  LANPR_RenderBuffer *rb = lanpr->render_buffer;
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   LinkData *lip;
   LANPR_RenderLine *rl;
   int i, idx;
@@ -342,7 +342,7 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
   LANPR_PrivateData *pd = stl->g_data;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
-  LANPR_RenderBuffer *rb = lanpr->render_buffer;
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   float co[2];
   int i;
 

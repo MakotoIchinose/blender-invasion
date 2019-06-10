@@ -95,8 +95,6 @@ typedef struct LANPR_SharedResource {
   void *ved_viewport;
   void *ved_render;
 
-  void *rb_ref;
-
   int init_complete;
 
   SpinLock render_flag_lock;
@@ -268,7 +266,6 @@ typedef struct LANPR_Data {
 typedef struct LANPR_RenderTaskInfo {
   // thrd_t           ThreadHandle;
 
-  struct LANPR_RenderBuffer *render_buffer;
   int thread_id;
 
   LinkData *contour;
@@ -290,6 +287,8 @@ typedef struct LANPR_RenderTaskInfo {
 
 typedef struct LANPR_RenderBuffer {
   struct LANPR_RenderBuffer *prev, *next;
+
+  int is_copied; // for render.
 
   int w, h;
   int tile_size_w, tile_size_h;
