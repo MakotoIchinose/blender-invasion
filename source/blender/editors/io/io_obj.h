@@ -36,10 +36,10 @@ extern "C" {
 #endif
 
 typedef struct OBJExportSettings {
-	float frame_start;
-	float frame_end;
+  float frame_start;
+  float frame_end;
 
-	bool flatten_hierarchy;
+  bool flatten_hierarchy;
 
 } OBJExportSettings;
 

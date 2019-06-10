@@ -25,16 +25,16 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif  /* __cplusplus */
+#endif /* __cplusplus */
 
 #include "../io_common.h"
 
 struct bContext;
 
-bool STL_export(bContext *C, ExportSettings * const settings);
+bool STL_export(bContext *C, ExportSettings *const settings);
 
 #ifdef __cplusplus
 }
-#endif  /* __cplusplus */
+#endif /* __cplusplus */
 
 /* #endif  /\* __IO_STL_H__ *\/ */

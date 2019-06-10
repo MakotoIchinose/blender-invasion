@@ -26,17 +26,16 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif  /* __cplusplus */
+#endif /* __cplusplus */
 
 #include "../io_common.h"
 
-
 struct bContext;
 
-bool OBJ_export(bContext *C, ExportSettings * const settings);
+bool OBJ_export(bContext *C, ExportSettings *const settings);
 
 #ifdef __cplusplus
 }
-#endif  /* __cplusplus */
+#endif /* __cplusplus */
 
 /* #endif  /\* __IO_OBJ_H__ *\/ */
