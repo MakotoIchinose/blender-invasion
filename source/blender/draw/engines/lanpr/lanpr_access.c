@@ -288,7 +288,7 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph)
   SceneLANPR *lanpr = &scene->lanpr;
   if (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE)
     return;
-  if (lanpr->render_buffer && lanpr->render_buffer->cached_for_frame != scene->r.cfra) {
+  if (!lanpr->render_buffer || lanpr->render_buffer->cached_for_frame != scene->r.cfra) {
     lanpr_compute_feature_lines_internal(depsgraph, lanpr, scene);
   }
 }

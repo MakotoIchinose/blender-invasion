@@ -157,21 +157,24 @@ static void lanpr_engine_init(void *ved)
 static void lanpr_engine_free(void)
 {
   void *ved = lanpr_share.ved_viewport;
-  LANPR_Data *vedata = (LANPR_Data *)ved;
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
+  if(ved){
+    LANPR_Data *vedata = (LANPR_Data *)ved;
+    LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
 
-  // only free custom data in storage list.
+    // only free custom data in storage list.
 
-  BLI_mempool_destroy(stl->g_data->mp_line_strip);
-  BLI_mempool_destroy(stl->g_data->mp_line_strip_point);
-  BLI_mempool_destroy(stl->g_data->mp_sample);
-  BLI_mempool_destroy(stl->g_data->mp_batch_list);
+    BLI_mempool_destroy(stl->g_data->mp_line_strip);
+    BLI_mempool_destroy(stl->g_data->mp_line_strip_point);
+    BLI_mempool_destroy(stl->g_data->mp_sample);
+    BLI_mempool_destroy(stl->g_data->mp_batch_list);
 
-  lanpr_destroy_atlas(vedata);
+    lanpr_destroy_atlas(vedata);
 
-  lanpr_destroy_render_data(stl->g_data->rb_ref);
+    stl->g_data = 0;
+  }
 
-  stl->g_data = 0;
+  lanpr_destroy_render_data(lanpr_share.rb_ref);
+
 }
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
@@ -536,7 +539,7 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
   }
 
   // Draw can create stuff there.
-  pd->rb_ref = lanpr->render_buffer;
+  lanpr_share.rb_ref = lanpr->render_buffer;
 }
 
 static void lanpr_draw_scene(void *vedata)
@@ -659,7 +662,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   lanpr_cache_finish(vedata);
 
   /* get ref for destroy data */
-  stl->g_data->rb_ref = lanpr->render_buffer;
+  lanpr_share.rb_ref = lanpr->render_buffer;
 
   DRW_render_instance_buffer_finish();
 
@@ -759,4 +762,5 @@ RenderEngineType DRW_engine_viewport_lanpr_type = {
     NULL,  // update in script
     NULL,  // update in render pass
     &draw_engine_lanpr_type,
-    {NULL, NULL, NULL}};
+    {NULL, NULL, NULL}
+};

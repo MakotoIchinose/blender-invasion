@@ -95,6 +95,8 @@ typedef struct LANPR_SharedResource {
   void *ved_viewport;
   void *ved_render;
 
+  void *rb_ref;
+
   int init_complete;
 
   SpinLock render_flag_lock;
@@ -231,9 +233,6 @@ typedef struct LANPR_PrivateData {
   GPUBatch *snake_batch;
 
   ListBase dpix_batch_list;
-
-  LANPR_RenderBuffer *rb_ref;
-
 } LANPR_PrivateData;
 
 typedef struct LANPR_StorageList {

@@ -40,14 +40,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-/*
-
-   Ported from NUL4.0
-
-   Author(s):WuYiming - xp8110@outlook.com
-
- */
-
+extern LANPR_SharedResource lanpr_share;
 struct Object;
 
 int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
@@ -3941,6 +3934,9 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr
   LANPR_RenderBuffer *rb;
 
   rb = lanpr_create_render_buffer(lanpr);
+
+  lanpr_share.rb_ref = rb;
+
   rb->scene = scene;
   rb->w = scene->r.xsch;
   rb->h = scene->r.ysch;
