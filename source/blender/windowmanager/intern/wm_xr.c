@@ -345,7 +345,7 @@ static void wm_xr_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-eWM_xrGraphicsBinding wm_xr_session_active_graphics_lib_get(const wmXRContext *xr_context)
+eWM_xrGraphicsBinding wm_xr_session_active_graphics_binding_type_get(const wmXRContext *xr_context)
 {
   return xr_context->gpu_binding;
 }

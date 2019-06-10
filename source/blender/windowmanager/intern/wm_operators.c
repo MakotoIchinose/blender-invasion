@@ -3552,18 +3552,19 @@ static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   struct wmXRContext *xr_context = wm->xr_context;
-  const eWM_xrGraphicsBinding graphics_lib = wm_xr_session_active_graphics_lib_get(xr_context);
+  const eWM_xrGraphicsBinding gpu_binding = wm_xr_session_active_graphics_binding_type_get(
+      xr_context);
 
   if (wm_xr_session_is_running(xr_context)) {
     BLI_assert(wm->xr_gpu_context != NULL);
 
     wm_xr_session_end(xr_context);
-    xr_session_gpu_binding_context_destroy(graphics_lib, wm->xr_gpu_context);
+    xr_session_gpu_binding_context_destroy(gpu_binding, wm->xr_gpu_context);
   }
   else {
     BLI_assert(wm->xr_gpu_context == NULL);
 
-    wm->xr_gpu_context = xr_session_gpu_binding_context_create(graphics_lib);
+    wm->xr_gpu_context = xr_session_gpu_binding_context_create(gpu_binding);
     wm_xr_session_start(xr_context, wm->xr_gpu_context);
   }
   return OPERATOR_FINISHED;
