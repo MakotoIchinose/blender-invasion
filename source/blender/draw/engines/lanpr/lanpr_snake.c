@@ -96,13 +96,13 @@ int lanpr_detect_direction(LANPR_PrivateData *pd, int col, int row, int LastDire
 
 LANPR_LineStrip *lanpr_create_line_strip(LANPR_PrivateData *pd)
 {
-  LANPR_LineStrip *ls = BLI_mempool_calloc(pd->mp_line_strip);
+  LANPR_LineStrip *ls = BLI_mempool_calloc(lanpr_share.mp_line_strip);
   return ls;
 }
 LANPR_LineStripPoint *lanpr_append_point(
     LANPR_PrivateData *pd, LANPR_LineStrip *ls, real X, real Y, real Z)
 {
-  LANPR_LineStripPoint *lsp = BLI_mempool_calloc(pd->mp_line_strip_point);
+  LANPR_LineStripPoint *lsp = BLI_mempool_calloc(lanpr_share.mp_line_strip_point);
 
   lsp->P[0] = X;
   lsp->P[1] = Y;
@@ -117,7 +117,7 @@ LANPR_LineStripPoint *lanpr_append_point(
 LANPR_LineStripPoint *lanpr_push_point(
     LANPR_PrivateData *pd, LANPR_LineStrip *ls, real X, real Y, real Z)
 {
-  LANPR_LineStripPoint *lsp = BLI_mempool_calloc(pd->mp_line_strip_point);
+  LANPR_LineStripPoint *lsp = BLI_mempool_calloc(lanpr_share.mp_line_strip_point);
 
   lsp->P[0] = X;
   lsp->P[1] = Y;
@@ -134,9 +134,9 @@ void lanpr_destroy_line_strip(LANPR_PrivateData *pd, LANPR_LineStrip *ls)
 {
   LANPR_LineStripPoint *lsp;
   while (lsp = BLI_pophead(&ls->points)) {
-    BLI_mempool_free(pd->mp_line_strip_point, lsp);
+    BLI_mempool_free(lanpr_share.mp_line_strip_point, lsp);
   }
-  BLI_mempool_free(pd->mp_line_strip, ls);
+  BLI_mempool_free(lanpr_share.mp_line_strip, ls);
 }
 
 void lanpr_remove_sample(LANPR_PrivateData *pd, int row, int col)
@@ -353,7 +353,7 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
       GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_STATIC | GPU_BATCH_OWNS_VBO);
 }
 
-void lanpr_snake_free_pool_data(LANPR_PrivateData *pd)
+void lanpr_snake_prepare_cache(LANPR_PrivateData *pd)
 {
   if (pd->line_result_8bit)
     MEM_freeN(pd->line_result_8bit);
@@ -361,10 +361,26 @@ void lanpr_snake_free_pool_data(LANPR_PrivateData *pd)
   if (pd->line_result)
     MEM_freeN(pd->line_result);
   pd->line_result = 0;
-  BLI_mempool_clear(pd->mp_line_strip);
-  BLI_mempool_clear(pd->mp_line_strip_point);
-  BLI_mempool_clear(pd->mp_sample);
-  BLI_mempool_clear(pd->mp_batch_list);
+  lanpr_share.mp_sample = BLI_mempool_create(
+        sizeof(LANPR_TextureSample), 0, 512, BLI_MEMPOOL_NOP);
+  lanpr_share.mp_line_strip = BLI_mempool_create(
+        sizeof(LANPR_LineStrip), 0, 512, BLI_MEMPOOL_NOP);
+  lanpr_share.mp_line_strip_point = BLI_mempool_create(
+        sizeof(LANPR_LineStripPoint), 0, 1024, BLI_MEMPOOL_NOP);
+  
+}
+void lanpe_sanke_free_cache(LANPR_PrivateData *pd)
+{
+  if (pd->line_result_8bit)
+    MEM_freeN(pd->line_result_8bit);
+  pd->line_result_8bit = 0;
+  if (pd->line_result)
+    MEM_freeN(pd->line_result);
+  pd->line_result = 0;
+
+  BLI_mempool_destroy(lanpr_share.mp_line_strip);
+  BLI_mempool_destroy(lanpr_share.mp_line_strip_point);
+  BLI_mempool_destroy(lanpr_share.mp_sample);
 }
 void lanpr_snake_free_readback_data(LANPR_PrivateData *pd)
 {
@@ -486,7 +502,7 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
       int index = h * texw + w;
       if ((sample = pd->line_result[index]) > 0.9) {
         pd->line_result_8bit[index] = 255;
-        LANPR_TextureSample *ts = BLI_mempool_calloc(pd->mp_sample);
+        LANPR_TextureSample *ts = BLI_mempool_calloc(lanpr_share.mp_sample);
         BLI_addtail(&pd->pending_samples, ts);
         pd->sample_table[index] = ts;
         ts->X = w;
@@ -533,7 +549,7 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
 
   GPUBatch *snake_batch = lanpr_get_snake_batch(pd);
 
-  lanpr_snake_free_pool_data(pd);
+  lanpr_snake_prepare_cache(pd);
 
   psl->snake_pass = DRW_pass_create("Snake Visualization Pass",
                                     DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
@@ -554,9 +570,9 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
   DRW_draw_pass(psl->snake_pass);
   GPU_batch_discard(snake_batch);
 
-  BLI_mempool_clear(pd->mp_sample);
-  BLI_mempool_clear(pd->mp_line_strip);
-  BLI_mempool_clear(pd->mp_line_strip_point);
+  BLI_mempool_clear(lanpr_share.mp_sample);
+  BLI_mempool_clear(lanpr_share.mp_line_strip);
+  BLI_mempool_clear(lanpr_share.mp_line_strip_point);
 
   pd->pending_samples.first = pd->pending_samples.last = 0;
   pd->erased_samples.first = pd->erased_samples.last = 0;
@@ -564,4 +580,6 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
 
   GPU_framebuffer_bind(DefaultFB);
   DRW_multisamples_resolve(txl->depth, txl->edge_intermediate, 1);
+
+  lanpe_sanke_free_cache(pd);
 }

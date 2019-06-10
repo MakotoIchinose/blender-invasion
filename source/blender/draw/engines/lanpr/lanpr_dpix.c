@@ -327,7 +327,7 @@ int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_ind
   GPUBatch *gb2 = GPU_batch_create_ex(
       GPU_PRIM_POINTS, vbo2, 0, GPU_USAGE_STATIC | GPU_BATCH_OWNS_VBO);
 
-  LANPR_BatchItem *bi = BLI_mempool_alloc(pd->mp_batch_list);
+  LANPR_BatchItem *bi = BLI_mempool_alloc(lanpr_share.mp_batch_list);
   BLI_addtail(&pd->dpix_batch_list, bi);
   bi->dpix_transform_batch = gb;
   bi->dpix_preview_batch = gb2;

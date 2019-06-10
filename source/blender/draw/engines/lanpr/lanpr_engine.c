@@ -157,25 +157,19 @@ static void lanpr_engine_init(void *ved)
 static void lanpr_engine_free(void)
 {
   void *ved = lanpr_share.ved_viewport;
-  if(ved){
-    LANPR_Data *vedata = (LANPR_Data *)ved;
-    LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
 
-    // only free custom data in storage list.
+  BLI_mempool* mp = lanpr_share.mp_batch_list;
 
-    BLI_mempool_destroy(stl->g_data->mp_line_strip);
-    BLI_mempool_destroy(stl->g_data->mp_line_strip_point);
-    BLI_mempool_destroy(stl->g_data->mp_sample);
-    BLI_mempool_destroy(stl->g_data->mp_batch_list);
-
-    lanpr_destroy_atlas(vedata);
-
-    stl->g_data = 0;
+  if(mp){
+    BLI_mempool_destroy(mp);
+    mp=NULL;
   }
-
-  lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
-  MEM_freeN(lanpr_share.render_buffer_shared);//no longer needed.
-  lanpr_share.render_buffer_shared=NULL;
+  
+  if(lanpr_share.render_buffer_shared){
+    lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
+    MEM_freeN(lanpr_share.render_buffer_shared);
+    lanpr_share.render_buffer_shared=NULL;
+  }
 }
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
@@ -194,13 +188,10 @@ static void lanpr_cache_init(void *vedata)
   if (!stl->g_data) {
     /* Alloc transient pointers */
     stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
-    stl->g_data->mp_sample = BLI_mempool_create(
-        sizeof(LANPR_TextureSample), 0, 512, BLI_MEMPOOL_NOP);
-    stl->g_data->mp_line_strip = BLI_mempool_create(
-        sizeof(LANPR_LineStrip), 0, 512, BLI_MEMPOOL_NOP);
-    stl->g_data->mp_line_strip_point = BLI_mempool_create(
-        sizeof(LANPR_LineStripPoint), 0, 1024, BLI_MEMPOOL_NOP);
-    stl->g_data->mp_batch_list = BLI_mempool_create(
+  }
+
+  if(!lanpr_share.mp_batch_list){
+    lanpr_share.mp_batch_list = BLI_mempool_create(
         sizeof(LANPR_BatchItem), 0, 128, BLI_MEMPOOL_NOP);
   }
 
@@ -381,7 +372,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask");  // should always be float
 
       pd->dpix_batch_list.first = pd->dpix_batch_list.last = 0;
-      BLI_mempool_clear(pd->mp_batch_list);
+      BLI_mempool_clear(lanpr_share.mp_batch_list);
     }
   }
   else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {

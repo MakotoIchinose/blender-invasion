@@ -78,6 +78,12 @@ typedef struct LANPR_SharedResource {
   /* We only allocate once for all */
   LANPR_RenderBuffer *render_buffer_shared;
 
+  /* cache */
+  BLI_mempool *mp_sample;
+  BLI_mempool *mp_line_strip;
+  BLI_mempool *mp_line_strip_point;
+  BLI_mempool *mp_batch_list;
+
   /* Snake */
   GPUShader *multichannel_shader;
   GPUShader *edge_detect_shader;
@@ -191,11 +197,6 @@ typedef struct LANPR_PrivateData {
   unsigned char *line_result_8bit;
   int width, height;  // if not match recreate buffer.
   void **sample_table;
-
-  BLI_mempool *mp_sample;
-  BLI_mempool *mp_line_strip;
-  BLI_mempool *mp_line_strip_point;
-  BLI_mempool *mp_batch_list;
 
   ListBase pending_samples;
   ListBase erased_samples;
