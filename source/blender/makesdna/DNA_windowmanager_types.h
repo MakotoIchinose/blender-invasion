@@ -178,8 +178,10 @@ typedef struct wmWindowManager {
   char par[7];
 
   struct wmMsgBus *message_bus;
+
   //#ifdef WITH_OPENXR
   struct wmXRContext *xr_context;
+  void *xr_gpu_context;
   //#endif
 } wmWindowManager;
 

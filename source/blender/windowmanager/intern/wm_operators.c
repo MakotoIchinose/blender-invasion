@@ -81,6 +81,10 @@
 
 #include "BLF_api.h"
 
+#ifdef WITH_OPENXR
+#  include "GHOST_C-api.h"
+#endif
+
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
@@ -3518,15 +3522,49 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 }
 
 #ifdef WITH_OPENXR
+static GHOST_ContextHandle xr_session_gpu_binding_context_create(
+    eWM_xrGraphicsBinding graphics_lib)
+{
+#  ifndef WIN32
+  BLI_assert(graphics_lib == WM_XR_GRAPHICS_OPENGL);
+#  endif
+
+  switch (graphics_lib) {
+    case WM_XR_GRAPHICS_OPENGL:
+      return WM_opengl_context_create();
+    default:
+      return NULL;
+  }
+}
+
+static void xr_session_gpu_binding_context_destroy(eWM_xrGraphicsBinding graphics_lib,
+                                                   GHOST_ContextHandle ghost_context)
+{
+  switch (graphics_lib) {
+    case WM_XR_GRAPHICS_OPENGL:
+      WM_opengl_context_dispose(ghost_context);
+    default:
+      return;
+  }
+}
+
 static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  struct wmXRContext *xr_context = CTX_wm_xr_context(C);
+  wmWindowManager *wm = CTX_wm_manager(C);
+  struct wmXRContext *xr_context = wm->xr_context;
+  const eWM_xrGraphicsBinding graphics_lib = wm_xr_session_active_graphics_lib_get(xr_context);
 
   if (wm_xr_session_is_running(xr_context)) {
+    BLI_assert(wm->xr_gpu_context != NULL);
+
     wm_xr_session_end(xr_context);
+    xr_session_gpu_binding_context_destroy(graphics_lib, wm->xr_gpu_context);
   }
   else {
-    wm_xr_session_start(xr_context);
+    BLI_assert(wm->xr_gpu_context == NULL);
+
+    wm->xr_gpu_context = xr_session_gpu_binding_context_create(graphics_lib);
+    wm_xr_session_start(xr_context, wm->xr_gpu_context);
   }
   return OPERATOR_FINISHED;
 }

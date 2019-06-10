@@ -26,15 +26,21 @@
 
 #include "BKE_context.h"
 
-#include "DNA_windowmanager_types.h"
-
 #include "MEM_guardedalloc.h"
 
 #include "BLI_assert.h"
 #include "BLI_compiler_attrs.h"
 #include "BLI_string.h"
+#include "DNA_windowmanager_types.h"
+
+#include "GHOST_C-api.h"
+
+#ifdef WITH_X11
+#  include <GL/glxew.h>
+#endif
 
 #include "openxr/openxr.h"
+#include "openxr/openxr_platform.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -64,6 +70,9 @@ typedef struct OpenXRData {
 
 typedef struct wmXRContext {
   OpenXRData oxr;
+
+  /** Active graphics binding type. */
+  eWM_xrGraphicsBinding gpu_binding;
 
   /** Names of enabled extensions */
   const char **enabled_extensions;
@@ -154,54 +163,92 @@ static bool openxr_extension_is_available(const OpenXRData *oxr, const char *ext
   return false;
 }
 
+static const char *openxr_ext_name_from_wm_gpu_binding(eWM_xrGraphicsBinding binding)
+{
+  switch (binding) {
+    case WM_XR_GRAPHICS_OPENGL:
+      return XR_KHR_OPENGL_ENABLE_EXTENSION_NAME;
+#ifdef WIN32
+    case WM_XR_GRAPHICS_D3D11:
+      return XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
+#endif
+    case WM_XR_GRAPHICS_UNKNOWN:
+      BLI_assert(false);
+  }
+
+  return NULL;
+}
+
+/**
+ * Decide which graphics binding extension to use based on
+ * #wmXRContextCreateInfo.gpu_binding_candidates and available extensions.
+ */
+static eWM_xrGraphicsBinding openxr_graphics_extension_to_enable_get(
+    const OpenXRData *oxr, const wmXRContextCreateInfo *create_info)
+{
+  BLI_assert(create_info->gpu_binding_candidates != NULL);
+  BLI_assert(create_info->gpu_binding_candidates_count > 0);
+
+  for (uint i = 0; i < create_info->gpu_binding_candidates_count; i++) {
+    BLI_assert(create_info->gpu_binding_candidates[i] != WM_XR_GRAPHICS_UNKNOWN);
+    const char *ext_name = openxr_ext_name_from_wm_gpu_binding(
+        create_info->gpu_binding_candidates[i]);
+    if (openxr_extension_is_available(oxr, ext_name)) {
+      return create_info->gpu_binding_candidates[i];
+    }
+  }
+
+  return WM_XR_GRAPHICS_UNKNOWN;
+}
+
 /**
  * Gather an array of names for the extensions to enable.
  */
-static void openxr_extensions_to_enable_get(const OpenXRData *oxr,
+static void openxr_extensions_to_enable_get(const wmXRContext *context,
+                                            const OpenXRData *oxr,
                                             const char ***r_ext_names,
                                             uint *r_ext_count)
 {
-  const static char *try_ext[] = {
-      "XR_KHR_opengl_enable",
-#ifdef WIN32
-      "XR_KHR_D3D11_enable",
-#endif
-  };
-  const uint try_ext_count = ARRAY_SIZE(try_ext);
+  BLI_assert(context->gpu_binding != WM_XR_GRAPHICS_UNKNOWN);
 
-  BLI_assert(r_ext_names != NULL);
-  BLI_assert(r_ext_count != NULL);
+  const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding);
+  BLI_assert(gpu_binding);
 
-  *r_ext_names = MEM_malloc_arrayN(try_ext_count, sizeof(char *), __func__);
+  {
+    const static char *try_ext[] = {};
+    const uint try_ext_count = ARRAY_SIZE(try_ext);
 
-  for (uint i = 0, j = 0; j < try_ext_count; j++) {
-    if (openxr_extension_is_available(oxr, try_ext[j])) {
-      *r_ext_names[i++] = try_ext[j];
+    BLI_assert(r_ext_names != NULL);
+    BLI_assert(r_ext_count != NULL);
+
+    /* try_ext_count + 1 for graphics binding extension. */
+    *r_ext_names = MEM_malloc_arrayN(try_ext_count + 1, sizeof(char *), __func__);
+
+    /* Add graphics binding extension. */
+    *r_ext_names[0] = gpu_binding;
+    *r_ext_count = 1;
+
+    for (uint i = 1, j = 0; j < try_ext_count; j++) {
+      if (openxr_extension_is_available(oxr, try_ext[j])) {
+        *r_ext_names[i++] = try_ext[j];
+        (*r_ext_count)++;
+      }
     }
   }
 }
 
 ATTR_NONNULL()
-static bool openxr_instance_setup(wmXRContext *context)
+static bool openxr_instance_create(wmXRContext *context)
 {
   XrInstanceCreateInfo create_info = {.type = XR_TYPE_INSTANCE_CREATE_INFO};
   OpenXRData *oxr = &context->oxr;
-
-#ifdef USE_EXT_LAYER_PRINTS
-  puts("Available OpenXR layers/extensions:");
-#endif
-  openxr_gather_api_layers(oxr);
-  openxr_gather_extensions(oxr);
-#ifdef USE_EXT_LAYER_PRINTS
-  puts("Done printing OpenXR layers/extensions.");
-#endif
 
   BLI_strncpy(
       create_info.applicationInfo.applicationName, "Blender", XR_MAX_APPLICATION_NAME_SIZE);
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 
   openxr_extensions_to_enable_get(
-      oxr, &context->enabled_extensions, &create_info.enabledExtensionCount);
+      context, oxr, &context->enabled_extensions, &create_info.enabledExtensionCount);
   create_info.enabledExtensionNames = context->enabled_extensions;
 
   xrCreateInstance(&create_info, &oxr->instance);
@@ -214,22 +261,38 @@ static void openxr_instance_log_print(OpenXRData *oxr)
 {
   BLI_assert(oxr->instance != XR_NULL_HANDLE);
 
-  XrInstanceProperties instanceProperties = {XR_TYPE_INSTANCE_PROPERTIES};
+  XrInstanceProperties instanceProperties = {.type = XR_TYPE_INSTANCE_PROPERTIES};
   xrGetInstanceProperties(oxr->instance, &instanceProperties);
 
   printf("Connected to OpenXR runtime: %s\n", instanceProperties.runtimeName);
 }
 
-wmXRContext *wm_xr_context_create(void)
+/**
+ * \brief Initialize the window manager XR-Context.
+ * Includes setting up the OpenXR instance, querying available extensions and API layers, enabling
+ * extensions (currently graphics binding extension only) and API layers.
+ */
+wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info)
 {
   wmXRContext *xr_context = MEM_callocN(sizeof(*xr_context), "wmXRContext");
   OpenXRData *oxr = &xr_context->oxr;
 
-  oxr->session_state = XR_SESSION_STATE_UNKNOWN;
+#ifdef USE_EXT_LAYER_PRINTS
+  puts("Available OpenXR layers/extensions:");
+#endif
+  openxr_gather_api_layers(oxr);
+  openxr_gather_extensions(oxr);
+#ifdef USE_EXT_LAYER_PRINTS
+  puts("Done printing OpenXR layers/extensions.");
+#endif
+
+  xr_context->gpu_binding = openxr_graphics_extension_to_enable_get(oxr, create_info);
 
   BLI_assert(xr_context->oxr.instance == XR_NULL_HANDLE);
-  openxr_instance_setup(xr_context);
+  openxr_instance_create(xr_context);
   openxr_instance_log_print(oxr);
+
+  oxr->session_state = XR_SESSION_STATE_UNKNOWN;
 
   return xr_context;
 }
@@ -241,7 +304,9 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
   if (oxr->session != XR_NULL_HANDLE) {
     xrDestroySession(oxr->session);
   }
-  xrDestroyInstance(oxr->instance);
+  if (oxr->instance != XR_NULL_HANDLE) {
+    xrDestroyInstance(oxr->instance);
+  }
 
   MEM_SAFE_FREE(oxr->extensions);
   MEM_SAFE_FREE(oxr->layers);
@@ -280,7 +345,47 @@ static void wm_xr_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-void wm_xr_session_start(wmXRContext *xr_context)
+eWM_xrGraphicsBinding wm_xr_session_active_graphics_lib_get(const wmXRContext *xr_context)
+{
+  return xr_context->gpu_binding;
+}
+
+static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
+                                            GHOST_ContextHandle UNUSED(ghost_context))
+{
+  void *binding_ptr = NULL;
+
+  switch (xr_context->gpu_binding) {
+    case WM_XR_GRAPHICS_OPENGL: {
+#if defined(WITH_X11)
+      XrGraphicsBindingOpenGLXlibKHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR};
+
+#elif defined(WIN32)
+      XrGraphicsBindingOpenGLWin32KHR binding =
+      {.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR }
+
+#endif
+
+      binding_ptr = MEM_mallocN(sizeof(binding), __func__);
+      memcpy(binding_ptr, &binding, sizeof(binding));
+      break;
+    }
+#ifdef WIN32
+    case WM_XR_GRAPHICS_D3D11: {
+      XrGraphicsBindingD3D11KHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR};
+
+      binding_ptr = MEM_mallocN(sizeof(binding), __func__);
+      memcpy(binding_ptr, &binding, sizeof(binding));
+    }
+#endif
+    default:
+      BLI_assert(false);
+  }
+
+  return binding_ptr;
+}
+
+void wm_xr_session_start(wmXRContext *xr_context, void *ghost_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
@@ -291,8 +396,7 @@ void wm_xr_session_start(wmXRContext *xr_context)
 
   XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
   create_info.systemId = oxr->system_id;
-  /* TODO .next needs to point to graphics extension structure  XrGraphicsBindingFoo */
-  // create_info.next = ;
+  create_info.next = openxr_graphics_binding_create(xr_context, ghost_context);
 
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }

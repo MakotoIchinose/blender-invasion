@@ -189,6 +189,8 @@ if(WITH_OPENXR)
       set(OPENXR_LOADER_NAME openxr_loader)
     endif()
 
+    include(xr_platform_defines)
+
     list(APPEND LIB ${OPENXR_LOADER_NAME})
   endif()
 
