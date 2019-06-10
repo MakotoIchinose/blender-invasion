@@ -3093,8 +3093,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
-      arm->flag &= ~(ARM_FLAG_UNUSED_1 | ARM_FLAG_UNUSED_5 | ARM_FLAG_UNUSED_7 |
-                     ARM_FLAG_UNUSED_12);
+      arm->flag &= ~(ARM_FLAG_UNUSED_1 | ARM_FLAG_UNUSED_5 | ARM_FLAG_UNUSED_6 |
+                     ARM_FLAG_UNUSED_7 | ARM_FLAG_UNUSED_12);
     }
 
     LISTBASE_FOREACH (Text *, text, &bmain->texts) {
@@ -3530,6 +3530,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                                             COLLECTION_RESTRICT_SELECT |
                                             COLLECTION_RESTRICT_RENDER);
       }
+    }
+
+    LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+      arm->flag &= ~(ARM_FLAG_UNUSED_6);
     }
   }
 }

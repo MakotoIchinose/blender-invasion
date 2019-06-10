@@ -75,6 +75,9 @@ const EnumPropertyItem rna_enum_sequence_modifier_type_items[] = {
 
 #  include "WM_api.h"
 
+#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph_build.h"
+
 #  include "IMB_imbuf.h"
 
 typedef struct SequenceSearchData {
@@ -151,6 +154,25 @@ static void rna_Sequence_invalidate_composite_update(Main *UNUSED(bmain),
 
     BKE_sequence_invalidate_cache_composite(scene, seq);
   }
+}
+
+static void rna_Sequence_use_sequence(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  /* General update callback. */
+  rna_Sequence_invalidate_raw_update(bmain, scene, ptr);
+  /* Chaning recursion changes set of IDs which needs to be remapped by the copy-on-write.
+   * the only way for this currently is to tag the ID for ID_RECALC_COPY_ON_WRITE. */
+  Editing *ed = BKE_sequencer_editing_get(scene, false);
+  if (ed) {
+    Sequence *seq = (Sequence *)ptr->data;
+    if (seq->scene != NULL) {
+      DEG_id_tag_update(&seq->scene->id, ID_RECALC_COPY_ON_WRITE);
+    }
+  }
+  /* The sequencer scene is to be updated as well, including new relations from the nested
+   * sequencer. */
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
+  DEG_relations_tag_update(bmain);
 }
 
 static void rna_SequenceEditor_sequences_all_begin(CollectionPropertyIterator *iter,
@@ -727,37 +749,9 @@ static int rna_Sequence_proxy_filepath_length(PointerRNA *ptr)
   return strlen(path);
 }
 
-static void rna_Sequence_volume_set(PointerRNA *ptr, float value)
+static void rna_Sequence_audio_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
 {
-  Sequence *seq = (Sequence *)(ptr->data);
-
-  seq->volume = value;
-  if (seq->scene_sound) {
-    BKE_sound_set_scene_sound_volume(
-        seq->scene_sound, value, (seq->flag & SEQ_AUDIO_VOLUME_ANIMATED) != 0);
-  }
-}
-
-static void rna_Sequence_pitch_set(PointerRNA *ptr, float value)
-{
-  Sequence *seq = (Sequence *)(ptr->data);
-
-  seq->pitch = value;
-  if (seq->scene_sound) {
-    BKE_sound_set_scene_sound_pitch(
-        seq->scene_sound, value, (seq->flag & SEQ_AUDIO_PITCH_ANIMATED) != 0);
-  }
-}
-
-static void rna_Sequence_pan_set(PointerRNA *ptr, float value)
-{
-  Sequence *seq = (Sequence *)(ptr->data);
-
-  seq->pan = value;
-  if (seq->scene_sound) {
-    BKE_sound_set_scene_sound_pan(
-        seq->scene_sound, value, (seq->flag & SEQ_AUDIO_PAN_ANIMATED) != 0);
-  }
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
 }
 
 static int rna_Sequence_input_count_get(PointerRNA *ptr)
@@ -801,9 +795,8 @@ static void rna_Sequence_reopen_files_update(Main *bmain, Scene *UNUSED(scene), 
 static void rna_Sequence_mute_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->id.data;
-  Editing *ed = BKE_sequencer_editing_get(scene, false);
 
-  BKE_sequencer_update_muting(ed);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
 }
 
 static void rna_Sequence_filepath_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -1790,7 +1783,7 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", SEQ_CACHE_STORE_PREPROCESSED);
   RNA_def_property_ui_text(
       prop,
-      "Cache Rreprocessed",
+      "Cache Preprocessed",
       "Cache preprocessed images, for faster tweaking of effects at the cost of memory usage");
 
   prop = RNA_def_property(srna, "use_cache_composite", PROP_BOOLEAN, PROP_NONE);
@@ -2049,6 +2042,7 @@ static void rna_def_proxy(StructRNA *srna)
   RNA_def_property_ui_text(
       prop, "Use Proxy / Timecode", "Use a preview proxy and/or timecode index for this strip");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_Sequence_use_proxy_set");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "proxy", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "strip->proxy");
@@ -2229,7 +2223,7 @@ static void rna_def_scene(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_SCENE_STRIPS);
   RNA_def_property_ui_text(
       prop, "Use Sequence", "Use scenes sequence strips directly, instead of rendering");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_use_sequence");
 
   prop = RNA_def_property(srna, "use_grease_pencil", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SEQ_SCENE_NO_GPENCIL);
@@ -2392,23 +2386,20 @@ static void rna_def_sound(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 100.0f);
   RNA_def_property_ui_text(prop, "Volume", "Playback volume of the sound");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
-  RNA_def_property_float_funcs(prop, NULL, "rna_Sequence_volume_set", NULL);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "pitch", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "pitch");
   RNA_def_property_range(prop, 0.1f, 10.0f);
   RNA_def_property_ui_text(prop, "Pitch", "Playback pitch of the sound");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
-  RNA_def_property_float_funcs(prop, NULL, "rna_Sequence_pitch_set", NULL);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "pan", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "pan");
   RNA_def_property_range(prop, -2.0f, 2.0f);
   RNA_def_property_ui_text(prop, "Pan", "Playback panning of the sound (only for Mono sources)");
-  RNA_def_property_float_funcs(prop, NULL, "rna_Sequence_pan_set", NULL);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "show_waveform", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_AUDIO_DRAW_WAVEFORM);
