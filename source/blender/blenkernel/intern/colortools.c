@@ -904,8 +904,7 @@ void curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
     }
   }
 
-  /* HANS-TODO: Reenable this for other curves! */
-  /* qsort(cmp, cuma->totpoint, sizeof(CurveMapPoint), sort_curvepoints); */
+//   qsort(cmp, cuma->totpoint, sizeof(CurveMapPoint), sort_curvepoints);
 
   /* remove doubles, threshold set on 1% of default range */
   if (rem_doubles && cuma->totpoint > 2) {

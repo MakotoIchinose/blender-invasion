@@ -40,7 +40,8 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "BKE_profile_path.h"
+//#include "BKE_profile_path.h"
+#include "BKE_colortools.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -228,16 +229,19 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 
-  // curvemapping_free(bmd->profile_curve);
-  // HANS-TODO: I need to free the CurveMapping data somewhere, but this is apparently not the
-  // place, as it causes a crash
-
   return result;
 }
 
 static bool dependsOnNormals(ModifierData *UNUSED(md))
 {
   return true;
+}
+
+/* HANS-TODO: Huh, this doesn't work either, causes a segfault */
+static void freeData(ModifierData *md)
+{
+  BevelModifierData *bmd = (BevelModifierData *)md;
+  curvemapping_free(bmd->profile_curve);
 }
 
 ModifierTypeInfo modifierType_Bevel = {
