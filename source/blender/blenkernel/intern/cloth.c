@@ -476,7 +476,8 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
   float value = 0.0;
   float temp_v2[2];
   int index = BM_elem_index_get(&v1);
-  ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, index)->link;
+  /* ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, index)->link; */
+  ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, 0)->link;
   /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't matter
    * since all sizing are same */
   mul_v2_m2v2(temp_v2, sizing_temp->m, u12);
@@ -507,6 +508,67 @@ static int cloth_remeshing_find_bad_edges(BMesh *bm, LinkNodePair *sizing)
   return tagged;
 }
 
+static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
+                                                         BMEdge *e,
+                                                         BMVert *v,
+                                                         float fac)
+{
+  BLI_assert(BM_vert_in_edge(e, v) == true);
+
+  /* find faces containing edge, should be only 2 */
+  BMFace *f;
+  BMIter fiter;
+  int face_i = 0;
+  BMFace *f1 = NULL, *f2 = NULL;
+  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, face_i) {
+    if (face_i == 0) {
+      f1 = f;
+    }
+    else {
+      f2 = f;
+    }
+    printf("face_i: %d\n", face_i);
+  }
+
+  if (!f1) {
+    return NULL;
+  }
+
+  /* split the edge */
+  BMEdge *new_edge;
+  BMEdge old_edge = *e;
+  BMVert *new_v = BM_edge_split(bm, e, v, &new_edge, fac);
+  BM_elem_flag_disable(new_edge, BM_ELEM_TAG);
+
+  BMVert *vert;
+  BMIter viter;
+  /* search for vert within the face that is not part of input edge
+   * create new edge between this
+   * vert and newly created vert */
+  BM_ITER_ELEM (vert, &viter, f1, BM_VERTS_OF_FACE) {
+    if (vert == old_edge.v1 || vert == old_edge.v2 || vert == new_v) {
+      continue;
+    }
+
+    BM_face_create_quad_tri(bm, vert, old_edge.v1, new_v, NULL, NULL, BM_CREATE_NOP);
+    BM_face_create_quad_tri(bm, vert, new_v, old_edge.v2, NULL, NULL, BM_CREATE_NOP);
+    BM_face_kill(bm, f1);
+  }
+  if (f2) {
+    BM_ITER_ELEM (vert, &viter, f2, BM_VERTS_OF_FACE) {
+      if (vert == old_edge.v1 || vert == old_edge.v2 || vert == new_v) {
+        continue;
+      }
+
+      BM_face_create_quad_tri(bm, vert, old_edge.v1, new_v, NULL, NULL, BM_CREATE_NOP);
+      BM_face_create_quad_tri(bm, vert, new_v, old_edge.v2, NULL, NULL, BM_CREATE_NOP);
+      BM_face_kill(bm, f2);
+    }
+  }
+
+  return new_v;
+}
+
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
@@ -521,29 +583,30 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
     if (BM_elem_flag_test_bool(e, BM_ELEM_TAG)) {
       int v1_index = BM_elem_index_get(e->v1);
       int v2_index = BM_elem_index_get(e->v2);
-      BMEdge *new_e;
-      BMVert *new_v = BM_edge_split(bm, e, e->v1, &new_e, 0.5);
-      ClothSizing *sizing_mean = MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single");
-
-      /* average of the sizing of the other 2 vertices */
-      ClothSizing *sizing_01 = (ClothSizing *)BLI_linklist_find(sizing->list, v1_index)->link;
-      ClothSizing *sizing_02 = (ClothSizing *)BLI_linklist_find(sizing->list, v2_index)->link;
-      add_m2_m2m2(sizing_mean->m,
-                  /* first vertex sizing */
-                  sizing_01->m,
-                  /* second vertex sizing */
-                  sizing_02->m);
-      mul_m2_fl(sizing_mean->m, 0.5f);
-
-      /* TODO(Ish): need to figure out the indexing between sizing and the vertices */
-      BLI_linklist_append(sizing, sizing_mean);
-      BM_elem_flag_disable(new_e, BM_ELEM_TAG);
+      BMEdge(*new_edges)[3];
+      int new_edge_count = 0;
+      BMVert *new_v = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
       BM_elem_flag_disable(e, BM_ELEM_TAG);
+      /* ClothSizing *sizing_mean = MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single"); */
+
+      /* /\* average of the sizing of the other 2 vertices *\/ */
+      /* ClothSizing *sizing_01 = (ClothSizing *)BLI_linklist_find(sizing->list, v1_index)->link;
+       */
+      /* ClothSizing *sizing_02 = (ClothSizing *)BLI_linklist_find(sizing->list, v2_index)->link;
+       */
+      /* add_m2_m2m2(sizing_mean->m, */
+      /*             /\* first vertex sizing *\/ */
+      /*             sizing_01->m, */
+      /*             /\* second vertex sizing *\/ */
+      /*             sizing_02->m); */
+      /* mul_m2_fl(sizing_mean->m, 0.5f); */
+
+      /* /\* TODO(Ish): need to figure out the indexing between sizing and the vertices *\/ */
+      /* BLI_linklist_append(sizing, sizing_mean); */
+      /* BM_elem_flag_disable(e, BM_ELEM_TAG); */
     }
   }
   BM_mesh_normals_update(bm);
-  BM_mesh_triangulate(
-      bm, MOD_TRIANGULATE_QUAD_SHORTEDGE, MOD_TRIANGULATE_NGON_BEAUTY, 4, false, NULL, NULL, NULL);
   return true;
 }
 
