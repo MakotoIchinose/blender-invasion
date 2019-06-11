@@ -35,6 +35,22 @@
 
 #include "GHOST_C-api.h"
 
+/* Platform headers */
+#ifdef XR_USE_PLATFORM_WIN32
+#  define WIN32_LEAN_AND_MEAN
+#  define NOMINMAX
+#  include <windows.h>
+#endif
+/* Graphics headers */
+#ifdef XR_USE_GRAPHICS_API_D3D10
+#  include <d3d10_1.h>
+#endif
+#ifdef XR_USE_GRAPHICS_API_D3D11
+#  include <d3d11_4.h>
+#endif
+#ifdef XR_USE_GRAPHICS_API_D3D12
+#  include <d3d12.h>
+#endif
 #ifdef WITH_X11
 #  include <GL/glxew.h>
 #endif
@@ -215,8 +231,14 @@ static void openxr_extensions_to_enable_get(const wmXRContext *context,
   BLI_assert(gpu_binding);
 
   {
+/* Zero sized array is GCC extension, so disable until it grows. */
+#if 0
     const static char *try_ext[] = {};
     const uint try_ext_count = ARRAY_SIZE(try_ext);
+#else
+    const static char **try_ext = NULL;
+    const uint try_ext_count = 0;
+#endif
 
     BLI_assert(r_ext_names != NULL);
     BLI_assert(r_ext_count != NULL);
@@ -361,13 +383,14 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
       XrGraphicsBindingOpenGLXlibKHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR};
 
 #elif defined(WIN32)
-      XrGraphicsBindingOpenGLWin32KHR binding =
-      {.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR }
+      XrGraphicsBindingOpenGLWin32KHR binding = {
+          .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR};
 
 #endif
 
       binding_ptr = MEM_mallocN(sizeof(binding), __func__);
       memcpy(binding_ptr, &binding, sizeof(binding));
+
       break;
     }
 #ifdef WIN32
@@ -376,6 +399,8 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
 
       binding_ptr = MEM_mallocN(sizeof(binding), __func__);
       memcpy(binding_ptr, &binding, sizeof(binding));
+
+      break;
     }
 #endif
     default:
