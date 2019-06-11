@@ -31,6 +31,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_ghash.h"
 #include "BLI_stack.h"
+#include "BLI_gsqueue.h"
 
 #include "BLT_translation.h"
 
@@ -7756,13 +7757,20 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random, b
 
 static void sculpt_filter_cache_free(SculptSession *ss)
 {
-  MEM_freeN(ss->filter_cache->orco);
-  MEM_freeN(ss->filter_cache->nodes);
+  if (ss->filter_cache->orco) {
+    MEM_freeN(ss->filter_cache->orco);
+  }
+  if (ss->filter_cache->nodes) {
+    MEM_freeN(ss->filter_cache->nodes);
+  }
   if (ss->filter_cache->random_disp) {
     MEM_freeN(ss->filter_cache->random_disp);
   }
   if (ss->filter_cache->orvcol) {
     MEM_freeN(ss->filter_cache->orvcol);
+  }
+  if (ss->filter_cache->mask_update_it) {
+    MEM_freeN(ss->filter_cache->mask_update_it);
   }
   MEM_freeN(ss->filter_cache);
 }
@@ -8788,7 +8796,6 @@ void ED_sculpt_init_transform(const struct bContext *C, bool transform_pivot_onl
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  struct Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
 
   copy_v3_v3(ss->init_pivot_pos, ss->pivot_pos);
@@ -8938,15 +8945,35 @@ void ED_sculpt_update_modal_transform(const struct bContext *C, bool transform_p
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  ARegion *ar = CTX_wm_region(C);
-  struct Scene *scene = CTX_data_scene(C);
+  View3D *v3d = CTX_wm_view3d(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
 
   if (transform_pivot_only) {
     return;
   }
 
+  if (!ss->pbvh) {
+    return;
+  }
+
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false, true);
+
+  if (!BKE_sculptsession_use_pbvh_draw(ob, v3d)) {
+
+    if (ss->filter_cache->nodes) {
+      MEM_freeN(ss->filter_cache->nodes);
+    }
+    SculptSearchSphereData searchdata = {
+        .ss = ss,
+        .sd = sd,
+        .radius_squared = FLT_MAX,
+    };
+    BKE_pbvh_search_gather(ss->pbvh,
+                           sculpt_search_sphere_cb,
+                           &searchdata,
+                           &ss->filter_cache->nodes,
+                           &ss->filter_cache->totnode);
+  }
 
   SculptThreadedTaskData data = {
       .sd = sd,
@@ -9038,7 +9065,6 @@ static int sculpt_set_pivot_position_invoke(bContext *C, wmOperator *op, const w
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   ARegion *ar = CTX_wm_region(C);
-  struct Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
 
@@ -9130,6 +9156,273 @@ static void SCULPT_OT_set_pivot_position(wmOperatorType *ot)
                "");
 }
 
+static void sculpt_expand_task_cb(void *__restrict userdata,
+                                  const int i,
+                                  const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+  SculptThreadedTaskData *data = userdata;
+  SculptSession *ss = data->ob->sculpt;
+  PBVHNode *node = data->nodes[i];
+  PBVHVertexIter vd;
+  int proc_it = data->proc_it;
+
+  BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
+  {
+    int vi = vd.vert_indices[vd.i];
+    float final_mask = *vd.mask;
+    if (ss->filter_cache->mask_update_it[vi] <= proc_it &&
+        ss->filter_cache->mask_update_it[vi] != 0) {
+      final_mask = 1.0f;
+    }
+    else {
+      final_mask = 0.0f;
+    }
+
+    if (*vd.mask != final_mask) {
+      *vd.mask = final_mask;
+      BKE_pbvh_node_mark_redraw(node);
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+}
+
+int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+  float prevclik_f[2];
+  copy_v2_v2(prevclik_f, op->customdata);
+  int prevclick[2];
+  prevclick[0] = (int)prevclik_f[0];
+  prevclick[1] = (int)prevclik_f[1];
+  int len = len_v2v2_int(prevclick, event->mval);
+
+  len = ABS(len);
+  int mask_speed = RNA_int_get(op->ptr, "mask_speed");
+  int proc_it = len / mask_speed;
+  proc_it = proc_it + 1;
+
+  if (RNA_boolean_get(op->ptr, "use_cursor")) {
+    StrokeGeometryInfo sgi;
+    float mouse[2];
+    mouse[0] = event->mval[0];
+    mouse[1] = event->mval[1];
+    sculpt_stroke_get_geometry_info(C, &sgi, mouse);
+    proc_it = ss->filter_cache->mask_update_it[ss->active_vertex_mesh_index];
+  }
+
+  if (event->type == 1 && (event->val == 2 || event->val == 1)) {
+
+    BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
+
+    /* Invert */
+    if (RNA_boolean_get(op->ptr, "invert")) {
+      for (int i = 0; i < ss->totvert; i++) {
+        ss->vmask[i] = 1.0f - ss->vmask[i];
+      }
+    }
+
+    /* Smooth iterations */
+    SculptThreadedTaskData data = {
+        .sd = sd,
+        .ob = ob,
+        .nodes = ss->filter_cache->nodes,
+        .smooth_value = 0.5f,
+        .filter_type = MASK_FILTER_BLUR,
+    };
+
+    int smooth_iterations = RNA_int_get(op->ptr, "smooth_iterations");
+    for (int i = 0; i < smooth_iterations; i++) {
+      ParallelRangeSettings settings;
+      BLI_parallel_range_settings_defaults(&settings);
+      settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
+                                ss->filter_cache->totnode > SCULPT_THREADED_LIMIT);
+      BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, mask_filter_task_cb, &settings);
+    }
+
+    /* Pivot position */
+    if (RNA_boolean_get(op->ptr, "update_pivot")) {
+      float avg[3];
+      int total = 0;
+      float threshold = 0.2f;
+      zero_v3(avg);
+      for (int i = 0; i < ss->totvert; i++) {
+        // symmetry not supported yet
+        if (ss->vmask[i] < (0.5f + threshold) && ss->vmask[i] > (0.5f - threshold) &&
+            check_vertex_pivot_symmetry(ss->mvert[i].co, ss->pivot_pos, 0)) {
+          total++;
+          add_v3_v3(avg, ss->mvert[i].co);
+        }
+      }
+      if (total > 0) {
+        mul_v3_fl(avg, 1.0f / total);
+        copy_v3_v3(ss->pivot_pos, avg);
+      }
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
+    }
+
+    MEM_freeN(op->customdata);
+
+    sculpt_undo_push_end();
+    sculpt_filter_cache_free(ss);
+
+    sculpt_flush_update_done(C, ob);
+    return OPERATOR_FINISHED;
+  }
+
+  if (proc_it == ss->filter_cache->mask_update_current_it) {
+    return OPERATOR_RUNNING_MODAL;
+  }
+
+  if (proc_it < ss->filter_cache->mask_update_last_it) {
+    SculptThreadedTaskData data = {
+        .sd = sd,
+        .ob = ob,
+        .nodes = ss->filter_cache->nodes,
+        .proc_it = proc_it,
+    };
+    ParallelRangeSettings settings;
+    BLI_parallel_range_settings_defaults(&settings);
+    settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
+                              ss->filter_cache->totnode > SCULPT_THREADED_LIMIT);
+
+    BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, sculpt_expand_task_cb, &settings);
+    ss->filter_cache->mask_update_current_it = proc_it;
+  }
+
+  sculpt_flush_update_step(C);
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+typedef struct maskExmandVIT {
+  int v;
+  int it;
+} maskExmandVIT;
+
+static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+  PBVH *pbvh = ob->sculpt->pbvh;
+
+  StrokeGeometryInfo sgi;
+  float mouse[2];
+  mouse[0] = event->mval[0];
+  mouse[1] = event->mval[1];
+
+  op->customdata = MEM_mallocN(2 * sizeof(float), "initial mouse position");
+  copy_v2_v2(op->customdata, mouse);
+
+  sculpt_stroke_get_geometry_info(C, &sgi, mouse);
+
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
+
+  if (!ss->vmask) {
+    return OPERATOR_CANCELLED;
+  }
+
+  ss->filter_cache = MEM_callocN(sizeof(FilterCache), "filter cache");
+
+  SculptSearchSphereData searchdata = {
+      .ss = ss,
+      .sd = sd,
+      .radius_squared = FLT_MAX,
+  };
+  BKE_pbvh_search_gather(pbvh,
+                         sculpt_search_sphere_cb,
+                         &searchdata,
+                         &ss->filter_cache->nodes,
+                         &ss->filter_cache->totnode);
+
+  sculpt_undo_push_begin("mesh filter fill");
+  for (int i = 0; i < ss->filter_cache->totnode; i++) {
+    sculpt_undo_push_node(ob, ss->filter_cache->nodes[i], SCULPT_UNDO_MASK);
+    BKE_pbvh_node_mark_redraw(ss->filter_cache->nodes[i]);
+  }
+
+  ss->filter_cache->mask_update_it = MEM_callocN(sizeof(int) * ss->totvert,
+                                                 "mask update iteration");
+  ss->filter_cache->mask_update_last_it = 1;
+  ss->filter_cache->mask_update_current_it = 1;
+  ss->filter_cache->mask_update_it[ss->active_vertex_mesh_index] = 1;
+  ss->vmask[ss->active_vertex_mesh_index] = 1.0f;
+
+  char *prev_mask = MEM_callocN(ss->totvert * sizeof(char), "prevmask");
+
+  GSQueue *queue = BLI_gsqueue_new(sizeof(maskExmandVIT));
+
+  maskExmandVIT mevit;
+  mevit.v = ss->active_vertex_mesh_index;
+  mevit.it = 1;
+  BLI_gsqueue_push(queue, &mevit);
+
+  while (!BLI_gsqueue_is_empty(queue)) {
+    maskExmandVIT c_mevit;
+    BLI_gsqueue_pop(queue, &c_mevit);
+    MeshElemMap *vert_map = &ss->pmap[c_mevit.v];
+
+    int i = 0;
+    for (i = 0; i < vert_map->count; i++) {
+      const MPoly *p = &ss->mpoly[vert_map->indices[i]];
+      unsigned f_adj_v[2];
+      if (poly_get_adj_loops_from_vert(p, ss->mloop, c_mevit.v, f_adj_v) != -1) {
+        int j;
+        for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
+          if (prev_mask[f_adj_v[j]] == 0) {
+            maskExmandVIT new_entry;
+            new_entry.v = f_adj_v[j];
+            new_entry.it = c_mevit.it + 1;
+            ss->filter_cache->mask_update_it[new_entry.v] = new_entry.it;
+            prev_mask[new_entry.v] = 1;
+            if (ss->filter_cache->mask_update_last_it < new_entry.it) {
+              ss->filter_cache->mask_update_last_it = new_entry.it;
+            }
+            BLI_gsqueue_push(queue, &new_entry);
+          }
+        }
+      }
+    }
+  }
+
+  BLI_gsqueue_free(queue);
+
+  MEM_freeN(prev_mask);
+
+  sculpt_flush_update_step(C);
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static void SCULPT_OT_mask_expand(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Mask expand";
+  ot->idname = "SCULPT_OT_mask_expand";
+  ot->description = "Expands a mask from the initial active vertex under the cursor";
+
+  /* api callbacks */
+  ot->invoke = sculpt_mask_expand_invoke;
+  ot->modal = sculpt_mask_expand_modal;
+  ot->poll = sculpt_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->prop = RNA_def_boolean(ot->srna, "invert", true, "Invert", "Invert the new mask");
+  ot->prop = RNA_def_boolean(
+      ot->srna, "use_cursor", true, "Use cursor", "Expand the mask to the cursor position");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "update_pivot",
+                             true,
+                             "Update Pivot position",
+                             "Set the pivot position to the mask border after creating the mask");
+  ot->prop = RNA_def_int(ot->srna, "smooth_iterations", 2, 0, 10, "Smooth iterations", "", 0, 10);
+  ot->prop = RNA_def_int(ot->srna, "mask_speed", 5, 1, 10, "Mask speed", "", 1, 10);
+}
+
 void ED_operatortypes_sculpt(void)
 {
   WM_operatortype_append(SCULPT_OT_brush_stroke);
@@ -9149,4 +9442,5 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_mask_by_normal);
   WM_operatortype_append(SCULPT_OT_mask_by_color);
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
+  WM_operatortype_append(SCULPT_OT_mask_expand);
 }

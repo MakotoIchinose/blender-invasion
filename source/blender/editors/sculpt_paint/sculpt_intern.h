@@ -214,6 +214,8 @@ typedef struct SculptThreadedTaskData {
   float min_len;
   bool use_automasking_brush_location;
 
+  int proc_it;
+
   ThreadMutex mutex;
 
 } SculptThreadedTaskData;
@@ -305,6 +307,10 @@ typedef struct FilterCache {
   int totnode;
 
   float *dirty_mask;
+
+  int mask_update_current_it;
+  int mask_update_last_it;
+  int *mask_update_it;
 } FilterCache;
 
 typedef struct StrokeCache {
