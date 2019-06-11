@@ -52,6 +52,9 @@
 #include "wm_event_system.h"
 #include "wm_draw.h"
 #include "wm.h"
+#ifdef WITH_OPENXR
+#  include "wm_xr.h"
+#endif
 
 #include "ED_screen.h"
 #include "BKE_undo_system.h"

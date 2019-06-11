@@ -64,6 +64,9 @@
 #include "wm_files.h"
 #include "wm_window.h"
 #include "wm_event_system.h"
+#ifdef WITH_OPENXR
+#  include "wm_xr.h"
+#endif
 
 #include "ED_anim_api.h"
 #include "ED_render.h"

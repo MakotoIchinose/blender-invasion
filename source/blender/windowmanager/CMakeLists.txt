@@ -176,7 +176,16 @@ endif()
 
 if(WITH_OPENXR)
   list(APPEND SRC
-    intern/wm_xr.c
+    xr/intern/wm_xr.c
+    xr/intern/wm_xr_event.c
+    xr/intern/wm_xr_session.c
+
+    xr/wm_xr.h
+    xr/intern/wm_xr_intern.h
+    xr/intern/wm_xr_openxr_includes.h
+  )
+  list(APPEND INC
+    xr
   )
   list(APPEND INC_SYS
     ${OPENXR_SDK_INCLUDES}

@@ -24,75 +24,21 @@
 
 #include "CLG_log.h"
 
-#include "BKE_context.h"
-
 #include "MEM_guardedalloc.h"
 
 #include "BLI_assert.h"
 #include "BLI_compiler_attrs.h"
 #include "BLI_string.h"
-#include "DNA_windowmanager_types.h"
+#include "BLI_utildefines.h"
 
-#include "GHOST_C-api.h"
+#include "wm_xr_openxr_includes.h"
 
-/* Platform headers */
-#ifdef XR_USE_PLATFORM_WIN32
-#  define WIN32_LEAN_AND_MEAN
-#  define NOMINMAX
-#  include <windows.h>
-#endif
-/* Graphics headers */
-#ifdef XR_USE_GRAPHICS_API_D3D10
-#  include <d3d10_1.h>
-#endif
-#ifdef XR_USE_GRAPHICS_API_D3D11
-#  include <d3d11_4.h>
-#endif
-#ifdef XR_USE_GRAPHICS_API_D3D12
-#  include <d3d12.h>
-#endif
-#ifdef WITH_X11
-#  include <GL/glxew.h>
-#endif
-
-#include "openxr/openxr.h"
-#include "openxr/openxr_platform.h"
-
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm.h"
+#include "wm_xr.h"
+#include "wm_xr_intern.h"
 
 /* Toggle printing of available OpenXR extensions and API-layers. Should probably be changed to use
  * CLOG at some point */
 #define USE_EXT_LAYER_PRINTS
-
-#if !defined(WITH_OPENXR)
-static_assert(false, "WITH_OPENXR not defined, but wm_xr.c is being compiled.");
-#endif
-
-typedef struct OpenXRData {
-  XrInstance instance;
-
-  XrExtensionProperties *extensions;
-  uint32_t extension_count;
-
-  XrApiLayerProperties *layers;
-  uint32_t layer_count;
-
-  XrSystemId system_id;
-  XrSession session;
-  XrSessionState session_state;
-} OpenXRData;
-
-typedef struct wmXRContext {
-  OpenXRData oxr;
-
-  /** Active graphics binding type. */
-  eWM_xrGraphicsBinding gpu_binding;
-
-  /** Names of enabled extensions */
-  const char **enabled_extensions;
-} wmXRContext;
 
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
@@ -336,154 +282,4 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
   MEM_SAFE_FREE(xr_context->enabled_extensions);
 
   MEM_SAFE_FREE(xr_context);
-}
-
-bool wm_xr_session_is_running(const wmXRContext *xr_context)
-{
-  const OpenXRData *oxr = &xr_context->oxr;
-
-  if (oxr->session == XR_NULL_HANDLE) {
-    return false;
-  }
-
-  return ELEM(oxr->session_state,
-              XR_SESSION_STATE_RUNNING,
-              XR_SESSION_STATE_VISIBLE,
-              XR_SESSION_STATE_FOCUSED);
-}
-
-/**
- * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
- * devices are managed through OpenXR. So this attempts to init the HMD and the other devices.
- */
-static void wm_xr_system_init(OpenXRData *oxr)
-{
-  BLI_assert(oxr->instance != XR_NULL_HANDLE);
-  BLI_assert(oxr->system_id == XR_NULL_SYSTEM_ID);
-
-  XrSystemGetInfo system_info = {.type = XR_TYPE_SYSTEM_GET_INFO};
-  system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-
-  xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
-}
-
-eWM_xrGraphicsBinding wm_xr_session_active_graphics_binding_type_get(const wmXRContext *xr_context)
-{
-  return xr_context->gpu_binding;
-}
-
-static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
-                                            GHOST_ContextHandle UNUSED(ghost_context))
-{
-  void *binding_ptr = NULL;
-
-  switch (xr_context->gpu_binding) {
-    case WM_XR_GRAPHICS_OPENGL: {
-#if defined(WITH_X11)
-      XrGraphicsBindingOpenGLXlibKHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR};
-
-#elif defined(WIN32)
-      XrGraphicsBindingOpenGLWin32KHR binding = {
-          .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR};
-
-#endif
-
-      binding_ptr = MEM_mallocN(sizeof(binding), __func__);
-      memcpy(binding_ptr, &binding, sizeof(binding));
-
-      break;
-    }
-#ifdef WIN32
-    case WM_XR_GRAPHICS_D3D11: {
-      XrGraphicsBindingD3D11KHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR};
-
-      binding_ptr = MEM_mallocN(sizeof(binding), __func__);
-      memcpy(binding_ptr, &binding, sizeof(binding));
-
-      break;
-    }
-#endif
-    default:
-      BLI_assert(false);
-  }
-
-  return binding_ptr;
-}
-
-void wm_xr_session_start(wmXRContext *xr_context, void *ghost_context)
-{
-  OpenXRData *oxr = &xr_context->oxr;
-
-  BLI_assert(oxr->instance != XR_NULL_HANDLE);
-  BLI_assert(oxr->session == XR_NULL_HANDLE);
-
-  wm_xr_system_init(oxr);
-
-  XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
-  create_info.systemId = oxr->system_id;
-  create_info.next = openxr_graphics_binding_create(xr_context, ghost_context);
-
-  xrCreateSession(oxr->instance, &create_info, &oxr->session);
-}
-
-void wm_xr_session_end(wmXRContext *xr_context)
-{
-  xrEndSession(xr_context->oxr.session);
-}
-
-static void wm_xr_session_state_change(OpenXRData *oxr,
-                                       const XrEventDataSessionStateChanged *lifecycle)
-{
-  oxr->session_state = lifecycle->state;
-
-  switch (lifecycle->state) {
-    case XR_SESSION_STATE_READY: {
-      XrSessionBeginInfo begin_info = {
-          .type = XR_TYPE_SESSION_BEGIN_INFO,
-          .primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
-      xrBeginSession(oxr->session, &begin_info);
-      break;
-    }
-    case XR_SESSION_STATE_STOPPING: {
-      BLI_assert(oxr->session != XR_NULL_HANDLE);
-      xrEndSession(oxr->session);
-    }
-    default:
-      break;
-  }
-}
-
-static bool wm_xr_event_poll_next(OpenXRData *oxr, XrEventDataBuffer *r_event_data)
-{
-  /* (Re-)initialize as required by specification */
-  r_event_data->type = XR_TYPE_EVENT_DATA_BUFFER;
-  r_event_data->next = NULL;
-
-  return (xrPollEvent(oxr->instance, r_event_data) == XR_SUCCESS);
-}
-
-bool wm_xr_events_handle(wmXRContext *xr_context)
-{
-  OpenXRData *oxr = &xr_context->oxr;
-  XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
-
-  if (!wm_xr_session_is_running(xr_context)) {
-    return false;
-  }
-
-  while (wm_xr_event_poll_next(oxr, &event_buffer)) {
-    XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
-
-    switch (event->type) {
-      case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
-        wm_xr_session_state_change(oxr, (XrEventDataSessionStateChanged *)&event);
-        return true;
-
-      default:
-        printf("Unhandled event: %u\n", event->type);
-        return false;
-    }
-  }
-
-  return false;
 }
