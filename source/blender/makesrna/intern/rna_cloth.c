@@ -774,6 +774,43 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_cloth_update");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
+  /* remeshing */
+  prop = RNA_def_property(srna, "refine_angle", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "refine_angle");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Refine Angle", "Remeshing refine angle");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "refine_compression", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "refine_compression");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Refine Compression", "Remeshing refine compression");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "refine_velocity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "refine_velocity");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Refine Velocity", "Remeshing refine velocity");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "size_min", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "size_min");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Size Min", "Remeshing size minimum");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "size_max", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "size_max");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Size Max", "Remeshing size maximum");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "aspect_min", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "aspect_min");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Aspect Min", "Remeshing aspect minimum");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
   /* unused */
 
   /* unused still */

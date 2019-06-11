@@ -309,6 +309,37 @@ class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):
         col.prop_search(cloth, "vertex_group_self_collisions", ob, "vertex_groups", text="Vertex Group")
 
 
+class PHYSICS_PT_cloth_remeshing(PhysicButtonsPanel, Panel):
+    bl_label = "Remeshing"
+    bl_parent_id = 'PHYSICS_PT_cloth'
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        md = context.cloth
+        cloth = md.settings
+
+#layout.active = cloth_panel_enabled(md)
+
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
+
+        col = flow.column()
+        col.prop(cloth, "refine_angle", text="Refine Angle")
+        col = flow.column()
+        col.prop(cloth, "refine_compression", text="Refine Compression")
+        col = flow.column()
+        col.prop(cloth, "refine_velocity", text="Refine Velocity")
+        col = flow.column()
+        col.prop(cloth, "size_min", text="Size Minimum")
+        col = flow.column()
+        col.prop(cloth, "size_max", text="Size Maximum")
+        col = flow.column()
+        col.prop(cloth, "aspect_min", text="Aspect Minimum")
+
+
 class PHYSICS_PT_cloth_property_weights(PhysicButtonsPanel, Panel):
     bl_label = "Property Weights"
     bl_parent_id = 'PHYSICS_PT_cloth'
@@ -385,6 +416,7 @@ classes = (
     PHYSICS_PT_cloth_collision,
     PHYSICS_PT_cloth_object_collision,
     PHYSICS_PT_cloth_self_collision,
+    PHYSICS_PT_cloth_remeshing,
     PHYSICS_PT_cloth_property_weights,
     PHYSICS_PT_cloth_field_weights,
 )
