@@ -158,6 +158,15 @@ static void lanpr_engine_free(void)
 {
   void *ved = lanpr_share.ved_viewport;
 
+  DRW_SHADER_FREE_SAFE(lanpr_share.multichannel_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.snake_connection_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.software_chaining_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.dpix_preview_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.dpix_transform_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.edge_detect_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.edge_thinning_shader);
+  DRW_SHADER_FREE_SAFE(lanpr_share.software_shader);
+
   BLI_mempool* mp = lanpr_share.mp_batch_list;
 
   if(mp){
