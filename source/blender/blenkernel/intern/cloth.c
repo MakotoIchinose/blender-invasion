@@ -573,6 +573,100 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
   return new_v;
 }
 
+static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
+{
+  FILE *fout = fopen(file_name, "w");
+  if (!fout) {
+    printf("File not written, couldn't find path to %s\n", file_name);
+    return;
+  }
+  printf("Writing file %s\n", file_name);
+  typedef struct Vert {
+    float co[3];
+    float no[3];
+  } Vert;
+  typedef struct UV {
+    float uv[2];
+  } UV;
+  typedef struct Face {
+    int *vi;
+    int *uv;
+    int len;
+    BMFace *bm_face;
+  } Face;
+  Vert *verts;
+  verts = MEM_mallocN(sizeof(Vert) * bm->totvert, "Verts");
+  Face *faces;
+  faces = MEM_mallocN(sizeof(Face) * bm->totface, "Faces");
+  for (int i = 0; i < bm->totface; i++) {
+    faces[i].vi = NULL;
+    faces[i].uv = NULL;
+    faces[i].len = 0;
+    faces[i].bm_face = NULL;
+  }
+  BMVert *v;
+  BMIter viter;
+  int vert_i = 0;
+  int face_i = 0;
+  BM_ITER_MESH (v, &viter, bm, BM_VERTS_OF_MESH) {
+    copy_v3_v3(verts[vert_i].co, v->co);
+    copy_v3_v3(verts[vert_i].no, v->no);
+    BMFace *f;
+    BMIter fiter;
+    BM_ITER_ELEM (f, &fiter, v, BM_FACES_OF_VERT) {
+      int curr_i = face_i;
+      for (int i = 0; i < face_i; i++) {
+        if (faces[i].bm_face == f) {
+          curr_i = i;
+          break;
+        }
+      }
+      if (faces[curr_i].len == 0) {
+        faces[curr_i].len = 1;
+        faces[curr_i].vi = MEM_mallocN(sizeof(int) * 6, "face vi");
+        faces[curr_i].uv = MEM_mallocN(sizeof(int) * 6, "face uv");
+        faces[curr_i].bm_face = f;
+        face_i++;
+      }
+      faces[curr_i].vi[faces[curr_i].len - 1] = vert_i + 1;
+      faces[curr_i].uv[faces[curr_i].len - 1] = vert_i + 1;
+      faces[curr_i].len++;
+    }
+    vert_i++;
+  }
+
+  for (int i = 0; i < bm->totvert; i++) {
+    fprintf(fout, "v %f %f %f\n", verts[i].co[0], verts[i].co[1], verts[i].co[2]);
+  }
+
+  for (int i = 0; i < bm->totvert; i++) {
+    fprintf(fout, "vn %f %f %f\n", verts[i].no[0], verts[i].no[1], verts[i].no[2]);
+  }
+
+  for (int i = 0; i < bm->totface; i++) {
+    fprintf(fout, "f ");
+    for (int j = 0; j < faces[i].len - 1; j++) {
+      fprintf(fout, "%d//%d ", faces[i].vi[j], faces[i].vi[j]);
+    }
+    fprintf(fout, "\n");
+  }
+
+  for (int i = 0; i < bm->totface; i++) {
+    if (faces[i].vi) {
+      MEM_freeN(faces[i].vi);
+    }
+    if (faces[i].uv) {
+      MEM_freeN(faces[i].uv);
+    }
+  }
+
+  MEM_freeN(faces);
+  MEM_freeN(verts);
+
+  fclose(fout);
+  printf("File %s written\n", file_name);
+}
+
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
@@ -638,9 +732,15 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Split edges
    */
-  while (cloth_remeshing_split_edges(clmd, &sizing)) {
-    /* empty while */
-  }
+  /* while (cloth_remeshing_split_edges(clmd, &sizing)) { */
+  /*   /\* empty while *\/ */
+  /* } */
+  cloth_remeshing_split_edges(clmd, &sizing);
+  static int file_no = 0;
+  file_no++;
+  char file_name[100];
+  sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
+  cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
 
   /**
    * Collapse edges
