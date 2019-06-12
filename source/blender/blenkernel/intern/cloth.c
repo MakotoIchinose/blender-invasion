@@ -596,6 +596,8 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
   } Face;
   Vert *verts;
   verts = MEM_mallocN(sizeof(Vert) * bm->totvert, "Verts");
+  UV *uvs;
+  uvs = MEM_mallocN(sizeof(UV) * bm->totvert, "UVs");
   Face *faces;
   faces = MEM_mallocN(sizeof(Face) * bm->totface, "Faces");
   for (int i = 0; i < bm->totface; i++) {
@@ -632,11 +634,24 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
       faces[curr_i].uv[faces[curr_i].len - 1] = vert_i + 1;
       faces[curr_i].len++;
     }
+    BMLoop *l;
+    BMIter liter;
+    MLoopUV *luv;
+    const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+
+    BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
+      luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+      copy_v2_v2(uvs[vert_i].uv, luv->uv);
+    }
     vert_i++;
   }
 
   for (int i = 0; i < bm->totvert; i++) {
     fprintf(fout, "v %f %f %f\n", verts[i].co[0], verts[i].co[1], verts[i].co[2]);
+  }
+
+  for (int i = 0; i < bm->totvert; i++) {
+    fprintf(fout, "vt %f %f\n", uvs[i].uv[0], uvs[i].uv[1]);
   }
 
   for (int i = 0; i < bm->totvert; i++) {
@@ -646,7 +661,7 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
   for (int i = 0; i < bm->totface; i++) {
     fprintf(fout, "f ");
     for (int j = 0; j < faces[i].len - 1; j++) {
-      fprintf(fout, "%d//%d ", faces[i].vi[j], faces[i].vi[j]);
+      fprintf(fout, "%d/%d/%d ", faces[i].vi[j], faces[i].uv[j], faces[i].vi[j]);
     }
     fprintf(fout, "\n");
   }
@@ -661,6 +676,7 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
   }
 
   MEM_freeN(faces);
+  MEM_freeN(uvs);
   MEM_freeN(verts);
 
   fclose(fout);
