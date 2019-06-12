@@ -404,7 +404,8 @@ typedef struct LANPR_BoundingArea {
   int triangle_count;
   ListBase linked_triangles;
   ListBase linked_lines;
-  ListBase linked_chains;  // reserved for multithread chainning
+
+  ListBase linked_chains;  // reserved for image space reduction && multithread chainning
 } LANPR_BoundingArea;
 
 #define TNS_COMMAND_LINE 0

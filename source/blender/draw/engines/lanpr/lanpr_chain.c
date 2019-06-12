@@ -425,6 +425,60 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
   }
 }
 
+LANPR_BoundingArea *lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(
+  LANPR_RenderBuffer *rb, LANPR_BoundingArea *root, LANPR_RenderLineChainItem* rlci){
+  if (!root->child) {
+    return root;
+  }
+  else {
+    LANPR_BoundingArea* ch = root->child;
+    #define IN_BOUND(ba,rlci)\
+      ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
+    if     (IN_BOUND(ch[0],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci);
+    else if(IN_BOUND(ch[1],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci);
+    else if(IN_BOUND(ch[2],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci);
+    else if(IN_BOUND(ch[3],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci);
+    #undef IN_BOUND
+  }
+  return NULL;
+}
+LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb, LANPR_RenderLineChainItem* rlci){
+  LANPR_BoundingArea* root = lanpr_get_point_bounding_area(rb,rlci->pos[0],rlci->pos[1]);
+  return lanpr_get_point_bounding_area_recursive(rb,root,rlci);
+}
+// if reduction threshold is even larger than a small bounding area,
+// then 1) geometry is simply too dense.
+//      2) probably need to add it to root bounding area which has larger surface area then it will cover typical threshold values.
+void lanpr_link_point_with_bounding_area_recursive(
+  LANPR_RenderBuffer *rb, LANPR_BoundingArea* root, LANPR_RenderLineChain* rlc, LANPR_RenderLineChainItem* rlci){
+  if (!root->child) {
+    LANPR_ChainRegisterEntry* cre = list_append_pointer_static_sized(&root->linked_chains, &rb->render_data_pool, rlc, sizeof(LANPR_ChainRegisterEntry));
+    cre->rlci = rlci;
+  }
+  else {
+    LANPR_BoundingArea* ch = root->child;
+    #define IN_BOUND(ba,rlci)\
+      ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
+    if     (IN_BOUND(ch[0],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[0],rlc,rlci);
+    else if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci);
+    else if(IN_BOUND(ch[2],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[2],rlc,rlci);
+    else if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci);
+    #undef IN_BOUND
+  }
+}
+
+void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLineChain* rlc)
+{
+  LANPR_RenderLineChainItem* pl = rlc->chain.first;
+  LANPR_RenderLineChainItem* pr = rlc->chain.last;
+  LANPR_BoundingArea* ba1 = lanpr_get_point_bounding_area(rb,pl->pos[0],pl->pos[1]);
+  LANPR_BoundingArea* ba2 = lanpr_get_point_bounding_area(rb,pr->pos[0],pr->pos[1]);
+
+  lanpr_link_point_with_bounding_area_recursive(rb,ba1,rlc,pl);
+  lanpr_link_point_with_bounding_area_recursive(rb,ba2,rlc,pr);
+}
+
 void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc, *new_rlc;
@@ -468,6 +522,106 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
       }
     }
   }
+  for(rlc = rb->chains.first;rlc;rlc=rlc->item.next){
+    lanpr_link_chain_with_bounding_areas(rb,rlc);
+  }
+}
+
+// note: segment type (crease/material/contour...) is ambiguous after this.
+void lanpr_connect_two_chains(LANPR_RenderBuffer* rb, LANPR_RenderLineChain* onto, LANPR_RenderLineChain* sub, int reverse_1, int reverse_2){
+  if(!reverse_1){  // L--R L-R
+    if(reverse_2){ // L--R R-L
+      BLI_listbase_reverse(&sub->chain);
+    }
+    ((LANPR_RenderLineChainItem*)onto->chain.last)->item.next = sub->chain.first;
+    ((LANPR_RenderLineChainItem*)sub->chain.first)->item.prev = onto->chain.last;
+    onto->chain.last = sub->chain.last;
+  }else{            // L-R L--R
+    if(!reverse_2){ // R-L L--R
+      BLI_listbase_reverse(&sub->chain);
+    }
+    ((LANPR_RenderLineChainItem*)sub->chain.last)->item.next = onto->chain.first;
+    ((LANPR_RenderLineChainItem*)onto->chain.first)->item.prev = sub->chain.last;
+    onto->chain.first = sub->chain.first;
+  }
+  BLI_remlink(&rb->chains,sub);
+}
+
+// this only does head-tail connection.
+// overlapping / tiny isolated segment / loop reduction not implemented here yet.
+void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
+{
+  LANPR_RenderLineChain *rlc, *new_rlc;
+  LANPR_RenderLineChainItem *rlci, *next_rlci;
+  LANPR_BoundingArea* ba;
+  LANPR_ChainRegisterEntry* cre, *next_cre, *closest_cre;
+  float dist;
+  ListBase swap = {0};
+
+  swap.first = rb->chains.first;
+  swap.last = rb->chains.last;
+
+  rb->chains.last = rb->chains.first = NULL;
+
+  while (rlc = BLI_pophead(&swap)) {
+    if(rlc->picked) continue;
+    rlci = rlc->chain.last;
+    ba = lanpr_get_end_point_bounding_area(rb,rlci);
+    dist = 100.0f;
+    closest_cre = NULL;
+    for(cre = ba->linked_chains.first;cre;cre = next_cre){
+      next_cre = cre->item.next;
+      if(cre->rlc == rlc) continue;
+      if(cre->rlc->picked){
+        BLI_remlink(&ba->linked_chains,cre);
+        continue;
+      }
+      float new_len = len_v2v2(cre->rlci->pos,rlci->pos);
+      if(new_len<dist){
+        closest_cre = cre;
+        dist = new_len;
+      }
+    }
+    if(dist<0.00001f && closest_cre){
+      closest_cre->picked = 1;
+      closest_cre->rlc->picked = 1;
+      BLI_remlink(&ba->linked_chains,cre);
+      if(closest_cre->rlci == closest_cre->rlc->chain.first){
+        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,0,0);
+      }else{
+        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,0,1);
+      }
+    }
+
+    rlci = rlc->chain.first;
+    ba = lanpr_get_end_point_bounding_area(rb,rlci);
+    dist = 100.0f;
+    closest_cre = NULL;
+    for(cre = ba->linked_chains.first;cre;cre = next_cre){
+      next_cre = cre->item.next;
+      if(cre->rlc == rlc) continue;
+      if(cre->rlc->picked){
+        BLI_remlink(&ba->linked_chains,cre);
+        continue;
+      }
+      float new_len = len_v2v2(cre->rlci->pos,rlci->pos);
+      if(new_len<dist){
+        closest_cre = cre;
+        dist = new_len;
+      }
+    }
+    if(dist<0.00001f && closest_cre){
+      closest_cre->picked = 1;
+      closest_cre->rlc->picked = 1;
+      BLI_remlink(&ba->linked_chains,cre);
+      if(closest_cre->rlci == closest_cre->rlc->chain.first){
+        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,1,0);
+      }else{
+        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,1,1);
+      }
+    }
+  }
+ 
 }
 
 int lanpr_count_chain(LANPR_RenderLineChain *rlc)
