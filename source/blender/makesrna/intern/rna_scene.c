@@ -818,9 +818,13 @@ static void rna_Scene_camera_update(Main *bmain, Scene *UNUSED(scene_unused), Po
   DEG_relations_tag_update(bmain);
 }
 
-static void rna_Scene_fps_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
+static void rna_Scene_fps_update(Main *bmain, Scene *scene, PointerRNA *UNUSED(ptr))
 {
   DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_FPS | ID_RECALC_SEQUENCER_STRIPS);
+  /* NOTE: Tag via dependency graph will take care of all the updates ion the evaluated domain,
+   * however, changes in FPS actually modifies an original stip length, so this we take care about
+   * here. */
+  BKE_sequencer_refresh_sound_length(bmain, scene);
 }
 
 static void rna_Scene_listener_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
@@ -1146,12 +1150,12 @@ static void rna_ImageFormatSettings_file_format_set(PointerRNA *ptr, int value)
 {
   ImageFormatData *imf = (ImageFormatData *)ptr->data;
   ID *id = ptr->id.data;
+  imf->imtype = value;
+
   const bool is_render = (id && GS(id->name) == ID_SCE);
   /* see note below on why this is */
   const char chan_flag = BKE_imtype_valid_channels(imf->imtype, true) |
                          (is_render ? IMA_CHAN_FLAG_BW : 0);
-
-  imf->imtype = value;
 
   /* ensure depth and color settings match */
   if (((imf->planes == R_IMF_PLANES_BW) && !(chan_flag & IMA_CHAN_FLAG_BW)) ||
