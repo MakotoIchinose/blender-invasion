@@ -324,7 +324,7 @@ typedef struct BevelParams {
 
 // #pragma GCC diagnostic ignored "-Wpadded"
 
-// #include "bevdebug.c" /* HANS-TODO: Comment this back out before commit! */
+ #include "bevdebug.c" /* HANS-TODO: Comment this back out before commit! */
 
 /* Some flags to re-enable old behavior for a while,
  * in case fixes broke things not caught by regression tests. */
@@ -5487,7 +5487,7 @@ static void find_bevel_edge_order(BMesh *bm, BevVert *bv, BMEdge *first_bme)
  * \param r_bv The BevVert conencted to the EdgeHalf which is updated if the we switch
           EdgeHalves in the current edge */
 static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
-                                    EdgeHalf *cur_edge,
+                                    EdgeHalf *start_edge,
                                     bool toward_bv,
                                     BevVert **r_bv)
 {
@@ -5500,27 +5500,55 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   float new_angle;
   float best_angle = (float)M_PI; /* Initialized to the LEAST parallel angle */
   float second_best_angle = best_angle;
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+  printf("NEXT EDGEHALF BEV");
+//  printf("Start_edge BEFORE: %p\n", (void *)start_edge);
+#endif
 
-  printf("next_edgehalf_bev");
+
 
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf */
   if (toward_bv) {
+    printf("TOWARD_BV");
     /* Find the direction vector of the current edge (pointing INTO the BevVert) .
      * v1 and v2 don't necessarily have an order, so we need to check which is closer to bv */
     /* HANS-TODO: r_bv not initialized */
-    v1_dist_to_bv = fabsf(len_v3v3(cur_edge->e->v1->co, (*r_bv)->v->co));
-    v2_dist_to_bv = fabsf(len_v3v3(cur_edge->e->v2->co, (*r_bv)->v->co));
+    v1_dist_to_bv = fabsf(len_v3v3(start_edge->e->v1->co, (*r_bv)->v->co));
+    v2_dist_to_bv = fabsf(len_v3v3(start_edge->e->v2->co, (*r_bv)->v->co));
     /* HANS-TODO: Helper function for this comparison? */
     if (v1_dist_to_bv < v2_dist_to_bv) {
-      sub_v3_v3v3(d_cur, cur_edge->e->v1->co, cur_edge->e->v2->co);
+      sub_v3_v3v3(d_cur, start_edge->e->v1->co, start_edge->e->v2->co);
     }
     else {
-      sub_v3_v3v3(d_cur, cur_edge->e->v2->co, cur_edge->e->v1->co);
+      sub_v3_v3v3(d_cur, start_edge->e->v2->co, start_edge->e->v1->co);
     }
 
     /* Find the beveled edge coming out of the BevVert most parallel to the current edge */
-    new_edge = cur_edge;
-    while ((new_edge = next_bev(*r_bv, new_edge)) != cur_edge) {
+    new_edge = start_edge;
+//    new_edge = next_bev(*r_bv, start_edge);
+    new_edge = new_edge->next;
+//    printf("new_edge_AFTER: %p\n", (void *)new_edge);
+//    printf("start_edge_AFTER: %p\n", (void *)start_edge);
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+//    if (new_edge) {
+//      printf("[new_edge]");
+//      if (new_edge == start_edge) {
+//        printf("[new_edge == cur_edge]\n");
+//        printf("Beveled Edge Count for BevVert: %d\n", (*r_bv)->selcount);
+////        dump_bv(*r_bv);
+//      }
+//    } else {
+//      printf("[!new_edge]");
+//    }
+#endif
+    while (new_edge && new_edge != start_edge) {
+      if (!new_edge->is_bev) {
+        new_edge = new_edge->next;
+        continue;
+      }
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+      printf("[while loop]");
+#endif
       /* Find direction vector of the possible next edge (pointing OUT of the BevVert) */
       v1_dist_to_bv = fabsf(len_v3v3(new_edge->e->v1->co, (*r_bv)->v->co));
       v2_dist_to_bv = fabsf(len_v3v3(new_edge->e->v2->co, (*r_bv)->v->co));
@@ -5533,37 +5561,62 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 
       /* Use this edge if it is the most parallel to the orignial so far */
       new_angle = angle_v3v3(d_cur, d_other);
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+      printf("[angle:%0.2f]", (double)new_angle);
+#endif
       if (new_angle < best_angle) {
         second_best_angle = best_angle; /* For remembering if the choice was too close */
         best_angle = new_angle;
         next_edge = new_edge;
       }
+//      new_edge = next_bev(*r_bv, new_edge);
+      new_edge = new_edge->next;
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+//      if (new_edge) {
+//        printf("[loop - new_edge]");
+//      } else {
+//        printf("[loop - !new_edge]");
+//      }
+#endif
     }
 
     /* Only return a new Edge if one was found and if the choice of next edge was not too close */
     if (!next_edge) {
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+      printf("(NULL - !next_edge)\n");
+#endif
       return NULL;
-      printf("returning NULL, no next edge\n");
     }
-    if (second_best_angle < best_angle + DEG2RADF(10.0f) ||
-        second_best_angle > best_angle - DEG2RADF(10.0f)) { /* HANS-TODO: Macro for this? */
-      printf("returning NULL, angle too close\n");
+    if (second_best_angle < best_angle + DEG2RADF(30.0f) ||
+        second_best_angle > best_angle - DEG2RADF(30.0f)) { /* HANS-TODO: Macro for this? */
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+      printf("(NULL - no angle choice)\n");
+#endif
       return NULL;
     }
     else {
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
       if (next_edge->is_bev) {
-        printf("returning next_edge\n");
+        printf("(next_edge - is_bev)\n");
       } else {
-        printf("returning NULL\n");
+        printf("(NULL - !is_bev)\n");
       }
+#endif
       return (next_edge->is_bev) ? next_edge : NULL; /* And only if the next edge is beveled */
     }
   }
 
   /* Case 2: The next EdgeHalf is the other side of the BMEdge.
    * Because it's part of the same BMEdge, we know the other edge half will also be beveled */
-  next_edge = find_other_end_edge_half(bp, cur_edge, r_bv);
-  printf("Returning %p\n", next_edge);
+  printf("AWAY_BV");
+  next_edge = find_other_end_edge_half(bp, start_edge, r_bv);
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+  if (next_edge) {
+    printf("(next_edge)\n");
+  } else {
+    printf("(NULL - !other_edge_half)\n");
+  }
+#endif
   return next_edge;
 }
 
@@ -5580,7 +5633,7 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
   bool toward_bv;
   bool last_direction_right;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-  printf("regularize_profile_orientation\n");
+  printf("REGULARIZE PROFILE ORIENTATION\n");
   float debug_color[4];
   debug_color[0] = 1.0;
   debug_color[1] = 0.0;
@@ -5590,10 +5643,19 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
 
   /* Start at the first EdgeHalf. Once the travelling is finished for that EdgeHalf,
    * go to the next non-visited one and start the travel process from there. */
-  start_bv = find_bevvert(bp, bme->v1); /* HANS-TODO: This could be wrong because it might matter which vert it gets */
+  start_bv = find_bevvert(bp, bme->v1);
+  /* HANS-TODO: This could be wrong because it might matter which vert it gets */
   start_edge = find_edge_half(start_bv, bme);
   if (!start_edge->is_bev || start_edge->visited_custom) {
-    return; /* HANS-TODO: Check with BM_ELEM_TAG instead of is_bev */
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+    if (!start_edge->is_bev) {
+      printf("NOT BEVELED\n");
+    }
+    if (start_edge->visited_custom) {
+      printf("ALREADY VISITED\n");
+    }
+#endif
+    return;
   }
 
   /* Pick a BoundVert on one side of the profile to use for the start of the profile */
@@ -5607,16 +5669,13 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
   toward_bv = true;
   bv = start_bv;
   edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf("%p", (void *)edge);
-#endif
   while (edge) {
     /* Stop if this EdgeHalf was already visited */
     if (edge->visited_custom) {
       break;
     }
 
-    /* Mark the correct BoundVert as the start of the newly visited profile *
+    /* Mark the correct BoundVert as the start of the newly visited profile
      * The direction of the BoundVert along the path switches every time because their directions
      * are relative to the BevVert they're connected to. So the right and left are BoundVerts
      * would also switch every EdgeHalf, and all I need to do is switch which BoundVert I make
@@ -5637,9 +5696,6 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
     toward_bv = !toward_bv;
 
     edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf("%p", (void *)edge);
-#endif
   }
 
   /* Now travel the path in the other direction, away from the BevVert */
@@ -5672,15 +5728,7 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
     toward_bv = !toward_bv;
 
     edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf("%p", (void *)edge);
-#endif
   }
-
-
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-  printf("\n");
-#endif
 }
 
 /* Construction around the vertex */
