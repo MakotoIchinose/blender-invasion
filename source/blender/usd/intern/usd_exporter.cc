@@ -22,6 +22,7 @@
 
 #include <pxr/pxr.h>
 #include <pxr/base/gf/matrix4f.h>
+#include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/xform.h>
@@ -54,8 +55,7 @@ USDExporter::~USDExporter()
 
 void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
 {
-  timespec ts_begin;
-  clock_gettime(CLOCK_MONOTONIC, &ts_begin);
+  Timer timer_("Writing to USD");
 
   r_progress = 0.0;
   r_was_canceled = false;
@@ -75,12 +75,6 @@ void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
 
   m_stage->GetRootLayer()->Save();
 
-  timespec ts_end;
-  clock_gettime(CLOCK_MONOTONIC, &ts_end);
-  double duration = double(ts_end.tv_sec - ts_begin.tv_sec) +
-                    double(ts_end.tv_nsec - ts_begin.tv_nsec) / 1e9;
-  printf("Export to USD took %.3f sec wallclock time\n", duration);
-
   r_progress = 1.0;
 }
 
@@ -99,11 +93,6 @@ bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &data_)
            mesh);
     return false;
   }
-  printf("USD-\033[32mexporting\033[0m object %s  isinstance=%d type=%d mesh = %p\n",
-         ob_eval->id.name,
-         data_.dupli_object_current != NULL,
-         ob_eval->type,
-         mesh);
 
   // Compute the parent's SdfPath and get the object matrix relative to the parent.
   if (ob_eval->parent == NULL) {
@@ -123,15 +112,25 @@ bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &data_)
     invert_m4_m4(ob_eval->imat, ob_eval->obmat);
     mul_m4_m4m4(parent_relative_matrix, ob_eval->parent->imat, ob_eval->obmat);
   }
-  pxr::SdfPath xform_path = parent_path.AppendPath(pxr::SdfPath(ob_eval->id.name + 2));
+
+  std::string xform_name = pxr::TfMakeValidIdentifier(ob_eval->id.name + 2);
+  pxr::SdfPath xform_path = parent_path.AppendPath(pxr::SdfPath(xform_name));
   usd_object_paths[ob_eval] = xform_path;
+
+  printf("USD-\033[32mexporting\033[0m object %s → %s   isinstance=%d type=%d mesh = %p\n",
+         ob_eval->id.name,
+         xform_path.GetString().c_str(),
+         data_.dupli_object_current != NULL,
+         ob_eval->type,
+         mesh);
 
   // Write the transform relative to the parent.
   pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(m_stage, xform_path);
   xform.AddTransformOp().Set(pxr::GfMatrix4d(parent_relative_matrix));
 
   // Write the mesh.
-  pxr::SdfPath mesh_path(xform_path.AppendPath(pxr::SdfPath(std::string(mesh->id.name))));
+  std::string mesh_name = pxr::TfMakeValidIdentifier(mesh->id.name + 2);
+  pxr::SdfPath mesh_path(xform_path.AppendPath(pxr::SdfPath(mesh_name)));
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(m_stage, mesh_path);
 
   const MVert *verts = mesh->mvert;

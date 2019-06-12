@@ -43,6 +43,27 @@ struct ExportSettings {
   USDExportParams params;
 };
 
+// Temporary class for timing stuff.
+#include <ctime>
+class Timer {
+  timespec ts_begin;
+  std::string label;
+
+ public:
+  explicit Timer(std::string label) : label(label)
+  {
+    clock_gettime(CLOCK_MONOTONIC, &ts_begin);
+  }
+  ~Timer()
+  {
+    timespec ts_end;
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double duration = double(ts_end.tv_sec - ts_begin.tv_sec) +
+                      double(ts_end.tv_nsec - ts_begin.tv_nsec) / 1e9;
+    printf("%s took %.3f sec wallclock time\n", label.c_str(), duration);
+  }
+};
+
 class USDExporter {
   ExportSettings &m_settings;
   const char *m_filename;

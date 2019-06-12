@@ -59,6 +59,7 @@ struct ExportJobData {
 
 static void export_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
+  Timer timer_("Export to USD");
   ExportJobData *data = static_cast<ExportJobData *>(customdata);
 
   data->stop = stop;
