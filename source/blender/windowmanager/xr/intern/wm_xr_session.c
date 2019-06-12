@@ -84,7 +84,7 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
 #if defined(WITH_X11)
       binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
 #elif defined(WIN32)
-      binding.wgl = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
+      binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
 #endif
 
       break;
