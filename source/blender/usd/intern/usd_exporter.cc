@@ -19,6 +19,8 @@
  */
 
 #include "usd_exporter.h"
+#include "usd_writer_mesh.h"
+#include "usd_writer_transform.h"
 
 #include <pxr/pxr.h>
 #include <pxr/base/gf/matrix4f.h>
@@ -31,6 +33,7 @@
 #include <time.h>
 
 extern "C" {
+#include "BKE_anim.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_scene.h"
 
@@ -83,21 +86,27 @@ bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &data_)
   const pxr::SdfPath root("/");
   Mesh *mesh = ob_eval->runtime.mesh_eval;
   pxr::SdfPath parent_path;
-  float parent_relative_matrix[4][4];
+  USDAbstractWriter *parent_writer = NULL;
 
-  if (mesh == NULL || data_.dupli_object_current != NULL) {
-    printf("USD-\033[34mSKIPPING\033[0m object %s  isinstance=%d type=%d mesh = %p\n",
+  if (mesh == NULL) {
+    printf("USD-\033[34mSKIPPING\033[0m object %s  type=%d mesh = %p\n",
            ob_eval->id.name,
-           data_.dupli_object_current != NULL,
+           ob_eval->type,
+           mesh);
+    return false;
+  }
+  if (data_.dupli_object_current != NULL) {
+    printf("USD-\033[34mSKIPPING\033[0m object %s  instance of %s  type=%d mesh = %p\n",
+           ob_eval->id.name,
+           data_.dupli_object_current->ob->id.name,
            ob_eval->type,
            mesh);
     return false;
   }
 
-  // Compute the parent's SdfPath and get the object matrix relative to the parent.
+  // Compute the parent's SdfPath.
   if (ob_eval->parent == NULL) {
     parent_path = root;
-    copy_m4_m4(parent_relative_matrix, ob_eval->obmat);
   }
   else {
     USDPathMap::iterator path_it = usd_object_paths.find(ob_eval->parent);
@@ -108,59 +117,21 @@ bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &data_)
       return false;
     }
     parent_path = path_it->second;
-
-    invert_m4_m4(ob_eval->imat, ob_eval->obmat);
-    mul_m4_m4m4(parent_relative_matrix, ob_eval->parent->imat, ob_eval->obmat);
+    parent_writer = usd_writers[parent_path];
   }
 
-  std::string xform_name = pxr::TfMakeValidIdentifier(ob_eval->id.name + 2);
-  pxr::SdfPath xform_path = parent_path.AppendPath(pxr::SdfPath(xform_name));
-  usd_object_paths[ob_eval] = xform_path;
+  USDAbstractWriter *xformWriter = new USDTransformWriter(
+      m_stage, parent_path, ob_eval, data_, parent_writer);
 
-  printf("USD-\033[32mexporting\033[0m object %s → %s   isinstance=%d type=%d mesh = %p\n",
-         ob_eval->id.name,
-         xform_path.GetString().c_str(),
-         data_.dupli_object_current != NULL,
-         ob_eval->type,
-         mesh);
+  USDAbstractWriter *meshWriter = new USDMeshWriter(
+      m_stage, parent_path, ob_eval, data_, parent_writer);
 
-  // Write the transform relative to the parent.
-  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(m_stage, xform_path);
-  xform.AddTransformOp().Set(pxr::GfMatrix4d(parent_relative_matrix));
+  usd_object_paths[ob_eval] = xformWriter->usd_path();
+  usd_writers[xformWriter->usd_path()] = xformWriter;
+  usd_writers[meshWriter->usd_path()] = meshWriter;
 
-  // Write the mesh.
-  std::string mesh_name = pxr::TfMakeValidIdentifier(mesh->id.name + 2);
-  pxr::SdfPath mesh_path(xform_path.AppendPath(pxr::SdfPath(mesh_name)));
-  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(m_stage, mesh_path);
-
-  const MVert *verts = mesh->mvert;
-
-  // TODO(Sybren): there is probably a more C++-y way to do this, which avoids copying the entire
-  // mesh to a different structure. I haven't seen the approach below in the USD exporters for
-  // Maya/Houdini, but it's simple and it works for now.
-  pxr::VtArray<pxr::GfVec3f> usd_points;
-  usd_points.reserve(mesh->totvert);
-  for (int i = 0; i < mesh->totvert; ++i) {
-    usd_points.push_back(pxr::GfVec3f(verts[i].co));
-  }
-  usd_mesh.CreatePointsAttr().Set(usd_points);
-
-  pxr::VtArray<int> usd_face_vertex_counts, usd_face_indices;
-  usd_face_vertex_counts.reserve(mesh->totpoly);
-  usd_face_indices.reserve(mesh->totloop);
-
-  MLoop *mloop = mesh->mloop;
-  MPoly *mpoly = mesh->mpoly;
-
-  for (int i = 0; i < mesh->totpoly; ++i, ++mpoly) {
-    MLoop *loop = mloop + mpoly->loopstart;
-    usd_face_vertex_counts.push_back(mpoly->totloop);
-    for (int j = 0; j < mpoly->totloop; ++j, ++loop) {
-      usd_face_indices.push_back(loop->v);
-    }
-  }
-  usd_mesh.CreateFaceVertexCountsAttr().Set(usd_face_vertex_counts);
-  usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_face_indices);
+  xformWriter->write();
+  meshWriter->write();
 
   return true;
 }

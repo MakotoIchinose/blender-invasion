@@ -30,9 +30,9 @@
 #include <map>
 
 struct Depsgraph;
-struct Main;
 struct Scene;
 struct ViewLayer;
+class USDAbstractWriter;
 
 struct ExportSettings {
   Scene *scene;
@@ -69,7 +69,10 @@ class USDExporter {
   const char *m_filename;
 
   typedef std::map<Object *, pxr::SdfPath> USDPathMap;
+  typedef std::map<pxr::SdfPath, USDAbstractWriter *> USDWriterMap;
+
   USDPathMap usd_object_paths;
+  USDWriterMap usd_writers;
 
   pxr::UsdStageRefPtr m_stage;
 

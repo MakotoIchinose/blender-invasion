@@ -43,9 +43,15 @@ set(INC_SYS
 set(SRC
   intern/usd_capi.cc
   intern/usd_exporter.cc
+  intern/usd_writer_abstract.cc
+  intern/usd_writer_mesh.cc
+  intern/usd_writer_transform.cc
 
   usd.h
   intern/usd_exporter.h
+  intern/usd_writer_abstract.h
+  intern/usd_writer_mesh.h
+  intern/usd_writer_transform.h
 )
 
 set(LIB
