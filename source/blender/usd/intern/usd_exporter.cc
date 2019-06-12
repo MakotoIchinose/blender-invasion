@@ -22,15 +22,8 @@
 #include "usd_writer_mesh.h"
 #include "usd_writer_transform.h"
 
-#include <pxr/pxr.h>
-#include <pxr/base/gf/matrix4f.h>
-#include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/usd/stage.h>
-#include <pxr/usd/usdGeom/mesh.h>
-#include <pxr/usd/usdGeom/xform.h>
-
-#include <cmath>
-#include <time.h>
+#include <pxr/usd/usdGeom/tokens.h>
 
 extern "C" {
 #include "BKE_anim.h"
@@ -38,13 +31,8 @@ extern "C" {
 #include "BKE_scene.h"
 
 #include "BLI_iterator.h"
-#include "BLI_math_matrix.h"
 
 #include "DEG_depsgraph_query.h"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
 }
 
 USDExporter::USDExporter(const char *filename, ExportSettings &settings)
