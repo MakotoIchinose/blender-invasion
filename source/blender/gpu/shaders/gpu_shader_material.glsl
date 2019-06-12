@@ -1264,9 +1264,34 @@ float integer_noise(int n)
   return 0.5 * (float(nn) / 1073741824.0);
 }
 
-uint hash(uint kx, uint ky, uint kz)
-{
+/* Jenkins Lookup3 Hash Functions.
+ * http://burtleburtle.net/bob/c/lookup3.c
+ */
+
 #define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
+
+#define mix(a, b, c) \
+  { \
+    a -= c; \
+    a ^= rot(c, 4); \
+    c += b; \
+    b -= a; \
+    b ^= rot(a, 6); \
+    a += c; \
+    c -= b; \
+    c ^= rot(b, 8); \
+    b += a; \
+    a -= c; \
+    a ^= rot(c, 16); \
+    c += b; \
+    b -= a; \
+    b ^= rot(a, 19); \
+    a += c; \
+    c -= b; \
+    c ^= rot(b, 4); \
+    b += a; \
+  }
+
 #define final(a, b, c) \
   { \
     c ^= b; \
@@ -1284,9 +1309,34 @@ uint hash(uint kx, uint ky, uint kz)
     c ^= b; \
     c -= rot(b, 24); \
   }
-  // now hash the data!
-  uint a, b, c, len = 3u;
-  a = b = c = 0xdeadbeefu + (len << 2u) + 13u;
+
+uint hash(uint kx)
+{
+  uint a, b, c;
+  a = b = c = 0xdeadbeefu + (1u << 2u) + 13u;
+
+  a += kx;
+  final(a, b, c);
+
+  return c;
+}
+
+uint hash(uint kx, uint ky)
+{
+  uint a, b, c;
+  a = b = c = 0xdeadbeefu + (2u << 2u) + 13u;
+
+  b += ky;
+  a += kx;
+  final(a, b, c);
+
+  return c;
+}
+
+uint hash(uint kx, uint ky, uint kz)
+{
+  uint a, b, c;
+  a = b = c = 0xdeadbeefu + (3u << 2u) + 13u;
 
   c += kz;
   b += ky;
@@ -1294,18 +1344,57 @@ uint hash(uint kx, uint ky, uint kz)
   final(a, b, c);
 
   return c;
+}
+
+uint hash(uint kx, uint ky, uint kz, uint kw)
+{
+  uint a, b, c;
+  a = b = c = 0xdeadbeefu + (4u << 2u) + 13u;
+
+  a += kx;
+  b += ky;
+  c += kz;
+  mix(a, b, c);
+
+  a += kw;
+  final(a, b, c);
+
+  return c;
+}
+
 #undef rot
 #undef final
+#undef mix
+
+float bits_to_01(uint bits)
+{
+  return (float(bits) / 4294967295.0);
+}
+
+void white_noise_1D(vec3 vec, float w, out float fac)
+{
+  fac = bits_to_01(hash(floatBitsToUint(w)));
+}
+
+void white_noise_2D(vec3 vec, float w, out float fac)
+{
+  fac = bits_to_01(hash(floatBitsToUint(vec.x), floatBitsToUint(vec.y)));
+}
+
+void white_noise_3D(vec3 vec, float w, out float fac)
+{
+  fac = bits_to_01(hash(floatBitsToUint(vec.x), floatBitsToUint(vec.y), floatBitsToUint(vec.z)));
+}
+
+void white_noise_4D(vec3 vec, float w, out float fac)
+{
+  fac = bits_to_01(hash(
+      floatBitsToUint(vec.x), floatBitsToUint(vec.y), floatBitsToUint(vec.z), floatBitsToUint(w)));
 }
 
 uint hash(int kx, int ky, int kz)
 {
   return hash(uint(kx), uint(ky), uint(kz));
-}
-
-float bits_to_01(uint bits)
-{
-  return (float(bits) / 4294967295.0);
 }
 
 float cellnoise(vec3 p)

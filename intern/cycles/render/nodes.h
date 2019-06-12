@@ -300,6 +300,19 @@ class BrickTextureNode : public TextureNode {
   }
 };
 
+class WhiteNoiseTextureNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(WhiteNoiseTextureNode)
+  virtual int get_group()
+  {
+    return NODE_GROUP_LEVEL_2;
+  }
+
+  int dimensions;
+  float3 vector;
+  float w;
+};
+
 class PointDensityTextureNode : public ShaderNode {
  public:
   SHADER_NODE_NO_CLONE_CLASS(PointDensityTextureNode)

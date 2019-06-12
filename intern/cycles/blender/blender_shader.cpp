@@ -820,6 +820,12 @@ static ShaderNode *add_node(Scene *scene,
     }
     node = ies;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeTexWhiteNoise)) {
+    BL::ShaderNodeTexWhiteNoise b_tex_white_noise_node(b_node);
+    WhiteNoiseTextureNode *whiteNoise = new WhiteNoiseTextureNode();
+    whiteNoise->dimensions = b_tex_white_noise_node.dimensions();
+    node = whiteNoise;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeNormalMap)) {
     BL::ShaderNodeNormalMap b_normal_map_node(b_node);
     NormalMapNode *nmap = new NormalMapNode();

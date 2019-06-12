@@ -172,6 +172,14 @@ const EnumPropertyItem rna_enum_node_vec_math_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+const EnumPropertyItem rna_enum_node_tex_dimensions_items[] = {
+    {1, "1D", 0, "1D", ""},
+    {2, "2D", 0, "2D", ""},
+    {3, "3D", 0, "3D", ""},
+    {4, "4D", 0, "4D", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
 const EnumPropertyItem rna_enum_node_filter_items[] = {
     {0, "SOFTEN", 0, "Soften", ""},
     {1, "SHARPEN", 0, "Sharpen", ""},
@@ -4401,6 +4409,17 @@ static void def_sh_tex_wave(StructRNA *srna)
   RNA_def_property_enum_items(prop, prop_wave_profile_items);
   RNA_def_property_ui_text(prop, "Wave Profile", "");
   RNA_def_property_update(prop, 0, "rna_Node_update");
+}
+
+static void def_sh_tex_white_noise(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "dimensions", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
+  RNA_def_property_ui_text(prop, "Dimensions", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 
 static void def_sh_tex_coord(StructRNA *srna)

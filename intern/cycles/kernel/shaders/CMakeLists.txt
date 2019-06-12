@@ -91,6 +91,7 @@ set(SRC_OSL
   node_rgb_to_bw.osl
   node_map_range.osl
   node_clamp.osl
+  node_white_noise_texture.osl
 )
 
 set(SRC_OSL_HEADERS
