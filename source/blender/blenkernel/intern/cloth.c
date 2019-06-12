@@ -431,7 +431,7 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
   clmd->clothObject->bm = clmd->clothObject->bm_prev;
 }
 
-static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifierData *clmd)
+static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *UNUSED(ob), ClothModifierData *clmd)
 {
   Mesh *mesh_result = NULL;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
@@ -445,8 +445,7 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
 
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *sizing)
 {
-  BMVert v1 = *edge->v1;
-  BMVert v2 = *edge->v2;
+  /* BMVert v1 = *edge->v1; */
   float u1[2], u2[2];
 
   /**
@@ -475,7 +474,7 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
   sub_v2_v2(u12, u2);
   float value = 0.0;
   float temp_v2[2];
-  int index = BM_elem_index_get(&v1);
+  /* int index = BM_elem_index_get(&v1); */
   /* ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, index)->link; */
   ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, 0)->link;
   /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't matter
@@ -489,8 +488,6 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
 static int cloth_remeshing_find_bad_edges(BMesh *bm, LinkNodePair *sizing)
 {
   int tagged = 0;
-  BMVert *v;
-  BMIter iter;
   BMEdge *e;
   BMIter eiter;
   /* clearing out the tags */
@@ -527,7 +524,7 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
     else {
       f2 = f;
     }
-    printf("face_i: %d\n", face_i);
+    /* printf("face_i: %d\n", face_i); */
   }
 
   if (!f1) {
@@ -536,7 +533,6 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
 
   /* split the edge */
   BMEdge *new_edge;
-  BMEdge old_edge = *e;
   BMVert *new_v = BM_edge_split(bm, e, v, &new_edge, fac);
   BM_elem_flag_disable(new_edge, BM_ELEM_TAG);
 
@@ -546,23 +542,31 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
    * create new edge between this
    * vert and newly created vert */
   BM_ITER_ELEM (vert, &viter, f1, BM_VERTS_OF_FACE) {
-    if (vert == old_edge.v1 || vert == old_edge.v2 || vert == new_v) {
+    if (vert == e->v1 || vert == e->v2 || vert == new_edge->v1 || vert == new_edge->v2 ||
+        vert == new_v) {
       continue;
     }
-
-    BM_face_create_quad_tri(bm, vert, old_edge.v1, new_v, NULL, NULL, BM_CREATE_NOP);
-    BM_face_create_quad_tri(bm, vert, new_v, old_edge.v2, NULL, NULL, BM_CREATE_NOP);
-    BM_face_kill(bm, f1);
+    BMLoop *l_a = NULL, *l_b = NULL;
+    l_a = BM_face_vert_share_loop(f1, vert);
+    l_b = BM_face_vert_share_loop(f1, new_v);
+    if (!BM_face_split(bm, f1, l_a, l_b, NULL, NULL, true)) {
+      printf("face not split: f1\n");
+    }
+    break;
   }
   if (f2) {
     BM_ITER_ELEM (vert, &viter, f2, BM_VERTS_OF_FACE) {
-      if (vert == old_edge.v1 || vert == old_edge.v2 || vert == new_v) {
+      if (vert == e->v1 || vert == e->v2 || vert == new_edge->v1 || vert == new_edge->v2 ||
+          vert == new_v) {
         continue;
       }
-
-      BM_face_create_quad_tri(bm, vert, old_edge.v1, new_v, NULL, NULL, BM_CREATE_NOP);
-      BM_face_create_quad_tri(bm, vert, new_v, old_edge.v2, NULL, NULL, BM_CREATE_NOP);
-      BM_face_kill(bm, f2);
+      BMLoop *l_a = NULL, *l_b = NULL;
+      l_a = BM_face_vert_share_loop(f2, vert);
+      l_b = BM_face_vert_share_loop(f2, new_v);
+      if (!BM_face_split(bm, f2, l_a, l_b, NULL, NULL, true)) {
+        printf("face not split: f2\n");
+      }
+      break;
     }
   }
 
@@ -581,11 +585,12 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
   BMIter iter;
   BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
     if (BM_elem_flag_test_bool(e, BM_ELEM_TAG)) {
-      int v1_index = BM_elem_index_get(e->v1);
-      int v2_index = BM_elem_index_get(e->v2);
-      BMEdge(*new_edges)[3];
-      int new_edge_count = 0;
-      BMVert *new_v = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
+      /* int v1_index = BM_elem_index_get(e->v1); */
+      /* int v2_index = BM_elem_index_get(e->v2); */
+      /* BMEdge(*new_edges)[3]; */
+      /* int new_edge_count = 0; */
+      cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
+      /* BMVert *new_v = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5); */
       BM_elem_flag_disable(e, BM_ELEM_TAG);
       /* ClothSizing *sizing_mean = MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single"); */
 
@@ -606,7 +611,6 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
       /* BM_elem_flag_disable(e, BM_ELEM_TAG); */
     }
   }
-  BM_mesh_normals_update(bm);
   return true;
 }
 
