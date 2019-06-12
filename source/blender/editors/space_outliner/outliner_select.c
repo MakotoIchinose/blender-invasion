@@ -1310,6 +1310,74 @@ void outliner_item_do_activate_from_tree_element(
       C, scene, view_layer, soops, te, tselem, extend, recursive);
 }
 
+static void do_outliner_selection_sync_recursive(SpaceOutliner *soops,
+                                                 ViewLayer *view_layer,
+                                                 ListBase *tree,
+                                                 bool to_view_layer)
+{
+  TreeElement *te;
+
+  for (te = tree->first; te; te = te->next) {
+    if (te->idcode == ID_OB) {
+      TreeStoreElem *tselem = TREESTORE(te);
+      Object *ob = (Object *)tselem->id;
+
+      Base *base = (te->directdata) ? (Base *)te->directdata :
+                                      BKE_view_layer_base_find(view_layer, ob);
+
+      if (to_view_layer) {
+        const bool is_selected = (tselem->flag & TSE_SELECTED) != 0;
+
+        if (is_selected) {
+
+          base->flag |= BASE_SELECTED;
+        }
+      }
+      else {
+        const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
+
+        if (is_selected) {
+          tselem->flag |= TSE_SELECTED;
+        }
+      }
+    }
+
+    if (&te->subtree) {
+      do_outliner_selection_sync_recursive(soops, view_layer, &te->subtree, to_view_layer);
+    }
+  }
+}
+
+void do_outliner_selection_sync(bContext *C, bool to_view_layer)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+
+  if (!to_view_layer) {
+    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  }
+  do_outliner_selection_sync_recursive(soops, view_layer, &soops->tree, to_view_layer);
+
+  if (to_view_layer) {
+    /* Mark other outliners as dirty */
+    if (to_view_layer) {
+      Main *bmain = CTX_data_main(C);
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+            if (space->spacetype == SPACE_OUTLINER) {
+              SpaceOutliner *soutliner = (SpaceOutliner *)space;
+
+              /* Mark selection state as dirty */
+              soutliner->flag |= SO_IS_DIRTY;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 /**
  * Action to run when clicking in the outliner,
  *
@@ -1327,6 +1395,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   TreeElement *te;
   float view_mval[2];
   bool changed = false, rebuild_tree = false;
+
+  // Set dirty
+  soops->flag |= SO_IS_DIRTY;
 
   UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
 
@@ -1374,6 +1445,11 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
       ED_region_tag_redraw_no_rebuild(ar);
     }
     ED_undo_push(C, "Outliner selection change");
+
+    /* Sync selection */
+    if (soops->flag & SO_SYNC_SELECTION) {
+      do_outliner_selection_sync(C, true);
+    }
   }
 
   return OPERATOR_FINISHED;
@@ -1462,6 +1538,10 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   ED_region_tag_redraw(ar);
+
+  if ((soops->flag & SO_SYNC_SELECTION) != 0) {
+    do_outliner_selection_sync(C, true);
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -1614,7 +1694,6 @@ static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, c
   }
   else if (direction == OUTLINER_SELECT_WALK_RIGHT) {
     if (!TSELEM_OPEN(tselem, soops) && active->subtree.first) {
-      printf("not open\n");
       tselem->flag &= ~TSE_CLOSED;
     }
   }

@@ -3507,6 +3507,12 @@ void draw_outliner(const bContext *C)
 
   outliner_build_tree(mainvar, scene, view_layer, soops, ar);  // always
 
+  /* Get selection state from view layer if dirty */
+  if ((soops->flag & SO_IS_DIRTY) != 0 && (soops->flag & SO_SYNC_SELECTION)) {
+    do_outliner_selection_sync(C, false);
+  }
+  soops->flag &= ~SO_IS_DIRTY;
+
   /* force display to pixel coords */
   v2d->flag |= (V2D_PIXELOFS_X | V2D_PIXELOFS_Y);
   /* set matrix for 2d-view controls */

@@ -114,6 +114,23 @@ float ED_view3d_select_dist_px(void)
   return 75.0f * U.pixelsize;
 }
 
+static void view3d_sync_selection_to_outliner(bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+      for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+        if (space->spacetype == SPACE_OUTLINER) {
+          SpaceOutliner *soutliner = (SpaceOutliner *)space;
+
+          /* Mark selection state as dirty */
+          soutliner->flag |= SO_IS_DIRTY;
+        }
+      }
+    }
+  }
+}
+
 /* TODO: should return whether there is valid context to continue */
 void ED_view3d_viewcontext_init(bContext *C, ViewContext *vc)
 {
@@ -1334,6 +1351,7 @@ static int view3d_lasso_select_exec(bContext *C, wmOperator *op)
     MEM_freeN((void *)mcords);
 
     if (changed_multi) {
+      view3d_sync_selection_to_outliner(C);
       return OPERATOR_FINISHED;
     }
     else {
@@ -2354,6 +2372,10 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
    * */
   if (retval) {
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+
+    /* Mark outliners selection state as dirty */
+    view3d_sync_selection_to_outliner(C);
+
     return OPERATOR_PASS_THROUGH | OPERATOR_FINISHED;
   }
   else {
@@ -3202,6 +3224,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
   WM_generic_user_data_free(wm_userdata);
 
   if (changed_multi) {
+    view3d_sync_selection_to_outliner(C);
     return OPERATOR_FINISHED;
   }
   else {
@@ -3951,6 +3974,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
   }
   else if (obact && (obact->mode & OB_MODE_PARTICLE_EDIT)) {
     if (PE_circle_select(C, sel_op, mval, (float)radius)) {
+      view3d_sync_selection_to_outliner(C);
       return OPERATOR_FINISHED;
     }
     return OPERATOR_CANCELLED;
@@ -3970,6 +3994,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
     WM_generic_user_data_free(wm_userdata);
   }
 
+  view3d_sync_selection_to_outliner(C);
   return OPERATOR_FINISHED;
 }
 

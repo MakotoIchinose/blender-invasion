@@ -94,6 +94,24 @@
  * \note Caller must send a `NC_SCENE | ND_OB_SELECT` notifier
  * (or a `NC_SCENE | ND_OB_VISIBLE` in case of visibility toggling).
  */
+
+static void object_sync_selection_to_outliner(bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+      for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+        if (space->spacetype == SPACE_OUTLINER) {
+          SpaceOutliner *soutliner = (SpaceOutliner *)space;
+
+          /* Mark selection state as dirty */
+          soutliner->flag |= SO_IS_DIRTY;
+        }
+      }
+    }
+  }
+}
+
 void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
 {
   if (mode == BA_INVERT) {
@@ -1140,6 +1158,8 @@ static int object_select_all_exec(bContext *C, wmOperator *op)
     Scene *scene = CTX_data_scene(C);
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+
+    object_sync_selection_to_outliner(C);
 
     return OPERATOR_FINISHED;
   }
