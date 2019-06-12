@@ -139,6 +139,7 @@ typedef struct LANPR_ChainRegisterEntry{
   LANPR_RenderLineChain*     rlc;
   LANPR_RenderLineChainItem* rlci;
   char                       picked;
+  char                       is_left; // left/right mark. Because we revert list in chaining and we need the flag.
 } LANPR_ChainRegisterEntry;
 
 #endif
