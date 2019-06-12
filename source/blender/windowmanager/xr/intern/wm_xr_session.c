@@ -65,38 +65,33 @@ static void wm_xr_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-eWM_xrGraphicsBinding wm_xr_session_active_graphics_binding_type_get(const wmXRContext *xr_context)
-{
-  return xr_context->gpu_binding;
-}
-
 static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
                                             GHOST_ContextHandle UNUSED(ghost_context))
 {
-  void *binding_ptr = NULL;
+  static union {
+#if defined(WITH_X11)
+    XrGraphicsBindingOpenGLXlibKHR glx;
+#elif defined(WIN32)
+    XrGraphicsBindingOpenGLWin32KHR wgl;
+    XrGraphicsBindingD3D11KHR d3d11;
+#endif
+  } binding;
+
+  memset(&binding, 0, sizeof(binding));
 
   switch (xr_context->gpu_binding) {
     case WM_XR_GRAPHICS_OPENGL: {
 #if defined(WITH_X11)
-      XrGraphicsBindingOpenGLXlibKHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR};
-
+      binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
 #elif defined(WIN32)
-      XrGraphicsBindingOpenGLWin32KHR binding = {
-          .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR};
-
+      binding.wgl = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
 #endif
-
-      binding_ptr = MEM_mallocN(sizeof(binding), __func__);
-      memcpy(binding_ptr, &binding, sizeof(binding));
 
       break;
     }
 #ifdef WIN32
     case WM_XR_GRAPHICS_D3D11: {
-      XrGraphicsBindingD3D11KHR binding = {.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR};
-
-      binding_ptr = MEM_mallocN(sizeof(binding), __func__);
-      memcpy(binding_ptr, &binding, sizeof(binding));
+      binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
 
       break;
     }
@@ -105,21 +100,37 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
       BLI_assert(false);
   }
 
-  return binding_ptr;
+  return &binding;
 }
 
-void wm_xr_session_start(wmXRContext *xr_context, void *ghost_context)
+void wm_xr_session_start(wmXRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
   BLI_assert(oxr->instance != XR_NULL_HANDLE);
   BLI_assert(oxr->session == XR_NULL_HANDLE);
+  if (xr_context->gpu_ctx_bind_fn == NULL) {
+    fprintf(stderr,
+            "Invalid API usage: No way to bind graphics context to the XR session. Call "
+            "wm_xr_graphics_context_bind_funcs() with valid parameters before starting the "
+            "session (through wm_xr_session_start()).");
+    return;
+  }
 
   wm_xr_system_init(oxr);
 
+  wm_xr_graphics_context_bind(xr_context);
+  if (xr_context->gpu_ctx == NULL) {
+    fprintf(stderr,
+            "Invalid API usage: No graphics context returned through the callback set with "
+            "wm_xr_graphics_context_bind_funcs(). This is required for session starting (through "
+            "wm_xr_session_start()).\n");
+    return;
+  }
+
   XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
   create_info.systemId = oxr->system_id;
-  create_info.next = openxr_graphics_binding_create(xr_context, ghost_context);
+  create_info.next = openxr_graphics_binding_create(xr_context, xr_context->gpu_ctx);
 
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }
@@ -127,6 +138,7 @@ void wm_xr_session_start(wmXRContext *xr_context, void *ghost_context)
 void wm_xr_session_end(wmXRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
+  wm_xr_graphics_context_unbind(xr_context);
 }
 
 void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged *lifecycle)

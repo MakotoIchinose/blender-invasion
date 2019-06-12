@@ -269,6 +269,9 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
+  /* Unbinding may involve destruction, so call here too */
+  wm_xr_graphics_context_unbind(xr_context);
+
   if (oxr->session != XR_NULL_HANDLE) {
     xrDestroySession(oxr->session);
   }
@@ -282,4 +285,35 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
   MEM_SAFE_FREE(xr_context->enabled_extensions);
 
   MEM_SAFE_FREE(xr_context);
+}
+
+/**
+ * Set context for binding and unbinding a graphics context for a session. The binding callback may
+ * create a new context thereby. In fact that's the sole reason for this callback approach to
+ * binding. Just make sure to have an unbind function set that properly destructs.
+ *
+ * \param bind_fn Function to retrieve (possibly create) a graphics context.
+ * \param unbind_fn Function to release (possibly free) a graphics context.
+ */
+void wm_xr_graphics_context_bind_funcs(wmXRContext *xr_context,
+                                       wmXRGraphicsContextBindFn bind_fn,
+                                       wmXRGraphicsContextUnbindFn unbind_fn)
+{
+  wm_xr_graphics_context_unbind(xr_context);
+  xr_context->gpu_ctx_bind_fn = bind_fn;
+  xr_context->gpu_ctx_unbind_fn = unbind_fn;
+}
+
+void wm_xr_graphics_context_bind(wmXRContext *xr_context)
+{
+  BLI_assert(xr_context->gpu_ctx_bind_fn);
+  xr_context->gpu_ctx = xr_context->gpu_ctx_bind_fn(xr_context->gpu_binding);
+}
+
+void wm_xr_graphics_context_unbind(wmXRContext *xr_context)
+{
+  if (xr_context->gpu_ctx_unbind_fn) {
+    xr_context->gpu_ctx_unbind_fn(xr_context->gpu_binding, xr_context->gpu_ctx);
+  }
+  xr_context->gpu_ctx = NULL;
 }

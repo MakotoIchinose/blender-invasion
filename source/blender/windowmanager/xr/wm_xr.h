@@ -56,11 +56,17 @@ struct wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_inf
     ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 void wm_xr_context_destroy(struct wmXRContext *xr_context);
 
+typedef void *(*wmXRGraphicsContextBindFn)(eWM_xrGraphicsBinding graphics_lib);
+typedef void (*wmXRGraphicsContextUnbindFn)(eWM_xrGraphicsBinding graphics_lib,
+                                            void *graphics_context);
+
+void wm_xr_graphics_context_bind_funcs(struct wmXRContext *xr_context,
+                                       wmXRGraphicsContextBindFn bind_fn,
+                                       wmXRGraphicsContextUnbindFn unbind_fn) ATTR_NONNULL(1, 2);
+
 /* sessions */
 bool wm_xr_session_is_running(const struct wmXRContext *xr_context) ATTR_WARN_UNUSED_RESULT;
-eWM_xrGraphicsBinding wm_xr_session_active_graphics_binding_type_get(
-    const struct wmXRContext *xr_context) ATTR_NONNULL();
-void wm_xr_session_start(struct wmXRContext *xr_context, void *ghost_context) ATTR_NONNULL();
+void wm_xr_session_start(struct wmXRContext *xr_context) ATTR_NONNULL();
 void wm_xr_session_end(struct wmXRContext *xr_context) ATTR_NONNULL();
 
 /* events */

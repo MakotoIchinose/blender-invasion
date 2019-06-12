@@ -181,7 +181,6 @@ typedef struct wmWindowManager {
 
   //#ifdef WITH_OPENXR
   struct wmXRContext *xr_context;
-  void *xr_gpu_context;
   //#endif
 } wmWindowManager;
 

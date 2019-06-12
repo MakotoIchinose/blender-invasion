@@ -40,10 +40,19 @@ typedef struct wmXRContext {
 
   /** Active graphics binding type. */
   eWM_xrGraphicsBinding gpu_binding;
+  /** Function to retrieve (possibly create) a graphics context */
+  wmXRGraphicsContextBindFn gpu_ctx_bind_fn;
+  /** Function to release (possibly free) a graphics context */
+  wmXRGraphicsContextUnbindFn gpu_ctx_unbind_fn;
+  /** Active Ghost graphic context. */
+  void *gpu_ctx;
 
   /** Names of enabled extensions */
   const char **enabled_extensions;
 } wmXRContext;
+
+void wm_xr_graphics_context_bind(wmXRContext *xr_context) ATTR_NONNULL();
+void wm_xr_graphics_context_unbind(wmXRContext *xr_context) ATTR_NONNULL();
 
 void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged *lifecycle)
     ATTR_NONNULL();
