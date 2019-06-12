@@ -193,6 +193,16 @@ extern GHOST_ContextHandle GHOST_CreateOpenGLContext(GHOST_SystemHandle systemha
 extern GHOST_TSuccess GHOST_DisposeOpenGLContext(GHOST_SystemHandle systemhandle,
                                                  GHOST_ContextHandle contexthandle);
 
+#ifdef WIN32
+/**
+ * Create a new DirectX offscreen context.
+ * Never explicitly delete the context, use disposeContext() instead.
+ * \param systemhandle The handle to the system
+ * \return A handle to the new context ( == NULL if creation failed).
+ */
+extern GHOST_ContextHandle GHOST_CreateDirectXContext(GHOST_SystemHandle systemhandle);
+#endif
+
 /**
  * Returns the window user data.
  * \param windowhandle The handle to the window
