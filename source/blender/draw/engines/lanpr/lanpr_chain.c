@@ -445,6 +445,7 @@ LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(
 }
 LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb, LANPR_RenderLineChainItem* rlci){
   LANPR_BoundingArea* root = lanpr_get_point_bounding_area(rb,rlci->pos[0],rlci->pos[1]);
+  if(!root) return NULL;
   return lanpr_get_point_bounding_area_recursive(rb,root,rlci);
 }
 // if reduction threshold is even larger than a small bounding area,
@@ -475,8 +476,8 @@ void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLi
   LANPR_BoundingArea* ba1 = lanpr_get_point_bounding_area(rb,pl->pos[0],pl->pos[1]);
   LANPR_BoundingArea* ba2 = lanpr_get_point_bounding_area(rb,pr->pos[0],pr->pos[1]);
 
-  lanpr_link_point_with_bounding_area_recursive(rb,ba1,rlc,pl);
-  lanpr_link_point_with_bounding_area_recursive(rb,ba2,rlc,pr);
+  if(ba1) lanpr_link_point_with_bounding_area_recursive(rb,ba1,rlc,pl);
+  if(ba2) lanpr_link_point_with_bounding_area_recursive(rb,ba2,rlc,pr);
 }
 
 void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
@@ -544,7 +545,9 @@ void lanpr_connect_two_chains(LANPR_RenderBuffer* rb, LANPR_RenderLineChain* ont
     ((LANPR_RenderLineChainItem*)onto->chain.first)->item.prev = sub->chain.last;
     onto->chain.first = sub->chain.first;
   }
-  BLI_remlink(&rb->chains,sub);
+  //((LANPR_RenderLineChainItem*)sub->chain.first)->occlusion = ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion;
+  //((LANPR_RenderLineChainItem*)onto->chain.last)->occlusion = ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion;
+  //((LANPR_RenderLineChainItem*)sub->chain.last)->occlusion = ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion;
 }
 
 // this only does head-tail connection.
@@ -556,6 +559,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
   LANPR_BoundingArea* ba;
   LANPR_ChainRegisterEntry* cre, *next_cre, *closest_cre;
   float dist;
+  int occlusion;
   ListBase swap = {0};
 
   swap.first = rb->chains.first;
@@ -564,61 +568,80 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
   rb->chains.last = rb->chains.first = NULL;
 
   while (rlc = BLI_pophead(&swap)) {
+    BLI_addtail(&rb->chains, rlc);
     if(rlc->picked) continue;
+
+    occlusion = ((LANPR_RenderLineChainItem*)rlc->chain.first)->occlusion;
+
     rlci = rlc->chain.last;
-    ba = lanpr_get_end_point_bounding_area(rb,rlci);
-    dist = 100.0f;
-    closest_cre = NULL;
-    for(cre = ba->linked_chains.first;cre;cre = next_cre){
-      next_cre = cre->item.next;
-      if(cre->rlc == rlc) continue;
-      if(cre->rlc->picked){
+    while(ba = lanpr_get_end_point_bounding_area(rb,rlci)){
+      dist = 100.0f;
+      closest_cre = NULL;
+      if(!ba->linked_chains.first) break;
+      for(cre = ba->linked_chains.first;cre;cre = next_cre){
+        next_cre = cre->item.next;
+        if(cre->rlc == rlc || ((LANPR_RenderLineChainItem*)cre->rlc->chain.first)->occlusion != occlusion) continue;
+        if(cre->rlc->picked){
+          BLI_remlink(&ba->linked_chains,cre);
+          continue;
+        }
+        float new_len = len_v2v2(cre->rlci->pos,rlci->pos);
+        if(new_len<dist){
+          closest_cre = cre;
+          dist = new_len;
+        }
+      }
+      if(dist<0.05f && closest_cre){
+        closest_cre->picked = 1;
+        closest_cre->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains,cre);
-        continue;
-      }
-      float new_len = len_v2v2(cre->rlci->pos,rlci->pos);
-      if(new_len<dist){
-        closest_cre = cre;
-        dist = new_len;
-      }
-    }
-    if(dist<0.00001f && closest_cre){
-      closest_cre->picked = 1;
-      closest_cre->rlc->picked = 1;
-      BLI_remlink(&ba->linked_chains,cre);
-      if(closest_cre->rlci == closest_cre->rlc->chain.first){
-        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,0,0);
+        if(closest_cre->rlci == closest_cre->rlc->chain.first){
+          lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,0,0);
+          BLI_remlink(&swap,closest_cre->rlc);
+        }else{
+          lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,0,1);
+          BLI_remlink(&swap,closest_cre->rlc);
+        }
       }else{
-        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,0,1);
+        break;
       }
+      rlci = rlc->chain.last;
     }
+    
 
     rlci = rlc->chain.first;
-    ba = lanpr_get_end_point_bounding_area(rb,rlci);
-    dist = 100.0f;
-    closest_cre = NULL;
-    for(cre = ba->linked_chains.first;cre;cre = next_cre){
-      next_cre = cre->item.next;
-      if(cre->rlc == rlc) continue;
-      if(cre->rlc->picked){
+    while(ba = lanpr_get_end_point_bounding_area(rb,rlci)){
+      dist = 100.0f;
+      closest_cre = NULL;
+      if(!ba->linked_chains.first) break;
+      for(cre = ba->linked_chains.first;cre;cre = next_cre){
+        next_cre = cre->item.next;
+        if(cre->rlc == rlc || ((LANPR_RenderLineChainItem*)cre->rlc->chain.first)->occlusion != occlusion) continue;
+        if(cre->rlc->picked){
+          BLI_remlink(&ba->linked_chains,cre);
+          continue;
+        }
+        float new_len = len_v2v2(cre->rlci->pos,rlci->pos);
+        if(new_len<dist){
+          closest_cre = cre;
+          dist = new_len;
+        }
+      }
+      if(dist<0.05f && closest_cre){
+        closest_cre->picked = 1;
+        closest_cre->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains,cre);
-        continue;
-      }
-      float new_len = len_v2v2(cre->rlci->pos,rlci->pos);
-      if(new_len<dist){
-        closest_cre = cre;
-        dist = new_len;
-      }
-    }
-    if(dist<0.00001f && closest_cre){
-      closest_cre->picked = 1;
-      closest_cre->rlc->picked = 1;
-      BLI_remlink(&ba->linked_chains,cre);
-      if(closest_cre->rlci == closest_cre->rlc->chain.first){
-        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,1,0);
+        if(closest_cre->rlci == closest_cre->rlc->chain.first){
+          BLI_remlink(&swap,closest_cre->rlc);
+          lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,1,0);
+        }else{
+          lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,1,1);
+          BLI_remlink(&swap,closest_cre->rlc);
+        }
       }else{
-        lanpr_connect_two_chains(rb,rlc,closest_cre->rlc,1,1);
+        break;
       }
+      rlci = rlc->chain.first;
     }
   }
  
