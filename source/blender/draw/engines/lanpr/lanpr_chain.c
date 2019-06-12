@@ -428,20 +428,20 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
 LANPR_BoundingArea *lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(
   LANPR_RenderBuffer *rb, LANPR_BoundingArea *root, LANPR_RenderLineChainItem* rlci){
-  if (!root->child) {
+  //if (!root->child) {
     return root;
-  }
-  else {
-    LANPR_BoundingArea* ch = root->child;
-    #define IN_BOUND(ba,rlci)\
-      ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
-    if     (IN_BOUND(ch[0],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci);
-    else if(IN_BOUND(ch[1],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci);
-    else if(IN_BOUND(ch[2],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci);
-    else if(IN_BOUND(ch[3],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci);
-    #undef IN_BOUND
-  }
-  return NULL;
+  //}
+  //else {
+  //  LANPR_BoundingArea* ch = root->child;
+  //  #define IN_BOUND(ba,rlci)\
+  //    ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
+  //  if     (IN_BOUND(ch[0],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci);
+  //  else if(IN_BOUND(ch[1],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci);
+  //  else if(IN_BOUND(ch[2],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci);
+  //  else if(IN_BOUND(ch[3],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci);
+  //  #undef IN_BOUND
+  //}
+  //return NULL;
 }
 LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb, LANPR_RenderLineChainItem* rlci){
   LANPR_BoundingArea* root = lanpr_get_point_bounding_area(rb,rlci->pos[0],rlci->pos[1]);
@@ -453,21 +453,21 @@ LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb, LA
 //      2) probably need to add it to root bounding area which has larger surface area then it will cover typical threshold values.
 void lanpr_link_point_with_bounding_area_recursive(
   LANPR_RenderBuffer *rb, LANPR_BoundingArea* root, LANPR_RenderLineChain* rlc, LANPR_RenderLineChainItem* rlci){
-  if (!root->child) {
+  //if (!root->child) {
     LANPR_ChainRegisterEntry* cre = list_append_pointer_static_sized(&root->linked_chains, &rb->render_data_pool, rlc, sizeof(LANPR_ChainRegisterEntry));
     cre->rlci = rlci;
     if(rlci==rlc->chain.first) cre->is_left = 1;
-  }
-  else {
-    LANPR_BoundingArea* ch = root->child;
-    #define IN_BOUND(ba,rlci)\
-      ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
-    if     (IN_BOUND(ch[0],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[0],rlc,rlci);
-    else if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci);
-    else if(IN_BOUND(ch[2],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[2],rlc,rlci);
-    else if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci);
-    #undef IN_BOUND
-  }
+  //}
+  //else {
+  //  LANPR_BoundingArea* ch = root->child;
+  //  #define IN_BOUND(ba,rlci)\
+  //    ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
+  //  if     (IN_BOUND(ch[0],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[0],rlc,rlci);
+  //  else if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci);
+  //  else if(IN_BOUND(ch[2],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[2],rlc,rlci);
+  //  else if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci);
+  //  #undef IN_BOUND
+  //}
 }
 
 void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLineChain* rlc)
