@@ -539,7 +539,7 @@ void GPU_framebuffer_bind(GPUFrameBuffer *fb)
 void GPU_framebuffer_restore(void)
 {
   if (GPU_framebuffer_active_get() != NULL) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, GPU_framebuffer_default());
     gpu_framebuffer_current_set(NULL);
   }
 }
@@ -718,13 +718,13 @@ void GPU_framebuffer_blit(GPUFrameBuffer *fb_read,
     gpu_framebuffer_current_set(prev_fb);
   }
   else {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, GPU_framebuffer_default());
     gpu_framebuffer_current_set(NULL);
   }
 }
 
 /**
- * Use this if you need to custom downsample your texture and use the previous mip level as input.
+ * Use this if you need to custom down-sample your texture and use the previous mip level as input.
  * This function only takes care of the correct texture handling.
  * It execute the callback for each texture level.
  */
@@ -909,7 +909,7 @@ void GPU_offscreen_draw_to_screen(GPUOffScreen *ofs, int x, int y)
     gpu_print_framebuffer_error(status, NULL);
   }
 
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, GPU_framebuffer_default());
 }
 
 void GPU_offscreen_read_pixels(GPUOffScreen *ofs, int type, void *pixels)

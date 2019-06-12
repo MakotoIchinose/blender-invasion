@@ -29,6 +29,9 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
+/* Needed for the instance iterator. */
+#include "DNA_object_types.h"
+
 struct ID;
 
 struct BLI_Iterator;
@@ -64,6 +67,9 @@ float DEG_get_ctime(const Depsgraph *graph);
 bool DEG_id_type_updated(const struct Depsgraph *depsgraph, short id_type);
 bool DEG_id_type_any_updated(const struct Depsgraph *depsgraph);
 
+/* Check if given ID type is present in the depsgraph */
+bool DEG_id_type_any_exists(const struct Depsgraph *depsgraph, short id_type);
+
 /* Get additional evaluation flags for the given ID. */
 uint32_t DEG_get_eval_flags_for_id(const struct Depsgraph *graph, struct ID *id);
 
@@ -75,9 +81,19 @@ void DEG_get_customdata_mask_for_object(const struct Depsgraph *graph,
 /* Get scene at its evaluated state.
  *
  * Technically, this is a copied-on-written and fully evaluated version of the input scene.
- * This function will check that the datablock has been expanded (and copied) from the original
+ * This function will check that the data-block has been expanded (and copied) from the original
  * one. Assert will happen if it's not. */
 struct Scene *DEG_get_evaluated_scene(const struct Depsgraph *graph);
+
+/* Similar to DEG_get_evaluated_scene(), but allows to access non-fully evaluated pointer without
+ * causing asserts or crashes. Works the following way:
+ *  - If the scene was never evaluated NULL returned.
+ *  - Otherwise the last known state of the scene is returned.
+ *
+ * Use in exceptional case if it's absolutely must to.
+ *
+ * Allows to pass depsgraph == NULL, wil lreturn NULL in that case. */
+struct Scene *DEG_get_evaluated_scene_if_exists(const struct Depsgraph *graph);
 
 /* Get view layer at its evaluated state.
  * This is a shortcut for accessing active view layer from evaluated scene. */
@@ -103,15 +119,20 @@ struct ID *DEG_get_original_id(struct ID *id);
 /* Check whether given ID is an original,
  *
  * Original IDs are considered all the IDs which are not covered by copy-on-write system and are
- * not out-of-main localized datablocks. */
+ * not out-of-main localized data-blocks. */
 bool DEG_is_original_id(struct ID *id);
 bool DEG_is_original_object(struct Object *object);
 
 /* Opposite of the above.
  *
- * If the datablock is not original it must be evaluated, and vice versa. */
+ * If the data-block is not original it must be evaluated, and vice versa. */
 bool DEG_is_evaluated_id(struct ID *id);
 bool DEG_is_evaluated_object(struct Object *object);
+
+/* Check whether depsgraph os fully evaluated. This includes the following checks:
+ * - Relations are up-to-date.
+ * - Nothing is tagged for update. */
+bool DEG_is_fully_evaluated(const struct Depsgraph *depsgraph);
 
 /* ************************ DEG object iterators ********************* */
 

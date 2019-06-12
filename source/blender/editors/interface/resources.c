@@ -247,8 +247,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           cp = ts->header;
           break;
         case TH_HEADERDESEL:
-          /* we calculate a dynamic builtin header deselect color,
-           * also for pulldowns... */
+          /* We calculate a dynamic builtin header deselect color, also for pull-downs. */
           cp = ts->header;
           headerdesel[0] = cp[0] > 10 ? cp[0] - 10 : 0;
           headerdesel[1] = cp[1] > 10 ? cp[1] - 10 : 0;
@@ -309,8 +308,8 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_GRID:
           cp = ts->grid;
           break;
-        case TH_SCRUBBING_BACKGROUND:
-          cp = ts->scrubbing_background;
+        case TH_TIME_SCRUB_BACKGROUND:
+          cp = ts->time_scrub_background;
           break;
         case TH_VIEW_OVERLAY:
           cp = ts->view_overlay;

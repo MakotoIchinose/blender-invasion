@@ -404,11 +404,9 @@ static int ctx_data_base_collection_get(const bContext *C, const char *member, L
   ListBase ctx_object_list;
   bool ok = false;
 
-  if (!ctx_data_collection_get(C, member, &ctx_object_list)) {
-    return 0;
-  }
-
-  if (BLI_listbase_is_empty(&ctx_object_list)) {
+  if ((ctx_data_collection_get(C, member, &ctx_object_list) == false) ||
+      BLI_listbase_is_empty(&ctx_object_list)) {
+    BLI_listbase_clear(list);
     return 0;
   }
 
@@ -1367,7 +1365,7 @@ Depsgraph *CTX_data_evaluated_depsgraph(const bContext *C)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Main *bmain = CTX_data_main(C);
-  BKE_scene_graph_update_tagged(depsgraph, bmain);
+  BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
   return depsgraph;
 }
 

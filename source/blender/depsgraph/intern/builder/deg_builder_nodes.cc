@@ -58,6 +58,7 @@ extern "C" {
 #include "DNA_lightprobe_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
@@ -78,6 +79,7 @@ extern "C" {
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
+#include "BKE_layer.h"
 #include "BKE_mask.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
@@ -89,6 +91,8 @@ extern "C" {
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_rigidbody.h"
+#include "BKE_scene.h"
+#include "BKE_sequencer.h"
 #include "BKE_shader_fx.h"
 #include "BKE_sound.h"
 #include "BKE_tracking.h"
@@ -453,6 +457,9 @@ void DepsgraphNodeBuilder::build_id(ID *id)
     case ID_CF:
       build_cachefile((CacheFile *)id);
       break;
+    case ID_SCE:
+      build_scene_parameters((Scene *)id);
+      break;
     default:
       fprintf(stderr, "Unhandled ID %s\n", id->name);
       BLI_assert(!"Should never happen");
@@ -540,7 +547,10 @@ void DepsgraphNodeBuilder::build_object(int base_index,
   IDNode *id_node = add_id_node(&object->id);
   Object *object_cow = get_cow_datablock(object);
   id_node->linked_state = linked_state;
-  if (object == scene_->camera) {
+  /* NOTE: Scene is NULL when building dependency graph for render pipeline.
+   * Probably need to assign that to something non-NULL, but then the logic here will still be
+   * somewhat weird. */
+  if (scene_ != NULL && object == scene_->camera) {
     id_node->is_directly_visible = true;
   }
   else {
@@ -681,7 +691,7 @@ void DepsgraphNodeBuilder::build_object_data(Object *object, bool is_object_visi
       break;
     default: {
       ID *obdata = (ID *)object->data;
-      if (built_map_.checkIsBuilt(obdata) == 0) {
+      if (!built_map_.checkIsBuilt(obdata)) {
         build_animdata(obdata);
       }
       break;
@@ -1306,6 +1316,9 @@ void DepsgraphNodeBuilder::build_camera(Camera *camera)
   }
   build_animdata(&camera->id);
   build_parameters(&camera->id);
+  if (camera->dof.focus_object != NULL) {
+    build_object(-1, camera->dof.focus_object, DEG_ID_LINKED_INDIRECTLY, false);
+  }
 }
 
 void DepsgraphNodeBuilder::build_light(Light *lamp)
@@ -1363,8 +1376,16 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
       build_object(-1, (Object *)id, DEG_ID_LINKED_INDIRECTLY, true);
     }
     else if (id_type == ID_SCE) {
-      /* Scenes are used by compositor trees, and handled by render
-       * pipeline. No need to build dependencies for them here. */
+      Scene *node_scene = (Scene *)id;
+      build_scene_parameters(node_scene);
+      /* Camera is used by defocus node.
+       *
+       * On the one hand it's annoying to always pull it in, but on another hand it's also annoying
+       * to have hardcoded node-type exception here. */
+      if (node_scene->camera != NULL) {
+        /* TODO(sergey): Use visibility of owner of the node tree. */
+        build_object(-1, node_scene->camera, DEG_ID_LINKED_INDIRECTLY, true);
+      }
     }
     else if (id_type == ID_TXT) {
       /* Ignore script nodes. */
@@ -1439,19 +1460,6 @@ void DepsgraphNodeBuilder::build_image(Image *image)
       &image->id, NodeType::GENERIC_DATABLOCK, OperationCode::GENERIC_DATABLOCK_UPDATE);
 }
 
-void DepsgraphNodeBuilder::build_compositor(Scene *scene)
-{
-  /* For now, just a plain wrapper? */
-  // TODO: create compositing component?
-  // XXX: component type undefined!
-  // graph->get_node(&scene->id, NULL, NodeType::COMPOSITING, NULL);
-
-  /* for now, nodetrees are just parameters; compositing occurs in internals
-   * of renderer... */
-  add_component_node(&scene->id, NodeType::PARAMETERS);
-  build_nodetree(scene->nodetree);
-}
-
 void DepsgraphNodeBuilder::build_gpencil(bGPdata *gpd)
 {
   if (built_map_.checkIsBuiltAndTag(gpd)) {
@@ -1492,7 +1500,7 @@ void DepsgraphNodeBuilder::build_mask(Mask *mask)
     return;
   }
   ID *mask_id = &mask->id;
-  Mask *mask_cow = get_cow_datablock(mask);
+  Mask *mask_cow = (Mask *)ensure_cow_id(mask_id);
   /* F-Curve based animation. */
   build_animdata(mask_id);
   build_parameters(mask_id);
@@ -1560,10 +1568,66 @@ void DepsgraphNodeBuilder::build_sound(bSound *sound)
   if (built_map_.checkIsBuiltAndTag(sound)) {
     return;
   }
-  /* Placeholder so we can add relations and tag ID node for update. */
-  add_operation_node(&sound->id, NodeType::AUDIO, OperationCode::SOUND_EVAL);
+  add_id_node(&sound->id);
+  bSound *sound_cow = get_cow_datablock(sound);
+  add_operation_node(&sound->id,
+                     NodeType::AUDIO,
+                     OperationCode::SOUND_EVAL,
+                     function_bind(BKE_sound_evaluate, _1, bmain_, sound_cow));
   build_animdata(&sound->id);
   build_parameters(&sound->id);
+}
+
+void DepsgraphNodeBuilder::build_scene_sequencer(Scene *scene)
+{
+  if (scene->ed == NULL) {
+    return;
+  }
+  build_scene_audio(scene);
+  Scene *scene_cow = get_cow_datablock(scene);
+  add_operation_node(&scene->id,
+                     NodeType::SEQUENCER,
+                     OperationCode::SEQUENCES_EVAL,
+                     function_bind(BKE_scene_eval_sequencer_sequences, _1, scene_cow));
+  /* Make sure data for sequences is in the graph. */
+  Sequence *seq;
+  SEQ_BEGIN (scene->ed, seq) {
+    if (seq->sound != NULL) {
+      build_sound(seq->sound);
+    }
+    if (seq->scene != NULL) {
+      build_scene_parameters(seq->scene);
+    }
+    if (seq->type == SEQ_TYPE_SCENE && seq->scene != NULL) {
+      if (seq->flag & SEQ_SCENE_STRIPS) {
+        build_scene_sequencer(seq->scene);
+      }
+      ViewLayer *sequence_view_layer = BKE_view_layer_default_render(seq->scene);
+      build_scene_speakers(seq->scene, sequence_view_layer);
+    }
+    /* TODO(sergey): Movie clip, scene, camera, mask. */
+  }
+  SEQ_END;
+}
+
+void DepsgraphNodeBuilder::build_scene_audio(Scene *scene)
+{
+  if (built_map_.checkIsBuiltAndTag(scene, BuilderMap::TAG_SCENE_AUDIO)) {
+    return;
+  }
+  add_operation_node(&scene->id, NodeType::AUDIO, OperationCode::SOUND_EVAL);
+}
+
+void DepsgraphNodeBuilder::build_scene_speakers(Scene * /*scene*/, ViewLayer *view_layer)
+{
+  LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
+    Object *object = base->object;
+    if (object->type != OB_SPEAKER || !need_pull_base_into_graph(base)) {
+      continue;
+    }
+    /* NOTE: Can not use base because it does not belong to a current view layer. */
+    build_object(-1, base->object, DEG_ID_LINKED_INDIRECTLY, true);
+  }
 }
 
 /* **** ID traversal callbacks functions **** */

@@ -41,6 +41,7 @@
 #include "intern/builder/deg_builder_rna.h"
 #include "intern/depsgraph.h"
 #include "intern/node/deg_node.h"
+#include "intern/node/deg_node_id.h"
 #include "intern/node/deg_node_component.h"
 #include "intern/node/deg_node_operation.h"
 
@@ -194,8 +195,15 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   void add_special_eval_flag(ID *object, uint32_t flag);
 
   void build_id(ID *id);
+
+  void build_scene_render(Scene *scene);
+  void build_scene_parameters(Scene *scene);
+  void build_scene_compositor(Scene *scene);
+
   void build_layer_collections(ListBase *lb);
-  void build_view_layer(Scene *scene, ViewLayer *view_layer);
+  void build_view_layer(Scene *scene,
+                        ViewLayer *view_layer,
+                        eDepsNode_LinkedState_Type linked_state);
   void build_collection(LayerCollection *from_layer_collection,
                         Object *object,
                         Collection *collection);
@@ -258,7 +266,6 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   void build_material(Material *ma);
   void build_texture(Tex *tex);
   void build_image(Image *image);
-  void build_compositor(Scene *scene);
   void build_gpencil(bGPdata *gpd);
   void build_cachefile(CacheFile *cache_file);
   void build_mask(Mask *mask);
@@ -266,6 +273,9 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   void build_lightprobe(LightProbe *probe);
   void build_speaker(Speaker *speaker);
   void build_sound(bSound *sound);
+  void build_scene_sequencer(Scene *scene);
+  void build_scene_audio(Scene *scene);
+  void build_scene_speakers(Scene *scene, ViewLayer *view_layer);
 
   void build_nested_datablock(ID *owner, ID *id);
   void build_nested_nodetree(ID *owner, bNodeTree *ntree);

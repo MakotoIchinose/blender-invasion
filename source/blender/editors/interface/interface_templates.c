@@ -1723,7 +1723,7 @@ void uiTemplatePathBuilder(uiLayout *layout,
 
 /************************ Modifier Template *************************/
 
-#define ERROR_LIBDATA_MESSAGE IFACE_("Can't edit external library data")
+#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 
 static void modifiers_convertToReal(bContext *C, void *ob_v, void *md_v)
 {
@@ -2355,7 +2355,7 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
   /* Repeat button with operator name as text. */
   uiItemFullO(layout,
               "SCREEN_OT_repeat_last",
-              RNA_struct_ui_name(op->type->srna),
+              WM_operatortype_name(op->type, op->ptr),
               ICON_NONE,
               NULL,
               WM_OP_INVOKE_DEFAULT,
@@ -2441,24 +2441,11 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 
   /* open/close */
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
-  uiItemR(row, &ptr, "show_expanded", UI_ITEM_R_ICON_ONLY, "", ICON_NONE);
-  UI_block_emboss_set(block, UI_EMBOSS);
+  uiItemR(row, &ptr, "show_expanded", 0, "", ICON_NONE);
 
-  /* name */
-  uiDefBut(block,
-           UI_BTYPE_LABEL,
-           0,
-           typestr,
-           xco + 0.5f * UI_UNIT_X,
-           yco,
-           5 * UI_UNIT_X,
-           0.9f * UI_UNIT_Y,
-           NULL,
-           0.0,
-           0.0,
-           0.0,
-           0.0,
-           "");
+  /* constraint-type icon */
+  uiItemL(row, "", RNA_struct_ui_icon(ptr.type));
+  UI_block_emboss_set(block, UI_EMBOSS);
 
   if (con->flag & CONSTRAINT_DISABLE) {
     uiLayoutSetRedAlert(row, true);
@@ -2563,7 +2550,7 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 
   /* Set but-locks for protected settings (magic numbers are used here!) */
   if (proxy_protected) {
-    UI_block_lock_set(block, true, IFACE_("Cannot edit Proxy-Protected Constraint"));
+    UI_block_lock_set(block, true, TIP_("Cannot edit Proxy-Protected Constraint"));
   }
 
   /* Draw constraint data */
@@ -3092,7 +3079,7 @@ static void colorband_update_cb(bContext *UNUSED(C), void *bt_v, void *coba_v)
   uiBut *bt = bt_v;
   ColorBand *coba = coba_v;
 
-  /* sneaky update here, we need to sort the colorband points to be in order,
+  /* Sneaky update here, we need to sort the color-band points to be in order,
    * however the RNA pointer then is wrong, so we update it */
   BKE_colorband_update_sort(coba);
   bt->rnapoin.data = coba->data + coba->cur;
@@ -5928,7 +5915,7 @@ eAutoPropButsReturn uiTemplateOperatorPropertyButs(const bContext *C,
   }
 
   if (flag & UI_TEMPLATE_OP_PROPS_SHOW_TITLE) {
-    uiItemL(layout, RNA_struct_ui_name(op->type->srna), ICON_NONE);
+    uiItemL(layout, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
   }
 
   /* menu */

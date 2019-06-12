@@ -109,7 +109,7 @@ static void outliner_storage_cleanup(SpaceOutliner *soops)
     }
 
     /* cleanup only after reading file or undo step, and always for
-     * RNA datablocks view in order to save memory */
+     * RNA data-blocks view in order to save memory */
     if (soops->storeflag & SO_TREESTORE_CLEANUP) {
       soops->storeflag &= ~SO_TREESTORE_CLEANUP;
 
@@ -376,12 +376,15 @@ static void outliner_add_object_contents(SpaceOutliner *soops,
                 soops, &tenla1->subtree, ob, tenla1, TSE_CONSTRAINT, const_index);
 #if 0 /* disabled as it needs to be reworked for recoded constraints system */
             target = get_constraint_target(con, &str);
-            if (str && str[0])
+            if (str && str[0]) {
               ten1->name = str;
-            else if (target)
+            }
+            else if (target) {
               ten1->name = target->id.name + 2;
-            else
+            }
+            else {
               ten1->name = con->name;
+            }
 #endif
             ten1->name = con->name;
             ten1->directdata = con;
@@ -441,12 +444,15 @@ static void outliner_add_object_contents(SpaceOutliner *soops,
       ten = outliner_add_element(soops, &tenla->subtree, ob, tenla, TSE_CONSTRAINT, a);
 #if 0 /* disabled due to constraints system targets recode... code here needs review */
       target = get_constraint_target(con, &str);
-      if (str && str[0])
+      if (str && str[0]) {
         ten->name = str;
-      else if (target)
+      }
+      else if (target) {
         ten->name = target->id.name + 2;
-      else
+      }
+      else {
         ten->name = con->name;
+      }
 #endif
       ten->name = con->name;
       ten->directdata = con;
@@ -829,7 +835,7 @@ static TreeElement *outliner_add_element(
   if (type == 0) {
     TreeStoreElem *tsepar = parent ? TREESTORE(parent) : NULL;
 
-    /* ID datablock */
+    /* ID data-block. */
     if (tsepar == NULL || tsepar->type != TSE_ID_BASE || soops->filter_id_type) {
       outliner_add_id_contents(soops, te, tselem, id);
     }
@@ -1271,7 +1277,7 @@ static TreeElement *outliner_add_library_contents(Main *mainvar,
 
       if (id) {
         if (!tenlib) {
-          /* Create library tree element on demand, depending if there are any datablocks. */
+          /* Create library tree element on demand, depending if there are any data-blocks. */
           if (lib) {
             tenlib = outliner_add_element(soops, lb, lib, NULL, 0, 0);
           }
@@ -1281,7 +1287,7 @@ static TreeElement *outliner_add_library_contents(Main *mainvar,
           }
         }
 
-        /* Create datablock list parent element on demand. */
+        /* Create data-block list parent element on demand. */
         if (filter_id_type) {
           ten = tenlib;
         }
@@ -1322,7 +1328,7 @@ static void outliner_add_orphaned_datablocks(Main *mainvar, SpaceOutliner *soops
     if (lbarray[a] && lbarray[a]->first) {
       ID *id = lbarray[a]->first;
 
-      /* check if there are any datablocks of this type which are orphans */
+      /* check if there are any data-blocks of this type which are orphans */
       for (; id; id = id->next) {
         if (ID_REAL_USERS(id) <= 0) {
           break;
@@ -1330,7 +1336,7 @@ static void outliner_add_orphaned_datablocks(Main *mainvar, SpaceOutliner *soops
       }
 
       if (id) {
-        /* header for this type of datablock */
+        /* header for this type of data-block */
         if (filter_id_type) {
           ten = NULL;
         }
@@ -1340,7 +1346,7 @@ static void outliner_add_orphaned_datablocks(Main *mainvar, SpaceOutliner *soops
           ten->name = outliner_idcode_to_plural(GS(id->name));
         }
 
-        /* add the orphaned datablocks - these will not be added with any subtrees attached */
+        /* add the orphaned data-blocks - these will not be added with any subtrees attached */
         for (id = lbarray[a]->first; id; id = id->next) {
           if (ID_REAL_USERS(id) <= 0) {
             outliner_add_element(soops, (ten) ? &ten->subtree : &soops->tree, id, ten, 0, 0);
@@ -1374,25 +1380,27 @@ static void outliner_add_layer_collections_recursive(SpaceOutliner *soops,
 {
   for (LayerCollection *lc = layer_collections->first; lc; lc = lc->next) {
     const bool exclude = (lc->flag & LAYER_COLLECTION_EXCLUDE) != 0;
+    TreeElement *ten;
 
     if (exclude && ((soops->show_restrict_flags & SO_RESTRICT_ENABLE) == 0)) {
-      continue;
+      ten = parent_ten;
     }
+    else {
+      ID *id = &lc->collection->id;
+      ten = outliner_add_element(soops, tree, id, parent_ten, TSE_LAYER_COLLECTION, 0);
 
-    ID *id = &lc->collection->id;
-    TreeElement *ten = outliner_add_element(soops, tree, id, parent_ten, TSE_LAYER_COLLECTION, 0);
+      ten->name = id->name + 2;
+      ten->directdata = lc;
 
-    ten->name = id->name + 2;
-    ten->directdata = lc;
+      /* Open by default. */
+      TreeStoreElem *tselem = TREESTORE(ten);
+      if (!tselem->used) {
+        tselem->flag &= ~TSE_CLOSED;
+      }
 
-    /* Open by default. */
-    TreeStoreElem *tselem = TREESTORE(ten);
-    if (!tselem->used) {
-      tselem->flag &= ~TSE_CLOSED;
-    }
-
-    if (exclude || (lc->runtime_flag & LAYER_COLLECTION_VISIBLE) == 0) {
-      ten->flag |= TE_DISABLED;
+      if (exclude || (lc->runtime_flag & LAYER_COLLECTION_VISIBLE) == 0) {
+        ten->flag |= TE_DISABLED;
+      }
     }
 
     outliner_add_layer_collections_recursive(
@@ -1678,20 +1686,25 @@ static int treesort_obtype_alpha(const void *v1, const void *v2)
   else {
     /* 2nd we check ob type */
     if (x1->idcode == ID_OB && x2->idcode == ID_OB) {
-      if (((Object *)x1->id)->type > ((Object *)x2->id)->type)
+      if (((Object *)x1->id)->type > ((Object *)x2->id)->type) {
         return 1;
-      else if (((Object *)x1->id)->type > ((Object *)x2->id)->type)
+      }
+      else if (((Object *)x1->id)->type > ((Object *)x2->id)->type) {
         return -1;
-      else
+      }
+      else {
         return 0;
+      }
     }
     else {
       int comp = strcmp(x1->name, x2->name);
 
-      if (comp > 0)
+      if (comp > 0) {
         return 1;
-      else if (comp < 0)
+      }
+      else if (comp < 0) {
         return -1;
+      }
       return 0;
     }
   }
@@ -1808,7 +1821,7 @@ static void outliner_collections_children_sort(ListBase *lb)
   }
 
   for (te = lb->first; te; te = te->next) {
-    outliner_sort(&te->subtree);
+    outliner_collections_children_sort(&te->subtree);
   }
 }
 
@@ -1828,7 +1841,6 @@ static void outliner_restore_scrolling_position(SpaceOutliner *soops,
                                                 OutlinerTreeElementFocus *focus)
 {
   View2D *v2d = &ar->v2d;
-  int ytop;
 
   if (focus->tselem != NULL) {
     outliner_set_coordinates(ar, soops);
@@ -1836,18 +1848,11 @@ static void outliner_restore_scrolling_position(SpaceOutliner *soops,
     TreeElement *te_new = outliner_find_tree_element(&soops->tree, focus->tselem);
 
     if (te_new != NULL) {
-      int ys_new, ys_old;
+      int ys_new = te_new->ys;
+      int ys_old = focus->ys;
 
-      ys_new = te_new->ys;
-      ys_old = focus->ys;
-
-      ytop = v2d->cur.ymax + (ys_new - ys_old) - 1;
-      if (ytop > 0) {
-        ytop = 0;
-      }
-
-      v2d->cur.ymax = (float)ytop;
-      v2d->cur.ymin = (float)(ytop - BLI_rcti_size_y(&v2d->mask));
+      float y_move = MIN2(ys_new - ys_old, -v2d->cur.ymax);
+      BLI_rctf_translate(&v2d->cur, 0, y_move);
     }
     else {
       return;
@@ -2213,7 +2218,7 @@ void outliner_build_tree(
   int show_opened = !soops->treestore || !BLI_mempool_len(soops->treestore);
 
   /* Are we looking for something - we want to tag parents to filter child matches
-   * - NOT in datablocks view - searching all datablocks takes way too long to be useful
+   * - NOT in data-blocks view - searching all data-blocks takes way too long to be useful
    * - this variable is only set once per tree build */
   if (soops->search_string[0] != 0 && soops->outlinevis != SO_DATA_API) {
     soops->search_flags |= SO_SEARCH_RECURSIVE;

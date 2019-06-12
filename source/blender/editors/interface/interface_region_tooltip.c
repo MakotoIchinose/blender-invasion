@@ -657,7 +657,7 @@ static uiTooltipData *ui_tooltip_data_from_button(bContext *C, uiBut *but)
                                                  .style = UI_TIP_STYLE_NORMAL,
                                                  .color_id = UI_TIP_LC_NORMAL,
                                              });
-      field->text = BLI_strdup(IFACE_("(Shift-Click/Drag to select multiple)"));
+      field->text = BLI_strdup(TIP_("(Shift-Click/Drag to select multiple)"));
     }
   }
   /* Enum field label & tip */
@@ -883,8 +883,7 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
 
   /* Operator Actions */
   {
-    bool use_drag = gz->drag_part != -1 && gz->highlight_part != gz->drag_part;
-
+    const bool use_drag = gz->drag_part != -1 && gz->highlight_part != gz->drag_part;
     const struct {
       int part;
       const char *prefix;

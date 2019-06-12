@@ -228,13 +228,14 @@ struct EDBMSelectID_Context {
 static bool check_ob_drawface_dot(short select_mode, const View3D *v3d, char dt)
 {
   if (select_mode & SCE_SELECT_FACE) {
-    if (dt < OB_SOLID) {
+    if ((dt < OB_SOLID) || XRAY_FLAG_ENABLED(v3d)) {
       return true;
     }
     if (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) {
       return true;
     }
-    if (XRAY_FLAG_ENABLED(v3d)) {
+    if ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_EDGES) == 0) {
+      /* Since we can't deduce face selection when edges aren't visible - show dots. */
       return true;
     }
   }
@@ -279,7 +280,7 @@ BMElem *EDBM_select_id_bm_elem_get(struct EDBMSelectID_Context *sel_id_ctx,
                                    const uint sel_id,
                                    uint *r_base_index)
 {
-  char elem_type;
+  char elem_type = 0;
   uint elem_id;
   uint base_index = 0;
   for (; base_index < sel_id_ctx->bases_len; base_index++) {
@@ -299,6 +300,11 @@ BMElem *EDBM_select_id_bm_elem_get(struct EDBMSelectID_Context *sel_id_ctx,
       elem_type = BM_VERT;
       break;
     }
+  }
+
+  if (base_index >= sel_id_ctx->bases_len) {
+    BLI_assert(0);
+    return NULL;
   }
 
   if (r_base_index) {
@@ -346,7 +352,7 @@ uint EDBM_select_id_context_elem_len(const struct EDBMSelectID_Context *sel_id_c
 
 struct EDBMSelectID_Context *EDBM_select_id_context_create(ViewContext *vc,
                                                            Base **bases,
-                                                           uint bases_len,
+                                                           const uint bases_len,
                                                            short select_mode)
 {
   struct EDBMSelectID_Context *sel_id_ctx = MEM_mallocN(sizeof(*sel_id_ctx), __func__);
@@ -504,7 +510,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
   }
   else {
     struct NearestVertUserData data = {{0}};
-    const struct NearestVertUserData_Hit *hit;
+    const struct NearestVertUserData_Hit *hit = NULL;
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_DEFAULT;
     BMesh *prev_select_bm = NULL;
 
@@ -547,6 +553,10 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
         *r_dist = hit->dist;
         prev_select_bm = vc->em->bm;
       }
+    }
+
+    if (hit == NULL) {
+      return NULL;
     }
 
     prev_select.index = hit->index;
@@ -751,7 +761,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
   }
   else {
     struct NearestEdgeUserData data = {{0}};
-    const struct NearestEdgeUserData_Hit *hit;
+    const struct NearestEdgeUserData_Hit *hit = NULL;
     /* interpolate along the edge before doing a clipping plane test */
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_DEFAULT & ~V3D_PROJ_TEST_CLIP_BB;
     BMesh *prev_select_bm = NULL;
@@ -796,6 +806,10 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
         *r_dist = hit->dist;
         prev_select_bm = vc->em->bm;
       }
+    }
+
+    if (hit == NULL) {
+      return NULL;
     }
 
     if (r_dist_center) {
@@ -960,7 +974,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
   }
   else {
     struct NearestFaceUserData data = {{0}};
-    const struct NearestFaceUserData_Hit *hit;
+    const struct NearestFaceUserData_Hit *hit = NULL;
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_DEFAULT;
     BMesh *prev_select_bm = NULL;
 
@@ -1003,6 +1017,10 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
         *r_dist = hit->dist;
         prev_select_bm = vc->em->bm;
       }
+    }
+
+    if (hit == NULL) {
+      return NULL;
     }
 
     if (r_dist_center) {

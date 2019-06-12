@@ -127,7 +127,7 @@ int EEVEE_screen_raytrace_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
           &fbl->refract_fb, {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->refract_color)});
     }
 
-    const bool is_persp = DRW_viewport_is_persp_get();
+    const bool is_persp = DRW_view_is_persp_get(NULL);
     if (effects->ssr_was_persp != is_persp) {
       effects->ssr_was_persp = is_persp;
       DRW_viewport_request_redraw();
@@ -209,7 +209,7 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
      * - First pass Trace rays across the depth buffer. The hit position and pdf are
      *   recorded in a RGBA16F render target for each ray (sample).
      *
-     * - We downsample the previous frame color buffer.
+     * - We down-sample the previous frame color buffer.
      *
      * - For each final pixel, we gather neighbors rays and choose a color buffer
      *   mipmap for each ray using its pdf. (filtered importance sampling)
@@ -232,7 +232,7 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
     }
     DRW_shgroup_call(grp, quad, NULL);
 
-    DRW_PASS_CREATE(psl->ssr_resolve, DRW_STATE_WRITE_COLOR | DRW_STATE_ADDITIVE);
+    DRW_PASS_CREATE(psl->ssr_resolve, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
     grp = DRW_shgroup_create(resolve_shader, psl->ssr_resolve);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &e_data.depth_src);
     DRW_shgroup_uniform_texture_ref(grp, "normalBuffer", &effects->ssr_normal_input);

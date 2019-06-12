@@ -31,7 +31,7 @@ class USERPREF_HT_header(Header):
     bl_space_type = 'PREFERENCES'
 
     @staticmethod
-    def draw_buttons(layout, context, *, is_vertical=False):
+    def draw_buttons(layout, context):
         prefs = context.preferences
 
         layout.scale_x = 1.0
@@ -40,10 +40,21 @@ class USERPREF_HT_header(Header):
 
         row = layout.row()
         row.menu("USERPREF_MT_save_load", text="", icon='COLLAPSEMENU')
-        if not prefs.use_preferences_save:
-            sub_revert = row.row(align=True)
-            sub_revert.active = prefs.is_dirty
-            sub_revert.operator("wm.save_userpref")
+        if prefs.use_preferences_save:
+            if bpy.app.use_userpref_skip_save_on_exit:
+                # We should have an 'alert' icon, for now use 'error'.
+                sub = row.row(align=True)
+                props = sub.operator(
+                    "wm.context_toggle",
+                    text="Skip Auto-Save",
+                    icon='CHECKBOX_HLT',
+                )
+                props.module = "bpy.app"
+                props.data_path = "use_userpref_skip_save_on_exit"
+        else:
+            sub = row.row(align=True)
+            sub.active = prefs.is_dirty
+            sub.operator("wm.save_userpref")
 
     def draw(self, context):
         layout = self.layout
@@ -118,7 +129,7 @@ class USERPREF_PT_save_preferences(Panel):
         layout.scale_x = 1.3
         layout.scale_y = 1.3
 
-        USERPREF_HT_header.draw_buttons(layout, context, is_vertical=True)
+        USERPREF_HT_header.draw_buttons(layout, context)
 
 
 # Panel mix-in.
@@ -1433,9 +1444,11 @@ class USERPREF_PT_input_mouse(PreferencePanel, Panel):
         flow.prop(inputs, "use_mouse_emulate_3_button")
         flow.prop(inputs, "use_mouse_continuous")
         flow.prop(inputs, "use_drag_immediately")
+        flow.prop(inputs, "mouse_double_click_time", text="Double Click Speed")
+        flow.prop(inputs, "drag_threshold_mouse")
+        flow.prop(inputs, "drag_threshold_tablet")
         flow.prop(inputs, "drag_threshold")
         flow.prop(inputs, "move_threshold")
-        flow.prop(inputs, "mouse_double_click_time", text="Double Click Speed")
 
 
 class USERPREF_PT_navigation_orbit(PreferencePanel, Panel):

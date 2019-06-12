@@ -35,7 +35,7 @@
  *                     _ = 4 byte pointer, - = 8 byte pointer
  * </pre>
  *
- * datablocks: (also see struct #BHead).
+ * data-blocks: (also see struct #BHead).
  * <pre>
  *     <bh.code>           4 chars
  *     <bh.len>            int,  len data after BHead
@@ -2354,7 +2354,7 @@ static void write_light(WriteData *wd, Light *la)
 
 static void write_collection_nolib(WriteData *wd, Collection *collection)
 {
-  /* Shared function for collection datablocks and scene master collection. */
+  /* Shared function for collection data-blocks and scene master collection. */
   write_previews(wd, collection->preview);
 
   for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
@@ -2580,13 +2580,13 @@ static void write_scene(WriteData *wd, Scene *sce)
 
         Strip *strip = seq->strip;
         writestruct(wd, DATA, Strip, 1, strip);
-        if (seq->flag & SEQ_USE_CROP && strip->crop) {
+        if (strip->crop) {
           writestruct(wd, DATA, StripCrop, 1, strip->crop);
         }
-        if (seq->flag & SEQ_USE_TRANSFORM && strip->transform) {
+        if (strip->transform) {
           writestruct(wd, DATA, StripTransform, 1, strip->transform);
         }
-        if (seq->flag & SEQ_USE_PROXY && strip->proxy) {
+        if (strip->proxy) {
           writestruct(wd, DATA, StripProxy, 1, strip->proxy);
         }
         if (seq->type == SEQ_TYPE_IMAGE) {
@@ -3779,7 +3779,7 @@ static bool write_file_handle(Main *mainvar,
                                                 NULL :
                                                 BKE_override_static_operations_store_initialize();
 
-  /* This outer loop allows to save first datablocks from real mainvar,
+  /* This outer loop allows to save first data-blocks from real mainvar,
    * then the temp ones from override process,
    * if needed, without duplicating whole code. */
   Main *bmain = mainvar;

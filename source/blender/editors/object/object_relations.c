@@ -29,19 +29,20 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_mesh_types.h"
+#include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_material_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_world_types.h"
-#include "DNA_object_types.h"
 #include "DNA_vfont_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_world_types.h"
 
 #include "BLI_math.h"
 #include "BLI_listbase.h"
@@ -1384,10 +1385,12 @@ static void link_to_scene(Main *UNUSED(bmain), unsigned short UNUSED(nr))
   Scene *sce = (Scene *)BLI_findlink(&bmain->scene, G.curscreen->scenenr - 1);
   Base *base, *nbase;
 
-  if (sce == NULL)
+  if (sce == NULL) {
     return;
-  if (sce->id.lib)
+  }
+  if (sce->id.lib) {
     return;
+  }
 
   for (base = FIRSTBASE; base; base = base->next) {
     if (BASE_SELECTED(v3d, base)) {
@@ -1850,7 +1853,7 @@ static void single_obdata_users(
 {
   Light *la;
   Curve *cu;
-  /* Camera *cam; */
+  Camera *cam;
   Mesh *me;
   Lattice *lat;
   ID *id;
@@ -1867,7 +1870,8 @@ static void single_obdata_users(
             ob->data = la = ID_NEW_SET(ob->data, BKE_light_copy(bmain, ob->data));
             break;
           case OB_CAMERA:
-            ob->data = ID_NEW_SET(ob->data, BKE_camera_copy(bmain, ob->data));
+            cam = ob->data = ID_NEW_SET(ob->data, BKE_camera_copy(bmain, ob->data));
+            ID_NEW_REMAP(cam->dof.focus_object);
             break;
           case OB_MESH:
             /* Needed to remap texcomesh below. */
@@ -1967,9 +1971,6 @@ static void single_mat_users(
           if (ma->id.us > 1) {
             man = BKE_material_copy(bmain, ma);
             BKE_animdata_copy_id_action(bmain, &man->id, false);
-            if (man->nodetree != NULL) {
-              BKE_animdata_copy_id_action(bmain, &man->nodetree->id, false);
-            }
 
             man->id.us = 0;
             assign_material(bmain, ob, man, a, BKE_MAT_ASSIGN_USERPREF);
