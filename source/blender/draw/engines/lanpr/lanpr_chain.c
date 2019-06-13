@@ -524,7 +524,7 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
       }
     }
   }
-  for(rlc = rb->chains.first;rlc;rlc=rlc->item.next){
+  for(rlc = rb->chains.first;rlc;rlc=(LANPR_RenderLineChain *)rlc->item.next){
     lanpr_link_chain_with_bounding_areas(rb,rlc);
   }
 }
@@ -583,7 +583,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
       closest_cre = NULL;
       if(!ba->linked_chains.first) break;
       for(cre = ba->linked_chains.first;cre;cre = next_cre){
-        next_cre = cre->item.next;
+        next_cre = (LANPR_ChainRegisterEntry*)cre->item.next;
         if(cre->rlc == rlc || ((LANPR_RenderLineChainItem*)cre->rlc->chain.first)->occlusion != occlusion) continue;
         if(cre->rlc->picked){
           BLI_remlink(&ba->linked_chains,cre);
@@ -618,7 +618,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
       closest_cre = NULL;
       if(!ba->linked_chains.first) break;
       for(cre = ba->linked_chains.first;cre;cre = next_cre){
-        next_cre = cre->item.next;
+        next_cre = (LANPR_ChainRegisterEntry*)cre->item.next;
         if(cre->rlc == rlc || ((LANPR_RenderLineChainItem*)cre->rlc->chain.first)->occlusion != occlusion) continue;
         if(cre->rlc->picked){
           BLI_remlink(&ba->linked_chains,cre);
