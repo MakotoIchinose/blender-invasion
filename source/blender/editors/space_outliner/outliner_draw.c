@@ -117,6 +117,12 @@ static void outliner_tree_dimensions(SpaceOutliner *soops, int *r_width, int *r_
 static bool is_object_data_in_editmode(const ID *id, const Object *obact)
 {
   const short id_type = GS(id->name);
+
+  if (id_type == ID_GD && obact && obact->data == id) {
+    bGPdata *gpd = (bGPdata *)id;
+    return GPENCIL_EDIT_MODE(gpd);
+  }
+
   return ((obact && (obact->mode & OB_MODE_EDIT)) && (id && OB_DATA_SUPPORT_EDITMODE(id_type)) &&
           (GS(((ID *)obact->data)->name) == id_type) && BKE_object_data_is_in_editmode(id));
 }
@@ -2669,7 +2675,7 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
 /**
  * Return the index to use based on the TreeElement ID and object type
  *
- * We use a continuum of indices until we get to the object datablocks
+ * We use a continuum of indices until we get to the object data-blocks
  * and we then make room for the object types.
  */
 static int tree_element_id_type_to_index(TreeElement *te)
@@ -3297,7 +3303,7 @@ static void outliner_draw_highlights_recursive(unsigned pos,
       else {
         if (is_searching && (tselem->flag & TSE_SEARCHMATCH)) {
           /* search match highlights
-           *   we don't expand items when searching in the datablocks but we
+           *   we don't expand items when searching in the data-blocks but we
            *   still want to highlight any filter matches. */
           immUniformColor4fv(col_searchmatch);
           immRecti(pos, start_x, start_y, end_x, start_y + UI_UNIT_Y);
