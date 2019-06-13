@@ -18,21 +18,21 @@ class USDAbstractWriter {
   Object *m_object;
 
   const DEGObjectIterData &m_degiter_data;
-  std::vector<USDAbstractWriter *> m_children;
   pxr::SdfPath m_path;
 
  public:
   USDAbstractWriter(pxr::UsdStageRefPtr stage,
                     const pxr::SdfPath &parent_path,
                     Object *ob_eval,
-                    const DEGObjectIterData &degiter_data,
-                    USDAbstractWriter *parent = NULL);
+                    const DEGObjectIterData &degiter_data);
   virtual ~USDAbstractWriter();
 
-  void add_child(USDAbstractWriter *child);
   void write();
-
   const pxr::SdfPath &usd_path() const;
+
+  /* Returns true iff the data to be written is actually supported. This would, for example, allow
+   * a hypothetical camera writer accept a perspective camera but reject an orthogonal one. */
+  virtual bool is_supported() const;
 
  protected:
   virtual void do_write() = 0;

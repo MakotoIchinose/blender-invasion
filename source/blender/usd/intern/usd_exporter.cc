@@ -26,13 +26,10 @@
 #include <pxr/usd/usdGeom/tokens.h>
 
 extern "C" {
-#include "BKE_anim.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_scene.h"
 
 #include "BLI_iterator.h"
-
-#include "DEG_depsgraph_query.h"
 }
 
 USDExporter::USDExporter(const char *filename, ExportSettings &settings)
@@ -69,28 +66,10 @@ void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
   r_progress = 1.0;
 }
 
-bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &data_)
+bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &degiter_data)
 {
   const pxr::SdfPath root("/");
-  Mesh *mesh = ob_eval->runtime.mesh_eval;
   pxr::SdfPath parent_path;
-  USDAbstractWriter *parent_writer = NULL;
-
-  if (mesh == NULL) {
-    printf("USD-\033[34mSKIPPING\033[0m object %s  type=%d mesh = %p\n",
-           ob_eval->id.name,
-           ob_eval->type,
-           mesh);
-    return false;
-  }
-  if (data_.dupli_object_current != NULL) {
-    printf("USD-\033[34mSKIPPING\033[0m object %s  instance of %s  type=%d mesh = %p\n",
-           ob_eval->id.name,
-           data_.dupli_object_current->ob->id.name,
-           ob_eval->type,
-           mesh);
-    return false;
-  }
 
   // Compute the parent's SdfPath.
   if (ob_eval->parent == NULL) {
@@ -105,21 +84,40 @@ bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &data_)
       return false;
     }
     parent_path = path_it->second;
-    parent_writer = usd_writers[parent_path];
   }
 
-  USDAbstractWriter *xformWriter = new USDTransformWriter(
-      m_stage, parent_path, ob_eval, data_, parent_writer);
+  // Write the transform. This is always done, even when we don't write the data, as it makes it
+  // possible to reference collection-instantiating empties.
+  USDAbstractWriter *xform_writer = new USDTransformWriter(
+      m_stage, parent_path, ob_eval, degiter_data);
+  const pxr::SdfPath &xform_usd_path = xform_writer->usd_path();
+  usd_object_paths[ob_eval] = xform_usd_path;
+  usd_writers[xform_usd_path] = xform_writer;
+  xform_writer->write();
 
-  USDAbstractWriter *meshWriter = new USDMeshWriter(
-      m_stage, parent_path, ob_eval, data_, parent_writer);
+  // Write the object data, if we know how.
+  // TODO: let the writer determine whether the data is actually supported.
+  USDAbstractWriter *data_writer = NULL;
+  switch (ob_eval->type) {
+    case OB_MESH:
+      data_writer = new USDMeshWriter(m_stage, xform_usd_path, ob_eval, degiter_data);
+      break;
+    default:
+      printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
+             ob_eval->id.name,
+             ob_eval->type);
+      return false;
+  }
 
-  usd_object_paths[ob_eval] = xformWriter->usd_path();
-  usd_writers[xformWriter->usd_path()] = xformWriter;
-  usd_writers[meshWriter->usd_path()] = meshWriter;
-
-  xformWriter->write();
-  meshWriter->write();
+  if (!data_writer->is_supported()) {
+    printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
+           ob_eval->id.name,
+           ob_eval->type);
+  }
+  else {
+    usd_writers[data_writer->usd_path()] = data_writer;
+    data_writer->write();
+  }
 
   return true;
 }

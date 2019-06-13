@@ -10,9 +10,8 @@ extern "C" {
 USDTransformWriter::USDTransformWriter(pxr::UsdStageRefPtr stage,
                                        const pxr::SdfPath &parent_path,
                                        Object *ob_eval,
-                                       const DEGObjectIterData &degiter_data,
-                                       USDAbstractWriter *parent)
-    : USDAbstractWriter(stage, parent_path, ob_eval, degiter_data, parent)
+                                       const DEGObjectIterData &degiter_data)
+    : USDAbstractWriter(stage, parent_path, ob_eval, degiter_data)
 {
 }
 

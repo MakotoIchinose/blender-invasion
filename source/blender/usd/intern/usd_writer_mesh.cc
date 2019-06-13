@@ -3,6 +3,9 @@
 #include <pxr/usd/usdGeom/mesh.h>
 
 extern "C" {
+#include "BLI_utildefines.h"
+
+#include "BKE_anim.h"
 #include "BKE_library.h"
 
 #include "DNA_mesh_types.h"
@@ -12,9 +15,8 @@ extern "C" {
 USDGenericMeshWriter::USDGenericMeshWriter(pxr::UsdStageRefPtr stage,
                                            const pxr::SdfPath &parent_path,
                                            Object *ob_eval,
-                                           const DEGObjectIterData &degiter_data,
-                                           USDAbstractWriter *parent)
-    : USDAbstractWriter(stage, parent_path, ob_eval, degiter_data, parent)
+                                           const DEGObjectIterData &degiter_data)
+    : USDAbstractWriter(stage, parent_path, ob_eval, degiter_data)
 {
 }
 
@@ -45,8 +47,8 @@ void USDGenericMeshWriter::free_evaluated_mesh(struct Mesh *mesh)
 
 void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
 {
-  printf("USD-\033[32mexporting\033[0m object %s → %s   isinstance=%d type=%d mesh = %p\n",
-         m_object->id.name,
+  printf("USD-\033[32mexporting\033[0m data %s → %s   isinstance=%d type=%d mesh = %p\n",
+         mesh->id.name,
          m_path.GetString().c_str(),
          m_degiter_data.dupli_object_current != NULL,
          m_object->type,
@@ -87,14 +89,21 @@ void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
 USDMeshWriter::USDMeshWriter(pxr::UsdStageRefPtr stage,
                              const pxr::SdfPath &parent_path,
                              Object *ob_eval,
-                             const DEGObjectIterData &degiter_data,
-                             USDAbstractWriter *parent)
-    : USDGenericMeshWriter(stage, parent_path, ob_eval, degiter_data, parent)
+                             const DEGObjectIterData &degiter_data)
+    : USDGenericMeshWriter(stage, parent_path, ob_eval, degiter_data)
 {
 }
 
-Mesh *USDMeshWriter::get_evaluated_mesh(bool &r_needsfree)
+Mesh *USDMeshWriter::get_evaluated_mesh(bool &UNUSED(r_needsfree))
 {
-  r_needsfree = false;
+  if (m_degiter_data.dupli_object_current != NULL) {
+    printf("USD-\033[34mSKIPPING\033[0m object %s  instance of %s  type=%d mesh = %p\n",
+           m_object->id.name,
+           m_degiter_data.dupli_object_current->ob->id.name,
+           m_object->type,
+           m_object->runtime.mesh_eval);
+    return NULL;
+  }
+
   return m_object->runtime.mesh_eval;
 }
