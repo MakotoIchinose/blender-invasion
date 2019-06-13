@@ -3919,7 +3919,7 @@ static Base *mesh_separate_tagged(
   /* new in 2.5 */
   assign_matarar(bmain, base_new->object, give_matarar(obedit), *give_totcolp(obedit));
 
-  ED_object_base_select(base_new, BA_SELECT);
+  ED_object_base_select(view_layer, base_new, BA_SELECT);
 
   BMO_op_callf(bm_old,
                (BMO_FLAG_DEFAULTS & ~BMO_FLAG_RESPECT_HIDE),

@@ -119,7 +119,9 @@ bool ED_object_parent_set(struct ReportList *reports,
                           const int vert_par[3]);
 void ED_object_parent_clear(struct Object *ob, const int type);
 
-void ED_object_base_select(struct Base *base, eObjectSelect_Mode mode);
+void ED_object_base_select(struct ViewLayer *view_layer,
+                           struct Base *base,
+                           eObjectSelect_Mode mode);
 void ED_object_base_activate(struct bContext *C, struct Base *base);
 void ED_object_base_free_and_unlink(struct Main *bmain, struct Scene *scene, struct Object *ob);
 bool ED_object_base_deselect_all_ex(struct ViewLayer *view_layer,

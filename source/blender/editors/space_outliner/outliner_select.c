@@ -150,7 +150,7 @@ static void do_outliner_activate_obdata(
       ok = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
     }
     if (ok) {
-      ED_object_base_select(base, (ob->mode & OB_MODE_EDIT) ? BA_SELECT : BA_DESELECT);
+      ED_object_base_select(view_layer, base, (ob->mode & OB_MODE_EDIT) ? BA_SELECT : BA_DESELECT);
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
     }
@@ -198,7 +198,7 @@ static void do_outliner_activate_pose(
       ok = ED_object_posemode_enter_ex(bmain, ob);
     }
     if (ok) {
-      ED_object_base_select(base, (ob->mode & OB_MODE_POSE) ? BA_SELECT : BA_DESELECT);
+      ED_object_base_select(view_layer, base, (ob->mode & OB_MODE_POSE) ? BA_SELECT : BA_DESELECT);
 
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, NULL);
@@ -264,7 +264,7 @@ static void do_outliner_object_select_recursive(ViewLayer *view_layer,
   for (base = FIRSTBASE(view_layer); base; base = base->next) {
     Object *ob = base->object;
     if ((((base->flag & BASE_VISIBLE) != 0) && BKE_object_is_child_recursive(ob_parent, ob))) {
-      ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
+      ED_object_base_select(view_layer, base, select ? BA_SELECT : BA_DESELECT);
     }
   }
 }
@@ -355,10 +355,10 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
     if (set == OL_SETSEL_EXTEND) {
       /* swap select */
       if (base->flag & BASE_SELECTED) {
-        ED_object_base_select(base, BA_DESELECT);
+        ED_object_base_select(view_layer, base, BA_DESELECT);
       }
       else {
-        ED_object_base_select(base, BA_SELECT);
+        ED_object_base_select(view_layer, base, BA_SELECT);
       }
     }
     else {
@@ -373,7 +373,7 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
               true) {
         BKE_view_layer_base_deselect_all(view_layer);
       }
-      ED_object_base_select(base, BA_SELECT);
+      ED_object_base_select(view_layer, base, BA_SELECT);
     }
 
     if (recursive) {
@@ -1149,7 +1149,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
         FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (gr, object) {
           Base *base = BKE_view_layer_base_find(view_layer, object);
           if (base) {
-            ED_object_base_select(base, sel);
+            ED_object_base_select(view_layer, base, sel);
           }
         }
         FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
@@ -1162,7 +1162,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
           /* Object may not be in this scene */
           if (base != NULL) {
             if ((base->flag & BASE_SELECTED) == 0) {
-              ED_object_base_select(base, BA_SELECT);
+              ED_object_base_select(view_layer, base, BA_SELECT);
             }
           }
         }

@@ -114,23 +114,6 @@ float ED_view3d_select_dist_px(void)
   return 75.0f * U.pixelsize;
 }
 
-static void view3d_sync_selection_to_outliner(bContext *C)
-{
-  Main *bmain = CTX_data_main(C);
-  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
-        if (space->spacetype == SPACE_OUTLINER) {
-          SpaceOutliner *soutliner = (SpaceOutliner *)space;
-
-          /* Mark selection state as dirty */
-          soutliner->flag |= SO_IS_DIRTY;
-        }
-      }
-    }
-  }
-}
-
 /* TODO: should return whether there is valid context to continue */
 void ED_view3d_viewcontext_init(bContext *C, ViewContext *vc)
 {
@@ -172,7 +155,7 @@ static bool object_deselect_all_visible(ViewLayer *view_layer, View3D *v3d)
   for (Base *base = view_layer->object_bases.first; base; base = base->next) {
     if (base->flag & BASE_SELECTED) {
       if (BASE_SELECTABLE(v3d, base)) {
-        ED_object_base_select(base, BA_DESELECT);
+        ED_object_base_select(view_layer, base, BA_DESELECT);
         changed = true;
       }
     }
@@ -187,7 +170,7 @@ static bool object_deselect_all_except(ViewLayer *view_layer, Base *b)
   for (Base *base = view_layer->object_bases.first; base; base = base->next) {
     if (base->flag & BASE_SELECTED) {
       if (b != base) {
-        ED_object_base_select(base, BA_DESELECT);
+        ED_object_base_select(view_layer, base, BA_DESELECT);
         changed = true;
       }
     }
@@ -606,7 +589,7 @@ static bool do_lasso_select_objects(ViewContext *vc,
                                   mcords, moves, base->sx, base->sy, IS_CLIPPED));
       const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
-        ED_object_base_select(base, sel_op_result ? BA_SELECT : BA_DESELECT);
+        ED_object_base_select(vc->view_layer, base, sel_op_result ? BA_SELECT : BA_DESELECT);
         changed = true;
       }
     }
@@ -1351,7 +1334,6 @@ static int view3d_lasso_select_exec(bContext *C, wmOperator *op)
     MEM_freeN((void *)mcords);
 
     if (changed_multi) {
-      view3d_sync_selection_to_outliner(C);
       return OPERATOR_FINISHED;
     }
     else {
@@ -1427,6 +1409,7 @@ static const EnumPropertyItem *object_select_menu_enum_itemf(bContext *C,
 
 static int object_select_menu_exec(bContext *C, wmOperator *op)
 {
+  ViewLayer *view_layer = CTX_data_view_layer(C);
   const int name_index = RNA_enum_get(op->ptr, "name");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
   bool changed = false;
@@ -1435,7 +1418,7 @@ static int object_select_menu_exec(bContext *C, wmOperator *op)
   if (!toggle) {
     CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
       if ((base->flag & BASE_SELECTED) != 0) {
-        ED_object_base_select(base, BA_DESELECT);
+        ED_object_base_select(view_layer, base, BA_DESELECT);
         changed = true;
       }
     }
@@ -1447,7 +1430,7 @@ static int object_select_menu_exec(bContext *C, wmOperator *op)
      * but library objects can mess this up. */
     if (STREQ(name, base->object->id.name + 2)) {
       ED_object_base_activate(C, base);
-      ED_object_base_select(base, BA_SELECT);
+      ED_object_base_select(view_layer, base, BA_SELECT);
       changed = true;
     }
   }
@@ -2066,7 +2049,7 @@ static bool ed_object_select_pick(bContext *C,
                   }
                 }
 
-                ED_object_base_select(basact, BA_SELECT);
+                ED_object_base_select(view_layer, basact, BA_SELECT);
 
                 retval = true;
 
@@ -2099,7 +2082,7 @@ static bool ed_object_select_pick(bContext *C,
 
           /* we make the armature selected:
            * not-selected active object in posemode won't work well for tools */
-          ED_object_base_select(basact, BA_SELECT);
+          ED_object_base_select(view_layer, basact, BA_SELECT);
 
           retval = true;
           WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, basact->object);
@@ -2157,31 +2140,31 @@ static bool ed_object_select_pick(bContext *C,
     if (vc.obedit) {
       /* only do select */
       object_deselect_all_except(view_layer, basact);
-      ED_object_base_select(basact, BA_SELECT);
+      ED_object_base_select(view_layer, basact, BA_SELECT);
     }
     /* also prevent making it active on mouse selection */
     else if (BASE_SELECTABLE(v3d, basact)) {
       if (extend) {
-        ED_object_base_select(basact, BA_SELECT);
+        ED_object_base_select(view_layer, basact, BA_SELECT);
       }
       else if (deselect) {
-        ED_object_base_select(basact, BA_DESELECT);
+        ED_object_base_select(view_layer, basact, BA_DESELECT);
       }
       else if (toggle) {
         if (basact->flag & BASE_SELECTED) {
           if (basact == oldbasact) {
-            ED_object_base_select(basact, BA_DESELECT);
+            ED_object_base_select(view_layer, basact, BA_DESELECT);
           }
         }
         else {
-          ED_object_base_select(basact, BA_SELECT);
+          ED_object_base_select(view_layer, basact, BA_SELECT);
         }
       }
       else {
         /* When enabled, this puts other objects out of multi pose-mode. */
         if (is_pose_mode == false) {
           object_deselect_all_except(view_layer, basact);
-          ED_object_base_select(basact, BA_SELECT);
+          ED_object_base_select(view_layer, basact, BA_SELECT);
         }
       }
 
@@ -2372,9 +2355,6 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
    * */
   if (retval) {
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
-
-    /* Mark outliners selection state as dirty */
-    view3d_sync_selection_to_outliner(C);
 
     return OPERATOR_PASS_THROUGH | OPERATOR_FINISHED;
   }
@@ -3032,7 +3012,7 @@ static bool do_object_box_select(bContext *C, ViewContext *vc, rcti *rect, const
       const bool is_inside = base->object->id.tag & LIB_TAG_DOIT;
       const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
-        ED_object_base_select(base, sel_op_result ? BA_SELECT : BA_DESELECT);
+        ED_object_base_select(vc->view_layer, base, sel_op_result ? BA_SELECT : BA_DESELECT);
         changed = true;
       }
     }
@@ -3224,7 +3204,6 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
   WM_generic_user_data_free(wm_userdata);
 
   if (changed_multi) {
-    view3d_sync_selection_to_outliner(C);
     return OPERATOR_FINISHED;
   }
   else {
@@ -3912,7 +3891,7 @@ static bool object_circle_select(ViewContext *vc,
                                          V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_WIN |
                                              V3D_PROJ_TEST_CLIP_NEAR) == V3D_PROJ_RET_OK) {
         if (len_squared_v2v2(mval_fl, screen_co) <= radius_squared) {
-          ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
+          ED_object_base_select(view_layer, base, select ? BA_SELECT : BA_DESELECT);
           changed = true;
         }
       }
@@ -3974,7 +3953,6 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
   }
   else if (obact && (obact->mode & OB_MODE_PARTICLE_EDIT)) {
     if (PE_circle_select(C, sel_op, mval, (float)radius)) {
-      view3d_sync_selection_to_outliner(C);
       return OPERATOR_FINISHED;
     }
     return OPERATOR_CANCELLED;
@@ -3994,7 +3972,6 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
     WM_generic_user_data_free(wm_userdata);
   }
 
-  view3d_sync_selection_to_outliner(C);
   return OPERATOR_FINISHED;
 }
 

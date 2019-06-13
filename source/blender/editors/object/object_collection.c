@@ -599,6 +599,7 @@ void OBJECT_OT_collection_unlink(wmOperatorType *ot)
 static int select_grouped_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
   Collection *collection = CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data;
 
   if (!collection) {
@@ -608,7 +609,7 @@ static int select_grouped_exec(bContext *C, wmOperator *UNUSED(op))
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
     if (((base->flag & BASE_SELECTED) == 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
       if (BKE_collection_has_object_recursive(collection, base->object)) {
-        ED_object_base_select(base, BA_SELECT);
+        ED_object_base_select(view_layer, base, BA_SELECT);
       }
     }
   }

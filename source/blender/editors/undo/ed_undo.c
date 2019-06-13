@@ -726,7 +726,7 @@ void ED_undo_object_editmode_restore_helper(struct bContext *C,
       ED_object_editmode_exit_ex(bmain, scene, bases[i]->object, EM_FREEDATA);
       /* Ideally we would know the selection state it was before entering edit-mode,
        * for now follow the convention of having them unselected when exiting the mode. */
-      ED_object_base_select(bases[i], BA_DESELECT);
+      ED_object_base_select(view_layer, bases[i], BA_DESELECT);
     }
   }
   MEM_freeN(bases);

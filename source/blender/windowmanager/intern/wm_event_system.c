@@ -419,6 +419,27 @@ void wm_event_do_notifiers(bContext *C)
 
     CTX_wm_window_set(C, win);
 
+    ViewLayer *view_layer = CTX_data_view_layer(C);
+
+    /* This may need to be moved */
+    if ((view_layer->flag & VIEW_LAYER_OUTLINER_SELECT_DIRTY) != 0) {
+      /* Mark all outliners as dirty */
+      Main *bmain = CTX_data_main(C);
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+            if (space->spacetype == SPACE_OUTLINER) {
+              SpaceOutliner *soutliner = (SpaceOutliner *)space;
+
+              /* Mark selection state as dirty */
+              soutliner->flag |= SO_IS_DIRTY;
+            }
+          }
+        }
+      }
+      view_layer->flag &= ~VIEW_LAYER_OUTLINER_SELECT_DIRTY;
+    }
+
     for (note = wm->queue.first; note; note = next) {
       next = note->next;
 
@@ -483,7 +504,6 @@ void wm_event_do_notifiers(bContext *C)
         }
       }
       if (ELEM(note->category, NC_SCENE, NC_OBJECT, NC_GEOM, NC_WM)) {
-        ViewLayer *view_layer = CTX_data_view_layer(C);
         ED_info_stats_clear(view_layer);
         WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO, NULL);
       }

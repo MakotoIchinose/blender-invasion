@@ -1844,7 +1844,7 @@ static bool get_new_constraint_target(
 
     /* restore, BKE_object_add sets active */
     BASACT(view_layer) = base;
-    ED_object_base_select(base, BA_SELECT);
+    ED_object_base_select(view_layer, base, BA_SELECT);
 
     /* make our new target the new object */
     *tar_ob = obt;

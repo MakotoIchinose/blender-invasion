@@ -6588,7 +6588,7 @@ static void clear_trans_object_base_flags(TransInfo *t)
 
   for (base = view_layer->object_bases.first; base; base = base->next) {
     if (base->flag_legacy & BA_WAS_SEL) {
-      ED_object_base_select(base, BA_SELECT);
+      ED_object_base_select(view_layer, base, BA_SELECT);
     }
 
     base->flag_legacy &= ~(BA_WAS_SEL | BA_SNAP_FIX_DEPS_FIASCO | BA_TEMP_TAG |
