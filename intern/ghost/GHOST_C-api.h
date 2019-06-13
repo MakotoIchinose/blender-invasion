@@ -203,6 +203,8 @@ extern GHOST_TSuccess GHOST_DisposeOpenGLContext(GHOST_SystemHandle systemhandle
 extern GHOST_ContextHandle GHOST_CreateDirectXContext(GHOST_SystemHandle systemhandle);
 #endif
 
+extern GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle);
+
 /**
  * Returns the window user data.
  * \param windowhandle The handle to the window

@@ -3534,6 +3534,17 @@ static void *xr_session_gpu_binding_context_create(eWM_xrGraphicsBinding graphic
   switch (graphics_lib) {
     case WM_XR_GRAPHICS_OPENGL:
       return WM_opengl_context_create();
+#  ifdef WIN32
+    case WM_XR_GRAPHICS_D3D11: {
+      wmWindowManager *wm = G_MAIN->wm.first;
+      for (wmWindow *win = wm->windows.first; win; win = win->next) {
+        if (GHOST_GetDrawingContextType(win->ghostwin)) {
+          return GHOST_GetWindowContext(win->ghostwin);
+        }
+      }
+      return NULL;
+    }
+#  endif
     default:
       return NULL;
   }
@@ -3561,6 +3572,12 @@ static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     wm_xr_session_end(xr_context);
   }
   else {
+#  if defined(WIN32) && 0
+    rcti rect;
+    BLI_rcti_init(&rect, 20, 1000, 20, 1200);
+    wmWindow *win = WM_window_open_directx(C, &rect);
+#  endif
+
     wm_xr_graphics_context_bind_funcs(
         xr_context, xr_session_gpu_binding_context_create, xr_session_gpu_binding_context_destroy);
     wm_xr_session_start(xr_context);

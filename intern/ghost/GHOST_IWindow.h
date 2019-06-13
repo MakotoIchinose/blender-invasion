@@ -77,6 +77,8 @@ class GHOST_IWindow {
    */
   virtual GHOST_TSuccess setDrawingContextType(GHOST_TDrawingContextType type) = 0;
 
+  virtual class GHOST_IContext *getDrawingContext() = 0;
+
   /**
    * Sets the title displayed in the title bar.
    * \param title The title to display in the title bar.

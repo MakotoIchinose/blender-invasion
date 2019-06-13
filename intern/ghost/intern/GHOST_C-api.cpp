@@ -136,6 +136,13 @@ GHOST_ContextHandle GHOST_CreateDirectXContext(GHOST_SystemHandle systemhandle)
 }
 #endif
 
+GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+
+  return (GHOST_ContextHandle)window->getDrawingContext();
+}
+
 GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                       const char *title,
                                       GHOST_TInt32 left,

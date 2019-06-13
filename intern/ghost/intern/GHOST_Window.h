@@ -227,6 +227,11 @@ class GHOST_Window : public GHOST_IWindow {
    */
   virtual bool getModifiedState();
 
+  inline GHOST_IContext *getDrawingContext()
+  {
+    return (GHOST_IContext *)m_context;
+  }
+
   /**
    * Returns the type of drawing context used in this window.
    * \return The current type of drawing context.
