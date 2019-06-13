@@ -16,6 +16,10 @@
 
 /** \file
  * \ingroup wm
+ *
+ * \note This is taken mostly from the OpenXR SDK, but with modified D3D versions (e.g. d3d11_4.h
+ * -> d3d11.h). Take care for that when updating, we don't want to require newest Win SDKs to be
+ * installed.
  */
 
 #ifndef __WM_XR_SYSTEM_INCLUDES_H__
@@ -33,7 +37,7 @@
 #  include <d3d10_1.h>
 #endif
 #ifdef XR_USE_GRAPHICS_API_D3D11
-#  include <d3d11_4.h>
+#  include <d3d11.h>
 #endif
 #ifdef XR_USE_GRAPHICS_API_D3D12
 #  include <d3d12.h>

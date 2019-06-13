@@ -18,6 +18,8 @@
  * \ingroup wm
  */
 
+#include <stdio.h>
+
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 
