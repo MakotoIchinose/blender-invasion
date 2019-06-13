@@ -25,6 +25,13 @@ void USDGenericMeshWriter::do_write()
   bool needsfree = false;
   struct Mesh *mesh = get_evaluated_mesh(needsfree);
 
+  if (mesh == NULL) {
+    printf("USD-\033[31mSKIPPING\033[0m object %s  type=%d mesh = NULL\n",
+           m_object->id.name,
+           m_object->type);
+    return;
+  }
+
   try {
     write_mesh(mesh);
 
@@ -96,14 +103,5 @@ USDMeshWriter::USDMeshWriter(pxr::UsdStageRefPtr stage,
 
 Mesh *USDMeshWriter::get_evaluated_mesh(bool &UNUSED(r_needsfree))
 {
-  if (m_degiter_data.dupli_object_current != NULL) {
-    printf("USD-\033[34mSKIPPING\033[0m object %s  instance of %s  type=%d mesh = %p\n",
-           m_object->id.name,
-           m_degiter_data.dupli_object_current->ob->id.name,
-           m_object->type,
-           m_object->runtime.mesh_eval);
-    return NULL;
-  }
-
   return m_object->runtime.mesh_eval;
 }

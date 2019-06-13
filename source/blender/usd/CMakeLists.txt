@@ -20,6 +20,12 @@
 
 include(/opt/usd/pxrConfig.cmake)
 
+# This suppresses the warning "This file includes at least one deprecated or antiquated header which
+# may be removed without further notice at a future date", which is caused by the USD library
+# including <ext/hash_set>. Nothing we can do about that until they change what
+# they include, so this just suppresses it.
+add_definitions(-D_GLIBCXX_PERMIT_BACKWARD_HASH)
+
 set(INC
   .
   ../blenkernel

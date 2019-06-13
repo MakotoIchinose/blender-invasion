@@ -76,7 +76,16 @@ class USDExporter {
 
   pxr::UsdStageRefPtr m_stage;
 
+ private:
   bool export_object(Object *ob_eval, const DEGObjectIterData &data_);
+  pxr::SdfPath parent_usd_path(Object *ob_eval, const DEGObjectIterData &degiter_data);
+
+  USDAbstractWriter *export_object_xform(const pxr::SdfPath &parent_path,
+                                         Object *ob_eval,
+                                         const DEGObjectIterData &degiter_data);
+  USDAbstractWriter *export_object_data(const pxr::SdfPath &parent_path,
+                                        Object *ob_eval,
+                                        const DEGObjectIterData &degiter_data);
 
  public:
   USDExporter(const char *filename, ExportSettings &settings);

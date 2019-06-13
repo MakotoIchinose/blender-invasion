@@ -68,56 +68,97 @@ void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
 
 bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &degiter_data)
 {
-  const pxr::SdfPath root("/");
-  pxr::SdfPath parent_path;
-
-  // Compute the parent's SdfPath.
-  if (ob_eval->parent == NULL) {
-    parent_path = root;
+  pxr::SdfPath parent_path = parent_usd_path(ob_eval, degiter_data);
+  if (parent_path.IsEmpty()) {
+    return false;
   }
-  else {
-    USDPathMap::iterator path_it = usd_object_paths.find(ob_eval->parent);
+
+  USDAbstractWriter *xform_writer, *data_writer;
+  xform_writer = export_object_xform(parent_path, ob_eval, degiter_data);
+  data_writer = export_object_data(xform_writer->usd_path(), ob_eval, degiter_data);
+
+  return data_writer != NULL;
+}
+
+pxr::SdfPath USDExporter::parent_usd_path(Object *ob_eval, const DEGObjectIterData &degiter_data)
+{
+  static const pxr::SdfPath root("/");
+  pxr::SdfPath parent_path(root);
+
+  // Prepend any dupli-parent USD path.
+  if (degiter_data.dupli_parent != NULL && degiter_data.dupli_parent != ob_eval) {
+    USDPathMap::iterator path_it = usd_object_paths.find(degiter_data.dupli_parent);
     if (path_it == usd_object_paths.end()) {
-      printf("USD-\033[31mSKIPPING\033[0m object %s because parent %s hasn't been seen yet\n",
-             ob_eval->id.name,
-             ob_eval->parent->id.name);
-      return false;
+      printf(
+          "USD-\033[31mSKIPPING\033[0m object %s because dupli-parent %s hasn't been seen yet\n",
+          ob_eval->id.name,
+          degiter_data.dupli_parent->id.name);
+      return pxr::SdfPath();
     }
     parent_path = path_it->second;
   }
 
-  // Write the transform. This is always done, even when we don't write the data, as it makes it
-  // possible to reference collection-instantiating empties.
+  if (ob_eval->parent == NULL) {
+    return parent_path;
+  }
+
+  // Append the parent object's USD path.
+  USDPathMap::iterator path_it = usd_object_paths.find(ob_eval->parent);
+  if (path_it == usd_object_paths.end()) {
+    printf("USD-\033[31mSKIPPING\033[0m object %s because parent %s hasn't been seen yet\n",
+           ob_eval->id.name,
+           ob_eval->parent->id.name);
+    return pxr::SdfPath();
+  }
+
+  return parent_path.AppendPath(path_it->second.MakeRelativePath(root));
+}
+
+/* Write the transform. This is always done, even when we don't write the data, as it makes it
+ * possible to reference collection-instantiating empties. */
+USDAbstractWriter *USDExporter::export_object_xform(const pxr::SdfPath &parent_path,
+                                                    Object *ob_eval,
+                                                    const DEGObjectIterData &degiter_data)
+{
   USDAbstractWriter *xform_writer = new USDTransformWriter(
       m_stage, parent_path, ob_eval, degiter_data);
+
   const pxr::SdfPath &xform_usd_path = xform_writer->usd_path();
   usd_object_paths[ob_eval] = xform_usd_path;
   usd_writers[xform_usd_path] = xform_writer;
   xform_writer->write();
 
-  // Write the object data, if we know how.
-  // TODO: let the writer determine whether the data is actually supported.
+  return xform_writer;
+}
+
+/* Write the object data, if we know how. */
+USDAbstractWriter *USDExporter::export_object_data(const pxr::SdfPath &parent_path,
+                                                   Object *ob_eval,
+                                                   const DEGObjectIterData &degiter_data)
+{
   USDAbstractWriter *data_writer = NULL;
+
   switch (ob_eval->type) {
     case OB_MESH:
-      data_writer = new USDMeshWriter(m_stage, xform_usd_path, ob_eval, degiter_data);
+      data_writer = new USDMeshWriter(m_stage, parent_path, ob_eval, degiter_data);
       break;
     default:
       printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
              ob_eval->id.name,
              ob_eval->type);
-      return false;
+      return NULL;
   }
 
   if (!data_writer->is_supported()) {
     printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
            ob_eval->id.name,
            ob_eval->type);
-  }
-  else {
-    usd_writers[data_writer->usd_path()] = data_writer;
-    data_writer->write();
+    delete data_writer;
+    return NULL;
   }
 
-  return true;
+  usd_writers[data_writer->usd_path()] = data_writer;
+  data_writer->write();
+
+  return data_writer;
 }
