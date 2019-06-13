@@ -81,6 +81,11 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
+static void deformStroke(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf){
+  lanpr_update_data_for_external(depsgraph);
+  lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
+}
+
 static void bakeModifier(Main *UNUSED(bmain),
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
@@ -91,10 +96,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
-      lanpr_update_data_for_external(depsgraph);
-      lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
-      return;
+      deformStroke(md, depsgraph, ob, gpl, gpf);
     }
   }
 }
@@ -105,9 +107,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  // lanpr_generate_gpencil_geometry(md, depsgraph, ob, gpl, gpf);
-  lanpr_update_data_for_external(depsgraph);
-  lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
+  deformStroke(md, depsgraph, ob, gpl, gpf);
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
