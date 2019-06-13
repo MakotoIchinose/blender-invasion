@@ -40,6 +40,7 @@
 
 //#include "BKE_profile_path.h"
 #include "BKE_colortools.h"
+#include "DNA_color_types.h"
 
 #include "bmesh.h"
 #include "bmesh_bevel.h" /* own include */
@@ -324,7 +325,7 @@ typedef struct BevelParams {
 
 // #pragma GCC diagnostic ignored "-Wpadded"
 
- #include "bevdebug.c" /* HANS-TODO: Comment this back out before commit! */
+// #include "bevdebug.c" /* HANS-TODO: Comment this back out before commit! */
 
 /* Some flags to re-enable old behavior for a while,
  * in case fixes broke things not caught by regression tests. */
@@ -5493,8 +5494,8 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 {
   EdgeHalf *new_edge;
   EdgeHalf *next_edge = NULL;
-  float d_cur[3];
-  float d_other[3];
+  float d_start[3];
+  float d_new[3];
   float v1_dist_to_bv;
   float v2_dist_to_bv;
   float new_angle;
@@ -5509,7 +5510,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf */
   if (toward_bv) {
-    printf("TOWARD_BV");
+    printf("[toward_bv]");
     /* Find the direction vector of the current edge (pointing INTO the BevVert) .
      * v1 and v2 don't necessarily have an order, so we need to check which is closer to bv */
     /* HANS-TODO: r_bv not initialized */
@@ -5517,18 +5518,21 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
     v2_dist_to_bv = fabsf(len_v3v3(start_edge->e->v2->co, (*r_bv)->v->co));
     /* HANS-TODO: Helper function for this comparison? */
     if (v1_dist_to_bv < v2_dist_to_bv) {
-      sub_v3_v3v3(d_cur, start_edge->e->v1->co, start_edge->e->v2->co);
+      sub_v3_v3v3(d_start, start_edge->e->v1->co, start_edge->e->v2->co);
     }
     else {
-      sub_v3_v3v3(d_cur, start_edge->e->v2->co, start_edge->e->v1->co);
+      sub_v3_v3v3(d_start, start_edge->e->v2->co, start_edge->e->v1->co);
     }
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+    printf("[d_start:(%0.2f, %0.2f, %0.2f)]", (double)d_start[0],
+                                              (double)d_start[1],
+                                              (double)d_start[2]);
+#endif
 
     /* Find the beveled edge coming out of the BevVert most parallel to the current edge */
     new_edge = start_edge;
 //    new_edge = next_bev(*r_bv, start_edge);
     new_edge = new_edge->next;
-//    printf("new_edge_AFTER: %p\n", (void *)new_edge);
-//    printf("start_edge_AFTER: %p\n", (void *)start_edge);
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
 //    if (new_edge) {
 //      printf("[new_edge]");
@@ -5547,22 +5551,25 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
         continue;
       }
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-      printf("[while loop]");
+      printf("[new_edge]");
 #endif
       /* Find direction vector of the possible next edge (pointing OUT of the BevVert) */
       v1_dist_to_bv = fabsf(len_v3v3(new_edge->e->v1->co, (*r_bv)->v->co));
       v2_dist_to_bv = fabsf(len_v3v3(new_edge->e->v2->co, (*r_bv)->v->co));
       if (v1_dist_to_bv > v2_dist_to_bv) {
-        sub_v3_v3v3(d_other, new_edge->e->v1->co, new_edge->e->v2->co);
+        sub_v3_v3v3(d_new, new_edge->e->v1->co, new_edge->e->v2->co);
       }
       else {
-        sub_v3_v3v3(d_other, new_edge->e->v2->co, new_edge->e->v1->co);
+        sub_v3_v3v3(d_new, new_edge->e->v2->co, new_edge->e->v1->co);
       }
 
       /* Use this edge if it is the most parallel to the orignial so far */
-      new_angle = angle_v3v3(d_cur, d_other);
+      new_angle = angle_v3v3(d_start, d_new);
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-      printf("[angle:%0.2f]", (double)new_angle);
+      printf("[d_new:(%0.2f, %0.2f, %0.2f)][angle:%0.2f]", (double)d_new[0],
+                                                           (double)d_new[1],
+                                                           (double)d_new[2],
+                                                           (double)new_angle);
 #endif
       if (new_angle < best_angle) {
         second_best_angle = best_angle; /* For remembering if the choice was too close */
@@ -5580,17 +5587,17 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 #endif
     }
 
-    /* Only return a new Edge if one was found and if the choice of next edge was not too close */
     if (!next_edge) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
       printf("(NULL - !next_edge)\n");
 #endif
       return NULL;
     }
-    if (second_best_angle < best_angle + DEG2RADF(30.0f) ||
-        second_best_angle > best_angle - DEG2RADF(30.0f)) { /* HANS-TODO: Macro for this? */
+
+    /* Only return a new Edge if one was found and if the choice of next edge was not too close */
+    if ((float)fabs((double)(best_angle - second_best_angle)) < DEG2RADF(30.0f)) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-      printf("(NULL - no angle choice)\n");
+      printf("[2nd angle:%0.2f](NULL - no angle choice)\n", (double)second_best_angle);
 #endif
       return NULL;
     }
@@ -5608,7 +5615,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 
   /* Case 2: The next EdgeHalf is the other side of the BMEdge.
    * Because it's part of the same BMEdge, we know the other edge half will also be beveled */
-  printf("AWAY_BV");
+  printf("[away_bv]");
   next_edge = find_other_end_edge_half(bp, start_edge, r_bv);
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   if (next_edge) {
@@ -5618,6 +5625,33 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   }
 #endif
   return next_edge;
+}
+
+static void debug_RPO_draw_sphere(BevelParams* bp, BMEdge* e) {
+  float debug_color_1[4];
+  debug_color_1[0] = 1.0;
+  debug_color_1[1] = 0.0;
+  debug_color_1[2] = 0.0;
+  debug_color_1[3] = 1.0;
+  float debug_color_2[4];
+  debug_color_2[0] = 0.0;
+  debug_color_2[1] = 0.0;
+  debug_color_2[2] = 1.0;
+  debug_color_2[3] = 1.0;
+  EdgeHalf *edge_half = find_edge_half(find_bevvert(bp, e->v1), e);
+  if (edge_half->rightv->is_patch_start) {
+      DRW_debug_sphere(edge_half->rightv->nv.co, 0.05f, debug_color_1);
+  }
+  else {
+      DRW_debug_sphere(edge_half->leftv->nv.co, 0.05f, debug_color_1);
+  }
+  edge_half = find_edge_half(find_bevvert(bp, e->v2), e);
+  if (edge_half->rightv->is_patch_start) {
+      DRW_debug_sphere(edge_half->rightv->nv.co, 0.05f, debug_color_1);
+  }
+  else {
+      DRW_debug_sphere(edge_half->leftv->nv.co, 0.05f, debug_color_1);
+  }
 }
 
 /* The custom profiles are not necessarily symmetrical, so along beveled edges
@@ -5631,14 +5665,9 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
   EdgeHalf *start_edge;
   EdgeHalf *edge;
   bool toward_bv;
-  bool last_direction_right;
+  bool mark_left;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   printf("REGULARIZE PROFILE ORIENTATION\n");
-  float debug_color[4];
-  debug_color[0] = 1.0;
-  debug_color[1] = 0.0;
-  debug_color[2] = 0.0;
-  debug_color[3] = 1.0;
 #endif
 
   /* Start at the first EdgeHalf. Once the travelling is finished for that EdgeHalf,
@@ -5662,7 +5691,7 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
   /* HANS-TODO: Possibly use a more advanced metric here for the start edge */
   start_edge->rightv->is_profile_start = true;
   start_edge->leftv->is_profile_start = false;
-  last_direction_right = true;
+  mark_left = true;
 
   /* Travel the path in the direction of the BevVert the EdgeHalf is attached to */
   edge = start_edge;
@@ -5674,34 +5703,41 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
     if (edge->visited_custom) {
       break;
     }
+    edge->visited_custom = true;
 
     /* Mark the correct BoundVert as the start of the newly visited profile
      * The direction of the BoundVert along the path switches every time because their directions
      * are relative to the BevVert they're connected to. So the right and left are BoundVerts
      * would also switch every EdgeHalf, and all I need to do is switch which BoundVert I make
      * the profile's start every time. */
-    edge->rightv->is_profile_start = !last_direction_right;
-    edge->leftv->is_profile_start = last_direction_right;
-    last_direction_right = !last_direction_right;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf(">");
-    if (edge->rightv->is_patch_start) {
-      DRW_debug_sphere(edge->rightv->nv.co, 0.05f, debug_color);
+    if (mark_left) {
+      printf("[mark_left]");
     }
     else {
-      DRW_debug_sphere(edge->leftv->nv.co, 0.05f, debug_color);
+      printf("[mark_right]");
     }
+    printf("%s", (mark_left) ? "[mark_left]" : "[mark_right]");
+#endif
+    edge->rightv->is_profile_start = !mark_left;
+    edge->leftv->is_profile_start = mark_left;
+    mark_left = !mark_left;
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+    printf("[1st loop move]\n");
 #endif
     /* The next jump will in the opposite direction relative to the BevVert */
     toward_bv = !toward_bv;
 
     edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
   }
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+  printf("[1st loop stopped]\n");
+#endif
 
   /* Now travel the path in the other direction, away from the BevVert */
   edge = start_edge;
   toward_bv = false;
-  last_direction_right = true;
+  mark_left = true;
   bv = start_bv;
   edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
   while (edge) {
@@ -5711,24 +5747,28 @@ static void regularize_profile_orientation(BevelParams * bp, BMEdge *bme)
     }
 
     /* Mark the correct BoundVert as the start of the newly visited profile */
-    edge->rightv->is_profile_start = !last_direction_right;
-    edge->leftv->is_profile_start = last_direction_right;
-    last_direction_right = !last_direction_right;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf("<");
-    if (edge->rightv->is_patch_start) {
-      DRW_debug_sphere(edge->rightv->nv.co, 0.05f, debug_color);
+    if (mark_left) {
+      printf("[mark_left]");
     }
     else {
-      DRW_debug_sphere(edge->leftv->nv.co, 0.05f, debug_color);
-      /* HANS-TODO: This should be done in one pass at the end */
+      printf("[mark_right]");
     }
+#endif
+    edge->rightv->is_profile_start = !mark_left;
+    edge->leftv->is_profile_start = mark_left;
+    mark_left = !mark_left;
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+    printf("[2nd loop move]\n");
 #endif
     /* The next jump will in the opposite direction relative to the BevVert */
     toward_bv = !toward_bv;
 
     edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
   }
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+  printf("[2nd loop stopped]\n");
+#endif
 }
 
 /* Construction around the vertex */
@@ -7254,11 +7294,21 @@ void BM_mesh_bevel(BMesh *bm,
     /* Maintain consistent orientations for the unsymmetrical custom profiles */
     if (bp.use_custom_profile) {
       BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
-        if (BM_elem_flag_test(e, BM_ELEM_TAG)) { /* HANS-QUESTION: Is this a check if the edge is going to be beveled? Is it necessary here? */
+        if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
           regularize_profile_orientation(&bp, e);
+          break;
         }
       }
     }
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+    if (bp.use_custom_profile) {
+      BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
+        if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
+          debug_RPO_draw_sphere(&bp, e);
+        }
+      }
+    }
+#endif
 
     /* Build the meshes around vertices, now that positions are final */
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
