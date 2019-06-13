@@ -448,31 +448,45 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
 {
   /* BMVert v1 = *edge->v1; */
   float u1[2], u2[2];
+  float u12[2];
 
   /**
    * Get UV Coordinates of v1 and v2
    */
   BMLoop *l;
-  BMIter liter;
+  BMLoop *l2;
   MLoopUV *luv;
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
 
-  BM_ITER_ELEM (l, &liter, edge->v1, BM_LOOPS_OF_VERT) {
-    luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-    copy_v2_v2(u1, luv->uv);
+  l = edge->l;
+  if (l->v == edge->v1) {
+    if (l->next->v == edge->v2) {
+      l2 = l->next;
+    }
+    else {
+      l2 = l->prev;
+    }
   }
-  BM_ITER_ELEM (l, &liter, edge->v2, BM_LOOPS_OF_VERT) {
-    luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-    copy_v2_v2(u2, luv->uv);
+  else {
+    if (l->next->v == edge->v1) {
+      l2 = l->next;
+    }
+    else {
+      l2 = l->prev;
+    }
   }
+
+  luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+  copy_v2_v2(u1, luv->uv);
+  luv = BM_ELEM_CD_GET_VOID_P(l2, cd_loop_uv_offset);
+  copy_v2_v2(u2, luv->uv);
+  copy_v2_v2(u12, u1);
+  sub_v2_v2(u12, u2);
 
   /**
    *TODO(Ish): Need to add functionality when the vertex is on a seam
    */
 
-  float u12[2];
-  copy_v2_v2(u12, u1);
-  sub_v2_v2(u12, u2);
   float value = 0.0;
   float temp_v2[2];
   /* int index = BM_elem_index_get(&v1); */
