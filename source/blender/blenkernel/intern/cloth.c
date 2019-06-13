@@ -35,6 +35,7 @@
 #include "BLI_math.h"
 #include "BLI_edgehash.h"
 #include "BLI_linklist.h"
+#include "BLI_array.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -485,24 +486,50 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
   return sqrtf(fmax(value, 0.0f));
 }
 
-static int cloth_remeshing_find_bad_edges(BMesh *bm, LinkNodePair *sizing)
+static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
 {
+  Edge_Pair *ea = (Edge_Pair *)a;
+  Edge_Pair *eb = (Edge_Pair *)b;
+  if (ea->size < eb->size) {
+    return 1;
+  }
+  if (ea->size > eb->size) {
+    return -1;
+  }
+  return 0;
+}
+
+static void cloth_remeshing_find_bad_edges(BMesh *bm,
+                                           LinkNodePair *sizing,
+                                           BMEdge ***r_edges,
+                                           int *r_edges_len)
+{
+  Edge_Pair *edge_pairs = MEM_mallocN(sizeof(Edge_Pair) * bm->totedge, "Edge Pairs");
+
   int tagged = 0;
   BMEdge *e;
   BMIter eiter;
-  /* clearing out the tags */
-  BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
-    BM_elem_flag_disable(e, BM_ELEM_TAG);
-  }
   BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
     float size = cloth_remeshing_edge_size(bm, e, sizing);
     if (size > 1.0f) {
-      BM_elem_flag_enable(e, BM_ELEM_TAG);
+      edge_pairs[tagged].size = size;
+      edge_pairs[tagged].edge = e;
       tagged++;
     }
   }
 
-  return tagged;
+  /* sort the list based on the size */
+  qsort(edge_pairs, tagged, sizeof(Edge_Pair), cloth_remeshing_edge_pair_compare);
+
+  *r_edges = MEM_mallocN(sizeof(BMEdge *) * tagged, "Bad Edges");
+
+  for (int i = 0; i < tagged; i++) {
+    (*r_edges)[i] = edge_pairs[i].edge;
+  }
+
+  *r_edges_len = tagged;
+
+  MEM_freeN(edge_pairs);
 }
 
 static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
@@ -686,41 +713,19 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
-  int tagged = cloth_remeshing_find_bad_edges(bm, sizing);
-  printf("tagged: %d\n", tagged);
-  if (tagged == 0) {
+  int num_bad_edges;
+  BMEdge **bad_edges;
+  cloth_remeshing_find_bad_edges(bm, sizing, &bad_edges, &num_bad_edges);
+  printf("tagged: %d\n", num_bad_edges);
+  if (num_bad_edges == 0) {
     return false;
   }
   BMEdge *e;
-  BMIter iter;
-  BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
-    if (BM_elem_flag_test_bool(e, BM_ELEM_TAG)) {
-      /* int v1_index = BM_elem_index_get(e->v1); */
-      /* int v2_index = BM_elem_index_get(e->v2); */
-      /* BMEdge(*new_edges)[3]; */
-      /* int new_edge_count = 0; */
-      cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
-      /* BMVert *new_v = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5); */
-      BM_elem_flag_disable(e, BM_ELEM_TAG);
-      /* ClothSizing *sizing_mean = MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single"); */
-
-      /* /\* average of the sizing of the other 2 vertices *\/ */
-      /* ClothSizing *sizing_01 = (ClothSizing *)BLI_linklist_find(sizing->list, v1_index)->link;
-       */
-      /* ClothSizing *sizing_02 = (ClothSizing *)BLI_linklist_find(sizing->list, v2_index)->link;
-       */
-      /* add_m2_m2m2(sizing_mean->m, */
-      /*             /\* first vertex sizing *\/ */
-      /*             sizing_01->m, */
-      /*             /\* second vertex sizing *\/ */
-      /*             sizing_02->m); */
-      /* mul_m2_fl(sizing_mean->m, 0.5f); */
-
-      /* /\* TODO(Ish): need to figure out the indexing between sizing and the vertices *\/ */
-      /* BLI_linklist_append(sizing, sizing_mean); */
-      /* BM_elem_flag_disable(e, BM_ELEM_TAG); */
-    }
+  for (int i = 0; i < num_bad_edges; i++) {
+    e = bad_edges[i];
+    cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
   }
+  MEM_freeN(bad_edges);
   return true;
 }
 
