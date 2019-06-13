@@ -21,7 +21,8 @@
  * \ingroup bmesh
  */
 
-#include "BKE_profile_path.h"
+//#include "BKE_profile_path.h"
+#include "DNA_color_types.h"
 
 struct MDeformVert;
 
