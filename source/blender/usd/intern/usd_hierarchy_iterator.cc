@@ -32,7 +32,7 @@ void USDHierarchyIterator::delete_object_writer(TEMP_WRITER_TYPE *writer)
 
 std::string USDHierarchyIterator::get_id_name(const ID *const id) const
 {
-  BLI_assert(id != NULL);
+  BLI_assert(id != nullptr);
   std::string name(id->name + 2);
   return pxr::TfMakeValidIdentifier(name);
 }
@@ -68,7 +68,7 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &na
       printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
              ctx.ob_eval->id.name,
              ctx.ob_eval->type);
-      return NULL;
+      return nullptr;
   }
 
   if (!data_writer->is_supported()) {
@@ -76,7 +76,7 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &na
            ctx.ob_eval->id.name,
            ctx.ob_eval->type);
     delete data_writer;
-    return NULL;
+    return nullptr;
   }
 
   data_writer->write();

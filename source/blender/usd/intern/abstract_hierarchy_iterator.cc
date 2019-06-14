@@ -36,13 +36,13 @@ void AbstractHierarchyIterator::iterate()
   ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
   for (Base *base = static_cast<Base *>(view_layer->object_bases.first); base; base = base->next) {
     Object *ob = base->object;
-    visit_object(base, ob, ob->parent, NULL);
+    visit_object(base, ob, ob->parent, nullptr);
   }
 }
 
 std::string AbstractHierarchyIterator::get_object_name(const Object *const object) const
 {
-  if (object == NULL) {
+  if (object == nullptr) {
     return "";
   }
 
@@ -51,7 +51,7 @@ std::string AbstractHierarchyIterator::get_object_name(const Object *const objec
 
 std::string AbstractHierarchyIterator::get_id_name(const ID *const id) const
 {
-  if (id == NULL) {
+  if (id == nullptr) {
     return "";
   }
 
@@ -61,7 +61,7 @@ std::string AbstractHierarchyIterator::get_id_name(const ID *const id) const
 /**
  * \brief get_object_dag_path_name returns the name under which the object
  *  will be exported in the Alembic file. It is of the form
- *  "[../grandparent/]parent/object" if dupli_parent is NULL, or
+ *  "[../grandparent/]parent/object" if dupli_parent is nullptr, or
  *  "dupli_parent/[../grandparent/]parent/object" otherwise.
  * \param ob:
  * \param dupli_parent:
@@ -103,7 +103,7 @@ void AbstractHierarchyIterator::visit_object(Base *base,
 {
   /* If an object isn't exported itself, its duplilist shouldn't be
    * exported either. */
-  if (!should_visit_object(base, dupliObParent != NULL)) {
+  if (!should_visit_object(base, dupliObParent != nullptr)) {
     return;
   }
 
@@ -114,8 +114,8 @@ void AbstractHierarchyIterator::visit_object(Base *base,
 
   if (lb) {
     DupliObject *link = static_cast<DupliObject *>(lb->first);
-    Object *dupli_ob = NULL;
-    Object *dupli_parent = NULL;
+    Object *dupli_ob = nullptr;
+    Object *dupli_parent = nullptr;
 
     for (; link; link = link->next) {
       if (!should_visit_duplilink(link)) {
@@ -139,12 +139,11 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *o
   BLI_assert(ob != parent);
   BLI_assert(ob != dupliObParent);
 
-  std::string name;
-  name = get_object_dag_path_name(ob, dupliObParent);
+  std::string name = get_object_dag_path_name(ob, dupliObParent);
 
   /* check if we have already created a transform writer for this object */
   TEMP_WRITER_TYPE *xform_writer = get_writer(name);
-  if (xform_writer != NULL) {
+  if (xform_writer != nullptr) {
     return xform_writer;
   }
 
@@ -156,15 +155,15 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *o
      * return the parent's writer pointer. */
     if (parent->parent) {
       if (parent == dupliObParent) {
-        parent_writer = export_object_and_parents(parent, parent->parent, NULL);
+        parent_writer = export_object_and_parents(parent, parent->parent, nullptr);
       }
       else {
         parent_writer = export_object_and_parents(parent, parent->parent, dupliObParent);
       }
     }
     else if (parent == dupliObParent) {
-      if (dupliObParent->parent == NULL) {
-        parent_writer = export_object_and_parents(parent, NULL, NULL);
+      if (dupliObParent->parent == nullptr) {
+        parent_writer = export_object_and_parents(parent, nullptr, nullptr);
       }
       else {
         parent_writer = export_object_and_parents(
@@ -179,13 +178,13 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *o
   }
 
   xform_writer = create_xform_writer(name, ob, parent_writer);
-  if (xform_writer != NULL) {
+  if (xform_writer != nullptr) {
     writers[name] = xform_writer;
   }
 
-  if (ob->data != NULL) {
+  if (ob->data != nullptr) {
     TEMP_WRITER_TYPE *data_writer = create_data_writer(name, ob, xform_writer);
-    if (data_writer != NULL) {
+    if (data_writer != nullptr) {
       writers[name] = data_writer;
     }
   }
@@ -198,7 +197,7 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::get_writer(const std::string &name)
   WriterMap::iterator it = writers.find(name);
 
   if (it == writers.end()) {
-    return NULL;
+    return nullptr;
   }
   return it->second;
 }

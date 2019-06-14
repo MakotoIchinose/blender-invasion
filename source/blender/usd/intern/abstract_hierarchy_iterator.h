@@ -14,10 +14,11 @@ struct ViewLayer;
 typedef void TEMP_WRITER_TYPE;
 
 class AbstractHierarchyIterator {
+ public:
+  typedef std::map<std::string, TEMP_WRITER_TYPE *> WriterMap;
+
  protected:
   Depsgraph *depsgraph;
-
-  typedef std::map<std::string, TEMP_WRITER_TYPE *> WriterMap;
   WriterMap writers;
 
  public:
