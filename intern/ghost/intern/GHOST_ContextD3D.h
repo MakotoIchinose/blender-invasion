@@ -32,7 +32,7 @@
 
 class GHOST_ContextD3D : public GHOST_Context {
  public:
-  GHOST_ContextD3D(bool stereoVisual, HWND hWnd, HDC hDC);
+  GHOST_ContextD3D(bool stereoVisual, HWND hWnd);
   ~GHOST_ContextD3D();
 
   /**
@@ -104,18 +104,20 @@ class GHOST_ContextD3D : public GHOST_Context {
     return 0;
   }
 
+  GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx);
+
  private:
   GHOST_TSuccess setupD3DLib();
 
-  // TODO Not used yet.
   HWND m_hWnd;
-  HDC m_hDC;
 
-  Microsoft::WRL::ComPtr<ID3D11Device> m_d3d_device;
-  Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_d3d_device_ctx;
+  Microsoft::WRL::ComPtr<ID3D11Device> m_device;
+  Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_device_ctx;
+  Microsoft::WRL::ComPtr<IDXGISwapChain> m_swapchain;
+  Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_backbuffer_view;
 
   static HMODULE s_d3d_lib;
-  static PFN_D3D11_CREATE_DEVICE s_D3D11CreateDeviceFn;
+  static PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN s_D3D11CreateDeviceAndSwapChainFn;
 };
 
 #endif /* __GHOST_CONTEXTD3D_H__ */

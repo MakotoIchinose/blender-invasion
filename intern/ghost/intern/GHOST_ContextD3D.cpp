@@ -21,10 +21,10 @@
 #include "GHOST_ContextD3D.h"
 
 HMODULE GHOST_ContextD3D::s_d3d_lib = NULL;
-PFN_D3D11_CREATE_DEVICE GHOST_ContextD3D::s_D3D11CreateDeviceFn = NULL;
+PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN GHOST_ContextD3D::s_D3D11CreateDeviceAndSwapChainFn = NULL;
 
-GHOST_ContextD3D::GHOST_ContextD3D(bool stereoVisual, HWND hWnd, HDC hDC)
-    : GHOST_Context(stereoVisual), m_hWnd(hWnd), m_hDC(hDC)
+GHOST_ContextD3D::GHOST_ContextD3D(bool stereoVisual, HWND hWnd)
+    : GHOST_Context(stereoVisual), m_hWnd(hWnd)
 {
 }
 
@@ -34,7 +34,8 @@ GHOST_ContextD3D::~GHOST_ContextD3D()
 
 GHOST_TSuccess GHOST_ContextD3D::swapBuffers()
 {
-  return GHOST_kFailure;
+  HRESULT res = m_swapchain->Present(0, 0);
+  return (res == S_OK) ? GHOST_kSuccess : GHOST_kFailure;
 }
 
 GHOST_TSuccess GHOST_ContextD3D::activateDrawingContext()
@@ -60,14 +61,14 @@ GHOST_TSuccess GHOST_ContextD3D::setupD3DLib()
     }
   }
 
-  if (s_D3D11CreateDeviceFn == NULL) {
-    s_D3D11CreateDeviceFn = (PFN_D3D11_CREATE_DEVICE)GetProcAddress(s_d3d_lib,
-                                                                    "D3D11CreateDevice");
+  if (s_D3D11CreateDeviceAndSwapChainFn == NULL) {
+    s_D3D11CreateDeviceAndSwapChainFn = (PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN)GetProcAddress(
+        s_d3d_lib, "D3D11CreateDeviceAndSwapChain");
 
-    WIN32_CHK(s_D3D11CreateDeviceFn != NULL);
+    WIN32_CHK(s_D3D11CreateDeviceAndSwapChainFn != NULL);
 
-    if (s_D3D11CreateDeviceFn == NULL) {
-      fprintf(stderr, "GetProcAddress(s_d3d_lib, \"D3D11CreateDevice\") failed!\n");
+    if (s_D3D11CreateDeviceAndSwapChainFn == NULL) {
+      fprintf(stderr, "GetProcAddress(s_d3d_lib, \"D3D11CreateDeviceAndSwapChain\") failed!\n");
       return GHOST_kFailure;
     }
   }
@@ -81,18 +82,33 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
     return GHOST_kFailure;
   }
 
-  const D3D_FEATURE_LEVEL feature_level[] = {D3D_FEATURE_LEVEL_11_1};
-  HRESULT hres = s_D3D11CreateDeviceFn(NULL,
-                                       D3D_DRIVER_TYPE_HARDWARE,
-                                       NULL,
-                                       0,
-                                       feature_level,
-                                       std::size(feature_level),
-                                       D3D11_SDK_VERSION,
-                                       &m_d3d_device,
-                                       NULL,
-                                       &m_d3d_device_ctx);
+  DXGI_SWAP_CHAIN_DESC sd{};
+
+  sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+  sd.SampleDesc.Count = 1;
+  sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+  sd.BufferCount = 1;
+  sd.OutputWindow = m_hWnd;
+  sd.Windowed = TRUE;
+  sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+  HRESULT hres = s_D3D11CreateDeviceAndSwapChainFn(NULL,
+                                                   D3D_DRIVER_TYPE_HARDWARE,
+                                                   NULL,
+                                                   0,
+                                                   NULL,
+                                                   0,
+                                                   D3D11_SDK_VERSION,
+                                                   &sd,
+                                                   &m_swapchain,
+                                                   &m_device,
+                                                   NULL,
+                                                   &m_device_ctx);
   WIN32_CHK(hres == S_OK);
+
+  Microsoft::WRL::ComPtr<ID3D11Resource> back_buffer = nullptr;
+  m_swapchain->GetBuffer(0, __uuidof(ID3D11Resource), &back_buffer);
+  m_device->CreateRenderTargetView(back_buffer.Get(), nullptr, &m_backbuffer_view);
 
   return GHOST_kSuccess;
 }
@@ -100,4 +116,14 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
 GHOST_TSuccess GHOST_ContextD3D::releaseNativeHandles()
 {
   return GHOST_kFailure;
+}
+
+GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx)
+{
+  /* Just testing. OpenGL compatibility code goes here (using NV_DX_interop extensions) */
+
+  const float col[] = {0.9f, 0.3f, 0.0f, 1.0f};
+  m_device_ctx->ClearRenderTargetView(m_backbuffer_view.Get(), col);
+
+  return GHOST_kSuccess;
 }

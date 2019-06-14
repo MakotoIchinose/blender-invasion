@@ -428,9 +428,13 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContextD3D()
                            GetModuleHandle(NULL),
                            NULL);
 
-  HDC mHDC = GetDC(wnd);
-
-  context = new GHOST_ContextD3D(false, wnd, mHDC);
+  context = new GHOST_ContextD3D(false, wnd);
+  if (context->initializeDrawingContext()) {
+    return context;
+  }
+  else {
+    delete context;
+  }
 
   return context;
 }

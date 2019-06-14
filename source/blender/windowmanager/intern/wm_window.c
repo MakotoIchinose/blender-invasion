@@ -650,7 +650,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     /* needed here, because it's used before it reads userdef */
     WM_window_set_dpi(win);
 
-    wm_window_swap_buffers(win);
+    wm_window_present(win);
 
     // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
 
@@ -1931,8 +1931,18 @@ void wm_window_raise(wmWindow *win)
   GHOST_SetWindowOrder(win->ghostwin, GHOST_kWindowOrderTop);
 }
 
-void wm_window_swap_buffers(wmWindow *win)
+/**
+ * \brief Push rendered buffer to the screen.
+ * In most cases, just swaps the buffer. However a window offscreen context may have been used to
+ * inject a layer of control in-between the OpenGL context and the window. We use this to support
+ * drawing with OpenGL into a DirectX window for the rare cases we need this (Windows Mixed
+ * Reality OpenXR runtime, which doesn't support OpenGL).
+ */
+void wm_window_present(wmWindow *win)
 {
+  if (win->offscreen_context) {
+    GHOST_BlitOpenGLOffscreenContext(win->ghostwin, win->offscreen_context);
+  }
   GHOST_SwapWindowBuffers(win->ghostwin);
 }
 

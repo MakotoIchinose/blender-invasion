@@ -728,21 +728,13 @@ GHOST_Context *GHOST_WindowWin32::newDrawingContext(GHOST_TDrawingContextType ty
   else if (type == GHOST_kDrawingContextTypeD3D) {
     GHOST_Context *context;
 
-    HWND wnd = CreateWindowA("STATIC",
-                             "BlenderD3D",
-                             WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-                             0,
-                             0,
-                             64,
-                             64,
-                             NULL,
-                             NULL,
-                             GetModuleHandle(NULL),
-                             NULL);
-
-    HDC mHDC = GetDC(wnd);
-
-    context = new GHOST_ContextD3D(false, wnd, mHDC);
+    context = new GHOST_ContextD3D(false, m_hWnd);
+    if (context->initializeDrawingContext()) {
+      return context;
+    }
+    else {
+      delete context;
+    }
 
     return context;
   }

@@ -898,7 +898,7 @@ void wm_draw_update(bContext *C)
       screen->do_draw_paintcursor = false;
       screen->do_draw_drag = false;
 
-      wm_window_swap_buffers(win);
+      wm_window_present(win);
 
       CTX_wm_window_set(C, NULL);
     }

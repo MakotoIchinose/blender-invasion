@@ -272,6 +272,8 @@ class GHOST_Window : public GHOST_IWindow {
    */
   virtual unsigned int getDefaultFramebuffer();
 
+  virtual GHOST_TSuccess blitOpenGLOffscreenContext(class GHOST_IContext *offscreen_ctx);
+
   /**
    * Returns the window user data.
    * \return The window user data.

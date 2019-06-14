@@ -128,6 +128,12 @@ class GHOST_Context : public GHOST_IContext {
     return 0;
   }
 
+  virtual GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen)
+  {
+    /* Not implemented. Could just implement as activateDrawingContext(offscreen)? */
+    return GHOST_kFailure;
+  }
+
  protected:
   void initContextGLEW();
 

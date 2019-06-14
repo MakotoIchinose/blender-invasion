@@ -114,6 +114,11 @@ unsigned int GHOST_Window::getDefaultFramebuffer()
   return (m_context) ? m_context->getDefaultFramebuffer() : 0;
 }
 
+GHOST_TSuccess GHOST_Window::blitOpenGLOffscreenContext(GHOST_IContext *offscreen_ctx)
+{
+  return m_context->blitOpenGLOffscreenContext((GHOST_Context *)offscreen_ctx);
+}
+
 GHOST_TSuccess GHOST_Window::activateDrawingContext()
 {
   return m_context->activateDrawingContext();

@@ -127,14 +127,13 @@ GHOST_TSuccess GHOST_DisposeOpenGLContext(GHOST_SystemHandle systemhandle,
   return system->disposeContext(context);
 }
 
-#ifdef WIN32
-GHOST_ContextHandle GHOST_CreateDirectXContext(GHOST_SystemHandle systemhandle)
+GHOST_TSuccess GHOST_BlitOpenGLOffscreenContext(GHOST_WindowHandle windowhandle,
+                                                GHOST_ContextHandle offscreen_contexthandle)
 {
-  GHOST_ISystem *system = (GHOST_ISystem *)systemhandle;
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
 
-  return (GHOST_ContextHandle)system->createOffscreenContext(GHOST_kDrawingContextTypeD3D);
+  return window->blitOpenGLOffscreenContext((GHOST_IContext *)offscreen_contexthandle);
 }
-#endif
 
 GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle)
 {
