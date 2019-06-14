@@ -681,6 +681,13 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
   MLoopUV *luv;
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
 
+  /* find edge_size only if edge has a loop (so it has a face attached) */
+  if (!edge->l) {
+    /* TODO(Ish): Might want to mark such an edge as sewing edge, so it can be used when an edge
+     * connected to 2 sewing edges is split, new sewing edges can be added */
+    return 0.0f;
+  }
+
   l = edge->l;
   if (l->v == edge->v1) {
     if (l->next->v == edge->v2) {
