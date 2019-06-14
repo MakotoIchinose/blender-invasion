@@ -55,9 +55,105 @@
 #  include "util/util_logging.h"
 #  include "util/util_progress.h"
 
+#define TASKING_INTERNAL
+#define RTC_NAMESPACE_BEGIN
+#define RTC_NAMESPACE_END
+
+#include "embree/kernels/common/scene.h"
+#include "embree/kernels/bvh/bvh.h"
+#include "embree/kernels/geometry/trianglev.h"
+#include "bvh_node.h"
 CCL_NAMESPACE_BEGIN
 
 #  define IS_HAIR(x) (x & 1)
+
+ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
+    return ccl::BoundBox(
+                make_float3(bound.lower.x, bound.lower.y, bound.lower.z),
+                make_float3(bound.upper.x, bound.upper.y, bound.upper.z));
+
+}
+
+template<typename Primitive>
+BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::Scene *s) {
+    if(node.isLeaf()) {
+        LeafNode *ret = nullptr; // new LeafNode(bb, vis, lo, hi);
+        size_t nb;
+        Primitive *prims = reinterpret_cast<Primitive *>(node.leaf(nb));
+
+        int visibility = 0;
+        unsigned int min = 999999,
+                max = 0;
+        for(size_t i = 0; i < nb; i++) {
+            for(size_t j = 0; j < prims[i].size(); j++) {
+                const auto geom_id = prims[i].geomID(j);
+                const auto prim_id = prims[i].primID(j);
+
+                embree::Geometry *g = s->get(geom_id);
+
+                size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
+                visibility |= g->mask;
+
+                const unsigned int id = prim_offset + prim_id;
+                if(id < min) min = id;
+                if(id > max) max = id;
+            }
+        }
+        return new LeafNode(bb, visibility, min, max);
+    } else {
+        InnerNode *ret = nullptr;
+
+        if(node.isAlignedNode()) {
+            embree::BVH4::AlignedNode *anode = node.alignedNode();
+
+            BVHNode *children[4];
+            for(int i = 0; i < 4; i++) {
+                    children[i] = nodeEmbreeToCcl<Primitive>(
+                                anode->children[i],
+                                RTCBoundBoxToCCL(anode->bounds(i)),
+                                s
+                                );
+            }
+
+            ret = new InnerNode(
+                        bb,
+                        children,
+                        4);
+        } else {
+            std::cout << "Unknown node" << std::endl;
+        }
+
+        return ret;
+    }
+}
+
+void print_bvhInfo(RTCScene);
+
+void print_bvhInfo(RTCScene scene) {
+    embree::Scene *s = (embree::Scene *)scene;
+
+    std::cout << "<- Accel used ->" << std::endl;
+    for (embree::Accel *a : s->accels) {
+        std::cout << "Accel " << a->intersectors.intersector1.name << std::endl;
+        embree::AccelData *ad = a->intersectors.ptr;
+        switch (ad->type) {
+        case embree::AccelData::TY_BVH4: {
+            embree::BVH4 *bvh = dynamic_cast<embree::BVHN<4> *>(ad);
+            std::cout << "Prim type -> " << bvh->primTy->name() << std::endl;
+
+            embree::BVH4::NodeRef root = bvh->root;
+            nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()), s);
+
+        } break;
+        default:
+            std::cout << "[EMBREE - BVH] Unknown type " << ad->type << std::endl;
+            break;
+        }
+    }
+    std::cout << "[DONE]" << std::endl;
+}
+
+
 
 /* This gets called by Embree at every valid ray/object intersection.
  * Things like recording subsurface or shadow hits for later evaluation
@@ -301,7 +397,7 @@ BVHEmbree::BVHEmbree(const BVHParams &params_, const vector<Object *> &objects_)
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
   thread_scoped_lock lock(rtc_shared_mutex);
   if (rtc_shared_users == 0) {
-    rtc_shared_device = rtcNewDevice("verbose=0");
+    rtc_shared_device = rtcNewDevice("verbose=0;tri_accel=bvh4.triangle4v");
     /* Check here if Embree was built with the correct flags. */
     ssize_t ret = rtcGetDeviceProperty(rtc_shared_device, RTC_DEVICE_PROPERTY_RAY_MASK_SUPPORTED);
     if (ret != 1) {
@@ -482,6 +578,9 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
 
   rtcSetSceneProgressMonitorFunction(scene, rtc_progress_func, &progress);
   rtcCommitScene(scene);
+
+  if(this->params.top_level)
+    print_bvhInfo(scene);
 
   pack_primitives();
 
