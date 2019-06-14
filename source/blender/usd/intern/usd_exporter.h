@@ -23,6 +23,8 @@
 
 #include "../usd.h"
 #include "usd_exporter_context.h"
+#include "usd_hierarchy_iterator.h"
+
 #include "DEG_depsgraph_query.h"
 
 #include <pxr/usd/sdf/path.h>

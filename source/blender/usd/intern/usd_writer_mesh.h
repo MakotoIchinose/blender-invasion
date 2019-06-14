@@ -4,7 +4,7 @@
 #include "usd_writer_abstract.h"
 
 /* Writer for USD geometry. Does not assume the object is a mesh object. */
-class USDGenericMeshWriter : public USDAbstractObjectDataWriter {
+class USDGenericMeshWriter : public USDAbstractWriter {
  public:
   USDGenericMeshWriter(const USDExporterContext &ctx);
 

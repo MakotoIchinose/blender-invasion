@@ -1,4 +1,7 @@
 #include "usd_hierarchy_iterator.h"
+#include "usd_writer_abstract.h"
+#include "usd_writer_mesh.h"
+#include "usd_writer_transform.h"
 
 #include <string>
 
@@ -6,7 +9,9 @@
 
 extern "C" {
 #include "BKE_anim.h"
+
 #include "BLI_assert.h"
+#include "BLI_utildefines.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -15,171 +20,66 @@ extern "C" {
 #include "DNA_object_types.h"
 }
 
-static std::string get_id_name(const Object *const ob)
+USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph, pxr::UsdStageRefPtr stage)
+    : AbstractHierarchyIterator(depsgraph), stage(stage)
 {
-  if (!ob) {
-    return "";
-  }
-
-  return get_id_name(&ob->id);
 }
 
-static std::string get_id_name(const ID *const id)
+void USDHierarchyIterator::delete_object_writer(TEMP_WRITER_TYPE *writer)
 {
-  if (!id)
-    return "";
+  delete static_cast<USDAbstractWriter *>(writer);
+}
 
+std::string USDHierarchyIterator::get_id_name(const ID *const id) const
+{
+  BLI_assert(id != NULL);
   std::string name(id->name + 2);
   return pxr::TfMakeValidIdentifier(name);
 }
 
-/**
- * \brief get_object_dag_path_name returns the name under which the object
- *  will be exported in the Alembic file. It is of the form
- *  "[../grandparent/]parent/object" if dupli_parent is NULL, or
- *  "dupli_parent/[../grandparent/]parent/object" otherwise.
- * \param ob:
- * \param dupli_parent:
- * \return
- */
-static std::string get_object_dag_path_name(const Object *const ob, Object *dupli_parent)
+TEMP_WRITER_TYPE *USDHierarchyIterator::create_xform_writer(const std::string &name,
+                                                            Object *object,
+                                                            void *UNUSED(parent_writer))
 {
-  std::string name = get_id_name(ob);
+  printf("\033[32;1mCREATE\033[0m %s at %s\n", object->id.name, name.c_str());
+  pxr::SdfPath usd_path("/" + name);
 
-  Object *p = ob->parent;
-
-  while (p) {
-    name = get_id_name(p) + "/" + name;
-    p = p->parent;
-  }
-
-  if (dupli_parent && (ob != dupli_parent)) {
-    name = get_id_name(dupli_parent) + "/" + name;
-  }
-
-  return name;
+  USDExporterContext ctx = {stage, usd_path, object, NULL};
+  USDAbstractWriter *xform_writer = new USDTransformWriter(ctx);
+  xform_writer->write();
+  return xform_writer;
 }
 
-void AbstractHierarchyIterator::iterate()
+TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &name,
+                                                           Object *object,
+                                                           void *UNUSED(parent_writer))
 {
-  ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
-  for (Base *base = static_cast<Base *>(view_layer->object_bases.first); base; base = base->next) {
-    Object *ob = base->object;
-    visit_object(base, ob, ob->parent, NULL);
-  }
-}
+  pxr::SdfPath usd_path("/" + name);
+  std::string data_name(get_id_name((ID *)object->data));
 
-void AbstractHierarchyIterator::visit_object(Base *base,
-                                             Object *object,
-                                             Object *parent,
-                                             Object *dupliObParent)
-{
-  /* If an object isn't exported itself, its duplilist shouldn't be
-   * exported either. */
-  if (!should_visit_object(base, dupliObParent != NULL)) {
-    return;
-  }
+  USDExporterContext ctx = {stage, usd_path.AppendPath(pxr::SdfPath(data_name)), object, NULL};
+  USDAbstractWriter *data_writer = NULL;
 
-  Object *ob = DEG_get_evaluated_object(depsgraph, object);
-  export_object_and_parents(ob, parent, dupliObParent);
-
-  ListBase *lb = object_duplilist(depsgraph, DEG_get_input_scene(depsgraph), ob);
-
-  if (lb) {
-    DupliObject *link = static_cast<DupliObject *>(lb->first);
-    Object *dupli_ob = NULL;
-    Object *dupli_parent = NULL;
-
-    for (; link; link = link->next) {
-      //   /* This skips things like custom bone shapes. */
-      //   if (m_settings.renderable_only && link->no_draw) {
-      //     continue;
-      //   }
-
-      if (link->type == OB_DUPLICOLLECTION) {
-        dupli_ob = link->ob;
-        dupli_parent = (dupli_ob->parent) ? dupli_ob->parent : ob;
-
-        visit_object(base, dupli_ob, dupli_parent, ob);
-      }
-    }
-
-    free_object_duplilist(lb);
-  }
-}
-
-TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *ob,
-                                                                       Object *parent,
-                                                                       Object *dupliObParent)
-{
-  /* An object should not be its own parent, or we'll get infinite loops. */
-  BLI_assert(ob != parent);
-  BLI_assert(ob != dupliObParent);
-
-  std::string name;
-  //   if (m_settings.flatten_hierarchy) {
-  //     name = get_id_name(ob);
-  //   }
-  //   else {
-  name = get_object_dag_path_name(ob, dupliObParent);
-  //   }
-
-  /* check if we have already created a transform writer for this object */
-  TEMP_WRITER_TYPE *my_writer = get_writer(name);
-  if (my_writer != NULL) {
-    return my_writer;
+  switch (ctx.ob_eval->type) {
+    case OB_MESH:
+      data_writer = new USDMeshWriter(ctx);
+      break;
+    default:
+      printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
+             ctx.ob_eval->id.name,
+             ctx.ob_eval->type);
+      return NULL;
   }
 
-  TEMP_WRITER_TYPE *parent_writer = NULL;
-
-  if (/* m_settings.flatten_hierarchy || */ parent == NULL) {
-  }
-  else {
-    /* Since there are so many different ways to find parents (as evident
-     * in the number of conditions below), we can't really look up the
-     * parent by name. We'll just call export_object_and_parents(), which will
-     * return the parent's writer pointer. */
-    if (parent->parent) {
-      if (parent == dupliObParent) {
-        parent_writer = export_object_and_parents(parent, parent->parent, NULL);
-      }
-      else {
-        parent_writer = export_object_and_parents(parent, parent->parent, dupliObParent);
-      }
-    }
-    else if (parent == dupliObParent) {
-      if (dupliObParent->parent == NULL) {
-        parent_writer = export_object_and_parents(parent, NULL, NULL);
-      }
-      else {
-        parent_writer = export_object_and_parents(
-            parent, dupliObParent->parent, dupliObParent->parent);
-      }
-    }
-    else {
-      parent_writer = export_object_and_parents(parent, dupliObParent, dupliObParent);
-    }
-
-    BLI_assert(parent_writer);
-  }
-
-  my_writer = create_object_writer(name, ob, parent_writer);
-
-  //   /* When flattening, the matrix of the dupliobject has to be added. */
-  //   if (m_settings.flatten_hierarchy && dupliObParent) {
-  //     my_writer->m_proxy_from = dupliObParent;
-  //   }
-
-  writers[name] = my_writer;
-  return my_writer;
-}
-
-TEMP_WRITER_TYPE *AbstractHierarchyIterator::get_writer(const std::string &name)
-{
-  WriterMap::iterator it = writers.find(name);
-
-  if (it == writers.end()) {
+  if (!data_writer->is_supported()) {
+    printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
+           ctx.ob_eval->id.name,
+           ctx.ob_eval->type);
+    delete data_writer;
     return NULL;
   }
-  return it->second;
+
+  data_writer->write();
+
+  return data_writer;
 }

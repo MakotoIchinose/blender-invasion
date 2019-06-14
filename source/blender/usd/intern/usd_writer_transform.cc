@@ -13,34 +13,24 @@ USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstr
 
 void USDTransformWriter::do_write()
 {
-  float dupliparent_relative_matrix[4][4];
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
 
-  if (m_instanced_by != NULL && m_instanced_by != m_object) {
-    invert_m4_m4(m_instanced_by->imat, m_instanced_by->obmat);
-    mul_m4_m4m4(dupliparent_relative_matrix, m_instanced_by->imat, m_object->obmat);
-  }
-  else {
-    copy_m4_m4(dupliparent_relative_matrix, m_object->obmat);
-  }
-
   // Get the object matrix relative to the parent.
-  if (m_object->parent == NULL) {
-    copy_m4_m4(parent_relative_matrix, dupliparent_relative_matrix);
+  if (object->parent == NULL) {
+    copy_m4_m4(parent_relative_matrix, object->obmat);
   }
   else {
-    invert_m4_m4(m_object->parent->imat, m_object->parent->obmat);
-    mul_m4_m4m4(parent_relative_matrix, m_object->parent->imat, dupliparent_relative_matrix);
+    invert_m4_m4(object->parent->imat, object->parent->obmat);
+    mul_m4_m4m4(parent_relative_matrix, object->parent->imat, object->obmat);
   }
 
-  printf("USD-\033[32mexporting\033[0m XForm %s → %s   type=%d   addr = %p  instanced_by = %p\n",
-         m_object->id.name,
-         usd_path().GetString().c_str(),
-         m_object->type,
-         m_object,
-         m_instanced_by);
+  printf("USD-\033[32mexporting\033[0m XForm %s → %s   type=%d   addr = %p\n",
+         object->id.name,
+         usd_path_.GetString().c_str(),
+         object->type,
+         object);
 
   // Write the transform relative to the parent.
-  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(m_stage, usd_path());
+  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(stage, usd_path_);
   xform.AddTransformOp().Set(pxr::GfMatrix4d(parent_relative_matrix));
 }

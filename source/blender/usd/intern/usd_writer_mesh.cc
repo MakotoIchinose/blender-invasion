@@ -12,8 +12,7 @@ extern "C" {
 #include "DNA_meshdata_types.h"
 }
 
-USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx)
-    : USDAbstractObjectDataWriter(ctx)
+USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
 
@@ -24,8 +23,8 @@ void USDGenericMeshWriter::do_write()
 
   if (mesh == NULL) {
     printf("USD-\033[31mSKIPPING\033[0m object %s  type=%d mesh = NULL\n",
-           m_object->id.name,
-           m_object->type);
+           object->id.name,
+           object->type);
     return;
   }
 
@@ -51,14 +50,13 @@ void USDGenericMeshWriter::free_evaluated_mesh(struct Mesh *mesh)
 
 void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
 {
-  printf("USD-\033[32mexporting\033[0m mesh  %s → %s   isinstance=%d type=%d mesh = %p\n",
+  printf("USD-\033[32mexporting\033[0m mesh  %s → %s   type=%d mesh = %p\n",
          mesh->id.name,
-         usd_path().GetString().c_str(),
-         m_instanced_by != NULL,
-         m_object->type,
+         usd_path_.GetString().c_str(),
+         object->type,
          mesh);
 
-  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(m_stage, usd_path());
+  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path_);
 
   const MVert *verts = mesh->mvert;
 
@@ -96,5 +94,5 @@ USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWrit
 
 Mesh *USDMeshWriter::get_evaluated_mesh(bool &UNUSED(r_needsfree))
 {
-  return m_object->runtime.mesh_eval;
+  return object->runtime.mesh_eval;
 }

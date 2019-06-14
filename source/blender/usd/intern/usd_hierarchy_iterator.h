@@ -1,40 +1,35 @@
 #ifndef __USD__USD_HIERARCHY_ITERATOR_H__
 #define __USD__USD_HIERARCHY_ITERATOR_H__
 
-#include <map>
+#include "abstract_hierarchy_iterator.h"
+#include "usd_exporter_context.h"
+
 #include <string>
 
+#include <pxr/usd/usd/common.h>
+
 struct Depsgraph;
-struct ViewLayer;
+struct ID;
+struct Object;
+struct USDAbstractWriter;
 
-typedef void TEMP_WRITER_TYPE;
-
-class AbstractHierarchyIterator {
- protected:
-  Depsgraph *depsgraph;
-
-  typedef std::map<std::string, TEMP_WRITER_TYPE *> WriterMap;
-  WriterMap writers;
+class USDHierarchyIterator : public AbstractHierarchyIterator {
+ private:
+  pxr::UsdStageRefPtr stage;
 
  public:
-  AbstractHierarchyIterator(Dpesgraph *depsgraph);
-  ~AbstractHierarchyIterator();
-
-  void iterate();
-
- private:
-  void visit_object(Base *base, Object *object, Object *parent, Object *dupliObParent);
-
-  TEMP_WRITER_TYPE *export_object_and_parents(Object *ob, Object *parent, Object *dupliObParent);
-  TEMP_WRITER_TYPE *get_writer(const std::string &name);
+  USDHierarchyIterator(Depsgraph *depsgraph, pxr::UsdStageRefPtr stage);
 
  protected:
-  /* Not visiting means not exporting and also not expanding its duplis. */
-  virtual bool should_visit_object(const Base *const base, bool is_duplicated) = 0;
+  virtual TEMP_WRITER_TYPE *create_xform_writer(const std::string &name,
+                                                Object *object,
+                                                void *parent_writer) override;
+  virtual TEMP_WRITER_TYPE *create_data_writer(const std::string &name,
+                                               Object *object,
+                                               void *parent_writer) override;
 
-  virtual TEMP_WRITER_TYPE *create_object_writer(const std::string &name,
-                                                 Object *object,
-                                                 void *parent_writer) = 0;
+  virtual std::string get_id_name(const ID *const id) const override;
+  virtual void delete_object_writer(TEMP_WRITER_TYPE *writer) override;
 };
 
 #endif /* __USD__USD_HIERARCHY_ITERATOR_H__ */

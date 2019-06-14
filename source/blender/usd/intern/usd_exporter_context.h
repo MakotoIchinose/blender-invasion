@@ -8,7 +8,7 @@ struct Object;
 
 struct USDExporterContext {
   pxr::UsdStageRefPtr stage;
-  pxr::SdfPath parent_path;
+  pxr::SdfPath usd_path;
   Object *ob_eval;
   Object *instanced_by;  // The dupli-object that instanced this object.
 };
