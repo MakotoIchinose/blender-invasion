@@ -25,10 +25,10 @@ class AbstractHierarchyIterator {
   virtual ~AbstractHierarchyIterator();
 
   void iterate();
+  const WriterMap &writer_map() const;
+  void release_writers();
 
  private:
-  void release();
-
   void visit_object(Base *base, Object *object, Object *parent, Object *dupliObParent);
 
   std::string get_object_name(const Object *const object) const;

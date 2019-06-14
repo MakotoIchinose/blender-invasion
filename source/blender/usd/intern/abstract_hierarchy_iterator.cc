@@ -6,7 +6,6 @@ extern "C" {
 #include "BKE_anim.h"
 
 #include "BLI_assert.h"
-#include "BLI_utildefines.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -24,7 +23,7 @@ AbstractHierarchyIterator::~AbstractHierarchyIterator()
 {
 }
 
-void AbstractHierarchyIterator::release()
+void AbstractHierarchyIterator::release_writers()
 {
   for (WriterMap::value_type it : writers) {
     delete_object_writer(it.second);
@@ -85,8 +84,8 @@ std::string AbstractHierarchyIterator::get_object_dag_path_name(
   return name;
 }
 
-bool AbstractHierarchyIterator::should_visit_object(const Base *const UNUSED(base),
-                                                    bool UNUSED(is_duplicated)) const
+bool AbstractHierarchyIterator::should_visit_object(const Base * /*base*/,
+                                                    bool /*is_duplicated*/) const
 {
   return true;
 }
@@ -141,12 +140,7 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *o
   BLI_assert(ob != dupliObParent);
 
   std::string name;
-  //   if (m_settings.flatten_hierarchy) {
-  //     name = get_id_name(ob);
-  //   }
-  //   else {
   name = get_object_dag_path_name(ob, dupliObParent);
-  //   }
 
   /* check if we have already created a transform writer for this object */
   TEMP_WRITER_TYPE *xform_writer = get_writer(name);
@@ -154,11 +148,8 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *o
     return xform_writer;
   }
 
-  TEMP_WRITER_TYPE *parent_writer = NULL;
-
-  if (/* m_settings.flatten_hierarchy || */ parent == NULL) {
-  }
-  else {
+  TEMP_WRITER_TYPE *parent_writer = nullptr;
+  if (parent != nullptr) {
     /* Since there are so many different ways to find parents (as evident
      * in the number of conditions below), we can't really look up the
      * parent by name. We'll just call export_object_and_parents(), which will
@@ -188,10 +179,6 @@ TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *o
   }
 
   xform_writer = create_xform_writer(name, ob, parent_writer);
-  //   /* When flattening, the matrix of the dupliobject has to be added. */
-  //   if (m_settings.flatten_hierarchy && dupliObParent) {
-  //     xform_writer->m_proxy_from = dupliObParent;
-  //   }
   if (xform_writer != NULL) {
     writers[name] = xform_writer;
   }
