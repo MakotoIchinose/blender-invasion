@@ -489,25 +489,25 @@ static void cloth_remeshing_cloth_object_free(Cloth *cloth)
 static void cloth_copy_cloth_vertex(ClothVertex *r, ClothVertex *src)
 {
   r->flags = src->flags;
-  copy_v3_v3(r->v, a->v);
-  copy_v3_v3(r->xconst, a->xconst);
-  copy_v3_v3(r->x, a->x);
-  copy_v3_v3(r->xold, a->xold);
-  copy_v3_v3(r->tx, a->tx);
-  copy_v3_v3(r->txold, a->txold);
-  copy_v3_v3(r->tv, a->tv);
-  copy_v3_v3(r->impulse, a->impulse);
-  copy_v3_v3(r->xrest, a->xrest);
-  copy_v3_v3(r->dcvel, a->dcvel);
-  r->mass = a->mass;
-  r->goal = a->goal;
-  r->impulse_count = a->impulse_count;
-  r->avg_spring_len = a->avg_spring_len;
-  r->struct_stiff = a->struct_stiff;
-  r->bend_stiff = a->bend_stiff;
-  r->shear_stiff = a->shear_stiff;
-  r->spring_count = a->spring_count;
-  r->shrink_factor = a->shrink_factor;
+  copy_v3_v3(r->v, src->v);
+  copy_v3_v3(r->xconst, src->xconst);
+  copy_v3_v3(r->x, src->x);
+  copy_v3_v3(r->xold, src->xold);
+  copy_v3_v3(r->tx, src->tx);
+  copy_v3_v3(r->txold, src->txold);
+  copy_v3_v3(r->tv, src->tv);
+  copy_v3_v3(r->impulse, src->impulse);
+  copy_v3_v3(r->xrest, src->xrest);
+  copy_v3_v3(r->dcvel, src->dcvel);
+  r->mass = src->mass;
+  r->goal = src->goal;
+  r->impulse_count = src->impulse_count;
+  r->avg_spring_len = src->avg_spring_len;
+  r->struct_stiff = src->struct_stiff;
+  r->bend_stiff = src->bend_stiff;
+  r->shear_stiff = src->shear_stiff;
+  r->spring_count = src->spring_count;
+  r->shrink_factor = src->shrink_factor;
 }
 
 /* factor: first vertex properties factor over finding the mean, given between 0.0f and 1.0f
@@ -576,7 +576,7 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
   Cloth *cloth = clmd->clothObject;
 
   /* We need to update Cloth only if number of verts change */
-  if (mesh_result->totvert == cloth->mvert_num) {
+  if (mesh->totvert == cloth->mvert_num) {
     return;
   }
 
@@ -593,13 +593,13 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
   new_cloth->last_frame = cloth->last_frame;
 
   /* start to either copy the verts */
-  new_cloth->mvert_num = mesh_result->totvert;
+  new_cloth->mvert_num = mesh->totvert;
   new_cloth->verts = MEM_callocN(sizeof(ClothVertex) * new_cloth->mvert_num,
                                  "New Cloth Object Verts");
 
   int new_vert_count = 0;
-  for (int i = 0; i < mesh_result->totvert; i++) {
-    MVert *mvert = &mesh_result->mvert[i];
+  for (int i = 0; i < mesh->totvert; i++) {
+    MVert *mvert = &mesh->mvert[i];
     /* if new vert */
     if (mvert->flag & SELECT) {
       new_vert_count++;
@@ -613,15 +613,15 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
       MVert *prev_mvert, *next_mvert;
       for (int j = i - 1; j >= 0; j--) {
         prev_count++;
-        if (!(mesh_result->mvert[j]->flag & SELECT)) {
-          prev_mvert = &mesh_result->mvert[j];
+        if (!(mesh->mvert[j].flag & SELECT)) {
+          prev_mvert = &mesh->mvert[j];
           break;
         }
       }
-      for (int j = i; j < mesh_result->totvert; j++) {
+      for (int j = i; j < mesh->totvert; j++) {
         next_count++;
-        if (!(mesh_result->mvert[j]->flag & SELECT)) {
-          next_mvert = &mesh_result->mvert[j];
+        if (!(mesh->mvert[j].flag & SELECT)) {
+          next_mvert = &mesh->mvert[j];
           break;
         }
       }
@@ -633,7 +633,7 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
     else {
       for (int j = 0; j < cloth->mvert_num; j++) {
         /* CHECKHERE(Ish) */
-        if (equals_v3v3(mvert->co, cloth->verts[j]->xold)) {
+        if (equals_v3v3(mvert->co, cloth->verts[j].xold)) {
           cloth_copy_cloth_vertex(&new_cloth->verts[i], &cloth->verts[j]);
           break;
         }
@@ -659,7 +659,7 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *UNUSED(ob), Cloth
   Mesh *mesh_result = NULL;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
   mesh_result = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
-  cloth_remeshing_update_cloth_object_mesh(clmd, mesh);
+  /* cloth_remeshing_update_cloth_object_mesh(clmd, mesh_result); */
   clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
   BM_mesh_free(clmd->clothObject->bm);
   clmd->clothObject->bm = NULL;
