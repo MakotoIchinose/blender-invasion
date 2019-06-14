@@ -25,6 +25,7 @@ extern "C" {
 #include <chrono>
 
 #include "common.hpp"
+#include "iterators.hpp"
 
 // Anonymous namespace for internal functions
 namespace {
@@ -78,8 +79,9 @@ bool object_type_is_exportable(const Object *const ob)
   switch (ob->type) {
     case OB_MESH:
       return !object_is_smoke_sim(ob);
-      /* case OB_CURVE: */
-      /* case OB_SURF: */
+    case OB_CURVE:
+    case OB_SURF:
+      return true;
     case OB_LAMP:
     case OB_EMPTY:
     case OB_CAMERA:
@@ -232,7 +234,7 @@ bool export_end(bContext *UNUSED(C), ExportSettings *const settings)
 bool time_export(bContext *C,
                  ExportSettings *const settings,
                  void (*start)(bContext *C, ExportSettings *const settings),
-                 void (*end)(bContext *C, ExportSettings *const settings))
+                 bool (*end)(bContext *C, ExportSettings *const settings))
 {
   auto f = std::chrono::steady_clock::now();
   start(C, settings);
@@ -247,4 +249,73 @@ const std::array<float, 3> calculate_normal(const Mesh *const mesh, const MPoly 
   BKE_mesh_calc_poly_normal(&mp, mesh->mloop + mp.loopstart, mesh->mvert, no);
   return std::array<float, 3>{no[0], no[1], no[2]};
 }
+
+std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh)
+{
+  std::vector<std::array<float, 3>> normals{};
+  normals.reserve(mesh->totvert);
+  const float(*loop_no)[3] = static_cast<float(*)[3]>(
+      CustomData_get_layer(&mesh->ldata, CD_NORMAL));
+  unsigned loop_index = 0;
+  MVert *verts = mesh->mvert;
+  MPoly *mp = mesh->mpoly;
+  MLoop *mloop = mesh->mloop;
+  MLoop *ml = mloop;
+
+  // TODO someone Should -0 be converted to 0?
+  if (loop_no) {
+    for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
+      ml = mesh->mloop + mp->loopstart + (mp->totloop - 1);
+      for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
+        const float(&no)[3] = loop_no[ml->v];
+        normals.push_back(std::array<float, 3>{no[0], no[1], no[2]});
+      }
+    }
+  }
+  else {
+    float no[3];
+    for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
+      ml = mloop + mp->loopstart + (mp->totloop - 1);
+
+      /* Flat shaded, use common normal for all verts. */
+      if ((mp->flag & ME_SMOOTH) == 0) {
+        BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1), verts, no);
+        normals.push_back(std::array<float, 3>{no[0], no[1], no[2]});
+        ml -= mp->totloop;
+        loop_index += mp->totloop;
+      }
+      else {
+        /* Smooth shaded, use individual vert normals. */
+        for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
+          normal_short_to_float_v3(no, verts[ml->v].no);
+          normals.push_back(std::array<float, 3>{no[0], no[1], no[2]});
+        }
+      }
+    }
+  }
+  normals.shrink_to_fit();
+  return normals;
+}
+std::vector<std::array<float, 2>> get_uv(const Mesh *const mesh)
+{
+  std::vector<std::array<float, 2>> uvs{};
+  uvs.reserve(mesh->totloop);
+  for (int i = 0, e = mesh->totloop; i < e; ++i) {
+    const float(&uv)[2] = mesh->mloopuv[i].uv;
+    uvs.push_back(std::array<float, 2>{uv[0], uv[1]});
+  }
+  return uvs;
+}
+
+std::vector<std::array<float, 3>> get_vertices(const Mesh *const mesh)
+{
+  std::vector<std::array<float, 3>> vxs{};
+  vxs.reserve(mesh->totvert);
+  for (int i = 0, e = mesh->totvert; i < e; ++i) {
+    const MVert &v = mesh->mvert[i];
+    vxs.push_back(std::array<float, 3>{v.co[0], v.co[1], v.co[2]});
+  }
+  return vxs;
+}
+
 }  // namespace common

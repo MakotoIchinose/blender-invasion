@@ -49,6 +49,7 @@ extern "C" {
 #include <cstdint>
 
 #include "common.hpp"
+#include "iterators.hpp"
 
 namespace {
 bool STL_export_mesh_ascii(bContext *UNUSED(C),

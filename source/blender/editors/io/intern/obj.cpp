@@ -43,6 +43,7 @@ extern "C" {
 #include <vector>
 
 #include "common.hpp"
+#include "iterators.hpp"
 
 /*
   TODO someone: () not done, -- done, # maybe add, ? unsure
@@ -78,29 +79,26 @@ namespace {
 
 using namespace common;
 
-bool OBJ_export_materials(bContext *UNUSED(C),
-                          ExportSettings *UNUSED(settings),
-                          std::fstream &fs,
-                          std::map<std::string, const Material *const> materials)
-{
-
-  fs << "# Blender MTL File\n"; /* TODO someone Filename necessary? */
-  fs << "# Material Count: " << materials.size() << '\n';
-
-  for (auto p : materials) {
-    const Material *const mat = p.second;
-    BLI_assert(mat != nullptr);
-    fs << "newmtl " << (mat->id.name + 2) << '\n';
-    // TODO someone Ka seems to no longer make sense, without BI
-    fs << "Kd " << mat->r << mat->g << mat->b << '\n';
-    fs << "Ks " << ((1 - mat->roughness) * mat->r) << ((1 - mat->roughness) * mat->g)
-       << ((1 - mat->roughness) * mat->b) << '\n';
-    // TODO someone It doens't seem to make sense too use this,
-    // unless I use the Principled BSDF settings, instead of the viewport
-  }
-
-  return true;
-}
+// bool obj_export_materials(bcontext *unused(c),
+//                           exportsettings *unused(settings),
+//                           std::fstream &fs,
+//                           std::map<std::string, const material *const> materials)
+// {
+//   fs << "# blender mtl file\n"; /* todo someone filename necessary? */
+//   fs << "# material count: " << materials.size() << '\n';
+//   for (auto p : materials) {
+//     const material *const mat = p.second;
+//     bli_assert(mat != nullptr);
+//     fs << "newmtl " << (mat->id.name + 2) << '\n';
+//     // todo someone ka seems to no longer make sense, without bi
+//     fs << "kd " << mat->r << mat->g << mat->b << '\n';
+//     fs << "ks " << ((1 - mat->roughness) * mat->r) << ((1 - mat->roughness) * mat->g)
+//        << ((1 - mat->roughness) * mat->b) << '\n';
+//     // todo someone it doens't seem to make sense too use this,
+//     // unless i use the principled bsdf settings, instead of the viewport
+//   }
+//   return true;
+// }
 
 bool OBJ_export_mesh(bContext *UNUSED(C),
                      ExportSettings *settings,
@@ -134,6 +132,9 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   fs << std::fixed << std::setprecision(6);
   for (const MVert &v : common::vert_iter{mesh})
     fs << "v " << v.co[0] << ' ' << v.co[1] << ' ' << v.co[2] << '\n';
+  // auto vxs = common::get_vertices(mesh);
+  // for (const auto &v : vxs)
+  //   fs << "v " << v[0] << ' ' << v[1] << ' ' << v[2] << '\n';
 
   if (settings->export_uvs) {
     // TODO someone Is T47010 still relevant?
@@ -144,6 +145,9 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
     else
       for (const std::array<float, 2> &uv : common::uv_iter{mesh})
         fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
+    // auto uvs = common::get_uv(mesh);
+    // for (const auto &uv : uvs)
+    //   fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
   }
 
   if (settings->export_normals) {
@@ -156,6 +160,9 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
       for (const std::array<float, 3> &no : common::normal_iter{mesh}) {
         fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
       }
+    // auto nos = common::get_normals(mesh);
+    // for (const auto &no : nos)
+    //   fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
   }
 
   if (settings->export_edges) {
@@ -243,9 +250,6 @@ bool OBJ_export_object(bContext *C,
 {
   // TODO someone Should it be evaluated first? Is this expensive? Breaks mesh_create_eval_final
   // Object *eob = DEG_get_evaluated_object(settings->depsgraph, base->object);
-  // if (!common::should_export_object(settings, ob) ||
-  //     !common::object_type_is_exportable(ob))
-  // 	return false;
 
   struct Mesh *mesh = nullptr;
   bool needs_free = false;
@@ -269,10 +273,9 @@ bool OBJ_export_object(bContext *C,
       common::free_mesh(mesh, needs_free);
       return true;
     default:
-      // TODO someone Probably abort, it shouldn't be possible to get here
-      std::string s{"OBJ Export for the object \""};
-      (s += ob->id.name) += "\" not implemented";
-      BLI_assert(!s.c_str());
+      // TODO someone Probably abort, it shouldn't be possible to get here (once finished)
+      std::cerr << "OBJ Export for the object \"" << ob->id.name << "\" is not implemented\n";
+      // BLI_assert(false);
       return false;
   }
 }

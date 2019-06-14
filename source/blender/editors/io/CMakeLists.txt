@@ -54,10 +54,11 @@ set(SRC
 
   intern/obj.cpp
   intern/obj.h
-  intern/common.cpp
-  intern/common.hpp
   intern/stl.cpp
   intern/stl.h
+  intern/common.cpp
+  intern/common.hpp
+  intern/iterators.hpp
 )
 
 set(LIB
@@ -86,5 +87,7 @@ endif()
 if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
 endif()
+
+add_definitions(-Wfatal-errors)
 
 blender_add_lib(bf_editor_io "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
