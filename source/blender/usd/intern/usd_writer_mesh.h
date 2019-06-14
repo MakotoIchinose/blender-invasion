@@ -4,12 +4,9 @@
 #include "usd_writer_abstract.h"
 
 /* Writer for USD geometry. Does not assume the object is a mesh object. */
-class USDGenericMeshWriter : public USDAbstractWriter {
+class USDGenericMeshWriter : public USDAbstractObjectDataWriter {
  public:
-  USDGenericMeshWriter(pxr::UsdStageRefPtr stage,
-                       const pxr::SdfPath &parent_path,
-                       Object *ob_eval,
-                       const DEGObjectIterData &degiter_data);
+  USDGenericMeshWriter(const USDExporterContext &ctx);
 
  protected:
   virtual void do_write() override;
@@ -23,10 +20,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
 
 class USDMeshWriter : public USDGenericMeshWriter {
  public:
-  USDMeshWriter(pxr::UsdStageRefPtr stage,
-                const pxr::SdfPath &parent_path,
-                Object *ob_eval,
-                const DEGObjectIterData &degiter_data);
+  USDMeshWriter(const USDExporterContext &ctx);
 
  protected:
   virtual Mesh *get_evaluated_mesh(bool &r_needsfree);

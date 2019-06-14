@@ -2,23 +2,33 @@
 
 #include <pxr/base/tf/stringUtils.h>
 
-USDAbstractWriter::USDAbstractWriter(pxr::UsdStageRefPtr stage,
-                                     const pxr::SdfPath &parent_path,
-                                     Object *ob_eval,
-                                     const DEGObjectIterData &degiter_data)
-    : m_stage(stage), m_parent_path(parent_path), m_object(ob_eval), m_degiter_data(degiter_data)
+USDAbstractWriter::USDAbstractWriter(const USDExporterContext &ctx)
+    : m_stage(ctx.stage),
+      m_parent_path(ctx.parent_path),
+      _path(),
+      m_object(ctx.ob_eval),
+      m_instanced_by(ctx.instanced_by)
 {
-  std::string usd_name(pxr::TfMakeValidIdentifier(ob_eval->id.name + 2));
-  m_path = m_parent_path.AppendPath(pxr::SdfPath(usd_name));
 }
 
 USDAbstractWriter::~USDAbstractWriter()
 {
 }
 
+std::string USDAbstractWriter::usd_name() const
+{
+  return m_object->id.name + 2;
+}
+
 const pxr::SdfPath &USDAbstractWriter::usd_path() const
 {
-  return m_path;
+  /* Lazy-evaluation; this isn't done in the constructor to allow overriding usd_name() in a
+  /* subclass. */
+  if (_path.IsEmpty()) {
+    std::string my_usd_name = pxr::TfMakeValidIdentifier(usd_name());
+    _path = m_parent_path.AppendPath(pxr::SdfPath(my_usd_name));
+  }
+  return _path;
 }
 
 bool USDAbstractWriter::is_supported() const
@@ -29,4 +39,15 @@ bool USDAbstractWriter::is_supported() const
 void USDAbstractWriter::write()
 {
   do_write();
+}
+
+USDAbstractObjectDataWriter::USDAbstractObjectDataWriter(const USDExporterContext &ctx)
+    : USDAbstractWriter(ctx)
+{
+}
+
+std::string USDAbstractObjectDataWriter::usd_name() const
+{
+  ID *data = static_cast<ID *>(m_object->data);
+  return data->name + 2;
 }

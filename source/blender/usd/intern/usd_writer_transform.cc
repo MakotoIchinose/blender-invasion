@@ -7,11 +7,7 @@ extern "C" {
 #include "BLI_math_matrix.h"
 }
 
-USDTransformWriter::USDTransformWriter(pxr::UsdStageRefPtr stage,
-                                       const pxr::SdfPath &parent_path,
-                                       Object *ob_eval,
-                                       const DEGObjectIterData &degiter_data)
-    : USDAbstractWriter(stage, parent_path, ob_eval, degiter_data)
+USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
 
@@ -20,9 +16,9 @@ void USDTransformWriter::do_write()
   float dupliparent_relative_matrix[4][4];
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
 
-  if (m_degiter_data.dupli_parent != NULL && m_degiter_data.dupli_parent != m_object) {
-    invert_m4_m4(m_degiter_data.dupli_parent->imat, m_degiter_data.dupli_parent->obmat);
-    mul_m4_m4m4(dupliparent_relative_matrix, m_degiter_data.dupli_parent->imat, m_object->obmat);
+  if (m_instanced_by != NULL && m_instanced_by != m_object) {
+    invert_m4_m4(m_instanced_by->imat, m_instanced_by->obmat);
+    mul_m4_m4m4(dupliparent_relative_matrix, m_instanced_by->imat, m_object->obmat);
   }
   else {
     copy_m4_m4(dupliparent_relative_matrix, m_object->obmat);
@@ -37,13 +33,14 @@ void USDTransformWriter::do_write()
     mul_m4_m4m4(parent_relative_matrix, m_object->parent->imat, dupliparent_relative_matrix);
   }
 
-  printf("USD-\033[32mexporting\033[0m XForm %s → %s   isinstance=%d type=%d\n",
+  printf("USD-\033[32mexporting\033[0m XForm %s → %s   type=%d   addr = %p  instanced_by = %p\n",
          m_object->id.name,
-         m_path.GetString().c_str(),
-         m_degiter_data.dupli_object_current != NULL,
-         m_object->type);
+         usd_path().GetString().c_str(),
+         m_object->type,
+         m_object,
+         m_instanced_by);
 
   // Write the transform relative to the parent.
-  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(m_stage, m_path);
+  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(m_stage, usd_path());
   xform.AddTransformOp().Set(pxr::GfMatrix4d(parent_relative_matrix));
 }

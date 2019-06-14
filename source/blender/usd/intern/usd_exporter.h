@@ -22,12 +22,14 @@
 #define __USD_EXPORTER_H__
 
 #include "../usd.h"
+#include "usd_exporter_context.h"
 #include "DEG_depsgraph_query.h"
 
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/common.h>
 
 #include <map>
+#include <set>
 
 struct Depsgraph;
 struct Scene;
@@ -70,22 +72,24 @@ class USDExporter {
 
   typedef std::map<Object *, pxr::SdfPath> USDPathMap;
   typedef std::map<pxr::SdfPath, USDAbstractWriter *> USDWriterMap;
+  typedef std::map<Object *, std::vector<USDExporterContext>> DeferredExportSet;
 
   USDPathMap usd_object_paths;
   USDWriterMap usd_writers;
+  DeferredExportSet deferred_exports;
 
   pxr::UsdStageRefPtr m_stage;
 
  private:
-  bool export_object(Object *ob_eval, const DEGObjectIterData &data_);
-  pxr::SdfPath parent_usd_path(Object *ob_eval, const DEGObjectIterData &degiter_data);
+  pxr::SdfPath parent_usd_path(Object *ob_eval,
+                               Object *instanced_by,
+                               const pxr::SdfPath &anchor,
+                               Object **r_missing);
 
-  USDAbstractWriter *export_object_xform(const pxr::SdfPath &parent_path,
-                                         Object *ob_eval,
-                                         const DEGObjectIterData &degiter_data);
-  USDAbstractWriter *export_object_data(const pxr::SdfPath &parent_path,
-                                        Object *ob_eval,
-                                        const DEGObjectIterData &degiter_data);
+  void export_or_queue(Object *ob_eval, Object *instanced_by, const pxr::SdfPath &anchor);
+  pxr::SdfPath export_object(const USDExporterContext &ctx);
+  USDAbstractWriter *export_object_xform(const USDExporterContext &ctx);
+  USDAbstractWriter *export_object_data(const USDExporterContext &ctx);
 
  public:
   USDExporter(const char *filename, ExportSettings &settings);

@@ -12,11 +12,8 @@ extern "C" {
 #include "DNA_meshdata_types.h"
 }
 
-USDGenericMeshWriter::USDGenericMeshWriter(pxr::UsdStageRefPtr stage,
-                                           const pxr::SdfPath &parent_path,
-                                           Object *ob_eval,
-                                           const DEGObjectIterData &degiter_data)
-    : USDAbstractWriter(stage, parent_path, ob_eval, degiter_data)
+USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx)
+    : USDAbstractObjectDataWriter(ctx)
 {
 }
 
@@ -54,14 +51,14 @@ void USDGenericMeshWriter::free_evaluated_mesh(struct Mesh *mesh)
 
 void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
 {
-  printf("USD-\033[32mexporting\033[0m data %s → %s   isinstance=%d type=%d mesh = %p\n",
+  printf("USD-\033[32mexporting\033[0m mesh  %s → %s   isinstance=%d type=%d mesh = %p\n",
          mesh->id.name,
-         m_path.GetString().c_str(),
-         m_degiter_data.dupli_object_current != NULL,
+         usd_path().GetString().c_str(),
+         m_instanced_by != NULL,
          m_object->type,
          mesh);
 
-  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(m_stage, m_path);
+  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(m_stage, usd_path());
 
   const MVert *verts = mesh->mvert;
 
@@ -93,11 +90,7 @@ void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
   usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_face_indices);
 }
 
-USDMeshWriter::USDMeshWriter(pxr::UsdStageRefPtr stage,
-                             const pxr::SdfPath &parent_path,
-                             Object *ob_eval,
-                             const DEGObjectIterData &degiter_data)
-    : USDGenericMeshWriter(stage, parent_path, ob_eval, degiter_data)
+USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx)
 {
 }
 

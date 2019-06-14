@@ -26,10 +26,13 @@
 #include <pxr/usd/usdGeom/tokens.h>
 
 extern "C" {
+#include "BKE_anim.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_scene.h"
 
 #include "BLI_iterator.h"
+
+#include "DNA_layer_types.h"
 }
 
 USDExporter::USDExporter(const char *filename, ExportSettings &settings)
@@ -43,6 +46,7 @@ USDExporter::~USDExporter()
 
 void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
 {
+  static const pxr::SdfPath root("/");
   Timer timer_("Writing to USD");
 
   r_progress = 0.0;
@@ -52,79 +56,181 @@ void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
   m_stage = pxr::UsdStage::CreateNew(m_filename);
   m_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
 
-  // Approach copied from draw manager.
-  DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (m_settings.depsgraph, ob_eval) {
-    if (export_object(ob_eval, data_)) {
-      // printf("Breaking out of USD export loop after first object\n");
-      // break;
-    }
+  for (Base *base = static_cast<Base *>(m_settings.view_layer->object_bases.first); base;
+       base = base->next) {
+    Object *ob = base->object;
+    Object *ob_eval = DEG_get_evaluated_object(m_settings.depsgraph, ob);
+
+    export_or_queue(ob_eval, NULL, root);
   }
-  DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
+
+  // DEG_OBJECT_ITER_BEGIN (m_settings.depsgraph,
+  //                        ob_eval,
+  //                        DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+  //                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE
+  //                            | DEG_ITER_OBJECT_FLAG_DUPLI) {
+  //   export_or_queue(ob_eval, data_.dupli_parent);
+  // }
+  // DEG_OBJECT_ITER_END;
+
+  printf("====== Dealing with deferred exports\n");
+  // for (DeferredExportSet::iterator it : deferred_exports) {
+
+  // }
+
+  printf("Impossible exports: %lu \n", deferred_exports.size());
+
+  while (!deferred_exports.empty()) {
+    DeferredExportSet::iterator it = deferred_exports.begin();
+
+    Object *missing_ob = it->first;
+    Object *missing_ob_eval = DEG_get_evaluated_object(m_settings.depsgraph, missing_ob);
+
+    printf("   - %s  referred by %lu objects\n", missing_ob->id.name, it->second.size());
+    printf(
+        "     type = %d  addr = %p   orig = %p   eval = %p  orig->parent = %p (%s at path %s)\n",
+        missing_ob->type,
+        missing_ob,
+        DEG_get_original_object(missing_ob),
+        missing_ob_eval,
+        missing_ob->parent,
+        missing_ob->parent ? missing_ob->parent->id.name : "-null-",
+        usd_object_paths[missing_ob->parent].GetString().c_str());
+
+    for (const auto &deferred_ctx : it->second) {
+      printf("     - %s (%p) instanced by %s (%p)\n",
+             deferred_ctx.ob_eval->id.name,
+             deferred_ctx.ob_eval,
+             deferred_ctx.instanced_by ? deferred_ctx.instanced_by->id.name : "-none-",
+             deferred_ctx.instanced_by);
+    }
+
+    deferred_exports.erase(it);
+
+    // export_or_queue(missing_ob_eval, NULL);
+  }
 
   m_stage->GetRootLayer()->Save();
 
   r_progress = 1.0;
 }
 
-bool USDExporter::export_object(Object *ob_eval, const DEGObjectIterData &degiter_data)
+void USDExporter::export_or_queue(Object *ob_eval,
+                                  Object *instanced_by,
+                                  const pxr::SdfPath &anchor)
 {
-  pxr::SdfPath parent_path = parent_usd_path(ob_eval, degiter_data);
+  Object *missing_ob = NULL;
+
+  pxr::SdfPath parent_path = parent_usd_path(ob_eval, instanced_by, anchor, &missing_ob);
+  USDExporterContext ctx = {m_stage, parent_path, ob_eval, instanced_by};
+
   if (parent_path.IsEmpty()) {
-    return false;
+    // Object path couldn't be found, so queue this object until it is ok.
+    Object *missing_orig = DEG_get_original_object(missing_ob);
+    deferred_exports[missing_orig].push_back(ctx);
+    printf("Deferred, %lu exports now waiting for this object %p\n",
+           deferred_exports[missing_orig].size(),
+           missing_orig);
+    return;
   }
 
-  USDAbstractWriter *xform_writer, *data_writer;
-  xform_writer = export_object_xform(parent_path, ob_eval, degiter_data);
-  data_writer = export_object_data(xform_writer->usd_path(), ob_eval, degiter_data);
+  printf("              XForm %s (%p) inside parent %s anchored at %s\n",
+         ob_eval->id.name,
+         ob_eval,
+         parent_path.GetString().c_str(),
+         anchor.GetString().c_str());
 
-  return data_writer != NULL;
+  pxr::SdfPath usd_path = export_object(ctx);
+
+  // Export objects duplicated by this object.
+  ListBase *lb = object_duplilist(m_settings.depsgraph, m_settings.scene, ob_eval);
+
+  if (lb) {
+    DupliObject *link = static_cast<DupliObject *>(lb->first);
+    Object *dupli_ob = NULL;
+    Object *dupli_parent = NULL;
+
+    for (; link; link = link->next) {
+      /* This skips things like custom bone shapes. */
+      if (link->no_draw) {
+        continue;
+      }
+
+      if (link->type != OB_DUPLICOLLECTION) {
+        continue;
+      }
+
+      Object *instance_eval_ob = DEG_get_evaluated_object(m_settings.depsgraph, link->ob);
+      export_or_queue(instance_eval_ob, ob_eval, usd_path);
+    }
+
+    free_object_duplilist(lb);
+  }
+
+  // Perform export of objects that were waiting for this one.
+  Object *ob_orig = DEG_get_original_object(ob_eval);
+  DeferredExportSet::const_iterator deferred_it = deferred_exports.find(ob_orig);
+  if (deferred_it == deferred_exports.end())
+    return;
+
+  const std::vector<USDExporterContext> deferred = deferred_it->second;
+  deferred_exports.erase(deferred_it);
+
+  printf("   Now free to handle %lu deferred exports\n", deferred.size());
+
+  for (USDExporterContext ctx : deferred) {
+    export_or_queue(ctx.ob_eval, ctx.instanced_by, pxr::SdfPath("/"));
+  }
 }
 
-pxr::SdfPath USDExporter::parent_usd_path(Object *ob_eval, const DEGObjectIterData &degiter_data)
+/* Return the parent USD path. If an empty path is returned, r_missing is set to the Object that is
+ * required to determine that path (and is not available in usd_object_paths). */
+pxr::SdfPath USDExporter::parent_usd_path(Object *ob_eval,
+                                          Object *instanced_by,
+                                          const pxr::SdfPath &anchor,
+                                          Object **r_missing)
 {
-  static const pxr::SdfPath root("/");
-  pxr::SdfPath parent_path(root);
-
-  // Prepend any dupli-parent USD path.
-  if (degiter_data.dupli_parent != NULL && degiter_data.dupli_parent != ob_eval) {
-    USDPathMap::iterator path_it = usd_object_paths.find(degiter_data.dupli_parent);
-    if (path_it == usd_object_paths.end()) {
-      printf(
-          "USD-\033[31mSKIPPING\033[0m object %s because dupli-parent %s hasn't been seen yet\n",
-          ob_eval->id.name,
-          degiter_data.dupli_parent->id.name);
-      return pxr::SdfPath();
-    }
-    parent_path = path_it->second;
-  }
-
   if (ob_eval->parent == NULL) {
-    return parent_path;
+    return anchor;
   }
 
   // Append the parent object's USD path.
   USDPathMap::iterator path_it = usd_object_paths.find(ob_eval->parent);
   if (path_it == usd_object_paths.end()) {
-    printf("USD-\033[31mSKIPPING\033[0m object %s because parent %s hasn't been seen yet\n",
-           ob_eval->id.name,
-           ob_eval->parent->id.name);
+    printf(
+        "USD-\033[31mSKIPPING\033[0m object %s (%p) instanced by %p because parent %s (%p) "
+        "hasn't been seen yet\n",
+        ob_eval->id.name,
+        ob_eval,
+        instanced_by,
+        ob_eval->parent->id.name,
+        ob_eval->parent);
+    *r_missing = ob_eval->parent;
     return pxr::SdfPath();
   }
 
-  return parent_path.AppendPath(path_it->second.MakeRelativePath(root));
+  return path_it->second;
+}
+
+pxr::SdfPath USDExporter::export_object(const USDExporterContext &ctx)
+{
+  USDAbstractWriter *xform_writer = export_object_xform(ctx);
+
+  USDExporterContext data_ctx = ctx;
+  data_ctx.parent_path = xform_writer->usd_path();
+  export_object_data(data_ctx);
+
+  return xform_writer->usd_path();
 }
 
 /* Write the transform. This is always done, even when we don't write the data, as it makes it
  * possible to reference collection-instantiating empties. */
-USDAbstractWriter *USDExporter::export_object_xform(const pxr::SdfPath &parent_path,
-                                                    Object *ob_eval,
-                                                    const DEGObjectIterData &degiter_data)
+USDAbstractWriter *USDExporter::export_object_xform(const USDExporterContext &ctx)
 {
-  USDAbstractWriter *xform_writer = new USDTransformWriter(
-      m_stage, parent_path, ob_eval, degiter_data);
+  USDAbstractWriter *xform_writer = new USDTransformWriter(ctx);
 
   const pxr::SdfPath &xform_usd_path = xform_writer->usd_path();
-  usd_object_paths[ob_eval] = xform_usd_path;
+  usd_object_paths[ctx.ob_eval] = xform_usd_path;
   usd_writers[xform_usd_path] = xform_writer;
   xform_writer->write();
 
@@ -132,27 +238,25 @@ USDAbstractWriter *USDExporter::export_object_xform(const pxr::SdfPath &parent_p
 }
 
 /* Write the object data, if we know how. */
-USDAbstractWriter *USDExporter::export_object_data(const pxr::SdfPath &parent_path,
-                                                   Object *ob_eval,
-                                                   const DEGObjectIterData &degiter_data)
+USDAbstractWriter *USDExporter::export_object_data(const USDExporterContext &ctx)
 {
   USDAbstractWriter *data_writer = NULL;
 
-  switch (ob_eval->type) {
+  switch (ctx.ob_eval->type) {
     case OB_MESH:
-      data_writer = new USDMeshWriter(m_stage, parent_path, ob_eval, degiter_data);
+      data_writer = new USDMeshWriter(ctx);
       break;
     default:
       printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
-             ob_eval->id.name,
-             ob_eval->type);
+             ctx.ob_eval->id.name,
+             ctx.ob_eval->type);
       return NULL;
   }
 
   if (!data_writer->is_supported()) {
     printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
-           ob_eval->id.name,
-           ob_eval->type);
+           ctx.ob_eval->id.name,
+           ctx.ob_eval->type);
     delete data_writer;
     return NULL;
   }

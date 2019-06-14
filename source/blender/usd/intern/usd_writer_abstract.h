@@ -1,6 +1,8 @@
 #ifndef __USD__USD_WRITER_ABSTRACT_H__
 #define __USD__USD_WRITER_ABSTRACT_H__
 
+#include "usd_exporter_context.h"
+
 #include "DEG_depsgraph_query.h"
 
 #include <pxr/usd/sdf/path.h>
@@ -15,16 +17,13 @@ class USDAbstractWriter {
  protected:
   pxr::UsdStageRefPtr m_stage;
   pxr::SdfPath m_parent_path;
-  Object *m_object;
+  mutable pxr::SdfPath _path;  // use usd_path() to get
 
-  const DEGObjectIterData &m_degiter_data;
-  pxr::SdfPath m_path;
+  Object *m_object;
+  Object *m_instanced_by;  // The dupli-object that instanced this object.
 
  public:
-  USDAbstractWriter(pxr::UsdStageRefPtr stage,
-                    const pxr::SdfPath &parent_path,
-                    Object *ob_eval,
-                    const DEGObjectIterData &degiter_data);
+  USDAbstractWriter(const USDExporterContext &ctx);
   virtual ~USDAbstractWriter();
 
   void write();
@@ -36,6 +35,15 @@ class USDAbstractWriter {
 
  protected:
   virtual void do_write() = 0;
+  virtual std::string usd_name() const;
+};
+
+class USDAbstractObjectDataWriter : public USDAbstractWriter {
+ public:
+  USDAbstractObjectDataWriter(const USDExporterContext &ctx);
+
+ protected:
+  virtual std::string usd_name() const override;
 };
 
 #endif /* __USD__USD_WRITER_ABSTRACT_H__ */

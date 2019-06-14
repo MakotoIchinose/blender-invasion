@@ -5,10 +5,7 @@
 
 class USDTransformWriter : public USDAbstractWriter {
  public:
-  USDTransformWriter(pxr::UsdStageRefPtr stage,
-                     const pxr::SdfPath &parent_path,
-                     Object *ob_eval,
-                     const DEGObjectIterData &degiter_data);
+  USDTransformWriter(const USDExporterContext &ctx);
 
  protected:
   void do_write() override;
