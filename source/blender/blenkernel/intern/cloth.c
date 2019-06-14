@@ -432,6 +432,145 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
   clmd->clothObject->bm = clmd->clothObject->bm_prev;
 }
 
+/* similar to cloth_free_modifier() but does not free everything, used when the number of verts
+ * change */
+static void cloth_remeshing_cloth_object_free(Cloth *cloth)
+{
+  if (cloth->implicit) {
+    BPH_mass_spring_solver_free(cloth->implicit);
+    cloth->implicit = NULL;
+  }
+
+  // Free the verts.
+  if (cloth->verts != NULL) {
+    MEM_freeN(cloth->verts);
+  }
+
+  cloth->verts = NULL;
+  cloth->mvert_num = 0;
+
+  // Free the springs.
+  if (cloth->springs != NULL) {
+    LinkNode *search = cloth->springs;
+    while (search) {
+      ClothSpring *spring = search->link;
+
+      MEM_SAFE_FREE(spring->pa);
+      MEM_SAFE_FREE(spring->pb);
+
+      MEM_freeN(spring);
+      search = search->next;
+    }
+    BLI_linklist_free(cloth->springs, NULL);
+
+    cloth->springs = NULL;
+  }
+
+  cloth->springs = NULL;
+  cloth->numsprings = 0;
+
+  // we save our faces for collision objects
+  if (cloth->tri) {
+    MEM_freeN(cloth->tri);
+  }
+
+  if (cloth->edgeset) {
+    BLI_edgeset_free(cloth->edgeset);
+  }
+
+#if 0
+    if (clmd->clothObject->facemarks) {
+      MEM_freeN(clmd->clothObject->facemarks);
+    }
+#endif
+  MEM_freeN(cloth);
+}
+
+static void cloth_copy_cloth_vertex(ClothVertex *r, ClothVertex *src)
+{
+  r->flags = src->flags;
+  copy_v3_v3(r->v, a->v);
+  copy_v3_v3(r->xconst, a->xconst);
+  copy_v3_v3(r->x, a->x);
+  copy_v3_v3(r->xold, a->xold);
+  copy_v3_v3(r->tx, a->tx);
+  copy_v3_v3(r->txold, a->txold);
+  copy_v3_v3(r->tv, a->tv);
+  copy_v3_v3(r->impulse, a->impulse);
+  copy_v3_v3(r->xrest, a->xrest);
+  copy_v3_v3(r->dcvel, a->dcvel);
+  r->mass = a->mass;
+  r->goal = a->goal;
+  r->impulse_count = a->impulse_count;
+  r->avg_spring_len = a->avg_spring_len;
+  r->struct_stiff = a->struct_stiff;
+  r->bend_stiff = a->bend_stiff;
+  r->shear_stiff = a->shear_stiff;
+  r->spring_count = a->spring_count;
+  r->shrink_factor = a->shrink_factor;
+}
+
+/* factor: first vertex properties factor over finding the mean, given between 0.0f and 1.0f
+ * Simply put, v1 properties * factor + v2 properties * (1.0f - factor)
+ */
+static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex *v2, float factor)
+{
+  ClothVertex new_vert;
+  float inv_factor = 1.0f - factor;
+  /* TODO(Ish): flags */
+  mul_v3_fl(v1->v, factor);
+  mul_v3_fl(v2->v, inv_factor);
+  add_v3_v3v3(new_vert.v, v1->v, v2->v);
+
+  mul_v3_fl(v1->xconst, factor);
+  mul_v3_fl(v2->xconst, inv_factor);
+  add_v3_v3v3(new_vert.xconst, v1->xconst, v2->xconst);
+
+  mul_v3_fl(v1->x, factor);
+  mul_v3_fl(v2->x, inv_factor);
+  add_v3_v3v3(new_vert.x, v1->x, v2->x);
+
+  mul_v3_fl(v1->xold, factor);
+  mul_v3_fl(v2->xold, inv_factor);
+  add_v3_v3v3(new_vert.xold, v1->xold, v2->xold);
+
+  mul_v3_fl(v1->tx, factor);
+  mul_v3_fl(v2->tx, inv_factor);
+  add_v3_v3v3(new_vert.tx, v1->tx, v2->tx);
+
+  mul_v3_fl(v1->txold, factor);
+  mul_v3_fl(v2->txold, inv_factor);
+  add_v3_v3v3(new_vert.txold, v1->txold, v2->txold);
+
+  mul_v3_fl(v1->tv, factor);
+  mul_v3_fl(v2->tv, inv_factor);
+  add_v3_v3v3(new_vert.tv, v1->tv, v2->tv);
+
+  mul_v3_fl(v1->impulse, factor);
+  mul_v3_fl(v2->impulse, inv_factor);
+  add_v3_v3v3(new_vert.impulse, v1->impulse, v2->impulse);
+
+  mul_v3_fl(v1->xrest, factor);
+  mul_v3_fl(v2->xrest, inv_factor);
+  add_v3_v3v3(new_vert.xrest, v1->xrest, v2->xrest);
+
+  mul_v3_fl(v1->dcvel, factor);
+  mul_v3_fl(v2->dcvel, inv_factor);
+  add_v3_v3v3(new_vert.dcvel, v1->dcvel, v2->dcvel);
+
+  new_vert.mass = ((v1->mass * factor) + (v2->mass * inv_factor));
+  new_vert.goal = ((v1->goal * factor) + (v2->goal * inv_factor));
+  new_vert.impulse_count = ((v1->impulse_count * factor) + (v2->impulse_count * inv_factor));
+  new_vert.avg_spring_len = ((v1->avg_spring_len * factor) + (v2->avg_spring_len * inv_factor));
+  new_vert.struct_stiff = ((v1->struct_stiff * factor) + (v2->struct_stiff * inv_factor));
+  new_vert.bend_stiff = ((v1->bend_stiff * factor) + (v2->bend_stiff * inv_factor));
+  new_vert.shear_stiff = ((v1->shear_stiff * factor) + (v2->shear_stiff * inv_factor));
+  new_vert.spring_count = ((v1->spring_count * factor) + (v2->spring_count * inv_factor));
+  new_vert.shrink_factor = ((v1->shrink_factor * factor) + (v2->shrink_factor * inv_factor));
+
+  return new_vert;
+}
+
 static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Mesh *mesh)
 {
   Cloth *cloth = clmd->clothObject;
@@ -441,19 +580,71 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
     return;
   }
 
-  Cloth *new_cloth = MEM_mallocN(sizeof(Cloth), "New Cloth Object");
+  Cloth *new_cloth = MEM_callocN(sizeof(Cloth), "New Cloth Object");
 
-  /* copy most attributes from previous cloth data except verts, springs */
+  /* copy most attributes from previous cloth data except:
+   * verts, springs, tri, implicit, and
+   * edgeset */
+  new_cloth->old_solver_type = cloth->old_solver_type;
+  new_cloth->bm = cloth->bm;
+  new_cloth->bm_prev = cloth->bm_prev;
+  new_cloth->bvhtree = cloth->bvhtree;
+  new_cloth->bvhselftree = cloth->bvhselftree;
+  new_cloth->last_frame = cloth->last_frame;
+
+  /* start to either copy the verts */
+  new_cloth->mvert_num = mesh_result->totvert;
+  new_cloth->verts = MEM_callocN(sizeof(ClothVertex) * new_cloth->mvert_num,
+                                 "New Cloth Object Verts");
 
   int new_vert_count = 0;
   for (int i = 0; i < mesh_result->totvert; i++) {
     MVert *mvert = &mesh_result->mvert[i];
+    /* if new vert */
     if (mvert->flag & SELECT) {
       new_vert_count++;
+
+      /* We search the previous and next vertices until
+       * we find a vert that has not been selected
+       * and count how many selected verts between these 2
+       * This can give us a factor that we use while
+       * finding the values for that vertex. */
+      int prev_count = 0, next_count = 0;
+      MVert *prev_mvert, *next_mvert;
+      for (int j = i - 1; j >= 0; j--) {
+        prev_count++;
+        if (!(mesh_result->mvert[j]->flag & SELECT)) {
+          prev_mvert = &mesh_result->mvert[j];
+          break;
+        }
+      }
+      for (int j = i; j < mesh_result->totvert; j++) {
+        next_count++;
+        if (!(mesh_result->mvert[j]->flag & SELECT)) {
+          next_mvert = &mesh_result->mvert[j];
+          break;
+        }
+      }
+      int tot_count = prev_count + next_count;
+      float factor = (float)prev_count / (float)tot_count;
+      /* need to find prev_mvert and next_mvert's corresponding ClothVertex */
+    }
+    /* if old vert */
+    else {
+      for (int j = 0; j < cloth->mvert_num; j++) {
+        /* CHECKHERE(Ish) */
+        if (equals_v3v3(mvert->co, cloth->verts[j]->xold)) {
+          cloth_copy_cloth_vertex(&new_cloth->verts[i], &cloth->verts[j]);
+          break;
+        }
+      }
     }
   }
 
-  cloth->mvert_num = mesh_result->totvert;
+  /* set clothObject to new_cloth and free cloth */
+  clmd->clothObject = new_cloth;
+  cloth_remeshing_cloth_object_free(cloth);
+  cloth = NULL;
 
   /* Tag all verts as old */
   BMVert *v;
@@ -524,8 +715,8 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
   /* int index = BM_elem_index_get(&v1); */
   /* ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, index)->link; */
   ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, 0)->link;
-  /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't matter
-   * since all sizing are same */
+  /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't
+   * matter since all sizing are same */
   mul_v2_m2v2(temp_v2, sizing_temp->m, u12);
   value += dot_v2v2(u12, temp_v2);
 
@@ -576,53 +767,6 @@ static void cloth_remeshing_find_bad_edges(BMesh *bm,
   *r_edges_len = tagged;
 
   MEM_freeN(edge_pairs);
-}
-
-static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex *v2)
-{
-  ClothVertex new_vert;
-  /* TODO(Ish): flags */
-  add_v3_v3v3(new_vert.v, v1->v, v2->v);
-  mul_v3_fl(new_vert.v, 0.5f);
-
-  add_v3_v3v3(new_vert.xconst, v1->xconst, v2->xconst);
-  mul_v3_fl(new_vert.xconst, 0.5f);
-
-  add_v3_v3v3(new_vert.x, v1->x, v2->x);
-  mul_v3_fl(new_vert.x, 0.5f);
-
-  add_v3_v3v3(new_vert.xold, v1->xold, v2->xold);
-  mul_v3_fl(new_vert.xold, 0.5f);
-
-  add_v3_v3v3(new_vert.tx, v1->tx, v2->tx);
-  mul_v3_fl(new_vert.tx, 0.5f);
-
-  add_v3_v3v3(new_vert.txold, v1->txold, v2->txold);
-  mul_v3_fl(new_vert.txold, 0.5f);
-
-  add_v3_v3v3(new_vert.tv, v1->tv, v2->tv);
-  mul_v3_fl(new_vert.tv, 0.5f);
-
-  add_v3_v3v3(new_vert.impulse, v1->impulse, v2->impulse);
-  mul_v3_fl(new_vert.impulse, 0.5f);
-
-  add_v3_v3v3(new_vert.xrest, v1->xrest, v2->xrest);
-  mul_v3_fl(new_vert.xrest, 0.5f);
-
-  add_v3_v3v3(new_vert.dcvel, v1->dcvel, v2->dcvel);
-  mul_v3_fl(new_vert.dcvel, 0.5f);
-
-  new_vert.mass = (v1->mass + v2->mass) * 0.5f;
-  new_vert.goal = (v1->goal + v2->goal) * 0.5f;
-  new_vert.impulse_count = (v1->impulse_count + v2->impulse_count) * 0.5f;
-  new_vert.avg_spring_len = (v1->avg_spring_len + v2->avg_spring_len) * 0.5f;
-  new_vert.struct_stiff = (v1->struct_stiff + v2->struct_stiff) * 0.5f;
-  new_vert.bend_stiff = (v1->bend_stiff + v2->bend_stiff) * 0.5f;
-  new_vert.shear_stiff = (v1->shear_stiff + v2->shear_stiff) * 0.5f;
-  new_vert.spring_count = (v1->spring_count + v2->spring_count) * 0.5f;
-  new_vert.shrink_factor = (v1->shrink_factor + v2->shrink_factor) * 0.5f;
-
-  return new_vert;
 }
 
 static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
