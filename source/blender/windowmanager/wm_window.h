@@ -61,6 +61,7 @@ void wm_window_reset_drawable(void);
 void wm_window_raise(wmWindow *win);
 void wm_window_lower(wmWindow *win);
 void wm_window_set_size(wmWindow *win, int width, int height);
+void wm_window_check_position(rcti *rect);
 void wm_window_get_position(wmWindow *win, int *r_pos_x, int *r_pos_y);
 void wm_window_swap_buffers(wmWindow *win);
 void wm_window_set_swap_interval(wmWindow *win, int interval);

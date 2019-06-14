@@ -205,6 +205,8 @@ typedef struct wmWindow {
 
   /** Don't want to include ghost.h stuff. */
   void *ghostwin;
+  /** Ghost context for rendering the window offscreen (usually unused). */
+  void *offscreen_context;
   /** Don't want to include gpu stuff. */
   void *gpuctx;
 

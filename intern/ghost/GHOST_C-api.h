@@ -736,6 +736,11 @@ extern GHOST_TSuccess GHOST_ReleaseOpenGLContext(GHOST_ContextHandle contexthand
 /**
  * Get the OpenGL framebuffer handle that serves as a default framebuffer.
  */
+extern unsigned int GHOST_GetContextDefaultOpenGLFramebuffer(GHOST_ContextHandle contexthandle);
+
+/**
+ * Get the OpenGL framebuffer handle that serves as a default framebuffer.
+ */
 extern unsigned int GHOST_GetDefaultOpenGLFramebuffer(GHOST_WindowHandle windwHandle);
 
 /**

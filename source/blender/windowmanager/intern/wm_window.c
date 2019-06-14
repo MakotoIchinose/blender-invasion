@@ -158,7 +158,7 @@ void wm_get_desktopsize(int *r_width, int *r_height)
 
 /* keeps offset and size within monitor bounds */
 /* XXX solve dual screen... */
-static void wm_window_check_position(rcti *rect)
+void wm_window_check_position(rcti *rect)
 {
   int width, height, d;
 
@@ -191,6 +191,19 @@ static void wm_window_check_position(rcti *rect)
   }
 }
 
+static void wm_window_drawing_context_activate(wmWindow *win)
+{
+  if (WM_window_is_non_opengl(win)) {
+    BLI_assert(win->offscreen_context);
+
+    /* If this is not an OpenGL window, use the offscreen OpenGL context. */
+    GHOST_ActivateOpenGLContext(win->offscreen_context);
+  }
+  else {
+    GHOST_ActivateWindowDrawingContext(win->ghostwin);
+  }
+}
+
 static void wm_ghostwindow_destroy(wmWindowManager *wm, wmWindow *win)
 {
   if (win->ghostwin) {
@@ -205,7 +218,7 @@ static void wm_ghostwindow_destroy(wmWindowManager *wm, wmWindow *win)
     }
 
     /* We need this window's opengl context active to discard it. */
-    GHOST_ActivateWindowDrawingContext(win->ghostwin);
+    wm_window_drawing_context_activate(win);
     GPU_context_active_set(win->gpuctx);
 
     /* Delete local gpu context.  */
@@ -586,16 +599,17 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
 
   if (ghostwin) {
     GHOST_RectangleHandle bounds;
+    GLuint default_fb;
 
     if (context_type == GHOST_kDrawingContextTypeOpenGL) {
-      GLuint default_fb = GHOST_GetDefaultOpenGLFramebuffer(ghostwin);
+      default_fb = GHOST_GetDefaultOpenGLFramebuffer(ghostwin);
       win->gpuctx = GPU_context_create(default_fb);
     }
     else {
-      GHOST_ContextHandle *gl_context = WM_opengl_context_create();
-      WM_opengl_context_activate(gl_context);
-      win->gpuctx = GPU_context_create(0);
-      // wm_window_reset_drawable();
+      win->offscreen_context = WM_opengl_context_create();
+      default_fb = GHOST_GetContextDefaultOpenGLFramebuffer(win->offscreen_context);
+      win->gpuctx = GPU_context_create(default_fb);
+      wm_window_reset_drawable();
     }
 
     /* needed so we can detect the graphics card below */
@@ -1092,8 +1106,9 @@ static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool acti
 
   wm->windrawable = win;
   if (activate) {
-    GHOST_ActivateWindowDrawingContext(win->ghostwin);
+    wm_window_drawing_context_activate(win);
   }
+
   GPU_context_active_set(win->gpuctx);
   immActivate();
 }
