@@ -3031,6 +3031,7 @@ void RNA_def_constraint(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
   RNA_def_property_ui_text(prop, "Disable", "Enable/Disable Constraint");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
 
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
