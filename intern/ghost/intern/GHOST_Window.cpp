@@ -124,6 +124,11 @@ GHOST_TSuccess GHOST_Window::blitOpenGLOffscreenContext(GHOST_IContext *offscree
       (GHOST_Context *)offscreen_ctx, rect.getWidth(), rect.getHeight());
 }
 
+bool GHOST_Window::isUpsideDown() const
+{
+  return m_context->isUpsideDown();
+}
+
 GHOST_TSuccess GHOST_Window::activateDrawingContext()
 {
   return m_context->activateDrawingContext();

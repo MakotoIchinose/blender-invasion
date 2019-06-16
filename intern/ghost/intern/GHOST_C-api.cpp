@@ -171,6 +171,13 @@ void GHOST_SetWindowUserData(GHOST_WindowHandle windowhandle, GHOST_TUserDataPtr
   window->setUserData(userdata);
 }
 
+int GHOST_isUpsideDownWindow(GHOST_WindowHandle windowhandle)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+
+  return window->isUpsideDown();
+}
+
 GHOST_TSuccess GHOST_DisposeWindow(GHOST_SystemHandle systemhandle,
                                    GHOST_WindowHandle windowhandle)
 {

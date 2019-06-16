@@ -213,6 +213,11 @@ extern GHOST_TUserDataPtr GHOST_GetWindowUserData(GHOST_WindowHandle windowhandl
 extern void GHOST_SetWindowUserData(GHOST_WindowHandle windowhandle, GHOST_TUserDataPtr userdata);
 
 /**
+ * Returns whether a window is rendered upside down compared to OpenGL.
+ */
+extern int GHOST_isUpsideDownWindow(GHOST_WindowHandle windowhandle);
+
+/**
  * Dispose a window.
  * \param systemhandle The handle to the system
  * \param windowhandle Handle to the window to be disposed.

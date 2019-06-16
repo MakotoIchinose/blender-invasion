@@ -120,6 +120,11 @@ class GHOST_Context : public GHOST_IContext {
     return m_stereoVisual;
   }
 
+  inline virtual bool isUpsideDown() const
+  {
+    return false;
+  }
+
   /**
    * Gets the OpenGL framebuffer associated with the OpenGL context
    * \return The ID of an OpenGL framebuffer object.

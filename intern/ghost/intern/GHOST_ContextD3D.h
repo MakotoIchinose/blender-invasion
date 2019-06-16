@@ -108,6 +108,11 @@ class GHOST_ContextD3D : public GHOST_Context {
                                             GHOST_TInt32 width,
                                             GHOST_TInt32 height);
 
+  bool isUpsideDown() const
+  {
+    return true;
+  }
+
  private:
   friend class SharedOpenGLContext;
 

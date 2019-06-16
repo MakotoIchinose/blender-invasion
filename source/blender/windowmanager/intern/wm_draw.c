@@ -722,6 +722,73 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
   }
 }
 
+static void wm_draw_upside_down(wmWindow *win)
+{
+  GPUVertFormat *format = immVertexFormat();
+  uint texcoord = GPU_vertformat_attr_add(format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_2D_IMAGE);
+
+  const int sizex = WM_window_pixels_x(win);
+  const int sizey = WM_window_pixels_y(win);
+
+  /* wmOrtho for the screen has this same offset */
+  const float halfx = GLA_PIXEL_OFS / sizex;
+  const float halfy = GLA_PIXEL_OFS / sizex;
+
+  immUniform1i("image", 0); /* texture is already bound to GL_TEXTURE0 unit */
+
+  immBegin(GPU_PRIM_TRI_FAN, 4);
+
+  immAttr2f(texcoord, halfx, 1.0f + halfy);
+  immVertex2f(pos, 0.0f, 0.0f);
+
+  immAttr2f(texcoord, 1.0f + halfx, 1.0f + halfy);
+  immVertex2f(pos, sizex, 0.0f);
+
+  immAttr2f(texcoord, 1.0f + halfx, halfy);
+  immVertex2f(pos, sizex, sizey);
+
+  immAttr2f(texcoord, halfx, halfy);
+  immVertex2f(pos, 0.0f, sizey);
+
+  immEnd();
+
+  immUnbindProgram();
+}
+
+static void wm_draw_window_upside_down_onscreen(bContext *C, wmWindow *win)
+{
+  const int width = WM_window_pixels_x(win);
+  const int height = WM_window_pixels_y(win);
+  GPUOffScreen *offscreen = GPU_offscreen_create(width, height, 0, false, false, NULL);
+
+  /* Upside down rendering only implemented for non-stereo. Easy to add but makes code messy. */
+  BLI_assert(
+      !(WM_stereo3d_enabled(win, false) && GHOST_isUpsideDownWindow(win->offscreen_context)));
+
+  if (offscreen) {
+    GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
+    wm_draw_offscreen_texture_parameters(offscreen);
+
+    /* Draw view into offscreen buffer. */
+    GPU_offscreen_bind(offscreen, false);
+    wm_draw_window_onscreen(C, win, -1);
+    GPU_offscreen_unbind(offscreen, false);
+
+    /* Draw offscreen buffer to screen. */
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, GPU_texture_opengl_bindcode(texture));
+
+    wm_draw_upside_down(win);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    GPU_offscreen_free(offscreen);
+  }
+}
+
 static void wm_draw_window(bContext *C, wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
@@ -733,8 +800,13 @@ static void wm_draw_window(bContext *C, wmWindow *win)
 
   /* Now we draw into the window framebuffer, in full window coordinates. */
   if (!stereo) {
-    /* Regular mono drawing. */
-    wm_draw_window_onscreen(C, win, -1);
+    if (GHOST_isUpsideDownWindow(win->ghostwin)) {
+      wm_draw_window_upside_down_onscreen(C, win);
+    }
+    else {
+      /* Regular mono drawing. */
+      wm_draw_window_onscreen(C, win, -1);
+    }
   }
   else if (win->stereo3d_format->display_mode == S3D_DISPLAY_PAGEFLIP) {
     /* For pageflip we simply draw to both back buffers. */
