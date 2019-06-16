@@ -429,27 +429,6 @@ static void object_update_from_subsurf_ccg(Object *object)
 /* free data derived from mesh, called when mesh changes or is freed */
 void BKE_object_free_derived_caches(Object *ob)
 {
-  /* Also serves as signal to remake texspace.
-   *
-   * NOTE: This function can be called from threads on different objects
-   * sharing same data datablock. So we need to ensure atomic nature of
-   * data modification here.
-   */
-  if (ob->type == OB_MESH) {
-    Mesh *me = ob->data;
-
-    if (me && me->bb) {
-      atomic_fetch_and_or_int32(&me->bb->flag, BOUNDBOX_DIRTY);
-    }
-  }
-  else if (ELEM(ob->type, OB_SURF, OB_CURVE, OB_FONT)) {
-    Curve *cu = ob->data;
-
-    if (cu && cu->bb) {
-      atomic_fetch_and_or_int32(&cu->bb->flag, BOUNDBOX_DIRTY);
-    }
-  }
-
   MEM_SAFE_FREE(ob->runtime.bb);
 
   object_update_from_subsurf_ccg(ob);
@@ -518,12 +497,13 @@ void BKE_object_free_caches(Object *object)
   for (md = object->modifiers.first; md != NULL; md = md->next) {
     if (md->type == eModifierType_ParticleSystem) {
       ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
-      if (psmd->mesh_final) {
-        BKE_id_free(NULL, psmd->mesh_final);
-        psmd->mesh_final = NULL;
-        if (psmd->mesh_original) {
-          BKE_id_free(NULL, psmd->mesh_original);
-          psmd->mesh_original = NULL;
+      ParticleSystemModifierDataRuntime *psmd_runtime = BKE_particle_modifier_runtime_ensure(psmd);
+      if (psmd_runtime->mesh_final) {
+        BKE_id_free(NULL, psmd_runtime->mesh_final);
+        psmd_runtime->mesh_final = NULL;
+        if (psmd_runtime->mesh_original) {
+          BKE_id_free(NULL, psmd_runtime->mesh_original);
+          psmd_runtime->mesh_original = NULL;
         }
         psmd->flag |= eParticleSystemFlag_file_loaded;
         update_flag |= ID_RECALC_GEOMETRY;
@@ -4451,17 +4431,6 @@ bool BKE_object_modifier_update_subframe(Depsgraph *depsgraph,
   }
 
   return false;
-}
-
-void BKE_object_type_set_empty_for_versioning(Object *ob)
-{
-  ob->type = OB_EMPTY;
-  ob->data = NULL;
-  if (ob->pose) {
-    BKE_pose_free_ex(ob->pose, false);
-    ob->pose = NULL;
-  }
-  ob->mode = OB_MODE_OBJECT;
 }
 
 /* Updates select_id of all objects in the given bmain. */

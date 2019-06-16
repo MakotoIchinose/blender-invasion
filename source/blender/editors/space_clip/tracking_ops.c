@@ -35,7 +35,6 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 #include "BKE_report.h"
-#include "BKE_sound.h"
 
 #include "DEG_depsgraph.h"
 
@@ -153,7 +152,7 @@ void CLIP_OT_add_marker(wmOperatorType *ot)
 
 static int add_marker_at_click_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  ED_workspace_status_text(C, IFACE_("Use LMB click to define location where place the marker"));
+  ED_workspace_status_text(C, TIP_("Use LMB click to define location where place the marker"));
 
   /* Add modal handler for ESC. */
   WM_event_add_modal_handler(C, op);
@@ -1356,7 +1355,7 @@ static int frame_jump_exec(bContext *C, wmOperator *op)
 
   if (CFRA != sc->user.framenr) {
     CFRA = sc->user.framenr;
-    BKE_sound_seek_scene(CTX_data_main(C), scene);
+    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }

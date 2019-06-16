@@ -124,19 +124,13 @@ class GHOST_Window : public GHOST_IWindow {
    * \param   hotY    The Y coordinate of the cursor hotspot.
    * \return  Indication of success.
    */
-  GHOST_TSuccess setCustomCursorShape(GHOST_TUns8 bitmap[16][2],
-                                      GHOST_TUns8 mask[16][2],
-                                      int hotX,
-                                      int hotY);
-
   GHOST_TSuccess setCustomCursorShape(GHOST_TUns8 *bitmap,
                                       GHOST_TUns8 *mask,
                                       int sizex,
                                       int sizey,
                                       int hotX,
                                       int hotY,
-                                      int fg_color,
-                                      int bg_color);
+                                      bool canInvertColor);
 
   /**
    * Returns the visibility state of the cursor.
@@ -262,6 +256,12 @@ class GHOST_Window : public GHOST_IWindow {
   GHOST_TSuccess updateDrawingContext();
 
   /**
+   * Gets the OpenGL framebuffer associated with the window's contents.
+   * \return The ID of an OpenGL framebuffer object.
+   */
+  virtual unsigned int getDefaultFramebuffer();
+
+  /**
    * Returns the window user data.
    * \return The window user data.
    */
@@ -341,19 +341,13 @@ class GHOST_Window : public GHOST_IWindow {
    * Sets the cursor shape on the window using
    * native window system calls.
    */
-  virtual GHOST_TSuccess setWindowCustomCursorShape(GHOST_TUns8 bitmap[16][2],
-                                                    GHOST_TUns8 mask[16][2],
-                                                    int hotX,
-                                                    int hotY) = 0;
-
   virtual GHOST_TSuccess setWindowCustomCursorShape(GHOST_TUns8 *bitmap,
                                                     GHOST_TUns8 *mask,
                                                     int szx,
                                                     int szy,
                                                     int hotX,
                                                     int hotY,
-                                                    int fg,
-                                                    int bg) = 0;
+                                                    bool canInvertColor) = 0;
 
   GHOST_TSuccess releaseNativeHandles();
 

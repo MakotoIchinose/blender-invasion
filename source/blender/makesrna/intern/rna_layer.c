@@ -91,10 +91,12 @@ static void rna_LayerObjects_active_object_set(PointerRNA *ptr,
                                                struct ReportList *UNUSED(reports))
 {
   ViewLayer *view_layer = (ViewLayer *)ptr->data;
-  if (value.data)
+  if (value.data) {
     view_layer->basact = BKE_view_layer_base_find(view_layer, (Object *)value.data);
-  else
+  }
+  else {
     view_layer->basact = NULL;
+  }
 }
 
 static char *rna_ViewLayer_path(PointerRNA *ptr)
@@ -121,8 +123,9 @@ static IDProperty *rna_ViewLayer_idprops(PointerRNA *ptr, bool create)
 static void rna_ViewLayer_update_render_passes(ID *id)
 {
   Scene *scene = (Scene *)id;
-  if (scene->nodetree)
+  if (scene->nodetree) {
     ntreeCompositUpdateRLayers(scene->nodetree);
+  }
 }
 
 static PointerRNA rna_ViewLayer_objects_get(CollectionPropertyIterator *iter)
@@ -366,7 +369,7 @@ static void rna_def_layer_collection(BlenderRNA *brna)
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", LAYER_COLLECTION_HIDE);
   RNA_def_property_boolean_funcs(prop, NULL, "rna_LayerCollection_hide_viewport_set");
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide in Viewport", "Temporarily hide in viewport");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_LayerCollection_update");
@@ -453,7 +456,7 @@ static void rna_def_object_base(BlenderRNA *brna)
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", BASE_HIDDEN);
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide in Viewport", "Temporarily hide in viewport");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);

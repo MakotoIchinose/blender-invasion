@@ -1462,7 +1462,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
 
 void ui_but_override_flag(uiBut *but)
 {
-  const int override_status = RNA_property_static_override_status(
+  const int override_status = RNA_property_override_library_status(
       &but->rnapoin, but->rnaprop, but->rnaindex);
 
   if (override_status & RNA_OVERRIDE_STATUS_OVERRIDDEN) {
@@ -4241,7 +4241,7 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
 
   if (!str) {
     if (ot && ot->srna) {
-      str = RNA_struct_ui_name(ot->srna);
+      str = WM_operatortype_name(ot, NULL);
     }
     else {
       str = "";
@@ -6392,7 +6392,7 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
       }
       else if (but->optype) {
         if (type == BUT_GET_RNA_LABEL) {
-          tmp = BLI_strdup(RNA_struct_ui_name(but->optype->srna));
+          tmp = BLI_strdup(WM_operatortype_name(but->optype, NULL));
         }
         else {
           const char *t = RNA_struct_ui_description(but->optype->srna);

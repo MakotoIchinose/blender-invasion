@@ -27,7 +27,7 @@
 import bpy
 from bpy.types import Panel
 
-from .space_toolsystem_common import (
+from bl_ui.space_toolsystem_common import (
     ToolSelectPanelHelper,
     ToolDef,
 )
@@ -972,6 +972,16 @@ class _defs_sculpt:
         )
 
     @ToolDef.from_fn
+    def mask_lasso():
+        return dict(
+            idname="builtin.lasso_mask",
+            label="Lasso Mask",
+            icon="ops.sculpt.lasso_mask",
+            widget=None,
+            keymap=(),
+        )
+
+    @ToolDef.from_fn
     def mask_filter():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("sculpt.mask_filter")
@@ -1043,6 +1053,7 @@ class _defs_sculpt:
             keymap="3D View Tool: Move",
             draw_settings=draw_settings,
         )
+
 
 
 
@@ -1135,7 +1146,7 @@ class _defs_weight_paint:
         def draw_settings(context, layout, tool):
             brush = context.tool_settings.weight_paint.brush
             if brush is not None:
-                from .properties_paint_common import UnifiedPaintPanel
+                from bl_ui.properties_paint_common import UnifiedPaintPanel
                 UnifiedPaintPanel.prop_unified_weight(layout, context, brush, "weight", slider=True)
                 UnifiedPaintPanel.prop_unified_strength(layout, context, brush, "strength", slider=True)
             props = tool.operator_properties("paint.weight_gradient")
@@ -1540,6 +1551,10 @@ class _defs_gpencil_sculpt:
             icon_prefix="ops.gpencil.sculpt_",
             type=bpy.types.GPencilSculptSettings,
             attr="sculpt_tool",
+            tooldef_keywords=dict(
+                operator="gpencil.sculpt_paint",
+                keymap="3D View Tool: Sculpt Gpencil, Paint",
+            ),
         )
 
 
@@ -1553,6 +1568,10 @@ class _defs_gpencil_weight:
             icon_prefix="ops.gpencil.sculpt_",
             type=bpy.types.GPencilSculptSettings,
             attr="weight_tool",
+            tooldef_keywords=dict(
+                operator="gpencil.sculpt_paint",
+                keymap="3D View Tool: Sculpt Gpencil, Paint",
+            ),
         )
 
 
@@ -1967,8 +1986,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'SCULPT': [
             _defs_sculpt.generate_from_brushes,
             None,
+            (
+                _defs_sculpt.mask_border,
+                _defs_sculpt.mask_lasso,
+            ),
             _defs_sculpt.hide_border,
-            _defs_sculpt.mask_border,
             None,
             _defs_sculpt.mesh_filter,
             _defs_sculpt.color_filter,

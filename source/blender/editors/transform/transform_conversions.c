@@ -860,7 +860,7 @@ static void bone_children_clear_transflag(int mode, short around, ListBase *lb)
       bone->flag |= BONE_TRANSFORM_CHILD;
     }
     else {
-      bone->flag &= ~BONE_TRANSFORM;
+      bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
     }
 
     bone_children_clear_transflag(mode, around, &bone->childbase);
@@ -886,14 +886,14 @@ int count_set_pose_transflags(Object *ob,
         bone->flag |= BONE_TRANSFORM;
       }
       else {
-        bone->flag &= ~BONE_TRANSFORM;
+        bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
       }
 
       bone->flag &= ~BONE_HINGE_CHILD_TRANSFORM;
       bone->flag &= ~BONE_TRANSFORM_CHILD;
     }
     else {
-      bone->flag &= ~BONE_TRANSFORM;
+      bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
     }
   }
 
@@ -1883,7 +1883,12 @@ static void calc_distanceCurveVerts(TransData *head, TransData *tail)
     }
     else if (td_near) {
       float dist;
-      dist = len_v3v3(td_near->center, td->center);
+      float vec[3];
+
+      sub_v3_v3v3(vec, td_near->center, td->center);
+      mul_m3_v3(head->mtx, vec);
+      dist = len_v3(vec);
+
       if (dist < (td - 1)->dist) {
         td->dist = (td - 1)->dist;
       }
@@ -1904,7 +1909,12 @@ static void calc_distanceCurveVerts(TransData *head, TransData *tail)
     }
     else if (td_near) {
       float dist;
-      dist = len_v3v3(td_near->center, td->center);
+      float vec[3];
+
+      sub_v3_v3v3(vec, td_near->center, td->center);
+      mul_m3_v3(head->mtx, vec);
+      dist = len_v3(vec);
+
       if (td->flag & TD_NOTCONNECTED || dist < td->dist || (td + 1)->dist < td->dist) {
         td->flag &= ~TD_NOTCONNECTED;
         if (dist < (td + 1)->dist) {
@@ -2462,8 +2472,8 @@ static void createTransParticleVerts(bContext *C, TransInfo *t)
 
       if (psys && !(psys->flag & PSYS_GLOBAL_HAIR)) {
         ParticleSystemModifierData *psmd_eval = edit->psmd_eval;
-        psys_mat_hair_to_global(
-            ob, psmd_eval->mesh_final, psys->part->from, psys->particles + i, mat);
+        Mesh *mesh_final = BKE_particle_modifier_mesh_final_get(psmd_eval);
+        psys_mat_hair_to_global(ob, mesh_final, psys->part->from, psys->particles + i, mat);
       }
 
       for (k = 0, key = point->keys; k < point->totkey; k++, key++) {
@@ -2554,8 +2564,8 @@ void flushTransParticles(TransInfo *t)
 
       if (psys && !(psys->flag & PSYS_GLOBAL_HAIR)) {
         ParticleSystemModifierData *psmd_eval = edit->psmd_eval;
-        psys_mat_hair_to_global(
-            ob, psmd_eval->mesh_final, psys->part->from, psys->particles + i, mat);
+        Mesh *mesh_final = BKE_particle_modifier_mesh_final_get(psmd_eval);
+        psys_mat_hair_to_global(ob, mesh_final, psys->part->from, psys->particles + i, mat);
         invert_m4_m4(imat, mat);
 
         for (k = 0, key = point->keys; k < point->totkey; k++, key++) {
@@ -3122,7 +3132,7 @@ static void createTransEditVerts(TransInfo *t)
       if (totleft > 0)
 #endif
       {
-        mappedcos = BKE_crazyspace_get_mapped_editverts(t->depsgraph, t->scene, tc->obedit);
+        mappedcos = BKE_crazyspace_get_mapped_editverts(t->depsgraph, tc->obedit);
         quats = MEM_mallocN(em->bm->totvert * sizeof(*quats), "crazy quats");
         BKE_crazyspace_set_quats_editmesh(em, defcos, mappedcos, quats, !prop_mode);
         if (mappedcos) {
@@ -6826,7 +6836,8 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
     }
 
     for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
-      if (pchan->bone->flag & BONE_TRANSFORM) {
+      if (pchan->bone->flag & (BONE_TRANSFORM | BONE_TRANSFORM_MIRROR)) {
+
         ListBase dsources = {NULL, NULL};
 
         /* clear any 'unkeyed' flag it may have */
@@ -7473,12 +7484,10 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
 
-      bArmature *arm;
       bPoseChannel *pchan;
       short targetless_ik = 0;
 
       ob = tc->poseobj;
-      arm = ob->data;
 
       if ((t->flag & T_AUTOIK) && (t->options & CTX_AUTOCONFIRM)) {
         /* when running transform non-interactively (operator exec),
@@ -7515,14 +7524,6 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
        * only if transform wasn't canceled (or TFM_DUMMY) */
       if (!canceled && (t->mode != TFM_DUMMY)) {
         autokeyframe_pose(C, t->scene, ob, t->mode, targetless_ik);
-        DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-      }
-      else if (arm->flag & ARM_DELAYDEFORM) {
-        /* TODO(sergey): Armature is already updated by recalcData(), so we
-         * might save some time by skipping re-evaluating it. But this isn't
-         * possible yet within new dependency graph, and also other contexts
-         * might need to update their CoW copies.
-         */
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       }
       else {

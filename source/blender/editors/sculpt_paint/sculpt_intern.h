@@ -36,8 +36,8 @@
 #include "BKE_mesh.h"
 #include "BKE_paint.h"
 
-struct Main;
 struct KeyBlock;
+struct Main;
 struct Object;
 struct SculptOrigVertData;
 struct SculptUndoNode;

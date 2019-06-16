@@ -753,7 +753,7 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, int opcontext)
     return retval;
   }
   else {
-    pup = UI_popup_menu_begin(C, RNA_struct_ui_name(op->type->srna), ICON_NONE);
+    pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
     layout = UI_popup_menu_layout(pup);
     /* set this so the default execution context is the same as submenus */
     uiLayoutSetOperatorContext(layout, opcontext);
@@ -805,7 +805,7 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
   uiDefBut(block,
            UI_BTYPE_LABEL,
            0,
-           RNA_struct_ui_name(op->type->srna),
+           WM_operatortype_name(op->type, op->ptr),
            10,
            10,
            UI_searchbox_size_x(),
@@ -1843,6 +1843,14 @@ static int wm_call_menu_exec(bContext *C, wmOperator *op)
   return UI_popup_menu_invoke(C, idname, op->reports);
 }
 
+static const char *wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
+{
+  char idname[BKE_ST_MAXNAME];
+  RNA_string_get(ptr, "name", idname);
+  MenuType *mt = WM_menutype_find(idname, true);
+  return (mt) ? mt->label : ot->name;
+}
+
 static void WM_OT_call_menu(wmOperatorType *ot)
 {
   ot->name = "Call Menu";
@@ -1851,6 +1859,7 @@ static void WM_OT_call_menu(wmOperatorType *ot)
 
   ot->exec = wm_call_menu_exec;
   ot->poll = WM_operator_winactive;
+  ot->get_name = wm_call_menu_get_name;
 
   ot->flag = OPTYPE_INTERNAL;
 
@@ -1882,6 +1891,7 @@ static void WM_OT_call_menu_pie(wmOperatorType *ot)
   ot->invoke = wm_call_pie_menu_invoke;
   ot->exec = wm_call_pie_menu_exec;
   ot->poll = WM_operator_winactive;
+  ot->get_name = wm_call_menu_get_name;
 
   ot->flag = OPTYPE_INTERNAL;
 
@@ -1897,6 +1907,14 @@ static int wm_call_panel_exec(bContext *C, wmOperator *op)
   return UI_popover_panel_invoke(C, idname, keep_open, op->reports);
 }
 
+static const char *wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
+{
+  char idname[BKE_ST_MAXNAME];
+  RNA_string_get(ptr, "name", idname);
+  PanelType *pt = WM_paneltype_find(idname, true);
+  return (pt) ? pt->label : ot->name;
+}
+
 static void WM_OT_call_panel(wmOperatorType *ot)
 {
   ot->name = "Call Panel";
@@ -1905,6 +1923,7 @@ static void WM_OT_call_panel(wmOperatorType *ot)
 
   ot->exec = wm_call_panel_exec;
   ot->poll = WM_operator_winactive;
+  ot->get_name = wm_call_panel_get_name;
 
   ot->flag = OPTYPE_INTERNAL;
 
@@ -3334,6 +3353,22 @@ static void WM_OT_previews_ensure(wmOperatorType *ot)
 
 /* Only types supporting previews currently. */
 static const EnumPropertyItem preview_id_type_items[] = {
+    {FILTER_ID_SCE | FILTER_ID_GR | FILTER_ID_OB | FILTER_ID_MA | FILTER_ID_LA | FILTER_ID_WO |
+         FILTER_ID_TE | FILTER_ID_IM,
+     "ALL",
+     0,
+     "All Types",
+     ""},
+    {FILTER_ID_SCE | FILTER_ID_GR | FILTER_ID_OB,
+     "GEOMETRY",
+     0,
+     "All Geometry Types",
+     "Clear previews for scenes, collections and objects"},
+    {FILTER_ID_MA | FILTER_ID_LA | FILTER_ID_WO | FILTER_ID_TE | FILTER_ID_IM,
+     "SHADING",
+     0,
+     "All Shading Types",
+     "Clear previews for materiasl, lights, worlds, textures and images"},
     {FILTER_ID_SCE, "SCENE", 0, "Scenes", ""},
     {FILTER_ID_GR, "GROUP", 0, "Groups", ""},
     {FILTER_ID_OB, "OBJECT", 0, "Objects", ""},

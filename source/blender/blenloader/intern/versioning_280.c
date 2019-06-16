@@ -784,7 +784,7 @@ void do_versions_after_linking_280(Main *bmain)
     }
 
     /* We need to assign lib pointer to generated hidden collections *after* all have been created,
-     * otherwise we'll end up with several datablocks sharing same name/library,
+     * otherwise we'll end up with several data-blocks sharing same name/library,
      * which is FORBIDDEN!
      * Note: we need this to be recursive,
      * since a child collection may be sorted before its parent in bmain. */
@@ -2354,7 +2354,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
-              v3d->shading.flag |= V3D_SHADING_XRAY_BONE;
+              v3d->shading.flag |= V3D_SHADING_XRAY_WIREFRAME;
             }
           }
         }
@@ -2742,13 +2742,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Camera *ca = bmain->cameras.first; ca; ca = ca->id.next) {
       ca->drawsize *= 2.0f;
     }
-    for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
-      if (ob->type != OB_EMPTY) {
-        if (UNLIKELY(ob->transflag & OB_DUPLICOLLECTION)) {
-          BKE_object_type_set_empty_for_versioning(ob);
-        }
-      }
-    }
 
     /* Grease pencil primitive curve */
     if (!DNA_struct_elem_find(
@@ -3075,8 +3068,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
-      arm->flag &= ~(ARM_FLAG_UNUSED_1 | ARM_FLAG_UNUSED_5 | ARM_FLAG_UNUSED_7 |
-                     ARM_FLAG_UNUSED_12);
+      arm->flag &= ~(ARM_FLAG_UNUSED_1 | ARM_FLAG_UNUSED_5 | ARM_FLAG_UNUSED_6 |
+                     ARM_FLAG_UNUSED_7 | ARM_FLAG_UNUSED_12);
     }
 
     LISTBASE_FOREACH (Text *, text, &bmain->texts) {
@@ -3525,6 +3518,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                                             COLLECTION_RESTRICT_SELECT |
                                             COLLECTION_RESTRICT_RENDER);
       }
+    }
+
+    LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+      arm->flag &= ~(ARM_FLAG_UNUSED_6);
     }
   }
 }

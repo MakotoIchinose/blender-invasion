@@ -23,15 +23,15 @@ from bpy.types import (
     Menu,
     Panel,
 )
-from .properties_paint_common import (
+from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
 )
-from .properties_grease_pencil_common import (
+from bl_ui.properties_grease_pencil_common import (
     AnnotationDataPanel,
     AnnotationOnionSkin,
     GreasePencilMaterialsPanel,
 )
-from .space_toolsystem_common import (
+from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
 )
 from bpy.app.translations import contexts as i18n_contexts
@@ -62,7 +62,7 @@ class VIEW3D_HT_tool_header(Header):
 
         # Active Tool
         # -----------
-        from .space_toolsystem_common import ToolSelectPanelHelper
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.draw_active_tool_header(
             context, layout,
             tool_key=('VIEW_3D', tool_mode),
@@ -225,7 +225,7 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             brush_basic_sculpt_settings,
         )
         brush_basic_sculpt_settings(layout, context, brush, compact=True)
@@ -242,7 +242,7 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             UnifiedPaintPanel,
             brush_basic_texpaint_settings,
         )
@@ -263,7 +263,7 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             UnifiedPaintPanel,
             brush_basic_vpaint_settings,
         )
@@ -283,7 +283,7 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return
 
-        from .properties_paint_common import brush_basic_wpaint_settings
+        from bl_ui.properties_paint_common import brush_basic_wpaint_settings
         brush_basic_wpaint_settings(layout, context, brush, compact=True)
 
     @staticmethod
@@ -343,7 +343,7 @@ class _draw_tool_settings_context_mode:
         if context.object and brush.gpencil_tool in {'FILL', 'DRAW'}:
             draw_color_selector()
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
         )
         brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
@@ -377,7 +377,7 @@ class _draw_tool_settings_context_mode:
         settings = tool_settings.gpencil_sculpt
         brush = settings.brush
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             brush_basic_gpencil_sculpt_settings,
         )
         brush_basic_gpencil_sculpt_settings(layout, context, brush, compact=True)
@@ -390,7 +390,7 @@ class _draw_tool_settings_context_mode:
         settings = tool_settings.gpencil_sculpt
         brush = settings.brush
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             brush_basic_gpencil_weight_settings,
         )
         brush_basic_gpencil_weight_settings(layout, context, brush, compact=True)
@@ -482,7 +482,7 @@ class VIEW3D_HT_header(Header):
                 show_snap = True
             else:
 
-                from .properties_paint_common import UnifiedPaintPanel
+                from bl_ui.properties_paint_common import UnifiedPaintPanel
                 paint_settings = UnifiedPaintPanel.paint_settings(context)
 
                 if paint_settings:
@@ -4995,7 +4995,7 @@ class VIEW3D_PT_object_type_visibility(Panel):
             ("curve", "Curve"),
             ("surf", "Surface"),
             ("meta", "Meta"),
-            ("font", "Font"),
+            ("font", "Text"),
             ("grease_pencil", "Grease Pencil"),
             (None, None),
             # Other
@@ -5546,6 +5546,10 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
         row.prop(overlay, "show_edge_bevel_weight", text="Bevel", toggle=True)
         row.prop(overlay, "show_edge_seams", text="Seams", toggle=True)
 
+        if context.preferences.view.show_developer_ui:
+            col.label(text="Developer")
+            col.prop(overlay, "show_extra_indices", text="Indices")
+
 
 class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
     bl_space_type = 'VIEW_3D'
@@ -5704,29 +5708,6 @@ class VIEW3D_PT_overlay_edit_mesh_freestyle(Panel):
         row = col.row()
         row.prop(overlay, "show_freestyle_edge_marks", text="Edge Marks")
         row.prop(overlay, "show_freestyle_face_marks", text="Face Marks")
-
-
-class VIEW3D_PT_overlay_edit_mesh_developer(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay_edit_mesh'
-    bl_label = "Developer"
-
-    @classmethod
-    def poll(cls, context):
-        return context.mode == 'EDIT_MESH' and context.preferences.view.show_developer_ui
-
-    def draw(self, context):
-        layout = self.layout
-
-        view = context.space_data
-        overlay = view.overlay
-        display_all = overlay.show_overlays
-
-        col = layout.column()
-        col.active = display_all
-
-        col.prop(overlay, "show_extra_indices", text="Indices")
 
 
 class VIEW3D_PT_overlay_edit_curve(Panel):
@@ -6686,7 +6667,6 @@ classes = (
     VIEW3D_PT_overlay_edit_mesh_measurement,
     VIEW3D_PT_overlay_edit_mesh_normals,
     VIEW3D_PT_overlay_edit_mesh_freestyle,
-    VIEW3D_PT_overlay_edit_mesh_developer,
     VIEW3D_PT_overlay_edit_curve,
     VIEW3D_PT_overlay_paint,
     VIEW3D_PT_overlay_pose,

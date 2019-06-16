@@ -2757,7 +2757,7 @@ static void mesh_create_edit_facedots_select_id(MeshRenderData *rdata, GPUVertBu
       if (p_orig != ORIGINDEX_NONE) {
         const BMFace *efa = BM_face_at_index(rdata->edit_bmesh->bm, p_orig);
         if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          *((uint *)GPU_vertbuf_raw_step(&idx_step)) = poly;
+          *((uint *)GPU_vertbuf_raw_step(&idx_step)) = p_orig;
         }
       }
     }
@@ -4931,10 +4931,9 @@ void DRW_mesh_batch_cache_create_requested(
   }
 
   if (batch_requested & (MBC_SURFACE | MBC_SURF_PER_MAT | MBC_WIRE_LOOPS_UVS)) {
-    /* Optimization : Only create orco layer if mesh is deformed. */
+    /* Modifiers will only generate an orco layer if the mesh is deformed. */
     if (cache->cd_needed.orco != 0) {
-      CustomData *cd_vdata = (me->edit_mesh) ? &me->edit_mesh->bm->vdata : &me->vdata;
-      if (CustomData_get_layer(cd_vdata, CD_ORCO) != NULL && ob->modifiers.first != NULL) {
+      if (CustomData_get_layer(&me->vdata, CD_ORCO) != NULL) {
         /* Orco layer is needed. */
       }
       else if (cache->cd_needed.tan_orco == 0) {

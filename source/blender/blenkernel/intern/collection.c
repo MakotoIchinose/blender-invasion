@@ -624,6 +624,26 @@ bool BKE_collection_is_empty(Collection *collection)
 
 /********************** Collection Objects *********************/
 
+static void collection_tag_update_parent_recursive(Main *bmain,
+                                                   Collection *collection,
+                                                   const int flag)
+{
+  if (collection->flag & COLLECTION_IS_MASTER) {
+    return;
+  }
+
+  DEG_id_tag_update_ex(bmain, &collection->id, flag);
+
+  for (CollectionParent *collection_parent = collection->parents.first; collection_parent;
+       collection_parent = collection_parent->next) {
+    if (collection_parent->collection->flag & COLLECTION_IS_MASTER) {
+      /* We don't care about scene/master collection here. */
+      continue;
+    }
+    collection_tag_update_parent_recursive(bmain, collection_parent->collection, flag);
+  }
+}
+
 static bool collection_object_add(
     Main *bmain, Collection *collection, Object *ob, int flag, const bool add_us)
 {
@@ -649,7 +669,7 @@ static bool collection_object_add(
   }
 
   if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
-    DEG_id_tag_update_ex(bmain, &collection->id, ID_RECALC_COPY_ON_WRITE);
+    collection_tag_update_parent_recursive(bmain, collection, ID_RECALC_COPY_ON_WRITE);
   }
 
   if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
@@ -679,7 +699,7 @@ static bool collection_object_remove(Main *bmain,
     id_us_min(&ob->id);
   }
 
-  DEG_id_tag_update_ex(bmain, &collection->id, ID_RECALC_COPY_ON_WRITE);
+  collection_tag_update_parent_recursive(bmain, collection, ID_RECALC_COPY_ON_WRITE);
 
   return true;
 }
@@ -1281,7 +1301,16 @@ bool BKE_collection_move(Main *bmain,
         view_layer, collection);
 
     if (layer_collection) {
-      layer_collection->flag = POINTER_AS_INT(BLI_ghashIterator_getValue(&gh_iter));
+      /* We treat exclude as a special case.
+       *
+       * If in a different view layer the parent collection was disabled (e.g., background)
+       * and now we moved a new collection to be part of the background this collection should
+       * probably be disabled.
+       *
+       * Note: If we were to also keep the exclude flag we would need to re-sync the collections.
+       */
+      layer_collection->flag = POINTER_AS_INT(BLI_ghashIterator_getValue(&gh_iter)) |
+                               (layer_collection->flag & LAYER_COLLECTION_EXCLUDE);
     }
   }
 

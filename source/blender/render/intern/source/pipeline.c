@@ -181,22 +181,22 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
   megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
 
   fprintf(stdout,
-          IFACE_("Fra:%d Mem:%.2fM (%.2fM, Peak %.2fM) "),
+          TIP_("Fra:%d Mem:%.2fM (%.2fM, Peak %.2fM) "),
           rs->cfra,
           megs_used_memory,
           mmap_used_memory,
           megs_peak_memory);
 
   if (rs->curfield) {
-    fprintf(stdout, IFACE_("Field %d "), rs->curfield);
+    fprintf(stdout, TIP_("Field %d "), rs->curfield);
   }
   if (rs->curblur) {
-    fprintf(stdout, IFACE_("Blur %d "), rs->curblur);
+    fprintf(stdout, TIP_("Blur %d "), rs->curblur);
   }
 
   BLI_timecode_string_from_time_simple(
       info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
-  fprintf(stdout, IFACE_("| Time:%s | "), info_time_str);
+  fprintf(stdout, TIP_("| Time:%s | "), info_time_str);
 
   if (rs->infostr) {
     fprintf(stdout, "%s", rs->infostr);
@@ -204,7 +204,7 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
   else {
     if (rs->tothalo) {
       fprintf(stdout,
-              IFACE_("Sce: %s Ve:%d Fa:%d Ha:%d La:%d"),
+              TIP_("Sce: %s Ve:%d Fa:%d Ha:%d La:%d"),
               rs->scene_name,
               rs->totvert,
               rs->totface,
@@ -213,7 +213,7 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
     }
     else {
       fprintf(stdout,
-              IFACE_("Sce: %s Ve:%d Fa:%d La:%d"),
+              TIP_("Sce: %s Ve:%d Fa:%d La:%d"),
               rs->scene_name,
               rs->totvert,
               rs->totface,
@@ -1116,7 +1116,7 @@ void *RE_gl_context_get(Render *re)
 void *RE_gpu_context_get(Render *re)
 {
   if (re->gpu_context == NULL) {
-    re->gpu_context = GPU_context_create();
+    re->gpu_context = GPU_context_create(0);
   }
   return re->gpu_context;
 }
@@ -2537,8 +2537,14 @@ void RE_RenderAnim(Render *re,
 
       re->movie_ctx_arr[i] = mh->context_create();
 
-      if (!mh->start_movie(
-              re->movie_ctx_arr[i], scene, &re->r, width, height, re->reports, false, suffix)) {
+      if (!mh->start_movie(re->movie_ctx_arr[i],
+                           re->pipeline_scene_eval,
+                           &re->r,
+                           width,
+                           height,
+                           re->reports,
+                           false,
+                           suffix)) {
         is_error = true;
         break;
       }
@@ -2744,7 +2750,7 @@ void RE_RenderAnim(Render *re,
 
   BLI_callback_exec(
       re->main, (ID *)scene, G.is_break ? BLI_CB_EVT_RENDER_CANCEL : BLI_CB_EVT_RENDER_COMPLETE);
-  BKE_sound_reset_scene_specs(scene);
+  BKE_sound_reset_scene_specs(re->pipeline_scene_eval);
 
   RE_CleanAfterRender(re);
 

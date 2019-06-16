@@ -170,24 +170,39 @@ function(blender_include_dirs_sys
 endfunction()
 
 function(blender_source_group
-	sources
-	)
+  sources
+  )
 
-	# Group by location on disk
-	source_group("Source Files" FILES CMakeLists.txt)
+  #if enabled, use the sources directories as filters.
+  if(WINDOWS_USE_VISUAL_STUDIO_SOURCE_FOLDERS)
+    foreach(_SRC ${sources})
+      # remove ../'s
+      get_filename_component(_SRC_DIR ${_SRC} REALPATH)
+      get_filename_component(_SRC_DIR ${_SRC_DIR} DIRECTORY)
+      if(${_SRC_DIR} MATCHES "${CMAKE_CURRENT_SOURCE_DIR}/")
+        string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/" "" GROUP_ID ${_SRC_DIR})
+        string(REPLACE "/" "\\" GROUP_ID ${GROUP_ID})
+        source_group("${GROUP_ID}" FILES ${_SRC})
+      endif()
+    endforeach()
+  else()
+    # Group by location on disk
+    source_group("Source Files" FILES CMakeLists.txt)
+    foreach(_SRC ${sources})
+      get_filename_component(_SRC_EXT ${_SRC} EXT)
+      if((${_SRC_EXT} MATCHES ".h") OR
+         (${_SRC_EXT} MATCHES ".hpp") OR
+         (${_SRC_EXT} MATCHES ".hh"))
 
-	foreach(_SRC ${sources})
-		get_filename_component(_SRC_EXT ${_SRC} EXT)
-		if((${_SRC_EXT} MATCHES ".h") OR
-		   (${_SRC_EXT} MATCHES ".hpp") OR
-		   (${_SRC_EXT} MATCHES ".hh"))
-
-			set(GROUP_ID "Header Files")
-		else()
-			set(GROUP_ID "Source Files")
-		endif()
-		source_group("${GROUP_ID}" FILES ${_SRC})
-	endforeach()
+        set(GROUP_ID "Header Files")
+      elseif(${_SRC_EXT} MATCHES ".glsl$")
+        set(GROUP_ID "Shaders")
+      else()
+        set(GROUP_ID "Source Files")
+      endif()
+      source_group("${GROUP_ID}" FILES ${_SRC})
+    endforeach()
+  endif()
 endfunction()
 
 
@@ -218,42 +233,41 @@ endmacro()
 
 # only MSVC uses SOURCE_GROUP
 function(blender_add_lib__impl
-	name
-	sources
-	includes
-	includes_sys
-	library_deps
-	)
+  name
+  sources
+  includes
+  includes_sys
+  library_deps
+  )
 
-	# message(STATUS "Configuring library ${name}")
+  # message(STATUS "Configuring library ${name}")
 
-	# include_directories(${includes})
-	# include_directories(SYSTEM ${includes_sys})
-	blender_include_dirs("${includes}")
-	blender_include_dirs_sys("${includes_sys}")
+  # include_directories(${includes})
+  # include_directories(SYSTEM ${includes_sys})
+  blender_include_dirs("${includes}")
+  blender_include_dirs_sys("${includes_sys}")
 
-	add_library(${name} ${sources})
+  add_library(${name} ${sources})
 
-	if (NOT "${library_deps}" STREQUAL "")
-		target_link_libraries(${name} "${library_deps}")
-	endif()
+  if (NOT "${library_deps}" STREQUAL "")
+    target_link_libraries(${name} INTERFACE "${library_deps}")
+  endif()
 
-	# works fine without having the includes
-	# listed is helpful for IDE's (QtCreator/MSVC)
-	blender_source_group("${sources}")
+  # works fine without having the includes
+  # listed is helpful for IDE's (QtCreator/MSVC)
+  blender_source_group("${sources}")
 
-	#if enabled, set the FOLDER property for visual studio projects
-	if(WINDOWS_USE_VISUAL_STUDIO_FOLDERS)
-		get_filename_component(FolderDir ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
-		string(REPLACE ${CMAKE_SOURCE_DIR} "" FolderDir ${FolderDir})
-		set_target_properties(${name} PROPERTIES FOLDER ${FolderDir})
-	endif()
+  #if enabled, set the FOLDER property for visual studio projects
+  if(WINDOWS_USE_VISUAL_STUDIO_PROJECT_FOLDERS)
+    get_filename_component(FolderDir ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
+    string(REPLACE ${CMAKE_SOURCE_DIR} "" FolderDir ${FolderDir})
+    set_target_properties(${name} PROPERTIES FOLDER ${FolderDir})
+  endif()
 
-	list_assert_duplicates("${sources}")
-	list_assert_duplicates("${includes}")
-	# Not for system includes because they can resolve to the same path
-	# list_assert_duplicates("${includes_sys}")
-
+  list_assert_duplicates("${sources}")
+  list_assert_duplicates("${includes}")
+  # Not for system includes because they can resolve to the same path
+  # list_assert_duplicates("${includes_sys}")
 endfunction()
 
 
@@ -1497,4 +1511,27 @@ macro(WINDOWS_SIGN_TARGET target)
 			)
 		endif()
 	endif()
+endmacro()
+
+macro(blender_precompile_headers target cpp header)
+  if (MSVC)
+    # get the name for the pch output file
+    get_filename_component( pchbase ${cpp} NAME_WE )
+    set( pchfinal "${CMAKE_CURRENT_BINARY_DIR}/${pchbase}.pch" )
+
+    # mark the cpp as the one outputting the pch
+    set_property(SOURCE ${cpp} APPEND PROPERTY OBJECT_OUTPUTS "${pchfinal}")
+
+    # get all sources for the target
+    get_target_property(sources ${target} SOURCES)
+
+    # make all sources depend on the pch to enforce the build order
+    foreach(src ${sources})
+      set_property(SOURCE ${src} APPEND PROPERTY OBJECT_DEPENDS "${pchfinal}")
+    endforeach()
+
+    target_sources(${target} PRIVATE ${cpp} ${header})
+    set_target_properties(${target} PROPERTIES COMPILE_FLAGS "/Yu${header} /Fp${pchfinal} /FI${header}")
+    set_source_files_properties(${cpp} PROPERTIES COMPILE_FLAGS "/Yc${header} /Fp${pchfinal}")
+  endif()
 endmacro()

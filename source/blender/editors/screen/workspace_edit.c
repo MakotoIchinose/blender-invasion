@@ -205,6 +205,8 @@ WorkSpace *ED_workspace_duplicate(WorkSpace *workspace_old, Main *bmain, wmWindo
   WorkSpace *workspace_new = ED_workspace_add(bmain, workspace_old->id.name + 2);
 
   workspace_new->flags = workspace_old->flags;
+  workspace_new->object_mode = workspace_old->object_mode;
+  workspace_new->order = workspace_old->order;
   BLI_duplicatelist(&workspace_new->owner_ids, &workspace_old->owner_ids);
 
   /* TODO(campbell): tools */
@@ -374,6 +376,9 @@ static int workspace_append_activate_exec(bContext *C, wmOperator *op)
     BLI_assert(appended_workspace != NULL);
 
     if (appended_workspace) {
+      /* Set defaults. */
+      BLO_update_defaults_workspace(appended_workspace, NULL);
+
       /* Reorder to last position. */
       BKE_id_reorder(&bmain->workspaces, &appended_workspace->id, NULL, true);
 

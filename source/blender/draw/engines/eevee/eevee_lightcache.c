@@ -213,7 +213,7 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
   if (lcache != NULL) {
     if (lcache->flag & LIGHTCACHE_BAKING) {
       BLI_strncpy(
-          eevee->light_cache_info, IFACE_("Baking light cache"), sizeof(eevee->light_cache_info));
+          eevee->light_cache_info, TIP_("Baking light cache"), sizeof(eevee->light_cache_info));
       return;
     }
 
@@ -224,14 +224,14 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
 
     BLI_snprintf(eevee->light_cache_info,
                  sizeof(eevee->light_cache_info),
-                 IFACE_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
+                 TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
                  lcache->cube_len - 1,
                  irr_samples,
                  formatted_mem);
   }
   else {
     BLI_strncpy(eevee->light_cache_info,
-                IFACE_("No light cache in this scene"),
+                TIP_("No light cache in this scene"),
                 sizeof(eevee->light_cache_info));
   }
 }
@@ -409,7 +409,7 @@ static void eevee_lightbake_context_enable(EEVEE_LightBake *lbake)
   if (lbake->gl_context) {
     DRW_opengl_render_context_enable(lbake->gl_context);
     if (lbake->gpu_context == NULL) {
-      lbake->gpu_context = GPU_context_create();
+      lbake->gpu_context = GPU_context_create(0);
     }
     DRW_gawain_render_context_enable(lbake->gpu_context);
   }
@@ -1248,7 +1248,7 @@ void EEVEE_lightbake_job(void *custom_data, short *stop, short *do_update, float
 
   /* Assume that if lbake->gl_context is NULL
    * we are not running in this in a job, so update
-   * the scene lightcache pointer before deleting it. */
+   * the scene light-cache pointer before deleting it. */
   if (lbake->gl_context == NULL) {
     BLI_assert(BLI_thread_is_main());
     EEVEE_lightbake_update(lbake);

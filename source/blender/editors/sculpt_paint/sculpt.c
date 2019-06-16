@@ -6293,7 +6293,7 @@ static void sculpt_flush_update_step(bContext *C)
       r.xmax += ar->winrct.xmin + 2;
       r.ymin += ar->winrct.ymin - 2;
       r.ymax += ar->winrct.ymin + 2;
-      ED_region_tag_redraw_partial(ar, &r);
+      ED_region_tag_redraw_partial(ar, &r, true);
     }
   }
 }
@@ -6656,6 +6656,9 @@ void sculpt_pbvh_clear(Object *ob)
   }
   ss->pbvh = NULL;
   BKE_object_free_derived_caches(ob);
+
+  /* Tag to rebuild PBVH in depsgraph. */
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 }
 
 void sculpt_dyntopo_node_layers_add(SculptSession *ss)
@@ -7492,7 +7495,7 @@ static int sculpt_sample_detail_size_exec(bContext *C, wmOperator *op)
 
 static int sculpt_sample_detail_size_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e))
 {
-  ED_workspace_status_text(C, "Click on the mesh to set the detail");
+  ED_workspace_status_text(C, TIP_("Click on the mesh to set the detail"));
   WM_cursor_modal_set(CTX_wm_window(C), BC_EYEDROPPER_CURSOR);
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
