@@ -973,12 +973,18 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def mask_lasso():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("paint.mask_lasso_gesture")
+            sub = layout.row()
+            sub.use_property_split = False
+            sub.prop(props, "front_faces_only")
         return dict(
             idname="builtin.lasso_mask",
             label="Lasso Mask",
             icon="ops.sculpt.lasso_mask",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
