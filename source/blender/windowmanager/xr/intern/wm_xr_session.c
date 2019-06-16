@@ -38,13 +38,8 @@
 
 bool wm_xr_session_is_running(const wmXRContext *xr_context)
 {
-  const OpenXRData *oxr = &xr_context->oxr;
-
-  if (oxr->session == XR_NULL_HANDLE) {
-    return false;
-  }
-
-  return ELEM(oxr->session_state,
+  return (xr_context != NULL) && (xr_context->oxr.session != XR_NULL_HANDLE) &&
+         ELEM(xr_context->oxr.session_state,
               XR_SESSION_STATE_RUNNING,
               XR_SESSION_STATE_VISIBLE,
               XR_SESSION_STATE_FOCUSED);

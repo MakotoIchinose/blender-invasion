@@ -43,18 +43,20 @@
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
  */
-static void openxr_gather_extensions_ex(OpenXRData *oxr, const char *layer_name)
+static bool openxr_gather_extensions_ex(OpenXRData *oxr, const char *layer_name)
 {
   uint32_t extension_count = 0;
 
   oxr->extensions = NULL;
 
   /* Get count for array creation/init first. */
-  xrEnumerateInstanceExtensionProperties(layer_name, 0, &extension_count, NULL);
+  if (XR_FAILED(xrEnumerateInstanceExtensionProperties(layer_name, 0, &extension_count, NULL))) {
+    return false;
+  }
 
   if (extension_count == 0) {
-    /* Extensions are optional, can safely exit. */
-    return;
+    /* Extensions are optional, can successfully exit. */
+    return true;
   }
 
   oxr->extensions = MEM_calloc_arrayN(
@@ -77,22 +79,26 @@ static void openxr_gather_extensions_ex(OpenXRData *oxr, const char *layer_name)
     printf("Extension: %s\n", oxr->extensions[i].extensionName);
   }
 #endif
+
+  return true;
 }
-static void openxr_gather_extensions(OpenXRData *oxr)
+static bool openxr_gather_extensions(OpenXRData *oxr)
 {
-  openxr_gather_extensions_ex(oxr, NULL);
+  return openxr_gather_extensions_ex(oxr, NULL);
 }
 
-static void openxr_gather_api_layers(OpenXRData *oxr)
+static bool openxr_gather_api_layers(OpenXRData *oxr)
 {
   uint32_t layer_count = 0;
 
   /* Get count for array creation/init first. */
-  xrEnumerateApiLayerProperties(0, &layer_count, NULL);
+  if (XR_FAILED(xrEnumerateApiLayerProperties(0, &layer_count, NULL))) {
+    return false;
+  }
 
   if (layer_count == 0) {
     /* Layers are optional, can safely exit. */
-    return;
+    return true;
   }
 
   oxr->layers = MEM_calloc_arrayN(layer_count, sizeof(*oxr->layers), "XrApiLayerProperties");
@@ -110,6 +116,8 @@ static void openxr_gather_api_layers(OpenXRData *oxr)
     /* Each layer may have own extensions */
     openxr_gather_extensions_ex(oxr, oxr->layers[i].layerName);
   }
+
+  return true;
 }
 
 ATTR_NONNULL()
@@ -248,8 +256,10 @@ wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info)
 #ifdef USE_EXT_LAYER_PRINTS
   puts("Available OpenXR layers/extensions:");
 #endif
-  openxr_gather_api_layers(oxr);
-  openxr_gather_extensions(oxr);
+  if (!openxr_gather_api_layers(oxr) || !openxr_gather_extensions(oxr)) {
+    MEM_freeN(xr_context);
+    return NULL;
+  }
 #ifdef USE_EXT_LAYER_PRINTS
   puts("Done printing OpenXR layers/extensions.");
 #endif

@@ -3649,6 +3649,10 @@ static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   wmWindowManager *wm = CTX_wm_manager(C);
   struct wmXRContext *xr_context = wm->xr_context;
 
+  if (xr_context == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
   if (wm_xr_session_is_running(xr_context)) {
     wm_xr_session_end(xr_context);
   }
