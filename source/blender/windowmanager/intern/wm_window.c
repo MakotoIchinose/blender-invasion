@@ -835,11 +835,11 @@ static wmWindow *wm_window_open_ex(bContext *C,
 
 wmWindow *WM_window_open(bContext *C, const rcti *rect)
 {
-  wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeOpenGL);
+  return wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeOpenGL);
 }
 wmWindow *WM_window_open_directx(bContext *C, const rcti *rect)
 {
-  wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeD3D);
+  return wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeD3D);
 }
 
 /**
