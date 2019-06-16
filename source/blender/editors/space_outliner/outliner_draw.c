@@ -807,7 +807,7 @@ static void namebutton_cb(bContext *C, void *tsep, char *oldname)
           BLI_uniquename(
               &gpd->layers, gpl, "GP Layer", '.', offsetof(bGPDlayer, info), sizeof(gpl->info));
 
-          WM_event_add_notifier(C, NC_GPENCIL | ND_DATA, gpd);
+          WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, gpd);
           break;
         }
         case TSE_R_LAYER: {
@@ -2281,17 +2281,8 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         data.icon = ICON_GROUP;
         break;
       }
-      /* Removed the icons from outliner.
-       * Need a better structure with Layers, Palettes and Colors. */
       case TSE_GP_LAYER: {
-        /* indicate whether layer is active */
-        bGPDlayer *gpl = te->directdata;
-        if (gpl->flag & GP_LAYER_ACTIVE) {
-          data.icon = ICON_GREASEPENCIL;
-        }
-        else {
-          data.icon = ICON_DOT;
-        }
+        data.icon = ICON_OUTLINER_DATA_GP_LAYER;
         break;
       }
       default:
@@ -2771,12 +2762,16 @@ static void outliner_draw_iconrow(bContext *C,
           active = tree_element_active(C, scene, view_layer, soops, te, OL_SETSEL_NONE, false);
         }
       }
+      else if (tselem->type == TSE_GP_LAYER) {
+        bGPDlayer *gpl = te->directdata;
+        active = (gpl->flag & GP_LAYER_ACTIVE) ? OL_DRAWSEL_ACTIVE : OL_DRAWSEL_NONE;
+      }
       else {
         active = tree_element_type_active(
             C, scene, view_layer, soops, te, tselem, OL_SETSEL_NONE, false);
       }
 
-      if (!ELEM(tselem->type, 0, TSE_LAYER_COLLECTION, TSE_R_LAYER)) {
+      if (!ELEM(tselem->type, 0, TSE_LAYER_COLLECTION, TSE_R_LAYER, TSE_GP_LAYER)) {
         outliner_draw_iconrow_doit(block, te, fstyle, xmax, offsx, ys, alpha_fac, active, 1);
       }
       else {
@@ -2938,6 +2933,13 @@ static void outliner_draw_tree_element(bContext *C,
         }
       }
     }
+    else if (tselem->type == TSE_GP_LAYER) {
+      /* Active grease pencil layer. */
+      if (((bGPDlayer *)te->directdata)->flag & GP_LAYER_ACTIVE) {
+        icon_bgcolor[3] = 0.2f;
+        active = OL_DRAWSEL_ACTIVE;
+      }
+    }
     else {
       active = tree_element_type_active(
           C, scene, view_layer, soops, te, tselem, OL_SETSEL_NONE, false);
@@ -3031,7 +3033,7 @@ static void outliner_draw_tree_element(bContext *C,
       }
       offsx += UI_UNIT_X + 4 * ufac;
     }
-    else if (ELEM(tselem->type, 0, TSE_LAYER_COLLECTION) && ID_IS_STATIC_OVERRIDE(tselem->id)) {
+    else if (ELEM(tselem->type, 0, TSE_LAYER_COLLECTION) && ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
       UI_icon_draw_alpha((float)startx + offsx + 2 * ufac,
                          (float)*starty + 2 * ufac,
                          ICON_LIBRARY_DATA_OVERRIDE,
