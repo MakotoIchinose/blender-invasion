@@ -7893,6 +7893,7 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
+  View3D *v3d = CTX_wm_view3d(C);
   int mode = RNA_enum_get(op->ptr, "type");
   float filter_strength = RNA_float_get(op->ptr, "strength");
 
@@ -7901,6 +7902,22 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   if (!ss->pbvh) {
     return OPERATOR_RUNNING_MODAL;
+  }
+
+  if (!BKE_sculptsession_use_pbvh_draw(ob, v3d)) {
+    if (ss->filter_cache->nodes) {
+      MEM_freeN(ss->filter_cache->nodes);
+    }
+    SculptSearchSphereData searchdata = {
+        .ss = ss,
+        .sd = sd,
+        .radius_squared = FLT_MAX,
+    };
+    BKE_pbvh_search_gather(ss->pbvh,
+                           sculpt_search_sphere_cb,
+                           &searchdata,
+                           &ss->filter_cache->nodes,
+                           &ss->filter_cache->totnode);
   }
 
   SculptThreadedTaskData data = {
