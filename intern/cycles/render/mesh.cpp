@@ -1981,10 +1981,11 @@ void MeshManager::device_update_bvh(Device *device,
 
 #ifdef WITH_EMBREE
   if(bparams.bvh_layout == BVH_LAYOUT_EMBREE_GPU) {
-      dscene->data.bvh.bvh_layout = BVH_LAYOUT_BVH2;
+    dscene->data.bvh.bvh_layout = BVH_LAYOUT_BVH2;
   }
   if (bparams.bvh_layout == BVH_LAYOUT_EMBREE) {
-    dscene->data.bvh.scene = ((BVHEmbree *)bvh)->scene;
+    dscene->data.bvh.bvh_layout = BVH_LAYOUT_BVH4;
+    // dscene->data.bvh.scene = ((BVHEmbree *)bvh)->scene;
   }
   else {
     dscene->data.bvh.scene = NULL;

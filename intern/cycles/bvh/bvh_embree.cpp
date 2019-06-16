@@ -35,6 +35,9 @@
 
 #ifdef WITH_EMBREE
 
+#include <deque>
+#include <stack>
+
 #  include <pmmintrin.h>
 #  include <xmmintrin.h>
 #  include <embree3/rtcore_geometry.h>
@@ -67,6 +70,22 @@ CCL_NAMESPACE_BEGIN
 
 #  define IS_HAIR(x) (x & 1)
 
+std::stack<LeafNode*> groupByRange(std::vector<uint> ids, BoundBox bb) {
+    std::sort(ids.begin(), ids.end());
+    std::stack<LeafNode*> groups;
+
+    for(uint id : ids) {
+        if(!groups.empty() && groups.top()->hi == id) {
+            groups.top()->hi = id + 1;
+        } else {
+            groups.push(new LeafNode(bb, 4294967295, id, id + 1));
+        }
+    }
+
+    return groups;
+}
+
+
 ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
     return ccl::BoundBox(
                 make_float3(bound.lower.x, bound.lower.y, bound.lower.z),
@@ -77,13 +96,11 @@ ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
 template<typename Primitive>
 BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::Scene *s) {
     if(node.isLeaf()) {
-        LeafNode *ret = nullptr; // new LeafNode(bb, vis, lo, hi);
         size_t nb;
         Primitive *prims = reinterpret_cast<Primitive *>(node.leaf(nb));
 
-        int visibility = 0;
-        unsigned int min = 999999,
-                max = 0;
+        std::vector<uint> ids; ids.reserve(nb * 4);
+
         for(size_t i = 0; i < nb; i++) {
             for(size_t j = 0; j < prims[i].size(); j++) {
                 const auto geom_id = prims[i].geomID(j);
@@ -92,14 +109,44 @@ BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::S
                 embree::Geometry *g = s->get(geom_id);
 
                 size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
-                visibility |= g->mask;
 
-                const unsigned int id = prim_offset + prim_id;
-                if(id < min) min = id;
-                if(id > max) max = id;
+                ids.push_back(prim_offset + prim_id);
             }
         }
-        return new LeafNode(bb, visibility, min, max);
+
+        if(ids.empty()) return new LeafNode(BoundBox::empty, 0, 0, 0);
+
+        BVHNode *ret = nullptr;
+        std::stack<LeafNode *> leafs = groupByRange(ids, bb);
+        std::deque<BVHNode *> nodes;
+
+        while(!leafs.empty()) {
+            nodes.push_back(leafs.top());
+            leafs.pop();
+        }
+
+        while(!nodes.empty()) {
+            if(ret == nullptr) {
+                ret = nodes.front();
+                nodes.pop_front();
+                continue;
+            }
+
+            if(ret->is_leaf() || ret->num_children()) {
+                ret = new InnerNode(bb, &ret, 1);
+            }
+
+            InnerNode *innerNode = dynamic_cast<InnerNode*>(ret);
+            innerNode->children[innerNode->num_children_++] = nodes.front();
+            nodes.pop_front();
+
+            if(ret->num_children() == 4) {
+                nodes.push_back(ret);
+                ret = nullptr;
+            }
+        }
+
+        return ret;
     } else {
         InnerNode *ret = nullptr;
 
@@ -107,7 +154,7 @@ BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::S
             embree::BVH4::AlignedNode *anode = node.alignedNode();
 
             BVHNode *children[4];
-            for(int i = 0; i < 4; i++) {
+            for(uint i = 0; i < 4; i++) {
                     children[i] = nodeEmbreeToCcl<Primitive>(
                                 anode->children[i],
                                 RTCBoundBoxToCCL(anode->bounds(i)),
@@ -127,9 +174,7 @@ BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::S
     }
 }
 
-void print_bvhInfo(RTCScene);
-
-void print_bvhInfo(RTCScene scene) {
+BVHNode* print_bvhInfo(RTCScene scene) {
     embree::Scene *s = (embree::Scene *)scene;
 
     std::cout << "<- Accel used ->" << std::endl;
@@ -142,15 +187,15 @@ void print_bvhInfo(RTCScene scene) {
             std::cout << "Prim type -> " << bvh->primTy->name() << std::endl;
 
             embree::BVH4::NodeRef root = bvh->root;
-            nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()), s);
-
-        } break;
+            return nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()), s);
+        }
         default:
             std::cout << "[EMBREE - BVH] Unknown type " << ad->type << std::endl;
             break;
         }
     }
     std::cout << "[DONE]" << std::endl;
+    return nullptr;
 }
 
 
@@ -382,7 +427,7 @@ int BVHEmbree::rtc_shared_users = 0;
 thread_mutex BVHEmbree::rtc_shared_mutex;
 
 BVHEmbree::BVHEmbree(const BVHParams &params_, const vector<Object *> &objects_)
-    : BVH(params_, objects_),
+    : BVH4(params_, objects_),
       scene(NULL),
       mem_used(0),
       top_level(NULL),
@@ -579,9 +624,6 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
   rtcSetSceneProgressMonitorFunction(scene, rtc_progress_func, &progress);
   rtcCommitScene(scene);
 
-  if(this->params.top_level)
-    print_bvhInfo(scene);
-
   pack_primitives();
 
   if (progress.get_cancel()) {
@@ -591,7 +633,11 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
   }
 
   progress.set_substatus("Packing geometry");
-  pack_nodes(NULL);
+  BVHNode *root = print_bvhInfo(scene);
+  root->print();
+  pack_nodes(root);
+  std::cout << "SAH " << root->computeSubtreeSAHCost(this->params) << std::endl;
+  // pack_nodes(NULL);
 
   stats = NULL;
 }
@@ -906,9 +952,10 @@ void BVHEmbree::add_curves(Object *ob, int i)
   rtcAttachGeometryByID(scene, geom_id, i * 2 + 1);
   rtcReleaseGeometry(geom_id);
 }
-
-void BVHEmbree::pack_nodes(const BVHNode *)
+void BVHEmbree::pack_nodes(const BVHNode *r)
 {
+    BVH4::pack_nodes(r);
+#ifdef _
   /* Quite a bit of this code is for compatibility with Cycles' native BVH. */
   if (!params.top_level) {
     return;
@@ -1035,6 +1082,7 @@ void BVHEmbree::pack_nodes(const BVHNode *)
 
     prim_offset += bvh->pack.prim_index.size();
   }
+#endif
 }
 
 void BVHEmbree::refit_nodes()
