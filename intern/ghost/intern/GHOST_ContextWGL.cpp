@@ -24,12 +24,15 @@
  */
 
 #include "GHOST_ContextWGL.h"
+#include "GHOST_Rect.h"
 
 #include <tchar.h>
 
 #include <cstdio>
 #include <cassert>
 #include <vector>
+
+#include <windef.h>
 
 HGLRC GHOST_ContextWGL::s_sharedHGLRC = NULL;
 int GHOST_ContextWGL::s_sharedCount = 0;
@@ -49,7 +52,7 @@ GHOST_ContextWGL::GHOST_ContextWGL(bool stereoVisual,
                                    int contextMinorVersion,
                                    int contextFlags,
                                    int contextResetNotificationStrategy)
-    : GHOST_Context(stereoVisual),
+    : GHOST_Context(GHOST_kDrawingContextTypeOpenGL, stereoVisual),
       m_hWnd(hWnd),
       m_hDC(hDC),
       m_contextProfileMask(contextProfileMask),
@@ -138,6 +141,26 @@ GHOST_TSuccess GHOST_ContextWGL::releaseDrawingContext()
   else {
     return GHOST_kFailure;
   }
+}
+
+GHOST_TSuccess GHOST_ContextWGL::setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height)
+{
+  RECT winrect;
+  GetWindowRect(m_hWnd, &winrect);
+
+  if (((winrect.right - winrect.left) != width) || ((winrect.bottom - winrect.top) != height)) {
+    return SetWindowPos(m_hWnd,
+                        HWND_TOP,
+                        0,
+                        0,
+                        width,
+                        height,
+                        SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOMOVE | SWP_NOZORDER) ?
+               GHOST_kSuccess :
+               GHOST_kFailure;
+  }
+
+  return GHOST_kSuccess;
 }
 
 /* Ron Fosner's code for weighting pixel formats and forcing software.

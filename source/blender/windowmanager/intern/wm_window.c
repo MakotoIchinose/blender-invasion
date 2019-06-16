@@ -98,6 +98,12 @@
 #  include "BLI_threads.h"
 #endif
 
+/* We may want to open non-OpenGL windows in certain cases and do all drawing into an offscreen
+ * OpenGL context then. This flag is useful for testing the blitting. It forces OpenGL windows
+ * only, but still does the offscreen rendering and blitting (if supported by GHOST context).
+ * See GHOST_BlitOpenGLOffscreenContext. */
+// #define USE_FORCE_OPENGL_FOR_NON_OPENGL_WIN
+
 /* the global to talk to ghost */
 static GHOST_SystemHandle g_system = NULL;
 
@@ -193,10 +199,8 @@ void wm_window_check_position(rcti *rect)
 
 static void wm_window_drawing_context_activate(wmWindow *win)
 {
-  if (WM_window_is_non_opengl(win)) {
-    BLI_assert(win->offscreen_context);
-
-    /* If this is not an OpenGL window, use the offscreen OpenGL context. */
+  if (win->offscreen_context) {
+    /* In rare cases we may want to draw to an offscreen context.  */
     GHOST_ActivateOpenGLContext(win->offscreen_context);
   }
   else {
@@ -594,7 +598,11 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                 win->sizex,
                                 win->sizey,
                                 (GHOST_TWindowState)win->windowstate,
+#ifdef USE_FORCE_OPENGL_FOR_NON_OPENGL_WIN
+                                GHOST_kDrawingContextTypeOpenGL,
+#else
                                 context_type,
+#endif
                                 glSettings);
 
   if (ghostwin) {
@@ -606,7 +614,10 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       win->gpuctx = GPU_context_create(default_fb);
     }
     else {
+      /* Drawing into a non-OpenGL window -> create an offscreen OpenGL context to draw into. */
       win->offscreen_context = WM_opengl_context_create();
+      WM_opengl_context_activate(win->offscreen_context);
+
       default_fb = GHOST_GetContextDefaultOpenGLFramebuffer(win->offscreen_context);
       win->gpuctx = GPU_context_create(default_fb);
       wm_window_reset_drawable();
@@ -1941,7 +1952,11 @@ void wm_window_raise(wmWindow *win)
 void wm_window_present(wmWindow *win)
 {
   if (win->offscreen_context) {
+    /* The window may be a non-OpenGL window (unlikely though). In that case it's given the
+     * chance to blit the offscreen buffer to its onscreen context. Just a simple interop
+     * layer. */
     GHOST_BlitOpenGLOffscreenContext(win->ghostwin, win->offscreen_context);
+    GHOST_SwapContextBuffers(win->offscreen_context);
   }
   GHOST_SwapWindowBuffers(win->ghostwin);
 }

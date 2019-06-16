@@ -41,7 +41,7 @@ GHOST_ContextSDL::GHOST_ContextSDL(bool stereoVisual,
                                    int contextMinorVersion,
                                    int contextFlags,
                                    int contextResetNotificationStrategy)
-    : GHOST_Context(stereoVisual),
+    : GHOST_Context(GHOST_kDrawingContextTypeOpenGL, stereoVisual),
       m_window(window),
       m_hidden_window(NULL),
       m_contextProfileMask(contextProfileMask),

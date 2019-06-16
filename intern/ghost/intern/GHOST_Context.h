@@ -38,7 +38,8 @@ class GHOST_Context : public GHOST_IContext {
    * Constructor.
    * \param stereoVisual      Stereo visual for quad buffered stereo.
    */
-  GHOST_Context(bool stereoVisual) : m_stereoVisual(stereoVisual)
+  GHOST_Context(GHOST_TDrawingContextType type, bool stereoVisual)
+      : m_type(type), m_stereoVisual(stereoVisual)
   {
   }
 
@@ -128,15 +129,26 @@ class GHOST_Context : public GHOST_IContext {
     return 0;
   }
 
-  virtual GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen)
+  /**
+   * For offscreen rendering, we create an invisible window. So this can be used to update the
+   * offscreen buffer size by changing the size of this context's window.
+   *
+   * \note This actually changes the window size! That is the only way to change the default
+   *       framebuffer size. Better only use for offscreen contexts.
+   */
+  virtual GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height)
   {
-    /* Not implemented. Could just implement as activateDrawingContext(offscreen)? */
     return GHOST_kFailure;
   }
+
+  virtual GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen,
+                                                    GHOST_TInt32 width,
+                                                    GHOST_TInt32 height);
 
  protected:
   void initContextGLEW();
 
+  GHOST_TDrawingContextType m_type;
   bool m_stereoVisual;
 
   static void initClearGL();

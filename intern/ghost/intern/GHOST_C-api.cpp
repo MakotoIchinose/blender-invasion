@@ -613,6 +613,13 @@ GHOST_TSuccess GHOST_SwapWindowBuffers(GHOST_WindowHandle windowhandle)
   return window->swapBuffers();
 }
 
+GHOST_TSuccess GHOST_SwapContextBuffers(GHOST_ContextHandle contexthandle)
+{
+  GHOST_IContext *context = (GHOST_IContext *)contexthandle;
+
+  return context->swapBuffers();
+}
+
 GHOST_TSuccess GHOST_SetSwapInterval(GHOST_WindowHandle windowhandle, int interval)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;

@@ -208,7 +208,7 @@ GHOST_ContextEGL::GHOST_ContextEGL(bool stereoVisual,
                                    EGLint contextFlags,
                                    EGLint contextResetNotificationStrategy,
                                    EGLenum api)
-    : GHOST_Context(stereoVisual),
+    : GHOST_Context(GHOST_kDrawingContextTypeOpenGL, stereoVisual),
       m_nativeDisplay(nativeDisplay),
       m_nativeWindow(nativeWindow),
       m_contextProfileMask(contextProfileMask),

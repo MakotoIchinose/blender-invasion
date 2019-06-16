@@ -149,3 +149,65 @@ void GHOST_Context::initClearGL()
   glClear(GL_COLOR_BUFFER_BIT);
   glClearColor(0.000, 0.000, 0.000, 0.000);
 }
+
+GHOST_TSuccess GHOST_Context::blitOpenGLOffscreenContext(GHOST_Context *offscreen,
+                                                         GHOST_TInt32 width,
+                                                         GHOST_TInt32 height)
+{
+  GLuint fbo_offscreen;
+  GLuint fbo_onscreen;
+  GLuint render_buf_shared;
+
+  if ((m_type != GHOST_kDrawingContextTypeOpenGL) ||
+      (offscreen->m_type != GHOST_kDrawingContextTypeOpenGL)) {
+    return GHOST_kFailure;
+  }
+
+  offscreen->setDefaultFramebufferSize(width, height);
+
+  /* Logic here:
+   * We can't simply blit from one context's framebuffer into the other. Unlike Framebuffers/FBOs,
+   * Renderbuffers can be shared though. So create one, and blit the offscreen context framebuffer
+   * contents into it. To share it, an FBO has to be created for each context though, as the
+   * default framebuffer doesn't allow any attachments. */
+
+  offscreen->activateDrawingContext();
+
+  /* Create shared renderbuffer */
+  glGenRenderbuffers(1, &render_buf_shared);
+  glBindRenderbuffer(GL_RENDERBUFFER, render_buf_shared);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+
+  /* Create offscreen FBO and assign renderbuffer */
+  glGenFramebuffers(1, &fbo_offscreen);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo_offscreen);
+  glFramebufferRenderbuffer(
+      GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, render_buf_shared);
+
+  /* Blit offscreen framebuffer into renderbuffer */
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, offscreen->getDefaultFramebuffer());
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_offscreen);
+  glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+  glDeleteFramebuffers(1, &fbo_offscreen); /* Can delete already. Do before context change. */
+
+  activateDrawingContext();
+
+  /* Create onscreen FBO and assign renderbuffer */
+  glGenFramebuffers(1, &fbo_onscreen);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo_onscreen);
+  glFramebufferRenderbuffer(
+      GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, render_buf_shared);
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_onscreen);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, getDefaultFramebuffer());
+  /* Finally, blit to onscreen buffer. */
+  glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+  glDeleteFramebuffers(1, &fbo_onscreen);
+  glDeleteRenderbuffers(1, &render_buf_shared);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  return GHOST_kSuccess;
+}

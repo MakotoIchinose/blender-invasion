@@ -683,6 +683,13 @@ extern GHOST_TSuccess GHOST_SetWindowOrder(GHOST_WindowHandle windowhandle,
 extern GHOST_TSuccess GHOST_SwapWindowBuffers(GHOST_WindowHandle windowhandle);
 
 /**
+ * Swaps front and back buffers of a context.
+ * \param contexthandle The handle to the context
+ * \return A success indicator.
+ */
+extern GHOST_TSuccess GHOST_SwapContextBuffers(GHOST_ContextHandle contexthandle);
+
+/**
  * Sets the swap interval for swapBuffers.
  * \param interval The swap interval to use.
  * \return A boolean success indicator.

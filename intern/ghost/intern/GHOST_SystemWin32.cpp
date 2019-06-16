@@ -415,6 +415,8 @@ GHOST_TSuccess GHOST_SystemWin32::disposeContext(GHOST_IContext *context)
 GHOST_IContext *GHOST_SystemWin32::createOffscreenContextD3D()
 {
   GHOST_Context *context;
+  HDC prev_hdc = wglGetCurrentDC();
+  HGLRC prev_context = wglGetCurrentContext();
 
   HWND wnd = CreateWindowA("STATIC",
                            "BlenderD3D",
@@ -429,12 +431,10 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContextD3D()
                            NULL);
 
   context = new GHOST_ContextD3D(false, wnd);
-  if (context->initializeDrawingContext()) {
-    return context;
-  }
-  else {
+  if (context->initializeDrawingContext() == GHOST_kFailure) {
     delete context;
   }
+  wglMakeCurrent(prev_hdc, prev_context);
 
   return context;
 }

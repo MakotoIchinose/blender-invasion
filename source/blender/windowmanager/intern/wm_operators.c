@@ -3555,6 +3555,7 @@ static void *xr_session_gpu_binding_context_create(eWM_xrGraphicsBinding graphic
     case WM_XR_GRAPHICS_D3D11: {
       wmWindowManager *wm = G_MAIN->wm.first;
       for (wmWindow *win = wm->windows.first; win; win = win->next) {
+        /* TODO better lookup? For now only one D3D window possible, but later? */
         if (GHOST_GetDrawingContextType(win->ghostwin) == GHOST_kDrawingContextTypeD3D) {
           return GHOST_GetWindowContext(win->ghostwin);
         }
