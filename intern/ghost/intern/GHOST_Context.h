@@ -141,7 +141,7 @@ class GHOST_Context : public GHOST_IContext {
    * \note This actually changes the window size! That is the only way to change the default
    *       framebuffer size. Better only use for offscreen contexts.
    */
-  virtual GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height)
+  virtual GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 /*width*/, GHOST_TUns32 /*height*/)
   {
     return GHOST_kFailure;
   }

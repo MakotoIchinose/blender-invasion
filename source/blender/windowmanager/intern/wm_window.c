@@ -837,10 +837,12 @@ wmWindow *WM_window_open(bContext *C, const rcti *rect)
 {
   return wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeOpenGL);
 }
+#ifdef WIN32
 wmWindow *WM_window_open_directx(bContext *C, const rcti *rect)
 {
   return wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeD3D);
 }
+#endif
 
 /**
  * Uses `screen->temp` tag to define what to do, currently it limits
@@ -1657,7 +1659,9 @@ void wm_window_process_events(const bContext *C)
     GHOST_DispatchEvents(g_system);
   }
   hasevent |= wm_window_timer(C);
+#ifdef WITH_OPENXR
   hasevent |= wm_xr_events_handle(CTX_wm_xr_context(C));
+#endif
 
   /* no event, we sleep 5 milliseconds */
   if (hasevent == 0) {
