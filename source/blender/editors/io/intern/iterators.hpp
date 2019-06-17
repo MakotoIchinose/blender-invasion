@@ -28,6 +28,40 @@ extern "C" {
 /* clang-format on */
 
 namespace common {
+
+// /* clang-format off */
+// template<typename T>
+// struct pointer_iterator {
+//   using difference_type = ptrdiff_t;
+//   using value_type = T;
+//   using pointer    = T *;
+//   using reference  = T &;
+//   using iterator_category = std::random_access_iterator_tag;
+//   pointer_iterator() : first(nullptr), curr(nullptr), size(0) {}
+//   pointer_iterator(T *p) : curr(p), first(p), size(0) {}
+//   pointer_iterator(T *p, size_t size) : it(p), first(p), size(size) {}
+//   operator T *() const { return curr; }
+//   pointer_iterator &operator=(const pointer_iterator<T, iterator_category> &p)
+//   {
+//     // Placement new: construct a new object in the position of `this`
+//     // Doesn't actually allocate memory
+//     new (this) pointer_iterator(p);
+//     return *this;
+//   }
+//   pointer_iterator begin() const { return {first, size}; }
+//   pointer_iterator end()   const { return {first + size, size}; }
+//   pointer_iterator &operator++() { ++curr; }
+//   pointer_iterator &operator--() { --curr; }
+//   pointer_iterator &operator+(ptrdiff_t n) { curr += n; return *this; }
+//   ptrdiff_t operator-(const pointer_iterator &other) const { return other.curr - curr; }
+//   bool operator==(const pointer_iterator &other) const { return curr == other.curr; }
+//   const T & operator*() const { return *curr; }
+//   T *first;
+//   T *curr;
+//   size_t size;
+// };
+// /* clang-format on */
+
 // Adapt a pointer-size pair as a random access iterator
 // This makes use of `boost::iterator_facade` and makes it possible to use
 // for each style loops, as well as cleanly hiding how the underlying Blender
@@ -341,15 +375,17 @@ struct exportable_object_iter
   }
   void increment()
   {
-    while (this->base() != this->base().end() &&
-           !common::should_export_object(settings, *this->base()))
+    do {
       ++this->base_reference();
+    } while (this->base() != this->base().end() &&
+             !common::should_export_object(settings, *this->base()));
   }
   void decrement()
   {
-    while (this->base() != this->base().begin() &&
-           !common::should_export_object(settings, *this->base()))
+    do {
       --this->base_reference();
+    } while (this->base() != this->base().begin() &&
+             !common::should_export_object(settings, *this->base()));
   }
   const ExportSettings *const settings;
 };

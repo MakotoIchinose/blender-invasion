@@ -34,6 +34,7 @@ extern "C" {
 
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -102,7 +103,7 @@ using namespace common;
 
 bool OBJ_export_mesh(bContext *UNUSED(C),
                      ExportSettings *settings,
-                     std::fstream &fs,
+                     std::FILE *file,
                      Object *eob,
                      Mesh *mesh,
                      ulong &vertex_total,
@@ -124,14 +125,13 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   if (settings->export_objects_as_objects || settings->export_objects_as_groups) {
     std::string name = common::get_object_name(eob, mesh);
     if (settings->export_objects_as_objects)
-      fs << "o " << name << '\n';
+      fprintf(file, "o %s\n", name.c_str());
     else
-      fs << "g " << name << '\n';
+      fprintf(file, "g %s\n", name.c_str());
   }
 
-  fs << std::fixed << std::setprecision(6);
   for (const MVert &v : common::vert_iter{mesh})
-    fs << "v " << v.co[0] << ' ' << v.co[1] << ' ' << v.co[2] << '\n';
+    fprintf(file, "v %.6g %.6g %.6g\n", v.co[0], v.co[1], v.co[2]);
   // auto vxs = common::get_vertices(mesh);
   // for (const auto &v : vxs)
   //   fs << "v " << v[0] << ' ' << v[1] << ' ' << v[2] << '\n';
@@ -141,40 +141,34 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
     if (settings->dedup_uvs)
       for (const std::array<float, 2> &uv :
            common::deduplicated_uv_iter(mesh, uv_total, uv_mapping_pair))
-        fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
+        fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
     else
       for (const std::array<float, 2> &uv : common::uv_iter{mesh})
-        fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
+        fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
     // auto uvs = common::get_uv(mesh);
     // for (const auto &uv : uvs)
     //   fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
   }
 
   if (settings->export_normals) {
-    fs << std::fixed << std::setprecision(4);
     if (settings->dedup_normals)
       for (const std::array<float, 3> &no :
            common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
-        fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+        fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
     else
       for (const std::array<float, 3> &no : common::normal_iter{mesh}) {
-        fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+        fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
       }
     // auto nos = common::get_normals(mesh);
     // for (const auto &no : nos)
     //   fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
   }
 
-  if (settings->export_edges) {
-    for (const MEdge &e : common::loose_edge_iter{mesh})
-      fs << "l " << e.v1 << ' ' << e.v2 << '\n';
-  }
-
   std::cerr << "Totals: " << uv_total << " " << no_total << "\nSizes: " << uv_mapping.size() << " "
             << no_mapping.size() << '\n';
 
   for (const MPoly &p : common::poly_iter(mesh)) {
-    fs << 'f';
+    fputc('f', file);
     // Loop index
     int li = p.loopstart;
     for (const MLoop &l : common::loop_of_poly_iter(mesh, p)) {
@@ -194,43 +188,22 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
           no = no_initial_count + l.v;
       }
       if (settings->export_uvs && settings->export_normals)
-        fs << ' ' << vx << '/' << uv << '/' << no;
+        fprintf(file, " %lu/%lu/%lu", vx, uv, no);
       else if (settings->export_uvs)
-        fs << ' ' << vx << '/' << uv;
+        fprintf(file, " %lu/%lu", vx, uv);
       else if (settings->export_normals)
-        fs << ' ' << vx << "//" << no;
+        fprintf(file, " %lu//%lu", vx, no);
       else
-        fs << ' ' << vx;
+        fprintf(file, " %lu", vx);
     }
-    fs << '\n';
+    fputc('\n', file);
   }
 
-  // for (int p_i = 0, p_e = mesh->totpoly; p_i < p_e; ++p_i) {
-  // 	fs << 'f';
-  // 	MPoly *p = mesh->mpoly + p_i;
-  // 	for (int l_i = p->loopstart, l_e = p->loopstart + p->totloop;
-  // 	     l_i < l_e; ++l_i) {
-  // 		MLoop *vxl = mesh->mloop + l_i;
-  // 		if (settings->export_uvs && settings->export_normals) {
-  // 			fs << ' '
-  // 			   << vertex_total + vxl->v << '/'
-  // 			   << uv_mapping[uv_initial_count + l_i]->second << '/'
-  // 			   << no_mapping[no_initial_count + vxl->v]->second;
-  // 		} else if (settings->export_uvs) {
-  // 			fs << ' '
-  // 			   << vertex_total + vxl->v << '/'
-  // 			   << uv_mapping[uv_initial_count + l_i]->second;
-  // 		} else if (settings->export_normals) {
-  // 			fs << ' '
-  // 			   << vertex_total + vxl->v << "//"
-  // 			   << no_mapping[no_initial_count + vxl->v]->second;
-  // 		} else {
-  // 			fs << ' '
-  // 			   << vertex_total + vxl->v;
-  // 		}
-  // 	}
-  // 	fs << '\n';
-  // }
+  if (settings->export_edges) {
+    for (const MEdge &e : common::loose_edge_iter{mesh})
+      fprintf(file, "l %lu %lu\n", vertex_total + e.v1, vertex_total + e.v2);
+  }
+
   vertex_total += mesh->totvert;
   uv_total += mesh->totloop;
   no_total += mesh->totvert;
@@ -241,7 +214,7 @@ bool OBJ_export_object(bContext *C,
                        ExportSettings *const settings,
                        Scene *scene,
                        Object *ob,
-                       std::fstream &fs,
+                       std::FILE *file,
                        ulong &vertex_total,
                        ulong &uv_total,
                        ulong &no_total,
@@ -260,7 +233,7 @@ bool OBJ_export_object(bContext *C,
 
       if (!OBJ_export_mesh(C,
                            settings,
-                           fs,
+                           file,
                            ob,
                            mesh,
                            vertex_total,
@@ -284,12 +257,14 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
 {
   common::export_start(C, settings);
 
-  std::fstream fs;
-  fs.open(settings->filepath, std::ios::out | std::ios::trunc);
-  fs << "# " << common::get_version_string() << "# www.blender.org\n";
-  // TODO someone add material export
+  std::FILE *file = std::fopen(settings->filepath, "w");
+  if (file == nullptr) {
+    std::cerr << "Couldn't open file: " << settings->filepath << '\n';
+    return;
+  }
+  fprintf(file, "# %s\n# www.blender.org\n", common::get_version_string().c_str());
 
-  // If not exporting animattions, the start and end are the same
+  // If not exporting animations, the start and end are the same
   for (int frame = settings->frame_start; frame <= settings->frame_end; ++frame) {
     BKE_scene_frame_set(settings->scene, frame);
     BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
@@ -306,7 +281,7 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
                              settings,
                              escene,
                              ob,
-                             fs,
+                             file,
                              vertex_total,
                              uv_total,
                              no_total,

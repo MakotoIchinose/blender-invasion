@@ -88,6 +88,8 @@ if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
-add_definitions(-Wfatal-errors)
+if(CMAKE_COMPILER_IS_GNUCC)
+  add_definitions(-Wfatal-errors) # Temporary, for development
+endif()
 
 blender_add_lib(bf_editor_io "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
