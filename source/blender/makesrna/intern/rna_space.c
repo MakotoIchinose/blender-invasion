@@ -1846,7 +1846,7 @@ static void rna_SpaceDopeSheetEditor_action_update(bContext *C, PointerRNA *ptr)
              *
              * EXCEPTION:
              * This callback runs when unlinking actions. In that case, we don't want to
-             * stash the action, as the user is signalling that they want to detach it.
+             * stash the action, as the user is signaling that they want to detach it.
              * This can be reviewed again later,
              * but it could get annoying if we keep these instead.
              */
@@ -3141,7 +3141,7 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_xray_wireframe", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_SHADING_XRAY_BONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_SHADING_XRAY_WIREFRAME);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Show X-Ray", "Show whole scene transparent");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
