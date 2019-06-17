@@ -15,20 +15,21 @@
  */
 
 /** \file
- * \ingroup wm
+ * \ingroup GHOST
  */
 
-#ifndef __WM_XR_INTERN_H__
-#define __WM_XR_INTERN_H__
+#ifndef __GHOST_XR_INTERN_H__
+#define __GHOST_XR_INTERN_H__
+
+#include <vector>
+
+#include "GHOST_XR_openxr_includes.h"
 
 typedef struct OpenXRData {
   XrInstance instance;
 
-  XrExtensionProperties *extensions;
-  uint32_t extension_count;
-
-  struct XrApiLayerProperties *layers;
-  uint32_t layer_count;
+  std::vector<XrExtensionProperties> extensions;
+  std::vector<XrApiLayerProperties> layers;
 
   XrSystemId system_id;
   XrSession session;
@@ -45,15 +46,15 @@ typedef struct wmXRContext {
   /** Function to release (possibly free) a graphics context */
   wmXRGraphicsContextUnbindFn gpu_ctx_unbind_fn;
   /** Active Ghost graphic context. */
-  void *gpu_ctx;
+  class GHOST_Context *gpu_ctx;
 
   /** Names of enabled extensions */
-  const char **enabled_extensions;
+  std::vector<const char *> enabled_extensions;
 } wmXRContext;
 
-void wm_xr_graphics_context_bind(wmXRContext *xr_context);
-void wm_xr_graphics_context_unbind(wmXRContext *xr_context);
+void wm_xr_graphics_context_bind(wmXRContext &xr_context);
+void wm_xr_graphics_context_unbind(wmXRContext &xr_context);
 
-void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged *lifecycle);
+void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle);
 
-#endif /* __WM_XR_INTERN_H__ */
+#endif /* __GHOST_XR_INTERN_H__ */

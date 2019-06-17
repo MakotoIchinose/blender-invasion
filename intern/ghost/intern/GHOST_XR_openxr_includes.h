@@ -15,15 +15,15 @@
  */
 
 /** \file
- * \ingroup wm
+ * \ingroup GHOST
  *
  * \note This is taken mostly from the OpenXR SDK, but with modified D3D versions (e.g. d3d11_4.h
  * -> d3d11.h). Take care for that when updating, we don't want to require newest Win SDKs to be
  * installed.
  */
 
-#ifndef __WM_XR_SYSTEM_INCLUDES_H__
-#define __WM_XR_SYSTEM_INCLUDES_H__
+#ifndef __GHOST_XR_SYSTEM_INCLUDES_H__
+#define __GHOST_XR_SYSTEM_INCLUDES_H__
 
 /* Platform headers */
 #ifdef XR_USE_PLATFORM_WIN32
@@ -49,4 +49,4 @@
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
-#endif /* __WM_XR_SYSTEM_INCLUDES_H__ */
+#endif /* __GHOST_XR_SYSTEM_INCLUDES_H__ */

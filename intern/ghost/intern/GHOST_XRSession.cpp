@@ -15,18 +15,15 @@
  */
 
 /** \file
- * \ingroup wm
+ * \ingroup GHOST
  */
 
 #include <cassert>
 #include <cstdio>
-#include <string.h>
+#include <cstring>
 
 #include "GHOST_C-api.h"
 
-#include "GHOST_XR_openxr_includes.h"
-
-//#include "wm_xr.h"
 #include "GHOST_XR_intern.h"
 
 /** \file
@@ -35,7 +32,7 @@
 
 GHOST_TSuccess wm_xr_session_is_running(const wmXRContext *xr_context)
 {
-  if ((xr_context == NULL) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
+  if ((xr_context == nullptr) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
     return GHOST_kFailure;
   }
   switch (xr_context->oxr.session_state) {
@@ -57,7 +54,8 @@ static void wm_xr_system_init(OpenXRData *oxr)
   assert(oxr->instance != XR_NULL_HANDLE);
   assert(oxr->system_id == XR_NULL_SYSTEM_ID);
 
-  XrSystemGetInfo system_info = {.type = XR_TYPE_SYSTEM_GET_INFO};
+  XrSystemGetInfo system_info{};
+  system_info.type = XR_TYPE_SYSTEM_GET_INFO;
   system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
@@ -107,7 +105,7 @@ void wm_xr_session_start(wmXRContext *xr_context)
 
   assert(oxr->instance != XR_NULL_HANDLE);
   assert(oxr->session == XR_NULL_HANDLE);
-  if (xr_context->gpu_ctx_bind_fn == NULL) {
+  if (xr_context->gpu_ctx_bind_fn == nullptr) {
     fprintf(stderr,
             "Invalid API usage: No way to bind graphics context to the XR session. Call "
             "wm_xr_graphics_context_bind_funcs() with valid parameters before starting the "
@@ -117,8 +115,8 @@ void wm_xr_session_start(wmXRContext *xr_context)
 
   wm_xr_system_init(oxr);
 
-  wm_xr_graphics_context_bind(xr_context);
-  if (xr_context->gpu_ctx == NULL) {
+  wm_xr_graphics_context_bind(*xr_context);
+  if (xr_context->gpu_ctx == nullptr) {
     fprintf(stderr,
             "Invalid API usage: No graphics context returned through the callback set with "
             "wm_xr_graphics_context_bind_funcs(). This is required for session starting (through "
@@ -126,7 +124,8 @@ void wm_xr_session_start(wmXRContext *xr_context)
     return;
   }
 
-  XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
+  XrSessionCreateInfo create_info{};
+  create_info.type = XR_TYPE_SESSION_CREATE_INFO;
   create_info.systemId = oxr->system_id;
   create_info.next = openxr_graphics_binding_create(xr_context,
                                                     (GHOST_ContextHandle)xr_context->gpu_ctx);
@@ -137,18 +136,19 @@ void wm_xr_session_start(wmXRContext *xr_context)
 void wm_xr_session_end(wmXRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
-  wm_xr_graphics_context_unbind(xr_context);
+  wm_xr_graphics_context_unbind(*xr_context);
 }
 
-void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged *lifecycle)
+void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
 {
-  oxr->session_state = lifecycle->state;
+  oxr->session_state = lifecycle.state;
 
-  switch (lifecycle->state) {
+  switch (lifecycle.state) {
     case XR_SESSION_STATE_READY: {
-      XrSessionBeginInfo begin_info = {
-          .type = XR_TYPE_SESSION_BEGIN_INFO,
-          .primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
+      XrSessionBeginInfo begin_info{};
+
+      begin_info.type = XR_TYPE_SESSION_BEGIN_INFO;
+      begin_info.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
       xrBeginSession(oxr->session, &begin_info);
       break;
     }
