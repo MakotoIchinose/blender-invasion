@@ -175,34 +175,6 @@ if(WITH_COMPOSITOR)
 endif()
 
 if(WITH_OPENXR)
-  list(APPEND SRC
-    xr/intern/wm_xr.c
-    xr/intern/wm_xr_event.c
-    xr/intern/wm_xr_session.c
-
-    xr/wm_xr.h
-    xr/intern/wm_xr_intern.h
-    xr/intern/wm_xr_openxr_includes.h
-  )
-  list(APPEND INC
-    xr
-  )
-  list(APPEND INC_SYS
-    ${OPENXR_SDK_INCLUDES}
-  )
-
-  include(xr_platform_defines)
-
-  if(OPENXR_USE_BUNDLED_SRC)
-    if(WIN32)
-      set(OPENXR_LOADER_NAME openxr_loader-0_90)
-    else()
-      set(OPENXR_LOADER_NAME openxr_loader)
-    endif()
-
-    list(APPEND LIB ${OPENXR_LOADER_NAME})
-  endif()
-
   add_definitions(-DWITH_OPENXR)
 endif()
 

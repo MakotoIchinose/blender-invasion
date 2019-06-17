@@ -20,21 +20,18 @@
  * Abstraction for XR (VR, AR, MR, ..) access via OpenXR.
  */
 
+#include <cassert>
+#include <cstring>
+#include <cstdio>
+#include <stdlib.h>
 #include <string.h>
 
-#include "CLG_log.h"
+#include "GHOST_C-api.h"
 
-#include "MEM_guardedalloc.h"
+#include "GHOST_XR_openxr_includes.h"
 
-#include "BLI_assert.h"
-#include "BLI_compiler_attrs.h"
-#include "BLI_string.h"
-#include "BLI_utildefines.h"
-
-#include "wm_xr_openxr_includes.h"
-
-#include "wm_xr.h"
-#include "wm_xr_intern.h"
+//#include "wm_xr.h"
+#include "GHOST_XR_intern.h"
 
 /* Toggle printing of available OpenXR extensions and API-layers. Should probably be changed to use
  * CLOG at some point */
@@ -59,8 +56,8 @@ static bool openxr_gather_extensions_ex(OpenXRData *oxr, const char *layer_name)
     return true;
   }
 
-  oxr->extensions = MEM_calloc_arrayN(
-      extension_count, sizeof(*oxr->extensions), "xrExtensionProperties");
+  oxr->extensions = (XrExtensionProperties *)calloc(oxr->extension_count,
+                                                    sizeof(*oxr->extensions));
   oxr->extension_count = extension_count;
   for (uint i = 0; i < extension_count; i++) {
     oxr->extensions[i].type = XR_TYPE_EXTENSION_PROPERTIES;
@@ -101,7 +98,7 @@ static bool openxr_gather_api_layers(OpenXRData *oxr)
     return true;
   }
 
-  oxr->layers = MEM_calloc_arrayN(layer_count, sizeof(*oxr->layers), "XrApiLayerProperties");
+  oxr->layers = (XrApiLayerProperties *)calloc(layer_count, sizeof(*oxr->layers));
   oxr->layer_count = layer_count;
   for (uint i = 0; i < layer_count; i++) {
     oxr->layers[i].type = XR_TYPE_API_LAYER_PROPERTIES;
@@ -120,12 +117,10 @@ static bool openxr_gather_api_layers(OpenXRData *oxr)
   return true;
 }
 
-ATTR_NONNULL()
-ATTR_WARN_UNUSED_RESULT
 static bool openxr_extension_is_available(const OpenXRData *oxr, const char *extension_name)
 {
   for (uint i = 0; i < oxr->extension_count; i++) {
-    if (STREQ(oxr->extensions[i].extensionName, extension_name)) {
+    if (strncmp(oxr->extensions[i].extensionName, extension_name, strlen(extension_name)) == 0) {
       return true;
     }
   }
@@ -143,7 +138,7 @@ static const char *openxr_ext_name_from_wm_gpu_binding(eWM_xrGraphicsBinding bin
       return XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
 #endif
     case WM_XR_GRAPHICS_UNKNOWN:
-      BLI_assert(false);
+      assert(false);
   }
 
   return NULL;
@@ -156,11 +151,11 @@ static const char *openxr_ext_name_from_wm_gpu_binding(eWM_xrGraphicsBinding bin
 static eWM_xrGraphicsBinding openxr_graphics_extension_to_enable_get(
     const OpenXRData *oxr, const wmXRContextCreateInfo *create_info)
 {
-  BLI_assert(create_info->gpu_binding_candidates != NULL);
-  BLI_assert(create_info->gpu_binding_candidates_count > 0);
+  assert(create_info->gpu_binding_candidates != NULL);
+  assert(create_info->gpu_binding_candidates_count > 0);
 
   for (uint i = 0; i < create_info->gpu_binding_candidates_count; i++) {
-    BLI_assert(create_info->gpu_binding_candidates[i] != WM_XR_GRAPHICS_UNKNOWN);
+    assert(create_info->gpu_binding_candidates[i] != WM_XR_GRAPHICS_UNKNOWN);
     const char *ext_name = openxr_ext_name_from_wm_gpu_binding(
         create_info->gpu_binding_candidates[i]);
     if (openxr_extension_is_available(oxr, ext_name)) {
@@ -179,10 +174,10 @@ static void openxr_extensions_to_enable_get(const wmXRContext *context,
                                             const char ***r_ext_names,
                                             uint *r_ext_count)
 {
-  BLI_assert(context->gpu_binding != WM_XR_GRAPHICS_UNKNOWN);
+  assert(context->gpu_binding != WM_XR_GRAPHICS_UNKNOWN);
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding);
-  BLI_assert(gpu_binding);
+  assert(gpu_binding);
 
   {
 /* Zero sized array is GCC extension, so disable until it grows. */
@@ -194,11 +189,11 @@ static void openxr_extensions_to_enable_get(const wmXRContext *context,
     const uint try_ext_count = 0;
 #endif
 
-    BLI_assert(r_ext_names != NULL);
-    BLI_assert(r_ext_count != NULL);
+    assert(r_ext_names != NULL);
+    assert(r_ext_count != NULL);
 
     /* try_ext_count + 1 for graphics binding extension. */
-    *r_ext_names = MEM_malloc_arrayN(try_ext_count + 1, sizeof(char *), __func__);
+    *r_ext_names = (const char **)malloc(sizeof(char *) * (try_ext_count + 1));
 
     /* Add graphics binding extension. */
     *r_ext_names[0] = gpu_binding;
@@ -213,14 +208,12 @@ static void openxr_extensions_to_enable_get(const wmXRContext *context,
   }
 }
 
-ATTR_NONNULL()
 static bool openxr_instance_create(wmXRContext *context)
 {
   XrInstanceCreateInfo create_info = {.type = XR_TYPE_INSTANCE_CREATE_INFO};
   OpenXRData *oxr = &context->oxr;
 
-  BLI_strncpy(
-      create_info.applicationInfo.applicationName, "Blender", XR_MAX_APPLICATION_NAME_SIZE);
+  strncpy(create_info.applicationInfo.applicationName, "Blender", XR_MAX_APPLICATION_NAME_SIZE);
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 
   openxr_extensions_to_enable_get(
@@ -232,10 +225,9 @@ static bool openxr_instance_create(wmXRContext *context)
   return true;
 }
 
-ATTR_NONNULL()
 static void openxr_instance_log_print(OpenXRData *oxr)
 {
-  BLI_assert(oxr->instance != XR_NULL_HANDLE);
+  assert(oxr->instance != XR_NULL_HANDLE);
 
   XrInstanceProperties instanceProperties = {.type = XR_TYPE_INSTANCE_PROPERTIES};
   xrGetInstanceProperties(oxr->instance, &instanceProperties);
@@ -250,14 +242,14 @@ static void openxr_instance_log_print(OpenXRData *oxr)
  */
 wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info)
 {
-  wmXRContext *xr_context = MEM_callocN(sizeof(*xr_context), "wmXRContext");
+  wmXRContext *xr_context = (wmXRContext *)calloc(1, sizeof(*xr_context));
   OpenXRData *oxr = &xr_context->oxr;
 
 #ifdef USE_EXT_LAYER_PRINTS
   puts("Available OpenXR layers/extensions:");
 #endif
   if (!openxr_gather_api_layers(oxr) || !openxr_gather_extensions(oxr)) {
-    MEM_freeN(xr_context);
+    free(xr_context);
     return NULL;
   }
 #ifdef USE_EXT_LAYER_PRINTS
@@ -266,7 +258,7 @@ wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info)
 
   xr_context->gpu_binding = openxr_graphics_extension_to_enable_get(oxr, create_info);
 
-  BLI_assert(xr_context->oxr.instance == XR_NULL_HANDLE);
+  assert(xr_context->oxr.instance == XR_NULL_HANDLE);
   openxr_instance_create(xr_context);
   openxr_instance_log_print(oxr);
 
@@ -289,12 +281,12 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
     xrDestroyInstance(oxr->instance);
   }
 
-  MEM_SAFE_FREE(oxr->extensions);
-  MEM_SAFE_FREE(oxr->layers);
+  delete oxr->extensions;
+  delete oxr->layers;
 
-  MEM_SAFE_FREE(xr_context->enabled_extensions);
+  delete xr_context->enabled_extensions;
 
-  MEM_SAFE_FREE(xr_context);
+  delete xr_context;
 }
 
 /**
@@ -316,7 +308,7 @@ void wm_xr_graphics_context_bind_funcs(wmXRContext *xr_context,
 
 void wm_xr_graphics_context_bind(wmXRContext *xr_context)
 {
-  BLI_assert(xr_context->gpu_ctx_bind_fn);
+  assert(xr_context->gpu_ctx_bind_fn);
   xr_context->gpu_ctx = xr_context->gpu_ctx_bind_fn(xr_context->gpu_binding);
 }
 

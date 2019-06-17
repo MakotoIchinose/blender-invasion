@@ -18,31 +18,34 @@
  * \ingroup wm
  */
 
+#include <cassert>
+#include <cstdio>
 #include <string.h>
-
-#include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
 
 #include "GHOST_C-api.h"
 
-#include "MEM_guardedalloc.h"
+#include "GHOST_XR_openxr_includes.h"
 
-#include "wm_xr_openxr_includes.h"
-
-#include "wm_xr.h"
-#include "wm_xr_intern.h"
+//#include "wm_xr.h"
+#include "GHOST_XR_intern.h"
 
 /** \file
  * \ingroup wm
  */
 
-bool wm_xr_session_is_running(const wmXRContext *xr_context)
+GHOST_TSuccess wm_xr_session_is_running(const wmXRContext *xr_context)
 {
-  return (xr_context != NULL) && (xr_context->oxr.session != XR_NULL_HANDLE) &&
-         ELEM(xr_context->oxr.session_state,
-              XR_SESSION_STATE_RUNNING,
-              XR_SESSION_STATE_VISIBLE,
-              XR_SESSION_STATE_FOCUSED);
+  if ((xr_context == NULL) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
+    return GHOST_kFailure;
+  }
+  switch (xr_context->oxr.session_state) {
+    case XR_SESSION_STATE_RUNNING:
+    case XR_SESSION_STATE_VISIBLE:
+    case XR_SESSION_STATE_FOCUSED:
+      return GHOST_kSuccess;
+    default:
+      return GHOST_kFailure;
+  }
 }
 
 /**
@@ -51,8 +54,8 @@ bool wm_xr_session_is_running(const wmXRContext *xr_context)
  */
 static void wm_xr_system_init(OpenXRData *oxr)
 {
-  BLI_assert(oxr->instance != XR_NULL_HANDLE);
-  BLI_assert(oxr->system_id == XR_NULL_SYSTEM_ID);
+  assert(oxr->instance != XR_NULL_HANDLE);
+  assert(oxr->system_id == XR_NULL_SYSTEM_ID);
 
   XrSystemGetInfo system_info = {.type = XR_TYPE_SYSTEM_GET_INFO};
   system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
@@ -61,7 +64,7 @@ static void wm_xr_system_init(OpenXRData *oxr)
 }
 
 static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
-                                            GHOST_ContextHandle UNUSED(ghost_context))
+                                            GHOST_ContextHandle /*ghost_context*/)
 {
   static union {
 #if defined(WITH_X11)
@@ -92,7 +95,7 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
     }
 #endif
     default:
-      BLI_assert(false);
+      assert(false);
   }
 
   return &binding;
@@ -102,8 +105,8 @@ void wm_xr_session_start(wmXRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
-  BLI_assert(oxr->instance != XR_NULL_HANDLE);
-  BLI_assert(oxr->session == XR_NULL_HANDLE);
+  assert(oxr->instance != XR_NULL_HANDLE);
+  assert(oxr->session == XR_NULL_HANDLE);
   if (xr_context->gpu_ctx_bind_fn == NULL) {
     fprintf(stderr,
             "Invalid API usage: No way to bind graphics context to the XR session. Call "
@@ -125,7 +128,8 @@ void wm_xr_session_start(wmXRContext *xr_context)
 
   XrSessionCreateInfo create_info = {.type = XR_TYPE_SESSION_CREATE_INFO};
   create_info.systemId = oxr->system_id;
-  create_info.next = openxr_graphics_binding_create(xr_context, xr_context->gpu_ctx);
+  create_info.next = openxr_graphics_binding_create(xr_context,
+                                                    (GHOST_ContextHandle)xr_context->gpu_ctx);
 
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }
@@ -149,7 +153,7 @@ void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateCh
       break;
     }
     case XR_SESSION_STATE_STOPPING: {
-      BLI_assert(oxr->session != XR_NULL_HANDLE);
+      assert(oxr->session != XR_NULL_HANDLE);
       xrEndSession(oxr->session);
     }
     default:

@@ -53,7 +53,7 @@
 #include "wm_draw.h"
 #include "wm.h"
 #ifdef WITH_OPENXR
-#  include "wm_xr.h"
+#  include "GHOST_C-api.h"
 #endif
 
 #include "ED_screen.h"

@@ -18,15 +18,13 @@
  * \ingroup wm
  */
 
-#include <stdio.h>
+#include <iostream>
 
-#include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
+#include "GHOST_XR_openxr_includes.h"
 
-#include "wm_xr_openxr_includes.h"
-
-#include "wm_xr.h"
-#include "wm_xr_intern.h"
+//#include "wm_xr.h"
+#include "GHOST_C-api.h"
+#include "GHOST_XR_intern.h"
 
 static bool wm_xr_event_poll_next(OpenXRData *oxr, XrEventDataBuffer *r_event_data)
 {
@@ -37,13 +35,13 @@ static bool wm_xr_event_poll_next(OpenXRData *oxr, XrEventDataBuffer *r_event_da
   return (xrPollEvent(oxr->instance, r_event_data) == XR_SUCCESS);
 }
 
-bool wm_xr_events_handle(wmXRContext *xr_context)
+GHOST_TSuccess wm_xr_events_handle(wmXRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
 
   if (!wm_xr_session_is_running(xr_context)) {
-    return false;
+    return GHOST_kFailure;
   }
 
   while (wm_xr_event_poll_next(oxr, &event_buffer)) {
@@ -52,13 +50,13 @@ bool wm_xr_events_handle(wmXRContext *xr_context)
     switch (event->type) {
       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
         wm_xr_session_state_change(oxr, (XrEventDataSessionStateChanged *)&event);
-        return true;
+        return GHOST_kSuccess;
 
       default:
-        printf("Unhandled event: %u\n", event->type);
-        return false;
+        printf("Unhandled event: %i\n", event->type);
+        return GHOST_kFailure;
     }
   }
 
-  return false;
+  return GHOST_kFailure;
 }

@@ -963,6 +963,58 @@ extern void GHOST_BeginIME(GHOST_WindowHandle windowhandle,
  */
 extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
 
+#ifdef WITH_OPENXR
+#  if !defined(WITH_OPENXR)
+// TODO
+static_assert(false, "WITH_OPENXR not defined, but wm_xr.c is being compiled.");
+#  endif
+
+/**
+ * The XR view (i.e. the OpenXR runtime) may require a different graphics library than OpenGL. An
+ * offscreen texture of the viewport will then be drawn into using OpenGL, but the final texture
+ * draw call will happen through another lib (say DirectX).
+ *
+ * This enum defines the possible graphics bindings to attempt to enable.
+ */
+typedef enum {
+  WM_XR_GRAPHICS_UNKNOWN = 0,
+  WM_XR_GRAPHICS_OPENGL,
+#  ifdef WIN32
+  WM_XR_GRAPHICS_D3D11,
+#  endif
+  /* For later */
+  //  WM_XR_GRAPHICS_VULKAN,
+} eWM_xrGraphicsBinding;
+/* An array of eWM_xrGraphicsBinding items defining the candidate bindings to use. The first
+ * available candidate will be chosen, so order defines priority. */
+typedef const eWM_xrGraphicsBinding *wmXRGraphicsBindingCandidates;
+
+typedef struct {
+  const wmXRGraphicsBindingCandidates gpu_binding_candidates;
+  unsigned int gpu_binding_candidates_count;
+} wmXRContextCreateInfo;
+
+/* xr-context */
+struct wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info);
+void wm_xr_context_destroy(struct wmXRContext *xr_context);
+
+typedef void *(*wmXRGraphicsContextBindFn)(eWM_xrGraphicsBinding graphics_lib);
+typedef void (*wmXRGraphicsContextUnbindFn)(eWM_xrGraphicsBinding graphics_lib,
+                                            void *graphics_context);
+
+void wm_xr_graphics_context_bind_funcs(struct wmXRContext *xr_context,
+                                       wmXRGraphicsContextBindFn bind_fn,
+                                       wmXRGraphicsContextUnbindFn unbind_fn);
+
+/* sessions */
+GHOST_TSuccess wm_xr_session_is_running(const struct wmXRContext *xr_context);
+void wm_xr_session_start(struct wmXRContext *xr_context);
+void wm_xr_session_end(struct wmXRContext *xr_context);
+
+/* events */
+GHOST_TSuccess wm_xr_events_handle(struct wmXRContext *xr_context);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

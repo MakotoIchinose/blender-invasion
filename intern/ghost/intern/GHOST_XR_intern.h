@@ -51,10 +51,9 @@ typedef struct wmXRContext {
   const char **enabled_extensions;
 } wmXRContext;
 
-void wm_xr_graphics_context_bind(wmXRContext *xr_context) ATTR_NONNULL();
-void wm_xr_graphics_context_unbind(wmXRContext *xr_context) ATTR_NONNULL();
+void wm_xr_graphics_context_bind(wmXRContext *xr_context);
+void wm_xr_graphics_context_unbind(wmXRContext *xr_context);
 
-void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged *lifecycle)
-    ATTR_NONNULL();
+void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged *lifecycle);
 
 #endif /* __WM_XR_INTERN_H__ */
