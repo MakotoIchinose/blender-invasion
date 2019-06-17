@@ -1666,6 +1666,33 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "face_influence")
 
+    def FEATURE_LINE(self, layout, ob, md):
+        layout.label(text='Not operational yet')
+        layout.label(text='Usage:')
+        row = layout.row()
+        row.prop(md,'usage',expand=True)
+        if md.usage == 'INCLUDE':
+            layout.label(text='Enable Types:')
+            row = layout.row(align=True)
+            row.prop(md,'enable_contour',toggle=True)
+            row.prop(md,'enable_crease',toggle=True)
+            row.prop(md,'enable_mark',toggle=True)
+            row.prop(md,'enable_material',toggle=True)
+            row.prop(md,'enable_intersection',toggle=True)
+            row.prop(md,'enable_modifier_mark',toggle=True)
+            layout.label(text='Result GP:')
+            layout.prop(md,'target')
+            layout.prop(md,'replace')
+
+            row = layout.row()
+            row.prop(md,'layer')
+            row.prop(md,'material')
+
+            row = layout.row(align=True)
+            row.prop(md,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
+            row.prop(md,'level_begin')
+            if md.use_multiple_levels:
+                row.prop(md,'level_end')
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"
