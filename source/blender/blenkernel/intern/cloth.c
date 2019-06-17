@@ -611,30 +611,50 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
        * finding the values for that vertex. */
       int prev_count = 0, next_count = 0;
       MVert *prev_mvert, *next_mvert;
-      for (int j = i - 1; j >= 0; j--) {
+      for (int j = mesh->totvert - 1; j >= 0; j--) {
         prev_count++;
-        if (!(mesh->mvert[j].flag & SELECT)) {
-          prev_mvert = &mesh->mvert[j];
+        if (!(mesh->mvert[(i + j) % mesh->totvert].flag & SELECT)) {
+          prev_mvert = &mesh->mvert[(i + j) % mesh->totvert];
           break;
         }
       }
-      for (int j = i; j < mesh->totvert; j++) {
+      for (int j = 0; j < mesh->totvert; j++) {
         next_count++;
-        if (!(mesh->mvert[j].flag & SELECT)) {
-          next_mvert = &mesh->mvert[j];
+        if (!(mesh->mvert[(i + j) % mesh->totvert].flag & SELECT)) {
+          next_mvert = &mesh->mvert[(i + j) % mesh->totvert];
           break;
         }
       }
       int tot_count = prev_count + next_count;
       float factor = (float)prev_count / (float)tot_count;
       /* need to find prev_mvert and next_mvert's corresponding ClothVertex */
+      ClothVertex prev_vert;
+      ClothVertex next_vert;
+      for (int j = i - 1; j >= 0; j--) {
+        /* CHECKHERE(Ish) */
+        if (equals_v3v3(prev_mvert->co, cloth->verts[j].xold)) {
+          /* cloth_copy_cloth_vertex(&prev_vert, &cloth->verts[j]); */
+          prev_vert = cloth->verts[j];
+          break;
+        }
+      }
+      for (int j = i; j < cloth->mvert_num; j++) {
+        /* CHECKHERE(Ish) */
+        if (equals_v3v3(next_mvert->co, cloth->verts[j].xold)) {
+          /* cloth_copy_cloth_vertex(&next_vert, &cloth->verts[j]); */
+          next_vert = cloth->verts[j];
+          break;
+        }
+      }
+      new_cloth->verts[i] = cloth_remeshing_mean_cloth_vert(&prev_vert, &next_vert, factor);
     }
     /* if old vert */
     else {
       for (int j = 0; j < cloth->mvert_num; j++) {
         /* CHECKHERE(Ish) */
         if (equals_v3v3(mvert->co, cloth->verts[j].xold)) {
-          cloth_copy_cloth_vertex(&new_cloth->verts[i], &cloth->verts[j]);
+          /* cloth_copy_cloth_vertex(&new_cloth->verts[i], &cloth->verts[j]); */
+          new_cloth->verts[i] = cloth->verts[j];
           break;
         }
       }
@@ -805,7 +825,6 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
   /* split the edge */
   BMEdge *new_edge;
   BMVert *new_v = BM_edge_split(bm, e, v, &new_edge, fac);
-  BM_elem_flag_disable(new_edge, BM_ELEM_TAG);
 
   BMVert *vert;
   BMIter viter;
