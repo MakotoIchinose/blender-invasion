@@ -147,6 +147,7 @@ static char *workbench_build_prepass_frag(void)
 {
   DynStr *ds = BLI_dynstr_new();
 
+  BLI_dynstr_append(ds, datatoc_common_view_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_data_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_common_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_prepass_frag_glsl);

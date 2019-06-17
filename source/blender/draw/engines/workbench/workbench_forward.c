@@ -98,6 +98,18 @@ static char *workbench_build_forward_vert(bool is_hair)
   return str;
 }
 
+static char *workbench_build_forward_outline_frag(void)
+{
+  DynStr *ds = BLI_dynstr_new();
+
+  BLI_dynstr_append(ds, datatoc_common_view_lib_glsl);
+  BLI_dynstr_append(ds, datatoc_workbench_forward_depth_frag_glsl);
+
+  char *str = BLI_dynstr_get_cstring(ds);
+  BLI_dynstr_free(ds);
+  return str;
+}
+
 static char *workbench_build_forward_transparent_accum_frag(void)
 {
   DynStr *ds = BLI_dynstr_new();
@@ -286,26 +298,30 @@ void workbench_forward_outline_shaders_ensure(WORKBENCH_PrivateData *wpd, eGPUSh
     char *defines_texture = workbench_material_build_defines(wpd, true, false, false);
     char *defines_hair = workbench_material_build_defines(wpd, false, true, false);
     char *forward_vert = workbench_build_forward_vert(false);
+    char *forward_frag = workbench_build_forward_outline_frag();
     char *forward_hair_vert = workbench_build_forward_vert(true);
+
+    const char *define_id_pass = "#define OBJECT_ID_PASS_ENABLED\n";
 
     sh_data->object_outline_sh = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib, forward_vert, NULL},
-        .frag = (const char *[]){datatoc_workbench_forward_depth_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg_data->def, defines, NULL},
+        .frag = (const char *[]){forward_frag, NULL},
+        .defs = (const char *[]){sh_cfg_data->def, defines, define_id_pass, NULL},
     });
     sh_data->object_outline_texture_sh = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib, forward_vert, NULL},
-        .frag = (const char *[]){datatoc_workbench_forward_depth_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg_data->def, defines_texture, NULL},
+        .frag = (const char *[]){forward_frag, NULL},
+        .defs = (const char *[]){sh_cfg_data->def, defines_texture, define_id_pass, NULL},
     });
     sh_data->object_outline_hair_sh = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib, forward_hair_vert, NULL},
-        .frag = (const char *[]){datatoc_workbench_forward_depth_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg_data->def, defines_hair, NULL},
+        .frag = (const char *[]){forward_frag, NULL},
+        .defs = (const char *[]){sh_cfg_data->def, defines_hair, define_id_pass, NULL},
     });
 
     MEM_freeN(forward_hair_vert);
     MEM_freeN(forward_vert);
+    MEM_freeN(forward_frag);
     MEM_freeN(defines);
     MEM_freeN(defines_texture);
     MEM_freeN(defines_hair);

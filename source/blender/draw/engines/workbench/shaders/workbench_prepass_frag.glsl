@@ -1,4 +1,3 @@
-uniform int object_id = 0;
 
 uniform vec3 materialDiffuseColor;
 uniform float materialMetallic;
@@ -73,7 +72,7 @@ void main()
 #endif /* MATDATA_PASS_ENABLED */
 
 #ifdef OBJECT_ID_PASS_ENABLED
-  objectId = uint(object_id);
+  objectId = uint(resource_id + 1) & 0xFFu;
 #endif
 
 #ifdef NORMAL_VIEWPORT_PASS_ENABLED
