@@ -122,7 +122,7 @@ typedef struct LANPR_RenderLineChain {
   ListBase chain;
   // int         SegmentCount;  // we count before draw cmd.
   float length;  // calculated before draw cmd.
-  char  picked;  // used when re-connecting
+  char picked;   // used when re-connecting
 } LANPR_RenderLineChain;
 
 typedef struct LANPR_RenderLineChainItem {
@@ -134,12 +134,12 @@ typedef struct LANPR_RenderLineChainItem {
   char occlusion;  // [1]--------------->[2]---------------->[3]--....
 } LANPR_RenderLineChainItem;
 
-typedef struct LANPR_ChainRegisterEntry{
+typedef struct LANPR_ChainRegisterEntry {
   Link item;
-  LANPR_RenderLineChain*     rlc;
-  LANPR_RenderLineChainItem* rlci;
-  char                       picked;
-  char                       is_left; // left/right mark. Because we revert list in chaining and we need the flag.
+  LANPR_RenderLineChain *rlc;
+  LANPR_RenderLineChainItem *rlci;
+  char picked;
+  char is_left;  // left/right mark. Because we revert list in chaining and we need the flag.
 } LANPR_ChainRegisterEntry;
 
 #endif

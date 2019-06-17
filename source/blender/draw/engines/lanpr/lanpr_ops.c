@@ -1979,8 +1979,8 @@ void lanpr_perspective_division(LANPR_RenderBuffer *rb)
       // rv[i].fbcoord[2] = cam->clipsta * cam->clipend / (cam->clipend -
       // fabs(rv[i].fbcoord[2]) * (cam->clipend - cam->clipsta));
 
-      rv[i].fbcoord[0] -= cam->shiftx*2;
-      rv[i].fbcoord[1] -= cam->shifty*2;
+      rv[i].fbcoord[0] -= cam->shiftx * 2;
+      rv[i].fbcoord[1] -= cam->shifty * 2;
     }
   }
 }
@@ -2656,15 +2656,14 @@ int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
     lanpr_LinearInterpolate3dv(rl->l->gloc, rl->r->gloc, Cut, gloc);
     tmat_apply_transform_44d(Trans, vp, gloc);
     tMatVectorMultiSelf3d(Trans, (1 / Trans[3]) /**HeightMultiply/2*/);
-    Camera* camera = cam->data;
-    Trans[0] -= camera->shiftx*2;
-    Trans[1] -= camera->shifty*2;
+    Camera *camera = cam->data;
+    Trans[0] -= camera->shiftx * 2;
+    Trans[1] -= camera->shifty * 2;
   }
   else {
     lanpr_LinearInterpolate3dv(rl->l->fbcoord, rl->r->fbcoord, Cut, Trans);
     // tmat_apply_transform_44d(Trans, vp, gloc);
   }
-
 
   // Trans[2] = tmat_dist_3dv(gloc, cam->Base.gloc);
   // Trans[2] = cam->clipsta*cam->clipend / (cam->clipend - fabs(Trans[2]) * (cam->clipend -
@@ -2919,7 +2918,7 @@ LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(LANPR_RenderBuf
   real ZMax = ((Camera *)rb->scene->camera->data)->clip_end;
   real ZMin = ((Camera *)rb->scene->camera->data)->clip_start;
   LANPR_RenderVert *Share = lanpr_triangle_share_point(testing, rt);
-  Camera* cam = rb->scene->camera->data;
+  Camera *cam = rb->scene->camera->data;
 
   tMatVectorConvert3fd(rb->scene->camera->obmat[3], cl);
 
@@ -3002,10 +3001,10 @@ LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(LANPR_RenderBuf
   tMatVectorMultiSelf3d(l->fbcoord, (1 / l->fbcoord[3]) /**HeightMultiply/2*/);
   tMatVectorMultiSelf3d(r->fbcoord, (1 / r->fbcoord[3]) /**HeightMultiply/2*/);
 
-  l->fbcoord[0] -= cam->shiftx*2;
-  l->fbcoord[1] -= cam->shifty*2;
-  r->fbcoord[0] -= cam->shiftx*2;
-  r->fbcoord[1] -= cam->shifty*2;
+  l->fbcoord[0] -= cam->shiftx * 2;
+  l->fbcoord[1] -= cam->shifty * 2;
+  r->fbcoord[0] -= cam->shiftx * 2;
+  r->fbcoord[1] -= cam->shifty * 2;
 
   l->fbcoord[2] = ZMin * ZMax / (ZMax - fabs(l->fbcoord[2]) * (ZMax - ZMin));
   r->fbcoord[2] = ZMin * ZMax / (ZMax - fabs(r->fbcoord[2]) * (ZMax - ZMin));
@@ -3273,8 +3272,9 @@ extern LANPR_SharedResource lanpr_share;
 void lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderElementLinkNode *reln;
-  
-  if(!rb) return;
+
+  if (!rb)
+    return;
 
   rb->contour_count = 0;
   rb->contour_managed = 0;
@@ -3312,7 +3312,8 @@ LANPR_RenderBuffer *lanpr_create_render_buffer(SceneLANPR *lanpr)
 {
   if (lanpr_share.render_buffer_shared) {
     lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
-    return lanpr_share.render_buffer_shared;;
+    return lanpr_share.render_buffer_shared;
+    ;
   }
 
   LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "LANPR render buffer");

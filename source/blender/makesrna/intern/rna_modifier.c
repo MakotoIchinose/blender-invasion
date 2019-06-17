@@ -99,9 +99,21 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     {eModifierType_Solidify, "SOLIDIFY", ICON_MOD_SOLIDIFY, "Solidify", ""},
     {eModifierType_Subsurf, "SUBSURF", ICON_MOD_SUBSURF, "Subdivision Surface", ""},
     {eModifierType_Triangulate, "TRIANGULATE", ICON_MOD_TRIANGULATE, "Triangulate", ""},
-    {eModifierType_Wireframe, "WIREFRAME", ICON_MOD_WIREFRAME, "Wireframe", "Generate a wireframe on the edges of a mesh"},
-    {eModifierType_MyBMesh, "MY_BMESH", ICON_MOD_SMOOTH, "Smooth Contour", "Generate smooth contour geometry for feature line rendering."},
-    {eModifierType_FeatureLine, "FEATURE_LINE", ICON_MOD_WIREFRAME, "Feature Line", "Extract feature lines into an GPencil object target"},
+    {eModifierType_Wireframe,
+     "WIREFRAME",
+     ICON_MOD_WIREFRAME,
+     "Wireframe",
+     "Generate a wireframe on the edges of a mesh"},
+    {eModifierType_MyBMesh,
+     "MY_BMESH",
+     ICON_MOD_SMOOTH,
+     "Smooth Contour",
+     "Generate smooth contour geometry for feature line rendering."},
+    {eModifierType_FeatureLine,
+     "FEATURE_LINE",
+     ICON_MOD_WIREFRAME,
+     "Feature Line",
+     "Extract feature lines into an GPencil object target"},
     {0, "", 0, N_("Deform"), ""},
     {eModifierType_Armature, "ARMATURE", ICON_MOD_ARMATURE, "Armature", ""},
     {eModifierType_Cast, "CAST", ICON_MOD_CAST, "Cast", ""},
@@ -573,7 +585,7 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_WeightedNormalModifier;
     case eModifierType_MyBMesh:
       return &RNA_MyBMeshModifier;
-      case eModifierType_FeatureLine:
+    case eModifierType_FeatureLine:
       return &RNA_FeatureLineModifier;
     /* Default */
     case eModifierType_None:
@@ -5980,26 +5992,19 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static EnumPropertyItem prop_feature_line_usage_items[] = {
-      {MOD_FEATURE_LINE_INCLUDE,
-       "INCLUDE",
-       0,
-       "Include",
-       "Include this object into calculation"},
+      {MOD_FEATURE_LINE_INCLUDE, "INCLUDE", 0, "Include", "Include this object into calculation"},
       {MOD_FEATURE_LINE_OCCLUSION_ONLY,
        "OCCLUSION_ONLY",
        0,
        "Occlusion Only",
        "Don't produce lines, only used as occlusion object"},
-      {MOD_FEATURE_LINE_EXCLUDE,
-       "EXCLUDE",
-       0,
-       "Exclude",
-       "Don't calculate this object"},
+      {MOD_FEATURE_LINE_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't calculate this object"},
       {0, NULL, 0, NULL, NULL},
   };
 
   srna = RNA_def_struct(brna, "FeatureLineModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Feature Line Modifier", "To extract feature lines from a mesh using LANPR");
+  RNA_def_struct_ui_text(
+      srna, "Feature Line Modifier", "To extract feature lines from a mesh using LANPR");
   RNA_def_struct_sdna(srna, "FeatureLineModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_WIREFRAME);
 
@@ -6050,13 +6055,13 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   prop = RNA_def_property(srna, "layer", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_range(prop, 1, 100, 1, -1);
-  RNA_def_property_ui_text(prop, "Layer","GPencil layer to put the results into");
+  RNA_def_property_ui_text(prop, "Layer", "GPencil layer to put the results into");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "material", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_range(prop, 0, 100, 1, -1);
-  RNA_def_property_ui_text(prop, "Material","GPencil material to use to generate the results");
+  RNA_def_property_ui_text(prop, "Material", "GPencil material to use to generate the results");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
@@ -6067,13 +6072,13 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   prop = RNA_def_property(srna, "level_begin", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level","Occlusion level");
+  RNA_def_property_ui_text(prop, "Level", "Occlusion level");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "To","Occlusion level");
+  RNA_def_property_ui_text(prop, "To", "Occlusion level");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

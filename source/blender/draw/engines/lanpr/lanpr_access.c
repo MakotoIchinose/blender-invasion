@@ -290,44 +290,46 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph)
   SceneLANPR *lanpr = &scene->lanpr;
   if (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE)
     return;
-  if (!lanpr_share.render_buffer_shared || lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra) {
+  if (!lanpr_share.render_buffer_shared ||
+      lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra) {
     lanpr_compute_feature_lines_internal(depsgraph, lanpr, scene);
   }
 }
 
-void lanpr_copy_data(Scene* from, Scene* to){
-  SceneLANPR *lanpr= &from->lanpr;
-  LANPR_RenderBuffer* rb = lanpr_share.render_buffer_shared, *new_rb;
-  LANPR_LineLayer* ll,*new_ll;
-  LANPR_LineLayerComponent* llc,*new_llc;
+void lanpr_copy_data(Scene *from, Scene *to)
+{
+  SceneLANPR *lanpr = &from->lanpr;
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared, *new_rb;
+  LANPR_LineLayer *ll, *new_ll;
+  LANPR_LineLayerComponent *llc, *new_llc;
 
   list_handle_empty(&to->lanpr.line_layers);
 
-  for (ll = lanpr->line_layers.first;ll;ll=ll->next){
-    new_ll = MEM_callocN(sizeof(LANPR_LineLayer),"Copied Line Layer");
-    memcpy(new_ll,ll,sizeof(LANPR_LineLayer));
+  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
+    new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
+    memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
     list_handle_empty(&new_ll->components);
-    new_ll->next=new_ll->prev=NULL;
-    BLI_addtail(&to->lanpr.line_layers,new_ll);
-    for(llc = ll->components.first;llc;llc=llc->next){
-      new_llc = MEM_callocN(sizeof(LANPR_LineLayerComponent),"Copied Line Layer Component");
-      memcpy(new_llc,llc,sizeof(LANPR_LineLayerComponent));
-      new_llc->next=new_llc->prev=NULL;
-      BLI_addtail(&new_ll->components,new_llc);
+    new_ll->next = new_ll->prev = NULL;
+    BLI_addtail(&to->lanpr.line_layers, new_ll);
+    for (llc = ll->components.first; llc; llc = llc->next) {
+      new_llc = MEM_callocN(sizeof(LANPR_LineLayerComponent), "Copied Line Layer Component");
+      memcpy(new_llc, llc, sizeof(LANPR_LineLayerComponent));
+      new_llc->next = new_llc->prev = NULL;
+      BLI_addtail(&new_ll->components, new_llc);
     }
   }
 
   // render_buffer now only accessible from lanpr_share
-
 }
 
-void lanpr_free_everything(Scene* s){
-  SceneLANPR *lanpr= &s->lanpr;
-  LANPR_LineLayer* ll;
-  LANPR_LineLayerComponent* llc;
-  
-  while(ll = BLI_pophead(&lanpr->line_layers)){
-    while(llc=BLI_pophead(&ll->components))
+void lanpr_free_everything(Scene *s)
+{
+  SceneLANPR *lanpr = &s->lanpr;
+  LANPR_LineLayer *ll;
+  LANPR_LineLayerComponent *llc;
+
+  while (ll = BLI_pophead(&lanpr->line_layers)) {
+    while (llc = BLI_pophead(&ll->components))
       MEM_freeN(llc);
     MEM_freeN(ll);
   }

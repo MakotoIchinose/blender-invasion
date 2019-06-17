@@ -289,7 +289,7 @@ typedef struct LANPR_RenderTaskInfo {
 typedef struct LANPR_RenderBuffer {
   struct LANPR_RenderBuffer *prev, *next;
 
-  int is_copied; // for render.
+  int is_copied;  // for render.
 
   int w, h;
   int tile_size_w, tile_size_h;

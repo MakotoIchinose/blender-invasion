@@ -88,11 +88,11 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-        BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
-        bGPDstroke* gps;
-        for(gps=gpf->strokes.first;gps;gps=gps->next){
-          BKE_gpencil_stretch_stroke(gps,lmd->length);
-        }
+      BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
+      bGPDstroke *gps;
+      for (gps = gpf->strokes.first; gps; gps = gps->next) {
+        BKE_gpencil_stretch_stroke(gps, lmd->length);
+      }
       return;
     }
   }
@@ -100,16 +100,14 @@ static void bakeModifier(Main *UNUSED(bmain),
 
 /* -------------------------------- */
 
-
-
 /* Generic "generateStrokes" callback */
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
-  bGPDstroke* gps;
-  for(gps=gpf->strokes.first;gps;gps=gps->next){
-    BKE_gpencil_stretch_stroke(gps,lmd->length);
+  bGPDstroke *gps;
+  for (gps = gpf->strokes.first; gps; gps = gps->next) {
+    BKE_gpencil_stretch_stroke(gps, lmd->length);
   }
 }
 

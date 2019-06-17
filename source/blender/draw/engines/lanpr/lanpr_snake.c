@@ -361,13 +361,10 @@ void lanpr_snake_prepare_cache(LANPR_PrivateData *pd)
   if (pd->line_result)
     MEM_freeN(pd->line_result);
   pd->line_result = 0;
-  lanpr_share.mp_sample = BLI_mempool_create(
-        sizeof(LANPR_TextureSample), 0, 512, BLI_MEMPOOL_NOP);
-  lanpr_share.mp_line_strip = BLI_mempool_create(
-        sizeof(LANPR_LineStrip), 0, 512, BLI_MEMPOOL_NOP);
+  lanpr_share.mp_sample = BLI_mempool_create(sizeof(LANPR_TextureSample), 0, 512, BLI_MEMPOOL_NOP);
+  lanpr_share.mp_line_strip = BLI_mempool_create(sizeof(LANPR_LineStrip), 0, 512, BLI_MEMPOOL_NOP);
   lanpr_share.mp_line_strip_point = BLI_mempool_create(
-        sizeof(LANPR_LineStripPoint), 0, 1024, BLI_MEMPOOL_NOP);
-  
+      sizeof(LANPR_LineStripPoint), 0, 1024, BLI_MEMPOOL_NOP);
 }
 void lanpe_sanke_free_cache(LANPR_PrivateData *pd)
 {

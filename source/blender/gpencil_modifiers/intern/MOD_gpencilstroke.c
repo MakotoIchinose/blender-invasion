@@ -81,7 +81,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-static void deformStroke(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf){
+static void deformStroke(
+    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+{
   lanpr_update_data_for_external(depsgraph);
   lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
 }

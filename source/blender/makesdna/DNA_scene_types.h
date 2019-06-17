@@ -1684,8 +1684,8 @@ typedef struct SceneLANPR {
 
   /* offline render */
 
-  //struct LANPR_RenderBuffer *render_buffer; /* no longer accessible directly from here */
-  ListBase line_layers;                     /* now here!!! */
+  // struct LANPR_RenderBuffer *render_buffer; /* no longer accessible directly from here */
+  ListBase line_layers; /* now here!!! */
   struct LANPR_LineLayer *active_layer;
 
   int enable_intersections;

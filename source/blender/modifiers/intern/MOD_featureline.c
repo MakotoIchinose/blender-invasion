@@ -59,7 +59,7 @@
 static void initData(ModifierData *md)
 {
   FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-  flmd->types= MOD_FEATURE_LINE_ALL;
+  flmd->types = MOD_FEATURE_LINE_ALL;
 }
 static void freeData(ModifierData *md)
 {
@@ -73,7 +73,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 }
 static bool dependsOnTime(ModifierData *UNUSED(md))
 {
-  return true; // ??
+  return true;  // ??
 }
 static void requiredDataMask(Object *UNUSED(ob),
                              ModifierData *md,

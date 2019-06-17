@@ -338,8 +338,7 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 
   /* lanpr data */
 
-  lanpr_copy_data(sce_src,sce_dst);
-  
+  lanpr_copy_data(sce_src, sce_dst);
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)

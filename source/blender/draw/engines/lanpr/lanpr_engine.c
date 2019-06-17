@@ -167,17 +167,17 @@ static void lanpr_engine_free(void)
   DRW_SHADER_FREE_SAFE(lanpr_share.edge_thinning_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.software_shader);
 
-  BLI_mempool* mp = lanpr_share.mp_batch_list;
+  BLI_mempool *mp = lanpr_share.mp_batch_list;
 
-  if(mp){
+  if (mp) {
     BLI_mempool_destroy(mp);
-    mp=NULL;
+    mp = NULL;
   }
-  
-  if(lanpr_share.render_buffer_shared){
+
+  if (lanpr_share.render_buffer_shared) {
     lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
     MEM_freeN(lanpr_share.render_buffer_shared);
-    lanpr_share.render_buffer_shared=NULL;
+    lanpr_share.render_buffer_shared = NULL;
   }
 }
 
@@ -199,7 +199,7 @@ static void lanpr_cache_init(void *vedata)
     stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
   }
 
-  if(!lanpr_share.mp_batch_list){
+  if (!lanpr_share.mp_batch_list) {
     lanpr_share.mp_batch_list = BLI_mempool_create(
         sizeof(LANPR_BatchItem), 0, 128, BLI_MEMPOOL_NOP);
   }
@@ -466,14 +466,18 @@ static void lanpr_cache_finish(void *vedata)
 
     LANPR_BatchItem *bi;
     for (bi = pd->dpix_batch_list.first; bi; bi = (void *)bi->item.next) {
-      DRW_shgroup_call_ex(pd->dpix_transform_shgrp, 0, bi->ob->obmat, bi->dpix_transform_batch, 0, 0, true, NULL);
+      DRW_shgroup_call_ex(
+          pd->dpix_transform_shgrp, 0, bi->ob->obmat, bi->dpix_transform_batch, 0, 0, true, NULL);
       DRW_shgroup_call(pd->dpix_preview_shgrp, bi->dpix_preview_batch, 0);
     }
 
-    if (lanpr_share.render_buffer_shared && lanpr_share.render_buffer_shared->DPIXIntersectionBatch) {
+    if (lanpr_share.render_buffer_shared &&
+        lanpr_share.render_buffer_shared->DPIXIntersectionBatch) {
+      DRW_shgroup_call(pd->dpix_transform_shgrp,
+                       lanpr_share.render_buffer_shared->DPIXIntersectionTransformBatch,
+                       0);
       DRW_shgroup_call(
-          pd->dpix_transform_shgrp, lanpr_share.render_buffer_shared->DPIXIntersectionTransformBatch, 0);
-      DRW_shgroup_call(pd->dpix_preview_shgrp, lanpr_share.render_buffer_shared->DPIXIntersectionBatch, 0);
+          pd->dpix_preview_shgrp, lanpr_share.render_buffer_shared->DPIXIntersectionBatch, 0);
     }
   }
 }
@@ -625,7 +629,8 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
     if (!lanpr_share.render_buffer_shared)
       lanpr_create_render_buffer(lanpr);
-    if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra || LANPR_GLOBAL_update_tag) {
+    if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra ||
+        LANPR_GLOBAL_update_tag) {
       lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, lanpr, scene);
     }
   }
@@ -660,7 +665,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   lanpr_cache_finish(vedata);
 
   /* get ref for destroy data */
-  //lanpr_share.rb_ref = lanpr->render_buffer;
+  // lanpr_share.rb_ref = lanpr->render_buffer;
 
   DRW_render_instance_buffer_finish();
 
@@ -760,5 +765,4 @@ RenderEngineType DRW_engine_viewport_lanpr_type = {
     NULL,  // update in script
     NULL,  // update in render pass
     &draw_engine_lanpr_type,
-    {NULL, NULL, NULL}
-};
+    {NULL, NULL, NULL}};

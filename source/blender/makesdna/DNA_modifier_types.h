@@ -1979,8 +1979,8 @@ typedef struct FeatureLineModifierData {
   ModifierData modifier;
 
   int usage;
-  int types; //eFeatureLine_TypeFlag
-  
+  int types;  // eFeatureLine_TypeFlag
+
   struct Object *target;
   int replace;
   int layer;
@@ -1994,25 +1994,22 @@ typedef struct FeatureLineModifierData {
 
 enum eFeatureLine_Usage {
   MOD_FEATURE_LINE_INCLUDE = 0,
-  MOD_FEATURE_LINE_OCCLUSION_ONLY = (1<<0),
-  MOD_FEATURE_LINE_EXCLUDE = (1<<1),
+  MOD_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
+  MOD_FEATURE_LINE_EXCLUDE = (1 << 1),
 };
 
 enum eFeatureLine_TypeFlag {
-  MOD_FEATURE_LINE_NONE = (1<<0),
-  MOD_FEATURE_LINE_CONTOUR = (1<<1),
-  MOD_FEATURE_LINE_CREASE = (1<<2),
-  MOD_FEATURE_LINE_MARK = (1<<3),
-  MOD_FEATURE_LINE_MATERIAL = (1<<4),
-  MOD_FEATURE_LINE_INTERSECTION = (1<<5),
-  MOD_FEATURE_LINE_MODIFIER_MARK = (1<<6)
+  MOD_FEATURE_LINE_NONE = (1 << 0),
+  MOD_FEATURE_LINE_CONTOUR = (1 << 1),
+  MOD_FEATURE_LINE_CREASE = (1 << 2),
+  MOD_FEATURE_LINE_MARK = (1 << 3),
+  MOD_FEATURE_LINE_MATERIAL = (1 << 4),
+  MOD_FEATURE_LINE_INTERSECTION = (1 << 5),
+  MOD_FEATURE_LINE_MODIFIER_MARK = (1 << 6)
 };
 
-#define MOD_FEATURE_LINE_ALL (MOD_FEATURE_LINE_CONTOUR|\
-               MOD_FEATURE_LINE_CREASE|\
-               MOD_FEATURE_LINE_MARK|\
-               MOD_FEATURE_LINE_MATERIAL|\
-               MOD_FEATURE_LINE_MODIFIER_MARK|\
-               MOD_FEATURE_LINE_INTERSECTION)
+#define MOD_FEATURE_LINE_ALL \
+  (MOD_FEATURE_LINE_CONTOUR | MOD_FEATURE_LINE_CREASE | MOD_FEATURE_LINE_MARK | \
+   MOD_FEATURE_LINE_MATERIAL | MOD_FEATURE_LINE_MODIFIER_MARK | MOD_FEATURE_LINE_INTERSECTION)
 
 #endif /* __DNA_MODIFIER_TYPES_H__ */
