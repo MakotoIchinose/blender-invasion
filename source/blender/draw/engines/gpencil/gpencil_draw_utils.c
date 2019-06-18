@@ -1398,6 +1398,12 @@ void DRW_gpencil_triangulate_stroke_fill(Object *ob, bGPDstroke *gps)
   MEM_SAFE_FREE(uv);
 }
 
+/* Check if stencil is required */
+static bool gpencil_is_stencil_required(MaterialGPencilStyle *gp_style)
+{
+  return (bool)(gp_style->stroke_style == GP_STYLE_STROKE_STYLE_SOLID);
+}
+
 /* draw stroke in drawing buffer */
 void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
                                          void *vedata,
@@ -1462,7 +1468,7 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
               1.0f,
               (const int *)stl->storage->shade_render);
 
-          if (gp_style->flag & GP_STYLE_DISABLE_STENCIL) {
+          if (!gpencil_is_stencil_required(gp_style)) {
             /* Disable stencil for this type */
             DRW_shgroup_state_disable(stl->g_data->shgrps_drawing_stroke,
                                       DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
@@ -1693,15 +1699,15 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         start_stroke = elm->vertex_idx;
 
         /* set stencil mask id */
-        if (gp_style->flag & GP_STYLE_DISABLE_STENCIL) {
+        if (gpencil_is_stencil_required(gp_style)) {
+          DRW_shgroup_stencil_mask(shgrp, stencil_id);
+          stencil_id++;
+        }
+        else {
           /* Disable stencil for this type */
           DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
           /* set stencil mask id as not used */
           DRW_shgroup_stencil_mask(shgrp, 0x00f);
-        }
-        else {
-          DRW_shgroup_stencil_mask(shgrp, stencil_id);
-          stencil_id++;
         }
         break;
       }

@@ -128,8 +128,6 @@ typedef enum eMaterialGPencilStyle_Flag {
   GP_STYLE_FILL_SHOW = (1 << 9),
   /* mix stroke texture */
   GP_STYLE_STROKE_TEX_MIX = (1 << 11),
-  /* disable stencil clipping */
-  GP_STYLE_DISABLE_STENCIL = (1 << 12),
 } eMaterialGPencilStyle_Flag;
 
 typedef enum eMaterialGPencilStyle_Mode {
