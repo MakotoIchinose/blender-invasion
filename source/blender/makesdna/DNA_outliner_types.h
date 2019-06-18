@@ -53,14 +53,14 @@ typedef struct TreeStore {
 enum {
   TSE_CLOSED = (1 << 0),
   TSE_SELECTED = (1 << 1),
-  TSE_ACTIVE = (1 << 2),
-  TSE_TEXTBUT = (1 << 3),
-  TSE_CHILDSEARCH = (1 << 4),
-  TSE_SEARCHMATCH = (1 << 5),
-  TSE_HIGHLIGHTED = (1 << 6),
-  TSE_DRAG_INTO = (1 << 7),
-  TSE_DRAG_BEFORE = (1 << 8),
-  TSE_DRAG_AFTER = (1 << 9),
+  TSE_TEXTBUT = (1 << 2),
+  TSE_CHILDSEARCH = (1 << 3),
+  TSE_SEARCHMATCH = (1 << 4),
+  TSE_HIGHLIGHTED = (1 << 5),
+  TSE_DRAG_INTO = (1 << 6),
+  TSE_DRAG_BEFORE = (1 << 7),
+  TSE_DRAG_AFTER = (1 << 8),
+  TSE_ACTIVE = (1 << 9),
   TSE_DRAG_ANY = (TSE_DRAG_INTO | TSE_DRAG_BEFORE | TSE_DRAG_AFTER),
 };
 
