@@ -34,6 +34,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 
+#include "BLI_alloca.h"
 #include "BLI_hash.h"
 #include "BLI_link_utils.h"
 #include "BLI_mempool.h"
@@ -50,6 +51,35 @@
 /* -------------------------------------------------------------------- */
 /** \name Uniform Buffer Object (DRW_uniformbuffer)
  * \{ */
+
+static void draw_call_sort(DRWCall *array, DRWCall *array_tmp, int array_len)
+{
+  /* Count unique batches. Tt's not really important if
+   * there is colisions. If there is a lot of different batches,
+   * the sorting benefit will be negligeable. So at least
+   * sort fast! */
+  uchar idx[128] = {0};
+  /* Shift by 7 positions knowing each GPUBatch is > 64 bytes */
+#define KEY(a) ((((size_t)((a).batch)) >> 7) % ARRAY_SIZE(idx))
+  BLI_assert(array_len <= ARRAY_SIZE(idx));
+
+  for (int i = 0; i < array_len; i++) {
+    /* Early out if nothing to sort. */
+    if (++idx[KEY(array[i])] == array_len)
+      return;
+  }
+  /* Cumulate batch indices */
+  for (int i = 1; i < ARRAY_SIZE(idx); i++) {
+    idx[i] += idx[i - 1];
+  }
+  /* Traverse in reverse to not change the order of the resource ids. */
+  for (int src = array_len - 1; src >= 0; src--) {
+    array_tmp[--idx[KEY(array[src])]] = array[src];
+  }
+#undef KEY
+
+  memcpy(array, array_tmp, sizeof(DRWCallChunk) - offsetof(DRWCallChunk, calls));
+}
 
 GPUUniformBuffer *DRW_uniformbuffer_create(int size, const void *data)
 {
@@ -107,6 +137,16 @@ void drw_resource_buffer_finish(ViewportMemoryPool *vmempool)
       GPU_uniformbuffer_update(vmempool->obinfos_ubo[i], data_infos);
     }
   }
+
+  /* Aligned alloc to avoid unaligned memcpy. */
+  DRWCallChunk *chunk_tmp = MEM_mallocN_aligned(sizeof(DRWCallChunk), 16, "tmp call chunk");
+  DRWCallChunk *chunk;
+  BLI_memblock_iter iter;
+  BLI_memblock_iternew(vmempool->calls, &iter);
+  while ((chunk = BLI_memblock_iterstep(&iter))) {
+    draw_call_sort(chunk->calls, chunk_tmp->calls, chunk->call_used);
+  }
+  MEM_freeN(chunk_tmp);
 }
 
 /** \} */

@@ -313,7 +313,7 @@ typedef struct DRWCallChunk {
   struct DRWCallChunk *next; /* single-linked list */
   uchar chunk_len;
   uchar call_used;
-  DRWCall calls[63];
+  DRWCall calls[126];
 } DRWCallChunk;
 
 typedef struct DRWCallSmallChunk {
@@ -322,8 +322,11 @@ typedef struct DRWCallSmallChunk {
   uchar call_used;
   /* Small chunk to avoid wasting too much memory
    * on small shading groups. */
-  DRWCall calls[5];
+  DRWCall calls[4];
 } DRWCallSmallChunk;
+
+BLI_STATIC_ASSERT_ALIGN(DRWCallChunk, 16);
+BLI_STATIC_ASSERT_ALIGN(DRWCallSmallChunk, 16);
 
 /* ------------- DRAW DEBUG ------------ */
 
