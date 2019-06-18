@@ -144,6 +144,7 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
                 col.template_ID(gpcolor, "stroke_image", open="image.open")
                 if gpcolor.mode == 'LINE':
                     col.prop(gpcolor, "pixel_size", text="UV Factor")
+                    col.prop(gpcolor, "use_stencil_clipping")
 
                 col.prop(gpcolor, "use_stroke_pattern", text="Use As Pattern")
                 if gpcolor.use_stroke_pattern is False:
@@ -160,6 +161,8 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
 
             if gpcolor.mode in {'DOTS', 'BOX'}:
                 col.prop(gpcolor, "alignment_mode")
+            if gpcolor.mode == 'LINE':
+                col.prop(gpcolor, "use_stencil_clipping")
 
 
 class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
