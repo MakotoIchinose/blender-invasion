@@ -52,9 +52,9 @@ typedef struct wmXRContext {
   std::vector<const char *> enabled_extensions;
 } wmXRContext;
 
-void wm_xr_graphics_context_bind(wmXRContext &xr_context);
-void wm_xr_graphics_context_unbind(wmXRContext &xr_context);
+void GHOST_XR_graphics_context_bind(wmXRContext &xr_context);
+void GHOST_XR_graphics_context_unbind(wmXRContext &xr_context);
 
-void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle);
+void GHOST_XR_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle);
 
 #endif /* __GHOST_XR_INTERN_H__ */

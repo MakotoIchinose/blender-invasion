@@ -305,7 +305,7 @@ void WM_check(bContext *C)
         .gpu_binding_candidates = gpu_bindings_candidates,
         .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
 
-    wm->xr_context = wm_xr_context_create(&create_info);
+    wm->xr_context = GHOST_XR_context_create(&create_info);
   }
 #endif
 
@@ -395,7 +395,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
 
 #ifdef WITH_OPENXR
   if (wm->xr_context != NULL) {
-    wm_xr_context_destroy(wm->xr_context);
+    GHOST_XR_context_destroy(wm->xr_context);
   }
 #endif
 

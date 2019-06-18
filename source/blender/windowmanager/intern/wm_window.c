@@ -1657,7 +1657,7 @@ void wm_window_process_events(const bContext *C)
   }
   hasevent |= wm_window_timer(C);
 #ifdef WITH_OPENXR
-  hasevent |= wm_xr_events_handle(CTX_wm_xr_context(C));
+  hasevent |= GHOST_XR_events_handle(CTX_wm_xr_context(C));
 #endif
 
   /* no event, we sleep 5 milliseconds */

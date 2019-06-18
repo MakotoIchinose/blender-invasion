@@ -966,7 +966,7 @@ extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
 #ifdef WITH_OPENXR
 #  if !defined(WITH_OPENXR)
 // TODO
-static_assert(false, "WITH_OPENXR not defined, but wm_xr.c is being compiled.");
+static_assert(false, "WITH_OPENXR not defined, but GHOST_XR.c is being compiled.");
 #  endif
 
 /**
@@ -995,24 +995,24 @@ typedef struct {
 } wmXRContextCreateInfo;
 
 /* xr-context */
-struct wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info);
-void wm_xr_context_destroy(struct wmXRContext *xr_context);
+struct wmXRContext *GHOST_XR_context_create(const wmXRContextCreateInfo *create_info);
+void GHOST_XR_context_destroy(struct wmXRContext *xr_context);
 
 typedef void *(*wmXRGraphicsContextBindFn)(eWM_xrGraphicsBinding graphics_lib);
 typedef void (*wmXRGraphicsContextUnbindFn)(eWM_xrGraphicsBinding graphics_lib,
                                             void *graphics_context);
 
-void wm_xr_graphics_context_bind_funcs(struct wmXRContext *xr_context,
-                                       wmXRGraphicsContextBindFn bind_fn,
-                                       wmXRGraphicsContextUnbindFn unbind_fn);
+void GHOST_XR_graphics_context_bind_funcs(struct wmXRContext *xr_context,
+                                          wmXRGraphicsContextBindFn bind_fn,
+                                          wmXRGraphicsContextUnbindFn unbind_fn);
 
 /* sessions */
-GHOST_TSuccess wm_xr_session_is_running(const struct wmXRContext *xr_context);
-void wm_xr_session_start(struct wmXRContext *xr_context);
-void wm_xr_session_end(struct wmXRContext *xr_context);
+GHOST_TSuccess GHOST_XR_session_is_running(const struct wmXRContext *xr_context);
+void GHOST_XR_session_start(struct wmXRContext *xr_context);
+void GHOST_XR_session_end(struct wmXRContext *xr_context);
 
 /* events */
-GHOST_TSuccess wm_xr_events_handle(struct wmXRContext *xr_context);
+GHOST_TSuccess GHOST_XR_events_handle(struct wmXRContext *xr_context);
 #endif
 
 #ifdef __cplusplus

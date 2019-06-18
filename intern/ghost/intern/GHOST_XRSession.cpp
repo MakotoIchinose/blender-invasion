@@ -30,7 +30,7 @@
  * \ingroup wm
  */
 
-GHOST_TSuccess wm_xr_session_is_running(const wmXRContext *xr_context)
+GHOST_TSuccess GHOST_XR_session_is_running(const wmXRContext *xr_context)
 {
   if ((xr_context == nullptr) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
     return GHOST_kFailure;
@@ -49,7 +49,7 @@ GHOST_TSuccess wm_xr_session_is_running(const wmXRContext *xr_context)
  * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
  * devices are managed through OpenXR. So this attempts to init the HMD and the other devices.
  */
-static void wm_xr_system_init(OpenXRData *oxr)
+static void GHOST_XR_system_init(OpenXRData *oxr)
 {
   assert(oxr->instance != XR_NULL_HANDLE);
   assert(oxr->system_id == XR_NULL_SYSTEM_ID);
@@ -99,7 +99,7 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
   return &binding;
 }
 
-void wm_xr_session_start(wmXRContext *xr_context)
+void GHOST_XR_session_start(wmXRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
@@ -108,19 +108,19 @@ void wm_xr_session_start(wmXRContext *xr_context)
   if (xr_context->gpu_ctx_bind_fn == nullptr) {
     fprintf(stderr,
             "Invalid API usage: No way to bind graphics context to the XR session. Call "
-            "wm_xr_graphics_context_bind_funcs() with valid parameters before starting the "
-            "session (through wm_xr_session_start()).");
+            "GHOST_XR_graphics_context_bind_funcs() with valid parameters before starting the "
+            "session (through GHOST_XR_session_start()).");
     return;
   }
 
-  wm_xr_system_init(oxr);
+  GHOST_XR_system_init(oxr);
 
-  wm_xr_graphics_context_bind(*xr_context);
+  GHOST_XR_graphics_context_bind(*xr_context);
   if (xr_context->gpu_ctx == nullptr) {
     fprintf(stderr,
             "Invalid API usage: No graphics context returned through the callback set with "
-            "wm_xr_graphics_context_bind_funcs(). This is required for session starting (through "
-            "wm_xr_session_start()).\n");
+            "GHOST_XR_graphics_context_bind_funcs(). This is required for session starting (through "
+            "GHOST_XR_session_start()).\n");
     return;
   }
 
@@ -133,13 +133,13 @@ void wm_xr_session_start(wmXRContext *xr_context)
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }
 
-void wm_xr_session_end(wmXRContext *xr_context)
+void GHOST_XR_session_end(wmXRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
-  wm_xr_graphics_context_unbind(*xr_context);
+  GHOST_XR_graphics_context_unbind(*xr_context);
 }
 
-void wm_xr_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
+void GHOST_XR_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
 {
   oxr->session_state = lifecycle.state;
 

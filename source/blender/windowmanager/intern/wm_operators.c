@@ -3650,17 +3650,17 @@ static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  if (wm_xr_session_is_running(xr_context)) {
-    wm_xr_session_end(xr_context);
+  if (GHOST_XR_session_is_running(xr_context)) {
+    GHOST_XR_session_end(xr_context);
   }
   else {
 #  if defined(WIN32)
     xr_session_window_create(C);
 #  endif
 
-    wm_xr_graphics_context_bind_funcs(
+    GHOST_XR_graphics_context_bind_funcs(
         xr_context, xr_session_gpu_binding_context_create, xr_session_gpu_binding_context_destroy);
-    wm_xr_session_start(xr_context);
+    GHOST_XR_session_start(xr_context);
   }
   return OPERATOR_FINISHED;
 }

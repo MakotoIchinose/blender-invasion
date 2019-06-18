@@ -222,7 +222,7 @@ static void openxr_instance_log_print(OpenXRData *oxr)
  * Includes setting up the OpenXR instance, querying available extensions and API layers, enabling
  * extensions (currently graphics binding extension only) and API layers.
  */
-wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info)
+wmXRContext *GHOST_XR_context_create(const wmXRContextCreateInfo *create_info)
 {
   wmXRContext *xr_context = new wmXRContext();
   OpenXRData *oxr = &xr_context->oxr;
@@ -249,12 +249,12 @@ wmXRContext *wm_xr_context_create(const wmXRContextCreateInfo *create_info)
   return xr_context;
 }
 
-void wm_xr_context_destroy(wmXRContext *xr_context)
+void GHOST_XR_context_destroy(wmXRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
   /* Unbinding may involve destruction, so call here too */
-  wm_xr_graphics_context_unbind(*xr_context);
+  GHOST_XR_graphics_context_unbind(*xr_context);
 
   if (oxr->session != XR_NULL_HANDLE) {
     xrDestroySession(oxr->session);
@@ -274,23 +274,23 @@ void wm_xr_context_destroy(wmXRContext *xr_context)
  * \param bind_fn Function to retrieve (possibly create) a graphics context.
  * \param unbind_fn Function to release (possibly free) a graphics context.
  */
-void wm_xr_graphics_context_bind_funcs(wmXRContext *xr_context,
+void GHOST_XR_graphics_context_bind_funcs(wmXRContext *xr_context,
                                        wmXRGraphicsContextBindFn bind_fn,
                                        wmXRGraphicsContextUnbindFn unbind_fn)
 {
-  wm_xr_graphics_context_unbind(*xr_context);
+  GHOST_XR_graphics_context_unbind(*xr_context);
   xr_context->gpu_ctx_bind_fn = bind_fn;
   xr_context->gpu_ctx_unbind_fn = unbind_fn;
 }
 
-void wm_xr_graphics_context_bind(wmXRContext &xr_context)
+void GHOST_XR_graphics_context_bind(wmXRContext &xr_context)
 {
   assert(xr_context.gpu_ctx_bind_fn);
   xr_context.gpu_ctx = static_cast<GHOST_Context *>(
       xr_context.gpu_ctx_bind_fn(xr_context.gpu_binding));
 }
 
-void wm_xr_graphics_context_unbind(wmXRContext &xr_context)
+void GHOST_XR_graphics_context_unbind(wmXRContext &xr_context)
 {
   if (xr_context.gpu_ctx_unbind_fn) {
     xr_context.gpu_ctx_unbind_fn(xr_context.gpu_binding, xr_context.gpu_ctx);
