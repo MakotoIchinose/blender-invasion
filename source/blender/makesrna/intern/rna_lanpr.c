@@ -143,6 +143,10 @@ void RNA_def_lanpr(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Object", "Normal Style Control Object");
 
+  prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, true);
+  RNA_def_property_ui_text(prop, "Same Style", "Use same styles for multiple line types.");
+
   prop = RNA_def_property(srna, "use_qi_range", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "QI Range", "Use QI Range (occlusion levels) to select lines");
 

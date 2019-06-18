@@ -780,7 +780,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
-    bl_label = "Types"
+    bl_label = "Styles"
     bl_parent_id = "RENDER_PT_lanpr"
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
@@ -798,40 +798,52 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
         active_layer = lanpr.layers.active_layer
         if active_layer and lanpr.master_mode == "DPIX":
             active_layer = lanpr.layers[0]
-
-        layout.operator("scene.lanpr_enable_all_line_types")
-
-        split = layout.split(factor=0.3)
-        col = split.column()
-        col.prop(active_layer, "enable_contour", text="Contour", toggle=True)
-        col.prop(active_layer, "enable_crease", text="Crease", toggle=True)
-        col.prop(active_layer, "enable_edge_mark", text="Mark", toggle=True)
-        col.prop(active_layer, "enable_material_seperate", text="Material", toggle=True)
-        col.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
-        col = split.column()
-        row = col.row(align = True)
-        #row.enabled = active_layer.enable_contour this is always enabled now
-        row.prop(active_layer, "color", text="")
-        row.prop(active_layer, "thickness", text="")
-        row = col.row(align = True)
-        row.enabled = active_layer.enable_crease
-        row.prop(active_layer, "crease_color", text="")
-        row.prop(active_layer, "thickness_crease", text="")
-        row = col.row(align = True)
-        row.enabled = active_layer.enable_edge_mark
-        row.prop(active_layer, "edge_mark_color", text="")
-        row.prop(active_layer, "thickness_edge_mark", text="")
-        row = col.row(align = True)
-        row.enabled = active_layer.enable_material_seperate
-        row.prop(active_layer, "material_color", text="")
-        row.prop(active_layer, "thickness_material", text="")
-        row = col.row(align = True)
-        if lanpr.enable_intersections:
-            row.enabled = active_layer.enable_intersection
-            row.prop(active_layer, "intersection_color", text="")
-            row.prop(active_layer, "thickness_intersection", text="")
+        
+        row = layout.row(align=True)
+        row.prop(active_layer,"use_same_style")
+        if active_layer.use_same_style:
+            row = layout.row(align=True)
+            row.prop(active_layer, "color", text="")
+            row.prop(active_layer, "thickness", text="")
+            row = layout.row(align=True)
+            row.prop(active_layer, "enable_contour", text="Contour", toggle=True)
+            row.prop(active_layer, "enable_crease", text="Crease", toggle=True)
+            row.prop(active_layer, "enable_edge_mark", text="Mark", toggle=True)
+            row.prop(active_layer, "enable_material_seperate", text="Material", toggle=True)
+            row.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
         else:
-            row.label(text= "Intersection Calculation Disabled")
+            layout.operator("scene.lanpr_enable_all_line_types",text='Set All')
+            split = layout.split(factor=0.3)
+            col = split.column()
+            col.prop(active_layer, "enable_contour", text="Contour", toggle=True)
+            col.prop(active_layer, "enable_crease", text="Crease", toggle=True)
+            col.prop(active_layer, "enable_edge_mark", text="Mark", toggle=True)
+            col.prop(active_layer, "enable_material_seperate", text="Material", toggle=True)
+            col.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
+            col = split.column()
+            row = col.row(align = True)
+            #row.enabled = active_layer.enable_contour this is always enabled now
+            row.prop(active_layer, "color", text="")
+            row.prop(active_layer, "thickness", text="")
+            row = col.row(align = True)
+            row.enabled = active_layer.enable_crease
+            row.prop(active_layer, "crease_color", text="")
+            row.prop(active_layer, "thickness_crease", text="")
+            row = col.row(align = True)
+            row.enabled = active_layer.enable_edge_mark
+            row.prop(active_layer, "crease_color", text="")
+            row.prop(active_layer, "thickness_edge_mark", text="")
+            row = col.row(align = True)
+            row.enabled = active_layer.enable_material_seperate
+            row.prop(active_layer, "material_color", text="")
+            row.prop(active_layer, "thickness_material", text="")
+            row = col.row(align = True)
+            if lanpr.enable_intersections:
+                row.enabled = active_layer.enable_intersection
+                row.prop(active_layer, "intersection_color", text="")
+                row.prop(active_layer, "thickness_intersection", text="")
+            else:
+                row.label(text= "Intersection Calculation Disabled")
 
         if lanpr.master_mode == "DPIX" and active_layer.enable_intersection:
             row = col.row(align = True)
