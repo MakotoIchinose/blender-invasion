@@ -1774,19 +1774,11 @@ enum {
 
 /* Modifier data stored in the blend file */
 typedef struct MyBMeshModifierData {
-<<<<<<< HEAD
   ModifierData modifier;
   struct Object *camera_ob;
   void *osd_eval;
   int flag; /* options stored here */
   short _pad[2];
-=======
-	ModifierData modifier;
-	struct Object *camera_ob;
-	void *osd_eval;
-	int flag;  /* options stored here */
-	short _pad[2];
->>>>>>> DarkdefenderRepo/npr_tess
 } MyBMeshModifierData;
 
 typedef struct DataTransferModifierData {
@@ -1981,6 +1973,7 @@ enum {
   MOD_MYBMESH_RAD_I = (1 << 5),
   MOD_MYBMESH_RAD_FLIP = (1 << 6),
   MOD_MYBMESH_OPTI = (1 << 7),
+  MOD_MYBMESH_SEL = (1 << 8),
 };
 
 typedef struct FeatureLineModifierData {
