@@ -59,6 +59,7 @@
 #include "ED_sequencer.h"
 #include "ED_undo.h"
 #include "ED_gpencil.h"
+#include "ED_outliner.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -70,6 +71,30 @@
 #include "RNA_define.h"
 
 #include "outliner_intern.h"
+
+/* Get base of object under cursor (for eyedropper) */
+Base *ED_outliner_give_base_under_cursor(struct bContext *C, const int mval[2])
+{
+  ARegion *ar = CTX_wm_region(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  TreeElement *te;
+  Base *base = NULL;
+  float view_mval[2];
+
+  UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
+
+  te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
+  if (te) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0) {
+      Object *ob = (Object *)tselem->id;
+      base = (te->directdata) ? (Base *)te->directdata : BKE_view_layer_base_find(view_layer, ob);
+    }
+  }
+
+  return base;
+}
 
 static bool do_outliner_activate_common(bContext *C,
                                         Main *bmain,
