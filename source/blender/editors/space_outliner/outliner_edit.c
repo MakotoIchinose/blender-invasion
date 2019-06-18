@@ -1187,7 +1187,7 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
   View2D *v2d = &ar->v2d;
 
   TreeElement *te;
-  int xdelta, ytop;
+  int ytop;
 
   Object *obact = OBACT(view_layer);
 
@@ -1229,11 +1229,6 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
 
     v2d->cur.ymax = (float)ytop;
     v2d->cur.ymin = (float)(ytop - BLI_rcti_size_y(&v2d->mask));
-
-    /* make te->xs ==> te->xend center of view */
-    xdelta = (int)(te->xs - v2d->cur.xmin);
-    v2d->cur.xmin += xdelta;
-    v2d->cur.xmax += xdelta;
   }
 
   ED_region_tag_redraw_no_rebuild(ar);
