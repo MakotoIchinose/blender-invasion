@@ -743,7 +743,7 @@ struct ReportList *CTX_wm_reports(const bContext *C)
 }
 
 #ifdef WITH_OPENXR
-struct wmXRContext *CTX_wm_xr_context(const bContext *C)
+struct GHOST_XRContext *CTX_wm_xr_context(const bContext *C)
 {
   return C->wm.manager ? C->wm.manager->xr_context : NULL;
 }

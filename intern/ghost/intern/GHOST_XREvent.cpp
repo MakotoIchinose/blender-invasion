@@ -32,7 +32,7 @@ static bool GHOST_XR_event_poll_next(OpenXRData *oxr, XrEventDataBuffer &r_event
   return (xrPollEvent(oxr->instance, &r_event_data) == XR_SUCCESS);
 }
 
-GHOST_TSuccess GHOST_XR_events_handle(wmXRContext *xr_context)
+GHOST_TSuccess GHOST_XR_events_handle(GHOST_XRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */

@@ -122,16 +122,16 @@ static bool openxr_extension_is_available(const OpenXRData *oxr, const std::stri
   return false;
 }
 
-static const char *openxr_ext_name_from_wm_gpu_binding(eWM_xrGraphicsBinding binding)
+static const char *openxr_ext_name_from_wm_gpu_binding(GHOST_TGraphicsBinding binding)
 {
   switch (binding) {
-    case WM_XR_GRAPHICS_OPENGL:
+    case GHOST_kXRGraphicsOpenGL:
       return XR_KHR_OPENGL_ENABLE_EXTENSION_NAME;
 #ifdef WIN32
-    case WM_XR_GRAPHICS_D3D11:
+    case GHOST_kXRGraphicsD3D11:
       return XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
 #endif
-    case WM_XR_GRAPHICS_UNKNOWN:
+    case GHOST_kXRGraphicsUnknown:
       assert(false);
       return nullptr;
   }
@@ -141,16 +141,16 @@ static const char *openxr_ext_name_from_wm_gpu_binding(eWM_xrGraphicsBinding bin
 
 /**
  * Decide which graphics binding extension to use based on
- * #wmXRContextCreateInfo.gpu_binding_candidates and available extensions.
+ * #GHOST_XRContextCreateInfo.gpu_binding_candidates and available extensions.
  */
-static eWM_xrGraphicsBinding openxr_graphics_extension_to_enable_get(
-    const OpenXRData *oxr, const wmXRContextCreateInfo *create_info)
+static GHOST_TGraphicsBinding openxr_graphics_extension_to_enable_get(
+    const OpenXRData *oxr, const GHOST_XRContextCreateInfo *create_info)
 {
   assert(create_info->gpu_binding_candidates != NULL);
   assert(create_info->gpu_binding_candidates_count > 0);
 
   for (uint32_t i = 0; i < create_info->gpu_binding_candidates_count; i++) {
-    assert(create_info->gpu_binding_candidates[i] != WM_XR_GRAPHICS_UNKNOWN);
+    assert(create_info->gpu_binding_candidates[i] != GHOST_kXRGraphicsUnknown);
     const char *ext_name = openxr_ext_name_from_wm_gpu_binding(
         create_info->gpu_binding_candidates[i]);
     if (openxr_extension_is_available(oxr, ext_name)) {
@@ -158,17 +158,17 @@ static eWM_xrGraphicsBinding openxr_graphics_extension_to_enable_get(
     }
   }
 
-  return WM_XR_GRAPHICS_UNKNOWN;
+  return GHOST_kXRGraphicsUnknown;
 }
 
 /**
  * Gather an array of names for the extensions to enable.
  */
-static void openxr_extensions_to_enable_get(const wmXRContext *context,
+static void openxr_extensions_to_enable_get(const GHOST_XRContext *context,
                                             const OpenXRData *oxr,
                                             std::vector<const char *> &r_ext_names)
 {
-  assert(context->gpu_binding != WM_XR_GRAPHICS_UNKNOWN);
+  assert(context->gpu_binding != GHOST_kXRGraphicsUnknown);
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding);
   const static std::vector<std::string> try_ext; /* None yet */
@@ -187,7 +187,7 @@ static void openxr_extensions_to_enable_get(const wmXRContext *context,
   }
 }
 
-static bool openxr_instance_create(wmXRContext *context)
+static bool openxr_instance_create(GHOST_XRContext *context)
 {
   XrInstanceCreateInfo create_info{};
   OpenXRData *oxr = &context->oxr;
@@ -222,9 +222,9 @@ static void openxr_instance_log_print(OpenXRData *oxr)
  * Includes setting up the OpenXR instance, querying available extensions and API layers, enabling
  * extensions (currently graphics binding extension only) and API layers.
  */
-wmXRContext *GHOST_XR_context_create(const wmXRContextCreateInfo *create_info)
+GHOST_XRContext *GHOST_XR_context_create(const GHOST_XRContextCreateInfo *create_info)
 {
-  wmXRContext *xr_context = new wmXRContext();
+  GHOST_XRContext *xr_context = new GHOST_XRContext();
   OpenXRData *oxr = &xr_context->oxr;
 
 #ifdef USE_EXT_LAYER_PRINTS
@@ -249,7 +249,7 @@ wmXRContext *GHOST_XR_context_create(const wmXRContextCreateInfo *create_info)
   return xr_context;
 }
 
-void GHOST_XR_context_destroy(wmXRContext *xr_context)
+void GHOST_XR_context_destroy(GHOST_XRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
@@ -274,23 +274,23 @@ void GHOST_XR_context_destroy(wmXRContext *xr_context)
  * \param bind_fn Function to retrieve (possibly create) a graphics context.
  * \param unbind_fn Function to release (possibly free) a graphics context.
  */
-void GHOST_XR_graphics_context_bind_funcs(wmXRContext *xr_context,
-                                       wmXRGraphicsContextBindFn bind_fn,
-                                       wmXRGraphicsContextUnbindFn unbind_fn)
+void GHOST_XR_graphics_context_bind_funcs(GHOST_XRContext *xr_context,
+                                          GHOST_XRGraphicsContextBindFn bind_fn,
+                                          GHOST_XRGraphicsContextUnbindFn unbind_fn)
 {
   GHOST_XR_graphics_context_unbind(*xr_context);
   xr_context->gpu_ctx_bind_fn = bind_fn;
   xr_context->gpu_ctx_unbind_fn = unbind_fn;
 }
 
-void GHOST_XR_graphics_context_bind(wmXRContext &xr_context)
+void GHOST_XR_graphics_context_bind(GHOST_XRContext &xr_context)
 {
   assert(xr_context.gpu_ctx_bind_fn);
   xr_context.gpu_ctx = static_cast<GHOST_Context *>(
       xr_context.gpu_ctx_bind_fn(xr_context.gpu_binding));
 }
 
-void GHOST_XR_graphics_context_unbind(wmXRContext &xr_context)
+void GHOST_XR_graphics_context_unbind(GHOST_XRContext &xr_context)
 {
   if (xr_context.gpu_ctx_unbind_fn) {
     xr_context.gpu_ctx_unbind_fn(xr_context.gpu_binding, xr_context.gpu_ctx);

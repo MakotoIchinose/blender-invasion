@@ -977,42 +977,42 @@ static_assert(false, "WITH_OPENXR not defined, but GHOST_XR.c is being compiled.
  * This enum defines the possible graphics bindings to attempt to enable.
  */
 typedef enum {
-  WM_XR_GRAPHICS_UNKNOWN = 0,
-  WM_XR_GRAPHICS_OPENGL,
+  GHOST_kXRGraphicsUnknown = 0,
+  GHOST_kXRGraphicsOpenGL,
 #  ifdef WIN32
-  WM_XR_GRAPHICS_D3D11,
+  GHOST_kXRGraphicsD3D11,
 #  endif
   /* For later */
-  //  WM_XR_GRAPHICS_VULKAN,
-} eWM_xrGraphicsBinding;
-/* An array of eWM_xrGraphicsBinding items defining the candidate bindings to use. The first
+  //  GHOST_kXRGraphicsVulkan,
+} GHOST_TGraphicsBinding;
+/* An array of GHOST_TGraphicsBinding items defining the candidate bindings to use. The first
  * available candidate will be chosen, so order defines priority. */
-typedef const eWM_xrGraphicsBinding *wmXRGraphicsBindingCandidates;
+typedef const GHOST_TGraphicsBinding *GHOST_XRGraphicsBindingCandidates;
 
 typedef struct {
-  const wmXRGraphicsBindingCandidates gpu_binding_candidates;
+  const GHOST_XRGraphicsBindingCandidates gpu_binding_candidates;
   unsigned int gpu_binding_candidates_count;
-} wmXRContextCreateInfo;
+} GHOST_XRContextCreateInfo;
 
 /* xr-context */
-struct wmXRContext *GHOST_XR_context_create(const wmXRContextCreateInfo *create_info);
-void GHOST_XR_context_destroy(struct wmXRContext *xr_context);
+struct GHOST_XRContext *GHOST_XR_context_create(const GHOST_XRContextCreateInfo *create_info);
+void GHOST_XR_context_destroy(struct GHOST_XRContext *xr_context);
 
-typedef void *(*wmXRGraphicsContextBindFn)(eWM_xrGraphicsBinding graphics_lib);
-typedef void (*wmXRGraphicsContextUnbindFn)(eWM_xrGraphicsBinding graphics_lib,
-                                            void *graphics_context);
+typedef void *(*GHOST_XRGraphicsContextBindFn)(GHOST_TGraphicsBinding graphics_lib);
+typedef void (*GHOST_XRGraphicsContextUnbindFn)(GHOST_TGraphicsBinding graphics_lib,
+                                                void *graphics_context);
 
-void GHOST_XR_graphics_context_bind_funcs(struct wmXRContext *xr_context,
-                                          wmXRGraphicsContextBindFn bind_fn,
-                                          wmXRGraphicsContextUnbindFn unbind_fn);
+void GHOST_XR_graphics_context_bind_funcs(struct GHOST_XRContext *xr_context,
+                                          GHOST_XRGraphicsContextBindFn bind_fn,
+                                          GHOST_XRGraphicsContextUnbindFn unbind_fn);
 
 /* sessions */
-GHOST_TSuccess GHOST_XR_session_is_running(const struct wmXRContext *xr_context);
-void GHOST_XR_session_start(struct wmXRContext *xr_context);
-void GHOST_XR_session_end(struct wmXRContext *xr_context);
+GHOST_TSuccess GHOST_XR_session_is_running(const struct GHOST_XRContext *xr_context);
+void GHOST_XR_session_start(struct GHOST_XRContext *xr_context);
+void GHOST_XR_session_end(struct GHOST_XRContext *xr_context);
 
 /* events */
-GHOST_TSuccess GHOST_XR_events_handle(struct wmXRContext *xr_context);
+GHOST_TSuccess GHOST_XR_events_handle(struct GHOST_XRContext *xr_context);
 #endif
 
 #ifdef __cplusplus

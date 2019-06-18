@@ -36,25 +36,26 @@ typedef struct OpenXRData {
   XrSessionState session_state;
 } OpenXRData;
 
-typedef struct wmXRContext {
+typedef struct GHOST_XRContext {
   OpenXRData oxr;
 
   /** Active graphics binding type. */
-  eWM_xrGraphicsBinding gpu_binding;
+  GHOST_TGraphicsBinding gpu_binding;
   /** Function to retrieve (possibly create) a graphics context */
-  wmXRGraphicsContextBindFn gpu_ctx_bind_fn;
+  GHOST_XRGraphicsContextBindFn gpu_ctx_bind_fn;
   /** Function to release (possibly free) a graphics context */
-  wmXRGraphicsContextUnbindFn gpu_ctx_unbind_fn;
+  GHOST_XRGraphicsContextUnbindFn gpu_ctx_unbind_fn;
   /** Active Ghost graphic context. */
   class GHOST_Context *gpu_ctx;
 
   /** Names of enabled extensions */
   std::vector<const char *> enabled_extensions;
-} wmXRContext;
+} GHOST_XRContext;
 
-void GHOST_XR_graphics_context_bind(wmXRContext &xr_context);
-void GHOST_XR_graphics_context_unbind(wmXRContext &xr_context);
+void GHOST_XR_graphics_context_bind(GHOST_XRContext &xr_context);
+void GHOST_XR_graphics_context_unbind(GHOST_XRContext &xr_context);
 
-void GHOST_XR_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle);
+void GHOST_XR_session_state_change(OpenXRData *oxr,
+                                   const XrEventDataSessionStateChanged &lifecycle);
 
 #endif /* __GHOST_XR_INTERN_H__ */

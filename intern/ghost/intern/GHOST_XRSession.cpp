@@ -30,7 +30,7 @@
  * \ingroup wm
  */
 
-GHOST_TSuccess GHOST_XR_session_is_running(const wmXRContext *xr_context)
+GHOST_TSuccess GHOST_XR_session_is_running(const GHOST_XRContext *xr_context)
 {
   if ((xr_context == nullptr) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
     return GHOST_kFailure;
@@ -61,7 +61,7 @@ static void GHOST_XR_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
+static void *openxr_graphics_binding_create(const GHOST_XRContext *xr_context,
                                             GHOST_ContextHandle /*ghost_context*/)
 {
   static union {
@@ -76,7 +76,7 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
   memset(&binding, 0, sizeof(binding));
 
   switch (xr_context->gpu_binding) {
-    case WM_XR_GRAPHICS_OPENGL: {
+    case GHOST_kXRGraphicsOpenGL: {
 #if defined(WITH_X11)
       binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
 #elif defined(WIN32)
@@ -86,7 +86,7 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
       break;
     }
 #ifdef WIN32
-    case WM_XR_GRAPHICS_D3D11: {
+    case GHOST_kXRGraphicsD3D11: {
       binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
 
       break;
@@ -99,7 +99,7 @@ static void *openxr_graphics_binding_create(const wmXRContext *xr_context,
   return &binding;
 }
 
-void GHOST_XR_session_start(wmXRContext *xr_context)
+void GHOST_XR_session_start(GHOST_XRContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
@@ -134,7 +134,7 @@ void GHOST_XR_session_start(wmXRContext *xr_context)
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }
 
-void GHOST_XR_session_end(wmXRContext *xr_context)
+void GHOST_XR_session_end(GHOST_XRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
   GHOST_XR_graphics_context_unbind(*xr_context);

@@ -3539,17 +3539,17 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 }
 
 #ifdef WITH_OPENXR
-static void *xr_session_gpu_binding_context_create(eWM_xrGraphicsBinding graphics_lib)
+static void *xr_session_gpu_binding_context_create(GHOST_TGraphicsBinding graphics_lib)
 {
 #  ifndef WIN32
-  BLI_assert(graphics_lib == WM_XR_GRAPHICS_OPENGL);
+  BLI_assert(graphics_lib == GHOST_kXRGraphicsOpenGL);
 #  endif
 
   switch (graphics_lib) {
-    case WM_XR_GRAPHICS_OPENGL:
+    case GHOST_kXRGraphicsOpenGL:
       return WM_opengl_context_create();
 #  ifdef WIN32
-    case WM_XR_GRAPHICS_D3D11: {
+    case GHOST_kXRGraphicsD3D11: {
       wmWindowManager *wm = G_MAIN->wm.first;
       for (wmWindow *win = wm->windows.first; win; win = win->next) {
         /* TODO better lookup? For now only one D3D window possible, but later? */
@@ -3565,13 +3565,13 @@ static void *xr_session_gpu_binding_context_create(eWM_xrGraphicsBinding graphic
   }
 }
 
-static void xr_session_gpu_binding_context_destroy(eWM_xrGraphicsBinding graphics_lib,
+static void xr_session_gpu_binding_context_destroy(GHOST_TGraphicsBinding graphics_lib,
                                                    void *context)
 {
   GHOST_ContextHandle ghost_context = context;
 
   switch (graphics_lib) {
-    case WM_XR_GRAPHICS_OPENGL:
+    case GHOST_kXRGraphicsOpenGL:
       WM_opengl_context_dispose(ghost_context);
     default:
       return;
@@ -3647,13 +3647,13 @@ static bool wm_xr_ensure_context(wmWindowManager *wm)
     return true;
   }
 
-  const eWM_xrGraphicsBinding gpu_bindings_candidates[] = {
-      WM_XR_GRAPHICS_OPENGL,
+  const GHOST_TGraphicsBinding gpu_bindings_candidates[] = {
+      GHOST_kXRGraphicsOpenGL,
 #  ifdef WIN32
-      WM_XR_GRAPHICS_D3D11,
+      GHOST_kXRGraphicsD3D11,
 #  endif
   };
-  const wmXRContextCreateInfo create_info = {
+  const GHOST_XRContextCreateInfo create_info = {
       .gpu_binding_candidates = gpu_bindings_candidates,
       .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
 
@@ -3665,7 +3665,7 @@ static bool wm_xr_ensure_context(wmWindowManager *wm)
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  struct wmXRContext *xr_context = wm->xr_context;
+  struct GHOST_XRContext *xr_context = wm->xr_context;
 
   /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
   if (wm_xr_ensure_context(wm) == false) {
