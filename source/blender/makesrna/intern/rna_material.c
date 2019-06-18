@@ -620,12 +620,6 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Pattern", "Use Fill Texture as a pattern to apply color");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
-  prop = RNA_def_property(srna, "use_stencil_clipping", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", GP_STYLE_DISABLE_STENCIL);
-  RNA_def_property_ui_text(
-      prop, "Stencil", "Use Stencil Clipping for avoiding glitches with alpha materials");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
-
   prop = RNA_def_property(srna, "show_stroke", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_STROKE_SHOW);
   RNA_def_property_ui_text(prop, "Show Stroke", "Show stroke lines of this material");
