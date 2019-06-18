@@ -1348,7 +1348,7 @@ static void do_outliner_selection_sync_recursive(SpaceOutliner *soops,
   }
 }
 
-void do_outliner_selection_sync(bContext *C, bool to_view_layer)
+void do_outliner_selection_sync(const bContext *C, bool to_view_layer)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
