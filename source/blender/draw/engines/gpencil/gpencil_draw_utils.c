@@ -1571,7 +1571,9 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
           }
           stl->g_data->shgrps_drawing_fill = DRW_shgroup_create(e_data->gpencil_drawing_fill_sh,
                                                                 psl->drawing_pass);
-
+          /* Disable stencil for this type */
+          DRW_shgroup_state_disable(stl->g_data->shgrps_drawing_stroke,
+                                    DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
           /* clean previous version of the batch */
           if (stl->storage->buffer_fill) {
             GPU_BATCH_DISCARD_SAFE(e_data->batch_buffer_fill);
