@@ -43,6 +43,19 @@ typedef struct CollectionChild {
   struct Collection *collection;
 } CollectionChild;
 
+typedef struct CollectionLANPR{
+  short usage;
+  short force;/* force objects with LANPR modifier follow the rule */
+  char _pad[4];
+}CollectionLANPR;
+
+/* CollectionLANPR->mode */
+enum {
+  COLLECTION_LANPR_INCLUDE = 0,
+  COLLECTION_LANPR_OCCLUSION_ONLY = 1,
+  COLLECTION_LANPR_EXCLUDE = 2,
+};
+
 typedef struct Collection {
   ID id;
 
@@ -58,6 +71,9 @@ typedef struct Collection {
 
   short flag;
   char _pad[6];
+
+  /** LANPR engine specific */
+  CollectionLANPR lanpr;
 
   /* Runtime. Cache of objects in this collection and all its
    * children. This is created on demand when e.g. some physics
