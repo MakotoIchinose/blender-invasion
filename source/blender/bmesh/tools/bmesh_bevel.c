@@ -3097,7 +3097,6 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf */
   if (toward_bv) {
-    printf("[toward_bv]");
     /* Find the direction vector of the current edge (pointing INTO the BevVert) .
      * v1 and v2 don't necessarily have an order, so we need to check which is closer to bv */
     /* HANS-TODO: r_bv not initialized */
@@ -3111,6 +3110,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
       sub_v3_v3v3(d_start, start_edge->e->v2->co, start_edge->e->v1->co);
     }
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
+    printf("[toward_bv]");
     printf("[d_start:(%0.2f, %0.2f, %0.2f)]", (double)d_start[0],
                                               (double)d_start[1],
                                               (double)d_start[2]);
@@ -3203,9 +3203,9 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 
   /* Case 2: The next EdgeHalf is the other side of the BMEdge.
    * Because it's part of the same BMEdge, we know the other edge half will also be beveled */
-  printf("[away_bv]");
   next_edge = find_other_end_edge_half(bp, start_edge, r_bv);
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
+  printf("[away_bv]");
   if (next_edge) {
     printf("(next_edge)\n");
   } else {
@@ -3214,7 +3214,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 #endif
   return next_edge;
 }
-
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
 static void debug_RPO_draw_sphere(BevelParams* bp, BMEdge* e) {
   float debug_color_1[4];
   debug_color_1[0] = 1.0;
@@ -3241,6 +3241,7 @@ static void debug_RPO_draw_sphere(BevelParams* bp, BMEdge* e) {
       DRW_debug_sphere(edge_half->leftv->nv.co, 0.06f, debug_color_2);
   }
 }
+#endif
 
 /* The custom profiles are not necessarily symmetrical, so along beveled edges
  * the profiles can start from opposite sides of the edge. In order to fix this we
