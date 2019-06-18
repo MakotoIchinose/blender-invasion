@@ -293,22 +293,6 @@ void WM_check(bContext *C)
     wm->message_bus = WM_msgbus_create();
   }
 
-#ifdef WITH_OPENXR
-  if (wm->xr_context == NULL) {
-    const eWM_xrGraphicsBinding gpu_bindings_candidates[] = {
-        WM_XR_GRAPHICS_OPENGL,
-#  ifdef WIN32
-        WM_XR_GRAPHICS_D3D11,
-#  endif
-    };
-    const wmXRContextCreateInfo create_info = {
-        .gpu_binding_candidates = gpu_bindings_candidates,
-        .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
-
-    wm->xr_context = GHOST_XR_context_create(&create_info);
-  }
-#endif
-
   /* case: fileread */
   /* note: this runs in bg mode to set the screen context cb */
   if ((wm->initialized & WM_WINDOW_IS_INITIALIZED) == 0) {

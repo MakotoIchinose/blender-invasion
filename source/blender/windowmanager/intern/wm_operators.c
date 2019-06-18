@@ -3641,12 +3641,34 @@ static void xr_session_window_create(bContext *C)
 }
 #  endif /* WIN32 */
 
-static int xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
+static bool wm_xr_ensure_context(wmWindowManager *wm)
+{
+  if (wm->xr_context) {
+    return true;
+  }
+
+  const eWM_xrGraphicsBinding gpu_bindings_candidates[] = {
+      WM_XR_GRAPHICS_OPENGL,
+#  ifdef WIN32
+      WM_XR_GRAPHICS_D3D11,
+#  endif
+  };
+  const wmXRContextCreateInfo create_info = {
+      .gpu_binding_candidates = gpu_bindings_candidates,
+      .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
+
+  wm->xr_context = GHOST_XR_context_create(&create_info);
+
+  return wm->xr_context != NULL;
+}
+
+static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   struct wmXRContext *xr_context = wm->xr_context;
 
-  if (xr_context == NULL) {
+  /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
+  if (wm_xr_ensure_context(wm) == false) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3675,7 +3697,7 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
       "opened";
 
   /* callbacks */
-  ot->exec = xr_session_toggle_exec;
+  ot->exec = wm_xr_session_toggle_exec;
 }
 #endif /* WITH_OPENXR */
 

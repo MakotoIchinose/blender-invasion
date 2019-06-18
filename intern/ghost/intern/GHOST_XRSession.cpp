@@ -117,10 +117,11 @@ void GHOST_XR_session_start(wmXRContext *xr_context)
 
   GHOST_XR_graphics_context_bind(*xr_context);
   if (xr_context->gpu_ctx == nullptr) {
-    fprintf(stderr,
-            "Invalid API usage: No graphics context returned through the callback set with "
-            "GHOST_XR_graphics_context_bind_funcs(). This is required for session starting (through "
-            "GHOST_XR_session_start()).\n");
+    fprintf(
+        stderr,
+        "Invalid API usage: No graphics context returned through the callback set with "
+        "GHOST_XR_graphics_context_bind_funcs(). This is required for session starting (through "
+        "GHOST_XR_session_start()).\n");
     return;
   }
 
@@ -139,7 +140,8 @@ void GHOST_XR_session_end(wmXRContext *xr_context)
   GHOST_XR_graphics_context_unbind(*xr_context);
 }
 
-void GHOST_XR_session_state_change(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
+void GHOST_XR_session_state_change(OpenXRData *oxr,
+                                   const XrEventDataSessionStateChanged &lifecycle)
 {
   oxr->session_state = lifecycle.state;
 
