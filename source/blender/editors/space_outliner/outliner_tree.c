@@ -2010,6 +2010,7 @@ static int outliner_exclude_filter_get(SpaceOutliner *soops)
       break;
     case SO_FILTER_OB_INVISIBLE:
       exclude_filter |= SO_FILTER_OB_STATE_INVISIBLE;
+      break;
     case SO_FILTER_OB_SELECTED:
       exclude_filter |= SO_FILTER_OB_STATE_SELECTED;
       break;
