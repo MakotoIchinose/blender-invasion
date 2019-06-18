@@ -1615,10 +1615,16 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
   int start_edit = 0;
   int start_edlin = 0;
 
+  uint stencil_id = 1;
   for (int i = 0; i < cache->grp_used; i++) {
     elm = &cache->grp_cache[i];
     array_elm = &cache_ob->shgrp_array[idx];
     const float scale = cache_ob->scale;
+
+    /* Limit stencil id */
+    if (stencil_id > 255) {
+      stencil_id = 1;
+    }
 
     /* save last group when change */
     if (gpl_prev == NULL) {
@@ -1674,6 +1680,10 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         }
         stl->storage->shgroup_id++;
         start_stroke = elm->vertex_idx;
+
+        /* set stencil mask id */
+        DRW_shgroup_stencil_mask(shgrp, stencil_id);
+        stencil_id++;
         break;
       }
       case eGpencilBatchGroupType_Point: {
@@ -1698,6 +1708,10 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         }
         stl->storage->shgroup_id++;
         start_point = elm->vertex_idx;
+
+        /* set stencil mask id */
+        DRW_shgroup_stencil_mask(shgrp, stencil_id);
+        stencil_id++;
         break;
       }
       case eGpencilBatchGroupType_Fill: {
@@ -1719,6 +1733,10 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         }
         stl->storage->shgroup_id++;
         start_fill = elm->vertex_idx;
+
+        /* set stencil mask id */
+        DRW_shgroup_stencil_mask(shgrp, stencil_id);
+        stencil_id++;
         break;
       }
       case eGpencilBatchGroupType_Edit: {
