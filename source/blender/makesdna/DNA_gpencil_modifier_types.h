@@ -31,6 +31,7 @@
 struct RNG;
 
 typedef enum GpencilModifierType {
+<<<<<<< HEAD
   eGpencilModifierType_None = 0,
   eGpencilModifierType_Noise = 1,
   eGpencilModifierType_Subdiv = 2,
@@ -52,6 +53,27 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Sample = 18,
   eGpencilModifierType_Backbone = 19,
   NUM_GREASEPENCIL_MODIFIER_TYPES,
+=======
+	eGpencilModifierType_None      = 0,
+	eGpencilModifierType_Noise     = 1,
+	eGpencilModifierType_Subdiv    = 2,
+	eGpencilModifierType_Thick     = 3,
+	eGpencilModifierType_Tint      = 4,
+	eGpencilModifierType_Array     = 5,
+	eGpencilModifierType_Build     = 6,
+	eGpencilModifierType_Opacity   = 7,
+	eGpencilModifierType_Color     = 8,
+	eGpencilModifierType_Lattice   = 9,
+	eGpencilModifierType_Simplify  = 10,
+	eGpencilModifierType_Smooth    = 11,
+	eGpencilModifierType_Hook      = 12,
+	eGpencilModifierType_Offset    = 13,
+	eGpencilModifierType_Mirror    = 14,
+	eGpencilModifierType_Armature  = 15,
+	eGpencilModifierType_Time      = 16,
+	eGpencilModifierType_Stroke    = 17,
+	NUM_GREASEPENCIL_MODIFIER_TYPES
+>>>>>>> DarkdefenderRepo/npr_tess
 } GpencilModifierType;
 
 typedef enum GpencilModifierMode {

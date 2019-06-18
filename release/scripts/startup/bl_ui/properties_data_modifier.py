@@ -698,6 +698,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.label(text="Camera Object:")
         col.prop(md, "camera_object", text="")
 
+        col.prop(md, "do_sel")
+
     def OCEAN(self, layout, ob, md):
         if not bpy.app.build_options.mod_oceansim:
             layout.label(text="Built without OceanSim modifier")
@@ -2062,6 +2064,27 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column()
         col.prop(md, "replace_material", text="Material")
         col.prop(md, "keep_on_top", text="Keep original stroke on top")
+
+        col = layout.column()
+        col.separator()
+        col.label(text="Material:")
+        row = col.row(align=True)
+        row.prop(md, "pass_index", text="Pass")
+        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
+
+        col.label(text="Layer:")
+        row = col.row(align=True)
+        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
+        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "layer_pass", text="Pass")
+        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
+
+    def GP_STROKE(self, layout, ob, md):
+        gpd = ob.data
+
+        col = layout.column()
+        col.prop(md, "offset_object", text="Object")
 
         col = layout.column()
         col.separator()
