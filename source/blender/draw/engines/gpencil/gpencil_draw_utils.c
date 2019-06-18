@@ -1537,6 +1537,9 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
               false,
               1.0f,
               (const int *)stl->storage->shade_render);
+          /* Disable stencil for this type */
+          DRW_shgroup_state_disable(stl->g_data->shgrps_drawing_stroke,
+                                    DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
         }
 
         /* clean previous version of the batch */
