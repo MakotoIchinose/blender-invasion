@@ -7137,9 +7137,9 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem rna_enum_lanpr_master_mode[] = {
-      {LANPR_MASTER_MODE_SOFTWARE, "SOFTWARE", 0, "Software", "Software edge calculation"},
-      {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "DPIX", "DPIX GPU edge calculation"},
-      {LANPR_MASTER_MODE_SNAKE, "SNAKE", 0, "Snake", "Image filter and GPU tracing method"},
+      {LANPR_MASTER_MODE_SOFTWARE, "SOFTWARE", 0, "CPU", "Software edge calculation"},
+      {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "GPU", "DPIX GPU edge extraction"},
+      {LANPR_MASTER_MODE_SNAKE, "SNAKE", 0, "Edge Detection", "Edge detection filter and tracing"},
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem rna_enum_lanpr_enable_post_processing[] = {
@@ -7189,6 +7189,14 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SceneLANPR", NULL);
   RNA_def_struct_sdna(srna, "SceneLANPR");
   RNA_def_struct_ui_text(srna, "Scene LANPR Config", "LANPR global config");
+
+  prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
+
+  prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(prop, "Auto Update", "Automatically update LANPR cache when scene changes");
 
   prop = RNA_def_property(srna, "reloaded", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, DEBUG_rna_enum_lanpr_reload);

@@ -1639,12 +1639,13 @@ struct LANPR_LineLayer;
 
 typedef struct SceneLANPR {
 
+  int enabled;
+  int auto_update; // for LANPR->GP to update automatically
+
   int master_mode;
 
   int enable_vector_trace;
   int display_thinning_result;
-
-  // int SizeCompensate;
 
   float depth_clamp;
   float depth_strength;
@@ -1693,7 +1694,9 @@ typedef struct SceneLANPR {
 
   /* composite utility */
   int composite_render_animation;
-  int what;
+
+  int _pad1;
+  
 
 } SceneLANPR;
 

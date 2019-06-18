@@ -702,15 +702,6 @@ class LANPR_linesets(UIList):
             layout.alignment = 'CENTER'
             layout.label("", icon_value=icon)
 
-def lanpr_get_composition_scene(scene):
-    n = scene.name+'_lanpr_comp'
-    for s in bpy.data.scenes:
-        if s.name == n: return s
-    return None
-
-def lanpr_is_composition_scene(scene):
-    return scene.name.endswith('_lanpr_comp')
-
 class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
     bl_label = "LANPR"
@@ -720,84 +711,60 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
     def poll(cls, context):
         return True
 
+    def draw_header(self, context):
+        self.layout.prop(context.scene.lanpr, "enabled", text="")
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer 
+        mode = lanpr.master_mode
 
-        # make LANPR main panel now visible under all engines.
-        # composition method yet to be deteremined.
-        
-        #sc = lanpr_get_composition_scene(scene)
-        
-        #if sc is not None:
-        #    layout.label(text = 'You are adjusting values for LANPR compostion scene.')
-        #    row = layout.row()
-        #    row.scale_y=1.5
-        #    row.operator("lanpr.goto_composition_scene")
-        #    layout.operator("lanpr.remove_composition_scene")
-        #    scene = sc
-        #    lanpr = scene.lanpr
-        #    active_layer = lanpr.layers.active_layer
-        #    return
-        #elif scene.render.engine!='BLENDER_LANPR':
-        #    layout.label(text = 'Select LANPR engine or use composition scene.')
-        #    layout.operator("lanpr.make_composition_scene")
-        #    return
 
-        #if lanpr_is_composition_scene(scene):
-        #   row = layout.row()
-        #    row.scale_y=1.5
-        #    row.operator("lanpr.goto_original_scene") 
-        #    
-        #    layout.label(text='LANPR Composition')
-        #    row = layout.row()
-        #    row.scale_y=1.5
-        #    row.scale_x=4
-        #    row.operator("lanpr.render_composited", icon = 'RENDER_STILL')
-        #    row.scale_x=1
-        #    row.prop(lanpr,"composite_render_animation", toggle=True, icon = 'RENDER_ANIMATION')
         
         if scene.render.engine!='BLENDER_LANPR':
-            layout.label(text='Mode:')
             layout.prop(lanpr, "master_mode", expand=True) 
         else:
             layout.label(text='Only Software mode result is used to generate GP stroke.')
 
-        if lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE":
+        if mode == "SOFTWARE":
+            row=layout.row(align=True)
+            row.prop(lanpr,'auto_update',toggle=True,text='Auto')
+            if not lanpr.auto_update:
+                row.operator("scene.lanpr_calculate", icon='RENDER_STILL', text='Update')
+
+        if mode == "DPIX" or mode == "SOFTWARE":
             
             layout.prop(lanpr, "background_color")
             layout.prop(lanpr, "crease_threshold")
 
             if lanpr.master_mode == "SOFTWARE":
-                layout.label(text="Enable On Demand:")
                 row = layout.row()
                 row.prop(lanpr,"enable_intersections", text = "Intersection Lines")
-                row.prop(lanpr,"enable_chaining", text = "Chaining (SLOW!)")
-                layout.label(text="RUN:")
-                layout.operator("scene.lanpr_calculate", icon='RENDER_STILL')
-
-                split = layout.split(factor=0.7)
+                row.prop(lanpr,"enable_chaining", text = "Chaining")
+                
+                split = layout.split(factor=0.4)
                 col = split.column()
-                col.label(text="Layer Composition:")
+                col.label(text="Line Layers:")
                 col = split.column()
-                col.operator("scene.lanpr_auto_create_line_layer", text = "Default")#, icon = "ZOOMIN")
-                layout.template_list("LANPR_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+                col.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
+                row=layout.row()
+                row.template_list("LANPR_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+                col=row.column(align=True)
                 if active_layer:
-                    split = layout.split()
-                    col = split.column()
-                    col.operator("scene.lanpr_add_line_layer")#icon="ZOOMIN")
-                    col.operator("scene.lanpr_delete_line_layer")#, icon="ZOOMOUT")
-                    col = split.column()
-                    col.operator("scene.lanpr_move_line_layer").direction = "UP"
-                    col.operator("scene.lanpr_move_line_layer").direction = "DOWN"
-                    layout.operator("scene.lanpr_rebuild_all_commands")
+                    col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+                    col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
+                    col.separator()
+                    col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
+                    col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
+                    col.separator()
+                    col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
                 else:
-                    layout.operator("scene.lanpr_add_line_layer")
+                    col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
             
             if active_layer:
-                layout.label(text= "Normal:")
+                layout.label(text= "Normal controlled line weight:")
                 layout.prop(active_layer,"normal_mode", expand = True)
                 if active_layer.normal_mode != "DISABLED":
                     layout.prop(active_layer,"normal_control_object")
