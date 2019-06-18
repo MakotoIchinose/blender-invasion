@@ -1461,6 +1461,12 @@ void DRW_gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
               false,
               1.0f,
               (const int *)stl->storage->shade_render);
+
+          if (gp_style->flag & GP_STYLE_DISABLE_STENCIL) {
+            /* Disable stencil for this type */
+            DRW_shgroup_state_disable(stl->g_data->shgrps_drawing_stroke,
+                                      DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
+          }
         }
         else {
           stl->g_data->shgrps_drawing_stroke = DRW_gpencil_shgroup_point_create(
@@ -1687,8 +1693,16 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         start_stroke = elm->vertex_idx;
 
         /* set stencil mask id */
-        DRW_shgroup_stencil_mask(shgrp, stencil_id);
-        stencil_id++;
+        if (gp_style->flag & GP_STYLE_DISABLE_STENCIL) {
+          /* Disable stencil for this type */
+          DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
+          /* set stencil mask id as not used */
+          DRW_shgroup_stencil_mask(shgrp, 0x00f);
+        }
+        else {
+          DRW_shgroup_stencil_mask(shgrp, stencil_id);
+          stencil_id++;
+        }
         break;
       }
       case eGpencilBatchGroupType_Point: {
