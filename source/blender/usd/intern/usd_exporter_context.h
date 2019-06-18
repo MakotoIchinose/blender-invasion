@@ -4,9 +4,11 @@
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/common.h>
 
+struct Depsgraph;
 struct Object;
 
 struct USDExporterContext {
+  Depsgraph *depsgraph;
   pxr::UsdStageRefPtr stage;
   pxr::SdfPath usd_path;
   Object *ob_eval;

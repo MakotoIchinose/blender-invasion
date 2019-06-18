@@ -3,7 +3,7 @@
 #include <pxr/base/tf/stringUtils.h>
 
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &ctx)
-    : stage(ctx.stage), usd_path_(ctx.usd_path), object(ctx.ob_eval)
+    : depsgraph(ctx.depsgraph), stage(ctx.stage), usd_path_(ctx.usd_path), object(ctx.ob_eval)
 {
 }
 

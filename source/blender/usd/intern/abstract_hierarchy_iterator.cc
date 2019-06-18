@@ -23,6 +23,11 @@ AbstractHierarchyIterator::~AbstractHierarchyIterator()
 {
 }
 
+const AbstractHierarchyIterator::WriterMap &AbstractHierarchyIterator::writer_map() const
+{
+  return writers;
+}
+
 void AbstractHierarchyIterator::release_writers()
 {
   for (WriterMap::value_type it : writers) {

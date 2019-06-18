@@ -15,20 +15,22 @@ void USDTransformWriter::do_write()
 {
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
 
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, object);
+
   // Get the object matrix relative to the parent.
-  if (object->parent == NULL) {
-    copy_m4_m4(parent_relative_matrix, object->obmat);
+  if (ob_eval->parent == NULL) {
+    copy_m4_m4(parent_relative_matrix, ob_eval->obmat);
   }
   else {
-    invert_m4_m4(object->parent->imat, object->parent->obmat);
-    mul_m4_m4m4(parent_relative_matrix, object->parent->imat, object->obmat);
+    invert_m4_m4(ob_eval->parent->imat, ob_eval->parent->obmat);
+    mul_m4_m4m4(parent_relative_matrix, ob_eval->parent->imat, ob_eval->obmat);
   }
 
   printf("USD-\033[32mexporting\033[0m XForm %s → %s   type=%d   addr = %p\n",
-         object->id.name,
+         ob_eval->id.name,
          usd_path_.GetString().c_str(),
-         object->type,
-         object);
+         ob_eval->type,
+         ob_eval);
 
   // Write the transform relative to the parent.
   pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(stage, usd_path_);

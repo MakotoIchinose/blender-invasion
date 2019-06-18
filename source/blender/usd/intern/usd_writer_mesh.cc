@@ -94,5 +94,6 @@ USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWrit
 
 Mesh *USDMeshWriter::get_evaluated_mesh(bool &UNUSED(r_needsfree))
 {
-  return object->runtime.mesh_eval;
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, object);
+  return ob_eval->runtime.mesh_eval;
 }

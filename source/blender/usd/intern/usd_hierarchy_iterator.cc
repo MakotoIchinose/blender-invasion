@@ -44,10 +44,8 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_xform_writer(const std::string &n
   printf("\033[32;1mCREATE\033[0m %s at %s\n", object->id.name, name.c_str());
   pxr::SdfPath usd_path("/" + name);
 
-  USDExporterContext ctx = {stage, usd_path, object, NULL};
-  USDAbstractWriter *xform_writer = new USDTransformWriter(ctx);
-  xform_writer->write();
-  return xform_writer;
+  USDExporterContext ctx = {depsgraph, stage, usd_path, object, nullptr};
+  return new USDTransformWriter(ctx);
 }
 
 TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &name,
@@ -57,8 +55,9 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &na
   pxr::SdfPath usd_path("/" + name);
   std::string data_name(get_id_name((ID *)object->data));
 
-  USDExporterContext ctx = {stage, usd_path.AppendPath(pxr::SdfPath(data_name)), object, NULL};
-  USDAbstractWriter *data_writer = NULL;
+  USDExporterContext ctx = {
+      depsgraph, stage, usd_path.AppendPath(pxr::SdfPath(data_name)), object, nullptr};
+  USDAbstractWriter *data_writer = nullptr;
 
   switch (ctx.ob_eval->type) {
     case OB_MESH:
@@ -78,8 +77,6 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &na
     delete data_writer;
     return nullptr;
   }
-
-  data_writer->write();
 
   return data_writer;
 }

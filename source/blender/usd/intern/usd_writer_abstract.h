@@ -15,6 +15,7 @@ struct Object;
 
 class USDAbstractWriter {
  protected:
+  Depsgraph *depsgraph;
   pxr::UsdStageRefPtr stage;
   pxr::SdfPath usd_path_;
   Object *object;
