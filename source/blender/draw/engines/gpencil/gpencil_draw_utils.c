@@ -1709,9 +1709,10 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         stl->storage->shgroup_id++;
         start_point = elm->vertex_idx;
 
-        /* set stencil mask id */
-        DRW_shgroup_stencil_mask(shgrp, stencil_id);
-        stencil_id++;
+        /* Disable stencil for this type */
+        DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
+        /* set stencil mask id as not used */
+        DRW_shgroup_stencil_mask(shgrp, 0x00f);
         break;
       }
       case eGpencilBatchGroupType_Fill: {
@@ -1734,9 +1735,10 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         stl->storage->shgroup_id++;
         start_fill = elm->vertex_idx;
 
-        /* set stencil mask id */
-        DRW_shgroup_stencil_mask(shgrp, stencil_id);
-        stencil_id++;
+        /* Disable stencil for this type */
+        DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
+        /* set stencil mask id as not used */
+        DRW_shgroup_stencil_mask(shgrp, 0x00f);
         break;
       }
       case eGpencilBatchGroupType_Edit: {
