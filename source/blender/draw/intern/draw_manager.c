@@ -724,6 +724,10 @@ static void drw_viewport_var_init(void)
     G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(DRWViewUboStorage), NULL);
   }
 
+  if (DST.draw_list == NULL) {
+    DST.draw_list = GPU_draw_list_create(DRW_DRAWLIST_LEN);
+  }
+
   memset(DST.object_instance_data, 0x0, sizeof(DST.object_instance_data));
 }
 
@@ -2907,6 +2911,10 @@ void DRW_engines_free(void)
   DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
 
   MEM_SAFE_FREE(DST.uniform_names.buffer);
+
+  if (DST.draw_list) {
+    GPU_draw_list_discard(DST.draw_list);
+  }
 
   DRW_opengl_context_disable();
 }

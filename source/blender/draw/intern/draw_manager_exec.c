@@ -597,6 +597,23 @@ BLI_INLINE void draw_legacy_matrix_update(DRWShadingGroup *shgroup,
   }
 }
 
+BLI_INLINE void draw_geometry_bind(DRWShadingGroup *shgroup, GPUBatch *geom)
+{
+  /* XXX hacking gawain. we don't want to call glUseProgram! (huge performance loss) */
+  if (DST.batch) {
+    DST.batch->program_in_use = false;
+  }
+
+  DST.batch = geom;
+
+  GPU_batch_program_set_no_use(
+      geom, GPU_shader_get_program(shgroup->shader), GPU_shader_get_interface(shgroup->shader));
+
+  geom->program_in_use = true;
+
+  GPU_batch_bind(geom);
+}
+
 BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
                                       GPUBatch *geom,
                                       int vert_first,
@@ -617,20 +634,33 @@ BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
 
   /* bind vertex array */
   if (DST.batch != geom) {
-    DST.batch = geom;
-
-    GPU_batch_program_set_no_use(
-        geom, GPU_shader_get_program(shgroup->shader), GPU_shader_get_interface(shgroup->shader));
-
-    GPU_batch_bind(geom);
+    draw_geometry_bind(shgroup, geom);
   }
 
-  /* XXX hacking gawain. we don't want to call glUseProgram! (huge performance loss) */
-  geom->program_in_use = true;
-
   GPU_batch_draw_advanced(geom, vert_first, vert_count, inst_first, inst_count);
+}
 
-  geom->program_in_use = false; /* XXX hacking gawain */
+BLI_INLINE void draw_indirect_call(DRWShadingGroup *shgroup,
+                                   GPUBatch *geom,
+                                   int vert_first,
+                                   int vert_count,
+                                   int inst_first,
+                                   int inst_count,
+                                   int baseinst_loc)
+{
+  if (baseinst_loc == -1) {
+    /* bind vertex array */
+    if (DST.batch != geom) {
+      GPU_draw_list_submit(DST.draw_list);
+      draw_geometry_bind(shgroup, geom);
+    }
+    GPU_draw_list_command_add(DST.draw_list, vert_first, vert_count, inst_first, inst_count);
+  }
+  /* Fallback when unsupported */
+  else if (inst_count > 0) {
+    draw_geometry_execute(
+        shgroup, geom, vert_first, vert_count, inst_first, inst_count, baseinst_loc);
+  }
 }
 
 enum {
@@ -992,6 +1022,8 @@ typedef struct DRWCommandsState {
   int resource_chunk;
   int base_inst;
   int inst_count;
+  int v_first;
+  int v_count;
   GPUBatch *batch;
   bool neg_scale;
 } DRWCommandsState;
@@ -1040,9 +1072,18 @@ static bool draw_call_do_batching(DRWShadingGroup *shgroup,
      * where any if the above condition are true. */
     BLI_assert(state->inst_count == 0);
     if (state->inst_count > 0) {
-      draw_geometry_execute(
-          shgroup, state->batch, 0, 0, state->base_inst, state->inst_count, baseinst_loc);
+      /* We need to draw the pending instances. */
+      draw_indirect_call(shgroup,
+                         state->batch,
+                         state->v_first,
+                         state->v_count,
+                         state->base_inst,
+                         state->inst_count,
+                         baseinst_loc);
     }
+    /* Submit the pending commands. */
+    /* NOTE/TODO: We could allow command list usage in this case. */
+    GPU_draw_list_submit(DST.draw_list);
     /* We cannot pack in this situation. */
     state->inst_count = 0;
     state->base_inst = 0;
@@ -1051,26 +1092,69 @@ static bool draw_call_do_batching(DRWShadingGroup *shgroup,
   }
   else {
     /* See if any condition requires to interupt the packing. */
-    if ((call->handle.id != state->base_inst + state->inst_count) || /* Is the id consecutive? */
-        (call->handle.negative_scale != state->neg_scale) ||         /* */
-        (call->handle.chunk != state->resource_chunk) ||             /* */
-        (call->batch != state->batch)                                /* */
+    if ((call->handle.negative_scale != state->neg_scale) || /* Need to change state. */
+        (call->handle.chunk != state->resource_chunk) ||     /* Need to change UBOs. */
+        (call->batch != state->batch)                        /* Need to change VAO. */
     ) {
       /* We need to draw the pending instances. */
-      if (state->inst_count > 0) {
-        draw_geometry_execute(
-            shgroup, state->batch, 0, 0, state->base_inst, state->inst_count, baseinst_loc);
-      }
+      draw_indirect_call(shgroup,
+                         state->batch,
+                         state->v_first,
+                         state->v_count,
+                         state->base_inst,
+                         state->inst_count,
+                         baseinst_loc);
+      /* Submit the pending commands. */
+      GPU_draw_list_submit(DST.draw_list);
+
+      state->batch = call->batch;
+      state->v_first = 0;
+      state->v_count = (call->batch->elem) ? call->batch->elem->index_len :
+                                             call->batch->verts[0]->vertex_len;
       state->inst_count = 1;
       state->base_inst = call->handle.id;
-      state->batch = call->batch;
+
       draw_call_resource_bind(state, call->handle, obmats_loc, obinfos_loc, chunkid_loc);
+
+      GPU_draw_list_init(DST.draw_list, state->batch);
+    }
+    /* Is the id consecutive? */
+    else if (call->handle.id != state->base_inst + state->inst_count) {
+      /* We need to add a draw command for the pending instances. */
+      draw_indirect_call(shgroup,
+                         state->batch,
+                         state->v_first,
+                         state->v_count,
+                         state->base_inst,
+                         state->inst_count,
+                         baseinst_loc);
+      state->inst_count = 1;
+      state->base_inst = call->handle.id;
     }
     else {
       state->inst_count++;
     }
     return true;
   }
+}
+
+/* Flush remaining pending drawcalls. */
+static void draw_call_batching_finish(DRWShadingGroup *shgroup,
+                                      DRWCommandsState *state,
+                                      int baseinst_loc)
+{
+  if (state->inst_count > 0) {
+    /* Add last instance call if there was any in preparation. */
+    draw_indirect_call(shgroup,
+                       state->batch,
+                       state->v_first,
+                       state->v_count,
+                       state->base_inst,
+                       state->inst_count,
+                       baseinst_loc);
+  }
+  /* Flush the last pending drawcalls batched together. */
+  GPU_draw_list_submit(DST.draw_list);
 }
 #endif
 
@@ -1095,6 +1179,10 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     }
     GPU_shader_bind(shgroup->shader);
     DST.shader = shgroup->shader;
+    /* XXX hacking gawain */
+    if (DST.batch) {
+      DST.batch->program_in_use = false;
+    }
     DST.batch = NULL;
   }
 
@@ -1122,6 +1210,10 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   {
     GPUBatch *first_batch = (shgroup->calls.first) ? shgroup->calls.first->calls[0].batch : NULL;
 
+    if (first_batch) {
+      GPU_draw_list_init(DST.draw_list, first_batch);
+    }
+
     DRWCallIterator iter;
     draw_call_iter_begin(&iter, shgroup);
     DRWCall *call;
@@ -1132,6 +1224,10 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         .base_inst = 0,
         .inst_count = 0,
         .callid = 0,
+        .v_first = 0,
+        .v_count = (first_batch ? (first_batch->elem ? first_batch->elem->index_len :
+                                                       first_batch->verts[0]->vertex_len) :
+                                  0),
         .batch = first_batch,
     };
     while ((call = draw_call_iter_step(&iter))) {
@@ -1167,13 +1263,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                             call->inst_count,
                             baseinst_loc);
     }
-
 #ifdef USE_BATCHING
-    /* Flush the last pending drawcall batched together. */
-    if (state.inst_count > 0) {
-      draw_geometry_execute(
-          shgroup, state.batch, 0, 0, state.base_inst, state.inst_count, baseinst_loc);
-    }
+    draw_call_batching_finish(shgroup, &state, baseinst_loc);
 #endif
 
     /* Reset state */
@@ -1259,6 +1350,11 @@ static void drw_draw_pass_ex(DRWPass *pass,
   if (DST.shader) {
     GPU_shader_unbind();
     DST.shader = NULL;
+  }
+
+  if (DST.batch) {
+    DST.batch->program_in_use = false;
+    DST.batch = NULL;
   }
 
   /* HACK: Rasterized discard can affect clear commands which are not
