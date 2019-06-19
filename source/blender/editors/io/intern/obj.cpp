@@ -104,7 +104,7 @@ using namespace common;
 bool OBJ_export_mesh(bContext *UNUSED(C),
                      ExportSettings *settings,
                      std::FILE *file,
-                     Object *eob,
+                     const Object *eob,
                      Mesh *mesh,
                      ulong &vertex_total,
                      ulong &uv_total,
@@ -213,7 +213,7 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
 bool OBJ_export_object(bContext *C,
                        ExportSettings *const settings,
                        Scene *scene,
-                       Object *ob,
+                       const Object *ob,
                        std::FILE *file,
                        ulong &vertex_total,
                        ulong &uv_total,
@@ -276,7 +276,7 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
         settings->dedup_normals_threshold);
 
     // TODO someone if not exporting as objects, do they need to all be merged?
-    for (Object *ob : common::exportable_object_iter{settings})
+    for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings})
       if (!OBJ_export_object(C,
                              settings,
                              escene,

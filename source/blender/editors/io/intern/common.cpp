@@ -231,6 +231,7 @@ bool export_end(bContext *UNUSED(C), ExportSettings *const settings)
   return true;
 }
 
+/* clang-format off */
 bool time_export(bContext *C,
                  ExportSettings *const settings,
                  void (*start)(bContext *C, ExportSettings *const settings),
@@ -239,9 +240,12 @@ bool time_export(bContext *C,
   auto f = std::chrono::steady_clock::now();
   start(C, settings);
   auto ret = end(C, settings);
-  std::cout << "Took " << (std::chrono::steady_clock::now() - f).count() << "ns\n";
+  std::cout << "Took "
+            << std::chrono::duration_cast<std::chrono::milliseconds>
+               (std::chrono::steady_clock::now() - f).count() << "ms\n";
   return ret;
 }
+/* clang-format on */
 
 const std::array<float, 3> calculate_normal(const Mesh *const mesh, const MPoly &mp)
 {

@@ -29,408 +29,179 @@ extern "C" {
 
 namespace common {
 
-// /* clang-format off */
-// template<typename T>
-// struct pointer_iterator {
-//   using difference_type = ptrdiff_t;
-//   using value_type = T;
-//   using pointer    = T *;
-//   using reference  = T &;
-//   using iterator_category = std::random_access_iterator_tag;
-//   pointer_iterator() : first(nullptr), curr(nullptr), size(0) {}
-//   pointer_iterator(T *p) : curr(p), first(p), size(0) {}
-//   pointer_iterator(T *p, size_t size) : it(p), first(p), size(size) {}
-//   operator T *() const { return curr; }
-//   pointer_iterator &operator=(const pointer_iterator<T, iterator_category> &p)
-//   {
-//     // Placement new: construct a new object in the position of `this`
-//     // Doesn't actually allocate memory
-//     new (this) pointer_iterator(p);
-//     return *this;
-//   }
-//   pointer_iterator begin() const { return {first, size}; }
-//   pointer_iterator end()   const { return {first + size, size}; }
-//   pointer_iterator &operator++() { ++curr; }
-//   pointer_iterator &operator--() { --curr; }
-//   pointer_iterator &operator+(ptrdiff_t n) { curr += n; return *this; }
-//   ptrdiff_t operator-(const pointer_iterator &other) const { return other.curr - curr; }
-//   bool operator==(const pointer_iterator &other) const { return curr == other.curr; }
-//   const T & operator*() const { return *curr; }
-//   T *first;
-//   T *curr;
-//   size_t size;
-// };
-// /* clang-format on */
-
+/* clang-format off */
 // Adapt a pointer-size pair as a random access iterator
 // This makes use of `boost::iterator_facade` and makes it possible to use
 // for each style loops, as well as cleanly hiding how the underlying Blender
 // data structures are accessed
-template<typename SourceT, typename Tag = std::random_access_iterator_tag>
-struct pointer_iterator
-    : public boost::iterator_facade<pointer_iterator<SourceT, Tag>, SourceT &, Tag> {
-  pointer_iterator() : first(nullptr)
-  {
-  }
-  pointer_iterator(const pointer_iterator<SourceT, Tag> &) = default;
-  pointer_iterator(pointer_iterator<SourceT, Tag> &&) = default;
-  explicit pointer_iterator(SourceT *p) : it(p), first(p), size(0)
-  {
-  }
-  explicit pointer_iterator(SourceT *p, size_t size) : it(p), first(p), size(size)
-  {
-  }
-  operator SourceT *() const
-  {
-    return it;
-  }
-  pointer_iterator &operator=(const pointer_iterator<SourceT, Tag> &p)
-  {
+template<typename T, typename Tag = std::random_access_iterator_tag>
+struct pointer_iterator_base {
+  using difference_type = ptrdiff_t;
+  using value_type = T;
+  using pointer    = T *;
+  using reference  = T &;
+  using iterator_category = Tag;
+  pointer_iterator_base(pointer p, size_t size) : first(p), curr(p), size(size) {}
+  pointer_iterator_base(const pointer_iterator_base &pib) : first(pib.first), curr(pib.curr), size(pib.size) {}
+  operator pointer() const { return curr; }
+  pointer_iterator_base &operator=(const pointer_iterator_base &p) {
     // Placement new: construct a new object in the position of `this`
     // Doesn't actually allocate memory
-    new (this) pointer_iterator(p);
+    new (this) pointer_iterator_base(p);
     return *this;
   }
-  // pointer_iterator & operator=(pointer_iterator<SourceT, Tag> &&p) = default;//  {
-  // 	return pointer_iterator<SourceT, Tag>(p);
-  // }
-  pointer_iterator begin() const
-  {
-    return pointer_iterator{first, size};
-  }
-  const pointer_iterator cbegin() const
-  {
-    return pointer_iterator{first, size};
-  }
-  pointer_iterator end() const
-  {
-    return pointer_iterator{first + size, size};
-  }
-  const pointer_iterator cend() const
-  {
-    return pointer_iterator{first + size, size};
-  }
-  friend class boost::iterator_core_access;
-  void increment()
-  {
-    ++it;
-  }
-  void decrement()
-  {
-    --it;
-  }
-  void advance(ptrdiff_t n)
-  {
-    it += n;
-  }
-  ptrdiff_t distance_to(const pointer_iterator &other)
-  {
-    return other.it - it;
-  }
-  bool equal(const pointer_iterator &other) const
-  {
-    return it == other.it;
-  }
-  SourceT &dereference() const
-  {
-    return *this->it;
-  }
-  SourceT *it;
-  SourceT *const first;
+  pointer_iterator_base begin() const { return {this->first, this->size}; }
+  pointer_iterator_base end()   const { return {this->first + this->size, this->size}; }
+  pointer_iterator_base & operator++() { ++curr; return *this; }
+  pointer_iterator_base & operator--() { --curr; return *this; }
+  pointer_iterator_base & operator+(difference_type n) { curr += n; return *this; }
+  ptrdiff_t operator-(const pointer_iterator_base &other) const { return other.curr - curr; }
+  bool operator==(const pointer_iterator_base &other)     const { return curr == other.curr; }
+  pointer first;
+  pointer curr;
   size_t size;
 };
 
-// This is another iterator, whcih makes use of `boost::iterator_adaptor` to change  how the
-// underlying iterator behaves. Specifically, it uses the derived class' `dereference` method. This
-// makes use of CRTP, the curiously recurring template pattern This means that the base class has,
-// as a template paramater, the type of the derived class which means that it can hold a pointer to
-// said derived class and call it's `dereference` method.
-template<typename SourceT,
-         typename ResT,
-         typename CRTP,
-         typename Base = pointer_iterator<SourceT>,
-         typename Tag = typename std::iterator_traits<Base>::iterator_category>
-struct dereference_iterator
-    : public boost::iterator_adaptor<dereference_iterator<SourceT, ResT, CRTP, Base>,
-                                     Base,
-                                     ResT,
-                                     Tag,
-                                     ResT> {
-  using dereference_iterator_ = dereference_iterator<SourceT, ResT, CRTP, Base>;
-  dereference_iterator() : dereference_iterator::iterator_adaptor_(), crtp(nullptr)
-  {
-  }
-  dereference_iterator(const dereference_iterator &di, CRTP *crtp)
-      : dereference_iterator::iterator_adaptor_(di.base()), crtp(crtp)
-  {
-  }
-  dereference_iterator(dereference_iterator &&di, CRTP *crtp)
-      : dereference_iterator::iterator_adaptor_(di.base()), crtp(crtp)
-  {
-  }
-  dereference_iterator(Base const &other, CRTP *crtp)
-      : dereference_iterator::iterator_adaptor_(other), crtp(crtp)
-  {
-  }
-  template<typename Size = size_t>
-  explicit dereference_iterator(SourceT *p, Size size, CRTP *crtp)
-      : dereference_iterator(Base{p, (size_t)size}, crtp)
-  {
-  }
-  explicit dereference_iterator(SourceT *p, CRTP *crtp)  // For list_iterator
-      : dereference_iterator(Base{p}, crtp)
-  {
-  }
-  dereference_iterator begin() const
-  {
-    return {this->base().begin(), crtp};
-  }
-  const dereference_iterator cbegin() const
-  {
-    return {this->base().cbegin(), crtp};
-  }
-  dereference_iterator end() const
-  {
-    return {this->base().end(), crtp};
-  }
-  const dereference_iterator cend() const
-  {
-    return {this->base().cend(), crtp};
-  }
-  friend class boost::iterator_core_access;
-  ResT dereference() const
-  {
-    return crtp->dereference(this->base());
-  }
-  CRTP *crtp;
+template<typename T>
+struct pointer_iterator : pointer_iterator_base<T, std::random_access_iterator_tag> {
+  using pointer_iterator_base<T, std::random_access_iterator_tag>
+      ::pointer_iterator_base;
+  inline const T & operator*() const { return *this->curr; }
 };
 
-// Another iterator that iterates over doubly linked lists
+// An iterator that iterates over doubly linked lists
 template<typename SourceT,
          typename ResT = SourceT &,
          typename Tag = std::bidirectional_iterator_tag>
-struct list_iterator : public boost::iterator_adaptor<list_iterator<SourceT, ResT, Tag>,
-                                                      pointer_iterator<SourceT, Tag>,
-                                                      ResT,
-                                                      Tag,
-                                                      ResT> {
-  list_iterator() : list_iterator::iterator_adaptor_(), first(nullptr)
-  {
-  }
-  list_iterator(const pointer_iterator<SourceT, Tag> &other)
-      : list_iterator::iterator_adaptor_(other), first(other.first)
-  {
-  }
-  explicit list_iterator(SourceT *first)
-      : list_iterator::iterator_adaptor_(pointer_iterator<SourceT, Tag>{first}), first(first)
-  {
-  }
-  list_iterator begin() const
-  {
-    return list_iterator{first};
-  }
-  list_iterator end() const
-  {
-    return list_iterator{nullptr};
-  }
-  const list_iterator cbegin() const
-  {
-    return list_iterator{first};
-  }
-  const list_iterator cend() const
-  {
-    return list_iterator{nullptr};
-  }
-  friend class boost::iterator_core_access;
-  void increment()
-  {
-    this->base_reference().it = this->base_reference()->next;
-  }
-  void decrement()
-  {
-    this->base_reference().it = this->base_reference()->prev;
-  }
-  ResT dereference() const
-  {
-    return *this->base();
-  }
-  SourceT *const first;
+struct list_iterator : pointer_iterator_base<SourceT, Tag> {
+  list_iterator(SourceT *p) : pointer_iterator_base<SourceT, Tag>(p, 0) {}
+  list_iterator begin() const { return {this->first}; }
+  list_iterator end()   const { return {nullptr}; }
+  list_iterator & operator++() { this->curr = this->curr->next; return *this; }
+  list_iterator & operator--() { this->curr = this->curr->prev; return *this; }
+  inline const ResT operator*() const { return *this->curr; }
 };
 
 // Iterator over the polygons of a mesh
 struct poly_iter : pointer_iterator<MPoly> {
-  poly_iter(const Mesh *const m) : pointer_iterator(m->mpoly, m->totpoly)
-  {
-  }
-  poly_iter(const pointer_iterator &p) : pointer_iterator(p)
-  {
-  }
-  poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p))
-  {
-  }
+  poly_iter(const Mesh *const m) : pointer_iterator(m->mpoly, m->totpoly) {}
+  poly_iter(MPoly * const poly, size_t size) : pointer_iterator(poly, size) {}
+  poly_iter begin() const { return {this->first, this->size}; }
+  poly_iter end()   const { return {this->first + this->size, this->size}; }
+  // poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
+  // poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 };
 
 // Iterator over the vertices of a mesh
 struct vert_iter : pointer_iterator<MVert> {
-  vert_iter(const Mesh *const m) : pointer_iterator(m->mvert, m->totvert)
-  {
-  }
+  vert_iter(const Mesh *const m) : pointer_iterator(m->mvert, m->totvert) {}
 };
 
 // Iterator over the vertices of a polygon
-struct vert_of_poly_iter : public dereference_iterator<MLoop, MVert &, vert_of_poly_iter> {
+struct vert_of_poly_iter : pointer_iterator_base<MLoop, std::random_access_iterator_tag> {
   // TODO someone What order are the vertices stored in? Clockwise?
-  explicit vert_of_poly_iter(const Mesh *const mesh, const MPoly &mp)
-      : dereference_iterator(mesh->mloop + mp.loopstart, mp.totloop, this), mesh(mesh)
-  {
-  }
-  inline MVert &dereference(const pointer_iterator<MLoop> &b)
-  {
-    return mesh->mvert[b->v];
-  }
-  const Mesh *const mesh;
+  vert_of_poly_iter(const Mesh *const mesh, const MPoly &mp)
+    : pointer_iterator_base(mesh->mloop + mp.loopstart, mp.totloop), mvert(mesh->mvert) {}
+  vert_of_poly_iter(const MVert * const mvert, MLoop *poly, size_t size)
+    : pointer_iterator_base(poly, size), mvert(mvert) {}
+  vert_of_poly_iter begin() const { return {mvert, this->first, this->size}; }
+  vert_of_poly_iter end()   const { return {mvert, this->first + this->size, this->size}; }
+  const MVert & operator*() const { return mvert[this->curr->v]; }
+  const MVert * const mvert;
 };
 
 // Iterator over all the edges of a mesh
 struct edge_iter : pointer_iterator<MEdge> {
-  edge_iter(const Mesh *const m) : pointer_iterator(m->medge, m->totedge)
-  {
-  }
-  edge_iter(const pointer_iterator<MEdge> &pi) : pointer_iterator(pi)
-  {
-  }
-  edge_iter(pointer_iterator<MEdge> &&pi) : pointer_iterator(pi)
-  {
-  }
+  edge_iter(const Mesh *const m) : pointer_iterator(m->medge, m->totedge) {}
+  edge_iter(MEdge * const e, size_t s) : pointer_iterator(e, s) {}
+  // edge_iter(const pointer_iterator<MEdge> &pi) : pointer_iterator(pi) {}
+  // edge_iter(pointer_iterator<MEdge> &&pi) : pointer_iterator(pi) {}
 };
 
-// Iterator over the edges of a mesh whcih are marked as loose
-struct loose_edge_iter
-    : public boost::
-          iterator_adaptor<loose_edge_iter, edge_iter, MEdge, std::bidirectional_iterator_tag> {
-  explicit loose_edge_iter(const Mesh *const m, const edge_iter &e)
-      : loose_edge_iter::iterator_adaptor_(e), mesh(m)
-  {
-  }
-  explicit loose_edge_iter(const Mesh *const m) : loose_edge_iter(m, edge_iter(m))
-  {
-  }
-  loose_edge_iter begin() const
-  {
-    return loose_edge_iter(mesh);
-  }
-  loose_edge_iter end() const
-  {
-    return loose_edge_iter(mesh, this->base().end());
-  }
-  void increment()
-  {
+// Iterator over the edges of a mesh which are marked as loose
+struct loose_edge_iter : edge_iter {
+  loose_edge_iter(const Mesh *const m) : edge_iter(m) {}
+  loose_edge_iter(MEdge * const e, size_t s) : edge_iter(e, s) {}
+  loose_edge_iter begin() const { return {this->first, this->size}; }
+  loose_edge_iter end()   const { return {this->first + this->size, this->size}; }
+  loose_edge_iter & operator++() {
     do {
-      ++this->base_reference();
-    } while (!(this->base()->flag & ME_LOOSEEDGE));
+      ++this->curr;
+    } while (!(this->curr->flag & ME_LOOSEEDGE));
+    return *this;
   }
-  void decrement()
-  {
+  loose_edge_iter & operator--() {
     do {
-      --this->base_reference();
-    } while (!(this->base()->flag & ME_LOOSEEDGE));
+      --this->curr;
+    } while (!(this->curr->flag & ME_LOOSEEDGE));
+    return *this;
   }
-  const Mesh *const mesh;
 };
 
 // Iterator over all the objects in a `ViewLayer`
 // TODO someone G.is_break
-struct object_iter : dereference_iterator<Base, Object *, object_iter, list_iterator<Base>> {
+struct object_iter : list_iterator<Base, Object *> {
+  object_iter(Base * const b) : list_iterator(b) {}
   object_iter(const ViewLayer *const vl)
-      : dereference_iterator((Base *)vl->object_bases.first, this)
-  {
-  }
-  object_iter(Base *b) : dereference_iterator(b, this)
-  {
-  }
-  inline static Object *dereference(const list_iterator<Base> &b)
-  {
-    return b->object;
+      : list_iterator((Base *)vl->object_bases.first) {}
+  const Object * operator*() {
+    return this->curr->object;
   }
 };
 
-struct exportable_object_iter
-    : public boost::iterator_adaptor<exportable_object_iter, object_iter> {
-  explicit exportable_object_iter(const ExportSettings *const settings)
-      : exportable_object_iter::iterator_adaptor_(settings->view_layer), settings(settings)
-  {
+struct exportable_object_iter : object_iter {
+  exportable_object_iter(const ViewLayer *const vl,
+                         const ExportSettings *const settings)
+      : object_iter(vl), settings(settings) {}
+  exportable_object_iter(Base *base, const ExportSettings *const settings)
+      : object_iter(base), settings(settings) {}
+  exportable_object_iter begin() const {
+    return {this->first, settings};
   }
-  exportable_object_iter(const ExportSettings *const settings, Base *base)
-      : exportable_object_iter::iterator_adaptor_(base), settings(settings)
-  {
+  exportable_object_iter end() const {
+    return {(Base *)nullptr, settings};
   }
-  friend class boost::iterator_core_access;
-  exportable_object_iter begin() const
-  {
-    return {settings, (Base *)settings->view_layer->object_bases.first};
-  }
-  exportable_object_iter end() const
-  {
-    return {settings, (Base *)nullptr};
-  }
-  void increment()
-  {
+  exportable_object_iter & operator++() {
     do {
-      ++this->base_reference();
-    } while (this->base() != this->base().end() &&
-             !common::should_export_object(settings, *this->base()));
-  }
-  void decrement()
-  {
-    do {
-      --this->base_reference();
-    } while (this->base() != this->base().begin() &&
-             !common::should_export_object(settings, *this->base()));
+      this->curr = this->curr->next;
+    } while (this->curr != nullptr &&
+             !common::should_export_object(settings, this->curr->object));
+    return *this;
   }
   const ExportSettings *const settings;
 };
 
 // Iterator over the modifiers of an `Object`
 struct modifier_iter : list_iterator<ModifierData> {
-  explicit modifier_iter(const Object *const ob)
-      : list_iterator((ModifierData *)ob->modifiers.first)
-  {
-  }
+  modifier_iter(const Object *const ob)
+      : list_iterator((ModifierData *)ob->modifiers.first) {}
 };
 
 // Iterator over the `MLoop` of a `MPoly` of a mesh
 struct loop_of_poly_iter : pointer_iterator<MLoop> {
-  explicit loop_of_poly_iter(const Mesh *const mesh, const poly_iter &poly)
-      : pointer_iterator(mesh->mloop + poly->loopstart, poly->totloop - 1)
-  {
-  }
-  explicit loop_of_poly_iter(const Mesh *const mesh, const MPoly &poly)
-      : pointer_iterator(mesh->mloop + poly.loopstart, poly.totloop - 1)
-  {
-  }
-  loop_of_poly_iter(const pointer_iterator &p) : pointer_iterator(p)
-  {
-  }
-  loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p))
-  {
-  }
+  loop_of_poly_iter(const Mesh *const mesh, const poly_iter &poly)
+    : pointer_iterator(mesh->mloop + (*poly).loopstart, (*poly).totloop) {} // XXX DEBUG THIS HERE
+  loop_of_poly_iter(const Mesh *const mesh, const MPoly &poly)
+      : pointer_iterator(mesh->mloop + poly.loopstart, poly.totloop) {}
+  loop_of_poly_iter(MLoop * const loop, size_t size)
+    : pointer_iterator(loop, size) {}
+  loop_of_poly_iter begin() const { return loop_of_poly_iter{this->first, this->size}; }
+  loop_of_poly_iter end()   const { return loop_of_poly_iter{this->first + this->size, this->size}; }
+  // loop_of_poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
+  // loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 };
 
 // Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
-struct uv_iter : public dereference_iterator<MLoopUV, const std::array<float, 2>, uv_iter> {
-  explicit uv_iter(const Mesh *const m) : dereference_iterator(m->mloopuv, m->totloop, this)
-  {
+struct uv_iter : pointer_iterator_base<MLoopUV> {
+  uv_iter(const Mesh *const m) : pointer_iterator_base(m->mloopuv, m->totloop) {}
+  uv_iter(MLoopUV * const uv, size_t size) : pointer_iterator_base(uv, size) {}
+  uv_iter begin() const { return {this->first, this->size}; }
+  uv_iter end()   const { return {this->first + this->size, this->size}; }
+  inline const std::array<float, 2> operator*() {
+    return {this->curr->uv[0], this->curr->uv[1]};
   }
-  uv_iter(const dereference_iterator_ &di) : dereference_iterator(di, this)
-  {
-  }
-  uv_iter(dereference_iterator_ &&di) : dereference_iterator(di, this)
-  {
-  }
-  inline const std::array<float, 2> dereference(const pointer_iterator<MLoopUV> &b)
-  {
-    return {b->uv[0], b->uv[1]};
-  }
+  // uv_iter(const dereference_iterator_ &di) : dereference_iterator(di, this) {}
+  // uv_iter(dereference_iterator_ &&di) : dereference_iterator(di, this) {}
 };
 
 // Iterator over the normals of mesh
@@ -440,49 +211,60 @@ struct uv_iter : public dereference_iterator<MLoopUV, const std::array<float, 2>
 //   - Vertex normals, when the face is smooth shaded
 // This is a completely separate iterator because it needs to override pretty much all behaviours
 // It's only a bidirectional iterator, because it is not continuous
-struct normal_iter : public boost::iterator_facade<normal_iter,
-                                                   std::array<float, 3>,
-                                                   std::bidirectional_iterator_tag,
-                                                   const std::array<float, 3>> {
+struct normal_iter {
   using ResT = const std::array<float, 3>;
-  normal_iter() = default;
-  normal_iter(const normal_iter &) = default;
-  normal_iter(normal_iter &&) = default;
-  explicit normal_iter(const Mesh *const mesh, const poly_iter poly, const loop_of_poly_iter loop)
-      : mesh(mesh), poly(poly), loop(loop)
-  {
+  // normal_iter() = default;
+  // normal_iter(const normal_iter &) = default;
+  // normal_iter(normal_iter &&) = default;
+  using difference_type = ptrdiff_t;
+  using value_type = ResT;
+  using pointer    = ResT *;
+  using reference  = ResT &;
+  using iterator_category = std::bidirectional_iterator_tag;
+  normal_iter(const Mesh *const mesh, const poly_iter &poly,
+              const loop_of_poly_iter &loop)
+    : mesh(mesh), poly(poly), loop(loop) {
     custom_no = static_cast<float(*)[3]>(CustomData_get_layer(&mesh->ldata, CD_NORMAL));
   }
-  explicit normal_iter(const Mesh *const mesh)
-      : normal_iter(mesh, poly_iter(mesh), loop_of_poly_iter(mesh, poly_iter(mesh)))
-  {
+  normal_iter(const Mesh *const mesh)
+    : normal_iter(mesh, poly_iter(mesh), loop_of_poly_iter(mesh, poly_iter(mesh))) {}
+  normal_iter begin() const {
+    return {mesh};
   }
-  normal_iter begin() const
-  {
-    return *this;
+  normal_iter end() const {
+    return {mesh, poly.end(), loop.end()};
   }
-  normal_iter end() const
-  {
-    return normal_iter(mesh, poly.end(), loop.end());
-  }
-  friend class boost::iterator_core_access;
-  void increment()
-  {
-    // If we're not at the end of the loop, we increment it
-    if (loop != loop.end()) {
-      ++loop;
-    }
-    else if (poly != poly.end()) {
-      // if we're not at the end of the poly, we increment it
+  normal_iter & operator++() {
+    // If not flat shaded
+    // const bool flat_shaded = (((*poly).flag & ME_SMOOTH) == 1);
+    // if (flat_shaded)
+    ++loop;
+    if (loop == loop.end()) {
       ++poly;
+      // if incrementing the poly didn't put us past the end,
       if (poly != poly.end())
-        // if incrementing the poly didn't put us past the end,
         // use the new poly to generate the new loop iterator
         loop = loop_of_poly_iter{mesh, poly};
+      else
+        // otherwise make sure loop is at the end, so we can stop iterating
+        loop = loop.end();
     }
+    // // If we're not at the end of the loop, we increment it
+    // if (loop != loop.end()) {
+    //   ++loop;
+    // } else if (poly != poly.end()) {
+    //   // if we're not at the end of the poly, we increment it
+    //   ++poly;
+    //   if (poly != poly.end())
+    //     // if incrementing the poly didn't put us past the end,
+    //     // use the new poly to generate the new loop iterator
+    //     loop = loop_of_poly_iter{mesh, poly};
+    //   else
+    //     loop = loop.end();
+    // }
+    return *this;
   }
-  void decrement()
-  {
+  normal_iter & operator--() {
     if (loop != loop.begin()) {
       --loop;
     }
@@ -490,33 +272,35 @@ struct normal_iter : public boost::iterator_facade<normal_iter,
       --poly;
       loop = loop_of_poly_iter{mesh, poly};
     }
+    return *this;
   }
-  bool equal(const normal_iter &other) const
-  {
+  bool operator==(const normal_iter &other) const {
     // Equal if the poly iterator is the same
     return poly == other.poly &&
-           // And either the face is not smooth shaded, in which case we
-           // don't care about the loop, or if the loop is the same
-           ((poly->flag & ME_SMOOTH) == 0 || loop == other.loop);
+      // And either the face is not smooth shaded, in which case we
+      // don't care about the loop, or if the loop is the same
+      (((*poly).flag & ME_SMOOTH) == 0 || loop == other.loop);
   }
-  ResT dereference() const
-  {
+  bool operator!=(const normal_iter &other) const {
+    return !(*this == other);
+  }
+  ResT operator*() const {
     // If we have custom normals, read from there
     if (custom_no) {
-      const float(&no)[3] = custom_no[loop->v];
+      const float(&no)[3] = custom_no[(*loop).v];
       return {no[0], no[1], no[2]};
-    }
-    else {
+    } else {
       float no[3];
       // If the face is not smooth shaded, calculate the normal of the face
-      if ((poly->flag & ME_SMOOTH) == 0)
+      if (((*poly).flag & ME_SMOOTH) == 0) {
         // Note the `loop.first`. This is because the function expects
         // a pointer to the first element of the loop
         BKE_mesh_calc_poly_normal(poly, loop.first, mesh->mvert, no);
-      else
+      } else {
         // Otherwise, the normal is stored alongside the vertex,
         // as a short, so we retrieve it
-        normal_short_to_float_v3(no, mesh->mvert[loop->v].no);
+        normal_short_to_float_v3(no, mesh->mvert[(*loop).v].no);
+      }
       return {no[0], no[1], no[2]};
     }
   }
@@ -526,25 +310,26 @@ struct normal_iter : public boost::iterator_facade<normal_iter,
   const float (*custom_no)[3];
 };
 
-template<size_t N>
-inline float len_sq(const std::array<float, N> &lhs, const std::array<float, N> &rhs)
-{
-  float f = 0.0;
-  for (int i = 0; i < N; ++i)
-    f += std::pow(lhs[i] - rhs[i], 2);
-  return f;
-}
+// template<size_t N>
+// inline float len_sq(const std::array<float, N> &lhs, const std::array<float, N> &rhs)
+// {
+//   float f = 0.0;
+//   for (int i = 0; i < N; ++i)
+//     f += std::pow(lhs[i] - rhs[i], 2);
+//   return f;
+// }
 
-template<size_t N>
-inline float too_similar(const std::array<float, N> &lhs,
-                         const std::array<float, N> &rhs,
-                         const float th)
-{
-  bool b = true;
-  for (int i = 0; i < N; ++i)
-    b &= (lhs[i] - rhs[i]) < th;
-  return b;
-}
+// template<size_t N>
+// inline float too_similar(const std::array<float, N> &lhs,
+//                          const std::array<float, N> &rhs,
+//                          const float th)
+// {
+//   bool b = true;
+//   for (int i = 0; i < N; ++i)
+//     b &= (lhs[i] - rhs[i]) < th;
+//   return b;
+// }
+
 
 // --- Deduplication ---
 
@@ -553,66 +338,64 @@ template<typename KeyT,
          typename SourceIter,
          typename ResT = const typename KeyT::first_type,
          typename Tag = std::forward_iterator_tag>
-struct deduplicated_iterator
-    : public boost::iterator_adaptor<deduplicated_iterator<KeyT, SourceIter, ResT, Tag>,
-                                     SourceIter,
-                                     ResT,
-                                     Tag,
-                                     ResT> {
-  deduplicated_iterator() = default;
-  explicit deduplicated_iterator(const Mesh *const mesh,
+struct deduplicated_iterator {
+  using difference_type = ptrdiff_t;
+  using value_type = ResT;
+  using pointer = ResT *;
+  using reference = ResT &;
+  using iterator_category = Tag;
+  deduplicated_iterator(const Mesh *const mesh, dedup_pair_t<KeyT> &dp,
+                        ulong &total, SourceIter it)
+    : it(it), mesh(mesh), dedup_pair(dp), total(total) {}
+  deduplicated_iterator(const Mesh *const mesh,
                                  dedup_pair_t<KeyT> &dp,
-                                 ulong &total,
-                                 SourceIter it)
-      : deduplicated_iterator::iterator_adaptor_(it), mesh(mesh), dedup_pair(dp), total(total)
-  {
-  }
-  explicit deduplicated_iterator(const Mesh *const mesh,
-                                 dedup_pair_t<KeyT> &dp,
-                                 ulong &total,
-                                 ulong reserve)
-      : deduplicated_iterator(mesh, dp, total, SourceIter{mesh})
-  {
+                                 ulong &total, ulong reserve)
+      : deduplicated_iterator(mesh, dp, total, SourceIter{mesh}) {
     // Reserve space so we don't constantly allocate
     dedup_pair.second.reserve(reserve);
     // Need to insert the first element, because we need to dereference before incrementing
-    auto p = dedup_pair.first.insert(std::make_pair(*this->base(), total++));
+    auto p = dedup_pair.first.insert(std::make_pair(*this->it, total++));
     dedup_pair.second.push_back(p.first);
-    ++this->base_reference();
+    ++this->it;
   }
-  deduplicated_iterator begin() const
-  {
-    return *this;
+  deduplicated_iterator begin() const {
+    return deduplicated_iterator(mesh, dedup_pair, total, it.begin());
   }
-  deduplicated_iterator end() const
-  {
-    return deduplicated_iterator(mesh, dedup_pair, total, this->base().end());
+  deduplicated_iterator end() const {
+    return deduplicated_iterator(mesh, dedup_pair, total, it.end());
   }
-  friend class boost::iterator_core_access;
-  void increment()
-  {
+  deduplicated_iterator & operator++() {
     // Handle everything until the next different element, or the end, by...
-    while (this->base() != this->base().end()) {
-      // tring to insert it into the set
-      auto p = dedup_pair.first.insert(std::make_pair(*this->base(), total));
+    while (true) {
       // going to the next element of the `SourceIter`
-      ++this->base_reference();
+      ++this->it;
+      // if at the end, we're done
+      if (this->it == this->it.end())
+        return *this;
+      // try to insert it into the set
+      auto p = dedup_pair.first.insert(std::make_pair(*this->it, total));
       // push the set::iterator onto the back of the mapping vector
       dedup_pair.second.push_back(p.first);
       // If we actually inserted in the set
       if (p.second) {
-        // There's a new element, so stop
+        // There's a new element, so increment the total and stop
         ++total;
-        return;
+        return *this;
       }
     }
+    // Should be unreachable
+    return *this;
   }
-  // The last element in the mapping vector. Requires we insert the first element
-  // in the constructor, otherwise this vector would be empty
-  const ResT dereference() const
-  {
-    return dedup_pair.second.back()->first;
+  bool operator==(const deduplicated_iterator &other) {
+    return it == other.it;
   }
+  bool operator!=(const deduplicated_iterator &other) {
+    return !(it == other.it);
+  }
+  ResT operator*() const {
+    return this->dedup_pair.second.back()->first;
+  }
+  SourceIter it;
   const Mesh *const mesh;
   dedup_pair_t<KeyT> &dedup_pair;
   ulong &total;
@@ -621,18 +404,26 @@ struct deduplicated_iterator
 // Iterator to deduplicated normals (returns `const std::array<float, 3>`)
 struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, normal_iter> {
   deduplicated_normal_iter(const Mesh *const mesh, ulong &total, dedup_pair_t<no_key_t> &dp)
-      : deduplicated_iterator<no_key_t, normal_iter>(mesh, dp, total, total + mesh->totvert)
-  {
+      : deduplicated_iterator<no_key_t, normal_iter>(mesh, dp, total, total + mesh->totvert) {}
+  // The last element in the mapping vector. Requires we insert the first element
+  // in the constructor, otherwise this vector would be empty
+  const std::array<float, 3> operator*() const {
+    return this->dedup_pair.second.back()->first;
   }
 };
 
 // Iterator to deduplicated UVs (returns `const std::array<float, 2>`)
 struct deduplicated_uv_iter : deduplicated_iterator<uv_key_t, uv_iter> {
   deduplicated_uv_iter(const Mesh *const mesh, ulong &total, dedup_pair_t<uv_key_t> &dp)
-      : deduplicated_iterator<uv_key_t, uv_iter>(mesh, dp, total, total + mesh->totloop)
-  {
+      : deduplicated_iterator<uv_key_t, uv_iter>(mesh, dp, total, total + mesh->totloop) {}
+  // The last element in the mapping vector. Requires we insert the first element
+  // in the constructor, otherwise this vector would be empty
+  const std::array<float, 2> operator*() const {
+    return this->dedup_pair.second.back()->first;
   }
 };
+
 }  // namespace common
 
+/* clang-format on */
 #endif  // __io_intern_iterators_h__

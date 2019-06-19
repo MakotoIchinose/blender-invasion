@@ -53,7 +53,7 @@ extern "C" {
 
 namespace {
 bool STL_export_mesh_ascii(bContext *UNUSED(C),
-                           ExportSettings *const settings,
+                           ExportSettings *const UNUSED(settings),
                            std::fstream &fs,
                            const Object *const ob,
                            const Mesh *const mesh)
@@ -96,9 +96,9 @@ std::fstream &operator<<(std::fstream &fs, const T &v)
 }
 
 bool STL_export_mesh_bin(bContext *UNUSED(C),
-                         ExportSettings *const settings,
+                         ExportSettings *const UNUSED(settings),
                          std::fstream &fs,
-                         const Object *const ob,
+                         const Object *const UNUSED(ob),
                          const Mesh *const mesh)
 {
   char header[80] = {'\0'};
@@ -121,7 +121,7 @@ void STL_export_start(bContext *C, ExportSettings *const settings)
   std::fstream fs;
   fs.open(settings->filepath, std::ios::out | std::ios::trunc);
   Scene *escene = DEG_get_evaluated_scene(settings->depsgraph);
-  for (const Object *ob : common::exportable_object_iter{settings}) {
+  for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings}) {
     Mesh *mesh;
     settings->triangulate = true;  // STL only really works with triangles
     bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh);
