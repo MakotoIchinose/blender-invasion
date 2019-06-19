@@ -40,6 +40,11 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
+#include "BKE_modifier.h"
+#include "BKE_gpencil.h"
+#include "BKE_gpencil_modifier.h"
+#include "lanpr_access.h"
+
 extern LANPR_SharedResource lanpr_share;
 struct Object;
 
@@ -3308,7 +3313,7 @@ void lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   mem_static_destroy(&rb->render_data_pool);
 }
 
-LANPR_RenderBuffer *lanpr_create_render_buffer(SceneLANPR *lanpr)
+LANPR_RenderBuffer *lanpr_create_render_buffer()
 {
   if (lanpr_share.render_buffer_shared) {
     lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
@@ -3941,22 +3946,24 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 /* ============================================ operators =========================================
  */
 
-int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr, Scene *scene)
+int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 {
   LANPR_RenderBuffer *rb;
+  SceneLANPR* lanpr;
 
-  rb = lanpr_create_render_buffer(lanpr);
+  rb = lanpr_create_render_buffer();
 
   lanpr_share.render_buffer_shared = rb;
 
-  rb->scene = scene;
-  rb->w = scene->r.xsch;
-  rb->h = scene->r.ysch;
+  rb->scene = DEG_get_evaluated_scene(depsgraph);
+  rb->w = rb->scene->r.xsch;
+  rb->h = rb->scene->r.ysch;
+  lanpr = &rb->scene->lanpr;
   rb->enable_intersections = lanpr->enable_intersections;
 
   rb->triangle_size = lanpr_get_render_triangle_size(rb);
 
-  lanpr_make_render_geometry_buffers(depsgraph, scene, scene->camera, rb);
+  lanpr_make_render_geometry_buffers(depsgraph, rb->scene, rb->scene->camera, rb);
 
   lanpr_compute_view_Vector(rb);
   lanpr_cull_triangles(rb);
@@ -3977,7 +3984,7 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr
     lanpr_connect_chains_image_space(rb);
   }
 
-  rb->cached_for_frame = scene->r.cfra;
+  rb->cached_for_frame = rb->scene->r.cfra;
 
   return OPERATOR_FINISHED;
 }
@@ -4005,7 +4012,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  return lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C), lanpr, scene);
+  return lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C));
 }
 static void lanpr_compute_feature_lines_cancel(struct bContext *C, struct wmOperator *op)
 {
@@ -4214,6 +4221,35 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  SceneLANPR *lanpr = &scene->lanpr;
+  Object* ob;
+  Object* gpobj;
+  ModifierData* md;
+  bGPdata* gpd;
+  bGPDlayer* gpl;
+  bGPDframe* gpf;
+  
+  return;
+  //XXX this iteration will not work. try to get an object list.
+  for(ob = scene->collection->objects.first; ob; ob=ob->id.next){
+    //TODO: Object visibility in render and viewport.
+    for(md = ob->modifiers.first;md;md=md->next){
+      if(md->type == eModifierType_FeatureLine){
+        FeatureLineModifierData* flmd = (FeatureLineModifierData*)flmd;
+        if(flmd->target && flmd->target->type == OB_GPENCIL){
+          gpobj = flmd->target;
+          gpd = gpobj->data;
+            // add strokes
+        }
+      }
+    }
+  }
+
+  return OPERATOR_FINISHED;
+}
 
 void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot)
 {
@@ -4301,134 +4337,13 @@ void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, 10000, "index", "index of this line component", 0, 10000);
 }
 
-#ifdef USE_LANPR_HINT
-
-// how to access LANPR's occlusion info after LANPR software mode calculation
-
-// You can access descrete occlusion data from every edge,
-// but you can also access occlusion using LANPR's chain data.
-// Two examples are given.
-
-// [1.descrete occlusion data for
-// edges]======================================================================================
-//
-// LANPR occlusion related data storage :
-//
-// LANPR_RenderBuffer :: all_render_lines   ====>  All LANPR_RenderLine nodes. Each node for a
-// singe edge on the mesh.
-//                                               Only features lines are in this list.
-//                                               LANPR_RenderLine stores a list of occlusion info
-//                                               in LANPR_RenderLineSegment.
-//
-// LANPR_RenderBuffer :: contours (and crease/material_lines/Intersections/edge_marks)
-//                                        ====>  ListItemPointers to LANPR_RenderLine nodes.
-//                                               Use these lists to access individual line types
-//                                               for convenience. For how to access this list,
-//                                               refer to this file line 728-730 as an example.
-//
-// LANPR_RenderLine :: segments           ====>  List of LANPR_RenderLineSegment to represent
-// occlusion info.
-//                                               See below for how occlusion is reoresented in
-//                                               Renderline and RenderLineSegment.
-//
-//  RenderLine Diagram:
-//    +[RenderLine]
-//       [segments]
-//         [Segment]  at=0      occlusion=0
-//         [Segment]  at=0.5    occlusion=1
-//         [Segment]  at=0.7    occlusion=0
-//
-//  Then you get a line with such occlusion:
-//  [l]|-------------------------|=========|-----------[r]
-//
-//  the beginning to 50% of the line :   Not occluded
-//  50% to 70% of the line :             Occluded 1 time
-//  70% to the end of the line :         Not occluded
-//
-//  cut positions are linear interpolated in image space from line->l->fbcoord to
-//  line->r->fbcoord (always l to r)
-//                    ~~~~~~~~~~~~~~~~~~~    ~~~~~~~~~~~
-//  to see an example of iterating occlusion data for all lines for drawing, see below or refer to
-//  this file line 2930.
-//
-//  [Iterating occlusion data]
-void lanpr_iterate_renderline_and_occlusion(LANPR_RenderBuffer *rb, double *v_OUT, double Occ_OUT)
+void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot)
 {
-  LinkData *lip;
-  LANPR_RenderLine *rl;
-  LANPR_RenderLineSegment *rls, *irls;
-  double *v = v_Out;
-  double *O = Occ_OUT;
+  ot->name = "Update LANPR Strokes";
+  ot->description = "Update strokes for LANPR grease pencil targets";
+  ot->idname = "SCENE_OT_lanpr_update_gp_strokes";
 
-  for (rl = rb->all_render_lines->first; rl; rl = lip->next) {
-    for (rls = rl->segments.first; rls; rls = rls->item.next) {
-
-      irls = rls->item.next;
-
-      // safety reasons
-      CLAMP(rls->at, 0, 1);
-      if (irls)
-        CLAMP(irls->at, 0, 1);
-
-      // segment begin at some X and Y
-      // tnsLinearItp() is a linear interpolate function.
-      *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], rls->at);
-      v++;
-      *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], rls->at);
-      v++;
-      *O = rls->occlusion;
-      *O++;
-
-      // segment end at some X and Y
-      *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], irls ? irls->at : 1);
-      v++;
-      *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], irls ? irls->at : 1);
-      v++;
-      *O = rls->occlusion;
-      *O++;
-
-      // please note that LANPR_RenderVert::fbcoord is in NDC coorninates
-      // to transform it into screen pixel space use rb->W/2 and rb->H/2
-    }
-  }
+  ot->exec = lanpr_update_gp_strokes_exec;
 }
 
-// [2. LANPR's chain
-// data]======================================================================================
-//
-// Chain data storage: (Also see lanpr_all.h line 485 for diagram)
-//
-// LANPR_RenderBuffer :: chains          ====> For storing LANPR_RenderLineChain nodes.
-//                                             Only available when chaining enabled and calculation
-//                                             is done.
-//
-// LANPR_RenderLineChain :: Chain        ====> LANPR_RenderLineChainItem node list.
-//
-// LANPR_RenderLineChainItem :: pos      ====> pos[0] and pos[1] for x y NDC coordinates, pos[2]
-// reserved, do not use.
-//
-// LANPR_RenderLineChainItem :: LineType and occlusion   ====> See lanpr_all.h line 485 for
-// diagram.
-//                                                                  These 2 fields in the last
-//                                                                  ChainItem of a Chain is not
-//                                                                  used.
-//
-// to see an example of accessing occlusion data as a whole chain, see below or refer to
-// lanpr_chain.c line 336.
-//
-// [Iteration chains and occlusion data for each chain segments]
-int lanpr_iterate_chains_and_occlusion(LANPR_RenderBuffer *rb)
-{
-  LANPR_RenderLineChainItem *rlci;
-  LANPR_RenderLineChain *rlc;
-  for (rlc = rb->chains.first; rlc; rlc = rlc->item.next) {
-    for (rlci = rlc->Chain.first; rlci; rlci = rlci->item.next) {
-      // vL = rlci->pos;
-      // vR = ((LANPR_RenderLineChainItem*)rlci->item.next)->pos;
-      // line_type_of_this_segment = rlci->LineType;          // ====> values are defined in
-      // lanpr_all.h line 456. occlusion_of_this_segment = rlci->occlusion;
-    }
-  }
-}
 
-#endif

@@ -587,8 +587,8 @@ static void lanpr_render_matrices_init(RenderEngine *engine, Depsgraph *depsgrap
   DRW_view_set_active(view);
 }
 
-int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr, Scene *scene);
-LANPR_RenderBuffer *lanpr_create_render_buffer(SceneLANPR *lanpr);
+int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph);
+LANPR_RenderBuffer *lanpr_create_render_buffer();
 
 extern DrawEngineType draw_engine_lanpr_type;
 
@@ -628,10 +628,10 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
     if (!lanpr_share.render_buffer_shared)
-      lanpr_create_render_buffer(lanpr);
+      lanpr_create_render_buffer();
     if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra ||
         LANPR_GLOBAL_update_tag) {
-      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, lanpr, scene);
+      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph);
     }
   }
 

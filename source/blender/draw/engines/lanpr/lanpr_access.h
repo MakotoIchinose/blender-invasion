@@ -20,7 +20,7 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph);
 
 int lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
-int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr, Scene *scene);
+int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph);
 
 void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 

@@ -292,7 +292,7 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph)
     return;
   if (!lanpr_share.render_buffer_shared ||
       lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra) {
-    lanpr_compute_feature_lines_internal(depsgraph, lanpr, scene);
+    lanpr_compute_feature_lines_internal(depsgraph);
   }
 }
 

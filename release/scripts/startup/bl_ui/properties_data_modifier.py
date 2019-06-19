@@ -1669,7 +1669,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "face_influence")
 
     def FEATURE_LINE(self, layout, ob, md):
-        layout.label(text='Not operational yet')
+        layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Manual Update')
         layout.label(text='Usage:')
         row = layout.row()
         row.prop(md,'usage',expand=True)
@@ -1684,7 +1684,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             row.prop(md,'enable_modifier_mark',toggle=True)
             layout.label(text='Result GP:')
             layout.prop(md,'target')
-            layout.prop(md,'replace')
+            layout.prop(md,'replace', text='Replace existing frames')
 
             row = layout.row()
             row.prop(md,'layer')
