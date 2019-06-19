@@ -89,11 +89,10 @@ class GHOST_XRGraphicsBinding {
         oxr_binding.glx.xDisplay = ctx_glx->m_display;
 #elif defined(WIN32)
         GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
-        GHOST_ContextWGL::Info info = ctx_wgl->getInfo();
 
         oxr_binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
-        oxr_binding.wgl.hDC = info.hDC;
-        oxr_binding.wgl.hGLRC = info.hGLRC;
+        oxr_binding.wgl.hDC = ctx_wgl->m_hDC;
+        oxr_binding.wgl.hGLRC = ctx_wgl->m_hGLRC;
 #endif
 
         break;
@@ -103,7 +102,7 @@ class GHOST_XRGraphicsBinding {
         GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
 
         oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
-        oxr_binding.d3d11.device = ctx_d3d->getDevice();
+        oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
 
         break;
       }
@@ -154,6 +153,7 @@ void GHOST_XR_session_end(GHOST_XRContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
   GHOST_XR_graphics_context_unbind(*xr_context);
+  delete xr_context->gpu_binding;
 }
 
 void GHOST_XR_session_state_change(OpenXRData *oxr,

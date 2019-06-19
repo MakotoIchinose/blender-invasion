@@ -35,6 +35,9 @@
 #endif
 
 class GHOST_ContextWGL : public GHOST_Context {
+  /* XR code needs low level graphics data to send to OpenXR. */
+  friend class GHOST_XRGraphicsBinding;
+
  public:
   /**
    * Constructor.
@@ -100,15 +103,6 @@ class GHOST_ContextWGL : public GHOST_Context {
   GHOST_TSuccess getSwapInterval(int &intervalOut);
 
   GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height);
-
-  /**
-   * Helper to get low level system specific info out of the context.
-   */
-  struct Info {
-    HDC hDC;
-    HGLRC hGLRC;
-  };
-  Info getInfo();
 
  private:
   int choose_pixel_format(bool stereoVisual, bool needAlpha);

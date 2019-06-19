@@ -383,8 +383,3 @@ static void drawTestTriangle(ID3D11Device *m_device,
   m_device_ctx->Draw(std::size(vertices), 0);
 }
 #endif
-
-ID3D11Device *GHOST_ContextD3D::getDevice()
-{
-  return m_device.Get();
-}

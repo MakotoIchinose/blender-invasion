@@ -255,6 +255,7 @@ void GHOST_XR_context_destroy(GHOST_XRContext *xr_context)
 
   /* Unbinding may involve destruction, so call here too */
   GHOST_XR_graphics_context_unbind(*xr_context);
+  delete xr_context->gpu_binding;
 
   if (oxr->session != XR_NULL_HANDLE) {
     xrDestroySession(oxr->session);
