@@ -561,11 +561,12 @@ static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex 
   new_vert.mass = ((v1->mass * factor) + (v2->mass * inv_factor));
   new_vert.goal = ((v1->goal * factor) + (v2->goal * inv_factor));
   new_vert.impulse_count = ((v1->impulse_count * factor) + (v2->impulse_count * inv_factor));
-  new_vert.avg_spring_len = ((v1->avg_spring_len * factor) + (v2->avg_spring_len * inv_factor));
+  /* new_vert.avg_spring_len = ((v1->avg_spring_len * factor) + (v2->avg_spring_len * inv_factor));
+   */
   new_vert.struct_stiff = ((v1->struct_stiff * factor) + (v2->struct_stiff * inv_factor));
   new_vert.bend_stiff = ((v1->bend_stiff * factor) + (v2->bend_stiff * inv_factor));
   new_vert.shear_stiff = ((v1->shear_stiff * factor) + (v2->shear_stiff * inv_factor));
-  new_vert.spring_count = ((v1->spring_count * factor) + (v2->spring_count * inv_factor));
+  /* new_vert.spring_count = ((v1->spring_count * factor) + (v2->spring_count * inv_factor)); */
   new_vert.shrink_factor = ((v1->shrink_factor * factor) + (v2->shrink_factor * inv_factor));
 
   return new_vert;
@@ -674,12 +675,86 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
   }
 }
 
-static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *UNUSED(ob), ClothModifierData *clmd)
+static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifierData *clmd)
 {
   Mesh *mesh_result = NULL;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
   mesh_result = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
   /* cloth_remeshing_update_cloth_object_mesh(clmd, mesh_result); */
+  /**/
+
+  Cloth *cloth = clmd->clothObject;
+  // Free the springs.
+  if (cloth->springs != NULL) {
+    LinkNode *search = cloth->springs;
+    while (search) {
+      ClothSpring *spring = search->link;
+
+      MEM_SAFE_FREE(spring->pa);
+      MEM_SAFE_FREE(spring->pb);
+
+      MEM_freeN(spring);
+      search = search->next;
+    }
+    BLI_linklist_free(cloth->springs, NULL);
+
+    cloth->springs = NULL;
+  }
+
+  cloth->springs = NULL;
+  cloth->numsprings = 0;
+
+  // free BVH collision tree
+  if (cloth->bvhtree) {
+    BLI_bvhtree_free(cloth->bvhtree);
+  }
+
+  if (cloth->bvhselftree) {
+    BLI_bvhtree_free(cloth->bvhselftree);
+  }
+
+  // we save our faces for collision objects
+  if (cloth->tri) {
+    MEM_freeN(cloth->tri);
+    cloth->tri = NULL;
+  }
+
+  if (cloth->edgeset) {
+    BLI_edgeset_free(cloth->edgeset);
+    cloth->edgeset = NULL;
+  }
+
+  /* Now build those things */
+  const MLoop *mloop = mesh_result->mloop;
+  const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh_result);
+  const unsigned int looptri_num = mesh_result->runtime.looptris.len;
+
+  /* save face information */
+  clmd->clothObject->tri_num = looptri_num;
+  clmd->clothObject->tri = MEM_mallocN(sizeof(MVertTri) * looptri_num, "clothLoopTris");
+  if (clmd->clothObject->tri == NULL) {
+    cloth_free_modifier(clmd);
+    modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject->looptri");
+    printf("cloth_free_modifier clmd->clothObject->looptri\n");
+    return;
+  }
+  BKE_mesh_runtime_verttri_from_looptri(clmd->clothObject->tri, mloop, looptri, looptri_num);
+
+  if (!cloth_build_springs(clmd, mesh_result)) {
+    cloth_free_modifier(clmd);
+    modifier_setError(&(clmd->modifier), "Cannot build springs");
+    return 0;
+  }
+
+  // init our solver
+  BPH_cloth_solver_init(ob, clmd);
+
+  BKE_cloth_solver_set_positions(clmd);
+
+  clmd->clothObject->bvhtree = bvhtree_build_from_cloth(clmd, clmd->coll_parms->epsilon);
+  clmd->clothObject->bvhselftree = bvhtree_build_from_cloth(clmd, clmd->coll_parms->selfepsilon);
+
+  /**/
   clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
   BM_mesh_free(clmd->clothObject->bm);
   clmd->clothObject->bm = NULL;
@@ -973,6 +1048,27 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
   printf("File %s written\n", file_name);
 }
 
+static ClothVertex *cloth_remeshing_find_cloth_vertex(BMVert *v, ClothVertex *verts, int vert_num)
+{
+  ClothVertex *cv = NULL;
+
+  for (int i = 0; i < vert_num; i++) {
+    if (equals_v3v3(v->co, verts[i].x)) {
+      cv = &verts[i];
+      break;
+    }
+  }
+
+  return cv;
+}
+
+static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
+{
+  for (int i = 0; i < vert_num; i++) {
+    printf("%f %f %f\n", verts[i].x[0], verts[i].x[1], verts[i].x[2]);
+  }
+}
+
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
@@ -986,8 +1082,27 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
   BMEdge *e;
   for (int i = 0; i < num_bad_edges; i++) {
     e = bad_edges[i];
+    BMEdge old_edge = *e;
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
     BM_elem_flag_enable(new_vert, BM_ELEM_SELECT);
+    Cloth *cloth = clmd->clothObject;
+    cloth->verts = MEM_reallocN(cloth->verts, (cloth->mvert_num + 1) * sizeof(ClothVertex));
+    BLI_assert(cloth->verts != NULL);
+    ClothVertex *v1, *v2;
+    v1 = cloth_remeshing_find_cloth_vertex(old_edge.v1, cloth->verts, cloth->mvert_num);
+    v2 = cloth_remeshing_find_cloth_vertex(old_edge.v2, cloth->verts, cloth->mvert_num);
+    if (v1 == NULL) {
+      printf("v: %f %f %f\n", old_edge.v1->co[0], old_edge.v1->co[1], old_edge.v1->co[2]);
+      cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
+    }
+    if (v2 == NULL) {
+      printf("v: %f %f %f\n", old_edge.v2->co[0], old_edge.v2->co[1], old_edge.v2->co[2]);
+      cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
+    }
+    BLI_assert(v1 != NULL);
+    BLI_assert(v2 != NULL);
+    cloth->mvert_num += 1;
+    cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(v1, v2, 0.5);
   }
   MEM_freeN(bad_edges);
   return true;
