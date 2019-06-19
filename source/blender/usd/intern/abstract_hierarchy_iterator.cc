@@ -50,13 +50,13 @@ void AbstractHierarchyIterator::iterate()
     // Non-instanced objects always have their object-parent as export-parent.
     visit_object(base, base->object, base->object->parent, false);
 
-    // Object *evaluated_ob = DEG_get_evaluated_object(depsgraph, object);
-    // export_object_and_parents(ob, parent, dupliObParent);
-
+    // Export the duplicated objects instanced by this object.
     ListBase *lb = object_duplilist(depsgraph, scene, base->object);
     if (lb) {
       DupliObject *link = nullptr;
 
+      // Construct the set of duplicated objects, so that later we can determine whether a parent
+      // is also duplicated itself.
       std::set<Object *> dupli_set;
       for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
         if (!should_visit_duplilink(link)) {
@@ -70,6 +70,7 @@ void AbstractHierarchyIterator::iterate()
         if (!should_visit_duplilink(link)) {
           continue;
         }
+
         // If the dupli-object's scene parent is also instanced by this object, use that as the
         // export parent. Otherwise use the dupli-parent as export parent.
         if (link->ob->parent != nullptr && dupli_set.find(link->ob->parent) != dupli_set.end()) {
@@ -78,6 +79,7 @@ void AbstractHierarchyIterator::iterate()
         else {
           export_parent = base->object;
         }
+
         visit_object(base, link->ob, export_parent, false);
       }
     }
@@ -85,6 +87,8 @@ void AbstractHierarchyIterator::iterate()
     free_object_duplilist(lb);
   }
 
+  // Add the parent objects that weren't included in this view layer as transform-only objects.
+  // This ensures that the object hierarchy in Blender is reflected in the exported file.
   printf("====== adding xform-onlies:\n");
   while (!xform_onlies.empty()) {
     std::set<Object *>::iterator first = xform_onlies.begin();
@@ -95,6 +99,7 @@ void AbstractHierarchyIterator::iterate()
     xform_onlies.erase(xform_only);
   }
 
+  // For debug: print the export graph.
   printf("====== Export graph:\n");
   for (auto it : export_graph) {
     printf("    OB %s:\n", it.first == nullptr ? "/" : (it.first->id.name + 2));
@@ -105,19 +110,41 @@ void AbstractHierarchyIterator::iterate()
     }
   }
 
+  // For debug: print the export paths.
   printf("====== Export paths:\n");
-  make_paths(nullptr, "");
+  make_writers(nullptr, "", nullptr);
 }
 
-void AbstractHierarchyIterator::make_paths(Object *for_object, const std::string &at_path)
+void AbstractHierarchyIterator::make_writers(Object *parent_object,
+                                             const std::string &parent_path,
+                                             TEMP_WRITER_TYPE *parent_writer)
 {
-  for (auto it : export_graph[for_object]) {
-    std::string usd_path = at_path + "/" + get_object_name(it.object);
+  TEMP_WRITER_TYPE *xform_writer = nullptr;
+  TEMP_WRITER_TYPE *data_writer = nullptr;
 
-    const char *colour = it.xform_only ? "31;1" : "30";
-    printf("%s \033[%sm%s\033[0m\n", usd_path.c_str(), colour, it.xform_only ? "true" : "false");
+  for (const ExportInfo &export_info : export_graph[parent_object]) {
+    // TODO(Sybren): make the separator overridable in a subclass.
+    std::string usd_path = parent_path + "/" + get_object_name(export_info.object);
 
-    make_paths(it.object, usd_path);
+    const char *colour = export_info.xform_only ? "31;1" : "30";
+    printf("%s \033[%sm%s\033[0m\n",
+           usd_path.c_str(),
+           colour,
+           export_info.xform_only ? "true" : "false");
+
+    xform_writer = create_xform_writer(usd_path, export_info.object, parent_writer);
+    if (xform_writer != nullptr) {
+      writers[usd_path] = xform_writer;
+    }
+
+    if (!export_info.xform_only && export_info.object->data != nullptr) {
+      data_writer = create_data_writer(usd_path, export_info.object, xform_writer);
+      if (data_writer != nullptr) {
+        writers[usd_path] = data_writer;
+      }
+    }
+
+    make_writers(export_info.object, usd_path, xform_writer);
   }
 }
 
@@ -137,32 +164,6 @@ std::string AbstractHierarchyIterator::get_id_name(const ID *const id) const
   }
 
   return std::string(id->name + 2);
-}
-
-/**
- * \brief get_object_dag_path_name returns the name under which the object
- *  will be exported in the Alembic file. It is of the form
- *  "[../grandparent/]parent/object" if dupli_parent is nullptr, or
- *  "dupli_parent/[../grandparent/]parent/object" otherwise.
- * \param ob:
- * \param dupli_parent:
- * \return
- */
-std::string AbstractHierarchyIterator::get_object_dag_path_name(
-    const Object *const ob, const Object *const dupli_parent) const
-{
-  std::string name = get_object_name(ob);
-
-  for (Object *parent = ob->parent; parent; parent = parent->parent) {
-    name = get_object_name(parent) + "/" + name;
-  }
-
-  if (dupli_parent && (ob != dupli_parent)) {
-    // TODO(Sybren): shouldn't this call get_object_dag_path_name()?
-    name = get_object_name(dupli_parent) + "/" + name;
-  }
-
-  return name;
 }
 
 bool AbstractHierarchyIterator::should_visit_object(const Base * /*base*/,
@@ -190,9 +191,11 @@ void AbstractHierarchyIterator::visit_object(Base *base,
 
   BLI_assert(DEG_is_original_object(export_parent));
   if (export_parent != NULL && export_graph.find(export_parent) == export_graph.end()) {
-    // If the export-parent is not an exportable object, it should be exported as XForm-only.
+    // The parent is not (yet) exported, to remember to export it as transform-only.
     xform_onlies.insert(export_parent);
   }
+
+  // This object is exported for real (so not "transform-only").
   xform_onlies.erase(object);
 
   ExportInfo export_info = {
@@ -206,90 +209,6 @@ void AbstractHierarchyIterator::visit_object(Base *base,
          get_object_name(object).c_str(),
          export_parent_name.c_str(),
          export_info.xform_only ? "true" : "false");
-
-  // Object *evaluated_ob = DEG_get_evaluated_object(depsgraph, object);
-  // export_object_and_parents(ob, parent, dupliObParent);
-
-  // ListBase *lb = object_duplilist(depsgraph, DEG_get_input_scene(depsgraph), ob);
-
-  // if (lb) {
-  //   DupliObject *link = static_cast<DupliObject *>(lb->first);
-  //   Object *dupli_ob = nullptr;
-  //   Object *dupli_parent = nullptr;
-
-  //   for (; link; link = link->next) {
-  //     if (!should_visit_duplilink(link)) {
-  //       continue;
-  //     }
-
-  //     dupli_ob = link->ob;
-  //     dupli_parent = (dupli_ob->parent) ? dupli_ob->parent : ob;
-  //     visit_object(base, dupli_ob, dupli_parent, ob);
-  //   }
-
-  //   free_object_duplilist(lb);
-  // }
-}
-
-TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *ob,
-                                                                       Object *parent,
-                                                                       Object *dupliObParent)
-{
-  /* An object should not be its own parent, or we'll get infinite loops. */
-  BLI_assert(ob != parent);
-  BLI_assert(ob != dupliObParent);
-
-  std::string name = get_object_dag_path_name(ob, dupliObParent);
-
-  /* check if we have already created a transform writer for this object */
-  TEMP_WRITER_TYPE *xform_writer = get_writer(name);
-  if (xform_writer != nullptr) {
-    return xform_writer;
-  }
-
-  TEMP_WRITER_TYPE *parent_writer = nullptr;
-  if (parent != nullptr) {
-    /* Since there are so many different ways to find parents (as evident
-     * in the number of conditions below), we can't really look up the
-     * parent by name. We'll just call export_object_and_parents(), which will
-     * return the parent's writer pointer. */
-    if (parent->parent) {
-      if (parent == dupliObParent) {
-        parent_writer = export_object_and_parents(parent, parent->parent, nullptr);
-      }
-      else {
-        parent_writer = export_object_and_parents(parent, parent->parent, dupliObParent);
-      }
-    }
-    else if (parent == dupliObParent) {
-      if (dupliObParent->parent == nullptr) {
-        parent_writer = export_object_and_parents(parent, nullptr, nullptr);
-      }
-      else {
-        parent_writer = export_object_and_parents(
-            parent, dupliObParent->parent, dupliObParent->parent);
-      }
-    }
-    else {
-      parent_writer = export_object_and_parents(parent, dupliObParent, dupliObParent);
-    }
-
-    BLI_assert(parent_writer);
-  }
-
-  xform_writer = create_xform_writer(name, ob, parent_writer);
-  if (xform_writer != nullptr) {
-    writers[name] = xform_writer;
-  }
-
-  if (ob->data != nullptr) {
-    TEMP_WRITER_TYPE *data_writer = create_data_writer(name, ob, xform_writer);
-    if (data_writer != nullptr) {
-      writers[name] = data_writer;
-    }
-  }
-
-  return xform_writer;
 }
 
 TEMP_WRITER_TYPE *AbstractHierarchyIterator::get_writer(const std::string &name)

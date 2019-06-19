@@ -46,13 +46,12 @@ class AbstractHierarchyIterator {
 
  private:
   void visit_object(Base *base, Object *object, Object *export_parent, bool xform_only);
-  void make_paths(Object *for_object, const std::string &at_path);
+  void make_writers(Object *parent_object,
+                    const std::string &parent_path,
+                    TEMP_WRITER_TYPE *parent_writer);
 
   std::string get_object_name(const Object *const object) const;
-  std::string get_object_dag_path_name(const Object *const ob,
-                                       const Object *const dupli_parent) const;
 
-  TEMP_WRITER_TYPE *export_object_and_parents(Object *ob, Object *parent, Object *dupliObParent);
   TEMP_WRITER_TYPE *get_writer(const std::string &name);
 
  protected:

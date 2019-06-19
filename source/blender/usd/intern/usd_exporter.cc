@@ -60,13 +60,13 @@ void USDExporter::operator()(float &r_progress, bool &r_was_canceled)
   USDHierarchyIterator iter(m_settings.depsgraph, m_stage);
   iter.iterate();
 
-  // for (AbstractHierarchyIterator::WriterMap::value_type it : iter.writer_map()) {
-  //   USDAbstractWriter *writer = static_cast<USDAbstractWriter *>(it.second);
-  //   printf("  ==> %s\n", it.first.c_str());
-  //   writer->write();
-  // }
-  // iter.release_writers();
+  for (AbstractHierarchyIterator::WriterMap::value_type it : iter.writer_map()) {
+    USDAbstractWriter *writer = static_cast<USDAbstractWriter *>(it.second);
+    printf("  ==> %s\n", it.first.c_str());
+    writer->write();
+  }
+  iter.release_writers();
 
-  // m_stage->GetRootLayer()->Save();
+  m_stage->GetRootLayer()->Save();
   r_progress = 1.0;
 }

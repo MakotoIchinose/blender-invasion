@@ -42,7 +42,7 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_xform_writer(const std::string &n
                                                             void *UNUSED(parent_writer))
 {
   printf("\033[32;1mCREATE\033[0m %s at %s\n", object->id.name, name.c_str());
-  pxr::SdfPath usd_path("/" + name);
+  pxr::SdfPath usd_path(name);
 
   USDExporterContext ctx = {depsgraph, stage, usd_path, object, nullptr};
   return new USDTransformWriter(ctx);
@@ -52,7 +52,7 @@ TEMP_WRITER_TYPE *USDHierarchyIterator::create_data_writer(const std::string &na
                                                            Object *object,
                                                            void *UNUSED(parent_writer))
 {
-  pxr::SdfPath usd_path("/" + name);
+  pxr::SdfPath usd_path(name);
   std::string data_name(get_id_name((ID *)object->data));
 
   USDExporterContext ctx = {
