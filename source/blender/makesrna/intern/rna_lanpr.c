@@ -147,8 +147,8 @@ void RNA_def_lanpr(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_ui_text(prop, "Same Style", "Use same styles for multiple line types.");
 
-  prop = RNA_def_property(srna, "use_qi_range", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "QI Range", "Use QI Range (occlusion levels) to select lines");
+  prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Use Multiple Levels", "Select lines from multiple occlusion levels");
 
   prop = RNA_def_property(srna, "enable_contour", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Enable Contour", "Draw contour lines");

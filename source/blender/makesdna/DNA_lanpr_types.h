@@ -89,8 +89,7 @@ typedef struct LANPR_LineLayer {
 
   int type;
 
-  int use_qi_range;
-
+  int use_multiple_levels;
   int qi_begin;
   int qi_end; /* these are for QI Range thing... just occlusion levels */
 

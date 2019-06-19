@@ -693,8 +693,13 @@ class LANPR_linesets(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         lineset = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(factor=0.6)
-            split.label(text="Layer")
+            split = layout.split(factor=0.4)
+            t=''
+            if not lineset.use_multiple_levels:
+                t='Level %d'%lineset.qi_begin
+            else:
+                t='Level %d - %d'%(lineset.qi_begin,lineset.qi_end)
+            split.label(text=t)
             row = split.row(align=True)
             row.prop(lineset, "color", text="", icon_value=icon)
             row.prop(lineset, "thickness", text="", icon_value=icon)
@@ -762,26 +767,15 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
                     col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
                 else:
                     col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
-            
-            if active_layer:
-                layout.label(text= "Normal controlled line weight:")
-                layout.prop(active_layer,"normal_mode", expand = True)
-                if active_layer.normal_mode != "DISABLED":
-                    layout.prop(active_layer,"normal_control_object")
-                    layout.prop(active_layer,"normal_effect_inverse", toggle = True)
-                    layout.prop(active_layer,"normal_ramp_begin")
-                    layout.prop(active_layer,"normal_ramp_end")
-                    layout.prop(active_layer,"normal_thickness_begin", slider=True)
-                    layout.prop(active_layer,"normal_thickness_end", slider=True)
-            
         else:
             layout.label(text="Vectorization:")
             layout.prop(lanpr, "enable_vector_trace", expand = True)
 
 
 class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
-    bl_label = "Styles"
+    bl_label = "Layer Settings"
     bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
@@ -798,6 +792,13 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
         active_layer = lanpr.layers.active_layer
         if active_layer and lanpr.master_mode == "DPIX":
             active_layer = lanpr.layers[0]
+
+        if lanpr.master_mode == "SOFTWARE":
+            row = layout.row(align=True)
+            row.prop(active_layer, "use_multiple_levels", icon='GP_MULTIFRAME_EDITING', icon_only=True)
+            row.prop(active_layer, "qi_begin", text='Level')
+            if active_layer.use_multiple_levels:
+                row.prop(active_layer, "qi_end", text='To')
         
         row = layout.row(align=True)
         row.prop(active_layer,"use_same_style")
@@ -851,14 +852,10 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             if lanpr.enable_intersections:
                 row.operator("scene.lanpr_calculate", text= "Recalculate")
 
-        if lanpr.master_mode == "SOFTWARE":
-            row = layout.row(align=True)
-            row.prop(active_layer, "qi_begin")
-            row.prop(active_layer, "qi_end")
-
 class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
     bl_label = "Including"
     bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
@@ -898,33 +895,48 @@ class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
 class RENDER_PT_lanpr_line_effects(RenderButtonsPanel, Panel):
     bl_label = "Effects"
     bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return lanpr.master_mode == "DPIX"
+        return lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE"
 
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
+        
+        if lanpr.master_mode == "DPIX":
+            row = layout.row(align = True)
+            row.prop(lanpr, "crease_threshold")
+            row.prop(lanpr, "crease_fade_threshold")
+            row = layout.row(align = True)
+            row.prop(lanpr, "depth_width_influence")
+            row.prop(lanpr, "depth_width_curve")
+            row = layout.row(align = True)
+            row.prop(lanpr, "depth_alpha_influence")
+            row.prop(lanpr, "depth_alpha_curve")
+        elif lanpr.master_mode == "SOFTWARE":
+            if active_layer:
+                layout.label(text= "Normal based line weight:")
+                layout.prop(active_layer,"normal_mode", expand = True)
+                if active_layer.normal_mode != "DISABLED":
+                    layout.prop(active_layer,"normal_control_object")
+                    layout.prop(active_layer,"normal_effect_inverse", toggle = True)
+                    layout.prop(active_layer,"normal_ramp_begin")
+                    layout.prop(active_layer,"normal_ramp_end")
+                    layout.prop(active_layer,"normal_thickness_begin", slider=True)
+                    layout.prop(active_layer,"normal_thickness_end", slider=True)
 
-        row = layout.row(align = True)
-        row.prop(lanpr, "crease_threshold")
-        row.prop(lanpr, "crease_fade_threshold")
-        row = layout.row(align = True)
-        row.prop(lanpr, "depth_width_influence")
-        row.prop(lanpr, "depth_width_curve")
-        row = layout.row(align = True)
-        row.prop(lanpr, "depth_alpha_influence")
-        row.prop(lanpr, "depth_alpha_curve")
 
 class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
     bl_label = "Sobel Parameters"
     bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
@@ -947,6 +959,7 @@ class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
 class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
     bl_label = "Snake Settings"
     bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
@@ -1003,6 +1016,7 @@ class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
 class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
     bl_label = "Chain Styles"
     bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
