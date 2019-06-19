@@ -40,7 +40,8 @@ typedef struct GHOST_XRContext {
   OpenXRData oxr;
 
   /** Active graphics binding type. */
-  GHOST_TGraphicsBinding gpu_binding;
+  GHOST_TGraphicsBinding gpu_binding_type;
+  class GHOST_XRGraphicsBinding *gpu_binding;
   /** Function to retrieve (possibly create) a graphics context */
   GHOST_XRGraphicsContextBindFn gpu_ctx_bind_fn;
   /** Function to release (possibly free) a graphics context */

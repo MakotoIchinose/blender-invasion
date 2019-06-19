@@ -168,9 +168,9 @@ static void openxr_extensions_to_enable_get(const GHOST_XRContext *context,
                                             const OpenXRData *oxr,
                                             std::vector<const char *> &r_ext_names)
 {
-  assert(context->gpu_binding != GHOST_kXRGraphicsUnknown);
+  assert(context->gpu_binding_type != GHOST_kXRGraphicsUnknown);
 
-  const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding);
+  const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding_type);
   const static std::vector<std::string> try_ext; /* None yet */
 
   assert(gpu_binding);
@@ -238,7 +238,7 @@ GHOST_XRContext *GHOST_XR_context_create(const GHOST_XRContextCreateInfo *create
   puts("Done printing OpenXR layers/extensions.");
 #endif
 
-  xr_context->gpu_binding = openxr_graphics_extension_to_enable_get(oxr, create_info);
+  xr_context->gpu_binding_type = openxr_graphics_extension_to_enable_get(oxr, create_info);
 
   assert(xr_context->oxr.instance == XR_NULL_HANDLE);
   openxr_instance_create(xr_context);
@@ -287,13 +287,13 @@ void GHOST_XR_graphics_context_bind(GHOST_XRContext &xr_context)
 {
   assert(xr_context.gpu_ctx_bind_fn);
   xr_context.gpu_ctx = static_cast<GHOST_Context *>(
-      xr_context.gpu_ctx_bind_fn(xr_context.gpu_binding));
+      xr_context.gpu_ctx_bind_fn(xr_context.gpu_binding_type));
 }
 
 void GHOST_XR_graphics_context_unbind(GHOST_XRContext &xr_context)
 {
   if (xr_context.gpu_ctx_unbind_fn) {
-    xr_context.gpu_ctx_unbind_fn(xr_context.gpu_binding, xr_context.gpu_ctx);
+    xr_context.gpu_ctx_unbind_fn(xr_context.gpu_binding_type, xr_context.gpu_ctx);
   }
   xr_context.gpu_ctx = nullptr;
 }

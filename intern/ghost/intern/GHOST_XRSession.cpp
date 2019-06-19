@@ -67,51 +67,52 @@ static void GHOST_XR_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-static void *openxr_graphics_binding_create(const GHOST_XRContext *xr_context,
-                                            GHOST_Context *ghost_ctx)
-{
-  static union {
+class GHOST_XRGraphicsBinding {
+ public:
+  union {
 #if defined(WITH_X11)
     XrGraphicsBindingOpenGLXlibKHR glx;
 #elif defined(WIN32)
     XrGraphicsBindingOpenGLWin32KHR wgl;
     XrGraphicsBindingD3D11KHR d3d11;
 #endif
-  } binding;
+  } oxr_binding;
 
-  memset(&binding, 0, sizeof(binding));
-
-  switch (xr_context->gpu_binding) {
-    case GHOST_kXRGraphicsOpenGL: {
+  void initFromGhostContext(GHOST_TGraphicsBinding type, GHOST_Context *ghost_ctx)
+  {
+    switch (type) {
+      case GHOST_kXRGraphicsOpenGL: {
 #if defined(WITH_X11)
-      binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
+        GHOST_ContextGLX *ctx_glx = static_cast<GHOST_ContextGLX *>(ghost_ctx);
+
+        oxr_binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
+        oxr_binding.glx.xDisplay = ctx_glx->m_display;
 #elif defined(WIN32)
-      GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
-      GHOST_ContextWGL::Info info = ctx_wgl->getInfo();
+        GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
+        GHOST_ContextWGL::Info info = ctx_wgl->getInfo();
 
-      binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
-      binding.wgl.hDC = info.hDC;
-      binding.wgl.hGLRC = info.hGLRC;
+        oxr_binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
+        oxr_binding.wgl.hDC = info.hDC;
+        oxr_binding.wgl.hGLRC = info.hGLRC;
 #endif
 
-      break;
-    }
+        break;
+      }
 #ifdef WIN32
-    case GHOST_kXRGraphicsD3D11: {
-      GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
+      case GHOST_kXRGraphicsD3D11: {
+        GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
 
-      binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
-      binding.d3d11.device = ctx_d3d->getDevice();
+        oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
+        oxr_binding.d3d11.device = ctx_d3d->getDevice();
 
-      break;
-    }
+        break;
+      }
 #endif
-    default:
-      assert(false);
+      default:
+        assert(false);
+    }
   }
-
-  return &binding;
-}
+};
 
 void GHOST_XR_session_start(GHOST_XRContext *xr_context)
 {
@@ -138,11 +139,13 @@ void GHOST_XR_session_start(GHOST_XRContext *xr_context)
         "GHOST_XR_session_start()).\n");
     return;
   }
+  xr_context->gpu_binding = new GHOST_XRGraphicsBinding();
+  xr_context->gpu_binding->initFromGhostContext(xr_context->gpu_binding_type, xr_context->gpu_ctx);
 
   XrSessionCreateInfo create_info{};
   create_info.type = XR_TYPE_SESSION_CREATE_INFO;
   create_info.systemId = oxr->system_id;
-  create_info.next = openxr_graphics_binding_create(xr_context, xr_context->gpu_ctx);
+  create_info.next = &xr_context->gpu_binding->oxr_binding;
 
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }
