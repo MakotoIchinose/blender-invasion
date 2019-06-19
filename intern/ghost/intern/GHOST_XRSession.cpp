@@ -67,51 +67,40 @@ static void GHOST_XR_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-class GHOST_XRGraphicsBinding {
- public:
-  union {
+void GHOST_XRGraphicsBinding::initFromGhostContext(GHOST_TGraphicsBinding type,
+                                                   GHOST_Context *ghost_ctx)
+{
+  switch (type) {
+    case GHOST_kXRGraphicsOpenGL: {
 #if defined(WITH_X11)
-    XrGraphicsBindingOpenGLXlibKHR glx;
+      GHOST_ContextGLX *ctx_glx = static_cast<GHOST_ContextGLX *>(ghost_ctx);
+
+      oxr_binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
+      oxr_binding.glx.xDisplay = ctx_glx->m_display;
 #elif defined(WIN32)
-    XrGraphicsBindingOpenGLWin32KHR wgl;
-    XrGraphicsBindingD3D11KHR d3d11;
-#endif
-  } oxr_binding;
+      GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
 
-  void initFromGhostContext(GHOST_TGraphicsBinding type, GHOST_Context *ghost_ctx)
-  {
-    switch (type) {
-      case GHOST_kXRGraphicsOpenGL: {
-#if defined(WITH_X11)
-        GHOST_ContextGLX *ctx_glx = static_cast<GHOST_ContextGLX *>(ghost_ctx);
-
-        oxr_binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
-        oxr_binding.glx.xDisplay = ctx_glx->m_display;
-#elif defined(WIN32)
-        GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
-
-        oxr_binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
-        oxr_binding.wgl.hDC = ctx_wgl->m_hDC;
-        oxr_binding.wgl.hGLRC = ctx_wgl->m_hGLRC;
+      oxr_binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
+      oxr_binding.wgl.hDC = ctx_wgl->m_hDC;
+      oxr_binding.wgl.hGLRC = ctx_wgl->m_hGLRC;
 #endif
 
-        break;
-      }
-#ifdef WIN32
-      case GHOST_kXRGraphicsD3D11: {
-        GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
-
-        oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
-        oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
-
-        break;
-      }
-#endif
-      default:
-        assert(false);
+      break;
     }
+#ifdef WIN32
+    case GHOST_kXRGraphicsD3D11: {
+      GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
+
+      oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
+      oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
+
+      break;
+    }
+#endif
+    default:
+      assert(false);
   }
-};
+}
 
 void GHOST_XR_session_start(GHOST_XRContext *xr_context)
 {

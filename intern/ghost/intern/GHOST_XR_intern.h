@@ -36,6 +36,20 @@ typedef struct OpenXRData {
   XrSessionState session_state;
 } OpenXRData;
 
+class GHOST_XRGraphicsBinding {
+ public:
+  union {
+#if defined(WITH_X11)
+    XrGraphicsBindingOpenGLXlibKHR glx;
+#elif defined(WIN32)
+    XrGraphicsBindingOpenGLWin32KHR wgl;
+    XrGraphicsBindingD3D11KHR d3d11;
+#endif
+  } oxr_binding;
+
+  void initFromGhostContext(GHOST_TGraphicsBinding type, class GHOST_Context *ghost_ctx);
+};
+
 typedef struct GHOST_XRContext {
   OpenXRData oxr;
 
