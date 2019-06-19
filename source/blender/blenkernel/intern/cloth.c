@@ -513,61 +513,61 @@ static void cloth_copy_cloth_vertex(ClothVertex *r, ClothVertex *src)
 /* factor: first vertex properties factor over finding the mean, given between 0.0f and 1.0f
  * Simply put, v1 properties * factor + v2 properties * (1.0f - factor)
  */
-static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex *v2, float factor)
+static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex v1, ClothVertex v2, float factor)
 {
   ClothVertex new_vert;
   float inv_factor = 1.0f - factor;
   /* TODO(Ish): flags */
-  mul_v3_fl(v1->v, factor);
-  mul_v3_fl(v2->v, inv_factor);
-  add_v3_v3v3(new_vert.v, v1->v, v2->v);
+  mul_v3_fl(v1.v, factor);
+  mul_v3_fl(v2.v, inv_factor);
+  add_v3_v3v3(new_vert.v, v1.v, v2.v);
 
-  mul_v3_fl(v1->xconst, factor);
-  mul_v3_fl(v2->xconst, inv_factor);
-  add_v3_v3v3(new_vert.xconst, v1->xconst, v2->xconst);
+  mul_v3_fl(v1.xconst, factor);
+  mul_v3_fl(v2.xconst, inv_factor);
+  add_v3_v3v3(new_vert.xconst, v1.xconst, v2.xconst);
 
-  mul_v3_fl(v1->x, factor);
-  mul_v3_fl(v2->x, inv_factor);
-  add_v3_v3v3(new_vert.x, v1->x, v2->x);
+  mul_v3_fl(v1.x, factor);
+  mul_v3_fl(v2.x, inv_factor);
+  add_v3_v3v3(new_vert.x, v1.x, v2.x);
 
-  mul_v3_fl(v1->xold, factor);
-  mul_v3_fl(v2->xold, inv_factor);
-  add_v3_v3v3(new_vert.xold, v1->xold, v2->xold);
+  mul_v3_fl(v1.xold, factor);
+  mul_v3_fl(v2.xold, inv_factor);
+  add_v3_v3v3(new_vert.xold, v1.xold, v2.xold);
 
-  mul_v3_fl(v1->tx, factor);
-  mul_v3_fl(v2->tx, inv_factor);
-  add_v3_v3v3(new_vert.tx, v1->tx, v2->tx);
+  mul_v3_fl(v1.tx, factor);
+  mul_v3_fl(v2.tx, inv_factor);
+  add_v3_v3v3(new_vert.tx, v1.tx, v2.tx);
 
-  mul_v3_fl(v1->txold, factor);
-  mul_v3_fl(v2->txold, inv_factor);
-  add_v3_v3v3(new_vert.txold, v1->txold, v2->txold);
+  mul_v3_fl(v1.txold, factor);
+  mul_v3_fl(v2.txold, inv_factor);
+  add_v3_v3v3(new_vert.txold, v1.txold, v2.txold);
 
-  mul_v3_fl(v1->tv, factor);
-  mul_v3_fl(v2->tv, inv_factor);
-  add_v3_v3v3(new_vert.tv, v1->tv, v2->tv);
+  mul_v3_fl(v1.tv, factor);
+  mul_v3_fl(v2.tv, inv_factor);
+  add_v3_v3v3(new_vert.tv, v1.tv, v2.tv);
 
-  mul_v3_fl(v1->impulse, factor);
-  mul_v3_fl(v2->impulse, inv_factor);
-  add_v3_v3v3(new_vert.impulse, v1->impulse, v2->impulse);
+  mul_v3_fl(v1.impulse, factor);
+  mul_v3_fl(v2.impulse, inv_factor);
+  add_v3_v3v3(new_vert.impulse, v1.impulse, v2.impulse);
 
-  mul_v3_fl(v1->xrest, factor);
-  mul_v3_fl(v2->xrest, inv_factor);
-  add_v3_v3v3(new_vert.xrest, v1->xrest, v2->xrest);
+  mul_v3_fl(v1.xrest, factor);
+  mul_v3_fl(v2.xrest, inv_factor);
+  add_v3_v3v3(new_vert.xrest, v1.xrest, v2.xrest);
 
-  mul_v3_fl(v1->dcvel, factor);
-  mul_v3_fl(v2->dcvel, inv_factor);
-  add_v3_v3v3(new_vert.dcvel, v1->dcvel, v2->dcvel);
+  mul_v3_fl(v1.dcvel, factor);
+  mul_v3_fl(v2.dcvel, inv_factor);
+  add_v3_v3v3(new_vert.dcvel, v1.dcvel, v2.dcvel);
 
-  new_vert.mass = ((v1->mass * factor) + (v2->mass * inv_factor));
-  new_vert.goal = ((v1->goal * factor) + (v2->goal * inv_factor));
-  new_vert.impulse_count = ((v1->impulse_count * factor) + (v2->impulse_count * inv_factor));
-  /* new_vert.avg_spring_len = ((v1->avg_spring_len * factor) + (v2->avg_spring_len * inv_factor));
+  new_vert.mass = ((v1.mass * factor) + (v2.mass * inv_factor));
+  new_vert.goal = ((v1.goal * factor) + (v2.goal * inv_factor));
+  new_vert.impulse_count = ((v1.impulse_count * factor) + (v2.impulse_count * inv_factor));
+  /* new_vert.avg_spring_len = ((v1.avg_spring_len * factor) + (v2.avg_spring_len * inv_factor));
    */
-  new_vert.struct_stiff = ((v1->struct_stiff * factor) + (v2->struct_stiff * inv_factor));
-  new_vert.bend_stiff = ((v1->bend_stiff * factor) + (v2->bend_stiff * inv_factor));
-  new_vert.shear_stiff = ((v1->shear_stiff * factor) + (v2->shear_stiff * inv_factor));
-  /* new_vert.spring_count = ((v1->spring_count * factor) + (v2->spring_count * inv_factor)); */
-  new_vert.shrink_factor = ((v1->shrink_factor * factor) + (v2->shrink_factor * inv_factor));
+  new_vert.struct_stiff = ((v1.struct_stiff * factor) + (v2.struct_stiff * inv_factor));
+  new_vert.bend_stiff = ((v1.bend_stiff * factor) + (v2.bend_stiff * inv_factor));
+  new_vert.shear_stiff = ((v1.shear_stiff * factor) + (v2.shear_stiff * inv_factor));
+  /* new_vert.spring_count = ((v1.spring_count * factor) + (v2.spring_count * inv_factor)); */
+  new_vert.shrink_factor = ((v1.shrink_factor * factor) + (v2.shrink_factor * inv_factor));
 
   return new_vert;
 }
@@ -647,7 +647,7 @@ static void cloth_remeshing_update_cloth_object_mesh(ClothModifierData *clmd, Me
           break;
         }
       }
-      new_cloth->verts[i] = cloth_remeshing_mean_cloth_vert(&prev_vert, &next_vert, factor);
+      new_cloth->verts[i] = cloth_remeshing_mean_cloth_vert(prev_vert, next_vert, factor);
     }
     /* if old vert */
     else {
@@ -1091,18 +1091,14 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
     ClothVertex *v1, *v2;
     v1 = cloth_remeshing_find_cloth_vertex(old_edge.v1, cloth->verts, cloth->mvert_num);
     v2 = cloth_remeshing_find_cloth_vertex(old_edge.v2, cloth->verts, cloth->mvert_num);
-    if (v1 == NULL) {
-      printf("v: %f %f %f\n", old_edge.v1->co[0], old_edge.v1->co[1], old_edge.v1->co[2]);
-      cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
-    }
-    if (v2 == NULL) {
-      printf("v: %f %f %f\n", old_edge.v2->co[0], old_edge.v2->co[1], old_edge.v2->co[2]);
-      cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
-    }
+    printf("v: %f %f %f\n", old_edge.v1->co[0], old_edge.v1->co[1], old_edge.v1->co[2]);
+    cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
+    printf("v: %f %f %f\n", old_edge.v2->co[0], old_edge.v2->co[1], old_edge.v2->co[2]);
+    cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
     BLI_assert(v1 != NULL);
     BLI_assert(v2 != NULL);
     cloth->mvert_num += 1;
-    cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(v1, v2, 0.5);
+    cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(*v1, *v2, 0.5);
   }
   MEM_freeN(bad_edges);
   return true;
