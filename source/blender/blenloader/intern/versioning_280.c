@@ -3519,6 +3519,31 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         do_versions_seq_alloc_transform_and_crop(&scene->ed->seqbase);
       }
     }
+    for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
+        sce->lanpr.crease_threshold = 0.7;
+
+        sce->lanpr.line_thickness = 1.5;
+        sce->lanpr.depth_clamp = 0.001;
+        sce->lanpr.depth_strength = 800;
+        sce->lanpr.normal_clamp = 2;
+        sce->lanpr.normal_strength = 10;
+
+        sce->lanpr.enable_intersections = 1;
+
+        sce->lanpr.background_color[0] = 0;
+        sce->lanpr.background_color[1] = 0;
+        sce->lanpr.background_color[2] = 0;
+        sce->lanpr.background_color[3] = 1;
+
+        sce->lanpr.line_color[0] = 1;
+        sce->lanpr.line_color[1] = 1;
+        sce->lanpr.line_color[2] = 1;
+        sce->lanpr.line_color[3] = 1;
+
+        sce->lanpr.enable_intersections = 1;
+        sce->lanpr.enable_chaining = 1;
+        sce->lanpr.chaining_threshold = 0.01;
+    }
   }
 
   {
