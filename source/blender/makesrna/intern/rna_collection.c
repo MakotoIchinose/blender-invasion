@@ -365,15 +365,15 @@ static void rna_def_collection_children(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
-static void rna_def_collection_lanpr(BlenderRNA *brna,StructRNA *srna)
+static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
 {
   PropertyRNA *prop;
 
   static const EnumPropertyItem rna_collection_lanpr_usage[] = {
-    {0, "INCLUDE", 0, "Include", "Include the collection into LANPR calculation"},
-    {1, "OCCLUSION_ONLY", 0, "Occlusion Only", "Only use the collction to produce occlusion"},
-    {2, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
-    {0, NULL, 0, NULL, NULL}};
+      {0, "INCLUDE", 0, "Include", "Include the collection into LANPR calculation"},
+      {1, "OCCLUSION_ONLY", 0, "Occlusion Only", "Only use the collction to produce occlusion"},
+      {2, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
+      {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "CollectionLANPR", NULL);
   RNA_def_struct_sdna(srna, "CollectionLANPR");
@@ -387,8 +387,8 @@ static void rna_def_collection_lanpr(BlenderRNA *brna,StructRNA *srna)
 
   prop = RNA_def_property(srna, "force", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_ui_text(prop, "Force", "Force object who has LANPR modifiers to follow the rule");
-  
+  RNA_def_property_ui_text(
+      prop, "Force", "Force object who has LANPR modifiers to follow the rule");
 }
 
 void RNA_def_collections(BlenderRNA *brna)
@@ -484,7 +484,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
-  rna_def_collection_lanpr(brna,srna);
+  rna_def_collection_lanpr(brna, srna);
   prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the collection");

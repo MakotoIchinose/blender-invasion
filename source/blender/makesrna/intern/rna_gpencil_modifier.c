@@ -1742,66 +1742,73 @@ static void rna_def_modifier_gpencilbackbone(BlenderRNA *brna)
 
 static void rna_def_modifier_gpencilstroke(BlenderRNA *brna)
 {
-	StructRNA *srna;
-	PropertyRNA *prop;
+  StructRNA *srna;
+  PropertyRNA *prop;
 
-	srna = RNA_def_struct(brna, "StrokeGpencilModifier", "GpencilModifier");
-	RNA_def_struct_ui_text(srna, "Stroke Modifier", "Create strokes from mesh geometry");
-	RNA_def_struct_sdna(srna, "StrokeGpencilModifierData");
-	RNA_def_struct_ui_icon(srna, ICON_MOD_ARRAY);
+  srna = RNA_def_struct(brna, "StrokeGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Stroke Modifier", "Create strokes from mesh geometry");
+  RNA_def_struct_sdna(srna, "StrokeGpencilModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_ARRAY);
 
-	prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
-	RNA_def_property_string_sdna(prop, NULL, "layername");
-	RNA_def_property_ui_text(prop, "Layer", "Layer name");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "layername");
+  RNA_def_property_ui_text(prop, "Layer", "Layer name");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "pass_index");
-	RNA_def_property_range(prop, 0, 100);
-	RNA_def_property_ui_text(prop, "Pass", "Pass index");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "pass_index");
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_text(prop, "Pass", "Pass index");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	/* Offset parameters */
-	prop = RNA_def_property(srna, "offset_object", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "object");
-	RNA_def_property_ui_text(prop, "Object Offset",
-		"Use the location and rotation of another object to determine the distance and "
-		"rotational change between arrayed items");
-	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
+  /* Offset parameters */
+  prop = RNA_def_property(srna, "offset_object", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "object");
+  RNA_def_property_ui_text(
+      prop,
+      "Object Offset",
+      "Use the location and rotation of another object to determine the distance and "
+      "rotational change between arrayed items");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 
-	prop = RNA_def_property(srna, "replace_material", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "mat_rpl");
-	RNA_def_property_range(prop, 0, INT_MAX);
-	RNA_def_property_ui_text(prop, "Material", "Index of the material used for generated strokes (0 keep original material)");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "replace_material", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "mat_rpl");
+  RNA_def_property_range(prop, 0, INT_MAX);
+  RNA_def_property_ui_text(
+      prop,
+      "Material",
+      "Index of the material used for generated strokes (0 keep original material)");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	prop = RNA_def_property(srna, "invert_layers", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_LAYER);
-	RNA_def_property_ui_text(prop, "Inverse Layers", "Inverse filter");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "invert_layers", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_LAYER);
+  RNA_def_property_ui_text(prop, "Inverse Layers", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	prop = RNA_def_property(srna, "invert_material_pass", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_PASS);
-	RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "invert_material_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_PASS);
+  RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	prop = RNA_def_property(srna, "layer_pass", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "layer_pass");
-	RNA_def_property_range(prop, 0, 100);
-	RNA_def_property_ui_text(prop, "Pass", "Layer pass index");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "layer_pass", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "layer_pass");
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_text(prop, "Pass", "Layer pass index");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	prop = RNA_def_property(srna, "invert_layer_pass", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_LAYERPASS);
-	RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "invert_layer_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_LAYERPASS);
+  RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-	prop = RNA_def_property(srna, "keep_on_top", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_KEEP_ONTOP);
-	RNA_def_property_ui_text(prop, "Keep On Top",
-		"Keep the original stroke in front of new instances (only affect by layer)");
-	RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "keep_on_top", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_KEEP_ONTOP);
+  RNA_def_property_ui_text(
+      prop,
+      "Keep On Top",
+      "Keep the original stroke in front of new instances (only affect by layer)");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
 void RNA_def_greasepencil_modifier(BlenderRNA *brna)

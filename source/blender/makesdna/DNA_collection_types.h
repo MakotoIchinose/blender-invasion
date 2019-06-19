@@ -43,11 +43,11 @@ typedef struct CollectionChild {
   struct Collection *collection;
 } CollectionChild;
 
-typedef struct CollectionLANPR{
+typedef struct CollectionLANPR {
   short usage;
-  short force;/* force objects with LANPR modifier follow the rule */
+  short force; /* force objects with LANPR modifier follow the rule */
   char _pad[4];
-}CollectionLANPR;
+} CollectionLANPR;
 
 /* CollectionLANPR->mode */
 enum {

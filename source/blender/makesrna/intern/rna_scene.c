@@ -7187,7 +7187,8 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_ui_text(prop, "Auto Update", "Automatically update LANPR cache when scene changes");
+  RNA_def_property_ui_text(
+      prop, "Auto Update", "Automatically update LANPR cache when scene changes");
 
   prop = RNA_def_property(srna, "reloaded", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, DEBUG_rna_enum_lanpr_reload);
@@ -7356,11 +7357,16 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "enable_chain_connection", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 1);
-  RNA_def_property_ui_text(prop, "Enable Chain Connection", "Connect short chains in the image space into one longer chain");
+  RNA_def_property_ui_text(prop,
+                           "Enable Chain Connection",
+                           "Connect short chains in the image space into one longer chain");
 
   prop = RNA_def_property(srna, "chaining_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.01f);
-  RNA_def_property_ui_text(prop, "Threshold", "Segments where distance between them lower than this value will be chained together");
+  RNA_def_property_ui_text(
+      prop,
+      "Threshold",
+      "Segments where distance between them lower than this value will be chained together");
   RNA_def_property_ui_range(prop, 0.0f, 0.02f, 0.001, 3);
 
   /* here's the collection stuff.... */

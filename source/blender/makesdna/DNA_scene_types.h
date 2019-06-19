@@ -1640,7 +1640,7 @@ struct LANPR_LineLayer;
 typedef struct SceneLANPR {
 
   int enabled;
-  int auto_update; // for LANPR->GP to update automatically
+  int auto_update;  // for LANPR->GP to update automatically
 
   int master_mode;
 
@@ -1696,7 +1696,7 @@ typedef struct SceneLANPR {
   int composite_render_animation;
 
   int _pad2;
-  
+
 } SceneLANPR;
 
 /* *************************************************************** */
