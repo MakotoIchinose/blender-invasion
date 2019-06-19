@@ -74,9 +74,14 @@ void GHOST_XRGraphicsBinding::initFromGhostContext(GHOST_TGraphicsBinding type,
     case GHOST_kXRGraphicsOpenGL: {
 #if defined(WITH_X11)
       GHOST_ContextGLX *ctx_glx = static_cast<GHOST_ContextGLX *>(ghost_ctx);
+      XVisualInfo *visual_info = glXGetVisualFromFBConfig(ctx_glx->m_display, ctx_glx->m_fbconfig);
 
       oxr_binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
       oxr_binding.glx.xDisplay = ctx_glx->m_display;
+      oxr_binding.glx.glxFBConfig = ctx_glx->m_fbconfig;
+      oxr_binding.glx.glxDrawable = ctx_glx->m_window;
+      oxr_binding.glx.glxContext = ctx_glx->m_context;
+      oxr_binding.glx.visualid = visual_info->visualid;
 #elif defined(WIN32)
       GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
 
