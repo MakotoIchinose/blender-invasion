@@ -234,9 +234,9 @@ class LANPR_render_composited(bpy.types.Operator):
         return {'FINISHED'}
 
 classes=(
-    LANPR_make_composition_scene,
-    LANPR_remove_composition_scene,
-    LANPR_goto_original_scene,
-    LANPR_goto_composition_scene,
-    LANPR_render_composited,
+    #LANPR_make_composition_scene,
+    #LANPR_remove_composition_scene,
+    #LANPR_goto_original_scene,
+    #LANPR_goto_composition_scene,
+    #LANPR_render_composited,
 )

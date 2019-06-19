@@ -1029,6 +1029,7 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
         layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
+        layout.prop(lanpr, "chaining_threshold")
         layout.label(text="Taper:")
         layout.prop(lanpr, "use_same_taper", expand = True)
         if lanpr.use_same_taper == "DISABLED":

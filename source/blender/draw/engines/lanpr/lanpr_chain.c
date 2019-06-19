@@ -195,7 +195,7 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
   }
 }
 
-void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_threshold)
+void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
@@ -412,16 +412,6 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_thre
       }
       ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
-
-    // LANPR_RenderLineChainItem* rlci;
-    // printf("line:\n");
-    // for (rlci = rlc->chain.first; rlci; rlci = rlci->item.next) {
-    //	printf("  %f,%f %d\n", rlci->pos[0],rlci->pos[1], rlci->occlusion);
-    //}
-    // printf("--------\n");
-
-    // lanpr_reduce_render_line_chain_recursive(rlc,rlc->chain.first, rlc->chain.last,
-    // dist_threshold);
   }
 }
 
@@ -623,7 +613,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
           dist = new_len;
         }
       }
-      if (dist < 0.01f && closest_cre) {
+      if (dist < rb->scene->lanpr.chaining_threshold && closest_cre) {
         closest_cre->picked = 1;
         closest_cre->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains, cre);
@@ -662,7 +652,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
           dist = new_len;
         }
       }
-      if (dist < 0.01f && closest_cre) {
+      if (dist < rb->scene->lanpr.chaining_threshold && closest_cre) {
         closest_cre->picked = 1;
         closest_cre->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains, cre);

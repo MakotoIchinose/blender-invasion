@@ -7354,14 +7354,14 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
 
-  /* composition */
+  prop = RNA_def_property(srna, "enable_chain_connection", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(prop, "Enable Chain Connection", "Connect short chains in the image space into one longer chain");
 
-  prop = RNA_def_property(srna, "composite_render_animation", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_ui_text(
-      prop,
-      "Composition Render Animation",
-      "Re-render backdrop and LANPR layer to produce animation(image sequence only).");
+  prop = RNA_def_property(srna, "chaining_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.01f);
+  RNA_def_property_ui_text(prop, "Threshold", "Segments where distance between them lower than this value will be chained together");
+  RNA_def_property_ui_range(prop, 0.0f, 0.02f, 0.001, 3);
 
   /* here's the collection stuff.... */
 

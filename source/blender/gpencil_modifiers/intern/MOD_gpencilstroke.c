@@ -84,7 +84,6 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 static void deformStroke(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  lanpr_update_data_for_external(depsgraph);
   lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
 }
 
@@ -95,6 +94,8 @@ static void bakeModifier(Main *UNUSED(bmain),
 {
 
   bGPdata *gpd = ob->data;
+
+  lanpr_update_data_for_external(depsgraph);
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
@@ -109,6 +110,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
+  lanpr_update_data_for_external(depsgraph);
   deformStroke(md, depsgraph, ob, gpl, gpf);
 }
 

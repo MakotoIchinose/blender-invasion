@@ -987,15 +987,19 @@ void BKE_scene_init(Scene *sce)
 
   sce->lanpr.enable_intersections = 1;
 
-  sce->lanpr.background_color[0] = 0.76;
-  sce->lanpr.background_color[1] = 0.54;
-  sce->lanpr.background_color[2] = 0.29;
+  sce->lanpr.background_color[0] = 0;
+  sce->lanpr.background_color[1] = 0;
+  sce->lanpr.background_color[2] = 0;
   sce->lanpr.background_color[3] = 1;
 
-  sce->lanpr.line_color[0] = 0.39;
-  sce->lanpr.line_color[1] = 0.12;
-  sce->lanpr.line_color[2] = 0.04;
+  sce->lanpr.line_color[0] = 1;
+  sce->lanpr.line_color[1] = 1;
+  sce->lanpr.line_color[2] = 1;
   sce->lanpr.line_color[3] = 1;
+
+  sce->lanpr.enable_intersections = 1;
+  sce->lanpr.enable_chaining = 1;
+  sce->lanpr.chaining_threshold = 0.01;
 }
 
 Scene *BKE_scene_add(Main *bmain, const char *name)

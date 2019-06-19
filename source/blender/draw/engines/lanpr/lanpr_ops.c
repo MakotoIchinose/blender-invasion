@@ -3721,7 +3721,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
   DRW_multisamples_resolve(txl->depth, txl->color, 1);
 }
 
-void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb, float dist_threshold);
+void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
 void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
 void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb);
 
@@ -3972,7 +3972,7 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, SceneLANPR *lanpr
   lanpr_THREAD_calculate_line_occlusion_begin(rb);
 
   if (lanpr->enable_chaining) {
-    lanpr_NO_THREAD_chain_feature_lines(rb, 0.00001);  // should use user_adjustable value
+    lanpr_NO_THREAD_chain_feature_lines(rb);  // should use user_adjustable value
     lanpr_split_chains_for_fixed_occlusion(rb);
     lanpr_connect_chains_image_space(rb);
   }
