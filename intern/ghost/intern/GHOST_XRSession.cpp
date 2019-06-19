@@ -23,6 +23,12 @@
 #include <cstring>
 
 #include "GHOST_C-api.h"
+#if defined(WITH_X11)
+#  include "GHOST_ContextGLX.h"
+#elif defined(WIN32)
+#  include "GHOST_ContextWGL.h"
+#  include "GHOST_ContextD3D.h"
+#endif
 
 #include "GHOST_XR_intern.h"
 
@@ -62,7 +68,7 @@ static void GHOST_XR_system_init(OpenXRData *oxr)
 }
 
 static void *openxr_graphics_binding_create(const GHOST_XRContext *xr_context,
-                                            GHOST_ContextHandle /*ghost_context*/)
+                                            GHOST_Context *ghost_ctx)
 {
   static union {
 #if defined(WITH_X11)
@@ -80,14 +86,22 @@ static void *openxr_graphics_binding_create(const GHOST_XRContext *xr_context,
 #if defined(WITH_X11)
       binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
 #elif defined(WIN32)
+      GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
+      GHOST_ContextWGL::Info info = ctx_wgl->getInfo();
+
       binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
+      binding.wgl.hDC = info.hDC;
+      binding.wgl.hGLRC = info.hGLRC;
 #endif
 
       break;
     }
 #ifdef WIN32
     case GHOST_kXRGraphicsD3D11: {
+      GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
+
       binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
+      binding.d3d11.device = ctx_d3d->getDevice();
 
       break;
     }
@@ -128,8 +142,7 @@ void GHOST_XR_session_start(GHOST_XRContext *xr_context)
   XrSessionCreateInfo create_info{};
   create_info.type = XR_TYPE_SESSION_CREATE_INFO;
   create_info.systemId = oxr->system_id;
-  create_info.next = openxr_graphics_binding_create(xr_context,
-                                                    (GHOST_ContextHandle)xr_context->gpu_ctx);
+  create_info.next = openxr_graphics_binding_create(xr_context, xr_context->gpu_ctx);
 
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }

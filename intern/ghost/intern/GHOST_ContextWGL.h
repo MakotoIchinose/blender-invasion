@@ -101,6 +101,15 @@ class GHOST_ContextWGL : public GHOST_Context {
 
   GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height);
 
+  /**
+   * Helper to get low level system specific info out of the context.
+   */
+  struct Info {
+    HDC hDC;
+    HGLRC hGLRC;
+  };
+  Info getInfo();
+
  private:
   int choose_pixel_format(bool stereoVisual, bool needAlpha);
   int choose_pixel_format_arb(bool stereoVisual, bool needAlpha);

@@ -113,6 +113,8 @@ class GHOST_ContextD3D : public GHOST_Context {
     return true;
   }
 
+  ID3D11Device *getDevice();
+
  private:
   friend class SharedOpenGLContext;
 

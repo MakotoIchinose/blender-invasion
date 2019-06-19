@@ -730,3 +730,8 @@ GHOST_TSuccess GHOST_ContextWGL::releaseNativeHandles()
 
   return success;
 }
+
+GHOST_ContextWGL::Info GHOST_ContextWGL::getInfo()
+{
+  return Info{m_hDC, m_hGLRC};
+}
