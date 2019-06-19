@@ -1660,9 +1660,6 @@ typedef struct SceneLANPR {
   float taper_right_distance;
   float taper_right_strength;
 
-  int enable_tip_extend;
-  float extend_length;
-
   int snake_sensitivity;
 
   /* shared */

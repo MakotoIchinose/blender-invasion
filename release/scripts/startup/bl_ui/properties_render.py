@@ -1014,7 +1014,7 @@ class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
             layout.prop(lanpr,"extend_length")
 
 class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
-    bl_label = "Chain Styles"
+    bl_label = "Chaining Options"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
@@ -1046,12 +1046,6 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
             col = split.column(align = True)
             col.prop(lanpr,"taper_left_distance")
             col.prop(lanpr,"taper_left_strength") 
-
-        layout.label(text="Tip Extend:")
-        layout.prop(lanpr, "enable_tip_extend",  expand = True)
-        if lanpr.enable_tip_extend == "ENABLED":
-            layout.label(text="---INOP---")
-            layout.prop(lanpr,"extend_length")
 
 
 classes = (

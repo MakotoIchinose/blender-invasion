@@ -7177,15 +7177,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
        "Use same taper value for both sides of the line"},
       {0, NULL, 0, NULL, NULL}};
 
-  static const EnumPropertyItem rna_enum_lanpr_enable_tip_extend[] = {
-      {LANPR_DISABLE_TIP_EXTEND, "DISABLED", 0, "Disable", "Do not extend curve tips"},
-      {LANPR_ENABLE_TIP_EXTEND,
-       "ENABLED",
-       0,
-       "Enable",
-       "Extend curve tips to a user specified length"},
-      {0, NULL, 0, NULL, NULL}};
-
   srna = RNA_def_struct(brna, "SceneLANPR", NULL);
   RNA_def_struct_sdna(srna, "SceneLANPR");
   RNA_def_struct_ui_text(srna, "Scene LANPR Config", "LANPR global config");
@@ -7338,20 +7329,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Background Color", "Background Color");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "enable_tip_extend", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_enable_tip_extend);
-  RNA_def_property_enum_default(prop, LANPR_DISABLE_TIP_EXTEND);
-  RNA_def_property_ui_text(prop, "Extend Tips", "Extending tips of curves");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "extend_length", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Extend Length", "Extend lenght of curves");
-  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
