@@ -65,6 +65,8 @@ class BVHEmbree : public BVH4 {
   BVHEmbree *top_level;
 
  private:
+  BVHLayout bvh_layout;
+
   void delete_rtcScene();
   void update_tri_vertex_buffer(RTCGeometry geom_id, const Mesh *mesh);
   void update_curve_vertex_buffer(RTCGeometry geom_id, const Mesh *mesh);

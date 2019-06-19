@@ -650,6 +650,9 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
             row = col.row()
             row.active = use_cpu(context)
             row.prop(cscene, "use_bvh_embree")
+            row2 = col.row()
+            row2.active = cscene.use_bvh_embree
+            row2.prop(cscene, "use_bvh_embree_converter")
         if _cycles.with_embree:
             row = col.row()
             row.active = use_cuda(context)

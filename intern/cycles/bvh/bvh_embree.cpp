@@ -60,6 +60,7 @@
 
 #define TASKING_INTERNAL
 #define RTC_NAMESPACE_BEGIN
+#define RTC_NAMESPACE_OPEN
 #define RTC_NAMESPACE_END
 
 #include "embree/kernels/common/scene.h"
@@ -427,7 +428,8 @@ int BVHEmbree::rtc_shared_users = 0;
 thread_mutex BVHEmbree::rtc_shared_mutex;
 
 BVHEmbree::BVHEmbree(const BVHParams &params_, const vector<Object *> &objects_)
-    : BVH4(params_, objects_),
+    : bvh_layout(params_.bvh_layout),
+      BVH4(params_, objects_),
       scene(NULL),
       mem_used(0),
       top_level(NULL),
@@ -633,11 +635,14 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
   }
 
   progress.set_substatus("Packing geometry");
-  BVHNode *root = print_bvhInfo(scene);
-  root->print();
-  pack_nodes(root);
-  std::cout << "SAH " << root->computeSubtreeSAHCost(this->params) << std::endl;
-  // pack_nodes(NULL);
+  if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
+    BVHNode *root = print_bvhInfo(scene);
+    root->print();
+    pack_nodes(root);
+    std::cout << "SAH " << root->computeSubtreeSAHCost(this->params) << std::endl;
+  } else {
+    pack_nodes(NULL);
+  }
 
   stats = NULL;
 }
@@ -954,135 +959,136 @@ void BVHEmbree::add_curves(Object *ob, int i)
 }
 void BVHEmbree::pack_nodes(const BVHNode *r)
 {
+  if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
     BVH4::pack_nodes(r);
-#ifdef _
-  /* Quite a bit of this code is for compatibility with Cycles' native BVH. */
-  if (!params.top_level) {
-    return;
-  }
-
-  for (size_t i = 0; i < pack.prim_index.size(); ++i) {
-    if (pack.prim_index[i] != -1) {
-      if (pack.prim_type[i] & PRIMITIVE_ALL_CURVE)
-        pack.prim_index[i] += objects[pack.prim_object[i]]->mesh->curve_offset;
-      else
-        pack.prim_index[i] += objects[pack.prim_object[i]]->mesh->tri_offset;
-    }
-  }
-
-  size_t prim_offset = pack.prim_index.size();
-
-  /* reserve */
-  size_t prim_index_size = pack.prim_index.size();
-  size_t prim_tri_verts_size = pack.prim_tri_verts.size();
-
-  size_t pack_prim_index_offset = prim_index_size;
-  size_t pack_prim_tri_verts_offset = prim_tri_verts_size;
-  size_t object_offset = 0;
-
-  map<Mesh *, int> mesh_map;
-
-  foreach (Object *ob, objects) {
-    Mesh *mesh = ob->mesh;
-    BVH *bvh = mesh->bvh;
-
-    if (mesh->need_build_bvh()) {
-      if (mesh_map.find(mesh) == mesh_map.end()) {
-        prim_index_size += bvh->pack.prim_index.size();
-        prim_tri_verts_size += bvh->pack.prim_tri_verts.size();
-        mesh_map[mesh] = 1;
+  } else {
+      /* Quite a bit of this code is for compatibility with Cycles' native BVH. */
+      if (!params.top_level) {
+          return;
       }
-    }
-  }
 
-  mesh_map.clear();
+      for (size_t i = 0; i < pack.prim_index.size(); ++i) {
+          if (pack.prim_index[i] != -1) {
+              if (pack.prim_type[i] & PRIMITIVE_ALL_CURVE)
+                  pack.prim_index[i] += objects[pack.prim_object[i]]->mesh->curve_offset;
+              else
+                  pack.prim_index[i] += objects[pack.prim_object[i]]->mesh->tri_offset;
+          }
+      }
 
-  pack.prim_index.resize(prim_index_size);
-  pack.prim_type.resize(prim_index_size);
-  pack.prim_object.resize(prim_index_size);
-  pack.prim_visibility.clear();
-  pack.prim_tri_verts.resize(prim_tri_verts_size);
-  pack.prim_tri_index.resize(prim_index_size);
-  pack.object_node.resize(objects.size());
+      size_t prim_offset = pack.prim_index.size();
 
-  int *pack_prim_index = (pack.prim_index.size()) ? &pack.prim_index[0] : NULL;
-  int *pack_prim_type = (pack.prim_type.size()) ? &pack.prim_type[0] : NULL;
-  int *pack_prim_object = (pack.prim_object.size()) ? &pack.prim_object[0] : NULL;
-  float4 *pack_prim_tri_verts = (pack.prim_tri_verts.size()) ? &pack.prim_tri_verts[0] : NULL;
-  uint *pack_prim_tri_index = (pack.prim_tri_index.size()) ? &pack.prim_tri_index[0] : NULL;
+      /* reserve */
+      size_t prim_index_size = pack.prim_index.size();
+      size_t prim_tri_verts_size = pack.prim_tri_verts.size();
 
-  /* merge */
-  foreach (Object *ob, objects) {
-    Mesh *mesh = ob->mesh;
+      size_t pack_prim_index_offset = prim_index_size;
+      size_t pack_prim_tri_verts_offset = prim_tri_verts_size;
+      size_t object_offset = 0;
 
-    /* We assume that if mesh doesn't need own BVH it was already included
+      map<Mesh *, int> mesh_map;
+
+      foreach (Object *ob, objects) {
+          Mesh *mesh = ob->mesh;
+          BVH *bvh = mesh->bvh;
+
+          if (mesh->need_build_bvh()) {
+              if (mesh_map.find(mesh) == mesh_map.end()) {
+                  prim_index_size += bvh->pack.prim_index.size();
+                  prim_tri_verts_size += bvh->pack.prim_tri_verts.size();
+                  mesh_map[mesh] = 1;
+              }
+          }
+      }
+
+      mesh_map.clear();
+
+      pack.prim_index.resize(prim_index_size);
+      pack.prim_type.resize(prim_index_size);
+      pack.prim_object.resize(prim_index_size);
+      pack.prim_visibility.clear();
+      pack.prim_tri_verts.resize(prim_tri_verts_size);
+      pack.prim_tri_index.resize(prim_index_size);
+      pack.object_node.resize(objects.size());
+
+      int *pack_prim_index = (pack.prim_index.size()) ? &pack.prim_index[0] : NULL;
+      int *pack_prim_type = (pack.prim_type.size()) ? &pack.prim_type[0] : NULL;
+      int *pack_prim_object = (pack.prim_object.size()) ? &pack.prim_object[0] : NULL;
+      float4 *pack_prim_tri_verts = (pack.prim_tri_verts.size()) ? &pack.prim_tri_verts[0] : NULL;
+      uint *pack_prim_tri_index = (pack.prim_tri_index.size()) ? &pack.prim_tri_index[0] : NULL;
+
+      /* merge */
+      foreach (Object *ob, objects) {
+          Mesh *mesh = ob->mesh;
+
+          /* We assume that if mesh doesn't need own BVH it was already included
      * into a top-level BVH and no packing here is needed.
      */
-    if (!mesh->need_build_bvh()) {
-      pack.object_node[object_offset++] = prim_offset;
-      continue;
-    }
+          if (!mesh->need_build_bvh()) {
+              pack.object_node[object_offset++] = prim_offset;
+              continue;
+          }
 
-    /* if mesh already added once, don't add it again, but used set
+          /* if mesh already added once, don't add it again, but used set
      * node offset for this object */
-    map<Mesh *, int>::iterator it = mesh_map.find(mesh);
+          map<Mesh *, int>::iterator it = mesh_map.find(mesh);
 
-    if (mesh_map.find(mesh) != mesh_map.end()) {
-      int noffset = it->second;
-      pack.object_node[object_offset++] = noffset;
-      continue;
-    }
+          if (mesh_map.find(mesh) != mesh_map.end()) {
+              int noffset = it->second;
+              pack.object_node[object_offset++] = noffset;
+              continue;
+          }
 
-    BVHEmbree *bvh = (BVHEmbree *)mesh->bvh;
+          BVHEmbree *bvh = (BVHEmbree *)mesh->bvh;
 
-    rtc_memory_monitor_func(stats, unaccounted_mem, true);
-    unaccounted_mem = 0;
+          rtc_memory_monitor_func(stats, unaccounted_mem, true);
+          unaccounted_mem = 0;
 
-    int mesh_tri_offset = mesh->tri_offset;
-    int mesh_curve_offset = mesh->curve_offset;
+          int mesh_tri_offset = mesh->tri_offset;
+          int mesh_curve_offset = mesh->curve_offset;
 
-    /* fill in node indexes for instances */
-    pack.object_node[object_offset++] = prim_offset;
+          /* fill in node indexes for instances */
+          pack.object_node[object_offset++] = prim_offset;
 
-    mesh_map[mesh] = pack.object_node[object_offset - 1];
+          mesh_map[mesh] = pack.object_node[object_offset - 1];
 
-    /* merge primitive, object and triangle indexes */
-    if (bvh->pack.prim_index.size()) {
-      size_t bvh_prim_index_size = bvh->pack.prim_index.size();
-      int *bvh_prim_index = &bvh->pack.prim_index[0];
-      int *bvh_prim_type = &bvh->pack.prim_type[0];
-      uint *bvh_prim_tri_index = &bvh->pack.prim_tri_index[0];
+          /* merge primitive, object and triangle indexes */
+          if (bvh->pack.prim_index.size()) {
+              size_t bvh_prim_index_size = bvh->pack.prim_index.size();
+              int *bvh_prim_index = &bvh->pack.prim_index[0];
+              int *bvh_prim_type = &bvh->pack.prim_type[0];
+              uint *bvh_prim_tri_index = &bvh->pack.prim_tri_index[0];
 
-      for (size_t i = 0; i < bvh_prim_index_size; ++i) {
-        if (bvh->pack.prim_type[i] & PRIMITIVE_ALL_CURVE) {
-          pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_curve_offset;
-          pack_prim_tri_index[pack_prim_index_offset] = -1;
-        }
-        else {
-          pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_tri_offset;
-          pack_prim_tri_index[pack_prim_index_offset] = bvh_prim_tri_index[i] +
-                                                        pack_prim_tri_verts_offset;
-        }
+              for (size_t i = 0; i < bvh_prim_index_size; ++i) {
+                  if (bvh->pack.prim_type[i] & PRIMITIVE_ALL_CURVE) {
+                      pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_curve_offset;
+                      pack_prim_tri_index[pack_prim_index_offset] = -1;
+                  }
+                  else {
+                      pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_tri_offset;
+                      pack_prim_tri_index[pack_prim_index_offset] = bvh_prim_tri_index[i] +
+                              pack_prim_tri_verts_offset;
+                  }
 
-        pack_prim_type[pack_prim_index_offset] = bvh_prim_type[i];
-        pack_prim_object[pack_prim_index_offset] = 0;
+                  pack_prim_type[pack_prim_index_offset] = bvh_prim_type[i];
+                  pack_prim_object[pack_prim_index_offset] = 0;
 
-        ++pack_prim_index_offset;
+                  ++pack_prim_index_offset;
+              }
+          }
+
+          /* Merge triangle vertices data. */
+          if (bvh->pack.prim_tri_verts.size()) {
+              const size_t prim_tri_size = bvh->pack.prim_tri_verts.size();
+              memcpy(pack_prim_tri_verts + pack_prim_tri_verts_offset,
+                     &bvh->pack.prim_tri_verts[0],
+                      prim_tri_size * sizeof(float4));
+              pack_prim_tri_verts_offset += prim_tri_size;
+          }
+
+          prim_offset += bvh->pack.prim_index.size();
       }
-    }
-
-    /* Merge triangle vertices data. */
-    if (bvh->pack.prim_tri_verts.size()) {
-      const size_t prim_tri_size = bvh->pack.prim_tri_verts.size();
-      memcpy(pack_prim_tri_verts + pack_prim_tri_verts_offset,
-             &bvh->pack.prim_tri_verts[0],
-             prim_tri_size * sizeof(float4));
-      pack_prim_tri_verts_offset += prim_tri_size;
-    }
-
-    prim_offset += bvh->pack.prim_index.size();
   }
-#endif
 }
 
 void BVHEmbree::refit_nodes()
