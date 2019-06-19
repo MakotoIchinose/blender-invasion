@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <set>
 
 struct Base;
 struct Depsgraph;
@@ -13,9 +14,23 @@ struct ViewLayer;
 
 typedef void TEMP_WRITER_TYPE;
 
+struct ExportInfo {
+  Object *object;
+  bool xform_only;
+
+  bool operator<(const ExportInfo &other) const
+  {
+    return object < other.object;
+  }
+};
+
 class AbstractHierarchyIterator {
  public:
   typedef std::map<std::string, TEMP_WRITER_TYPE *> WriterMap;
+
+  // Mapping from object to its children, as should be exported.
+  std::map<Object *, std::set<ExportInfo>> export_graph;
+  std::set<Object *> xform_onlies;
 
  protected:
   Depsgraph *depsgraph;
@@ -30,7 +45,8 @@ class AbstractHierarchyIterator {
   void release_writers();
 
  private:
-  void visit_object(Base *base, Object *object, Object *parent, Object *dupliObParent);
+  void visit_object(Base *base, Object *object, Object *export_parent, bool xform_only);
+  void make_paths(Object *for_object, const std::string &at_path);
 
   std::string get_object_name(const Object *const object) const;
   std::string get_object_dag_path_name(const Object *const ob,

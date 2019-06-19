@@ -39,9 +39,85 @@ void AbstractHierarchyIterator::release_writers()
 void AbstractHierarchyIterator::iterate()
 {
   ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
+
+  printf("====== Visiting objects:\n");
+  Scene *scene = DEG_get_input_scene(depsgraph);
   for (Base *base = static_cast<Base *>(view_layer->object_bases.first); base; base = base->next) {
-    Object *ob = base->object;
-    visit_object(base, ob, ob->parent, nullptr);
+    if (base->flag & BASE_HOLDOUT) {
+      continue;
+    }
+
+    // Non-instanced objects always have their object-parent as export-parent.
+    visit_object(base, base->object, base->object->parent, false);
+
+    // Object *evaluated_ob = DEG_get_evaluated_object(depsgraph, object);
+    // export_object_and_parents(ob, parent, dupliObParent);
+
+    ListBase *lb = object_duplilist(depsgraph, scene, base->object);
+    if (lb) {
+      DupliObject *link = nullptr;
+
+      std::set<Object *> dupli_set;
+      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
+        if (!should_visit_duplilink(link)) {
+          continue;
+        }
+        dupli_set.insert(link->ob);
+      }
+
+      Object *export_parent = nullptr;
+      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
+        if (!should_visit_duplilink(link)) {
+          continue;
+        }
+        // If the dupli-object's scene parent is also instanced by this object, use that as the
+        // export parent. Otherwise use the dupli-parent as export parent.
+        if (link->ob->parent != nullptr && dupli_set.find(link->ob->parent) != dupli_set.end()) {
+          export_parent = link->ob->parent;
+        }
+        else {
+          export_parent = base->object;
+        }
+        visit_object(base, link->ob, export_parent, false);
+      }
+    }
+
+    free_object_duplilist(lb);
+  }
+
+  printf("====== adding xform-onlies:\n");
+  while (!xform_onlies.empty()) {
+    std::set<Object *>::iterator first = xform_onlies.begin();
+
+    Object *xform_only = *first;
+    visit_object(nullptr, xform_only, xform_only->parent, true);
+
+    xform_onlies.erase(xform_only);
+  }
+
+  printf("====== Export graph:\n");
+  for (auto it : export_graph) {
+    printf("    OB %s:\n", it.first == nullptr ? "/" : (it.first->id.name + 2));
+    for (auto child_it : it.second) {
+      printf("       - %s (xform_only=%s)\n",
+             child_it.object->id.name + 2,
+             child_it.xform_only ? "true" : "false");
+    }
+  }
+
+  printf("====== Export paths:\n");
+  make_paths(nullptr, "");
+}
+
+void AbstractHierarchyIterator::make_paths(Object *for_object, const std::string &at_path)
+{
+  for (auto it : export_graph[for_object]) {
+    std::string usd_path = at_path + "/" + get_object_name(it.object);
+
+    const char *colour = it.xform_only ? "31;1" : "30";
+    printf("%s \033[%sm%s\033[0m\n", usd_path.c_str(), colour, it.xform_only ? "true" : "false");
+
+    make_paths(it.object, usd_path);
   }
 }
 
@@ -103,37 +179,56 @@ bool AbstractHierarchyIterator::should_visit_duplilink(const DupliObject *const 
 
 void AbstractHierarchyIterator::visit_object(Base *base,
                                              Object *object,
-                                             Object *parent,
-                                             Object *dupliObParent)
+                                             Object *export_parent,
+                                             bool xform_only)
 {
   /* If an object isn't exported itself, its duplilist shouldn't be
    * exported either. */
-  if (!should_visit_object(base, dupliObParent != nullptr)) {
+  if (!should_visit_object(base, false)) {
     return;
   }
 
-  Object *ob = DEG_get_evaluated_object(depsgraph, object);
-  export_object_and_parents(ob, parent, dupliObParent);
-
-  ListBase *lb = object_duplilist(depsgraph, DEG_get_input_scene(depsgraph), ob);
-
-  if (lb) {
-    DupliObject *link = static_cast<DupliObject *>(lb->first);
-    Object *dupli_ob = nullptr;
-    Object *dupli_parent = nullptr;
-
-    for (; link; link = link->next) {
-      if (!should_visit_duplilink(link)) {
-        continue;
-      }
-
-      dupli_ob = link->ob;
-      dupli_parent = (dupli_ob->parent) ? dupli_ob->parent : ob;
-      visit_object(base, dupli_ob, dupli_parent, ob);
-    }
-
-    free_object_duplilist(lb);
+  BLI_assert(DEG_is_original_object(export_parent));
+  if (export_parent != NULL && export_graph.find(export_parent) == export_graph.end()) {
+    // If the export-parent is not an exportable object, it should be exported as XForm-only.
+    xform_onlies.insert(export_parent);
   }
+  xform_onlies.erase(object);
+
+  ExportInfo export_info = {
+      .object = object,
+      .xform_only = xform_only || object->type == OB_EMPTY,
+  };
+  export_graph[export_parent].insert(export_info);
+
+  std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
+  printf("    OB %20s (parent=%s; xform-only=%s)\n",
+         get_object_name(object).c_str(),
+         export_parent_name.c_str(),
+         export_info.xform_only ? "true" : "false");
+
+  // Object *evaluated_ob = DEG_get_evaluated_object(depsgraph, object);
+  // export_object_and_parents(ob, parent, dupliObParent);
+
+  // ListBase *lb = object_duplilist(depsgraph, DEG_get_input_scene(depsgraph), ob);
+
+  // if (lb) {
+  //   DupliObject *link = static_cast<DupliObject *>(lb->first);
+  //   Object *dupli_ob = nullptr;
+  //   Object *dupli_parent = nullptr;
+
+  //   for (; link; link = link->next) {
+  //     if (!should_visit_duplilink(link)) {
+  //       continue;
+  //     }
+
+  //     dupli_ob = link->ob;
+  //     dupli_parent = (dupli_ob->parent) ? dupli_ob->parent : ob;
+  //     visit_object(base, dupli_ob, dupli_parent, ob);
+  //   }
+
+  //   free_object_duplilist(lb);
+  // }
 }
 
 TEMP_WRITER_TYPE *AbstractHierarchyIterator::export_object_and_parents(Object *ob,
