@@ -849,7 +849,7 @@ void **DRW_view_layer_engine_data_ensure(DrawEngineType *engine_type,
  * \{ */
 
 /* Used for DRW_drawdata_from_id()
- * All ID-datablocks which have their own 'local' DrawData
+ * All ID-data-blocks which have their own 'local' DrawData
  * should have the same arrangement in their structs.
  */
 typedef struct IdDdtTemplate {
@@ -1494,6 +1494,7 @@ void DRW_notify_view_update(const DRWUpdateContext *update_ctx)
     };
 
     drw_engines_enable(view_layer, engine_type, gpencil_engine_needed);
+    drw_engines_data_validate();
 
     for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
       DrawEngineType *draw_engine = link->data;
@@ -1590,7 +1591,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   /* Get list of enabled engines */
   drw_engines_enable(view_layer, engine_type, gpencil_engine_needed);
-
   drw_engines_data_validate();
 
   /* Update ubos */
@@ -1691,7 +1691,9 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   DRW_state_reset();
 
   if (DST.draw_ctx.evil_C) {
+    GPU_depth_test(false);
     ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.ar, REGION_DRAW_POST_VIEW);
+    GPU_depth_test(true);
     /* Callback can be nasty and do whatever they want with the state.
      * Don't trust them! */
     DRW_state_reset();
@@ -2289,6 +2291,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     drw_engines_enable_from_overlays(v3d->overlay.flag);
     drw_engines_enable_from_object_mode();
   }
+  drw_engines_data_validate();
 
   /* Setup viewport */
 
@@ -2516,6 +2519,7 @@ void DRW_draw_depth_loop(struct Depsgraph *depsgraph,
     if (DRW_state_draw_support()) {
       drw_engines_enable_from_object_mode();
     }
+    drw_engines_data_validate();
   }
 
   drw_draw_depth_loop_imp();
@@ -2563,7 +2567,10 @@ void DRW_draw_depth_loop_gpencil(struct Depsgraph *depsgraph,
   };
 
   use_drw_engine(&draw_engine_gpencil_type);
+  drw_engines_data_validate();
+
   drw_draw_depth_loop_imp();
+
   drw_engines_disable();
 
 #ifdef DEBUG

@@ -2794,8 +2794,11 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
           int part = -1;
           gz = wm_gizmomap_highlight_find(gzmap, C, event, &part);
 
-          if ((gz == NULL) || (prev.gz != gz) || (prev.part != part)) {
-            WM_tooltip_clear(C, CTX_wm_window(C));
+          /* If no gizmos are/were active, don't clear tool-tips. */
+          if (gz || prev.gz) {
+            if ((prev.gz != gz) || (prev.part != part)) {
+              WM_tooltip_clear(C, CTX_wm_window(C));
+            }
           }
 
           if (wm_gizmomap_highlight_set(gzmap, C, gz, part)) {
@@ -3485,7 +3488,7 @@ void WM_event_fileselect_event(wmWindowManager *wm, void *ophandle, int eventval
 
 /**
  * The idea here is to keep a handler alive on window queue, owning the operator.
- * The filewindow can send event to make it execute, thus ensuring
+ * The file window can send event to make it execute, thus ensuring
  * executing happens outside of lower level queues, with UI refreshed.
  * Should also allow multiwin solutions
  */
@@ -4131,14 +4134,15 @@ static int convert_key(GHOST_TKey key)
 
 static void wm_eventemulation(wmEvent *event, bool test_only)
 {
-  /* Store last mmb/rmb event value to make emulation work when modifier keys
-   * are released first. This really should be in a data structure somewhere. */
+  /* Store last middle-mouse event value to make emulation work
+   * when modifier keys are released first.
+   * This really should be in a data structure somewhere. */
   static int emulating_event = EVENT_NONE;
 
-  /* middlemouse and rightmouse emulation */
+  /* Middle-mouse emulation. */
   if (U.flag & USER_TWOBUTTONMOUSE) {
-    if (event->type == LEFTMOUSE) {
 
+    if (event->type == LEFTMOUSE) {
       if (event->val == KM_PRESS && event->alt) {
         event->type = MIDDLEMOUSE;
         event->alt = 0;
@@ -4147,25 +4151,11 @@ static void wm_eventemulation(wmEvent *event, bool test_only)
           emulating_event = MIDDLEMOUSE;
         }
       }
-#ifdef __APPLE__
-      else if (event->val == KM_PRESS && event->oskey) {
-        event->type = RIGHTMOUSE;
-        event->oskey = 0;
-
-        if (!test_only) {
-          emulating_event = RIGHTMOUSE;
-        }
-      }
-#endif
       else if (event->val == KM_RELEASE) {
         /* only send middle-mouse release if emulated */
         if (emulating_event == MIDDLEMOUSE) {
           event->type = MIDDLEMOUSE;
           event->alt = 0;
-        }
-        else if (emulating_event == RIGHTMOUSE) {
-          event->type = RIGHTMOUSE;
-          event->oskey = 0;
         }
 
         if (!test_only) {
@@ -5019,7 +5009,7 @@ const char *WM_window_cursor_keymap_status_get(const wmWindow *win,
 
 /**
  * Similar to #BKE_screen_area_map_find_area_xy and related functions,
- * use here since the ara is stored in the window manager.
+ * use here since the area is stored in the window manager.
  */
 ScrArea *WM_window_status_area_find(wmWindow *win, bScreen *screen)
 {
