@@ -804,14 +804,14 @@ static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
   DRWShadingGroup *from_shgrp = init_shgrp;
   DRWShadingGroup *to_shgrp = init_shgrp;
   int stencil_tot = 0;
-  bool do_last = false;
+  bool do_last = true;
 
   if (do_antialiasing) {
     MULTISAMPLE_GP_SYNC_ENABLE(stl->storage->multisamples, fbl);
   }
 
   /* Loop all shading groups to separate by stencil groups. */
-  while (shgrp) {
+  while ((shgrp) && (shgrp != end_shgrp)) {
     do_last = true;
     /* Count number of groups using stencil. */
     if (DRW_shgroup_stencil_mask_get(shgrp) != 0) {
@@ -841,16 +841,22 @@ static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
 
       shgrp = DRW_shgroup_get_next(shgrp);
       if (shgrp) {
-        from_shgrp = shgrp;
-        to_shgrp = shgrp;
+        from_shgrp = to_shgrp = shgrp;
         stencil_tot = 0;
-        continue;
+        if (shgrp != end_shgrp) {
+          continue;
+        }
+        else {
+          do_last = true;
+          break;
+        }
       }
       else {
         /* No more groups. */
         break;
       }
     }
+
     /* Still below stencil group limit. */
     shgrp = DRW_shgroup_get_next(shgrp);
     if (shgrp) {
