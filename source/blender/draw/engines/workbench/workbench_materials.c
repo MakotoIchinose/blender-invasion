@@ -148,40 +148,38 @@ char *workbench_material_build_defines(WORKBENCH_PrivateData *wpd,
 
 uint workbench_material_get_hash(WORKBENCH_MaterialData *mat, bool is_ghost)
 {
-  struct {
-    /* WHATCH: Keep in sync with View3DShading.color_type max value. */
-    uint color_type : 5;
-    uint diff_r : 9;
-    uint diff_g : 9;
-    uint diff_b : 9;
+  union {
+    struct {
+      /* WHATCH: Keep in sync with View3DShading.color_type max value. */
+      uchar color_type;
+      uchar diff_r;
+      uchar diff_g;
+      uchar diff_b;
 
-    uint pad : 4;
-    uint ghost : 1;
-    uint metal : 9;
-    uint roughness : 9;
-    uint alpha : 9;
+      uchar alpha;
+      uchar ghost;
+      uchar metal;
+      uchar roughness;
 
-    union {
-      /* HACK to ensure input is 4 uint long. */
-      uint a[2];
       void *ima;
     };
-  } input = {.color_type = (uint)(mat->color_type),
-             .diff_r = (uint)(mat->base_color[0] * 0x1FF),
-             .diff_g = (uint)(mat->base_color[1] * 0x1FF),
-             .diff_b = (uint)(mat->base_color[2] * 0x1FF),
+    /* HACK to ensure input is 4 uint long. */
+    uint a[4];
+  } input = {.color_type = (uchar)(mat->color_type),
+             .diff_r = (uchar)(mat->base_color[0] * 0xFF),
+             .diff_g = (uchar)(mat->base_color[1] * 0xFF),
+             .diff_b = (uchar)(mat->base_color[2] * 0xFF),
 
-             .pad = 0x0, /* Unused for now. */
-             .alpha = (uint)(mat->alpha * 0x1FF),
-             .ghost = (uint)(is_ghost ? 1 : 0),
-             .metal = (uint)(mat->metallic * 0x1FF),
-             .roughness = (uint)(mat->roughness * 0x1FF),
+             .alpha = (uint)(mat->alpha * 0xFF),
+             .ghost = (uchar)is_ghost,
+             .metal = (uchar)(mat->metallic * 0xFF),
+             .roughness = (uchar)(mat->roughness * 0xFF),
 
              .ima = mat->ima};
 
   BLI_assert(sizeof(input) == sizeof(uint) * 4);
 
-  return BLI_ghashutil_uinthash_v4_murmur((uint *)&input);
+  return BLI_ghashutil_uinthash_v4((uint *)&input);
 }
 
 int workbench_material_get_composite_shader_index(WORKBENCH_PrivateData *wpd)
