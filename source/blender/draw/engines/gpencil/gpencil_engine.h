@@ -517,7 +517,7 @@ void GPENCIL_render_to_image(void *vedata,
       DRW_stats_query_start("GP Multisample Blit"); \
       GPU_framebuffer_bind(fbl->multisample_fb); \
       GPU_framebuffer_clear_color_depth_stencil( \
-          fbl->multisample_fb, (const float[4]){0.0f}, 1.0f, 0x00f); \
+          fbl->multisample_fb, (const float[4]){0.0f}, 1.0f, 0x0); \
       DRW_stats_query_end(); \
     } \
   } \
