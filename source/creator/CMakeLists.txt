@@ -1062,6 +1062,16 @@ unset(LIB)
 
 setup_liblinks(blender)
 
+# -----------------------------------------------------------------------------
+# USD registry
+if (WIN32 AND WITH_USD)
+  install(DIRECTORY
+   ${LIBDIR}/usd/lib/usd
+   DESTINATION "."
+  )
+endif()
+
+
 # vcpkg substitutes our libs with theirs, which will cause issues when you
 # you run these builds on other systems due to missing dlls. So we opt out
 # the use of vcpkg
