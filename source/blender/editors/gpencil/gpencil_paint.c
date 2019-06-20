@@ -1429,7 +1429,6 @@ static void gp_stroke_soft_refine(bGPDstroke *gps)
 static void gp_stroke_eraser_dostroke(tGPsdata *p,
                                       bGPDlayer *gpl,
                                       bGPDframe *gpf,
-                                      bGPDframe *derived_gpf,
                                       bGPDstroke *gps,
                                       const float mval[2],
                                       const float mvalo[2],
@@ -1453,8 +1452,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 
   if (gps->totpoints == 0) {
     /* just free stroke */
-    gp_free_stroke(p->gpd, gpf, gps->runtime.gps_orig);
-    gp_free_stroke(p->gpd, derived_gpf, gps);
+    gp_free_stroke(p->gpd, gpf, gps);
   }
   else if (gps->totpoints == 1) {
     /* only process if it hasn't been masked out... */
@@ -1467,8 +1465,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
         /* only check if point is inside */
         if (len_v2v2_int(mval_i, pc1) <= radius) {
           /* free stroke */
-          gp_free_stroke(p->gpd, gpf, gps->runtime.gps_orig);
-          gp_free_stroke(p->gpd, derived_gpf, gps);
+          gp_free_stroke(p->gpd, gpf, gps);
         }
       }
     }
@@ -1476,6 +1473,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
   else if ((p->flags & GP_PAINTFLAG_STROKE_ERASER) ||
            (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_STROKE)) {
     for (i = 0; (i + 1) < gps->totpoints; i++) {
+
       /* only process if it hasn't been masked out... */
       if ((p->flags & GP_PAINTFLAG_SELECTMASK) && !(gps->points->flag & GP_SPOINT_SELECT)) {
         continue;
@@ -1483,10 +1481,6 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 
       /* get points to work with */
       pt1 = gps->points + i;
-      if (pt1->runtime.pt_orig == NULL) {
-        continue;
-      }
-
       bGPDspoint npt;
       gp_point_to_parent_space(pt1, diff_mat, &npt);
       gp_point_to_xy(&p->gsc, gps, &npt, &pc1[0], &pc1[1]);
@@ -1496,8 +1490,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
         /* only check if point is inside */
         if (len_v2v2_int(mval_i, pc1) <= radius) {
           /* free stroke */
-          gp_free_stroke(p->gpd, gpf, gps->runtime.gps_orig);
-          gp_free_stroke(p->gpd, derived_gpf, gps);
+          gp_free_stroke(p->gpd, gpf, gps);
           return;
         }
       }
@@ -1521,11 +1514,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
      */
     for (i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
-      if (pt->runtime.pt_orig == NULL) {
-        continue;
-      }
-
-      pt->runtime.pt_orig->flag &= ~GP_SPOINT_TAG;
+      pt->flag &= ~GP_SPOINT_TAG;
     }
 
     /* First Pass: Loop over the points in the stroke
@@ -1537,10 +1526,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
       pt0 = i > 0 ? gps->points + i - 1 : NULL;
       pt1 = gps->points + i;
       pt2 = gps->points + i + 1;
-      if (((pt0) && (pt0->runtime.pt_orig == NULL)) || (pt1->runtime.pt_orig == NULL) ||
-          (pt2->runtime.pt_orig == NULL)) {
-        continue;
-      }
+
       /* only process if it hasn't been masked out... */
       if ((p->flags & GP_PAINTFLAG_SELECTMASK) && !(gps->points->flag & GP_SPOINT_SELECT)) {
         continue;
@@ -1588,58 +1574,53 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 
               if (pt0) {
                 influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc0);
-                pt0->runtime.pt_orig->strength -= influence * strength * f_strength * 0.5f;
-                CLAMP_MIN(pt0->runtime.pt_orig->strength, 0.0f);
-                pt0->runtime.pt_orig->pressure -= influence * strength * f_thickness * 0.5f;
+                pt0->strength -= influence * strength * f_strength * 0.5f;
+                CLAMP_MIN(pt0->strength, 0.0f);
+                pt0->pressure -= influence * strength * f_thickness * 0.5f;
               }
 
               influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc1);
-              pt1->runtime.pt_orig->strength -= influence * strength * f_strength;
-              CLAMP_MIN(pt1->runtime.pt_orig->strength, 0.0f);
-              pt1->runtime.pt_orig->pressure -= influence * strength * f_thickness;
+              pt1->strength -= influence * strength * f_strength;
+              CLAMP_MIN(pt1->strength, 0.0f);
+              pt1->pressure -= influence * strength * f_thickness;
 
               influence = gp_stroke_eraser_calc_influence(p, mval, radius, pc2);
-              pt2->runtime.pt_orig->strength -= influence * strength * f_strength * 0.5f;
-              CLAMP_MIN(pt2->runtime.pt_orig->strength, 0.0f);
-              pt2->runtime.pt_orig->pressure -= influence * strength * f_thickness * 0.5f;
+              pt2->strength -= influence * strength * f_strength * 0.5f;
+              CLAMP_MIN(pt2->strength, 0.0f);
+              pt2->pressure -= influence * strength * f_thickness * 0.5f;
 
               /* if invisible, delete point */
-              if ((pt0) && ((pt0->runtime.pt_orig->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
-                            (pt0->runtime.pt_orig->pressure < cull_thresh))) {
-                pt0->runtime.pt_orig->flag |= GP_SPOINT_TAG;
+              if ((pt0) && ((pt0->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
+                            (pt0->pressure < cull_thresh))) {
+                pt0->flag |= GP_SPOINT_TAG;
                 do_cull = true;
               }
-              if ((pt1->runtime.pt_orig->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
-                  (pt1->runtime.pt_orig->pressure < cull_thresh)) {
-                pt1->runtime.pt_orig->flag |= GP_SPOINT_TAG;
+              if ((pt1->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
+                  (pt1->pressure < cull_thresh)) {
+                pt1->flag |= GP_SPOINT_TAG;
                 do_cull = true;
               }
-              if ((pt2->runtime.pt_orig->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
-                  (pt2->runtime.pt_orig->pressure < cull_thresh)) {
-                pt2->runtime.pt_orig->flag |= GP_SPOINT_TAG;
+              if ((pt2->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
+                  (pt2->pressure < cull_thresh)) {
+                pt2->flag |= GP_SPOINT_TAG;
                 do_cull = true;
               }
             }
             else {
-              pt1->runtime.pt_orig->pressure -= gp_stroke_eraser_calc_influence(
-                                                    p, mval, radius, pc1) *
-                                                strength;
-              pt2->runtime.pt_orig->pressure -= gp_stroke_eraser_calc_influence(
-                                                    p, mval, radius, pc2) *
-                                                strength * 0.5f;
+              pt1->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc1) * strength;
+              pt2->pressure -= gp_stroke_eraser_calc_influence(p, mval, radius, pc2) * strength *
+                               0.5f;
             }
 
             /* 2) Tag any point with overly low influence for removal in the next pass */
-            if ((pt1->runtime.pt_orig->pressure < cull_thresh) ||
-                (p->flags & GP_PAINTFLAG_HARD_ERASER) ||
+            if ((pt1->pressure < cull_thresh) || (p->flags & GP_PAINTFLAG_HARD_ERASER) ||
                 (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_HARD)) {
-              pt1->runtime.pt_orig->flag |= GP_SPOINT_TAG;
+              pt1->flag |= GP_SPOINT_TAG;
               do_cull = true;
             }
-            if ((pt2->runtime.pt_orig->pressure < cull_thresh) ||
-                (p->flags & GP_PAINTFLAG_HARD_ERASER) ||
+            if ((pt2->pressure < cull_thresh) || (p->flags & GP_PAINTFLAG_HARD_ERASER) ||
                 (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_HARD)) {
-              pt2->runtime.pt_orig->flag |= GP_SPOINT_TAG;
+              pt2->flag |= GP_SPOINT_TAG;
               do_cull = true;
             }
           }
@@ -1652,11 +1633,10 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
       /* if soft eraser, must analyze points to be sure the stroke ends
        * don't get rounded */
       if (eraser->gpencil_settings->eraser_mode == GP_BRUSH_ERASER_SOFT) {
-        gp_stroke_soft_refine(gps->runtime.gps_orig);
+        gp_stroke_soft_refine(gps);
       }
 
-      gp_stroke_delete_tagged_points(
-          gpf, gps->runtime.gps_orig, gps->runtime.gps_orig->next, GP_SPOINT_TAG, false, 0);
+      gp_stroke_delete_tagged_points(gpf, gps, gps->next, GP_SPOINT_TAG, false, 0);
     }
     gp_update_cache(p->gpd);
   }
@@ -1673,7 +1653,6 @@ static void gp_stroke_doeraser(tGPsdata *p)
   bool use_pressure = false;
   float press = 1.0f;
   BrushGpencilSettings *gp_settings = NULL;
-  Object *ob_eval = DEG_get_evaluated_object(p->depsgraph, p->ob);
 
   /* detect if use pressure in eraser */
   if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
@@ -1707,23 +1686,19 @@ static void gp_stroke_doeraser(tGPsdata *p)
    * only a subset of layers, it is harder to perform the same erase operation
    * on multiple layers...
    */
-  int derived_idx = 0;
   for (gpl = p->gpd->layers.first; gpl; gpl = gpl->next) {
     bGPDframe *gpf = gpl->actframe;
-    /* Get derived frames array data */
-    bGPDframe *derived_gpf = &ob_eval->runtime.derived_frames[derived_idx];
-    derived_idx++;
 
     /* only affect layer if it's editable (and visible) */
     if (gpencil_layer_is_editable(gpl) == false) {
       continue;
     }
-    else if (ELEM(gpf, derived_gpf, NULL)) {
+    else if (gpf == NULL) {
       continue;
     }
 
     /* loop over strokes, checking segments for intersections */
-    for (gps = derived_gpf->strokes.first; gps; gps = gpn) {
+    for (gps = gpf->strokes.first; gps; gps = gpn) {
       gpn = gps->next;
       /* check if the color is editable */
       if (ED_gpencil_stroke_color_use(p->ob, gpl, gps) == false) {
@@ -1733,8 +1708,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
        * (e.g. 2D space strokes in the 3D view, if the same datablock is shared)
        */
       if (ED_gpencil_stroke_can_use_direct(p->sa, gps)) {
-        gp_stroke_eraser_dostroke(
-            p, gpl, gpf, derived_gpf, gps, p->mval, p->mvalo, calc_radius, &rect);
+        gp_stroke_eraser_dostroke(p, gpl, gpf, gps, p->mval, p->mvalo, calc_radius, &rect);
       }
     }
   }
