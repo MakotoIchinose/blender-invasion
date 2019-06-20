@@ -185,14 +185,13 @@ static void rna_ViewLayer_update_tagged(ID *id_ptr, ViewLayer *view_layer, Main 
 #  endif
 }
 
-static void rna_ObjectBase_select_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *ptr)
+static void rna_ObjectBase_select_update(Main *UNUSED(bmain),
+                                         Scene *UNUSED(scene),
+                                         PointerRNA *ptr)
 {
-  ViewLayer *view_layer;
-  for (view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
-    Base *base = (Base *)ptr->data;
-    short mode = (base->flag & BASE_SELECTED) ? BA_SELECT : BA_DESELECT;
-    ED_object_base_select(view_layer, base, mode);
-  }
+  Base *base = (Base *)ptr->data;
+  short mode = (base->flag & BASE_SELECTED) ? BA_SELECT : BA_DESELECT;
+  ED_object_base_select(base, mode);
 }
 
 static void rna_ObjectBase_hide_viewport_update(bContext *C, PointerRNA *UNUSED(ptr))

@@ -1200,7 +1200,7 @@ static void select_marker_camera_switch(
         if (marker->frame == cfra) {
           base = BKE_view_layer_base_find(view_layer, marker->camera);
           if (base) {
-            ED_object_base_select(view_layer, base, sel);
+            ED_object_base_select(base, sel);
             if (sel) {
               ED_object_base_activate(C, base);
             }

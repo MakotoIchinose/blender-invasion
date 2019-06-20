@@ -147,8 +147,6 @@ enum {
   VIEW_LAYER_RENDER = (1 << 0),
   /* VIEW_LAYER_DEPRECATED  = (1 << 1), */
   VIEW_LAYER_FREESTYLE = (1 << 2),
-  /* This may need to be moved */
-  VIEW_LAYER_OUTLINER_SELECT_DIRTY = (1 << 5),
 };
 
 /****************************** Deprecated ******************************/

@@ -94,7 +94,7 @@
  * \note Caller must send a `NC_SCENE | ND_OB_SELECT` notifier
  * (or a `NC_SCENE | ND_OB_VISIBLE` in case of visibility toggling).
  */
-void ED_object_base_select(ViewLayer *view_layer, Base *base, eObjectSelect_Mode mode)
+void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
 {
   if (mode == BA_INVERT) {
     mode = (base->flag & BASE_SELECTED) != 0 ? BA_DESELECT : BA_SELECT;
@@ -116,9 +116,6 @@ void ED_object_base_select(ViewLayer *view_layer, Base *base, eObjectSelect_Mode
     }
     BKE_scene_object_base_flag_sync_from_base(base);
   }
-
-  /* Flag view layer as having a change in selection (for outliner syncing) */
-  view_layer->flag |= VIEW_LAYER_OUTLINER_SELECT_DIRTY;
 }
 
 /**
@@ -164,23 +161,23 @@ bool ED_object_base_deselect_all_ex(ViewLayer *view_layer,
     switch (action) {
       case SEL_SELECT:
         if ((base->flag & BASE_SELECTED) == 0) {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
         }
         break;
       case SEL_DESELECT:
         if ((base->flag & BASE_SELECTED) != 0) {
-          ED_object_base_select(view_layer, base, BA_DESELECT);
+          ED_object_base_select(base, BA_DESELECT);
           changed = true;
         }
         break;
       case SEL_INVERT:
         if ((base->flag & BASE_SELECTED) != 0) {
-          ED_object_base_select(view_layer, base, BA_DESELECT);
+          ED_object_base_select(base, BA_DESELECT);
           changed = true;
         }
         else {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
         }
         break;
@@ -282,7 +279,7 @@ bool ED_object_jump_to_object(bContext *C, Object *ob, const bool UNUSED(reveal_
       ED_object_base_deselect_all(view_layer, v3d, SEL_DESELECT);
 
       if (base->flag & BASE_VISIBLE) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
       }
 
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, CTX_data_scene(C));
@@ -421,7 +418,7 @@ static int object_select_by_type_exec(bContext *C, wmOperator *op)
 
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
     if (base->object->type == obtype) {
-      ED_object_base_select(view_layer, base, BA_SELECT);
+      ED_object_base_select(base, BA_SELECT);
     }
   }
   CTX_DATA_END;
@@ -488,13 +485,12 @@ static const EnumPropertyItem prop_select_linked_types[] = {
 
 static bool object_select_all_by_obdata(bContext *C, void *obdata)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
     if (((base->flag & BASE_SELECTED) == 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
       if (base->object->data == obdata) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
         changed = true;
       }
     }
@@ -506,7 +502,6 @@ static bool object_select_all_by_obdata(bContext *C, void *obdata)
 
 static bool object_select_all_by_material(bContext *C, Material *mat)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
@@ -519,7 +514,7 @@ static bool object_select_all_by_material(bContext *C, Material *mat)
         mat1 = give_current_material(ob, a);
 
         if (mat1 == mat) {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
         }
       }
@@ -532,7 +527,6 @@ static bool object_select_all_by_material(bContext *C, Material *mat)
 
 static bool object_select_all_by_instance_collection(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
   Collection *instance_collection = (ob->transflag & OB_DUPLICOLLECTION) ?
                                         ob->instance_collection :
@@ -544,7 +538,7 @@ static bool object_select_all_by_instance_collection(bContext *C, Object *ob)
                                                   base->object->instance_collection :
                                                   NULL;
       if (instance_collection == instance_collection_other) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
         changed = true;
       }
     }
@@ -556,7 +550,6 @@ static bool object_select_all_by_instance_collection(bContext *C, Object *ob)
 
 static bool object_select_all_by_particle(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   ParticleSystem *psys_act = psys_get_current(ob);
   bool changed = false;
 
@@ -567,7 +560,7 @@ static bool object_select_all_by_particle(bContext *C, Object *ob)
 
       for (psys = base->object->particlesystem.first; psys; psys = psys->next) {
         if (psys->part == psys_act->part) {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
           break;
         }
@@ -585,13 +578,12 @@ static bool object_select_all_by_particle(bContext *C, Object *ob)
 
 static bool object_select_all_by_library(bContext *C, Library *lib)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
     if (((base->flag & BASE_SELECTED) == 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
       if (lib == base->object->id.lib) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
         changed = true;
       }
     }
@@ -603,13 +595,12 @@ static bool object_select_all_by_library(bContext *C, Library *lib)
 
 static bool object_select_all_by_library_obdata(bContext *C, Library *lib)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
     if (((base->flag & BASE_SELECTED) == 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
       if (base->object->data && lib == ((ID *)base->object->data)->lib) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
         changed = true;
       }
     }
@@ -788,13 +779,12 @@ static const EnumPropertyItem prop_select_grouped_types[] = {
 
 static bool select_grouped_children(bContext *C, Object *ob, const bool recursive)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
     if (ob == base->object->parent) {
       if ((base->flag & BASE_SELECTED) == 0) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
         changed = true;
       }
 
@@ -822,7 +812,7 @@ static bool select_grouped_parent(bContext *C) /* Makes parent active and de-sel
 
   /* can be NULL if parent in other scene */
   if (baspar && BASE_SELECTABLE(v3d, baspar)) {
-    ED_object_base_select(view_layer, baspar, BA_SELECT);
+    ED_object_base_select(baspar, BA_SELECT);
     ED_object_base_activate(C, baspar);
     changed = true;
   }
@@ -833,7 +823,6 @@ static bool select_grouped_parent(bContext *C) /* Makes parent active and de-sel
 /* Select objects in the same group as the active */
 static bool select_grouped_collection(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
   Collection *collection, *ob_collections[COLLECTION_MENU_MAX];
   int collection_count = 0, i;
@@ -857,7 +846,7 @@ static bool select_grouped_collection(bContext *C, Object *ob)
     CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
       if (((base->flag & BASE_SELECTED) == 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
         if (BKE_collection_has_object(collection, base->object)) {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
         }
       }
@@ -900,7 +889,7 @@ static bool select_grouped_object_hooks(bContext *C, Object *ob)
       if (hmd->object) {
         base = BKE_view_layer_base_find(view_layer, hmd->object);
         if (base && ((base->flag & BASE_SELECTED) == 0) && (BASE_SELECTABLE(v3d, base))) {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
         }
       }
@@ -913,12 +902,11 @@ static bool select_grouped_object_hooks(bContext *C, Object *ob)
  * parent can be NULL also */
 static bool select_grouped_siblings(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
     if ((base->object->parent == ob->parent) && ((base->flag & BASE_SELECTED) == 0)) {
-      ED_object_base_select(view_layer, base, BA_SELECT);
+      ED_object_base_select(base, BA_SELECT);
       changed = true;
     }
   }
@@ -927,7 +915,6 @@ static bool select_grouped_siblings(bContext *C, Object *ob)
 }
 static bool select_grouped_lighttype(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   Light *la = ob->data;
 
   bool changed = false;
@@ -936,7 +923,7 @@ static bool select_grouped_lighttype(bContext *C, Object *ob)
     if (base->object->type == OB_LAMP) {
       Light *la_test = base->object->data;
       if ((la->type == la_test->type) && ((base->flag & BASE_SELECTED) == 0)) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
         changed = true;
       }
     }
@@ -946,12 +933,11 @@ static bool select_grouped_lighttype(bContext *C, Object *ob)
 }
 static bool select_grouped_type(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
     if ((base->object->type == ob->type) && ((base->flag & BASE_SELECTED) == 0)) {
-      ED_object_base_select(view_layer, base, BA_SELECT);
+      ED_object_base_select(base, BA_SELECT);
       changed = true;
     }
   }
@@ -961,12 +947,11 @@ static bool select_grouped_type(bContext *C, Object *ob)
 
 static bool select_grouped_index_object(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
     if ((base->object->index == ob->index) && ((base->flag & BASE_SELECTED) == 0)) {
-      ED_object_base_select(view_layer, base, BA_SELECT);
+      ED_object_base_select(base, BA_SELECT);
       changed = true;
     }
   }
@@ -976,13 +961,12 @@ static bool select_grouped_index_object(bContext *C, Object *ob)
 
 static bool select_grouped_color(bContext *C, Object *ob)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
     if (((base->flag & BASE_SELECTED) == 0) &&
         (compare_v3v3(base->object->color, ob->color, 0.005f))) {
-      ED_object_base_select(view_layer, base, BA_SELECT);
+      ED_object_base_select(base, BA_SELECT);
       changed = true;
     }
   }
@@ -992,7 +976,6 @@ static bool select_grouped_color(bContext *C, Object *ob)
 
 static bool select_grouped_keyingset(bContext *C, Object *UNUSED(ob), ReportList *reports)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   KeyingSet *ks = ANIM_scene_get_active_keyingset(CTX_data_scene(C));
   bool changed = false;
 
@@ -1030,7 +1013,7 @@ static bool select_grouped_keyingset(bContext *C, Object *UNUSED(ob), ReportList
       for (ksp = ks->paths.first; ksp; ksp = ksp->next) {
         /* if id matches, select then stop looping (match found) */
         if (ksp->id == (ID *)base->object) {
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           changed = true;
           break;
         }
@@ -1197,7 +1180,6 @@ void OBJECT_OT_select_all(wmOperatorType *ot)
 static int object_select_same_collection_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   Collection *collection;
   char collection_name[MAX_ID_NAME];
 
@@ -1217,7 +1199,7 @@ static int object_select_same_collection_exec(bContext *C, wmOperator *op)
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
     if (((base->flag & BASE_SELECTED) == 0) && ((base->flag & BASE_SELECTABLE) != 0)) {
       if (BKE_collection_has_object(collection, base->object)) {
-        ED_object_base_select(view_layer, base, BA_SELECT);
+        ED_object_base_select(base, BA_SELECT);
       }
     }
   }
@@ -1275,13 +1257,13 @@ static int object_select_mirror_exec(bContext *C, wmOperator *op)
         Base *secbase = BKE_view_layer_base_find(view_layer, ob);
 
         if (secbase) {
-          ED_object_base_select(view_layer, secbase, BA_SELECT);
+          ED_object_base_select(secbase, BA_SELECT);
         }
       }
     }
 
     if (extend == false) {
-      ED_object_base_select(view_layer, primbase, BA_DESELECT);
+      ED_object_base_select(primbase, BA_DESELECT);
     }
   }
   CTX_DATA_END;
@@ -1360,7 +1342,7 @@ static bool object_select_more_less(bContext *C, const bool select)
     Base *base = ctx_base->ptr.data;
     Object *ob = base->object;
     if ((ob->id.tag & LIB_TAG_DOIT) && ((base->flag & BASE_SELECTED) != select_flag)) {
-      ED_object_base_select(view_layer, base, select_mode);
+      ED_object_base_select(base, select_mode);
       changed = true;
     }
   }
@@ -1438,7 +1420,6 @@ void OBJECT_OT_select_less(wmOperatorType *ot)
 
 static int object_select_random_exec(bContext *C, wmOperator *op)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   const float randfac = RNA_float_get(op->ptr, "percent") / 100.0f;
   const int seed = WM_operator_properties_select_random_seed_increment_get(op);
   const bool select = (RNA_enum_get(op->ptr, "action") == SEL_SELECT);
@@ -1447,7 +1428,7 @@ static int object_select_random_exec(bContext *C, wmOperator *op)
 
   CTX_DATA_BEGIN (C, Base *, base, selectable_bases) {
     if (BLI_rng_get_float(rng) < randfac) {
-      ED_object_base_select(view_layer, base, select);
+      ED_object_base_select(base, select);
     }
   }
   CTX_DATA_END;

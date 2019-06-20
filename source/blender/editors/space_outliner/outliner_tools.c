@@ -462,7 +462,7 @@ static void object_select_cb(bContext *C,
   Base *base = BKE_view_layer_base_find(view_layer, ob);
 
   if (base) {
-    ED_object_base_select(view_layer, base, BA_SELECT);
+    ED_object_base_select(base, BA_SELECT);
   }
 }
 

@@ -1471,7 +1471,7 @@ static int localview_remove_from_exec(bContext *C, wmOperator *op)
   for (Base *base = FIRSTBASE(view_layer); base; base = base->next) {
     if (BASE_SELECTED(v3d, base)) {
       base->local_view_bits &= ~v3d->local_view_uuid;
-      ED_object_base_select(view_layer, base, BA_DESELECT);
+      ED_object_base_select(base, BA_DESELECT);
 
       if (base == BASACT(view_layer)) {
         view_layer->basact = NULL;

@@ -2867,7 +2867,7 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
       if (base->flag & BASE_SELECTABLE) {
         if (selectmode == SELECT_INVERT) {
           /* swap select */
-          ED_object_base_select(view_layer, base, BA_INVERT);
+          ED_object_base_select(base, BA_INVERT);
 
           if (adt) {
             adt->flag ^= ADT_UI_SELECTED;
@@ -2879,14 +2879,14 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
           /* deselect all */
           /* TODO: should this deselect all other types of channels too? */
           for (b = view_layer->object_bases.first; b; b = b->next) {
-            ED_object_base_select(view_layer, b, BA_DESELECT);
+            ED_object_base_select(b, BA_DESELECT);
             if (b->object->adt) {
               b->object->adt->flag &= ~(ADT_UI_SELECTED | ADT_UI_ACTIVE);
             }
           }
 
           /* select object now */
-          ED_object_base_select(view_layer, base, BA_SELECT);
+          ED_object_base_select(base, BA_SELECT);
           if (adt) {
             adt->flag |= ADT_UI_SELECTED;
           }

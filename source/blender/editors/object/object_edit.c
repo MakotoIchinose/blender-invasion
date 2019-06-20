@@ -223,14 +223,14 @@ static int object_hide_view_set_exec(bContext *C, wmOperator *op)
 
     if (!unselected) {
       if (base->flag & BASE_SELECTED) {
-        ED_object_base_select(view_layer, base, BA_DESELECT);
+        ED_object_base_select(base, BA_DESELECT);
         base->flag |= BASE_HIDDEN;
         changed = true;
       }
     }
     else {
       if (!(base->flag & BASE_SELECTED)) {
-        ED_object_base_select(view_layer, base, BA_DESELECT);
+        ED_object_base_select(base, BA_DESELECT);
         base->flag |= BASE_HIDDEN;
         changed = true;
       }

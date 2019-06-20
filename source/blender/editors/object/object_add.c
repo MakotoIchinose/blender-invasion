@@ -2026,8 +2026,8 @@ static Base *duplibase_for_convert(
   BKE_collection_object_add_from(bmain, scene, ob, obn);
 
   basen = BKE_view_layer_base_find(view_layer, obn);
-  ED_object_base_select(view_layer, basen, BA_SELECT);
-  ED_object_base_select(view_layer, base, BA_DESELECT);
+  ED_object_base_select(basen, BA_SELECT);
+  ED_object_base_select(base, BA_DESELECT);
 
   /* XXX Doing that here is stupid, it means we update and re-evaluate the whole depsgraph every
    * time we need to duplicate an object to convert it. Even worse, this is not 100% correct, since
@@ -2548,8 +2548,8 @@ static int duplicate_exec(bContext *C, wmOperator *op)
 
     /* note that this is safe to do with this context iterator,
      * the list is made in advance */
-    ED_object_base_select(view_layer, base, BA_DESELECT);
-    ED_object_base_select(view_layer, basen, BA_SELECT);
+    ED_object_base_select(base, BA_DESELECT);
+    ED_object_base_select(basen, BA_SELECT);
 
     if (basen == NULL) {
       continue;
@@ -2652,7 +2652,7 @@ static int add_named_exec(bContext *C, wmOperator *op)
     ED_view3d_cursor3d_position(C, mval, false, basen->object->loc);
   }
 
-  ED_object_base_select(view_layer, basen, BA_SELECT);
+  ED_object_base_select(basen, BA_SELECT);
   ED_object_base_activate(C, basen);
 
   copy_object_set_idnew(C);

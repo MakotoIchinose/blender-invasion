@@ -614,7 +614,7 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
       view_layer, CTX_wm_view3d(C), &bases_len);
 
   CTX_DATA_BEGIN (C, Base *, base, visible_bases) {
-    ED_object_base_select(view_layer, base, BA_DESELECT);
+    ED_object_base_select(base, BA_DESELECT);
   }
   CTX_DATA_END;
 
@@ -635,7 +635,7 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
      */
 
     /* 1) only edit-base selected */
-    ED_object_base_select(view_layer, base_iter, BA_SELECT);
+    ED_object_base_select(base_iter, BA_SELECT);
 
     /* 1) store starting settings and exit editmode */
     oldob = obedit;

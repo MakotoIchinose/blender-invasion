@@ -620,7 +620,7 @@ static int scene_drop_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent 
        view_layer = view_layer->next) {
     Base *base = BKE_view_layer_base_find(view_layer, ob);
     if (base) {
-      ED_object_base_select(view_layer, base, BA_SELECT);
+      ED_object_base_select(base, BA_SELECT);
     }
   }
 

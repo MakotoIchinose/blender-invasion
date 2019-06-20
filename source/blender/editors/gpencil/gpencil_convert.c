@@ -1396,7 +1396,7 @@ static void gp_layer_to_curve(bContext *C,
     }
   }
 
-  ED_object_base_select(view_layer, base_new, BA_SELECT);
+  ED_object_base_select(base_new, BA_SELECT);
 }
 
 /* --- */
