@@ -59,8 +59,8 @@ static void draw_call_sort(DRWCall *array, DRWCall *array_tmp, int array_len)
    * the sorting benefit will be negligeable. So at least
    * sort fast! */
   uchar idx[128] = {0};
-  /* Shift by 7 positions knowing each GPUBatch is > 64 bytes */
-#define KEY(a) ((((size_t)((a).batch)) >> 7) % ARRAY_SIZE(idx))
+  /* Shift by 6 positions knowing each GPUBatch is > 64 bytes */
+#define KEY(a) ((((size_t)((a).batch)) >> 6) % ARRAY_SIZE(idx))
   BLI_assert(array_len <= ARRAY_SIZE(idx));
 
   for (int i = 0; i < array_len; i++) {
