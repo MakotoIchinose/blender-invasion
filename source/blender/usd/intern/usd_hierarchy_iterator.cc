@@ -54,10 +54,25 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_MESH:
       data_writer = new USDMeshWriter(usd_export_context);
       break;
-    default:
+
+    case OB_EMPTY:
+    case OB_CURVE:
+    case OB_SURF:
+    case OB_FONT:
+    case OB_MBALL:
+    case OB_LAMP:
+    case OB_CAMERA:
+    case OB_SPEAKER:
+    case OB_LIGHTPROBE:
+    case OB_LATTICE:
+    case OB_ARMATURE:
+    case OB_GPENCIL:
       printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
              context.object->id.name,
              context.object->type);
+      return nullptr;
+    case OB_TYPE_MAX:
+      BLI_assert(!"OB_TYPE_MAX should not be used");
       return nullptr;
   }
 
