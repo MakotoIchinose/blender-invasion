@@ -1090,22 +1090,25 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
   if (num_bad_edges == 0) {
     return false;
   }
+  Cloth *cloth = clmd->clothObject;
+  cloth->verts = MEM_reallocN(cloth->verts,
+                              (cloth->mvert_num + num_bad_edges) * sizeof(ClothVertex));
   BMEdge *e;
   for (int i = 0; i < num_bad_edges; i++) {
     e = bad_edges[i];
     BMEdge old_edge = *e;
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
     BM_elem_flag_enable(new_vert, BM_ELEM_SELECT);
-    Cloth *cloth = clmd->clothObject;
-    cloth->verts = MEM_reallocN(cloth->verts, (cloth->mvert_num + 1) * sizeof(ClothVertex));
     BLI_assert(cloth->verts != NULL);
     ClothVertex *v1, *v2;
     v1 = cloth_remeshing_find_cloth_vertex(old_edge.v1, cloth->verts, cloth->mvert_num);
     v2 = cloth_remeshing_find_cloth_vertex(old_edge.v2, cloth->verts, cloth->mvert_num);
+#if 0
     printf("v: %f %f %f\n", old_edge.v1->co[0], old_edge.v1->co[1], old_edge.v1->co[2]);
     cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
     printf("v: %f %f %f\n", old_edge.v2->co[0], old_edge.v2->co[1], old_edge.v2->co[2]);
     cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
+#endif
     BLI_assert(v1 != NULL);
     BLI_assert(v2 != NULL);
     cloth->mvert_num += 1;
