@@ -440,6 +440,8 @@ class TOPBAR_MT_file_export(Menu):
             self.layout.operator("wm.collada_export", text="Collada (Default) (.dae)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_export", text="Alembic (.abc)")
+        if bpy.app.build_options.usd:
+            self.layout.operator("wm.usd_export", text="Universal Scene Description (.usdc, .usda)")
 
 
 class TOPBAR_MT_file_external_data(Menu):

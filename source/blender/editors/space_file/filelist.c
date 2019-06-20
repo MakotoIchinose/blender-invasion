@@ -2130,6 +2130,9 @@ int ED_path_extension_type(const char *path)
   else if (BLI_path_extension_check(path, ".abc")) {
     return FILE_TYPE_ALEMBIC;
   }
+  else if (BLI_path_extension_check_n(path, ".usda", ".usdb", ".usdc", ".usdz", NULL)) {
+    return FILE_TYPE_USD;
+  }
   else if (BLI_path_extension_check(path, ".zip")) {
     return FILE_TYPE_ARCHIVE;
   }
