@@ -723,6 +723,11 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
     cloth->bvhselftree = NULL;
   }
 
+  if (cloth->implicit) {
+    BPH_mass_spring_solver_free(cloth->implicit);
+    cloth->implicit = NULL;
+  }
+
   // we save our faces for collision objects
   if (cloth->tri) {
     MEM_freeN(cloth->tri);
