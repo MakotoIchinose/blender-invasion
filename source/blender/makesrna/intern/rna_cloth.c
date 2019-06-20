@@ -775,6 +775,12 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /* remeshing */
+  prop = RNA_def_property(srna, "use_adaptive_remeshing", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING);
+  RNA_def_property_ui_text(prop, "Adaptive Remeshing", "Enables adaptive remeshing");
+  RNA_def_property_clear_flag(prop, PROP_NONE);
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
   prop = RNA_def_property(srna, "refine_angle", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "refine_angle");
   RNA_def_property_range(prop, 0.0f, 10.0f);

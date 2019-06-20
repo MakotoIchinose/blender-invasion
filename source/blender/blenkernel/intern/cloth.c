@@ -113,6 +113,7 @@ void cloth_init(ClothModifierData *clmd)
   clmd->sim_parms->mass = 0.3f;
   clmd->sim_parms->stepsPerFrame = 5;
   clmd->sim_parms->flags = 0;
+  clmd->sim_parms->flags |= CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING;
   clmd->sim_parms->solver_type = 0;
   clmd->sim_parms->maxspringlen = 10;
   clmd->sim_parms->vgroup_mass = 0;
@@ -1142,15 +1143,15 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Split edges
    */
-  /* while (cloth_remeshing_split_edges(clmd, &sizing)) { */
-  /*   /\* empty while *\/ */
-  /* } */
-  cloth_remeshing_split_edges(clmd, &sizing);
-  static int file_no = 0;
-  file_no++;
-  char file_name[100];
-  sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
-  cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
+  while (cloth_remeshing_split_edges(clmd, &sizing)) {
+    /* empty while */
+  }
+  /* cloth_remeshing_split_edges(clmd, &sizing); */
+  /* static int file_no = 0; */
+  /* file_no++; */
+  /* char file_name[100]; */
+  /* sprintf(file_name, "/tmp/objs/%03d.obj", file_no); */
+  /* cloth_remeshing_export_obj(clmd->clothObject->bm, file_name); */
 
   /**
    * Collapse edges
@@ -1204,7 +1205,9 @@ Mesh *clothModifier_do(
 #endif
 
   if (clmd->sim_parms->reset ||
-      (clmd->clothObject && mesh_result->totvert != clmd->clothObject->mvert_num)) {
+      (clmd->clothObject && mesh_result->totvert != clmd->clothObject->mvert_num &&
+       clmd->sim_parms->flags & ~CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING)) {
+    printf("this is called\n");
     clmd->sim_parms->reset = 0;
     clmd->sim_parms->remeshing_reset = 1;
 #if USE_CLOTH_CACHE

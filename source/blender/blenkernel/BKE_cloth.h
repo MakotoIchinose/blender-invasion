@@ -215,6 +215,7 @@ typedef enum {
   CLOTH_SIMSETTINGS_FLAG_SEW = (1 << 14), /* pull ends of loose edges together */
   CLOTH_SIMSETTINGS_FLAG_DYNAMIC_BASEMESH =
       (1 << 15), /* make simulation respect deformations in the base object */
+  CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING = (1 << 16), /* if true, use adaptive remeshing */
 } CLOTH_SIMSETTINGS_FLAGS;
 
 /* ClothSimSettings.bending_model. */
