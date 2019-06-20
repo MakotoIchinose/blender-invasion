@@ -429,6 +429,7 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
                         NULL);
     printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
+  clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
   clmd->clothObject->bm = clmd->clothObject->bm_prev;
 }
 
@@ -680,6 +681,12 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   Mesh *mesh_result = NULL;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
   mesh_result = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
+  if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) {
+    clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
+    BM_mesh_free(clmd->clothObject->bm);
+    clmd->clothObject->bm = NULL;
+    return mesh_result;
+  }
   /* cloth_remeshing_update_cloth_object_mesh(clmd, mesh_result); */
   /**/
 
@@ -707,10 +714,12 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   // free BVH collision tree
   if (cloth->bvhtree) {
     BLI_bvhtree_free(cloth->bvhtree);
+    cloth->bvhtree = NULL;
   }
 
   if (cloth->bvhselftree) {
     BLI_bvhtree_free(cloth->bvhselftree);
+    cloth->bvhselftree = NULL;
   }
 
   // we save our faces for collision objects
@@ -736,14 +745,14 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
     cloth_free_modifier(clmd);
     modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject->looptri");
     printf("cloth_free_modifier clmd->clothObject->looptri\n");
-    return;
+    return NULL;
   }
   BKE_mesh_runtime_verttri_from_looptri(clmd->clothObject->tri, mloop, looptri, looptri_num);
 
   if (!cloth_build_springs(clmd, mesh_result)) {
     cloth_free_modifier(clmd);
     modifier_setError(&(clmd->modifier), "Cannot build springs");
-    return 0;
+    return NULL;
   }
 
   // init our solver
@@ -758,6 +767,8 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
   BM_mesh_free(clmd->clothObject->bm);
   clmd->clothObject->bm = NULL;
+
+  clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
 
   return mesh_result;
 }
@@ -1658,6 +1669,8 @@ static int cloth_from_object(
   if (clmd->clothObject) {
     clmd->clothObject->old_solver_type = 255;
     clmd->clothObject->edgeset = NULL;
+    clmd->clothObject->bm = NULL;
+    clmd->clothObject->bm_prev = NULL;
   }
   else if (!clmd->clothObject) {
     modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject");

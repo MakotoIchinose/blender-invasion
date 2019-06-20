@@ -87,6 +87,7 @@ typedef struct Cloth {
   struct LinkNode *springs;  /* The springs connecting the mesh. */
   unsigned int numsprings;   /* The count of springs. */
   unsigned int mvert_num;    /* The number of verts == m * n. */
+  unsigned int mvert_num_prev;
   unsigned int tri_num;
   unsigned char old_solver_type; /* unused, only 1 solver here */
   struct BMesh *bm;      /* Used for remeshing step, initialized and deleted then and there */
