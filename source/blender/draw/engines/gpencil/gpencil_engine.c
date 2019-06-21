@@ -61,6 +61,7 @@ extern char datatoc_gpencil_edit_point_geom_glsl[];
 extern char datatoc_gpencil_edit_point_frag_glsl[];
 extern char datatoc_gpencil_blend_frag_glsl[];
 
+extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 /* *********** STATIC *********** */
@@ -169,29 +170,37 @@ static void GPENCIL_create_shaders(void)
 {
   /* normal fill shader */
   if (!e_data.gpencil_fill_sh) {
-    e_data.gpencil_fill_sh = DRW_shader_create_with_lib(datatoc_gpencil_fill_vert_glsl,
-                                                        NULL,
-                                                        datatoc_gpencil_fill_frag_glsl,
-                                                        datatoc_common_view_lib_glsl,
-                                                        NULL);
+    e_data.gpencil_fill_sh = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){datatoc_common_view_lib_glsl, datatoc_gpencil_fill_vert_glsl, NULL},
+        .frag = (const char *[]){datatoc_common_colormanagement_lib_glsl,
+                                 datatoc_gpencil_fill_frag_glsl,
+                                 NULL},
+    });
   }
 
   /* normal stroke shader using geometry to display lines (line mode) */
   if (!e_data.gpencil_stroke_sh) {
-    e_data.gpencil_stroke_sh = DRW_shader_create_with_lib(datatoc_gpencil_stroke_vert_glsl,
-                                                          datatoc_gpencil_stroke_geom_glsl,
-                                                          datatoc_gpencil_stroke_frag_glsl,
-                                                          datatoc_common_view_lib_glsl,
-                                                          NULL);
+    e_data.gpencil_stroke_sh = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){datatoc_common_view_lib_glsl, datatoc_gpencil_stroke_vert_glsl, NULL},
+        .geom = (const char *[]){datatoc_gpencil_stroke_geom_glsl, NULL},
+        .frag = (const char *[]){datatoc_common_colormanagement_lib_glsl,
+                                 datatoc_gpencil_stroke_frag_glsl,
+                                 NULL},
+    });
   }
 
   /* dot/rectangle mode for normal strokes using geometry */
   if (!e_data.gpencil_point_sh) {
-    e_data.gpencil_point_sh = DRW_shader_create_with_lib(datatoc_gpencil_point_vert_glsl,
-                                                         datatoc_gpencil_point_geom_glsl,
-                                                         datatoc_gpencil_point_frag_glsl,
-                                                         datatoc_common_view_lib_glsl,
-                                                         NULL);
+    e_data.gpencil_point_sh = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){datatoc_common_view_lib_glsl, datatoc_gpencil_point_vert_glsl, NULL},
+        .geom = (const char *[]){datatoc_gpencil_point_geom_glsl, NULL},
+        .frag = (const char *[]){datatoc_common_colormanagement_lib_glsl,
+                                 datatoc_gpencil_point_frag_glsl,
+                                 NULL},
+    });
   }
   /* used for edit points or strokes with one point only */
   if (!e_data.gpencil_edit_point_sh) {
@@ -467,8 +476,8 @@ void GPENCIL_cache_init(void *vedata)
     DRW_shgroup_uniform_int(mix_shgrp, "do_select", &stl->storage->do_select_outline, 1);
     DRW_shgroup_uniform_vec4(mix_shgrp, "select_color", stl->storage->select_color, 1);
 
-    /* mix pass no blend used to copy between passes. A separated pass is required
-     * because if mix_pass is used, the acumulation of blend degrade the colors.
+    /* Mix pass no blend used to copy between passes. A separated pass is required
+     * because if mix_pass is used, the accumulation of blend degrade the colors.
      *
      * This pass is used too to take the snapshot used for background_pass. This image
      * will be used as the background while the user is drawing.
@@ -535,7 +544,6 @@ void GPENCIL_cache_init(void *vedata)
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendDepth", &e_data.temp_depth_tx_fx);
     DRW_shgroup_uniform_int(blend_shgrp, "mode", &stl->storage->blend_mode, 1);
     DRW_shgroup_uniform_int(blend_shgrp, "clamp_layer", &stl->storage->clamp_layer, 1);
-    DRW_shgroup_uniform_float(blend_shgrp, "blend_opacity", &stl->storage->blend_opacity, 1);
     DRW_shgroup_uniform_int(mix_shgrp, "tonemapping", &stl->storage->tonemapping, 1);
 
     /* create effects passes */
@@ -975,7 +983,6 @@ void GPENCIL_draw_scene(void *ved)
               GPU_framebuffer_clear_color_depth(fbl->temp_fb_b, clearcol, 1.0f);
               stl->storage->blend_mode = array_elm->mode;
               stl->storage->clamp_layer = (int)array_elm->clamp_layer;
-              stl->storage->blend_opacity = array_elm->blend_opacity;
               stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
               DRW_draw_pass(psl->blend_pass);
               stl->storage->tonemapping = 0;

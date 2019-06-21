@@ -985,7 +985,7 @@ static int rna_3DViewShading_type_get(PointerRNA *ptr)
     return shading->type;
   }
   else if (BKE_scene_uses_blender_workbench(scene)) {
-    return (shading->type == OB_MATERIAL) ? OB_RENDER : shading->type;
+    return (shading->type == OB_MATERIAL) ? OB_SOLID : shading->type;
   }
   else {
     if (shading->type == OB_RENDER && !(type && type->view_draw)) {
@@ -1846,7 +1846,7 @@ static void rna_SpaceDopeSheetEditor_action_update(bContext *C, PointerRNA *ptr)
              *
              * EXCEPTION:
              * This callback runs when unlinking actions. In that case, we don't want to
-             * stash the action, as the user is signalling that they want to detach it.
+             * stash the action, as the user is signaling that they want to detach it.
              * This can be reviewed again later,
              * but it could get annoying if we keep these instead.
              */
@@ -3141,7 +3141,7 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_xray_wireframe", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_SHADING_XRAY_BONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_SHADING_XRAY_WIREFRAME);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Show X-Ray", "Show whole scene transparent");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
@@ -5488,6 +5488,8 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceFileBrowser", "Space");
   RNA_def_struct_sdna(srna, "SpaceFile");
   RNA_def_struct_ui_text(srna, "Space File Browser", "File browser space data");
+
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI));
 
   prop = RNA_def_property(srna, "params", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "params");
