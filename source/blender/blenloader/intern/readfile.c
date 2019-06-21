@@ -77,6 +77,7 @@
 #include "DNA_object_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_profilepath_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_text_types.h"
@@ -142,6 +143,7 @@
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
+#include "BKE_profile_path.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -2694,6 +2696,19 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
     cumap->cm[a].table = NULL;
     cumap->cm[a].premultable = NULL;
   }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Read ProfileWidget
+ * \{ */
+
+/* HANS-TODO: Use this in bevel modifier load functions? */
+static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwidget)
+{
+  prwidget->profile->path = newdataadr(fd, prwidget->profile->path);
+  prwidget->profile->table = NULL;
 }
 
 /** \} */
@@ -5792,6 +5807,14 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
             }
           }
         }
+      }
+    }
+    else if (md->type == eModifierType_Bevel) {
+      /* HANS-TODO: Test */
+      BevelModifierData * bmd = (BevelModifierData *)md;
+      bmd->prwdgt = newdataadr(fd, bmd->prwdgt);
+      if (bmd->prwdgt) {
+        direct_link_profilewidget(fd, bmd->prwdgt);
       }
     }
   }

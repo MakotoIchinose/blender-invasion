@@ -27,6 +27,7 @@
 #include "DNA_color_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_movieclip_types.h"
+#include "DNA_profilepath_types.h"
 
 #include "BLI_math.h"
 #include "BLI_rect.h"
@@ -37,6 +38,7 @@
 #include "BKE_colortools.h"
 #include "BKE_node.h"
 #include "BKE_tracking.h"
+#include "BKE_profile_path.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -2099,6 +2101,233 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
   immUnbindProgram();
 }
 
+/** Simplified version of ui_draw_but_CURVE, used to draw bevel ProfileWidget. */
+/* HANS-TODO: Add the ability to lengthen the height of the UI to keep the grid square */
+void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
+{
+  ProfileWidget *prwidget;
+
+  if (but->editprwdgt) { /* HANS-TODO: Maybe don't reuse this? */
+    prwidget = but->editprwdgt;
+  }
+  else {
+    prwidget = (ProfileWidget *)but->poin;
+  }
+
+  /* calculate offset and zoom */
+  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&prwidget->curr);
+  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&prwidget->curr);
+  float offsx = prwidget->curr.xmin - (1.0f / zoomx);
+  float offsy = prwidget->curr.ymin - (1.0f / zoomy);
+
+  /* exit early if too narrow */
+  if (zoomx == 0.0f) {
+    return;
+  }
+
+  ProfilePath *prpath = prwidget->profile;
+
+  /* needed because curve can draw outside of boundary */
+  /* HANS-TODO: Verify this */
+  int scissor[4];
+  GPU_scissor_get_i(scissor);
+  rcti scissor_new = {
+      .xmin = rect->xmin,
+      .ymin = rect->ymin,
+      .xmax = rect->xmax,
+      .ymax = rect->ymax,
+  };
+  rcti scissor_region = {0, ar->winx, 0, ar->winy};
+  BLI_rcti_isect(&scissor_new, &scissor_region, &scissor_new);
+  GPU_scissor(scissor_new.xmin,
+              scissor_new.ymin,
+              BLI_rcti_size_x(&scissor_new),
+              BLI_rcti_size_y(&scissor_new));
+
+  /* Do this first to not mess imm context */
+  if ((int)but->a1 == UI_GRAD_H) {
+    /* magic trigger for curve backgrounds */
+    float col[3] = {0.0f, 0.0f, 0.0f}; /* dummy arg */
+
+    rcti grid = {
+        .xmin = (int)(rect->xmin + zoomx * (-offsx)),
+        .xmax = (int)(grid.xmin + zoomx),
+        .ymin = (int)(rect->ymin + zoomy * (-offsy)),
+        .ymax = (int)(grid.ymin + zoomy),
+    };
+
+    ui_draw_gradient(&grid, col, UI_GRAD_H, 1.0f);
+  }
+
+  GPU_line_width(1.0f);
+
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+
+  /* backdrop */
+  float color_backdrop[4] = {0, 0, 0, 1};
+
+  /* HANS-TODO: Probably get rid of the first case here */
+  if (but->a1 == UI_GRAD_H) {
+    /* grid, hsv uses different grid */
+    GPU_blend(true);
+    GPU_blend_set_func_separate(
+        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    ARRAY_SET_ITEMS(color_backdrop, 0, 0, 0, 48.0 / 255.0);
+    immUniformColor4fv(color_backdrop);
+    ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 0.1666666f);
+    GPU_blend(false);
+  }
+  else {
+    if (prwidget->flag & PROF_DO_CLIP) {
+      gl_shaded_color_get_fl((uchar *)wcol->inner, -20, color_backdrop);
+      immUniformColor3fv(color_backdrop);
+      immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
+      immUniformColor3ubv((uchar *)wcol->inner);
+      immRectf(pos,
+               rect->xmin + zoomx * (prwidget->clipr.xmin - offsx),
+               rect->ymin + zoomy * (prwidget->clipr.ymin - offsy),
+               rect->xmin + zoomx * (prwidget->clipr.xmax - offsx),
+               rect->ymin + zoomy * (prwidget->clipr.ymax - offsy));
+    }
+    else {
+      rgb_uchar_to_float(color_backdrop, (const uchar *)wcol->inner);
+      immUniformColor3fv(color_backdrop);
+      immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
+    }
+
+    /* grid, every 0.25 step */
+    gl_shaded_color((uchar *)wcol->inner, -16);
+    ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 0.25f);
+    /* grid, every 1.0 step */
+    gl_shaded_color((uchar *)wcol->inner, -24);
+    ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 1.0f);
+    /* axes */
+    gl_shaded_color((uchar *)wcol->inner, -50);
+    immBegin(GPU_PRIM_LINES, 4);
+    immVertex2f(pos, rect->xmin, rect->ymin + zoomy * (-offsy));
+    immVertex2f(pos, rect->xmax, rect->ymin + zoomy * (-offsy));
+    immVertex2f(pos, rect->xmin + zoomx * (-offsx), rect->ymin);
+    immVertex2f(pos, rect->xmin + zoomx * (-offsx), rect->ymax);
+    immEnd();
+  }
+
+  immUnbindProgram();
+
+  if (prpath->path == NULL) { /* HANS-TODO: Change this to prpath->table */
+    profilewidget_changed(prwidget, false);
+  }
+
+  /* HANS-TODO: Change this to the higher resolution table with the subdivided curves */
+  ProfilePoint *pts = prpath->path;
+  rctf line_range;
+
+  /* First curve point. */
+  line_range.xmin = rect->xmin;
+  line_range.ymin = rect->ymin + zoomy * (pts[0].y - offsy);
+  /* Last curve point. */
+  line_range.xmax = rect->xmax;
+  line_range.ymax = rect->ymin + zoomy * (pts[PROF_TABLE_SIZE].y - offsy);
+
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+  GPU_blend(true);
+
+  /* Curve filled. */
+  immUniformColor3ubvAlpha((uchar *)wcol->item, 128);
+  GPU_polygon_smooth(true);
+  immBegin(GPU_PRIM_TRI_STRIP, (PROF_TABLE_SIZE * 2 + 2) + 4);
+  immVertex2f(pos, line_range.xmin, rect->ymin);
+  immVertex2f(pos, line_range.xmin, line_range.ymin);
+  for (int i = 0; i <= PROF_TABLE_SIZE; i++) {
+    float fx = rect->xmin + zoomx * (pts[i].x - offsx);
+    float fy = rect->ymin + zoomy * (pts[i].y - offsy);
+    immVertex2f(pos, fx, rect->ymin);
+    immVertex2f(pos, fx, fy);
+  }
+  immVertex2f(pos, line_range.xmax, rect->ymin);
+  immVertex2f(pos, line_range.xmax, line_range.ymax);
+  immEnd();
+  GPU_polygon_smooth(false);
+
+  /* The fill has to be more complicated because the profile can loop back on itself in the X
+   * direction. The fill can't just be a simple inequality anymore. Here's the new strategy:
+   *
+   * For every horizontal pixel, do the following:
+   *  1. Find all of the edges between `ProfilePoints` in the profile's `table` that will have the
+   *     same Y value as this pixel.
+   *  2. Sort those edges by their intersection point with the current pixel's X value (the Y value
+   *     at this X)
+   *  3. Go through the list, switching between drawing a light and dark edge to the next
+   *     intersection point after each edge. Start with light.
+   *
+   * This could be sped up by making a list in the profile table sorted by their X values. That way
+   * the first step would only have to be done once at the beginning of the whole process.
+*/
+
+  /* Draw the profile's path */
+  GPU_line_width(1.0f);
+  immUniformColor3ubvAlpha((uchar *)wcol->item, 255);
+  GPU_line_smooth(true);
+  immBegin(GPU_PRIM_LINE_STRIP, (PROF_TABLE_SIZE + 1) + 2);
+  immVertex2f(pos, line_range.xmin, line_range.ymin);
+  for (int i = 0; i <= PROF_TABLE_SIZE; i++) {
+    float fx = rect->xmin + zoomx * (pts[i].x - offsx);
+    float fy = rect->ymin + zoomy * (pts[i].y - offsy);
+    immVertex2f(pos, fx, fy);
+  }
+  immVertex2f(pos, line_range.xmax, line_range.ymax);
+  immEnd();
+
+  /* Reset state for fill & line. */
+  GPU_line_smooth(false);
+  GPU_blend(false);
+  immUnbindProgram();
+
+  /* The points, use aspect to make them visible on edges. */
+  format = immVertexFormat();
+  pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
+
+  /* Calculate vertex colors based on text theme. */
+  float color_vert[4], color_vert_select[4];
+  UI_GetThemeColor4fv(TH_TEXT_HI, color_vert);
+  UI_GetThemeColor4fv(TH_TEXT, color_vert_select);
+  if (len_squared_v3v3(color_vert, color_vert_select) < 0.1f) {
+    interp_v3_v3v3(color_vert, color_vert_select, color_backdrop, 0.75f);
+  }
+  if (len_squared_v3(color_vert) > len_squared_v3(color_vert_select)) {
+    /* Ensure brightest text color is used for selection. */
+    swap_v3_v3(color_vert, color_vert_select);
+  }
+
+  pts = prpath->path;
+  GPU_point_size(max_ff(1.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
+  immBegin(GPU_PRIM_POINTS, prpath->totpoint);
+  for (int a = 0; a < prpath->totpoint; a++) {
+    float fx = rect->xmin + zoomx * (pts[a].x - offsx);
+    float fy = rect->ymin + zoomy * (pts[a].y - offsy);
+    immAttr4fv(col, (pts[a].flag & CUMA_SELECT) ? color_vert_select : color_vert);
+    immVertex2f(pos, fx, fy);
+  }
+  immEnd();
+  immUnbindProgram();
+
+  /* restore scissortest */
+  GPU_scissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+
+  /* outline */
+  format = immVertexFormat();
+  pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+
+  immUniformColor3ubv((uchar *)wcol->outline);
+  imm_draw_box_wire_2d(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
+
+  immUnbindProgram();
+}
+
 void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(ar),
                               uiBut *but,
                               const uiWidgetColors *UNUSED(wcol),
@@ -2129,7 +2358,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(ar),
               (rect.xmax + 1) - (rect.xmin - 1),
               (rect.ymax + 1) - (rect.ymin - 1));
 
-  if (scopes->track_disabled) {
+  if (scopes->track_disabled) { /* HANS-QUESTION: What is this? */
     float color[4] = {0.7f, 0.3f, 0.3f, 0.3f};
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
     UI_draw_roundbox_4fv(

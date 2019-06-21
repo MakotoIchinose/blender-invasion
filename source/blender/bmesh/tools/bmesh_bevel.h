@@ -21,9 +21,7 @@
  * \ingroup bmesh
  */
 
-//#include "BKE_profile_path.h"
-#include "DNA_color_types.h"
-
+struct ProfileWidget;
 struct MDeformVert;
 
 void BM_mesh_bevel(BMesh *bm,
@@ -47,7 +45,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct CurveMapping *profile_curve,
+                   const struct ProfileWidget *prwdgt,
                    const bool sample_points);
 
 #endif /* __BMESH_BEVEL_H__ */

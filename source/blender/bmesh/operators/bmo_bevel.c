@@ -24,8 +24,8 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-//#include "BKE_profile_path.h"
-#include "BKE_colortools.h"
+#include "BKE_profile_path.h"
+#include "DNA_profilepath_types.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
 
@@ -48,9 +48,7 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
-  const struct CurveMapping *profile_curve = curvemapping_add(
-      1, 0.0f, 0.0f, 1.0f, 1.0f);  // HANS-TODO: This probably shouldn't be NULL? More figuring out
-                                   // how to get this through
+  const struct ProfileWidget *prwidget = profilewidget_add(PROF_PRESET_LINE);
   const bool sample_points = BMO_slot_bool_get(op->slots_in, "sample_points");
 
   if (offset > 0) {
@@ -96,7 +94,7 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
                   spread,
                   smoothresh,
                   use_custom_profile,
-                  profile_curve,
+                  prwidget,
                   sample_points);
 
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "faces.out", BM_FACE, BM_ELEM_TAG);

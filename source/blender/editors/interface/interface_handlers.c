@@ -32,7 +32,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_brush_types.h"
-
+#include "DNA_profilepath_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
@@ -57,6 +57,7 @@
 #include "BKE_tracking.h"
 #include "BKE_unit.h"
 #include "BKE_paint.h"
+#include "BKE_profile_path.h"
 
 #include "IMB_colormanagement.h"
 
@@ -417,6 +418,9 @@ static uiButMultiState *ui_multibut_lookup(uiHandleButtonData *data, const uiBut
 static ColorBand but_copypaste_coba = {0};
 static CurveMapping but_copypaste_curve = {0};
 static bool but_copypaste_curve_alive = false;
+static ProfileWidget but_copypaste_profile = {0};
+static bool but_copypaste_profile_alive = false;
+
 
 /** \} */
 
@@ -1005,6 +1009,14 @@ static void ui_apply_but_COLORBAND(bContext *C, uiBut *but, uiHandleButtonData *
 }
 
 static void ui_apply_but_CURVE(bContext *C, uiBut *but, uiHandleButtonData *data)
+{
+  ui_apply_but_func(C, but);
+  data->retval = but->retval;
+  data->applied = true;
+}
+
+/* HANS-QUESTION: What does this do? */
+static void ui_apply_but_PROFILE(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
   ui_apply_but_func(C, but);
   data->retval = but->retval;
@@ -1907,6 +1919,7 @@ static void ui_apply_but(
   float *editvec;
   ColorBand *editcoba;
   CurveMapping *editcumap;
+  ProfileWidget *editprwdgt;
 
   data->retval = 0;
 
@@ -1964,11 +1977,13 @@ static void ui_apply_but(
   editvec = but->editvec;
   editcoba = but->editcoba;
   editcumap = but->editcumap;
+  editprwdgt = but->editprwdgt;
   but->editstr = NULL;
   but->editval = NULL;
   but->editvec = NULL;
   but->editcoba = NULL;
   but->editcumap = NULL;
+  but->editprwdgt = NULL;
 
   /* handle different types */
   switch (but->type) {
@@ -2028,6 +2043,9 @@ static void ui_apply_but(
     case UI_BTYPE_CURVE:
       ui_apply_but_CURVE(C, but, data);
       break;
+    case UI_BTYPE_PROFILE:
+      ui_apply_but_PROFILE(C, but, data);
+      break;
     case UI_BTYPE_KEY_EVENT:
     case UI_BTYPE_HOTKEY_EVENT:
       ui_apply_but_BUT(C, but, data);
@@ -2075,6 +2093,7 @@ static void ui_apply_but(
   but->editvec = editvec;
   but->editcoba = editcoba;
   but->editcumap = editcumap;
+  but->editprwdgt = editprwdgt;
 }
 
 /** \} */
@@ -2374,6 +2393,30 @@ static void ui_but_paste_curvemapping(bContext *C, uiBut *but)
   }
 }
 
+/* HANS-TODO: Test these */
+static void ui_but_copy_profilewidget(uiBut *but)
+{
+  if (but->poin != NULL) {
+    but_copypaste_profile_alive = true;
+    profilewidget_free_data(&but_copypaste_profile);
+    profilewidget_copy_data(&but_copypaste_profile, (ProfileWidget *)but->poin);
+  }
+}
+
+static void ui_but_paste_profilewidget(bContext *C, uiBut *but)
+{
+  if (but_copypaste_profile_alive) {
+    if (!but->poin) {
+      but->poin = MEM_callocN(sizeof(ProfileWidget), "profilewidget");
+    }
+
+    button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
+    profilewidget_free_data((ProfileWidget *)but->poin);
+    profilewidget_copy_data((ProfileWidget *)but->poin, &but_copypaste_profile);
+    button_activate_state(C, but, BUTTON_STATE_EXIT);
+  }
+}
+
 static void ui_but_copy_operator(bContext *C, uiBut *but, char *output, int output_len_max)
 {
   PointerRNA *opptr;
@@ -2468,6 +2511,10 @@ static void ui_but_copy(bContext *C, uiBut *but, const bool copy_array)
       ui_but_copy_curvemapping(but);
       break;
 
+    case UI_BTYPE_PROFILE:
+      ui_but_copy_profilewidget(but);
+      break;
+
     case UI_BTYPE_BUT:
       ui_but_copy_operator(C, but, buf, buf_max_len);
       is_buf_set = true;
@@ -2548,6 +2595,10 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
       ui_but_paste_curvemapping(C, but);
       break;
 
+    case UI_BTYPE_PROFILE:
+      ui_but_paste_profilewidget(C, but);
+      break;
+
     default:
       break;
   }
@@ -2558,6 +2609,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 void ui_but_clipboard_free(void)
 {
   curvemapping_free_data(&but_copypaste_curve);
+  profilewidget_free_data(&but_copypaste_profile);
 }
 
 /** \} */
@@ -3675,8 +3727,11 @@ static void ui_do_but_textedit_select(
 
 static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
 {
-  if (but->type == UI_BTYPE_CURVE) {
+  if (but->type == UI_BTYPE_CURVE) { /* HANS-TODO: Can I reuse this? */
     but->editcumap = (CurveMapping *)but->poin;
+  }
+  if (but->type == UI_BTYPE_PROFILE) {
+    but->editprwdgt = (ProfileWidget *)but->poin;
   }
   else if (but->type == UI_BTYPE_COLORBAND) {
     data->coba = (ColorBand *)but->poin;
@@ -3717,6 +3772,7 @@ static void ui_numedit_end(uiBut *but, uiHandleButtonData *data)
   but->editvec = NULL;
   but->editcoba = NULL;
   but->editcumap = NULL;
+  but->editprwdgt = NULL;
 
   data->dragstartx = 0;
   data->draglastx = 0;
@@ -6658,6 +6714,286 @@ static int ui_do_but_CURVE(
   return WM_UI_HANDLER_CONTINUE;
 }
 
+/* Same as ui_numedit_but_PROFILE with some smaller changes */
+static bool ui_numedit_but_PROFILE(uiBlock *block,
+                                   uiBut *but,
+                                   uiHandleButtonData *data,
+                                   int evtx,
+                                   int evty,
+                                   bool snap,
+                                   const bool shift)
+{
+  ProfileWidget *prwidget = (ProfileWidget *)but->poin;
+  ProfilePath *prpath = prwidget->profile;
+  ProfilePoint *pts = prpath->path;
+  float fx, fy, zoomx, zoomy;
+  int mx, my, dragx, dragy;
+  int a;
+  bool changed = false;
+
+  /* evtx evty and drag coords are absolute mousecoords,
+   * prevents errors when editing when layout changes */
+  mx = evtx;
+  my = evty;
+  ui_window_to_block(data->region, block, &mx, &my);
+  dragx = data->draglastx;
+  dragy = data->draglasty;
+  ui_window_to_block(data->region, block, &dragx, &dragy);
+
+  zoomx = BLI_rctf_size_x(&but->rect) / BLI_rctf_size_x(&prwidget->curr);
+  zoomy = BLI_rctf_size_y(&but->rect) / BLI_rctf_size_y(&prwidget->curr);
+
+  if (snap) {
+    float d[2];
+
+    d[0] = mx - data->dragstartx;
+    d[1] = my - data->dragstarty;
+
+    if (len_squared_v2(d) < (3.0f * 3.0f)) {
+      snap = false;
+    }
+  }
+
+  if (data->dragsel != -1) {
+    ProfilePoint *point_last = NULL;
+    const float mval_factor = ui_mouse_scale_warp_factor(shift);
+    bool moved_point = false; /* for ctrl grid, can't use orig coords because of sorting */
+
+    fx = (mx - dragx) / zoomx;
+    fy = (my - dragy) / zoomy;
+
+    fx *= mval_factor;
+    fy *= mval_factor;
+
+    for (a = 0; a < prpath->totpoint; a++) {
+      if (pts[a].flag & PROF_SELECT) {
+        float origx = pts[a].x, origy = pts[a].y;
+        pts[a].x += fx;
+        pts[a].y += fy;
+        if (snap) {
+          pts[a].x = 0.125f * roundf(8.0f * pts[a].x);
+          pts[a].y = 0.125f * roundf(8.0f * pts[a].y);
+        }
+        if (pts[a].x != origx || pts[a].y != origy) {
+          moved_point = true;
+        }
+
+        point_last = &pts[a];
+      }
+    }
+
+    profilewidget_changed(prwidget, false);
+
+    if (moved_point) {
+      data->draglastx = evtx;
+      data->draglasty = evty;
+      changed = true;
+
+#ifdef USE_CONT_MOUSE_CORRECT
+      /* note: using 'cmp_last' is weak since there may be multiple points selected,
+       * but in practice this isnt really an issue */
+      if (ui_but_is_cursor_warp(but)) {
+        /* OK but can go outside bounds */
+        data->ungrab_mval[0] = but->rect.xmin + ((point_last->x - prwidget->curr.xmin) * zoomx);
+        data->ungrab_mval[1] = but->rect.ymin + ((point_last->y - prwidget->curr.ymin) * zoomy);
+        BLI_rctf_clamp_pt_v(&but->rect, data->ungrab_mval);
+      }
+#endif
+    }
+
+    data->dragchange = true; /* mark for selection */
+  }
+  else {
+    fx = (mx - dragx) / zoomx;
+    fy = (my - dragy) / zoomy;
+
+    /* clamp for clip */
+    if (prwidget->flag & PROF_DO_CLIP) {
+      if (prwidget->curr.xmin - fx < prwidget->clipr.xmin) {
+        fx = prwidget->curr.xmin - prwidget->clipr.xmin;
+      }
+      else if (prwidget->curr.xmax - fx > prwidget->clipr.xmax) {
+        fx = prwidget->curr.xmax - prwidget->clipr.xmax;
+      }
+      if (prwidget->curr.ymin - fy < prwidget->clipr.ymin) {
+        fy = prwidget->curr.ymin - prwidget->clipr.ymin;
+      }
+      else if (prwidget->curr.ymax - fy > prwidget->clipr.ymax) {
+        fy = prwidget->curr.ymax - prwidget->clipr.ymax;
+      }
+    }
+
+    prwidget->curr.xmin -= fx;
+    prwidget->curr.ymin -= fy;
+    prwidget->curr.xmax -= fx;
+    prwidget->curr.ymax -= fy;
+
+    data->draglastx = evtx;
+    data->draglasty = evty;
+
+    changed = true;
+  }
+
+  return changed;
+}
+
+static int ui_do_but_PROFILE(bContext *C,
+                             uiBlock *block,
+                             uiBut *but,
+                             uiHandleButtonData *data,
+                             const wmEvent *event)
+{
+  int mx, my, a;
+  bool changed = false;
+//  Scene *scene = CTX_data_scene(C);
+//  ViewLayer *view_layer = CTX_data_view_layer(C);
+
+  mx = event->x;
+  my = event->y;
+  ui_window_to_block(data->region, block, &mx, &my);
+
+  if (data->state == BUTTON_STATE_HIGHLIGHT) {
+    if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
+      ProfileWidget *prwidget = (ProfileWidget *)but->poin;
+      ProfilePath *prpath = prwidget->profile;
+      ProfilePoint *pts;
+      const float m_xy[2] = {mx, my};
+      float dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius */
+      int sel = -1;
+
+      if (event->ctrl) {
+        float f_xy[2];
+        BLI_rctf_transform_pt_v(&prwidget->curr, &but->rect, f_xy, m_xy);
+
+        profilepath_insert(prpath, f_xy[0], f_xy[1]);
+        profilewidget_changed(prwidget, false);
+        changed = true;
+      }
+
+      /* check for selecting of a point */
+      pts = prpath->path; /* ctrl adds point, new malloc */
+      for (a = 0; a < prpath->totpoint; a++) {
+        float f_xy[2];
+        BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[a].x);
+        const float dist_sq = len_squared_v2v2(m_xy, f_xy);
+        if (dist_sq < dist_min_sq) {
+          sel = a;
+          dist_min_sq = dist_sq;
+        }
+      }
+
+      if (sel == -1) {
+        int i;
+        float f_xy[2], f_xy_prev[2];
+
+        /* if the click didn't select anything, check if it's clicked on the
+         * curve itself, and if so, add a point */
+        pts = prpath->table;
+
+        BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[0].x);
+
+        /* with 160px height 8px should translate to the old 0.05 coefficient at no zoom */
+        dist_min_sq = SQUARE(U.dpi_fac * 8.0f);
+
+        /* loop through the curve segment table and find what's near the mouse. */
+        for (i = 1; i <= CM_TABLE; i++) {
+          copy_v2_v2(f_xy_prev, f_xy);
+          BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[i].x);
+
+          if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
+            BLI_rctf_transform_pt_v(&prwidget->curr, &but->rect, f_xy, m_xy);
+
+            profilepath_insert(prpath, f_xy[0], f_xy[1]);
+            profilewidget_changed(prwidget, false);
+
+            changed = true;
+
+            /* reset cmp back to the curve points again rather than drawing segments */
+            pts = prpath->path;
+
+            /* find newly added point and make it 'sel' */
+            /* HANS-TODO: This might need to be changed to not just use X */
+            for (a = 0; a < prpath->totpoint; a++) {
+              if (pts[a].x == f_xy[0]) {
+                sel = a;
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      if (sel != -1) {
+        /* ok, we move a point */
+        /* deselect all if this one is deselect. except if we hold shift */
+        if (!event->shift) {
+          for (a = 0; a < prpath->totpoint; a++) {
+            pts[a].flag &= ~PROF_SELECT;
+          }
+          pts[sel].flag |= PROF_SELECT;
+        }
+        else {
+          pts[sel].flag ^= PROF_SELECT;
+        }
+      }
+      else {
+        /* move the view */
+        data->cancel = true;
+      }
+
+      data->dragsel = sel;
+
+      data->dragstartx = event->x;
+      data->dragstarty = event->y;
+      data->draglastx = event->x;
+      data->draglasty = event->y;
+
+      button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
+      return WM_UI_HANDLER_BREAK;
+    }
+  }
+  else if (data->state == BUTTON_STATE_NUM_EDITING) {
+    if (event->type == MOUSEMOVE) {
+      if (event->x != data->draglastx || event->y != data->draglasty) {
+
+        if (ui_numedit_but_PROFILE(block, but, data, event->x, event->y, event->ctrl != 0,
+                                   event->shift != 0)) {
+          ui_numedit_apply(C, block, but, data);
+        }
+      }
+    }
+    else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
+      if (data->dragsel != -1) {
+        ProfileWidget *prwidget = (ProfileWidget *)but->poin;
+        ProfilePath *prpath = prwidget->profile;
+        ProfilePoint *pts = prpath->path;
+
+        if (data->dragchange == false) {
+          /* deselect all, select one */
+          if (!event->shift) {
+            for (a = 0; a < prpath->totpoint; a++) {
+              pts[a].flag &= ~CUMA_SELECT;
+            }
+            pts[data->dragsel].flag |= CUMA_SELECT;
+          }
+        }
+        else {
+          profilewidget_changed(prwidget, true); /* remove doubles */
+          /* HANS-TODO: Update or delete? */
+//          BKE_paint_invalidate_cursor_overlay(scene, view_layer, prwidget);
+        }
+      }
+      button_activate_state(C, but, BUTTON_STATE_EXIT);
+    }
+    return WM_UI_HANDLER_BREAK;
+  }
+
+  /* UNUSED but keep for now */
+  (void)changed;
+
+  return WM_UI_HANDLER_CONTINUE;
+}
+
 static bool ui_numedit_but_HISTOGRAM(uiBut *but, uiHandleButtonData *data, int mx, int my)
 {
   Histogram *hist = (Histogram *)but->poin;
@@ -7055,6 +7391,9 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
     case UI_BTYPE_CURVE:
       retval = ui_do_but_CURVE(C, block, but, data, event);
       break;
+    case UI_BTYPE_PROFILE:
+      retval = ui_do_but_PROFILE(C, block, but, data, event);
+      break;
     case UI_BTYPE_HSVCUBE:
       retval = ui_do_but_HSVCUBE(C, block, but, data, event);
       break;
@@ -7441,7 +7780,8 @@ static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonA
   copy_v2_fl(data->ungrab_mval, FLT_MAX);
 #endif
 
-  if (ELEM(but->type, UI_BTYPE_CURVE, UI_BTYPE_SEARCH_MENU)) {
+  /* HANS-TODO: Whaat? */
+  if (ELEM(but->type, UI_BTYPE_CURVE, UI_BTYPE_PROFILE, UI_BTYPE_SEARCH_MENU)) {
     /* XXX curve is temp */
   }
   else {

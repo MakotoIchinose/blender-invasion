@@ -394,7 +394,7 @@ typedef struct BevelModifierData {
   char defgrp_name[64];
 
   /** Curve info for the custom profile */
-  struct CurveMapping *profile_curve;
+  struct ProfileWidget *prwdgt;
 
 } BevelModifierData;
 

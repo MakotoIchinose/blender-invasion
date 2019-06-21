@@ -279,7 +279,8 @@ struct uiBut {
   double *editval;
   float *editvec;
   void *editcoba;
-  void *editcumap;
+  void *editcumap; /* HANS-TODO: Can I reuse this? */
+  void *editprwdgt;
 
   uiButPushedStateFunc pushed_state_func;
   void *pushed_state_arg;
@@ -730,6 +731,10 @@ void ui_draw_but_VECTORSCOPE(ARegion *ar,
 void ui_draw_but_COLORBAND(uiBut *but, const struct uiWidgetColors *wcol, const rcti *rect);
 void ui_draw_but_UNITVEC(uiBut *but, const struct uiWidgetColors *wcol, const rcti *rect);
 void ui_draw_but_CURVE(ARegion *ar,
+                       uiBut *but,
+                       const struct uiWidgetColors *wcol,
+                       const rcti *rect);
+void ui_draw_but_PROFILE(ARegion *ar,
                        uiBut *but,
                        const struct uiWidgetColors *wcol,
                        const rcti *rect);

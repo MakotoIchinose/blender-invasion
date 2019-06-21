@@ -38,9 +38,8 @@
 
 #include "eigen_capi.h"
 
-//#include "BKE_profile_path.h"
-#include "BKE_colortools.h"
-#include "DNA_color_types.h"
+#include "BKE_profile_path.h"
+#include "DNA_profilepath_types.h"
 
 #include "bmesh.h"
 #include "bmesh_bevel.h" /* own include */
@@ -58,7 +57,7 @@
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
-#define DEBUG_CUSTOM_PROFILE_SAMPLE 0
+#define DEBUG_CUSTOM_PROFILE_SAMPLE 1
 #define DEBUG_CUSTOM_PROFILE 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
@@ -290,8 +289,8 @@ typedef struct BevelParams {
   bool use_custom_profile;
   /** Should we just sample the points on the plot and disregard nseg*/
   bool sample_points;
-  /** The curve mapping struct used to store the custom profile input */
-  const struct CurveMapping *profile_curve;
+  /** The struct used to store the custom profile input */
+  const struct ProfileWidget *prwdgt;
   /** Vertex group array, maybe set if vertex_only. */
   const struct MDeformVert *dvert;
   /** Vertex group index, maybe set if vertex_only. */
@@ -6805,8 +6804,8 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
 {
   float x_temp, y_temp;
   for (int i = 0; i < bp->seg; i++) {
-    x_temp = bp->profile_curve->cm[0].curve[i].x;
-    y_temp = bp->profile_curve->cm[0].curve[i].y;
+    x_temp = bp->prwdgt->profile->path[i].x;
+    y_temp = bp->prwdgt->profile->path[i].y;
     xvals[i] = (double)y_temp;
     yvals[i] = 1.0 - (double)x_temp;
   }
@@ -6819,10 +6818,10 @@ static void set_profile_spacing_custom(BevelParams *bp, int seg, double *xvals, 
 {
   float x_temp, y_temp; /* Need temporary floats to convert to doubles */
 
-  curvemapping_path_initialize((struct CurveMapping *)bp->profile_curve, seg);
+  profilewidget_initialize((ProfileWidget *)bp->prwdgt, seg); /* HANS-TODO: Fix */
   if (!bp->sample_points) {
     for (int i = 0; i < seg; i++) {
-      curvemapping_path_evaluate(bp->profile_curve, i, &x_temp, &y_temp);
+      profilepath_evaluate(bp->prwdgt->profile, i, &x_temp, &y_temp);
       xvals[i] = (double)y_temp;
       yvals[i] = 1.0 - (double)x_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
     }
@@ -6853,12 +6852,12 @@ static void set_profile_spacing(BevelParams *bp)
           bp->mem_arena, (size_t)(seg + 1) * sizeof(double));
 
       if (!bp->sample_points) {
-        set_profile_spacing_custom(
-            bp, seg, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
+        set_profile_spacing_custom(bp, seg, bp->pro_spacing.xvals_custom,
+                                   bp->pro_spacing.yvals_custom);
       }
       else {
-        copy_profile_point_locations(
-            bp, bp->pro_spacing.xvals_custom, bp->pro_spacing.yvals_custom);
+        copy_profile_point_locations(bp, bp->pro_spacing.xvals_custom,
+                                     bp->pro_spacing.yvals_custom);
       }
     }
 
@@ -6903,7 +6902,7 @@ static void set_profile_spacing(BevelParams *bp)
           seg_2, bp->pro_super_r, bp->pro_spacing.xvals_2, bp->pro_spacing.yvals_2);
     }
   }
-  else {
+  else { /* Only 1 segment, we don't need any profile information */
     bp->pro_spacing.xvals = NULL;
     bp->pro_spacing.yvals = NULL;
     bp->pro_spacing.xvals_2 = NULL;
@@ -7168,7 +7167,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct CurveMapping *profile_curve,
+                   const struct ProfileWidget *prwdgt,
                    const bool sample_points)
 {
   BMIter iter, liter;
@@ -7181,9 +7180,9 @@ void BM_mesh_bevel(BMesh *bm,
 
   bp.offset = offset;
   bp.offset_type = offset_type;
-  bp.seg = segments;
+  bp.seg = (int)segments;
   bp.profile = profile;
-  bp.pro_super_r = -log(2.0) / log(sqrt(profile)); /* convert to superellipse exponent */
+  bp.pro_super_r = -logf(2.0) / logf(sqrtf(profile)); /* convert to superellipse exponent */
   bp.vertex_only = vertex_only;
   bp.use_weights = use_weights;
   bp.loop_slide = loop_slide;
@@ -7202,37 +7201,37 @@ void BM_mesh_bevel(BMesh *bm,
   bp.smoothresh = smoothresh;
   bp.face_hash = NULL;
   bp.use_custom_profile = use_custom_profile;
-  bp.profile_curve = profile_curve;
+  bp.prwdgt = prwdgt;
   bp.sample_points = sample_points;
 
   printf("\n=========== NEW BEVEL CALL ===========\n");
 
   if (bp.use_custom_profile && bp.sample_points) {
     /* We are sampling the segments from the points on the graph */
-    bp.seg = profile_curve->cm->totpoint - 1;
+    bp.seg = prwdgt->profile->totpoint - 1;
   }
 
   /* TEST PROFILE CURVE */
 #if DEBUG_CUSTOM_PROFILE_SAMPLE
   printf("%d segments\n", bp.seg);
-  if (bp.use_custom_profile && bp.profile_curve != NULL) {
-    curvemapping_path_initialize((const CurveMapping *)profile_curve, bp.seg); /* will be necessary to fill a table */
+  if (bp.use_custom_profile && bp.prwdgt != NULL) {
+    profilewidget_initialize((const ProfileWidget *)prwdgt, bp.seg); /* will be necessary to fill a table */
 
     if (!sample_points) {
       printf("Sampling portions along the path of the profile graph:\n");
       for (int i = 0; i <= bp.seg; i++) {
         float x, y;
-        curvemapping_path_evaluate((const CurveMapping *)profile_curve, i, &x, &y);
-        printf("Segment %d position is (%f, %f)\n", i, x, y);
+        profilewidget_evaluate((const ProfileWidget *)prwdgt, i, &x, &y);
+        printf("Segment %d position is (%f, %f)\n", i, (double)x, (double)y);
       }
     }
     else {
       printf("Sampling just the points on the graph\n");
       for (int i = 0; i < bp.seg; i++) {
         float x, y;
-        x = bp.profile_curve->cm[0].curve[i].x;
-        y = bp.profile_curve->cm[0].curve[i].y;
-        printf("Segment %d position is (%f, %f)\n", i, x, y);
+        x = bp.prwdgt->profile->path[i].x;
+        y = bp.prwdgt->profile->path[i].y;
+        printf("Segment %d position is (%f, %f)\n", i, (double)x, (double)y);
       }
     }
   }

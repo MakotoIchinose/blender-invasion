@@ -100,6 +100,7 @@ void BKE_paint_invalidate_overlay_tex(Scene *scene, ViewLayer *view_layer, const
   }
 }
 
+/* HANS-TODO: Update?! */
 void BKE_paint_invalidate_cursor_overlay(Scene *scene, ViewLayer *view_layer, CurveMapping *curve)
 {
   Paint *p = BKE_paint_get_active(scene, view_layer);

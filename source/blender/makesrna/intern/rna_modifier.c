@@ -3656,21 +3656,16 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
       prop, "Custom Profile", "Whether to use a user inputed curve for the bevel's profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "profile_curve", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CurveMapping");
-  RNA_def_property_pointer_sdna(prop, NULL, "profile_curve");
-  RNA_def_property_ui_text(
-      prop, "Custom Profile Curve", "The curve for the custom profile if it is used");
-  RNA_def_property_update(
-      prop,
-      0,
-      "rna_Modifier_update");  // Maybe actually "rna_Modifier_dependency_update", we'll see
+  prop = RNA_def_property(srna, "prwdgt", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ProfileWidget");
+  RNA_def_property_pointer_sdna(prop, NULL, "prwdgt");
+  RNA_def_property_ui_text(prop, "Custom Profile Path", "The path for the custom profile");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  /* HANS-TODO: Maybe actually "rna_Modifier_dependency_update", we'll see */
 
   prop = RNA_def_property(srna, "sample_points", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_SAMPLE_POINTS);
-  RNA_def_property_ui_text(
-      prop,
-      "Sample Only Points",
+  RNA_def_property_ui_text(prop, "Sample Only Points",
       "Whether to disregard the number of segments input and only use the points on the plot");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
