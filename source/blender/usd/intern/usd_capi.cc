@@ -102,7 +102,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
     usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
 
-    USDHierarchyIterator iter(data->depsgraph, usd_stage);
+    USDHierarchyIterator iter(data->depsgraph, usd_stage, data->params);
 
     // This should be done for every frame, when exporting animation:
     iter.iterate();

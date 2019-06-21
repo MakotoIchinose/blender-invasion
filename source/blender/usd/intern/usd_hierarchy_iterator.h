@@ -16,11 +16,16 @@ struct USDAbstractWriter;
 class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
   pxr::UsdStageRefPtr stage;
+  const USDExportParams &params;
 
  public:
-  USDHierarchyIterator(Depsgraph *depsgraph, pxr::UsdStageRefPtr stage);
+  USDHierarchyIterator(Depsgraph *depsgraph,
+                       pxr::UsdStageRefPtr stage,
+                       const USDExportParams &params);
 
  protected:
+  virtual bool should_visit_object(const Object *object) const override;
+
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) override;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) override;
 

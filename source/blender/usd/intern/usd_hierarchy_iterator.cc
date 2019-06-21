@@ -1,3 +1,4 @@
+#include "../usd.h"
 #include "usd_hierarchy_iterator.h"
 #include "usd_writer_abstract.h"
 #include "usd_writer_mesh.h"
@@ -19,9 +20,23 @@ extern "C" {
 #include "DNA_object_types.h"
 }
 
-USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph, pxr::UsdStageRefPtr stage)
-    : AbstractHierarchyIterator(depsgraph), stage(stage)
+USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph,
+                                           pxr::UsdStageRefPtr stage,
+                                           const USDExportParams &params)
+    : AbstractHierarchyIterator(depsgraph), stage(stage), params(params)
 {
+}
+
+bool USDHierarchyIterator::should_visit_object(const Object *object) const
+{
+  if (params.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
+    return false;
+  }
+  if (params.visible_objects_only && (object->base_flag & BASE_VISIBLE) == 0) {
+    return false;
+  }
+
+  return AbstractHierarchyIterator::should_visit_object(object);
 }
 
 void USDHierarchyIterator::delete_object_writer(AbstractHierarchyWriter *writer)

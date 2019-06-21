@@ -42,8 +42,8 @@
 
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (!RNA_struct_property_is_set(op->ptr, "_as_background_job")) {
-    RNA_boolean_set(op->ptr, "_as_background_job", true);
+  if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
+    RNA_boolean_set(op->ptr, "as_background_job", true);
   }
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
@@ -78,12 +78,18 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
-  struct USDExportParams params = {};
-
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
 
-  const bool as_background_job = RNA_boolean_get(op->ptr, "_as_background_job");
+  const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
+  const bool selected_objects_only = RNA_boolean_get(op->ptr, "selected_objects_only");
+  const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
+
+  struct USDExportParams params = {
+      .selected_objects_only = selected_objects_only,
+      .visible_objects_only = visible_objects_only,
+  };
+
   bool ok = USD_export(scene, C, filename, &params, as_background_job);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
@@ -102,9 +108,23 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
   WM_operator_properties_filesel(
       ot, 0, FILE_BLENDER, FILE_SAVE, WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 
+  RNA_def_boolean(ot->srna,
+                  "selected_objects_only",
+                  false,
+                  "Only export selected objects",
+                  "Only selected objects are exported. Unselected parents of selected objects are "
+                  "exported as empty transform.");
+
+  RNA_def_boolean(ot->srna,
+                  "visible_objects_only",
+                  false,
+                  "Only export visible objects",
+                  "Only visible objects are exported. Invisible parents of visible objects are "
+                  "exported as empty transform.");
+
   RNA_def_boolean(
       ot->srna,
-      "_as_background_job",
+      "as_background_job",
       false,
       "Run as Background Job",
       "Enable this to run the import in the background, disable to block Blender while importing. "

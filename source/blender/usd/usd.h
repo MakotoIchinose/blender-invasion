@@ -29,8 +29,8 @@ struct Scene;
 struct bContext;
 
 struct USDExportParams {
-  bool selected_only;
-  bool visible_layers_only;
+  bool selected_objects_only;
+  bool visible_objects_only;
 };
 
 /* The USD_export takes a as_background_job parameter, and returns a boolean.
