@@ -1940,6 +1940,10 @@ void wm_window_lower(wmWindow *win)
 
 void wm_window_raise(wmWindow *win)
 {
+  /* Restore window if minimized */
+  if (GHOST_GetWindowState(win->ghostwin) == GHOST_kWindowStateMinimized) {
+    GHOST_SetWindowState(win->ghostwin, GHOST_kWindowStateNormal);
+  }
   GHOST_SetWindowOrder(win->ghostwin, GHOST_kWindowOrderTop);
 }
 

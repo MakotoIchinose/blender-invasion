@@ -985,7 +985,7 @@ static int rna_3DViewShading_type_get(PointerRNA *ptr)
     return shading->type;
   }
   else if (BKE_scene_uses_blender_workbench(scene)) {
-    return (shading->type == OB_MATERIAL) ? OB_RENDER : shading->type;
+    return (shading->type == OB_MATERIAL) ? OB_SOLID : shading->type;
   }
   else {
     if (shading->type == OB_RENDER && !(type && type->view_draw)) {
@@ -5488,6 +5488,8 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceFileBrowser", "Space");
   RNA_def_struct_sdna(srna, "SpaceFile");
   RNA_def_struct_ui_text(srna, "Space File Browser", "File browser space data");
+
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI));
 
   prop = RNA_def_property(srna, "params", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "params");
