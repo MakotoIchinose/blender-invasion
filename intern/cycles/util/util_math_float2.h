@@ -46,6 +46,7 @@ ccl_device_inline float2 operator/=(float2 &a, float f);
 ccl_device_inline bool operator==(const float2 &a, const float2 &b);
 ccl_device_inline bool operator!=(const float2 &a, const float2 &b);
 
+ccl_device_inline float distance(const float2 &a, const float2 &b);
 ccl_device_inline bool is_zero(const float2 &a);
 ccl_device_inline float average(const float2 &a);
 ccl_device_inline float dot(const float2 &a, const float2 &b);
@@ -60,7 +61,10 @@ ccl_device_inline float2 clamp(const float2 &a, const float2 &mn, const float2 &
 ccl_device_inline float2 fabs(const float2 &a);
 ccl_device_inline float2 as_float2(const float4 &a);
 ccl_device_inline float2 interp(const float2 &a, const float2 &b, float t);
+ccl_device_inline float2 floor(const float2 &a);
 #endif /* !__KERNEL_OPENCL__ */
+
+ccl_device_inline float2 safe_divide_float2_float(const float2 a, const float b);
 
 /*******************************************************************************
  * Definition.
@@ -149,6 +153,12 @@ ccl_device_inline bool operator!=(const float2 &a, const float2 &b)
   return !(a == b);
 }
 
+ccl_device_inline float distance(const float2 &a, const float2 &b)
+{
+  float2 difference = a - b;
+  return sqrt(dot(difference, difference));
+}
+
 ccl_device_inline bool is_zero(const float2 &a)
 {
   return (a.x == 0.0f && a.y == 0.0f);
@@ -226,7 +236,18 @@ ccl_device_inline float2 mix(const float2 &a, const float2 &b, float t)
   return a + t * (b - a);
 }
 
+ccl_device_inline float2 floor(const float2 &a)
+{
+
+  return make_float2(floorf(a.x), floorf(a.y));
+}
+
 #endif /* !__KERNEL_OPENCL__ */
+
+ccl_device_inline float2 safe_divide_float2_float(const float2 a, const float b)
+{
+  return make_float2((b != 0.0f) ? a.x / b : 0.0f, (b != 0.0f) ? a.y / b : 0.0f);
+}
 
 CCL_NAMESPACE_END
 

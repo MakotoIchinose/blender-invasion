@@ -32,16 +32,16 @@ ccl_device void svm_node_tex_white_noise(KernelGlobals *kg,
   float r;
   switch (dimensions) {
     case 1:
-      r = hash_float_01(w);
+      r = hash_float_01_float(w);
       break;
     case 2:
-      r = hash_float2_01(vec.x, vec.y);
+      r = hash_float2_01_float(make_float2(vec.x, vec.y));
       break;
     case 3:
-      r = hash_float3_01(vec.x, vec.y, vec.z);
+      r = hash_float3_01_float(vec);
       break;
     case 4:
-      r = hash_float4_01(vec.x, vec.y, vec.z, w);
+      r = hash_float4_01_float(make_float4(vec.x, vec.y, vec.z, w));
       break;
     default:
       r = 0.0f;

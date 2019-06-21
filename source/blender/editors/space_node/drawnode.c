@@ -906,9 +906,13 @@ static void node_shader_buts_tex_musgrave(uiLayout *layout, bContext *UNUSED(C),
 
 static void node_shader_buts_tex_voronoi(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "coloring", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "distance", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "dimensions", 0, "", ICON_NONE);
   uiItemR(layout, ptr, "feature", 0, "", ICON_NONE);
+  int feature = RNA_enum_get(ptr, "feature");
+  if (feature != SHD_VORONOI_DISTANCE_TO_EDGE && feature != SHD_VORONOI_N_SPHERE_RADIUS &&
+      RNA_enum_get(ptr, "dimensions") != 1) {
+    uiItemR(layout, ptr, "distance", 0, "", ICON_NONE);
+  }
 }
 
 static void node_shader_buts_tex_pointdensity(uiLayout *layout,

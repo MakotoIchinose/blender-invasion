@@ -46,6 +46,7 @@ ccl_device_inline int4 operator>=(const float4 &a, const float4 &b);
 ccl_device_inline int4 operator<=(const float4 &a, const float4 &b);
 ccl_device_inline bool operator==(const float4 &a, const float4 &b);
 
+ccl_device_inline float distance(const float4 &a, const float4 &b);
 ccl_device_inline float dot(const float4 &a, const float4 &b);
 ccl_device_inline float len_squared(const float4 &a);
 ccl_device_inline float4 rcp(const float4 &a);
@@ -61,7 +62,10 @@ ccl_device_inline float4 min(const float4 &a, const float4 &b);
 ccl_device_inline float4 max(const float4 &a, const float4 &b);
 ccl_device_inline float4 clamp(const float4 &a, const float4 &mn, const float4 &mx);
 ccl_device_inline float4 fabs(const float4 &a);
+ccl_device_inline float4 floor(const float4 &a);
 #endif /* !__KERNEL_OPENCL__*/
+
+ccl_device_inline float4 safe_divide_float4_float(const float4 a, const float b);
 
 #ifdef __KERNEL_SSE__
 template<size_t index_0, size_t index_1, size_t index_2, size_t index_3>
@@ -213,6 +217,12 @@ ccl_device_inline bool operator==(const float4 &a, const float4 &b)
 #  endif
 }
 
+ccl_device_inline float distance(const float4 &a, const float4 &b)
+{
+  float4 difference = a - b;
+  return sqrt(dot(difference, difference));
+}
+
 ccl_device_inline float dot(const float4 &a, const float4 &b)
 {
 #  if defined(__KERNEL_SSE41__) && defined(__KERNEL_SSE__)
@@ -338,7 +348,25 @@ ccl_device_inline float4 fabs(const float4 &a)
   return make_float4(fabsf(a.x), fabsf(a.y), fabsf(a.z), fabsf(a.w));
 #  endif
 }
+
+ccl_device_inline float4 floor(const float4 &a)
+{
+#  ifdef __KERNEL_SSE__
+  return float4(_mm_floor_ps(a));
+#  else
+  return make_float4(floorf(a.x), floorf(a.y), floorf(a.z), floorf(a.w));
+#  endif
+}
+
 #endif /* !__KERNEL_OPENCL__*/
+
+ccl_device_inline float4 safe_divide_float4_float(const float4 a, const float b)
+{
+  return make_float4((b != 0.0f) ? a.x / b : 0.0f,
+                     (b != 0.0f) ? a.y / b : 0.0f,
+                     (b != 0.0f) ? a.z / b : 0.0f,
+                     (b != 0.0f) ? a.w / b : 0.0f);
+}
 
 #ifdef __KERNEL_SSE__
 template<size_t index_0, size_t index_1, size_t index_2, size_t index_3>

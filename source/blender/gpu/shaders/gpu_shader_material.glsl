@@ -243,11 +243,34 @@ void mapping_mat4(
   outvec = clamp(outvec, minvec, maxvec);
 }
 
-vec3 safe_divide_vec3(vec3 a, vec3 b)
+vec3 safe_divide(vec3 a, vec3 b)
 {
   return vec3((b.x != 0.0) ? a.x / b.x : 0.0,
               (b.y != 0.0) ? a.y / b.y : 0.0,
               (b.z != 0.0) ? a.z / b.z : 0.0);
+}
+
+float safe_divide(float a, float b)
+{
+  return (b != 0.0) ? a / b : 0.0;
+}
+
+vec2 safe_divide(vec2 a, float b)
+{
+  return vec2((b != 0.0) ? a.x / b : 0.0, (b != 0.0) ? a.y / b : 0.0);
+}
+
+vec3 safe_divide(vec3 a, float b)
+{
+  return vec3((b != 0.0) ? a.x / b : 0.0, (b != 0.0) ? a.y / b : 0.0, (b != 0.0) ? a.z / b : 0.0);
+}
+
+vec4 safe_divide(vec4 a, float b)
+{
+  return vec4((b != 0.0) ? a.x / b : 0.0,
+              (b != 0.0) ? a.y / b : 0.0,
+              (b != 0.0) ? a.z / b : 0.0,
+              (b != 0.0) ? a.w / b : 0.0);
 }
 
 mat3 euler_to_mat3(vec3 euler)
@@ -279,7 +302,7 @@ mat3 euler_to_mat3(vec3 euler)
 
 void mapping_texture(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
 {
-  outvec = safe_divide_vec3(euler_to_mat3(-rot) * (vec - loc), size);
+  outvec = safe_divide(euler_to_mat3(-rot) * (vec - loc), size);
 }
 
 void mapping_point(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
@@ -294,7 +317,7 @@ void mapping_vector(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
 
 void mapping_normal(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
 {
-  outvec = normalize(euler_to_mat3(rot) * safe_divide_vec3(vec, size));
+  outvec = normalize(euler_to_mat3(rot) * safe_divide(vec, size));
 }
 
 void camera(vec3 co, out vec3 outview, out float outdepth, out float outdist)
@@ -516,7 +539,7 @@ void vec_math_mul(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 
 void vec_math_div(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
-  outvec = safe_divide_vec3(v1, v2);
+  outvec = safe_divide(v1, v2);
   outval = 0.0;
 }
 
@@ -1369,6 +1392,63 @@ uint hash(uint kx, uint ky, uint kz, uint kw)
 float bits_to_01(uint bits)
 {
   return (float(bits) / 4294967295.0);
+}
+
+/* **** Hash a float or vec[234] into a float [0, 1] **** */
+
+float hash_01(float k)
+{
+  return bits_to_01(hash(floatBitsToUint(k)));
+}
+
+float hash_01(vec2 k)
+{
+  return bits_to_01(hash(floatBitsToUint(k.x), floatBitsToUint(k.y)));
+}
+
+float hash_01(vec3 k)
+{
+  return bits_to_01(hash(floatBitsToUint(k.x), floatBitsToUint(k.y), floatBitsToUint(k.z)));
+}
+
+float hash_01(vec4 k)
+{
+  return bits_to_01(hash(
+      floatBitsToUint(k.x), floatBitsToUint(k.y), floatBitsToUint(k.z), floatBitsToUint(k.w)));
+}
+
+/* **** Hash a vec[234] into a vec[234] [0, 1] **** */
+
+vec2 hash_01_vec2(vec2 k)
+{
+  return vec2(hash_01(k), hash_01(vec3(k, 1.0)));
+}
+
+vec3 hash_01_vec3(vec3 k)
+{
+  return vec3(hash_01(k), hash_01(vec4(k, 1.0)), hash_01(vec4(k, 2.0)));
+}
+
+vec4 hash_01_vec4(vec4 k)
+{
+  return vec4(hash_01(k.xyzw), hash_01(k.wxyz), hash_01(k.zwxy), hash_01(k.yzwx));
+}
+
+/* **** Hash a float or a vec[234] into a vec3 [0, 1] **** */
+
+vec3 hash_01_vec3(float k)
+{
+  return vec3(hash_01(k), hash_01(vec2(k, 1.0)), hash_01(vec2(k, 2.0)));
+}
+
+vec3 hash_01_vec3(vec2 k)
+{
+  return vec3(hash_01(k), hash_01(vec3(k, 1.0)), hash_01(vec3(k, 2.0)));
+}
+
+vec3 hash_01_vec3(vec4 k)
+{
+  return vec3(hash_01(k.xyzw), hash_01(k.zxwy), hash_01(k.wzyx));
 }
 
 void white_noise_1D(vec3 vec, float w, out float fac)
@@ -3376,121 +3456,1009 @@ void node_tex_sky(vec3 co, out vec4 color)
   color = vec4(1.0);
 }
 
-void node_tex_voronoi(vec3 co,
-                      float scale,
-                      float exponent,
-                      float coloring,
-                      float metric,
-                      float feature,
-                      out vec4 color,
-                      out float fac)
+/* **** Voronoi Texture **** */
+
+// Each of the following functions computes a certain voronoi feature in a certain dimension.
+// Independent functions are used because every feature/dimension have a different search area.
+//
+// This code is based on the following:
+// Base code : http://www.iquilezles.org/www/articles/smoothvoronoi/smoothvoronoi.htm
+// Smoothing : https://iquilezles.untergrund.net/www/articles/smin/smin.htm
+// Distance To Edge Method : https://www.shadertoy.com/view/llG3zy
+
+/* **** 1D Voronoi **** */
+
+float voronoi_distance(float a, float b, float metric, float exponent)
 {
-  vec3 p = co * scale;
-  int xx, yy, zz, xi, yi, zi;
-  vec4 da = vec4(1e10);
-  vec3 pa[4] = vec3[4](vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
+  return distance(a, b);
+}
 
-  xi = floor_to_int(p[0]);
-  yi = floor_to_int(p[1]);
-  zi = floor_to_int(p[2]);
+void node_tex_voronoi_f1_1d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
 
-  for (xx = xi - 1; xx <= xi + 1; xx++) {
-    for (yy = yi - 1; yy <= yi + 1; yy++) {
-      for (zz = zi - 1; zz <= zi + 1; zz++) {
-        vec3 ip = vec3(xx, yy, zz);
-        vec3 vp = cellnoise_color(ip);
-        vec3 pd = p - (vp + ip);
+  float scaledCoord = w * scale;
+  float cellPosition = floor(scaledCoord);
+  float localPosition = scaledCoord - cellPosition;
 
-        float d = 0.0;
-        if (metric == 0.0) { /* SHD_VORONOI_DISTANCE 0 */
-          d = dot(pd, pd);
-        }
-        else if (metric == 1.0) { /* SHD_VORONOI_MANHATTAN 1 */
-          d = abs(pd[0]) + abs(pd[1]) + abs(pd[2]);
-        }
-        else if (metric == 2.0) { /* SHD_VORONOI_CHEBYCHEV 2 */
-          d = max(abs(pd[0]), max(abs(pd[1]), abs(pd[2])));
-        }
-        else if (metric == 3.0) { /* SHD_VORONOI_MINKOWSKI 3 */
-          d = pow(pow(abs(pd[0]), exponent) + pow(abs(pd[1]), exponent) +
-                      pow(abs(pd[2]), exponent),
-                  1.0 / exponent);
-        }
+  float minDistance = 8.0;
+  float targetOffset, targetPosition;
+  for (int i = -1; i <= 1; i++) {
+    float cellOffset = float(i);
+    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+    if (distanceToPoint < minDistance) {
+      targetOffset = cellOffset;
+      minDistance = distanceToPoint;
+      targetPosition = pointPosition;
+    }
+  }
+  outDistance = minDistance;
+  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outW = safe_divide(targetPosition + cellPosition, scale);
+}
 
-        vp += vec3(xx, yy, zz);
-        if (d < da[0]) {
-          da.yzw = da.xyz;
-          da[0] = d;
+void node_tex_voronoi_smooth_f1_1d(vec3 coord,
+                                   float w,
+                                   float scale,
+                                   float smoothness,
+                                   float exponent,
+                                   float jitter,
+                                   float metric,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+  smoothness = max(smoothness, 1.0);
 
-          pa[3] = pa[2];
-          pa[2] = pa[1];
-          pa[1] = pa[0];
-          pa[0] = vp;
-        }
-        else if (d < da[1]) {
-          da.zw = da.yz;
-          da[1] = d;
+  float scaledCoord = w * scale;
+  float cellPosition = floor(scaledCoord);
+  float localPosition = scaledCoord - cellPosition;
 
-          pa[3] = pa[2];
-          pa[2] = pa[1];
-          pa[1] = vp;
-        }
-        else if (d < da[2]) {
-          da[3] = da[2];
-          da[2] = d;
+  float smoothDistance = 0.0;
+  float smoothPosition = 0.0;
+  vec3 smoothColor = vec3(0.0);
+  for (int i = -3; i <= 3; i++) {
+    float cellOffset = float(i);
+    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+    float weight = exp(-smoothness * distanceToPoint);
+    smoothDistance += weight;
+    smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+    smoothPosition += pointPosition * weight;
+  }
+  outDistance = -log(smoothDistance) / smoothness;
+  outColor.xyz = smoothColor / smoothDistance;
+  outW = safe_divide(cellPosition + smoothPosition / smoothDistance, scale);
+}
 
-          pa[3] = pa[2];
-          pa[2] = vp;
+void node_tex_voronoi_f2_1d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  float scaledCoord = w * scale;
+  float cellPosition = floor(scaledCoord);
+  float localPosition = scaledCoord - cellPosition;
+
+  float distanceF1 = 8.0;
+  float distanceF2 = 8.0;
+  float offsetF1 = 0.0;
+  float positionF1 = 0.0;
+  float offsetF2, positionF2;
+  for (int i = -1; i <= 1; i++) {
+    float cellOffset = float(i);
+    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+    if (distanceToPoint < distanceF1) {
+      distanceF2 = distanceF1;
+      distanceF1 = distanceToPoint;
+      offsetF2 = offsetF1;
+      offsetF1 = cellOffset;
+      positionF2 = positionF1;
+      positionF1 = pointPosition;
+    }
+    else if (distanceToPoint < distanceF2) {
+      distanceF2 = distanceToPoint;
+      offsetF2 = cellOffset;
+      positionF2 = pointPosition;
+    }
+  }
+  outDistance = distanceF2;
+  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outW = safe_divide(positionF2 + cellPosition, scale);
+}
+
+void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
+                                          float w,
+                                          float scale,
+                                          float smoothness,
+                                          float exponent,
+                                          float jitter,
+                                          float metric,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  float scaledCoord = w * scale;
+  float cellPosition = floor(scaledCoord);
+  float localPosition = scaledCoord - cellPosition;
+
+  float minDistance = 8.0;
+  for (int i = -1; i <= 1; i++) {
+    float cellOffset = float(i);
+    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+    minDistance = min(distanceToPoint, minDistance);
+  }
+  outDistance = minDistance;
+}
+
+void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
+                                         float w,
+                                         float scale,
+                                         float smoothness,
+                                         float exponent,
+                                         float jitter,
+                                         float metric,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  float scaledCoord = w * scale;
+  float cellPosition = floor(scaledCoord);
+  float localPosition = scaledCoord - cellPosition;
+
+  float closestPoint;
+  float closestPointOffset;
+  float minDistance = 8.0;
+  for (int i = -1; i <= 1; i++) {
+    float cellOffset = float(i);
+    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float distanceToPoint = distance(pointPosition, localPosition);
+    if (distanceToPoint < minDistance) {
+      minDistance = distanceToPoint;
+      closestPoint = pointPosition;
+      closestPointOffset = cellOffset;
+    }
+  }
+
+  minDistance = 8.0;
+  float closestPointToClosestPoint;
+  for (int i = -1; i <= 1; i++) {
+    if (i == 0)
+      continue;
+    float cellOffset = float(i) + closestPointOffset;
+    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float distanceToPoint = distance(closestPoint, pointPosition);
+    if (distanceToPoint < minDistance) {
+      minDistance = distanceToPoint;
+      closestPointToClosestPoint = pointPosition;
+    }
+  }
+  outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0;
+}
+
+/* **** 2D Voronoi **** */
+
+float voronoi_distance(vec2 a, vec2 b, float metric, float exponent)
+{
+  if (metric == 0.0)  // SHD_VORONOI_EUCLIDEAN
+    return distance(a, b);
+  else if (metric == 1.0)  // SHD_VORONOI_MANHATTAN
+    return abs(a.x - b.x) + abs(a.y - b.y);
+  else if (metric == 2.0)  // SHD_VORONOI_CHEBYCHEV
+    return max(abs(a.x - b.x), abs(a.y - b.y));
+  else if (metric == 3.0)  // SHD_VORONOI_MINKOWSKI
+    return pow(pow(abs(a.x - b.x), exponent) + pow(abs(a.y - b.y), exponent), 1.0 / exponent);
+  else
+    return 0.0;
+}
+
+void node_tex_voronoi_f1_2d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec2 scaledCoord = coord.xy * scale;
+  vec2 cellPosition = floor(scaledCoord);
+  vec2 localPosition = scaledCoord - cellPosition;
+
+  float minDistance = 8.0;
+  vec2 targetOffset, targetPosition;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 cellOffset = vec2(i, j);
+      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+      if (distanceToPoint < minDistance) {
+        targetOffset = cellOffset;
+        minDistance = distanceToPoint;
+        targetPosition = pointPosition;
+      }
+    }
+  }
+  outDistance = minDistance;
+  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outPosition = vec3(safe_divide(targetPosition + cellPosition, scale), 0.0);
+}
+
+void node_tex_voronoi_smooth_f1_2d(vec3 coord,
+                                   float w,
+                                   float scale,
+                                   float smoothness,
+                                   float exponent,
+                                   float jitter,
+                                   float metric,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+  smoothness = max(smoothness, 1.0);
+
+  vec2 scaledCoord = coord.xy * scale;
+  vec2 cellPosition = floor(scaledCoord);
+  vec2 localPosition = scaledCoord - cellPosition;
+
+  vec3 smoothColor = vec3(0.0);
+  float smoothDistance = 0.0;
+  vec2 smoothPosition = vec2(0.0);
+  for (int j = -3; j <= 3; j++) {
+    for (int i = -3; i <= 3; i++) {
+      vec2 cellOffset = vec2(i, j);
+      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+      float weight = exp(-smoothness * distanceToPoint);
+      smoothDistance += weight;
+      smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+      smoothPosition += pointPosition * weight;
+    }
+  }
+  outDistance = -log(smoothDistance) / smoothness;
+  outColor.xyz = smoothColor / smoothDistance;
+  outPosition = vec3(safe_divide(cellPosition + smoothPosition / smoothDistance, scale), 0.0);
+}
+
+void node_tex_voronoi_f2_2d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec2 scaledCoord = coord.xy * scale;
+  vec2 cellPosition = floor(scaledCoord);
+  vec2 localPosition = scaledCoord - cellPosition;
+
+  float distanceF1 = 8.0;
+  float distanceF2 = 8.0;
+  vec2 offsetF1 = vec2(0.0);
+  vec2 positionF1 = vec2(0.0);
+  vec2 offsetF2, positionF2;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 cellOffset = vec2(i, j);
+      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+      if (distanceToPoint < distanceF1) {
+        distanceF2 = distanceF1;
+        distanceF1 = distanceToPoint;
+        offsetF2 = offsetF1;
+        offsetF1 = cellOffset;
+        positionF2 = positionF1;
+        positionF1 = pointPosition;
+      }
+      else if (distanceToPoint < distanceF2) {
+        distanceF2 = distanceToPoint;
+        offsetF2 = cellOffset;
+        positionF2 = pointPosition;
+      }
+    }
+  }
+  outDistance = distanceF2;
+  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outPosition = vec3(safe_divide(positionF2 + cellPosition, scale), 0.0);
+}
+
+void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
+                                          float w,
+                                          float scale,
+                                          float smoothness,
+                                          float exponent,
+                                          float jitter,
+                                          float metric,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec2 scaledCoord = coord.xy * scale;
+  vec2 cellPosition = floor(scaledCoord);
+  vec2 localPosition = scaledCoord - cellPosition;
+
+  vec2 vectorToClosest;
+  float minDistance = 8.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 cellOffset = vec2(i, j);
+      vec2 vectorToPoint = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter -
+                           localPosition;
+      float distanceToPoint = dot(vectorToPoint, vectorToPoint);
+      if (distanceToPoint < minDistance) {
+        minDistance = distanceToPoint;
+        vectorToClosest = vectorToPoint;
+      }
+    }
+  }
+
+  minDistance = 8.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 cellOffset = vec2(i, j);
+      vec2 vectorToPoint = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter -
+                           localPosition;
+      vec2 perpendicularToEdge = vectorToPoint - vectorToClosest;
+      if (dot(perpendicularToEdge, perpendicularToEdge) > 0.0001) {
+        float distanceToEdge = dot((vectorToClosest + vectorToPoint) / 2.0,
+                                   normalize(perpendicularToEdge));
+        minDistance = min(minDistance, distanceToEdge);
+      }
+    }
+  }
+  outDistance = minDistance;
+}
+
+void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
+                                         float w,
+                                         float scale,
+                                         float smoothness,
+                                         float exponent,
+                                         float jitter,
+                                         float metric,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec2 scaledCoord = coord.xy * scale;
+  vec2 cellPosition = floor(scaledCoord);
+  vec2 localPosition = scaledCoord - cellPosition;
+
+  vec2 closestPoint;
+  vec2 closestPointOffset;
+  float minDistance = 8.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 cellOffset = vec2(i, j);
+      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      float distanceToPoint = distance(pointPosition, localPosition);
+      if (distanceToPoint < minDistance) {
+        minDistance = distanceToPoint;
+        closestPoint = pointPosition;
+        closestPointOffset = cellOffset;
+      }
+    }
+  }
+
+  minDistance = 8.0;
+  vec2 closestPointToClosestPoint;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      if (i == 0 && j == 0)
+        continue;
+      vec2 cellOffset = vec2(i, j) + closestPointOffset;
+      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      float distanceToPoint = distance(closestPoint, pointPosition);
+      if (distanceToPoint < minDistance) {
+        minDistance = distanceToPoint;
+        closestPointToClosestPoint = pointPosition;
+      }
+    }
+  }
+  outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0;
+}
+
+/* **** 3D Voronoi **** */
+
+float voronoi_distance(vec3 a, vec3 b, float metric, float exponent)
+{
+  if (metric == 0.0)  // SHD_VORONOI_EUCLIDEAN
+    return distance(a, b);
+  else if (metric == 1.0)  // SHD_VORONOI_MANHATTAN
+    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
+  else if (metric == 2.0)  // SHD_VORONOI_CHEBYCHEV
+    return max(abs(a.x - b.x), max(abs(a.y - b.y), abs(a.z - b.z)));
+  else if (metric == 3.0)  // SHD_VORONOI_MINKOWSKI
+    return pow(pow(abs(a.x - b.x), exponent) + pow(abs(a.y - b.y), exponent) +
+                   pow(abs(a.z - b.z), exponent),
+               1.0 / exponent);
+  else
+    return 0.0;
+}
+
+void node_tex_voronoi_f1_3d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec3 scaledCoord = coord * scale;
+  vec3 cellPosition = floor(scaledCoord);
+  vec3 localPosition = scaledCoord - cellPosition;
+
+  float minDistance = 8.0;
+  vec3 targetOffset, targetPosition;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 cellOffset = vec3(i, j, k);
+        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        if (distanceToPoint < minDistance) {
+          targetOffset = cellOffset;
+          minDistance = distanceToPoint;
+          targetPosition = pointPosition;
         }
-        else if (d < da[3]) {
-          da[3] = d;
-          pa[3] = vp;
+      }
+    }
+  }
+  outDistance = minDistance;
+  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outPosition = safe_divide(targetPosition + cellPosition, scale);
+}
+
+void node_tex_voronoi_smooth_f1_3d(vec3 coord,
+                                   float w,
+                                   float scale,
+                                   float smoothness,
+                                   float exponent,
+                                   float jitter,
+                                   float metric,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+  smoothness = max(smoothness, 1.0);
+
+  vec3 scaledCoord = coord * scale;
+  vec3 cellPosition = floor(scaledCoord);
+  vec3 localPosition = scaledCoord - cellPosition;
+
+  vec3 smoothColor = vec3(0.0);
+  float smoothDistance = 0.0;
+  vec3 smoothPosition = vec3(0.0);
+  for (int k = -3; k <= 3; k++) {
+    for (int j = -3; j <= 3; j++) {
+      for (int i = -3; i <= 3; i++) {
+        vec3 cellOffset = vec3(i, j, k);
+        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        float weight = exp(-smoothness * distanceToPoint);
+        smoothDistance += weight;
+        smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+        smoothPosition += pointPosition * weight;
+      }
+    }
+  }
+  outDistance = -log(smoothDistance) / smoothness;
+  outColor.xyz = smoothColor / smoothDistance;
+  outPosition = safe_divide(cellPosition + smoothPosition / smoothDistance, scale);
+}
+
+void node_tex_voronoi_f2_3d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec3 scaledCoord = coord * scale;
+  vec3 cellPosition = floor(scaledCoord);
+  vec3 localPosition = scaledCoord - cellPosition;
+
+  float distanceF1 = 8.0;
+  float distanceF2 = 8.0;
+  vec3 offsetF1 = vec3(0.0);
+  vec3 positionF1 = vec3(0.0);
+  vec3 offsetF2, positionF2;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 cellOffset = vec3(i, j, k);
+        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        if (distanceToPoint < distanceF1) {
+          distanceF2 = distanceF1;
+          distanceF1 = distanceToPoint;
+          offsetF2 = offsetF1;
+          offsetF1 = cellOffset;
+          positionF2 = positionF1;
+          positionF1 = pointPosition;
+        }
+        else if (distanceToPoint < distanceF2) {
+          distanceF2 = distanceToPoint;
+          offsetF2 = cellOffset;
+          positionF2 = pointPosition;
+        }
+      }
+    }
+  }
+  outDistance = distanceF2;
+  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outPosition = safe_divide(positionF2 + cellPosition, scale);
+}
+
+void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
+                                          float w,
+                                          float scale,
+                                          float smoothness,
+                                          float exponent,
+                                          float jitter,
+                                          float metric,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec3 scaledCoord = coord * scale;
+  vec3 cellPosition = floor(scaledCoord);
+  vec3 localPosition = scaledCoord - cellPosition;
+
+  vec3 vectorToClosest;
+  float minDistance = 8.0;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 cellOffset = vec3(i, j, k);
+        vec3 vectorToPoint = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter -
+                             localPosition;
+        float distanceToPoint = dot(vectorToPoint, vectorToPoint);
+        if (distanceToPoint < minDistance) {
+          minDistance = distanceToPoint;
+          vectorToClosest = vectorToPoint;
         }
       }
     }
   }
 
-  if (coloring == 0.0) {
-    /* Intensity output */
-    if (feature == 0.0) { /* F1 */
-      fac = abs(da[0]);
+  minDistance = 8.0;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 cellOffset = vec3(i, j, k);
+        vec3 vectorToPoint = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter -
+                             localPosition;
+        vec3 perpendicularToEdge = vectorToPoint - vectorToClosest;
+        if (dot(perpendicularToEdge, perpendicularToEdge) > 0.0001) {
+          float distanceToEdge = dot((vectorToClosest + vectorToPoint) / 2.0,
+                                     normalize(perpendicularToEdge));
+          minDistance = min(minDistance, distanceToEdge);
+        }
+      }
     }
-    else if (feature == 1.0) { /* F2 */
-      fac = abs(da[1]);
-    }
-    else if (feature == 2.0) { /* F3 */
-      fac = abs(da[2]);
-    }
-    else if (feature == 3.0) { /* F4 */
-      fac = abs(da[3]);
-    }
-    else if (feature == 4.0) { /* F2F1 */
-      fac = abs(da[1] - da[0]);
-    }
-    color = vec4(fac, fac, fac, 1.0);
   }
-  else {
-    /* Color output */
-    vec3 col = vec3(fac, fac, fac);
-    if (feature == 0.0) { /* F1 */
-      col = pa[0];
-    }
-    else if (feature == 1.0) { /* F2 */
-      col = pa[1];
-    }
-    else if (feature == 2.0) { /* F3 */
-      col = pa[2];
-    }
-    else if (feature == 3.0) { /* F4 */
-      col = pa[3];
-    }
-    else if (feature == 4.0) { /* F2F1 */
-      col = abs(pa[1] - pa[0]);
-    }
+  outDistance = minDistance;
+}
 
-    color = vec4(cellnoise_color(col), 1.0);
-    fac = (color.x + color.y + color.z) * (1.0 / 3.0);
+void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
+                                         float w,
+                                         float scale,
+                                         float smoothness,
+                                         float exponent,
+                                         float jitter,
+                                         float metric,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec3 scaledCoord = coord * scale;
+  vec3 cellPosition = floor(scaledCoord);
+  vec3 localPosition = scaledCoord - cellPosition;
+
+  vec3 closestPoint;
+  vec3 closestPointOffset;
+  float minDistance = 8.0;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 cellOffset = vec3(i, j, k);
+        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        float distanceToPoint = distance(pointPosition, localPosition);
+        if (distanceToPoint < minDistance) {
+          minDistance = distanceToPoint;
+          closestPoint = pointPosition;
+          closestPointOffset = cellOffset;
+        }
+      }
+    }
   }
+
+  minDistance = 8.0;
+  vec3 closestPointToClosestPoint;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        if (i == 0 && j == 0 && k == 0)
+          continue;
+        vec3 cellOffset = vec3(i, j, k) + closestPointOffset;
+        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        float distanceToPoint = distance(closestPoint, pointPosition);
+        if (distanceToPoint < minDistance) {
+          minDistance = distanceToPoint;
+          closestPointToClosestPoint = pointPosition;
+        }
+      }
+    }
+  }
+  outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0;
+}
+
+/* **** 4D Voronoi **** */
+
+float voronoi_distance(vec4 a, vec4 b, float metric, float exponent)
+{
+  if (metric == 0.0)  // SHD_VORONOI_EUCLIDEAN
+    return distance(a, b);
+  else if (metric == 1.0)  // SHD_VORONOI_MANHATTAN
+    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z) + abs(a.w - b.w);
+  else if (metric == 2.0)  // SHD_VORONOI_CHEBYCHEV
+    return max(abs(a.x - b.x), max(abs(a.y - b.y), max(abs(a.z - b.z), abs(a.w - b.w))));
+  else if (metric == 3.0)  // SHD_VORONOI_MINKOWSKI
+    return pow(pow(abs(a.x - b.x), exponent) + pow(abs(a.y - b.y), exponent) +
+                   pow(abs(a.z - b.z), exponent) + pow(abs(a.w - b.w), exponent),
+               1.0 / exponent);
+  else
+    return 0.0;
+}
+
+void node_tex_voronoi_f1_4d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec4 scaledCoord = vec4(coord, w) * scale;
+  vec4 cellPosition = floor(scaledCoord);
+  vec4 localPosition = scaledCoord - cellPosition;
+
+  float minDistance = 8.0;
+  vec4 targetOffset, targetPosition;
+  for (int u = -1; u <= 1; u++) {
+    for (int k = -1; k <= 1; k++) {
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec4 cellOffset = vec4(i, j, k, u);
+          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          if (distanceToPoint < minDistance) {
+            targetOffset = cellOffset;
+            minDistance = distanceToPoint;
+            targetPosition = pointPosition;
+          }
+        }
+      }
+    }
+  }
+  outDistance = minDistance;
+  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  vec4 p = safe_divide(targetPosition + cellPosition, scale);
+  outPosition = p.xyz;
+  outW = p.w;
+}
+
+void node_tex_voronoi_smooth_f1_4d(vec3 coord,
+                                   float w,
+                                   float scale,
+                                   float smoothness,
+                                   float exponent,
+                                   float jitter,
+                                   float metric,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+  smoothness = max(smoothness, 1.0);
+
+  vec4 scaledCoord = vec4(coord, w) * scale;
+  vec4 cellPosition = floor(scaledCoord);
+  vec4 localPosition = scaledCoord - cellPosition;
+
+  vec3 smoothColor = vec3(0.0);
+  float smoothDistance = 0.0;
+  vec4 smoothPosition = vec4(0.0);
+  for (int u = -3; u <= 3; u++) {
+    for (int k = -3; k <= 3; k++) {
+      for (int j = -3; j <= 3; j++) {
+        for (int i = -3; i <= 3; i++) {
+          vec4 cellOffset = vec4(i, j, k, u);
+          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          float weight = exp(-smoothness * distanceToPoint);
+          smoothDistance += weight;
+          smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+          smoothPosition += pointPosition * weight;
+        }
+      }
+    }
+  }
+  outDistance = -log(smoothDistance) / smoothness;
+  outColor.xyz = smoothColor / smoothDistance;
+  vec4 p = safe_divide(cellPosition + smoothPosition / smoothDistance, scale);
+  outPosition = p.xyz;
+  outW = p.w;
+}
+
+void node_tex_voronoi_f2_4d(vec3 coord,
+                            float w,
+                            float scale,
+                            float smoothness,
+                            float exponent,
+                            float jitter,
+                            float metric,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec4 scaledCoord = vec4(coord, w) * scale;
+  vec4 cellPosition = floor(scaledCoord);
+  vec4 localPosition = scaledCoord - cellPosition;
+
+  float distanceF1 = 8.0;
+  float distanceF2 = 8.0;
+  vec4 offsetF1 = vec4(0.0);
+  vec4 positionF1 = vec4(0.0);
+  vec4 offsetF2, positionF2;
+  for (int u = -1; u <= 1; u++) {
+    for (int k = -1; k <= 1; k++) {
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec4 cellOffset = vec4(i, j, k, u);
+          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          if (distanceToPoint < distanceF1) {
+            distanceF2 = distanceF1;
+            distanceF1 = distanceToPoint;
+            offsetF2 = offsetF1;
+            offsetF1 = cellOffset;
+            positionF2 = positionF1;
+            positionF1 = pointPosition;
+          }
+          else if (distanceToPoint < distanceF2) {
+            distanceF2 = distanceToPoint;
+            offsetF2 = cellOffset;
+            positionF2 = pointPosition;
+          }
+        }
+      }
+    }
+  }
+  outDistance = distanceF2;
+  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  vec4 p = safe_divide(positionF2 + cellPosition, scale);
+  outPosition = p.xyz;
+  outW = p.w;
+}
+
+void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
+                                          float w,
+                                          float scale,
+                                          float smoothness,
+                                          float exponent,
+                                          float jitter,
+                                          float metric,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec4 scaledCoord = vec4(coord, w) * scale;
+  vec4 cellPosition = floor(scaledCoord);
+  vec4 localPosition = scaledCoord - cellPosition;
+
+  vec4 vectorToClosest;
+  float minDistance = 8.0;
+  for (int u = -1; u <= 1; u++) {
+    for (int k = -1; k <= 1; k++) {
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec4 cellOffset = vec4(i, j, k, u);
+          vec4 vectorToPoint = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter -
+                               localPosition;
+          float distanceToPoint = dot(vectorToPoint, vectorToPoint);
+          if (distanceToPoint < minDistance) {
+            minDistance = distanceToPoint;
+            vectorToClosest = vectorToPoint;
+          }
+        }
+      }
+    }
+  }
+
+  minDistance = 8.0;
+  for (int u = -1; u <= 1; u++) {
+    for (int k = -1; k <= 1; k++) {
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec4 cellOffset = vec4(i, j, k, u);
+          vec4 vectorToPoint = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter -
+                               localPosition;
+          vec4 perpendicularToEdge = vectorToPoint - vectorToClosest;
+          if (dot(perpendicularToEdge, perpendicularToEdge) > 0.0001) {
+            float distanceToEdge = dot((vectorToClosest + vectorToPoint) / 2.0,
+                                       normalize(perpendicularToEdge));
+            minDistance = min(minDistance, distanceToEdge);
+          }
+        }
+      }
+    }
+  }
+  outDistance = minDistance;
+}
+
+void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
+                                         float w,
+                                         float scale,
+                                         float smoothness,
+                                         float exponent,
+                                         float jitter,
+                                         float metric,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
+{
+  jitter = clamp(jitter, 0.0, 1.0);
+
+  vec4 scaledCoord = vec4(coord, w) * scale;
+  vec4 cellPosition = floor(scaledCoord);
+  vec4 localPosition = scaledCoord - cellPosition;
+
+  vec4 closestPoint;
+  vec4 closestPointOffset;
+  float minDistance = 8.0;
+  for (int u = -1; u <= 1; u++) {
+    for (int k = -1; k <= 1; k++) {
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec4 cellOffset = vec4(i, j, k, u);
+          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          float distanceToPoint = distance(pointPosition, localPosition);
+          if (distanceToPoint < minDistance) {
+            minDistance = distanceToPoint;
+            closestPoint = pointPosition;
+            closestPointOffset = cellOffset;
+          }
+        }
+      }
+    }
+  }
+
+  minDistance = 8.0;
+  vec4 closestPointToClosestPoint;
+  for (int u = -1; u <= 1; u++) {
+    for (int k = -1; k <= 1; k++) {
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          if (i == 0 && j == 0 && k == 0 && u == 0)
+            continue;
+          vec4 cellOffset = vec4(i, j, k, u) + closestPointOffset;
+          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          float distanceToPoint = distance(closestPoint, pointPosition);
+          if (distanceToPoint < minDistance) {
+            minDistance = distanceToPoint;
+            closestPointToClosestPoint = pointPosition;
+          }
+        }
+      }
+    }
+  }
+  outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0;
 }
 
 float calc_wave(

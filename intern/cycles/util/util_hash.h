@@ -21,22 +21,6 @@
 
 CCL_NAMESPACE_BEGIN
 
-#ifdef __KERNEL_OPENCL__
-
-#  define float_as_uint(f) as_uint((f))
-
-#else
-#  ifdef __KERNEL_CUDA__
-
-#    define float_as_uint(f) __float_as_uint((f))
-
-#  else
-
-#    define float_as_uint(f) *(uint *)&(f)
-
-#  endif
-#endif
-
 /* Jenkins Lookup3 Hash Functions.
  * http://burtleburtle.net/bob/c/lookup3.c
  */
@@ -161,26 +145,72 @@ ccl_device_inline float hash_uint4_01(uint kx, uint ky, uint kz, uint kw)
   return (float)hash_uint4(kx, ky, kz, kw) * (1.0f / (float)0xFFFFFFFF);
 }
 
-/* **** Hashing floats into the [0, 1] range. **** */
+/* **** Hash a float or float[234] into a float [0, 1] **** */
 
-ccl_device_inline float hash_float_01(float kx)
+ccl_device_inline float hash_float_01_float(float k)
 {
-  return hash_uint_01(float_as_uint(kx));
+  return hash_uint_01(__float_as_uint(k));
 }
 
-ccl_device_inline float hash_float2_01(float kx, float ky)
+ccl_device_inline float hash_float2_01_float(float2 k)
 {
-  return hash_uint2_01(float_as_uint(kx), float_as_uint(ky));
+  return hash_uint2_01(__float_as_uint(k.x), __float_as_uint(k.y));
 }
 
-ccl_device_inline float hash_float3_01(float kx, float ky, float kz)
+ccl_device_inline float hash_float3_01_float(float3 k)
 {
-  return hash_uint3_01(float_as_uint(kx), float_as_uint(ky), float_as_uint(kz));
+  return hash_uint3_01(__float_as_uint(k.x), __float_as_uint(k.y), __float_as_uint(k.z));
 }
 
-ccl_device_inline float hash_float4_01(float kx, float ky, float kz, float kw)
+ccl_device_inline float hash_float4_01_float(float4 k)
 {
-  return hash_uint4_01(float_as_uint(kx), float_as_uint(ky), float_as_uint(kz), float_as_uint(kw));
+  return hash_uint4_01(
+      __float_as_uint(k.x), __float_as_uint(k.y), __float_as_uint(k.z), __float_as_uint(k.w));
+}
+
+/* **** Hash a float[234] into a float[234] [0, 1] **** */
+
+ccl_device_inline float2 hash_float2_01_float2(float2 k)
+{
+  return make_float2(hash_float2_01_float(k), hash_float3_01_float(make_float3(k.x, k.y, 1.0)));
+}
+
+ccl_device_inline float3 hash_float3_01_float3(float3 k)
+{
+  return make_float3(hash_float3_01_float(k),
+                     hash_float4_01_float(make_float4(k.x, k.y, k.z, 1.0)),
+                     hash_float4_01_float(make_float4(k.x, k.y, k.z, 2.0)));
+}
+
+ccl_device_inline float4 hash_float4_01_float4(float4 k)
+{
+  return make_float4(hash_float4_01_float(k),
+                     hash_float4_01_float(make_float4(k.w, k.x, k.y, k.z)),
+                     hash_float4_01_float(make_float4(k.z, k.w, k.x, k.y)),
+                     hash_float4_01_float(make_float4(k.y, k.z, k.w, k.x)));
+}
+
+/* **** Hash a float or a float[234] into a float3 [0, 1] **** */
+
+ccl_device_inline float3 hash_float_01_float3(float k)
+{
+  return make_float3(hash_float_01_float(k),
+                     hash_float2_01_float(make_float2(k, 1.0)),
+                     hash_float2_01_float(make_float2(k, 2.0)));
+}
+
+ccl_device_inline float3 hash_float2_01_float3(float2 k)
+{
+  return make_float3(hash_float2_01_float(k),
+                     hash_float3_01_float(make_float3(k.x, k.y, 1.0)),
+                     hash_float3_01_float(make_float3(k.x, k.y, 2.0)));
+}
+
+ccl_device_inline float3 hash_float4_01_float3(float4 k)
+{
+  return make_float3(hash_float4_01_float(k),
+                     hash_float4_01_float(make_float4(k.z, k.x, k.w, k.y)),
+                     hash_float4_01_float(make_float4(k.w, k.z, k.y, k.x)));
 }
 
 #ifndef __KERNEL_GPU__

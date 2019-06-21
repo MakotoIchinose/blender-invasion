@@ -869,9 +869,9 @@ typedef struct NodeTexNoise {
 
 typedef struct NodeTexVoronoi {
   NodeTexBase base;
-  int coloring;
-  int distance;
+  int dimensions;
   int feature;
+  int distance;
   char _pad[4];
 } NodeTexVoronoi;
 
@@ -1087,19 +1087,20 @@ typedef struct NodeCryptomatte {
 #define SHD_NOISE_HARD 1
 
 /* voronoi texture */
-#define SHD_VORONOI_DISTANCE 0
-#define SHD_VORONOI_MANHATTAN 1
-#define SHD_VORONOI_CHEBYCHEV 2
-#define SHD_VORONOI_MINKOWSKI 3
+enum {
+  SHD_VORONOI_EUCLIDEAN = 0,
+  SHD_VORONOI_MANHATTAN = 1,
+  SHD_VORONOI_CHEBYCHEV = 2,
+  SHD_VORONOI_MINKOWSKI = 3,
+};
 
-#define SHD_VORONOI_INTENSITY 0
-#define SHD_VORONOI_CELLS 1
-
-#define SHD_VORONOI_F1 0
-#define SHD_VORONOI_F2 1
-#define SHD_VORONOI_F3 2
-#define SHD_VORONOI_F4 3
-#define SHD_VORONOI_F2F1 4
+enum {
+  SHD_VORONOI_F1 = 0,
+  SHD_VORONOI_SMOOTH_F1 = 1,
+  SHD_VORONOI_F2 = 2,
+  SHD_VORONOI_DISTANCE_TO_EDGE = 3,
+  SHD_VORONOI_N_SPHERE_RADIUS = 4,
+};
 
 /* musgrave texture */
 #define SHD_MUSGRAVE_MULTIFRACTAL 0

@@ -47,6 +47,7 @@ ccl_device_inline float3 operator/=(float3 &a, float f);
 ccl_device_inline bool operator==(const float3 &a, const float3 &b);
 ccl_device_inline bool operator!=(const float3 &a, const float3 &b);
 
+ccl_device_inline float distance(const float3 &a, const float3 &b);
 ccl_device_inline float dot(const float3 &a, const float3 &b);
 ccl_device_inline float dot_xy(const float3 &a, const float3 &b);
 ccl_device_inline float3 cross(const float3 &a, const float3 &b);
@@ -58,6 +59,7 @@ ccl_device_inline float3 fabs(const float3 &a);
 ccl_device_inline float3 mix(const float3 &a, const float3 &b, float t);
 ccl_device_inline float3 rcp(const float3 &a);
 ccl_device_inline float3 sqrt(const float3 &a);
+ccl_device_inline float3 floor(const float3 &a);
 #endif /* !__KERNEL_OPENCL__ */
 
 ccl_device_inline float min3(float3 a);
@@ -72,7 +74,8 @@ ccl_device_inline float3 saturate3(float3 a);
 ccl_device_inline float3 safe_normalize(const float3 a);
 ccl_device_inline float3 normalize_len(const float3 a, float *t);
 ccl_device_inline float3 safe_normalize_len(const float3 a, float *t);
-ccl_device_inline float3 safe_divide_float3(const float3 a, const float3 b);
+ccl_device_inline float3 safe_divide_float3_float3(const float3 a, const float3 b);
+ccl_device_inline float3 safe_divide_float3_float(const float3 a, const float b);
 ccl_device_inline float3 interp(float3 a, float3 b, float t);
 ccl_device_inline float3 sqr3(float3 a);
 
@@ -209,6 +212,12 @@ ccl_device_inline bool operator!=(const float3 &a, const float3 &b)
   return !(a == b);
 }
 
+ccl_device_inline float distance(const float3 &a, const float3 &b)
+{
+  float3 difference = a - b;
+  return sqrt(dot(difference, difference));
+}
+
 ccl_device_inline float dot(const float3 &a, const float3 &b)
 {
 #  if defined(__KERNEL_SSE41__) && defined(__KERNEL_SSE__)
@@ -282,6 +291,15 @@ ccl_device_inline float3 sqrt(const float3 &a)
   return float3(_mm_sqrt_ps(a));
 #  else
   return make_float3(sqrtf(a.x), sqrtf(a.y), sqrtf(a.z));
+#  endif
+}
+
+ccl_device_inline float3 floor(const float3 &a)
+{
+#  ifdef __KERNEL_SSE__
+  return float3(_mm_floor_ps(a));
+#  else
+  return make_float3(floorf(a.x), floorf(a.y), floorf(a.z));
 #  endif
 }
 
@@ -362,11 +380,17 @@ ccl_device_inline float3 safe_normalize_len(const float3 a, float *t)
   return (*t != 0.0f) ? a / (*t) : a;
 }
 
-ccl_device_inline float3 safe_divide_float3(const float3 a, const float3 b)
+ccl_device_inline float3 safe_divide_float3_float3(const float3 a, const float3 b)
 {
   return make_float3((b.x != 0.0f) ? a.x / b.x : 0.0f,
                      (b.y != 0.0f) ? a.y / b.y : 0.0f,
                      (b.z != 0.0f) ? a.z / b.z : 0.0f);
+}
+
+ccl_device_inline float3 safe_divide_float3_float(const float3 a, const float b)
+{
+  return make_float3(
+      (b != 0.0f) ? a.x / b : 0.0f, (b != 0.0f) ? a.y / b : 0.0f, (b != 0.0f) ? a.z / b : 0.0f);
 }
 
 ccl_device_inline float3 interp(float3 a, float3 b, float t)

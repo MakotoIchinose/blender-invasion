@@ -944,33 +944,41 @@ NODE_DEFINE(VoronoiTextureNode)
 
   TEXTURE_MAPPING_DEFINE(VoronoiTextureNode);
 
-  static NodeEnum coloring_enum;
-  coloring_enum.insert("intensity", NODE_VORONOI_INTENSITY);
-  coloring_enum.insert("cells", NODE_VORONOI_CELLS);
-  SOCKET_ENUM(coloring, "Coloring", coloring_enum, NODE_VORONOI_INTENSITY);
+  static NodeEnum dimensions_enum;
+  dimensions_enum.insert("1D", 1);
+  dimensions_enum.insert("2D", 2);
+  dimensions_enum.insert("3D", 3);
+  dimensions_enum.insert("4D", 4);
+  SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
 
-  static NodeEnum metric;
-  metric.insert("distance", NODE_VORONOI_DISTANCE);
-  metric.insert("manhattan", NODE_VORONOI_MANHATTAN);
-  metric.insert("chebychev", NODE_VORONOI_CHEBYCHEV);
-  metric.insert("minkowski", NODE_VORONOI_MINKOWSKI);
-  SOCKET_ENUM(metric, "Distance Metric", metric, NODE_VORONOI_INTENSITY);
+  static NodeEnum distance_enum;
+  distance_enum.insert("euclidean", NODE_VORONOI_EUCLIDEAN);
+  distance_enum.insert("manhattan", NODE_VORONOI_MANHATTAN);
+  distance_enum.insert("chebychev", NODE_VORONOI_CHEBYCHEV);
+  distance_enum.insert("minkowski", NODE_VORONOI_MINKOWSKI);
+  SOCKET_ENUM(distance, "Distance Metric", distance_enum, NODE_VORONOI_EUCLIDEAN);
 
   static NodeEnum feature_enum;
-  feature_enum.insert("F1", NODE_VORONOI_F1);
-  feature_enum.insert("F2", NODE_VORONOI_F2);
-  feature_enum.insert("F3", NODE_VORONOI_F3);
-  feature_enum.insert("F4", NODE_VORONOI_F4);
-  feature_enum.insert("F2F1", NODE_VORONOI_F2F1);
-  SOCKET_ENUM(feature, "Feature", feature_enum, NODE_VORONOI_INTENSITY);
+  feature_enum.insert("f1", NODE_VORONOI_F1);
+  feature_enum.insert("smooth_f1", NODE_VORONOI_SMOOTH_F1);
+  feature_enum.insert("f2", NODE_VORONOI_F2);
+  feature_enum.insert("distance_to_edge", NODE_VORONOI_DISTANCE_TO_EDGE);
+  feature_enum.insert("n_sphere_radius", NODE_VORONOI_N_SPHERE_RADIUS);
+  SOCKET_ENUM(feature, "Feature", feature_enum, NODE_VORONOI_F1);
 
-  SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
-  SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
   SOCKET_IN_POINT(
       vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_GENERATED);
+  SOCKET_IN_FLOAT(w, "W", 0.0f);
+  SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
+  SOCKET_IN_FLOAT(smoothness, "Smoothness", 5.0f);
+  SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
+  SOCKET_IN_FLOAT(jitter, "Jitter", 1.0f);
 
-  SOCKET_OUT_COLOR(color, "Color");
-  SOCKET_OUT_FLOAT(fac, "Fac");
+  SOCKET_OUT_FLOAT(distance, "outDistance");
+  SOCKET_OUT_COLOR(color, "outColor");
+  SOCKET_OUT_VECTOR(position, "outPosition");
+  SOCKET_OUT_FLOAT(w, "outW");
+  SOCKET_OUT_FLOAT(radius, "outRadius");
 
   return type;
 }
@@ -981,28 +989,39 @@ VoronoiTextureNode::VoronoiTextureNode() : TextureNode(node_type)
 
 void VoronoiTextureNode::compile(SVMCompiler &compiler)
 {
-  ShaderInput *scale_in = input("Scale");
   ShaderInput *vector_in = input("Vector");
+  ShaderInput *w_in = input("W");
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *smoothness_in = input("Smoothness");
   ShaderInput *exponent_in = input("Exponent");
-  ShaderOutput *color_out = output("Color");
-  ShaderOutput *fac_out = output("Fac");
+  ShaderInput *jitter_in = input("Jitter");
 
-  if (vector_in->link)
-    compiler.stack_assign(vector_in);
-  if (scale_in->link)
-    compiler.stack_assign(scale_in);
-  if (exponent_in->link)
-    compiler.stack_assign(exponent_in);
+  ShaderOutput *distance_out = output("Distance");
+  ShaderOutput *color_out = output("Color");
+  ShaderOutput *position_out = output("Position");
+  ShaderOutput *w_out = output("W");
+  ShaderOutput *radius_out = output("Radius");
 
   int vector_offset = tex_mapping.compile_begin(compiler, vector_in);
 
-  compiler.add_node(NODE_TEX_VORONOI,
-                    compiler.encode_uchar4(vector_offset, coloring, metric, feature),
-                    compiler.encode_uchar4(compiler.stack_assign_if_linked(scale_in),
-                                           compiler.stack_assign_if_linked(exponent_in),
-                                           compiler.stack_assign(fac_out),
-                                           compiler.stack_assign(color_out)));
-  compiler.add_node(__float_as_int(scale), __float_as_int(exponent));
+  compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, distance);
+  compiler.add_node(compiler.encode_uchar4(vector_offset,
+                                           compiler.stack_assign_if_linked(w_in),
+                                           compiler.stack_assign_if_linked(scale_in),
+                                           compiler.stack_assign_if_linked(smoothness_in)),
+                    compiler.encode_uchar4(compiler.stack_assign_if_linked(exponent_in),
+                                           compiler.stack_assign_if_linked(jitter_in),
+                                           compiler.stack_assign_if_linked(distance_out),
+                                           compiler.stack_assign_if_linked(color_out)),
+                    compiler.encode_uchar4(compiler.stack_assign_if_linked(position_out),
+                                           compiler.stack_assign_if_linked(w_out),
+                                           compiler.stack_assign_if_linked(radius_out)),
+                    __float_as_int(w));
+
+  compiler.add_node(__float_as_int(scale),
+                    __float_as_int(smoothness),
+                    __float_as_int(exponent),
+                    __float_as_int(jitter));
 
   tex_mapping.compile_end(compiler, vector_in, vector_offset);
 }
@@ -1011,8 +1030,8 @@ void VoronoiTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
 
-  compiler.parameter(this, "coloring");
-  compiler.parameter(this, "metric");
+  compiler.parameter(this, "dimensions");
+  compiler.parameter(this, "distance");
   compiler.parameter(this, "feature");
   compiler.add(this, "node_voronoi_texture");
 }

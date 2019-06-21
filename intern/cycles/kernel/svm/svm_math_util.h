@@ -33,7 +33,7 @@ ccl_device void svm_vector_math(
       *Fac = 0.0f;
       break;
     case NODE_VECTOR_MATH_DIVIDE:
-      *Vector = safe_divide_float3(Vector1, Vector2);
+      *Vector = safe_divide_float3_float3(Vector1, Vector2);
       *Fac = 0.0f;
       break;
     case NODE_VECTOR_MATH_CROSS_PRODUCT:

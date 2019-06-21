@@ -32,13 +32,14 @@ ccl_device void svm_mapping(
       *outVec = transform_direction(&rot_t, (vecIn * size)) + loc;
       break;
     case NODE_MAPPING_TYPE_TEXTURE:
-      *outVec = safe_divide_float3(transform_direction(&rot_t, (vecIn - loc)), size);
+      *outVec = safe_divide_float3_float3(transform_direction(&rot_t, (vecIn - loc)), size);
       break;
     case NODE_MAPPING_TYPE_VECTOR:
       *outVec = transform_direction(&rot_t, (vecIn * size));
       break;
     case NODE_MAPPING_TYPE_NORMAL:
-      *outVec = safe_normalize(transform_direction(&rot_t, safe_divide_float3(vecIn, size)));
+      *outVec = safe_normalize(
+          transform_direction(&rot_t, safe_divide_float3_float3(vecIn, size)));
       break;
     default:
       *outVec = make_float3(0.0f, 0.0f, 0.0f);

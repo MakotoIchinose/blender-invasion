@@ -101,6 +101,8 @@ set(SRC_OSL_HEADERS
   node_texture.h
   stdosl.h
   oslutil.h
+  vector2.h
+  vector4.h
 )
 
 set(SRC_OSO

@@ -726,9 +726,9 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeTexVoronoi)) {
     BL::ShaderNodeTexVoronoi b_voronoi_node(b_node);
     VoronoiTextureNode *voronoi = new VoronoiTextureNode();
-    voronoi->coloring = (NodeVoronoiColoring)b_voronoi_node.coloring();
-    voronoi->metric = (NodeVoronoiDistanceMetric)b_voronoi_node.distance();
+    voronoi->dimensions = b_voronoi_node.dimensions();
     voronoi->feature = (NodeVoronoiFeature)b_voronoi_node.feature();
+    voronoi->distance = (NodeVoronoiDistanceMetric)b_voronoi_node.distance();
     BL::TexMapping b_texture_mapping(b_voronoi_node.texture_mapping());
     get_tex_mapping(&voronoi->tex_mapping, b_texture_mapping);
     node = voronoi;
