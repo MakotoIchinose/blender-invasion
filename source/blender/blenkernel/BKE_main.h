@@ -81,6 +81,7 @@ typedef struct Main {
   char recovered;                  /* indicate the main->name (file) is the recovered one */
   /** All current ID's exist in the last memfile undo step. */
   char is_memfile_undo_written;
+  char is_sync_select_dirty;
 
   BlendThumbnail *blen_thumb;
 

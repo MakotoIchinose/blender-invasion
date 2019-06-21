@@ -50,6 +50,7 @@
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
+#include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
@@ -116,6 +117,9 @@ void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
     }
     BKE_scene_object_base_flag_sync_from_base(base);
   }
+
+  /* Using globals to sync selection for now */
+  G_MAIN->is_sync_select_dirty = true;
 }
 
 /**
