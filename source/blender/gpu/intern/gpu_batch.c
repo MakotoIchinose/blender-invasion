@@ -776,12 +776,9 @@ struct GPUDrawList {
 
 GPUDrawList *GPU_draw_list_create(int length)
 {
-  GPUDrawList *list = MEM_mallocN(sizeof(GPUDrawList), "GPUDrawList");
+  GPUDrawList *list = MEM_callocN(sizeof(GPUDrawList), "GPUDrawList");
   /* Alloc the biggest possible command list which is indexed. */
   list->buffer_size = sizeof(GPUDrawCommandIndexed) * length;
-  list->cmd_len = 0;
-  list->cmd_offset = 0;
-  list->commands = NULL;
   if (USE_MULTI_DRAW_INDIRECT) {
     list->buffer_id = GPU_buf_alloc();
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, list->buffer_id);
@@ -881,7 +878,7 @@ void GPU_draw_list_submit(GPUDrawList *list)
     GLenum prim = batch->gl_prim_type;
 
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, list->buffer_id);
-    glFlushMappedBufferRange(GL_DRAW_INDIRECT_BUFFER, offset, bytes_used);
+    glFlushMappedBufferRange(GL_DRAW_INDIRECT_BUFFER, 0, bytes_used);
     glUnmapBuffer(GL_DRAW_INDIRECT_BUFFER);
     list->commands = NULL; /* Unmapped */
 
