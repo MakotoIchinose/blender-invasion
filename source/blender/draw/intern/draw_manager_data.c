@@ -1031,7 +1031,6 @@ static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass 
   shgroup->stencil_mask = 0;
   shgroup->calls.first = NULL;
   shgroup->calls.last = NULL;
-  shgroup->tfeedback_target = NULL;
   shgroup->pass_parent = pass;
 
   return shgroup;
@@ -1133,7 +1132,7 @@ DRWShadingGroup *DRW_shgroup_transform_feedback_create(struct GPUShader *shader,
   BLI_assert(tf_target != NULL);
   DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
   drw_shgroup_init(shgroup, shader);
-  shgroup->tfeedback_target = tf_target;
+  drw_shgroup_uniform_create_ex(shgroup, 0, DRW_UNIFORM_TFEEDBACK_TARGET, tf_target, 0, 1);
   return shgroup;
 }
 

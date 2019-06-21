@@ -847,7 +847,8 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
                                  int *chunkid_loc,
                                  int *obmat_loc,
                                  int *obinv_loc,
-                                 int *mvp_loc)
+                                 int *mvp_loc,
+                                 bool *use_tfeedback)
 {
   for (DRWUniformChunk *unichunk = shgroup->uniforms; unichunk; unichunk = unichunk->next) {
     DRWUniform *uni = unichunk->uniforms;
@@ -923,6 +924,11 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
         case DRW_UNIFORM_RESOURCE_CHUNK:
           *chunkid_loc = uni->location;
           GPU_shader_uniform_int(shgroup->shader, uni->location, 0);
+          break;
+        case DRW_UNIFORM_TFEEDBACK_TARGET:
+          BLI_assert(data && (*use_tfeedback == false));
+          *use_tfeedback = GPU_shader_transform_feedback_enable(shgroup->shader,
+                                                                ((GPUVertBuf *)data)->vbo_id);
           break;
           /* Legacy/Fallback support. */
         case DRW_UNIFORM_BASE_INSTANCE:
@@ -1226,11 +1232,6 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     DST.batch = NULL;
   }
 
-  if (shgroup->tfeedback_target != NULL) {
-    use_tfeedback = GPU_shader_transform_feedback_enable(shgroup->shader,
-                                                         shgroup->tfeedback_target->vbo_id);
-  }
-
   release_ubo_slots(shader_changed);
   release_texture_slots(shader_changed);
 
@@ -1244,7 +1245,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                        &chunkid_loc,
                        &obmat_loc,
                        &obinv_loc,
-                       &mvp_loc);
+                       &mvp_loc,
+                       &use_tfeedback);
 
   /* Rendering Calls */
   {

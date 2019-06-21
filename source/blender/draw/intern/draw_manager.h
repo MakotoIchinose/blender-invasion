@@ -180,6 +180,7 @@ typedef enum {
   DRW_UNIFORM_TEXTURE_REF,
   DRW_UNIFORM_BLOCK,
   DRW_UNIFORM_BLOCK_PERSIST,
+  DRW_UNIFORM_TFEEDBACK_TARGET,
   /** Per drawcall uniforms/UBO */
   DRW_UNIFORM_BLOCK_OBMATS,
   DRW_UNIFORM_BLOCK_OBINFOS,
@@ -202,10 +203,10 @@ struct DRWUniform {
     int ivalue[4];
   };
   int location;
-  uint32_t type : 4;      /* DRWUniformType */
+  uint32_t type : 5;      /* DRWUniformType */
   uint32_t length : 5;    /* cannot be more than 16 */
   uint32_t arraysize : 5; /* cannot be more than 16 too */
-  uint32_t name_ofs : 18; /* name offset in name buffer. */
+  uint32_t name_ofs : 17; /* name offset in name buffer. */
 };
 
 struct DRWShadingGroup {
@@ -219,9 +220,6 @@ struct DRWShadingGroup {
     /* Chunks of draw calls. */
     struct DRWCallChunk *first, *last;
   } calls;
-
-  /** TODO Maybe remove from here */
-  struct GPUVertBuf *tfeedback_target;
 
   /** State changes for this batch only (or'd with the pass's state) */
   DRWState state_extra;
