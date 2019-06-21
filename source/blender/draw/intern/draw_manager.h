@@ -45,7 +45,7 @@
 #define USE_GPU_SELECT
 
 /* Use drawcall batching using instanced rendering. */
-#define USE_BATCHING
+#define USE_BATCHING 1
 
 // #define DRW_DEBUG_CULLING
 #define DRW_DEBUG_USE_UNIFORM_NAME 0

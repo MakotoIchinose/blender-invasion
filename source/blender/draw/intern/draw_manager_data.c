@@ -636,7 +636,7 @@ static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
                                                Object *ob,
                                                uint vert_count)
 {
-
+  BLI_assert(vert_count > 0);
   DRWCall *call = drw_call_create(shgroup);
   call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
