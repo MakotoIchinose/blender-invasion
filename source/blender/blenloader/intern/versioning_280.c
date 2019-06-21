@@ -3510,5 +3510,17 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
       arm->flag &= ~(ARM_FLAG_UNUSED_6);
     }
+
+    /* Marks each outliner as dirty so a sync will occur as synced selection is enabled. */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+          if (space->spacetype == SPACE_OUTLINER) {
+            SpaceOutliner *soutliner = (SpaceOutliner *)space;
+            soutliner->flag |= SO_IS_DIRTY | SO_SYNC_SELECTION;
+          }
+        }
+      }
+    }
   }
 }

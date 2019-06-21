@@ -299,7 +299,7 @@ static SpaceLink *outliner_new(const ScrArea *UNUSED(area), const Scene *UNUSED(
   soutliner->filter_id_type = ID_GR;
   soutliner->show_restrict_flags = SO_RESTRICT_ENABLE | SO_RESTRICT_HIDE;
   soutliner->outlinevis = SO_VIEW_LAYER;
-  soutliner->flag |= SO_IS_DIRTY;
+  soutliner->flag |= SO_IS_DIRTY | SO_SYNC_SELECTION;
 
   /* header */
   ar = MEM_callocN(sizeof(ARegion), "header for outliner");
