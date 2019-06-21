@@ -63,10 +63,9 @@ typedef struct ProfilePath {
   int nsegments;
 
   /** Sampled segment point location table */
-  /* HANS-TODO: Figure out overlap between these and the curve / table ProfilePoint arrays */
   char _pad4[4];
   float *x_segment_vals;
-  float *y_segment_vals; /* HANS-TODO: Make sure these get freed too */
+  float *y_segment_vals;
 } ProfilePath;
 
 typedef struct ProfileWidget {

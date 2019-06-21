@@ -47,5 +47,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const bool use_custom_profile,
                    const struct ProfileWidget *prwdgt,
                    const bool sample_points);
+/* HANS-TODO: Problem with the ProfileWidget having a "const" qualifier: I have to change it to
+ * initialize it and build the output arrays right now. Maybe I need to not store the info there */
 
 #endif /* __BMESH_BEVEL_H__ */

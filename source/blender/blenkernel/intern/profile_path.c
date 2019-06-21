@@ -45,6 +45,9 @@
 
 void profilewidget_set_defaults(ProfileWidget *prwdgt)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEWIDGET SET DEFAULTS\n");
+#endif
   prwdgt->flag = PROF_DO_CLIP;
 
   BLI_rctf_init(&prwdgt->curr, 0.0f, 1.0f, 0.0f, 1.0f);
@@ -63,6 +66,10 @@ void profilewidget_set_defaults(ProfileWidget *prwdgt)
 
 struct ProfileWidget *profilewidget_add(int preset)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEWIDGET ADD\n");
+#endif
+
   ProfileWidget *prwdgt = MEM_callocN(sizeof(ProfileWidget), "new profile widget");
   prwdgt->profile = MEM_callocN(sizeof(ProfilePath), "new profile path");
 
@@ -74,6 +81,10 @@ struct ProfileWidget *profilewidget_add(int preset)
 
 void profilewidget_free_data(ProfileWidget *prwdgt)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEWIDGET FREE DATA\n");
+#endif
+
   if (!prwdgt->profile) {
     /* Why are you even here in the first place? */
     printf("ProfileWidget has no profile\n"); /* HANS-TODO: Remove */
@@ -100,6 +111,10 @@ void profilewidget_free_data(ProfileWidget *prwdgt)
 
 void profilewidget_free(ProfileWidget *prwdgt)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEWIDGET FREE\n");
+#endif
+
   if (prwdgt) {
     profilewidget_free_data(prwdgt);
     MEM_freeN(prwdgt);
@@ -108,6 +123,9 @@ void profilewidget_free(ProfileWidget *prwdgt)
 
 void profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEWIDGET COPY DATA\n");
+#endif
   *target = *prwdgt;
 
   if (prwdgt->profile->path) {
@@ -126,6 +144,10 @@ void profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
 
 ProfileWidget *profilewidget_copy(const ProfileWidget *prwdgt)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEWIDGET COPY\n");
+#endif
+
   if (prwdgt) {
     ProfileWidget *prwdgtn = MEM_dupallocN(prwdgt);
     profilewidget_copy_data(prwdgtn, prwdgt);
@@ -142,6 +164,10 @@ bool profilepath_remove_point(ProfilePath *prpath, ProfilePoint *point)
 {
   ProfilePoint *pts;
   int a, b, removed = 0;
+
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH REMOVE POINT\n");
+#endif
 
   /* must have 2 points minimum */
   if (prpath->totpoint <= 2) {
@@ -174,6 +200,10 @@ void profilepath_remove(ProfilePath *prpath, const short flag)
                                   "path points");
   int a, b, removed = 0;
 
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH REMOVE\n");
+#endif
+
   /* well, lets keep the two outer points! */
   pts[0] = prpath->path[0];
   for (a = 1, b = 1; a < prpath->totpoint - 1; a++) {
@@ -200,9 +230,15 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
   int a, b;
   bool foundloc = false;
 
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH INSERT");
+  printf("(begin total points = %d)", prpath->total_points);
+#endif
+
+  /* HANS-TODO: New insertion algorithm? */
   /* insert fragments of the old one and the new point to the new curve */
+  prpath->totpoint++;
   for (a = 0, b = 0; a < prpath->totpoint; a++) {
-    prpath->totpoint++;
     if ((foundloc == false) && ((a + 1 == prpath->totpoint) || (x < prpath->path[a].x))) {
       pts[a].x = x;
       pts[a].y = y;
@@ -219,8 +255,12 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
       b++;
     }
   }
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH INSERT");
+  printf("(end total points = %d)\n", prpath->total_points);
+#endif
 
-  /* free old curve and replace it with new one */
+  /* free old path and replace it with the new one */
   MEM_freeN(prpath->path);
   prpath->path = pts;
 
@@ -229,6 +269,10 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
 
 void profilepath_reset(ProfilePath *prpath, int preset)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH RESET\n");
+#endif
+
   if (prpath->path) {
     MEM_freeN(prpath->path);
   }
@@ -261,6 +305,9 @@ void profilepath_reset(ProfilePath *prpath, int preset)
  */
 void profilepath_handle_set(ProfilePath *cuma, int type)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH HANDLE SET\n");
+#endif
 
   if (cuma->path->flag & PROF_SELECT) {
     cuma->path->flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO_ANIM);
@@ -284,6 +331,9 @@ void profilepath_handle_set(ProfilePath *cuma, int type)
 /* HANS-TODO: Update */
 static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
+#if DEBUG_PRWDGT
+  printf("CALCHANDLE PROFILE\n");
+#endif
   /* defines to avoid confusion */
 #define p2_h1 ((p2)-3)
 #define p2_h2 ((p2) + 3)
@@ -412,13 +462,17 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
   float *fp, *allpoints, *lastpoint, curf, range;
   int i, totpoint;
 
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH MAKE TABLE\n");
+#endif
+
   if (prpath->path == NULL) {
     printf("ProfilePath's path is NULL\n"); /* HANS-TODO: Remove */
     return;
   }
 
   /* HANS-TODO: Remove */
-  prpath->table = prpath->path;
+//  prpath->table = prpath->path;
 
   /* default rect also is table range */
   prpath->mintable = clipr->xmin;
@@ -452,6 +506,7 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
 
   /* first and last handle need correction, instead of pointing to center of next/prev,
    * we let it point to the closest handle */
+  /* HANS-TODO: Remove this correction  */
   if (prpath->totpoint > 2) {
     float hlen, nlen, vec[3];
 
@@ -568,7 +623,8 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
   prwdgt->changed_timestamp++;
 
 #if DEBUG_PRWDGT
-  if (prwdgt->profile->totpoint < 0) {
+  printf("PROFILEWIDGET CHANGED\n");
+  if (prwdgt->profile->total_points < 0) {
     printf("Someone screwed up the totpoint\n");
   }
 #endif
@@ -656,6 +712,9 @@ float profilepath_linear_distance_to_next_point(const ProfilePath *prpath, int i
 /* Calculate the total length of the path (between all of the nodes and the ends at 0 and 1 */
 float profilepath_total_length(const struct ProfilePath *prpath)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH TOTAL LENGTH\n");
+#endif
   float total_length = 0;
   /*printf("Here are the locations of all of %d points in the list:\n", prpath->totpoint);
   for (int i = 0; i < prpath->totpoint; i++) {
@@ -681,6 +740,12 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
                           float *x_out,
                           float *y_out)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH EVALUATE\n");
+  if (prpath->total_points < 0) {
+    printf("Someone screwed up the totpoint\n");
+  }
+#endif
   /* HANS-TODO: For now I'm skipping the table and doing the evaluation here, */
   /*   but it should be moved later on so I don't have to travel down node list every call */
   float total_length = prpath->total_length;
@@ -708,13 +773,13 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
 #if DEBUG_PRWDGT
-  printf("  length portion input: %f\n", length_portion);
-  printf("  requested path length: %f\n", requested_length);
-  printf("  distance to next point: %f\n", distance_to_next_point);
-  printf("  length travelled: %f\n", length_travelled);
-  printf("  lerp-factor: %f\n", lerp_factor);
-  printf("  ith point  (%f, %f)\n", cuma->curve[i].x, cuma->curve[i].y);
-  printf("  next point (%f, %f)\n", cuma->curve[i + 1].x, cuma->curve[i + 1].y);
+  printf("  length portion input: %f\n", (double)length_portion);
+  printf("  requested path length: %f\n", (double)requested_length);
+  printf("  distance to next point: %f\n", (double)distance_to_next_point);
+  printf("  length travelled: %f\n", (double)length_travelled);
+  printf("  lerp-factor: %f\n", (double)lerp_factor);
+  printf("  ith point  (%f, %f)\n", (double)prpath->path[i].x, (double)prpath->path[i].y);
+  printf("  next point (%f, %f)\n", (double)prpath->path[i + 1].x, (double)prpath->path[i + 1].y);
 #endif
 
   *x_out = lerp(prpath->path[i].x, prpath->path[i + 1].x, lerp_factor);
@@ -727,6 +792,9 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
  * set of points */
 static void profilepath_fill_segment_table(struct ProfilePath *prpath)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH FILL SEGMENT TABLE\n");
+#endif
   /* Fill table with values for the position of the graph at each of the segments */
   const float segment_length = prpath->total_length / prpath->nsegments;
   float length_travelled = 0.0f;
@@ -769,6 +837,9 @@ static void profilepath_fill_segment_table(struct ProfilePath *prpath)
 /* HANS-TODO: Make the table equal the path for now */
 void profilewidget_initialize(ProfileWidget *prwdgt, int nsegments)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH INITIALIZE\n");
+#endif
   if (prwdgt == NULL) {
     return;
   }
@@ -795,6 +866,9 @@ void profilewidget_evaluate(const struct ProfileWidget *prwdgt,
                            float *x_out,
                            float *y_out)
 {
+#if DEBUG_PRWDGT
+  printf("PROFILEPATH EVALUATE\n");
+#endif
   /* HANS-TODO: Use profilepath_fill_segment_table */
 
   const ProfilePath *prpath = prwdgt->profile;

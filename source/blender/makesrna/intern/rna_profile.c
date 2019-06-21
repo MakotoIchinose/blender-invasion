@@ -227,6 +227,7 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   func = RNA_def_function(srna, "initialize", "rna_ProfileWidget_initialize");
   parm = RNA_def_int(func, "nsegments", 1, 1, 1000, "", "The number of segment values to"
                      " initialize the arrays with", 1, 100);
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   RNA_def_function_ui_description(func, "Initialize profile");
 }
 

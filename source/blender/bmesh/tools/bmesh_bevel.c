@@ -2422,7 +2422,7 @@ static void build_boundary_terminal_edge(BevelParams *bp,
 {
   MemArena *mem_arena = bp->mem_arena;
   VMesh *vm = bv->vmesh;
-  BoundVert *v1, *v2, *v;
+  BoundVert *v;
   EdgeHalf *e;
   const float *no;
   float co[3], d;
@@ -2433,9 +2433,9 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     no = e->fprev ? e->fprev->no : (e->fnext ? e->fnext->no : NULL);
     offset_in_plane(e, no, true, co);
     if (construct) {
-      v1 = add_new_bound_vert(mem_arena, vm, co);
-      v1->efirst = v->elast = v1->ebev = e;
-      e->leftv = v1;
+      v = add_new_bound_vert(mem_arena, vm, co);
+      v->efirst = v->elast = v->ebev = e;
+      e->leftv = v;
     }
     else {
       adjust_bound_vert(e->leftv, co);
@@ -2443,10 +2443,9 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     no = e->fnext ? e->fnext->no : (e->fprev ? e->fprev->no : NULL);
     offset_in_plane(e, no, false, co);
     if (construct) {
-      v2 = add_new_bound_vert(mem_arena, vm, co);
-      v2->efirst = v2->elast = e;
-      e->rightv = v2;
-      v = v2;
+      v = add_new_bound_vert(mem_arena, vm, co);
+      v->efirst = v->elast = e;
+      e->rightv = v;
     }
     else {
       adjust_bound_vert(e->rightv, co);
