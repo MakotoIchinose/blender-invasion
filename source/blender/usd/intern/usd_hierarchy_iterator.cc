@@ -27,7 +27,7 @@ USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph,
 {
 }
 
-bool USDHierarchyIterator::should_visit_object(const Object *object) const
+bool USDHierarchyIterator::should_export_object(const Object *object) const
 {
   if (params.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
     return false;
@@ -35,8 +35,7 @@ bool USDHierarchyIterator::should_visit_object(const Object *object) const
   if (params.visible_objects_only && (object->base_flag & BASE_VISIBLE) == 0) {
     return false;
   }
-
-  return AbstractHierarchyIterator::should_visit_object(object);
+  return true;
 }
 
 void USDHierarchyIterator::delete_object_writer(AbstractHierarchyWriter *writer)

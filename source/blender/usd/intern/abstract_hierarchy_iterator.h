@@ -23,7 +23,10 @@ struct HierarchyContext {
   /* Determined during hierarchy iteration: */
   Object *object;
   Object *export_parent;
-  bool xform_only;
+
+  // When true, the object will be exported only as transform, and only if is an ancestor of a
+  // non-weak child.
+  bool weak_export;
 
   /* Determined during writer creation: */
   std::string export_path;  // Hierarchical path, such as "/grandparent/parent/objectname".
@@ -39,10 +42,10 @@ struct HierarchyContext {
 class AbstractHierarchyIterator {
  public:
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
+  typedef std::map<Object *, std::set<HierarchyContext>> ExportGraph;
 
  protected:
-  // Mapping from object to its children, as should be exported.
-  std::map<Object *, std::set<HierarchyContext>> export_graph;
+  ExportGraph export_graph;  // Mapping from object to its children, as should be exported.
 
   Depsgraph *depsgraph;
   WriterMap writers;
@@ -56,7 +59,9 @@ class AbstractHierarchyIterator {
   void release_writers();
 
  private:
-  void visit_object(Object *object, Object *export_parent, bool xform_only);
+  void visit_object(Object *object, Object *export_parent, bool weak_export);
+  void prune_export_graph();
+
   void make_writers(Object *parent_object,
                     const std::string &parent_path,
                     AbstractHierarchyWriter *parent_writer);
@@ -68,8 +73,8 @@ class AbstractHierarchyIterator {
   AbstractHierarchyWriter *ensure_data_writer(const HierarchyContext &context);
 
  protected:
-  virtual bool should_visit_object(const Object *object) const;
   virtual bool should_visit_duplilink(const DupliObject *link) const;
+  virtual bool should_export_object(const Object *object) const;
 
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) = 0;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) = 0;

@@ -24,7 +24,7 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
                        const USDExportParams &params);
 
  protected:
-  virtual bool should_visit_object(const Object *object) const override;
+  virtual bool should_export_object(const Object *object) const override;
 
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) override;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) override;
