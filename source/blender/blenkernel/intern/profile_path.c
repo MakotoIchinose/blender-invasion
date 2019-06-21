@@ -235,10 +235,19 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
   printf("(begin total points = %d)", prpath->total_points);
 #endif
 
-  /* HANS-TODO: New insertion algorithm? */
+  /* HANS-TODO: New insertion algorithm. Find closest points in 2D and then insert them in the
+   * middle of those. Maybe just lengthen the size of the array instead of allocating a new one
+   * too, but that probbaly doesn't matter so much.
+   *
+   * New algorithm would probably be: Sort the points by their proximity to the new location. Then
+   * find the two points closest to the new position that are ordered one after the next in the
+   * original array of points (this will probably be the two closest points, but for more
+   * complicated profiles it could be points on opposite sides of the profile). Then insert the new
+   * point between the two we just found. */
   /* insert fragments of the old one and the new point to the new curve */
   prpath->totpoint++;
   for (a = 0, b = 0; a < prpath->totpoint; a++) {
+    /* Insert the new point at the correct X location */
     if ((foundloc == false) && ((a + 1 == prpath->totpoint) || (x < prpath->path[a].x))) {
       pts[a].x = x;
       pts[a].y = y;
@@ -247,6 +256,7 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
       newpt = &pts[a];
     }
     else {
+      /* Copy old point over to the new array */
       pts[a].x = prpath->path[b].x;
       pts[a].y = prpath->path[b].y;
       /* make sure old points don't remain selected */

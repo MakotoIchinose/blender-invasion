@@ -6955,7 +6955,6 @@ static int ui_do_but_PROFILE(bContext *C,
   else if (data->state == BUTTON_STATE_NUM_EDITING) {
     if (event->type == MOUSEMOVE) {
       if (event->x != data->draglastx || event->y != data->draglasty) {
-
         if (ui_numedit_but_PROFILE(block, but, data, event->x, event->y, event->ctrl != 0,
                                    event->shift != 0)) {
           ui_numedit_apply(C, block, but, data);
@@ -6972,9 +6971,9 @@ static int ui_do_but_PROFILE(bContext *C,
           /* deselect all, select one */
           if (!event->shift) {
             for (a = 0; a < prpath->totpoint; a++) {
-              pts[a].flag &= ~CUMA_SELECT;
+              pts[a].flag &= ~PROF_SELECT;
             }
-            pts[data->dragsel].flag |= CUMA_SELECT;
+            pts[data->dragsel].flag |= PROF_SELECT;
           }
         }
         else {

@@ -65,19 +65,6 @@ typedef struct CurveMap {
   /** For RGB curves, premulled extrapolation vector. */
   float premul_ext_in[2];
   float premul_ext_out[2];
-
-  /* HANS-TODO: Should I just make a separate struct and code for this? */
-  /* The portion of functionality that overlaps is pretty low */
-
-  /** Total length of curve for path curves */
-  float total_length;
-  /** Number of segments for sampled path HANS-TODO: This should probably move to the CurveMapping
-   * Struct*/
-  int nsegments;
-  /** Segment point location table */
-  float *x_segment_vals;
-  float *y_segment_vals; /* HANS-TODO: Make sure these get freed too */
-
 } CurveMap;
 
 /* cuma->flag */
