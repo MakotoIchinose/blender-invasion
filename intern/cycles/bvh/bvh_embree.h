@@ -23,7 +23,7 @@
 #  include <embree3/rtcore_scene.h>
 
 #  include "bvh/bvh.h"
-#  include "bvh/bvh4.h"
+#  include "bvh/bvh2.h"
 #  include "bvh/bvh_params.h"
 
 #  include "util/util_thread.h"
@@ -34,10 +34,10 @@ CCL_NAMESPACE_BEGIN
 
 class Mesh;
 
-class BVHEmbree : public BVH4 {
+class BVHEmbree : public BVH2 {
  public:
   virtual void build(Progress &progress, Stats *stats) override;
-  virtual ~BVHEmbree();
+  virtual ~BVHEmbree() override;
   RTCScene scene;
   static void destroy(RTCScene);
 

@@ -645,24 +645,13 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
         cscene = scene.cycles
 
         col = layout.column()
-
-        if _cycles.with_embree:
-            row = col.row()
-            row.active = use_cpu(context)
-            row.prop(cscene, "use_bvh_embree")
-            row2 = col.row()
-            row2.active = cscene.use_bvh_embree
-            row2.prop(cscene, "use_bvh_embree_converter")
-        if _cycles.with_embree:
-            row = col.row()
-            row.active = use_cuda(context)
-            row.prop(cscene, "use_bvh_embree_gpu")
+        col.prop(cscene, "bvh_builder")
         col.prop(cscene, "debug_use_spatial_splits")
         sub = col.column()
-        sub.active = not cscene.use_bvh_embree or not _cycles.with_embree
+        sub.active = cscene.bvh_builder != 'EMBREE' or not _cycles.with_embree
         sub.prop(cscene, "debug_use_hair_bvh")
         sub = col.column()
-        sub.active = not cscene.debug_use_spatial_splits and not cscene.use_bvh_embree
+        sub.active = not cscene.debug_use_spatial_splits and cscene.bvh_builder != 'EMBREE'
         sub.prop(cscene, "debug_bvh_time_steps")
 
 

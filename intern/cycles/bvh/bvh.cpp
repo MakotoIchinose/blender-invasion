@@ -52,6 +52,8 @@ const char *bvh_layout_name(BVHLayout layout)
       return "NONE";
     case BVH_LAYOUT_EMBREE:
       return "EMBREE";
+    case BVH_LAYOUT_EMBREE_CONVERTED:
+      return "EMBREE_CONVERTED";
     case BVH_LAYOUT_EMBREE_GPU:
       return "EMBREE_GPU";
     case BVH_LAYOUT_ALL:
@@ -100,6 +102,7 @@ BVH::BVH(const BVHParams &params_, const vector<Object *> &objects_)
 
 BVH *BVH::create(const BVHParams &params, const vector<Object *> &objects)
 {
+  std::cout << "Using layout : " << bvh_layout_name(params.bvh_layout) << std::endl;
   switch (params.bvh_layout) {
     case BVH_LAYOUT_BVH2:
       return new BVH2(params, objects);

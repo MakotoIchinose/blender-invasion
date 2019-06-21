@@ -338,7 +338,7 @@ class CPUDevice : public Device {
     }
 #endif
 #ifdef WITH_EMBREE
-    bvh_layout_mask |= BVH_LAYOUT_EMBREE | BVH_LAYOUT_EMBREE_CONVERTED;
+    bvh_layout_mask |= BVH_LAYOUT_EMBREE | BVH_LAYOUT_EMBREE_CONVERTED | BVH_LAYOUT_EMBREE_GPU;
 #endif /* WITH_EMBREE */
     return bvh_layout_mask;
   }

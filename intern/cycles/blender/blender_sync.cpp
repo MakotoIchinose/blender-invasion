@@ -695,12 +695,17 @@ SceneParams BlenderSync::get_scene_params(BL::Scene &b_scene, bool background)
   }
 
 #ifdef WITH_EMBREE
-  params.bvh_layout = RNA_boolean_get(&cscene, "use_bvh_embree") ? BVH_LAYOUT_EMBREE :
-                                                                   params.bvh_layout;
-  params.bvh_layout = RNA_boolean_get(&cscene, "use_bvh_embree_converter") ? BVH_LAYOUT_EMBREE_CONVERTED :
-                                                                             params.bvh_layout;
-  params.bvh_layout = RNA_boolean_get(&cscene, "use_bvh_embree_gpu") ? BVH_LAYOUT_EMBREE_GPU :
-                                                                       params.bvh_layout;
+  switch (RNA_enum_get(&cscene, "bvh_builder")) {
+  case 1:
+      params.bvh_layout = BVH_LAYOUT_EMBREE;
+      break;
+  case 2:
+      params.bvh_layout = BVH_LAYOUT_EMBREE_CONVERTED;
+      break;
+  case 3:
+      params.bvh_layout = BVH_LAYOUT_EMBREE_GPU;
+      break;
+  }
 #endif
   return params;
 }

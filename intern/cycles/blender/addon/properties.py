@@ -57,6 +57,13 @@ enum_bvh_layouts = (
     ('BVH8', "BVH8", "", 4),
 )
 
+enum_bvh_builder = (
+    ('INTERNAL', "Internal", "Use old internal BVH builder"),
+    ('EMBREE', "Embree", "Use full featured embree (only on CPU)"),
+    ('EMBREE_CONVERT', "Embree, then convert", "Use embree, then convert it to BVH2"),
+    ('EMBREE_BUILDER', "Embree builder", "Use Embree BVH Builder"),
+)
+
 enum_bvh_types = (
     ('DYNAMIC_BVH', "Dynamic BVH", "Objects can be individually updated, at the cost of slower render time"),
     ('STATIC_BVH', "Static BVH", "Any object modification requires a complete BVH rebuild, but renders faster"),
@@ -522,21 +529,13 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         items=enum_bvh_types,
         default='DYNAMIC_BVH',
     )
-    use_bvh_embree: BoolProperty(
-        name="Use Embree",
-        description="Use Embree as ray accelerator",
-        default=False,
+    bvh_builder: EnumProperty(
+        name="BVH Builder",
+        description="Choose the BVH builder that will be used",
+        items=enum_bvh_builder,
+        default='INTERNAL',
     )
-    use_bvh_embree_converter: BoolProperty(
-        name="Convert Embree to Internal BVH",
-        description="Use Embree as ray accelerator",
-        default=False,
-    )
-    use_bvh_embree_gpu: BoolProperty(
-        name="Use Embree on GPU (experimental)",
-        description="Use Embree as ray accelerator",
-        default=False,
-    )
+
     debug_use_spatial_splits: BoolProperty(
         name="Use Spatial Splits",
         description="Use BVH spatial splits: longer builder time, faster render",

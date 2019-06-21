@@ -199,6 +199,20 @@ BVHNode* print_bvhInfo(RTCScene scene) {
     return nullptr;
 }
 
+BVHNode *bvh_shrink(BVHNode *root) {
+    if(root->num_children() <= 2) return root;
+
+    InnerNode *node = dynamic_cast<InnerNode*>(root);
+
+    node->children[0] = new InnerNode(root->bounds, bvh_shrink(node->children[0]), bvh_shrink(node->children[1]));
+    if(root->num_children() == 3) {
+        node->children[1] = bvh_shrink(node->children[2]);
+    } else {
+        node->children[1] = new InnerNode(root->bounds, bvh_shrink(node->children[2]), bvh_shrink(node->children[3]));
+    }
+    node->num_children_ = 2;
+    return node;
+}
 
 
 /* This gets called by Embree at every valid ray/object intersection.
@@ -429,7 +443,7 @@ thread_mutex BVHEmbree::rtc_shared_mutex;
 
 BVHEmbree::BVHEmbree(const BVHParams &params_, const vector<Object *> &objects_)
     : bvh_layout(params_.bvh_layout),
-      BVH4(params_, objects_),
+      BVH2(params_, objects_),
       scene(NULL),
       mem_used(0),
       top_level(NULL),
@@ -637,9 +651,11 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
   progress.set_substatus("Packing geometry");
   if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
     BVHNode *root = print_bvhInfo(scene);
+    std::cout << "SAH4 " << root->computeSubtreeSAHCost(this->params) << std::endl;
     root->print();
+    root = bvh_shrink(root);
     pack_nodes(root);
-    std::cout << "SAH " << root->computeSubtreeSAHCost(this->params) << std::endl;
+    std::cout << "SAH2 " << root->computeSubtreeSAHCost(this->params) << std::endl;
   } else {
     pack_nodes(NULL);
   }
@@ -960,7 +976,7 @@ void BVHEmbree::add_curves(Object *ob, int i)
 void BVHEmbree::pack_nodes(const BVHNode *r)
 {
   if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
-    BVH4::pack_nodes(r);
+    BVH2::pack_nodes(r);
   } else {
       /* Quite a bit of this code is for compatibility with Cycles' native BVH. */
       if (!params.top_level) {
