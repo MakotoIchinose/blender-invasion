@@ -36,7 +36,7 @@
  * \ingroup wm
  */
 
-GHOST_TSuccess GHOST_XR_session_is_running(const GHOST_XRContext *xr_context)
+GHOST_TSuccess GHOST_XrSessionIsRunning(const GHOST_XrContext *xr_context)
 {
   if ((xr_context == nullptr) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
     return GHOST_kFailure;
@@ -55,7 +55,7 @@ GHOST_TSuccess GHOST_XR_session_is_running(const GHOST_XRContext *xr_context)
  * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
  * devices are managed through OpenXR. So this attempts to init the HMD and the other devices.
  */
-static void GHOST_XR_system_init(OpenXRData *oxr)
+static void GHOST_XrSystemInit(OpenXRData *oxr)
 {
   assert(oxr->instance != XR_NULL_HANDLE);
   assert(oxr->system_id == XR_NULL_SYSTEM_ID);
@@ -67,11 +67,11 @@ static void GHOST_XR_system_init(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-void GHOST_XRGraphicsBinding::initFromGhostContext(GHOST_TGraphicsBinding type,
+void GHOST_XrGraphicsBinding::initFromGhostContext(GHOST_TXrGraphicsBinding type,
                                                    GHOST_Context *ghost_ctx)
 {
   switch (type) {
-    case GHOST_kXRGraphicsOpenGL: {
+    case GHOST_kXrGraphicsOpenGL: {
 #if defined(WITH_X11)
       GHOST_ContextGLX *ctx_glx = static_cast<GHOST_ContextGLX *>(ghost_ctx);
       XVisualInfo *visual_info = glXGetVisualFromFBConfig(ctx_glx->m_display, ctx_glx->m_fbconfig);
@@ -93,7 +93,7 @@ void GHOST_XRGraphicsBinding::initFromGhostContext(GHOST_TGraphicsBinding type,
       break;
     }
 #ifdef WIN32
-    case GHOST_kXRGraphicsD3D11: {
+    case GHOST_kXrGraphicsD3D11: {
       GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
 
       oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
@@ -107,7 +107,7 @@ void GHOST_XRGraphicsBinding::initFromGhostContext(GHOST_TGraphicsBinding type,
   }
 }
 
-void GHOST_XR_session_start(GHOST_XRContext *xr_context)
+void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
@@ -116,23 +116,22 @@ void GHOST_XR_session_start(GHOST_XRContext *xr_context)
   if (xr_context->gpu_ctx_bind_fn == nullptr) {
     fprintf(stderr,
             "Invalid API usage: No way to bind graphics context to the XR session. Call "
-            "GHOST_XR_graphics_context_bind_funcs() with valid parameters before starting the "
-            "session (through GHOST_XR_session_start()).");
+            "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
+            "session (through GHOST_XrSessionStart()).");
     return;
   }
 
-  GHOST_XR_system_init(oxr);
+  GHOST_XrSystemInit(oxr);
 
-  GHOST_XR_graphics_context_bind(*xr_context);
+  GHOST_XrGraphicsContextBind(*xr_context);
   if (xr_context->gpu_ctx == nullptr) {
-    fprintf(
-        stderr,
-        "Invalid API usage: No graphics context returned through the callback set with "
-        "GHOST_XR_graphics_context_bind_funcs(). This is required for session starting (through "
-        "GHOST_XR_session_start()).\n");
+    fprintf(stderr,
+            "Invalid API usage: No graphics context returned through the callback set with "
+            "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
+            "GHOST_XrSessionStart()).\n");
     return;
   }
-  xr_context->gpu_binding = new GHOST_XRGraphicsBinding();
+  xr_context->gpu_binding = new GHOST_XrGraphicsBinding();
   xr_context->gpu_binding->initFromGhostContext(xr_context->gpu_binding_type, xr_context->gpu_ctx);
 
   XrSessionCreateInfo create_info{};
@@ -143,15 +142,14 @@ void GHOST_XR_session_start(GHOST_XRContext *xr_context)
   xrCreateSession(oxr->instance, &create_info, &oxr->session);
 }
 
-void GHOST_XR_session_end(GHOST_XRContext *xr_context)
+void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
-  GHOST_XR_graphics_context_unbind(*xr_context);
+  GHOST_XrGraphicsContextUnbind(*xr_context);
   delete xr_context->gpu_binding;
 }
 
-void GHOST_XR_session_state_change(OpenXRData *oxr,
-                                   const XrEventDataSessionStateChanged &lifecycle)
+void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
 {
   oxr->session_state = lifecycle.state;
 

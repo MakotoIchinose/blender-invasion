@@ -42,7 +42,7 @@ struct wmKeyMap;
 struct wmMsgBus;
 struct wmOperator;
 struct wmOperatorType;
-struct GHOST_XRContext;
+struct GHOST_XrContext;
 
 /* forwards */
 struct PointerRNA;
@@ -180,7 +180,7 @@ typedef struct wmWindowManager {
   struct wmMsgBus *message_bus;
 
   //#ifdef WITH_OPENXR
-  struct GHOST_XRContext *xr_context;
+  struct GHOST_XrContext *xr_context;
   //#endif
 } wmWindowManager;
 

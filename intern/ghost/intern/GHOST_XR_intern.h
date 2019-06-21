@@ -36,7 +36,7 @@ typedef struct OpenXRData {
   XrSessionState session_state;
 } OpenXRData;
 
-class GHOST_XRGraphicsBinding {
+class GHOST_XrGraphicsBinding {
  public:
   union {
 #if defined(WITH_X11)
@@ -47,30 +47,29 @@ class GHOST_XRGraphicsBinding {
 #endif
   } oxr_binding;
 
-  void initFromGhostContext(GHOST_TGraphicsBinding type, class GHOST_Context *ghost_ctx);
+  void initFromGhostContext(GHOST_TXrGraphicsBinding type, class GHOST_Context *ghost_ctx);
 };
 
-typedef struct GHOST_XRContext {
+typedef struct GHOST_XrContext {
   OpenXRData oxr;
 
   /** Active graphics binding type. */
-  GHOST_TGraphicsBinding gpu_binding_type;
-  class GHOST_XRGraphicsBinding *gpu_binding;
+  GHOST_TXrGraphicsBinding gpu_binding_type;
+  class GHOST_XrGraphicsBinding *gpu_binding;
   /** Function to retrieve (possibly create) a graphics context */
-  GHOST_XRGraphicsContextBindFn gpu_ctx_bind_fn;
+  GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn;
   /** Function to release (possibly free) a graphics context */
-  GHOST_XRGraphicsContextUnbindFn gpu_ctx_unbind_fn;
+  GHOST_XrGraphicsContextUnbindFn gpu_ctx_unbind_fn;
   /** Active Ghost graphic context. */
   class GHOST_Context *gpu_ctx;
 
   /** Names of enabled extensions */
   std::vector<const char *> enabled_extensions;
-} GHOST_XRContext;
+} GHOST_XrContext;
 
-void GHOST_XR_graphics_context_bind(GHOST_XRContext &xr_context);
-void GHOST_XR_graphics_context_unbind(GHOST_XRContext &xr_context);
+void GHOST_XrGraphicsContextBind(GHOST_XrContext &xr_context);
+void GHOST_XrGraphicsContextUnbind(GHOST_XrContext &xr_context);
 
-void GHOST_XR_session_state_change(OpenXRData *oxr,
-                                   const XrEventDataSessionStateChanged &lifecycle);
+void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle);
 
 #endif /* __GHOST_XR_INTERN_H__ */

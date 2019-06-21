@@ -3539,17 +3539,17 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 }
 
 #ifdef WITH_OPENXR
-static void *xr_session_gpu_binding_context_create(GHOST_TGraphicsBinding graphics_lib)
+static void *xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_lib)
 {
 #  ifndef WIN32
-  BLI_assert(graphics_lib == GHOST_kXRGraphicsOpenGL);
+  BLI_assert(graphics_lib == GHOST_kXrGraphicsOpenGL);
 #  endif
 
   switch (graphics_lib) {
-    case GHOST_kXRGraphicsOpenGL:
+    case GHOST_kXrGraphicsOpenGL:
       return WM_opengl_context_create();
 #  ifdef WIN32
-    case GHOST_kXRGraphicsD3D11: {
+    case GHOST_kXrGraphicsD3D11: {
       wmWindowManager *wm = G_MAIN->wm.first;
       for (wmWindow *win = wm->windows.first; win; win = win->next) {
         /* TODO better lookup? For now only one D3D window possible, but later? */
@@ -3565,13 +3565,13 @@ static void *xr_session_gpu_binding_context_create(GHOST_TGraphicsBinding graphi
   }
 }
 
-static void xr_session_gpu_binding_context_destroy(GHOST_TGraphicsBinding graphics_lib,
+static void xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding graphics_lib,
                                                    void *context)
 {
   GHOST_ContextHandle ghost_context = context;
 
   switch (graphics_lib) {
-    case GHOST_kXRGraphicsOpenGL:
+    case GHOST_kXrGraphicsOpenGL:
       WM_opengl_context_dispose(ghost_context);
     default:
       return;
@@ -3629,14 +3629,11 @@ static void xr_session_window_create(bContext *C)
 
   if (win->ghostwin) {
     GHOST_SetTitle(win->ghostwin, "Blender VR Session View");
-    return win;
   }
   else {
     /* very unlikely! but opening a new window can fail */
     wm_window_close(C, CTX_wm_manager(C), win);
     CTX_wm_window_set(C, win_prev);
-
-    return NULL;
   }
 }
 #  endif /* WIN32 */
@@ -3647,17 +3644,17 @@ static bool wm_xr_ensure_context(wmWindowManager *wm)
     return true;
   }
 
-  const GHOST_TGraphicsBinding gpu_bindings_candidates[] = {
-      GHOST_kXRGraphicsOpenGL,
+  const GHOST_TXrGraphicsBinding gpu_bindings_candidates[] = {
+      GHOST_kXrGraphicsOpenGL,
 #  ifdef WIN32
-      GHOST_kXRGraphicsD3D11,
+      GHOST_kXrGraphicsD3D11,
 #  endif
   };
-  const GHOST_XRContextCreateInfo create_info = {
+  const GHOST_XrContextCreateInfo create_info = {
       .gpu_binding_candidates = gpu_bindings_candidates,
       .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
 
-  wm->xr_context = GHOST_XR_context_create(&create_info);
+  wm->xr_context = GHOST_XrContextCreate(&create_info);
 
   return wm->xr_context != NULL;
 }
@@ -3670,18 +3667,18 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   if (wm_xr_ensure_context(wm) == false) {
     return OPERATOR_CANCELLED;
   }
-  if (GHOST_XR_session_is_running(wm->xr_context)) {
-    GHOST_XR_session_end(wm->xr_context);
+  if (GHOST_XrSessionIsRunning(wm->xr_context)) {
+    GHOST_XrSessionEnd(wm->xr_context);
   }
   else {
 #  if defined(WIN32)
     xr_session_window_create(C);
 #  endif
 
-    GHOST_XR_graphics_context_bind_funcs(wm->xr_context,
+    GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
                                          xr_session_gpu_binding_context_create,
                                          xr_session_gpu_binding_context_destroy);
-    GHOST_XR_session_start(wm->xr_context);
+    GHOST_XrSessionStart(wm->xr_context);
   }
   return OPERATOR_FINISHED;
 }

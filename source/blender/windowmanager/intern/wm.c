@@ -379,7 +379,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
 
 #ifdef WITH_OPENXR
   if (wm->xr_context != NULL) {
-    GHOST_XR_context_destroy(wm->xr_context);
+    GHOST_XrContextDestroy(wm->xr_context);
   }
 #endif
 

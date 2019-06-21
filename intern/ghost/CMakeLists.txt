@@ -349,13 +349,13 @@ endif()
 
 if(WITH_OPENXR)
   list(APPEND SRC
-    intern/GHOST_XR.cpp
-    intern/GHOST_XREvent.cpp
-    intern/GHOST_XRSession.cpp
+    intern/GHOST_Xr.cpp
+    intern/GHOST_XrEvent.cpp
+    intern/GHOST_XrSession.cpp
 
-    intern/GHOST_XR_intern.h
-    intern/GHOST_XR_openxr_includes.h
-#    intern/GHOST_XRSession.h
+    intern/GHOST_Xr_intern.h
+    intern/GHOST_Xr_openxr_includes.h
+#    intern/GHOST_XrSession.h
   )
   list(APPEND INC
   )
