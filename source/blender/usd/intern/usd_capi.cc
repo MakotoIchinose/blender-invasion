@@ -28,6 +28,7 @@
 extern "C" {
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "DNA_scene_types.h"
 
@@ -49,21 +50,13 @@ extern "C" {
 #include "WM_types.h"
 }
 
-struct ExportSettings {
-  Scene *scene;
-  /** Scene layer to export; all its objects will be exported, unless selected_only=true. */
-  ViewLayer *view_layer;
-  Depsgraph *depsgraph;
-
-  USDExportParams params;
-};
-
 struct ExportJobData {
   ViewLayer *view_layer;
   Main *bmain;
+  Depsgraph *depsgraph;
 
   char filename[1024];
-  ExportSettings settings;
+  USDExportParams params;
 
   short *stop;
   short *do_update;
@@ -88,16 +81,18 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
    */
   G.is_rendering = true;
   BKE_spacedata_draw_locks(true);
-
   G.is_break = false;
 
+  // Construct the depsgraph for exporting.
+  Scene *scene = DEG_get_input_scene(data->depsgraph);
   {
-    DEG_graph_build_from_view_layer(
-        data->settings.depsgraph, data->bmain, data->settings.scene, data->view_layer);
-    BKE_scene_graph_update_tagged(data->settings.depsgraph, data->bmain);
+    Timer deg_build_timer_("Building depsgraph for USD export");
+    ViewLayer *view_layer = DEG_get_input_view_layer(data->depsgraph);
+    DEG_graph_build_from_view_layer(data->depsgraph, data->bmain, scene, view_layer);
+    BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
   }
 
-  Scene *scene = data->settings.scene; /* for the CFRA macro */
+  // For restoring the current frame after exporting animation is done.
   const int orig_frame = CFRA;
 
   {
@@ -107,7 +102,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
     usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
 
-    USDHierarchyIterator iter(data->settings.depsgraph, usd_stage);
+    USDHierarchyIterator iter(data->depsgraph, usd_stage);
 
     // This should be done for every frame, when exporting animation:
     iter.iterate();
@@ -120,8 +115,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
 
   if (CFRA != orig_frame) {
     CFRA = orig_frame;
-
-    BKE_scene_graph_update_for_newframe(data->settings.depsgraph, data->bmain);
+    BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
   }
 
   data->export_ok = !data->was_canceled;
@@ -131,7 +125,7 @@ static void export_endjob(void *customdata)
 {
   ExportJobData *data = static_cast<ExportJobData *>(customdata);
 
-  DEG_graph_free(data->settings.depsgraph);
+  DEG_graph_free(data->depsgraph);
 
   if (data->was_canceled && BLI_exists(data->filename)) {
     BLI_delete(data->filename, false, false);
@@ -150,27 +144,19 @@ bool USD_export(Scene *scene,
   ExportJobData *job = static_cast<ExportJobData *>(
       MEM_mallocN(sizeof(ExportJobData), "ExportJobData"));
 
-  job->view_layer = CTX_data_view_layer(C);
   job->bmain = CTX_data_main(C);
   job->export_ok = false;
   BLI_strncpy(job->filename, filepath, 1024);
 
-  job->settings.scene = scene;
-  job->settings.depsgraph = DEG_graph_new(scene, job->view_layer, DAG_EVAL_RENDER);
-
-  /* TODO(Sybren): for now we only export the active scene layer.
-   * Later in the 2.8 development process this may be replaced by using
-   * a specific collection for Alembic I/O, which can then be toggled
-   * between "real" objects and cached Alembic files. */
-  job->settings.view_layer = job->view_layer;
-
-  job->settings.params = *params;
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  job->depsgraph = DEG_graph_new(scene, view_layer, DAG_EVAL_RENDER);
+  job->params = *params;
 
   bool export_ok = false;
   if (as_background_job) {
     wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                                 CTX_wm_window(C),
-                                job->settings.scene,
+                                scene,
                                 "USD Export",
                                 WM_JOB_PROGRESS,
                                 WM_JOB_TYPE_ALEMBIC);
