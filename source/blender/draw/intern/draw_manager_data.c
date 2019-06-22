@@ -52,7 +52,7 @@
 /** \name Uniform Buffer Object (DRW_uniformbuffer)
  * \{ */
 
-static void draw_call_sort(DRWCall *array, DRWCall *array_tmp, int array_len)
+static void draw_call_sort(DRWCommand *array, DRWCommand *array_tmp, int array_len)
 {
   /* Count unique batches. Tt's not really important if
    * there is colisions. If there is a lot of different batches,
@@ -60,7 +60,7 @@ static void draw_call_sort(DRWCall *array, DRWCall *array_tmp, int array_len)
    * sort fast! */
   uchar idx[128] = {0};
   /* Shift by 6 positions knowing each GPUBatch is > 64 bytes */
-#define KEY(a) ((((size_t)((a).batch)) >> 6) % ARRAY_SIZE(idx))
+#define KEY(a) ((((size_t)((a).draw.batch)) >> 6) % ARRAY_SIZE(idx))
   BLI_assert(array_len <= ARRAY_SIZE(idx));
 
   for (int i = 0; i < array_len; i++) {
@@ -78,7 +78,7 @@ static void draw_call_sort(DRWCall *array, DRWCall *array_tmp, int array_len)
   }
 #undef KEY
 
-  memcpy(array, array_tmp, sizeof(DRWCallChunk) - offsetof(DRWCallChunk, calls));
+  memcpy(array, array_tmp, sizeof(*array) * array_len);
 }
 
 GPUUniformBuffer *DRW_uniformbuffer_create(int size, const void *data)
@@ -139,12 +139,21 @@ void drw_resource_buffer_finish(ViewportMemoryPool *vmempool)
   }
 
   /* Aligned alloc to avoid unaligned memcpy. */
-  DRWCallChunk *chunk_tmp = MEM_mallocN_aligned(sizeof(DRWCallChunk), 16, "tmp call chunk");
-  DRWCallChunk *chunk;
+  DRWCommandChunk *chunk_tmp = MEM_mallocN_aligned(sizeof(DRWCommandChunk), 16, "tmp call chunk");
+  DRWCommandChunk *chunk;
   BLI_memblock_iter iter;
-  BLI_memblock_iternew(vmempool->calls, &iter);
+  BLI_memblock_iternew(vmempool->commands, &iter);
   while ((chunk = BLI_memblock_iterstep(&iter))) {
-    draw_call_sort(chunk->calls, chunk_tmp->calls, chunk->call_used);
+    bool sortable = true;
+    /* We can only sort chunks that contain DRWCommandDraw only. */
+    for (int i = 0; i < ARRAY_SIZE(chunk->command_type) && sortable; i++) {
+      if (chunk->command_type[i] != 0) {
+        sortable = false;
+      }
+    }
+    if (sortable) {
+      draw_call_sort(chunk->commands, chunk_tmp->commands, chunk->command_used);
+    }
   }
   MEM_freeN(chunk_tmp);
 }
@@ -518,7 +527,7 @@ static void drw_call_culling_init(DRWCullingState *cull, Object *ob)
   cull->user_data = NULL;
 }
 
-static DRWResourceHandle drw_call_state_create(float (*obmat)[4], Object *ob)
+static DRWResourceHandle drw_resource_handle_new(float (*obmat)[4], Object *ob)
 {
   DRWCullingState *culling = BLI_memblock_alloc(DST.vmempool->cullstates);
   DRWObjectMatrix *ob_mats = BLI_memblock_alloc(DST.vmempool->obmats);
@@ -539,9 +548,9 @@ static DRWResourceHandle drw_call_state_create(float (*obmat)[4], Object *ob)
   return handle;
 }
 
-static DRWResourceHandle drw_call_handle_object(DRWShadingGroup *shgroup,
-                                                float (*obmat)[4],
-                                                Object *ob)
+static DRWResourceHandle drw_resource_handle(DRWShadingGroup *shgroup,
+                                             float (*obmat)[4],
+                                             Object *ob)
 {
   if (ob == NULL) {
     if (obmat == NULL) {
@@ -549,12 +558,12 @@ static DRWResourceHandle drw_call_handle_object(DRWShadingGroup *shgroup,
       return handle;
     }
     else {
-      return drw_call_state_create(obmat, NULL);
+      return drw_resource_handle_new(obmat, NULL);
     }
   }
   else {
     if (DST.ob_handle.value == 0) {
-      DST.ob_handle = drw_call_state_create(obmat, ob);
+      DST.ob_handle = drw_resource_handle_new(obmat, ob);
       DST.ob_state_obinfo_init = false;
     }
 
@@ -573,53 +582,107 @@ static DRWResourceHandle drw_call_handle_object(DRWShadingGroup *shgroup,
   }
 }
 
-static DRWCall *drw_call_create(DRWShadingGroup *shgroup)
+static void command_type_set(uint64_t *command_type_bits, int index, eDRWCommandType type)
 {
-  DRWCallChunk *chunk = shgroup->calls.last;
+  command_type_bits[index / 16] |= ((uint64_t)type) << ((index % 16) * 4);
+}
+
+eDRWCommandType command_type_get(uint64_t *command_type_bits, int index)
+{
+  return ((command_type_bits[index / 16] >> ((index % 16) * 4)) & 0xF);
+}
+
+static void *drw_command_create(DRWShadingGroup *shgroup, eDRWCommandType type)
+{
+  DRWCommandChunk *chunk = shgroup->cmd.last;
 
   if (chunk == NULL) {
-    /* TODO Create another pool to reduce memory usage of the first chunk. */
-    DRWCallSmallChunk *smallchunk = BLI_memblock_alloc(DST.vmempool->calls);
-    smallchunk->chunk_len = ARRAY_SIZE(smallchunk->calls);
-    smallchunk->call_used = 0;
-    chunk = (DRWCallChunk *)smallchunk;
-    BLI_LINKS_APPEND(&shgroup->calls, chunk);
+    DRWCommandSmallChunk *smallchunk = BLI_memblock_alloc(DST.vmempool->commands_small);
+    smallchunk->command_len = ARRAY_SIZE(smallchunk->commands);
+    smallchunk->command_used = 0;
+    chunk = (DRWCommandChunk *)smallchunk;
+    BLI_LINKS_APPEND(&shgroup->cmd, chunk);
   }
-  else if (chunk->call_used == chunk->chunk_len) {
-    chunk = BLI_memblock_alloc(DST.vmempool->calls);
-    chunk->chunk_len = ARRAY_SIZE(chunk->calls);
-    chunk->call_used = 0;
-    BLI_LINKS_APPEND(&shgroup->calls, chunk);
+  else if (chunk->command_used == chunk->command_len) {
+    chunk = BLI_memblock_alloc(DST.vmempool->commands);
+    chunk->command_len = ARRAY_SIZE(chunk->commands);
+    chunk->command_used = 0;
+    memset(chunk->command_type, 0x0, sizeof(chunk->command_type));
+    BLI_LINKS_APPEND(&shgroup->cmd, chunk);
   }
 
-  return chunk->calls + chunk->call_used++;
+  command_type_set(chunk->command_type, chunk->command_used, type);
+
+  return chunk->commands + chunk->command_used++;
+}
+
+static void drw_command_draw(DRWShadingGroup *shgroup, GPUBatch *batch, DRWResourceHandle handle)
+{
+  DRWCommandDraw *cmd = drw_command_create(shgroup, DRW_CMD_DRAW);
+  cmd->batch = batch;
+  cmd->handle = handle;
+}
+
+static void drw_command_draw_range(DRWShadingGroup *shgroup,
+                                   GPUBatch *batch,
+                                   uint start,
+                                   uint count)
+{
+  DRWCommandDrawRange *cmd = drw_command_create(shgroup, DRW_CMD_DRAW_RANGE);
+  cmd->batch = batch;
+  cmd->vert_first = start;
+  cmd->vert_count = count;
+}
+
+static void drw_command_draw_instance(DRWShadingGroup *shgroup,
+                                      GPUBatch *batch,
+                                      DRWResourceHandle handle,
+                                      uint count)
+{
+  DRWCommandDrawInstance *cmd = drw_command_create(shgroup, DRW_CMD_DRAW_INSTANCE);
+  cmd->batch = batch;
+  cmd->handle = handle;
+  cmd->inst_count = count;
+}
+
+static void drw_command_draw_procedural(DRWShadingGroup *shgroup,
+                                        GPUBatch *batch,
+                                        DRWResourceHandle handle,
+                                        uint vert_count)
+{
+  DRWCommandDrawProcedural *cmd = drw_command_create(shgroup, DRW_CMD_DRAW_PROCEDURAL);
+  cmd->batch = batch;
+  cmd->handle = handle;
+  cmd->vert_count = vert_count;
+}
+
+static void drw_command_set_select_id(DRWShadingGroup *shgroup, GPUVertBuf *buf, uint select_id)
+{
+  /* Only one can be valid. */
+  BLI_assert(buf == NULL || select_id == -1);
+  DRWCommandSetSelectID *cmd = drw_command_create(shgroup, DRW_CMD_SELECTID);
+  cmd->select_buf = buf;
+  cmd->select_id = select_id;
 }
 
 void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          Object *ob,
                          float (*obmat)[4],
                          struct GPUBatch *geom,
-                         uint v_sta,
-                         uint v_ct,
                          bool bypass_culling,
                          void *user_data)
 {
   BLI_assert(geom != NULL);
+  if (G.f & G_FLAG_PICKSEL) {
+    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+  }
+  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : obmat, ob);
+  drw_command_draw(shgroup, geom, handle);
 
-  DRWCall *call = drw_call_create(shgroup);
-  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : obmat, ob);
-  call->batch = geom;
-  call->vert_first = v_sta;
-  call->vert_count = v_ct; /* 0 means auto from batch. */
-  call->inst_count = -1;   /* -1 means no instances. */
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
   /* Culling data. */
   if (user_data || bypass_culling) {
     DRWCullingState *culling = BLI_memblock_elem_get(
-        DST.vmempool->cullstates, call->handle.chunk, call->handle.id);
+        DST.vmempool->cullstates, handle.chunk, handle.id);
 
     if (user_data) {
       culling->user_data = user_data;
@@ -631,22 +694,27 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   }
 }
 
+void DRW_shgroup_call_range(DRWShadingGroup *shgroup, struct GPUBatch *geom, uint v_sta, uint v_ct)
+{
+  BLI_assert(geom != NULL);
+  if (G.f & G_FLAG_PICKSEL) {
+    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+  }
+  drw_command_draw_range(shgroup, geom, v_sta, v_ct);
+}
+
 static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
                                                GPUBatch *geom,
                                                Object *ob,
                                                uint vert_count)
 {
   BLI_assert(vert_count > 0);
-  DRWCall *call = drw_call_create(shgroup);
-  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
-  call->batch = geom;
-  call->vert_first = 0;
-  call->vert_count = vert_count;
-  call->inst_count = -1; /* -1 means no instances. */
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
+  BLI_assert(geom != NULL);
+  if (G.f & G_FLAG_PICKSEL) {
+    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+  }
+  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
+  drw_command_draw_procedural(shgroup, geom, handle, vert_count);
 }
 
 void DRW_shgroup_call_procedural_points(DRWShadingGroup *shgroup, Object *ob, uint point_len)
@@ -667,23 +735,18 @@ void DRW_shgroup_call_procedural_triangles(DRWShadingGroup *shgroup, Object *ob,
   drw_shgroup_call_procedural_add_ex(shgroup, geom, ob, tria_count * 3);
 }
 
+/* Should be removed */
 void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
                                 Object *ob,
                                 struct GPUBatch *geom,
                                 uint count)
 {
   BLI_assert(geom != NULL);
-
-  DRWCall *call = drw_call_create(shgroup);
-  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
-  call->batch = geom;
-  call->vert_first = 0;
-  call->vert_count = 0; /* Auto from batch. */
-  call->inst_count = count;
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
+  if (G.f & G_FLAG_PICKSEL) {
+    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+  }
+  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
+  drw_command_draw_instance(shgroup, geom, handle, count);
 }
 
 void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
@@ -693,19 +756,13 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
 {
   BLI_assert(geom != NULL);
   BLI_assert(inst_attributes->verts[0] != NULL);
-
+  if (G.f & G_FLAG_PICKSEL) {
+    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+  }
+  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
   GPUVertBuf *buf_inst = inst_attributes->verts[0];
-
-  DRWCall *call = drw_call_create(shgroup);
-  call->handle = drw_call_handle_object(shgroup, ob ? ob->obmat : NULL, ob);
-  call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, geom);
-  call->vert_first = 0;
-  call->vert_count = 0; /* Auto from batch. */
-  call->inst_count = buf_inst->vertex_len;
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
+  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, geom);
+  drw_command_draw(shgroup, batch, handle);
 }
 
 // #define SCULPT_DEBUG_BUFFERS
@@ -858,25 +915,26 @@ DRWCallBuffer *DRW_shgroup_call_buffer(DRWShadingGroup *shgroup,
   BLI_assert(ELEM(prim_type, GPU_PRIM_POINTS, GPU_PRIM_LINES, GPU_PRIM_TRI_FAN));
   BLI_assert(format != NULL);
 
-  DRWCall *call = drw_call_create(shgroup);
-  call->handle = drw_call_handle_object(shgroup, NULL, NULL);
-  GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->vert_count);
-  call->batch = DRW_temp_batch_request(DST.idatalist, buf, prim_type);
-  call->vert_first = 0;
-  call->vert_count = 0;
-  call->inst_count = -1; /* -1 means no instances. */
+  DRWCallBuffer *callbuf = BLI_memblock_alloc(DST.vmempool->callbuffers);
+  callbuf->buf = DRW_temp_buffer_request(DST.idatalist, format, &callbuf->count);
+  callbuf->buf_select = NULL;
+  callbuf->count = 0;
 
-#ifdef USE_GPU_SELECT
   if (G.f & G_FLAG_PICKSEL) {
     /* Not actually used for rendering but alloced in one chunk. */
     if (inst_select_format.attr_len == 0) {
       GPU_vertformat_attr_add(&inst_select_format, "selectId", GPU_COMP_I32, 1, GPU_FETCH_INT);
     }
-    call->inst_selectid = DRW_temp_buffer_request(
-        DST.idatalist, &inst_select_format, &call->vert_count);
+    callbuf->buf_select = DRW_temp_buffer_request(
+        DST.idatalist, &inst_select_format, &callbuf->count);
+    drw_command_set_select_id(shgroup, callbuf->buf_select, -1);
   }
-#endif
-  return (DRWCallBuffer *)call;
+
+  DRWResourceHandle handle = drw_resource_handle(shgroup, NULL, NULL);
+  GPUBatch *batch = DRW_temp_batch_request(DST.idatalist, callbuf->buf, prim_type);
+  drw_command_draw(shgroup, batch, handle);
+
+  return callbuf;
 }
 
 DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
@@ -886,54 +944,52 @@ DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
   BLI_assert(geom != NULL);
   BLI_assert(format != NULL);
 
-  DRWCall *call = drw_call_create(shgroup);
-  call->handle = drw_call_handle_object(shgroup, NULL, NULL);
-  GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->inst_count);
-  call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf, geom);
-  call->vert_first = 0;
-  call->vert_count = 0; /* Auto from batch. */
-  call->inst_count = 0;
+  DRWCallBuffer *callbuf = BLI_memblock_alloc(DST.vmempool->callbuffers);
+  callbuf->buf = DRW_temp_buffer_request(DST.idatalist, format, &callbuf->count);
+  callbuf->buf_select = NULL;
+  callbuf->count = 0;
 
-#ifdef USE_GPU_SELECT
   if (G.f & G_FLAG_PICKSEL) {
     /* Not actually used for rendering but alloced in one chunk. */
     if (inst_select_format.attr_len == 0) {
       GPU_vertformat_attr_add(&inst_select_format, "selectId", GPU_COMP_I32, 1, GPU_FETCH_INT);
     }
-    call->inst_selectid = DRW_temp_buffer_request(
-        DST.idatalist, &inst_select_format, &call->inst_count);
+    callbuf->buf_select = DRW_temp_buffer_request(
+        DST.idatalist, &inst_select_format, &callbuf->count);
+    drw_command_set_select_id(shgroup, callbuf->buf_select, -1);
   }
-#endif
-  return (DRWCallBuffer *)call;
+
+  DRWResourceHandle handle = drw_resource_handle(shgroup, NULL, NULL);
+  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, callbuf->buf, geom);
+  drw_command_draw(shgroup, batch, handle);
+
+  return callbuf;
 }
 
 void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint attr_len)
 {
-  DRWCall *call = (DRWCall *)callbuf;
-  const bool is_instance = call->batch->inst != NULL;
-  GPUVertBuf *buf = is_instance ? call->batch->inst : call->batch->verts[0];
-  uint count = is_instance ? call->inst_count++ : call->vert_count++;
-  const bool resize = (count == buf->vertex_alloc);
+  GPUVertBuf *buf = callbuf->buf;
+  const bool resize = (callbuf->count == buf->vertex_alloc);
 
   BLI_assert(attr_len == buf->format.attr_len);
   UNUSED_VARS_NDEBUG(attr_len);
 
   if (UNLIKELY(resize)) {
-    GPU_vertbuf_data_resize(buf, count + DRW_BUFFER_VERTS_CHUNK);
+    GPU_vertbuf_data_resize(buf, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
   }
 
   for (int i = 0; i < attr_len; ++i) {
-    GPU_vertbuf_attr_set(buf, i, count, attr[i]);
+    GPU_vertbuf_attr_set(buf, i, callbuf->count, attr[i]);
   }
 
-#ifdef USE_GPU_SELECT
   if (G.f & G_FLAG_PICKSEL) {
     if (UNLIKELY(resize)) {
-      GPU_vertbuf_data_resize(call->inst_selectid, count + DRW_BUFFER_VERTS_CHUNK);
+      GPU_vertbuf_data_resize(callbuf->buf_select, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
     }
-    GPU_vertbuf_attr_set(call->inst_selectid, 0, count, &DST.select_id);
+    GPU_vertbuf_attr_set(callbuf->buf_select, 0, callbuf->count, &DST.select_id);
   }
-#endif
+
+  callbuf->count++;
 }
 
 /** \} */
@@ -1029,8 +1085,8 @@ static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass 
   shgroup->state_extra = 0;
   shgroup->state_extra_disable = ~0x0;
   shgroup->stencil_mask = 0;
-  shgroup->calls.first = NULL;
-  shgroup->calls.last = NULL;
+  shgroup->cmd.first = NULL;
+  shgroup->cmd.last = NULL;
   shgroup->pass_parent = pass;
 
   return shgroup;
@@ -1158,7 +1214,7 @@ void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask)
 
 bool DRW_shgroup_is_empty(DRWShadingGroup *shgroup)
 {
-  return shgroup->calls.first == NULL;
+  return shgroup->cmd.first == NULL;
 }
 
 /* This is a workaround function waiting for the clearing operation to be available inside the
@@ -1181,8 +1237,8 @@ DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
 
   *shgroup_new = *shgroup;
   drw_shgroup_init(shgroup_new, shgroup_new->shader);
-  shgroup_new->calls.first = NULL;
-  shgroup_new->calls.last = NULL;
+  shgroup_new->cmd.first = NULL;
+  shgroup_new->cmd.last = NULL;
 
   BLI_LINKS_INSERT_AFTER(&shgroup->pass_parent->shgroups, shgroup, shgroup_new);
 
@@ -1728,8 +1784,10 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
   const DRWShadingGroup *shgrp_a = (const DRWShadingGroup *)a;
   const DRWShadingGroup *shgrp_b = (const DRWShadingGroup *)b;
 
-  const DRWCall *call_a = &((DRWCallChunk *)shgrp_a->calls.first)->calls[0];
-  const DRWCall *call_b = &((DRWCallChunk *)shgrp_b->calls.first)->calls[0];
+  /* XXX TODO FIXMEALREADY: THIS IS BROKEN FIX IT ASAP. First command is not garanteed to be a draw
+   * command. Also, it is always allocated. */
+  const DRWCommandDraw *call_a = &((DRWCommandSmallChunk *)shgrp_a->cmd.first)->commands[0].draw;
+  const DRWCommandDraw *call_b = &((DRWCommandSmallChunk *)shgrp_b->cmd.first)->commands[0].draw;
 
   if (call_a == NULL) {
     return -1;
@@ -1789,6 +1847,9 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 void DRW_pass_sort_shgroup_z(DRWPass *pass)
 {
   const float(*viewinv)[4] = DST.view_active->storage.viewinv;
+
+  /* XXX TODO FIXMEALREADY: THIS IS BROKEN FIX IT ASAP. */
+  return;
 
   ZSortData zsortdata = {viewinv[2], viewinv[3]};
 

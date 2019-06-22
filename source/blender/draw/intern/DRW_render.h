@@ -84,8 +84,6 @@ typedef struct DRWPass DRWPass;
 typedef struct DRWShadingGroup DRWShadingGroup;
 typedef struct DRWUniform DRWUniform;
 typedef struct DRWView DRWView;
-
-/* Opaque type to avoid usage as a DRWCall but it is exactly the same thing. */
 typedef struct DRWCallBuffer DRWCallBuffer;
 
 /* TODO Put it somewhere else? */
@@ -407,35 +405,29 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          Object *ob,
                          float (*obmat)[4],
                          struct GPUBatch *geom,
-                         uint v_sta,
-                         uint v_ct,
                          bool bypass_culling,
                          void *user_data);
 
 /* If ob is NULL, unit modelmatrix is assumed and culling is bypassed. */
-#define DRW_shgroup_call(shgrp, geom, ob) \
-  DRW_shgroup_call_ex(shgrp, ob, NULL, geom, 0, 0, false, NULL)
+#define DRW_shgroup_call(shgrp, geom, ob) DRW_shgroup_call_ex(shgrp, ob, NULL, geom, false, NULL)
 
 /* Same as DRW_shgroup_call but override the obmat. Not culled. */
 #define DRW_shgroup_call_obmat(shgrp, geom, obmat) \
-  DRW_shgroup_call_ex(shgrp, NULL, obmat, geom, 0, 0, false, NULL)
+  DRW_shgroup_call_ex(shgrp, NULL, obmat, geom, false, NULL)
 
 /* TODO(fclem) remove this when we have DRWView */
 /* user_data is used by DRWCallVisibilityFn defined in DRWView. */
 #define DRW_shgroup_call_with_callback(shgrp, geom, ob, user_data) \
-  DRW_shgroup_call_ex(shgrp, ob, NULL, geom, 0, 0, false, user_data)
+  DRW_shgroup_call_ex(shgrp, ob, NULL, geom, false, user_data)
 
 /* Same as DRW_shgroup_call but bypass culling even if ob is not NULL. */
 #define DRW_shgroup_call_no_cull(shgrp, geom, ob) \
-  DRW_shgroup_call_ex(shgrp, ob, NULL, geom, 0, 0, true, NULL)
+  DRW_shgroup_call_ex(shgrp, ob, NULL, geom, true, NULL)
 
-/* Only draw a certain range of geom. */
-#define DRW_shgroup_call_range(shgrp, geom, ob, v_sta, v_ct) \
-  DRW_shgroup_call_ex(shgrp, ob, NULL, geom, v_sta, v_ct, false, NULL)
-
-/* Same as DRW_shgroup_call_range but override the obmat. Special for gpencil. */
-#define DRW_shgroup_call_range_obmat(shgrp, geom, obmat, v_sta, v_ct) \
-  DRW_shgroup_call_ex(shgrp, NULL, obmat, geom, v_sta, v_ct, false, NULL)
+void DRW_shgroup_call_range(DRWShadingGroup *shgroup,
+                            struct GPUBatch *geom,
+                            uint v_sta,
+                            uint v_ct);
 
 void DRW_shgroup_call_procedural_points(DRWShadingGroup *sh, Object *ob, uint point_ct);
 void DRW_shgroup_call_procedural_lines(DRWShadingGroup *sh, Object *ob, uint line_ct);

@@ -37,7 +37,9 @@ typedef struct GPUViewport GPUViewport;
 
 /* Contains memory pools information */
 typedef struct ViewportMemoryPool {
-  struct BLI_memblock *calls;
+  struct BLI_memblock *commands;
+  struct BLI_memblock *commands_small;
+  struct BLI_memblock *callbuffers;
   struct BLI_memblock *obmats;
   struct BLI_memblock *obinfos;
   struct BLI_memblock *cullstates;

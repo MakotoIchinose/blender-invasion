@@ -94,11 +94,6 @@
  *                           > DRWUniform
  */
 
-/* Used by DRWCallState.flag */
-enum {
-  DRW_CALL_NEGSCALE = (1 << 0),
-};
-
 typedef struct DRWCullingState {
   uint32_t mask;
   /* Culling: Using Bounding Sphere for now for faster culling.
@@ -154,20 +149,62 @@ typedef struct DRWObjectInfos {
 BLI_STATIC_ASSERT_ALIGN(DRWObjectMatrix, 16)
 BLI_STATIC_ASSERT_ALIGN(DRWObjectInfos, 16)
 
-typedef struct DRWCall {
+typedef enum {
+  /* Draw Commands */
+  DRW_CMD_DRAW = 0, /* Only sortable type. Must be 0. */
+  DRW_CMD_DRAW_RANGE = 1,
+  DRW_CMD_DRAW_INSTANCE = 2,
+  DRW_CMD_DRAW_PROCEDURAL = 3,
+  /* Other Commands */
+  DRW_CMD_SELECTID = 15,
+  /* Needs to fit in 4bits */
+} eDRWCommandType;
+
+typedef struct DRWCommandDraw {
   GPUBatch *batch;
-  int vert_first;
-  int vert_count;
-  int inst_count;
-
   DRWResourceHandle handle;
+} DRWCommandDraw;
 
-#ifdef USE_GPU_SELECT
-  /* TODO(fclem) remove once we have a dedicated selection engine. */
-  int select_id;
-  GPUVertBuf *inst_selectid;
-#endif
-} DRWCall;
+/* Assume DRWResourceHandle to be 0. */
+typedef struct DRWCommandDrawRange {
+  GPUBatch *batch;
+  uint vert_first;
+  uint vert_count;
+} DRWCommandDrawRange;
+
+typedef struct DRWCommandDrawInstance {
+  GPUBatch *batch;
+  DRWResourceHandle handle;
+  uint inst_count;
+} DRWCommandDrawInstance;
+
+typedef struct DRWCommandDrawProcedural {
+  GPUBatch *batch;
+  DRWResourceHandle handle;
+  uint vert_count;
+} DRWCommandDrawProcedural;
+
+typedef struct DRWCommandSetSelectID {
+  GPUVertBuf *select_buf;
+  uint select_id;
+} DRWCommandSetSelectID;
+
+typedef union DRWCommand {
+  /* Only sortable type */
+  DRWCommandDraw draw;
+  DRWCommandDrawRange range;
+  DRWCommandDrawInstance instance;
+  DRWCommandDrawProcedural procedural;
+  /* Select */
+  DRWCommandSetSelectID select_id;
+} DRWCommand;
+
+/* Used for agregating calls into GPUVertBufs. */
+struct DRWCallBuffer {
+  GPUVertBuf *buf;
+  GPUVertBuf *buf_select;
+  int count;
+};
 
 /* Used by DRWUniform.type */
 typedef enum {
@@ -218,8 +255,8 @@ struct DRWShadingGroup {
 
   struct {
     /* Chunks of draw calls. */
-    struct DRWCallChunk *first, *last;
-  } calls;
+    struct DRWCommandChunk *first, *last;
+  } cmd;
 
   /** State changes for this batch only (or'd with the pass's state) */
   DRWState state_extra;
@@ -299,24 +336,28 @@ typedef struct DRWUniformChunk {
   DRWUniform uniforms[5];
 } DRWUniformChunk;
 
-typedef struct DRWCallChunk {
-  struct DRWCallChunk *next; /* single-linked list */
-  uchar chunk_len;
-  uchar call_used;
-  DRWCall calls[126];
-} DRWCallChunk;
+typedef struct DRWCommandChunk {
+  struct DRWCommandChunk *next;
+  uint32_t command_len;
+  uint32_t command_used;
+  /* 4bits for each command. */
+  uint64_t command_type[6];
+  /* -- 64 bytes aligned -- */
+  DRWCommand commands[96];
+  /* -- 64 bytes aligned -- */
+} DRWCommandChunk;
 
-typedef struct DRWCallSmallChunk {
-  struct DRWCallChunk *next; /* single-linked list */
-  uchar chunk_len;
-  uchar call_used;
-  /* Small chunk to avoid wasting too much memory
-   * on small shading groups. */
-  DRWCall calls[4];
-} DRWCallSmallChunk;
+typedef struct DRWCommandSmallChunk {
+  struct DRWCommandChunk *next;
+  uint32_t command_len;
+  uint32_t command_used;
+  /* 4bits for each command. */
+  /* TODO reduce size of command_type. */
+  uint64_t command_type[6];
+  DRWCommand commands[6];
+} DRWCommandSmallChunk;
 
-BLI_STATIC_ASSERT_ALIGN(DRWCallChunk, 16);
-BLI_STATIC_ASSERT_ALIGN(DRWCallSmallChunk, 16);
+BLI_STATIC_ASSERT_ALIGN(DRWCommandChunk, 16);
 
 /* ------------- DRAW DEBUG ------------ */
 
@@ -463,6 +504,8 @@ void drw_state_set(DRWState state);
 
 void drw_debug_draw(void);
 void drw_debug_init(void);
+
+eDRWCommandType command_type_get(uint64_t *command_type_bits, int index);
 
 void drw_batch_cache_validate(Object *ob);
 void drw_batch_cache_generate_requested(struct Object *ob);

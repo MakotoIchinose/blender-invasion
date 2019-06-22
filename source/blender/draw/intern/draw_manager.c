@@ -540,7 +540,9 @@ static void drw_viewport_cache_resize(void)
       GPU_texture_free(*tex);
     }
 
-    BLI_memblock_clear(DST.vmempool->calls, NULL);
+    BLI_memblock_clear(DST.vmempool->commands, NULL);
+    BLI_memblock_clear(DST.vmempool->commands_small, NULL);
+    BLI_memblock_clear(DST.vmempool->callbuffers, NULL);
     BLI_memblock_clear(DST.vmempool->obmats, NULL);
     BLI_memblock_clear(DST.vmempool->obinfos, NULL);
     BLI_memblock_clear(DST.vmempool->cullstates, NULL);
@@ -635,8 +637,14 @@ static void drw_viewport_var_init(void)
 
     DST.vmempool = GPU_viewport_mempool_get(DST.viewport);
 
-    if (DST.vmempool->calls == NULL) {
-      DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCallChunk));
+    if (DST.vmempool->commands == NULL) {
+      DST.vmempool->commands = BLI_memblock_create(sizeof(DRWCommandChunk));
+    }
+    if (DST.vmempool->commands_small == NULL) {
+      DST.vmempool->commands_small = BLI_memblock_create(sizeof(DRWCommandSmallChunk));
+    }
+    if (DST.vmempool->callbuffers == NULL) {
+      DST.vmempool->callbuffers = BLI_memblock_create(sizeof(DRWCallBuffer));
     }
     if (DST.vmempool->obmats == NULL) {
       uint chunk_len = sizeof(DRWObjectMatrix) * DRW_RESOURCE_CHUNK_LEN;

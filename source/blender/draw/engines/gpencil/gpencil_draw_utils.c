@@ -1742,7 +1742,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
                                               scale,
                                               cache_ob->shading_type);
         if ((do_onion) || (elm->onion == false)) {
-          DRW_shgroup_call_range_obmat(shgrp, cache->b_stroke.batch, obmat, start_stroke, len);
+          DRW_shgroup_call_range(shgrp, cache->b_stroke.batch, start_stroke, len);
         }
         stl->storage->shgroup_id++;
         start_stroke = elm->vertex_idx;
@@ -1778,7 +1778,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
                                              cache_ob->shading_type);
 
         if ((do_onion) || (elm->onion == false)) {
-          DRW_shgroup_call_range_obmat(shgrp, cache->b_point.batch, obmat, start_point, len);
+          DRW_shgroup_call_range(shgrp, cache->b_point.batch, start_point, len);
         }
         stl->storage->shgroup_id++;
         start_point = elm->vertex_idx;
@@ -1804,7 +1804,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
                                             cache_ob->shading_type);
 
         if ((do_onion) || (elm->onion == false)) {
-          DRW_shgroup_call_range_obmat(shgrp, cache->b_fill.batch, obmat, start_fill, len);
+          DRW_shgroup_call_range(shgrp, cache->b_fill.batch, start_fill, len);
         }
         stl->storage->shgroup_id++;
         start_fill = elm->vertex_idx;
@@ -1822,8 +1822,8 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
           shgrp = DRW_shgroup_create_sub(stl->g_data->shgrps_edit_point);
           DRW_shgroup_uniform_mat4(shgrp, "gpModelMatrix", obmat);
           /* use always the same group */
-          DRW_shgroup_call_range_obmat(
-              stl->g_data->shgrps_edit_point, cache->b_edit.batch, obmat, start_edit, len);
+          DRW_shgroup_call_range(
+              stl->g_data->shgrps_edit_point, cache->b_edit.batch, start_edit, len);
 
           start_edit = elm->vertex_idx;
         }
@@ -1836,8 +1836,8 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
           shgrp = DRW_shgroup_create_sub(stl->g_data->shgrps_edit_line);
           DRW_shgroup_uniform_mat4(shgrp, "gpModelMatrix", obmat);
           /* use always the same group */
-          DRW_shgroup_call_range_obmat(
-              stl->g_data->shgrps_edit_line, cache->b_edlin.batch, obmat, start_edlin, len);
+          DRW_shgroup_call_range(
+              stl->g_data->shgrps_edit_line, cache->b_edlin.batch, start_edlin, len);
 
           start_edlin = elm->vertex_idx;
         }

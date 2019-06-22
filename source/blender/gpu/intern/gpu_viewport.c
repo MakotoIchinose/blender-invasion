@@ -621,8 +621,14 @@ void GPU_viewport_free(GPUViewport *viewport)
   MEM_freeN(viewport->fbl);
   MEM_freeN(viewport->txl);
 
-  if (viewport->vmempool.calls != NULL) {
-    BLI_memblock_destroy(viewport->vmempool.calls, NULL);
+  if (viewport->vmempool.commands != NULL) {
+    BLI_memblock_destroy(viewport->vmempool.commands, NULL);
+  }
+  if (viewport->vmempool.commands_small != NULL) {
+    BLI_memblock_destroy(viewport->vmempool.commands_small, NULL);
+  }
+  if (viewport->vmempool.callbuffers != NULL) {
+    BLI_memblock_destroy(viewport->vmempool.callbuffers, NULL);
   }
   if (viewport->vmempool.obmats != NULL) {
     BLI_memblock_destroy(viewport->vmempool.obmats, NULL);

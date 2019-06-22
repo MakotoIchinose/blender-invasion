@@ -47,6 +47,28 @@ void DRW_select_load_id(uint id)
 
 #define DEBUG_UBO_BINDING
 
+typedef struct DRWCommandsState {
+  GPUBatch *batch;
+  int resource_chunk;
+  int base_inst;
+  int inst_count;
+  int v_first;
+  int v_count;
+  bool neg_scale;
+  /* Resource location. */
+  int obmats_loc;
+  int obinfos_loc;
+  int baseinst_loc;
+  int chunkid_loc;
+  /* Legacy matrix support. */
+  int obmat_loc;
+  int obinv_loc;
+  int mvp_loc;
+  /* Selection ID state. */
+  GPUVertBuf *select_buf;
+  uint select_id;
+} DRWCommandsState;
+
 /* -------------------------------------------------------------------- */
 /** \name Draw State (DRW_state)
  * \{ */
@@ -391,10 +413,10 @@ void DRW_state_reset(void)
 /** \name Culling (DRW_culling)
  * \{ */
 
-static bool draw_call_is_culled(DRWCall *call, DRWView *view)
+static bool draw_call_is_culled(DRWResourceHandle handle, DRWView *view)
 {
   DRWCullingState *culling = BLI_memblock_elem_get(
-      DST.vmempool->cullstates, call->handle.chunk, call->handle.id);
+      DST.vmempool->cullstates, handle.chunk, handle.id);
   return (culling->mask & view->culling_mask) != 0;
 }
 
@@ -640,29 +662,29 @@ BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
   GPU_batch_draw_advanced(geom, vert_first, vert_count, inst_first, inst_count);
 }
 
-BLI_INLINE void draw_indirect_call(DRWShadingGroup *shgroup,
-                                   GPUBatch *geom,
-                                   int vert_first,
-                                   int vert_count,
-                                   int inst_first,
-                                   int inst_count,
-                                   int baseinst_loc)
+BLI_INLINE void draw_indirect_call(DRWShadingGroup *shgroup, DRWCommandsState *state)
 {
-  if (inst_count == 0) {
+  if (state->inst_count == 0) {
     return;
   }
-  if (baseinst_loc == -1) {
+  if (state->baseinst_loc == -1) {
     /* bind vertex array */
-    if (DST.batch != geom) {
+    if (DST.batch != state->batch) {
       GPU_draw_list_submit(DST.draw_list);
-      draw_geometry_bind(shgroup, geom);
+      draw_geometry_bind(shgroup, state->batch);
     }
-    GPU_draw_list_command_add(DST.draw_list, vert_first, vert_count, inst_first, inst_count);
+    GPU_draw_list_command_add(
+        DST.draw_list, state->v_first, state->v_count, state->base_inst, state->inst_count);
   }
   /* Fallback when unsupported */
   else {
-    draw_geometry_execute(
-        shgroup, geom, vert_first, vert_count, inst_first, inst_count, baseinst_loc);
+    draw_geometry_execute(shgroup,
+                          state->batch,
+                          state->v_first,
+                          state->v_count,
+                          state->base_inst,
+                          state->inst_count,
+                          state->baseinst_loc);
   }
 }
 
@@ -841,13 +863,7 @@ static void release_ubo_slots(bool with_persist)
 }
 
 static void draw_update_uniforms(DRWShadingGroup *shgroup,
-                                 int *obmats_loc,
-                                 int *obinfos_loc,
-                                 int *baseinst_loc,
-                                 int *chunkid_loc,
-                                 int *obmat_loc,
-                                 int *obinv_loc,
-                                 int *mvp_loc,
+                                 DRWCommandsState *state,
                                  bool *use_tfeedback)
 {
   for (DRWUniformChunk *unichunk = shgroup->uniforms; unichunk; unichunk = unichunk->next) {
@@ -910,19 +926,19 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
           break;
         case DRW_UNIFORM_BLOCK_OBMATS:
-          *obmats_loc = uni->location;
+          state->obmats_loc = uni->location;
           ubo = DST.vmempool->matrices_ubo[0];
           GPU_uniformbuffer_bind(ubo, 0);
           GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
           break;
         case DRW_UNIFORM_BLOCK_OBINFOS:
-          *obinfos_loc = uni->location;
+          state->obinfos_loc = uni->location;
           ubo = DST.vmempool->obinfos_ubo[0];
           GPU_uniformbuffer_bind(ubo, 1);
           GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
           break;
         case DRW_UNIFORM_RESOURCE_CHUNK:
-          *chunkid_loc = uni->location;
+          state->chunkid_loc = uni->location;
           GPU_shader_uniform_int(shgroup->shader, uni->location, 0);
           break;
         case DRW_UNIFORM_TFEEDBACK_TARGET:
@@ -932,16 +948,16 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           break;
           /* Legacy/Fallback support. */
         case DRW_UNIFORM_BASE_INSTANCE:
-          *baseinst_loc = uni->location;
+          state->baseinst_loc = uni->location;
           break;
         case DRW_UNIFORM_MODEL_MATRIX:
-          *obmat_loc = uni->location;
+          state->obmat_loc = uni->location;
           break;
         case DRW_UNIFORM_MODEL_MATRIX_INVERSE:
-          *obinv_loc = uni->location;
+          state->obinv_loc = uni->location;
           break;
         case DRW_UNIFORM_MODELVIEWPROJECTION_MATRIX:
-          *mvp_loc = uni->location;
+          state->mvp_loc = uni->location;
           break;
       }
     }
@@ -950,91 +966,70 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
   BLI_assert(ubo_bindings_validate(shgroup));
 }
 
-BLI_INLINE void draw_select_do_call(DRWShadingGroup *shgroup, DRWCall *call, int baseinst_loc)
+BLI_INLINE void draw_select_buffer(DRWShadingGroup *shgroup,
+                                   DRWCommandsState *state,
+                                   GPUBatch *batch,
+                                   DRWResourceHandle handle)
 {
-#ifdef USE_GPU_SELECT
-  if (call->inst_selectid != NULL) {
-    const bool is_instancing = (call->inst_count != -1);
-    int start = 0;
-    int count = 1;
-    int tot = is_instancing ? max_ii(0, call->inst_count) : call->vert_count;
-    /* Hack : get vbo data without actually drawing. */
-    GPUVertBufRaw raw;
-    GPU_vertbuf_attr_get_raw_data(call->inst_selectid, 0, &raw);
-    int *select_id = GPU_vertbuf_raw_step(&raw);
+  const bool is_instancing = (batch->inst != NULL);
+  int start = 0;
+  int count = 1;
+  int tot = is_instancing ? batch->inst->vertex_len : batch->verts[0]->vertex_len;
+  /* Hack : get "vbo" data without actually drawing. */
+  int *select_id = (void *)state->select_buf->data;
 
-    /* Batching */
-    if (!is_instancing) {
-      /* FIXME: Meh a bit nasty. */
-      if (call->batch->gl_prim_type == convert_prim_type_to_gl(GPU_PRIM_TRIS)) {
-        count = 3;
-      }
-      else if (call->batch->gl_prim_type == convert_prim_type_to_gl(GPU_PRIM_LINES)) {
-        count = 2;
-      }
+  /* Batching */
+  if (!is_instancing) {
+    /* FIXME: Meh a bit nasty. */
+    if (batch->gl_prim_type == convert_prim_type_to_gl(GPU_PRIM_TRIS)) {
+      count = 3;
     }
-
-    while (start < tot) {
-      GPU_select_load_id(select_id[start]);
-      if (is_instancing) {
-        draw_geometry_execute(shgroup, call->batch, 0, 0, start, count, baseinst_loc);
-      }
-      else {
-        draw_geometry_execute(
-            shgroup, call->batch, start, count, call->handle.id, 0, baseinst_loc);
-      }
-      start += count;
+    else if (batch->gl_prim_type == convert_prim_type_to_gl(GPU_PRIM_LINES)) {
+      count = 2;
     }
   }
-  else {
-    GPU_select_load_id(call->select_id);
-    draw_geometry_execute(shgroup, call->batch, 0, 0, call->handle.id, 0, baseinst_loc);
+
+  while (start < tot) {
+    GPU_select_load_id(select_id[start]);
+    if (is_instancing) {
+      draw_geometry_execute(shgroup, batch, 0, 0, start, count, state->baseinst_loc);
+    }
+    else {
+      draw_geometry_execute(shgroup, batch, start, count, handle.id, 0, state->baseinst_loc);
+    }
+    start += count;
   }
-#endif
 }
 
-typedef struct DRWCallIterator {
-  int call_index;
-  DRWCallChunk *curr_chunk;
-} DRWCallIterator;
+typedef struct DRWCommandIterator {
+  int cmd_index;
+  DRWCommandChunk *curr_chunk;
+} DRWCommandIterator;
 
-static void draw_call_iter_begin(DRWCallIterator *iter, DRWShadingGroup *shgroup)
+static void draw_command_iter_begin(DRWCommandIterator *iter, DRWShadingGroup *shgroup)
 {
-  iter->curr_chunk = shgroup->calls.first;
-  iter->call_index = 0;
+  iter->curr_chunk = shgroup->cmd.first;
+  iter->cmd_index = 0;
 }
 
-static DRWCall *draw_call_iter_step(DRWCallIterator *iter)
+static DRWCommand *draw_command_iter_step(DRWCommandIterator *iter, eDRWCommandType *cmd_type)
 {
   if (iter->curr_chunk) {
-    if (iter->call_index == iter->curr_chunk->chunk_len) {
+    if (iter->cmd_index == iter->curr_chunk->command_len) {
       iter->curr_chunk = iter->curr_chunk->next;
-      iter->call_index = 0;
+      iter->cmd_index = 0;
     }
     if (iter->curr_chunk) {
-      if (iter->call_index < iter->curr_chunk->call_used) {
-        return iter->curr_chunk->calls + iter->call_index++;
+      *cmd_type = command_type_get(iter->curr_chunk->command_type, iter->cmd_index);
+      if (iter->cmd_index < iter->curr_chunk->command_used) {
+        return iter->curr_chunk->commands + iter->cmd_index++;
       }
     }
   }
   return NULL;
 }
 
-typedef struct DRWCommandsState {
-  GPUBatch *batch;
-  int resource_chunk;
-  int base_inst;
-  int inst_count;
-  int v_first;
-  int v_count;
-  bool neg_scale;
-} DRWCommandsState;
-
-static void draw_call_resource_bind(DRWCommandsState *state,
-                                    DRWResourceHandle handle,
-                                    int obmats_loc,
-                                    int obinfos_loc,
-                                    int chunkid_loc)
+static void draw_call_resource_bind(DRWCommandsState *state, DRWResourceHandle handle)
 {
   /* Front face is not a resource but it is inside the resource handle. */
   if (handle.negative_scale != state->neg_scale) {
@@ -1043,14 +1038,14 @@ static void draw_call_resource_bind(DRWCommandsState *state,
   }
 
   if (state->resource_chunk != handle.chunk) {
-    if (chunkid_loc != -1) {
-      GPU_shader_uniform_int(NULL, chunkid_loc, handle.chunk);
+    if (state->chunkid_loc != -1) {
+      GPU_shader_uniform_int(NULL, state->chunkid_loc, handle.chunk);
     }
-    if (obmats_loc != -1) {
+    if (state->obmats_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state->resource_chunk]);
       GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
     }
-    if (obinfos_loc != -1) {
+    if (state->obinfos_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[state->resource_chunk]);
       GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 1);
     }
@@ -1058,7 +1053,47 @@ static void draw_call_resource_bind(DRWCommandsState *state,
   }
 }
 
-static void draw_call_batching_start(DRWCommandsState *state, GPUBatch *first_batch)
+static void draw_call_single_do(DRWShadingGroup *shgroup,
+                                DRWCommandsState *state,
+                                GPUBatch *batch,
+                                DRWResourceHandle handle,
+                                int vert_first,
+                                int vert_count,
+                                int inst_count)
+{
+  /* Flush pending drawcalls. */
+  draw_indirect_call(shgroup, state);
+  GPU_draw_list_submit(DST.draw_list);
+
+  state->batch = batch;
+  state->v_first = 0;
+  state->v_count = 0;
+  state->inst_count = 0;
+  state->base_inst = -1;
+
+  draw_call_resource_bind(state, handle);
+
+  /* TODO This is Legacy. Need to be removed. */
+  if (state->obmats_loc == -1 &&
+      (state->obmat_loc != -1 || state->obinv_loc != -1 || state->mvp_loc != -1)) {
+    draw_legacy_matrix_update(shgroup, handle, state->obmat_loc, state->obinv_loc, state->mvp_loc);
+  }
+
+  if (G.f & G_FLAG_PICKSEL) {
+    if (state->select_buf != NULL) {
+      draw_select_buffer(shgroup, state, batch, handle);
+      return;
+    }
+    else {
+      GPU_select_load_id(state->select_id);
+    }
+  }
+
+  draw_geometry_execute(
+      shgroup, batch, vert_first, vert_count, handle.id, inst_count, state->baseinst_loc);
+}
+
+static void draw_call_batching_start(DRWCommandsState *state)
 {
   state->neg_scale = false;
   state->resource_chunk = 0;
@@ -1066,140 +1101,65 @@ static void draw_call_batching_start(DRWCommandsState *state, GPUBatch *first_ba
   state->inst_count = 0;
   state->v_first = 0;
   state->v_count = 0;
-  state->batch = first_batch;
+  state->batch = NULL;
 
-  if (first_batch) {
-    GPU_draw_list_init(DST.draw_list, first_batch);
-    state->v_count = first_batch->elem ? first_batch->elem->index_len :
-                                         first_batch->verts[0]->vertex_len;
-  }
+  state->select_id = -1;
+  state->select_buf = NULL;
 }
 
 static void draw_call_batching_do(DRWShadingGroup *shgroup,
                                   DRWCommandsState *state,
-                                  DRWCall *call,
-                                  int obmats_loc,
-                                  int obinfos_loc,
-                                  int baseinst_loc,
-                                  int obmat_loc,
-                                  int obinv_loc,
-                                  int mvp_loc,
-                                  int chunkid_loc)
+                                  DRWCommandDraw *call)
 {
-  /* Regular rendering */
-  if (!USE_BATCHING || call->inst_count != -1 || obmats_loc == -1 || call->vert_first > 0 ||
-      call->vert_count > 0 || (G.f & G_FLAG_PICKSEL)) {
-    /* We need to draw the pending instances. */
-    draw_indirect_call(shgroup,
-                       state->batch,
-                       state->v_first,
-                       state->v_count,
-                       state->base_inst,
-                       state->inst_count,
-                       baseinst_loc);
-    /* Submit the pending commands. */
+  /* If any condition requires to interupt the merging. */
+  if ((call->handle.negative_scale != state->neg_scale) || /* Need to change state. */
+      (call->handle.chunk != state->resource_chunk) ||     /* Need to change UBOs. */
+      (call->batch != state->batch)                        /* Need to change VAO. */
+  ) {
+    /* Flush pending drawcalls. */
+    draw_indirect_call(shgroup, state);
     GPU_draw_list_submit(DST.draw_list);
 
     state->batch = call->batch;
     state->v_first = 0;
-    state->v_count = 0;
-    state->inst_count = 0;
-    state->base_inst = -1;
+    state->v_count = (call->batch->elem) ? call->batch->elem->index_len :
+                                           call->batch->verts[0]->vertex_len;
+    state->inst_count = 1;
+    state->base_inst = call->handle.id;
 
-    draw_call_resource_bind(state, call->handle, obmats_loc, obinfos_loc, chunkid_loc);
+    draw_call_resource_bind(state, call->handle);
 
-    /* TODO This is Legacy. Need to be removed. */
-    if (obmats_loc == -1 && (obmat_loc != -1 || obinv_loc != -1 || mvp_loc != -1)) {
-      draw_legacy_matrix_update(shgroup, call->handle, obmat_loc, obinv_loc, mvp_loc);
-    }
-
-    if (G.f & G_FLAG_PICKSEL) {
-      draw_select_do_call(shgroup, call, baseinst_loc);
-    }
-    else {
-      draw_geometry_execute(shgroup,
-                            call->batch,
-                            call->vert_first,
-                            call->vert_count,
-                            call->handle.id,
-                            call->inst_count,
-                            baseinst_loc);
-    }
+    GPU_draw_list_init(DST.draw_list, state->batch);
   }
-  /* Draw Call Batching/Packing */
+  /* Is the id consecutive? */
+  else if (call->handle.id != state->base_inst + state->inst_count) {
+    /* We need to add a draw command for the pending instances. */
+    draw_indirect_call(shgroup, state);
+    state->inst_count = 1;
+    state->base_inst = call->handle.id;
+  }
+  /* We avoid a drawcall by merging with the precedent
+   * drawcall using instancing. */
   else {
-    /* See if any condition requires to interupt the packing. */
-    if ((call->handle.negative_scale != state->neg_scale) || /* Need to change state. */
-        (call->handle.chunk != state->resource_chunk) ||     /* Need to change UBOs. */
-        (call->batch != state->batch)                        /* Need to change VAO. */
-    ) {
-      /* We need to draw the pending instances. */
-      draw_indirect_call(shgroup,
-                         state->batch,
-                         state->v_first,
-                         state->v_count,
-                         state->base_inst,
-                         state->inst_count,
-                         baseinst_loc);
-      /* Submit the pending commands. */
-      GPU_draw_list_submit(DST.draw_list);
-
-      state->batch = call->batch;
-      state->v_first = 0;
-      state->v_count = (call->batch->elem) ? call->batch->elem->index_len :
-                                             call->batch->verts[0]->vertex_len;
-      state->inst_count = 1;
-      state->base_inst = call->handle.id;
-
-      draw_call_resource_bind(state, call->handle, obmats_loc, obinfos_loc, chunkid_loc);
-
-      GPU_draw_list_init(DST.draw_list, state->batch);
-    }
-    /* Is the id consecutive? */
-    else if (call->handle.id != state->base_inst + state->inst_count) {
-      /* We need to add a draw command for the pending instances. */
-      draw_indirect_call(shgroup,
-                         state->batch,
-                         state->v_first,
-                         state->v_count,
-                         state->base_inst,
-                         state->inst_count,
-                         baseinst_loc);
-      state->inst_count = 1;
-      state->base_inst = call->handle.id;
-    }
-    else {
-      state->inst_count++;
-    }
+    state->inst_count++;
   }
 }
 
 /* Flush remaining pending drawcalls. */
-static void draw_call_batching_finish(DRWShadingGroup *shgroup,
-                                      DRWCommandsState *state,
-                                      int obmats_loc,
-                                      int obinfos_loc,
-                                      int baseinst_loc)
+static void draw_call_batching_finish(DRWShadingGroup *shgroup, DRWCommandsState *state)
 {
-  /* Add last instance call if there was any in preparation. */
-  draw_indirect_call(shgroup,
-                     state->batch,
-                     state->v_first,
-                     state->v_count,
-                     state->base_inst,
-                     state->inst_count,
-                     baseinst_loc);
-  /* Flush the last pending drawcalls batched together. */
+  /* Flush pending drawcalls. */
+  draw_indirect_call(shgroup, state);
   GPU_draw_list_submit(DST.draw_list);
 
   /* Reset state */
   if (state->neg_scale) {
     glFrontFace(GL_CCW);
   }
-  if (obmats_loc != -1) {
+  if (state->obmats_loc != -1) {
     GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state->resource_chunk]);
   }
-  if (obinfos_loc != -1) {
+  if (state->obinfos_loc != -1) {
     GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[state->resource_chunk]);
   }
 }
@@ -1208,16 +1168,18 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 {
   BLI_assert(shgroup->shader);
 
+  DRWCommandsState state = {
+      .obmats_loc = -1,
+      .obinfos_loc = -1,
+      .baseinst_loc = -1,
+      .chunkid_loc = -1,
+      .obmat_loc = -1,
+      .obinv_loc = -1,
+      .mvp_loc = -1,
+  };
+
   const bool shader_changed = (DST.shader != shgroup->shader);
   bool use_tfeedback = false;
-  int obmats_loc = -1;
-  int obinfos_loc = -1;
-  int baseinst_loc = -1;
-  int chunkid_loc = -1;
-  /* Legacy matrix support. */
-  int obmat_loc = -1;
-  int obinv_loc = -1;
-  int mvp_loc = -1;
 
   if (shader_changed) {
     if (DST.shader) {
@@ -1238,42 +1200,74 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   drw_state_set((pass_state & shgroup->state_extra_disable) | shgroup->state_extra);
   drw_stencil_set(shgroup->stencil_mask);
 
-  draw_update_uniforms(shgroup,
-                       &obmats_loc,
-                       &obinfos_loc,
-                       &baseinst_loc,
-                       &chunkid_loc,
-                       &obmat_loc,
-                       &obinv_loc,
-                       &mvp_loc,
-                       &use_tfeedback);
+  draw_update_uniforms(shgroup, &state, &use_tfeedback);
 
   /* Rendering Calls */
   {
-    DRWCommandsState state;
-    DRWCallIterator iter;
-    DRWCall *call;
+    DRWCommandIterator iter;
+    DRWCommand *cmd;
+    eDRWCommandType cmd_type;
 
-    draw_call_iter_begin(&iter, shgroup);
+    draw_command_iter_begin(&iter, shgroup);
 
-    draw_call_batching_start(&state, (iter.curr_chunk) ? iter.curr_chunk->calls[0].batch : NULL);
+    draw_call_batching_start(&state);
 
-    while ((call = draw_call_iter_step(&iter))) {
-      if (!draw_call_is_culled(call, DST.view_active)) {
-        draw_call_batching_do(shgroup,
+    while ((cmd = draw_command_iter_step(&iter, &cmd_type))) {
+      switch (cmd_type) {
+        case DRW_CMD_DRAW:
+        case DRW_CMD_DRAW_PROCEDURAL:
+        case DRW_CMD_DRAW_INSTANCE:
+          if (draw_call_is_culled(cmd->instance.handle, DST.view_active)) {
+            continue;
+          }
+        default:
+          break;
+      }
+
+      switch (cmd_type) {
+        case DRW_CMD_SELECTID:
+          state.select_id = cmd->select_id.select_id;
+          state.select_buf = cmd->select_id.select_buf;
+          break;
+        case DRW_CMD_DRAW:
+          if (!USE_BATCHING || state.obmats_loc == -1 || (G.f & G_FLAG_PICKSEL)) {
+            draw_call_single_do(shgroup, &state, cmd->draw.batch, cmd->draw.handle, 0, 0, 0);
+          }
+          else {
+            draw_call_batching_do(shgroup, &state, &cmd->draw);
+          }
+          break;
+        case DRW_CMD_DRAW_PROCEDURAL:
+          draw_call_single_do(shgroup,
                               &state,
-                              call,
-                              obmats_loc,
-                              obinfos_loc,
-                              baseinst_loc,
-                              chunkid_loc,
-                              obmat_loc,
-                              obinv_loc,
-                              mvp_loc);
+                              cmd->procedural.batch,
+                              cmd->procedural.handle,
+                              0,
+                              cmd->procedural.vert_count,
+                              1);
+          break;
+        case DRW_CMD_DRAW_INSTANCE:
+          draw_call_single_do(shgroup,
+                              &state,
+                              cmd->instance.batch,
+                              cmd->instance.handle,
+                              0,
+                              0,
+                              cmd->instance.inst_count);
+          break;
+        case DRW_CMD_DRAW_RANGE:
+          draw_call_single_do(shgroup,
+                              &state,
+                              cmd->range.batch,
+                              (DRWResourceHandle){.value = 0},
+                              cmd->range.vert_first,
+                              cmd->range.vert_count,
+                              1);
+          break;
       }
     }
 
-    draw_call_batching_finish(shgroup, &state, obmats_loc, obinfos_loc, baseinst_loc);
+    draw_call_batching_finish(shgroup, &state);
   }
 
   if (use_tfeedback) {
