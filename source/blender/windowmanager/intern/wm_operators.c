@@ -3679,6 +3679,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
                                          xr_session_gpu_binding_context_create,
                                          xr_session_gpu_binding_context_destroy);
     GHOST_XrSessionStart(wm->xr_context);
+    GHOST_XrSessionRenderingPrepare(wm->xr_context);
   }
   return OPERATOR_FINISHED;
 }
