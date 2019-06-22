@@ -62,13 +62,13 @@ void main()
 
   /* -------- SHADING --------- */
 #ifdef V3D_LIGHTING_FLAT
-  vec3 shaded_color = diffuse_color.rgb;
+  vec3 shaded_color = base_color.rgb;
 
 #elif defined(V3D_LIGHTING_MATCAP)
   bool flipped = world_data.matcap_orientation != 0;
   vec2 matcap_uv = matcap_uv_compute(I_vs, nor, flipped);
   vec3 matcap = textureLod(matcapImage, matcap_uv, 0.0).rgb;
-  vec3 shaded_color = matcap * diffuse_color.rgb;
+  vec3 shaded_color = matcap * base_color.rgb;
 
 #elif defined(V3D_LIGHTING_STUDIO)
 #  ifdef V3D_SHADING_SPECULAR_HIGHLIGHT
