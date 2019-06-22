@@ -1910,7 +1910,7 @@ bool CustomData_merge(const struct CustomData *source,
     else if ((maxnumber != -1) && (number >= maxnumber)) {
       continue;
     }
-    else if (CustomData_get_layer_named(dest, type, layer->name)) {
+    else if (CustomData_get_named_layer_index(dest, type, layer->name) != -1) {
       continue;
     }
 
@@ -3474,6 +3474,34 @@ static void CustomData_bmesh_alloc_block(CustomData *data, void **block)
   }
 }
 
+static void CustomData_bmesh_set_default_n(CustomData *data, void **block, int n)
+{
+  const LayerTypeInfo *typeInfo;
+  int offset = data->layers[n].offset;
+
+  typeInfo = layerType_getInfo(data->layers[n].type);
+
+  if (typeInfo->set_default) {
+    typeInfo->set_default(POINTER_OFFSET(*block, offset), 1);
+  }
+  else {
+    memset(POINTER_OFFSET(*block, offset), 0, typeInfo->size);
+  }
+}
+
+void CustomData_bmesh_set_default(CustomData *data, void **block)
+{
+  int i;
+
+  if (*block == NULL) {
+    CustomData_bmesh_alloc_block(data, block);
+  }
+
+  for (i = 0; i < data->totlayer; ++i) {
+    CustomData_bmesh_set_default_n(data, block, i);
+  }
+}
+
 void CustomData_bmesh_copy_data(const CustomData *source,
                                 CustomData *dest,
                                 void *src_block,
@@ -3497,6 +3525,7 @@ void CustomData_bmesh_copy_data(const CustomData *source,
      * (this should work because layers are ordered by type)
      */
     while (dest_i < dest->totlayer && dest->layers[dest_i].type < source->layers[src_i].type) {
+      CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
       dest_i++;
     }
 
@@ -3526,6 +3555,11 @@ void CustomData_bmesh_copy_data(const CustomData *source,
        */
       dest_i++;
     }
+  }
+
+  while (dest_i < dest->totlayer) {
+    CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
+    dest_i++;
   }
 }
 
@@ -3835,34 +3869,6 @@ void CustomData_bmesh_interp(CustomData *data,
 
   if (count > SOURCE_BUF_SIZE) {
     MEM_freeN((void *)sources);
-  }
-}
-
-static void CustomData_bmesh_set_default_n(CustomData *data, void **block, int n)
-{
-  const LayerTypeInfo *typeInfo;
-  int offset = data->layers[n].offset;
-
-  typeInfo = layerType_getInfo(data->layers[n].type);
-
-  if (typeInfo->set_default) {
-    typeInfo->set_default(POINTER_OFFSET(*block, offset), 1);
-  }
-  else {
-    memset(POINTER_OFFSET(*block, offset), 0, typeInfo->size);
-  }
-}
-
-void CustomData_bmesh_set_default(CustomData *data, void **block)
-{
-  int i;
-
-  if (*block == NULL) {
-    CustomData_bmesh_alloc_block(data, block);
-  }
-
-  for (i = 0; i < data->totlayer; ++i) {
-    CustomData_bmesh_set_default_n(data, block, i);
   }
 }
 

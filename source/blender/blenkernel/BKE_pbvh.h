@@ -34,6 +34,7 @@ struct CCGElem;
 struct CCGKey;
 struct CustomData;
 struct DMFlagMat;
+struct IsectRayPrecalc;
 struct GPUBatch;
 struct GPU_PBVH_Buffers;
 struct MLoop;
@@ -142,12 +143,13 @@ bool BKE_pbvh_node_raycast(PBVH *bvh,
                            bool use_origco,
                            const float ray_start[3],
                            const float ray_normal[3],
-                           float *depth,
-                           RaycastOutputData *output_data);
+                           RaycastOutputData *output_data,
+                           struct IsectRayPrecalc *isect_precalc,
+                           float *depth);
 
 bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
                                         const float ray_start[3],
-                                        const float ray_normal[3],
+                                        struct IsectRayPrecalc *isect_precalc,
                                         float *depth,
                                         float *r_edge_length);
 

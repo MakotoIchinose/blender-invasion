@@ -880,6 +880,8 @@ static int forcefield_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
+  DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+
   return OPERATOR_FINISHED;
 }
 
@@ -1720,7 +1722,7 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
 
   /* identifiers */
   ot->name = "Move to Collection";
-  ot->description = "Move objects to a scene collection";
+  ot->description = "Move objects to a collection";
   ot->idname = "OBJECT_OT_move_to_collection";
 
   /* api callbacks */
