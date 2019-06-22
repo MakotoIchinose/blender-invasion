@@ -1354,8 +1354,10 @@ static void do_outliner_selection_sync_recursive(SpaceOutliner *soops,
         const bool is_selected = (tselem->flag & TSE_SELECTED) != 0;
 
         if (is_selected) {
-
           base->flag |= BASE_SELECTED;
+        }
+        else {
+          base->flag &= ~BASE_SELECTED;
         }
       }
       else {
@@ -1375,6 +1377,7 @@ static void do_outliner_selection_sync_recursive(SpaceOutliner *soops,
 
 void do_outliner_selection_sync(const bContext *C, bool to_view_layer)
 {
+  Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
@@ -1400,6 +1403,10 @@ void do_outliner_selection_sync(const bContext *C, bool to_view_layer)
         }
       }
     }
+
+    /* Redraw 3D view */
+    DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   }
 }
 
@@ -1420,9 +1427,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   TreeElement *te;
   float view_mval[2];
   bool changed = false, rebuild_tree = false;
-
-  // Set dirty
-  soops->flag |= SO_IS_DIRTY;
 
   UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
 
@@ -1564,7 +1568,8 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   ED_region_tag_redraw(ar);
 
-  if ((soops->flag & SO_SYNC_SELECTION) != 0) {
+  /* Sync selection */
+  if (soops->flag & SO_SYNC_SELECTION) {
     do_outliner_selection_sync(C, true);
   }
 
