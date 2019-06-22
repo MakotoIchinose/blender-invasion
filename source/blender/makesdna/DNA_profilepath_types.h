@@ -85,7 +85,8 @@ typedef struct ProfileWidget {
 #define PROF_DO_CLIP (1 << 0)
 
 typedef enum eProfilePathPresets {
-  PROF_PRESET_LINE = 0,
+  PROF_PRESET_LINE = 0, /* Default simple line */
+  PROF_PRESET_SUPPORTS = 1, /* Support loops for a regular curved profile */
 } ProfilePathPresets;
 
 #endif

@@ -6845,8 +6845,6 @@ static int ui_do_but_PROFILE(bContext *C,
 {
   int mx, my, a;
   bool changed = false;
-//  Scene *scene = CTX_data_scene(C);
-//  ViewLayer *view_layer = CTX_data_view_layer(C);
 
   mx = event->x;
   my = event->y;
@@ -6881,6 +6879,8 @@ static int ui_do_but_PROFILE(bContext *C,
           dist_min_sq = dist_sq;
         }
       }
+      /* HANS-QUESTION: Why do we continue execution after deciding that it was an insert
+       * operation? */
 
       if (sel == -1) {
         int i;
@@ -6978,8 +6978,6 @@ static int ui_do_but_PROFILE(bContext *C,
         }
         else {
           profilewidget_changed(prwidget, true); /* remove doubles */
-          /* HANS-TODO: Update or delete? */
-//          BKE_paint_invalidate_cursor_overlay(scene, view_layer, prwidget);
         }
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);

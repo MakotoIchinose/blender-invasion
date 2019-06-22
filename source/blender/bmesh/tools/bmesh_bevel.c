@@ -57,7 +57,7 @@
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
-#define DEBUG_CUSTOM_PROFILE_SAMPLE 1
+#define DEBUG_CUSTOM_PROFILE_SAMPLE 0
 #define DEBUG_CUSTOM_PROFILE 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
@@ -2415,6 +2415,9 @@ static void build_boundary_vertex_only(BevelParams *bp, BevVert *bv, bool constr
  * The 'width adjust' part of build_boundary has been done already,
  * and \a efirst is the first beveled edge at vertex \a bv.
  */
+/* HANS-TODO: In the TRI_FAN fill case, check if the third point is planar with the other two
+ * boundverts. If it is, then use polyfill operation on the face instead of a TRI_FAN. When they
+ * are planar the overlapping geometry used to fill the profile if it overlaps itself looks bad */
 static void build_boundary_terminal_edge(BevelParams *bp,
                                          BevVert *bv,
                                          EdgeHalf *efirst,

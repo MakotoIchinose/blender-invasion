@@ -4607,7 +4607,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   ProfileWidget *prwidget = ptr->data;
   ProfilePath *prpath = prwidget->profile;
   ProfilePoint *point = NULL;
-//  uiLayout *row;
+  uiLayout *row, *sub;
   uiBlock *block;
   uiBut *bt;
   int icon, size;
@@ -4615,10 +4615,18 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
   block = uiLayoutGetBlock(layout);
 
-  /* Operation buttons */
+  UI_block_emboss_set(block, UI_EMBOSS);
+
   uiLayoutRow(layout, false);
 
-  UI_block_emboss_set(block, UI_EMBOSS_NONE);
+  /* Preset selector */
+
+
+  row = uiLayoutRow(layout, false);
+
+  /* (Left aligned) */
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);
 
   /* Zoom in */
   bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_ZOOM_IN, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0,
@@ -4629,6 +4637,10 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_ZOOM_OUT, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0,
                     0.0, 0.0, 0.0, TIP_("Zoom out"));
   UI_but_func_set(bt, profilewidget_buttons_zoom_out, prwidget, NULL);
+
+  /* (Right aligned) */
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
 
   /* Reset view, vector handle, auto handle, auto clamped handle, reset curve */
   bt = uiDefIconBlockBut(block, profilewidget_buttons_tools, prwidget, 0, ICON_DOWNARROW_HLT, 0,

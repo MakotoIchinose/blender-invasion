@@ -211,6 +211,8 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna,"ProfileWidget",
                          "Profile Path editor used to build a user-defined profile");
 
+//  prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
+
   prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_DO_CLIP);
   RNA_def_property_ui_text(prop, "Clip", "Force the path view to fit a defined boundary");

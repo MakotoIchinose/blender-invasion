@@ -28,6 +28,8 @@ struct ProfileWidget;
 struct ProfilePath;
 struct ProfilePoint;
 
+/* HANS-TODO: Organize */
+
 void profilewidget_set_defaults(struct ProfileWidget *prwdgt);
 
 struct ProfileWidget *profilewidget_add(int preset);
@@ -74,9 +76,5 @@ void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles)
 
 /* call before _all_ evaluation functions */
 void profilewidget_initialize(struct ProfileWidget *prwdgt, int nsegments);
-
-/* HANS-TODO: Remove these, they only sample in 1D, so they won't be useful */
-/* single curve, no table check */
-float profilepath_evaluateF(const struct ProfilePath *prpath, float value);
 
 #endif

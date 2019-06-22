@@ -41,7 +41,7 @@
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
 
-#define DEBUG_PRWDGT 0
+#define DEBUG_PRWDGT 1
 
 void profilewidget_set_defaults(ProfileWidget *prwdgt)
 {
@@ -75,6 +75,7 @@ struct ProfileWidget *profilewidget_add(int preset)
 
   profilewidget_set_defaults(prwdgt);
   profilepath_reset(prwdgt->profile, preset);
+  profilewidget_changed(prwdgt, false);
 
   return prwdgt;
 }
@@ -232,18 +233,9 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
 
 #if DEBUG_PRWDGT
   printf("PROFILEPATH INSERT");
-  printf("(begin total points = %d)", prpath->total_points);
+  printf("(begin total points = %d)", prpath->totpoint);
 #endif
 
-  /* HANS-TODO: New insertion algorithm. Find closest points in 2D and then insert them in the
-   * middle of those. Maybe just lengthen the size of the array instead of allocating a new one
-   * too, but that probbaly doesn't matter so much.
-   *
-   * New algorithm would probably be: Sort the points by their proximity to the new location. Then
-   * find the two points closest to the new position that are ordered one after the next in the
-   * original array of points (this will probably be the two closest points, but for more
-   * complicated profiles it could be points on opposite sides of the profile). Then insert the new
-   * point between the two we just found. */
   /* insert fragments of the old one and the new point to the new curve */
   prpath->totpoint++;
   for (a = 0, b = 0; a < prpath->totpoint; a++) {
@@ -266,8 +258,7 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
     }
   }
 #if DEBUG_PRWDGT
-  printf("PROFILEPATH INSERT");
-  printf("(end total points = %d)\n", prpath->total_points);
+  printf("(end total points = %d)\n", prpath->totpoint);
 #endif
 
   /* free old path and replace it with the new one */
@@ -277,6 +268,39 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
   return newpt;
 }
 
+/* HANS-TODO: New insertion algorithm. Find closest points in 2D and then insert them in the
+ * middle of those. Maybe just lengthen the size of the array instead of allocating a new one
+ * too, but that probbaly doesn't matter so much.
+ *
+ * New algorithm would probably be: Sort the points by their proximity to the new location. Then
+ * find the two points closest to the new position that are ordered one after the next in the
+ * original array of points (this will probably be the two closest points, but for more
+ * complicated profiles it could be points on opposite sides of the profile). Then insert the new
+ * point between the two we just found. */
+ProfilePoint *profilepath_insert2(ProfilePath *prpath, float x, float y)
+{
+  ProfilePoint *new_pts = MEM_callocN(((size_t)prpath->totpoint + 1) * sizeof(ProfilePoint),
+                                  "path points");
+  ProfilePoint *new_pt = NULL;
+  int a, b;
+  bool foundloc = false;
+  int *sorted_indices = MEM_callocN((size_t)prpath->totpoint * sizeof(int), "points sorted i");
+
+
+
+
+
+  /* free old path and replace it with the new one */
+  MEM_freeN(prpath->path);
+  prpath->path = new_pts;
+
+  MEM_freeN(sorted_indices);
+
+  return new_pt;
+}
+
+/* Requires ProfilePath changed call afterwards */
+/* HANS-TODO: Couldn't it just build the table at the end of this function here? */
 void profilepath_reset(ProfilePath *prpath, int preset)
 {
 #if DEBUG_PRWDGT
@@ -291,6 +315,9 @@ void profilepath_reset(ProfilePath *prpath, int preset)
     case PROF_PRESET_LINE:
       prpath->totpoint = 2;
       break;
+    case PROF_PRESET_SUPPORTS:
+      prpath->totpoint = 4;
+      break;
   }
 
   prpath->path = MEM_callocN((size_t)prpath->totpoint * sizeof(ProfilePoint), "path points");
@@ -301,6 +328,17 @@ void profilepath_reset(ProfilePath *prpath, int preset)
       prpath->path[0].y = 0.0;
       prpath->path[1].x = 1.0;
       prpath->path[1].y = 1.0;
+      break;
+    case PROF_PRESET_SUPPORTS:
+      prpath->path[0].x = 0.0;
+      prpath->path[0].y = 0.0;
+      prpath->path[1].x = 0.5;
+      prpath->path[1].y = 0.0;
+      /* HANS-TODO: Add curve in middle */
+      prpath->path[2].x = 0.5;
+      prpath->path[2].y = 0.5;
+      prpath->path[3].x = 1.0;
+      prpath->path[3].y = 1.0;
       break;
   }
 
@@ -474,17 +512,14 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
 
 #if DEBUG_PRWDGT
   printf("PROFILEPATH MAKE TABLE\n");
-#endif
-
   if (prpath->path == NULL) {
-    printf("ProfilePath's path is NULL\n"); /* HANS-TODO: Remove */
+    printf("(path is NULL)\n");
     return;
   }
+#endif
 
-  /* HANS-TODO: Remove */
-//  prpath->table = prpath->path;
-
-  /* default rect also is table range */
+  /* Evaluate table inside the clip range */
+  /* HANS-TODO: Not good, this only uses X */
   prpath->mintable = clipr->xmin;
   prpath->maxtable = clipr->xmax;
 
@@ -634,7 +669,7 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
 
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET CHANGED\n");
-  if (prwdgt->profile->total_points < 0) {
+  if (prwdgt->profile->totpoint < 0) {
     printf("Someone screwed up the totpoint\n");
   }
 #endif
@@ -752,7 +787,7 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH EVALUATE\n");
-  if (prpath->total_points < 0) {
+  if (prpath->totpoint < 0) {
     printf("Someone screwed up the totpoint\n");
   }
 #endif
