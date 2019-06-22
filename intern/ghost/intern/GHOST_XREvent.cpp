@@ -37,7 +37,7 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContext *xr_context)
   OpenXRData *oxr = &xr_context->oxr;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
 
-  if (!GHOST_XrSessionIsRunning(xr_context)) {
+  if ((xr_context == NULL) || (oxr->session == XR_NULL_HANDLE)) {
     return GHOST_kFailure;
   }
 
