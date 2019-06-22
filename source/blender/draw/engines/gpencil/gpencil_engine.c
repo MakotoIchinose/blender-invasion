@@ -158,7 +158,7 @@ static void GPENCIL_create_framebuffers(void *vedata)
         stl->storage->background_ready = false;
       }
       DRW_texture_ensure_2d(
-          &txl->background_depth_tx, size[0], size[1], GPU_DEPTH24_STENCIL8, DRW_TEX_FILTER);
+          &txl->background_depth_tx, size[0], size[1], GPU_DEPTH_COMPONENT24, DRW_TEX_FILTER);
       DRW_texture_ensure_2d(
           &txl->background_color_tx, size[0], size[1], GPU_RGBA16F, DRW_TEX_FILTER);
       GPU_framebuffer_ensure_config(&fbl->background_fb,
