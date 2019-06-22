@@ -1133,8 +1133,7 @@ static void add_nodes(Scene *scene,
         for (b_node->inputs.begin(b_input); b_input != b_node->inputs.end(); ++b_input) {
           ShaderInput *input = node_find_input_by_name(node, *b_node, *b_input);
           if (!input) {
-            /* XXX should not happen, report error? */
-            continue;
+            assert(false);
           }
           input_map[b_input->ptr.data] = input;
 
@@ -1143,8 +1142,7 @@ static void add_nodes(Scene *scene,
         for (b_node->outputs.begin(b_output); b_output != b_node->outputs.end(); ++b_output) {
           ShaderOutput *output = node_find_output_by_name(node, *b_node, *b_output);
           if (!output) {
-            /* XXX should not happen, report error? */
-            continue;
+            assert(false);
           }
           output_map[b_output->ptr.data] = output;
         }
