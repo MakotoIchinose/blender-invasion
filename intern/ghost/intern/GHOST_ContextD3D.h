@@ -32,7 +32,7 @@
 
 class GHOST_ContextD3D : public GHOST_Context {
   /* XR code needs low level graphics data to send to OpenXR. */
-  friend class GHOST_XrGraphicsBinding;
+  friend class GHOST_XrGraphicsBindingD3D;
 
  public:
   GHOST_ContextD3D(bool stereoVisual, HWND hWnd);

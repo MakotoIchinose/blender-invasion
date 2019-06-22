@@ -21,15 +21,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
-#include <cstring>
 
 #include "GHOST_C-api.h"
-#if defined(WITH_X11)
-#  include "GHOST_ContextGLX.h"
-#elif defined(WIN32)
-#  include "GHOST_ContextWGL.h"
-#  include "GHOST_ContextD3D.h"
-#endif
+
+#include "GHOST_IXRGraphicsBinding.h"
 
 #include "GHOST_XR_intern.h"
 
@@ -64,46 +59,6 @@ static void GHOST_XrSystemInit(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-void GHOST_XrGraphicsBinding::initFromGhostContext(GHOST_TXrGraphicsBinding type,
-                                                   GHOST_Context *ghost_ctx)
-{
-  switch (type) {
-    case GHOST_kXrGraphicsOpenGL: {
-#if defined(WITH_X11)
-      GHOST_ContextGLX *ctx_glx = static_cast<GHOST_ContextGLX *>(ghost_ctx);
-      XVisualInfo *visual_info = glXGetVisualFromFBConfig(ctx_glx->m_display, ctx_glx->m_fbconfig);
-
-      oxr_binding.glx.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
-      oxr_binding.glx.xDisplay = ctx_glx->m_display;
-      oxr_binding.glx.glxFBConfig = ctx_glx->m_fbconfig;
-      oxr_binding.glx.glxDrawable = ctx_glx->m_window;
-      oxr_binding.glx.glxContext = ctx_glx->m_context;
-      oxr_binding.glx.visualid = visual_info->visualid;
-#elif defined(WIN32)
-      GHOST_ContextWGL *ctx_wgl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
-
-      oxr_binding.wgl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
-      oxr_binding.wgl.hDC = ctx_wgl->m_hDC;
-      oxr_binding.wgl.hGLRC = ctx_wgl->m_hGLRC;
-#endif
-
-      break;
-    }
-#ifdef WIN32
-    case GHOST_kXrGraphicsD3D11: {
-      GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
-
-      oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
-      oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
-
-      break;
-    }
-#endif
-    default:
-      assert(false);
-  }
-}
-
 void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
@@ -128,8 +83,8 @@ void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
             "GHOST_XrSessionStart()).\n");
     return;
   }
-  xr_context->gpu_binding = new GHOST_XrGraphicsBinding();
-  xr_context->gpu_binding->initFromGhostContext(xr_context->gpu_binding_type, xr_context->gpu_ctx);
+  xr_context->gpu_binding = GHOST_XrGraphicsBindingCreateFromType(xr_context->gpu_binding_type);
+  xr_context->gpu_binding->initFromGhostContext(xr_context->gpu_ctx);
 
   XrSessionCreateInfo create_info{};
   create_info.type = XR_TYPE_SESSION_CREATE_INFO;
@@ -143,7 +98,6 @@ void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
 {
   xrEndSession(xr_context->oxr.session);
   GHOST_XrGraphicsContextUnbind(*xr_context);
-  delete xr_context->gpu_binding;
 }
 
 void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
@@ -168,45 +122,8 @@ void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateCh
   }
 }
 
-static bool swapchain_format_choose(GHOST_TXrGraphicsBinding gpu_binding_type,
-                                    const std::vector<int64_t> &runtime_formats,
-                                    int64_t *r_result)
-{
-  std::vector<int64_t> gpu_binding_formats;
-
-  switch (gpu_binding_type) {
-    case GHOST_kXrGraphicsOpenGL: {
-      gpu_binding_formats = {GL_RGBA8};
-      break;
-    }
-#ifdef WIN32
-    case GHOST_kXrGraphicsD3D11: {
-      gpu_binding_formats = {DXGI_FORMAT_R8G8B8A8_UNORM};
-      break;
-    }
-#endif
-    default:
-      return false;
-  }
-
-  if (gpu_binding_formats.empty()) {
-    return false;
-  }
-
-  auto res = std::find_first_of(gpu_binding_formats.begin(),
-                                gpu_binding_formats.end(),
-                                runtime_formats.begin(),
-                                runtime_formats.end());
-  if (res == gpu_binding_formats.end()) {
-    return false;
-  }
-
-  *r_result = *res;
-  return true;
-}
-
-static bool swapchain_create(OpenXRData *oxr,
-                             GHOST_TXrGraphicsBinding gpu_binding_type,
+static bool swapchain_create(const GHOST_XrContext *xr_context,
+                             OpenXRData *oxr,
                              const XrViewConfigurationView *xr_view)
 {
   XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
@@ -220,7 +137,7 @@ static bool swapchain_create(OpenXRData *oxr,
       oxr->session, swapchain_formats.size(), &format_count, swapchain_formats.data());
   assert(swapchain_formats.size() == format_count);
 
-  if (!swapchain_format_choose(gpu_binding_type, swapchain_formats, &chosen_format)) {
+  if (!xr_context->gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
     fprintf(stderr, "Error: No format matching OpenXR runtime supported swapchain formats found.");
     return false;
   }
@@ -252,6 +169,6 @@ void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
       oxr->instance, oxr->system_id, oxr->view_type, views.size(), &view_count, views.data());
 
   for (const XrViewConfigurationView &view : views) {
-    swapchain_create(oxr, xr_context->gpu_binding_type, &view);
+    swapchain_create(xr_context, oxr, &view);
   }
 }

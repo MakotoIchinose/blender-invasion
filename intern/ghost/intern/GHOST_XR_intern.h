@@ -21,9 +21,11 @@
 #ifndef __GHOST_XR_INTERN_H__
 #define __GHOST_XR_INTERN_H__
 
+#include <memory>
 #include <vector>
 
 #include "GHOST_XR_openxr_includes.h"
+#include "GHOST_IXRGraphicsBinding.h"
 
 typedef struct OpenXRData {
   XrInstance instance;
@@ -38,26 +40,12 @@ typedef struct OpenXRData {
   XrSessionState session_state;
 } OpenXRData;
 
-class GHOST_XrGraphicsBinding {
- public:
-  union {
-#if defined(WITH_X11)
-    XrGraphicsBindingOpenGLXlibKHR glx;
-#elif defined(WIN32)
-    XrGraphicsBindingOpenGLWin32KHR wgl;
-    XrGraphicsBindingD3D11KHR d3d11;
-#endif
-  } oxr_binding;
-
-  void initFromGhostContext(GHOST_TXrGraphicsBinding type, class GHOST_Context *ghost_ctx);
-};
-
 typedef struct GHOST_XrContext {
   OpenXRData oxr;
 
   /** Active graphics binding type. */
   GHOST_TXrGraphicsBinding gpu_binding_type;
-  class GHOST_XrGraphicsBinding *gpu_binding;
+  std::unique_ptr<GHOST_IXrGraphicsBinding> gpu_binding;
   /** Function to retrieve (possibly create) a graphics context */
   GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn;
   /** Function to release (possibly free) a graphics context */
