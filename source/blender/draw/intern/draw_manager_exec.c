@@ -1198,7 +1198,6 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   release_texture_slots(shader_changed);
 
   drw_state_set((pass_state & shgroup->state_extra_disable) | shgroup->state_extra);
-  drw_stencil_set(shgroup->stencil_mask);
 
   draw_update_uniforms(shgroup, &state, &use_tfeedback);
 
@@ -1225,6 +1224,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       }
 
       switch (cmd_type) {
+        case DRW_CMD_STENCIL:
+          drw_stencil_set(cmd->stencil.mask);
+          break;
         case DRW_CMD_SELECTID:
           state.select_id = cmd->select_id.select_id;
           state.select_buf = cmd->select_id.select_buf;

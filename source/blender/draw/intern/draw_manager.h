@@ -156,6 +156,7 @@ typedef enum {
   DRW_CMD_DRAW_INSTANCE = 2,
   DRW_CMD_DRAW_PROCEDURAL = 3,
   /* Other Commands */
+  DRW_CMD_STENCIL = 14,
   DRW_CMD_SELECTID = 15,
   /* Needs to fit in 4bits */
 } eDRWCommandType;
@@ -189,12 +190,18 @@ typedef struct DRWCommandSetSelectID {
   uint select_id;
 } DRWCommandSetSelectID;
 
+typedef struct DRWCommandSetStencil {
+  uint mask;
+} DRWCommandSetStencil;
+
 typedef union DRWCommand {
   /* Only sortable type */
   DRWCommandDraw draw;
   DRWCommandDrawRange range;
   DRWCommandDrawInstance instance;
   DRWCommandDrawProcedural procedural;
+  /* Stencil */
+  DRWCommandSetStencil stencil;
   /* Select */
   DRWCommandSetSelectID select_id;
 } DRWCommand;
@@ -253,6 +260,8 @@ struct DRWShadingGroup {
   struct DRWUniformChunk *uniforms; /* Uniforms pointers */
   uint32_t uniform_count;           /* Index of next uniform inside DRWUniformChunk. */
 
+  int objectinfo;
+
   struct {
     /* Chunks of draw calls. */
     struct DRWCommandChunk *first, *last;
@@ -262,10 +271,6 @@ struct DRWShadingGroup {
   DRWState state_extra;
   /** State changes for this batch only (and'd with the pass's state) */
   DRWState state_extra_disable;
-  /** Stencil mask to use for stencil test / write operations */
-  uint stencil_mask;
-
-  int objectinfo;
 
   DRWPass *pass_parent; /* backlink to pass we're in */
 };

@@ -665,6 +665,13 @@ static void drw_command_set_select_id(DRWShadingGroup *shgroup, GPUVertBuf *buf,
   cmd->select_id = select_id;
 }
 
+static void drw_command_set_stencil_mask(DRWShadingGroup *shgroup, uint mask)
+{
+  BLI_assert(mask <= 0xFF);
+  DRWCommandSetStencil *cmd = drw_command_create(shgroup, DRW_CMD_STENCIL);
+  cmd->mask = mask;
+}
+
 void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          Object *ob,
                          float (*obmat)[4],
@@ -1084,7 +1091,6 @@ static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass 
   shgroup->shader = shader;
   shgroup->state_extra = 0;
   shgroup->state_extra_disable = ~0x0;
-  shgroup->stencil_mask = 0;
   shgroup->cmd.first = NULL;
   shgroup->cmd.last = NULL;
   shgroup->pass_parent = pass;
@@ -1208,8 +1214,7 @@ void DRW_shgroup_state_disable(DRWShadingGroup *shgroup, DRWState state)
 
 void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask)
 {
-  BLI_assert(mask <= 255);
-  shgroup->stencil_mask = mask;
+  drw_command_set_stencil_mask(shgroup, mask);
 }
 
 bool DRW_shgroup_is_empty(DRWShadingGroup *shgroup)
@@ -1228,7 +1233,8 @@ DRWShadingGroup *DRW_shgroup_get_next(DRWShadingGroup *shgroup)
  * shgroups. */
 uint DRW_shgroup_stencil_mask_get(DRWShadingGroup *shgroup)
 {
-  return shgroup->stencil_mask;
+  /* TODO remove. This is broken. */
+  return 0;
 }
 
 DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
