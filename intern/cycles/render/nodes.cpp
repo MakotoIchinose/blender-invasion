@@ -974,11 +974,11 @@ NODE_DEFINE(VoronoiTextureNode)
   SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
   SOCKET_IN_FLOAT(jitter, "Jitter", 1.0f);
 
-  SOCKET_OUT_FLOAT(distance, "outDistance");
-  SOCKET_OUT_COLOR(color, "outColor");
-  SOCKET_OUT_VECTOR(position, "outPosition");
-  SOCKET_OUT_FLOAT(w, "outW");
-  SOCKET_OUT_FLOAT(radius, "outRadius");
+  SOCKET_OUT_FLOAT(distance, "Distance");
+  SOCKET_OUT_COLOR(color, "Color");
+  SOCKET_OUT_POINT(position, "Position");
+  SOCKET_OUT_FLOAT(w, "W");
+  SOCKET_OUT_FLOAT(radius, "Radius");
 
   return type;
 }

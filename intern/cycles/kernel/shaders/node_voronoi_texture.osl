@@ -51,8 +51,9 @@ vector2 hash_01_vector2(vector2 k)
 
 vector3 hash_01_vector3(vector3 k)
 {
-  return vector3(
-      hash_01(k), hash_01(vector4(k[0], k[1], k[2], 1.0)), hash_01(vector4(k[0], k[1], k[2], 2.0)));
+  return vector3(hash_01(k),
+                 hash_01(vector4(k[0], k[1], k[2], 1.0)),
+                 hash_01(vector4(k[0], k[1], k[2], 2.0)));
 }
 
 vector4 hash_01_vector4(vector4 k)
@@ -77,8 +78,9 @@ color hash_01_color(vector2 k)
 
 color hash_01_color(vector3 k)
 {
-  return color(
-      hash_01(k), hash_01(vector4(k[0], k[1], k[2], 1.0)), hash_01(vector4(k[0], k[1], k[2], 2.0)));
+  return color(hash_01(k),
+               hash_01(vector4(k[0], k[1], k[2], 1.0)),
+               hash_01(vector4(k[0], k[1], k[2], 2.0)));
 }
 
 color hash_01_color(vector4 k)
@@ -110,8 +112,7 @@ float distance(vector4 a, vector4 b)
 
 vector2 safe_divide(vector2 a, float b)
 {
-  return vector2((b != 0.0) ? a.x / b : 0.0,
-  (b != 0.0) ? a.y / b : 0.0);
+  return vector2((b != 0.0) ? a.x / b : 0.0, (b != 0.0) ? a.y / b : 0.0);
 }
 
 vector4 safe_divide(vector4 a, float b)
@@ -919,19 +920,19 @@ shader node_voronoi_texture(
     int use_mapping = 0,
     matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     string dimensions = "3D",
-    string metric = "euclidean",
+    string distance = "euclidean",
     string feature = "f1",
     vector3 Vector = P,
-    float W = 0.0,
+    float WIn = 0.0,
     float Scale = 5.0,
     float Smoothness = 5.0,
     float Exponent = 1.0,
     float Jitter = 1.0,
-    output float outDistance = 0.0,
-    output color outColor = 0.0,
-    output vector3 outPosition = P,
-    output float outW = 0.0,
-    output float outRadius = 0.0)
+    output float Distance = 0.0,
+    output color Color = 0.0,
+    output vector3 Position = P,
+    output float WOut = 0.0,
+    output float Radius = 0.0)
 {
   float jitter = clamp(Jitter, 0.0, 1.0);
   float smoothness = max(Smoothness, 1.0);
@@ -940,102 +941,101 @@ shader node_voronoi_texture(
   if (use_mapping)
     coord = transform(mapping, coord);
 
-  float w = W * Scale;
+  float w = WIn * Scale;
   coord *= Scale;
 
   if (dimensions == "1D") {
     if (feature == "f1") {
-      voronoi_f1_1d(w, Exponent, jitter, metric, outDistance, outColor, outW);
+      voronoi_f1_1d(w, Exponent, jitter, distance, Distance, Color, WOut);
     }
     else if (feature == "smooth_f1") {
-      voronoi_smooth_f1_1d(w, smoothness, Exponent, jitter, metric, outDistance, outColor, outW);
+      voronoi_smooth_f1_1d(w, smoothness, Exponent, jitter, distance, Distance, Color, WOut);
     }
     else if (feature == "f2") {
-      voronoi_f2_1d(w, Exponent, jitter, metric, outDistance, outColor, outW);
+      voronoi_f2_1d(w, Exponent, jitter, distance, Distance, Color, WOut);
     }
     else if (feature == "distance_to_edge") {
-      voronoi_distance_to_edge_1d(w, jitter, outDistance);
+      voronoi_distance_to_edge_1d(w, jitter, Distance);
     }
     else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius_1d(w, jitter, outRadius);
+      voronoi_n_sphere_radius_1d(w, jitter, Radius);
     }
     else {
       error("Unknown feature!");
     }
-    outW = (Scale != 0.0) ? outW / Scale : 0.0;
+    WOut = (Scale != 0.0) ? WOut / Scale : 0.0;
   }
   else if (dimensions == "2D") {
     vector2 coord2D = vector2(coord[0], coord[1]);
     vector2 outPosition2D;
     if (feature == "f1") {
-      voronoi_f1_2d(coord2D, Exponent, jitter, metric, outDistance, outColor, outPosition2D);
+      voronoi_f1_2d(coord2D, Exponent, jitter, distance, Distance, Color, outPosition2D);
     }
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_2d(
-          coord2D, smoothness, Exponent, jitter, metric, outDistance, outColor, outPosition2D);
+          coord2D, smoothness, Exponent, jitter, distance, Distance, Color, outPosition2D);
     }
     else if (feature == "f2") {
-      voronoi_f2_2d(coord2D, Exponent, jitter, metric, outDistance, outColor, outPosition2D);
+      voronoi_f2_2d(coord2D, Exponent, jitter, distance, Distance, Color, outPosition2D);
     }
     else if (feature == "distance_to_edge") {
-      voronoi_distance_to_edge_2d(coord2D, jitter, outDistance);
+      voronoi_distance_to_edge_2d(coord2D, jitter, Distance);
     }
     else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius_2d(coord2D, jitter, outRadius);
+      voronoi_n_sphere_radius_2d(coord2D, jitter, Radius);
     }
     else {
       error("Unknown feature!");
     }
     outPosition2D = safe_divide(outPosition2D, Scale);
-    outPosition = vector3(outPosition2D.x, outPosition2D.y, 0.0);
+    Position = vector3(outPosition2D.x, outPosition2D.y, 0.0);
   }
   else if (dimensions == "3D") {
     if (feature == "f1") {
-      voronoi_f1_3d(coord, Exponent, jitter, metric, outDistance, outColor, outPosition);
+      voronoi_f1_3d(coord, Exponent, jitter, distance, Distance, Color, Position);
     }
     else if (feature == "smooth_f1") {
-      voronoi_smooth_f1_3d(
-          coord, smoothness, Exponent, jitter, metric, outDistance, outColor, outPosition);
+      voronoi_smooth_f1_3d(coord, smoothness, Exponent, jitter, distance, Distance, Color, Position);
     }
     else if (feature == "f2") {
-      voronoi_f2_3d(coord, Exponent, jitter, metric, outDistance, outColor, outPosition);
+      voronoi_f2_3d(coord, Exponent, jitter, distance, Distance, Color, Position);
     }
     else if (feature == "distance_to_edge") {
-      voronoi_distance_to_edge_3d(coord, jitter, outDistance);
+      voronoi_distance_to_edge_3d(coord, jitter, Distance);
     }
     else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius_3d(coord, jitter, outRadius);
+      voronoi_n_sphere_radius_3d(coord, jitter, Radius);
     }
     else {
       error("Unknown feature!");
     }
-    outPosition = (Scale != 0.0) ? outPosition / Scale : vector3(0.0);
+    Position = (Scale != 0.0) ? Position / Scale : vector3(0.0);
   }
   else if (dimensions == "4D") {
     vector4 coord4D = vector4(coord[0], coord[1], coord[2], w);
     vector4 outPosition4D;
     if (feature == "f1") {
-      voronoi_f1_4d(coord4D, Exponent, jitter, metric, outDistance, outColor, outPosition4D);
+      voronoi_f1_4d(coord4D, Exponent, jitter, distance, Distance, Color, outPosition4D);
     }
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_4d(
-          coord4D, smoothness, Exponent, jitter, metric, outDistance, outColor, outPosition4D);
+          coord4D, smoothness, Exponent, jitter, distance, Distance, Color, outPosition4D);
     }
     else if (feature == "f2") {
-      voronoi_f2_4d(coord4D, Exponent, jitter, metric, outDistance, outColor, outPosition4D);
+      voronoi_f2_4d(coord4D, Exponent, jitter, distance, Distance, Color, outPosition4D);
     }
     else if (feature == "distance_to_edge") {
-      voronoi_distance_to_edge_4d(coord4D, jitter, outDistance);
+      voronoi_distance_to_edge_4d(coord4D, jitter, Distance);
     }
     else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius_4d(coord4D, jitter, outRadius);
+      voronoi_n_sphere_radius_4d(coord4D, jitter, Radius);
     }
     else {
       error("Unknown feature!");
     }
     outPosition4D = safe_divide(outPosition4D, Scale);
-    outPosition = vector3(outPosition4D.x, outPosition4D.y, outPosition4D.z);
-    outW = outPosition4D.w;
+    Position = vector3(outPosition4D.x, outPosition4D.y, outPosition4D.z);
+    WOut = outPosition4D.w;
   }
   else {
     error("Unknown dimension!");
