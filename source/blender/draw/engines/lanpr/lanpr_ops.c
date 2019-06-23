@@ -3748,7 +3748,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
 
 void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
 void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
-void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb);
+void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_space);
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
 {
@@ -4041,7 +4041,8 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
   if (lanpr->enable_chaining) {
     lanpr_NO_THREAD_chain_feature_lines(rb);  // should use user_adjustable value
     lanpr_split_chains_for_fixed_occlusion(rb);
-    lanpr_connect_chains_image_space(rb);
+    lanpr_connect_chains_image_space(rb, 1);
+    lanpr_connect_chains_image_space(rb, 0);
   }
 
   rb->cached_for_frame = rb->scene->r.cfra;
@@ -4305,6 +4306,7 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
             gpl = BKE_gpencil_layer_addnew(gpd,"lanpr_layer",true);
           }
           gpf = BKE_gpencil_frame_addnew(gpl,frame);
+          BKE_gpencil_free_strokes(gpf); // force clear now
 
           lanpr_generate_gpencil_from_chain(md, dg, ob, gpl, gpf);
         }

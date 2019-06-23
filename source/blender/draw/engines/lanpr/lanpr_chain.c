@@ -525,7 +525,7 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
                                              rlci->normal,
                                              rlci->line_type,
                                              fixed_occ);
-
+        new_rlc->object_ref = rlc->object_ref;
         rlc = new_rlc;
         fixed_occ = rlci->occlusion;
       }
@@ -569,7 +569,7 @@ void lanpr_connect_two_chains(LANPR_RenderBuffer *rb,
 
 // this only does head-tail connection.
 // overlapping / tiny isolated segment / loop reduction not implemented here yet.
-void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
+void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_space)
 {
   LANPR_RenderLineChain *rlc, *new_rlc;
   LANPR_RenderLineChainItem *rlci, *next_rlci;
@@ -596,7 +596,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
 
     rlci = rlc->chain.last;
     while (ba = lanpr_get_end_point_bounding_area(rb, rlci)) {
-      dist = 100.0f;
+      dist = do_geometry_space?rb->scene->lanpr.chaining_threshold:100.0f;
       closest_cre = NULL;
       if (!ba->linked_chains.first)
         break;
@@ -610,7 +610,9 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
           BLI_remlink(&ba->linked_chains, cre);
           continue;
         }
-        float new_len = len_v2v2(cre->rlci->pos, rlci->pos);
+        float new_len = do_geometry_space?
+                        len_v3v3(cre->rlci->gpos,rlci->gpos):
+                        len_v2v2(cre->rlci->pos, rlci->pos);
         if (new_len < dist) {
           closest_cre = cre;
           dist = new_len;
@@ -636,7 +638,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
 
     rlci = rlc->chain.first;
     while (ba = lanpr_get_end_point_bounding_area(rb, rlci)) {
-      dist = 100.0f;
+      dist = do_geometry_space?rb->scene->lanpr.chaining_threshold:100.0f;
       closest_cre = NULL;
       if (!ba->linked_chains.first)
         break;
@@ -649,7 +651,9 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
           BLI_remlink(&ba->linked_chains, cre);
           continue;
         }
-        float new_len = len_v2v2(cre->rlci->pos, rlci->pos);
+        float new_len = do_geometry_space?
+                        len_v3v3(cre->rlci->gpos,rlci->gpos):
+                        len_v2v2(cre->rlci->pos, rlci->pos);
         if (new_len < dist) {
           closest_cre = cre;
           dist = new_len;

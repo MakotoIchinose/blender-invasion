@@ -1513,7 +1513,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     length += len_v3v3(last_coord, this_coord);
   }
 
-  int count = (int)(length / dist) + 3;  // preserve some extra in case
+  int count = (int)(length / dist) + 10;  // preserve some extra in case
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
 
