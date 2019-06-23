@@ -1806,49 +1806,21 @@ typedef struct ZSortData {
   const float *origin;
 } ZSortData;
 
-static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
+static int pass_shgroup_dist_sort(const void *a, const void *b)
 {
-  const ZSortData *zsortdata = (ZSortData *)thunk;
   const DRWShadingGroup *shgrp_a = (const DRWShadingGroup *)a;
   const DRWShadingGroup *shgrp_b = (const DRWShadingGroup *)b;
 
-  /* XXX TODO FIXMEALREADY: THIS IS BROKEN FIX IT ASAP. First command is not garanteed to be a draw
-   * command. Also, it is always allocated. */
-  const DRWCommandDraw *call_a = &((DRWCommandSmallChunk *)shgrp_a->cmd.first)->commands[0].draw;
-  const DRWCommandDraw *call_b = &((DRWCommandSmallChunk *)shgrp_b->cmd.first)->commands[0].draw;
-
-  if (call_a == NULL) {
-    return -1;
-  }
-  if (call_b == NULL) {
-    return -1;
-  }
-
-  /** XXX(fclem) This is extremely inefficient. To revisit. */
-  DRWObjectMatrix *a_ob_mats = BLI_memblock_elem_get(
-      DST.vmempool->obmats, call_a->handle.chunk, call_a->handle.id);
-  DRWObjectMatrix *b_ob_mats = BLI_memblock_elem_get(
-      DST.vmempool->obmats, call_a->handle.chunk, call_b->handle.id);
-
-  float tmp[3];
-  sub_v3_v3v3(tmp, zsortdata->origin, a_ob_mats->model[3]);
-  const float a_sq = dot_v3v3(zsortdata->axis, tmp);
-  sub_v3_v3v3(tmp, zsortdata->origin, b_ob_mats->model[3]);
-  const float b_sq = dot_v3v3(zsortdata->axis, tmp);
-
-  if (a_sq < b_sq) {
+  if (shgrp_a->z_sorting.distance < shgrp_b->z_sorting.distance) {
     return 1;
   }
-  else if (a_sq > b_sq) {
+  else if (shgrp_a->z_sorting.distance > shgrp_b->z_sorting.distance) {
     return -1;
   }
   else {
-    /* If there is a depth prepass put it before */
-    if ((shgrp_a->state_extra & DRW_STATE_WRITE_DEPTH) != 0) {
+    /* If distances are the same, keep original order. */
+    if (shgrp_a->z_sorting.original_index > shgrp_b->z_sorting.original_index) {
       return -1;
-    }
-    else if ((shgrp_b->state_extra & DRW_STATE_WRITE_DEPTH) != 0) {
-      return 1;
     }
     else {
       return 0;
@@ -1860,38 +1832,61 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
 
 #define SORT_IMPL_LINKTYPE DRWShadingGroup
 
-#define SORT_IMPL_USE_THUNK
 #define SORT_IMPL_FUNC shgroup_sort_fn_r
 #include "../../blenlib/intern/list_sort_impl.h"
 #undef SORT_IMPL_FUNC
-#undef SORT_IMPL_USE_THUNK
 
 #undef SORT_IMPL_LINKTYPE
 
 /**
  * Sort Shading groups by decreasing Z of their first draw call.
- * This is useful for order dependent effect such as transparency.
+ * This is useful for order dependent effect such as alpha-blending.
  */
 void DRW_pass_sort_shgroup_z(DRWPass *pass)
 {
   const float(*viewinv)[4] = DST.view_active->storage.viewinv;
 
-  /* XXX TODO FIXMEALREADY: THIS IS BROKEN FIX IT ASAP. */
-  return;
-
-  ZSortData zsortdata = {viewinv[2], viewinv[3]};
-
-  if (pass->shgroups.first && pass->shgroups.first->next) {
-    pass->shgroups.first = shgroup_sort_fn_r(
-        pass->shgroups.first, pass_shgroup_dist_sort, &zsortdata);
-
-    /* Find the next last */
-    DRWShadingGroup *last = pass->shgroups.first;
-    while ((last = last->next)) {
-      /* Do nothing */
-    }
-    pass->shgroups.last = last;
+  if (!(pass->shgroups.first && pass->shgroups.first->next)) {
+    /* Nothing to sort */
+    return;
   }
+
+  uint index = 0;
+  DRWShadingGroup *shgroup = pass->shgroups.first;
+  do {
+    DRWResourceHandle handle = {.value = 0};
+    /* Find first DRWCommandDraw. */
+    DRWCommandChunk *cmd_chunk = shgroup->cmd.first;
+    for (; cmd_chunk && handle.value == 0; cmd_chunk = cmd_chunk->next) {
+      for (int i = 0; i < cmd_chunk->command_used && handle.value == 0; i++) {
+        if (DRW_CMD_DRAW == command_type_get(cmd_chunk->command_type, i)) {
+          handle = cmd_chunk->commands[i].draw.handle;
+        }
+      }
+    }
+    /* To be sorted a shgroup needs to have at least one draw command.  */
+    BLI_assert(handle.value != 0);
+
+    DRWObjectMatrix *obmats = BLI_memblock_elem_get(DST.vmempool->obmats, handle.chunk, handle.id);
+
+    /* Compute distance to camera. */
+    float tmp[3];
+    sub_v3_v3v3(tmp, viewinv[3], obmats->model[3]);
+    shgroup->z_sorting.distance = dot_v3v3(viewinv[2], tmp);
+    shgroup->z_sorting.original_index = index++;
+
+  } while ((shgroup = shgroup->next));
+
+  /* Sort using computed distances. */
+  pass->shgroups.first = shgroup_sort_fn_r(pass->shgroups.first, pass_shgroup_dist_sort);
+
+  /* Find the new last */
+  DRWShadingGroup *last = pass->shgroups.first;
+  while ((last = last->next)) {
+    /* Reset the pass id for debugging. */
+    last->pass_handle = pass->handle;
+  }
+  pass->shgroups.last = last;
 }
 
 /** \} */

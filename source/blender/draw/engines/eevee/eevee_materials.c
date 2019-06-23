@@ -1423,6 +1423,24 @@ static void material_transparent(Material *ma,
   const float *spec_p = &ma->spec;
   const float *rough_p = &ma->roughness;
 
+  const bool use_prepass = ((ma->blend_flag & MA_BL_HIDE_BACKFACE) != 0);
+
+  DRWState cur_state;
+  DRWState all_state = (DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_CULL_BACK |
+                        DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_DEPTH_EQUAL |
+                        DRW_STATE_BLEND_CUSTOM);
+
+  /* Depth prepass */
+  if (use_prepass) {
+    *shgrp_depth = DRW_shgroup_create(e_data.default_prepass_clip_sh, psl->transparent_pass);
+
+    cur_state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+    cur_state |= (do_cull) ? DRW_STATE_CULL_BACK : 0;
+
+    DRW_shgroup_state_disable(*shgrp_depth, all_state);
+    DRW_shgroup_state_enable(*shgrp_depth, cur_state);
+  }
+
   if (ma->use_nodes && ma->nodetree) {
     static float error_col[3] = {1.0f, 0.0f, 1.0f};
     static float compile_col[3] = {0.5f, 0.5f, 0.5f};
@@ -1480,30 +1498,13 @@ static void material_transparent(Material *ma,
     DRW_shgroup_uniform_float(*shgrp, "roughness", rough_p, 1);
   }
 
-  const bool use_prepass = ((ma->blend_flag & MA_BL_HIDE_BACKFACE) != 0);
-
-  DRWState all_state = (DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_CULL_BACK |
-                        DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_DEPTH_EQUAL |
-                        DRW_STATE_BLEND_CUSTOM);
-
-  DRWState cur_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
+  cur_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
   cur_state |= (use_prepass) ? DRW_STATE_DEPTH_EQUAL : DRW_STATE_DEPTH_LESS_EQUAL;
   cur_state |= (do_cull) ? DRW_STATE_CULL_BACK : 0;
 
   /* Disable other blend modes and use the one we want. */
   DRW_shgroup_state_disable(*shgrp, all_state);
   DRW_shgroup_state_enable(*shgrp, cur_state);
-
-  /* Depth prepass */
-  if (use_prepass) {
-    *shgrp_depth = DRW_shgroup_create(e_data.default_prepass_clip_sh, psl->transparent_pass);
-
-    cur_state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    cur_state |= (do_cull) ? DRW_STATE_CULL_BACK : 0;
-
-    DRW_shgroup_state_disable(*shgrp_depth, all_state);
-    DRW_shgroup_state_enable(*shgrp_depth, cur_state);
-  }
 }
 
 /* Return correct material or &defmaterial if slot is empty. */
