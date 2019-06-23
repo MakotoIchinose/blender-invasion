@@ -171,15 +171,16 @@ static DRWUniform *drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
                                                  int length,
                                                  int arraysize)
 {
+  DRWUniformChunk *unichunk = shgroup->uniforms;
   /* Happens on first uniform or if chunk is full. */
-  if (shgroup->uniform_count == 0) {
-    DRWUniformChunk *unichunk = BLI_memblock_alloc(DST.vmempool->uniforms);
+  if (!unichunk || unichunk->uniform_used == unichunk->uniform_len) {
+    unichunk = BLI_memblock_alloc(DST.vmempool->uniforms);
+    unichunk->uniform_len = ARRAY_SIZE(shgroup->uniforms->uniforms);
+    unichunk->uniform_used = 0;
     BLI_LINKS_PREPEND(shgroup->uniforms, unichunk);
   }
 
-  DRWUniform *uni = &shgroup->uniforms->uniforms[shgroup->uniform_count];
-
-  shgroup->uniform_count = (shgroup->uniform_count + 1) % ARRAY_SIZE(shgroup->uniforms->uniforms);
+  DRWUniform *uni = unichunk->uniforms + unichunk->uniform_used++;
 
   uni->location = loc;
   uni->type = type;
@@ -1008,7 +1009,6 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint
 static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
 {
   shgroup->uniforms = NULL;
-  shgroup->uniform_count = 0;
 
   /* TODO(fclem) make them builtin. */
   int view_ubo_location = GPU_shader_get_uniform_block(shader, "viewBlock");

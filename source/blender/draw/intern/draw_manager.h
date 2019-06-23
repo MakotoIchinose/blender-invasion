@@ -258,7 +258,6 @@ struct DRWShadingGroup {
 
   GPUShader *shader;                /* Shader to bind */
   struct DRWUniformChunk *uniforms; /* Uniforms pointers */
-  uint32_t uniform_count;           /* Index of next uniform inside DRWUniformChunk. */
 
   int objectinfo;
 
@@ -338,7 +337,9 @@ struct DRWView {
 
 typedef struct DRWUniformChunk {
   struct DRWUniformChunk *next; /* single-linked list */
-  DRWUniform uniforms[5];
+  uint32_t uniform_len;
+  uint32_t uniform_used;
+  DRWUniform uniforms[10];
 } DRWUniformChunk;
 
 typedef struct DRWCommandChunk {

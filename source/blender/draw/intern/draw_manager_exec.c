@@ -868,11 +868,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
 {
   for (DRWUniformChunk *unichunk = shgroup->uniforms; unichunk; unichunk = unichunk->next) {
     DRWUniform *uni = unichunk->uniforms;
-    /* shgroup->uniform_count is 0 if the first chunk is full. */
-    int uniform_count = ((unichunk == shgroup->uniforms) && shgroup->uniform_count > 0) ?
-                            shgroup->uniform_count :
-                            ARRAY_SIZE(shgroup->uniforms->uniforms);
-    for (int i = 0; i < uniform_count; i++, uni++) {
+    for (int i = 0; i < unichunk->uniform_used; i++, uni++) {
       GPUTexture *tex;
       GPUUniformBuffer *ubo;
       if (uni->location == -2) {
