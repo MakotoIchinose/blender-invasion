@@ -37,6 +37,7 @@ typedef struct OpenXRData {
   XrSystemId system_id;
   // Only stereo rendering supported now.
   const XrViewConfigurationType view_type{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
+  std::vector<XrView> views;
   XrSession session;
   XrSessionState session_state;
 
@@ -56,9 +57,17 @@ typedef struct GHOST_XrContext {
   /** Active Ghost graphic context. */
   class GHOST_Context *gpu_ctx;
 
+  GHOST_XrDrawViewFn draw_view_fn;
+  /** Information on the currently drawn frame. Set while drawing only. */
+  std::unique_ptr<struct GHOST_XrDrawFrame> draw_frame;
+
   /** Names of enabled extensions */
   std::vector<const char *> enabled_extensions;
 } GHOST_XrContext;
+
+struct GHOST_XrDrawFrame {
+  XrFrameState frame_state;
+};
 
 void GHOST_XrGraphicsContextBind(GHOST_XrContext &xr_context);
 void GHOST_XrGraphicsContextUnbind(GHOST_XrContext &xr_context);

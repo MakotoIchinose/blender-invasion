@@ -172,34 +172,42 @@ static XrSwapchain swapchain_create(const XrSession session,
 void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
-  std::vector<XrViewConfigurationView> views;
+  std::vector<XrViewConfigurationView> view_configs;
   uint32_t view_count;
 
   xrEnumerateViewConfigurationViews(
       oxr->instance, oxr->system_id, oxr->view_type, 0, &view_count, nullptr);
-  views.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
-  xrEnumerateViewConfigurationViews(
-      oxr->instance, oxr->system_id, oxr->view_type, views.size(), &view_count, views.data());
+  xrEnumerateViewConfigurationViews(oxr->instance,
+                                    oxr->system_id,
+                                    oxr->view_type,
+                                    view_configs.size(),
+                                    &view_count,
+                                    view_configs.data());
 
-  for (const XrViewConfigurationView &view : views) {
+  for (const XrViewConfigurationView &view : view_configs) {
     XrSwapchain swapchain = swapchain_create(oxr->session, xr_context->gpu_binding.get(), &view);
     auto images = swapchain_images_create(swapchain, xr_context->gpu_binding.get());
 
     oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
   }
+
+  oxr->views.resize(view_count, {XR_TYPE_VIEW});
 }
 
 void GHOST_XrSessionBeginDrawing(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrFrameWaitInfo wait_info{XR_TYPE_FRAME_WAIT_INFO};
-  XrFrameState state_info{XR_TYPE_FRAME_STATE};
   XrFrameBeginInfo begin_info{XR_TYPE_FRAME_BEGIN_INFO};
+  XrFrameState frame_state{XR_TYPE_FRAME_STATE};
 
   // TODO Blocking call. Does this intefer with other drawing?
-  xrWaitFrame(oxr->session, &wait_info, &state_info);
+  xrWaitFrame(oxr->session, &wait_info, &frame_state);
 
   xrBeginFrame(oxr->session, &begin_info);
+
+  xr_context->draw_frame = std::unique_ptr<GHOST_XrDrawFrame>(new GHOST_XrDrawFrame());
+  xr_context->draw_frame->frame_state = frame_state;
 }
 
 void GHOST_XrSessionEndDrawing(GHOST_XrContext *xr_context)
@@ -207,4 +215,27 @@ void GHOST_XrSessionEndDrawing(GHOST_XrContext *xr_context)
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
 
   xrEndFrame(xr_context->oxr.session, &end_info);
+  xr_context->draw_frame = nullptr;
+}
+
+void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
+{
+  OpenXRData *oxr = &xr_context->oxr;
+  XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
+  XrViewState view_state{XR_TYPE_VIEW_STATE};
+  XrReferenceSpaceCreateInfo refspace_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+  XrSpace space;
+  uint32_t view_count;
+
+  refspace_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+  // TODO Use viewport pose here.
+  refspace_info.poseInReferenceSpace.position = {0.0f, 0.0f, 0.0f};
+  refspace_info.poseInReferenceSpace.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+  xrCreateReferenceSpace(oxr->session, &refspace_info, &space);
+
+  viewloc_info.displayTime = xr_context->draw_frame->frame_state.predictedDisplayTime;
+  viewloc_info.space = space;
+
+  xrLocateViews(
+      oxr->session, &viewloc_info, &view_state, oxr->views.size(), &view_count, oxr->views.data());
 }

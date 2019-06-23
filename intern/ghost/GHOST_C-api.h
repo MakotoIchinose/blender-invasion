@@ -990,6 +990,11 @@ typedef struct {
   unsigned int gpu_binding_candidates_count;
 } GHOST_XrContextCreateInfo;
 
+typedef struct {
+  // Required info to build matrices goes here.
+  int dummy;
+} GHOST_XrDrawViewInfo;
+
 /* xr-context */
 struct GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info);
 void GHOST_XrContextDestroy(struct GHOST_XrContext *xr_context);
@@ -997,10 +1002,13 @@ void GHOST_XrContextDestroy(struct GHOST_XrContext *xr_context);
 typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
 typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
                                                 void *graphics_context);
+typedef void (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo draw_view, void *customdata);
 
 void GHOST_XrGraphicsContextBindFuncs(struct GHOST_XrContext *xr_context,
                                       GHOST_XrGraphicsContextBindFn bind_fn,
                                       GHOST_XrGraphicsContextUnbindFn unbind_fn);
+
+void GHOST_XrDrawViewFunc(struct GHOST_XrContext *xr_context, GHOST_XrDrawViewFn draw_view_fn);
 
 /* sessions */
 GHOST_TSuccess GHOST_XrSessionIsRunning(const struct GHOST_XrContext *xr_context);
@@ -1009,6 +1017,7 @@ void GHOST_XrSessionEnd(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionRenderingPrepare(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionBeginDrawing(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionEndDrawing(struct GHOST_XrContext *xr_context);
+void GHOST_XrSessionDrawViews(struct GHOST_XrContext *xr_context);
 
 /* events */
 GHOST_TSuccess GHOST_XrEventsHandle(struct GHOST_XrContext *xr_context);

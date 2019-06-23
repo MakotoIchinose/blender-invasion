@@ -301,3 +301,8 @@ void GHOST_XrGraphicsContextUnbind(GHOST_XrContext &xr_context)
   }
   xr_context.gpu_ctx = nullptr;
 }
+
+void GHOST_XrDrawViewFunc(struct GHOST_XrContext *xr_context, GHOST_XrDrawViewFn draw_view_fn)
+{
+  xr_context->draw_view_fn = draw_view_fn;
+}
