@@ -264,9 +264,11 @@ void lanpr_generate_gpencil_from_chain(
   LANPR_RenderLineChainItem *rlci;
   for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
 
-    if(!rlc->object_ref) continue; //XXX: intersection lines are lost
-    
-    if(ob && ob!=rlc->object_ref->id.orig_id) continue;
+    if (!rlc->object_ref)
+      continue;  // XXX: intersection lines are lost
+
+    if (ob && ob != rlc->object_ref->id.orig_id)
+      continue;
 
     int array_idx = 0;
     int count = lanpr_count_chain(rlc);

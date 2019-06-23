@@ -984,9 +984,10 @@ bGPDlayer *BKE_gpencil_layer_getactive(bGPdata *gpd)
   return NULL;
 }
 
-bGPDlayer *BKE_gpencil_layer_get_index(bGPdata* gpd, int index, int first_if_not_found){
+bGPDlayer *BKE_gpencil_layer_get_index(bGPdata *gpd, int index, int first_if_not_found)
+{
   bGPDlayer *gpl;
-  int i=0;
+  int i = 0;
 
   /* error checking */
   if (ELEM(NULL, gpd, gpd->layers.first)) {
@@ -995,14 +996,14 @@ bGPDlayer *BKE_gpencil_layer_get_index(bGPdata* gpd, int index, int first_if_not
 
   /* loop over layers until found (assume only one active) */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    if (i==index) {
+    if (i == index) {
       return gpl;
     }
     i++;
   }
 
   /* no such layer */
-  if(first_if_not_found){
+  if (first_if_not_found) {
     return gpd->layers.first;
   }
   return NULL;

@@ -2159,7 +2159,7 @@ static void cusp_detection(MeshData *m_d)
 
               // if( isect_line_line_v2_point( uv_1, uv_2, uv_3, cusp_uv, edge_uv ) !=
               // ISECT_LINE_LINE_CROSS ){ 	printf("Couldn't find intersection point to edge from
-              //cusp!\n");
+              // cusp!\n");
               //	//TODO this is a big error so quit instead
               //	continue;
               //}

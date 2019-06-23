@@ -4283,17 +4283,18 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, int frame){
+void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, int frame)
+{
   Object *ob;
   Object *gpobj;
   ModifierData *md;
   bGPdata *gpd;
   bGPDlayer *gpl;
   bGPDframe *gpf;
-  CollectionObject* co;
-  CollectionChild* cc;
+  CollectionObject *co;
+  CollectionChild *cc;
 
-  for(co = col->gobject.first;co;co=co->next){
+  for (co = col->gobject.first; co; co = co->next) {
     ob = co->ob;
     for (md = ob->modifiers.first; md; md = md->next) {
       if (md->type == eModifierType_FeatureLine) {
@@ -4301,26 +4302,26 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
         if (flmd->target && flmd->target->type == OB_GPENCIL) {
           gpobj = flmd->target;
           gpd = gpobj->data;
-          gpl = BKE_gpencil_layer_get_index(gpd,flmd->layer,1);
-          if(!gpl){
-            gpl = BKE_gpencil_layer_addnew(gpd,"lanpr_layer",true);
+          gpl = BKE_gpencil_layer_get_index(gpd, flmd->layer, 1);
+          if (!gpl) {
+            gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
           }
-          gpf = BKE_gpencil_frame_addnew(gpl,frame);
-          BKE_gpencil_free_strokes(gpf); // force clear now
+          gpf = BKE_gpencil_frame_addnew(gpl, frame);
+          BKE_gpencil_free_strokes(gpf);  // force clear now
 
           lanpr_generate_gpencil_from_chain(md, dg, ob, gpl, gpf);
         }
       }
     }
   }
-  for(cc=col->children.first;cc;cc=cc->next){
-    lanpr_update_gp_strokes_recursive(dg, cc->collection,frame);
+  for (cc = col->children.first; cc; cc = cc->next) {
+    lanpr_update_gp_strokes_recursive(dg, cc->collection, frame);
   }
 }
 int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph* dg = CTX_data_depsgraph(C);
+  Depsgraph *dg = CTX_data_depsgraph(C);
   SceneLANPR *lanpr = &scene->lanpr;
   int frame = scene->r.cfra;
 

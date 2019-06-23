@@ -5799,9 +5799,9 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       }
     }
     else if (md->type == eModifierType_FeatureLine) {
-      FeatureLineModifierData *flmd= (FeatureLineModifierData *)md;
+      FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
 
-      //flmd->target = newdataadr(fd, flmd->target);
+      // flmd->target = newdataadr(fd, flmd->target);
     }
   }
 }

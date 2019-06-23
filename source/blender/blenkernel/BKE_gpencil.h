@@ -135,7 +135,9 @@ struct bGPDframe *BKE_gpencil_layer_getframe(struct bGPDlayer *gpl,
 struct bGPDframe *BKE_gpencil_layer_find_frame(struct bGPDlayer *gpl, int cframe);
 bool BKE_gpencil_layer_delframe(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 
-struct bGPDlayer *BKE_gpencil_layer_get_index(struct bGPdata* gpd, int index, int first_if_not_found);
+struct bGPDlayer *BKE_gpencil_layer_get_index(struct bGPdata *gpd,
+                                              int index,
+                                              int first_if_not_found);
 
 struct bGPDlayer *BKE_gpencil_layer_getactive(struct bGPdata *gpd);
 void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);

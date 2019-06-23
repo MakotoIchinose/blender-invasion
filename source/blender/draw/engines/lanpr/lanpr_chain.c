@@ -214,7 +214,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
     rlc = lanpr_create_render_line_chain(rb);
 
-    rlc->object_ref = rl->object_ref; // can only be the same object in a chain.
+    rlc->object_ref = rl->object_ref;  // can only be the same object in a chain.
 
     int r1, r2, c1, c2, row, col;
     LANPR_RenderLine *new_rl = rl;
@@ -596,13 +596,14 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
 
     rlci = rlc->chain.last;
     while (ba = lanpr_get_end_point_bounding_area(rb, rlci)) {
-      dist = do_geometry_space?rb->scene->lanpr.chaining_threshold:100.0f;
+      dist = do_geometry_space ? rb->scene->lanpr.chaining_threshold : 100.0f;
       closest_cre = NULL;
       if (!ba->linked_chains.first)
         break;
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
         next_cre = (LANPR_ChainRegisterEntry *)cre->item.next;
-        if (cre->rlc->object_ref!=rlc) continue;
+        if (cre->rlc->object_ref != rlc)
+          continue;
         if (cre->rlc == rlc ||
             ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion)
           continue;
@@ -610,9 +611,8 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
           BLI_remlink(&ba->linked_chains, cre);
           continue;
         }
-        float new_len = do_geometry_space?
-                        len_v3v3(cre->rlci->gpos,rlci->gpos):
-                        len_v2v2(cre->rlci->pos, rlci->pos);
+        float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
+                                            len_v2v2(cre->rlci->pos, rlci->pos);
         if (new_len < dist) {
           closest_cre = cre;
           dist = new_len;
@@ -638,7 +638,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
 
     rlci = rlc->chain.first;
     while (ba = lanpr_get_end_point_bounding_area(rb, rlci)) {
-      dist = do_geometry_space?rb->scene->lanpr.chaining_threshold:100.0f;
+      dist = do_geometry_space ? rb->scene->lanpr.chaining_threshold : 100.0f;
       closest_cre = NULL;
       if (!ba->linked_chains.first)
         break;
@@ -651,9 +651,8 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
           BLI_remlink(&ba->linked_chains, cre);
           continue;
         }
-        float new_len = do_geometry_space?
-                        len_v3v3(cre->rlci->gpos,rlci->gpos):
-                        len_v2v2(cre->rlci->pos, rlci->pos);
+        float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
+                                            len_v2v2(cre->rlci->pos, rlci->pos);
         if (new_len < dist) {
           closest_cre = cre;
           dist = new_len;
