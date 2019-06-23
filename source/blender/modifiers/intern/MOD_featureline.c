@@ -40,6 +40,7 @@
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
+#include "BKE_library_query.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -87,6 +88,13 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
+static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk, void *userData)
+{
+  FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
+
+  walk(userData, ob, &flmd->target, IDWALK_NOP);
+}
+
 ModifierTypeInfo modifierType_FeatureLine = {
     /* name */ "Feature Line",
     /* structName */ "FeatureLineModifierData",
@@ -108,7 +116,7 @@ ModifierTypeInfo modifierType_FeatureLine = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ dependsOnTime,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
+    /* foreachObjectLink */ foreachObjectLink,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

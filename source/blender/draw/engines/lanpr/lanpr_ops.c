@@ -4040,8 +4040,8 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 
   if (lanpr->enable_chaining) {
     lanpr_NO_THREAD_chain_feature_lines(rb);  // should use user_adjustable value
-    //lanpr_split_chains_for_fixed_occlusion(rb);
-    //anpr_connect_chains_image_space(rb);
+    lanpr_split_chains_for_fixed_occlusion(rb);
+    lanpr_connect_chains_image_space(rb);
   }
 
   rb->cached_for_frame = rb->scene->r.cfra;
