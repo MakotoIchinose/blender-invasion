@@ -19,6 +19,7 @@
  */
 
 #include <algorithm>
+#include <list>
 
 #if defined(WITH_X11)
 #  include "GHOST_ContextGLX.h"
@@ -74,11 +75,33 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #endif
   }
 
-  bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats, int64_t *r_result) override
+  bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats,
+                             int64_t *r_result) const override
   {
     std::vector<int64_t> gpu_binding_formats = {GL_RGBA8};
     return choose_swapchain_format_from_candidates(gpu_binding_formats, runtime_formats, r_result);
   }
+
+  std::vector<XrSwapchainImageBaseHeader *> createSwapchainImages(uint32_t image_count) override
+  {
+    std::vector<XrSwapchainImageOpenGLKHR> ogl_images(image_count);
+    std::vector<XrSwapchainImageBaseHeader *> base_images;
+
+    // Need to return vector of base header pointers, so of a different type. Need to build a new
+    // list with this type, and keep the initial one alive.
+    for (XrSwapchainImageOpenGLKHR &image : ogl_images) {
+      image.type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;
+      base_images.push_back(reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
+    }
+
+    // Keep alive.
+    m_image_cache.push_back(std::move(ogl_images));
+
+    return base_images;
+  }
+
+ private:
+  std::list<std::vector<XrSwapchainImageOpenGLKHR>> m_image_cache;
 };
 
 #ifdef WIN32
@@ -92,11 +115,33 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
   }
 
-  bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats, int64_t *r_result) override
+  bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats,
+                             int64_t *r_result) const override
   {
     std::vector<int64_t> gpu_binding_formats = {DXGI_FORMAT_R8G8B8A8_UNORM};
     return choose_swapchain_format_from_candidates(gpu_binding_formats, runtime_formats, r_result);
   }
+
+  std::vector<XrSwapchainImageBaseHeader *> createSwapchainImages(uint32_t image_count) override
+  {
+    std::vector<XrSwapchainImageD3D11KHR> d3d_images(image_count);
+    std::vector<XrSwapchainImageBaseHeader *> base_images;
+
+    // Need to return vector of base header pointers, so of a different type. Need to build a new
+    // list with this type, and keep the initial one alive.
+    for (XrSwapchainImageD3D11KHR &image : d3d_images) {
+      image.type = XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR;
+      base_images.push_back(reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
+    }
+
+    // Keep alive.
+    m_image_cache.push_back(std::move(d3d_images));
+
+    return base_images;
+  }
+
+ private:
+  std::list<std::vector<XrSwapchainImageD3D11KHR>> m_image_cache;
 };
 #endif  // WIN32
 

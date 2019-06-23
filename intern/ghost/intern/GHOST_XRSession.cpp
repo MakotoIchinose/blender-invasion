@@ -122,24 +122,37 @@ void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateCh
   }
 }
 
-static bool swapchain_create(const GHOST_XrContext *xr_context,
-                             OpenXRData *oxr,
-                             const XrViewConfigurationView *xr_view)
+static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
+    XrSwapchain swapchain, GHOST_IXrGraphicsBinding *gpu_binding)
+{
+  std::vector<XrSwapchainImageBaseHeader *> images;
+  uint32_t image_count;
+
+  xrEnumerateSwapchainImages(swapchain, 0, &image_count, nullptr);
+  images = gpu_binding->createSwapchainImages(image_count);
+  xrEnumerateSwapchainImages(swapchain, images.size(), &image_count, images[0]);
+
+  return images;
+}
+
+static XrSwapchain swapchain_create(const XrSession session,
+                                    GHOST_IXrGraphicsBinding *gpu_binding,
+                                    const XrViewConfigurationView *xr_view)
 {
   XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
   XrSwapchain swapchain;
   uint32_t format_count = 0;
   int64_t chosen_format;
 
-  xrEnumerateSwapchainFormats(oxr->session, 0, &format_count, nullptr);
+  xrEnumerateSwapchainFormats(session, 0, &format_count, nullptr);
   std::vector<int64_t> swapchain_formats(format_count);
   xrEnumerateSwapchainFormats(
-      oxr->session, swapchain_formats.size(), &format_count, swapchain_formats.data());
+      session, swapchain_formats.size(), &format_count, swapchain_formats.data());
   assert(swapchain_formats.size() == format_count);
 
-  if (!xr_context->gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
+  if (!gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
     fprintf(stderr, "Error: No format matching OpenXR runtime supported swapchain formats found.");
-    return false;
+    return nullptr;
   }
 
   create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
@@ -151,9 +164,9 @@ static bool swapchain_create(const GHOST_XrContext *xr_context,
   create_info.faceCount = 1;
   create_info.arraySize = 1;
   create_info.mipCount = 1;
-  xrCreateSwapchain(oxr->session, &create_info, &swapchain);
+  xrCreateSwapchain(session, &create_info, &swapchain);
 
-  return true;
+  return swapchain;
 }
 
 void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
@@ -169,6 +182,9 @@ void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
       oxr->instance, oxr->system_id, oxr->view_type, views.size(), &view_count, views.data());
 
   for (const XrViewConfigurationView &view : views) {
-    swapchain_create(xr_context, oxr, &view);
+    XrSwapchain swapchain = swapchain_create(oxr->session, xr_context->gpu_binding.get(), &view);
+    auto images = swapchain_images_create(swapchain, xr_context->gpu_binding.get());
+
+    oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
   }
 }

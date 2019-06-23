@@ -21,6 +21,7 @@
 #ifndef __GHOST_XR_INTERN_H__
 #define __GHOST_XR_INTERN_H__
 
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -38,6 +39,8 @@ typedef struct OpenXRData {
   const XrViewConfigurationType view_type{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
   XrSession session;
   XrSessionState session_state;
+
+  std::map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>> swapchain_images;
 } OpenXRData;
 
 typedef struct GHOST_XrContext {
