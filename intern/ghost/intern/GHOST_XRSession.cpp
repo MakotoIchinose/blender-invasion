@@ -188,3 +188,23 @@ void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
     oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
   }
 }
+
+void GHOST_XrSessionBeginDrawing(GHOST_XrContext *xr_context)
+{
+  OpenXRData *oxr = &xr_context->oxr;
+  XrFrameWaitInfo wait_info{XR_TYPE_FRAME_WAIT_INFO};
+  XrFrameState state_info{XR_TYPE_FRAME_STATE};
+  XrFrameBeginInfo begin_info{XR_TYPE_FRAME_BEGIN_INFO};
+
+  // TODO Blocking call. Does this intefer with other drawing?
+  xrWaitFrame(oxr->session, &wait_info, &state_info);
+
+  xrBeginFrame(oxr->session, &begin_info);
+}
+
+void GHOST_XrSessionEndDrawing(GHOST_XrContext *xr_context)
+{
+  XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
+
+  xrEndFrame(xr_context->oxr.session, &end_info);
+}

@@ -1007,6 +1007,8 @@ GHOST_TSuccess GHOST_XrSessionIsRunning(const struct GHOST_XrContext *xr_context
 void GHOST_XrSessionStart(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionEnd(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionRenderingPrepare(struct GHOST_XrContext *xr_context);
+void GHOST_XrSessionBeginDrawing(struct GHOST_XrContext *xr_context);
+void GHOST_XrSessionEndDrawing(struct GHOST_XrContext *xr_context);
 
 /* events */
 GHOST_TSuccess GHOST_XrEventsHandle(struct GHOST_XrContext *xr_context);
