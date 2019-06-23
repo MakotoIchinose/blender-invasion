@@ -58,7 +58,7 @@ extern "C" {
   axis remap -- doesn't work. Does it need to update, somehow?
     DEG_id_tag_update(&mesh->id, 0); obedit->id.recalc & ID_RECALC_ALL
   --selection only
-  animation - partly
+  --animation
   --apply modifiers
   --render modifiers -- mesh_create_derived_{view,render}, deg_get_mode
   --edges
@@ -66,9 +66,9 @@ extern "C" {
   bitflag smooth groups?
   --normals
   --uvs
-  materials
+  --materials
   material groups
-  path mode -- python repr
+  path mode -- needed?
   --triangulate
   nurbs
   polygroups?
@@ -78,8 +78,6 @@ extern "C" {
   --scale
   # units?
   # removing duplicates with a threshold and as an option
-  TODO someone filter_glob : StringProp weird Python syntax
-
  */
 
 namespace {
@@ -144,7 +142,7 @@ bool OBJ_export_materials(bContext *C,
 
     ss << (mat->id.name + 2) << '"';
   }
-  ss << "])";
+  ss << "], '" << path_reference_mode[settings->path_mode].identifier << "')";
   std::cerr << "Running '" << ss.str() << "'\n";
   return BPY_execute_string(C, imports, ss.str().c_str());
 #else

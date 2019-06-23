@@ -14,6 +14,11 @@ struct Depsgraph;
 
 enum axis_remap { AXIS_X, AXIS_Y, AXIS_Z, AXIS_NEG_X, AXIS_NEG_Y, AXIS_NEG_Z };
 
+enum path_reference_mode { AUTO, ABSOLUTE, RELATIVE, MATCH, STRIP, COPY };
+
+extern const EnumPropertyItem axis_remap[];
+extern const EnumPropertyItem path_reference_mode[];
+
 typedef struct ExportSettings {
 
   /* Mostly From Alembic */
@@ -42,6 +47,8 @@ typedef struct ExportSettings {
   float shutter_close;
 
   bool flatten_hierarchy;
+
+  enum path_reference_mode path_mode;
 
   bool export_animations;
   bool export_normals;

@@ -35,8 +35,8 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op)
 
   /* So we only do this once, use the dummy property */
   if (scene != NULL && RNA_boolean_get(&ptr, "init_scene_frame_range")) {
-    RNA_int_set(&ptr, "start", SFRA);
-    RNA_int_set(&ptr, "end", EFRA);
+    RNA_int_set(&ptr, "start_frame", SFRA);
+    RNA_int_set(&ptr, "end_frame", EFRA);
     RNA_boolean_set(&ptr, "init_scene_frame_range", false);
   }
 
@@ -56,17 +56,18 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op)
   uiItemR(row, &ptr, "axis_up", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
-  uiItemR(row, &ptr, "export_animations", 0, NULL, ICON_NONE);
+  sub_box = uiLayoutBox(row);
+  uiItemR(sub_box, &ptr, "export_animations", 0, NULL, ICON_NONE);
 
   const bool animations = RNA_boolean_get(&ptr, "export_animations");
 
-  row = uiLayoutRow(box, false);
+  row = uiLayoutRow(sub_box, false);
   uiLayoutSetEnabled(row, animations);
-  uiItemR(row, &ptr, "start", 0, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "start_frame", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(box, false);
+  row = uiLayoutRow(sub_box, false);
   uiLayoutSetEnabled(row, animations);
-  uiItemR(row, &ptr, "end", 0, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "end_frame", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
   uiItemR(row, &ptr, "selected_only", 0, NULL, ICON_NONE);
@@ -123,8 +124,14 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op)
   row = uiLayoutRow(box, false);
   uiItemR(row, &ptr, "export_edges", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(box, false);
+  sub_box = uiLayoutBox(box);
+  row = uiLayoutRow(sub_box, false);
   uiItemR(row, &ptr, "export_materials", 0, NULL, ICON_NONE);
+
+  const bool materials = RNA_boolean_get(&ptr, "export_materials");
+  row = uiLayoutRow(sub_box, false);
+  uiLayoutSetEnabled(row, materials);
+  uiItemR(row, &ptr, "path_mode", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
   uiItemR(row, &ptr, "export_vcolors", 0, NULL, ICON_NONE);
@@ -133,11 +140,12 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op)
   uiItemR(row, &ptr, "export_face_sets", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
-  uiItemR(row, &ptr, "apply_modifiers", 0, NULL, ICON_NONE);
+  sub_box = uiLayoutBox(row);
+  uiItemR(sub_box, &ptr, "apply_modifiers", 0, NULL, ICON_NONE);
 
   const bool modifiers = RNA_boolean_get(&ptr, "apply_modifiers");
 
-  row = uiLayoutRow(box, false);
+  row = uiLayoutRow(sub_box, false);
   uiLayoutSetEnabled(row, modifiers);
   uiItemR(row, &ptr, "render_modifiers", 0, NULL, ICON_NONE);
 

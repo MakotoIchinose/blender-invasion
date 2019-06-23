@@ -24,7 +24,7 @@ import bpy
 from mathutils import Matrix, Vector, Color
 from bpy_extras import io_utils, node_shader_utils
 
-def write_mtl(filepath, materials):
+def write_mtl(filepath, materials, path_mode):
     C = bpy.context
     scene = C.scene
     world = scene.world
@@ -32,6 +32,9 @@ def write_mtl(filepath, materials):
 
     source_dir = os.path.dirname(bpy.data.filepath)
     dest_dir = os.path.dirname(filepath)
+
+    # Set of images topotentially copy
+    copy_set = set()
 
     with open(filepath, "w", encoding="utf8", newline="\n") as f:
         fw = f.write
@@ -106,7 +109,7 @@ def write_mtl(filepath, materials):
                         continue
 
                     filepath = io_utils.path_reference(image.filepath, source_dir, dest_dir,
-                                                       'AUTO', "", None, image.library)
+                                                       path_mode, "", copy_set, image.library)
                     options = []
                     if key == "map_Bump":
                         if mat_wrap.normalmap_strength != 1.0:
@@ -128,3 +131,6 @@ def write_mtl(filepath, materials):
                 fw('Ks 0.8 0.8 0.8\n')  # Specular
                 fw('d 1\n')             # No alpha
                 fw('illum 2\n')         # light normally
+
+    # After closing file
+    io_utils.path_reference_copy(copy_set)

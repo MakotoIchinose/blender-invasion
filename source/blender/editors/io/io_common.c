@@ -25,13 +25,25 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-const EnumPropertyItem axis_remap[] = {{AXIS_X, "AXIS_X", ICON_NONE, "X axis", ""},
-                                       {AXIS_Y, "AXIS_Y", ICON_NONE, "Y axis", ""},
-                                       {AXIS_Z, "AXIS_Z", ICON_NONE, "Z axis", ""},
-                                       {AXIS_NEG_X, "AXIS_NEG_X", ICON_NONE, "-X axis", ""},
-                                       {AXIS_NEG_Y, "AXIS_NEG_Y", ICON_NONE, "-Y axis", ""},
-                                       {AXIS_NEG_Z, "AXIS_NEG_Z", ICON_NONE, "-Z axis", ""},
-                                       {0, NULL, 0, NULL, NULL}};
+/* clang-format off */
+const EnumPropertyItem axis_remap[] =
+  {{AXIS_X,     "AXIS_X",     ICON_NONE, "X axis",  ""},
+   {AXIS_Y,     "AXIS_Y",     ICON_NONE, "Y axis",  ""},
+   {AXIS_Z,     "AXIS_Z",     ICON_NONE, "Z axis",  ""},
+   {AXIS_NEG_X, "AXIS_NEG_X", ICON_NONE, "-X axis", ""},
+   {AXIS_NEG_Y, "AXIS_NEG_Y", ICON_NONE, "-Y axis", ""},
+   {AXIS_NEG_Z, "AXIS_NEG_Z", ICON_NONE, "-Z axis", ""},
+   {0,          NULL,         0,         NULL,      NULL}};
+
+const EnumPropertyItem path_reference_mode[] = {
+    {AUTO,     "AUTO",     ICON_NONE, "Auto",       "Use Relative paths with subdirectories only"},
+    {ABSOLUTE, "ABSOLUTE", ICON_NONE, "Absolute",   "Always write absolute paths"},
+    {RELATIVE, "RELATIVE", ICON_NONE, "Relative",   "Always write relative paths (where possible)"},
+    {MATCH,    "MATCH",    ICON_NONE, "Match",      "Match Absolute/Relative setting with input path"},
+    {STRIP,    "STRIP",    ICON_NONE, "Strip Path", "Filename only"},
+    {COPY,     "COPY",     ICON_NONE, "Copy",       "Copy the file to the destination path (or subdirectory)"},
+    {0,        NULL,       0,         NULL,         NULL}};
+/* clang-format on */
 
 void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_Types file_type)
 {
@@ -278,6 +290,13 @@ void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_T
                "Up",
                "The axis to remap the up axis to");
 
+  RNA_def_enum(ot->srna,
+               "path_mode",
+               path_reference_mode,
+               AUTO,
+               "Path mode",
+               "How external files referenced (such as images) are treated");
+
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at
    * every change, draw update. */
@@ -329,6 +348,7 @@ ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
   settings->dedup_uvs_threshold = RNA_float_get(op->ptr, "dedup_uvs_threshold");
   settings->export_edges = RNA_boolean_get(op->ptr, "export_edges");
   settings->export_materials = RNA_boolean_get(op->ptr, "export_materials");
+  settings->path_mode = RNA_enum_get(op->ptr, "path_mode");
   settings->export_vcolors = RNA_boolean_get(op->ptr, "export_vcolors");
   settings->export_face_sets = RNA_boolean_get(op->ptr, "export_face_sets");
   settings->export_vweights = RNA_boolean_get(op->ptr, "export_vweights");

@@ -87,7 +87,7 @@ std::fstream &operator<<(std::fstream &fs, const T &v)
     fs.write((char *)&v, size);
   }
   else {
-    char bytes[8], *pv = (char *)&v;
+    char bytes[size], *pv = (char *)&v;
     for (int i = 0; i < size; ++i)
       bytes[i] = pv[size - 1 - i];
     fs.write(bytes, size);
