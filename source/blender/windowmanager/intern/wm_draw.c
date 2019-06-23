@@ -873,11 +873,8 @@ static void wm_draw_window(bContext *C, wmWindow *win)
 static void wm_draw_non_window_surfaces(wmWindowManager *wm)
 {
 #ifdef WITH_OPENXR
-  if (wm->xr_context && GHOST_XrSessionIsRunning(wm->xr_context)) {
-    GHOST_XrSessionBeginDrawing(wm->xr_context);
-    /* TODO execute drawcall. Something like this? */
-    // ED_XR_view_draw();
-    GHOST_XrSessionEndDrawing(wm->xr_context);
+  if (wm->xr_context) {
+    wm_xr_session_draw(wm->xr_context);
   }
 #else
   UNUSED_VARS(wm);
