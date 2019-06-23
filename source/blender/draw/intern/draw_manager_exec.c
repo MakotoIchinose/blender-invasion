@@ -1049,6 +1049,16 @@ static void draw_call_resource_bind(DRWCommandsState *state, DRWResourceHandle h
   }
 }
 
+static void draw_call_batching_flush(DRWShadingGroup *shgroup, DRWCommandsState *state)
+{
+  draw_indirect_call(shgroup, state);
+  GPU_draw_list_submit(DST.draw_list);
+
+  state->batch = NULL;
+  state->inst_count = 0;
+  state->base_inst = -1;
+}
+
 static void draw_call_single_do(DRWShadingGroup *shgroup,
                                 DRWCommandsState *state,
                                 GPUBatch *batch,
@@ -1057,15 +1067,7 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
                                 int vert_count,
                                 int inst_count)
 {
-  /* Flush pending drawcalls. */
-  draw_indirect_call(shgroup, state);
-  GPU_draw_list_submit(DST.draw_list);
-
-  state->batch = batch;
-  state->v_first = 0;
-  state->v_count = 0;
-  state->inst_count = 0;
-  state->base_inst = -1;
+  draw_call_batching_flush(shgroup, state);
 
   draw_call_resource_bind(state, handle);
 
@@ -1112,9 +1114,7 @@ static void draw_call_batching_do(DRWShadingGroup *shgroup,
       (call->handle.chunk != state->resource_chunk) ||     /* Need to change UBOs. */
       (call->batch != state->batch)                        /* Need to change VAO. */
   ) {
-    /* Flush pending drawcalls. */
-    draw_indirect_call(shgroup, state);
-    GPU_draw_list_submit(DST.draw_list);
+    draw_call_batching_flush(shgroup, state);
 
     state->batch = call->batch;
     state->v_first = 0;
@@ -1144,9 +1144,7 @@ static void draw_call_batching_do(DRWShadingGroup *shgroup,
 /* Flush remaining pending drawcalls. */
 static void draw_call_batching_finish(DRWShadingGroup *shgroup, DRWCommandsState *state)
 {
-  /* Flush pending drawcalls. */
-  draw_indirect_call(shgroup, state);
-  GPU_draw_list_submit(DST.draw_list);
+  draw_call_batching_flush(shgroup, state);
 
   /* Reset state */
   if (state->neg_scale) {
@@ -1208,13 +1206,18 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     draw_call_batching_start(&state);
 
     while ((cmd = draw_command_iter_step(&iter, &cmd_type))) {
+
       switch (cmd_type) {
+        case DRW_CMD_STENCIL:
+          draw_call_batching_flush(shgroup, &state);
+          break;
         case DRW_CMD_DRAW:
         case DRW_CMD_DRAW_PROCEDURAL:
         case DRW_CMD_DRAW_INSTANCE:
           if (draw_call_is_culled(cmd->instance.handle, DST.view_active)) {
             continue;
           }
+          break;
         default:
           break;
       }
