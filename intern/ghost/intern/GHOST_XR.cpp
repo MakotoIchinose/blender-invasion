@@ -256,6 +256,10 @@ void GHOST_XrContextDestroy(GHOST_XrContext *xr_context)
   /* Unbinding may involve destruction, so call here too */
   GHOST_XrGraphicsContextUnbind(*xr_context);
 
+  for (auto &swapchain_image : oxr->swapchain_images) {
+    xrDestroySwapchain(swapchain_image.first);
+  }
+
   if (oxr->session != XR_NULL_HANDLE) {
     xrDestroySession(oxr->session);
   }
