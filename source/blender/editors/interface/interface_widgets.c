@@ -4721,8 +4721,8 @@ void ui_draw_but(const bContext *C, ARegion *ar, uiStyle *style, uiBut *but, rct
         break;
 
       case UI_BTYPE_PROFILE:
-        rect->xmin += (int)(0.2f * UI_UNIT_X);
-        rect->xmax -= (int)(0.2f * UI_UNIT_X); /* HANS-TODO: Re-evaluate this decision */
+//        rect->xmin += (int)(0.2f * UI_UNIT_X);
+//        rect->xmax -= (int)(0.2f * UI_UNIT_X); /* HANS-TODO: Re-evaluate this decision */
         ui_draw_but_PROFILE(ar, but, &tui->wcol_regular, rect);
         break;
 
