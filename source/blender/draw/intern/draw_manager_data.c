@@ -674,6 +674,16 @@ static void drw_command_set_stencil_mask(DRWShadingGroup *shgroup, uint mask)
   cmd->mask = mask;
 }
 
+static void drw_command_set_mutable_state(DRWShadingGroup *shgroup,
+                                          DRWState enable,
+                                          DRWState disable)
+{
+  /* TODO Restrict what state can be changed. */
+  DRWCommandSetMutableState *cmd = drw_command_create(shgroup, DRW_CMD_DRWSTATE);
+  cmd->enable = enable;
+  cmd->disable = disable;
+}
+
 void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          Object *ob,
                          float (*obmat)[4],
@@ -1090,8 +1100,6 @@ static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass 
   BLI_LINKS_APPEND(&pass->shgroups, shgroup);
 
   shgroup->shader = shader;
-  shgroup->state_extra = 0;
-  shgroup->state_extra_disable = ~0x0;
   shgroup->cmd.first = NULL;
   shgroup->cmd.last = NULL;
   shgroup->pass_handle = pass->handle;
@@ -1205,12 +1213,12 @@ DRWShadingGroup *DRW_shgroup_transform_feedback_create(struct GPUShader *shader,
  */
 void DRW_shgroup_state_enable(DRWShadingGroup *shgroup, DRWState state)
 {
-  shgroup->state_extra |= state;
+  drw_command_set_mutable_state(shgroup, state, ~0x0);
 }
 
 void DRW_shgroup_state_disable(DRWShadingGroup *shgroup, DRWState state)
 {
-  shgroup->state_extra_disable &= ~state;
+  drw_command_set_mutable_state(shgroup, 0x0, state);
 }
 
 void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask)

@@ -67,6 +67,9 @@ typedef struct DRWCommandsState {
   /* Selection ID state. */
   GPUVertBuf *select_buf;
   uint select_id;
+  /* Drawing State */
+  DRWState drw_state_enabled;
+  DRWState drw_state_disabled;
 } DRWCommandsState;
 
 /* -------------------------------------------------------------------- */
@@ -1174,6 +1177,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       .obmat_loc = -1,
       .obinv_loc = -1,
       .mvp_loc = -1,
+      .drw_state_enabled = 0,
+      .drw_state_disabled = ~0x0,
   };
 
   const bool shader_changed = (DST.shader != shgroup->shader);
@@ -1195,9 +1200,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
   release_ubo_slots(shader_changed);
   release_texture_slots(shader_changed);
 
-  drw_state_set((pass_state & shgroup->state_extra_disable) | shgroup->state_extra);
-
   draw_update_uniforms(shgroup, &state, &use_tfeedback);
+
+  drw_state_set(pass_state);
 
   /* Rendering Calls */
   {
@@ -1212,6 +1217,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
     while ((cmd = draw_command_iter_step(&iter, &cmd_type))) {
 
       switch (cmd_type) {
+        case DRW_CMD_DRWSTATE:
         case DRW_CMD_STENCIL:
           draw_call_batching_flush(shgroup, &state);
           break;
@@ -1227,6 +1233,11 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       }
 
       switch (cmd_type) {
+        case DRW_CMD_DRWSTATE:
+          state.drw_state_enabled |= cmd->state.enable;
+          state.drw_state_disabled &= ~cmd->state.disable;
+          drw_state_set((pass_state & state.drw_state_disabled) | state.drw_state_enabled);
+          break;
         case DRW_CMD_STENCIL:
           drw_stencil_set(cmd->stencil.mask);
           break;

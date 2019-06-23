@@ -155,11 +155,10 @@ typedef enum {
   DRW_CMD_DRAW_RANGE = 1,
   DRW_CMD_DRAW_INSTANCE = 2,
   DRW_CMD_DRAW_PROCEDURAL = 3,
-  /* First 2 bits are for draw commands.
-   * DRW_shgroup_is_empty uses this fact. */
   /* Other Commands */
-  DRW_CMD_STENCIL = 2 << 2,
-  DRW_CMD_SELECTID = 3 << 2,
+  DRW_CMD_DRWSTATE = 13,
+  DRW_CMD_STENCIL = 14,
+  DRW_CMD_SELECTID = 15,
   /* Needs to fit in 4bits */
 } eDRWCommandType;
 
@@ -189,24 +188,28 @@ typedef struct DRWCommandDrawProcedural {
   uint vert_count;
 } DRWCommandDrawProcedural;
 
-typedef struct DRWCommandSetSelectID {
-  GPUVertBuf *select_buf;
-  uint select_id;
-} DRWCommandSetSelectID;
+typedef struct DRWCommandSetMutableState {
+  /** State changes (or'd or and'd with the pass's state) */
+  DRWState enable;
+  DRWState disable;
+} DRWCommandSetMutableState;
 
 typedef struct DRWCommandSetStencil {
   uint mask;
 } DRWCommandSetStencil;
 
+typedef struct DRWCommandSetSelectID {
+  GPUVertBuf *select_buf;
+  uint select_id;
+} DRWCommandSetSelectID;
+
 typedef union DRWCommand {
-  /* Only sortable type */
   DRWCommandDraw draw;
   DRWCommandDrawRange range;
   DRWCommandDrawInstance instance;
   DRWCommandDrawProcedural procedural;
-  /* Stencil */
+  DRWCommandSetMutableState state;
   DRWCommandSetStencil stencil;
-  /* Select */
   DRWCommandSetSelectID select_id;
 } DRWCommand;
 
@@ -268,10 +271,6 @@ struct DRWShadingGroup {
     struct DRWCommandChunk *first, *last;
   } cmd;
 
-  /** State changes for this batch only (or'd with the pass's state) */
-  DRWState state_extra;
-  /** State changes for this batch only (and'd with the pass's state) */
-  DRWState state_extra_disable;
   union {
     struct {
       int objectinfo;                /* Equal to 1 if the shader needs obinfos. */
