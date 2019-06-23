@@ -113,7 +113,10 @@ typedef struct LANPR_RenderLine {
   // *MaterialRef;
   char min_occ;
   char flags;  // also for line type determination on chainning
+  
+  // still need this entry because culled lines will not add to object reln node
   struct Object *object_ref;
+
   int edge_idx;  // for gpencil stroke modifier
 } LANPR_RenderLine;
 
@@ -123,6 +126,7 @@ typedef struct LANPR_RenderLineChain {
   // int         SegmentCount;  // we count before draw cmd.
   float length;  // calculated before draw cmd.
   char picked;   // used when re-connecting
+  struct Object* object_ref;
 } LANPR_RenderLineChain;
 
 typedef struct LANPR_RenderLineChainItem {

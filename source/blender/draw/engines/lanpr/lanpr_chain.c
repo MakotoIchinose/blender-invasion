@@ -214,6 +214,8 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
     rlc = lanpr_create_render_line_chain(rb);
 
+    rlc->object_ref = rl->object_ref; // can only be the same object in a chain.
+
     int r1, r2, c1, c2, row, col;
     LANPR_RenderLine *new_rl = rl;
     LANPR_RenderVert *new_rv;
@@ -600,6 +602,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb)
         break;
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
         next_cre = (LANPR_ChainRegisterEntry *)cre->item.next;
+        if (cre->rlc->object_ref!=rlc) continue;
         if (cre->rlc == rlc ||
             ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion)
           continue;
