@@ -29,15 +29,6 @@ extern "C" {
 
 // Anonymous namespace for internal functions
 namespace {
-inline void name_compat(std::string &ob_name, const std::string &mesh_name)
-{
-  if (ob_name.compare(mesh_name) != 0) {
-    ob_name += "_" + mesh_name;
-  }
-  size_t start_pos;
-  while ((start_pos = ob_name.find(" ")) != std::string::npos)
-    ob_name.replace(start_pos, 1, "_");
-}
 
 inline void change_single_axis_orientation(float (&mat)[4][4], int axis_from, int axis_to)
 {
@@ -63,6 +54,16 @@ inline void change_single_axis_orientation(float (&mat)[4][4], int axis_from, in
 }  // namespace
 
 namespace common {
+
+void name_compat(std::string &ob_name, const std::string &mesh_name)
+{
+  if (ob_name.compare(mesh_name) != 0) {
+    ob_name += "_" + mesh_name;
+  }
+  size_t start_pos;
+  while ((start_pos = ob_name.find(" ")) != std::string::npos)
+    ob_name.replace(start_pos, 1, "_");
+}
 
 bool object_is_smoke_sim(const Object *const ob)
 {
@@ -194,14 +195,6 @@ void free_mesh(Mesh *mesh, bool needs_free)
 {
   if (needs_free)
     BKE_id_free(NULL, mesh);  // TODO someoene null? (alembic)
-}
-
-std::string get_object_name(const Object *const eob, const Mesh *const mesh)
-{
-  std::string name{eob->id.name + 2};
-  std::string mesh_name{mesh->id.name + 2};
-  name_compat(name /* modifies */, mesh_name);
-  return name;
 }
 
 std::string get_version_string()

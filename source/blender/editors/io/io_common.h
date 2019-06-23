@@ -67,10 +67,10 @@ typedef struct ExportSettings {
   bool export_child_hairs;
   bool export_objects_as_objects;
   bool export_objects_as_groups;
+  bool export_curves;
 
   bool apply_modifiers;
   bool render_modifiers;
-  bool curves_as_mesh;
   bool pack_uv;
   bool triangulate;
   int quad_method;

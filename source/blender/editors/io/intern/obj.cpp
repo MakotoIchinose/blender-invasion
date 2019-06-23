@@ -18,6 +18,7 @@ extern "C" {
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_space_types.h"
+#include "DNA_curve_types.h"
 
 #include "DEG_depsgraph.h"
 
@@ -123,12 +124,12 @@ std::FILE *get_file(const char *const original_path,
 
 bool OBJ_export_materials(bContext *C,
                           ExportSettings *settings,
-                          std::set<const Material *> materials,
-                          size_t frame)
+                          std::string mtl_path,
+                          std::set<const Material *> materials)
 {
 #ifdef WITH_PYTHON
   const char *imports[] = {"obj_export", NULL};
-  std::string mtl_path = get_path(settings->filepath, ".mtl", settings->export_animations, frame);
+
   std::stringstream ss;
   ss << "obj_export.write_mtl(\"" << mtl_path << "\", [";
   bool first = true;
@@ -148,6 +149,85 @@ bool OBJ_export_materials(bContext *C,
 #else
   return false;
 #endif
+}
+
+bool OBJ_export_curve(bContext *UNUSED(C),
+                      ExportSettings *UNUSED(settings),
+                      std::FILE *file,
+                      const Object *eob,
+                      const Curve *cu)
+{
+  size_t totvert = 0;
+  for (const Nurb &nurb : nurbs_of_curve_iter(cu)) {
+    size_t deg_order_u = 0;
+    if (nurb.type == CU_POLY) {
+      deg_order_u = 1;
+    }
+    else {
+      // Original OBJ exporter says this is tested to be correct...
+      deg_order_u = nurb.orderu - 1;
+    }
+
+    if (nurb.type == CU_BEZIER) {
+      std::cerr << "Warning: BEZIER curve '" << eob->id.name
+                << "' skipped. Only Poly and NURBS curves supported\n";
+      return true;  // Don't abort all exports, just skip
+    }
+
+    if (nurb.pntsv > 1) {
+      std::cerr << "Warning: Surface curve '" << eob->id.name
+                << "' skipped. Only Poly and NURBS curves supported\n";
+      return true;  // Don't abort all exports, just skip
+    }
+
+    // If the length of the nurb.bp array is smaller than the degree, we'remissing points
+    if ((nurb.pntsv > 0 ? nurb.pntsu * nurb.pntsv : nurb.pntsu) <= deg_order_u) {
+      std::cerr << "Warning: Number of points in object '" << eob->id.name
+                << "' is lower than it's degree. Skipped. \n";
+      return true;  // Don't abort all exports, just skip
+    }
+
+    const bool closed = nurb.flagu & CU_NURB_CYCLIC;
+    const bool endpoints = !closed && (nurb.flagu & CU_NURB_ENDPOINT);
+    size_t num_points = 0;
+    // TODO someone Transform, scale and such
+    for (const std::array<float, 3> &point : points_of_nurbs_iter(&nurb)) {
+      fprintf(file, "v %.6g %.6g %.6g\n", point[0], point[1], point[2]);
+      ++num_points;
+    }
+    totvert += num_points;
+
+    fprintf(file, "g %s\n", common::get_object_name(eob, cu).c_str());
+    fprintf(file, "cstype bspline\ndeg %lu\n", deg_order_u);
+
+    size_t real_num_points = num_points;
+    if (closed) {
+      num_points += deg_order_u;
+    }
+
+    fputs("curv 0.0 1.0", file);
+    for (int i = 0; i < num_points; ++i) {
+      // Relative indexes, reuse vertices if closed
+      fprintf(file, " %ld", (long)(i < real_num_points ? -(i + 1) : -(i - real_num_points + 1)));
+    }
+    fputc('\n', file);
+
+    fputs("parm u", file);
+    size_t tot_parm = deg_order_u + 1 + num_points;
+    float tot_norm_div = 1.0f / (tot_parm - 1);
+    for (int i = 0; i < tot_parm; ++i) {
+      float parm = i * tot_norm_div;
+      if (endpoints) {
+        if (i <= deg_order_u)
+          parm = 0;
+        else if (i >= num_points)
+          parm = 1;
+      }
+      fprintf(file, " %g", parm);
+    }
+    fputs("\nend\n", file);
+  }
+  return true;
 }
 
 bool OBJ_export_mesh(bContext *UNUSED(C),
@@ -294,11 +374,17 @@ bool OBJ_export_object(bContext *C,
 
       common::free_mesh(mesh, needs_free);
       return true;
+    case OB_CURVE:
+    case OB_SURF:
+      if (settings->export_curves)
+        return OBJ_export_curve(C, settings, file, ob, (const Curve *)ob->data);
+      else
+        return true;  // Continue
     default:
       // TODO someone Probably abort, it shouldn't be possible to get here (once finished)
       std::cerr << "OBJ Export for the object \"" << ob->id.name << "\" is not implemented\n";
       // BLI_assert(false);
-      return false;
+      return true;
   }
 }
 
@@ -322,9 +408,12 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
     /* clang-format off */
     auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(settings->dedup_uvs_threshold);
     auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(settings->dedup_normals_threshold);
+
+    std::string mtl_path = get_path(settings->filepath, ".mtl", settings->export_animations, frame);
+    std::set<const Material *> materials;
     /* clang-format on */
 
-    std::set<const Material *> materials;
+    fprintf(obj_file, "mtllib %s\n", mtl_path.c_str() + mtl_path.find_last_of("/\\") + 1);
 
     for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings}) {
       if (!OBJ_export_object(C,
@@ -347,7 +436,7 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
     }
 
     if (settings->export_materials) {
-      if (!OBJ_export_materials(C, settings, materials, frame)) {
+      if (!OBJ_export_materials(C, settings, mtl_path, materials)) {
         std::cerr << "Couldn't export materials\n";
       }
     }

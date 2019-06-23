@@ -74,7 +74,7 @@ bool get_final_mesh(const ExportSettings *const settings,
 
 void free_mesh(Mesh *mesh, bool needs_free);
 
-std::string get_object_name(const Object *const ob, const Mesh *const mesh);
+void name_compat(std::string &ob_name, const std::string &mesh_name);
 std::string get_version_string();
 
 void export_start(bContext *C, ExportSettings *const settings);
@@ -94,6 +94,16 @@ std::vector<std::array<float, 2>> get_uv(const Mesh *const mesh);
 std::vector<std::array<float, 3>> get_vertices(const Mesh *const mesh);
 
 // --- TEMPLATES ---
+
+// T should be something with an ID, like Mesh or Curve
+template<typename T> std::string get_object_name(const Object *const ob, const T *const data)
+{
+  std::string name{ob->id.name + 2};
+  std::string data_name{data->id.name + 2};
+  name_compat(name /* modifies */, data_name);
+  return name;
+}
+
 // --- Deduplication ---
 // TODO someone How to properly compare similarity of vectors?
 struct threshold_comparator {

@@ -150,7 +150,7 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op)
   uiItemR(row, &ptr, "render_modifiers", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
-  uiItemR(row, &ptr, "curves_as_mesh", 0, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "export_curves", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
   uiItemR(row, &ptr, "triangulate", 0, NULL, ICON_NONE);

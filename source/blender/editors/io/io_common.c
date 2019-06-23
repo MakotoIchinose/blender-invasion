@@ -26,7 +26,7 @@
 #include "UI_resources.h"
 
 /* clang-format off */
-const EnumPropertyItem axis_remap[] =
+extern const EnumPropertyItem axis_remap[] =
   {{AXIS_X,     "AXIS_X",     ICON_NONE, "X axis",  ""},
    {AXIS_Y,     "AXIS_Y",     ICON_NONE, "Y axis",  ""},
    {AXIS_Z,     "AXIS_Z",     ICON_NONE, "Z axis",  ""},
@@ -35,7 +35,7 @@ const EnumPropertyItem axis_remap[] =
    {AXIS_NEG_Z, "AXIS_NEG_Z", ICON_NONE, "-Z axis", ""},
    {0,          NULL,         0,         NULL,      NULL}};
 
-const EnumPropertyItem path_reference_mode[] = {
+extern const EnumPropertyItem path_reference_mode[] = {
     {AUTO,     "AUTO",     ICON_NONE, "Auto",       "Use Relative paths with subdirectories only"},
     {ABSOLUTE, "ABSOLUTE", ICON_NONE, "Absolute",   "Always write absolute paths"},
     {RELATIVE, "RELATIVE", ICON_NONE, "Relative",   "Always write relative paths (where possible)"},
@@ -226,11 +226,8 @@ void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_T
                   "Use Render Modifiers",
                   "Whether to use Render or View modifier stettings");
 
-  RNA_def_boolean(ot->srna,
-                  "curves_as_mesh",
-                  false,
-                  "Curves as Mesh",
-                  "Export curves and NURBS surfaces as meshes");
+  RNA_def_boolean(
+      ot->srna, "export_curves", false, "Export curves", "Export curves and NURBS surfaces");
 
   RNA_def_boolean(ot->srna, "pack_uv", 1, "Pack UV Islands", "Export UVs with packed island");
 
@@ -357,7 +354,7 @@ ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
   settings->export_child_hairs = RNA_boolean_get(op->ptr, "export_child_hairs");
   settings->export_objects_as_objects = RNA_boolean_get(op->ptr, "export_objects_as_objects");
   settings->export_objects_as_groups = RNA_boolean_get(op->ptr, "export_objects_as_groups");
-  settings->curves_as_mesh = RNA_boolean_get(op->ptr, "curves_as_mesh");
+  settings->export_curves = RNA_boolean_get(op->ptr, "export_curves");
   settings->pack_uv = RNA_boolean_get(op->ptr, "pack_uv");
   settings->triangulate = RNA_boolean_get(op->ptr, "triangulate");
   settings->quad_method = RNA_enum_get(op->ptr, "quad_method");

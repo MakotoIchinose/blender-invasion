@@ -3,15 +3,16 @@
 
 extern "C" {
 /* clang-format off */
+#include "BKE_customdata.h"
 #include "BKE_global.h"
+#include "BKE_library.h"
+#include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
-#include "BKE_library.h"
-#include "BKE_customdata.h"
 #include "BKE_scene.h"
-#include "BKE_material.h"
 
+#include "DNA_curve_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_mesh_types.h"
@@ -190,7 +191,7 @@ struct modifier_iter : list_iterator<ModifierData> {
 // Iterator over the `MLoop` of a `MPoly` of a mesh
 struct loop_of_poly_iter : pointer_iterator<MLoop> {
   loop_of_poly_iter(const Mesh *const mesh, const poly_iter &poly)
-    : pointer_iterator(mesh->mloop + (*poly).loopstart, (*poly).totloop) {} // XXX DEBUG THIS HERE
+    : pointer_iterator(mesh->mloop + (*poly).loopstart, (*poly).totloop) {}
   loop_of_poly_iter(const Mesh *const mesh, const MPoly &poly)
       : pointer_iterator(mesh->mloop + poly.loopstart, poly.totloop) {}
   loop_of_poly_iter(MLoop * const loop, size_t size)
@@ -218,6 +219,21 @@ struct material_iter : offset_iterator<Material *> {
   }
   const Object * const ob;
   const Material * const * const mdata;
+};
+
+struct nurbs_of_curve_iter : list_iterator<Nurb> {
+  nurbs_of_curve_iter(const Curve * const curve) : list_iterator((Nurb *) curve->nurb.first) {}
+};
+
+struct points_of_nurbs_iter : pointer_iterator_base<BPoint> {
+  points_of_nurbs_iter(const Nurb * const nu)
+    : pointer_iterator_base(nu->bp, (nu->pntsv > 0 ? nu->pntsu * nu->pntsv : nu->pntsu)) {}
+  points_of_nurbs_iter(BPoint *bp, size_t size) : pointer_iterator_base(bp, size) {}
+  points_of_nurbs_iter begin() const { return {this->first, this->size}; }
+  points_of_nurbs_iter end()   const { return {this->first + this->size, this->size}; }
+  inline const std::array<float, 3> operator*() const {
+    return {curr->vec[0], curr->vec[1], curr->vec[2]};
+  }
 };
 
 // Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
