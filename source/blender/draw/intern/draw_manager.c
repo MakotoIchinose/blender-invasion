@@ -668,13 +668,15 @@ static void drw_viewport_var_init(void)
       DST.vmempool->views = BLI_memblock_create(sizeof(DRWView));
     }
     if (DST.vmempool->passes == NULL) {
-      DST.vmempool->passes = BLI_memblock_create(sizeof(DRWPass));
+      uint chunk_len = sizeof(DRWPass) * DRW_RESOURCE_CHUNK_LEN;
+      DST.vmempool->passes = BLI_memblock_create_ex(sizeof(DRWPass), chunk_len);
     }
     if (DST.vmempool->images == NULL) {
       DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *));
     }
 
     DST.resource_handle.value = 0;
+    DST.pass_handle.value = 0;
 
     draw_unit_state_create();
 

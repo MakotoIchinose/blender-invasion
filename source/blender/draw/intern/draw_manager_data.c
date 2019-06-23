@@ -568,7 +568,7 @@ static DRWResourceHandle drw_resource_handle(DRWShadingGroup *shgroup,
       DST.ob_state_obinfo_init = false;
     }
 
-    if (shgroup->objectinfo != -1) {
+    if (shgroup->objectinfo) {
       if (!DST.ob_state_obinfo_init) {
         DST.ob_state_obinfo_init = true;
 
@@ -601,6 +601,7 @@ static void *drw_command_create(DRWShadingGroup *shgroup, eDRWCommandType type)
     DRWCommandSmallChunk *smallchunk = BLI_memblock_alloc(DST.vmempool->commands_small);
     smallchunk->command_len = ARRAY_SIZE(smallchunk->commands);
     smallchunk->command_used = 0;
+    smallchunk->command_type[0] = 0x0lu;
     chunk = (DRWCommandChunk *)smallchunk;
     BLI_LINKS_APPEND(&shgroup->cmd, chunk);
   }
@@ -1056,7 +1057,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
     shgroup->objectinfo = 1;
   }
   else {
-    shgroup->objectinfo = -1;
+    shgroup->objectinfo = 0;
   }
 
   if (view_ubo_location != -1) {
@@ -1093,7 +1094,7 @@ static DRWShadingGroup *drw_shgroup_create_ex(struct GPUShader *shader, DRWPass 
   shgroup->state_extra_disable = ~0x0;
   shgroup->cmd.first = NULL;
   shgroup->cmd.last = NULL;
-  shgroup->pass_parent = pass;
+  shgroup->pass_handle = pass->handle;
 
   return shgroup;
 }
@@ -1219,7 +1220,15 @@ void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask)
 
 bool DRW_shgroup_is_empty(DRWShadingGroup *shgroup)
 {
-  return shgroup->cmd.first == NULL;
+  DRWCommandChunk *chunk = shgroup->cmd.first;
+  for (; chunk; chunk = chunk->next) {
+    for (int i = 0; i < chunk->command_used; i++) {
+      if (command_type_get(chunk->command_type, i) <= DRW_MAX_DRAW_CMD_TYPE) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /* This is a workaround function waiting for the clearing operation to be available inside the
@@ -1246,7 +1255,10 @@ DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
   shgroup_new->cmd.first = NULL;
   shgroup_new->cmd.last = NULL;
 
-  BLI_LINKS_INSERT_AFTER(&shgroup->pass_parent->shgroups, shgroup, shgroup_new);
+  DRWPass *parent_pass = BLI_memblock_elem_get(
+      DST.vmempool->passes, shgroup->pass_handle.chunk, shgroup->pass_handle.id);
+
+  BLI_LINKS_INSERT_AFTER(&parent_pass->shgroups, shgroup, shgroup_new);
 
   return shgroup_new;
 }
@@ -1741,6 +1753,8 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
 
   pass->shgroups.first = NULL;
   pass->shgroups.last = NULL;
+  pass->handle = DST.pass_handle;
+  INCREMENT_RESOURCE_HANDLE(DST.pass_handle);
 
   return pass;
 }

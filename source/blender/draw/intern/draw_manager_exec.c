@@ -829,8 +829,12 @@ static bool ubo_bindings_validate(DRWShadingGroup *shgroup)
         printf("Trying to draw with missing UBO binding.\n");
         valid = false;
       }
+
+      DRWPass *parent_pass = BLI_memblock_elem_get(
+          DST.vmempool->passes, shgroup->pass_handle.chunk, shgroup->pass_handle.id);
+
       printf("Pass : %s, Shader : %s, Block : %s\n",
-             shgroup->pass_parent->name,
+             parent_pass->name,
              shgroup->shader->name,
              blockname);
     }

@@ -155,11 +155,15 @@ typedef enum {
   DRW_CMD_DRAW_RANGE = 1,
   DRW_CMD_DRAW_INSTANCE = 2,
   DRW_CMD_DRAW_PROCEDURAL = 3,
+  /* First 2 bits are for draw commands.
+   * DRW_shgroup_is_empty uses this fact. */
   /* Other Commands */
-  DRW_CMD_STENCIL = 14,
-  DRW_CMD_SELECTID = 15,
+  DRW_CMD_STENCIL = 2 << 2,
+  DRW_CMD_SELECTID = 3 << 2,
   /* Needs to fit in 4bits */
 } eDRWCommandType;
+
+#define DRW_MAX_DRAW_CMD_TYPE DRW_CMD_DRAW_PROCEDURAL
 
 typedef struct DRWCommandDraw {
   GPUBatch *batch;
@@ -259,8 +263,6 @@ struct DRWShadingGroup {
   GPUShader *shader;                /* Shader to bind */
   struct DRWUniformChunk *uniforms; /* Uniforms pointers */
 
-  int objectinfo;
-
   struct {
     /* Chunks of draw calls. */
     struct DRWCommandChunk *first, *last;
@@ -270,8 +272,16 @@ struct DRWShadingGroup {
   DRWState state_extra;
   /** State changes for this batch only (and'd with the pass's state) */
   DRWState state_extra_disable;
-
-  DRWPass *pass_parent; /* backlink to pass we're in */
+  union {
+    struct {
+      int objectinfo;                /* Equal to 1 if the shader needs obinfos. */
+      DRWResourceHandle pass_handle; /* Memblock key to parent pass. */
+    };
+    struct {
+      float distance;      /* Distance from camera. */
+      uint original_index; /* Original position inside the shgroup list. */
+    } z_sorting;
+  };
 };
 
 #define MAX_PASS_NAME 32
@@ -283,6 +293,7 @@ struct DRWPass {
     DRWShadingGroup *last;
   } shgroups;
 
+  DRWResourceHandle handle;
   DRWState state;
   char name[MAX_PASS_NAME];
 };
@@ -396,6 +407,8 @@ typedef struct DRWManager {
   bool ob_state_obinfo_init;
   /** Handle of current object resource in object resource arrays (DRWObjectMatrices/Infos). */
   DRWResourceHandle resource_handle;
+  /** Handle of next DRWPass to be allocated. */
+  DRWResourceHandle pass_handle;
 
   /** Dupli state. NULL if not dupli. */
   struct DupliObject *dupli_source;
