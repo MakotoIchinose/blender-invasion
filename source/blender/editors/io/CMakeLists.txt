@@ -88,6 +88,11 @@ if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
+if(WITH_PYTHON)
+  list(APPEND INC ../../python)
+  add_definitions(-DWITH_PYTHON)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCC)
   add_definitions(-Wfatal-errors) # Temporary, for development
 endif()

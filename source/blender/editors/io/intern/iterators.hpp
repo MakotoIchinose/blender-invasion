@@ -10,6 +10,7 @@ extern "C" {
 #include "BKE_library.h"
 #include "BKE_customdata.h"
 #include "BKE_scene.h"
+#include "BKE_material.h"
 
 #include "DNA_layer_types.h"
 #include "DNA_meshdata_types.h"
@@ -43,6 +44,7 @@ struct pointer_iterator_base {
   using iterator_category = Tag;
   pointer_iterator_base(pointer p, size_t size) : first(p), curr(p), size(size) {}
   pointer_iterator_base(const pointer_iterator_base &pib) : first(pib.first), curr(pib.curr), size(pib.size) {}
+  // Conversion to base pointer
   operator pointer() const { return curr; }
   pointer_iterator_base &operator=(const pointer_iterator_base &p) {
     // Placement new: construct a new object in the position of `this`
@@ -55,8 +57,8 @@ struct pointer_iterator_base {
   pointer_iterator_base & operator++() { ++curr; return *this; }
   pointer_iterator_base & operator--() { --curr; return *this; }
   pointer_iterator_base & operator+(difference_type n) { curr += n; return *this; }
-  ptrdiff_t operator-(const pointer_iterator_base &other) const { return other.curr - curr; }
-  bool operator==(const pointer_iterator_base &other)     const { return curr == other.curr; }
+  difference_type operator-(const pointer_iterator_base &other) const { return other.curr - curr; }
+  bool operator==(const pointer_iterator_base &other) const { return curr == other.curr; }
   pointer first;
   pointer curr;
   size_t size;
@@ -80,6 +82,14 @@ struct list_iterator : pointer_iterator_base<SourceT, Tag> {
   list_iterator & operator++() { this->curr = this->curr->next; return *this; }
   list_iterator & operator--() { this->curr = this->curr->prev; return *this; }
   inline const ResT operator*() const { return *this->curr; }
+};
+
+// Represents an offset into an array (base for iterators like material_iter)
+template<typename T>
+struct offset_iterator : pointer_iterator_base<T, std::random_access_iterator_tag> {
+  offset_iterator(size_t size)
+    : pointer_iterator_base<T, std::random_access_iterator_tag>(0, size) {}
+  size_t offset() const { return ((size_t) this->curr) / sizeof(T); }
 };
 
 // Iterator over the polygons of a mesh
@@ -191,6 +201,25 @@ struct loop_of_poly_iter : pointer_iterator<MLoop> {
   // loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 };
 
+struct material_iter : offset_iterator<Material *> {
+  material_iter(const Object * const ob)
+    : offset_iterator(ob->totcol), ob(ob), mdata(*give_matarar((Object *) ob)) {}
+  material_iter begin() const { return material_iter(ob); }
+  material_iter end()   const { material_iter mi(ob); mi.curr = mi.first + mi.size; return mi; }
+  const Material * operator*() {
+    const size_t off = offset();
+    if (ob->matbits && ob->matbits[off]) {
+      // In Object
+      return ob->mat[off];
+    } else {
+      // In Data
+      return mdata[off];
+    }
+  }
+  const Object * const ob;
+  const Material * const * const mdata;
+};
+
 // Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
 struct uv_iter : pointer_iterator_base<MLoopUV> {
   uv_iter(const Mesh *const m) : pointer_iterator_base(m->mloopuv, m->totloop) {}
@@ -249,19 +278,6 @@ struct normal_iter {
         // otherwise make sure loop is at the end, so we can stop iterating
         loop = loop.end();
     }
-    // // If we're not at the end of the loop, we increment it
-    // if (loop != loop.end()) {
-    //   ++loop;
-    // } else if (poly != poly.end()) {
-    //   // if we're not at the end of the poly, we increment it
-    //   ++poly;
-    //   if (poly != poly.end())
-    //     // if incrementing the poly didn't put us past the end,
-    //     // use the new poly to generate the new loop iterator
-    //     loop = loop_of_poly_iter{mesh, poly};
-    //   else
-    //     loop = loop.end();
-    // }
     return *this;
   }
   normal_iter & operator--() {
@@ -309,27 +325,6 @@ struct normal_iter {
   loop_of_poly_iter loop;
   const float (*custom_no)[3];
 };
-
-// template<size_t N>
-// inline float len_sq(const std::array<float, N> &lhs, const std::array<float, N> &rhs)
-// {
-//   float f = 0.0;
-//   for (int i = 0; i < N; ++i)
-//     f += std::pow(lhs[i] - rhs[i], 2);
-//   return f;
-// }
-
-// template<size_t N>
-// inline float too_similar(const std::array<float, N> &lhs,
-//                          const std::array<float, N> &rhs,
-//                          const float th)
-// {
-//   bool b = true;
-//   for (int i = 0; i < N; ++i)
-//     b &= (lhs[i] - rhs[i]) < th;
-//   return b;
-// }
-
 
 // --- Deduplication ---
 

@@ -34,8 +34,8 @@ typedef struct ExportSettings {
   bool visible_only;
   bool renderable_only;
 
-  float frame_start;
-  float frame_end;
+  float start_frame;
+  float end_frame;
   float frame_samples_xform;
   float frame_samples_shape;
   float shutter_open;

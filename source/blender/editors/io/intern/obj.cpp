@@ -24,6 +24,10 @@ extern "C" {
 #include "WM_api.h"
 #include "WM_types.h"
 
+#ifdef WITH_PYTHON
+#  include "BPY_extern.h"
+#endif
+
 #include "ED_object.h"
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -33,6 +37,7 @@ extern "C" {
 }
 
 #include <array>
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <fstream>
@@ -40,6 +45,7 @@ extern "C" {
 #include <iostream>
 #include <map>
 #include <set>
+#include <sstream>
 #include <unordered_map>
 #include <vector>
 
@@ -80,26 +86,71 @@ namespace {
 
 using namespace common;
 
-// bool obj_export_materials(bcontext *unused(c),
-//                           exportsettings *unused(settings),
-//                           std::fstream &fs,
-//                           std::map<std::string, const material *const> materials)
-// {
-//   fs << "# blender mtl file\n"; /* todo someone filename necessary? */
-//   fs << "# material count: " << materials.size() << '\n';
-//   for (auto p : materials) {
-//     const material *const mat = p.second;
-//     bli_assert(mat != nullptr);
-//     fs << "newmtl " << (mat->id.name + 2) << '\n';
-//     // todo someone ka seems to no longer make sense, without bi
-//     fs << "kd " << mat->r << mat->g << mat->b << '\n';
-//     fs << "ks " << ((1 - mat->roughness) * mat->r) << ((1 - mat->roughness) * mat->g)
-//        << ((1 - mat->roughness) * mat->b) << '\n';
-//     // todo someone it doens't seem to make sense too use this,
-//     // unless i use the principled bsdf settings, instead of the viewport
-//   }
-//   return true;
-// }
+std::string get_path(const char *const original_path,
+                     const char *const ext,
+                     const bool export_animations = false,
+                     const int frame = 0)
+{
+  std::string path = original_path;
+  size_t start_pos = path.rfind(".obj");
+  if (start_pos == std::string::npos) {
+    std::cerr << "Invalid file path: " << original_path << '\n';
+    return "";
+  }
+  path.erase(path.begin() + start_pos, path.end());
+  if (export_animations) {
+    char fr[8];
+    std::snprintf(fr, 8, "_%06d", frame);
+    path += fr;
+  }
+  path += ext;
+  return path;
+}
+
+std::FILE *get_file(const char *const original_path,
+                    const char *const ext,
+                    const bool export_animations = false,
+                    const size_t frame = 0)
+{
+  std::string path = get_path(original_path, ext, export_animations, frame);
+  if (path == "")
+    return nullptr;
+
+  std::FILE *file = std::fopen(path.c_str(), "w");
+  if (file == nullptr)
+    std::cerr << "Couldn't open file: " << path << '\n';
+
+  return file;
+}
+
+bool OBJ_export_materials(bContext *C,
+                          ExportSettings *settings,
+                          std::set<const Material *> materials,
+                          size_t frame)
+{
+#ifdef WITH_PYTHON
+  const char *imports[] = {"obj_export", NULL};
+  std::string mtl_path = get_path(settings->filepath, ".mtl", settings->export_animations, frame);
+  std::stringstream ss;
+  ss << "obj_export.write_mtl(\"" << mtl_path << "\", [";
+  bool first = true;
+  for (const Material *const mat : materials) {
+    if (first) {
+      ss << '"';
+      first = false;
+    }
+    else
+      ss << ", \"";
+
+    ss << (mat->id.name + 2) << '"';
+  }
+  ss << "])";
+  std::cerr << "Running '" << ss.str() << "'\n";
+  return BPY_execute_string(C, imports, ss.str().c_str());
+#else
+  return false;
+#endif
+}
 
 bool OBJ_export_mesh(bContext *UNUSED(C),
                      ExportSettings *settings,
@@ -257,37 +308,51 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
 {
   common::export_start(C, settings);
 
-  std::FILE *file = std::fopen(settings->filepath, "w");
-  if (file == nullptr) {
-    std::cerr << "Couldn't open file: " << settings->filepath << '\n';
-    return;
-  }
-  fprintf(file, "# %s\n# www.blender.org\n", common::get_version_string().c_str());
-
   // If not exporting animations, the start and end are the same
-  for (int frame = settings->frame_start; frame <= settings->frame_end; ++frame) {
+  for (int frame = settings->start_frame; frame <= settings->end_frame; ++frame) {
+    std::FILE *obj_file = get_file(settings->filepath, ".obj", settings->export_animations, frame);
+    if (obj_file == nullptr)
+      return;
+
+    fprintf(obj_file, "# %s\n# www.blender.org\n", common::get_version_string().c_str());
+
     BKE_scene_frame_set(settings->scene, frame);
     BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
     Scene *escene = DEG_get_evaluated_scene(settings->depsgraph);
     ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
+    /* clang-format off */
     auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(settings->dedup_uvs_threshold);
-    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(
-        settings->dedup_normals_threshold);
+    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(settings->dedup_normals_threshold);
+    /* clang-format on */
 
-    // TODO someone if not exporting as objects, do they need to all be merged?
-    for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings})
+    std::set<const Material *> materials;
+
+    for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings}) {
       if (!OBJ_export_object(C,
                              settings,
                              escene,
                              ob,
-                             file,
+                             obj_file,
                              vertex_total,
                              uv_total,
                              no_total,
                              uv_mapping_pair,
-                             no_mapping_pair))
+                             no_mapping_pair)) {
         return;
+      }
+
+      if (settings->export_materials) {
+        auto mi = material_iter(ob);
+        materials.insert(mi.begin(), mi.end());
+      }
+    }
+
+    if (settings->export_materials) {
+      if (!OBJ_export_materials(C, settings, materials, frame)) {
+        std::cerr << "Couldn't export materials\n";
+      }
+    }
   }
 }
 

@@ -60,7 +60,7 @@ void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_T
                   "Export only objects marked renderable in the outliner");
 
   RNA_def_int(ot->srna,
-              "start",
+              "start_frame",
               INT_MIN,
               INT_MIN,
               INT_MAX,
@@ -71,7 +71,7 @@ void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_T
               INT_MAX);
 
   RNA_def_int(ot->srna,
-              "end",
+              "end_frame",
               INT_MIN,
               INT_MIN,
               INT_MAX,
@@ -313,8 +313,8 @@ ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
   settings->selected_only = RNA_boolean_get(op->ptr, "selected_only");
   settings->visible_only = RNA_boolean_get(op->ptr, "visible_only");
   settings->renderable_only = RNA_boolean_get(op->ptr, "renderable_only");
-  settings->frame_start = RNA_int_get(op->ptr, "start");
-  settings->frame_end = RNA_int_get(op->ptr, "end");
+  settings->start_frame = RNA_int_get(op->ptr, "start_frame");
+  settings->end_frame = RNA_int_get(op->ptr, "end_frame");
   settings->frame_samples_xform = RNA_int_get(op->ptr, "xsamples");
   settings->frame_samples_shape = RNA_int_get(op->ptr, "gsamples");
   settings->shutter_open = RNA_float_get(op->ptr, "sh_open");
@@ -347,9 +347,8 @@ ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
   settings->use_scene_units = RNA_boolean_get(op->ptr, "use_scene_units");
 
   if (!settings->export_animations) {
-    settings->frame_start = BKE_scene_frame_get(CTX_data_scene(C));
-    ;
-    settings->frame_end = settings->frame_start;
+    settings->start_frame = BKE_scene_frame_get(CTX_data_scene(C));
+    settings->end_frame = settings->start_frame;
   }
 
   return settings;
