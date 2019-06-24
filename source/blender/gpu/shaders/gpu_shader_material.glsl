@@ -3532,7 +3532,7 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
   float smoothDistance = 0.0;
   float smoothPosition = 0.0;
   vec3 smoothColor = vec3(0.0);
-  for (int i = -3; i <= 3; i++) {
+  for (int i = -2; i <= 2; i++) {
     float cellOffset = float(i);
     float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
@@ -3748,8 +3748,8 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
   vec3 smoothColor = vec3(0.0);
   float smoothDistance = 0.0;
   vec2 smoothPosition = vec2(0.0);
-  for (int j = -3; j <= 3; j++) {
-    for (int i = -3; i <= 3; i++) {
+  for (int j = -2; j <= 2; j++) {
+    for (int i = -2; i <= 2; i++) {
       vec2 cellOffset = vec2(i, j);
       vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
@@ -3998,9 +3998,9 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
   vec3 smoothColor = vec3(0.0);
   float smoothDistance = 0.0;
   vec3 smoothPosition = vec3(0.0);
-  for (int k = -3; k <= 3; k++) {
-    for (int j = -3; j <= 3; j++) {
-      for (int i = -3; i <= 3; i++) {
+  for (int k = -2; k <= 2; k++) {
+    for (int j = -2; j <= 2; j++) {
+      for (int i = -2; i <= 2; i++) {
         vec3 cellOffset = vec3(i, j, k);
         vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
@@ -4264,10 +4264,10 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
   vec3 smoothColor = vec3(0.0);
   float smoothDistance = 0.0;
   vec4 smoothPosition = vec4(0.0);
-  for (int u = -3; u <= 3; u++) {
-    for (int k = -3; k <= 3; k++) {
-      for (int j = -3; j <= 3; j++) {
-        for (int i = -3; i <= 3; i++) {
+  for (int u = -2; u <= 2; u++) {
+    for (int k = -2; k <= 2; k++) {
+      for (int j = -2; j <= 2; j++) {
+        for (int i = -2; i <= 2; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
           vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);

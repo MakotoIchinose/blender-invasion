@@ -79,7 +79,7 @@ ccl_device void voronoi_smooth_f1_1d(float w,
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
   float smoothPosition = 0.0f;
-  for (int i = -3; i <= 3; i++) {
+  for (int i = -2; i <= 2; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset + hash_float_01_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, metric, exponent);
@@ -248,8 +248,8 @@ ccl_device void voronoi_smooth_f1_2d(float2 coord,
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
   float2 smoothPosition = make_float2(0.0f, 0.0f);
-  for (int j = -3; j <= 3; j++) {
-    for (int i = -3; i <= 3; i++) {
+  for (int j = -2; j <= 2; j++) {
+    for (int i = -2; i <= 2; i++) {
       float2 cellOffset = make_float2(i, j);
       float2 pointPosition = cellOffset +
                              hash_float2_01_float2(cellPosition + cellOffset) * jitter;
@@ -457,9 +457,9 @@ ccl_device void voronoi_smooth_f1_3d(float3 coord,
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
   float3 smoothPosition = make_float3(0.0f, 0.0f, 0.0f);
-  for (int k = -3; k <= 3; k++) {
-    for (int j = -3; j <= 3; j++) {
-      for (int i = -3; i <= 3; i++) {
+  for (int k = -2; k <= 2; k++) {
+    for (int j = -2; j <= 2; j++) {
+      for (int i = -2; i <= 2; i++) {
         float3 cellOffset = make_float3(i, j, k);
         float3 pointPosition = cellOffset +
                                hash_float3_01_float3(cellPosition + cellOffset) * jitter;
@@ -682,10 +682,10 @@ ccl_device void voronoi_smooth_f1_4d(float4 coord,
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
   float4 smoothPosition = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-  for (int u = -3; u <= 3; u++) {
-    for (int k = -3; k <= 3; k++) {
-      for (int j = -3; j <= 3; j++) {
-        for (int i = -3; i <= 3; i++) {
+  for (int u = -2; u <= 2; u++) {
+    for (int k = -2; k <= 2; k++) {
+      for (int j = -2; j <= 2; j++) {
+        for (int i = -2; i <= 2; i++) {
           float4 cellOffset = make_float4(i, j, k, u);
           float4 pointPosition = cellOffset +
                                  hash_float4_01_float4(cellPosition + cellOffset) * jitter;
