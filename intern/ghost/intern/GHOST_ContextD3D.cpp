@@ -176,7 +176,7 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
 
   DXGI_SWAP_CHAIN_DESC sd{};
 
-  sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+  sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
   sd.SampleDesc.Count = 1;
   sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
   sd.BufferCount = 3;

@@ -227,7 +227,8 @@ void drawing_end(GHOST_XrContext *xr_context, std::vector<XrCompositionLayerBase
   xr_context->draw_frame = nullptr;
 }
 
-static void draw_view(OpenXRData *oxr,
+static void draw_view(GHOST_XrContext *xr_context,
+                      OpenXRData *oxr,
                       XrSwapchain swapchain,
                       XrCompositionLayerProjectionView &proj_layer_view,
                       XrView &view)
@@ -252,19 +253,22 @@ static void draw_view(OpenXRData *oxr,
 
   swapchain_image = oxr->swapchain_images[swapchain][swapchain_idx];
 
-  //    xr_context->draw_view_fn();
+  xr_context->gpu_binding->drawViewBegin(swapchain_image);
+  //  xr_context->draw_view_fn();
+  xr_context->gpu_binding->drawViewEnd(swapchain_image);
 
   xrReleaseSwapchainImage(swapchain, &release_info);
 }
 
-static XrCompositionLayerProjection draw_layer(GHOST_XrContext *xr_context,
-                                               OpenXRData *oxr,
-                                               XrSpace space)
+static XrCompositionLayerProjection draw_layer(
+    GHOST_XrContext *xr_context,
+    OpenXRData *oxr,
+    XrSpace space,
+    std::vector<XrCompositionLayerProjectionView> &proj_layer_views)
 {
   XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
   XrViewState view_state{XR_TYPE_VIEW_STATE};
   XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
-  std::vector<XrCompositionLayerProjectionView> proj_layer_views;
   uint32_t view_count;
 
   viewloc_info.displayTime = xr_context->draw_frame->frame_state.predictedDisplayTime;
@@ -277,7 +281,11 @@ static XrCompositionLayerProjection draw_layer(GHOST_XrContext *xr_context,
   proj_layer_views.resize(view_count);
 
   for (uint32_t view_idx = 0; view_idx < view_count; view_idx++) {
-    draw_view(oxr, oxr->swapchains[view_idx], proj_layer_views[view_idx], oxr->views[view_idx]);
+    draw_view(xr_context,
+              oxr,
+              oxr->swapchains[view_idx],
+              proj_layer_views[view_idx],
+              oxr->views[view_idx]);
   }
 
   layer.space = space;
@@ -291,6 +299,8 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrReferenceSpaceCreateInfo refspace_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+  std::vector<XrCompositionLayerProjectionView>
+      projection_layer_views;  // Keep alive until xrEndFrame() call!
   XrCompositionLayerProjection proj_layer;
   std::vector<XrCompositionLayerBaseHeader *> layers;
   XrSpace space;
@@ -303,7 +313,7 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
   refspace_info.poseInReferenceSpace.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
   xrCreateReferenceSpace(oxr->session, &refspace_info, &space);
 
-  proj_layer = draw_layer(xr_context, oxr, space);
+  proj_layer = draw_layer(xr_context, oxr, space, projection_layer_views);
   layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
 
   drawing_end(xr_context, &layers);

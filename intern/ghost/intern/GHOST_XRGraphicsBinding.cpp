@@ -100,6 +100,17 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     return base_images;
   }
 
+  void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) override
+  {
+    // TODO
+    (void)swapchain_image;
+  }
+  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image) override
+  {
+    // TODO
+    (void)swapchain_image;
+  }
+
  private:
   std::list<std::vector<XrSwapchainImageOpenGLKHR>> m_image_cache;
 };
@@ -113,6 +124,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
 
     oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
     oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
+    m_ghost_ctx = ctx_d3d;
   }
 
   bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats,
@@ -140,7 +152,30 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     return base_images;
   }
 
+  void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) override
+  {
+    // Can't we simply use the backbuffer texture? Didn't work in initial test.
+
+    XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
+        swapchain_image);
+    const CD3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
+                                                                 DXGI_FORMAT_R8G8B8A8_UNORM);
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;
+    m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture,
+                                                  &render_target_view_desc,
+                                                  renderTargetView.ReleaseAndGetAddressOf());
+
+    const float clear_col[] = {0.2f, 0.5f, 0.8f, 1.0f};
+    m_ghost_ctx->m_device_ctx->ClearRenderTargetView(renderTargetView.Get(), clear_col);
+  }
+  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image) override
+  {
+    // TODO
+    (void)swapchain_image;
+  }
+
  private:
+  GHOST_ContextD3D *m_ghost_ctx;
   std::list<std::vector<XrSwapchainImageD3D11KHR>> m_image_cache;
 };
 #endif  // WIN32
