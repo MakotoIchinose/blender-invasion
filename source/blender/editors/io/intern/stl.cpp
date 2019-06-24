@@ -40,6 +40,7 @@ extern "C" {
 
 #include "stl.h"
 #include "../io_common.h"
+#include "../io_stl.h"
 }
 
 #include <chrono>
@@ -125,7 +126,7 @@ void STL_export_start(bContext *C, ExportSettings *const settings)
     Mesh *mesh;
     settings->triangulate = true;  // STL only really works with triangles
     bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh);
-    if (settings->use_ascii) {
+    if (((STLExportSettings *)settings->extra)->use_ascii) {
       if (!STL_export_mesh_ascii(C, settings, fs, ob, mesh))
         return;
     }

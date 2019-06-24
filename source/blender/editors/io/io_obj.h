@@ -36,11 +36,17 @@ extern "C" {
 #endif
 
 typedef struct OBJExportSettings {
-  float frame_start;
-  float frame_end;
-
-  bool flatten_hierarchy;
-
+  float start_frame;
+  float end_frame;
+  enum path_reference_mode path_mode;
+  bool export_animations;
+  bool export_objects_as_objects;
+  bool export_objects_as_groups;
+  bool export_face_sets;
+  bool dedup_normals;
+  bool dedup_uvs;
+  float dedup_normals_threshold;
+  float dedup_uvs_threshold;
 } OBJExportSettings;
 
 void WM_OT_obj_export(struct wmOperatorType *ot);

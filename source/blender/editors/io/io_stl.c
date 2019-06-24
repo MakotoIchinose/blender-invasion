@@ -6,12 +6,17 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 
+#include "MEM_guardedalloc.h"
+
 #include "DNA_space_types.h"
 
 #include "io_stl.h"
 #include "intern/stl.h"
 
 #include "RNA_access.h"
+#include "RNA_define.h"
+#include "RNA_enum_types.h"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -23,18 +28,26 @@ static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent *even
 }
 static int wm_stl_export_exec(bContext *C, wmOperator *op)
 {
-  return io_common_export_exec(C, op, &STL_export /* export function */);
+  ExportSettings *settings = io_common_construct_default_export_settings(C, op);
+  settings->use_scene_units = RNA_boolean_get(op->ptr, "use_scene_units");
+
+  settings->extra = MEM_mallocN(sizeof(STLExportSettings), "STLExportSettings");
+  STLExportSettings *extra = settings->extra;
+
+  extra->use_ascii = RNA_boolean_get(op->ptr, "use_ascii");
+
+  return io_common_export_exec(C, op, settings, &STL_export /* export function */);
 }
-static void wm_stl_export_draw(bContext *C, wmOperator *op)
+static void wm_stl_export_draw(bContext *UNUSED(C), wmOperator *op)
 {
   PointerRNA ptr;
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
   /* uiLayout *box; */
   /* uiLayout *sub_box; */
-  uiLayout *row;
-
   /* box = uiLayoutBox(op->layout); */
+
+  uiLayout *row;
 
   row = uiLayoutRow(op->layout, false);
   uiItemR(row, &ptr, "axis_forward", 0, NULL, ICON_NONE);
@@ -69,27 +82,32 @@ static void wm_stl_export_draw(bContext *C, wmOperator *op)
   uiLayoutSetEnabled(row, modifiers);
   uiItemR(row, &ptr, "render_modifiers", 0, NULL, ICON_NONE);
 }
+
 static bool wm_stl_export_check(bContext *C, wmOperator *op)
 {
   return io_common_export_check(C, op, ".stl");
 }
 
-static int wm_stl_import_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int wm_stl_import_invoke(bContext *UNUSED(C),
+                                wmOperator *UNUSED(op),
+                                const wmEvent *UNUSED(event))
 {
   return OPERATOR_CANCELLED;
 }
-static int wm_stl_import_exec(bContext *C, wmOperator *op)
+
+static int wm_stl_import_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
   return OPERATOR_CANCELLED;
-} /* TODO someone */
-static void wm_stl_import_draw(bContext *UNUSED(C), wmOperator *op)
-{
-  /* TODO someone */
 }
-static bool wm_stl_import_check(bContext *C, wmOperator *op)
+
+static void wm_stl_import_draw(bContext *UNUSED(C), wmOperator *UNUSED(op))
+{
+}
+
+static bool wm_stl_import_check(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
   return false;
-} /* TODO someone */
+}
 
 void WM_OT_stl_export(struct wmOperatorType *ot)
 {
@@ -102,8 +120,21 @@ void WM_OT_stl_export(struct wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_stl_export_draw;
   ot->check = wm_stl_export_check;
+
   // TODO someone Does there need to be a new file type?
   io_common_default_declare_export(ot, FILE_TYPE_OBJ);
+
+  RNA_def_boolean(ot->srna,
+                  "use_ascii",
+                  0,
+                  "Use ASCII format",
+                  "Whether to use the ASCII or the binary variant");
+
+  RNA_def_boolean(ot->srna,
+                  "use_scene_units",
+                  0,
+                  "Use scene units",
+                  "Whether to use the scene's units as a scaling factor");
 }
 void WM_OT_stl_import(struct wmOperatorType *ot)
 {

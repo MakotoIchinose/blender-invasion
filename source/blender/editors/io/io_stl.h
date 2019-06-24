@@ -35,6 +35,10 @@ struct wmOperatorType;
 extern "C" {
 #endif
 
+typedef struct STLExportSettings {
+  bool use_ascii;
+} STLExportSettings;
+
 void WM_OT_stl_export(struct wmOperatorType *ot);
 void WM_OT_stl_import(struct wmOperatorType *ot);
 

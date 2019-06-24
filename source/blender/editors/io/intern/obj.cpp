@@ -35,6 +35,7 @@ extern "C" {
 
 #include "obj.h"
 #include "../io_common.h"
+#include "../io_obj.h"
 }
 
 #include <array>
@@ -143,7 +144,8 @@ bool OBJ_export_materials(bContext *C,
 
     ss << (mat->id.name + 2) << '"';
   }
-  ss << "], '" << path_reference_mode[settings->path_mode].identifier << "')";
+  ss << "], '" << path_reference_mode[((OBJExportSettings *)settings->extra)->path_mode].identifier
+     << "')";
   std::cerr << "Running '" << ss.str() << "'\n";
   return BPY_execute_string(C, imports, ss.str().c_str());
 #else
@@ -251,9 +253,11 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   if (mesh->totvert == 0)
     return true;
 
-  if (settings->export_objects_as_objects || settings->export_objects_as_groups) {
+  const OBJExportSettings *extra = (OBJExportSettings *)settings->extra;
+
+  if (extra->export_objects_as_objects || extra->export_objects_as_groups) {
     std::string name = common::get_object_name(eob, mesh);
-    if (settings->export_objects_as_objects)
+    if (extra->export_objects_as_objects)
       fprintf(file, "o %s\n", name.c_str());
     else
       fprintf(file, "g %s\n", name.c_str());
@@ -267,7 +271,7 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
 
   if (settings->export_uvs) {
     // TODO someone Is T47010 still relevant?
-    if (settings->dedup_uvs)
+    if (extra->dedup_uvs)
       for (const std::array<float, 2> &uv :
            common::deduplicated_uv_iter(mesh, uv_total, uv_mapping_pair))
         fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
@@ -280,7 +284,7 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   }
 
   if (settings->export_normals) {
-    if (settings->dedup_normals)
+    if (extra->dedup_normals)
       for (const std::array<float, 3> &no :
            common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
         fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
@@ -305,13 +309,13 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
       ulong uv = 0;
       ulong no = 0;
       if (settings->export_uvs) {
-        if (settings->dedup_uvs)
+        if (extra->dedup_uvs)
           uv = uv_mapping[uv_initial_count + li]->second;
         else
           uv = uv_initial_count + li;
       }
       if (settings->export_normals) {
-        if (settings->dedup_normals)
+        if (extra->dedup_normals)
           no = no_mapping[no_initial_count + l.v]->second;
         else
           no = no_initial_count + l.v;
@@ -392,9 +396,11 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
 {
   common::export_start(C, settings);
 
+  const OBJExportSettings *extra = (OBJExportSettings *)settings->extra;
+
   // If not exporting animations, the start and end are the same
-  for (int frame = settings->start_frame; frame <= settings->end_frame; ++frame) {
-    std::FILE *obj_file = get_file(settings->filepath, ".obj", settings->export_animations, frame);
+  for (int frame = extra->start_frame; frame <= extra->end_frame; ++frame) {
+    std::FILE *obj_file = get_file(settings->filepath, ".obj", extra->export_animations, frame);
     if (obj_file == nullptr)
       return;
 
@@ -406,10 +412,10 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
     ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
     /* clang-format off */
-    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(settings->dedup_uvs_threshold);
-    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(settings->dedup_normals_threshold);
+    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(extra->dedup_uvs_threshold);
+    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(extra->dedup_normals_threshold);
 
-    std::string mtl_path = get_path(settings->filepath, ".mtl", settings->export_animations, frame);
+    std::string mtl_path = get_path(settings->filepath, ".mtl", extra->export_animations, frame);
     std::set<const Material *> materials;
     /* clang-format on */
 

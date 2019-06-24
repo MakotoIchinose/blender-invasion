@@ -23,12 +23,11 @@ typedef struct ExportSettings {
 
   /* Mostly From Alembic */
 
+  struct ViewLayer *view_layer;
+  // Scene layer to export; all its objects will be exported, unless selected_only=true
   struct Scene *scene;
-  struct ViewLayer *view_layer;  // Scene layer to export; all its objects will be exported, unless
-                                 // selected_only=true
-  struct Depsgraph *depsgraph;
   struct Main *main;
-  /* SimpleLogger logger; */
+  struct Depsgraph *depsgraph;
 
   char filepath[FILE_MAX];
 
@@ -39,34 +38,15 @@ typedef struct ExportSettings {
   bool visible_only;
   bool renderable_only;
 
-  float start_frame;
-  float end_frame;
-  float frame_samples_xform;
-  float frame_samples_shape;
-  float shutter_open;
-  float shutter_close;
-
-  bool flatten_hierarchy;
-
-  enum path_reference_mode path_mode;
-
-  bool export_animations;
   bool export_normals;
-  bool dedup_normals;
-  float dedup_normals_threshold;
   bool export_uvs;
-  bool dedup_uvs;
-  float dedup_uvs_threshold;
   bool export_edges;
   bool export_materials;
   bool export_vcolors;
-  bool export_face_sets;
   bool export_vweights;
   bool export_particles;
   bool export_hair;
   bool export_child_hairs;
-  bool export_objects_as_objects;
-  bool export_objects_as_groups;
   bool export_curves;
 
   bool apply_modifiers;
@@ -76,50 +56,14 @@ typedef struct ExportSettings {
   int quad_method;
   int ngon_method;
 
-  bool use_ascii;
   bool use_scene_units;
   float global_scale;
+
+  void *extra;  // Pointer to struct with extra settings that vary by exporter
 
   /* bool (*should_export_object)(const ExportSettings * const settings, const Object * const eob);
    */
 
-  /* bool use_subdiv_schema; */
-  /* bool export_ogawa; */
-  /* bool do_convert_axis; */
-  /* float convert_matrix[3][3]; */
-
-  /* Collada */
-
-  /* bool apply_modifiers; */
-  /* BC_export_mesh_type export_mesh_type; */
-
-  /* bool include_children; */
-  /* bool include_armatures; */
-  /* bool include_shapekeys; */
-  /* bool include_animations; */
-  /* bool include_all_actions; */
-  /* bool deform_bones_only; */
-  /* int sampling_rate; */
-  /* bool keep_smooth_curves; */
-  /* bool keep_keyframes; */
-  /* bool keep_flat_curves; */
-
-  /* bool active_uv_only; */
-  /* /\* BC_export_animation_type export_animation_type; *\/ */
-  /* bool use_texture_copies; */
-
-  /* bool triangulate; */
-  /* bool use_object_instantiation; */
-  /* bool use_blender_profile; */
-  /* bool sort_by_name; */
-  /* BC_export_transformation_type export_transformation_type; */
-
-  /* bool open_sim; */
-  /* bool limit_precision; */
-  /* bool keep_bind_info; */
-
-  /* char *filepath; */
-  /* LinkNode *export_set; */
 } ExportSettings;
 
 void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_Types file_type);
@@ -133,6 +77,7 @@ int io_common_export_invoke(struct bContext *C,
                             const char *ext);
 int io_common_export_exec(struct bContext *C,
                           struct wmOperator *op,
+                          ExportSettings *settings,
                           bool (*exporter)(struct bContext *C, ExportSettings *settings));
 /* void io_common_export_draw(bContext *C, wmOperator *op); */
 
