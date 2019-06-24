@@ -223,79 +223,57 @@ void profilepath_remove(ProfilePath *prpath, const short flag)
   prpath->totpoint -= removed;
 }
 
+/* The choice for which points to place the new vertex between is more complex with a profile than
+ * with a mapping function. We can't just find the new neighbors with X value comparisons. Instead
+ * this function checks which line segment is closest to the new point with a handy pre-made
+ * function.
+*/
 ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
 {
-  ProfilePoint *pts = MEM_callocN(((size_t)prpath->totpoint + 1) * sizeof(ProfilePoint),
-                                  "path points");
-  ProfilePoint *newpt = NULL;
-  int a, b;
-  bool foundloc = false;
-
+  ProfilePoint *new_pt;
+  float new_loc[2] = {x, y};
 #if DEBUG_PRWDGT
-  printf("PROFILEPATH INSERT");
-  printf("(begin total points = %d)", prpath->totpoint);
+  printf("PROFILEPATH INSERT\n");
 #endif
 
-  /* insert fragments of the old one and the new point to the new curve */
-  prpath->totpoint++;
-  for (a = 0, b = 0; a < prpath->totpoint; a++) {
-    /* Insert the new point at the correct X location */
-    if ((foundloc == false) && ((a + 1 == prpath->totpoint) || (x < prpath->path[a].x))) {
-      pts[a].x = x;
-      pts[a].y = y;
-      pts[a].flag = PROF_SELECT;
-      foundloc = true;
-      newpt = &pts[a];
-    }
-    else {
-      /* Copy old point over to the new array */
-      pts[a].x = prpath->path[b].x;
-      pts[a].y = prpath->path[b].y;
-      /* make sure old points don't remain selected */
-      pts[a].flag = prpath->path[b].flag & ~PROF_SELECT;
-      pts[a].shorty = prpath->path[b].shorty;
-      b++;
+  float distance;
+  float min_distance = FLT_MAX;
+  int insert_i;
+  for (int i = 0; i < prpath->totpoint - 1; i++) {
+    float loc1[2] = {prpath->path[i].x, prpath->path[i].y};
+    float loc2[2] = {prpath->path[i + 1].x, prpath->path[i + 1].y};
+
+    distance = dist_squared_to_line_segment_v2(new_loc, loc1, loc2);
+    if (distance < min_distance) {
+      min_distance = distance;
+      insert_i = i + 1;
     }
   }
-#if DEBUG_PRWDGT
-  printf("(end total points = %d)\n", prpath->totpoint);
-#endif
 
-  /* free old path and replace it with the new one */
-  MEM_freeN(prpath->path);
-  prpath->path = pts;
+  /* Insert the new point at the location we found and copy all of the old points in as well */
+  prpath->totpoint++;
+  ProfilePoint *new_pts = MEM_mallocN(((size_t)prpath->totpoint) * sizeof(ProfilePoint),
+                                      "path points");
+  for (int i_new = 0, i_old = 0; i_new < prpath->totpoint; i_new++) {
+    if (i_new != insert_i) {
+      /* Insert old point */
+      new_pts[i_new].x = prpath->path[i_old].x;
+      new_pts[i_new].y = prpath->path[i_old].y;
+      new_pts[i_new].flag = prpath->path[i_old].flag & ~PROF_SELECT; /* Deselect old points */
+      i_old++;
+    }
+    else {
+      /* Insert new point */
+      new_pts[i_new].x = x;
+      new_pts[i_new].y = y;
+      new_pts[i_new].flag = PROF_SELECT;
+      new_pt = &new_pts[i_new];
+    }
+  }
 
-  return newpt;
-}
-
-/* HANS-TODO: New insertion algorithm. Find closest points in 2D and then insert them in the
- * middle of those. Maybe just lengthen the size of the array instead of allocating a new one
- * too, but that probbaly doesn't matter so much.
- *
- * New algorithm would probably be: Sort the points by their proximity to the new location. Then
- * find the two points closest to the new position that are ordered one after the next in the
- * original array of points (this will probably be the two closest points, but for more
- * complicated profiles it could be points on opposite sides of the profile). Then insert the new
- * point between the two we just found. */
-ProfilePoint *profilepath_insert2(ProfilePath *prpath, float x, float y)
-{
-  ProfilePoint *new_pts = MEM_callocN(((size_t)prpath->totpoint + 1) * sizeof(ProfilePoint),
-                                  "path points");
-  ProfilePoint *new_pt = NULL;
-  int a, b;
-  bool foundloc = false;
-  int *sorted_indices = MEM_callocN((size_t)prpath->totpoint * sizeof(int), "points sorted i");
-
-
-
-
-
-  /* free old path and replace it with the new one */
+  /* Free the old points and use the new ones */
   MEM_freeN(prpath->path);
   prpath->path = new_pts;
-
-  MEM_freeN(sorted_indices);
-
   return new_pt;
 }
 
@@ -351,19 +329,19 @@ void profilepath_reset(ProfilePath *prpath, int preset)
 /**
  * \param type: eBezTriple_Handle
  */
-void profilepath_handle_set(ProfilePath *cuma, int type)
+void profilepath_handle_set(ProfilePath *prpath, int type)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH HANDLE SET\n");
 #endif
 
-  if (cuma->path->flag & PROF_SELECT) {
-    cuma->path->flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO_ANIM);
+  if (prpath->path->flag & PROF_SELECT) {
+    prpath->path->flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO_ANIM);
     if (type == HD_VECT) {
-      cuma->path->flag |= PROF_HANDLE_VECTOR;
+      prpath->path->flag |= PROF_HANDLE_VECTOR;
     }
     else if (type == HD_AUTO_ANIM) {
-      cuma->path->flag |= PROF_HANDLE_AUTO_ANIM;
+      prpath->path->flag |= PROF_HANDLE_AUTO_ANIM;
     }
     else {
       /* pass */
@@ -380,7 +358,7 @@ void profilepath_handle_set(ProfilePath *cuma, int type)
 static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
 #if DEBUG_PRWDGT
-  printf("CALCHANDLE PROFILE\n");
+  printf("CALCHANDLE PROFILE");
 #endif
   /* defines to avoid confusion */
 #define p2_h1 ((p2)-3)
@@ -496,6 +474,9 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
   if (bezt->h2 == HD_VECT) {
     madd_v2_v2v2fl(p2_h2, p2, dvec_b, 1.0f / 3.0f);
   }
+#if DEBUG_PRWDGT
+  printf("(finished)\n");
+#endif
 
 #undef p2_h1
 #undef p2_h2
@@ -551,7 +532,7 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
 
   /* first and last handle need correction, instead of pointing to center of next/prev,
    * we let it point to the closest handle */
-  /* HANS-TODO: Remove this correction  */
+  /* HANS-TODO: Remove this correction?  */
   if (prpath->totpoint > 2) {
     float hlen, nlen, vec[3];
 
