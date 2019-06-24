@@ -37,7 +37,6 @@ ccl_device float voronoi_distance_1d(float a,
 }
 
 ccl_device void voronoi_f1_1d(float w,
-                              float scale,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
@@ -45,11 +44,8 @@ ccl_device void voronoi_f1_1d(float w,
                               float3 *outColor,
                               float *outW)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float scaledCoord = w * scale;
-  float cellPosition = floorf(scaledCoord);
-  float localPosition = scaledCoord - cellPosition;
+  float cellPosition = floorf(w);
+  float localPosition = w - cellPosition;
 
   float minDistance = 8.0f;
   float targetOffset, targetPosition;
@@ -65,11 +61,10 @@ ccl_device void voronoi_f1_1d(float w,
   }
   *outDistance = minDistance;
   *outColor = hash_float_01_float3(cellPosition + targetOffset);
-  *outW = safe_divide(targetPosition + cellPosition, scale);
+  *outW = targetPosition + cellPosition;
 }
 
 ccl_device void voronoi_smooth_f1_1d(float w,
-                                     float scale,
                                      float smoothness,
                                      float exponent,
                                      float jitter,
@@ -78,12 +73,8 @@ ccl_device void voronoi_smooth_f1_1d(float w,
                                      float3 *outColor,
                                      float *outW)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-  smoothness = max(smoothness, 1.0f);
-
-  float scaledCoord = w * scale;
-  float cellPosition = floorf(scaledCoord);
-  float localPosition = scaledCoord - cellPosition;
+  float cellPosition = floorf(w);
+  float localPosition = w - cellPosition;
 
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
@@ -99,11 +90,10 @@ ccl_device void voronoi_smooth_f1_1d(float w,
   }
   *outDistance = -logf(smoothDistance) / smoothness;
   *outColor = smoothColor / smoothDistance;
-  *outW = safe_divide(cellPosition + smoothPosition / smoothDistance, scale);
+  *outW = cellPosition + smoothPosition / smoothDistance;
 }
 
 ccl_device void voronoi_f2_1d(float w,
-                              float scale,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
@@ -111,11 +101,8 @@ ccl_device void voronoi_f2_1d(float w,
                               float3 *outColor,
                               float *outW)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float scaledCoord = w * scale;
-  float cellPosition = floorf(scaledCoord);
-  float localPosition = scaledCoord - cellPosition;
+  float cellPosition = floorf(w);
+  float localPosition = w - cellPosition;
 
   float distanceF1 = 8.0f;
   float distanceF2 = 8.0f;
@@ -142,16 +129,13 @@ ccl_device void voronoi_f2_1d(float w,
   }
   *outDistance = distanceF2;
   *outColor = hash_float_01_float3(cellPosition + offsetF2);
-  *outW = safe_divide(positionF2 + cellPosition, scale);
+  *outW = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge_1d(float w, float scale, float jitter, float *outDistance)
+ccl_device void voronoi_distance_to_edge_1d(float w, float jitter, float *outDistance)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float scaledCoord = w * scale;
-  float cellPosition = floorf(scaledCoord);
-  float localPosition = scaledCoord - cellPosition;
+  float cellPosition = floorf(w);
+  float localPosition = w - cellPosition;
 
   float minDistance = 8.0f;
   for (int i = -1; i <= 1; i++) {
@@ -163,13 +147,10 @@ ccl_device void voronoi_distance_to_edge_1d(float w, float scale, float jitter, 
   *outDistance = minDistance;
 }
 
-ccl_device void voronoi_n_sphere_radius_1d(float w, float scale, float jitter, float *outRadius)
+ccl_device void voronoi_n_sphere_radius_1d(float w, float jitter, float *outRadius)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float scaledCoord = w * scale;
-  float cellPosition = floorf(scaledCoord);
-  float localPosition = scaledCoord - cellPosition;
+  float cellPosition = floorf(w);
+  float localPosition = w - cellPosition;
 
   float closestPoint;
   float closestPointOffset;
@@ -221,20 +202,16 @@ ccl_device float voronoi_distance_2d(float2 a,
     return 0.0f;
 }
 
-ccl_device void voronoi_f1_2d(float3 coord,
-                              float scale,
+ccl_device void voronoi_f1_2d(float2 coord,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
                               float *outDistance,
                               float3 *outColor,
-                              float3 *outPosition)
+                              float2 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float2 scaledCoord = make_float2(coord.x, coord.y) * scale;
-  float2 cellPosition = floor(scaledCoord);
-  float2 localPosition = scaledCoord - cellPosition;
+  float2 cellPosition = floor(coord);
+  float2 localPosition = coord - cellPosition;
 
   float minDistance = 8.0f;
   float2 targetOffset, targetPosition;
@@ -253,26 +230,20 @@ ccl_device void voronoi_f1_2d(float3 coord,
   }
   *outDistance = minDistance;
   *outColor = hash_float2_01_float3(cellPosition + targetOffset);
-  float2 scaledPosition = safe_divide_float2_float(targetPosition + cellPosition, scale);
-  *outPosition = make_float3(scaledPosition.x, scaledPosition.y, 0.0f);
+  *outPosition = targetPosition + cellPosition;
 }
 
-ccl_device void voronoi_smooth_f1_2d(float3 coord,
-                                     float scale,
+ccl_device void voronoi_smooth_f1_2d(float2 coord,
                                      float smoothness,
                                      float exponent,
                                      float jitter,
                                      NodeVoronoiDistanceMetric metric,
                                      float *outDistance,
                                      float3 *outColor,
-                                     float3 *outPosition)
+                                     float2 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-  smoothness = max(smoothness, 1.0f);
-
-  float2 scaledCoord = make_float2(coord.x, coord.y) * scale;
-  float2 cellPosition = floor(scaledCoord);
-  float2 localPosition = scaledCoord - cellPosition;
+  float2 cellPosition = floor(coord);
+  float2 localPosition = coord - cellPosition;
 
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
@@ -291,25 +262,19 @@ ccl_device void voronoi_smooth_f1_2d(float3 coord,
   }
   *outDistance = -logf(smoothDistance) / smoothness;
   *outColor = smoothColor / smoothDistance;
-  float2 scaledPosition = safe_divide_float2_float(cellPosition + smoothPosition / smoothDistance,
-                                                   scale);
-  *outPosition = make_float3(scaledPosition.x, scaledPosition.y, 0.0f);
+  *outPosition = cellPosition + smoothPosition / smoothDistance;
 }
 
-ccl_device void voronoi_f2_2d(float3 coord,
-                              float scale,
+ccl_device void voronoi_f2_2d(float2 coord,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
                               float *outDistance,
                               float3 *outColor,
-                              float3 *outPosition)
+                              float2 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float2 scaledCoord = make_float2(coord.x, coord.y) * scale;
-  float2 cellPosition = floor(scaledCoord);
-  float2 localPosition = scaledCoord - cellPosition;
+  float2 cellPosition = floor(coord);
+  float2 localPosition = coord - cellPosition;
 
   float distanceF1 = 8.0f;
   float distanceF2 = 8.0f;
@@ -339,20 +304,13 @@ ccl_device void voronoi_f2_2d(float3 coord,
   }
   *outDistance = distanceF2;
   *outColor = hash_float2_01_float3(cellPosition + offsetF2);
-  float2 scaledPosition = safe_divide_float2_float(positionF2 + cellPosition, scale);
-  *outPosition = make_float3(scaledPosition.x, scaledPosition.y, 0.0f);
+  *outPosition = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge_2d(float3 coord,
-                                            float scale,
-                                            float jitter,
-                                            float *outDistance)
+ccl_device void voronoi_distance_to_edge_2d(float2 coord, float jitter, float *outDistance)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float2 scaledCoord = make_float2(coord.x, coord.y) * scale;
-  float2 cellPosition = floor(scaledCoord);
-  float2 localPosition = scaledCoord - cellPosition;
+  float2 cellPosition = floor(coord);
+  float2 localPosition = coord - cellPosition;
 
   float2 vectorToClosest;
   float minDistance = 8.0f;
@@ -388,16 +346,10 @@ ccl_device void voronoi_distance_to_edge_2d(float3 coord,
   *outDistance = minDistance;
 }
 
-ccl_device void voronoi_n_sphere_radius_2d(float3 coord,
-                                           float scale,
-                                           float jitter,
-                                           float *outRadius)
+ccl_device void voronoi_n_sphere_radius_2d(float2 coord, float jitter, float *outRadius)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float2 scaledCoord = make_float2(coord.x, coord.y) * scale;
-  float2 cellPosition = floor(scaledCoord);
-  float2 localPosition = scaledCoord - cellPosition;
+  float2 cellPosition = floor(coord);
+  float2 localPosition = coord - cellPosition;
 
   float2 closestPoint;
   float2 closestPointOffset;
@@ -457,7 +409,6 @@ ccl_device float voronoi_distance_3d(float3 a,
 }
 
 ccl_device void voronoi_f1_3d(float3 coord,
-                              float scale,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
@@ -465,11 +416,8 @@ ccl_device void voronoi_f1_3d(float3 coord,
                               float3 *outColor,
                               float3 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float3 scaledCoord = coord * scale;
-  float3 cellPosition = floor(scaledCoord);
-  float3 localPosition = scaledCoord - cellPosition;
+  float3 cellPosition = floor(coord);
+  float3 localPosition = coord - cellPosition;
 
   float minDistance = 8.0f;
   float3 targetOffset, targetPosition;
@@ -491,11 +439,10 @@ ccl_device void voronoi_f1_3d(float3 coord,
   }
   *outDistance = minDistance;
   *outColor = hash_float3_01_float3(cellPosition + targetOffset);
-  *outPosition = safe_divide_float3_float(targetPosition + cellPosition, scale);
+  *outPosition = targetPosition + cellPosition;
 }
 
 ccl_device void voronoi_smooth_f1_3d(float3 coord,
-                                     float scale,
                                      float smoothness,
                                      float exponent,
                                      float jitter,
@@ -504,12 +451,8 @@ ccl_device void voronoi_smooth_f1_3d(float3 coord,
                                      float3 *outColor,
                                      float3 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-  smoothness = max(smoothness, 1.0f);
-
-  float3 scaledCoord = coord * scale;
-  float3 cellPosition = floor(scaledCoord);
-  float3 localPosition = scaledCoord - cellPosition;
+  float3 cellPosition = floor(coord);
+  float3 localPosition = coord - cellPosition;
 
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
@@ -531,11 +474,10 @@ ccl_device void voronoi_smooth_f1_3d(float3 coord,
   }
   *outDistance = -logf(smoothDistance) / smoothness;
   *outColor = smoothColor / smoothDistance;
-  *outPosition = safe_divide_float3_float(cellPosition + smoothPosition / smoothDistance, scale);
+  *outPosition = cellPosition + smoothPosition / smoothDistance;
 }
 
 ccl_device void voronoi_f2_3d(float3 coord,
-                              float scale,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
@@ -543,11 +485,8 @@ ccl_device void voronoi_f2_3d(float3 coord,
                               float3 *outColor,
                               float3 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float3 scaledCoord = coord * scale;
-  float3 cellPosition = floor(scaledCoord);
-  float3 localPosition = scaledCoord - cellPosition;
+  float3 cellPosition = floor(coord);
+  float3 localPosition = coord - cellPosition;
 
   float distanceF1 = 8.0f;
   float distanceF2 = 8.0f;
@@ -580,19 +519,13 @@ ccl_device void voronoi_f2_3d(float3 coord,
   }
   *outDistance = distanceF2;
   *outColor = hash_float3_01_float3(cellPosition + offsetF2);
-  *outPosition = safe_divide_float3_float(positionF2 + cellPosition, scale);
+  *outPosition = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge_3d(float3 coord,
-                                            float scale,
-                                            float jitter,
-                                            float *outDistance)
+ccl_device void voronoi_distance_to_edge_3d(float3 coord, float jitter, float *outDistance)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float3 scaledCoord = coord * scale;
-  float3 cellPosition = floor(scaledCoord);
-  float3 localPosition = scaledCoord - cellPosition;
+  float3 cellPosition = floor(coord);
+  float3 localPosition = coord - cellPosition;
 
   float3 vectorToClosest;
   float minDistance = 8.0f;
@@ -632,16 +565,10 @@ ccl_device void voronoi_distance_to_edge_3d(float3 coord,
   *outDistance = minDistance;
 }
 
-ccl_device void voronoi_n_sphere_radius_3d(float3 coord,
-                                           float scale,
-                                           float jitter,
-                                           float *outRadius)
+ccl_device void voronoi_n_sphere_radius_3d(float3 coord, float jitter, float *outRadius)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float3 scaledCoord = coord * scale;
-  float3 cellPosition = floor(scaledCoord);
-  float3 localPosition = scaledCoord - cellPosition;
+  float3 cellPosition = floor(coord);
+  float3 localPosition = coord - cellPosition;
 
   float3 closestPoint;
   float3 closestPointOffset;
@@ -704,22 +631,16 @@ ccl_device float voronoi_distance_4d(float4 a,
     return 0.0f;
 }
 
-ccl_device void voronoi_f1_4d(float3 coord,
-                              float w,
-                              float scale,
+ccl_device void voronoi_f1_4d(float4 coord,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
                               float *outDistance,
                               float3 *outColor,
-                              float3 *outPosition,
-                              float *outW)
+                              float4 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float4 scaledCoord = make_float4(coord.x, coord.y, coord.z, w) * scale;
-  float4 cellPosition = floor(scaledCoord);
-  float4 localPosition = scaledCoord - cellPosition;
+  float4 cellPosition = floor(coord);
+  float4 localPosition = coord - cellPosition;
 
   float minDistance = 8.0f;
   float4 targetOffset, targetPosition;
@@ -743,29 +664,20 @@ ccl_device void voronoi_f1_4d(float3 coord,
   }
   *outDistance = minDistance;
   *outColor = hash_float4_01_float3(cellPosition + targetOffset);
-  float4 scaledPosition = safe_divide_float4_float(targetPosition + cellPosition, scale);
-  *outPosition = make_float3(scaledPosition.x, scaledPosition.y, scaledPosition.z);
-  *outW = scaledPosition.w;
+  *outPosition = targetPosition + cellPosition;
 }
 
-ccl_device void voronoi_smooth_f1_4d(float3 coord,
-                                     float w,
-                                     float scale,
+ccl_device void voronoi_smooth_f1_4d(float4 coord,
                                      float smoothness,
                                      float exponent,
                                      float jitter,
                                      NodeVoronoiDistanceMetric metric,
                                      float *outDistance,
                                      float3 *outColor,
-                                     float3 *outPosition,
-                                     float *outW)
+                                     float4 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-  smoothness = max(smoothness, 1.0f);
-
-  float4 scaledCoord = make_float4(coord.x, coord.y, coord.z, w) * scale;
-  float4 cellPosition = floor(scaledCoord);
-  float4 localPosition = scaledCoord - cellPosition;
+  float4 cellPosition = floor(coord);
+  float4 localPosition = coord - cellPosition;
 
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float smoothDistance = 0.0f;
@@ -789,28 +701,19 @@ ccl_device void voronoi_smooth_f1_4d(float3 coord,
   }
   *outDistance = -logf(smoothDistance) / smoothness;
   *outColor = smoothColor / smoothDistance;
-  float4 scaledPosition = safe_divide_float4_float(cellPosition + smoothPosition / smoothDistance,
-                                                   scale);
-  *outPosition = make_float3(scaledPosition.x, scaledPosition.y, scaledPosition.z);
-  *outW = scaledPosition.w;
+  *outPosition = cellPosition + smoothPosition / smoothDistance;
 }
 
-ccl_device void voronoi_f2_4d(float3 coord,
-                              float w,
-                              float scale,
+ccl_device void voronoi_f2_4d(float4 coord,
                               float exponent,
                               float jitter,
                               NodeVoronoiDistanceMetric metric,
                               float *outDistance,
                               float3 *outColor,
-                              float3 *outPosition,
-                              float *outW)
+                              float4 *outPosition)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float4 scaledCoord = make_float4(coord.x, coord.y, coord.z, w) * scale;
-  float4 cellPosition = floor(scaledCoord);
-  float4 localPosition = scaledCoord - cellPosition;
+  float4 cellPosition = floor(coord);
+  float4 localPosition = coord - cellPosition;
 
   float distanceF1 = 8.0f;
   float distanceF2 = 8.0f;
@@ -845,19 +748,13 @@ ccl_device void voronoi_f2_4d(float3 coord,
   }
   *outDistance = distanceF2;
   *outColor = hash_float4_01_float3(cellPosition + offsetF2);
-  float4 scaledPosition = safe_divide_float4_float(positionF2 + cellPosition, scale);
-  *outPosition = make_float3(scaledPosition.x, scaledPosition.y, scaledPosition.z);
-  *outW = scaledPosition.w;
+  *outPosition = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge_4d(
-    float3 coord, float w, float scale, float jitter, float *outDistance)
+ccl_device void voronoi_distance_to_edge_4d(float4 coord, float jitter, float *outDistance)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float4 scaledCoord = make_float4(coord.x, coord.y, coord.z, w) * scale;
-  float4 cellPosition = floor(scaledCoord);
-  float4 localPosition = scaledCoord - cellPosition;
+  float4 cellPosition = floor(coord);
+  float4 localPosition = coord - cellPosition;
 
   float4 vectorToClosest;
   float minDistance = 8.0f;
@@ -901,14 +798,10 @@ ccl_device void voronoi_distance_to_edge_4d(
   *outDistance = minDistance;
 }
 
-ccl_device void voronoi_n_sphere_radius_4d(
-    float3 coord, float w, float scale, float jitter, float *outRadius)
+ccl_device void voronoi_n_sphere_radius_4d(float4 coord, float jitter, float *outRadius)
 {
-  jitter = clamp(jitter, 0.0f, 1.0f);
-
-  float4 scaledCoord = make_float4(coord.x, coord.y, coord.z, w) * scale;
-  float4 cellPosition = floor(scaledCoord);
-  float4 localPosition = scaledCoord - cellPosition;
+  float4 cellPosition = floor(coord);
+  float4 localPosition = coord - cellPosition;
 
   float4 closestPoint;
   float4 closestPointOffset;
@@ -987,96 +880,90 @@ ccl_device void svm_node_tex_voronoi(KernelGlobals *kg,
   float distance_out, w_out, radius_out;
   float3 color_out, position_out;
 
+  jitter = clamp(jitter, 0.0f, 1.0f);
+  smoothness = max(smoothness, 1.0f);
+
+  w *= scale;
+  coord *= scale;
+
   switch (dimensions) {
-    case 1:
+    case 1: {
       switch (voronoi_feature) {
         case NODE_VORONOI_F1:
-          voronoi_f1_1d(
-              w, scale, exponent, jitter, voronoi_metric, &distance_out, &color_out, &w_out);
+          voronoi_f1_1d(w, exponent, jitter, voronoi_metric, &distance_out, &color_out, &w_out);
           break;
         case NODE_VORONOI_SMOOTH_F1:
-          voronoi_smooth_f1_1d(w,
-                               scale,
+          voronoi_smooth_f1_1d(
+              w, smoothness, exponent, jitter, voronoi_metric, &distance_out, &color_out, &w_out);
+          break;
+        case NODE_VORONOI_F2:
+          voronoi_f2_1d(w, exponent, jitter, voronoi_metric, &distance_out, &color_out, &w_out);
+          break;
+        case NODE_VORONOI_DISTANCE_TO_EDGE:
+          voronoi_distance_to_edge_1d(w, jitter, &distance_out);
+          break;
+        case NODE_VORONOI_N_SPHERE_RADIUS:
+          voronoi_n_sphere_radius_1d(w, jitter, &radius_out);
+          break;
+        default:
+          kernel_assert(0);
+      }
+      w_out = safe_divide(w_out, scale);
+      break;
+    }
+    case 2: {
+      float2 coord_2d = make_float2(coord.x, coord.y);
+      float2 position_out_2d;
+      switch (voronoi_feature) {
+        case NODE_VORONOI_F1:
+          voronoi_f1_2d(coord_2d,
+                        exponent,
+                        jitter,
+                        voronoi_metric,
+                        &distance_out,
+                        &color_out,
+                        &position_out_2d);
+          break;
+        case NODE_VORONOI_SMOOTH_F1:
+          voronoi_smooth_f1_2d(coord_2d,
                                smoothness,
                                exponent,
                                jitter,
                                voronoi_metric,
                                &distance_out,
                                &color_out,
-                               &w_out);
+                               &position_out_2d);
           break;
         case NODE_VORONOI_F2:
-          voronoi_f2_1d(
-              w, scale, exponent, jitter, voronoi_metric, &distance_out, &color_out, &w_out);
+          voronoi_f2_2d(coord_2d,
+                        exponent,
+                        jitter,
+                        voronoi_metric,
+                        &distance_out,
+                        &color_out,
+                        &position_out_2d);
           break;
         case NODE_VORONOI_DISTANCE_TO_EDGE:
-          voronoi_distance_to_edge_1d(w, scale, jitter, &distance_out);
+          voronoi_distance_to_edge_2d(coord_2d, jitter, &distance_out);
           break;
         case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_1d(w, scale, jitter, &radius_out);
+          voronoi_n_sphere_radius_2d(coord_2d, jitter, &radius_out);
           break;
         default:
           kernel_assert(0);
       }
+      position_out_2d = safe_divide_float2_float(position_out_2d, scale);
+      position_out = make_float3(position_out_2d.x, position_out_2d.y, 0.0f);
       break;
-    case 2:
+    }
+    case 3: {
       switch (voronoi_feature) {
         case NODE_VORONOI_F1:
-          voronoi_f1_2d(coord,
-                        scale,
-                        exponent,
-                        jitter,
-                        voronoi_metric,
-                        &distance_out,
-                        &color_out,
-                        &position_out);
-          break;
-        case NODE_VORONOI_SMOOTH_F1:
-          voronoi_smooth_f1_2d(coord,
-                               scale,
-                               smoothness,
-                               exponent,
-                               jitter,
-                               voronoi_metric,
-                               &distance_out,
-                               &color_out,
-                               &position_out);
-          break;
-        case NODE_VORONOI_F2:
-          voronoi_f2_2d(coord,
-                        scale,
-                        exponent,
-                        jitter,
-                        voronoi_metric,
-                        &distance_out,
-                        &color_out,
-                        &position_out);
-          break;
-        case NODE_VORONOI_DISTANCE_TO_EDGE:
-          voronoi_distance_to_edge_2d(coord, scale, jitter, &distance_out);
-          break;
-        case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_2d(coord, scale, jitter, &radius_out);
-          break;
-        default:
-          kernel_assert(0);
-      }
-      break;
-    case 3:
-      switch (voronoi_feature) {
-        case NODE_VORONOI_F1:
-          voronoi_f1_3d(coord,
-                        scale,
-                        exponent,
-                        jitter,
-                        voronoi_metric,
-                        &distance_out,
-                        &color_out,
-                        &position_out);
+          voronoi_f1_3d(
+              coord, exponent, jitter, voronoi_metric, &distance_out, &color_out, &position_out);
           break;
         case NODE_VORONOI_SMOOTH_F1:
           voronoi_smooth_f1_3d(coord,
-                               scale,
                                smoothness,
                                exponent,
                                jitter,
@@ -1086,74 +973,67 @@ ccl_device void svm_node_tex_voronoi(KernelGlobals *kg,
                                &position_out);
           break;
         case NODE_VORONOI_F2:
-          voronoi_f2_3d(coord,
-                        scale,
-                        exponent,
-                        jitter,
-                        voronoi_metric,
-                        &distance_out,
-                        &color_out,
-                        &position_out);
+          voronoi_f2_3d(
+              coord, exponent, jitter, voronoi_metric, &distance_out, &color_out, &position_out);
           break;
         case NODE_VORONOI_DISTANCE_TO_EDGE:
-          voronoi_distance_to_edge_3d(coord, scale, jitter, &distance_out);
+          voronoi_distance_to_edge_3d(coord, jitter, &distance_out);
           break;
         case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_3d(coord, scale, jitter, &radius_out);
+          voronoi_n_sphere_radius_3d(coord, jitter, &radius_out);
           break;
         default:
           kernel_assert(0);
       }
+      position_out = safe_divide_float3_float(position_out, scale);
       break;
-    case 4:
+    }
+    case 4: {
+      float4 coord_4d = make_float4(coord.x, coord.y, coord.z, w);
+      float4 position_out_4d;
       switch (voronoi_feature) {
         case NODE_VORONOI_F1:
-          voronoi_f1_4d(coord,
-                        w,
-                        scale,
+          voronoi_f1_4d(coord_4d,
                         exponent,
                         jitter,
                         voronoi_metric,
                         &distance_out,
                         &color_out,
-                        &position_out,
-                        &w_out);
+                        &position_out_4d);
           break;
         case NODE_VORONOI_SMOOTH_F1:
-          voronoi_smooth_f1_4d(coord,
-                               w,
-                               scale,
+          voronoi_smooth_f1_4d(coord_4d,
                                smoothness,
                                exponent,
                                jitter,
                                voronoi_metric,
                                &distance_out,
                                &color_out,
-                               &position_out,
-                               &w_out);
+                               &position_out_4d);
           break;
         case NODE_VORONOI_F2:
-          voronoi_f2_4d(coord,
-                        w,
-                        scale,
+          voronoi_f2_4d(coord_4d,
                         exponent,
                         jitter,
                         voronoi_metric,
                         &distance_out,
                         &color_out,
-                        &position_out,
-                        &w_out);
+                        &position_out_4d);
           break;
         case NODE_VORONOI_DISTANCE_TO_EDGE:
-          voronoi_distance_to_edge_4d(coord, w, scale, jitter, &distance_out);
+          voronoi_distance_to_edge_4d(coord_4d, jitter, &distance_out);
           break;
         case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_4d(coord, w, scale, jitter, &radius_out);
+          voronoi_n_sphere_radius_4d(coord_4d, jitter, &radius_out);
           break;
         default:
           kernel_assert(0);
       }
+      position_out_4d = safe_divide_float4_float(position_out_4d, scale);
+      position_out = make_float3(position_out_4d.x, position_out_4d.y, position_out_4d.z);
+      w_out = position_out_4d.w;
       break;
+    }
     default:
       kernel_assert(0);
   }
