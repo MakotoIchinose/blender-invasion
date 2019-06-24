@@ -602,7 +602,7 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
         break;
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
         next_cre = (LANPR_ChainRegisterEntry *)cre->item.next;
-        if (cre->rlc->object_ref != rlc)
+        if (cre->rlc->object_ref != rlc->object_ref)
           continue;
         if (cre->rlc == rlc ||
             ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion)
@@ -644,6 +644,8 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
         break;
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
         next_cre = (LANPR_ChainRegisterEntry *)cre->item.next;
+        if (cre->rlc->object_ref != rlc->object_ref)
+          continue;
         if (cre->rlc == rlc ||
             ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion)
           continue;

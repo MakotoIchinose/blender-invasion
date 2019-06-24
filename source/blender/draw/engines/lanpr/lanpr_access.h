@@ -14,7 +14,7 @@ void lanpr_generate_gpencil_geometry(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
 
 void lanpr_generate_gpencil_from_chain(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
+    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
 
 void lanpr_update_data_for_external(Depsgraph *depsgraph);
 

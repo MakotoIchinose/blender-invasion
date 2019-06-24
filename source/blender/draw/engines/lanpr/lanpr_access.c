@@ -235,9 +235,8 @@ void lanpr_generate_gpencil_geometry(
 }
 
 void lanpr_generate_gpencil_from_chain(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  StrokeGpencilModifierData *gpmd = (StrokeGpencilModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
 
@@ -267,7 +266,7 @@ void lanpr_generate_gpencil_from_chain(
     if (!rlc->object_ref)
       continue;  // XXX: intersection lines are lost
 
-    if (ob && ob != rlc->object_ref->id.orig_id)
+    if (ob && &ob->id != rlc->object_ref->id.orig_id)
       continue;
 
     int array_idx = 0;

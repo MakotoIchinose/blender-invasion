@@ -4312,7 +4312,7 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
           gpf = BKE_gpencil_frame_addnew(gpl, frame);
           BKE_gpencil_free_strokes(gpf);  // force clear now
 
-          lanpr_generate_gpencil_from_chain(md, dg, ob, gpl, gpf);
+          lanpr_generate_gpencil_from_chain(dg, ob, gpl, gpf);
         }
       }
     }

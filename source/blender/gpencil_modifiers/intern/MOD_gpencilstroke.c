@@ -84,7 +84,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 static void deformStroke(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  lanpr_generate_gpencil_from_chain(md, depsgraph, ob, gpl, gpf);
+  lanpr_generate_gpencil_from_chain(depsgraph, ob, gpl, gpf);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
