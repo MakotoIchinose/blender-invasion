@@ -1444,32 +1444,23 @@ static int stroke_march_next_point(bGPDstroke *gps,
     return -1;
 
   copy_v3_v3(step_start, current);
-
-  point[0] = gps->points[next_point_index].x;
-  point[1] = gps->points[next_point_index].y;
-  point[2] = gps->points[next_point_index].z;
+  copy_v3_v3(point,&gps->points[next_point_index]);
   remaining_till_next = len_v3v3(point, step_start);
 
   while (remaining_till_next < remaining_march) {
     remaining_march -= remaining_till_next;
-    point[0] = gps->points[next_point_index].x;
-    point[1] = gps->points[next_point_index].y;
-    point[2] = gps->points[next_point_index].z;
+    copy_v3_v3(point,&gps->points[next_point_index]);
     copy_v3_v3(step_start, point);
     next_point_index++;
     if (!(next_point_index < gps->totpoints)) {
       next_point_index = gps->totpoints - 1;
       break;
     }
-    point[0] = gps->points[next_point_index].x;
-    point[1] = gps->points[next_point_index].y;
-    point[2] = gps->points[next_point_index].z;
+    copy_v3_v3(point,&gps->points[next_point_index]);
     remaining_till_next = len_v3v3(point, step_start);
   }
   if (remaining_till_next < remaining_march) {
-    result[0] = gps->points[next_point_index].x;
-    result[1] = gps->points[next_point_index].y;
-    result[2] = gps->points[next_point_index].z;
+    copy_v3_v3(result,&gps->points[next_point_index]);
     *pressure = gps->points[next_point_index].pressure;
     *strength = gps->points[next_point_index].strength;
     return 0;
@@ -1504,13 +1495,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
 
   float length = 0.0f;
   float last_coord[3], this_coord[3];
-  last_coord[0] = pt[0].x;
-  last_coord[1] = pt[0].y;
-  last_coord[2] = pt[0].z;
+  copy_v3_v3(last_coord,&pt[0]);
   for (i = 1; i < gps->totpoints; i++) {
-    this_coord[0] = pt[i].x;
-    this_coord[1] = pt[i].y;
-    this_coord[2] = pt[i].z;
+    copy_v3_v3(this_coord,&pt[i]);
     length += len_v3v3(last_coord, this_coord);
   }
 
@@ -1521,21 +1508,15 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   int next_point_index = 1;
   i = 0;
   float pressure, strength;
-  last_coord[0] = pt[0].x;
-  last_coord[1] = pt[0].y;
-  last_coord[2] = pt[0].z;
+  copy_v3_v3(last_coord,&pt[0]);
   // 1st point
-  new_pt[i].x = last_coord[0];
-  new_pt[i].y = last_coord[1];
-  new_pt[i].z = last_coord[2];
+  copy_v3_v3(&new_pt[i],last_coord);
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
   i++;
   while ((next_point_index = stroke_march_next_point(
               gps, next_point_index, last_coord, dist, last_coord, &pressure, &strength)) > -1) {
-    new_pt[i].x = last_coord[0];
-    new_pt[i].y = last_coord[1];
-    new_pt[i].z = last_coord[2];
+    copy_v3_v3(&new_pt[i],last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
     i++;
