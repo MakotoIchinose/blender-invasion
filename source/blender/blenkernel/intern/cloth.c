@@ -428,6 +428,11 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
                         NULL,
                         NULL,
                         NULL);
+    BMVert *v;
+    BMIter viter;
+    BM_ITER_MESH (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH) {
+      mul_m4_v3(ob->obmat, v->co);
+    }
     printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
