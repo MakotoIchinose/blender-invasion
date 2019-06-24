@@ -214,8 +214,7 @@ ccl_device_inline bool operator!=(const float3 &a, const float3 &b)
 
 ccl_device_inline float distance(const float3 &a, const float3 &b)
 {
-  float3 difference = a - b;
-  return sqrt(dot(difference, difference));
+  return len(a - b);
 }
 
 ccl_device_inline float dot(const float3 &a, const float3 &b)
