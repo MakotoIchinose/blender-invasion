@@ -42,7 +42,6 @@ extern GpencilModifierTypeInfo modifierType_Gpencil_Hook;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Offset;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Armature;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Time;
-extern GpencilModifierTypeInfo modifierType_Gpencil_Stroke;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Sample;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Backbone;
 

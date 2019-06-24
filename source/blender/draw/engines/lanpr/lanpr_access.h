@@ -10,11 +10,8 @@
 
 typedef struct LANPR_RenderLineChain LANPR_RenderLineChain;
 
-void lanpr_generate_gpencil_geometry(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
-
 void lanpr_generate_gpencil_from_chain(
-    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf);
+    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, int qi_begin, int qi_end);
 
 void lanpr_update_data_for_external(Depsgraph *depsgraph);
 

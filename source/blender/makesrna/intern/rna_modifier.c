@@ -6059,8 +6059,8 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "layer", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 1, 100);
-  RNA_def_property_ui_range(prop, 1, 100, 1, -1);
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
   RNA_def_property_ui_text(prop, "Layer", "GPencil layer to put the results into");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 

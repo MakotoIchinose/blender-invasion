@@ -53,7 +53,7 @@ struct bGPDstroke;
 
 typedef enum {
   /* Should not be used, only for None modifier type */
-  eGpencilModifierTypeType_None,
+  Type_None,
 
   /* grease pencil modifiers */
   eGpencilModifierTypeType_Gpencil,

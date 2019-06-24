@@ -504,6 +504,7 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
     BLI_addtail(&rb->chains, rlc);
     LANPR_RenderLineChainItem *first_rlci = (LANPR_RenderLineChainItem *)rlc->chain.first;
     int fixed_occ = first_rlci->occlusion;
+    rlc->level = fixed_occ;
     for (rlci = (LANPR_RenderLineChainItem *)first_rlci->item.next; rlci; rlci = next_rlci) {
       next_rlci = (LANPR_RenderLineChainItem *)rlci->item.next;
       if (rlci->occlusion != fixed_occ) {
@@ -528,6 +529,7 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
         new_rlc->object_ref = rlc->object_ref;
         rlc = new_rlc;
         fixed_occ = rlci->occlusion;
+        rlc->level = fixed_occ;
       }
     }
   }

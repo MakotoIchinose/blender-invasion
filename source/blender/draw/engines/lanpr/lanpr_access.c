@@ -39,203 +39,8 @@ static BMVert *split_edge_and_move(BMesh *bm, BMEdge *edge, const float new_pos[
   return vert;
 }
 
-void lanpr_generate_gpencil_geometry(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
-{
-  StrokeGpencilModifierData *gpmd = (StrokeGpencilModifierData *)md;
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
-
-  if (gpmd->object == NULL) {
-    printf("NULL object!\n");
-    return;
-  }
-
-  if (rb == NULL) {
-    printf("NULL LANPR rb!\n");
-    return;
-  }
-
-  int color_idx = 0;
-  int tot_points = 0;
-  short thickness = 1;
-
-  float mat[4][4];
-
-  unit_m4(mat);
-
-  BMesh *bm;
-
-  bm = BKE_mesh_to_bmesh_ex(gpmd->object->data,
-                            &(struct BMeshCreateParams){0},
-                            &(struct BMeshFromMeshParams){
-                                .calc_face_normal = true,
-                                .cd_mask_extra = CD_MASK_ORIGINDEX,
-                            });
-
-  // Split countour lines at occlution points and deselect occluded segment
-  LANPR_RenderLine *rl;
-  LANPR_RenderLineSegment *rls, *irls;
-  for (rl = rb->all_render_lines.first; rl; rl = (LANPR_RenderLine *)rl->item.next) {
-    BMEdge *e = BM_edge_at_index_find(bm, rl->edge_idx);
-    BMVert *v1 = e->v1;  // Segment goes from v1 to v2
-    BMVert *v2 = e->v2;
-
-    BMVert *cur_vert = v1;
-    for (rls = rl->segments.first; rls; rls = (LANPR_RenderLineSegment *)rls->item.next) {
-      irls = (LANPR_RenderLineSegment *)rls->item.next;
-
-      if (rls->occlusion != 0) {
-        BM_elem_flag_disable(cur_vert, BM_ELEM_SELECT);
-      }
-
-      if (!irls) {
-        break;
-      }
-
-      // safety reasons
-      CLAMP(rls->at, 0, 1);
-      CLAMP(irls->at, 0, 1);
-
-      if (irls->at == 1.0f) {
-        if (irls->occlusion != 0) {
-          BM_elem_flag_disable(v2, BM_ELEM_SELECT);
-        }
-        break;
-      }
-
-      float split_pos[3];
-
-      interp_v3_v3v3(split_pos, v1->co, v2->co, irls->at);
-
-      cur_vert = split_edge_and_move(bm, e, split_pos);
-
-      e = BM_edge_exists(cur_vert, v2);
-    }
-  }
-
-  // Chain together strokes
-  BMVert *vert;
-  BMIter iter;
-
-  BM_ITER_MESH (vert, &iter, bm, BM_VERTS_OF_MESH) {
-
-    // Have we already used this vert?
-    // if(!BM_elem_flag_test(vert, BM_ELEM_SELECT)){
-    //	continue;
-    //}
-
-    BMVert *prepend_vert = NULL;
-    BMVert *next_vert = vert;
-    // Chain together the C verts and export them as GP strokes (chain in object space)
-    BMVert *edge_vert;
-    BMEdge *e;
-    BMIter iter_e;
-
-    LinkNodePair chain = {NULL, NULL};
-
-    int connected_c_verts;
-
-    while (next_vert != NULL) {
-
-      connected_c_verts = 0;
-      vert = next_vert;
-
-      BLI_linklist_append(&chain, vert);
-
-      BM_elem_flag_disable(vert, BM_ELEM_SELECT);
-
-      BM_ITER_ELEM (e, &iter_e, vert, BM_EDGES_OF_VERT) {
-        edge_vert = BM_edge_other_vert(e, vert);
-
-        if (BM_elem_flag_test(edge_vert, BM_ELEM_SELECT)) {
-          if (connected_c_verts == 0) {
-            next_vert = edge_vert;
-          }
-          else if (connected_c_verts == 1 && prepend_vert == NULL) {
-            prepend_vert = edge_vert;
-          }
-          else {
-            printf("C verts not connected in a simple line!\n");
-          }
-          connected_c_verts++;
-        }
-      }
-
-      if (connected_c_verts == 0) {
-        next_vert = NULL;
-      }
-    }
-
-    LinkNode *pre_list = chain.list;
-
-    while (prepend_vert != NULL) {
-
-      connected_c_verts = 0;
-      vert = prepend_vert;
-
-      BLI_linklist_prepend(&pre_list, vert);
-
-      BM_elem_flag_disable(vert, BM_ELEM_SELECT);
-
-      BM_ITER_ELEM (e, &iter_e, vert, BM_EDGES_OF_VERT) {
-        edge_vert = BM_edge_other_vert(e, vert);
-
-        if (BM_elem_flag_test(edge_vert, BM_ELEM_SELECT)) {
-          if (connected_c_verts == 0) {
-            prepend_vert = edge_vert;
-          }
-          else {
-            printf("C verts not connected in a simple line!\n");
-          }
-          connected_c_verts++;
-        }
-      }
-
-      if (connected_c_verts == 0) {
-        prepend_vert = NULL;
-      }
-    }
-
-    tot_points = BLI_linklist_count(pre_list);
-
-    printf("Tot points: %d\n", tot_points);
-
-    if (tot_points <= 1) {
-      // Don't draw a stroke, chain too short.
-      printf("Chain to short\n");
-      continue;
-    }
-
-    float *stroke_data = BLI_array_alloca(stroke_data, tot_points * GP_PRIM_DATABUF_SIZE);
-
-    int array_idx = 0;
-
-    for (LinkNode *entry = pre_list; entry; entry = entry->next) {
-      vert = entry->link;
-      stroke_data[array_idx] = vert->co[0];
-      stroke_data[array_idx + 1] = vert->co[1];
-      stroke_data[array_idx + 2] = vert->co[2];
-
-      stroke_data[array_idx + 3] = 1.0f;  // thickness
-      stroke_data[array_idx + 4] = 1.0f;  // hardness?
-
-      array_idx += 5;
-    }
-
-    /* generate stroke */
-    bGPDstroke *gps;
-    gps = BKE_gpencil_add_stroke(gpf, color_idx, tot_points, thickness);
-    BKE_gpencil_stroke_add_points(gps, stroke_data, tot_points, mat);
-
-    BLI_linklist_free(pre_list, NULL);
-  }
-
-  BM_mesh_free(bm);
-}
-
 void lanpr_generate_gpencil_from_chain(
-    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, int qi_begin, int qi_end)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
@@ -266,6 +71,9 @@ void lanpr_generate_gpencil_from_chain(
     if (!rlc->object_ref)
       continue;  // XXX: intersection lines are lost
 
+    if (rlc->level>qi_end || rlc->level<qi_begin)
+      continue;
+
     if (ob && &ob->id != rlc->object_ref->id.orig_id)
       continue;
 
@@ -276,11 +84,11 @@ void lanpr_generate_gpencil_from_chain(
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
     for (rlci = rlc->chain.first; rlci; rlci = (LANPR_RenderLineChainItem *)rlci->item.next) {
-      float opatity = rlci->occlusion ? 0.0f : 1.0f;
+      float opatity = 1.0f; //rlci->occlusion ? 0.0f : 1.0f;
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];
-      stroke_data[array_idx + 3] = opatity;  // thickness
+      stroke_data[array_idx + 3] = 1;  // thickness
       stroke_data[array_idx + 4] = opatity;  // hardness?
       array_idx += 5;
     }
