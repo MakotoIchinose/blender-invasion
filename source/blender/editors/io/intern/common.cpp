@@ -124,6 +124,39 @@ void change_orientation(float (&mat)[4][4], int forward, int up)
   change_single_axis_orientation(mat, AXIS_Z, up);
 }
 
+float get_unit_scale(const Scene *const scene)
+{
+  // From collada_internal.cpp
+  PointerRNA scene_ptr, unit_settings;
+  PropertyRNA *system_ptr, *scale_ptr;
+  RNA_id_pointer_create(&scene.id, &scene_ptr);
+
+  unit_settings = RNA_pointer_get(&scene_ptr, "unit_settings");
+  system_ptr = RNA_struct_find_property(&unit_settings, "system");
+  scale_ptr = RNA_struct_find_property(&unit_settings, "scale_length");
+
+  int type = RNA_property_enum_get(&unit_settings, system_ptr);
+  float scale;
+
+  switch (type) {
+    case USER_UNIT_NONE:
+      scale = 1.0;  // map 1 Blender unit to 1 Meter
+      break;
+    case USER_UNIT_METRIC:
+      scale = RNA_property_float_get(&unit_settings, scale_ptr);
+      break;
+    case USER_UNIT_IMPERIAL:
+      scale = RNA_property_float_get(&unit_settings, scale_ptr);
+      // it looks like the conversion to Imperial is done implicitly.
+      // So nothing to do here.
+      break;
+    default:
+      BLI_assert("New unit system added but not handled");
+  }
+
+  return scale;
+}
+
 bool get_final_mesh(const ExportSettings *const settings,
                     const Scene *const escene,
                     const Object *ob,
@@ -137,7 +170,7 @@ bool get_final_mesh(const ExportSettings *const settings,
       md.mode |= eModifierMode_DisableTemporary;
 
   float scale_mat[4][4];
-  scale_m4_fl(scale_mat, settings->global_scale);
+  scale_m4_fl(scale_mat, settings->global_scale * get_unit_scale(scene));
 
   change_orientation(scale_mat, settings->axis_forward, settings->axis_up);
 

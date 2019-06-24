@@ -56,30 +56,30 @@ extern "C" {
 
 /*
   TODO someone: () not done, -- done, # maybe add, ? unsure
-  presets
-  axis remap -- doesn't work. Does it need to update, somehow?
-    DEG_id_tag_update(&mesh->id, 0); obedit->id.recalc & ID_RECALC_ALL
   --selection only
   --animation
   --apply modifiers
   --render modifiers -- mesh_create_derived_{view,render}, deg_get_mode
   --edges
-  smooth groups
-  bitflag smooth groups?
   --normals
   --uvs
   --materials
-  material groups
-  path mode -- needed?
-  --triangulate
-  nurbs
-  polygroups?
+  -- path mode
+  -- triangulate
+  -- nurbs
   --obj objects
   --obj groups
-  -?vertex order
   --scale
-  # units?
-  # removing duplicates with a threshold and as an option
+  --units
+  --removing duplicates with a threshold and as an option
+  presets
+  axis remap -- doesn't work. Does it need to update, somehow?
+    DEG_id_tag_update(&mesh->id, 0); obedit->id.recalc & ID_RECALC_ALL
+  smooth groups
+  bitflag smooth groups?
+  material groups
+  polygroups?
+  -?vertex order
  */
 
 namespace {
