@@ -813,7 +813,7 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             row.prop(active_layer, "enable_material_seperate", text="Material", toggle=True)
             row.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
         else:
-            layout.operator("scene.lanpr_enable_all_line_types",text='Set All')
+            row.prop(active_layer, "thickness", text="")
             split = layout.split(factor=0.3)
             col = split.column()
             col.prop(active_layer, "enable_contour", text="Contour", toggle=True)
@@ -824,25 +824,25 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             col = split.column()
             row = col.row(align = True)
             #row.enabled = active_layer.enable_contour this is always enabled now
-            row.prop(active_layer, "color", text="")
-            row.prop(active_layer, "thickness", text="")
+            row.prop(active_layer, "contour_color", text="")
+            row.prop(active_layer, "thickness_contour", text="", slider=True)
             row = col.row(align = True)
             row.enabled = active_layer.enable_crease
             row.prop(active_layer, "crease_color", text="")
-            row.prop(active_layer, "thickness_crease", text="")
+            row.prop(active_layer, "thickness_crease", text="", slider=True)
             row = col.row(align = True)
             row.enabled = active_layer.enable_edge_mark
-            row.prop(active_layer, "crease_color", text="")
-            row.prop(active_layer, "thickness_edge_mark", text="")
+            row.prop(active_layer, "edge_mark_color", text="")
+            row.prop(active_layer, "thickness_edge_mark", text="", slider=True)
             row = col.row(align = True)
             row.enabled = active_layer.enable_material_seperate
             row.prop(active_layer, "material_color", text="")
-            row.prop(active_layer, "thickness_material", text="")
+            row.prop(active_layer, "thickness_material", text="", slider=True)
             row = col.row(align = True)
             if lanpr.enable_intersections:
                 row.enabled = active_layer.enable_intersection
                 row.prop(active_layer, "intersection_color", text="")
-                row.prop(active_layer, "thickness_intersection", text="")
+                row.prop(active_layer, "thickness_intersection", text="", slider=True)
             else:
                 row.label(text= "Intersection Calculation Disabled")
 

@@ -179,32 +179,43 @@ void RNA_def_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "thickness", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Thickness", "Master Thickness");
-  RNA_def_property_ui_range(prop, 0.0f, 30.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
 
-  prop = RNA_def_property(srna, "thickness_crease", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "thickness_contour", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Thickness", "Crease Thickness");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.01, 2);
 
-  prop = RNA_def_property(srna, "thickness_material", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "thickness_crease", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Thickness", "Crease Thickness");
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.01, 2);
+
+  prop = RNA_def_property(srna, "thickness_material", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Thickness", "Material Thickness");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.01, 2);
 
-  prop = RNA_def_property(srna, "thickness_edge_mark", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "thickness_edge_mark", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Thickness", "Edge Mark Thickness");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.01, 2);
 
-  prop = RNA_def_property(srna, "thickness_intersection", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "thickness_intersection", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Thickness", "Edge Mark Thickness");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.01, 2);
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Color", "Master Color");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+
+  prop = RNA_def_property(srna, "contour_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Contour Color", "Contour color");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
 
   prop = RNA_def_property(srna, "crease_color", PROP_FLOAT, PROP_COLOR);

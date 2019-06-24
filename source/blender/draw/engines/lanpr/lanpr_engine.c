@@ -311,14 +311,14 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "edge_mask_tex", &txl->dpix_in_edge_mask);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "viewport", stl->g_data->dpix_viewport, 1);
-    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "color", ll->color, 1);
-    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "crease_color", ll->crease_color, 1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "color", ll->use_same_style?ll->color:ll->contour_color, 1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "crease_color", ll->use_same_style?ll->color:ll->crease_color, 1);
     DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "material_color", ll->material_color, 1);
+        stl->g_data->dpix_preview_shgrp, "material_color", ll->use_same_style?ll->color:ll->material_color, 1);
     DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "edge_mark_color", ll->edge_mark_color, 1);
+        stl->g_data->dpix_preview_shgrp, "edge_mark_color", ll->use_same_style?ll->color:ll->edge_mark_color, 1);
     DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "intersection_color", ll->intersection_color, 1);
+        stl->g_data->dpix_preview_shgrp, "intersection_color", ll->use_same_style?ll->color:ll->intersection_color, 1);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "background_color", lanpr->background_color, 1);
     // DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "line_color", ll->line_color, 1);
@@ -337,17 +337,18 @@ static void lanpr_cache_init(void *vedata)
                               1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "depth_alpha_curve", &lanpr->depth_alpha_curve, 1);
+    static float unit_thickness=1.0f;
     DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness", &ll->thickness, 1);
+        stl->g_data->dpix_preview_shgrp, "line_thickness", ll->use_same_style?&ll->thickness:&ll->thickness_contour, 1);
     DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness_crease", &ll->thickness_crease, 1);
+        stl->g_data->dpix_preview_shgrp, "line_thickness_crease", ll->use_same_style?&unit_thickness:&ll->thickness_crease, 1);
     DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness_material", &ll->thickness_material, 1);
+        stl->g_data->dpix_preview_shgrp, "line_thickness_material", ll->use_same_style?&unit_thickness:&ll->thickness_material, 1);
     DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness_edge_mark", &ll->thickness_edge_mark, 1);
+        stl->g_data->dpix_preview_shgrp, "line_thickness_edge_mark", ll->use_same_style?&unit_thickness:&ll->thickness_edge_mark, 1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_intersection",
-                              &ll->thickness_intersection,
+                              ll->use_same_style?&unit_thickness:&ll->thickness_intersection,
                               1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "z_near", &stl->g_data->dpix_znear, 1);

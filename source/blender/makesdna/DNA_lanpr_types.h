@@ -96,20 +96,21 @@ typedef struct LANPR_LineLayer {
   int enable_material_seperate;
   int enable_intersection;
 
-  float thickness; /* default is for contour */
+  float thickness;
+  float thickness_contour;
   float thickness_crease;
   float thickness_material;
   float thickness_edge_mark;
   float thickness_intersection;
 
-  float color[4]; /* default is for contour */
+  float color[4];
+  float contour_color[4];
   float crease_color[4];
   float material_color[4];
   float edge_mark_color[4];
   float intersection_color[4];
 
   int use_same_style;
-  int _pad;
 
   int normal_mode;
   int normal_effect_inverse;
