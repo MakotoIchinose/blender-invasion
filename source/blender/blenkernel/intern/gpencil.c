@@ -1427,13 +1427,15 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 
 /* ************************************************** */
 
+/* weight not working yet! */
 static int stroke_march_next_point(bGPDstroke *gps,
                                    int next_point_index,
                                    float *current,
                                    float dist,
                                    float *result,
                                    float *pressure,
-                                   float *strength)
+                                   float *strength,
+                                   float* weight)
 {
   float remaining_till_next = 0.0f;
   float remaining_march = dist;
@@ -1463,6 +1465,7 @@ static int stroke_march_next_point(bGPDstroke *gps,
     copy_v3_v3(result, &gps->points[next_point_index]);
     *pressure = gps->points[next_point_index].pressure;
     *strength = gps->points[next_point_index].strength;
+    *weight = gps->dvert[next_point_index].dw->weight;
     return 0;
   }
   else {
@@ -1484,6 +1487,7 @@ static int stroke_march_next_point(bGPDstroke *gps,
 bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
 {
   bGPDspoint *pt = gps->points;
+  MDeformVert* dv = gps->dvert;
   int i;
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON)
@@ -1501,13 +1505,17 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     length += len_v3v3(last_coord, this_coord);
   }
 
-  int count = (int)(length / dist) + 10;  // preserve some extra in case
+  int count = (int)(length / dist) + 2;  // preserve some extra in case
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
+  MDeformVert* new_dv;
+  if (gps->dvert != NULL) {
+    new_dv = MEM_callocN(gps->dvert, sizeof(*gps->dvert) * count);
+  }
 
   int next_point_index = 1;
   i = 0;
-  float pressure, strength;
+  float pressure, strength, weight;
   copy_v3_v3(last_coord, &pt[0]);
   // 1st point
   copy_v3_v3(&new_pt[i], last_coord);
@@ -1515,7 +1523,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   new_pt[i].strength = pt[0].strength;
   i++;
   while ((next_point_index = stroke_march_next_point(
-              gps, next_point_index, last_coord, dist, last_coord, &pressure, &strength)) > -1) {
+              gps, next_point_index, last_coord, dist, last_coord, &pressure, &strength, &weight)) > -1) {
     copy_v3_v3(&new_pt[i], last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
@@ -1525,10 +1533,12 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   }
 
   gps->points = new_pt;
+  gps->dvert = new_dv;
 
   gps->totpoints = i;
 
   MEM_freeN(pt);  // original
+  MEM_freeN(dv);
 
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->tot_triangles = 0;
