@@ -2704,7 +2704,6 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
 /** \name Read ProfileWidget
  * \{ */
 
-/* HANS-TODO: Use this in bevel modifier load functions? */
 static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwidget)
 {
   prwidget->profile->path = newdataadr(fd, prwidget->profile->path);
