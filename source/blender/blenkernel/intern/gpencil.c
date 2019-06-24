@@ -1427,7 +1427,19 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 
 /* ************************************************** */
 
-/* weight not working yet! */
+MDeformVert* stroke_defvert_new_count(int totweight, int count)
+{
+  int i;
+
+  MDeformVert* dst = MEM_mallocN(count * sizeof(MDeformVert),"new_deformVert");
+
+  for (i = 0; i < count; i++) {
+      dst[i].dw = MEM_mallocN(sizeof(MDeformWeight) * totweight, "new_deformWeight");
+  }
+
+  return dst;
+}
+
 static int stroke_march_next_point(bGPDstroke *gps,
                                    int next_point_index,
                                    float *current,
@@ -1435,7 +1447,7 @@ static int stroke_march_next_point(bGPDstroke *gps,
                                    float *result,
                                    float *pressure,
                                    float *strength,
-                                   float* weight)
+                                   float* weights)
 {
   float remaining_till_next = 0.0f;
   float remaining_march = dist;
@@ -1465,7 +1477,12 @@ static int stroke_march_next_point(bGPDstroke *gps,
     copy_v3_v3(result, &gps->points[next_point_index]);
     *pressure = gps->points[next_point_index].pressure;
     *strength = gps->points[next_point_index].strength;
-    *weight = gps->dvert[next_point_index].dw->weight;
+    if(weights){
+      for(int j=0;j<gps->dvert->totweight;j++){
+        weights[j] = gps->dvert[next_point_index].dw[j].weight;
+      }
+    }
+    
     return 0;
   }
   else {
@@ -1475,6 +1492,13 @@ static int stroke_march_next_point(bGPDstroke *gps,
         gps->points[next_point_index - 1].pressure, gps->points[next_point_index].pressure, ratio);
     *strength = interpf(
         gps->points[next_point_index - 1].strength, gps->points[next_point_index].strength, ratio);
+    if(weights){
+      for(int j=0;j<gps->dvert->totweight;j++){
+        weights[j] = interpf(
+        gps->dvert[next_point_index - 1].dw[j].weight, gps->dvert[next_point_index].dw[j].weight, ratio);
+      }
+    }
+    
     return next_point_index;
   }
 }
@@ -1508,37 +1532,56 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   int count = (int)(length / dist) + 2;  // preserve some extra in case
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
-  MDeformVert* new_dv;
+  MDeformVert* new_dv=NULL;
   if (gps->dvert != NULL) {
-    new_dv = MEM_callocN(gps->dvert, sizeof(*gps->dvert) * count);
+    new_dv = stroke_defvert_new_count(gps->dvert->totweight, count);
+    new_dv->totweight = gps->dvert->totweight;
+    new_dv->flag = gps->dvert->flag;
   }
 
   int next_point_index = 1;
   i = 0;
-  float pressure, strength, weight;
+  float pressure, strength, *weights=NULL;
+  if(new_dv)
+    weights = MEM_callocN(sizeof(float)*gps->dvert->totweight,"gp_stroke_point_weights_sampled");
+
+  // 1st point is always at the start
   copy_v3_v3(last_coord, &pt[0]);
-  // 1st point
   copy_v3_v3(&new_pt[i], last_coord);
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
+  if(new_dv){
+    for(int j=0;j<new_dv->totweight;j++){
+      new_dv[i].dw[j].weight = gps->dvert->dw[j].weight;
+    }
+  }
   i++;
+
+  // the rest
   while ((next_point_index = stroke_march_next_point(
-              gps, next_point_index, last_coord, dist, last_coord, &pressure, &strength, &weight)) > -1) {
+              gps, next_point_index, last_coord, dist, last_coord, &pressure, &strength, weights)) > -1) {
     copy_v3_v3(&new_pt[i], last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
+    if(new_dv){
+      for(int j=0;j<new_dv->totweight;j++){
+        new_dv[i].dw[j].weight = weights[j];
+      }
+    }
     i++;
     if (next_point_index == 0)
       break;  // last point finished
   }
-
+  
   gps->points = new_pt;
-  gps->dvert = new_dv;
-
   gps->totpoints = i;
-
   MEM_freeN(pt);  // original
-  MEM_freeN(dv);
+
+  if(new_dv){
+    BKE_gpencil_free_stroke_weights(gps);
+    gps->dvert = new_dv;
+    MEM_freeN(weights);
+  }
 
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->tot_triangles = 0;
