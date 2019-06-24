@@ -25,8 +25,6 @@ void wm_xr_session_draw(struct GHOST_XrContext *xr_context)
   if (!GHOST_XrSessionIsRunning(xr_context)) {
     return;
   }
-  GHOST_XrSessionBeginDrawing(xr_context);
   // TODO session visible?
   GHOST_XrSessionDrawViews(xr_context);
-  GHOST_XrSessionEndDrawing(xr_context);
 }

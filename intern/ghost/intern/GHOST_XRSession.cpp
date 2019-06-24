@@ -177,6 +177,7 @@ void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
 
   xrEnumerateViewConfigurationViews(
       oxr->instance, oxr->system_id, oxr->view_type, 0, &view_count, nullptr);
+  view_configs.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
   xrEnumerateViewConfigurationViews(oxr->instance,
                                     oxr->system_id,
                                     oxr->view_type,
@@ -188,13 +189,16 @@ void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
     XrSwapchain swapchain = swapchain_create(oxr->session, xr_context->gpu_binding.get(), &view);
     auto images = swapchain_images_create(swapchain, xr_context->gpu_binding.get());
 
+    oxr->swapchain_image_width = view.recommendedImageRectWidth;
+    oxr->swapchain_image_height = view.recommendedImageRectHeight;
+    oxr->swapchains.push_back(swapchain);
     oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
   }
 
   oxr->views.resize(view_count, {XR_TYPE_VIEW});
 }
 
-void GHOST_XrSessionBeginDrawing(GHOST_XrContext *xr_context)
+static void drawing_begin(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrFrameWaitInfo wait_info{XR_TYPE_FRAME_WAIT_INFO};
@@ -210,22 +214,88 @@ void GHOST_XrSessionBeginDrawing(GHOST_XrContext *xr_context)
   xr_context->draw_frame->frame_state = frame_state;
 }
 
-void GHOST_XrSessionEndDrawing(GHOST_XrContext *xr_context)
+void drawing_end(GHOST_XrContext *xr_context, std::vector<XrCompositionLayerBaseHeader *> *layers)
 {
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
+
+  end_info.displayTime = xr_context->draw_frame->frame_state.predictedDisplayTime;
+  end_info.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+  end_info.layerCount = layers->size();
+  end_info.layers = layers->data();
 
   xrEndFrame(xr_context->oxr.session, &end_info);
   xr_context->draw_frame = nullptr;
 }
 
+static void draw_view(OpenXRData *oxr,
+                      XrSwapchain swapchain,
+                      XrCompositionLayerProjectionView &proj_layer_view,
+                      XrView &view)
+{
+  XrSwapchainImageAcquireInfo acquire_info{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+  XrSwapchainImageWaitInfo wait_info{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+  XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+  XrSwapchainImageBaseHeader *swapchain_image;
+  uint32_t swapchain_idx;
+
+  xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx);
+  wait_info.timeout = XR_INFINITE_DURATION;
+  xrWaitSwapchainImage(swapchain, &wait_info);
+
+  proj_layer_view.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+  proj_layer_view.pose = view.pose;
+  proj_layer_view.fov = view.fov;
+  proj_layer_view.subImage.swapchain = swapchain;
+  proj_layer_view.subImage.imageRect.offset = {0, 0};
+  proj_layer_view.subImage.imageRect.extent = {oxr->swapchain_image_width,
+                                               oxr->swapchain_image_height};
+
+  swapchain_image = oxr->swapchain_images[swapchain][swapchain_idx];
+
+  //    xr_context->draw_view_fn();
+
+  xrReleaseSwapchainImage(swapchain, &release_info);
+}
+
+static XrCompositionLayerProjection draw_layer(GHOST_XrContext *xr_context,
+                                               OpenXRData *oxr,
+                                               XrSpace space)
+{
+  XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
+  XrViewState view_state{XR_TYPE_VIEW_STATE};
+  XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+  std::vector<XrCompositionLayerProjectionView> proj_layer_views;
+  uint32_t view_count;
+
+  viewloc_info.displayTime = xr_context->draw_frame->frame_state.predictedDisplayTime;
+  viewloc_info.space = space;
+
+  xrLocateViews(
+      oxr->session, &viewloc_info, &view_state, oxr->views.size(), &view_count, oxr->views.data());
+  assert(oxr->swapchains.size() == view_count);
+
+  proj_layer_views.resize(view_count);
+
+  for (uint32_t view_idx = 0; view_idx < view_count; view_idx++) {
+    draw_view(oxr, oxr->swapchains[view_idx], proj_layer_views[view_idx], oxr->views[view_idx]);
+  }
+
+  layer.space = space;
+  layer.viewCount = proj_layer_views.size();
+  layer.views = proj_layer_views.data();
+
+  return layer;
+}
+
 void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
-  XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
-  XrViewState view_state{XR_TYPE_VIEW_STATE};
   XrReferenceSpaceCreateInfo refspace_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+  XrCompositionLayerProjection proj_layer;
+  std::vector<XrCompositionLayerBaseHeader *> layers;
   XrSpace space;
-  uint32_t view_count;
+
+  drawing_begin(xr_context);
 
   refspace_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
   // TODO Use viewport pose here.
@@ -233,9 +303,8 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
   refspace_info.poseInReferenceSpace.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
   xrCreateReferenceSpace(oxr->session, &refspace_info, &space);
 
-  viewloc_info.displayTime = xr_context->draw_frame->frame_state.predictedDisplayTime;
-  viewloc_info.space = space;
+  proj_layer = draw_layer(xr_context, oxr, space);
+  layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
 
-  xrLocateViews(
-      oxr->session, &viewloc_info, &view_state, oxr->views.size(), &view_count, oxr->views.data());
+  drawing_end(xr_context, &layers);
 }

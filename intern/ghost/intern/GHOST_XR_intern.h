@@ -41,7 +41,9 @@ typedef struct OpenXRData {
   XrSession session;
   XrSessionState session_state;
 
+  std::vector<XrSwapchain> swapchains;
   std::map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>> swapchain_images;
+  int32_t swapchain_image_width, swapchain_image_height;
 } OpenXRData;
 
 typedef struct GHOST_XrContext {
