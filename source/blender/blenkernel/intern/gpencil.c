@@ -1538,9 +1538,10 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     pt1 = &gps->points[i];
     copy_v3_v3(this_coord, &pt1->x);
     length += len_v3v3(last_coord, this_coord);
+    copy_v3_v3(last_coord, &pt1->x);
   }
 
-  int count = (int)(length / dist) + 1;
+  int count = (int)(length / dist) + 3; /* Head + tail + float point precision tolerance */
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
   MDeformVert *new_dv = NULL;
