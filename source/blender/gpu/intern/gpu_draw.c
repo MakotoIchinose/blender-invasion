@@ -313,10 +313,12 @@ static GPUTexture **gpu_get_movieclip_gputexture(MovieClip *clip,
     BLI_addtail(&clip->runtime.gputextures, tex);
   }
 
-  if (textarget == GL_TEXTURE_2D)
+  if (textarget == GL_TEXTURE_2D) {
     return &tex->gputexture[TEXTARGET_TEXTURE_2D];
-  else if (textarget == GL_TEXTURE_CUBE_MAP)
+  }
+  else if (textarget == GL_TEXTURE_CUBE_MAP) {
     return &tex->gputexture[TEXTARGET_TEXTURE_CUBE_MAP];
+  }
 
   return NULL;
 }
@@ -499,6 +501,9 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, int textarget
   BKE_image_release_ibuf(ima, ibuf, NULL);
 
   *tex = GPU_texture_from_bindcode(textarget, bindcode);
+
+  GPU_texture_orig_size_set(*tex, ibuf->x, ibuf->y);
+
   return *tex;
 }
 
