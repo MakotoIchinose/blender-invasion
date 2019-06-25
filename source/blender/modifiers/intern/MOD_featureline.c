@@ -74,7 +74,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 }
 static bool dependsOnTime(ModifierData *UNUSED(md))
 {
-  return true;  // ??
+  return true;  /*  ?? */
 }
 static void requiredDataMask(Object *UNUSED(ob),
                              ModifierData *md,

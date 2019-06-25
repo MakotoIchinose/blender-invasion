@@ -30,7 +30,7 @@
 #include "lanpr_data_types.h"
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
-//#include "GPU_framebuffer.h"
+/* #include "GPU_framebuffer.h" */
 #include "GPU_batch.h"
 #include "GPU_framebuffer.h"
 #include "GPU_shader.h"
@@ -104,9 +104,9 @@ typedef struct LANPR_SharedResource {
   int init_complete;
 
   SpinLock render_flag_lock;
-  int during_render;  // get/set using access funcion which uses render_flag_lock to lock.
-                      // this prevents duplicate too much resource. (no render preview in viewport
-                      // while rendering)
+  int during_render;  /*  get/set using access funcion which uses render_flag_lock to lock. */
+                      /*  this prevents duplicate too much resource. (no render preview in viewport */
+                      /*  while rendering) */
 
 } LANPR_SharedResource;
 
@@ -181,7 +181,7 @@ typedef struct LANPR_PrivateData {
 
   DRWShadingGroup *debug_shgrp;
 
-  // snake
+  /*  snake */
 
   float normal_clamp;
   float normal_strength;
@@ -191,18 +191,18 @@ typedef struct LANPR_PrivateData {
   float zfar;
   float znear;
 
-  int stage;  // thinning
+  int stage;  /*  thinning */
 
   float *line_result;
   unsigned char *line_result_8bit;
-  int width, height;  // if not match recreate buffer.
+  int width, height;  /*  if not match recreate buffer. */
   void **sample_table;
 
   ListBase pending_samples;
   ListBase erased_samples;
   ListBase line_strips;
 
-  // dpix data
+  /*  dpix data */
 
   void *atlas_pl;
   void *atlas_pr;
@@ -222,7 +222,7 @@ typedef struct LANPR_PrivateData {
   float dpix_znear;
   float dpix_zfar;
 
-  // drawing
+  /*  drawing */
 
   unsigned v_buf;
   unsigned i_buf;
@@ -265,7 +265,7 @@ typedef struct LANPR_Data {
 #define TNS_CALCULATION_FINISHED 100
 
 typedef struct LANPR_RenderTaskInfo {
-  // thrd_t           ThreadHandle;
+  /*  thrd_t           ThreadHandle; */
 
   int thread_id;
 
@@ -289,7 +289,7 @@ typedef struct LANPR_RenderTaskInfo {
 typedef struct LANPR_RenderBuffer {
   struct LANPR_RenderBuffer *prev, *next;
 
-  int is_copied;  // for render.
+  int is_copied;  /*  for render. */
 
   int w, h;
   int tile_size_w, tile_size_h;
@@ -319,7 +319,7 @@ typedef struct LANPR_RenderBuffer {
 
   Material *material_pointers[2048];
 
-  // render status
+  /*  render status */
 
   int cached_for_frame;
 
@@ -361,7 +361,7 @@ typedef struct LANPR_RenderBuffer {
   SpinLock cs_data;
   SpinLock cs_management;
 
-  // settings
+  /*  settings */
 
   int max_occlusion_level;
   real crease_angle;
@@ -394,7 +394,7 @@ typedef struct LANPR_BoundingArea {
   real l, r, u, b;
   real cx, cy;
 
-  struct LANPR_BoundingArea *child;  // 1,2,3,4 quadrant
+  struct LANPR_BoundingArea *child;  /*  1,2,3,4 quadrant */
 
   ListBase lp;
   ListBase rp;
@@ -405,7 +405,7 @@ typedef struct LANPR_BoundingArea {
   ListBase linked_triangles;
   ListBase linked_lines;
 
-  ListBase linked_chains;  // reserved for image space reduction && multithread chainning
+  ListBase linked_chains;  /*  reserved for image space reduction && multithread chainning */
 } LANPR_BoundingArea;
 
 #define TNS_COMMAND_LINE 0
@@ -417,9 +417,9 @@ typedef struct LANPR_BoundingArea {
 
 #define TNS_OVERRIDE_ONLY 0
 #define TNS_OVERRIDE_EXCLUDE 1
-//#define TNS_OVERRIDE_ALL_OTHERS_OUTSIDE_GROUP 2
-//#define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3
-//#define TNS_OVERRIDE_ALL_OTHERS               4
+/* #define TNS_OVERRIDE_ALL_OTHERS_OUTSIDE_GROUP 2 */
+/* #define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3 */
+/* #define TNS_OVERRIDE_ALL_OTHERS               4 */
 
 #define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
 
@@ -443,8 +443,8 @@ typedef struct LANPR_BoundingArea {
 
 #define TNS_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
 
-//#define TNS_DOUBLE_CLOSE_ENOUGH(a,b)\
-// //(((a)+0.00000000001)>=(b) && ((a)-0.0000000001)<=(b))
+/* #define TNS_DOUBLE_CLOSE_ENOUGH(a,b)\ */
+/*  //(((a)+0.00000000001)>=(b) && ((a)-0.0000000001)<=(b)) */
 
 #define TNS_FLOAT_CLOSE_ENOUGH_WIDER(a, b) (((a) + 0.0000001) >= (b) && ((a)-0.0000001) <= (b))
 
@@ -503,7 +503,7 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
   double x;
   double y;
   double Ratio;
-  double xDiff = (a2[0] - a1[0]);  // +DBL_EPSILON;
+  double xDiff = (a2[0] - a1[0]);  /*  +DBL_EPSILON; */
   double xDiff2 = (b2[0] - b1[0]);
 
   if (xDiff == 0) {
@@ -551,7 +551,7 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
 }
 BLI_INLINE double lanpr_GetLineZ(tnsVector3d l, tnsVector3d r, real Ratio)
 {
-  // double z = 1 / tnsLinearItp(1 / l[2], 1 / r[2], Ratio);
+  /*  double z = 1 / tnsLinearItp(1 / l[2], 1 / r[2], Ratio); */
   double z = tnsLinearItp(l[2], r[2], Ratio);
   return z;
 }
@@ -559,7 +559,7 @@ BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d l, tnsVector3d r, tnsVector3d 
 {
   double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
   return tnsLinearItp(l[2], r[2], ra);
-  // return 1 / tnsLinearItp(1 / l[2], 1 / r[2], r);
+  /*  return 1 / tnsLinearItp(1 / l[2], 1 / r[2], r); */
 }
 BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
 {
@@ -695,9 +695,9 @@ real lanpr_LinearInterpolate(real l, real r, real T);
 void lanpr_LinearInterpolate2dv(real *l, real *r, real T, real *Result);
 void lanpr_LinearInterpolate3dv(real *l, real *r, real T, real *Result);
 
-// functions
+/*  functions */
 
-// dpix
+/*  dpix */
 
 void lanpr_init_atlas_inputs(void *ved);
 void lanpr_destroy_atlas(void *ved);

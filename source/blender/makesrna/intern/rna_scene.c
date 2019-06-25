@@ -7871,7 +7871,6 @@ void RNA_def_scene(BlenderRNA *brna)
 
   /* LANPR */
   prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
-  // RNA_def_property_pointer_sdna(prop, NULL, "lanpr");
   RNA_def_property_struct_type(prop, "SceneLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the scene");
 

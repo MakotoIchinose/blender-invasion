@@ -50,9 +50,9 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
     if ((!(nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) || (nrl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED))
       continue;
 
-    // always chain connected lines for now.
-    // simplification will take care of the sharp points.
-    // if(cosine whatever) continue;
+    /*  always chain connected lines for now. */
+    /*  simplification will take care of the sharp points. */
+    /*  if(cosine whatever) continue; */
 
     if (rv != nrl->l && rv != nrl->r) {
       if (nrl->flags & LANPR_EDGE_FLAG_INTERSECTION) {
@@ -77,7 +77,7 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
 
 int lanpr_get_nearby_render_line(LANPR_BoundingArea *ba, LANPR_RenderLine *rl)
 {
-  // hold on
+  /*  hold on */
   return 1;
 }
 
@@ -115,7 +115,7 @@ LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuff
   rlci->occlusion = level;
   BLI_addtail(&rlc->chain, rlci);
 
-  // printf("a %f,%f %d\n", x, y, level);
+  /*  printf("a %f,%f %d\n", x, y, level); */
 
   return rlci;
 }
@@ -144,12 +144,12 @@ LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_RenderBuffer
   rlci->occlusion = level;
   BLI_addhead(&rlc->chain, rlci);
 
-  // printf("data %f,%f %d\n", x, y, level);
+  /*  printf("data %f,%f %d\n", x, y, level); */
 
   return rlci;
 }
 
-// refer to http://karthaus.nl/rdp/ for description
+/*  refer to http://karthaus.nl/rdp/ for description */
 void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
                                               LANPR_RenderLineChainItem *from,
                                               LANPR_RenderLineChainItem *to,
@@ -160,7 +160,7 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
   float max_dist = 0;
   LANPR_RenderLineChainItem *max_rlci = 0;
 
-  // find the max distance item
+  /*  find the max distance item */
   for (rlci = (LANPR_RenderLineChainItem *)from->item.next; rlci != to; rlci = next_rlci) {
     next_rlci = (LANPR_RenderLineChainItem *)rlci->item.next;
 
@@ -173,7 +173,7 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
       max_dist = dist;
       max_rlci = rlci;
     }
-    // if (dist <= dist_threshold) BLI_remlink(&rlc->chain, (void*)rlci);
+    /*  if (dist <= dist_threshold) BLI_remlink(&rlc->chain, (void*)rlci); */
   }
 
   if (!max_rlci) {
@@ -214,7 +214,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
     rlc = lanpr_create_render_line_chain(rb);
 
-    rlc->object_ref = rl->object_ref;  // can only be the same object in a chain.
+    rlc->object_ref = rl->object_ref;  /*  can only be the same object in a chain. */
 
     int r1, r2, c1, c2, row, col;
     LANPR_RenderLine *new_rl = rl;
@@ -235,7 +235,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       normalize_v3(N);
     }
 
-    // step 1: grow left
+    /*  step 1: grow left */
     ba = lanpr_get_point_bounding_area(rb, rl->l->fbcoord[0], rl->l->fbcoord[1]);
     new_rv = rl->l;
     rls = rl->segments.first;
@@ -319,7 +319,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
 
-    // step 2: this line
+    /*  step 2: this line */
     rls = rl->segments.first;
     last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
     for (rls = (LANPR_RenderLineSegment *)rls->item.next; rls;
@@ -342,15 +342,15 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                          rl->flags,
                                          last_occlusion);
 
-    // step 3: grow right
+    /*  step 3: grow right */
     ba = lanpr_get_point_bounding_area(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
     new_rv = rl->r;
-    // below already done in step 2
-    // lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
+    /*  below already done in step 2 */
+    /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0); */
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
-      // fix leading vertex type
+      /*  fix leading vertex type */
       rlci = rlc->chain.last;
       rlci->line_type = new_rl->flags & LANPR_EDGE_FLAG_ALL_TYPE;
 
@@ -358,7 +358,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
         rls = new_rl->segments.last;
         last_occlusion = rls->occlusion;
         rlci->occlusion = last_occlusion;
-        // rls = (LANPR_RenderLineSegment *)rls->item.prev;
+        /*  rls = (LANPR_RenderLineSegment *)rls->item.prev; */
         if (rls)
           last_occlusion = rls->occlusion;
         for (rls = new_rl->segments.last; rls; rls = (LANPR_RenderLineSegment *)rls->item.prev) {
@@ -422,20 +422,20 @@ LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_RenderBuffer *
                                                             LANPR_BoundingArea *root,
                                                             LANPR_RenderLineChainItem *rlci)
 {
-  // if (!root->child) {
+  /*  if (!root->child) { */
   return root;
-  //}
-  // else {
-  //  LANPR_BoundingArea* ch = root->child;
-  //  #define IN_BOUND(ba,rlci)\
-  //    ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
-  //  if     (IN_BOUND(ch[0],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci);
-  //  else if(IN_BOUND(ch[1],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci);
-  //  else if(IN_BOUND(ch[2],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci);
-  //  else if(IN_BOUND(ch[3],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci);
-  //  #undef IN_BOUND
-  //}
-  // return NULL;
+  /* } */
+  /*  else { */
+  /*   LANPR_BoundingArea* ch = root->child; */
+  /*   #define IN_BOUND(ba,rlci)\ */
+  /*     ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1] */
+  /*   if     (IN_BOUND(ch[0],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci); */
+  /*   else if(IN_BOUND(ch[1],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci); */
+  /*   else if(IN_BOUND(ch[2],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci); */
+  /*   else if(IN_BOUND(ch[3],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci); */
+  /*   #undef IN_BOUND */
+  /* } */
+  /*  return NULL; */
 }
 LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
                                                       LANPR_RenderLineChainItem *rlci)
@@ -445,34 +445,34 @@ LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
     return NULL;
   return lanpr_get_point_bounding_area_recursive(rb, root, rlci);
 }
-// if reduction threshold is even larger than a small bounding area,
-// then 1) geometry is simply too dense.
-//      2) probably need to add it to root bounding area which has larger surface area then it will
-//      cover typical threshold values.
+/*  if reduction threshold is even larger than a small bounding area, */
+/*  then 1) geometry is simply too dense. */
+/*       2) probably need to add it to root bounding area which has larger surface area then it will */
+/*       cover typical threshold values. */
 void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb,
                                                    LANPR_BoundingArea *root,
                                                    LANPR_RenderLineChain *rlc,
                                                    LANPR_RenderLineChainItem *rlci)
 {
-  // if (!root->child) {
+  /*  if (!root->child) { */
   LANPR_ChainRegisterEntry *cre = list_append_pointer_static_sized(
       &root->linked_chains, &rb->render_data_pool, rlc, sizeof(LANPR_ChainRegisterEntry));
   cre->rlci = rlci;
   if (rlci == rlc->chain.first)
     cre->is_left = 1;
-  //}
-  // else {
-  //  LANPR_BoundingArea* ch = root->child;
-  //  #define IN_BOUND(ba,rlci)\
-  //    ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1]
-  //  if     (IN_BOUND(ch[0],rlci))
-  //  lanpr_link_point_with_bounding_area_recursive(rb,&ch[0],rlc,rlci); else
-  //  if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci);
-  //  else if(IN_BOUND(ch[2],rlci))
-  //  lanpr_link_point_with_bounding_area_recursive(rb,&ch[2],rlc,rlci); else
-  //  if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci);
-  //  #undef IN_BOUND
-  //}
+  /* } */
+  /*  else { */
+  /*   LANPR_BoundingArea* ch = root->child; */
+  /*   #define IN_BOUND(ba,rlci)\ */
+  /*     ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1] */
+  /*   if     (IN_BOUND(ch[0],rlci)) */
+  /*   lanpr_link_point_with_bounding_area_recursive(rb,&ch[0],rlc,rlci); else */
+  /*   if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci); */
+  /*   else if(IN_BOUND(ch[2],rlci)) */
+  /*   lanpr_link_point_with_bounding_area_recursive(rb,&ch[2],rlc,rlci); else */
+  /*   if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci); */
+  /*   #undef IN_BOUND */
+  /* } */
 }
 
 void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLineChain *rlc)
@@ -515,7 +515,7 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
         ((LANPR_RenderLineChainItem *)rlc->chain.last)->item.next = 0;
         rlci->item.prev = 0;
 
-        // end the previous one
+        /*  end the previous one */
         lanpr_append_render_line_chain_point(rb,
                                              rlc,
                                              rlci->pos[0],
@@ -538,39 +538,39 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
   }
 }
 
-// note: segment type (crease/material/contour...) is ambiguous after this.
+/*  note: segment type (crease/material/contour...) is ambiguous after this. */
 void lanpr_connect_two_chains(LANPR_RenderBuffer *rb,
                               LANPR_RenderLineChain *onto,
                               LANPR_RenderLineChain *sub,
                               int reverse_1,
                               int reverse_2)
 {
-  if (!reverse_1) {   // L--R L-R
-    if (reverse_2) {  // L--R R-L
+  if (!reverse_1) {   /*  L--R L-R */
+    if (reverse_2) {  /*  L--R R-L */
       BLI_listbase_reverse(&sub->chain);
     }
     ((LANPR_RenderLineChainItem *)onto->chain.last)->item.next = sub->chain.first;
     ((LANPR_RenderLineChainItem *)sub->chain.first)->item.prev = onto->chain.last;
     onto->chain.last = sub->chain.last;
   }
-  else {               // L-R L--R
-    if (!reverse_2) {  // R-L L--R
+  else {               /*  L-R L--R */
+    if (!reverse_2) {  /*  R-L L--R */
       BLI_listbase_reverse(&sub->chain);
     }
     ((LANPR_RenderLineChainItem *)sub->chain.last)->item.next = onto->chain.first;
     ((LANPR_RenderLineChainItem *)onto->chain.first)->item.prev = sub->chain.last;
     onto->chain.first = sub->chain.first;
   }
-  //((LANPR_RenderLineChainItem*)sub->chain.first)->occlusion =
-  //((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion;
-  //((LANPR_RenderLineChainItem*)onto->chain.last)->occlusion =
-  //((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion;
-  //((LANPR_RenderLineChainItem*)sub->chain.last)->occlusion =
-  //((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion;
+  /* ((LANPR_RenderLineChainItem*)sub->chain.first)->occlusion = */
+  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
+  /* ((LANPR_RenderLineChainItem*)onto->chain.last)->occlusion = */
+  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
+  /* ((LANPR_RenderLineChainItem*)sub->chain.last)->occlusion = */
+  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
 }
 
-// this only does head-tail connection.
-// overlapping / tiny isolated segment / loop reduction not implemented here yet.
+/*  this only does head-tail connection. */
+/*  overlapping / tiny isolated segment / loop reduction not implemented here yet. */
 void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_space)
 {
   LANPR_RenderLineChain *rlc, *new_rlc;
@@ -757,11 +757,11 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
   for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
     int count = lanpr_count_chain(rlc);
-    // printf("seg contains %d verts\n", count);
+    /*  printf("seg contains %d verts\n", count); */
     vert_count += count;
   }
 
-  GPU_vertbuf_data_alloc(vbo, vert_count + 1);  // serve as end point's adj.
+  GPU_vertbuf_data_alloc(vbo, vert_count + 1);  /*  serve as end point's adj. */
 
   lengths = MEM_callocN(sizeof(float) * vert_count, "chain lengths");
 
@@ -812,7 +812,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
       i++;
     }
   }
-  // set end point flag value.
+  /*  set end point flag value. */
   length_target[0] = 3e30f;
   length_target[1] = 3e30f;
   GPU_vertbuf_attr_set(vbo, attr_id.pos, vert_count, length_target);

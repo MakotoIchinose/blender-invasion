@@ -2,7 +2,7 @@
 #define __LANPR_UTIL_H__
 
 #include <string.h>
-//#include "lanpr_all.h"
+/* #include "lanpr_all.h" */
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_threads.h"
@@ -45,7 +45,7 @@ typedef int tnsVector2i[2];
 typedef struct LANPR_StaticMemPoolNode {
   Link item;
   int used_byte;
-  //  <----------- User Mem Start Here
+  /*   <----------- User Mem Start Here */
 } LANPR_StaticMemPoolNode;
 
 typedef struct LANPR_StaticMemPool {
@@ -54,12 +54,12 @@ typedef struct LANPR_StaticMemPool {
   SpinLock cs_mem;
 } LANPR_StaticMemPool;
 
-#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  // nutCalloc(sizeof(Type),1)
+#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  /*  nutCalloc(sizeof(Type),1) */
 
 #define CreateNew_Size(size) nutCalloc(size, 1)
 
 #define CreateNewBuffer(Type, Num) \
-  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER")  // nutCalloc(sizeof(Type),Num);
+  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER")  /*  nutCalloc(sizeof(Type),Num); */
 
 void list_handle_empty(ListBase *h);
 

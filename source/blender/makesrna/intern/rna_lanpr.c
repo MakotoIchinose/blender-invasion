@@ -103,11 +103,6 @@ void RNA_def_lanpr(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "LANPR_LineLayer");
   RNA_def_struct_ui_text(srna, "Line Layer", "LANPR_LineLayer");
 
-  // removed for mow
-  // prop = RNA_def_property(srna, "use_differnt_style", PROP_BOOLEAN, PROP_NONE);
-  // RNA_def_property_ui_text(prop, "Different Style", "Use different line styles for differnt line
-  // types");
-
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);
   RNA_def_property_enum_default(prop, LANPR_NORMAL_DONT_CARE);
@@ -117,7 +112,7 @@ void RNA_def_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Inverse", "Inverse Normal Thickness");
 
   prop = RNA_def_property(
-      srna, "normal_ramp_begin", PROP_FLOAT, PROP_FACTOR);  // begin is least strength
+      srna, "normal_ramp_begin", PROP_FLOAT, PROP_FACTOR);  /* begin is least strength */
   RNA_def_property_float_default(prop, 0.0f);
   RNA_def_property_ui_text(prop, "Ramp Begin", "Normal Ramp Begin Value");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
@@ -128,7 +123,7 @@ void RNA_def_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
 
   prop = RNA_def_property(
-      srna, "normal_thickness_begin", PROP_FLOAT, PROP_NONE);  // begin is least strength
+      srna, "normal_thickness_begin", PROP_FLOAT, PROP_NONE);  /* begin is least strength */ 
   RNA_def_property_float_default(prop, 0.2f);
   RNA_def_property_ui_text(prop, "Thickness Begin", "Normal Thickness Begin Value");
   RNA_def_property_ui_range(prop, 0.0f, 5.0f, 0.05, 2);

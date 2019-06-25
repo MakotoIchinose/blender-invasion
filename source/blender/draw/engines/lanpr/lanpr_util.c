@@ -8,12 +8,12 @@
 #define _CRT_SEQURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
-//#include <time.h>
+/* #include <time.h> */
 #include "lanpr_util.h"
 #include "lanpr_all.h"
 #include <math.h>
 
-//===================================================================[slt]
+/* ===================================================================[slt] */
 
 void list_handle_empty(ListBase *h)
 {
@@ -440,7 +440,7 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp)
   return ret;
 }
 
-//=======================================================================[str]
+/* =======================================================================[str] */
 
 void tmat_load_identity_44d(tnsMatrix44d m)
 {
@@ -619,9 +619,9 @@ void tmat_apply_transform_43df(tnsVector4d result, tnsMatrix44d mat, tnsVector3f
   result[1] = mat[1] * v[0] + mat[5] * v[1] + mat[9] * v[2] + mat[13] * 1;
   result[2] = mat[2] * v[0] + mat[6] * v[1] + mat[10] * v[2] + mat[14] * 1;
   real w = mat[3] * v[0] + mat[7] * v[1] + mat[11] * v[2] + mat[15] * 1;
-  // result[0] /= w;
-  // result[1] /= w;
-  // result[2] /= w;
+  /*  result[0] /= w; */
+  /*  result[1] /= w; */
+  /*  result[2] /= w; */
 }
 void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v)
 {
@@ -776,9 +776,9 @@ void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat)
       }
     }
 
-    // if (UNLIKELY(tempmat[i][i] == 0.0f)) {
-    //	return false;  /* No non-zero pivot */
-    //}
+    /*  if (UNLIKELY(tempmat[i][i] == 0.0f)) { */
+    /* 	return false;  /* No non-zero pivot  */
+    /* } */
 
     temp = (double)tempmat[i * 5];
     for (k = 0; k < 4; k++) {
@@ -925,13 +925,13 @@ void tmat_make_rotation_matrix_44d(tnsMatrix44d m, real angle_rad, real x, real 
 
   mag = (real)sqrt(x * x + y * y + z * z);
 
-  // Identity matrix
+  /*  Identity matrix */
   if (mag == 0.0f) {
     tmat_load_identity_44d(m);
     return;
   }
 
-  // Rotation matrix is normalized
+  /*  Rotation matrix is normalized */
   x /= mag;
   y /= mag;
   z /= mag;
@@ -1012,13 +1012,13 @@ void tmat_make_viewport_matrix_44d(tnsMatrix44d m, real w, real h, real Far, rea
   m[13] = h / 2;
   m[14] = (Far + Near) / 2;
   m[15] = 1;
-  // m[0] = 2/w;
-  // m[5] = 2/h;
-  // m[10] = 1;
-  // m[12] = 2/w;
-  // m[13] = 2/h;
-  // m[14] = 1;
-  // m[15] = 1;
+  /*  m[0] = 2/w; */
+  /*  m[5] = 2/h; */
+  /*  m[10] = 1; */
+  /*  m[12] = 2/w; */
+  /*  m[13] = 2/h; */
+  /*  m[14] = 1; */
+  /*  m[15] = 1; */
 }
 
 real lanpr_LinearInterpolate(real L, real R, real T)

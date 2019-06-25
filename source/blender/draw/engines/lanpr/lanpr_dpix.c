@@ -100,7 +100,7 @@ void lanpr_init_atlas_inputs(void *ved)
 }
 void lanpr_destroy_atlas(void *ved)
 {
-  // no need to free things, no custom data.
+  /*  no need to free things, no custom data. */
 }
 
 int lanpr_feed_atlas_data_obj(void *vedata,
@@ -177,7 +177,7 @@ int lanpr_feed_atlas_data_obj(void *vedata,
     if (CanFindFreestyle) {
       fe = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
       if (fe->flag & FREESTYLE_EDGE_MARK)
-        AtlasEdgeMask[idx + 1] = 1;  // channel G
+        AtlasEdgeMask[idx + 1] = 1;  /*  channel G */
     }
 
     if (f1) {
@@ -193,14 +193,14 @@ int lanpr_feed_atlas_data_obj(void *vedata,
       AtlasFaceNormalL[idx + 3] = 0;
     }
 
-    if (f2 && f2 != f1) {  // this is for edge condition
+    if (f2 && f2 != f1) {  /*  this is for edge condition */
       AtlasFaceNormalR[idx + 0] = f2->no[0];
       AtlasFaceNormalR[idx + 1] = f2->no[1];
       AtlasFaceNormalR[idx + 2] = f2->no[2];
       AtlasFaceNormalR[idx + 3] = 1;
 
       if (f2->mat_nr != f1->mat_nr)
-        AtlasEdgeMask[idx] = 1;  // channel r
+        AtlasEdgeMask[idx] = 1;  /*  channel r */
     }
     else {
       AtlasFaceNormalR[idx + 0] = 0;
@@ -241,7 +241,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
     rl = lip->data;
 
     idx = (begin_index + i) * 4;
-    AtlasEdgeMask[idx + 2] = 1;  // channel B
+    AtlasEdgeMask[idx + 2] = 1;  /*  channel B */
 
     AtlasPointsL[idx + 0] = rl->l->gloc[0];
     AtlasPointsL[idx + 1] = rl->l->gloc[1];
@@ -427,7 +427,7 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   if (is_render && !camera)
     return;
 
-  // XXX: should implement view angle functions for ortho camera.
+  /*  XXX: should implement view angle functions for ortho camera. */
 
   pd->dpix_viewport[2] = texw;
   pd->dpix_viewport[3] = texh;
@@ -439,7 +439,7 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   pd->dpix_zfar = camera ? ((Camera *)camera->data)->clip_end : v3d->clip_end;
 
   GPU_point_size(1);
-  // GPU_line_width(2);
+  /*  GPU_line_width(2); */
   GPU_framebuffer_bind(fbl->dpix_transform);
   DRW_draw_pass(psl->dpix_transform_pass);
 

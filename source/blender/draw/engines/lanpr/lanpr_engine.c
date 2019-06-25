@@ -232,19 +232,19 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "normal_clamp",
                               &stl->g_data->normal_clamp,
-                              1);  // normal clamp
+                              1);  /*  normal clamp */
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "normal_strength",
                               &stl->g_data->normal_strength,
-                              1);  // normal strength
+                              1);  /*  normal strength */
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "depth_clamp",
                               &stl->g_data->depth_clamp,
-                              1);  // depth clamp
+                              1);  /*  depth clamp */
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "depth_strength",
                               &stl->g_data->depth_strength,
-                              1);  // depth strength
+                              1);  /*  depth strength */
     DRW_shgroup_call(stl->g_data->edge_detect_shgrp, quad, NULL);
 
     psl->edge_thinning = DRW_pass_create("Edge Thinning Stage 1", DRW_STATE_WRITE_COLOR);
@@ -306,7 +306,7 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "face_normal0_tex", &txl->dpix_in_nl);
     DRW_shgroup_uniform_texture_ref(stl->g_data->dpix_preview_shgrp,
                                     "face_normal1_tex",
-                                    &txl->dpix_in_nr);  // these are for normal shading
+                                    &txl->dpix_in_nr);  /*  these are for normal shading */
     DRW_shgroup_uniform_texture_ref(
         stl->g_data->dpix_preview_shgrp, "edge_mask_tex", &txl->dpix_in_edge_mask);
     DRW_shgroup_uniform_vec4(
@@ -321,8 +321,8 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "intersection_color", ll->use_same_style?ll->color:ll->intersection_color, 1);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "background_color", lanpr->background_color, 1);
-    // DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "line_color", ll->line_color, 1);
-    // //we have color
+    /*  DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "line_color", ll->line_color, 1); */
+    /*  //we have color */
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "depth_offset", &stl->g_data->dpix_depth_offset, 1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
@@ -379,7 +379,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_pr = MEM_callocN(fsize, "atlas_point_r");
       pd->atlas_nl = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_nr = MEM_callocN(fsize, "atlas_normal_l");
-      pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask");  // should always be float
+      pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask");  /*  should always be float */
 
       pd->dpix_batch_list.first = pd->dpix_batch_list.last = 0;
       BLI_mempool_clear(lanpr_share.mp_batch_list);
@@ -487,19 +487,19 @@ void lanpr_batch_free(SceneLANPR *lanpr)
 {
 }
 
-// below are commented to prevent interface lock in some conditions.
-// should look into it,
+/*  below are commented to prevent interface lock in some conditions. */
+/*  should look into it, */
 void lanpr_set_render_flag()
 {
-  // BLI_spin_lock(&lanpr_share.render_flag_lock);
-  // lanpr_share.during_render = 1;
-  // BLI_spin_unlock(&lanpr_share.render_flag_lock);
+  /*  BLI_spin_lock(&lanpr_share.render_flag_lock); */
+  /*  lanpr_share.during_render = 1; */
+  /*  BLI_spin_unlock(&lanpr_share.render_flag_lock); */
 }
 void lanpr_clear_render_flag()
 {
-  // BLI_spin_lock(&lanpr_share.render_flag_lock);
-  // lanpr_share.during_render = 0;
-  // BLI_spin_unlock(&lanpr_share.render_flag_lock);
+  /*  BLI_spin_lock(&lanpr_share.render_flag_lock); */
+  /*  lanpr_share.during_render = 0; */
+  /*  BLI_spin_unlock(&lanpr_share.render_flag_lock); */
 }
 int lanpr_during_render()
 {
@@ -540,7 +540,7 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     lanpr_snake_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
   else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {
-    // should isolate these into a seperate function.
+    /*  should isolate these into a seperate function. */
     lanpr_software_draw_scene(vedata, dfb, is_render);
   }
 }
@@ -597,7 +597,7 @@ static int LANPR_GLOBAL_update_tag;
 
 void lanpr_id_update(LANPR_Data *vedata, ID *id)
 {
-  // if (vedata->engine_type != &draw_engine_lanpr_type) return;
+  /*  if (vedata->engine_type != &draw_engine_lanpr_type) return; */
 
   /* Handle updates based on ID type. */
   switch (GS(id->name)) {
@@ -620,7 +620,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   LANPR_TextureList *txl = vedata->txl;
   LANPR_FramebufferList *fbl = vedata->fbl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  // int update_mark = DEG_id_type_any_updated(draw_ctx->depsgraph);
+  /*  int update_mark = DEG_id_type_any_updated(draw_ctx->depsgraph); */
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
 
@@ -660,13 +660,13 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
                                  GPU_ATTACHMENT_LEAVE});
 
   lanpr_engine_init(vedata);
-  lanpr->reloaded = 1;  // force dpix batch to re-create
+  lanpr->reloaded = 1;  /*  force dpix batch to re-create */
   lanpr_cache_init(vedata);
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, LANPR_render_cache);
   lanpr_cache_finish(vedata);
 
   /* get ref for destroy data */
-  // lanpr_share.rb_ref = lanpr->render_buffer;
+  /*  lanpr_share.rb_ref = lanpr->render_buffer; */
 
   DRW_render_instance_buffer_finish();
 
@@ -680,7 +680,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
 
   lanpr_draw_scene_exec(vedata, dfbl->default_fb, 1);
 
-  // read it back so we can again display and save it.
+  /*  read it back so we can again display and save it. */
   const char *viewname = RE_GetActiveRenderView(engine->re);
   RenderPass *rp = RE_pass_find_by_name(render_layer, RE_PASSNAME_COMBINED, viewname);
   GPU_framebuffer_bind(dfbl->default_fb);
@@ -693,44 +693,44 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
                              0,
                              rp->rect);
 
-  // we don't need to free pass/buffer/texture in the engine's list
-  // lanpr_engine_free();
+  /*  we don't need to free pass/buffer/texture in the engine's list */
+  /*  lanpr_engine_free(); */
 
   lanpr_clear_render_flag();
 }
 
 static void lanpr_view_update(void *vedata)
 {
-  // LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-  // if (stl->g_data) {
-  //	stl->g_data->view_updated = true;
-  //}
+  /*  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl; */
+  /*  if (stl->g_data) { */
+  /* 	stl->g_data->view_updated = true; */
+  /* } */
 
-  // our update flag is in SceneLANPR.
+  /*  our update flag is in SceneLANPR. */
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr;
-  lanpr->reloaded = 1;  // very bad solution, this will slow down animation.
+  lanpr->reloaded = 1;  /*  very bad solution, this will slow down animation. */
 }
 
-// static void lanpr_id_update(void *vedata, ID *id){
-//	const DRWContextState *draw_ctx = DRW_context_state_get();
-//    SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr;
-//
-//	/* look at eevee_engine.c */
-//	switch (GS(id->name)) {
-//		case ID_OB:
-//		    //seems doesn't need this one currently...
-//			//eevee_id_object_update(vedata, (Object *)id);
-//			lanpr->reloaded = 1;
-//			break;
-//		case ID_ME:
-//		    lanpr->reloaded=1;
-//			break;
-//		default:
-//			/* pass */
-//			break;
-//	}
-//}
+/*  static void lanpr_id_update(void *vedata, ID *id){ */
+/* 	const DRWContextState *draw_ctx = DRW_context_state_get(); */
+/*     SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr; */
+/*  */
+/* 	/* look at eevee_engine.c */
+/* 	switch (GS(id->name)) { */
+/* 		case ID_OB: */
+/* 		    //seems doesn't need this one currently... */
+/* 			//eevee_id_object_update(vedata, (Object *)id); */
+/* 			lanpr->reloaded = 1; */
+/* 			break; */
+/* 		case ID_ME: */
+/* 		    lanpr->reloaded=1; */
+/* 			break; */
+/* 		default: */
+/* 			/* pass */
+/* 			break; */
+/* 	} */
+/* } */
 
 static const DrawEngineDataSize lanpr_data_size = DRW_VIEWPORT_DATA_SIZE(LANPR_Data);
 
@@ -738,17 +738,17 @@ DrawEngineType draw_engine_lanpr_type = {
     NULL,
     NULL,
     N_("LANPR"),
-    &lanpr_data_size,  // why should we have the "&" ?
+    &lanpr_data_size,  /*  why should we have the "&" ? */
     &lanpr_engine_init,
     &lanpr_engine_free,
     &lanpr_cache_init,
     &lanpr_cache_populate,
     &lanpr_cache_finish,
-    NULL,               // draw background
-    &lanpr_draw_scene,  // draw scene, looks like that not much difference except a camera overlay
-                        // image.
+    NULL,               /*  draw background */
+    &lanpr_draw_scene,  /*  draw scene, looks like that not much difference except a camera overlay */
+                        /*  image. */
     &lanpr_view_update,
-    &lanpr_id_update,  //&lanpr_id_update, wait till I figure out how to do this.
+    &lanpr_id_update,  /* &lanpr_id_update, wait till I figure out how to do this. */
     &lanpr_render_to_image,
 };
 
@@ -758,12 +758,12 @@ RenderEngineType DRW_engine_viewport_lanpr_type = {
     LANPR_ENGINE,
     N_("LANPR"),
     RE_INTERNAL,
-    NULL,                  // update
-    &DRW_render_to_image,  // render to img
-    NULL,                  // bake
-    NULL,  // doesn't seem to be what I thought it was... &lanpr_view_update,// view update
-    NULL,  // render to view
-    NULL,  // update in script
-    NULL,  // update in render pass
+    NULL,                  /*  update */
+    &DRW_render_to_image,  /*  render to img */
+    NULL,                  /*  bake */
+    NULL,  /*  doesn't seem to be what I thought it was... &lanpr_view_update,// view update */
+    NULL,  /*  render to view */
+    NULL,  /*  update in script */
+    NULL,  /*  update in render pass */
     &draw_engine_lanpr_type,
     {NULL, NULL, NULL}};

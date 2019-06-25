@@ -29,7 +29,7 @@ extern LANPR_SharedResource lanpr_share;
 
 static BMVert *split_edge_and_move(BMesh *bm, BMEdge *edge, const float new_pos[3])
 {
-  // Split edge one time and move the created vert to new_pos
+  /*  Split edge one time and move the created vert to new_pos */
   BMVert *vert;
 
   vert = bmesh_kernel_split_edge_make_vert(bm, edge->v1, edge, NULL);
@@ -60,7 +60,7 @@ void lanpr_generate_gpencil_from_chain(
 
   unit_m4(mat);
 
-  // Split countour lines at occlution points and deselect occluded segment
+  /*  Split countour lines at occlution points and deselect occluded segment */
   LANPR_RenderLine *rl;
   LANPR_RenderLineSegment *rls, *irls;
 
@@ -69,7 +69,7 @@ void lanpr_generate_gpencil_from_chain(
   for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
 
     if (!rlc->object_ref)
-      continue;  // XXX: intersection lines are lost
+      continue;  /*  XXX: intersection lines are lost */
 
     if (rlc->level>qi_end || rlc->level<qi_begin)
       continue;
@@ -84,12 +84,12 @@ void lanpr_generate_gpencil_from_chain(
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
     for (rlci = rlc->chain.first; rlci; rlci = (LANPR_RenderLineChainItem *)rlci->item.next) {
-      float opatity = 1.0f; //rlci->occlusion ? 0.0f : 1.0f;
+      float opatity = 1.0f; /* rlci->occlusion ? 0.0f : 1.0f; */
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];
-      stroke_data[array_idx + 3] = 1;  // thickness
-      stroke_data[array_idx + 4] = opatity;  // hardness?
+      stroke_data[array_idx + 3] = 1;  /*  thickness */
+      stroke_data[array_idx + 4] = opatity;  /*  hardness? */
       array_idx += 5;
     }
 
@@ -132,7 +132,7 @@ void lanpr_copy_data(Scene *from, Scene *to)
     }
   }
 
-  // render_buffer now only accessible from lanpr_share
+  /*  render_buffer now only accessible from lanpr_share */
 }
 
 void lanpr_free_everything(Scene *s)
