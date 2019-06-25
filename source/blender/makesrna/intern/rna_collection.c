@@ -389,6 +389,39 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
       prop, "Force", "Force object who has LANPR modifiers to follow the rule");
+
+  prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "target");
+  RNA_def_property_ui_text(prop, "Target", "GPencil object to put the stroke result");
+  RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_GPencil_object_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+
+  prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
+
+  prop = RNA_def_property(srna, "layer", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
+  RNA_def_property_ui_text(prop, "Layer", "GPencil layer to put the results into");
+
+  prop = RNA_def_property(srna, "material", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
+  RNA_def_property_ui_text(prop, "Material", "GPencil material to use to generate the results");
+
+  prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
+  RNA_def_property_ui_text(prop, "Multiple", "Use multiple occlusion levels");
+
+  prop = RNA_def_property(srna, "level_begin", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 255);
+  RNA_def_property_ui_range(prop, 0, 255, 1, -1);
+  RNA_def_property_ui_text(prop, "Level", "Occlusion level");
+
+  prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 255);
+  RNA_def_property_ui_range(prop, 0, 255, 1, -1);
+  RNA_def_property_ui_text(prop, "To", "Occlusion level");
 }
 
 void RNA_def_collections(BlenderRNA *brna)

@@ -66,10 +66,27 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
     def draw(self,context):
         layout = self.layout
         collection = context.collection
+        lanpr = collection.lanpr
         row = layout.row()
-        row.prop(collection.lanpr,"usage",expand=True)
-        if collection.lanpr.usage!='INCLUDE':
-            layout.prop(collection.lanpr,"force")
+        row.prop(lanpr,"usage",expand=True)
+        if lanpr.usage!='INCLUDE':
+            layout.prop(lanpr,"force")
+        else:
+            row = layout.row()
+            row.prop(lanpr,"target")
+            
+            if lanpr.target:
+                row = layout.row(align=True)
+                row.prop(lanpr,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
+                row.prop(lanpr,'level_begin')
+                if lanpr.use_multiple_levels:
+                    row.prop(lanpr,'level_end')
+                row = layout.row()
+                row.prop(lanpr,'replace', text='Replace existing frames')
+                row = layout.row()
+                row.prop(lanpr,'layer')
+                row.prop(lanpr,'material')
+
 
 classes = (
     COLLECTION_PT_collection_flags,

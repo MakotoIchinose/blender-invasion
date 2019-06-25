@@ -46,7 +46,16 @@ typedef struct CollectionChild {
 typedef struct CollectionLANPR {
   short usage;
   short force; /* force objects with LANPR modifier follow the rule */
+
   char _pad[4];
+
+  struct Object *target;
+  int replace;
+  int layer;
+  int material;
+  int use_multiple_levels;
+  int level_begin;
+  int level_end;
 } CollectionLANPR;
 
 /* CollectionLANPR->mode */
