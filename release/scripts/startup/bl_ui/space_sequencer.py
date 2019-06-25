@@ -106,10 +106,6 @@ class SEQUENCER_HT_header(Header):
 
         layout.separator_spacer()
 
-        if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
-            layout.separator()
-            layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="")
-
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
             layout.prop(st, "display_mode", text="", icon_only=True)
 
@@ -224,6 +220,10 @@ class SEQUENCER_MT_view(Menu):
             layout.operator_context = 'INVOKE_DEFAULT'
             layout.menu("SEQUENCER_MT_navigation")
             layout.menu("SEQUENCER_MT_range")
+
+            layout.separator()
+
+            layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="Refresh All")
 
             layout.separator()
 
@@ -814,9 +814,41 @@ class SEQUENCER_PT_strip(SequencerButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         strip = act_strip(context)
+        strip_type = strip.type
+
+        if strip_type in {
+                'ADD', 'SUBTRACT', 'ALPHA_OVER', 'ALPHA_UNDER', 'MULTIPLY',
+                'OVER_DROP', 'GLOW', 'TRANSFORM', 'SPEED', 'MULTICAM',
+                'GAUSSIAN_BLUR', 'COLORMIX',
+        }:
+            icon_header = 'SHADERFX'
+        elif strip_type in {
+                'CROSS', 'GAMMA_CROSS', 'WIPE',
+        }:
+            icon_header = 'ARROW_LEFTRIGHT'
+        elif strip_type == 'SCENE':
+            icon_header = 'SCENE_DATA'
+        elif strip_type == 'MOVIECLIP':
+            icon_header = 'TRACKER'
+        elif strip_type == 'MASK':
+            icon_header = 'MOD_MASK'
+        elif strip_type == 'MOVIE':
+            icon_header = 'FILE_MOVIE'
+        elif strip_type == 'SOUND':
+            icon_header = 'FILE_SOUND'
+        elif strip_type == 'IMAGE':
+            icon_header = 'FILE_IMAGE'
+        elif strip_type == 'COLOR':
+            icon_header = 'COLOR'
+        elif strip_type == 'TEXT':
+            icon_header = 'FONT_DATA'
+        elif strip_type == 'ADJUSTMENT':
+            icon_header = 'COLOR'
+        else:
+            icon_header = 'SEQ_SEQUENCER'
 
         row = layout.row()
-        row.label(text="", icon='SEQ_SEQUENCER')
+        row.label(text="", icon=icon_header)
         row.prop(strip, "name", text="")
         row.prop(strip, "mute", toggle=True, icon_only=True, emboss=False)
 
@@ -1222,7 +1254,7 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
         if scene:
             layout.prop(scene, "audio_volume", text="Volume")
 
-        if strip.scene_input == '3D_CAMERA':
+        if strip.scene_input == 'CAMERA':
             layout.alignment = 'RIGHT'
             sub = layout.column(align=True)
             split = sub.split(factor=0.5, align=True)

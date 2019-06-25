@@ -329,8 +329,7 @@ typedef struct GPENCIL_e_data {
 } GPENCIL_e_data; /* Engine data */
 
 /* general drawing functions */
-struct DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,
-                                                          struct GPENCIL_Data *vedata,
+struct DRWShadingGroup *DRW_gpencil_shgroup_stroke_create(struct GPENCIL_Data *vedata,
                                                           struct DRWPass *pass,
                                                           struct GPUShader *shader,
                                                           struct Object *ob,
