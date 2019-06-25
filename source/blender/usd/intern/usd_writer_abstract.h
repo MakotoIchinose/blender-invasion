@@ -19,12 +19,13 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   Depsgraph *depsgraph;
   pxr::UsdStageRefPtr stage;
   pxr::SdfPath usd_path_;
+  USDHierarchyIterator *const hierarchy_iterator;
 
  public:
   USDAbstractWriter(const USDExporterContext &usd_export_context);
   virtual ~USDAbstractWriter();
 
-  virtual void write(Object *object_eval) override;
+  virtual void write(HierarchyContext &context) override;
 
   /* Returns true iff the data to be written is actually supported. This would, for example, allow
    * a hypothetical camera writer accept a perspective camera but reject an orthogonal one. */
@@ -33,7 +34,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   const pxr::SdfPath &usd_path() const;
 
  protected:
-  virtual void do_write(Object *object_eval) = 0;
+  virtual void do_write(HierarchyContext &context) = 0;
 };
 
 #endif /* __USD__USD_WRITER_ABSTRACT_H__ */

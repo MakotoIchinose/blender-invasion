@@ -12,17 +12,13 @@ struct ID;
 struct Object;
 struct ViewLayer;
 
-class AbstractHierarchyWriter {
- public:
-  virtual void write(Object *object_eval) = 0;
-  // TODO: add function like unused_during_iteration() that's called when a writer was previously
-  // created, but wasn't used this iteration.
-};
+class AbstractHierarchyWriter;
 
 struct HierarchyContext {
   /* Determined during hierarchy iteration: */
   Object *object;
   Object *export_parent;
+  float matrix_world[4][4];
 
   // When true, the object will be exported only as transform, and only if is an ancestor of a
   // non-weak child.
@@ -37,6 +33,13 @@ struct HierarchyContext {
   {
     return object < other.object;
   }
+};
+
+class AbstractHierarchyWriter {
+ public:
+  virtual void write(HierarchyContext &context) = 0;
+  // TODO: add function like unused_during_iteration() that's called when a writer was previously
+  // created, but wasn't used this iteration.
 };
 
 class AbstractHierarchyIterator {
@@ -60,6 +63,7 @@ class AbstractHierarchyIterator {
 
  private:
   void visit_object(Object *object, Object *export_parent, bool weak_export);
+  void visit_dupli_object(DupliObject *dupli_object, Object *export_parent, bool weak_export);
   void prune_export_graph();
 
   void make_writers(Object *parent_object,

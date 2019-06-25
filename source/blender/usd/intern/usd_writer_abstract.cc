@@ -5,7 +5,8 @@
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
     : depsgraph(usd_export_context.depsgraph),
       stage(usd_export_context.stage),
-      usd_path_(usd_export_context.usd_path)
+      usd_path_(usd_export_context.usd_path),
+      hierarchy_iterator(usd_export_context.hierarchy_iterator)
 {
 }
 
@@ -18,9 +19,11 @@ bool USDAbstractWriter::is_supported() const
   return true;
 }
 
-void USDAbstractWriter::write(Object *object_eval)
+void USDAbstractWriter::write(HierarchyContext &context)
 {
-  do_write(object_eval);
+  // TODO(Sybren): deal with animatedness of objects and only calling do_write() when this is
+  // either the first call or the object is animated.
+  do_write(context);
 }
 
 const pxr::SdfPath &USDAbstractWriter::usd_path() const

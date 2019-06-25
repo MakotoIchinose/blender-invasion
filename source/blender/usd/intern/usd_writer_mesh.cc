@@ -1,4 +1,5 @@
 #include "usd_writer_mesh.h"
+#include "usd_hierarchy_iterator.h"
 
 #include <pxr/usd/usdGeom/mesh.h>
 
@@ -14,8 +15,9 @@ USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDA
 {
 }
 
-void USDGenericMeshWriter::do_write(Object *object_eval)
+void USDGenericMeshWriter::do_write(HierarchyContext &context)
 {
+  Object *object_eval = context.object;
   bool needsfree = false;
   struct Mesh *mesh = get_export_mesh(object_eval, needsfree);
 
@@ -48,10 +50,11 @@ void USDGenericMeshWriter::free_export_mesh(struct Mesh *mesh)
 
 void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
 {
-  printf("USD-\033[32mexporting\033[0m mesh  %s → %s  mesh = %p\n",
-         mesh->id.name,
-         usd_path_.GetString().c_str(),
-         mesh);
+  pxr::UsdTimeCode timecode = hierarchy_iterator->get_export_time_code();
+  // printf("USD-\033[32mexporting\033[0m mesh  %s → %s  mesh = %p\n",
+  //        mesh->id.name,
+  //        usd_path_.GetString().c_str(),
+  //        mesh);
 
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path_);
 
@@ -65,7 +68,7 @@ void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
   for (int i = 0; i < mesh->totvert; ++i) {
     usd_points.push_back(pxr::GfVec3f(verts[i].co));
   }
-  usd_mesh.CreatePointsAttr().Set(usd_points);
+  usd_mesh.CreatePointsAttr().Set(usd_points, timecode);
 
   pxr::VtArray<int> usd_face_vertex_counts, usd_face_indices;
   usd_face_vertex_counts.reserve(mesh->totpoly);
@@ -81,8 +84,8 @@ void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
       usd_face_indices.push_back(loop->v);
     }
   }
-  usd_mesh.CreateFaceVertexCountsAttr().Set(usd_face_vertex_counts);
-  usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_face_indices);
+  usd_mesh.CreateFaceVertexCountsAttr().Set(usd_face_vertex_counts, timecode);
+  usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_face_indices, timecode);
 }
 
 USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx)

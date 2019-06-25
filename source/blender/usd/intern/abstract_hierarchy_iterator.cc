@@ -6,6 +6,7 @@ extern "C" {
 #include "BKE_anim.h"
 
 #include "BLI_assert.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_ID.h"
 #include "DNA_layer_types.h"
@@ -89,7 +90,7 @@ void AbstractHierarchyIterator::iterate()
           export_parent = object;
         }
 
-        visit_object(link->ob, export_parent, false);
+        visit_dupli_object(link, export_parent, false);
       }
     }
 
@@ -124,6 +125,51 @@ void AbstractHierarchyIterator::iterate()
   // For debug: print the export paths.
   // printf("====== Export paths:\n");
   make_writers(nullptr, "", nullptr);
+
+  export_graph.clear();
+}
+
+void AbstractHierarchyIterator::visit_object(Object *object,
+                                             Object *export_parent,
+                                             bool weak_export)
+{
+  HierarchyContext context;
+  context.object = object;
+  context.export_parent = export_parent;
+  context.weak_export = weak_export;
+  context.export_path = "";
+  context.parent_writer = nullptr;
+  // TODO(Sybren): avoid creating too many copies of the matrix.
+  copy_m4_m4(context.matrix_world, object->obmat);
+
+  export_graph[export_parent].insert(context);
+
+  // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
+  // printf("    OB %30s %p (parent=%s %p; xform-only=%s; instance=%s; world x = %f)\n",
+  //        get_object_name(object).c_str(),
+  //        object,
+  //        export_parent_name.c_str(),
+  //        export_parent,
+  //        context.weak_export ? "\033[31;1mtrue\033[0m" : "false",
+  //        context.object->base_flag & BASE_FROM_DUPLI ? "\033[35;1mtrue\033[0m" :
+  //                                                      "\033[30;1mfalse\033[0m",
+  //        context.matrix_world[3][0]);
+}
+
+void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
+                                                   Object *export_parent,
+                                                   bool weak_export)
+{
+  HierarchyContext context;
+  context.object = dupli_object->ob;
+  context.export_parent = export_parent;
+  context.weak_export = weak_export;
+  context.export_path = "";
+  context.parent_writer = nullptr;
+  // TODO(Sybren): avoid creating too many copies of the matrix.
+  copy_m4_m4(context.matrix_world, dupli_object->mat);
+
+  export_graph[export_parent].insert(context);
 }
 
 static bool prune_the_weak(const HierarchyContext &context,
@@ -190,7 +236,7 @@ void AbstractHierarchyIterator::make_writers(Object *parent_object,
     }
 
     BLI_assert(DEG_is_evaluated_object(context.object));
-    xform_writer->write(context.object);
+    xform_writer->write(context);
 
     // Get or create the object data writer, but only if it is needed.
     if (!context.weak_export && context.object->data != nullptr) {
@@ -203,7 +249,7 @@ void AbstractHierarchyIterator::make_writers(Object *parent_object,
 
       data_writer = ensure_data_writer(context);
       if (data_writer != nullptr) {
-        data_writer->write(context.object);
+        data_writer->write(context);
       }
     }
 
@@ -245,35 +291,6 @@ bool AbstractHierarchyIterator::should_visit_duplilink(const DupliObject *link) 
 bool AbstractHierarchyIterator::should_export_object(const Object * /*object*/) const
 {
   return true;
-}
-
-void AbstractHierarchyIterator::visit_object(Object *object,
-                                             Object *export_parent,
-                                             bool weak_export)
-{
-  BLI_assert(DEG_is_evaluated_object(object));
-  BLI_assert(export_parent == nullptr || DEG_is_evaluated_object(export_parent));
-
-  HierarchyContext context = {
-      .object = object,
-      .export_parent = export_parent,
-      .weak_export = weak_export,
-
-      // Will be determined during the writer creation:
-      .export_path = "",
-      .parent_writer = nullptr,
-  };
-  export_graph[export_parent].insert(context);
-
-  // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
-  // printf("    OB %30s %p (parent=%s %p; xform-only=%s; instance=%s)\n",
-  //        get_object_name(object).c_str(),
-  //        object,
-  //        export_parent_name.c_str(),
-  //        export_parent,
-  //        context.weak_export ? "\033[31;1mtrue\033[0m" : "false",
-  //        context.object->base_flag & BASE_FROM_DUPLI ? "\033[35;1mtrue\033[0m" :
-  //                                                      "\033[30;1mfalse\033[0m");
 }
 
 AbstractHierarchyWriter *AbstractHierarchyIterator::get_writer(const std::string &name)

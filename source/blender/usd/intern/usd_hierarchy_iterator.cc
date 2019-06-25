@@ -50,19 +50,32 @@ std::string USDHierarchyIterator::get_id_name(const ID *const id) const
   return pxr::TfMakeValidIdentifier(name);
 }
 
+void USDHierarchyIterator::set_export_frame(float frame_nr)
+{
+  // The USD stage is already set up to have FPS timecodes per frame.
+  export_time = pxr::UsdTimeCode(frame_nr);
+}
+
+const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
+{
+  return export_time;
+}
+
 AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const HierarchyContext &context)
 {
   // printf(
   //     "\033[32;1mCREATE\033[0m %s at %s\n", context.object->id.name,
   //     context.export_path.c_str());
 
-  USDExporterContext usd_export_context = {depsgraph, stage, pxr::SdfPath(context.export_path)};
+  USDExporterContext usd_export_context = {
+      depsgraph, stage, pxr::SdfPath(context.export_path), this};
   return new USDTransformWriter(usd_export_context);
 }
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const HierarchyContext &context)
 {
-  USDExporterContext usd_export_context = {depsgraph, stage, pxr::SdfPath(context.export_path)};
+  USDExporterContext usd_export_context = {
+      depsgraph, stage, pxr::SdfPath(context.export_path), this};
   USDAbstractWriter *data_writer = nullptr;
 
   switch (context.object->type) {

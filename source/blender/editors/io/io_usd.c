@@ -84,10 +84,12 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
   const bool selected_objects_only = RNA_boolean_get(op->ptr, "selected_objects_only");
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
+  const bool animation = RNA_boolean_get(op->ptr, "animation");
 
   struct USDExportParams params = {
-      .selected_objects_only = selected_objects_only,
-      .visible_objects_only = visible_objects_only,
+      animation,
+      selected_objects_only,
+      visible_objects_only,
   };
 
   bool ok = USD_export(scene, C, filename, &params, as_background_job);
@@ -111,16 +113,23 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "selected_objects_only",
                   false,
-                  "Only export selected objects",
+                  "Only Export Selected Objects",
                   "Only selected objects are exported. Unselected parents of selected objects are "
                   "exported as empty transform.");
 
   RNA_def_boolean(ot->srna,
                   "visible_objects_only",
                   false,
-                  "Only export visible objects",
+                  "Only Export Visible Objects",
                   "Only visible objects are exported. Invisible parents of visible objects are "
                   "exported as empty transform.");
+
+  RNA_def_boolean(ot->srna,
+                  "animation",
+                  false,
+                  "Export Animation",
+                  "When true, the render frame range is exported. When false, only the current "
+                  "frame is exported.");
 
   RNA_def_boolean(
       ot->srna,

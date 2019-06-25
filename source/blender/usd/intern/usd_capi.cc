@@ -102,10 +102,32 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
     usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
 
+    // Set up the stage for animated data.
+    if (data->params.do_animation) {
+      usd_stage->SetTimeCodesPerSecond(FPS);
+      usd_stage->SetStartTimeCode(scene->r.sfra);
+      usd_stage->SetEndTimeCode(scene->r.efra);
+    }
+
     USDHierarchyIterator iter(data->depsgraph, usd_stage, data->params);
 
-    // This should be done for every frame, when exporting animation:
-    iter.iterate();
+    if (data->params.do_animation) {
+      for (float frame = scene->r.sfra; frame < scene->r.efra; frame++) {
+        *progress = 0.09 * frame;
+
+        printf("\033[35;1mFRAME\033[0m %f\n", frame);
+        // Update the scene for the next frame to render.
+        scene->r.cfra = static_cast<int>(frame);
+        scene->r.subframe = frame - scene->r.cfra;
+        BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
+
+        iter.set_export_frame(frame);
+        iter.iterate();
+      }
+    }
+    else {
+      iter.iterate();
+    }
 
     iter.release_writers();
     usd_stage->GetRootLayer()->Save();

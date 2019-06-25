@@ -29,6 +29,7 @@ struct Scene;
 struct bContext;
 
 struct USDExportParams {
+  bool do_animation;
   bool selected_objects_only;
   bool visible_objects_only;
 };

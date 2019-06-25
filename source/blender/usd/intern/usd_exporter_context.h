@@ -6,11 +6,13 @@
 
 struct Depsgraph;
 struct Object;
+class USDHierarchyIterator;
 
 struct USDExporterContext {
   Depsgraph *depsgraph;
   pxr::UsdStageRefPtr stage;
   pxr::SdfPath usd_path;
+  USDHierarchyIterator *hierarchy_iterator;
 };
 
 #endif /* __USD__USD_EXPORTER_CONTEXT_H__ */

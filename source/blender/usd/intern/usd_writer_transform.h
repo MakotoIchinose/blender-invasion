@@ -3,12 +3,17 @@
 
 #include "usd_writer_abstract.h"
 
+#include <pxr/usd/usdGeom/xform.h>
+
 class USDTransformWriter : public USDAbstractWriter {
+ private:
+  pxr::UsdGeomXformOp xformOp_;
+
  public:
   USDTransformWriter(const USDExporterContext &ctx);
 
  protected:
-  void do_write(Object *object_eval) override;
+  void do_write(HierarchyContext &context) override;
 };
 
 #endif /* __USD__USD_WRITER_TRANSFORM_H__ */
