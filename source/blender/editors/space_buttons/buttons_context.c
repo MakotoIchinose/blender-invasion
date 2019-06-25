@@ -164,6 +164,31 @@ static int buttons_context_path_world(ButsContextPath *path)
   return 0;
 }
 
+static int buttons_context_path_collection(ButsContextPath *path, wmWindow* window)
+{
+  Scene *scene;
+  World *world;
+  PointerRNA *ptr = &path->ptr[path->len - 1];
+
+  /* if we already have a (pinned) collection, we're done */
+  if (RNA_struct_is_a(ptr->type, &RNA_Collection)) {
+    return 1;
+  }
+  /* if we have a view layer, use the view layer's active collection */
+  else if (buttons_context_path_view_layer(path, window)) {
+    ViewLayer *view_layer = path->ptr[path->len - 1].data;
+    Collection* c = view_layer->active_collection->collection;
+    if (c) {
+      RNA_id_pointer_create(&c->id, &path->ptr[path->len]);
+      path->len++;
+      return 1;
+    }
+  }
+
+  /* no path to a collection possible */
+  return 0;
+}
+
 static int buttons_context_path_linestyle(ButsContextPath *path, wmWindow *window)
 {
   FreestyleLineStyle *linestyle;
@@ -574,6 +599,9 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
       break;
     case BCONTEXT_WORLD:
       found = buttons_context_path_world(path);
+      break;
+    case BCONTEXT_COLLECTION:
+      found = buttons_context_path_collection(path, window);
       break;
     case BCONTEXT_TOOL:
       found = true;

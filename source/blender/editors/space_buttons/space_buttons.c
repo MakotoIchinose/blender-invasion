@@ -160,6 +160,9 @@ static void buttons_main_region_layout_properties(const bContext *C,
     case BCONTEXT_WORLD:
       contexts[0] = "world";
       break;
+    case BCONTEXT_COLLECTION:
+      contexts[0] = "collection";
+      break;
     case BCONTEXT_OBJECT:
       contexts[0] = "object";
       break;

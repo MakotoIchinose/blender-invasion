@@ -82,25 +82,9 @@ class VIEWLAYER_PT_eevee_layer_passes(ViewLayerButtonsPanel, Panel):
         col = flow.column()
         col.prop(view_layer, "use_pass_subsurface_color", text="Subsurface Color")
 
-class VIEWLAYER_PT_lanpr_collection(ViewLayerButtonsPanel, Panel):
-    bl_label = "Collection LANPR"
-
-    @classmethod
-    def poll(cls, context):
-        return context.scene.lanpr.enabled
-
-    def draw(self,context):
-        layout = self.layout
-        collection = context.collection
-        row = layout.row()
-        row.prop(collection.lanpr,"usage",expand=True)
-        if collection.lanpr.usage!='INCLUDE':
-            layout.prop(collection.lanpr,"force")
-
 classes = (
     VIEWLAYER_PT_layer,
     VIEWLAYER_PT_eevee_layer_passes,
-    VIEWLAYER_PT_lanpr_collection,
 )
 
 if __name__ == "__main__":  # only for live edit.
