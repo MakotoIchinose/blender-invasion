@@ -73,7 +73,7 @@ void free_object_duplilist(struct ListBase *lb);
 typedef struct DupliObject {
   struct DupliObject *next, *prev;
   struct Object *ob;
-  float mat[4][4];
+  float mat[4][4]; /* World matrix of the duplicated object. */
   float orco[3], uv[2];
 
   short type; /* from Object.transflag */
