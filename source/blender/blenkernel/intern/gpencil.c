@@ -1440,6 +1440,8 @@ MDeformVert *stroke_defvert_new_count(int totweight, int count)
   return dst;
 }
 
+/* Can't interpolate because not every vert has the same amount of groups attached to it. */
+/* Future solution: add all groups to every vert and set weight to 0 for those are not in. */
 static int stroke_march_next_point(bGPDstroke *gps,
                                    int next_point_index,
                                    float *current,
@@ -1482,11 +1484,11 @@ static int stroke_march_next_point(bGPDstroke *gps,
     copy_v3_v3(result, &pt->x);
     *pressure = gps->points[next_point_index].pressure;
     *strength = gps->points[next_point_index].strength;
-    if (weights) {
+    /* if (weights) {
       for (int j = 0; j < gps->dvert->totweight; j++) {
         weights[j] = gps->dvert[next_point_index].dw[j].weight;
       }
-    }
+    } */
 
     return 0;
   }
@@ -1497,13 +1499,13 @@ static int stroke_march_next_point(bGPDstroke *gps,
         gps->points[next_point_index - 1].pressure, gps->points[next_point_index].pressure, ratio);
     *strength = interpf(
         gps->points[next_point_index - 1].strength, gps->points[next_point_index].strength, ratio);
-    if (weights) {
+    /* if (weights) {
       for (int j = 0; j < gps->dvert->totweight; j++) {
         weights[j] = interpf(gps->dvert[next_point_index - 1].dw[j].weight,
                              gps->dvert[next_point_index].dw[j].weight,
                              ratio);
       }
-    }
+    } */
 
     return next_point_index;
   }
@@ -1538,21 +1540,21 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     length += len_v3v3(last_coord, this_coord);
   }
 
-  int count = (int)(length / dist) + 2;  // preserve some extra in case
+  int count = (int)(length / dist) + 1;
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
   MDeformVert *new_dv = NULL;
   if (gps->dvert != NULL) {
     new_dv = stroke_defvert_new_count(gps->dvert->totweight, count);
-    new_dv->totweight = gps->dvert->totweight;
-    new_dv->flag = gps->dvert->flag;
+    /* new_dv->totweight = gps->dvert->totweight; */
+    /* new_dv->flag = gps->dvert->flag; */
   }
 
   int next_point_index = 1;
   i = 0;
   float pressure, strength, *weights = NULL;
   if (new_dv)
-    weights = MEM_callocN(sizeof(float) * gps->dvert->totweight,
+    weights = MEM_callocN(sizeof(float) * count,
                           "gp_stroke_point_weights_sampled");
 
   // 1st point is always at the start
@@ -1562,12 +1564,14 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   copy_v3_v3(&pt2->x, last_coord);
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
+  i++;
+  /*
   if (new_dv) {
     for (int j = 0; j < new_dv->totweight; j++) {
       new_dv[i].dw[j].weight = gps->dvert->dw[j].weight;
     }
   }
-  i++;
+  */
 
   // the rest
   while (
@@ -1578,19 +1582,21 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     copy_v3_v3(&pt2->x, last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
+    /*
     if (new_dv) {
       for (int j = 0; j < new_dv->totweight; j++) {
         new_dv[i].dw[j].weight = weights[j];
       }
     }
+    */
     i++;
     if (next_point_index == 0)
-      break;  // last point finished
+      break;  /* last point finished */ 
   }
 
   gps->points = new_pt;
   gps->totpoints = i;
-  MEM_freeN(pt);  // original
+  MEM_freeN(pt);  /* original */ 
 
   if (new_dv) {
     BKE_gpencil_free_stroke_weights(gps);
