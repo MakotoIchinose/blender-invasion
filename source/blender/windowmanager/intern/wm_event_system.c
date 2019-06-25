@@ -421,24 +421,6 @@ void wm_event_do_notifiers(bContext *C)
 
     ViewLayer *view_layer = CTX_data_view_layer(C);
 
-    /* This may need to be moved - A selection has occured */
-    if (G_MAIN->is_sync_select_dirty) {
-      /* Mark all outliners as dirty */
-      Main *bmain = CTX_data_main(C);
-      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
-            if (space->spacetype == SPACE_OUTLINER) {
-              SpaceOutliner *soutliner = (SpaceOutliner *)space;
-              /* Mark selection state as dirty */
-              soutliner->flag |= SO_IS_DIRTY;
-            }
-          }
-        }
-      }
-      G_MAIN->is_sync_select_dirty = false;
-    }
-
     for (note = wm->queue.first; note; note = next) {
       next = note->next;
 

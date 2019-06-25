@@ -261,7 +261,7 @@ void outliner_object_mode_toggle(struct bContext *C,
                                  ViewLayer *view_layer,
                                  Base *base);
 
-void do_outliner_selection_sync(const struct bContext *C, bool to_view_layer);
+void outliners_mark_dirty(const struct bContext *C, struct SpaceOutliner *soops);
 
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_cb)(struct bContext *C,

@@ -41,6 +41,7 @@
 #include "BKE_armature.h"
 #include "BKE_collection.h"
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -71,6 +72,15 @@
 #include "RNA_define.h"
 
 #include "outliner_intern.h"
+
+/* Set clean outliner and mark other outliners for syncing */
+static void outliner_select_sync(const bContext *C, SpaceOutliner *soops)
+{
+  puts("Outliner select... Mark other outliners as dirty for syncing");
+  G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
+  G_MAIN->clean_outliner = soops;
+  outliners_mark_dirty(C, soops);
+}
 
 /* Get base of object under cursor (for eyedropper) */
 Base *ED_outliner_give_base_under_cursor(struct bContext *C, const int mval[2])
@@ -1335,81 +1345,6 @@ void outliner_item_do_activate_from_tree_element(
       C, scene, view_layer, soops, te, tselem, extend, recursive);
 }
 
-static void do_outliner_selection_sync_recursive(SpaceOutliner *soops,
-                                                 ViewLayer *view_layer,
-                                                 ListBase *tree,
-                                                 bool to_view_layer)
-{
-  TreeElement *te;
-
-  for (te = tree->first; te; te = te->next) {
-    if (te->idcode == ID_OB) {
-      TreeStoreElem *tselem = TREESTORE(te);
-      Object *ob = (Object *)tselem->id;
-
-      Base *base = (te->directdata) ? (Base *)te->directdata :
-                                      BKE_view_layer_base_find(view_layer, ob);
-
-      if (to_view_layer) {
-        const bool is_selected = (tselem->flag & TSE_SELECTED) != 0;
-
-        if (is_selected) {
-          base->flag |= BASE_SELECTED;
-        }
-        else {
-          base->flag &= ~BASE_SELECTED;
-        }
-      }
-      else {
-        const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
-
-        if (is_selected) {
-          tselem->flag |= TSE_SELECTED;
-        }
-      }
-    }
-
-    if (&te->subtree) {
-      do_outliner_selection_sync_recursive(soops, view_layer, &te->subtree, to_view_layer);
-    }
-  }
-}
-
-void do_outliner_selection_sync(const bContext *C, bool to_view_layer)
-{
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  SpaceOutliner *soops = CTX_wm_space_outliner(C);
-
-  if (!to_view_layer) {
-    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
-  }
-  do_outliner_selection_sync_recursive(soops, view_layer, &soops->tree, to_view_layer);
-
-  if (to_view_layer) {
-    /* Mark other outliners as dirty */
-    if (to_view_layer) {
-      Main *bmain = CTX_data_main(C);
-      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
-            if (space->spacetype == SPACE_OUTLINER) {
-              SpaceOutliner *soutliner = (SpaceOutliner *)space;
-
-              /* Mark selection state as dirty */
-              soutliner->flag |= SO_IS_DIRTY;
-            }
-          }
-        }
-      }
-    }
-
-    /* Redraw 3D view */
-    DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
-  }
-}
-
 /**
  * Action to run when clicking in the outliner,
  *
@@ -1423,6 +1358,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
                                                  const bool deselect_all)
 {
   ARegion *ar = CTX_wm_region(C);
+  Scene *scene = CTX_data_scene(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   TreeElement *te;
   float view_mval[2];
@@ -1437,6 +1373,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
     if (deselect_all) {
       outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+      WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
       changed = true;
     }
   }
@@ -1448,7 +1385,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     rebuild_tree = true;
   }
   else {
-    Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = CTX_data_view_layer(C);
     /* the row may also contain children, if one is hovered we want this instead of current te */
     TreeElement *activate_te = outliner_find_item_at_x_in_row(soops, te, view_mval[0]);
@@ -1475,9 +1411,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     }
     ED_undo_push(C, "Outliner selection change");
 
-    /* Sync selection */
     if (soops->flag & SO_SYNC_SELECTION) {
-      do_outliner_selection_sync(C, true);
+      outliner_select_sync(C, soops);
     }
   }
 
@@ -1568,9 +1503,8 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   ED_region_tag_redraw(ar);
 
-  /* Sync selection */
   if (soops->flag & SO_SYNC_SELECTION) {
-    do_outliner_selection_sync(C, true);
+    outliner_select_sync(C, soops);
   }
 
   return OPERATOR_FINISHED;

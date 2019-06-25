@@ -119,7 +119,7 @@ void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
   }
 
   /* Using globals to sync selection for now */
-  G_MAIN->is_sync_select_dirty = true;
+  G_MAIN->sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 }
 
 /**

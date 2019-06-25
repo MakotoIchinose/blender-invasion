@@ -45,6 +45,7 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
+#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_idcode.h"
 #include "BKE_layer.h"
@@ -3538,6 +3539,107 @@ static void outliner_update_viewable_area(ARegion *ar,
   UI_view2d_totRect_set(&ar->v2d, sizex, sizey);
 }
 
+void outliners_mark_dirty(const bContext *C, SpaceOutliner *soops)
+{
+  Main *bmain = CTX_data_main(C);
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+      for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+        if (space->spacetype == SPACE_OUTLINER) {
+          SpaceOutliner *soutliner = (SpaceOutliner *)space;
+
+          /* Mark selection state as dirty */
+          if (soutliner != soops) {
+            soutliner->flag |= SO_IS_DIRTY;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Sync selection flags with other outliner */
+static void outliner_sync_selection_with_outliner(SpaceOutliner *soops, ListBase *tree)
+{
+  for (TreeElement *te = tree->first; te; te = te->next) {
+    TreeStoreElem *tselem = TREESTORE(te);
+
+    TreeElement *ten = outliner_find_id(soops, &soops->tree, tselem->id);
+    if (ten) {
+      TreeStoreElem *this_tselem = TREESTORE(ten);
+      /* If is selected in other outliner */
+      if (tselem->flag & TSE_SELECTED) {
+
+        this_tselem->flag |= TSE_SELECTED;
+      }
+      else {
+        this_tselem->flag &= ~TSE_SELECTED;
+      }
+    }
+
+    outliner_sync_selection_with_outliner(soops, &te->subtree);
+  }
+}
+
+/* Sync selection flags from active view layer */
+static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListBase *tree)
+{
+  for (TreeElement *te = tree->first; te; te = te->next) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0) {
+      if (te->idcode == ID_OB) {
+        Object *ob = (Object *)tselem->id;
+        Base *base = (te->directdata) ? (Base *)te->directdata :
+                                        BKE_view_layer_base_find(view_layer, ob);
+        const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
+
+        if (G_MAIN->sync_select_dirty_flag == SYNC_SELECT_EXTEND) {
+          puts("extend mode");
+        }
+
+        if (base && G_MAIN->sync_select_dirty_flag != SYNC_SELECT_EXTEND) {
+          if (is_selected) {
+            tselem->flag |= TSE_SELECTED;
+          }
+          else if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_EXTEND) {
+            tselem->flag &= ~TSE_SELECTED;
+          }
+        }
+      }
+    }
+
+    outliner_sync_selection_from_view_layer(view_layer, &te->subtree);
+  }
+}
+
+static void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
+{
+  /* Sync from clean outliner */
+  if (soops->flag & SO_IS_DIRTY) {
+    puts("\tSyncing from clean outliner");
+    if (G_MAIN->clean_outliner) {
+      outliner_sync_selection_with_outliner(soops, &G_MAIN->clean_outliner->tree);
+    }
+
+    soops->flag &= ~SO_IS_DIRTY;
+  }
+  /* Sync from view layer */
+  else if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_NONE) {
+    printf("View3D select... Syncing from view layer... ");
+
+    ViewLayer *view_layer = CTX_data_view_layer(C);
+
+    outliner_sync_selection_from_view_layer(view_layer, &soops->tree);
+
+    /* Mark other outliners as dirty */
+    outliners_mark_dirty(C, soops);
+
+    G_MAIN->clean_outliner = soops;
+    G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
+    printf("set clean outliner\n");
+  }
+}
+
 /* ****************************************************** */
 /* Main Entrypoint - Draw contents of Outliner editor */
 
@@ -3554,10 +3656,9 @@ void draw_outliner(const bContext *C)
 
   outliner_build_tree(mainvar, scene, view_layer, soops, ar);  // always
 
-  /* Get selection state from view layer if dirty */
-  if ((soops->flag & SO_IS_DIRTY) && (soops->flag & SO_SYNC_SELECTION)) {
-    do_outliner_selection_sync(C, false);
-    soops->flag &= ~SO_IS_DIRTY;
+  /* Sync selection state from view layer or clean outliner if needed */
+  if (soops->flag & SO_SYNC_SELECTION) {
+    outliner_sync_selection(C, soops);
   }
 
   /* force display to pixel coords */
