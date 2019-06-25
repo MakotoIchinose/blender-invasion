@@ -104,9 +104,9 @@ typedef struct LANPR_SharedResource {
   int init_complete;
 
   SpinLock render_flag_lock;
-  int during_render;  /*  get/set using access funcion which uses render_flag_lock to lock. */
-                      /*  this prevents duplicate too much resource. (no render preview in viewport */
-                      /*  while rendering) */
+  int during_render; /*  get/set using access funcion which uses render_flag_lock to lock. */
+  /*  this prevents duplicate too much resource. (no render preview in viewport */
+  /*  while rendering) */
 
 } LANPR_SharedResource;
 
@@ -191,11 +191,11 @@ typedef struct LANPR_PrivateData {
   float zfar;
   float znear;
 
-  int stage;  /*  thinning */
+  int stage; /*  thinning */
 
   float *line_result;
   unsigned char *line_result_8bit;
-  int width, height;  /*  if not match recreate buffer. */
+  int width, height; /*  if not match recreate buffer. */
   void **sample_table;
 
   ListBase pending_samples;
@@ -289,7 +289,7 @@ typedef struct LANPR_RenderTaskInfo {
 typedef struct LANPR_RenderBuffer {
   struct LANPR_RenderBuffer *prev, *next;
 
-  int is_copied;  /*  for render. */
+  int is_copied; /*  for render. */
 
   int w, h;
   int tile_size_w, tile_size_h;
@@ -394,7 +394,7 @@ typedef struct LANPR_BoundingArea {
   real l, r, u, b;
   real cx, cy;
 
-  struct LANPR_BoundingArea *child;  /*  1,2,3,4 quadrant */
+  struct LANPR_BoundingArea *child; /*  1,2,3,4 quadrant */
 
   ListBase lp;
   ListBase rp;
@@ -405,7 +405,7 @@ typedef struct LANPR_BoundingArea {
   ListBase linked_triangles;
   ListBase linked_lines;
 
-  ListBase linked_chains;  /*  reserved for image space reduction && multithread chainning */
+  ListBase linked_chains; /*  reserved for image space reduction && multithread chainning */
 } LANPR_BoundingArea;
 
 #define TNS_COMMAND_LINE 0
@@ -503,7 +503,7 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
   double x;
   double y;
   double Ratio;
-  double xDiff = (a2[0] - a1[0]);  /*  +DBL_EPSILON; */
+  double xDiff = (a2[0] - a1[0]); /*  +DBL_EPSILON; */
   double xDiff2 = (b2[0] - b1[0]);
 
   if (xDiff == 0) {

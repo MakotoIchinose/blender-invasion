@@ -74,7 +74,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 }
 static bool dependsOnTime(ModifierData *UNUSED(md))
 {
-  return true;  /*  ?? */
+  return true; /*  ?? */
 }
 static void requiredDataMask(Object *UNUSED(ob),
                              ModifierData *md,
@@ -95,9 +95,10 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
   walk(userData, ob, &flmd->target, IDWALK_NOP);
 }
 
-static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams){
+static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams)
+{
   FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-  if(!flmd->target)
+  if (!flmd->target)
     return true;
   return false;
 }

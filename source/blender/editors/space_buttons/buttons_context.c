@@ -164,7 +164,7 @@ static int buttons_context_path_world(ButsContextPath *path)
   return 0;
 }
 
-static int buttons_context_path_collection(ButsContextPath *path, wmWindow* window)
+static int buttons_context_path_collection(ButsContextPath *path, wmWindow *window)
 {
   Scene *scene;
   World *world;
@@ -177,7 +177,7 @@ static int buttons_context_path_collection(ButsContextPath *path, wmWindow* wind
   /* if we have a view layer, use the view layer's active collection */
   else if (buttons_context_path_view_layer(path, window)) {
     ViewLayer *view_layer = path->ptr[path->len - 1].data;
-    Collection* c = view_layer->active_collection->collection;
+    Collection *c = view_layer->active_collection->collection;
     if (c) {
       RNA_id_pointer_create(&c->id, &path->ptr[path->len]);
       path->len++;

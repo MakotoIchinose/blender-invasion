@@ -54,12 +54,12 @@ typedef struct LANPR_StaticMemPool {
   SpinLock cs_mem;
 } LANPR_StaticMemPool;
 
-#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID")  /*  nutCalloc(sizeof(Type),1) */
+#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID") /*  nutCalloc(sizeof(Type),1) */
 
 #define CreateNew_Size(size) nutCalloc(size, 1)
 
 #define CreateNewBuffer(Type, Num) \
-  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER")  /*  nutCalloc(sizeof(Type),Num); */
+  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER") /*  nutCalloc(sizeof(Type),Num); */
 
 void list_handle_empty(ListBase *h);
 

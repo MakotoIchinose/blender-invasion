@@ -177,7 +177,7 @@ int lanpr_feed_atlas_data_obj(void *vedata,
     if (CanFindFreestyle) {
       fe = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
       if (fe->flag & FREESTYLE_EDGE_MARK)
-        AtlasEdgeMask[idx + 1] = 1;  /*  channel G */
+        AtlasEdgeMask[idx + 1] = 1; /*  channel G */
     }
 
     if (f1) {
@@ -193,14 +193,14 @@ int lanpr_feed_atlas_data_obj(void *vedata,
       AtlasFaceNormalL[idx + 3] = 0;
     }
 
-    if (f2 && f2 != f1) {  /*  this is for edge condition */
+    if (f2 && f2 != f1) { /*  this is for edge condition */
       AtlasFaceNormalR[idx + 0] = f2->no[0];
       AtlasFaceNormalR[idx + 1] = f2->no[1];
       AtlasFaceNormalR[idx + 2] = f2->no[2];
       AtlasFaceNormalR[idx + 3] = 1;
 
       if (f2->mat_nr != f1->mat_nr)
-        AtlasEdgeMask[idx] = 1;  /*  channel r */
+        AtlasEdgeMask[idx] = 1; /*  channel r */
     }
     else {
       AtlasFaceNormalR[idx + 0] = 0;
@@ -241,7 +241,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
     rl = lip->data;
 
     idx = (begin_index + i) * 4;
-    AtlasEdgeMask[idx + 2] = 1;  /*  channel B */
+    AtlasEdgeMask[idx + 2] = 1; /*  channel B */
 
     AtlasPointsL[idx + 0] = rl->l->gloc[0];
     AtlasPointsL[idx + 1] = rl->l->gloc[1];

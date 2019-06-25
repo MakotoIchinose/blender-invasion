@@ -232,19 +232,19 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "normal_clamp",
                               &stl->g_data->normal_clamp,
-                              1);  /*  normal clamp */
+                              1); /*  normal clamp */
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "normal_strength",
                               &stl->g_data->normal_strength,
-                              1);  /*  normal strength */
+                              1); /*  normal strength */
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "depth_clamp",
                               &stl->g_data->depth_clamp,
-                              1);  /*  depth clamp */
+                              1); /*  depth clamp */
     DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
                               "depth_strength",
                               &stl->g_data->depth_strength,
-                              1);  /*  depth strength */
+                              1); /*  depth strength */
     DRW_shgroup_call(stl->g_data->edge_detect_shgrp, quad, NULL);
 
     psl->edge_thinning = DRW_pass_create("Edge Thinning Stage 1", DRW_STATE_WRITE_COLOR);
@@ -306,22 +306,35 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "face_normal0_tex", &txl->dpix_in_nl);
     DRW_shgroup_uniform_texture_ref(stl->g_data->dpix_preview_shgrp,
                                     "face_normal1_tex",
-                                    &txl->dpix_in_nr);  /*  these are for normal shading */
+                                    &txl->dpix_in_nr); /*  these are for normal shading */
     DRW_shgroup_uniform_texture_ref(
         stl->g_data->dpix_preview_shgrp, "edge_mask_tex", &txl->dpix_in_edge_mask);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "viewport", stl->g_data->dpix_viewport, 1);
-    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "color", ll->use_same_style?ll->color:ll->contour_color, 1);
-    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "crease_color", ll->use_same_style?ll->color:ll->crease_color, 1);
-    DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "material_color", ll->use_same_style?ll->color:ll->material_color, 1);
-    DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "edge_mark_color", ll->use_same_style?ll->color:ll->edge_mark_color, 1);
-    DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "intersection_color", ll->use_same_style?ll->color:ll->intersection_color, 1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
+                             "color",
+                             ll->use_same_style ? ll->color : ll->contour_color,
+                             1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
+                             "crease_color",
+                             ll->use_same_style ? ll->color : ll->crease_color,
+                             1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
+                             "material_color",
+                             ll->use_same_style ? ll->color : ll->material_color,
+                             1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
+                             "edge_mark_color",
+                             ll->use_same_style ? ll->color : ll->edge_mark_color,
+                             1);
+    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
+                             "intersection_color",
+                             ll->use_same_style ? ll->color : ll->intersection_color,
+                             1);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "background_color", lanpr->background_color, 1);
-    /*  DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "line_color", ll->line_color, 1); */
+    /*  DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "line_color", ll->line_color, 1);
+     */
     /*  //we have color */
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "depth_offset", &stl->g_data->dpix_depth_offset, 1);
@@ -337,18 +350,26 @@ static void lanpr_cache_init(void *vedata)
                               1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "depth_alpha_curve", &lanpr->depth_alpha_curve, 1);
-    static float unit_thickness=1.0f;
-    DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness", ll->use_same_style?&ll->thickness:&ll->thickness_contour, 1);
-    DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness_crease", ll->use_same_style?&unit_thickness:&ll->thickness_crease, 1);
-    DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness_material", ll->use_same_style?&unit_thickness:&ll->thickness_material, 1);
-    DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "line_thickness_edge_mark", ll->use_same_style?&unit_thickness:&ll->thickness_edge_mark, 1);
+    static float unit_thickness = 1.0f;
+    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
+                              "line_thickness",
+                              ll->use_same_style ? &ll->thickness : &ll->thickness_contour,
+                              1);
+    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
+                              "line_thickness_crease",
+                              ll->use_same_style ? &unit_thickness : &ll->thickness_crease,
+                              1);
+    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
+                              "line_thickness_material",
+                              ll->use_same_style ? &unit_thickness : &ll->thickness_material,
+                              1);
+    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
+                              "line_thickness_edge_mark",
+                              ll->use_same_style ? &unit_thickness : &ll->thickness_edge_mark,
+                              1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_intersection",
-                              ll->use_same_style?&unit_thickness:&ll->thickness_intersection,
+                              ll->use_same_style ? &unit_thickness : &ll->thickness_intersection,
                               1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "z_near", &stl->g_data->dpix_znear, 1);
@@ -379,7 +400,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_pr = MEM_callocN(fsize, "atlas_point_r");
       pd->atlas_nl = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_nr = MEM_callocN(fsize, "atlas_normal_l");
-      pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask");  /*  should always be float */
+      pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
 
       pd->dpix_batch_list.first = pd->dpix_batch_list.last = 0;
       BLI_mempool_clear(lanpr_share.mp_batch_list);
@@ -660,7 +681,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
                                  GPU_ATTACHMENT_LEAVE});
 
   lanpr_engine_init(vedata);
-  lanpr->reloaded = 1;  /*  force dpix batch to re-create */
+  lanpr->reloaded = 1; /*  force dpix batch to re-create */
   lanpr_cache_init(vedata);
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, LANPR_render_cache);
   lanpr_cache_finish(vedata);
@@ -709,7 +730,7 @@ static void lanpr_view_update(void *vedata)
   /*  our update flag is in SceneLANPR. */
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr;
-  lanpr->reloaded = 1;  /*  very bad solution, this will slow down animation. */
+  lanpr->reloaded = 1; /*  very bad solution, this will slow down animation. */
 }
 
 /*  static void lanpr_id_update(void *vedata, ID *id){ */
@@ -738,17 +759,18 @@ DrawEngineType draw_engine_lanpr_type = {
     NULL,
     NULL,
     N_("LANPR"),
-    &lanpr_data_size,  /*  why should we have the "&" ? */
+    &lanpr_data_size, /*  why should we have the "&" ? */
     &lanpr_engine_init,
     &lanpr_engine_free,
     &lanpr_cache_init,
     &lanpr_cache_populate,
     &lanpr_cache_finish,
-    NULL,               /*  draw background */
-    &lanpr_draw_scene,  /*  draw scene, looks like that not much difference except a camera overlay */
-                        /*  image. */
+    NULL,              /*  draw background */
+    &lanpr_draw_scene, /*  draw scene, looks like that not much difference except a camera overlay
+                        */
+                       /*  image. */
     &lanpr_view_update,
-    &lanpr_id_update,  /* &lanpr_id_update, wait till I figure out how to do this. */
+    &lanpr_id_update, /* &lanpr_id_update, wait till I figure out how to do this. */
     &lanpr_render_to_image,
 };
 
@@ -758,12 +780,12 @@ RenderEngineType DRW_engine_viewport_lanpr_type = {
     LANPR_ENGINE,
     N_("LANPR"),
     RE_INTERNAL,
-    NULL,                  /*  update */
-    &DRW_render_to_image,  /*  render to img */
-    NULL,                  /*  bake */
-    NULL,  /*  doesn't seem to be what I thought it was... &lanpr_view_update,// view update */
-    NULL,  /*  render to view */
-    NULL,  /*  update in script */
-    NULL,  /*  update in render pass */
+    NULL,                 /*  update */
+    &DRW_render_to_image, /*  render to img */
+    NULL,                 /*  bake */
+    NULL, /*  doesn't seem to be what I thought it was... &lanpr_view_update,// view update */
+    NULL, /*  render to view */
+    NULL, /*  update in script */
+    NULL, /*  update in render pass */
     &draw_engine_lanpr_type,
     {NULL, NULL, NULL}};

@@ -1555,8 +1555,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   i = 0;
   float pressure, strength, *weights = NULL;
   if (new_dv)
-    weights = MEM_callocN(sizeof(float) * count,
-                          "gp_stroke_point_weights_sampled");
+    weights = MEM_callocN(sizeof(float) * count, "gp_stroke_point_weights_sampled");
 
   // 1st point is always at the start
   pt1 = &gps->points[0];
@@ -1592,12 +1591,12 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     */
     i++;
     if (next_point_index == 0)
-      break;  /* last point finished */ 
+      break; /* last point finished */
   }
 
   gps->points = new_pt;
   gps->totpoints = i;
-  MEM_freeN(pt);  /* original */ 
+  MEM_freeN(pt); /* original */
 
   if (new_dv) {
     BKE_gpencil_free_stroke_weights(gps);

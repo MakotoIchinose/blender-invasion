@@ -214,7 +214,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
     rlc = lanpr_create_render_line_chain(rb);
 
-    rlc->object_ref = rl->object_ref;  /*  can only be the same object in a chain. */
+    rlc->object_ref = rl->object_ref; /*  can only be the same object in a chain. */
 
     int r1, r2, c1, c2, row, col;
     LANPR_RenderLine *new_rl = rl;
@@ -346,7 +346,8 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     ba = lanpr_get_point_bounding_area(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
     new_rv = rl->r;
     /*  below already done in step 2 */
-    /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0); */
+    /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
+     */
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
@@ -429,10 +430,14 @@ LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_RenderBuffer *
   /*   LANPR_BoundingArea* ch = root->child; */
   /*   #define IN_BOUND(ba,rlci)\ */
   /*     ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1] */
-  /*   if     (IN_BOUND(ch[0],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci); */
-  /*   else if(IN_BOUND(ch[1],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci); */
-  /*   else if(IN_BOUND(ch[2],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci); */
-  /*   else if(IN_BOUND(ch[3],rlci)) return lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci); */
+  /*   if     (IN_BOUND(ch[0],rlci)) return
+   * lanpr_get_point_bounding_area_recursive(rb,&ch[0],rlci); */
+  /*   else if(IN_BOUND(ch[1],rlci)) return
+   * lanpr_get_point_bounding_area_recursive(rb,&ch[1],rlci); */
+  /*   else if(IN_BOUND(ch[2],rlci)) return
+   * lanpr_get_point_bounding_area_recursive(rb,&ch[2],rlci); */
+  /*   else if(IN_BOUND(ch[3],rlci)) return
+   * lanpr_get_point_bounding_area_recursive(rb,&ch[3],rlci); */
   /*   #undef IN_BOUND */
   /* } */
   /*  return NULL; */
@@ -447,7 +452,8 @@ LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
 }
 /*  if reduction threshold is even larger than a small bounding area, */
 /*  then 1) geometry is simply too dense. */
-/*       2) probably need to add it to root bounding area which has larger surface area then it will */
+/*       2) probably need to add it to root bounding area which has larger surface area then it
+ * will */
 /*       cover typical threshold values. */
 void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb,
                                                    LANPR_BoundingArea *root,
@@ -467,10 +473,12 @@ void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb,
   /*     ba.l<=rlci->pos[0] && ba.r>=rlci->pos[0] && ba.b<=rlci->pos[1] && ba.u>=rlci->pos[1] */
   /*   if     (IN_BOUND(ch[0],rlci)) */
   /*   lanpr_link_point_with_bounding_area_recursive(rb,&ch[0],rlc,rlci); else */
-  /*   if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci); */
+  /*   if(IN_BOUND(ch[1],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[1],rlc,rlci);
+   */
   /*   else if(IN_BOUND(ch[2],rlci)) */
   /*   lanpr_link_point_with_bounding_area_recursive(rb,&ch[2],rlc,rlci); else */
-  /*   if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci); */
+  /*   if(IN_BOUND(ch[3],rlci)) lanpr_link_point_with_bounding_area_recursive(rb,&ch[3],rlc,rlci);
+   */
   /*   #undef IN_BOUND */
   /* } */
 }
@@ -545,16 +553,16 @@ void lanpr_connect_two_chains(LANPR_RenderBuffer *rb,
                               int reverse_1,
                               int reverse_2)
 {
-  if (!reverse_1) {   /*  L--R L-R */
-    if (reverse_2) {  /*  L--R R-L */
+  if (!reverse_1) {  /*  L--R L-R */
+    if (reverse_2) { /*  L--R R-L */
       BLI_listbase_reverse(&sub->chain);
     }
     ((LANPR_RenderLineChainItem *)onto->chain.last)->item.next = sub->chain.first;
     ((LANPR_RenderLineChainItem *)sub->chain.first)->item.prev = onto->chain.last;
     onto->chain.last = sub->chain.last;
   }
-  else {               /*  L-R L--R */
-    if (!reverse_2) {  /*  R-L L--R */
+  else {              /*  L-R L--R */
+    if (!reverse_2) { /*  R-L L--R */
       BLI_listbase_reverse(&sub->chain);
     }
     ((LANPR_RenderLineChainItem *)sub->chain.last)->item.next = onto->chain.first;
@@ -761,7 +769,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
     vert_count += count;
   }
 
-  GPU_vertbuf_data_alloc(vbo, vert_count + 1);  /*  serve as end point's adj. */
+  GPU_vertbuf_data_alloc(vbo, vert_count + 1); /*  serve as end point's adj. */
 
   lengths = MEM_callocN(sizeof(float) * vert_count, "chain lengths");
 
