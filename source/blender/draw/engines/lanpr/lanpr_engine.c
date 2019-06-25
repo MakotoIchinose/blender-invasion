@@ -60,8 +60,9 @@ static void lanpr_engine_init(void *ved)
   SceneLANPR *lanpr = &scene->lanpr;
   View3D *v3d = draw_ctx->v3d;
 
-  if (!lanpr_share.init_complete)
+  if (!lanpr_share.init_complete) {
     BLI_spin_init(&lanpr_share.render_flag_lock);
+  }
 
   /* SNAKE */
 
@@ -420,12 +421,15 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
   View3D *v3d = draw_ctx->v3d;
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
 
-  if (!DRW_object_is_renderable(ob))
+  if (!DRW_object_is_renderable(ob)) {
     return;
-  if (ob == draw_ctx->object_edit)
+  }
+  if (ob == draw_ctx->object_edit) {
     return;
-  if (ob->type != OB_MESH)
+  }
+  if (ob->type != OB_MESH) {
     return;
+  }
 
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
@@ -649,8 +653,9 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
-    if (!lanpr_share.render_buffer_shared)
+    if (!lanpr_share.render_buffer_shared) {
       lanpr_create_render_buffer();
+    }
     if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra ||
         LANPR_GLOBAL_update_tag) {
       lanpr_compute_feature_lines_internal(draw_ctx->depsgraph);

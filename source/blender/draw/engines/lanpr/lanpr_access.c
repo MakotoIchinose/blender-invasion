@@ -54,8 +54,9 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     printf("NULL LANPR rb!\n");
     return;
   }
-  if (scene->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE)
+  if (scene->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE) {
     return;
+  }
 
   int color_idx = 0;
   int tot_points = 0;
@@ -73,14 +74,15 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
   LANPR_RenderLineChainItem *rlci;
   for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
 
-    if (!rlc->object_ref)
+    if (!rlc->object_ref) {
       continue; /*  XXX: intersection lines are lost */
-
-    if (rlc->level > qi_end || rlc->level < qi_begin)
+    }
+    if (rlc->level > qi_end || rlc->level < qi_begin) {
       continue;
-
-    if (ob && &ob->id != rlc->object_ref->id.orig_id)
+    }
+    if (ob && &ob->id != rlc->object_ref->id.orig_id) {
       continue;
+    }
 
     int array_idx = 0;
     int count = lanpr_count_chain(rlc);
@@ -107,8 +109,9 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
-  if (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE)
+  if (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE) {
     return;
+  }
   if (!lanpr_share.render_buffer_shared ||
       lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra) {
     lanpr_compute_feature_lines_internal(depsgraph);

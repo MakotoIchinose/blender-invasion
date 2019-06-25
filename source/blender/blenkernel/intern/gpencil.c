@@ -1457,8 +1457,9 @@ static int stroke_march_next_point(bGPDstroke *gps,
   float point[3];
   bGPDspoint *pt = NULL;
 
-  if (!(next_point_index < gps->totpoints))
+  if (!(next_point_index < gps->totpoints)) {
     return -1;
+  }
 
   copy_v3_v3(step_start, current);
   pt = &gps->points[next_point_index];
@@ -1523,8 +1524,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   bGPDspoint *pt2 = NULL;
   int i;
 
-  if (gps->totpoints < 2 || dist < FLT_EPSILON)
+  if (gps->totpoints < 2 || dist < FLT_EPSILON) {
     return false;
+  }
 
   for (i = 0; i < gps->totpoints; i++) {
     pt[i].flag &= ~GP_SPOINT_TAG_FEATURE;  // feature point preservation not implemented yet
@@ -1554,8 +1556,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   int next_point_index = 1;
   i = 0;
   float pressure, strength, *weights = NULL;
-  if (new_dv)
+  if (new_dv) {
     weights = MEM_callocN(sizeof(float) * count, "gp_stroke_point_weights_sampled");
+  }
 
   // 1st point is always at the start
   pt1 = &gps->points[0];
@@ -1590,8 +1593,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     }
     */
     i++;
-    if (next_point_index == 0)
+    if (next_point_index == 0) {
       break; /* last point finished */
+    }
   }
 
   gps->points = new_pt;
@@ -1619,8 +1623,9 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
 {
   bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
 
-  if (gps->totpoints < 2 || dist < FLT_EPSILON)
+  if (gps->totpoints < 2 || dist < FLT_EPSILON) {
     return false;
+  }
 
   last_pt = &pt[gps->totpoints - 1];
   ;

@@ -114,13 +114,16 @@ int lanpr_feed_atlas_data_obj(void *vedata,
 {
   LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
 
-  if (!DRW_object_is_renderable(ob))
+  if (!DRW_object_is_renderable(ob)) {
     return begin_index;
+  }
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  if (ob == draw_ctx->object_edit)
+  if (ob == draw_ctx->object_edit) {
     return begin_index;
-  if (ob->type != OB_MESH)
+  }
+  if (ob->type != OB_MESH) {
     return begin_index;
+  }
 
   Mesh *me = ob->data;
   BMesh *bm;
@@ -157,10 +160,12 @@ int lanpr_feed_atlas_data_obj(void *vedata,
     v2 = e->v2;
     l1 = e->l;
     l2 = e->l ? e->l->radial_next : 0;
-    if (l1)
+    if (l1) {
       f1 = l1->f;
-    if (l2)
+    }
+    if (l2) {
       f2 = l2->f;
+    }
 
     idx = (begin_index + i) * 4;
 
@@ -176,8 +181,9 @@ int lanpr_feed_atlas_data_obj(void *vedata,
 
     if (CanFindFreestyle) {
       fe = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
-      if (fe->flag & FREESTYLE_EDGE_MARK)
+      if (fe->flag & FREESTYLE_EDGE_MARK) {
         AtlasEdgeMask[idx + 1] = 1; /*  channel G */
+      }
     }
 
     if (f1) {
@@ -199,8 +205,9 @@ int lanpr_feed_atlas_data_obj(void *vedata,
       AtlasFaceNormalR[idx + 2] = f2->no[2];
       AtlasFaceNormalR[idx + 3] = 1;
 
-      if (f2->mat_nr != f1->mat_nr)
+      if (f2->mat_nr != f1->mat_nr) {
         AtlasEdgeMask[idx] = 1; /*  channel r */
+      }
     }
     else {
       AtlasFaceNormalR[idx + 0] = 0;
@@ -234,8 +241,9 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
 
   i = 0;
 
-  if (!rb)
+  if (!rb) {
     return 0;
+  }
 
   for (lip = rb->intersection_lines.first; lip; lip = lip->next) {
     rl = lip->data;
@@ -288,8 +296,9 @@ int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_ind
   LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
   LANPR_PrivateData *pd = stl->g_data;
   Mesh *me = ob->data;
-  if (ob->type != OB_MESH)
+  if (ob->type != OB_MESH) {
     return begin_index;
+  }
   int edge_count = me->totedge;
   int i;
   float co[2];
@@ -346,15 +355,18 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
   float co[2];
   int i;
 
-  if (!rb)
+  if (!rb) {
     return;
+  }
 
-  if (rb->DPIXIntersectionBatch)
+  if (rb->DPIXIntersectionBatch) {
     GPU_batch_discard(rb->DPIXIntersectionBatch);
+  }
   rb->DPIXIntersectionBatch = 0;
 
-  if (!rb->intersection_count)
+  if (!rb->intersection_count) {
     return;
+  }
 
   static GPUVertFormat format = {0};
   static struct {
@@ -402,9 +414,9 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   uint clear_stencil = 0xFF;
   int is_persp = 1;
 
-  if (!lanpr->active_layer)
+  if (!lanpr->active_layer) {
     return; /* return early in case we don't have line layers. DPIX only use the first layer. */
-
+  }
   int texw = GPU_texture_width(txl->edge_intermediate),
       texh = GPU_texture_height(txl->edge_intermediate);
   ;
@@ -421,12 +433,13 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   }
   if (!camera) {
     camera = scene->camera;
-    if (!v3d)
+    if (!v3d) {
       is_persp = ((Camera *)camera->data)->type == CAM_PERSP ? 1 : 0;
+    }
   }
-  if (is_render && !camera)
+  if (is_render && !camera) {
     return;
-
+  }
   /*  XXX: should implement view angle functions for ortho camera. */
 
   pd->dpix_viewport[2] = texw;

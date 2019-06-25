@@ -27,15 +27,19 @@ void *lst_get_top(ListBase *Handle)
 
 int list_remove_segment(ListBase *Handle, Link *Begin, Link *End)
 {
-  if (!Begin->prev)
+  if (!Begin->prev) {
     Handle->first = End->next;
-  else
+  }
+  else {
     ((Link *)Begin->prev)->next = End->next;
+  }
 
-  if (!End->next)
+  if (!End->next) {
     Handle->last = Begin->prev;
-  else
+  }
+  else {
     ((Link *)End->next)->prev = Begin->prev;
+  }
 
   End->next = Begin->prev = 0;
 
@@ -81,8 +85,9 @@ void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot)
 void *list_append_pointer_only(ListBase *h, void *data)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = CreateNew(LinkData);
   lip->data = data;
   BLI_addtail(h, lip);
@@ -91,8 +96,9 @@ void *list_append_pointer_only(ListBase *h, void *data)
 void *list_append_pointer_sized_only(ListBase *h, void *data, int size)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = calloc(1, size);
   lip->data = data;
   BLI_addtail(h, lip);
@@ -101,8 +107,9 @@ void *list_append_pointer_sized_only(ListBase *h, void *data, int size)
 void *list_push_pointer_only(ListBase *h, void *data)
 {
   LinkData *lip = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = CreateNew(LinkData);
   lip->data = data;
   BLI_addhead(h, lip);
@@ -111,8 +118,9 @@ void *list_push_pointer_only(ListBase *h, void *data)
 void *list_push_pointer_sized_only(ListBase *h, void *data, int size)
 {
   LinkData *lip = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = calloc(1, size);
   lip->data = data;
   BLI_addhead(h, lip);
@@ -122,8 +130,9 @@ void *list_push_pointer_sized_only(ListBase *h, void *data, int size)
 void *list_append_pointer(ListBase *h, void *data)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = MEM_callocN(sizeof(LinkData), "LinkNode");
   lip->data = data;
   BLI_addtail(h, lip);
@@ -132,8 +141,9 @@ void *list_append_pointer(ListBase *h, void *data)
 void *list_append_pointer_sized(ListBase *h, void *data, int size)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = MEM_callocN(size, "LinkNode");
   lip->data = data;
   BLI_addtail(h, lip);
@@ -142,8 +152,9 @@ void *list_append_pointer_sized(ListBase *h, void *data, int size)
 void *list_push_pointer(ListBase *h, void *data)
 {
   LinkData *lip = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = MEM_callocN(sizeof(LinkData), "LinkNode");
   lip->data = data;
   BLI_addhead(h, lip);
@@ -152,8 +163,9 @@ void *list_push_pointer(ListBase *h, void *data)
 void *list_push_pointer_sized(ListBase *h, void *data, int size)
 {
   LinkData *lip = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = MEM_callocN(size, "LinkNodeSized");
   lip->data = data;
   BLI_addhead(h, lip);
@@ -163,8 +175,9 @@ void *list_push_pointer_sized(ListBase *h, void *data, int size)
 void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = mem_static_aquire(smp, sizeof(LinkData));
   lip->data = data;
   BLI_addtail(h, lip);
@@ -173,8 +186,9 @@ void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *da
 void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = mem_static_aquire(smp, size);
   lip->data = data;
   BLI_addtail(h, lip);
@@ -183,8 +197,9 @@ void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, vo
 void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
 {
   LinkData *lip = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = mem_static_aquire(smp, sizeof(LinkData));
   lip->data = data;
   BLI_addhead(h, lip);
@@ -193,8 +208,9 @@ void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data
 void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
 {
   LinkData *lip = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = mem_static_aquire(smp, size);
   lip->data = data;
   BLI_addhead(h, lip);
@@ -205,8 +221,9 @@ void *list_pop_pointer_only(ListBase *h)
 {
   LinkData *lip;
   void *rev = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = BLI_pophead(h);
   BLI_remlink(h, h->first);
   rev = lip ? lip->data : 0;
@@ -255,8 +272,9 @@ void *list_pop_pointer(ListBase *h)
 {
   LinkData *lip;
   void *rev = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = BLI_pophead(h);
   rev = lip ? lip->data : 0;
   MEM_freeN(lip);
@@ -304,8 +322,9 @@ void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to)
 void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *data)
 {
   LinkData *lip;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = mem_static_aquire(mph, sizeof(LinkData));
   lip->data = data;
   BLI_addtail(h, lip);
@@ -315,8 +334,9 @@ void *list_pop_pointer_no_free(ListBase *h)
 {
   LinkData *lip;
   void *rev = 0;
-  if (!h)
+  if (!h) {
     return 0;
+  }
   lip = BLI_pophead(h);
   rev = lip ? lip->data : 0;
   return rev;
@@ -345,46 +365,58 @@ void list_clear_prev_next(Link *li)
 void list_move_up(ListBase *h, Link *li)
 {
   void *pprev = li->prev ? ((Link *)li->prev)->prev : 0;
-  if (!h || !li)
+  if (!h || !li) {
     return;
-  if (li == h->first)
+  }
+  if (li == h->first) {
     return;
+  }
   else {
-    if (li == h->last)
+    if (li == h->last) {
       h->last = li->prev;
+    }
     ((Link *)li->prev)->next = li->next;
     ((Link *)li->prev)->prev = li;
-    if (li->next)
+    if (li->next) {
       ((Link *)li->next)->prev = li->prev;
+    }
     li->next = li->prev;
     li->prev = pprev;
-    if (pprev)
+    if (pprev) {
       ((Link *)pprev)->next = li;
+    }
   }
-  if (!li->prev)
+  if (!li->prev) {
     h->first = li;
+  }
 }
 void list_move_down(ListBase *h, Link *li)
 {
   void *ppnext = li->next ? ((Link *)li->next)->next : 0;
-  if (!h || !li)
+  if (!h || !li) {
     return;
-  if (li == h->last)
+  }
+  if (li == h->last) {
     return;
+  }
   else {
-    if (li == h->first)
+    if (li == h->first) {
       h->first = li->next;
+    }
     ((Link *)li->next)->prev = li->prev;
     ((Link *)li->next)->next = li;
-    if (li->prev)
+    if (li->prev) {
       ((Link *)li->prev)->next = li->next;
+    }
     li->prev = li->next;
     li->next = ppnext;
-    if (ppnext)
+    if (ppnext) {
       ((Link *)ppnext)->prev = li;
+    }
   }
-  if (!li->next)
+  if (!li->next) {
     h->last = li;
+  }
 }
 
 LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp)
@@ -399,8 +431,9 @@ void *mem_static_aquire(LANPR_StaticMemPool *smp, int size)
   LANPR_StaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB)
+  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
+  }
 
   ret = ((BYTE *)smpn) + smpn->used_byte;
 
@@ -415,8 +448,9 @@ void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
 
   BLI_spin_lock(&smp->cs_mem);
 
-  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB)
+  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
+  }
 
   ret = ((BYTE *)smpn) + smpn->used_byte;
 
@@ -554,10 +588,12 @@ real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveRef
   if (PositiveReference) {
     tnsVector3d res;
     tmat_vector_cross_3d(res, from, to);
-    if (tmat_dot_3d(res, PositiveReference, 1) > 0)
+    if (tmat_dot_3d(res, PositiveReference, 1) > 0) {
       return acosf(tmat_dot_3d(from, to, 1));
-    else
+    }
+    else {
       return -acosf(tmat_dot_3d(from, to, 1));
+    }
   }
   return acosf(tmat_dot_3d(from, to, 1));
 }

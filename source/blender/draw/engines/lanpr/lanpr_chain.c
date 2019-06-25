@@ -47,8 +47,10 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
   for (lip = ba->linked_lines.first; lip; lip = lip->next) {
     nrl = lip->data;
 
-    if ((!(nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) || (nrl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED))
+    if ((!(nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) ||
+        (nrl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED)) {
       continue;
+    }
 
     /*  always chain connected lines for now. */
     /*  simplification will take care of the sharp points. */
@@ -60,9 +62,11 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
           *new_rv = LANPR_OTHER_RV(nrl, nrl->l);
           return nrl;
         }
-        else if (rv->fbcoord[0] == nrl->r->fbcoord[0] && rv->fbcoord[1] == nrl->r->fbcoord[1]) {
-          *new_rv = LANPR_OTHER_RV(nrl, nrl->r);
-          return nrl;
+        else {
+          if (rv->fbcoord[0] == nrl->r->fbcoord[0] && rv->fbcoord[1] == nrl->r->fbcoord[1]) {
+            *new_rv = LANPR_OTHER_RV(nrl, nrl->r);
+            return nrl;
+          }
         }
       }
       continue;
@@ -165,8 +169,9 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
     next_rlci = (LANPR_RenderLineChainItem *)rlci->item.next;
 
     if (next_rlci &&
-        (next_rlci->occlusion != rlci->occlusion || next_rlci->line_type != rlci->line_type))
+        (next_rlci->occlusion != rlci->occlusion || next_rlci->line_type != rlci->line_type)) {
       continue;
+    }
 
     float dist = dist_to_line_segment_v2(rlci->pos, from->pos, to->pos);
     if (dist > dist_threshold && dist > max_dist) {
@@ -177,21 +182,25 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
   }
 
   if (!max_rlci) {
-    if ((LANPR_RenderLineChainItem *)from->item.next == to)
+    if ((LANPR_RenderLineChainItem *)from->item.next == to) {
       return;
+    }
     for (rlci = (LANPR_RenderLineChainItem *)from->item.next; rlci != to; rlci = next_rlci) {
       next_rlci = (LANPR_RenderLineChainItem *)rlci->item.next;
       if (next_rlci &&
-          (next_rlci->occlusion != rlci->occlusion || next_rlci->line_type != rlci->line_type))
+          (next_rlci->occlusion != rlci->occlusion || next_rlci->line_type != rlci->line_type)) {
         continue;
+      }
       BLI_remlink(&rlc->chain, (void *)rlci);
     }
   }
   else {
-    if ((LANPR_RenderLineChainItem *)from->item.next != max_rlci)
+    if ((LANPR_RenderLineChainItem *)from->item.next != max_rlci) {
       lanpr_reduce_render_line_chain_recursive(rlc, from, max_rlci, dist_threshold);
-    if ((LANPR_RenderLineChainItem *)to->item.prev != max_rlci)
+    }
+    if ((LANPR_RenderLineChainItem *)to->item.prev != max_rlci) {
       lanpr_reduce_render_line_chain_recursive(rlc, max_rlci, to, dist_threshold);
+    }
   }
 }
 
@@ -207,8 +216,9 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
   for (rl = rb->all_render_lines.first; rl; rl = (LANPR_RenderLine *)rl->item.next) {
 
-    if ((!(rl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) || (rl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED))
+    if ((!(rl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) || (rl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED)) {
       continue;
+    }
 
     rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
@@ -285,38 +295,40 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
           last_occlusion = rls->occlusion;
         }
       }
-      else if (new_rv == new_rl->r) {
-        rls = new_rl->segments.first;
-        last_occlusion = rls->occlusion;
-        rls = (LANPR_RenderLineSegment *)rls->item.next;
-        for (rls; rls; rls = (LANPR_RenderLineSegment *)rls->item.next) {
-          double gpos[3], lpos[3];
-          lanpr_LinearInterpolate3dv(new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at, lpos);
-          lanpr_LinearInterpolate3dv(new_rl->l->gloc, new_rl->r->gloc, rls->at, gpos);
+      else {
+        if (new_rv == new_rl->r) {
+          rls = new_rl->segments.first;
+          last_occlusion = rls->occlusion;
+          rls = (LANPR_RenderLineSegment *)rls->item.next;
+          for (rls; rls; rls = (LANPR_RenderLineSegment *)rls->item.next) {
+            double gpos[3], lpos[3];
+            lanpr_LinearInterpolate3dv(new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at, lpos);
+            lanpr_LinearInterpolate3dv(new_rl->l->gloc, new_rl->r->gloc, rls->at, gpos);
+            lanpr_push_render_line_chain_point(rb,
+                                               rlc,
+                                               lpos[0],
+                                               lpos[1],
+                                               gpos[0],
+                                               gpos[1],
+                                               gpos[2],
+                                               N,
+                                               new_rl->flags,
+                                               last_occlusion);
+            last_occlusion = rls->occlusion;
+          }
           lanpr_push_render_line_chain_point(rb,
                                              rlc,
-                                             lpos[0],
-                                             lpos[1],
-                                             gpos[0],
-                                             gpos[1],
-                                             gpos[2],
+                                             new_rl->r->fbcoord[0],
+                                             new_rl->r->fbcoord[1],
+                                             new_rl->r->gloc[0],
+                                             new_rl->r->gloc[1],
+                                             new_rl->r->gloc[2],
                                              N,
                                              new_rl->flags,
                                              last_occlusion);
-          last_occlusion = rls->occlusion;
         }
-        lanpr_push_render_line_chain_point(rb,
-                                           rlc,
-                                           new_rl->r->fbcoord[0],
-                                           new_rl->r->fbcoord[1],
-                                           new_rl->r->gloc[0],
-                                           new_rl->r->gloc[1],
-                                           new_rl->r->gloc[2],
-                                           N,
-                                           new_rl->flags,
-                                           last_occlusion);
+        ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
       }
-      ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
 
     /*  step 2: this line */
@@ -360,8 +372,9 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
         last_occlusion = rls->occlusion;
         rlci->occlusion = last_occlusion;
         /*  rls = (LANPR_RenderLineSegment *)rls->item.prev; */
-        if (rls)
+        if (rls) {
           last_occlusion = rls->occlusion;
+        }
         for (rls = new_rl->segments.last; rls; rls = (LANPR_RenderLineSegment *)rls->item.prev) {
           double gpos[3], lpos[3];
           lanpr_LinearInterpolate3dv(new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at, lpos);
@@ -381,37 +394,39 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                                last_occlusion);
         }
       }
-      else if (new_rv == new_rl->r) {
-        rls = new_rl->segments.first;
-        last_occlusion = rls->occlusion;
-        rlci->occlusion = last_occlusion;
-        rls = (LANPR_RenderLineSegment *)rls->item.next;
-        for (rls; rls; rls = (LANPR_RenderLineSegment *)rls->item.next) {
-          double gpos[3], lpos[3];
-          lanpr_LinearInterpolate3dv(new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at, lpos);
-          lanpr_LinearInterpolate3dv(new_rl->l->gloc, new_rl->r->gloc, rls->at, gpos);
+      else {
+        if (new_rv == new_rl->r) {
+          rls = new_rl->segments.first;
+          last_occlusion = rls->occlusion;
+          rlci->occlusion = last_occlusion;
+          rls = (LANPR_RenderLineSegment *)rls->item.next;
+          for (rls; rls; rls = (LANPR_RenderLineSegment *)rls->item.next) {
+            double gpos[3], lpos[3];
+            lanpr_LinearInterpolate3dv(new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at, lpos);
+            lanpr_LinearInterpolate3dv(new_rl->l->gloc, new_rl->r->gloc, rls->at, gpos);
+            lanpr_append_render_line_chain_point(rb,
+                                                 rlc,
+                                                 lpos[0],
+                                                 lpos[1],
+                                                 gpos[0],
+                                                 gpos[1],
+                                                 gpos[2],
+                                                 N,
+                                                 new_rl->flags,
+                                                 rls->occlusion);
+            last_occlusion = rls->occlusion;
+          }
           lanpr_append_render_line_chain_point(rb,
                                                rlc,
-                                               lpos[0],
-                                               lpos[1],
-                                               gpos[0],
-                                               gpos[1],
-                                               gpos[2],
+                                               new_rl->r->fbcoord[0],
+                                               new_rl->r->fbcoord[1],
+                                               new_rl->r->gloc[0],
+                                               new_rl->r->gloc[1],
+                                               new_rl->r->gloc[2],
                                                N,
                                                new_rl->flags,
-                                               rls->occlusion);
-          last_occlusion = rls->occlusion;
+                                               last_occlusion);
         }
-        lanpr_append_render_line_chain_point(rb,
-                                             rlc,
-                                             new_rl->r->fbcoord[0],
-                                             new_rl->r->fbcoord[1],
-                                             new_rl->r->gloc[0],
-                                             new_rl->r->gloc[1],
-                                             new_rl->r->gloc[2],
-                                             N,
-                                             new_rl->flags,
-                                             last_occlusion);
       }
       ba = lanpr_get_point_bounding_area(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
@@ -446,8 +461,9 @@ LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
                                                       LANPR_RenderLineChainItem *rlci)
 {
   LANPR_BoundingArea *root = lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
-  if (!root)
+  if (!root) {
     return NULL;
+  }
   return lanpr_get_point_bounding_area_recursive(rb, root, rlci);
 }
 /*  if reduction threshold is even larger than a small bounding area, */
@@ -463,9 +479,12 @@ void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb,
   /*  if (!root->child) { */
   LANPR_ChainRegisterEntry *cre = list_append_pointer_static_sized(
       &root->linked_chains, &rb->render_data_pool, rlc, sizeof(LANPR_ChainRegisterEntry));
+
   cre->rlci = rlci;
-  if (rlci == rlc->chain.first)
+
+  if (rlci == rlc->chain.first) {
     cre->is_left = 1;
+  }
   /* } */
   /*  else { */
   /*   LANPR_BoundingArea* ch = root->child; */
@@ -490,10 +509,12 @@ void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLi
   LANPR_BoundingArea *ba1 = lanpr_get_point_bounding_area(rb, pl->pos[0], pl->pos[1]);
   LANPR_BoundingArea *ba2 = lanpr_get_point_bounding_area(rb, pr->pos[0], pr->pos[1]);
 
-  if (ba1)
+  if (ba1) {
     lanpr_link_point_with_bounding_area_recursive(rb, ba1, rlc, pl);
-  if (ba2)
+  }
+  if (ba2) {
     lanpr_link_point_with_bounding_area_recursive(rb, ba2, rlc, pr);
+  }
 }
 
 void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
@@ -597,8 +618,9 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
   while (rlc = BLI_pophead(&swap)) {
     rlc->item.next = rlc->item.prev = NULL;
     BLI_addtail(&rb->chains, rlc);
-    if (rlc->picked)
+    if (rlc->picked) {
       continue;
+    }
 
     rlc->picked = 1;
 
@@ -608,15 +630,18 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
     while (ba = lanpr_get_end_point_bounding_area(rb, rlci)) {
       dist = do_geometry_space ? rb->scene->lanpr.chaining_threshold : 100.0f;
       closest_cre = NULL;
-      if (!ba->linked_chains.first)
+      if (!ba->linked_chains.first) {
         break;
+      }
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
         next_cre = (LANPR_ChainRegisterEntry *)cre->item.next;
-        if (cre->rlc->object_ref != rlc->object_ref)
+        if (cre->rlc->object_ref != rlc->object_ref) {
           continue;
+        }
         if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion)
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion) {
           continue;
+        }
         if (cre->rlc->picked) {
           BLI_remlink(&ba->linked_chains, cre);
           continue;
@@ -650,15 +675,18 @@ void lanpr_connect_chains_image_space(LANPR_RenderBuffer *rb, int do_geometry_sp
     while (ba = lanpr_get_end_point_bounding_area(rb, rlci)) {
       dist = do_geometry_space ? rb->scene->lanpr.chaining_threshold : 100.0f;
       closest_cre = NULL;
-      if (!ba->linked_chains.first)
+      if (!ba->linked_chains.first) {
         break;
+      }
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
         next_cre = (LANPR_ChainRegisterEntry *)cre->item.next;
-        if (cre->rlc->object_ref != rlc->object_ref)
+        if (cre->rlc->object_ref != rlc->object_ref) {
           continue;
+        }
         if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion)
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion) {
           continue;
+        }
         if (cre->rlc->picked) {
           BLI_remlink(&ba->linked_chains, cre);
           continue;
@@ -805,16 +833,20 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
       }
 
       if (rlci == rlc->chain.first) {
-        if (rlci->item.next == rlc->chain.last)
+        if (rlci->item.next == rlc->chain.last) {
           GPU_indexbuf_add_line_adj_verts(&elb, vert_count, i, i + 1, vert_count);
-        else
+        }
+        else {
           GPU_indexbuf_add_line_adj_verts(&elb, vert_count, i, i + 1, i + 2);
+        }
       }
       else {
-        if (rlci->item.next == rlc->chain.last)
+        if (rlci->item.next == rlc->chain.last) {
           GPU_indexbuf_add_line_adj_verts(&elb, i - 1, i, i + 1, vert_count);
-        else
+        }
+        else {
           GPU_indexbuf_add_line_adj_verts(&elb, i - 1, i, i + 1, i + 2);
+        }
       }
 
       i++;
@@ -827,8 +859,9 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
   MEM_freeN(lengths);
 
-  if (rb->chain_draw_batch)
+  if (rb->chain_draw_batch) {
     GPU_batch_discard(rb->chain_draw_batch);
+  }
   rb->chain_draw_batch = GPU_batch_create_ex(
       GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 }

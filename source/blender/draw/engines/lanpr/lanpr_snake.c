@@ -83,11 +83,13 @@ int lanpr_detect_direction(LANPR_PrivateData *pd, int col, int row, int LastDire
     TNS_CLAMP_TEXTURE_CONTINUE(pd, (_TNS_colOffsets[i] + col), (_TNS_rowOffsets[i] + row));
     if (ts = pd->sample_table[(_TNS_colOffsets[i] + col) +
                               (_TNS_rowOffsets[i] + row) * pd->width]) {
-      if (!LastDirection)
+      if (!LastDirection) {
         return i + 1;
+      }
       Deviate[i + 1] = lanpr_direction_deviate(i, LastDirection);
-      if (!MinDeviate || Deviate[MinDeviate] > Deviate[i + 1])
+      if (!MinDeviate || Deviate[MinDeviate] > Deviate[i + 1]) {
         MinDeviate = i + 1;
+      }
     }
   }
 
@@ -190,8 +192,9 @@ void lanpr_grow_snake_r(LANPR_PrivateData *pd,
       l = 0;
     }
   }
-  if (TX != ThisP->P[0] || TY != ThisP->P[1])
+  if (TX != ThisP->P[0] || TY != ThisP->P[1]) {
     lanpr_append_point(pd, ls, TX, TY, 0);
+  }
 }
 
 void lanpr_grow_snake_l(LANPR_PrivateData *pd,
@@ -233,15 +236,17 @@ void lanpr_grow_snake_l(LANPR_PrivateData *pd,
       l = 0;
     }
   }
-  if (TX != ThisP->P[0] || TY != ThisP->P[1])
+  if (TX != ThisP->P[0] || TY != ThisP->P[1]) {
     lanpr_push_point(pd, ls, TX, TY, 0);
+  }
 }
 
 int lanpr_reverse_direction(int From)
 {
   From -= 4;
-  if (From <= 0)
+  if (From <= 0) {
     From += 8;
+  }
   return From;
 }
 
@@ -294,10 +299,12 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
       int v2 = i + vert_offset;
       int v3 = i + vert_offset + 1;
       int v4 = i + vert_offset + 2;
-      if (v1 < 0)
+      if (v1 < 0) {
         v1 = 0;
-      if (v4 >= v_count)
+      }
+      if (v4 >= v_count) {
         v4 = v_count - 1;
+      }
       GPU_indexbuf_add_line_adj_verts(&elb, v1, v2, v3, v4);
     }
 
@@ -355,11 +362,13 @@ GPUBatch *lanpr_get_snake_batch(LANPR_PrivateData *pd)
 
 void lanpr_snake_prepare_cache(LANPR_PrivateData *pd)
 {
-  if (pd->line_result_8bit)
+  if (pd->line_result_8bit) {
     MEM_freeN(pd->line_result_8bit);
+  }
   pd->line_result_8bit = 0;
-  if (pd->line_result)
+  if (pd->line_result) {
     MEM_freeN(pd->line_result);
+  }
   pd->line_result = 0;
   lanpr_share.mp_sample = BLI_mempool_create(sizeof(LANPR_TextureSample), 0, 512, BLI_MEMPOOL_NOP);
   lanpr_share.mp_line_strip = BLI_mempool_create(sizeof(LANPR_LineStrip), 0, 512, BLI_MEMPOOL_NOP);
@@ -368,11 +377,13 @@ void lanpr_snake_prepare_cache(LANPR_PrivateData *pd)
 }
 void lanpe_sanke_free_cache(LANPR_PrivateData *pd)
 {
-  if (pd->line_result_8bit)
+  if (pd->line_result_8bit) {
     MEM_freeN(pd->line_result_8bit);
+  }
   pd->line_result_8bit = 0;
-  if (pd->line_result)
+  if (pd->line_result) {
     MEM_freeN(pd->line_result);
+  }
   pd->line_result = 0;
 
   BLI_mempool_destroy(lanpr_share.mp_line_strip);
@@ -381,11 +392,13 @@ void lanpe_sanke_free_cache(LANPR_PrivateData *pd)
 }
 void lanpr_snake_free_readback_data(LANPR_PrivateData *pd)
 {
-  if (pd->line_result_8bit)
+  if (pd->line_result_8bit) {
     MEM_freeN(pd->line_result_8bit);
+  }
   pd->line_result_8bit = 0;
-  if (pd->line_result)
+  if (pd->line_result) {
     MEM_freeN(pd->line_result);
+  }
   pd->line_result = 0;
 }
 
@@ -459,8 +472,9 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
     GPU_framebuffer_bind(DefaultFB);
     DRW_multisamples_resolve(txl->depth, txl->color, 1);
 
-    if (!lanpr->enable_vector_trace)
+    if (!lanpr->enable_vector_trace) {
       return;
+    }
   }
 
   int texw = GPU_texture_width(txl->edge_intermediate),
@@ -468,21 +482,25 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
   ;
   int tsize = texw * texh;
   int recreate = 0;
-  if (tsize != pd->width * pd->height)
+  if (tsize != pd->width * pd->height) {
     recreate = 1;
+  }
 
   if (recreate || !pd->line_result) {
-    if (pd->line_result)
+    if (pd->line_result) {
       MEM_freeN(pd->line_result);
+    }
     pd->line_result = MEM_callocN(sizeof(float) * tsize, "Texture readback buffer");
 
-    if (pd->line_result_8bit)
+    if (pd->line_result_8bit) {
       MEM_freeN(pd->line_result_8bit);
+    }
     pd->line_result_8bit = MEM_callocN(sizeof(unsigned char) * tsize,
                                        "Texture readback buffer 8bit");
 
-    if (pd->sample_table)
+    if (pd->sample_table) {
       MEM_freeN(pd->sample_table);
+    }
     pd->sample_table = MEM_callocN(sizeof(void *) * tsize, "Texture readback buffer 8bit");
 
     pd->width = texw;
