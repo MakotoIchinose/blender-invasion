@@ -3593,17 +3593,11 @@ static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListB
                                         BKE_view_layer_base_find(view_layer, ob);
         const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
 
-        if (G_MAIN->sync_select_dirty_flag == SYNC_SELECT_EXTEND) {
-          puts("extend mode");
+        if (is_selected) {
+          tselem->flag |= TSE_SELECTED;
         }
-
-        if (base && G_MAIN->sync_select_dirty_flag != SYNC_SELECT_EXTEND) {
-          if (is_selected) {
-            tselem->flag |= TSE_SELECTED;
-          }
-          else if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_EXTEND) {
-            tselem->flag &= ~TSE_SELECTED;
-          }
+        else if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_EXTEND) {
+          tselem->flag &= ~TSE_SELECTED;
         }
       }
     }
