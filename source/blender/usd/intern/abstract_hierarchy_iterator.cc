@@ -40,7 +40,7 @@ void AbstractHierarchyIterator::iterate()
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
-  printf("====== Visiting objects:\n");
+  // printf("====== Visiting objects:\n");
   DEG_OBJECT_ITER_BEGIN (depsgraph,
                          object,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
@@ -97,32 +97,32 @@ void AbstractHierarchyIterator::iterate()
   }
   DEG_OBJECT_ITER_END;
 
-  // For debug: print the export graph.
-  printf("====== Export graph pre-prune:\n");
-  for (auto it : export_graph) {
-    printf("    OB %s:\n", it.first == nullptr ? "/" : (it.first->id.name + 2));
-    for (auto child_it : it.second) {
-      printf("       - %s (weak_export=%s)\n",
-             child_it.object->id.name + 2,
-             child_it.weak_export ? "true" : "false");
-    }
-  }
+  // // For debug: print the export graph.
+  // printf("====== Export graph pre-prune:\n");
+  // for (auto it : export_graph) {
+  //   printf("    OB %s:\n", it.first == nullptr ? "/" : (it.first->id.name + 2));
+  //   for (auto child_it : it.second) {
+  //     printf("       - %s (weak_export=%s)\n",
+  //            child_it.object->id.name + 2,
+  //            child_it.weak_export ? "true" : "false");
+  //   }
+  // }
 
   prune_export_graph();
 
-  // For debug: print the export graph.
-  printf("====== Export graph post-prune:\n");
-  for (auto it : export_graph) {
-    printf("    OB %s (%p):\n", it.first == nullptr ? "/" : (it.first->id.name + 2), it.first);
-    for (auto child_it : it.second) {
-      printf("       - %s (weak_export=%s)\n",
-             child_it.object->id.name + 2,
-             child_it.weak_export ? "true" : "false");
-    }
-  }
+  // // For debug: print the export graph.
+  // printf("====== Export graph post-prune:\n");
+  // for (auto it : export_graph) {
+  //   printf("    OB %s (%p):\n", it.first == nullptr ? "/" : (it.first->id.name + 2), it.first);
+  //   for (auto child_it : it.second) {
+  //     printf("       - %s (weak_export=%s)\n",
+  //            child_it.object->id.name + 2,
+  //            child_it.weak_export ? "true" : "false");
+  //   }
+  // }
 
   // For debug: print the export paths.
-  printf("====== Export paths:\n");
+  // printf("====== Export paths:\n");
   make_writers(nullptr, "", nullptr);
 }
 
@@ -175,11 +175,11 @@ void AbstractHierarchyIterator::make_writers(Object *parent_object,
     context.parent_writer = parent_writer;
     context.export_path = export_path;
 
-    const char *color = context.weak_export ? "31;1" : "30";
-    printf("%s \033[%sm%s\033[0m\n",
-           export_path.c_str(),
-           color,
-           context.weak_export ? "true" : "false");
+    // const char *color = context.weak_export ? "31;1" : "30";
+    // printf("%s \033[%sm%s\033[0m\n",
+    //        export_path.c_str(),
+    //        color,
+    //        context.weak_export ? "true" : "false");
 
     // Get or create the transform writer.
     xform_writer = ensure_xform_writer(context);
@@ -265,15 +265,15 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   };
   export_graph[export_parent].insert(context);
 
-  std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
-  printf("    OB %30s %p (parent=%s %p; xform-only=%s; instance=%s)\n",
-         get_object_name(object).c_str(),
-         object,
-         export_parent_name.c_str(),
-         export_parent,
-         context.weak_export ? "\033[31;1mtrue\033[0m" : "false",
-         context.object->base_flag & BASE_FROM_DUPLI ? "\033[35;1mtrue\033[0m" :
-                                                       "\033[30;1mfalse\033[0m");
+  // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
+  // printf("    OB %30s %p (parent=%s %p; xform-only=%s; instance=%s)\n",
+  //        get_object_name(object).c_str(),
+  //        object,
+  //        export_parent_name.c_str(),
+  //        export_parent,
+  //        context.weak_export ? "\033[31;1mtrue\033[0m" : "false",
+  //        context.object->base_flag & BASE_FROM_DUPLI ? "\033[35;1mtrue\033[0m" :
+  //                                                      "\033[30;1mfalse\033[0m");
 }
 
 AbstractHierarchyWriter *AbstractHierarchyIterator::get_writer(const std::string &name)
