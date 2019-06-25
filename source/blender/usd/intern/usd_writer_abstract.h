@@ -20,6 +20,8 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   pxr::UsdStageRefPtr stage;
   pxr::SdfPath usd_path_;
   USDHierarchyIterator *const hierarchy_iterator;
+  bool frame_has_been_written_;
+  bool is_animated_;
 
  public:
   USDAbstractWriter(const USDExporterContext &usd_export_context);
@@ -35,6 +37,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
 
  protected:
   virtual void do_write(HierarchyContext &context) = 0;
+  virtual bool check_is_animated(Object *object) const;
 };
 
 #endif /* __USD__USD_WRITER_ABSTRACT_H__ */
