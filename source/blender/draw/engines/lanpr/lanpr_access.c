@@ -40,7 +40,7 @@ static BMVert *split_edge_and_move(BMesh *bm, BMEdge *edge, const float new_pos[
 }
 
 void lanpr_generate_gpencil_from_chain(
-    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, int qi_begin, int qi_end)
+    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, int qi_begin, int qi_end, int material_nr)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
@@ -94,6 +94,7 @@ void lanpr_generate_gpencil_from_chain(
     }
 
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
+    gps->mat_nr = material_nr;
   }
 }
 

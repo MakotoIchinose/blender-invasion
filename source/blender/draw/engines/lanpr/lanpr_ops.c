@@ -4309,11 +4309,13 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
           if (!gpl) {
             gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
           }
-          gpf = BKE_gpencil_frame_addnew(gpl, frame);
-          BKE_gpencil_free_strokes(gpf);  /*  force clear now */
+          gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+          /* BKE_gpencil_free_strokes(gpf);   will be overwritten. need another solution */
+          /* Please manually delete those strokes before clicking Update once again. */
 
           lanpr_generate_gpencil_from_chain(dg, ob, gpl, gpf, 
-            flmd->level_begin, flmd->use_multiple_levels?flmd->level_end:flmd->level_begin);
+            flmd->level_begin, flmd->use_multiple_levels?flmd->level_end:flmd->level_begin,
+            flmd->material);
         }
       }
     }
