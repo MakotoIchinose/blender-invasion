@@ -1682,19 +1682,22 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             row.prop(md,'enable_material',toggle=True)
             row.prop(md,'enable_intersection',toggle=True)
             row.prop(md,'enable_modifier_mark',toggle=True)
-            layout.label(text='Result GP:')
-            layout.prop(md,'target')
-            layout.prop(md,'replace', text='Replace existing frames')
-
-            row = layout.row()
-            row.prop(md,'layer')
-            row.prop(md,'material')
 
             row = layout.row(align=True)
             row.prop(md,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
             row.prop(md,'level_begin')
             if md.use_multiple_levels:
                 row.prop(md,'level_end')
+
+            layout.label(text='Result GP:')
+            layout.prop(md,'target')
+            if not md.target:
+                layout.label(text="You have to specify a target GP Object")
+            else:
+                layout.prop(md,'replace', text='Replace existing frames')
+                row = layout.row()
+                row.prop(md,'layer')
+                row.prop(md,'material')
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"
