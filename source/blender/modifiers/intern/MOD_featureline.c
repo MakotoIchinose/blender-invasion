@@ -95,6 +95,13 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
   walk(userData, ob, &flmd->target, IDWALK_NOP);
 }
 
+static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams){
+  FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
+  if(!flmd->target)
+    return true;
+  return false;
+}
+
 ModifierTypeInfo modifierType_FeatureLine = {
     /* name */ "Feature Line",
     /* structName */ "FeatureLineModifierData",
@@ -112,7 +119,7 @@ ModifierTypeInfo modifierType_FeatureLine = {
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
     /* freeData */ freeData,
-    /* isDisabled */ NULL,
+    /* isDisabled */ isDisabled,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ dependsOnTime,
     /* dependsOnNormals */ NULL,
