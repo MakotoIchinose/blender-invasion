@@ -1118,6 +1118,43 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
   return true;
 }
 
+static bool cloth_remeshing_can_collapse_edge(BMEdge *e, BMesh *bm)
+{
+  if (BM_edge_face_count(e) < 2) {
+    return false;
+  }
+
+  return true;
+}
+
+static void cloth_remeshing_collapse_edge(BMEdge *e, BMesh *bm)
+{
+}
+
+static bool cloth_remeshing_try_edge_collapse(BMEdge *e, BMesh *bm)
+{
+  if (!cloth_remeshing_can_collapse_edge(e, bm)) {
+    return false;
+  }
+  cloth_remeshing_collapse_edge(e, bm);
+  return true;
+}
+
+static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
+                                           LinkNodePair *sizing,
+                                           LinkNodePair *active_faces)
+{
+  for (int i = 0; i < BLI_linklist_count(active_faces->list); i++) {
+    BMFace *f = (BMFace *)BLI_linklist_find(active_faces->list, i)->link;
+    BMEdge *e;
+    BMIter eiter;
+    BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
+      BMVert *v1 = e->v1, *v2 = e->v2;
+    }
+  }
+  return false;
+}
+
 static void cloth_remeshing_static(ClothModifierData *clmd)
 {
   /**
@@ -1155,15 +1192,24 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Collapse edges
    */
-
-  /**
-   * Split edges
-   */
+  LinkNodePair *active_faces = MEM_mallocN(sizeof(LinkNodePair), "Active Faces LinkNodePair");
+  active_faces->list = NULL;
+  active_faces->last_node = NULL;
+  BMFace *f;
+  BMIter fiter;
+  BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
+    BLI_linklist_append(active_faces, f);
+  }
+  while (cloth_remeshing_collapse_edges(clmd, &sizing, active_faces)) {
+    /* empty while */
+  }
 
   /**
    * Delete sizing
    */
   BLI_linklist_freeN(sizing.list);
+  BLI_linklist_free(active_faces->list, NULL);
+  MEM_freeN(active_faces);
 }
 
 Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
