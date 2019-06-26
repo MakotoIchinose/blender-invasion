@@ -50,7 +50,7 @@ void USDGenericMeshWriter::free_export_mesh(struct Mesh *mesh)
 
 void USDGenericMeshWriter::write_mesh(struct Mesh *mesh)
 {
-  pxr::UsdTimeCode timecode = hierarchy_iterator->get_export_time_code();
+  pxr::UsdTimeCode timecode = get_export_time_code();
   // printf("USD-\033[32mexporting\033[0m mesh  %s → %s  mesh = %p\n",
   //        mesh->id.name,
   //        usd_path_.GetString().c_str(),

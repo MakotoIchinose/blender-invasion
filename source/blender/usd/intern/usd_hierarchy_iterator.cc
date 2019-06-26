@@ -68,14 +68,14 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const Hierarc
   //     context.export_path.c_str());
 
   USDExporterContext usd_export_context = {
-      depsgraph, stage, pxr::SdfPath(context.export_path), this};
+      depsgraph, stage, pxr::SdfPath(context.export_path), this, params};
   return new USDTransformWriter(usd_export_context);
 }
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const HierarchyContext &context)
 {
   USDExporterContext usd_export_context = {
-      depsgraph, stage, pxr::SdfPath(context.export_path), this};
+      depsgraph, stage, pxr::SdfPath(context.export_path), this, params};
   USDAbstractWriter *data_writer = nullptr;
 
   switch (context.object->type) {
