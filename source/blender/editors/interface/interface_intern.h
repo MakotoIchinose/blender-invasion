@@ -279,7 +279,7 @@ struct uiBut {
   double *editval;
   float *editvec;
   void *editcoba;
-  void *editcumap; /* HANS-TODO: Can I reuse this? */
+  void *editcumap;
   void *editprwdgt;
 
   uiButPushedStateFunc pushed_state_func;

@@ -125,7 +125,6 @@ static void node_buts_mix_rgb(uiLayout *layout, bContext *UNUSED(C), PointerRNA 
   uiItemR(col, ptr, "use_clamp", 0, NULL, ICON_NONE);
 }
 
-/* HANS-TODO: Does this need a new ProfileWidget analog? */
 static void node_buts_time(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
   uiLayout *row;
