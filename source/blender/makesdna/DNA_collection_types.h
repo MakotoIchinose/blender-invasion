@@ -43,6 +43,12 @@ typedef struct CollectionChild {
   struct Collection *collection;
 } CollectionChild;
 
+enum CollectionFeatureLine_Usage {
+  COLLECTION_FEATURE_LINE_INCLUDE = 0,
+  COLLECTION_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
+  COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
+};
+
 typedef struct CollectionLANPR {
   short usage;
   short force; /* force objects with LANPR modifier follow the rule */

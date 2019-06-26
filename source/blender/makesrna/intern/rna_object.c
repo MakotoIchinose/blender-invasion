@@ -2313,11 +2313,11 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static EnumPropertyItem prop_feature_line_usage_items[] = {
-      {OBJECT_FEATURE_LINE_INCLUDE,
-       "INCLUDE",
+      {OBJECT_FEATURE_LINE_INHERENT,
+       "INHERENT",
        0,
-       "Include",
-       "Include this object into calculation"},
+       "Inherent",
+       "Follow settings from the parent collection"},
       {OBJECT_FEATURE_LINE_OCCLUSION_ONLY,
        "OCCLUSION_ONLY",
        0,

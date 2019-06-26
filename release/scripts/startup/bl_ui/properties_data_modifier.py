@@ -1670,33 +1670,30 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def FEATURE_LINE(self, layout, ob, md):
         layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Manual Update')
-        if ob.lanpr.usage == 'INCLUDE':
-            layout.label(text='Enable Types:')
-            row = layout.row(align=True)
-            row.prop(md,'enable_contour',toggle=True)
-            row.prop(md,'enable_crease',toggle=True)
-            row.prop(md,'enable_mark',toggle=True)
-            row.prop(md,'enable_material',toggle=True)
-            row.prop(md,'enable_intersection',toggle=True)
-            row.prop(md,'enable_modifier_mark',toggle=True)
+        layout.label(text='Enable Types:')
+        row = layout.row(align=True)
+        row.prop(md,'enable_contour',toggle=True)
+        row.prop(md,'enable_crease',toggle=True)
+        row.prop(md,'enable_mark',toggle=True)
+        row.prop(md,'enable_material',toggle=True)
+        row.prop(md,'enable_intersection',toggle=True)
+        row.prop(md,'enable_modifier_mark',toggle=True)
 
-            row = layout.row(align=True)
-            row.prop(md,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
-            row.prop(md,'level_begin')
-            if md.use_multiple_levels:
-                row.prop(md,'level_end')
+        row = layout.row(align=True)
+        row.prop(md,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
+        row.prop(md,'level_begin')
+        if md.use_multiple_levels:
+            row.prop(md,'level_end')
 
-            layout.label(text='Result GP:')
-            layout.prop(md,'target')
-            if not md.target:
-                layout.label(text="You have to specify a target GP Object")
-            else:
-                layout.prop(md,'replace', text='Replace existing frames')
-                row = layout.row()
-                row.prop(md,'layer')
-                row.prop(md,'material')
+        layout.label(text='Result GP:')
+        layout.prop(md,'target')
+        if not md.target:
+            layout.label(text="You have to specify a target GP Object")
         else:
-            layout.label(text="This object is not included in LANPR")
+            layout.prop(md,'replace', text='Replace existing frames')
+            row = layout.row()
+            row.prop(md,'layer')
+            row.prop(md,'material')
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"

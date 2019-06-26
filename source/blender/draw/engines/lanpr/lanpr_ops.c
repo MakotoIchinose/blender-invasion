@@ -2118,10 +2118,8 @@ void lanpr_calculate_render_triangle_normal(LANPR_RenderTriangle *rt)
   tmat_vector_cross_3d(rt->gn, l, r);
   tmat_normalize_self_3d(rt->gn);
 }
-void lanpr_make_render_geometry_buffers_object(Object *o,
-                                               real *MvMat,
-                                               real *MvPMat,
-                                               LANPR_RenderBuffer *rb)
+void lanpr_make_render_geometry_buffers_object(
+    Object *o, real *MvMat, real *MvPMat, LANPR_RenderBuffer *rb, int override_usage)
 {
   Object *oc;
   Mesh *mo;
@@ -2147,7 +2145,9 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
   int CanFindFreestyle = 0;
   int i;
 
-  if (o->lanpr.usage == OBJECT_FEATURE_LINE_EXCLUDE) {
+  int usage = override_usage ? override_usage : o->lanpr.usage;
+
+  if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
     return;
   }
 
@@ -2237,7 +2237,7 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
       LANPR_RenderLineSegment *rls = mem_static_aquire(&rb->render_data_pool,
                                                        sizeof(LANPR_RenderLineSegment));
       BLI_addtail(&rl->segments, rls);
-      if (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE) {
+      if (usage == OBJECT_FEATURE_LINE_INHERENT) {
         BLI_addtail(&rb->all_render_lines, rl);
       }
       rl++;
@@ -2283,16 +2283,63 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
   }
 }
 
-/* reserved for checking collection includes/excludes */
-int lanpr_object_usage(Object *o)
+int lanpr_object_has_feature_line_modifier(Object *o)
 {
   ModifierData *md;
   for (md = o->modifiers.first; md; md = md->next) {
     if (md->type == eModifierType_FeatureLine) {
-      FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
+      return 1;
     }
   }
   return 0;
+}
+int lanpr_object_collection_usage_check(Collection *c, Object *o)
+{
+  CollectionChild *cc;
+  int object_is_used = (lanpr_object_has_feature_line_modifier(o) &&
+                        o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT);
+
+  if (object_is_used && c->lanpr.force && c->lanpr.usage != COLLECTION_FEATURE_LINE_INCLUDE) {
+    if (BKE_collection_has_object_recursive(c, o)) {
+      if (c->lanpr.usage == COLLECTION_FEATURE_LINE_EXCLUDE) {
+        return OBJECT_FEATURE_LINE_EXCLUDE;
+      }
+      else if (c->lanpr.usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY) {
+        return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
+      }
+    }
+  }
+
+  if (!c->children.first) {
+    if (BKE_collection_has_object(c, o)) {
+      if (o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT) {
+        if (c->lanpr.usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY) {
+          return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
+        }
+        else if (c->lanpr.usage == COLLECTION_FEATURE_LINE_EXCLUDE) {
+          return OBJECT_FEATURE_LINE_EXCLUDE;
+        }
+        else {
+          return OBJECT_FEATURE_LINE_INHERENT;
+        }
+      }
+      else {
+        return o->lanpr.usage;
+      }
+    }
+    else {
+      return OBJECT_FEATURE_LINE_INHERENT;
+    }
+  }
+
+  for (cc = c->children.first; cc; cc = cc->next) {
+    int result = lanpr_object_collection_usage_check(cc->collection, o);
+    if (result > OBJECT_FEATURE_LINE_INHERENT) {
+      return result;
+    }
+  }
+
+  return OBJECT_FEATURE_LINE_INHERENT;
 }
 
 void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
@@ -2342,7 +2389,9 @@ void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                          o,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    lanpr_make_render_geometry_buffers_object(o, view, proj, rb);
+    int usage = lanpr_object_collection_usage_check(s->master_collection, o);
+
+    lanpr_make_render_geometry_buffers_object(o, view, proj, rb, usage);
   }
   DEG_OBJECT_ITER_END;
 

@@ -186,7 +186,7 @@ typedef struct ObjectLANPR {
 } ObjectLANPR;
 
 enum ObjectFeatureLine_Usage {
-  OBJECT_FEATURE_LINE_INCLUDE = 0,
+  OBJECT_FEATURE_LINE_INHERENT = 0,
   OBJECT_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
   OBJECT_FEATURE_LINE_EXCLUDE = (1 << 1),
 };
