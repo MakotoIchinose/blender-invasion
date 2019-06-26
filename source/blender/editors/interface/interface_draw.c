@@ -2114,27 +2114,28 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 #if DEBUG_PROFILE_DRAW
   printf("UI DRAW BUT PROFILE\n");
 #endif
-
-  ProfileWidget *prwidget;
+  uint i;
+  float fx, fy;
+  ProfileWidget *prwdgt;
   if (but->editprwdgt) {
-    prwidget = but->editprwdgt;
+    prwdgt = but->editprwdgt;
   }
   else {
-    prwidget = (ProfileWidget *)but->poin;
+    prwdgt = (ProfileWidget *)but->poin;
   }
 
   /* Calculate offset and zoom */
-  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&prwidget->curr);
-  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&prwidget->curr);
-  float offsx = prwidget->curr.xmin - (1.0f / zoomx);
-  float offsy = prwidget->curr.ymin - (1.0f / zoomy);
+  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&prwdgt->curr);
+  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&prwdgt->curr);
+  float offsx = prwdgt->curr.xmin - (1.0f / zoomx);
+  float offsy = prwdgt->curr.ymin - (1.0f / zoomy);
 
   /* Exit early if too narrow */
   if (zoomx == 0.0f) {
     return;
   }
 
-  ProfilePath *prpath = prwidget->profile;
+  ProfilePath *prpath = prwdgt->profile;
 
   /* Test needed because path can draw outside of boundary */
   int scissor[4];
@@ -2160,16 +2161,16 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Backdrop */
   float color_backdrop[4] = {0, 0, 0, 1};
-  if (prwidget->flag & PROF_DO_CLIP) {
+  if (prwdgt->flag & PROF_DO_CLIP) {
     gl_shaded_color_get_fl((uchar *)wcol->inner, -20, color_backdrop);
     immUniformColor3fv(color_backdrop);
     immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
     immUniformColor3ubv((uchar *)wcol->inner);
     immRectf(pos,
-             rect->xmin + zoomx * (prwidget->clipr.xmin - offsx),
-             rect->ymin + zoomy * (prwidget->clipr.ymin - offsy),
-             rect->xmin + zoomx * (prwidget->clipr.xmax - offsx),
-             rect->ymin + zoomy * (prwidget->clipr.ymax - offsy));
+             rect->xmin + zoomx * (prwdgt->clipr.xmin - offsx),
+             rect->ymin + zoomy * (prwdgt->clipr.ymin - offsy),
+             rect->xmin + zoomx * (prwdgt->clipr.xmax - offsx),
+             rect->ymin + zoomy * (prwdgt->clipr.ymax - offsy));
   }
   else {
     rgb_uchar_to_float(color_backdrop, (uchar *)wcol->inner);
@@ -2184,46 +2185,77 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   gl_shaded_color((uchar *)wcol->inner, -24);
   ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 1.0f);
 
-  /* Draw the curve's fill */
+  /* Draw the path's fill */
 
   /* HANS-TODO: Change totpoint back to PROF_TABLE_SIZE + 1 when the table is properly
    * with that many elements along the path. And change pts back to prpath->table as well. */
   if (prpath->path == NULL) {
-    profilewidget_changed(prwidget, false);
+    profilewidget_changed(prwdgt, false);
   }
   ProfilePoint *pts = prpath->path;
-  uint tot_points = (uint)prpath->totpoint + 1;
+  /* Also add the last points on the right and bottom edges to close off the fill polygon */
+  bool add_right_triangle = prwdgt->curr.xmax > 1.0f;
+  bool add_bottom_triangle = prwdgt->curr.ymin < 0.0f;
+  uint tot_points = (uint)prpath->totpoint + 1 + add_right_triangle + add_bottom_triangle;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
   float (*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (uint i = 0; i < tot_points - 1; i++) {
+  for (i = 0; i < tot_points - 1; i++) {
     table_coords[i][0] = pts[i].x;
-    table_coords[i][1] = pts[i].y; /* HANS-TODO: Do the transformation here for a wee speedup */
+    table_coords[i][1] = pts[i].y; /* HANS-TODO: Do the transformation here to reuse it later */
   }
-  /* Add the last point in the corner to close off the polygon */
-  table_coords[tot_points - 1][0] = 1.0;
-  table_coords[tot_points - 1][1] = 0.0;
+  if (add_right_triangle && add_bottom_triangle) {
+    /* Add right side, bottom right corner, and bottom side points */
+    table_coords[tot_points - 3][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 3][1] = 1.0f;
+    table_coords[tot_points - 2][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 2][1] = prwdgt->curr.ymin;
+    table_coords[tot_points - 1][0] = 0.0f;
+    table_coords[tot_points - 1][1] = prwdgt->curr.ymin;
+  }
+  else if (add_right_triangle) {
+    /* Add the right side and bottom right corner points */
+    table_coords[tot_points - 2][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 2][1] = 1.0f;
+    table_coords[tot_points - 1][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 1][1] = 0.0f;
+  }
+  else if (add_bottom_triangle) {
+    /* Add the bottom side and bottom right corner points */
+    table_coords[tot_points - 2][0] = 1.0f;
+    table_coords[tot_points - 2][1] = prwdgt->curr.ymin;
+    table_coords[tot_points - 1][0] = 0.0f;
+    table_coords[tot_points - 1][1] = prwdgt->curr.ymin;
+  }
+  else {
+    /* Don't bother adding any side points, they would be redundant anyway */
+    table_coords[tot_points - 1][0] = 1.0f;
+    table_coords[tot_points - 1][1] = 0.0f;
+  }
+
+
 
   /* Calculate the indices of the fill triangles */
   uint (*tri_indices)[3] = MEM_mallocN(sizeof(*tri_indices) * tot_triangles, "return tri indices");
   BLI_polyfill_calc(table_coords, tot_points, 1, tri_indices);
 
 #if DEBUG_PROFILE_DRAW
+  printf("tot_points = %u\n", tot_points);
   printf("Point coords:\n");
-  for (uint i = 0; i < tot_points; i++) {
-    printf("(%.0f, %.0f) ", (double)table_coords[i][0], (double)table_coords[i][1]);
+  for (i = 0; i < tot_points; i++) {
+    printf("(%.3f, %.3f) ", (double)table_coords[i][0], (double)table_coords[i][1]);
   }
   printf("\nPoint indices:\n");
-  for (uint i = 0; i < tot_triangles; i++) {
+  for (i = 0; i < tot_triangles; i++) {
     printf("(%u, %u, %u) ", tri_indices[i][0], tri_indices[i][1], tri_indices[i][2]);
   }
   printf("\nPoint corners:\n");
-  for (uint i = 0; i < tot_triangles; i++) {
+  for (i = 0; i < tot_triangles; i++) {
     uint *tri = tri_indices[i];
-    printf("([%.0f, %.0f],", (double)table_coords[tri[0]][0], (double)table_coords[tri[0]][1]);
-    printf("[%.0f, %.0f],",  (double)table_coords[tri[1]][0], (double)table_coords[tri[1]][1]);
-    printf("[%.0f, %.0f]) ", (double)table_coords[tri[2]][0], (double)table_coords[tri[2]][1]);
+    printf("([%.03f, %.03f],", (double)table_coords[tri[0]][0], (double)table_coords[tri[0]][1]);
+    printf("[%.03f, %.03f],",  (double)table_coords[tri[1]][0], (double)table_coords[tri[1]][1]);
+    printf("[%.03f, %.03f]) ", (double)table_coords[tri[2]][0], (double)table_coords[tri[2]][1]);
   }
   printf("\n");
 #endif
@@ -2233,30 +2265,32 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   GPU_blend(true);
   GPU_polygon_smooth(false);
   immBegin(GPU_PRIM_TRIS, 3 * tot_triangles);
-  for (uint i = 0; i < tot_triangles; i++) {
+  for (i = 0; i < tot_triangles; i++) {
     for (uint j = 0; j < 3; j++) {
       uint *tri = tri_indices[i];
-      float fx = rect->xmin + zoomx * (table_coords[tri[j]][0] - offsx);
-      float fy = rect->ymin + zoomy * (table_coords[tri[j]][1] - offsy);
+      fx = rect->xmin + zoomx * (table_coords[tri[j]][0] - offsx);
+      fy = rect->ymin + zoomy * (table_coords[tri[j]][1] - offsy);
       immVertex2f(pos, fx, fy);
     }
   }
   immEnd();
   MEM_freeN(tri_indices);
-  MEM_freeN(table_coords);
 
   /* Draw the profile's path */
+  tot_points -= (add_right_triangle + add_right_triangle);
   GPU_line_width(1.0f);
   immUniformColor3ubvAlpha((uchar *)wcol->item, 255);
   GPU_line_smooth(true);
   immBegin(GPU_PRIM_LINE_STRIP, tot_points - 1);
-  for (uint i = 0; i < tot_points - 1; i++) {
-    float fx = rect->xmin + zoomx * (pts[i].x - offsx);
-    float fy = rect->ymin + zoomy * (pts[i].y - offsy);
+  for (i = 0; i < tot_points - 1; i++) {
+    fx = rect->xmin + zoomx * (table_coords[i][0] - offsx);
+    fy = rect->ymin + zoomy * (table_coords[i][1] - offsy);
     immVertex2f(pos, fx, fy);
   }
   immEnd();
   immUnbindProgram();
+  MEM_freeN(table_coords);
+
 
   /* The points, use aspect to make them visible on edges. */
   format = immVertexFormat();
@@ -2282,9 +2316,9 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   pts = prpath->path;
   GPU_point_size(max_ff(1.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
   immBegin(GPU_PRIM_POINTS, tot_points - 1);
-  for (uint i = 0; i < tot_points - 1; i++) {
-    float fx = rect->xmin + zoomx * (pts[i].x - offsx);
-    float fy = rect->ymin + zoomy * (pts[i].y - offsy);
+  for (i = 0; i < tot_points - 1; i++) {
+    fx = rect->xmin + zoomx * (pts[i].x - offsx);
+    fy = rect->ymin + zoomy * (pts[i].y - offsy);
     immAttr4fv(col, (pts[i].flag & PROF_SELECT) ? color_vert_select : color_vert);
     immVertex2f(pos, fx, fy);
   }
