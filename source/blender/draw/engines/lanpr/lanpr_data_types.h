@@ -28,25 +28,25 @@
 #include "lanpr_util.h"
 
 typedef struct LANPR_TextureSample {
-  Link item;
+  struct LANPR_TextureSample *next, *prev;
   int X, Y;
   float Z; /*  for future usage */
 } LANPR_TextureSample;
 
 typedef struct LANPR_LineStripPoint {
-  Link item;
+  struct LANPR_LineStripPoint *next, *prev;
   float P[3];
 } LANPR_LineStripPoint;
 
 typedef struct LANPR_LineStrip {
-  Link item;
+  struct LANPR_LineStrip *next, *prev;
   ListBase points;
   int point_count;
   float total_length;
 } LANPR_LineStrip;
 
 typedef struct LANPR_RenderTriangle {
-  Link item;
+  struct LANPR_RenderTriangle *next, *prev;
   struct LANPR_RenderVert *v[3];
   struct LANPR_RenderLine *rl[3];
   real gn[3];
@@ -64,7 +64,7 @@ typedef struct LANPR_RenderTriangleThread {
 } LANPR_RenderTriangleThread;
 
 typedef struct LANPR_RenderElementLinkNode {
-  Link item;
+  struct LANPR_RenderElementLinkNode *next, *prev;
   void *pointer;
   int element_count;
   void *object_ref;
@@ -72,7 +72,7 @@ typedef struct LANPR_RenderElementLinkNode {
 } LANPR_RenderElementLinkNode;
 
 typedef struct LANPR_RenderLineSegment {
-  Link item;
+  struct LANPR_RenderLineSegment *next, *prev;
   real at;                  /*  at==0: left    at==1: right  (this is in 2D projected space) */
   real at_global;           /*  to reconstruct 3d stroke     (XXX: implement global space?) */
   u8bit occlusion;          /*  after "at" point */
@@ -80,7 +80,7 @@ typedef struct LANPR_RenderLineSegment {
 } LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
-  Link item;
+  struct LANPR_RenderVert *next, *prev;
   real gloc[4];
   real fbcoord[4];
   int fbcoordi[2];
@@ -104,7 +104,7 @@ typedef struct LANPR_RenderVert {
 #define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
 
 typedef struct LANPR_RenderLine {
-  Link item;
+  struct LANPR_RenderLine *next, *prev;
   struct LANPR_RenderVert *l, *r;
   struct LANPR_RenderTriangle *tl, *tr;
   ListBase segments;
@@ -121,7 +121,7 @@ typedef struct LANPR_RenderLine {
 } LANPR_RenderLine;
 
 typedef struct LANPR_RenderLineChain {
-  Link item;
+  struct LANPR_RenderLineChain *next, *prev;
   ListBase chain;
   /*  int         SegmentCount;  /*  we count before draw cmd. */
   float length; /*  calculated before draw cmd. */
@@ -131,7 +131,7 @@ typedef struct LANPR_RenderLineChain {
 } LANPR_RenderLineChain;
 
 typedef struct LANPR_RenderLineChainItem {
-  Link item;
+  struct LANPR_RenderLineChainItem *next, *prev;
   float pos[3];  /*  need z value for fading */
   float gpos[3]; /*  for restore position to 3d space */
   float normal[3];
@@ -140,7 +140,7 @@ typedef struct LANPR_RenderLineChainItem {
 } LANPR_RenderLineChainItem;
 
 typedef struct LANPR_ChainRegisterEntry {
-  Link item;
+  struct LANPR_ChainRegisterEntry *next, *prev;
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
   char picked;

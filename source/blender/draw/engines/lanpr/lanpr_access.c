@@ -73,7 +73,7 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
-  for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
+  for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
 
     if (rlc->picked) {
       continue;
@@ -101,7 +101,7 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
-    for (rlci = rlc->chain.first; rlci; rlci = (LANPR_RenderLineChainItem *)rlci->item.next) {
+    for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
       float opatity = 1.0f; /* rlci->occlusion ? 0.0f : 1.0f; */
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
