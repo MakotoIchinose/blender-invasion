@@ -1103,6 +1103,8 @@ static int outliner_select_all_exec(bContext *C, wmOperator *op)
       break;
   }
 
+  outliner_select_sync(C, soops);
+
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   ED_region_tag_redraw_no_rebuild(ar);

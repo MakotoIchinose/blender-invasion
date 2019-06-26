@@ -3539,7 +3539,7 @@ static void outliner_update_viewable_area(ARegion *ar,
   UI_view2d_totRect_set(&ar->v2d, sizex, sizey);
 }
 
-void outliners_mark_dirty(const bContext *C, SpaceOutliner *soops)
+void outliners_mark_dirty(const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
@@ -3549,36 +3549,45 @@ void outliners_mark_dirty(const bContext *C, SpaceOutliner *soops)
           SpaceOutliner *soutliner = (SpaceOutliner *)space;
 
           /* Mark selection state as dirty */
-          if (soutliner != soops) {
-            soutliner->flag |= SO_IS_DIRTY;
-          }
+          soutliner->flag |= SO_IS_DIRTY;
         }
       }
     }
   }
 }
 
-/* Sync selection flags with other outliner */
-static void outliner_sync_selection_with_outliner(SpaceOutliner *soops, ListBase *tree)
+/* Sync selection flags to active view layer */
+void outliner_sync_selection_to_view_layer(bContext *C, ListBase *tree)
 {
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0) {
+      if (te->idcode == ID_OB) {
+        Object *ob = (Object *)tselem->id;
+        Base *base = (te->directdata) ? (Base *)te->directdata :
+                                        BKE_view_layer_base_find(view_layer, ob);
 
-    TreeElement *ten = outliner_find_id(soops, &soops->tree, tselem->id);
-    if (ten) {
-      TreeStoreElem *this_tselem = TREESTORE(ten);
-      /* If is selected in other outliner */
-      if (tselem->flag & TSE_SELECTED) {
+        if (base) {
+          const bool is_selected = ((tselem->flag & TSE_SELECTED) != 0);
 
-        this_tselem->flag |= TSE_SELECTED;
-      }
-      else {
-        this_tselem->flag &= ~TSE_SELECTED;
+          if (is_selected) {
+            ED_object_base_select(base, BA_SELECT);
+          }
+          else {
+            ED_object_base_select(base, BA_DESELECT);
+          }
+        }
       }
     }
 
-    outliner_sync_selection_with_outliner(soops, &te->subtree);
+    outliner_sync_selection_to_view_layer(C, &te->subtree);
   }
+
+  DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
 }
 
 /* Sync selection flags from active view layer */
@@ -3596,7 +3605,7 @@ static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListB
         if (is_selected) {
           tselem->flag |= TSE_SELECTED;
         }
-        else if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_EXTEND) {
+        else {
           tselem->flag &= ~TSE_SELECTED;
         }
       }
@@ -3608,29 +3617,24 @@ static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListB
 
 static void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
 {
-  /* Sync from clean outliner */
-  if (soops->flag & SO_IS_DIRTY) {
-    puts("\tSyncing from clean outliner");
-    if (G_MAIN->clean_outliner) {
-      outliner_sync_selection_with_outliner(soops, &G_MAIN->clean_outliner->tree);
-    }
+  ViewLayer *view_layer = CTX_data_view_layer(C);
 
-    soops->flag &= ~SO_IS_DIRTY;
+  /* If 3D view selection occurred, mark outliners as dirty */
+  if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_NONE) {
+    printf("Marking outliners as dirty\n");
+
+    outliners_mark_dirty(C);
+
+    G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
   }
-  /* Sync from view layer */
-  else if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_NONE) {
-    printf("View3D select... Syncing from view layer... ");
 
-    ViewLayer *view_layer = CTX_data_view_layer(C);
+  /* If dirty, sync from view layer */
+  if (soops->flag & SO_IS_DIRTY) {
+    printf("\tSyncing dirty outliner...\n");
 
     outliner_sync_selection_from_view_layer(view_layer, &soops->tree);
 
-    /* Mark other outliners as dirty */
-    outliners_mark_dirty(C, soops);
-
-    G_MAIN->clean_outliner = soops;
-    G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
-    printf("set clean outliner\n");
+    soops->flag &= ~SO_IS_DIRTY;
   }
 }
 

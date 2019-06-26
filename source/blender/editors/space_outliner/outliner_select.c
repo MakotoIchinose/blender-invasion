@@ -74,12 +74,15 @@
 #include "outliner_intern.h"
 
 /* Set clean outliner and mark other outliners for syncing */
-static void outliner_select_sync(const bContext *C, SpaceOutliner *soops)
+void outliner_select_sync(bContext *C, SpaceOutliner *soops)
 {
   puts("Outliner select... Mark other outliners as dirty for syncing");
+  outliner_sync_selection_to_view_layer(C, &soops->tree);
   G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
-  G_MAIN->clean_outliner = soops;
-  outliners_mark_dirty(C, soops);
+
+  /* Don't need to mark self as dirty here... */
+  outliners_mark_dirty(C);
+  soops->flag &= ~SO_IS_DIRTY;
 }
 
 /* Get base of object under cursor (for eyedropper) */
@@ -1373,7 +1376,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
     if (deselect_all) {
       outliner_flag_set(&soops->tree, TSE_SELECTED, false);
-      WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
       changed = true;
     }
   }
@@ -1683,6 +1685,9 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
     do_outliner_select_walk(soops, active, direction);
   }
 
+  if (soops->flag & SO_SYNC_SELECTION) {
+    outliner_select_sync(C, soops);
+  }
   ED_region_tag_redraw(ar);
 
   return OPERATOR_FINISHED;
