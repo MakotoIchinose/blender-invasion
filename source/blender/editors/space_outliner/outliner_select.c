@@ -1152,7 +1152,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   else if (tselem->type == TSE_POSE_BASE) {
     /* Support pose mode toggle, keeping the active object as is. */
   }
-  else {
+  else if (soops->flag & SO_SYNC_SELECTION) {
     tree_element_set_active_object(C,
                                    scene,
                                    view_layer,

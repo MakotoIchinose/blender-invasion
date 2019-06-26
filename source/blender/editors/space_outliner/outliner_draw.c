@@ -3572,9 +3572,11 @@ void outliner_sync_selection_to_view_layer(bContext *C, ListBase *tree)
                                         BKE_view_layer_base_find(view_layer, ob);
 
         if (base) {
-          const bool is_selected = ((tselem->flag & TSE_SELECTED) != 0);
+          if (tselem->flag & TSE_ACTIVE) {
+            ED_object_base_activate(C, base);
+          }
 
-          if (is_selected) {
+          if (tselem->flag & TSE_SELECTED) {
             ED_object_base_select(base, BA_SELECT);
           }
           else {
@@ -3596,12 +3598,20 @@ static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListB
 {
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
+
+    tselem->flag &= ~TSE_ACTIVE;
+
     if (tselem->type == 0) {
       if (te->idcode == ID_OB) {
         Object *ob = (Object *)tselem->id;
+        Object *obact = OBACT(view_layer);
         Base *base = (te->directdata) ? (Base *)te->directdata :
                                         BKE_view_layer_base_find(view_layer, ob);
         const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
+
+        if (base && (ob == obact)) {
+          tselem->flag |= TSE_ACTIVE;
+        }
 
         if (is_selected) {
           tselem->flag |= TSE_SELECTED;
@@ -3658,6 +3668,9 @@ void draw_outliner(const bContext *C)
   /* Sync selection state from view layer or clean outliner if needed */
   if (soops->flag & SO_SYNC_SELECTION) {
     outliner_sync_selection(C, soops);
+  }
+  else {
+    soops->flag |= SO_IS_DIRTY;
   }
 
   /* force display to pixel coords */
