@@ -34,7 +34,8 @@
 typedef struct ProfilePoint {
   float x, y;
   /** Shorty for result lookup. */
-  short flag, shorty;
+  short flag;
+  char _pad[2];
 } ProfilePoint;
 
 /* ProfilePoint->flag */
