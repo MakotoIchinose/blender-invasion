@@ -831,9 +831,10 @@ static void rna_Scene_listener_update(Main *UNUSED(bmain), Scene *scene, Pointer
   DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_LISTENER);
 }
 
-static void rna_Scene_volume_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
+static void rna_Scene_volume_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_VOLUME);
+  Scene *scene = (Scene *)ptr->id.data;
+  DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_VOLUME | ID_RECALC_SEQUENCER_STRIPS);
 }
 
 static const char *rna_Scene_statistics_string_get(Scene *scene,
@@ -2887,7 +2888,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_transform_pivot_point_align", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "transform_flag", SCE_XFORM_AXIS_ALIGN);
   RNA_def_property_ui_text(
-      prop, "Only Origins", "Manipulate center points (object, pose and weight paint mode only)");
+      prop, "Only Origins", "Manipulate origins (object, pose and weight paint mode only)");
   RNA_def_property_ui_icon(prop, ICON_CENTER_ONLY, 0);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
