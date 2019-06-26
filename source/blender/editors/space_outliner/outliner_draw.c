@@ -3307,7 +3307,8 @@ static void outliner_draw_highlights_recursive(unsigned pos,
     const int start_y = *io_start_y;
 
     /* selection status */
-    if ((tselem->flag & TSE_ACTIVE) && (tselem->flag & TSE_SELECTED)) {
+    if ((soops->flag & SO_SYNC_SELECTION) && (tselem->flag & TSE_ACTIVE) &&
+        (tselem->flag & TSE_SELECTED)) {
       immUniformColor4fv(col_active);
       immRecti(pos, 0, start_y, (int)ar->v2d.cur.xmax, start_y + UI_UNIT_Y);
     }
