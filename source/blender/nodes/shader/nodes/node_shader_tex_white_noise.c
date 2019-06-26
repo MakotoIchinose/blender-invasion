@@ -57,21 +57,10 @@ static int gpu_shader_tex_white_noise(GPUMaterial *mat,
 static void node_shader_update_tex_white_noise(bNodeTree *UNUSED(ntree), bNode *node)
 {
   bNodeSocket *inVecSock = BLI_findlink(&node->inputs, 0);
-  bNodeSocket *inFacSock = BLI_findlink(&node->inputs, 1);
+  bNodeSocket *inWSock = BLI_findlink(&node->inputs, 1);
 
-  switch (node->custom1) {
-    case 1:
-      inVecSock->flag |= SOCK_UNAVAIL;
-      inFacSock->flag &= ~SOCK_UNAVAIL;
-      break;
-    case 4:
-      inVecSock->flag &= ~SOCK_UNAVAIL;
-      inFacSock->flag &= ~SOCK_UNAVAIL;
-      break;
-    default:
-      inVecSock->flag &= ~SOCK_UNAVAIL;
-      inFacSock->flag |= SOCK_UNAVAIL;
-  }
+  nodeSetSocketAvailability(inVecSock, node->custom1 != 1);
+  nodeSetSocketAvailability(inWSock, node->custom1 == 1 || node->custom1 == 4);
 }
 
 void register_node_type_sh_tex_white_noise(void)

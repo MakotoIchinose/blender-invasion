@@ -2799,6 +2799,16 @@ int nodeSocketIsHidden(bNodeSocket *sock)
   return ((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0);
 }
 
+void nodeSetSocketAvailability(bNodeSocket *sock, bool condition)
+{
+  if (condition) {
+    sock->flag &= ~SOCK_UNAVAIL;
+  }
+  else {
+    sock->flag |= SOCK_UNAVAIL;
+  }
+}
+
 /* ************** Node Clipboard *********** */
 
 #define USE_NODE_CB_VALIDATE

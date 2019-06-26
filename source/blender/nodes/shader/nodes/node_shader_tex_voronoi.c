@@ -208,72 +208,23 @@ static void node_shader_update_tex_voronoi(bNodeTree *UNUSED(ntree), bNode *node
   bNodeSocket *outWSock = BLI_findlink(&node->outputs, 3);
   bNodeSocket *outRadiusSock = BLI_findlink(&node->outputs, 4);
 
-  if (tex->dimensions == 1 || tex->dimensions == 4) {
-    inWSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    inWSock->flag |= SOCK_UNAVAIL;
-  }
-
-  if (tex->dimensions == 1) {
-    inVecSock->flag |= SOCK_UNAVAIL;
-  }
-  else {
-    inVecSock->flag &= ~SOCK_UNAVAIL;
-  }
-
-  if (tex->distance == SHD_VORONOI_MINKOWSKI) {
-    inExponentSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    inExponentSock->flag |= SOCK_UNAVAIL;
-  }
-
-  if (tex->feature == SHD_VORONOI_SMOOTH_F1) {
-    inSmoothnessSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    inSmoothnessSock->flag |= SOCK_UNAVAIL;
-  }
-
-  if (tex->feature == SHD_VORONOI_N_SPHERE_RADIUS) {
-    outDistanceSock->flag |= SOCK_UNAVAIL;
-  }
-  else {
-    outDistanceSock->flag &= ~SOCK_UNAVAIL;
-  }
-
-  if (tex->feature != SHD_VORONOI_DISTANCE_TO_EDGE &&
-      tex->feature != SHD_VORONOI_N_SPHERE_RADIUS) {
-    outColorSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    outColorSock->flag |= SOCK_UNAVAIL;
-  }
-
-  if (tex->feature != SHD_VORONOI_DISTANCE_TO_EDGE &&
-      tex->feature != SHD_VORONOI_N_SPHERE_RADIUS && tex->dimensions != 1) {
-    outPositionSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    outPositionSock->flag |= SOCK_UNAVAIL;
-  }
-
-  if (tex->feature != SHD_VORONOI_DISTANCE_TO_EDGE &&
-      tex->feature != SHD_VORONOI_N_SPHERE_RADIUS &&
-      (tex->dimensions == 1 || tex->dimensions == 4)) {
-    outWSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    outWSock->flag |= SOCK_UNAVAIL;
-  }
-
-  if (tex->feature == SHD_VORONOI_N_SPHERE_RADIUS) {
-    outRadiusSock->flag &= ~SOCK_UNAVAIL;
-  }
-  else {
-    outRadiusSock->flag |= SOCK_UNAVAIL;
-  }
+  nodeSetSocketAvailability(inWSock, tex->dimensions == 1 || tex->dimensions == 4);
+  nodeSetSocketAvailability(inVecSock, tex->dimensions != 1);
+  nodeSetSocketAvailability(inExponentSock, tex->distance == SHD_VORONOI_MINKOWSKI);
+  nodeSetSocketAvailability(inSmoothnessSock, tex->feature == SHD_VORONOI_SMOOTH_F1);
+  nodeSetSocketAvailability(outDistanceSock, tex->feature != SHD_VORONOI_N_SPHERE_RADIUS);
+  nodeSetSocketAvailability(outColorSock,
+                            tex->feature != SHD_VORONOI_DISTANCE_TO_EDGE &&
+                                tex->feature != SHD_VORONOI_N_SPHERE_RADIUS);
+  nodeSetSocketAvailability(outPositionSock,
+                            tex->feature != SHD_VORONOI_DISTANCE_TO_EDGE &&
+                                tex->feature != SHD_VORONOI_N_SPHERE_RADIUS &&
+                                tex->dimensions != 1);
+  nodeSetSocketAvailability(outWSock,
+                            tex->feature != SHD_VORONOI_DISTANCE_TO_EDGE &&
+                                tex->feature != SHD_VORONOI_N_SPHERE_RADIUS &&
+                                (tex->dimensions == 1 || tex->dimensions == 4));
+  nodeSetSocketAvailability(outRadiusSock, tex->feature == SHD_VORONOI_N_SPHERE_RADIUS);
 }
 
 void register_node_type_sh_tex_voronoi(void)
