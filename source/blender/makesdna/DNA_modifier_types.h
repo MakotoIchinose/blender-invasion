@@ -1972,7 +1972,7 @@ enum {
 typedef struct FeatureLineModifierData {
   ModifierData modifier;
 
-  int usage;
+  char _pad[4];
   int types;  // eFeatureLine_TypeFlag
 
   struct Object *target;
@@ -1985,12 +1985,6 @@ typedef struct FeatureLineModifierData {
   int level_end;
 
 } FeatureLineModifierData;
-
-enum eFeatureLine_Usage {
-  MOD_FEATURE_LINE_INCLUDE = 0,
-  MOD_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
-  MOD_FEATURE_LINE_EXCLUDE = (1 << 1),
-};
 
 enum eFeatureLine_TypeFlag {
   MOD_FEATURE_LINE_NONE = (1 << 0),

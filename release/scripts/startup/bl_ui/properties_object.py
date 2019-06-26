@@ -402,6 +402,20 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col = flow.column()
         col.prop(ob, "hide_select", text="Selectable", toggle=False, invert_checkbox=True)
 
+class OBJECT_PT_lanpr(ObjectButtonsPanel, Panel):
+    bl_label = "LANPR"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.object) and (context.scene.lanpr.enabled)
+
+    def draw(self, context):
+        layout=self.layout
+        lanpr = context.object.lanpr
+        layout.label(text='Usage:')
+        row = layout.row()
+        row.prop(lanpr,'usage',expand=True)
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
@@ -423,6 +437,7 @@ classes = (
     OBJECT_PT_display,
     OBJECT_PT_display_bounds,
     OBJECT_PT_visibility,
+    OBJECT_PT_lanpr,
     OBJECT_PT_custom_props,
 )
 

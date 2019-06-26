@@ -1670,10 +1670,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def FEATURE_LINE(self, layout, ob, md):
         layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Manual Update')
-        layout.label(text='Usage:')
-        row = layout.row()
-        row.prop(md,'usage',expand=True)
-        if md.usage == 'INCLUDE':
+        if ob.lanpr.usage == 'INCLUDE':
             layout.label(text='Enable Types:')
             row = layout.row(align=True)
             row.prop(md,'enable_contour',toggle=True)
@@ -1698,6 +1695,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
                 row = layout.row()
                 row.prop(md,'layer')
                 row.prop(md,'material')
+        else:
+            layout.label(text="This object is not included in LANPR")
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"

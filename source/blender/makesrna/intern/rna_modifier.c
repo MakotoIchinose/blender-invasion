@@ -5996,27 +5996,11 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static EnumPropertyItem prop_feature_line_usage_items[] = {
-      {MOD_FEATURE_LINE_INCLUDE, "INCLUDE", 0, "Include", "Include this object into calculation"},
-      {MOD_FEATURE_LINE_OCCLUSION_ONLY,
-       "OCCLUSION_ONLY",
-       0,
-       "Occlusion Only",
-       "Don't produce lines, only used as occlusion object"},
-      {MOD_FEATURE_LINE_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't calculate this object"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   srna = RNA_def_struct(brna, "FeatureLineModifier", "Modifier");
   RNA_def_struct_ui_text(
       srna, "Feature Line Modifier", "To extract feature lines from a mesh using LANPR");
   RNA_def_struct_sdna(srna, "FeatureLineModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_WIREFRAME);
-
-  prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, prop_feature_line_usage_items);
-  RNA_def_property_ui_text(prop, "Usage", "How to use this object");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "enable_contour", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_CONTOUR);

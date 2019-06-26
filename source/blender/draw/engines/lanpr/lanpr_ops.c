@@ -2276,6 +2276,16 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
     BM_mesh_free(bm);
   }
 }
+int lanpr_object_usage(Object *o)
+{
+  ModifierData *md;
+  for (md = o->modifiers.first; md; md = md->next) {
+    if (md->type == eModifierType_FeatureLine) {
+      FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
+    }
+  }
+  return 0;
+}
 void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                                         Scene *s,
                                         Object *c /*camera*/,
