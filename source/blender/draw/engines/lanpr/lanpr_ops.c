@@ -4476,7 +4476,8 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
                                             flmd->level_begin,
                                             flmd->use_multiple_levels ? flmd->level_end :
                                                                         flmd->level_begin,
-                                            flmd->material);
+                                            flmd->material,
+                                            NULL);
         }
       }
     }
@@ -4485,6 +4486,46 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
     lanpr_update_gp_strokes_recursive(dg, cc->collection, frame);
   }
 }
+void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, int frame)
+{
+  Object *ob;
+  Object *gpobj;
+  ModifierData *md;
+  bGPdata *gpd;
+  bGPDlayer *gpl;
+  bGPDframe *gpf;
+  CollectionObject *co;
+  CollectionChild *cc;
+
+  /* depth first */
+  for (cc = col->children.first; cc; cc = cc->next) {
+    lanpr_update_gp_strokes_collection(dg, cc->collection, frame);
+  }
+
+  if (col->lanpr.usage != COLLECTION_LANPR_INCLUDE || !col->lanpr.target) {
+    return;
+  }
+
+  gpobj = col->lanpr.target;
+  gpd = gpobj->data;
+  gpl = BKE_gpencil_layer_get_index(gpd, col->lanpr.layer, 1);
+  if (!gpl) {
+    gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
+  }
+  gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+  /* BKE_gpencil_free_strokes(gpf);   will be overwritten. need another solution */
+  /* Please manually delete those strokes before clicking Update once again. */
+
+  lanpr_generate_gpencil_from_chain(dg,
+                                    NULL,
+                                    gpl,
+                                    gpf,
+                                    col->lanpr.level_begin,
+                                    col->lanpr.use_multiple_levels ? col->lanpr.level_end :
+                                                                     col->lanpr.level_begin,
+                                    col->lanpr.material,
+                                    col);
+}
 int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -4492,7 +4533,11 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
   SceneLANPR *lanpr = &scene->lanpr;
   int frame = scene->r.cfra;
 
+  lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
+
   lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame);
+
+  lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
 
   return OPERATOR_FINISHED;
 }

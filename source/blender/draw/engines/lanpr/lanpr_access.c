@@ -45,7 +45,8 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                        bGPDframe *gpf,
                                        int qi_begin,
                                        int qi_end,
-                                       int material_nr)
+                                       int material_nr,
+                                       Collection *col)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
@@ -74,8 +75,11 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
   LANPR_RenderLineChainItem *rlci;
   for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
 
+    if (rlc->picked) {
+      continue;
+    }
     if (!rlc->object_ref) {
-      continue; /*  XXX: intersection lines are lost */
+      continue; /* intersection lines are lost! */
     }
     if (rlc->level > qi_end || rlc->level < qi_begin) {
       continue;
@@ -83,6 +87,13 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (ob && &ob->id != rlc->object_ref->id.orig_id) {
       continue;
     }
+    if (col) {
+      if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref->id.orig_id)) {
+        continue;
+      }
+    }
+
+    rlc->picked = 1;
 
     int array_idx = 0;
     int count = lanpr_count_chain(rlc);

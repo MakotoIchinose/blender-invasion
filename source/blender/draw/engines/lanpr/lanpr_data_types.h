@@ -125,7 +125,7 @@ typedef struct LANPR_RenderLineChain {
   ListBase chain;
   /*  int         SegmentCount;  /*  we count before draw cmd. */
   float length; /*  calculated before draw cmd. */
-  char picked;  /*  used when re-connecting */
+  char picked;  /*  used when re-connecting and gp stroke generation */
   char level;
   struct Object *object_ref;
 } LANPR_RenderLineChain;

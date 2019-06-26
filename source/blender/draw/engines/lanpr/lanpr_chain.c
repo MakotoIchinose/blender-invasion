@@ -864,3 +864,14 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
   rb->chain_draw_batch = GPU_batch_create_ex(
       GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 }
+
+void lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
+{
+  LANPR_RenderLineChain *rlc;
+  if (!rb) {
+    return;
+  }
+  for (rlc = rb->chains.first; rlc; rlc = (LANPR_RenderLineChain *)rlc->item.next) {
+    rlc->picked = 0;
+  }
+}

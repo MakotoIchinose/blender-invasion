@@ -11,16 +11,19 @@
 typedef struct LANPR_RenderLineChain LANPR_RenderLineChain;
 
 void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
-                                       Object *ob,
+                                       struct Object *ob,
                                        bGPDlayer *gpl,
                                        bGPDframe *gpf,
                                        int qi_begin,
                                        int qi_end,
-                                       int material_nr);
+                                       int material_nr,
+                                       struct Collection *col);
 
 void lanpr_update_data_for_external(Depsgraph *depsgraph);
 
 int lanpr_count_chain(LANPR_RenderLineChain *rlc);
+
+void lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
 int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph);
 
