@@ -2147,6 +2147,10 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
   int CanFindFreestyle = 0;
   int i;
 
+  if (o->lanpr.usage == OBJECT_FEATURE_LINE_EXCLUDE) {
+    return;
+  }
+
   if (o->type == OB_MESH) {
 
     tmat_obmat_to_16d(o->obmat, self_transform);
@@ -2233,7 +2237,9 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
       LANPR_RenderLineSegment *rls = mem_static_aquire(&rb->render_data_pool,
                                                        sizeof(LANPR_RenderLineSegment));
       BLI_addtail(&rl->segments, rls);
-      BLI_addtail(&rb->all_render_lines, rl);
+      if (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE) {
+        BLI_addtail(&rb->all_render_lines, rl);
+      }
       rl++;
     }
 
@@ -2276,6 +2282,8 @@ void lanpr_make_render_geometry_buffers_object(Object *o,
     BM_mesh_free(bm);
   }
 }
+
+/* reserved for checking collection includes/excludes */
 int lanpr_object_usage(Object *o)
 {
   ModifierData *md;
@@ -2286,6 +2294,7 @@ int lanpr_object_usage(Object *o)
   }
   return 0;
 }
+
 void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                                         Scene *s,
                                         Object *c /*camera*/,
