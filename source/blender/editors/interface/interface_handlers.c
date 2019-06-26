@@ -3727,7 +3727,7 @@ static void ui_do_but_textedit_select(
 
 static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
 {
-  if (but->type == UI_BTYPE_CURVE) { /* HANS-TODO: Can I reuse this? */
+  if (but->type == UI_BTYPE_CURVE) {
     but->editcumap = (CurveMapping *)but->poin;
   }
   if (but->type == UI_BTYPE_PROFILE) {
@@ -6754,18 +6754,20 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
     }
   }
 
+  fx = (mx - dragx) / zoomx;
+  fy = (my - dragy) / zoomy;
+
   if (data->dragsel != -1) {
     ProfilePoint *point_last = NULL;
     const float mval_factor = ui_mouse_scale_warp_factor(shift);
     bool moved_point = false; /* for ctrl grid, can't use orig coords because of sorting */
-
-    fx = (mx - dragx) / zoomx;
-    fy = (my - dragy) / zoomy;
+    /* HANS-TODO: Well enable using original coords then? */
 
     fx *= mval_factor;
     fy *= mval_factor;
 
-    for (a = 0; a < prpath->totpoint; a++) {
+    /* Move all the points that aren't the last or the first */
+    for (a = 1; a < prpath->totpoint - 1; a++) {
       if (pts[a].flag & PROF_SELECT) {
         float origx = pts[a].x, origy = pts[a].y;
         pts[a].x += fx;
@@ -6774,7 +6776,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
           pts[a].x = 0.125f * roundf(8.0f * pts[a].x);
           pts[a].y = 0.125f * roundf(8.0f * pts[a].y);
         }
-        if (pts[a].x != origx || pts[a].y != origy) {
+        if (!moved_point && (pts[a].x != origx || pts[a].y != origy)) {
           moved_point = true;
         }
 
@@ -6788,7 +6790,6 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
       data->draglastx = evtx;
       data->draglasty = evty;
       changed = true;
-
 #ifdef USE_CONT_MOUSE_CORRECT
       /* note: using 'cmp_last' is weak since there may be multiple points selected,
        * but in practice this isnt really an issue */
@@ -6800,13 +6801,9 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
       }
 #endif
     }
-
     data->dragchange = true; /* mark for selection */
   }
   else {
-    fx = (mx - dragx) / zoomx;
-    fy = (my - dragy) / zoomy;
-
     /* clamp for clip */
     if (prwidget->flag & PROF_DO_CLIP) {
       if (prwidget->curr.xmin - fx < prwidget->clipr.xmin) {
@@ -6843,7 +6840,7 @@ static int ui_do_but_PROFILE(bContext *C,
                              uiHandleButtonData *data,
                              const wmEvent *event)
 {
-  int mx, my, a;
+  int mx, my, i;
   bool changed = false;
 
   mx = event->x;
@@ -6854,10 +6851,10 @@ static int ui_do_but_PROFILE(bContext *C,
     if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
       ProfileWidget *prwidget = (ProfileWidget *)but->poin;
       ProfilePath *prpath = prwidget->profile;
-      ProfilePoint *pts;
+      ProfilePoint *pts; /* Path or table */
       const float m_xy[2] = {mx, my};
       float dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius */
-      int sel = -1;
+      int i_selected = -1;
 
       if (event->ctrl) {
         float f_xy[2];
@@ -6870,20 +6867,17 @@ static int ui_do_but_PROFILE(bContext *C,
 
       /* check for selecting of a point */
       pts = prpath->path; /* ctrl adds point, new malloc */
-      for (a = 0; a < prpath->totpoint; a++) {
+      for (i = 0; i < prpath->totpoint; i++) {
         float f_xy[2];
-        BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[a].x);
+        BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[i].x);
         const float dist_sq = len_squared_v2v2(m_xy, f_xy);
         if (dist_sq < dist_min_sq) {
-          sel = a;
+          i_selected = i;
           dist_min_sq = dist_sq;
         }
       }
-      /* HANS-QUESTION: Why do we continue execution after deciding that it was an insert
-       * operation? */
 
-      if (sel == -1) {
-        int i;
+      if (i_selected == -1) {
         float f_xy[2], f_xy_prev[2];
 
         /* if the click didn't select anything, check if it's clicked on the
@@ -6896,14 +6890,14 @@ static int ui_do_but_PROFILE(bContext *C,
         dist_min_sq = SQUARE(U.dpi_fac * 8.0f);
 
         /* loop through the curve segment table and find what's near the mouse. */
-        for (i = 1; i <= CM_TABLE; i++) {
+        for (i = 1; i <= PROF_TABLE_SIZE; i++) {
           copy_v2_v2(f_xy_prev, f_xy);
           BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[i].x);
 
           if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
             BLI_rctf_transform_pt_v(&prwidget->curr, &but->rect, f_xy, m_xy);
 
-            profilepath_insert(prpath, f_xy[0], f_xy[1]);
+            ProfilePoint *new_pt = profilepath_insert(prpath, f_xy[0], f_xy[1]);
             profilewidget_changed(prwidget, false);
 
             changed = true;
@@ -6912,10 +6906,9 @@ static int ui_do_but_PROFILE(bContext *C,
             pts = prpath->path;
 
             /* find newly added point and make it 'sel' */
-            /* HANS-TODO: This might need to be changed to not just use X */
-            for (a = 0; a < prpath->totpoint; a++) {
-              if (pts[a].x == f_xy[0]) {
-                sel = a;
+            for (i = 0; i < prpath->totpoint; i++) {
+              if (&pts[i] == new_pt) {
+                i_selected = i;
               }
             }
             break;
@@ -6923,25 +6916,25 @@ static int ui_do_but_PROFILE(bContext *C,
         }
       }
 
-      if (sel != -1) {
+      if (i_selected != -1) {
         /* ok, we move a point */
         /* deselect all if this one is deselect. except if we hold shift */
         if (!event->shift) {
-          for (a = 0; a < prpath->totpoint; a++) {
-            pts[a].flag &= ~PROF_SELECT;
+          for (i = 0; i < prpath->totpoint; i++) {
+            pts[i].flag &= ~PROF_SELECT;
           }
-          pts[sel].flag |= PROF_SELECT;
+          pts[i_selected].flag |= PROF_SELECT;
         }
         else {
-          pts[sel].flag ^= PROF_SELECT;
+          pts[i_selected].flag ^= PROF_SELECT;
         }
       }
       else {
-        /* move the view */
+        /* move the view */ /* HANS-QUESTION: Where is this done? */
         data->cancel = true;
       }
 
-      data->dragsel = sel;
+      data->dragsel = i_selected;
 
       data->dragstartx = event->x;
       data->dragstarty = event->y;
@@ -6970,8 +6963,8 @@ static int ui_do_but_PROFILE(bContext *C,
         if (data->dragchange == false) {
           /* deselect all, select one */
           if (!event->shift) {
-            for (a = 0; a < prpath->totpoint; a++) {
-              pts[a].flag &= ~PROF_SELECT;
+            for (i = 0; i < prpath->totpoint; i++) {
+              pts[i].flag &= ~PROF_SELECT;
             }
             pts[data->dragsel].flag |= PROF_SELECT;
           }
@@ -7777,7 +7770,6 @@ static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonA
   copy_v2_fl(data->ungrab_mval, FLT_MAX);
 #endif
 
-  /* HANS-TODO: Whaat? */
   if (ELEM(but->type, UI_BTYPE_CURVE, UI_BTYPE_PROFILE, UI_BTYPE_SEARCH_MENU)) {
     /* XXX curve is temp */
   }
