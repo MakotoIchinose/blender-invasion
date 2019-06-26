@@ -7361,13 +7361,23 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
                            "Enable Chain Connection",
                            "Connect short chains in the image space into one longer chain");
 
-  prop = RNA_def_property(srna, "chaining_threshold", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.1f);
+  RNA_def_property_ui_text(prop,
+                           "Geometry Threshold",
+                           "Segments where their geometric distance between them lower than this "
+                           "will be chained together");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+
+  prop = RNA_def_property(srna, "chaining_image_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.01f);
   RNA_def_property_ui_text(
       prop,
-      "Threshold",
-      "Segments where distance between them lower than this value will be chained together");
-  RNA_def_property_ui_range(prop, 0.0f, 0.02f, 0.001, 3);
+      "Image Threshold",
+      "Segments where their image distance between them lower than this will be chained together");
+  RNA_def_property_ui_range(prop, 0.0f, 0.1f, 0.001, 4);
+  RNA_def_property_range(prop, 0.0f, 0.1f);
 
   /* here's the collection stuff.... */
 

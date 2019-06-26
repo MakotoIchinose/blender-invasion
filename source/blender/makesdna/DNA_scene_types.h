@@ -1640,7 +1640,7 @@ struct LANPR_LineLayer;
 typedef struct SceneLANPR {
 
   int enabled;
-  int auto_update;  // for LANPR->GP to update automatically
+  int auto_update; /* for LANPR->GP to update automatically */
 
   int master_mode;
 
@@ -1681,21 +1681,18 @@ typedef struct SceneLANPR {
   int reloaded;
 
   /* offline render */
-
-  // struct LANPR_RenderBuffer *render_buffer; /* no longer accessible directly from here */
-  ListBase line_layers; /* now here!!! */
+  ListBase line_layers;
   struct LANPR_LineLayer *active_layer;
 
   char enable_intersections;
   char enable_chaining;
   char enable_chain_connection;
   char _pad1;
-  float chaining_threshold;
+  float chaining_geometry_threshold;
+  float chaining_image_threshold;
 
   /* composite utility */
   int composite_render_animation;
-
-  int _pad2;
 
 } SceneLANPR;
 

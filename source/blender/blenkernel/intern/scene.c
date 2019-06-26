@@ -999,7 +999,8 @@ void BKE_scene_init(Scene *sce)
 
   sce->lanpr.enable_intersections = 1;
   sce->lanpr.enable_chaining = 1;
-  sce->lanpr.chaining_threshold = 0.01;
+  sce->lanpr.chaining_image_threshold = 0.01;
+  sce->lanpr.chaining_geometry_threshold = 0.1;
 }
 
 Scene *BKE_scene_add(Main *bmain, const char *name)
