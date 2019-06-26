@@ -77,6 +77,8 @@ void free_mesh(Mesh *mesh, bool needs_free);
 void name_compat(std::string &ob_name, const std::string &mesh_name);
 std::string get_version_string();
 
+float get_unit_scale(const Scene *const scene);
+
 void export_start(bContext *C, ExportSettings *const settings);
 bool export_end(bContext *C, ExportSettings *const settings);
 

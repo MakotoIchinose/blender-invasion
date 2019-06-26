@@ -13,6 +13,8 @@ extern "C" {
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 
+#include "RNA_access.h"
+
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
@@ -129,14 +131,14 @@ float get_unit_scale(const Scene *const scene)
   // From collada_internal.cpp
   PointerRNA scene_ptr, unit_settings;
   PropertyRNA *system_ptr, *scale_ptr;
-  RNA_id_pointer_create(&scene.id, &scene_ptr);
+  RNA_id_pointer_create((ID *)&scene->id, &scene_ptr);
 
   unit_settings = RNA_pointer_get(&scene_ptr, "unit_settings");
   system_ptr = RNA_struct_find_property(&unit_settings, "system");
   scale_ptr = RNA_struct_find_property(&unit_settings, "scale_length");
 
   int type = RNA_property_enum_get(&unit_settings, system_ptr);
-  float scale;
+  float scale = 1.0;
 
   switch (type) {
     case USER_UNIT_NONE:
@@ -170,7 +172,7 @@ bool get_final_mesh(const ExportSettings *const settings,
       md.mode |= eModifierMode_DisableTemporary;
 
   float scale_mat[4][4];
-  scale_m4_fl(scale_mat, settings->global_scale * get_unit_scale(scene));
+  scale_m4_fl(scale_mat, settings->global_scale * get_unit_scale(escene));
 
   change_orientation(scale_mat, settings->axis_forward, settings->axis_up);
 
