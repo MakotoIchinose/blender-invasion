@@ -1676,13 +1676,21 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
 
   TreeElement *active = outliner_find_active_element(&soops->tree);
 
-  /* Set root to active if no active exists */
+  /* Set root to active if no active exists (may not be needed now that syncing works) */
   if (!active) {
     active = soops->tree.first;
     TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
   }
   else {
-    do_outliner_select_walk(soops, active, direction);
+    TreeStoreElem *tselem = TREESTORE(active);
+
+    /* If active is not selected, just select it */
+    if ((tselem->flag & TSE_SELECTED) == 0) {
+      tselem->flag |= TSE_SELECTED;
+    }
+    else {
+      do_outliner_select_walk(soops, active, direction);
+    }
   }
 
   if (soops->flag & SO_SYNC_SELECTION) {
