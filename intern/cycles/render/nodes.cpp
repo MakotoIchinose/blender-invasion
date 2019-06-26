@@ -951,12 +951,12 @@ NODE_DEFINE(VoronoiTextureNode)
   dimensions_enum.insert("4D", 4);
   SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
 
-  static NodeEnum distance_enum;
-  distance_enum.insert("euclidean", NODE_VORONOI_EUCLIDEAN);
-  distance_enum.insert("manhattan", NODE_VORONOI_MANHATTAN);
-  distance_enum.insert("chebychev", NODE_VORONOI_CHEBYCHEV);
-  distance_enum.insert("minkowski", NODE_VORONOI_MINKOWSKI);
-  SOCKET_ENUM(distance, "Distance Metric", distance_enum, NODE_VORONOI_EUCLIDEAN);
+  static NodeEnum metric_enum;
+  metric_enum.insert("euclidean", NODE_VORONOI_EUCLIDEAN);
+  metric_enum.insert("manhattan", NODE_VORONOI_MANHATTAN);
+  metric_enum.insert("chebychev", NODE_VORONOI_CHEBYCHEV);
+  metric_enum.insert("minkowski", NODE_VORONOI_MINKOWSKI);
+  SOCKET_ENUM(metric, "Distance Metric", metric_enum, NODE_VORONOI_EUCLIDEAN);
 
   static NodeEnum feature_enum;
   feature_enum.insert("f1", NODE_VORONOI_F1);
@@ -1004,7 +1004,7 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
 
   int vector_offset = tex_mapping.compile_begin(compiler, vector_in);
 
-  compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, distance);
+  compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, metric);
   compiler.add_node(compiler.encode_uchar4(vector_offset,
                                            compiler.stack_assign_if_linked(w_in),
                                            compiler.stack_assign_if_linked(scale_in),
@@ -1031,8 +1031,8 @@ void VoronoiTextureNode::compile(OSLCompiler &compiler)
   tex_mapping.compile(compiler);
 
   compiler.parameter(this, "dimensions");
-  compiler.parameter(this, "distance");
   compiler.parameter(this, "feature");
+  compiler.parameter(this, "metric");
   compiler.add(this, "node_voronoi_texture");
 }
 

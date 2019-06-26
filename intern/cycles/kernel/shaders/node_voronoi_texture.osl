@@ -920,8 +920,8 @@ shader node_voronoi_texture(
     int use_mapping = 0,
     matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     string dimensions = "3D",
-    string distance = "euclidean",
     string feature = "f1",
+    string metric = "euclidean",
     vector3 Vector = P,
     float WIn = 0.0,
     float Scale = 5.0,
@@ -946,13 +946,13 @@ shader node_voronoi_texture(
 
   if (dimensions == "1D") {
     if (feature == "f1") {
-      voronoi_f1_1d(w, Exponent, jitter, distance, Distance, Color, WOut);
+      voronoi_f1_1d(w, Exponent, jitter, metric, Distance, Color, WOut);
     }
     else if (feature == "smooth_f1") {
-      voronoi_smooth_f1_1d(w, smoothness, Exponent, jitter, distance, Distance, Color, WOut);
+      voronoi_smooth_f1_1d(w, smoothness, Exponent, jitter, metric, Distance, Color, WOut);
     }
     else if (feature == "f2") {
-      voronoi_f2_1d(w, Exponent, jitter, distance, Distance, Color, WOut);
+      voronoi_f2_1d(w, Exponent, jitter, metric, Distance, Color, WOut);
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_1d(w, jitter, Distance);
@@ -969,14 +969,14 @@ shader node_voronoi_texture(
     vector2 coord2D = vector2(coord[0], coord[1]);
     vector2 outPosition2D;
     if (feature == "f1") {
-      voronoi_f1_2d(coord2D, Exponent, jitter, distance, Distance, Color, outPosition2D);
+      voronoi_f1_2d(coord2D, Exponent, jitter, metric, Distance, Color, outPosition2D);
     }
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_2d(
-          coord2D, smoothness, Exponent, jitter, distance, Distance, Color, outPosition2D);
+          coord2D, smoothness, Exponent, jitter, metric, Distance, Color, outPosition2D);
     }
     else if (feature == "f2") {
-      voronoi_f2_2d(coord2D, Exponent, jitter, distance, Distance, Color, outPosition2D);
+      voronoi_f2_2d(coord2D, Exponent, jitter, metric, Distance, Color, outPosition2D);
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_2d(coord2D, jitter, Distance);
@@ -992,13 +992,13 @@ shader node_voronoi_texture(
   }
   else if (dimensions == "3D") {
     if (feature == "f1") {
-      voronoi_f1_3d(coord, Exponent, jitter, distance, Distance, Color, Position);
+      voronoi_f1_3d(coord, Exponent, jitter, metric, Distance, Color, Position);
     }
     else if (feature == "smooth_f1") {
-      voronoi_smooth_f1_3d(coord, smoothness, Exponent, jitter, distance, Distance, Color, Position);
+      voronoi_smooth_f1_3d(coord, smoothness, Exponent, jitter, metric, Distance, Color, Position);
     }
     else if (feature == "f2") {
-      voronoi_f2_3d(coord, Exponent, jitter, distance, Distance, Color, Position);
+      voronoi_f2_3d(coord, Exponent, jitter, metric, Distance, Color, Position);
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_3d(coord, jitter, Distance);
@@ -1015,14 +1015,14 @@ shader node_voronoi_texture(
     vector4 coord4D = vector4(coord[0], coord[1], coord[2], w);
     vector4 outPosition4D;
     if (feature == "f1") {
-      voronoi_f1_4d(coord4D, Exponent, jitter, distance, Distance, Color, outPosition4D);
+      voronoi_f1_4d(coord4D, Exponent, jitter, metric, Distance, Color, outPosition4D);
     }
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_4d(
-          coord4D, smoothness, Exponent, jitter, distance, Distance, Color, outPosition4D);
+          coord4D, smoothness, Exponent, jitter, metric, Distance, Color, outPosition4D);
     }
     else if (feature == "f2") {
-      voronoi_f2_4d(coord4D, Exponent, jitter, distance, Distance, Color, outPosition4D);
+      voronoi_f2_4d(coord4D, Exponent, jitter, metric, Distance, Color, outPosition4D);
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_4d(coord4D, jitter, Distance);

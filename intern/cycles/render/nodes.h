@@ -220,7 +220,7 @@ class VoronoiTextureNode : public TextureNode {
   }
 
   int dimensions;
-  NodeVoronoiDistanceMetric distance;
+  NodeVoronoiDistanceMetric metric;
   NodeVoronoiFeature feature;
   float w, scale, exponent, smoothness, jitter;
   float3 vector;
