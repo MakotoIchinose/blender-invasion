@@ -15,6 +15,7 @@ uniform float normal_thickness_begin;
 uniform float normal_thickness_end;
 
 uniform float thickness;
+uniform float thickness_contour;
 uniform float thickness_crease;
 uniform float thickness_material;
 uniform float thickness_edge_mark;
@@ -37,7 +38,7 @@ uniform int occlusion_level_end;
 // uniform float zNear;
 // uniform float zFar;
 
-uniform vec4 color;
+uniform vec4 contour_color;
 uniform vec4 crease_color;
 uniform vec4 material_color;
 uniform vec4 edge_mark_color;
@@ -194,7 +195,7 @@ void decide_line_style(int component_id)
   }
 
   if (component_id == 0) {
-    out_color = color;
+    out_color = contour_color;
     use_thickness = th * enable_contour;
     return;
   }

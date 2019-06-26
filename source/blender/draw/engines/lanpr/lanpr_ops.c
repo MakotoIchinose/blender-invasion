@@ -3922,8 +3922,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 
         lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
-        DRW_shgroup_uniform_vec4(
-            rb->ChainShgrp, "color", ll->use_same_style ? ll->color : ll->contour_color, 1);
+        DRW_shgroup_uniform_vec4(rb->ChainShgrp,
+                                 "contour_color",
+                                 ll->use_same_style ? ll->color : ll->contour_color,
+                                 1);
         DRW_shgroup_uniform_vec4(
             rb->ChainShgrp, "crease_color", ll->use_same_style ? ll->color : ll->crease_color, 1);
         DRW_shgroup_uniform_vec4(rb->ChainShgrp,
@@ -3939,9 +3941,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                  ll->use_same_style ? ll->color : ll->intersection_color,
                                  1);
         static float unit_thickness = 1.0f;
+        DRW_shgroup_uniform_float(rb->ChainShgrp, "thickness", &ll->thickness, 1);
         DRW_shgroup_uniform_float(rb->ChainShgrp,
-                                  "thickness",
-                                  ll->use_same_style ? &ll->thickness : &ll->thickness_contour,
+                                  "thickness_contour",
+                                  ll->use_same_style ? &unit_thickness : &ll->thickness_contour,
                                   1);
         DRW_shgroup_uniform_float(rb->ChainShgrp,
                                   "thickness_crease",
@@ -4015,7 +4018,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 
           lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
-          DRW_shgroup_uniform_vec4(ll->shgrp, "color", ll->color, 1);
+          DRW_shgroup_uniform_vec4(
+              ll->shgrp, "contour_color", ll->use_same_style ? ll->color : ll->contour_color, 1);
           DRW_shgroup_uniform_vec4(
               ll->shgrp, "crease_color", ll->use_same_style ? ll->color : ll->crease_color, 1);
           DRW_shgroup_uniform_vec4(
@@ -4028,22 +4032,31 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                    "intersection_color",
                                    ll->use_same_style ? ll->color : ll->intersection_color,
                                    1);
+          static float uniform_thickness = 1.0f;
           DRW_shgroup_uniform_float(ll->shgrp, "thickness", &ll->thickness, 1);
           DRW_shgroup_uniform_float(ll->shgrp,
+                                    "thickness_contour",
+                                    ll->use_same_style ? &uniform_thickness :
+                                                         &ll->thickness_contour,
+                                    1);
+          DRW_shgroup_uniform_float(ll->shgrp,
                                     "thickness_crease",
-                                    ll->use_same_style ? &ll->thickness : &ll->thickness_crease,
+                                    ll->use_same_style ? &uniform_thickness :
+                                                         &ll->thickness_crease,
                                     1);
           DRW_shgroup_uniform_float(ll->shgrp,
                                     "thickness_material",
-                                    ll->use_same_style ? &ll->thickness : &ll->thickness_material,
+                                    ll->use_same_style ? &uniform_thickness :
+                                                         &ll->thickness_material,
                                     1);
           DRW_shgroup_uniform_float(ll->shgrp,
                                     "thickness_edge_mark",
-                                    ll->use_same_style ? &ll->thickness : &ll->thickness_edge_mark,
+                                    ll->use_same_style ? &uniform_thickness :
+                                                         &ll->thickness_edge_mark,
                                     1);
           DRW_shgroup_uniform_float(ll->shgrp,
                                     "thickness_intersection",
-                                    ll->use_same_style ? &ll->thickness :
+                                    ll->use_same_style ? &uniform_thickness :
                                                          &ll->thickness_intersection,
                                     1);
           DRW_shgroup_uniform_vec4(ll->shgrp, "preview_viewport", stl->g_data->dpix_viewport, 1);

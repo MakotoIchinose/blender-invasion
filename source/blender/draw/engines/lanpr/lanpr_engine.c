@@ -313,7 +313,7 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "viewport", stl->g_data->dpix_viewport, 1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
-                             "color",
+                             "contour_color",
                              ll->use_same_style ? ll->color : ll->contour_color,
                              1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
@@ -352,9 +352,11 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "depth_alpha_curve", &lanpr->depth_alpha_curve, 1);
     static float unit_thickness = 1.0f;
+    DRW_shgroup_uniform_float(
+        stl->g_data->dpix_preview_shgrp, "line_thickness", &ll->thickness, 1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
-                              "line_thickness",
-                              ll->use_same_style ? &ll->thickness : &ll->thickness_contour,
+                              "line_thickness_contour",
+                              ll->use_same_style ? &unit_thickness : &ll->thickness_contour,
                               1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_crease",

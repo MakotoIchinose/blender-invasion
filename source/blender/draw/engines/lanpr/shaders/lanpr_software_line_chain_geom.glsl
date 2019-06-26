@@ -11,6 +11,7 @@ uniform float normal_thickness_begin;
 uniform float normal_thickness_end;
 
 uniform float thickness;
+uniform float thickness_contour;
 uniform float thickness_crease;
 uniform float thickness_material;
 uniform float thickness_edge_mark;
@@ -24,7 +25,7 @@ uniform float thickness_intersection;
 // uniform float zNear;
 // uniform float zFar;
 
-uniform vec4 color;
+uniform vec4 contour_color;
 uniform vec4 crease_color;
 uniform vec4 material_color;
 uniform vec4 edge_mark_color;
@@ -101,8 +102,8 @@ void decide_color_and_thickness(float component_id)
   }
 
   if (component_id < 1.5) {
-    out_color = color;
-    use_thickness = th;
+    out_color = contour_color;
+    use_thickness = th * thickness_contour;
     return;
   }
   if (component_id < 2.5) {

@@ -20,14 +20,15 @@ uniform float depth_alpha_curve;
 uniform float z_near;
 uniform float z_far;
 
-uniform vec4 color;
 uniform vec4 background_color;
 
+uniform vec4 contour_color;
 uniform vec4 crease_color;
 uniform vec4 material_color;
 uniform vec4 edge_mark_color;
 uniform vec4 intersection_color;
 
+uniform float line_thickness_contour;
 uniform float line_thickness_crease;
 uniform float line_thickness_material;
 uniform float line_thickness_edge_mark;
@@ -153,8 +154,6 @@ void main()
 
   int is_crease = 0;
 
-  use_color = color;
-
   float th = line_thickness;
   if (normal_mode == 0) {
     th = line_thickness;
@@ -167,8 +166,6 @@ void main()
     float factor = dot(use_normal, normal_direction);
     th = factor_to_thickness(factor);
   }
-
-  use_thickness = th;
 
   if (edge_mask.g > 0) {
     use_color = edge_mark_color;
@@ -186,6 +183,10 @@ void main()
     use_color = crease_color;
     use_thickness = th * line_thickness_crease;
     is_crease = 1;
+  }
+  else {
+    use_color = contour_color;
+    use_thickness = th * line_thickness_contour;
   }
 
   draw_line(p1, p2, is_crease);
