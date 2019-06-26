@@ -1679,7 +1679,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
           /* Disable stencil for this type */
           DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
           /* set stencil mask id as not used */
-          DRW_shgroup_stencil_mask(shgrp, 0x00f);
+          DRW_shgroup_stencil_mask(shgrp, 0x0);
         }
         break;
       }
@@ -1708,7 +1708,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         /* Disable stencil for this type */
         DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
         /* set stencil mask id as not used */
-        DRW_shgroup_stencil_mask(shgrp, 0x00f);
+        DRW_shgroup_stencil_mask(shgrp, 0x0);
         break;
       }
       case eGpencilBatchGroupType_Fill: {
@@ -1733,7 +1733,7 @@ static void DRW_gpencil_shgroups_create(GPENCIL_e_data *e_data,
         /* Disable stencil for this type */
         DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
         /* set stencil mask id as not used */
-        DRW_shgroup_stencil_mask(shgrp, 0x00f);
+        DRW_shgroup_stencil_mask(shgrp, 0x0);
         break;
       }
       case eGpencilBatchGroupType_Edit: {

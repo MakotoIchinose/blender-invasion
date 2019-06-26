@@ -632,7 +632,6 @@ class SEQUENCER_MT_strip_movie(Menu):
         layout = self.layout
 
         layout.operator("sequencer.rendersize")
-        layout.operator("sequencer.images_separate")
         layout.operator("sequencer.deinterlace_selected_movies")
 
 
@@ -1052,8 +1051,8 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
             rowsub.active = strip.use_shadow
             rowsub.prop(strip, "shadow_color", text="")
 
-            col.prop(strip, "align_x")
-            col.prop(strip, "align_y", text="Y")
+            col.prop(strip, "align_x", text="Horizontal")
+            col.prop(strip, "align_y", text="Vertical")
             row = col.row(align=True)
             row.prop(strip, "location", text="Location")
             col.prop(strip, "wrap_width")
