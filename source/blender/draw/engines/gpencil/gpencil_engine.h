@@ -210,12 +210,12 @@ typedef struct GPENCIL_PassList {
   struct DRWPass *stroke_pass_3d;
   struct DRWPass *edit_pass;
   struct DRWPass *drawing_pass;
-  struct DRWPass *mix_pass;
-  struct DRWPass *mix_pass_noblend;
+  struct DRWPass *mix_screen_pass;
+  struct DRWPass *mix_screen_noblend_pass;
   struct DRWPass *background_pass;
   struct DRWPass *paper_pass;
   struct DRWPass *grid_pass;
-  struct DRWPass *blend_pass;
+  struct DRWPass *blend_layers_pass;
 
   /* effects */
   struct DRWPass *fx_shader_pass;

@@ -800,7 +800,7 @@ static void gpencil_draw_fx_pass(GPENCIL_Data *vedata, DRWShadingGroup *shgrp, b
 
   GPU_framebuffer_bind(fbl->temp_fb_a);
   GPU_framebuffer_clear_color_depth(fbl->temp_fb_a, clearcol, 1.0f);
-  DRW_draw_pass(psl->mix_pass_noblend);
+  DRW_draw_pass(psl->mix_screen_noblend_pass);
 }
 
 /* helper to manage gaussian blur passes */
@@ -853,7 +853,7 @@ static void draw_gpencil_midpass_blur(GPENCIL_Data *vedata, ShaderFxData_Runtime
   /* copy pass from b for ping-pong frame buffers */
   GPU_framebuffer_bind(fbl->temp_fb_fx);
   GPU_framebuffer_clear_color_depth(fbl->temp_fb_fx, clearcol, 1.0f);
-  DRW_draw_pass(psl->mix_pass_noblend);
+  DRW_draw_pass(psl->mix_screen_noblend_pass);
 }
 
 /* do blur of mid passes */
@@ -917,7 +917,7 @@ static void draw_gpencil_rim_passes(GPENCIL_Data *vedata, RimShaderFxData *fxd)
 
   GPU_framebuffer_bind(fbl->temp_fb_a);
   GPU_framebuffer_clear_color_depth(fbl->temp_fb_a, clearcol, 1.0f);
-  DRW_draw_pass(psl->mix_pass_noblend);
+  DRW_draw_pass(psl->mix_screen_noblend_pass);
 }
 
 /* helper to draw SHADOW passes */
@@ -952,7 +952,7 @@ static void draw_gpencil_shadow_passes(GPENCIL_Data *vedata, ShadowShaderFxData 
 
   GPU_framebuffer_bind(fbl->temp_fb_a);
   GPU_framebuffer_clear_color_depth(fbl->temp_fb_a, clearcol, 1.0f);
-  DRW_draw_pass(psl->mix_pass_noblend);
+  DRW_draw_pass(psl->mix_screen_noblend_pass);
 }
 
 /* helper to draw GLOW passes */
@@ -992,7 +992,7 @@ static void draw_gpencil_glow_passes(GPENCIL_Data *vedata, GlowShaderFxData *fxd
 
   GPU_framebuffer_bind(fbl->temp_fb_a);
   GPU_framebuffer_clear_color_depth(fbl->temp_fb_a, clearcol, 1.0f);
-  DRW_draw_pass(psl->mix_pass_noblend);
+  DRW_draw_pass(psl->mix_screen_noblend_pass);
 }
 
 /* apply all object fx effects */

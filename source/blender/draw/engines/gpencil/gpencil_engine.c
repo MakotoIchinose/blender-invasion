@@ -84,7 +84,7 @@ void gpencil_multisample_ensure(GPENCIL_Data *vedata, int rect_w, int rect_h)
       if (fbl->multisample_fb) {
         if (txl->multisample_color == NULL) {
           txl->multisample_color = GPU_texture_create_2d_multisample(
-              rect_w, rect_h, GPU_RGBA16F, NULL, samples, NULL);
+              rect_w, rect_h, GPU_RGBA16, NULL, samples, NULL);
         }
         if (txl->multisample_depth == NULL) {
           txl->multisample_depth = GPU_texture_create_2d_multisample(
@@ -105,7 +105,7 @@ static void GPENCIL_create_framebuffers(void *vedata)
   GPENCIL_TextureList *txl = ((GPENCIL_Data *)vedata)->txl;
 
   /* Go full 32bits for rendering */
-  eGPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16F;
+  eGPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16;
 
   if (DRW_state_is_fbo()) {
     const float *viewport_size = DRW_viewport_size_get();
@@ -469,10 +469,11 @@ void GPENCIL_cache_init(void *vedata)
 
     /* full screen pass to combine the result with default framebuffer */
     struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
-    psl->mix_pass = DRW_pass_create("GPencil Mix Pass",
-                                    DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                                        DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
-    DRWShadingGroup *mix_shgrp = DRW_shgroup_create(e_data.gpencil_fullscreen_sh, psl->mix_pass);
+    psl->mix_screen_pass = DRW_pass_create("GPencil Mix Pass",
+                                           DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                                               DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+    DRWShadingGroup *mix_shgrp = DRW_shgroup_create(e_data.gpencil_fullscreen_sh,
+                                                    psl->mix_screen_pass);
     DRW_shgroup_call(mix_shgrp, quad, NULL);
     DRW_shgroup_uniform_texture_ref(mix_shgrp, "strokeColor", &stl->g_data->input_color_tx);
     DRW_shgroup_uniform_texture_ref(mix_shgrp, "strokeDepth", &stl->g_data->input_depth_tx);
@@ -486,11 +487,11 @@ void GPENCIL_cache_init(void *vedata)
      * This pass is used too to take the snapshot used for background_pass. This image
      * will be used as the background while the user is drawing.
      */
-    psl->mix_pass_noblend = DRW_pass_create("GPencil Mix Pass no blend",
-                                            DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                                DRW_STATE_DEPTH_LESS);
+    psl->mix_screen_noblend_pass = DRW_pass_create("GPencil Mix Pass no blend",
+                                                   DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                                                       DRW_STATE_DEPTH_LESS);
     DRWShadingGroup *mix_shgrp_noblend = DRW_shgroup_create(e_data.gpencil_fullscreen_sh,
-                                                            psl->mix_pass_noblend);
+                                                            psl->mix_screen_noblend_pass);
     DRW_shgroup_call(mix_shgrp_noblend, quad, NULL);
     DRW_shgroup_uniform_texture_ref(
         mix_shgrp_noblend, "strokeColor", &stl->g_data->input_color_tx);
@@ -538,11 +539,11 @@ void GPENCIL_cache_init(void *vedata)
     }
 
     /* blend layers pass */
-    psl->blend_pass = DRW_pass_create("GPencil Blend Layers Pass",
-                                      DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                                          DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+    psl->blend_layers_pass = DRW_pass_create("GPencil Blend Layers Pass",
+                                             DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                                                 DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
     DRWShadingGroup *blend_shgrp = DRW_shgroup_create(e_data.gpencil_blend_fullscreen_sh,
-                                                      psl->blend_pass);
+                                                      psl->blend_layers_pass);
     DRW_shgroup_call(blend_shgrp, quad, NULL);
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeColor", &stl->g_data->temp_color_tx_a);
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeDepth", &stl->g_data->temp_depth_tx_a);
@@ -1025,73 +1026,65 @@ void GPENCIL_draw_scene(void *ved)
             sizeof(tGPencilObjectCache),
             gpencil_object_cache_compare_zdepth);
 
+      GPU_framebuffer_bind(fbl->temp_fb_a);
+      GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_a, clearcol, 1.0f, 0x0);
+
       for (int i = 0; i < stl->g_data->gp_cache_used; i++) {
         cache_ob = &stl->g_data->gp_object_cache[i];
         Object *ob = cache_ob->ob;
         bGPdata *gpd = cache_ob->gpd;
-        init_shgrp = NULL;
-        /* Render stroke in separated framebuffer */
-        GPU_framebuffer_bind(fbl->temp_fb_a);
-        GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_a, clearcol, 1.0f, 0x0);
         /* Stroke Pass:
          * draw only a subset that usually starts with a fill and ends with stroke
          */
-        bool use_blend = false;
         if (cache_ob->tot_layers > 0) {
           for (int e = 0; e < cache_ob->tot_layers; e++) {
-            bool is_last = (e == cache_ob->tot_layers - 1) ? true : false;
             array_elm = &cache_ob->shgrp_array[e];
+            init_shgrp = array_elm->init_shgrp;
+            end_shgrp = array_elm->end_shgrp;
 
-            if (((array_elm->mode == eGplBlendMode_Regular) && (!use_blend) &&
-                 (!array_elm->clamp_layer)) ||
-                (e == 0)) {
-              if (init_shgrp == NULL) {
-                init_shgrp = array_elm->init_shgrp;
+            if (array_elm->mode == eGplBlendMode_Regular) {
+              /* Draw current group in MSAA texture or final texture. */
+              if (stl->storage->multisamples > 0) {
+                GPU_framebuffer_bind(fbl->multisample_fb);
               }
-              end_shgrp = array_elm->end_shgrp;
+              else {
+                GPU_framebuffer_bind(fbl->temp_fb_a);
+              }
+
+              gpencil_draw_pass_range(
+                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, false);
             }
             else {
-              use_blend = true;
-              /* draw pending groups */
-              gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, is_last);
-
-              /* Draw current group in separated texture to blend later */
-              init_shgrp = array_elm->init_shgrp;
-              end_shgrp = array_elm->end_shgrp;
-
+              /* Draw current group in separated texture to blend later. */
               GPU_framebuffer_bind(fbl->temp_fb_fx);
               GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_fx, clearcol, 1.0f, 0x0);
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fb_fx, ob, gpd, init_shgrp, end_shgrp, is_last);
+                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, false);
 
-              /* Blend A texture and FX texture */
-              GPU_framebuffer_bind(fbl->temp_fb_b);
-              GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_b, clearcol, 1.0f, 0x0);
-              stl->storage->blend_mode = array_elm->mode;
-              stl->storage->clamp_layer = (int)array_elm->clamp_layer;
-              stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
-              DRW_draw_pass(psl->blend_pass);
-              stl->storage->tonemapping = 0;
-
-              /* Copy B texture to A texture to follow loop */
-              stl->g_data->input_depth_tx = stl->g_data->temp_depth_tx_b;
-              stl->g_data->input_color_tx = stl->g_data->temp_color_tx_b;
-
-              GPU_framebuffer_bind(fbl->temp_fb_a);
-              GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_a, clearcol, 1.0f, 0x0);
-              DRW_draw_pass(psl->mix_pass_noblend);
-
-              /* prepare next group */
-              init_shgrp = NULL;
+              /* Draw Blended texture over MSAA texture */
+              GPU_framebuffer_bind(fbl->multisample_fb);
+              // TODO: How resolve the Blend?
+              // TODO: Clamp?
+              // Do I need use the blend layer pass/fragment (blend_layers_pass)
+              // stl->g_data->input_depth_tx = txl->multisample_depth;
+              // stl->g_data->input_color_tx = txl->multisample_color;
+              // DRW_draw_pass(psl->mix_screen_noblend_pass); // general copy of buffers
             }
           }
-          /* last group */
-          gpencil_draw_pass_range(
-              fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, true);
+
+          /* Resolve MSAA texture to A texture to follow with VFX */
+          MULTISAMPLE_GP_SYNC_DISABLE(stl->storage->multisamples, fbl, fbl->temp_fb_a, txl);
+        }
+
+        /* Clear multisample framebuffer to avoid garbage in the screen */
+        if (stl->storage->multisamples > 0) {
+          GPU_framebuffer_bind(fbl->multisample_fb);
+          GPU_framebuffer_clear_color_depth_stencil(
+              fbl->multisample_fb, (const float[4]){0.0f}, 1.0f, 0x0);
         }
 
         /* Current buffer drawing */
+        GPU_framebuffer_bind(fbl->temp_fb_a);
         if ((!is_render) && (cache_ob->is_dup_ob == false)) {
           DRW_draw_pass(psl->drawing_pass);
         }
@@ -1130,7 +1123,7 @@ void GPENCIL_draw_scene(void *ved)
         }
 
         /* draw mix pass */
-        DRW_draw_pass(psl->mix_pass);
+        DRW_draw_pass(psl->mix_screen_pass);
 
         /* disable select flag */
         stl->storage->do_select_outline = 0;
@@ -1138,7 +1131,7 @@ void GPENCIL_draw_scene(void *ved)
         /* prepare for fast drawing */
         if (!is_render) {
           if (!playing) {
-            gpencil_prepare_fast_drawing(stl, dfbl, fbl, psl->mix_pass_noblend, clearcol);
+            gpencil_prepare_fast_drawing(stl, dfbl, fbl, psl->mix_screen_noblend_pass, clearcol);
           }
         }
         else {
