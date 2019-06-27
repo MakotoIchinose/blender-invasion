@@ -1118,17 +1118,103 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *s
   return true;
 }
 
+static void cloth_remeshing_get_uv_from_face(BMFace *f, float **r_uvs, int *r_uv_num)
+{
+  BMFace *e;
+  BMIter eiter;
+  int i = 0;
+  BM_ITER_ELEM_INDEX (e, &eiter, f, BM_EDGES_OF_FACE, i) {
+    MLoopUV *luv;
+    const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+    BMLoop *l, *l2;
+    float u1[2], u2[2];
+
+    l = e->l;
+    if (l->v == e->v1) {
+      if (l->next->v == e->v2) {
+        l2 = l->next;
+      }
+      else {
+        l2 = l->prev;
+      }
+    }
+    else {
+      if (l->next->v == e->v1) {
+        l2 = l->next;
+      }
+      else {
+        l2 = l->prev;
+      }
+    }
+
+    luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+    copy_v2_v2(u1, luv->uv);
+    luv = BM_ELEM_CD_GET_VOID_P(l2, cd_loop_uv_offset);
+    copy_v2_v2(u2, luv->uv);
+
+    /* copy over the UVs only if they don't already exist */
+    bool uv_exists = false;
+    for (int j = 0; j < i; j++) {
+      if (equals_v2v2(u1, r_uvs[j])) {
+        uv_exists = true;
+      }
+    }
+    if (!uv_exists) {
+      copy_v2_v2(r_uvs[i], u1);
+    }
+    uv_exists = false;
+    for (int j = 0; j < i; j++) {
+      if (equals_v2v2(u2, r_uvs[j])) {
+        uv_exists = true;
+      }
+    }
+    if (!uv_exists) {
+      copy_v2_v2(r_uvs[i], u2);
+    }
+  }
+}
+
+static float cloth_remeshing_edge_size_collapse(BMEdge *e, BMVert *v)
+{
+}
+
+#define REMESHING_HYSTERESIS_PARAMETER 0.2
 static bool cloth_remeshing_can_collapse_edge(BMEdge *e, BMesh *bm)
 {
   if (BM_edge_face_count(e) < 2) {
     return false;
   }
 
+  /* TODO(Ish): aspect ratio parameter */
+
+  /* Edge Metric, not same as split edge edge metric */
+  BMVert *v1 = e->v1;
+  BMVert *v2 = e->v2;
+  BMVert *v3 = NULL;
+  BMEdge *adj_e;
+  BMIter adj_e_iter;
+  BM_ITER_ELEM (adj_e, &adj_e_iter, v1, BM_EDGES_OF_VERT) {
+    BMIter adj_v_iter;
+    BM_ITER_ELEM (v3, &adj_v_iter, adj_e, BM_VERTS_OF_EDGE) {
+      if (v3 != v1 && v3 != v2) {
+        break;
+      }
+    }
+    /* Edge metric using v1, v2, v3 */
+    if (v3) {
+      if (cloth_remeshing_edge_size_collapse(e, v3) > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
+        return false;
+      }
+      v3 = NULL; /* done so that edge metric is found only if v3 exists */
+    }
+  }
+
   return true;
 }
 
-static void cloth_remeshing_collapse_edge(BMEdge *e, BMesh *bm)
+static BMEdge *cloth_remeshing_collapse_edge(BMEdge *e, BMesh *bm)
 {
+  return BM_vert_collapse_faces(bm, e, e->v1, 1.0f, true, true, true);
 }
 
 static bool cloth_remeshing_try_edge_collapse(BMEdge *e, BMesh *bm)
@@ -1136,6 +1222,7 @@ static bool cloth_remeshing_try_edge_collapse(BMEdge *e, BMesh *bm)
   if (!cloth_remeshing_can_collapse_edge(e, bm)) {
     return false;
   }
+
   cloth_remeshing_collapse_edge(e, bm);
   return true;
 }
