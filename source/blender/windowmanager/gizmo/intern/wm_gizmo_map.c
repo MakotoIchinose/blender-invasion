@@ -71,6 +71,9 @@ static ListBase gizmomaptypes = {NULL, NULL};
 typedef enum eWM_GizmoFlagGroupTypeGlobalFlag {
   WM_GIZMOMAPTYPE_GLOBAL_UPDATE_INIT = (1 << 0),
   WM_GIZMOMAPTYPE_GLOBAL_UPDATE_REMOVE = (1 << 1),
+
+  /* XXX. */
+  WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE = (1 << 2),
 } eWM_GizmoFlagGroupTypeGlobalFlag;
 
 static eWM_GizmoFlagGroupTypeGlobalFlag wm_gzmap_type_update_flag = 0;
@@ -1257,6 +1260,11 @@ void WM_gizmoconfig_update_tag_group_type_remove(wmGizmoMapType *gzmap_type,
   wm_gzmap_type_update_flag |= WM_GIZMOMAPTYPE_GLOBAL_UPDATE_REMOVE;
 }
 
+void WM_gizmoconfig_update_tag_remove_single_group(void)
+{
+  wm_gzmap_type_update_flag |= WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
+}
+
 /**
  * Run in case new types have been added (runs often, early exit where possible).
  * Follows #WM_keyconfig_update conventions.
@@ -1269,6 +1277,32 @@ void WM_gizmoconfig_update(struct Main *bmain)
 
   if (wm_gzmap_type_update_flag == 0) {
     return;
+  }
+
+  if (wm_gzmap_type_update_flag & WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE) {
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+          for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
+            wmGizmoMap *gzmap = ar->gizmo_map;
+            if (gzmap != NULL) {
+
+              for (wmGizmoGroup *gzgroup = gzmap->groups.first, *gzgroup_next; gzgroup;
+                   gzgroup = gzgroup_next) {
+                gzgroup_next = gzgroup->next;
+                if (gzgroup->tag_remove) {
+                  printf("Removing tagged\n");
+                  wm_gizmogroup_free(NULL, gzgroup);
+                  ED_region_tag_redraw(ar);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    wm_gzmap_type_update_flag &= ~WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
   }
 
   if (wm_gzmap_type_update_flag & WM_GIZMOMAPTYPE_GLOBAL_UPDATE_REMOVE) {
