@@ -67,7 +67,7 @@ void WM_gizmo_unlink(ListBase *gizmolist,
 
 bool WM_gizmo_select_unlink(struct wmGizmoMap *gzmap, struct wmGizmo *gz);
 bool WM_gizmo_select_set(struct wmGizmoMap *gzmap, struct wmGizmo *gz, bool select);
-void WM_gizmo_highlight_set(struct wmGizmoMap *gzmap, struct wmGizmo *gz);
+bool WM_gizmo_highlight_set(struct wmGizmoMap *gzmap, struct wmGizmo *gz);
 
 void WM_gizmo_modal_set_from_setup(struct wmGizmoMap *gzmap,
                                    struct bContext *C,
@@ -159,10 +159,10 @@ struct wmGizmoGroupTypeRef *WM_gizmogrouptype_append_and_link(
 /* wm_gizmo_map.c */
 
 /* Dynamic Updates (for RNA runtime registration) */
-void WM_gizmoconfig_update_tag_init(struct wmGizmoMapType *gzmap_type,
-                                    struct wmGizmoGroupType *gzgt);
-void WM_gizmoconfig_update_tag_remove(struct wmGizmoMapType *gzmap_type,
-                                      struct wmGizmoGroupType *gzgt);
+void WM_gizmoconfig_update_tag_group_type_init(struct wmGizmoMapType *gzmap_type,
+                                               struct wmGizmoGroupType *gzgt);
+void WM_gizmoconfig_update_tag_group_type_remove(struct wmGizmoMapType *gzmap_type,
+                                                 struct wmGizmoGroupType *gzgt);
 void WM_gizmoconfig_update(struct Main *bmain);
 
 /* wm_maniulator_target_props.c */

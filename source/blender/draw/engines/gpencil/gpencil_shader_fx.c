@@ -132,11 +132,11 @@ static void GPENCIL_dof_nearfar(Object *camera, float coc, float nearfar[2])
  * The effect is done using two shading groups because is faster to apply horizontal
  * and vertical in different operations.
  */
-static void DRW_gpencil_fx_blur(ShaderFxData *fx,
-                                int ob_idx,
-                                GPENCIL_e_data *e_data,
-                                GPENCIL_Data *vedata,
-                                tGPencilObjectCache *cache)
+static void gpencil_fx_blur(ShaderFxData *fx,
+                            int ob_idx,
+                            GPENCIL_e_data *e_data,
+                            GPENCIL_Data *vedata,
+                            tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -215,7 +215,7 @@ static void DRW_gpencil_fx_blur(ShaderFxData *fx,
 }
 
 /* Colorize FX */
-static void DRW_gpencil_fx_colorize(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Data *vedata)
+static void gpencil_fx_colorize(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Data *vedata)
 {
   if (fx == NULL) {
     return;
@@ -239,7 +239,7 @@ static void DRW_gpencil_fx_colorize(ShaderFxData *fx, GPENCIL_e_data *e_data, GP
 }
 
 /* Flip FX */
-static void DRW_gpencil_fx_flip(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Data *vedata)
+static void gpencil_fx_flip(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Data *vedata)
 {
   if (fx == NULL) {
     return;
@@ -271,10 +271,10 @@ static void DRW_gpencil_fx_flip(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCI
 }
 
 /* Light FX */
-static void DRW_gpencil_fx_light(ShaderFxData *fx,
-                                 GPENCIL_e_data *e_data,
-                                 GPENCIL_Data *vedata,
-                                 tGPencilObjectCache *cache)
+static void gpencil_fx_light(ShaderFxData *fx,
+                             GPENCIL_e_data *e_data,
+                             GPENCIL_Data *vedata,
+                             tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -325,10 +325,10 @@ static void DRW_gpencil_fx_light(ShaderFxData *fx,
 }
 
 /* Pixelate FX */
-static void DRW_gpencil_fx_pixel(ShaderFxData *fx,
-                                 GPENCIL_e_data *e_data,
-                                 GPENCIL_Data *vedata,
-                                 tGPencilObjectCache *cache)
+static void gpencil_fx_pixel(ShaderFxData *fx,
+                             GPENCIL_e_data *e_data,
+                             GPENCIL_Data *vedata,
+                             tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -359,10 +359,10 @@ static void DRW_gpencil_fx_pixel(ShaderFxData *fx,
 }
 
 /* Rim FX */
-static void DRW_gpencil_fx_rim(ShaderFxData *fx,
-                               GPENCIL_e_data *e_data,
-                               GPENCIL_Data *vedata,
-                               tGPencilObjectCache *cache)
+static void gpencil_fx_rim(ShaderFxData *fx,
+                           GPENCIL_e_data *e_data,
+                           GPENCIL_Data *vedata,
+                           tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -421,10 +421,10 @@ static void DRW_gpencil_fx_rim(ShaderFxData *fx,
 }
 
 /* Shadow FX */
-static void DRW_gpencil_fx_shadow(ShaderFxData *fx,
-                                  GPENCIL_e_data *e_data,
-                                  GPENCIL_Data *vedata,
-                                  tGPencilObjectCache *cache)
+static void gpencil_fx_shadow(ShaderFxData *fx,
+                              GPENCIL_e_data *e_data,
+                              GPENCIL_Data *vedata,
+                              tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -505,10 +505,10 @@ static void DRW_gpencil_fx_shadow(ShaderFxData *fx,
 }
 
 /* Glow FX */
-static void DRW_gpencil_fx_glow(ShaderFxData *fx,
-                                GPENCIL_e_data *e_data,
-                                GPENCIL_Data *vedata,
-                                tGPencilObjectCache *cache)
+static void gpencil_fx_glow(ShaderFxData *fx,
+                            GPENCIL_e_data *e_data,
+                            GPENCIL_Data *vedata,
+                            tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -564,10 +564,10 @@ static void DRW_gpencil_fx_glow(ShaderFxData *fx,
 }
 
 /* Swirl FX */
-static void DRW_gpencil_fx_swirl(ShaderFxData *fx,
-                                 GPENCIL_e_data *e_data,
-                                 GPENCIL_Data *vedata,
-                                 tGPencilObjectCache *cache)
+static void gpencil_fx_swirl(ShaderFxData *fx,
+                             GPENCIL_e_data *e_data,
+                             GPENCIL_Data *vedata,
+                             tGPencilObjectCache *cache)
 {
   if (fx == NULL) {
     return;
@@ -605,7 +605,7 @@ static void DRW_gpencil_fx_swirl(ShaderFxData *fx,
 }
 
 /* Wave Distorsion FX */
-static void DRW_gpencil_fx_wave(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Data *vedata)
+static void gpencil_fx_wave(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Data *vedata)
 {
   if (fx == NULL) {
     return;
@@ -717,9 +717,9 @@ void GPENCIL_create_fx_passes(GPENCIL_PassList *psl)
 }
 
 /* prepare fx shading groups */
-void DRW_gpencil_fx_prepare(GPENCIL_e_data *e_data,
-                            GPENCIL_Data *vedata,
-                            tGPencilObjectCache *cache_ob)
+void gpencil_fx_prepare(GPENCIL_e_data *e_data,
+                        GPENCIL_Data *vedata,
+                        tGPencilObjectCache *cache_ob)
 {
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   const bool wiremode = (bool)(cache_ob->shading_type[0] == OB_WIRE);
@@ -734,34 +734,34 @@ void DRW_gpencil_fx_prepare(GPENCIL_e_data *e_data,
     if (effect_is_active(cache_ob->gpd, fx, stl->storage->is_render)) {
       switch (fx->type) {
         case eShaderFxType_Blur:
-          DRW_gpencil_fx_blur(fx, ob_idx, e_data, vedata, cache_ob);
+          gpencil_fx_blur(fx, ob_idx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Colorize:
-          DRW_gpencil_fx_colorize(fx, e_data, vedata);
+          gpencil_fx_colorize(fx, e_data, vedata);
           break;
         case eShaderFxType_Flip:
-          DRW_gpencil_fx_flip(fx, e_data, vedata);
+          gpencil_fx_flip(fx, e_data, vedata);
           break;
         case eShaderFxType_Light:
-          DRW_gpencil_fx_light(fx, e_data, vedata, cache_ob);
+          gpencil_fx_light(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Pixel:
-          DRW_gpencil_fx_pixel(fx, e_data, vedata, cache_ob);
+          gpencil_fx_pixel(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Rim:
-          DRW_gpencil_fx_rim(fx, e_data, vedata, cache_ob);
+          gpencil_fx_rim(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Shadow:
-          DRW_gpencil_fx_shadow(fx, e_data, vedata, cache_ob);
+          gpencil_fx_shadow(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Glow:
-          DRW_gpencil_fx_glow(fx, e_data, vedata, cache_ob);
+          gpencil_fx_glow(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Swirl:
-          DRW_gpencil_fx_swirl(fx, e_data, vedata, cache_ob);
+          gpencil_fx_swirl(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Wave:
-          DRW_gpencil_fx_wave(fx, e_data, vedata);
+          gpencil_fx_wave(fx, e_data, vedata);
           break;
         default:
           break;
@@ -771,10 +771,7 @@ void DRW_gpencil_fx_prepare(GPENCIL_e_data *e_data,
 }
 
 /* helper to draw one FX pass and do ping-pong copy */
-static void gpencil_draw_fx_pass(GPENCIL_e_data *e_data,
-                                 GPENCIL_Data *vedata,
-                                 DRWShadingGroup *shgrp,
-                                 bool blend)
+static void gpencil_draw_fx_pass(GPENCIL_Data *vedata, DRWShadingGroup *shgrp, bool blend)
 {
   if (shgrp == NULL) {
     return;
@@ -807,9 +804,7 @@ static void gpencil_draw_fx_pass(GPENCIL_e_data *e_data,
 }
 
 /* helper to manage gaussian blur passes */
-static void draw_gpencil_blur_passes(GPENCIL_e_data *e_data,
-                                     GPENCIL_Data *vedata,
-                                     BlurShaderFxData *fxd)
+static void draw_gpencil_blur_passes(GPENCIL_Data *vedata, BlurShaderFxData *fxd)
 {
   if (fxd->runtime.fx_sh == NULL) {
     return;
@@ -833,13 +828,13 @@ static void draw_gpencil_blur_passes(GPENCIL_e_data *e_data,
     if (bx > 0) {
       fxd->blur[0] = bx;
       fxd->blur[1] = 0;
-      gpencil_draw_fx_pass(e_data, vedata, shgrp, true);
+      gpencil_draw_fx_pass(vedata, shgrp, true);
     }
     /* vertical */
     if (by > 0) {
       fxd->blur[0] = 0;
       fxd->blur[1] = by;
-      gpencil_draw_fx_pass(e_data, vedata, shgrp, true);
+      gpencil_draw_fx_pass(vedata, shgrp, true);
     }
   }
 }
@@ -862,13 +857,8 @@ static void draw_gpencil_midpass_blur(GPENCIL_Data *vedata, ShaderFxData_Runtime
 }
 
 /* do blur of mid passes */
-static void draw_gpencil_do_blur(GPENCIL_e_data *e_data,
-                                 GPENCIL_Data *vedata,
-                                 ShaderFxData_Runtime *runtime,
-                                 int samples,
-                                 int bx,
-                                 int by,
-                                 int blur[2])
+static void draw_gpencil_do_blur(
+    GPENCIL_Data *vedata, ShaderFxData_Runtime *runtime, int samples, int bx, int by, int blur[2])
 {
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
 
@@ -895,9 +885,7 @@ static void draw_gpencil_do_blur(GPENCIL_e_data *e_data,
 }
 
 /* helper to draw RIM passes */
-static void draw_gpencil_rim_passes(GPENCIL_e_data *e_data,
-                                    GPENCIL_Data *vedata,
-                                    RimShaderFxData *fxd)
+static void draw_gpencil_rim_passes(GPENCIL_Data *vedata, RimShaderFxData *fxd)
 {
   if (fxd->runtime.fx_sh_b == NULL) {
     return;
@@ -916,7 +904,7 @@ static void draw_gpencil_rim_passes(GPENCIL_e_data *e_data,
 
   /* blur rim */
   draw_gpencil_do_blur(
-      e_data, vedata, &fxd->runtime, fxd->samples, fxd->blur[0], fxd->blur[1], &fxd->blur[0]);
+      vedata, &fxd->runtime, fxd->samples, fxd->blur[0], fxd->blur[1], &fxd->blur[0]);
 
   /* resolve */
   GPU_framebuffer_bind(fbl->temp_fb_b);
@@ -933,9 +921,7 @@ static void draw_gpencil_rim_passes(GPENCIL_e_data *e_data,
 }
 
 /* helper to draw SHADOW passes */
-static void draw_gpencil_shadow_passes(GPENCIL_e_data *e_data,
-                                       GPENCIL_Data *vedata,
-                                       ShadowShaderFxData *fxd)
+static void draw_gpencil_shadow_passes(GPENCIL_Data *vedata, ShadowShaderFxData *fxd)
 {
   if (fxd->runtime.fx_sh_b == NULL) {
     return;
@@ -953,7 +939,7 @@ static void draw_gpencil_shadow_passes(GPENCIL_e_data *e_data,
 
   /* blur shadow */
   draw_gpencil_do_blur(
-      e_data, vedata, &fxd->runtime, fxd->samples, fxd->blur[0], fxd->blur[1], &fxd->blur[0]);
+      vedata, &fxd->runtime, fxd->samples, fxd->blur[0], fxd->blur[1], &fxd->blur[0]);
 
   /* resolve */
   GPU_framebuffer_bind(fbl->temp_fb_b);
@@ -970,9 +956,7 @@ static void draw_gpencil_shadow_passes(GPENCIL_e_data *e_data,
 }
 
 /* helper to draw GLOW passes */
-static void draw_gpencil_glow_passes(GPENCIL_e_data *e_data,
-                                     GPENCIL_Data *vedata,
-                                     GlowShaderFxData *fxd)
+static void draw_gpencil_glow_passes(GPENCIL_Data *vedata, GlowShaderFxData *fxd)
 {
   if (fxd->runtime.fx_sh_b == NULL) {
     return;
@@ -991,7 +975,7 @@ static void draw_gpencil_glow_passes(GPENCIL_e_data *e_data,
 
   /* blur glow */
   draw_gpencil_do_blur(
-      e_data, vedata, &fxd->runtime, fxd->samples, fxd->blur[0], fxd->blur[0], &fxd->blur[0]);
+      vedata, &fxd->runtime, fxd->samples, fxd->blur[0], fxd->blur[0], &fxd->blur[0]);
 
   /* resolve */
   GPU_framebuffer_bind(fbl->temp_fb_b);
@@ -1012,9 +996,9 @@ static void draw_gpencil_glow_passes(GPENCIL_e_data *e_data,
 }
 
 /* apply all object fx effects */
-void DRW_gpencil_fx_draw(GPENCIL_e_data *e_data,
-                         GPENCIL_Data *vedata,
-                         tGPencilObjectCache *cache_ob)
+void gpencil_fx_draw(GPENCIL_e_data *UNUSED(e_data),
+                     GPENCIL_Data *vedata,
+                     tGPencilObjectCache *cache_ob)
 {
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
 
@@ -1025,52 +1009,52 @@ void DRW_gpencil_fx_draw(GPENCIL_e_data *e_data,
 
         case eShaderFxType_Blur: {
           BlurShaderFxData *fxd = (BlurShaderFxData *)fx;
-          draw_gpencil_blur_passes(e_data, vedata, fxd);
+          draw_gpencil_blur_passes(vedata, fxd);
           break;
         }
         case eShaderFxType_Colorize: {
           ColorizeShaderFxData *fxd = (ColorizeShaderFxData *)fx;
-          gpencil_draw_fx_pass(e_data, vedata, fxd->runtime.fx_sh, false);
+          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
         case eShaderFxType_Flip: {
           FlipShaderFxData *fxd = (FlipShaderFxData *)fx;
-          gpencil_draw_fx_pass(e_data, vedata, fxd->runtime.fx_sh, false);
+          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
         case eShaderFxType_Light: {
           LightShaderFxData *fxd = (LightShaderFxData *)fx;
-          gpencil_draw_fx_pass(e_data, vedata, fxd->runtime.fx_sh, false);
+          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
         case eShaderFxType_Pixel: {
           PixelShaderFxData *fxd = (PixelShaderFxData *)fx;
-          gpencil_draw_fx_pass(e_data, vedata, fxd->runtime.fx_sh, false);
+          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
         case eShaderFxType_Rim: {
           RimShaderFxData *fxd = (RimShaderFxData *)fx;
-          draw_gpencil_rim_passes(e_data, vedata, fxd);
+          draw_gpencil_rim_passes(vedata, fxd);
           break;
         }
         case eShaderFxType_Shadow: {
           ShadowShaderFxData *fxd = (ShadowShaderFxData *)fx;
-          draw_gpencil_shadow_passes(e_data, vedata, fxd);
+          draw_gpencil_shadow_passes(vedata, fxd);
           break;
         }
         case eShaderFxType_Glow: {
           GlowShaderFxData *fxd = (GlowShaderFxData *)fx;
-          draw_gpencil_glow_passes(e_data, vedata, fxd);
+          draw_gpencil_glow_passes(vedata, fxd);
           break;
         }
         case eShaderFxType_Swirl: {
           SwirlShaderFxData *fxd = (SwirlShaderFxData *)fx;
-          gpencil_draw_fx_pass(e_data, vedata, fxd->runtime.fx_sh, false);
+          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
         case eShaderFxType_Wave: {
           WaveShaderFxData *fxd = (WaveShaderFxData *)fx;
-          gpencil_draw_fx_pass(e_data, vedata, fxd->runtime.fx_sh, false);
+          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
         default:
