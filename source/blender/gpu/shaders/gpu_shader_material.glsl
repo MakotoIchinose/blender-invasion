@@ -3115,19 +3115,22 @@ void node_tex_magic(
 
 /* **** Perlin Noise **** */
 
-// The following functions compute 1D, 2D, 3D, and 4D perlin noise.
-// The code is based on the OSL noise code for compatibility.
-// See oslnoise.h
+/* The following functions compute 1D, 2D, 3D, and 4D perlin noise.
+ * The code is based on the OSL noise code for compatibility.
+ * See oslnoise.h
+ */
 
-// Bilinear Interpolation:
-//
-// v2          v3
-//  @ + + + + @       y
-//  +         +       ^
-//  +         +       |
-//  +         +       |
-//  @ + + + + @       @------> x
-// v0          v1
+/* Bilinear Interpolation:
+ *
+ * v2          v3
+ *  @ + + + + @       y
+ *  +         +       ^
+ *  +         +       |
+ *  +         +       |
+ *  @ + + + + @       @------> x
+ * v0          v1
+ *
+ */
 
 float bi_mix(float v0, float v1, float v2, float v3, float x, float y)
 {
@@ -3135,23 +3138,24 @@ float bi_mix(float v0, float v1, float v2, float v3, float x, float y)
   return (1.0 - y) * (v0 * x1 + v1 * x) + y * (v2 * x1 + v3 * x);
 }
 
-// Trilinear Interpolation:
-//
-//  v6               v7
-//    @ + + + + + + @
-//    +\            +\
-//    + \           + \
-//    +  \          +  \
-//    +   \ v4      +   \ v5
-//    +    @ + + + +++ + @          z
-//    +    +        +    +      y   ^
-// v2 @ + +++ + + + @ v3 +       \  |
-//     \   +         \   +        \ |
-//      \  +          \  +         \|
-//       \ +           \ +          +---------> x
-//        \+            \+
-//         @ + + + + + + @
-//       v0               v1
+/* Trilinear Interpolation:
+ *
+ *   v6               v7
+ *     @ + + + + + + @
+ *     +\            +\
+ *     + \           + \
+ *     +  \          +  \
+ *     +   \ v4      +   \ v5
+ *     +    @ + + + +++ + @          z
+ *     +    +        +    +      y   ^
+ *  v2 @ + +++ + + + @ v3 +       \  |
+ *      \   +         \   +        \ |
+ *       \  +          \  +         \|
+ *        \ +           \ +          +---------> x
+ *         \+            \+
+ *          @ + + + + + + @
+ *        v0               v1
+ */
 
 float tri_mix(float v0,
               float v1,
@@ -3172,17 +3176,19 @@ float tri_mix(float v0,
          z * (y1 * (v4 * x1 + v5 * x) + y * (v6 * x1 + v7 * x));
 }
 
-// An alternative to Hermite interpolation that have zero first and
-// second derivatives at t = 0 and t = 1.
-// Described in Ken Perlin's "Improving noise" [2002].
+/* An alternative to Hermite interpolation that have zero first and
+ * second derivatives at t = 0 and t = 1.
+ * Described in Ken Perlin's "Improving noise" [2002].
+ */
 
 float noise_fade(float t)
 {
   return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
 }
 
-// Remap the output of noise to a predictable range [-1, 1].
-// The values were computed experimentally by the OSL developers.
+/* Remap the output of noise to a predictable range [-1, 1].
+ * The values were computed experimentally by the OSL developers.
+ */
 
 float noise_scale1(float result)
 {
@@ -3209,8 +3215,9 @@ float negate_if(float val, uint condition)
   return (condition != 0u) ? -val : val;
 }
 
-// Compute the dot product with a randomly choose vector from a list of
-// predetermined vectors based on a hash value.
+/* Compute the dot product with a randomly choose vector from a list of
+ * predetermined vectors based on a hash value.
+ */
 
 float noise_grad(uint hash, float x)
 {
@@ -3391,8 +3398,9 @@ float snoise(vec4 p)
   return noise_perlin(p);
 }
 
-// The following 4 functions are exactly the same but with different input type.
-// When refactoring, simply copy the function body to the rest of the functions.
+/* The following 4 functions are exactly the same but with different input type.
+ * When refactoring, simply copy the function body to the rest of the functions.
+ */
 
 float noise_turbulence(float p, float octaves)
 {
@@ -3502,8 +3510,9 @@ float noise_turbulence(vec4 p, float octaves)
   }
 }
 
-// To compute the color output of the noise, we either swizzle the
-// components, add a random offset {75, 125, 150}, or do both.
+/* To compute the color output of the noise, we either swizzle the
+ * components, add a random offset {75, 125, 150}, or do both.
+ */
 
 void node_tex_noise_1d(
     vec3 co, float w, float scale, float detail, float distortion, out vec4 color, out float fac)
@@ -3784,13 +3793,14 @@ void node_tex_sky(vec3 co, out vec4 color)
 
 /* **** Voronoi Texture **** */
 
-// Each of the following functions computes a certain voronoi feature in a certain dimension.
-// Independent functions are used because every feature/dimension have a different search area.
-//
-// This code is based on the following:
-// Base code : http://www.iquilezles.org/www/articles/smoothvoronoi/smoothvoronoi.htm
-// Smoothing : https://iquilezles.untergrund.net/www/articles/smin/smin.htm
-// Distance To Edge Method : https://www.shadertoy.com/view/llG3zy
+/* Each of the following functions computes a certain voronoi feature in a certain dimension.
+ * Independent functions are used because every feature/dimension have a different search area.
+ *
+ * This code is based on the following:
+ * Base code : http://www.iquilezles.org/www/articles/smoothvoronoi/smoothvoronoi.htm
+ * Smoothing : https://iquilezles.untergrund.net/www/articles/smin/smin.htm
+ * Distance To Edge Method : https://www.shadertoy.com/view/llG3zy
+ */
 
 /* **** 1D Voronoi **** */
 
