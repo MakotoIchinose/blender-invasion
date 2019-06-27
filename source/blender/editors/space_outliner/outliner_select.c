@@ -1576,7 +1576,7 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
 
 /* **************** Walk Select Tool ****************** */
 
-static TreeElement *outliner_find_rightmost_child(SpaceOutliner *soops, TreeElement *te)
+static TreeElement *outliner_find_rightmost_visible_child(SpaceOutliner *soops, TreeElement *te)
 {
   while (te->subtree.last) {
     if (TSELEM_OPEN(TREESTORE(te), soops)) {
@@ -1589,23 +1589,29 @@ static TreeElement *outliner_find_rightmost_child(SpaceOutliner *soops, TreeElem
   return te;
 }
 
+static TreeElement *outliner_element_find_successor_in_parents(TreeElement *te)
+{
+  TreeElement *successor = te;
+  while (successor->parent) {
+    if (successor->parent->next) {
+      te = successor->parent->next;
+      break;
+    }
+    else {
+      successor = successor->parent;
+    }
+  }
+
+  return te;
+}
+
 static TreeElement *do_outliner_select_walk_up(SpaceOutliner *soops, TreeElement *active)
 {
   if (active->prev) {
-    TreeStoreElem *tselem = TREESTORE(active->prev);
-
-    if (TSELEM_OPEN(tselem, soops)) {
-      active = outliner_find_rightmost_child(soops, active->prev);
-    }
-    else {
-      active = active->prev;
-    }
+    active = outliner_find_rightmost_visible_child(soops, active->prev);
   }
   else if (active->parent) {
     active = active->parent;
-  }
-  else {
-    active = outliner_find_rightmost_child(soops, active);
   }
 
   return active;
@@ -1622,15 +1628,7 @@ static TreeElement *do_outliner_select_walk_down(SpaceOutliner *soops, TreeEleme
     active = active->next;
   }
   else {
-    while (active->parent) {
-      if (active->parent->next) {
-        active = active->parent->next;
-        break;
-      }
-      else {
-        active = active->parent;
-      }
-    }
+    active = outliner_element_find_successor_in_parents(active);
   }
 
   return active;
@@ -1643,25 +1641,27 @@ static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, c
   outliner_flag_set(&soops->tree, TSE_SELECTED, false);
   tselem->flag &= ~TSE_ACTIVE;
 
-  if (direction == OUTLINER_SELECT_WALK_UP) {
-    active = do_outliner_select_walk_up(soops, active);
-  }
-  else if (direction == OUTLINER_SELECT_WALK_DOWN) {
-    active = do_outliner_select_walk_down(soops, active);
-  }
-  else if (direction == OUTLINER_SELECT_WALK_LEFT) {
-    if (TSELEM_OPEN(tselem, soops)) {
-      tselem->flag |= TSE_CLOSED;
-    }
-    else {
-      /* Jummp active to parent */
-      active = active->parent;
-    }
-  }
-  else if (direction == OUTLINER_SELECT_WALK_RIGHT) {
-    if (!TSELEM_OPEN(tselem, soops) && active->subtree.first) {
-      tselem->flag &= ~TSE_CLOSED;
-    }
+  switch (direction) {
+    case OUTLINER_SELECT_WALK_UP:
+      active = do_outliner_select_walk_up(soops, active);
+      break;
+    case OUTLINER_SELECT_WALK_DOWN:
+      active = do_outliner_select_walk_down(soops, active);
+      break;
+    case OUTLINER_SELECT_WALK_LEFT:
+      /* Close open element or jummp active to parent */
+      if (TSELEM_OPEN(tselem, soops)) {
+        tselem->flag |= TSE_CLOSED;
+      }
+      else if (active->parent) {
+        active = active->parent;
+      }
+      break;
+    case OUTLINER_SELECT_WALK_RIGHT:
+      if (!TSELEM_OPEN(tselem, soops) && active->subtree.first) {
+        tselem->flag &= ~TSE_CLOSED;
+      }
+      break;
   }
 
   tselem = TREESTORE(active);
@@ -1676,9 +1676,18 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
 
   TreeElement *active = outliner_find_active_element(&soops->tree);
 
-  /* Set root to active if no active exists (may not be needed now that syncing works) */
+  /* Set first element to active if no active exists (may not be needed with synced selection) */
   if (!active) {
     active = soops->tree.first;
+    TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
+  }
+  else if (!outliner_is_element_visible(&soops->tree, active)) {
+    /* If active is not visible, set its first visble parent to active */
+    while (!outliner_is_element_visible(&soops->tree, active)) {
+      active = active->parent;
+    }
+
+    outliner_flag_set(&soops->tree, TSE_SELECTED | TSE_ACTIVE, false);
     TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
   }
   else {
