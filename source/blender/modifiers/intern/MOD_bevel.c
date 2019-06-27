@@ -69,7 +69,13 @@ static void initData(ModifierData *md)
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
+  printf("COPY DATA (MOD_bevel.c)\n");
+//  const BevelModifierData *bmd_src = (const BevelModifierData *)md_src;
+//  BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
+
   modifier_copyData_generic(md_src, md_dst, flag);
+
+//  bmd_dst->prwdgt = profilewidget_copy(bmd_src->prwdgt);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -237,11 +243,12 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
   return true;
 }
 
-/* HANS-TODO: Huh, this doesn't work either, causes a segfault */
+/* HANS-TODO: Huh, this doesn't work either, causes a segfault. It think because free is getting
+ * called before copy */
 static void freeData(ModifierData *md)
 {
   BevelModifierData *bmd = (BevelModifierData *)md;
-  profilewidget_free(bmd->prwdgt);
+//  profilewidget_free(bmd->prwdgt);
 }
 
 ModifierTypeInfo modifierType_Bevel = {
@@ -251,18 +258,15 @@ ModifierTypeInfo modifierType_Bevel = {
     /* type */ eModifierTypeType_Constructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_AcceptsCVs,
-
     /* copyData */ copyData,
-
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
     /* applyModifier */ applyModifier,
-
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
-    /* freeData */ NULL, /* HANS-TODO: Put something here... */
+    /* freeData */ freeData,
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,

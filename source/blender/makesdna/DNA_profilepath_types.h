@@ -65,8 +65,6 @@ typedef struct ProfilePath {
 
   /** Sampled segment point location table */
   char _pad4[4];
-  float *x_segment_vals;
-  float *y_segment_vals;
 } ProfilePath;
 
 typedef struct ProfileWidget {
@@ -77,17 +75,19 @@ typedef struct ProfileWidget {
   int changed_timestamp;
   /** Current rect, clip rect (is default rect too). */
   char _pad[4];
-  rctf curr, clipr; /* HANS-TODO: remove clipr because it should always be the same anyway */
+  rctf view_rect, clip_rect;
   /** The actual profile path information */
   ProfilePath *profile;
 } ProfileWidget;
 
 /* ProfileWidget->flag */
 #define PROF_DO_CLIP (1 << 0)
+#define PROF_USE_TABLE (1 << 1)
 
 typedef enum eProfilePathPresets {
   PROF_PRESET_LINE = 0, /* Default simple line */
   PROF_PRESET_SUPPORTS = 1, /* Support loops for a regular curved profile */
+  PROF_PRESET_EXAMPLE1 = 2, /* Molding type example of a supposed common use case */
 } ProfilePathPresets;
 
 #endif

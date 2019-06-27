@@ -200,6 +200,13 @@ static void rna_def_profilepath(BlenderRNA *brna)
 //  RNA_def_function_return(func, parm);
 }
 
+/* HANS-STRETCH-GOAL: Give the presets icons! */
+const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
+    {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
+    {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops", "Loops on either side of the profile"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 static void rna_def_profilewidget(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -211,7 +218,19 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna,"ProfileWidget",
                          "Profile Path editor used to build a user-defined profile");
 
-//  prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
+//  prop = RNA_def_property(srna, "rotation_mode", PROP_ENUM, PROP_NONE);
+//  RNA_def_property_enum_sdna(prop, NULL, "rotmode");
+//  RNA_def_property_enum_items(prop, rna_enum_object_rotation_mode_items);
+//  RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
+//  RNA_def_property_ui_text(prop, "Rotation Mode", "");
+//  eProfilePathPresets
+
+  prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "preset");
+  RNA_def_property_enum_items(prop, rna_enum_profilewidget_preset_items);
+//  RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
+  RNA_def_property_ui_text(prop, "Preset", "");
+  //  eProfilePathPresets
 
   prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_DO_CLIP);

@@ -2396,6 +2396,7 @@ static void ui_but_paste_curvemapping(bContext *C, uiBut *but)
 /* HANS-TODO: Test these */
 static void ui_but_copy_profilewidget(uiBut *but)
 {
+  printf("UI BUT COPY PROFILEWIDGET\n");
   if (but->poin != NULL) {
     but_copypaste_profile_alive = true;
     profilewidget_free_data(&but_copypaste_profile);
@@ -2405,6 +2406,7 @@ static void ui_but_copy_profilewidget(uiBut *but)
 
 static void ui_but_paste_profilewidget(bContext *C, uiBut *but)
 {
+  printf("UI BUT PASTE PROFILEWIDGET\n");
   if (but_copypaste_profile_alive) {
     if (!but->poin) {
       but->poin = MEM_callocN(sizeof(ProfileWidget), "profilewidget");
@@ -2608,6 +2610,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 
 void ui_but_clipboard_free(void)
 {
+  printf("UI BUT CLIPBOARD FREE\n");
   curvemapping_free_data(&but_copypaste_curve);
   profilewidget_free_data(&but_copypaste_profile);
 }
@@ -6740,8 +6743,8 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   dragy = data->draglasty;
   ui_window_to_block(data->region, block, &dragx, &dragy);
 
-  zoomx = BLI_rctf_size_x(&but->rect) / BLI_rctf_size_x(&prwidget->curr);
-  zoomy = BLI_rctf_size_y(&but->rect) / BLI_rctf_size_y(&prwidget->curr);
+  zoomx = BLI_rctf_size_x(&but->rect) / BLI_rctf_size_x(&prwidget->view_rect);
+  zoomy = BLI_rctf_size_y(&but->rect) / BLI_rctf_size_y(&prwidget->view_rect);
 
   if (snap) {
     float d[2];
@@ -6795,8 +6798,8 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
        * but in practice this isnt really an issue */
       if (ui_but_is_cursor_warp(but)) {
         /* OK but can go outside bounds */
-        data->ungrab_mval[0] = but->rect.xmin + ((point_last->x - prwidget->curr.xmin) * zoomx);
-        data->ungrab_mval[1] = but->rect.ymin + ((point_last->y - prwidget->curr.ymin) * zoomy);
+        data->ungrab_mval[0] = but->rect.xmin + ((point_last->x - prwidget->view_rect.xmin) * zoomx);
+        data->ungrab_mval[1] = but->rect.ymin + ((point_last->y - prwidget->view_rect.ymin) * zoomy);
         BLI_rctf_clamp_pt_v(&but->rect, data->ungrab_mval);
       }
 #endif
@@ -6806,24 +6809,24 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   else {
     /* clamp for clip */
     if (prwidget->flag & PROF_DO_CLIP) {
-      if (prwidget->curr.xmin - fx < prwidget->clipr.xmin) {
-        fx = prwidget->curr.xmin - prwidget->clipr.xmin;
+      if (prwidget->view_rect.xmin - fx < prwidget->clip_rect.xmin) {
+        fx = prwidget->view_rect.xmin - prwidget->clip_rect.xmin;
       }
-      else if (prwidget->curr.xmax - fx > prwidget->clipr.xmax) {
-        fx = prwidget->curr.xmax - prwidget->clipr.xmax;
+      else if (prwidget->view_rect.xmax - fx > prwidget->clip_rect.xmax) {
+        fx = prwidget->view_rect.xmax - prwidget->clip_rect.xmax;
       }
-      if (prwidget->curr.ymin - fy < prwidget->clipr.ymin) {
-        fy = prwidget->curr.ymin - prwidget->clipr.ymin;
+      if (prwidget->view_rect.ymin - fy < prwidget->clip_rect.ymin) {
+        fy = prwidget->view_rect.ymin - prwidget->clip_rect.ymin;
       }
-      else if (prwidget->curr.ymax - fy > prwidget->clipr.ymax) {
-        fy = prwidget->curr.ymax - prwidget->clipr.ymax;
+      else if (prwidget->view_rect.ymax - fy > prwidget->clip_rect.ymax) {
+        fy = prwidget->view_rect.ymax - prwidget->clip_rect.ymax;
       }
     }
 
-    prwidget->curr.xmin -= fx;
-    prwidget->curr.ymin -= fy;
-    prwidget->curr.xmax -= fx;
-    prwidget->curr.ymax -= fy;
+    prwidget->view_rect.xmin -= fx;
+    prwidget->view_rect.ymin -= fy;
+    prwidget->view_rect.xmax -= fx;
+    prwidget->view_rect.ymax -= fy;
 
     data->draglastx = evtx;
     data->draglasty = evty;
@@ -6858,7 +6861,7 @@ static int ui_do_but_PROFILE(bContext *C,
 
       if (event->ctrl) {
         float f_xy[2];
-        BLI_rctf_transform_pt_v(&prwidget->curr, &but->rect, f_xy, m_xy);
+        BLI_rctf_transform_pt_v(&prwidget->view_rect, &but->rect, f_xy, m_xy);
 
         profilepath_insert(prpath, f_xy[0], f_xy[1]);
         profilewidget_changed(prwidget, false);
@@ -6869,7 +6872,7 @@ static int ui_do_but_PROFILE(bContext *C,
       pts = prpath->path; /* ctrl adds point, new malloc */
       for (i = 0; i < prpath->totpoint; i++) {
         float f_xy[2];
-        BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[i].x);
+        BLI_rctf_transform_pt_v(&but->rect, &prwidget->view_rect, f_xy, &pts[i].x);
         const float dist_sq = len_squared_v2v2(m_xy, f_xy);
         if (dist_sq < dist_min_sq) {
           i_selected = i;
@@ -6884,7 +6887,7 @@ static int ui_do_but_PROFILE(bContext *C,
          * curve itself, and if so, add a point */
         pts = prpath->table;
 
-        BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[0].x);
+        BLI_rctf_transform_pt_v(&but->rect, &prwidget->view_rect, f_xy, &pts[0].x);
 
         /* with 160px height 8px should translate to the old 0.05 coefficient at no zoom */
         dist_min_sq = SQUARE(U.dpi_fac * 8.0f);
@@ -6892,10 +6895,10 @@ static int ui_do_but_PROFILE(bContext *C,
         /* loop through the curve segment table and find what's near the mouse. */
         for (i = 1; i <= PROF_TABLE_SIZE; i++) {
           copy_v2_v2(f_xy_prev, f_xy);
-          BLI_rctf_transform_pt_v(&but->rect, &prwidget->curr, f_xy, &pts[i].x);
+          BLI_rctf_transform_pt_v(&but->rect, &prwidget->view_rect, f_xy, &pts[i].x);
 
           if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
-            BLI_rctf_transform_pt_v(&prwidget->curr, &but->rect, f_xy, m_xy);
+            BLI_rctf_transform_pt_v(&prwidget->view_rect, &but->rect, f_xy, m_xy);
 
             ProfilePoint *new_pt = profilepath_insert(prpath, f_xy[0], f_xy[1]);
             profilewidget_changed(prwidget, false);

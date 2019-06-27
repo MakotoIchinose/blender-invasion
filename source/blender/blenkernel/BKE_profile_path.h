@@ -69,12 +69,18 @@ bool profilepath_remove_point(struct ProfilePath *prpath, struct ProfilePoint *p
 
 struct ProfilePoint *profilepath_insert(struct ProfilePath *prpath, float x, float y);
 
+void profilepath_reverse(struct ProfilePath *prpath);
+
 void profilepath_handle_set(struct ProfilePath *prpath, int type);
 
 /* Called for a complete update of the widget after modifications */
 void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
 
-/* call before _all_ evaluation functions */
+/* call before all evaluation functions */
 void profilewidget_initialize(struct ProfileWidget *prwdgt, int nsegments);
+
+void profilepath_fill_segment_table(const struct ProfilePath *prpath,
+                                    double *x_table_out,
+                                    double *y_table_out);
 
 #endif

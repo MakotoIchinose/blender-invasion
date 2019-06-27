@@ -4178,85 +4178,29 @@ static void curvemap_buttons_layout(uiLayout *layout,
 
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
-  bt = uiDefIconBut(block,
-                    UI_BTYPE_BUT,
-                    0,
-                    ICON_ZOOM_IN,
-                    0,
-                    0,
-                    dx,
-                    dx,
-                    NULL,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
+  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_ZOOM_IN, 0, 0, dx, dx, NULL, 0.0, 0.0, 0.0, 0.0,
                     TIP_("Zoom in"));
   UI_but_func_set(bt, curvemap_buttons_zoom_in, cumap, NULL);
 
-  bt = uiDefIconBut(block,
-                    UI_BTYPE_BUT,
-                    0,
-                    ICON_ZOOM_OUT,
-                    0,
-                    0,
-                    dx,
-                    dx,
-                    NULL,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
+  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_ZOOM_OUT, 0, 0, dx, dx, NULL, 0.0, 0.0, 0.0, 0.0,
                     TIP_("Zoom out"));
   UI_but_func_set(bt, curvemap_buttons_zoom_out, cumap, NULL);
 
   if (brush && neg_slope) {
-    bt = uiDefIconBlockBut(block,
-                           curvemap_brush_tools_negslope_func,
-                           cumap,
-                           0,
-                           ICON_DOWNARROW_HLT,
-                           0,
-                           0,
-                           dx,
-                           dx,
-                           TIP_("Tools"));
+    bt = uiDefIconBlockBut(block, curvemap_brush_tools_negslope_func, cumap, 0, ICON_DOWNARROW_HLT,
+                           0, 0, dx, dx, TIP_("Tools"));
   }
   else if (brush) {
-    bt = uiDefIconBlockBut(block,
-                           curvemap_brush_tools_func,
-                           cumap,
-                           0,
-                           ICON_DOWNARROW_HLT,
-                           0,
-                           0,
-                           dx,
-                           dx,
-                           TIP_("Tools"));
+    bt = uiDefIconBlockBut(block, curvemap_brush_tools_func, cumap, 0, ICON_DOWNARROW_HLT, 0, 0,
+                           dx, dx, TIP_("Tools"));
   }
   else if (neg_slope) {
-    bt = uiDefIconBlockBut(block,
-                           curvemap_tools_negslope_func,
-                           cumap,
-                           0,
-                           ICON_DOWNARROW_HLT,
-                           0,
-                           0,
-                           dx,
-                           dx,
-                           TIP_("Tools"));
+    bt = uiDefIconBlockBut(block, curvemap_tools_negslope_func, cumap, 0, ICON_DOWNARROW_HLT, 0, 0,
+                           dx, dx, TIP_("Tools"));
   }
   else {
-    bt = uiDefIconBlockBut(block,
-                           curvemap_tools_posslope_func,
-                           cumap,
-                           0,
-                           ICON_DOWNARROW_HLT,
-                           0,
-                           0,
-                           dx,
-                           dx,
-                           TIP_("Tools"));
+    bt = uiDefIconBlockBut(block, curvemap_tools_posslope_func, cumap, 0, ICON_DOWNARROW_HLT, 0, 0,
+                           dx, dx, TIP_("Tools"));
   }
 
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
@@ -4266,19 +4210,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       block, curvemap_clipping_func, cumap, 0, icon, 0, 0, dx, dx, TIP_("Clipping Options"));
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
 
-  bt = uiDefIconBut(block,
-                    UI_BTYPE_BUT,
-                    0,
-                    ICON_X,
-                    0,
-                    0,
-                    dx,
-                    dx,
-                    NULL,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
+  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, dx, dx, NULL, 0.0, 0.0, 0.0, 0.0,
                     TIP_("Delete points"));
   UI_but_funcN_set(bt, curvemap_buttons_delete, MEM_dupallocN(cb), cumap);
 
@@ -4313,34 +4245,10 @@ static void curvemap_buttons_layout(uiLayout *layout,
 
     uiLayoutRow(layout, true);
     UI_block_funcN_set(block, curvemap_buttons_update, MEM_dupallocN(cb), cumap);
-    uiDefButF(block,
-              UI_BTYPE_NUM,
-              0,
-              "X",
-              0,
-              2 * UI_UNIT_Y,
-              UI_UNIT_X * 10,
-              UI_UNIT_Y,
-              &cmp->x,
-              bounds.xmin,
-              bounds.xmax,
-              1,
-              5,
-              "");
-    uiDefButF(block,
-              UI_BTYPE_NUM,
-              0,
-              "Y",
-              0,
-              1 * UI_UNIT_Y,
-              UI_UNIT_X * 10,
-              UI_UNIT_Y,
-              &cmp->y,
-              bounds.ymin,
-              bounds.ymax,
-              1,
-              5,
-              "");
+    uiDefButF(block, UI_BTYPE_NUM, 0, "X", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y, &cmp->x,
+              bounds.xmin, bounds.xmax, 1, 5, "");
+    uiDefButF(block, UI_BTYPE_NUM, 0, "Y", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y, &cmp->y,
+              bounds.ymin, bounds.ymax, 1, 5, "");
   }
 
   /* black/white levels */
@@ -4350,20 +4258,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
     uiItemR(uiLayoutColumn(split, false), ptr, "white_level", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
     uiLayoutRow(layout, false);
-    bt = uiDefBut(block,
-                  UI_BTYPE_BUT,
-                  0,
-                  IFACE_("Reset"),
-                  0,
-                  0,
-                  UI_UNIT_X * 10,
-                  UI_UNIT_Y,
-                  NULL,
-                  0.0f,
-                  0.0f,
-                  0,
-                  0,
-                  TIP_("Reset Black/White point and curves"));
+    bt = uiDefBut(block, UI_BTYPE_BUT, 0, IFACE_("Reset"), 0, 0, UI_UNIT_X * 10,UI_UNIT_Y, NULL,
+                  0.0f, 0.0f, 0, 0, TIP_("Reset Black/White point and curves"));
     UI_but_funcN_set(bt, curvemap_buttons_reset, MEM_dupallocN(cb), cumap);
   }
 
@@ -4385,8 +4281,8 @@ void uiTemplateCurveMapping(uiLayout *layout,
   ID *id;
   uiBlock *block = uiLayoutGetBlock(layout);
 
-  if (!prop) {
-    RNA_warning("curve property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
+  if (!prop) {RNA_warning("curve property not found: %s.%s",
+                          RNA_struct_identifier(ptr->type), propname);
     return;
   }
 
@@ -4416,20 +4312,61 @@ void uiTemplateCurveMapping(uiLayout *layout,
 
 /********************* ProfileWidget Template ************************/
 
-/* HANS-TODO: This function isn't used?
-static void profilewidget_buttons_reset(bContext *C, void *cb_v, void *prwidget_v)
+static void profilewidget_presets_dofunc(bContext *C, void *prwidget_v, int event)
 {
   ProfileWidget *prwidget = prwidget_v;
+  ProfilePath *prpath = prwidget->profile;
 
-  prwidget->preset = CURVE_PRESET_LINE; // HANS-TODO: Eventually get preset from dropdown
-  profilepath_reset(prwidget->profile, prwidget->preset);
-
-  profilewidget_changed(prwidget, false);
-
-  rna_update_cb(C, cb_v, NULL);
+  switch (event) {
+    case PROF_PRESET_LINE:
+      prwidget->preset = PROF_PRESET_LINE;
+      profilepath_reset(prpath, prwidget->preset);
+      profilewidget_changed(prwidget, false);
+      break;
+    case PROF_PRESET_SUPPORTS:
+      prwidget->preset = PROF_PRESET_SUPPORTS;
+      profilepath_reset(prpath, prwidget->preset);
+      profilewidget_changed(prwidget, false);
+      break;
+  case PROF_PRESET_EXAMPLE1:
+    prwidget->preset = PROF_PRESET_EXAMPLE1;
+    profilepath_reset(prpath, prwidget->preset);
+    profilewidget_changed(prwidget, false);
+    break;
+  }
+  ED_undo_push(C, "ProfilePath tools");
+  ED_region_tag_redraw(CTX_wm_region(C));
 }
-*/
 
+static uiBlock *profilewidget_presets_func(bContext *C, ARegion *ar, ProfileWidget *prwidget)
+{
+  uiBlock *block;
+  short yco = 0;
+  short menuwidth = 12 * UI_UNIT_X;
+
+  block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
+  UI_block_func_butmenu_set(block, profilewidget_presets_dofunc, prwidget);
+
+  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Default"), 0,
+                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
+                   PROF_PRESET_LINE, "");
+  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Support Loops"), 0,
+                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
+                   PROF_PRESET_SUPPORTS, "");
+  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Example 1"), 0,
+                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
+                   PROF_PRESET_EXAMPLE1, "");
+
+  UI_block_direction_set(block, UI_DIR_DOWN);
+  UI_block_bounds_set_text(block, (int)(3.0f * UI_UNIT_X));
+
+  return block;
+}
+
+static uiBlock *profilewidget_buttons_presets(bContext *C, ARegion *ar, void *prwidget_v)
+{
+  return profilewidget_presets_func(C, ar, (ProfileWidget *)prwidget_v);
+}
 
 /* only for profilewidget tools block */
 enum {
@@ -4451,7 +4388,7 @@ static void profilewidget_tools_dofunc(bContext *C, void *prwidget_v, int event)
       profilewidget_changed(prwidget, false);
       break;
     case UIPROFILE_FUNC_RESET_VIEW: /* reset view to clipping rect */
-      prwidget->curr = prwidget->clipr;
+      prwidget->view_rect = prwidget->clip_rect;
       break;
     case UIPROFILE_FUNC_HANDLE_VECTOR: /* set vector */
       profilepath_handle_set(prpath, HD_VECT);
@@ -4512,13 +4449,13 @@ static void profilewidget_buttons_zoom_in(bContext *C, void *prwidget_v, void *U
   float d;
 
   /* we allow 20 times zoom */
-  if (BLI_rctf_size_x(&prwidget->curr) > 0.04f * BLI_rctf_size_x(&prwidget->clipr)) {
-    d = 0.1154f * BLI_rctf_size_x(&prwidget->curr);
-    prwidget->curr.xmin += d;
-    prwidget->curr.xmax -= d;
-    d = 0.1154f * BLI_rctf_size_y(&prwidget->curr);
-    prwidget->curr.ymin += d;
-    prwidget->curr.ymax -= d;
+  if (BLI_rctf_size_x(&prwidget->view_rect) > 0.04f * BLI_rctf_size_x(&prwidget->clip_rect)) {
+    d = 0.1154f * BLI_rctf_size_x(&prwidget->view_rect);
+    prwidget->view_rect.xmin += d;
+    prwidget->view_rect.xmax -= d;
+    d = 0.1154f * BLI_rctf_size_y(&prwidget->view_rect);
+    prwidget->view_rect.ymin += d;
+    prwidget->view_rect.ymax -= d;
   }
 
   ED_region_tag_redraw(CTX_wm_region(C));
@@ -4530,40 +4467,40 @@ static void profilewidget_buttons_zoom_out(bContext *C, void *prwidget_v, void *
   float d, d1;
 
   /* Allow 20 times zoom, but don't view outside clip */
-  if (BLI_rctf_size_x(&prwidget->curr) < 20.0f * BLI_rctf_size_x(&prwidget->clipr)) {
-    d = d1 = 0.15f * BLI_rctf_size_x(&prwidget->curr);
+  if (BLI_rctf_size_x(&prwidget->view_rect) < 20.0f * BLI_rctf_size_x(&prwidget->clip_rect)) {
+    d = d1 = 0.15f * BLI_rctf_size_x(&prwidget->view_rect);
 
     if (prwidget->flag & PROF_DO_CLIP) {
-      if (prwidget->curr.xmin - d < prwidget->clipr.xmin) {
-        d1 = prwidget->curr.xmin - prwidget->clipr.xmin;
+      if (prwidget->view_rect.xmin - d < prwidget->clip_rect.xmin) {
+        d1 = prwidget->view_rect.xmin - prwidget->clip_rect.xmin;
       }
     }
-    prwidget->curr.xmin -= d1;
+    prwidget->view_rect.xmin -= d1;
 
     d1 = d;
     if (prwidget->flag & PROF_DO_CLIP) {
-      if (prwidget->curr.xmax + d > prwidget->clipr.xmax) {
-        d1 = -prwidget->curr.xmax + prwidget->clipr.xmax;
+      if (prwidget->view_rect.xmax + d > prwidget->clip_rect.xmax) {
+        d1 = -prwidget->view_rect.xmax + prwidget->clip_rect.xmax;
       }
     }
-    prwidget->curr.xmax += d1;
+    prwidget->view_rect.xmax += d1;
 
-    d = d1 = 0.15f * BLI_rctf_size_y(&prwidget->curr);
+    d = d1 = 0.15f * BLI_rctf_size_y(&prwidget->view_rect);
 
     if (prwidget->flag & PROF_DO_CLIP) {
-      if (prwidget->curr.ymin - d < prwidget->clipr.ymin) {
-        d1 = prwidget->curr.ymin - prwidget->clipr.ymin;
+      if (prwidget->view_rect.ymin - d < prwidget->clip_rect.ymin) {
+        d1 = prwidget->view_rect.ymin - prwidget->clip_rect.ymin;
       }
     }
-    prwidget->curr.ymin -= d1;
+    prwidget->view_rect.ymin -= d1;
 
     d1 = d;
     if (prwidget->flag & PROF_DO_CLIP) {
-      if (prwidget->curr.ymax + d > prwidget->clipr.ymax) {
-        d1 = -prwidget->curr.ymax + prwidget->clipr.ymax;
+      if (prwidget->view_rect.ymax + d > prwidget->clip_rect.ymax) {
+        d1 = -prwidget->view_rect.ymax + prwidget->clip_rect.ymax;
       }
     }
-    prwidget->curr.ymax += d1;
+    prwidget->view_rect.ymax += d1;
   }
 
   ED_region_tag_redraw(CTX_wm_region(C));
@@ -4575,6 +4512,15 @@ static void profilewidget_clipping_toggle(bContext *C, void *cb_v, void *prwidge
 
   prwidget->flag ^= PROF_DO_CLIP;
 
+  profilewidget_changed(prwidget, false);
+  rna_update_cb(C, cb_v, NULL);
+}
+
+static void profilewidget_buttons_reverse(bContext *C, void *cb_v, void *prwidget_v)
+{
+  ProfileWidget *prwidget = prwidget_v;
+
+  profilepath_reverse(prwidget->profile);
   profilewidget_changed(prwidget, false);
   rna_update_cb(C, cb_v, NULL);
 }
@@ -4596,12 +4542,6 @@ static void profilewidget_buttons_update(bContext *C, void *arg1_v, void *prwidg
   rna_update_cb(C, arg1_v, NULL);
 }
 
-/* HANS-TODO: I don't think this is necessary */
-//static void profilewidget_buttons_redraw(bContext *C, void *UNUSED(arg1), void *UNUSED(arg2))
-//{
-//  ED_region_tag_redraw(CTX_wm_region(C));
-//}
-
 static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUpdateCb *cb)
 {
   ProfileWidget *prwidget = ptr->data;
@@ -4612,6 +4552,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiBut *bt;
   int icon, size;
   int bg = -1, i;
+//  PointerRNA rna_pwgdt; /* Use for preset selector? */
+//  RNA_pointer_create(ale->id, &RNA_Keyframe, prwidget, &rna_pwgdt);
 
   block = uiLayoutGetBlock(layout);
 
@@ -4620,7 +4562,10 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayoutRow(layout, false);
 
   /* Preset selector */
-
+  /* HANS-TODO: This isn't the proper way to do this at all, but it should work for now */
+  bt = uiDefBlockBut(block, profilewidget_buttons_presets, prwidget, "Preset", 0, 0,
+                             UI_UNIT_X, UI_UNIT_X, "");
+  UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
 
   row = uiLayoutRow(layout, false);
 
@@ -4643,9 +4588,15 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
 
   /* Reset view, vector handle, auto handle, auto clamped handle, reset curve */
-  bt = uiDefIconBlockBut(block, profilewidget_buttons_tools, prwidget, 0, ICON_DOWNARROW_HLT, 0,
-                         0, UI_UNIT_X, UI_UNIT_X, TIP_("Tools"));
+  bt = uiDefIconBlockBut(block, profilewidget_buttons_tools, prwidget, 0, 0, 0, 0, UI_UNIT_X,
+                         UI_UNIT_X, TIP_("Tools"));
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
+
+  /* Flip path */
+  /* HANS-TODO: Get a proper icon for this */
+  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_UV_SYNC_SELECT, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
+                    0.0, 0.0, TIP_("Reverse Path"));
+  UI_but_funcN_set(bt, profilewidget_buttons_reverse, MEM_dupallocN(cb), prwidget);
 
   /* Clipping toggle */
   icon = (prwidget->flag & PROF_DO_CLIP) ? ICON_CLIPUV_HLT : ICON_CLIPUV_DEHLT;
@@ -4668,17 +4619,22 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
            0.0f, 1.0f, bg, 0, "");
 
   /* Position sliders for (first) selected point */
-  for (i = 0; i < prpath->totpoint; i++) {
-    if (prpath->path[i].flag & PROF_SELECT) {
-      point = &prpath->path[i];
-      break;
+  /* HANS-TODO: Somehow this is running before the default path is created.
+   * That shouldn't be possible, and it might be an error in this file. For now though I can
+   * just disable this if the path hasn't been created yet */
+  if (prpath->path) {
+    for (i = 0; i < prpath->totpoint; i++) {
+      if (prpath->path[i].flag & PROF_SELECT) {
+        point = &prpath->path[i];
+        break;
+      }
     }
   }
 
   if (point) {
     rctf bounds;
     if (prwidget->flag & PROF_DO_CLIP) {
-      bounds = prwidget->clipr;
+      bounds = prwidget->clip_rect;
     }
     else {
       bounds.xmin = bounds.ymin = -1000.0;
@@ -4707,12 +4663,14 @@ void uiTemplateProfileWidget(uiLayout *layout, PointerRNA *ptr, const char *prop
   uiBlock *block = uiLayoutGetBlock(layout);
 
   if (!prop) {
-    RNA_warning("Path Widget property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
+    RNA_warning("Profile Widget property not found: %s.%s", RNA_struct_identifier(ptr->type),
+                propname);
     return;
   }
 
   if (RNA_property_type(prop) != PROP_POINTER) {
-    RNA_warning("Path Widget is not a pointer: %s.%s", RNA_struct_identifier(ptr->type), propname);
+    RNA_warning("Profile Widget is not a pointer: %s.%s", RNA_struct_identifier(ptr->type),
+                propname);
     return;
   }
 

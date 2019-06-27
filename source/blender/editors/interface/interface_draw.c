@@ -2125,10 +2125,10 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
 
   /* Calculate offset and zoom */
-  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&prwdgt->curr);
-  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&prwdgt->curr);
-  float offsx = prwdgt->curr.xmin - (1.0f / zoomx);
-  float offsy = prwdgt->curr.ymin - (1.0f / zoomy);
+  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&prwdgt->view_rect);
+  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&prwdgt->view_rect);
+  float offsx = prwdgt->view_rect.xmin - (1.0f / zoomx);
+  float offsy = prwdgt->view_rect.ymin - (1.0f / zoomy);
 
   /* Exit early if too narrow */
   if (zoomx == 0.0f) {
@@ -2136,6 +2136,15 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
 
   ProfilePath *prpath = prwdgt->profile;
+#if DEBUG_PROFILE_DRAW
+  if (!prpath->path) {
+    printf("UI DRAW BUT PROFILE -- ProfilePath has no path!\n");
+  }
+  if (!prpath->table) {
+    printf("UI DRAW BUT PROFILE -- ProfilePath has no table!\n");
+  }
+  fflush(0);
+#endif
 
   /* Test needed because path can draw outside of boundary */
   int scissor[4];
@@ -2167,10 +2176,10 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
     immUniformColor3ubv((uchar *)wcol->inner);
     immRectf(pos,
-             rect->xmin + zoomx * (prwdgt->clipr.xmin - offsx),
-             rect->ymin + zoomy * (prwdgt->clipr.ymin - offsy),
-             rect->xmin + zoomx * (prwdgt->clipr.xmax - offsx),
-             rect->ymin + zoomy * (prwdgt->clipr.ymax - offsy));
+             rect->xmin + zoomx * (prwdgt->clip_rect.xmin - offsx),
+             rect->ymin + zoomy * (prwdgt->clip_rect.ymin - offsy),
+             rect->xmin + zoomx * (prwdgt->clip_rect.xmax - offsx),
+             rect->ymin + zoomy * (prwdgt->clip_rect.ymax - offsy));
   }
   else {
     rgb_uchar_to_float(color_backdrop, (uchar *)wcol->inner);
@@ -2194,8 +2203,8 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
   ProfilePoint *pts = prpath->path;
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
-  bool add_right_triangle = prwdgt->curr.xmax > 1.0f;
-  bool add_bottom_triangle = prwdgt->curr.ymin < 0.0f;
+  bool add_right_triangle = prwdgt->view_rect.xmax > 1.0f;
+  bool add_bottom_triangle = prwdgt->view_rect.ymin < 0.0f;
   uint tot_points = (uint)prpath->totpoint + 1 + add_right_triangle + add_bottom_triangle;
   uint tot_triangles = tot_points - 2;
 
@@ -2207,26 +2216,26 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
   if (add_right_triangle && add_bottom_triangle) {
     /* Add right side, bottom right corner, and bottom side points */
-    table_coords[tot_points - 3][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 3][0] = prwdgt->view_rect.xmax;
     table_coords[tot_points - 3][1] = 1.0f;
-    table_coords[tot_points - 2][0] = prwdgt->curr.xmax;
-    table_coords[tot_points - 2][1] = prwdgt->curr.ymin;
+    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmax;
+    table_coords[tot_points - 2][1] = prwdgt->view_rect.ymin;
     table_coords[tot_points - 1][0] = 0.0f;
-    table_coords[tot_points - 1][1] = prwdgt->curr.ymin;
+    table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
   }
   else if (add_right_triangle) {
     /* Add the right side and bottom right corner points */
-    table_coords[tot_points - 2][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmax;
     table_coords[tot_points - 2][1] = 1.0f;
-    table_coords[tot_points - 1][0] = prwdgt->curr.xmax;
+    table_coords[tot_points - 1][0] = prwdgt->view_rect.xmax;
     table_coords[tot_points - 1][1] = 0.0f;
   }
   else if (add_bottom_triangle) {
     /* Add the bottom side and bottom right corner points */
     table_coords[tot_points - 2][0] = 1.0f;
-    table_coords[tot_points - 2][1] = prwdgt->curr.ymin;
+    table_coords[tot_points - 2][1] = prwdgt->view_rect.ymin;
     table_coords[tot_points - 1][0] = 0.0f;
-    table_coords[tot_points - 1][1] = prwdgt->curr.ymin;
+    table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
   }
   else {
     /* Don't bother adding any side points, they would be redundant anyway */
