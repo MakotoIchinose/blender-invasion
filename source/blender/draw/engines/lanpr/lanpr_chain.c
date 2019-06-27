@@ -230,6 +230,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     rlc = lanpr_create_render_line_chain(rb);
 
     rlc->object_ref = rl->object_ref; /*  can only be the same object in a chain. */
+    rlc->type = (rl->flags & LANPR_EDGE_FLAG_ALL_TYPE);
 
     int r1, r2, c1, c2, row, col;
     LANPR_RenderLine *new_rl = rl;
@@ -639,7 +640,8 @@ void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
           continue;
         }
         if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion) {
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion||
+            (cre->rlc->type != rlc->type)) {
           continue;
         }
         if (cre->rlc->picked) {
@@ -685,7 +687,8 @@ void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
           continue;
         }
         if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion) {
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion||
+            (cre->rlc->type != rlc->type)) {
           continue;
         }
         if (cre->rlc->picked) {
