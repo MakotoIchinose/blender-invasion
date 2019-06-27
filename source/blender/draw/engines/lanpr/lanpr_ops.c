@@ -327,9 +327,11 @@ int lanpr_line_crosses_bounding_area(LANPR_RenderBuffer *fb,
   if (((converted[0] = (real)ba->l) > MAX2(l[0], r[0])) ||
       ((converted[1] = (real)ba->r) < MIN2(l[0], r[0])) ||
       ((converted[2] = (real)ba->b) > MAX2(l[1], r[1])) ||
-      ((converted[3] = (real)ba->u) < MIN2(l[1], r[1])))
+      ((converted[3] = (real)ba->u) < MIN2(l[1], r[1]))){
+    return 0;
+  }
 
-    vx = l[0] - r[0];
+  vx = l[0] - r[0];
   vy = l[1] - r[1];
 
   c1 = vx * (converted[2] - l[1]) - vy * (converted[0] - l[0]);
@@ -375,19 +377,22 @@ int lanpr_triangle_covers_bounding_area(LANPR_RenderBuffer *fb,
 
   if ((FBC1[0] >= p1[0] && FBC1[0] <= p2[0] && FBC1[1] >= p1[1] && FBC1[1] <= p3[1]) ||
       (FBC2[0] >= p1[0] && FBC2[0] <= p2[0] && FBC2[1] >= p1[1] && FBC2[1] <= p3[1]) ||
-      (FBC3[0] >= p1[0] && FBC3[0] <= p2[0] && FBC3[1] >= p1[1] && FBC3[1] <= p3[1]))
+      (FBC3[0] >= p1[0] && FBC3[0] <= p2[0] && FBC3[1] >= p1[1] && FBC3[1] <= p3[1])){
     return 1;
+  }
 
   if (lanpr_point_inside_triangled(p1, FBC1, FBC2, FBC3) ||
       lanpr_point_inside_triangled(p2, FBC1, FBC2, FBC3) ||
       lanpr_point_inside_triangled(p3, FBC1, FBC2, FBC3) ||
-      lanpr_point_inside_triangled(p4, FBC1, FBC2, FBC3))
+      lanpr_point_inside_triangled(p4, FBC1, FBC2, FBC3)){
     return 1;
+  }
 
   if ((lanpr_line_crosses_bounding_area(fb, FBC1, FBC2, ba)) ||
       (lanpr_line_crosses_bounding_area(fb, FBC2, FBC3, ba)) ||
-      (lanpr_line_crosses_bounding_area(fb, FBC3, FBC1, ba)))
+      (lanpr_line_crosses_bounding_area(fb, FBC3, FBC1, ba))){
     return 1;
+  }
 
   return 0;
 }
