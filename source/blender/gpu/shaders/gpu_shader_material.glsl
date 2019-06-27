@@ -3230,7 +3230,7 @@ float noise_grad(uint hash, float x, float y)
 {
   uint h = hash & 7u;
   float u = h < 4u ? x : y;
-  float v = 2.0 * h < 4 ? y : x;
+  float v = 2.0 * (h < 4u ? y : x);
   return negate_if(u, h & 1u) + negate_if(v, h & 2u);
 }
 
@@ -3246,9 +3246,9 @@ float noise_grad(uint hash, float x, float y, float z)
 float noise_grad(uint hash, float x, float y, float z, float w)
 {
   uint h = hash & 31u;
-  float u = (h < 24u) ? x : y;
-  float v = (h < 16u) ? y : z;
-  float s = (h < 8u) ? z : w;
+  float u = h < 24u ? x : y;
+  float v = h < 16u ? y : z;
+  float s = h < 8u ? z : w;
   return negate_if(u, h & 1u) + negate_if(v, h & 2u) + negate_if(s, h & 4u);
 }
 
