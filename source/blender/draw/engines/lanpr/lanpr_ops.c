@@ -4152,6 +4152,10 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
   LANPR_RenderBuffer *rb;
   SceneLANPR *lanpr;
 
+  if (!lanpr->enabled) {
+    return OPERATOR_CANCELLED;
+  }
+
   rb = lanpr_create_render_buffer();
 
   lanpr_share.render_buffer_shared = rb;
@@ -4207,6 +4211,10 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
+
+  if (!lanpr->enabled) {
+    return OPERATOR_CANCELLED;
+  }
 
   if (!scene->camera) {
     BKE_report(op->reports, RPT_ERROR, "There is no active camera in this scene!");
