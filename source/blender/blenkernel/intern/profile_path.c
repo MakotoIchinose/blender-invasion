@@ -704,10 +704,10 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
       fp += 2;
     }
     if (fp == allpoints || (curf >= fp[0] && fp == lastpoint)) {
-      /* HANS-TODO: Remove this case. Why did I say this? */
+      /* HANS-TODO: Remove this case... Why did I say this? */
     }
     else {
-      /* HANS-QUESTION: Why this factor stuff? */
+      /* HANS-QUESTION: What's the idea behind this factor stuff? */
       float fac1 = fp[0] - fp[-2];
       float fac2 = fp[0] - curf;
       if (fac1 > FLT_EPSILON) {

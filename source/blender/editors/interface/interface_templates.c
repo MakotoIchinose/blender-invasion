@@ -4398,7 +4398,8 @@ static void profilewidget_tools_dofunc(bContext *C, void *prwidget_v, int event)
       profilepath_handle_set(prpath, HD_AUTO);
       profilewidget_changed(prwidget, false);
       break;
-    case UIPROFILE_FUNC_HANDLE_AUTO_ANIM: /* set auto-clamped */ /* HANS-QUESTION: Is this used? */
+    case UIPROFILE_FUNC_HANDLE_AUTO_ANIM: /* set auto-clamped */
+      /* HANS-QUESTION: Is this used? Do I really need two different curved interpolation flags? */
       profilepath_handle_set(prpath, HD_AUTO_ANIM);
       profilewidget_changed(prwidget, false);
       break;

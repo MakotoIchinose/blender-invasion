@@ -101,8 +101,7 @@ typedef struct EdgeHalf {
   bool is_seam;                 /* is e a seam for custom loopdata (e.g., UVs)? */
   /** Used during the custom profile orientation pass */
   bool visited_custom;
-  //  int _pad;
-  char _pad[5];  // HANS-TODO: Delete these pads
+  char _pad[5];
 } EdgeHalf;
 
 /* Profile specification.
@@ -156,9 +155,11 @@ typedef struct BoundVert {
   EdgeHalf *efirst;
   EdgeHalf *elast;
   /** The "edge between" that this is on, in offset_on_edge_between case. */
-  EdgeHalf *eon; /* HANS-QUESTION: What is the "eon edge?" */
+  EdgeHalf *eon;
+  /* HANS-QUESTION: What is the "eon edge?" I haven't been able to visualize where this is. */
   /** Beveled edge whose left side is attached here, if any. */
-  EdgeHalf *ebev; /* HANS-QUESTION: Why just store the left edge? */
+  EdgeHalf *ebev;
+  /* HANS-QUESTION: Why just store the left edge? For travelling counterclockwise? */
   /** Used for vmesh indexing. */
   int index;
   /** When eon set, ratio of sines of angles to eon edge. */
@@ -190,8 +191,9 @@ typedef struct VMesh {
   NewVert *mesh;         /* allocated array - size and structure depends on kind */
   BoundVert *boundstart; /* start of boundary double-linked list */
   int count;             /* number of vertices in the boundary */
-  /* HANS-QUESTION: Does that mean the number of points in the profile so far? */
   int seg;               /* common # of segments for segmented edges */
+  /* HANS-QUESTION: How is this seg different than the global bp->seg? Is it the number of segments
+   * built so far? */
   enum {
     M_NONE,    /* no polygon mesh needed */
     M_POLY,    /* a simple polygon */
@@ -1268,7 +1270,8 @@ static void project_to_edge(BMEdge *e, const float co_a[3], const float co_b[3],
 /* If there is a bndv->ebev edge, find the mid control point if necessary.
  * It is the closest point on the beveled edge to the line segment between
  * bndv and bndv->next.  */
-/* HANS-QUESTION: Will I need to change this? */
+/* HANS-QUESTION: I'm not sure if I'll need to change this. I don't think the custom situation
+ * uses the mid control point yet.*/
 static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 {
   EdgeHalf *e;
@@ -1735,7 +1738,9 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
           }
           p[2] = 0.0f;
           mul_v3_m4v3(co, m, p);
-          /* HANS-QUESTION: What's the reason to have this and the final projection? */
+          /* HANS-QUESTION: I guess this projection takes it from the profile spacing
+           * two dimentions to the global three dimensions and the next projection (onto profile
+           * plane) fixes it / rotates it? I don't fully understand why both are necessary. */
         }
         else {
           interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
@@ -1832,7 +1837,6 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
           p[1] = (float)yvals[k];
           p[2] = 0.0f;
           mul_v3_m4v3(co, m, p);
-          /* HANS-QUESTION: What's the reason to have this and the final projection? */
         }
         else {
           interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
@@ -3874,7 +3878,7 @@ static void fill_vmesh_fracs(VMesh *vm, float *frac, int i)
 }
 
 /* Like fill_vmesh_fracs but want fractions for profile points of bndv, with ns segments */
-/* HANS-QUESTION: What exactly are these functions doing? */
+/* HANS-QUESTION: I haven't yet figured out what these fill_*_fracs functions are doing. */
 static void fill_profile_fracs(BevelParams *bp, BoundVert *bndv, float *frac, int ns)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -3936,7 +3940,8 @@ static int interp_range(const float *frac, int n, const float f, float *r_rest)
 
 /* Interpolate given vmesh to make one with target nseg border vertices on the profiles */
 /* HANS-TODO: Needs custom analog. */
-/* HANS-QUESTION: General idea of how this works */
+/* HANS-QUESTION: What's the general idea of how this works? Maybe I could find that in the notes
+ * documents? */
 static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -4018,22 +4023,22 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
 #if DEBUG_CUSTOM_PROFILE_ADJ
   printf("CUBIC SUBDIV\n");
 #endif
-  int n, ns0, ns20, ns1;
+  int n_boundary, ns0, ns20, ns1;
   int i, j, k, inext;
   float co[3], co1[3], co2[3], acc[3];
   float beta, gamma;
   VMesh *vm1;
   BoundVert *bndv;
 
-  n = vm0->count; /* HANS-QUESTION: The difference between all of these seg numbers */
+  n_boundary = vm0->count;
   ns0 = vm0->seg;
   ns20 = ns0 / 2;
   BLI_assert(ns0 % 2 == 0);
   ns1 = 2 * ns0;
-  vm1 = new_adj_vmesh(bp->mem_arena, n, ns1, vm0->boundstart);
+  vm1 = new_adj_vmesh(bp->mem_arena, n_boundary, ns1, vm0->boundstart);
 
   /* First we adjust the boundary vertices of the input mesh, storing in output mesh */
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     copy_v3_v3(mesh_vert(vm1, i, 0, 0)->co, mesh_vert(vm0, i, 0, 0)->co);
     for (k = 1; k < ns0; k++) {
       /* smooth boundary rule */
@@ -4050,7 +4055,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   }
   /* now do odd ones in output mesh, based on even ones */
   bndv = vm1->boundstart;
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     for (k = 1; k < ns1; k += 2) {
       if (bp->use_custom_profile && !bndv->is_profile_start) {
         get_profile_point(bp, &bndv->profile, ns1 - k, ns1, co);
@@ -4072,7 +4077,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   vmesh_copy_equiv_verts(vm1);
 
   /* Copy adjusted verts back into vm0 */
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     for (k = 0; k < ns0; k++) {
       copy_v3_v3(mesh_vert(vm0, i, 0, k)->co, mesh_vert(vm1, i, 0, 2 * k)->co);
     }
@@ -4084,7 +4089,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
    * and assuming all boundary vertices have valence 4 */
 
   /* The new face vertices */
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     for (j = 0; j < ns20; j++) {
       for (k = 0; k < ns20; k++) {
         /* face up and right from (j, k) */
@@ -4099,7 +4104,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   }
 
   /* The new vertical edge vertices  */
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     for (j = 0; j < ns20; j++) {
       for (k = 1; k <= ns20; k++) {
         /* vertical edge between (j, k) and (j+1, k) */
@@ -4114,7 +4119,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   }
 
   /* The new horizontal edge vertices  */
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     for (j = 1; j < ns20; j++) {
       for (k = 0; k < ns20; k++) {
         /* horizontal edge between (j, k) and (j, k+1) */
@@ -4131,7 +4136,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   /* The new vertices, not on border */
   gamma = 0.25f;
   beta = -gamma;
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     for (j = 1; j < ns20; j++) {
       for (k = 1; k <= ns20; k++) {
         /* co1 = centroid of adjacent new edge verts */
@@ -4158,28 +4163,28 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   vmesh_copy_equiv_verts(vm1);
 
   /* The center vertex is special */
-  gamma = sabin_gamma(n);
+  gamma = sabin_gamma(n_boundary);
   beta = -gamma;
   /* accumulate edge verts in co1, face verts in co2 */
   zero_v3(co1);
   zero_v3(co2);
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     add_v3_v3(co1, mesh_vert(vm1, i, ns0, ns0 - 1)->co);
     add_v3_v3(co2, mesh_vert(vm1, i, ns0 - 1, ns0 - 1)->co);
     add_v3_v3(co2, mesh_vert(vm1, i, ns0 - 1, ns0 + 1)->co);
   }
   copy_v3_v3(co, co1);
-  mul_v3_fl(co, 1.0f / (float)n);
-  madd_v3_v3fl(co, co2, beta / (2.0f * (float)n));
+  mul_v3_fl(co, 1.0f / (float)n_boundary);
+  madd_v3_v3fl(co, co2, beta / (2.0f * (float)n_boundary));
   madd_v3_v3fl(co, mesh_vert(vm0, 0, ns20, ns20)->co, gamma);
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_boundary; i++) {
     copy_v3_v3(mesh_vert(vm1, i, ns0, ns0)->co, co);
   }
 
   /* Final step: sample the boundary vertices at even parameter spacing */
   bndv = vm1->boundstart;
-  for (i = 0; i < n; i++) {
-    inext = (i + 1) % n;
+  for (i = 0; i < n_boundary; i++) {
+    inext = (i + 1) % n_boundary;
     for (k = 0; k <= ns1; k++) {
       if (bp->use_custom_profile && !bndv->is_profile_start) {
         /* The profile is reversed so get the points from the other side */
@@ -4446,7 +4451,10 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
       for (k = 0; k <= ns; k++) {
         copy_v3_v3(v, mesh_vert(vm, i, j, k)->co);
 
-        /* HANS-QUESTION: What's going on here? */
+        /* HANS-QUESTION: It looks this is moving the point to the right part of the vmesh. But
+         * wouldn't a "unit cube map" assume that the profile is 0.5? And it's also a bit confusing
+         * that it uses the same unit cube map for all of the points. I guess I'm just a bit lost
+         * here in general. */
         v[3] = 1.0f;
         mul_m4_v4(mat, v);
         copy_v3_v3(mesh_vert(vm, i, j, k)->co, v);
@@ -4585,7 +4593,7 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
     snap_to_superellipsoid(p, pro->super_r, midline);
 
     mul_v3_m4v3(snap, m, p);
-    copy_v3_v3(co, snap); /* HANS-QUESTION: Why not just do that in the previousn line? */
+    copy_v3_v3(co, snap); /* HANS-TODO: Try just doing that in the previous line? */
   }
   else {
     /* planar case: just snap to line va0--vb0 */
@@ -4594,6 +4602,8 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
   }
 }
 
+/* HANS-TODO: I can probably replace this with creating a new profile for each ring along the
+ * direction of the pipe and snapping to that with snap_to_custom_profile */
 static void snap_to_pipe_profile_custom(BoundVert *vpipe, float co[3], int seg)
 {
   float va[3], vb[3], edir[3], va0[3], vb0[3], vmid0[3];
@@ -4647,7 +4657,7 @@ static void snap_to_pipe_profile_custom(BoundVert *vpipe, float co[3], int seg)
     closest_to_line_segment_v3(p, p, &pro->prof_co_2[3 * min_i], &pro->prof_co_2[3 * (min_i + 1)]);
 
     mul_v3_m4v3(snap, m, p);
-    copy_v3_v3(co, snap); /* HANS-QUESTION: Why not just do that in the previous line? */
+    copy_v3_v3(co, snap);
   }
   else {
     /* planar case: just snap to line va0--vb0 */
@@ -5566,14 +5576,14 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     }
   } while ((bndv = bndv->next) != vm->boundstart);
 
-  /* Create new vertices and place them based on the profiles HANS-QUESTION: Right? */
+  /* Create new vertices and place them based on the profiles */
   /* copy other ends to (i, 0, ns) for all i, and fill in profiles for edges */
   bndv = vm->boundstart;
   do {
     i = bndv->index;
     /* bndv's last vert along the boundary arc is the the first vert of the next BoundVert's arc */
     copy_mesh_vert(vm, i, 0, ns, bndv->next->index, 0, 0);
-    /* HANS-QUESTION: Move mesh_kind != M_ADJ check out here for a small optimization? */
+    /* HANS-TODO: Try moving mesh_kind != M_ADJ check out here for a small optimization? */
     for (k = 1; k < ns; k++) {
       if (bndv->ebev && vm->mesh_kind != M_ADJ) {
         /* Fix the profile orientation if it has the wrong orientation
@@ -5586,7 +5596,6 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         else {
           get_profile_point(bp, &bndv->profile, k, ns, co);
         }
-        /* HANS-QUESTION: When/why does it use this function instead of the calculated profile */
         copy_v3_v3(mesh_vert(vm, i, 0, k)->co, co); /* Get NewVert location from profile coord */
         if (!weld) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -5625,7 +5634,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         }
         else {
           mid_v3_v3v3(co, va, vb);
-          /* HANS-QUESTION: Why would you do this? Wouldn't they be at the same position? */
+          /* HANS-QUESTION: Why would you do this? Wouldn't va and vb be at the same position? */
         }
       }
       else {

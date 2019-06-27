@@ -1015,7 +1015,6 @@ static void ui_apply_but_CURVE(bContext *C, uiBut *but, uiHandleButtonData *data
   data->applied = true;
 }
 
-/* HANS-QUESTION: What does this do? */
 static void ui_apply_but_PROFILE(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
   ui_apply_but_func(C, but);

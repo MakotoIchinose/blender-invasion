@@ -2382,7 +2382,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(ar),
               (rect.xmax + 1) - (rect.xmin - 1),
               (rect.ymax + 1) - (rect.ymin - 1));
 
-  if (scopes->track_disabled) { /* HANS-QUESTION: What is this? */
+  if (scopes->track_disabled) {
     float color[4] = {0.7f, 0.3f, 0.3f, 0.3f};
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
     UI_draw_roundbox_4fv(
