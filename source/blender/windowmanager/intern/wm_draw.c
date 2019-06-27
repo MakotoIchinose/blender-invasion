@@ -870,11 +870,11 @@ static void wm_draw_window(bContext *C, wmWindow *win)
  * For now keeping it simple by handling all possible cases here directly (only VR view drawing
  * currently). Could generalize this by something like a wmSurface type.
  */
-static void wm_draw_non_window_surfaces(wmWindowManager *wm)
+static void wm_draw_non_window_surfaces(bContext *C, wmWindowManager *wm)
 {
 #ifdef WITH_OPENXR
   if (wm->xr_context) {
-    wm_xr_session_draw(wm->xr_context);
+    wm_xr_session_draw(C, wm->xr_context);
   }
 #else
   UNUSED_VARS(wm);
@@ -993,7 +993,7 @@ void wm_draw_update(bContext *C)
     }
   }
 
-  wm_draw_non_window_surfaces(wm);
+  wm_draw_non_window_surfaces(C, wm);
 }
 
 void wm_draw_region_clear(wmWindow *win, ARegion *UNUSED(ar))

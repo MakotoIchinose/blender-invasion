@@ -1002,7 +1002,7 @@ void GHOST_XrContextDestroy(struct GHOST_XrContext *xr_context);
 typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
 typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
                                                 void *graphics_context);
-typedef void (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo draw_view, void *customdata);
+typedef void (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
 
 void GHOST_XrGraphicsContextBindFuncs(struct GHOST_XrContext *xr_context,
                                       GHOST_XrGraphicsContextBindFn bind_fn,
@@ -1015,7 +1015,7 @@ GHOST_TSuccess GHOST_XrSessionIsRunning(const struct GHOST_XrContext *xr_context
 void GHOST_XrSessionStart(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionEnd(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionRenderingPrepare(struct GHOST_XrContext *xr_context);
-void GHOST_XrSessionDrawViews(struct GHOST_XrContext *xr_context);
+void GHOST_XrSessionDrawViews(struct GHOST_XrContext *xr_context, void *customdata);
 
 /* events */
 GHOST_TSuccess GHOST_XrEventsHandle(struct GHOST_XrContext *xr_context);

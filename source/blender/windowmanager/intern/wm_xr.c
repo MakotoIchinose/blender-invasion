@@ -18,13 +18,15 @@
  * \ingroup wm
  */
 
+#include "BKE_context.h"
+
 #include "GHOST_C-api.h"
 
-void wm_xr_session_draw(struct GHOST_XrContext *xr_context)
+
+void wm_xr_session_draw(bContext *C, struct GHOST_XrContext *xr_context)
 {
   if (!GHOST_XrSessionIsRunning(xr_context)) {
     return;
   }
-  // TODO session visible?
-  GHOST_XrSessionDrawViews(xr_context);
+  GHOST_XrSessionDrawViews(xr_context, C);
 }

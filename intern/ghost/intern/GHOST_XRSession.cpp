@@ -42,6 +42,19 @@ GHOST_TSuccess GHOST_XrSessionIsRunning(const GHOST_XrContext *xr_context)
       return GHOST_kFailure;
   }
 }
+static GHOST_TSuccess GHOST_XrSessionIsVisible(const GHOST_XrContext *xr_context)
+{
+  if ((xr_context == nullptr) || (xr_context->oxr.session == XR_NULL_HANDLE)) {
+    return GHOST_kFailure;
+  }
+  switch (xr_context->oxr.session_state) {
+    case XR_SESSION_STATE_VISIBLE:
+    case XR_SESSION_STATE_FOCUSED:
+      return GHOST_kSuccess;
+    default:
+      return GHOST_kFailure;
+  }
+}
 
 /**
  * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
@@ -231,12 +244,14 @@ static void draw_view(GHOST_XrContext *xr_context,
                       OpenXRData *oxr,
                       XrSwapchain swapchain,
                       XrCompositionLayerProjectionView &proj_layer_view,
-                      XrView &view)
+                      XrView &view,
+                      void *draw_customdata)
 {
   XrSwapchainImageAcquireInfo acquire_info{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
   XrSwapchainImageWaitInfo wait_info{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
   XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
   XrSwapchainImageBaseHeader *swapchain_image;
+  GHOST_XrDrawViewInfo draw_view_info{};
   uint32_t swapchain_idx;
 
   xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx);
@@ -254,7 +269,7 @@ static void draw_view(GHOST_XrContext *xr_context,
   swapchain_image = oxr->swapchain_images[swapchain][swapchain_idx];
 
   xr_context->gpu_binding->drawViewBegin(swapchain_image);
-  //  xr_context->draw_view_fn();
+  xr_context->draw_view_fn(&draw_view_info, draw_customdata);
   xr_context->gpu_binding->drawViewEnd(swapchain_image);
 
   xrReleaseSwapchainImage(swapchain, &release_info);
@@ -264,7 +279,8 @@ static XrCompositionLayerProjection draw_layer(
     GHOST_XrContext *xr_context,
     OpenXRData *oxr,
     XrSpace space,
-    std::vector<XrCompositionLayerProjectionView> &proj_layer_views)
+    std::vector<XrCompositionLayerProjectionView> &proj_layer_views,
+    void *draw_customdata)
 {
   XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
   XrViewState view_state{XR_TYPE_VIEW_STATE};
@@ -285,7 +301,8 @@ static XrCompositionLayerProjection draw_layer(
               oxr,
               oxr->swapchains[view_idx],
               proj_layer_views[view_idx],
-              oxr->views[view_idx]);
+              oxr->views[view_idx],
+              draw_customdata);
   }
 
   layer.space = space;
@@ -295,7 +312,7 @@ static XrCompositionLayerProjection draw_layer(
   return layer;
 }
 
-void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
+void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context, void *draw_customdata)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrReferenceSpaceCreateInfo refspace_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
@@ -313,8 +330,10 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context)
   refspace_info.poseInReferenceSpace.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
   xrCreateReferenceSpace(oxr->session, &refspace_info, &space);
 
-  proj_layer = draw_layer(xr_context, oxr, space, projection_layer_views);
-  layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
+  if (GHOST_XrSessionIsVisible(xr_context)) {
+    proj_layer = draw_layer(xr_context, oxr, space, projection_layer_views, draw_customdata);
+    layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
+  }
 
   drawing_end(xr_context, &layers);
 }

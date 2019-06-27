@@ -3638,6 +3638,13 @@ static void xr_session_window_create(bContext *C)
 }
 #  endif /* WIN32 */
 
+static void wm_xr_draw_view_fn(const GHOST_XrDrawViewInfo *UNUSED(draw_view), void *customdata)
+{
+  bContext *C = customdata;
+
+  (void)C;
+}
+
 static bool wm_xr_ensure_context(wmWindowManager *wm)
 {
   if (wm->xr_context) {
@@ -3676,8 +3683,10 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 #  endif
 
     GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
-                                         xr_session_gpu_binding_context_create,
-                                         xr_session_gpu_binding_context_destroy);
+                                     xr_session_gpu_binding_context_create,
+                                     xr_session_gpu_binding_context_destroy);
+    GHOST_XrDrawViewFunc(wm->xr_context, wm_xr_draw_view_fn);
+
     GHOST_XrSessionStart(wm->xr_context);
     GHOST_XrSessionRenderingPrepare(wm->xr_context);
   }

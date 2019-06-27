@@ -96,6 +96,6 @@ void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
 /* wm_xr.c */
-void wm_xr_session_draw(struct GHOST_XrContext *xr_context);
+void wm_xr_session_draw(bContext *C, struct GHOST_XrContext *xr_context);
 
 #endif /* __WM_H__ */
