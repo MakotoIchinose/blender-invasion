@@ -24,9 +24,9 @@
 
 #include "GHOST_C-api.h"
 
-#include "GHOST_IXRGraphicsBinding.h"
+#include "GHOST_IXrGraphicsBinding.h"
 
-#include "GHOST_XR_intern.h"
+#include "GHOST_Xr_intern.h"
 
 GHOST_TSuccess GHOST_XrSessionIsRunning(const GHOST_XrContext *xr_context)
 {
@@ -227,7 +227,8 @@ static void drawing_begin(GHOST_XrContext *xr_context)
   xr_context->draw_frame->frame_state = frame_state;
 }
 
-void drawing_end(GHOST_XrContext *xr_context, std::vector<XrCompositionLayerBaseHeader *> *layers)
+static void drawing_end(GHOST_XrContext *xr_context,
+                        std::vector<XrCompositionLayerBaseHeader *> *layers)
 {
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
 

@@ -22,6 +22,10 @@
 
 #include "GHOST_C-api.h"
 
+#include "WM_types.h"
+#include "WM_api.h"
+
+#include "wm.h"
 
 void wm_xr_session_draw(bContext *C, struct GHOST_XrContext *xr_context)
 {

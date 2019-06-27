@@ -25,7 +25,7 @@
 
 #include "GHOST_C-api.h"
 
-#include "GHOST_XR_intern.h"
+#include "GHOST_Xr_intern.h"
 
 /* Toggle printing of available OpenXR extensions and API-layers. Should probably be changed to use
  * CLOG at some point */

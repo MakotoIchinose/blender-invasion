@@ -25,8 +25,8 @@
 #include <memory>
 #include <vector>
 
-#include "GHOST_XR_openxr_includes.h"
-#include "GHOST_IXRGraphicsBinding.h"
+#include "GHOST_Xr_openxr_includes.h"
+#include "GHOST_IXrGraphicsBinding.h"
 
 typedef struct OpenXRData {
   XrInstance instance;

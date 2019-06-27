@@ -23,7 +23,7 @@
 
 #include <memory>
 #include <vector>
-#include "GHOST_XR_openxr_includes.h"
+#include "GHOST_Xr_openxr_includes.h"
 
 class GHOST_IXrGraphicsBinding {
   friend std::unique_ptr<GHOST_IXrGraphicsBinding> GHOST_XrGraphicsBindingCreateFromType(
@@ -51,5 +51,8 @@ class GHOST_IXrGraphicsBinding {
   /* Use GHOST_XrGraphicsBindingCreateFromType */
   GHOST_IXrGraphicsBinding() = default;
 };
+
+std::unique_ptr<GHOST_IXrGraphicsBinding> GHOST_XrGraphicsBindingCreateFromType(
+    GHOST_TXrGraphicsBinding type);
 
 #endif /* __GHOST_IXRGRAPHICSBINDING_H__ */

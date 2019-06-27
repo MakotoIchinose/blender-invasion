@@ -28,13 +28,13 @@
 #  include "GHOST_ContextD3D.h"
 #endif
 #include "GHOST_C-api.h"
-#include "GHOST_XR_intern.h"
+#include "GHOST_Xr_intern.h"
 
-#include "GHOST_IXRGraphicsBinding.h"
+#include "GHOST_IXrGraphicsBinding.h"
 
-bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_binding_formats,
-                                             std::vector<int64_t> runtime_formats,
-                                             int64_t *r_result)
+static bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_binding_formats,
+                                                    std::vector<int64_t> runtime_formats,
+                                                    int64_t *r_result)
 {
   if (gpu_binding_formats.empty()) {
     return false;
@@ -161,9 +161,8 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     const CD3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
                                                                  DXGI_FORMAT_R8G8B8A8_UNORM);
     ID3D11RenderTargetView *render_target_view;
-    m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture,
-                                                  &render_target_view_desc,
-                                                  &render_target_view);
+    m_ghost_ctx->m_device->CreateRenderTargetView(
+        d3d_swapchain_image->texture, &render_target_view_desc, &render_target_view);
 
     const float clear_col[] = {0.2f, 0.5f, 0.8f, 1.0f};
     m_ghost_ctx->m_device_ctx->ClearRenderTargetView(render_target_view, clear_col);
