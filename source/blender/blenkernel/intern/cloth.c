@@ -588,6 +588,38 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   return mesh_result;
 }
 
+static LinkNodePair *cloth_remeshing_find_edges_to_flip(BMesh *bm, LinkNodePair *active_faces)
+{
+  /* TODO(Ish) */
+}
+
+static LinkNodePair *cloth_remeshing_find_independent_edges(LinkNodePair *edges)
+{
+  /* TODO(Ish) */
+}
+
+static void cloth_remeshing_flip_edges(BMesh *bm, LinkNodePair *active_faces)
+{
+  /* TODO(Ish): This loop might cause problems */
+  while (BLI_linklist_count(active_faces->list) != 0) {
+    LinkNodePair *flipable_edges = cloth_remeshing_find_edges_to_flip(bm, active_faces);
+    LinkNodePair *independent_edges = cloth_remeshing_find_independent_edges(flipable_edges);
+
+    while (BLI_linklist_count(independent_edges->list) != 0) {
+      BMEdge *edge = BLI_linklist_pop(&independent_edges->list);
+      BM_edge_rotate(
+          bm, edge, true, BM_EDGEROT_CHECK_SPLICE); /* this sets it up for BM_CREATE_NO_DOUBLE */
+    }
+
+    /* TODO(Ish): need to update active_faces */
+  }
+}
+
+static bool cloth_remeshing_fix_mesh(BMesh *bm, LinkNodePair *active_faces)
+{
+  cloth_remeshing_flip_edges(bm, active_faces);
+}
+
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *sizing)
 {
   /* BMVert v1 = *edge->v1; */
