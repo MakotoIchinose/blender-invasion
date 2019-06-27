@@ -1634,11 +1634,16 @@ static TreeElement *do_outliner_select_walk_down(SpaceOutliner *soops, TreeEleme
   return active;
 }
 
-static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, const int direction)
+static void do_outliner_select_walk(SpaceOutliner *soops,
+                                    TreeElement *active,
+                                    const int direction,
+                                    const bool extend)
 {
   TreeStoreElem *tselem = TREESTORE(active);
 
-  outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  if (!extend) {
+    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  }
   tselem->flag &= ~TSE_ACTIVE;
 
   switch (direction) {
@@ -1663,9 +1668,15 @@ static void do_outliner_select_walk(SpaceOutliner *soops, TreeElement *active, c
       }
       break;
   }
+  TreeStoreElem *tselem_new = TREESTORE(active);
 
-  tselem = TREESTORE(active);
-  tselem->flag |= TSE_SELECTED | TSE_ACTIVE;
+  if (extend) {
+    const short new_flag = (extend && (tselem_new->flag & TSE_SELECTED)) ? 0 : TSE_SELECTED;
+    tselem->flag &= ~(TSE_ACTIVE | TSE_SELECTED);
+    tselem->flag |= new_flag;
+  }
+
+  tselem_new->flag |= TSE_SELECTED | TSE_ACTIVE;
 }
 
 static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -1673,6 +1684,7 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   ARegion *ar = CTX_wm_region(C);
   const int direction = RNA_enum_get(op->ptr, "direction");
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
 
   TreeElement *active = outliner_find_active_element(&soops->tree);
 
@@ -1698,7 +1710,7 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
       tselem->flag |= TSE_SELECTED;
     }
     else {
-      do_outliner_select_walk(soops, active, direction);
+      do_outliner_select_walk(soops, active, direction, extend);
     }
   }
 
@@ -1737,6 +1749,8 @@ void OUTLINER_OT_select_walk(wmOperatorType *ot)
                       0,
                       "Walk Direction",
                       "Select file in this direction");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend selection on walk");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
