@@ -4150,7 +4150,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 {
   LANPR_RenderBuffer *rb;
-  SceneLANPR *lanpr;
+  Scene* s = DEG_get_evaluated_scene(depsgraph);
+  SceneLANPR *lanpr = &s->lanpr;
 
   if (!lanpr->enabled) {
     return OPERATOR_CANCELLED;
@@ -4160,10 +4161,9 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 
   lanpr_share.render_buffer_shared = rb;
 
-  rb->scene = DEG_get_evaluated_scene(depsgraph);
-  rb->w = rb->scene->r.xsch;
-  rb->h = rb->scene->r.ysch;
-  lanpr = &rb->scene->lanpr;
+  rb->scene = s;
+  rb->w = s->r.xsch;
+  rb->h = s->r.ysch;
   rb->enable_intersections = lanpr->enable_intersections;
 
   rb->triangle_size = lanpr_get_render_triangle_size(rb);

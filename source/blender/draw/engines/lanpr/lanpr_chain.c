@@ -38,7 +38,8 @@ LANPR_BoundingArea *lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x
 
 LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
                                                   LANPR_RenderVert *rv,
-                                                  LANPR_RenderVert **new_rv)
+                                                  LANPR_RenderVert **new_rv,
+                                                  int match_flag)
 {
   LinkData *lip;
   LANPR_RenderLine *nrl;
@@ -49,6 +50,10 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
 
     if ((!(nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) ||
         (nrl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED)) {
+      continue;
+    }
+
+    if(match_flag && ((nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)&match_flag)==0){
       continue;
     }
 
@@ -259,7 +264,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                        N,
                                        rl->flags,
                                        rls->occlusion);
-    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
+    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv,rl->flags))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
       N[0] = N[1] = N[2] = 0;
@@ -357,7 +362,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     /*  below already done in step 2 */
     /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
      */
-    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv))) {
+    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv,rl->flags))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
       /*  fix leading vertex type */
