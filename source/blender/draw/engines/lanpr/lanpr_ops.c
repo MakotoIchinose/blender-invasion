@@ -4544,6 +4544,32 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Depsgraph *dg = CTX_data_depsgraph(C);
+  SceneLANPR *lanpr = &scene->lanpr;
+  int frame, current_frame = scene->r.cfra;
+  int frame_begin = scene->r.sfra;
+  int frame_end = scene->r.efra;
+
+  for(frame = frame_begin;frame<=frame_end;frame++){
+    //BKE_scene_frame_set(scene,frame);
+    DEG_evaluate_on_framechange(CTX_data_main(C),dg,frame);
+
+    lanpr_compute_feature_lines_internal(dg);
+
+    lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
+
+    lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame);
+
+    lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
+  }
+
+  
+
+  return OPERATOR_FINISHED;
+}
 
 void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot)
 {
@@ -4639,3 +4665,13 @@ void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot)
 
   ot->exec = lanpr_update_gp_strokes_exec;
 }
+
+void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot)
+{
+  ot->name = "Bake LANPR Strokes";
+  ot->description = "Bake strokes for LANPR grease pencil targets in all frames";
+  ot->idname = "SCENE_OT_lanpr_bake_gp_strokes";
+
+  ot->exec = lanpr_bake_gp_strokes_exec;
+}
+

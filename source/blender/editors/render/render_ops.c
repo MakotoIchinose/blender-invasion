@@ -90,6 +90,7 @@ void ED_operatortypes_render(void)
   WM_operatortype_append(SCENE_OT_lanpr_delete_line_component);
   WM_operatortype_append(SCENE_OT_lanpr_enable_all_line_types);
   WM_operatortype_append(SCENE_OT_lanpr_update_gp_strokes);
+  WM_operatortype_append(SCENE_OT_lanpr_bake_gp_strokes);
 
   WM_operatortype_append(TEXTURE_OT_slot_copy);
   WM_operatortype_append(TEXTURE_OT_slot_paste);
