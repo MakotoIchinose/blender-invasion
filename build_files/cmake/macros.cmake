@@ -179,12 +179,13 @@ function(blender_source_group
       # remove ../'s
       get_filename_component(_SRC_DIR ${_SRC} REALPATH)
       get_filename_component(_SRC_DIR ${_SRC_DIR} DIRECTORY)
-      string(FIND ${_SRC_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/" _POS)
-      if(NOT _POS EQUAL -1)
+      string(FIND ${_SRC_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/" _pos)
+      if(NOT _pos EQUAL -1)
         string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/" "" GROUP_ID ${_SRC_DIR})
         string(REPLACE "/" "\\" GROUP_ID ${GROUP_ID})
         source_group("${GROUP_ID}" FILES ${_SRC})
       endif()
+      unset(_pos)
     endforeach()
   else()
     # Group by location on disk
@@ -250,7 +251,7 @@ function(blender_add_lib__impl
 
   add_library(${name} ${sources})
 
-  if (NOT "${library_deps}" STREQUAL "")
+  if(NOT "${library_deps}" STREQUAL "")
     target_link_libraries(${name} INTERFACE "${library_deps}")
   endif()
 
@@ -954,6 +955,7 @@ function(delayed_install
     endif()
     set_property(GLOBAL APPEND PROPERTY DELAYED_INSTALL_DESTINATIONS ${destination})
   endforeach()
+  unset(f)
 endfunction()
 
 # note this is a function instead of a macro so that ${BUILD_TYPE} in targetdir
@@ -1238,10 +1240,10 @@ macro(WINDOWS_SIGN_TARGET target)
 endmacro()
 
 macro(blender_precompile_headers target cpp header)
-  if (MSVC)
+  if(MSVC)
     # get the name for the pch output file
     get_filename_component( pchbase ${cpp} NAME_WE )
-    set( pchfinal "${CMAKE_CURRENT_BINARY_DIR}/${pchbase}.pch" )
+    set( pchfinal "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${pchbase}.pch" )
 
     # mark the cpp as the one outputting the pch
     set_property(SOURCE ${cpp} APPEND PROPERTY OBJECT_OUTPUTS "${pchfinal}")

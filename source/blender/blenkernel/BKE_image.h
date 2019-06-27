@@ -205,7 +205,8 @@ struct Image *BKE_image_add_generated(struct Main *bmain,
                                       int floatbuf,
                                       short gen_type,
                                       const float color[4],
-                                      const bool stereo3d);
+                                      const bool stereo3d,
+                                      const bool is_data);
 /* adds image from imbuf, owns imbuf */
 struct Image *BKE_image_add_from_imbuf(struct Main *bmain, struct ImBuf *ibuf, const char *name);
 
@@ -217,6 +218,7 @@ void BKE_image_signal(struct Main *bmain, struct Image *ima, struct ImageUser *i
 void BKE_image_walk_all_users(const struct Main *mainp,
                               void *customdata,
                               void callback(struct Image *ima,
+                                            struct ID *iuser_id,
                                             struct ImageUser *iuser,
                                             void *customdata));
 
@@ -320,6 +322,8 @@ float *BKE_image_get_float_pixels_for_frame(struct Image *image, int frame);
 /* Image modifications */
 bool BKE_image_is_dirty(struct Image *image);
 void BKE_image_mark_dirty(struct Image *image, struct ImBuf *ibuf);
+bool BKE_image_buffer_format_writable(struct ImBuf *ibuf);
+bool BKE_image_is_dirty_writable(struct Image *image, bool *is_format_writable);
 
 /* Guess offset for the first frame in the sequence */
 int BKE_image_sequence_guess_offset(struct Image *image);

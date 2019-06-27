@@ -1558,7 +1558,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   RegionView3D *rv3d = ar->regiondata;
   const bool do_annotations = (((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0) &&
                                ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0));
-  const bool do_camera_frame = !DST.options.is_image_render;
 
   DST.draw_ctx.evil_C = evil_C;
   DST.viewport = viewport;
@@ -1650,23 +1649,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   drw_engines_draw_background();
 
-  /* WIP, single image drawn over the camera view (replace) */
-  bool do_bg_image = false;
-  if (rv3d->persp == RV3D_CAMOB) {
-    Object *cam_ob = v3d->camera;
-    if (cam_ob && cam_ob->type == OB_CAMERA) {
-      Camera *cam = cam_ob->data;
-      if (!BLI_listbase_is_empty(&cam->bg_images)) {
-        do_bg_image = true;
-      }
-    }
-  }
-
   GPU_framebuffer_bind(DST.default_framebuffer);
-
-  if (do_bg_image) {
-    ED_view3d_draw_bgpic_test(scene, depsgraph, ar, v3d, false, do_camera_frame);
-  }
 
   DRW_draw_callbacks_pre_scene();
   if (DST.draw_ctx.evil_C) {
@@ -1733,10 +1716,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   }
 
   DRW_stats_reset();
-
-  if (do_bg_image) {
-    ED_view3d_draw_bgpic_test(scene, depsgraph, ar, v3d, true, do_camera_frame);
-  }
 
   if (G.debug_value > 20 && G.debug_value < 30) {
     GPU_depth_test(false);
@@ -2001,10 +1980,10 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
     BLI_rcti_init(&render_rect, 0, size[0], 0, size[1]);
   }
 
-  /* Reset state before drawing */
-  DRW_state_reset();
   /* Set the default Blender draw state */
   GPU_state_init();
+  /* Reset state before drawing */
+  DRW_state_reset();
 
   /* Init render result. */
   RenderResult *render_result = RE_engine_begin_result(engine,
@@ -2019,15 +1998,14 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
   for (RenderView *render_view = render_result->views.first; render_view != NULL;
        render_view = render_view->next) {
     RE_SetActiveRenderView(render, render_view->name);
+    /* Reset the view. */
+    DST.view_default = NULL;
+    DST.view_active = NULL;
+    DST.view_previous = NULL;
     engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
     /* grease pencil: render result is merged in the previous render result. */
     if (DRW_render_check_grease_pencil(depsgraph)) {
       DRW_state_reset();
-      /* HACK: this is just for sanity and not trigger asserts. */
-      DST.view_default = NULL;
-      DST.view_active = NULL;
-      DST.view_previous = NULL;
-
       DRW_render_gpencil_to_image(engine, render_layer, &render_rect);
     }
     DST.buffer_finish_called = false;
