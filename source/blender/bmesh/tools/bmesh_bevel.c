@@ -61,7 +61,7 @@
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 1
-#define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
+#define DEBUG_CUSTOM_PROFILE_ORIENTATION 1
 
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
 extern void DRW_debug_sphere(const float center[3], const float radius, const float color[4]);
@@ -1654,15 +1654,14 @@ static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n,
   }
 }
 
-/* This does the same thing as the regular calculate profile function, but it uses the
- * custom profile points instead of the normal ones. Eventually, when the custom and normal
- * profile spacings are merged, this function will be redundant, but for now, I will call this
- * function in certain cases where I am working on the custom profile. This also checks for
- * is_profile_start and flips the profile if it isn't the start of the boundary */
-/* HANS-TODO: Get rid of this function when all custom profile cases are completed */
-/* HANS-TODO: Change the reverse case so that I don't have to sample the points backwards in
- * get_profile_point. This would simplify the rest of the code a lot */
-static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reversed)
+/* Calculate the actual coordinate values for bndv's profile.
+ * This is only needed if bp->seg > 1.
+ * Allocate the space for them if that hasn't been done already.
+ * If bp->seg is not a power of 2, also need to calculate
+ * the coordinate values for the power of 2 >= bp->seg,
+ * because the ADJ pattern needs power-of-2 boundaries
+ * during construction. */
+static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
 {
   int i, k, ns;
   const double *xvals, *yvals;
@@ -1711,7 +1710,7 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
       xvals = bp->pro_spacing.xvals_2;
       yvals = bp->pro_spacing.yvals_2;
       prof_co = pro->prof_co_2;
-    }    
+    }
     /* HANS-TODO: Why this assert? */
     BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
 
@@ -1727,10 +1726,10 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
         if (map_ok) {
           if (reversed) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-            printf("Using reversed custom profile orientation\n");
+            printf("(reversed)\n");
 #endif
-            p[0] = (float)yvals[k];
-            p[1] = (float)xvals[k];
+            p[0] = (float)yvals[ns - k];
+            p[1] = (float)xvals[ns - k];
           }
           else {
             p[0] = (float)xvals[k];
@@ -1741,102 +1740,6 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
           /* HANS-QUESTION: I guess this projection takes it from the profile spacing
            * two dimentions to the global three dimensions and the next projection (onto profile
            * plane) fixes it / rotates it? I don't fully understand why both are necessary. */
-        }
-        else {
-          interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
-        }
-      }
-      /* project co onto final profile plane */
-      prof_co_k = prof_co + 3 * k; /* Each coord takes up 3 spaces */
-      if (!is_zero_v3(pro->proj_dir)) {
-        add_v3_v3v3(co2, co, pro->proj_dir);
-        /* pro->plane_co and pro->plane_no are built in "set_profile_params" */
-        if (!isect_line_plane_v3(prof_co_k, co, co2, pro->plane_co, pro->plane_no)) {
-          /* shouldn't happen */
-          copy_v3_v3(prof_co_k, co);
-        }
-      }
-      else {
-        copy_v3_v3(prof_co_k, co);
-      }
-    }
-  }
-}
-
-/* Calculate the actual coordinate values for bndv's profile.
- * This is only needed if bp->seg > 1.
- * Allocate the space for them if that hasn't been done already.
- * If bp->seg is not a power of 2, also need to calculate
- * the coordinate values for the power of 2 >= bp->seg,
- * because the ADJ pattern needs power-of-2 boundaries
- * during construction. */
-static void calculate_profile(BevelParams *bp, BoundVert *bndv)
-{
-  int i, k, ns;
-  const double *xvals, *yvals;
-  float co[3], co2[3], p[3], m[4][4];
-  float *prof_co, *prof_co_k;
-  float r;
-  bool need_2, map_ok;
-  Profile *pro = &bndv->profile;
-
-  if (bp->seg == 1) {
-    return;
-  }
-
-  need_2 = bp->seg != bp->pro_spacing.seg_2;
-  if (!pro->prof_co) {
-    pro->prof_co = (float *)BLI_memarena_alloc(bp->mem_arena,
-                                               ((size_t)bp->seg + 1) * 3 * sizeof(float));
-    if (need_2) {
-      pro->prof_co_2 = (float *)BLI_memarena_alloc(
-          bp->mem_arena, ((size_t)bp->pro_spacing.seg_2 + 1) * 3 * sizeof(float));
-    }
-    else {
-      pro->prof_co_2 = pro->prof_co;
-    }
-  }
-  r = pro->super_r;
-  if (r == PRO_LINE_R) {
-    map_ok = false;
-  }
-  else {
-    map_ok = make_unit_square_map(pro->coa, pro->midco, pro->cob, m);
-  }
-  /* The first iteration is the nseg case, the second is the seg_2 case if it's needed */
-  for (i = 0; i < 2; i++) {
-    if (i == 0) {
-      ns = bp->seg;
-      xvals = bp->pro_spacing.xvals;
-      yvals = bp->pro_spacing.yvals;
-      prof_co = pro->prof_co;
-    }
-    else {
-      if (!need_2) {
-        break; /* shares coords with pro->prof_co */
-      }
-      ns = bp->pro_spacing.seg_2;
-      xvals = bp->pro_spacing.xvals_2;
-      yvals = bp->pro_spacing.yvals_2;
-      prof_co = pro->prof_co_2;
-    }
-    /* HANS-TODO: Why this assert? */
-    BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
-
-    /* Iterate over the vertices along the boundary arc */
-    for (k = 0; k <= ns; k++) {
-      if (k == 0) {
-        copy_v3_v3(co, pro->coa);
-      }
-      else if (k == ns) {
-        copy_v3_v3(co, pro->cob);
-      }
-      else {
-        if (map_ok) {
-          p[0] = (float)xvals[k];
-          p[1] = (float)yvals[k];
-          p[2] = 0.0f;
-          mul_v3_m4v3(co, m, p);
         }
         else {
           interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
@@ -2370,19 +2273,6 @@ static bool eh_on_plane(EdgeHalf *e)
   return false;
 }
 
-/* Same thing as below, but the profiles are calculated with the custom profile spacing data
- * HANS-TODO: Remove this when all of the cases are resolved */
-static void calculate_vm_profiles_custom(BevelParams *bp, BevVert *bv, VMesh *vm)
-{
-  BoundVert *v;
-
-  v = vm->boundstart;
-  do {
-    set_profile_params(bp, bv, v);
-    calculate_profile_custom(bp, v, false); /* HANS-TODO: Possibly choose whether to reverse here */
-  } while ((v = v->next) != vm->boundstart);
-}
-
 /* Calculate the profiles for all the BoundVerts of VMesh vm */
 static void calculate_vm_profiles(BevelParams *bp, BevVert *bv, VMesh *vm)
 {
@@ -2391,7 +2281,8 @@ static void calculate_vm_profiles(BevelParams *bp, BevVert *bv, VMesh *vm)
   v = vm->boundstart;
   do {
     set_profile_params(bp, bv, v);
-    calculate_profile(bp, v);
+    /* We probably don't know to orientation at this point, so don't reverse the profiles */
+    calculate_profile(bp, v, false);
   } while ((v = v->next) != vm->boundstart);
 }
 
@@ -2418,12 +2309,7 @@ static void build_boundary_vertex_only(BevelParams *bp, BevVert *bv, bool constr
     }
   } while ((e = e->next) != efirst);
 
-  if (bp->use_custom_profile){
-    calculate_vm_profiles_custom(bp, bv, vm);
-  }
-  else {
-    calculate_vm_profiles(bp, bv, vm);
-  }
+  calculate_vm_profiles(bp, bv, vm);
 
   if (construct) {
     set_bound_vert_seams(bv, bp->mark_seam, bp->mark_sharp);
@@ -2538,24 +2424,14 @@ static void build_boundary_terminal_edge(BevelParams *bp,
       }
     }
   }
-  if (!bp->use_custom_profile) {
-    calculate_vm_profiles(bp, bv, vm);
-  }
-  else {
-    calculate_vm_profiles_custom(bp, bv, vm); /* HANS-TODO: Change when all cases are converted */
-  }
+  calculate_vm_profiles(bp, bv, vm);
 
   if (bv->edgecount >= 3) {
     /* special case: snap profile to plane of adjacent two edges */
     v = vm->boundstart;
     BLI_assert(v->ebev != NULL);
     move_profile_plane(v, bv->v);
-    if (!bp->use_custom_profile) {
-      calculate_profile(bp, v);
-    }
-    else {
-      calculate_profile_custom(bp, v, false); /* HANS-TODO: Change back when all cases are converted */
-    }
+    calculate_profile(bp, v, false);
   }
 
   if (construct) {
@@ -2895,12 +2771,7 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
     adjust_miter_coords(bp, bv, emiter);
   }
 
-  if (bp->use_custom_profile) {
-    calculate_vm_profiles_custom(bp, bv, vm);
-  }
-  else {
-    calculate_vm_profiles(bp, bv, vm);
-  }
+  calculate_vm_profiles(bp, bv, vm);
 
   if (construct) {
     set_bound_vert_seams(bv, bp->mark_seam, bp->mark_sharp);
@@ -3244,7 +3115,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   return next_edge;
 }
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-static void debug_RPO_draw_sphere(BevelParams* bp, BMEdge* e) {
+static void debug_RPO_edge_draw_sphere(BevelParams* bp, BMEdge* e) {
   float debug_color_1[4];
   debug_color_1[0] = 1.0;
   debug_color_1[1] = 0.0;
@@ -3324,8 +3195,8 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
     /* Mark the correct BoundVert as the start of the newly visited profile
      * The direction of the BoundVert along the path switches every time because their directions
      * are relative to the BevVert they're connected to. So the right and left are BoundVerts
-     * would also switch every EdgeHalf, and all I need to do is switch which BoundVert I make
-     * the profile's start every time. */
+     * would also switch every EdgeHalf, and all we need to do is switch which BoundVert I mark as
+     * the profile's start each time. */
     edgehalf->rightv->is_profile_start = toward_bv;
     edgehalf->leftv->is_profile_start = !toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -3356,7 +3227,8 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
     }
     edgehalf->visited_custom = true;
 
-    /* Mark the correct BoundVert as the start of the newly visited profile */
+    /* Mark the correct BoundVert as the start of the newly visited profile. It's the opposite side
+     * as when we were travelling the other direction because we're facing the other way. */
     edgehalf->rightv->is_profile_start = !toward_bv;
     edgehalf->leftv->is_profile_start = toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -3891,11 +3763,7 @@ static void fill_profile_fracs(BevelParams *bp, BoundVert *bndv, float *frac, in
   frac[0] = 0.0f;
   copy_v3_v3(co, bndv->nv.co);
   for (k = 0; k < ns; k++) {
-    if (bp->use_custom_profile && !bndv->is_profile_start) {
-      get_profile_point(bp, &bndv->profile, ns - (k + 1), ns, co);
-    } else {
-      get_profile_point(bp, &bndv->profile, k + 1, ns, nextco);
-    }
+    get_profile_point(bp, &bndv->profile, k + 1, ns, nextco);
     total += len_v3v3(co, nextco);
     frac[k + 1] = total;
     copy_v3_v3(co, nextco);
@@ -4057,12 +3925,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   bndv = vm1->boundstart;
   for (i = 0; i < n_boundary; i++) {
     for (k = 1; k < ns1; k += 2) {
-      if (bp->use_custom_profile && !bndv->is_profile_start) {
-        get_profile_point(bp, &bndv->profile, ns1 - k, ns1, co);
-      }
-      else {
-        get_profile_point(bp, &bndv->profile, k, ns1, co);
-      }
+      get_profile_point(bp, &bndv->profile, k, ns1, co);
       copy_v3_v3(co1, mesh_vert_canon(vm1, i, 0, k - 1)->co);
       copy_v3_v3(co2, mesh_vert_canon(vm1, i, 0, k + 1)->co);
 
@@ -4186,13 +4049,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   for (i = 0; i < n_boundary; i++) {
     inext = (i + 1) % n_boundary;
     for (k = 0; k <= ns1; k++) {
-      if (bp->use_custom_profile && !bndv->is_profile_start) {
-        /* The profile is reversed so get the points from the other side */
-        get_profile_point(bp, &bndv->profile, ns1 - k, ns1, co);
-      }
-      else {
-        get_profile_point(bp, &bndv->profile, k, ns1, co);
-      }
+      get_profile_point(bp, &bndv->profile, k, ns1, co);
       copy_v3_v3(mesh_vert(vm1, i, 0, k)->co, co);
       if (k >= ns0 && k < ns1) {
         copy_v3_v3(mesh_vert(vm1, inext, ns1 - k, 0)->co, co);
@@ -4308,12 +4165,13 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
     return make_cube_corner_square_in(mem_arena, nseg);
   }
 
-  /* initial mesh has 3 sides, 2 segments */
+  /* Initial mesh has 3 sides and 2 segments on each side */
   vm0 = new_adj_vmesh(mem_arena, 3, 2, NULL);
   vm0->count = 0;  // reset, so following loop will end up with correct count
   for (i = 0; i < 3; i++) {
     zero_v3(co);
     co[i] = 1.0f;
+    /* HANS-QUESTION: Why are we adding new boundverts now? Haven't they already been created? */
     add_new_bound_vert(mem_arena, vm0, co);
   }
   bndv = vm0->boundstart;
@@ -4330,15 +4188,9 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
     copy_v3_v3(bndv->profile.plane_co, bndv->profile.coa);
     cross_v3_v3v3(bndv->profile.plane_no, bndv->profile.coa, bndv->profile.cob);
     copy_v3_v3(bndv->profile.proj_dir, bndv->profile.plane_no);
-    if (!bp->use_custom_profile) {
-      calculate_profile(bp, bndv);
-    }
-    else {
-      calculate_profile_custom(bp, bndv, !bndv->is_profile_start);
-    }
+    calculate_profile(bp, bndv, !bndv->is_profile_start);
 
     /* Just building the boundaries here, so sample the profile halfway through */
-    /* HANS-TODO: Switch the order here too? Probably not */
     get_profile_point(bp, &bndv->profile, 1, 2, mesh_vert(vm0, i, 0, 1)->co);
 
     bndv = bndv->next;
@@ -5133,13 +4985,8 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
     do {
       Profile *pro = &v->profile;
       copy_v3_v3(pro->midco, bv->v->co);
-      if (!bp->use_custom_profile) {
-        pro->super_r = bp->pro_super_r;
-        calculate_profile(bp, v);
-      }
-      else {
-        calculate_profile_custom(bp, v, !v->is_profile_start);
-      }
+      pro->super_r = bp->pro_super_r;
+      calculate_profile(bp, v, !v->is_profile_start);
       v = v->next;
     } while (v != bv->vmesh->boundstart);
   }
@@ -5476,15 +5323,8 @@ static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
     zero_v3(pro->plane_co);
     zero_v3(pro->plane_no);
     zero_v3(pro->proj_dir);
-
-    if (!bp->use_custom_profile) {
-      calculate_profile(bp, bndv);
-    }
-    else {
-      /* The orientation of the bevel doesn't matter because there is no orientation chain / cycle
-       * to continue */
-      calculate_profile_custom(bp, bndv, false);
-    }
+    /* The orientation of the bevel doesn't matter-- there's no orientation chain / cycle to continue */
+    calculate_profile(bp, bndv, false);
 
     for (k = 1; k < ns; k++) {
       get_profile_point(bp, pro, k, ns, co);
@@ -5558,20 +5398,14 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       else { /* Get the last of the two BoundVerts */
         weld2 = bndv;
         move_weld_profile_planes(bv, weld1, weld2);
-        if (!bp->use_custom_profile) {
-          calculate_profile(bp, weld1);
-          calculate_profile(bp, weld2);
-          /* HANS-TODO: Try calculating just one of the profiles and see if it can work. It
-           * would be a small speedup if it did */
+        if (bp->use_custom_profile && !weld1->is_profile_start) {
+          SWAP(BoundVert *, weld1, weld2);
         }
-        else {
-          /* HANS-TODO: Just use the reverse param rather than swapping the two? */
-          if (!weld1->is_profile_start) {
-            SWAP(BoundVert *, weld1, weld2);
-          }
-          calculate_profile_custom(bp, weld1, false);
-          calculate_profile_custom(bp, weld2, false);
-        }
+        /* HANS-TODO: Just use the reverse param rather than swapping the two? */
+        calculate_profile(bp, weld1, false);
+        calculate_profile(bp, weld2, false);
+        /* HANS-TODO: Try calculating just one of the profiles and see if it can work. It would be
+         * a small speedup if it did */
       }
     }
   } while ((bndv = bndv->next) != vm->boundstart);
@@ -5583,19 +5417,14 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     i = bndv->index;
     /* bndv's last vert along the boundary arc is the the first vert of the next BoundVert's arc */
     copy_mesh_vert(vm, i, 0, ns, bndv->next->index, 0, 0);
+    /* Fix the profile orientation if it has the wrong direction */
+    if (bp->use_custom_profile && !bndv->is_profile_start) {
+      calculate_profile(bp, bndv, true);
+    }
     /* HANS-TODO: Try moving mesh_kind != M_ADJ check out here for a small optimization? */
     for (k = 1; k < ns; k++) {
       if (bndv->ebev && vm->mesh_kind != M_ADJ) {
-        /* Fix the profile orientation if it has the wrong orientation
-         * HANS-TODO: There could be other ways to solve this. Perhaps building the boundary arc
-         * with the EdgeHalf's other boundvert would be simpler and more efficient. */
-        if (bp->use_custom_profile && !bndv->is_profile_start) {
-          calculate_profile_custom(bp, bndv, true);
-          get_profile_point(bp, &bndv->profile, ns - k, ns, co);
-        }
-        else {
-          get_profile_point(bp, &bndv->profile, k, ns, co);
-        }
+        get_profile_point(bp, &bndv->profile, k, ns, co);
         copy_v3_v3(mesh_vert(vm, i, 0, k)->co, co); /* Get NewVert location from profile coord */
         if (!weld) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -5938,8 +5767,6 @@ static void find_bevel_edge_order(BMesh *bm, BevVert *bv, BMEdge *first_bme)
     }
   }
 }
-
-
 
 /* Construction around the vertex */
 static BevVert *bevel_vert_construct(BMesh *bm, BevelParams *bp, BMVert *v)
@@ -7468,7 +7295,7 @@ void BM_mesh_bevel(BMesh *bm,
     if (bp.use_custom_profile) {
       BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
-          debug_RPO_draw_sphere(&bp, e);
+          debug_RPO_edge_draw_sphere(&bp, e);
         }
       }
     }
