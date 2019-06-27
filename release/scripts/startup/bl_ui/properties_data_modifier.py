@@ -1669,6 +1669,10 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "face_influence")
 
     def FEATURE_LINE(self, layout, ob, md):
+        lanpr_enabled = bpy.context.scene.lanpr.enabled
+        layout.active = lanpr_enabled
+        if not lanpr_enabled:
+            layout.label(text="LANPR is not enabled")
         layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Manual Update')
         layout.label(text='Enable Types:')
         row = layout.row(align=True)
