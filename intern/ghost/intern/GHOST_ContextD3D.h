@@ -26,7 +26,6 @@
 #endif  // WIN32
 
 #include <D3D11.h>
-#include <wrl.h>  // Microsoft::WRL::ComPtr
 
 #include "GHOST_Context.h"
 
@@ -126,10 +125,10 @@ class GHOST_ContextD3D : public GHOST_Context {
 
   HWND m_hWnd;
 
-  Microsoft::WRL::ComPtr<ID3D11Device> m_device;
-  Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_device_ctx;
-  Microsoft::WRL::ComPtr<IDXGISwapChain> m_swapchain;
-  Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_backbuffer_view;
+  ID3D11Device *m_device;
+  ID3D11DeviceContext *m_device_ctx;
+  IDXGISwapChain *m_swapchain;
+  ID3D11RenderTargetView *m_backbuffer_view;
 
   SharedOpenGLContext *glshared{NULL};
 };

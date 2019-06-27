@@ -71,7 +71,7 @@ class SharedOpenGLContext {
 
     m_wgl_ctx->activateDrawingContext();
 
-    m_shared.device = wglDXOpenDeviceNV(m_d3d_ctx->m_device.Get());
+    m_shared.device = wglDXOpenDeviceNV(m_d3d_ctx->m_device);
     if (m_shared.device == NULL) {
       fprintf(stderr, "Error opening shared device using wglDXOpenDeviceNV()\n");
       return GHOST_kFailure;
@@ -122,6 +122,10 @@ GHOST_ContextD3D::GHOST_ContextD3D(bool stereoVisual, HWND hWnd)
 GHOST_ContextD3D::~GHOST_ContextD3D()
 {
   delete glshared;
+  m_swapchain->Release();
+  m_backbuffer_view->Release();
+  m_device->Release();
+  m_device_ctx->Release();
 }
 
 GHOST_TSuccess GHOST_ContextD3D::swapBuffers()
@@ -198,10 +202,11 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
                                                    &m_device_ctx);
   WIN32_CHK(hres == S_OK);
 
-  Microsoft::WRL::ComPtr<ID3D11Resource> back_buffer = nullptr;
-  m_swapchain->GetBuffer(0, __uuidof(ID3D11Resource), &back_buffer);
+  ID3D11Texture2D *back_buffer;
+  m_swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&back_buffer);
 
-  m_device->CreateRenderTargetView(back_buffer.Get(), nullptr, &m_backbuffer_view);
+  m_device->CreateRenderTargetView(back_buffer, nullptr, &m_backbuffer_view);
+  back_buffer->Release();
 
   m_swapchain->Present(0, 0);
 
@@ -225,8 +230,8 @@ GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context *offsc
   }
 
   // const float clear_col[] = {0.2f, 0.5f, 0.8f, 1.0f};
-  // m_device_ctx->ClearRenderTargetView(m_backbuffer_view.Get(), clear_col);
-  m_device_ctx->OMSetRenderTargets(1, m_backbuffer_view.GetAddressOf(), nullptr);
+  // m_device_ctx->ClearRenderTargetView(m_backbuffer_view, clear_col);
+  m_device_ctx->OMSetRenderTargets(1, &m_backbuffer_view, nullptr);
 
   offscreen_ctx->activateDrawingContext();
 

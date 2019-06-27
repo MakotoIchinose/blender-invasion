@@ -123,7 +123,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);
 
     oxr_binding.d3d11.type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR;
-    oxr_binding.d3d11.device = ctx_d3d->m_device.Get();
+    oxr_binding.d3d11.device = ctx_d3d->m_device;
     m_ghost_ctx = ctx_d3d;
   }
 
@@ -160,13 +160,15 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
         swapchain_image);
     const CD3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
                                                                  DXGI_FORMAT_R8G8B8A8_UNORM);
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;
+    ID3D11RenderTargetView *render_target_view;
     m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture,
                                                   &render_target_view_desc,
-                                                  renderTargetView.ReleaseAndGetAddressOf());
+                                                  &render_target_view);
 
     const float clear_col[] = {0.2f, 0.5f, 0.8f, 1.0f};
-    m_ghost_ctx->m_device_ctx->ClearRenderTargetView(renderTargetView.Get(), clear_col);
+    m_ghost_ctx->m_device_ctx->ClearRenderTargetView(render_target_view, clear_col);
+
+    render_target_view->Release();
   }
   void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image) override
   {
