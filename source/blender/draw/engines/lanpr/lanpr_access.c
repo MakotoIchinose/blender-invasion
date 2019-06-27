@@ -46,7 +46,8 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                        int qi_begin,
                                        int qi_end,
                                        int material_nr,
-                                       Collection *col)
+                                       Collection *col,
+                                       int types)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
@@ -80,6 +81,9 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     }
     if (!rlc->object_ref) {
       continue; /* intersection lines are lost! */
+    }
+    if(!(rlc->type & types)){
+      continue;
     }
     if (rlc->level > qi_end || rlc->level < qi_begin) {
       continue;

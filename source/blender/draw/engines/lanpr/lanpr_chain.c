@@ -551,6 +551,7 @@ void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
                                              rlci->line_type,
                                              fixed_occ);
         new_rlc->object_ref = rlc->object_ref;
+        new_rlc->type = rlc->type;
         rlc = new_rlc;
         fixed_occ = rlci->occlusion;
         rlc->level = fixed_occ;

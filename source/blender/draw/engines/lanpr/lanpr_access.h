@@ -17,7 +17,8 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                        int qi_begin,
                                        int qi_end,
                                        int material_nr,
-                                       struct Collection *col);
+                                       struct Collection *col,
+                                       int types);
 
 void lanpr_update_data_for_external(Depsgraph *depsgraph);
 

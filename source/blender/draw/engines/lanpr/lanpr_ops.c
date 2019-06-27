@@ -4478,7 +4478,8 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
                                             flmd->use_multiple_levels ? flmd->level_end :
                                                                         flmd->level_begin,
                                             flmd->material,
-                                            NULL);
+                                            NULL,
+                                            flmd->types);
         }
       }
     }
@@ -4525,7 +4526,8 @@ void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, i
                                     col->lanpr.use_multiple_levels ? col->lanpr.level_end :
                                                                      col->lanpr.level_begin,
                                     col->lanpr.material,
-                                    col);
+                                    col,
+                                    col->lanpr.types);
 }
 int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 {
