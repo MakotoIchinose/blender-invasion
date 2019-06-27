@@ -819,24 +819,20 @@ static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
                                     Object *ob,
                                     bGPdata *gpd,
                                     DRWShadingGroup *init_shgrp,
-                                    DRWShadingGroup *end_shgrp,
-                                    bool multi)
+                                    DRWShadingGroup *end_shgrp)
 {
   if (init_shgrp == NULL) {
     return;
   }
 
-  const bool do_antialiasing = ((!stl->storage->is_mat_preview) && (multi));
+  const bool do_antialiasing = ((!stl->storage->is_mat_preview) &&
+                                (stl->storage->multisamples > 0));
 
   DRWShadingGroup *shgrp = init_shgrp;
   DRWShadingGroup *from_shgrp = init_shgrp;
   DRWShadingGroup *to_shgrp = init_shgrp;
   int stencil_tot = 0;
   bool do_last = true;
-
-  if (do_antialiasing) {
-    MULTISAMPLE_GP_SYNC_ENABLE(stl->storage->multisamples, fbl);
-  }
 
   /* Loop all shading groups to separate by stencil groups. */
   while ((shgrp) && (shgrp != end_shgrp)) {
@@ -897,10 +893,6 @@ static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
     DRW_draw_pass_subset(GPENCIL_3D_DRAWMODE(ob, gpd) ? psl->stroke_pass_3d : psl->stroke_pass_2d,
                          from_shgrp,
                          to_shgrp);
-  }
-
-  if (do_antialiasing) {
-    MULTISAMPLE_GP_SYNC_DISABLE(stl->storage->multisamples, fbl, fb, txl);
   }
 }
 
@@ -1052,14 +1044,14 @@ void GPENCIL_draw_scene(void *ved)
               }
 
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, false);
+                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp);
             }
             else {
               /* Draw current group in separated texture to blend later. */
               GPU_framebuffer_bind(fbl->temp_fb_fx);
               GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_fx, clearcol, 1.0f, 0x0);
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp, false);
+                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp);
 
               /* Draw Blended texture over MSAA texture */
               GPU_framebuffer_bind(fbl->multisample_fb);
