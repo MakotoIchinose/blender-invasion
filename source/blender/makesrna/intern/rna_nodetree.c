@@ -4258,8 +4258,16 @@ static void def_sh_tex_gradient(StructRNA *srna)
 
 static void def_sh_tex_noise(StructRNA *srna)
 {
+  PropertyRNA *prop;
+
   RNA_def_struct_sdna_from(srna, "NodeTexNoise", "storage");
   def_sh_tex(srna);
+
+  prop = RNA_def_property(srna, "dimensions", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "dimensions");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
+  RNA_def_property_ui_text(prop, "Dimensions", "");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 }
 
 static void def_sh_tex_checker(StructRNA *srna)

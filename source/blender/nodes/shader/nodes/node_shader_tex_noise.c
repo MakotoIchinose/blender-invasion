@@ -23,6 +23,7 @@
 
 static bNodeSocketTemplate sh_node_tex_noise_in[] = {
     {SOCK_VECTOR, 1, N_("Vector"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_NONE, SOCK_HIDE_VALUE},
+    {SOCK_FLOAT, 1, N_("W"), 0.0f, 0.0f, 0.0f, 0.0f, -1000.0f, 1000.0f},
     {SOCK_FLOAT, 1, N_("Scale"), 5.0f, 0.0f, 0.0f, 0.0f, -1000.0f, 1000.0f},
     {SOCK_FLOAT, 1, N_("Detail"), 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 16.0f},
     {SOCK_FLOAT, 1, N_("Distortion"), 0.0f, 0.0f, 0.0f, 0.0f, -1000.0f, 1000.0f},
@@ -60,6 +61,7 @@ static void node_shader_init_tex_noise(bNodeTree *UNUSED(ntree), bNode *node)
   NodeTexNoise *tex = MEM_callocN(sizeof(NodeTexNoise), "NodeTexNoise");
   BKE_texture_mapping_default(&tex->base.tex_mapping, TEXMAP_TYPE_POINT);
   BKE_texture_colormapping_default(&tex->base.color_mapping);
+  tex->dimensions = 3;
 
   node->storage = tex;
 }
@@ -77,7 +79,31 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
 
   node_shader_gpu_tex_mapping(mat, node, in, out);
 
-  return GPU_stack_link(mat, node, "node_tex_noise", in, out);
+  NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
+
+  switch (tex->dimensions) {
+    case 1:
+      return GPU_stack_link(mat, node, "node_tex_noise_1d", in, out);
+    case 2:
+      return GPU_stack_link(mat, node, "node_tex_noise_2d", in, out);
+    case 3:
+      return GPU_stack_link(mat, node, "node_tex_noise_3d", in, out);
+    case 4:
+      return GPU_stack_link(mat, node, "node_tex_noise_4d", in, out);
+    default:
+      return 0;
+  }
+}
+
+static void node_shader_update_tex_noise(bNodeTree *UNUSED(ntree), bNode *node)
+{
+  NodeTexNoise *tex = (NodeTexNoise *)node->storage;
+
+  bNodeSocket *inVecSock = BLI_findlink(&node->inputs, 0);
+  bNodeSocket *inWSock = BLI_findlink(&node->inputs, 1);
+
+  nodeSetSocketAvailability(inVecSock, tex->dimensions != 1);
+  nodeSetSocketAvailability(inWSock, tex->dimensions == 1 || tex->dimensions == 4);
 }
 
 /* node type definition */
@@ -91,6 +117,7 @@ void register_node_type_sh_tex_noise(void)
   node_type_storage(
       &ntype, "NodeTexNoise", node_free_standard_storage, node_copy_standard_storage);
   node_type_gpu(&ntype, node_shader_gpu_tex_noise);
+  node_type_update(&ntype, node_shader_update_tex_noise);
 
   nodeRegisterType(&ntype);
 }
