@@ -4,14 +4,19 @@
 #include "usd_exporter_context.h"
 #include "abstract_hierarchy_iterator.h"
 
-#include "DEG_depsgraph_query.h"
-
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdShade/material.h>
 
 #include <vector>
 
+extern "C" {
+#include "DEG_depsgraph_query.h"
+#include "DNA_material_types.h"
+}
+
 struct Main;
+struct Material;
 struct Object;
 
 class USDAbstractWriter : public AbstractHierarchyWriter {
@@ -40,6 +45,8 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   virtual void do_write(HierarchyContext &context) = 0;
   virtual bool check_is_animated(const HierarchyContext &context) const;
   pxr::UsdTimeCode get_export_time_code() const;
+
+  pxr::UsdShadeMaterial ensure_usd_material(Material *material);
 };
 
 #endif /* __USD__USD_WRITER_ABSTRACT_H__ */

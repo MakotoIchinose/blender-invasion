@@ -70,6 +70,8 @@ class AbstractHierarchyIterator {
   const WriterMap &writer_map() const;
   void release_writers();
 
+  virtual std::string get_id_name(const ID *id) const = 0;
+
  private:
   void construct_export_graph();
   void visit_object(Object *object, Object *export_parent, bool weak_export);
@@ -96,7 +98,6 @@ class AbstractHierarchyIterator {
 
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) = 0;
 
-  virtual std::string get_id_name(const ID *id) const = 0;
   virtual std::string path_concatenate(const std::string &parent_path,
                                        const std::string &child_path) const;
 };

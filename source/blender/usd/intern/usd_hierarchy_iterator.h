@@ -28,13 +28,14 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   void set_export_frame(float frame_nr);
   const pxr::UsdTimeCode &get_export_time_code() const;
 
+  virtual std::string get_id_name(const ID *const id) const override;
+
  protected:
   virtual bool should_export_object(const Object *object) const override;
 
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) override;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) override;
 
-  virtual std::string get_id_name(const ID *const id) const override;
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) override;
 };
 

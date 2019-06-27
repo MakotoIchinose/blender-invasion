@@ -94,3 +94,33 @@ const pxr::SdfPath &USDAbstractWriter::usd_path() const
 {
   return usd_path_;
 }
+
+pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(Material *material)
+{
+  static pxr::SdfPath material_library_path("/_materials");
+
+  // Construct the material.
+  pxr::TfToken material_name(hierarchy_iterator->get_id_name(&material->id));
+  pxr::SdfPath usd_path = material_library_path.AppendChild(material_name);
+  pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Get(stage, usd_path);
+  if (usd_material) {
+    return usd_material;
+  }
+  usd_material = pxr::UsdShadeMaterial::Define(stage, usd_path);
+
+  // Construct the shader.
+  pxr::SdfPath shader_path = usd_path.AppendChild(pxr::TfToken("previewShader"));
+  pxr::UsdShadeShader shader = pxr::UsdShadeShader::Define(stage, shader_path);
+  shader.CreateIdAttr(pxr::VtValue(pxr::TfToken("UsdPreviewSurface")));
+  shader.CreateInput(pxr::TfToken("diffuseColor"), pxr::SdfValueTypeNames->Color3f)
+      .Set(pxr::GfVec3f(material->r, material->g, material->b));
+  shader.CreateInput(pxr::TfToken("roughness"), pxr::SdfValueTypeNames->Float)
+      .Set(material->roughness);
+  shader.CreateInput(pxr::TfToken("metallic"), pxr::SdfValueTypeNames->Float)
+      .Set(material->metallic);
+
+  // Connect the shader and the material together.
+  usd_material.CreateSurfaceOutput().ConnectToSource(shader, pxr::TfToken("surface"));
+
+  return usd_material;
+}

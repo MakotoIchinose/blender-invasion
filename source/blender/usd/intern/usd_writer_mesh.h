@@ -15,7 +15,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   virtual void free_export_mesh(Mesh *mesh);
 
  private:
-  void write_mesh(Mesh *mesh);
+  void write_mesh(HierarchyContext &context, Mesh *mesh);
 };
 
 class USDMeshWriter : public USDGenericMeshWriter {
