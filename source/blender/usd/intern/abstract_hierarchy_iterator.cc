@@ -15,6 +15,12 @@ extern "C" {
 #include "DEG_depsgraph_query.h"
 }
 
+const HierarchyContext &HierarchyContext::root()
+{
+  static const HierarchyContext root_hierarchy_context = {.object = nullptr};
+  return root_hierarchy_context;
+}
+
 AbstractHierarchyIterator::AbstractHierarchyIterator(Depsgraph *depsgraph)
     : depsgraph(depsgraph), writers()
 {
@@ -83,14 +89,17 @@ void AbstractHierarchyIterator::iterate()
 
         // If the dupli-object's scene parent is also instanced by this object, use that as the
         // export parent. Otherwise use the dupli-parent as export parent.
+        ExportGraph::key_type graph_index;
         if (link->ob->parent != nullptr && dupli_set.find(link->ob->parent) != dupli_set.end()) {
           export_parent = link->ob->parent;
+          graph_index = std::make_pair(export_parent, object);
         }
         else {
           export_parent = object;
+          graph_index = std::make_pair(export_parent, nullptr);
         }
 
-        visit_dupli_object(link, export_parent, false);
+        visit_dupli_object(link, graph_index, object, export_parent, false);
       }
     }
 
@@ -101,11 +110,32 @@ void AbstractHierarchyIterator::iterate()
   // // For debug: print the export graph.
   // printf("====== Export graph pre-prune:\n");
   // for (auto it : export_graph) {
-  //   printf("    OB %s:\n", it.first == nullptr ? "/" : (it.first->id.name + 2));
+  //   const std::pair<Object *, Object *> &parent_info = it.first;
+  //   Object *const export_parent = parent_info.first;
+  //   Object *const duplicator = parent_info.second;
+
+  //   if (duplicator != nullptr) {
+  //     printf("    DU %s (as dupped by %s):\n",
+  //            export_parent == nullptr ? "-null-" : (export_parent->id.name + 2),
+  //            duplicator->id.name + 2);
+  //   }
+  //   else {
+  //     printf("    OB %s:\n", export_parent == nullptr ? "-null-" : (export_parent->id.name +
+  //     2));
+  //   }
+
   //   for (auto child_it : it.second) {
-  //     printf("       - %s (weak_export=%s)\n",
-  //            child_it.object->id.name + 2,
-  //            child_it.weak_export ? "true" : "false");
+  //     if (child_it.duplicator == nullptr) {
+  //       printf("       - %s%s\n",
+  //              child_it.object->id.name + 2,
+  //              child_it.weak_export ? " (weak)" : "");
+  //     }
+  //     else {
+  //       printf("       - %s (dup by %s%s)\n",
+  //              child_it.object->id.name + 2,
+  //              child_it.duplicator->id.name + 2,
+  //              child_it.weak_export ? ", weak" : "");
+  //     }
   //   }
   // }
 
@@ -114,17 +144,38 @@ void AbstractHierarchyIterator::iterate()
   // // For debug: print the export graph.
   // printf("====== Export graph post-prune:\n");
   // for (auto it : export_graph) {
-  //   printf("    OB %s (%p):\n", it.first == nullptr ? "/" : (it.first->id.name + 2), it.first);
+  //   const std::pair<Object *, Object *> &parent_info = it.first;
+  //   Object *const export_parent = parent_info.first;
+  //   Object *const duplicator = parent_info.second;
+
+  //   if (duplicator != nullptr) {
+  //     printf("    DU %s (as dupped by %s):\n",
+  //            export_parent == nullptr ? "-null-" : (export_parent->id.name + 2),
+  //            duplicator->id.name + 2);
+  //   }
+  //   else {
+  //     printf("    OB %s:\n", export_parent == nullptr ? "-null-" : (export_parent->id.name +
+  //     2));
+  //   }
+
   //   for (auto child_it : it.second) {
-  //     printf("       - %s (weak_export=%s)\n",
-  //            child_it.object->id.name + 2,
-  //            child_it.weak_export ? "true" : "false");
+  //     if (child_it.duplicator == nullptr) {
+  //       printf("       - %s%s\n",
+  //              child_it.object->id.name + 2,
+  //              child_it.weak_export ? " (weak)" : "");
+  //     }
+  //     else {
+  //       printf("       - %s (dup by %s%s)\n",
+  //              child_it.object->id.name + 2,
+  //              child_it.duplicator->id.name + 2,
+  //              child_it.weak_export ? ", weak" : "");
+  //     }
   //   }
   // }
 
   // For debug: print the export paths.
   // printf("====== Export paths:\n");
-  make_writers(nullptr, "", nullptr);
+  make_writers(HierarchyContext::root(), nullptr);
 
   export_graph.clear();
 }
@@ -136,40 +187,46 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   HierarchyContext context;
   context.object = object;
   context.export_parent = export_parent;
+  context.duplicator = nullptr;
   context.weak_export = weak_export;
   context.export_path = "";
   context.parent_writer = nullptr;
-  // TODO(Sybren): avoid creating too many copies of the matrix.
   copy_m4_m4(context.matrix_world, object->obmat);
 
-  export_graph[export_parent].insert(context);
+  export_graph[std::make_pair(export_parent, nullptr)].insert(context);
 
   // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
-  // printf("    OB %30s %p (parent=%s %p; xform-only=%s; instance=%s; world x = %f)\n",
-  //        get_object_name(object).c_str(),
-  //        object,
+  // printf("    OB %30s %p (export-parent=%s; world x = %f)\n",
+  //        get_object_name(context.object).c_str(),
+  //        context.object,
   //        export_parent_name.c_str(),
-  //        export_parent,
-  //        context.weak_export ? "\033[31;1mtrue\033[0m" : "false",
-  //        context.object->base_flag & BASE_FROM_DUPLI ? "\033[35;1mtrue\033[0m" :
-  //                                                      "\033[30;1mfalse\033[0m",
   //        context.matrix_world[3][0]);
 }
 
 void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
+                                                   const ExportGraph::key_type &graph_index,
+                                                   Object *duplicator,
                                                    Object *export_parent,
                                                    bool weak_export)
 {
   HierarchyContext context;
   context.object = dupli_object->ob;
   context.export_parent = export_parent;
+  context.duplicator = duplicator;
   context.weak_export = weak_export;
   context.export_path = "";
   context.parent_writer = nullptr;
-  // TODO(Sybren): avoid creating too many copies of the matrix.
   copy_m4_m4(context.matrix_world, dupli_object->mat);
 
-  export_graph[export_parent].insert(context);
+  export_graph[graph_index].insert(context);
+
+  // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
+  // printf("    DU %30s %p (export-parent=%s; duplicator = %s; world x = %f)\n",
+  //        get_object_name(context.object).c_str(),
+  //        context.object,
+  //        export_parent_name.c_str(),
+  //        duplicator->id.name + 2,
+  //        context.matrix_world[3][0]);
 }
 
 static bool prune_the_weak(const HierarchyContext &context,
@@ -177,8 +234,8 @@ static bool prune_the_weak(const HierarchyContext &context,
                            const AbstractHierarchyIterator::ExportGraph &iterate)
 {
   bool all_is_weak = context.weak_export;
-  AbstractHierarchyIterator::ExportGraph::const_iterator child_iterator = iterate.find(
-      context.object);
+  const auto map_index = std::make_pair(context.object, context.duplicator);
+  AbstractHierarchyIterator::ExportGraph::const_iterator child_iterator = iterate.find(map_index);
 
   if (child_iterator != iterate.end()) {
     for (const HierarchyContext &child_context : child_iterator->second) {
@@ -187,14 +244,14 @@ static bool prune_the_weak(const HierarchyContext &context,
 
       if (child_tree_is_weak) {
         // This subtree is all weak, so we can remove it from the current object's children.
-        modify[context.object].erase(child_context);
+        modify[map_index].erase(child_context);
       }
     }
   }
 
   if (all_is_weak) {
     // This node and all its children are weak, so it can be removed from the export graph.
-    modify.erase(context.object);
+    modify.erase(map_index);
   }
 
   return all_is_weak;
@@ -204,28 +261,36 @@ void AbstractHierarchyIterator::prune_export_graph()
 {
   // Take a copy of the map so that we can modify while recursing.
   ExportGraph unpruned_export_graph = export_graph;
-  const HierarchyContext root = {.object = nullptr};
-
-  prune_the_weak(root, export_graph, unpruned_export_graph);
+  prune_the_weak(HierarchyContext::root(), export_graph, unpruned_export_graph);
 }
 
-void AbstractHierarchyIterator::make_writers(Object *parent_object,
-                                             const std::string &parent_path,
+void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_context,
                                              AbstractHierarchyWriter *parent_writer)
 {
   AbstractHierarchyWriter *xform_writer = nullptr;
   AbstractHierarchyWriter *data_writer = nullptr;
+  float parent_matrix_inv_world[4][4];
 
-  for (HierarchyContext context : export_graph[parent_object]) {
-    std::string export_path = path_concatenate(parent_path, get_object_name(context.object));
+  if (parent_context.object == nullptr) {
+    unit_m4(parent_matrix_inv_world);
+  }
+  else {
+    invert_m4_m4(parent_matrix_inv_world, parent_context.matrix_world);
+  }
+
+  for (HierarchyContext context :
+       export_graph[std::make_pair(parent_context.object, parent_context.duplicator)]) {
+    std::string export_path = path_concatenate(parent_context.export_path,
+                                               get_object_name(context.object));
     context.parent_writer = parent_writer;
     context.export_path = export_path;
+    copy_m4_m4(context.parent_matrix_inv_world, parent_matrix_inv_world);
 
-    // const char *color = context.weak_export ? "31;1" : "30";
+    // const char *color = context.duplicator ? "32;1" : "30";
     // printf("%s \033[%sm%s\033[0m\n",
     //        export_path.c_str(),
     //        color,
-    //        context.weak_export ? "true" : "false");
+    //        context.duplicator ? context.duplicator->id.name + 2 : "");
 
     // Get or create the transform writer.
     xform_writer = ensure_xform_writer(context);
@@ -240,20 +305,20 @@ void AbstractHierarchyIterator::make_writers(Object *parent_object,
 
     // Get or create the object data writer, but only if it is needed.
     if (!context.weak_export && context.object->data != nullptr) {
+      HierarchyContext data_context = context;
       ID *object_data = static_cast<ID *>(context.object->data);
       std::string data_path = path_concatenate(export_path, get_id_name(object_data));
 
-      // Update the export context for writing the data.
-      context.export_path = data_path;
-      context.parent_writer = xform_writer;
+      data_context.export_path = data_path;
+      data_context.parent_writer = xform_writer;
 
-      data_writer = ensure_data_writer(context);
+      data_writer = ensure_data_writer(data_context);
       if (data_writer != nullptr) {
-        data_writer->write(context);
+        data_writer->write(data_context);
       }
     }
 
-    make_writers(context.object, export_path, xform_writer);
+    make_writers(context, xform_writer);
   }
 
   // TODO(Sybren): iterate over all unused writers and call unused_during_iteration() or something.

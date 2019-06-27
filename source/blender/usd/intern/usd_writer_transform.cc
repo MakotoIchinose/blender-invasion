@@ -19,13 +19,7 @@ USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstr
 void USDTransformWriter::do_write(HierarchyContext &context)
 {
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
-  if (context.export_parent == NULL) {
-    copy_m4_m4(parent_relative_matrix, context.matrix_world);
-  }
-  else {
-    invert_m4_m4(context.export_parent->imat, context.export_parent->obmat);
-    mul_m4_m4m4(parent_relative_matrix, context.export_parent->imat, context.matrix_world);
-  }
+  mul_m4_m4m4(parent_relative_matrix, context.parent_matrix_inv_world, context.matrix_world);
 
   // Write the transform relative to the parent.
   pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(stage, usd_path_);

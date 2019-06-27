@@ -18,13 +18,15 @@ struct HierarchyContext {
   /* Determined during hierarchy iteration: */
   Object *object;
   Object *export_parent;
+  Object *duplicator;
   float matrix_world[4][4];
 
   // When true, the object will be exported only as transform, and only if is an ancestor of a
-  // non-weak child.
+  // non-weak child:
   bool weak_export;
 
   /* Determined during writer creation: */
+  float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
   std::string export_path;  // Hierarchical path, such as "/grandparent/parent/objectname".
   AbstractHierarchyWriter *parent_writer;  // The parent of this object during the export.
 
@@ -33,6 +35,9 @@ struct HierarchyContext {
   {
     return object < other.object;
   }
+
+  /* Return a HierarchyContext representing the root of the export hierarchy. */
+  static const HierarchyContext &root();
 };
 
 class AbstractHierarchyWriter {
@@ -45,11 +50,11 @@ class AbstractHierarchyWriter {
 class AbstractHierarchyIterator {
  public:
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
-  typedef std::map<Object *, std::set<HierarchyContext>> ExportGraph;
+  // Mapping from <object, duplicator> to its export-children.
+  typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext>> ExportGraph;
 
  protected:
-  ExportGraph export_graph;  // Mapping from object to its children, as should be exported.
-
+  ExportGraph export_graph;
   Depsgraph *depsgraph;
   WriterMap writers;
 
@@ -63,11 +68,14 @@ class AbstractHierarchyIterator {
 
  private:
   void visit_object(Object *object, Object *export_parent, bool weak_export);
-  void visit_dupli_object(DupliObject *dupli_object, Object *export_parent, bool weak_export);
+  void visit_dupli_object(DupliObject *dupli_object,
+                          const ExportGraph::key_type &graph_index,
+                          Object *duplicator,
+                          Object *export_parent,
+                          bool weak_export);
   void prune_export_graph();
 
-  void make_writers(Object *parent_object,
-                    const std::string &parent_path,
+  void make_writers(const HierarchyContext &parent_context,
                     AbstractHierarchyWriter *parent_writer);
 
   std::string get_object_name(const Object *object) const;
