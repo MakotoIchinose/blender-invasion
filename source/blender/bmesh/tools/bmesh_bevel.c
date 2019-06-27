@@ -58,8 +58,9 @@
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
 #define DEBUG_CUSTOM_PROFILE_SAMPLE 0
-#define DEBUG_CUSTOM_PROFILE 0
+#define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
+#define DEBUG_CUSTOM_PROFILE_ADJ 1
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -126,8 +127,8 @@ typedef struct Profile {
   float plane_co[3]; /* coordinate on plane to project to */
   float proj_dir[3]; /* direction of projection line */
   int _pad;
-  float *prof_co;                      /* seg+1 profile coordinates (triples of floats) */
-  float *prof_co_2;                    /* like prof_co, but for seg power of 2 >= seg */
+  float *prof_co;    /* seg+1 profile coordinates (triples of floats) */
+  float *prof_co_2;  /* like prof_co, but for seg power of 2 >= seg */
 } Profile;
 #define PRO_SQUARE_R 1e4f
 #define PRO_CIRCLE_R 2.0f
@@ -144,10 +145,6 @@ typedef struct ProfileSpacing {
   double *yvals_2; /* seg_2+1 y values, seg_2 = power of 2 >= seg */
   int seg_2;       /* the seg_2 value */
   int _pad;
-  double *xvals_custom;   /* HANS-TODO: These will eventually be merged with the original */
-  double *yvals_custom;   /* value list as everything is converted to custom profile locations */
-  double *xvals_2_custom; /* HANS-TODO: These will eventually be merged with the original */
-  double *yvals_2_custom; /* value list as everything is converted to custom profile locations */
 } ProfileSpacing;
 
 /* An element in a cyclic boundary of a Vertex Mesh (VMesh) */
@@ -170,8 +167,6 @@ typedef struct BoundVert {
   struct BoundVert *adjchain;
   /** Edge profile between this and next BoundVert. */
   Profile profile;
-  /* HANS-QUESTION: Why is the profile stored in the BoundVert? There are two boundverts
-   * for every beveled EdgeHalf, so it seems that there would be duplicate information */
   /** Are any of the edges attached here seams? */
   bool any_seam;
   /** Used during delta adjust pass */
@@ -195,6 +190,7 @@ typedef struct VMesh {
   NewVert *mesh;         /* allocated array - size and structure depends on kind */
   BoundVert *boundstart; /* start of boundary double-linked list */
   int count;             /* number of vertices in the boundary */
+  /* HANS-QUESTION: Does that mean the number of points in the profile so far? */
   int seg;               /* common # of segments for segmented edges */
   enum {
     M_NONE,    /* no polygon mesh needed */
@@ -311,7 +307,7 @@ typedef struct BevelParams {
 
 // #pragma GCC diagnostic ignored "-Wpadded"
 
-// #include "bevdebug.c" /* HANS-TODO: Uncomment this before commit! */
+// #include "bevdebug.c" /* HANS-TODO: Comment this before commit! */
 
 /* Some flags to re-enable old behavior for a while,
  * in case fixes broke things not caught by regression tests. */
@@ -1272,6 +1268,7 @@ static void project_to_edge(BMEdge *e, const float co_a[3], const float co_b[3],
 /* If there is a bndv->ebev edge, find the mid control point if necessary.
  * It is the closest point on the beveled edge to the line segment between
  * bndv and bndv->next.  */
+/* HANS-QUESTION: Will I need to change this? */
 static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 {
   EdgeHalf *e;
@@ -1414,6 +1411,8 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 /* Maybe move the profile plane for bndv->ebev to the plane its profile's coa, cob and the
  * original beveled vert, bmv. This will usually be the plane containing its adjacent
  * non-beveled edges, but sometimes coa and cob are not on those edges.
+ *
+ * Currently just used in build boundary terminal edge
  */
 static void move_profile_plane(BoundVert *bndv, BMVert *bmv)
 {
@@ -1623,6 +1622,8 @@ static double superellipse_co(double x, float r, bool rbig)
  * In the latter case, we subsample the profile for seg_2, which will not necessarily
  * give equal spaced chords, but is in fact more what is desired by the cubic subdivision
  * method used to make the vmesh pattern. */
+/* HANS-TODO: Probably should just give this a reversed parameter instead of changing the call
+ * when the boundvert isn't the profile start boundvert */
 static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n, float r_co[3])
 {
   int d;
@@ -1654,8 +1655,10 @@ static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n,
  * custom profile points instead of the normal ones. Eventually, when the custom and normal
  * profile spacings are merged, this function will be redundant, but for now, I will call this
  * function in certain cases where I am working on the custom profile. This also checks for
- * is_profile_start and flips the profile if it isn't the start of the boundary
- * HANS-TODO: Get rid of this function when all custom profile cases are completed */
+ * is_profile_start and flips the profile if it isn't the start of the boundary */
+/* HANS-TODO: Get rid of this function when all custom profile cases are completed */
+/* HANS-TODO: Change the reverse case so that I don't have to sample the points backwards in
+ * get_profile_point. This would simplify the rest of the code a lot */
 static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reversed)
 {
   int i, k, ns;
@@ -1693,8 +1696,8 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
   for (i = 0; i < 2; i++) {
     if (i == 0) {
       ns = bp->seg;
-      xvals = bp->pro_spacing.xvals_custom;
-      yvals = bp->pro_spacing.yvals_custom;
+      xvals = bp->pro_spacing.xvals;
+      yvals = bp->pro_spacing.yvals;
       prof_co = pro->prof_co;
     }
     else {
@@ -1702,11 +1705,11 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
         break; /* shares coords with pro->prof_co */
       }
       ns = bp->pro_spacing.seg_2;
-      xvals = bp->pro_spacing.xvals_2_custom;
-      yvals = bp->pro_spacing.yvals_2_custom;
+      xvals = bp->pro_spacing.xvals_2;
+      yvals = bp->pro_spacing.yvals_2;
       prof_co = pro->prof_co_2;
     }    
-    /* HANS-TODO: Why this assert? BECAUSE IT SIGABRTs IF YOU DON'T!!!! */
+    /* HANS-TODO: Why this assert? */
     BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
 
     /* Iterate over the vertices along the boundary arc */
@@ -1720,6 +1723,9 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
       else {
         if (map_ok) {
           if (reversed) {
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+            printf("Using reversed custom profile orientation\n");
+#endif
             p[0] = (float)yvals[k];
             p[1] = (float)xvals[k];
           }
@@ -1736,7 +1742,7 @@ static void calculate_profile_custom(BevelParams *bp, BoundVert *bndv, bool reve
         }
       }
       /* project co onto final profile plane */
-      prof_co_k = prof_co + 3 * k; /* 3 times deeper because each coord takes up 3 spaces */
+      prof_co_k = prof_co + 3 * k; /* Each coord takes up 3 spaces */
       if (!is_zero_v3(pro->proj_dir)) {
         add_v3_v3v3(co2, co, pro->proj_dir);
         /* pro->plane_co and pro->plane_no are built in "set_profile_params" */
@@ -1833,7 +1839,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
         }
       }
       /* project co onto final profile plane */
-      prof_co_k = prof_co + 3 * k; /* 3 times deeper because each coord takes up 3 spaces */
+      prof_co_k = prof_co + 3 * k; /* Each coord takes up 3 spaces */
       if (!is_zero_v3(pro->proj_dir)) {
         add_v3_v3v3(co2, co, pro->proj_dir);
         /* pro->plane_co and pro->plane_no are built in "set_profile_params" */
@@ -1850,11 +1856,15 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv)
 }
 
 /* Snap a direction co to a superellipsoid with parameter super_r.
- * For square profiles, midline says whether or not to snap to both planes. */
+ * For square profiles, midline says whether or not to snap to both planes.
+ *
+ * Only currently used for the pipe and cube corner special cases */
 static void snap_to_superellipsoid(float co[3], const float super_r, bool midline)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("SNAP TO SUPERELLIPSOID\n");
+#endif
   float a, b, c, x, y, z, r, rinv, dx, dy;
-
   r = super_r;
   if (r == PRO_CIRCLE_R) {
     normalize_v3(co);
@@ -1919,6 +1929,16 @@ static void snap_to_superellipsoid(float co[3], const float super_r, bool midlin
   co[1] = y;
   co[2] = z;
 }
+
+/* This is meant to be the "custom" equivalent to the snap_to_superellipsoid function.
+ * It has to be more complex because it's not as a simple as just snapping to a superellipsoid
+ * function because the custom profile can't be parametrized. There are (seg_2 - 1) edges defining
+ * the custom profile that could be the closest edge to snap to */
+/* HANS-TODO: Finish this. And params probably need to change */
+//static void snap_to_custom_profile(float co[3], Profile *pro)
+//{
+
+//}
 
 #define BEV_EXTEND_EDGE_DATA_CHECK(eh, flag) (BM_elem_flag_test(eh->e, flag))
 
@@ -2394,7 +2414,12 @@ static void build_boundary_vertex_only(BevelParams *bp, BevVert *bv, bool constr
     }
   } while ((e = e->next) != efirst);
 
-  calculate_vm_profiles(bp, bv, vm);
+  if (bp->use_custom_profile){
+    calculate_vm_profiles_custom(bp, bv, vm);
+  }
+  else {
+    calculate_vm_profiles(bp, bv, vm);
+  }
 
   if (construct) {
     set_bound_vert_seams(bv, bp->mark_seam, bp->mark_sharp);
@@ -2866,7 +2891,12 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
     adjust_miter_coords(bp, bv, emiter);
   }
 
-  calculate_vm_profiles(bp, bv, vm);
+  if (bp->use_custom_profile) {
+    calculate_vm_profiles_custom(bp, bv, vm);
+  }
+  else {
+    calculate_vm_profiles(bp, bv, vm);
+  }
 
   if (construct) {
     set_bound_vert_seams(bv, bp->mark_seam, bp->mark_sharp);
@@ -3091,20 +3121,16 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   float second_best_angle = best_angle;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   printf("NEXT EDGEHALF BEV");
-//  printf("Start_edge BEFORE: %p\n", (void *)start_edge);
 #endif
-
-
+  BLI_assert(r_bv != NULL);
 
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf */
   if (toward_bv) {
     /* Find the direction vector of the current edge (pointing INTO the BevVert) .
      * v1 and v2 don't necessarily have an order, so we need to check which is closer to bv */
-    /* HANS-TODO: r_bv not initialized */
     v1_dist_to_bv = fabsf(len_v3v3(start_edge->e->v1->co, (*r_bv)->v->co));
     v2_dist_to_bv = fabsf(len_v3v3(start_edge->e->v2->co, (*r_bv)->v->co));
-    /* HANS-TODO: Helper function for this comparison? */
-    if (v1_dist_to_bv < v2_dist_to_bv) {
+    if (v1_dist_to_bv < v2_dist_to_bv) { /* HANS-TODO: Helper function for this comparison? */
       sub_v3_v3v3(d_start, start_edge->e->v1->co, start_edge->e->v2->co);
     }
     else {
@@ -3119,7 +3145,6 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 
     /* Find the beveled edge coming out of the BevVert most parallel to the current edge */
     new_edge = start_edge;
-//    new_edge = next_bev(*r_bv, start_edge);
     new_edge = new_edge->next;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
 //    if (new_edge) {
@@ -3164,7 +3189,6 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
         best_angle = new_angle;
         next_edge = new_edge;
       }
-//      new_edge = next_bev(*r_bv, new_edge);
       new_edge = new_edge->next;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
 //      if (new_edge) {
@@ -3247,16 +3271,13 @@ static void debug_RPO_draw_sphere(BevelParams* bp, BMEdge* e) {
 /* The custom profiles are not necessarily symmetrical, so along beveled edges
  * the profiles can start from opposite sides of the edge. In order to fix this we
  * need to travel along the beveled edges marking consistent boundverts for the
- * bevels to start from.
- *
- * Also in this pass, the profiles for the terminal edge cases are switched if they
- * conflict with the orientation. */
+ * bevels to start from. */
 static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
 {
   BevVert *start_bv;
   BevVert *bv;
-  EdgeHalf *start_edge;
-  EdgeHalf *edge;
+  EdgeHalf *start_edgehalf;
+  EdgeHalf *edgehalf;
   bool toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   printf("REGULARIZE PROFILE ORIENTATION\n");
@@ -3266,13 +3287,13 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
    * go to the next non-visited one and start the travel process from there. */
   start_bv = find_bevvert(bp, bme->v1);
   /* HANS-TODO: Maybe implement better choice of start BevVert */
-  start_edge = find_edge_half(start_bv, bme);
-  if (!start_edge->is_bev || start_edge->visited_custom) {
+  start_edgehalf = find_edge_half(start_bv, bme);
+  if (!start_edgehalf->is_bev || start_edgehalf->visited_custom) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    if (!start_edge->is_bev) {
+    if (!start_edgehalf->is_bev) {
       printf("NOT BEVELED\n");
     }
-    if (start_edge->visited_custom) {
+    if (start_edgehalf->visited_custom) {
       printf("ALREADY VISITED\n");
     }
 #endif
@@ -3281,35 +3302,35 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
 
   /* Pick a BoundVert on one side of the profile to use for the start of the profile */
   /* HANS-TODO: Possibly use a more advanced metric here for the start edge */
-  start_edge->rightv->is_profile_start = true;
-  start_edge->leftv->is_profile_start = false;
+  start_edgehalf->rightv->is_profile_start = true;
+  start_edgehalf->leftv->is_profile_start = false;
 
   /* Travel the path in the direction of the BevVert the EdgeHalf is attached to */
-  edge = start_edge;
+  edgehalf = start_edgehalf;
   toward_bv = true;
   bv = start_bv;
-  edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
-  while (edge) {
+  edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
+  while (edgehalf) {
     /* Stop if this EdgeHalf was already visited and "visit" it if it hasn't been */
-    if (edge->visited_custom) {
+    if (edgehalf->visited_custom) {
       break;
     }
-    edge->visited_custom = true;
+    edgehalf->visited_custom = true;
 
     /* Mark the correct BoundVert as the start of the newly visited profile
      * The direction of the BoundVert along the path switches every time because their directions
      * are relative to the BevVert they're connected to. So the right and left are BoundVerts
      * would also switch every EdgeHalf, and all I need to do is switch which BoundVert I make
      * the profile's start every time. */
-    edge->rightv->is_profile_start = toward_bv;
-    edge->leftv->is_profile_start = !toward_bv;
+    edgehalf->rightv->is_profile_start = toward_bv;
+    edgehalf->leftv->is_profile_start = !toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
     printf("[1st loop move]\n");
 #endif
     /* The next jump will in the opposite direction relative to the BevVert */
     toward_bv = !toward_bv;
 
-    edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
+    edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
   }
 
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -3320,27 +3341,27 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
    * changes is the initial value of toward_bv anyway */
 
   /* Now travel the path in the other direction, away from the BevVert */
-  edge = start_edge;
+  edgehalf = start_edgehalf;
   toward_bv = false;
   bv = start_bv;
-  edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
-  while (edge) {
+  edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
+  while (edgehalf) {
     /* Stop if this EdgeHalf was already visited and "visit" it if it hasn't been */
-    if (edge->visited_custom) {
+    if (edgehalf->visited_custom) {
       break;
     }
-    edge->visited_custom = true;
+    edgehalf->visited_custom = true;
 
     /* Mark the correct BoundVert as the start of the newly visited profile */
-    edge->rightv->is_profile_start = !toward_bv;
-    edge->leftv->is_profile_start = toward_bv;
+    edgehalf->rightv->is_profile_start = !toward_bv;
+    edgehalf->leftv->is_profile_start = toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
     printf("[2nd loop move]\n");
 #endif
     /* The next jump will in the opposite direction relative to the BevVert */
     toward_bv = !toward_bv;
 
-    edge = next_edgehalf_bev(bp, edge, toward_bv, &bv);
+    edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
   }
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   printf("[2nd loop stopped]\n");
@@ -3732,6 +3753,9 @@ static bool is_canon(VMesh *vm, int i, int j, int k)
 }
 
 /* Copy the vertex data to all of vm verts from canonical ones */
+/* HANS-QUESTION: Are these equivalences because of symmetry or because some vertices will overlap?
+ * If they are because of symmetry I will have to disable these checks because the profile isn't
+ * necessarily symmetrical. */
 static void vmesh_copy_equiv_verts(VMesh *vm)
 {
   int n, ns, ns2, i, j, k;
@@ -3758,6 +3782,9 @@ static void vmesh_copy_equiv_verts(VMesh *vm)
 /* Calculate and return in r_cent the centroid of the center poly */
 static void vmesh_center(VMesh *vm, float r_cent[3])
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("VMESH CENTER\n");
+#endif
   int n, ns2, i;
 
   n = vm->count;
@@ -3774,8 +3801,8 @@ static void vmesh_center(VMesh *vm, float r_cent[3])
   }
 }
 
-static void avg4(
-    float co[3], const NewVert *v0, const NewVert *v1, const NewVert *v2, const NewVert *v3)
+static void avg4(float co[3], const NewVert *v0, const NewVert *v1, const NewVert *v2,
+                 const NewVert *v3)
 {
   add_v3_v3v3(co, v0->co, v1->co);
   add_v3_v3(co, v2->co);
@@ -3786,6 +3813,9 @@ static void avg4(
 /* gamma needed for smooth Catmull-Clark, Sabin modification */
 static float sabin_gamma(int n)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("SABIN GAMMA\n");
+#endif
   double ans, k, k2, k4, k6, x, y;
 
   /* precalculated for common cases of n */
@@ -3821,6 +3851,9 @@ static float sabin_gamma(int n)
 /* Fill frac with fractions of way along ring 0 for vertex i, for use with interp_range function */
 static void fill_vmesh_fracs(VMesh *vm, float *frac, int i)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("FILL VMESH FRACS\n");
+#endif
   int k, ns;
   float total = 0.0f;
 
@@ -3841,8 +3874,12 @@ static void fill_vmesh_fracs(VMesh *vm, float *frac, int i)
 }
 
 /* Like fill_vmesh_fracs but want fractions for profile points of bndv, with ns segments */
+/* HANS-QUESTION: What exactly are these functions doing? */
 static void fill_profile_fracs(BevelParams *bp, BoundVert *bndv, float *frac, int ns)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("FILL PROFILE FRACS\n");
+#endif
   int k;
   float co[3], nextco[3];
   float total = 0.0f;
@@ -3850,7 +3887,11 @@ static void fill_profile_fracs(BevelParams *bp, BoundVert *bndv, float *frac, in
   frac[0] = 0.0f;
   copy_v3_v3(co, bndv->nv.co);
   for (k = 0; k < ns; k++) {
-    get_profile_point(bp, &bndv->profile, k + 1, ns, nextco);
+    if (bp->use_custom_profile && !bndv->is_profile_start) {
+      get_profile_point(bp, &bndv->profile, ns - (k + 1), ns, co);
+    } else {
+      get_profile_point(bp, &bndv->profile, k + 1, ns, nextco);
+    }
     total += len_v3v3(co, nextco);
     frac[k + 1] = total;
     copy_v3_v3(co, nextco);
@@ -3894,30 +3935,35 @@ static int interp_range(const float *frac, int n, const float f, float *r_rest)
 }
 
 /* Interpolate given vmesh to make one with target nseg border vertices on the profiles */
+/* HANS-TODO: Needs custom analog. */
+/* HANS-QUESTION: General idea of how this works */
 static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
 {
-  int n, ns0, nseg2, odd, i, j, k, j0, k0, k0prev, j0inc, k0inc;
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("INTERP VMESH\n");
+#endif
+  int n_verts, ns0, nseg2, odd, i, j, k, j0, k0, k0prev, j0inc, k0inc;
   float *prev_frac, *frac, *new_frac, *prev_new_frac;
   float f, restj, restk, restkprev;
   float quad[4][3], co[3], center[3];
   VMesh *vm1;
   BoundVert *bndv;
 
-  n = vm0->count;
+  n_verts = vm0->count;
   ns0 = vm0->seg;
   nseg2 = nseg / 2;
   odd = nseg % 2;
-  vm1 = new_adj_vmesh(bp->mem_arena, n, nseg, vm0->boundstart);
+  vm1 = new_adj_vmesh(bp->mem_arena, n_verts, nseg, vm0->boundstart);
 
   prev_frac = BLI_array_alloca(prev_frac, (ns0 + 1));
   frac = BLI_array_alloca(frac, (ns0 + 1));
   new_frac = BLI_array_alloca(new_frac, (nseg + 1));
   prev_new_frac = BLI_array_alloca(prev_new_frac, (nseg + 1));
 
-  fill_vmesh_fracs(vm0, prev_frac, n - 1);
+  fill_vmesh_fracs(vm0, prev_frac, n_verts - 1);
   bndv = vm0->boundstart;
   fill_profile_fracs(bp, bndv->prev, prev_new_frac, nseg);
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_verts; i++) {
     fill_vmesh_fracs(vm0, frac, i);
     fill_profile_fracs(bp, bndv, new_frac, nseg);
     for (j = 0; j <= nseg2 - 1 + odd; j++) {
@@ -3952,8 +3998,8 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
       }
     }
     bndv = bndv->next;
-    memcpy(prev_frac, frac, (ns0 + 1) * sizeof(float));
-    memcpy(prev_new_frac, new_frac, (nseg + 1) * sizeof(float));
+    memcpy(prev_frac, frac, (size_t)(ns0 + 1) * sizeof(float));
+    memcpy(prev_new_frac, new_frac, (size_t)(nseg + 1) * sizeof(float));
   }
   if (!odd) {
     vmesh_center(vm0, center);
@@ -3969,6 +4015,9 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
  * See Levin 1999 paper: "Filling an N-sided hole using combined subdivision schemes". */
 static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("CUBIC SUBDIV\n");
+#endif
   int n, ns0, ns20, ns1;
   int i, j, k, inext;
   float co[3], co1[3], co2[3], acc[3];
@@ -3976,7 +4025,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   VMesh *vm1;
   BoundVert *bndv;
 
-  n = vm0->count;
+  n = vm0->count; /* HANS-QUESTION: The difference between all of these seg numbers */
   ns0 = vm0->seg;
   ns20 = ns0 / 2;
   BLI_assert(ns0 % 2 == 0);
@@ -4003,7 +4052,12 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   bndv = vm1->boundstart;
   for (i = 0; i < n; i++) {
     for (k = 1; k < ns1; k += 2) {
-      get_profile_point(bp, &bndv->profile, k, ns1, co);
+      if (bp->use_custom_profile && !bndv->is_profile_start) {
+        get_profile_point(bp, &bndv->profile, ns1 - k, ns1, co);
+      }
+      else {
+        get_profile_point(bp, &bndv->profile, k, ns1, co);
+      }
       copy_v3_v3(co1, mesh_vert_canon(vm1, i, 0, k - 1)->co);
       copy_v3_v3(co2, mesh_vert_canon(vm1, i, 0, k + 1)->co);
 
@@ -4127,7 +4181,13 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   for (i = 0; i < n; i++) {
     inext = (i + 1) % n;
     for (k = 0; k <= ns1; k++) {
-      get_profile_point(bp, &bndv->profile, k, ns1, co);
+      if (bp->use_custom_profile && !bndv->is_profile_start) {
+        /* The profile is reversed so get the points from the other side */
+        get_profile_point(bp, &bndv->profile, ns1 - k, ns1, co);
+      }
+      else {
+        get_profile_point(bp, &bndv->profile, k, ns1, co);
+      }
       copy_v3_v3(mesh_vert(vm1, i, 0, k)->co, co);
       if (k >= ns0 && k < ns1) {
         copy_v3_v3(mesh_vert(vm1, inext, ns1 - k, 0)->co, co);
@@ -4142,6 +4202,9 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
 /* Special case for cube corner, when r is PRO_SQUARE_R, meaning straight sides */
 static VMesh *make_cube_corner_square(MemArena *mem_arena, int nseg)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("MAKE CUBE CORNER SQUARE\n");
+#endif
   VMesh *vm;
   float co[3];
   int i, j, k, ns2;
@@ -4177,6 +4240,9 @@ static VMesh *make_cube_corner_square(MemArena *mem_arena, int nseg)
  * with a triangle in the middle for odd nseg */
 static VMesh *make_cube_corner_square_in(MemArena *mem_arena, int nseg)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("MAKE CUBE CORNER SQUARE IN\n");
+#endif
   VMesh *vm;
   float co[3];
   float b;
@@ -4217,9 +4283,11 @@ static VMesh *make_cube_corner_square_in(MemArena *mem_arena, int nseg)
  * This has BoundVerts at (1,0,0), (0,1,0) and (0,0,1), with quarter circle arcs
  * on the faces for the orthogonal planes through the origin.
  */
-/* HANS-QUESTION: Is this a special case where you're bevelling the corner of a cube? */
 static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("MAKE CUBE CORNER ADJ VMESH\n");
+#endif
   MemArena *mem_arena = bp->mem_arena;
   int nseg = bp->seg;
   float r = bp->pro_super_r;
@@ -4257,7 +4325,15 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
     copy_v3_v3(bndv->profile.plane_co, bndv->profile.coa);
     cross_v3_v3v3(bndv->profile.plane_no, bndv->profile.coa, bndv->profile.cob);
     copy_v3_v3(bndv->profile.proj_dir, bndv->profile.plane_no);
-    calculate_profile(bp, bndv);
+    if (!bp->use_custom_profile) {
+      calculate_profile(bp, bndv);
+    }
+    else {
+      calculate_profile_custom(bp, bndv, !bndv->is_profile_start);
+    }
+
+    /* Just building the boundaries here, so sample the profile halfway through */
+    /* HANS-TODO: Switch the order here too? Probably not */
     get_profile_point(bp, &bndv->profile, 1, 2, mesh_vert(vm0, i, 0, 1)->co);
 
     bndv = bndv->next;
@@ -4290,7 +4366,12 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
   for (i = 0; i < 3; i++) {
     for (j = 0; j <= ns2; j++) {
       for (k = 0; k <= nseg; k++) {
-        snap_to_superellipsoid(mesh_vert(vm1, i, j, k)->co, r, false);
+        if (!bp->use_custom_profile) {
+          snap_to_superellipsoid(mesh_vert(vm1, i, j, k)->co, r, false);
+        }
+        else {
+          /* HANS-TODO: Use custom analog */
+        }
       }
     }
   }
@@ -4340,6 +4421,9 @@ static int tri_corner_test(BevelParams *bp, BevVert *bv)
 
 static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("TRI CORNER ADJ VMESH\n");
+#endif
   int i, j, k, ns, ns2;
   float co0[3], co1[3], co2[3];
   float mat[4][4], v[4];
@@ -4361,6 +4445,8 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
     for (j = 0; j <= ns2; j++) {
       for (k = 0; k <= ns; k++) {
         copy_v3_v3(v, mesh_vert(vm, i, j, k)->co);
+
+        /* HANS-QUESTION: What's going on here? */
         v[3] = 1.0f;
         mul_m4_v4(mat, v);
         copy_v3_v3(mesh_vert(vm, i, j, k)->co, v);
@@ -4373,6 +4459,9 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("ADJ VMESH\n");
+#endif
   int n, ns, i;
   VMesh *vm0, *vm1;
   float co[3], coa[3], cob[3], dir[3];
@@ -4422,6 +4511,7 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
    * Calculate 'fullness' = fraction of way
    * from co to coa (if positive) or to cob (if negative).
    */
+
   copy_v3_v3(coa, bv->v->co);
   mul_v3_fl(co, 1.0f / (float)n);
   sub_v3_v3v3(cob, co, coa);
@@ -4477,9 +4567,10 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
   copy_v3_v3(va, pro->coa);
   copy_v3_v3(vb, pro->cob);
 
+  /* Get a plane with the normal pointing along the beveled edge */
   sub_v3_v3v3(edir, e->e->v1->co, e->e->v2->co);
-
   plane_from_point_normal_v3(plane, co, edir);
+
   closest_to_plane_v3(va0, plane, va);
   closest_to_plane_v3(vb0, plane, vb);
   closest_to_plane_v3(vmid0, plane, pro->midco);
@@ -4492,8 +4583,71 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
     }
     mul_v3_m4v3(p, minv, co);
     snap_to_superellipsoid(p, pro->super_r, midline);
+
     mul_v3_m4v3(snap, m, p);
-    copy_v3_v3(co, snap);
+    copy_v3_v3(co, snap); /* HANS-QUESTION: Why not just do that in the previousn line? */
+  }
+  else {
+    /* planar case: just snap to line va0--vb0 */
+    closest_to_line_segment_v3(p, co, va0, vb0);
+    copy_v3_v3(co, p);
+  }
+}
+
+static void snap_to_pipe_profile_custom(BoundVert *vpipe, float co[3], int seg)
+{
+  float va[3], vb[3], edir[3], va0[3], vb0[3], vmid0[3];
+  float plane[4], m[4][4], minv[4][4], p[3], snap[3];
+
+  float distance, min_distance, prof_v1[3], prof_v2[3];
+  int min_i;
+  /* HANS-TODO: Merge new variables with old ones where possible */
+
+  Profile *pro = &vpipe->profile;
+  EdgeHalf *e = vpipe->ebev;
+
+  copy_v3_v3(va, pro->coa);
+  copy_v3_v3(vb, pro->cob);
+
+  /* Get a plane with the normal pointing along the beveled edge */
+  sub_v3_v3v3(edir, e->e->v1->co, e->e->v2->co);
+  plane_from_point_normal_v3(plane, co, edir);
+
+  closest_to_plane_v3(va0, plane, va);
+  closest_to_plane_v3(vb0, plane, vb);
+#if DEBUG_CUSTOM_PROFILE_ORIGINAL
+  printf("snap to superellipsoid co argument: (%0.3f, %0.3f, %0.3f)\n", (double)va0[0],
+                                                                        (double)va0[1],
+                                                                        (double)va0[2]);
+#endif
+
+  closest_to_plane_v3(vmid0, plane, pro->midco);
+  if (make_unit_square_map(va0, vmid0, vb0, m)) {
+    /* Transform co and project it onto superellipse */
+    if (!invert_m4_m4(minv, m)) {
+      /* shouldn't happen */
+      BLI_assert(!"failed inverse during pipe profile snap custom");
+      return;
+    }
+    mul_v3_m4v3(p, minv, co);
+
+    /* Find (index of) the profile's closest line segment to the point */
+    min_distance = FLT_MAX;
+    for (int i = 0; i < seg - 1; i++) {
+      closest_to_plane_v3(prof_v1, plane, &pro->prof_co_2[3 * i]);
+      closest_to_plane_v3(prof_v2, plane, &pro->prof_co_2[3 * (i + 1)]);
+      distance = dist_to_line_segment_v3(p, prof_v1, prof_v2);
+      if (distance < min_distance) {
+        min_distance = distance;
+        min_i = i;
+      }
+    }
+
+    /* Snap the point to the closest line segment we just found */
+    closest_to_line_segment_v3(p, p, &pro->prof_co_2[3 * min_i], &pro->prof_co_2[3 * (min_i + 1)]);
+
+    mul_v3_m4v3(snap, m, p);
+    copy_v3_v3(co, snap); /* HANS-QUESTION: Why not just do that in the previous line? */
   }
   else {
     /* planar case: just snap to line va0--vb0 */
@@ -4509,6 +4663,9 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
  * to snap to the midline on the pipe, not just to one plane or the other. */
 static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("PIPE ADJ VMESH\n");
+#endif
   int i, j, k, n, ns, ns2, ipipe1, ipipe2;
   VMesh *vm;
   bool even, midline;
@@ -4529,7 +4686,14 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
           continue;
         }
         midline = even && k == ns2 && ((i == 0 && j == ns2) || (i == ipipe1 || i == ipipe2));
-        snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
+        if (!bp->use_custom_profile) {
+          snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
+        }
+        else {
+          snap_to_pipe_profile_custom(vpipe,
+                                      mesh_vert(vm, i, j, k)->co,
+                                      power_of_2_max_i(bp->seg));
+        }
       }
     }
   }
@@ -4934,6 +5098,9 @@ static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
  * using cubic subdivision, then make the BMVerts and the new faces. */
 static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
+#if DEBUG_CUSTOM_PROFILE_ADJ
+  printf("BEVEL BUILD RINGS\n");
+#endif
   int n, ns, ns2, odd, i, j, k, ring;
   VMesh *vm1, *vm;
   BoundVert *v;
@@ -4955,9 +5122,14 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
     v = bv->vmesh->boundstart;
     do {
       Profile *pro = &v->profile;
-      pro->super_r = bp->pro_super_r;
       copy_v3_v3(pro->midco, bv->v->co);
-      calculate_profile(bp, v);
+      if (!bp->use_custom_profile) {
+        pro->super_r = bp->pro_super_r;
+        calculate_profile(bp, v);
+      }
+      else {
+        calculate_profile_custom(bp, v, !v->is_profile_start);
+      }
       v = v->next;
     } while (v != bv->vmesh->boundstart);
   }
@@ -5027,20 +5199,8 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
         if (bp->vertex_only) {
           if (j < k) {
             if (k == ns2 && j == ns2 - 1) {
-              r_f = bev_create_quad_ex(bm,
-                                       bmv1,
-                                       bmv2,
-                                       bmv3,
-                                       bmv4,
-                                       f2,
-                                       f2,
-                                       f2,
-                                       f2,
-                                       NULL,
-                                       NULL,
-                                       v->next->efirst->e,
-                                       bme,
-                                       mat_nr);
+              r_f = bev_create_quad_ex(bm, bmv1, bmv2, bmv3, bmv4, f2, f2, f2, f2, NULL, NULL,
+                                       v->next->efirst->e, bme, mat_nr);
             }
             else {
               r_f = bev_create_quad(bm, bmv1, bmv2, bmv3, bmv4, f2, f2, f2, f2, mat_nr);
@@ -5307,7 +5467,14 @@ static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
     zero_v3(pro->plane_no);
     zero_v3(pro->proj_dir);
 
-    calculate_profile(bp, bndv);
+    if (!bp->use_custom_profile) {
+      calculate_profile(bp, bndv);
+    }
+    else {
+      /* The orientation of the bevel doesn't matter because there is no orientation chain / cycle
+       * to continue */
+      calculate_profile_custom(bp, bndv, false);
+    }
 
     for (k = 1; k < ns; k++) {
       get_profile_point(bp, pro, k, ns, co);
@@ -5372,6 +5539,8 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     copy_v3_v3(mesh_vert(vm, i, 0, 0)->co, bndv->nv.co); /* Move mesh NewVert to boundary NewVert */
     create_mesh_bmvert(bm, vm, i, 0, 0, bv->v); /* Create BMVert for that NewVert */
     bndv->nv.v = mesh_vert(vm, i, 0, 0)->v; /* Use the BMVert for the BoundVert's NewVert */
+
+    /* Calculate profiles and find boundverts for the weld case */
     if (weld && bndv->ebev) {
       if (!weld1) {
         weld1 = bndv;
@@ -5382,11 +5551,11 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         if (!bp->use_custom_profile) {
           calculate_profile(bp, weld1);
           calculate_profile(bp, weld2);
-          /* HANS-QUESTION: Why do we need to calculate the profile for both BoundVerts if we
-           * just copy over the NewVerts from one BoundVert to the other anyway? */
+          /* HANS-TODO: Try calculating just one of the profiles and see if it can work. It
+           * would be a small speedup if it did */
         }
         else {
-          /* HANS-TODO: Check if this is happening for the terminal edge case */
+          /* HANS-TODO: Just use the reverse param rather than swapping the two? */
           if (!weld1->is_profile_start) {
             SWAP(BoundVert *, weld1, weld2);
           }
@@ -5456,7 +5625,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         }
         else {
           mid_v3_v3v3(co, va, vb);
-          /* HANS-QUESTION: Why would you do this? */
+          /* HANS-QUESTION: Why would you do this? Wouldn't they be at the same position? */
         }
       }
       else {
@@ -6816,18 +6985,24 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
 /* What I think I need to be doing here is getting the 2D coords of the profile curve,
  * but I'm not positive that pro_spacing is the right place to store these. We'll see.
  * HANS-TODO: Verify this */
-static void set_profile_spacing_custom(BevelParams *bp, int seg, double *xvals, double *yvals)
+static void sample_custom_profile(BevelParams *bp, int seg, double *xvals, double *yvals)
 {
-  float x_temp, y_temp; /* Need temporary floats to convert to doubles */
+#if DEBUG_CUSTOM_PROFILE_SAMPLE
+  printf("SET PROFILE SPACING CUSTOM(seg = %d)\n", seg);
+#endif
+  float x_temp;
+  float y_temp;
 
-  profilewidget_initialize((ProfileWidget *)bp->prwdgt, seg); /* HANS-TODO: Fix */
-  if (!bp->sample_points) {
-    for (int i = 0; i < seg; i++) {
-      profilepath_evaluate(bp->prwdgt->profile, i, &x_temp, &y_temp);
-      xvals[i] = (double)y_temp;
-      yvals[i] = 1.0 - (double)x_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
-    }
+  profilewidget_initialize((ProfileWidget *)bp->prwdgt, seg);
+  for (int i = 0; i < seg; i++) {
+    profilewidget_evaluate(bp->prwdgt, i, &x_temp, &y_temp);
+    xvals[i] = (double)y_temp;
+    yvals[i] = 1.0 - (double)x_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
   }
+
+  /* HANS-TODO: Either use this instead or make a parametric subdivision method and get the
+   * resulting points from that */
+  /*profilepath_fill_segment_table(bp->prwdgt->profile, xvals, yvals);*/
 }
 
 /* The superellipse used for multisegment profiles does not
@@ -6842,34 +7017,27 @@ static void set_profile_spacing(BevelParams *bp)
 {
   int seg, seg_2;
 
+  /* Sample the input number of segments */
   seg = bp->seg;
   if (seg > 1) {
-
-    if (bp->use_custom_profile) {
-      /* HANS-TODO: This should be merged with the original arrays eventually, but for now allocate
-       * separate arrays */
-      bp->pro_spacing.xvals_custom = (double *)BLI_memarena_alloc(
-          bp->mem_arena, (size_t)(seg + 1) * sizeof(double));
-      bp->pro_spacing.yvals_custom = (double *)BLI_memarena_alloc(
-          bp->mem_arena, (size_t)(seg + 1) * sizeof(double));
-
-      if (!bp->sample_points) {
-        set_profile_spacing_custom(bp, seg, bp->pro_spacing.xvals_custom,
-                                   bp->pro_spacing.yvals_custom);
-      }
-      else {
-        copy_profile_point_locations(bp, bp->pro_spacing.xvals_custom,
-                                     bp->pro_spacing.yvals_custom);
-      }
-    }
-
     bp->pro_spacing.xvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (size_t)(seg + 1) * sizeof(double));
     bp->pro_spacing.yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (size_t)(seg + 1) * sizeof(double));
-    find_even_superellipse_chords(
-        seg, bp->pro_super_r, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
+    if (bp->use_custom_profile) {
+      if (bp->sample_points) {
+        copy_profile_point_locations(bp, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
+      }
+      else {
+        sample_custom_profile(bp, seg, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
+      }
+    }
+    else {
+      find_even_superellipse_chords(seg, bp->pro_super_r, bp->pro_spacing.xvals,
+                                    bp->pro_spacing.yvals);
+    }
 
+    /* Sample the segments used for interpolation when subdividing the vertex meshes */
     seg_2 = power_of_2_max_i(bp->seg);
     if (seg_2 == 2) {
       seg_2 = 4;
@@ -6878,30 +7046,25 @@ static void set_profile_spacing(BevelParams *bp)
     if (seg_2 == seg) {
       bp->pro_spacing.xvals_2 = bp->pro_spacing.xvals;
       bp->pro_spacing.yvals_2 = bp->pro_spacing.yvals;
-
-      bp->pro_spacing.xvals_2_custom = bp->pro_spacing.xvals_custom;
-      bp->pro_spacing.yvals_2_custom = bp->pro_spacing.yvals_custom;
     }
     else {
-
-      if (bp->use_custom_profile) {
-        bp->pro_spacing.xvals_2_custom = (double *)BLI_memarena_alloc(
-            bp->mem_arena, (size_t)(seg + 1) * sizeof(double));
-        bp->pro_spacing.yvals_2_custom = (double *)BLI_memarena_alloc(
-            bp->mem_arena, (size_t)(seg + 1) * sizeof(double));
-
-        /* Don't use the special function to just sample the coords of the points,
-         * we may need more samples than the number of points on the plot */
-        set_profile_spacing_custom(
-            bp, seg_2, bp->pro_spacing.xvals_2_custom, bp->pro_spacing.yvals_2_custom);
-      }
-
       bp->pro_spacing.xvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       bp->pro_spacing.yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                              (size_t)(seg_2 + 1) * sizeof(double));
-      find_even_superellipse_chords(
-          seg_2, bp->pro_super_r, bp->pro_spacing.xvals_2, bp->pro_spacing.yvals_2);
+      if (bp->use_custom_profile) {
+        if (bp->sample_points && seg == seg_2) {
+          copy_profile_point_locations(bp, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
+        } else {
+          /* Don't use the special function to just sample the coords of the points--
+           * we need more samples than the number of points on the plot */
+          sample_custom_profile(bp, seg_2, bp->pro_spacing.xvals_2, bp->pro_spacing.yvals_2);
+        }
+      }
+      else {
+        find_even_superellipse_chords(seg_2, bp->pro_super_r, bp->pro_spacing.xvals_2,
+                                      bp->pro_spacing.yvals_2);
+      }
     }
   }
   else { /* Only 1 segment, we don't need any profile information */
@@ -6909,10 +7072,6 @@ static void set_profile_spacing(BevelParams *bp)
     bp->pro_spacing.yvals = NULL;
     bp->pro_spacing.xvals_2 = NULL;
     bp->pro_spacing.yvals_2 = NULL;
-    bp->pro_spacing.xvals_custom = NULL;
-    bp->pro_spacing.yvals_custom = NULL;
-    bp->pro_spacing.xvals_2_custom = NULL;
-    bp->pro_spacing.yvals_2_custom = NULL;
     bp->pro_spacing.seg_2 = 0;
   }
 }
@@ -7208,6 +7367,8 @@ void BM_mesh_bevel(BMesh *bm,
 
   printf("\n=========== NEW BEVEL CALL ===========\n");
 
+
+
   if (bp.use_custom_profile && bp.sample_points) {
     /* We are sampling the segments from the points on the graph */
     bp.seg = prwdgt->profile->totpoint - 1;
@@ -7215,7 +7376,7 @@ void BM_mesh_bevel(BMesh *bm,
 
   /* TEST PROFILE CURVE */
 #if DEBUG_CUSTOM_PROFILE_SAMPLE
-  printf("%d segments\n", bp.seg);
+  printf("Test sample: %d segments\n", bp.seg);
   if (bp.use_custom_profile && bp.prwdgt != NULL) {
     profilewidget_initialize((const ProfileWidget *)prwdgt, bp.seg); /* will be necessary to fill a table */
 
@@ -7248,6 +7409,8 @@ void BM_mesh_bevel(BMesh *bm,
     bp.vert_hash = BLI_ghash_ptr_new(__func__);
     bp.mem_arena = BLI_memarena_new(MEM_SIZE_OPTIMAL(1 << 16), __func__);
     BLI_memarena_use_calloc(bp.mem_arena);
+
+    /* Get the 2D profile point locations from either the superellipse or the custom profile */
     set_profile_spacing(&bp);
 
     bp.face_hash = BLI_ghash_ptr_new(__func__);
@@ -7376,34 +7539,22 @@ void BM_mesh_bevel(BMesh *bm,
       BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
         BM_elem_flag_disable(l, BM_ELEM_LONG_TAG);
       }
-    }
 
-#if DEBUG_CUSTOM_PROFILE
-    printf("The normal spacings in the profile spacing struct:\n");
-    /* Figure out what's already in the ProfileSpacing struct to see if I should put the 2D custom
-     * profile sampling there */
-    if (bp.pro_spacing.xvals != NULL) {
-      for (int i = 0; i < bp.seg; i++) {
-        printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals[i], bp.pro_spacing.yvals[i]);
-      }
-      printf("\n");
-    }
-    else {
-      printf("Profile spacing values don't exist\n");
-    }
-    if (bp.use_custom_profile) {
+#if DEBUG_CUSTOM_PROFILE_SAMPLE
+      printf("Profile spacing struct:\n");
+      /* Figure out what's already in the ProfileSpacing struct to see if I should put the 2D custom
+       * profile sampling there */
       if (bp.pro_spacing.xvals != NULL) {
-        printf("The custom spacings in the profile spacing struct:\n");
         for (int i = 0; i < bp.seg; i++) {
-          printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals_custom[i], bp.pro_spacing.yvals_custom[i]);
+          printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals[i], bp.pro_spacing.yvals[i]);
         }
         printf("\n");
       }
       else {
-        printf("Custom profile spacing values don't exist\n");
+        printf("Profile spacing values don't exist\n");
       }
-    }
 #endif
+    }
 
     /* primary free */
     BLI_ghash_free(bp.vert_hash, NULL, NULL);
@@ -7411,3 +7562,10 @@ void BM_mesh_bevel(BMesh *bm,
     BLI_memarena_free(bp.mem_arena);
   }
 }
+
+#undef DEBUG_CUSTOM_PROFILE_SAMPLE
+#undef DEBUG_CUSTOM_PROFILE_ORIGINAL
+#undef DEBUG_CUSTOM_PROFILE_WELD
+#undef DEBUG_CUSTOM_PROFILE_ADJ
+#undef DEBUG_CUSTOM_PROFILE_ORIENTATION
+
