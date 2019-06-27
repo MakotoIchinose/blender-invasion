@@ -327,7 +327,7 @@ int lanpr_line_crosses_bounding_area(LANPR_RenderBuffer *fb,
   if (((converted[0] = (real)ba->l) > MAX2(l[0], r[0])) ||
       ((converted[1] = (real)ba->r) < MIN2(l[0], r[0])) ||
       ((converted[2] = (real)ba->b) > MAX2(l[1], r[1])) ||
-      ((converted[3] = (real)ba->u) < MIN2(l[1], r[1]))){
+      ((converted[3] = (real)ba->u) < MIN2(l[1], r[1]))) {
     return 0;
   }
 
@@ -377,20 +377,20 @@ int lanpr_triangle_covers_bounding_area(LANPR_RenderBuffer *fb,
 
   if ((FBC1[0] >= p1[0] && FBC1[0] <= p2[0] && FBC1[1] >= p1[1] && FBC1[1] <= p3[1]) ||
       (FBC2[0] >= p1[0] && FBC2[0] <= p2[0] && FBC2[1] >= p1[1] && FBC2[1] <= p3[1]) ||
-      (FBC3[0] >= p1[0] && FBC3[0] <= p2[0] && FBC3[1] >= p1[1] && FBC3[1] <= p3[1])){
+      (FBC3[0] >= p1[0] && FBC3[0] <= p2[0] && FBC3[1] >= p1[1] && FBC3[1] <= p3[1])) {
     return 1;
   }
 
   if (lanpr_point_inside_triangled(p1, FBC1, FBC2, FBC3) ||
       lanpr_point_inside_triangled(p2, FBC1, FBC2, FBC3) ||
       lanpr_point_inside_triangled(p3, FBC1, FBC2, FBC3) ||
-      lanpr_point_inside_triangled(p4, FBC1, FBC2, FBC3)){
+      lanpr_point_inside_triangled(p4, FBC1, FBC2, FBC3)) {
     return 1;
   }
 
   if ((lanpr_line_crosses_bounding_area(fb, FBC1, FBC2, ba)) ||
       (lanpr_line_crosses_bounding_area(fb, FBC2, FBC3, ba)) ||
-      (lanpr_line_crosses_bounding_area(fb, FBC3, FBC1, ba))){
+      (lanpr_line_crosses_bounding_area(fb, FBC3, FBC1, ba))) {
     return 1;
   }
 
@@ -4155,7 +4155,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 {
   LANPR_RenderBuffer *rb;
-  Scene* s = DEG_get_evaluated_scene(depsgraph);
+  Scene *s = DEG_get_evaluated_scene(depsgraph);
   SceneLANPR *lanpr = &s->lanpr;
 
   if (!lanpr->enabled) {
@@ -4558,9 +4558,9 @@ int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
   int frame_begin = scene->r.sfra;
   int frame_end = scene->r.efra;
 
-  for(frame = frame_begin;frame<=frame_end;frame++){
-    //BKE_scene_frame_set(scene,frame);
-    DEG_evaluate_on_framechange(CTX_data_main(C),dg,frame);
+  for (frame = frame_begin; frame <= frame_end; frame++) {
+    // BKE_scene_frame_set(scene,frame);
+    DEG_evaluate_on_framechange(CTX_data_main(C), dg, frame);
 
     lanpr_compute_feature_lines_internal(dg);
 
@@ -4570,8 +4570,6 @@ int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 
     lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
   }
-
-  
 
   return OPERATOR_FINISHED;
 }
@@ -4679,4 +4677,3 @@ void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot)
 
   ot->exec = lanpr_bake_gp_strokes_exec;
 }
-

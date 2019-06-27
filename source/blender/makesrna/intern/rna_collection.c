@@ -385,7 +385,6 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LANPR");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
-
   prop = RNA_def_property(srna, "enable_contour", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CONTOUR);
   RNA_def_property_ui_text(prop, "Contour", "Contour lines");

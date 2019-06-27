@@ -53,7 +53,7 @@ LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
       continue;
     }
 
-    if(match_flag && ((nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)&match_flag)==0){
+    if (match_flag && ((nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE) & match_flag) == 0) {
       continue;
     }
 
@@ -265,7 +265,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                        N,
                                        rl->flags,
                                        rls->occlusion);
-    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv,rl->flags))) {
+    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
       N[0] = N[1] = N[2] = 0;
@@ -363,7 +363,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     /*  below already done in step 2 */
     /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
      */
-    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv,rl->flags))) {
+    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
       /*  fix leading vertex type */
@@ -641,7 +641,7 @@ void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
           continue;
         }
         if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion||
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
             (cre->rlc->type != rlc->type)) {
           continue;
         }
@@ -688,7 +688,7 @@ void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
           continue;
         }
         if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion||
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
             (cre->rlc->type != rlc->type)) {
           continue;
         }

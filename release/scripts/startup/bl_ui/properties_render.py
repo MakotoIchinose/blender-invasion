@@ -739,6 +739,10 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             row.prop(lanpr,'auto_update',toggle=True,text='Auto')
             if not lanpr.auto_update:
                 row.operator("scene.lanpr_calculate", icon='RENDER_STILL', text='Update')
+        
+        layout.label(text = "CAUTION: this bakes ALL frames!")
+        row=layout.row()
+        row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake GPencil Strokes')
 
         if mode == "DPIX" or mode == "SOFTWARE":
             

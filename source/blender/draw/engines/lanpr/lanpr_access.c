@@ -82,7 +82,7 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (!rlc->object_ref) {
       continue; /* intersection lines are lost! */
     }
-    if(!(rlc->type & types)){
+    if (!(rlc->type & types)) {
       continue;
     }
     if (rlc->level > qi_end || rlc->level < qi_begin) {
