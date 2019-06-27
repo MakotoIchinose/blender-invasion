@@ -316,6 +316,15 @@ def _template_items_tool_select_actions_simple(operator, *, type, value, propert
     ]
 
 
+def _template_items_legacy_tools_from_numbers():
+    return [
+        ("wm.tool_set_by_index",
+         {"type": NUMBERS_1[i % 10], "value": 'PRESS', "shift": i >= 10},
+         {"properties": [("index", i)]})
+        for i in range(20)
+    ]
+
+
 # ------------------------------------------------------------------------------
 # Window, Screen, Areas, Regions
 
@@ -1078,7 +1087,7 @@ def km_view3d(params):
         items.extend([
             op_menu_pie("VIEW3D_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
             ("wm.context_toggle", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("data_path", 'space_data.show_gizmo_context')]}),
+             {"properties": [("data_path", 'space_data.show_gizmo')]}),
             op_menu_pie("VIEW3D_MT_pivot_pie", {"type": 'PERIOD', "value": 'PRESS'}),
             op_menu_pie("VIEW3D_MT_orientations_pie", {"type": 'COMMA', "value": 'PRESS'}),
             op_menu_pie(
@@ -1579,7 +1588,7 @@ def km_node_editor(params):
     def node_select_ops(select_mouse):
         return [
             ("node.select", {"type": select_mouse, "value": 'PRESS'},
-             {"properties": [("extend", False)]}),
+             {"properties": [("extend", False), ("deselect_all", True)]}),
             ("node.select", {"type": select_mouse, "value": 'PRESS', "ctrl": True},
              {"properties": [("extend", False)]}),
             ("node.select", {"type": select_mouse, "value": 'PRESS', "alt": True},
@@ -1617,7 +1626,7 @@ def km_node_editor(params):
          {"properties": [("detach", True)]}),
         ("node.resize", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, None),
         ("node.add_reroute", {"type": params.action_tweak, "value": 'ANY', "shift": True}, None),
-        ("node.links_cut", {"type": params.action_tweak, "value": 'ANY', "ctrl": True}, None),
+        ("node.links_cut", {"type": 'RIGHTMOUSE', "value": 'ANY', "ctrl": True}, None),
         ("node.select_link_viewer", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ("node.backimage_move", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
         ("node.backimage_zoom", {"type": 'V', "value": 'PRESS'},
@@ -1750,7 +1759,7 @@ def km_file_browser(_params):
     return keymap
 
 
-def km_file_browser_main(_params):
+def km_file_browser_main(params):
     items = []
     keymap = (
         "File Browser Main",
@@ -1799,7 +1808,7 @@ def km_file_browser_main(_params):
          {"properties": [("direction", 'RIGHT'), ("extend", True), ("fill", True)]}),
         ("file.previous", {"type": 'BUTTON4MOUSE', "value": 'CLICK'}, None),
         ("file.next", {"type": 'BUTTON5MOUSE', "value": 'CLICK'}, None),
-        ("file.select_all", {"type": 'A', "value": 'PRESS'}, None),
+        *_template_items_select_actions(params, "file.select_all"),
         ("file.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("file.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, None),
         ("file.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY', "shift": True},
@@ -3629,6 +3638,9 @@ def km_image_paint(params):
         op_panel("VIEW3D_PT_paint_texture_context_menu", params.context_menu_event),
     ])
 
+    if params.legacy:
+        items.extend(_template_items_legacy_tools_from_numbers())
+
     return keymap
 
 
@@ -3671,6 +3683,9 @@ def km_vertex_paint(params):
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
         op_panel("VIEW3D_PT_paint_vertex_context_menu", params.context_menu_event),
     ])
+
+    if params.legacy:
+        items.extend(_template_items_legacy_tools_from_numbers())
 
     return keymap
 
@@ -3715,6 +3730,10 @@ def km_weight_paint(params):
         items.extend([
             ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True}, None),
         ])
+
+
+    if params.legacy:
+        items.extend(_template_items_legacy_tools_from_numbers())
 
     return keymap
 
@@ -3809,6 +3828,9 @@ def km_sculpt(params):
         op_menu("VIEW3D_MT_angle_control", {"type": 'R', "value": 'PRESS'}),
         op_panel("VIEW3D_PT_sculpt_context_menu", params.context_menu_event),
     ])
+
+    if params.legacy:
+        items.extend(_template_items_legacy_tools_from_numbers())
 
     return keymap
 
@@ -4970,6 +4992,39 @@ def km_image_editor_tool_uv_sculpt_stroke(params):
     )
 
 
+def km_image_editor_tool_uv_move(params):
+    return (
+        "Image Editor Tool: Uv, Move",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.translate", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_image_editor_tool_uv_rotate(params):
+    return (
+        "Image Editor Tool: Uv, Rotate",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.rotate", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_image_editor_tool_uv_scale(params):
+    return (
+        "Image Editor Tool: Uv, Scale",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.resize", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("release_confirm", True)]}),
+        ]},
+    )
+
+
 def km_node_editor_tool_select(params):
     return (
         "Node Tool: Select",
@@ -5956,6 +6011,9 @@ def generate_keymaps(params=None):
         km_image_editor_tool_uv_select_circle(params),
         km_image_editor_tool_uv_select_lasso(params),
         km_image_editor_tool_uv_sculpt_stroke(params),
+        km_image_editor_tool_uv_move(params),
+        km_image_editor_tool_uv_rotate(params),
+        km_image_editor_tool_uv_scale(params),
         km_node_editor_tool_select(params),
         km_node_editor_tool_select_box(params),
         km_node_editor_tool_select_lasso(params),

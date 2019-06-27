@@ -571,8 +571,11 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
     const int viewport[4] = {0, 0, ar->winx, ar->winy};
     float co_3d_origin[3];
 
-    GPU_matrix_unproject_model_inverted(
-        co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d_origin);
+    /* Avoid multiple calculations. */
+    struct GPUMatrixUnproject_Precalc unproj_precalc;
+    GPU_matrix_unproject_precalc(&unproj_precalc, rv3d->viewmat, rv3d->winmat, viewport);
+
+    GPU_matrix_unproject_with_precalc(&unproj_precalc, co_screen, co_3d_origin);
 
     GLuint *buf_iter = buffer;
     int hit_found = -1;
@@ -583,7 +586,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
       wmGizmo *gz = visible_gizmos[buf_iter[3] >> 8];
       float co_3d[3];
       co_screen[2] = int_as_float(buf_iter[1]);
-      GPU_matrix_unproject_model_inverted(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d);
+      GPU_matrix_unproject_with_precalc(&unproj_precalc, co_screen, co_3d);
       float select_bias = gz->select_bias;
       if ((gz->flag & WM_GIZMO_DRAW_NO_SCALE) == 0) {
         select_bias *= gz->scale_final;
@@ -626,7 +629,7 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
   {
     for (int select_id = 0; select_id < visible_gizmos_len; select_id++) {
       wmGizmo *gz = visible_gizmos[select_id];
-      /* With both defined, favor the 3D, incase the gizmo can be used in 2D or 3D views. */
+      /* With both defined, favor the 3D, in case the gizmo can be used in 2D or 3D views. */
       if (gz->type->test_select && (gz->type->draw_select == NULL)) {
         if ((*r_part = gz->type->test_select(C, gz, co)) != -1) {
           hit = select_id;
@@ -1254,8 +1257,8 @@ void WM_gizmoconfig_update_tag_remove(wmGizmoMapType *gzmap_type, wmGizmoGroupTy
 }
 
 /**
- * Run incase new types have been added (runs often, early exit where possible).
- * Follows #WM_keyconfig_update concentions.
+ * Run in case new types have been added (runs often, early exit where possible).
+ * Follows #WM_keyconfig_update conventions.
  */
 void WM_gizmoconfig_update(struct Main *bmain)
 {
