@@ -21,9 +21,13 @@ struct HierarchyContext {
   Object *duplicator;
   float matrix_world[4][4];
 
-  // When true, the object will be exported only as transform, and only if is an ancestor of a
-  // non-weak child:
+  /* When true, the object will be exported only as transform, and only if is an ancestor of a
+   * non-weak child: */
   bool weak_export;
+
+  /* When true, this object should check its parents for animation data when determining whether
+   * it's animated. */
+  bool animation_check_include_parent;
 
   /* Determined during writer creation: */
   float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
@@ -50,7 +54,7 @@ class AbstractHierarchyWriter {
 class AbstractHierarchyIterator {
  public:
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
-  // Mapping from <object, duplicator> to its export-children.
+  // Mapping from <object, duplicator> to the object's export-children.
   typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext>> ExportGraph;
 
  protected:
@@ -67,12 +71,11 @@ class AbstractHierarchyIterator {
   void release_writers();
 
  private:
+  void construct_export_graph();
   void visit_object(Object *object, Object *export_parent, bool weak_export);
   void visit_dupli_object(DupliObject *dupli_object,
-                          const ExportGraph::key_type &graph_index,
                           Object *duplicator,
-                          Object *export_parent,
-                          bool weak_export);
+                          const std::set<Object *> &dupli_set);
   void prune_export_graph();
 
   void make_writers(const HierarchyContext &parent_context,

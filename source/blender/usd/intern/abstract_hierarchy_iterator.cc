@@ -45,67 +45,7 @@ void AbstractHierarchyIterator::release_writers()
 
 void AbstractHierarchyIterator::iterate()
 {
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-
-  // printf("====== Visiting objects:\n");
-  DEG_OBJECT_ITER_BEGIN (depsgraph,
-                         object,
-                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                             DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    if (object->base_flag & BASE_HOLDOUT) {
-      visit_object(object, object->parent, true);
-      continue;
-    }
-
-    // Non-instanced objects always have their object-parent as export-parent.
-    bool weak_export = !should_export_object(object);
-    visit_object(object, object->parent, weak_export);
-
-    if (weak_export) {
-      // If a duplicator shouldn't be exported, its duplilist also shouldn't be.
-      continue;
-    }
-
-    // Export the duplicated objects instanced by this object.
-    ListBase *lb = object_duplilist(depsgraph, scene, object);
-    if (lb) {
-      DupliObject *link = nullptr;
-
-      // Construct the set of duplicated objects, so that later we can determine whether a parent
-      // is also duplicated itself.
-      std::set<Object *> dupli_set;
-      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
-        if (!should_visit_duplilink(link)) {
-          continue;
-        }
-        dupli_set.insert(link->ob);
-      }
-
-      Object *export_parent = nullptr;
-      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
-        if (!should_visit_duplilink(link)) {
-          continue;
-        }
-
-        // If the dupli-object's scene parent is also instanced by this object, use that as the
-        // export parent. Otherwise use the dupli-parent as export parent.
-        ExportGraph::key_type graph_index;
-        if (link->ob->parent != nullptr && dupli_set.find(link->ob->parent) != dupli_set.end()) {
-          export_parent = link->ob->parent;
-          graph_index = std::make_pair(export_parent, object);
-        }
-        else {
-          export_parent = object;
-          graph_index = std::make_pair(export_parent, nullptr);
-        }
-
-        visit_dupli_object(link, graph_index, object, export_parent, false);
-      }
-    }
-
-    free_object_duplilist(lb);
-  }
-  DEG_OBJECT_ITER_END;
+  construct_export_graph();
 
   // // For debug: print the export graph.
   // printf("====== Export graph pre-prune:\n");
@@ -180,6 +120,58 @@ void AbstractHierarchyIterator::iterate()
   export_graph.clear();
 }
 
+void AbstractHierarchyIterator::construct_export_graph()
+{
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+
+  // printf("====== Visiting objects:\n");
+  DEG_OBJECT_ITER_BEGIN (depsgraph,
+                         object,
+                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                             DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
+    if (object->base_flag & BASE_HOLDOUT) {
+      visit_object(object, object->parent, true);
+      continue;
+    }
+
+    // Non-instanced objects always have their object-parent as export-parent.
+    bool weak_export = !should_export_object(object);
+    visit_object(object, object->parent, weak_export);
+
+    if (weak_export) {
+      // If a duplicator shouldn't be exported, its duplilist also shouldn't be.
+      continue;
+    }
+
+    // Export the duplicated objects instanced by this object.
+    ListBase *lb = object_duplilist(depsgraph, scene, object);
+    if (lb) {
+      DupliObject *link = nullptr;
+
+      // Construct the set of duplicated objects, so that later we can determine whether a parent
+      // is also duplicated itself.
+      std::set<Object *> dupli_set;
+      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
+        if (!should_visit_duplilink(link)) {
+          continue;
+        }
+        dupli_set.insert(link->ob);
+      }
+
+      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
+        if (!should_visit_duplilink(link)) {
+          continue;
+        }
+
+        visit_dupli_object(link, object, dupli_set);
+      }
+    }
+
+    free_object_duplilist(lb);
+  }
+  DEG_OBJECT_ITER_END;
+}
+
 void AbstractHierarchyIterator::visit_object(Object *object,
                                              Object *export_parent,
                                              bool weak_export)
@@ -189,6 +181,7 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context.export_parent = export_parent;
   context.duplicator = nullptr;
   context.weak_export = weak_export;
+  context.animation_check_include_parent = false;
   context.export_path = "";
   context.parent_writer = nullptr;
   copy_m4_m4(context.matrix_world, object->obmat);
@@ -204,18 +197,37 @@ void AbstractHierarchyIterator::visit_object(Object *object,
 }
 
 void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
-                                                   const ExportGraph::key_type &graph_index,
                                                    Object *duplicator,
-                                                   Object *export_parent,
-                                                   bool weak_export)
+                                                   const std::set<Object *> &dupli_set)
 {
+  ExportGraph::key_type graph_index;
+  bool animation_check_include_parent = false;
+
   HierarchyContext context;
   context.object = dupli_object->ob;
-  context.export_parent = export_parent;
   context.duplicator = duplicator;
-  context.weak_export = weak_export;
+  context.weak_export = false;
   context.export_path = "";
   context.parent_writer = nullptr;
+
+  /* If the dupli-object's scene parent is also instanced by this object, use that as the
+   * export parent. Otherwise use the dupli-parent as export parent. */
+  Object *parent = dupli_object->ob->parent;
+  if (parent != nullptr && dupli_set.find(parent) != dupli_set.end()) {
+    // The parent object is part of the duplicated collection.
+    context.export_parent = parent;
+    graph_index = std::make_pair(parent, duplicator);
+  }
+  else {
+    /* The parent object is NOT part of the duplicated collection. This means that the world
+     * transform of this dupliobject can be influenced by objects that are not part of its
+     * export graph. */
+    animation_check_include_parent = true;
+    context.export_parent = duplicator;
+    graph_index = std::make_pair(duplicator, nullptr);
+  }
+
+  context.animation_check_include_parent = animation_check_include_parent;
   copy_m4_m4(context.matrix_world, dupli_object->mat);
 
   export_graph[graph_index].insert(context);

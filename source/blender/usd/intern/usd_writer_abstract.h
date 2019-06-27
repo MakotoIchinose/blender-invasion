@@ -38,7 +38,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
 
  protected:
   virtual void do_write(HierarchyContext &context) = 0;
-  virtual bool check_is_animated(Object *object) const;
+  virtual bool check_is_animated(const HierarchyContext &context) const;
   pxr::UsdTimeCode get_export_time_code() const;
 };
 

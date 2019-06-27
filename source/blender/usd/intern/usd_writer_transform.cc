@@ -29,16 +29,8 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   xformOp_.Set(pxr::GfMatrix4d(parent_relative_matrix), get_export_time_code());
 }
 
-bool USDTransformWriter::check_is_animated(Object *object) const
+static bool check_is_transform_animated(Object *object, bool recurse_parent)
 {
-  /* We should also check the animation state of parents that aren't part of the export hierarchy
-   * (that is, when the animated parent is not instanced by the duplicator of the current object).
-   * For now, just assume duplis are transform-animated. */
-  // if (object->base_flag & BASE_FROM_DUPLI) {
-  //   return true;
-  // }
-  return true;
-
   AnimData *adt = BKE_animdata_from_id(&object->id);
   /* TODO(Sybren): make this check more strict, as the AnimationData may
    * actually be empty (no fcurves, drivers, etc.) and thus effectively
@@ -51,5 +43,14 @@ bool USDTransformWriter::check_is_animated(Object *object) const
     return true;
   }
 
+  if (recurse_parent && object->parent != nullptr) {
+    return check_is_transform_animated(object->parent, recurse_parent);
+  }
+
   return false;
+}
+
+bool USDTransformWriter::check_is_animated(const HierarchyContext &context) const
+{
+  return check_is_transform_animated(context.object, context.animation_check_include_parent);
 }

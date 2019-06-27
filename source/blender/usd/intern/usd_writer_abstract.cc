@@ -49,7 +49,7 @@ void USDAbstractWriter::write(HierarchyContext &context)
     }
   }
   else {
-    is_animated_ = export_params.do_animation && check_is_animated(context.object);
+    is_animated_ = export_params.do_animation && check_is_animated(context);
     // printf("%sANIMATION\033[0m: %20s: %s\n",
     //        is_animated_ ? "\033[32;1m" : "\033[31;1m",
     //        context.export_path.c_str(),
@@ -61,8 +61,10 @@ void USDAbstractWriter::write(HierarchyContext &context)
   frame_has_been_written_ = true;
 }
 
-bool USDAbstractWriter::check_is_animated(Object *object) const
+bool USDAbstractWriter::check_is_animated(const HierarchyContext &context) const
 {
+  const Object *object = context.object;
+
   if (object->data != nullptr) {
     AnimData *adt = BKE_animdata_from_id(static_cast<ID *>(object->data));
     /* TODO(Sybren): make this check more strict, as the AnimationData may

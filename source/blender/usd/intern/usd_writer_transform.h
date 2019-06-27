@@ -14,7 +14,7 @@ class USDTransformWriter : public USDAbstractWriter {
 
  protected:
   void do_write(HierarchyContext &context) override;
-  bool check_is_animated(Object *object) const override;
+  bool check_is_animated(const HierarchyContext &context) const override;
 };
 
 #endif /* __USD__USD_WRITER_TRANSFORM_H__ */
