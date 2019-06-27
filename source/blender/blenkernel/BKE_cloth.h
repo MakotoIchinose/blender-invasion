@@ -33,6 +33,7 @@ struct MFace;
 struct Mesh;
 struct Object;
 struct Scene;
+struct BVHTree;
 
 #define DO_INLINE MALWAYS_INLINE
 
@@ -307,5 +308,10 @@ void cloth_parallel_transport_hair_frame(float mat[3][3],
                                          const float dir_new[3]);
 
 ////////////////////////////////////////////////
+
+/* for cloth_remeshing.cpp */
+void cloth_to_mesh(struct Object *ob, struct ClothModifierData *clmd, struct Mesh *r_mesh);
+int cloth_build_springs(struct ClothModifierData *clmd, struct Mesh *mesh);
+struct BVHTree *bvhtree_build_from_cloth(struct ClothModifierData *clmd, float epsilon);
 
 #endif
