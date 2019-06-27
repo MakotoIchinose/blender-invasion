@@ -385,6 +385,27 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LANPR");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
+
+  prop = RNA_def_property(srna, "enable_contour", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CONTOUR);
+  RNA_def_property_ui_text(prop, "Contour", "Contour lines");
+
+  prop = RNA_def_property(srna, "enable_crease", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CREASE);
+  RNA_def_property_ui_text(prop, "Crease", "Crease lines");
+
+  prop = RNA_def_property(srna, "enable_mark", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_MARK);
+  RNA_def_property_ui_text(prop, "Mark", "Freestyle marked edges");
+
+  prop = RNA_def_property(srna, "enable_material", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_MATERIAL);
+  RNA_def_property_ui_text(prop, "Material", "Material lines");
+
+  prop = RNA_def_property(srna, "enable_intersection", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_INTERSECTION);
+  RNA_def_property_ui_text(prop, "Intersection", "Intersection lines");
+
   prop = RNA_def_property(srna, "force", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(

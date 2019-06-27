@@ -76,13 +76,23 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
             row.prop(lanpr,"target")
             
             if lanpr.target:
+
+                row = layout.row(align=True)
+                row.prop(lanpr,'enable_contour',toggle=True)
+                row.prop(lanpr,'enable_crease',toggle=True)
+                row.prop(lanpr,'enable_mark',toggle=True)
+                row.prop(lanpr,'enable_material',toggle=True)
+                row.prop(lanpr,'enable_intersection',toggle=True)
+
                 row = layout.row(align=True)
                 row.prop(lanpr,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
                 row.prop(lanpr,'level_begin')
                 if lanpr.use_multiple_levels:
                     row.prop(lanpr,'level_end')
+                
                 row = layout.row()
                 row.prop(lanpr,'replace', text='Replace existing frames')
+                
                 row = layout.row()
                 row.prop(lanpr,'layer')
                 row.prop(lanpr,'material')
