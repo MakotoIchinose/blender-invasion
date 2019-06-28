@@ -817,8 +817,7 @@ static void gpencil_free_runtime_data(GPENCIL_StorageList *stl)
   MEM_SAFE_FREE(stl->g_data->gp_object_cache);
 }
 
-static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
-                                    GPENCIL_StorageList *stl,
+static void gpencil_draw_pass_range(GPENCIL_StorageList *stl,
                                     GPENCIL_PassList *psl,
                                     GPUFrameBuffer *fb,
                                     Object *ob,
@@ -829,9 +828,6 @@ static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
   if (init_shgrp == NULL) {
     return;
   }
-
-  const bool do_antialiasing = ((!stl->storage->is_mat_preview) &&
-                                (stl->storage->multisamples > 0));
 
   DRWShadingGroup *shgrp = init_shgrp;
   DRWShadingGroup *from_shgrp = init_shgrp;
@@ -858,12 +854,7 @@ static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
                            from_shgrp,
                            to_shgrp);
       /* Clear Stencil and prepare for next group. */
-      if (do_antialiasing) {
-        GPU_framebuffer_clear_stencil(fbl->multisample_fb, 0x0);
-      }
-      else {
-        GPU_framebuffer_clear_stencil(fb, 0x0);
-      }
+      GPU_framebuffer_clear_stencil(fb, 0x0);
 
       /* Set new init group and reset. */
       do_last = false;
@@ -1027,6 +1018,8 @@ void GPENCIL_draw_scene(void *ved)
 
       GPU_framebuffer_bind(fbl->temp_a_fb);
       GPU_framebuffer_clear_color_depth_stencil(fbl->temp_a_fb, clearcol, 1.0f, 0x0);
+      const bool do_antialiasing = ((!stl->storage->is_mat_preview) &&
+                                    (stl->storage->multisamples > 0));
 
       for (int i = 0; i < stl->g_data->gp_cache_used; i++) {
         cache_ob = &stl->g_data->gp_object_cache[i];
@@ -1050,15 +1043,14 @@ void GPENCIL_draw_scene(void *ved)
 
             if (array_elm->mode == eGplBlendMode_Regular) {
               /* Draw current group in MSAA texture or final texture. */
-              gpencil_draw_pass_range(
-                  fbl, stl, psl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
+              GPUFrameBuffer *final_fb = (do_antialiasing) ? fbl->multisample_fb : fbl->temp_fx_fb;
+              gpencil_draw_pass_range(stl, psl, final_fb, ob, gpd, init_shgrp, end_shgrp);
             }
             else {
               /* Draw current group in separated texture to blend later. */
               GPU_framebuffer_bind(blend_fb);
               GPU_framebuffer_clear_color_depth_stencil(blend_fb, clearcol, 1.0f, 0x0);
-              gpencil_draw_pass_range(
-                  fbl, stl, psl, fbl->temp_fx_fb, ob, gpd, init_shgrp, end_shgrp);
+              gpencil_draw_pass_range(stl, psl, fbl->temp_fx_fb, ob, gpd, init_shgrp, end_shgrp);
 
               /* Draw Blended texture over MSAA texture */
               if (stl->storage->multisamples > 0) {
