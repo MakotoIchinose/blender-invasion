@@ -18,21 +18,30 @@ CCL_NAMESPACE_BEGIN
 
 /* Noise */
 
-ccl_device void svm_node_tex_noise(
-    KernelGlobals *kg, ShaderData *sd, float *stack, uint4 node, int *offset)
+ccl_device void svm_node_tex_noise(KernelGlobals *kg,
+                                   ShaderData *sd,
+                                   float *stack,
+                                   uint dimensions,
+                                   uint offsets1,
+                                   uint offsets2,
+                                   int *offset)
 {
-  uint co_offset, scale_offset, detail_offset, distortion_offset, fac_offset, color_offset;
+  uint co_offset, w_offset, scale_offset, detail_offset, distortion_offset, fac_offset,
+      color_offset;
 
-  decode_node_uchar4(node.y, &co_offset, &scale_offset, &detail_offset, &distortion_offset);
-  decode_node_uchar4(node.z, &color_offset, &fac_offset, NULL, NULL);
+  decode_node_uchar4(offsets1, &co_offset, &w_offset, &scale_offset, &detail_offset);
+  decode_node_uchar4(offsets2, &distortion_offset, &color_offset, &fac_offset, NULL);
 
-  uint4 node2 = read_node(kg, offset);
+  uint4 node1 = read_node(kg, offset);
 
-  float scale = stack_load_float_default(stack, scale_offset, node2.x);
-  float detail = stack_load_float_default(stack, detail_offset, node2.y);
-  float distortion = stack_load_float_default(stack, distortion_offset, node2.z);
-  float3 p = stack_load_float3(stack, co_offset) * scale;
-  int hard = 0;
+  float3 p = stack_load_float3(stack, co_offset);
+  float w = stack_load_float_default(stack, scale_offset, node1.x);
+  float scale = stack_load_float_default(stack, scale_offset, node1.y);
+  float detail = stack_load_float_default(stack, detail_offset, node1.z);
+  float distortion = stack_load_float_default(stack, distortion_offset, node1.w);
+
+  p *= scale;
+  w *= scale;
 
   if (distortion != 0.0f) {
     float3 r, offset = make_float3(13.5f, 13.5f, 13.5f);
@@ -43,7 +52,7 @@ ccl_device void svm_node_tex_noise(
 
     p += r;
   }
-
+  int hard = 0;
   float f = noise_turbulence(p, detail, hard);
 
   if (stack_valid(fac_offset)) {

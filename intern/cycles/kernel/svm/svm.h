@@ -305,7 +305,7 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg,
         svm_node_tex_image_box(kg, sd, stack, node);
         break;
       case NODE_TEX_NOISE:
-        svm_node_tex_noise(kg, sd, stack, node, &offset);
+        svm_node_tex_noise(kg, sd, stack, node.y, node.z, node.w, &offset);
         break;
 #  endif /* __TEXTURES__ */
 #  ifdef __EXTRA_NODES__

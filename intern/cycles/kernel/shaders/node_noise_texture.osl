@@ -15,46 +15,103 @@
  */
 
 #include "stdosl.h"
+#include "vector2.h"
+#include "vector4.h"
 #include "node_texture.h"
 
-/* Noise */
+#define vector3 point
 
-float noise(point ip, float distortion, float detail, output color Color)
+/* To compute the color output of the noise, we either swizzle the
+ * components, add a random offset {75, 125, 150}, or do both.
+ */
+
+float noise(float p, float detail, float distortion, output color Color)
 {
-  point r;
-  point p = ip;
-  int hard = 0;
-
   if (distortion != 0.0) {
-    r[0] = safe_noise(p + point(13.5), "unsigned") * distortion;
-    r[1] = safe_noise(p, "unsigned") * distortion;
-    r[2] = safe_noise(p - point(13.5), "unsigned") * distortion;
+    p += safe_noise(p + 13.5) * distortion;
+  }
 
+  float fac = noise_turbulence(p, detail);
+  Color = color(fac, noise_turbulence(p + 75.0, detail), noise_turbulence(p + 125.0, detail));
+  return fac;
+}
+
+float noise(vector2 p, float detail, float distortion, output color Color)
+{
+  if (distortion != 0.0) {
+    vector2 r;
+    r.x = safe_noise(p + vector2(13.5, 13.5)) * distortion;
+    r.y = safe_noise(p) * distortion;
     p += r;
   }
 
-  float fac = noise_turbulence(p, detail, hard);
-
+  float fac = noise_turbulence(p, detail);
   Color = color(fac,
-                noise_turbulence(point(p[1], p[0], p[2]), detail, hard),
-                noise_turbulence(point(p[1], p[2], p[0]), detail, hard));
+                noise_turbulence(p + vector2(150.0, 125.0), detail),
+                noise_turbulence(p + vector2(75.0, 125.0), detail));
+  return fac;
+}
 
+float noise(vector3 p, float detail, float distortion, output color Color)
+{
+  if (distortion != 0.0) {
+    vector3 r, offset = vector3(13.5);
+    r[0] = safe_noise(p + offset) * distortion;
+    r[1] = safe_noise(p) * distortion;
+    r[2] = safe_noise(p - offset) * distortion;
+    p += r;
+  }
+
+  float fac = noise_turbulence(p, detail);
+  Color = color(fac,
+                noise_turbulence(vector3(p[1], p[0], p[2]), detail),
+                noise_turbulence(vector3(p[1], p[2], p[0]), detail));
+  return fac;
+}
+
+float noise(vector4 p, float detail, float distortion, output color Color)
+{
+  if (distortion != 0.0) {
+    vector4 r, offset = vector4(13.5, 13.5, 13.5, 13.5);
+    r.x = safe_noise(p + offset) * distortion;
+    r.y = safe_noise(p) * distortion;
+    r.z = safe_noise(p - offset) * distortion;
+    r.w = safe_noise(vector4(p.w, p.y, p.z, p.x) + offset) * distortion;
+    p += r;
+  }
+
+  float fac = noise_turbulence(p, detail);
+  Color = color(fac,
+                noise_turbulence(vector4(p.y, p.w, p.z, p.x), detail),
+                noise_turbulence(vector4(p.y, p.z, p.w, p.x), detail));
   return fac;
 }
 
 shader node_noise_texture(int use_mapping = 0,
                           matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-                          float Distortion = 0.0,
+                          string dimensions = "3D",
+                          vector3 Vector = P,
+                          float W = 0.0,
                           float Scale = 5.0,
                           float Detail = 2.0,
-                          point Vector = P,
+                          float Distortion = 0.0,
                           output float Fac = 0.0,
                           output color Color = 0.0)
 {
-  point p = Vector;
-
+  vector3 p = Vector;
   if (use_mapping)
     p = transform(mapping, p);
+  p *= Scale;
+  float w = W * Scale;
 
-  Fac = noise(p * Scale, Distortion, Detail, Color);
+  if (dimensions == "1D")
+    Fac = noise(w, Detail, Distortion, Color);
+  else if (dimensions == "2D")
+    Fac = noise(vector2(p[0], p[1]), Detail, Distortion, Color);
+  else if (dimensions == "3D")
+    Fac = noise(p, Detail, Distortion, Color);
+  else if (dimensions == "4D")
+    Fac = noise(vector4(p[0], p[1], p[2], w), Detail, Distortion, Color);
+  else
+    error("Unknown dimension!");
 }

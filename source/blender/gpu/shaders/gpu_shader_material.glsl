@@ -3531,8 +3531,8 @@ void node_tex_noise_2d(
 {
   vec2 p = co.xy * scale;
   if (distortion != 0.0) {
-    vec2 r, offset = vec2(13.5, 13.5);
-    r.x = noise(p + offset) * distortion;
+    vec2 r;
+    r.x = noise(p + vec2(13.5)) * distortion;
     r.y = noise(p) * distortion;
     p += r;
   }
