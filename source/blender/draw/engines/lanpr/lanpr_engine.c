@@ -256,7 +256,8 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_int(stl->g_data->edge_thinning_shgrp, "stage", &stl->g_data->stage, 1);
     DRW_shgroup_call(stl->g_data->edge_thinning_shgrp, quad, NULL);
   }
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {
+  else if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+           !lanpr_share.dpix_shader_error) {
     LANPR_LineLayer *ll = lanpr->line_layers.first;
     psl->dpix_transform_pass = DRW_pass_create("DPIX Transform Stage", DRW_STATE_WRITE_COLOR);
     stl->g_data->dpix_transform_shgrp = DRW_shgroup_create(lanpr_share.dpix_transform_shader,
@@ -438,7 +439,8 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
     DRW_shgroup_call_no_cull(stl->g_data->multipass_shgrp, geom, ob);
   }
 
-  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {
+  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+      !lanpr_share.dpix_shader_error) {
     int idx = pd->begin_index;
     if (lanpr->reloaded) {
       pd->begin_index = lanpr_feed_atlas_data_obj(vedata,
@@ -465,7 +467,8 @@ static void lanpr_cache_finish(void *vedata)
   float mat[4][4];
   unit_m4(mat);
 
-  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer) {
+  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+      !lanpr_share.dpix_shader_error) {
     if (lanpr->reloaded) {
       if (lanpr_share.render_buffer_shared) {
         lanpr_feed_atlas_data_intersection_cache(vedata,
@@ -558,7 +561,7 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
   SceneLANPR *lanpr = &scene->lanpr;
   View3D *v3d = draw_ctx->v3d;
 
-  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX) {
+  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && !lanpr_share.dpix_shader_error) {
     DRW_draw_pass(psl->color_pass);
     lanpr_dpix_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }

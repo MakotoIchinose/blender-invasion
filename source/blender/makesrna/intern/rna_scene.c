@@ -2483,6 +2483,13 @@ void rna_lanpr_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
   lanpr->active_layer = value.data;
 }
 
+extern bool lanpr_dpix_shader_error();
+
+static bool rna_lanpr_shader_error_get(PointerRNA *ptr)
+{
+  return lanpr_dpix_shader_error();
+}
+
 #else
 
 /* Grease Pencil Interpolation tool settings */
@@ -7361,6 +7368,12 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Enable Chain Connection",
                            "Connect short chains in the image space into one longer chain");
+
+  prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", "");
+  RNA_def_property_ui_text(
+      prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU.");
 
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);

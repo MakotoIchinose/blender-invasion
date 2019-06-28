@@ -731,6 +731,10 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         layout.prop(lanpr, "master_mode", expand=True) 
 
+        if mode == "DPIX" and lanpr.shader_error:
+            layout.label(text="DPIX transfor shader compile error!")
+            return;
+
         if scene.render.engine!='BLENDER_LANPR':
             layout.label(text='Only Software mode result is used to generate GP stroke.')
 

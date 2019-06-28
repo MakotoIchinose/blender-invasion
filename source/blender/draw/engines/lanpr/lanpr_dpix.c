@@ -89,6 +89,10 @@ void lanpr_init_atlas_inputs(void *ved)
         NULL,
         datatoc_lanpr_dpix_project_clip_frag_glsl,
         NULL);
+    if (!lanpr_share.dpix_transform_shader) {
+      lanpr_share.dpix_shader_error = 1;
+      printf("LANPR: DPIX transform shader compile error.");
+    }
   }
   if (!lanpr_share.dpix_preview_shader) {
     lanpr_share.dpix_preview_shader = DRW_shader_create(
@@ -96,6 +100,10 @@ void lanpr_init_atlas_inputs(void *ved)
         datatoc_lanpr_dpix_preview_geom_glsl,
         datatoc_lanpr_dpix_preview_frag_glsl,
         NULL);
+    if (!lanpr_share.dpix_transform_shader) {
+      lanpr_share.dpix_shader_error = 1;
+      printf("LANPR: DPIX transform shader compile error.");
+    }
   }
 }
 void lanpr_destroy_atlas(void *ved)

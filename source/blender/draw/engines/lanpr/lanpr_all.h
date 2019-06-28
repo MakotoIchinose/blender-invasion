@@ -93,6 +93,7 @@ typedef struct LANPR_SharedResource {
   /* DPIX */
   GPUShader *dpix_transform_shader;
   GPUShader *dpix_preview_shader;
+  int dpix_shader_error;
 
   /* Software */
   GPUShader *software_shader;

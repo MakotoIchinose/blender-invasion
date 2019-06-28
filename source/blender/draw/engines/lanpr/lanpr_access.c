@@ -133,6 +133,11 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph)
   }
 }
 
+bool lanpr_dpix_shader_error()
+{
+  return lanpr_share.dpix_shader_error;
+}
+
 void lanpr_copy_data(Scene *from, Scene *to)
 {
   SceneLANPR *lanpr = &from->lanpr;
