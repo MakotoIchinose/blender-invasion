@@ -84,7 +84,7 @@ void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgra
       size[0], size[1], GPU_DEPTH_COMPONENT24, &draw_engine_gpencil_type);
   vedata->render_color_tx = DRW_texture_pool_query_2d(
       size[0], size[1], GPU_RGBA32F, &draw_engine_gpencil_type);
-  GPU_framebuffer_ensure_config(&fbl->main,
+  GPU_framebuffer_ensure_config(&fbl->main_fb,
                                 {GPU_ATTACHMENT_TEXTURE(vedata->render_depth_tx),
                                  GPU_ATTACHMENT_TEXTURE(vedata->render_color_tx)});
 
@@ -201,7 +201,7 @@ static void GPENCIL_render_result_z(struct RenderLayer *rl,
   if ((view_layer->passflag & SCE_PASS_Z) != 0) {
     RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_Z, viewname);
 
-    GPU_framebuffer_read_depth(vedata->fbl->main,
+    GPU_framebuffer_read_depth(vedata->fbl->main_fb,
                                rect->xmin,
                                rect->ymin,
                                BLI_rcti_size_x(rect),
@@ -243,8 +243,8 @@ static void GPENCIL_render_result_combined(struct RenderLayer *rl,
   RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_COMBINED, viewname);
   GPENCIL_FramebufferList *fbl = ((GPENCIL_Data *)vedata)->fbl;
 
-  GPU_framebuffer_bind(fbl->main);
-  GPU_framebuffer_read_color(vedata->fbl->main,
+  GPU_framebuffer_bind(fbl->main_fb);
+  GPU_framebuffer_read_color(vedata->fbl->main_fb,
                              rect->xmin,
                              rect->ymin,
                              BLI_rcti_size_x(rect),
@@ -298,13 +298,13 @@ void GPENCIL_render_to_image(void *vedata,
   stl->storage->camera = camera; /* save current camera */
 
   GPENCIL_FramebufferList *fbl = ((GPENCIL_Data *)vedata)->fbl;
-  if (fbl->main) {
-    GPU_framebuffer_texture_attach(fbl->main, ((GPENCIL_Data *)vedata)->render_depth_tx, 0, 0);
-    GPU_framebuffer_texture_attach(fbl->main, ((GPENCIL_Data *)vedata)->render_color_tx, 0, 0);
+  if (fbl->main_fb) {
+    GPU_framebuffer_texture_attach(fbl->main_fb, ((GPENCIL_Data *)vedata)->render_depth_tx, 0, 0);
+    GPU_framebuffer_texture_attach(fbl->main_fb, ((GPENCIL_Data *)vedata)->render_color_tx, 0, 0);
     /* clean first time the buffer */
     float clearcol[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    GPU_framebuffer_bind(fbl->main);
-    GPU_framebuffer_clear_color_depth(fbl->main, clearcol, 1.0f);
+    GPU_framebuffer_bind(fbl->main_fb);
+    GPU_framebuffer_clear_color_depth(fbl->main_fb, clearcol, 1.0f);
   }
 
   /* loop all objects and draw */
@@ -319,9 +319,9 @@ void GPENCIL_render_to_image(void *vedata,
   GPENCIL_render_result_z(render_layer, viewname, vedata, rect);
 
   /* detach textures */
-  if (fbl->main) {
-    GPU_framebuffer_texture_detach(fbl->main, ((GPENCIL_Data *)vedata)->render_depth_tx);
-    GPU_framebuffer_texture_detach(fbl->main, ((GPENCIL_Data *)vedata)->render_color_tx);
+  if (fbl->main_fb) {
+    GPU_framebuffer_texture_detach(fbl->main_fb, ((GPENCIL_Data *)vedata)->render_depth_tx);
+    GPU_framebuffer_texture_detach(fbl->main_fb, ((GPENCIL_Data *)vedata)->render_color_tx);
   }
 
   /* merge previous render image with new GP image */

@@ -224,10 +224,10 @@ typedef struct GPENCIL_PassList {
 } GPENCIL_PassList;
 
 typedef struct GPENCIL_FramebufferList {
-  struct GPUFrameBuffer *main;
-  struct GPUFrameBuffer *temp_fb_a;
-  struct GPUFrameBuffer *temp_fb_b;
-  struct GPUFrameBuffer *temp_fb_fx;
+  struct GPUFrameBuffer *main_fb;
+  struct GPUFrameBuffer *temp_a_fb;
+  struct GPUFrameBuffer *temp_b_fb;
+  struct GPUFrameBuffer *temp_fx_fb;
   struct GPUFrameBuffer *background_fb;
 
   struct GPUFrameBuffer *multisample_fb;
@@ -287,14 +287,14 @@ typedef struct g_data {
   struct GPUTexture *input_color_tx;
 
   /* working textures */
-  struct GPUTexture *temp_color_tx_a;
-  struct GPUTexture *temp_depth_tx_a;
+  struct GPUTexture *temp_color_a_tx;
+  struct GPUTexture *temp_depth_a_tx;
 
-  struct GPUTexture *temp_color_tx_b;
-  struct GPUTexture *temp_depth_tx_b;
+  struct GPUTexture *temp_color_b_tx;
+  struct GPUTexture *temp_depth_b_tx;
 
-  struct GPUTexture *temp_color_tx_fx;
-  struct GPUTexture *temp_depth_tx_fx;
+  struct GPUTexture *temp_color_fx_tx;
+  struct GPUTexture *temp_depth_fx_tx;
 
   int session_flag;
   bool do_instances;

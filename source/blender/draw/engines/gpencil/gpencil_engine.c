@@ -120,35 +120,35 @@ static void GPENCIL_create_framebuffers(void *vedata)
     /* Framebufers for basic object drawing */
     if (stl->storage->framebuffer_flag & GP_FRAMEBUFFER_BASIC) {
       /* temp textures for ping-pong buffers */
-      stl->g_data->temp_depth_tx_a = DRW_texture_pool_query_2d(
+      stl->g_data->temp_depth_a_tx = DRW_texture_pool_query_2d(
           size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);
-      stl->g_data->temp_color_tx_a = DRW_texture_pool_query_2d(
+      stl->g_data->temp_color_a_tx = DRW_texture_pool_query_2d(
           size[0], size[1], fb_format, &draw_engine_gpencil_type);
-      GPU_framebuffer_ensure_config(&fbl->temp_fb_a,
+      GPU_framebuffer_ensure_config(&fbl->temp_a_fb,
                                     {
-                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_depth_tx_a),
-                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_color_tx_a),
+                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_depth_a_tx),
+                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_color_a_tx),
                                     });
 
-      stl->g_data->temp_depth_tx_b = DRW_texture_pool_query_2d(
+      stl->g_data->temp_depth_b_tx = DRW_texture_pool_query_2d(
           size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);
-      stl->g_data->temp_color_tx_b = DRW_texture_pool_query_2d(
+      stl->g_data->temp_color_b_tx = DRW_texture_pool_query_2d(
           size[0], size[1], fb_format, &draw_engine_gpencil_type);
-      GPU_framebuffer_ensure_config(&fbl->temp_fb_b,
+      GPU_framebuffer_ensure_config(&fbl->temp_b_fb,
                                     {
-                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_depth_tx_b),
-                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_color_tx_b),
+                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_depth_b_tx),
+                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_color_b_tx),
                                     });
 
       /* used for FX effects and Layer blending */
-      stl->g_data->temp_depth_tx_fx = DRW_texture_pool_query_2d(
+      stl->g_data->temp_depth_fx_tx = DRW_texture_pool_query_2d(
           size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);
-      stl->g_data->temp_color_tx_fx = DRW_texture_pool_query_2d(
+      stl->g_data->temp_color_fx_tx = DRW_texture_pool_query_2d(
           size[0], size[1], fb_format, &draw_engine_gpencil_type);
-      GPU_framebuffer_ensure_config(&fbl->temp_fb_fx,
+      GPU_framebuffer_ensure_config(&fbl->temp_fx_fb,
                                     {
-                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_depth_tx_fx),
-                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_color_tx_fx),
+                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_depth_fx_tx),
+                                        GPU_ATTACHMENT_TEXTURE(stl->g_data->temp_color_fx_tx),
                                     });
     }
 
@@ -545,10 +545,10 @@ void GPENCIL_cache_init(void *vedata)
     DRWShadingGroup *blend_shgrp = DRW_shgroup_create(e_data.gpencil_blend_fullscreen_sh,
                                                       psl->blend_layers_pass);
     DRW_shgroup_call(blend_shgrp, quad, NULL);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeColor", &stl->g_data->temp_color_tx_a);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeDepth", &stl->g_data->temp_depth_tx_a);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendColor", &stl->g_data->temp_color_tx_fx);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendDepth", &stl->g_data->temp_depth_tx_fx);
+    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeColor", &stl->g_data->temp_color_a_tx);
+    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeDepth", &stl->g_data->temp_depth_a_tx);
+    DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendColor", &stl->g_data->temp_color_fx_tx);
+    DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendDepth", &stl->g_data->temp_depth_fx_tx);
     DRW_shgroup_uniform_int(blend_shgrp, "mode", &stl->storage->blend_mode, 1);
     DRW_shgroup_uniform_int(blend_shgrp, "clamp_layer", &stl->storage->clamp_layer, 1);
     DRW_shgroup_uniform_int(mix_shgrp, "tonemapping", &stl->storage->tonemapping, 1);
@@ -1018,8 +1018,10 @@ void GPENCIL_draw_scene(void *ved)
             sizeof(tGPencilObjectCache),
             gpencil_object_cache_compare_zdepth);
 
-      GPU_framebuffer_bind(fbl->temp_fb_a);
-      GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_a, clearcol, 1.0f, 0x0);
+      GPUFrameBuffer *blend_fb = fbl->temp_fx_fb;
+
+      GPU_framebuffer_bind(fbl->temp_a_fb);
+      GPU_framebuffer_clear_color_depth_stencil(fbl->temp_a_fb, clearcol, 1.0f, 0x0);
 
       for (int i = 0; i < stl->g_data->gp_cache_used; i++) {
         cache_ob = &stl->g_data->gp_object_cache[i];
@@ -1040,23 +1042,23 @@ void GPENCIL_draw_scene(void *ved)
                 GPU_framebuffer_bind(fbl->multisample_fb);
               }
               else {
-                GPU_framebuffer_bind(fbl->temp_fb_a);
+                GPU_framebuffer_bind(fbl->temp_a_fb);
               }
 
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp);
+                  fbl, stl, psl, txl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
             }
             else {
               /* Draw current group in separated texture to blend later. */
-              GPU_framebuffer_bind(fbl->temp_fb_fx);
-              GPU_framebuffer_clear_color_depth_stencil(fbl->temp_fb_fx, clearcol, 1.0f, 0x0);
+              GPU_framebuffer_bind(blend_fb);
+              GPU_framebuffer_clear_color_depth_stencil(blend_fb, clearcol, 1.0f, 0x0);
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fb_a, ob, gpd, init_shgrp, end_shgrp);
+                  fbl, stl, psl, txl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
 
               /* Draw Blended texture over MSAA texture */
               GPU_framebuffer_bind(fbl->multisample_fb);
               // TODO: How resolve the Blend?
-              // TODO: Clamp?
+              // TODO: Mask Layers?
               // Do I need use the blend layer pass/fragment (blend_layers_pass)
               // stl->g_data->input_depth_tx = txl->multisample_depth;
               // stl->g_data->input_color_tx = txl->multisample_color;
@@ -1065,7 +1067,7 @@ void GPENCIL_draw_scene(void *ved)
           }
 
           /* Resolve MSAA texture to A texture to follow with VFX */
-          MULTISAMPLE_GP_SYNC_DISABLE(stl->storage->multisamples, fbl, fbl->temp_fb_a, txl);
+          MULTISAMPLE_GP_SYNC_DISABLE(stl->storage->multisamples, fbl, fbl->temp_a_fb, txl);
         }
 
         /* Clear multisample framebuffer to avoid garbage in the screen */
@@ -1076,7 +1078,7 @@ void GPENCIL_draw_scene(void *ved)
         }
 
         /* Current buffer drawing */
-        GPU_framebuffer_bind(fbl->temp_fb_a);
+        GPU_framebuffer_bind(fbl->temp_a_fb);
         if ((!is_render) && (cache_ob->is_dup_ob == false)) {
           DRW_draw_pass(psl->drawing_pass);
         }
@@ -1086,15 +1088,15 @@ void GPENCIL_draw_scene(void *ved)
           gpencil_fx_draw(&e_data, vedata, cache_ob);
         }
 
-        stl->g_data->input_depth_tx = stl->g_data->temp_depth_tx_a;
-        stl->g_data->input_color_tx = stl->g_data->temp_color_tx_a;
+        stl->g_data->input_depth_tx = stl->g_data->temp_depth_a_tx;
+        stl->g_data->input_color_tx = stl->g_data->temp_color_a_tx;
 
         /* Combine with scene buffer */
-        if ((!is_render) || (fbl->main == NULL)) {
+        if ((!is_render) || (fbl->main_fb == NULL)) {
           GPU_framebuffer_bind(dfbl->default_fb);
         }
         else {
-          GPU_framebuffer_bind(fbl->main);
+          GPU_framebuffer_bind(fbl->main_fb);
         }
         /* tonemapping */
         stl->storage->tonemapping = DRW_state_do_color_management() ? 0 : 1;
