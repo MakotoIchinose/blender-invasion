@@ -1,6 +1,5 @@
 
 uniform sampler2D strokeColor;
-uniform sampler2D strokeDepth;
 uniform int mode;
 
 #define MODE_REGULAR 0
@@ -18,7 +17,6 @@ void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
   vec4 src = texelFetch(strokeColor, texel, 0).rgba;
-  gl_FragDepth = texelFetch(strokeDepth, texel, 0).r;
 
   switch (mode) {
     case MODE_REGULAR:

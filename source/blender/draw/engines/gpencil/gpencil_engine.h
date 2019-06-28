@@ -216,6 +216,7 @@ typedef struct GPENCIL_PassList {
   struct DRWPass *paper_pass;
   struct DRWPass *grid_pass;
   struct DRWPass *blend_layers_pass;
+  struct DRWPass *blend_layers_depth_pass;
 
   /* effects */
   struct DRWPass *fx_shader_pass;
@@ -321,6 +322,7 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *gpencil_fullscreen_sh;
   struct GPUShader *gpencil_simple_fullscreen_sh;
   struct GPUShader *gpencil_blend_fullscreen_sh;
+  struct GPUShader *gpencil_merge_depth_sh;
   struct GPUShader *gpencil_background_sh;
   struct GPUShader *gpencil_paper_sh;
 

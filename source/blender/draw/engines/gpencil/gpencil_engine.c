@@ -60,6 +60,7 @@ extern char datatoc_gpencil_edit_point_vert_glsl[];
 extern char datatoc_gpencil_edit_point_geom_glsl[];
 extern char datatoc_gpencil_edit_point_frag_glsl[];
 extern char datatoc_gpencil_blend_frag_glsl[];
+extern char datatoc_gpencil_merge_depth_frag_glsl[];
 
 extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
@@ -243,6 +244,9 @@ static void GPENCIL_create_shaders(void)
   if (!e_data.gpencil_blend_fullscreen_sh) {
     e_data.gpencil_blend_fullscreen_sh = DRW_shader_create_fullscreen(
         datatoc_gpencil_blend_frag_glsl, NULL);
+
+    e_data.gpencil_merge_depth_sh = DRW_shader_create_fullscreen(
+        datatoc_gpencil_merge_depth_frag_glsl, NULL);
   }
 
   /* shaders for use when drawing */
@@ -282,6 +286,7 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gpencil_fullscreen_sh);
   DRW_SHADER_FREE_SAFE(e_data.gpencil_simple_fullscreen_sh);
   DRW_SHADER_FREE_SAFE(e_data.gpencil_blend_fullscreen_sh);
+  DRW_SHADER_FREE_SAFE(e_data.gpencil_merge_depth_sh);
   DRW_SHADER_FREE_SAFE(e_data.gpencil_background_sh);
   DRW_SHADER_FREE_SAFE(e_data.gpencil_paper_sh);
 
@@ -543,10 +548,16 @@ void GPENCIL_cache_init(void *vedata)
                                              DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     DRWShadingGroup *blend_shgrp = DRW_shgroup_create(e_data.gpencil_blend_fullscreen_sh,
                                                       psl->blend_layers_pass);
-    DRW_shgroup_call(blend_shgrp, quad, NULL);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeColor", &stl->g_data->temp_color_a_tx);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeDepth", &stl->g_data->temp_depth_a_tx);
+    DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeColor", &stl->g_data->temp_color_fx_tx);
     DRW_shgroup_uniform_int(blend_shgrp, "mode", &stl->storage->blend_mode, 1);
+    DRW_shgroup_call(blend_shgrp, quad, NULL);
+
+    psl->blend_layers_depth_pass = DRW_pass_create("GPencil Merge Depth Pass",
+                                                   DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+    DRWShadingGroup *shgrp = DRW_shgroup_create(e_data.gpencil_merge_depth_sh,
+                                                psl->blend_layers_depth_pass);
+    DRW_shgroup_uniform_texture_ref(shgrp, "strokeDepth", &stl->g_data->temp_depth_fx_tx);
+    DRW_shgroup_call(shgrp, quad, NULL);
 
     /* create effects passes */
     if (!stl->storage->simplify_fx) {
@@ -809,7 +820,6 @@ static void gpencil_free_runtime_data(GPENCIL_StorageList *stl)
 static void gpencil_draw_pass_range(GPENCIL_FramebufferList *fbl,
                                     GPENCIL_StorageList *stl,
                                     GPENCIL_PassList *psl,
-                                    GPENCIL_TextureList *txl,
                                     GPUFrameBuffer *fb,
                                     Object *ob,
                                     bGPdata *gpd,
@@ -1041,14 +1051,14 @@ void GPENCIL_draw_scene(void *ved)
             if (array_elm->mode == eGplBlendMode_Regular) {
               /* Draw current group in MSAA texture or final texture. */
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
+                  fbl, stl, psl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
             }
             else {
               /* Draw current group in separated texture to blend later. */
               GPU_framebuffer_bind(blend_fb);
               GPU_framebuffer_clear_color_depth_stencil(blend_fb, clearcol, 1.0f, 0x0);
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_fx_fb, ob, gpd, init_shgrp, end_shgrp);
+                  fbl, stl, psl, fbl->temp_fx_fb, ob, gpd, init_shgrp, end_shgrp);
 
               /* Draw Blended texture over MSAA texture */
               if (stl->storage->multisamples > 0) {
@@ -1058,7 +1068,8 @@ void GPENCIL_draw_scene(void *ved)
                 GPU_framebuffer_bind(fbl->temp_a_fb);
               }
               stl->storage->blend_mode = array_elm->mode;
-              DRW_draw_pass(psl->blend_layers_pass);  // general copy of buffers
+              DRW_draw_pass(psl->blend_layers_pass);
+              DRW_draw_pass(psl->blend_layers_depth_pass);
             }
           }
 
