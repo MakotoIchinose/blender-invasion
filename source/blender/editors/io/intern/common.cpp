@@ -164,6 +164,7 @@ bool get_final_mesh(const ExportSettings *const settings,
                     float (*mat)[4][4] /* out */)
 {
   scale_m4_fl(*mat, settings->global_scale * get_unit_scale(escene));
+  mul_m4_m4m4(*mat, *mat, eob->obmat);
 
   change_orientation(*mat, settings->axis_forward, settings->axis_up);
 
@@ -238,6 +239,8 @@ bool export_end(bContext *UNUSED(C), ExportSettings *const settings)
   G.is_rendering = false;
   BKE_spacedata_draw_locks(false);
   DEG_graph_free(settings->depsgraph);
+  if (settings->format_specific)
+    MEM_freeN(settings->format_specific);
   MEM_freeN(settings);
   return true;
 }
