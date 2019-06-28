@@ -161,6 +161,7 @@ void BVH2::pack_unaligned_node(int idx,
 
 void BVH2::pack_nodes(const BVHNode *root)
 {
+  std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
   const size_t num_nodes = root->getSubtreeSize(BVH_STAT_NODE_COUNT);
   const size_t num_leaf_nodes = root->getSubtreeSize(BVH_STAT_LEAF_COUNT);
   assert(num_leaf_nodes <= num_nodes);

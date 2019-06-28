@@ -1904,7 +1904,7 @@ void MeshManager::device_update_bvh(Device *device,
   bparams.curve_flags = dscene->data.curve.curveflags;
   bparams.curve_subdivisions = dscene->data.curve.subdivisions;
 
-  VLOG(1) << "Using " << bvh_layout_name(bparams.bvh_layout) << " layout.";
+  std::cout << "Using " << bvh_layout_name(bparams.bvh_layout) << " layout.";
 
 #ifdef WITH_EMBREE
   if (bparams.bvh_layout == BVH_LAYOUT_EMBREE) {
@@ -1915,7 +1915,7 @@ void MeshManager::device_update_bvh(Device *device,
 #endif
 
   BVH *bvh = BVH::create(bparams, scene->objects);
-  bvh->build(progress, &device->stats);
+  bvh->buildTimed(progress, &device->stats);
 
   if (progress.get_cancel()) {
 #ifdef WITH_EMBREE

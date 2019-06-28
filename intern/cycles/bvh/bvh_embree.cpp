@@ -66,6 +66,7 @@
 #include "embree/kernels/common/scene.h"
 #include "embree/kernels/bvh/bvh.h"
 #include "embree/kernels/geometry/trianglev.h"
+#include "embree/kernels/geometry/instance.h"
 #include "bvh_node.h"
 CCL_NAMESPACE_BEGIN
 
@@ -95,7 +96,7 @@ ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
 }
 
 template<typename Primitive>
-BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::Scene *s) {
+BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::Scene *s, vector<Object*> objects) {
     if(node.isLeaf()) {
         size_t nb;
         Primitive *prims = reinterpret_cast<Primitive *>(node.leaf(nb));
@@ -159,8 +160,8 @@ BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::S
                     children[i] = nodeEmbreeToCcl<Primitive>(
                                 anode->children[i],
                                 RTCBoundBoxToCCL(anode->bounds(i)),
-                                s
-                                );
+                                s,
+                                objects);
             }
 
             ret = new InnerNode(
@@ -175,10 +176,90 @@ BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::S
     }
 }
 
-BVHNode* print_bvhInfo(RTCScene scene) {
+template<>
+BVHNode* nodeEmbreeToCcl<embree::InstancePrimitive>(embree::BVH4::NodeRef node, ccl::BoundBox bb, embree::Scene *s, vector<Object*> objects) {
+    if(node.isLeaf()) {
+        size_t nb;
+        embree::InstancePrimitive *prims = reinterpret_cast<embree::InstancePrimitive *>(node.leaf(nb));
+
+        std::stack<LeafNode *> leafs;
+
+        for(size_t i = 0; i < nb; i++) {
+            int id = prims[i].instance->geomID;
+            // BoundBox bb(make_float3(-2, -2, -2), make_float3(4, 4, 4)); // RTCBoundBoxToCCL(prims[i].instance->bounds(0));
+            // BoundBox bb = RTCBoundBoxToCCL(prims[i].instance->object->bounds.bounds());
+            // BoundBox bb = RTCBoundBoxToCCL(prims[i].instance->linearBounds(0, embree::BBox1f(0, 1)).bounds());
+            // embree::AffineSpace3fa loc2World = prims[i].instance->getLocal2World();
+
+            LeafNode *leafNode = new LeafNode(objects.at(id)->bounds, 4294967295, id, id + 1);
+            leafs.push(leafNode);
+
+            print_float3("MIN", bb.min);
+            print_float3("MAX", bb.max);
+        }
+
+        std::deque<BVHNode *> nodes;
+        BVHNode *ret = nullptr;
+        while(!leafs.empty()) {
+            nodes.push_back(leafs.top());
+            leafs.pop();
+        }
+
+        while(!nodes.empty()) {
+            if(ret == nullptr) {
+                ret = nodes.front();
+                nodes.pop_front();
+                continue;
+            }
+
+            if(ret->is_leaf() || ret->num_children()) {
+                ret = new InnerNode(bb, &ret, 1);
+            }
+
+            InnerNode *innerNode = dynamic_cast<InnerNode*>(ret);
+            innerNode->children[innerNode->num_children_++] = nodes.front();
+            nodes.pop_front();
+
+            if(ret->num_children() == 4) {
+                nodes.push_back(ret);
+                ret = nullptr;
+            }
+        }
+
+        return ret;
+    } else {
+        InnerNode *ret = nullptr;
+
+        if(node.isAlignedNode()) {
+            embree::BVH4::AlignedNode *anode = node.alignedNode();
+
+            BVHNode *children[4];
+            for(uint i = 0; i < 4; i++) {
+                    children[i] = nodeEmbreeToCcl<embree::InstancePrimitive>(
+                                anode->children[i],
+                                RTCBoundBoxToCCL(anode->bounds(i)),
+                                s,
+                                objects);
+            }
+
+            ret = new InnerNode(
+                        bb,
+                        children,
+                        4);
+        } else {
+            std::cout << "Unknown node" << std::endl;
+        }
+
+        return ret;
+    }
+}
+
+BVHNode* print_bvhInfo(RTCScene scene, vector<Object *> objects) {
     embree::Scene *s = (embree::Scene *)scene;
 
     std::cout << "<- Accel used ->" << std::endl;
+    std::vector<BVHNode *> nodes;
+    BoundBox bb = BoundBox::empty;
     for (embree::Accel *a : s->accels) {
         std::cout << "Accel " << a->intersectors.intersector1.name << std::endl;
         embree::AccelData *ad = a->intersectors.ptr;
@@ -187,16 +268,32 @@ BVHNode* print_bvhInfo(RTCScene scene) {
             embree::BVH4 *bvh = dynamic_cast<embree::BVHN<4> *>(ad);
             std::cout << "Prim type -> " << bvh->primTy->name() << std::endl;
 
-            embree::BVH4::NodeRef root = bvh->root;
-            return nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()), s);
-        }
+            if(bvh->primTy == &embree::Triangle4v::type) {
+                embree::BVH4::NodeRef root = bvh->root;
+                BVHNode *rootNode = nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()), s, objects);
+                bb.grow(rootNode->bounds);
+                nodes.push_back(rootNode);
+            } else if(bvh->primTy == &embree::InstancePrimitive::type) {
+                embree::BVH4::NodeRef root = bvh->root;
+                BVHNode *rootNode = nodeEmbreeToCcl<embree::InstancePrimitive>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()), s, objects);
+                bb.grow(rootNode->bounds);
+                nodes.push_back(rootNode);
+            } else {
+
+            }
+
+        } break;
         default:
             std::cout << "[EMBREE - BVH] Unknown type " << ad->type << std::endl;
             break;
         }
     }
     std::cout << "[DONE]" << std::endl;
-    return nullptr;
+
+    if(nodes.size() == 1)
+        return nodes.front();
+
+    return new InnerNode(bb, nodes.data(), nodes.size());
 }
 
 BVHNode *bvh_shrink(BVHNode *root) {
@@ -650,12 +747,11 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
 
   progress.set_substatus("Packing geometry");
   if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
-    BVHNode *root = print_bvhInfo(scene);
-    std::cout << "SAH4 " << root->computeSubtreeSAHCost(this->params) << std::endl;
-    root->print();
+    BVHNode *root = print_bvhInfo(scene, objects);
+    std::cout << "BVH4 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     root = bvh_shrink(root);
     pack_nodes(root);
-    std::cout << "SAH2 " << root->computeSubtreeSAHCost(this->params) << std::endl;
+    std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
   } else {
     pack_nodes(NULL);
   }
