@@ -4,6 +4,7 @@
 
 extern "C" {
 #include "BKE_anim.h"
+#include "BKE_particle.h"
 
 #include "BLI_assert.h"
 #include "BLI_math_matrix.h"
@@ -11,6 +12,7 @@ extern "C" {
 #include "DNA_ID.h"
 #include "DNA_layer_types.h"
 #include "DNA_object_types.h"
+#include "DNA_particle_types.h"
 
 #include "DEG_depsgraph_query.h"
 }
@@ -280,7 +282,6 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
                                              AbstractHierarchyWriter *parent_writer)
 {
   AbstractHierarchyWriter *xform_writer = nullptr;
-  AbstractHierarchyWriter *data_writer = nullptr;
   float parent_matrix_inv_world[4][4];
 
   if (parent_context.object == nullptr) {
@@ -315,25 +316,72 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
     BLI_assert(DEG_is_evaluated_object(context.object));
     xform_writer->write(context);
 
-    // Get or create the object data writer, but only if it is needed.
-    if (!context.weak_export && context.object->data != nullptr) {
-      HierarchyContext data_context = context;
-      ID *object_data = static_cast<ID *>(context.object->data);
-      std::string data_path = path_concatenate(export_path, get_id_name(object_data));
-
-      data_context.export_path = data_path;
-      data_context.parent_writer = xform_writer;
-
-      data_writer = ensure_writer(data_context, &AbstractHierarchyIterator::create_data_writer);
-      if (data_writer != nullptr) {
-        data_writer->write(data_context);
-      }
+    if (!context.weak_export) {
+      make_writers_particle_systems(context, xform_writer);
+      make_writer_object_data(context, xform_writer);
     }
 
+    // Recurse into this object's children.
     make_writers(context, xform_writer);
   }
 
   // TODO(Sybren): iterate over all unused writers and call unused_during_iteration() or something.
+}
+
+void AbstractHierarchyIterator::make_writers_particle_systems(
+    const HierarchyContext &xform_context, AbstractHierarchyWriter *xform_writer)
+{
+  Object *object = xform_context.object;
+  ParticleSystem *psys = static_cast<ParticleSystem *>(object->particlesystem.first);
+  for (; psys; psys = psys->next) {
+    if (!psys_check_enabled(object, psys, true)) {
+      continue;
+    }
+
+    HierarchyContext hair_context = xform_context;
+    hair_context.export_path = path_concatenate(xform_context.export_path,
+                                                get_id_name(&psys->part->id));
+    hair_context.parent_writer = xform_writer;
+    hair_context.particle_system = psys;
+
+    AbstractHierarchyWriter *writer = nullptr;
+    switch (psys->part->type) {
+      case PART_HAIR:
+        writer = ensure_writer(hair_context, &AbstractHierarchyIterator::create_hair_writer);
+        break;
+      case PART_EMITTER:
+        writer = ensure_writer(hair_context, &AbstractHierarchyIterator::create_particle_writer);
+        break;
+    }
+
+    if (writer != nullptr) {
+      writer->write(hair_context);
+    }
+  }
+}
+
+void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext &context,
+                                                        AbstractHierarchyWriter *xform_writer)
+{
+  if (context.object->data == nullptr) {
+    return;
+  }
+
+  HierarchyContext data_context = context;
+  ID *object_data = static_cast<ID *>(context.object->data);
+  std::string data_path = path_concatenate(context.export_path, get_id_name(object_data));
+
+  data_context.export_path = data_path;
+  data_context.parent_writer = xform_writer;
+
+  AbstractHierarchyWriter *data_writer;
+
+  data_writer = ensure_writer(data_context, &AbstractHierarchyIterator::create_data_writer);
+  if (data_writer == nullptr) {
+    return;
+  }
+
+  data_writer->write(data_context);
 }
 
 std::string AbstractHierarchyIterator::get_object_name(const Object *object) const

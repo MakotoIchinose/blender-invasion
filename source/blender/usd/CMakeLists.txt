@@ -51,6 +51,7 @@ set(SRC
   intern/usd_capi.cc
   intern/usd_hierarchy_iterator.cc
   intern/usd_writer_abstract.cc
+  intern/usd_writer_hair.cc
   intern/usd_writer_mesh.cc
   intern/usd_writer_transform.cc
 
@@ -58,6 +59,7 @@ set(SRC
   intern/abstract_hierarchy_iterator.h
   intern/usd_hierarchy_iterator.h
   intern/usd_writer_abstract.h
+  intern/usd_writer_hair.h
   intern/usd_writer_mesh.h
   intern/usd_writer_transform.h
 )

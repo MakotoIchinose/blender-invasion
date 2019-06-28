@@ -1,3 +1,38 @@
+/*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * The Original Code is Copyright (C) 2019 Blender Foundation.
+ * All rights reserved.
+ */
+
+/*
+ * This file contains the AbstractHierarchyIterator. It is intended for exporters for file
+ * formats that concern an entire hierarchy of objects (rather than, for example, an OBJ file that
+ * contains only a single mesh). Examples are Universal Scene Description (USD) and Alembic.
+ * AbstractHierarchyIterator is intended to be subclassed to support concrete file formats.
+ *
+ * The AbstractHierarchyIterator makes a distinction between the actual object hierarchy and the
+ * export hierarchy. The former is the parent/child structure in Blender, which can have multiple
+ * parent-like objects. For example, a duplicated object can have both a duplicator and a parent,
+ * both determining the final transform. The export hierarchy is the hierarchy as written to the
+ * file, and every object has only one export-parent.
+ *
+ * Currently the AbstractHierarchyIterator does not make any decisions about *what* to export.
+ * Selections like "selected only" or "no hair systems" are left to concrete subclasses.
+ */
+
 #ifndef __USD__ABSTRACT_HIERARCHY_ITERATOR_H__
 #define __USD__ABSTRACT_HIERARCHY_ITERATOR_H__
 
@@ -10,6 +45,7 @@ struct Depsgraph;
 struct DupliObject;
 struct ID;
 struct Object;
+struct ParticleSystem;
 struct ViewLayer;
 
 class AbstractHierarchyWriter;
@@ -33,6 +69,7 @@ struct HierarchyContext {
   float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
   std::string export_path;  // Hierarchical path, such as "/grandparent/parent/objectname".
   AbstractHierarchyWriter *parent_writer;  // The parent of this object during the export.
+  ParticleSystem *particle_system;         // Only set for particle/hair writers.
 
   // For making the struct insertable into a std::set<>.
   bool operator<(const HierarchyContext &other) const
@@ -82,6 +119,10 @@ class AbstractHierarchyIterator {
 
   void make_writers(const HierarchyContext &parent_context,
                     AbstractHierarchyWriter *parent_writer);
+  void make_writer_object_data(const HierarchyContext &context,
+                               AbstractHierarchyWriter *xform_writer);
+  void make_writers_particle_systems(const HierarchyContext &context,
+                                     AbstractHierarchyWriter *xform_writer);
 
   std::string get_object_name(const Object *object) const;
 
@@ -98,6 +139,8 @@ class AbstractHierarchyIterator {
 
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) = 0;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) = 0;
+  virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext &context) = 0;
+  virtual AbstractHierarchyWriter *create_particle_writer(const HierarchyContext &context) = 0;
 
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) = 0;
 

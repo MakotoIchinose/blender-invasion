@@ -1,6 +1,8 @@
 #include "../usd.h"
+
 #include "usd_hierarchy_iterator.h"
 #include "usd_writer_abstract.h"
+#include "usd_writer_hair.h"
 #include "usd_writer_mesh.h"
 #include "usd_writer_transform.h"
 
@@ -61,21 +63,22 @@ const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
   return export_time;
 }
 
+USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext &context)
+{
+  return USDExporterContext{depsgraph, stage, pxr::SdfPath(context.export_path), this, params};
+}
+
 AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const HierarchyContext &context)
 {
   // printf(
   //     "\033[32;1mCREATE\033[0m %s at %s\n", context.object->id.name,
   //     context.export_path.c_str());
-
-  USDExporterContext usd_export_context = {
-      depsgraph, stage, pxr::SdfPath(context.export_path), this, params};
-  return new USDTransformWriter(usd_export_context);
+  return new USDTransformWriter(create_usd_export_context(context));
 }
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const HierarchyContext &context)
 {
-  USDExporterContext usd_export_context = {
-      depsgraph, stage, pxr::SdfPath(context.export_path), this, params};
+  USDExporterContext usd_export_context = create_usd_export_context(context);
   USDAbstractWriter *data_writer = nullptr;
 
   switch (context.object->type) {
@@ -113,4 +116,14 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
   }
 
   return data_writer;
+}
+
+AbstractHierarchyWriter *USDHierarchyIterator::create_hair_writer(const HierarchyContext &context)
+{
+  return new USDHairWriter(create_usd_export_context(context));
+}
+
+AbstractHierarchyWriter *USDHierarchyIterator::create_particle_writer(const HierarchyContext &)
+{
+  return nullptr;
 }
