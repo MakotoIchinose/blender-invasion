@@ -305,7 +305,7 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
     //        context.duplicator ? context.duplicator->id.name + 2 : "");
 
     // Get or create the transform writer.
-    xform_writer = ensure_xform_writer(context);
+    xform_writer = ensure_writer(context, &AbstractHierarchyIterator::create_xform_writer);
     if (xform_writer == nullptr) {
       // Unable to export, so there is nothing to attach any children to; just abort this entire
       // branch of the export hierarchy.
@@ -324,7 +324,7 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
       data_context.export_path = data_path;
       data_context.parent_writer = xform_writer;
 
-      data_writer = ensure_data_writer(data_context);
+      data_writer = ensure_writer(data_context, &AbstractHierarchyIterator::create_data_writer);
       if (data_writer != nullptr) {
         data_writer->write(data_context);
       }
@@ -380,32 +380,17 @@ AbstractHierarchyWriter *AbstractHierarchyIterator::get_writer(const std::string
   return it->second;
 }
 
-AbstractHierarchyWriter *AbstractHierarchyIterator::ensure_xform_writer(
-    const HierarchyContext &context)
+AbstractHierarchyWriter *AbstractHierarchyIterator::ensure_writer(
+    const HierarchyContext &context, AbstractHierarchyIterator::create_writer_func create_func)
 {
-  AbstractHierarchyWriter *xform_writer = get_writer(context.export_path);
-  if (xform_writer != nullptr) {
-    return xform_writer;
+  AbstractHierarchyWriter *writer = get_writer(context.export_path);
+  if (writer != nullptr) {
+    return writer;
   }
 
-  xform_writer = create_xform_writer(context);
-  if (xform_writer != nullptr) {
-    writers[context.export_path] = xform_writer;
+  writer = (this->*create_func)(context);
+  if (writer != nullptr) {
+    writers[context.export_path] = writer;
   }
-  return xform_writer;
-}
-
-AbstractHierarchyWriter *AbstractHierarchyIterator::ensure_data_writer(
-    const HierarchyContext &context)
-{
-  AbstractHierarchyWriter *data_writer = get_writer(context.export_path);
-  if (data_writer != nullptr) {
-    return data_writer;
-  }
-
-  data_writer = create_data_writer(context);
-  if (data_writer != nullptr) {
-    writers[context.export_path] = data_writer;
-  }
-  return data_writer;
+  return writer;
 }

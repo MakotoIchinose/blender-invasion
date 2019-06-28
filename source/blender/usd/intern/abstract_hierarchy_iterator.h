@@ -86,8 +86,11 @@ class AbstractHierarchyIterator {
   std::string get_object_name(const Object *object) const;
 
   AbstractHierarchyWriter *get_writer(const std::string &name);
-  AbstractHierarchyWriter *ensure_xform_writer(const HierarchyContext &context);
-  AbstractHierarchyWriter *ensure_data_writer(const HierarchyContext &context);
+
+  typedef AbstractHierarchyWriter *(AbstractHierarchyIterator::*create_writer_func)(
+      const HierarchyContext &);
+  AbstractHierarchyWriter *ensure_writer(const HierarchyContext &context,
+                                         create_writer_func create_func);
 
  protected:
   virtual bool should_visit_duplilink(const DupliObject *link) const;
