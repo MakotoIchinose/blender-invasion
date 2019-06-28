@@ -3540,15 +3540,19 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 }
 
 #ifdef WITH_OPENXR
+
+#  ifdef WIN32
+//#    define USE_FORCE_WINDOWED_SESSION
+#  endif
+
 static void *xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
 {
-#  ifndef WIN32
+#  ifndef USE_FORCE_WINDOWED_SESSION
   wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
 
   wm_surface_add(surface);
 
-  return surface->ghost_ctx;
-
+  return surface->secondary_ghost_ctx ? surface->secondary_ghost_ctx : surface->ghost_ctx;
 #  else
 #    ifdef WIN32
   if (graphics_binding == GHOST_kXrGraphicsD3D11) {
@@ -3559,16 +3563,16 @@ static void *xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding grap
         return GHOST_GetWindowContext(win->ghostwin);
       }
     }
-    return NULL;
   }
 #    endif
+  return NULL;
 #  endif
 }
 
 static void xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(graphics_lib),
                                                    void *UNUSED(context))
 {
-#  ifndef WIN32
+#  ifndef USE_FORCE_WINDOWED_SESSION
   wmSurface *surface = wm_xr_session_surface_get();
 
   if (surface) { /* Might have been freed already */
@@ -3577,7 +3581,7 @@ static void xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUS
 #  endif
 }
 
-#  ifdef WIN32
+#  if defined(WIN32) && defined(USE_FORCE_WINDOWED_SESSION)
 static void xr_session_window_create(bContext *C)
 {
   Main *bmain = CTX_data_main(C);
@@ -3635,7 +3639,7 @@ static void xr_session_window_create(bContext *C)
     CTX_wm_window_set(C, win_prev);
   }
 }
-#  endif /* WIN32 */
+#  endif /* WIN32 && USE_FORCE_WINDOWED_SESSION */
 
 static void wm_xr_draw_view_fn(const GHOST_XrDrawViewInfo *UNUSED(draw_view), void *customdata)
 {
@@ -3656,7 +3660,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     GHOST_XrSessionEnd(wm->xr_context);
   }
   else {
-#  if defined(WIN32)
+#  if defined(WIN32) && defined(USE_FORCE_WINDOWED_SESSION)
     xr_session_window_create(C);
 #  endif
 

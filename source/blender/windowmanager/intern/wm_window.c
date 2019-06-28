@@ -2462,3 +2462,24 @@ void WM_opengl_context_release(void *context)
 }
 
 /** \} */
+
+#ifdef WIN32
+/* -------------------------------------------------------------------- */
+/** \name Direct DirectX Context Management
+ * \{ */
+
+void *WM_directx_context_create(void)
+{
+  BLI_assert(GPU_framebuffer_active_get() == NULL);
+  return GHOST_CreateDirectXContext(g_system);
+}
+
+void WM_directx_context_dispose(void *context)
+{
+  BLI_assert(GPU_framebuffer_active_get() == NULL);
+  GHOST_DisposeDirectXContext(g_system, context);
+}
+
+/** \} */
+
+#endif

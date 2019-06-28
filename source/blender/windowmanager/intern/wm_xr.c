@@ -104,14 +104,15 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int gpu_bi
 
   wm_window_clear_drawable(wm);
   wm_surface_clear_drawable();
+  surface->ghost_ctx = WM_opengl_context_create();
+  WM_opengl_context_activate(surface->ghost_ctx);
 
   switch (gpu_binding_type) {
     case GHOST_kXrGraphicsOpenGL:
-      surface->ghost_ctx = WM_opengl_context_create();
-      WM_opengl_context_activate(surface->ghost_ctx);
       break;
 #ifdef WIN32
     case GHOST_kXrGraphicsD3D11:
+      surface->secondary_ghost_ctx = WM_directx_context_create();
       break;
 #endif
   }

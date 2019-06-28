@@ -154,6 +154,10 @@ void *WM_opengl_context_create(void);
 void WM_opengl_context_dispose(void *context);
 void WM_opengl_context_activate(void *context);
 void WM_opengl_context_release(void *context);
+#ifdef WIN32
+void *WM_directx_context_create(void);
+void WM_directx_context_dispose(void *context);
+#endif
 
 /* defines for 'type' WM_window_open_temp */
 enum {

@@ -268,15 +268,7 @@ class GHOST_ISystem {
    * Overload to allow requesting a different context type. By default only OpenGL is supported.
    * However by explicitly overloading this a system may add support for others.
    */
-  virtual GHOST_IContext *createOffscreenContext(GHOST_TDrawingContextType type)
-  {
-    switch (type) {
-      case GHOST_kDrawingContextTypeOpenGL:
-        return createOffscreenContext();
-      default:
-        return NULL;
-    }
-  }
+  virtual GHOST_IContext *createOffscreenContext(GHOST_TDrawingContextType type) = 0;
 
   /**
    * Dispose of a context.
