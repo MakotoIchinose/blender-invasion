@@ -559,7 +559,9 @@ struct deduplicated_iterator {
       : deduplicated_iterator(mesh, dp, total, SourceIter{mesh})
   {
     // Reserve space so we don't constantly allocate
+    // if (dedup_pair.second.size() + reserve > dedup_pair.second.capacity()) {
     dedup_pair.second.reserve(reserve);
+    // }
     // Need to insert the first element, because we need to dereference before incrementing
     if (this->it != this->it.end()) {
       auto p = dedup_pair.first.insert(std::make_pair(*this->it, total++));
@@ -578,7 +580,7 @@ struct deduplicated_iterator {
   deduplicated_iterator &operator++()
   {
     // Handle everything until the next different element, or the end, by...
-    while (true) {
+    while (this->it != this->it.end()) {
       // going to the next element of the `SourceIter`
       ++this->it;
       // if at the end, we're done

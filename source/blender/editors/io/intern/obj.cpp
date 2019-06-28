@@ -305,24 +305,24 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
     // Loop index
     int li = p.loopstart;
     for (const MLoop &l : common::loop_of_poly_iter(mesh, p)) {
-      ulong vx = vertex_total + l.v;
-      ulong uv = 0;
-      ulong no = 0;
-      if (settings->export_uvs) {
+      ulong vx = vertex_total + l.v + 1;
+      ulong uv = 1;
+      ulong no = 1;
+      if (settings->export_uvs && mesh->mloopuv != nullptr) {
         if (format_specific->dedup_uvs)
-          uv = uv_mapping[uv_initial_count + li]->second;
+          uv = uv_mapping[uv_initial_count + li]->second + 1;
         else
-          uv = uv_initial_count + li;
+          uv = uv_initial_count + li + 1;
       }
       if (settings->export_normals) {
         if (format_specific->dedup_normals)
-          no = no_mapping[no_initial_count + l.v]->second;
+          no = no_mapping[no_initial_count + l.v]->second + 1;
         else
-          no = no_initial_count + l.v;
+          no = no_initial_count + l.v + 1;
       }
-      if (settings->export_uvs && settings->export_normals)
+      if (settings->export_uvs && settings->export_normals && mesh->mloopuv != nullptr)
         fprintf(file, " %lu/%lu/%lu", vx, uv, no);
-      else if (settings->export_uvs)
+      else if (settings->export_uvs && mesh->mloopuv != nullptr)
         fprintf(file, " %lu/%lu", vx, uv);
       else if (settings->export_normals)
         fprintf(file, " %lu//%lu", vx, no);
@@ -452,6 +452,7 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
         std::cerr << "Couldn't export materials\n";
       }
     }
+    fclose(obj_file);
   }
 }
 
