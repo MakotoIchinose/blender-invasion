@@ -62,6 +62,9 @@ extern "C" {
 
 #include "BPH_mass_spring.h"
 
+#include <vector>
+using namespace std;
+
 /******************************************************************************
  * cloth_remeshing_step - remeshing function for adaptive cloth modifier
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
@@ -301,7 +304,7 @@ static bool cloth_remeshing_fix_mesh(BMesh *bm, LinkNodePair *active_faces)
   return true;
 }
 
-static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *sizing)
+static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, vector<ClothSizing> &sizing)
 {
   /* BMVert v1 = *edge->v1; */
   float u1[2], u2[2];
@@ -354,11 +357,11 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, LinkNodePair *si
   float value = 0.0;
   float temp_v2[2];
   /* int index = BM_elem_index_get(&v1); */
-  /* ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, index)->link; */
-  ClothSizing *sizing_temp = (ClothSizing *)BLI_linklist_find(sizing->list, 0)->link;
+  /* ClothSizing sizing_temp = sizing[index] */
+  ClothSizing sizing_temp = sizing[0];
   /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't
    * matter since all sizing are same */
-  mul_v2_m2v2(temp_v2, sizing_temp->m, u12);
+  mul_v2_m2v2(temp_v2, sizing_temp.m, u12);
   value += dot_v2v2(u12, temp_v2);
 
   return sqrtf(fmax(value, 0.0f));
@@ -378,7 +381,7 @@ static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
 }
 
 static void cloth_remeshing_find_bad_edges(BMesh *bm,
-                                           LinkNodePair *sizing,
+                                           vector<ClothSizing> sizing,
                                            BMEdge ***r_edges,
                                            int *r_edges_len)
 {
@@ -612,7 +615,7 @@ static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
   }
 }
 
-static bool cloth_remeshing_split_edges(ClothModifierData *clmd, LinkNodePair *sizing)
+static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSizing> &sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
   int num_bad_edges;
@@ -781,25 +784,23 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
    * sizing indices match vertex indices
    * while appending new verticies ensure sizing is added at same index
    */
-  LinkNodePair sizing;
-  sizing.list = NULL;
-  sizing.last_node = NULL;
+  vector<ClothSizing> sizing;
   int numVerts = clmd->clothObject->bm->totvert;
 
   /**
    * Define sizing staticly
    */
   for (int i = 0; i < numVerts; i++) {
-    ClothSizing *size = (ClothSizing *)MEM_mallocN(sizeof(ClothSizing), "ClothSizing_single");
-    unit_m2(size->m);
-    mul_m2_fl(size->m, 1.0f / clmd->sim_parms->size_min);
-    BLI_linklist_append(&sizing, size);
+    ClothSizing size;
+    unit_m2(size.m);
+    mul_m2_fl(size.m, 1.0f / clmd->sim_parms->size_min);
+    sizing.push_back(size);
   }
 
   /**
    * Split edges
    */
-  while (cloth_remeshing_split_edges(clmd, &sizing)) {
+  while (cloth_remeshing_split_edges(clmd, sizing)) {
     /* empty while */
   }
   /* cloth_remeshing_split_edges(clmd, &sizing); */
@@ -828,7 +829,7 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Delete sizing
    */
-  BLI_linklist_freeN(sizing.list);
+  sizing.clear();
   // BLI_linklist_free(active_faces->list, NULL);
   // MEM_freeN(active_faces);
 }
