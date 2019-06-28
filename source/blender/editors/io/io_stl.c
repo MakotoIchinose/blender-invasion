@@ -31,10 +31,10 @@ static int wm_stl_export_exec(bContext *C, wmOperator *op)
   ExportSettings *settings = io_common_construct_default_export_settings(C, op);
   settings->use_scene_units = RNA_boolean_get(op->ptr, "use_scene_units");
 
-  settings->extra = MEM_mallocN(sizeof(STLExportSettings), "STLExportSettings");
-  STLExportSettings *extra = settings->extra;
+  settings->format_specific = MEM_mallocN(sizeof(STLExportSettings), "STLExportSettings");
+  STLExportSettings *format_specific = settings->format_specific;
 
-  extra->use_ascii = RNA_boolean_get(op->ptr, "use_ascii");
+  format_specific->use_ascii = RNA_boolean_get(op->ptr, "use_ascii");
 
   return io_common_export_exec(C, op, settings, &STL_export /* export function */);
 }

@@ -136,11 +136,7 @@ ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
   settings->scene = CTX_data_scene(C);
   settings->view_layer = CTX_data_view_layer(C);
   settings->main = CTX_data_main(C);
-  // If render_modifiers use render depsgraph, to get render modifiers
-  settings->depsgraph = DEG_graph_new(settings->scene,
-                                      settings->view_layer,
-                                      settings->render_modifiers ? DAG_EVAL_RENDER :
-                                                                   DAG_EVAL_VIEWPORT);
+  settings->depsgraph = NULL;  // Defer building
 
   RNA_string_get(op->ptr, "filepath", settings->filepath);
 

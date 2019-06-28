@@ -125,8 +125,9 @@ void STL_export_start(bContext *C, ExportSettings *const settings)
   for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings}) {
     Mesh *mesh;
     settings->triangulate = true;  // STL only really works with triangles
-    bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh);
-    if (((STLExportSettings *)settings->extra)->use_ascii) {
+    float mat[4][4];
+    bool needs_free = common::get_final_mesh(settings, escene, ob, &mesh, &mat);
+    if (((STLExportSettings *)settings->format_specific)->use_ascii) {
       if (!STL_export_mesh_ascii(C, settings, fs, ob, mesh))
         return;
     }

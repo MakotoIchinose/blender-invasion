@@ -38,25 +38,26 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
   settings->export_curves = RNA_boolean_get(op->ptr, "export_curves");
   settings->pack_uv = RNA_boolean_get(op->ptr, "pack_uv");
 
-  settings->extra = MEM_mallocN(sizeof(OBJExportSettings), "OBJExportSettings");
-  OBJExportSettings *extra = settings->extra;
+  settings->format_specific = MEM_mallocN(sizeof(OBJExportSettings), "OBJExportSettings");
+  OBJExportSettings *format_specific = settings->format_specific;
 
-  extra->start_frame = RNA_int_get(op->ptr, "start_frame");
-  extra->end_frame = RNA_int_get(op->ptr, "end_frame");
+  format_specific->start_frame = RNA_int_get(op->ptr, "start_frame");
+  format_specific->end_frame = RNA_int_get(op->ptr, "end_frame");
 
-  extra->export_animations = RNA_boolean_get(op->ptr, "export_animations");
-  extra->dedup_normals = RNA_boolean_get(op->ptr, "dedup_normals");
-  extra->dedup_normals_threshold = RNA_float_get(op->ptr, "dedup_normals_threshold");
-  extra->dedup_uvs = RNA_boolean_get(op->ptr, "dedup_uvs");
-  extra->dedup_uvs_threshold = RNA_float_get(op->ptr, "dedup_uvs_threshold");
-  extra->export_face_sets = RNA_boolean_get(op->ptr, "export_face_sets");
-  extra->path_mode = RNA_enum_get(op->ptr, "path_mode");
-  extra->export_objects_as_objects = RNA_boolean_get(op->ptr, "export_objects_as_objects");
-  extra->export_objects_as_groups = RNA_boolean_get(op->ptr, "export_objects_as_groups");
+  format_specific->export_animations = RNA_boolean_get(op->ptr, "export_animations");
+  format_specific->dedup_normals = RNA_boolean_get(op->ptr, "dedup_normals");
+  format_specific->dedup_normals_threshold = RNA_float_get(op->ptr, "dedup_normals_threshold");
+  format_specific->dedup_uvs = RNA_boolean_get(op->ptr, "dedup_uvs");
+  format_specific->dedup_uvs_threshold = RNA_float_get(op->ptr, "dedup_uvs_threshold");
+  format_specific->export_face_sets = RNA_boolean_get(op->ptr, "export_face_sets");
+  format_specific->path_mode = RNA_enum_get(op->ptr, "path_mode");
+  format_specific->export_objects_as_objects = RNA_boolean_get(op->ptr,
+                                                               "export_objects_as_objects");
+  format_specific->export_objects_as_groups = RNA_boolean_get(op->ptr, "export_objects_as_groups");
 
-  if (!extra->export_animations) {
-    extra->start_frame = BKE_scene_frame_get(CTX_data_scene(C));
-    extra->end_frame = extra->start_frame;
+  if (!format_specific->export_animations) {
+    format_specific->start_frame = BKE_scene_frame_get(CTX_data_scene(C));
+    format_specific->end_frame = format_specific->start_frame;
   }
 
   return io_common_export_exec(C, op, settings, &OBJ_export /* export function */);

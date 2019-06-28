@@ -12,15 +12,17 @@ extern "C" {
 #include "BKE_library.h"
 #include "BKE_customdata.h"
 
+#include "DNA_curve_types.h"
 #include "DNA_ID.h"
+#include "DNA_layer_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_space_types.h"
-#include "DNA_curve_types.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -144,7 +146,8 @@ bool OBJ_export_materials(bContext *C,
 
     ss << (mat->id.name + 2) << '"';
   }
-  ss << "], '" << path_reference_mode[((OBJExportSettings *)settings->extra)->path_mode].identifier
+  ss << "], '"
+     << path_reference_mode[((OBJExportSettings *)settings->format_specific)->path_mode].identifier
      << "')";
   std::cerr << "Running '" << ss.str() << "'\n";
   return BPY_execute_string(C, imports, ss.str().c_str());
@@ -237,6 +240,7 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
                      std::FILE *file,
                      const Object *eob,
                      Mesh *mesh,
+                     const float mat[4][4],
                      ulong &vertex_total,
                      ulong &uv_total,
                      ulong &no_total,
@@ -253,38 +257,34 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   if (mesh->totvert == 0)
     return true;
 
-  const OBJExportSettings *extra = (OBJExportSettings *)settings->extra;
+  const OBJExportSettings *format_specific = (OBJExportSettings *)settings->format_specific;
 
-  if (extra->export_objects_as_objects || extra->export_objects_as_groups) {
+  if (format_specific->export_objects_as_objects || format_specific->export_objects_as_groups) {
     std::string name = common::get_object_name(eob, mesh);
-    if (extra->export_objects_as_objects)
+    if (format_specific->export_objects_as_objects)
       fprintf(file, "o %s\n", name.c_str());
     else
       fprintf(file, "g %s\n", name.c_str());
   }
 
-  for (const MVert &v : common::vert_iter{mesh})
-    fprintf(file, "v %.6g %.6g %.6g\n", v.co[0], v.co[1], v.co[2]);
-  // auto vxs = common::get_vertices(mesh);
-  // for (const auto &v : vxs)
-  //   fs << "v " << v[0] << ' ' << v[1] << ' ' << v[2] << '\n';
+  for (const std::array<float, 3> &v : common::transformed_vertex_iter(mesh, mat)) {
+    fprintf(file, "v %.6g %.6g %.6g\n", v[0], v[1], v[2]);
+  }
 
+  // handles non-existant uvs
   if (settings->export_uvs) {
     // TODO someone Is T47010 still relevant?
-    if (extra->dedup_uvs)
+    if (format_specific->dedup_uvs)
       for (const std::array<float, 2> &uv :
            common::deduplicated_uv_iter(mesh, uv_total, uv_mapping_pair))
         fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
     else
       for (const std::array<float, 2> &uv : common::uv_iter{mesh})
         fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
-    // auto uvs = common::get_uv(mesh);
-    // for (const auto &uv : uvs)
-    //   fs << "vt " << uv[0] << ' ' << uv[1] << '\n';
   }
 
   if (settings->export_normals) {
-    if (extra->dedup_normals)
+    if (format_specific->dedup_normals)
       for (const std::array<float, 3> &no :
            common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
         fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
@@ -309,13 +309,13 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
       ulong uv = 0;
       ulong no = 0;
       if (settings->export_uvs) {
-        if (extra->dedup_uvs)
+        if (format_specific->dedup_uvs)
           uv = uv_mapping[uv_initial_count + li]->second;
         else
           uv = uv_initial_count + li;
       }
       if (settings->export_normals) {
-        if (extra->dedup_normals)
+        if (format_specific->dedup_normals)
           no = no_mapping[no_initial_count + l.v]->second;
         else
           no = no_initial_count + l.v;
@@ -338,7 +338,7 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   }
 
   vertex_total += mesh->totvert;
-  uv_total += mesh->totloop;
+  uv_total += mesh->mloopuv ? mesh->totloop : 0;
   no_total += mesh->totvert;
   return true;
 }
@@ -354,21 +354,19 @@ bool OBJ_export_object(bContext *C,
                        dedup_pair_t<uv_key_t> &uv_mapping_pair,
                        dedup_pair_t<no_key_t> &no_mapping_pair)
 {
-  // TODO someone Should it be evaluated first? Is this expensive? Breaks mesh_create_eval_final
-  // Object *eob = DEG_get_evaluated_object(settings->depsgraph, base->object);
-
-  struct Mesh *mesh = nullptr;
-  bool needs_free = false;
-
   switch (ob->type) {
-    case OB_MESH:
-      needs_free = common::get_final_mesh(settings, scene, ob, &mesh /* OUT */);
+    case OB_MESH: {
+      struct Mesh *mesh = nullptr;
+      float mat[4][4];
+      bool needs_free = false;
+      needs_free = common::get_final_mesh(settings, scene, ob, &mesh /* OUT */, &mat /* OUT */);
 
       if (!OBJ_export_mesh(C,
                            settings,
                            file,
                            ob,
                            mesh,
+                           mat,
                            vertex_total,
                            uv_total,
                            no_total,
@@ -378,6 +376,7 @@ bool OBJ_export_object(bContext *C,
 
       common::free_mesh(mesh, needs_free);
       return true;
+    }
     case OB_CURVE:
     case OB_SURF:
       if (settings->export_curves)
@@ -396,50 +395,56 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
 {
   common::export_start(C, settings);
 
-  const OBJExportSettings *extra = (OBJExportSettings *)settings->extra;
+  const OBJExportSettings *format_specific = (OBJExportSettings *)settings->format_specific;
 
   // If not exporting animations, the start and end are the same
-  for (int frame = extra->start_frame; frame <= extra->end_frame; ++frame) {
-    std::FILE *obj_file = get_file(settings->filepath, ".obj", extra->export_animations, frame);
+  for (int frame = format_specific->start_frame; frame <= format_specific->end_frame; ++frame) {
+    std::FILE *obj_file = get_file(
+        settings->filepath, ".obj", format_specific->export_animations, frame);
     if (obj_file == nullptr)
       return;
 
     fprintf(obj_file, "# %s\n# www.blender.org\n", common::get_version_string().c_str());
-
     BKE_scene_frame_set(settings->scene, frame);
     BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
     Scene *escene = DEG_get_evaluated_scene(settings->depsgraph);
     ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
     /* clang-format off */
-    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(extra->dedup_uvs_threshold);
-    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(extra->dedup_normals_threshold);
+    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(format_specific->dedup_uvs_threshold);
+    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(format_specific->dedup_normals_threshold);
 
-    std::string mtl_path = get_path(settings->filepath, ".mtl", extra->export_animations, frame);
+    std::string mtl_path = get_path(settings->filepath, ".mtl", format_specific->export_animations, frame);
     std::set<const Material *> materials;
     /* clang-format on */
 
-    fprintf(obj_file, "mtllib %s\n", mtl_path.c_str() + mtl_path.find_last_of("/\\") + 1);
+    fprintf(obj_file, "mtllib %s\n", (mtl_path.c_str() + mtl_path.find_last_of("/\\") + 1));
 
-    for (const Object *const ob : common::exportable_object_iter{settings->view_layer, settings}) {
-      if (!OBJ_export_object(C,
-                             settings,
-                             escene,
-                             ob,
-                             obj_file,
-                             vertex_total,
-                             uv_total,
-                             no_total,
-                             uv_mapping_pair,
-                             no_mapping_pair)) {
-        return;
-      }
+    DEG_OBJECT_ITER_BEGIN (settings->depsgraph,
+                           ob,
+                           DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                               DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_DUPLI) {
+      if (common::should_export_object(settings, ob)) {
+        if (!OBJ_export_object(C,
+                               settings,
+                               escene,
+                               ob,
+                               obj_file,
+                               vertex_total,
+                               uv_total,
+                               no_total,
+                               uv_mapping_pair,
+                               no_mapping_pair)) {
+          return;
+        }
 
-      if (settings->export_materials) {
-        auto mi = material_iter(ob);
-        materials.insert(mi.begin(), mi.end());
+        if (settings->export_materials) {
+          auto mi = material_iter(ob);
+          materials.insert(mi.begin(), mi.end());
+        }
       }
     }
+    DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
 
     if (settings->export_materials) {
       if (!OBJ_export_materials(C, settings, mtl_path, materials)) {

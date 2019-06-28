@@ -59,7 +59,7 @@ typedef struct ExportSettings {
   bool use_scene_units;
   float global_scale;
 
-  void *extra;  // Pointer to struct with extra settings that vary by exporter
+  void *format_specific;  // Pointer to struct with extra settings that vary by exporter
 
   /* bool (*should_export_object)(const ExportSettings * const settings, const Object * const eob);
    */

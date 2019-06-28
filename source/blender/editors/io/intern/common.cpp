@@ -106,11 +106,9 @@ bool should_export_object(const ExportSettings *const settings, const Object *co
     /* These tests only make sense when the object isn't being instanced
      * into the scene. When it is, its exportability is determined by
      * its dupli-object and the DupliObject::no_draw property. */
-    return (settings->selected_only && (ob->flag & BASE_SELECTED) != 0) ||
-           // FIXME Sybren: handle these cleanly (maybe just remove code),
-           // now using active scene layer instead.
-           (settings->visible_only && (ob->flag & BASE_VISIBLE) != 0) ||
-           (settings->renderable_only && (ob->flag & BASE_ENABLED_RENDER) != 0);
+    return (settings->selected_only ? ((ob->base_flag & BASE_SELECTED) != 0) : true) &&
+           (settings->visible_only ? ((ob->base_flag & BASE_VISIBLE) != 0) : true) &&
+           (settings->renderable_only ? ((ob->base_flag & BASE_ENABLED_RENDER) != 0) : true);
   }
   else if (!(ob->parent != NULL && ob->parent->transflag & OB_DUPLI))
     return should_export_object(settings, ob->parent);
@@ -161,45 +159,25 @@ float get_unit_scale(const Scene *const scene)
 
 bool get_final_mesh(const ExportSettings *const settings,
                     const Scene *const escene,
-                    const Object *ob,
-                    Mesh **mesh /* out */)
+                    const Object *eob,
+                    Mesh **mesh /* out */,
+                    float (*mat)[4][4] /* out */)
 {
-  /* Based on abc_mesh.cc */
+  scale_m4_fl(*mat, settings->global_scale * get_unit_scale(escene));
 
-  /* Temporarily disable modifiers if we shouldn't apply them */
-  if (!settings->apply_modifiers)
-    for (ModifierData &md : common::modifier_iter{ob})
-      md.mode |= eModifierMode_DisableTemporary;
-
-  float scale_mat[4][4];
-  scale_m4_fl(scale_mat, settings->global_scale * get_unit_scale(escene));
-
-  change_orientation(scale_mat, settings->axis_forward, settings->axis_up);
+  change_orientation(*mat, settings->axis_forward, settings->axis_up);
 
   // TODO someone Unsure if necessary
-  // scale_mat[3][3] = m_settings.global_scale;  /* also scale translation */
+  // mat[3][3] = m_settings.global_scale;  /* also scale translation */
 
   // TODO someone Doesn't seem to do anyhing. Is it necessary to update the object somehow?
-  mul_m4_m4m4((float(*)[4])ob->obmat, ob->obmat, scale_mat);
+  // mul_m4_m4m4((float(*)[4])eob->obmat, eob->obmat, mat);
   // yup_mat[3][3] /= m_settings.global_scale;  /* normalise the homogeneous component */
 
-  if (determinant_m4(ob->obmat) < 0.0)
+  if (determinant_m4(*mat) < 0.0)
     ; /* TODO someone flip normals */
 
-  /* Object *ob = DEG_get_evaluated_object(settings->depsgraph, ob); */
-  // *mesh = mesh_get_eval_final(settings->depsgraph, (Scene *) escene,
-  //                             (Object *) ob, &CD_MASK_MESH);
-
-  if (settings->render_modifiers)  // vv Depends on depsgraph type
-    *mesh = mesh_create_eval_final_render(
-        settings->depsgraph, (Scene *)escene, (Object *)ob, &CD_MASK_MESH);
-  else
-    *mesh = mesh_create_eval_final_view(
-        settings->depsgraph, (Scene *)escene, (Object *)ob, &CD_MASK_MESH);
-
-  if (!settings->apply_modifiers)
-    for (ModifierData &md : common::modifier_iter{ob})
-      md.mode &= ~eModifierMode_DisableTemporary;
+  *mesh = eob->runtime.mesh_eval;
 
   if (settings->triangulate) {
     struct BMeshCreateParams bmcp = {false};
@@ -245,6 +223,11 @@ void export_start(bContext *UNUSED(C), ExportSettings *const settings)
    */
   G.is_rendering = true;  // TODO someone Should use BKE_main_lock(bmain);?
   BKE_spacedata_draw_locks(true);
+  // If render_modifiers use render depsgraph, to get render modifiers
+  settings->depsgraph = DEG_graph_new(settings->scene,
+                                      settings->view_layer,
+                                      settings->render_modifiers ? DAG_EVAL_RENDER :
+                                                                   DAG_EVAL_VIEWPORT);
   DEG_graph_build_from_view_layer(
       settings->depsgraph, settings->main, settings->scene, settings->view_layer);
   BKE_scene_graph_update_tagged(settings->depsgraph, settings->main);
@@ -259,7 +242,6 @@ bool export_end(bContext *UNUSED(C), ExportSettings *const settings)
   return true;
 }
 
-/* clang-format off */
 bool time_export(bContext *C,
                  ExportSettings *const settings,
                  void (*start)(bContext *C, ExportSettings *const settings),
@@ -269,11 +251,12 @@ bool time_export(bContext *C,
   start(C, settings);
   auto ret = end(C, settings);
   std::cout << "Took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>
-               (std::chrono::steady_clock::now() - f).count() << "ms\n";
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now() - f)
+                   .count()
+            << "ms\n";
   return ret;
 }
-/* clang-format on */
 
 const std::array<float, 3> calculate_normal(const Mesh *const mesh, const MPoly &mp)
 {

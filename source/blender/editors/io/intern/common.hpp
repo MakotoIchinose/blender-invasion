@@ -69,8 +69,9 @@ void change_orientation(float (&mat)[4][4], int forward, int up);
 
 bool get_final_mesh(const ExportSettings *const settings,
                     const Scene *const escene,
-                    const Object *ob,
-                    Mesh **mesh /* out */);
+                    const Object *eob,
+                    Mesh **mesh /* out */,
+                    float (*mat)[4][4] /* out */);
 
 void free_mesh(Mesh *mesh, bool needs_free);
 

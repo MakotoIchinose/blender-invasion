@@ -108,6 +108,22 @@ struct vert_iter : pointer_iterator<MVert> {
   vert_iter(const Mesh *const m) : pointer_iterator(m->mvert, m->totvert) {}
 };
 
+struct transformed_vertex_iter : pointer_iterator_base<MVert> {
+  using Mat = const float(*)[4]; // Must actually be float[4][4]
+  transformed_vertex_iter(const Mesh *const m, Mat &mat)
+    : pointer_iterator_base(m->mvert, m->totvert), mat(mat) {}
+  transformed_vertex_iter(MVert * const mvert, size_t size, Mat &mat)
+    : pointer_iterator_base(mvert, size), mat(mat) {}
+  transformed_vertex_iter begin() const { return {this->first,  this->size, mat}; }
+  transformed_vertex_iter end()   const { return {this->first + this->size, this->size, mat}; }
+  const std::array<float, 3> operator*() const {
+    float co[3];
+    mul_v3_m4v3(co, mat, this->curr->co);
+    return {co[0], co[1], co[2]};
+  }
+  Mat &mat;
+};
+
 // Iterator over the vertices of a polygon
 struct vert_of_poly_iter : pointer_iterator_base<MLoop, std::random_access_iterator_tag> {
   // TODO someone What order are the vertices stored in? Clockwise?
@@ -238,8 +254,8 @@ struct points_of_nurbs_iter : pointer_iterator_base<BPoint> {
 
 // Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
 struct uv_iter : pointer_iterator_base<MLoopUV> {
-  uv_iter(const Mesh *const m) : pointer_iterator_base(m->mloopuv, m->totloop) {}
-  uv_iter(MLoopUV * const uv, size_t size) : pointer_iterator_base(uv, size) {}
+  uv_iter(const Mesh *const m) : pointer_iterator_base(m->mloopuv, m->mloopuv ? m->totloop : 0) {}
+  uv_iter(MLoopUV * const uv, size_t size) : pointer_iterator_base(uv, uv ? size : 0) {}
   uv_iter begin() const { return {this->first, this->size}; }
   uv_iter end()   const { return {this->first + this->size, this->size}; }
   inline const std::array<float, 2> operator*() {
@@ -365,9 +381,11 @@ struct deduplicated_iterator {
     // Reserve space so we don't constantly allocate
     dedup_pair.second.reserve(reserve);
     // Need to insert the first element, because we need to dereference before incrementing
-    auto p = dedup_pair.first.insert(std::make_pair(*this->it, total++));
-    dedup_pair.second.push_back(p.first);
-    ++this->it;
+    if (this->it != this->it.end()) {
+      auto p = dedup_pair.first.insert(std::make_pair(*this->it, total++));
+      dedup_pair.second.push_back(p.first);
+      ++this->it;
+    }
   }
   deduplicated_iterator begin() const {
     return deduplicated_iterator(mesh, dedup_pair, total, it.begin());
