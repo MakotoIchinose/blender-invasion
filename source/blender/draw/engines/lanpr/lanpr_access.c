@@ -79,8 +79,8 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (rlc->picked) {
       continue;
     }
-    if (!rlc->object_ref) {
-      continue; /* intersection lines are lost! */
+    if (ob && !rlc->object_ref) {
+      continue; /* intersection lines are all in the first collection running into here */
     }
     if (!(rlc->type & types)) {
       continue;
