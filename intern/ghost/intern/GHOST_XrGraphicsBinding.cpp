@@ -75,7 +75,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #endif
   }
 
-  bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats,
+  bool chooseSwapchainFormat(const std::vector<int64_t> &runtime_formats,
                              int64_t *r_result) const override
   {
     std::vector<int64_t> gpu_binding_formats = {GL_RGBA8};
@@ -127,7 +127,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     m_ghost_ctx = ctx_d3d;
   }
 
-  bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats,
+  bool chooseSwapchainFormat(const std::vector<int64_t> &runtime_formats,
                              int64_t *r_result) const override
   {
     std::vector<int64_t> gpu_binding_formats = {DXGI_FORMAT_R8G8B8A8_UNORM};

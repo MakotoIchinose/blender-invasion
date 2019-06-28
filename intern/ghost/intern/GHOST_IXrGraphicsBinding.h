@@ -40,7 +40,7 @@ class GHOST_IXrGraphicsBinding {
   } oxr_binding;
 
   virtual void initFromGhostContext(class GHOST_Context *ghost_ctx) = 0;
-  virtual bool chooseSwapchainFormat(std::vector<int64_t> runtime_formats,
+  virtual bool chooseSwapchainFormat(const std::vector<int64_t> &runtime_formats,
                                      int64_t *r_result) const = 0;
   virtual std::vector<XrSwapchainImageBaseHeader *> createSwapchainImages(
       uint32_t image_count) = 0;
