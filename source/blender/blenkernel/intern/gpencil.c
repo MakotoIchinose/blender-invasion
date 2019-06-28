@@ -422,9 +422,9 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
   gpd->pixfactor = GP_DEFAULT_PIX_FACTOR;
 
   /* grid settings */
-  ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f);  /*  Color */
-  ARRAY_SET_ITEMS(gpd->grid.scale, 1.0f, 1.0f);        /*  Scale */
-  gpd->grid.lines = GP_DEFAULT_GRID_LINES;             /*  Number of lines */
+  ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f); /*  Color */
+  ARRAY_SET_ITEMS(gpd->grid.scale, 1.0f, 1.0f);       /*  Scale */
+  gpd->grid.lines = GP_DEFAULT_GRID_LINES;            /*  Number of lines */
 
   /* onion-skinning settings (datablock level) */
   gpd->onion_flag |= (GP_ONION_GHOST_PREVCOL | GP_ONION_GHOST_NEXTCOL);
@@ -1427,29 +1427,33 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 
 /* ************************************************** */
 
-void stroke_defvert_create_nr_list(MDeformVert* dv_list, int count, ListBase* result, int* totweight){
-  LinkData* ld;
-  MDeformVert* dv;
-  MDeformWeight* dw;
-  int i,j;
-  int tw=0;
-  for(i=0;i<count;i++){
-    dv=&dv_list[i];
+void stroke_defvert_create_nr_list(MDeformVert *dv_list,
+                                   int count,
+                                   ListBase *result,
+                                   int *totweight)
+{
+  LinkData *ld;
+  MDeformVert *dv;
+  MDeformWeight *dw;
+  int i, j;
+  int tw = 0;
+  for (i = 0; i < count; i++) {
+    dv = &dv_list[i];
 
     /* find def_nr in list, if not exist, then create one */
-    for(j=0;j<dv->totweight;j++){
+    for (j = 0; j < dv->totweight; j++) {
       int found = 0;
       dw = &dv->dw[j];
-      for(ld=result->first;ld;ld=ld->next){
-        if(ld->data == (void*)dw->def_nr){
+      for (ld = result->first; ld; ld = ld->next) {
+        if (ld->data == (void *)dw->def_nr) {
           found = 1;
           break;
         }
       }
-      if(!found){
-        ld = MEM_callocN(sizeof(LinkData),"def_nr_item");
-        ld->data = (void*)dw->def_nr;
-        BLI_addtail(result,ld);
+      if (!found) {
+        ld = MEM_callocN(sizeof(LinkData), "def_nr_item");
+        ld->data = (void *)dw->def_nr;
+        BLI_addtail(result, ld);
         tw++;
       }
     }
@@ -1458,19 +1462,19 @@ void stroke_defvert_create_nr_list(MDeformVert* dv_list, int count, ListBase* re
   *totweight = tw;
 }
 
-MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase* def_nr_list)
+MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr_list)
 {
-  int i,j;
-  LinkData* ld;
+  int i, j;
+  LinkData *ld;
   MDeformVert *dst = MEM_mallocN(count * sizeof(MDeformVert), "new_deformVert");
 
   dst->totweight = totweight;
 
   for (i = 0; i < count; i++) {
     dst[i].dw = MEM_mallocN(sizeof(MDeformWeight) * totweight, "new_deformWeight");
-    j=0;
+    j = 0;
     /* re-assign deform groups */
-    for(ld=def_nr_list->first;ld;ld=ld->next){
+    for (ld = def_nr_list->first; ld; ld = ld->next) {
       dst[i].dw[j].def_nr = (int)ld->data;
       j++;
     }
@@ -1479,25 +1483,28 @@ MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase* def_nr
   return dst;
 }
 
-float stroke_defvert_get_nr_weight(MDeformVert* dv, int def_nr){
+float stroke_defvert_get_nr_weight(MDeformVert *dv, int def_nr)
+{
   int i;
-  for(i=0;i<dv->totweight;i++){
-    if(dv->dw[i].def_nr == def_nr){
+  for (i = 0; i < dv->totweight; i++) {
+    if (dv->dw[i].def_nr == def_nr) {
       return dv->dw[i].weight;
     }
   }
   return 0.0f;
 }
 
-void stroke_interpolate_deform_weights(bGPDstroke *gps, int index_from, int index_to, float ratio, MDeformVert* vert){
-  MDeformVert* vl = &gps->dvert[index_from];
-  MDeformVert* vr = &gps->dvert[index_to];
+void stroke_interpolate_deform_weights(
+    bGPDstroke *gps, int index_from, int index_to, float ratio, MDeformVert *vert)
+{
+  MDeformVert *vl = &gps->dvert[index_from];
+  MDeformVert *vr = &gps->dvert[index_to];
   int i;
 
-  for(i=0;i<vert->totweight;i++){
-    float wl = stroke_defvert_get_nr_weight(vl,vert->dw[i].def_nr);
-    float wr = stroke_defvert_get_nr_weight(vr,vert->dw[i].def_nr);
-    vert->dw[i].weight = interpf(wr,wl,ratio);
+  for (i = 0; i < vert->totweight; i++) {
+    float wl = stroke_defvert_get_nr_weight(vl, vert->dw[i].def_nr);
+    float wr = stroke_defvert_get_nr_weight(vr, vert->dw[i].def_nr);
+    vert->dw[i].weight = interpf(wr, wl, ratio);
   }
 }
 
@@ -1562,7 +1569,7 @@ static int stroke_march_next_point(bGPDstroke *gps,
         gps->points[next_point_index].pressure, gps->points[next_point_index - 1].pressure, ratio);
     *strength = interpf(
         gps->points[next_point_index].strength, gps->points[next_point_index - 1].strength, ratio);
-    
+
     *index_from = next_point_index - 1;
     *index_to = next_point_index;
     *ratio_result = ratio;
@@ -1582,14 +1589,14 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   bGPDspoint *pt1 = NULL;
   bGPDspoint *pt2 = NULL;
   int i;
-  ListBase def_nr_list={0};
+  ListBase def_nr_list = {0};
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON) {
     return false;
   }
 
   for (i = 0; i < gps->totpoints; i++) {
-    pt[i].flag &= ~GP_SPOINT_TAG_FEATURE;  /*  feature point preservation not implemented yet */
+    pt[i].flag &= ~GP_SPOINT_TAG_FEATURE; /*  feature point preservation not implemented yet */
   }
 
   float length = 0.0f;
@@ -1608,7 +1615,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
   MDeformVert *new_dv = NULL;
   if (gps->dvert != NULL) {
-    new_dv = stroke_defvert_new_count(gps->dvert->totweight, count,&def_nr_list);
+    new_dv = stroke_defvert_new_count(gps->dvert->totweight, count, &def_nr_list);
   }
 
   int next_point_index = 1;
@@ -1624,26 +1631,31 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
   i++;
-  
+
   if (new_dv) {
-    stroke_interpolate_deform_weights(gps,0,0,0,&new_dv[0]);
+    stroke_interpolate_deform_weights(gps, 0, 0, 0, &new_dv[0]);
   }
 
   /*  the rest */
-  while (
-      (next_point_index = stroke_march_next_point(
-           gps, next_point_index, last_coord, dist, last_coord,
-           &pressure, &strength, &ratio_result,
-           &index_from,&index_to)) > -1) {
+  while ((next_point_index = stroke_march_next_point(gps,
+                                                     next_point_index,
+                                                     last_coord,
+                                                     dist,
+                                                     last_coord,
+                                                     &pressure,
+                                                     &strength,
+                                                     &ratio_result,
+                                                     &index_from,
+                                                     &index_to)) > -1) {
     pt2 = &new_pt[i];
     copy_v3_v3(&pt2->x, last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
-    
+
     if (new_dv) {
-      stroke_interpolate_deform_weights(gps,index_from,index_to,ratio_result,&new_dv[i]);
+      stroke_interpolate_deform_weights(gps, index_from, index_to, ratio_result, &new_dv[i]);
     }
-    
+
     i++;
     if (next_point_index == 0) {
       break; /* last point finished */
