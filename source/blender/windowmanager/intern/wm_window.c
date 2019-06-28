@@ -621,7 +621,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
 
       default_fb = GHOST_GetContextDefaultOpenGLFramebuffer(win->offscreen_context);
       win->gpuctx = GPU_context_create(default_fb);
-      wm_window_reset_drawable();
     }
 
     /* needed so we can detect the graphics card below */

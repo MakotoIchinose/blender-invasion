@@ -97,6 +97,7 @@
 #include "wm_event_system.h"
 #include "wm.h"
 #include "wm_files.h"
+#include "wm_surface.h"
 #include "wm_window.h"
 
 #include "ED_anim_api.h"
@@ -523,6 +524,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
   BKE_keyconfig_pref_type_free();
 
   wm_operatortype_free();
+  wm_surfaces_free();
   wm_dropbox_free();
   WM_menutype_free();
   WM_uilisttype_free();

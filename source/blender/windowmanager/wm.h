@@ -96,6 +96,8 @@ void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
 /* wm_xr.c */
-void wm_xr_session_draw(bContext *C, struct GHOST_XrContext *xr_context);
+bool wm_xr_context_ensure(wmWindowManager *wm);
+struct wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int graphics_lib);
+struct wmSurface *wm_xr_session_surface_get(void);
 
 #endif /* __WM_H__ */

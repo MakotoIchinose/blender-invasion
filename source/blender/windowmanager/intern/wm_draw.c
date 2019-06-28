@@ -72,6 +72,7 @@
 #include "wm_draw.h"
 #include "wm_window.h"
 #include "wm_event_system.h"
+#include "wm_surface.h"
 
 #ifdef WITH_OPENSUBDIV
 #  include "BKE_subsurf.h"
@@ -866,19 +867,16 @@ static void wm_draw_window(bContext *C, wmWindow *win)
 
 /**
  * Draw offscreen contexts not bound to a specific window.
- *
- * For now keeping it simple by handling all possible cases here directly (only VR view drawing
- * currently). Could generalize this by something like a wmSurface type.
  */
-static void wm_draw_non_window_surfaces(bContext *C, wmWindowManager *wm)
+static void wm_draw_surface(bContext *C, wmSurface *surface)
 {
-#ifdef WITH_OPENXR
-  if (wm->xr_context) {
-    wm_xr_session_draw(C, wm->xr_context);
-  }
-#else
-  UNUSED_VARS(wm);
-#endif
+  wm_window_clear_drawable(CTX_wm_manager(C));
+  wm_surface_make_drawable(surface);
+
+  surface->draw(C);
+
+  /* Avoid interference with window drawable */
+  wm_surface_clear_drawable();
 }
 
 /****************** main update call **********************/
@@ -993,7 +991,8 @@ void wm_draw_update(bContext *C)
     }
   }
 
-  wm_draw_non_window_surfaces(C, wm);
+  /* Draw non-windows (surfaces) */
+  wm_surfaces_iter(C, wm_draw_surface);
 }
 
 void wm_draw_region_clear(wmWindow *win, ARegion *UNUSED(ar))

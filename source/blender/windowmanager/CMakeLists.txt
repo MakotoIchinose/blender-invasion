@@ -71,6 +71,7 @@ set(SRC
   intern/wm_playanim.c
   intern/wm_stereo.c
   intern/wm_subwindow.c
+  intern/wm_surface.c
   intern/wm_toolsystem.c
   intern/wm_tooltip.c
   intern/wm_uilist_type.c
@@ -98,6 +99,7 @@ set(SRC
   wm_event_system.h
   wm_event_types.h
   wm_files.h
+  wm_surface.h
   wm_window.h
   gizmo/WM_gizmo_api.h
   gizmo/WM_gizmo_types.h

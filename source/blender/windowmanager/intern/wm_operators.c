@@ -115,6 +115,7 @@
 #include "wm_event_system.h"
 #include "wm_event_types.h"
 #include "wm_files.h"
+#include "wm_surface.h"
 #include "wm_window.h"
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
@@ -3539,43 +3540,41 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 }
 
 #ifdef WITH_OPENXR
-static void *xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_lib)
+static void *xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
 {
 #  ifndef WIN32
-  BLI_assert(graphics_lib == GHOST_kXrGraphicsOpenGL);
-#  endif
+  wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
 
-  switch (graphics_lib) {
-    case GHOST_kXrGraphicsOpenGL:
-      return WM_opengl_context_create();
-#  ifdef WIN32
-    case GHOST_kXrGraphicsD3D11: {
-      wmWindowManager *wm = G_MAIN->wm.first;
-      for (wmWindow *win = wm->windows.first; win; win = win->next) {
-        /* TODO better lookup? For now only one D3D window possible, but later? */
-        if (GHOST_GetDrawingContextType(win->ghostwin) == GHOST_kDrawingContextTypeD3D) {
-          return GHOST_GetWindowContext(win->ghostwin);
-        }
+  wm_surface_add(surface);
+
+  return surface->ghost_ctx;
+
+#  else
+#    ifdef WIN32
+  if (graphics_binding == GHOST_kXrGraphicsD3D11) {
+    wmWindowManager *wm = G_MAIN->wm.first;
+    for (wmWindow *win = wm->windows.first; win; win = win->next) {
+      /* TODO better lookup? For now only one D3D window possible, but later? */
+      if (GHOST_GetDrawingContextType(win->ghostwin) == GHOST_kDrawingContextTypeD3D) {
+        return GHOST_GetWindowContext(win->ghostwin);
       }
-      return NULL;
     }
-#  endif
-    default:
-      return NULL;
+    return NULL;
   }
+#    endif
+#  endif
 }
 
-static void xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding graphics_lib,
-                                                   void *context)
+static void xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(graphics_lib),
+                                                   void *UNUSED(context))
 {
-  GHOST_ContextHandle ghost_context = context;
+#  ifndef WIN32
+  wmSurface *surface = wm_xr_session_surface_get();
 
-  switch (graphics_lib) {
-    case GHOST_kXrGraphicsOpenGL:
-      WM_opengl_context_dispose(ghost_context);
-    default:
-      return;
+  if (surface) { /* Might have been freed already */
+    wm_surface_remove(surface);
   }
+#  endif
 }
 
 #  ifdef WIN32
@@ -3645,33 +3644,12 @@ static void wm_xr_draw_view_fn(const GHOST_XrDrawViewInfo *UNUSED(draw_view), vo
   (void)C;
 }
 
-static bool wm_xr_ensure_context(wmWindowManager *wm)
-{
-  if (wm->xr_context) {
-    return true;
-  }
-
-  const GHOST_TXrGraphicsBinding gpu_bindings_candidates[] = {
-      GHOST_kXrGraphicsOpenGL,
-#  ifdef WIN32
-      GHOST_kXrGraphicsD3D11,
-#  endif
-  };
-  const GHOST_XrContextCreateInfo create_info = {
-      .gpu_binding_candidates = gpu_bindings_candidates,
-      .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
-
-  wm->xr_context = GHOST_XrContextCreate(&create_info);
-
-  return wm->xr_context != NULL;
-}
-
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
 
   /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
-  if (wm_xr_ensure_context(wm) == false) {
+  if (wm_xr_context_ensure(wm) == false) {
     return OPERATOR_CANCELLED;
   }
   if (GHOST_XrSessionIsRunning(wm->xr_context)) {
