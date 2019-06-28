@@ -1589,6 +1589,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   bGPDspoint *pt1 = NULL;
   bGPDspoint *pt2 = NULL;
   int i;
+  LinkData *ld;
   ListBase def_nr_list = {0};
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON) {
@@ -1614,8 +1615,12 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
   MDeformVert *new_dv = NULL;
+
+  int result_totweight;
+
   if (gps->dvert != NULL) {
-    new_dv = stroke_defvert_new_count(gps->dvert->totweight, count, &def_nr_list);
+    stroke_defvert_create_nr_list(gps->dvert, count, &def_nr_list, &result_totweight);
+    new_dv = stroke_defvert_new_count(count, result_totweight, &def_nr_list);
   }
 
   int next_point_index = 1;
@@ -1668,6 +1673,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
 
   if (new_dv) {
     BKE_gpencil_free_stroke_weights(gps);
+    while (ld = BLI_pophead(&def_nr_list)) {
+      MEM_freeN(ld);
+    }
     gps->dvert = new_dv;
   }
 
