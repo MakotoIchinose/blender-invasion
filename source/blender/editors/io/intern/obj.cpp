@@ -410,13 +410,14 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
     Scene *escene = DEG_get_evaluated_scene(settings->depsgraph);
     ulong vertex_total = 0, uv_total = 0, no_total = 0;
 
-    /* clang-format off */
-    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(format_specific->dedup_uvs_threshold);
-    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(format_specific->dedup_normals_threshold);
+    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(
+        format_specific->dedup_uvs_threshold);
+    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(
+        format_specific->dedup_normals_threshold);
 
-    std::string mtl_path = get_path(settings->filepath, ".mtl", format_specific->export_animations, frame);
+    std::string mtl_path = get_path(
+        settings->filepath, ".mtl", format_specific->export_animations, frame);
     std::set<const Material *> materials;
-    /* clang-format on */
 
     fprintf(obj_file, "mtllib %s\n", (mtl_path.c_str() + mtl_path.find_last_of("/\\") + 1));
 

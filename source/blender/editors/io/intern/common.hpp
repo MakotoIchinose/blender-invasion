@@ -7,52 +7,52 @@
 /* #include "DNA_object_types.h" */
 
 extern "C" {
-/* clang-format off */
-#include "BKE_global.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_modifier.h"
-#include "BKE_library.h"
-#include "BKE_customdata.h"
-#include "BKE_scene.h"
 
-#include "MEM_guardedalloc.h"
+// Clang-format is adding these spaces, but it's not allowed by the standard
+
+#  include "BKE_global.h"
+#  include "BKE_mesh.h"
+#  include "BKE_mesh_runtime.h"
+#  include "BKE_modifier.h"
+#  include "BKE_library.h"
+#  include "BKE_customdata.h"
+#  include "BKE_scene.h"
+
+#  include "MEM_guardedalloc.h"
 
 /* SpaceType struct has a member called 'new' which obviously conflicts with C++
  * so temporarily redefining the new keyword to make it compile. */
-#define new extern_new
-#include "BKE_screen.h"
-#undef new
+#  define new extern_new
+#  include "BKE_screen.h"
+#  undef new
 
-#include "BLI_listbase.h"
-#include "BLI_math_matrix.h"
-#include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
+#  include "BLI_listbase.h"
+#  include "BLI_math_matrix.h"
+#  include "BLI_math_vector.h"
+#  include "BLI_utildefines.h"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#  include "bmesh.h"
+#  include "bmesh_tools.h"
 
-#include "DNA_layer_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_modifier_types.h"
-#include "DNA_object_types.h"
+#  include "DNA_layer_types.h"
+#  include "DNA_meshdata_types.h"
+#  include "DNA_mesh_types.h"
+#  include "DNA_modifier_types.h"
+#  include "DNA_object_types.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph_query.h"
 
-#include "../io_common.h"
+#  include "../io_common.h"
 }
 
-#include <utility>
-#include <string>
-#include <vector>
-#include <set>
-#include <array>
-#include <typeinfo>
-#include <iterator>
-
-/* clang-format on */
+#  include <utility>
+#  include <string>
+#  include <vector>
+#  include <set>
+#  include <array>
+#  include <typeinfo>
+#  include <iterator>
 
 namespace common {
 using ulong = unsigned long;
