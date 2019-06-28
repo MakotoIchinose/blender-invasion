@@ -84,7 +84,7 @@ void gpencil_multisample_ensure(GPENCIL_Data *vedata, int rect_w, int rect_h)
       if (fbl->multisample_fb) {
         if (txl->multisample_color == NULL) {
           txl->multisample_color = GPU_texture_create_2d_multisample(
-              rect_w, rect_h, GPU_RGBA16, NULL, samples, NULL);
+              rect_w, rect_h, GPU_RGBA16F, NULL, samples, NULL);
         }
         if (txl->multisample_depth == NULL) {
           txl->multisample_depth = GPU_texture_create_2d_multisample(
@@ -105,7 +105,7 @@ static void GPENCIL_create_framebuffers(void *vedata)
   GPENCIL_TextureList *txl = ((GPENCIL_Data *)vedata)->txl;
 
   /* Go full 32bits for rendering */
-  eGPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16;
+  eGPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16F;
 
   if (DRW_state_is_fbo()) {
     const float *viewport_size = DRW_viewport_size_get();
