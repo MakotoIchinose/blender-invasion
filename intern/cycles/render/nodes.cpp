@@ -396,7 +396,8 @@ void ImageTextureNode::compile(OSLCompiler &compiler)
   }
 
   if (slot == -1) {
-    compiler.parameter_texture("filename", filename, known_colorspace);
+    compiler.parameter_texture(
+        "filename", filename, compress_as_srgb ? u_colorspace_raw : known_colorspace);
   }
   else {
     compiler.parameter_texture("filename", slot);
@@ -583,7 +584,8 @@ void EnvironmentTextureNode::compile(OSLCompiler &compiler)
   }
 
   if (slot == -1) {
-    compiler.parameter_texture("filename", filename, known_colorspace);
+    compiler.parameter_texture(
+        "filename", filename, compress_as_srgb ? u_colorspace_raw : known_colorspace);
   }
   else {
     compiler.parameter_texture("filename", slot);
