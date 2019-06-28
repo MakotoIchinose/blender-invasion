@@ -550,7 +550,7 @@ void GPENCIL_cache_init(void *vedata)
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendColor", &stl->g_data->temp_color_fx_tx);
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendDepth", &stl->g_data->temp_depth_fx_tx);
     DRW_shgroup_uniform_int(blend_shgrp, "mode", &stl->storage->blend_mode, 1);
-    DRW_shgroup_uniform_int(blend_shgrp, "clamp_layer", &stl->storage->clamp_layer, 1);
+    DRW_shgroup_uniform_int(blend_shgrp, "mask_layer", &stl->storage->mask_layer, 1);
     DRW_shgroup_uniform_int(mix_shgrp, "tonemapping", &stl->storage->tonemapping, 1);
 
     /* create effects passes */
