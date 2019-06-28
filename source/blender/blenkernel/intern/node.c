@@ -2799,9 +2799,9 @@ int nodeSocketIsHidden(bNodeSocket *sock)
   return ((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0);
 }
 
-void nodeSetSocketAvailability(bNodeSocket *sock, bool condition)
+void nodeSetSocketAvailability(bNodeSocket *sock, bool is_available)
 {
-  if (condition) {
+  if (is_available) {
     sock->flag &= ~SOCK_UNAVAIL;
   }
   else {
