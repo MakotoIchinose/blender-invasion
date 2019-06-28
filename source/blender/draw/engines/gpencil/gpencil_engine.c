@@ -1043,7 +1043,7 @@ void GPENCIL_draw_scene(void *ved)
 
             if (array_elm->mode == eGplBlendMode_Regular) {
               /* Draw current group in MSAA texture or final texture. */
-              GPUFrameBuffer *final_fb = (do_antialiasing) ? fbl->multisample_fb : fbl->temp_fx_fb;
+              GPUFrameBuffer *final_fb = (do_antialiasing) ? fbl->multisample_fb : fbl->temp_a_fb;
               gpencil_draw_pass_range(stl, psl, final_fb, ob, gpd, init_shgrp, end_shgrp);
             }
             else {
