@@ -540,18 +540,13 @@ void GPENCIL_cache_init(void *vedata)
 
     /* blend layers pass */
     psl->blend_layers_pass = DRW_pass_create("GPencil Blend Layers Pass",
-                                             DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                                                 DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+                                             DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     DRWShadingGroup *blend_shgrp = DRW_shgroup_create(e_data.gpencil_blend_fullscreen_sh,
                                                       psl->blend_layers_pass);
     DRW_shgroup_call(blend_shgrp, quad, NULL);
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeColor", &stl->g_data->temp_color_a_tx);
     DRW_shgroup_uniform_texture_ref(blend_shgrp, "strokeDepth", &stl->g_data->temp_depth_a_tx);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendColor", &stl->g_data->temp_color_fx_tx);
-    DRW_shgroup_uniform_texture_ref(blend_shgrp, "blendDepth", &stl->g_data->temp_depth_fx_tx);
     DRW_shgroup_uniform_int(blend_shgrp, "mode", &stl->storage->blend_mode, 1);
-    DRW_shgroup_uniform_int(blend_shgrp, "mask_layer", &stl->storage->mask_layer, 1);
-    DRW_shgroup_uniform_int(mix_shgrp, "tonemapping", &stl->storage->tonemapping, 1);
 
     /* create effects passes */
     if (!stl->storage->simplify_fx) {
@@ -1036,15 +1031,15 @@ void GPENCIL_draw_scene(void *ved)
             init_shgrp = array_elm->init_shgrp;
             end_shgrp = array_elm->end_shgrp;
 
+            if (stl->storage->multisamples > 0) {
+              GPU_framebuffer_bind(fbl->multisample_fb);
+            }
+            else {
+              GPU_framebuffer_bind(fbl->temp_a_fb);
+            }
+
             if (array_elm->mode == eGplBlendMode_Regular) {
               /* Draw current group in MSAA texture or final texture. */
-              if (stl->storage->multisamples > 0) {
-                GPU_framebuffer_bind(fbl->multisample_fb);
-              }
-              else {
-                GPU_framebuffer_bind(fbl->temp_a_fb);
-              }
-
               gpencil_draw_pass_range(
                   fbl, stl, psl, txl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
             }
@@ -1053,16 +1048,17 @@ void GPENCIL_draw_scene(void *ved)
               GPU_framebuffer_bind(blend_fb);
               GPU_framebuffer_clear_color_depth_stencil(blend_fb, clearcol, 1.0f, 0x0);
               gpencil_draw_pass_range(
-                  fbl, stl, psl, txl, fbl->temp_a_fb, ob, gpd, init_shgrp, end_shgrp);
+                  fbl, stl, psl, txl, fbl->temp_fx_fb, ob, gpd, init_shgrp, end_shgrp);
 
               /* Draw Blended texture over MSAA texture */
-              GPU_framebuffer_bind(fbl->multisample_fb);
-              // TODO: How resolve the Blend?
-              // TODO: Mask Layers?
-              // Do I need use the blend layer pass/fragment (blend_layers_pass)
-              // stl->g_data->input_depth_tx = txl->multisample_depth;
-              // stl->g_data->input_color_tx = txl->multisample_color;
-              // DRW_draw_pass(psl->mix_screen_noblend_pass); // general copy of buffers
+              if (stl->storage->multisamples > 0) {
+                GPU_framebuffer_bind(fbl->multisample_fb);
+              }
+              else {
+                GPU_framebuffer_bind(fbl->temp_a_fb);
+              }
+              stl->storage->blend_mode = array_elm->mode;
+              DRW_draw_pass(psl->blend_layers_pass);  // general copy of buffers
             }
           }
 
