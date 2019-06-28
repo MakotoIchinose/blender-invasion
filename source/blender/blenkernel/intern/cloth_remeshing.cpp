@@ -268,27 +268,28 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   return mesh_result;
 }
 
-static LinkNodePair *cloth_remeshing_find_edges_to_flip(BMesh *bm, LinkNodePair *active_faces)
+static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
+                                                           vector<BMFace *> &active_faces)
 {
   /* TODO(Ish) */
-  return NULL;
+  return vector<BMEdge *>();
 }
 
-static LinkNodePair *cloth_remeshing_find_independent_edges(LinkNodePair *edges)
+static vector<BMEdge *> cloth_remeshing_find_independent_edges(vector<BMEdge *> edges)
 {
   /* TODO(Ish) */
-  return NULL;
+  return vector<BMEdge *>();
 }
 
-static void cloth_remeshing_flip_edges(BMesh *bm, LinkNodePair *active_faces)
+static void cloth_remeshing_flip_edges(BMesh *bm, vector<BMFace *> &active_faces)
 {
   /* TODO(Ish): This loop might cause problems */
-  while (BLI_linklist_count(active_faces->list) != 0) {
-    LinkNodePair *flipable_edges = cloth_remeshing_find_edges_to_flip(bm, active_faces);
-    LinkNodePair *independent_edges = cloth_remeshing_find_independent_edges(flipable_edges);
+  while (active_faces.size() != 0) {
+    vector<BMEdge *> flipable_edges = cloth_remeshing_find_edges_to_flip(bm, active_faces);
+    vector<BMEdge *> independent_edges = cloth_remeshing_find_independent_edges(flipable_edges);
 
-    while (BLI_linklist_count(independent_edges->list) != 0) {
-      BMEdge *edge = (BMEdge *)BLI_linklist_pop(&independent_edges->list);
+    for (int i = 0; i < independent_edges.size(); i++) {
+      BMEdge *edge = independent_edges[i];
       BM_edge_rotate(
           bm, edge, true, BM_EDGEROT_CHECK_SPLICE); /* this sets it up for BM_CREATE_NO_DOUBLE
                                                      */
@@ -298,7 +299,7 @@ static void cloth_remeshing_flip_edges(BMesh *bm, LinkNodePair *active_faces)
   }
 }
 
-static bool cloth_remeshing_fix_mesh(BMesh *bm, LinkNodePair *active_faces)
+static bool cloth_remeshing_fix_mesh(BMesh *bm, vector<BMFace *> active_faces)
 {
   cloth_remeshing_flip_edges(bm, active_faces);
   return true;
@@ -764,11 +765,11 @@ static bool cloth_remeshing_try_edge_collapse(BMEdge *e, BMesh *bm)
 }
 
 static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
-                                           LinkNodePair *sizing,
-                                           LinkNodePair *active_faces)
+                                           vector<ClothSizing> &sizing,
+                                           vector<BMFace *> &active_faces)
 {
-  for (int i = 0; i < BLI_linklist_count(active_faces->list); i++) {
-    BMFace *f = (BMFace *)BLI_linklist_find(active_faces->list, i)->link;
+  for (int i = 0; i < active_faces.size(); i++) {
+    BMFace *f = active_faces[i];
     BMEdge *e;
     BMIter eiter;
     BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
@@ -813,16 +814,13 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Collapse edges
    */
-  // LinkNodePair *active_faces = (LinkNodePair *)MEM_mallocN(sizeof(LinkNodePair),
-  //                                                          "Active Faces LinkNodePair");
-  // active_faces->list = NULL;
-  // active_faces->last_node = NULL;
+  // vector<BMFace *> active_faces;
   // BMFace *f;
   // BMIter fiter;
   // BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
-  //   BLI_linklist_append(active_faces, f);
+  //   active_faces.push_back(f);
   // }
-  // while (cloth_remeshing_collapse_edges(clmd, &sizing, active_faces)) {
+  // while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces)) {
   //   /* empty while */
   // }
 
@@ -830,8 +828,7 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
    * Delete sizing
    */
   sizing.clear();
-  // BLI_linklist_free(active_faces->list, NULL);
-  // MEM_freeN(active_faces);
+  // active_faces.clear();
 }
 
 Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
