@@ -82,10 +82,6 @@
 
 #include "BLF_api.h"
 
-#ifdef WITH_OPENXR
-#  include "GHOST_C-api.h"
-#endif
-
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
@@ -3540,114 +3536,6 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 }
 
 #ifdef WITH_OPENXR
-
-#  ifdef WIN32
-//#    define USE_FORCE_WINDOWED_SESSION
-#  endif
-
-static void *xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
-{
-#  ifndef USE_FORCE_WINDOWED_SESSION
-  wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
-
-  wm_surface_add(surface);
-
-  return surface->secondary_ghost_ctx ? surface->secondary_ghost_ctx : surface->ghost_ctx;
-#  else
-#    ifdef WIN32
-  if (graphics_binding == GHOST_kXrGraphicsD3D11) {
-    wmWindowManager *wm = G_MAIN->wm.first;
-    for (wmWindow *win = wm->windows.first; win; win = win->next) {
-      /* TODO better lookup? For now only one D3D window possible, but later? */
-      if (GHOST_GetDrawingContextType(win->ghostwin) == GHOST_kDrawingContextTypeD3D) {
-        return GHOST_GetWindowContext(win->ghostwin);
-      }
-    }
-  }
-#    endif
-  return NULL;
-#  endif
-}
-
-static void xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(graphics_lib),
-                                                   void *UNUSED(context))
-{
-#  ifndef USE_FORCE_WINDOWED_SESSION
-  wmSurface *surface = wm_xr_session_surface_get();
-
-  if (surface) { /* Might have been freed already */
-    wm_surface_remove(surface);
-  }
-#  endif
-}
-
-#  if defined(WIN32) && defined(USE_FORCE_WINDOWED_SESSION)
-static void xr_session_window_create(bContext *C)
-{
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  wmWindow *win_prev = CTX_wm_window(C);
-
-  rcti rect;
-  wmWindow *win;
-  bScreen *screen;
-  ScrArea *sa;
-  int screen_size[2];
-
-  wm_get_screensize(&screen_size[0], &screen_size[1]);
-  BLI_rcti_init(&rect, 0, screen_size[0], 0, screen_size[1]);
-  BLI_rcti_scale(&rect, 0.8f);
-  wm_window_check_position(&rect);
-
-  win = WM_window_open_directx(C, &rect);
-
-  if (WM_window_get_active_workspace(win) == NULL) {
-    WorkSpace *workspace = WM_window_get_active_workspace(win_prev);
-    BKE_workspace_active_set(win->workspace_hook, workspace);
-  }
-
-  /* add new screen layout */
-  WorkSpace *workspace = WM_window_get_active_workspace(win);
-  WorkSpaceLayout *layout = ED_workspace_layout_add(bmain, workspace, win, "VR Session");
-
-  screen = BKE_workspace_layout_screen_get(layout);
-  WM_window_set_active_layout(win, workspace, layout);
-
-  /* Set scene and view layer to match original window. */
-  STRNCPY(win->view_layer_name, view_layer->name);
-  if (WM_window_get_active_scene(win) != scene) {
-    ED_screen_scene_change(C, win, scene);
-  }
-
-  WM_check(C);
-
-  CTX_wm_window_set(C, win);
-  sa = screen->areabase.first;
-  CTX_wm_area_set(C, sa);
-  ED_area_newspace(C, sa, SPACE_VIEW3D, false);
-
-  ED_screen_change(C, screen);
-  ED_screen_refresh(CTX_wm_manager(C), win); /* test scale */
-
-  if (win->ghostwin) {
-    GHOST_SetTitle(win->ghostwin, "Blender VR Session View");
-  }
-  else {
-    /* very unlikely! but opening a new window can fail */
-    wm_window_close(C, CTX_wm_manager(C), win);
-    CTX_wm_window_set(C, win_prev);
-  }
-}
-#  endif /* WIN32 && USE_FORCE_WINDOWED_SESSION */
-
-static void wm_xr_draw_view_fn(const GHOST_XrDrawViewInfo *UNUSED(draw_view), void *customdata)
-{
-  bContext *C = customdata;
-
-  (void)C;
-}
-
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -3656,22 +3544,9 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   if (wm_xr_context_ensure(wm) == false) {
     return OPERATOR_CANCELLED;
   }
-  if (GHOST_XrSessionIsRunning(wm->xr_context)) {
-    GHOST_XrSessionEnd(wm->xr_context);
-  }
-  else {
-#  if defined(WIN32) && defined(USE_FORCE_WINDOWED_SESSION)
-    xr_session_window_create(C);
-#  endif
 
-    GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
-                                     xr_session_gpu_binding_context_create,
-                                     xr_session_gpu_binding_context_destroy);
-    GHOST_XrDrawViewFunc(wm->xr_context, wm_xr_draw_view_fn);
+  wm_xr_session_toggle(wm->xr_context);
 
-    GHOST_XrSessionStart(wm->xr_context);
-    GHOST_XrSessionRenderingPrepare(wm->xr_context);
-  }
   return OPERATOR_FINISHED;
 }
 

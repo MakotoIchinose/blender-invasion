@@ -95,9 +95,10 @@ void wm_stereo3d_set_cancel(bContext *C, wmOperator *op);
 void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
+#ifdef WITH_OPENXR
 /* wm_xr.c */
 bool wm_xr_context_ensure(wmWindowManager *wm);
-struct wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int graphics_lib);
-struct wmSurface *wm_xr_session_surface_get(void);
+void wm_xr_session_toggle(struct GHOST_XrContext *xr_context);
+#endif
 
 #endif /* __WM_H__ */
