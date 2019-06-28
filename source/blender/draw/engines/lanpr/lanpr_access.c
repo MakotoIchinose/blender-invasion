@@ -91,7 +91,7 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (ob && &ob->id != rlc->object_ref->id.orig_id) {
       continue;
     }
-    if (col) {
+    if (col && rlc->object_ref) {
       if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref->id.orig_id)) {
         continue;
       }
