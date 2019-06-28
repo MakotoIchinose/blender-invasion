@@ -61,9 +61,10 @@
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 1
-#define DEBUG_CUSTOM_PROFILE_ORIENTATION 1
+#define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
+#define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 1
 
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
 extern void DRW_debug_sphere(const float center[3], const float radius, const float color[4]);
 #endif
 
@@ -154,12 +155,10 @@ typedef struct BoundVert {
   /** First of edges attached here: in CCW order. */
   EdgeHalf *efirst;
   EdgeHalf *elast;
-  /** The "edge between" that this is on, in offset_on_edge_between case. */
+  /** The "edge between" that this boundvert on, in offset_on_edge_between case. */
   EdgeHalf *eon;
-  /* HANS-QUESTION: What is the "eon edge?" I haven't been able to visualize where this is. */
   /** Beveled edge whose left side is attached here, if any. */
   EdgeHalf *ebev;
-  /* HANS-QUESTION: Why just store the left edge? For travelling counterclockwise? */
   /** Used for vmesh indexing. */
   int index;
   /** When eon set, ratio of sines of angles to eon edge. */
@@ -191,9 +190,7 @@ typedef struct VMesh {
   NewVert *mesh;         /* allocated array - size and structure depends on kind */
   BoundVert *boundstart; /* start of boundary double-linked list */
   int count;             /* number of vertices in the boundary */
-  int seg;               /* common # of segments for segmented edges */
-  /* HANS-QUESTION: How is this seg different than the global bp->seg? Is it the number of segments
-   * built so far? */
+  int seg;               /* common # of segments for segmented edges (same as bp->seg) */
   enum {
     M_NONE,    /* no polygon mesh needed */
     M_POLY,    /* a simple polygon */
@@ -398,6 +395,7 @@ static BoundVert *add_new_bound_vert(MemArena *mem_arena, VMesh *vm, const float
   ans->any_seam = false;
   ans->is_arc_start = false;
   ans->is_patch_start = false;
+  ans->is_profile_start = false;
   vm->count++;
   return ans;
 }
@@ -1270,8 +1268,6 @@ static void project_to_edge(BMEdge *e, const float co_a[3], const float co_b[3],
 /* If there is a bndv->ebev edge, find the mid control point if necessary.
  * It is the closest point on the beveled edge to the line segment between
  * bndv and bndv->next.  */
-/* HANS-QUESTION: I'm not sure if I'll need to change this. I don't think the custom situation
- * uses the mid control point yet.*/
 static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 {
   EdgeHalf *e;
@@ -1625,8 +1621,6 @@ static double superellipse_co(double x, float r, bool rbig)
  * In the latter case, we subsample the profile for seg_2, which will not necessarily
  * give equal spaced chords, but is in fact more what is desired by the cubic subdivision
  * method used to make the vmesh pattern. */
-/* HANS-TODO: Probably should just give this a reversed parameter instead of changing the call
- * when the boundvert isn't the profile start boundvert */
 static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n, float r_co[3])
 {
   int d;
@@ -1711,8 +1705,6 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
       yvals = bp->pro_spacing.yvals_2;
       prof_co = pro->prof_co_2;
     }
-    /* HANS-TODO: Why this assert? */
-    BLI_assert((r == PRO_LINE_R || (xvals != NULL && yvals != NULL)) && prof_co != NULL);
 
     /* Iterate over the vertices along the boundary arc */
     for (k = 0; k <= ns; k++) {
@@ -1736,16 +1728,14 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
             p[1] = (float)yvals[k];
           }
           p[2] = 0.0f;
+          /* Do the 2D->3D transformation */
           mul_v3_m4v3(co, m, p);
-          /* HANS-QUESTION: I guess this projection takes it from the profile spacing
-           * two dimentions to the global three dimensions and the next projection (onto profile
-           * plane) fixes it / rotates it? I don't fully understand why both are necessary. */
         }
         else {
           interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
         }
       }
-      /* project co onto final profile plane */
+      /* Project co onto final profile plane */
       prof_co_k = prof_co + 3 * k; /* Each coord takes up 3 spaces */
       if (!is_zero_v3(pro->proj_dir)) {
         add_v3_v3v3(co2, co, pro->proj_dir);
@@ -2461,6 +2451,8 @@ static void build_boundary_terminal_edge(BevelParams *bp,
 }
 
 /* Helper for build_boundary to handle special miters */
+/* HANS-TODO: I'll need to sample a non-custom profile too to build the connection between the
+ * extra miter boundverts. Otherwise that connection is the same custom profile which is weird. */
 static void adjust_miter_coords(BevelParams *bp, BevVert *bv, EdgeHalf *emiter)
 {
   float co1[3], co2[3], co3[3], edge_dir[3], line_p[3];
@@ -3114,7 +3106,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 #endif
   return next_edge;
 }
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
 static void debug_RPO_edge_draw_sphere(BevelParams* bp, BMEdge* e) {
   float debug_color_1[4];
   debug_color_1[0] = 1.0;
@@ -3147,6 +3139,7 @@ static void debug_RPO_edge_draw_sphere(BevelParams* bp, BMEdge* e) {
  * the profiles can start from opposite sides of the edge. In order to fix this we
  * need to travel along the beveled edges marking consistent boundverts for the
  * bevels to start from. */
+/* HANS-TODO: Fix the problem near impassible verts like on a single beveled edge */
 static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
 {
   BevVert *start_bv;
@@ -3631,7 +3624,8 @@ static bool is_canon(VMesh *vm, int i, int j, int k)
 /* Copy the vertex data to all of vm verts from canonical ones */
 /* HANS-QUESTION: Are these equivalences because of symmetry or because some vertices will overlap?
  * If they are because of symmetry I will have to disable these checks because the profile isn't
- * necessarily symmetrical. */
+ * necessarily symmetrical. From reading notes it's looking like the canonical verts are the
+ * un-transformed verts*/
 static void vmesh_copy_equiv_verts(VMesh *vm)
 {
   int n, ns, ns2, i, j, k;
@@ -3750,7 +3744,6 @@ static void fill_vmesh_fracs(VMesh *vm, float *frac, int i)
 }
 
 /* Like fill_vmesh_fracs but want fractions for profile points of bndv, with ns segments */
-/* HANS-QUESTION: I haven't yet figured out what these fill_*_fracs functions are doing. */
 static void fill_profile_fracs(BevelParams *bp, BoundVert *bndv, float *frac, int ns)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -3808,8 +3801,11 @@ static int interp_range(const float *frac, int n, const float f, float *r_rest)
 
 /* Interpolate given vmesh to make one with target nseg border vertices on the profiles */
 /* HANS-TODO: Needs custom analog. */
-/* HANS-QUESTION: What's the general idea of how this works? Maybe I could find that in the notes
- * documents? */
+/* HANS-QUESTION: So it looks this resamples the mesh at the correct nseg. Because its whole method
+ * is about sampling even spaces along the profile, it looks like I'll need to make an entirely
+ * new function for the same purpose in the profile space. But it also could be that I can use
+ * the distances along the rings that are built to control how much of which profile is sampled
+ * This process here is the biggest remaining unknown. */
 static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -3874,7 +3870,7 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
     memcpy(prev_frac, frac, (size_t)(ns0 + 1) * sizeof(float));
     memcpy(prev_new_frac, new_frac, (size_t)(nseg + 1) * sizeof(float));
   }
-  if (!odd) {
+  if (!odd && !bp->use_custom_profile) {
     vmesh_center(vm0, center);
     copy_v3_v3(mesh_vert(vm1, 0, nseg2, nseg2)->co, center);
   }
@@ -4158,11 +4154,13 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
   int i, j, k, ns2;
   float co[3], coc[3];
 
-  if (r == PRO_SQUARE_R) {
-    return make_cube_corner_square(mem_arena, nseg);
-  }
-  else if (r == PRO_SQUARE_IN_R) {
-    return make_cube_corner_square_in(mem_arena, nseg);
+  if (!bp->use_custom_profile) {
+    if (r == PRO_SQUARE_R) {
+      return make_cube_corner_square(mem_arena, nseg);
+    }
+    else if (r == PRO_SQUARE_IN_R) {
+      return make_cube_corner_square_in(mem_arena, nseg);
+    }
   }
 
   /* Initial mesh has 3 sides and 2 segments on each side */
@@ -4171,7 +4169,10 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
   for (i = 0; i < 3; i++) {
     zero_v3(co);
     co[i] = 1.0f;
-    /* HANS-QUESTION: Why are we adding new boundverts now? Haven't they already been created? */
+    /* HANS-QUESTION: Why are we adding new boundverts now? I thought they already been created?
+     * And we're calculating profiles again too? Maybe I'm missing something obvious but I thought
+     * that was done earlier. It probably has to be done here anyway though because we fixed
+     * orientations after the boundary was created */
     add_new_bound_vert(mem_arena, vm0, co);
   }
   bndv = vm0->boundstart;
@@ -4210,6 +4211,7 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
 
   vmesh_copy_equiv_verts(vm0);
 
+  /* HANS-TODO: The "bulge" snap is probably in here, find it and take it out */
   vm1 = vm0;
   while (vm1->seg < nseg) {
     vm1 = cubic_subdiv(bp, vm1);
@@ -4302,11 +4304,9 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
     for (j = 0; j <= ns2; j++) {
       for (k = 0; k <= ns; k++) {
         copy_v3_v3(v, mesh_vert(vm, i, j, k)->co);
-
-        /* HANS-QUESTION: It looks this is moving the point to the right part of the vmesh. But
-         * wouldn't a "unit cube map" assume that the profile is 0.5? And it's also a bit confusing
-         * that it uses the same unit cube map for all of the points. I guess I'm just a bit lost
-         * here in general. */
+        /* HANS-QUESTION: So it looks like we're mapping from the center of the BevVert to the
+         * outside of the area in between the bound verts? Although I don't see the profile
+         * radius used here, so I'm still confused by this. */
         v[3] = 1.0f;
         mul_m4_v4(mat, v);
         copy_v3_v3(mesh_vert(vm, i, j, k)->co, v);
@@ -5463,7 +5463,8 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         }
         else {
           mid_v3_v3v3(co, va, vb);
-          /* HANS-QUESTION: Why would you do this? Wouldn't va and vb be at the same position? */
+          /* HANS-QUESTION: Why would you do this? Wouldn't va and vb be at the same position?
+           * Because they're sampled in opposite directions from the opposing boundverts */
         }
       }
       else {
@@ -7291,7 +7292,7 @@ void BM_mesh_bevel(BMesh *bm,
         }
       }
     }
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
     if (bp.use_custom_profile) {
       BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(e, BM_ELEM_TAG)) {

@@ -958,9 +958,9 @@ static void write_curvemapping(WriteData *wd, CurveMapping *cumap)
 
 static void write_profilewidget(WriteData *wd, ProfileWidget *prwdgt)
 {
-  /* HANS-QUESTION: I seem to have to write the ProfilePath struct when the curvemapping write
-   * function doesn't have to do the analagous write. Anyway, the loading after a save crashes, so
-   * this can't be right. */
+  /* HANS-TODO: I seemed to have to write the ProfilePath struct when the curvemapping write
+   * function doesn't have to do the analagous write. Anyway, the loading after a save still
+   * crashes, so this can't be right. I think free is being called before copy somewhere. */
   writestruct(wd, DATA, ProfileWidget, 1, prwdgt);
   writestruct(wd, DATA, ProfilePath, 1, prwdgt->profile);
   writestruct(wd, DATA, ProfilePoint, prwdgt->profile->totpoint, prwdgt->profile->path);

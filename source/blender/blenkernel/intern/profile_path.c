@@ -707,7 +707,8 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
       /* HANS-TODO: Remove this case... Why did I say this? */
     }
     else {
-      /* HANS-QUESTION: What's the idea behind this factor stuff? */
+      /* HANS-QUESTION: I'm not sure of the idea behind this factor stuff. I'll have to look into
+       * it closer, or possible use a different method. */
       float fac1 = fp[0] - fp[-2];
       float fac2 = fp[0] - curf;
       if (fac1 > FLT_EPSILON) {
