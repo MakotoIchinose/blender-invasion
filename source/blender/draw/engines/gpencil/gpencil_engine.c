@@ -1019,10 +1019,10 @@ void GPENCIL_draw_scene(void *ved)
                                     (stl->storage->multisamples > 0));
       GPUFrameBuffer *final_fb = (do_antialiasing) ? fbl->multisample_fb : fbl->temp_a_fb;
 
-      GPU_framebuffer_bind(fbl->temp_a_fb);
-      GPU_framebuffer_clear_color_depth_stencil(fbl->temp_a_fb, clearcol, 1.0f, 0x0);
-
       for (int i = 0; i < stl->g_data->gp_cache_used; i++) {
+        GPU_framebuffer_bind(fbl->temp_a_fb);
+        GPU_framebuffer_clear_color_depth_stencil(fbl->temp_a_fb, clearcol, 1.0f, 0x0);
+
         cache_ob = &stl->g_data->gp_object_cache[i];
         Object *ob = cache_ob->ob;
         bGPdata *gpd = cache_ob->gpd;
