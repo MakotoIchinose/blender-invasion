@@ -2683,7 +2683,6 @@ static void do_mask_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 static void apply_color(SculptSession *ss, PBVHVertexIter *vd, const Brush *brush, float fade)
 {
   float factor = ss->cache ? fade * fabs(ss->cache->bstrength) : fade;
-  factor *= 2;
   CLAMP(factor, 0.0f, 1.0f);
   char r = brush->rgb[0] * 255;
   char g = brush->rgb[1] * 255;
