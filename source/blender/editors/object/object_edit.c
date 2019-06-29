@@ -2029,3 +2029,140 @@ void OBJECT_OT_loop_to_vertex_colors(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+static int paint_mask_extract_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+
+  ID *data;
+  data = ob->data;
+  if (data && ID_IS_LINKED(data)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (ob->type == OB_MESH) {
+    Mesh *mesh = ob->data;
+    Main *bmain = CTX_data_main(C);
+    CustomData *vdata = GET_CD_DATA(mesh, vdata);
+    float *paint_mask = CustomData_get_layer(vdata, CD_PAINT_MASK);
+    if (!paint_mask) {
+      return OPERATOR_CANCELLED;
+    }
+    BKE_mesh_runtime_looptri_recalc(mesh);
+    const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
+    MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(mesh),
+                                    "remesh_looptri");
+    BKE_mesh_runtime_verttri_from_looptri(
+        verttri, mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(mesh));
+
+    int totfaces = BKE_mesh_runtime_looptri_len(mesh);
+    unsigned int totverts = mesh->totvert;
+    float *verts = (float *)MEM_calloc_arrayN(totverts * 3, sizeof(float), "remesh_input_verts");
+    unsigned int *faces = (unsigned int *)MEM_calloc_arrayN(
+        totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
+
+    for (int i = 0; i < totverts; i++) {
+      MVert mvert = mesh->mvert[i];
+      verts[i * 3] = mvert.co[0];
+      verts[i * 3 + 1] = mvert.co[1];
+      verts[i * 3 + 2] = mvert.co[2];
+    }
+
+    int current_valid_face = 0;
+    float mask_threshold = 0.7;
+    for (int i = 0; i < totfaces; i++) {
+      MVertTri vt = verttri[i];
+      if (paint_mask[vt.tri[0]] > mask_threshold && paint_mask[vt.tri[1]] > mask_threshold &&
+          paint_mask[vt.tri[2]] > mask_threshold) {
+        faces[current_valid_face * 3] = vt.tri[0];
+        faces[current_valid_face * 3 + 1] = vt.tri[1];
+        faces[current_valid_face * 3 + 2] = vt.tri[2];
+        current_valid_face++;
+      }
+    }
+
+    Mesh *newMesh = BKE_mesh_new_nomain(mesh->totvert, 0, current_valid_face, 0, 0);
+
+    for (int i = 0; i < mesh->totvert; i++) {
+      float vco[3] = {verts[i * 3], verts[i * 3 + 1], verts[i * 3 + 2]};
+      copy_v3_v3(newMesh->mvert[i].co, vco);
+    }
+
+    for (int i = 0; i < current_valid_face; i++) {
+      newMesh->mface[i].v4 = 0;
+      newMesh->mface[i].v3 = faces[i * 3];
+      newMesh->mface[i].v2 = faces[i * 3 + 1];
+      newMesh->mface[i].v1 = faces[i * 3 + 2];
+    }
+
+    MEM_freeN(faces);
+    MEM_freeN(verts);
+
+    BKE_mesh_calc_edges_tessface(newMesh);
+    BKE_mesh_convert_mfaces_to_mpolys(newMesh);
+    BKE_mesh_calc_normals(newMesh);
+    BKE_mesh_strip_loose_edges(newMesh);
+    BKE_mesh_strip_loose_polysloops(newMesh);
+    BKE_mesh_strip_loose_faces(newMesh);
+
+    const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(newMesh);
+    BMesh *bm;
+    bm = BM_mesh_create(&allocsize,
+                        &((struct BMeshCreateParams){
+                            .use_toolflags = false,
+                        }));
+
+    BM_mesh_bm_from_me(bm,
+                       newMesh,
+                       (&(struct BMeshFromMeshParams){
+                           .calc_face_normal = true,
+                       }));
+
+    BMEditMesh *em = BKE_editmesh_create(bm, false);
+    BMVert *v;
+    BMIter iter;
+    BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
+    BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
+      BM_elem_flag_set(v, BM_ELEM_TAG, (v->e == NULL));
+    }
+    BM_mesh_delete_hflag_context(bm, BM_ELEM_TAG, DEL_VERTS);
+    BKE_editmesh_free_derivedmesh(em);
+    BKE_mesh_free(newMesh);
+    newMesh = BKE_mesh_from_bmesh_nomain(bm, (&(struct BMeshToMeshParams){}));
+    ushort local_view_bits = 0;
+    View3D *v3d = CTX_wm_view3d(C);
+    if (v3d && v3d->localvd) {
+      local_view_bits = v3d->local_view_uuid;
+    }
+    Object *newob = ED_object_add_type(C, OB_MESH, NULL, ob->loc, ob->rot, false, local_view_bits);
+
+    BKE_mesh_nomain_to_mesh(newMesh, newob->data, newob, &CD_MASK_EVERYTHING, true);
+
+    struct Scene *scene = CTX_data_scene(C);
+    if (!ED_object_modifier_add(op->reports, bmain, scene, newob, NULL, eModifierType_Solidify)) {
+      return OPERATOR_CANCELLED;
+    }
+
+    WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, newob);
+    BKE_mesh_batch_cache_dirty_tag(newob->data, BKE_MESH_BATCH_DIRTY_ALL);
+    DEG_relations_tag_update(bmain);
+    DEG_id_tag_update(&newob->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, newob->data);
+    BKE_mesh_free(newMesh);
+  }
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_paint_mask_extract(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Mask Extract";
+  ot->description = "Create a new solid object from the current paint mask";
+  ot->idname = "OBJECT_OT_paint_mask_extract";
+
+  /* api callbacks */
+  ot->poll = object_mode_set_poll;
+  ot->exec = paint_mask_extract_exec;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}

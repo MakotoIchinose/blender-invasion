@@ -284,6 +284,8 @@ void OBJECT_OT_remesh(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_to_loop_colors(struct wmOperatorType *ot);
 void OBJECT_OT_loop_to_vertex_colors(struct wmOperatorType *ot);
 
+void OBJECT_OT_paint_mask_extract(struct wmOperatorType *ot);
+
 void REMESH_OT_csg_add(struct wmOperatorType *ot);
 void REMESH_OT_csg_remove(struct wmOperatorType *ot);
 void REMESH_OT_csg_move_up(struct wmOperatorType *ot);
