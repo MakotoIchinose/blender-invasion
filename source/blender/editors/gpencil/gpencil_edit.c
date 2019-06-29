@@ -4656,7 +4656,7 @@ void GPENCIL_OT_stroke_close(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = gpencil_close_exec;
-  ot->poll = gp_active_layer_poll;
+  ot->poll = gp_strokes_edit3d_poll;
 
   /* flag */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
