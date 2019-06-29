@@ -2806,6 +2806,7 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
 
   const int type = RNA_enum_get(op->ptr, "type");
+  const bool geometry = RNA_boolean_get(op->ptr, "geometry");
 
   /* sanity checks */
   if (ELEM(NULL, gpd)) {
@@ -2848,6 +2849,11 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
           BLI_assert(0);
           break;
       }
+
+      /* Create new geometry. */
+      if ((gps->flag & GP_STROKE_CYCLIC) && (geometry)) {
+        BKE_gpencil_close_stroke(gps);
+      }
     }
   }
   CTX_DATA_END;
@@ -2886,6 +2892,8 @@ void GPENCIL_OT_stroke_cyclical_set(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", cyclic_type, GP_STROKE_CYCLIC_TOGGLE, "Type", "");
+  RNA_def_boolean(
+      ot->srna, "geometry", true, "Create Geometry", "Create new geometry for closing stroke");
 }
 
 /* ******************* Flat Stroke Caps ************************** */
