@@ -1010,8 +1010,17 @@ typedef struct {
 } GHOST_XrContextCreateInfo;
 
 typedef struct {
-  // Required info to build matrices goes here.
-  int dummy;
+  int width, height;
+
+  struct {
+    float position[3];
+    float quat[4];
+  } pose;
+
+  struct {
+    float angle_left, angle_right;
+    float angle_up, angle_down;
+  } fov;
 } GHOST_XrDrawViewInfo;
 
 /* xr-context */

@@ -1590,6 +1590,75 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   G.f &= ~G_FLAG_RENDER_VIEWPORT;
 }
 
+void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
+                                     Scene *scene,
+                                     View3DShading *shading_override,
+                                     int drawtype,
+                                     int winx,
+                                     int winy,
+                                     uint draw_flags,
+                                     float viewmat[4][4],
+                                     float winmat[4][4],
+                                     float clip_start,
+                                     float clip_end,
+                                     float lens,
+                                     bool do_sky,
+                                     bool is_persp,
+                                     const char *viewname,
+                                     const bool do_color_management,
+                                     GPUOffScreen *ofs,
+                                     GPUViewport *viewport)
+{
+  View3D v3d = {NULL};
+  ARegion ar = {NULL};
+  RegionView3D rv3d = {{{0}}};
+
+  /* connect data */
+  v3d.regionbase.first = v3d.regionbase.last = &ar;
+  ar.regiondata = &rv3d;
+  ar.regiontype = RGN_TYPE_WINDOW;
+
+  View3DShading *source_shading_settings = &scene->display.shading;
+  if (draw_flags & V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS && shading_override != NULL) {
+    source_shading_settings = shading_override;
+  }
+  memcpy(&v3d.shading, source_shading_settings, sizeof(View3DShading));
+  v3d.shading.type = drawtype;
+
+  if (drawtype == OB_MATERIAL) {
+    v3d.shading.flag = V3D_SHADING_SCENE_WORLD | V3D_SHADING_SCENE_LIGHTS;
+  }
+
+  v3d.flag2 = V3D_HIDE_OVERLAYS;
+
+  if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
+    v3d.flag2 |= V3D_SHOW_ANNOTATION;
+  }
+
+  v3d.shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
+
+  rv3d.persp = RV3D_PERSP;
+  v3d.clip_start = clip_start;
+  v3d.clip_end = clip_end;
+  v3d.lens = lens;
+
+  ED_view3d_draw_offscreen(depsgraph,
+                           scene,
+                           drawtype,
+                           &v3d,
+                           &ar,
+                           winx,
+                           winy,
+                           viewmat,
+                           winmat,
+                           do_sky,
+                           is_persp,
+                           viewname,
+                           do_color_management,
+                           ofs,
+                           viewport);
+}
+
 /**
  * Utility func for ED_view3d_draw_offscreen
  *

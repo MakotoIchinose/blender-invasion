@@ -4324,6 +4324,33 @@ void perspective_m4(float mat[4][4],
       mat[3][3] = 0.0f;
 }
 
+void perspective_m4_fov(float mat[4][4],
+                        const float angle_left,
+                        const float angle_right,
+                        const float angle_up,
+                        const float angle_down,
+                        const float nearClip,
+                        const float farClip)
+{
+  const float tan_angle_left = tanf(angle_left);
+  const float tan_angle_right = tanf(angle_right);
+  const float tan_angle_up = tanf(angle_up);
+  const float tan_angle_down = tanf(angle_down);
+  const float Xdelta = tan_angle_right - tan_angle_left;
+  const float Ydelta = tan_angle_up - tan_angle_down;
+
+  mat[0][0] = 2 / Xdelta;
+  mat[1][1] = 2 / Ydelta;
+  mat[2][0] = (tan_angle_right + tan_angle_left) / Xdelta;
+  mat[2][1] = (tan_angle_up + tan_angle_down) / Ydelta;
+  mat[2][2] = -(farClip + nearClip) / (farClip - nearClip);
+  mat[2][3] = -1;
+  mat[3][2] = -(farClip * (nearClip + nearClip)) / (farClip - nearClip);
+
+  mat[0][1] = mat[0][2] = mat[0][3] = mat[1][0] = mat[1][2] = mat[1][3] = mat[3][0] = mat[3][1] =
+      mat[3][3] = 0.0f;
+}
+
 /* translate a matrix created by orthographic_m4 or perspective_m4 in XY coords
  * (used to jitter the view) */
 void window_translate_m4(float winmat[4][4], float perspmat[4][4], const float x, const float y)

@@ -241,6 +241,22 @@ static void drawing_end(GHOST_XrContext *xr_context,
   xr_context->draw_frame = nullptr;
 }
 
+static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
+{
+  r_info.pose.position[0] = view.pose.position.x;
+  r_info.pose.position[1] = view.pose.position.y;
+  r_info.pose.position[2] = view.pose.position.z;
+  r_info.pose.quat[0] = view.pose.orientation.x;
+  r_info.pose.quat[1] = view.pose.orientation.y;
+  r_info.pose.quat[2] = view.pose.orientation.z;
+  r_info.pose.quat[3] = view.pose.orientation.w;
+
+  r_info.fov.angle_left = view.fov.angleLeft;
+  r_info.fov.angle_right = view.fov.angleRight;
+  r_info.fov.angle_up = view.fov.angleUp;
+  r_info.fov.angle_down = view.fov.angleDown;
+}
+
 static void draw_view(GHOST_XrContext *xr_context,
                       OpenXRData *oxr,
                       XrSwapchain swapchain,
@@ -268,6 +284,10 @@ static void draw_view(GHOST_XrContext *xr_context,
                                                oxr->swapchain_image_height};
 
   swapchain_image = oxr->swapchain_images[swapchain][swapchain_idx];
+
+  draw_view_info.width = oxr->swapchain_image_width;
+  draw_view_info.height = oxr->swapchain_image_height;
+  ghost_xr_draw_view_info_from_view(view, draw_view_info);
 
   xr_context->gpu_binding->drawViewBegin(swapchain_image);
   xr_context->draw_view_fn(&draw_view_info, draw_customdata);
