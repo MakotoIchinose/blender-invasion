@@ -82,7 +82,7 @@ typedef enum {
   SCULPT_UNDO_DYNTOPO_BEGIN,
   SCULPT_UNDO_DYNTOPO_END,
   SCULPT_UNDO_DYNTOPO_SYMMETRIZE,
-  SCULPT_UNDO_REMESH,
+  SCULPT_UNDO_GEOMETRY,
   SCULPT_UNDO_COLOR,
   SCULPT_UNDO_COORDS_COLOR,
 } SculptUndoType;
@@ -301,7 +301,7 @@ typedef struct FilterCache {
   float (*orco)[3];
   struct MVertCol *orvcol;
 
-  float *random_disp;
+  float *random_factor;
   /* unmasked nodes */
   PBVHNode **nodes;
   int totnode;

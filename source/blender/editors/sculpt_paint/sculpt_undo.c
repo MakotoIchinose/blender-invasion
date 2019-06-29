@@ -474,7 +474,7 @@ static int sculpt_undo_bmesh_restore(bContext *C,
     case SCULPT_UNDO_DYNTOPO_END:
       sculpt_undo_bmesh_restore_end(C, unode, ob, ss);
       return true;
-    case SCULPT_UNDO_REMESH:
+    case SCULPT_UNDO_GEOMETRY:
       sculpt_pbvh_clear(ob);
       me = ob->data;
       CustomData_free(&me->vdata, me->totvert);
@@ -539,7 +539,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
   for (unode = lb->first; unode; unode = unode->next) {
     /* restore pivot */
     copy_v3_v3(ss->pivot_pos, unode->pivot_pos);
-    if (unode->type == SCULPT_UNDO_REMESH) {
+    if (unode->type == SCULPT_UNDO_GEOMETRY) {
       remesh_update = true;
     }
     if (STREQ(unode->idname, ob->id.name)) {
@@ -613,7 +613,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
       case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
         BLI_assert(!"Dynamic topology should've already been handled");
         break;
-      case SCULPT_UNDO_REMESH:
+      case SCULPT_UNDO_GEOMETRY:
         break;
     }
   }
@@ -1003,7 +1003,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
       unode->bm_entry = BM_log_entry_add(ss->bm_log);
       BM_log_all_added(ss->bm, ss->bm_log);
     }
-    else if (type == SCULPT_UNDO_REMESH) {
+    else if (type == SCULPT_UNDO_GEOMETRY) {
       Mesh *me = ob->data;
 
       CustomData_copy(
@@ -1058,7 +1058,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
       case SCULPT_UNDO_DYNTOPO_BEGIN:
       case SCULPT_UNDO_DYNTOPO_END:
       case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
-      case SCULPT_UNDO_REMESH:
+      case SCULPT_UNDO_GEOMETRY:
         break;
     }
   }
@@ -1075,7 +1075,7 @@ SculptUndoNode *sculpt_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
   BLI_thread_lock(LOCK_CUSTOM1);
 
   if (ss->bm ||
-      ELEM(type, SCULPT_UNDO_DYNTOPO_BEGIN, SCULPT_UNDO_DYNTOPO_END, SCULPT_UNDO_REMESH)) {
+      ELEM(type, SCULPT_UNDO_DYNTOPO_BEGIN, SCULPT_UNDO_DYNTOPO_END, SCULPT_UNDO_GEOMETRY)) {
     /* Dynamic topology stores only one undo node per stroke,
      * regardless of the number of PBVH nodes modified */
     unode = sculpt_undo_bmesh_push(ob, node, type);
@@ -1129,7 +1129,7 @@ SculptUndoNode *sculpt_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
     case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
       BLI_assert(!"Dynamic topology should've already been handled");
       break;
-    case SCULPT_UNDO_REMESH:
+    case SCULPT_UNDO_GEOMETRY:
       break;
   }
 

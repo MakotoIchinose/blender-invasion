@@ -1796,15 +1796,12 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
 
 static int remesh_exec(bContext *C, wmOperator *op)
 {
-  bool linked_data = false;
-
   Object *ob = CTX_data_active_object(C);
   Main *bmain = CTX_data_main(C);
 
   ID *data;
   data = ob->data;
   if (data && ID_IS_LINKED(data)) {
-    linked_data = true;
     return OPERATOR_CANCELLED;
   }
 
@@ -1835,7 +1832,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
       pbvh = ob->sculpt->pbvh;
       BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
       sculpt_undo_push_begin("voxel remesh");
-      sculpt_undo_push_node(ob, nodes[0], SCULPT_UNDO_REMESH);
+      sculpt_undo_push_node(ob, nodes[0], SCULPT_UNDO_GEOMETRY);
     }
 
     struct OpenVDBLevelSet *level_set;

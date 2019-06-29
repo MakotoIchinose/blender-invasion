@@ -1273,7 +1273,7 @@ bool BKE_brush_sculpt_has_secondary_color(const Brush *brush)
               SCULPT_TOOL_FILL,
               SCULPT_TOOL_SCRAPE,
               SCULPT_TOOL_MASK,
-              SCULPT_TOOL_DAM);
+              SCULPT_TOOL_ORCO);
 }
 
 void BKE_brush_unprojected_radius_set(Scene *scene, Brush *brush, float unprojected_radius)

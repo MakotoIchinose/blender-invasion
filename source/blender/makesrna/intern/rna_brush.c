@@ -84,7 +84,7 @@ const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
     {SCULPT_TOOL_SCRAPE, "SCRAPE", ICON_BRUSH_SCRAPE, "Scrape", ""},
     {SCULPT_TOOL_PINCH, "PINCH", ICON_BRUSH_PINCH, "Pinch", ""},
     {0, "", 0, NULL, NULL},
-    {SCULPT_TOOL_DAM, "DAM", ICON_BRUSH_PINCH, "Dam", ""},
+    {SCULPT_TOOL_ORCO, "ORCO", ICON_BRUSH_PINCH, "Orco Draw", ""},
     {SCULPT_TOOL_RELAX, "RELAX", ICON_BRUSH_SMOOTH, "Relax", ""},
     {0, "", 0, NULL, NULL},
     {SCULPT_TOOL_GRAB, "GRAB", ICON_BRUSH_GRAB, "Grab", ""},

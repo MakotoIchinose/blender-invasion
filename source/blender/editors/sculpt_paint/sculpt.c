@@ -149,7 +149,7 @@ static int sculpt_brush_needs_normal(const SculptSession *ss, const Brush *brush
                SCULPT_TOOL_BLOB,
                SCULPT_TOOL_CREASE,
                SCULPT_TOOL_DRAW,
-               SCULPT_TOOL_DAM,
+               SCULPT_TOOL_ORCO,
                SCULPT_TOOL_LAYER,
                SCULPT_TOOL_NUDGE,
                SCULPT_TOOL_ROTATE,
@@ -1161,7 +1161,7 @@ static float brush_strength(const Sculpt *sd,
     case SCULPT_TOOL_PAINT:
     case SCULPT_TOOL_LAYER:
       return alpha * flip * pressure * overlap * feather;
-    case SCULPT_TOOL_DAM:
+    case SCULPT_TOOL_ORCO:
       return alpha * flip * 4 * pressure * overlap * feather;
     case SCULPT_TOOL_MASK:
       overlap = (1 + overlap) / 2;
@@ -2839,9 +2839,9 @@ static void do_draw_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
   BLI_task_parallel_range(0, totnode, &data, do_draw_brush_task_cb_ex, &settings);
 }
 
-static void do_dam_brush_task_cb_ex(void *__restrict userdata,
-                                    const int n,
-                                    const ParallelRangeTLS *__restrict tls)
+static void do_orco_brush_task_cb_ex(void *__restrict userdata,
+                                     const int n,
+                                     const ParallelRangeTLS *__restrict tls)
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -2884,7 +2884,7 @@ static void do_dam_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_dam_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+static void do_orco_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -2912,7 +2912,7 @@ static void do_dam_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
   ParallelRangeSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
-  BLI_task_parallel_range(0, totnode, &data, do_dam_brush_task_cb_ex, &settings);
+  BLI_task_parallel_range(0, totnode, &data, do_orco_brush_task_cb_ex, &settings);
 }
 
 /**
@@ -4887,8 +4887,8 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
       case SCULPT_TOOL_SCRAPE:
         do_scrape_brush(sd, ob, nodes, totnode);
         break;
-      case SCULPT_TOOL_DAM:
-        do_dam_brush(sd, ob, nodes, totnode);
+      case SCULPT_TOOL_ORCO:
+        do_orco_brush(sd, ob, nodes, totnode);
         break;
       case SCULPT_TOOL_MASK:
         do_mask_brush(sd, ob, nodes, totnode);
@@ -5406,8 +5406,8 @@ static const char *sculpt_tool_name(Sculpt *sd)
       return "Rotate Brush";
     case SCULPT_TOOL_MASK:
       return "Mask Brush";
-    case SCULPT_TOOL_DAM:
-      return "Dam Brush";
+    case SCULPT_TOOL_ORCO:
+      return "Orco Draw Brush";
     case SCULPT_TOOL_SIMPLIFY:
       return "Simplify Brush";
     case SCULPT_TOOL_PAINT:
@@ -7691,8 +7691,8 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random, b
   ss->filter_cache = MEM_callocN(sizeof(FilterCache), "filter cache");
   ss->filter_cache->orco = MEM_mallocN(3 * ss->totvert * sizeof(float), "orco");
   if (init_random) {
-    ss->filter_cache->random_disp = MEM_mallocN(MESH_FILTER_RANDOM_MOD * sizeof(float),
-                                                "random_disp");
+    ss->filter_cache->random_factor = MEM_mallocN(MESH_FILTER_RANDOM_MOD * sizeof(float),
+                                                  "random_disp");
   }
 
   if (init_colors && ss->vcol) {
@@ -7725,7 +7725,7 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random, b
       .nodes = nodes,
       .filter_type = filter_type,
       .init_colors = init_colors,
-      .random_disp = ss->filter_cache->random_disp,
+      .random_disp = ss->filter_cache->random_factor,
       .node_mask = node_mask,
   };
 
@@ -7773,8 +7773,8 @@ static void sculpt_filter_cache_free(SculptSession *ss)
   if (ss->filter_cache->nodes) {
     MEM_freeN(ss->filter_cache->nodes);
   }
-  if (ss->filter_cache->random_disp) {
-    MEM_freeN(ss->filter_cache->random_disp);
+  if (ss->filter_cache->random_factor) {
+    MEM_freeN(ss->filter_cache->random_factor);
   }
   if (ss->filter_cache->orvcol) {
     MEM_freeN(ss->filter_cache->orvcol);
@@ -7789,7 +7789,7 @@ typedef enum eSculptMeshFilterTypes {
   MESH_FILTER_SMOOTH = 0,
   MESH_FILTER_GROW = 1,
   MESH_FILTER_SCALE = 2,
-  MESH_FILTER_DILATE = 3,
+  MESH_FILTER_INFLATE = 3,
   MESH_FILTER_SPHERE = 4,
   MESH_FILTER_RANDOM = 5,
   MESH_FILTER_RELAX = 6,
@@ -7800,7 +7800,7 @@ EnumPropertyItem prop_mesh_filter_types[] = {
     // {MESH_FILTER_RELAX, "RELAX", 0, "Relax", "Relax mesh"},
     {MESH_FILTER_GROW, "GROW", 0, "Grow", "Grow mesh"},
     {MESH_FILTER_SCALE, "SCALE", 0, "Scale", "Scale mesh"},
-    {MESH_FILTER_DILATE, "DILATE", 0, "Dilate", "Dilate mesh"},
+    {MESH_FILTER_INFLATE, "INFLATE", 0, "Inflate", "Inflate mesh"},
     {MESH_FILTER_SPHERE, "SPHERE", 0, "Sphere", "Morph into sphere"},
     {MESH_FILTER_RANDOM, "RANDOM", 0, "Random", "Randomize mesh"},
     {0, NULL, 0, NULL, NULL},
@@ -7837,7 +7837,7 @@ static void mesh_filter_task_cb(void *__restrict userdata,
         relax_vertex(disp, vd, ss, true);
         add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
         break;
-      case MESH_FILTER_DILATE:
+      case MESH_FILTER_INFLATE:
         normal_short_to_float_v3(normal, vd.no);
         mul_v3_v3fl(disp, normal, fade);
         add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
@@ -7934,7 +7934,7 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
       .smooth_value = 0.5f,
       .filter_type = mode,
       .filter_strength = filter_strength,
-      .random_disp = ss->filter_cache->random_disp,
+      .random_disp = ss->filter_cache->random_factor,
   };
 
   ParallelRangeSettings settings;
@@ -8010,7 +8010,7 @@ void SCULPT_OT_mesh_filter(struct wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* rna */
-  RNA_def_enum(ot->srna, "type", prop_mesh_filter_types, MESH_FILTER_DILATE, "Filter type", "");
+  RNA_def_enum(ot->srna, "type", prop_mesh_filter_types, MESH_FILTER_INFLATE, "Filter type", "");
   RNA_def_float(
       ot->srna, "strength", 1.0f, -10.0f, 10.0f, "Strength", "Filter Strength", -10.0f, 10.0f);
 }
@@ -8215,7 +8215,7 @@ int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
       .nodes = ss->filter_cache->nodes,
       .filter_type = mode,
       .filter_strength = filter_strength,
-      .random_disp = ss->filter_cache->random_disp,
+      .random_disp = ss->filter_cache->random_factor,
   };
 
   ParallelRangeSettings settings;
@@ -8545,10 +8545,9 @@ static void do_color_fill_task_cb(void *__restrict userdata,
   BKE_pbvh_node_mark_redraw(node);
 }
 
-static int sculpt_color_fill_exec(bContext *C, wmOperator *op)
+static int sculpt_fill_color_exec(bContext *C, wmOperator *op)
 {
   ARegion *ar = CTX_wm_region(C);
-  struct Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   PBVH *pbvh = ob->sculpt->pbvh;
@@ -8595,15 +8594,15 @@ static int sculpt_color_fill_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void SCULPT_OT_color_fill(struct wmOperatorType *ot)
+void SCULPT_OT_fill_color(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Color fill";
-  ot->idname = "SCULPT_OT_color_fill";
+  ot->name = "Fill color";
+  ot->idname = "SCULPT_OT_fill_color";
   ot->description = "Fills the mesh with the current brush color";
 
   /* api callbacks */
-  ot->exec = sculpt_color_fill_exec;
+  ot->exec = sculpt_fill_color_exec;
   ot->poll = sculpt_mode_poll;
 
   ot->flag = OPTYPE_REGISTER;
@@ -8616,7 +8615,6 @@ static int sculpt_mask_by_normal_invoke(bContext *C, wmOperator *op, const wmEve
   SculptSession *ss = ob->sculpt;
   ARegion *ar = CTX_wm_region(C);
   PBVH *pbvh = ob->sculpt->pbvh;
-  struct Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   PBVHNode **nodes;
   int totnode;
@@ -8630,7 +8628,7 @@ static int sculpt_mask_by_normal_invoke(bContext *C, wmOperator *op, const wmEve
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
 
   BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
-  sculpt_undo_push_begin("Mask Coplanar");
+  sculpt_undo_push_begin("Mask by normal");
   for (int i = 0; i < totnode; i++) {
     sculpt_undo_push_node(ob, nodes[i], SCULPT_UNDO_MASK);
     BKE_pbvh_node_mark_redraw(nodes[i]);
@@ -8738,12 +8736,10 @@ static void SCULPT_OT_mask_by_normal(wmOperatorType *ot)
 
 static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e))
 {
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   ARegion *ar = CTX_wm_region(C);
   PBVH *pbvh = ob->sculpt->pbvh;
-  struct Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   PBVHNode **nodes;
   int totnode;
@@ -9379,7 +9375,7 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
   ss->filter_cache->mask_update_it[ss->active_vertex_mesh_index] = 1;
   ss->vmask[ss->active_vertex_mesh_index] = 1.0f;
 
-  char *prev_mask = MEM_callocN(ss->totvert * sizeof(char), "prevmask");
+  char *visited_vertices = MEM_callocN(ss->totvert * sizeof(char), "prevmask");
 
   GSQueue *queue = BLI_gsqueue_new(sizeof(maskExmandVIT));
 
@@ -9400,12 +9396,12 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
       if (poly_get_adj_loops_from_vert(p, ss->mloop, c_mevit.v, f_adj_v) != -1) {
         int j;
         for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
-          if (prev_mask[f_adj_v[j]] == 0) {
+          if (visited_vertices[f_adj_v[j]] == 0) {
             maskExmandVIT new_entry;
             new_entry.v = f_adj_v[j];
             new_entry.it = c_mevit.it + 1;
             ss->filter_cache->mask_update_it[new_entry.v] = new_entry.it;
-            prev_mask[new_entry.v] = 1;
+            visited_vertices[new_entry.v] = 1;
             if (ss->filter_cache->mask_update_last_it < new_entry.it) {
               ss->filter_cache->mask_update_last_it = new_entry.it;
             }
@@ -9418,7 +9414,7 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   BLI_gsqueue_free(queue);
 
-  MEM_freeN(prev_mask);
+  MEM_freeN(visited_vertices);
 
   sculpt_flush_update_step(C);
   WM_event_add_modal_handler(C, op);
@@ -9465,7 +9461,7 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_mesh_filter);
   WM_operatortype_append(SCULPT_OT_color_filter);
   WM_operatortype_append(SCULPT_OT_mask_filter);
-  WM_operatortype_append(SCULPT_OT_color_fill);
+  WM_operatortype_append(SCULPT_OT_fill_color);
   WM_operatortype_append(SCULPT_OT_mask_by_normal);
   WM_operatortype_append(SCULPT_OT_mask_by_color);
   WM_operatortype_append(SCULPT_OT_set_pivot_position);

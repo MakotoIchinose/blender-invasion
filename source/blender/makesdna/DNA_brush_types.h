@@ -473,7 +473,7 @@ typedef enum eBrushSculptTool {
   SCULPT_TOOL_BLOB = 17,
   SCULPT_TOOL_CLAY_STRIPS = 18,
   SCULPT_TOOL_MASK = 19,
-  SCULPT_TOOL_DAM = 20,
+  SCULPT_TOOL_ORCO = 20,
   SCULPT_TOOL_PAINT = 21,
   SCULPT_TOOL_RELAX = 22,
 } eBrushSculptTool;
@@ -508,7 +508,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ROTATE, \
         SCULPT_TOOL_THUMB, \
         SCULPT_TOOL_LAYER, \
-        SCULPT_TOOL_DAM, \
+        SCULPT_TOOL_ORCO, \
         SCULPT_TOOL_PAINT, \
         SCULPT_TOOL_RELAX, \
 \
