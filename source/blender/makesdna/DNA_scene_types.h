@@ -969,11 +969,10 @@ typedef struct Sculpt {
   /* Direction used for SCULPT_OT_symmetrize operator */
   int symmetrize_direction;
 
+  char _pad[4];
+
   /* gravity factor for sculpting */
   float gravity_factor;
-
-  /* mask opacity */
-  float mask_opacity;
 
   /* scale for constant detail size */
   /** Constant detail resolution (Blender unit / constant_detail). */
