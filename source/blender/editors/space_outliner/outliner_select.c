@@ -1294,8 +1294,9 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 
   outliner_flag_set(&soops->tree, TSE_SELECTED, false);
 
-  /* Range select requires the active element to be visible, so select if not visible */
-  if (!outliner_is_element_visible(&soops->tree, active)) {
+  /* Select element under cursor if active element not visible or if the cursor element is the
+   * active element */
+  if (!outliner_is_element_visible(&soops->tree, active) || (active == cursor)) {
     TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
     return;
   }
