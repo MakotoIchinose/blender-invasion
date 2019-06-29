@@ -4588,3 +4588,68 @@ bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
   }
   return ok;
 }
+
+/* Add geometry to stroke for closing the path */
+static int gpencil_close_exec(bContext *C, wmOperator *op)
+{
+  Object *obact = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)obact->data;
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  bGPDstroke *gps = NULL;
+
+  if (gpd == NULL) {
+    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil data");
+    return OPERATOR_CANCELLED;
+  }
+
+  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+
+    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+        if (gpf == NULL) {
+          continue;
+        }
+
+        for (gps = gpf->strokes.first; gps; gps = gps->next) {
+          /* skip strokes that are invalid for current view */
+          if (ED_gpencil_stroke_can_use(C, gps) == false) {
+            continue;
+          }
+
+          if (gps->flag & GP_STROKE_SELECT) {
+            /* generate geometry */
+            BKE_gpencil_close_stroke(gps);
+          }
+        }
+        /* if not multiedit, exit loop*/
+        if (!is_multiedit) {
+          break;
+        }
+      }
+    }
+  }
+  CTX_DATA_END;
+
+  /* updates */
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&obact->id, ID_RECALC_COPY_ON_WRITE);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_stroke_close(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Stroke Close";
+  ot->description = "Add geometry to close stroke";
+  ot->idname = "GPENCIL_OT_stroke_close";
+
+  /* callbacks */
+  ot->exec = gpencil_close_exec;
+  ot->poll = gp_active_layer_poll;
+
+  /* flag */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
