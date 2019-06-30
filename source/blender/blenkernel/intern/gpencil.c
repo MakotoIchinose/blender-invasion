@@ -2010,8 +2010,8 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
 
     /* Average point. */
     interp_v3_v3v3(&pt->x, &pt1->x, &pt2->x, step);
-    pt->pressure = interpf(pt1->pressure, pt2->pressure, step);
-    pt->strength = interpf(pt1->strength, pt2->strength, step);
+    pt->pressure = interpf(pt2->pressure, pt1->pressure, step);
+    pt->strength = interpf(pt2->strength, pt1->strength, step);
     pt->flag = 0;
 
     /* Set weights. */
