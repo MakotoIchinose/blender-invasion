@@ -49,9 +49,9 @@ static void initData(ModifierData *md)
 {
   BevelModifierData *bmd = (BevelModifierData *)md;
 
-  bmd->value = 0.1f;
+  bmd->value = 1.0f;
   bmd->res = 1;
-  bmd->flags = 0;
+  bmd->flags = MOD_BEVEL_SAMPLE_POINTS;
   bmd->val_flags = MOD_BEVEL_AMT_OFFSET;
   bmd->lim_flags = 0;
   bmd->e_flags = 0;
@@ -70,12 +70,12 @@ static void initData(ModifierData *md)
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
   printf("COPY DATA (MOD_bevel.c)\n");
-//  const BevelModifierData *bmd_src = (const BevelModifierData *)md_src;
-//  BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
+  const BevelModifierData *bmd_src = (const BevelModifierData *)md_src;
+  BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
 
   modifier_copyData_generic(md_src, md_dst, flag);
 
-//  bmd_dst->prwdgt = profilewidget_copy(bmd_src->prwdgt);
+  bmd_dst->prwdgt = profilewidget_copy(bmd_src->prwdgt);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),

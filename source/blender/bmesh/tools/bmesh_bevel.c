@@ -3613,10 +3613,10 @@ static NewVert *mesh_vert_canon(VMesh *vm, int i, int j, int k)
 static bool is_canon(VMesh *vm, int i, int j, int k)
 {
   int ns2 = vm->seg / 2;
-  if (vm->seg % 2 == 1) {
+  if (vm->seg % 2 == 1) { /* odd */
     return (j <= ns2 && k <= ns2);
   }
-  else {
+  else { /* even */
     return ((j < ns2 && k <= ns2) || (j == ns2 && k == ns2 && i == 0));
   }
 }
@@ -4246,7 +4246,7 @@ static int tri_corner_test(BevelParams *bp, BevVert *bv)
   int i;
   int in_plane_e = 0;
 
-  if (bp->vertex_only) {
+  if (bp->vertex_only || bp->use_custom_profile) {
     return -1;
   }
   if (bv->vmesh->count != 3) {
@@ -4528,20 +4528,20 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
 #if DEBUG_CUSTOM_PROFILE_ADJ
   printf("PIPE ADJ VMESH\n");
 #endif
-  int i, j, k, n, ns, ns2, ipipe1, ipipe2;
+  int i, j, k, n_bndv, ns, ns2, ipipe1, ipipe2;
   VMesh *vm;
   bool even, midline;
 
   vm = adj_vmesh(bp, bv);
 
   /* Now snap all interior coordinates to be on the epipe profile */
-  n = bv->vmesh->count;
+  n_bndv = bv->vmesh->count;
   ns = bv->vmesh->seg;
   ns2 = ns / 2;
   even = (ns % 2) == 0;
   ipipe1 = vpipe->index;
   ipipe2 = vpipe->next->next->index;
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_bndv; i++) {
     for (j = 1; j <= ns2; j++) {
       for (k = 0; k <= ns2; k++) {
         if (!is_canon(vm, i, j, k)) {
