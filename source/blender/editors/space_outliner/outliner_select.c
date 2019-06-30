@@ -1278,15 +1278,17 @@ static void do_outliner_range_select_recursive(ListBase *lb,
 static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 {
   TreeElement *active = outliner_find_active_element(&soops->tree);
-
-  outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  TreeStoreElem *tselem = TREESTORE(active);
 
   /* Select element under cursor if active element not visible or if the cursor element is the
    * active element */
-  if (!outliner_is_element_visible(&soops->tree, active) || (active == cursor)) {
+  if (!(tselem->flag & TSE_SELECTED) || !outliner_is_element_visible(active) ||
+      (active == cursor)) {
     TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
     return;
   }
+
+  outliner_flag_set(&soops->tree, TSE_SELECTED, false);
 
   bool selecting = false;
   do_outliner_range_select_recursive(&soops->tree, active, cursor, &selecting);
@@ -1681,9 +1683,9 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
     active = soops->tree.first;
     TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
   }
-  else if (!outliner_is_element_visible(&soops->tree, active)) {
+  else if (!outliner_is_element_visible(active)) {
     /* If active is not visible, set its first visble parent to active */
-    while (!outliner_is_element_visible(&soops->tree, active)) {
+    while (!outliner_is_element_visible(active)) {
       active = active->parent;
     }
 
