@@ -2807,6 +2807,8 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
 
   const int type = RNA_enum_get(op->ptr, "type");
   const bool geometry = RNA_boolean_get(op->ptr, "geometry");
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  bGPDstroke *gps = NULL;
 
   /* sanity checks */
   if (ELEM(NULL, gpd)) {
@@ -2815,44 +2817,55 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
 
   /* loop all selected strokes */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    if (gpl->actframe == NULL) {
-      continue;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
-    for (bGPDstroke *gps = gpl->actframe->strokes.last; gps; gps = gps->prev) {
-      MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+        if (gpf == NULL) {
+          continue;
+        }
 
-      /* skip strokes that are not selected or invalid for current view */
-      if (((gps->flag & GP_STROKE_SELECT) == 0) || ED_gpencil_stroke_can_use(C, gps) == false) {
-        continue;
-      }
-      /* skip hidden or locked colors */
-      if (!gp_style || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
-          (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
-        continue;
-      }
+        for (gps = gpf->strokes.first; gps; gps = gps->next) {
+          MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+          /* skip strokes that are not selected or invalid for current view */
+          if (((gps->flag & GP_STROKE_SELECT) == 0) ||
+              ED_gpencil_stroke_can_use(C, gps) == false) {
+            continue;
+          }
+          /* skip hidden or locked colors */
+          if (!gp_style || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
+              (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
+            continue;
+          }
 
-      switch (type) {
-        case GP_STROKE_CYCLIC_CLOSE:
-          /* Close all (enable) */
-          gps->flag |= GP_STROKE_CYCLIC;
-          break;
-        case GP_STROKE_CYCLIC_OPEN:
-          /* Open all (disable) */
-          gps->flag &= ~GP_STROKE_CYCLIC;
-          break;
-        case GP_STROKE_CYCLIC_TOGGLE:
-          /* Just toggle flag... */
-          gps->flag ^= GP_STROKE_CYCLIC;
-          break;
-        default:
-          BLI_assert(0);
-          break;
-      }
+          switch (type) {
+            case GP_STROKE_CYCLIC_CLOSE:
+              /* Close all (enable) */
+              gps->flag |= GP_STROKE_CYCLIC;
+              break;
+            case GP_STROKE_CYCLIC_OPEN:
+              /* Open all (disable) */
+              gps->flag &= ~GP_STROKE_CYCLIC;
+              break;
+            case GP_STROKE_CYCLIC_TOGGLE:
+              /* Just toggle flag... */
+              gps->flag ^= GP_STROKE_CYCLIC;
+              break;
+            default:
+              BLI_assert(0);
+              break;
+          }
 
-      /* Create new geometry. */
-      if ((gps->flag & GP_STROKE_CYCLIC) && (geometry)) {
-        BKE_gpencil_close_stroke(gps);
+          /* Create new geometry. */
+          if ((gps->flag & GP_STROKE_CYCLIC) && (geometry)) {
+            BKE_gpencil_close_stroke(gps);
+          }
+        }
+
+        /* if not multiedit, exit loop*/
+        if (!is_multiedit) {
+          break;
+        }
       }
     }
   }
