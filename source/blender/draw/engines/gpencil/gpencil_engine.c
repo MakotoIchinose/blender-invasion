@@ -1025,6 +1025,10 @@ void GPENCIL_draw_scene(void *ved)
 
         cache_ob = &stl->g_data->gp_object_cache[i];
         Object *ob = cache_ob->ob;
+        /* TODO: To check if the object has VFX, verify the value of
+         * cache_ob->has_fx
+         */
+
         bGPdata *gpd = cache_ob->gpd;
         /* Stroke Pass:
          * draw only a subset that usually starts with a fill and ends with stroke
