@@ -13,33 +13,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2015, Blender Foundation
+ * The Original Code is Copyright (C) 2004 Blender Foundation.
+ * All rights reserved.
  */
 
 /** \file
- * \ingroup editors
+ * \ingroup spoutliner
  */
 
-#ifndef __ED_OUTLINER_H__
-#define __ED_OUTLINER_H__
+#include "DNA_layer_types.h"
+#include "DNA_outliner_types.h"
+#include "DNA_space_types.h"
 
-struct ListBase;
-struct bContext;
+#include "ED_outliner.h"
 
-/* Flag to indicate if a sync is to extend or replace the outliner selection */
-extern short sync_select_dirty_flag;
+#include "outliner_intern.h"
 
-/* sync_select_dirty_flag types */
-enum {
-  SYNC_SELECT_NONE = 0,
-  SYNC_SELECT_REPLACE = 1,
-  SYNC_SELECT_EXTEND = 2,
-};
-
-bool ED_outliner_collections_editor_poll(struct bContext *C);
-
-void ED_outliner_selected_objects_get(const struct bContext *C, struct ListBase *objects);
-
-Base *ED_outliner_give_base_under_cursor(struct bContext *C, const int mval[2]);
-
-#endif /*  __ED_OUTLINER_H__ */
+/* Default value for sync selection state */
+short sync_select_dirty_flag = SYNC_SELECT_NONE;

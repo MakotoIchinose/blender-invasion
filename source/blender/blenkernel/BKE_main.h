@@ -82,10 +82,6 @@ typedef struct Main {
   /** All current ID's exist in the last memfile undo step. */
   char is_memfile_undo_written;
 
-  /* Flag to indicate if a sync is to extend or replace the outliner selection */
-  char sync_select_dirty_flag;
-  struct SpaceOutliner *clean_outliner; /* to store the clean outliner to be synced from */
-
   BlendThumbnail *blen_thumb;
 
   struct Library *curlib;
@@ -135,13 +131,6 @@ typedef struct Main {
 
   struct MainLock *lock;
 } Main;
-
-/* Main->sync_select_dirty_flag */
-enum {
-  SYNC_SELECT_NONE = 0,
-  SYNC_SELECT_REPLACE = 1,
-  SYNC_SELECT_EXTEND = 2,
-};
 
 struct Main *BKE_main_new(void);
 void BKE_main_free(struct Main *mainvar);

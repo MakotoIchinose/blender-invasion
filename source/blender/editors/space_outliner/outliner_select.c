@@ -41,7 +41,6 @@
 #include "BKE_armature.h"
 #include "BKE_collection.h"
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -78,7 +77,7 @@ void outliner_select_sync(bContext *C, SpaceOutliner *soops)
 {
   puts("Outliner select... Mark other outliners as dirty for syncing");
   outliner_sync_selection_to_view_layer(C, &soops->tree);
-  G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
+  sync_select_dirty_flag = SYNC_SELECT_NONE;
 
   /* Don't need to mark self as dirty here... */
   outliners_mark_dirty(C);

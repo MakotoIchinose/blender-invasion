@@ -45,7 +45,6 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_idcode.h"
 #include "BKE_layer.h"
@@ -62,6 +61,7 @@
 #include "ED_armature.h"
 #include "ED_keyframing.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 
 #include "WM_api.h"
@@ -3631,12 +3631,12 @@ static void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   /* If 3D view selection occurred, mark outliners as dirty */
-  if (G_MAIN->sync_select_dirty_flag != SYNC_SELECT_NONE) {
+  if (sync_select_dirty_flag != SYNC_SELECT_NONE) {
     printf("Marking outliners as dirty\n");
 
     outliners_mark_dirty(C);
 
-    G_MAIN->sync_select_dirty_flag = SYNC_SELECT_NONE;
+    sync_select_dirty_flag = SYNC_SELECT_NONE;
   }
 
   /* If dirty, sync from view layer */

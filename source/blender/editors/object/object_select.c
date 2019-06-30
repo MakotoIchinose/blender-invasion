@@ -50,7 +50,6 @@
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
-#include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
@@ -70,6 +69,7 @@
 
 #include "ED_armature.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
 #include "ED_keyframing.h"
@@ -119,7 +119,7 @@ void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
   }
 
   /* Using globals to sync selection for now */
-  G_MAIN->sync_select_dirty_flag = SYNC_SELECT_REPLACE;
+  sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 }
 
 /**
