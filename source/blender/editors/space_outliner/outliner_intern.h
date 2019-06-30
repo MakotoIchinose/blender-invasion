@@ -261,12 +261,6 @@ void outliner_object_mode_toggle(struct bContext *C,
                                  ViewLayer *view_layer,
                                  Base *base);
 
-void outliners_mark_dirty(const struct bContext *C);
-
-void outliner_sync_selection_to_view_layer(struct bContext *C, struct ListBase *tree);
-
-void outliner_select_sync(struct bContext *C, struct SpaceOutliner *soops);
-
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_cb)(struct bContext *C,
                                       struct ReportList *,
@@ -473,5 +467,13 @@ bool outliner_tree_traverse(const SpaceOutliner *soops,
 float outliner_restrict_columns_width(const struct SpaceOutliner *soops);
 TreeElement *outliner_find_active_element(const ListBase *lb);
 bool outliner_is_element_visible(const ListBase *lb, const TreeElement *te);
+
+/* outliner_sync.c ---------------------------------------------- */
+
+void outliners_mark_dirty(const struct bContext *C);
+void outliner_select_sync(struct bContext *C, struct SpaceOutliner *soops);
+void outliner_sync_selection(const struct bContext *C, struct SpaceOutliner *soops);
+void outliner_sync_selection_from_view_layer(struct ViewLayer *view_layer, struct ListBase *tree);
+void outliner_sync_selection_to_view_layer(struct bContext *C, struct ListBase *tree);
 
 #endif /* __OUTLINER_INTERN_H__ */

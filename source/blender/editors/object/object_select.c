@@ -118,7 +118,7 @@ void ED_object_base_select(Base *base, eObjectSelect_Mode mode)
     BKE_scene_object_base_flag_sync_from_base(base);
   }
 
-  /* Using globals to sync selection for now */
+  /* Set synced selection global declared in ED_outliner.h */
   sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 }
 

@@ -72,18 +72,6 @@
 
 #include "outliner_intern.h"
 
-/* Set clean outliner and mark other outliners for syncing */
-void outliner_select_sync(bContext *C, SpaceOutliner *soops)
-{
-  puts("Outliner select... Mark other outliners as dirty for syncing");
-  outliner_sync_selection_to_view_layer(C, &soops->tree);
-  sync_select_dirty_flag = SYNC_SELECT_NONE;
-
-  /* Don't need to mark self as dirty here... */
-  outliners_mark_dirty(C);
-  soops->flag &= ~SO_IS_DIRTY;
-}
-
 /* Get base of object under cursor (for eyedropper) */
 Base *ED_outliner_give_base_under_cursor(struct bContext *C, const int mval[2])
 {
