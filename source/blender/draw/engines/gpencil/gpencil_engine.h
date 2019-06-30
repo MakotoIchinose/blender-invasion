@@ -84,6 +84,8 @@ typedef struct tGPencilObjectCache {
   int idx; /*original index, can change after sort */
   char *name;
 
+  bool has_layer_blend;
+
   /* effects */
   bool has_fx;
   ListBase shader_fx;

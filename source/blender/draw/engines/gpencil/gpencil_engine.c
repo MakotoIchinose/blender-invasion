@@ -571,6 +571,7 @@ static void gpencil_add_draw_data(void *vedata, Object *ob)
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   bGPdata *gpd = (bGPdata *)ob->data;
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  tGPencilObjectCache_shgrp *array_elm = NULL;
 
   int i = stl->g_data->gp_cache_used - 1;
   tGPencilObjectCache *cache_ob = &stl->g_data->gp_object_cache[i];
@@ -582,6 +583,16 @@ static void gpencil_add_draw_data(void *vedata, Object *ob)
     }
     else {
       gpencil_populate_multiedit(&e_data, vedata, ob, cache_ob);
+    }
+  }
+
+  /* Verify if the object has layer blending */
+  cache_ob->has_layer_blend = false;
+  for (int e = 0; e < cache_ob->tot_layers; e++) {
+    array_elm = &cache_ob->shgrp_array[e];
+    if ((array_elm->mode != eGplBlendMode_Regular) || (array_elm->mask_layer)) {
+      cache_ob->has_layer_blend = true;
+      break;
     }
   }
 
@@ -1025,6 +1036,12 @@ void GPENCIL_draw_scene(void *ved)
 
         cache_ob = &stl->g_data->gp_object_cache[i];
         Object *ob = cache_ob->ob;
+        /* TODO: To check if the object has Blend, verify the value of
+         * cache_ob->has_layer_blend
+         * Actually this variable is set to true if any layer has any blend mode
+         * different of Regular mode or the layer has the Masking enabled.
+         */
+
         /* TODO: To check if the object has VFX, verify the value of
          * cache_ob->has_fx
          */
