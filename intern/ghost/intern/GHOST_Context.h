@@ -146,9 +146,9 @@ class GHOST_Context : public GHOST_IContext {
     return GHOST_kFailure;
   }
 
-  virtual GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen,
-                                                    GHOST_TInt32 width,
-                                                    GHOST_TInt32 height);
+  GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen,
+                                            GHOST_TInt32 width,
+                                            GHOST_TInt32 height);
 
  protected:
   void initContextGLEW();

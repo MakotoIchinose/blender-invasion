@@ -105,10 +105,11 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     // TODO
     (void)swapchain_image;
   }
-  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image) override
+  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image, GHOST_Context *ogl_ctx) override
   {
     // TODO
     (void)swapchain_image;
+    (void)ogl_ctx;
   }
 
  private:
@@ -152,27 +153,52 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     return base_images;
   }
 
-  void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) override
+  void drawViewBegin(XrSwapchainImageBaseHeader * /*swapchain_image*/) override
   {
-    // Can't we simply use the backbuffer texture? Didn't work in initial test.
-
+  }
+  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image, GHOST_Context *ogl_ctx) override
+  {
     XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
         swapchain_image);
-    const CD3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
-                                                                 DXGI_FORMAT_R8G8B8A8_UNORM);
-    ID3D11RenderTargetView *render_target_view;
-    m_ghost_ctx->m_device->CreateRenderTargetView(
-        d3d_swapchain_image->texture, &render_target_view_desc, &render_target_view);
 
-    const float clear_col[] = {0.2f, 0.5f, 0.8f, 1.0f};
-    m_ghost_ctx->m_device_ctx->ClearRenderTargetView(render_target_view, clear_col);
+#  if 0
+    /* Ideally we'd just create a render target view for the OpenXR swapchain image texture and
+     * blit from the OpenGL context into it. The NV_DX_interop extension doesn't want to work with
+     * this though. At least not with Optimus hardware. See:
+     * https://github.com/mpv-player/mpv/issues/2949#issuecomment-197262807.
+     * Note: Even if this worked, the blitting code only supports one shared resource by now, we'd
+     * need at least two (for each eye). We could also entirely re-register shared resources all
+     * the time. Also, the runtime might recreate the swapchain image so the shared resource would
+     * have to be re-registered then as well. */
 
-    render_target_view->Release();
-  }
-  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image) override
-  {
-    // TODO
-    (void)swapchain_image;
+    ID3D11RenderTargetView *rtv;
+    CD3D11_RENDER_TARGET_VIEW_DESC rtv_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
+                                            DXGI_FORMAT_R8G8B8A8_UNORM);
+    D3D11_TEXTURE2D_DESC tex_desc;
+
+    d3d_swapchain_image->texture->GetDesc(&tex_desc);
+
+    m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture, &rtv_desc, &rtv);
+    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, rtv, tex_desc.Width, tex_desc.Height);
+#  else
+    ID3D11Resource *res;
+    ID3D11Texture2D *tex;
+    D3D11_TEXTURE2D_DESC tex_desc;
+
+    d3d_swapchain_image->texture->GetDesc(&tex_desc);
+
+    ogl_ctx->activateDrawingContext();
+    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, tex_desc.Width, tex_desc.Height);
+
+    m_ghost_ctx->m_backbuffer_view->GetResource(&res);
+    res->QueryInterface<ID3D11Texture2D>(&tex);
+
+    m_ghost_ctx->m_device_ctx->OMSetRenderTargets(0, nullptr, nullptr);
+    m_ghost_ctx->m_device_ctx->CopyResource(d3d_swapchain_image->texture, tex);
+
+    res->Release();
+    tex->Release();
+#  endif
   }
 
  private:

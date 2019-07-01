@@ -21,11 +21,13 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
+#include "BKE_screen.h"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 
 #include "DNA_object_types.h"
+#include "DNA_view3d_types.h"
 
 #include "DRW_engine.h"
 
@@ -148,45 +150,59 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int
   return surface;
 }
 
-static void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
+static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
+                                       const float clip_start,
+                                       const float clip_end,
+                                       float r_view_mat[4][4],
+                                       float r_proj_mat[4][4])
 {
-  bContext *C = customdata;
-  const float ofs[] = {3.0f, 3.0f, 3.0f};
-  const float clip_start = 0.01, clip_end = 500.0f;
-  const float lens = 50.0f; /* TODO get from OpenXR */
-
-  GPUOffScreen *offscreen;
-  GPUViewport *viewport;
-  float viewmat[4][4], winmat[4][4];
-  char err_out[256] = "unknown";
-
-  perspective_m4_fov(winmat,
+  perspective_m4_fov(r_proj_mat,
                      draw_view->fov.angle_left,
                      draw_view->fov.angle_right,
                      draw_view->fov.angle_up,
                      draw_view->fov.angle_down,
                      clip_start,
                      clip_end);
-  ED_view3d_to_m4(viewmat, ofs, draw_view->pose.quat, 0.0f);
-  invert_m4(viewmat);
+
+  ED_view3d_to_m4(r_view_mat, draw_view->pose.position, draw_view->pose.quat, 0.0f);
+  invert_m4(r_view_mat);
+}
+
+static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
+{
+  bContext *C = customdata;
+  const float clip_start = 0.01, clip_end = 500.0f;
+  const float lens = 50.0f; /* TODO get from OpenXR */
+
+  GPUOffScreen *offscreen;
+  GPUViewport *viewport;
+  View3DShading shading;
+  float viewmat[4][4], winmat[4][4];
+  char err_out[256] = "unknown";
+
+  wm_xr_draw_matrices_create(draw_view, clip_start, clip_end, viewmat, winmat);
 
   DRW_opengl_context_enable();
   offscreen = GPU_offscreen_create(draw_view->width, draw_view->height, 0, true, false, err_out);
   if (offscreen == NULL) {
     fprintf(stderr, "%s: failed to get buffer, %s\n", __func__, err_out);
     DRW_opengl_context_disable();
-    return;
+    return NULL;
   }
   GPU_offscreen_bind(offscreen, true);
   viewport = GPU_viewport_create_from_offscreen(offscreen);
 
+  glViewport(draw_view->ofsx, draw_view->ofsy, draw_view->width, draw_view->height);
+
+  BKE_screen_view3d_shading_init(&shading);
   ED_view3d_draw_offscreen_simple(CTX_data_depsgraph(C),
                                   CTX_data_scene(C),
-                                  NULL,
+                                  &shading,
                                   OB_SOLID,
                                   draw_view->width,
                                   draw_view->height,
-                                  0,
+                                  /* Draw floor for better orientation */
+                                  V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | V3D_OFSDRAW_SHOW_GRIDFLOOR,
                                   viewmat,
                                   winmat,
                                   clip_start,
@@ -198,14 +214,21 @@ static void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customd
                                   false,
                                   offscreen,
                                   viewport);
-
   GPU_viewport_clear_from_offscreen(viewport);
   GPU_viewport_free(viewport);
 
+  /* Blit from the DRW context into the offscreen surface context. Would be good to avoid this.
+   * Idea: Allow passing custom offscreen context to DRW? */
+  GHOST_ContextBlitOpenGLOffscreenContext(
+      g_xr_surface->ghost_ctx, DRW_opengl_context_get(), draw_view->width, draw_view->height);
+
   GPU_offscreen_unbind(offscreen, true);
+  GPU_framebuffer_restore();
+  DRW_opengl_context_disable_ex(true);
+
   GPU_offscreen_free(offscreen);
 
-  DRW_opengl_context_disable();
+  return g_xr_surface->ghost_ctx;
 }
 
 static void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)

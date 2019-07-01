@@ -55,6 +55,8 @@ class GHOST_ContextD3D : public GHOST_Context {
    */
   GHOST_TSuccess releaseDrawingContext();
 
+  GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height);
+
   /**
    * Call immediately after new to initialize.  If this fails then immediately delete the object.
    * \return Indication as to whether initialization has succeeded.
@@ -109,6 +111,10 @@ class GHOST_ContextD3D : public GHOST_Context {
   GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx,
                                             GHOST_TInt32 width,
                                             GHOST_TInt32 height);
+  GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx,
+                                            ID3D11RenderTargetView *render_target,
+                                            GHOST_TInt32 width,
+                                            GHOST_TInt32 height);
 
   bool isUpsideDown() const
   {
@@ -116,9 +122,8 @@ class GHOST_ContextD3D : public GHOST_Context {
   }
 
  private:
-  friend class SharedOpenGLContext;
-
   GHOST_TSuccess setupD3DLib();
+  GHOST_TSuccess updateSwapchain(GHOST_TUns32 width, GHOST_TUns32 height);
 
   static HMODULE s_d3d_lib;
   static PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN s_D3D11CreateDeviceAndSwapChainFn;
@@ -130,7 +135,7 @@ class GHOST_ContextD3D : public GHOST_Context {
   IDXGISwapChain *m_swapchain;
   ID3D11RenderTargetView *m_backbuffer_view;
 
-  SharedOpenGLContext *glshared{NULL};
+  class SharedOpenGLContext *glshared{nullptr};
 };
 
 #endif /* __GHOST_CONTEXTD3D_H__ */

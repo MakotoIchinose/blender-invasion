@@ -1634,6 +1634,9 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
   if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
     v3d.flag2 |= V3D_SHOW_ANNOTATION;
   }
+  if (draw_flags & V3D_OFSDRAW_SHOW_GRIDFLOOR) {
+    v3d.gridflag |= V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y;
+  }
 
   v3d.shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
 
@@ -1851,6 +1854,9 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
 
   if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
     v3d.flag2 |= V3D_SHOW_ANNOTATION;
+  }
+  if (draw_flags & V3D_OFSDRAW_SHOW_GRIDFLOOR) {
+    v3d.gridflag |= V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y;
   }
 
   v3d.shading.background_type = V3D_SHADING_BACKGROUND_WORLD;

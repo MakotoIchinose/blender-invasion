@@ -243,13 +243,14 @@ static void drawing_end(GHOST_XrContext *xr_context,
 
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
 {
-  r_info.pose.position[0] = view.pose.position.x;
+  /* Set and convert to Blender coodinate space */
+  r_info.pose.position[0] = -view.pose.position.x;
   r_info.pose.position[1] = view.pose.position.y;
-  r_info.pose.position[2] = view.pose.position.z;
-  r_info.pose.quat[0] = view.pose.orientation.x;
-  r_info.pose.quat[1] = view.pose.orientation.y;
-  r_info.pose.quat[2] = view.pose.orientation.z;
-  r_info.pose.quat[3] = view.pose.orientation.w;
+  r_info.pose.position[2] = -view.pose.position.z;
+  r_info.pose.quat[0] = view.pose.orientation.w;
+  r_info.pose.quat[1] = view.pose.orientation.x;
+  r_info.pose.quat[2] = -view.pose.orientation.y;
+  r_info.pose.quat[3] = view.pose.orientation.z;
 
   r_info.fov.angle_left = view.fov.angleLeft;
   r_info.fov.angle_right = view.fov.angleRight;
@@ -269,6 +270,7 @@ static void draw_view(GHOST_XrContext *xr_context,
   XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
   XrSwapchainImageBaseHeader *swapchain_image;
   GHOST_XrDrawViewInfo draw_view_info{};
+  GHOST_ContextHandle draw_ctx;
   uint32_t swapchain_idx;
 
   xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx);
@@ -285,13 +287,15 @@ static void draw_view(GHOST_XrContext *xr_context,
 
   swapchain_image = oxr->swapchain_images[swapchain][swapchain_idx];
 
-  draw_view_info.width = oxr->swapchain_image_width;
-  draw_view_info.height = oxr->swapchain_image_height;
+  draw_view_info.ofsx = proj_layer_view.subImage.imageRect.offset.x;
+  draw_view_info.ofsy = proj_layer_view.subImage.imageRect.offset.y;
+  draw_view_info.width = proj_layer_view.subImage.imageRect.extent.width;
+  draw_view_info.height = proj_layer_view.subImage.imageRect.extent.height;
   ghost_xr_draw_view_info_from_view(view, draw_view_info);
 
   xr_context->gpu_binding->drawViewBegin(swapchain_image);
-  xr_context->draw_view_fn(&draw_view_info, draw_customdata);
-  xr_context->gpu_binding->drawViewEnd(swapchain_image);
+  draw_ctx = xr_context->draw_view_fn(&draw_view_info, draw_customdata);
+  xr_context->gpu_binding->drawViewEnd(swapchain_image, (GHOST_Context *)draw_ctx);
 
   xrReleaseSwapchainImage(swapchain, &release_info);
 }

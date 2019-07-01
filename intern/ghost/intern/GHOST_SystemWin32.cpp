@@ -297,6 +297,29 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const STR_String &title,
   return window;
 }
 
+LRESULT WINAPI offscreen_s_wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+  LRESULT lResult = 0;
+  bool event_handled = false;
+
+  switch (msg) {
+    case WM_GETMINMAXINFO: {
+      ::DefWindowProc(hwnd, msg, wParam, lParam);
+      MINMAXINFO *mmi = (MINMAXINFO *)lParam;
+      mmi->ptMaxTrackSize.x = LONG_MAX;
+      mmi->ptMaxTrackSize.y = LONG_MAX;
+      event_handled = true;
+      break;
+    }
+  }
+
+  if (!event_handled) {
+    lResult = ::DefWindowProc(hwnd, msg, wParam, lParam);
+  }
+
+  return lResult;
+}
+
 /**
  * Create a new offscreen context.
  * Never explicitly delete the window, use #disposeContext() instead.
@@ -306,9 +329,30 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
 {
   bool debug_context = false; /* TODO: inform as a parameter */
 
+  /* TODO Doesn't use STATIC class to allow offscreen context framebuffer bigger than screen size.
+   * For that, WM_GETMINMAXINFO event has to be listented to in custom WndProc callback. Need to
+   * verify this doesn't cause side effects, also, de-duplicate class definition.
+   */
   GHOST_Context *context;
+  WNDCLASSW wc = {0};
+  wc.style = CS_HREDRAW | CS_VREDRAW;
+  wc.lpfnWndProc = offscreen_s_wndProc;
+  wc.cbClsExtra = 0;
+  wc.cbWndExtra = 0;
+  wc.hInstance = ::GetModuleHandle(0);
+  wc.hCursor = ::LoadCursor(0, IDC_ARROW);
+  wc.hbrBackground =
+#ifdef INW32_COMPISITING
+      (HBRUSH)CreateSolidBrush
+#endif
+      (0x00000000);
+  wc.lpszMenuName = 0;
+  wc.lpszClassName = L"GHOST_OffscreenWindowClass";
 
-  HWND wnd = CreateWindowA("STATIC",
+  // Use RegisterClassEx for setting small icon
+  ::RegisterClassW(&wc);
+
+  HWND wnd = CreateWindowA("GHOST_OffscreenWindowClass",
                            "BlenderGLEW",
                            WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
                            0,
@@ -418,7 +462,29 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContextD3D()
   HDC prev_hdc = wglGetCurrentDC();
   HGLRC prev_context = wglGetCurrentContext();
 
-  HWND wnd = CreateWindowA("STATIC",
+  /* TODO Doesn't use STATIC class to allow offscreen context framebuffer bigger than screen size.
+   * For that, WM_GETMINMAXINFO event has to be listented to in custom WndProc callback. Need to
+   * verify this doesn't cause side effects, also, de-duplicate class definition.
+   */
+  WNDCLASSW wc = {0};
+  wc.style = CS_HREDRAW | CS_VREDRAW;
+  wc.lpfnWndProc = offscreen_s_wndProc;
+  wc.cbClsExtra = 0;
+  wc.cbWndExtra = 0;
+  wc.hInstance = ::GetModuleHandle(0);
+  wc.hCursor = ::LoadCursor(0, IDC_ARROW);
+  wc.hbrBackground =
+#ifdef INW32_COMPISITING
+      (HBRUSH)CreateSolidBrush
+#endif
+      (0x00000000);
+  wc.lpszMenuName = 0;
+  wc.lpszClassName = L"GHOST_OffscreenWindowClass";
+
+  // Use RegisterClassEx for setting small icon
+  ::RegisterClassW(&wc);
+
+  HWND wnd = CreateWindowA("GHOST_OffscreenWindowClass",
                            "BlenderD3D",
                            WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
                            0,

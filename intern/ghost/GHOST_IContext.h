@@ -56,6 +56,10 @@ class GHOST_IContext {
    */
   virtual GHOST_TSuccess releaseDrawingContext() = 0;
 
+  virtual GHOST_TSuccess blitOpenGLOffscreenContext(class GHOST_Context *offscreen,
+                                                    GHOST_TInt32 width,
+                                                    GHOST_TInt32 height) = 0;
+
   virtual unsigned int getDefaultFramebuffer() = 0;
 
   virtual GHOST_TSuccess swapBuffers() = 0;

@@ -154,6 +154,17 @@ GHOST_TSuccess GHOST_BlitOpenGLOffscreenContext(GHOST_WindowHandle windowhandle,
   return window->blitOpenGLOffscreenContext((GHOST_IContext *)offscreen_contexthandle);
 }
 
+GHOST_TSuccess GHOST_ContextBlitOpenGLOffscreenContext(GHOST_ContextHandle onscreen_contexthandle,
+                                                       GHOST_ContextHandle offscreen_contexthandle,
+                                                       GHOST_TInt32 width,
+                                                       GHOST_TInt32 height)
+{
+  GHOST_IContext *context = (GHOST_IContext *)onscreen_contexthandle;
+
+  return context->blitOpenGLOffscreenContext(
+      (class GHOST_Context *)offscreen_contexthandle, width, height);
+}
+
 GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;

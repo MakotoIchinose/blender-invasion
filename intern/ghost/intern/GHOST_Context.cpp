@@ -157,6 +157,7 @@ GHOST_TSuccess GHOST_Context::blitOpenGLOffscreenContext(GHOST_Context *offscree
   GLuint fbo_offscreen;
   GLuint fbo_onscreen;
   GLuint render_buf_shared;
+  GLint fbo_prev_draw;
 
   if ((m_type != GHOST_kDrawingContextTypeOpenGL) ||
       (offscreen->m_type != GHOST_kDrawingContextTypeOpenGL)) {
@@ -173,6 +174,8 @@ GHOST_TSuccess GHOST_Context::blitOpenGLOffscreenContext(GHOST_Context *offscree
 
   offscreen->activateDrawingContext();
 
+  glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fbo_prev_draw);
+
   /* Create shared renderbuffer */
   glGenRenderbuffers(1, &render_buf_shared);
   glBindRenderbuffer(GL_RENDERBUFFER, render_buf_shared);
@@ -185,7 +188,7 @@ GHOST_TSuccess GHOST_Context::blitOpenGLOffscreenContext(GHOST_Context *offscree
       GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, render_buf_shared);
 
   /* Blit offscreen framebuffer into renderbuffer */
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, offscreen->getDefaultFramebuffer());
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_prev_draw);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_offscreen);
   glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 

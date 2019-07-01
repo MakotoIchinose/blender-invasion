@@ -215,6 +215,12 @@ GHOST_TSuccess GHOST_DisposeDirectXContext(GHOST_SystemHandle systemhandle,
 GHOST_TSuccess GHOST_BlitOpenGLOffscreenContext(GHOST_WindowHandle windowhandle,
                                                 GHOST_ContextHandle offscreen_contexthandle);
 
+extern GHOST_TSuccess GHOST_ContextBlitOpenGLOffscreenContext(
+    GHOST_ContextHandle onscreen_contexthandle,
+    GHOST_ContextHandle offscreen_contexthandle,
+    GHOST_TInt32 width,
+    GHOST_TInt32 height);
+
 extern GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle);
 
 /**
@@ -1010,6 +1016,7 @@ typedef struct {
 } GHOST_XrContextCreateInfo;
 
 typedef struct {
+  int ofsx, ofsy;
   int width, height;
 
   struct {
@@ -1030,7 +1037,10 @@ void GHOST_XrContextDestroy(struct GHOST_XrContext *xr_context);
 typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
 typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
                                                 void *graphics_context);
-typedef void (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
+/* XXX hacky: returns GHOST_ContextHandle so DirectX binding can get a handle to the OpenGL
+ * offscreen context. */
+typedef GHOST_ContextHandle (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view,
+                                                  void *customdata);
 
 void GHOST_XrGraphicsContextBindFuncs(struct GHOST_XrContext *xr_context,
                                       GHOST_XrGraphicsContextBindFn bind_fn,

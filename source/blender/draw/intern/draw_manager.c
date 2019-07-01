@@ -3224,6 +3224,11 @@ void DRW_opengl_context_disable(void)
   DRW_opengl_context_disable_ex(true);
 }
 
+void *DRW_opengl_context_get(void)
+{
+  return DST.gl_context;
+}
+
 void DRW_opengl_render_context_enable(void *re_gl_context)
 {
   /* If thread is main you should use DRW_opengl_context_enable(). */

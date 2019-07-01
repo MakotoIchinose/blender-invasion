@@ -145,8 +145,17 @@ GHOST_TSuccess GHOST_ContextWGL::releaseDrawingContext()
 
 GHOST_TSuccess GHOST_ContextWGL::setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height)
 {
+  RECT rect = {0, 0, (long)width, (long)height};
   RECT winrect;
+
+  /* To get a default framebuffer with custom size, the hidden window has to be resized. */
+
   GetWindowRect(m_hWnd, &winrect);
+
+  WIN32_CHK(AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, 0));
+
+  width = rect.right - rect.left;
+  height = rect.bottom - rect.top;
 
   if (((winrect.right - winrect.left) != width) || ((winrect.bottom - winrect.top) != height)) {
     return SetWindowPos(m_hWnd,

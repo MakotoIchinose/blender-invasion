@@ -95,6 +95,14 @@ void wm_surface_reset_drawable(void)
   }
 }
 
+void wm_surface_present(wmSurface *surface)
+{
+  GHOST_SwapContextBuffers(surface->ghost_ctx);
+  if (surface->secondary_ghost_ctx) {
+    GHOST_SwapContextBuffers(surface->secondary_ghost_ctx);
+  }
+}
+
 void wm_surface_add(wmSurface *surface)
 {
   BLI_addtail(&global_surface_list, surface);

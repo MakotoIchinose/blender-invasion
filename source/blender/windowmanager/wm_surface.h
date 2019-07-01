@@ -52,5 +52,6 @@ void wm_surface_make_drawable(wmSurface *surface);
 void wm_surface_clear_drawable(void);
 void wm_surface_set_drawable(wmSurface *surface, bool activate);
 void wm_surface_reset_drawable(void);
+void wm_surface_present(wmSurface *surface);
 
 #endif /* __WM_SURFACE_H__ */

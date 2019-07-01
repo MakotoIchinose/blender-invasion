@@ -875,6 +875,8 @@ static void wm_draw_surface(bContext *C, wmSurface *surface)
 
   surface->draw(C);
 
+  wm_surface_present(surface);
+
   /* Avoid interference with window drawable */
   wm_surface_clear_drawable();
 }
