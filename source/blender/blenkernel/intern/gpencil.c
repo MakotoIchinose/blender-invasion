@@ -1693,6 +1693,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
 bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
 {
   bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
+  int i;
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON) {
     return false;
@@ -1703,18 +1704,33 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
   second_last = &pt[gps->totpoints - 2];
   next_pt = &pt[1];
 
-  float len1 = len_v3v3(&next_pt->x, &pt->x);
+  float len1 = 0;
+  float len2 = 0;
+
+  i = 1;
+  while (len1 < 0.001 && gps->totpoints > i) {
+    next_pt = &pt[i];
+    len1 = len_v3v3(&next_pt->x, &pt->x);
+    i++;
+  }
+
+  i = 2;
+  while (len2 < 0.001 && gps->totpoints >= i) {
+    second_last = &pt[gps->totpoints - i];
+    len2 = len_v3v3(&last_pt->x, &second_last->x);
+    i++;
+  }
+
   float extend1 = (len1 + dist) / len1;
-  float len2 = len_v3v3(&last_pt->x, &second_last->x);
   float extend2 = (len2 + dist) / len2;
 
-  float result1[3],result2[3];
+  float result1[3], result2[3];
 
   interp_v3_v3v3(result1, &next_pt->x, &pt->x, extend1);
   interp_v3_v3v3(result2, &second_last->x, &last_pt->x, extend2);
 
-  copy_v3_v3(&pt->x,result1);
-  copy_v3_v3(&last_pt->x,result2);
+  copy_v3_v3(&pt->x, result1);
+  copy_v3_v3(&last_pt->x, result2);
 
   return true;
 }
