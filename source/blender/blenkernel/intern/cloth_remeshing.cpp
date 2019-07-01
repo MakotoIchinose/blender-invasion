@@ -63,6 +63,7 @@ extern "C" {
 #include "BPH_mass_spring.h"
 
 #include <vector>
+#include <utility>
 using namespace std;
 
 /******************************************************************************
@@ -710,13 +711,71 @@ static void cloth_remeshing_get_uv_from_face(BMesh *bm, BMFace *f, float **r_uvs
   }
 }
 
-static float cloth_remeshing_edge_size_collapse(BMEdge *e, BMVert *v)
+static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2])
 {
-  return 1.0f;
+  BLI_assert(BM_vert_in_face(v, f));
+
+  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+  BMLoop *l = BM_face_vert_share_loop(f, v);
+  MLoopUV *luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+  copy_v2_v2(r_uv, luv->uv);
+}
+
+static pair<BMFace *, BMFace *> cloth_remeshing_find_match(BMesh *bm,
+                                                           pair<BMFace *, BMFace *> &face_pair_01,
+                                                           pair<BMFace *, BMFace *> &face_pair_02,
+                                                           BMVert *vert)
+{
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      BMFace *f1 = i == 0 ? face_pair_01.first : face_pair_01.second;
+      BMFace *f2 = j == 0 ? face_pair_02.first : face_pair_02.second;
+
+      if (f1 && f2) {
+        float uv_01[2], uv_02[2];
+        cloth_remeshing_uv_of_vert_in_face(bm, f1, vert, uv_01);
+        cloth_remeshing_uv_of_vert_in_face(bm, f2, vert, uv_02);
+        if (equals_v2v2(uv_01, uv_02)) {
+          return make_pair(f1, f2);
+        }
+      }
+    }
+  }
+  return make_pair((BMFace *)NULL, (BMFace *)NULL);
+}
+
+static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
+                                                 BMEdge *e,
+                                                 BMVert *v,
+                                                 vector<ClothSizing> &sizing)
+{
+  BMFace *f1, *f2;
+  BM_edge_face_pair(BM_edge_exists(e->v1, v), &f1, &f2);
+  pair<BMFace *, BMFace *> face_pair_01 = make_pair(f1, f2);
+  BM_edge_face_pair(BM_edge_exists(e->v2, v), &f1, &f2);
+  pair<BMFace *, BMFace *> face_pair_02 = make_pair(f1, f2);
+
+  pair<BMFace *, BMFace *> face_pair = cloth_remeshing_find_match(
+      bm, face_pair_01, face_pair_02, v);
+  float uv_01[2], uv_02[2];
+  cloth_remeshing_uv_of_vert_in_face(bm, face_pair.first, e->v1, uv_01);
+  cloth_remeshing_uv_of_vert_in_face(bm, face_pair.second, e->v2, uv_02);
+
+  /* TODO(Ish): Need to fix this for when sizing is fixed */
+  float value = 0.0;
+  float temp_v2[2];
+  float u12[2];
+  copy_v2_v2(u12, uv_01);
+  sub_v2_v2(u12, uv_02);
+  ClothSizing sizing_temp = sizing[0];
+  mul_v2_m2v2(temp_v2, sizing_temp.m, u12);
+  value += dot_v2v2(u12, temp_v2);
+
+  return sqrtf(fmax(value, 0.0f));
 }
 
 #define REMESHING_HYSTERESIS_PARAMETER 0.2
-static bool cloth_remeshing_can_collapse_edge(BMEdge *e, BMesh *bm)
+static bool cloth_remeshing_can_collapse_edge(BMesh *bm, BMEdge *e, vector<ClothSizing> &sizing)
 {
   if (BM_edge_face_count(e) < 2) {
     return false;
@@ -739,7 +798,8 @@ static bool cloth_remeshing_can_collapse_edge(BMEdge *e, BMesh *bm)
     }
     /* Edge metric using v1, v2, v3 */
     if (v3) {
-      if (cloth_remeshing_edge_size_collapse(e, v3) > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
+      if (cloth_remeshing_edge_size_with_vert(bm, e, v3, sizing) >
+          (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
         return false;
       }
       v3 = NULL; /* done so that edge metric is found only if v3 exists */
@@ -749,18 +809,18 @@ static bool cloth_remeshing_can_collapse_edge(BMEdge *e, BMesh *bm)
   return true;
 }
 
-static BMEdge *cloth_remeshing_collapse_edge(BMEdge *e, BMesh *bm)
+static BMEdge *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e)
 {
   return BM_vert_collapse_faces(bm, e, e->v1, 1.0f, true, true, true);
 }
 
-static bool cloth_remeshing_try_edge_collapse(BMEdge *e, BMesh *bm)
+static bool cloth_remeshing_try_edge_collapse(BMesh *bm, BMEdge *e, vector<ClothSizing> &sizing)
 {
-  if (!cloth_remeshing_can_collapse_edge(e, bm)) {
+  if (!cloth_remeshing_can_collapse_edge(bm, e, sizing)) {
     return false;
   }
 
-  cloth_remeshing_collapse_edge(e, bm);
+  cloth_remeshing_collapse_edge(bm, e);
   return true;
 }
 
