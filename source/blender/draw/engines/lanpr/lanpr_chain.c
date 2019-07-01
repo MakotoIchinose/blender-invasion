@@ -723,6 +723,33 @@ void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
   }
 }
 
+/* length is in image space */
+float lanpr_compute_chain_length(LANPR_RenderLineChain *rlc){
+  LANPR_RenderLineChainItem *rlci;
+  float offset_accum = 0;
+  float dist;
+  float last_point[2];
+
+  rlci = rlc->chain.first;
+  copy_v2_v2(last_point, rlci->pos);
+  for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
+    dist = len_v2v2(rlci->pos, last_point);
+    offset_accum += dist;
+    copy_v2_v2(last_point, rlci->pos);
+  }
+  return offset_accum;
+}
+
+void lanpr_discard_short_chains(LANPR_RenderBuffer* rb, float threshold){
+  LANPR_RenderLineChain *rlc,*next_rlc;
+  for(rlc = rb->chains.first;rlc;rlc=next_rlc){
+    next_rlc = rlc->next;
+    if(lanpr_compute_chain_length(rlc)<threshold){
+      BLI_remlink(&rb->chains,rlc);
+    }
+  }
+}
+
 int lanpr_count_chain(LANPR_RenderLineChain *rlc)
 {
   LANPR_RenderLineChainItem *rlci;
@@ -733,7 +760,7 @@ int lanpr_count_chain(LANPR_RenderLineChain *rlc)
   return Count;
 }
 
-float lanpr_compute_chain_length(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
+float lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
 {
   LANPR_RenderLineChainItem *rlci;
   int i = 0;
@@ -811,7 +838,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
 
-    total_length = lanpr_compute_chain_length(rlc, lengths, i);
+    total_length = lanpr_compute_chain_length_draw(rlc, lengths, i);
 
     for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
 
