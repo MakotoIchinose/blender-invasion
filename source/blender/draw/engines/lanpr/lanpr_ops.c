@@ -4489,6 +4489,7 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
                                             flmd->material,
                                             NULL,
                                             flmd->types);
+          DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
         }
       }
     }
@@ -4537,6 +4538,7 @@ void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, i
                                     col->lanpr.material,
                                     col,
                                     col->lanpr.types);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
 int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 {
@@ -4550,6 +4552,8 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
   lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame);
 
   lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL); 
 
   return OPERATOR_FINISHED;
 }
@@ -4574,6 +4578,8 @@ int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 
     lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
   }
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL); 
 
   return OPERATOR_FINISHED;
 }
