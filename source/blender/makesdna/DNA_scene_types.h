@@ -1680,6 +1680,10 @@ typedef struct SceneLANPR {
 
   int reloaded;
 
+  /* edge split modifier will cause problems in LANPR. */
+  int disable_edge_splits;
+  char _pad[4];
+
   /* offline render */
   ListBase line_layers;
   struct LANPR_LineLayer *active_layer;

@@ -41,6 +41,8 @@
 
 #include "MOD_modifiertypes.h"
 
+#include "lanpr_access.h"
+
 static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd)
 {
   Mesh *result;
@@ -132,10 +134,15 @@ static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool 
   ModifierData* imd;
   EdgeSplitModifierData *emd = (EdgeSplitModifierData *)md;
 
-  for(imd = md->prev; imd; imd=imd->prev){
-    if(imd->type == eModifierType_FeatureLine){
-      lanpr_found = 1;
-      break;
+  if(lanpr_disable_edge_splits(scene)){
+    lanpr_found = 1;
+  }
+  if(!lanpr_found){
+    for(imd = md->prev; imd; imd=imd->prev){
+      if(imd->type == eModifierType_FeatureLine){
+        lanpr_found = 1;
+        break;
+      }
     }
   }
   if(!lanpr_found){

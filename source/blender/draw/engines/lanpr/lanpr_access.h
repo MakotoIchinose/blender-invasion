@@ -30,8 +30,12 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph);
 
 void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
-void lanpr_copy_data(Scene *from, Scene *to);
+bool lanpr_dpix_shader_error();
 
-void lanpr_free_everything(Scene *s);
+bool lanpr_disable_edge_splits(struct Scene* s);
+
+void lanpr_copy_data(struct Scene *from, struct Scene *to);
+
+void lanpr_free_everything(struct Scene *s);
 
 #endif

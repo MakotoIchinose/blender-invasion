@@ -7369,11 +7369,17 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
                            "Enable Chain Connection",
                            "Connect short chains in the image space into one longer chain");
 
+  /* should be read-only */
   prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", "");
   RNA_def_property_ui_text(
       prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU.");
+
+  prop = RNA_def_property(srna, "disable_edge_splits", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(
+      prop, "Disable Edge Splits", "Disable edge split modifiers to prevent errors in LANPR.");
 
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);

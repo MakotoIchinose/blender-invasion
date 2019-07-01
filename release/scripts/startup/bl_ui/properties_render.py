@@ -737,9 +737,10 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         if mode == "SOFTWARE":
             row=layout.row(align=True)
-            row.prop(lanpr,'auto_update',toggle=True,text='Auto')
+            row.prop(lanpr,'auto_update',toggle=True,text='Auto Update')
             if not lanpr.auto_update:
                 row.operator("scene.lanpr_calculate", icon='RENDER_STILL', text='Update')
+            layout.prop(lanpr, "disable_edge_splits")
 
         if mode == "DPIX" or mode == "SOFTWARE":
             
