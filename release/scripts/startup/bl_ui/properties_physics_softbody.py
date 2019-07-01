@@ -46,7 +46,7 @@ class PhysicButtonsPanel:
 
 class PHYSICS_PT_softbody(PhysicButtonsPanel, Panel):
     bl_label = "Soft Body"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -62,7 +62,7 @@ class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
     bl_label = "Object"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -90,7 +90,7 @@ class PHYSICS_PT_softbody_simulation(PhysicButtonsPanel, Panel):
     bl_label = "Simulation"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -108,7 +108,7 @@ class PHYSICS_PT_softbody_cache(PhysicButtonsPanel, Panel):
     bl_label = "Cache"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         md = context.soft_body
@@ -119,7 +119,7 @@ class PHYSICS_PT_softbody_goal(PhysicButtonsPanel, Panel):
     bl_label = "Goal"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw_header(self, context):
         softbody = context.soft_body.settings
@@ -144,7 +144,7 @@ class PHYSICS_PT_softbody_goal_strengths(PhysicButtonsPanel, Panel):
     bl_label = "Strengths"
     bl_parent_id = 'PHYSICS_PT_softbody_goal'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -170,7 +170,7 @@ class PHYSICS_PT_softbody_goal_settings(PhysicButtonsPanel, Panel):
     bl_label = "Settings"
     bl_parent_id = 'PHYSICS_PT_softbody_goal'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -193,7 +193,7 @@ class PHYSICS_PT_softbody_edge(PhysicButtonsPanel, Panel):
     bl_label = "Edges"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw_header(self, context):
         softbody = context.soft_body.settings
@@ -240,7 +240,7 @@ class PHYSICS_PT_softbody_edge_aerodynamics(PhysicButtonsPanel, Panel):
     bl_label = "Aerodynamics"
     bl_parent_id = 'PHYSICS_PT_softbody_edge'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -263,7 +263,7 @@ class PHYSICS_PT_softbody_edge_stiffness(PhysicButtonsPanel, Panel):
     bl_label = "Stiffness"
     bl_parent_id = 'PHYSICS_PT_softbody_edge'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw_header(self, context):
         softbody = context.soft_body.settings
@@ -287,7 +287,7 @@ class PHYSICS_PT_softbody_collision(PhysicButtonsPanel, Panel):
     bl_label = "Self Collision"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw_header(self, context):
         softbody = context.soft_body.settings
@@ -322,7 +322,7 @@ class PHYSICS_PT_softbody_solver(PhysicButtonsPanel, Panel):
     bl_label = "Solver"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -347,7 +347,7 @@ class PHYSICS_PT_softbody_solver_diagnostics(PhysicButtonsPanel, Panel):
     bl_label = "Diagnostics"
     bl_parent_id = 'PHYSICS_PT_softbody_solver'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -366,7 +366,7 @@ class PHYSICS_PT_softbody_solver_helpers(PhysicButtonsPanel, Panel):
     bl_label = "Helpers"
     bl_parent_id = 'PHYSICS_PT_softbody_solver'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         layout = self.layout
@@ -389,7 +389,7 @@ class PHYSICS_PT_softbody_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Field Weights"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', ''}
 
     def draw(self, context):
         md = context.soft_body

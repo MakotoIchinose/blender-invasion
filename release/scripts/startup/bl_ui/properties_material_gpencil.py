@@ -235,7 +235,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
 
 class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
     bl_label = "Preview"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -245,7 +245,7 @@ class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
 
 
 class MATERIAL_PT_gpencil_custom_props(GPMaterialButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
     _context_path = "object.active_material"
     _property_type = bpy.types.Material
 

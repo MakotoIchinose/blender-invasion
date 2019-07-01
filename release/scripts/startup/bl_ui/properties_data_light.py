@@ -323,7 +323,7 @@ class DATA_PT_falloff_curve(DataButtonsPanel, Panel):
 
 
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
     _context_path = "object.data"
     _property_type = bpy.types.Light
 
