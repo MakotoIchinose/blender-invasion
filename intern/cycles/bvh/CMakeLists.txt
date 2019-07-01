@@ -19,6 +19,7 @@ set(SRC
   bvh_sort.cpp
   bvh_split.cpp
   bvh_unaligned.cpp
+  bvh_embree_converter.cpp
 )
 
 set(SRC_HEADERS
@@ -35,6 +36,7 @@ set(SRC_HEADERS
   bvh_sort.h
   bvh_split.h
   bvh_unaligned.h
+  bvh_embree_converter.h
 )
 
 set(LIB

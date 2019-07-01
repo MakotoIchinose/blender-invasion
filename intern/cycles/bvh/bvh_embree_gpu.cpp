@@ -331,8 +331,6 @@ void BVHEmbreeGPU::build(Progress& progress, Stats *stats_)
     root->update_time();
     root->update_visibility();
 
-    std::cout << "Subtree SAH cost " << root->computeSubtreeSAHCost(this->params) << std::endl;
-
     pack_primitives();
 
     progress.set_substatus("Packing geometry");
