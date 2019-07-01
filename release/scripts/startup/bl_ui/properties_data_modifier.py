@@ -1673,7 +1673,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.active = lanpr_enabled
         if not lanpr_enabled:
             layout.label(text="LANPR is not enabled")
-        layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Manual Update')
         layout.label(text='Enable Types:')
         row = layout.row(align=True)
         row.prop(md,'enable_contour',toggle=True)

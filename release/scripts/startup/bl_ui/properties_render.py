@@ -740,10 +740,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             row.prop(lanpr,'auto_update',toggle=True,text='Auto')
             if not lanpr.auto_update:
                 row.operator("scene.lanpr_calculate", icon='RENDER_STILL', text='Update')
-        
-        layout.label(text = "CAUTION: this bakes ALL frames!")
-        row=layout.row()
-        row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake GPencil Strokes')
 
         if mode == "DPIX" or mode == "SOFTWARE":
             
@@ -781,6 +777,11 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         else:
             layout.label(text="Vectorization:")
             layout.prop(lanpr, "enable_vector_trace", expand = True)
+        
+        row=layout.row()
+        row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+        row=layout.row()
+        row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
 
 class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
@@ -794,7 +795,7 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return lanpr.enabled and active_layer and lanpr.master_mode != "SNAKE"
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and active_layer and lanpr.master_mode != "SNAKE"
 
     def draw(self, context):
         layout = self.layout
@@ -874,7 +875,7 @@ class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return lanpr.enabled and active_layer and lanpr.master_mode == "SOFTWARE" and not lanpr.enable_chaining
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and active_layer and lanpr.master_mode == "SOFTWARE" and not lanpr.enable_chaining
 
     def draw(self, context):
         layout = self.layout
@@ -914,7 +915,7 @@ class RENDER_PT_lanpr_line_effects(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return lanpr.enabled and active_layer and (lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE")
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and active_layer and (lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE")
 
     def draw(self, context):
         layout = self.layout
@@ -955,7 +956,7 @@ class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return lanpr.enabled and lanpr.master_mode == "SNAKE"
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and lanpr.master_mode == "SNAKE"
 
     def draw(self, context):
         layout = self.layout
@@ -978,7 +979,7 @@ class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return lanpr.enabled and lanpr.master_mode == "SNAKE" and lanpr.enable_vector_trace == "ENABLED"
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and lanpr.master_mode == "SNAKE" and lanpr.enable_vector_trace == "ENABLED"
 
     def draw(self, context):
         layout = self.layout
