@@ -735,9 +735,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             layout.label(text="DPIX transfor shader compile error!")
             return;
 
-        if scene.render.engine!='BLENDER_LANPR':
-            layout.label(text='Only Software mode result is used to generate GP stroke.')
-
         if mode == "SOFTWARE":
             row=layout.row(align=True)
             row.prop(lanpr,'auto_update',toggle=True,text='Auto')
@@ -756,26 +753,31 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             if lanpr.master_mode == "SOFTWARE":
                 row = layout.row()
                 row.prop(lanpr,"enable_intersections", text = "Intersection Lines")
-                row.prop(lanpr,"enable_chaining", text = "Chaining")
-                
-                split = layout.split(factor=0.4)
-                col = split.column()
-                col.label(text="Line Layers:")
-                col = split.column()
-                col.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
-                row=layout.row()
-                row.template_list("LANPR_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
-                col=row.column(align=True)
-                if active_layer:
-                    col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
-                    col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
-                    col.separator()
-                    col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
-                    col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
-                    col.separator()
-                    col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
+
+                if scene.render.engine=="BLENDER_LANPR":
+                    row.prop(lanpr,"enable_chaining", text = "Chaining")
+                    
+                    split = layout.split(factor=0.4)
+                    col = split.column()
+                    col.label(text="Line Layers:")
+                    col = split.column()
+                    col.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
+                    row=layout.row()
+                    row.template_list("LANPR_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+                    col=row.column(align=True)
+                    if active_layer:
+                        col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+                        col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
+                        col.separator()
+                        col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
+                        col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
+                        col.separator()
+                        col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
+                    else:
+                        col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
                 else:
-                    col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+                    row = layout.row()
+                    row.label(text='Chain is enabled to generate GP strokes.')
         else:
             layout.label(text="Vectorization:")
             layout.prop(lanpr, "enable_vector_trace", expand = True)
@@ -1045,23 +1047,24 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
         row.prop(lanpr, "chaining_geometry_threshold", text="Geometry")
         row.prop(lanpr, "chaining_image_threshold", text="Image")
 
-        layout.label(text="Taper:")
-        layout.prop(lanpr, "use_same_taper", expand = True)
-        if lanpr.use_same_taper == "DISABLED":
-            split = layout.split()
-            col = split.column(align = True)
-            col.label(text="Left:")
-            col.prop(lanpr,"taper_left_distance")
-            col.prop(lanpr,"taper_left_strength")
-            col = split.column(align = True)
-            col.label(text="Right:")
-            col.prop(lanpr,"taper_right_distance")
-            col.prop(lanpr,"taper_right_strength")
-        else:
-            split = layout.split()
-            col = split.column(align = True)
-            col.prop(lanpr,"taper_left_distance")
-            col.prop(lanpr,"taper_left_strength") 
+        if scene.render.engine=="BLENDER_LANPR":
+            layout.label(text="Taper:")
+            layout.prop(lanpr, "use_same_taper", expand = True)
+            if lanpr.use_same_taper == "DISABLED":
+                split = layout.split()
+                col = split.column(align = True)
+                col.label(text="Left:")
+                col.prop(lanpr,"taper_left_distance")
+                col.prop(lanpr,"taper_left_strength")
+                col = split.column(align = True)
+                col.label(text="Right:")
+                col.prop(lanpr,"taper_right_distance")
+                col.prop(lanpr,"taper_right_strength")
+            else:
+                split = layout.split()
+                col = split.column(align = True)
+                col.prop(lanpr,"taper_left_distance")
+                col.prop(lanpr,"taper_left_strength") 
 
 
 classes = (
