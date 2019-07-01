@@ -138,7 +138,8 @@ bool lanpr_dpix_shader_error()
   return lanpr_share.dpix_shader_error;
 }
 
-bool lanpr_disable_edge_splits(Scene* s){
+bool lanpr_disable_edge_splits(Scene *s)
+{
   return s->lanpr.disable_edge_splits;
 }
 

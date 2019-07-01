@@ -32,7 +32,7 @@ void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
 bool lanpr_dpix_shader_error();
 
-bool lanpr_disable_edge_splits(struct Scene* s);
+bool lanpr_disable_edge_splits(struct Scene *s);
 
 void lanpr_copy_data(struct Scene *from, struct Scene *to);
 

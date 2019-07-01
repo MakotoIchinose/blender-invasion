@@ -3641,17 +3641,17 @@ long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer 
     }
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
-      
-      if(!ll->use_multiple_levels){
+
+      if (!ll->use_multiple_levels) {
         if (rls->occlusion == ll->qi_begin) {
           Count++;
         }
-      }else{
+      }
+      else {
         if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
           Count++;
         }
       }
-      
     }
   }
   return Count;
@@ -3690,17 +3690,19 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
       int use = 0;
-      if(!ll->use_multiple_levels){
+      if (!ll->use_multiple_levels) {
         if (rls->occlusion == ll->qi_begin) {
           use = 1;
         }
-      }else{
+      }
+      else {
         if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
           use = 1;
         }
       }
 
-      if(!use) continue;
+      if (!use)
+        continue;
 
       if (rl->tl) {
         N[0] += rl->tl->gn[0];
@@ -3897,7 +3899,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
 void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
 void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
 void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
-void lanpr_discard_short_chains(LANPR_RenderBuffer* rb, float threshold);
+void lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
 {
@@ -4070,7 +4072,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_shgroup_uniform_vec3(rb->ChainShgrp, "normal_direction", normal_object_direction, 1);
 
         DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_begin", &ll->qi_begin, 1);
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_end", ll->use_multiple_levels?&ll->qi_end:&ll->qi_begin, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp,
+                                "occlusion_level_end",
+                                ll->use_multiple_levels ? &ll->qi_end : &ll->qi_begin,
+                                1);
 
         DRW_shgroup_uniform_vec4(
             rb->ChainShgrp, "preview_viewport", stl->g_data->dpix_viewport, 1);
@@ -4251,12 +4256,12 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   result = lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C));
-  
+
   lanpr_rebuild_all_command(lanpr);
-  
+
   return result;
 }
 static void lanpr_compute_feature_lines_cancel(struct bContext *C, struct wmOperator *op)
@@ -4320,7 +4325,7 @@ int lanpr_add_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -4353,7 +4358,7 @@ int lanpr_delete_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -4381,7 +4386,7 @@ int lanpr_move_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -4431,7 +4436,7 @@ int lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -4542,7 +4547,8 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
                                             flmd->material,
                                             NULL,
                                             flmd->types);
-          DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(&gpd->id,
+                            ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
         }
       }
     }
@@ -4606,7 +4612,7 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 
   lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
 
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL); 
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -4632,7 +4638,7 @@ int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
     lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
   }
 
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL); 
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
   return OPERATOR_FINISHED;
 }

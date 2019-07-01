@@ -129,34 +129,36 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
   return result;
 }
 
-static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams){
-  int lanpr_found=0;
-  ModifierData* imd;
+static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams)
+{
+  int lanpr_found = 0;
+  ModifierData *imd;
   EdgeSplitModifierData *emd = (EdgeSplitModifierData *)md;
 
-  if(lanpr_disable_edge_splits(scene)){
+  if (lanpr_disable_edge_splits(scene)) {
     lanpr_found = 1;
   }
-  if(!lanpr_found){
-    for(imd = md->prev; imd; imd=imd->prev){
-      if(imd->type == eModifierType_FeatureLine){
+  if (!lanpr_found) {
+    for (imd = md->prev; imd; imd = imd->prev) {
+      if (imd->type == eModifierType_FeatureLine) {
         lanpr_found = 1;
         break;
       }
     }
   }
-  if(!lanpr_found){
-    for(imd = md->next; imd; imd=imd->next){
-      if(imd->type == eModifierType_FeatureLine){
+  if (!lanpr_found) {
+    for (imd = md->next; imd; imd = imd->next) {
+      if (imd->type == eModifierType_FeatureLine) {
         lanpr_found = 1;
         break;
       }
     }
   }
-  if(!lanpr_found){
+  if (!lanpr_found) {
     return false;
-  }else{
-    if(emd->ignore_lanpr){
+  }
+  else {
+    if (emd->ignore_lanpr) {
       return false;
     }
     return true;
