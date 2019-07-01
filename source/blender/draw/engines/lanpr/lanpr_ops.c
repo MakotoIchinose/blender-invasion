@@ -46,6 +46,7 @@
 #include "lanpr_access.h"
 
 extern LANPR_SharedResource lanpr_share;
+extern const char *RE_engine_id_BLENDER_LANPR;
 struct Object;
 
 int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
@@ -4189,7 +4190,8 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 
   lanpr_THREAD_calculate_line_occlusion_begin(rb);
 
-  if (lanpr->enable_chaining) {
+  /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
+  if (lanpr->enable_chaining || strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
     lanpr_NO_THREAD_chain_feature_lines(rb); /*  should use user_adjustable value */
     lanpr_split_chains_for_fixed_occlusion(rb);
     lanpr_connect_chains(rb, 1);
