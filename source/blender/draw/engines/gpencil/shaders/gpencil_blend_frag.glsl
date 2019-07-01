@@ -39,36 +39,33 @@ void main()
        * */
       src.rgb = mix(vec3(0.5), src.rgb, src.a);
       vec3 q0 = vec3(greaterThanEqual(src.rgb, vec3(0.5)));
-      vec3 q1 = ((q0 - 0.5) * 2.0);
+      vec3 q1 = q0 * 2.0 - 1.0;
       vec3 src2 = 2.0 * src.rgb;
       FragColor0.rgb = src2 * q0 - q0;
-      FragColor0.a = 0.0;
       FragColor1.rgb = 2.0 * q0 - src2 * q1;
-      FragColor1.a = 1.0;
       break;
     case MODE_ADD:
       FragColor0.rgb = src.rgb * src.a;
-      FragColor0.a = 0.0;
-      FragColor1 = vec4(1.0);
+      FragColor1.rgb = vec3(1.0);
       break;
     case MODE_SUB:
       FragColor0.rgb = -src.rgb * src.a;
-      FragColor0.a = 0.0;
-      FragColor1 = vec4(1.0);
+      FragColor1.rgb = vec3(1.0);
       break;
     case MODE_MULTIPLY:
-      FragColor0 = vec4(0.0);
+      FragColor0.rgb = vec3(0.0);
       FragColor1.rgb = mix(vec3(1.0), src.rgb, src.a);
-      FragColor1.a = 1.0;
       break;
     case MODE_DIVIDE:
-      FragColor0 = vec4(0.0);
+      FragColor0.rgb = vec3(0.0);
       FragColor1.rgb = 1.0 / mix(vec3(1.0), src.rgb, src.a);
-      FragColor1.a = 1.0;
       break;
     default:
       FragColor0 = vec4(0.0);
       FragColor1 = vec4(1.0);
       break;
   }
+
+  FragColor0.a = 1.0 - clamp(dot(vec3(1.0 / 3.0), FragColor1.rgb), 0.0, 1.0);
+  FragColor1.a = 1.0 - FragColor0.a;
 }
