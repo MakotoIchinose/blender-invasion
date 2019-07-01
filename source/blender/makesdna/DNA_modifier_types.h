@@ -354,6 +354,8 @@ typedef struct EdgeSplitModifierData {
   /** Angle above which edges should be split. */
   float split_angle;
   int flags;
+  int ignore_lanpr;
+  char _pad[4];
 } EdgeSplitModifierData;
 
 /* EdgeSplitModifierData->flags */
