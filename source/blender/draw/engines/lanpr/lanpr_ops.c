@@ -4286,6 +4286,16 @@ LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
   BLI_addtail(&lanpr->line_layers, ll);
   lanpr->active_layer = ll;
   ll->use_same_style = 1;
+  ll->thickness = 1.0f;
+  ll->color[0] = 1.0f;
+  ll->color[1] = 1.0f;
+  ll->color[2] = 1.0f;
+  ll->color[3] = 1.0f;
+  ll->enable_contour = 1;
+  ll->enable_crease = 1;
+  ll->enable_material_seperate = 1;
+  ll->enable_edge_mark = 1;
+  ll->enable_intersection = 1;
   return ll;
 }
 LANPR_LineLayerComponent *lanpr_new_line_component(SceneLANPR *lanpr)
@@ -4307,6 +4317,10 @@ int lanpr_add_line_layer_exec(struct bContext *C, struct wmOperator *op)
   SceneLANPR *lanpr = &scene->lanpr;
 
   lanpr_new_line_layer(lanpr);
+
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
 
   return OPERATOR_FINISHED;
 }
