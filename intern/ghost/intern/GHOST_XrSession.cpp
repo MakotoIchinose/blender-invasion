@@ -72,69 +72,6 @@ static void GHOST_XrSystemInit(OpenXRData *oxr)
   xrGetSystem(oxr->instance, &system_info, &oxr->system_id);
 }
 
-void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
-{
-  OpenXRData *oxr = &xr_context->oxr;
-
-  assert(oxr->instance != XR_NULL_HANDLE);
-  assert(oxr->session == XR_NULL_HANDLE);
-  if (xr_context->gpu_ctx_bind_fn == nullptr) {
-    fprintf(stderr,
-            "Invalid API usage: No way to bind graphics context to the XR session. Call "
-            "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
-            "session (through GHOST_XrSessionStart()).");
-    return;
-  }
-
-  GHOST_XrSystemInit(oxr);
-
-  GHOST_XrGraphicsContextBind(*xr_context);
-  if (xr_context->gpu_ctx == nullptr) {
-    fprintf(stderr,
-            "Invalid API usage: No graphics context returned through the callback set with "
-            "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
-            "GHOST_XrSessionStart()).\n");
-    return;
-  }
-  xr_context->gpu_binding = GHOST_XrGraphicsBindingCreateFromType(xr_context->gpu_binding_type);
-  xr_context->gpu_binding->initFromGhostContext(xr_context->gpu_ctx);
-
-  XrSessionCreateInfo create_info{};
-  create_info.type = XR_TYPE_SESSION_CREATE_INFO;
-  create_info.systemId = oxr->system_id;
-  create_info.next = &xr_context->gpu_binding->oxr_binding;
-
-  xrCreateSession(oxr->instance, &create_info, &oxr->session);
-}
-
-void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
-{
-  xrEndSession(xr_context->oxr.session);
-  GHOST_XrGraphicsContextUnbind(*xr_context);
-}
-
-void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
-{
-  oxr->session_state = lifecycle.state;
-
-  switch (lifecycle.state) {
-    case XR_SESSION_STATE_READY: {
-      XrSessionBeginInfo begin_info{};
-
-      begin_info.type = XR_TYPE_SESSION_BEGIN_INFO;
-      begin_info.primaryViewConfigurationType = oxr->view_type;
-      xrBeginSession(oxr->session, &begin_info);
-      break;
-    }
-    case XR_SESSION_STATE_STOPPING: {
-      assert(oxr->session != XR_NULL_HANDLE);
-      xrEndSession(oxr->session);
-    }
-    default:
-      break;
-  }
-}
-
 static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
     XrSwapchain swapchain, GHOST_IXrGraphicsBinding *gpu_binding)
 {
@@ -182,7 +119,7 @@ static XrSwapchain swapchain_create(const XrSession session,
   return swapchain;
 }
 
-void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
+void prepare_drawing(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   std::vector<XrViewConfigurationView> view_configs;
@@ -211,7 +148,72 @@ void GHOST_XrSessionRenderingPrepare(GHOST_XrContext *xr_context)
   oxr->views.resize(view_count, {XR_TYPE_VIEW});
 }
 
-static void drawing_begin(GHOST_XrContext *xr_context)
+void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
+{
+  OpenXRData *oxr = &xr_context->oxr;
+
+  assert(oxr->instance != XR_NULL_HANDLE);
+  assert(oxr->session == XR_NULL_HANDLE);
+  if (xr_context->gpu_ctx_bind_fn == nullptr) {
+    fprintf(stderr,
+            "Invalid API usage: No way to bind graphics context to the XR session. Call "
+            "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
+            "session (through GHOST_XrSessionStart()).");
+    return;
+  }
+
+  GHOST_XrSystemInit(oxr);
+
+  GHOST_XrGraphicsContextBind(*xr_context);
+  if (xr_context->gpu_ctx == nullptr) {
+    fprintf(stderr,
+            "Invalid API usage: No graphics context returned through the callback set with "
+            "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
+            "GHOST_XrSessionStart()).\n");
+    return;
+  }
+  xr_context->gpu_binding = GHOST_XrGraphicsBindingCreateFromType(xr_context->gpu_binding_type);
+  xr_context->gpu_binding->initFromGhostContext(xr_context->gpu_ctx);
+
+  XrSessionCreateInfo create_info{};
+  create_info.type = XR_TYPE_SESSION_CREATE_INFO;
+  create_info.systemId = oxr->system_id;
+  create_info.next = &xr_context->gpu_binding->oxr_binding;
+
+  xrCreateSession(oxr->instance, &create_info, &oxr->session);
+
+  prepare_drawing(xr_context);
+}
+
+void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
+{
+  xrEndSession(xr_context->oxr.session);
+  GHOST_XrGraphicsContextUnbind(*xr_context);
+}
+
+void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
+{
+  oxr->session_state = lifecycle.state;
+
+  switch (lifecycle.state) {
+    case XR_SESSION_STATE_READY: {
+      XrSessionBeginInfo begin_info{};
+
+      begin_info.type = XR_TYPE_SESSION_BEGIN_INFO;
+      begin_info.primaryViewConfigurationType = oxr->view_type;
+      xrBeginSession(oxr->session, &begin_info);
+      break;
+    }
+    case XR_SESSION_STATE_STOPPING: {
+      assert(oxr->session != XR_NULL_HANDLE);
+      xrEndSession(oxr->session);
+    }
+    default:
+      break;
+  }
+}
+
+static void frame_drawing_begin(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
   XrFrameWaitInfo wait_info{XR_TYPE_FRAME_WAIT_INFO};
@@ -227,8 +229,8 @@ static void drawing_begin(GHOST_XrContext *xr_context)
   xr_context->draw_frame->frame_state = frame_state;
 }
 
-static void drawing_end(GHOST_XrContext *xr_context,
-                        std::vector<XrCompositionLayerBaseHeader *> *layers)
+static void frame_drawing_end(GHOST_XrContext *xr_context,
+                              std::vector<XrCompositionLayerBaseHeader *> *layers)
 {
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
 
@@ -247,10 +249,10 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
   r_info.pose.position[0] = -view.pose.position.x;
   r_info.pose.position[1] = view.pose.position.y;
   r_info.pose.position[2] = -view.pose.position.z;
-  r_info.pose.quat[0] = view.pose.orientation.w;
-  r_info.pose.quat[1] = view.pose.orientation.x;
-  r_info.pose.quat[2] = -view.pose.orientation.y;
-  r_info.pose.quat[3] = view.pose.orientation.z;
+  r_info.pose.orientation_quat[0] = view.pose.orientation.w;
+  r_info.pose.orientation_quat[1] = view.pose.orientation.x;
+  r_info.pose.orientation_quat[2] = -view.pose.orientation.y;
+  r_info.pose.orientation_quat[3] = view.pose.orientation.z;
 
   r_info.fov.angle_left = view.fov.angleLeft;
   r_info.fov.angle_right = view.fov.angleRight;
@@ -347,7 +349,7 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context, void *draw_customdata
   std::vector<XrCompositionLayerBaseHeader *> layers;
   XrSpace space;
 
-  drawing_begin(xr_context);
+  frame_drawing_begin(xr_context);
 
   refspace_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
   // TODO Use viewport pose here.
@@ -360,5 +362,5 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context, void *draw_customdata
     layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
   }
 
-  drawing_end(xr_context, &layers);
+  frame_drawing_end(xr_context, &layers);
 }

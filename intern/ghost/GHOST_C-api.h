@@ -31,21 +31,6 @@ extern "C" {
 #endif
 
 /**
- * Creates a "handle" for a C++ GHOST object.
- * A handle is just an opaque pointer to an empty struct.
- * In the API the pointer is cast to the actual C++ class.
- * The 'name' argument to the macro is the name of the handle to create.
- */
-
-GHOST_DECLARE_HANDLE(GHOST_SystemHandle);
-GHOST_DECLARE_HANDLE(GHOST_TimerTaskHandle);
-GHOST_DECLARE_HANDLE(GHOST_WindowHandle);
-GHOST_DECLARE_HANDLE(GHOST_EventHandle);
-GHOST_DECLARE_HANDLE(GHOST_RectangleHandle);
-GHOST_DECLARE_HANDLE(GHOST_EventConsumerHandle);
-GHOST_DECLARE_HANDLE(GHOST_ContextHandle);
-
-/**
  * Definition of a callback routine that receives events.
  * \param event The event received.
  * \param userdata The callback's user data, supplied to GHOST_CreateSystem.
@@ -990,57 +975,9 @@ extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
 
 #ifdef WITH_OPENXR
 
-/**
- * The XR view (i.e. the OpenXR runtime) may require a different graphics library than OpenGL. An
- * offscreen texture of the viewport will then be drawn into using OpenGL, but the final texture
- * draw call will happen through another lib (say DirectX).
- *
- * This enum defines the possible graphics bindings to attempt to enable.
- */
-typedef enum {
-  GHOST_kXrGraphicsUnknown = 0,
-  GHOST_kXrGraphicsOpenGL,
-#  ifdef WIN32
-  GHOST_kXrGraphicsD3D11,
-#  endif
-  /* For later */
-  //  GHOST_kXrGraphicsVulkan,
-} GHOST_TXrGraphicsBinding;
-/* An array of GHOST_TXrGraphicsBinding items defining the candidate bindings to use. The first
- * available candidate will be chosen, so order defines priority. */
-typedef const GHOST_TXrGraphicsBinding *GHOST_XrGraphicsBindingCandidates;
-
-typedef struct {
-  const GHOST_XrGraphicsBindingCandidates gpu_binding_candidates;
-  unsigned int gpu_binding_candidates_count;
-} GHOST_XrContextCreateInfo;
-
-typedef struct {
-  int ofsx, ofsy;
-  int width, height;
-
-  struct {
-    float position[3];
-    float quat[4];
-  } pose;
-
-  struct {
-    float angle_left, angle_right;
-    float angle_up, angle_down;
-  } fov;
-} GHOST_XrDrawViewInfo;
-
 /* xr-context */
 struct GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info);
 void GHOST_XrContextDestroy(struct GHOST_XrContext *xr_context);
-
-typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
-typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
-                                                void *graphics_context);
-/* XXX hacky: returns GHOST_ContextHandle so DirectX binding can get a handle to the OpenGL
- * offscreen context. */
-typedef GHOST_ContextHandle (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view,
-                                                  void *customdata);
 
 void GHOST_XrGraphicsContextBindFuncs(struct GHOST_XrContext *xr_context,
                                       GHOST_XrGraphicsContextBindFn bind_fn,
@@ -1052,7 +989,6 @@ void GHOST_XrDrawViewFunc(struct GHOST_XrContext *xr_context, GHOST_XrDrawViewFn
 GHOST_TSuccess GHOST_XrSessionIsRunning(const struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionStart(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionEnd(struct GHOST_XrContext *xr_context);
-void GHOST_XrSessionRenderingPrepare(struct GHOST_XrContext *xr_context);
 void GHOST_XrSessionDrawViews(struct GHOST_XrContext *xr_context, void *customdata);
 
 /* events */

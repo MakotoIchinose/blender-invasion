@@ -164,7 +164,7 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
                      clip_start,
                      clip_end);
 
-  ED_view3d_to_m4(r_view_mat, draw_view->pose.position, draw_view->pose.quat, 0.0f);
+  ED_view3d_to_m4(r_view_mat, draw_view->pose.position, draw_view->pose.orientation_quat, 0.0f);
   invert_m4(r_view_mat);
 }
 
@@ -281,7 +281,6 @@ void wm_xr_session_toggle(struct GHOST_XrContext *xr_context)
     GHOST_XrDrawViewFunc(xr_context, wm_xr_draw_view);
 
     GHOST_XrSessionStart(xr_context);
-    GHOST_XrSessionRenderingPrepare(xr_context);
   }
 }
 
