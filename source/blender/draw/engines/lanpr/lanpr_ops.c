@@ -3641,10 +3641,17 @@ long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer 
     }
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
-
-      if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
-        Count++;
+      
+      if(ll->use_same_style){
+        if (rls->occlusion == ll->qi_begin) {
+          Count++;
+        }
+      }else{
+        if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
+          Count++;
+        }
       }
+      
     }
   }
   return Count;
@@ -3682,6 +3689,19 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
     }
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
+      int use = 0;
+      if(ll->use_same_style){
+        if (rls->occlusion == ll->qi_begin) {
+          use = 1;
+        }
+      }else{
+        if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
+          use = 1;
+        }
+      }
+
+      if(!use) continue;
+
       if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
 
         if (rl->tl) {
@@ -3830,6 +3850,8 @@ void lanpr_rebuild_all_command(SceneLANPR *lanpr)
       lanpr_rebuild_render_draw_command(lanpr_share.render_buffer_shared, ll);
     }
   }
+
+  DEG_id_tag_update(&lanpr_share.render_buffer_shared->scene->id, ID_RECALC_COPY_ON_WRITE);
 }
 
 void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
@@ -4220,6 +4242,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
+  int result;
 
   if (!lanpr->enabled) {
     return OPERATOR_CANCELLED;
@@ -4231,7 +4254,13 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  return lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C));
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+
+  result = lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C));
+  
+  lanpr_rebuild_all_command(lanpr);
+  
+  return result;
 }
 static void lanpr_compute_feature_lines_cancel(struct bContext *C, struct wmOperator *op)
 {
@@ -4311,6 +4340,10 @@ int lanpr_delete_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   MEM_freeN(ll);
 
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+
   return OPERATOR_FINISHED;
 }
 int lanpr_move_line_layer_exec(struct bContext *C, struct wmOperator *op)
@@ -4334,6 +4367,10 @@ int lanpr_move_line_layer_exec(struct bContext *C, struct wmOperator *op)
     BLI_remlink(&lanpr->line_layers, ll);
     BLI_insertlinkafter(&lanpr->line_layers, ll->next, ll);
   }
+
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
 
   return OPERATOR_FINISHED;
 }
@@ -4380,6 +4417,11 @@ int lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator *op)
   SceneLANPR *lanpr = &scene->lanpr;
 
   lanpr_rebuild_all_command(lanpr);
+
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW , NULL); 
+
   return OPERATOR_FINISHED;
 }
 int lanpr_enable_all_line_types_exec(struct bContext *C, struct wmOperator *op)
