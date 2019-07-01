@@ -1708,8 +1708,13 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
   float len2 = len_v3v3(&last_pt->x, &second_last->x);
   float extend2 = (len2 + dist) / len2;
 
-  interp_v3_v3v3(&pt->x, &next_pt->x, &pt->x, extend1);
-  interp_v3_v3v3(&last_pt->x, &second_last->x, &last_pt->x, extend2);
+  float result1[3],result2[3];
+
+  interp_v3_v3v3(result1, &next_pt->x, &pt->x, extend1);
+  interp_v3_v3v3(result2, &second_last->x, &last_pt->x, extend2);
+
+  copy_v3_v3(&pt->x,result1);
+  copy_v3_v3(&last_pt->x,result2);
 
   return true;
 }
