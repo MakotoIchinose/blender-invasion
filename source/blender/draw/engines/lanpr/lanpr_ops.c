@@ -3642,7 +3642,7 @@ long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer 
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
       
-      if(ll->use_same_style){
+      if(!ll->use_multiple_levels){
         if (rls->occlusion == ll->qi_begin) {
           Count++;
         }
@@ -3690,7 +3690,7 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
       int use = 0;
-      if(ll->use_same_style){
+      if(!ll->use_multiple_levels){
         if (rls->occlusion == ll->qi_begin) {
           use = 1;
         }
@@ -3702,42 +3702,39 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
 
       if(!use) continue;
 
-      if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
-
-        if (rl->tl) {
-          N[0] += rl->tl->gn[0];
-          N[1] += rl->tl->gn[1];
-          N[2] += rl->tl->gn[2];
-        }
-        if (rl->tr) {
-          N[0] += rl->tr->gn[0];
-          N[1] += rl->tr->gn[1];
-          N[2] += rl->tr->gn[2];
-        }
-        if (rl->tl || rl->tr) {
-          normalize_v3(N);
-          copy_v3_v3(&N[3], N);
-        }
-        N += 6;
-
-        CLAMP(rls->at, 0, 1);
-        if (irls = rls->next) {
-          CLAMP(irls->at, 0, 1);
-        }
-
-        *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], rls->at);
-        v++;
-        *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], rls->at);
-        v++;
-        *v = componet_id;
-        v++;
-        *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], irls ? irls->at : 1);
-        v++;
-        *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], irls ? irls->at : 1);
-        v++;
-        *v = componet_id;
-        v++;
+      if (rl->tl) {
+        N[0] += rl->tl->gn[0];
+        N[1] += rl->tl->gn[1];
+        N[2] += rl->tl->gn[2];
       }
+      if (rl->tr) {
+        N[0] += rl->tr->gn[0];
+        N[1] += rl->tr->gn[1];
+        N[2] += rl->tr->gn[2];
+      }
+      if (rl->tl || rl->tr) {
+        normalize_v3(N);
+        copy_v3_v3(&N[3], N);
+      }
+      N += 6;
+
+      CLAMP(rls->at, 0, 1);
+      if (irls = rls->next) {
+        CLAMP(irls->at, 0, 1);
+      }
+
+      *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], rls->at);
+      v++;
+      *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], rls->at);
+      v++;
+      *v = componet_id;
+      v++;
+      *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], irls ? irls->at : 1);
+      v++;
+      *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], irls ? irls->at : 1);
+      v++;
+      *v = componet_id;
+      v++;
     }
   }
   *NextNormal = N;
@@ -4073,7 +4070,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_shgroup_uniform_vec3(rb->ChainShgrp, "normal_direction", normal_object_direction, 1);
 
         DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_begin", &ll->qi_begin, 1);
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_end", &ll->qi_end, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_end", ll->use_multiple_levels?&ll->qi_end:&ll->qi_begin, 1);
 
         DRW_shgroup_uniform_vec4(
             rb->ChainShgrp, "preview_viewport", stl->g_data->dpix_viewport, 1);
