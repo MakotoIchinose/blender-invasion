@@ -2239,7 +2239,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       case TSE_SEQUENCE:
         switch (te->idcode) {
           case SEQ_TYPE_SCENE:
-            data.icon = ICON_SCENE;
+            data.icon = ICON_SCENE_DATA;
             break;
           case SEQ_TYPE_MOVIECLIP:
             data.icon = ICON_TRACKER;
