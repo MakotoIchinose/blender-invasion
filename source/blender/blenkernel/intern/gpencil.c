@@ -1732,6 +1732,12 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
   return true;
 }
 
+/**
+ * Trim stroke to needed segments
+ * \param gps: Target stroke
+ * \param index_from: the index of the first point to be used in the trimmed result
+ * \param index_to: the index of the last point to be used in the trimmed result
+ */
 bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, int index_from, int index_to)
 {
   bGPDspoint *pt = gps->points, *new_pt;
@@ -1837,8 +1843,6 @@ bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, float dist)
   if (gps->totpoints == 0) {
     return false;
   }
-
-  printf("%d %d %d\n", index_start, index_end, gps->totpoints);
 
   pt = gps->points;
 
