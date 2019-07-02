@@ -20,7 +20,13 @@
 import bpy
 from bpy.types import Panel
 from bpy.app.translations import pgettext_iface as iface_
+from mathutils import Vector
 
+def is_unit_transformation(ob):
+    if ob.scale.xyz==Vector((1,1,1)) and ob.location.xyz==Vector((0,0,0)) and \
+        ob.rotation_euler.x == 0.0 and ob.rotation_euler.y == 0.0 and ob.rotation_euler.z == 0.0:
+        return True
+    return False
 
 class ModifierButtonsPanel:
     bl_space_type = 'PROPERTIES'
@@ -1697,6 +1703,11 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         if not md.target:
             layout.label(text="You have to specify a target GP Object")
         else:
+            if not is_unit_transformation(md.target):
+                row = layout.row()
+                row.label(text = "Target GP has self transformations.")
+                row = layout.row()
+                row.operator("lanpr.reset_object_transfromations").obj=md.target.name
             layout.prop(md,'replace', text='Replace existing frames')
             row = layout.row()
             row.prop(md,'layer')

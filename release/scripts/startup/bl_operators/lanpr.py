@@ -233,10 +233,26 @@ class LANPR_render_composited(bpy.types.Operator):
         
         return {'FINISHED'}
 
+class LANPR_reset_object_transfromations(bpy.types.Operator):
+    """Reset Transformations"""
+    bl_idname = "lanpr.reset_object_transfromations"
+    bl_label = "Reset Transformations"
+
+    obj = bpy.props.StringProperty(name="Target Object")
+    
+    def execute(self, context):
+        print(self.obj)
+        ob = bpy.data.objects[self.obj]
+        ob.location.zero()
+        ob.rotation_euler.zero()
+        ob.scale.xyz=[1,1,1]
+        return {'FINISHED'}
+
 classes=(
     #LANPR_make_composition_scene,
     #LANPR_remove_composition_scene,
     #LANPR_goto_original_scene,
     #LANPR_goto_composition_scene,
     #LANPR_render_composited,
+    LANPR_reset_object_transfromations,
 )
