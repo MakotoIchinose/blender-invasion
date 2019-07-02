@@ -32,6 +32,7 @@
 #include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
+#include "BKE_sequencer.h"
 
 #include "DEG_depsgraph.h"
 
@@ -102,15 +103,15 @@ static void outliner_sync_selection_to_view_layer(bContext *C, ListBase *tree)
 /* Sync selection flags from active view layer */
 static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListBase *tree)
 {
+  Object *obact = OBACT(view_layer);
+
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
-
     tselem->flag &= ~TSE_ACTIVE;
 
     if (tselem->type == 0) {
       if (te->idcode == ID_OB) {
         Object *ob = (Object *)tselem->id;
-        Object *obact = OBACT(view_layer);
         Base *base = (te->directdata) ? (Base *)te->directdata :
                                         BKE_view_layer_base_find(view_layer, ob);
         const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
@@ -132,8 +133,11 @@ static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListB
   }
 }
 
-static void outliner_sync_selection_from_sequencer(ListBase *tree)
+static void outliner_sync_selection_from_sequencer(const bContext *C, ListBase *tree)
 {
+  Scene *scene = CTX_data_scene(C);
+  Sequence *seq_act = BKE_sequencer_active_get(scene);
+
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
 
@@ -144,6 +148,10 @@ static void outliner_sync_selection_from_sequencer(ListBase *tree)
 
       Sequence *seq = (Sequence *)tselem->id;
 
+      if (seq == seq_act) {
+        tselem->flag |= TSE_ACTIVE;
+      }
+
       if (seq->flag & SELECT) {
         tselem->flag |= TSE_SELECTED;
       }
@@ -152,7 +160,7 @@ static void outliner_sync_selection_from_sequencer(ListBase *tree)
       }
     }
 
-    outliner_sync_selection_from_sequencer(&te->subtree);
+    outliner_sync_selection_from_sequencer(C, &te->subtree);
   }
 }
 
@@ -167,6 +175,10 @@ static void outliner_sync_selection_to_sequencer(bContext *C, ListBase *tree)
       printf("\t\tSyncing a sequence: %s\n", te->name);
 
       Sequence *seq = (Sequence *)tselem->id;
+
+      if (tselem->flag & TSE_ACTIVE) {
+        BKE_sequencer_active_set(scene, seq);
+      }
 
       if (tselem->flag & TSE_SELECTED) {
         seq->flag |= SELECT;
@@ -215,8 +227,10 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
 
     outliner_sync_selection_from_view_layer(view_layer, &soops->tree);
 
-    printf("\tSyncing sequences...\n");
-    outliner_sync_selection_from_sequencer(&soops->tree);
+    if (soops->outlinevis == SO_SEQUENCE) {
+      printf("\tSyncing sequences...\n");
+      outliner_sync_selection_from_sequencer(C, &soops->tree);
+    }
 
     soops->flag &= ~SO_IS_DIRTY;
   }
