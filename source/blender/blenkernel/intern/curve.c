@@ -5443,6 +5443,7 @@ void BKE_curve_eval_geometry(Depsgraph *depsgraph, Curve *curve)
       *curve_orig->bb = *bb;
       copy_v3_v3(curve_orig->loc, curve->loc);
       copy_v3_v3(curve_orig->size, curve->size);
+      copy_v3_v3(curve_orig->rot, curve->rot);
     }
   }
 }

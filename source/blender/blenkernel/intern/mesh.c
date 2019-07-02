@@ -2018,6 +2018,7 @@ void BKE_mesh_eval_geometry(Depsgraph *depsgraph, Mesh *mesh)
       *mesh_orig->bb = *bb;
       copy_v3_v3(mesh_orig->loc, mesh->loc);
       copy_v3_v3(mesh_orig->size, mesh->size);
+      copy_v3_v3(mesh_orig->rot, mesh->rot);
     }
   }
 }
