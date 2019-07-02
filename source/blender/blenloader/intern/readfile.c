@@ -77,7 +77,7 @@
 #include "DNA_object_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
-#include "DNA_profilepath_types.h"
+#include "DNA_profilewidget_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_text_types.h"
@@ -143,7 +143,7 @@
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_profile_path.h"
+#include "BKE_profile_widget.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -2707,8 +2707,9 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
 
 static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwidget)
 {
-  prwidget->profile->path = newdataadr(fd, prwidget->profile->path);
-  prwidget->profile->table = NULL;
+  printf("DIRECT LINK PROFILEWIDGET\n");
+  prwidget->path = newdataadr(fd, prwidget->path);
+  prwidget->table = NULL;
 }
 
 /** \} */

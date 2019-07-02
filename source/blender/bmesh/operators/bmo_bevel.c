@@ -24,8 +24,8 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "BKE_profile_path.h"
-#include "DNA_profilepath_types.h"
+#include "BKE_profile_widget.h"
+#include "DNA_profilewidget_types.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
 

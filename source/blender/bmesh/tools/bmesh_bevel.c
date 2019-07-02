@@ -38,8 +38,8 @@
 
 #include "eigen_capi.h"
 
-#include "BKE_profile_path.h"
-#include "DNA_profilepath_types.h"
+#include "BKE_profile_widget.h"
+#include "DNA_profilewidget_types.h"
 
 #include "bmesh.h"
 #include "bmesh_bevel.h" /* own include */
@@ -3882,112 +3882,120 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
  * For now, this is written assuming vm0->nseg is even and > 0.
  * We are allowed to modify vm0, as it will not be used after this call.
  * See Levin 1999 paper: "Filling an N-sided hole using combined subdivision schemes". */
-static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
+static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm_in)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
   printf("CUBIC SUBDIV\n");
 #endif
-  int n_boundary, ns0, ns20, ns1;
+  int n_boundary, ns_in, ns_in2, ns_out;
   int i, j, k, inext;
   float co[3], co1[3], co2[3], acc[3];
   float beta, gamma;
-  VMesh *vm1;
+  VMesh *vm_out;
   BoundVert *bndv;
 
-  n_boundary = vm0->count;
-  ns0 = vm0->seg;
-  ns20 = ns0 / 2;
-  BLI_assert(ns0 % 2 == 0);
-  ns1 = 2 * ns0;
-  vm1 = new_adj_vmesh(bp->mem_arena, n_boundary, ns1, vm0->boundstart);
+  n_boundary = vm_in->count;
+  ns_in = vm_in->seg;
+  ns_in2 = ns_in / 2;
+  BLI_assert(ns_in % 2 == 0);
+  ns_out = 2 * ns_in;
+  vm_out = new_adj_vmesh(bp->mem_arena, n_boundary, ns_out, vm_in->boundstart);
 
   /* First we adjust the boundary vertices of the input mesh, storing in output mesh */
   for (i = 0; i < n_boundary; i++) {
-    copy_v3_v3(mesh_vert(vm1, i, 0, 0)->co, mesh_vert(vm0, i, 0, 0)->co);
-    for (k = 1; k < ns0; k++) {
-      /* smooth boundary rule */
-      copy_v3_v3(co, mesh_vert(vm0, i, 0, k)->co);
-      copy_v3_v3(co1, mesh_vert(vm0, i, 0, k - 1)->co);
-      copy_v3_v3(co2, mesh_vert(vm0, i, 0, k + 1)->co);
+    copy_v3_v3(mesh_vert(vm_out, i, 0, 0)->co, mesh_vert(vm_in, i, 0, 0)->co);
+    for (k = 1; k < ns_in; k++) {
+      copy_v3_v3(co, mesh_vert(vm_in, i, 0, k)->co);
 
-      add_v3_v3v3(acc, co1, co2);
-      madd_v3_v3fl(acc, co, -2.0f);
-      madd_v3_v3fl(co, acc, -1.0f / 6.0f);
+      /* Smooth boundary rule. Custom profile's shouldn't be smoothed */
+      if (!bp->use_custom_profile) {
+        copy_v3_v3(co1, mesh_vert(vm_in, i, 0, k - 1)->co);
+        copy_v3_v3(co2, mesh_vert(vm_in, i, 0, k + 1)->co);
 
-      copy_v3_v3(mesh_vert_canon(vm1, i, 0, 2 * k)->co, co);
+        add_v3_v3v3(acc, co1, co2);
+        madd_v3_v3fl(acc, co, -2.0f);
+        madd_v3_v3fl(co, acc, -1.0f / 6.0f);
+      }
+
+      copy_v3_v3(mesh_vert_canon(vm_out, i, 0, 2 * k)->co, co);
     }
   }
   /* now do odd ones in output mesh, based on even ones */
-  bndv = vm1->boundstart;
+  bndv = vm_out->boundstart;
   for (i = 0; i < n_boundary; i++) {
-    for (k = 1; k < ns1; k += 2) {
-      get_profile_point(bp, &bndv->profile, k, ns1, co);
-      copy_v3_v3(co1, mesh_vert_canon(vm1, i, 0, k - 1)->co);
-      copy_v3_v3(co2, mesh_vert_canon(vm1, i, 0, k + 1)->co);
+    for (k = 1; k < ns_out; k += 2) {
+      get_profile_point(bp, &bndv->profile, k, ns_out, co);
 
-      add_v3_v3v3(acc, co1, co2);
-      madd_v3_v3fl(acc, co, -2.0f);
-      madd_v3_v3fl(co, acc, -1.0f / 6.0f);
+      /* Only smooth if using a non-custom profile */
+      if (!bp->use_custom_profile) {
+        copy_v3_v3(co1, mesh_vert_canon(vm_out, i, 0, k - 1)->co);
+        copy_v3_v3(co2, mesh_vert_canon(vm_out, i, 0, k + 1)->co);
 
-      copy_v3_v3(mesh_vert_canon(vm1, i, 0, k)->co, co);
+        add_v3_v3v3(acc, co1, co2);
+        madd_v3_v3fl(acc, co, -2.0f);
+        madd_v3_v3fl(co, acc, -1.0f / 6.0f);
+      }
+
+      copy_v3_v3(mesh_vert_canon(vm_out, i, 0, k)->co, co);
     }
     bndv = bndv->next;
   }
-  vmesh_copy_equiv_verts(vm1);
+  vmesh_copy_equiv_verts(vm_out);
 
-  /* Copy adjusted verts back into vm0 */
+  /* Copy adjusted verts back into vm_in */
+  /* HANS-TODO: Maybe I just disable this whole adjustment process? */
   for (i = 0; i < n_boundary; i++) {
-    for (k = 0; k < ns0; k++) {
-      copy_v3_v3(mesh_vert(vm0, i, 0, k)->co, mesh_vert(vm1, i, 0, 2 * k)->co);
+    for (k = 0; k < ns_in; k++) {
+      copy_v3_v3(mesh_vert(vm_in, i, 0, k)->co, mesh_vert(vm_out, i, 0, 2 * k)->co);
     }
   }
 
-  vmesh_copy_equiv_verts(vm0);
+  vmesh_copy_equiv_verts(vm_in);
 
   /* Now we do the internal vertices, using standard Catmull-Clark
    * and assuming all boundary vertices have valence 4 */
 
   /* The new face vertices */
   for (i = 0; i < n_boundary; i++) {
-    for (j = 0; j < ns20; j++) {
-      for (k = 0; k < ns20; k++) {
+    for (j = 0; j < ns_in2; j++) {
+      for (k = 0; k < ns_in2; k++) {
         /* face up and right from (j, k) */
         avg4(co,
-             mesh_vert(vm0, i, j, k),
-             mesh_vert(vm0, i, j, k + 1),
-             mesh_vert(vm0, i, j + 1, k),
-             mesh_vert(vm0, i, j + 1, k + 1));
-        copy_v3_v3(mesh_vert(vm1, i, 2 * j + 1, 2 * k + 1)->co, co);
+             mesh_vert(vm_in, i, j, k),
+             mesh_vert(vm_in, i, j, k + 1),
+             mesh_vert(vm_in, i, j + 1, k),
+             mesh_vert(vm_in, i, j + 1, k + 1));
+        copy_v3_v3(mesh_vert(vm_out, i, 2 * j + 1, 2 * k + 1)->co, co);
       }
     }
   }
 
   /* The new vertical edge vertices  */
   for (i = 0; i < n_boundary; i++) {
-    for (j = 0; j < ns20; j++) {
-      for (k = 1; k <= ns20; k++) {
+    for (j = 0; j < ns_in2; j++) {
+      for (k = 1; k <= ns_in2; k++) {
         /* vertical edge between (j, k) and (j+1, k) */
         avg4(co,
-             mesh_vert(vm0, i, j, k),
-             mesh_vert(vm0, i, j + 1, k),
-             mesh_vert_canon(vm1, i, 2 * j + 1, 2 * k - 1),
-             mesh_vert_canon(vm1, i, 2 * j + 1, 2 * k + 1));
-        copy_v3_v3(mesh_vert(vm1, i, 2 * j + 1, 2 * k)->co, co);
+             mesh_vert(vm_in, i, j, k),
+             mesh_vert(vm_in, i, j + 1, k),
+             mesh_vert_canon(vm_out, i, 2 * j + 1, 2 * k - 1),
+             mesh_vert_canon(vm_out, i, 2 * j + 1, 2 * k + 1));
+        copy_v3_v3(mesh_vert(vm_out, i, 2 * j + 1, 2 * k)->co, co);
       }
     }
   }
 
   /* The new horizontal edge vertices  */
   for (i = 0; i < n_boundary; i++) {
-    for (j = 1; j < ns20; j++) {
-      for (k = 0; k < ns20; k++) {
+    for (j = 1; j < ns_in2; j++) {
+      for (k = 0; k < ns_in2; k++) {
         /* horizontal edge between (j, k) and (j, k+1) */
         avg4(co,
-             mesh_vert(vm0, i, j, k),
-             mesh_vert(vm0, i, j, k + 1),
-             mesh_vert_canon(vm1, i, 2 * j - 1, 2 * k + 1),
-             mesh_vert_canon(vm1, i, 2 * j + 1, 2 * k + 1));
-        copy_v3_v3(mesh_vert(vm1, i, 2 * j, 2 * k + 1)->co, co);
+             mesh_vert(vm_in, i, j, k),
+             mesh_vert(vm_in, i, j, k + 1),
+             mesh_vert_canon(vm_out, i, 2 * j - 1, 2 * k + 1),
+             mesh_vert_canon(vm_out, i, 2 * j + 1, 2 * k + 1));
+        copy_v3_v3(mesh_vert(vm_out, i, 2 * j, 2 * k + 1)->co, co);
       }
     }
   }
@@ -3996,30 +4004,30 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   gamma = 0.25f;
   beta = -gamma;
   for (i = 0; i < n_boundary; i++) {
-    for (j = 1; j < ns20; j++) {
-      for (k = 1; k <= ns20; k++) {
+    for (j = 1; j < ns_in2; j++) {
+      for (k = 1; k <= ns_in2; k++) {
         /* co1 = centroid of adjacent new edge verts */
         avg4(co1,
-             mesh_vert_canon(vm1, i, 2 * j, 2 * k - 1),
-             mesh_vert_canon(vm1, i, 2 * j, 2 * k + 1),
-             mesh_vert_canon(vm1, i, 2 * j - 1, 2 * k),
-             mesh_vert_canon(vm1, i, 2 * j + 1, 2 * k));
+             mesh_vert_canon(vm_out, i, 2 * j, 2 * k - 1),
+             mesh_vert_canon(vm_out, i, 2 * j, 2 * k + 1),
+             mesh_vert_canon(vm_out, i, 2 * j - 1, 2 * k),
+             mesh_vert_canon(vm_out, i, 2 * j + 1, 2 * k));
         /* co2 = centroid of adjacent new face verts */
         avg4(co2,
-             mesh_vert_canon(vm1, i, 2 * j - 1, 2 * k - 1),
-             mesh_vert_canon(vm1, i, 2 * j + 1, 2 * k - 1),
-             mesh_vert_canon(vm1, i, 2 * j - 1, 2 * k + 1),
-             mesh_vert_canon(vm1, i, 2 * j + 1, 2 * k + 1));
+             mesh_vert_canon(vm_out, i, 2 * j - 1, 2 * k - 1),
+             mesh_vert_canon(vm_out, i, 2 * j + 1, 2 * k - 1),
+             mesh_vert_canon(vm_out, i, 2 * j - 1, 2 * k + 1),
+             mesh_vert_canon(vm_out, i, 2 * j + 1, 2 * k + 1));
         /* combine with original vert with alpha, beta, gamma factors */
         copy_v3_v3(co, co1); /* alpha = 1.0 */
         madd_v3_v3fl(co, co2, beta);
-        madd_v3_v3fl(co, mesh_vert(vm0, i, j, k)->co, gamma);
-        copy_v3_v3(mesh_vert(vm1, i, 2 * j, 2 * k)->co, co);
+        madd_v3_v3fl(co, mesh_vert(vm_in, i, j, k)->co, gamma);
+        copy_v3_v3(mesh_vert(vm_out, i, 2 * j, 2 * k)->co, co);
       }
     }
   }
 
-  vmesh_copy_equiv_verts(vm1);
+  vmesh_copy_equiv_verts(vm_out);
 
   /* The center vertex is special */
   gamma = sabin_gamma(n_boundary);
@@ -4028,33 +4036,34 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm0)
   zero_v3(co1);
   zero_v3(co2);
   for (i = 0; i < n_boundary; i++) {
-    add_v3_v3(co1, mesh_vert(vm1, i, ns0, ns0 - 1)->co);
-    add_v3_v3(co2, mesh_vert(vm1, i, ns0 - 1, ns0 - 1)->co);
-    add_v3_v3(co2, mesh_vert(vm1, i, ns0 - 1, ns0 + 1)->co);
+    add_v3_v3(co1, mesh_vert(vm_out, i, ns_in, ns_in - 1)->co);
+    add_v3_v3(co2, mesh_vert(vm_out, i, ns_in - 1, ns_in - 1)->co);
+    add_v3_v3(co2, mesh_vert(vm_out, i, ns_in - 1, ns_in + 1)->co);
   }
   copy_v3_v3(co, co1);
   mul_v3_fl(co, 1.0f / (float)n_boundary);
   madd_v3_v3fl(co, co2, beta / (2.0f * (float)n_boundary));
-  madd_v3_v3fl(co, mesh_vert(vm0, 0, ns20, ns20)->co, gamma);
+  madd_v3_v3fl(co, mesh_vert(vm_in, 0, ns_in2, ns_in2)->co, gamma);
   for (i = 0; i < n_boundary; i++) {
-    copy_v3_v3(mesh_vert(vm1, i, ns0, ns0)->co, co);
+    copy_v3_v3(mesh_vert(vm_out, i, ns_in, ns_in)->co, co);
   }
 
   /* Final step: sample the boundary vertices at even parameter spacing */
-  bndv = vm1->boundstart;
+  /* HANS-TODO: I may need to disable this? */
+  bndv = vm_out->boundstart;
   for (i = 0; i < n_boundary; i++) {
     inext = (i + 1) % n_boundary;
-    for (k = 0; k <= ns1; k++) {
-      get_profile_point(bp, &bndv->profile, k, ns1, co);
-      copy_v3_v3(mesh_vert(vm1, i, 0, k)->co, co);
-      if (k >= ns0 && k < ns1) {
-        copy_v3_v3(mesh_vert(vm1, inext, ns1 - k, 0)->co, co);
+    for (k = 0; k <= ns_out; k++) {
+      get_profile_point(bp, &bndv->profile, k, ns_out, co);
+      copy_v3_v3(mesh_vert(vm_out, i, 0, k)->co, co);
+      if (k >= ns_in && k < ns_out) {
+        copy_v3_v3(mesh_vert(vm_out, inext, ns_out - k, 0)->co, co);
       }
     }
     bndv = bndv->next;
   }
 
-  return vm1;
+  return vm_out;
 }
 
 /* Special case for cube corner, when r is PRO_SQUARE_R, meaning straight sides */
@@ -4317,6 +4326,8 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
   return vm;
 }
 
+/* Makes the mesh that replaces the original vertex, bounded by the profiles on the sides */
+/* HANS-TODO: Disable uneeded stuff when in custom profiles */
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -4379,23 +4390,25 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 
   /* An offline optimization process found fullness that let to closest fit to sphere as
    * a function of r and ns (for case of cube corner) */
-  r = bp->pro_super_r;
-  p = bp->profile;
-  if (r == PRO_LINE_R) {
-    fullness = 0.0f;
-  }
-  else if (r == PRO_CIRCLE_R && ns > 0 && ns <= CIRCLE_FULLNESS_SEGS) {
-    fullness = circle_fullness[ns - 1];
-  }
-  else {
-    /* linear regression fit found best linear function, separately for even/odd segs */
-    if (ns % 2 == 0) {
-      fullness = 2.4506f * p - 0.00000300f * ns - 0.6266f;
+  if (!bp->use_custom_profile) {
+    r = bp->pro_super_r;
+    p = bp->profile;
+    if (r == PRO_LINE_R) {
+      fullness = 0.0f;
+    }
+    else if (r == PRO_CIRCLE_R && ns > 0 && ns <= CIRCLE_FULLNESS_SEGS) {
+      fullness = circle_fullness[ns - 1];
     }
     else {
-      fullness = 2.3635f * p + 0.000152f * ns - 0.6060f;
+      /* linear regression fit found best linear function, separately for even/odd segs */
+      if (ns % 2 == 0) {
+        fullness = 2.4506f * p - 0.00000300f * ns - 0.6266f;
+      }
+      else {
+        fullness = 2.3635f * p + 0.000152f * ns - 0.6060f;
+      }
     }
-  }
+  } /* HANS-TODO: Disable more? */
   sub_v3_v3v3(dir, coa, co);
   if (len_squared_v3(dir) > BEVEL_EPSILON_SQ) {
     madd_v3_v3fl(co, dir, fullness);
@@ -4407,7 +4420,7 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
   do {
     vm1 = cubic_subdiv(bp, vm1);
   } while (vm1->seg < ns);
-  if (vm1->seg != ns) {
+  if (vm1->seg != ns/* && !bp->use_custom_profile*/) {
     vm1 = interp_vmesh(bp, vm1, ns);
   }
   return vm1;
@@ -6812,8 +6825,8 @@ static void copy_profile_point_locations(BevelParams *bp, double *xvals, double 
 {
   float x_temp, y_temp;
   for (int i = 0; i < bp->seg; i++) {
-    x_temp = bp->prwdgt->profile->path[i].x;
-    y_temp = bp->prwdgt->profile->path[i].y;
+    x_temp = bp->prwdgt->path[i].x;
+    y_temp = bp->prwdgt->path[i].y;
     xvals[i] = (double)y_temp;
     yvals[i] = 1.0 - (double)x_temp;
   }
@@ -6839,7 +6852,7 @@ static void sample_custom_profile(BevelParams *bp, int seg, double *xvals, doubl
 
   /* HANS-TODO: Either use this instead or make a parametric subdivision method and get the
    * resulting points from that */
-  /*profilepath_fill_segment_table(bp->prwdgt->profile, xvals, yvals);*/
+  /*profilewidget_fill_segment_table(bp->prwdgt, xvals, yvals);*/
 }
 
 /* The superellipse used for multisegment profiles does not
@@ -7208,7 +7221,7 @@ void BM_mesh_bevel(BMesh *bm,
 
   if (bp.use_custom_profile && bp.sample_points) {
     /* We are sampling the segments from the points on the graph */
-    bp.seg = prwdgt->profile->totpoint - 1;
+    bp.seg = prwdgt->totpoint - 1;
   }
 
   /* TEST PROFILE CURVE */
@@ -7229,8 +7242,8 @@ void BM_mesh_bevel(BMesh *bm,
       printf("Sampling just the points on the graph\n");
       for (int i = 0; i < bp.seg; i++) {
         float x, y;
-        x = bp.prwdgt->profile->path[i].x;
-        y = bp.prwdgt->profile->path[i].y;
+        x = bp.prwdgt->path[i].x;
+        y = bp.prwdgt->path[i].y;
         printf("Segment %d position is (%f, %f)\n", i, (double)x, (double)y);
       }
     }

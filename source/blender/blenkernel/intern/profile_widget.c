@@ -28,7 +28,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_profilepath_types.h"
+#include "DNA_profilewidget_types.h"
 #include "DNA_curve_types.h"
 
 #include "BLI_blenlib.h"
@@ -37,11 +37,11 @@
 #include "BLI_task.h"
 #include "BLI_threads.h"
 
-#include "BKE_profile_path.h"
+#include "BKE_profile_widget.h"
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
 
-#define DEBUG_PRWDGT 0
+#define DEBUG_PRWDGT 1
 #define DEBUG_PRWDGT_TABLE 1
 #define DEBUG_PRWDGT_EVALUATE 0
 #define DEBUG_PRWDGT_REVERSE 0
@@ -58,13 +58,13 @@ void profilewidget_set_defaults(ProfileWidget *prwdgt)
   BLI_rctf_init(&prwdgt->view_rect, 0.0f, 1.0f, 0.0f, 1.0f);
   prwdgt->clip_rect = prwdgt->view_rect;
 
-  prwdgt->profile->totpoint = 2;
-  prwdgt->profile->path = MEM_callocN(2 * sizeof(ProfilePoint), "path points");
+  prwdgt->totpoint = 2;
+  prwdgt->path = MEM_callocN(2 * sizeof(ProfilePoint), "path points");
 
-  prwdgt->profile->path[0].x = 1.0f;
-  prwdgt->profile->path[0].y = 0.0f;
-  prwdgt->profile->path[1].x = 1.0f;
-  prwdgt->profile->path[1].y = 1.0f;
+  prwdgt->path[0].x = 1.0f;
+  prwdgt->path[0].y = 0.0f;
+  prwdgt->path[1].x = 1.0f;
+  prwdgt->path[1].y = 1.0f;
 
   prwdgt->changed_timestamp = 0;
 }
@@ -76,10 +76,10 @@ struct ProfileWidget *profilewidget_add(int preset)
 #endif
 
   ProfileWidget *prwdgt = MEM_callocN(sizeof(ProfileWidget), "new profile widget");
-  prwdgt->profile = MEM_callocN(sizeof(ProfilePath), "new profile path");
 
   profilewidget_set_defaults(prwdgt);
-  profilepath_reset(prwdgt->profile, preset);
+  prwdgt->preset = preset;
+  profilewidget_reset(prwdgt);
   profilewidget_changed(prwdgt, false);
 
   return prwdgt;
@@ -91,20 +91,19 @@ void profilewidget_free_data(ProfileWidget *prwdgt)
   printf("PROFILEWIDGET FREE DATA\n");
 #endif
 
-  if (!prwdgt->profile) {
-    /* Why are you even here in the first place? */
-    printf("ProfileWidget has no profile\n"); /* HANS-TODO: Remove */
-    return;
+  if (prwdgt->path) {
+    MEM_freeN(prwdgt->path);
+    prwdgt->path = NULL;
   }
-  if (prwdgt->profile->path) {
-    MEM_freeN(prwdgt->profile->path);
-    prwdgt->profile->path = NULL;
+  else {
+#if DEBUG_PRWDGT
+  printf("The prwdgt had no path... probably a second redundant free call\n");
+#endif
   }
-  if (prwdgt->profile->table) {
-    MEM_freeN(prwdgt->profile->table);
-    prwdgt->profile->table = NULL;
+  if (prwdgt->table) {
+    MEM_freeN(prwdgt->table);
+    prwdgt->table = NULL;
   }
-  MEM_freeN(prwdgt->profile);
 }
 
 void profilewidget_free(ProfileWidget *prwdgt)
@@ -112,7 +111,6 @@ void profilewidget_free(ProfileWidget *prwdgt)
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET FREE\n");
 #endif
-
   if (prwdgt) {
     profilewidget_free_data(prwdgt);
     MEM_freeN(prwdgt);
@@ -126,11 +124,11 @@ void profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
 #endif
   *target = *prwdgt;
 
-  if (prwdgt->profile->path) {
-    target->profile->path = MEM_dupallocN(prwdgt->profile->path);
+  if (prwdgt->path) {
+    target->path = MEM_dupallocN(prwdgt->path);
   }
-  if (prwdgt->profile->table) {
-    target->profile->table = MEM_dupallocN(prwdgt->profile->table);
+  if (prwdgt->table) {
+    target->table = MEM_dupallocN(prwdgt->table);
   }
 }
 
@@ -141,9 +139,9 @@ ProfileWidget *profilewidget_copy(const ProfileWidget *prwdgt)
 #endif
 
   if (prwdgt) {
-    ProfileWidget *prwdgtn = MEM_dupallocN(prwdgt);
-    profilewidget_copy_data(prwdgtn, prwdgt);
-    return prwdgtn;
+    ProfileWidget *new_prdgt = MEM_dupallocN(prwdgt);
+    profilewidget_copy_data(new_prdgt, prwdgt);
+    return new_prdgt;
   }
   return NULL;
 }
@@ -151,7 +149,7 @@ ProfileWidget *profilewidget_copy(const ProfileWidget *prwdgt)
 /* ********** requires profilewidget_changed() call after ******** */
 
 /* remove specified point */
-bool profilepath_remove_point(ProfilePath *prpath, ProfilePoint *point)
+bool profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
 {
   ProfilePoint *pts;
   int a, b, removed = 0;
@@ -161,16 +159,16 @@ bool profilepath_remove_point(ProfilePath *prpath, ProfilePoint *point)
 #endif
 
   /* must have 2 points minimum */
-  if (prpath->totpoint <= 2) {
+  if (prwdgt->totpoint <= 2) {
     return false;
   }
 
-  pts = MEM_mallocN((size_t)prpath->totpoint * sizeof(ProfilePoint), "path points");
+  pts = MEM_mallocN((size_t)prwdgt->totpoint * sizeof(ProfilePoint), "path points");
 
   /* well, lets keep the two outer points! */
-  for (a = 0, b = 0; a < prpath->totpoint; a++) {
-    if (&prpath->path[a] != point) {
-      pts[b] = prpath->path[a];
+  for (a = 0, b = 0; a < prwdgt->totpoint; a++) {
+    if (&prwdgt->path[a] != point) {
+      pts[b] = prwdgt->path[a];
       b++;
     }
     else {
@@ -178,16 +176,16 @@ bool profilepath_remove_point(ProfilePath *prpath, ProfilePoint *point)
     }
   }
 
-  MEM_freeN(prpath->path);
-  prpath->path = pts;
-  prpath->totpoint -= removed;
+  MEM_freeN(prwdgt->path);
+  prwdgt->path = pts;
+  prwdgt->totpoint -= removed;
   return (removed != 0);
 }
 
 /* removes with flag set */
-void profilepath_remove(ProfilePath *prpath, const short flag)
+void profilewidget_remove(ProfileWidget *prwdgt, const short flag)
 {
-  ProfilePoint *pts = MEM_mallocN(((size_t)prpath->totpoint) * sizeof(ProfilePoint),
+  ProfilePoint *pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
                                   "path points");
   int a, b, removed = 0;
 
@@ -196,21 +194,21 @@ void profilepath_remove(ProfilePath *prpath, const short flag)
 #endif
 
   /* well, lets keep the two outer points! */
-  pts[0] = prpath->path[0];
-  for (a = 1, b = 1; a < prpath->totpoint - 1; a++) {
-    if (!(prpath->path[a].flag & flag)) {
-      pts[b] = prpath->path[a];
+  pts[0] = prwdgt->path[0];
+  for (a = 1, b = 1; a < prwdgt->totpoint - 1; a++) {
+    if (!(prwdgt->path[a].flag & flag)) {
+      pts[b] = prwdgt->path[a];
       b++;
     }
     else {
       removed++;
     }
   }
-  pts[b] = prpath->path[a];
+  pts[b] = prwdgt->path[a];
 
-  MEM_freeN(prpath->path);
-  prpath->path = pts;
-  prpath->totpoint -= removed;
+  MEM_freeN(prwdgt->path);
+  prwdgt->path = pts;
+  prwdgt->totpoint -= removed;
 }
 
 /* The choice for which points to place the new vertex between is more complex with a profile than
@@ -218,7 +216,7 @@ void profilepath_remove(ProfilePath *prpath, const short flag)
  * this function checks which line segment is closest to the new point with a handy pre-made
  * function.
 */
-ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
+ProfilePoint *profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
 {
   ProfilePoint *new_pt;
   float new_loc[2] = {x, y};
@@ -230,9 +228,9 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
   float distance;
   float min_distance = FLT_MAX;
   int insert_i;
-  for (int i = 0; i < prpath->totpoint - 1; i++) {
-    float loc1[2] = {prpath->path[i].x, prpath->path[i].y};
-    float loc2[2] = {prpath->path[i + 1].x, prpath->path[i + 1].y};
+  for (int i = 0; i < prwdgt->totpoint - 1; i++) {
+    float loc1[2] = {prwdgt->path[i].x, prwdgt->path[i].y};
+    float loc2[2] = {prwdgt->path[i + 1].x, prwdgt->path[i + 1].y};
 
     distance = dist_squared_to_line_segment_v2(new_loc, loc1, loc2);
     if (distance < min_distance) {
@@ -242,15 +240,15 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
   }
 
   /* Insert the new point at the location we found and copy all of the old points in as well */
-  prpath->totpoint++;
-  ProfilePoint *new_pts = MEM_mallocN(((size_t)prpath->totpoint) * sizeof(ProfilePoint),
+  prwdgt->totpoint++;
+  ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
                                       "path points");
-  for (int i_new = 0, i_old = 0; i_new < prpath->totpoint; i_new++) {
+  for (int i_new = 0, i_old = 0; i_new < prwdgt->totpoint; i_new++) {
     if (i_new != insert_i) {
       /* Insert old point */
-      new_pts[i_new].x = prpath->path[i_old].x;
-      new_pts[i_new].y = prpath->path[i_old].y;
-      new_pts[i_new].flag = prpath->path[i_old].flag & ~PROF_SELECT; /* Deselect old points */
+      new_pts[i_new].x = prwdgt->path[i_old].x;
+      new_pts[i_new].y = prwdgt->path[i_old].y;
+      new_pts[i_new].flag = prwdgt->path[i_old].flag & ~PROF_SELECT; /* Deselect old points */
       i_old++;
     }
     else {
@@ -263,173 +261,176 @@ ProfilePoint *profilepath_insert(ProfilePath *prpath, float x, float y)
   }
 
   /* Free the old points and use the new ones */
-  MEM_freeN(prpath->path);
-  prpath->path = new_pts;
+  MEM_freeN(prwdgt->path);
+  prwdgt->path = new_pts;
   return new_pt;
 }
 
-/* Requires ProfilePath changed call afterwards */
+/* Requires ProfileWidget changed call afterwards */
 /* HANS-TODO: Or we could just reverse the table here and not require that? */
-void profilepath_reverse(ProfilePath *prpath)
+void profilewidget_reverse(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH INSERT\n");
 #endif
   /* Quick fix for when there are only two points and reversing shouldn't do anything */
-  if (prpath->totpoint == 2) {
+  if (prwdgt->totpoint == 2) {
     return;
   }
-  ProfilePoint *new_pts = MEM_mallocN(((size_t)prpath->totpoint) * sizeof(ProfilePoint),
+  ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
                                       "path points");
   /* Mirror the new points across the y = 1 - x line */
-  for (int i = 1; i < prpath->totpoint - 1; i++) {
-    new_pts[prpath->totpoint - i - 1].x = 1.0f - prpath->path[i].y;
-    new_pts[prpath->totpoint - i - 1].y = 1.0f - prpath->path[i].x;
-    new_pts[prpath->totpoint - i - 1].flag = prpath->path[i].flag;
+  for (int i = 1; i < prwdgt->totpoint - 1; i++) {
+    new_pts[prwdgt->totpoint - i - 1].x = 1.0f - prwdgt->path[i].y;
+    new_pts[prwdgt->totpoint - i - 1].y = 1.0f - prwdgt->path[i].x;
+    new_pts[prwdgt->totpoint - i - 1].flag = prwdgt->path[i].flag;
   }
   /* Set the location of the first and last points */
   new_pts[0].x = 0.0;
   new_pts[0].y = 0.0;
-  new_pts[prpath->totpoint - 1].x = 1.0;
-  new_pts[prpath->totpoint - 1].y = 1.0;
+  new_pts[prwdgt->totpoint - 1].x = 1.0;
+  new_pts[prwdgt->totpoint - 1].y = 1.0;
 
 #if DEBUG_PRWDGT_REVERSE
   printf("Locations before:\n");
-  for (int i = 0; i < prpath->totpoint; i++) {
-    printf("(%.2f, %.2f)", (double)prpath->path[i].x, (double)prpath->path[i].y);
+  for (int i = 0; i < prwdgt->totpoint; i++) {
+    printf("(%.2f, %.2f)", (double)prwdgt->path[i].x, (double)prwdgt->path[i].y);
   }
   printf("\nLocations after:\n");
-  for (int i = 0; i < prpath->totpoint; i++) {
+  for (int i = 0; i < prwdgt->totpoint; i++) {
     printf("(%.2f, %.2f)", (double)new_pts[i].x, (double)new_pts[i].y);
   }
   printf("\n");
 #endif
 
   /* Free the old points and use the new ones */
-  MEM_freeN(prpath->path);
-  prpath->path = new_pts;
+  MEM_freeN(prwdgt->path);
+  prwdgt->path = new_pts;
 }
 
-/* Requires ProfilePath changed call afterwards */
+/* Requires ProfileWidget changed call afterwards */
 /* HANS-TODO: Couldn't it just build the table at the end of this function here? */
-void profilepath_reset(ProfilePath *prpath, int preset)
+void profilewidget_reset(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH RESET\n");
 #endif
 
-  if (prpath->path) {
-    MEM_freeN(prpath->path);
+  if (prwdgt->path) {
+    MEM_freeN(prwdgt->path);
   }
+
+  int preset = prwdgt->preset;
 
   switch (preset) {
     case PROF_PRESET_LINE:
-      prpath->totpoint = 2;
+      prwdgt->totpoint = 2;
       break;
     case PROF_PRESET_SUPPORTS:
-      prpath->totpoint = 12;
+      prwdgt->totpoint = 12;
       break;
     case PROF_PRESET_EXAMPLE1:
-      prpath->totpoint = 23;
+      prwdgt->totpoint = 23;
       break;
   }
 
-  prpath->path = MEM_callocN((size_t)prpath->totpoint * sizeof(ProfilePoint), "path points");
+  prwdgt->path = MEM_callocN((size_t)prwdgt->totpoint * sizeof(ProfilePoint), "path points");
 
   switch (preset) {
     case PROF_PRESET_LINE:
-      prpath->path[0].x = 0.0;
-      prpath->path[0].y = 0.0;
-      prpath->path[1].x = 1.0;
-      prpath->path[1].y = 1.0;
+      prwdgt->path[0].x = 0.0;
+      prwdgt->path[0].y = 0.0;
+      prwdgt->path[1].x = 1.0;
+      prwdgt->path[1].y = 1.0;
       break;
     case PROF_PRESET_SUPPORTS:
-      prpath->path[0].x = 0.0;
-      prpath->path[0].y = 0.0;
-      prpath->path[1].x = 0.0;
-      prpath->path[1].y = 0.5;
+      prwdgt->path[0].x = 0.0;
+      prwdgt->path[0].y = 0.0;
+      prwdgt->path[1].x = 0.0;
+      prwdgt->path[1].y = 0.5;
       for (int i = 1; i < 10; i++) {
-        prpath->path[i + 1].x = 0.5f * (1.0f - cosf((float)((i / 9.0) * M_PI_2)));
-        prpath->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / 9.0) * M_PI_2));
+        prwdgt->path[i + 1].x = 0.5f * (1.0f - cosf((float)((i / 9.0) * M_PI_2)));
+        prwdgt->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / 9.0) * M_PI_2));
       }
-      prpath->path[10].x = 0.5;
-      prpath->path[10].y = 1.0;
-      prpath->path[11].x = 1.0;
-      prpath->path[11].y = 1.0;
+      prwdgt->path[10].x = 0.5;
+      prwdgt->path[10].y = 1.0;
+      prwdgt->path[11].x = 1.0;
+      prwdgt->path[11].y = 1.0;
       break;
     case PROF_PRESET_EXAMPLE1: /* HANS-TODO: Don't worry, this is just temporary */
-      prpath->path[0].x = 0.0f;
-      prpath->path[0].y = 0.0f;
-      prpath->path[1].x = 0.0f;
-      prpath->path[1].y = 0.6f;
-      prpath->path[2].x = 0.1f;
-      prpath->path[2].y = 0.6f;
-      prpath->path[3].x = 0.1f;
-      prpath->path[3].y = 0.7f;
-      prpath->path[4].x = 0.195024f;
-      prpath->path[4].y = 0.709379f;
-      prpath->path[5].x = 0.294767f;
-      prpath->path[5].y = 0.735585f;
-      prpath->path[6].x = 0.369792f;
-      prpath->path[6].y = 0.775577f;
-      prpath->path[7].x = 0.43429f;
-      prpath->path[7].y = 0.831837f;
-      prpath->path[8].x = 0.500148f;
-      prpath->path[8].y = 0.884851f;
-      prpath->path[9].x = 0.565882f;
-      prpath->path[9].y = 0.91889f;
-      prpath->path[10].x = 0.633279f;
-      prpath->path[10].y = 0.935271f;
-      prpath->path[11].x = 0.697628f;
-      prpath->path[11].y = 0.937218f;
-      prpath->path[12].x = 0.75148f;
-      prpath->path[12].y = 0.924844f;
-      prpath->path[13].x = 0.791918f;
-      prpath->path[13].y = 0.904817f;
-      prpath->path[14].x = 0.822379f;
-      prpath->path[14].y = 0.873682f;
-      prpath->path[15].x = 0.842155f;
-      prpath->path[15].y = 0.83174f;
-      prpath->path[16].x = 0.85f;
-      prpath->path[16].y = 0.775f;
-      prpath->path[17].x = 0.929009f;
-      prpath->path[17].y = 0.775f;
-      prpath->path[18].x = 0.953861f;
-      prpath->path[18].y = 0.780265f;
-      prpath->path[19].x = 0.967919f;
-      prpath->path[19].y = 0.794104f;
-      prpath->path[20].x = 0.978458f;
-      prpath->path[20].y = 0.818784f;
-      prpath->path[21].x = 0.988467f;
-      prpath->path[21].y = 0.890742f;
-      prpath->path[22].x = 1.0f;
-      prpath->path[22].x = 1.0f;
+      prwdgt->path[0].x = 0.0f;
+      prwdgt->path[0].y = 0.0f;
+      prwdgt->path[1].x = 0.0f;
+      prwdgt->path[1].y = 0.6f;
+      prwdgt->path[2].x = 0.1f;
+      prwdgt->path[2].y = 0.6f;
+      prwdgt->path[3].x = 0.1f;
+      prwdgt->path[3].y = 0.7f;
+      prwdgt->path[4].x = 0.195024f;
+      prwdgt->path[4].y = 0.709379f;
+      prwdgt->path[5].x = 0.294767f;
+      prwdgt->path[5].y = 0.735585f;
+      prwdgt->path[6].x = 0.369792f;
+      prwdgt->path[6].y = 0.775577f;
+      prwdgt->path[7].x = 0.43429f;
+      prwdgt->path[7].y = 0.831837f;
+      prwdgt->path[8].x = 0.500148f;
+      prwdgt->path[8].y = 0.884851f;
+      prwdgt->path[9].x = 0.565882f;
+      prwdgt->path[9].y = 0.91889f;
+      prwdgt->path[10].x = 0.633279f;
+      prwdgt->path[10].y = 0.935271f;
+      prwdgt->path[11].x = 0.697628f;
+      prwdgt->path[11].y = 0.937218f;
+      prwdgt->path[12].x = 0.75148f;
+      prwdgt->path[12].y = 0.924844f;
+      prwdgt->path[13].x = 0.791918f;
+      prwdgt->path[13].y = 0.904817f;
+      prwdgt->path[14].x = 0.822379f;
+      prwdgt->path[14].y = 0.873682f;
+      prwdgt->path[15].x = 0.842155f;
+      prwdgt->path[15].y = 0.83174f;
+      prwdgt->path[16].x = 0.85f;
+      prwdgt->path[16].y = 0.775f;
+      prwdgt->path[17].x = 0.929009f;
+      prwdgt->path[17].y = 0.775f;
+      prwdgt->path[18].x = 0.953861f;
+      prwdgt->path[18].y = 0.780265f;
+      prwdgt->path[19].x = 0.967919f;
+      prwdgt->path[19].y = 0.794104f;
+      prwdgt->path[20].x = 0.978458f;
+      prwdgt->path[20].y = 0.818784f;
+      prwdgt->path[21].x = 0.988467f;
+      prwdgt->path[21].y = 0.890742f;
+      prwdgt->path[22].x = 1.0f;
+      prwdgt->path[22].x = 1.0f;
       break;
 
   }
 
-  if (prpath->table) {
-    MEM_freeN(prpath->table);
-    prpath->table = NULL;
+  if (prwdgt->table) {
+    MEM_freeN(prwdgt->table);
+    prwdgt->table = NULL;
   }
 }
 
 /**
  * \param type: eBezTriple_Handle
  */
-void profilepath_handle_set(ProfilePath *prpath, int type)
+void profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH HANDLE SET\n");
 #endif
+  /* HANS-TODO: This is only doing the first point? */
 
-  if (prpath->path->flag & PROF_SELECT) {
-    prpath->path->flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO_ANIM);
+  if (prwdgt->path->flag & PROF_SELECT) {
+    prwdgt->path->flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO_ANIM);
     if (type == HD_VECT) {
-      prpath->path->flag |= PROF_HANDLE_VECTOR;
+      prwdgt->path->flag |= PROF_HANDLE_VECTOR;
     }
     else if (type == HD_AUTO_ANIM) {
-      prpath->path->flag |= PROF_HANDLE_AUTO_ANIM;
+      prwdgt->path->flag |= PROF_HANDLE_AUTO_ANIM;
     }
     else {
       /* pass */
@@ -446,7 +447,7 @@ void profilepath_handle_set(ProfilePath *prpath, int type)
 static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
 #if DEBUG_PRWDGT
-  printf("CALCHANDLE PROFILE");
+//  printf("CALCHANDLE PROFILE");
 #endif
   /* defines to avoid confusion */
 #define p2_h1 ((p2)-3)
@@ -562,47 +563,37 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
   if (bezt->h2 == HD_VECT) {
     madd_v2_v2v2fl(p2_h2, p2, dvec_b, 1.0f / 3.0f);
   }
-#if DEBUG_PRWDGT
-  printf("(finished)\n");
-#endif
-
 #undef p2_h1
 #undef p2_h2
 }
 
 /* Creates the table of points with the sampled curves */
 /* HANS-TODO: Update to add the ability to go back on itself */
-static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
+static void profilewidget_make_table(ProfileWidget *prwdgt)
 {
-  ProfilePoint *point = prpath->path;
+  ProfilePoint *new_table = prwdgt->path;
   BezTriple *bezt;
-  float *fp, *allpoints, *lastpoint, curf, range;
-  int i, totpoint;
+  float *fp, *curvepoints, *lastpoint, curf, range;
+  int i, n_curve_point;
 
 #if DEBUG_PRWDGT
   printf("PROFILEPATH MAKE TABLE\n");
-  if (prpath->path == NULL) {
+  if (prwdgt->path == NULL) {
     printf("(path is NULL)\n");
     return;
   }
 #endif
 
-  /* Evaluate table inside the clip range */
-  /* HANS-TODO: Not good, this only uses X */
-  prpath->mintable = clipr->xmin;
-  prpath->maxtable = clipr->xmax;
+  bezt = MEM_callocN((size_t)prwdgt->totpoint * sizeof(BezTriple), "beztarr");
 
-  bezt = MEM_callocN((size_t)prpath->totpoint * sizeof(BezTriple), "beztarr");
-
-  for (i = 0; i < prpath->totpoint; i++) {
-    prpath->mintable = min_ff(prpath->mintable, point[i].x);
-    prpath->maxtable = max_ff(prpath->maxtable, point[i].x);
-    bezt[i].vec[1][0] = point[i].x;
-    bezt[i].vec[1][1] = point[i].y;
-    if (point[i].flag & PROF_HANDLE_VECTOR) {
+  /* Create Bezier points for the path */
+  for (i = 0; i < prwdgt->totpoint; i++) {
+    bezt[i].vec[1][0] = new_table[i].x;
+    bezt[i].vec[1][1] = new_table[i].y;
+    if (new_table[i].flag & PROF_HANDLE_VECTOR) {
       bezt[i].h1 = bezt[i].h2 = HD_VECT;
     }
-    else if (point[i].flag & PROF_HANDLE_AUTO_ANIM) {
+    else if (new_table[i].flag & PROF_HANDLE_AUTO_ANIM) {
       bezt[i].h1 = bezt[i].h2 = HD_AUTO_ANIM;
     }
     else {
@@ -610,9 +601,10 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
     }
   }
 
+  /* Find the automatic positions for the bezier handles */
   const BezTriple *bezt_prev = NULL;
-  for (i = 0; i < prpath->totpoint; i++) {
-    const BezTriple *bezt_next = (i != prpath->totpoint - 1) ? &bezt[i + 1] : NULL;
+  for (i = 0; i < prwdgt->totpoint; i++) {
+    const BezTriple *bezt_next = (i != prwdgt->totpoint - 1) ? &bezt[i + 1] : NULL;
     calchandle_profile(&bezt[i], bezt_prev, bezt_next);
     bezt_prev = &bezt[i];
   }
@@ -620,7 +612,7 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
   /* first and last handle need correction, instead of pointing to center of next/prev,
    * we let it point to the closest handle */
   /* HANS-TODO: Remove this correction?  */
-  if (prpath->totpoint > 2) {
+  if (prwdgt->totpoint > 2) {
     float hlen, nlen, vec[3];
 
     if (bezt[0].h2 == HD_AUTO) {
@@ -640,7 +632,7 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
         sub_v3_v3v3(bezt[0].vec[0], bezt[0].vec[1], vec);
       }
     }
-    i = prpath->totpoint - 1;
+    i = prwdgt->totpoint - 1;
     if (bezt[i].h2 == HD_AUTO) {
 
       hlen = len_v3v3(bezt[i].vec[1], bezt[i].vec[0]); /* original handle length */
@@ -659,14 +651,13 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
       }
     }
   }
-  /* make the bezier curve */
-  if (prpath->table) {
-    MEM_freeN(prpath->table);
-  }
-  totpoint = (prpath->totpoint - 1) * PROF_RESOL;
-  fp = allpoints = MEM_callocN((size_t)totpoint * 2 * sizeof(float), "table");
 
-  for (i = 0; i < prpath->totpoint - 1; i++, fp += 2 * PROF_RESOL) {
+  /* Make the bezier curve */
+  /* HANS-TODO: Only add new points between HD_AUTO_ANIM points */
+  n_curve_point = (prwdgt->totpoint - 1) * PROF_RESOL;
+  fp = curvepoints = MEM_callocN((size_t)n_curve_point * 2 * sizeof(float), "table");
+
+  for (i = 0; i < prwdgt->totpoint - 1; i++, fp += 2 * PROF_RESOL) {
     correct_bezpart(bezt[i].vec[1], bezt[i].vec[2], bezt[i + 1].vec[0], bezt[i + 1].vec[1]);
     BKE_curve_forward_diff_bezier(bezt[i].vec[1][0],
                                   bezt[i].vec[2][0],
@@ -687,26 +678,26 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
   /* cleanup */
   MEM_freeN(bezt);
 
-  range = PROF_TABLEDIV * (prpath->maxtable - prpath->mintable);
-  prpath->range = 1.0f / range;
+//  range = PROF_TABLEDIV * (prwdgt->maxtable - prwdgt->mintable);
+  range = PROF_TABLEDIV * profilewidget_total_length(prwdgt);
+  /* HANS-TODO: Change to length of bezier curve */
+  prwdgt->range = 1.0f / range;
 
-  /* now make a table with PROF_TABLE_SIZE equal distances */
-  fp = allpoints;
-  lastpoint = allpoints + 2 * (totpoint - 1);
-  point = MEM_callocN((PROF_TABLE_SIZE + 1) * sizeof(ProfilePoint), "dist table");
+  /* Now make the table with PROF_TABLE_SIZE points */
+  fp = curvepoints;
+  lastpoint = curvepoints + 2 * (n_curve_point - 1);
+  new_table = MEM_callocN((PROF_TABLE_SIZE + 1) * sizeof(ProfilePoint), "dist table");
 
+  /* HANS-TODO: Use travel down path method */
   for (i = 0; i <= PROF_TABLE_SIZE; i++) {
-    curf = prpath->mintable + range * (float)i;
-    point[i].x = curf;
+    curf = range * (float)i;
+    new_table[i].x = curf;
 
     /* get the first x coordinate larger than curf */
     while (curf >= fp[0] && fp != lastpoint) {
       fp += 2;
     }
-    if (fp == allpoints || (curf >= fp[0] && fp == lastpoint)) {
-      /* HANS-TODO: Remove this case... Why did I say this? */
-    }
-    else {
+    if (fp != curvepoints && fp != lastpoint) {
       /* HANS-QUESTION: I'm not sure of the idea behind this factor stuff. I'll have to look into
        * it closer, or possible use a different method. */
       float fac1 = fp[0] - fp[-2];
@@ -717,19 +708,21 @@ static void profilepath_make_table(ProfilePath *prpath, const rctf *clipr)
       else {
         fac1 = 0.0f;
       }
-      point[i].y = fac1 * fp[-1] + (1.0f - fac1) * fp[1];
+      new_table[i].y = fac1 * fp[-1] + (1.0f - fac1) * fp[1];
     }
   }
 
-  MEM_freeN(allpoints);
-  prpath->table = point;
+  MEM_freeN(curvepoints);
+  if (prwdgt->table) {
+    MEM_freeN(prwdgt->table);
+  }
+  prwdgt->table = new_table;
 }
 
 /* HANS-TODO: Update */
 void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
 {
-  ProfilePath *prpath = prwdgt->profile;
-  ProfilePoint *points = prpath->path;
+  ProfilePoint *points = prwdgt->path;
   rctf *clipr = &prwdgt->clip_rect;
   float thresh = 0.01f * BLI_rctf_size_x(clipr);
   float dx = 0.0f, dy = 0.0f;
@@ -738,15 +731,16 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
   prwdgt->changed_timestamp++;
 
 #if DEBUG_PRWDGT
-  printf("PROFILEWIDGET CHANGED\n");
-  if (prwdgt->profile->totpoint < 0) {
-    printf("Someone screwed up the totpoint\n");
+  printf("PROFILEWIDGET CHANGED");
+  if (prwdgt->totpoint < 0) {
+    printf("(Someone screwed up the totpoint)");
   }
+  printf("\n");
 #endif
 
   /* Clamp with the clipping rect in case something got past */
   if (prwdgt->flag & PROF_DO_CLIP) {
-    for (i = 0; i < prpath->totpoint; i++) {
+    for (i = 0; i < prwdgt->totpoint; i++) {
       if (points[i].flag & PROF_SELECT) {
         if (points[i].x < clipr->xmin) {
           dx = min_ff(dx, points[i].x - clipr->xmin);
@@ -762,14 +756,14 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
         }
       }
     }
-    for (i = 0; i < prpath->totpoint; i++) {
+    for (i = 0; i < prwdgt->totpoint; i++) {
       if (points[i].flag & PROF_SELECT) {
         points[i].x -= dx;
         points[i].y -= dy;
       }
     }
 
-    /* ensure zoom-level respects clipping */
+    /* Ensure zoom-level respects clipping */
     /* HANS-TODO: Isn't this done in the zooming functions? */
     if (BLI_rctf_size_x(&prwdgt->view_rect) > BLI_rctf_size_x(&prwdgt->clip_rect)) {
       prwdgt->view_rect.xmin = prwdgt->clip_rect.xmin;
@@ -781,9 +775,9 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
     }
   }
 
-  /* remove doubles, threshold set on 1% of default range */
-  if (rem_doubles && prpath->totpoint > 2) {
-    for (i = 0; i < prpath->totpoint - 1; i++) {
+  /* Remove doubles, threshold set on 1% of default range */
+  if (rem_doubles && prwdgt->totpoint > 2) {
+    for (i = 0; i < prwdgt->totpoint - 1; i++) {
       dx = points[i].x - points[i + 1].x;
       dy = points[i].y - points[i + 1].y;
       if (sqrtf(dx * dx + dy * dy) < thresh) {
@@ -799,50 +793,50 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool rem_doubles)
             points[i + 1].flag |= PROF_SELECT;
           }
         }
-        break; /* we assume 1 deletion per edit is ok */
+        break; /* Assumes 1 deletion per edit is ok */
       }
     }
-    if (i != prpath->totpoint - 1) {
-      profilepath_remove(prpath, 2);
+    if (i != prwdgt->totpoint - 1) {
+      profilewidget_remove(prwdgt, 2);
     }
   }
-  profilepath_make_table(prpath, clipr);
+  profilewidget_make_table(prwdgt);
 }
 
 
 
 /* This might be a little less efficient because it has to fetch x and y */
 /* rather than carrying them over from the last point while travelling */
-float profilepath_linear_distance_to_next_point(const ProfilePath *prpath, int i)
+float profilewidget_linear_distance_to_next_point(const ProfileWidget *prwdgt, int i)
 {
   /* HANS-TODO: Remove after sufficient testing */
-//  BLI_assert(prpath != NULL);
+//  BLI_assert(prwdgt != NULL);
 //  BLI_assert(i >= 0);
-//  BLI_assert(i < prpath->totpoint);
+//  BLI_assert(i < prwdgt->totpoint);
 
-  float x = prpath->path[i].x;
-  float y = prpath->path[i].y;
-  float x_next = prpath->path[i + 1].x;
-  float y_next = prpath->path[i + 1].y;
+  float x = prwdgt->path[i].x;
+  float y = prwdgt->path[i].y;
+  float x_next = prwdgt->path[i + 1].x;
+  float y_next = prwdgt->path[i + 1].y;
 
   return sqrtf(powf(y_next - y, 2) + powf(x_next - x, 2));
 }
 
 /* Calculate the total length of the path (between all of the nodes and the ends at 0 and 1 */
-float profilepath_total_length(const struct ProfilePath *prpath)
+float profilewidget_total_length(const struct ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH TOTAL LENGTH\n");
 #endif
   float total_length = 0;
-  /*printf("Here are the locations of all of %d points in the list:\n", prpath->totpoint);
-  for (int i = 0; i < prpath->totpoint; i++) {
-    printf("(%f, %f)\n", prpath->path[i].x, prpath->path[i].y);
+  /*printf("Here are the locations of all of %d points in the list:\n", prwdgt->totpoint);
+  for (int i = 0; i < prwdgt->totpoint; i++) {
+    printf("(%f, %f)\n", prwdgt->path[i].x, prwdgt->path[i].y);
   }*/
 
   /* HANS-TODO: This is a bad way to do this */
-  for (int i = 0; i < prpath->totpoint - 1; i++) {
-    total_length += profilepath_linear_distance_to_next_point(prpath, i);
+  for (int i = 0; i < prwdgt->totpoint - 1; i++) {
+    total_length += profilewidget_linear_distance_to_next_point(prwdgt, i);
   }
 
   return total_length;
@@ -856,20 +850,20 @@ static inline float lerp(float a, float b, float f)
 /** Gives a single evaluation along the profile's path
  * \param length_portion: The portion (0 to 1) of the path's full length to sample at
 */
-void profilepath_evaluate(const struct ProfilePath *prpath,
+void profilewidget_evaluate_portion(const struct ProfileWidget *prwdgt,
                           float length_portion,
                           float *x_out,
                           float *y_out)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH EVALUATE\n");
-  if (prpath->totpoint < 0) {
+  if (prwdgt->totpoint < 0) {
     printf("Someone screwed up the totpoint\n");
   }
 #endif
   /* HANS-TODO: For now I'm skipping the table and doing the evaluation here,
    * but it should be moved later on so I don't have to travel down node list every call */
-  float total_length = prpath->total_length;
+  float total_length = prwdgt->total_length;
   float requested_length = length_portion * total_length;
 
   /* Find the last point along the path with a lower length portion than the input */
@@ -877,10 +871,10 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
   float length_travelled = 0.0f;
   while (length_travelled < requested_length) {
     /* Check if we reached the last point before the final one */
-    if (i == prpath->totpoint - 2) {
+    if (i == prwdgt->totpoint - 2) {
       break;
     }
-    float new_length = profilepath_linear_distance_to_next_point(prpath, i);
+    float new_length = profilewidget_linear_distance_to_next_point(prwdgt, i);
     if (length_travelled + new_length >= requested_length) {
       break;
     }
@@ -890,7 +884,7 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
 
   /* Now travel the remaining distance of length portion down the path to the next point and
    * find the location where we stop */
-  float distance_to_next_point = profilepath_linear_distance_to_next_point(prpath, i);
+  float distance_to_next_point = profilewidget_linear_distance_to_next_point(prwdgt, i);
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
 #if DEBUG_PRWDGT_EVALUATE
@@ -899,30 +893,30 @@ void profilepath_evaluate(const struct ProfilePath *prpath,
   printf("  distance to next point: %f\n", (double)distance_to_next_point);
   printf("  length travelled: %f\n", (double)length_travelled);
   printf("  lerp-factor: %f\n", (double)lerp_factor);
-  printf("  ith point  (%f, %f)\n", (double)prpath->path[i].x, (double)prpath->path[i].y);
-  printf("  next point (%f, %f)\n", (double)prpath->path[i + 1].x, (double)prpath->path[i + 1].y);
+  printf("  ith point  (%f, %f)\n", (double)prwdgt->path[i].x, (double)prwdgt->path[i].y);
+  printf("  next point (%f, %f)\n", (double)prwdgt->path[i + 1].x, (double)prwdgt->path[i + 1].y);
 #endif
 
-  *x_out = lerp(prpath->path[i].x, prpath->path[i + 1].x, lerp_factor);
-  *y_out = lerp(prpath->path[i].y, prpath->path[i + 1].y, lerp_factor);
+  *x_out = lerp(prwdgt->path[i].x, prwdgt->path[i + 1].x, lerp_factor);
+  *y_out = lerp(prwdgt->path[i].y, prwdgt->path[i + 1].y, lerp_factor);
 }
 
-/** Samples evenly spaced positions along the profile widget's path. */
+/** Samples evenly spaced positions along the profile widget's path. Fills an entire table at once
+  * for a speedup if all of the results are going to be used anyway. */
 /* HANS-TODO: Enable this */
-/* HANS-TODO: Switch this over to using the secondary higher resolution set of points. Either that
- * or build something that subdivides the points parametrically depending on their whether they are
- * vector or curve interpolated */
-void profilepath_fill_segment_table(const struct ProfilePath *prpath,
+/* HANS-TODO: Switch this over to using the secondary higher resolution set of points which ideally
+ * would be parametrically subdivided so that there are  only extra points between the curved
+ * user-inputted points */
+void profilewidget_fill_segment_table(const struct ProfileWidget *prwdgt,
                                     double *x_table_out,
                                     double *y_table_out)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH FILL SEGMENT TABLE\n");
 #endif
-  /* Fill table with values for the position of the graph at each of the segments */
-  const float segment_length = prpath->total_length / prpath->nsegments;
+  const float segment_length = prwdgt->total_length / prwdgt->nsegments;
   float length_travelled = 0.0f;
-  float distance_to_next_point = profilepath_linear_distance_to_next_point(prpath, 0);
+  float distance_to_next_point = profilewidget_linear_distance_to_next_point(prwdgt, 0);
   float distance_to_previous_point = 0.0f;
   float travelled_since_last_point = 0.0f;
   float segment_left = segment_length;
@@ -930,20 +924,20 @@ void profilepath_fill_segment_table(const struct ProfilePath *prpath,
   int i_point = 0;
 
   /* Travel along the path, recording locations of segments as we pass where they should be */
-  for (int i = 0; i < prpath->nsegments; i++) {
+  for (int i = 0; i < prwdgt->nsegments; i++) {
     /* Travel over all of the points that could be inside this segment */
     while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {
       length_travelled += distance_to_next_point;
       segment_left -= distance_to_next_point;
       travelled_since_last_point += distance_to_next_point;
       i_point++;
-      distance_to_next_point = profilepath_linear_distance_to_next_point(prpath, i_point);
+      distance_to_next_point = profilewidget_linear_distance_to_next_point(prwdgt, i_point);
       distance_to_previous_point = 0.0f;
     }
     /* We're now at the last point that fits inside the current segment */
     f = segment_left / (distance_to_previous_point + distance_to_next_point);
-    x_table_out[i] = (double)lerp(prpath->path[i_point].x, prpath->path[i_point+1].x, f);
-    y_table_out[i] = (double)lerp(prpath->path[i_point].x, prpath->path[i_point+1].x, f);
+    x_table_out[i] = (double)lerp(prwdgt->path[i_point].x, prwdgt->path[i_point+1].x, f);
+    y_table_out[i] = (double)lerp(prwdgt->path[i_point].x, prwdgt->path[i_point+1].x, f);
     distance_to_next_point -= segment_left;
     distance_to_previous_point += segment_left;
 
@@ -964,18 +958,16 @@ void profilewidget_initialize(ProfileWidget *prwdgt, int nsegments)
     return;
   }
 
-  ProfilePath *prpath = prwdgt->profile;
-
-  prpath->nsegments = nsegments;
-  float total_length = profilepath_total_length(prwdgt->profile);
-  prpath->total_length = total_length;
+  prwdgt->nsegments = nsegments;
+  float total_length = profilewidget_total_length(prwdgt);
+  prwdgt->total_length = total_length;
 
 #if DEBUG_PRWDGT
   printf("Total length of the path is: %f\n", (double)total_length);
 #endif
 
   /* Calculate the high resolution table for display and evaluation */
-  profilepath_make_table(prwdgt->profile, &prwdgt->clip_rect);
+  profilewidget_make_table(prwdgt);
 }
 
 /* Evaluates along the length of the path rather than with X coord */
@@ -987,10 +979,9 @@ void profilewidget_evaluate(const struct ProfileWidget *prwdgt,
 #if DEBUG_PRWDGT
   printf("PROFILEPATH EVALUATE\n");
 #endif
-  /* HANS-TODO: Use profilepath_fill_segment_table */
+  /* HANS-TODO: Use profilewidget_fill_segment_table */
 
-  const ProfilePath *prpath = prwdgt->profile;
-  profilepath_evaluate(prpath, ((float)segment / (float)prpath->nsegments), x_out, y_out);
+  profilewidget_evaluate_portion(prwdgt, ((float)segment / (float)prwdgt->nsegments), x_out, y_out);
 
   /* Clip down to 0 to 1 range for both coords */
   if (prwdgt->flag & PROF_DO_CLIP) {

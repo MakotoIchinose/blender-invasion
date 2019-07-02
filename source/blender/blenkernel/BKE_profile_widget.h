@@ -25,7 +25,6 @@
  */
 
 struct ProfileWidget;
-struct ProfilePath;
 struct ProfilePoint;
 
 /* HANS-TODO: Organize */
@@ -49,29 +48,29 @@ void profilewidget_evaluate(const struct ProfileWidget *prwdgt,
                             float *y_out);
 
 /* Length portion is the fraction of the total path length where we want the location */
-void profilepath_evaluate(const struct ProfilePath *prpath,
+void profilewidget_evaluate_portion(const struct ProfileWidget *prwdgt,
                           float length_portion,
                           float *x_out,
                           float *y_out);
 
 /* Need to find the total length of the curve to sample a portion of it */
-float profilepath_total_length(const struct ProfilePath *prpath);
+float profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
 /* Distance in 2D to the next point */
-float profilepath_linear_distance_to_next_point(const struct ProfilePath *prpath, int i);
+float profilewidget_linear_distance_to_next_point(const struct ProfileWidget *prwdgt, int i);
 
 
-void profilepath_reset(struct ProfilePath *prpath, int preset);
+void profilewidget_reset(struct ProfileWidget *prwdgt);
 
-void profilepath_remove(struct ProfilePath *prpath, const short flag);
+void profilewidget_remove(struct ProfileWidget *prwdgt, const short flag);
 
-bool profilepath_remove_point(struct ProfilePath *prpath, struct ProfilePoint *point);
+bool profilewidget_remove_point(struct ProfileWidget *prwdgt, struct ProfilePoint *point);
 
-struct ProfilePoint *profilepath_insert(struct ProfilePath *prpath, float x, float y);
+struct ProfilePoint *profilewidget_insert(struct ProfileWidget *prwdgt, float x, float y);
 
-void profilepath_reverse(struct ProfilePath *prpath);
+void profilewidget_reverse(struct ProfileWidget *prwdgt);
 
-void profilepath_handle_set(struct ProfilePath *prpath, int type);
+void profilewidget_handle_set(struct ProfileWidget *prwdgt, int type);
 
 /* Called for a complete update of the widget after modifications */
 void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
@@ -79,7 +78,7 @@ void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles)
 /* call before all evaluation functions */
 void profilewidget_initialize(struct ProfileWidget *prwdgt, int nsegments);
 
-void profilepath_fill_segment_table(const struct ProfilePath *prpath,
+void profilewidget_fill_segment_table(const struct ProfileWidget *prwdgt,
                                     double *x_table_out,
                                     double *y_table_out);
 

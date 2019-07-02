@@ -31,7 +31,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_profilepath_types.h"
+#include "DNA_profilewidget_types.h"
 
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
@@ -41,12 +41,13 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "BKE_profile_path.h"
+#include "BKE_profile_widget.h"
 
 #include "DEG_depsgraph_query.h"
 
 static void initData(ModifierData *md)
 {
+  printf("INIT DATA\n");
   BevelModifierData *bmd = (BevelModifierData *)md;
 
   bmd->value = 1.0f;
@@ -69,13 +70,14 @@ static void initData(ModifierData *md)
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
-  printf("COPY DATA (MOD_bevel.c)\n");
+  printf("COPY DATA\n");
   const BevelModifierData *bmd_src = (const BevelModifierData *)md_src;
   BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
 
   modifier_copyData_generic(md_src, md_dst, flag);
-
+//  printf("(src prwdgt: %p)", (const void *)bmd_src);
   bmd_dst->prwdgt = profilewidget_copy(bmd_src->prwdgt);
+//  printf("(dst prwdgt: %p)\n", (void *)bmd_dst);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -95,6 +97,7 @@ static void requiredDataMask(Object *UNUSED(ob),
  */
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
+  printf("APPLY MODIFIER\n");
   Mesh *result;
   BMesh *bm;
   BMIter iter;
@@ -247,8 +250,9 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
  * called before copy */
 static void freeData(ModifierData *md)
 {
+  printf("FREEDATA\n");
   BevelModifierData *bmd = (BevelModifierData *)md;
-//  profilewidget_free(bmd->prwdgt);
+  profilewidget_free(bmd->prwdgt);
 }
 
 ModifierTypeInfo modifierType_Bevel = {

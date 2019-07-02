@@ -154,6 +154,7 @@ static void modifier_free_data_id_us_cb(void *UNUSED(userData),
 
 void modifier_free_ex(ModifierData *md, const int flag)
 {
+  printf("MODIFIER FREE EX\n");
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
@@ -338,6 +339,7 @@ static void modifier_copy_data_id_us_cb(void *UNUSED(userData),
 
 void modifier_copyData_ex(ModifierData *md, ModifierData *target, const int flag)
 {
+  printf("MODIFIER COPYDATA EX\n");
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
 
   target->mode = md->mode;
@@ -901,6 +903,7 @@ struct Mesh *modwrap_applyModifier(ModifierData *md,
                                    const ModifierEvalContext *ctx,
                                    struct Mesh *me)
 {
+  printf("MODWRAP APPLY MODIFIER\n");
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
   BLI_assert(CustomData_has_layer(&me->pdata, CD_NORMAL) == false);
 

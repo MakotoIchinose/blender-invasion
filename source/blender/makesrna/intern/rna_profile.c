@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "DNA_profilepath_types.h"
+#include "DNA_profilewidget_types.h"
 #include "DNA_texture_types.h"
 
 #include "BLI_utildefines.h"
@@ -32,6 +32,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+/* HANS-TODO: Update runtime */
 #ifdef RNA_RUNTIME
 
 #  include "RNA_access.h"
@@ -47,7 +48,7 @@
 #  include "MEM_guardedalloc.h"
 
 #  include "BKE_colorband.h"
-#  include "BKE_profile_path.h"
+#  include "BKE_profile_widget.h"
 #  include "BKE_image.h"
 #  include "BKE_movieclip.h"
 #  include "BKE_node.h"
@@ -75,10 +76,10 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
   profilewidget_changed(prwdgt, false);
 }
 
-static void rna_ProfilePath_remove_point(ProfilePath *prpath, ReportList *reports, PointerRNA *point_ptr)
+static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt, ReportList *reports, PointerRNA *point_ptr)
 {
   ProfilePoint *point = point_ptr->data;
-  if (profilepath_remove_point(prpath, point) == false) {
+  if (profilewidget_remove_point(prwdgt, point) == false) {
     BKE_report(reports, RPT_ERROR, "Unable to remove path point");
     return;
   }
@@ -87,7 +88,7 @@ static void rna_ProfilePath_remove_point(ProfilePath *prpath, ReportList *report
 }
 
 /* HANS-TODO: Needs to change to a 2D output */
-//static float rna_ProfilePath_evaluate(struct ProfilePath *cuma, ReportList *reports, float value)
+//static float rna_ProfileWidget_evaluate(struct ProfileWidget *cuma, ReportList *reports, float value)
 //{
 //  if (!cuma->table) {
 //    BKE_report(reports, RPT_ERROR,
@@ -115,7 +116,7 @@ static void rna_def_profilepoint(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem prop_handle_type_items[] = {
-      {0, "AUTO", 0, "Auto Handle", ""},
+      {0, "AUTO", 0, "Auto Handle", ""}, /* HANS-TODO: Remove */
       {PROF_HANDLE_AUTO_ANIM, "AUTO_CLAMPED", 0, "Auto Clamped Handle", ""},
       {PROF_HANDLE_VECTOR, "VECTOR", 0, "Vector Handle", ""},
       {0, NULL, 0, NULL, NULL},
@@ -140,7 +141,8 @@ static void rna_def_profilepoint(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Select", "Selection state of the path point");
 }
 
-static void rna_def_profilepath_points_api(BlenderRNA *brna, PropertyRNA *cprop)
+/* HANS-TODO: Add more API callbacks */
+static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
   PropertyRNA *parm;
@@ -148,11 +150,11 @@ static void rna_def_profilepath_points_api(BlenderRNA *brna, PropertyRNA *cprop)
 
   RNA_def_property_srna(cprop, "ProfilePoints");
   srna = RNA_def_struct(brna, "ProfilePoints", NULL);
-  RNA_def_struct_sdna(srna, "ProfilePath");
+  RNA_def_struct_sdna(srna, "ProfileWidget");
   RNA_def_struct_ui_text(srna, "Profile Point", "Collection of Profile Points");
 
-  func = RNA_def_function(srna, "new", "profilepath_insert");
-  RNA_def_function_ui_description(func, "Add point to ProfilePath");
+  func = RNA_def_function(srna, "new", "profilewidget_insert");
+  RNA_def_function_ui_description(func, "Add point to the profile widget");
   parm = RNA_def_float(func, "x", 0.0f, -FLT_MAX, FLT_MAX, "X Position",
                        "X Position for new point", -FLT_MAX, FLT_MAX);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
@@ -162,48 +164,20 @@ static void rna_def_profilepath_points_api(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_pointer(func, "point", "ProfilePoint", "", "New point");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_ProfilePath_remove_point");
+  func = RNA_def_function(srna, "remove", "rna_ProfileWidget_remove_point");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  RNA_def_function_ui_description(func, "Delete point from ProfilePath");
+  RNA_def_function_ui_description(func, "Delete point from profile widget");
   parm = RNA_def_pointer(func, "point", "ProfilePoint", "", "PointElement to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
-static void rna_def_profilepath(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-//  PropertyRNA *parm;
-//  FunctionRNA *func;
-
-  /* HANS-TODO: Add more props? */
-
-  srna = RNA_def_struct(brna, "ProfilePath", NULL);
-  RNA_def_struct_ui_text(srna, "ProfilePath", "The profile data for the ProfileWidget");
-
-  prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "path", "totpoint");
-  RNA_def_property_struct_type(prop, "ProfilePoint");
-  RNA_def_property_ui_text(prop, "Points", "");
-  rna_def_profilepath_points_api(brna, prop);
-
-  /* HANS-TODO: This is disabled until I figure out how to return the X/Y pair */
-//  func = RNA_def_function(srna, "evaluate", "rna_CurveMap_evaluateF");
-//  RNA_def_function_flag(func, FUNC_USE_REPORTS);
-//  RNA_def_function_ui_description(func, "Evaluate the position of the indexed ProfilePoint");
-//  parm = RNA_def_float(func, "position", 0.0f, -FLT_MAX, FLT_MAX, "Position",
-//                       "Position to evaluate curve at", -FLT_MAX, FLT_MAX);
-//  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-//  parm = RNA_def_float(func, "value", 0.0f, -FLT_MAX, FLT_MAX, "Value",
-//                       "Value of curve at given location", -FLT_MAX, FLT_MAX);
-//  RNA_def_function_return(func, parm);
-}
-
 /* HANS-STRETCH-GOAL: Give the presets icons! */
+/* HANS-TODO: Add more props? */
 const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
     {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
     {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops", "Loops on either side of the profile"},
+    {PROF_PRESET_EXAMPLE1, "EXAMPLE1", 0, "Molding Example", "An example use case"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -215,32 +189,19 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   FunctionRNA *func;
 
   srna = RNA_def_struct(brna, "ProfileWidget", NULL);
-  RNA_def_struct_ui_text(srna,"ProfileWidget",
-                         "Profile Path editor used to build a user-defined profile");
-
-//  prop = RNA_def_property(srna, "rotation_mode", PROP_ENUM, PROP_NONE);
-//  RNA_def_property_enum_sdna(prop, NULL, "rotmode");
-//  RNA_def_property_enum_items(prop, rna_enum_object_rotation_mode_items);
-//  RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
-//  RNA_def_property_ui_text(prop, "Rotation Mode", "");
-//  eProfilePathPresets
+  RNA_def_struct_ui_text(srna,"ProfileWidget", "Profile Path editor used to build a profile path");
 
   prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "preset");
   RNA_def_property_enum_items(prop, rna_enum_profilewidget_preset_items);
 //  RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
   RNA_def_property_ui_text(prop, "Preset", "");
-  //  eProfilePathPresets
+  //  ProfileWidgetPresets
 
   prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_DO_CLIP);
   RNA_def_property_ui_text(prop, "Clip", "Force the path view to fit a defined boundary");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_ProfileWidget_clip_set");
-
-  prop = RNA_def_property(srna, "profile", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "profile"); /* HANS-TODO: Test this, it might be wrong */
-  RNA_def_property_struct_type(prop, "ProfilePath");
-  RNA_def_property_ui_text(prop, "Profile", "The profile data");
 
   func = RNA_def_function(srna, "update", "rna_ProfileWidget_changed");
   RNA_def_function_ui_description(func, "Update profile widget after making changes");
@@ -250,12 +211,28 @@ static void rna_def_profilewidget(BlenderRNA *brna)
                      " initialize the arrays with", 1, 100);
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   RNA_def_function_ui_description(func, "Initialize profile");
+
+  prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "path", "totpoint");
+  RNA_def_property_struct_type(prop, "ProfilePoint");
+  RNA_def_property_ui_text(prop, "Points", "");
+  rna_def_profilewidget_points_api(brna, prop);
+
+  /* HANS-TODO: This is disabled until I figure out how to return the X/Y pair */
+//  func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_Evaluate");
+//  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+//  RNA_def_function_ui_description(func, "Evaluate the position of the indexed ProfilePoint");
+//  parm = RNA_def_float(func, "position", 0.0f, -FLT_MAX, FLT_MAX, "Position",
+//                       "Position to evaluate curve at", -FLT_MAX, FLT_MAX);
+//  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+//  parm = RNA_def_float(func, "value", 0.0f, -FLT_MAX, FLT_MAX, "Value",
+//                       "Value of curve at given location", -FLT_MAX, FLT_MAX);
+//  RNA_def_function_return(func, parm);
 }
 
 void RNA_def_profile(BlenderRNA *brna)
 {
   rna_def_profilepoint(brna);
-  rna_def_profilepath(brna);
   rna_def_profilewidget(brna);
 }
 

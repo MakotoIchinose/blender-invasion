@@ -27,7 +27,7 @@
 #include "DNA_color_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_movieclip_types.h"
-#include "DNA_profilepath_types.h"
+#include "DNA_profilewidget_types.h"
 
 #include "BLI_math.h"
 #include "BLI_rect.h"
@@ -41,7 +41,7 @@
 #include "BKE_colortools.h"
 #include "BKE_node.h"
 #include "BKE_tracking.h"
-#include "BKE_profile_path.h"
+#include "BKE_profile_widget.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -2136,13 +2136,12 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     return;
   }
 
-  ProfilePath *prpath = prwdgt->profile;
 #if DEBUG_PROFILE_DRAW
-  if (!prpath->path) {
-    printf("UI DRAW BUT PROFILE -- ProfilePath has no path!\n");
+  if (!prwdgt->path) {
+    printf("UI DRAW BUT PROFILE -- ProfileWidget has no path!\n");
   }
-  if (!prpath->table) {
-    printf("UI DRAW BUT PROFILE -- ProfilePath has no table!\n");
+  if (!prwdgt->table) {
+    printf("UI DRAW BUT PROFILE -- ProfileWidget has no table!\n");
   }
   fflush(0);
 #endif
@@ -2198,15 +2197,15 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   /* Draw the path's fill */
 
   /* HANS-TODO: Change totpoint back to PROF_TABLE_SIZE + 1 when the table is properly
-   * with that many elements along the path. And change pts back to prpath->table as well. */
-  if (prpath->path == NULL) {
+   * with that many elements along the path. And change pts back to prwdgt->table as well. */
+  if (prwdgt->path == NULL) {
     profilewidget_changed(prwdgt, false);
   }
-  ProfilePoint *pts = prpath->path;
+  ProfilePoint *pts = prwdgt->path;
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
   bool add_right_triangle = prwdgt->view_rect.xmax > 1.0f;
   bool add_bottom_triangle = prwdgt->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)prpath->totpoint + 1 + add_right_triangle + add_bottom_triangle;
+  uint tot_points = (uint)prwdgt->totpoint + 1 + add_right_triangle + add_bottom_triangle;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
@@ -2323,7 +2322,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   /* Draw the user's control points */
   GPU_line_smooth(false);
   GPU_blend(false);
-  pts = prpath->path;
+  pts = prwdgt->path;
   GPU_point_size(max_ff(1.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
   immBegin(GPU_PRIM_POINTS, tot_points - 1);
   for (i = 0; i < tot_points - 1; i++) {

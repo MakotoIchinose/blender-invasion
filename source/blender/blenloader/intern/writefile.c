@@ -138,7 +138,7 @@
 #include "DNA_workspace_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_mask_types.h"
-#include "DNA_profilepath_types.h"
+#include "DNA_profilewidget_types.h"
 
 #include "MEM_guardedalloc.h"  // MEM_freeN
 #include "BLI_bitmap.h"
@@ -958,12 +958,8 @@ static void write_curvemapping(WriteData *wd, CurveMapping *cumap)
 
 static void write_profilewidget(WriteData *wd, ProfileWidget *prwdgt)
 {
-  /* HANS-TODO: I seemed to have to write the ProfilePath struct when the curvemapping write
-   * function doesn't have to do the analagous write. Anyway, the loading after a save still
-   * crashes, so this can't be right. I think free is being called before copy somewhere. */
   writestruct(wd, DATA, ProfileWidget, 1, prwdgt);
-  writestruct(wd, DATA, ProfilePath, 1, prwdgt->profile);
-  writestruct(wd, DATA, ProfilePoint, prwdgt->profile->totpoint, prwdgt->profile->path);
+  writestruct(wd, DATA, ProfilePoint, prwdgt->totpoint, prwdgt->path);
 }
 
 static void write_node_socket(WriteData *wd, bNodeSocket *sock)

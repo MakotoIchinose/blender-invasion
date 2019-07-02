@@ -500,7 +500,6 @@ extern StructRNA RNA_PreferencesSystem;
 extern StructRNA RNA_PreferencesView;
 extern StructRNA RNA_PreferencesWalkNavigation;
 extern StructRNA RNA_ProfileWidget;
-extern StructRNA RNA_ProfilePath;
 extern StructRNA RNA_ProfilePoint;
 extern StructRNA RNA_Property;
 extern StructRNA RNA_PropertyGroup;
