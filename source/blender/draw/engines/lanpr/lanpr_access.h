@@ -26,7 +26,7 @@ int lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
 void lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
-int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph);
+int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int instersections_only);
 
 void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 

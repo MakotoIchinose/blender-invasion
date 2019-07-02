@@ -4178,7 +4178,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 /* ============================================ operators =========================================
  */
 
-int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
+int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_only)
 {
   LANPR_RenderBuffer *rb;
   Scene *s = DEG_get_evaluated_scene(depsgraph);
@@ -4208,14 +4208,19 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph)
 
   lanpr_make_initial_bounding_areas(rb);
 
-  lanpr_compute_scene_contours(rb, lanpr->crease_threshold);
+  if (!intersectons_only) {
+    lanpr_compute_scene_contours(rb, lanpr->crease_threshold);
+  }
 
   lanpr_add_triangles(rb);
 
-  lanpr_THREAD_calculate_line_occlusion_begin(rb);
+  if (!intersectons_only) {
+    lanpr_THREAD_calculate_line_occlusion_begin(rb);
+  }
 
   /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
-  if (lanpr->enable_chaining || strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
+  if ((lanpr->enable_chaining || strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) &&
+      (!intersectons_only)) {
     lanpr_NO_THREAD_chain_feature_lines(rb); /*  should use user_adjustable value */
     lanpr_split_chains_for_fixed_occlusion(rb);
     lanpr_connect_chains(rb, 1);
@@ -4256,11 +4261,13 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
+  int intersections_only = (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
 
-  result = lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C));
+  result = lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C), intersections_only);
 
   lanpr_rebuild_all_command(lanpr);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   return result;
 }
@@ -4629,7 +4636,7 @@ int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
     // BKE_scene_frame_set(scene,frame);
     DEG_evaluate_on_framechange(CTX_data_main(C), dg, frame);
 
-    lanpr_compute_feature_lines_internal(dg);
+    lanpr_compute_feature_lines_internal(dg, 0);
 
     lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
 
