@@ -1278,6 +1278,12 @@ static void do_outliner_range_select_recursive(ListBase *lb,
 static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 {
   TreeElement *active = outliner_find_active_element(&soops->tree);
+
+  if (!active) {
+    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
+    return;
+  }
+
   TreeStoreElem *tselem = TREESTORE(active);
   const bool active_selected = (tselem->flag & TSE_SELECTED);
 
