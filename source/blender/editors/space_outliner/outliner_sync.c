@@ -64,14 +64,15 @@ static void outliners_mark_dirty(const bContext *C)
   }
 }
 
-/* Sync selection flags to active view layer */
-static void outliner_sync_selection_to_view_layer(bContext *C, ListBase *tree)
+/* Sync selection and active flags from outliner to active view layer, bones, and sequencer */
+static void outliner_sync_selection_from_outliner(bContext *C, ListBase *tree)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
+
     if (tselem->type == 0) {
       if (te->idcode == ID_OB) {
         Object *ob = (Object *)tselem->id;
@@ -92,18 +93,35 @@ static void outliner_sync_selection_to_view_layer(bContext *C, ListBase *tree)
         }
       }
     }
+    else if (tselem->type == TSE_SEQUENCE) {
+      printf("\t\tSyncing a sequence: %s\n", te->name);
 
-    outliner_sync_selection_to_view_layer(C, &te->subtree);
+      Sequence *seq = (Sequence *)tselem->id;
+
+      if (tselem->flag & TSE_ACTIVE) {
+        BKE_sequencer_active_set(scene, seq);
+      }
+
+      if (tselem->flag & TSE_SELECTED) {
+        seq->flag |= SELECT;
+      }
+      else {
+        seq->flag &= ~SELECT;
+      }
+    }
+
+    outliner_sync_selection_from_outliner(C, &te->subtree);
   }
-
-  DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
 }
 
-/* Sync selection flags from active view layer */
-static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListBase *tree)
+/* Sync selection and active flags from active view layer, bones, and sequences to the outliner */
+static void outliner_sync_selection_to_outliner(const bContext *C,
+                                                ViewLayer *view_layer,
+                                                ListBase *tree)
 {
+  Scene *scene = CTX_data_scene(C);
   Object *obact = OBACT(view_layer);
+  Sequence *seq_act = BKE_sequencer_active_get(scene);
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
@@ -128,22 +146,7 @@ static void outliner_sync_selection_from_view_layer(ViewLayer *view_layer, ListB
         }
       }
     }
-
-    outliner_sync_selection_from_view_layer(view_layer, &te->subtree);
-  }
-}
-
-static void outliner_sync_selection_from_sequencer(const bContext *C, ListBase *tree)
-{
-  Scene *scene = CTX_data_scene(C);
-  Sequence *seq_act = BKE_sequencer_active_get(scene);
-
-  for (TreeElement *te = tree->first; te; te = te->next) {
-    TreeStoreElem *tselem = TREESTORE(te);
-
-    tselem->flag &= ~TSE_ACTIVE;
-
-    if (tselem->type == TSE_SEQUENCE) {
+    else if (tselem->type == TSE_SEQUENCE) {
       printf("\t\tSyncing a sequence: %s\n", te->name);
 
       Sequence *seq = (Sequence *)tselem->id;
@@ -160,52 +163,29 @@ static void outliner_sync_selection_from_sequencer(const bContext *C, ListBase *
       }
     }
 
-    outliner_sync_selection_from_sequencer(C, &te->subtree);
+    outliner_sync_selection_to_outliner(C, view_layer, &te->subtree);
   }
-}
-
-static void outliner_sync_selection_to_sequencer(bContext *C, ListBase *tree)
-{
-  Scene *scene = CTX_data_scene(C);
-
-  for (TreeElement *te = tree->first; te; te = te->next) {
-    TreeStoreElem *tselem = TREESTORE(te);
-
-    if (tselem->type == TSE_SEQUENCE) {
-      printf("\t\tSyncing a sequence: %s\n", te->name);
-
-      Sequence *seq = (Sequence *)tselem->id;
-
-      if (tselem->flag & TSE_ACTIVE) {
-        BKE_sequencer_active_set(scene, seq);
-      }
-
-      if (tselem->flag & TSE_SELECTED) {
-        seq->flag |= SELECT;
-      }
-      else {
-        seq->flag &= ~SELECT;
-      }
-    }
-
-    outliner_sync_selection_to_sequencer(C, &te->subtree);
-  }
-
-  // DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
 }
 
 /* Set clean outliner and mark other outliners for syncing */
 void outliner_select_sync(bContext *C, SpaceOutliner *soops)
 {
+  Scene *scene = CTX_data_scene(C);
+
   puts("Outliner select... Mark other outliners as dirty for syncing");
-  outliner_sync_selection_to_view_layer(C, &soops->tree);
-  outliner_sync_selection_to_sequencer(C, &soops->tree);
+  outliner_sync_selection_from_outliner(C, &soops->tree);
+
+  // outliner_sync_selection_to_sequencer(C, &soops->tree);
   sync_select_dirty_flag = SYNC_SELECT_NONE;
 
   /* Don't need to mark self as dirty here... */
   outliners_mark_dirty(C);
   soops->flag &= ~SO_IS_DIRTY;
+
+  /* Update editors */
+  DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
 }
 
 void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
@@ -225,12 +205,12 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
   if (soops->flag & SO_IS_DIRTY) {
     printf("\tSyncing dirty outliner...\n");
 
-    outliner_sync_selection_from_view_layer(view_layer, &soops->tree);
+    outliner_sync_selection_to_outliner(C, view_layer, &soops->tree);
 
-    if (soops->outlinevis == SO_SEQUENCE) {
-      printf("\tSyncing sequences...\n");
-      outliner_sync_selection_from_sequencer(C, &soops->tree);
-    }
+    // if (soops->outlinevis == SO_SEQUENCE) {
+    //   printf("\tSyncing sequences...\n");
+    //   outliner_sync_selection_from_sequencer(C, &soops->tree);
+    // }
 
     soops->flag &= ~SO_IS_DIRTY;
   }
