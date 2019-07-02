@@ -156,11 +156,39 @@ static void outliner_sync_selection_from_sequencer(ListBase *tree)
   }
 }
 
+static void outliner_sync_selection_to_sequencer(bContext *C, ListBase *tree)
+{
+  Scene *scene = CTX_data_scene(C);
+
+  for (TreeElement *te = tree->first; te; te = te->next) {
+    TreeStoreElem *tselem = TREESTORE(te);
+
+    if (tselem->type == TSE_SEQUENCE) {
+      printf("\t\tSyncing a sequence: %s\n", te->name);
+
+      Sequence *seq = (Sequence *)tselem->id;
+
+      if (tselem->flag & TSE_SELECTED) {
+        seq->flag |= SELECT;
+      }
+      else {
+        seq->flag &= ~SELECT;
+      }
+    }
+
+    outliner_sync_selection_to_sequencer(C, &te->subtree);
+  }
+
+  // DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
+}
+
 /* Set clean outliner and mark other outliners for syncing */
 void outliner_select_sync(bContext *C, SpaceOutliner *soops)
 {
   puts("Outliner select... Mark other outliners as dirty for syncing");
   outliner_sync_selection_to_view_layer(C, &soops->tree);
+  outliner_sync_selection_to_sequencer(C, &soops->tree);
   sync_select_dirty_flag = SYNC_SELECT_NONE;
 
   /* Don't need to mark self as dirty here... */
