@@ -757,6 +757,10 @@ static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
 
   pair<BMFace *, BMFace *> face_pair = cloth_remeshing_find_match(
       bm, face_pair_01, face_pair_02, v);
+  if (!face_pair.first || !face_pair.second) {
+    /* TODO(Ish): need to figure out when the face_pair are NULL */
+    return 100.0f;
+  }
   float uv_01[2], uv_02[2];
   cloth_remeshing_uv_of_vert_in_face(bm, face_pair.first, e->v1, uv_01);
   cloth_remeshing_uv_of_vert_in_face(bm, face_pair.second, e->v2, uv_02);
@@ -782,28 +786,17 @@ static bool cloth_remeshing_can_collapse_edge(BMesh *bm, BMEdge *e, vector<Cloth
   }
 
   /* TODO(Ish): aspect ratio parameter */
-
-  /* Edge Metric, not same as split edge edge metric */
-  BMVert *v1 = e->v1;
-  BMVert *v2 = e->v2;
-  BMVert *v3 = NULL;
-  BMEdge *adj_e;
-  BMIter adj_e_iter;
-  BM_ITER_ELEM (adj_e, &adj_e_iter, v1, BM_EDGES_OF_VERT) {
-    BMIter adj_v_iter;
-    BM_ITER_ELEM (v3, &adj_v_iter, adj_e, BM_VERTS_OF_EDGE) {
-      if (v3 != v1 && v3 != v2) {
-        break;
-      }
-    }
-    /* Edge metric using v1, v2, v3 */
-    if (v3) {
-      if (cloth_remeshing_edge_size_with_vert(bm, e, v3, sizing) >
-          (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
-        return false;
-      }
-      v3 = NULL; /* done so that edge metric is found only if v3 exists */
-    }
+  BMFace *f1, *f2;
+  BM_edge_face_pair(e, &f1, &f2);
+  BMVert *v_01 = BM_face_other_vert_loop(f1, e->v1, e->v2)->v;
+  float size_01 = cloth_remeshing_edge_size_with_vert(bm, e, v_01, sizing);
+  if (size_01 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
+    return false;
+  }
+  BMVert *v_02 = BM_face_other_vert_loop(f2, e->v1, e->v2)->v;
+  float size_02 = cloth_remeshing_edge_size_with_vert(bm, e, v_02, sizing);
+  if (size_02 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
+    return false;
   }
 
   return true;
@@ -828,13 +821,33 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
                                            vector<ClothSizing> &sizing,
                                            vector<BMFace *> &active_faces)
 {
+  static int count = 0;
+  BMesh *bm = clmd->clothObject->bm;
   for (int i = 0; i < active_faces.size(); i++) {
     BMFace *f = active_faces[i];
     BMEdge *e;
     BMIter eiter;
     BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
       BMVert *v1 = e->v1, *v2 = e->v2;
+
+      if (!cloth_remeshing_try_edge_collapse(bm, BM_edge_exists(v1, v2), sizing)) {
+        if (!cloth_remeshing_try_edge_collapse(bm, BM_edge_exists(v2, v1), sizing)) {
+          continue;
+        }
+      }
+
+      /* update active_faces */
+
+      /* run cloth_remeshing_fix_mesh on newly created faces by
+       * cloth_remeshing_try_edge_collapse */
+
+      /* update active_faces */
+
+      return true;
     }
+    active_faces.erase(active_faces.begin() + i--);
+    count++;
+    printf("collapse edges count: %d", count);
   }
   return false;
 }
@@ -874,21 +887,26 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Collapse edges
    */
-  // vector<BMFace *> active_faces;
-  // BMFace *f;
-  // BMIter fiter;
-  // BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
-  //   active_faces.push_back(f);
-  // }
-  // while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces)) {
-  //   /* empty while */
-  // }
+
+#if 1
+  vector<BMFace *> active_faces;
+  BMFace *f;
+  BMIter fiter;
+  BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
+    active_faces.push_back(f);
+  }
+  while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces)) {
+    /* empty while */
+  }
+#endif
 
   /**
    * Delete sizing
    */
   sizing.clear();
-  // active_faces.clear();
+#if 1
+  active_faces.clear();
+#endif
 }
 
 Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
