@@ -111,11 +111,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      "Thickness",
      "Change stroke thickness"},
     {eGpencilModifierType_Time, "GP_TIME", ICON_MOD_TIME, "Time Offset", "Offset keyframes"},
-    {eGpencilModifierType_Backbone,
-     "GP_BACKBONE",
+    {eGpencilModifierType_Length,
+     "GP_LENGTH",
      ICON_MOD_EDGESPLIT,
-     "Backbone Stretch",
-     "Extend the end points of a stroke to a specific length"},
+     "Length",
+     "Extend or shrink strokes"},
     {0, "", 0, N_("Color"), ""},
     {eGpencilModifierType_Color,
      "GP_COLOR",
@@ -215,8 +215,8 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_ArmatureGpencilModifier;
     case eGpencilModifierType_Sample:
       return &RNA_SampleGpencilModifier;
-    case eGpencilModifierType_Backbone:
-      return &RNA_BackboneGpencilModifier;
+    case eGpencilModifierType_Length:
+      return &RNA_LengthGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -1721,9 +1721,9 @@ static void rna_def_modifier_gpencilbackbone(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "BackboneGpencilModifier", "GpencilModifier");
-  RNA_def_struct_ui_text(srna, "Backbone Stretch Modifier", "Stretch the end points of strokes");
-  RNA_def_struct_sdna(srna, "BackboneGpencilModifierData");
+  srna = RNA_def_struct(brna, "LengthGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Length Modifier", "Stretch or shrink strokes");
+  RNA_def_struct_sdna(srna, "LengthGpencilModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_EDGESPLIT);
 
   prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);

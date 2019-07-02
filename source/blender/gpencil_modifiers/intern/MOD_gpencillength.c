@@ -18,8 +18,6 @@
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
  *
- * Contributor(s): Antonio Vazquez, Joshua Leung, Yiming Wu
- *
  * ***** END GPL LICENSE BLOCK *****
  *
  */
@@ -70,7 +68,7 @@
 
 static void initData(GpencilModifierData *md)
 {
-  BackboneGpencilModifierData *gpmd = (BackboneGpencilModifierData *)md;
+  LengthGpencilModifierData *gpmd = (LengthGpencilModifierData *)md;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -88,7 +86,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
+      LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
         BKE_gpencil_stretch_stroke(gps, lmd->length);
@@ -104,7 +102,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
+  LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
   bGPDstroke *gps;
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
     BKE_gpencil_stretch_stroke(gps, lmd->length);
@@ -113,7 +111,7 @@ static void generateStrokes(
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  BackboneGpencilModifierData *lmd = (BackboneGpencilModifierData *)md;
+  LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
 }
 
 static void foreachObjectLink(GpencilModifierData *md,
@@ -121,13 +119,13 @@ static void foreachObjectLink(GpencilModifierData *md,
                               ObjectWalkFunc walk,
                               void *userData)
 {
-  BackboneGpencilModifierData *mmd = (BackboneGpencilModifierData *)md;
+  LengthGpencilModifierData *mmd = (LengthGpencilModifierData *)md;
 }
 
-GpencilModifierTypeInfo modifierType_Gpencil_Backbone = {
-    /* name */ "Backbone Stretch",
-    /* structName */ "BackboneGpencilModifierData",
-    /* structSize */ sizeof(BackboneGpencilModifierData),
+GpencilModifierTypeInfo modifierType_Gpencil_Length = {
+    /* name */ "Length Stretch",
+    /* structName */ "LengthGpencilModifierData",
+    /* structSize */ sizeof(LengthGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
     /* flags */ 0,
 

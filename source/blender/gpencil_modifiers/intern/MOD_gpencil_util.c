@@ -59,7 +59,7 @@ void gpencil_modifier_type_init(GpencilModifierTypeInfo *types[])
   INIT_GP_TYPE(Subdiv);
   INIT_GP_TYPE(Simplify);
   INIT_GP_TYPE(Sample);
-  INIT_GP_TYPE(Backbone);
+  INIT_GP_TYPE(Length);
   INIT_GP_TYPE(Thick);
   INIT_GP_TYPE(Tint);
   INIT_GP_TYPE(Color);

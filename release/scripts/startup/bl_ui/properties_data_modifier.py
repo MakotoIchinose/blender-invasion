@@ -2327,7 +2327,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column()
         col.prop(md, "length")
     
-    def GP_BACKBONE(self, layout, ob, md):
+    def GP_LENGTH(self, layout, ob, md):
         col = layout.column()
         col.prop(md, "length")
 
