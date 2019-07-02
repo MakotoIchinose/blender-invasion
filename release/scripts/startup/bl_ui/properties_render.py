@@ -731,15 +731,20 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         layout.prop(lanpr, "master_mode", expand=True) 
 
+        if scene.render.engine!="BLENDER_LANPR" and mode != "SOFTWARE":
+            layout.label(text="Not in LANPR engine, mode disabled.")
+            return;
+
         if mode == "DPIX" and lanpr.shader_error:
             layout.label(text="DPIX transfor shader compile error!")
             return;
 
-        if mode == "SOFTWARE":
+        if mode == "SOFTWARE" or mode == "DPIX":
             row=layout.row(align=True)
             row.prop(lanpr,'auto_update',toggle=True,text='Auto Update')
+            txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
             if not lanpr.auto_update:
-                row.operator("scene.lanpr_calculate", icon='RENDER_STILL', text='Update')
+                row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
             layout.prop(lanpr, "disable_edge_splits")
 
         if mode == "DPIX" or mode == "SOFTWARE":
@@ -779,10 +784,11 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             layout.label(text="Vectorization:")
             layout.prop(lanpr, "enable_vector_trace", expand = True)
         
-        row=layout.row()
-        row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
-        row=layout.row()
-        row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
+        if mode == "SOFTWARE":
+            row=layout.row()
+            row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+            row=layout.row()
+            row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
 
 class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
