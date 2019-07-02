@@ -32,6 +32,7 @@
 #include "BLI_ghash.h"
 #include "BLI_stack.h"
 #include "BLI_gsqueue.h"
+#include "BLI_math_color_blend.h"
 
 #include "BLT_translation.h"
 
@@ -2684,15 +2685,83 @@ static void apply_color(SculptSession *ss, PBVHVertexIter *vd, const Brush *brus
 {
   float factor = ss->cache ? fade * fabs(ss->cache->bstrength) : fade;
   CLAMP(factor, 0.0f, 1.0f);
-  char r = brush->rgb[0] * 255;
-  char g = brush->rgb[1] * 255;
-  char b = brush->rgb[2] * 255;
-
-  char brushColor[4] = {r, g, b, 0};
-  /* TODO (Pablo): Implement proper blend modes */
-  vd->col->r = vd->col->r * (1 - factor) + brushColor[0] * factor;
-  vd->col->g = vd->col->g * (1 - factor) + brushColor[1] * factor;
-  vd->col->b = vd->col->b * (1 - factor) + brushColor[2] * factor;
+  unsigned char r = brush->rgb[0] * 255;
+  unsigned char g = brush->rgb[1] * 255;
+  unsigned char b = brush->rgb[2] * 255;
+  unsigned char a = factor * 255;
+  unsigned char brushColor[4] = {r, g, b, a};
+  unsigned char *col = (unsigned char *)vd->col;
+  switch (brush->sculpt_color_mix_mode) {
+    case BRUSH_SCULPT_COLOR_MIX:
+      blend_color_mix_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_ADD:
+      blend_color_add_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_SUB:
+      blend_color_sub_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_MUL:
+      blend_color_mul_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_LIGHTEN:
+      blend_color_lighten_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_DARKEN:
+      blend_color_darken_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_ERASE_ALPHA:
+      blend_color_erase_alpha_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_ADD_ALPHA:
+      blend_color_add_alpha_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_OVERLAY:
+      blend_color_overlay_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_HARDLIGHT:
+      blend_color_hardlight_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_BURN:
+      blend_color_burn_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_LINEARBURN:
+      blend_color_linearburn_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_DODGE:
+      blend_color_dodge_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_SCREEN:
+      blend_color_screen_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_SOFTLIGHT:
+      blend_color_softlight_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_PINLIGHT:
+      blend_color_pinlight_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_LINEARLIGHT:
+      blend_color_linearlight_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_VIVIDLIGHT:
+      blend_color_vividlight_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_DIFFERENCE:
+      blend_color_difference_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_EXCLUSION:
+      blend_color_exclusion_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_COLOR:
+      blend_color_color_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_HUE:
+      blend_color_hue_byte(col, col, brushColor);
+      break;
+    case BRUSH_SCULPT_COLOR_LUMINOSITY:
+      blend_color_luminosity_byte(col, col, brushColor);
+      break;
+  }
 }
 
 static void do_paint_brush_task_cb_ex(void *__restrict userdata,
