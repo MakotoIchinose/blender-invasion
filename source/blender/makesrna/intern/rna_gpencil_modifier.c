@@ -82,6 +82,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      "Subdivide",
      "Subdivide stroke adding more control points"},
     {eGpencilModifierType_Sample, "GP_SAMPLE", ICON_MOD_MULTIRES, "Sample", "Resamples strokes"},
+    {eGpencilModifierType_Multiply,
+     "GP_MULTIPLY",
+     ICON_GP_MULTIFRAME_EDITING,
+     "Multiply",
+     "Produce multiple strokes along one stroke"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
      "GP_ARMATURE",
@@ -217,6 +222,8 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_SampleGpencilModifier;
     case eGpencilModifierType_Length:
       return &RNA_LengthGpencilModifier;
+    case eGpencilModifierType_Multiply:
+      return &RNA_MultiplyGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -1716,7 +1723,7 @@ static void rna_def_modifier_gpencilsample(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
-static void rna_def_modifier_gpencilbackbone(BlenderRNA *brna)
+static void rna_def_modifier_gpencillength(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1730,6 +1737,47 @@ static void rna_def_modifier_gpencilbackbone(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "length");
   RNA_def_property_range(prop, 0, 10);
   RNA_def_property_ui_text(prop, "Length", "Length of each segment");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+}
+
+static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "MultiplyGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Multiply Modifier", "Generate multiple strokes from one stroke");
+  RNA_def_struct_sdna(srna, "MultiplyGpencilModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_GP_MULTIFRAME_EDITING);
+
+  prop = RNA_def_property(srna, "enable_duplication", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_DUPLICATION);
+  RNA_def_property_ui_text(prop, "Duplication", "Enable stroke duplication");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "enable_angle_splitting", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_ANGLE_SPLITTING);
+  RNA_def_property_ui_text(prop, "Angle Splitting", "Enable angle splitting");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "split_angle", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, M_PI);
+  RNA_def_property_ui_text(prop, "Angle", "Split angle for segments");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "duplications", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Duplications", "How many copies of strokes be displayed");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, M_PI);
+  RNA_def_property_ui_text(prop, "Distance", "Distance of duplications.");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Offset", "Offset of duplications. -1 to 1: inner to outer");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
@@ -1803,10 +1851,11 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencilbuild(brna);
   rna_def_modifier_gpencilopacity(brna);
   rna_def_modifier_gpencillattice(brna);
+  rna_def_modifier_gpencillength(brna);
   rna_def_modifier_gpencilmirror(brna);
+  rna_def_modifier_gpencilmultiply(brna);
   rna_def_modifier_gpencilhook(brna);
   rna_def_modifier_gpencilarmature(brna);
-  rna_def_modifier_gpencilbackbone(brna);
 }
 
 #endif

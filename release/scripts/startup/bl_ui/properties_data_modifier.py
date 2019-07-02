@@ -2330,6 +2330,23 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     def GP_LENGTH(self, layout, ob, md):
         col = layout.column()
         col.prop(md, "length")
+    
+    def GP_MULTIPLY(self, layout, ob, md):
+        sp = layout.split(factor = 0.5)
+
+        col = sp.column()
+        col.prop(md, "enable_duplication")
+        if md.enable_duplication:
+            col.prop(md,"duplications")
+            col.prop(md,"distance")
+            col.prop(md,"offset")
+
+        col = sp.column()
+        col.prop(md, "enable_angle_splitting")
+        if md.enable_angle_splitting:
+            col.prop(md,"split_angle")
+
+        
 
 
 classes = (

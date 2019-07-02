@@ -50,6 +50,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Time = 16,
   eGpencilModifierType_Sample = 17,
   eGpencilModifierType_Length = 18,
+  eGpencilModifierType_Multiply = 19,
   NUM_GREASEPENCIL_MODIFIER_TYPES
 } GpencilModifierType;
 
@@ -600,6 +601,9 @@ typedef enum eStrokeGpencil_Flag { /* emm what are these for */
                                    GP_STROKE_INVERT_LAYERPASS = (1 << 3),
 } eStrokeGpencil_Flag;
 
+/* XXX: all the length and similar parameters should have an image space behavior. */
+/* Need future investigations */
+
 typedef struct SampleGpencilModifierData {
   GpencilModifierData modifier;
   float length;
@@ -611,5 +615,23 @@ typedef struct LengthGpencilModifierData {
   float length;
   char _pad[4];
 } LengthGpencilModifierData;
+
+typedef struct MultiplyGpencilModifierData {
+  GpencilModifierData modifier;
+  int flags;
+
+  int duplications;
+  float distance;
+  float offset; /* -1:inner 0:middle 1:outer */
+
+  float split_angle; /* in rad not deg */
+
+  char _pad[4];
+} MultiplyGpencilModifierData;
+
+typedef enum eMultiplyGpencil_Flag {
+  GP_MULTIPLY_ENABLE_DUPLICATION = (1 << 0),
+  GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),
+} eMultiplyGpencil_Flag;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */
