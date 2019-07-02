@@ -89,7 +89,12 @@ static void bakeModifier(Main *UNUSED(bmain),
       LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        BKE_gpencil_stretch_stroke(gps, lmd->length);
+        if (lmd->length > 0) {
+          BKE_gpencil_stretch_stroke(gps, lmd->length);
+        }
+        else {
+          BKE_gpencil_shrink_stroke(gps, -lmd->length);
+        }
       }
       return;
     }
@@ -105,7 +110,12 @@ static void generateStrokes(
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
   bGPDstroke *gps;
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    BKE_gpencil_stretch_stroke(gps, lmd->length);
+    if (lmd->length > 0) {
+      BKE_gpencil_stretch_stroke(gps, lmd->length);
+    }
+    else {
+      BKE_gpencil_shrink_stroke(gps, -lmd->length);
+    }
   }
 }
 

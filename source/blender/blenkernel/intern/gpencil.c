@@ -1508,8 +1508,6 @@ void stroke_interpolate_deform_weights(
   }
 }
 
-/* Can't interpolate because not every vert has the same amount of groups attached to it. */
-/* Future solution: add all groups to every vert and set weight to 0 for those are not in. */
 static int stroke_march_next_point(bGPDstroke *gps,
                                    int next_point_index,
                                    float *current,
@@ -1700,7 +1698,6 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
   }
 
   last_pt = &pt[gps->totpoints - 1];
-  ;
   second_last = &pt[gps->totpoints - 2];
   next_pt = &pt[1];
 
@@ -1731,6 +1728,130 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
 
   copy_v3_v3(&pt->x, result1);
   copy_v3_v3(&last_pt->x, result2);
+
+  return true;
+}
+
+bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, int index_from, int index_to)
+{
+  bGPDspoint *pt = gps->points, *new_pt;
+  MDeformVert *dv, *new_dv;
+
+  int new_count = index_to - index_from + 1;
+
+  if (new_count >= gps->totpoints) {
+    return false;
+  }
+
+  if (new_count == 1) {
+    BKE_gpencil_free_stroke_weights(gps);
+    MEM_freeN(gps->points);
+    gps->points = NULL;
+    gps->dvert = NULL;
+    gps->totpoints = 0;
+    return false;
+  }
+
+  new_pt = MEM_callocN(sizeof(bGPDspoint) * new_count, "gp_stroke_points_trimmed");
+
+  for (int i = 0; i < new_count; i++) {
+    memcpy(&new_pt[i], &pt[i + index_from], sizeof(bGPDspoint));
+  }
+
+  if (gps->dvert) {
+    new_dv = MEM_callocN(sizeof(MDeformVert) * new_count, "gp_stroke_dverts_trimmed");
+    for (int i = 0; i < new_count; i++) {
+      dv = &gps->dvert[i + index_from];
+      new_dv[i].flag = dv->flag;
+      new_dv[i].totweight = dv->totweight;
+      new_dv[i].dw = MEM_callocN(sizeof(MDeformWeight) * dv->totweight,
+                                 "gp_stroke_dverts_dw_trimmed");
+      for (int j = 0; j < dv->totweight; j++) {
+        new_dv[i].dw[j].weight = dv->dw[j].weight;
+        new_dv[i].dw[j].def_nr = dv->dw[j].def_nr;
+      }
+    }
+    MEM_freeN(gps->dvert);
+    gps->dvert = new_dv;
+  }
+
+  MEM_freeN(gps->points);
+  gps->points = new_pt;
+  gps->totpoints = new_count;
+
+  return true;
+}
+
+/**
+ * Shrink the stroke by length.
+ * \param gps: Stroke to shrink
+ * \param dist: delta length
+ */
+bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, float dist)
+{
+  bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
+  int i;
+
+  if (gps->totpoints < 2 || dist < FLT_EPSILON) {
+    return false;
+  }
+
+  last_pt = &pt[gps->totpoints - 1];
+  second_last = &pt[gps->totpoints - 2];
+  next_pt = &pt[1];
+
+  float len1 = 0, this_len1, cut_len1;
+  float len2 = 0, this_len2, cut_len2;
+  int index_start, index_end;
+
+  i = 1;
+  while (len1 < dist && gps->totpoints > i) {
+    next_pt = &pt[i];
+    this_len1 = len_v3v3(&next_pt->x, &pt->x);
+    len1 += this_len1;
+    cut_len1 = len1 - dist;
+    i++;
+  }
+  index_start = i - 2;
+
+  i = 2;
+  while (len2 < dist && gps->totpoints >= i) {
+    second_last = &pt[gps->totpoints - i];
+    this_len2 = len_v3v3(&last_pt->x, &second_last->x);
+    len2 += this_len2;
+    cut_len2 = len2 - dist;
+    i++;
+  }
+  index_end = gps->totpoints - i + 2;
+
+  if (len1 < dist || len2 < dist || index_end <= index_start) {
+    index_start = index_end = 0; /* empty stroke */
+  }
+
+  if ((index_end == index_start + 1) && (cut_len1 + cut_len2 > 1.0f)) {
+    index_start = index_end = 0; /* no length left to cut */
+  }
+
+  BKE_gpencil_trim_stroke_points(gps, index_start, index_end);
+
+  if (gps->totpoints == 0) {
+    return false;
+  }
+
+  printf("%d %d %d\n", index_start, index_end, gps->totpoints);
+
+  pt = gps->points;
+
+  float cut1 = cut_len1 / this_len1;
+  float cut2 = cut_len2 / this_len2;
+
+  float result1[3], result2[3];
+
+  interp_v3_v3v3(result1, &pt[1].x, &pt[0].x, cut1);
+  interp_v3_v3v3(result2, &pt[gps->totpoints - 2].x, &pt[gps->totpoints - 1].x, cut2);
+
+  copy_v3_v3(&pt[0].x, result1);
+  copy_v3_v3(&pt[gps->totpoints - 1].x, result2);
 
   return true;
 }

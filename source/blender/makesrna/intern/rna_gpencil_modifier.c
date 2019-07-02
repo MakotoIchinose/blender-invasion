@@ -1735,7 +1735,7 @@ static void rna_def_modifier_gpencillength(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "length");
-  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_range(prop, -10, 10);
   RNA_def_property_ui_text(prop, "Length", "Length of each segment");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
