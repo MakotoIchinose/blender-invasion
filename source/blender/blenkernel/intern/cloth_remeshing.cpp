@@ -802,9 +802,9 @@ static bool cloth_remeshing_can_collapse_edge(BMesh *bm, BMEdge *e, vector<Cloth
   return true;
 }
 
-static BMEdge *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e)
+static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e)
 {
-  return BM_vert_collapse_faces(bm, e, e->v1, 1.0f, true, true, true);
+  return BM_edge_collapse(bm, e, e->v1, true, true);
 }
 
 static bool cloth_remeshing_try_edge_collapse(BMesh *bm, BMEdge *e, vector<ClothSizing> &sizing)
