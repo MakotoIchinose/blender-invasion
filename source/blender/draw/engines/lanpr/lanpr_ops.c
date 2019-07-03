@@ -4517,6 +4517,27 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+void lanpr_clear_gp_lanpr_flags(Depsgraph *dg, int frame)
+{
+  DEG_OBJECT_ITER_BEGIN (dg,
+                         o,
+                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                             DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
+    if (o->type == OB_GPENCIL) {
+      bGPdata *gpd = ((Object *)o->id.orig_id)->data;
+      bGPDlayer *gpl;
+      for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        bGPDframe *gpf = BKE_gpencil_layer_find_frame(gpl, frame);
+        if (!gpf) {
+          continue;
+        }
+        gpf->flag &= ~GP_FRAME_LANPR_CLEARED;
+      }
+    }
+  }
+  DEG_OBJECT_ITER_END;
+}
+
 void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, int frame)
 {
   Object *ob;
@@ -4541,8 +4562,11 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
             gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
           }
           gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
-          /* BKE_gpencil_free_strokes(gpf);   will be overwritten. need another solution */
-          /* Please manually delete those strokes before clicking Update once again. */
+
+          if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
+            BKE_gpencil_free_strokes(gpf);
+            gpf->flag |= GP_FRAME_LANPR_CLEARED;
+          }
 
           lanpr_generate_gpencil_from_chain(dg,
                                             ob,
@@ -4591,8 +4615,11 @@ void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, i
     gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
   }
   gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
-  /* BKE_gpencil_free_strokes(gpf);   will be overwritten. need another solution */
-  /* Please manually delete those strokes before clicking Update once again. */
+
+  if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
+    BKE_gpencil_free_strokes(gpf);
+    gpf->flag |= GP_FRAME_LANPR_CLEARED;
+  }
 
   lanpr_generate_gpencil_from_chain(dg,
                                     NULL,
@@ -4613,7 +4640,8 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
   SceneLANPR *lanpr = &scene->lanpr;
   int frame = scene->r.cfra;
 
-  if (lanpr_share.render_buffer_shared->cached_for_frame != frame) {
+  if (!lanpr_share.render_buffer_shared ||
+      lanpr_share.render_buffer_shared->cached_for_frame != frame) {
     lanpr_compute_feature_lines_internal(dg, 0);
   }
 
@@ -4622,6 +4650,8 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
   lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame);
 
   lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame);
+
+  lanpr_clear_gp_lanpr_flags(dg, frame);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 

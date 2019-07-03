@@ -1708,7 +1708,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
                 row.label(text = "Target GP has self transformations.")
                 row = layout.row()
                 row.operator("lanpr.reset_object_transfromations").obj=md.target.name
-            layout.prop(md,'replace', text='Replace existing frames')
+            #remove this for now.
+            #layout.prop(md,'replace', text='Replace existing frames')
             row = layout.row()
             row.prop(md,'layer')
             row.prop(md,'material')
