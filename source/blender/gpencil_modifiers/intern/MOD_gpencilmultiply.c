@@ -68,7 +68,9 @@
 
 static void initData(GpencilModifierData *md)
 {
-  MultiplyGpencilModifierData *gpmd = (MultiplyGpencilModifierData *)md;
+  MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
+  mmd->distance = 0.5;
+  mmd->split_angle = 1.0f;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -99,8 +101,82 @@ static void splitStroke(bGPDframe *gpf, bGPDstroke *gps, float split_angle)
   }
 }
 
-static void duplicateStroke(bGPDstroke *gps, int count, float dist, float offsset)
+static void minter_v3_v3v3v3_ref(
+    float *result, float *left, float *middle, float *right, float *stroke_normal)
 {
+  float left_arm[3], right_arm[3], inter1[3], inter2[3];
+  float minter[3];
+  if (left) {
+    sub_v3_v3v3(left_arm, middle, left);
+    cross_v3_v3v3(inter1, stroke_normal, left_arm);
+  }
+  if (right) {
+    sub_v3_v3v3(right_arm, right, middle);
+    cross_v3_v3v3(inter2, stroke_normal, right_arm);
+  }
+  if (!left) {
+    normalize_v3(inter2);
+    copy_v3_v3(result, inter2);
+    return;
+  }
+
+  if (!right) {
+    normalize_v3(inter1);
+    copy_v3_v3(result, inter1);
+    return;
+  }
+
+  interp_v3_v3v3(minter, inter1, inter2, 0.5);
+  normalize_v3(minter);
+  copy_v3_v3(result, minter);
+}
+
+static void duplicateStroke(
+    bGPDframe *gpf, bGPDstroke *gps, int count, float dist, float offset, ListBase *results)
+{
+  int i;
+  bGPDstroke *new_gps;
+  float stroke_normal[3];
+  float minter[3];
+  float target1[3], target2[3];
+  bGPDspoint *pt;
+  float offset_factor;
+
+  BKE_gpencil_stroke_normal(gps, stroke_normal);
+  if (len_v3(stroke_normal) < FLT_EPSILON) {
+    add_v3_fl(stroke_normal, 1);
+    normalize_v3(stroke_normal);
+  }
+
+  for (i = 0; i < count; i++) {
+    if (i != 0) {
+      new_gps = BKE_gpencil_stroke_duplicate(gps);
+      new_gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+      BLI_addtail(results, new_gps);
+    }
+    else {
+      new_gps = gps;
+    }
+
+    pt = new_gps->points;
+    offset_factor = (float)i / (float)count;
+
+    for (int j = 0; j < new_gps->totpoints; j++) {
+      if (j == 0) {
+        minter_v3_v3v3v3_ref(minter, NULL, &pt[j].x, &pt[j + 1].x, stroke_normal);
+      }
+      else if (j == new_gps->totpoints - 1) {
+        minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, NULL, stroke_normal);
+      }
+      else {
+        minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, &pt[j + 1].x, stroke_normal);
+      }
+      mul_v3_fl(minter, dist);
+      add_v3_v3v3(target1, &pt[j].x, minter);
+      sub_v3_v3v3(target2, &pt[j].x, minter);
+      interp_v3_v3v3(&pt[j].x, target1, target2, offset_factor + offset / 2);
+    }
+  }
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
@@ -113,14 +189,22 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      ListBase duplicates = {0};
       MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
         if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
           splitStroke(gpf, gps, mmd->split_angle);
         }
+        if (mmd->flags & GP_MULTIPLY_ENABLE_DUPLICATION) {
+          duplicateStroke(gpf, gps, mmd->duplications, mmd->distance, mmd->offset, &duplicates);
+        }
       }
-      return;
+      if (duplicates.first) {
+        ((bGPDstroke *)gpf->strokes.last)->next = duplicates.first;
+        ((bGPDstroke *)duplicates.first)->prev = gpf->strokes.last;
+        gpf->strokes.last = duplicates.first;
+      }
     }
   }
 }
@@ -133,10 +217,19 @@ static void generateStrokes(
 {
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
   bGPDstroke *gps;
+  ListBase duplicates = {0};
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
     if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
       splitStroke(gpf, gps, mmd->split_angle);
     }
+    if (mmd->flags & GP_MULTIPLY_ENABLE_DUPLICATION) {
+      duplicateStroke(gpf, gps, mmd->duplications, mmd->distance, mmd->offset, &duplicates);
+    }
+  }
+  if (duplicates.first) {
+    ((bGPDstroke *)gpf->strokes.last)->next = duplicates.first;
+    ((bGPDstroke *)duplicates.first)->prev = gpf->strokes.last;
+    gpf->strokes.last = duplicates.first;
   }
 }
 
