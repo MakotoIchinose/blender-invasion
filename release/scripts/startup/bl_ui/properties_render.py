@@ -740,14 +740,21 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             return;
 
         if mode == "SOFTWARE" or mode == "DPIX":
-            row=layout.row(align=True)
-            row.prop(lanpr,'auto_update',toggle=True,text='Auto Update')
-            txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
-            if not lanpr.auto_update:
-                row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
-            layout.prop(lanpr, "disable_edge_splits")
 
-        if mode == "DPIX" or mode == "SOFTWARE":
+            if scene.render.engine!="BLENDER_LANPR":
+                row=layout.row()
+                row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+                row=layout.row()
+                row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
+            else:
+                row=layout.row(align=True)
+                row.prop(lanpr,'auto_update',toggle=True,text='Auto Update')
+                txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
+                if not lanpr.auto_update:
+                    row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
+            
+
+            layout.prop(lanpr, "disable_edge_splits")
             
             layout.prop(lanpr, "background_color")
             layout.prop(lanpr, "crease_threshold")
@@ -783,13 +790,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         else:
             layout.label(text="Vectorization:")
             layout.prop(lanpr, "enable_vector_trace", expand = True)
-        
-        if mode == "SOFTWARE":
-            row=layout.row()
-            row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
-            row=layout.row()
-            row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
-
 
 class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"

@@ -4613,6 +4613,10 @@ int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
   SceneLANPR *lanpr = &scene->lanpr;
   int frame = scene->r.cfra;
 
+  if (lanpr_share.render_buffer_shared->cached_for_frame != frame) {
+    lanpr_compute_feature_lines_internal(dg, 0);
+  }
+
   lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
 
   lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame);
