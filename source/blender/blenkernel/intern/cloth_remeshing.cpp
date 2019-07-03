@@ -847,11 +847,12 @@ static bool cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
   return true;
 }
 
+int count;
+
 static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
                                            vector<ClothSizing> &sizing,
                                            vector<BMFace *> &active_faces)
 {
-  static int count = 0;
   for (int i = 0; i < active_faces.size(); i++) {
     BMFace *f = active_faces[i];
     BMEdge *e;
@@ -876,13 +877,23 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
     }
     active_faces.erase(active_faces.begin() + i--);
     count++;
-    printf("collapse edges count: %d", count);
   }
   return false;
 }
 
 static void cloth_remeshing_reindex_cloth_vertices(Cloth *cloth, BMesh *bm)
 {
+  ClothVertex *new_verts = (ClothVertex *)MEM_mallocN(sizeof(ClothVertex) * cloth->mvert_num,
+                                                      "New ClothVertex Array");
+  BMVert *v;
+  BMIter viter;
+  int i = 0;
+  BM_ITER_MESH_INDEX (v, &viter, bm, BM_VERTS_OF_MESH, i) {
+    new_verts[i] = *cloth_remeshing_find_cloth_vertex(v, cloth->verts, cloth->mvert_num);
+  }
+
+  MEM_freeN(cloth->verts);
+  cloth->verts = new_verts;
 }
 
 static void cloth_remeshing_static(ClothModifierData *clmd)
@@ -929,9 +940,11 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
     active_faces.push_back(f);
   }
   int prev_mvert_num = clmd->clothObject->mvert_num;
+  count = 0;
   while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces)) {
     /* empty while */
   }
+  printf("collapse edges count: %d\n", count);
   /* delete excess vertices after collpase edges */
   if (prev_mvert_num != clmd->clothObject->mvert_num) {
     clmd->clothObject->verts = (ClothVertex *)MEM_reallocN(
@@ -939,6 +952,11 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   }
 
 #endif
+
+  /**
+   * Reindex clmd->clothObject->verts to match clmd->clothObject->bm
+   */
+  cloth_remeshing_reindex_cloth_vertices(clmd->clothObject, clmd->clothObject->bm);
 
   /**
    * Delete sizing
