@@ -610,6 +610,21 @@ static ClothVertex *cloth_remeshing_find_cloth_vertex(BMVert *v, ClothVertex *ve
   return cv;
 }
 
+static int cloth_remeshing_find_cloth_vertex_index(BMVert *v, ClothVertex *verts, int vert_num)
+{
+  int i;
+  for (i = 0; i < vert_num; i++) {
+    /* if (equals_v3v3(v->co, verts[i].xold)) { */
+    if (fabs(v->co[0] - verts[i].xold[0]) < EPSILON_CLOTH &&
+        fabs(v->co[1] - verts[i].xold[1]) < EPSILON_CLOTH &&
+        fabs(v->co[2] - verts[i].xold[2]) < EPSILON_CLOTH) {
+      break;
+    }
+  }
+
+  return i;
+}
+
 static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
 {
   for (int i = 0; i < vert_num; i++) {
@@ -802,18 +817,33 @@ static bool cloth_remeshing_can_collapse_edge(BMesh *bm, BMEdge *e, vector<Cloth
   return true;
 }
 
-static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e)
+static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth, BMVert *v)
 {
-  return BM_edge_collapse(bm, e, e->v1, true, true);
+  int v_index = cloth_remeshing_find_cloth_vertex_index(v, cloth->verts, cloth->mvert_num);
+  cloth->verts[v_index] = cloth->verts[cloth->mvert_num];
+  cloth->mvert_num--;
 }
 
-static bool cloth_remeshing_try_edge_collapse(BMesh *bm, BMEdge *e, vector<ClothSizing> &sizing)
+static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth, BMesh *bm, BMEdge *e)
 {
+  BMVert v1 = *e->v1;
+  BMVert *v2 = BM_edge_collapse(bm, e, e->v1, true, true);
+
+  cloth_remeshing_remove_vertex_from_cloth(cloth, &v1);
+  return v2;
+}
+
+static bool cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
+                                              BMEdge *e,
+                                              vector<ClothSizing> &sizing)
+{
+  Cloth *cloth = clmd->clothObject;
+  BMesh *bm = cloth->bm;
   if (!cloth_remeshing_can_collapse_edge(bm, e, sizing)) {
     return false;
   }
 
-  cloth_remeshing_collapse_edge(bm, e);
+  cloth_remeshing_collapse_edge(cloth, bm, e);
   return true;
 }
 
@@ -822,7 +852,6 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
                                            vector<BMFace *> &active_faces)
 {
   static int count = 0;
-  BMesh *bm = clmd->clothObject->bm;
   for (int i = 0; i < active_faces.size(); i++) {
     BMFace *f = active_faces[i];
     BMEdge *e;
@@ -830,8 +859,8 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
     BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
       BMVert *v1 = e->v1, *v2 = e->v2;
 
-      if (!cloth_remeshing_try_edge_collapse(bm, BM_edge_exists(v1, v2), sizing)) {
-        if (!cloth_remeshing_try_edge_collapse(bm, BM_edge_exists(v2, v1), sizing)) {
+      if (!cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v1, v2), sizing)) {
+        if (!cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v2, v1), sizing)) {
           continue;
         }
       }
@@ -850,6 +879,10 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
     printf("collapse edges count: %d", count);
   }
   return false;
+}
+
+static void cloth_remeshing_reindex_cloth_vertices(Cloth *cloth, BMesh *bm)
+{
 }
 
 static void cloth_remeshing_static(ClothModifierData *clmd)
@@ -895,9 +928,16 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
     active_faces.push_back(f);
   }
+  int prev_mvert_num = clmd->clothObject->mvert_num;
   while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces)) {
     /* empty while */
   }
+  /* delete excess vertices after collpase edges */
+  if (prev_mvert_num != clmd->clothObject->mvert_num) {
+    clmd->clothObject->verts = (ClothVertex *)MEM_reallocN(
+        clmd->clothObject->verts, sizeof(ClothVertex) * clmd->clothObject->mvert_num);
+  }
+
 #endif
 
   /**
