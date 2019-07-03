@@ -1803,20 +1803,18 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
     return false;
   }
 
-  int new_count = gps->totpoints - before_index + 1;
+  int new_count = gps->totpoints - before_index;
   int old_count = before_index;
 
   /* Handle remaining segments first. */
 
   new_gps = BKE_gpencil_add_stroke(gpf, gps->mat_nr, new_count, gps->thickness);
 
-  new_pt = MEM_callocN(sizeof(bGPDspoint) * new_count, "gp_stroke_points_remaining");
+  new_pt = new_gps->points; /* Allocated from above. */
 
   for (int i = 0; i < new_count; i++) {
     memcpy(&new_pt[i], &pt[i + before_index], sizeof(bGPDspoint));
   }
-
-  new_gps->points = new_pt;
 
   if (gps->dvert) {
     new_dv = MEM_callocN(sizeof(MDeformVert) * new_count, "gp_stroke_dverts_remaining");
@@ -1834,11 +1832,12 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
     new_gps->dvert = new_dv;
   }
 
-  *remaining_gps = new_gps;
+  (*remaining_gps) = new_gps;
 
-  /* trim the original stroke into a shorter one */
+  /* Trim the original stroke into a shorter one. */
+  /* Keep the end point. */
 
-  BKE_gpencil_trim_stroke_points(gps, 0, new_count - 1);
+  BKE_gpencil_trim_stroke_points(gps, 0, old_count);
 
   return true;
 }

@@ -76,8 +76,27 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-static void splitStroke(bGPDstroke *gps, float angle)
+static void splitStroke(bGPDframe *gpf, bGPDstroke *gps, float split_angle)
 {
+  bGPDspoint *pt = gps->points;
+  bGPDstroke *new_gps = gps;
+  int i;
+  volatile float angle;
+
+  if (split_angle <= FLT_EPSILON) {
+    return;
+  }
+
+  for (i = 1; i < new_gps->totpoints - 1; i++) {
+    angle = angle_v3v3v3(&pt[i - 1].x, &pt[i].x, &pt[i + 1].x);
+    if (angle < split_angle) {
+      if (BKE_gpencil_split_stroke(gpf, new_gps, i, &new_gps)) {
+        pt = new_gps->points;
+        i = 0;
+        continue; /* then i == 1 again */
+      }
+    }
+  }
 }
 
 static void duplicateStroke(bGPDstroke *gps, int count, float dist, float offsset)
@@ -94,10 +113,12 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      MultiplyGpencilModifierData *lmd = (MultiplyGpencilModifierData *)md;
+      MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        /* deform goes here */
+        if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
+          splitStroke(gpf, gps, mmd->split_angle);
+        }
       }
       return;
     }
@@ -110,16 +131,18 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void generateStrokes(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  MultiplyGpencilModifierData *lmd = (MultiplyGpencilModifierData *)md;
+  MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
   bGPDstroke *gps;
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    /* deform goes here */
+    if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
+      splitStroke(gpf, gps, mmd->split_angle);
+    }
   }
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  MultiplyGpencilModifierData *lmd = (MultiplyGpencilModifierData *)md;
+  MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
 }
 
 static void foreachObjectLink(GpencilModifierData *md,
