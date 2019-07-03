@@ -18,40 +18,111 @@ CCL_NAMESPACE_BEGIN
 
 /* Turbulence */
 
-ccl_device_noinline float noise_turbulence(float3 p, float octaves, int hard)
+/* The following 4 functions are exactly the same but with different input type.
+ * When refactoring, simply copy the function body to the rest of the functions
+ * and replace noise_[1234]d with the appropriate function.
+ */
+
+ccl_device_noinline float noise_turbulence_1d(float p, float octaves)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
   float sum = 0.0f;
-  int i, n;
-
   octaves = clamp(octaves, 0.0f, 16.0f);
-  n = float_to_int(octaves);
-
-  for (i = 0; i <= n; i++) {
-    float t = noise(fscale * p);
-
-    if (hard)
-      t = fabsf(2.0f * t - 1.0f);
-
+  int n = float_to_int(octaves);
+  for (int i = 0; i <= n; i++) {
+    float t = noise_1d(fscale * p);
     sum += t * amp;
     amp *= 0.5f;
     fscale *= 2.0f;
   }
-
   float rmd = octaves - floorf(octaves);
-
   if (rmd != 0.0f) {
-    float t = noise(fscale * p);
-
-    if (hard)
-      t = fabsf(2.0f * t - 1.0f);
-
+    float t = noise_1d(fscale * p);
     float sum2 = sum + t * amp;
-
     sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
     sum2 *= ((float)(1 << (n + 1)) / (float)((1 << (n + 2)) - 1));
+    return (1.0f - rmd) * sum + rmd * sum2;
+  }
+  else {
+    sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
+    return sum;
+  }
+}
 
+ccl_device_noinline float noise_turbulence_2d(float2 p, float octaves)
+{
+  float fscale = 1.0f;
+  float amp = 1.0f;
+  float sum = 0.0f;
+  octaves = clamp(octaves, 0.0f, 16.0f);
+  int n = float_to_int(octaves);
+  for (int i = 0; i <= n; i++) {
+    float t = noise_2d(fscale * p);
+    sum += t * amp;
+    amp *= 0.5f;
+    fscale *= 2.0f;
+  }
+  float rmd = octaves - floorf(octaves);
+  if (rmd != 0.0f) {
+    float t = noise_2d(fscale * p);
+    float sum2 = sum + t * amp;
+    sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
+    sum2 *= ((float)(1 << (n + 1)) / (float)((1 << (n + 2)) - 1));
+    return (1.0f - rmd) * sum + rmd * sum2;
+  }
+  else {
+    sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
+    return sum;
+  }
+}
+
+ccl_device_noinline float noise_turbulence_3d(float3 p, float octaves)
+{
+  float fscale = 1.0f;
+  float amp = 1.0f;
+  float sum = 0.0f;
+  octaves = clamp(octaves, 0.0f, 16.0f);
+  int n = float_to_int(octaves);
+  for (int i = 0; i <= n; i++) {
+    float t = noise_3d(fscale * p);
+    sum += t * amp;
+    amp *= 0.5f;
+    fscale *= 2.0f;
+  }
+  float rmd = octaves - floorf(octaves);
+  if (rmd != 0.0f) {
+    float t = noise_3d(fscale * p);
+    float sum2 = sum + t * amp;
+    sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
+    sum2 *= ((float)(1 << (n + 1)) / (float)((1 << (n + 2)) - 1));
+    return (1.0f - rmd) * sum + rmd * sum2;
+  }
+  else {
+    sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
+    return sum;
+  }
+}
+
+ccl_device_noinline float noise_turbulence_4d(float4 p, float octaves)
+{
+  float fscale = 1.0f;
+  float amp = 1.0f;
+  float sum = 0.0f;
+  octaves = clamp(octaves, 0.0f, 16.0f);
+  int n = float_to_int(octaves);
+  for (int i = 0; i <= n; i++) {
+    float t = noise_4d(fscale * p);
+    sum += t * amp;
+    amp *= 0.5f;
+    fscale *= 2.0f;
+  }
+  float rmd = octaves - floorf(octaves);
+  if (rmd != 0.0f) {
+    float t = noise_4d(fscale * p);
+    float sum2 = sum + t * amp;
+    sum *= ((float)(1 << n) / (float)((1 << (n + 1)) - 1));
+    sum2 *= ((float)(1 << (n + 1)) / (float)((1 << (n + 2)) - 1));
     return (1.0f - rmd) * sum + rmd * sum2;
   }
   else {

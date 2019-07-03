@@ -919,10 +919,11 @@ NoiseTextureNode::NoiseTextureNode() : TextureNode(node_type)
 void NoiseTextureNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
-  ShaderInput *w_in = input("Vector");
+  ShaderInput *w_in = input("W");
   ShaderInput *scale_in = input("Scale");
   ShaderInput *detail_in = input("Detail");
   ShaderInput *distortion_in = input("Distortion");
+
   ShaderOutput *color_out = output("Color");
   ShaderOutput *fac_out = output("Fac");
 

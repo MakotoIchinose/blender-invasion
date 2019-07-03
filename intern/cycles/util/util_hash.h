@@ -123,6 +123,107 @@ ccl_device_inline uint hash_uint4(uint kx, uint ky, uint kz, uint kw)
 #undef final
 #undef mix
 
+#ifdef __KERNEL_SSE2__
+#  define rot(x, k) (((x) << (k)) | (srl(x, 32 - (k))))
+
+#  define mix(a, b, c) \
+    { \
+      a -= c; \
+      a ^= rot(c, 4); \
+      c += b; \
+      b -= a; \
+      b ^= rot(a, 6); \
+      a += c; \
+      c -= b; \
+      c ^= rot(b, 8); \
+      b += a; \
+      a -= c; \
+      a ^= rot(c, 16); \
+      c += b; \
+      b -= a; \
+      b ^= rot(a, 19); \
+      a += c; \
+      c -= b; \
+      c ^= rot(b, 4); \
+      b += a; \
+    }
+
+#  define final(a, b, c) \
+    { \
+      c ^= b; \
+      c -= rot(b, 14); \
+      a ^= c; \
+      a -= rot(c, 11); \
+      b ^= a; \
+      b -= rot(a, 25); \
+      c ^= b; \
+      c -= rot(b, 16); \
+      a ^= c; \
+      a -= rot(c, 4); \
+      b ^= a; \
+      b -= rot(a, 14); \
+      c ^= b; \
+      c -= rot(b, 24); \
+    }
+
+ccl_device_inline ssei hash_ssei(ssei kx)
+{
+  ssei a, b, c;
+  a = b = c = ssei(0xdeadbeef + (1 << 2) + 13);
+
+  a += kx;
+  final(a, b, c);
+
+  return c;
+}
+
+ccl_device_inline ssei hash_ssei2(ssei kx, ssei ky)
+{
+  ssei a, b, c;
+  a = b = c = ssei(0xdeadbeef + (2 << 2) + 13);
+
+  b += ky;
+  a += kx;
+  final(a, b, c);
+
+  return c;
+}
+
+ccl_device_inline ssei hash_ssei3(ssei kx, ssei ky, ssei kz)
+{
+  ssei a, b, c;
+  a = b = c = ssei(0xdeadbeef + (3 << 2) + 13);
+
+  c += kz;
+  b += ky;
+  a += kx;
+  final(a, b, c);
+
+  return c;
+}
+
+ccl_device_inline ssei hash_ssei4(ssei kx, ssei ky, ssei kz, ssei kw)
+{
+  ssei a, b, c;
+  a = b = c = ssei(0xdeadbeef + (4 << 2) + 13);
+
+  a += kx;
+  b += ky;
+  c += kz;
+  mix(a, b, c);
+
+  a += kw;
+  final(a, b, c);
+
+  return c;
+}
+
+#  undef rot
+#  undef final
+#  undef mix
+
+#endif
+
 /* **** Hashing uints into the [0, 1] range. **** */
 
 ccl_device_inline float hash_uint_01(uint kx)

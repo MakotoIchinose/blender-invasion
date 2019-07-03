@@ -16,7 +16,79 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Noise */
+/* To compute the color output of the noise, we either swizzle the
+ * components, add a random offset {75, 125, 150}, or do both.
+ */
+ccl_device void tex_noise_1d(
+    float p, float detail, float distortion, bool color_is_needed, float3 *color, float *fac)
+{
+  if (distortion != 0.0f) {
+    p += noise_1d(p + 13.5f) * distortion;
+  }
+
+  *fac = noise_turbulence_1d(p, detail);
+  if (color_is_needed) {
+    *color = make_float3(
+        *fac, noise_turbulence_1d(p + 75.0f, detail), noise_turbulence_1d(p + 125.0f, detail));
+  }
+}
+
+ccl_device void tex_noise_2d(
+    float2 p, float detail, float distortion, bool color_is_needed, float3 *color, float *fac)
+{
+  if (distortion != 0.0f) {
+    float2 r;
+    r.x = noise_2d(p + make_float2(13.5f, 13.5f)) * distortion;
+    r.y = noise_2d(p) * distortion;
+    p += r;
+  }
+
+  *fac = noise_turbulence_2d(p, detail);
+  if (color_is_needed) {
+    *color = make_float3(*fac,
+                         noise_turbulence_2d(p + make_float2(150.0f, 125.0f), detail),
+                         noise_turbulence_2d(p + make_float2(75.0f, 125.0f), detail));
+  }
+}
+
+ccl_device void tex_noise_3d(
+    float3 p, float detail, float distortion, bool color_is_needed, float3 *color, float *fac)
+{
+  if (distortion != 0.0f) {
+    float3 r, offset = make_float3(13.5f, 13.5f, 13.5f);
+    r.x = noise_3d(p + offset) * distortion;
+    r.y = noise_3d(p) * distortion;
+    r.z = noise_3d(p - offset) * distortion;
+    p += r;
+  }
+
+  *fac = noise_turbulence_3d(p, detail);
+  if (color_is_needed) {
+    *color = make_float3(*fac,
+                         noise_turbulence_3d(make_float3(p.y, p.x, p.z), detail),
+                         noise_turbulence_3d(make_float3(p.y, p.z, p.x), detail));
+  }
+}
+
+ccl_device void tex_noise_4d(
+    float4 p, float detail, float distortion, bool color_is_needed, float3 *color, float *fac)
+{
+  if (distortion != 0.0f) {
+    float4 r, offset = make_float4(13.5, 13.5, 13.5, 13.5);
+    r.x = noise_4d(p + offset) * distortion;
+    r.y = noise_4d(p) * distortion;
+    r.z = noise_4d(p - offset) * distortion;
+    r.w = noise_4d(make_float4(p.w, p.y, p.z, p.x) + offset) * distortion;
+    p += r;
+  }
+
+  *fac = noise_turbulence_4d(p, detail);
+  if (color_is_needed) {
+    *color = make_float3(*fac,
+                         noise_turbulence_4d(make_float4(p.y, p.w, p.z, p.x), detail),
+                         noise_turbulence_4d(make_float4(p.y, p.z, p.w, p.x), detail));
+  }
+}
 
 ccl_device void svm_node_tex_noise(KernelGlobals *kg,
                                    ShaderData *sd,
@@ -35,7 +107,7 @@ ccl_device void svm_node_tex_noise(KernelGlobals *kg,
   uint4 node1 = read_node(kg, offset);
 
   float3 p = stack_load_float3(stack, co_offset);
-  float w = stack_load_float_default(stack, scale_offset, node1.x);
+  float w = stack_load_float_default(stack, w_offset, node1.x);
   float scale = stack_load_float_default(stack, scale_offset, node1.y);
   float detail = stack_load_float_default(stack, detail_offset, node1.z);
   float distortion = stack_load_float_default(stack, distortion_offset, node1.w);
@@ -43,25 +115,36 @@ ccl_device void svm_node_tex_noise(KernelGlobals *kg,
   p *= scale;
   w *= scale;
 
-  if (distortion != 0.0f) {
-    float3 r, offset = make_float3(13.5f, 13.5f, 13.5f);
+  float fac;
+  float3 color;
 
-    r.x = noise(p + offset) * distortion;
-    r.y = noise(p) * distortion;
-    r.z = noise(p - offset) * distortion;
-
-    p += r;
+  switch (dimensions) {
+    case 1:
+      tex_noise_1d(w, detail, distortion, stack_valid(color_offset), &color, &fac);
+      break;
+    case 2:
+      tex_noise_2d(
+          make_float2(p.x, p.y), detail, distortion, stack_valid(color_offset), &color, &fac);
+      break;
+    case 3:
+      tex_noise_3d(p, detail, distortion, stack_valid(color_offset), &color, &fac);
+      break;
+    case 4:
+      tex_noise_4d(make_float4(p.x, p.y, p.z, w),
+                   detail,
+                   distortion,
+                   stack_valid(color_offset),
+                   &color,
+                   &fac);
+      break;
+    default:
+      kernel_assert(0);
   }
-  int hard = 0;
-  float f = noise_turbulence(p, detail, hard);
 
   if (stack_valid(fac_offset)) {
-    stack_store_float(stack, fac_offset, f);
+    stack_store_float(stack, fac_offset, fac);
   }
   if (stack_valid(color_offset)) {
-    float3 color = make_float3(f,
-                               noise_turbulence(make_float3(p.y, p.x, p.z), detail, hard),
-                               noise_turbulence(make_float3(p.y, p.z, p.x), detail, hard));
     stack_store_float3(stack, color_offset, color);
   }
 }

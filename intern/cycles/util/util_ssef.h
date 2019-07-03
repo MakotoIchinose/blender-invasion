@@ -533,6 +533,15 @@ __forceinline ssei floori(const ssef &a)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Common Functions
+////////////////////////////////////////////////////////////////////////////////
+
+__forceinline ssef mix(const ssef &a, const ssef &b, const ssef &t)
+{
+  return madd(t, b, (ssef(1.0f) - t) * a);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// Movement/Shifting/Shuffling Functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -557,6 +566,21 @@ template<> __forceinline const ssef shuffle<0, 1, 0, 1>(const ssef &a)
 }
 
 template<> __forceinline const ssef shuffle<2, 3, 2, 3>(const ssef &a)
+{
+  return _mm_movehl_ps(a, a);
+}
+
+template<size_t i0, size_t i1> __forceinline const ssef shuffle(const ssef &b)
+{
+  return _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(b), _MM_SHUFFLE(i1, i0, i1, i0)));
+}
+
+template<> __forceinline const ssef shuffle<0, 1>(const ssef &a)
+{
+  return _mm_movelh_ps(a, a);
+}
+
+template<> __forceinline const ssef shuffle<2, 3>(const ssef &a)
 {
   return _mm_movehl_ps(a, a);
 }
