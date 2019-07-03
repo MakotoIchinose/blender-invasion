@@ -7396,8 +7396,8 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
       prop,
       "Image Threshold",
       "Segments where their image distance between them lower than this will be chained together");
-  RNA_def_property_ui_range(prop, 0.0f, 0.1f, 0.001, 4);
-  RNA_def_property_range(prop, 0.0f, 0.1f);
+  RNA_def_property_ui_range(prop, 0.0f, 0.3f, 0.001, 4);
+  RNA_def_property_range(prop, 0.0f, 0.3f);
 
   /* here's the collection stuff.... */
 
