@@ -37,7 +37,7 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContext *xr_context)
   OpenXRData *oxr = &xr_context->oxr;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
 
-  if ((xr_context == NULL) || (oxr->session == XR_NULL_HANDLE)) {
+  if (xr_context == NULL) {
     return GHOST_kFailure;
   }
 
@@ -46,7 +46,7 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContext *xr_context)
 
     switch (event.type) {
       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
-        GHOST_XrSessionStateChange(oxr, (XrEventDataSessionStateChanged &)event);
+        GHOST_XrSessionStateChange(xr_context, (XrEventDataSessionStateChanged &)event);
         return GHOST_kSuccess;
 
       default:

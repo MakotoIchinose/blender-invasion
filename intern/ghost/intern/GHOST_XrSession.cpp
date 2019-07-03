@@ -185,15 +185,50 @@ void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
   prepare_drawing(xr_context);
 }
 
-void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
+void GHOST_XrSessionEndNoDestroy(GHOST_XrContext *xr_context)
 {
-  xrEndSession(xr_context->oxr.session);
-  GHOST_XrGraphicsContextUnbind(*xr_context);
+  OpenXRData *oxr = &xr_context->oxr;
+
+  assert(oxr->session != XR_NULL_HANDLE);
+
+  xrEndSession(oxr->session);
 }
 
-void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle)
+void GHOST_XrSessionDestroy(GHOST_XrContext *xr_context)
 {
+  OpenXRData *oxr = &xr_context->oxr;
+
+  assert(oxr->session != XR_NULL_HANDLE);
+
+  GHOST_XrGraphicsContextUnbind(*xr_context);
+
+  for (XrSwapchain &swapchain : oxr->swapchains) {
+    xrDestroySwapchain(swapchain);
+  }
+  oxr->swapchains.clear();
+  xrDestroySession(oxr->session);
+
+  oxr->session = XR_NULL_HANDLE;
+  /* Requery on next launch (allows changing devices/system). */
+  oxr->system_id = XR_NULL_SYSTEM_ID;
+  oxr->session_state = XR_SESSION_STATE_UNKNOWN;
+}
+
+void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
+{
+  GHOST_XrSessionEndNoDestroy(xr_context);
+  GHOST_XrSessionDestroy(xr_context);
+}
+
+void GHOST_XrSessionStateChange(GHOST_XrContext *xr_context,
+                                const XrEventDataSessionStateChanged &lifecycle)
+{
+  OpenXRData *oxr = &xr_context->oxr;
+
   oxr->session_state = lifecycle.state;
+
+  /* Runtime may send events for apparently destroyed session. Our handle should be NULL then. */
+  assert((oxr->session == XR_NULL_HANDLE) || (oxr->session == lifecycle.session));
 
   switch (lifecycle.state) {
     case XR_SESSION_STATE_READY: {
@@ -204,10 +239,13 @@ void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateCh
       xrBeginSession(oxr->session, &begin_info);
       break;
     }
-    case XR_SESSION_STATE_STOPPING: {
-      assert(oxr->session != XR_NULL_HANDLE);
-      xrEndSession(oxr->session);
-    }
+    case XR_SESSION_STATE_STOPPING:
+      /* Runtime will change state to STATE_EXITING, don't destruct session yet. */
+      GHOST_XrSessionEndNoDestroy(xr_context);
+      break;
+    case XR_SESSION_STATE_EXITING:
+      GHOST_XrSessionDestroy(xr_context);
+      break;
     default:
       break;
   }
@@ -363,4 +401,5 @@ void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context, void *draw_customdata
   }
 
   frame_drawing_end(xr_context, &layers);
+  xrDestroySpace(space);
 }

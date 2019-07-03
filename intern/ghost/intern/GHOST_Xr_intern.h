@@ -74,6 +74,8 @@ struct GHOST_XrDrawFrame {
 void GHOST_XrGraphicsContextBind(GHOST_XrContext &xr_context);
 void GHOST_XrGraphicsContextUnbind(GHOST_XrContext &xr_context);
 
-void GHOST_XrSessionStateChange(OpenXRData *oxr, const XrEventDataSessionStateChanged &lifecycle);
+void GHOST_XrSessionDestroy(GHOST_XrContext *xr_context);
+void GHOST_XrSessionStateChange(GHOST_XrContext *xr_context,
+                                const XrEventDataSessionStateChanged &lifecycle);
 
 #endif /* __GHOST_XR_INTERN_H__ */
