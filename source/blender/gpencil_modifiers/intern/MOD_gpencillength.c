@@ -76,7 +76,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-static void deformStroke(bGPDstroke *gps, int length)
+static void deformStroke(bGPDstroke *gps, float length)
 {
   if (length > 0) {
     BKE_gpencil_stretch_stroke(gps, length);
