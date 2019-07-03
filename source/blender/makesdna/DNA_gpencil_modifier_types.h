@@ -613,7 +613,7 @@ typedef struct SampleGpencilModifierData {
 typedef struct LengthGpencilModifierData {
   GpencilModifierData modifier;
   float length;
-  char _pad[4];
+  float percentage;
 } LengthGpencilModifierData;
 
 typedef struct MultiplyGpencilModifierData {

@@ -212,6 +212,7 @@ void BKE_gpencil_stroke_2d_flat_ref(const struct bGPDspoint *ref_points,
                                     float (*points2d)[2],
                                     const float scale,
                                     int *r_direction);
+float BKE_gpencil_stroke_length(const struct bGPDstroke *gps, bool use_3d);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 

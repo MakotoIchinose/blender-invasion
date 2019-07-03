@@ -76,7 +76,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-static void deformStroke(bGPDstroke *gps, float length)
+static void stretchOrShrinkStroke(bGPDstroke *gps, float length)
 {
   if (length > 0) {
     BKE_gpencil_stretch_stroke(gps, length);
@@ -84,6 +84,20 @@ static void deformStroke(bGPDstroke *gps, float length)
   else {
     BKE_gpencil_shrink_stroke(gps, -length);
   }
+}
+
+static void deformStroke(bGPDstroke *gps, float length, float percentage)
+{
+
+  stretchOrShrinkStroke(gps, length);
+
+  float len = BKE_gpencil_stroke_length(gps, 1);
+  if (len < FLT_EPSILON) {
+    return;
+  }
+  float length2 = len * percentage;
+
+  stretchOrShrinkStroke(gps, length2);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
@@ -99,7 +113,7 @@ static void bakeModifier(Main *UNUSED(bmain),
       LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        deformStroke(gps, lmd->length);
+        deformStroke(gps, lmd->length, lmd->percentage);
       }
       return;
     }
@@ -115,7 +129,7 @@ static void generateStrokes(
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
   bGPDstroke *gps;
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    deformStroke(gps, lmd->length);
+    deformStroke(gps, lmd->length, lmd->percentage);
   }
 }
 

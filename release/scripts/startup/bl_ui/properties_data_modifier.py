@@ -2340,8 +2340,14 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "length")
     
     def GP_LENGTH(self, layout, ob, md):
-        col = layout.column()
+        sp = layout.split()
+        col = sp.column()
+        col.label(text="Absolute:")
         col.prop(md, "length")
+
+        col = sp.column()
+        col.label(text="Relative:")
+        col.prop(md, "percentage")
     
     def GP_MULTIPLY(self, layout, ob, md):
         sp = layout.split(factor = 0.5)

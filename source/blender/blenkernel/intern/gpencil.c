@@ -2376,6 +2376,28 @@ void BKE_gpencil_stroke_2d_flat_ref(const bGPDspoint *ref_points,
   *r_direction = (int)locy[2];
 }
 
+float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
+{
+  if (!gps->points || gps->totpoints < 2) {
+    return 0;
+  }
+  float *last_pt = &gps->points[0].x;
+  int i;
+  bGPDspoint *pt;
+  float total_length = 0;
+  for (i = 1; i < gps->totpoints; i++) {
+    pt = &gps->points[i];
+    if (use_3d) {
+      total_length += len_v3v3(&pt->x, last_pt);
+    }
+    else {
+      total_length += len_v2v2(&pt->x, last_pt);
+    }
+    last_pt = &pt->x;
+  }
+  return total_length;
+}
+
 /**
  * Trim stroke to the first intersection or loop
  * \param gps: Stroke data
