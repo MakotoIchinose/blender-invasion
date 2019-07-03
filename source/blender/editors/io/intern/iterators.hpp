@@ -42,6 +42,9 @@ template<typename T, typename Tag = std::random_access_iterator_tag> struct poin
   pointer_iterator_base(pointer p, size_t size) : first(p), curr(p), size(size)
   {
   }
+  pointer_iterator_base(pointer p, size_t size, pointer first) : first(first), curr(p), size(size)
+  {
+  }
   pointer_iterator_base(const pointer_iterator_base &pib)
       : first(pib.first), curr(pib.curr), size(pib.size)
   {
@@ -60,11 +63,11 @@ template<typename T, typename Tag = std::random_access_iterator_tag> struct poin
   }
   pointer_iterator_base begin() const
   {
-    return {this->first, this->size};
+    return {this->first, this->size, this->first};
   }
   pointer_iterator_base end() const
   {
-    return {this->first + this->size, this->size};
+    return {this->first + this->size, this->size, this->first};
   }
   pointer_iterator_base &operator++()
   {
@@ -97,6 +100,10 @@ template<typename T, typename Tag = std::random_access_iterator_tag> struct poin
 template<typename T>
 struct pointer_iterator : pointer_iterator_base<T, std::random_access_iterator_tag> {
   using pointer_iterator_base<T, std::random_access_iterator_tag>::pointer_iterator_base;
+  pointer_iterator(const pointer_iterator_base<T, std::random_access_iterator_tag> &pi)
+      : pointer_iterator_base<T, std::random_access_iterator_tag>(pi)
+  {
+  }
   inline const T &operator*() const
   {
     return *this->curr;
@@ -152,19 +159,17 @@ struct poly_iter : pointer_iterator<MPoly> {
   poly_iter(const Mesh *const m) : pointer_iterator(m->mpoly, m->totpoly)
   {
   }
-  poly_iter(MPoly *const poly, size_t size) : pointer_iterator(poly, size)
+  poly_iter(const pointer_iterator_base<MPoly> &pi) : pointer_iterator(pi)
   {
   }
   poly_iter begin() const
   {
-    return {this->first, this->size};
+    return {{this->first, this->size, this->first}};
   }
   poly_iter end() const
   {
-    return {this->first + this->size, this->size};
+    return {{this->first + this->size, this->size, this->first}};
   }
-  // poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
-  // poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 };
 
 // Iterator over the vertices of a mesh
@@ -180,17 +185,17 @@ struct transformed_vertex_iter : pointer_iterator_base<MVert> {
       : pointer_iterator_base(m->mvert, m->totvert), mat(mat)
   {
   }
-  transformed_vertex_iter(MVert *const mvert, size_t size, Mat &mat)
-      : pointer_iterator_base(mvert, size), mat(mat)
+  transformed_vertex_iter(const pointer_iterator_base<MVert> &pi, Mat &mat)
+      : pointer_iterator_base(pi), mat(mat)
   {
   }
   transformed_vertex_iter begin() const
   {
-    return {this->first, this->size, mat};
+    return {{this->first, this->size, this->first}, mat};
   }
   transformed_vertex_iter end() const
   {
-    return {this->first + this->size, this->size, mat};
+    return {{this->first + this->size, this->size, this->first}, mat};
   }
   const std::array<float, 3> operator*() const
   {
@@ -208,17 +213,18 @@ struct vert_of_poly_iter : pointer_iterator_base<MLoop, std::random_access_itera
       : pointer_iterator_base(mesh->mloop + mp.loopstart, mp.totloop), mvert(mesh->mvert)
   {
   }
-  vert_of_poly_iter(const MVert *const mvert, MLoop *poly, size_t size)
-      : pointer_iterator_base(poly, size), mvert(mvert)
+  vert_of_poly_iter(const MVert *const mvert,
+                    const pointer_iterator_base<MLoop, std::random_access_iterator_tag> &pi)
+      : pointer_iterator_base(pi), mvert(mvert)
   {
   }
   vert_of_poly_iter begin() const
   {
-    return {mvert, this->first, this->size};
+    return {mvert, {this->first, this->size, this->first}};
   }
   vert_of_poly_iter end() const
   {
-    return {mvert, this->first + this->size, this->size};
+    return {mvert, {this->first + this->size, this->size, this->first}};
   }
   const MVert &operator*() const
   {
@@ -232,11 +238,9 @@ struct edge_iter : pointer_iterator<MEdge> {
   edge_iter(const Mesh *const m) : pointer_iterator(m->medge, m->totedge)
   {
   }
-  edge_iter(MEdge *const e, size_t s) : pointer_iterator(e, s)
+  edge_iter(const pointer_iterator<MEdge> &pi) : pointer_iterator(pi)
   {
   }
-  // edge_iter(const pointer_iterator<MEdge> &pi) : pointer_iterator(pi) {}
-  // edge_iter(pointer_iterator<MEdge> &&pi) : pointer_iterator(pi) {}
 };
 
 // Iterator over the edges of a mesh which are marked as loose
@@ -244,16 +248,16 @@ struct loose_edge_iter : edge_iter {
   loose_edge_iter(const Mesh *const m) : edge_iter(m)
   {
   }
-  loose_edge_iter(MEdge *const e, size_t s) : edge_iter(e, s)
+  loose_edge_iter(const pointer_iterator<MEdge> &pi) : edge_iter(pi)
   {
   }
   loose_edge_iter begin() const
   {
-    return {this->first, this->size};
+    return {{this->first, this->size, this->first}};
   }
   loose_edge_iter end() const
   {
-    return {this->first + this->size, this->size};
+    return {{this->first + this->size, this->size, this->first}};
   }
   loose_edge_iter &operator++()
   {
@@ -330,19 +334,17 @@ struct loop_of_poly_iter : pointer_iterator<MLoop> {
       : pointer_iterator(mesh->mloop + poly.loopstart, poly.totloop)
   {
   }
-  loop_of_poly_iter(MLoop *const loop, size_t size) : pointer_iterator(loop, size)
+  loop_of_poly_iter(const pointer_iterator_base<MLoop> &pi) : pointer_iterator(pi)
   {
   }
   loop_of_poly_iter begin() const
   {
-    return loop_of_poly_iter{this->first, this->size};
+    return loop_of_poly_iter{{this->first, this->size, this->first}};
   }
   loop_of_poly_iter end() const
   {
-    return loop_of_poly_iter{this->first + this->size, this->size};
+    return loop_of_poly_iter{{this->first + this->size, this->size, this->first}};
   }
-  // loop_of_poly_iter(const pointer_iterator &p) : pointer_iterator(p) {}
-  // loop_of_poly_iter(pointer_iterator &&p) : pointer_iterator(std::move(p)) {}
 };
 
 struct material_iter : offset_iterator<Material *> {
@@ -387,16 +389,16 @@ struct points_of_nurbs_iter : pointer_iterator_base<BPoint> {
       : pointer_iterator_base(nu->bp, (nu->pntsv > 0 ? nu->pntsu * nu->pntsv : nu->pntsu))
   {
   }
-  points_of_nurbs_iter(BPoint *bp, size_t size) : pointer_iterator_base(bp, size)
+  points_of_nurbs_iter(const pointer_iterator_base<BPoint> &pi) : pointer_iterator_base(pi)
   {
   }
   points_of_nurbs_iter begin() const
   {
-    return {this->first, this->size};
+    return {{this->first, this->size, this->first}};
   }
   points_of_nurbs_iter end() const
   {
-    return {this->first + this->size, this->size};
+    return {{this->first + this->size, this->size, this->first}};
   }
   inline const std::array<float, 3> operator*() const
   {
@@ -409,23 +411,21 @@ struct uv_iter : pointer_iterator_base<MLoopUV> {
   uv_iter(const Mesh *const m) : pointer_iterator_base(m->mloopuv, m->mloopuv ? m->totloop : 0)
   {
   }
-  uv_iter(MLoopUV *const uv, size_t size) : pointer_iterator_base(uv, uv ? size : 0)
+  uv_iter(const pointer_iterator_base<MLoopUV> &pi) : pointer_iterator_base(pi)
   {
   }
   uv_iter begin() const
   {
-    return {this->first, this->size};
+    return {{this->first, this->size, this->first}};
   }
   uv_iter end() const
   {
-    return {this->first + this->size, this->size};
+    return {{this->first + this->size, this->size, this->first}};
   }
   inline const std::array<float, 2> operator*()
   {
     return {this->curr->uv[0], this->curr->uv[1]};
   }
-  // uv_iter(const dereference_iterator_ &di) : dereference_iterator(di, this) {}
-  // uv_iter(dereference_iterator_ &&di) : dereference_iterator(di, this) {}
 };
 
 // Iterator over the normals of mesh
@@ -437,21 +437,17 @@ struct uv_iter : pointer_iterator_base<MLoopUV> {
 // It's only a bidirectional iterator, because it is not continuous
 struct normal_iter {
   using ResT = const std::array<float, 3>;
-  // normal_iter() = default;
-  // normal_iter(const normal_iter &) = default;
-  // normal_iter(normal_iter &&) = default;
   using difference_type = ptrdiff_t;
   using value_type = ResT;
   using pointer = ResT *;
   using reference = ResT &;
-  using iterator_category = std::bidirectional_iterator_tag;
-  normal_iter(const Mesh *const mesh, const poly_iter &poly, const loop_of_poly_iter &loop)
-      : mesh(mesh), poly(poly), loop(loop)
+  using iterator_category = std::forward_iterator_tag;
+  normal_iter(const Mesh *const mesh) : mesh(mesh), mp(mesh->mpoly), ml(mesh->mloop)
   {
     custom_no = static_cast<float(*)[3]>(CustomData_get_layer(&mesh->ldata, CD_NORMAL));
   }
-  normal_iter(const Mesh *const mesh)
-      : normal_iter(mesh, poly_iter(mesh), loop_of_poly_iter(mesh, poly_iter(mesh)))
+  normal_iter(const Mesh *const mesh, const MPoly *poly, const MLoop *loop)
+      : mesh(mesh), mp(poly), ml(loop)
   {
   }
   normal_iter begin() const
@@ -460,44 +456,35 @@ struct normal_iter {
   }
   normal_iter end() const
   {
-    return {mesh, poly.end(), loop.end()};
+    const MPoly *const last_poly = mesh->mpoly + (mesh->totpoly);
+    return {mesh, last_poly, mesh->mloop + last_poly->loopstart + (last_poly->totloop - 1)};
   }
   normal_iter &operator++()
   {
-    // If not flat shaded
-    // const bool flat_shaded = (((*poly).flag & ME_SMOOTH) == 1);
-    // if (flat_shaded)
-    ++loop;
-    if (loop == loop.end()) {
-      ++poly;
-      // if incrementing the poly didn't put us past the end,
-      if (poly != poly.end())
-        // use the new poly to generate the new loop iterator
-        loop = loop_of_poly_iter{mesh, poly};
-      else
-        // otherwise make sure loop is at the end, so we can stop iterating
-        loop = loop.end();
+    // If not past the last element of the current loop, go to the next one
+    if (ml < (mesh->mloop + mp->loopstart + mp->totloop)) {
+      ++ml;
     }
-    return *this;
-  }
-  normal_iter &operator--()
-  {
-    if (loop != loop.begin()) {
-      --loop;
-    }
-    else if (poly != poly.begin()) {
-      --poly;
-      loop = loop_of_poly_iter{mesh, poly};
+    // If past the last (eg after the previous increment)
+    if (ml >= (mesh->mloop + mp->loopstart + mp->totloop)) {
+      // If not past the last poly
+      if (mp < (mesh->mpoly + mesh->totpoly)) {
+        // Increment the poly
+        ++mp;
+        // Get the loop of the current poly
+        ml = mesh->mloop + mp->loopstart;
+        // If now past the last poly
+        if (mp >= (mesh->mpoly + mesh->totpoly)) {
+          // Make sure the loop is at it's end, so we compare true with `end()`
+          ml += mp->totloop - 1;
+        }
+      }
     }
     return *this;
   }
   bool operator==(const normal_iter &other) const
   {
-    // Equal if the poly iterator is the same
-    return poly == other.poly &&
-           // And either the face is not smooth shaded, in which case we
-           // don't care about the loop, or if the loop is the same
-           (((*poly).flag & ME_SMOOTH) == 0 || loop == other.loop);
+    return mp == other.mp && ml == other.ml;
   }
   bool operator!=(const normal_iter &other) const
   {
@@ -505,31 +492,74 @@ struct normal_iter {
   }
   ResT operator*() const
   {
-    // If we have custom normals, read from there
+    // TODO someone Should -0 be converted to 0?
     if (custom_no) {
-      const float(&no)[3] = custom_no[(*loop).v];
+      const float(&no)[3] = custom_no[ml->v];
       return {no[0], no[1], no[2]};
     }
     else {
       float no[3];
-      // If the face is not smooth shaded, calculate the normal of the face
-      if (((*poly).flag & ME_SMOOTH) == 0) {
-        // Note the `loop.first`. This is because the function expects
-        // a pointer to the first element of the loop
-        BKE_mesh_calc_poly_normal(poly, loop.first, mesh->mvert, no);
+      /* Flat shaded, use common normal for all verts. */
+      if ((mp->flag & ME_SMOOTH) == 0) {
+        BKE_mesh_calc_poly_normal(mp, mesh->mloop + mp->loopstart, mesh->mvert, no);
+        return {no[0], no[1], no[2]};
       }
       else {
-        // Otherwise, the normal is stored alongside the vertex,
-        // as a short, so we retrieve it
-        normal_short_to_float_v3(no, mesh->mvert[(*loop).v].no);
+        /* Smooth shaded, use individual vert normals. */
+        normal_short_to_float_v3(no, mesh->mvert[ml->v].no);
+        return {no[0], no[1], no[2]};
       }
-      return {no[0], no[1], no[2]};
     }
   }
   const Mesh *const mesh;
-  poly_iter poly;
-  loop_of_poly_iter loop;
+  const MPoly *mp;
+  const MLoop *ml;
   const float (*custom_no)[3];
+};
+
+struct transformed_normal_iter {
+  using difference_type = ptrdiff_t;
+  using value_type = std::array<float, 3>;
+  using pointer = value_type *;
+  using reference = value_type &;
+  using iterator_category = std::forward_iterator_tag;
+  using Mat = const float (*)[4];  // Must actually be float[4][4]
+  transformed_normal_iter() = delete;
+  transformed_normal_iter(const Mesh *const mesh, Mat mat) : ni(mesh), mat(mat)
+  {
+  }
+  transformed_normal_iter(const normal_iter &ni, Mat mat) : ni(ni), mat(mat)
+  {
+  }
+  transformed_normal_iter &operator++()
+  {
+    ++ni;
+    return *this;
+  }
+  transformed_normal_iter begin() const
+  {
+    return {ni.begin(), mat};
+  }
+  transformed_normal_iter end() const
+  {
+    return {ni.end(), mat};
+  }
+  bool operator==(const transformed_normal_iter &other) const
+  {
+    return ni == other.ni;
+  }
+  bool operator!=(const transformed_normal_iter &other) const
+  {
+    return ni != other.ni;
+  }
+  std::array<float, 3> operator*() const
+  {
+    std::array<float, 3> no = *ni;
+    mul_v3_m4v3(no.data(), mat, no.data());
+    return no;
+  }
+  normal_iter ni;
+  Mat mat;
 };
 
 // --- Deduplication ---
@@ -552,11 +582,9 @@ struct deduplicated_iterator {
       : it(it), mesh(mesh), dedup_pair(dp), total(total)
   {
   }
-  deduplicated_iterator(const Mesh *const mesh,
-                        dedup_pair_t<KeyT> &dp,
-                        ulong &total,
-                        ulong reserve)
-      : deduplicated_iterator(mesh, dp, total, SourceIter{mesh})
+  deduplicated_iterator(
+      const Mesh *const mesh, dedup_pair_t<KeyT> &dp, ulong &total, ulong reserve, SourceIter it)
+      : deduplicated_iterator(mesh, dp, total, it)
   {
     // Reserve space so we don't constantly allocate
     // if (dedup_pair.second.size() + reserve > dedup_pair.second.capacity()) {
@@ -619,9 +647,13 @@ struct deduplicated_iterator {
 };
 
 // Iterator to deduplicated normals (returns `const std::array<float, 3>`)
-struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, normal_iter> {
-  deduplicated_normal_iter(const Mesh *const mesh, ulong &total, dedup_pair_t<no_key_t> &dp)
-      : deduplicated_iterator<no_key_t, normal_iter>(mesh, dp, total, total + mesh->totvert)
+struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, transformed_normal_iter> {
+  deduplicated_normal_iter(const Mesh *const mesh,
+                           ulong &total,
+                           dedup_pair_t<no_key_t> &dp,
+                           const float (*mat)[4])
+      : deduplicated_iterator<no_key_t, transformed_normal_iter>(
+            mesh, dp, total, total + mesh->totvert, transformed_normal_iter(mesh, mat))
   {
   }
   // The last element in the mapping vector. Requires we insert the first element
@@ -635,7 +667,8 @@ struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, normal_iter> {
 // Iterator to deduplicated UVs (returns `const std::array<float, 2>`)
 struct deduplicated_uv_iter : deduplicated_iterator<uv_key_t, uv_iter> {
   deduplicated_uv_iter(const Mesh *const mesh, ulong &total, dedup_pair_t<uv_key_t> &dp)
-      : deduplicated_iterator<uv_key_t, uv_iter>(mesh, dp, total, total + mesh->totloop)
+      : deduplicated_iterator<uv_key_t, uv_iter>(
+            mesh, dp, total, total + mesh->totloop, uv_iter{mesh})
   {
   }
   // The last element in the mapping vector. Requires we insert the first element

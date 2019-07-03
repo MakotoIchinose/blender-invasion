@@ -32,25 +32,31 @@ extern "C" {
 // Anonymous namespace for internal functions
 namespace {
 
-inline void change_single_axis_orientation(float (&mat)[4][4], int axis_from, int axis_to)
+inline bool axis_enum_to_index(int &axis)
 {
-  bool negate = false;
-  switch (axis_to) {
+  switch (axis) {
     case AXIS_X:  // Fallthrough
     case AXIS_Y:  // Fallthrough
     case AXIS_Z:
-      break;          // Just swap
+      return false;   // Just swap
     case AXIS_NEG_X:  // Fallthrough
     case AXIS_NEG_Y:  // Fallthrough
     case AXIS_NEG_Z:
-      axis_to -= AXIS_NEG_X;  // Transform the enum into an index
-      negate = true;          // Swap and negate
-      break;
+      axis -= AXIS_NEG_X;  // Transform the enum into an index
+      return true;         // Swap and negate
+    default:
+      return false;
   }
+}
+
+inline void change_single_axis_orientation(float (&mat)[4][4], int axis_from, int axis_to)
+{
+  bool negate = axis_enum_to_index(axis_to);
+
   for (size_t i = 0; i < 4; ++i) {
-    float t = mat[i][axis_to];
-    mat[i][axis_to] = (negate ? -1 : 1) * mat[i][axis_from];
-    mat[i][axis_from] = t;
+    float t = mat[axis_to][i];
+    mat[axis_to][i] = (negate ? -1 : 1) * mat[axis_from][i];
+    mat[axis_from][i] = t;
   }
 }
 }  // namespace
@@ -120,8 +126,14 @@ bool should_export_object(const ExportSettings *const settings, const Object *co
 
 void change_orientation(float (&mat)[4][4], int forward, int up)
 {
-  change_single_axis_orientation(mat, AXIS_X, forward);
-  change_single_axis_orientation(mat, AXIS_Z, up);
+  change_single_axis_orientation(mat, AXIS_Y, AXIS_NEG_Z);  // Works
+  // change_single_axis_orientation(mat, AXIS_X, up);
+
+  // change_single_axis_orientation(mat, AXIS_X, forward);
+  // change_single_axis_orientation(mat, AXIS_X, up);
+
+  // set_single_axis(mat, AXIS_Z, up);
+  // set_single_axis(mat, AXIS_Y, forward);
 }
 
 float get_unit_scale(const Scene *const scene)

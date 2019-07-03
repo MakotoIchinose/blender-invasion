@@ -286,10 +286,10 @@ bool OBJ_export_mesh(bContext *UNUSED(C),
   if (settings->export_normals) {
     if (format_specific->dedup_normals)
       for (const std::array<float, 3> &no :
-           common::deduplicated_normal_iter{mesh, no_total, no_mapping_pair})
+           common::deduplicated_normal_iter(mesh, no_total, no_mapping_pair, mat))
         fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
     else
-      for (const std::array<float, 3> &no : common::normal_iter{mesh}) {
+      for (const std::array<float, 3> &no : common::transformed_normal_iter(mesh, mat)) {
         fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
       }
     // auto nos = common::get_normals(mesh);

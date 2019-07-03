@@ -266,11 +266,7 @@ void WM_OT_obj_export(struct wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna, "export_uvs", 1, "UVs", "Export UVs");
 
-  RNA_def_boolean(ot->srna,
-                  "dedup_normals",
-                  1,
-                  "Deduplicate Normals",
-                  "Remove duplicate normals");  // TODO someone add a threshold
+  RNA_def_boolean(ot->srna, "dedup_normals", 1, "Deduplicate Normals", "Remove duplicate normals");
 
   // The UI seems to make it so the minimum softlimit can't be smaller than 0.001,
   // but normals are only printed with four decimal places, so it doesn't matter too much
@@ -284,11 +280,7 @@ void WM_OT_obj_export(struct wmOperatorType *ot)
                 0.001,
                 10.0);
 
-  RNA_def_boolean(ot->srna,
-                  "dedup_uvs",
-                  1,
-                  "Deduplicate UVs",
-                  "Remove duplicate UVs");  // TODO someone add a threshold
+  RNA_def_boolean(ot->srna, "dedup_uvs", 1, "Deduplicate UVs", "Remove duplicate UVs");
 
   RNA_def_float(ot->srna,
                 "dedup_uvs_threshold",
