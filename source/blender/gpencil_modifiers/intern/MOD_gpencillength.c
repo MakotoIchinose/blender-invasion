@@ -76,6 +76,16 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
+static void deformStroke(bGPDstroke *gps, int length)
+{
+  if (length > 0) {
+    BKE_gpencil_stretch_stroke(gps, length);
+  }
+  else {
+    BKE_gpencil_shrink_stroke(gps, -length);
+  }
+}
+
 static void bakeModifier(Main *UNUSED(bmain),
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
@@ -89,12 +99,7 @@ static void bakeModifier(Main *UNUSED(bmain),
       LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        if (lmd->length > 0) {
-          BKE_gpencil_stretch_stroke(gps, lmd->length);
-        }
-        else {
-          BKE_gpencil_shrink_stroke(gps, -lmd->length);
-        }
+        deformStroke(gps, lmd->length);
       }
       return;
     }
@@ -110,12 +115,7 @@ static void generateStrokes(
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
   bGPDstroke *gps;
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    if (lmd->length > 0) {
-      BKE_gpencil_stretch_stroke(gps, lmd->length);
-    }
-    else {
-      BKE_gpencil_shrink_stroke(gps, -lmd->length);
-    }
+    deformStroke(gps, lmd->length);
   }
 }
 
