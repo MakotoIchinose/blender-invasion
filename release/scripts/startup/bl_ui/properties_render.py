@@ -689,7 +689,7 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel):
         sub.prop(rd, "simplify_gpencil_remove_lines", text="Lines")
 
 
-class LANPR_linesets(UIList):
+class LANPR_UL_linesets(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         lineset = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -772,7 +772,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
                     col = split.column()
                     col.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
                     row=layout.row()
-                    row.template_list("LANPR_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+                    row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
                     col=row.column(align=True)
                     if active_layer:
                         col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
@@ -1111,7 +1111,7 @@ classes = (
     RENDER_PT_lanpr_snake_sobel_parameters,
     RENDER_PT_lanpr_snake_settings,
     RENDER_PT_lanpr_software_chain_styles,
-    LANPR_linesets,
+    LANPR_UL_linesets,
 )
 
 if __name__ == "__main__":  # only for live edit.
