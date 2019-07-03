@@ -1790,6 +1790,59 @@ bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, int index_from, int index_t
   return true;
 }
 
+bool BKE_gpencil_split_stroke(bGPDframe *gpf,
+                              bGPDstroke *gps,
+                              int before_index,
+                              bGPDstroke **remaining_gps)
+{
+  bGPDstroke *new_gps;
+  bGPDspoint *pt = gps->points, *new_pt;
+  MDeformVert *dv, *new_dv;
+
+  if (before_index >= gps->totpoints || before_index == 0) {
+    return false;
+  }
+
+  int new_count = gps->totpoints - before_index + 1;
+  int old_count = before_index;
+
+  /* Handle remaining segments first. */
+
+  new_gps = BKE_gpencil_add_stroke(gpf, gps->mat_nr, new_count, gps->thickness);
+
+  new_pt = MEM_callocN(sizeof(bGPDspoint) * new_count, "gp_stroke_points_remaining");
+
+  for (int i = 0; i < new_count; i++) {
+    memcpy(&new_pt[i], &pt[i + before_index], sizeof(bGPDspoint));
+  }
+
+  new_gps->points = new_pt;
+
+  if (gps->dvert) {
+    new_dv = MEM_callocN(sizeof(MDeformVert) * new_count, "gp_stroke_dverts_remaining");
+    for (int i = 0; i < new_count; i++) {
+      dv = &gps->dvert[i + before_index];
+      new_dv[i].flag = dv->flag;
+      new_dv[i].totweight = dv->totweight;
+      new_dv[i].dw = MEM_callocN(sizeof(MDeformWeight) * dv->totweight,
+                                 "gp_stroke_dverts_dw_remaining");
+      for (int j = 0; j < dv->totweight; j++) {
+        new_dv[i].dw[j].weight = dv->dw[j].weight;
+        new_dv[i].dw[j].def_nr = dv->dw[j].def_nr;
+      }
+    }
+    new_gps->dvert = new_dv;
+  }
+
+  *remaining_gps = new_gps;
+
+  /* trim the original stroke into a shorter one */
+
+  BKE_gpencil_trim_stroke_points(gps, 0, new_count - 1);
+
+  return true;
+}
+
 /**
  * Shrink the stroke by length.
  * \param gps: Stroke to shrink

@@ -76,6 +76,14 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
+static void splitStroke(bGPDstroke *gps, float angle)
+{
+}
+
+static void duplicateStroke(bGPDstroke *gps, int count, float dist, float offsset)
+{
+}
+
 static void bakeModifier(Main *UNUSED(bmain),
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
