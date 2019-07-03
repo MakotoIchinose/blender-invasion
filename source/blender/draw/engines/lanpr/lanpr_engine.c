@@ -575,9 +575,29 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
   }
 }
 
+void lanpr_rebuild_all_command(SceneLANPR *lanpr);
+
 static void lanpr_draw_scene(void *vedata)
 {
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  int updated = 0;
+  if (draw_ctx->scene->lanpr.auto_update &&
+      (!lanpr_share.render_buffer_shared ||
+       lanpr_share.render_buffer_shared->cached_for_frame != draw_ctx->scene->r.cfra)) {
+    if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
+      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 0);
+      updated = 1;
+    }
+    else if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_DPIX) {
+      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
+    }
+  }
+
+  if (updated) {
+    lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
+  }
+
   lanpr_draw_scene_exec(vedata, dfbl->default_fb, 0);
 }
 
