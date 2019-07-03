@@ -53,6 +53,7 @@
 #include "ED_keyframing.h"
 #include "ED_mesh.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
@@ -87,6 +88,8 @@ static void pose_do_bone_select(bPoseChannel *pchan, const int select_mode)
       }
       break;
   }
+
+  sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 }
 
 void ED_pose_bone_select_tag_update(Object *ob)

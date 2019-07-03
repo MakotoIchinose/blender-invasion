@@ -88,6 +88,7 @@
 #include "ED_particle.h"
 #include "ED_mesh.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_select_buffer_utils.h"
 #include "ED_select_utils.h"
@@ -1482,6 +1483,9 @@ static bool view3d_lasso_select(
           break;
         case OB_ARMATURE:
           changed = do_lasso_select_armature(vc, mcords, moves, sel_op);
+          if (changed) {
+            sync_select_dirty_flag = SYNC_SELECT_REPLACE;
+          }
           break;
         case OB_MBALL:
           changed = do_lasso_select_meta(vc, mcords, moves, sel_op);
@@ -2482,6 +2486,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
       if (!retval && deselect_all) {
         retval = ED_armature_edit_deselect_all_visible_multi(C);
       }
+      sync_select_dirty_flag = SYNC_SELECT_REPLACE;
     }
     else if (obedit->type == OB_LATTICE) {
       retval = ED_lattice_select_pick(C, location, extend, deselect, toggle);
@@ -3117,6 +3122,8 @@ static bool do_armature_box_select(ViewContext *vc, const rcti *rect, const eSel
       changed |= ED_armature_edit_select_op_from_tagged(obedit->data, sel_op);
     }
   }
+
+  sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 
   MEM_freeN(bases);
 
@@ -4038,6 +4045,9 @@ static bool obedit_circle_select(ViewContext *vc,
       break;
     case OB_ARMATURE:
       changed = armature_circle_select(vc, sel_op, mval, rad);
+      if (changed) {
+        sync_select_dirty_flag = SYNC_SELECT_REPLACE;
+      }
       break;
     case OB_MBALL:
       changed = mball_circle_select(vc, sel_op, mval, rad);

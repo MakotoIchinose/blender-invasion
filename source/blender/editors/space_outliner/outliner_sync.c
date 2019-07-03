@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 
+#include "DNA_armature_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_outliner_types.h"
 #include "DNA_screen_types.h"
@@ -36,6 +37,7 @@
 
 #include "DEG_depsgraph.h"
 
+#include "ED_armature.h"
 #include "ED_object.h"
 #include "ED_outliner.h"
 
@@ -93,6 +95,33 @@ static void outliner_sync_selection_from_outliner(bContext *C, ListBase *tree)
         }
       }
     }
+    else if (tselem->type == TSE_EBONE) {
+      printf("\t\tSyncing an editbone: %s\n", te->name);
+      EditBone *ebone = (EditBone *)te->directdata;
+
+      if (tselem->flag & TSE_SELECTED) {
+        ebone->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+      }
+      else {
+        ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+      }
+    }
+    else if (tselem->type == TSE_POSE_CHANNEL) {
+      printf("\t\tSyncing a posebone: %s\n", te->name);
+      Object *ob = (Object *)tselem->id;
+      bArmature *arm = ob->data;
+      bPoseChannel *pchan = (bPoseChannel *)te->directdata;
+
+      if (tselem->flag & TSE_SELECTED) {
+        pchan->bone->flag |= BONE_SELECTED;
+      }
+      else {
+        pchan->bone->flag &= ~BONE_SELECTED;
+      }
+
+      DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+    }
     else if (tselem->type == TSE_SEQUENCE) {
       printf("\t\tSyncing a sequence: %s\n", te->name);
 
@@ -146,9 +175,31 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
         }
       }
     }
+    else if (tselem->type == TSE_EBONE) {
+      printf("\t\tSyncing an editbone: %s\n", te->name);
+      EditBone *ebone = (EditBone *)te->directdata;
+
+      if (ebone->flag & BONE_SELECTED) {
+        tselem->flag |= TSE_SELECTED;
+      }
+      else {
+        tselem->flag &= ~TSE_SELECTED;
+      }
+    }
+    else if (tselem->type == TSE_POSE_CHANNEL) {
+      printf("\t\tSyncing a posebone: %s\n", te->name);
+      bPoseChannel *pchan = (bPoseChannel *)te->directdata;
+      Bone *bone = pchan->bone;
+
+      if (bone->flag & BONE_SELECTED) {
+        tselem->flag |= TSE_SELECTED;
+      }
+      else {
+        tselem->flag &= ~TSE_SELECTED;
+      }
+    }
     else if (tselem->type == TSE_SEQUENCE) {
       printf("\t\tSyncing a sequence: %s\n", te->name);
-
       Sequence *seq = (Sequence *)tselem->id;
 
       if (seq == seq_act) {

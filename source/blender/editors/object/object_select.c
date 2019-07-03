@@ -1272,6 +1272,8 @@ static int object_select_mirror_exec(bContext *C, wmOperator *op)
   }
   CTX_DATA_END;
 
+  sync_select_dirty_flag = SYNC_SELECT_REPLACE;
+
   /* undo? */
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);

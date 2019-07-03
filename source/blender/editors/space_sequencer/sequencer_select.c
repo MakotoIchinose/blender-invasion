@@ -51,7 +51,7 @@
 /* own include */
 #include "sequencer_intern.h"
 
-static void sequencer_sync_selection()
+static void sequencer_sync_selection(void)
 {
   sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 }
