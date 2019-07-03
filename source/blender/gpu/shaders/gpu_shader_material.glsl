@@ -3131,7 +3131,6 @@ void node_tex_magic(
  * v0          v1
  *
  */
-
 float bi_mix(float v0, float v1, float v2, float v3, float x, float y)
 {
   float x1 = 1.0 - x;
@@ -3156,7 +3155,6 @@ float bi_mix(float v0, float v1, float v2, float v3, float x, float y)
  *          @ + + + + + + @
  *        v0               v1
  */
-
 float tri_mix(float v0,
               float v1,
               float v2,
@@ -3180,34 +3178,9 @@ float tri_mix(float v0,
  * second derivatives at t = 0 and t = 1.
  * Described in Ken Perlin's "Improving noise" [2002].
  */
-
 float noise_fade(float t)
 {
   return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
-}
-
-/* Remap the output of noise to a predictable range [-1, 1].
- * The values were computed experimentally by the OSL developers.
- */
-
-float noise_scale1(float result)
-{
-  return 0.2500 * result;
-}
-
-float noise_scale2(float result)
-{
-  return 0.6616 * result;
-}
-
-float noise_scale3(float result)
-{
-  return 0.9820 * result;
-}
-
-float noise_scale4(float result)
-{
-  return 0.8344 * result;
 }
 
 float negate_if(float val, uint condition)
@@ -3218,7 +3191,6 @@ float negate_if(float val, uint condition)
 /* Compute the dot product with a randomly choose vector from a list of
  * predetermined vectors based on a hash value.
  */
-
 float noise_grad(uint hash, float x)
 {
   uint h = hash & 15u;
@@ -3260,7 +3232,7 @@ float noise_perlin(float x)
 
   float r = mix(noise_grad(hash(X), fx), noise_grad(hash(X + 1), fx - 1.0), u);
 
-  return (isinf(r)) ? 0.0 : noise_scale1(r);
+  return r;
 }
 
 float noise_perlin(vec2 vec)
@@ -3281,7 +3253,7 @@ float noise_perlin(vec2 vec)
                    u,
                    v);
 
-  return (isinf(r)) ? 0.0 : noise_scale2(r);
+  return r;
 }
 
 float noise_perlin(vec3 vec)
@@ -3310,7 +3282,7 @@ float noise_perlin(vec3 vec)
                     v,
                     w);
 
-  return (isinf(r)) ? 0.0 : noise_scale3(r);
+  return r;
 }
 
 float noise_perlin(vec4 vec)
@@ -3355,53 +3327,79 @@ float noise_perlin(vec4 vec)
               t),
       s);
 
-  return (isinf(r)) ? 0.0 : noise_scale4(r);
+  return r;
 }
 
-float noise(float p)
+/* Remap the output of noise to a predictable range [-1, 1].
+ * The values were computed experimentally by the OSL developers.
+ */
+float noise_scale1(float result)
 {
-  return 0.5 * noise_perlin(p) + 0.5;
+  return 0.2500 * result;
 }
 
-float noise(vec2 p)
+float noise_scale2(float result)
 {
-  return 0.5 * noise_perlin(p) + 0.5;
+  return 0.6616 * result;
 }
 
-float noise(vec3 p)
+float noise_scale3(float result)
 {
-  return 0.5 * noise_perlin(p) + 0.5;
+  return 0.9820 * result;
 }
 
-float noise(vec4 p)
+float noise_scale4(float result)
 {
-  return 0.5 * noise_perlin(p) + 0.5;
+  return 0.8344 * result;
 }
 
 float snoise(float p)
 {
-  return noise_perlin(p);
+  float r = noise_perlin(p);
+  return (isinf(r)) ? 0.0 : noise_scale1(r);
+}
+
+float noise(float p)
+{
+  return 0.5 * snoise(p) + 0.5;
 }
 
 float snoise(vec2 p)
 {
-  return noise_perlin(p);
+  float r = noise_perlin(p);
+  return (isinf(r)) ? 0.0 : noise_scale2(r);
+}
+
+float noise(vec2 p)
+{
+  return 0.5 * snoise(p) + 0.5;
 }
 
 float snoise(vec3 p)
 {
-  return noise_perlin(p);
+  float r = noise_perlin(p);
+  return (isinf(r)) ? 0.0 : noise_scale3(r);
+}
+
+float noise(vec3 p)
+{
+  return 0.5 * snoise(p) + 0.5;
 }
 
 float snoise(vec4 p)
 {
-  return noise_perlin(p);
+  float r = noise_perlin(p);
+  return (isinf(r)) ? 0.0 : noise_scale4(r);
+}
+
+float noise(vec4 p)
+{
+  return 0.5 * snoise(p) + 0.5;
 }
 
 /* The following 4 functions are exactly the same but with different input type.
  * When refactoring, simply copy the function body to the rest of the functions.
  */
-
 float noise_turbulence(float p, float octaves)
 {
   float fscale = 1.0;
@@ -3513,7 +3511,6 @@ float noise_turbulence(vec4 p, float octaves)
 /* To compute the color output of the noise, we either swizzle the
  * components, add a random offset {75, 125, 150}, or do both.
  */
-
 void node_tex_noise_1d(
     vec3 co, float w, float scale, float detail, float distortion, out vec4 color, out float fac)
 {
