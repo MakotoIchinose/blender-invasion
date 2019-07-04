@@ -99,7 +99,12 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
     bmesh_from_mesh_params.cd_mask_extra = cddata_masks;
     clmd->clothObject->bm_prev = BKE_mesh_to_bmesh_ex(
         mesh, &bmesh_create_params, &bmesh_from_mesh_params);
-
+    BMVert *v;
+    BMIter viter;
+    int i = 0;
+    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
+      copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
+    }
     BM_mesh_triangulate(clmd->clothObject->bm_prev,
                         MOD_TRIANGULATE_QUAD_SHORTEDGE,
                         MOD_TRIANGULATE_NGON_BEAUTY,
@@ -108,12 +113,15 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
                         NULL,
                         NULL,
                         NULL);
+    printf("remeshing_reset has been set to true or bm_prev does not exist\n");
+  }
+  else {
     BMVert *v;
     BMIter viter;
-    BM_ITER_MESH (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH) {
-      mul_m4_v3(ob->obmat, v->co);
+    int i = 0;
+    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
+      copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
     }
-    printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
   clmd->clothObject->bm = clmd->clothObject->bm_prev;
@@ -599,9 +607,9 @@ static ClothVertex *cloth_remeshing_find_cloth_vertex(BMVert *v, ClothVertex *ve
 
   for (int i = 0; i < vert_num; i++) {
     /* if (equals_v3v3(v->co, verts[i].xold)) { */
-    if (fabs(v->co[0] - verts[i].xold[0]) < EPSILON_CLOTH &&
-        fabs(v->co[1] - verts[i].xold[1]) < EPSILON_CLOTH &&
-        fabs(v->co[2] - verts[i].xold[2]) < EPSILON_CLOTH) {
+    if (fabs(v->co[0] - verts[i].x[0]) < EPSILON_CLOTH &&
+        fabs(v->co[1] - verts[i].x[1]) < EPSILON_CLOTH &&
+        fabs(v->co[2] - verts[i].x[2]) < EPSILON_CLOTH) {
       cv = &verts[i];
       break;
     }
@@ -615,9 +623,9 @@ static int cloth_remeshing_find_cloth_vertex_index(BMVert *v, ClothVertex *verts
   int i;
   for (i = 0; i < vert_num; i++) {
     /* if (equals_v3v3(v->co, verts[i].xold)) { */
-    if (fabs(v->co[0] - verts[i].xold[0]) < EPSILON_CLOTH &&
-        fabs(v->co[1] - verts[i].xold[1]) < EPSILON_CLOTH &&
-        fabs(v->co[2] - verts[i].xold[2]) < EPSILON_CLOTH) {
+    if (fabs(v->co[0] - verts[i].x[0]) < EPSILON_CLOTH &&
+        fabs(v->co[1] - verts[i].x[1]) < EPSILON_CLOTH &&
+        fabs(v->co[2] - verts[i].x[2]) < EPSILON_CLOTH) {
       break;
     }
   }
@@ -873,7 +881,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
 
       /* update active_faces */
 
-      return true;
+      return false;
     }
     active_faces.erase(active_faces.begin() + i--);
     count++;
@@ -932,12 +940,18 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
    * Collapse edges
    */
 
-#if 1
+#if 0
   vector<BMFace *> active_faces;
   BMFace *f;
   BMIter fiter;
   BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
     active_faces.push_back(f);
+  }
+  for (int i = 0; i < active_faces.size(); i++) {
+    BMFace *temp_f = active_faces[i];
+    if (!(temp_f->head.htype == BM_FACE)) {
+      printf("htype didn't match: %d\n", i);
+    }
   }
   int prev_mvert_num = clmd->clothObject->mvert_num;
   count = 0;
@@ -962,7 +976,7 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
    * Delete sizing
    */
   sizing.clear();
-#if 1
+#if 0
   active_faces.clear();
 #endif
 }
