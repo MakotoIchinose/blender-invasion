@@ -2049,6 +2049,9 @@ static int gpencil_check_same_material_color(Object *ob_gp, Material *mat_cu, Ma
 {
   Material *ma = NULL;
   float color_cu[4] = {mat_cu->r, mat_cu->g, mat_cu->b, mat_cu->a};
+  linearrgb_to_srgb_v3_v3(color_cu, &mat_cu->r);
+  color_cu[3] = 1.0f;
+
   for (int i = 1; i <= ob_gp->totcol; i++) {
     ma = give_current_material(ob_gp, i);
     MaterialGPencilStyle *gp_style = ma->gp_style;
