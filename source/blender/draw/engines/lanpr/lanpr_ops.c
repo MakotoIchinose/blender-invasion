@@ -999,6 +999,12 @@ void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Be
   for (rls = ns; rls && rls != ns2; rls = rls->next) {
     rls->occlusion++;
   }
+
+  char min_occ = 127;
+  for (rls = rl->segments.first; rls; rls = rls->next) {
+    min_occ = MIN2(min_occ, rls->occlusion);
+  }
+  rl->min_occ = min_occ;
 }
 
 int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_RenderTaskInfo *rti)
@@ -1135,6 +1141,9 @@ void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
                                                          &l,
                                                          &r)) {
         lanpr_cut_render_line(rb, rl, l, r);
+        if (rl->min_occ > rb->max_occlusion_level) {
+          return; /* No need to caluclate any longer. */
+        }
       }
     }
 
@@ -3570,6 +3579,80 @@ LANPR_RenderBuffer *lanpr_create_render_buffer()
   return rb;
 }
 
+int lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr);
+
+int lanpr_max_occlusion_in_collections(Collection *c)
+{
+  CollectionChild *cc;
+  int max_occ = 0;
+  int max;
+  if (c->lanpr.use_multiple_levels) {
+    max = MAX2(c->lanpr.level_begin, c->lanpr.level_end);
+  }
+  else {
+    max = c->lanpr.level_begin;
+  }
+  max_occ = MAX2(max, max_occ);
+
+  for (cc = c->children.first; cc; cc = cc->next) {
+    max = lanpr_max_occlusion_in_collections(cc->collection);
+    max_occ = MAX2(max, max_occ);
+  }
+
+  return max_occ;
+}
+
+int lanpr_max_occlusion_in_targets(Scene *s)
+{
+  DRWContextState *cs = DRW_context_state_get();
+  Depsgraph *depsgraph = cs->depsgraph;
+  int max_occ = 0;
+  int max;
+
+  /* Objects */
+  DEG_OBJECT_ITER_BEGIN (depsgraph,
+                         o,
+                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                             DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
+    ModifierData *md;
+    for (md = o->modifiers.first; md; md = md->next) {
+      if (md->type == eModifierType_FeatureLine) {
+        FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
+        if (flmd->target) {
+          if (flmd->use_multiple_levels) {
+            max = MAX2(flmd->level_begin, flmd->level_end);
+          }
+          else {
+            max = flmd->level_begin;
+          }
+          max_occ = MAX2(max, max_occ);
+        }
+      }
+    }
+  }
+  DEG_OBJECT_ITER_END;
+
+  /* Collections */
+  max = lanpr_max_occlusion_in_collections(s->master_collection);
+
+  max_occ = MAX2(max, max_occ);
+
+  return max_occ;
+}
+
+int lanpr_get_max_occlusion_level(Scene *s)
+{
+  SceneLANPR *lanpr = &s->lanpr;
+  if (!strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
+    /* Use the line layers in scene LANPR settings */
+    return lanpr_max_occlusion_in_line_layers(lanpr);
+  }
+  else {
+    /* Other engines, use GPencil configurations */
+    return lanpr_max_occlusion_in_targets(s);
+  }
+}
+
 void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *ll);
 
 int lanpr_get_render_triangle_size(LANPR_RenderBuffer *rb)
@@ -4199,6 +4282,8 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
 
   rb->triangle_size = lanpr_get_render_triangle_size(rb);
 
+  rb->max_occlusion_level = lanpr_get_max_occlusion_level(s);
+
   lanpr_make_render_geometry_buffers(depsgraph, rb->scene, rb->scene->camera, rb);
 
   lanpr_compute_view_Vector(rb);
@@ -4292,9 +4377,8 @@ void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
   ot->exec = lanpr_compute_feature_lines_exec;
 }
 
-LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
+int lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
 {
-  LANPR_LineLayer *ll = MEM_callocN(sizeof(LANPR_LineLayer), "Line Layer");
   LANPR_LineLayer *lli;
   int max_occ = 0, max;
   for (lli = lanpr->line_layers.first; lli; lli = lli->next) {
@@ -4306,6 +4390,14 @@ LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
     }
     max_occ = MAX2(max, max_occ);
   }
+  return max_occ;
+}
+
+LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
+{
+  LANPR_LineLayer *ll = MEM_callocN(sizeof(LANPR_LineLayer), "Line Layer");
+
+  int max_occ = lanpr_max_occlusion_in_line_layers(lanpr);
 
   ll->qi_begin = ll->qi_end = max_occ + 1;
   ll->use_same_style = 1;
