@@ -174,7 +174,7 @@ int lanpr_feed_atlas_data_obj(void *vedata,
   int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
 
   /* Don't overflow the cache. */
-  if ((edge_count + begin_index + cache_total) < (cache_total - 1)) {
+  if ((edge_count + begin_index) > (cache_total - 1)) {
     return begin_index;
   }
 
@@ -290,7 +290,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
   int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
 
   /* Don't overflow the cache. */
-  if ((rb->intersection_count + begin_index + cache_total) < (cache_total - 1)) {
+  if ((rb->intersection_count + begin_index) > (cache_total - 1)) {
     return 0;
   }
 
@@ -355,7 +355,7 @@ int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_ind
   int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
 
   /* Don't overflow the cache. */
-  if ((edge_count + begin_index + cache_total) < (cache_total - 1)) {
+  if ((edge_count + begin_index) > (cache_total - 1)) {
     return begin_index;
   }
 
@@ -427,7 +427,7 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
   int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
 
   /* Don't overflow the cache. */
-  if ((rb->intersection_count + begin_index + cache_total) < (cache_total - 1)) {
+  if ((rb->intersection_count + begin_index) > (cache_total - 1)) {
     return 0;
   }
 
