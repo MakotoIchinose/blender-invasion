@@ -171,6 +171,13 @@ int lanpr_feed_atlas_data_obj(void *vedata,
   int vert_count = me->totvert, edge_count = me->totedge, face_count = me->totface;
   int i, idx;
 
+  int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
+
+  /* Don't overflow the cache. */
+  if ((edge_count + begin_index + cache_total) < (cache_total - 1)) {
+    return begin_index;
+  }
+
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(me);
   bm = BM_mesh_create(&allocsize,
                       &((struct BMeshCreateParams){
@@ -280,6 +287,13 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
     return 0;
   }
 
+  int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
+
+  /* Don't overflow the cache. */
+  if ((rb->intersection_count + begin_index + cache_total) < (cache_total - 1)) {
+    return 0;
+  }
+
   for (lip = rb->intersection_lines.first; lip; lip = lip->next) {
     rl = lip->data;
 
@@ -337,6 +351,13 @@ int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_ind
   int edge_count = me->totedge;
   int i;
   float co[2];
+
+  int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
+
+  /* Don't overflow the cache. */
+  if ((edge_count + begin_index + cache_total) < (cache_total - 1)) {
+    return begin_index;
+  }
 
   static GPUVertFormat format = {0};
   static struct {
@@ -401,6 +422,13 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
 
   if (!rb->intersection_count) {
     return;
+  }
+
+  int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
+
+  /* Don't overflow the cache. */
+  if ((rb->intersection_count + begin_index + cache_total) < (cache_total - 1)) {
+    return 0;
   }
 
   static GPUVertFormat format = {0};
