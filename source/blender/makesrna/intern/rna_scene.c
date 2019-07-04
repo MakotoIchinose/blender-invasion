@@ -7191,6 +7191,13 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
        "Same",
        "Use same taper value for both sides of the line"},
       {0, NULL, 0, NULL, NULL}};
+  static const EnumPropertyItem rna_enum_lanpr_gpu_cache_size[] = {
+      {LANPR_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_4K, "S4K", 0, "4K", "4K px texture as cache"},
+      {0, NULL, 0, NULL, NULL}};
+
 
   srna = RNA_def_struct(brna, "SceneLANPR", NULL);
   RNA_def_struct_sdna(srna, "SceneLANPR");
@@ -7216,6 +7223,13 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_lanpr_master_mode);
   RNA_def_property_enum_default(prop, LANPR_MASTER_MODE_DPIX);
   RNA_def_property_ui_text(prop, "Master Mode", "Choose calculation mode for NPR Line");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "gpu_cache_size", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_gpu_cache_size);
+  RNA_def_property_enum_default(prop, LANPR_GPU_CACHE_SIZE_512);
+  RNA_def_property_ui_text(prop, "GPU Cache Size", "Texture cache size for DPIX algorithm");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 

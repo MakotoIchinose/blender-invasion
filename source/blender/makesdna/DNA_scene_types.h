@@ -1682,7 +1682,8 @@ typedef struct SceneLANPR {
 
   /* edge split modifier will cause problems in LANPR. */
   int disable_edge_splits;
-  char _pad[4];
+  
+  int gpu_cache_size; /* enum! */
 
   /* offline render */
   ListBase line_layers;
@@ -1699,6 +1700,13 @@ typedef struct SceneLANPR {
   int composite_render_animation;
 
 } SceneLANPR;
+
+enum {
+  LANPR_GPU_CACHE_SIZE_512 = 0,
+  LANPR_GPU_CACHE_SIZE_1K = 1, /* default */
+  LANPR_GPU_CACHE_SIZE_2K = 2,
+  LANPR_GPU_CACHE_SIZE_4K = 3,
+};
 
 /* *************************************************************** */
 /* Scene ID-Block */

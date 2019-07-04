@@ -753,6 +753,9 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
                 if not lanpr.auto_update:
                     row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
             
+            if lanpr.master_mode == "DPIX":
+                layout.label(text="Cache Size:")
+                layout.prop(lanpr,"gpu_cache_size", expand=True)
 
             layout.prop(lanpr, "disable_edge_splits")
             
