@@ -24,6 +24,7 @@
  * \ingroup bke
  */
 
+struct Scene;
 struct ArrayGpencilModifierData;
 struct BoundBox;
 struct Brush;
@@ -296,6 +297,12 @@ bool BKE_gpencil_close_stroke(struct bGPDstroke *gps);
 void BKE_gpencil_get_range_selected(struct bGPDlayer *gpl, int *r_initframe, int *r_endframe);
 float BKE_gpencil_multiframe_falloff_calc(
     struct bGPDframe *gpf, int actnum, int f_init, int f_end, struct CurveMapping *cur_falloff);
+
+void BKE_gpencil_convert_curve(struct Main *bmain,
+                               const struct Scene *scene,
+                               struct Object *ob_gp,
+                               struct Object *ob_cu,
+                               const bool gpencil_lines);
 
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
