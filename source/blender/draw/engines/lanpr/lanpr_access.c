@@ -140,7 +140,7 @@ bool lanpr_dpix_shader_error()
 
 bool lanpr_disable_edge_splits(Scene *s)
 {
-  return s->lanpr.disable_edge_splits;
+  return (s->lanpr.enabled && s->lanpr.disable_edge_splits);
 }
 
 void lanpr_copy_data(Scene *from, Scene *to)
