@@ -183,6 +183,7 @@ static void lanpr_engine_free(void)
 }
 
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
+int lanpr_dpix_texture_size(SceneLANPR *lanpr);
 
 static void lanpr_cache_init(void *vedata)
 {
@@ -211,6 +212,9 @@ static void lanpr_cache_init(void *vedata)
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
   View3D *v3d = draw_ctx->v3d;
+
+  int texture_size = lanpr_dpix_texture_size(lanpr);
+  lanpr_share.texture_size = texture_size;
 
   psl->color_pass = DRW_pass_create(
       "color Pass", DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH);
@@ -397,7 +401,7 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "normal_direction", normal_object_direction, 1);
 
     pd->begin_index = 0;
-    int fsize = sizeof(float) * 4 * TNS_DPIX_TEXTURE_SIZE * TNS_DPIX_TEXTURE_SIZE;
+    int fsize = sizeof(float) * 4 * texture_size * texture_size;
 
     if (lanpr->reloaded) {
       pd->atlas_pl = MEM_callocN(fsize, "atlas_point_l");

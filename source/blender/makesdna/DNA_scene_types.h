@@ -1682,7 +1682,7 @@ typedef struct SceneLANPR {
 
   /* edge split modifier will cause problems in LANPR. */
   int disable_edge_splits;
-  
+
   int gpu_cache_size; /* enum! */
 
   /* offline render */

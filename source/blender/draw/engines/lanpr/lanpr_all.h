@@ -49,6 +49,7 @@
 #include "BKE_customdata.h"
 #include "DEG_depsgraph_query.h"
 #include "GPU_draw.h"
+#include "GPU_texture.h"
 
 #include "BLI_threads.h"
 
@@ -94,6 +95,7 @@ typedef struct LANPR_SharedResource {
   GPUShader *dpix_transform_shader;
   GPUShader *dpix_preview_shader;
   int dpix_shader_error;
+  int texture_size;
 
   /* Software */
   GPUShader *software_shader;
@@ -110,8 +112,6 @@ typedef struct LANPR_SharedResource {
   /*  while rendering) */
 
 } LANPR_SharedResource;
-
-#define TNS_DPIX_TEXTURE_SIZE 2048
 
 typedef struct LANPR_PassList {
   /* Snake */

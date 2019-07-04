@@ -31,6 +31,21 @@ extern char datatoc_lanpr_dpix_project_clip_frag_glsl[];
 extern char datatoc_lanpr_dpix_preview_geom_glsl[];
 extern char datatoc_lanpr_dpix_preview_frag_glsl[];
 
+int lanpr_dpix_texture_size(SceneLANPR *lanpr)
+{
+  switch (lanpr->gpu_cache_size) {
+    case LANPR_GPU_CACHE_SIZE_512:
+      return 512;
+    case LANPR_GPU_CACHE_SIZE_1K:
+      return 1024;
+    case LANPR_GPU_CACHE_SIZE_2K:
+      return 2048;
+    case LANPR_GPU_CACHE_SIZE_4K:
+      return 4096;
+  }
+  return 512;
+}
+
 void lanpr_init_atlas_inputs(void *ved)
 {
   lanpr_share.ved_viewport = ved;
@@ -46,23 +61,35 @@ void lanpr_init_atlas_inputs(void *ved)
   Object *camera = (rv3d && rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
 
+  int texture_size = lanpr_dpix_texture_size(lanpr);
+  lanpr_share.texture_size = texture_size;
+
+  if (txl->dpix_in_pl && GPU_texture_width(txl->dpix_in_pl) != texture_size) {
+    DRW_texture_free(txl->dpix_in_pl);
+    txl->dpix_in_pl = NULL;
+    DRW_texture_free(txl->dpix_in_pr);
+    txl->dpix_in_pr = NULL;
+    DRW_texture_free(txl->dpix_in_nl);
+    txl->dpix_in_nl = NULL;
+    DRW_texture_free(txl->dpix_in_nr);
+    txl->dpix_in_nr = NULL;
+    DRW_texture_free(txl->dpix_out_pl);
+    txl->dpix_out_pl = NULL;
+    DRW_texture_free(txl->dpix_out_pr);
+    txl->dpix_out_pr = NULL;
+    DRW_texture_free(txl->dpix_out_length);
+    txl->dpix_out_length = NULL;
+  }
+
   if (lanpr->reloaded || !txl->dpix_in_pl) {
-    DRW_texture_ensure_2d(
-        &txl->dpix_in_pl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_in_pr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_in_nl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_in_nr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_in_edge_mask, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA8, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_out_pl, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_out_pr, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
-    DRW_texture_ensure_2d(
-        &txl->dpix_out_length, TNS_DPIX_TEXTURE_SIZE, TNS_DPIX_TEXTURE_SIZE, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_in_pl, texture_size, texture_size, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_in_pr, texture_size, texture_size, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_in_nl, texture_size, texture_size, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_in_nr, texture_size, texture_size, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_in_edge_mask, texture_size, texture_size, GPU_RGBA8, 0);
+    DRW_texture_ensure_2d(&txl->dpix_out_pl, texture_size, texture_size, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_out_pr, texture_size, texture_size, GPU_RGBA32F, 0);
+    DRW_texture_ensure_2d(&txl->dpix_out_length, texture_size, texture_size, GPU_RGBA32F, 0);
   }
 
   GPU_framebuffer_ensure_config(&fbl->dpix_transform,
@@ -287,16 +314,16 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
 
 void lanpr_dpix_index_to_coord(int index, float *x, float *y)
 {
-  (*x) = tnsLinearItp(
-      -1, 1, (float)(index % TNS_DPIX_TEXTURE_SIZE + 0.5) / (float)TNS_DPIX_TEXTURE_SIZE);
-  (*y) = tnsLinearItp(
-      -1, 1, (float)(index / TNS_DPIX_TEXTURE_SIZE + 0.5) / (float)TNS_DPIX_TEXTURE_SIZE);
+  int texture_size = lanpr_share.texture_size;
+  (*x) = tnsLinearItp(-1, 1, (float)(index % texture_size + 0.5) / (float)texture_size);
+  (*y) = tnsLinearItp(-1, 1, (float)(index / texture_size + 0.5) / (float)texture_size);
 }
 
 void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
 {
-  (*x) = (float)(index % TNS_DPIX_TEXTURE_SIZE) + 0.5;
-  (*y) = (float)(index / TNS_DPIX_TEXTURE_SIZE) + 0.5;
+  int texture_size = lanpr_share.texture_size;
+  (*x) = (float)(index % texture_size) + 0.5;
+  (*y) = (float)(index / texture_size) + 0.5;
 }
 
 int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_index)
@@ -450,11 +477,13 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   }
   /*  XXX: should implement view angle functions for ortho camera. */
 
+  int texture_size = lanpr_share.texture_size;
+
   pd->dpix_viewport[2] = texw;
   pd->dpix_viewport[3] = texh;
   pd->dpix_is_perspective = is_persp;
   pd->dpix_sample_step = 1;
-  pd->dpix_buffer_width = TNS_DPIX_TEXTURE_SIZE;
+  pd->dpix_buffer_width = texture_size;
   pd->dpix_depth_offset = 0.0001;
   pd->dpix_znear = camera ? ((Camera *)camera->data)->clip_start : v3d->clip_start;
   pd->dpix_zfar = camera ? ((Camera *)camera->data)->clip_end : v3d->clip_end;
