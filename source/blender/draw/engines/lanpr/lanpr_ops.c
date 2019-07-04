@@ -1550,13 +1550,13 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     for (i; i < reln->element_count; i++) {
       int In1 = 0, In2 = 0, In3 = 0;
       rt = (void *)(((BYTE *)reln->pointer) + rb->triangle_size * i);
-      if (rt->v[0]->fbcoord[3] < 0) {
+      if (rt->v[0]->fbcoord[3] < ((Camera *)cam->data)->clip_start) {
         In1 = 1;
       }
-      if (rt->v[1]->fbcoord[3] < 0) {
+      if (rt->v[1]->fbcoord[3] < ((Camera *)cam->data)->clip_start) {
         In2 = 1;
       }
-      if (rt->v[2]->fbcoord[3] < 0) {
+      if (rt->v[2]->fbcoord[3] < ((Camera *)cam->data)->clip_start) {
         In3 = 1;
       }
 
@@ -1816,7 +1816,7 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             tMatVectorMinus3d(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
-            a = dot1 / (dot1 + dot2);
+            a = dot2 / (dot1 + dot2);
             rv[0].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[1]->gloc[0];
             rv[0].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[1]->gloc[1];
             rv[0].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[1]->gloc[2];
@@ -1826,7 +1826,7 @@ void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             tMatVectorMinus3d(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
-            a = dot1 / (dot1 + dot2);
+            a = dot2 / (dot1 + dot2);
             rv[1].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[2]->gloc[0];
             rv[1].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[2]->gloc[1];
             rv[1].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[2]->gloc[2];
