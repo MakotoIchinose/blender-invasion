@@ -1696,8 +1696,7 @@ typedef struct SceneLANPR {
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 
-  /* composite utility */
-  int composite_render_animation;
+  int max_occlusion; /* Defaults to 1 to increase speed in complex scenes. */
 
 } SceneLANPR;
 
