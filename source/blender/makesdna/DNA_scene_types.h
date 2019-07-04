@@ -1696,7 +1696,7 @@ typedef struct SceneLANPR {
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 
-  int max_occlusion; /* Defaults to 1 to increase speed in complex scenes. */
+  char _pad2[4];
 
 } SceneLANPR;
 

@@ -4295,8 +4295,19 @@ void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
 LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *ll = MEM_callocN(sizeof(LANPR_LineLayer), "Line Layer");
-  BLI_addtail(&lanpr->line_layers, ll);
-  lanpr->active_layer = ll;
+  LANPR_LineLayer *lli;
+  int max_occ = 0, max;
+  for (lli = lanpr->line_layers.first; lli; lli = lli->next) {
+    if (lli->use_multiple_levels) {
+      max = MAX2(lli->qi_begin, lli->qi_end);
+    }
+    else {
+      max = lli->qi_begin;
+    }
+    max_occ = MAX2(max, max_occ);
+  }
+
+  ll->qi_begin = ll->qi_end = max_occ + 1;
   ll->use_same_style = 1;
   ll->thickness = 1.0f;
   ll->color[0] = 1.0f;
@@ -4308,6 +4319,10 @@ LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->enable_material_seperate = 1;
   ll->enable_edge_mark = 1;
   ll->enable_intersection = 1;
+
+  lanpr->active_layer = ll;
+  BLI_addtail(&lanpr->line_layers, ll);
+
   return ll;
 }
 LANPR_LineLayerComponent *lanpr_new_line_component(SceneLANPR *lanpr)
