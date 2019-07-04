@@ -527,6 +527,8 @@ void BVHEmbree::add_instance(Object *ob, int i)
     assert(0);
     return;
   }
+  ob->pack_index = pack.prim_index.size();
+
   BVHEmbree *instance_bvh = (BVHEmbree *)(ob->mesh->bvh);
 
   if (instance_bvh->top_level != this) {

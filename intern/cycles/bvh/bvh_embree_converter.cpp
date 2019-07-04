@@ -40,8 +40,8 @@ struct RangeInput {
 
 std::stack<LeafNode*> groupByRange(std::vector<RangeInput> &ids) {
     std::sort(ids.begin(), ids.end(), [](const RangeInput &lhs, const RangeInput &rhs) -> bool {
-		    return lhs.id > rhs.id;
-		    });
+        return lhs.id > rhs.id;
+    });
     std::stack<LeafNode*> groups;
 
     for(const RangeInput &r : ids) {
@@ -68,9 +68,16 @@ ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
 }
 
 BVHNode *bvh_shrink(BVHNode *root) {
-    if(root->num_children() <= 2) return root;
+    if(root->is_leaf()) return root;
 
     InnerNode *node = dynamic_cast<InnerNode*>(root);
+
+    if(node->num_children() == 1) return bvh_shrink(root->get_child(0));
+    if(node->num_children() <= 2) {
+        node->children[0] = bvh_shrink(node->children[0]);
+        node->children[1] = bvh_shrink(node->children[1]);
+        return node;
+    }
 
     node->children[0] = new InnerNode(merge(node->children[0]->bounds, node->children[1]->bounds), bvh_shrink(node->children[0]), bvh_shrink(node->children[1]));
     if(root->num_children() == 3) {
@@ -88,39 +95,61 @@ BVHEmbreeConverter::BVHEmbreeConverter(RTCScene scene, std::vector<Object *> obj
       params(params) {}
 
 
-template<>
-std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4v>(const embree::BVH4::NodeRef &node, const BoundBox &) {
-        size_t nb;
-        embree::Triangle4v *prims = reinterpret_cast<embree::Triangle4v *>(node.leaf(nb));
-        std::vector<RangeInput> ids; ids.reserve(nb * 4);
+template<typename Primitive>
+std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf(const embree::BVH4::NodeRef &node, const BoundBox &) {
+    size_t nb;
+    Primitive *prims = reinterpret_cast<Primitive *>(node.leaf(nb));
+    std::vector<RangeInput> ids; ids.reserve(nb * 4);
 
-        for(size_t i = 0; i < nb; i++) {
-            for(size_t j = 0; j < prims[i].size(); j++) {
-                const auto geom_id = prims[i].geomID(j);
-                const auto prim_id = prims[i].primID(j);
+    for(size_t i = 0; i < nb; i++) {
+        for(size_t j = 0; j < prims[i].size(); j++) {
+            const auto geom_id = prims[i].geomID(j);
+            const auto prim_id = prims[i].primID(j);
 
-                embree::Geometry *g = s->get(geom_id);
+            embree::Geometry *g = s->get(geom_id);
 
-                size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
+            size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
 
-                Object *obj = this->objects.at(geom_id / 2);
-                Mesh *m = obj->mesh;
-                BoundBox bb = BoundBox::empty;//obj->bounds;
-                m->get_triangle(prim_id).bounds_grow(m->verts.data(), bb);
+            Object *obj = this->objects.at(geom_id / 2);
+            Mesh *m = obj->mesh;
+            BoundBox bb = BoundBox::empty;
 
-                ids.push_back(RangeInput(prim_offset + prim_id, objects.at(geom_id / 2)->visibility, bb));
+            const Mesh::Triangle t = m->get_triangle(prim_id);
+            const float3 *mesh_verts = m->verts.data();
+            const float3 *mesh_vert_steps = nullptr;
+            size_t motion_steps = 1;
+
+            if (m->has_motion_blur()) {
+                const Attribute *attr_motion_vertex = m->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+                if (attr_motion_vertex) {
+                    mesh_vert_steps = attr_motion_vertex->data_float3();
+                    motion_steps = m->motion_steps;
+                }
             }
+
+            for (uint step = 0; step < motion_steps; ++step) {
+                float3 verts[3];
+                t.verts_for_step(mesh_verts, mesh_vert_steps, m->num_triangles(), motion_steps, step, verts);
+
+
+              for (int i = 0; i < 3; i++) {
+                  bb.grow(verts[i]);
+              }
+            }
+
+            ids.push_back(RangeInput(prim_offset + prim_id, obj->visibility, bb));
         }
+    }
 
-        std::stack<LeafNode *> leafs = groupByRange(ids);
-        std::deque<BVHNode *> nodes;
+    std::stack<LeafNode *> leafs = groupByRange(ids);
+    std::deque<BVHNode *> nodes;
 
-        while(!leafs.empty()) {
-            nodes.push_back(leafs.top());
-            leafs.pop();
-        }
+    while(!leafs.empty()) {
+        nodes.push_back(leafs.top());
+        leafs.pop();
+    }
 
-        return nodes;
+    return nodes;
 }
 
 template<>
@@ -131,10 +160,10 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::InstancePrimitive>(c
     std::stack<LeafNode *> leafs;
 
     for(size_t i = 0; i < nb; i++) {
-        uint id = prims[i].instance->geomID;
+        uint id = prims[i].instance->geomID / 2;
         Object *obj = objects.at(id);
         // Better solution, but crash -> RTCBoundBoxToCCL(prims[i].instance->bounds(0));
-        LeafNode *leafNode = new LeafNode(obj->bounds, obj->visibility, id, id + 1);
+        LeafNode *leafNode = new LeafNode(obj->bounds, obj->visibility, obj->pack_index, obj->pack_index + 1);
         leafs.push(leafNode);
     }
 
@@ -181,11 +210,11 @@ BVHNode* BVHEmbreeConverter::nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::Bo
         if(node.isAlignedNode()) {
             embree::BVH4::AlignedNode *anode = node.alignedNode();
 
-	    int nb = 0;
+            int nb = 0;
             BVHNode *children[4];
             for(uint i = 0; i < 4; i++) {
                 BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
-		if(child != nullptr)
+                if(child != nullptr)
                     children[nb++] = child;
             }
 
@@ -193,8 +222,52 @@ BVHNode* BVHEmbreeConverter::nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::Bo
                         bb,
                         children,
                         nb);
+        } else if(node.isAlignedNodeMB()) {
+            embree::BVH4::AlignedNodeMB *anode = node.alignedNodeMB();
+
+            int nb = 0;
+            BVHNode *children[4];
+            for(uint i = 0; i < 4; i++) {
+                BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
+                if(child != nullptr) {
+                    children[nb++] = child;
+                }
+            }
+
+            ret = new InnerNode(
+                        bb,
+                        children,
+                        nb);
+        } else if (node.isUnalignedNode()) {
+            std::cout << "[EMBREE - BVH] Node type is unaligned" << std::endl;
+        } else if (node.isUnalignedNodeMB()) {
+            std::cout << "[EMBREE - BVH] Node type is unaligned MB" << std::endl;
+        } else if (node.isBarrier()) {
+            std::cout << "[EMBREE - BVH] Node type is barrier ??" << std::endl;
+        } else if (node.isQuantizedNode()) {
+            std::cout << "[EMBREE - BVH] Node type is Quantized node !" << std::endl;
+        } else if (node.isAlignedNodeMB4D()) {
+            // He is an aligned node MB
+            embree::BVH4::AlignedNodeMB4D *anode = node.alignedNodeMB4D();
+
+            int nb = 0;
+            BVHNode *children[4];
+            for(uint i = 0; i < 4; i++) {
+                BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
+                if(child != nullptr) {
+                    embree::BBox1f timeRange = anode->timeRange(i);
+                    child->time_from = timeRange.lower;
+                    child->time_to = timeRange.upper;
+                    children[nb++] = child;
+                }
+            }
+
+            ret = new InnerNode(
+                        bb,
+                        children,
+                        nb);
         } else {
-            std::cout << "Unknown node" << std::endl;
+            std::cout << "[EMBREE - BVH] Node type is unknown -> " << node.type() << std::endl;
         }
 
         return ret;
@@ -213,23 +286,25 @@ BVHNode* BVHEmbreeConverter::getBVH4() {
             embree::BVH4 *bvh = dynamic_cast<embree::BVHN<4> *>(ad);
             std::cout << "Prim type -> " << bvh->primTy->name() << std::endl;
 
+            embree::BVH4::NodeRef root = bvh->root;
+            BVHNode *rootNode = nullptr;
             if(bvh->primTy == &embree::Triangle4v::type) {
-                embree::BVH4::NodeRef root = bvh->root;
-                BVHNode *rootNode = this->nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
-                bb.grow(rootNode->bounds);
-                nodes.push_back(rootNode);
+                rootNode = this->nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
             } else if(bvh->primTy == &embree::InstancePrimitive::type) {
-                embree::BVH4::NodeRef root = bvh->root;
-                BVHNode *rootNode = nodeEmbreeToCcl<embree::InstancePrimitive>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
-                bb.grow(rootNode->bounds);
-                nodes.push_back(rootNode);
+                rootNode = nodeEmbreeToCcl<embree::InstancePrimitive>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
+            } else if(bvh->primTy == &embree::Triangle4i::type) {
+                rootNode = nodeEmbreeToCcl<embree::Triangle4i>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
             } else {
-
+                std::cout << "[EMBREE - BVH] Unknown primitive type " << bvh->primTy->name() << std::endl;
             }
 
+            if(rootNode != nullptr) {
+                bb.grow(rootNode->bounds);
+                nodes.push_back(rootNode);
+            }
         } break;
         default:
-            std::cout << "[EMBREE - BVH] Unknown type " << ad->type << std::endl;
+            std::cout << "[EMBREE - BVH] Unknown acceleration type " << ad->type << std::endl;
             break;
         }
     }

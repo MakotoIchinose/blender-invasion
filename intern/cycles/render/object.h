@@ -97,6 +97,10 @@ class Object : public Node {
   /* Specifies the position of the object in scene->objects and
    * in the device vectors. Gets set in device_update. */
   int index;
+ public:
+  /* Specifies the position of the object in pack and
+   * in the device vectors. Gets set in device_update. */
+  int pack_index;
 
   friend class ObjectManager;
 };

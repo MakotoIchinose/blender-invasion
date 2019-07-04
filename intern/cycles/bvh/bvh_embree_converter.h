@@ -32,6 +32,7 @@
 #include "embree/kernels/common/scene.h"
 #include "embree/kernels/bvh/bvh.h"
 #include "embree/kernels/geometry/trianglev.h"
+#include "embree/kernels/geometry/trianglei.h"
 #include "embree/kernels/geometry/instance.h"
 #include "bvh_node.h"
 
