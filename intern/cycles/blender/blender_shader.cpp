@@ -780,6 +780,7 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeTexMusgrave b_musgrave_node(b_node);
     MusgraveTextureNode *musgrave = new MusgraveTextureNode();
     musgrave->type = (NodeMusgraveType)b_musgrave_node.musgrave_type();
+    musgrave->dimensions = b_musgrave_node.dimensions();
     BL::TexMapping b_texture_mapping(b_musgrave_node.texture_mapping());
     get_tex_mapping(&musgrave->tex_mapping, b_texture_mapping);
     node = musgrave;

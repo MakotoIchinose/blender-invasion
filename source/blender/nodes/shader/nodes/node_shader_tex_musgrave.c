@@ -23,6 +23,7 @@
 
 static bNodeSocketTemplate sh_node_tex_musgrave_in[] = {
     {SOCK_VECTOR, 1, N_("Vector"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_NONE, SOCK_HIDE_VALUE},
+    {SOCK_FLOAT, 1, N_("W"), 0.0f, 0.0f, 0.0f, 0.0f, -1000.0f, 1000.0f},
     {SOCK_FLOAT, 1, N_("Scale"), 5.0f, 0.0f, 0.0f, 0.0f, -1000.0f, 1000.0f},
     {SOCK_FLOAT, 1, N_("Detail"), 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 16.0f},
     {SOCK_FLOAT, 1, N_("Dimension"), 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f},
@@ -33,17 +34,6 @@ static bNodeSocketTemplate sh_node_tex_musgrave_in[] = {
 };
 
 static bNodeSocketTemplate sh_node_tex_musgrave_out[] = {
-    {SOCK_RGBA,
-     0,
-     N_("Color"),
-     0.0f,
-     0.0f,
-     0.0f,
-     0.0f,
-     0.0f,
-     1.0f,
-     PROP_NONE,
-     SOCK_NO_INTERNAL_LINK},
     {SOCK_FLOAT,
      0,
      N_("Fac"),
@@ -64,6 +54,7 @@ static void node_shader_init_tex_musgrave(bNodeTree *UNUSED(ntree), bNode *node)
   BKE_texture_mapping_default(&tex->base.tex_mapping, TEXMAP_TYPE_POINT);
   BKE_texture_colormapping_default(&tex->base.color_mapping);
   tex->musgrave_type = SHD_MUSGRAVE_FBM;
+  tex->dimensions = 3;
 
   node->storage = tex;
 }
@@ -83,8 +74,29 @@ static int node_shader_gpu_tex_musgrave(GPUMaterial *mat,
 
   NodeTexMusgrave *tex = (NodeTexMusgrave *)node->storage;
   float type = tex->musgrave_type;
+  float dimensions = tex->dimensions;
 
-  return GPU_stack_link(mat, node, "node_tex_musgrave", in, out, GPU_constant(&type));
+  return GPU_stack_link(
+      mat, node, "node_tex_musgrave", in, out, GPU_constant(&type), GPU_constant(&dimensions));
+}
+
+static void node_shader_update_tex_musgrave(bNodeTree *UNUSED(ntree), bNode *node)
+{
+  NodeTexMusgrave *tex = (NodeTexMusgrave *)node->storage;
+
+  bNodeSocket *inVecSock = BLI_findlink(&node->inputs, 0);
+  bNodeSocket *inWSock = BLI_findlink(&node->inputs, 1);
+  bNodeSocket *inOffsetSock = BLI_findlink(&node->inputs, 6);
+  bNodeSocket *inGainSock = BLI_findlink(&node->inputs, 7);
+
+  nodeSetSocketAvailability(inVecSock, tex->dimensions != 1);
+  nodeSetSocketAvailability(inWSock, tex->dimensions == 1 || tex->dimensions == 4);
+  nodeSetSocketAvailability(inOffsetSock,
+                            tex->musgrave_type != SHD_MUSGRAVE_MULTIFRACTAL &&
+                                tex->musgrave_type != SHD_MUSGRAVE_FBM);
+  nodeSetSocketAvailability(inGainSock,
+                            tex->musgrave_type == SHD_MUSGRAVE_HYBRID_MULTIFRACTAL &&
+                                tex->musgrave_type != SHD_MUSGRAVE_RIDGED_MULTIFRACTAL);
 }
 
 /* node type definition */
@@ -99,6 +111,7 @@ void register_node_type_sh_tex_musgrave(void)
   node_type_storage(
       &ntype, "NodeTexMusgrave", node_free_standard_storage, node_copy_standard_storage);
   node_type_gpu(&ntype, node_shader_gpu_tex_musgrave);
+  node_type_update(&ntype, node_shader_update_tex_musgrave);
 
   nodeRegisterType(&ntype);
 }
