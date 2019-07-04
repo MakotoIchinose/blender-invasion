@@ -446,7 +446,23 @@ void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
                                         LANPR_BoundingArea *RootBoundingArea,
                                         LANPR_RenderLine *rl)
 {
-  list_append_pointer_static_pool(&rb->render_data_pool, &RootBoundingArea->linked_lines, rl);
+  if (!RootBoundingArea->child) {
+    list_append_pointer_static_pool(&rb->render_data_pool, &RootBoundingArea->linked_lines, rl);
+  }
+  else {
+    if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[0])) {
+      lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[0], rl);
+    }
+    else if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[1])) {
+      lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[1], rl);
+    }
+    else if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[2])) {
+      lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[2], rl);
+    }
+    else if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[3])) {
+      lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[3], rl);
+    }
+  }
 }
 int lanpr_get_triangle_bounding_areas(LANPR_RenderBuffer *rb,
                                       LANPR_RenderTriangle *rt,
@@ -564,6 +580,44 @@ LANPR_BoundingArea *lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x
   }
 
   return &rb->initial_bounding_areas[row * 4 + col];
+}
+static LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_BoundingArea *ba,
+                                                                   real x,
+                                                                   real y)
+{
+  if (!ba->child) {
+    return ba;
+  }
+  else {
+    LANPR_BoundingArea *ch = ba->child;
+#define IN_BOUND(i, x, y) \
+  \ 
+    ba->child[i] \
+              .l <= x && \
+      ba->child[i].r >= x && ba->child[i].b <= y && ba->child[i].u >= y
+
+    if (IN_BOUND(0, x, y)) {
+      return lanpr_get_point_bounding_area_recursive(&ba->child[0], x, y);
+    }
+    else if (IN_BOUND(1, x, y)) {
+      return lanpr_get_point_bounding_area_recursive(&ba->child[1], x, y);
+    }
+    else if (IN_BOUND(2, x, y)) {
+      return lanpr_get_point_bounding_area_recursive(&ba->child[2], x, y);
+    }
+    else if (IN_BOUND(3, x, y)) {
+      return lanpr_get_point_bounding_area_recursive(&ba->child[3], x, y);
+    }
+  }
+  return NULL;
+}
+LANPR_BoundingArea *lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y)
+{
+  LANPR_BoundingArea *ba;
+  if (ba = lanpr_get_point_bounding_area(rb, x, y)) {
+    return lanpr_get_point_bounding_area_recursive(ba, x, y);
+  }
+  return NULL;
 }
 void lanpr_add_triangles(LANPR_RenderBuffer *rb)
 {
