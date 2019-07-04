@@ -73,11 +73,77 @@ static int node_shader_gpu_tex_musgrave(GPUMaterial *mat,
   node_shader_gpu_tex_mapping(mat, node, in, out);
 
   NodeTexMusgrave *tex = (NodeTexMusgrave *)node->storage;
-  float type = tex->musgrave_type;
-  float dimensions = tex->dimensions;
+  int dimensions = tex->dimensions;
+  int type = tex->musgrave_type;
 
-  return GPU_stack_link(
-      mat, node, "node_tex_musgrave", in, out, GPU_constant(&type), GPU_constant(&dimensions));
+  switch (dimensions) {
+    case 1: {
+      switch (type) {
+        case SHD_MUSGRAVE_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_multi_fractal_1d", in, out);
+        case SHD_MUSGRAVE_FBM:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_fBm_1d", in, out);
+        case SHD_MUSGRAVE_HYBRID_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hybrid_multi_fractal_1d", in, out);
+        case SHD_MUSGRAVE_RIDGED_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_ridged_multi_fractal_1d", in, out);
+        case SHD_MUSGRAVE_HETERO_TERRAIN:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hetero_terrain_1d", in, out);
+        default:
+          return 0;
+      }
+    }
+    case 2: {
+      switch (type) {
+        case SHD_MUSGRAVE_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_multi_fractal_2d", in, out);
+        case SHD_MUSGRAVE_FBM:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_fBm_2d", in, out);
+        case SHD_MUSGRAVE_HYBRID_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hybrid_multi_fractal_2d", in, out);
+        case SHD_MUSGRAVE_RIDGED_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_ridged_multi_fractal_2d", in, out);
+        case SHD_MUSGRAVE_HETERO_TERRAIN:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hetero_terrain_2d", in, out);
+        default:
+          return 0;
+      }
+    }
+    case 3: {
+      switch (type) {
+        case SHD_MUSGRAVE_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_multi_fractal_3d", in, out);
+        case SHD_MUSGRAVE_FBM:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_fBm_3d", in, out);
+        case SHD_MUSGRAVE_HYBRID_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hybrid_multi_fractal_3d", in, out);
+        case SHD_MUSGRAVE_RIDGED_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_ridged_multi_fractal_3d", in, out);
+        case SHD_MUSGRAVE_HETERO_TERRAIN:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hetero_terrain_3d", in, out);
+        default:
+          return 0;
+      }
+    }
+    case 4: {
+      switch (type) {
+        case SHD_MUSGRAVE_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_multi_fractal_4d", in, out);
+        case SHD_MUSGRAVE_FBM:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_fBm_4d", in, out);
+        case SHD_MUSGRAVE_HYBRID_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hybrid_multi_fractal_4d", in, out);
+        case SHD_MUSGRAVE_RIDGED_MULTIFRACTAL:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_ridged_multi_fractal_4d", in, out);
+        case SHD_MUSGRAVE_HETERO_TERRAIN:
+          return GPU_stack_link(mat, node, "node_tex_musgrave_hetero_terrain_4d", in, out);
+        default:
+          return 0;
+      }
+    }
+    default:
+      return 0;
+  }
 }
 
 static void node_shader_update_tex_musgrave(bNodeTree *UNUSED(ntree), bNode *node)
