@@ -65,7 +65,7 @@ bool object_type_is_exportable(const Object *const ob);
 
 bool should_export_object(const ExportSettings *const settings, const Object *const ob);
 
-void change_orientation(float (&mat)[4][4], int forward, int up);
+bool get_axis_remap_and_scale_matrix(float (&mat)[4][4], int forward, int up, float scale);
 
 bool get_final_mesh(const ExportSettings *const settings,
                     const Scene *const escene,

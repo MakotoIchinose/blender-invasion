@@ -49,16 +49,6 @@ inline bool axis_enum_to_index(int &axis)
   }
 }
 
-inline void change_single_axis_orientation(float (&mat)[4][4], int axis_from, int axis_to)
-{
-  bool negate = axis_enum_to_index(axis_to);
-
-  for (size_t i = 0; i < 4; ++i) {
-    float t = mat[axis_to][i];
-    mat[axis_to][i] = (negate ? -1 : 1) * mat[axis_from][i];
-    mat[axis_from][i] = t;
-  }
-}
 }  // namespace
 
 namespace common {
@@ -124,16 +114,36 @@ bool should_export_object(const ExportSettings *const settings, const Object *co
   }
 }
 
-void change_orientation(float (&mat)[4][4], int forward, int up)
+/**
+ * Fills in mat with the matrix which converts the Y axis to `forward` and the Z axis to `up`,
+ * scaled by `scale`, and where the remaining axis is the cross product of `up` and `forward`
+ */
+bool get_axis_remap_and_scale_matrix(float (&mat)[4][4], int forward, int up, float scale)
 {
-  change_single_axis_orientation(mat, AXIS_Y, AXIS_NEG_Z);  // Works
-  // change_single_axis_orientation(mat, AXIS_X, up);
-
-  // change_single_axis_orientation(mat, AXIS_X, forward);
-  // change_single_axis_orientation(mat, AXIS_X, up);
-
-  // set_single_axis(mat, AXIS_Z, up);
-  // set_single_axis(mat, AXIS_Y, forward);
+  bool negate[4];
+  bool temp = axis_enum_to_index(up);  // Modifies up
+  negate[up] = temp;
+  temp = axis_enum_to_index(forward);
+  negate[forward] = temp;
+  int other_axis = (3 - forward - up);
+  negate[other_axis] = false;
+  negate[3] = false;
+  // Can't have two axis be the same
+  if (forward == up) {
+    return false;
+  }
+  int axis_from = 0;
+  for (int axis_to : {other_axis, forward, up, 3}) {
+    for (int i = 0; i < 4; ++i) {
+      mat[axis_from][i] = 0;
+    }
+    mat[axis_from][axis_to] = (negate[axis_to] ? -1 : 1) * scale;
+    ++axis_from;
+  }
+  // A bit hacky, but it's a pointer anyway, it just modifies the first three elements
+  cross_v3_v3v3(mat[other_axis], mat[up], mat[forward]);
+  mat[other_axis][3] = 0;
+  return true;
 }
 
 float get_unit_scale(const Scene *const scene)
@@ -175,20 +185,17 @@ bool get_final_mesh(const ExportSettings *const settings,
                     Mesh **mesh /* out */,
                     float (*mat)[4][4] /* out */)
 {
-  scale_m4_fl(*mat, settings->global_scale * get_unit_scale(escene));
+  bool r = get_axis_remap_and_scale_matrix(*mat,
+                                           settings->axis_forward,
+                                           settings->axis_up,
+                                           settings->global_scale * get_unit_scale(escene));
+  // Failed, up == forward
+  if (!r) {
+    // Ignore remapping
+    scale_m4_fl(*mat, settings->global_scale * get_unit_scale(escene));
+  }
+
   mul_m4_m4m4(*mat, *mat, eob->obmat);
-
-  change_orientation(*mat, settings->axis_forward, settings->axis_up);
-
-  // TODO someone Unsure if necessary
-  // mat[3][3] = m_settings.global_scale;  /* also scale translation */
-
-  // TODO someone Doesn't seem to do anyhing. Is it necessary to update the object somehow?
-  // mul_m4_m4m4((float(*)[4])eob->obmat, eob->obmat, mat);
-  // yup_mat[3][3] /= m_settings.global_scale;  /* normalise the homogeneous component */
-
-  if (determinant_m4(*mat) < 0.0)
-    ; /* TODO someone flip normals */
 
   *mesh = eob->runtime.mesh_eval;
 
