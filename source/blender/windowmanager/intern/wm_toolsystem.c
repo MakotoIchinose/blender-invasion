@@ -794,6 +794,34 @@ bool WM_toolsystem_active_tool_is_brush(const bContext *C)
   return tref_rt && (tref_rt->data_block[0] != '\0');
 }
 
+/* Follow wmMsgNotifyFn spec */
+void WM_toolsystem_do_msg_notify_tag_refresh(bContext *C,
+                                             wmMsgSubscribeKey *UNUSED(msg_key),
+                                             wmMsgSubscribeValue *msg_val)
+{
+  ScrArea *sa = msg_val->user_data;
+  Main *bmain = CTX_data_main(C);
+  wmWindow *win = ((wmWindowManager *)bmain->wm.first)->windows.first;
+  if (win->next != NULL) {
+    do {
+      bScreen *screen = WM_window_get_active_screen(win);
+      if (BLI_findindex(&screen->areabase, sa) != -1) {
+        break;
+      }
+    } while ((win = win->next));
+  }
+
+  WorkSpace *workspace = WM_window_get_active_workspace(win);
+  ViewLayer *view_layer = WM_window_get_active_view_layer(win);
+
+  const bToolKey tkey = {
+      .space_type = sa->spacetype,
+      .mode = WM_toolsystem_mode_from_spacetype(view_layer, sa, sa->spacetype),
+  };
+  WM_toolsystem_refresh(C, workspace, &tkey);
+  WM_toolsystem_refresh_screen_area(workspace, view_layer, sa);
+}
+
 IDProperty *WM_toolsystem_ref_properties_ensure_idprops(bToolRef *tref)
 {
   if (tref->properties == NULL) {
