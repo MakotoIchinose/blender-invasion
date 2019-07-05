@@ -693,16 +693,28 @@ class LANPR_UL_linesets(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         lineset = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(factor=0.4)
+            split = layout.split(factor=0.25)
             t=''
             if not lineset.use_multiple_levels:
-                t='Level %d'%lineset.qi_begin
+                t='%d'%lineset.qi_begin
             else:
-                t='Level %d - %d'%(lineset.qi_begin,lineset.qi_end)
+                t='%d - %d'%(lineset.qi_begin,lineset.qi_end)
             split.label(text=t)
             row = split.row(align=True)
-            row.prop(lineset, "color", text="", icon_value=icon)
-            row.prop(lineset, "thickness", text="", icon_value=icon)
+            s2 = row.split(factor=0.5,align=True)
+            if lineset.use_same_style:
+                row.prop(lineset, "contour_color", text="")
+                row.prop(lineset, "thickness", text="", icon_value=icon)
+            else:
+                r = s2.row(align=True)
+                r.prop(lineset, "contour_color", text="")
+                r.prop(lineset, "crease_color", text="")
+                r.prop(lineset, "edge_mark_color", text="")
+                r.prop(lineset, "material_color", text="")
+                r.prop(lineset, "intersection_color", text="")
+                r = s2.row(align=True)
+                r.prop(lineset, "thickness", text="", icon_value=icon)
+            
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label("", icon_value=icon)
