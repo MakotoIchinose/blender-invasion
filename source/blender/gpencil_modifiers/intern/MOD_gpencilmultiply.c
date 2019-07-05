@@ -181,7 +181,7 @@ static void duplicateStroke(bGPDframe *gpf,
   }
 
   /* This ensures the original stroke is the last one to be processed. */
-  for (i = count - 1; i>=0; i--) {
+  for (i = count - 1; i >= 0; i--) {
     if (i != 0) {
       new_gps = BKE_gpencil_stroke_duplicate(gps);
       new_gps->flag |= GP_STROKE_RECALC_GEOMETRY;
@@ -203,9 +203,10 @@ static void duplicateStroke(bGPDframe *gpf,
     if (fading) {
       thickness_factor = (offset_factor > fading_center) ?
                              (interpf(1 - fading_thickness, 1.0f, offset_factor - fading_center)) :
-                             (interpf(1.0f, 1 - fading_thickness, offset_factor - fading_center + 1));
+                             (interpf(
+                                 1.0f, 1 - fading_thickness, offset_factor - fading_center + 1));
       opacity_factor = (offset_factor > fading_center) ?
-                           (interpf(1 - fading_opacity, 1.0f, offset_factor - fading_center)):
+                           (interpf(1 - fading_opacity, 1.0f, offset_factor - fading_center)) :
                            (interpf(1.0f, 1 - fading_opacity, offset_factor - fading_center + 1));
     }
 
