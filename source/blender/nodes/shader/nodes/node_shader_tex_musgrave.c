@@ -119,6 +119,9 @@ static int node_shader_gpu_tex_musgrave(GPUMaterial *mat,
           },
   };
 
+  BLI_assert(type >= 0 && type < 5);
+  BLI_assert(dimensions > 0 && dimensions < 5);
+
   return GPU_stack_link(mat, node, names[type][dimensions], in, out);
 }
 
