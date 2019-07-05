@@ -4699,7 +4699,8 @@ void lanpr_clear_gp_lanpr_flags(Depsgraph *dg, int frame)
   DEG_OBJECT_ITER_END;
 }
 
-void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, int frame, Object* source_only, Object* target_only)
+void lanpr_update_gp_strokes_recursive(
+    Depsgraph *dg, struct Collection *col, int frame, Object *source_only, Object *target_only)
 {
   Object *ob;
   Object *gpobj;
@@ -4710,7 +4711,7 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
   CollectionObject *co;
   CollectionChild *cc;
 
-  for (co = col->gobject.first; co||source_only; co = co->next) {
+  for (co = col->gobject.first; co || source_only; co = co->next) {
     ob = source_only ? source_only : co->ob;
     for (md = ob->modifiers.first; md; md = md->next) {
       if (md->type == eModifierType_FeatureLine) {
@@ -4718,7 +4719,7 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
         if (flmd->target && flmd->target->type == OB_GPENCIL) {
           gpobj = flmd->target;
 
-          if(target_only && target_only!=gpobj){
+          if (target_only && target_only != gpobj) {
             continue;
           }
 
@@ -4754,7 +4755,7 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
         }
       }
     }
-    if(source_only){
+    if (source_only) {
       return;
     }
   }
@@ -4762,7 +4763,8 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
     lanpr_update_gp_strokes_recursive(dg, cc->collection, frame, source_only, target_only);
   }
 }
-void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, int frame, int this_only, Object* target_only)
+void lanpr_update_gp_strokes_collection(
+    Depsgraph *dg, struct Collection *col, int frame, int this_only, Object *target_only)
 {
   Object *ob;
   Object *gpobj;
@@ -4774,7 +4776,7 @@ void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, i
   CollectionChild *cc;
 
   /* depth first */
-  if(!this_only){
+  if (!this_only) {
     for (cc = col->children.first; cc; cc = cc->next) {
       lanpr_update_gp_strokes_collection(dg, cc->collection, frame, this_only, target_only);
     }
@@ -4786,7 +4788,7 @@ void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, i
 
   gpobj = col->lanpr.target;
 
-  if(target_only && target_only!=gpobj){
+  if (target_only && target_only != gpobj) {
     return;
   }
 
@@ -4873,7 +4875,7 @@ int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph(C);
   SceneLANPR *lanpr = &scene->lanpr;
-  Object* gpo = CTX_data_active_object(C);
+  Object *gpo = CTX_data_active_object(C);
 
   int frame = scene->r.cfra;
 
@@ -4899,7 +4901,7 @@ int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph(C);
   SceneLANPR *lanpr = &scene->lanpr;
-  Object* source_obj = CTX_data_active_object(C);
+  Object *source_obj = CTX_data_active_object(C);
 
   int frame = scene->r.cfra;
 
@@ -4921,19 +4923,22 @@ int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool lanpr_active_is_gpencil_object(bContext *C){
-  Object* o = CTX_data_active_object(C);
+static bool lanpr_active_is_gpencil_object(bContext *C)
+{
+  Object *o = CTX_data_active_object(C);
   return o->type == OB_GPENCIL;
 }
 
-static bool lanpr_active_is_source_object(bContext *C){
-  Object* o = CTX_data_active_object(C);
-  if(o->type!=OB_MESH){
+static bool lanpr_active_is_source_object(bContext *C)
+{
+  Object *o = CTX_data_active_object(C);
+  if (o->type != OB_MESH) {
     return false;
-  }else{
-    ModifierData* md;
-    for(md = o->modifiers.first;md;md=md->next){
-      if(md->type == eModifierType_FeatureLine){
+  }
+  else {
+    ModifierData *md;
+    for (md = o->modifiers.first; md; md = md->next) {
+      if (md->type == eModifierType_FeatureLine) {
         return true;
       }
     }

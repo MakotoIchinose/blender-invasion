@@ -336,8 +336,10 @@ int testProfileEdge(ivec2 texcoord, vec3 world_position)
 
   bool contour = (dot0 >= 0.0 && dot1 <= 0.0) || (dot0 <= 0.0 && dot1 >= 0.0);
 
-  is_crease = (((enable_contour>0 && !contour)||enable_contour==0) && ((dot2 < crease_threshold) || (dot2 < crease_fade_threshold))) ? 1 :
-                                                                                              0;
+  is_crease = (((enable_contour > 0 && !contour) || enable_contour == 0) &&
+               ((dot2 < crease_threshold) || (dot2 < crease_fade_threshold))) ?
+                  1 :
+                  0;
 
   crease_strength = (is_crease > 0 && dot2 > crease_threshold) ?
                         ((dot2 - crease_threshold) / (crease_fade_threshold - crease_threshold) /
@@ -345,12 +347,11 @@ int testProfileEdge(ivec2 texcoord, vec3 world_position)
                         0;
   // use 0 to 0.5 to repesent the range, because 1 will represent another meaning
 
-  if (enable_contour>0 && contour)
+  if (enable_contour > 0 && contour)
     return 1;
-  if (((enable_crease > 0) && (is_crease > 0)) ||
-           ((enable_material > 0) && (edge_mask.r > 0)) ||
-           ((enable_edge_mark > 0) && (edge_mask.g > 0)) ||
-           ((enable_intersection > 0) && (edge_mask.b > 0)) || false)
+  if (((enable_crease > 0) && (is_crease > 0)) || ((enable_material > 0) && (edge_mask.r > 0)) ||
+      ((enable_edge_mark > 0) && (edge_mask.g > 0)) ||
+      ((enable_intersection > 0) && (edge_mask.b > 0)) || false)
     return 2;
   return 0;
 }

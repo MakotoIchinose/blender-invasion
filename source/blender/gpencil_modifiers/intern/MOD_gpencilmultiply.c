@@ -131,8 +131,16 @@ static void minter_v3_v3v3v3_ref(
   copy_v3_v3(result, minter);
 }
 
-static void duplicateStroke(
-    bGPDframe *gpf, bGPDstroke *gps, int count, float dist, float offset, ListBase *results)
+static void duplicateStroke(bGPDframe *gpf,
+                            bGPDstroke *gps,
+                            int count,
+                            float dist,
+                            float offset,
+                            ListBase *results,
+                            int fading,
+                            float fading_center,
+                            float fading_thickness,
+                            float fading_opacity)
 {
   int i;
   bGPDstroke *new_gps;
@@ -141,6 +149,8 @@ static void duplicateStroke(
   float target1[3], target2[3];
   bGPDspoint *pt;
   float offset_factor;
+  float thickness_factor;
+  float opacity_factor;
 
   BKE_gpencil_stroke_normal(gps, stroke_normal);
   if (len_v3(stroke_normal) < FLT_EPSILON) {
@@ -148,10 +158,12 @@ static void duplicateStroke(
     normalize_v3(stroke_normal);
   }
 
-  float* t1_array = MEM_callocN(sizeof(float)*3*gps->totpoints,"duplicate_temp_result_array_1");
-  float* t2_array = MEM_callocN(sizeof(float)*3*gps->totpoints,"duplicate_temp_result_array_2");
-  
-  pt= gps->points;
+  float *t1_array = MEM_callocN(sizeof(float) * 3 * gps->totpoints,
+                                "duplicate_temp_result_array_1");
+  float *t2_array = MEM_callocN(sizeof(float) * 3 * gps->totpoints,
+                                "duplicate_temp_result_array_2");
+
+  pt = gps->points;
 
   for (int j = 0; j < gps->totpoints; j++) {
     if (j == 0) {
@@ -164,11 +176,12 @@ static void duplicateStroke(
       minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, &pt[j + 1].x, stroke_normal);
     }
     mul_v3_fl(minter, dist);
-    add_v3_v3v3(&t1_array[j*3], &pt[j].x, minter);
-    sub_v3_v3v3(&t2_array[j*3], &pt[j].x, minter);
+    add_v3_v3v3(&t1_array[j * 3], &pt[j].x, minter);
+    sub_v3_v3v3(&t2_array[j * 3], &pt[j].x, minter);
   }
 
-  for (i = 0; i < count; i++) {
+  /* This ensures the original stroke is the last one to be processed. */
+  for (i = count - 1; i>=0; i--) {
     if (i != 0) {
       new_gps = BKE_gpencil_stroke_duplicate(gps);
       new_gps->flag |= GP_STROKE_RECALC_GEOMETRY;
@@ -179,15 +192,32 @@ static void duplicateStroke(
     }
 
     pt = new_gps->points;
-    
-    if(count == 1){
+
+    if (count == 1) {
       offset_factor = 0;
-    }else{
-      offset_factor = offset_factor = (float)i / (float)(count-1);
+    }
+    else {
+      offset_factor = (float)i / (float)(count - 1);
+    }
+
+    if (fading) {
+      thickness_factor = (offset_factor > fading_center) ?
+                             (interpf(1 - fading_thickness, 1.0f, offset_factor - fading_center)) :
+                             (interpf(1.0f, 1 - fading_thickness, offset_factor - fading_center + 1));
+      opacity_factor = (offset_factor > fading_center) ?
+                           (interpf(1 - fading_opacity, 1.0f, offset_factor - fading_center)):
+                           (interpf(1.0f, 1 - fading_opacity, offset_factor - fading_center + 1));
     }
 
     for (int j = 0; j < new_gps->totpoints; j++) {
-      interp_v3_v3v3(&pt[j].x, &t1_array[j*3], &t2_array[j*3], interpf(1+offset,offset,offset_factor));
+      interp_v3_v3v3(&pt[j].x,
+                     &t1_array[j * 3],
+                     &t2_array[j * 3],
+                     interpf(1 + offset, offset, offset_factor));
+      if (fading) {
+        pt[j].pressure = gps->points[j].pressure * thickness_factor;
+        pt[j].strength = gps->points[j].strength * opacity_factor;
+      }
     }
   }
   MEM_freeN(t1_array);
@@ -212,7 +242,16 @@ static void bakeModifier(Main *UNUSED(bmain),
           splitStroke(gpf, gps, mmd->split_angle);
         }
         if (mmd->flags & GP_MULTIPLY_ENABLE_DUPLICATION) {
-          duplicateStroke(gpf, gps, mmd->duplications, mmd->distance, mmd->offset, &duplicates);
+          duplicateStroke(gpf,
+                          gps,
+                          mmd->duplications,
+                          mmd->distance,
+                          mmd->offset,
+                          &duplicates,
+                          mmd->flags & GP_MULTIPLY_ENABLE_FADING,
+                          mmd->fading_center,
+                          mmd->fading_thickness,
+                          mmd->fading_opacity);
         }
       }
       if (duplicates.first) {
@@ -238,7 +277,16 @@ static void generateStrokes(
       splitStroke(gpf, gps, mmd->split_angle);
     }
     if (mmd->flags & GP_MULTIPLY_ENABLE_DUPLICATION) {
-      duplicateStroke(gpf, gps, mmd->duplications, mmd->distance, mmd->offset, &duplicates);
+      duplicateStroke(gpf,
+                      gps,
+                      mmd->duplications,
+                      mmd->distance,
+                      mmd->offset,
+                      &duplicates,
+                      mmd->flags & GP_MULTIPLY_ENABLE_FADING,
+                      mmd->fading_center,
+                      mmd->fading_thickness,
+                      mmd->fading_opacity);
     }
   }
   if (duplicates.first) {
