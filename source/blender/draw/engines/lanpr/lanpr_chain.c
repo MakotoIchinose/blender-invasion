@@ -441,9 +441,7 @@ LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBuffer *r
   else {
     LANPR_BoundingArea *ch = root->child;
 #define IN_BOUND(ba, rlci) \
-  \ 
-    ba.l <= rlci->pos[0] && \
-      ba.r >= rlci->pos[0] && ba.b <= rlci->pos[1] && ba.u >= rlci->pos[1]
+  ba.l <= rlci->pos[0] && ba.r >= rlci->pos[0] && ba.b <= rlci->pos[1] && ba.u >= rlci->pos[1]
 
     if (IN_BOUND(ch[0], rlci)) {
       return lanpr_get_rlci_bounding_area_recursive(rb, &ch[0], rlci);

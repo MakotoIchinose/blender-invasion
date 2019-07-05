@@ -450,16 +450,20 @@ void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
     list_append_pointer_static_pool(&rb->render_data_pool, &RootBoundingArea->linked_lines, rl);
   }
   else {
-    if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[0])) {
+    if (lanpr_line_crosses_bounding_area(
+            rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[0])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[0], rl);
     }
-    else if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[1])) {
+    else if (lanpr_line_crosses_bounding_area(
+                 rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[1])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[1], rl);
     }
-    else if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[2])) {
+    else if (lanpr_line_crosses_bounding_area(
+                 rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[2])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[2], rl);
     }
-    else if (lanpr_line_crosses_bounding_area(rb, rl->l, rl->r, &RootBoundingArea->child[3])) {
+    else if (lanpr_line_crosses_bounding_area(
+                 rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[3])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[3], rl);
     }
   }
@@ -591,10 +595,7 @@ static LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_Boundin
   else {
     LANPR_BoundingArea *ch = ba->child;
 #define IN_BOUND(i, x, y) \
-  \ 
-    ba->child[i] \
-              .l <= x && \
-      ba->child[i].r >= x && ba->child[i].b <= y && ba->child[i].u >= y
+  ba->child[i].l <= x && ba->child[i].r >= x && ba->child[i].b <= y && ba->child[i].u >= y
 
     if (IN_BOUND(0, x, y)) {
       return lanpr_get_point_bounding_area_recursive(&ba->child[0], x, y);
