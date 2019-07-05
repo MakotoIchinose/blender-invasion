@@ -760,11 +760,16 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             if lanpr.master_mode == "DPIX":
                 layout.label(text="Cache Size:")
                 layout.prop(lanpr,"gpu_cache_size", expand=True)
+                layout.prop(lanpr,"enable_intersections", text = "Intersection Lines")
 
             layout.prop(lanpr, "disable_edge_splits")
             
             layout.prop(lanpr, "background_color")
             layout.prop(lanpr, "crease_threshold")
+
+            if lanpr.master_mode == "DPIX" and len(lanpr.layers)==0:
+                layout.label(text="You don't have a layer to display.")
+                layout.operator("scene.lanpr_add_line_layer");
 
             if lanpr.master_mode == "SOFTWARE":
                 row = layout.row()
