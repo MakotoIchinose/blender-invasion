@@ -866,7 +866,7 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             col.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
             col = split.column()
             row = col.row(align = True)
-            #row.enabled = active_layer.enable_contour this is always enabled now
+            row.enabled = active_layer.enable_contour
             row.prop(active_layer, "contour_color", text="")
             row.prop(active_layer, "thickness_contour", text="", slider=True)
             row = col.row(align = True)
@@ -882,18 +882,18 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             row.prop(active_layer, "material_color", text="")
             row.prop(active_layer, "thickness_material", text="", slider=True)
             row = col.row(align = True)
-            if lanpr.enable_intersections:
-                row.enabled = active_layer.enable_intersection
-                row.prop(active_layer, "intersection_color", text="")
-                row.prop(active_layer, "thickness_intersection", text="", slider=True)
-            else:
-                row.label(text= "Intersection Calculation Disabled")
+            row.enabled = (active_layer.enable_intersection and lanpr.enable_intersections)
+            row.prop(active_layer, "intersection_color", text="")
+            row.prop(active_layer, "thickness_intersection", text="", slider=True)
 
-        if lanpr.master_mode == "DPIX" and active_layer.enable_intersection:
-            row = col.row(align = True)
-            row.prop(lanpr,"enable_intersections", toggle = True, text = "Enable")
-            if lanpr.enable_intersections:
-                row.operator("scene.lanpr_calculate", text= "Recalculate")
+            if lanpr.master_mode == "DPIX" and active_layer.enable_intersection:
+                row = col.row(align = True)
+                row.prop(lanpr,"enable_intersections", toggle = True, text = "Enable")
+                if lanpr.enable_intersections:
+                    row.operator("scene.lanpr_calculate", text= "Recalculate")
+
+        if not lanpr.enable_intersections:
+            layout.label(text= "Intersection calculation disabled.")
 
 class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
     bl_label = "Including"
