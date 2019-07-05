@@ -4710,8 +4710,8 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
   CollectionObject *co;
   CollectionChild *cc;
 
-  for (co = source_only ? source_only : col->gobject.first; co; co = co->next) {
-    ob = co->ob;
+  for (co = col->gobject.first; co||source_only; co = co->next) {
+    ob = source_only ? source_only : co->ob;
     for (md = ob->modifiers.first; md; md = md->next) {
       if (md->type == eModifierType_FeatureLine) {
         FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
@@ -5055,6 +5055,7 @@ void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot)
   ot->exec = lanpr_update_gp_target_exec;
 }
 
+/* Not working due to lack of GP flags for the object */
 void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 {
   ot->name = "Update Strokes";

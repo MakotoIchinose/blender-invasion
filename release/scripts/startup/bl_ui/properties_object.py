@@ -413,12 +413,14 @@ class OBJECT_PT_lanpr(ObjectButtonsPanel, Panel):
     def draw(self, context):
         layout=self.layout
         lanpr = context.object.lanpr
-        layout.label(text='Usage:')
-        row = layout.row()
-        row.prop(lanpr,'usage',expand=True)
         if context.object.type == 'MESH':
-            layout.operator("object.lanpr_update_gp_source")
-        elif context.object.type == 'GPENCIL':
+            layout.label(text='Usage:')
+            row = layout.row()
+            row.prop(lanpr,'usage',expand=True)
+        #if context.object.type == 'MESH':
+        #    layout.operator("object.lanpr_update_gp_source")
+        if context.object.type == 'GPENCIL':
+            layout.prop(context.scene.lanpr,"gpencil_overwrite", text="Overwrite Frame", toggle=True)
             layout.operator("object.lanpr_update_gp_target")
         
 
