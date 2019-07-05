@@ -703,7 +703,7 @@ class LANPR_UL_linesets(UIList):
             row = split.row(align=True)
             s2 = row.split(factor=0.5,align=True)
             if lineset.use_same_style:
-                row.prop(lineset, "contour_color", text="")
+                row.prop(lineset, "color", text="")
                 row.prop(lineset, "thickness", text="", icon_value=icon)
             else:
                 r = s2.row(align=True)
@@ -740,7 +740,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         layout = self.layout
 
-        layout.active = lanpr.enabled
+        layout.active = scene.render.engine=="BLENDER_LANPR" or lanpr.enabled
 
         layout.prop(lanpr, "master_mode", expand=True) 
 
@@ -827,7 +827,7 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and active_layer and lanpr.master_mode != "SNAKE"
+        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode != "SNAKE"
 
     def draw(self, context):
         layout = self.layout
@@ -907,7 +907,7 @@ class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and active_layer and lanpr.master_mode == "SOFTWARE" and not lanpr.enable_chaining
+        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "SOFTWARE" and not lanpr.enable_chaining
 
     def draw(self, context):
         layout = self.layout
@@ -947,7 +947,7 @@ class RENDER_PT_lanpr_line_effects(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and active_layer and (lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE")
+        return scene.render.engine=="BLENDER_LANPR" and active_layer and (lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE")
 
     def draw(self, context):
         layout = self.layout
@@ -988,7 +988,7 @@ class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and lanpr.master_mode == "SNAKE"
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.master_mode == "SNAKE"
 
     def draw(self, context):
         layout = self.layout
@@ -1011,7 +1011,7 @@ class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.enabled and lanpr.master_mode == "SNAKE" and lanpr.enable_vector_trace == "ENABLED"
+        return scene.render.engine=="BLENDER_LANPR" and lanpr.master_mode == "SNAKE" and lanpr.enable_vector_trace == "ENABLED"
 
     def draw(self, context):
         layout = self.layout
@@ -1068,7 +1068,7 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return lanpr.enabled and lanpr.master_mode == "SOFTWARE" and lanpr.enable_chaining
+        return lanpr.master_mode == "SOFTWARE" and lanpr.enable_chaining
 
     def draw(self, context):
         layout = self.layout
