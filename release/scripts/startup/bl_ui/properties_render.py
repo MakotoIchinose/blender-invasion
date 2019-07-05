@@ -729,7 +729,8 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         return True
 
     def draw_header(self, context):
-        self.layout.prop(context.scene.lanpr, "enabled", text="")
+        if context.scene.render.engine != 'BLENDER_LANPR':
+            self.layout.prop(context.scene.lanpr, "enabled", text="")
 
     def draw(self, context):
         scene = context.scene

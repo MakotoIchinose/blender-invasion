@@ -4320,8 +4320,9 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
   LANPR_RenderBuffer *rb;
   Scene *s = DEG_get_evaluated_scene(depsgraph);
   SceneLANPR *lanpr = &s->lanpr;
+  int is_lanpr_engine = !strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!lanpr->enabled) {
+  if (!is_lanpr_engine && !lanpr->enabled) {
     return OPERATOR_CANCELLED;
   }
 
@@ -4358,8 +4359,7 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
   }
 
   /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
-  if ((lanpr->enable_chaining || strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) &&
-      (!intersectons_only)) {
+  if ((lanpr->enable_chaining || !is_lanpr_engine) && (!intersectons_only)) {
     lanpr_NO_THREAD_chain_feature_lines(rb); /*  should use user_adjustable value */
     lanpr_split_chains_for_fixed_occlusion(rb);
     lanpr_connect_chains(rb, 1);
@@ -4389,8 +4389,9 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
   int result;
+  int is_lanpr_engine = !strcmp(scene->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!lanpr->enabled) {
+  if (!is_lanpr_engine && !lanpr->enabled) {
     return OPERATOR_CANCELLED;
   }
 
