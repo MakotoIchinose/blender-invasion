@@ -748,7 +748,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             return;
 
         if mode == "DPIX" and lanpr.shader_error:
-            layout.label(text="DPIX transfor shader compile error!")
+            layout.label(text="DPIX transform shader compile error!")
             return;
 
         if mode == "SOFTWARE" or mode == "DPIX":

@@ -293,6 +293,8 @@ static void lanpr_cache_init(void *vedata)
                               &lanpr->crease_fade_threshold,
                               1);
     DRW_shgroup_uniform_int(
+        stl->g_data->dpix_transform_shgrp, "enable_contour", &ll->enable_contour, 1);
+    DRW_shgroup_uniform_int(
         stl->g_data->dpix_transform_shgrp, "enable_crease", &ll->enable_crease, 1);
     DRW_shgroup_uniform_int(
         stl->g_data->dpix_transform_shgrp, "enable_material", &ll->enable_material_seperate, 1);
