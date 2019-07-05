@@ -742,8 +742,12 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         if mode == "SOFTWARE" or mode == "DPIX":
 
             if scene.render.engine!="BLENDER_LANPR":
-                row=layout.row()
-                row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+                row=layout.row(align=True)
+                row.prop(lanpr,"auto_update",toggle=True,text='Auto Update')
+                row.prop(lanpr,"gpencil_overwrite",toggle=True,text='Overwrite')
+                if not lanpr.auto_update:
+                    row=layout.row()
+                    row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
                 row=layout.row()
                 row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
             else:

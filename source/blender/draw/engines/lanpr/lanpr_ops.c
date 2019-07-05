@@ -4724,6 +4724,11 @@ void lanpr_update_gp_strokes_recursive(Depsgraph *dg, struct Collection *col, in
           }
           gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
 
+          if (gpf->strokes.first &&
+              !lanpr_share.render_buffer_shared->scene->lanpr.gpencil_overwrite) {
+            continue;
+          }
+
           if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
             BKE_gpencil_free_strokes(gpf);
             gpf->flag |= GP_FRAME_LANPR_CLEARED;
@@ -4776,6 +4781,10 @@ void lanpr_update_gp_strokes_collection(Depsgraph *dg, struct Collection *col, i
     gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
   }
   gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+
+  if (gpf->strokes.first && !lanpr_share.render_buffer_shared->scene->lanpr.gpencil_overwrite) {
+    return;
+  }
 
   if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
     BKE_gpencil_free_strokes(gpf);

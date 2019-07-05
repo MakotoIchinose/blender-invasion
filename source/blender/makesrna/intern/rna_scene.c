@@ -7211,6 +7211,12 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Auto Update", "Automatically update LANPR cache when scene changes");
 
+  prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(prop,
+                           "GPencil Overwrite",
+                           "Overwrite existing strokes in the current frame of target GP objects");
+
   prop = RNA_def_property(srna, "reloaded", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, DEBUG_rna_enum_lanpr_reload);
   RNA_def_property_enum_default(prop, 0);

@@ -1696,7 +1696,8 @@ typedef struct SceneLANPR {
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 
-  char _pad2[4];
+  /* Overwrite existing strokes in this frame. */
+  int gpencil_overwrite;
 
 } SceneLANPR;
 
