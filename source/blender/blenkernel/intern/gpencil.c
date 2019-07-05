@@ -2044,6 +2044,43 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   return true;
 }
 
+/* Check if to v3 are equal but with a limit in the precission to get some tolerance.
+ *
+ * \param v1: First value.
+ * \param v2: Second value.
+ * \param limit: Maximum difference limit.
+ * \return: True
+ */
+static bool equals_v4v4_limit(const float v1[4], const float v2[4], const float limit)
+{
+  float vd[4];
+  vd[0] = fabsf(v1[0] - v2[0]);
+  vd[1] = fabsf(v1[1] - v2[1]);
+  vd[2] = fabsf(v1[2] - v2[2]);
+  vd[3] = fabsf(v1[3] - v2[3]);
+
+  if ((vd[0] > limit) || (vd[1] > limit) || (vd[2] > limit) || (vd[3] > limit)) {
+    return false;
+  }
+
+  return true;
+}
+
+/* Check if to v3 are equal but with a limit in the precission to get some tolerance.
+ *
+ * \param v1: First value.
+ * \param v2: Second value.
+ * \param limit: Maximum difference limit.
+ * \return: True
+ */
+static bool equals_v3v3_limit(const float v1[3], const float v2[3], const float limit)
+{
+  float v1a[4], v2a[4];
+  ARRAY_SET_ITEMS(v1a, v1[0], v1[1], v1[2], 0.0f);
+  ARRAY_SET_ITEMS(v2a, v2[0], v2[1], v2[2], 0.0f);
+  return equals_v4v4_limit(v1a, v2a, limit);
+}
+
 /* Helper function to check materials with same color */
 static int gpencil_check_same_material_color(Object *ob_gp, Material *mat_cu, Material *r_mat)
 {
@@ -2051,11 +2088,16 @@ static int gpencil_check_same_material_color(Object *ob_gp, Material *mat_cu, Ma
   float color_cu[4] = {mat_cu->r, mat_cu->g, mat_cu->b, mat_cu->a};
   linearrgb_to_srgb_v3_v3(color_cu, &mat_cu->r);
   color_cu[3] = 1.0f;
-
+  float hsv1[3];
+  rgb_to_hsv_v(color_cu, hsv1);
   for (int i = 1; i <= ob_gp->totcol; i++) {
     ma = give_current_material(ob_gp, i);
     MaterialGPencilStyle *gp_style = ma->gp_style;
-    if (equals_v4v4(color_cu, gp_style->fill_rgba)) {
+    /* Check color with small tolerance (better in HSV). */
+    float hsv2[3];
+    rgb_to_hsv_v(gp_style->fill_rgba, hsv2);
+
+    if (equals_v3v3_limit(hsv1, hsv2, 0.01f)) {
       r_mat = ma;
       return i - 1;
     }
@@ -2146,7 +2188,7 @@ void BKE_gpencil_convert_curve(
     /* Check if grease pencil has a material with same color.*/
     int r_idx = gpencil_check_same_material_color(ob_gp, mat_cu, mat_gp);
     if (r_idx < 0) {
-      mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, "GPMat", &r_idx);
+      mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, "Material", &r_idx);
       MaterialGPencilStyle *gp_style = mat_gp->gp_style;
       if (gpencil_lines) {
         ARRAY_SET_ITEMS(gp_style->stroke_rgba, 0.0f, 0.0f, 0.0f, 1.0f);
