@@ -4456,9 +4456,9 @@ LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->qi_begin = ll->qi_end = max_occ + 1;
   ll->use_same_style = 1;
   ll->thickness = 1.0f;
-  ll->color[0] = 1.0f;
-  ll->color[1] = 1.0f;
-  ll->color[2] = 1.0f;
+  ll->color[0] = 0.0f;
+  ll->color[1] = 0.0f;
+  ll->color[2] = 0.0f;
   ll->color[3] = 1.0f;
   ll->enable_contour = 1;
   ll->enable_crease = 1;
@@ -4647,9 +4647,9 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   ll = lanpr_new_line_layer(lanpr);
   ll->thickness = 1.7;
-  ll->color[0] = 1;
-  ll->color[1] = 1;
-  ll->color[2] = 1;
+  ll->color[0] = 0;
+  ll->color[1] = 0;
+  ll->color[2] = 0;
 
   lanpr_enable_all_line_types_exec(C, op);
 
@@ -4657,8 +4657,8 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
   ll->thickness = 0.9;
   ll->qi_begin = 1;
   ll->qi_end = 1;
-  ll->color[0] = 0.314;
-  ll->color[1] = 0.596;
+  ll->color[0] = 0.1;
+  ll->color[1] = 0.1;
   ll->color[2] = 1;
 
   lanpr_enable_all_line_types_exec(C, op);
@@ -4667,9 +4667,9 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
   ll->thickness = 0.7;
   ll->qi_begin = 2;
   ll->qi_end = 2;
-  ll->color[0] = 0.135;
-  ll->color[1] = 0.304;
-  ll->color[2] = 0.508;
+  ll->color[0] = 0.2;
+  ll->color[1] = 0.2;
+  ll->color[2] = 0.2;
 
   lanpr_enable_all_line_types_exec(C, op);
 

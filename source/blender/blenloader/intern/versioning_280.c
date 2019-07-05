@@ -3529,20 +3529,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
       sce->lanpr.enable_intersections = 1;
 
-      sce->lanpr.background_color[0] = 0;
-      sce->lanpr.background_color[1] = 0;
-      sce->lanpr.background_color[2] = 0;
+      sce->lanpr.background_color[0] = 0.75;
+      sce->lanpr.background_color[1] = 0.75;
+      sce->lanpr.background_color[2] = 0.75;
       sce->lanpr.background_color[3] = 1;
 
-      sce->lanpr.line_color[0] = 1;
-      sce->lanpr.line_color[1] = 1;
-      sce->lanpr.line_color[2] = 1;
-      sce->lanpr.line_color[3] = 1;
+      sce->lanpr.line_color[0] = 0;
+      sce->lanpr.line_color[1] = 0;
+      sce->lanpr.line_color[2] = 0;
+      sce->lanpr.line_color[3] = 0;
 
       sce->lanpr.enable_intersections = 1;
       sce->lanpr.enable_chaining = 1;
-      sce->lanpr.chaining_image_threshold = 0.01;
-      sce->lanpr.chaining_geometry_threshold = 0.1;
+      sce->lanpr.chaining_image_threshold = 0.01f;
+      sce->lanpr.chaining_geometry_threshold = 0.0f;
 
       sce->lanpr.disable_edge_splits = 1;
     }
