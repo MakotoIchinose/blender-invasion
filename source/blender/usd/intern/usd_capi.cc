@@ -117,9 +117,9 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
 
     if (data->params.export_animation) {
       // Writing the animated frames is 80% of the work.
-      float progress_per_frame = 0.8f / std::max(1, (scene->r.efra - scene->r.sfra));
+      float progress_per_frame = 0.8f / std::max(1, (scene->r.efra - scene->r.sfra + 1));
 
-      for (float frame = scene->r.sfra; frame < scene->r.efra; frame++) {
+      for (float frame = scene->r.sfra; frame <= scene->r.efra; frame++) {
         printf("\033[35;1mFRAME\033[0m %f\n", frame);
         // Update the scene for the next frame to render.
         scene->r.cfra = static_cast<int>(frame);
