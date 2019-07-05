@@ -168,6 +168,32 @@ int BKE_camera_sensor_fit(int sensor_fit, float sizex, float sizey)
   return sensor_fit;
 }
 
+void BKE_camera_sensor_size_for_render(const Camera *camera,
+                                       const struct RenderData *rd,
+                                       float *r_sensor_x,
+                                       float *r_sensor_y)
+{
+  /* Compute the final image size in pixels. */
+  float sizex = rd->xsch * rd->xasp;
+  float sizey = rd->ysch * rd->yasp;
+
+  int sensor_fit = BKE_camera_sensor_fit(camera->sensor_fit, sizex, sizey);
+
+  switch (sensor_fit) {
+    case CAMERA_SENSOR_FIT_HOR:
+      *r_sensor_x = camera->sensor_x;
+      *r_sensor_y = camera->sensor_x * sizey / sizex;
+      break;
+    case CAMERA_SENSOR_FIT_VERT:
+      *r_sensor_x = camera->sensor_y * sizex / sizey;
+      *r_sensor_y = camera->sensor_y;
+      break;
+    case CAMERA_SENSOR_FIT_AUTO:
+      BLI_assert(!"Camera fit should be either horizontal or vertical");
+      break;
+  }
+}
+
 /******************************** Camera Params *******************************/
 
 void BKE_camera_params_init(CameraParams *params)

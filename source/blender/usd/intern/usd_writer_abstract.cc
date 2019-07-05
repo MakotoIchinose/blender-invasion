@@ -25,7 +25,7 @@ USDAbstractWriter::~USDAbstractWriter()
 {
 }
 
-bool USDAbstractWriter::is_supported() const
+bool USDAbstractWriter::is_supported(const Object * /*object*/) const
 {
   return true;
 }

@@ -2,6 +2,7 @@
 
 #include "usd_hierarchy_iterator.h"
 #include "usd_writer_abstract.h"
+#include "usd_writer_camera.h"
 #include "usd_writer_hair.h"
 #include "usd_writer_mesh.h"
 #include "usd_writer_transform.h"
@@ -85,6 +86,9 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_MESH:
       data_writer = new USDMeshWriter(usd_export_context);
       break;
+    case OB_CAMERA:
+      data_writer = new USDCameraWriter(usd_export_context);
+      break;
 
     case OB_EMPTY:
     case OB_CURVE:
@@ -92,7 +96,6 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_FONT:
     case OB_MBALL:
     case OB_LAMP:
-    case OB_CAMERA:
     case OB_SPEAKER:
     case OB_LIGHTPROBE:
     case OB_LATTICE:
@@ -107,7 +110,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
       return nullptr;
   }
 
-  if (!data_writer->is_supported()) {
+  if (!data_writer->is_supported(context.object)) {
     // printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
     //        context.object->id.name,
     //        context.object->type);

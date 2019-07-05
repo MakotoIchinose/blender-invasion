@@ -37,7 +37,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
 
   /* Returns true iff the data to be written is actually supported. This would, for example, allow
    * a hypothetical camera writer accept a perspective camera but reject an orthogonal one. */
-  virtual bool is_supported() const;
+  virtual bool is_supported(const Object *object) const;
 
   const pxr::SdfPath &usd_path() const;
 

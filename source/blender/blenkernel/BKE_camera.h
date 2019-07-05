@@ -61,6 +61,12 @@ float BKE_camera_object_dof_distance(struct Object *ob);
 int BKE_camera_sensor_fit(int sensor_fit, float sizex, float sizey);
 float BKE_camera_sensor_size(int sensor_fit, float sensor_x, float sensor_y);
 
+/* Return the clamped sensor width/height for the given render data. */
+void BKE_camera_sensor_size_for_render(const struct Camera *camera,
+                                       const struct RenderData *rd,
+                                       float *r_sensor_x,
+                                       float *r_sensor_y);
+
 /* Camera Parameters:
  *
  * Intermediate struct for storing camera parameters from various sources,
