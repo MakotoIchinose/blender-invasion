@@ -161,6 +161,8 @@ static void duplicateStroke(
     pt = new_gps->points;
     offset_factor = (float)i / (float)count;
 
+    float* result_array = MEM_callocN(sizeof(float)*3*new_gps->totpoints,"duplicate_temp_result_array");
+
     for (int j = 0; j < new_gps->totpoints; j++) {
       if (j == 0) {
         minter_v3_v3v3v3_ref(minter, NULL, &pt[j].x, &pt[j + 1].x, stroke_normal);
@@ -174,8 +176,14 @@ static void duplicateStroke(
       mul_v3_fl(minter, dist);
       add_v3_v3v3(target1, &pt[j].x, minter);
       sub_v3_v3v3(target2, &pt[j].x, minter);
-      interp_v3_v3v3(&pt[j].x, target1, target2, offset_factor + offset / 2);
+      interp_v3_v3v3(&result_array[j*3], target1, target2, offset_factor + offset / 2);
     }
+    for (int j = 0; j < new_gps->totpoints; j++) {
+      copy_v3_v3(&pt[j].x,&result_array[j*3]);
+    }
+
+    MEM_freeN(result_array);
+
   }
 }
 
