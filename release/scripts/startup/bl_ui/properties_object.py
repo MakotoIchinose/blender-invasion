@@ -416,6 +416,11 @@ class OBJECT_PT_lanpr(ObjectButtonsPanel, Panel):
         layout.label(text='Usage:')
         row = layout.row()
         row.prop(lanpr,'usage',expand=True)
+        if context.object.type == 'MESH':
+            layout.operator("object.lanpr_update_gp_source")
+        elif context.object.type == 'GPENCIL':
+            layout.operator("object.lanpr_update_gp_target")
+        
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
