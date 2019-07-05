@@ -103,7 +103,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
 
     // Set up the stage for animated data.
-    if (data->params.do_animation) {
+    if (data->params.export_animation) {
       usd_stage->SetTimeCodesPerSecond(FPS);
       usd_stage->SetStartTimeCode(scene->r.sfra);
       usd_stage->SetEndTimeCode(scene->r.efra);
@@ -111,7 +111,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
 
     USDHierarchyIterator iter(data->depsgraph, usd_stage, data->params);
 
-    if (data->params.do_animation) {
+    if (data->params.export_animation) {
       for (float frame = scene->r.sfra; frame < scene->r.efra; frame++) {
         *progress = 0.09 * frame;
 

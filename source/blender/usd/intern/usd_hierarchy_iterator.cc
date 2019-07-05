@@ -120,6 +120,9 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_hair_writer(const HierarchyContext &context)
 {
+  if (!params.export_hair) {
+    return nullptr;
+  }
   return new USDHairWriter(create_usd_export_context(context));
 }
 

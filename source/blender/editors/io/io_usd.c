@@ -84,10 +84,12 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
   const bool selected_objects_only = RNA_boolean_get(op->ptr, "selected_objects_only");
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
-  const bool animation = RNA_boolean_get(op->ptr, "animation");
+  const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
+  const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
 
   struct USDExportParams params = {
-      animation,
+      export_animation,
+      export_hair,
       selected_objects_only,
       visible_objects_only,
   };
@@ -115,21 +117,24 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                   false,
                   "Only Export Selected Objects",
                   "Only selected objects are exported. Unselected parents of selected objects are "
-                  "exported as empty transform.");
+                  "exported as empty transform");
 
   RNA_def_boolean(ot->srna,
                   "visible_objects_only",
                   false,
                   "Only Export Visible Objects",
                   "Only visible objects are exported. Invisible parents of visible objects are "
-                  "exported as empty transform.");
+                  "exported as empty transform");
 
   RNA_def_boolean(ot->srna,
-                  "animation",
-                  false,
+                  "export_animation",
+                  true,
                   "Export Animation",
                   "When true, the render frame range is exported. When false, only the current "
-                  "frame is exported.");
+                  "frame is exported");
+
+  RNA_def_boolean(
+      ot->srna, "export_hair", false, "Export Hair", "When true, hair is exported as USD curves");
 
   RNA_def_boolean(
       ot->srna,

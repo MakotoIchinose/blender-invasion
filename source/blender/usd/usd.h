@@ -29,7 +29,8 @@ struct Scene;
 struct bContext;
 
 struct USDExportParams {
-  bool do_animation;
+  bool export_animation;
+  bool export_hair;
   bool selected_objects_only;
   bool visible_objects_only;
 };
