@@ -3479,7 +3479,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.mark_sharp")
             col.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
 
-            if render.use_freestyle:
+            if render.use_freestyle or context.scene.lanpr.enabled:
                 col.separator()
 
                 col.operator("mesh.mark_freestyle_edge").clear = False
