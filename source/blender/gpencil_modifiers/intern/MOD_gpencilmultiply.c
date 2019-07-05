@@ -148,6 +148,26 @@ static void duplicateStroke(
     normalize_v3(stroke_normal);
   }
 
+  float* t1_array = MEM_callocN(sizeof(float)*3*gps->totpoints,"duplicate_temp_result_array_1");
+  float* t2_array = MEM_callocN(sizeof(float)*3*gps->totpoints,"duplicate_temp_result_array_2");
+  
+  pt= gps->points;
+
+  for (int j = 0; j < gps->totpoints; j++) {
+    if (j == 0) {
+      minter_v3_v3v3v3_ref(minter, NULL, &pt[j].x, &pt[j + 1].x, stroke_normal);
+    }
+    else if (j == gps->totpoints - 1) {
+      minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, NULL, stroke_normal);
+    }
+    else {
+      minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, &pt[j + 1].x, stroke_normal);
+    }
+    mul_v3_fl(minter, dist);
+    add_v3_v3v3(&t1_array[j*3], &pt[j].x, minter);
+    sub_v3_v3v3(&t2_array[j*3], &pt[j].x, minter);
+  }
+
   for (i = 0; i < count; i++) {
     if (i != 0) {
       new_gps = BKE_gpencil_stroke_duplicate(gps);
@@ -159,32 +179,19 @@ static void duplicateStroke(
     }
 
     pt = new_gps->points;
-    offset_factor = (float)i / (float)count;
-
-    float* result_array = MEM_callocN(sizeof(float)*3*new_gps->totpoints,"duplicate_temp_result_array");
-
-    for (int j = 0; j < new_gps->totpoints; j++) {
-      if (j == 0) {
-        minter_v3_v3v3v3_ref(minter, NULL, &pt[j].x, &pt[j + 1].x, stroke_normal);
-      }
-      else if (j == new_gps->totpoints - 1) {
-        minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, NULL, stroke_normal);
-      }
-      else {
-        minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, &pt[j + 1].x, stroke_normal);
-      }
-      mul_v3_fl(minter, dist);
-      add_v3_v3v3(target1, &pt[j].x, minter);
-      sub_v3_v3v3(target2, &pt[j].x, minter);
-      interp_v3_v3v3(&result_array[j*3], target1, target2, offset_factor + offset / 2);
-    }
-    for (int j = 0; j < new_gps->totpoints; j++) {
-      copy_v3_v3(&pt[j].x,&result_array[j*3]);
+    
+    if(count == 1){
+      offset_factor = 0;
+    }else{
+      offset_factor = offset_factor = (float)i / (float)(count-1);
     }
 
-    MEM_freeN(result_array);
-
+    for (int j = 0; j < new_gps->totpoints; j++) {
+      interp_v3_v3v3(&pt[j].x, &t1_array[j*3], &t2_array[j*3], interpf(1+offset,offset,offset_factor));
+    }
   }
+  MEM_freeN(t1_array);
+  MEM_freeN(t2_array);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),

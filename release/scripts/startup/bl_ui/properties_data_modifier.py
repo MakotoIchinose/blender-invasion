@@ -2357,7 +2357,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         if md.enable_duplication:
             col.prop(md,"duplications")
             col.prop(md,"distance")
-            col.prop(md,"offset")
+            col.prop(md,"offset", slider=True)
 
         col = sp.column()
         col.prop(md, "enable_angle_splitting")

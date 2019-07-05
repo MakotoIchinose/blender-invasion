@@ -1780,7 +1780,7 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_range(prop, -1, 1, 0.1, 3);
   RNA_def_property_ui_text(prop, "Offset", "Offset of duplications. -1 to 1: inner to outer");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
