@@ -624,14 +624,19 @@ typedef struct MultiplyGpencilModifierData {
   float distance;
   float offset; /* -1:inner 0:middle 1:outer */
 
+  float fading_center;
+  float fading_thickness;
+  float fading_opacity;
+
   float split_angle; /* in rad not deg */
 
-  char _pad[4];
+  /* char _pad[4]; */
 } MultiplyGpencilModifierData;
 
 typedef enum eMultiplyGpencil_Flag {
   GP_MULTIPLY_ENABLE_DUPLICATION = (1 << 0),
   GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),
+  GP_MULTIPLY_ENABLE_FADING = (1<<2),
 } eMultiplyGpencil_Flag;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

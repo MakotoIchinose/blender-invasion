@@ -2358,11 +2358,19 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
             col.prop(md,"duplications")
             col.prop(md,"distance")
             col.prop(md,"offset", slider=True)
+        
+            col.prop(md,"enable_fading")
+            if md.enable_fading:
+                col.prop(md, "fading_center")
+                c = col.column(align = True)
+                c.prop(md, "fading_thickness", slider=True)
+                c.prop(md, "fading_opacity", slider=True)
 
         col = sp.column()
         col.prop(md, "enable_angle_splitting")
         if md.enable_angle_splitting:
             col.prop(md,"split_angle")
+
 
         
 

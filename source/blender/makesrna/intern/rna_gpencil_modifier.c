@@ -1764,6 +1764,11 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Angle Splitting", "Enable angle splitting");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
+  prop = RNA_def_property(srna, "enable_fading", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_FADING);
+  RNA_def_property_ui_text(prop, "Enable Fading", "Enable fading");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
   prop = RNA_def_property(srna, "split_angle", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0, M_PI);
   RNA_def_property_ui_text(prop, "Angle", "Split angle for segments");
@@ -1782,6 +1787,23 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_range(prop, -1, 1, 0.1, 3);
   RNA_def_property_ui_text(prop, "Offset", "Offset of duplications. -1 to 1: inner to outer");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fading_thickness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_float_default(prop, 0.5);
+  RNA_def_property_ui_text(prop, "Thickness", "Fade influence of stroke's thickness");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fading_opacity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_float_default(prop, 0.5);
+  RNA_def_property_ui_text(prop, "Opacity", "Fade influence of stroke's opacity");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fading_center", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_ui_text(prop, "Center", "Fade center");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
