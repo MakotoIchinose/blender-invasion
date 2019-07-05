@@ -102,9 +102,11 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   {
     Timer usd_write_timer_("Writing to USD");
 
-    // Create a stage with the Only Correct up-axis.
+    // Create a stage and set up the metadata.
     pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
     usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
+    usd_stage->SetMetadata(pxr::UsdGeomTokens->metersPerUnit,
+                           pxr::VtValue(scene->unit.scale_length));
 
     // Set up the stage for animated data.
     if (data->params.export_animation) {
