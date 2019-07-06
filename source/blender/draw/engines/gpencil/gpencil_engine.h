@@ -438,6 +438,10 @@ void GPENCIL_render_to_image(void *vedata,
                              struct RenderLayer *render_layer,
                              const rcti *rect);
 
+/* TODO: GPXX workaround function to call free memory from draw manager while draw manager support
+ * scene finish callback. */
+void DRW_gpencil_free_runtime_data(void *ved);
+
 /* Use of multisample framebuffers. */
 #define MULTISAMPLE_GP_SYNC_ENABLE(lvl, fbl) \
   { \
