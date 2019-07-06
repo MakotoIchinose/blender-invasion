@@ -86,6 +86,13 @@ extern "C" {
 
 namespace {
 
+struct Mesh_export {
+  Object *object;
+  Mesh *mesh;
+  float mat[4][4];
+  bool needs_free;
+};
+
 using namespace common;
 
 std::string get_path(const char *const original_path,
@@ -235,146 +242,136 @@ bool OBJ_export_curve(bContext *UNUSED(C),
   return true;
 }
 
-bool OBJ_export_mesh(bContext *UNUSED(C),
-                     ExportSettings *settings,
-                     std::FILE *file,
-                     const Object *eob,
-                     Mesh *mesh,
-                     const float mat[4][4],
-                     ulong &vertex_total,
-                     ulong &uv_total,
-                     ulong &no_total,
-                     dedup_pair_t<uv_key_t> &uv_mapping_pair /* IN OUT */,
-                     dedup_pair_t<no_key_t> &no_mapping_pair /* IN OUT */)
+bool OBJ_export_meshes(bContext *UNUSED(C),
+                       ExportSettings *settings,
+                       const Scene *const UNUSED(escene),
+                       std::FILE *file,
+                       const std::vector<Mesh_export> &meshes)
 {
+  if (meshes.size() == 0) {
+    return true;
+  }
 
+  const OBJExportSettings *format_specific = (OBJExportSettings *)settings->format_specific;
+
+  ulong uv_total = 0, no_total = 0;
+  auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(
+      format_specific->dedup_uvs_threshold);
+  auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(
+      format_specific->dedup_normals_threshold);
   auto &uv_mapping = uv_mapping_pair.second;
   auto &no_mapping = no_mapping_pair.second;
 
   ulong uv_initial_count = uv_mapping.size();
   ulong no_initial_count = no_mapping.size();
 
-  if (mesh->totvert == 0)
-    return true;
-
-  const OBJExportSettings *format_specific = (OBJExportSettings *)settings->format_specific;
-
-  if (format_specific->export_objects_as_objects || format_specific->export_objects_as_groups) {
-    std::string name = common::get_object_name(eob, mesh);
-    if (format_specific->export_objects_as_objects)
-      fprintf(file, "o %s\n", name.c_str());
-    else
-      fprintf(file, "g %s\n", name.c_str());
-  }
-
-  for (const std::array<float, 3> &v : common::transformed_vertex_iter(mesh, mat)) {
-    fprintf(file, "v %.6g %.6g %.6g\n", v[0], v[1], v[2]);
+  for (const Mesh_export &me : meshes) {
+    for (const std::array<float, 3> &v : common::transformed_vertex_iter(me.mesh, me.mat)) {
+      fprintf(file, "v %.6g %.6g %.6g\n", v[0], v[1], v[2]);
+    }
   }
 
   // handles non-existant uvs
   if (settings->export_uvs) {
-    // TODO someone Is T47010 still relevant?
-    if (format_specific->dedup_uvs)
-      for (const std::array<float, 2> &uv :
-           common::deduplicated_uv_iter(mesh, uv_total, uv_mapping_pair))
-        fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
-    else
-      for (const std::array<float, 2> &uv : common::uv_iter{mesh})
-        fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+    for (const Mesh_export &me : meshes) {
+      // TODO someone Is T47010 still relevant?
+      if (format_specific->dedup_uvs) {
+        for (const std::array<float, 2> &uv :
+             common::deduplicated_uv_iter(me.mesh, uv_total, uv_mapping_pair)) {
+          fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+        }
+      }
+      else {
+        for (const std::array<float, 2> &uv : common::uv_iter{me.mesh}) {
+          fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+        }
+      }
+    }
   }
 
   if (settings->export_normals) {
-    if (format_specific->dedup_normals)
-      for (const std::array<float, 3> &no :
-           common::deduplicated_normal_iter(mesh, no_total, no_mapping_pair, mat))
-        fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
-    else
-      for (const std::array<float, 3> &no : common::transformed_normal_iter(mesh, mat)) {
-        fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
+    for (const Mesh_export &me : meshes) {
+      if (format_specific->dedup_normals) {
+        for (const std::array<float, 3> &no :
+             common::deduplicated_normal_iter(me.mesh, no_total, no_mapping_pair, me.mat)) {
+          fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
+        }
       }
-    // auto nos = common::get_normals(mesh);
-    // for (const auto &no : nos)
-    //   fs << "vn " << no[0] << ' ' << no[1] << ' ' << no[2] << '\n';
+      else {
+        for (const std::array<float, 3> &no : common::transformed_normal_iter(me.mesh, me.mat)) {
+          fprintf(file, "vn %.4g %.4g %.4g\n", no[0], no[1], no[2]);
+        }
+      }
+    }
   }
 
   std::cerr << "Totals: " << uv_total << " " << no_total << "\nSizes: " << uv_mapping.size() << " "
             << no_mapping.size() << '\n';
 
-  for (const MPoly &p : common::poly_iter(mesh)) {
-    fputc('f', file);
-    // Loop index
-    int li = p.loopstart;
-    for (const MLoop &l : common::loop_of_poly_iter(mesh, p)) {
-      ulong vx = vertex_total + l.v + 1;
-      ulong uv = 1;
-      ulong no = 1;
-      if (settings->export_uvs && mesh->mloopuv != nullptr) {
-        if (format_specific->dedup_uvs)
-          uv = uv_mapping[uv_initial_count + li]->second + 1;
-        else
-          uv = uv_initial_count + li + 1;
-      }
-      if (settings->export_normals) {
-        if (format_specific->dedup_normals)
-          no = no_mapping[no_initial_count + l.v]->second + 1;
-        else
-          no = no_initial_count + l.v + 1;
-      }
-      if (settings->export_uvs && settings->export_normals && mesh->mloopuv != nullptr)
-        fprintf(file, " %lu/%lu/%lu", vx, uv, no);
-      else if (settings->export_uvs && mesh->mloopuv != nullptr)
-        fprintf(file, " %lu/%lu", vx, uv);
-      else if (settings->export_normals)
-        fprintf(file, " %lu//%lu", vx, no);
+  for (const Mesh_export &me : meshes) {
+    if (format_specific->export_objects_as_objects || format_specific->export_objects_as_groups) {
+      const std::string name = common::get_object_name(me.object, me.mesh);
+      if (format_specific->export_objects_as_objects)
+        fprintf(file, "o %s\n", name.c_str());
       else
-        fprintf(file, " %lu", vx);
+        fprintf(file, "g %s\n", name.c_str());
     }
-    fputc('\n', file);
+
+    for (const MPoly &p : common::poly_iter(me.mesh)) {
+      fputc('f', file);
+      // Loop index
+      int li = p.loopstart;
+      for (const MLoop &l : common::loop_of_poly_iter(me.mesh, p)) {
+        ulong vx = me.mesh->totvert + l.v + 1;
+        ulong uv = 1;  // TODO XXX Fix UV and NO index with dedup
+        ulong no = 1;
+        if (settings->export_uvs && me.mesh->mloopuv != nullptr) {
+          if (format_specific->dedup_uvs)
+            uv = uv_mapping[uv_initial_count + li]->second + 1;
+          else
+            uv = uv_initial_count + li + 1;
+        }
+        if (settings->export_normals) {
+          if (format_specific->dedup_normals)
+            no = no_mapping[no_initial_count + l.v]->second + 1;
+          else
+            no = no_initial_count + l.v + 1;
+        }
+        if (settings->export_uvs && settings->export_normals && me.mesh->mloopuv != nullptr)
+          fprintf(file, " %lu/%lu/%lu", vx, uv, no);
+        else if (settings->export_uvs && me.mesh->mloopuv != nullptr)
+          fprintf(file, " %lu/%lu", vx, uv);
+        else if (settings->export_normals)
+          fprintf(file, " %lu//%lu", vx, no);
+        else
+          fprintf(file, " %lu", vx);
+      }
+      fputc('\n', file);
+    }
+
+    if (settings->export_edges) {
+      for (const MEdge &e : common::loose_edge_iter{me.mesh})
+        fprintf(file, "l %u %u\n", me.mesh->totvert + e.v1, me.mesh->totvert + e.v2);
+    }
   }
 
-  if (settings->export_edges) {
-    for (const MEdge &e : common::loose_edge_iter{mesh})
-      fprintf(file, "l %lu %lu\n", vertex_total + e.v1, vertex_total + e.v2);
-  }
-
-  vertex_total += mesh->totvert;
-  uv_total += mesh->mloopuv ? mesh->totloop : 0;
-  no_total += mesh->totvert;
   return true;
 }
 
 bool OBJ_export_object(bContext *C,
                        ExportSettings *const settings,
                        Scene *scene,
-                       const Object *ob,
+                       Object *ob,
                        std::FILE *file,
-                       ulong &vertex_total,
-                       ulong &uv_total,
-                       ulong &no_total,
-                       dedup_pair_t<uv_key_t> &uv_mapping_pair,
-                       dedup_pair_t<no_key_t> &no_mapping_pair)
+                       std::vector<Mesh_export> &meshes)
 {
   switch (ob->type) {
     case OB_MESH: {
-      struct Mesh *mesh = nullptr;
-      float mat[4][4];
-      bool needs_free = false;
-      needs_free = common::get_final_mesh(settings, scene, ob, &mesh /* OUT */, &mat /* OUT */);
-
-      if (!OBJ_export_mesh(C,
-                           settings,
-                           file,
-                           ob,
-                           mesh,
-                           mat,
-                           vertex_total,
-                           uv_total,
-                           no_total,
-                           uv_mapping_pair,
-                           no_mapping_pair))
-        return false;
-
-      common::free_mesh(mesh, needs_free);
+      meshes.emplace_back();
+      Mesh_export &me = meshes.back();
+      me.object = ob;
+      me.needs_free = common::get_final_mesh(
+          settings, scene, ob, &me.mesh /* OUT */, &me.mat /* OUT */);
       return true;
     }
     case OB_CURVE:
@@ -405,37 +402,27 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
       return;
 
     fprintf(obj_file, "# %s\n# www.blender.org\n", common::get_version_string().c_str());
+
     BKE_scene_frame_set(settings->scene, frame);
     BKE_scene_graph_update_for_newframe(settings->depsgraph, settings->main);
     Scene *escene = DEG_get_evaluated_scene(settings->depsgraph);
-    ulong vertex_total = 0, uv_total = 0, no_total = 0;
-
-    auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(
-        format_specific->dedup_uvs_threshold);
-    auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(
-        format_specific->dedup_normals_threshold);
 
     std::string mtl_path = get_path(
         settings->filepath, ".mtl", format_specific->export_animations, frame);
     std::set<const Material *> materials;
 
-    fprintf(obj_file, "mtllib %s\n", (mtl_path.c_str() + mtl_path.find_last_of("/\\") + 1));
+    if (settings->export_materials) {
+      fprintf(obj_file, "mtllib %s\n", (mtl_path.c_str() + mtl_path.find_last_of("/\\") + 1));
+    }
+
+    std::vector<Mesh_export> meshes;
 
     DEG_OBJECT_ITER_BEGIN (settings->depsgraph,
                            ob,
                            DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
                                DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_DUPLI) {
       if (common::should_export_object(settings, ob)) {
-        if (!OBJ_export_object(C,
-                               settings,
-                               escene,
-                               ob,
-                               obj_file,
-                               vertex_total,
-                               uv_total,
-                               no_total,
-                               uv_mapping_pair,
-                               no_mapping_pair)) {
+        if (!OBJ_export_object(C, settings, escene, ob, obj_file, meshes /* OUT */)) {
           return;
         }
 
@@ -446,6 +433,8 @@ void OBJ_export_start(bContext *C, ExportSettings *const settings)
       }
     }
     DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
+
+    OBJ_export_meshes(C, settings, escene, obj_file, meshes /* IN */);
 
     if (settings->export_materials) {
       if (!OBJ_export_materials(C, settings, mtl_path, materials)) {

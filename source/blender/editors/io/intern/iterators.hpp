@@ -181,11 +181,11 @@ struct vert_iter : pointer_iterator<MVert> {
 
 struct transformed_vertex_iter : pointer_iterator_base<MVert> {
   using Mat = const float (*)[4];  // Must actually be float[4][4]
-  transformed_vertex_iter(const Mesh *const m, Mat &mat)
+  transformed_vertex_iter(const Mesh *const m, const Mat &mat)
       : pointer_iterator_base(m->mvert, m->totvert), mat(mat)
   {
   }
-  transformed_vertex_iter(const pointer_iterator_base<MVert> &pi, Mat &mat)
+  transformed_vertex_iter(const pointer_iterator_base<MVert> &pi, const Mat &mat)
       : pointer_iterator_base(pi), mat(mat)
   {
   }
@@ -203,7 +203,7 @@ struct transformed_vertex_iter : pointer_iterator_base<MVert> {
     mul_v3_m4v3(co, mat, this->curr->co);
     return {co[0], co[1], co[2]};
   }
-  Mat &mat;
+  const Mat &mat;
 };
 
 // Iterator over the vertices of a polygon
