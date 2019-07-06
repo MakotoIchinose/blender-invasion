@@ -4316,6 +4316,7 @@ static void profilewidget_presets_dofunc(bContext *C, void *prwdgt_v, int event)
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
+  /* HANS-TODO: Could be condensed */
   switch (event) {
     case PROF_PRESET_LINE:
       prwdgt->preset = PROF_PRESET_LINE;
@@ -4371,9 +4372,6 @@ static uiBlock *profilewidget_buttons_presets(bContext *C, ARegion *ar, void *pr
 enum {
   UIPROFILE_FUNC_RESET,
   UIPROFILE_FUNC_RESET_VIEW,
-  UIPROFILE_FUNC_HANDLE_VECTOR,
-  UIPROFILE_FUNC_HANDLE_AUTO,
-  UIPROFILE_FUNC_HANDLE_AUTO_ANIM,
 };
 
 static void profilewidget_tools_dofunc(bContext *C, void *prwdgt_v, int event)
@@ -4387,20 +4385,6 @@ static void profilewidget_tools_dofunc(bContext *C, void *prwdgt_v, int event)
       break;
     case UIPROFILE_FUNC_RESET_VIEW: /* reset view to clipping rect */
       prwdgt->view_rect = prwdgt->clip_rect;
-      break;
-    case UIPROFILE_FUNC_HANDLE_VECTOR: /* set vector */
-      profilewidget_handle_set(prwdgt, HD_VECT);
-      profilewidget_changed(prwdgt, false);
-      break;
-    case UIPROFILE_FUNC_HANDLE_AUTO: /* set auto */
-      profilewidget_handle_set(prwdgt, HD_AUTO);
-      profilewidget_changed(prwdgt, false);
-      break;
-    case UIPROFILE_FUNC_HANDLE_AUTO_ANIM: /* set auto-clamped */
-      /* HANS-QUESTION: Is this used? Not sure if I really need two different curved interpolation
-       * flags. */
-      profilewidget_handle_set(prwdgt, HD_AUTO_ANIM);
-      profilewidget_changed(prwdgt, false);
       break;
   }
   ED_undo_push(C, "ProfileWidget tools");
@@ -4419,21 +4403,12 @@ static uiBlock *profilewidget_tools_func(bContext *C, ARegion *ar, ProfileWidget
   uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Reset View"), 0,
                    yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
                    UIPROFILE_FUNC_RESET_VIEW, "");
-  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Vector Handle"), 0,
-                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
-                   UIPROFILE_FUNC_HANDLE_VECTOR, "");
-  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Auto Handle"), 0,
-                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
-                   UIPROFILE_FUNC_HANDLE_AUTO, "");
-  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Auto Clamped Handle"), 0,
-                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
-                   UIPROFILE_FUNC_HANDLE_AUTO_ANIM, "");
   uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Reset Curve"), 0,
                    yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
                    UIPROFILE_FUNC_RESET, "");
 
   UI_block_direction_set(block, UI_DIR_DOWN);
-  UI_block_bounds_set_text(block, 3.0f * UI_UNIT_X);
+  UI_block_bounds_set_text(block, (int)(3.0f * UI_UNIT_X));
 
   return block;
 }
@@ -4539,7 +4514,7 @@ static void profilewidget_buttons_setsharp(bContext *C, void *cb_v, void *prwdgt
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  profilewidget_handle_set(prwdgt, PROF_HANDLE_VECTOR);
+  profilewidget_handle_set(prwdgt, HD_VECT);
   profilewidget_changed(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
@@ -4549,7 +4524,7 @@ static void profilewidget_buttons_setcurved(bContext *C, void *cb_v, void *prwdg
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  profilewidget_handle_set(prwdgt, PROF_HANDLE_AUTO_ANIM);
+  profilewidget_handle_set(prwdgt, HD_AUTO_ANIM);
   profilewidget_changed(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
@@ -4569,8 +4544,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayout *row, *sub;
   uiBlock *block;
   uiBut *bt;
-  int icon, size;
-  int bg = -1, i;
+  int icon, path_width, path_height;
+  int i;
   rctf bounds;
 
   block = uiLayoutGetBlock(layout);
@@ -4580,7 +4555,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayoutRow(layout, false);
 
   /* Preset selector */
-  /* HANS-TODO: This isn't the proper way to do this at all, but it should work for now */
+  /* HANS-TODO: This isn't the proper way to do this, but it should work for now */
   bt = uiDefBlockBut(block, profilewidget_buttons_presets, prwdgt, "Preset", 0, 0,
                              UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
@@ -4622,19 +4597,15 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
                     0.0, TIP_("Toggle Profile Clipping"));
   UI_but_funcN_set(bt, profilewidget_clipping_toggle, MEM_dupallocN(cb), prwdgt);
 
-  /* Delete points */
-  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
-                    0.0, 0.0, TIP_("Delete points"));
-  UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
-
-  UI_block_emboss_set(block, UI_EMBOSS);
-  UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
-
   /* The path itself */
-  size = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
+  path_width = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
+  path_width = min_ii(path_width, (int)(16.0f * UI_UNIT_X));
+  /* HANS-TODO: Capping the width doesn't work, probably reassigned somwhere down the line */
+//  path_height = (8.0f * UI_UNIT_X);
+  path_height = path_width;
   uiLayoutRow(layout, false);
-  uiDefBut(block, UI_BTYPE_PROFILE, 0, "", 0, 0, (short)size, (short)(8.0f * UI_UNIT_X), prwdgt,
-           0.0f, 1.0f, bg, 0, "");
+  uiDefBut(block, UI_BTYPE_PROFILE, 0, "", 0, 0, (short)path_width, (short)path_height,
+           prwdgt, 0.0f, 1.0f, -1, 0, "");
 
   /* Position sliders for (first) selected point */
   if (prwdgt->path) { /* HANS-TODO: This check shouldn't be necessary */
@@ -4672,6 +4643,14 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
               bounds.xmin, bounds.xmax, 1, 5, "");
     uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y, &point->y,
               bounds.ymin, bounds.ymax, 1, 5, "");
+
+    /* Delete points */
+    bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
+                      0.0, 0.0, TIP_("Delete points"));
+    UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
+
+    UI_block_emboss_set(block, UI_EMBOSS);
+    UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
   }
 
   UI_block_funcN_set(block, NULL, NULL, NULL);
@@ -4679,6 +4658,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
 /** Template for a path creation widget intended for custom bevel profiles.
   * This section is quite similar to uiTemplateCurveMapping, but with reduced complexity */
+/* HANS-STRETCH-GOAL: Add the ability to lengthen the height of the UI to keep the grid square
+ * (or shrink the width I guess) */
 void uiTemplateProfileWidget(uiLayout *layout, PointerRNA *ptr, const char *propname)
 {
   RNAUpdateCb *cb;

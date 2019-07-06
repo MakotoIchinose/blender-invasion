@@ -1757,7 +1757,8 @@ static BMOpDefine bmo_bevel_def = {
   /* slots_in */
   {{"geom", BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT | BM_EDGE | BM_FACE}},     /* input edges and vertices */
    {"offset", BMO_OP_SLOT_FLT},           /* amount to offset beveled edge */
-   {"offset_type", BMO_OP_SLOT_INT, {(int)BMO_OP_SLOT_SUBTYPE_INT_ENUM}, bmo_enum_bevel_offset_type}, /* how to measure the offset */
+   {"offset_type", BMO_OP_SLOT_INT, {(int)BMO_OP_SLOT_SUBTYPE_INT_ENUM},
+    bmo_enum_bevel_offset_type}, /* how to measure the offset */
    {"segments", BMO_OP_SLOT_INT},         /* number of segments in bevel */
    {"profile", BMO_OP_SLOT_FLT},          /* profile shape, 0->1 (.5=>round) */
    {"vertex_only", BMO_OP_SLOT_BOOL},     /* only bevel vertices, not edges */
@@ -1775,10 +1776,9 @@ static BMOpDefine bmo_bevel_def = {
     bmo_enum_bevel_miter_type},         /* outer miter kind */
    {"spread", BMO_OP_SLOT_FLT},           /* amount to offset beveled edge */
    {"smoothresh", BMO_OP_SLOT_FLT},       /* for passing mesh's smoothresh, used in hardening */
-   {"use_custom_profiles", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
-   {"prwdgt", BMO_OP_SLOT_PTR},    /* the ProfileWiget struct for the custom profile shape */
+   {"use_custom_profile", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
+   {"prwdgt", BMO_OP_SLOT_PTR, {(int)BMO_OP_SLOT_SUBTYPE_PTR_WIDGET}},    /* the ProfileWiget struct for the custom profile shape */
    /* HANS-TODO: Figure out how to get the struct through here using the required subtype */
-   {"sample_points", BMO_OP_SLOT_BOOL},   /* only sample points on plot */
    {{'\0'}},
   },
   /* slots_out */

@@ -3531,8 +3531,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   };
 
   srna = RNA_def_struct(brna, "BevelModifier", "Modifier");
-  RNA_def_struct_ui_text(
-      srna, "Bevel Modifier", "Bevel modifier to make edges and vertices more rounded");
+  RNA_def_struct_ui_text(srna, "Bevel Modifier",
+                         "Bevel modifier to make edges and vertices more rounded");
   RNA_def_struct_sdna(srna, "BevelModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_BEVEL);
 
@@ -3627,8 +3627,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "face_strength_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "face_str_mode");
   RNA_def_property_enum_items(prop, prop_harden_normals_items);
-  RNA_def_property_ui_text(
-      prop, "Set Face Strength", "Whether to set face strength, and which faces to set it on");
+  RNA_def_property_ui_text(prop, "Set Face Strength",
+                           "Whether to set face strength, and which faces to set it on");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "miter_outer", PROP_ENUM, PROP_NONE);
@@ -3652,8 +3652,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_profile", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_CUSTOM_PROFILE);
-  RNA_def_property_ui_text(
-      prop, "Custom Profile", "Whether to use a user inputed curve for the bevel's profile");
+  RNA_def_property_ui_text(prop, "Custom Profile",
+                           "Whether to use a user inputed curve for the bevel's profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "prwdgt", PROP_POINTER, PROP_NONE);
@@ -3662,12 +3662,6 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Custom Profile Path", "The path for the custom profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
   /* HANS-TODO: Maybe actually "rna_Modifier_dependency_update", we'll see */
-
-  prop = RNA_def_property(srna, "sample_points", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_SAMPLE_POINTS);
-  RNA_def_property_ui_text(prop, "Sample Only Points",
-      "Whether to disregard the number of segments input and only use the points on the plot");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_shrinkwrap(BlenderRNA *brna)

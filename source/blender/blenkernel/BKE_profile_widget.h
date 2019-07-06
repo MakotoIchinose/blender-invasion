@@ -16,7 +16,7 @@
  * Copyright (C) 2019 Blender Foundation.
  * All rights reserved.
  */
-/* HANS-TODO: Check right copyright info for new files */
+
 #ifndef BKE_PROFILEPATH_H
 #define BKE_PROFILEPATH_H
 
@@ -41,6 +41,8 @@ void profilewidget_copy_data(struct ProfileWidget *target, const struct ProfileW
 
 struct ProfileWidget *profilewidget_copy(const struct ProfileWidget *prwdgt);
 
+void profilewidget_create_samples(const struct ProfileWidget *prwdgt, float *locations, int n_segments);
+
 /* Evaluates along the length of the path rather than with X coord */
 void profilewidget_evaluate(const struct ProfileWidget *prwdgt,
                             int segment,
@@ -53,11 +55,13 @@ void profilewidget_evaluate_portion(const struct ProfileWidget *prwdgt,
                           float *x_out,
                           float *y_out);
 
+void profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
+
 /* Need to find the total length of the curve to sample a portion of it */
 float profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
 /* Distance in 2D to the next point */
-float profilewidget_linear_distance_to_next_point(const struct ProfileWidget *prwdgt, int i);
+float profilewidget_distance_to_next_point(const struct ProfileWidget *prwdgt, int i);
 
 
 void profilewidget_reset(struct ProfileWidget *prwdgt);
@@ -74,9 +78,6 @@ void profilewidget_handle_set(struct ProfileWidget *prwdgt, int type);
 
 /* Called for a complete update of the widget after modifications */
 void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
-
-/* call before all evaluation functions */
-void profilewidget_initialize(struct ProfileWidget *prwdgt, int nsegments);
 
 void profilewidget_fill_segment_table(const struct ProfileWidget *prwdgt,
                                     double *x_table_out,

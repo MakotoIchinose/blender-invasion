@@ -2106,10 +2106,9 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
 }
 
 #define DEBUG_PROFILE_DRAW 0
+#define DEBUG_PROFILE_DRAW_FILL 0
 
-/** Simplified version of ui_draw_but_CURVE, used to draw bevel ProfileWidget. */
-/* HANS-TODO: Add the ability to lengthen the height of the UI to keep the grid square */
-/* HANS-STRETCH-GOAL: Rounded corners for widget! */
+/** Used to draw a profile widget. Similar to ui_draw_but_CURVE */
 void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
 {
 #if DEBUG_PROFILE_DRAW
@@ -2189,57 +2188,55 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* 0.25 step grid */
   gl_shaded_color((uchar *)wcol->inner, -16);
+  /* HANS-TODO: Tends to crash when very zoomed out. Wrong number of verts given to GPU */
   ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 0.25f);
   /* 1.0 step grid */
   gl_shaded_color((uchar *)wcol->inner, -24);
   ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 1.0f);
 
   /* Draw the path's fill */
-
-  /* HANS-TODO: Change totpoint back to PROF_TABLE_SIZE + 1 when the table is properly
-   * with that many elements along the path. And change pts back to prwdgt->table as well. */
-  if (prwdgt->path == NULL) {
+  if (prwdgt->table == NULL) {
     profilewidget_changed(prwdgt, false);
   }
-  ProfilePoint *pts = prwdgt->path;
+  ProfilePoint *pts = prwdgt->table;
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
-  bool add_right_triangle = prwdgt->view_rect.xmax > 1.0f;
-  bool add_bottom_triangle = prwdgt->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)prwdgt->totpoint + 1 + add_right_triangle + add_bottom_triangle;
+  bool add_left_tri = prwdgt->view_rect.xmin < 0.0f;
+  bool add_bottom_tri = prwdgt->view_rect.ymin < 0.0f;
+  uint tot_points = (uint)PROF_TABLE_SIZE + 1 + add_left_tri + add_bottom_tri;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
   float (*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < tot_points - 1; i++) {
+  for (i = 0; i < PROF_TABLE_SIZE; i++) { /* Only add the points from the table here */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y; /* HANS-TODO: Do the transformation here to reuse it later */
   }
-  if (add_right_triangle && add_bottom_triangle) {
-    /* Add right side, bottom right corner, and bottom side points */
-    table_coords[tot_points - 3][0] = prwdgt->view_rect.xmax;
+  if (add_left_tri && add_bottom_tri) {
+    /* Add left side, bottom left corner, and bottom side points */
+    table_coords[tot_points - 3][0] = prwdgt->view_rect.xmin;
     table_coords[tot_points - 3][1] = 1.0f;
-    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmax;
+    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmin;
     table_coords[tot_points - 2][1] = prwdgt->view_rect.ymin;
-    table_coords[tot_points - 1][0] = 0.0f;
+    table_coords[tot_points - 1][0] = 1.0f;
     table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
   }
-  else if (add_right_triangle) {
-    /* Add the right side and bottom right corner points */
-    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmax;
+  else if (add_left_tri) {
+    /* Add the left side and bottom left corner points */
+    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmin;
     table_coords[tot_points - 2][1] = 1.0f;
-    table_coords[tot_points - 1][0] = prwdgt->view_rect.xmax;
+    table_coords[tot_points - 1][0] = prwdgt->view_rect.xmin;
     table_coords[tot_points - 1][1] = 0.0f;
   }
-  else if (add_bottom_triangle) {
-    /* Add the bottom side and bottom right corner points */
-    table_coords[tot_points - 2][0] = 1.0f;
+  else if (add_bottom_tri) {
+    /* Add the bottom side and bottom left corner points */
+    table_coords[tot_points - 2][0] = 0.0f;
     table_coords[tot_points - 2][1] = prwdgt->view_rect.ymin;
-    table_coords[tot_points - 1][0] = 0.0f;
+    table_coords[tot_points - 1][0] = 1.0f;
     table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
   }
   else {
     /* Don't bother adding any side points, they would be redundant anyway */
-    table_coords[tot_points - 1][0] = 1.0f;
+    table_coords[tot_points - 1][0] = 0.0f;
     table_coords[tot_points - 1][1] = 0.0f;
   }
 
@@ -2247,14 +2244,20 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Calculate the indices of the fill triangles */
   uint (*tri_indices)[3] = MEM_mallocN(sizeof(*tri_indices) * tot_triangles, "return tri indices");
-  BLI_polyfill_calc(table_coords, tot_points, 1, tri_indices);
+  BLI_polyfill_calc(table_coords, tot_points, -1, tri_indices);
 
 #if DEBUG_PROFILE_DRAW
+  printf("add_bottom_tri: %d\n", add_bottom_tri);
+  printf("add_left_tri: %d\n", add_left_tri);
+
   printf("tot_points = %u\n", tot_points);
   printf("Point coords:\n");
   for (i = 0; i < tot_points; i++) {
     printf("(%.3f, %.3f) ", (double)table_coords[i][0], (double)table_coords[i][1]);
   }
+  printf("\n");
+#endif
+#if DEBUG_PROFILE_DRAW_FILL
   printf("\nPoint indices:\n");
   for (i = 0; i < tot_triangles; i++) {
     printf("(%u, %u, %u) ", tri_indices[i][0], tri_indices[i][1], tri_indices[i][2]);
@@ -2269,7 +2272,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   printf("\n");
 #endif
 
-  /* Draw the triangles */
+  /* Draw the triangles for the profile fill */
   immUniformColor3ubvAlpha((uchar *)wcol->item, 128);
   GPU_blend(true);
   GPU_polygon_smooth(false);
@@ -2285,8 +2288,8 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   immEnd();
   MEM_freeN(tri_indices);
 
-  /* Draw the profile's path */
-  tot_points -= (add_right_triangle + add_right_triangle);
+  /* Draw the profile's path so the edge stands out a bit */
+  tot_points -= (add_left_tri + add_left_tri);
   GPU_line_width(1.0f);
   immUniformColor3ubvAlpha((uchar *)wcol->item, 255);
   GPU_line_smooth(true);
@@ -2301,13 +2304,14 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   MEM_freeN(table_coords);
 
 
-  /* The points, use aspect to make them visible on edges. */
+  /* Draw the control points, use aspect to make them visible on edges. */
   format = immVertexFormat();
   pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
 
   /* Calculate vertex colors based on text theme. */
+  /* HANS-TODO: Try this with differen themes, I could imagine this being confusing */
   float color_vert[4], color_vert_select[4];
   UI_GetThemeColor4fv(TH_TEXT_HI, color_vert);
   UI_GetThemeColor4fv(TH_TEXT, color_vert_select);
@@ -2319,11 +2323,12 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     swap_v3_v3(color_vert, color_vert_select);
   }
 
-  /* Draw the user's control points */
+  /* Draw the control points */
+  pts = prwdgt->path;
+  tot_points = (uint)prwdgt->totpoint;
   GPU_line_smooth(false);
   GPU_blend(false);
-  pts = prwdgt->path;
-  GPU_point_size(max_ff(1.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
+  GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
   immBegin(GPU_PRIM_POINTS, tot_points - 1);
   for (i = 0; i < tot_points - 1; i++) {
     fx = rect->xmin + zoomx * (pts[i].x - offsx);
@@ -2332,6 +2337,29 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     immVertex2f(pos, fx, fy);
   }
   immEnd();
+
+  /* Draw the sampled points in addition to the control points if they have been created
+   * HANS-TODO: Doesn't work yet, I don't think the bevel code has the same copy of the widget
+   * that is drawn
+  pts = prwdgt->samples;
+  tot_points = (uint)prwdgt->totsegments;
+  printf("(int)prwdgt->totsegments: %d\n", (int)prwdgt->totsegments);
+  printf("(uint)prwdgt->totsegments: %d\n", (uint)prwdgt->totsegments);
+  printf("prwdgt->totsegments: %d\n", prwdgt->totsegments);
+  printf("totsegments: %d\n", (int)tot_points);
+  if (tot_points > 0) {
+    printf("DRAWING SAMPLE POINTS!!!\n");
+    GPU_point_size(max_ff(1.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
+    immBegin(GPU_PRIM_POINTS, tot_points - 1);
+    for (i = 0; i < tot_points - 1; i++) {
+      fx = rect->xmin + zoomx * (pts[i].x - offsx);
+      fy = rect->ymin + zoomy * (pts[i].y - offsy);
+      immAttr4fv(col, color_vert);
+      immVertex2f(pos, fx, fy);
+    }
+    immEnd();
+  }
+  */
   immUnbindProgram();
 
   /* restore scissortest */
@@ -2346,9 +2374,6 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   imm_draw_box_wire_2d(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
 
   immUnbindProgram();
-#if DEBUG_PROFILE_DRAW
-  printf("Finished drawing\n");
-#endif
 }
 
 void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(ar),

@@ -31,6 +31,7 @@
 
 void bmo_bevel_exec(BMesh *bm, BMOperator *op)
 {
+  printf("BMO BEVEL EXEC\n");
   const float offset = BMO_slot_float_get(op->slots_in, "offset");
   const int offset_type = BMO_slot_int_get(op->slots_in, "offset_type");
   const int seg = BMO_slot_int_get(op->slots_in, "segments");
@@ -48,8 +49,13 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
-  const struct ProfileWidget *prwidget = profilewidget_add(PROF_PRESET_LINE);
-  const bool sample_points = BMO_slot_bool_get(op->slots_in, "sample_points");
+  const struct ProfileWidget *prwdgt =
+      (const struct ProfileWidget *)BMO_slot_ptr_get(op->slots_in, "prwdgt");
+
+  if (!prwdgt) {
+    printf("(bmo_bevel_exec) prwdgt null, shouldn't happen\n");
+    prwdgt = profilewidget_add(PROF_PRESET_LINE);
+  }
 
   if (offset > 0) {
     BMOIter siter;
@@ -94,8 +100,7 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
                   spread,
                   smoothresh,
                   use_custom_profile,
-                  prwidget,
-                  sample_points);
+                  prwdgt);
 
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "faces.out", BM_FACE, BM_ELEM_TAG);
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "edges.out", BM_EDGE, BM_ELEM_TAG);

@@ -406,7 +406,7 @@ enum {
   MOD_BEVEL_WEIGHT = (1 << 4),
   MOD_BEVEL_VGROUP = (1 << 5),
   MOD_BEVEL_CUSTOM_PROFILE = (1 << 7),
-  MOD_BEVEL_SAMPLE_POINTS = (1 << 8),
+  /* unused                   = (1 << 8), */
   /*  unused                  = (1 << 9), */
   /*  unused                  = (1 << 10), */
   /*  unused                  = (1 << 11), */

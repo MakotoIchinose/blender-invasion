@@ -47,12 +47,11 @@
 
 static void initData(ModifierData *md)
 {
-  printf("INIT DATA\n");
   BevelModifierData *bmd = (BevelModifierData *)md;
 
   bmd->value = 1.0f;
   bmd->res = 1;
-  bmd->flags = MOD_BEVEL_SAMPLE_POINTS;
+  bmd->flags = 0;
   bmd->val_flags = MOD_BEVEL_AMT_OFFSET;
   bmd->lim_flags = 0;
   bmd->e_flags = 0;
@@ -70,7 +69,6 @@ static void initData(ModifierData *md)
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
-  printf("COPY DATA\n");
   const BevelModifierData *bmd_src = (const BevelModifierData *)md_src;
   BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
 
@@ -97,7 +95,6 @@ static void requiredDataMask(Object *UNUSED(ob),
  */
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  printf("APPLY MODIFIER\n");
   Mesh *result;
   BMesh *bm;
   BMIter iter;
@@ -122,7 +119,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   const int miter_inner = bmd->miter_inner;
   const float spread = bmd->spread;
   const bool use_custom_profile = (bmd->flags & MOD_BEVEL_CUSTOM_PROFILE);
-  const bool sample_points = (bmd->flags & MOD_BEVEL_SAMPLE_POINTS);
 
   bm = BKE_mesh_to_bmesh_ex(mesh,
                             &(struct BMeshCreateParams){0},
@@ -227,8 +223,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                 spread,
                 mesh->smoothresh,
                 use_custom_profile,
-                bmd->prwdgt,
-                sample_points);
+                bmd->prwdgt);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 
@@ -246,11 +241,8 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
   return true;
 }
 
-/* HANS-TODO: Huh, this doesn't work either, causes a segfault. It think because free is getting
- * called before copy */
 static void freeData(ModifierData *md)
 {
-  printf("FREEDATA\n");
   BevelModifierData *bmd = (BevelModifierData *)md;
   profilewidget_free(bmd->prwdgt);
 }

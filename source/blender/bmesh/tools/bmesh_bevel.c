@@ -60,7 +60,7 @@
 #define DEBUG_CUSTOM_PROFILE_SAMPLE 0
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
-#define DEBUG_CUSTOM_PROFILE_ADJ 1
+#define DEBUG_CUSTOM_PROFILE_ADJ 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 1
 
@@ -282,8 +282,6 @@ typedef struct BevelParams {
   bool harden_normals;
   /** Should we use the custom profiles feature? */
   bool use_custom_profile;
-  /** Should we just sample the points on the plot and disregard nseg*/
-  bool sample_points;
   /** The struct used to store the custom profile input */
   const struct ProfileWidget *prwdgt;
   /** Vertex group array, maybe set if vertex_only. */
@@ -305,8 +303,6 @@ typedef struct BevelParams {
 } BevelParams;
 
 // #pragma GCC diagnostic ignored "-Wpadded"
-
-// #include "bevdebug.c" /* HANS-TODO: Comment this before commit! */
 
 /* Some flags to re-enable old behavior for a while,
  * in case fixes broke things not caught by regression tests. */
@@ -2438,7 +2434,6 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     }
   }
 #if DEBUG_CUSTOM_PROFILE_WELD
-  /* HANS-TODO: Get the locations for the profie that it calculates */
   if (bp->seg > 1) {
     printf("Terminal Edge Profile Coordinates:\n");
     for (int k = 0; k < bp->seg; k++) {
@@ -2961,7 +2956,6 @@ static bool adjust_the_cycle_or_chain_fast(BoundVert *vstart, int np, bool iscyc
 }
 #endif
 
-/* HANS-TODO: Maybe move (and rename?) this function to the top with the other helpers? */
 /** Helper function to return the next Beveled EdgeHalf along a path.
  *
  * \note Right now this returns the most parallel edge if it's the most parallel by
@@ -3139,7 +3133,8 @@ static void debug_RPO_edge_draw_sphere(BevelParams* bp, BMEdge* e) {
  * the profiles can start from opposite sides of the edge. In order to fix this we
  * need to travel along the beveled edges marking consistent boundverts for the
  * bevels to start from. */
-/* HANS-TODO: Fix the problem near impassible verts like on a single beveled edge */
+/* HANS-TODO: Fix the problem near impassible verts like on a single beveled edge. Add a green
+ * debug sphere to the start edgehalf to see if the problem is at that point of the process. */
 static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
 {
   BevVert *start_bv;
@@ -3205,7 +3200,7 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
   printf("[1st loop stopped]\n");
 #endif
 
-  /* HANS-TODO: Make this into a for loop instead of two while loops. The only thing that
+  /* HANS-TODO: Make this into a for loop instead of two separate while loops. The only thing that
    * changes is the initial value of toward_bv anyway */
 
   /* Now travel the path in the other direction, away from the BevVert */
@@ -4327,7 +4322,7 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 }
 
 /* Makes the mesh that replaces the original vertex, bounded by the profiles on the sides */
-/* HANS-TODO: Disable uneeded stuff when in custom profiles */
+/* HANS-TODO: Disable uneeded stuff when in custom profiles mode */
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -4475,7 +4470,7 @@ static void snap_to_pipe_profile_custom(BoundVert *vpipe, float co[3], int seg)
   float plane[4], m[4][4], minv[4][4], p[3], snap[3];
 
   float distance, min_distance, prof_v1[3], prof_v2[3];
-  int min_i;
+  int min_i = 0;
   /* HANS-TODO: Merge new variables with old ones where possible */
 
   Profile *pro = &vpipe->profile;
@@ -6820,41 +6815,6 @@ static void find_even_superellipse_chords(int n, float r, double *xvals, double 
   find_even_superellipse_chords_general(n, r, xvals, yvals);
 }
 
-/* This is for the sample points option where only the points locations are used for the profile */
-static void copy_profile_point_locations(BevelParams *bp, double *xvals, double *yvals)
-{
-  float x_temp, y_temp;
-  for (int i = 0; i < bp->seg; i++) {
-    x_temp = bp->prwdgt->path[i].x;
-    y_temp = bp->prwdgt->path[i].y;
-    xvals[i] = (double)y_temp;
-    yvals[i] = 1.0 - (double)x_temp;
-  }
-}
-
-/* What I think I need to be doing here is getting the 2D coords of the profile curve,
- * but I'm not positive that pro_spacing is the right place to store these. We'll see.
- * HANS-TODO: Verify this */
-static void sample_custom_profile(BevelParams *bp, int seg, double *xvals, double *yvals)
-{
-#if DEBUG_CUSTOM_PROFILE_SAMPLE
-  printf("SET PROFILE SPACING CUSTOM(seg = %d)\n", seg);
-#endif
-  float x_temp;
-  float y_temp;
-
-  profilewidget_initialize((ProfileWidget *)bp->prwdgt, seg);
-  for (int i = 0; i < seg; i++) {
-    profilewidget_evaluate(bp->prwdgt, i, &x_temp, &y_temp);
-    xvals[i] = (double)y_temp;
-    yvals[i] = 1.0 - (double)x_temp; /* Reverse Y axis to use the order ProfileSpacing uses */
-  }
-
-  /* HANS-TODO: Either use this instead or make a parametric subdivision method and get the
-   * resulting points from that */
-  /*profilewidget_fill_segment_table(bp->prwdgt, xvals, yvals);*/
-}
-
 /* The superellipse used for multisegment profiles does not
  * have a closed-form way to generate evenly spaced points
  * along an arc. We use an expensive search procedure to find
@@ -6866,20 +6826,22 @@ static void sample_custom_profile(BevelParams *bp, int seg, double *xvals, doubl
 static void set_profile_spacing(BevelParams *bp)
 {
   int seg, seg_2;
+  float *temp_locs = NULL;
 
   /* Sample the input number of segments */
   seg = bp->seg;
+  seg_2 = power_of_2_max_i(bp->seg);
   if (seg > 1) {
     bp->pro_spacing.xvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (size_t)(seg + 1) * sizeof(double));
     bp->pro_spacing.yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (size_t)(seg + 1) * sizeof(double));
     if (bp->use_custom_profile) {
-      if (bp->sample_points) {
-        copy_profile_point_locations(bp, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
-      }
-      else {
-        sample_custom_profile(bp, seg, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
+      temp_locs = BLI_memarena_alloc(bp->mem_arena, (size_t)(2 * (seg_2 + 1)) * sizeof(float));
+      profilewidget_create_samples(bp->prwdgt, temp_locs, seg + 1);
+      for (int i = 0; i < seg + 1; i++) {
+        bp->pro_spacing.xvals[i] = temp_locs[2 * i + 1];
+        bp->pro_spacing.yvals[i] = temp_locs[2 * i];
       }
     }
     else {
@@ -6887,8 +6849,7 @@ static void set_profile_spacing(BevelParams *bp)
                                     bp->pro_spacing.yvals);
     }
 
-    /* Sample the segments used for interpolation when subdividing the vertex meshes */
-    seg_2 = power_of_2_max_i(bp->seg);
+    /* Sample the segments used for interpolation after subdividing the vertex meshes */
     if (seg_2 == 2) {
       seg_2 = 4;
     }
@@ -6903,13 +6864,14 @@ static void set_profile_spacing(BevelParams *bp)
       bp->pro_spacing.yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       if (bp->use_custom_profile) {
-        if (bp->sample_points && seg == seg_2) {
-          copy_profile_point_locations(bp, bp->pro_spacing.xvals, bp->pro_spacing.yvals);
-        } else {
-          /* Don't use the special function to just sample the coords of the points--
-           * we need more samples than the number of points on the plot */
-          sample_custom_profile(bp, seg_2, bp->pro_spacing.xvals_2, bp->pro_spacing.yvals_2);
+        BLI_assert(temp_locs);
+        profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1);
+        for (int i = 0; i < seg_2 + 1; i++) {
+          bp->pro_spacing.xvals_2[i] = temp_locs[2 * i + 1];
+          bp->pro_spacing.yvals_2[i] = temp_locs[2 * i];
         }
+        /* HANS-QUESTION: Is there a way to free part of a memory arena? This pointer won't be used
+         * again */
       }
       else {
         find_even_superellipse_chords(seg_2, bp->pro_super_r, bp->pro_spacing.xvals_2,
@@ -7178,8 +7140,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct ProfileWidget *prwdgt,
-                   const bool sample_points)
+                   const struct ProfileWidget *prwdgt)
 {
   BMIter iter, liter;
   BMVert *v, *v_next;
@@ -7213,42 +7174,16 @@ void BM_mesh_bevel(BMesh *bm,
   bp.face_hash = NULL;
   bp.use_custom_profile = use_custom_profile;
   bp.prwdgt = prwdgt;
-  bp.sample_points = sample_points;
 
-  printf("\n=========== NEW BEVEL CALL ===========\n");
+  printf("\nBM MESH BEVEL\n");
 
-
-
-  if (bp.use_custom_profile && bp.sample_points) {
-    /* We are sampling the segments from the points on the graph */
-    bp.seg = prwdgt->totpoint - 1;
-  }
-
-  /* TEST PROFILE CURVE */
-#if DEBUG_CUSTOM_PROFILE_SAMPLE
-  printf("Test sample: %d segments\n", bp.seg);
-  if (bp.use_custom_profile && bp.prwdgt != NULL) {
-    profilewidget_initialize((const ProfileWidget *)prwdgt, bp.seg); /* will be necessary to fill a table */
-
-    if (!sample_points) {
-      printf("Sampling portions along the path of the profile graph:\n");
-      for (int i = 0; i <= bp.seg; i++) {
-        float x, y;
-        profilewidget_evaluate((const ProfileWidget *)prwdgt, i, &x, &y);
-        printf("Segment %d position is (%f, %f)\n", i, (double)x, (double)y);
-      }
+  if (bp.use_custom_profile) {
+    /* For now we need to sample the custom profile with at least as many segments as points */
+    if (bp.seg < bp.prwdgt->totpoint) {
+      bp.seg = bp.prwdgt->totpoint;
     }
-    else {
-      printf("Sampling just the points on the graph\n");
-      for (int i = 0; i < bp.seg; i++) {
-        float x, y;
-        x = bp.prwdgt->path[i].x;
-        y = bp.prwdgt->path[i].y;
-        printf("Segment %d position is (%f, %f)\n", i, (double)x, (double)y);
-      }
-    }
+    profilewidget_initialize(bp.prwdgt, (short)bp.seg + 1);
   }
-#endif
 
   if (profile >= 0.950f) { /* r ~ 692, so PRO_SQUARE_R is 1e4 */
     bp.pro_super_r = PRO_SQUARE_R;

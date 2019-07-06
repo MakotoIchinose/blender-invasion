@@ -2705,11 +2705,11 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
 /** \name Read ProfileWidget
  * \{ */
 
-static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwidget)
+static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwdgt)
 {
   printf("DIRECT LINK PROFILEWIDGET\n");
-  prwidget->path = newdataadr(fd, prwidget->path);
-  prwidget->table = NULL;
+  prwdgt->path = newdataadr(fd, prwdgt->path);
+  prwdgt->table = NULL;
 }
 
 /** \} */
@@ -5813,7 +5813,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       }
     }
     else if (md->type == eModifierType_Bevel) {
-      /* HANS-TODO: Test */
       BevelModifierData * bmd = (BevelModifierData *)md;
       bmd->prwdgt = newdataadr(fd, bmd->prwdgt);
       if (bmd->prwdgt) {

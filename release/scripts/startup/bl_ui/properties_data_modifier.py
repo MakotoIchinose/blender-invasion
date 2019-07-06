@@ -163,18 +163,17 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Width Method:")
         layout.row().prop(md, "offset_type", expand=True)
 
-        layout.label(text="Set Face Strength Mode")
-        layout.row().prop(md, "face_strength_mode", expand=True)
+        layout.row().prop(md, "face_strength_mode", expand=False)
 
         layout.label(text="Miter Patterns")
         layout.row().prop(md, "miter_outer")
         layout.row().prop(md, "miter_inner")
-        layout.row().prop(md, "spread")
+        if md.miter_inner == 'MITER_PATCH' or md.miter_inner == 'MITER_ARC':
+            layout.row().prop(md, "spread")
 
         layout.row().prop(md, "use_custom_profile")
         if md.use_custom_profile:
             layout.template_profilewidget(md, "prwdgt")
-            layout.row().prop(md, "sample_points")
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()

@@ -26,19 +26,20 @@
 
 #include "DNA_vec_types.h"
 
-/* general defines for kernel functions */
-#define PROF_RESOL 32
 #define PROF_TABLE_SIZE 256
-#define PROF_TABLEDIV (1.0f / 256.0f)
+/* HANS-TODO: Switch to variable table size based on resolution and number of points
+#define PROF_N_TABLE(n_pts) (((n_pts) - 1) * PROF_RESOL)
+#define PROF_RESOL 2 */
 
 typedef struct ProfilePoint {
+  /** Location of the point */
   float x, y;
-  /** Shorty for result lookup. */
+  /** Flag for handle type and selection state */
   short flag;
   char _pad[2];
 } ProfilePoint;
 
-/* ProfilePoint->flag */
+/** ProfilePoint->flag */
 enum {
   PROF_SELECT = (1 << 0),
   PROF_HANDLE_VECTOR = (1 << 1),
@@ -46,34 +47,31 @@ enum {
 };
 
 typedef struct ProfileWidget {
+  /** Number of user-added points that define the profile */
   short totpoint;
-  char _pad1[6];
+  /** Number of sampled points */
+  short totsegments;
+  /** Preset to use when reset */
+  int preset;
   /** Sequence of points defining the shape of the curve  */
   ProfilePoint *path;
   /** Display and evaluation table at higher resolution for curves */
   ProfilePoint *table;
-
-  /** Total length of curve for path curves */
-  float total_length;
-  /** Range... */ /* HANS-TODO: Figure out if I need range */
-  float range;
-  /** Number of segments for sampled path */
-  /* HANS-TODO: Could remove this for simplicity. Then it would only be associated with sampling */
-  int nsegments;
-
+  /** The positions of the sampled points. Used to display a preview of where they will be */
+  ProfilePoint *samples;
   /** Cur; for buttons, to show active curve. */
   int flag;
-  /** Preset to use when reset */
-  int preset;
+  /** Used for keeping track how many times the widget is changed */
   int changed_timestamp;
   /** Current rect, clip rect (is default rect too). */
   rctf view_rect, clip_rect;
-
 } ProfileWidget;
 
-/* ProfileWidget->flag */
-#define PROF_DO_CLIP (1 << 0)
-#define PROF_USE_TABLE (1 << 1)
+/** ProfileWidget->flag */
+enum {
+  PROF_DO_CLIP = (1 << 0),
+  PROF_USE_TABLE = (1 << 1),
+};
 
 typedef enum eProfileWidgetPresets {
   PROF_PRESET_LINE = 0, /* Default simple line */

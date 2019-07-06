@@ -237,6 +237,8 @@ typedef enum eBMOpSlotSubType_Ptr {
   BMO_OP_SLOT_SUBTYPE_PTR_SCENE = 101,
   BMO_OP_SLOT_SUBTYPE_PTR_OBJECT = 102,
   BMO_OP_SLOT_SUBTYPE_PTR_MESH = 103,
+  BMO_OP_SLOT_SUBTYPE_PTR_WIDGET = 104,
+  /* HANS-TODO: Can I do it without adding this? Or add something more general? */
 } eBMOpSlotSubType_Ptr;
 typedef enum eBMOpSlotSubType_Int {
   BMO_OP_SLOT_SUBTYPE_INT_ENUM = 200,
