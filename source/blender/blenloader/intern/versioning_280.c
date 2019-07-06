@@ -3534,10 +3534,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       sce->lanpr.background_color[2] = 0.75;
       sce->lanpr.background_color[3] = 1;
 
-      sce->lanpr.line_color[0] = 0;
-      sce->lanpr.line_color[1] = 0;
-      sce->lanpr.line_color[2] = 0;
-      sce->lanpr.line_color[3] = 0;
+      zero_v4(sce->lanpr.line_color);
 
       sce->lanpr.enable_intersections = 1;
       sce->lanpr.enable_chaining = 1;
