@@ -269,7 +269,7 @@ static void wm_xr_session_gpu_binding_context_destroy(
 
 void wm_xr_session_toggle(struct GHOST_XrContext *xr_context)
 {
-  if (GHOST_XrSessionIsRunning(xr_context)) {
+  if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
     GHOST_XrSessionEnd(xr_context);
   }
   else {

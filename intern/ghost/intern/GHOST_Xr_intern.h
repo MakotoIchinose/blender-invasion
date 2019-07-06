@@ -21,61 +21,47 @@
 #ifndef __GHOST_XR_INTERN_H__
 #define __GHOST_XR_INTERN_H__
 
-#include <map>
 #include <memory>
 #include <vector>
 
 #include "GHOST_Xr_openxr_includes.h"
-#include "GHOST_IXrGraphicsBinding.h"
+#include "GHOST_XrSession.h"
 
 typedef struct OpenXRData {
   XrInstance instance;
 
   std::vector<XrExtensionProperties> extensions;
   std::vector<XrApiLayerProperties> layers;
-
-  XrSystemId system_id;
-  // Only stereo rendering supported now.
-  const XrViewConfigurationType view_type{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
-  std::vector<XrView> views;
-  XrSession session;
-  XrSessionState session_state;
-
-  std::vector<XrSwapchain> swapchains;
-  std::map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>> swapchain_images;
-  int32_t swapchain_image_width, swapchain_image_height;
 } OpenXRData;
 
+/**
+ * \brief Main GHOST container to manage OpenXR through.
+ *
+ * Creating a context using #GHOST_XrContextCreate involves dynamically connecting to the OpenXR
+ * runtime, likely reading the OS OpenXR configuration (i.e. active_runtime.json). So this is
+ * something that should better be done using lazy-initialization.
+ */
 typedef struct GHOST_XrContext {
   OpenXRData oxr;
 
+  /* The active GHOST XR Session. Null while no session runs. */
+  std::unique_ptr<GHOST_XrSession> session;
+
   /** Active graphics binding type. */
   GHOST_TXrGraphicsBinding gpu_binding_type;
-  std::unique_ptr<GHOST_IXrGraphicsBinding> gpu_binding;
   /** Function to retrieve (possibly create) a graphics context */
   GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn;
   /** Function to release (possibly free) a graphics context */
   GHOST_XrGraphicsContextUnbindFn gpu_ctx_unbind_fn;
-  /** Active Ghost graphic context. */
-  class GHOST_Context *gpu_ctx;
 
+  /** Custom per-view draw function for Blender side drawing. */
   GHOST_XrDrawViewFn draw_view_fn;
-  /** Information on the currently drawn frame. Set while drawing only. */
-  std::unique_ptr<struct GHOST_XrDrawFrame> draw_frame;
 
   /** Names of enabled extensions */
   std::vector<const char *> enabled_extensions;
 } GHOST_XrContext;
 
-struct GHOST_XrDrawFrame {
-  XrFrameState frame_state;
-};
-
-void GHOST_XrGraphicsContextBind(GHOST_XrContext &xr_context);
-void GHOST_XrGraphicsContextUnbind(GHOST_XrContext &xr_context);
-
-void GHOST_XrSessionDestroy(GHOST_XrContext *xr_context);
 void GHOST_XrSessionStateChange(GHOST_XrContext *xr_context,
-                                const XrEventDataSessionStateChanged &lifecycle);
+                                const XrEventDataSessionStateChanged *lifecycle);
 
 #endif /* __GHOST_XR_INTERN_H__ */

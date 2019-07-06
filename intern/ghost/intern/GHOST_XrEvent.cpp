@@ -42,15 +42,15 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContext *xr_context)
   }
 
   while (GHOST_XrEventPollNext(oxr, event_buffer)) {
-    XrEventDataBaseHeader &event = (XrEventDataBaseHeader &)event_buffer; /* base event struct */
+    XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
 
-    switch (event.type) {
+    switch (event->type) {
       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
-        GHOST_XrSessionStateChange(xr_context, (XrEventDataSessionStateChanged &)event);
+        GHOST_XrSessionStateChange(xr_context, (XrEventDataSessionStateChanged *)event);
         return GHOST_kSuccess;
 
       default:
-        printf("Unhandled event: %i\n", event.type);
+        printf("Unhandled event: %i\n", event->type);
         return GHOST_kFailure;
     }
   }

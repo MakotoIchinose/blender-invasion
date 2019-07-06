@@ -357,7 +357,7 @@ if(WITH_OPENXR)
     intern/GHOST_Xr_intern.h
     intern/GHOST_Xr_openxr_includes.h
     intern/GHOST_IXrGraphicsBinding.h
-#    intern/GHOST_XrSession.h
+    intern/GHOST_XrSession.h
   )
   list(APPEND INC
   )

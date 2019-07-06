@@ -244,8 +244,6 @@ GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_i
   openxr_instance_create(xr_context);
   openxr_instance_log_print(oxr);
 
-  oxr->session_state = XR_SESSION_STATE_UNKNOWN;
-
   return xr_context;
 }
 
@@ -253,15 +251,51 @@ void GHOST_XrContextDestroy(GHOST_XrContext *xr_context)
 {
   OpenXRData *oxr = &xr_context->oxr;
 
-  if (oxr->session != XR_NULL_HANDLE) {
-    GHOST_XrSessionDestroy(xr_context);
-  }
+  xr_context->session = nullptr;
 
   if (oxr->instance != XR_NULL_HANDLE) {
     xrDestroyInstance(oxr->instance);
   }
 
   delete xr_context;
+}
+
+void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
+{
+  if (xr_context->session == nullptr) {
+    xr_context->session = std::unique_ptr<GHOST_XrSession>(new GHOST_XrSession(xr_context));
+  }
+
+  xr_context->session->start();
+}
+
+void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)
+{
+  xr_context->session->end();
+  xr_context->session = nullptr;
+}
+
+GHOST_TSuccess GHOST_XrSessionIsRunning(const GHOST_XrContext *xr_context)
+{
+  return (xr_context->session && xr_context->session->isRunning()) ? GHOST_kSuccess :
+                                                                     GHOST_kFailure;
+}
+
+void GHOST_XrSessionDrawViews(GHOST_XrContext *xr_context, void *draw_customdata)
+{
+  xr_context->session->draw(draw_customdata);
+}
+
+/**
+ * Delegates event to session, allowing context to destruct the session if needed.
+ */
+void GHOST_XrSessionStateChange(GHOST_XrContext *xr_context,
+                                const XrEventDataSessionStateChanged *lifecycle)
+{
+  if (xr_context->session &&
+      xr_context->session->handleStateChangeEvent(lifecycle) == GHOST_XrSession::SESSION_DESTROY) {
+    xr_context->session = nullptr;
+  }
 }
 
 /**
@@ -276,24 +310,11 @@ void GHOST_XrGraphicsContextBindFuncs(GHOST_XrContext *xr_context,
                                       GHOST_XrGraphicsContextBindFn bind_fn,
                                       GHOST_XrGraphicsContextUnbindFn unbind_fn)
 {
-  GHOST_XrGraphicsContextUnbind(*xr_context);
+  if (xr_context->session) {
+    xr_context->session->unbindGraphicsContext();
+  }
   xr_context->gpu_ctx_bind_fn = bind_fn;
   xr_context->gpu_ctx_unbind_fn = unbind_fn;
-}
-
-void GHOST_XrGraphicsContextBind(GHOST_XrContext &xr_context)
-{
-  assert(xr_context.gpu_ctx_bind_fn);
-  xr_context.gpu_ctx = static_cast<GHOST_Context *>(
-      xr_context.gpu_ctx_bind_fn(xr_context.gpu_binding_type));
-}
-
-void GHOST_XrGraphicsContextUnbind(GHOST_XrContext &xr_context)
-{
-  if (xr_context.gpu_ctx_unbind_fn) {
-    xr_context.gpu_ctx_unbind_fn(xr_context.gpu_binding_type, xr_context.gpu_ctx);
-  }
-  xr_context.gpu_ctx = nullptr;
 }
 
 void GHOST_XrDrawViewFunc(struct GHOST_XrContext *xr_context, GHOST_XrDrawViewFn draw_view_fn)

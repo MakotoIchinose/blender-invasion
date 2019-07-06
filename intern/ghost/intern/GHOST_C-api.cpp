@@ -31,6 +31,7 @@
 #include "GHOST_IEvent.h"
 #include "GHOST_IEventConsumer.h"
 #include "intern/GHOST_CallbackEventConsumer.h"
+#include "intern/GHOST_XrSession.h"
 
 GHOST_SystemHandle GHOST_CreateSystem(void)
 {
