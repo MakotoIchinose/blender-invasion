@@ -2044,59 +2044,6 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   return true;
 }
 
-/* Check if two floats are equal but with a limit in the precission to get some tolerance.
- *
- * \param v1: First value.
- * \param v2: Second value.
- * \param limit: Maximum difference limit.
- * \return: True
- */
-static bool equals_f_f_limit(const float v1, const float v2, const float limit)
-{
-  if (fabsf(v1 - v2) > limit) {
-    return false;
-  }
-  return true;
-}
-
-/* Check if two v2 are equal but with a limit in the precission to get some tolerance.
- *
- * \param v1: First value.
- * \param v2: Second value.
- * \param limit: Maximum difference limit.
- * \return: True
- */
-static bool equals_v2v2_limit(const float v1[2], const float v2[2], const float limit)
-{
-  return (bool)(equals_f_f_limit(v1[0], v2[0], limit) && equals_f_f_limit(v1[1], v2[1], limit));
-}
-
-/* Check if two v3 are equal but with a limit in the precission to get some tolerance.
- *
- * \param v1: First value.
- * \param v2: Second value.
- * \param limit: Maximum difference limit.
- * \return: True
- */
-static bool equals_v3v3_limit(const float v1[3], const float v2[3], const float limit)
-{
-  return (bool)(equals_f_f_limit(v1[0], v2[0], limit) && equals_f_f_limit(v1[1], v2[1], limit) &&
-                equals_f_f_limit(v1[2], v2[2], limit));
-}
-
-/* Check if two v4 are equal but with a limit in the precission to get some tolerance.
- *
- * \param v1: First value.
- * \param v2: Second value.
- * \param limit: Maximum difference limit.
- * \return: True
- */
-static bool equals_v4v4_limit(const float v1[4], const float v2[4], const float limit)
-{
-  return (bool)(equals_f_f_limit(v1[0], v2[0], limit) && equals_f_f_limit(v1[1], v2[1], limit) &&
-                equals_f_f_limit(v1[2], v2[2], limit) && equals_f_f_limit(v1[3], v2[3], limit));
-}
-
 /* Helper function to check materials with same color */
 static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Material *r_mat)
 {
@@ -2114,7 +2061,7 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Mate
     float hsv2[3];
     rgb_to_hsv_v(gp_style->fill_rgba, hsv2);
 
-    if (equals_v3v3_limit(hsv1, hsv2, 0.01f)) {
+    if (compare_v3v3(hsv1, hsv2, 0.01f)) {
       r_mat = ma;
       return i - 1;
     }
