@@ -322,6 +322,7 @@ typedef struct OBJECT_DupliData {
   GPUBatch *outline_geom;
   DRWShadingGroup *extra_shgrp;
   GPUBatch *extra_geom;
+  short base_flag;
 } OBJECT_DupliData;
 
 static struct {
@@ -535,7 +536,10 @@ static void OBJECT_engine_init(void *vedata)
 
     /* Lightprobes */
     sh_data->lightprobe_grid = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg_data->lib, datatoc_object_lightprobe_grid_vert_glsl, NULL},
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_object_lightprobe_grid_vert_glsl,
+                                 NULL},
         .frag = (const char *[]){datatoc_gpu_shader_flat_id_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
@@ -1208,6 +1212,9 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
         BLI_addtail(&e_data.movie_clips, BLI_genericNodeN(clip));
         BKE_movieclip_get_size(clip, &bgpic->cuser, &image_width, &image_height);
         image_aspect = (image_width * image_aspect_x) / (image_height * image_aspect_y);
+      }
+      else {
+        continue;
       }
 
       /* ensure link_data is allocated to store matrice */
@@ -2794,7 +2801,7 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
   OBJECT_LightProbeEngineData *prb_data = (OBJECT_LightProbeEngineData *)DRW_drawdata_ensure(
       &ob->id, &draw_engine_object_type, sizeof(OBJECT_LightProbeEngineData), NULL, NULL);
 
-  if ((DRW_state_is_select() || do_outlines) && ((prb->flag & LIGHTPROBE_FLAG_SHOW_DATA) != 0)) {
+  if (DRW_state_is_select() || do_outlines) {
     int *call_id = shgroup_theme_id_to_probe_outline_counter(stl, theme_id, ob->base_flag);
 
     if (prb->type == LIGHTPROBE_TYPE_GRID) {
@@ -2832,6 +2839,7 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
 
       uint cell_count = prb->grid_resolution_x * prb->grid_resolution_y * prb->grid_resolution_z;
       DRWShadingGroup *grp = DRW_shgroup_create(sh_data->lightprobe_grid, psl->lightprobes);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_int_copy(grp, "call_id", *call_id);
       DRW_shgroup_uniform_int(grp, "baseId", call_id, 1); /* that's correct */
       DRW_shgroup_uniform_vec3(grp, "corner", prb_data->corner, 1);
@@ -2839,10 +2847,11 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
       DRW_shgroup_uniform_vec3(grp, "increment_y", prb_data->increment_y, 1);
       DRW_shgroup_uniform_vec3(grp, "increment_z", prb_data->increment_z, 1);
       DRW_shgroup_uniform_ivec3(grp, "grid_resolution", &prb->grid_resolution_x, 1);
-      DRW_shgroup_call_procedural_points(grp, NULL, cell_count);
       if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
         DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
       }
+      DRW_shgroup_call_procedural_points(grp, NULL, cell_count);
+      *call_id += 1;
     }
     else if (prb->type == LIGHTPROBE_TYPE_CUBE) {
       float draw_size = 1.0f;
@@ -2857,14 +2866,14 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
        * to keep the call ids correct. */
       zero_m4(probe_cube_mat);
       DRW_buffer_add_entry(buf, call_id, &draw_size, probe_cube_mat);
+      *call_id += 1;
     }
-    else {
+    else if (prb->flag & LIGHTPROBE_FLAG_SHOW_DATA) {
       float draw_size = 1.0f;
       DRWCallBuffer *buf = buffer_theme_id_to_probe_planar_outline_shgrp(stl, theme_id);
       DRW_buffer_add_entry(buf, call_id, &draw_size, ob->obmat);
+      *call_id += 1;
     }
-
-    *call_id += 1;
   }
 
   switch (prb->type) {
@@ -3390,6 +3399,10 @@ BLI_INLINE OBJECT_DupliData *OBJECT_duplidata_get(Object *ob, void *vedata, bool
       *dupli_data = MEM_callocN(sizeof(OBJECT_DupliData), "OBJECT_DupliData");
       *init = true;
     }
+    else if ((*dupli_data)->base_flag != ob->base_flag) {
+      /* Select state might have change, reinit. */
+      *init = true;
+    }
     return *dupli_data;
   }
   return NULL;
@@ -3450,6 +3463,9 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
       if (dupli_data && !init_duplidata) {
         geom = dupli_data->outline_geom;
         shgroup = dupli_data->outline_shgrp;
+        /* TODO: Remove. Only here to increment outline id counter. */
+        theme_id = DRW_object_wire_theme_get(ob, view_layer, NULL);
+        shgroup = shgroup_theme_id_to_outline_or_null(stl, theme_id, ob->base_flag);
       }
       else {
         if (stl->g_data->xray_enabled_and_not_wire || is_flat_object_viewed_from_side) {
@@ -3657,6 +3673,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
     if (init_duplidata) {
       dupli_data->extra_shgrp = shgroup;
       dupli_data->extra_geom = geom;
+      dupli_data->base_flag = ob->base_flag;
     }
   }
 
