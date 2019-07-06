@@ -91,6 +91,10 @@ struct Mesh_export {
   Mesh *mesh;
   float mat[4][4];
   bool needs_free;
+  // Index offsets
+  size_t vx_offset;
+  size_t uv_offset;
+  size_t no_offset;
 };
 
 using namespace common;
@@ -246,7 +250,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
                        ExportSettings *settings,
                        const Scene *const UNUSED(escene),
                        std::FILE *file,
-                       const std::vector<Mesh_export> &meshes)
+                       std::vector<Mesh_export> &meshes)
 {
   if (meshes.size() == 0) {
     return true;
@@ -254,7 +258,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
 
   const OBJExportSettings *format_specific = (OBJExportSettings *)settings->format_specific;
 
-  ulong uv_total = 0, no_total = 0;
+  size_t vx_total = 0, uv_total = 0, no_total = 0;
   auto uv_mapping_pair = common::make_deduplicate_set<uv_key_t>(
       format_specific->dedup_uvs_threshold);
   auto no_mapping_pair = common::make_deduplicate_set<no_key_t>(
@@ -262,35 +266,38 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
   auto &uv_mapping = uv_mapping_pair.second;
   auto &no_mapping = no_mapping_pair.second;
 
-  ulong uv_initial_count = uv_mapping.size();
-  ulong no_initial_count = no_mapping.size();
-
-  for (const Mesh_export &me : meshes) {
+  for (Mesh_export &me : meshes) {
+    me.vx_offset = vx_total;
+    vx_total += me.mesh->totvert;
     for (const std::array<float, 3> &v : common::transformed_vertex_iter(me.mesh, me.mat)) {
       fprintf(file, "v %.6g %.6g %.6g\n", v[0], v[1], v[2]);
     }
   }
 
-  // handles non-existant uvs
   if (settings->export_uvs) {
-    for (const Mesh_export &me : meshes) {
-      // TODO someone Is T47010 still relevant?
-      if (format_specific->dedup_uvs) {
-        for (const std::array<float, 2> &uv :
-             common::deduplicated_uv_iter(me.mesh, uv_total, uv_mapping_pair)) {
-          fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+    for (Mesh_export &me : meshes) {
+      if (me.mesh->mloopuv != nullptr) {
+        me.uv_offset = uv_total;
+        // TODO someone Is T47010 still relevant?
+        if (format_specific->dedup_uvs) {
+          for (const std::array<float, 2> &uv :
+               common::deduplicated_uv_iter(me.mesh, uv_total, uv_mapping_pair)) {
+            fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+          }
         }
-      }
-      else {
-        for (const std::array<float, 2> &uv : common::uv_iter{me.mesh}) {
-          fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+        else {
+          uv_total += me.mesh->totloop;
+          for (const std::array<float, 2> &uv : common::uv_iter{me.mesh}) {
+            fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
+          }
         }
       }
     }
   }
 
   if (settings->export_normals) {
-    for (const Mesh_export &me : meshes) {
+    for (Mesh_export &me : meshes) {
+      me.no_offset = no_total;
       if (format_specific->dedup_normals) {
         for (const std::array<float, 3> &no :
              common::deduplicated_normal_iter(me.mesh, no_total, no_mapping_pair, me.mat)) {
@@ -322,20 +329,18 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
       // Loop index
       int li = p.loopstart;
       for (const MLoop &l : common::loop_of_poly_iter(me.mesh, p)) {
-        ulong vx = me.mesh->totvert + l.v + 1;
-        ulong uv = 1;  // TODO XXX Fix UV and NO index with dedup
-        ulong no = 1;
+        size_t vx = me.vx_offset + l.v + 1, uv, no;
         if (settings->export_uvs && me.mesh->mloopuv != nullptr) {
           if (format_specific->dedup_uvs)
-            uv = uv_mapping[uv_initial_count + li]->second + 1;
+            uv = uv_mapping[me.uv_offset + li]->second + 1;
           else
-            uv = uv_initial_count + li + 1;
+            uv = me.uv_offset + li + 1;
         }
         if (settings->export_normals) {
           if (format_specific->dedup_normals)
-            no = no_mapping[no_initial_count + l.v]->second + 1;
+            no = no_mapping[me.no_offset + l.v]->second + 1;
           else
-            no = no_initial_count + l.v + 1;
+            no = me.no_offset + l.v + 1;
         }
         if (settings->export_uvs && settings->export_normals && me.mesh->mloopuv != nullptr)
           fprintf(file, " %lu/%lu/%lu", vx, uv, no);
@@ -372,7 +377,7 @@ bool OBJ_export_object(bContext *C,
       me.object = ob;
       me.needs_free = common::get_final_mesh(
           settings, scene, ob, &me.mesh /* OUT */, &me.mat /* OUT */);
-      return true;
+      return me.mesh != nullptr;
     }
     case OB_CURVE:
     case OB_SURF:
