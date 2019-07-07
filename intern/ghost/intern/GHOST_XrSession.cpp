@@ -35,6 +35,7 @@ struct OpenXRSessionData {
 
   // Only stereo rendering supported now.
   const XrViewConfigurationType view_type{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
+  XrSpace reference_space;
   std::vector<XrView> views;
   std::vector<XrSwapchain> swapchains;
   std::map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>> swapchain_images;
@@ -58,6 +59,9 @@ GHOST_XrSession::~GHOST_XrSession()
     xrDestroySwapchain(swapchain);
   }
   m_oxr->swapchains.clear();
+  if (m_oxr->reference_space != XR_NULL_HANDLE) {
+    xrDestroySpace(m_oxr->reference_space);
+  }
   xrDestroySession(m_oxr->session);
 
   m_oxr->session = XR_NULL_HANDLE;
@@ -197,6 +201,22 @@ void GHOST_XrSession::prepareDrawing()
   m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
 }
 
+static void create_reference_space(OpenXRSessionData *oxr)
+{
+  XrReferenceSpaceCreateInfo create_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+
+  create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+  create_info.poseInReferenceSpace.position.x = 0.0f;
+  create_info.poseInReferenceSpace.position.y = 0.0f;
+  create_info.poseInReferenceSpace.position.z = 0.0f;
+  create_info.poseInReferenceSpace.orientation.x = 0.0f;
+  create_info.poseInReferenceSpace.orientation.y = 0.0f;
+  create_info.poseInReferenceSpace.orientation.z = 0.0f;
+  create_info.poseInReferenceSpace.orientation.w = 1.0f;
+
+  xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space);
+}
+
 void GHOST_XrSession::start()
 {
   assert(m_context->oxr.instance != XR_NULL_HANDLE);
@@ -231,6 +251,7 @@ void GHOST_XrSession::start()
   xrCreateSession(m_context->oxr.instance, &create_info, &m_oxr->session);
 
   prepareDrawing();
+  create_reference_space(m_oxr.get());
 }
 
 void GHOST_XrSession::end()
@@ -301,28 +322,19 @@ void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *
 
 void GHOST_XrSession::draw(void *draw_customdata)
 {
-  XrReferenceSpaceCreateInfo refspace_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
   std::vector<XrCompositionLayerProjectionView>
       projection_layer_views;  // Keep alive until xrEndFrame() call!
   XrCompositionLayerProjection proj_layer;
   std::vector<XrCompositionLayerBaseHeader *> layers;
-  XrSpace space;
 
   beginFrameDrawing();
 
-  refspace_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-  // TODO Use viewport pose here.
-  refspace_info.poseInReferenceSpace.position = {0.0f, 0.0f, 0.0f};
-  refspace_info.poseInReferenceSpace.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-  xrCreateReferenceSpace(m_oxr->session, &refspace_info, &space);
-
   if (isVisible()) {
-    proj_layer = drawLayer(space, projection_layer_views, draw_customdata);
+    proj_layer = drawLayer(projection_layer_views, draw_customdata);
     layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
   }
 
   endFrameDrawing(&layers);
-  xrDestroySpace(space);
 }
 
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
@@ -383,9 +395,7 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
 }
 
 XrCompositionLayerProjection GHOST_XrSession::drawLayer(
-    XrSpace space,
-    std::vector<XrCompositionLayerProjectionView> &proj_layer_views,
-    void *draw_customdata)
+    std::vector<XrCompositionLayerProjectionView> &proj_layer_views, void *draw_customdata)
 {
   XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
   XrViewState view_state{XR_TYPE_VIEW_STATE};
@@ -393,7 +403,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
   uint32_t view_count;
 
   viewloc_info.displayTime = m_draw_frame->frame_state.predictedDisplayTime;
-  viewloc_info.space = space;
+  viewloc_info.space = m_oxr->reference_space;
 
   xrLocateViews(m_oxr->session,
                 &viewloc_info,
@@ -412,7 +422,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
              draw_customdata);
   }
 
-  layer.space = space;
+  layer.space = m_oxr->reference_space;
   layer.viewCount = proj_layer_views.size();
   layer.views = proj_layer_views.data();
 
