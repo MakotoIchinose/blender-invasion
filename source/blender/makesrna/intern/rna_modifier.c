@@ -3662,6 +3662,12 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Custom Profile Path", "The path for the custom profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
   /* HANS-TODO: Maybe actually "rna_Modifier_dependency_update", we'll see */
+
+  prop = RNA_def_property(srna, "sample_straight_edges", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_SAMPLE_STRAIGHT);
+  RNA_def_property_ui_text(prop, "Sample Straight Edges",
+                           "Whether to sample straight edges from the profile widget");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_shrinkwrap(BlenderRNA *brna)

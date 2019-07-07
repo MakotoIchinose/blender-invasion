@@ -45,5 +45,6 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct ProfileWidget *prwdgt);
+                   const struct ProfileWidget *prwdgt,
+                   const bool sample_straight_edges);
 #endif /* __BMESH_BEVEL_H__ */

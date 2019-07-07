@@ -41,7 +41,10 @@ void profilewidget_copy_data(struct ProfileWidget *target, const struct ProfileW
 
 struct ProfileWidget *profilewidget_copy(const struct ProfileWidget *prwdgt);
 
-void profilewidget_create_samples(const struct ProfileWidget *prwdgt, float *locations, int n_segments);
+void profilewidget_create_samples(const struct ProfileWidget *prwdgt,
+                                  float *locations,
+                                  int n_segments,
+                                  bool sample_straight_edges);
 
 /* Evaluates along the length of the path rather than with X coord */
 void profilewidget_evaluate(const struct ProfileWidget *prwdgt,
@@ -51,9 +54,9 @@ void profilewidget_evaluate(const struct ProfileWidget *prwdgt,
 
 /* Length portion is the fraction of the total path length where we want the location */
 void profilewidget_evaluate_portion(const struct ProfileWidget *prwdgt,
-                          float length_portion,
-                          float *x_out,
-                          float *y_out);
+                                    float length_portion,
+                                    float *x_out,
+                                    float *y_out);
 
 void profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
 
@@ -80,7 +83,7 @@ void profilewidget_handle_set(struct ProfileWidget *prwdgt, int type);
 void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
 
 void profilewidget_fill_segment_table(const struct ProfileWidget *prwdgt,
-                                    double *x_table_out,
-                                    double *y_table_out);
+                                      double *x_table_out,
+                                      double *y_table_out);
 
 #endif

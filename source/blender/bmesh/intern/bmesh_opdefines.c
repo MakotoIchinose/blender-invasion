@@ -1779,6 +1779,7 @@ static BMOpDefine bmo_bevel_def = {
    {"use_custom_profile", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
    {"prwdgt", BMO_OP_SLOT_PTR, {(int)BMO_OP_SLOT_SUBTYPE_PTR_WIDGET}},    /* the ProfileWiget struct for the custom profile shape */
    /* HANS-TODO: Figure out how to get the struct through here using the required subtype */
+   {"sample_straight_edges", BMO_OP_SLOT_BOOL},
    {{'\0'}},
   },
   /* slots_out */

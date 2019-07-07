@@ -2707,7 +2707,6 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
 
 static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwdgt)
 {
-  printf("DIRECT LINK PROFILEWIDGET\n");
   prwdgt->path = newdataadr(fd, prwdgt->path);
   prwdgt->table = NULL;
 }

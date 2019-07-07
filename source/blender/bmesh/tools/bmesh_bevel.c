@@ -282,6 +282,8 @@ typedef struct BevelParams {
   bool harden_normals;
   /** Should we use the custom profiles feature? */
   bool use_custom_profile;
+  /** Whether to sample straight edges from the profile widget */
+  bool sample_straight_edges;
   /** The struct used to store the custom profile input */
   const struct ProfileWidget *prwdgt;
   /** Vertex group array, maybe set if vertex_only. */
@@ -6838,7 +6840,7 @@ static void set_profile_spacing(BevelParams *bp)
                                                          (size_t)(seg + 1) * sizeof(double));
     if (bp->use_custom_profile) {
       temp_locs = BLI_memarena_alloc(bp->mem_arena, (size_t)(2 * (seg_2 + 1)) * sizeof(float));
-      profilewidget_create_samples(bp->prwdgt, temp_locs, seg + 1);
+      profilewidget_create_samples(bp->prwdgt, temp_locs, seg + 1, bp->sample_straight_edges);
       for (int i = 0; i < seg + 1; i++) {
         bp->pro_spacing.xvals[i] = temp_locs[2 * i + 1];
         bp->pro_spacing.yvals[i] = temp_locs[2 * i];
@@ -6865,7 +6867,7 @@ static void set_profile_spacing(BevelParams *bp)
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       if (bp->use_custom_profile) {
         BLI_assert(temp_locs);
-        profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1);
+        profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1, bp->sample_straight_edges);
         for (int i = 0; i < seg_2 + 1; i++) {
           bp->pro_spacing.xvals_2[i] = temp_locs[2 * i + 1];
           bp->pro_spacing.yvals_2[i] = temp_locs[2 * i];
@@ -7140,7 +7142,8 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct ProfileWidget *prwdgt)
+                   const struct ProfileWidget *prwdgt,
+                   const bool sample_straight_edges)
 {
   BMIter iter, liter;
   BMVert *v, *v_next;
@@ -7174,15 +7177,14 @@ void BM_mesh_bevel(BMesh *bm,
   bp.face_hash = NULL;
   bp.use_custom_profile = use_custom_profile;
   bp.prwdgt = prwdgt;
-
-  printf("\nBM MESH BEVEL\n");
+  bp.sample_straight_edges = sample_straight_edges;
 
   if (bp.use_custom_profile) {
     /* For now we need to sample the custom profile with at least as many segments as points */
     if (bp.seg < bp.prwdgt->totpoint) {
       bp.seg = bp.prwdgt->totpoint;
     }
-    profilewidget_initialize(bp.prwdgt, (short)bp.seg + 1);
+//    profilewidget_initialize(bp.prwdgt, (short)bp.seg + 1);
   }
 
   if (profile >= 0.950f) { /* r ~ 692, so PRO_SQUARE_R is 1e4 */

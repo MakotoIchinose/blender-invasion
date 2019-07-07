@@ -119,6 +119,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   const int miter_inner = bmd->miter_inner;
   const float spread = bmd->spread;
   const bool use_custom_profile = (bmd->flags & MOD_BEVEL_CUSTOM_PROFILE);
+  const bool sample_straight_edges = (bmd->flags & MOD_BEVEL_SAMPLE_STRAIGHT);
 
   bm = BKE_mesh_to_bmesh_ex(mesh,
                             &(struct BMeshCreateParams){0},
@@ -223,7 +224,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                 spread,
                 mesh->smoothresh,
                 use_custom_profile,
-                bmd->prwdgt);
+                bmd->prwdgt,
+                sample_straight_edges);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 

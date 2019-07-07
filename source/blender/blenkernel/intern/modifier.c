@@ -338,7 +338,6 @@ static void modifier_copy_data_id_us_cb(void *UNUSED(userData),
 
 void modifier_copyData_ex(ModifierData *md, ModifierData *target, const int flag)
 {
-  printf("MODIFIER COPYDATA EX\n");
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
 
   target->mode = md->mode;
