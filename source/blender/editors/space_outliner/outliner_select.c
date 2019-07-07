@@ -1638,11 +1638,11 @@ static TreeElement *do_outliner_select_walk_down(SpaceOutliner *soops, TreeEleme
   return active;
 }
 
-static void do_outliner_select_walk(SpaceOutliner *soops,
-                                    TreeElement *active,
-                                    const int direction,
-                                    const bool extend)
+static void do_outliner_select_walk(
+    bContext *C, SpaceOutliner *soops, TreeElement *active, const int direction, const bool extend)
 {
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
   TreeStoreElem *tselem = TREESTORE(active);
 
   if (!extend) {
@@ -1680,7 +1680,10 @@ static void do_outliner_select_walk(SpaceOutliner *soops,
     tselem->flag |= new_flag;
   }
 
-  tselem_new->flag |= TSE_SELECTED | TSE_ACTIVE;
+  /* Activate rather than just setting flags to support mode switching */
+  outliner_item_select(soops, active, extend, extend);
+  do_outliner_item_activate_tree_element(
+      C, scene, view_layer, soops, active, tselem_new, extend, false);
 }
 
 static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -1714,7 +1717,7 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
       tselem->flag |= TSE_SELECTED;
     }
     else {
-      do_outliner_select_walk(soops, active, direction, extend);
+      do_outliner_select_walk(C, soops, active, direction, extend);
     }
   }
 
