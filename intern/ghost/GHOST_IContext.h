@@ -64,6 +64,8 @@ class GHOST_IContext {
 
   virtual GHOST_TSuccess swapBuffers() = 0;
 
+  virtual bool isUpsideDown() const = 0;
+
 #ifdef WITH_CXX_GUARDEDALLOC
   MEM_CXX_CLASS_ALLOC_FUNCS("GHOST:GHOST_IContext")
 #endif

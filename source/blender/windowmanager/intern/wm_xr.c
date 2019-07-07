@@ -27,6 +27,7 @@
 #include "BLI_math_matrix.h"
 
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 
 #include "DRW_engine.h"
@@ -150,12 +151,15 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int
   return surface;
 }
 
-static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
+static void wm_xr_draw_matrices_create(const Scene *scene,
+                                       const GHOST_XrDrawViewInfo *draw_view,
                                        const float clip_start,
                                        const float clip_end,
                                        float r_view_mat[4][4],
                                        float r_proj_mat[4][4])
 {
+  float temp[4][4];
+
   perspective_m4_fov(r_proj_mat,
                      draw_view->fov.angle_left,
                      draw_view->fov.angle_right,
@@ -164,8 +168,14 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
                      clip_start,
                      clip_end);
 
-  ED_view3d_to_m4(r_view_mat, draw_view->pose.position, draw_view->pose.orientation_quat, 0.0f);
-  invert_m4(r_view_mat);
+  ED_view3d_to_m4(temp, draw_view->pose.position, draw_view->pose.orientation_quat, 1.0f);
+  if (scene->camera) {
+    invert_m4_m4(scene->camera->imat, scene->camera->obmat);
+    mul_m4_m4m4(r_view_mat, temp, scene->camera->imat);
+  }
+  else {
+    copy_m4_m4(r_view_mat, temp);
+  }
 }
 
 static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
@@ -180,7 +190,7 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
   float viewmat[4][4], winmat[4][4];
   char err_out[256] = "unknown";
 
-  wm_xr_draw_matrices_create(draw_view, clip_start, clip_end, viewmat, winmat);
+  wm_xr_draw_matrices_create(CTX_data_scene(C), draw_view, clip_start, clip_end, viewmat, winmat);
 
   DRW_opengl_context_enable();
   offscreen = GPU_offscreen_create(draw_view->width, draw_view->height, 0, true, false, err_out);
@@ -214,18 +224,34 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
                                   false,
                                   offscreen,
                                   viewport);
-  GPU_viewport_clear_from_offscreen(viewport);
-  GPU_viewport_free(viewport);
 
   /* Blit from the DRW context into the offscreen surface context. Would be good to avoid this.
    * Idea: Allow passing custom offscreen context to DRW? */
-  GHOST_ContextBlitOpenGLOffscreenContext(
-      g_xr_surface->ghost_ctx, DRW_opengl_context_get(), draw_view->width, draw_view->height);
+  //  GHOST_ContextBlitOpenGLOffscreenContext(
+  //      g_xr_surface->ghost_ctx, DRW_opengl_context_get(), draw_view->width, draw_view->height);
 
   GPU_offscreen_unbind(offscreen, true);
   GPU_framebuffer_restore();
   DRW_opengl_context_disable_ex(true);
 
+  void wm_draw_offscreen_texture_parameters(GPUOffScreen * offscreen);
+  void wm_draw_upside_down(int sizex, int sizey);
+  GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
+  rcti rect = {.xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
+
+  GHOST_ActivateOpenGLContext(g_xr_surface->ghost_ctx);
+  wm_draw_offscreen_texture_parameters(offscreen);
+
+  wmViewport(&rect);
+  GPU_viewport_draw_to_screen(viewport, &rect);
+  if (GHOST_isUpsideDownContext(g_xr_surface->secondary_ghost_ctx)) {
+    GPU_texture_bind(texture, 0);
+    wm_draw_upside_down(draw_view->width, draw_view->height);
+    GPU_texture_unbind(texture);
+  }
+
+  GPU_viewport_clear_from_offscreen(viewport);
+  GPU_viewport_free(viewport);
   GPU_offscreen_free(offscreen);
 
   return g_xr_surface->ghost_ctx;
@@ -267,22 +293,39 @@ static void wm_xr_session_gpu_binding_context_destroy(
   wm_window_reset_drawable();
 }
 
-void wm_xr_session_toggle(struct GHOST_XrContext *xr_context)
+static void wm_xr_session_begin_info_create(const Scene *scene,
+                                            GHOST_XrSessionBeginInfo *begin_info)
+{
+  if (scene->camera) {
+    copy_v3_v3(begin_info->base_pose.position, scene->camera->loc);
+    /* TODO will only work if rotmode is euler */
+    eul_to_quat(begin_info->base_pose.orientation_quat, scene->camera->rot);
+  }
+  else {
+    copy_v3_fl(begin_info->base_pose.position, 0.0f);
+    unit_qt(begin_info->base_pose.orientation_quat);
+  }
+}
+
+void wm_xr_session_toggle(bContext *C, struct GHOST_XrContext *xr_context)
 {
   if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
     GHOST_XrSessionEnd(xr_context);
   }
   else {
+    GHOST_XrSessionBeginInfo begin_info;
+
 #if defined(USE_FORCE_WINDOWED_SESSION)
     xr_session_window_create(C);
 #endif
+    wm_xr_session_begin_info_create(CTX_data_scene(C), &begin_info);
 
     GHOST_XrGraphicsContextBindFuncs(xr_context,
                                      wm_xr_session_gpu_binding_context_create,
                                      wm_xr_session_gpu_binding_context_destroy);
     GHOST_XrDrawViewFunc(xr_context, wm_xr_draw_view);
 
-    GHOST_XrSessionStart(xr_context);
+    GHOST_XrSessionStart(xr_context, &begin_info);
   }
 }
 

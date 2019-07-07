@@ -36,7 +36,7 @@ class GHOST_XrSession {
   GHOST_XrSession(struct GHOST_XrContext *xr_context);
   ~GHOST_XrSession();
 
-  void start();
+  void start(const GHOST_XrSessionBeginInfo *begin_info);
   void end();
 
   eLifeExpectancy handleStateChangeEvent(const struct XrEventDataSessionStateChanged *lifecycle);

@@ -260,13 +260,13 @@ void GHOST_XrContextDestroy(GHOST_XrContext *xr_context)
   delete xr_context;
 }
 
-void GHOST_XrSessionStart(GHOST_XrContext *xr_context)
+void GHOST_XrSessionStart(GHOST_XrContext *xr_context, const GHOST_XrSessionBeginInfo *begin_info)
 {
   if (xr_context->session == nullptr) {
     xr_context->session = std::unique_ptr<GHOST_XrSession>(new GHOST_XrSession(xr_context));
   }
 
-  xr_context->session->start();
+  xr_context->session->start(begin_info);
 }
 
 void GHOST_XrSessionEnd(GHOST_XrContext *xr_context)

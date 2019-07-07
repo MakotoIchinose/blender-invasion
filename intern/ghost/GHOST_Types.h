@@ -583,15 +583,19 @@ typedef enum {
 typedef const GHOST_TXrGraphicsBinding *GHOST_XrGraphicsBindingCandidates;
 
 typedef struct {
+  float position[3];
+  /* Blender convention (w, x, y, z) */
+  float orientation_quat[4];
+} GHOST_XrPose;
+
+typedef struct {
   const GHOST_XrGraphicsBindingCandidates gpu_binding_candidates;
   unsigned int gpu_binding_candidates_count;
 } GHOST_XrContextCreateInfo;
 
 typedef struct {
-  float position[3];
-  /* Blender convention (w, x, y, z) */
-  float orientation_quat[4];
-} GHOST_XrPose;
+  GHOST_XrPose base_pose;
+} GHOST_XrSessionBeginInfo;
 
 typedef struct {
   int ofsx, ofsy;

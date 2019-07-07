@@ -3545,7 +3545,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  wm_xr_session_toggle(wm->xr_context);
+  wm_xr_session_toggle(C, wm->xr_context);
 
   return OPERATOR_FINISHED;
 }

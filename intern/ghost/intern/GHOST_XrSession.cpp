@@ -201,23 +201,26 @@ void GHOST_XrSession::prepareDrawing()
   m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
 }
 
-static void create_reference_space(OpenXRSessionData *oxr)
+static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *base_pose)
 {
   XrReferenceSpaceCreateInfo create_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+  create_info.poseInReferenceSpace.orientation.w = 1.0f;
 
   create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-  create_info.poseInReferenceSpace.position.x = 0.0f;
-  create_info.poseInReferenceSpace.position.y = 0.0f;
-  create_info.poseInReferenceSpace.position.z = 0.0f;
-  create_info.poseInReferenceSpace.orientation.x = 0.0f;
-  create_info.poseInReferenceSpace.orientation.y = 0.0f;
-  create_info.poseInReferenceSpace.orientation.z = 0.0f;
-  create_info.poseInReferenceSpace.orientation.w = 1.0f;
+#if 0
+  create_info.poseInReferenceSpace.position.x = base_pose->position[0];
+  create_info.poseInReferenceSpace.position.y = base_pose->position[2];
+  create_info.poseInReferenceSpace.position.z = -base_pose->position[1];
+  create_info.poseInReferenceSpace.orientation.x = base_pose->orientation_quat[1];
+  create_info.poseInReferenceSpace.orientation.y = base_pose->orientation_quat[3];
+  create_info.poseInReferenceSpace.orientation.z = -base_pose->orientation_quat[2];
+  create_info.poseInReferenceSpace.orientation.w = base_pose->orientation_quat[0];
+#endif
 
   xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space);
 }
 
-void GHOST_XrSession::start()
+void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
 {
   assert(m_context->oxr.instance != XR_NULL_HANDLE);
   assert(m_oxr->session == XR_NULL_HANDLE);
@@ -251,7 +254,7 @@ void GHOST_XrSession::start()
   xrCreateSession(m_context->oxr.instance, &create_info, &m_oxr->session);
 
   prepareDrawing();
-  create_reference_space(m_oxr.get());
+  create_reference_space(m_oxr.get(), &begin_info->base_pose);
 }
 
 void GHOST_XrSession::end()
@@ -339,14 +342,24 @@ void GHOST_XrSession::draw(void *draw_customdata)
 
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
 {
+#if 0
   /* Set and convert to Blender coodinate space */
-  r_info.pose.position[0] = -view.pose.position.x;
-  r_info.pose.position[1] = view.pose.position.y;
-  r_info.pose.position[2] = -view.pose.position.z;
+  r_info.pose.position[0] = view.pose.position.x;
+  r_info.pose.position[1] = -view.pose.position.z;
+  r_info.pose.position[2] = view.pose.position.y;
   r_info.pose.orientation_quat[0] = view.pose.orientation.w;
   r_info.pose.orientation_quat[1] = view.pose.orientation.x;
-  r_info.pose.orientation_quat[2] = -view.pose.orientation.y;
+  r_info.pose.orientation_quat[2] = -view.pose.orientation.z;
+  r_info.pose.orientation_quat[3] = view.pose.orientation.y;
+#else
+  r_info.pose.position[0] = view.pose.position.x;
+  r_info.pose.position[1] = view.pose.position.y;
+  r_info.pose.position[2] = view.pose.position.z;
+  r_info.pose.orientation_quat[0] = view.pose.orientation.w;
+  r_info.pose.orientation_quat[1] = view.pose.orientation.x;
+  r_info.pose.orientation_quat[2] = view.pose.orientation.y;
   r_info.pose.orientation_quat[3] = view.pose.orientation.z;
+#endif
 
   r_info.fov.angle_left = view.fov.angleLeft;
   r_info.fov.angle_right = view.fov.angleRight;

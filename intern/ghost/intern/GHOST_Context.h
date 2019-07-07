@@ -120,7 +120,7 @@ class GHOST_Context : public GHOST_IContext {
     return m_stereoVisual;
   }
 
-  inline virtual bool isUpsideDown() const
+  inline bool isUpsideDown() const
   {
     return false;
   }

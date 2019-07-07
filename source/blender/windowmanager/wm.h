@@ -98,7 +98,7 @@ void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 #ifdef WITH_OPENXR
 /* wm_xr.c */
 bool wm_xr_context_ensure(wmWindowManager *wm);
-void wm_xr_session_toggle(struct GHOST_XrContext *xr_context);
+void wm_xr_session_toggle(bContext *C, struct GHOST_XrContext *xr_context);
 #endif
 
 #endif /* __WM_H__ */
