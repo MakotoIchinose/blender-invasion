@@ -1670,6 +1670,8 @@ typedef struct SceneLANPR {
 
   float line_color[4];
   float background_color[4];
+  int use_world_background; /* color only */
+  char _pad1[4];
 
   float depth_width_influence;
   float depth_width_curve;
@@ -1692,7 +1694,7 @@ typedef struct SceneLANPR {
   char enable_intersections;
   char enable_chaining;
   char enable_chain_connection;
-  char _pad1;
+  char _pad2;
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 

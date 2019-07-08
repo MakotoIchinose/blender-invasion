@@ -3534,6 +3534,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       sce->lanpr.background_color[2] = 0.75;
       sce->lanpr.background_color[3] = 1;
 
+      sce->lanpr.use_world_background = 1;
+
       zero_v4(sce->lanpr.line_color);
 
       sce->lanpr.enable_intersections = 1;

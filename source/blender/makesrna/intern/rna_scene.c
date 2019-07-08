@@ -7367,6 +7367,11 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
+  prop = RNA_def_property(srna, "use_world_background", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(
+      prop, "Use World Background", "Use the background color set in the world panels");
+
   prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Crease Threshold", "cosine value of face angle");

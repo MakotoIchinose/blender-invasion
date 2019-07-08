@@ -777,7 +777,13 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
             layout.prop(lanpr, "disable_edge_splits")
             
-            layout.prop(lanpr, "background_color")
+            layout.label(text="Background Color:")
+            row = layout.row(align=True)
+            row.prop(lanpr,"use_world_background",toggle=True,icon='WORLD',text="Use World")
+            if(lanpr.use_world_background):
+                row.prop(scene.world, "color",text="")
+            else:
+                row.prop(lanpr, "background_color",text="")
             layout.prop(lanpr, "crease_threshold")
 
             if lanpr.master_mode == "DPIX" and len(lanpr.layers)==0:
