@@ -50,6 +50,7 @@ set(INC
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
   ../../../intern/smoke/extern
+  ../editors/include
 )
 
 set(INC_SYS
