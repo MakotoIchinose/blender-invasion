@@ -42,6 +42,7 @@ extern "C" {
 struct ARegion;
 struct GHashIterator;
 struct GPUViewport;
+struct ID;
 struct IDProperty;
 struct ImBuf;
 struct ImageFormatData;
@@ -104,6 +105,8 @@ void WM_init_opengl(struct Main *bmain);
 
 void WM_check(struct bContext *C);
 void WM_reinit_gizmomap_all(struct Main *bmain);
+
+uint *WM_window_pixels_read(struct wmWindowManager *wm, struct wmWindow *win, int r_size[2]);
 
 int WM_window_pixels_x(const struct wmWindow *win);
 int WM_window_pixels_y(const struct wmWindow *win);
@@ -182,6 +185,10 @@ void WM_autosave_init(struct wmWindowManager *wm);
 void WM_recover_last_session(struct bContext *C, struct ReportList *reports);
 void WM_file_tag_modified(void);
 
+struct ID *WM_file_append_datablock(struct bContext *C,
+                                    const char *filepath,
+                                    const short id_code,
+                                    const char *id_name);
 void WM_lib_reload(struct Library *lib, struct bContext *C, struct ReportList *reports);
 
 /* mouse cursors */
@@ -653,7 +660,6 @@ enum {
   WM_JOB_PRIORITY = (1 << 0),
   WM_JOB_EXCL_RENDER = (1 << 1),
   WM_JOB_PROGRESS = (1 << 2),
-  WM_JOB_SUSPEND = (1 << 3),
 };
 
 /** Identifying jobs by owner alone is unreliable, this isnt saved,
@@ -704,6 +710,7 @@ bool WM_jobs_is_stopped(wmWindowManager *wm, void *owner);
 void *WM_jobs_customdata_get(struct wmJob *);
 void WM_jobs_customdata_set(struct wmJob *, void *customdata, void (*free)(void *));
 void WM_jobs_timer(struct wmJob *, double timestep, unsigned int note, unsigned int endnote);
+void WM_jobs_delay_start(struct wmJob *, double delay_time);
 void WM_jobs_callbacks(struct wmJob *,
                        void (*startjob)(void *, short *, short *, float *),
                        void (*initjob)(void *),

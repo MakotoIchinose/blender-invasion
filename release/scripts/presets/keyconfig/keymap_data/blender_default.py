@@ -1188,7 +1188,7 @@ def km_mask_editing(params):
             ("mask.select", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
              {"properties": [("extend", False), ("deselect", False), ("toggle", False),
                              ("deselect_all", not params.legacy)]}),
-            ("transform.translate", {"type": 'RIGHTMOUSE', "value": 'ANY'}, None),
+            ("transform.translate", {"type": 'EVT_TWEAK_R', "value": 'ANY'}, None),
         ])
 
     items.extend([
@@ -1373,10 +1373,10 @@ def km_graph_editor(params):
         ("graph.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("extend", True), ("column", False), ("curves", True)]}),
         ("graph.select_leftright",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("graph.select_leftright",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "shift": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True, "shift": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
         ("graph.select_leftright", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
          {"properties": [("mode", 'LEFT'), ("extend", False)]}),
@@ -1907,10 +1907,10 @@ def km_dopesheet(params):
         ("action.clickselect", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
          {"properties": [("extend", True), ("column", False), ("channel", True)]}),
         ("action.select_leftright",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("action.select_leftright",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "shift": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True, "shift": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
         ("action.select_leftright", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
          {"properties": [("mode", 'LEFT'), ("extend", False)]}),
@@ -2050,10 +2050,10 @@ def km_nla_editor(params):
         ("nla.click_select", {"type": params.select_mouse, "value": 'PRESS', "shift": True},
          {"properties": [("extend", True)]}),
         ("nla.select_leftright",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True},
          {"properties": [("mode", 'CHECK'), ("extend", False)]}),
         ("nla.select_leftright",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "shift": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True, "shift": True},
          {"properties": [("mode", 'CHECK'), ("extend", True)]}),
         ("nla.select_leftright", {"type": 'LEFT_BRACKET', "value": 'PRESS'},
          {"properties": [("mode", 'LEFT'), ("extend", False)]}),
@@ -2322,6 +2322,7 @@ def km_sequencer(params):
         ("sequencer.reload", {"type": 'R', "value": 'PRESS', "alt": True}, None),
         ("sequencer.reload", {"type": 'R', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("adjust_length", True)]}),
+        ("sequencer.refresh_all", {"type": 'R', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.offset_clear", {"type": 'O', "value": 'PRESS', "alt": True}, None),
         ("sequencer.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
         ("sequencer.delete", {"type": 'X', "value": 'PRESS'}, None),
@@ -2372,10 +2373,10 @@ def km_sequencer(params):
         ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("extend", True), ("linked_handle", True), ("left_right", 'NONE'), ("linked_time", False)]}),
         ("sequencer.select",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True},
          {"properties": [("linked_handle", False), ("left_right", 'MOUSE'), ("linked_time", True), ("extend", False)]}),
         ("sequencer.select",
-         {"type": params.select_mouse, "value": 'PRESS', "ctrl": True, "shift": True, "alt": not params.legacy},
+         {"type": params.select_mouse, "value": 'PRESS' if params.legacy else 'CLICK', "ctrl": True, "shift": True},
          {"properties": [("linked_handle", False), ("left_right", 'MOUSE'), ("linked_time", True), ("extend", True)]}),
         ("sequencer.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True}, None),
@@ -3007,6 +3008,9 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.stroke_join", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
         ("gpencil.stroke_join", {"type": 'J', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("type", 'JOINCOPY')]}),
+        # Close strokes
+        ("gpencil.stroke_cyclical_set", {"type": 'F', "value": 'PRESS'},
+         {"properties": [("type", 'CLOSE'), ("geometry", True)]}),
         # Copy + paset
         ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("gpencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
@@ -3231,8 +3235,6 @@ def km_grease_pencil_stroke_weight_mode(params):
     )
 
     items.extend([
-        # Selection
-        *_grease_pencil_selection(params),
         # Painting
         ("gpencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("wait_for_input", False)]}),
@@ -3660,7 +3662,10 @@ def km_vertex_paint(params):
     )
 
     items.extend([
-        ("paint.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("paint.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("mode", 'NORMAL')]}),
+        ("paint.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
         ("paint.brush_colors_flip", {"type": 'X', "value": 'PRESS'}, None),
         ("paint.sample_color", {"type": 'S', "value": 'PRESS'}, None),
         ("paint.vertex_color_set", {"type": 'K', "value": 'PRESS', "shift": True}, None),
@@ -3693,6 +3698,11 @@ def km_vertex_paint(params):
 
     if params.legacy:
         items.extend(_template_items_legacy_tools_from_numbers())
+    else:
+        items.append(
+            ("wm.context_toggle", {"type": 'V', "value": 'PRESS'},
+             {"properties": [("data_path", 'vertex_paint_object.data.use_paint_mask_vertex')]})
+        )
 
     return keymap
 
