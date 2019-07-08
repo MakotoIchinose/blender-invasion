@@ -451,6 +451,7 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
+  int usage, dpix_ok;
 
   if (!DRW_object_is_renderable(ob)) {
     return;
@@ -464,15 +465,23 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
 
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
+    if(dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+      !lanpr_share.dpix_shader_error)){
+      usage = lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
+      if(usage == OBJECT_FEATURE_LINE_EXCLUDE){
+        return;
+      }
+    }
     DRW_shgroup_call_no_cull(stl->g_data->multipass_shgrp, geom, ob);
   }
 
-  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
-      !lanpr_share.dpix_shader_error) {
-    int usage = lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
-    if(usage != OBJECT_FEATURE_LINE_INHERENT){
+  if (dpix_ok) {
+
+    /* usage already set */
+    if(usage == OBJECT_FEATURE_LINE_OCCLUSION_ONLY){
       return;
     }
+    
     int idx = pd->begin_index;
     if (lanpr->reloaded) {
       pd->begin_index = lanpr_feed_atlas_data_obj(vedata,
