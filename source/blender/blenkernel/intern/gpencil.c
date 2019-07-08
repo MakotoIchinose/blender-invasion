@@ -2072,12 +2072,13 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Mate
   return -1;
 }
 
-static Material *gpencil_add_curve_material(Main *bmain,
-                                            Object *ob_gp,
-                                            float cu_color[3],
-                                            const bool gpencil_lines,
-                                            const bool fill,
-                                            int *r_idx)
+/* Add gpencil material using curve material as base */
+static Material *gpencil_add_from_curve_material(Main *bmain,
+                                                 Object *ob_gp,
+                                                 float cu_color[3],
+                                                 const bool gpencil_lines,
+                                                 const bool fill,
+                                                 int *r_idx)
 {
   Material *mat_gp = BKE_gpencil_object_material_new(
       bmain, ob_gp, (fill) ? "Material" : "Unassigned", r_idx);
@@ -2089,11 +2090,13 @@ static Material *gpencil_add_curve_material(Main *bmain,
   }
   else {
     linearrgb_to_srgb_v3_v3(gp_style->stroke_rgba, cu_color);
+    /* TODO: review alpha*/
     gp_style->stroke_rgba[3] = 1.0f;
   }
 
   /* Fill color. */
   linearrgb_to_srgb_v3_v3(gp_style->fill_rgba, cu_color);
+  /* TODO: review alpha*/
   gp_style->fill_rgba[3] = 1.0f;
   /* Fill is false if the original curva hasn't material assigned. */
   if (fill) {
@@ -2212,7 +2215,9 @@ void BKE_gpencil_convert_curve(Main *bmain,
   gps->tot_triangles = 0;
   gps->triangles = NULL;
 
-  /* Materials */
+  /* Materials
+   * Notice: The color of the material is the color of viewport and not the final shader color.
+   */
   Material *mat_gp = NULL;
   bool fill = true;
   /* Check if grease pencil has a material with same color.*/
@@ -2230,7 +2235,12 @@ void BKE_gpencil_convert_curve(Main *bmain,
   }
   int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
   if (r_idx < 0) {
-    mat_gp = gpencil_add_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    /* If object has more than 1 material, use second material for stroke color */
+    if (ob_cu->totcol > 1) {
+      Material *ma_stroke = give_current_material(ob_cu, 2);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+    }
   }
   gps->mat_nr = r_idx;
 
