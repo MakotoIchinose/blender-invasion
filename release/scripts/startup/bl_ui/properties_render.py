@@ -753,18 +753,27 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             return;
 
         if mode == "SOFTWARE" or mode == "DPIX":
+            if not scene.camera:
+                has_camera=False
+                layout.label(text="No active camera.")
+            else:
+                has_camera=True
 
             if scene.render.engine!="BLENDER_LANPR":
                 row=layout.row(align=True)
+                row.enabled=has_camera
                 row.prop(lanpr,"auto_update",toggle=True,text='Auto Update')
                 row.prop(lanpr,"gpencil_overwrite",toggle=True,text='Overwrite')
                 if not lanpr.auto_update:
                     row=layout.row()
+                    row.enabled=has_camera
                     row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
                 row=layout.row()
+                row.enabled=has_camera
                 row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
             else:
                 row=layout.row(align=True)
+                row.enabled = has_camera
                 row.prop(lanpr,'auto_update',toggle=True,text='Auto Update')
                 txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
                 if not lanpr.auto_update:

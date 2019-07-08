@@ -4380,6 +4380,11 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
   return OPERATOR_FINISHED;
 }
 
+bool lanpr_camera_exists(struct bContext*c){
+  Scene* s = CTX_data_scene(c);
+  return s->camera?true:false;
+}
+
 /*  seems we don't quite need this operator... */
 static int lanpr_clear_render_buffer_exec(struct bContext *C, struct wmOperator *op)
 {
@@ -4433,9 +4438,7 @@ void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
   ot->description = "LANPR calculates feature line in current scene";
   ot->idname = "SCENE_OT_lanpr_calculate";
 
-  /* api callbacks */
-  /*  ot->invoke = screen_render_invoke; /* why we need both invoke and exec? */
-  /*  ot->modal = screen_render_modal; */
+  ot->poll = lanpr_camera_exists;
   ot->cancel = lanpr_compute_feature_lines_cancel;
   ot->exec = lanpr_compute_feature_lines_exec;
 }
