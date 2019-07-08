@@ -68,14 +68,14 @@ vec4 apply_scale(vec4 center, vec4 a)
   return mix(a, center, depth_factor);
 }
 
-void emit_alpha_pre_mul(vec4 a, int is_crease, float crease_fading)
+void emit_color_and_alpha(vec4 a, int is_crease, float crease_fading)
 {
   float lz = get_linear_depth(a.z);
   float alpha_factor = mix(0, curve_01(lz, depth_alpha_curve), depth_alpha_influence);
   float alpha_crease_fading = alpha_factor;
   if (is_crease > 0)
     alpha_crease_fading = mix(alpha_factor, 1, crease_fading * 2);  // fading=0.5 -> fade all
-  out_color = mix(use_color, background_color, alpha_crease_fading);
+  out_color = vec4(use_color.rgb, mix(1, 0, alpha_crease_fading));
 }
 
 void draw_line(vec4 p1, vec4 p2, int is_crease)
@@ -102,23 +102,23 @@ void draw_line(vec4 p1, vec4 p2, int is_crease)
   d = apply_scale(p2, d);
 
   gl_Position = vec4(a.xy, a.z - depth_offset, 1);
-  emit_alpha_pre_mul(a, is_crease, p2.w);
+  emit_color_and_alpha(a, is_crease, p2.w);
   EmitVertex();
   gl_Position = vec4(b.xy, b.z - depth_offset, 1);
-  emit_alpha_pre_mul(b, is_crease, p2.w);
+  emit_color_and_alpha(b, is_crease, p2.w);
   EmitVertex();
   gl_Position = vec4(c.xy, c.z - depth_offset, 1);
-  emit_alpha_pre_mul(c, is_crease, p2.w);
+  emit_color_and_alpha(c, is_crease, p2.w);
   EmitVertex();
 
   gl_Position = vec4(b.xy, b.z - depth_offset, 1);
-  emit_alpha_pre_mul(b, is_crease, p2.w);
+  emit_color_and_alpha(b, is_crease, p2.w);
   EmitVertex();
   gl_Position = vec4(c.xy, c.z - depth_offset, 1);
-  emit_alpha_pre_mul(c, is_crease, p2.w);
+  emit_color_and_alpha(c, is_crease, p2.w);
   EmitVertex();
   gl_Position = vec4(d.xy, d.z - depth_offset, 1);
-  emit_alpha_pre_mul(d, is_crease, p2.w);
+  emit_color_and_alpha(d, is_crease, p2.w);
   EmitVertex();
 
   EndPrimitive();

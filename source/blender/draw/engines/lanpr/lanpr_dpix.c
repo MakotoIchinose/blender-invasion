@@ -523,12 +523,18 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
 
   GPU_framebuffer_bind(fbl->dpix_preview);
   eGPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
-  GPU_framebuffer_clear(
-      fbl->dpix_preview, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
+  GPU_framebuffer_clear(fbl->dpix_preview, clear_bits, clear_col, clear_depth, clear_stencil);
   DRW_draw_pass(psl->dpix_preview_pass);
 
+  if (is_render) {
+    mul_v3_v3fl(clear_col, lanpr->background_color, lanpr->background_color[3]);
+    clear_col[3] = lanpr->background_color[3];
+  }
+  else {
+    copy_v4_v4(clear_col, lanpr->background_color);
+  }
+
   GPU_framebuffer_bind(DefaultFB);
-  GPU_framebuffer_clear(
-      DefaultFB, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
-  DRW_multisamples_resolve(txl->depth, txl->color, 1);
+  GPU_framebuffer_clear(DefaultFB, clear_bits, clear_col, clear_depth, clear_stencil);
+  DRW_multisamples_resolve(txl->depth, txl->color, 0);
 }
