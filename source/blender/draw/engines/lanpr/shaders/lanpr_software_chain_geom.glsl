@@ -53,6 +53,10 @@ uniform float taper_r_strength;
 uniform vec4 output_viewport;
 uniform vec4 preview_viewport;
 
+uniform float camdx;
+uniform float camdy;
+uniform float camzoom;
+
 out vec4 out_color;
 
 float use_thickness;
@@ -221,6 +225,14 @@ void decide_line_style(int component_id)
   }
 }
 
+vec4 correct_camera_scale(vec4 p){
+  
+  p.x-=camdx*4;
+  p.y-=camdy*4;
+  p.xy*=camzoom;
+  return p;
+}
+
 void main()
 {
   int level = gLevel[1];
@@ -239,6 +251,11 @@ void main()
   L.x *= x_scale;
   R.x *= x_scale;
   RR.x *= x_scale;
+
+  LL = correct_camera_scale(LL);
+  L = correct_camera_scale(L);
+  R = correct_camera_scale(R);
+  RR = correct_camera_scale(RR);
 
   int type = gType[1];
 

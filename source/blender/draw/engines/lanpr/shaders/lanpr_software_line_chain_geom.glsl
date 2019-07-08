@@ -35,6 +35,10 @@ uniform vec4 intersection_color;
 uniform vec4 output_viewport;
 uniform vec4 preview_viewport;
 
+uniform float camdx;
+uniform float camdy;
+uniform float camzoom;
+
 out vec4 out_color;
 
 float use_thickness;
@@ -128,6 +132,14 @@ void decide_color_and_thickness(float component_id)
   }
 }
 
+vec4 correct_camera_scale(vec4 p){
+  
+  p.x-=camdx*4;
+  p.y-=camdy*4;
+  p.xy*=camzoom;
+  return p;
+}
+
 void main()
 {
 
@@ -140,6 +152,9 @@ void main()
 
   p1.x *= x_scale;
   p2.x *= x_scale;
+
+  p1 = correct_camera_scale(p1);
+  p2 = correct_camera_scale(p2);
 
   decide_color_and_thickness(gl_in[0].gl_Position.z);
 

@@ -22,6 +22,7 @@
 #include "BKE_camera.h"
 #include "BKE_collection.h"
 #include "BKE_report.h"
+#include "BKE_screen.h"
 #include "GPU_draw.h"
 
 #include "GPU_batch.h"
@@ -4099,6 +4100,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   float indentity_mat[4][4];
   static float normal_object_direction[3] = {0, 0, 1};
   float use_background_color[4]={0.0f ,0.0f,0.0f,1.0f};
+  static float camdx,camdy,camzoom;
 
   if (is_render) {
     lanpr_rebuild_all_command(lanpr);
@@ -4144,6 +4146,17 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     DRW_view_default_set(view);
     DRW_view_set_active(view);
 
+    RegionView3D* rv3d = v3d?draw_ctx->rv3d:NULL;
+    if(rv3d){
+      camdx = rv3d->camdx;
+      camdy = rv3d->camdy;
+      camzoom = BKE_screen_view3d_zoom_to_fac(rv3d->camzoom);
+      printf("%f %f %f", camdx,camdy,camzoom);
+    }else{
+      camdx = camdy = 0.0f;
+      camzoom = 1.0f;
+    }
+
     if (lanpr->enable_chaining && lanpr_share.render_buffer_shared->chain_draw_batch) {
       for (ll = lanpr->line_layers.last; ll; ll = ll->prev) {
         LANPR_RenderBuffer *rb;
@@ -4155,6 +4168,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                             psl->software_pass);
 
         lanpr_calculate_normal_object_vector(ll, normal_object_direction);
+
+        DRW_shgroup_uniform_float(rb->ChainShgrp, "camdx", &camdx, 1);
+        DRW_shgroup_uniform_float(rb->ChainShgrp, "camdy", &camdy, 1);
+        DRW_shgroup_uniform_float(rb->ChainShgrp, "camzoom", &camzoom, 1);
 
         DRW_shgroup_uniform_vec4(rb->ChainShgrp,
                                  "contour_color",
@@ -4254,6 +4271,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
           ll->shgrp = DRW_shgroup_create(lanpr_share.software_shader, psl->software_pass);
 
           lanpr_calculate_normal_object_vector(ll, normal_object_direction);
+
+          DRW_shgroup_uniform_float(ll->shgrp, "camdx", &camdx, 1);
+          DRW_shgroup_uniform_float(ll->shgrp, "camdy", &camdy, 1);
+          DRW_shgroup_uniform_float(ll->shgrp, "camzoom", &camzoom, 1);
 
           DRW_shgroup_uniform_vec4(
               ll->shgrp, "contour_color", ll->use_same_style ? ll->color : ll->contour_color, 1);
