@@ -4145,8 +4145,12 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     unit_m4(indentity_mat);
 
     DRWView *view = DRW_view_create(indentity_mat, indentity_mat, NULL, NULL, NULL);
-    DRW_view_default_set(view);
-    DRW_view_set_active(view);
+    if (is_render) {
+      DRW_view_default_set(view);
+    }
+    else {
+      DRW_view_set_active(view);
+    }
 
     RegionView3D *rv3d = v3d ? draw_ctx->rv3d : NULL;
     if (rv3d) {
@@ -4341,6 +4345,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   }
 
   GPU_framebuffer_blit(fbl->software_ms, 0, dfb, 0, GPU_COLOR_BIT);
+
+  if (!is_render) {
+    DRW_view_set_active(NULL);
+  }
 }
 
 /* ============================================ operators =========================================
