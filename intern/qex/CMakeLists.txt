@@ -31,6 +31,9 @@ set(SRC
         igl_capi.h
 )
 
+set(LIB
+)
+
 if(WITH_QEX)
   add_definitions(
     -DWITH_QEX
@@ -50,4 +53,4 @@ if(WITH_QEX)
         )
 endif()
 
-blender_add_lib(bf_intern_qex "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_intern_qex "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
