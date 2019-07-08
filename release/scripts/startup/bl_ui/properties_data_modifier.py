@@ -1680,9 +1680,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def FEATURE_LINE(self, layout, ob, md):
         lanpr_enabled = bpy.context.scene.lanpr.enabled
-        layout.active = lanpr_enabled
-        if not lanpr_enabled:
+        modifier_useless = bpy.context.scene.render.engine!="BLENDER_LANPR" and not lanpr_enabled
+        layout.active = not modifier_useless
+        
+        if modifier_useless:
             layout.label(text="LANPR is not enabled")
+
         layout.label(text='Enable Types:')
         row = layout.row(align=True)
         row.prop(md,'enable_contour',toggle=True)
