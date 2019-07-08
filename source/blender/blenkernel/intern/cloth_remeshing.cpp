@@ -219,7 +219,6 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
                         NULL,
                         NULL,
                         NULL);
-    cloth_remeshing_uv_from_islands(clmd->clothObject->bm_prev);
     printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
   else {
@@ -916,6 +915,14 @@ static bool cloth_remeshing_can_collapse_edge(BMesh *bm, BMEdge *e, vector<Cloth
   /* TODO(Ish): aspect ratio parameter */
   BMFace *f1, *f2;
   BM_edge_face_pair(e, &f1, &f2);
+#if 1
+  /* TODO(Ish): This was a hack, figure out why it doesn't give the
+   * fair pair even though face count is 2 or more
+   * It might be fixed if the UV seams if fixed */
+  if (!f1 || !f2) {
+    return false;
+  }
+#endif
   BMVert *v_01 = BM_face_other_vert_loop(f1, e->v1, e->v2)->v;
   float size_01 = cloth_remeshing_edge_size_with_vert(bm, e, v_01, sizing);
   if (size_01 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
@@ -941,14 +948,37 @@ static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth, BMVert *v)
   cloth->mvert_num--;
 }
 
-static bool cloth_remeshing_vert_on_seam_test(BMVert *v)
+static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e)
 {
-  return BM_elem_flag_test_bool(v, BM_ELEM_SEAM);
+  BMFace *f1, *f2;
+  BM_edge_face_pair(e, &f1, &f2);
+  if (!f1 || !f2) {
+    return false;
+  }
+  float uv_f1_v1[2], uv_f1_v2[2], uv_f2_v1[2], uv_f2_v2[2];
+  cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v1, uv_f1_v1);
+  cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v2, uv_f1_v2);
+  cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v1, uv_f2_v1);
+  cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v2, uv_f2_v2);
+
+  return (!equals_v2v2(uv_f1_v1, uv_f2_v1) || !equals_v2v2(uv_f1_v2, uv_f2_v2));
+}
+
+static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v)
+{
+  BMEdge *e;
+  BMIter eiter;
+  BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
+    if (cloth_remeshing_edge_on_seam_test(bm, e)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth, BMesh *bm, BMEdge *e)
 {
-  if (cloth_remeshing_vert_on_seam_test(e->v1)) {
+  if (cloth_remeshing_vert_on_seam_test(bm, e->v1)) {
     printf("didn't collapse edge due to vert on seam: %f, %f, %f\n",
            e->v1->co[0],
            e->v1->co[1],
@@ -1123,7 +1153,10 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   /**
    * Reindex clmd->clothObject->verts to match clmd->clothObject->bm
    */
+
+#if 1
   cloth_remeshing_reindex_cloth_vertices(clmd->clothObject, clmd->clothObject->bm);
+#endif
 
   /**
    * Delete sizing
