@@ -68,7 +68,7 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return context.scene.lanpr.enabled
+        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
 
     def draw(self,context):
         layout = self.layout

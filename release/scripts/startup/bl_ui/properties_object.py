@@ -408,7 +408,7 @@ class OBJECT_PT_lanpr(ObjectButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (context.object) and (context.scene.lanpr.enabled)
+        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
 
     def draw(self, context):
         layout=self.layout
