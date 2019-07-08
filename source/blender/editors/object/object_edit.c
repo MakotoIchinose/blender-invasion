@@ -2128,7 +2128,9 @@ static int paint_mask_extract_exec(bContext *C, wmOperator *op)
     BM_mesh_delete_hflag_context(bm, BM_ELEM_TAG, DEL_VERTS);
     BKE_editmesh_free_derivedmesh(em);
     BKE_mesh_free(newMesh);
-    newMesh = BKE_mesh_from_bmesh_nomain(bm, (&(struct BMeshToMeshParams){}));
+    newMesh = BKE_mesh_from_bmesh_nomain(bm, (&(struct BMeshToMeshParams){
+                                                .calc_object_remap = true,
+                                              }));
     ushort local_view_bits = 0;
     View3D *v3d = CTX_wm_view3d(C);
     if (v3d && v3d->localvd) {
