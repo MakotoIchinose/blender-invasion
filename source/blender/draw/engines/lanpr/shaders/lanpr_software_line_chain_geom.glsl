@@ -146,7 +146,7 @@ void main()
   float asp1 = output_viewport.z / output_viewport.w;
   float asp2 = preview_viewport.z / preview_viewport.w;
   float x_scale = asp1 / asp2;
-
+      
   vec4 p1 = vec4(gl_in[0].gl_Position.xy, 0, 1);
   vec4 p2 = vec4(gl_in[1].gl_Position.xy, 0, 1);
 

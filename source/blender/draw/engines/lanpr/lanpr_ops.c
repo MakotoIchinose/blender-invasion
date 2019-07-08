@@ -4151,7 +4151,6 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
       camdx = rv3d->camdx;
       camdy = rv3d->camdy;
       camzoom = BKE_screen_view3d_zoom_to_fac(rv3d->camzoom);
-      printf("%f %f %f", camdx,camdy,camzoom);
     }else{
       camdx = camdy = 0.0f;
       camzoom = 1.0f;
