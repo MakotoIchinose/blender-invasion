@@ -291,4 +291,6 @@ void REMESH_OT_csg_remove(struct wmOperatorType *ot);
 void REMESH_OT_csg_move_up(struct wmOperatorType *ot);
 void REMESH_OT_csg_move_down(struct wmOperatorType *ot);
 
+void OBJECT_OT_blueprint(struct wmOperatorType *ot);
+
 #endif /* __OBJECT_INTERN_H__ */

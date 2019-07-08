@@ -46,6 +46,7 @@ set(SRC
   object_add.c
   object_bake.c
   object_bake_api.c
+  object_blueprint.c
   object_collection.c
   object_constraint.c
   object_data_transfer.c

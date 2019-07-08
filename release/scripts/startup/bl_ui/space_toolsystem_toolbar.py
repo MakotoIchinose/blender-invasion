@@ -140,6 +140,28 @@ class _defs_view3d_generic:
             keymap="3D View Tool: Measure",
         )
 
+    @ToolDef.from_fn
+    def blueprint():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("object.blueprint")
+            sub = layout.row()
+            sub.use_property_split = False
+            sub.prop(props, "draw_tool", expand=False)
+            sub.prop(props, "plane_offset", expand=False)
+            sub.prop(props, "grid_snap", expand=False)
+            sub.prop(props, "grid_size", expand=False)
+            sub.prop(props, "floor_grid_snap", expand=False)
+            sub.prop(props, "vertex_snap", expand=False)
+            sub.prop(props, "symmetrical_extrude", expand=False)
+            sub.prop(props, "ellipse_nsegments", expand=False)
+        return dict(
+            idname="object.blueprint",
+            label="Bluerprint",
+            icon="object.blueprint",
+            keymap="Object: Blueprint",
+            draw_settings=draw_settings,
+        )
+
 
 class _defs_annotate:
 
@@ -1911,6 +1933,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         None,
         *_tools_annotate,
         _defs_view3d_generic.ruler,
+        None,
+        _defs_view3d_generic.blueprint,
     )
 
     _tools = {

@@ -5916,6 +5916,15 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
     )
 
 
+def km_3d_view_tool_object_blueprint(params):
+    return (
+        "Object: Blueprint",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("object.blueprint", {"type": params.tool_mouse, "value": 'PRESS'},
+             None)
+        ]},
+    )
 # ------------------------------------------------------------------------------
 # Full Configuration
 
@@ -6128,6 +6137,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_sculpt_gpencil_select_box(params),
         km_3d_view_tool_sculpt_gpencil_select_circle(params),
         km_3d_view_tool_sculpt_gpencil_select_lasso(params),
+        km_3d_view_tool_object_blueprint(params),
     ]
 
 # ------------------------------------------------------------------------------
