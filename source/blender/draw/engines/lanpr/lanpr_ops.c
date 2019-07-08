@@ -4443,7 +4443,7 @@ void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
 int lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *lli;
-  int max_occ = 0, max;
+  int max_occ = -1, max;
   for (lli = lanpr->line_layers.first; lli; lli = lli->next) {
     if (lli->use_multiple_levels) {
       max = MAX2(lli->qi_begin, lli->qi_end);
@@ -4465,9 +4465,7 @@ LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->qi_begin = ll->qi_end = max_occ + 1;
   ll->use_same_style = 1;
   ll->thickness = 1.0f;
-  ll->color[0] = 0.0f;
-  ll->color[1] = 0.0f;
-  ll->color[2] = 0.0f;
+  copy_v3_fl(ll->color,0.8);
   ll->color[3] = 1.0f;
   ll->enable_contour = 1;
   ll->enable_crease = 1;
@@ -4656,29 +4654,18 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   ll = lanpr_new_line_layer(lanpr);
   ll->thickness = 1.7;
-  ll->color[0] = 0;
-  ll->color[1] = 0;
-  ll->color[2] = 0;
 
   lanpr_enable_all_line_types_exec(C, op);
 
   ll = lanpr_new_line_layer(lanpr);
   ll->thickness = 0.9;
-  ll->qi_begin = 1;
-  ll->qi_end = 1;
-  ll->color[0] = 0.1;
-  ll->color[1] = 0.1;
-  ll->color[2] = 1;
+  copy_v3_fl(ll->color,0.6);
 
   lanpr_enable_all_line_types_exec(C, op);
 
   ll = lanpr_new_line_layer(lanpr);
   ll->thickness = 0.7;
-  ll->qi_begin = 2;
-  ll->qi_end = 2;
-  ll->color[0] = 0.2;
-  ll->color[1] = 0.2;
-  ll->color[2] = 0.2;
+  copy_v3_fl(ll->color,0.5);
 
   lanpr_enable_all_line_types_exec(C, op);
 
