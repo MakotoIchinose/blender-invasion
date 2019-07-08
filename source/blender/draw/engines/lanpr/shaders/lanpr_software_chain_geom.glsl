@@ -225,11 +225,12 @@ void decide_line_style(int component_id)
   }
 }
 
-vec4 correct_camera_scale(vec4 p){
-  
-  p.x-=camdx*4;
-  p.y-=camdy*4;
-  p.xy*=camzoom;
+vec4 correct_camera_scale(vec4 p)
+{
+
+  p.x -= camdx * 4;
+  p.y -= camdy * 4;
+  p.xy *= camzoom;
   return p;
 }
 
@@ -242,15 +243,40 @@ void main()
 
   float asp1 = output_viewport.z / output_viewport.w;
   float asp2 = preview_viewport.z / preview_viewport.w;
-  float x_scale = asp1 / asp2;
+  float x_scale;
+  float y_scale;
+  if (asp1 > 1) {
+    if (asp2 < 1) {
+      x_scale = 1 / asp2;
+      y_scale = 1 / asp1;
+    }
+    else {
+      x_scale = 1;
+      y_scale = asp2 / asp1;
+    }
+  }
+  else {
+    if (asp2 < 1) {
+      x_scale = asp1 / asp2;
+      y_scale = 1;
+    }
+    else {
+      x_scale = asp1;
+      y_scale = asp2;
+    }
+  }
 
   vec4 LL = vec4(gl_in[0].gl_Position.xy, 0, 1), L = vec4(gl_in[1].gl_Position.xy, 0, 1),
        R = vec4(gl_in[2].gl_Position.xy, 0, 1), RR = vec4(gl_in[3].gl_Position.xy, 0, 1);
 
   LL.x *= x_scale;
+  LL.y *= y_scale;
   L.x *= x_scale;
+  L.y *= y_scale;
   R.x *= x_scale;
+  R.y *= y_scale;
   RR.x *= x_scale;
+  RR.y *= y_scale;
 
   LL = correct_camera_scale(LL);
   L = correct_camera_scale(L);

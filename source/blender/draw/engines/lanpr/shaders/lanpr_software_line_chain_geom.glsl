@@ -132,11 +132,11 @@ void decide_color_and_thickness(float component_id)
   }
 }
 
-vec4 correct_camera_scale(vec4 p){
-  
-  p.x-=camdx*4;
-  p.y-=camdy*4;
-  p.xy*=camzoom;
+vec4 correct_camera_scale(vec4 p)
+{
+  p.x -= camdx * 4;
+  p.y -= camdy * 4;
+  p.xy *= camzoom;
   return p;
 }
 
@@ -145,13 +145,36 @@ void main()
 
   float asp1 = output_viewport.z / output_viewport.w;
   float asp2 = preview_viewport.z / preview_viewport.w;
-  float x_scale = asp1 / asp2;
-      
+  float x_scale;
+  float y_scale;
+  if (asp1 > 1) {
+    if (asp2 < 1) {
+      x_scale = 1 / asp2;
+      y_scale = 1 / asp1;
+    }
+    else {
+      x_scale = 1;
+      y_scale = asp2 / asp1;
+    }
+  }
+  else {
+    if (asp2 < 1) {
+      x_scale = asp1 / asp2;
+      y_scale = 1;
+    }
+    else {
+      x_scale = asp1;
+      y_scale = asp2;
+    }
+  }
+
   vec4 p1 = vec4(gl_in[0].gl_Position.xy, 0, 1);
   vec4 p2 = vec4(gl_in[1].gl_Position.xy, 0, 1);
 
   p1.x *= x_scale;
   p2.x *= x_scale;
+  p1.y *= y_scale;
+  p2.y *= y_scale;
 
   p1 = correct_camera_scale(p1);
   p2 = correct_camera_scale(p2);
