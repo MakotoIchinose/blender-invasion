@@ -941,10 +941,12 @@ static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth, BMVert *v)
 {
   int v_index = cloth_remeshing_find_cloth_vertex_index(v, cloth->verts, cloth->mvert_num);
   cloth->verts[v_index] = cloth->verts[cloth->mvert_num - 1];
+#if 0
   printf("removed: %f %f %f\n",
          cloth->verts[cloth->mvert_num - 1].x[0],
          cloth->verts[cloth->mvert_num - 1].x[1],
          cloth->verts[cloth->mvert_num - 1].x[2]);
+#endif
   cloth->mvert_num--;
 }
 
@@ -979,10 +981,12 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v)
 static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth, BMesh *bm, BMEdge *e)
 {
   if (cloth_remeshing_vert_on_seam_test(bm, e->v1)) {
+#if 0
     printf("didn't collapse edge due to vert on seam: %f, %f, %f\n",
            e->v1->co[0],
            e->v1->co[1],
            e->v1->co[2]);
+#endif
     return NULL;
   }
   BMVert v1 = *e->v1;
@@ -1070,7 +1074,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
 
       /* update active_faces */
 
-      return false;
+      return true;
     }
     cloth_remeshing_remove_face(active_faces, i--);
     count++;
