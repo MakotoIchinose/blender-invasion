@@ -476,6 +476,7 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   float clear_depth = 1.0f;
   uint clear_stencil = 0xFF;
   int is_persp = 1;
+  float use_background_color[4] = {0.0f ,0.0f,0.0f,1.0f};;
 
   if (!lanpr->active_layer) {
     return; /* return early in case we don't have line layers. DPIX only use the first layer. */
@@ -516,6 +517,13 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   pd->dpix_znear = camera ? ((Camera *)camera->data)->clip_start : v3d->clip_start;
   pd->dpix_zfar = camera ? ((Camera *)camera->data)->clip_end : v3d->clip_end;
 
+  if(lanpr->use_world_background){
+    copy_v3_v3(use_background_color,&scene->world->horr);
+    use_background_color[3] = 1;
+  }else{
+    copy_v3_v3(use_background_color,lanpr->background_color);
+  }
+
   GPU_point_size(1);
   /*  GPU_line_width(2); */
   GPU_framebuffer_bind(fbl->dpix_transform);
@@ -527,11 +535,11 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   DRW_draw_pass(psl->dpix_preview_pass);
 
   if (is_render) {
-    mul_v3_v3fl(clear_col, lanpr->background_color, lanpr->background_color[3]);
-    clear_col[3] = lanpr->background_color[3];
+    mul_v3_v3fl(clear_col, use_background_color, use_background_color[3]);
+    clear_col[3] = use_background_color[3];
   }
   else {
-    copy_v4_v4(clear_col, lanpr->background_color);
+    copy_v4_v4(clear_col, use_background_color);
   }
 
   GPU_framebuffer_bind(DefaultFB);

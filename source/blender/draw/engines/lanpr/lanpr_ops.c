@@ -4000,6 +4000,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
   float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   float clear_depth = 1.0f;
   uint clear_stencil = 0xFF;
+  float use_background_color[4] = {0.0f ,0.0f,0.0f,1.0f};
 
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
@@ -4019,18 +4020,25 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
     camera = scene->camera;
   }
 
+  if(lanpr->use_world_background){
+    copy_v3_v3(use_background_color,&scene->world->horr);
+    use_background_color[3] = 1;
+  }else{
+    copy_v3_v3(use_background_color,lanpr->background_color);
+  }
+
   GPU_framebuffer_bind(fbl->dpix_transform);
   DRW_draw_pass(psl->dpix_transform_pass);
 
   GPU_framebuffer_bind(fbl->dpix_preview);
   eGPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
   GPU_framebuffer_clear(
-      fbl->dpix_preview, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
+      fbl->dpix_preview, clear_bits, use_background_color, clear_depth, clear_stencil);
   DRW_draw_pass(psl->dpix_preview_pass);
 
   GPU_framebuffer_bind(dfbl->default_fb);
   GPU_framebuffer_clear(
-      dfbl->default_fb, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
+      dfbl->default_fb, clear_bits, use_background_color, clear_depth, clear_stencil);
   DRW_multisamples_resolve(txl->depth, txl->color, 1);
 }
 
@@ -4090,6 +4098,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   View3D *v3d = draw_ctx->v3d;
   float indentity_mat[4][4];
   static float normal_object_direction[3] = {0, 0, 1};
+  float use_background_color[4]={0.0f ,0.0f,0.0f,1.0f};
 
   if (is_render) {
     lanpr_rebuild_all_command(lanpr);
@@ -4108,18 +4117,16 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   uint clear_stencil = 0xFF;
   eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
 
-  /*  Object *camera; */
-  /*  if (v3d) { */
-  /* 	RegionView3D *rv3d = draw_ctx->rv3d; */
-  /* 	camera = (rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL; */
-  /* } */
-  /*  else { */
-  /* 	camera = scene->camera; */
-  /* } */
+  if(lanpr->use_world_background){
+    copy_v3_v3(use_background_color,&scene->world->horr);
+    use_background_color[3] = 1;
+  }else{
+    copy_v3_v3(use_background_color,lanpr->background_color);
+  }
 
   GPU_framebuffer_bind(fbl->software_ms);
   GPU_framebuffer_clear(
-      fbl->software_ms, clear_bits, lanpr->background_color, clear_depth, clear_stencil);
+      fbl->software_ms, clear_bits, use_background_color, clear_depth, clear_stencil);
 
   if (lanpr_share.render_buffer_shared) {
 
