@@ -4001,7 +4001,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
   float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   float clear_depth = 1.0f;
   uint clear_stencil = 0xFF;
-  float use_background_color[4] = {0.0f ,0.0f,0.0f,1.0f};
+  float use_background_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
@@ -4021,11 +4021,12 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
     camera = scene->camera;
   }
 
-  if(lanpr->use_world_background){
-    copy_v3_v3(use_background_color,&scene->world->horr);
+  if (lanpr->use_world_background) {
+    copy_v3_v3(use_background_color, &scene->world->horr);
     use_background_color[3] = 1;
-  }else{
-    copy_v3_v3(use_background_color,lanpr->background_color);
+  }
+  else {
+    copy_v3_v3(use_background_color, lanpr->background_color);
   }
 
   GPU_framebuffer_bind(fbl->dpix_transform);
@@ -4099,8 +4100,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   View3D *v3d = draw_ctx->v3d;
   float indentity_mat[4][4];
   static float normal_object_direction[3] = {0, 0, 1};
-  float use_background_color[4]={0.0f ,0.0f,0.0f,1.0f};
-  static float camdx,camdy,camzoom;
+  float use_background_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static float camdx, camdy, camzoom;
 
   if (is_render) {
     lanpr_rebuild_all_command(lanpr);
@@ -4119,11 +4120,12 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   uint clear_stencil = 0xFF;
   eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
 
-  if(lanpr->use_world_background){
-    copy_v3_v3(use_background_color,&scene->world->horr);
+  if (lanpr->use_world_background) {
+    copy_v3_v3(use_background_color, &scene->world->horr);
     use_background_color[3] = 1;
-  }else{
-    copy_v3_v3(use_background_color,lanpr->background_color);
+  }
+  else {
+    copy_v3_v3(use_background_color, lanpr->background_color);
   }
 
   GPU_framebuffer_bind(fbl->software_ms);
@@ -4146,12 +4148,13 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     DRW_view_default_set(view);
     DRW_view_set_active(view);
 
-    RegionView3D* rv3d = v3d?draw_ctx->rv3d:NULL;
-    if(rv3d){
+    RegionView3D *rv3d = v3d ? draw_ctx->rv3d : NULL;
+    if (rv3d) {
       camdx = rv3d->camdx;
       camdy = rv3d->camdy;
       camzoom = BKE_screen_view3d_zoom_to_fac(rv3d->camzoom);
-    }else{
+    }
+    else {
       camdx = camdy = 0.0f;
       camzoom = 1.0f;
     }
@@ -4400,9 +4403,10 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
   return OPERATOR_FINISHED;
 }
 
-bool lanpr_camera_exists(struct bContext*c){
-  Scene* s = CTX_data_scene(c);
-  return s->camera?true:false;
+bool lanpr_camera_exists(struct bContext *c)
+{
+  Scene *s = CTX_data_scene(c);
+  return s->camera ? true : false;
 }
 
 /*  seems we don't quite need this operator... */
@@ -4488,7 +4492,7 @@ LANPR_LineLayer *lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->qi_begin = ll->qi_end = max_occ + 1;
   ll->use_same_style = 1;
   ll->thickness = 1.0f;
-  copy_v3_fl(ll->color,0.8);
+  copy_v3_fl(ll->color, 0.8);
   ll->color[3] = 1.0f;
   ll->enable_contour = 1;
   ll->enable_crease = 1;
@@ -4682,13 +4686,13 @@ int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   ll = lanpr_new_line_layer(lanpr);
   ll->thickness = 0.9;
-  copy_v3_fl(ll->color,0.6);
+  copy_v3_fl(ll->color, 0.6);
 
   lanpr_enable_all_line_types_exec(C, op);
 
   ll = lanpr_new_line_layer(lanpr);
   ll->thickness = 0.7;
-  copy_v3_fl(ll->color,0.5);
+  copy_v3_fl(ll->color, 0.5);
 
   lanpr_enable_all_line_types_exec(C, op);
 

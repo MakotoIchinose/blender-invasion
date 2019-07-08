@@ -465,10 +465,10 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
 
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
-    if(dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
-      !lanpr_share.dpix_shader_error)){
+    if (dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+                   !lanpr_share.dpix_shader_error)) {
       usage = lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
-      if(usage == OBJECT_FEATURE_LINE_EXCLUDE){
+      if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
         return;
       }
     }
@@ -478,10 +478,10 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
   if (dpix_ok) {
 
     /* usage already set */
-    if(usage == OBJECT_FEATURE_LINE_OCCLUSION_ONLY){
+    if (usage == OBJECT_FEATURE_LINE_OCCLUSION_ONLY) {
       return;
     }
-    
+
     int idx = pd->begin_index;
     if (lanpr->reloaded) {
       pd->begin_index = lanpr_feed_atlas_data_obj(vedata,
