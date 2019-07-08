@@ -49,14 +49,15 @@
 #include "BKE_action.h"
 #include "BKE_animsys.h"
 #include "BKE_curve.h"
+#include "BKE_collection.h"
+#include "BKE_colortools.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
-#include "BKE_colortools.h"
 #include "BKE_icons.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
 #include "BKE_material.h"
+#include "BKE_object.h"
 
 #include "BLI_math_color.h"
 
@@ -2113,14 +2114,35 @@ static void gpencil_add_new_points(bGPDstroke *gps, float *coord_array, int init
   }
 }
 
+/* Helper function to get the first collection that includes the object */
+static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
+{
+  FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+    for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
+      if (cob->ob == ob) {
+        return collection;
+      }
+    }
+  }
+  FOREACH_SCENE_COLLECTION_END;
+
+  return NULL;
+}
+
 /* Convert a curve to grease pencil stroke.
  *
  * \param scene: Original scene.
  * \param ob_gp: Grease pencil object to add strokes.
  * \param ob_cu: Curve to convert.
+ * \param gpencil_lines: Use lines for strokes.
+ * \param use_collections: Create layers using collection names.
  */
-void BKE_gpencil_convert_curve(
-    Main *bmain, const Scene *scene, Object *ob_gp, Object *ob_cu, const bool gpencil_lines)
+void BKE_gpencil_convert_curve(Main *bmain,
+                               Scene *scene,
+                               Object *ob_gp,
+                               Object *ob_cu,
+                               const bool gpencil_lines,
+                               const bool use_collections)
 {
   if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL)) {
     return;
@@ -2130,12 +2152,26 @@ void BKE_gpencil_convert_curve(
   Curve *cu = (Curve *)ob_cu->data;
   Nurb *nu = NULL;
   bool cyclic = true;
+  bGPDlayer *gpl = NULL;
 
   /* Check if there is an active layer. */
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
-  if (gpl == NULL) {
-    gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
+  if (use_collections) {
+    Collection *collection = gpencil_get_parent_collection(scene, ob_cu);
+    if (collection != NULL) {
+      gpl = BLI_findstring(&gpd->layers, collection->id.name + 2, offsetof(bGPDlayer, info));
+      if (gpl == NULL) {
+        gpl = BKE_gpencil_layer_addnew(gpd, collection->id.name + 2, true);
+      }
+    }
   }
+
+  if (gpl == NULL) {
+    bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+    if (gpl == NULL) {
+      gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
+    }
+  }
+
   /* Check if there is an active frame. */
   bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_COPY);
   /* Create Stroke. */
@@ -2232,8 +2268,8 @@ void BKE_gpencil_convert_curve(
         /* Free memory. */
         MEM_SAFE_FREE(coord_array);
 
-        /* As the last point of segment is the first point of next segment, back one array element
-         * to avoid duplicated points on the same location.
+        /* As the last point of segment is the first point of next segment, back one array
+         * element to avoid duplicated points on the same location.
          */
         init += resolu - 1;
       }

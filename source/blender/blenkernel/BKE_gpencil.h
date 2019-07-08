@@ -299,10 +299,11 @@ float BKE_gpencil_multiframe_falloff_calc(
     struct bGPDframe *gpf, int actnum, int f_init, int f_end, struct CurveMapping *cur_falloff);
 
 void BKE_gpencil_convert_curve(struct Main *bmain,
-                               const struct Scene *scene,
+                               struct Scene *scene,
                                struct Object *ob_gp,
                                struct Object *ob_cu,
-                               const bool gpencil_lines);
+                               const bool gpencil_lines,
+                               const bool use_collections);
 
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);

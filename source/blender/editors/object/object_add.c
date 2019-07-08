@@ -2140,6 +2140,7 @@ static int convert_exec(bContext *C, wmOperator *op)
   const short target = RNA_enum_get(op->ptr, "target");
   bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
   const bool gpencil_lines = RNA_boolean_get(op->ptr, "gpencil_lines");
+  const bool use_collections = RNA_boolean_get(op->ptr, "use_collections");
   int a, mballConverted = 0;
 
   /* don't forget multiple users! */
@@ -2384,7 +2385,7 @@ static int convert_exec(bContext *C, wmOperator *op)
           ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
           gpencil_ob = ED_gpencil_add_object(C, scene, cur, local_view_bits);
         }
-        BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, gpencil_lines);
+        BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, gpencil_lines, use_collections);
       }
     }
     else if (ob->type == OB_MBALL && target == OB_MESH) {
@@ -2533,7 +2534,12 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                   "gpencil_lines",
                   1,
                   "GPencil Lines",
-                  "Use black color lines for grease pencil conversion");
+                  "Use lines for grease pencil conversion");
+  RNA_def_boolean(ot->srna,
+                  "use_collections",
+                  1,
+                  "Use Collections",
+                  "Use name of collections as name for grease pencil layers");
 }
 
 /** \} */
