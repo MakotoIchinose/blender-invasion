@@ -1123,6 +1123,10 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                                    const bool extend,
                                                    const bool recursive)
 {
+  /* Set TreeStore flags for active element */
+  outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
+  tselem->flag |= TSE_ACTIVE;
+
   /* Always makes active object, except for some specific types. */
   if (ELEM(tselem->type,
            TSE_SEQUENCE,
@@ -1236,16 +1240,12 @@ void outliner_item_select(SpaceOutliner *soops,
                           const bool toggle)
 {
   TreeStoreElem *tselem = TREESTORE(te);
-  const short new_flag = (toggle && (tselem->flag & TSE_ACTIVE)) ? (tselem->flag ^ TSE_SELECTED) :
-                                                                   (tselem->flag | TSE_SELECTED);
-
-  // Change active element
-  outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
+  const short new_flag = toggle ? (tselem->flag ^ TSE_SELECTED) : (tselem->flag | TSE_SELECTED);
 
   if (extend == false) {
     outliner_flag_set(&soops->tree, TSE_SELECTED, false);
   }
-  tselem->flag = new_flag | TSE_ACTIVE;
+  tselem->flag = new_flag;
 }
 
 static void do_outliner_range_select_recursive(ListBase *lb,
@@ -1681,7 +1681,7 @@ static void do_outliner_select_walk(
   }
 
   /* Activate rather than just setting flags to support mode switching */
-  outliner_item_select(soops, active, extend, extend);
+  outliner_item_select(soops, active, extend, false);
   do_outliner_item_activate_tree_element(
       C, scene, view_layer, soops, active, tselem_new, extend, false);
 }
