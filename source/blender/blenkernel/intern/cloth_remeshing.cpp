@@ -74,6 +74,9 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
+static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e);
+static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v);
+
 static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
   CustomData_MeshMasks cddata_masks;
@@ -780,62 +783,6 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSiz
   }
   MEM_freeN(bad_edges);
   return true;
-}
-
-static void cloth_remeshing_get_uv_from_face(BMesh *bm, BMFace *f, float **r_uvs, int *r_uv_num)
-{
-  BMEdge *e;
-  BMIter eiter;
-  int i = 0;
-  BM_ITER_ELEM_INDEX (e, &eiter, f, BM_EDGES_OF_FACE, i) {
-    MLoopUV *luv;
-    const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
-    BMLoop *l, *l2;
-    float u1[2], u2[2];
-
-    l = e->l;
-    if (l->v == e->v1) {
-      if (l->next->v == e->v2) {
-        l2 = l->next;
-      }
-      else {
-        l2 = l->prev;
-      }
-    }
-    else {
-      if (l->next->v == e->v1) {
-        l2 = l->next;
-      }
-      else {
-        l2 = l->prev;
-      }
-    }
-
-    luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-    copy_v2_v2(u1, luv->uv);
-    luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l2, cd_loop_uv_offset);
-    copy_v2_v2(u2, luv->uv);
-
-    /* copy over the UVs only if they don't already exist */
-    bool uv_exists = false;
-    for (int j = 0; j < i; j++) {
-      if (equals_v2v2(u1, r_uvs[j])) {
-        uv_exists = true;
-      }
-    }
-    if (!uv_exists) {
-      copy_v2_v2(r_uvs[i], u1);
-    }
-    uv_exists = false;
-    for (int j = 0; j < i; j++) {
-      if (equals_v2v2(u2, r_uvs[j])) {
-        uv_exists = true;
-      }
-    }
-    if (!uv_exists) {
-      copy_v2_v2(r_uvs[i], u2);
-    }
-  }
 }
 
 static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2])
