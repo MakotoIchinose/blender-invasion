@@ -573,6 +573,7 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
  * curvature of the edge after each of them in the table. Works by comparing the angle between the
  * handles that make up the edge: the secong handle of the first point and the first handle
  * of the second. */
+/* HANS-TODO: This doesn't work so well, so maybe just assign the remainders to the longest edges */
 static int compare_curvature_bezt_edge_i(const BezTriple *bezt, const int i_a, const int i_b)
 {
   float handle_angle_a, handle_angle_b;
@@ -699,7 +700,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
   for (i = 0; i < totedges; i++) {
     /* Place the new index (i) at the first spot where its edge has less curvature */
     for (i_insert = 0; i_insert < i; i_insert++) {
-      if (compare_curvature_bezt_edge_i(bezt, i, i_curve_sorted[i_insert])) {
+      if (!compare_curvature_bezt_edge_i(bezt, i, i_curve_sorted[i_insert])) {
         break;
       }
     }

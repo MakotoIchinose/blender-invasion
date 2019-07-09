@@ -4658,8 +4658,6 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
 /** Template for a path creation widget intended for custom bevel profiles.
   * This section is quite similar to uiTemplateCurveMapping, but with reduced complexity */
-/* HANS-STRETCH-GOAL: Add the ability to lengthen the height of the UI to keep the grid square
- * (or shrink the width I guess) */
 void uiTemplateProfileWidget(uiLayout *layout, PointerRNA *ptr, const char *propname)
 {
   RNAUpdateCb *cb;

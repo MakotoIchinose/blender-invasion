@@ -7182,7 +7182,7 @@ void BM_mesh_bevel(BMesh *bm,
   if (bp.use_custom_profile) {
     /* For now we need to sample the custom profile with at least as many segments as points */
     if (bp.seg < bp.prwdgt->totpoint) {
-      bp.seg = bp.prwdgt->totpoint;
+      bp.seg = bp.prwdgt->totpoint - 1;
     }
 //    profilewidget_initialize(bp.prwdgt, (short)bp.seg + 1);
   }

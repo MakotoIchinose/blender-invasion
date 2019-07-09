@@ -2329,8 +2329,8 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   GPU_line_smooth(false);
   GPU_blend(false);
   GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
-  immBegin(GPU_PRIM_POINTS, tot_points - 1);
-  for (i = 0; i < tot_points - 1; i++) {
+  immBegin(GPU_PRIM_POINTS, tot_points);
+  for (i = 0; i < tot_points; i++) {
     fx = rect->xmin + zoomx * (pts[i].x - offsx);
     fy = rect->ymin + zoomy * (pts[i].y - offsy);
     immAttr4fv(col, (pts[i].flag & PROF_SELECT) ? color_vert_select : color_vert);

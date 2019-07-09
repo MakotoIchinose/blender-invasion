@@ -45,6 +45,7 @@
 #include "WM_types.h"
 
 #include "UI_interface.h"
+#include "UI_resources.h"
 
 #include "ED_mesh.h"
 #include "ED_numinput.h"
@@ -324,6 +325,7 @@ static bool edbm_bevel_calc(wmOperator *op)
   const float spread = RNA_float_get(op->ptr, "spread");
   const bool use_custom_profile = RNA_boolean_get(op->ptr, "use_custom_profile");
   const PointerRNA prwdgt_ptr = RNA_pointer_get(op->ptr, "prwdgt");
+  const bool sample_straight_edges = RNA_boolean_get(op->ptr, "sample_straight_edges");
 
   const ProfileWidget *prwdgt = prwdgt_ptr.data;
 
@@ -371,7 +373,8 @@ static bool edbm_bevel_calc(wmOperator *op)
                  spread,
                  me->smoothresh,
                  use_custom_profile,
-                 prwdgt);
+                 prwdgt,
+                 sample_straight_edges);
 
     BMO_op_exec(em->bm, &bmop);
 
@@ -492,6 +495,7 @@ static void edbm_bevel_calc_initial_length(wmOperator *op, const wmEvent *event,
 
 static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  printf("EDBM BEVEL INVOKE");
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BevelData *opdata;
   float center_3d[3];
@@ -855,6 +859,33 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
+static void edbm_bevel_ui(bContext *UNUSED(C), wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  PointerRNA ptr;
+
+  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+
+  uiItemR(layout, &ptr, "offset_type", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "offset_pct", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "profile", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "vertex_only", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "clamp_overlap", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "mark_seam", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "miter_outer", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "miter_inner", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
+  uiTemplateProfileWidget(layout, &ptr, "prwdgt");
+}
+
 void MESH_OT_bevel(wmOperatorType *ot)
 {
   printf("MESH OT BEVEL\n");
@@ -893,8 +924,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
 
   /* identifiers */
   ot->name = "Bevel";
-  ot->description =
-      "Cut into selected items at an angle to create flat or rounded bevel or chamfer";
+  ot->description = "Cut into selected items at an angle to create bevel or chamfer";
   ot->idname = "MESH_OT_bevel";
 
   /* api callbacks */
@@ -904,6 +934,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
   ot->cancel = edbm_bevel_cancel;
   ot->poll = ED_operator_editmesh;
   ot->poll_property = edbm_bevel_poll_property;
+  ot->ui = edbm_bevel_ui;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
@@ -960,8 +991,10 @@ void MESH_OT_bevel(wmOperatorType *ot)
                   "Define a custom profile for the bevel");
 
   /* HANS-TODO: Add the profile widget here somehow */
-  RNA_def_pointer(ot->srna, "prwdgt", "ProfileWidget", "Profile Widget",
-                  "Widget for editing profile path");
+  RNA_def_pointer(ot->srna, "prwdgt", "ProfileWidget", "", "Widget for editing profile path");
+
+  RNA_def_boolean(ot->srna, "sample_straight_edges", false, "Custom Profile",
+                  "Define a custom profile for the bevel");
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
