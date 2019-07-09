@@ -3094,13 +3094,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                                                     "Filmic");
       }
     }
-
-    Brush *br;
-    for (br = bmain->brushes.first; br; br = br->id.next) {
-      if (br->ob_mode & OB_MODE_SCULPT) {
-        br->normal_radius_factor = 0.2f;
-      }
-    }
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 49)) {
@@ -3522,6 +3515,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
       arm->flag &= ~(ARM_FLAG_UNUSED_6);
+    }
+
+    Brush *br;
+    for (br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->ob_mode & OB_MODE_SCULPT) {
+        br->normal_radius_factor = 0.2f;
+      }
     }
   }
 }
