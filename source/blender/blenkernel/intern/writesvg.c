@@ -26,7 +26,6 @@
 #include "BLI_string_utils.h"
 #include "BLI_listbase.h"
 
-#include "BKE_writesvg.h"
 #include "BKE_text.h"
 
 #include "DNA_object_types.h"
