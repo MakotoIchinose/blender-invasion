@@ -162,7 +162,7 @@ void cloth_init(ClothModifierData *clmd)
   clmd->sim_parms->refine_velocity = 0.5f;
   clmd->sim_parms->size_min = 100e-3f;
   clmd->sim_parms->size_max = 200e-3f;
-  clmd->sim_parms->aspect_min = 0.2f;
+  clmd->sim_parms->aspect_min = 1.0f;
 
   if (!clmd->sim_parms->effector_weights) {
     clmd->sim_parms->effector_weights = BKE_effector_add_weights(NULL);
