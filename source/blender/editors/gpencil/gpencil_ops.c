@@ -264,6 +264,8 @@ void ED_operatortypes_gpencil(void)
 
   WM_operatortype_append(GPENCIL_OT_sculpt_paint);
 
+  WM_operatortype_append(GPENCIL_OT_export_svg);
+
   /* Editing (Buttons) ------------ */
 
   WM_operatortype_append(GPENCIL_OT_data_add);

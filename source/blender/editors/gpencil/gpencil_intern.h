@@ -454,6 +454,8 @@ void GPENCIL_OT_frame_clean_loose(struct wmOperatorType *ot);
 
 void GPENCIL_OT_convert(struct wmOperatorType *ot);
 
+void GPENCIL_OT_export_svg(struct wmOperatorType *ot);
+
 enum {
   GP_STROKE_JOIN = -1,
   GP_STROKE_JOINCOPY = 1,
