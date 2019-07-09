@@ -95,6 +95,11 @@ void wm_stereo3d_set_cancel(bContext *C, wmOperator *op);
 void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
+/* wm_draw.c */
+struct GPUOffScreen;
+void wm_draw_offscreen_texture_parameters(struct GPUOffScreen *offscreen);
+void wm_draw_upside_down(int sizex, int sizey);
+
 #ifdef WITH_OPENXR
 /* wm_xr.c */
 bool wm_xr_context_ensure(wmWindowManager *wm);

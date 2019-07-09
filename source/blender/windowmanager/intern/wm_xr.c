@@ -234,8 +234,6 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
   GPU_framebuffer_restore();
   DRW_opengl_context_disable_ex(true);
 
-  void wm_draw_offscreen_texture_parameters(GPUOffScreen * offscreen);
-  void wm_draw_upside_down(int sizex, int sizey);
   GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
   rcti rect = {.xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
 

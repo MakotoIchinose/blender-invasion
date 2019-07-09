@@ -215,6 +215,8 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
   create_info.poseInReferenceSpace.orientation.y = base_pose->orientation_quat[3];
   create_info.poseInReferenceSpace.orientation.z = -base_pose->orientation_quat[2];
   create_info.poseInReferenceSpace.orientation.w = base_pose->orientation_quat[0];
+#else
+  (void)base_pose;
 #endif
 
   xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space);

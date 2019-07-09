@@ -111,7 +111,6 @@
 #include "wm_event_system.h"
 #include "wm_event_types.h"
 #include "wm_files.h"
-#include "wm_surface.h"
 #include "wm_window.h"
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
