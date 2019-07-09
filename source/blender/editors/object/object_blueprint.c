@@ -131,7 +131,6 @@ EnumPropertyItem prop_blueprint_draw_tool_types[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-
 typedef struct BlueprintPolyPoint {
   struct BlueprintPolyPoint *next, *prev;
 
@@ -159,8 +158,6 @@ typedef struct BlueprintCache {
 
   /* geometry creation context */
   Object *ob;
-
-
 
   float plane_offset;
 
@@ -254,34 +251,34 @@ void blueprint_draw_poly_volume(uint pos3d, BlueprintCache *cache, float z)
   int point_count = cache->point_count;
   GPU_depth_test(true);
   immUniformColor4ubv(cache->color.geom_fill);
-    float z_base = 0.0f;
-    if (cache->flags & BLUEPRINT_SYMMETRICAL_EXTRUDE) {
-      z_base = -cache->extrudedist;
-    }
+  float z_base = 0.0f;
+  if (cache->flags & BLUEPRINT_SYMMETRICAL_EXTRUDE) {
+    z_base = -cache->extrudedist;
+  }
 
-   bool draw_fill = cache->flags & BLUEPRINT_ENABLE_GEOMETRY_FILL;
+  bool draw_fill = cache->flags & BLUEPRINT_ENABLE_GEOMETRY_FILL;
   if (point_count >= 3) {
     if (draw_fill) {
-        immBegin(GPU_PRIM_TRIS, point_count * 6);
-        LISTBASE_FOREACH (BlueprintPolyPoint *, p, &cache->poly) {
-          BlueprintPolyPoint *np;
-          if (p->next) {
-            np = p->next;
-          }
-          else {
-            np = cache->poly.first;
-          }
-
-          immVertex3f(pos3d, p->co[0], p->co[1], z_base);
-          immVertex3f(pos3d, p->co[0], p->co[1], z);
-          immVertex3f(pos3d, np->co[0], np->co[1], z);
-
-          immVertex3f(pos3d, np->co[0], np->co[1], z_base);
-          immVertex3f(pos3d, p->co[0], p->co[1], z_base);
-          immVertex3f(pos3d, np->co[0], np->co[1], z);
+      immBegin(GPU_PRIM_TRIS, point_count * 6);
+      LISTBASE_FOREACH (BlueprintPolyPoint *, p, &cache->poly) {
+        BlueprintPolyPoint *np;
+        if (p->next) {
+          np = p->next;
+        }
+        else {
+          np = cache->poly.first;
         }
 
-        immEnd();
+        immVertex3f(pos3d, p->co[0], p->co[1], z_base);
+        immVertex3f(pos3d, p->co[0], p->co[1], z);
+        immVertex3f(pos3d, np->co[0], np->co[1], z);
+
+        immVertex3f(pos3d, np->co[0], np->co[1], z_base);
+        immVertex3f(pos3d, p->co[0], p->co[1], z_base);
+        immVertex3f(pos3d, np->co[0], np->co[1], z);
+      }
+
+      immEnd();
     }
 
     immUniformColor4ubv(cache->color.geom_stroke);
@@ -372,51 +369,51 @@ void blueprint_draw_grid(uint pos3d, BlueprintCache *cache)
 
   /* backgroud */
   if (cache->flags & BLUEPRINT_ENABLE_GRID_BACKGROUD) {
-      if (cache->state != BLUEPRINT_STATE_PLANE) {
-        immUniformColor4ubv(cache->color.bg);
-        immBegin(GPU_PRIM_TRIS, 6);
-        immVertex3f(pos3d, cache->grid_extends_min[0], cache->grid_extends_min[1], 0.0f);
-        immVertex3f(pos3d, cache->grid_extends_min[0], cache->grid_extends_max[1], 0.0f);
-        immVertex3f(pos3d, cache->grid_extends_max[0], cache->grid_extends_max[1], 0.0f);
+    if (cache->state != BLUEPRINT_STATE_PLANE) {
+      immUniformColor4ubv(cache->color.bg);
+      immBegin(GPU_PRIM_TRIS, 6);
+      immVertex3f(pos3d, cache->grid_extends_min[0], cache->grid_extends_min[1], 0.0f);
+      immVertex3f(pos3d, cache->grid_extends_min[0], cache->grid_extends_max[1], 0.0f);
+      immVertex3f(pos3d, cache->grid_extends_max[0], cache->grid_extends_max[1], 0.0f);
 
-        immVertex3f(pos3d, cache->grid_extends_min[0], cache->grid_extends_min[1], 0.0f);
-        immVertex3f(pos3d, cache->grid_extends_max[0], cache->grid_extends_min[1], 0.0f);
-        immVertex3f(pos3d, cache->grid_extends_max[0], cache->grid_extends_max[1], 0.0f);
-        immEnd();
-      }
+      immVertex3f(pos3d, cache->grid_extends_min[0], cache->grid_extends_min[1], 0.0f);
+      immVertex3f(pos3d, cache->grid_extends_max[0], cache->grid_extends_min[1], 0.0f);
+      immVertex3f(pos3d, cache->grid_extends_max[0], cache->grid_extends_max[1], 0.0f);
+      immEnd();
+    }
   }
 
   /* GRID */
   if (cache->flags & BLUEPRINT_ENABLE_GRID) {
-      GPU_line_width(0.5f);
-      immUniformColor4ubv(cache->color.grid);
-      int x_it = (cache->grid_extends_max[0] - cache->grid_extends_min[0]) / cache->gridx_size;
-      immBegin(GPU_PRIM_LINES, 2 * x_it + 2);
-      for (int i = 0; i < x_it + 1; i++) {
-        immVertex3f(pos3d,
-                    i * cache->gridx_size + cache->grid_extends_min[0],
-                    cache->grid_extends_min[1],
-                    0.0f);
-        immVertex3f(pos3d,
-                    i * cache->gridx_size + cache->grid_extends_min[0],
-                    cache->grid_extends_max[1],
-                    0.0f);
-      }
-      immEnd();
+    GPU_line_width(0.5f);
+    immUniformColor4ubv(cache->color.grid);
+    int x_it = (cache->grid_extends_max[0] - cache->grid_extends_min[0]) / cache->gridx_size;
+    immBegin(GPU_PRIM_LINES, 2 * x_it + 2);
+    for (int i = 0; i < x_it + 1; i++) {
+      immVertex3f(pos3d,
+                  i * cache->gridx_size + cache->grid_extends_min[0],
+                  cache->grid_extends_min[1],
+                  0.0f);
+      immVertex3f(pos3d,
+                  i * cache->gridx_size + cache->grid_extends_min[0],
+                  cache->grid_extends_max[1],
+                  0.0f);
+    }
+    immEnd();
 
-      int y_it = (cache->grid_extends_max[1] - cache->grid_extends_min[1]) / cache->gridy_size;
-      immBegin(GPU_PRIM_LINES, 2 * y_it + 2);
-      for (int i = 0; i < y_it + 1; i++) {
-        immVertex3f(pos3d,
-                    cache->grid_extends_min[0],
-                    i * cache->gridy_size + cache->grid_extends_min[1],
-                    0.0f);
-        immVertex3f(pos3d,
-                    cache->grid_extends_max[0],
-                    i * cache->gridy_size + cache->grid_extends_min[1],
-                    0.0f);
-      }
-      immEnd();
+    int y_it = (cache->grid_extends_max[1] - cache->grid_extends_min[1]) / cache->gridy_size;
+    immBegin(GPU_PRIM_LINES, 2 * y_it + 2);
+    for (int i = 0; i < y_it + 1; i++) {
+      immVertex3f(pos3d,
+                  cache->grid_extends_min[0],
+                  i * cache->gridy_size + cache->grid_extends_min[1],
+                  0.0f);
+      immVertex3f(pos3d,
+                  cache->grid_extends_max[0],
+                  i * cache->gridy_size + cache->grid_extends_min[1],
+                  0.0f);
+    }
+    immEnd();
   }
 
   GPU_point_size(4);
@@ -478,25 +475,20 @@ void blueprint_grid_extends_update(BlueprintCache *cache)
   blueprint_add_bb_point(pmin, pmax, cache->cursor);
   blueprint_add_bb_point(pmin, pmax, origin);
   if (cache->point_count > 0) {
-  LISTBASE_FOREACH (BlueprintPolyPoint *, p, &cache->poly) {
-    blueprint_add_bb_point(pmin, pmax, p->co);
-  }
+    LISTBASE_FOREACH (BlueprintPolyPoint *, p, &cache->poly) {
+      blueprint_add_bb_point(pmin, pmax, p->co);
+    }
   }
   cache->grid_extends_min[0] = pmin[0] - cache->grid_padding * cache->gridx_size;
   cache->grid_extends_min[1] = pmin[1] - cache->grid_padding * cache->gridy_size;
   cache->grid_extends_max[0] = pmax[0] + cache->grid_padding * cache->gridx_size;
   cache->grid_extends_max[1] = pmax[1] + cache->grid_padding * cache->gridy_size;
 
-  cache->grid_extends_min[0] = blueprint_snap_float(cache->grid_extends_min[0],
-                                                        cache->gridx_size);
-  cache->grid_extends_min[1] = blueprint_snap_float(cache->grid_extends_min[1],
-                                                        cache->gridx_size);
-  cache->grid_extends_max[0] = blueprint_snap_float(cache->grid_extends_max[0],
-                                                        cache->gridy_size);
-  cache->grid_extends_max[1] = blueprint_snap_float(cache->grid_extends_max[1],
-                                                        cache->gridy_size);
+  cache->grid_extends_min[0] = blueprint_snap_float(cache->grid_extends_min[0], cache->gridx_size);
+  cache->grid_extends_min[1] = blueprint_snap_float(cache->grid_extends_min[1], cache->gridx_size);
+  cache->grid_extends_max[0] = blueprint_snap_float(cache->grid_extends_max[0], cache->gridy_size);
+  cache->grid_extends_max[1] = blueprint_snap_float(cache->grid_extends_max[1], cache->gridy_size);
 }
-
 
 void blueprint_triangulation_free(BlueprintCache *cache)
 {
@@ -528,10 +520,9 @@ void blueprint_triangulation_update(BlueprintCache *cache)
 void blueprint_draw_geometry(uint pos3d, BlueprintCache *cache)
 {
 
-
   if (cache->state == BLUEPRINT_STATE_DRAW) {
-      blueprint_draw_poly_fill(pos3d, cache, 0.0f);
-      blueprint_draw_poly_stroke(pos3d, cache, 0.0f);
+    blueprint_draw_poly_fill(pos3d, cache, 0.0f);
+    blueprint_draw_poly_stroke(pos3d, cache, 0.0f);
   }
 
   if (cache->state == BLUEPRINT_STATE_EXTRUDE) {
@@ -539,9 +530,9 @@ void blueprint_draw_geometry(uint pos3d, BlueprintCache *cache)
     if (cache->flags & BLUEPRINT_SYMMETRICAL_EXTRUDE) {
       z_base = -cache->extrudedist;
     }
-      blueprint_draw_poly_fill(pos3d, cache, z_base);
-      blueprint_draw_poly_stroke(pos3d, cache, z_base);
-      blueprint_draw_poly_fill(pos3d, cache, cache->extrudedist);
+    blueprint_draw_poly_fill(pos3d, cache, z_base);
+    blueprint_draw_poly_stroke(pos3d, cache, z_base);
+    blueprint_draw_poly_fill(pos3d, cache, cache->extrudedist);
     blueprint_draw_poly_volume(pos3d, cache, cache->extrudedist);
     blueprint_draw_poly_stroke(pos3d, cache, cache->extrudedist);
   }
@@ -581,7 +572,6 @@ void blueprint_draw(const bContext *UNUSED(C), ARegion *UNUSED(ar), void *arg)
   GPU_blend(false);
   GPU_line_smooth(false);
 }
-
 
 int blueprint_init(bContext *C, wmOperator *op, BlueprintConfig *config)
 {
@@ -639,7 +629,6 @@ int blueprint_init(bContext *C, wmOperator *op, BlueprintConfig *config)
 
   cache->freehand_step_threshold = 0.05f;
 
-
   zero_v3(cache->cursor);
   zero_v3(cache->cursor_global);
 
@@ -662,37 +651,89 @@ void blueprint_op_properties(wmOperatorType *ot)
                              false,
                              "Extrude both sides",
                              "Extrudes the sketch symetrically");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "auto_enter_draw_state", false, "Auto enter draw state", "Enter draw state directly");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "auto_start_draw_state", false, "Auto start draw state", "Start drawing on entering draw state");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "extrude_on_release", false, "Extrude on release", "Start extrusion after releasing input");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "auto_enter_draw_state",
+                             false,
+                             "Auto enter draw state",
+                             "Enter draw state directly");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "auto_start_draw_state",
+                             false,
+                             "Auto start draw state",
+                             "Start drawing on entering draw state");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "extrude_on_release",
+                             false,
+                             "Extrude on release",
+                             "Start extrusion after releasing input");
   ot->prop = RNA_def_boolean(
       ot->srna, "enable_grid", true, "Enable grid", "Enable grid rendering");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "enable_grid_background", true, "Enable grid background", "Enable grid background rendering");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "enable_geometry_fill", true, "Enable geometry fill", "Enable geometry fill rendering");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "enable_grid_background",
+                             true,
+                             "Enable grid background",
+                             "Enable grid background rendering");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "enable_geometry_fill",
+                             true,
+                             "Enable geometry fill",
+                             "Enable geometry fill rendering");
   ot->prop = RNA_def_boolean(
       ot->srna, "grid_snap", false, "Snap to grid", "Snap sketch to the internal grid");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "floor_grid_snap", false, "Snap to floor", "Snap blueprint to the scene floor grid");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "vertex_snap", false, "Snap to vertices", "Snap blueprint to the scene geometry vertices");
-  ot->prop = RNA_def_boolean(
-      ot->srna, "symmetrical_extrude", false, "Symmetrical extrude", "Extrude both sides of the blueprint");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "floor_grid_snap",
+                             false,
+                             "Snap to floor",
+                             "Snap blueprint to the scene floor grid");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "vertex_snap",
+                             false,
+                             "Snap to vertices",
+                             "Snap blueprint to the scene geometry vertices");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "symmetrical_extrude",
+                             false,
+                             "Symmetrical extrude",
+                             "Extrude both sides of the blueprint");
   ot->prop = RNA_def_boolean(
       ot->srna, "show_grid", true, "Show snapping grid", "Show snapping grid");
   ot->prop = RNA_def_int(
       ot->srna, "grid_padding", 5, 2, 100, "Padding", "Padiing of the blueprint content", 2, 100);
-  RNA_def_enum(
-      ot->srna, "draw_tool", prop_blueprint_draw_tool_types, BLUEPRINT_DT_RECT, "Draw tool", "Draw tool mode");
-  ot->prop = RNA_def_int(
-      ot->srna, "ellipse_nsegments", 32, 3, 256, "Ellipse segments", "Number of segmetns of the draw ellipse tool", 3, 256);
-  ot->prop = RNA_def_float(ot->srna, "plane_offset", 0.0f, -1000.0f, 1000.0f, "Plane offset", "Blueprint plane offset to the surface",-1.0f, 1.0f);
+  RNA_def_enum(ot->srna,
+               "draw_tool",
+               prop_blueprint_draw_tool_types,
+               BLUEPRINT_DT_RECT,
+               "Draw tool",
+               "Draw tool mode");
+  ot->prop = RNA_def_int(ot->srna,
+                         "ellipse_nsegments",
+                         32,
+                         3,
+                         256,
+                         "Ellipse segments",
+                         "Number of segmetns of the draw ellipse tool",
+                         3,
+                         256);
+  ot->prop = RNA_def_float(ot->srna,
+                           "plane_offset",
+                           0.0f,
+                           -1000.0f,
+                           1000.0f,
+                           "Plane offset",
+                           "Blueprint plane offset to the surface",
+                           -1.0f,
+                           1.0f);
   const float default_grid_size[3] = {0.5f};
-  ot->prop = RNA_def_float_vector_xyz(ot->srna, "grid_size", 3, default_grid_size, -100.0f, 100.0f, "Grid size", "Blueprint internal grid size",-1.0f, 1.0f);
+  ot->prop = RNA_def_float_vector_xyz(ot->srna,
+                                      "grid_size",
+                                      3,
+                                      default_grid_size,
+                                      -100.0f,
+                                      100.0f,
+                                      "Grid size",
+                                      "Blueprint internal grid size",
+                                      -1.0f,
+                                      1.0f);
 
   ot->prop = RNA_def_string(
       ot->srna, "modifier", NULL, MAX_NAME, "Modifier", "Name of the modifier to edit");
@@ -711,148 +752,156 @@ void blueprint_end(bContext *C, wmOperator *op)
   }
 }
 
-bool blueprint_is_start_drawing_event(BlueprintCache *cache, const wmEvent *event) {
+bool blueprint_is_start_drawing_event(BlueprintCache *cache, const wmEvent *event)
+{
   bool is_start_event = false;
 
   if (cache->draw_tool_init) {
     return false;
   }
-     is_start_event = (event->type == LEFTMOUSE && event->val == KM_PRESS);
-     is_start_event = is_start_event || cache->flags & BLUEPRINT_AUTO_START_DRAW_STATE;
+  is_start_event = (event->type == LEFTMOUSE && event->val == KM_PRESS);
+  is_start_event = is_start_event || cache->flags & BLUEPRINT_AUTO_START_DRAW_STATE;
   if (is_start_event) {
     cache->draw_tool_init = true;
   }
   return is_start_event;
 }
 
-bool blueprint_is_end_drawing_event(BlueprintCache *cache, const wmEvent *event) {
+bool blueprint_is_end_drawing_event(BlueprintCache *cache, const wmEvent *event)
+{
   if (!cache->draw_tool_init) {
     return false;
   }
   if (cache->drawtool == BLUEPRINT_DT_POLYLINE) {
-      return event->type == RETKEY && event->val == KM_PRESS;
+    return event->type == RETKEY && event->val == KM_PRESS;
   }
   if (cache->drawtool == BLUEPRINT_DT_FREEHAND) {
-      return event->type == LEFTMOUSE && event->val == KM_RELEASE;
+    return event->type == LEFTMOUSE && event->val == KM_RELEASE;
   }
 
   /* rect and ellipse drawing modes */
   if (cache->flags & BLUEPRINT_EXTRUDE_ON_RELEASE) {
     return event->type == LEFTMOUSE && event->val == KM_RELEASE;
-  } else {
+  }
+  else {
     return event->type == LEFTMOUSE && event->val == KM_PRESS;
   }
 }
 
-bool blueprint_is_update_drawing_event(BlueprintCache *cache, const wmEvent *event) {
+bool blueprint_is_update_drawing_event(BlueprintCache *cache, const wmEvent *event)
+{
   if (cache->drawtool == BLUEPRINT_DT_POLYLINE) {
     return event->type == LEFTMOUSE && event->val == KM_PRESS;
   }
   return cache->draw_tool_init;
 }
 
-int blueprint_dt_rect_update_step(BlueprintCache *cache, const wmEvent *event) {
-      if (blueprint_is_start_drawing_event(cache, event)) {
-        for (int i = 0; i < 4; i++) {
-          cache->ps[i] = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
-          copy_v2_v2(cache->ps[i]->co, cache->cursor);
-          BLI_addtail(&cache->poly, cache->ps[i]);
-          cache->point_count++;
-        }
-          copy_v2_v2(cache->ps[2]->co, cache->cursor);
-          cache->ps[1]->co[0] = cache->cursor[0];
-          cache->ps[3]->co[1] = cache->cursor[1];
-          return BLUEPRINT_STATE_DRAW;
-      }
+int blueprint_dt_rect_update_step(BlueprintCache *cache, const wmEvent *event)
+{
+  if (blueprint_is_start_drawing_event(cache, event)) {
+    for (int i = 0; i < 4; i++) {
+      cache->ps[i] = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
+      copy_v2_v2(cache->ps[i]->co, cache->cursor);
+      BLI_addtail(&cache->poly, cache->ps[i]);
+      cache->point_count++;
+    }
+    copy_v2_v2(cache->ps[2]->co, cache->cursor);
+    cache->ps[1]->co[0] = cache->cursor[0];
+    cache->ps[3]->co[1] = cache->cursor[1];
+    return BLUEPRINT_STATE_DRAW;
+  }
 
-      if (blueprint_is_end_drawing_event(cache, event)) {
-        copy_v3_v3(cache->extrude_co, cache->cursor_global);
-        return BLUEPRINT_STATE_EXTRUDE;
-      }
+  if (blueprint_is_end_drawing_event(cache, event)) {
+    copy_v3_v3(cache->extrude_co, cache->cursor_global);
+    return BLUEPRINT_STATE_EXTRUDE;
+  }
 
-      if (blueprint_is_update_drawing_event(cache, event)) {
-          copy_v2_v2(cache->ps[2]->co, cache->cursor);
-          cache->ps[1]->co[0] = cache->cursor[0];
-          cache->ps[3]->co[1] = cache->cursor[1];
-          return BLUEPRINT_STATE_DRAW;
-      }
+  if (blueprint_is_update_drawing_event(cache, event)) {
+    copy_v2_v2(cache->ps[2]->co, cache->cursor);
+    cache->ps[1]->co[0] = cache->cursor[0];
+    cache->ps[3]->co[1] = cache->cursor[1];
+    return BLUEPRINT_STATE_DRAW;
+  }
 
-      return BLUEPRINT_STATE_DRAW;
-
+  return BLUEPRINT_STATE_DRAW;
 }
-int blueprint_dt_ellipse_update_step(BlueprintCache *cache, const wmEvent *event) {
-      if (blueprint_is_start_drawing_event(cache, event)) {
-        copy_v2_v2(cache->cursor_start, cache->cursor);
-        for (int i = 0; i < cache->ellipse_nsegments; i++) {
-          BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
-          copy_v2_v2(p->co, cache->cursor);
-          BLI_addtail(&cache->poly, p);
-          cache->point_count++;
-        }
-      return BLUEPRINT_STATE_DRAW;
-      }
+int blueprint_dt_ellipse_update_step(BlueprintCache *cache, const wmEvent *event)
+{
+  if (blueprint_is_start_drawing_event(cache, event)) {
+    copy_v2_v2(cache->cursor_start, cache->cursor);
+    for (int i = 0; i < cache->ellipse_nsegments; i++) {
+      BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
+      copy_v2_v2(p->co, cache->cursor);
+      BLI_addtail(&cache->poly, p);
+      cache->point_count++;
+    }
+    return BLUEPRINT_STATE_DRAW;
+  }
 
-      if (blueprint_is_end_drawing_event(cache, event)) {
-        copy_v3_v3(cache->extrude_co, cache->cursor_global);
-        return BLUEPRINT_STATE_EXTRUDE;
-      }
+  if (blueprint_is_end_drawing_event(cache, event)) {
+    copy_v3_v3(cache->extrude_co, cache->cursor_global);
+    return BLUEPRINT_STATE_EXTRUDE;
+  }
 
-      if (blueprint_is_update_drawing_event(cache, event)) {
-          int i = 0; float rad = len_v2v2(cache->cursor_start, cache->cursor);
-          LISTBASE_FOREACH (BlueprintPolyPoint *, p, &cache->poly) {
-            float angle = (float)(2 * M_PI) * ((float)i / (float)cache->ellipse_nsegments);
-            p->co[0] = cache->cursor_start[0] + rad * cosf(angle);
-            p->co[1] = cache->cursor_start[1] + rad * sinf(angle);
-            i++;
-          }
-      return BLUEPRINT_STATE_DRAW;
-      }
-      return BLUEPRINT_STATE_DRAW;
-
-}
-
-int blueprint_dt_freehand_update_step(BlueprintCache *cache, const wmEvent *event) {
-     if (blueprint_is_start_drawing_event(cache, event)) {
-        BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
-        copy_v2_v2(p->co, cache->cursor);
-        BLI_addtail(&cache->poly, p);
-        cache->point_count++;
-        return BLUEPRINT_STATE_DRAW;
-      }
-
-      if (blueprint_is_end_drawing_event(cache, event)) {
-        copy_v3_v3(cache->extrude_co, cache->cursor_global);
-        return BLUEPRINT_STATE_EXTRUDE;
-      }
-
-      if (blueprint_is_update_drawing_event(cache, event)) {
-        BlueprintPolyPoint *plast = cache->poly.last;
-        if (len_v2v2(plast->co, cache->cursor) > cache->freehand_step_threshold) {
-            BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
-            copy_v2_v2(p->co, cache->cursor);
-            BLI_addtail(&cache->poly, p);
-            cache->point_count++;
-        }
-        return BLUEPRINT_STATE_DRAW;
-      }
-      return BLUEPRINT_STATE_DRAW;
+  if (blueprint_is_update_drawing_event(cache, event)) {
+    int i = 0;
+    float rad = len_v2v2(cache->cursor_start, cache->cursor);
+    LISTBASE_FOREACH (BlueprintPolyPoint *, p, &cache->poly) {
+      float angle = (float)(2 * M_PI) * ((float)i / (float)cache->ellipse_nsegments);
+      p->co[0] = cache->cursor_start[0] + rad * cosf(angle);
+      p->co[1] = cache->cursor_start[1] + rad * sinf(angle);
+      i++;
+    }
+    return BLUEPRINT_STATE_DRAW;
+  }
+  return BLUEPRINT_STATE_DRAW;
 }
 
-int blueprint_dt_polyline_update_step(BlueprintCache *cache, const wmEvent *event) {
-      if (blueprint_is_start_drawing_event(cache, event) || blueprint_is_update_drawing_event(cache, event)) {
-        BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
-        copy_v2_v2(p->co, cache->cursor);
-        BLI_addtail(&cache->poly, p);
-        cache->point_count++;
-        return BLUEPRINT_STATE_DRAW;
-      }
+int blueprint_dt_freehand_update_step(BlueprintCache *cache, const wmEvent *event)
+{
+  if (blueprint_is_start_drawing_event(cache, event)) {
+    BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
+    copy_v2_v2(p->co, cache->cursor);
+    BLI_addtail(&cache->poly, p);
+    cache->point_count++;
+    return BLUEPRINT_STATE_DRAW;
+  }
 
-      if (blueprint_is_end_drawing_event(cache, event)) {
-        copy_v3_v3(cache->extrude_co, cache->cursor_global);
-        return BLUEPRINT_STATE_EXTRUDE;
-      }
+  if (blueprint_is_end_drawing_event(cache, event)) {
+    copy_v3_v3(cache->extrude_co, cache->cursor_global);
+    return BLUEPRINT_STATE_EXTRUDE;
+  }
 
-      return BLUEPRINT_STATE_DRAW;
+  if (blueprint_is_update_drawing_event(cache, event)) {
+    BlueprintPolyPoint *plast = cache->poly.last;
+    if (len_v2v2(plast->co, cache->cursor) > cache->freehand_step_threshold) {
+      BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
+      copy_v2_v2(p->co, cache->cursor);
+      BLI_addtail(&cache->poly, p);
+      cache->point_count++;
+    }
+    return BLUEPRINT_STATE_DRAW;
+  }
+  return BLUEPRINT_STATE_DRAW;
+}
+
+int blueprint_dt_polyline_update_step(BlueprintCache *cache, const wmEvent *event)
+{
+  if (blueprint_is_start_drawing_event(cache, event) ||
+      blueprint_is_update_drawing_event(cache, event)) {
+    BlueprintPolyPoint *p = MEM_mallocN(sizeof(BlueprintPolyPoint), "point");
+    copy_v2_v2(p->co, cache->cursor);
+    BLI_addtail(&cache->poly, p);
+    cache->point_count++;
+    return BLUEPRINT_STATE_DRAW;
+  }
+
+  if (blueprint_is_end_drawing_event(cache, event)) {
+    copy_v3_v3(cache->extrude_co, cache->cursor_global);
+    return BLUEPRINT_STATE_EXTRUDE;
+  }
+
+  return BLUEPRINT_STATE_DRAW;
 }
 
 ModifierData *edit_modifier_property_get_2(wmOperator *op, Object *ob, int type)
@@ -883,7 +932,7 @@ bool EDBM_op_finish_(BMEditMesh *em, BMOperator *bmop, wmOperator *op, const boo
       BKE_report(op->reports, RPT_ERROR, errmsg);
     }
 
-    //EDBM_mesh_free(em);
+    // EDBM_mesh_free(em);
     *em = *emcopy;
 
     MEM_freeN(emcopy);
@@ -942,16 +991,16 @@ bool EDBM_op_call_f(BMEditMesh *em, wmOperator *op, const char *fmt, ...)
   return EDBM_op_finish_(em, &bmop, op, true);
 }
 int blueprint_update_step(bContext *C,
-                              wmOperator *op,
-                              const wmEvent *event,
-                              BlueprintGeometryData *gdata)
+                          wmOperator *op,
+                          const wmEvent *event,
+                          BlueprintGeometryData *gdata)
 {
   BlueprintCD *cd = op->customdata;
   BlueprintCache *cache = &cd->cache;
 
   Main *bmain = CTX_data_main(C);
-Scene *scene = CTX_data_scene(C);
-Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Scene *scene = CTX_data_scene(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
 
   if (event->type == ESCKEY && event->val == KM_PRESS) {
     blueprint_end(C, op);
@@ -975,7 +1024,6 @@ Depsgraph *depsgraph = CTX_data_depsgraph(C);
     copy_v3_v3(plane_offset, gdata->n);
     mul_v3_fl(plane_offset, cache->plane_offset);
     add_v3_v3(cache->co, plane_offset);
-
 
     /* blueprint matrix setup */
     float z_axis[4] = {0.0f, 0.0f, 1.0f, 0.0f};
@@ -1002,17 +1050,17 @@ Depsgraph *depsgraph = CTX_data_depsgraph(C);
     invert_m4_m4(cache->mat_inv, cache->mat);
     copy_v3_v3(cache->origin, cache->co);
 
-
     if (gdata->sf_object) {
-        cache->sf_ob = gdata->sf_object;
+      cache->sf_ob = gdata->sf_object;
     }
 
     if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
-        if (false && cache->sf_ob != NULL) {
-            ED_object_modifier_add(op->reports, bmain, scene, cache->sf_ob, "bool_op", eModifierType_Boolean);
-                DEG_id_tag_update(&cache->sf_ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-                WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, cache->sf_ob);
-        }
+      if (false && cache->sf_ob != NULL) {
+        ED_object_modifier_add(
+            op->reports, bmain, scene, cache->sf_ob, "bool_op", eModifierType_Boolean);
+        DEG_id_tag_update(&cache->sf_ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+        WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, cache->sf_ob);
+      }
       cache->state = BLUEPRINT_STATE_DRAW;
       ED_region_tag_redraw(cache->ar);
       return OPERATOR_RUNNING_MODAL;
@@ -1059,9 +1107,8 @@ Depsgraph *depsgraph = CTX_data_depsgraph(C);
       cache->state = blueprint_dt_ellipse_update_step(cache, event);
     }
 
-      ED_region_tag_redraw(cache->ar);
-      return OPERATOR_RUNNING_MODAL;
-
+    ED_region_tag_redraw(cache->ar);
+    return OPERATOR_RUNNING_MODAL;
   }
 
   if (cache->state == BLUEPRINT_STATE_EXTRUDE) {
@@ -1090,9 +1137,10 @@ Depsgraph *depsgraph = CTX_data_depsgraph(C);
         int totvert = point_count * 2;
         int tottri = 0;
         if (point_count == 4) {
-           tottri = (point_count * 1) + 2;
-        } else {
-           tottri = (point_count * 1) + ((point_count - 2) * 2);
+          tottri = (point_count * 1) + 2;
+        }
+        else {
+          tottri = (point_count * 1) + ((point_count - 2) * 2);
         }
         Mesh *newMesh = BKE_mesh_new_nomain(totvert, 0, tottri, 0, 0);
 
@@ -1115,33 +1163,33 @@ Depsgraph *depsgraph = CTX_data_depsgraph(C);
         int face_it = 0;
 
         if (point_count == 4) {
-              newMesh->mface[face_it].v1 = 0;
-              newMesh->mface[face_it].v2 = 1;
-              newMesh->mface[face_it].v3 = 2;
-              newMesh->mface[face_it].v4 = 3;
-              face_it++;
-              newMesh->mface[face_it].v1 = 7;
-              newMesh->mface[face_it].v2 = 6;
-              newMesh->mface[face_it].v3 = 5;
-              newMesh->mface[face_it].v4 = 4;
-              face_it++;
+          newMesh->mface[face_it].v1 = 0;
+          newMesh->mface[face_it].v2 = 1;
+          newMesh->mface[face_it].v3 = 2;
+          newMesh->mface[face_it].v4 = 3;
+          face_it++;
+          newMesh->mface[face_it].v1 = 7;
+          newMesh->mface[face_it].v2 = 6;
+          newMesh->mface[face_it].v3 = 5;
+          newMesh->mface[face_it].v4 = 4;
+          face_it++;
         }
         else {
-            for (i = 0; i < point_count - 2; i++) {
-              uint *t_index = cache->r_tris[i];
-              newMesh->mface[face_it].v3 = t_index[2];
-              newMesh->mface[face_it].v2 = t_index[1];
-              newMesh->mface[face_it].v1 = t_index[0];
-              face_it++;
-            }
+          for (i = 0; i < point_count - 2; i++) {
+            uint *t_index = cache->r_tris[i];
+            newMesh->mface[face_it].v3 = t_index[2];
+            newMesh->mface[face_it].v2 = t_index[1];
+            newMesh->mface[face_it].v1 = t_index[0];
+            face_it++;
+          }
 
-            for (i = 0; i < point_count - 2; i++) {
-              uint *t_index = cache->r_tris[i];
-              newMesh->mface[face_it].v3 = t_index[0] + point_count;
-              newMesh->mface[face_it].v2 = t_index[1] + point_count;
-              newMesh->mface[face_it].v1 = t_index[2] + point_count;
-              face_it++;
-            }
+          for (i = 0; i < point_count - 2; i++) {
+            uint *t_index = cache->r_tris[i];
+            newMesh->mface[face_it].v3 = t_index[0] + point_count;
+            newMesh->mface[face_it].v2 = t_index[1] + point_count;
+            newMesh->mface[face_it].v1 = t_index[2] + point_count;
+            face_it++;
+          }
         }
 
         for (i = 0; i < point_count; i++) {
@@ -1177,77 +1225,77 @@ Depsgraph *depsgraph = CTX_data_depsgraph(C);
         BKE_mesh_calc_normals(newob->data);
 
         if (false) {
-        const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(newMesh);
-        BMesh *bm;
-        bm = BM_mesh_create(&allocsize,
-                            &((struct BMeshCreateParams){
-                                .use_toolflags = false,
-                            }));
+          const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(newMesh);
+          BMesh *bm;
+          bm = BM_mesh_create(&allocsize,
+                              &((struct BMeshCreateParams){
+                                  .use_toolflags = false,
+                              }));
 
-        BM_mesh_bm_from_me(bm,
-                           newMesh,
-                           (&(struct BMeshFromMeshParams){
-                               .calc_face_normal = true,
-                           }));
+          BM_mesh_bm_from_me(bm,
+                             newMesh,
+                             (&(struct BMeshFromMeshParams){
+                                 .calc_face_normal = true,
+                             }));
 
-            BMEditMesh *em = BKE_editmesh_create(bm, false);
-            BMFace *f;
-            BMIter iter;
-            BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-                BM_elem_flag_set(f, BM_ELEM_SELECT, true);
-            }
-            EDBM_op_call_f(em, op, "recalc_face_normals faces=%hf", BM_ELEM_SELECT);
-            BKE_editmesh_free_derivedmesh(em);
+          BMEditMesh *em = BKE_editmesh_create(bm, false);
+          BMFace *f;
+          BMIter iter;
+          BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+            BM_elem_flag_set(f, BM_ELEM_SELECT, true);
+          }
+          EDBM_op_call_f(em, op, "recalc_face_normals faces=%hf", BM_ELEM_SELECT);
+          BKE_editmesh_free_derivedmesh(em);
         }
 
         bool bool_op_ok = false;
 
-
         if (false && cache->sf_ob != NULL) {
-            //ED_object_modifier_add(op->reports, bmain, scene, cache->sf_ob, "bool_op", eModifierType_Boolean);
-            BooleanModifierData *bmd = (BooleanModifierData *)modifiers_findByName(cache->sf_ob, "bool_op");
-            if (bmd) {
-                bmd->object = newob;
-                bmd->operation = eBooleanModifierOp_Difference;
-                DEG_id_tag_update(&cache->sf_ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-                WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, cache->sf_ob);
-              bool_op_ok = true;
-            }
-            cache->new_ob = newob;
-            WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, newob);
-            BKE_mesh_batch_cache_dirty_tag(newob->data, BKE_MESH_BATCH_DIRTY_ALL);
-            DEG_relations_tag_update(bmain);
-            DEG_id_tag_update(&newob->id, ID_RECALC_GEOMETRY);
-            WM_event_add_notifier(C, NC_GEOM | ND_DATA, newob->data);
-            cache->state = BLUEPRINT_STATE_BOOLEAN;
-            return OPERATOR_RUNNING_MODAL;
+          // ED_object_modifier_add(op->reports, bmain, scene, cache->sf_ob, "bool_op",
+          // eModifierType_Boolean);
+          BooleanModifierData *bmd = (BooleanModifierData *)modifiers_findByName(cache->sf_ob,
+                                                                                 "bool_op");
+          if (bmd) {
+            bmd->object = newob;
+            bmd->operation = eBooleanModifierOp_Difference;
+            DEG_id_tag_update(&cache->sf_ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+            WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, cache->sf_ob);
+            bool_op_ok = true;
+          }
+          cache->new_ob = newob;
+          WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, newob);
+          BKE_mesh_batch_cache_dirty_tag(newob->data, BKE_MESH_BATCH_DIRTY_ALL);
+          DEG_relations_tag_update(bmain);
+          DEG_id_tag_update(&newob->id, ID_RECALC_GEOMETRY);
+          WM_event_add_notifier(C, NC_GEOM | ND_DATA, newob->data);
+          cache->state = BLUEPRINT_STATE_BOOLEAN;
+          return OPERATOR_RUNNING_MODAL;
         }
 
         if (!bool_op_ok) {
-            WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, newob);
-            BKE_mesh_batch_cache_dirty_tag(newob->data, BKE_MESH_BATCH_DIRTY_ALL);
-            DEG_relations_tag_update(bmain);
-            DEG_id_tag_update(&newob->id, ID_RECALC_GEOMETRY);
-            WM_event_add_notifier(C, NC_GEOM | ND_DATA, newob->data);
-            blueprint_end(C, op);
+          WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, newob);
+          BKE_mesh_batch_cache_dirty_tag(newob->data, BKE_MESH_BATCH_DIRTY_ALL);
+          DEG_relations_tag_update(bmain);
+          DEG_id_tag_update(&newob->id, ID_RECALC_GEOMETRY);
+          WM_event_add_notifier(C, NC_GEOM | ND_DATA, newob->data);
+          blueprint_end(C, op);
 
-            return OPERATOR_FINISHED;
+          return OPERATOR_FINISHED;
         }
-
       }
     }
   }
 
   if (cache->state == BLUEPRINT_STATE_BOOLEAN) {
-         BooleanModifierData *bmd = (BooleanModifierData *)modifiers_findByName(cache->sf_ob, "bool_op");
-         ED_object_modifier_apply(bmain, op->reports, depsgraph, scene, cache->sf_ob, &bmd->modifier, MODIFIER_APPLY_DATA);
-        DEG_id_tag_update(&cache->sf_ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-        WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, cache->sf_ob);
-         ED_object_base_free_and_unlink(bmain, scene, cache->new_ob);
-            DEG_relations_tag_update(bmain);
-
+    BooleanModifierData *bmd = (BooleanModifierData *)modifiers_findByName(cache->sf_ob,
+                                                                           "bool_op");
+    ED_object_modifier_apply(
+        bmain, op->reports, depsgraph, scene, cache->sf_ob, &bmd->modifier, MODIFIER_APPLY_DATA);
+    DEG_id_tag_update(&cache->sf_ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, cache->sf_ob);
+    ED_object_base_free_and_unlink(bmain, scene, cache->new_ob);
+    DEG_relations_tag_update(bmain);
   }
-
 
   ED_region_tag_redraw(cache->ar);
   return OPERATOR_RUNNING_MODAL;
@@ -1270,9 +1318,9 @@ static void scene_ray_cast(Scene *scene,
                            int *r_index,
                            Object **r_ob,
                            float r_obmat[16],
-float mval[2],
-bContext *C,
-bool vertex_snap)
+                           float mval[2],
+                           bContext *C,
+                           bool vertex_snap)
 {
   normalize_v3(direction);
 
@@ -1301,27 +1349,27 @@ bool vertex_snap)
   ED_transform_snap_object_context_destroy(sctx);
   sctx = ED_transform_snap_object_context_create_view3d(bmain, scene, depsgraph, 0, ar, v3d);
   bool ret_snnaped = ED_transform_snap_object_project_view3d_ex(sctx,
-                                                        SCE_SNAP_MODE_VERTEX,
-                                                     &(const struct SnapObjectParams){
-                                                         .snap_select = SNAP_ALL,
-                                                     },
-                                                     mval,
-                                                     &ray_dist,
-                                                     snap_loc,
-                                                     snap_normal,
-                                                     r_index,
-                                                     r_ob,
-                                                     (float(*)[4])r_obmat);
+                                                                SCE_SNAP_MODE_VERTEX,
+                                                                &(const struct SnapObjectParams){
+                                                                    .snap_select = SNAP_ALL,
+                                                                },
+                                                                mval,
+                                                                &ray_dist,
+                                                                snap_loc,
+                                                                snap_normal,
+                                                                r_index,
+                                                                r_ob,
+                                                                (float(*)[4])r_obmat);
   ED_transform_snap_object_context_destroy(sctx);
 
   if (ret_snnaped && vertex_snap) {
     copy_v3_v3(r_location, snap_loc);
     copy_v3_v3(r_normal, global_normal);
-  } else {
+  }
+  else {
     copy_v3_v3(r_location, global_loc);
     copy_v3_v3(r_normal, global_normal);
   }
-
 
   if (r_ob != NULL && *r_ob != NULL) {
     *r_ob = DEG_get_original_object(*r_ob);
@@ -1338,7 +1386,6 @@ bool vertex_snap)
     zero_v3(r_normal);
   }
 }
-
 
 static int object_blueprint_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1377,9 +1424,6 @@ static int object_blueprint_modal(bContext *C, wmOperator *op, const wmEvent *ev
                  C,
                  vertex_snap);
 
-
-
-
   if (!success) {
     float ground_plane[4];
     float ground_origin[3] = {0.0f, 0.0f, 0.0f};
@@ -1390,11 +1434,11 @@ static int object_blueprint_modal(bContext *C, wmOperator *op, const wmEvent *ev
     copy_v3_v3(gs_normal, ground_normal);
   }
 
-    if (RNA_boolean_get(op->ptr,"floor_grid_snap")) {
-      gs_co[0] = blueprint_snap_float(gs_co[0], 1.0f);
-      gs_co[1] = blueprint_snap_float(gs_co[1], 1.0f);
-      gs_co[2] = blueprint_snap_float(gs_co[2], 1.0f);
-    }
+  if (RNA_boolean_get(op->ptr, "floor_grid_snap")) {
+    gs_co[0] = blueprint_snap_float(gs_co[0], 1.0f);
+    gs_co[1] = blueprint_snap_float(gs_co[1], 1.0f);
+    gs_co[2] = blueprint_snap_float(gs_co[2], 1.0f);
+  }
   copy_v3_v3(gdata.n, gs_normal);
   copy_v3_v3(gdata.co, gs_co);
   int ret = blueprint_update_step(C, op, event, &gdata);
@@ -1424,7 +1468,7 @@ void OBJECT_OT_blueprint(wmOperatorType *ot)
   ot->description = "Blueprint operator";
 
   /* api callbacks */
-  ot->invoke =object_blueprint_invoke;
+  ot->invoke = object_blueprint_invoke;
   ot->modal = object_blueprint_modal;
   ot->poll = object_mode_blueprint_set_poll;
 
