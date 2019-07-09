@@ -1060,7 +1060,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       BMVert *temp_vert;
       temp_vert = cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v1, v2), sizing);
       if (!temp_vert) {
-        temp_vert = cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v1, v2), sizing);
+        temp_vert = cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v2, v1), sizing);
         if (!temp_vert) {
           continue;
         }
