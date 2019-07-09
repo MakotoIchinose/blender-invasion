@@ -852,14 +852,86 @@ static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
   return sqrtf(fmax(value, 0.0f));
 }
 
+static void cloth_remeshing_replace_uvs(float uv_01[2], float uv_02[2], float uvs[3][2])
+{
+  for (int i = 0; i < 3; i++) {
+    if (equals_v2v2(uv_01, uvs[i])) {
+      copy_v2_v2(uvs[i], uv_02);
+      break;
+    }
+  }
+}
+
+static inline float cloth_remeshing_wedge(float v_01[2], float v_02[2])
+{
+  return v_01[0] * v_02[1] - v_01[1] * v_02[0];
+}
+
+#define SQRT3 1.732050808f
+
+static bool cloth_remeshing_aspect_ratio(ClothModifierData *clmd, BMesh *bm, BMEdge *e)
+{
+  BMFace *f1, *f2;
+  BM_edge_face_pair(e, &f1, &f2);
+
+  BMFace *f;
+  BMIter fiter;
+  BM_ITER_ELEM (f, &fiter, e->v1, BM_FACES_OF_VERT) {
+    if (BM_vert_in_face(e->v2, f)) { /* This might be wrong */
+      continue;
+    }
+    float uvs[3][2];
+    BMVert *v;
+    BMIter viter;
+    int i = 0;
+    BM_ITER_ELEM_INDEX (v, &viter, f, BM_VERTS_OF_FACE, i) {
+      cloth_remeshing_uv_of_vert_in_face(bm, f, v, uvs[i]);
+    }
+    if (f1) {
+      float uv_01[2], uv_02[2];
+      cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v1, uv_01);
+      cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v2, uv_02);
+      cloth_remeshing_replace_uvs(uv_01, uv_02, uvs);
+    }
+    if (f2) {
+      float uv_01[2], uv_02[2];
+      cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v1, uv_01);
+      cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v2, uv_02);
+      cloth_remeshing_replace_uvs(uv_01, uv_02, uvs);
+    }
+
+    float temp_01[2], temp_02[2], temp_03[2];
+    copy_v2_v2(temp_01, uvs[1]);
+    sub_v2_v2(temp_01, uvs[0]);
+    copy_v2_v2(temp_02, uvs[2]);
+    sub_v2_v2(temp_02, uvs[0]);
+    copy_v2_v2(temp_03, uvs[1]);
+    sub_v2_v2(temp_03, uvs[2]);
+    float a = cloth_remeshing_wedge(temp_01, temp_02) * 0.5f;
+    float p = len_v2(temp_01) + len_v2(temp_02) + len_v3(temp_03); /* This might be wrong */
+    float aspect = 12.0f * SQRT3 * a / (p * p);
+    if (a < 1e-6 || aspect < clmd->sim_parms->aspect_min) {
+      return false;
+    }
+  }
+  return true;
+}
+
 #define REMESHING_HYSTERESIS_PARAMETER 0.2
-static bool cloth_remeshing_can_collapse_edge(BMesh *bm, BMEdge *e, vector<ClothSizing> &sizing)
+static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
+                                              BMesh *bm,
+                                              BMEdge *e,
+                                              vector<ClothSizing> &sizing)
 {
   if (BM_edge_face_count(e) < 2) {
     return false;
   }
 
-  /* TODO(Ish): aspect ratio parameter */
+  /* aspect ratio parameter */
+  if (!cloth_remeshing_aspect_ratio(clmd, bm, e)) {
+    return false;
+  }
+
   BMFace *f1, *f2;
   BM_edge_face_pair(e, &f1, &f2);
 #if 1
@@ -949,7 +1021,7 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
 {
   Cloth *cloth = clmd->clothObject;
   BMesh *bm = cloth->bm;
-  if (!cloth_remeshing_can_collapse_edge(bm, e, sizing)) {
+  if (!cloth_remeshing_can_collapse_edge(clmd, bm, e, sizing)) {
     return NULL;
   }
 
