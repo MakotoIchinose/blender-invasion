@@ -999,7 +999,7 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v)
 
 static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth, BMesh *bm, BMEdge *e)
 {
-  if (cloth_remeshing_vert_on_seam_test(bm, e->v1)) {
+  if (cloth_remeshing_vert_on_seam_test(bm, e->v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
 #if 0
     printf("didn't collapse edge due to vert on seam: %f, %f, %f\n",
            e->v1->co[0],
