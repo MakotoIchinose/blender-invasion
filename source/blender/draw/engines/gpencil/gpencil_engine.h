@@ -34,6 +34,9 @@ struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
 struct tGPspoint;
+struct GpencilBatchCache;
+struct GpencilBatchCacheElem;
+struct GpencilBatchGroup;
 
 #define GPENCIL_CACHE_BLOCK_SIZE 8
 #define GPENCIL_MAX_SHGROUPS 65536
@@ -45,23 +48,6 @@ struct tGPspoint;
 #define GPENCIL_COLOR_SOLID 0
 #define GPENCIL_COLOR_TEXTURE 1
 #define GPENCIL_COLOR_PATTERN 2
-
-#define GP_SIMPLIFY(scene) ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ENABLE))
-#define GP_SIMPLIFY_ONPLAY(playing) \
-  (((playing == true) && (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ON_PLAY)) || \
-   ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ON_PLAY) == 0))
-#define GP_SIMPLIFY_FILL(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FILL)))
-#define GP_SIMPLIFY_MODIF(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_MODIFIER)))
-#define GP_SIMPLIFY_FX(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FX)))
-#define GP_SIMPLIFY_BLEND(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_BLEND)))
 
 #define GP_IS_CAMERAVIEW ((rv3d != NULL) && (rv3d->persp == RV3D_CAMOB && v3d->camera))
 
@@ -340,61 +326,6 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *gpencil_fx_wave_sh;
 
 } GPENCIL_e_data; /* Engine data */
-
-/* GPUBatch Cache */
-typedef struct GpencilBatchCacheElem {
-  GPUBatch *batch;
-  GPUVertBuf *vbo;
-  int vbo_len;
-  /* attr ids */
-  GPUVertFormat format;
-  uint pos_id;
-  uint color_id;
-  uint thickness_id;
-  uint uvdata_id;
-  uint prev_pos_id;
-
-  /* size for VBO alloc */
-  int tot_vertex;
-} GpencilBatchCacheElem;
-
-typedef struct GpencilBatchGroup {
-  struct bGPDlayer *gpl;  /* reference to original layer */
-  struct bGPDframe *gpf;  /* reference to original frame */
-  struct bGPDstroke *gps; /* reference to original stroke */
-  short type;             /* type of element */
-  bool onion;             /* the group is part of onion skin */
-  int vertex_idx;         /* index of vertex data */
-} GpencilBatchGroup;
-
-typedef enum GpencilBatchGroup_Type {
-  eGpencilBatchGroupType_Stroke = 1,
-  eGpencilBatchGroupType_Point = 2,
-  eGpencilBatchGroupType_Fill = 3,
-  eGpencilBatchGroupType_Edit = 4,
-  eGpencilBatchGroupType_Edlin = 5,
-} GpencilBatchGroup_Type;
-
-typedef struct GpencilBatchCache {
-  GpencilBatchCacheElem b_stroke;
-  GpencilBatchCacheElem b_point;
-  GpencilBatchCacheElem b_fill;
-  GpencilBatchCacheElem b_edit;
-  GpencilBatchCacheElem b_edlin;
-
-  /* settings to determine if cache is invalid */
-  bool is_dirty;
-  bool is_editmode;
-  int cache_frame;
-
-  /* data with the shading groups */
-  int grp_used;                        /* total groups in arrays */
-  int grp_size;                        /* max size of the array */
-  struct GpencilBatchGroup *grp_cache; /* array of elements */
-
-  int tot_layers;
-  struct bGPDframe *derived_array; /* runtime data created by modifiers */
-} GpencilBatchCache;
 
 /* general drawing functions */
 struct DRWShadingGroup *gpencil_shgroup_stroke_create(struct GPENCIL_Data *vedata,

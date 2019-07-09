@@ -48,14 +48,18 @@
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
+#include "BKE_curve.h"
+#include "BKE_collection.h"
+#include "BKE_colortools.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
-#include "BKE_colortools.h"
 #include "BKE_icons.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
 #include "BKE_material.h"
+#include "BKE_object.h"
+
+#include "BLI_math_color.h"
 
 #include "DEG_depsgraph.h"
 
@@ -2571,4 +2575,250 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   gps->flag |= GP_STROKE_CYCLIC;
 
   return true;
+}
+
+/* Helper function to check materials with same color */
+static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Material *r_mat)
+{
+  Material *ma = NULL;
+  float color_cu[4];
+  linearrgb_to_srgb_v3_v3(color_cu, color);
+  color_cu[3] = 1.0f;
+  float hsv1[3];
+  rgb_to_hsv_v(color_cu, hsv1);
+
+  for (int i = 1; i <= ob_gp->totcol; i++) {
+    ma = give_current_material(ob_gp, i);
+    MaterialGPencilStyle *gp_style = ma->gp_style;
+    /* Check color with small tolerance (better in HSV). */
+    float hsv2[3];
+    rgb_to_hsv_v(gp_style->fill_rgba, hsv2);
+
+    if (compare_v3v3(hsv1, hsv2, 0.01f)) {
+      r_mat = ma;
+      return i - 1;
+    }
+  }
+
+  r_mat = NULL;
+  return -1;
+}
+
+/* Add gpencil material using curve material as base */
+static Material *gpencil_add_from_curve_material(Main *bmain,
+                                                 Object *ob_gp,
+                                                 float cu_color[3],
+                                                 const bool gpencil_lines,
+                                                 const bool fill,
+                                                 int *r_idx)
+{
+  Material *mat_gp = BKE_gpencil_object_material_new(
+      bmain, ob_gp, (fill) ? "Material" : "Unassigned", r_idx);
+  MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+
+  /* Stroke color. */
+  if (gpencil_lines) {
+    ARRAY_SET_ITEMS(gp_style->stroke_rgba, 0.0f, 0.0f, 0.0f, 1.0f);
+  }
+  else {
+    linearrgb_to_srgb_v3_v3(gp_style->stroke_rgba, cu_color);
+    /* TODO: review alpha*/
+    gp_style->stroke_rgba[3] = 1.0f;
+  }
+
+  /* Fill color. */
+  linearrgb_to_srgb_v3_v3(gp_style->fill_rgba, cu_color);
+  /* TODO: review alpha*/
+  gp_style->fill_rgba[3] = 1.0f;
+  /* Fill is false if the original curva hasn't material assigned. */
+  if (fill) {
+    gp_style->flag |= GP_STYLE_FILL_SHOW;
+  }
+
+  return mat_gp;
+}
+
+/* Helper function to create new stroke section */
+static void gpencil_add_new_points(bGPDstroke *gps, float *coord_array, int init, int totpoints)
+{
+  for (int i = 0; i < totpoints; i++) {
+    bGPDspoint *pt = &gps->points[i + init];
+    copy_v3_v3(&pt->x, &coord_array[3 * i]);
+    pt->pressure = 1.0f;
+    pt->strength = 1.0f;
+  }
+}
+
+/* Helper function to get the first collection that includes the object */
+static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
+{
+  FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+    for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
+      if (cob->ob == ob) {
+        return collection;
+      }
+    }
+  }
+  FOREACH_SCENE_COLLECTION_END;
+
+  return NULL;
+}
+
+/* Convert a curve to grease pencil stroke.
+ *
+ * \param scene: Original scene.
+ * \param ob_gp: Grease pencil object to add strokes.
+ * \param ob_cu: Curve to convert.
+ * \param gpencil_lines: Use lines for strokes.
+ * \param use_collections: Create layers using collection names.
+ */
+void BKE_gpencil_convert_curve(Main *bmain,
+                               Scene *scene,
+                               Object *ob_gp,
+                               Object *ob_cu,
+                               const bool gpencil_lines,
+                               const bool use_collections)
+{
+  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL)) {
+    return;
+  }
+
+  bGPdata *gpd = (bGPdata *)ob_gp->data;
+  Curve *cu = (Curve *)ob_cu->data;
+  Nurb *nu = NULL;
+  bool cyclic = true;
+  bGPDlayer *gpl = NULL;
+
+  /* Check if there is an active layer. */
+  if (use_collections) {
+    Collection *collection = gpencil_get_parent_collection(scene, ob_cu);
+    if (collection != NULL) {
+      gpl = BLI_findstring(&gpd->layers, collection->id.name + 2, offsetof(bGPDlayer, info));
+      if (gpl == NULL) {
+        gpl = BKE_gpencil_layer_addnew(gpd, collection->id.name + 2, true);
+      }
+    }
+  }
+
+  if (gpl == NULL) {
+    bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+    if (gpl == NULL) {
+      gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
+    }
+  }
+
+  /* Check if there is an active frame. */
+  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_COPY);
+  /* Create Stroke. */
+  bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
+  gps->thickness = 1.0f;
+  gps->gradient_f = 1.0f;
+  ARRAY_SET_ITEMS(gps->gradient_s, 1.0f, 1.0f);
+  gps->inittime = 0.0f;
+
+  /* Enable recalculation flag by default. */
+  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gps->flag &= ~GP_STROKE_SELECT;
+  gps->flag |= GP_STROKE_3DSPACE;
+
+  gps->mat_nr = 0;
+  /* Count total points
+   * The total of points must consider that last point of each segment is equal to the first
+   * point of next segment.
+   */
+  int totpoints = 0;
+  int segments = 0;
+  for (nu = cu->nurb.first; nu; nu = nu->next) {
+    int resolu = nu->resolu + 1;
+    if (nu->type == CU_BEZIER) {
+      segments = nu->pntsu;
+      if ((nu->flagu & CU_NURB_CYCLIC) == 0) {
+        segments--;
+        cyclic = false;
+      }
+      totpoints += resolu * segments;
+    }
+  }
+  totpoints -= segments - 1;
+  gps->totpoints = totpoints;
+  /* Allocate memory for storage points, but keep empty. */
+  gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+  /* Initialize triangle memory to dummy data. */
+  gps->tot_triangles = 0;
+  gps->triangles = NULL;
+
+  /* Materials
+   * Notice: The color of the material is the color of viewport and not the final shader color.
+   */
+  Material *mat_gp = NULL;
+  bool fill = true;
+  /* Check if grease pencil has a material with same color.*/
+  float color[3];
+  if ((cu->mat) && (*cu->mat)) {
+    Material *mat_cu = *cu->mat;
+    copy_v3_v3(color, &mat_cu->r);
+  }
+  else {
+    /* Pink (unassigned) */
+    zero_v3(color);
+    color[0] = 1.0f;
+    color[2] = 1.0f;
+    fill = false;
+  }
+  int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
+  if (r_idx < 0) {
+    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    /* If object has more than 1 material, use second material for stroke color */
+    if (ob_cu->totcol > 1) {
+      Material *ma_stroke = give_current_material(ob_cu, 2);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+    }
+  }
+  gps->mat_nr = r_idx;
+
+  /* Add stroke to frame.*/
+  BLI_addtail(&gpf->strokes, gps);
+
+  /* Read all segments of the curve. */
+  int init = 0;
+  for (nu = cu->nurb.first; nu; nu = nu->next) {
+    int resolu = nu->resolu + 1;
+    if (nu->type == CU_BEZIER) {
+      segments = nu->pntsu;
+      if ((nu->flagu & CU_NURB_CYCLIC) == 0) {
+        segments--;
+      }
+      /* Get all interpolated curve points of Beziert */
+      for (int s = 0; s < segments; s++) {
+        int inext = (s + 1) % nu->pntsu;
+        BezTriple *prevbezt = &nu->bezt[s];
+        BezTriple *bezt = &nu->bezt[inext];
+
+        float *coord_array = MEM_callocN(3 * resolu * sizeof(float), __func__);
+
+        for (int j = 0; j < 3; j++) {
+          BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
+                                        prevbezt->vec[2][j],
+                                        bezt->vec[0][j],
+                                        bezt->vec[1][j],
+                                        coord_array + j,
+                                        resolu - 1,
+                                        3 * sizeof(float));
+        }
+        /* Add points to the stroke */
+        gpencil_add_new_points(gps, coord_array, init, resolu);
+        /* Free memory. */
+        MEM_SAFE_FREE(coord_array);
+
+        /* As the last point of segment is the first point of next segment, back one array
+         * element to avoid duplicated points on the same location.
+         */
+        init += resolu - 1;
+      }
+    }
+  }
+  /* Cyclic curve, close stroke. */
+  if (cyclic) {
+    BKE_gpencil_close_stroke(gps);
+  }
 }

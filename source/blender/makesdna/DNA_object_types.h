@@ -176,6 +176,11 @@ typedef struct Object_Runtime {
 
   /** Runtime grease pencil drawing data */
   struct GpencilBatchCache *gpencil_cache;
+  /** Runtime grease pencil total layers used for derived data created by modifiers */
+  int tot_layers;
+  char _pad4[4];
+  /** Runtime grease pencil derived data created by modifiers */
+  struct bGPDframe *derived_frames;
 
   void *_pad2; /* Padding is here for win32s unconventional stuct alignment rules. */
 } Object_Runtime;
