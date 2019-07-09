@@ -27,14 +27,11 @@
 
 #include "GHOST_Xr_intern.h"
 
-/* Toggle printing of available OpenXR extensions and API-layers. Should probably be changed to use
- * CLOG at some point */
-#define USE_EXT_LAYER_PRINTS
-
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
  */
-static bool openxr_gather_extensions_ex(std::vector<XrExtensionProperties> &extensions,
+static bool openxr_gather_extensions_ex(const GHOST_XrContext *xr_context,
+                                        std::vector<XrExtensionProperties> &extensions,
                                         const char *layer_name)
 {
   const unsigned long old_extension_count = extensions.size();
@@ -58,28 +55,28 @@ static bool openxr_gather_extensions_ex(std::vector<XrExtensionProperties> &exte
     extensions.push_back(ext);
   }
 
-#ifdef USE_EXT_LAYER_PRINTS
   if (layer_name) {
-    printf("Layer: %s\n", layer_name);
+    XR_DEBUG_PRINTF(xr_context, "Layer: %s\n", layer_name);
   }
-#endif
+
   /* Actually get the extensions. */
   xrEnumerateInstanceExtensionProperties(
       layer_name, extension_count, &extension_count, extensions.data());
-#ifdef USE_EXT_LAYER_PRINTS
+  XR_DEBUG_BEGIN(xr_context);
   for (uint32_t i = 0; i < extension_count; i++) {
-    printf("Extension: %s\n", extensions[i + old_extension_count].extensionName);
+    XR_DEBUG_PRINTF(
+        xr_context, "Extension: %s\n", extensions[i + old_extension_count].extensionName);
   }
-#endif
+  XR_DEBUG_END;
 
   return true;
 }
-static bool openxr_gather_extensions(OpenXRData *oxr)
+static bool openxr_gather_extensions(const GHOST_XrContext *xr_context, OpenXRData *oxr)
 {
-  return openxr_gather_extensions_ex(oxr->extensions, nullptr);
+  return openxr_gather_extensions_ex(xr_context, oxr->extensions, nullptr);
 }
 
-static bool openxr_gather_api_layers(OpenXRData *oxr)
+static bool openxr_gather_api_layers(const GHOST_XrContext *xr_context, OpenXRData *oxr)
 {
   uint32_t layer_count = 0;
 
@@ -101,11 +98,10 @@ static bool openxr_gather_api_layers(OpenXRData *oxr)
   /* Actually get the layers. */
   xrEnumerateApiLayerProperties(layer_count, &layer_count, oxr->layers.data());
   for (XrApiLayerProperties &layer : oxr->layers) {
-#ifdef USE_EXT_LAYER_PRINTS
-    printf("Layer: %s\n", layer.layerName);
-#endif
+    XR_DEBUG_PRINTF(xr_context, "Layer: %s\n", layer.layerName);
+
     /* Each layer may have own extensions */
-    openxr_gather_extensions_ex(oxr->extensions, layer.layerName);
+    openxr_gather_extensions_ex(xr_context, oxr->extensions, layer.layerName);
   }
 
   return true;
@@ -174,7 +170,8 @@ static GHOST_TXrGraphicsBinding openxr_graphics_extension_to_enable_get(
 /**
  * Gather an array of names for the API-layers to enable.
  */
-static void openxr_layers_to_enable_get(const OpenXRData *oxr,
+static void openxr_layers_to_enable_get(const GHOST_XrContext *xr_context,
+                                        const OpenXRData *oxr,
                                         std::vector<const char *> &r_ext_names)
 {
   const static std::vector<std::string> try_layers = {"XR_APILAYER_LUNARG_core_validation"};
@@ -184,7 +181,7 @@ static void openxr_layers_to_enable_get(const OpenXRData *oxr,
   for (const std::string &layer : try_layers) {
     if (openxr_layer_is_available(oxr, layer)) {
       r_ext_names.push_back(layer.c_str());
-      printf("Enabling Layer %s\n", layer.c_str());
+      XR_DEBUG_PRINTF(xr_context, "Enabling OpenXR API-Layer %s\n", layer.c_str());
     }
   }
 }
@@ -199,9 +196,9 @@ static void openxr_extensions_to_enable_get(const GHOST_XrContext *context,
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding_type);
   const static std::vector<std::string> try_ext;
-  const auto add_ext = [&r_ext_names](const char *ext_name) {
+  const auto add_ext = [context, &r_ext_names](const char *ext_name) {
     r_ext_names.push_back(ext_name);
-    printf("Enabling Extension: %s\n", ext_name);
+    XR_DEBUG_PRINTF(context, "Enabling OpenXR Extension: %s\n", ext_name);
   };
 
   r_ext_names.reserve(try_ext.size() + 1); /* + 1 for graphics binding extension. */
@@ -228,7 +225,7 @@ static bool openxr_instance_create(GHOST_XrContext *context)
                               XR_MAX_APPLICATION_NAME_SIZE);
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 
-  openxr_layers_to_enable_get(oxr, context->enabled_layers);
+  openxr_layers_to_enable_get(context, oxr, context->enabled_layers);
   openxr_extensions_to_enable_get(context, oxr, context->enabled_extensions);
   create_info.enabledApiLayerCount = context->enabled_layers.size();
   create_info.enabledApiLayerNames = context->enabled_layers.data();
@@ -240,7 +237,7 @@ static bool openxr_instance_create(GHOST_XrContext *context)
   return true;
 }
 
-static void openxr_instance_log_print(OpenXRData *oxr)
+static void openxr_instance_log_print(const GHOST_XrContext *xr_context, OpenXRData *oxr)
 {
   assert(oxr->instance != XR_NULL_HANDLE);
 
@@ -248,7 +245,7 @@ static void openxr_instance_log_print(OpenXRData *oxr)
   instanceProperties.type = XR_TYPE_INSTANCE_PROPERTIES;
   xrGetInstanceProperties(oxr->instance, &instanceProperties);
 
-  printf("Connected to OpenXR runtime: %s\n", instanceProperties.runtimeName);
+  XR_DEBUG_PRINTF(xr_context, "Connected to OpenXR runtime: %s\n", instanceProperties.runtimeName);
 }
 
 /**
@@ -265,22 +262,18 @@ GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_i
     xr_context->debug = true;
   }
 
-#ifdef USE_EXT_LAYER_PRINTS
-  puts("Available OpenXR layers/extensions:");
-#endif
-  if (!openxr_gather_api_layers(oxr) || !openxr_gather_extensions(oxr)) {
+  XR_DEBUG_PRINTF(xr_context, "Available OpenXR API-layers/extensions:\n");
+  if (!openxr_gather_api_layers(xr_context, oxr) || !openxr_gather_extensions(xr_context, oxr)) {
     delete xr_context;
     return nullptr;
   }
-#ifdef USE_EXT_LAYER_PRINTS
-  puts("Done printing OpenXR layers/extensions.");
-#endif
+  XR_DEBUG_PRINTF(xr_context, "Done printing OpenXR API-layers/extensions.\n");
 
   xr_context->gpu_binding_type = openxr_graphics_extension_to_enable_get(oxr, create_info);
 
   assert(xr_context->oxr.instance == XR_NULL_HANDLE);
   openxr_instance_create(xr_context);
-  openxr_instance_log_print(oxr);
+  openxr_instance_log_print(xr_context, oxr);
 
   return xr_context;
 }

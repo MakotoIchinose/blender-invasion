@@ -50,7 +50,7 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContext *xr_context)
         return GHOST_kSuccess;
 
       default:
-        printf("Unhandled event: %i\n", event->type);
+        XR_DEBUG_PRINTF(xr_context, "Unhandled event: %i\n", event->type);
         return GHOST_kFailure;
     }
   }

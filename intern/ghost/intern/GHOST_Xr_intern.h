@@ -27,6 +27,19 @@
 #include "GHOST_Xr_openxr_includes.h"
 #include "GHOST_XrSession.h"
 
+#define XR_DEBUG_BEGIN(ctx) \
+  if ((ctx)->debug) { \
+    (void)0
+#define XR_DEBUG_END \
+  } \
+  (void)0
+
+#define XR_DEBUG_PRINTF(ctx, ...) \
+  if ((ctx)->debug) { \
+    printf(__VA_ARGS__); \
+  } \
+  (void)0
+
 typedef struct OpenXRData {
   XrInstance instance;
 
