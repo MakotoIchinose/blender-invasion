@@ -29,15 +29,19 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_listBase.h"
+#include "DNA_text_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
+#include "BKE_text.h"
 
 #include "DEG_depsgraph.h"
 
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_report.h"
+#include "BKE_writesvg.h"
 
 #include "UI_interface.h"
 
@@ -50,6 +54,17 @@
 
 static int gpencil_export_svg_exec(bContext *C, wmOperator *op)
 {
+  Object* gpobj = CTX_data_active_object(C);
+  bGPdata *gpd = gpobj->data;
+  bGPDlayer* gpl;
+
+  for(gpl = gpd->layers.first; gpl; gpl = gpl->next){
+    Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
+    BKE_svg_data_from_gpencil(gpd,ta,gpl,CTX_data_scene(C)->r.cfra);
+  }
+
+  
+
   return OPERATOR_FINISHED;
 }
 

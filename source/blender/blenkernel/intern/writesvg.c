@@ -99,13 +99,13 @@ static int svg_gpencil_get_path_callback(GPencilSVGReader* reader, float* fill_c
         if(!sr->frame->strokes.first){
             return 0;
         }
+        sr->stroke = sr->frame->strokes.first;
     }else{
         sr->stroke = sr->stroke->next;
-        if(!sr->frame->strokes.first){
+        if(!sr->stroke){
             return 0;
         }
     }
-    sr->stroke = sr->frame->strokes.first;
     *stroke_width = sr->stroke->thickness;
     
     /* TODO: no material access yet */
@@ -137,10 +137,6 @@ bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int fra
     if(!gpd || !ta || !gpd->layers.first){
         return false;
     }
-    
-    BKE_text_free_lines(ta);
-
-    write_svg_head(ta);
 
     /* Init temp reader */
     GPencilSVGReader gsr = {0};
@@ -150,9 +146,17 @@ bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int fra
     }else{
         gsr.layer = gpd->layers.first;
     }
-    gsr.frame = BKE_gpencil_layer_getframe(gsr.layer,frame,0);
+    gsr.frame = BKE_gpencil_layer_getframe(gsr.layer,frame,GP_GETFRAME_USE_PREV);
 
-    write_paths_from_callback(ta, &gsr, svg_gpencil_get_path_callback,svg_gpencil_get_node_callback);
+    if(!gsr.frame){
+        return false;
+    }
+    
+    BKE_text_free_lines(ta);
+
+    write_svg_head(ta);
+
+    write_paths_from_callback(&gsr, ta, svg_gpencil_get_path_callback,svg_gpencil_get_node_callback);
 
     write_svg_end(ta);
 

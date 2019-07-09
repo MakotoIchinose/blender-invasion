@@ -24,7 +24,7 @@
  * \ingroup bke
  */
 
-bool BKE_svg_data_from_gpencil(struct bGPdata* gpd, struct Text* ta);
+bool BKE_svg_data_from_gpencil(struct bGPdata* gpd, struct Text* ta, struct bGPDlayer* layer, int frame);
 
 
 #endif
