@@ -4399,11 +4399,22 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
 
   /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
   if ((lanpr->enable_chaining || !is_lanpr_engine) && (!intersectons_only)) {
-    lanpr_NO_THREAD_chain_feature_lines(rb); /*  should use user_adjustable value */
+    float t_image = rb->scene->lanpr.chaining_image_threshold;
+    float t_geom = rb->scene->lanpr.chaining_geometry_threshold;
+    
+    lanpr_NO_THREAD_chain_feature_lines(rb); 
     lanpr_split_chains_for_fixed_occlusion(rb);
+
+    if (t_image<FLT_EPSILON && t_geom<FLT_EPSILON){
+      t_geom = 0.0f;
+      t_image = 0.01f;
+    }
+
     lanpr_connect_chains(rb, 1);
     lanpr_connect_chains(rb, 0);
-    lanpr_discard_short_chains(rb, 0.01);
+
+    /* This configuration ensures there won't be accidental lost of short segments */
+    lanpr_discard_short_chains(rb, MIN3(t_image,t_geom,0.01f)-FLT_EPSILON);
   }
 
   rb->cached_for_frame = rb->scene->r.cfra;
