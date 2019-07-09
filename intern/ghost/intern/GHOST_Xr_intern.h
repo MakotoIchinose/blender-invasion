@@ -57,6 +57,9 @@ typedef struct GHOST_XrContext {
   /** Custom per-view draw function for Blender side drawing. */
   GHOST_XrDrawViewFn draw_view_fn;
 
+  /** Enable debug message prints and OpenXR API validation layers */
+  bool debug;
+
   /** Names of enabled extensions */
   std::vector<const char *> enabled_extensions;
   /** Names of enabled API-layers */

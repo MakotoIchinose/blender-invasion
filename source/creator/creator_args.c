@@ -604,6 +604,9 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_argsPrintArgDoc(ba, "--debug-gpu-shaders");
   BLI_argsPrintArgDoc(ba, "--debug-gpu-force-workarounds");
   BLI_argsPrintArgDoc(ba, "--debug-wm");
+#  ifdef WITH_OPENXR
+  BLI_argsPrintArgDoc(ba, "--debug-xr");
+#  endif
   BLI_argsPrintArgDoc(ba, "--debug-all");
   BLI_argsPrintArgDoc(ba, "--debug-io");
 
@@ -941,6 +944,13 @@ static const char arg_handle_debug_mode_generic_set_doc_wm[] =
     "\n\t"
     "Enable debug messages for the window manager, shows all operators in search, shows "
     "keymap errors.";
+#  ifdef WITH_OPENXR
+static const char arg_handle_debug_mode_generic_set_doc_xr[] =
+    "\n\t"
+    "Enable debug messages for virtual reality contexts.\n"
+    "\tEnables the OpenXR API validation layer, (OpenXR) debug messages and general information "
+    "prints.";
+#  endif
 static const char arg_handle_debug_mode_generic_set_doc_jobs[] =
     "\n\t"
     "Enable time profiling for background jobs.";
@@ -2081,6 +2091,10 @@ void main_args_setup(bContext *C, bArgs *ba)
               (void *)G_DEBUG_HANDLERS);
   BLI_argsAdd(
       ba, 1, NULL, "--debug-wm", CB_EX(arg_handle_debug_mode_generic_set, wm), (void *)G_DEBUG_WM);
+#  ifdef WITH_OPENXR
+  BLI_argsAdd(
+      ba, 1, NULL, "--debug-xr", CB_EX(arg_handle_debug_mode_generic_set, xr), (void *)G_DEBUG_XR);
+#  endif
   BLI_argsAdd(ba, 1, NULL, "--debug-all", CB(arg_handle_debug_mode_all), NULL);
 
   BLI_argsAdd(ba, 1, NULL, "--debug-io", CB(arg_handle_debug_mode_io), NULL);

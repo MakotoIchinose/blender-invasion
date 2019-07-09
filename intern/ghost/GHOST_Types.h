@@ -588,9 +588,15 @@ typedef struct {
   float orientation_quat[4];
 } GHOST_XrPose;
 
+enum {
+  GHOST_kXrContextDebug = (1 << 0),
+};
+
 typedef struct {
   const GHOST_XrGraphicsBindingCandidates gpu_binding_candidates;
   unsigned int gpu_binding_candidates_count;
+
+  unsigned int context_flag;
 } GHOST_XrContextCreateInfo;
 
 typedef struct {

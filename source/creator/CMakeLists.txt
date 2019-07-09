@@ -118,6 +118,10 @@ if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
 
+if(WITH_OPENXR)
+  add_definitions(-DWITH_OPENXR)
+endif()
+
 # Setup the exe sources and buildinfo
 set(SRC
   creator.c

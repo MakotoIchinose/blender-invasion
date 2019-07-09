@@ -72,9 +72,13 @@ bool wm_xr_context_ensure(wmWindowManager *wm)
       GHOST_kXrGraphicsD3D11,
 #endif
   };
-  const GHOST_XrContextCreateInfo create_info = {
+  GHOST_XrContextCreateInfo create_info = {
       .gpu_binding_candidates = gpu_bindings_candidates,
       .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
+
+  if (G.debug & G_DEBUG_XR) {
+    create_info.context_flag |= GHOST_kXrContextDebug;
+  }
 
   wm->xr_context = GHOST_XrContextCreate(&create_info);
 

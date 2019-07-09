@@ -261,6 +261,10 @@ GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_i
   GHOST_XrContext *xr_context = new GHOST_XrContext();
   OpenXRData *oxr = &xr_context->oxr;
 
+  if (create_info->context_flag & GHOST_kXrContextDebug) {
+    xr_context->debug = true;
+  }
+
 #ifdef USE_EXT_LAYER_PRINTS
   puts("Available OpenXR layers/extensions:");
 #endif
