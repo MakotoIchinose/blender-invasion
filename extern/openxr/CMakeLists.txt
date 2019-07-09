@@ -20,13 +20,6 @@
 set(MAJOR 0)
 set(MINOR 90)
 
-# Several files use these compile-time OS switches
-if(WIN32)
-  add_definitions(-DXR_OS_WINDOWS)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_definitions(-DXR_OS_LINUX)
-endif()
-
 include(CheckFunctionExists)
 CHECK_FUNCTION_EXISTS(secure_getenv HAVE_SECURE_GETENV)
 CHECK_FUNCTION_EXISTS(__secure_getenv HAVE___SECURE_GETENV)

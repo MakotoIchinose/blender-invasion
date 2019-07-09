@@ -59,6 +59,8 @@ typedef struct GHOST_XrContext {
 
   /** Names of enabled extensions */
   std::vector<const char *> enabled_extensions;
+  /** Names of enabled API-layers */
+  std::vector<const char *> enabled_layers;
 } GHOST_XrContext;
 
 void GHOST_XrSessionStateChange(GHOST_XrContext *xr_context,

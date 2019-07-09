@@ -111,6 +111,16 @@ static bool openxr_gather_api_layers(OpenXRData *oxr)
   return true;
 }
 
+static bool openxr_layer_is_available(const OpenXRData *oxr, const std::string &layer_name)
+{
+  for (const XrApiLayerProperties &layer : oxr->layers) {
+    if (layer.layerName == layer_name) {
+      return true;
+    }
+  }
+
+  return false;
+}
 static bool openxr_extension_is_available(const OpenXRData *oxr, const std::string &extension_name)
 {
   for (const XrExtensionProperties &ext : oxr->extensions) {
@@ -162,6 +172,23 @@ static GHOST_TXrGraphicsBinding openxr_graphics_extension_to_enable_get(
 }
 
 /**
+ * Gather an array of names for the API-layers to enable.
+ */
+static void openxr_layers_to_enable_get(const OpenXRData *oxr,
+                                        std::vector<const char *> &r_ext_names)
+{
+  const static std::vector<std::string> try_layers = {"XR_APILAYER_LUNARG_core_validation"};
+
+  r_ext_names.reserve(try_layers.size());
+
+  for (const std::string &layer : try_layers) {
+    if (openxr_layer_is_available(oxr, layer)) {
+      r_ext_names.push_back(layer.c_str());
+      printf("Enabling Layer %s\n", layer.c_str());
+    }
+  }
+}
+/**
  * Gather an array of names for the extensions to enable.
  */
 static void openxr_extensions_to_enable_get(const GHOST_XrContext *context,
@@ -171,18 +198,22 @@ static void openxr_extensions_to_enable_get(const GHOST_XrContext *context,
   assert(context->gpu_binding_type != GHOST_kXrGraphicsUnknown);
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding_type);
-  const static std::vector<std::string> try_ext; /* None yet */
-
-  assert(gpu_binding);
+  const static std::vector<std::string> try_ext;
+  const auto add_ext = [&r_ext_names](const char *ext_name) {
+    r_ext_names.push_back(ext_name);
+    printf("Enabling Extension: %s\n", ext_name);
+  };
 
   r_ext_names.reserve(try_ext.size() + 1); /* + 1 for graphics binding extension. */
 
   /* Add graphics binding extension. */
-  r_ext_names.push_back(gpu_binding);
+  assert(gpu_binding);
+  assert(openxr_extension_is_available(oxr, gpu_binding));
+  add_ext(gpu_binding);
 
   for (const std::string &ext : try_ext) {
     if (openxr_extension_is_available(oxr, ext)) {
-      r_ext_names.push_back(ext.c_str());
+      add_ext(ext.c_str());
     }
   }
 }
@@ -197,7 +228,10 @@ static bool openxr_instance_create(GHOST_XrContext *context)
                               XR_MAX_APPLICATION_NAME_SIZE);
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 
+  openxr_layers_to_enable_get(oxr, context->enabled_layers);
   openxr_extensions_to_enable_get(context, oxr, context->enabled_extensions);
+  create_info.enabledApiLayerCount = context->enabled_layers.size();
+  create_info.enabledApiLayerNames = context->enabled_layers.data();
   create_info.enabledExtensionCount = context->enabled_extensions.size();
   create_info.enabledExtensionNames = context->enabled_extensions.data();
 
@@ -219,8 +253,8 @@ static void openxr_instance_log_print(OpenXRData *oxr)
 
 /**
  * \brief Initialize the window manager XR-Context.
- * Includes setting up the OpenXR instance, querying available extensions and API layers, enabling
- * extensions (currently graphics binding extension only) and API layers.
+ * Includes setting up the OpenXR instance, querying available extensions and API layers,
+ * enabling extensions (currently graphics binding extension only) and API layers.
  */
 GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info)
 {
@@ -299,8 +333,8 @@ void GHOST_XrSessionStateChange(GHOST_XrContext *xr_context,
 }
 
 /**
- * Set context for binding and unbinding a graphics context for a session. The binding callback may
- * create a new context thereby. In fact that's the sole reason for this callback approach to
+ * Set context for binding and unbinding a graphics context for a session. The binding callback
+ * may create a new context thereby. In fact that's the sole reason for this callback approach to
  * binding. Just make sure to have an unbind function set that properly destructs.
  *
  * \param bind_fn Function to retrieve (possibly create) a graphics context.

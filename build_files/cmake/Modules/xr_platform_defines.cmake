@@ -17,6 +17,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     include(presentation)
 endif()
 
+if(WIN32)
+  add_definitions(-DXR_OS_WINDOWS)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_definitions(-DXR_OS_LINUX)
+endif()
+
 # Several files use these compile-time platform switches
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions( -DXR_USE_PLATFORM_WIN32 )
