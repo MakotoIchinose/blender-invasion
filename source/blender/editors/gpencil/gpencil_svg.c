@@ -44,8 +44,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "gpencil_intern.h"
-
 #include "ED_gpencil.h"
 #include "ED_select_utils.h"
 
