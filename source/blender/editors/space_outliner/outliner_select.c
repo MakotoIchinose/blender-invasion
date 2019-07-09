@@ -1123,9 +1123,8 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                                    const bool extend,
                                                    const bool recursive)
 {
-  /* Set TreeStore flags for active element */
-  outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
-  tselem->flag |= TSE_ACTIVE;
+  TreeElement *te_active = outliner_find_active_element(&soops->tree);
+  Object *obact = OBACT(view_layer);
 
   /* Always makes active object, except for some specific types. */
   if (ELEM(tselem->type,
@@ -1143,6 +1142,10 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   else if (tselem->type == TSE_POSE_BASE) {
     /* Support pose mode toggle, keeping the active object as is. */
   }
+  else if (ELEM(obact->mode, OB_MODE_EDIT, OB_MODE_POSE) && (te != te_active)) {
+    /* Select rather than activate other elements when in edit or pose mode */
+    return;
+  }
   else if (soops->flag & SO_SYNC_SELECTION) {
     tree_element_set_active_object(C,
                                    scene,
@@ -1153,6 +1156,9 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                                                    OL_SETSEL_NORMAL,
                                    recursive && tselem->type == 0);
   }
+
+  outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
+  tselem->flag |= TSE_ACTIVE;
 
   if (tselem->type == 0) {  // the lib blocks
     /* editmode? */
