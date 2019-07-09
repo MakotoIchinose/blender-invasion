@@ -67,5 +67,5 @@ bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta){
         // export paths.
 
     }
-
+    return true;
 }
