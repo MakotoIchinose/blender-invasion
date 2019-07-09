@@ -33,7 +33,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-extern char datatoc_paint_face_vert_glsl[];
+extern char datatoc_paint_face_selection_vert_glsl[];
 extern char datatoc_paint_weight_vert_glsl[];
 extern char datatoc_paint_weight_frag_glsl[];
 extern char datatoc_paint_vertex_vert_glsl[];
@@ -137,7 +137,7 @@ static void PAINT_VERTEX_engine_init(void *vedata)
     sh_data->face_select_overlay = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
                                  datatoc_common_view_lib_glsl,
-                                 datatoc_paint_face_vert_glsl,
+                                 datatoc_paint_face_selection_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
@@ -227,8 +227,9 @@ static void PAINT_VERTEX_cache_init(void *vedata)
   }
 
   {
-    DRWPass *pass = DRW_pass_create(
-        "Wire Pass", DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL);
+    DRWPass *pass = DRW_pass_create("Wire Pass",
+                                    (DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                                     DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL));
     for (int i = 0; i < MODE_LEN; i++) {
       DRWShadingGroup *shgrp = DRW_shgroup_create(sh_data->by_mode[i].wire_overlay, pass);
       DRW_shgroup_uniform_block(shgrp, "globalsBlock", G_draw.block_ubo);

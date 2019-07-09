@@ -219,7 +219,7 @@ void wm_operatortype_free(void)
  * #OP_PROP_TAG_ADVANCED. Previously defined ones properties not touched.
  *
  * Calling this multiple times without a call to #WM_operatortype_props_advanced_end,
- * all calls after the first one are ignored. Meaning all propereties defined after the
+ * all calls after the first one are ignored. Meaning all proprieties defined after the
  * first call are tagged as advanced.
  *
  * This doesn't do the actual tagging, #WM_operatortype_props_advanced_end does which is
@@ -586,12 +586,13 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
 
 const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *properties)
 {
+  const char *name = NULL;
+
   if (ot->get_name && properties) {
-    return ot->get_name(ot, properties);
+    name = ot->get_name(ot, properties);
   }
-  else {
-    return RNA_struct_ui_name(ot->srna);
-  }
+
+  return (name && name[0]) ? name : RNA_struct_ui_name(ot->srna);
 }
 
 /** \} */

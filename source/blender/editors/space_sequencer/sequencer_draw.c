@@ -38,12 +38,14 @@
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_sound_types.h"
+#include "DNA_anim_types.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_sequencer.h"
 #include "BKE_sound.h"
 #include "BKE_scene.h"
+#include "BKE_fcurve.h"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
@@ -251,18 +253,15 @@ static void drawseqwave(View2D *v2d,
     float yscale = (y2 - y1) / 2.0f;
     float samplestep;
     float startsample, endsample;
+    float volume = seq->volume;
     float value1, value2;
     bSound *sound = seq->sound;
+    FCurve *fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "volume", 0, NULL);
 
     SoundWaveform *waveform;
 
     if (length < 2) {
       return;
-    }
-
-    if (!sound->spinlock) {
-      sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
-      BLI_spin_init(sound->spinlock);
     }
 
     BLI_spin_lock(sound->spinlock);
@@ -334,8 +333,12 @@ static void drawseqwave(View2D *v2d,
         value2 = (1.0f - f) * value2 + f * waveform->data[p * 3 + 4];
       }
 
-      value1 *= seq->volume;
-      value2 *= seq->volume;
+      if (fcu) {
+        float evaltime = x1_offset + (i * stepsize);
+        volume = evaluate_fcurve(fcu, evaltime);
+      }
+      value1 *= volume;
+      value2 *= volume;
 
       if (value2 > 1 || value1 < -1) {
         immAttr4f(col, 1.0f, 0.0f, 0.0f, 0.5f);
@@ -1899,6 +1902,9 @@ static bool draw_cache_view_cb(
       else {
         return false;
       }
+
+    default:
+      return false;
   }
 
   int cfra = seq->start + nfra;
@@ -2036,8 +2042,6 @@ void draw_timeline_seq(const bContext *C, ARegion *ar)
   if (ed) {
     /* draw the data */
     draw_seq_strips(C, ed, ar);
-    draw_cache_view(C);
-
     /* text draw cached (for sequence names), in pixelspace now */
     UI_view2d_text_cache_draw(ar);
   }
@@ -2057,8 +2061,12 @@ void draw_timeline_seq(const bContext *C, ARegion *ar)
   }
   ED_markers_draw(C, marker_draw_flag);
 
-  /* preview range */
   UI_view2d_view_ortho(v2d);
+  /* draw cache on top of markers area */
+  if (ed) {
+    draw_cache_view(C);
+  }
+  /* preview range */
   ANIM_draw_previewrange(C, v2d, 1);
 
   /* overlap playhead */

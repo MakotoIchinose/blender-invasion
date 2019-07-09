@@ -20,6 +20,8 @@
 
 #include "DNA_userdef_types.h"
 
+#include "BLI_utildefines.h"
+
 #include "BKE_global.h"
 
 #include "GPU_glew.h"
@@ -172,4 +174,18 @@ void GPU_flush(void)
 void GPU_finish(void)
 {
   glFinish();
+}
+
+void GPU_logic_op_invert_set(bool enable)
+{
+  if (enable) {
+    glLogicOp(GL_INVERT);
+    glEnable(GL_COLOR_LOGIC_OP);
+    glDisable(GL_DITHER);
+  }
+  else {
+    glLogicOp(GL_COPY);
+    glDisable(GL_COLOR_LOGIC_OP);
+    glEnable(GL_DITHER);
+  }
 }

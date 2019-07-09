@@ -23,8 +23,8 @@ from bpy.types import (
 )
 from bl_ui.utils import PresetPanel
 
-from .properties_physics_common import (
-#point_cache_ui,
+from bl_ui.properties_physics_common import (
+    #point_cache_ui,
     effector_weights_ui,
 )
 
@@ -221,7 +221,7 @@ class PHYSICS_PT_cloth_shape(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_cloth_collision(PhysicButtonsPanel, Panel):
-    bl_label = "Collision"
+    bl_label = "Collisions"
     bl_parent_id = 'PHYSICS_PT_cloth'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
@@ -242,7 +242,7 @@ class PHYSICS_PT_cloth_collision(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
-    bl_label = "Object Collision"
+    bl_label = "Object Collisions"
     bl_parent_id = 'PHYSICS_PT_cloth_collision'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -274,7 +274,7 @@ class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):
-    bl_label = "Self Collision"
+    bl_label = "Self Collisions"
     bl_parent_id = 'PHYSICS_PT_cloth_collision'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
