@@ -15,7 +15,7 @@
  */
 
 /** \file
- * \ingroup bke
+ * \ingroup editor/io
  */
 
 #include <stdlib.h>
@@ -143,7 +143,7 @@ static int svg_gpencil_get_node_callback(GPencilSVGIterator* iterator, float* x,
     return 1;
 }
 
-bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int frame){
+bool ED_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int frame){
     if(!gpd || !ta || !gpd->layers.first){
         return false;
     }
