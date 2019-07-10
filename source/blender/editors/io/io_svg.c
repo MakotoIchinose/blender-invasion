@@ -221,7 +221,7 @@ static int svg_lanpr_get_node_callback(LanprSVGIterator* iterator, float* x, flo
     }
 }
 
-bool BKE_svg_data_from_lanpr_chain(Text* ta, LANPR_RenderBuffer* rb, LANPR_LineLayer* ll){
+bool ED_svg_data_from_lanpr_chain(Text* ta, LANPR_RenderBuffer* rb, LANPR_LineLayer* ll){
     if(!ll || !rb || !rb->chains.first){
         return false;
     }

@@ -25,7 +25,6 @@
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_text.h"
-#include "BKE_writesvg.h"
 #include "GPU_draw.h"
 
 #include "GPU_batch.h"
@@ -47,6 +46,9 @@
 #include "BKE_modifier.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
+
+#include "ED_svg.h"
+
 #include "lanpr_access.h"
 
 extern LANPR_SharedResource lanpr_share;
@@ -5124,7 +5126,7 @@ static int lanpr_export_svg_exec(bContext *C, wmOperator *op)
 
   for(ll = lanpr->line_layers.first; ll; ll = ll->next){
     Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
-    BKE_svg_data_from_lanpr_chain(ta,rb,ll);
+    ED_svg_data_from_lanpr_chain(ta,rb,ll);
   }
 
   return OPERATOR_FINISHED;

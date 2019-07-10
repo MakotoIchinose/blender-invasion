@@ -28,6 +28,9 @@ set(INC
   ../../makesrna
   ../../windowmanager
   ../../../../intern/guardedalloc
+
+  # remove this later when lanpr also uses ED_
+  ../../draw/engines/lanpr
 )
 
 set(INC_SYS
