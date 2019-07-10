@@ -167,7 +167,7 @@ GHOST_TSuccess GHOST_XrContext::enumerateApiLayers()
 
   if (layer_count == 0) {
     /* Layers are optional, can safely exit. */
-    return GHOST_kFailure;
+    return GHOST_kSuccess;
   }
 
   m_oxr->layers = std::vector<XrApiLayerProperties>(layer_count);
