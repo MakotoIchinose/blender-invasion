@@ -174,7 +174,11 @@ static void openxr_layers_to_enable_get(const GHOST_XrContext *xr_context,
                                         const OpenXRData *oxr,
                                         std::vector<const char *> &r_ext_names)
 {
-  const static std::vector<std::string> try_layers = {"XR_APILAYER_LUNARG_core_validation"};
+  static std::vector<std::string> try_layers;
+
+  XR_DEBUG_ONLY_BEGIN(xr_context);
+  try_layers.push_back("XR_APILAYER_LUNARG_core_validation");
+  XR_DEBUG_ONLY_END;
 
   r_ext_names.reserve(try_layers.size());
 
