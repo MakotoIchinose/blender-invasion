@@ -12,6 +12,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_modifier_types.h"
+#include "DNA_text_types.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_framebuffer.h"
@@ -23,6 +24,7 @@
 #include "BKE_collection.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
+#include "BKE_text.h"
 #include "GPU_draw.h"
 
 #include "GPU_batch.h"
@@ -5112,3 +5114,47 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
   ot->poll = lanpr_active_is_source_object;
   ot->exec = lanpr_update_gp_source_exec;
 }
+
+static int lanpr_export_svg_exec(bContext *C, wmOperator *op)
+{
+  LANPR_RenderBuffer* rb = lanpr_share.render_buffer_shared;
+  SceneLANPR* lanpr = &rb->scene->lanpr;
+  LANPR_LineLayer* ll;
+
+  for(ll = lanpr->line_layers.first; ll; ll = ll->next){
+    Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
+    /* exporter here */
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static bool lanpr_render_buffer_found(bContext *C)
+{
+  if(lanpr_share.render_buffer_shared){
+    return true;
+  }
+  return false;
+}
+
+void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Export LANPR to SVG";
+  ot->description = "Export LANPR render result into a SVG file";
+  ot->idname = "SCENE_OT_lanpr_export_svg";
+
+  /* callbacks */
+  ot->exec = lanpr_export_svg_exec;
+  ot->poll = lanpr_render_buffer_found;
+
+  /* flag */
+  ot->flag = OPTYPE_USE_EVAL_DATA;
+
+  /* properties */
+  /* Should have: facing, layer, visibility, file split... */
+}
+
+

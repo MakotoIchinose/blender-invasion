@@ -778,6 +778,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
                 txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
                 if not lanpr.auto_update:
                     row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
+                layout.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
             
             if lanpr.master_mode == "DPIX":
                 layout.label(text="Cache Size:")
