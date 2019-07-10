@@ -62,12 +62,12 @@ static bool openxr_gather_extensions_ex(const GHOST_XrContext *xr_context,
   /* Actually get the extensions. */
   xrEnumerateInstanceExtensionProperties(
       layer_name, extension_count, &extension_count, extensions.data());
-  XR_DEBUG_BEGIN(xr_context);
+  XR_DEBUG_ONLY_BEGIN(xr_context);
   for (uint32_t i = 0; i < extension_count; i++) {
     XR_DEBUG_PRINTF(
         xr_context, "Extension: %s\n", extensions[i + old_extension_count].extensionName);
   }
-  XR_DEBUG_END;
+  XR_DEBUG_ONLY_END;
 
   return true;
 }
