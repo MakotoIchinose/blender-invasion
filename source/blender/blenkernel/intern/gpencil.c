@@ -2170,7 +2170,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
   }
 
   if (gpl == NULL) {
-    bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+    gpl = BKE_gpencil_layer_getactive(gpd);
     if (gpl == NULL) {
       gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
     }
