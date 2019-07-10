@@ -37,9 +37,8 @@ struct BLI_memblock;
 typedef struct BLI_memblock BLI_memblock;
 typedef void (*MemblockValFreeFP)(void *val);
 
-BLI_memblock *BLI_memblock_create_ex(uint elem_size,
-                                     uint chunk_size) ATTR_MALLOC ATTR_WARN_UNUSED_RESULT;
-void *BLI_memblock_alloc(BLI_memblock *mblk) ATTR_MALLOC ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+BLI_memblock *BLI_memblock_create_ex(uint elem_size, uint chunk_size) ATTR_WARN_UNUSED_RESULT;
+void *BLI_memblock_alloc(BLI_memblock *mblk) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 void BLI_memblock_clear(BLI_memblock *mblk, MemblockValFreeFP valfreefp) ATTR_NONNULL(1);
 void BLI_memblock_destroy(BLI_memblock *mblk, MemblockValFreeFP free_callback) ATTR_NONNULL(1);
 
