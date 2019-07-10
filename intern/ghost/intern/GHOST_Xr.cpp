@@ -27,6 +27,9 @@
 
 #include "GHOST_Xr_intern.h"
 
+static PFN_xrCreateDebugUtilsMessengerEXT g_xrCreateDebugUtilsMessengerEXT_fn = nullptr;
+static PFN_xrDestroyDebugUtilsMessengerEXT g_xrDestroyDebugUtilsMessengerEXT_fn = nullptr;
+
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
  */
@@ -199,11 +202,16 @@ static void openxr_extensions_to_enable_get(const GHOST_XrContext *context,
   assert(context->gpu_binding_type != GHOST_kXrGraphicsUnknown);
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(context->gpu_binding_type);
-  const static std::vector<std::string> try_ext;
+  static std::vector<std::string> try_ext;
   const auto add_ext = [context, &r_ext_names](const char *ext_name) {
     r_ext_names.push_back(ext_name);
     XR_DEBUG_PRINTF(context, "Enabling OpenXR Extension: %s\n", ext_name);
   };
+
+  XR_DEBUG_ONLY_BEGIN(context);
+  /* Try enabling debug extension */
+  try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  XR_DEBUG_ONLY_END;
 
   r_ext_names.reserve(try_ext.size() + 1); /* + 1 for graphics binding extension. */
 
@@ -252,6 +260,48 @@ static void openxr_instance_log_print(const GHOST_XrContext *xr_context, OpenXRD
   XR_DEBUG_PRINTF(xr_context, "Connected to OpenXR runtime: %s\n", instanceProperties.runtimeName);
 }
 
+static XrBool32 debug_messenger_func(XrDebugUtilsMessageSeverityFlagsEXT /*messageSeverity*/,
+                                     XrDebugUtilsMessageTypeFlagsEXT /*messageTypes*/,
+                                     const XrDebugUtilsMessengerCallbackDataEXT *callbackData,
+                                     void * /*userData*/)
+{
+  puts("OpenXR Debug Message:");
+  puts(callbackData->message);
+  return XR_FALSE;  // OpenXR spec suggests always returning false.
+}
+
+static void openxr_instance_init_debug_messenger(GHOST_XrContext *xr_context)
+{
+  OpenXRData *oxr = &xr_context->oxr;
+  XrDebugUtilsMessengerCreateInfoEXT create_info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+
+  /* Extension functions need to be obtained through xrGetInstanceProcAddr */
+  if (XR_FAILED(
+          xrGetInstanceProcAddr(oxr->instance,
+                                "xrCreateDebugUtilsMessengerEXT",
+                                (PFN_xrVoidFunction *)&g_xrCreateDebugUtilsMessengerEXT_fn)) ||
+      XR_FAILED(
+          xrGetInstanceProcAddr(oxr->instance,
+                                "xrDestroyDebugUtilsMessengerEXT",
+                                (PFN_xrVoidFunction *)&g_xrDestroyDebugUtilsMessengerEXT_fn))) {
+    fprintf(stderr, "Could not use XR_EXT_debug_utils to enable debug prints.");
+    g_xrCreateDebugUtilsMessengerEXT_fn = nullptr;
+    g_xrDestroyDebugUtilsMessengerEXT_fn = nullptr;
+    return;
+  }
+
+  create_info.messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  create_info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+  create_info.userCallback = debug_messenger_func;
+
+  g_xrCreateDebugUtilsMessengerEXT_fn(oxr->instance, &create_info, &oxr->debug_messenger);
+}
+
 /**
  * \brief Initialize the window manager XR-Context.
  * Includes setting up the OpenXR instance, querying available extensions and API layers,
@@ -278,6 +328,9 @@ GHOST_XrContext *GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_i
   assert(xr_context->oxr.instance == XR_NULL_HANDLE);
   openxr_instance_create(xr_context);
   openxr_instance_log_print(xr_context, oxr);
+  XR_DEBUG_ONLY_BEGIN(xr_context);
+  openxr_instance_init_debug_messenger(xr_context);
+  XR_DEBUG_ONLY_END;
 
   return xr_context;
 }
@@ -288,6 +341,10 @@ void GHOST_XrContextDestroy(GHOST_XrContext *xr_context)
 
   xr_context->session = nullptr;
 
+  if (oxr->debug_messenger != XR_NULL_HANDLE) {
+    assert(g_xrDestroyDebugUtilsMessengerEXT_fn != nullptr);
+    g_xrDestroyDebugUtilsMessengerEXT_fn(oxr->debug_messenger);
+  }
   if (oxr->instance != XR_NULL_HANDLE) {
     xrDestroyInstance(oxr->instance);
   }

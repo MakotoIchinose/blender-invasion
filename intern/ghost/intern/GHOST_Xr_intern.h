@@ -45,6 +45,8 @@ typedef struct OpenXRData {
 
   std::vector<XrExtensionProperties> extensions;
   std::vector<XrApiLayerProperties> layers;
+
+  XrDebugUtilsMessengerEXT debug_messenger;
 } OpenXRData;
 
 /**
