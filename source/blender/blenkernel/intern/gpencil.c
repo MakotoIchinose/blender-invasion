@@ -2133,8 +2133,9 @@ static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
   return mycol;
 }
 
-/* Convert a curve to grease pencil stroke.
+/* Convert a curve object to grease pencil stroke.
  *
+ * \param bmain: Main thread pointer
  * \param scene: Original scene.
  * \param ob_gp: Grease pencil object to add strokes.
  * \param ob_cu: Curve to convert.
