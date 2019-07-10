@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 /* #include <time.h> */
-#include "lanpr_util.h"
+#include "ED_lanpr.h"
 #include "lanpr_all.h"
 #include <math.h>
 

@@ -26,8 +26,7 @@
 #ifndef __LANPR_ALL_H__
 #define __LANPR_ALL_H__
 
-#include "lanpr_util.h"
-#include "lanpr_data_types.h"
+#include "ED_lanpr.h"
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
 /* #include "GPU_framebuffer.h" */
@@ -73,45 +72,6 @@ extern struct RenderEngineType DRW_engine_viewport_lanpr_type;
 extern struct DrawEngineType draw_engine_lanpr_type;
 
 typedef struct LANPR_RenderBuffer LANPR_RenderBuffer;
-
-typedef struct LANPR_SharedResource {
-
-  /* We only allocate once for all */
-  LANPR_RenderBuffer *render_buffer_shared;
-
-  /* cache */
-  BLI_mempool *mp_sample;
-  BLI_mempool *mp_line_strip;
-  BLI_mempool *mp_line_strip_point;
-  BLI_mempool *mp_batch_list;
-
-  /* Snake */
-  GPUShader *multichannel_shader;
-  GPUShader *edge_detect_shader;
-  GPUShader *edge_thinning_shader;
-  GPUShader *snake_connection_shader;
-
-  /* DPIX */
-  GPUShader *dpix_transform_shader;
-  GPUShader *dpix_preview_shader;
-  int dpix_shader_error;
-  int texture_size;
-
-  /* Software */
-  GPUShader *software_shader;
-  GPUShader *software_chaining_shader;
-
-  void *ved_viewport;
-  void *ved_render;
-
-  int init_complete;
-
-  SpinLock render_flag_lock;
-  int during_render; /*  get/set using access funcion which uses render_flag_lock to lock. */
-  /*  this prevents duplicate too much resource. (no render preview in viewport */
-  /*  while rendering) */
-
-} LANPR_SharedResource;
 
 typedef struct LANPR_PassList {
   /* Snake */

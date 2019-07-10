@@ -38,7 +38,7 @@
 
 /* For LANPR */
 #include "DNA_lanpr_types.h"
-#include "lanpr_data_types.h"
+#include "ED_lanpr.h"
 
 #include "DEG_depsgraph.h"
 

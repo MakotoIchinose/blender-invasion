@@ -160,7 +160,6 @@ set(SRC
 	engines/lanpr/lanpr_util.h
 	engines/lanpr/lanpr_all.h
   engines/lanpr/lanpr_access.h
-  engines/lanpr/lanpr_data_types.h
 )
 
 set(LIB

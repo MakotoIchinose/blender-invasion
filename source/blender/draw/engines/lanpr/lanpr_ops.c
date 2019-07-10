@@ -6,7 +6,7 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 #include "lanpr_all.h"
-#include "lanpr_util.h"
+#include "ED_lanpr.h"
 #include "DRW_render.h"
 #include "BKE_object.h"
 #include "DNA_mesh_types.h"
@@ -5116,47 +5116,4 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
   ot->poll = lanpr_active_is_source_object;
   ot->exec = lanpr_update_gp_source_exec;
-}
-
-static int lanpr_export_svg_exec(bContext *C, wmOperator *op)
-{
-  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
-  SceneLANPR *lanpr =
-      &rb->scene->lanpr; /* XXX: This is not evaluated for copy_on_write stuff... */
-  LANPR_LineLayer *ll;
-
-  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
-    Text *ta = BKE_text_add(CTX_data_main(C), "exported_svg");
-    ED_svg_data_from_lanpr_chain(ta, rb, ll);
-  }
-
-  return OPERATOR_FINISHED;
-}
-
-static bool lanpr_render_buffer_found(bContext *C)
-{
-  if (lanpr_share.render_buffer_shared) {
-    return true;
-  }
-  return false;
-}
-
-void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
-{
-  PropertyRNA *prop;
-
-  /* identifiers */
-  ot->name = "Export LANPR to SVG";
-  ot->description = "Export LANPR render result into a SVG file";
-  ot->idname = "SCENE_OT_lanpr_export_svg";
-
-  /* callbacks */
-  ot->exec = lanpr_export_svg_exec;
-  ot->poll = lanpr_render_buffer_found;
-
-  /* flag */
-  ot->flag = OPTYPE_USE_EVAL_DATA;
-
-  /* properties */
-  /* Should have: facing, layer, visibility, file split... */
 }
