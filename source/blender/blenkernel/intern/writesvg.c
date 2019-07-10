@@ -42,7 +42,7 @@
 
 static void write_svg_head(Text* ta){
     BKE_text_write(ta, NULL, "<?xml version=\"1.0\" standalone=\"no\"?>\n");
-    BKE_text_write(ta, NULL, "<svg width=\"10cm\" height=\"10cm\" viewbox=\"0 0 10 10\""
+    BKE_text_write(ta, NULL, "<svg width=\"10\" height=\"10\" viewBox=\"-5 -5 10 10\" "
         "xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n");
 }
 
@@ -78,8 +78,8 @@ static void write_paths_from_callback(void* iterator, Text* ta, svg_get_path_cal
         CLAMP3(stroke_color,0,1);
 
         /* end the path */
-        sprintf(buf,"\" fill=#%X%X%X; stroke=#%X%X%X; stroke-width=\"%f\" />\n",
-            FAC_255_COLOR3(fill_color), FAC_255_COLOR3(stroke_color), stroke_width);
+        sprintf(buf,"\" fill=\"#%02X%02X%02X\" stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" />\n",
+            FAC_255_COLOR3(fill_color), FAC_255_COLOR3(stroke_color), stroke_width/1000.0f);
         BKE_text_write(ta, NULL, buf);
     }
     
@@ -153,7 +153,8 @@ bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int fra
         return false;
     }
     
-    BKE_text_free_lines(ta);
+    /* Will cause nothing to be written into the text block.(Why?) */
+    /* BKE_text_free_lines(ta); */
 
     write_svg_head(ta);
 
