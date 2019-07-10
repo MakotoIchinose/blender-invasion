@@ -50,25 +50,25 @@ static void write_svg_end(Text* ta){
     BKE_text_write(ta, NULL, "</svg>");
 }
 
-typedef int (svg_get_path_callback)(void* reader, float* fill_rgba, float* stroke_rgba, float* stroke_width);
-typedef int (svg_get_node_callback)(void* reader, float *x, float *y);
+typedef int (svg_get_path_callback)(void* iterator, float* fill_rgba, float* stroke_rgba, float* stroke_width);
+typedef int (svg_get_node_callback)(void* iterator, float *x, float *y);
 
 #define FAC_255_COLOR3(color) ((int)(255*color[0])),((int)(255*color[1])),((int)(255*color[2]))
 
-static void write_paths_from_callback(void* reader, Text* ta, svg_get_path_callback get_path, svg_get_node_callback get_node){
+static void write_paths_from_callback(void* iterator, Text* ta, svg_get_path_callback get_path, svg_get_node_callback get_node){
     int status;
     float fill_color[3], stroke_color[3], stroke_width;
     int fill_color_i[3], stroke_color_i[3];
     float x,y;
     char buf[128];
     int first_in;
-    while(get_path(reader,fill_color,stroke_color,&stroke_width)){
+    while(get_path(iterator,fill_color,stroke_color,&stroke_width)){
 
         /* beginning of a path item */
         BKE_text_write(ta, NULL, "<path d=\"");
         
         first_in = 1;
-        while(get_node(reader,&x,&y)){
+        while(get_node(iterator,&x,&y)){
             sprintf(buf,"%c %f %f\n",first_in?'M':'L',x,y);
             BKE_text_write(ta, NULL, buf);
             first_in = 0;
@@ -84,17 +84,17 @@ static void write_paths_from_callback(void* reader, Text* ta, svg_get_path_callb
     
 }
 
-typedef struct GPencilSVGReader{
+typedef struct GPencilSVGIterator{
     bGPdata* gpd;
     bGPDlayer* layer;
     bGPDframe* frame;
     bGPDstroke* stroke;
     bGPDspoint* point;
     int point_i;
-}GPencilSVGReader;
+}GPencilSVGIterator;
 
-static int svg_gpencil_get_path_callback(GPencilSVGReader* reader, float* fill_color, float* stroke_color, float* stroke_width){
-    GPencilSVGReader* sr = (GPencilSVGReader*)reader;
+static int svg_gpencil_get_path_callback(GPencilSVGIterator* iterator, float* fill_color, float* stroke_color, float* stroke_width){
+    GPencilSVGIterator* sr = (GPencilSVGIterator*)iterator;
     if(!sr->stroke){
         if(!sr->frame->strokes.first){
             return 0;
@@ -114,8 +114,8 @@ static int svg_gpencil_get_path_callback(GPencilSVGReader* reader, float* fill_c
     return 1;
 }
 
-static int svg_gpencil_get_node_callback(GPencilSVGReader* reader, float* x, float* y){
-    GPencilSVGReader* sr = (GPencilSVGReader*)reader;
+static int svg_gpencil_get_node_callback(GPencilSVGIterator* iterator, float* x, float* y){
+    GPencilSVGIterator* sr = (GPencilSVGIterator*)iterator;
     if(!sr->point){
         if(!sr->stroke->points){
             return 0;
@@ -138,8 +138,8 @@ bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int fra
         return false;
     }
 
-    /* Init temp reader */
-    GPencilSVGReader gsr = {0};
+    /* Init temp iterator */
+    GPencilSVGIterator gsr = {0};
     gsr.gpd = gpd;
     if(layer){
         gsr.layer = layer;
