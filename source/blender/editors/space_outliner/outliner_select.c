@@ -1126,25 +1126,25 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   TreeElement *te_active = outliner_find_active_element(&soops->tree);
   Object *obact = OBACT(view_layer);
 
-  /* Always makes active object, except for some specific types. */
-  if (ELEM(tselem->type,
-           TSE_SEQUENCE,
-           TSE_SEQ_STRIP,
-           TSE_SEQUENCE_DUP,
-           TSE_EBONE,
-           TSE_LAYER_COLLECTION)) {
-    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
-     * we do not want to switch out of edit mode (see T48328 for details). */
-  }
-  else if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
+  if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
     /* Support edit-mode toggle, keeping the active object as is. */
   }
   else if (tselem->type == TSE_POSE_BASE) {
     /* Support pose mode toggle, keeping the active object as is. */
   }
-  else if (ELEM(obact->mode, OB_MODE_EDIT, OB_MODE_POSE) && (te != te_active)) {
-    /* Select rather than activate other elements when in edit or pose mode */
+  else if ((obact->mode != OB_MODE_OBJECT) && (te != te_active)) {
+    /* Select rather than activate other elements when ouside of object mode */
     return;
+  }
+  /* Always makes active object, except for some specific types. */
+  else if (ELEM(tselem->type,
+                TSE_SEQUENCE,
+                TSE_SEQ_STRIP,
+                TSE_SEQUENCE_DUP,
+                TSE_EBONE,
+                TSE_LAYER_COLLECTION)) {
+    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
+     * we do not want to switch out of edit mode (see T48328 for details). */
   }
   else if (soops->flag & SO_SYNC_SELECTION) {
     tree_element_set_active_object(C,
@@ -1157,6 +1157,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                    recursive && tselem->type == 0);
   }
 
+  /* Mark as active in the outliner */
   outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
   tselem->flag |= TSE_ACTIVE;
 
@@ -1695,13 +1696,22 @@ static void do_outliner_select_walk(
 static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
   ARegion *ar = CTX_wm_region(C);
   const int direction = RNA_enum_get(op->ptr, "direction");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
 
   TreeElement *active = outliner_find_active_element(&soops->tree);
 
-  /* Set first element to active if no active exists (may not be needed with synced selection) */
+  Object *obact = OBACT(view_layer);
+  Base *base = BKE_view_layer_base_find(view_layer, obact);
+
+  if (obact->mode != OB_MODE_OBJECT) {
+    do_outliner_activate_obdata(C, scene, view_layer, base, false);
+  }
+
+  /* Set first element to active if no active exists */
   if (!active) {
     active = soops->tree.first;
     TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;

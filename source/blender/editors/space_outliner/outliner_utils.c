@@ -316,7 +316,7 @@ TreeElement *outliner_find_active_element(const ListBase *lb)
   return NULL;
 }
 
-// /* Find if element is visible in the outliner tree */
+/* Find if element is visible in the outliner tree */
 bool outliner_is_element_visible(const TreeElement *te)
 {
   TreeStoreElem *tselem;
