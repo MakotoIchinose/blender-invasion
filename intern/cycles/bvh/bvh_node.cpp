@@ -91,6 +91,10 @@ int BVHNode::getSubtreeSize(BVH_STAT stat) const
         cnt += 1;
       }
       return cnt;
+    case BVH_STAT_TIMELIMIT_NODE:
+      if(this->time_from != 0 || this->time_to != 1)
+          cnt = 1;
+      break;
     default:
       assert(0); /* unknown mode */
   }
@@ -118,7 +122,7 @@ float BVHNode::computeSubtreeSAHCost(const BVHParams &p, float probability) cons
   for (int i = 0; i < num_children(); i++) {
     BVHNode *child = get_child(i);
     SAH += child->computeSubtreeSAHCost(
-        p, probability * child->bounds.safe_area() / bounds.safe_area());
+        p, probability * child->bounds.safe_area() / bounds.safe_area() * (child->time_to - child->time_from) / (time_to - time_from));
   }
 
   return SAH;

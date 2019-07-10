@@ -816,6 +816,7 @@ void BVHEmbree::add_curves(Object *ob, int i)
   rtcAttachGeometryByID(scene, geom_id, i * 2 + 1);
   rtcReleaseGeometry(geom_id);
 }
+
 void BVHEmbree::pack_nodes(const BVHNode *r)
 {
   if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
@@ -970,6 +971,7 @@ void BVHEmbree::refit_nodes()
   }
   rtcCommitScene(scene);
 }
+
 CCL_NAMESPACE_END
 
 #endif /* WITH_EMBREE */

@@ -34,6 +34,7 @@
 #include "embree/kernels/geometry/trianglev.h"
 #include "embree/kernels/geometry/trianglei.h"
 #include "embree/kernels/geometry/instance.h"
+#include "embree/kernels/geometry/curveNi.h"
 #include "bvh_node.h"
 
 CCL_NAMESPACE_BEGIN

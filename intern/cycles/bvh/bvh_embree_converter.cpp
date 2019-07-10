@@ -40,7 +40,7 @@ struct RangeInput {
 
 std::stack<LeafNode*> groupByRange(std::vector<RangeInput> &ids) {
     std::sort(ids.begin(), ids.end(), [](const RangeInput &lhs, const RangeInput &rhs) -> bool {
-        return lhs.id > rhs.id;
+        return lhs.id < rhs.id;
     });
     std::stack<LeafNode*> groups;
 
@@ -94,11 +94,10 @@ BVHEmbreeConverter::BVHEmbreeConverter(RTCScene scene, std::vector<Object *> obj
       objects(objects),
       params(params) {}
 
-
-template<typename Primitive>
-std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf(const embree::BVH4::NodeRef &node, const BoundBox &) {
+template<>
+std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4i>(const embree::BVH4::NodeRef &node, const BoundBox &bb) {
     size_t nb;
-    Primitive *prims = reinterpret_cast<Primitive *>(node.leaf(nb));
+    embree::Triangle4i *prims = reinterpret_cast<embree::Triangle4i *>(node.leaf(nb));
     std::vector<RangeInput> ids; ids.reserve(nb * 4);
 
     for(size_t i = 0; i < nb; i++) {
@@ -111,32 +110,44 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf(const embree::BVH4::NodeRef 
             size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
 
             Object *obj = this->objects.at(geom_id / 2);
-            Mesh *m = obj->mesh;
-            BoundBox bb = BoundBox::empty;
 
-            const Mesh::Triangle t = m->get_triangle(prim_id);
-            const float3 *mesh_verts = m->verts.data();
-            const float3 *mesh_vert_steps = nullptr;
-            size_t motion_steps = 1;
+            /* TODO Compute local boundbox
+             * BoundBox bb = RTCBoundBoxToCCL(prims[i].linearBounds(s, embree::BBox1f(0, 1)).bounds());
+             */
 
-            if (m->has_motion_blur()) {
-                const Attribute *attr_motion_vertex = m->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
-                if (attr_motion_vertex) {
-                    mesh_vert_steps = attr_motion_vertex->data_float3();
-                    motion_steps = m->motion_steps;
-                }
-            }
+            ids.push_back(RangeInput(prim_offset + prim_id, obj->visibility, bb));
+        }
+    }
 
-            for (uint step = 0; step < motion_steps; ++step) {
-                float3 verts[3];
-                t.verts_for_step(mesh_verts, mesh_vert_steps, m->num_triangles(), motion_steps, step, verts);
+    std::stack<LeafNode *> leafs = groupByRange(ids);
+    std::deque<BVHNode *> nodes;
 
+    while(!leafs.empty()) {
+        nodes.push_back(leafs.top());
+        leafs.pop();
+    }
 
-              for (int i = 0; i < 3; i++) {
-                  bb.grow(verts[i]);
-              }
-            }
+    return nodes;
+}
 
+template<>
+std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4v>(const embree::BVH4::NodeRef &node, const BoundBox &) {
+    size_t nb;
+    embree::Triangle4v *prims = reinterpret_cast<embree::Triangle4v *>(node.leaf(nb));
+    std::vector<RangeInput> ids; ids.reserve(nb * 4);
+
+    for(size_t i = 0; i < nb; i++) {
+        for(size_t j = 0; j < prims[i].size(); j++) {
+            const auto geom_id = prims[i].geomID(j);
+            const auto prim_id = prims[i].primID(j);
+
+            embree::Geometry *g = s->get(geom_id);
+
+            size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
+
+            Object *obj = this->objects.at(geom_id / 2);
+
+            BoundBox bb = RTCBoundBoxToCCL(prims[i].bounds());
             ids.push_back(RangeInput(prim_offset + prim_id, obj->visibility, bb));
         }
     }
@@ -157,23 +168,19 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::InstancePrimitive>(c
     size_t nb;
     embree::InstancePrimitive *prims = reinterpret_cast<embree::InstancePrimitive *>(node.leaf(nb));
 
-    std::stack<LeafNode *> leafs;
+    std::deque<BVHNode *> leafs;
 
     for(size_t i = 0; i < nb; i++) {
         uint id = prims[i].instance->geomID / 2;
         Object *obj = objects.at(id);
-        // Better solution, but crash -> RTCBoundBoxToCCL(prims[i].instance->bounds(0));
+        /* TODO Better solution, but crash
+         * BoundBox bb = RTCBoundBoxToCCL(prims[i].instance->bounds(0));
+         */
         LeafNode *leafNode = new LeafNode(obj->bounds, obj->visibility, obj->pack_index, obj->pack_index + 1);
-        leafs.push(leafNode);
+        leafs.push_back(leafNode);
     }
 
-    std::deque<BVHNode *> nodes;
-    while(!leafs.empty()) {
-        nodes.push_back(leafs.top());
-        leafs.pop();
-    }
-
-    return nodes;
+    return leafs;
 }
 
 template<typename Primitive>
@@ -189,12 +196,14 @@ BVHNode* BVHEmbreeConverter::nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::Bo
                 continue;
             }
 
-            if(ret->is_leaf() || ret->num_children()) {
+            /* If it's a leaf or a full node -> create a new parrent */
+            if(ret->is_leaf() || ret->num_children() == 4) {
                 ret = new InnerNode(bb, &ret, 1);
             }
 
             InnerNode *innerNode = dynamic_cast<InnerNode*>(ret);
             innerNode->children[innerNode->num_children_++] = nodes.front();
+            innerNode->bounds.grow(nodes.front()->bounds);
             nodes.pop_front();
 
             if(ret->num_children() == 4) {
@@ -318,6 +327,7 @@ BVHNode* BVHEmbreeConverter::getBVH4() {
 
 BVHNode* BVHEmbreeConverter::getBVH2() {
     BVHNode *root = this->getBVH4();
+    std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
     std::cout << "BVH4 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     root = bvh_shrink(root);
     std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;

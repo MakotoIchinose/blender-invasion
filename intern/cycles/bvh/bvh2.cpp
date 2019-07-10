@@ -76,6 +76,8 @@ void BVH2::pack_aligned_inner(const BVHStackEntry &e,
                     e1.node->bounds,
                     e0.encodeIdx(),
                     e1.encodeIdx(),
+                    e.node->time_from,
+                    e.node->time_to,
                     e0.node->visibility,
                     e1.node->visibility);
 }
@@ -85,6 +87,8 @@ void BVH2::pack_aligned_node(int idx,
                              const BoundBox &b1,
                              int c0,
                              int c1,
+                             float timeFrom,
+                             float timeTo,
                              uint visibility0,
                              uint visibility1)
 {
@@ -107,6 +111,9 @@ void BVH2::pack_aligned_node(int idx,
                 __float_as_int(b1.min.z),
                 __float_as_int(b0.max.z),
                 __float_as_int(b1.max.z)),
+      make_int4(__float_as_int(timeFrom),
+                __float_as_int(timeTo),
+                0, 0),
   };
 
   memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE);
@@ -209,6 +216,7 @@ void BVH2::pack_nodes(const BVHNode *root)
       pack_leaf(e, leaf);
     }
     else {
+      assert(e.node->num_children() == 2);
       /* inner node */
       int idx[2];
       for (int i = 0; i < 2; ++i) {
@@ -281,7 +289,7 @@ void BVH2::refit_node(int idx, bool leaf, BoundBox &bbox, uint &visibility)
           idx, aligned_space, aligned_space, bbox0, bbox1, c0, c1, visibility0, visibility1);
     }
     else {
-      pack_aligned_node(idx, bbox0, bbox1, c0, c1, visibility0, visibility1);
+      pack_aligned_node(idx, bbox0, bbox1, c0, c1, __int_as_float(data[4].x), __int_as_float(data[4].y), visibility0, visibility1);
     }
 
     bbox.grow(bbox0);
