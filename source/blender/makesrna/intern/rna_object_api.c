@@ -734,6 +734,9 @@ bool rna_Object_convert_to_gpencil(Object *ob,
   }
 
   BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, gpencil_lines, use_collections);
+
+  WM_main_add_notifier(NC_GPENCIL | ND_DATA, NULL);
+
   return true;
 }
 #else /* RNA_RUNTIME */
