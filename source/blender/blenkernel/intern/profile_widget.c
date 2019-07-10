@@ -651,8 +651,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
   }
   calchandle_profile(&bezt[totpoints - 1], &bezt[totpoints - 2], NULL);
 
-  /* First and last handle need correction, instead of pointing to center of next/prev,
-   * we let it point to the closest handle */
+  /* HANS-TODO: Instead of this put the end handles pointing along the edge */
   if (0 && prwdgt->totpoint > 2) {
     float hlen, nlen, vec[3];
 

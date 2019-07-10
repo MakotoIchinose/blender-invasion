@@ -62,7 +62,7 @@
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
-#define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 1
+#define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 0
 
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
 extern void DRW_debug_sphere(const float center[3], const float radius, const float color[4]);
@@ -1716,9 +1716,6 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
       else {
         if (map_ok) {
           if (reversed) {
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-            printf("(reversed)\n");
-#endif
             p[0] = (float)yvals[ns - k];
             p[1] = (float)xvals[ns - k];
           }
@@ -3135,13 +3132,13 @@ static void debug_RPO_edge_draw_profile_orientation(BevelParams* bp, BMEdge* e) 
       DRW_debug_sphere(edge_half->rightv->nv.co, 0.05f, debug_color_2);
       mid_v3_v3v3(co, e->v1->co, e->v2->co);
       DRW_debug_line_v3v3(co, edge_half->rightv->nv.co, debug_color_2);
-      DRW_debug_line_v3v3(e->v1->co, edge_half->rightv->nv.co, debug_color_2);
+      DRW_debug_line_v3v3(e->v2->co, edge_half->rightv->nv.co, debug_color_2);
   }
   else {
       DRW_debug_sphere(edge_half->leftv->nv.co, 0.05f, debug_color_2);
       mid_v3_v3v3(co, e->v1->co, e->v2->co);
       DRW_debug_line_v3v3(co, edge_half->leftv->nv.co, debug_color_2);
-      DRW_debug_line_v3v3(e->v1->co, edge_half->leftv->nv.co, debug_color_2);
+      DRW_debug_line_v3v3(e->v2->co, edge_half->leftv->nv.co, debug_color_2);
   }
 }
 #endif
@@ -3150,14 +3147,11 @@ static void debug_RPO_edge_draw_profile_orientation(BevelParams* bp, BMEdge* e) 
  * the profiles can start from opposite sides of the edge. In order to fix this we
  * need to travel along the beveled edges marking consistent boundverts for the
  * bevels to start from. */
-/* HANS-TODO: Fix the problem near impassible verts like on a single beveled edge. Add a green
- * debug sphere to the start edgehalf to see if the problem is at that point of the process. */
 static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
 {
   BevVert *start_bv;
   BevVert *bv;
-  EdgeHalf *start_edgehalf;
-  EdgeHalf *edgehalf;
+  EdgeHalf *start_edgehalf, *edgehalf;
   bool toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   printf("REGULARIZE PROFILE ORIENTATION\n");
@@ -3166,7 +3160,6 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
   /* Start at the first EdgeHalf. Once the travelling is finished for that EdgeHalf,
    * go to the next non-visited one and start the travel process from there. */
   start_bv = find_bevvert(bp, bme->v1);
-  /* HANS-TODO: Maybe implement better choice of start BevVert */
   start_edgehalf = find_edge_half(start_bv, bme);
   if (!start_edgehalf->is_bev || start_edgehalf->visited_custom) {
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -3181,9 +3174,9 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
   }
 
   /* Pick a BoundVert on one side of the profile to use for the start of the profile */
-  /* HANS-TODO: Possibly use a more advanced metric here for the start edge */
-  start_edgehalf->rightv->is_profile_start = true;
-  start_edgehalf->leftv->is_profile_start = false;
+  start_edgehalf->rightv->is_profile_start = false;
+  start_edgehalf->leftv->is_profile_start = true;
+  start_edgehalf->visited_custom = true;
 
   /* Travel the path in the direction of the BevVert the EdgeHalf is attached to */
   edgehalf = start_edgehalf;

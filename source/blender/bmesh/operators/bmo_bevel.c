@@ -31,7 +31,6 @@
 
 void bmo_bevel_exec(BMesh *bm, BMOperator *op)
 {
-  printf("BMO BEVEL EXEC\n");
   const float offset = BMO_slot_float_get(op->slots_in, "offset");
   const int offset_type = BMO_slot_int_get(op->slots_in, "offset_type");
   const int seg = BMO_slot_int_get(op->slots_in, "segments");

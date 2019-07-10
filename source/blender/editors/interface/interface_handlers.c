@@ -2632,7 +2632,6 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 
 void ui_but_clipboard_free(void)
 {
-  printf("UI BUT CLIPBOARD FREE\n");
   curvemapping_free_data(&but_copypaste_curve);
   profilewidget_free_data(&but_copypaste_profile);
 }
