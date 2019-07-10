@@ -3710,50 +3710,48 @@ bool clipUVTransform(TransInfo *t, float vec[2], const bool resize)
     for (a = 0, td = tc->data; a < tc->data_len; a++, td++) {
       minmax_v2v2_v2(min, max, td->loc);
     }
+  }
 
-    if (resize) {
-      if (min[0] < 0.0f && t->center_global[0] > 0.0f &&
-          t->center_global[0] < t->aspect[0] * 0.5f) {
-        vec[0] *= t->center_global[0] / (t->center_global[0] - min[0]);
-      }
-      else if (max[0] > t->aspect[0] && t->center_global[0] < t->aspect[0]) {
-        vec[0] *= (t->center_global[0] - t->aspect[0]) / (t->center_global[0] - max[0]);
-      }
-      else {
-        clipx = 0;
-      }
-
-      if (min[1] < 0.0f && t->center_global[1] > 0.0f &&
-          t->center_global[1] < t->aspect[1] * 0.5f) {
-        vec[1] *= t->center_global[1] / (t->center_global[1] - min[1]);
-      }
-      else if (max[1] > t->aspect[1] && t->center_global[1] < t->aspect[1]) {
-        vec[1] *= (t->center_global[1] - t->aspect[1]) / (t->center_global[1] - max[1]);
-      }
-      else {
-        clipy = 0;
-      }
+  if (resize) {
+    if (min[0] < 0.0f && t->center_global[0] > 0.0f && t->center_global[0] < t->aspect[0] * 0.5f) {
+      vec[0] *= t->center_global[0] / (t->center_global[0] - min[0]);
+    }
+    else if (max[0] > t->aspect[0] && t->center_global[0] < t->aspect[0]) {
+      vec[0] *= (t->center_global[0] - t->aspect[0]) / (t->center_global[0] - max[0]);
     }
     else {
-      if (min[0] < 0.0f) {
-        vec[0] -= min[0];
-      }
-      else if (max[0] > t->aspect[0]) {
-        vec[0] -= max[0] - t->aspect[0];
-      }
-      else {
-        clipx = 0;
-      }
+      clipx = 0;
+    }
 
-      if (min[1] < 0.0f) {
-        vec[1] -= min[1];
-      }
-      else if (max[1] > t->aspect[1]) {
-        vec[1] -= max[1] - t->aspect[1];
-      }
-      else {
-        clipy = 0;
-      }
+    if (min[1] < 0.0f && t->center_global[1] > 0.0f && t->center_global[1] < t->aspect[1] * 0.5f) {
+      vec[1] *= t->center_global[1] / (t->center_global[1] - min[1]);
+    }
+    else if (max[1] > t->aspect[1] && t->center_global[1] < t->aspect[1]) {
+      vec[1] *= (t->center_global[1] - t->aspect[1]) / (t->center_global[1] - max[1]);
+    }
+    else {
+      clipy = 0;
+    }
+  }
+  else {
+    if (min[0] < 0.0f) {
+      vec[0] -= min[0];
+    }
+    else if (max[0] > t->aspect[0]) {
+      vec[0] -= max[0] - t->aspect[0];
+    }
+    else {
+      clipx = 0;
+    }
+
+    if (min[1] < 0.0f) {
+      vec[1] -= min[1];
+    }
+    else if (max[1] > t->aspect[1]) {
+      vec[1] -= max[1] - t->aspect[1];
+    }
+    else {
+      clipy = 0;
     }
   }
 
@@ -6443,10 +6441,15 @@ static void trans_object_base_deps_flag_prepare(ViewLayer *view_layer)
   }
 }
 
-static void set_trans_object_base_deps_flag_cb(ID *id, void *UNUSED(user_data))
+static void set_trans_object_base_deps_flag_cb(ID *id,
+                                               eDepsObjectComponentType component,
+                                               void *UNUSED(user_data))
 {
   /* Here we only handle object IDs. */
   if (GS(id->name) != ID_OB) {
+    return;
+  }
+  if (!ELEM(component, DEG_OB_COMP_TRANSFORM, DEG_OB_COMP_GEOMETRY)) {
     return;
   }
   id->tag |= LIB_TAG_DOIT;
@@ -6455,7 +6458,8 @@ static void set_trans_object_base_deps_flag_cb(ID *id, void *UNUSED(user_data))
 static void flush_trans_object_base_deps_flag(Depsgraph *depsgraph, Object *object)
 {
   object->id.tag |= LIB_TAG_DOIT;
-  DEG_foreach_dependent_ID(depsgraph, &object->id, set_trans_object_base_deps_flag_cb, NULL);
+  DEG_foreach_dependent_ID_component(
+      depsgraph, &object->id, DEG_OB_COMP_TRANSFORM, set_trans_object_base_deps_flag_cb, NULL);
 }
 
 static void trans_object_base_deps_flag_finish(ViewLayer *view_layer)

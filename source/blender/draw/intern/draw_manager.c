@@ -88,6 +88,7 @@
 #include "engines/basic/basic_engine.h"
 #include "engines/workbench/workbench_engine.h"
 #include "engines/external/external_engine.h"
+#include "engines/gpencil/gpencil_engine.h"
 
 #include "GPU_context.h"
 
@@ -206,6 +207,8 @@ bool DRW_object_use_hide_faces(const struct Object *ob)
     const Mesh *me = ob->data;
 
     switch (ob->mode) {
+      case OB_MODE_SCULPT:
+        return true;
       case OB_MODE_TEXTURE_PAINT:
         return (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
       case OB_MODE_VERTEX_PAINT:
@@ -2379,6 +2382,13 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     }
   }
 
+  /* TODO: GPXX Workaround for grease pencil selection while draw manager support a callback from
+   * scene finish */
+  void *data = GPU_viewport_engine_data_get(DST.viewport, &draw_engine_gpencil_type);
+  if (data != NULL) {
+    DRW_gpencil_free_runtime_data(data);
+  }
+
   DRW_state_lock(0);
 
   DRW_draw_callbacks_post_scene();
@@ -2721,6 +2731,14 @@ void DRW_draw_select_id_object(Scene *scene,
   if (select_mode == -1) {
     select_mode = ts->selectmode;
   }
+
+  /* Init the scene of the draw context. When using face dot selection on
+   * when the subsurf modifier is active on the cage, the scene needs to be
+   * valid. It is read from the context in the
+   * `DRW_mesh_batch_cache_create_requested` and used in the `isDisabled`
+   * method of the SubSurfModifier. */
+  DRWContextState *draw_ctx = &DST.draw_ctx;
+  draw_ctx->scene = scene;
 
   GPU_matrix_mul(ob->obmat);
 
