@@ -350,12 +350,14 @@ endif()
 if(WITH_OPENXR)
   list(APPEND SRC
     intern/GHOST_Xr.cpp
+    intern/GHOST_XrContext.cpp
     intern/GHOST_XrEvent.cpp
     intern/GHOST_XrGraphicsBinding.cpp
     intern/GHOST_XrSession.cpp
 
     intern/GHOST_Xr_intern.h
     intern/GHOST_Xr_openxr_includes.h
+    intern/GHOST_XrContext.h
     intern/GHOST_IXrGraphicsBinding.h
     intern/GHOST_XrSession.h
   )

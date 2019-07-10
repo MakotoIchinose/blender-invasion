@@ -18,25 +18,23 @@
  * \ingroup GHOST
  */
 
-#ifndef __GHOST_XR_INTERN_H__
-#define __GHOST_XR_INTERN_H__
+#ifndef __GHOST_IXRCONTEXT_H__
+#define __GHOST_IXRCONTEXT_H__
 
-#include <memory>
-#include <vector>
+#include "GHOST_Types.h"
 
-#include "GHOST_Xr_openxr_includes.h"
+class GHOST_IXrContext {
+ public:
+  virtual ~GHOST_IXrContext() = default;
 
-#define XR_DEBUG_ONLY_BEGIN(ctx) \
-  if ((ctx)->isDebugMode()) { \
-    (void)0
-#define XR_DEBUG_ONLY_END \
-  } \
-  (void)0
+  virtual void startSession(const GHOST_XrSessionBeginInfo *begin_info) = 0;
+  virtual void endSession() = 0;
+  virtual bool isSessionRunning() const = 0;
+  virtual void drawSessionViews(void *draw_customdata) = 0;
 
-#define XR_DEBUG_PRINTF(ctx, ...) \
-  if ((ctx)->isDebugMode()) { \
-    printf(__VA_ARGS__); \
-  } \
-  (void)0
+  virtual void setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
+                                           GHOST_XrGraphicsContextUnbindFn unbind_fn) = 0;
+  virtual void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) = 0;
+};
 
-#endif /* __GHOST_XR_INTERN_H__ */
+#endif  // __GHOST_IXRCONTEXT_H__

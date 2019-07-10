@@ -22,31 +22,32 @@
 
 #include "GHOST_C-api.h"
 #include "GHOST_Xr_intern.h"
+#include "GHOST_XrContext.h"
 
-static bool GHOST_XrEventPollNext(OpenXRData *oxr, XrEventDataBuffer &r_event_data)
+static bool GHOST_XrEventPollNext(XrInstance instance, XrEventDataBuffer &r_event_data)
 {
   /* (Re-)initialize as required by specification */
   r_event_data.type = XR_TYPE_EVENT_DATA_BUFFER;
   r_event_data.next = nullptr;
 
-  return (xrPollEvent(oxr->instance, &r_event_data) == XR_SUCCESS);
+  return (xrPollEvent(instance, &r_event_data) == XR_SUCCESS);
 }
 
-GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContext *xr_context)
+GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_contexthandle)
 {
-  OpenXRData *oxr = &xr_context->oxr;
+  GHOST_XrContext *xr_context = (GHOST_XrContext *)xr_contexthandle;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
 
   if (xr_context == NULL) {
     return GHOST_kFailure;
   }
 
-  while (GHOST_XrEventPollNext(oxr, event_buffer)) {
+  while (GHOST_XrEventPollNext(xr_context->getInstance(), event_buffer)) {
     XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
 
     switch (event->type) {
       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
-        GHOST_XrSessionStateChange(xr_context, (XrEventDataSessionStateChanged *)event);
+        xr_context->handleSessionStateChange((XrEventDataSessionStateChanged *)event);
         return GHOST_kSuccess;
 
       default:

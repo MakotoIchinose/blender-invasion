@@ -30,8 +30,8 @@
 #include "GHOST_ISystem.h"
 #include "GHOST_IEvent.h"
 #include "GHOST_IEventConsumer.h"
+#include "GHOST_IXrContext.h"
 #include "intern/GHOST_CallbackEventConsumer.h"
-#include "intern/GHOST_XrSession.h"
 
 GHOST_SystemHandle GHOST_CreateSystem(void)
 {
@@ -904,3 +904,46 @@ void GHOST_EndIME(GHOST_WindowHandle windowhandle)
 }
 
 #endif /* WITH_INPUT_IME */
+
+#ifdef WITH_OPENXR
+
+void GHOST_XrSessionStart(GHOST_XrContextHandle xr_contexthandle,
+                          const GHOST_XrSessionBeginInfo *begin_info)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  xr_context->startSession(begin_info);
+}
+
+void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_contexthandle)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  xr_context->endSession();
+}
+
+int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_contexthandle)
+{
+  const GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  return xr_context->isSessionRunning();
+}
+
+void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_contexthandle, void *draw_customdata)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  xr_context->drawSessionViews(draw_customdata);
+}
+
+void GHOST_XrGraphicsContextBindFuncs(GHOST_XrContextHandle xr_contexthandle,
+                                      GHOST_XrGraphicsContextBindFn bind_fn,
+                                      GHOST_XrGraphicsContextUnbindFn unbind_fn)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  xr_context->setGraphicsContextBindFuncs(bind_fn, unbind_fn);
+}
+
+void GHOST_XrDrawViewFunc(GHOST_XrContextHandle xr_contexthandle, GHOST_XrDrawViewFn draw_view_fn)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  xr_context->setDrawViewFunc(draw_view_fn);
+}
+
+#endif

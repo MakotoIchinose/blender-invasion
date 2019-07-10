@@ -180,7 +180,7 @@ typedef struct wmWindowManager {
   struct wmMsgBus *message_bus;
 
   //#ifdef WITH_OPENXR
-  struct GHOST_XrContext *xr_context;
+  void *xr_context; /* GHOST_XrContextHandle */
   //#endif
 } wmWindowManager;
 

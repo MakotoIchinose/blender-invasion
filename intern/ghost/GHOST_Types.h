@@ -55,6 +55,7 @@ GHOST_DECLARE_HANDLE(GHOST_EventHandle);
 GHOST_DECLARE_HANDLE(GHOST_RectangleHandle);
 GHOST_DECLARE_HANDLE(GHOST_EventConsumerHandle);
 GHOST_DECLARE_HANDLE(GHOST_ContextHandle);
+GHOST_DECLARE_HANDLE(GHOST_XrContextHandle);
 
 typedef char GHOST_TInt8;
 typedef unsigned char GHOST_TUns8;

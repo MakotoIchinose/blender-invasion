@@ -25,8 +25,10 @@
 #include "GHOST_C-api.h"
 
 #include "GHOST_IXrGraphicsBinding.h"
-#include "GHOST_XrSession.h"
 #include "GHOST_Xr_intern.h"
+#include "GHOST_XrContext.h"
+
+#include "GHOST_XrSession.h"
 
 struct OpenXRSessionData {
   XrSystemId system_id{XR_NULL_SYSTEM_ID};
@@ -102,26 +104,28 @@ bool GHOST_XrSession::isVisible()
  */
 void GHOST_XrSession::initSystem()
 {
-  assert(m_context->oxr.instance != XR_NULL_HANDLE);
+  assert(m_context->getInstance() != XR_NULL_HANDLE);
   assert(m_oxr->system_id == XR_NULL_SYSTEM_ID);
 
   XrSystemGetInfo system_info{};
   system_info.type = XR_TYPE_SYSTEM_GET_INFO;
   system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
-  xrGetSystem(m_context->oxr.instance, &system_info, &m_oxr->system_id);
+  xrGetSystem(m_context->getInstance(), &system_info, &m_oxr->system_id);
 }
 
 void GHOST_XrSession::bindGraphicsContext()
 {
-  assert(m_context->gpu_ctx_bind_fn);
+  GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
+  assert(custom_funcs->gpu_ctx_bind_fn);
   m_gpu_ctx = static_cast<GHOST_Context *>(
-      m_context->gpu_ctx_bind_fn(m_context->gpu_binding_type));
+      custom_funcs->gpu_ctx_bind_fn(m_context->getGraphicsBindingType()));
 }
 void GHOST_XrSession::unbindGraphicsContext()
 {
-  if (m_context->gpu_ctx_unbind_fn) {
-    m_context->gpu_ctx_unbind_fn(m_context->gpu_binding_type, m_gpu_ctx);
+  GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
+  if (custom_funcs->gpu_ctx_unbind_fn) {
+    custom_funcs->gpu_ctx_unbind_fn(m_context->getGraphicsBindingType(), m_gpu_ctx);
   }
   m_gpu_ctx = nullptr;
 }
@@ -179,9 +183,9 @@ void GHOST_XrSession::prepareDrawing()
   uint32_t view_count;
 
   xrEnumerateViewConfigurationViews(
-      m_context->oxr.instance, m_oxr->system_id, m_oxr->view_type, 0, &view_count, nullptr);
+      m_context->getInstance(), m_oxr->system_id, m_oxr->view_type, 0, &view_count, nullptr);
   view_configs.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
-  xrEnumerateViewConfigurationViews(m_context->oxr.instance,
+  xrEnumerateViewConfigurationViews(m_context->getInstance(),
                                     m_oxr->system_id,
                                     m_oxr->view_type,
                                     view_configs.size(),
@@ -224,9 +228,9 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
 
 void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
 {
-  assert(m_context->oxr.instance != XR_NULL_HANDLE);
+  assert(m_context->getInstance() != XR_NULL_HANDLE);
   assert(m_oxr->session == XR_NULL_HANDLE);
-  if (m_context->gpu_ctx_bind_fn == nullptr) {
+  if (m_context->getCustomFuncs()->gpu_ctx_bind_fn == nullptr) {
     fprintf(stderr,
             "Invalid API usage: No way to bind graphics context to the XR session. Call "
             "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
@@ -245,7 +249,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
     return;
   }
   m_gpu_binding = std::unique_ptr<GHOST_IXrGraphicsBinding>(
-      GHOST_XrGraphicsBindingCreateFromType(m_context->gpu_binding_type));
+      GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType()));
   m_gpu_binding->initFromGhostContext(m_gpu_ctx);
 
   XrSessionCreateInfo create_info{};
@@ -253,7 +257,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   create_info.systemId = m_oxr->system_id;
   create_info.next = &m_gpu_binding->oxr_binding;
 
-  xrCreateSession(m_context->oxr.instance, &create_info, &m_oxr->session);
+  xrCreateSession(m_context->getInstance(), &create_info, &m_oxr->session);
 
   prepareDrawing();
   create_reference_space(m_oxr.get(), &begin_info->base_pose);
@@ -403,7 +407,7 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
   ghost_xr_draw_view_info_from_view(view, draw_view_info);
 
   m_gpu_binding->drawViewBegin(swapchain_image);
-  draw_ctx = m_context->draw_view_fn(&draw_view_info, draw_customdata);
+  draw_ctx = m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
   m_gpu_binding->drawViewEnd(swapchain_image, (GHOST_Context *)draw_ctx);
 
   xrReleaseSwapchainImage(swapchain, &release_info);

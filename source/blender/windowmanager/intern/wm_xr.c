@@ -309,8 +309,10 @@ static void wm_xr_session_begin_info_create(const Scene *scene,
   }
 }
 
-void wm_xr_session_toggle(bContext *C, struct GHOST_XrContext *xr_context)
+void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 {
+  GHOST_XrContextHandle xr_context = xr_context_ptr;
+
   if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
     GHOST_XrSessionEnd(xr_context);
   }

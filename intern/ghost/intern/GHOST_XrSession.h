@@ -24,8 +24,6 @@
 #include <map>
 #include <memory>
 
-#include "GHOST_Xr_openxr_includes.h"
-
 class GHOST_XrSession {
  public:
   enum eLifeExpectancy {
@@ -33,7 +31,7 @@ class GHOST_XrSession {
     SESSION_DESTROY,
   };
 
-  GHOST_XrSession(struct GHOST_XrContext *xr_context);
+  GHOST_XrSession(class GHOST_XrContext *xr_context);
   ~GHOST_XrSession();
 
   void start(const GHOST_XrSessionBeginInfo *begin_info);
@@ -51,7 +49,7 @@ class GHOST_XrSession {
  private:
   /** Pointer back to context managing this session. Would be nice to avoid, but needed to access
    * custom callbacks set before session start. */
-  struct GHOST_XrContext *m_context;
+  class GHOST_XrContext *m_context;
 
   std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable */
 
