@@ -428,7 +428,7 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
 
   /* Don't overflow the cache. */
   if ((rb->intersection_count + begin_index) > (cache_total - 1)) {
-    return 0;
+    return;
   }
 
   static GPUVertFormat format = {0};
