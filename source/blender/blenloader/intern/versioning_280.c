@@ -78,6 +78,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_pointcache.h"
+#include "BKE_profile_widget.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
@@ -3508,6 +3509,17 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
       arm->flag &= ~(ARM_FLAG_UNUSED_6);
+    }
+
+    /* HANS-TODO: Versioning for bevel modifier and test it */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "ToolSettings", "ProfileWidget", "prwdgt")) {
+      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+        ToolSettings *ts = scene->toolsettings;
+        if ((ts) && (ts->prwdgt == NULL)) {
+          ts->prwdgt = profilewidget_add(PROF_PRESET_LINE);
+        }
+      }
     }
   }
 }

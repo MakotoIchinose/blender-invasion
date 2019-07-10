@@ -1778,8 +1778,7 @@ static BMOpDefine bmo_bevel_def = {
    {"smoothresh", BMO_OP_SLOT_FLT},       /* for passing mesh's smoothresh, used in hardening */
    {"use_custom_profile", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
    /* the ProfileWiget struct for the custom profile shape */
-   {"prwdgt", BMO_OP_SLOT_PTR, {(int)BMO_OP_SLOT_SUBTYPE_PTR_WIDGET}},
-   /* HANS-TODO: Figure out how to get the struct through here using the required subtype */
+   {"prwdgt", BMO_OP_SLOT_PTR, {(int)BMO_OP_SLOT_SUBTYPE_PTR_STRUCT}},
    {"sample_straight_edges", BMO_OP_SLOT_BOOL},
    {{'\0'}},
   },

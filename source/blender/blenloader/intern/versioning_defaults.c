@@ -51,6 +51,7 @@
 #include "BKE_screen.h"
 #include "BKE_studiolight.h"
 #include "BKE_workspace.h"
+#include "BKE_profile_widget.h"
 
 #include "BLO_readfile.h"
 
@@ -357,6 +358,11 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
                    &gp_primitive_curve->clipr,
                    CURVE_PRESET_BELL,
                    CURVEMAP_SLOPE_POSITIVE);
+  }
+
+  /* Make sure that the profile widget is initialized */
+  if (ts->prwdgt == NULL) {
+    ts->prwdgt = profilewidget_add(PROF_PRESET_LINE);
   }
 }
 

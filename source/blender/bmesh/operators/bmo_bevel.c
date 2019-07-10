@@ -49,14 +49,8 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
-  const struct ProfileWidget *prwdgt =
-      (const struct ProfileWidget *)BMO_slot_ptr_get(op->slots_in, "prwdgt");
+  const ProfileWidget *prwdgt = BMO_slot_ptr_get(op->slots_in, "prwdgt");
   const bool sample_straight_edges = BMO_slot_bool_get(op->slots_in, "sample_straight_edges");
-
-  if (!prwdgt) {
-    printf("(bmo_bevel_exec) prwdgt null, shouldn't happen\n");
-    prwdgt = profilewidget_add(PROF_PRESET_LINE);
-  }
 
   if (offset > 0) {
     BMOIter siter;

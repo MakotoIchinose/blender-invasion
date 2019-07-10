@@ -2188,7 +2188,6 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* 0.25 step grid */
   gl_shaded_color((uchar *)wcol->inner, -16);
-  /* HANS-TODO: Tends to crash when very zoomed out. Wrong number of verts given to GPU */
   ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 0.25f);
   /* 1.0 step grid */
   gl_shaded_color((uchar *)wcol->inner, -24);

@@ -4683,6 +4683,9 @@ void uiTemplateProfileWidget(uiLayout *layout, PointerRNA *ptr, const char *prop
     return;
   }
 
+  /* HANS-QUESTION: I don't quite know what the goal of this is. It looks like it was created for
+   * the CurveMapping struct, but it's probably still useful here. It looks like it enables
+   * updating the property with the pointer? */
   cb = MEM_callocN(sizeof(RNAUpdateCb), "RNAUpdateCb");
   cb->ptr = *ptr;
   cb->prop = prop;

@@ -6758,6 +6758,12 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     if (sce->toolsettings->gp_sculpt.cur_primitive) {
       direct_link_curvemapping(fd, sce->toolsettings->gp_sculpt.cur_primitive);
     }
+
+    /* Relink toolsettings profile widget */
+    sce->toolsettings->prwdgt = newdataadr(fd, sce->toolsettings->prwdgt);
+    if (sce->toolsettings->prwdgt) {
+      direct_link_profilewidget(fd, sce->toolsettings->prwdgt);
+    }
   }
 
   if (sce->ed) {

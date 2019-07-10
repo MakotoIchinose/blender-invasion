@@ -2538,6 +2538,10 @@ static void write_scene(WriteData *wd, Scene *sce)
   if (tos->gp_sculpt.cur_primitive) {
     write_curvemapping(wd, tos->gp_sculpt.cur_primitive);
   }
+  /* Write the profile widget to the file */
+  if (tos->prwdgt) {
+    write_profilewidget(wd, tos->prwdgt);
+  }
 
   write_paint(wd, &tos->imapaint.paint);
 

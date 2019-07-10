@@ -78,6 +78,7 @@
 #include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_profile_widget.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -180,6 +181,8 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
   /* duplicate Grease Pencil multiframe fallof */
   ts->gp_sculpt.cur_falloff = curvemapping_copy(ts->gp_sculpt.cur_falloff);
   ts->gp_sculpt.cur_primitive = curvemapping_copy(ts->gp_sculpt.cur_primitive);
+
+  ts->prwdgt = profilewidget_copy(ts->prwdgt);
   return ts;
 }
 
@@ -220,6 +223,10 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
   }
   if (toolsettings->gp_sculpt.cur_primitive) {
     curvemapping_free(toolsettings->gp_sculpt.cur_primitive);
+  }
+
+  if (toolsettings->prwdgt) {
+    profilewidget_free(toolsettings->prwdgt);
   }
 
   MEM_freeN(toolsettings);
@@ -883,6 +890,10 @@ void BKE_scene_init(Scene *sce)
   /* Annotations */
   sce->toolsettings->annotate_v3d_align = GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR;
   sce->toolsettings->annotate_thickness = 3;
+
+  /* Profile Widget */
+  printf("(BKE_scene_init) Adding profilewidget to tool settings\n");
+  sce->toolsettings->prwdgt = profilewidget_add(PROF_PRESET_LINE);
 
   for (int i = 0; i < ARRAY_SIZE(sce->orientation_slots); i++) {
     sce->orientation_slots[i].index_custom = -1;

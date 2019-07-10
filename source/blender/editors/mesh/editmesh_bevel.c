@@ -99,7 +99,10 @@ typedef struct {
   short gizmo_flag;
   short value_mode; /* Which value does mouse movement and numeric input affect? */
   float segments;   /* Segments as float so smooth mouse pan works in small increments */
+
+  ProfileWidget *prwdgt;
 } BevelData;
+
 
 enum {
   BEV_MODAL_CANCEL = 1,
@@ -217,8 +220,8 @@ static void edbm_bevel_update_header(bContext *C, wmOperator *op)
 
 static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 {
-  printf("EDBM BEVEL INIT\n");
   Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
   BevelData *opdata;
   ViewLayer *view_layer = CTX_data_view_layer(C);
   float pixels_per_inch;
@@ -232,6 +235,9 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
   op->customdata = opdata = MEM_mallocN(sizeof(BevelData), "beveldata_mesh_operator");
   uint objects_used_len = 0;
   opdata->max_obj_scale = FLT_MIN;
+
+  /* Put the Profile Widget from the toolsettings into the opdata struct */
+  opdata->prwdgt = ts->prwdgt;
 
   {
     uint ob_store_len = 0;
@@ -301,8 +307,6 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 
 static bool edbm_bevel_calc(wmOperator *op)
 {
-  printf("EDBM BEVEL CALC\n");
-
   BevelData *opdata = op->customdata;
   BMEditMesh *em;
   BMOperator bmop;
@@ -324,10 +328,7 @@ static bool edbm_bevel_calc(wmOperator *op)
   const int miter_inner = RNA_enum_get(op->ptr, "miter_inner");
   const float spread = RNA_float_get(op->ptr, "spread");
   const bool use_custom_profile = RNA_boolean_get(op->ptr, "use_custom_profile");
-  const PointerRNA prwdgt_ptr = RNA_pointer_get(op->ptr, "prwdgt");
   const bool sample_straight_edges = RNA_boolean_get(op->ptr, "sample_straight_edges");
-
-  const ProfileWidget *prwdgt = prwdgt_ptr.data;
 
   for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
     em = opdata->ob_store[ob_index].em;
@@ -354,7 +355,8 @@ static bool edbm_bevel_calc(wmOperator *op)
                  "bevel geom=%hev offset=%f segments=%i vertex_only=%b offset_type=%i profile=%f "
                  "clamp_overlap=%b material=%i loop_slide=%b mark_seam=%b mark_sharp=%b "
                  "harden_normals=%b face_strength_mode=%i "
-                 "miter_outer=%i miter_inner=%i spread=%f smoothresh=%f",
+                 "miter_outer=%i miter_inner=%i spread=%f smoothresh=%f use_custom_profile=%b "
+                 "prwdgt=%p sample_straight_edges=%b",
                  BM_ELEM_SELECT,
                  offset,
                  segments,
@@ -373,7 +375,7 @@ static bool edbm_bevel_calc(wmOperator *op)
                  spread,
                  me->smoothresh,
                  use_custom_profile,
-                 prwdgt,
+                 opdata->prwdgt,
                  sample_straight_edges);
 
     BMO_op_exec(em->bm, &bmop);
@@ -401,10 +403,7 @@ static bool edbm_bevel_calc(wmOperator *op)
 
 static void edbm_bevel_exit(bContext *C, wmOperator *op)
 {
-  printf("EDBM BEVEL EXIT\n");
-
   BevelData *opdata = op->customdata;
-
   ScrArea *sa = CTX_wm_area(C);
 
   if (sa) {
@@ -430,8 +429,6 @@ static void edbm_bevel_exit(bContext *C, wmOperator *op)
 
 static void edbm_bevel_cancel(bContext *C, wmOperator *op)
 {
-  printf("EDBM BEVEL CANCEL\n");
-
   BevelData *opdata = op->customdata;
   if (opdata->is_modal) {
     for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
@@ -450,8 +447,6 @@ static void edbm_bevel_cancel(bContext *C, wmOperator *op)
 /* bevel! yay!!*/
 static int edbm_bevel_exec(bContext *C, wmOperator *op)
 {
-  printf("EDBM BEVEL EXEC\n");
-
   if (!edbm_bevel_init(C, op, false)) {
     return OPERATOR_CANCELLED;
   }
@@ -468,7 +463,6 @@ static int edbm_bevel_exec(bContext *C, wmOperator *op)
 
 static void edbm_bevel_calc_initial_length(wmOperator *op, const wmEvent *event, bool mode_changed)
 {
-  printf("EDBM BEVEL CALC INITIAL LENGTH\n");
   BevelData *opdata;
   float mlen[2], len, value, sc, st;
   int vmode;
@@ -495,7 +489,6 @@ static void edbm_bevel_calc_initial_length(wmOperator *op, const wmEvent *event,
 
 static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  printf("EDBM BEVEL INVOKE");
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BevelData *opdata;
   float center_3d[3];
@@ -859,18 +852,29 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void edbm_bevel_ui(bContext *UNUSED(C), wmOperator *op)
+static void edbm_bevel_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
-  PointerRNA ptr;
 
+  PointerRNA ptr;
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
+  /* Get an RNA pointer to ToolSettings to give to the profile widget template code */
+  Scene *scene = CTX_data_scene(C);
+  PointerRNA toolsettings_ptr;
+  RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
+
   uiItemR(layout, &ptr, "offset_type", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "offset_pct", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "offset_type") == BEVEL_AMT_PERCENT) {
+    uiItemR(layout, &ptr, "offset_pct", 0, NULL, ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+  }
   uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "profile", 0, NULL, ICON_NONE);
+  if (!RNA_boolean_get(&ptr, "use_custom_profile")) {
+    uiItemR(layout, &ptr, "profile", 0, NULL, ICON_NONE);
+  }
   uiItemR(layout, &ptr, "vertex_only", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "clamp_overlap", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
@@ -881,14 +885,21 @@ static void edbm_bevel_ui(bContext *UNUSED(C), wmOperator *op)
   uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "miter_outer", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "miter_inner", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
+    uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
+  }
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
-  uiTemplateProfileWidget(layout, &ptr, "prwdgt");
+  uiLayoutRow(layout, false); /* HANS-TODO: Need this? */
+  if (RNA_boolean_get(&ptr, "use_custom_profile")) {
+    uiTemplateProfileWidget(layout, &toolsettings_ptr, "prwdgt");
+    uiItemR(layout, &ptr, "sample_straight_edges", 0, NULL, ICON_NONE);
+  }
+  /* HANS-TODO: Figure out why there's a double of the use_custom_profile prop at the end when it's
+   * enabled */
 }
 
 void MESH_OT_bevel(wmOperatorType *ot)
 {
-  printf("MESH OT BEVEL\n");
   PropertyRNA *prop;
 
   static const EnumPropertyItem offset_type_items[] = {
@@ -989,9 +1000,6 @@ void MESH_OT_bevel(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna, "use_custom_profile", false, "Custom Profile",
                   "Define a custom profile for the bevel");
-
-  /* HANS-TODO: Add the profile widget here somehow */
-  RNA_def_pointer(ot->srna, "prwdgt", "ProfileWidget", "", "Widget for editing profile path");
 
   RNA_def_boolean(ot->srna, "sample_straight_edges", false, "Custom Profile",
                   "Define a custom profile for the bevel");
