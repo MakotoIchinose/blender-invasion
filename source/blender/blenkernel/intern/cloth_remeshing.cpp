@@ -410,10 +410,26 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
   return edges;
 }
 
+static bool cloth_remeshing_independent_edge_test(BMEdge *e, vector<BMEdge *> edges)
+{
+  for (int i = 0; i < edges.size(); i++) {
+    if (e->v1 == edges[i]->v1 || e->v1 == edges[i]->v2 || e->v2 == edges[i]->v1 ||
+        e->v2 == edges[i]->v2) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static vector<BMEdge *> cloth_remeshing_find_independent_edges(vector<BMEdge *> edges)
 {
-  /* TODO(Ish) */
-  return vector<BMEdge *>();
+  vector<BMEdge *> i_edges;
+  for (int i = 0; i < edges.size(); i++) {
+    if (cloth_remeshing_independent_edge_test(edges[i], i_edges)) {
+      i_edges.push_back(edges[i]);
+    }
+  }
+  return i_edges;
 }
 
 static void cloth_remeshing_flip_edges(BMesh *bm,
