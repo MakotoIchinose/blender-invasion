@@ -76,6 +76,10 @@ using namespace std;
 
 static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e);
 static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v);
+static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2]);
+static float cloth_remeshing_wedge(float v_01[2], float v_02[2]);
+static float cloth_remeshing_edge_size_with_vert(
+    BMesh *bm, BMVert *v1, BMVert *v2, BMVert *v, vector<ClothSizing> &sizing);
 
 static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
@@ -325,7 +329,7 @@ static bool cloth_remeshing_should_flip(
   float x[2], y[2], z[2], w[2];
   cloth_remeshing_uv_of_vert_in_face(bm, f1, v1, x);
   cloth_remeshing_uv_of_vert_in_face(bm, f2, v4, y);
-  cloth_remeshing_uv_of_vert_in_face(bm, f3, v2, z);
+  cloth_remeshing_uv_of_vert_in_face(bm, f2, v2, z);
   cloth_remeshing_uv_of_vert_in_face(bm, f1, v3, w);
 
   /* TODO(Ish): fix sizing when properly implemented */
@@ -359,6 +363,7 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
   BMVert *v1;
   BMIter viter;
   for (int i = 0; i < active_faces.size(); i++) {
+    BMFace *f = active_faces[i];
     BM_ITER_ELEM (v1, &viter, f, BM_VERTS_OF_FACE) {
       BMEdge *e;
       BMIter eiter;
@@ -787,13 +792,15 @@ static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSizing> &sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
+  static int prev_num_bad_edges = 0;
   int num_bad_edges;
   BMEdge **bad_edges;
   cloth_remeshing_find_bad_edges(bm, sizing, &bad_edges, &num_bad_edges);
   printf("tagged: %d\n", num_bad_edges);
-  if (num_bad_edges == 0) {
+  if (num_bad_edges == 0 || num_bad_edges == prev_num_bad_edges) {
     return false;
   }
+  prev_num_bad_edges = num_bad_edges;
   Cloth *cloth = clmd->clothObject;
   cloth->verts = (ClothVertex *)MEM_reallocN(
       cloth->verts, (cloth->mvert_num + num_bad_edges) * sizeof(ClothVertex));
