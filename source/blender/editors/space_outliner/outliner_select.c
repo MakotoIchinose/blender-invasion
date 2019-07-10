@@ -1123,7 +1123,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                                    const bool extend,
                                                    const bool recursive)
 {
-  TreeElement *te_active = outliner_find_active_element(&soops->tree);
+  TreeElement *te_active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
   Object *obact = OBACT(view_layer);
 
   if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
@@ -1284,7 +1284,7 @@ static void do_outliner_range_select_recursive(ListBase *lb,
 /* Select a range of items between cursor and active element */
 static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 {
-  TreeElement *active = outliner_find_active_element(&soops->tree);
+  TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
 
   if (!active) {
     TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
@@ -1702,7 +1702,7 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
   const int direction = RNA_enum_get(op->ptr, "direction");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
 
-  TreeElement *active = outliner_find_active_element(&soops->tree);
+  TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
 
   Object *obact = OBACT(view_layer);
   Base *base = BKE_view_layer_base_find(view_layer, obact);

@@ -301,14 +301,14 @@ float outliner_restrict_columns_width(const SpaceOutliner *soops)
   return (num_columns * UI_UNIT_X + V2D_SCROLL_WIDTH);
 }
 
-/* Find active element in tree */
-TreeElement *outliner_find_active_element(const ListBase *lb)
+/* Find first tree element in tree with matching treestore flag */
+TreeElement *outliner_find_element_with_flag(const ListBase *lb, short flag)
 {
   for (TreeElement *te = lb->first; te; te = te->next) {
-    if (TREESTORE(te)->flag & TSE_ACTIVE) {
+    if ((TREESTORE(te)->flag & flag) == flag) {
       return te;
     }
-    TreeElement *active_element = outliner_find_active_element(&te->subtree);
+    TreeElement *active_element = outliner_find_element_with_flag(&te->subtree, flag);
     if (active_element) {
       return active_element;
     }
