@@ -283,11 +283,130 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   return mesh_result;
 }
 
+/* returns a pair of vertices that are on the edge faces of the given
+ * edge */
+static pair<BMVert *, BMVert *> cloth_remeshing_edge_side_verts(BMEdge *e)
+{
+  BMFace *f1, *f2;
+  pair<BMVert *, BMVert *> edge_side_verts;
+  edge_side_verts.first = NULL;
+  edge_side_verts.second = NULL;
+  BM_edge_face_pair(e, &f1, &f2);
+  if (f1) {
+    BMVert *v;
+    BMIter viter;
+    BM_ITER_ELEM (v, &viter, f1, BM_VERTS_OF_FACE) {
+      if (v != e->v1 && v != e->v2) {
+        edge_side_verts.first = v;
+        break;
+      }
+    }
+  }
+  if (f2) {
+    BMVert *v;
+    BMIter viter;
+    BM_ITER_ELEM (v, &viter, f2, BM_VERTS_OF_FACE) {
+      if (v != e->v1 && v != e->v2) {
+        edge_side_verts.second = v;
+        break;
+      }
+    }
+  }
+  return edge_side_verts;
+}
+
+/* from Bossen and Heckbert 1996 */
+static bool cloth_remeshing_should_flip(
+    BMesh *bm, BMVert *v1, BMVert *v2, BMVert *v3, BMVert *v4, vector<ClothSizing> &sizing)
+{
+  BMFace *f1, *f2;
+  BM_edge_face_pair(BM_edge_exists(v1, v2), &f1, &f2);
+  float x[2], y[2], z[2], w[2];
+  cloth_remeshing_uv_of_vert_in_face(bm, f1, v1, x);
+  cloth_remeshing_uv_of_vert_in_face(bm, f2, v4, y);
+  cloth_remeshing_uv_of_vert_in_face(bm, f3, v2, z);
+  cloth_remeshing_uv_of_vert_in_face(bm, f1, v3, w);
+
+  /* TODO(Ish): fix sizing when properly implemented */
+  float m[2][2];
+  copy_m2_m2(m, sizing[0].m);
+
+  float zy[2], xy[2], xw[2], mzw[2], mxy[2], zw[2];
+  copy_v2_v2(zy, z);
+  sub_v2_v2(zy, y);
+  copy_v2_v2(xy, x);
+  sub_v2_v2(xy, y);
+  copy_v2_v2(xw, x);
+  sub_v2_v2(xw, w);
+  copy_v2_v2(zw, z);
+  sub_v2_v2(zw, w);
+
+  mul_v2_m2v2(mzw, m, zw);
+  mul_v2_m2v2(mxy, m, xy);
+
+  return cloth_remeshing_wedge(zy, xy) * dot_v2v2(xw, mzw) +
+             dot_v2v2(zy, mxy) * cloth_remeshing_wedge(xw, zw) <
+         0.0f; /* TODO(Ish): update 0.0f to what it is supposed to be,
+                * but 0.0f should work for testing for now */
+}
+
 static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
+                                                           vector<ClothSizing> &sizing,
                                                            vector<BMFace *> &active_faces)
 {
-  /* TODO(Ish) */
-  return vector<BMEdge *>();
+  vector<BMEdge *> edges;
+  BMVert *v1;
+  BMIter viter;
+  for (int i = 0; i < active_faces.size(); i++) {
+    BM_ITER_ELEM (v1, &viter, f, BM_VERTS_OF_FACE) {
+      BMEdge *e;
+      BMIter eiter;
+      BM_ITER_ELEM (e, &eiter, v1, BM_EDGES_OF_VERT) {
+        BMVert *v2 = e->v2;
+        if (v2 == v1) {
+          v2 = e->v1;
+        }
+
+        /* Done to prevent same edge being checked multiple times */
+        if (v2 < v1) {
+          continue;
+        }
+
+        pair<BMVert *, BMVert *> edge_side_verts = cloth_remeshing_edge_side_verts(e);
+        BMFace *f1, *f2;
+        BM_edge_face_pair(e, &f1, &f2);
+        BMVert *v3, *v4;
+        v3 = edge_side_verts.first;
+        v4 = edge_side_verts.second;
+
+        if (!v3 || !v4) {
+          continue;
+        }
+        float uv_01[2], uv_02[2];
+        cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v1, uv_01);
+        cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v1, uv_02);
+        if (!equals_v2v2(uv_01, uv_02)) {
+          continue;
+        }
+        cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v2, uv_01);
+        cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v2, uv_02);
+        if (!equals_v2v2(uv_01, uv_02)) {
+          continue;
+        }
+
+        if (cloth_remeshing_edge_size_with_vert(bm, v3, v4, e->v1, sizing) > 1.0f) {
+          continue;
+        }
+
+        if (!cloth_remeshing_should_flip(bm, v1, v2, v3, v4, sizing)) {
+          continue;
+        }
+
+        edges.push_back(e);
+      }
+    }
+  }
+  return edges;
 }
 
 static vector<BMEdge *> cloth_remeshing_find_independent_edges(vector<BMEdge *> edges)
@@ -296,11 +415,13 @@ static vector<BMEdge *> cloth_remeshing_find_independent_edges(vector<BMEdge *> 
   return vector<BMEdge *>();
 }
 
-static void cloth_remeshing_flip_edges(BMesh *bm, vector<BMFace *> &active_faces)
+static void cloth_remeshing_flip_edges(BMesh *bm,
+                                       vector<ClothSizing> &sizing,
+                                       vector<BMFace *> &active_faces)
 {
   /* TODO(Ish): This loop might cause problems */
   while (active_faces.size() != 0) {
-    vector<BMEdge *> flipable_edges = cloth_remeshing_find_edges_to_flip(bm, active_faces);
+    vector<BMEdge *> flipable_edges = cloth_remeshing_find_edges_to_flip(bm, sizing, active_faces);
     vector<BMEdge *> independent_edges = cloth_remeshing_find_independent_edges(flipable_edges);
 
     for (int i = 0; i < independent_edges.size(); i++) {
@@ -314,9 +435,11 @@ static void cloth_remeshing_flip_edges(BMesh *bm, vector<BMFace *> &active_faces
   }
 }
 
-static bool cloth_remeshing_fix_mesh(BMesh *bm, vector<BMFace *> active_faces)
+static bool cloth_remeshing_fix_mesh(BMesh *bm,
+                                     vector<ClothSizing> &sizing,
+                                     vector<BMFace *> active_faces)
 {
-  cloth_remeshing_flip_edges(bm, active_faces);
+  cloth_remeshing_flip_edges(bm, sizing, active_faces);
   return true;
 }
 
@@ -715,15 +838,13 @@ static pair<BMFace *, BMFace *> cloth_remeshing_find_match(BMesh *bm,
   return make_pair((BMFace *)NULL, (BMFace *)NULL);
 }
 
-static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
-                                                 BMEdge *e,
-                                                 BMVert *v,
-                                                 vector<ClothSizing> &sizing)
+static float cloth_remeshing_edge_size_with_vert(
+    BMesh *bm, BMVert *v1, BMVert *v2, BMVert *v, vector<ClothSizing> &sizing)
 {
   BMFace *f1, *f2;
-  BM_edge_face_pair(BM_edge_exists(e->v1, v), &f1, &f2);
+  BM_edge_face_pair(BM_edge_exists(v1, v), &f1, &f2);
   pair<BMFace *, BMFace *> face_pair_01 = make_pair(f1, f2);
-  BM_edge_face_pair(BM_edge_exists(e->v2, v), &f1, &f2);
+  BM_edge_face_pair(BM_edge_exists(v2, v), &f1, &f2);
   pair<BMFace *, BMFace *> face_pair_02 = make_pair(f1, f2);
 
   pair<BMFace *, BMFace *> face_pair = cloth_remeshing_find_match(
@@ -733,8 +854,8 @@ static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
     return 100.0f;
   }
   float uv_01[2], uv_02[2];
-  cloth_remeshing_uv_of_vert_in_face(bm, face_pair.first, e->v1, uv_01);
-  cloth_remeshing_uv_of_vert_in_face(bm, face_pair.second, e->v2, uv_02);
+  cloth_remeshing_uv_of_vert_in_face(bm, face_pair.first, v1, uv_01);
+  cloth_remeshing_uv_of_vert_in_face(bm, face_pair.second, v2, uv_02);
 
   /* TODO(Ish): Need to fix this for when sizing is fixed */
   float value = 0.0;
@@ -747,6 +868,14 @@ static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
   value += dot_v2v2(u12, temp_v2);
 
   return sqrtf(fmax(value, 0.0f));
+}
+
+static float cloth_remeshing_edge_size_with_vert(BMesh *bm,
+                                                 BMEdge *e,
+                                                 BMVert *v,
+                                                 vector<ClothSizing> &sizing)
+{
+  return cloth_remeshing_edge_size_with_vert(bm, e->v1, e->v2, v, sizing);
 }
 
 static void cloth_remeshing_replace_uvs(float uv_01[2], float uv_02[2], float uvs[3][2])
