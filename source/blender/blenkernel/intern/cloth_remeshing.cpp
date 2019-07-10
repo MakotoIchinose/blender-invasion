@@ -316,6 +316,7 @@ static pair<BMVert *, BMVert *> cloth_remeshing_edge_side_verts(BMEdge *e)
 }
 
 /* from Bossen and Heckbert 1996 */
+#define CLOTH_REMESHING_EDGE_FLIP_THRESHOLD 0.001f
 static bool cloth_remeshing_should_flip(
     BMesh *bm, BMVert *v1, BMVert *v2, BMVert *v3, BMVert *v4, vector<ClothSizing> &sizing)
 {
@@ -346,8 +347,8 @@ static bool cloth_remeshing_should_flip(
 
   return cloth_remeshing_wedge(zy, xy) * dot_v2v2(xw, mzw) +
              dot_v2v2(zy, mxy) * cloth_remeshing_wedge(xw, zw) <
-         0.0f; /* TODO(Ish): update 0.0f to what it is supposed to be,
-                * but 0.0f should work for testing for now */
+         -CLOTH_REMESHING_EDGE_FLIP_THRESHOLD *
+             (cloth_remeshing_wedge(zy, xy) + cloth_remeshing_wedge(xw, zw));
 }
 
 static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
