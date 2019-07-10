@@ -88,6 +88,7 @@
 #include "engines/basic/basic_engine.h"
 #include "engines/workbench/workbench_engine.h"
 #include "engines/external/external_engine.h"
+#include "engines/gpencil/gpencil_engine.h"
 
 #include "GPU_context.h"
 
@@ -1916,6 +1917,13 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
   DST.buffer_finish_called = false;
 }
 
+static void drw_view_reset(void)
+{
+  DST.view_default = NULL;
+  DST.view_active = NULL;
+  DST.view_previous = NULL;
+}
+
 void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -1998,14 +2006,12 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
   for (RenderView *render_view = render_result->views.first; render_view != NULL;
        render_view = render_view->next) {
     RE_SetActiveRenderView(render, render_view->name);
-    /* Reset the view. */
-    DST.view_default = NULL;
-    DST.view_active = NULL;
-    DST.view_previous = NULL;
+    drw_view_reset();
     engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
     /* grease pencil: render result is merged in the previous render result. */
     if (DRW_render_check_grease_pencil(depsgraph)) {
       DRW_state_reset();
+      drw_view_reset();
       DRW_render_gpencil_to_image(engine, render_layer, &render_rect);
     }
     DST.buffer_finish_called = false;
@@ -2372,6 +2378,13 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     if (!select_pass_fn(DRW_SELECT_PASS_POST, select_pass_user_data)) {
       break;
     }
+  }
+
+  /* TODO: GPXX Workaround for grease pencil selection while draw manager support a callback from
+   * scene finish */
+  void *data = GPU_viewport_engine_data_get(DST.viewport, &draw_engine_gpencil_type);
+  if (data != NULL) {
+    DRW_gpencil_free_runtime_data(data);
   }
 
   DRW_state_lock(0);
