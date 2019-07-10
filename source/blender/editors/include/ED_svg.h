@@ -13,18 +13,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
+ * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
  */
 
-#ifndef __BKE_WRITESVG_H__
-#define __BKE_WRITESVG_H__
-
 /** \file
- * \ingroup bke
+ * \ingroup editors
  */
 
-bool BKE_svg_data_from_gpencil(struct bGPdata* gpd, struct Text* ta, struct bGPDlayer* layer, int frame);
+#ifndef __ED_SVG_H__
+#define __ED_SVG_H__
 
 
-#endif
+bool ED_svg_data_from_gpencil(struct bGPdata* gpd, struct Text* ta, struct bGPDlayer* layer, int frame);
+
+#endif /* __ED_SVG_H__ */

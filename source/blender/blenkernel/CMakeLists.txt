@@ -221,7 +221,6 @@ set(SRC
   intern/workspace.c
   intern/world.c
   intern/writeavi.c
-  intern/writesvg.c
 
   BKE_DerivedMesh.h
   BKE_action.h
@@ -344,7 +343,6 @@ set(SRC
   BKE_workspace.h
   BKE_world.h
   BKE_writeavi.h
-  BKE_writesvg.h
 
   nla_private.h
   particle_private.h

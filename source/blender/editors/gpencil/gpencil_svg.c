@@ -41,7 +41,6 @@
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_report.h"
-#include "BKE_writesvg.h"
 
 #include "UI_interface.h"
 
@@ -50,7 +49,7 @@
 
 #include "ED_gpencil.h"
 #include "ED_select_utils.h"
-
+#include "ED_svg.h"
 
 static int gpencil_export_svg_exec(bContext *C, wmOperator *op)
 {
@@ -60,10 +59,8 @@ static int gpencil_export_svg_exec(bContext *C, wmOperator *op)
 
   for(gpl = gpd->layers.first; gpl; gpl = gpl->next){
     Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
-    BKE_svg_data_from_gpencil(gpd,ta,gpl,CTX_data_scene(C)->r.cfra);
+    ED_svg_data_from_gpencil(gpd,ta,gpl,CTX_data_scene(C)->r.cfra);
   }
-
-  
 
   return OPERATOR_FINISHED;
 }
