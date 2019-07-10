@@ -25,6 +25,7 @@
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_text.h"
+#include "BKE_writesvg.h"
 #include "GPU_draw.h"
 
 #include "GPU_batch.h"
@@ -5123,7 +5124,7 @@ static int lanpr_export_svg_exec(bContext *C, wmOperator *op)
 
   for(ll = lanpr->line_layers.first; ll; ll = ll->next){
     Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
-    /* exporter here */
+    BKE_svg_data_from_lanpr_chain(ta,rb,ll);
   }
 
   return OPERATOR_FINISHED;

@@ -36,6 +36,10 @@
 #include "DNA_screen_types.h"
 #include "DNA_text_types.h"
 
+/* For LANPR */
+#include "DNA_lanpr_types.h"
+#include "lanpr_data_types.h"
+
 #include "DEG_depsgraph.h"
 
 #include "MEM_guardedalloc.h"
@@ -94,6 +98,12 @@ typedef struct GPencilSVGIterator{
     int point_i;
 }GPencilSVGIterator;
 
+typedef struct LanprSVGIterator{
+    LANPR_RenderLineChain* rlc;
+    LANPR_LineLayer* ll;
+    LANPR_RenderLineChainItem * rlci;
+}LanprSVGIterator;
+
 static int svg_gpencil_get_path_callback(GPencilSVGIterator* iterator, float* fill_color, float* stroke_color, float* stroke_width){
     GPencilSVGIterator* sr = (GPencilSVGIterator*)iterator;
     if(!sr->stroke){
@@ -114,7 +124,6 @@ static int svg_gpencil_get_path_callback(GPencilSVGIterator* iterator, float* fi
     zero_v3(stroke_color);
     return 1;
 }
-
 static int svg_gpencil_get_node_callback(GPencilSVGIterator* iterator, float* x, float* y){
     GPencilSVGIterator* sr = (GPencilSVGIterator*)iterator;
     if(!sr->point){
@@ -159,6 +168,72 @@ bool BKE_svg_data_from_gpencil(bGPdata* gpd, Text* ta, bGPDlayer* layer, int fra
     write_svg_head(ta);
 
     write_paths_from_callback(&gsr, ta, svg_gpencil_get_path_callback,svg_gpencil_get_node_callback);
+
+    write_svg_end(ta);
+
+    return true;
+}
+
+static bool lanpr_chain_match_layer(LANPR_RenderLineChain* rlc, LANPR_LineLayer* ll){
+    if(!rlc || !ll){
+        return false;
+    }
+    if(ll->use_multiple_levels){
+        if(rlc->level>=ll->qi_begin && rlc->level<=ll->qi_end){
+            return true;
+        }
+    }else{
+        if(rlc->level == ll->qi_begin){
+            return true;
+        }
+    }
+    return false;
+}
+static int svg_lanpr_get_path_callback(LanprSVGIterator* iterator, float* fill_color, float* stroke_color, float* stroke_width){
+    LanprSVGIterator* lsi = (LanprSVGIterator*)iterator;
+    if(lsi->rlc){
+        lsi->rlc = lsi->rlc->next;
+        while(lsi->rlc && !lanpr_chain_match_layer(lsi->rlc,lsi->ll)){
+            lsi->rlc = lsi->rlc->next;
+        }
+        if(lsi->rlc)
+            lsi->rlci = lsi->rlc->chain.first;
+    }else{
+        return 0;
+    }
+
+    *stroke_width = lsi->ll->thickness;
+    
+    /* TODO: no material access yet */
+    zero_v3(fill_color);
+    zero_v3(stroke_color);
+    return 1;
+}
+static int svg_lanpr_get_node_callback(LanprSVGIterator* iterator, float* x, float* y){
+    LanprSVGIterator* lsi = (LanprSVGIterator*)iterator;
+    if(!lsi->rlci){
+        return 0;
+    }else{
+        *x = lsi->rlci->pos[0];
+        *y = lsi->rlci->pos[1];
+        lsi->rlci = lsi->rlci->next;
+        return 1;
+    }
+}
+
+bool BKE_svg_data_from_lanpr_chain(Text* ta, LANPR_RenderBuffer* rb, LANPR_LineLayer* ll){
+    if(!ll || !rb || !rb->chains.first){
+        return false;
+    }
+
+    LanprSVGIterator lsi;
+    lsi.ll = ll;
+    lsi.rlc = rb->chains.first;
+    lsi.rlci = lsi.rlc->chain.first;
+
+    write_svg_head(ta);
+
+    write_paths_from_callback(&lsi, ta, svg_lanpr_get_path_callback,svg_lanpr_get_node_callback);
 
     write_svg_end(ta);
 

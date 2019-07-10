@@ -25,6 +25,7 @@
  */
 
 bool BKE_svg_data_from_gpencil(struct bGPdata* gpd, struct Text* ta, struct bGPDlayer* layer, int frame);
+bool BKE_svg_data_from_lanpr_chain(Text* ta, struct LANPR_RenderBuffer* rb, struct LANPR_LineLayer* ll);
 
 
 #endif
