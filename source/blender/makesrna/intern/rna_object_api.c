@@ -718,9 +718,8 @@ static bool rna_Object_update_from_editmode(Object *ob, Main *bmain)
 }
 
 bool rna_Object_convert_to_gpencil(Object *ob,
-                                   Main *bmain,
+                                   bContext *C,
                                    ReportList *reports,
-                                   Scene *scene,
                                    Object *ob_gpencil,
                                    bool gpencil_lines,
                                    bool use_collections)
@@ -732,6 +731,8 @@ bool rna_Object_convert_to_gpencil(Object *ob,
                 ob->id.name + 2);
     return false;
   }
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
 
   BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, gpencil_lines, use_collections);
 
@@ -1186,10 +1187,8 @@ void RNA_api_object(StructRNA *srna)
   /* Convert curve object to gpencil strokes. */
   func = RNA_def_function(srna, "convert_to_gpencil", "rna_Object_convert_to_gpencil");
   RNA_def_function_ui_description(func, "Convert a curve object to grease pencil strokes.");
-  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
 
-  parm = RNA_def_pointer(func, "scene", "Scene", "", "Scene of the object");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "ob_gpencil", "Object", "", "Grease Pencil object used to create new strokes");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
