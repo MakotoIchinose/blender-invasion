@@ -69,7 +69,7 @@ static void write_paths_from_callback(void* iterator, Text* ta, svg_get_path_cal
         
         first_in = 1;
         while(get_node(iterator,&x,&y)){
-            sprintf(buf,"%c %f %f\n",first_in?'M':'L',x,y);
+            sprintf(buf,"%c %f %f\n",first_in?'M':'L',x,y); /* Should handle closed stroke as well. */
             BKE_text_write(ta, NULL, buf);
             first_in = 0;
         }
@@ -80,6 +80,7 @@ static void write_paths_from_callback(void* iterator, Text* ta, svg_get_path_cal
         /* end the path */
         sprintf(buf,"\" fill=#%X%X%X; stroke=#%X%X%X; stroke-width=\"%f\" />\n",
             FAC_255_COLOR3(fill_color), FAC_255_COLOR3(stroke_color), stroke_width);
+        BKE_text_write(ta, NULL, buf);
     }
     
 }
