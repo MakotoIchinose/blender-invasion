@@ -66,6 +66,7 @@
 
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
 extern void DRW_debug_sphere(const float center[3], const float radius, const float color[4]);
+extern void DRW_debug_line_v3v3(const float v1[3], const float v2[3], const float color[4]);
 #endif
 
 /* happens far too often, uncomment for development */
@@ -3103,7 +3104,8 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   return next_edge;
 }
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
-static void debug_RPO_edge_draw_sphere(BevelParams* bp, BMEdge* e) {
+static void debug_RPO_edge_draw_profile_orientation(BevelParams* bp, BMEdge* e) {
+  float co[3];
   float debug_color_1[4];
   debug_color_1[0] = 1.0;
   debug_color_1[1] = 0.0;
@@ -3116,17 +3118,30 @@ static void debug_RPO_edge_draw_sphere(BevelParams* bp, BMEdge* e) {
   debug_color_2[3] = 1.0;
   EdgeHalf *edge_half = find_edge_half(find_bevvert(bp, e->v1), e);
   if (edge_half->rightv->is_profile_start) {
-      DRW_debug_sphere(edge_half->rightv->nv.co, 0.05f, debug_color_1);
+      DRW_debug_sphere(edge_half->rightv->nv.co, 0.04f, debug_color_1);
+      mid_v3_v3v3(co, e->v1->co, e->v2->co);
+      DRW_debug_line_v3v3(co, edge_half->rightv->nv.co, debug_color_1);
+      DRW_debug_line_v3v3(e->v1->co, edge_half->rightv->nv.co, debug_color_1);
   }
   else {
-      DRW_debug_sphere(edge_half->leftv->nv.co, 0.05f, debug_color_1);
+      DRW_debug_sphere(edge_half->leftv->nv.co, 0.04f, debug_color_1);
+      mid_v3_v3v3(co, e->v1->co, e->v2->co);
+      DRW_debug_line_v3v3(co, edge_half->leftv->nv.co, debug_color_1);
+      DRW_debug_line_v3v3(e->v1->co, edge_half->leftv->nv.co, debug_color_1);
   }
+
   edge_half = find_edge_half(find_bevvert(bp, e->v2), e);
   if (edge_half->rightv->is_profile_start) {
-      DRW_debug_sphere(edge_half->rightv->nv.co, 0.06f, debug_color_2);
+      DRW_debug_sphere(edge_half->rightv->nv.co, 0.05f, debug_color_2);
+      mid_v3_v3v3(co, e->v1->co, e->v2->co);
+      DRW_debug_line_v3v3(co, edge_half->rightv->nv.co, debug_color_2);
+      DRW_debug_line_v3v3(e->v1->co, edge_half->rightv->nv.co, debug_color_2);
   }
   else {
-      DRW_debug_sphere(edge_half->leftv->nv.co, 0.06f, debug_color_2);
+      DRW_debug_sphere(edge_half->leftv->nv.co, 0.05f, debug_color_2);
+      mid_v3_v3v3(co, e->v1->co, e->v2->co);
+      DRW_debug_line_v3v3(co, edge_half->leftv->nv.co, debug_color_2);
+      DRW_debug_line_v3v3(e->v1->co, edge_half->leftv->nv.co, debug_color_2);
   }
 }
 #endif
@@ -7182,7 +7197,7 @@ void BM_mesh_bevel(BMesh *bm,
   if (bp.use_custom_profile) {
     /* For now we need to sample the custom profile with at least as many segments as points */
     if (bp.seg < bp.prwdgt->totpoint) {
-      bp.seg = bp.prwdgt->totpoint - 1;
+      bp.seg = bp.prwdgt->totpoint;
     }
 //    profilewidget_initialize(bp.prwdgt, (short)bp.seg + 1);
   }
@@ -7246,7 +7261,7 @@ void BM_mesh_bevel(BMesh *bm,
     if (bp.use_custom_profile) {
       BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
-          debug_RPO_edge_draw_sphere(&bp, e);
+          debug_RPO_edge_draw_profile_orientation(&bp, e);
         }
       }
     }
