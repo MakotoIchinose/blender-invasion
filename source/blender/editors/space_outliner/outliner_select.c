@@ -1587,6 +1587,7 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
 
 /* **************** Walk Select Tool ****************** */
 
+/* Given a tree element return the rightmost child that is visible in the outliner */
 static TreeElement *outliner_find_rightmost_visible_child(SpaceOutliner *soops, TreeElement *te)
 {
   while (te->subtree.last) {
@@ -1600,6 +1601,21 @@ static TreeElement *outliner_find_rightmost_visible_child(SpaceOutliner *soops, 
   return te;
 }
 
+/* Find previous visible element in the tree  */
+static TreeElement *outliner_find_previous_element(SpaceOutliner *soops, TreeElement *walk_element)
+{
+  if (walk_element->prev) {
+    walk_element = outliner_find_rightmost_visible_child(soops, walk_element->prev);
+  }
+  else if (walk_element->parent) {
+    /* Use parent if at beginning of list */
+    walk_element = walk_element->parent;
+  }
+
+  return walk_element;
+}
+
+/* Recursively search up the tree until a successor to a given element is found */
 static TreeElement *outliner_element_find_successor_in_parents(TreeElement *te)
 {
   TreeElement *successor = te;
@@ -1616,125 +1632,121 @@ static TreeElement *outliner_element_find_successor_in_parents(TreeElement *te)
   return te;
 }
 
-static TreeElement *do_outliner_select_walk_up(SpaceOutliner *soops, TreeElement *active)
+/* Find next visible element in the tree */
+static TreeElement *outliner_find_next_element(SpaceOutliner *soops, TreeElement *walk_element)
 {
-  if (active->prev) {
-    active = outliner_find_rightmost_visible_child(soops, active->prev);
-  }
-  else if (active->parent) {
-    active = active->parent;
-  }
+  TreeStoreElem *tselem = TREESTORE(walk_element);
 
-  return active;
-}
-
-static TreeElement *do_outliner_select_walk_down(SpaceOutliner *soops, TreeElement *active)
-{
-  TreeStoreElem *tselem = TREESTORE(active);
-
-  if (TSELEM_OPEN(tselem, soops) && active->subtree.first) {
-    active = active->subtree.first;
+  if (TSELEM_OPEN(tselem, soops) && walk_element->subtree.first) {
+    walk_element = walk_element->subtree.first;
   }
-  else if (active->next) {
-    active = active->next;
+  else if (walk_element->next) {
+    walk_element = walk_element->next;
   }
   else {
-    active = outliner_element_find_successor_in_parents(active);
+    walk_element = outliner_element_find_successor_in_parents(walk_element);
   }
 
-  return active;
+  return walk_element;
 }
 
-static void do_outliner_select_walk(
-    bContext *C, SpaceOutliner *soops, TreeElement *active, const int direction, const bool extend)
+static void do_outliner_select_walk(SpaceOutliner *soops,
+                                    TreeElement *walk_element,
+                                    const int direction,
+                                    const bool extend)
 {
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  TreeStoreElem *tselem = TREESTORE(active);
+  TreeStoreElem *tselem = TREESTORE(walk_element);
 
   if (!extend) {
     outliner_flag_set(&soops->tree, TSE_SELECTED, false);
   }
-  tselem->flag &= ~TSE_ACTIVE;
+  tselem->flag &= ~TSE_WALK;
 
   switch (direction) {
     case OUTLINER_SELECT_WALK_UP:
-      active = do_outliner_select_walk_up(soops, active);
+      walk_element = outliner_find_previous_element(soops, walk_element);
       break;
     case OUTLINER_SELECT_WALK_DOWN:
-      active = do_outliner_select_walk_down(soops, active);
+      walk_element = outliner_find_next_element(soops, walk_element);
       break;
     case OUTLINER_SELECT_WALK_LEFT:
       /* Close open element or jummp active to parent */
       if (TSELEM_OPEN(tselem, soops)) {
         tselem->flag |= TSE_CLOSED;
       }
-      else if (active->parent) {
-        active = active->parent;
+      else if (walk_element->parent) {
+        walk_element = walk_element->parent;
       }
       break;
     case OUTLINER_SELECT_WALK_RIGHT:
-      if (!TSELEM_OPEN(tselem, soops) && active->subtree.first) {
+      if (!TSELEM_OPEN(tselem, soops) && walk_element->subtree.first) {
         tselem->flag &= ~TSE_CLOSED;
       }
       break;
   }
-  TreeStoreElem *tselem_new = TREESTORE(active);
 
+  TreeStoreElem *tselem_new = TREESTORE(walk_element);
+
+  /* If new element is already selected, deselect the previous element */
   if (extend) {
-    const short new_flag = (extend && (tselem_new->flag & TSE_SELECTED)) ? 0 : TSE_SELECTED;
-    tselem->flag &= ~(TSE_ACTIVE | TSE_SELECTED);
-    tselem->flag |= new_flag;
+    tselem->flag = (tselem_new->flag & TSE_SELECTED) ? (tselem->flag & ~TSE_SELECTED) :
+                                                       (tselem->flag | TSE_SELECTED);
   }
 
-  /* Activate rather than just setting flags to support mode switching */
-  outliner_item_select(soops, active, extend, false);
-  do_outliner_item_activate_tree_element(
-      C, scene, view_layer, soops, active, tselem_new, extend, false);
+  tselem_new->flag |= TSE_SELECTED | TSE_WALK;
+}
+
+/* Find walk select element, or set it if it does not exist.
+ * Changed is set to true if walk element is found, false if it was set */
+static TreeElement *find_walk_select_start_element(SpaceOutliner *soops, bool *changed)
+{
+  TreeElement *walk_element = outliner_find_element_with_flag(&soops->tree, TSE_WALK);
+
+  *changed = false;
+
+  /* If no walk element exists, start from active */
+  if (!walk_element) {
+    TreeElement *active_element = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
+
+    /* If no active element exists, use the first element in the tree */
+    if (!active_element) {
+      walk_element = soops->tree.first;
+    }
+    else {
+      walk_element = active_element;
+    }
+
+    *changed = true;
+  }
+
+  /* If walk element is not visible, set that element's first visible parent as walk element */
+  if (!outliner_is_element_visible(walk_element)) {
+    while (!outliner_is_element_visible(walk_element)) {
+      walk_element = walk_element->parent;
+    }
+    *changed = true;
+  }
+
+  return walk_element;
 }
 
 static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   ARegion *ar = CTX_wm_region(C);
+
   const int direction = RNA_enum_get(op->ptr, "direction");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
 
-  TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
+  bool changed;
+  TreeElement *walk_element = find_walk_select_start_element(soops, &changed);
 
-  Object *obact = OBACT(view_layer);
-  Base *base = BKE_view_layer_base_find(view_layer, obact);
-
-  if (obact->mode != OB_MODE_OBJECT) {
-    do_outliner_activate_obdata(C, scene, view_layer, base, false);
-  }
-
-  /* Set first element to active if no active exists */
-  if (!active) {
-    active = soops->tree.first;
-    TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
-  }
-  else if (!outliner_is_element_visible(active)) {
-    /* If active is not visible, set its first visble parent to active */
-    while (!outliner_is_element_visible(active)) {
-      active = active->parent;
-    }
-
-    outliner_flag_set(&soops->tree, TSE_SELECTED | TSE_ACTIVE, false);
-    TREESTORE(active)->flag |= TSE_SELECTED | TSE_ACTIVE;
+  /* If finding the starting walk select element did not move the element, proceed to walk */
+  if (!changed) {
+    do_outliner_select_walk(soops, walk_element, direction, extend);
   }
   else {
-    TreeStoreElem *tselem = TREESTORE(active);
-
-    /* If active is not selected, just select it */
-    if ((tselem->flag & TSE_SELECTED) == 0) {
-      tselem->flag |= TSE_SELECTED;
-    }
-    else {
-      do_outliner_select_walk(C, soops, active, direction, extend);
-    }
+    TREESTORE(walk_element)->flag |= TSE_SELECTED | TSE_WALK;
   }
 
   if (soops->flag & SO_SYNC_SELECTION) {
@@ -1758,7 +1770,7 @@ void OUTLINER_OT_select_walk(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Walk Select";
   ot->idname = "OUTLINER_OT_select_walk";
-  ot->description = "Use walk selection to select tree elements";
+  ot->description = "Use walk navigation to select tree elements";
 
   /* api callbacks */
   ot->invoke = outliner_walk_select_invoke;
@@ -1771,7 +1783,7 @@ void OUTLINER_OT_select_walk(wmOperatorType *ot)
                       direction_items,
                       0,
                       "Walk Direction",
-                      "Select file in this direction");
+                      "Select element in this direction");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend selection on walk");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);

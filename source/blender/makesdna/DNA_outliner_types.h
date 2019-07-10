@@ -61,6 +61,7 @@ enum {
   TSE_DRAG_BEFORE = (1 << 7),
   TSE_DRAG_AFTER = (1 << 8),
   TSE_ACTIVE = (1 << 9),
+  TSE_WALK = (1 << 10),
   TSE_DRAG_ANY = (TSE_DRAG_INTO | TSE_DRAG_BEFORE | TSE_DRAG_AFTER),
 };
 
