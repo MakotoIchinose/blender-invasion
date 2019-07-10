@@ -355,6 +355,7 @@ if(WITH_OPENXR)
     intern/GHOST_XrGraphicsBinding.cpp
     intern/GHOST_XrSession.cpp
 
+    GHOST_IXrContext.h
     intern/GHOST_Xr_intern.h
     intern/GHOST_Xr_openxr_includes.h
     intern/GHOST_XrContext.h

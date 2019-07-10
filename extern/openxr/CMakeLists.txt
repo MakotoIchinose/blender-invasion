@@ -20,6 +20,8 @@
 set(MAJOR 0)
 set(MINOR 90)
 
+include(xr_platform_defines)
+
 include(CheckFunctionExists)
 CHECK_FUNCTION_EXISTS(secure_getenv HAVE_SECURE_GETENV)
 CHECK_FUNCTION_EXISTS(__secure_getenv HAVE___SECURE_GETENV)
