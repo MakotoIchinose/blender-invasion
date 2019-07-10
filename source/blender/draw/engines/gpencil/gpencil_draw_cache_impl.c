@@ -385,7 +385,7 @@ GPUBatch *gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
   Object *ob = draw_ctx->obact;
 
   tGPspoint *points = gpd->runtime.sbuffer;
-  int totpoints = gpd->runtime.sbuffer_size;
+  int totpoints = gpd->runtime.sbuffer_used;
   /* if cyclic needs more vertex */
   int cyclic_add = (gpd->runtime.sbuffer_sflag & GP_STROKE_CYCLIC) ? 1 : 0;
   int totvertex = totpoints + cyclic_add + 2;
@@ -487,7 +487,7 @@ GPUBatch *gpencil_get_buffer_point_geom(bGPdata *gpd, short thickness)
   Object *ob = draw_ctx->obact;
 
   tGPspoint *points = gpd->runtime.sbuffer;
-  int totpoints = gpd->runtime.sbuffer_size;
+  int totpoints = gpd->runtime.sbuffer_used;
 
   static GPUVertFormat format = {0};
   static uint pos_id, color_id, thickness_id, uvdata_id, prev_pos_id;
@@ -631,7 +631,7 @@ GPUBatch *gpencil_get_buffer_fill_geom(bGPdata *gpd)
   }
 
   const tGPspoint *points = gpd->runtime.sbuffer;
-  int totpoints = gpd->runtime.sbuffer_size;
+  int totpoints = gpd->runtime.sbuffer_used;
   if (totpoints < 3) {
     return NULL;
   }

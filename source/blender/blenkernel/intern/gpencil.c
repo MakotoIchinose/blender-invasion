@@ -2652,16 +2652,17 @@ static void gpencil_add_new_points(bGPDstroke *gps, float *coord_array, int init
 /* Helper function to get the first collection that includes the object */
 static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
 {
+  Collection *mycol = NULL;
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
     for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
-      if (cob->ob == ob) {
-        return collection;
+      if ((mycol == NULL) && (cob->ob == ob)) {
+        mycol = collection;
       }
     }
   }
   FOREACH_SCENE_COLLECTION_END;
 
-  return NULL;
+  return mycol;
 }
 
 /* Convert a curve to grease pencil stroke.
