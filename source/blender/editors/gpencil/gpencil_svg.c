@@ -53,13 +53,13 @@
 
 static int gpencil_export_svg_exec(bContext *C, wmOperator *op)
 {
-  Object* gpobj = CTX_data_active_object(C);
+  Object *gpobj = CTX_data_active_object(C);
   bGPdata *gpd = gpobj->data;
-  bGPDlayer* gpl;
+  bGPDlayer *gpl;
 
-  for(gpl = gpd->layers.first; gpl; gpl = gpl->next){
-    Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
-    ED_svg_data_from_gpencil(gpd,ta,gpl,CTX_data_scene(C)->r.cfra);
+  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    Text *ta = BKE_text_add(CTX_data_main(C), "exported_svg");
+    ED_svg_data_from_gpencil(gpd, ta, gpl, CTX_data_scene(C)->r.cfra);
   }
 
   return OPERATOR_FINISHED;
@@ -67,9 +67,9 @@ static int gpencil_export_svg_exec(bContext *C, wmOperator *op)
 
 static bool gpencil_found(bContext *C)
 {
-  Object* o = CTX_data_active_object(C);
-  
-  if(o && o->type == OB_GPENCIL){
+  Object *o = CTX_data_active_object(C);
+
+  if (o && o->type == OB_GPENCIL) {
     return true;
   }
   return false;
@@ -94,4 +94,3 @@ void GPENCIL_OT_export_svg(wmOperatorType *ot)
   /* properties */
   /* Should have: facing, layer, visibility, file split... */
 }
-

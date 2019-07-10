@@ -4406,11 +4406,11 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
   if ((lanpr->enable_chaining || !is_lanpr_engine) && (!intersectons_only)) {
     float t_image = rb->scene->lanpr.chaining_image_threshold;
     float t_geom = rb->scene->lanpr.chaining_geometry_threshold;
-    
-    lanpr_NO_THREAD_chain_feature_lines(rb); 
+
+    lanpr_NO_THREAD_chain_feature_lines(rb);
     lanpr_split_chains_for_fixed_occlusion(rb);
 
-    if (t_image<FLT_EPSILON && t_geom<FLT_EPSILON){
+    if (t_image < FLT_EPSILON && t_geom < FLT_EPSILON) {
       t_geom = 0.0f;
       t_image = 0.01f;
     }
@@ -4419,7 +4419,7 @@ int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_
     lanpr_connect_chains(rb, 0);
 
     /* This configuration ensures there won't be accidental lost of short segments */
-    lanpr_discard_short_chains(rb, MIN3(t_image,t_geom,0.01f)-FLT_EPSILON);
+    lanpr_discard_short_chains(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
   }
 
   rb->cached_for_frame = rb->scene->r.cfra;
@@ -5120,13 +5120,14 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
 static int lanpr_export_svg_exec(bContext *C, wmOperator *op)
 {
-  LANPR_RenderBuffer* rb = lanpr_share.render_buffer_shared;
-  SceneLANPR* lanpr = &rb->scene->lanpr;
-  LANPR_LineLayer* ll;
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
+  SceneLANPR *lanpr =
+      &rb->scene->lanpr; /* XXX: This is not evaluated for copy_on_write stuff... */
+  LANPR_LineLayer *ll;
 
-  for(ll = lanpr->line_layers.first; ll; ll = ll->next){
-    Text *ta = BKE_text_add(CTX_data_main(C),"exported_svg");
-    ED_svg_data_from_lanpr_chain(ta,rb,ll);
+  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
+    Text *ta = BKE_text_add(CTX_data_main(C), "exported_svg");
+    ED_svg_data_from_lanpr_chain(ta, rb, ll);
   }
 
   return OPERATOR_FINISHED;
@@ -5134,7 +5135,7 @@ static int lanpr_export_svg_exec(bContext *C, wmOperator *op)
 
 static bool lanpr_render_buffer_found(bContext *C)
 {
-  if(lanpr_share.render_buffer_shared){
+  if (lanpr_share.render_buffer_shared) {
     return true;
   }
   return false;
@@ -5159,5 +5160,3 @@ void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
   /* properties */
   /* Should have: facing, layer, visibility, file split... */
 }
-
-
