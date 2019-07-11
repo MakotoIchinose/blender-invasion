@@ -35,6 +35,7 @@ ccl_device_forceinline int bvh_aligned_node_intersect(KernelGlobals *kg,
                                                       const float t,
                                                       const int node_addr,
                                                       const uint visibility,
+                                                      const float rayTime,
                                                       float dist[2])
 {
 
@@ -43,6 +44,7 @@ ccl_device_forceinline int bvh_aligned_node_intersect(KernelGlobals *kg,
   float4 node0 = kernel_tex_fetch(__bvh_nodes, node_addr + 1);
   float4 node1 = kernel_tex_fetch(__bvh_nodes, node_addr + 2);
   float4 node2 = kernel_tex_fetch(__bvh_nodes, node_addr + 3);
+  float4 timeLimits = kernel_tex_fetch(__bvh_nodes, node_addr + 4);
 
   /* intersect ray against child nodes */
   float c0lox = (node0.x - P.x) * idir.x;
@@ -65,6 +67,12 @@ ccl_device_forceinline int bvh_aligned_node_intersect(KernelGlobals *kg,
 
   dist[0] = c0min;
   dist[1] = c1min;
+
+  if(timeLimits.x > rayTime || timeLimits.z < rayTime)
+      c0max = -1.0f;
+
+  if(timeLimits.y > rayTime || timeLimits.w < rayTime)
+      c1max = -1.0f;
 
 #  ifdef __VISIBILITY_FLAG__
   /* this visibility test gives a 5% performance hit, how to solve? */
@@ -138,6 +146,7 @@ ccl_device_forceinline int bvh_node_intersect(KernelGlobals *kg,
                                               const float t,
                                               const int node_addr,
                                               const uint visibility,
+                                              const float rayTime,
                                               float dist[2])
 {
   float4 node = kernel_tex_fetch(__bvh_nodes, node_addr);
@@ -145,7 +154,7 @@ ccl_device_forceinline int bvh_node_intersect(KernelGlobals *kg,
     return bvh_unaligned_node_intersect(kg, P, dir, idir, t, node_addr, visibility, dist);
   }
   else {
-    return bvh_aligned_node_intersect(kg, P, idir, t, node_addr, visibility, dist);
+    return bvh_aligned_node_intersect(kg, P, idir, t, node_addr, visibility, rayTime, dist);
   }
 }
 

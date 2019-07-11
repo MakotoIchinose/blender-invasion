@@ -330,6 +330,7 @@ BVHNode* BVHEmbreeConverter::getBVH2() {
     std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
     std::cout << "BVH4 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     root = bvh_shrink(root);
+    std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
     std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     return root;
 }

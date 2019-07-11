@@ -76,8 +76,8 @@ void BVH2::pack_aligned_inner(const BVHStackEntry &e,
                     e1.node->bounds,
                     e0.encodeIdx(),
                     e1.encodeIdx(),
-                    e.node->time_from,
-                    e.node->time_to,
+                    make_float2(e0.node->time_from, e0.node->time_to),
+                    make_float2(e1.node->time_from, e1.node->time_to),
                     e0.node->visibility,
                     e1.node->visibility);
 }
@@ -87,8 +87,8 @@ void BVH2::pack_aligned_node(int idx,
                              const BoundBox &b1,
                              int c0,
                              int c1,
-                             float timeFrom,
-                             float timeTo,
+                             float2 time0,
+                             float2 time1,
                              uint visibility0,
                              uint visibility1)
 {
@@ -111,9 +111,10 @@ void BVH2::pack_aligned_node(int idx,
                 __float_as_int(b1.min.z),
                 __float_as_int(b0.max.z),
                 __float_as_int(b1.max.z)),
-      make_int4(__float_as_int(timeFrom),
-                __float_as_int(timeTo),
-                0, 0),
+      make_int4(__float_as_int(time0.x),
+                __float_as_int(time1.x),
+                __float_as_int(time0.y),
+                __float_as_int(time1.y)),
   };
 
   memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE);
@@ -289,7 +290,12 @@ void BVH2::refit_node(int idx, bool leaf, BoundBox &bbox, uint &visibility)
           idx, aligned_space, aligned_space, bbox0, bbox1, c0, c1, visibility0, visibility1);
     }
     else {
-      pack_aligned_node(idx, bbox0, bbox1, c0, c1, __int_as_float(data[4].x), __int_as_float(data[4].y), visibility0, visibility1);
+      pack_aligned_node(idx,
+                        bbox0, bbox1,
+                        c0, c1,
+                        make_float2(__int_as_float(data[4].x), __int_as_float(data[4].z)),
+                        make_float2(__int_as_float(data[4].y), __int_as_float(data[4].w)),
+                        visibility0, visibility1);
     }
 
     bbox.grow(bbox0);

@@ -65,8 +65,8 @@ class BVH2 : public BVH {
                          const BoundBox &b1,
                          int c0,
                          int c1,
-                         float timeFrom,
-                         float timeTo,
+                         float2 time0,
+                         float2 time1,
                          uint visibility0,
                          uint visibility1);
 

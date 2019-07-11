@@ -118,6 +118,7 @@ ccl_device_inline
                                        isect->t,
                                        node_addr,
                                        visibility,
+                                       ray->time,
                                        dist);
 #else  // __KERNEL_SSE2__
         traverse_mask = NODE_INTERSECT(kg,

@@ -92,7 +92,7 @@ int BVHNode::getSubtreeSize(BVH_STAT stat) const
       }
       return cnt;
     case BVH_STAT_TIMELIMIT_NODE:
-      if(this->time_from != 0 || this->time_to != 1)
+      if(this->time_from > 0 || this->time_to < 1)
           cnt = 1;
       break;
     default:
