@@ -3595,7 +3595,8 @@ void draw_outliner(const bContext *C)
   outliner_build_tree(mainvar, scene, view_layer, soops, ar);  // always
 
   /* Sync selection state from view layer or clean outliner if needed */
-  if (soops->flag & SO_SYNC_SELECTION) {
+  if (!ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS) &&
+      soops->flag & SO_SYNC_SELECTION) {
     outliner_sync_selection(C, soops);
   }
   else {

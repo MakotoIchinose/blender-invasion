@@ -46,8 +46,9 @@ class OUTLINER_HT_header(Header):
 
         layout.separator_spacer()
 
-        row = layout.row(align=True)
-        row.prop(space, "use_sync_selection", text="")
+        if display_mode not in {'LIBRARIES', 'DATA_API', 'ORPHAN_DATA'}:
+            row = layout.row(align=True)
+            row.prop(space, "use_sync_selection", text="")
 
         row = layout.row(align=True)
         if display_mode in {'SCENES', 'VIEW_LAYER'}:
