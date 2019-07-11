@@ -277,8 +277,8 @@ static eOLDrawState active_viewlayer(bContext *C,
 
 /**
  * Select object tree:
- * CTRL+LMB: Select/Deselect object and all children.
- * CTRL+SHIFT+LMB: Add/Remove object and all children.
+ * ALT+LMB: Select/Deselect object and all children.
+ * CTRL+ALT+LMB: Add/Remove object and all children.
  */
 static void do_outliner_object_select_recursive(ViewLayer *view_layer,
                                                 Object *ob_parent,
@@ -1455,7 +1455,7 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
   ot->poll = ED_operator_outliner_active;
 
   PropertyRNA *prop;
-  RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection for activation");
+  RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend selection for activation");
   prop = RNA_def_boolean(ot->srna, "range", false, "Range", "Select a range from active element");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
