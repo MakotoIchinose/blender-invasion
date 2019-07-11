@@ -76,7 +76,6 @@
 typedef struct TextUndoStep {
   UndoStep step;
   UndoRefID_Text text_ref;
-  TextUndoBuf data_dummy;
   struct {
 #ifdef USE_ARRAY_STORE
     BArrayState *state;
@@ -117,10 +116,6 @@ static void text_undosys_step_encode_init(struct bContext *C, UndoStep *us_p)
 
   UNUSED_VARS(C);
   /* XXX, use to set the undo type only. */
-
-  us->data_dummy.buf = NULL;
-  us->data_dummy.len = 0;
-  us->data_dummy.pos = -1;
 }
 
 static bool text_undosys_step_encode(struct bContext *C,
@@ -139,6 +134,7 @@ static bool text_undosys_step_encode(struct bContext *C,
     um_arraystore.bs = BLI_array_store_create(1, ARRAY_CHUNK_SIZE);
   }
   um_arraystore.users += 1;
+  const size_t total_size_prev = BLI_array_store_calc_size_compacted_get(um_arraystore.bs);
 
   us->data.state = BLI_array_store_state_add(um_arraystore.bs, buf, buf_strlen, NULL);
   MEM_freeN(buf);
@@ -166,7 +162,11 @@ static bool text_undosys_step_encode(struct bContext *C,
 
   us->text_ref.ptr = text;
 
-  us->step.data_size = us->data_dummy.len;
+#ifdef USE_ARRAY_STORE
+  us->step.data_size = BLI_array_store_calc_size_compacted_get(um_arraystore.bs) - total_size_prev;
+#else
+  us->step.data_size = us->data.buf_strlen + 1;
+#endif
 
   return true;
 }
@@ -225,8 +225,6 @@ static void text_undosys_step_free(UndoStep *us_p)
     um_arraystore.bs = NULL;
   }
 #endif
-
-  MEM_SAFE_FREE(us->data_dummy.buf);
 }
 
 static void text_undosys_foreach_ID_ref(UndoStep *us_p,
@@ -262,12 +260,11 @@ void ED_text_undosys_type(UndoType *ut)
  * \{ */
 
 /* Use operator system to finish the undo step. */
-TextUndoBuf *ED_text_undo_push_init(bContext *C)
+UndoStep *ED_text_undo_push_init(bContext *C)
 {
   UndoStack *ustack = ED_undo_stack_get();
   UndoStep *us_p = BKE_undosys_step_push_init_with_type(ustack, C, NULL, BKE_UNDOSYS_TYPE_TEXT);
-  TextUndoStep *us = (TextUndoStep *)us_p;
-  return &us->data_dummy;
+  return us_p;
 }
 
 /** \} */
