@@ -22,7 +22,9 @@
 #define __GHOST_IXRGRAPHICSBINDING_H__
 
 #include <memory>
+#include <string>
 #include <vector>
+
 #include "GHOST_Xr_openxr_includes.h"
 
 class GHOST_IXrGraphicsBinding {

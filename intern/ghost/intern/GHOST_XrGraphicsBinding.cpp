@@ -152,12 +152,26 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #ifdef WIN32
 class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
  public:
-  bool checkVersionRequirements(GHOST_Context * /*ghost_ctx*/,
-                                XrInstance /*instance*/,
-                                XrSystemId /*system_id*/,
-                                std::string * /*r_requirement_info*/) const override
+  bool checkVersionRequirements(GHOST_Context *ghost_ctx,
+                                XrInstance instance,
+                                XrSystemId system_id,
+                                std::string *r_requirement_info) const override
   {
-    // TODO
+
+    GHOST_ContextD3D *ctx_dx = static_cast<GHOST_ContextD3D *>(ghost_ctx);
+    XrGraphicsRequirementsD3D11KHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR};
+
+    xrGetD3D11GraphicsRequirementsKHR(instance, system_id, &gpu_requirements);
+
+    if (r_requirement_info) {
+      std::ostringstream strstream;
+      strstream << "Min DirectX 11 Feature Level " << gpu_requirements.minFeatureLevel
+                << std::endl;
+
+      *r_requirement_info = std::move(strstream.str());
+    }
+
+    return ctx_dx->m_device->GetFeatureLevel() >= gpu_requirements.minFeatureLevel;
   }
 
   void initFromGhostContext(GHOST_Context *ghost_ctx) override
