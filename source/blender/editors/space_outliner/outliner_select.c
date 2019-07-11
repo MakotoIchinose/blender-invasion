@@ -1108,6 +1108,12 @@ eOLDrawState tree_element_type_active(bContext *C,
 
 /* ================================================ */
 
+void outliner_element_activate(SpaceOutliner *soops, TreeStoreElem *tselem)
+{
+  outliner_flag_set(&soops->tree, TSE_ACTIVE | TSE_WALK, false);
+  tselem->flag |= TSE_ACTIVE | TSE_WALK;
+}
+
 /**
  * Action when clicking to activate an item (typically under the mouse cursor),
  * but don't do any cursor intersection checks.
@@ -1158,8 +1164,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   }
 
   /* Mark as active in the outliner */
-  outliner_flag_set(&soops->tree, TSE_ACTIVE, false);
-  tselem->flag |= TSE_ACTIVE;
+  outliner_element_activate(soops, tselem);
 
   if (tselem->type == 0) {  // the lib blocks
     /* editmode? */
@@ -1247,7 +1252,8 @@ void outliner_item_select(SpaceOutliner *soops,
                           const bool toggle)
 {
   TreeStoreElem *tselem = TREESTORE(te);
-  const short new_flag = toggle ? (tselem->flag ^ TSE_SELECTED) : (tselem->flag | TSE_SELECTED);
+  const short new_flag = (toggle && (tselem->flag & TSE_ACTIVE)) ? (tselem->flag ^ TSE_SELECTED) :
+                                                                   (tselem->flag | TSE_SELECTED);
 
   if (extend == false) {
     outliner_flag_set(&soops->tree, TSE_SELECTED, false);
@@ -1274,7 +1280,7 @@ static void do_outliner_range_select_recursive(ListBase *lb,
       TREESTORE(te)->flag |= TSE_SELECTED;
     }
 
-    /* Don't look at closed elements */
+    /* Don't look inside closed elements */
     if (!(TREESTORE(te)->flag & TSE_CLOSED)) {
       do_outliner_range_select_recursive(&te->subtree, active, cursor, selecting);
     }
@@ -1296,9 +1302,9 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 
   outliner_flag_set(&soops->tree, TSE_SELECTED, false);
 
-  /* Only select active if under cursor */
+  /* Select active if under cursor */
   if (active == cursor) {
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
+    TREESTORE(cursor)->flag |= TSE_SELECTED;
     return;
   }
 
@@ -1721,6 +1727,8 @@ static TreeElement *find_walk_select_start_element(SpaceOutliner *soops, bool *c
 
   /* If walk element is not visible, set that element's first visible parent as walk element */
   if (!outliner_is_element_visible(walk_element)) {
+    TREESTORE(walk_element)->flag &= ~TSE_WALK;
+
     while (!outliner_is_element_visible(walk_element)) {
       walk_element = walk_element->parent;
     }

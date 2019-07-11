@@ -81,11 +81,9 @@ static void outliner_sync_selection_from_outliner(bContext *C, ListBase *tree)
         Base *base = (te->directdata) ? (Base *)te->directdata :
                                         BKE_view_layer_base_find(view_layer, ob);
 
+        /* Don't sync active state from outliner because activation is handled by selection
+         * operators */
         if (base) {
-          if (tselem->flag & TSE_ACTIVE) {
-            ED_object_base_activate(C, base);
-          }
-
           if (tselem->flag & TSE_SELECTED) {
             ED_object_base_select(base, BA_SELECT);
           }
@@ -146,6 +144,7 @@ static void outliner_sync_selection_from_outliner(bContext *C, ListBase *tree)
 /* Sync selection and active flags from active view layer, bones, and sequences to the outliner */
 static void outliner_sync_selection_to_outliner(const bContext *C,
                                                 ViewLayer *view_layer,
+                                                SpaceOutliner *soops,
                                                 ListBase *tree)
 {
   Scene *scene = CTX_data_scene(C);
@@ -154,8 +153,6 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
-    tselem->flag &= ~TSE_ACTIVE;
-
     if (tselem->type == 0) {
       if (te->idcode == ID_OB) {
         Object *ob = (Object *)tselem->id;
@@ -164,7 +161,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
         const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
 
         if (base && (ob == obact)) {
-          tselem->flag |= TSE_ACTIVE;
+          outliner_element_activate(soops, tselem);
         }
 
         if (is_selected) {
@@ -203,7 +200,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
       Sequence *seq = (Sequence *)tselem->id;
 
       if (seq == seq_act) {
-        tselem->flag |= TSE_ACTIVE;
+        outliner_element_activate(soops, tselem);
       }
 
       if (seq->flag & SELECT) {
@@ -214,7 +211,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
       }
     }
 
-    outliner_sync_selection_to_outliner(C, view_layer, &te->subtree);
+    outliner_sync_selection_to_outliner(C, view_layer, soops, &te->subtree);
   }
 }
 
@@ -256,7 +253,7 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
   if (soops->flag & SO_IS_DIRTY) {
     printf("\tSyncing dirty outliner...\n");
 
-    outliner_sync_selection_to_outliner(C, view_layer, &soops->tree);
+    outliner_sync_selection_to_outliner(C, view_layer, soops, &soops->tree);
 
     // if (soops->outlinevis == SO_SEQUENCE) {
     //   printf("\tSyncing sequences...\n");
