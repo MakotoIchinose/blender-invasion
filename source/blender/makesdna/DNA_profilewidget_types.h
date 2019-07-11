@@ -71,6 +71,7 @@ typedef struct ProfileWidget {
 enum {
   PROF_DO_CLIP = (1 << 0),
   PROF_USE_TABLE = (1 << 1),
+  PROF_SAMPLE_STRAIGHT_EDGES = (1 << 2),
 };
 
 typedef enum eProfileWidgetPresets {

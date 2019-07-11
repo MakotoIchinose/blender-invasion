@@ -49,7 +49,7 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
   const ProfileWidget *prwdgt = BMO_slot_ptr_get(op->slots_in, "prwdgt");
-  const bool sample_straight_edges = BMO_slot_bool_get(op->slots_in, "sample_straight_edges");
+  const int vmesh_method = BMO_slot_int_get(op->slots_in, "vmesh_method");
 
   if (offset > 0) {
     BMOIter siter;
@@ -95,7 +95,7 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
                   smoothresh,
                   use_custom_profile,
                   prwdgt,
-                  sample_straight_edges);
+                  vmesh_method);
 
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "faces.out", BM_FACE, BM_ELEM_TAG);
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "edges.out", BM_EDGE, BM_ELEM_TAG);

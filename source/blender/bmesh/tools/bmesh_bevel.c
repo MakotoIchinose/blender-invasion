@@ -101,9 +101,8 @@ typedef struct EdgeHalf {
   bool is_bev;                  /* is this edge beveled? */
   bool is_rev;                  /* is e->v2 the vertex at this end? */
   bool is_seam;                 /* is e a seam for custom loopdata (e.g., UVs)? */
-  /** Used during the custom profile orientation pass */
-  bool visited_custom;
-  char _pad[5];
+  bool visited_custom;          /* Used during the custom profile orientation pass */
+  char _pad[4];
 } EdgeHalf;
 
 /* Profile specification.
@@ -179,11 +178,10 @@ typedef struct BoundVert {
   /** Is this boundvert the side of the custom profile's start */
   bool is_profile_start;
   /** Length of seam starting from current boundvert to next boundvert with ccw ordering */
+  char _pad[3];
   int seam_len;
   /** Same as seam_len but defines length of sharp edges */
   int sharp_len;
-
-  int _pad;
 } BoundVert;
 
 /* Mesh structure replacing a vertex */
@@ -197,6 +195,7 @@ typedef struct VMesh {
     M_POLY,    /* a simple polygon */
     M_ADJ,     /* "adjacent edges" mesh pattern */
     M_TRI_FAN, /* a simple polygon - fan filled */
+    M_CUTOFF,  /* A triangulated face at the end of each profile */
   } mesh_kind;
 
   int _pad;
@@ -283,9 +282,8 @@ typedef struct BevelParams {
   bool harden_normals;
   /** Should we use the custom profiles feature? */
   bool use_custom_profile;
-  /** Whether to sample straight edges from the profile widget */
-  bool sample_straight_edges;
   /** The struct used to store the custom profile input */
+  char _pad[3];
   const struct ProfileWidget *prwdgt;
   /** Vertex group array, maybe set if vertex_only. */
   const struct MDeformVert *dvert;
@@ -299,6 +297,8 @@ typedef struct BevelParams {
   int miter_outer;
   /** What kind of miter pattern to use on non-reflex angles. */
   int miter_inner;
+  /** The method to use for vertex mesh creation */
+  int vmesh_method;
   /** Amount to spread when doing inside miter. */
   float spread;
   /** Mesh's smoothresh, used if hardening. */
@@ -2770,7 +2770,14 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
       vm->mesh_kind = M_POLY;
     }
     else {
-      vm->mesh_kind = M_ADJ;
+      switch (bp->vmesh_method) {
+        case BEVEL_VMESH_ADJ:
+          vm->mesh_kind = M_ADJ;
+          break;
+        case BEVEL_VMESH_CUTOFF:
+          vm->mesh_kind = M_CUTOFF;
+          break;
+      }
     }
   }
 }
@@ -3369,7 +3376,7 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
   /* Use the solution to set new widths */
   v = vstart;
   i = 0;
-  do {
+  do {k
     val = EIG_linear_solver_variable_get(solver, 0, i);
     if (iscycle || i < np - 1) {
       eright = v->efirst;
@@ -4472,70 +4479,6 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
   }
 }
 
-/* HANS-TODO: I can probably replace this with creating a new profile for each ring along the
- * direction of the pipe and snapping to that with snap_to_custom_profile */
-static void snap_to_pipe_profile_custom(BoundVert *vpipe, float co[3], int seg)
-{
-  float va[3], vb[3], edir[3], va0[3], vb0[3], vmid0[3];
-  float plane[4], m[4][4], minv[4][4], p[3], snap[3];
-
-  float distance, min_distance, prof_v1[3], prof_v2[3];
-  int min_i = 0;
-  /* HANS-TODO: Merge new variables with old ones where possible */
-
-  Profile *pro = &vpipe->profile;
-  EdgeHalf *e = vpipe->ebev;
-
-  copy_v3_v3(va, pro->coa);
-  copy_v3_v3(vb, pro->cob);
-
-  /* Get a plane with the normal pointing along the beveled edge */
-  sub_v3_v3v3(edir, e->e->v1->co, e->e->v2->co);
-  plane_from_point_normal_v3(plane, co, edir);
-
-  closest_to_plane_v3(va0, plane, va);
-  closest_to_plane_v3(vb0, plane, vb);
-#if DEBUG_CUSTOM_PROFILE_ORIGINAL
-  printf("snap to superellipsoid co argument: (%0.3f, %0.3f, %0.3f)\n", (double)va0[0],
-                                                                        (double)va0[1],
-                                                                        (double)va0[2]);
-#endif
-
-  closest_to_plane_v3(vmid0, plane, pro->midco);
-  if (make_unit_square_map(va0, vmid0, vb0, m)) {
-    /* Transform co and project it onto superellipse */
-    if (!invert_m4_m4(minv, m)) {
-      /* shouldn't happen */
-      BLI_assert(!"failed inverse during pipe profile snap custom");
-      return;
-    }
-    mul_v3_m4v3(p, minv, co);
-
-    /* Find (index of) the profile's closest line segment to the point */
-    min_distance = FLT_MAX;
-    for (int i = 0; i < seg - 1; i++) {
-      closest_to_plane_v3(prof_v1, plane, &pro->prof_co_2[3 * i]);
-      closest_to_plane_v3(prof_v2, plane, &pro->prof_co_2[3 * (i + 1)]);
-      distance = dist_to_line_segment_v3(p, prof_v1, prof_v2);
-      if (distance < min_distance) {
-        min_distance = distance;
-        min_i = i;
-      }
-    }
-
-    /* Snap the point to the closest line segment we just found */
-    closest_to_line_segment_v3(p, p, &pro->prof_co_2[3 * min_i], &pro->prof_co_2[3 * (min_i + 1)]);
-
-    mul_v3_m4v3(snap, m, p);
-    copy_v3_v3(co, snap);
-  }
-  else {
-    /* planar case: just snap to line va0--vb0 */
-    closest_to_line_segment_v3(p, co, va0, vb0);
-    copy_v3_v3(co, p);
-  }
-}
-
 /* See pipe_test for conditions that make 'pipe'; vpipe is the return value from that.
  * We want to make an ADJ mesh but then snap the vertices to the profile in a plane
  * perpendicular to the pipes.
@@ -4566,14 +4509,7 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
           continue;
         }
         midline = even && k == ns2 && ((i == 0 && j == ns2) || (i == ipipe1 || i == ipipe2));
-        if (!bp->use_custom_profile) {
-          snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
-        }
-        else {
-          snap_to_pipe_profile_custom(vpipe,
-                                      mesh_vert(vm, i, j, k)->co,
-                                      power_of_2_max_i(bp->seg));
-        }
+        snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
       }
     }
   }
@@ -5021,13 +4957,13 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
     vm1 = tri_corner_adj_vmesh(bp, bv);
     /* the PRO_SQUARE_IN_R profile has boundary edges that merge
      * and no internal ring polys except possibly center ngon */
-    if (bp->pro_super_r == PRO_SQUARE_IN_R) {
+    if (bp->pro_super_r == PRO_SQUARE_IN_R && !bp->use_custom_profile) {
       build_square_in_vmesh(bp, bm, bv, vm1);
       return;
     }
   }
   else {
-    vm1 = adj_vmesh(bp, bv);
+      vm1 = adj_vmesh(bp, bv);
   }
 
   /* copy final vmesh into bv->vmesh, make BMVerts and BMFaces */
@@ -5151,6 +5087,13 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
   if (odd) {
     build_center_ngon(bp, bm, bv, mat_nr);
   }
+}
+
+/** Builds the vertex mesh when the vertex mesh type is set to "cut off" with a face closing
+ * off each incoming edge's profile */
+static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
+{
+
 }
 
 /* If we make a poly out of verts around bv, snapping to rep frep, will uv poly have zero area?
@@ -5528,6 +5471,8 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     case M_TRI_FAN:
       bevel_build_trifan(bp, bm, bv);
       break;
+    case M_CUTOFF:
+      bevel_build_cutoff(bp, bm, bv);
   }
 }
 
@@ -5621,6 +5566,8 @@ static int bevel_edge_order_extend(BMesh *bm, BevVert *bv, int i)
  * If this is the case, set bv->edges to such an order
  * and return true; else return unmark any partial path and return false.
  * Assume the first edge is already in bv->edges[0].e and it is tagged. */
+/* HANS-QUESTION: Could we enable this with versioning, where old files would keep the old code
+ * enabled but new files could use the new code? */
 #ifdef FASTER_FASTORDER
 /* The alternative older code is O(n^2) where n = # of edges incident to bv->v.
  * This implementation is O(n * m) where m = average number of faces attached to an edge incident
@@ -6848,7 +6795,8 @@ static void set_profile_spacing(BevelParams *bp)
                                                          (size_t)(seg + 1) * sizeof(double));
     if (bp->use_custom_profile) {
       temp_locs = BLI_memarena_alloc(bp->mem_arena, (size_t)(2 * (seg_2 + 1)) * sizeof(float));
-      profilewidget_create_samples(bp->prwdgt, temp_locs, seg + 1, bp->sample_straight_edges);
+      profilewidget_create_samples(bp->prwdgt, temp_locs, seg + 1,
+                                   bp->prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
       for (int i = 0; i < seg + 1; i++) {
         bp->pro_spacing.xvals[i] = temp_locs[2 * i + 1];
         bp->pro_spacing.yvals[i] = temp_locs[2 * i];
@@ -6875,7 +6823,8 @@ static void set_profile_spacing(BevelParams *bp)
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       if (bp->use_custom_profile) {
         BLI_assert(temp_locs);
-        profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1, bp->sample_straight_edges);
+        profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1,
+                                     bp->prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
         for (int i = 0; i < seg_2 + 1; i++) {
           bp->pro_spacing.xvals_2[i] = temp_locs[2 * i + 1];
           bp->pro_spacing.yvals_2[i] = temp_locs[2 * i];
@@ -7151,7 +7100,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float smoothresh,
                    const bool use_custom_profile,
                    const struct ProfileWidget *prwdgt,
-                   const bool sample_straight_edges)
+                   const int vmesh_method)
 {
   BMIter iter, liter;
   BMVert *v, *v_next;
@@ -7185,7 +7134,7 @@ void BM_mesh_bevel(BMesh *bm,
   bp.face_hash = NULL;
   bp.use_custom_profile = use_custom_profile;
   bp.prwdgt = prwdgt;
-  bp.sample_straight_edges = sample_straight_edges;
+  bp.vmesh_method = vmesh_method;
 
   if (bp.use_custom_profile) {
     /* For now we need to sample the custom profile with at least as many segments as points */

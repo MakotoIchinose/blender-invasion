@@ -379,10 +379,11 @@ typedef struct BevelModifierData {
   short mat;
   short edge_flags;
   short face_str_mode;
-  /* patterns to use for mitering non-reflex and reflex miter edges */
+  /** Patterns to use for mitering non-reflex and reflex miter edges */
   short miter_inner;
   short miter_outer;
-  char _pad0[2];
+  /** The method to use for creating >2-way intersections */
+  short vmesh_method;
   /** Controls profile shape (0->1, .5 is round). */
   float profile;
   /** if the MOD_BEVEL_ANGLE is set,
@@ -443,6 +444,12 @@ enum {
   MOD_BEVEL_MITER_SHARP,
   MOD_BEVEL_MITER_PATCH,
   MOD_BEVEL_MITER_ARC,
+};
+
+/* BevelModifier->vmesh_method */
+enum {
+  MOD_BEVEL_VMESH_ADJ,
+  MOD_BEVEL_VMESH_CUTOFF,
 };
 
 typedef struct SmokeModifierData {

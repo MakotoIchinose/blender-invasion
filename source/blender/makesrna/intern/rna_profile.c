@@ -76,6 +76,19 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
   profilewidget_changed(prwdgt, false);
 }
 
+static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value) {
+  ProfileWidget *prwdgt = (ProfileWidget *)ptr->data;
+
+  if (value) {
+    prwdgt->flag |= PROF_SAMPLE_STRAIGHT_EDGES;
+  }
+  else {
+    prwdgt->flag &= ~PROF_SAMPLE_STRAIGHT_EDGES;
+  }
+
+  profilewidget_changed(prwdgt, false);
+}
+
 static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt, ReportList *reports, PointerRNA *point_ptr)
 {
   ProfilePoint *point = point_ptr->data;
@@ -196,12 +209,16 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_profilewidget_preset_items);
 //  RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
   RNA_def_property_ui_text(prop, "Preset", "");
-  //  ProfileWidgetPresets
 
   prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_DO_CLIP);
   RNA_def_property_ui_text(prop, "Clip", "Force the path view to fit a defined boundary");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_ProfileWidget_clip_set");
+
+  prop = RNA_def_property(srna, "sample_straight_edges", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_SAMPLE_STRAIGHT_EDGES);
+  RNA_def_property_ui_text(prop, "Sample Straight Edges", "Sample edges with vector handles");
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_ProfileWidget_sample_straight_set");
 
   func = RNA_def_function(srna, "update", "rna_ProfileWidget_changed");
   RNA_def_function_ui_description(func, "Update profile widget after making changes");

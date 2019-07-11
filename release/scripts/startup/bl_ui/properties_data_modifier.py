@@ -171,10 +171,11 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         if md.miter_inner == 'MITER_PATCH' or md.miter_inner == 'MITER_ARC':
             layout.row().prop(md, "spread")
 
+        layout.label(text="Vertex Mesh Method")
+        layout.row().prop(md, "vmesh_method", expand=True)
         layout.row().prop(md, "use_custom_profile")
         if md.use_custom_profile:
             layout.template_profilewidget(md, "prwdgt")
-            layout.row().prop(md, "sample_straight_edges")
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()

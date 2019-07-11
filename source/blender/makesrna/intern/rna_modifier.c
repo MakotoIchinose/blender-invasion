@@ -3530,6 +3530,13 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static EnumPropertyItem prop_vmesh_method_items[] = {
+      {MOD_BEVEL_VMESH_ADJ, "ADJ", 0, "Grid Fill", "Default patterned fill"},
+      {MOD_BEVEL_VMESH_CUTOFF, "CUTOFF", 0, "Cutoff",
+       "A cut-off at each profile's end before the intersection"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "BevelModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Bevel Modifier",
                          "Bevel modifier to make edges and vertices more rounded");
@@ -3663,10 +3670,11 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
   /* HANS-TODO: Maybe actually "rna_Modifier_dependency_update", we'll see */
 
-  prop = RNA_def_property(srna, "sample_straight_edges", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_SAMPLE_STRAIGHT);
-  RNA_def_property_ui_text(prop, "Sample Straight Edges",
-                           "Whether to sample straight edges from the profile widget");
+  prop = RNA_def_property(srna, "vmesh_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "vmesh_method");
+  RNA_def_property_enum_items(prop, prop_vmesh_method_items);
+  RNA_def_property_ui_text(prop, "Vertex Mesh Method",
+                           "The method to use to create the mesh at intersections");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

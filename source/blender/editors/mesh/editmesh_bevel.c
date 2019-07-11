@@ -328,7 +328,7 @@ static bool edbm_bevel_calc(wmOperator *op)
   const int miter_inner = RNA_enum_get(op->ptr, "miter_inner");
   const float spread = RNA_float_get(op->ptr, "spread");
   const bool use_custom_profile = RNA_boolean_get(op->ptr, "use_custom_profile");
-  const bool sample_straight_edges = RNA_boolean_get(op->ptr, "sample_straight_edges");
+  const int vmesh_method = RNA_enum_get(op->ptr, "vmesh_method");
 
   for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
     em = opdata->ob_store[ob_index].em;
@@ -356,7 +356,7 @@ static bool edbm_bevel_calc(wmOperator *op)
                  "clamp_overlap=%b material=%i loop_slide=%b mark_seam=%b mark_sharp=%b "
                  "harden_normals=%b face_strength_mode=%i "
                  "miter_outer=%i miter_inner=%i spread=%f smoothresh=%f use_custom_profile=%b "
-                 "prwdgt=%p sample_straight_edges=%b",
+                 "prwdgt=%p vmesh_method=%i",
                  BM_ELEM_SELECT,
                  offset,
                  segments,
@@ -376,7 +376,7 @@ static bool edbm_bevel_calc(wmOperator *op)
                  me->smoothresh,
                  use_custom_profile,
                  opdata->prwdgt,
-                 sample_straight_edges);
+                 vmesh_method);
 
     BMO_op_exec(em->bm, &bmop);
 
@@ -882,17 +882,20 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiItemR(layout, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
+  if (RNA_boolean_get(&ptr, "harden_normals")) {
+    uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
+  }
   uiItemR(layout, &ptr, "miter_outer", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "miter_inner", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
     uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
   }
+  uiItemR(layout, &ptr, "vmesh_method", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
 //  uiLayoutRow(layout, false); /* HANS-TODO: Need this? */
   if (RNA_boolean_get(&ptr, "use_custom_profile")) {
     uiTemplateProfileWidget(layout, &toolsettings_ptr, "prwdgt");
-    uiItemR(layout, &ptr, "sample_straight_edges", 0, NULL, ICON_NONE);
+
   }
   /* HANS-TODO: Figure out why there's a double of the use_custom_profile prop at the end when it's
    * enabled */
@@ -930,6 +933,13 @@ void MESH_OT_bevel(wmOperatorType *ot)
   static const EnumPropertyItem miter_inner_items[] = {
       {BEVEL_MITER_SHARP, "SHARP", 0, "Sharp", "Inside of miter is sharp"},
       {BEVEL_MITER_ARC, "ARC", 0, "Arc", "Inside of miter is arc"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static EnumPropertyItem vmesh_method_items[] = {
+      {BEVEL_VMESH_ADJ, "ADJ", 0, "Grid Fill", "Default patterned fill"},
+      {BEVEL_VMESH_CUTOFF, "CUTOFF", 0, "Cutoff",
+       "A cut-off at each profile's end before the intersection"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1001,8 +1011,8 @@ void MESH_OT_bevel(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "use_custom_profile", false, "Custom Profile",
                   "Define a custom profile for the bevel");
 
-  RNA_def_boolean(ot->srna, "sample_straight_edges", false, "Custom Profile",
-                  "Define a custom profile for the bevel");
+  RNA_def_enum(ot->srna, "vmesh_method", vmesh_method_items, BEVEL_VMESH_ADJ,
+               "Vertex Mesh Method", "The method to use to create meshes at intersections");
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);

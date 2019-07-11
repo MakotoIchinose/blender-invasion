@@ -4653,6 +4653,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
     UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
   }
 
+  uiItemR(layout, ptr, "sample_straight_edges", 0, NULL, ICON_NONE);
+
   UI_block_funcN_set(block, NULL, NULL, NULL);
 }
 

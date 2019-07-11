@@ -1779,7 +1779,7 @@ static BMOpDefine bmo_bevel_def = {
    {"use_custom_profile", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
    /* the ProfileWiget struct for the custom profile shape */
    {"prwdgt", BMO_OP_SLOT_PTR, {(int)BMO_OP_SLOT_SUBTYPE_PTR_STRUCT}},
-   {"sample_straight_edges", BMO_OP_SLOT_BOOL},
+   {"vmesh_method", BMO_OP_SLOT_INT},
    {{'\0'}},
   },
   /* slots_out */
