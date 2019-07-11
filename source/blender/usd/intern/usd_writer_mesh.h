@@ -5,6 +5,8 @@
 
 #include <pxr/usd/usdGeom/mesh.h>
 
+struct USDMeshData;
+
 /* Writer for USD geometry. Does not assume the object is a mesh object. */
 class USDGenericMeshWriter : public USDAbstractWriter {
  public:
@@ -18,11 +20,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
 
  private:
   void write_mesh(HierarchyContext &context, Mesh *mesh);
-  void get_geometry_data(const Mesh *mesh,
-                         pxr::VtArray<pxr::GfVec3f> &usd_points,
-                         pxr::VtIntArray &usd_face_vertex_counts,
-                         pxr::VtIntArray &usd_face_indices,
-                         std::map<short, pxr::VtIntArray> &usd_face_groups);
+  void get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data);
   void assign_materials(const HierarchyContext &context,
                         pxr::UsdGeomMesh usd_mesh,
                         const std::map<short, pxr::VtIntArray> &usd_face_groups);

@@ -51,6 +51,13 @@ void USDGenericMeshWriter::free_export_mesh(Mesh *mesh)
   BKE_id_free(NULL, mesh);
 }
 
+struct USDMeshData {
+  pxr::VtArray<pxr::GfVec3f> points;
+  pxr::VtIntArray face_vertex_counts;
+  pxr::VtIntArray face_indices;
+  std::map<short, pxr::VtIntArray> face_groups;
+};
+
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
@@ -61,58 +68,50 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path_);
 
-  // USD structures for mesh data.
-  pxr::VtArray<pxr::GfVec3f> usd_points;
-  pxr::VtIntArray usd_face_vertex_counts, usd_face_indices;
-  std::map<short, pxr::VtIntArray> usd_face_groups;
+  USDMeshData usd_mesh_data;
+  get_geometry_data(mesh, usd_mesh_data);
 
-  get_geometry_data(mesh, usd_points, usd_face_vertex_counts, usd_face_indices, usd_face_groups);
-
-  usd_mesh.CreatePointsAttr().Set(usd_points, timecode);
-  usd_mesh.CreateFaceVertexCountsAttr().Set(usd_face_vertex_counts, timecode);
-  usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_face_indices, timecode);
+  usd_mesh.CreatePointsAttr().Set(usd_mesh_data.points, timecode);
+  usd_mesh.CreateFaceVertexCountsAttr().Set(usd_mesh_data.face_vertex_counts, timecode);
+  usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_mesh_data.face_indices, timecode);
 
   // TODO(Sybren): figure out what happens when the face groups change.
   if (frame_has_been_written_) {
     return;
   }
 
-  assign_materials(context, usd_mesh, usd_face_groups);
+  assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
 }
 
-void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh,
-                                             pxr::VtArray<pxr::GfVec3f> &usd_points,
-                                             pxr::VtIntArray &usd_face_vertex_counts,
-                                             pxr::VtIntArray &usd_face_indices,
-                                             std::map<short, pxr::VtIntArray> &usd_face_groups)
+void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
 {
   /* Only construct face groups (a.k.a. geometry subsets) when we need them for material
    * assignments. */
   bool construct_face_groups = mesh->totcol > 1;
 
-  usd_points.reserve(mesh->totvert);
-  usd_face_vertex_counts.reserve(mesh->totpoly);
-  usd_face_indices.reserve(mesh->totloop);
+  usd_mesh_data.points.reserve(mesh->totvert);
+  usd_mesh_data.face_vertex_counts.reserve(mesh->totpoly);
+  usd_mesh_data.face_indices.reserve(mesh->totloop);
 
   // TODO(Sybren): there is probably a more C++-y way to do this, which avoids copying the entire
   // mesh to a different structure. I haven't seen the approach below in the USD exporters for
   // Maya/Houdini, but it's simple and it works for now.
   const MVert *verts = mesh->mvert;
   for (int i = 0; i < mesh->totvert; ++i) {
-    usd_points.push_back(pxr::GfVec3f(verts[i].co));
+    usd_mesh_data.points.push_back(pxr::GfVec3f(verts[i].co));
   }
 
   MLoop *mloop = mesh->mloop;
   MPoly *mpoly = mesh->mpoly;
   for (int i = 0; i < mesh->totpoly; ++i, ++mpoly) {
     MLoop *loop = mloop + mpoly->loopstart;
-    usd_face_vertex_counts.push_back(mpoly->totloop);
+    usd_mesh_data.face_vertex_counts.push_back(mpoly->totloop);
     for (int j = 0; j < mpoly->totloop; ++j, ++loop) {
-      usd_face_indices.push_back(loop->v);
+      usd_mesh_data.face_indices.push_back(loop->v);
     }
 
     if (construct_face_groups) {
-      usd_face_groups[mpoly->mat_nr].push_back(i);
+      usd_mesh_data.face_groups[mpoly->mat_nr].push_back(i);
     }
   }
 }
