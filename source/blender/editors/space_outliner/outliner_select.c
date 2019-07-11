@@ -1132,27 +1132,24 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   TreeElement *te_active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
   Object *obact = OBACT(view_layer);
 
-  if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
+  /* Always makes active object, except for some specific types. */
+  if (ELEM(tselem->type,
+           TSE_SEQUENCE,
+           TSE_SEQ_STRIP,
+           TSE_SEQUENCE_DUP,
+           TSE_EBONE,
+           TSE_LAYER_COLLECTION)) {
+    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
+     * we do not want to switch out of edit mode (see T48328 for details). */
+  }
+  else if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
     /* Support edit-mode toggle, keeping the active object as is. */
   }
   else if (tselem->type == TSE_POSE_BASE) {
     /* Support pose mode toggle, keeping the active object as is. */
   }
-  else if ((obact->mode != OB_MODE_OBJECT) && (te != te_active)) {
-    /* Select rather than activate other elements when ouside of object mode */
-    return;
-  }
-  /* Always makes active object, except for some specific types. */
-  else if (ELEM(tselem->type,
-                TSE_SEQUENCE,
-                TSE_SEQ_STRIP,
-                TSE_SEQUENCE_DUP,
-                TSE_EBONE,
-                TSE_LAYER_COLLECTION)) {
-    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
-     * we do not want to switch out of edit mode (see T48328 for details). */
-  }
   else if (soops->flag & SO_SYNC_SELECTION) {
+    /* Only activate when synced selection is enabled */
     tree_element_set_active_object(C,
                                    scene,
                                    view_layer,
@@ -1230,7 +1227,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
       tree_element_active(C, scene, view_layer, soops, te, OL_SETSEL_NORMAL, false);
     }
   }
-  else {
+  else if (soops->flag & SO_SYNC_SELECTION) {
     tree_element_type_active(C,
                              scene,
                              view_layer,

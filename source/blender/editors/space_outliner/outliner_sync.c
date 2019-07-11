@@ -149,7 +149,8 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
 {
   Scene *scene = CTX_data_scene(C);
   Object *obact = OBACT(view_layer);
-  Sequence *seq_act = BKE_sequencer_active_get(scene);
+  Sequence *sequence_active = BKE_sequencer_active_get(scene);
+  bPoseChannel *pchan_active = CTX_data_active_pose_bone(C);
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
@@ -188,6 +189,10 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
       bPoseChannel *pchan = (bPoseChannel *)te->directdata;
       Bone *bone = pchan->bone;
 
+      if (pchan == pchan_active) {
+        tselem->flag |= TSE_ACTIVE;
+      }
+
       if (bone->flag & BONE_SELECTED) {
         tselem->flag |= TSE_SELECTED;
       }
@@ -199,7 +204,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
       printf("\t\tSyncing a sequence: %s\n", te->name);
       Sequence *seq = (Sequence *)tselem->id;
 
-      if (seq == seq_act) {
+      if (seq == sequence_active) {
         outliner_element_activate(soops, tselem);
       }
 
