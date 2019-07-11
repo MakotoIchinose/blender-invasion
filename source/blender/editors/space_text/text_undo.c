@@ -114,7 +114,7 @@ static void text_undosys_step_encode_init(struct bContext *C, UndoStep *us_p)
   TextUndoStep *us = (TextUndoStep *)us_p;
   BLI_assert(BLI_array_is_zeroed(&us->data, 1));
 
-  UNUSED_VARS(C);
+  UNUSED_VARS(C, us);
   /* XXX, use to set the undo type only. */
 }
 
