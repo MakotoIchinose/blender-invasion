@@ -228,7 +228,6 @@ void outliner_select_sync(bContext *C, SpaceOutliner *soops)
   puts("Outliner select... Mark other outliners as dirty for syncing");
   outliner_sync_selection_from_outliner(C, &soops->tree);
 
-  // outliner_sync_selection_to_sequencer(C, &soops->tree);
   sync_select_dirty_flag = SYNC_SELECT_NONE;
 
   /* Don't need to mark self as dirty here... */
@@ -259,11 +258,6 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
     printf("\tSyncing dirty outliner...\n");
 
     outliner_sync_selection_to_outliner(C, view_layer, soops, &soops->tree);
-
-    // if (soops->outlinevis == SO_SEQUENCE) {
-    //   printf("\tSyncing sequences...\n");
-    //   outliner_sync_selection_from_sequencer(C, &soops->tree);
-    // }
 
     soops->flag &= ~SO_IS_DIRTY;
   }
