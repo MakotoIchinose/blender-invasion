@@ -288,7 +288,8 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
         }
         else {
           uv_total += me.mesh->totloop;
-          for (const std::array<float, 2> &uv : common::uv_iter{me.mesh}) {
+          for (const std::array<float, 2> &uv :
+               common::uv_iter{me.mesh, uv_total /* const reference */}) {
             fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
           }
         }
@@ -298,6 +299,12 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
 
   if (settings->export_normals) {
     for (Mesh_export &me : meshes) {
+      // Remove location, because it shouldn't affect normals
+      for (size_t i = 0; i < 3; ++i) {
+        me.mat[3][i] = 0.0;
+      }
+      me.mat[3][3] = 1.0f;
+      normalize_m4(me.mat);
       me.no_offset = no_total;
       if (format_specific->dedup_normals) {
         for (const std::array<float, 3> &no :
@@ -339,7 +346,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
         }
         if (settings->export_normals) {
           if (format_specific->dedup_normals)
-            no = no_mapping[me.no_offset + l.v]->second + 1;
+            no = no_mapping[me.no_offset + li]->second + 1;
           else
             no = me.no_offset + l.v + 1;
         }

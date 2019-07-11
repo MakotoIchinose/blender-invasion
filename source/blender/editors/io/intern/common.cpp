@@ -141,8 +141,8 @@ bool get_axis_remap_and_scale_matrix(float (&mat)[4][4], int forward, int up, fl
     ++axis_from;
   }
   // A bit hacky, but it's a pointer anyway, it just modifies the first three elements
-  cross_v3_v3v3(mat[other_axis], mat[up], mat[forward]);
   mat[other_axis][3] = 0;
+  cross_v3_v3v3(mat[other_axis], mat[up], mat[forward]);
   return true;
 }
 
