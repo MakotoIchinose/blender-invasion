@@ -332,7 +332,41 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
         fprintf(file, "g %s\n", name.c_str());
     }
 
-    for (const MPoly &p : common::poly_iter(me.mesh)) {
+    int group_total = 0, *smooth_groups = nullptr;
+    if (format_specific->export_smooth_groups) {
+      smooth_groups = BKE_mesh_calc_smoothgroups(me.mesh->medge,
+                                                 me.mesh->totedge,
+                                                 me.mesh->mpoly,
+                                                 me.mesh->totpoly,
+                                                 me.mesh->mloop,
+                                                 me.mesh->totloop,
+                                                 &group_total,
+                                                 format_specific->smooth_groups_bitflags);
+    }
+
+    size_t poly_index = 0;
+    int state_smooth = -1;
+    for (auto pi = common::poly_iter(me.mesh); pi != pi.end(); ++pi, ++poly_index) {
+      const MPoly &p = *pi;
+      // Smooth indices start at 1, so 0 is not a valid index
+      int smooth = (p.flag & ME_SMOOTH) ? 1 : 0;
+      if (smooth && smooth_groups) {
+        smooth = smooth_groups[poly_index % group_total];
+      }
+
+      if (smooth != state_smooth) {
+        state_smooth = smooth;
+        if (smooth && smooth_groups) {
+          fprintf(file, "s %d\n", smooth_groups[poly_index]);
+        }
+        else if (smooth) {
+          fputs("s 1\n", file);
+        }
+        else {
+          fputs("s off\n", file);
+        }
+      }
+
       fputc('f', file);
       // Loop index
       int li = p.loopstart;

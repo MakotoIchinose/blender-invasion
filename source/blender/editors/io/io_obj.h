@@ -47,6 +47,9 @@ typedef struct OBJExportSettings {
   bool dedup_uvs;
   float dedup_normals_threshold;
   float dedup_uvs_threshold;
+
+  bool export_smooth_groups;
+  bool smooth_groups_bitflags;
 } OBJExportSettings;
 
 void WM_OT_obj_export(struct wmOperatorType *ot);

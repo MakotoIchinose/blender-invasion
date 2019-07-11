@@ -54,6 +54,8 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
   format_specific->export_objects_as_objects = RNA_boolean_get(op->ptr,
                                                                "export_objects_as_objects");
   format_specific->export_objects_as_groups = RNA_boolean_get(op->ptr, "export_objects_as_groups");
+  format_specific->export_smooth_groups = RNA_boolean_get(op->ptr, "export_smooth_groups");
+  format_specific->smooth_groups_bitflags = RNA_boolean_get(op->ptr, "smooth_groups_bitflags");
 
   if (!format_specific->export_animations) {
     format_specific->start_frame = BKE_scene_frame_get(CTX_data_scene(C));
@@ -166,6 +168,15 @@ static void wm_obj_export_draw(bContext *C, wmOperator *op)
   row = uiLayoutRow(sub_box, false);
   uiLayoutSetEnabled(row, materials);
   uiItemR(row, &ptr, "path_mode", 0, NULL, ICON_NONE);
+
+  sub_box = uiLayoutBox(box);
+  row = uiLayoutRow(sub_box, false);
+  uiItemR(row, &ptr, "export_smooth_groups", 0, NULL, ICON_NONE);
+
+  const bool smooth_groups = RNA_boolean_get(&ptr, "export_smooth_groups");
+  row = uiLayoutRow(sub_box, false);
+  uiLayoutSetEnabled(row, smooth_groups);
+  uiItemR(row, &ptr, "smooth_groups_bitflags", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
   uiItemR(row, &ptr, "export_vcolors", 0, NULL, ICON_NONE);
@@ -318,7 +329,7 @@ void WM_OT_obj_export(struct wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna, "export_curves", false, "Export curves", "Export curves and NURBS surfaces");
 
-  RNA_def_boolean(ot->srna, "pack_uv", 1, "Pack UV Islands", "Export UVs with packed island");
+  RNA_def_boolean(ot->srna, "pack_uv", false, "Pack UV Islands", "Export UVs with packed island");
 
   RNA_def_enum(ot->srna,
                "path_mode",
@@ -326,6 +337,18 @@ void WM_OT_obj_export(struct wmOperatorType *ot)
                AUTO,
                "Path mode",
                "How external files (such as images) are treated");
+
+  RNA_def_boolean(ot->srna,
+                  "export_smooth_groups",
+                  false,
+                  "Smooth Groups",
+                  "Write sharp edges as smooth groups");
+
+  RNA_def_boolean(ot->srna,
+                  "smooth_groups_bitflags",
+                  false,
+                  "Bitflags",
+                  "Use bitflags for smooth groups (produces at most 32 groups)");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at
