@@ -55,7 +55,6 @@ extern "C" {
 #  include <iterator>
 
 namespace common {
-using ulong = unsigned long;
 
 // --- PROTOTYPES ---
 
@@ -127,9 +126,9 @@ template<typename key_t> using set_t = std::set<key_t, threshold_comparator>;
 template<typename key_t> using set_mapping_t = std::vector<typename set_t<key_t>::iterator>;
 // A pair of the two above, to tie them together
 template<typename key_t> using dedup_pair_t = std::pair<set_t<key_t>, set_mapping_t<key_t>>;
-// The set key for UV and normal. ulong is the original index
-using uv_key_t = std::pair<std::array<float, 2>, ulong>;
-using no_key_t = std::pair<std::array<float, 3>, ulong>;
+// The set key for UV and normal. size_t is the original index
+using uv_key_t = std::pair<std::array<float, 2>, size_t>;
+using no_key_t = std::pair<std::array<float, 3>, size_t>;
 
 // Construct a new deduplicated set for either normals or UVs, with the given similarity threshold
 // C++14/17 would be useful here...

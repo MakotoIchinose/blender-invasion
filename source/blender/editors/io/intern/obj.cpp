@@ -4,13 +4,14 @@ extern "C" {
 #include "BLI_math.h"
 #include "BLT_translation.h"
 
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_global.h"
 #include "BKE_context.h"
-#include "BKE_scene.h"
-#include "BKE_library.h"
 #include "BKE_customdata.h"
+#include "BKE_global.h"
+#include "BKE_library.h"
+#include "BKE_mesh.h"
+#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_runtime.h"
+#include "BKE_scene.h"
 
 #include "DNA_curve_types.h"
 #include "DNA_ID.h"
@@ -214,7 +215,7 @@ bool OBJ_export_curve(bContext *UNUSED(C),
     totvert += num_points;
 
     fprintf(file, "g %s\n", common::get_object_name(eob, cu).c_str());
-    fprintf(file, "cstype bspline\ndeg %lu\n", deg_order_u);
+    fprintf(file, "cstype bspline\ndeg %zu\n", deg_order_u);
 
     size_t real_num_points = num_points;
     if (closed) {
@@ -343,13 +344,14 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
             no = me.no_offset + l.v + 1;
         }
         if (settings->export_uvs && settings->export_normals && me.mesh->mloopuv != nullptr)
-          fprintf(file, " %lu/%lu/%lu", vx, uv, no);
+          fprintf(file, " %zu/%zu/%zu", vx, uv, no);
         else if (settings->export_uvs && me.mesh->mloopuv != nullptr)
-          fprintf(file, " %lu/%lu", vx, uv);
+          fprintf(file, " %zu/%zu", vx, uv);
         else if (settings->export_normals)
-          fprintf(file, " %lu//%lu", vx, no);
+          fprintf(file, " %zu//%zu", vx, no);
         else
-          fprintf(file, " %lu", vx);
+          fprintf(file, " %zu", vx);
+        ++li;
       }
       fputc('\n', file);
     }

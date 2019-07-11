@@ -577,13 +577,13 @@ struct deduplicated_iterator {
   using iterator_category = Tag;
   deduplicated_iterator(const Mesh *const mesh,
                         dedup_pair_t<KeyT> &dp,
-                        ulong &total,
+                        size_t &total,
                         SourceIter it)
       : it(it), mesh(mesh), dedup_pair(dp), total(total)
   {
   }
   deduplicated_iterator(
-      const Mesh *const mesh, dedup_pair_t<KeyT> &dp, ulong &total, ulong reserve, SourceIter it)
+      const Mesh *const mesh, dedup_pair_t<KeyT> &dp, size_t &total, size_t reserve, SourceIter it)
       : deduplicated_iterator(mesh, dp, total, it)
   {
     // Reserve space so we don't constantly allocate
@@ -643,13 +643,13 @@ struct deduplicated_iterator {
   SourceIter it;
   const Mesh *const mesh;
   dedup_pair_t<KeyT> &dedup_pair;
-  ulong &total;
+  size_t &total;
 };
 
 // Iterator to deduplicated normals (returns `const std::array<float, 3>`)
 struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, transformed_normal_iter> {
   deduplicated_normal_iter(const Mesh *const mesh,
-                           ulong &total,
+                           size_t &total,
                            dedup_pair_t<no_key_t> &dp,
                            const float (*mat)[4])
       : deduplicated_iterator<no_key_t, transformed_normal_iter>(
