@@ -31,7 +31,9 @@ void USDHairWriter::do_write(HierarchyContext &context)
 
   pxr::VtArray<pxr::GfVec3f> points;
   pxr::VtIntArray curve_point_counts;
+  pxr::VtArray<pxr::GfVec3f> colors;
   curve_point_counts.reserve(psys->totpart);
+  colors.reserve(psys->totpart);
 
   ParticleCacheKey **cache = psys->pathcache;
   ParticleCacheKey *strand;
@@ -40,7 +42,7 @@ void USDHairWriter::do_write(HierarchyContext &context)
 
     int point_count = strand->segments + 1;
     curve_point_counts.push_back(point_count);
-    // colors.push_back(pxr::GfVec3f(strand->col));
+    colors.push_back(pxr::GfVec3f(strand->col));
 
     for (int point_index = 0; point_index < point_count; ++point_index, ++strand) {
       points.push_back(pxr::GfVec3f(strand->co));
@@ -49,11 +51,11 @@ void USDHairWriter::do_write(HierarchyContext &context)
 
   curves.CreatePointsAttr().Set(points, timecode);
   curves.CreateCurveVertexCountsAttr().Set(curve_point_counts, timecode);
+  curves.CreateDisplayColorAttr(pxr::VtValue(colors));
 
   if (psys->totpart > 0) {
-    pxr::VtArray<pxr::GfVec3f> colors;
-    colors.push_back(pxr::GfVec3f(cache[0]->col));
-    curves.CreateDisplayColorAttr(pxr::VtValue(colors));
+    // pxr::VtArray<pxr::GfVec3f> colors;
+    // colors.push_back(pxr::GfVec3f(cache[0]->col));
   }
 }
 
