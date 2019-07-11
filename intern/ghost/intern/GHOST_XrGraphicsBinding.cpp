@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <list>
+#include <sstream>
 
 #if defined(WITH_X11)
 #  include "GHOST_ContextGLX.h"
@@ -54,6 +55,38 @@ static bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_bin
 
 class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
  public:
+  bool checkVersionRequirements(GHOST_Context *ghost_ctx,
+                                XrInstance instance,
+                                XrSystemId system_id,
+                                std::string *r_requirement_info) const override
+  {
+#if defined(WITH_X11)
+    GHOST_ContextGLX *ctx_gl = static_cast<GHOST_ContextGLX *>(ghost_ctx);
+#else
+    GHOST_ContextWGL *ctx_gl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
+#endif
+    XrGraphicsRequirementsOpenGLKHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR};
+    const uint32_t gl_version = XR_MAKE_VERSION(
+        ctx_gl->m_contextMajorVersion, ctx_gl->m_contextMinorVersion, 0);
+
+    xrGetOpenGLGraphicsRequirementsKHR(instance, system_id, &gpu_requirements);
+
+    if (r_requirement_info) {
+      std::ostringstream strstream;
+      strstream << "Min OpenGL version "
+                << XR_VERSION_MAJOR(gpu_requirements.minApiVersionSupported) << "."
+                << XR_VERSION_MINOR(gpu_requirements.minApiVersionSupported) << std::endl;
+      strstream << "Max OpenGL version "
+                << XR_VERSION_MAJOR(gpu_requirements.maxApiVersionSupported) << "."
+                << XR_VERSION_MINOR(gpu_requirements.maxApiVersionSupported) << std::endl;
+
+      *r_requirement_info = std::move(strstream.str());
+    }
+
+    return (gl_version >= gpu_requirements.minApiVersionSupported) &&
+           (gl_version <= gpu_requirements.maxApiVersionSupported);
+  }
+
   void initFromGhostContext(GHOST_Context *ghost_ctx) override
   {
 #if defined(WITH_X11)
@@ -119,6 +152,14 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #ifdef WIN32
 class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
  public:
+  bool checkVersionRequirements(GHOST_Context * /*ghost_ctx*/,
+                                XrInstance /*instance*/,
+                                XrSystemId /*system_id*/,
+                                std::string * /*r_requirement_info*/) const override
+  {
+    // TODO
+  }
+
   void initFromGhostContext(GHOST_Context *ghost_ctx) override
   {
     GHOST_ContextD3D *ctx_d3d = static_cast<GHOST_ContextD3D *>(ghost_ctx);

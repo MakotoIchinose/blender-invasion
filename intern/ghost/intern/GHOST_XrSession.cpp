@@ -141,8 +141,16 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
             "GHOST_XrSessionStart()).\n");
     return;
   }
-  m_gpu_binding = std::unique_ptr<GHOST_IXrGraphicsBinding>(
-      GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType()));
+
+  std::string requirement_str;
+  m_gpu_binding = GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType());
+  if (!m_gpu_binding->checkVersionRequirements(
+          m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str)) {
+    fprintf(stderr,
+            "Available graphics context version does not meet the following requirements: %s",
+            requirement_str.c_str());
+    return;
+  }
   m_gpu_binding->initFromGhostContext(m_gpu_ctx);
 
   XrSessionCreateInfo create_info{};

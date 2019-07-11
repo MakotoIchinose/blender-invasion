@@ -116,7 +116,7 @@ void GHOST_XrContext::printInstanceInfo()
   XrInstanceProperties instance_properties{XR_TYPE_INSTANCE_PROPERTIES};
   xrGetInstanceProperties(m_oxr->instance, &instance_properties);
 
-  printf("Connected to OpenXR runtime: %s (Version %i.%i.%i)\n",
+  printf("Connected to OpenXR runtime: %s (Version %u.%u.%u)\n",
          instance_properties.runtimeName,
          XR_VERSION_MAJOR(instance_properties.runtimeVersion),
          XR_VERSION_MINOR(instance_properties.runtimeVersion),
