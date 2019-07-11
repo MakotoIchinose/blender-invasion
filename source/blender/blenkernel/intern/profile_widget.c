@@ -618,6 +618,10 @@ static int compare_curvature_bezt_edge_i(const BezTriple *bezt, const int i_a, c
  *        number of points used to define the profile (prwdgt->totpoint).
  * \param sample_straight_edges: Whether to sample points between vector handle control points. If
           this is true and there are only vector edges the straight edges will still be sampled. */
+/* HANS-TODO: The last segment is always a little too long. And in the non-sample_straight_edges
+ * case the second to last point can sometimes be forgotten for the sampling. */
+/* HANS-TODO: Enable proper sampling with fewer segments than points, probably using older sampling
+ * algorithms */
 void profilewidget_create_samples(const ProfileWidget *prwdgt,
                                   float *locations,
                                   int n_segments,
@@ -651,8 +655,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
   }
   calchandle_profile(&bezt[totpoints - 1], &bezt[totpoints - 2], NULL);
 
-  /* HANS-TODO: Instead of this put the end handles pointing along the edge */
-  if (0 && prwdgt->totpoint > 2) {
+  if (prwdgt->totpoint > 2) {
     float hlen, nlen, vec[3];
 
     if (bezt[0].h2 == HD_AUTO) {
