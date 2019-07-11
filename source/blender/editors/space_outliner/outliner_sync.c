@@ -190,7 +190,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
       Bone *bone = pchan->bone;
 
       if (pchan == pchan_active) {
-        tselem->flag |= TSE_ACTIVE;
+        tselem->flag |= TSE_ACTIVE | TSE_WALK;
       }
 
       if (bone->flag & BONE_SELECTED) {

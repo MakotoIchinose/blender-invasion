@@ -1288,16 +1288,17 @@ static void do_outliner_range_select_recursive(ListBase *lb,
 static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 {
   TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
+  outliner_flag_set(&soops->tree, TSE_WALK, false);
 
   if (!active) {
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
+    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE | TSE_WALK;
     return;
   }
 
   TreeStoreElem *tselem = TREESTORE(active);
   const bool active_selected = (tselem->flag & TSE_SELECTED);
 
-  outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  outliner_flag_set(&soops->tree, TSE_SELECTED | TSE_WALK, false);
 
   /* Select active if under cursor */
   if (active == cursor) {
@@ -1308,7 +1309,7 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
   /* If active is not selected, just select the element under the cursor */
   if (!active_selected || !outliner_is_element_visible(active)) {
     tselem->flag &= ~TSE_ACTIVE;
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE;
+    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE | TSE_WALK;
     return;
   }
 
