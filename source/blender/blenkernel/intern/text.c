@@ -407,6 +407,15 @@ bool BKE_text_reload(Text *text)
   return true;
 }
 
+void BKE_text_reload_from_buf(Text *text, const uchar *buf, int buf_len)
+{
+  /* free memory: */
+  BKE_text_free_lines(text);
+  txt_make_dirty(text);
+
+  text_from_buf(text, buf, buf_len);
+}
+
 Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const bool is_internal)
 {
   unsigned char *buffer;

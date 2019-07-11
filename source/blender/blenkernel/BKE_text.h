@@ -51,6 +51,7 @@ struct Text *BKE_text_copy(struct Main *bmain, const struct Text *ta);
 void BKE_text_make_local(struct Main *bmain, struct Text *text, const bool lib_local);
 void BKE_text_clear(struct Text *text, struct TextUndoBuf *utxt);
 void BKE_text_write(struct Text *text, struct TextUndoBuf *utxt, const char *str);
+void BKE_text_reload_from_buf(struct Text *text, const uchar *buf, int buf_len);
 int BKE_text_file_modified_check(struct Text *text);
 void BKE_text_file_modified_ignore(struct Text *text);
 
