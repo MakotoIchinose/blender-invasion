@@ -1129,9 +1129,6 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                                    const bool extend,
                                                    const bool recursive)
 {
-  TreeElement *te_active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
-  Object *obact = OBACT(view_layer);
-
   /* Always makes active object, except for some specific types. */
   if (ELEM(tselem->type,
            TSE_SEQUENCE,
