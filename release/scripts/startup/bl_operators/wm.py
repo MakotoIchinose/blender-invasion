@@ -1022,8 +1022,9 @@ class WM_OT_doc_view(Operator):
     bl_label = "View Documentation"
 
     doc_id: doc_id
-    if bpy.app.version_cycle == "release":
-        _prefix = ("https://docs.blender.org/api/current")
+    if bpy.app.version_cycle in {"release", "rc"}:
+        _prefix = ("https://docs.blender.org/api/%d.%d%s" %
+                   (bpy.app.version[0], bpy.app.version[1], bpy.app.version_char))
     else:
         _prefix = ("https://docs.blender.org/api/master")
 
@@ -1785,20 +1786,12 @@ class WM_MT_splash(Menu):
         col1.operator("wm.recover_last_session", icon='RECOVER_LAST')
 
         col2 = split.column()
-        if found_recent:
-            col2.operator(
-                "wm.url_open", text="Release Notes", icon='URL',
-            ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
-            col2.operator(
-                "wm.url_open", text="Development Fund", icon='URL'
-            ).url = "https://fund.blender.org"
-        else:
-            col2.operator(
-                "wm.url_open", text="Development Fund", icon='URL'
-            ).url = "https://fund.blender.org"
-            col2.operator(
-                "wm.url_open", text="Donate", icon='URL'
-            ).url = "https://www.blender.org/foundation/donation-payment/"
+        col2.operator(
+            "wm.url_open", text="Release Notes", icon='URL',
+        ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
+        col2.operator(
+            "wm.url_open", text="Development Fund", icon='FUND'
+        ).url = "https://fund.blender.org"
 
         layout.separator()
         layout.separator()
