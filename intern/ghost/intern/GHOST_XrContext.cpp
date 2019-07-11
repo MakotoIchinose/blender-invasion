@@ -326,7 +326,9 @@ void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_nam
   static std::vector<std::string> try_ext;
 
   /* Try enabling debug extension */
+#ifndef WIN32
   XR_DEBUG_ONLY_CALL(this, try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME));
+#endif
 
   r_ext_names.reserve(try_ext.size() + 1); /* + 1 for graphics binding extension. */
 
