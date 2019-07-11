@@ -48,6 +48,11 @@ struct GHOST_XrDrawFrame {
   XrFrameState frame_state;
 };
 
+/* -------------------------------------------------------------------- */
+/** \name Create, Initialize and Destruct
+ *
+ * \{ */
+
 GHOST_XrSession::GHOST_XrSession(GHOST_XrContext *xr_context)
     : m_context(xr_context), m_oxr(new OpenXRSessionData())
 {
@@ -70,34 +75,6 @@ GHOST_XrSession::~GHOST_XrSession()
   m_oxr->session_state = XR_SESSION_STATE_UNKNOWN;
 }
 
-bool GHOST_XrSession::isRunning()
-{
-  if (m_oxr->session == XR_NULL_HANDLE) {
-    return false;
-  }
-  switch (m_oxr->session_state) {
-    case XR_SESSION_STATE_RUNNING:
-    case XR_SESSION_STATE_VISIBLE:
-    case XR_SESSION_STATE_FOCUSED:
-      return true;
-    default:
-      return false;
-  }
-}
-bool GHOST_XrSession::isVisible()
-{
-  if (m_oxr->session == XR_NULL_HANDLE) {
-    return false;
-  }
-  switch (m_oxr->session_state) {
-    case XR_SESSION_STATE_VISIBLE:
-    case XR_SESSION_STATE_FOCUSED:
-      return true;
-    default:
-      return false;
-  }
-}
-
 /**
  * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
  * devices are managed through OpenXR. So this attempts to init the HMD and the other devices.
@@ -114,96 +91,12 @@ void GHOST_XrSession::initSystem()
   xrGetSystem(m_context->getInstance(), &system_info, &m_oxr->system_id);
 }
 
-void GHOST_XrSession::bindGraphicsContext()
-{
-  GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
-  assert(custom_funcs->gpu_ctx_bind_fn);
-  m_gpu_ctx = static_cast<GHOST_Context *>(
-      custom_funcs->gpu_ctx_bind_fn(m_context->getGraphicsBindingType()));
-}
-void GHOST_XrSession::unbindGraphicsContext()
-{
-  GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
-  if (custom_funcs->gpu_ctx_unbind_fn) {
-    custom_funcs->gpu_ctx_unbind_fn(m_context->getGraphicsBindingType(), m_gpu_ctx);
-  }
-  m_gpu_ctx = nullptr;
-}
+/** \} */ /* Create, Initialize and Destruct */
 
-static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
-    XrSwapchain swapchain, GHOST_IXrGraphicsBinding *gpu_binding)
-{
-  std::vector<XrSwapchainImageBaseHeader *> images;
-  uint32_t image_count;
-
-  xrEnumerateSwapchainImages(swapchain, 0, &image_count, nullptr);
-  images = gpu_binding->createSwapchainImages(image_count);
-  xrEnumerateSwapchainImages(swapchain, images.size(), &image_count, images[0]);
-
-  return images;
-}
-
-static XrSwapchain swapchain_create(const XrSession session,
-                                    GHOST_IXrGraphicsBinding *gpu_binding,
-                                    const XrViewConfigurationView *xr_view)
-{
-  XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-  XrSwapchain swapchain;
-  uint32_t format_count = 0;
-  int64_t chosen_format;
-
-  xrEnumerateSwapchainFormats(session, 0, &format_count, nullptr);
-  std::vector<int64_t> swapchain_formats(format_count);
-  xrEnumerateSwapchainFormats(
-      session, swapchain_formats.size(), &format_count, swapchain_formats.data());
-  assert(swapchain_formats.size() == format_count);
-
-  if (!gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
-    fprintf(stderr, "Error: No format matching OpenXR runtime supported swapchain formats found.");
-    return nullptr;
-  }
-
-  create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
-                           XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-  create_info.format = chosen_format;
-  create_info.sampleCount = xr_view->recommendedSwapchainSampleCount;
-  create_info.width = xr_view->recommendedImageRectWidth;
-  create_info.height = xr_view->recommendedImageRectHeight;
-  create_info.faceCount = 1;
-  create_info.arraySize = 1;
-  create_info.mipCount = 1;
-  xrCreateSwapchain(session, &create_info, &swapchain);
-
-  return swapchain;
-}
-
-void GHOST_XrSession::prepareDrawing()
-{
-  std::vector<XrViewConfigurationView> view_configs;
-  uint32_t view_count;
-
-  xrEnumerateViewConfigurationViews(
-      m_context->getInstance(), m_oxr->system_id, m_oxr->view_type, 0, &view_count, nullptr);
-  view_configs.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
-  xrEnumerateViewConfigurationViews(m_context->getInstance(),
-                                    m_oxr->system_id,
-                                    m_oxr->view_type,
-                                    view_configs.size(),
-                                    &view_count,
-                                    view_configs.data());
-
-  for (const XrViewConfigurationView &view : view_configs) {
-    XrSwapchain swapchain = swapchain_create(m_oxr->session, m_gpu_binding.get(), &view);
-    auto images = swapchain_images_create(swapchain, m_gpu_binding.get());
-
-    m_oxr->swapchain_image_width = view.recommendedImageRectWidth;
-    m_oxr->swapchain_image_height = view.recommendedImageRectHeight;
-    m_oxr->swapchains.push_back(swapchain);
-    m_oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
-  }
-
-  m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
-}
+/* -------------------------------------------------------------------- */
+/** \name State Management
+ *
+ * \{ */
 
 static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *base_pose)
 {
@@ -299,6 +192,87 @@ GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
   }
 
   return SESSION_KEEP_ALIVE;
+}
+/** \} */ /* State Management */
+
+/* -------------------------------------------------------------------- */
+/** \name Drawing
+ *
+ * \{ */
+
+static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
+    XrSwapchain swapchain, GHOST_IXrGraphicsBinding *gpu_binding)
+{
+  std::vector<XrSwapchainImageBaseHeader *> images;
+  uint32_t image_count;
+
+  xrEnumerateSwapchainImages(swapchain, 0, &image_count, nullptr);
+  images = gpu_binding->createSwapchainImages(image_count);
+  xrEnumerateSwapchainImages(swapchain, images.size(), &image_count, images[0]);
+
+  return images;
+}
+
+static XrSwapchain swapchain_create(const XrSession session,
+                                    GHOST_IXrGraphicsBinding *gpu_binding,
+                                    const XrViewConfigurationView *xr_view)
+{
+  XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+  XrSwapchain swapchain;
+  uint32_t format_count = 0;
+  int64_t chosen_format;
+
+  xrEnumerateSwapchainFormats(session, 0, &format_count, nullptr);
+  std::vector<int64_t> swapchain_formats(format_count);
+  xrEnumerateSwapchainFormats(
+      session, swapchain_formats.size(), &format_count, swapchain_formats.data());
+  assert(swapchain_formats.size() == format_count);
+
+  if (!gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
+    fprintf(stderr, "Error: No format matching OpenXR runtime supported swapchain formats found.");
+    return nullptr;
+  }
+
+  create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
+                           XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+  create_info.format = chosen_format;
+  create_info.sampleCount = xr_view->recommendedSwapchainSampleCount;
+  create_info.width = xr_view->recommendedImageRectWidth;
+  create_info.height = xr_view->recommendedImageRectHeight;
+  create_info.faceCount = 1;
+  create_info.arraySize = 1;
+  create_info.mipCount = 1;
+  xrCreateSwapchain(session, &create_info, &swapchain);
+
+  return swapchain;
+}
+
+void GHOST_XrSession::prepareDrawing()
+{
+  std::vector<XrViewConfigurationView> view_configs;
+  uint32_t view_count;
+
+  xrEnumerateViewConfigurationViews(
+      m_context->getInstance(), m_oxr->system_id, m_oxr->view_type, 0, &view_count, nullptr);
+  view_configs.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
+  xrEnumerateViewConfigurationViews(m_context->getInstance(),
+                                    m_oxr->system_id,
+                                    m_oxr->view_type,
+                                    view_configs.size(),
+                                    &view_count,
+                                    view_configs.data());
+
+  for (const XrViewConfigurationView &view : view_configs) {
+    XrSwapchain swapchain = swapchain_create(m_oxr->session, m_gpu_binding.get(), &view);
+    auto images = swapchain_images_create(swapchain, m_gpu_binding.get());
+
+    m_oxr->swapchain_image_width = view.recommendedImageRectWidth;
+    m_oxr->swapchain_image_height = view.recommendedImageRectHeight;
+    m_oxr->swapchains.push_back(swapchain);
+    m_oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
+  }
+
+  m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
 }
 
 void GHOST_XrSession::beginFrameDrawing()
@@ -447,3 +421,68 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
 
   return layer;
 }
+
+/** \} */ /* Drawing */
+
+/* -------------------------------------------------------------------- */
+/** \name State Queries
+ *
+ * \{ */
+
+bool GHOST_XrSession::isRunning() const
+{
+  if (m_oxr->session == XR_NULL_HANDLE) {
+    return false;
+  }
+  switch (m_oxr->session_state) {
+    case XR_SESSION_STATE_RUNNING:
+    case XR_SESSION_STATE_VISIBLE:
+    case XR_SESSION_STATE_FOCUSED:
+      return true;
+    default:
+      return false;
+  }
+}
+bool GHOST_XrSession::isVisible() const
+{
+  if (m_oxr->session == XR_NULL_HANDLE) {
+    return false;
+  }
+  switch (m_oxr->session_state) {
+    case XR_SESSION_STATE_VISIBLE:
+    case XR_SESSION_STATE_FOCUSED:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** \} */ /* State Queries */
+
+/* -------------------------------------------------------------------- */
+/** \name Graphics Context Injection
+ *
+ * Sessions need access to Ghost graphics context information. Additionally, this API allows
+ * creating contexts on the fly (created on start, destructed on end). For this, callbacks to bind
+ * (potentially create) and unbind (potentially destruct) a Ghost graphics context have to be set,
+ * which will be called on session start and end respectively.
+ *
+ * \{ */
+
+void GHOST_XrSession::bindGraphicsContext()
+{
+  const GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
+  assert(custom_funcs->gpu_ctx_bind_fn);
+  m_gpu_ctx = static_cast<GHOST_Context *>(
+      custom_funcs->gpu_ctx_bind_fn(m_context->getGraphicsBindingType()));
+}
+void GHOST_XrSession::unbindGraphicsContext()
+{
+  const GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
+  if (custom_funcs->gpu_ctx_unbind_fn) {
+    custom_funcs->gpu_ctx_unbind_fn(m_context->getGraphicsBindingType(), m_gpu_ctx);
+  }
+  m_gpu_ctx = nullptr;
+}
+
+/** \} */ /* Graphics Context Injection */

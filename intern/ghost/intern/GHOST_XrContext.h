@@ -59,8 +59,8 @@ class GHOST_XrContext : public GHOST_IXrContext {
                                    GHOST_XrGraphicsContextUnbindFn unbind_fn) override;
   void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) override;
 
-  GHOST_XrCustomFuncs *getCustomFuncs();
-  GHOST_TXrGraphicsBinding getGraphicsBindingType();
+  const GHOST_XrCustomFuncs *getCustomFuncs() const;
+  GHOST_TXrGraphicsBinding getGraphicsBindingType() const;
   XrInstance getInstance() const;
   bool isDebugMode() const;
 
@@ -71,7 +71,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
   std::unique_ptr<class GHOST_XrSession> m_session;
 
   /** Active graphics binding type. */
-  GHOST_TXrGraphicsBinding m_gpu_binding_type;
+  GHOST_TXrGraphicsBinding m_gpu_binding_type{GHOST_kXrGraphicsUnknown};
 
   /** Names of enabled extensions */
   std::vector<const char *> m_enabled_extensions;
@@ -84,8 +84,11 @@ class GHOST_XrContext : public GHOST_IXrContext {
   bool m_debug{false};
 
   void createOpenXRInstance();
-  void printInstanceInfo();
   void initDebugMessenger();
+
+  void printInstanceInfo();
+  void printAvailableAPILayersAndExtensionsInfo();
+  void printExtensionsAndAPILayersToEnable();
 
   GHOST_TSuccess enumerateApiLayers();
   GHOST_TSuccess enumerateExtensions();

@@ -39,8 +39,8 @@ class GHOST_XrSession {
 
   eLifeExpectancy handleStateChangeEvent(const struct XrEventDataSessionStateChanged *lifecycle);
 
-  bool isRunning();
-  bool isVisible();
+  bool isRunning() const;
+  bool isVisible() const;
 
   void unbindGraphicsContext(); /* public so context can ensure it's unbound as needed. */
 
@@ -54,7 +54,7 @@ class GHOST_XrSession {
   std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable */
 
   /** Active Ghost graphic context. Owned by Blender, not GHOST. */
-  class GHOST_Context *m_gpu_ctx;
+  class GHOST_Context *m_gpu_ctx{nullptr};
   std::unique_ptr<class GHOST_IXrGraphicsBinding> m_gpu_binding;
 
   /** Information on the currently drawn frame. Set while drawing only. */

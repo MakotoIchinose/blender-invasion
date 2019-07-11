@@ -39,4 +39,10 @@
   } \
   (void)0
 
+#define XR_DEBUG_ONLY_CALL(ctx, call) \
+  if ((ctx)->isDebugMode()) { \
+    call; \
+  } \
+  (void)0
+
 #endif /* __GHOST_XR_INTERN_H__ */

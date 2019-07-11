@@ -38,13 +38,18 @@ struct OpenXRInstanceData {
   static PFN_xrCreateDebugUtilsMessengerEXT s_xrCreateDebugUtilsMessengerEXT_fn;
   static PFN_xrDestroyDebugUtilsMessengerEXT s_xrDestroyDebugUtilsMessengerEXT_fn;
 
-  XrDebugUtilsMessengerEXT debug_messenger;
+  XrDebugUtilsMessengerEXT debug_messenger{XR_NULL_HANDLE};
 };
 
 PFN_xrCreateDebugUtilsMessengerEXT OpenXRInstanceData::s_xrCreateDebugUtilsMessengerEXT_fn =
     nullptr;
 PFN_xrDestroyDebugUtilsMessengerEXT OpenXRInstanceData::s_xrDestroyDebugUtilsMessengerEXT_fn =
     nullptr;
+
+/* -------------------------------------------------------------------- */
+/** \name Create, Initialize and Destruct
+ *
+ * \{ */
 
 GHOST_XrContext::GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info)
     : m_oxr(new OpenXRInstanceData()), m_debug(create_info->context_flag & GHOST_kXrContextDebug)
@@ -63,29 +68,25 @@ GHOST_XrContext::~GHOST_XrContext()
 
 GHOST_TSuccess GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
 {
-  XR_DEBUG_PRINTF(this, "Available OpenXR API-layers/extensions:\n");
   if (!enumerateApiLayers() || !enumerateExtensions()) {
     return GHOST_kFailure;
   }
-  XR_DEBUG_PRINTF(this, "Done printing OpenXR API-layers/extensions.\n");
+  XR_DEBUG_ONLY_CALL(this, printAvailableAPILayersAndExtensionsInfo());
 
   m_gpu_binding_type = determineGraphicsBindingTypeToEnable(create_info);
 
   assert(m_oxr->instance == XR_NULL_HANDLE);
   createOpenXRInstance();
   printInstanceInfo();
-  XR_DEBUG_ONLY_BEGIN(this);
-  initDebugMessenger();
-  XR_DEBUG_ONLY_END;
+  XR_DEBUG_ONLY_CALL(this, initDebugMessenger());
 
   return GHOST_kSuccess;
 }
 
 void GHOST_XrContext::createOpenXRInstance()
 {
-  XrInstanceCreateInfo create_info{};
+  XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
 
-  create_info.type = XR_TYPE_INSTANCE_CREATE_INFO;
   std::string("Blender").copy(create_info.applicationInfo.applicationName,
                               XR_MAX_APPLICATION_NAME_SIZE);
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
@@ -96,20 +97,101 @@ void GHOST_XrContext::createOpenXRInstance()
   create_info.enabledApiLayerNames = m_enabled_layers.data();
   create_info.enabledExtensionCount = m_enabled_extensions.size();
   create_info.enabledExtensionNames = m_enabled_extensions.data();
+  XR_DEBUG_ONLY_CALL(this, printExtensionsAndAPILayersToEnable());
 
   xrCreateInstance(&create_info, &m_oxr->instance);
 }
+
+/** \} */ /* Create, Initialize and Destruct */
+
+/* -------------------------------------------------------------------- */
+/** \name Debug Printing
+ *
+ * \{ */
 
 void GHOST_XrContext::printInstanceInfo()
 {
   assert(m_oxr->instance != XR_NULL_HANDLE);
 
-  XrInstanceProperties instanceProperties{};
-  instanceProperties.type = XR_TYPE_INSTANCE_PROPERTIES;
-  xrGetInstanceProperties(m_oxr->instance, &instanceProperties);
+  XrInstanceProperties instance_properties{XR_TYPE_INSTANCE_PROPERTIES};
+  xrGetInstanceProperties(m_oxr->instance, &instance_properties);
 
-  XR_DEBUG_PRINTF(this, "Connected to OpenXR runtime: %s\n", instanceProperties.runtimeName);
+  printf("Connected to OpenXR runtime: %s (Version %i.%i.%i)\n",
+         instance_properties.runtimeName,
+         XR_VERSION_MAJOR(instance_properties.runtimeVersion),
+         XR_VERSION_MINOR(instance_properties.runtimeVersion),
+         XR_VERSION_PATCH(instance_properties.runtimeVersion));
 }
+
+void GHOST_XrContext::printAvailableAPILayersAndExtensionsInfo()
+{
+  puts("Available OpenXR API-layers/extensions:");
+  for (XrApiLayerProperties &layer_info : m_oxr->layers) {
+    printf("Layer: %s\n", layer_info.layerName);
+  }
+  for (XrExtensionProperties &ext_info : m_oxr->extensions) {
+    printf("Extension: %s\n", ext_info.extensionName);
+  }
+}
+
+void GHOST_XrContext::printExtensionsAndAPILayersToEnable()
+{
+  for (const char *layer_name : m_enabled_layers) {
+    printf("Enabling OpenXR API-Layer: %s\n", layer_name);
+  }
+  for (const char *ext_name : m_enabled_extensions) {
+    printf("Enabling OpenXR Extension: %s\n", ext_name);
+  }
+}
+
+static XrBool32 debug_messenger_func(XrDebugUtilsMessageSeverityFlagsEXT /*messageSeverity*/,
+                                     XrDebugUtilsMessageTypeFlagsEXT /*messageTypes*/,
+                                     const XrDebugUtilsMessengerCallbackDataEXT *callbackData,
+                                     void * /*userData*/)
+{
+  puts("OpenXR Debug Message:");
+  puts(callbackData->message);
+  return XR_FALSE;  // OpenXR spec suggests always returning false.
+}
+
+void GHOST_XrContext::initDebugMessenger()
+{
+  XrDebugUtilsMessengerCreateInfoEXT create_info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+
+  /* Extension functions need to be obtained through xrGetInstanceProcAddr */
+  if (XR_FAILED(xrGetInstanceProcAddr(
+          m_oxr->instance,
+          "xrCreateDebugUtilsMessengerEXT",
+          (PFN_xrVoidFunction *)&m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn)) ||
+      XR_FAILED(xrGetInstanceProcAddr(
+          m_oxr->instance,
+          "xrDestroyDebugUtilsMessengerEXT",
+          (PFN_xrVoidFunction *)&m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn))) {
+    fprintf(stderr, "Could not use XR_EXT_debug_utils to enable debug prints.\n");
+    m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn = nullptr;
+    m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn = nullptr;
+    return;
+  }
+
+  create_info.messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  create_info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+  create_info.userCallback = debug_messenger_func;
+
+  m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn(
+      m_oxr->instance, &create_info, &m_oxr->debug_messenger);
+}
+
+/** \} */ /* Debug Printing */
+
+/* -------------------------------------------------------------------- */
+/** \name OpenXR API-Layers and Extensions
+ *
+ * \{ */
 
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
@@ -117,7 +199,6 @@ void GHOST_XrContext::printInstanceInfo()
 GHOST_TSuccess GHOST_XrContext::enumerateExtensionsEx(
     std::vector<XrExtensionProperties> &extensions, const char *layer_name)
 {
-  const unsigned long old_extension_count = extensions.size();
   uint32_t extension_count = 0;
 
   /* Get count for array creation/init first. */
@@ -136,18 +217,9 @@ GHOST_TSuccess GHOST_XrContext::enumerateExtensionsEx(
     extensions.push_back(ext);
   }
 
-  if (layer_name) {
-    XR_DEBUG_PRINTF(this, "Layer: %s\n", layer_name);
-  }
-
   /* Actually get the extensions. */
   xrEnumerateInstanceExtensionProperties(
       layer_name, extension_count, &extension_count, extensions.data());
-  XR_DEBUG_ONLY_BEGIN(this);
-  for (uint32_t i = 0; i < extension_count; i++) {
-    XR_DEBUG_PRINTF(this, "Extension: %s\n", extensions[i + old_extension_count].extensionName);
-  }
-  XR_DEBUG_ONLY_END;
 
   return GHOST_kSuccess;
 }
@@ -178,8 +250,6 @@ GHOST_TSuccess GHOST_XrContext::enumerateApiLayers()
   /* Actually get the layers. */
   xrEnumerateApiLayerProperties(layer_count, &layer_count, m_oxr->layers.data());
   for (XrApiLayerProperties &layer : m_oxr->layers) {
-    XR_DEBUG_PRINTF(this, "Layer: %s\n", layer.layerName);
-
     /* Each layer may have own extensions */
     enumerateExtensionsEx(m_oxr->extensions, layer.layerName);
   }
@@ -217,16 +287,13 @@ void GHOST_XrContext::getAPILayersToEnable(std::vector<const char *> &r_ext_name
 {
   static std::vector<std::string> try_layers;
 
-  XR_DEBUG_ONLY_BEGIN(this);
-  try_layers.push_back("XR_APILAYER_LUNARG_core_validation");
-  XR_DEBUG_ONLY_END;
+  XR_DEBUG_ONLY_CALL(this, try_layers.push_back("XR_APILAYER_LUNARG_core_validation"));
 
   r_ext_names.reserve(try_layers.size());
 
   for (const std::string &layer : try_layers) {
     if (openxr_layer_is_available(m_oxr->layers, layer)) {
       r_ext_names.push_back(layer.c_str());
-      XR_DEBUG_PRINTF(this, "Enabling OpenXR API-Layer %s\n", layer.c_str());
     }
   }
 }
@@ -257,26 +324,20 @@ void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_nam
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(m_gpu_binding_type);
   static std::vector<std::string> try_ext;
-  const auto add_ext = [this, &r_ext_names](const char *ext_name) {
-    r_ext_names.push_back(ext_name);
-    XR_DEBUG_PRINTF(this, "Enabling OpenXR Extension: %s\n", ext_name);
-  };
 
-  XR_DEBUG_ONLY_BEGIN(this);
   /* Try enabling debug extension */
-  try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
-  XR_DEBUG_ONLY_END;
+  XR_DEBUG_ONLY_CALL(this, try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME));
 
   r_ext_names.reserve(try_ext.size() + 1); /* + 1 for graphics binding extension. */
 
   /* Add graphics binding extension. */
   assert(gpu_binding);
   assert(openxr_extension_is_available(m_oxr->extensions, gpu_binding));
-  add_ext(gpu_binding);
+  r_ext_names.push_back(gpu_binding);
 
   for (const std::string &ext : try_ext) {
     if (openxr_extension_is_available(m_oxr->extensions, ext)) {
-      add_ext(ext.c_str());
+      r_ext_names.push_back(ext.c_str());
     }
   }
 }
@@ -303,47 +364,13 @@ GHOST_TXrGraphicsBinding GHOST_XrContext::determineGraphicsBindingTypeToEnable(
   return GHOST_kXrGraphicsUnknown;
 }
 
-static XrBool32 debug_messenger_func(XrDebugUtilsMessageSeverityFlagsEXT /*messageSeverity*/,
-                                     XrDebugUtilsMessageTypeFlagsEXT /*messageTypes*/,
-                                     const XrDebugUtilsMessengerCallbackDataEXT *callbackData,
-                                     void * /*userData*/)
-{
-  puts("OpenXR Debug Message:");
-  puts(callbackData->message);
-  return XR_FALSE;  // OpenXR spec suggests always returning false.
-}
+/** \} */ /* OpenXR API-Layers and Extensions */
 
-void GHOST_XrContext::initDebugMessenger()
-{
-  XrDebugUtilsMessengerCreateInfoEXT create_info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-
-  /* Extension functions need to be obtained through xrGetInstanceProcAddr */
-  if (XR_FAILED(xrGetInstanceProcAddr(
-          m_oxr->instance,
-          "xrCreateDebugUtilsMessengerEXT",
-          (PFN_xrVoidFunction *)&m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn)) ||
-      XR_FAILED(xrGetInstanceProcAddr(
-          m_oxr->instance,
-          "xrDestroyDebugUtilsMessengerEXT",
-          (PFN_xrVoidFunction *)&m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn))) {
-    fprintf(stderr, "Could not use XR_EXT_debug_utils to enable debug prints.");
-    m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn = nullptr;
-    m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn = nullptr;
-    return;
-  }
-
-  create_info.messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                  XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-  create_info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                             XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-  create_info.userCallback = debug_messenger_func;
-
-  m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn(
-      m_oxr->instance, &create_info, &m_oxr->debug_messenger);
-}
+/* -------------------------------------------------------------------- */
+/** \name Session management
+ *
+ * Manage session lifetime and delegate public calls to #GHOST_XrSession.
+ * \{ */
 
 void GHOST_XrContext::startSession(const GHOST_XrSessionBeginInfo *begin_info)
 {
@@ -380,6 +407,14 @@ void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChan
   }
 }
 
+/** \} */ /* Session Management */
+
+/* -------------------------------------------------------------------- */
+/** \name Public Accessors and Mutators
+ *
+ * Public as in, exposed in the Ghost API.
+ * \{ */
+
 /**
  * Set context for binding and unbinding a graphics context for a session. The binding callback
  * may create a new context thereby. In fact that's the sole reason for this callback approach to
@@ -403,12 +438,19 @@ void GHOST_XrContext::setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn)
   m_custom_funcs.draw_view_fn = draw_view_fn;
 }
 
-GHOST_XrCustomFuncs *GHOST_XrContext::getCustomFuncs()
+/** \} */ /* Public Accessors and Mutators */
+
+/* -------------------------------------------------------------------- */
+/** \name Ghost Internal Accessors and Mutators
+ *
+ * \{ */
+
+const GHOST_XrCustomFuncs *GHOST_XrContext::getCustomFuncs() const
 {
   return &m_custom_funcs;
 }
 
-GHOST_TXrGraphicsBinding GHOST_XrContext::getGraphicsBindingType()
+GHOST_TXrGraphicsBinding GHOST_XrContext::getGraphicsBindingType() const
 {
   return m_gpu_binding_type;
 }
@@ -422,3 +464,5 @@ bool GHOST_XrContext::isDebugMode() const
 {
   return m_debug;
 }
+
+/** \} */ /* Ghost Internal Accessors and Mutators */
