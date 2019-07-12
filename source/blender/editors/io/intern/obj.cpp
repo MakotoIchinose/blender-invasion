@@ -45,6 +45,7 @@ extern "C" {
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -322,6 +323,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
   std::cerr << "Totals: " << uv_total << " " << no_total << "\nSizes: " << uv_mapping.size() << " "
             << no_mapping.size() << '\n';
 
+  const char *state_mat = nullptr;
   for (const Mesh_export &me : meshes) {
     if (format_specific->export_objects_as_objects || format_specific->export_objects_as_groups) {
       const std::string name = common::get_object_name(me.object, me.mesh);
@@ -344,15 +346,15 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
     }
 
     size_t poly_index = 0;
-    int state_smooth = -1, state_mat = -1;
+    int state_smooth = -1;
     for (auto pi = common::poly_iter(me.mesh); pi != pi.end(); ++pi, ++poly_index) {
       const MPoly &p = *pi;
 
-      if (settings->export_materials) {
-        if (p.mat_nr != state_mat) {
-          fprintf(file, "usemtl %s\n", me.mesh->mat[p.mat_nr]->id.name + 2);
-          state_mat = p.mat_nr;
-        }
+      if (settings->export_materials && me.mesh->mat &&
+          (state_mat == nullptr ||
+           std::strncmp(me.mesh->mat[p.mat_nr]->id.name, state_mat, MAX_ID_NAME) != 0)) {
+        fprintf(file, "usemtl %s\n", me.mesh->mat[p.mat_nr]->id.name + 2);
+        state_mat = me.mesh->mat[p.mat_nr]->id.name;
       }
 
       // Smooth indices start at 1, so 0 is not a valid index
