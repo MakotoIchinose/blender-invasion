@@ -56,6 +56,22 @@ struct USDMeshData {
   pxr::VtIntArray face_vertex_counts;
   pxr::VtIntArray face_indices;
   std::map<short, pxr::VtIntArray> face_groups;
+
+  /* The length of this array specifies the number of creases on the surface. Each element gives
+   * the number of (must be adjacent) vertices in each crease, whose indices are linearly laid out
+   * in the 'creaseIndices' attribute. Since each crease must be at least one edge long, each
+   * element of this array should be greater than one. */
+  pxr::VtIntArray crease_lengths;
+  /* The indices of all vertices forming creased edges. The size of this array must be equal to the
+   * sum of all elements of the 'creaseLengths' attribute. */
+  pxr::VtIntArray crease_vertex_indices;
+  /* The per-crease or per-edge sharpness for all creases (Usd.Mesh.SHARPNESS_INFINITE for a
+   * perfectly sharp crease). Since 'creaseLengths' encodes the number of vertices in each crease,
+   * the number of elements in this array will be either len(creaseLengths) or the sum over all X
+   * of (creaseLengths[X] - 1). Note that while the RI spec allows each crease to have either a
+   * single sharpness or a value per-edge, USD will encode either a single sharpness per crease on
+   * a mesh, or sharpnesses for all edges making up the creases on a mesh. */
+  pxr::VtFloatArray crease_sharpnesses;
 };
 
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
@@ -75,6 +91,12 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   usd_mesh.CreateFaceVertexCountsAttr().Set(usd_mesh_data.face_vertex_counts, timecode);
   usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_mesh_data.face_indices, timecode);
 
+  if (!usd_mesh_data.crease_lengths.empty()) {
+    usd_mesh.CreateCreaseLengthsAttr().Set(usd_mesh_data.crease_lengths, timecode);
+    usd_mesh.CreateCreaseIndicesAttr().Set(usd_mesh_data.crease_vertex_indices, timecode);
+    usd_mesh.CreateCreaseSharpnessesAttr().Set(usd_mesh_data.crease_sharpnesses, timecode);
+  }
+
   // TODO(Sybren): figure out what happens when the face groups change.
   if (frame_has_been_written_) {
     return;
@@ -83,23 +105,24 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
 }
 
-void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+static void get_vertices(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+{
+  usd_mesh_data.points.reserve(mesh->totvert);
+
+  const MVert *verts = mesh->mvert;
+  for (int i = 0; i < mesh->totvert; ++i) {
+    usd_mesh_data.points.push_back(pxr::GfVec3f(verts[i].co));
+  }
+}
+
+static void get_loops_polys(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
 {
   /* Only construct face groups (a.k.a. geometry subsets) when we need them for material
    * assignments. */
   bool construct_face_groups = mesh->totcol > 1;
 
-  usd_mesh_data.points.reserve(mesh->totvert);
   usd_mesh_data.face_vertex_counts.reserve(mesh->totpoly);
   usd_mesh_data.face_indices.reserve(mesh->totloop);
-
-  // TODO(Sybren): there is probably a more C++-y way to do this, which avoids copying the entire
-  // mesh to a different structure. I haven't seen the approach below in the USD exporters for
-  // Maya/Houdini, but it's simple and it works for now.
-  const MVert *verts = mesh->mvert;
-  for (int i = 0; i < mesh->totvert; ++i) {
-    usd_mesh_data.points.push_back(pxr::GfVec3f(verts[i].co));
-  }
 
   MLoop *mloop = mesh->mloop;
   MPoly *mpoly = mesh->mpoly;
@@ -114,6 +137,38 @@ void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, struct USDMeshDat
       usd_mesh_data.face_groups[mpoly->mat_nr].push_back(i);
     }
   }
+}
+
+static void get_creases(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+{
+  const float factor = 1.0f / 255.0f;
+
+  MEdge *edge = mesh->medge;
+  float sharpness;
+  for (int edge_idx = 0, totedge = mesh->totedge; edge_idx < totedge; ++edge_idx, ++edge) {
+    if (edge->crease == 0) {
+      continue;
+    }
+
+    if (edge->crease == 255) {
+      sharpness = pxr::UsdGeomMesh::SHARPNESS_INFINITE;
+    }
+    else {
+      sharpness = static_cast<float>(edge->crease) * factor;
+    }
+
+    usd_mesh_data.crease_vertex_indices.push_back(edge->v1);
+    usd_mesh_data.crease_vertex_indices.push_back(edge->v2);
+    usd_mesh_data.crease_lengths.push_back(2);
+    usd_mesh_data.crease_sharpnesses.push_back(sharpness);
+  }
+}
+
+void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+{
+  get_vertices(mesh, usd_mesh_data);
+  get_loops_polys(mesh, usd_mesh_data);
+  get_creases(mesh, usd_mesh_data);
 }
 
 void USDGenericMeshWriter::assign_materials(
