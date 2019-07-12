@@ -18,25 +18,30 @@
  * \ingroup GHOST
  */
 
-#ifndef __GHOST_IXRCONTEXT_H__
-#define __GHOST_IXRCONTEXT_H__
+#ifndef __GHOST_XREXCEPTION_H__
+#define __GHOST_XREXCEPTION_H__
 
-#include "GHOST_Types.h"
+#include <exception>
 
-class GHOST_IXrContext {
+class GHOST_XrException : public std::exception {
+  friend class GHOST_XrContext;
+
  public:
-  virtual ~GHOST_IXrContext() = default;
+  GHOST_XrException(const char *msg, const char *file, int line, int res = 0)
+      : std::exception(), m_msg(msg), m_file(file), m_line(line), m_res(res)
+  {
+  }
 
-  virtual void startSession(const GHOST_XrSessionBeginInfo *begin_info) = 0;
-  virtual void endSession() = 0;
-  virtual bool isSessionRunning() const = 0;
-  virtual void drawSessionViews(void *draw_customdata) = 0;
+  const char *what() const noexcept override
+  {
+    return m_msg;
+  }
 
-  virtual void dispatchErrorMessage(const class GHOST_XrException *) const = 0;
-
-  virtual void setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
-                                           GHOST_XrGraphicsContextUnbindFn unbind_fn) = 0;
-  virtual void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) = 0;
+ private:
+  const char *m_msg;
+  const char *m_file;
+  const int m_line;
+  int m_res;
 };
 
-#endif  // __GHOST_IXRCONTEXT_H__
+#endif  // __GHOST_XREXCEPTION_H__

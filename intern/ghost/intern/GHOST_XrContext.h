@@ -47,17 +47,19 @@ class GHOST_XrContext : public GHOST_IXrContext {
   GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info);
   ~GHOST_XrContext();
 
-  GHOST_TSuccess initialize(const GHOST_XrContextCreateInfo *create_info);
+  void initialize(const GHOST_XrContextCreateInfo *create_info);
   void startSession(const GHOST_XrSessionBeginInfo *begin_info) override;
   void endSession() override;
   bool isSessionRunning() const override;
   void drawSessionViews(void *draw_customdata) override;
 
-  void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
+  void dispatchErrorMessage(const class GHOST_XrException *exception) const override;
 
   void setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
                                    GHOST_XrGraphicsContextUnbindFn unbind_fn) override;
   void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) override;
+
+  void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
 
   const GHOST_XrCustomFuncs *getCustomFuncs() const;
   GHOST_TXrGraphicsBinding getGraphicsBindingType() const;
@@ -90,10 +92,10 @@ class GHOST_XrContext : public GHOST_IXrContext {
   void printAvailableAPILayersAndExtensionsInfo();
   void printExtensionsAndAPILayersToEnable();
 
-  GHOST_TSuccess enumerateApiLayers();
-  GHOST_TSuccess enumerateExtensions();
-  GHOST_TSuccess enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
-                                       const char *layer_name);
+  void enumerateApiLayers();
+  void enumerateExtensions();
+  void enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
+                             const char *layer_name);
   void getAPILayersToEnable(std::vector<const char *> &r_ext_names);
   void getExtensionsToEnable(std::vector<const char *> &r_ext_names);
   GHOST_TXrGraphicsBinding determineGraphicsBindingTypeToEnable(

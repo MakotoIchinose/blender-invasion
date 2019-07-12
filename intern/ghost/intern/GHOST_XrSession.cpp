@@ -21,12 +21,14 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <sstream>
 
 #include "GHOST_C-api.h"
 
 #include "GHOST_IXrGraphicsBinding.h"
 #include "GHOST_Xr_intern.h"
 #include "GHOST_XrContext.h"
+#include "GHOST_XrException.h"
 
 #include "GHOST_XrSession.h"
 
@@ -62,6 +64,8 @@ GHOST_XrSession::~GHOST_XrSession()
 {
   assert(m_oxr->session != XR_NULL_HANDLE);
 
+  // TODO OpenXR calls here can fail, but we should not throw an exception in the destructor.
+
   for (XrSwapchain &swapchain : m_oxr->swapchains) {
     xrDestroySwapchain(swapchain);
   }
@@ -88,7 +92,8 @@ void GHOST_XrSession::initSystem()
   system_info.type = XR_TYPE_SYSTEM_GET_INFO;
   system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
-  xrGetSystem(m_context->getInstance(), &system_info, &m_oxr->system_id);
+  CHECK_XR(xrGetSystem(m_context->getInstance(), &system_info, &m_oxr->system_id),
+           "Failed to get device information. Is a device plugged in?");
 }
 
 /** \} */ /* Create, Initialize and Destruct */
@@ -116,7 +121,8 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
   (void)base_pose;
 #endif
 
-  xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space);
+  CHECK_XR(xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space),
+           "Failed to create reference space.");
 }
 
 void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
@@ -124,32 +130,30 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   assert(m_context->getInstance() != XR_NULL_HANDLE);
   assert(m_oxr->session == XR_NULL_HANDLE);
   if (m_context->getCustomFuncs()->gpu_ctx_bind_fn == nullptr) {
-    fprintf(stderr,
-            "Invalid API usage: No way to bind graphics context to the XR session. Call "
-            "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
-            "session (through GHOST_XrSessionStart()).");
-    return;
+    THROW_XR(
+        "Invalid API usage: No way to bind graphics context to the XR session. Call "
+        "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
+        "session (through GHOST_XrSessionStart()).");
   }
 
   initSystem();
 
   bindGraphicsContext();
   if (m_gpu_ctx == nullptr) {
-    fprintf(stderr,
-            "Invalid API usage: No graphics context returned through the callback set with "
-            "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
-            "GHOST_XrSessionStart()).\n");
-    return;
+    THROW_XR(
+        "Invalid API usage: No graphics context returned through the callback set with "
+        "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
+        "GHOST_XrSessionStart()).");
   }
 
   std::string requirement_str;
   m_gpu_binding = GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType());
   if (!m_gpu_binding->checkVersionRequirements(
           m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str)) {
-    fprintf(stderr,
-            "Available graphics context version does not meet the following requirements: %s",
-            requirement_str.c_str());
-    return;
+    std::ostringstream strstream;
+    strstream << "Available graphics context version does not meet the following requirements: %s"
+              << requirement_str;
+    THROW_XR(strstream.str().c_str());
   }
   m_gpu_binding->initFromGhostContext(m_gpu_ctx);
 
@@ -158,7 +162,8 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   create_info.systemId = m_oxr->system_id;
   create_info.next = &m_gpu_binding->oxr_binding;
 
-  xrCreateSession(m_context->getInstance(), &create_info, &m_oxr->session);
+  CHECK_XR(xrCreateSession(m_context->getInstance(), &create_info, &m_oxr->session),
+           "Failed to create VR session.");
 
   prepareDrawing();
   create_reference_space(m_oxr.get(), &begin_info->base_pose);
@@ -168,7 +173,7 @@ void GHOST_XrSession::end()
 {
   assert(m_oxr->session != XR_NULL_HANDLE);
 
-  xrEndSession(m_oxr->session);
+  CHECK_XR(xrEndSession(m_oxr->session), "Failed to cleanly end the VR session.");
   unbindGraphicsContext();
 }
 
@@ -186,7 +191,8 @@ GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
 
       begin_info.type = XR_TYPE_SESSION_BEGIN_INFO;
       begin_info.primaryViewConfigurationType = m_oxr->view_type;
-      xrBeginSession(m_oxr->session, &begin_info);
+      CHECK_XR(xrBeginSession(m_oxr->session, &begin_info),
+               "Failed to cleanly begin the VR session.");
       break;
     }
     case XR_SESSION_STATE_STOPPING:
@@ -214,9 +220,11 @@ static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
   std::vector<XrSwapchainImageBaseHeader *> images;
   uint32_t image_count;
 
-  xrEnumerateSwapchainImages(swapchain, 0, &image_count, nullptr);
+  CHECK_XR(xrEnumerateSwapchainImages(swapchain, 0, &image_count, nullptr),
+           "Failed to get count of swapchain images to create for the VR session.");
   images = gpu_binding->createSwapchainImages(image_count);
-  xrEnumerateSwapchainImages(swapchain, images.size(), &image_count, images[0]);
+  CHECK_XR(xrEnumerateSwapchainImages(swapchain, images.size(), &image_count, images[0]),
+           "Failed to create swapchain images for the VR session.");
 
   return images;
 }
@@ -230,15 +238,16 @@ static XrSwapchain swapchain_create(const XrSession session,
   uint32_t format_count = 0;
   int64_t chosen_format;
 
-  xrEnumerateSwapchainFormats(session, 0, &format_count, nullptr);
+  CHECK_XR(xrEnumerateSwapchainFormats(session, 0, &format_count, nullptr),
+           "Failed to get count of swapchain image formats.");
   std::vector<int64_t> swapchain_formats(format_count);
-  xrEnumerateSwapchainFormats(
-      session, swapchain_formats.size(), &format_count, swapchain_formats.data());
+  CHECK_XR(xrEnumerateSwapchainFormats(
+               session, swapchain_formats.size(), &format_count, swapchain_formats.data()),
+           "Failed to get swapchain image formats.");
   assert(swapchain_formats.size() == format_count);
 
   if (!gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
-    fprintf(stderr, "Error: No format matching OpenXR runtime supported swapchain formats found.");
-    return nullptr;
+    THROW_XR("Error: No format matching OpenXR runtime supported swapchain formats found.");
   }
 
   create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
@@ -250,7 +259,8 @@ static XrSwapchain swapchain_create(const XrSession session,
   create_info.faceCount = 1;
   create_info.arraySize = 1;
   create_info.mipCount = 1;
-  xrCreateSwapchain(session, &create_info, &swapchain);
+  CHECK_XR(xrCreateSwapchain(session, &create_info, &swapchain),
+           "Failed to create OpenXR swapchain.");
 
   return swapchain;
 }
@@ -260,15 +270,18 @@ void GHOST_XrSession::prepareDrawing()
   std::vector<XrViewConfigurationView> view_configs;
   uint32_t view_count;
 
-  xrEnumerateViewConfigurationViews(
-      m_context->getInstance(), m_oxr->system_id, m_oxr->view_type, 0, &view_count, nullptr);
+  CHECK_XR(
+      xrEnumerateViewConfigurationViews(
+          m_context->getInstance(), m_oxr->system_id, m_oxr->view_type, 0, &view_count, nullptr),
+      "Failed to get count of view configurations.");
   view_configs.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
-  xrEnumerateViewConfigurationViews(m_context->getInstance(),
-                                    m_oxr->system_id,
-                                    m_oxr->view_type,
-                                    view_configs.size(),
-                                    &view_count,
-                                    view_configs.data());
+  CHECK_XR(xrEnumerateViewConfigurationViews(m_context->getInstance(),
+                                             m_oxr->system_id,
+                                             m_oxr->view_type,
+                                             view_configs.size(),
+                                             &view_count,
+                                             view_configs.data()),
+           "Failed to get count of view configurations.");
 
   for (const XrViewConfigurationView &view : view_configs) {
     XrSwapchain swapchain = swapchain_create(m_oxr->session, m_gpu_binding.get(), &view);
@@ -290,9 +303,11 @@ void GHOST_XrSession::beginFrameDrawing()
   XrFrameState frame_state{XR_TYPE_FRAME_STATE};
 
   // TODO Blocking call. Does this intefer with other drawing?
-  xrWaitFrame(m_oxr->session, &wait_info, &frame_state);
+  CHECK_XR(xrWaitFrame(m_oxr->session, &wait_info, &frame_state),
+           "Failed to synchronize frame rates between Blender and the device.");
 
-  xrBeginFrame(m_oxr->session, &begin_info);
+  CHECK_XR(xrBeginFrame(m_oxr->session, &begin_info),
+           "Failed to submit frame rendering start state.");
 
   m_draw_frame = std::unique_ptr<GHOST_XrDrawFrame>(new GHOST_XrDrawFrame());
   m_draw_frame->frame_state = frame_state;
@@ -307,7 +322,7 @@ void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *
   end_info.layerCount = layers->size();
   end_info.layers = layers->data();
 
-  xrEndFrame(m_oxr->session, &end_info);
+  CHECK_XR(xrEndFrame(m_oxr->session, &end_info), "Failed to submit rendered frame.");
   m_draw_frame = nullptr;
 }
 
@@ -368,9 +383,11 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
   GHOST_ContextHandle draw_ctx;
   uint32_t swapchain_idx;
 
-  xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx);
+  CHECK_XR(xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx),
+           "Failed to acquire swapchain image for the VR session.");
   wait_info.timeout = XR_INFINITE_DURATION;
-  xrWaitSwapchainImage(swapchain, &wait_info);
+  CHECK_XR(xrWaitSwapchainImage(swapchain, &wait_info),
+           "Failed to acquire swapchain image for the VR session.");
 
   proj_layer_view.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
   proj_layer_view.pose = view.pose;
@@ -392,7 +409,8 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
   draw_ctx = m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
   m_gpu_binding->drawViewEnd(swapchain_image, (GHOST_Context *)draw_ctx);
 
-  xrReleaseSwapchainImage(swapchain, &release_info);
+  CHECK_XR(xrReleaseSwapchainImage(swapchain, &release_info),
+           "Failed to release swapchain image used to submit VR session frame.");
 }
 
 XrCompositionLayerProjection GHOST_XrSession::drawLayer(
@@ -406,12 +424,13 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
   viewloc_info.displayTime = m_draw_frame->frame_state.predictedDisplayTime;
   viewloc_info.space = m_oxr->reference_space;
 
-  xrLocateViews(m_oxr->session,
-                &viewloc_info,
-                &view_state,
-                m_oxr->views.size(),
-                &view_count,
-                m_oxr->views.data());
+  CHECK_XR(xrLocateViews(m_oxr->session,
+                         &viewloc_info,
+                         &view_state,
+                         m_oxr->views.size(),
+                         &view_count,
+                         m_oxr->views.data()),
+           "Failed to query frame view and projection state.");
   assert(m_oxr->swapchains.size() == view_count);
 
   proj_layer_views.resize(view_count);

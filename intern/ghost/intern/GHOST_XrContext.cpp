@@ -25,6 +25,7 @@
 
 #include "GHOST_Types.h"
 #include "GHOST_Xr_intern.h"
+#include "GHOST_XrException.h"
 #include "GHOST_XrSession.h"
 
 #include "GHOST_XrContext.h"
@@ -57,6 +58,8 @@ GHOST_XrContext::GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info)
 }
 GHOST_XrContext::~GHOST_XrContext()
 {
+  // TODO OpenXR calls here can fail, but we should not throw an exception in the destructor.
+
   if (m_oxr->debug_messenger != XR_NULL_HANDLE) {
     assert(m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn != nullptr);
     m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn(m_oxr->debug_messenger);
@@ -66,11 +69,10 @@ GHOST_XrContext::~GHOST_XrContext()
   }
 }
 
-GHOST_TSuccess GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
+void GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
 {
-  if (!enumerateApiLayers() || !enumerateExtensions()) {
-    return GHOST_kFailure;
-  }
+  enumerateApiLayers();
+  enumerateExtensions();
   XR_DEBUG_ONLY_CALL(this, printAvailableAPILayersAndExtensionsInfo());
 
   m_gpu_binding_type = determineGraphicsBindingTypeToEnable(create_info);
@@ -79,8 +81,6 @@ GHOST_TSuccess GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *crea
   createOpenXRInstance();
   printInstanceInfo();
   XR_DEBUG_ONLY_CALL(this, initDebugMessenger());
-
-  return GHOST_kSuccess;
 }
 
 void GHOST_XrContext::createOpenXRInstance()
@@ -99,7 +99,8 @@ void GHOST_XrContext::createOpenXRInstance()
   create_info.enabledExtensionNames = m_enabled_extensions.data();
   XR_DEBUG_ONLY_CALL(this, printExtensionsAndAPILayersToEnable());
 
-  xrCreateInstance(&create_info, &m_oxr->instance);
+  CHECK_XR(xrCreateInstance(&create_info, &m_oxr->instance),
+           "Failed to connect to an OpenXR runtime.");
 }
 
 /** \} */ /* Create, Initialize and Destruct */
@@ -114,7 +115,8 @@ void GHOST_XrContext::printInstanceInfo()
   assert(m_oxr->instance != XR_NULL_HANDLE);
 
   XrInstanceProperties instance_properties{XR_TYPE_INSTANCE_PROPERTIES};
-  xrGetInstanceProperties(m_oxr->instance, &instance_properties);
+  CHECK_XR(xrGetInstanceProperties(m_oxr->instance, &instance_properties),
+           "Failed to get OpenXR runtime information. Do you have an active runtime set up?");
 
   printf("Connected to OpenXR runtime: %s (Version %u.%u.%u)\n",
          instance_properties.runtimeName,
@@ -167,9 +169,12 @@ void GHOST_XrContext::initDebugMessenger()
           m_oxr->instance,
           "xrDestroyDebugUtilsMessengerEXT",
           (PFN_xrVoidFunction *)&m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn))) {
-    fprintf(stderr, "Could not use XR_EXT_debug_utils to enable debug prints.\n");
     m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn = nullptr;
     m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn = nullptr;
+
+    fprintf(stderr,
+            "Could not use XR_EXT_debug_utils to enable debug prints. Not a fatal error, "
+            "continuing without the messenger.\n");
     return;
   }
 
@@ -182,8 +187,23 @@ void GHOST_XrContext::initDebugMessenger()
                              XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
   create_info.userCallback = debug_messenger_func;
 
-  m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn(
-      m_oxr->instance, &create_info, &m_oxr->debug_messenger);
+  if (XR_FAILED(m_oxr->s_xrCreateDebugUtilsMessengerEXT_fn(
+          m_oxr->instance, &create_info, &m_oxr->debug_messenger))) {
+    fprintf(stderr,
+            "Failed to create OpenXR debug messenger. Not a fatal error, continuing without the "
+            "messenger.\n");
+    return;
+  }
+}
+
+void GHOST_XrContext::dispatchErrorMessage(const GHOST_XrException *exception) const
+{
+  // TODO dummy
+  printf("Error: %s %i (%s:%i)\n",
+         exception->m_msg,
+         exception->m_res,
+         exception->m_file,
+         exception->m_line);
 }
 
 /** \} */ /* Debug Printing */
@@ -196,20 +216,18 @@ void GHOST_XrContext::initDebugMessenger()
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
  */
-GHOST_TSuccess GHOST_XrContext::enumerateExtensionsEx(
-    std::vector<XrExtensionProperties> &extensions, const char *layer_name)
+void GHOST_XrContext::enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
+                                            const char *layer_name)
 {
   uint32_t extension_count = 0;
 
   /* Get count for array creation/init first. */
-  if (XR_FAILED(
-          xrEnumerateInstanceExtensionProperties(layer_name, 0, &extension_count, nullptr))) {
-    return GHOST_kFailure;
-  }
+  CHECK_XR(xrEnumerateInstanceExtensionProperties(layer_name, 0, &extension_count, nullptr),
+           "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
 
   if (extension_count == 0) {
     /* Extensions are optional, can successfully exit. */
-    return GHOST_kSuccess;
+    return;
   }
 
   for (uint32_t i = 0; i < extension_count; i++) {
@@ -218,28 +236,26 @@ GHOST_TSuccess GHOST_XrContext::enumerateExtensionsEx(
   }
 
   /* Actually get the extensions. */
-  xrEnumerateInstanceExtensionProperties(
-      layer_name, extension_count, &extension_count, extensions.data());
-
-  return GHOST_kSuccess;
+  CHECK_XR(xrEnumerateInstanceExtensionProperties(
+               layer_name, extension_count, &extension_count, extensions.data()),
+           "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
 }
-GHOST_TSuccess GHOST_XrContext::enumerateExtensions()
+void GHOST_XrContext::enumerateExtensions()
 {
-  return enumerateExtensionsEx(m_oxr->extensions, nullptr);
+  enumerateExtensionsEx(m_oxr->extensions, nullptr);
 }
 
-GHOST_TSuccess GHOST_XrContext::enumerateApiLayers()
+void GHOST_XrContext::enumerateApiLayers()
 {
   uint32_t layer_count = 0;
 
   /* Get count for array creation/init first. */
-  if (XR_FAILED(xrEnumerateApiLayerProperties(0, &layer_count, nullptr))) {
-    return GHOST_kFailure;
-  }
+  CHECK_XR(xrEnumerateApiLayerProperties(0, &layer_count, nullptr),
+           "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
 
   if (layer_count == 0) {
     /* Layers are optional, can safely exit. */
-    return GHOST_kSuccess;
+    return;
   }
 
   m_oxr->layers = std::vector<XrApiLayerProperties>(layer_count);
@@ -248,13 +264,12 @@ GHOST_TSuccess GHOST_XrContext::enumerateApiLayers()
   }
 
   /* Actually get the layers. */
-  xrEnumerateApiLayerProperties(layer_count, &layer_count, m_oxr->layers.data());
+  CHECK_XR(xrEnumerateApiLayerProperties(layer_count, &layer_count, m_oxr->layers.data()),
+           "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
   for (XrApiLayerProperties &layer : m_oxr->layers) {
     /* Each layer may have own extensions */
     enumerateExtensionsEx(m_oxr->extensions, layer.layerName);
   }
-
-  return GHOST_kSuccess;
 }
 
 static bool openxr_layer_is_available(const std::vector<XrApiLayerProperties> layers_info,

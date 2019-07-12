@@ -26,6 +26,16 @@
 
 #include "GHOST_Xr_openxr_includes.h"
 
+#define CHECK_XR(call, error_msg) \
+  { \
+    XrResult _res = call; \
+    if (XR_FAILED(_res)) { \
+      throw GHOST_XrException(error_msg, __FILE__, __LINE__, _res); \
+    } \
+  }
+
+#define THROW_XR(error_msg) throw GHOST_XrException(error_msg, __FILE__, __LINE__);
+
 #define XR_DEBUG_ONLY_BEGIN(ctx) \
   if ((ctx)->isDebugMode()) { \
     (void)0

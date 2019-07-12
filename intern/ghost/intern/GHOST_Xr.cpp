@@ -27,6 +27,7 @@
 
 #include "GHOST_Xr_intern.h"
 #include "GHOST_XrContext.h"
+#include "GHOST_XrException.h"
 
 /**
  * \brief Initialize the window manager XR-Context.
@@ -37,8 +38,13 @@ GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *cre
 {
   GHOST_XrContext *xr_context = new GHOST_XrContext(create_info);
 
-  if (xr_context->initialize(create_info) == GHOST_kFailure) {
-    return nullptr;
+  // TODO GHOST_XrContext's should probably be owned by the GHOST_System, which will handle context
+  // creation and destruction. Try-catch logic can be moved to C-API then.
+  try {
+    xr_context->initialize(create_info);
+  }
+  catch (GHOST_XrException &e) {
+    xr_context->dispatchErrorMessage(&e);
   }
 
   return (GHOST_XrContextHandle)xr_context;
