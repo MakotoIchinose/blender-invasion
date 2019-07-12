@@ -45,6 +45,9 @@ GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *cre
   }
   catch (GHOST_XrException &e) {
     xr_context->dispatchErrorMessage(&e);
+    delete xr_context;
+
+    return nullptr;
   }
 
   return (GHOST_XrContextHandle)xr_context;
