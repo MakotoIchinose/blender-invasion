@@ -32,6 +32,7 @@ extern "C" {
 
 #include "DNA_scene_types.h"
 
+#include "BKE_blender_version.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_scene.h"
@@ -107,6 +108,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
     usd_stage->SetMetadata(pxr::UsdGeomTokens->metersPerUnit,
                            pxr::VtValue(scene->unit.scale_length));
+    usd_stage->GetRootLayer()->SetDocumentation(std::string("Blender ") + versionstr);
 
     // Set up the stage for animated data.
     if (data->params.export_animation) {
