@@ -161,7 +161,7 @@ bool OBJ_export_materials(bContext *C,
   ss << "], '"
      << path_reference_mode[((OBJExportSettings *)settings->format_specific)->path_mode].identifier
      << "')";
-  std::cerr << "Running '" << ss.str() << "'\n";
+  std::cerr << "DEBUG: Running '" << ss.str() << "'\n";
   return BPY_execute_string(C, imports, ss.str().c_str());
 #else
   return false;
@@ -278,7 +278,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
   if (settings->export_uvs) {
     for (Mesh_export &me : meshes) {
       if (me.mesh->mloopuv != nullptr) {
-        me.uv_offset = uv_total;
+        me.uv_offset = uv_mapping.size();
         // TODO someone Is T47010 still relevant?
         if (format_specific->dedup_uvs) {
           for (const std::array<float, 2> &uv :
@@ -288,8 +288,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
         }
         else {
           uv_total += me.mesh->totloop;
-          for (const std::array<float, 2> &uv :
-               common::uv_iter{me.mesh, uv_total /* const reference */}) {
+          for (const std::array<float, 2> &uv : common::uv_iter{me.mesh}) {
             fprintf(file, "vt %.6g %.6g\n", uv[0], uv[1]);
           }
         }
@@ -305,7 +304,7 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
       }
       me.mat[3][3] = 1.0f;
       normalize_m4(me.mat);
-      me.no_offset = no_total;
+      me.no_offset = no_mapping.size();
       if (format_specific->dedup_normals) {
         for (const std::array<float, 3> &no :
              common::deduplicated_normal_iter(me.mesh, no_total, no_mapping_pair, me.mat)) {
@@ -345,9 +344,17 @@ bool OBJ_export_meshes(bContext *UNUSED(C),
     }
 
     size_t poly_index = 0;
-    int state_smooth = -1;
+    int state_smooth = -1, state_mat = -1;
     for (auto pi = common::poly_iter(me.mesh); pi != pi.end(); ++pi, ++poly_index) {
       const MPoly &p = *pi;
+
+      if (settings->export_materials) {
+        if (p.mat_nr != state_mat) {
+          fprintf(file, "usemtl %s\n", me.mesh->mat[p.mat_nr]->id.name + 2);
+          state_mat = p.mat_nr;
+        }
+      }
+
       // Smooth indices start at 1, so 0 is not a valid index
       int smooth = (p.flag & ME_SMOOTH) ? 1 : 0;
       if (smooth && smooth_groups) {

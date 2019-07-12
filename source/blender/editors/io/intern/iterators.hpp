@@ -408,31 +408,24 @@ struct points_of_nurbs_iter : pointer_iterator_base<BPoint> {
 
 // Iterator over the UVs of a mesh (as `const std::array<float, 2>`)
 struct uv_iter : pointer_iterator_base<MLoopUV> {
-  uv_iter(const Mesh *const m, const size_t &total)
-      : pointer_iterator_base(m->mloopuv, m->mloopuv ? m->totloop : 0), total(total)
+  uv_iter(const Mesh *const m) : pointer_iterator_base(m->mloopuv, m->mloopuv ? m->totloop : 0)
   {
   }
-  uv_iter(const pointer_iterator_base<MLoopUV> &pi, const size_t &total)
-      : pointer_iterator_base(pi), total(total)
+  uv_iter(const pointer_iterator_base<MLoopUV> &pi) : pointer_iterator_base(pi)
   {
   }
   uv_iter begin() const
   {
-    return {{this->first, this->size, this->first}, total};
+    return {{this->first, this->size, this->first}};
   }
   uv_iter end() const
   {
-    return {{this->first + this->size, this->size, this->first}, total};
+    return {{this->first + this->size, this->size, this->first}};
   }
   inline const std::array<float, 2> operator*()
   {
     return {this->curr->uv[0], this->curr->uv[1]};
   }
-  size_t index() const
-  {
-    return total;
-  }
-  const size_t &total;
 };
 
 // Iterator over the normals of mesh
@@ -518,10 +511,6 @@ struct normal_iter {
       }
     }
   }
-  size_t index() const
-  {
-    return ml->v;
-  }
   const Mesh *const mesh;
   const MPoly *mp;
   const MLoop *ml;
@@ -569,10 +558,6 @@ struct transformed_normal_iter {
     mul_v3_m4v3(no.data(), mat, no.data());
     return no;
   }
-  size_t index() const
-  {
-    return ni.ml->v;
-  }
   normal_iter ni;
   Mat mat;
 };
@@ -604,12 +589,14 @@ struct deduplicated_iterator {
     if (this->it != this->it.end()) {
       // Reserve space so we don't constantly allocate
       dedup_pair.second.reserve(reserve);
-      auto p = dedup_pair.first.insert(std::make_pair(*this->it, this->it.index()));
+      auto p = dedup_pair.first.insert(std::make_pair(*this->it, total));
       // Need to insert the first element, because we need to dereference before incrementing
       // dedup_pair.second.insert(dedup_pair.second.end(), reserve - dedup_pair.second.size(), {});
       dedup_pair.second.push_back(p.first);
-      ++total;
-      ++this->it;
+      if (p.second) {
+        ++total;
+      }
+      // ++this->it;
     }
   }
   deduplicated_iterator begin() const
@@ -630,7 +617,7 @@ struct deduplicated_iterator {
       if (this->it == this->it.end())
         return *this;
       // try to insert it into the set
-      auto p = dedup_pair.first.insert(std::make_pair(*this->it, this->it.index()));
+      auto p = dedup_pair.first.insert(std::make_pair(*this->it, total));
       // push the set::iterator onto the back of the mapping vector
       dedup_pair.second.push_back(p.first);
       // If we actually inserted in the set
@@ -683,7 +670,7 @@ struct deduplicated_normal_iter : deduplicated_iterator<no_key_t, transformed_no
 struct deduplicated_uv_iter : deduplicated_iterator<uv_key_t, uv_iter> {
   deduplicated_uv_iter(const Mesh *const mesh, size_t &total, dedup_pair_t<uv_key_t> &dp)
       : deduplicated_iterator<uv_key_t, uv_iter>(
-            mesh, dp, total, total + mesh->totloop, uv_iter{mesh, total})
+            mesh, dp, total, total + mesh->totloop, uv_iter{mesh})
   {
   }
   // The last element in the mapping vector. Requires we insert the first element
