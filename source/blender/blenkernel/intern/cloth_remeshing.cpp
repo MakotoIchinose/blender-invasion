@@ -1107,27 +1107,26 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
 {
   BMFace *f, *f2;
   BMIter fiter;
-  bool face_exists = false;
+  vector<BMFace *> new_active_faces;
   /* add the newly created faces, all those that have that vertex v */
   BM_ITER_ELEM (f, &fiter, e, BM_FACES_OF_EDGE) {
-    active_faces.push_back(f);
+    new_active_faces.push_back(f);
   }
 
   /* remove the faces from active_faces that have been removed from
    * bmesh */
   for (int i = 0; i < active_faces.size(); i++) {
-    face_exists = false;
     f = active_faces[i];
     BM_ITER_MESH (f2, &fiter, bm, BM_FACES_OF_MESH) {
       if (f == f2) {
-        face_exists = true;
+        new_active_faces.push_back(f);
         break;
       }
     }
-    if (!face_exists) {
-      cloth_remeshing_remove_face(active_faces, i);
-    }
   }
+
+  active_faces.swap(new_active_faces);
+  new_active_faces.clear();
 }
 
 static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
@@ -1136,27 +1135,26 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
 {
   BMFace *f, *f2;
   BMIter fiter;
-  bool face_exists = false;
+  vector<BMFace *> new_active_faces;
   /* add the newly created faces, all those that have that vertex v */
   BM_ITER_ELEM (f, &fiter, v, BM_FACES_OF_VERT) {
-    active_faces.push_back(f);
+    new_active_faces.push_back(f);
   }
 
   /* remove the faces from active_faces that have been removed from
    * bmesh */
   for (int i = 0; i < active_faces.size(); i++) {
-    face_exists = false;
     f = active_faces[i];
     BM_ITER_MESH (f2, &fiter, bm, BM_FACES_OF_MESH) {
       if (f == f2) {
-        face_exists = true;
+        new_active_faces.push_back(f);
         break;
       }
     }
-    if (!face_exists) {
-      cloth_remeshing_remove_face(active_faces, i);
-    }
   }
+
+  active_faces.swap(new_active_faces);
+  new_active_faces.clear();
 }
 
 int count;
@@ -1190,10 +1188,10 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
 
       /* update active_faces */
 
+      count++;
       return true;
     }
     cloth_remeshing_remove_face(active_faces, i--);
-    count++;
   }
   return false;
 }
