@@ -192,8 +192,19 @@ void USDGenericMeshWriter::assign_materials(
 
     pxr::UsdShadeMaterial usd_material = ensure_usd_material(material);
     usd_material.Bind(usd_mesh.GetPrim());
+
+    /* USD seems to support neither per-material nor per-face-group double-sidedness, so we just
+     * use the flag from the first non-empty material slot. */
+    usd_mesh.CreateDoubleSidedAttr(
+        pxr::VtValue((material->blend_flag & MA_BL_CULL_BACKFACE) == 0));
+
     mesh_material_bound = true;
     break;
+  }
+
+  if (!mesh_material_bound) {
+    /* Blender defaults to double-sided, but USD to single-sided. */
+    usd_mesh.CreateDoubleSidedAttr(pxr::VtValue(true));
   }
 
   if (!mesh_material_bound || usd_face_groups.size() < 2) {
