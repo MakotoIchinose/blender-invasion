@@ -24,6 +24,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   void assign_materials(const HierarchyContext &context,
                         pxr::UsdGeomMesh usd_mesh,
                         const std::map<short, pxr::VtIntArray> &usd_face_groups);
+  void write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
 };
 
 class USDMeshWriter : public USDGenericMeshWriter {

@@ -74,6 +74,31 @@ struct USDMeshData {
   pxr::VtFloatArray crease_sharpnesses;
 };
 
+void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh)
+{
+  pxr::UsdTimeCode timecode = get_export_time_code();
+
+  const CustomData *ldata = &mesh->ldata;
+  for (int layer_idx = 0; layer_idx < ldata->totlayer; layer_idx++) {
+    const CustomDataLayer *layer = &ldata->layers[layer_idx];
+    if (layer->type != CD_MLOOPUV) {
+      continue;
+    }
+
+    // UV coordinates are stored in a Primvar on the Mesh, and can be referenced from materials.
+    pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(std::string("uv_") + layer->name));
+    pxr::UsdGeomPrimvar uv_coords_primvar = usd_mesh.CreatePrimvar(
+        primvar_name, pxr::SdfValueTypeNames->TexCoord2fArray, pxr::UsdGeomTokens->faceVarying);
+
+    MLoopUV *mloopuv = static_cast<MLoopUV *>(layer->data);
+    pxr::VtArray<pxr::GfVec2f> uv_coords;
+    for (int loop_idx = 0; loop_idx < mesh->totloop; loop_idx++) {
+      uv_coords.push_back(pxr::GfVec2f(mloopuv[loop_idx].uv));
+    }
+    uv_coords_primvar.Set(uv_coords, timecode);
+  }
+}
+
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
@@ -96,6 +121,8 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     usd_mesh.CreateCreaseIndicesAttr().Set(usd_mesh_data.crease_vertex_indices, timecode);
     usd_mesh.CreateCreaseSharpnessesAttr().Set(usd_mesh_data.crease_sharpnesses, timecode);
   }
+
+  write_uv_maps(mesh, usd_mesh);
 
   // TODO(Sybren): figure out what happens when the face groups change.
   if (frame_has_been_written_) {
