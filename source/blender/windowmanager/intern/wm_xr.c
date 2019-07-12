@@ -21,6 +21,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
+#include "BKE_report.h"
 #include "BKE_screen.h"
 
 #include "BLI_math_geom.h"
@@ -43,6 +44,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "UI_interface.h"
+
 #include "WM_types.h"
 #include "WM_api.h"
 
@@ -60,27 +63,57 @@ typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
 } XrSurfaceData;
 
-bool wm_xr_context_ensure(wmWindowManager *wm)
+typedef struct {
+  wmWindowManager *wm;
+  bContext *evil_C;
+} wmXrErrorHandlerData;
+
+static void wm_xr_error_handler(const GHOST_XrError *error)
+{
+  wmXrErrorHandlerData *handler_data = error->customdata;
+  wmWindowManager *wm = handler_data->wm;
+
+  BKE_reports_clear(&wm->reports);
+  WM_report(RPT_ERROR, error->user_message);
+  WM_report_banner_show();
+  UI_popup_menu_reports(handler_data->evil_C, &wm->reports);
+
+  if (wm->xr_context) {
+    /* Just play safe and destroy the entire context. */
+    GHOST_XrContextDestroy(wm->xr_context);
+    wm->xr_context = NULL;
+  }
+}
+
+bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
 {
   if (wm->xr_context) {
     return true;
   }
+  static wmXrErrorHandlerData error_customdata;
 
-  const GHOST_TXrGraphicsBinding gpu_bindings_candidates[] = {
-      GHOST_kXrGraphicsOpenGL,
+  /* Set up error handling */
+  error_customdata.wm = wm;
+  error_customdata.evil_C = C;
+  GHOST_XrErrorHandler(wm_xr_error_handler, &error_customdata);
+
+  {
+    const GHOST_TXrGraphicsBinding gpu_bindings_candidates[] = {
+        GHOST_kXrGraphicsOpenGL,
 #ifdef WIN32
-      GHOST_kXrGraphicsD3D11,
+        GHOST_kXrGraphicsD3D11,
 #endif
-  };
-  GHOST_XrContextCreateInfo create_info = {
-      .gpu_binding_candidates = gpu_bindings_candidates,
-      .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
+    };
+    GHOST_XrContextCreateInfo create_info = {
+        .gpu_binding_candidates = gpu_bindings_candidates,
+        .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
 
-  if (G.debug & G_DEBUG_XR) {
-    create_info.context_flag |= GHOST_kXrContextDebug;
+    if (G.debug & G_DEBUG_XR) {
+      create_info.context_flag |= GHOST_kXrContextDebug;
+    }
+
+    wm->xr_context = GHOST_XrContextCreate(&create_info);
   }
-
-  wm->xr_context = GHOST_XrContextCreate(&create_info);
 
   return wm->xr_context != NULL;
 }

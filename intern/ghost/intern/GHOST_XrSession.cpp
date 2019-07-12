@@ -62,8 +62,6 @@ GHOST_XrSession::GHOST_XrSession(GHOST_XrContext *xr_context)
 
 GHOST_XrSession::~GHOST_XrSession()
 {
-  assert(m_oxr->session != XR_NULL_HANDLE);
-
   // TODO OpenXR calls here can fail, but we should not throw an exception in the destructor.
 
   for (XrSwapchain &swapchain : m_oxr->swapchains) {
@@ -73,7 +71,9 @@ GHOST_XrSession::~GHOST_XrSession()
   if (m_oxr->reference_space != XR_NULL_HANDLE) {
     xrDestroySpace(m_oxr->reference_space);
   }
-  xrDestroySession(m_oxr->session);
+  if (m_oxr->session != XR_NULL_HANDLE) {
+    xrDestroySession(m_oxr->session);
+  }
 
   m_oxr->session = XR_NULL_HANDLE;
   m_oxr->session_state = XR_SESSION_STATE_UNKNOWN;

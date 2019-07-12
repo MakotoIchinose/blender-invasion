@@ -46,13 +46,14 @@ class GHOST_XrContext : public GHOST_IXrContext {
  public:
   GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info);
   ~GHOST_XrContext();
-
   void initialize(const GHOST_XrContextCreateInfo *create_info);
+
   void startSession(const GHOST_XrSessionBeginInfo *begin_info) override;
   void endSession() override;
   bool isSessionRunning() const override;
   void drawSessionViews(void *draw_customdata) override;
 
+  static void setErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata);
   void dispatchErrorMessage(const class GHOST_XrException *exception) const override;
 
   void setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
@@ -80,6 +81,8 @@ class GHOST_XrContext : public GHOST_IXrContext {
   /** Names of enabled API-layers */
   std::vector<const char *> m_enabled_layers;
 
+  static GHOST_XrErrorHandlerFn s_error_handler;
+  static void *s_error_handler_customdata;
   GHOST_XrCustomFuncs m_custom_funcs;
 
   /** Enable debug message prints and OpenXR API validation layers */

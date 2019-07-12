@@ -981,6 +981,13 @@ extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
 #ifdef WITH_OPENXR
 
 /* xr-context */
+
+/**
+ * Set a custom callback to be executed whenever an error occurs. Should be set before calling
+ * #GHOST_XrContextCreate().
+ */
+void GHOST_XrErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata);
+
 GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info);
 void GHOST_XrContextDestroy(GHOST_XrContextHandle xr_context);
 

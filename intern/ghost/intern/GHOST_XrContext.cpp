@@ -21,6 +21,7 @@
  */
 
 #include <cassert>
+#include <sstream>
 #include <string>
 
 #include "GHOST_Types.h"
@@ -47,6 +48,9 @@ PFN_xrCreateDebugUtilsMessengerEXT OpenXRInstanceData::s_xrCreateDebugUtilsMesse
 PFN_xrDestroyDebugUtilsMessengerEXT OpenXRInstanceData::s_xrDestroyDebugUtilsMessengerEXT_fn =
     nullptr;
 
+GHOST_XrErrorHandlerFn GHOST_XrContext::s_error_handler = nullptr;
+void *GHOST_XrContext::s_error_handler_customdata = nullptr;
+
 /* -------------------------------------------------------------------- */
 /** \name Create, Initialize and Destruct
  *
@@ -66,6 +70,7 @@ GHOST_XrContext::~GHOST_XrContext()
   }
   if (m_oxr->instance != XR_NULL_HANDLE) {
     xrDestroyInstance(m_oxr->instance);
+    m_oxr->instance = XR_NULL_HANDLE;
   }
 }
 
@@ -196,17 +201,44 @@ void GHOST_XrContext::initDebugMessenger()
   }
 }
 
+/** \} */ /* Debug Printing */
+
+/* -------------------------------------------------------------------- */
+/** \name Error handling
+ *
+ * \{ */
+
 void GHOST_XrContext::dispatchErrorMessage(const GHOST_XrException *exception) const
 {
-  // TODO dummy
-  printf("Error: %s %i (%s:%i)\n",
-         exception->m_msg,
-         exception->m_res,
-         exception->m_file,
-         exception->m_line);
+  std::ostringstream stream_err_location;
+  std::string str_err_location;
+  GHOST_XrError error;
+
+  stream_err_location << exception->m_file << ":" << exception->m_line;
+  str_err_location = stream_err_location.str();
+
+  error.user_message = exception->m_msg;
+  error.source_location = str_err_location.c_str();
+  error.customdata = s_error_handler_customdata;
+
+  XR_DEBUG_ONLY_CALL(this,
+                     fprintf(stderr,
+                             "Error: \t%s\n\tOpenXR error value: %i\n\tSource: (%s)\n",
+                             error.user_message,
+                             exception->m_res,
+                             error.source_location));
+
+  /* Potentially destroys GHOST_XrContext */
+  s_error_handler(&error);
 }
 
-/** \} */ /* Debug Printing */
+void GHOST_XrContext::setErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata)
+{
+  s_error_handler = handler_fn;
+  s_error_handler_customdata = customdata;
+}
+
+/** \} */ /* Error handling */
 
 /* -------------------------------------------------------------------- */
 /** \name OpenXR API-Layers and Extensions

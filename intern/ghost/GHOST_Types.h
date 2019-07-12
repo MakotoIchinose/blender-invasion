@@ -616,6 +616,17 @@ typedef struct {
   } fov;
 } GHOST_XrDrawViewInfo;
 
+typedef struct {
+  const char *user_message;
+
+  /** File path and line number the error was found at. */
+  const char *source_location;
+
+  void *customdata;
+} GHOST_XrError;
+
+typedef void (*GHOST_XrErrorHandlerFn)(const GHOST_XrError *);
+
 typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
 typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
                                                 void *graphics_context);

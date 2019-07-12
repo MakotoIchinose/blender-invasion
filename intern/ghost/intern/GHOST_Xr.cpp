@@ -54,3 +54,8 @@ void GHOST_XrContextDestroy(GHOST_XrContextHandle xr_contexthandle)
 {
   delete (GHOST_XrContext *)xr_contexthandle;
 }
+
+void GHOST_XrErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata)
+{
+  GHOST_XrContext::setErrorHandler(handler_fn, customdata);
+}
