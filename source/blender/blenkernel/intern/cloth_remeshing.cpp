@@ -121,6 +121,9 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
     BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
       copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
     }
+
+    BM_mesh_normals_update(clmd->clothObject->bm_prev);
+
     BM_mesh_triangulate(clmd->clothObject->bm_prev,
                         MOD_TRIANGULATE_QUAD_SHORTEDGE,
                         MOD_TRIANGULATE_NGON_BEAUTY,
