@@ -25,6 +25,8 @@
 extern "C" {
 #endif
 
+#include "DEG_depsgraph.h"
+
 struct Scene;
 struct bContext;
 
@@ -33,6 +35,7 @@ struct USDExportParams {
   bool export_hair;
   bool selected_objects_only;
   bool visible_objects_only;
+  enum eEvaluationMode evaluation_mode;
 };
 
 /* The USD_export takes a as_background_job parameter, and returns a boolean.

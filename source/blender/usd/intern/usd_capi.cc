@@ -196,7 +196,7 @@ bool USD_export(Scene *scene,
   BLI_strncpy(job->filename, filepath, 1024);
 
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  job->depsgraph = DEG_graph_new(scene, view_layer, DAG_EVAL_RENDER);
+  job->depsgraph = DEG_graph_new(scene, view_layer, params->evaluation_mode);
   job->params = *params;
 
   bool export_ok = false;

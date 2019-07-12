@@ -314,6 +314,9 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
     }
 
     BLI_assert(DEG_is_evaluated_object(context.object));
+    /* XXX This can lead to too many XForms being written. For example, a camera writer can refuse
+     * to write an orthographic camera. By the time that this is known, the XForm has already been
+     * written. */
     xform_writer->write(context);
 
     if (!context.weak_export) {

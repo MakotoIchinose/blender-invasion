@@ -37,8 +37,24 @@
 #  include "WM_api.h"
 #  include "WM_types.h"
 
+#  include "DEG_depsgraph.h"
+
 #  include "io_usd.h"
 #  include "usd.h"
+
+const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
+    {DAG_EVAL_RENDER,
+     "RENDER",
+     0,
+     "Render",
+     "Use Render settings for object visibility, modifier settings, etc"},
+    {DAG_EVAL_VIEWPORT,
+     "VIEWPORT",
+     0,
+     "Viewport",
+     "Use Viewport settings for object visibility, modifier settings, etc"},
+    {0, NULL, 0, NULL, NULL},
+};
 
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -86,12 +102,14 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
   const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
+  const bool evaluation_mode = RNA_boolean_get(op->ptr, "evaluation_mode");
 
   struct USDExportParams params = {
       export_animation,
       export_hair,
       selected_objects_only,
       visible_objects_only,
+      evaluation_mode,
   };
 
   bool ok = USD_export(scene, C, filename, &params, as_background_job);
@@ -121,20 +139,27 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "visible_objects_only",
-                  false,
+                  true,
                   "Only Export Visible Objects",
                   "Only visible objects are exported. Invisible parents of visible objects are "
                   "exported as empty transform");
 
   RNA_def_boolean(ot->srna,
                   "export_animation",
-                  true,
+                  false,
                   "Export Animation",
                   "When true, the render frame range is exported. When false, only the current "
                   "frame is exported");
 
   RNA_def_boolean(
       ot->srna, "export_hair", false, "Export Hair", "When true, hair is exported as USD curves");
+
+  RNA_def_enum(ot->srna,
+               "evaluation_mode",
+               rna_enum_usd_export_evaluation_mode_items,
+               DAG_EVAL_RENDER,
+               "Evaluation Mode",
+               "Determines visibility of objects and modifier settings");
 
   RNA_def_boolean(
       ot->srna,
