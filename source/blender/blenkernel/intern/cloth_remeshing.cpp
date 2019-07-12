@@ -560,8 +560,7 @@ static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
 
 static void cloth_remeshing_find_bad_edges(BMesh *bm,
                                            vector<ClothSizing> sizing,
-                                           BMEdge ***r_edges,
-                                           int *r_edges_len)
+                                           vector<BMEdge *> &r_edges)
 {
   Edge_Pair *edge_pairs = (Edge_Pair *)MEM_mallocN(sizeof(Edge_Pair) * bm->totedge, "Edge Pairs");
 
@@ -580,13 +579,9 @@ static void cloth_remeshing_find_bad_edges(BMesh *bm,
   /* sort the list based on the size */
   qsort(edge_pairs, tagged, sizeof(Edge_Pair), cloth_remeshing_edge_pair_compare);
 
-  *r_edges = (BMEdge **)MEM_mallocN(sizeof(BMEdge *) * tagged, "Bad Edges");
-
   for (int i = 0; i < tagged; i++) {
-    (*r_edges)[i] = edge_pairs[i].edge;
+    r_edges.push_back(edge_pairs[i].edge);
   }
-
-  *r_edges_len = tagged;
 
   MEM_freeN(edge_pairs);
 }
@@ -810,19 +805,18 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSiz
 {
   BMesh *bm = clmd->clothObject->bm;
   static int prev_num_bad_edges = 0;
-  int num_bad_edges;
-  BMEdge **bad_edges;
-  cloth_remeshing_find_bad_edges(bm, sizing, &bad_edges, &num_bad_edges);
-  printf("tagged: %d\n", num_bad_edges);
-  if (num_bad_edges == 0 || num_bad_edges == prev_num_bad_edges) {
+  vector<BMEdge *> bad_edges;
+  cloth_remeshing_find_bad_edges(bm, sizing, bad_edges);
+  printf("split edges tagged: %d\n", (int)bad_edges.size());
+  if (bad_edges.size() == 0 || bad_edges.size() == prev_num_bad_edges) {
     return false;
   }
-  prev_num_bad_edges = num_bad_edges;
+  prev_num_bad_edges = bad_edges.size();
   Cloth *cloth = clmd->clothObject;
   cloth->verts = (ClothVertex *)MEM_reallocN(
-      cloth->verts, (cloth->mvert_num + num_bad_edges) * sizeof(ClothVertex));
+      cloth->verts, (cloth->mvert_num + bad_edges.size()) * sizeof(ClothVertex));
   BMEdge *e;
-  for (int i = 0; i < num_bad_edges; i++) {
+  for (int i = 0; i < bad_edges.size(); i++) {
     e = bad_edges[i];
     BMEdge old_edge = *e;
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
@@ -842,7 +836,7 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSiz
     cloth->mvert_num += 1;
     cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(v1, v2);
   }
-  MEM_freeN(bad_edges);
+  bad_edges.clear();
   return true;
 }
 
