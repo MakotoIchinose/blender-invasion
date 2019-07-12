@@ -1110,7 +1110,17 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
   /* remove the faces from active_faces that have been removed from
    * bmesh */
   for (int i = 0; i < active_faces.size(); i++) {
+    bool already_exists = false;
     f = active_faces[i];
+    for (int j = 0; j < new_active_faces.size(); j++) {
+      if (f == new_active_faces[j]) {
+        already_exists = true;
+        break;
+      }
+    }
+    if (already_exists) {
+      break;
+    }
     BM_ITER_MESH (f2, &fiter, bm, BM_FACES_OF_MESH) {
       if (f == f2) {
         new_active_faces.push_back(f);
@@ -1138,7 +1148,17 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
   /* remove the faces from active_faces that have been removed from
    * bmesh */
   for (int i = 0; i < active_faces.size(); i++) {
+    bool already_exists = false;
     f = active_faces[i];
+    for (int j = 0; j < new_active_faces.size(); j++) {
+      if (f == new_active_faces[j]) {
+        already_exists = true;
+        break;
+      }
+    }
+    if (already_exists) {
+      break;
+    }
     BM_ITER_MESH (f2, &fiter, bm, BM_FACES_OF_MESH) {
       if (f == f2) {
         new_active_faces.push_back(f);
