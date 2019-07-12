@@ -10,12 +10,27 @@ extern "C" {
 #include "BKE_library.h"
 #include "BKE_material.h"
 
+#include "DEG_depsgraph.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_particle_types.h"
 }
 
 USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
+}
+
+bool USDGenericMeshWriter::is_supported(const Object *object) const
+{
+  // Reject meshes that have a particle system that should have its emitter hidden.
+  if (object->particlesystem.first != NULL) {
+    char check_flag = export_params.evaluation_mode == DAG_EVAL_RENDER ? OB_DUPLI_FLAG_RENDER :
+                                                                         OB_DUPLI_FLAG_VIEWPORT;
+    return object->duplicator_visibility_flag & check_flag;
+  }
+
+  return true;
 }
 
 void USDGenericMeshWriter::do_write(HierarchyContext &context)
