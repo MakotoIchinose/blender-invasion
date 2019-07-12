@@ -398,8 +398,27 @@ static int parent_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   if ((par->type != OB_ARMATURE) && (par->type != OB_CURVE) && (par->type != OB_LATTICE)) {
+    if (event->custom != EVT_DATA_DRAGDROP) {
+      return OPERATOR_CANCELLED;
+    }
+
+    ListBase *lb = event->customdata;
+    wmDrag *drag = lb->first;
+
+    bool parent_set = false;
     int partype = 0;
-    if (ED_object_parent_set(op->reports, C, scene, ob, par, partype, false, false, NULL)) {
+    for (wmDragID *drag_id = drag->ids.first; drag_id; drag_id = drag_id->next) {
+      if (GS(drag_id->id->name) == ID_OB) {
+        Object *object = (Object *)drag_id->id;
+
+        if (ED_object_parent_set(
+                op->reports, C, scene, object, par, partype, false, false, NULL)) {
+          parent_set = true;
+        }
+      }
+    }
+
+    if (parent_set) {
       DEG_relations_tag_update(bmain);
       WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
       WM_event_add_notifier(C, NC_OBJECT | ND_PARENT, NULL);
