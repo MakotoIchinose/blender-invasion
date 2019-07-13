@@ -162,6 +162,48 @@ void GPU_indexbuf_add_line_adj_verts(
   GPU_indexbuf_add_generic_vert(builder, v4);
 }
 
+void GPU_indexbuf_set_point_vert(GPUIndexBufBuilder *builder, uint elem, uint v1)
+{
+  BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
+  BLI_assert(elem < builder->max_index_len);
+  builder->data[elem++] = v1;
+  if (builder->index_len < elem) {
+    builder->index_len = elem;
+  }
+}
+
+void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2)
+{
+  BLI_assert(builder->prim_type == GPU_PRIM_LINES);
+  BLI_assert(v1 != v2);
+  BLI_assert(v1 <= builder->max_allowed_index);
+  BLI_assert(v2 <= builder->max_allowed_index);
+  BLI_assert((elem + 1) * 2 <= builder->max_index_len);
+  uint idx = elem * 2;
+  builder->data[idx++] = v1;
+  builder->data[idx++] = v2;
+  if (builder->index_len < idx) {
+    builder->index_len = idx;
+  }
+}
+
+void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2, uint v3)
+{
+  BLI_assert(builder->prim_type == GPU_PRIM_TRIS);
+  BLI_assert(v1 != v2 && v2 != v3 && v3 != v1);
+  BLI_assert(v1 <= builder->max_allowed_index);
+  BLI_assert(v2 <= builder->max_allowed_index);
+  BLI_assert(v3 <= builder->max_allowed_index);
+  BLI_assert((elem + 1) * 3 <= builder->max_index_len);
+  uint idx = elem * 3;
+  builder->data[idx++] = v1;
+  builder->data[idx++] = v2;
+  builder->data[idx++] = v3;
+  if (builder->index_len < idx) {
+    builder->index_len = idx;
+  }
+}
+
 GPUIndexBuf *GPU_indexbuf_create_subrange(GPUIndexBuf *elem_src, uint start, uint length)
 {
   GPUIndexBuf *elem = MEM_callocN(sizeof(GPUIndexBuf), "GPUIndexBuf");
