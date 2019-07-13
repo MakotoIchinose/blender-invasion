@@ -334,6 +334,8 @@ void GHOST_XrContext::getAPILayersToEnable(std::vector<const char *> &r_ext_name
 {
   static std::vector<std::string> try_layers;
 
+  try_layers.clear();
+
   XR_DEBUG_ONLY_CALL(this, try_layers.push_back("XR_APILAYER_LUNARG_core_validation"));
 
   r_ext_names.reserve(try_layers.size());
@@ -371,6 +373,8 @@ void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_nam
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(m_gpu_binding_type);
   static std::vector<std::string> try_ext;
+
+  try_ext.clear();
 
   /* Try enabling debug extension */
 #ifndef WIN32

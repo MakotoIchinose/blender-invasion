@@ -64,6 +64,8 @@ GHOST_XrSession::~GHOST_XrSession()
 {
   // TODO OpenXR calls here can fail, but we should not throw an exception in the destructor.
 
+  unbindGraphicsContext();
+
   for (XrSwapchain &swapchain : m_oxr->swapchains) {
     xrDestroySwapchain(swapchain);
   }
@@ -163,7 +165,10 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   create_info.next = &m_gpu_binding->oxr_binding;
 
   CHECK_XR(xrCreateSession(m_context->getInstance(), &create_info, &m_oxr->session),
-           "Failed to create VR session.");
+           "Failed to create VR session. The OpenXR runtime may have additional requirements for "
+           "the graphics driver that are not met. Other causes are possible too however.\nTip: "
+           "The --debug-xr command line option for Blender might allow the runtime to output "
+           "detailed error information to the command line.");
 
   prepareDrawing();
   create_reference_space(m_oxr.get(), &begin_info->base_pose);
