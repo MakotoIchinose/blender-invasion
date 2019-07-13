@@ -64,7 +64,7 @@ extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 struct Object;
 
-void lanpr_update_data_for_external(struct Depsgraph *depsgraph);
+void ED_lanpr_update_data_for_external(struct Depsgraph *depsgraph);
 
 int lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
@@ -74,13 +74,18 @@ int lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int inster
 
 void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
-bool lanpr_dpix_shader_error();
+bool ED_lanpr_dpix_shader_error();
 
-bool lanpr_disable_edge_splits(struct Scene *s);
+bool ED_lanpr_disable_edge_splits(struct Scene *s);
 
-void lanpr_copy_data(struct Scene *from, struct Scene *to);
+void ED_lanpr_copy_data(struct Scene *from, struct Scene *to);
 
-void lanpr_free_everything(struct Scene *s);
+void ED_lanpr_free_everything(struct Scene *s);
+
+
+/* Calculations */
+
+
 
 
 
@@ -130,11 +135,10 @@ void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
 }
 
 
-
-
 /* Access */
 
-void lanpr_update_data_for_external(Depsgraph *depsgraph)
+/* Probably remove this in the future. */
+void ED_lanpr_update_data_for_external(Depsgraph *depsgraph)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -147,16 +151,16 @@ void lanpr_update_data_for_external(Depsgraph *depsgraph)
   }
 }
 
-bool lanpr_dpix_shader_error()
+bool ED_lanpr_dpix_shader_error()
 {
   return lanpr_share.dpix_shader_error;
 }
-bool lanpr_disable_edge_splits(Scene *s)
+bool ED_lanpr_disable_edge_splits(Scene *s)
 {
   return (s->lanpr.enabled && s->lanpr.disable_edge_splits);
 }
 
-void lanpr_copy_data(Scene *from, Scene *to)
+void ED_lanpr_copy_data(Scene *from, Scene *to)
 {
   SceneLANPR *lanpr = &from->lanpr;
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared, *new_rb;
@@ -182,7 +186,7 @@ void lanpr_copy_data(Scene *from, Scene *to)
   /*  render_buffer now only accessible from lanpr_share */
 }
 
-void lanpr_free_everything(Scene *s)
+void ED_lanpr_free_everything(Scene *s)
 {
   SceneLANPR *lanpr = &s->lanpr;
   LANPR_LineLayer *ll;

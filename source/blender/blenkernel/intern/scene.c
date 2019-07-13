@@ -339,7 +339,7 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 
   /* lanpr data */
 
-  lanpr_copy_data(sce_src, sce_dst);
+  ED_lanpr_copy_data(sce_src, sce_dst);
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
@@ -548,7 +548,7 @@ void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
     sce->eevee.light_cache = NULL;
   }
 
-  lanpr_free_everything(sce);
+  ED_lanpr_free_everything(sce);
 
   /* These are freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);

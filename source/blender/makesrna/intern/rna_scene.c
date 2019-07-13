@@ -2490,11 +2490,11 @@ void rna_lanpr_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
   lanpr->active_layer = value.data;
 }
 
-extern bool lanpr_dpix_shader_error();
+extern bool ED_lanpr_dpix_shader_error();
 
 static bool rna_lanpr_shader_error_get(PointerRNA *ptr)
 {
-  return lanpr_dpix_shader_error();
+  return ED_lanpr_dpix_shader_error();
 }
 
 #else

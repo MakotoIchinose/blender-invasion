@@ -135,7 +135,7 @@ static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool 
   ModifierData *imd;
   EdgeSplitModifierData *emd = (EdgeSplitModifierData *)md;
 
-  if (lanpr_disable_edge_splits(scene)) {
+  if (ED_lanpr_disable_edge_splits(scene)) {
     lanpr_found = 1;
   }
   if (!lanpr_found) {
