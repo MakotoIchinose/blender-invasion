@@ -397,16 +397,17 @@ static int parent_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     scene = CTX_data_scene(C);
   }
 
-  if ((par->type != OB_ARMATURE) && (par->type != OB_CURVE) && (par->type != OB_LATTICE)) {
+  /* Temporary: Only do object parenting */
+  if (true) {
     if (event->custom != EVT_DATA_DRAGDROP) {
       return OPERATOR_CANCELLED;
     }
 
+    bool parent_set = false;
+    int partype = 0;
     ListBase *lb = event->customdata;
     wmDrag *drag = lb->first;
 
-    bool parent_set = false;
-    int partype = 0;
     for (wmDragID *drag_id = drag->ids.first; drag_id; drag_id = drag_id->next) {
       if (GS(drag_id->id->name) == ID_OB) {
         Object *object = (Object *)drag_id->id;
