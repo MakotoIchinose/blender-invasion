@@ -1,16 +1,9 @@
-/*
-
-   Ported from NUL4.0
-
-   Author(s):WuYiming - xp8110@outlook.com
-
- */
 #define _CRT_SEQURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 /* #include <time.h> */
 #include "ED_lanpr.h"
-#include "lanpr_all.h"
+#include "MEM_guardedalloc.h"
 #include <math.h>
 
 /* ===================================================================[slt] */

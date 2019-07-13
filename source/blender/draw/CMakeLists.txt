@@ -130,7 +130,6 @@ set(SRC
 	engines/lanpr/lanpr_engine.c
 	engines/lanpr/lanpr_snake.c
 	engines/lanpr/lanpr_ops.c
-	engines/lanpr/lanpr_util.c
   engines/lanpr/lanpr_chain_draw.c
   engines/lanpr/lanpr_access.c
 
