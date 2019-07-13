@@ -698,13 +698,13 @@ void tmat_extract_xyz_euler_44d(tnsMatrix44d mat, real *x_result, real *y_result
       zRot = atan2(-mat[1], mat[0]);
     }
     else {
-      yRot = -TNS_PI / 2;
+      yRot = -M_PI / 2;
       xRot = -atan2(-mat[4], mat[5]);
       zRot = 0;
     }
   }
   else {
-    yRot = TNS_PI / 2;
+    yRot = M_PI / 2;
     xRot = atan2(-mat[4], mat[5]);
     zRot = 0;
   }

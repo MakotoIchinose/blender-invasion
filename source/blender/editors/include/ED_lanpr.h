@@ -31,6 +31,11 @@
 #include "BLI_linklist.h"
 #include "BLI_threads.h"
 
+#include <math.h>
+#include "BLI_math.h"
+
+#include "DNA_lanpr_types.h"
+
 #define _CRT_SECURE_NO_WARNINGS
 
 #ifndef BYTE
@@ -55,17 +60,6 @@ typedef float tnsVector3f[3];
 typedef float tnsVector4f[4];
 typedef int tnsVector2i[2];
 
-#define deg(r) r / M_PI * 180.0
-#define rad(d) d *M_PI / 180.0
-
-#define DBL_TRIANGLE_LIM 1e-8
-#define DBL_EDGE_LIM 1e-9
-
-#define NUL_MEMORY_POOL_1MB 1048576
-#define NUL_MEMORY_POOL_128MB 134217728
-#define NUL_MEMORY_POOL_256MB 268435456
-#define NUL_MEMORY_POOL_512MB 536870912
-
 typedef struct LANPR_StaticMemPoolNode {
   Link item;
   int used_byte;
@@ -77,122 +71,6 @@ typedef struct LANPR_StaticMemPool {
   ListBase pools;
   SpinLock cs_mem;
 } LANPR_StaticMemPool;
-
-#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID") /*  nutCalloc(sizeof(Type),1) */
-
-#define CreateNew_Size(size) nutCalloc(size, 1)
-
-#define CreateNewBuffer(Type, Num) \
-  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER") /*  nutCalloc(sizeof(Type),Num); */
-
-void list_handle_empty(ListBase *h);
-
-void list_clear_prev_next(Link *li);
-
-void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot);
-void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot);
-void list_insert_segment_before(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
-void lstInsertSegmentAfter(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
-int lstHaveItemInList(ListBase *Handle);
-void *lst_get_top(ListBase *Handle);
-
-void *list_append_pointer_only(ListBase *h, void *p);
-void *list_append_pointer_sized_only(ListBase *h, void *p, int size);
-void *list_push_pointer_only(ListBase *h, void *p);
-void *list_push_pointer_sized_only(ListBase *h, void *p, int size);
-
-void *list_append_pointer(ListBase *h, void *p);
-void *list_append_pointer_sized(ListBase *h, void *p, int size);
-void *list_push_pointer(ListBase *h, void *p);
-void *list_push_pointer_sized(ListBase *h, void *p, int size);
-
-void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
-void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
-void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
-void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
-
-void *list_pop_pointer_only(ListBase *h);
-void list_remove_pointer_item_only(ListBase *h, LinkData *lip);
-void list_remove_pointer_only(ListBase *h, void *p);
-void list_clear_pointer_only(ListBase *h);
-void list_generate_pointer_list_only(ListBase *from1, ListBase *from2, ListBase *to);
-
-void *list_pop_pointer(ListBase *h);
-void list_remove_pointer_item(ListBase *h, LinkData *lip);
-void list_remove_pointer(ListBase *h, void *p);
-void list_clear_pointer(ListBase *h);
-void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to);
-
-void list_copy_handle(ListBase *target, ListBase *src);
-
-void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *p);
-void *list_pop_pointer_no_free(ListBase *h);
-void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
-
-void list_move_up(ListBase *h, Link *li);
-void list_move_down(ListBase *h, Link *li);
-
-void lstAddElement(ListBase *hlst, void *ext);
-void lstDestroyElementList(ListBase *hlst);
-
-LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp);
-void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
-void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
-void *mem_static_destroy(LANPR_StaticMemPool *smp);
-
-void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out);
-
-real tmat_dist_idv2(real x1, real y1, real x2, real y2);
-real tmat_dist_3dv(tnsVector3d l, tnsVector3d r);
-real tmat_dist_2dv(tnsVector2d l, tnsVector2d r);
-
-real tmat_length_3d(tnsVector3d l);
-real tmat_length_2d(tnsVector3d l);
-void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
-void tmat_normalize_3f(tnsVector3f result, tnsVector3f l);
-void tmat_normalize_self_3d(tnsVector3d result);
-real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
-real tmat_dot_3df(tnsVector3d l, tnsVector3f r, int normalize);
-real tmat_dot_2d(tnsVector2d l, tnsVector2d r, int normalize);
-real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
-void tmat_apply_rotation_33d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_rotation_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_transform_43dfND(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
-void tmat_apply_normal_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_normal_transform_43df(tnsVector3d result, tnsMatrix44d mat, tnsVector3f v);
-void tmat_apply_transform_44d(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
-void tmat_apply_transform_43df(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
-void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
-
-void tmat_load_identity_44d(tnsMatrix44d m);
-void tmat_make_ortho_matrix_44d(
-    tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
-void tmat_make_perspective_matrix_44d(
-    tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax);
-void tmat_make_translation_matrix_44d(tnsMatrix44d mTrans, real x, real y, real z);
-void tmat_make_rotation_matrix_44d(tnsMatrix44d m, real angle_rad, real x, real y, real z);
-void tmat_make_scale_matrix_44d(tnsMatrix44d m, real x, real y, real z);
-void tmat_make_viewport_matrix_44d(tnsMatrix44d m, real w, real h, real Far, real Near);
-void tmat_multiply_44d(tnsMatrix44d result, tnsMatrix44d l, tnsMatrix44d r);
-void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat);
-void tmat_make_rotation_x_matrix_44d(tnsMatrix44d m, real angle_rad);
-void tmat_make_rotation_y_matrix_44d(tnsMatrix44d m, real angle_rad);
-void tmat_make_rotation_z_matrix_44d(tnsMatrix44d m, real angle_rad);
-void tmat_remove_translation_44d(tnsMatrix44d result, tnsMatrix44d mat);
-void tmat_clear_translation_44d(tnsMatrix44d mat);
-
-real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
-real tmat_length_3d(tnsVector3d l);
-void tmat_normalize_2d(tnsVector2d result, tnsVector2d l);
-void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
-void tmat_normalize_self_3d(tnsVector3d result);
-real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
-real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-
-
 
 typedef struct LANPR_TextureSample {
   struct LANPR_TextureSample *next, *prev;
@@ -456,9 +334,482 @@ typedef struct LANPR_SharedResource {
 
 } LANPR_SharedResource;
 
+#define deg(r) r / M_PI * 180.0
+#define rad(d) d *M_PI / 180.0
+
+#define DBL_TRIANGLE_LIM 1e-8
+#define DBL_EDGE_LIM 1e-9
+
+#define NUL_MEMORY_POOL_1MB 1048576
+#define NUL_MEMORY_POOL_128MB 134217728
+#define NUL_MEMORY_POOL_256MB 268435456
+#define NUL_MEMORY_POOL_512MB 536870912
+
+#define LANPR_CULL_DISCARD 2
+#define LANPR_CULL_USED 1
 
 
-typedef struct LANPR_RenderLineChain LANPR_RenderLineChain;
+#define TNS_THREAD_LINE_COUNT 10000
 
+#define TNS_CALCULATION_IDLE 0
+#define TNS_CALCULATION_GEOMETRY 1
+#define TNS_CALCULATION_CONTOUR 2
+#define TNS_CALCULATION_INTERSECTION 3
+#define TNS_CALCULATION_OCCLUTION 4
+#define TNS_CALCULATION_FINISHED 100
+
+typedef struct LANPR_RenderTaskInfo {
+  /*  thrd_t           ThreadHandle; */
+
+  int thread_id;
+
+  LinkData *contour;
+  ListBase contour_pointers;
+
+  LinkData *intersection;
+  ListBase intersection_pointers;
+
+  LinkData *crease;
+  ListBase crease_pointers;
+
+  LinkData *material;
+  ListBase material_pointers;
+
+  LinkData *edge_mark;
+  ListBase edge_mark_pointers;
+
+} LANPR_RenderTaskInfo;
+
+typedef struct LANPR_BoundingArea {
+  real l, r, u, b;
+  real cx, cy;
+
+  struct LANPR_BoundingArea *child; /*  1,2,3,4 quadrant */
+
+  ListBase lp;
+  ListBase rp;
+  ListBase up;
+  ListBase bp;
+
+  int triangle_count;
+  ListBase linked_triangles;
+  ListBase linked_lines;
+
+  ListBase linked_chains; /*  reserved for image space reduction && multithread chainning */
+} LANPR_BoundingArea;
+
+#define TNS_COMMAND_LINE 0
+#define TNS_COMMAND_MATERIAL 1
+#define TNS_COMMAND_EDGE 2
+
+#define TNS_TRANSPARENCY_DRAW_SIMPLE 0
+#define TNS_TRANSPARENCY_DRAW_LAYERED 1
+
+#define TNS_OVERRIDE_ONLY 0
+#define TNS_OVERRIDE_EXCLUDE 1
+/* #define TNS_OVERRIDE_ALL_OTHERS_OUTSIDE_GROUP 2 */
+/* #define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3 */
+/* #define TNS_OVERRIDE_ALL_OTHERS               4 */
+
+#define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
+
+#define TNS_TILE(tile, r, c, CCount) tile[r * CCount + c]
+
+#define TNS_CLAMP(a, Min, Max) a = a < Min ? Min : (a > Max ? Max : a)
+
+#define TNS_MAX2_INDEX(a, b) (a > b ? 0 : 1)
+
+#define TNS_MIN2_INDEX(a, b) (a < b ? 0 : 1)
+
+#define TNS_MAX3_INDEX(a, b, c) (a > b ? (a > c ? 0 : (b > c ? 1 : 2)) : (b > c ? 1 : 2))
+
+#define TNS_MIN3_INDEX(a, b, c) (a < b ? (a < c ? 0 : (b < c ? 1 : 2)) : (b < c ? 1 : 2))
+
+#define TNS_MAX3_INDEX_ABC(x, y, z) (x > y ? (x > z ? a : (y > z ? b : c)) : (y > z ? b : c))
+
+#define TNS_MIN3_INDEX_ABC(x, y, z) (x < y ? (x < z ? a : (y < z ? b : c)) : (y < z ? b : c))
+
+#define TNS_ABC(index) (index == 0 ? a : (index == 1 ? b : c))
+
+#define TNS_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
+
+/* #define TNS_DOUBLE_CLOSE_ENOUGH(a,b)\ */
+/*  //(((a)+0.00000000001)>=(b) && ((a)-0.0000000001)<=(b)) */
+
+#define TNS_FLOAT_CLOSE_ENOUGH_WIDER(a, b) (((a) + 0.0000001) >= (b) && ((a)-0.0000001) <= (b))
+
+#define TNS_IN_TILE_X(RenderTile, Fx) (RenderTile->FX <= Fx && RenderTile->FXLim >= Fx)
+
+#define TNS_IN_TILE_Y(RenderTile, Fy) (RenderTile->FY <= Fy && RenderTile->FYLim >= Fy)
+
+#define TNS_IN_TILE(RenderTile, Fx, Fy) \
+  (TNS_IN_TILE_X(RenderTile, Fx) && TNS_IN_TILE_Y(RenderTile, Fy))
+
+BLI_INLINE void tMatConvert44df(tnsMatrix44d from, tnsMatrix44f to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+  to[3] = from[3];
+  to[4] = from[4];
+  to[5] = from[5];
+  to[6] = from[6];
+  to[7] = from[7];
+  to[8] = from[8];
+  to[9] = from[9];
+  to[10] = from[10];
+  to[11] = from[11];
+  to[12] = from[12];
+  to[13] = from[13];
+  to[14] = from[14];
+  to[15] = from[15];
+}
+
+BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
+{
+  if (MAX3(rt->v[0]->fbcoord[2], rt->v[1]->fbcoord[2], rt->v[2]->fbcoord[2]) >
+      MIN2(rl->l->fbcoord[2], rl->r->fbcoord[2]))
+    return 0;
+  if (MAX3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]) <
+      MIN2(rl->l->fbcoord[0], rl->r->fbcoord[0]))
+    return 0;
+  if (MIN3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]) >
+      MAX2(rl->l->fbcoord[0], rl->r->fbcoord[0]))
+    return 0;
+  if (MAX3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]) <
+      MIN2(rl->l->fbcoord[1], rl->r->fbcoord[1]))
+    return 0;
+  if (MIN3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]) >
+      MAX2(rl->l->fbcoord[1], rl->r->fbcoord[1]))
+    return 0;
+  return 1;
+}
+
+BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL);
+BLI_INLINE int lanpr_LineIntersectTest2d(
+    const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
+{
+  double k1, k2;
+  double x;
+  double y;
+  double Ratio;
+  double xDiff = (a2[0] - a1[0]); /*  +DBL_EPSILON; */
+  double xDiff2 = (b2[0] - b1[0]);
+
+  if (xDiff == 0) {
+    if (xDiff2 == 0) {
+      *aRatio = 0;
+      return 0;
+    }
+    double r2 = tMatGetLinearRatio(b1[0], b2[0], a1[0]);
+    x = tnsLinearItp(b1[0], b2[0], r2);
+    y = tnsLinearItp(b1[1], b2[1], r2);
+    *aRatio = Ratio = tMatGetLinearRatio(a1[1], a2[1], y);
+  }
+  else {
+    if (xDiff2 == 0) {
+      Ratio = tMatGetLinearRatio(a1[0], a2[0], b1[0]);
+      x = tnsLinearItp(a1[0], a2[0], Ratio);
+      *aRatio = Ratio;
+    }
+    else {
+      k1 = (a2[1] - a1[1]) / xDiff;
+      k2 = (b2[1] - b1[1]) / xDiff2;
+
+      if ((k1 == k2))
+        return 0;
+
+      x = (a1[1] - b1[1] - k1 * a1[0] + k2 * b1[0]) / (k2 - k1);
+
+      Ratio = (x - a1[0]) / xDiff;
+
+      *aRatio = Ratio;
+    }
+  }
+
+  if (b1[0] == b2[0]) {
+    y = tnsLinearItp(a1[1], a2[1], Ratio);
+    if (y > MAX2(b1[1], b2[1]) || y < MIN2(b1[1], b2[1]))
+      return 0;
+  }
+  else if (Ratio <= 0 || Ratio > 1 || (b1[0] > b2[0] && x > b1[0]) ||
+           (b1[0] < b2[0] && x < b1[0]) || (b2[0] > b1[0] && x > b2[0]) ||
+           (b2[0] < b1[0] && x < b2[0]))
+    return 0;
+
+  return 1;
+}
+BLI_INLINE double lanpr_GetLineZ(tnsVector3d l, tnsVector3d r, real Ratio)
+{
+  /*  double z = 1 / tnsLinearItp(1 / l[2], 1 / r[2], Ratio); */
+  double z = tnsLinearItp(l[2], r[2], Ratio);
+  return z;
+}
+BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
+{
+  double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
+  return tnsLinearItp(l[2], r[2], ra);
+  /*  return 1 / tnsLinearItp(1 / l[2], 1 / r[2], r); */
+}
+BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
+{
+  double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
+  return ra;
+}
+
+BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL)
+{
+  double ra = (FromL - l) / (r - l);
+  return ra;
+}
+BLI_INLINE void tMatVectorMinus2d(tnsVector2d result, tnsVector2d l, tnsVector2d r)
+{
+  result[0] = l[0] - r[0];
+  result[1] = l[1] - r[1];
+}
+
+BLI_INLINE void tMatVectorMinus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
+{
+  result[0] = l[0] - r[0];
+  result[1] = l[1] - r[1];
+  result[2] = l[2] - r[2];
+}
+BLI_INLINE void tMatVectorSubtract3d(tnsVector3d l, tnsVector3d r)
+{
+  l[0] = l[0] - r[0];
+  l[1] = l[1] - r[1];
+  l[2] = l[2] - r[2];
+}
+BLI_INLINE void tMatVectorPlus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
+{
+  result[0] = l[0] + r[0];
+  result[1] = l[1] + r[1];
+  result[2] = l[2] + r[2];
+}
+BLI_INLINE void tMatVectorAccum3d(tnsVector3d l, tnsVector3d r)
+{
+  l[0] = l[0] + r[0];
+  l[1] = l[1] + r[1];
+  l[2] = l[2] + r[2];
+}
+BLI_INLINE void tMatVectorAccum2d(tnsVector2d l, tnsVector2d r)
+{
+  l[0] = l[0] + r[0];
+  l[1] = l[1] + r[1];
+}
+BLI_INLINE void tMatVectorNegate3d(tnsVector3d result, tnsVector3d l)
+{
+  result[0] = -l[0];
+  result[1] = -l[1];
+  result[2] = -l[2];
+}
+BLI_INLINE void tMatVectorNegateSelf3d(tnsVector3d l)
+{
+  l[0] = -l[0];
+  l[1] = -l[1];
+  l[2] = -l[2];
+}
+BLI_INLINE void tMatVectorCopy2d(tnsVector2d from, tnsVector2d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+}
+BLI_INLINE void tMatVectorCopy3d(tnsVector3d from, tnsVector3d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+}
+BLI_INLINE void tMatVectorCopy4d(tnsVector4d from, tnsVector4d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+  to[3] = from[3];
+}
+BLI_INLINE void tMatVectorMultiSelf4d(tnsVector3d from, real num)
+{
+  from[0] *= num;
+  from[1] *= num;
+  from[2] *= num;
+  from[3] *= num;
+}
+BLI_INLINE void tMatVectorMultiSelf3d(tnsVector3d from, real num)
+{
+  from[0] *= num;
+  from[1] *= num;
+  from[2] *= num;
+}
+BLI_INLINE void tMatVectorMultiSelf2d(tnsVector3d from, real num)
+{
+  from[0] *= num;
+  from[1] *= num;
+}
+
+BLI_INLINE real tMatDirectionToRad(tnsVector2d Dir)
+{
+  real arcc = acos(Dir[0]);
+  real arcs = asin(Dir[1]);
+
+  if (Dir[0] >= 0) {
+    if (Dir[1] >= 0)
+      return arcc;
+    else
+      return M_PI * 2 - arcc;
+  }
+  else {
+    if (Dir[1] >= 0)
+      return arcs + M_PI / 2;
+    else
+      return M_PI + arcs;
+  }
+}
+
+BLI_INLINE void tMatVectorConvert4fd(tnsVector4f from, tnsVector4d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+  to[3] = from[3];
+}
+
+BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to)
+{
+  to[0] = from[0];
+  to[1] = from[1];
+  to[2] = from[2];
+}
+
+int lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
+real lanpr_LinearInterpolate(real l, real r, real T);
+void lanpr_LinearInterpolate2dv(real *l, real *r, real T, real *Result);
+void lanpr_LinearInterpolate3dv(real *l, real *r, real T, real *Result);
+
+#define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
+
+#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID") /*  nutCalloc(sizeof(Type),1) */
+
+#define CreateNew_Size(size) nutCalloc(size, 1)
+
+#define CreateNewBuffer(Type, Num) \
+  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER") /*  nutCalloc(sizeof(Type),Num); */
+
+void list_handle_empty(ListBase *h);
+
+void list_clear_prev_next(Link *li);
+
+void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot);
+void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot);
+void list_insert_segment_before(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
+void lstInsertSegmentAfter(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
+int lstHaveItemInList(ListBase *Handle);
+void *lst_get_top(ListBase *Handle);
+
+void *list_append_pointer_only(ListBase *h, void *p);
+void *list_append_pointer_sized_only(ListBase *h, void *p, int size);
+void *list_push_pointer_only(ListBase *h, void *p);
+void *list_push_pointer_sized_only(ListBase *h, void *p, int size);
+
+void *list_append_pointer(ListBase *h, void *p);
+void *list_append_pointer_sized(ListBase *h, void *p, int size);
+void *list_push_pointer(ListBase *h, void *p);
+void *list_push_pointer_sized(ListBase *h, void *p, int size);
+
+void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
+void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
+void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
+void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
+
+void *list_pop_pointer_only(ListBase *h);
+void list_remove_pointer_item_only(ListBase *h, LinkData *lip);
+void list_remove_pointer_only(ListBase *h, void *p);
+void list_clear_pointer_only(ListBase *h);
+void list_generate_pointer_list_only(ListBase *from1, ListBase *from2, ListBase *to);
+
+void *list_pop_pointer(ListBase *h);
+void list_remove_pointer_item(ListBase *h, LinkData *lip);
+void list_remove_pointer(ListBase *h, void *p);
+void list_clear_pointer(ListBase *h);
+void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to);
+
+void list_copy_handle(ListBase *target, ListBase *src);
+
+void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *p);
+void *list_pop_pointer_no_free(ListBase *h);
+void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
+
+void list_move_up(ListBase *h, Link *li);
+void list_move_down(ListBase *h, Link *li);
+
+void lstAddElement(ListBase *hlst, void *ext);
+void lstDestroyElementList(ListBase *hlst);
+
+LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp);
+void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
+void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
+void *mem_static_destroy(LANPR_StaticMemPool *smp);
+
+void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out);
+
+real tmat_dist_idv2(real x1, real y1, real x2, real y2);
+real tmat_dist_3dv(tnsVector3d l, tnsVector3d r);
+real tmat_dist_2dv(tnsVector2d l, tnsVector2d r);
+
+real tmat_length_3d(tnsVector3d l);
+real tmat_length_2d(tnsVector3d l);
+void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
+void tmat_normalize_3f(tnsVector3f result, tnsVector3f l);
+void tmat_normalize_self_3d(tnsVector3d result);
+real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
+real tmat_dot_3df(tnsVector3d l, tnsVector3f r, int normalize);
+real tmat_dot_2d(tnsVector2d l, tnsVector2d r, int normalize);
+real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
+real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
+void tmat_apply_rotation_33d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
+void tmat_apply_rotation_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
+void tmat_apply_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
+void tmat_apply_transform_43dfND(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
+void tmat_apply_normal_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
+void tmat_apply_normal_transform_43df(tnsVector3d result, tnsMatrix44d mat, tnsVector3f v);
+void tmat_apply_transform_44d(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
+void tmat_apply_transform_43df(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
+void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
+
+void tmat_load_identity_44d(tnsMatrix44d m);
+void tmat_make_ortho_matrix_44d(
+    tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
+void tmat_make_perspective_matrix_44d(
+    tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax);
+void tmat_make_translation_matrix_44d(tnsMatrix44d mTrans, real x, real y, real z);
+void tmat_make_rotation_matrix_44d(tnsMatrix44d m, real angle_rad, real x, real y, real z);
+void tmat_make_scale_matrix_44d(tnsMatrix44d m, real x, real y, real z);
+void tmat_make_viewport_matrix_44d(tnsMatrix44d m, real w, real h, real Far, real Near);
+void tmat_multiply_44d(tnsMatrix44d result, tnsMatrix44d l, tnsMatrix44d r);
+void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat);
+void tmat_make_rotation_x_matrix_44d(tnsMatrix44d m, real angle_rad);
+void tmat_make_rotation_y_matrix_44d(tnsMatrix44d m, real angle_rad);
+void tmat_make_rotation_z_matrix_44d(tnsMatrix44d m, real angle_rad);
+void tmat_remove_translation_44d(tnsMatrix44d result, tnsMatrix44d mat);
+void tmat_clear_translation_44d(tnsMatrix44d mat);
+
+real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
+real tmat_length_3d(tnsVector3d l);
+void tmat_normalize_2d(tnsVector2d result, tnsVector2d l);
+void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
+void tmat_normalize_self_3d(tnsVector3d result);
+real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
+real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
+void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
+
+int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll);
+long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);
+long lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb);
+void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
+                                           ListBase *LineList,
+                                           float *vertexArray,
+                                           float *NormalArray,
+                                           float **NextNormal,
+                                           LANPR_LineLayer *ll,
+                                           float componet_id);
 
 #endif /* __ED_LANPR_H__ */
