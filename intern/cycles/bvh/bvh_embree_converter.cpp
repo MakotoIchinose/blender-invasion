@@ -83,7 +83,7 @@ BVHNode *bvh_shrink(BVHNode *root) {
     if(root->num_children() == 3) {
         node->children[1] = bvh_shrink(node->children[2]);
     } else {
-	node->children[1] = new InnerNode(merge(node->children[2]->bounds, node->children[3]->bounds), bvh_shrink(node->children[2]), bvh_shrink(node->children[3]));
+        node->children[1] = new InnerNode(merge(node->children[2]->bounds, node->children[3]->bounds), bvh_shrink(node->children[2]), bvh_shrink(node->children[3]));
     }
     node->num_children_ = 2;
     return node;
@@ -114,7 +114,6 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4i>(const em
             /* TODO Compute local boundbox
              * BoundBox bb = RTCBoundBoxToCCL(prims[i].linearBounds(s, embree::BBox1f(0, 1)).bounds());
              */
-
             ids.push_back(RangeInput(prim_offset + prim_id, obj->visibility, bb));
         }
     }
@@ -298,7 +297,7 @@ BVHNode* BVHEmbreeConverter::getBVH4() {
             embree::BVH4::NodeRef root = bvh->root;
             BVHNode *rootNode = nullptr;
             if(bvh->primTy == &embree::Triangle4v::type) {
-                rootNode = this->nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
+                rootNode = nodeEmbreeToCcl<embree::Triangle4v>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
             } else if(bvh->primTy == &embree::InstancePrimitive::type) {
                 rootNode = nodeEmbreeToCcl<embree::InstancePrimitive>(root, RTCBoundBoxToCCL(bvh->bounds.bounds()));
             } else if(bvh->primTy == &embree::Triangle4i::type) {
@@ -325,6 +324,23 @@ BVHNode* BVHEmbreeConverter::getBVH4() {
     return new InnerNode(bb, nodes.data(), nodes.size());
 }
 
+BoundBox bvh_tighten(BVHNode *root) {
+    if(root->is_leaf())
+        return root->bounds;
+
+    assert(root->num_children() == 2);
+    BoundBox bb = BoundBox::empty;
+    for(int i = 0; i < root->num_children(); i++) {
+        bb.grow(bvh_tighten(root->get_child(i)));
+    }
+
+    if(std::abs(root->bounds.area() - bb.area()) > .05f) {
+        std::cout << "Area " << root->bounds.area() << "\t" << bb.area() << std::endl;
+    }
+    root->bounds.intersect(bb);
+    return root->bounds;
+}
+
 BVHNode* BVHEmbreeConverter::getBVH2() {
     BVHNode *root = this->getBVH4();
     std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
@@ -332,6 +348,8 @@ BVHNode* BVHEmbreeConverter::getBVH2() {
     root = bvh_shrink(root);
     std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
     std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
+    bvh_tighten(root);
+    std::cout << "BVH² SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     return root;
 }
 

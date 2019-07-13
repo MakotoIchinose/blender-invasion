@@ -89,6 +89,10 @@ class BVHNode {
     return false;
   }
 
+  inline bool has_time_limits() const {
+    return this->time_from > 0 || this->time_to < 1;
+  }
+
   // Subtree functions
   int getSubtreeSize(BVH_STAT stat = BVH_STAT_NODE_COUNT) const;
   float computeSubtreeSAHCost(const BVHParams &p, float probability = 1.0f) const;

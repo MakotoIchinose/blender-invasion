@@ -496,7 +496,9 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
   progress.set_substatus("Packing geometry");
   if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
     BVHEmbreeConverter conv(scene, objects, this->params);
-    pack_nodes(conv.getBVH2());
+    BVHNode *root = conv.getBVH2();
+    BVH2::pack_nodes(root);
+    root->deleteSubtree();
   } else {
     pack_nodes(NULL);
   }

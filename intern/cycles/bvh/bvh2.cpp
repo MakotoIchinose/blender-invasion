@@ -96,6 +96,16 @@ void BVH2::pack_aligned_node(int idx,
   assert(c0 < 0 || c0 < pack.nodes.size());
   assert(c1 < 0 || c1 < pack.nodes.size());
 
+  if(time0.x > 0 || time0.y < 1)
+      visibility0 |= PATH_RAY_NODE_4D;
+  else
+      visibility0 &= ~PATH_RAY_NODE_4D;
+
+  if(time1.x > 0 || time1.y < 1)
+      visibility1 |= PATH_RAY_NODE_4D;
+  else
+      visibility1 &= ~PATH_RAY_NODE_4D;
+
   int4 data[BVH_NODE_SIZE] = {
       make_int4(
           visibility0 & ~PATH_RAY_NODE_UNALIGNED, visibility1 & ~PATH_RAY_NODE_UNALIGNED, c0, c1),

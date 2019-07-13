@@ -105,7 +105,6 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals *kg,
         int node_addr_child1, traverse_mask;
         float dist[2];
         float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr + 0);
-        float4 timeLimits = kernel_tex_fetch(__bvh_nodes, node_addr + 4);
 
 #if !defined(__KERNEL_SSE2__)
         {

@@ -319,7 +319,10 @@ enum PathRayFlag {
   /* Ray is to be terminated. */
   PATH_RAY_TERMINATE = (PATH_RAY_TERMINATE_IMMEDIATE | PATH_RAY_TERMINATE_AFTER_TRANSPARENT),
   /* Path and shader is being evaluated for direct lighting emission. */
-  PATH_RAY_EMISSION = (1 << 22)
+  PATH_RAY_EMISSION = (1 << 22),
+
+  /* Special flag to tag 4D BVH nodes (they also cary time bounds). */
+  PATH_RAY_NODE_4D = (1 << 23),
 };
 
 /* Closure Label */
