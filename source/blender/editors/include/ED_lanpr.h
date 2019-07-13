@@ -457,4 +457,8 @@ typedef struct LANPR_SharedResource {
 } LANPR_SharedResource;
 
 
+
+typedef struct LANPR_RenderLineChain LANPR_RenderLineChain;
+
+
 #endif /* __ED_LANPR_H__ */
