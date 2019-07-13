@@ -915,7 +915,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
       GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 }
 
-void lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
+void ED_lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc;
   if (!rb) {

@@ -428,11 +428,11 @@ static void lanpr_cache_init(void *vedata)
       (!lanpr_share.render_buffer_shared ||
        lanpr_share.render_buffer_shared->cached_for_frame != draw_ctx->scene->r.cfra)) {
     if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
-      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 0);
+      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 0);
       updated = 1;
     }
     else if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_DPIX) {
-      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
+      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
     }
   }
 
@@ -660,7 +660,7 @@ static void lanpr_render_matrices_init(RenderEngine *engine, Depsgraph *depsgrap
   DRW_view_set_active(view);
 }
 
-int lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int instersections_only);
+int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int instersections_only);
 LANPR_RenderBuffer *lanpr_create_render_buffer();
 
 extern DrawEngineType draw_engine_lanpr_type;
@@ -706,7 +706,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
     if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra ||
         LANPR_GLOBAL_update_tag) {
       int intersections_only = (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
-      lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, intersections_only);
+      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, intersections_only);
     }
   }
 
