@@ -32,7 +32,7 @@ int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
                                   int *rowEnd,
                                   int *colBegin,
                                   int *colEnd);
-LANPR_BoundingArea *lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 
 #define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
 
@@ -209,7 +209,7 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
   }
 }
 
-LANPR_BoundingArea *lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
 
 void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 {
@@ -254,7 +254,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     }
 
     /*  step 1: grow left */
-    ba = lanpr_get_point_bounding_area_deep(rb, rl->l->fbcoord[0], rl->l->fbcoord[1]);
+    ba = ED_lanpr_get_point_bounding_area_deep(rb, rl->l->fbcoord[0], rl->l->fbcoord[1]);
     new_rv = rl->l;
     rls = rl->segments.first;
     lanpr_push_render_line_chain_point(rb,
@@ -334,7 +334,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                            new_rl->flags,
                                            last_occlusion);
       }
-      ba = lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
+      ba = ED_lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
 
     /*  step 2: this line */
@@ -360,7 +360,7 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                          last_occlusion);
 
     /*  step 3: grow right */
-    ba = lanpr_get_point_bounding_area_deep(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
+    ba = ED_lanpr_get_point_bounding_area_deep(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
     new_rv = rl->r;
     /*  below already done in step 2 */
     /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
@@ -425,12 +425,12 @@ void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
                                              new_rl->flags,
                                              last_occlusion);
       }
-      ba = lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
+      ba = ED_lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
   }
 }
 
-LANPR_BoundingArea *lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBuffer *rb,
                                                            LANPR_BoundingArea *root,
                                                            LANPR_RenderLineChainItem *rlci)
@@ -462,7 +462,7 @@ LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBuffer *r
 LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
                                                       LANPR_RenderLineChainItem *rlci)
 {
-  LANPR_BoundingArea *root = lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
+  LANPR_BoundingArea *root = ED_lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
   if (!root) {
     return NULL;
   }
@@ -516,8 +516,8 @@ void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLi
 {
   LANPR_RenderLineChainItem *pl = rlc->chain.first;
   LANPR_RenderLineChainItem *pr = rlc->chain.last;
-  LANPR_BoundingArea *ba1 = lanpr_get_point_bounding_area(rb, pl->pos[0], pl->pos[1]);
-  LANPR_BoundingArea *ba2 = lanpr_get_point_bounding_area(rb, pr->pos[0], pr->pos[1]);
+  LANPR_BoundingArea *ba1 = ED_lanpr_get_point_bounding_area(rb, pl->pos[0], pl->pos[1]);
+  LANPR_BoundingArea *ba2 = ED_lanpr_get_point_bounding_area(rb, pr->pos[0], pr->pos[1]);
 
   if (ba1) {
     lanpr_link_point_with_bounding_area_recursive(rb, ba1, rlc, pl);

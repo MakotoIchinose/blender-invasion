@@ -176,7 +176,7 @@ static void lanpr_engine_free(void)
   }
 
   if (lanpr_share.render_buffer_shared) {
-    lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
+    ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
     MEM_freeN(lanpr_share.render_buffer_shared);
     lanpr_share.render_buffer_shared = NULL;
   }
@@ -441,7 +441,7 @@ static void lanpr_cache_init(void *vedata)
   }
 }
 
-int lanpr_object_collection_usage_check(Collection *c, Object *o);
+int ED_lanpr_object_collection_usage_check(Collection *c, Object *o);
 
 static void lanpr_cache_populate(void *vedata, Object *ob)
 {
@@ -467,7 +467,7 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
   if (geom) {
     if (dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
                    !lanpr_share.dpix_shader_error)) {
-      usage = lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
+      usage = ED_lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
       if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
         return;
       }
@@ -661,7 +661,7 @@ static void lanpr_render_matrices_init(RenderEngine *engine, Depsgraph *depsgrap
 }
 
 int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int instersections_only);
-LANPR_RenderBuffer *lanpr_create_render_buffer();
+LANPR_RenderBuffer *ED_lanpr_create_render_buffer();
 
 extern DrawEngineType draw_engine_lanpr_type;
 
@@ -701,7 +701,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
     if (!lanpr_share.render_buffer_shared) {
-      lanpr_create_render_buffer();
+      ED_lanpr_create_render_buffer();
     }
     if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra ||
         LANPR_GLOBAL_update_tag) {

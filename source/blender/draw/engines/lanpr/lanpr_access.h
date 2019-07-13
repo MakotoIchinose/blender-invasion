@@ -28,7 +28,7 @@ void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
 int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
 
-void lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
+void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
 bool ED_lanpr_dpix_shader_error();
 
