@@ -569,13 +569,21 @@ static bool parent_clear_poll(bContext *C,
 static int parent_clear_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
 {
   Main *bmain = CTX_data_main(C);
-  Object *ob = (Object *)WM_drag_ID_from_event(event, ID_OB);
 
-  if (ob == NULL) {
+  if (event->custom != EVT_DATA_DRAGDROP) {
     return OPERATOR_CANCELLED;
   }
 
-  ED_object_parent_clear(ob, 0);
+  ListBase *lb = event->customdata;
+  wmDrag *drag = lb->first;
+
+  for (wmDragID *drag_id = drag->ids.first; drag_id; drag_id = drag_id->next) {
+    if (GS(drag_id->id->name) == ID_OB) {
+      Object *object = (Object *)drag_id->id;
+
+      ED_object_parent_clear(object, 0);
+    }
+  }
 
   DEG_relations_tag_update(bmain);
   WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
