@@ -1192,7 +1192,7 @@ void RNA_api_object(StructRNA *srna)
   parm = RNA_def_pointer(
       func, "ob_gpencil", "Object", "", "Grease Pencil object used to create new strokes");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "gpencil_lines", 1, "", "Create Lines");
+  parm = RNA_def_boolean(func, "gpencil_lines", 0, "", "Create Lines");
   parm = RNA_def_boolean(func, "use_collections", 1, "", "Use Collections");
 
   parm = RNA_def_boolean(func, "result", 0, "", "Result");
