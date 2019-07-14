@@ -151,7 +151,15 @@ static void cloth_remeshing_init_bmesh(Object *ob, ClothModifierData *clmd, Mesh
 static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex *v2)
 {
   ClothVertex new_vert;
-  /* TODO(Ish): flags */
+
+  new_vert.flags = 0;
+  if ((v1->flags & CLOTH_VERT_FLAG_PINNED) && (v2->flags & CLOTH_VERT_FLAG_PINNED)) {
+    new_vert.flags |= CLOTH_VERT_FLAG_PINNED;
+  }
+  if ((v1->flags & CLOTH_VERT_FLAG_NOSELFCOLL) && (v2->flags & CLOTH_VERT_FLAG_NOSELFCOLL)) {
+    new_vert.flags |= CLOTH_VERT_FLAG_NOSELFCOLL;
+  }
+
   add_v3_v3v3(new_vert.v, v1->v, v2->v);
   mul_v3_fl(new_vert.v, 0.5f);
 
