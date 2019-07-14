@@ -71,11 +71,12 @@ typedef struct Global {
    *   *     -1: Disable faster motion paths computation (since 08/2018).
    *   * 1 - 30: EEVEE debug/stats values (01/2018).
    *   *    101: Enable UI debug drawing of fullscreen area's corner widget (10/2014).
+   *   *    474: Disable sleeping in `gpu_select_query_end`.
    *   *    527: Old mysterious switch in behavior of MeshDeform modifier (before 04/2010).
    *   *    666: Use quicker batch delete for outliners' delete hierarchy (01/2019).
    *   *    777: Enable UI node panel's sockets polling (11/2011).
    *   *    799: Enable some mysterious new depsgraph behavior (05/2015).
-   *   *   1112: Disable new Cloth internal springs hanlding (09/2014).
+   *   *   1112: Disable new Cloth internal springs handling (09/2014).
    *   *   1234: Disable new dyntopo code fixing skinny faces generation (04/2015).
    *   * 16384 and above: Reserved for python (add-ons) usage.
    */

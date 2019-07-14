@@ -31,7 +31,7 @@ class USERPREF_HT_header(Header):
     bl_space_type = 'PREFERENCES'
 
     @staticmethod
-    def draw_buttons(layout, context, *, is_vertical=False):
+    def draw_buttons(layout, context):
         prefs = context.preferences
 
         layout.scale_x = 1.0
@@ -40,10 +40,26 @@ class USERPREF_HT_header(Header):
 
         row = layout.row()
         row.menu("USERPREF_MT_save_load", text="", icon='COLLAPSEMENU')
-        if not prefs.use_preferences_save:
-            sub_revert = row.row(align=True)
-            sub_revert.active = prefs.is_dirty
-            sub_revert.operator("wm.save_userpref")
+        # Use '_is_startup' so once factory settings are loaded
+        # this display option will show, since it's confusing if disabling
+        # the option makes it dissapiers.
+        if prefs.use_preferences_save:
+            use_userpref_skip_save_on_exit = bpy.app.use_userpref_skip_save_on_exit
+            if use_userpref_skip_save_on_exit or getattr(USERPREF_HT_header, "_is_startup", False):
+                USERPREF_HT_header._is_startup = True
+
+                sub = row.row(align=True)
+                sub.alignment = 'LEFT'
+                props = sub.operator(
+                    "preferences.autosave_override_toggle",
+                    text="Skip Auto-Save",
+                    emboss=False,
+                    icon='CHECKBOX_HLT' if use_userpref_skip_save_on_exit else 'CHECKBOX_DEHLT',
+                )
+        else:
+            sub = row.row(align=True)
+            sub.active = prefs.is_dirty
+            sub.operator("wm.save_userpref")
 
     def draw(self, context):
         layout = self.layout
@@ -118,7 +134,7 @@ class USERPREF_PT_save_preferences(Panel):
         layout.scale_x = 1.3
         layout.scale_y = 1.3
 
-        USERPREF_HT_header.draw_buttons(layout, context, is_vertical=True)
+        USERPREF_HT_header.draw_buttons(layout, context)
 
 
 # Panel mix-in.
@@ -252,6 +268,7 @@ class USERPREF_PT_interface_editors(PreferencePanel, Panel):
 
         flow.prop(system, "use_region_overlap")
         flow.prop(view, "show_layout_ui", text="Corner Splitting")
+        flow.prop(view, "show_navigate_ui")
         flow.prop(view, "color_picker_type")
         flow.row().prop(view, "header_align")
         flow.prop(view, "factor_display_type")
@@ -628,10 +645,8 @@ class USERPREF_PT_viewport_display(PreferencePanel, Panel):
         col.prop(view, "mini_axis_type", text="3D Viewport Axis")
 
         if view.mini_axis_type == 'MINIMAL':
-            sub = col.column()
-            sub.active = view.mini_axis_type == 'MINIMAL'
-            sub.prop(view, "mini_axis_size", text="Size")
-            sub.prop(view, "mini_axis_brightness", text="Brightness")
+            col.prop(view, "mini_axis_size", text="Size")
+            col.prop(view, "mini_axis_brightness", text="Brightness")
 
 
 class USERPREF_PT_viewport_quality(PreferencePanel, Panel):
@@ -1433,9 +1448,11 @@ class USERPREF_PT_input_mouse(PreferencePanel, Panel):
         flow.prop(inputs, "use_mouse_emulate_3_button")
         flow.prop(inputs, "use_mouse_continuous")
         flow.prop(inputs, "use_drag_immediately")
+        flow.prop(inputs, "mouse_double_click_time", text="Double Click Speed")
+        flow.prop(inputs, "drag_threshold_mouse")
+        flow.prop(inputs, "drag_threshold_tablet")
         flow.prop(inputs, "drag_threshold")
         flow.prop(inputs, "move_threshold")
-        flow.prop(inputs, "mouse_double_click_time", text="Double Click Speed")
 
 
 class USERPREF_PT_navigation_orbit(PreferencePanel, Panel):

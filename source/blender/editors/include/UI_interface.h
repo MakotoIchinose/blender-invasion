@@ -743,7 +743,7 @@ bool UI_block_active_only_flagged_buttons(const struct bContext *C,
                                           struct ARegion *ar,
                                           struct uiBlock *block);
 
-void UI_but_execute(const struct bContext *C, uiBut *but);
+void UI_but_execute(const struct bContext *C, struct ARegion *ar, uiBut *but);
 
 bool UI_but_online_manual_id(const uiBut *but,
                              char *r_str,
@@ -2271,6 +2271,7 @@ void uiItemL(uiLayout *layout, const char *name, int icon); /* label */
 /* label icon for dragging */
 void uiItemLDrag(uiLayout *layout, struct PointerRNA *ptr, const char *name, int icon);
 /* menu */
+void uiItemM_ptr(uiLayout *layout, struct MenuType *mt, const char *name, int icon);
 void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon);
 /* menu contents */
 void uiItemMContents(uiLayout *layout, const char *menuname);

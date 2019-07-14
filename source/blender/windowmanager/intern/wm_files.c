@@ -358,9 +358,6 @@ static void wm_init_userdef(Main *bmain, const bool read_userdef_from_memory)
   /* versioning is here */
   UI_init_userdef(bmain);
 
-  MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
-  BKE_sound_init(bmain);
-
   /* needed so loading a file from the command line respects user-pref [#26156] */
   SET_FLAG_FROM_TEST(G.fileflags, U.flag & USER_FILENOUI, G_FILE_NO_UI);
 
@@ -374,6 +371,9 @@ static void wm_init_userdef(Main *bmain, const bool read_userdef_from_memory)
   if (read_userdef_from_memory) {
     BLO_update_defaults_userpref_blend();
   }
+
+  MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
+  BKE_sound_init(bmain);
 
   /* update tempdir from user preferences */
   BKE_tempdir_init(U.tempdir);
@@ -557,8 +557,7 @@ static void wm_file_read_post(bContext *C,
 
     /* After load post, so for example the driver namespace can be filled
      * before evaluating the depsgraph. */
-    DEG_on_visible_update(bmain, true);
-    wm_event_do_depsgraph(C);
+    wm_event_do_depsgraph(C, true);
 
     ED_editors_init(C);
 
@@ -635,7 +634,17 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
     /* confusing this global... */
     G.relbase_valid = 1;
-    retval = BKE_blendfile_read(C, filepath, &(const struct BlendFileReadParams){0}, reports);
+    retval = BKE_blendfile_read(
+        C,
+        filepath,
+        /* Loading preferences when the user intended to load a regular file is a security risk,
+         * because the excluded path list is also loaded.
+         * Further it's just confusing if a user loads a file and various preferences change. */
+        &(const struct BlendFileReadParams){
+            .is_startup = false,
+            .skip_flags = BLO_READ_SKIP_USERDEF,
+        },
+        reports);
 
 #ifdef DEBUG_LIBRARY
     printf("Updating assets for: %s\n", filepath);
@@ -683,8 +692,9 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     success = true;
   }
 #if 0
-  else if (retval == BKE_READ_EXOTIC_OK_OTHER)
+  else if (retval == BKE_READ_EXOTIC_OK_OTHER) {
     BKE_undo_write(C, "Import file");
+  }
 #endif
   else if (retval == BKE_READ_EXOTIC_FAIL_OPEN) {
     BKE_reportf(reports,
@@ -988,7 +998,7 @@ void wm_homefile_read(bContext *C,
         }
       }
     }
-    if (BLI_listbase_is_empty(&wmbase)) {
+    if (use_data && BLI_listbase_is_empty(&wmbase)) {
       wm_clear_default_size(C);
     }
   }
@@ -1386,7 +1396,7 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
   /* operator now handles overwrite checks */
 
   if (G.fileflags & G_FILE_AUTOPACK) {
-    packAll(bmain, reports, false);
+    BKE_packedfile_pack_all(bmain, reports, false);
   }
 
   /* don't forget not to return without! */
@@ -1749,6 +1759,23 @@ void WM_OT_save_userpref(wmOperatorType *ot)
   ot->exec = wm_userpref_write_exec;
 }
 
+/**
+ * When reading preferences, there are some exceptions for values which are reset.
+ */
+static void wm_userpref_read_exceptions(UserDef *userdef_curr, const UserDef *userdef_prev)
+{
+#define USERDEF_RESTORE(member) \
+  { \
+    userdef_curr->member = userdef_prev->member; \
+  } \
+  ((void)0)
+
+  /* Current visible preferences category. */
+  USERDEF_RESTORE(userpref);
+
+#undef USERDEF_RESTORE
+}
+
 static void rna_struct_update_when_changed(bContext *C,
                                            Main *bmain,
                                            PointerRNA *ptr_a,
@@ -1821,15 +1848,8 @@ static int wm_userpref_read_exec(bContext *C, wmOperator *op)
                    WM_init_state_app_template_get(),
                    NULL);
 
-#define USERDEF_RESTORE(member) \
-  { \
-    U.member = U_backup.member; \
-  } \
-  ((void)0)
-
-  USERDEF_RESTORE(userpref);
-
-#undef USERDEF_RESTORE
+  wm_userpref_read_exceptions(&U, &U_backup);
+  SET_FLAG_FROM_TEST(G.f, use_factory_settings, G_FLAG_USERPREF_NO_SAVE_ON_EXIT);
 
   Main *bmain = CTX_data_main(C);
 
@@ -1893,6 +1913,7 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   bool use_userdef = false;
   char filepath_buf[FILE_MAX];
   const char *filepath = NULL;
+  UserDef U_backup = U;
 
   if (!use_factory_settings) {
     PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
@@ -1924,7 +1945,6 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop_app_template = RNA_struct_find_property(op->ptr, "app_template");
   const bool use_splash = !use_factory_settings && RNA_boolean_get(op->ptr, "use_splash");
   const bool use_empty_data = RNA_boolean_get(op->ptr, "use_empty");
-  const bool use_temporary_preferences = RNA_boolean_get(op->ptr, "use_temporary_preferences");
 
   if (prop_app_template && RNA_property_is_set(op->ptr, prop_app_template)) {
     RNA_property_string_get(op->ptr, prop_app_template, app_template_buf);
@@ -1955,7 +1975,11 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   if (use_splash) {
     WM_init_splash(C);
   }
-  SET_FLAG_FROM_TEST(G.f, use_temporary_preferences, G_FLAG_USERPREF_NO_SAVE_ON_EXIT);
+
+  if (use_userdef) {
+    wm_userpref_read_exceptions(&U, &U_backup);
+    SET_FLAG_FROM_TEST(G.f, use_factory_settings, G_FLAG_USERPREF_NO_SAVE_ON_EXIT);
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -1995,13 +2019,6 @@ static void read_homefile_props(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna, "use_empty", false, "Empty", "");
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-
-  prop = RNA_def_boolean(ot->srna,
-                         "use_temporary_preferences",
-                         false,
-                         "Temporary Preferences",
-                         "Don't save preferences on exit");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
@@ -2730,9 +2747,10 @@ static void wm_block_autorun_warning_ignore(bContext *C, void *arg_block, void *
   UI_popup_block_close(C, win, arg_block);
 }
 
-static void wm_block_autorun_warning_allow(bContext *C, void *arg_block, void *UNUSED(arg))
+static void wm_block_autorun_warning_reload_with_scripts(bContext *C,
+                                                         void *arg_block,
+                                                         void *UNUSED(arg))
 {
-  PointerRNA props_ptr;
   wmWindow *win = CTX_wm_window(C);
 
   UI_popup_block_close(C, win, arg_block);
@@ -2742,13 +2760,35 @@ static void wm_block_autorun_warning_allow(bContext *C, void *arg_block, void *U
     WM_operator_name_call(C, "WM_OT_save_userpref", WM_OP_EXEC_DEFAULT, NULL);
   }
 
-  /* Load file again with scripts enabled. */
+  /* Load file again with scripts enabled.
+   * The reload is necessary to allow scripts to run when the files loads. */
   wmOperatorType *ot = WM_operatortype_find("WM_OT_revert_mainfile", false);
 
+  PointerRNA props_ptr;
   WM_operator_properties_create_ptr(&props_ptr, ot);
   RNA_boolean_set(&props_ptr, "use_scripts", true);
   WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &props_ptr);
   WM_operator_properties_free(&props_ptr);
+}
+
+static void wm_block_autorun_warning_enable_scripts(bContext *C,
+                                                    void *arg_block,
+                                                    void *UNUSED(arg))
+{
+  wmWindow *win = CTX_wm_window(C);
+  Main *bmain = CTX_data_main(C);
+
+  UI_popup_block_close(C, win, arg_block);
+
+  /* Save user preferences for permanent execution. */
+  if ((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0) {
+    WM_operator_name_call(C, "WM_OT_save_userpref", WM_OP_EXEC_DEFAULT, NULL);
+  }
+
+  /* Force a full refresh, but without reloading the file. */
+  LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+    BKE_scene_free_depsgraph_hash(scene);
+  }
 }
 
 /* Build the autorun warning dialog UI */
@@ -2756,6 +2796,7 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
                                              struct ARegion *ar,
                                              void *UNUSED(arg1))
 {
+  wmWindowManager *wm = CTX_wm_manager(C);
   uiStyle *style = UI_style_get();
   uiBlock *block = UI_block_begin(C, ar, "autorun_warning_popup", UI_EMBOSS);
 
@@ -2777,13 +2818,13 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
   /* Text and some vertical space */
   uiLayout *col = uiLayoutColumn(layout, true);
   uiItemL(col,
-          IFACE_("For security reasons, automatic execution of Python scripts in this file was "
-                 "disabled:"),
+          TIP_("For security reasons, automatic execution of Python scripts in this file was "
+               "disabled:"),
           ICON_ERROR);
   uiLayout *sub = uiLayoutRow(col, true);
   uiLayoutSetRedAlert(sub, true);
   uiItemL(sub, G.autoexec_fail, ICON_BLANK1);
-  uiItemL(col, IFACE_("This may lead to unexpected behavior"), ICON_BLANK1);
+  uiItemL(col, TIP_("This may lead to unexpected behavior"), ICON_BLANK1);
 
   uiItemS(layout);
 
@@ -2793,7 +2834,7 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
           &pref_ptr,
           "use_scripts_auto_execute",
           0,
-          IFACE_("Permanently allow execution of scripts"),
+          TIP_("Permanently allow execution of scripts"),
           ICON_NONE);
 
   uiItemS(layout);
@@ -2803,8 +2844,9 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
   uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
   col = uiLayoutColumn(split, false);
 
-  /* Allow reload if we have a saved file. */
-  if (G.relbase_valid) {
+  /* Allow reload if we have a saved file.
+   * Otherwise just enable scripts and reset the depsgraphs. */
+  if (G.relbase_valid && wm->file_saved) {
     but = uiDefIconTextBut(block,
                            UI_BTYPE_BUT,
                            0,
@@ -2820,10 +2862,25 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
                            0,
                            0,
                            TIP_("Reload file with execution of Python scripts enabled"));
-    UI_but_func_set(but, wm_block_autorun_warning_allow, block, NULL);
+    UI_but_func_set(but, wm_block_autorun_warning_reload_with_scripts, block, NULL);
   }
   else {
-    uiItemS(col);
+    but = uiDefIconTextBut(block,
+                           UI_BTYPE_BUT,
+                           0,
+                           ICON_NONE,
+                           IFACE_("Allow Execution"),
+                           0,
+                           0,
+                           50,
+                           UI_UNIT_Y,
+                           NULL,
+                           0,
+                           0,
+                           0,
+                           0,
+                           TIP_("Enable scripts"));
+    UI_but_func_set(but, wm_block_autorun_warning_enable_scripts, block, NULL);
   }
 
   /* empty space between buttons */
@@ -2912,11 +2969,14 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   UI_popup_block_close(C, win, arg_block);
 
   if (save_images_when_file_is_closed) {
-    ReportList *reports = CTX_wm_reports(C);
-    if (!ED_image_save_all_modified(C, reports)) {
+    if (ED_image_should_save_modified(C)) {
+      ReportList *reports = CTX_wm_reports(C);
+      ED_image_save_all_modified(C, reports);
+      WM_report_banner_show();
+    }
+    else {
       execute_callback = false;
     }
-    WM_report_banner_show();
   }
 
   Main *bmain = CTX_data_main(C);
@@ -3022,10 +3082,10 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
                  0,
                  0,
                  "");
+  }
 
-    LISTBASE_FOREACH (Report *, report, &reports.list) {
-      uiItemL(layout, report->message, ICON_ERROR);
-    }
+  LISTBASE_FOREACH (Report *, report, &reports.list) {
+    uiItemL(layout, report->message, ICON_ERROR);
   }
 
   BKE_reports_clear(&reports);

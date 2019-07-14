@@ -69,8 +69,13 @@ static ListBase gizmomaptypes = {NULL, NULL};
  */
 /* so operator removal can trigger update */
 typedef enum eWM_GizmoFlagGroupTypeGlobalFlag {
+  /** Initialize by #wmGroupType.type_update_flag. */
   WM_GIZMOMAPTYPE_GLOBAL_UPDATE_INIT = (1 << 0),
+  /** Remove by #wmGroupType.type_update_flag. */
   WM_GIZMOMAPTYPE_GLOBAL_UPDATE_REMOVE = (1 << 1),
+
+  /** Remove by #wmGroup.tag_remove. */
+  WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE = (1 << 2),
 } eWM_GizmoFlagGroupTypeGlobalFlag;
 
 static eWM_GizmoFlagGroupTypeGlobalFlag wm_gzmap_type_update_flag = 0;
@@ -547,6 +552,9 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
 
   bool use_select_bias = false;
 
+  /* TODO: waiting for the GPU in the middle of the event loop for every
+   * mouse move is bad for performance, we need to find a solution to not
+   * use the GPU or draw something once. (see T61474) */
   GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
   /* do the drawing */
   gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len, &use_select_bias);
@@ -571,8 +579,11 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
     const int viewport[4] = {0, 0, ar->winx, ar->winy};
     float co_3d_origin[3];
 
-    GPU_matrix_unproject_model_inverted(
-        co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d_origin);
+    /* Avoid multiple calculations. */
+    struct GPUMatrixUnproject_Precalc unproj_precalc;
+    GPU_matrix_unproject_precalc(&unproj_precalc, rv3d->viewmat, rv3d->winmat, viewport);
+
+    GPU_matrix_unproject_with_precalc(&unproj_precalc, co_screen, co_3d_origin);
 
     GLuint *buf_iter = buffer;
     int hit_found = -1;
@@ -583,7 +594,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
       wmGizmo *gz = visible_gizmos[buf_iter[3] >> 8];
       float co_3d[3];
       co_screen[2] = int_as_float(buf_iter[1]);
-      GPU_matrix_unproject_model_inverted(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d);
+      GPU_matrix_unproject_with_precalc(&unproj_precalc, co_screen, co_3d);
       float select_bias = gz->select_bias;
       if ((gz->flag & WM_GIZMO_DRAW_NO_SCALE) == 0) {
         select_bias *= gz->scale_final;
@@ -626,7 +637,7 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
   {
     for (int select_id = 0; select_id < visible_gizmos_len; select_id++) {
       wmGizmo *gz = visible_gizmos[select_id];
-      /* With both defined, favor the 3D, incase the gizmo can be used in 2D or 3D views. */
+      /* With both defined, favor the 3D, in case the gizmo can be used in 2D or 3D views. */
       if (gz->type->test_select && (gz->type->draw_select == NULL)) {
         if ((*r_part = gz->type->test_select(C, gz, co)) != -1) {
           hit = select_id;
@@ -636,7 +647,7 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
           break;
         }
       }
-      else {
+      else if (gz->type->draw_select != NULL) {
         has_3d = true;
       }
     }
@@ -679,13 +690,25 @@ wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
                                     const wmEvent *event,
                                     int *r_part)
 {
+  wmWindowManager *wm = CTX_wm_manager(C);
   wmGizmo *gz = NULL;
   BLI_buffer_declare_static(wmGizmo *, visible_3d_gizmos, BLI_BUFFER_NOP, 128);
   bool do_step[WM_GIZMOMAP_DRAWSTEP_MAX];
 
+  int mval[2] = {UNPACK2(event->mval)};
+
+  /* Ensure for drag events we use the location where the user clicked.
+   * Without this click-dragging on a gizmo can accidentally act on the wrong gizmo. */
+  if (ISTWEAK(event->type) || (event->val == KM_CLICK_DRAG)) {
+    mval[0] += event->x - event->prevclickx;
+    mval[1] += event->y - event->prevclicky;
+  }
+
   for (int i = 0; i < ARRAY_SIZE(do_step); i++) {
     do_step[i] = WM_gizmo_context_check_drawstep(C, i);
   }
+
+  const int event_modifier = WM_event_modifier_flag(event);
 
   for (wmGizmoGroup *gzgroup = gzmap->groups.first; gzgroup; gzgroup = gzgroup->next) {
 
@@ -712,10 +735,12 @@ wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
           /* cleared below */
         }
         if (step == WM_GIZMOMAP_DRAWSTEP_3D) {
-          wm_gizmogroup_intersectable_gizmos_to_list(gzgroup, &visible_3d_gizmos);
+          wm_gizmogroup_intersectable_gizmos_to_list(
+              wm, gzgroup, event_modifier, &visible_3d_gizmos);
         }
         else if (step == WM_GIZMOMAP_DRAWSTEP_2D) {
-          if ((gz = wm_gizmogroup_find_intersected_gizmo(gzgroup, C, event, r_part))) {
+          if ((gz = wm_gizmogroup_find_intersected_gizmo(
+                   wm, gzgroup, C, event_modifier, mval, r_part))) {
             break;
           }
         }
@@ -727,7 +752,7 @@ wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
     /* 2D gizmos get priority. */
     if (gz == NULL) {
       gz = gizmo_find_intersected_3d(
-          C, event->mval, visible_3d_gizmos.data, visible_3d_gizmos.count, r_part);
+          C, mval, visible_3d_gizmos.data, visible_3d_gizmos.count, r_part);
     }
   }
   BLI_buffer_free(&visible_3d_gizmos);
@@ -1010,7 +1035,7 @@ void wm_gizmomap_modal_set(
 
     /* Use even if we don't have invoke, so we can setup data before an operator runs. */
     if (gz->parent_gzgroup->type->invoke_prepare) {
-      gz->parent_gzgroup->type->invoke_prepare(C, gz->parent_gzgroup, gz);
+      gz->parent_gzgroup->type->invoke_prepare(C, gz->parent_gzgroup, gz, event);
     }
 
     if (gz->type->invoke && (gz->type->modal || gz->custom_modal)) {
@@ -1024,7 +1049,7 @@ void wm_gizmomap_modal_set(
     gzmap->gzmap_context.modal = gz;
 
     if ((gz->flag & WM_GIZMO_MOVE_CURSOR) && (event->is_motion_absolute == false)) {
-      WM_cursor_grab_enable(win, true, true, NULL);
+      WM_cursor_grab_enable(win, WM_CURSOR_WRAP_XY, true, NULL);
       copy_v2_v2_int(gzmap->gzmap_context.event_xy, &event->x);
       gzmap->gzmap_context.event_grabcursor = win->grabcursor;
     }
@@ -1130,10 +1155,15 @@ struct ARegion *WM_gizmomap_tooltip_init(struct bContext *C,
                                          bool *r_exit_on_event)
 {
   wmGizmoMap *gzmap = ar->gizmo_map;
-  *r_exit_on_event = true;
+  *r_exit_on_event = false;
   if (gzmap) {
     wmGizmo *gz = gzmap->gzmap_context.highlight;
     if (gz) {
+      wmGizmoGroup *gzgroup = gz->parent_gzgroup;
+      if ((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) != 0) {
+        /* On screen area of 3D gizmos may be large, exit on cursor motion. */
+        *r_exit_on_event = true;
+      }
       return UI_tooltip_create_from_gizmo(C, gz);
     }
   }
@@ -1205,16 +1235,18 @@ void wm_gizmos_keymap(wmKeyConfig *keyconf)
       wm_gizmogrouptype_setup_keymap(gzgt_ref->type, keyconf);
     }
   }
+
+  wm_gizmogroup_tweak_modal_keymap(keyconf);
 }
 
 /** \} */ /* wmGizmoMapType */
 
 /* -------------------------------------------------------------------- */
-/** \name Updates for Dynamic Type Registraion
+/** \name Updates for Dynamic Type Registration
  *
  * \{ */
 
-void WM_gizmoconfig_update_tag_init(wmGizmoMapType *gzmap_type, wmGizmoGroupType *gzgt)
+void WM_gizmoconfig_update_tag_group_type_init(wmGizmoMapType *gzmap_type, wmGizmoGroupType *gzgt)
 {
   /* tag for update on next use */
   gzmap_type->type_update_flag |= (WM_GIZMOMAPTYPE_UPDATE_INIT | WM_GIZMOMAPTYPE_KEYMAP_INIT);
@@ -1223,7 +1255,8 @@ void WM_gizmoconfig_update_tag_init(wmGizmoMapType *gzmap_type, wmGizmoGroupType
   wm_gzmap_type_update_flag |= WM_GIZMOMAPTYPE_GLOBAL_UPDATE_INIT;
 }
 
-void WM_gizmoconfig_update_tag_remove(wmGizmoMapType *gzmap_type, wmGizmoGroupType *gzgt)
+void WM_gizmoconfig_update_tag_group_type_remove(wmGizmoMapType *gzmap_type,
+                                                 wmGizmoGroupType *gzgt)
 {
   /* tag for update on next use */
   gzmap_type->type_update_flag |= WM_GIZMOMAPTYPE_UPDATE_REMOVE;
@@ -1232,9 +1265,16 @@ void WM_gizmoconfig_update_tag_remove(wmGizmoMapType *gzmap_type, wmGizmoGroupTy
   wm_gzmap_type_update_flag |= WM_GIZMOMAPTYPE_GLOBAL_UPDATE_REMOVE;
 }
 
+void WM_gizmoconfig_update_tag_group_remove(wmGizmoMap *gzmap)
+{
+  gzmap->tag_remove_group = true;
+
+  wm_gzmap_type_update_flag |= WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
+}
+
 /**
- * Run incase new types have been added (runs often, early exit where possible).
- * Follows #WM_keyconfig_update concentions.
+ * Run in case new types have been added (runs often, early exit where possible).
+ * Follows #WM_keyconfig_update conventions.
  */
 void WM_gizmoconfig_update(struct Main *bmain)
 {
@@ -1288,6 +1328,32 @@ void WM_gizmoconfig_update(struct Main *bmain)
     }
 
     wm_gzmap_type_update_flag &= ~WM_GIZMOMAPTYPE_GLOBAL_UPDATE_INIT;
+  }
+
+  if (wm_gzmap_type_update_flag & WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE) {
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+          for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
+            wmGizmoMap *gzmap = ar->gizmo_map;
+            if (gzmap != NULL && gzmap->tag_remove_group) {
+              gzmap->tag_remove_group = false;
+
+              for (wmGizmoGroup *gzgroup = gzmap->groups.first, *gzgroup_next; gzgroup;
+                   gzgroup = gzgroup_next) {
+                gzgroup_next = gzgroup->next;
+                if (gzgroup->tag_remove) {
+                  wm_gizmogroup_free(NULL, gzgroup);
+                  ED_region_tag_redraw(ar);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    wm_gzmap_type_update_flag &= ~WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
   }
 }
 

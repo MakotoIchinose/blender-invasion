@@ -62,6 +62,7 @@ static const char *BuiltinUniform_name(GPUUniformBuiltin u)
 
       [GPU_UNIFORM_NORMAL] = "NormalMatrix",
       [GPU_UNIFORM_ORCO] = "OrcoTexCoFactors",
+      [GPU_UNIFORM_CLIPPLANES] = "WorldClipPlanes",
 
       [GPU_UNIFORM_COLOR] = "color",
       [GPU_UNIFORM_CALLID] = "callId",
@@ -179,10 +180,10 @@ static const GPUShaderInput *add_uniform(GPUShaderInterface *shaderface, const c
 
   input->location = glGetUniformLocation(shaderface->program, name);
 
-  uint name_len = strlen(name);
+  const uint name_len = strlen(name);
+  /* Include NULL terminator. */
   shaderface->name_buffer = MEM_reallocN(shaderface->name_buffer,
-                                         shaderface->name_buffer_offset + name_len +
-                                             1); /* include NULL terminator */
+                                         shaderface->name_buffer_offset + name_len + 1);
   char *name_buffer = shaderface->name_buffer + shaderface->name_buffer_offset;
   strcpy(name_buffer, name);
 
