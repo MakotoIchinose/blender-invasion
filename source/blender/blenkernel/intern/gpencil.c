@@ -2237,15 +2237,37 @@ void BKE_gpencil_convert_curve(Main *bmain,
     color[2] = 1.0f;
     fill = false;
   }
-  int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
-  if (r_idx < 0) {
-    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
-    /* If object has more than 1 material, use second material for stroke color */
-    if (ob_cu->totcol > 1) {
-      Material *ma_stroke = give_current_material(ob_cu, 2);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+
+  /* Special case: If the color was created by the SVG add-on and the name contains '_stroke' and
+   * there is only one color, the stroke must not be closed, fill to false and use for
+   * stroke the fill color.
+   */
+  bool only_stroke = false;
+  if (ob_cu->totcol == 1) {
+    Material *ma_stroke = give_current_material(ob_cu, 1);
+    if ((ma_stroke) && (strstr(ma_stroke->id.name, "_stroke") != NULL)) {
+      only_stroke = true;
     }
   }
+
+  int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
+  if (r_idx < 0) {
+    Material *ma_stroke = NULL;
+    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    /* If object has more than 1 material, use second material for stroke color. */
+    if (ob_cu->totcol > 1) {
+      ma_stroke = give_current_material(ob_cu, 2);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+    }
+    else if (only_stroke) {
+      /* Also use the first color if the fill is none for stroke color. */
+      ma_stroke = give_current_material(ob_cu, 1);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      /* set fill to off */
+      mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+    }
+  }
+
   gps->mat_nr = r_idx;
 
   /* Add stroke to frame.*/
@@ -2290,7 +2312,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
     }
   }
   /* Cyclic curve, close stroke. */
-  if (cyclic) {
+  if ((cyclic) && (!only_stroke)) {
     BKE_gpencil_close_stroke(gps);
   }
 
