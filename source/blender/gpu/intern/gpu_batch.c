@@ -181,6 +181,25 @@ void GPU_batch_instbuf_set(GPUBatch *batch, GPUVertBuf *inst, bool own_vbo)
   }
 }
 
+void GPU_batch_elembuf_set(GPUBatch *batch, GPUIndexBuf *elem, bool own_ibo)
+{
+  BLI_assert(elem != NULL);
+  /* redo the bindings */
+  GPU_batch_vao_cache_clear(batch);
+
+  if (batch->elem != NULL && (batch->owns_flag & GPU_BATCH_OWNS_INDEX)) {
+    GPU_indexbuf_discard(batch->elem);
+  }
+  batch->elem = elem;
+
+  if (own_ibo) {
+    batch->owns_flag |= GPU_BATCH_OWNS_INDEX;
+  }
+  else {
+    batch->owns_flag &= ~GPU_BATCH_OWNS_INDEX;
+  }
+}
+
 /* Returns the index of verts in the batch. */
 int GPU_batch_vertbuf_add_ex(GPUBatch *batch, GPUVertBuf *verts, bool own_vbo)
 {
@@ -549,10 +568,10 @@ static void *elem_offset(const GPUIndexBuf *el, int v_first)
 {
 #if GPU_TRACK_INDEX_RANGE
   if (el->index_type == GPU_INDEX_U16) {
-    return (GLushort *)0 + v_first;
+    return (GLushort *)0 + v_first + el->index_start;
   }
 #endif
-  return (GLuint *)0 + v_first;
+  return (GLuint *)0 + v_first + el->index_start;
 }
 
 /* Use when drawing with GPU_batch_draw_advanced */
