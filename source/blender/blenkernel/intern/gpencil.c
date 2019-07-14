@@ -2150,7 +2150,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                const bool gpencil_lines,
                                const bool use_collections)
 {
-  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL)) {
+  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
     return;
   }
 
@@ -2185,6 +2185,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
   gps->thickness = 1.0f;
   gps->gradient_f = 1.0f;
   ARRAY_SET_ITEMS(gps->gradient_s, 1.0f, 1.0f);
+  ARRAY_SET_ITEMS(gps->caps, GP_STROKE_CAP_ROUND, GP_STROKE_CAP_ROUND);
   gps->inittime = 0.0f;
 
   /* Enable recalculation flag by default. */
@@ -2203,7 +2204,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
     int resolu = nu->resolu + 1;
     if (nu->type == CU_BEZIER) {
       segments = nu->pntsu;
-      if ((nu->flagu & CU_NURB_CYCLIC) == 0) {
+      if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
         segments--;
         cyclic = false;
       }
@@ -2256,7 +2257,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
     int resolu = nu->resolu + 1;
     if (nu->type == CU_BEZIER) {
       segments = nu->pntsu;
-      if ((nu->flagu & CU_NURB_CYCLIC) == 0) {
+      if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
         segments--;
       }
       /* Get all interpolated curve points of Beziert */
@@ -2292,4 +2293,6 @@ void BKE_gpencil_convert_curve(Main *bmain,
   if (cyclic) {
     BKE_gpencil_close_stroke(gps);
   }
+
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
