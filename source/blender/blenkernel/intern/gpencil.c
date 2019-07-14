@@ -2107,12 +2107,13 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
 }
 
 /* Helper function to create new stroke section */
-static void gpencil_add_new_points(bGPDstroke *gps, float *coord_array, int init, int totpoints)
+static void gpencil_add_new_points(
+    bGPDstroke *gps, float *coord_array, float pressure, int init, int totpoints)
 {
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt = &gps->points[i + init];
     copy_v3_v3(&pt->x, &coord_array[3 * i]);
-    pt->pressure = 1.0f;
+    pt->pressure = pressure;
     pt->strength = 1.0f;
   }
 }
@@ -2276,7 +2277,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                         3 * sizeof(float));
         }
         /* Add points to the stroke */
-        gpencil_add_new_points(gps, coord_array, init, resolu);
+        gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu);
         /* Free memory. */
         MEM_SAFE_FREE(coord_array);
 
