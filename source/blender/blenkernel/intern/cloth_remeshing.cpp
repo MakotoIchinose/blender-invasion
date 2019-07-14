@@ -74,6 +74,8 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
+static bool cloth_remeshing_boundary_test(BMVert *v);
+static bool cloth_remeshing_boundary_test(BMEdge *e);
 static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e);
 static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v);
 static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2]);
@@ -1033,6 +1035,33 @@ static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth, BMVert *v)
   cloth->mvert_num--;
 }
 
+static bool cloth_remeshing_boundary_test(BMEdge *e)
+{
+  BMFace *f1, *f2;
+  BM_edge_face_pair(e, &f1, &f2);
+  return !f1 || !f2;
+}
+
+static bool cloth_remeshing_boundary_test(BMVert *v)
+{
+  BMFace *f;
+  BMEdge *e;
+  BMIter iter;
+  int face_count = 0, vert_count = 0;
+
+  BM_ITER_ELEM (f, &iter, v, BM_FACES_OF_VERT) {
+    face_count++;
+  }
+
+  BM_ITER_ELEM (e, &iter, v, BM_EDGES_OF_VERT) {
+    if (e->v1 != v || e->v2 != v) {
+      vert_count++;
+    }
+  }
+
+  return face_count != vert_count;
+}
+
 static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e)
 {
   BMFace *f1, *f2;
@@ -1063,15 +1092,6 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v)
 
 static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth, BMesh *bm, BMEdge *e)
 {
-  if (cloth_remeshing_vert_on_seam_test(bm, e->v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
-#if 0
-    printf("didn't collapse edge due to vert on seam: %f, %f, %f\n",
-           e->v1->co[0],
-           e->v1->co[1],
-           e->v1->co[2]);
-#endif
-    return NULL;
-  }
   BMVert v1 = *e->v1;
   BMVert *v2 = BM_edge_collapse(bm, e, e->v1, true, true);
 
@@ -1085,6 +1105,15 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
 {
   Cloth *cloth = clmd->clothObject;
   BMesh *bm = cloth->bm;
+
+  if (cloth_remeshing_boundary_test(e->v1) && !cloth_remeshing_boundary_test(e)) {
+    return NULL;
+  }
+
+  if (cloth_remeshing_vert_on_seam_test(bm, e->v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
+    return NULL;
+  }
+
   if (!cloth_remeshing_can_collapse_edge(clmd, bm, e, sizing)) {
     return NULL;
   }
@@ -1188,9 +1217,11 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       BMVert *v1 = e->v1, *v2 = e->v2;
 
       BMVert *temp_vert;
-      temp_vert = cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v1, v2), sizing);
+      temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, sizing);
       if (!temp_vert) {
-        temp_vert = cloth_remeshing_try_edge_collapse(clmd, BM_edge_exists(v2, v1), sizing);
+        BM_edge_verts_swap(e);
+        temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, sizing);
+        BM_edge_verts_swap(e);
         if (!temp_vert) {
           continue;
         }
