@@ -4757,6 +4757,39 @@ MeshExtract extract_lines = {mesh_edge_init,
 
 /* --------------------- */
 
+static void *mesh_vert_init(const MeshRenderData *mr, void *UNUSED(buf))
+{
+  GPUIndexBufBuilder *elb = MEM_mallocN(sizeof(*elb), __func__);
+  GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr->vert_len, mr->loop_len + mr->loop_loose_len);
+  return elb;
+}
+static void mesh_vert_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+{
+  if (!(iter->use_hide && (iter->mvert->flag & ME_HIDE))) {
+    GPU_indexbuf_set_point_vert(elb, iter->vert_idx, iter->loop_idx);
+  }
+}
+static void mesh_vert_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+{
+  if (iter->eve && !BM_elem_flag_test(iter->eve, BM_ELEM_HIDDEN)) {
+    GPU_indexbuf_set_point_vert(elb, iter->vert_idx, iter->loop_idx);
+  }
+}
+static void mesh_vert_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
+{
+  GPU_indexbuf_build_in_place(elb, ibo);
+  MEM_freeN(elb);
+}
+
+MeshExtract extract_points = {mesh_vert_init,
+                              mesh_vert_iter,
+                              mesh_vert_iter_edit,
+                              mesh_vert_finish,
+                              MR_ITER_LOOP | MR_ITER_LEDGE | MR_ITER_LVERT,
+                              0};
+
+/* --------------------- */
+
 typedef struct PosNorLoop {
   float pos[3];
   GPUPackedNormal nor;
@@ -5166,7 +5199,7 @@ static void mesh_buffer_cache_create_requested(MeshBufferCache mbc,
     MeshBufferCache infos;
     MeshExtract *fn[0];
   } extract = {{{
-                    .pos_nor = (void *)&extract_dummy_vbo,
+                    .pos_nor = (void *)&extract_pos_nor,
                     .lnor = (void *)&extract_dummy_vbo, /* Can be copied */
                     .edge_fac = (void *)&extract_dummy_vbo,
                     .weights = (void *)&extract_dummy_vbo,
@@ -5189,9 +5222,9 @@ static void mesh_buffer_cache_create_requested(MeshBufferCache mbc,
                     .facedots_idx = (void *)&extract_dummy_vbo,
                 },
                 {
-                    .tris = (void *)&extract_dummy_ibo,
-                    .lines = (void *)&extract_dummy_ibo,
-                    .points = (void *)&extract_dummy_ibo,
+                    .tris = (void *)&extract_tris,
+                    .lines = (void *)&extract_lines,
+                    .points = (void *)&extract_points,
                     .facedots = (void *)&extract_dummy_ibo,
 
                     .lines_paint_mask = (void *)&extract_dummy_ibo,
