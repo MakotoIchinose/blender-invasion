@@ -952,46 +952,46 @@ endmacro()
 
 macro(remove_strict_flags)
 
-	if(CMAKE_COMPILER_IS_GNUCC)
-		remove_cc_flag(
-			"-Wstrict-prototypes"
-			"-Wmissing-prototypes"
-			"-Wmissing-declarations"
-			"-Wmissing-format-attribute"
-			"-Wunused-local-typedefs"
-			"-Wunused-macros"
-			"-Wunused-parameter"
-			"-Wwrite-strings"
-			"-Wredundant-decls"
-			"-Wundef"
-			"-Wshadow"
-			"-Wdouble-promotion"
-			"-Wold-style-definition"
-			"-Werror=[^ ]+"
-			"-Werror"
-		)
+  if(CMAKE_COMPILER_IS_GNUCC)
+    remove_cc_flag(
+      "-Wstrict-prototypes"
+      "-Wmissing-prototypes"
+      "-Wmissing-declarations"
+      "-Wmissing-format-attribute"
+      "-Wunused-local-typedefs"
+      "-Wunused-macros"
+      "-Wunused-parameter"
+      "-Wwrite-strings"
+      "-Wredundant-decls"
+      "-Wundef"
+      "-Wshadow"
+      "-Wdouble-promotion"
+      "-Wold-style-definition"
+      "-Werror=[^ ]+"
+      "-Werror"
+    )
 
-		# negate flags implied by '-Wall'
-		add_c_flag("${C_REMOVE_STRICT_FLAGS}")
-		add_cxx_flag("${CXX_REMOVE_STRICT_FLAGS}")
-	endif()
+    # negate flags implied by '-Wall'
+    add_c_flag("${C_REMOVE_STRICT_FLAGS}")
+    add_cxx_flag("${CXX_REMOVE_STRICT_FLAGS}")
+  endif()
 
-	if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-		remove_cc_flag(
-			"-Wunused-parameter"
-			"-Wunused-variable"
-			"-Werror=[^ ]+"
-			"-Werror"
-		)
+  if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    remove_cc_flag(
+      "-Wunused-parameter"
+      "-Wunused-variable"
+      "-Werror=[^ ]+"
+      "-Werror"
+    )
 
-		# negate flags implied by '-Wall'
-		add_c_flag("${C_REMOVE_STRICT_FLAGS}")
-		add_cxx_flag("${CXX_REMOVE_STRICT_FLAGS}")
-	endif()
+    # negate flags implied by '-Wall'
+    add_c_flag("${C_REMOVE_STRICT_FLAGS}")
+    add_cxx_flag("${CXX_REMOVE_STRICT_FLAGS}")
+  endif()
 
-	if(MSVC)
-		# TODO
-	endif()
+  if(MSVC)
+    remove_cc_flag(/w34189) # Restore warn C4189 (unused variable) back to w4 
+  endif()
 
 endmacro()
 

@@ -4666,7 +4666,7 @@ static int view3d_navigate_invoke(bContext *C,
 void VIEW3D_OT_navigate(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "View Navigation";
+  ot->name = "View Navigation (Walk/Fly)";
   ot->description =
       "Interactively navigate around the scene (uses the mode (walk/fly) preference)";
   ot->idname = "VIEW3D_OT_navigate";
@@ -5003,7 +5003,7 @@ void ED_view3d_cursor3d_position_rotation(bContext *C,
                                                    ray_no,
                                                    NULL,
                                                    &ob_dummy,
-                                                   obmat)) {
+                                                   obmat) != 0) {
       if (use_depth) {
         copy_v3_v3(cursor_co, ray_co);
       }

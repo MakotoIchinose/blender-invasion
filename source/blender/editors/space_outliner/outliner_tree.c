@@ -515,7 +515,7 @@ static void outliner_add_object_contents(SpaceOutliner *soops,
   }
 
   /* duplicated group */
-  if (ob->instance_collection) {
+  if (ob->instance_collection && (ob->transflag & OB_DUPLICOLLECTION)) {
     outliner_add_element(soops, &te->subtree, ob->instance_collection, te, 0, 0);
   }
 }
@@ -1545,7 +1545,7 @@ static void outliner_make_object_parent_hierarchy_collections(SpaceOutliner *soo
 
       if (!found) {
         /* We add the child in the tree even if it is not in the collection.
-         * We deliberately clear its subtree though, to make it less proeminent. */
+         * We deliberately clear its sub-tree though, to make it less prominent. */
         TreeElement *child_ob_tree_element = outliner_add_element(
             soops, &parent_ob_tree_element->subtree, child, parent_ob_tree_element, 0, 0);
         outliner_free_tree(&child_ob_tree_element->subtree);
@@ -2126,6 +2126,45 @@ static bool outliner_filter_has_name(TreeElement *te, const char *name, int flag
   return fnmatch(name, te->name, fn_flag) == 0;
 }
 
+static bool outliner_element_is_collection_or_object(TreeElement *te)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+
+  if ((tselem->type == 0) && (te->idcode == ID_OB)) {
+    return true;
+  }
+  else if (outliner_is_collection_tree_element(te)) {
+    return true;
+  }
+
+  return false;
+}
+
+static TreeElement *outliner_extract_children_from_subtree(TreeElement *element,
+                                                           ListBase *parent_subtree)
+{
+  TreeElement *te_next = element->next;
+
+  if (outliner_element_is_collection_or_object(element)) {
+    TreeElement *te_prev = NULL;
+    for (TreeElement *te = element->subtree.last; te; te = te_prev) {
+      te_prev = te->prev;
+
+      if (!outliner_element_is_collection_or_object(te)) {
+        continue;
+      }
+
+      te_next = te;
+      BLI_remlink(&element->subtree, te);
+      BLI_insertlinkafter(parent_subtree, element->prev, te);
+      te->parent = element->parent;
+    }
+  }
+
+  outliner_free_tree_element(element, parent_subtree);
+  return te_next;
+}
+
 static int outliner_filter_subtree(SpaceOutliner *soops,
                                    ViewLayer *view_layer,
                                    ListBase *lb,
@@ -2137,9 +2176,9 @@ static int outliner_filter_subtree(SpaceOutliner *soops,
 
   for (te = lb->first; te; te = te_next) {
     te_next = te->next;
-
     if ((outliner_element_visible_get(view_layer, te, exclude_filter) == false)) {
-      outliner_free_tree_element(te, lb);
+      /* Don't free the tree, but extract the children from the parent and add to this tree. */
+      te_next = outliner_extract_children_from_subtree(te, lb);
       continue;
     }
     else if ((exclude_filter & SO_FILTER_SEARCH) == 0) {

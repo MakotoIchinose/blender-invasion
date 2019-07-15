@@ -322,6 +322,7 @@ typedef struct OBJECT_DupliData {
   GPUBatch *outline_geom;
   DRWShadingGroup *extra_shgrp;
   GPUBatch *extra_geom;
+  short base_flag;
 } OBJECT_DupliData;
 
 static struct {
@@ -3276,7 +3277,12 @@ static void OBJECT_cache_populate_particles(OBJECT_Shaders *sh_data,
     ParticleSettings *part = psys->part;
     int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
 
-    if (draw_as != PART_DRAW_PATH) {
+    if (part->type == PART_HAIR) {
+      /* Hairs should have been rendered by the render engine.*/
+      continue;
+    }
+
+    if (!ELEM(draw_as, PART_DRAW_NOT, PART_DRAW_OB, PART_DRAW_GR)) {
       struct GPUBatch *geom = DRW_cache_particles_get_dots(ob, psys);
       DRWShadingGroup *shgrp = NULL;
       struct GPUBatch *shape = NULL;
@@ -3286,6 +3292,7 @@ static void OBJECT_cache_populate_particles(OBJECT_Shaders *sh_data,
       Material *ma = give_current_material(ob, part->omat);
 
       switch (draw_as) {
+        default:
         case PART_DRAW_DOT:
           shgrp = DRW_shgroup_create(sh_data->part_dot, psl->particle);
           DRW_shgroup_uniform_vec3(shgrp, "color", ma ? &ma->r : def_prim_col, 1);
@@ -3319,8 +3326,6 @@ static void OBJECT_cache_populate_particles(OBJECT_Shaders *sh_data,
           DRW_shgroup_uniform_float(shgrp, "draw_size", &part->draw_size, 1);
           DRW_shgroup_uniform_bool_copy(shgrp, "screen_space", false);
           DRW_shgroup_call_instances_with_attribs(shgrp, NULL, shape, geom);
-          break;
-        default:
           break;
       }
     }
@@ -3398,6 +3403,10 @@ BLI_INLINE OBJECT_DupliData *OBJECT_duplidata_get(Object *ob, void *vedata, bool
       *dupli_data = MEM_callocN(sizeof(OBJECT_DupliData), "OBJECT_DupliData");
       *init = true;
     }
+    else if ((*dupli_data)->base_flag != ob->base_flag) {
+      /* Select state might have change, reinit. */
+      *init = true;
+    }
     return *dupli_data;
   }
   return NULL;
@@ -3458,6 +3467,9 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
       if (dupli_data && !init_duplidata) {
         geom = dupli_data->outline_geom;
         shgroup = dupli_data->outline_shgrp;
+        /* TODO: Remove. Only here to increment outline id counter. */
+        theme_id = DRW_object_wire_theme_get(ob, view_layer, NULL);
+        shgroup = shgroup_theme_id_to_outline_or_null(stl, theme_id, ob->base_flag);
       }
       else {
         if (stl->g_data->xray_enabled_and_not_wire || is_flat_object_viewed_from_side) {
@@ -3665,6 +3677,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
     if (init_duplidata) {
       dupli_data->extra_shgrp = shgroup;
       dupli_data->extra_geom = geom;
+      dupli_data->base_flag = ob->base_flag;
     }
   }
 

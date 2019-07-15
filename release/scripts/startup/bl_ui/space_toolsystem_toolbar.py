@@ -317,7 +317,7 @@ class _defs_transform:
     @ToolDef.from_fn
     def transform():
         def draw_settings(context, layout, tool):
-            if not layout.use_property_split:
+            if layout.use_property_split:
                 layout.label(text="Gizmos:")
 
             props = tool.gizmo_group_properties("VIEW3D_GGT_xform_gizmo")
@@ -798,6 +798,7 @@ class _defs_edit_mesh:
         return dict(
             idname="builtin.knife",
             label="Knife",
+            cursor='KNIFE',
             icon="ops.mesh.knife_tool",
             widget=None,
             keymap=(),
