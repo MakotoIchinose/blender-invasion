@@ -33,15 +33,6 @@ const EnumPropertyItem axis_remap[] = {{AXIS_X, "AXIS_X", ICON_NONE, "X axis", "
                                        {AXIS_NEG_Z, "AXIS_NEG_Z", ICON_NONE, "-Z axis", ""},
                                        {0, NULL, 0, NULL, NULL}};
 
-const EnumPropertyItem path_reference_mode[] = {
-    {AUTO, "AUTO", ICON_NONE, "Auto", "Use Relative paths with subdirectories only"},
-    {ABSOLUTE, "ABSOLUTE", ICON_NONE, "Absolute", "Always write absolute paths"},
-    {RELATIVE, "RELATIVE", ICON_NONE, "Relative", "Always write relative paths (where possible)"},
-    {MATCH, "MATCH", ICON_NONE, "Match", "Match Absolute/Relative setting with input path"},
-    {STRIP, "STRIP", ICON_NONE, "Strip Path", "Filename only"},
-    {COPY, "COPY", ICON_NONE, "Copy", "Copy the file to the destination path (or subdirectory)"},
-    {0, NULL, 0, NULL, NULL}};
-
 void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_Types file_type)
 {
   // Defines "filepath"
@@ -121,8 +112,20 @@ void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_T
                 0.0001f,
                 1000.0f);
 }
-void io_common_default_declare_import(struct wmOperatorType *UNUSED(ot))
+void io_common_default_declare_import(struct wmOperatorType *ot)
 {
+  RNA_def_enum(ot->srna,
+               "axis_forward",
+               axis_remap,
+               AXIS_NEG_Z,  // From orientation helper, not sure why
+               "Forward",
+               "The axis to remap the forward axis to");
+  RNA_def_enum(ot->srna,
+               "axis_up",
+               axis_remap,
+               AXIS_Y,  // From orientation helper, not sure why
+               "Up",
+               "The axis to remap the up axis to");
 }
 
 ExportSettings *io_common_construct_default_export_settings(struct bContext *C,

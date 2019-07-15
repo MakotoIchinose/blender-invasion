@@ -14,10 +14,7 @@ struct Depsgraph;
 
 enum axis_remap { AXIS_X, AXIS_Y, AXIS_Z, AXIS_NEG_X, AXIS_NEG_Y, AXIS_NEG_Z };
 
-enum path_reference_mode { AUTO, ABSOLUTE, RELATIVE, MATCH, STRIP, COPY };
-
 extern const EnumPropertyItem axis_remap[];
-extern const EnumPropertyItem path_reference_mode[];
 
 typedef struct ExportSettings {
 
@@ -65,6 +62,13 @@ typedef struct ExportSettings {
    */
 
 } ExportSettings;
+
+typedef struct ImportSettings {
+  enum axis_remap axis_forward;
+  enum axis_remap axis_up;
+
+  void *format_specific;
+} ImportSettings;
 
 void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_Types file_type);
 

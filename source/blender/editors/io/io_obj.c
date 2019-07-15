@@ -22,6 +22,20 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+const EnumPropertyItem path_reference_mode[] = {
+    {AUTO, "AUTO", ICON_NONE, "Auto", "Use Relative paths with subdirectories only"},
+    {ABSOLUTE, "ABSOLUTE", ICON_NONE, "Absolute", "Always write absolute paths"},
+    {RELATIVE, "RELATIVE", ICON_NONE, "Relative", "Always write relative paths (where possible)"},
+    {MATCH, "MATCH", ICON_NONE, "Match", "Match Absolute/Relative setting with input path"},
+    {STRIP, "STRIP", ICON_NONE, "Strip Path", "Filename only"},
+    {COPY, "COPY", ICON_NONE, "Copy", "Copy the file to the destination path (or subdirectory)"},
+    {0, NULL, 0, NULL, NULL}};
+
+const EnumPropertyItem split_mode[] = {
+    {SPLIT_ON, "ON", ICON_NONE, "Split", "Split geometry, omits unused verts"},
+    {SPLIT_OFF, "OFF", ICON_NONE, "Keep Vert Order", "Keep vertex order from file"},
+    {0, NULL, 0, NULL, NULL}};
+
 static int wm_obj_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   return io_common_export_invoke(C, op, event, ".obj");
@@ -216,19 +230,54 @@ static bool wm_obj_export_check(bContext *C, wmOperator *op)
   return io_common_export_check(C, op, ".obj");
 }
 
-static int wm_obj_import_invoke(bContext *UNUSED(C),
-                                wmOperator *UNUSED(op),
-                                const wmEvent *UNUSED(event))
+static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  return OPERATOR_CANCELLED;
+  WM_event_add_fileselect(C, op);
+  return OPERATOR_RUNNING_MODAL;
 }
 static int wm_obj_import_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
   return OPERATOR_CANCELLED;
 } /* TODO someone */
-static void wm_obj_import_draw(bContext *UNUSED(C), wmOperator *UNUSED(op))
+static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
-  /* TODO someone */
+  PointerRNA ptr;
+  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+
+  uiLayout *box;
+  uiLayout *row;
+
+  row = uiLayoutRow(op->layout, false);
+  uiItemR(row, &ptr, "axis_forward", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(op->layout, false);
+  uiItemR(row, &ptr, "axis_up", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(op->layout, false);
+  uiItemR(row, &ptr, "import_smooth_groups", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(op->layout, false);
+  uiItemR(row, &ptr, "import_edges", 0, NULL, ICON_NONE);
+
+  box = uiLayoutBox(op->layout);
+  row = uiLayoutRow(box, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_EXPAND);
+  uiItemR(row, &ptr, "split_mode", 0, NULL, ICON_NONE);
+  /* uiItemEnumR(row, "FOO", ICON_NONE, &ptr, "split_mode", SPLIT_ON); */
+  /* uiItemFullR( */
+  /*     row, &ptr, RNA_struct_find_property(op->ptr, "split_mode"), 0, SPLIT_ON, 0, "",
+   * ICON_NONE); */
+
+  row = uiLayoutRow(box, false);
+  const enum split_mode split_mode = RNA_enum_get(&ptr, "split_mode");
+  if (split_mode == SPLIT_ON) {
+    uiItemL(row, IFACE_("Split by:"), ICON_NONE);
+    uiItemR(row, &ptr, "split_by_object", 0, NULL, ICON_NONE);
+    uiItemR(row, &ptr, "split_by_groups", 0, NULL, ICON_NONE);
+  }
+  else {
+    uiItemR(row, &ptr, "import_vertex_groups", 0, NULL, ICON_NONE);
+  }
 }
 static bool wm_obj_import_check(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
@@ -366,4 +415,40 @@ void WM_OT_obj_import(struct wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_obj_import_draw;
   ot->check = wm_obj_import_check;
-} /* TODO someone */
+
+  io_common_default_declare_import(ot);
+
+  RNA_def_boolean(ot->srna,
+                  "import_smooth_groups",
+                  true,
+                  "Smooth Groups",
+                  "Surround smooth groups by sharp edges");
+
+  RNA_def_boolean(
+      ot->srna, "import_edges", true, "Lines", "Import lines and faces with 2 verts as edge");
+
+  RNA_def_enum(ot->srna,
+               "split_mode",
+               split_mode,
+               SPLIT_ON,
+               "Split Mode",
+               "Whether to split the vertices into objects");
+
+  RNA_def_boolean(
+      ot->srna, "split_by_object", true, "Object", "Import OBJ Objects into Blender Objects");
+
+  RNA_def_boolean(
+      ot->srna, "split_by_groups", false, "Groups", "Import OBJ Groups into Blender Objects");
+
+  RNA_def_boolean(ot->srna,
+                  "import_vertex_groups",
+                  false,
+                  "Vertex Groups",
+                  "Import OBJ groups as vertex groups");
+
+  RNA_def_boolean(ot->srna,
+                  "use_image_search",
+                  false,
+                  "Image Search",
+                  "Search subdirs for any associated images (Warning: may be slow)");
+}

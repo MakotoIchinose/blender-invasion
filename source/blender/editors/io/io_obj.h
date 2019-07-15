@@ -35,6 +35,12 @@ struct wmOperatorType;
 extern "C" {
 #endif
 
+enum path_reference_mode { AUTO, ABSOLUTE, RELATIVE, MATCH, STRIP, COPY };
+enum split_mode { SPLIT_ON, SPLIT_OFF };
+
+extern const EnumPropertyItem path_reference_mode[];
+extern const EnumPropertyItem split_mode[];
+
 typedef struct OBJExportSettings {
   float start_frame;
   float end_frame;
@@ -51,6 +57,16 @@ typedef struct OBJExportSettings {
   bool export_smooth_groups;
   bool smooth_groups_bitflags;
 } OBJExportSettings;
+
+typedef struct OBJImportSettings {
+  bool import_smooth_groups;
+  bool import_edges;
+  enum split_mode split_mode;
+  bool split_by_object;
+  bool split_by_groups;
+  bool import_vertex_groups;
+  bool use_image_search;
+} OBJImportSettings;
 
 void WM_OT_obj_export(struct wmOperatorType *ot);
 void WM_OT_obj_import(struct wmOperatorType *ot);
