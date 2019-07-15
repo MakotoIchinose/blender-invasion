@@ -681,9 +681,6 @@ BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to)
 }
 
 int ED_lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
-real lanpr_LinearInterpolate(real l, real r, real T);
-void lanpr_LinearInterpolate2dv(real *l, real *r, real T, real *Result);
-void lanpr_LinearInterpolate3dv(real *l, real *r, real T, real *Result);
 
 #define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
 

@@ -1050,18 +1050,3 @@ void tmat_make_viewport_matrix_44d(tnsMatrix44d m, real w, real h, real Far, rea
   /*  m[15] = 1; */
 }
 
-real lanpr_LinearInterpolate(real L, real R, real T)
-{
-  return tnsLinearItp(L, R, T);
-}
-void lanpr_LinearInterpolate2dv(real *L, real *R, real T, real *Result)
-{
-  Result[0] = tnsLinearItp(L[0], R[0], T);
-  Result[1] = tnsLinearItp(L[1], R[1], T);
-}
-void lanpr_LinearInterpolate3dv(real *L, real *R, real T, real *Result)
-{
-  Result[0] = tnsLinearItp(L[0], R[0], T);
-  Result[1] = tnsLinearItp(L[1], R[1], T);
-  Result[2] = tnsLinearItp(L[2], R[2], T);
-}

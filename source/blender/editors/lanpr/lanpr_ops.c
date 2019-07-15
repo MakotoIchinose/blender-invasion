@@ -1123,9 +1123,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[2]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[2]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[2]->gloc[2];
+            interp_v3_v3v3_db(rv[0].gloc,rt->v[0]->gloc,rt->v[2]->gloc,a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[0]->gloc, cam_pos);
@@ -1133,9 +1131,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[1]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[1]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[1]->gloc[2];
+            interp_v3_v3v3_db(rv[1].gloc,rt->v[0]->gloc,rt->v[1]->gloc,a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1193,9 +1189,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[2]->gloc[0] + a * rt->v[0]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[2]->gloc[1] + a * rt->v[0]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[2]->gloc[2] + a * rt->v[0]->gloc[2];
+            interp_v3_v3v3_db(rv[0].gloc,rt->v[2]->gloc,rt->v[0]->gloc,a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
@@ -1203,9 +1197,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[2]->gloc[0] + a * rt->v[1]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[2]->gloc[1] + a * rt->v[1]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[2]->gloc[2] + a * rt->v[1]->gloc[2];
+            interp_v3_v3v3_db(rv[1].gloc,rt->v[2]->gloc,rt->v[1]->gloc,a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1263,9 +1255,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[1]->gloc[0] + a * rt->v[2]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[1]->gloc[1] + a * rt->v[2]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[1]->gloc[2] + a * rt->v[2]->gloc[2];
+            interp_v3_v3v3_db(rv[0].gloc,rt->v[1]->gloc,rt->v[2]->gloc,a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[1]->gloc, cam_pos);
@@ -1273,9 +1263,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[1]->gloc[0] + a * rt->v[0]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[1]->gloc[1] + a * rt->v[0]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[1]->gloc[2] + a * rt->v[0]->gloc[2];
+            interp_v3_v3v3_db(rv[1].gloc,rt->v[1]->gloc,rt->v[0]->gloc,a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1336,9 +1324,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot2 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[1]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[1]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[1]->gloc[2];
+            interp_v3_v3v3_db(rv[0].gloc,rt->v[0]->gloc,rt->v[1]->gloc,a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
@@ -1346,9 +1332,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot2 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[0]->gloc[0] + a * rt->v[2]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[0]->gloc[1] + a * rt->v[2]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[0]->gloc[2] + a * rt->v[2]->gloc[2];
+            interp_v3_v3v3_db(rv[1].gloc,rt->v[0]->gloc,rt->v[2]->gloc,a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1423,9 +1407,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[1]->gloc[0] + a * rt->v[2]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[1]->gloc[1] + a * rt->v[2]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[1]->gloc[2] + a * rt->v[2]->gloc[2];
+            interp_v3_v3v3_db(rv[0].gloc,rt->v[1]->gloc,rt->v[2]->gloc,a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[1]->gloc, cam_pos);
@@ -1433,9 +1415,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[1]->gloc[0] + a * rt->v[0]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[1]->gloc[1] + a * rt->v[0]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[1]->gloc[2] + a * rt->v[0]->gloc[2];
+            interp_v3_v3v3_db(rv[1].gloc,rt->v[1]->gloc,rt->v[0]->gloc,a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1510,9 +1490,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[0].gloc[0] = (1 - a) * rt->v[2]->gloc[0] + a * rt->v[0]->gloc[0];
-            rv[0].gloc[1] = (1 - a) * rt->v[2]->gloc[1] + a * rt->v[0]->gloc[1];
-            rv[0].gloc[2] = (1 - a) * rt->v[2]->gloc[2] + a * rt->v[0]->gloc[2];
+            interp_v3_v3v3_db(rv[0].gloc,rt->v[2]->gloc,rt->v[0]->gloc,a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
@@ -1520,9 +1498,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            rv[1].gloc[0] = (1 - a) * rt->v[2]->gloc[0] + a * rt->v[1]->gloc[0];
-            rv[1].gloc[1] = (1 - a) * rt->v[2]->gloc[1] + a * rt->v[1]->gloc[1];
-            rv[1].gloc[2] = (1 - a) * rt->v[2]->gloc[2] + a * rt->v[1]->gloc[2];
+            interp_v3_v3v3_db(rv[1].gloc,rt->v[2]->gloc,rt->v[1]->gloc,a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[1]);
@@ -1994,7 +1970,7 @@ static int lanpr_get_z_inersect_point(
   r = fabsf(r);
   ratio = l / (l + r);
 
-  IntersectResult[2] = lanpr_LinearInterpolate(lzl, lzr, ratio);
+  IntersectResult[2] = interpd(lzr,lzl,ratio);
   lanpr_get_interpolate_point2d(LL, LR, ratio, IntersectResult);
 
   return rev;
@@ -2193,7 +2169,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
   }
 
   if (((Camera *)cam->data)->type == CAM_PERSP) {
-    lanpr_LinearInterpolate3dv(rl->l->gloc, rl->r->gloc, Cut, gloc);
+    interp_v3_v3v3_db( gloc,rl->l->gloc, rl->r->gloc, Cut);
     tmat_apply_transform_44d(Trans, vp, gloc);
     tMatVectorMultiSelf3d(Trans, (1 / Trans[3]) /**HeightMultiply/2*/);
     Camera *camera = cam->data;
@@ -2201,7 +2177,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
     Trans[1] -= camera->shifty * 2;
   }
   else {
-    lanpr_LinearInterpolate3dv(rl->l->fbcoord, rl->r->fbcoord, Cut, Trans);
+    interp_v3_v3v3_db( Trans,rl->l->fbcoord, rl->r->fbcoord, Cut);
     /*  tmat_apply_transform_44d(Trans, vp, gloc); */
   }
 
@@ -2431,7 +2407,7 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
   DotL = fabs(DotL);
   DotR = fabs(DotR);
 
-  lanpr_LinearInterpolate3dv(l->gloc, r->gloc, DotL / (DotL + DotR), gloc);
+  interp_v3_v3v3_db( gloc,l->gloc, r->gloc, DotL / (DotL + DotR));
 
   if (Last && TNS_DOUBLE_CLOSE_ENOUGH(Last->gloc[0], gloc[0]) &&
       TNS_DOUBLE_CLOSE_ENOUGH(Last->gloc[1], gloc[1]) &&
@@ -4033,7 +4009,7 @@ static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBu
          sr > 0)) {
       r = sr;
     }
-    lanpr_LinearInterpolate2dv(rl->l->fbcoord, rl->r->fbcoord, r, data);
+    interp_v2_v2v2_db(data, rl->l->fbcoord, rl->r->fbcoord, r);
 
     return lanpr_get_bounding_area(rb, data[0], data[1]);
   }

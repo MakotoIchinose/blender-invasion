@@ -129,7 +129,7 @@ set(SRC
 	engines/lanpr/lanpr_dpix.c
 	engines/lanpr/lanpr_engine.c
 	engines/lanpr/lanpr_snake.c
-	engines/lanpr/lanpr_ops.c
+	engines/lanpr/lanpr_cpu.c
   engines/lanpr/lanpr_chain_draw.c
 
   DRW_engine.h
