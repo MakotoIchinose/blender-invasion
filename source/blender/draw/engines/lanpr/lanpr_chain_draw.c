@@ -26,7 +26,7 @@
 
 #include <math.h>
 
-int lanpr_count_chain(LANPR_RenderLineChain *rlc);
+int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
 float lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
 {
@@ -92,7 +92,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
 
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
-    int count = lanpr_count_chain(rlc);
+    int count = ED_lanpr_count_chain(rlc);
     /*  printf("seg contains %d verts\n", count); */
     vert_count += count;
   }

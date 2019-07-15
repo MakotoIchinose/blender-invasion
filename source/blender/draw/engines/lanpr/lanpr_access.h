@@ -22,7 +22,7 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
 void ED_lanpr_update_data_for_external(Depsgraph *depsgraph);
 
-int lanpr_count_chain(LANPR_RenderLineChain *rlc);
+int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 

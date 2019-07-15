@@ -161,7 +161,7 @@ void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *
   /*  later implement .... */
   /* } */
 }
-void lanpr_rebuild_all_command(SceneLANPR *lanpr)
+void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *ll;
   if (!lanpr || !lanpr_share.render_buffer_shared) {
@@ -290,7 +290,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   static float camdx, camdy, camzoom;
 
   if (is_render) {
-    lanpr_rebuild_all_command(lanpr);
+    ED_lanpr_rebuild_all_command(lanpr);
   }
   else {
     if (lanpr_during_render()) {

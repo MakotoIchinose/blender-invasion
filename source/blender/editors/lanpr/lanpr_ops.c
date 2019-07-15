@@ -69,23 +69,24 @@ extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 struct Object;
 
+/* External defines */
+
 void ED_lanpr_update_data_for_external(struct Depsgraph *depsgraph);
 
-int lanpr_count_chain(LANPR_RenderLineChain *rlc);
-
+int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
 int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
-
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
-bool ED_lanpr_dpix_shader_error();
+void ED_lanpr_copy_data(struct Scene *from, struct Scene *to);
+void ED_lanpr_free_everything(struct Scene *s);
+void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr);
 
+bool ED_lanpr_dpix_shader_error();
 bool ED_lanpr_disable_edge_splits(struct Scene *s);
 
-void ED_lanpr_copy_data(struct Scene *from, struct Scene *to);
-
-void ED_lanpr_free_everything(struct Scene *s);
+/* Own functions */
 
 static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBuffer *rb,
                                                            LANPR_RenderLine *rl);
@@ -281,13 +282,13 @@ static int lanpr_delete_line_component_exec(struct bContext *C, struct wmOperato
 
   return OPERATOR_FINISHED;
 }
-void lanpr_rebuild_all_command(SceneLANPR *lanpr);
+
 static int lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
 
-  lanpr_rebuild_all_command(lanpr);
+  ED_lanpr_rebuild_all_command(lanpr);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
@@ -349,7 +350,7 @@ static int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperat
 
   lanpr_enable_all_line_types_exec(C, op);
 
-  lanpr_rebuild_all_command(lanpr);
+  ED_lanpr_rebuild_all_command(lanpr);
 
   return OPERATOR_FINISHED;
 }
@@ -443,7 +444,6 @@ void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot)
 /* Geometry */
 
 int use_smooth_contour_modifier_contour = 0; /*  debug purpose */
-
 
 static void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Begin, real End)
 {
@@ -1820,6 +1820,7 @@ static int lanpr_object_has_feature_line_modifier(Object *o)
   }
   return 0;
 }
+
 int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
 {
   CollectionChild *cc;
@@ -4046,10 +4047,10 @@ static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBu
 
 /* Calculations */
 
-void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
-void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
-void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
-void lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
+void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
+void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
+void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
+void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
 
 int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_only)
 {
@@ -4099,26 +4100,26 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
     float t_image = rb->scene->lanpr.chaining_image_threshold;
     float t_geom = rb->scene->lanpr.chaining_geometry_threshold;
 
-    lanpr_NO_THREAD_chain_feature_lines(rb);
-    lanpr_split_chains_for_fixed_occlusion(rb);
+    ED_lanpr_NO_THREAD_chain_feature_lines(rb);
+    ED_lanpr_split_chains_for_fixed_occlusion(rb);
 
     if (t_image < FLT_EPSILON && t_geom < FLT_EPSILON) {
       t_geom = 0.0f;
       t_image = 0.01f;
     }
 
-    lanpr_connect_chains(rb, 1);
-    lanpr_connect_chains(rb, 0);
+    ED_lanpr_connect_chains(rb, 1);
+    ED_lanpr_connect_chains(rb, 0);
 
     /* This configuration ensures there won't be accidental lost of short segments */
-    lanpr_discard_short_chains(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
+    ED_lanpr_discard_short_chains(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
   }
 
   rb->cached_for_frame = rb->scene->r.cfra;
 
   return OPERATOR_FINISHED;
 }
-bool lanpr_camera_exists(struct bContext *c)
+static bool lanpr_camera_exists(struct bContext *c)
 {
   Scene *s = CTX_data_scene(c);
   return s->camera ? true : false;
@@ -4144,7 +4145,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C), intersections_only);
 
-  lanpr_rebuild_all_command(lanpr);
+  ED_lanpr_rebuild_all_command(lanpr);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
@@ -4345,7 +4346,7 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     rlc->picked = 1;
 
     int array_idx = 0;
-    int count = lanpr_count_chain(rlc);
+    int count = ED_lanpr_count_chain(rlc);
     bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, color_idx, count, thickness);
 
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);

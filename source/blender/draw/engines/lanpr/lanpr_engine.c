@@ -185,7 +185,7 @@ static void lanpr_engine_free(void)
 void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
 int lanpr_dpix_texture_size(SceneLANPR *lanpr);
 
-void lanpr_rebuild_all_command(SceneLANPR *lanpr);
+void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr);
 
 static void lanpr_cache_init(void *vedata)
 {
@@ -437,7 +437,7 @@ static void lanpr_cache_init(void *vedata)
   }
 
   if (updated) {
-    lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
+    ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
   }
 }
 

@@ -16,12 +16,7 @@
 
 #include <math.h>
 
-int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
-                                  LANPR_RenderLine *rl,
-                                  int *rowBegin,
-                                  int *rowEnd,
-                                  int *colBegin,
-                                  int *colEnd);
+
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 
 #define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
@@ -201,7 +196,7 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
 
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
 
-void lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
+void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
@@ -517,7 +512,7 @@ void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLi
   }
 }
 
-void lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
+void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc, *new_rlc;
   LANPR_RenderLineChainItem *rlci, *next_rlci;
@@ -601,7 +596,7 @@ void lanpr_connect_two_chains(LANPR_RenderBuffer *rb,
 
 /*  this only does head-tail connection. */
 /*  overlapping / tiny isolated segment / loop reduction not implemented here yet. */
-void lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
+void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
 {
   LANPR_RenderLineChain *rlc, *new_rlc;
   LANPR_RenderLineChainItem *rlci, *next_rlci;
@@ -746,7 +741,7 @@ float lanpr_compute_chain_length(LANPR_RenderLineChain *rlc)
   return offset_accum;
 }
 
-void lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold)
+void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold)
 {
   LANPR_RenderLineChain *rlc, *next_rlc;
   for (rlc = rb->chains.first; rlc; rlc = next_rlc) {
@@ -757,7 +752,7 @@ void lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold)
   }
 }
 
-int lanpr_count_chain(LANPR_RenderLineChain *rlc)
+int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc)
 {
   LANPR_RenderLineChainItem *rlci;
   int Count = 0;
