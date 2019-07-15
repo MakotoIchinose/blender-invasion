@@ -210,6 +210,7 @@ set(SRC
   shader/nodes/node_shader_volume_absorption.c
   shader/nodes/node_shader_volume_principled.c
   shader/nodes/node_shader_volume_scatter.c
+  shader/nodes/node_shader_volume_info.c
   shader/nodes/node_shader_wavelength.c
   shader/nodes/node_shader_wireframe.c
   shader/node_shader_tree.c
