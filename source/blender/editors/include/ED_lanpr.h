@@ -24,7 +24,6 @@
 #ifndef __ED_LANPR_H__
 #define __ED_LANPR_H__
 
-
 #include <string.h>
 /* #include "lanpr_all.h" */
 #include "BLI_listbase.h"
@@ -294,7 +293,6 @@ typedef struct LANPR_RenderBuffer {
 
 } LANPR_RenderBuffer;
 
-
 typedef struct LANPR_SharedResource {
 
   /* We only allocate once for all */
@@ -347,7 +345,6 @@ typedef struct LANPR_SharedResource {
 
 #define LANPR_CULL_DISCARD 2
 #define LANPR_CULL_USED 1
-
 
 #define TNS_THREAD_LINE_COUNT 10000
 
@@ -834,9 +831,7 @@ int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
 LANPR_LineLayerComponent *ED_lanpr_new_line_component(struct SceneLANPR *lanpr);
 
-LANPR_BoundingArea* ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
-
-
 
 #endif /* __ED_LANPR_H__ */

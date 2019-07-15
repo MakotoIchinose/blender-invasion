@@ -1049,4 +1049,3 @@ void tmat_make_viewport_matrix_44d(tnsMatrix44d m, real w, real h, real Far, rea
   /*  m[14] = 1; */
   /*  m[15] = 1; */
 }
-

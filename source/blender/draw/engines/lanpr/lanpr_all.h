@@ -212,7 +212,6 @@ typedef struct LANPR_Data {
   LANPR_StorageList *stl;
 } LANPR_Data;
 
-
 /*  functions */
 
 /*  dpix */

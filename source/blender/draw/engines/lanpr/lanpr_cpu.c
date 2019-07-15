@@ -514,6 +514,3 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     DRW_view_set_active(NULL);
   }
 }
-
-
-

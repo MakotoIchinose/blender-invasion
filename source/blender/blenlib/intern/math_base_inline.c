@@ -171,7 +171,7 @@ MINLINE float interpf(float target, float origin, float fac)
   return (fac * target) + (1.0f - fac) * origin;
 }
 
-MINLINE double interpd(double target, double  origin, double fac)
+MINLINE double interpd(double target, double origin, double fac)
 {
   return (fac * target) + (1.0f - fac) * origin;
 }

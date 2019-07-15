@@ -63,8 +63,6 @@
 #include "ED_svg.h"
 #include "BKE_text.h"
 
-
-
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 struct Object;
@@ -76,36 +74,35 @@ void lanpr_rebuild_all_command(SceneLANPR *lanpr);
 /* Own functions */
 
 static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBuffer *rb,
-                                                           LANPR_RenderLine *rl);
+                                                                  LANPR_RenderLine *rl);
 
 static void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
-                                        LANPR_BoundingArea *RootBoundingArea,
-                                        LANPR_RenderLine *rl);
+                                               LANPR_BoundingArea *RootBoundingArea,
+                                               LANPR_RenderLine *rl);
 
 static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This,
-                                                 LANPR_RenderLine *rl,
-                                                 real x,
-                                                 real y,
-                                                 real k,
-                                                 int PositiveX,
-                                                 int PositiveY,
-                                                 real *NextX,
-                                                 real *NextY);
+                                                        LANPR_RenderLine *rl,
+                                                        real x,
+                                                        real y,
+                                                        real k,
+                                                        int PositiveX,
+                                                        int PositiveY,
+                                                        real *NextX,
+                                                        real *NextY);
 static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
-                                                   LANPR_RenderTriangle *rt,
-                                                   LANPR_RenderLine *rl,
-                                                   Object *cam,
-                                                   tnsMatrix44d vp,
-                                                   real *CameraDir,
-                                                   double *From,
-                                                   double *To);
+                                                          LANPR_RenderTriangle *rt,
+                                                          LANPR_RenderLine *rl,
+                                                          Object *cam,
+                                                          tnsMatrix44d vp,
+                                                          real *CameraDir,
+                                                          double *From,
+                                                          double *To);
 static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
-                                  LANPR_RenderLine *rl,
-                                  int *rowBegin,
-                                  int *rowEnd,
-                                  int *colBegin,
-                                  int *colEnd);
-
+                                         LANPR_RenderLine *rl,
+                                         int *rowBegin,
+                                         int *rowEnd,
+                                         int *colBegin,
+                                         int *colEnd);
 
 /* Layer operations */
 
@@ -427,12 +424,14 @@ void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, 10000, "index", "index of this line component", 0, 10000);
 }
 
-
 /* Geometry */
 
 int use_smooth_contour_modifier_contour = 0; /*  debug purpose */
 
-static void lanpr_cut_render_line(LANPR_RenderBuffer *rb, LANPR_RenderLine *rl, real Begin, real End)
+static void lanpr_cut_render_line(LANPR_RenderBuffer *rb,
+                                  LANPR_RenderLine *rl,
+                                  real Begin,
+                                  real End)
 {
   LANPR_RenderLineSegment *rls = rl->segments.first, *irls;
   LANPR_RenderLineSegment *begin_segment = 0, *end_segment = 0;
@@ -640,8 +639,8 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
   return res;
 }
 static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
-                                           LANPR_RenderLine *rl,
-                                           int thread_id)
+                                                  LANPR_RenderLine *rl,
+                                                  int thread_id)
 {
   real x = rl->l->fbcoord[0], y = rl->l->fbcoord[1];
   LANPR_BoundingArea *ba = lanpr_get_first_possible_bounding_area(rb, rl);
@@ -691,8 +690,8 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
   }
 }
 static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict pool,
-                                           LANPR_RenderTaskInfo *rti,
-                                           int threadid)
+                                                  LANPR_RenderTaskInfo *rti,
+                                                  int threadid)
 {
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   int thread_id = rti->thread_id;
@@ -818,7 +817,10 @@ static int lanpr_point_on_lined(tnsVector2d v, tnsVector2d v0, tnsVector2d v1)
 
   return 0;
 }
-static int lanpr_point_triangle_relation(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2)
+static int lanpr_point_triangle_relation(tnsVector2d v,
+                                         tnsVector2d v0,
+                                         tnsVector2d v1,
+                                         tnsVector2d v2)
 {
   double cl, c;
   real r;
@@ -857,7 +859,10 @@ static int lanpr_point_triangle_relation(tnsVector2d v, tnsVector2d v0, tnsVecto
 
   return 2;
 }
-static int lanpr_point_inside_triangle3d(tnsVector3d v, tnsVector3d v0, tnsVector3d v1, tnsVector3d v2)
+static int lanpr_point_inside_triangle3d(tnsVector3d v,
+                                         tnsVector3d v0,
+                                         tnsVector3d v1,
+                                         tnsVector3d v2)
 {
   tnsVector3d l, r;
   tnsVector3d N1, N2;
@@ -892,7 +897,10 @@ static int lanpr_point_inside_triangle3d(tnsVector3d v, tnsVector3d v0, tnsVecto
 
   return 1;
 }
-static int lanpr_point_inside_triangle3de(tnsVector3d v, tnsVector3d v0, tnsVector3d v1, tnsVector3d v2)
+static int lanpr_point_inside_triangle3de(tnsVector3d v,
+                                          tnsVector3d v0,
+                                          tnsVector3d v1,
+                                          tnsVector3d v2)
 {
   tnsVector3d l, r;
   tnsVector3d N1, N2;
@@ -1110,7 +1118,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[0].gloc,rt->v[0]->gloc,rt->v[2]->gloc,a);
+            interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[0]->gloc, cam_pos);
@@ -1118,7 +1126,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[1].gloc,rt->v[0]->gloc,rt->v[1]->gloc,a);
+            interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1176,7 +1184,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[0].gloc,rt->v[2]->gloc,rt->v[0]->gloc,a);
+            interp_v3_v3v3_db(rv[0].gloc, rt->v[2]->gloc, rt->v[0]->gloc, a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
@@ -1184,7 +1192,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[1].gloc,rt->v[2]->gloc,rt->v[1]->gloc,a);
+            interp_v3_v3v3_db(rv[1].gloc, rt->v[2]->gloc, rt->v[1]->gloc, a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1242,7 +1250,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[0].gloc,rt->v[1]->gloc,rt->v[2]->gloc,a);
+            interp_v3_v3v3_db(rv[0].gloc, rt->v[1]->gloc, rt->v[2]->gloc, a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[1]->gloc, cam_pos);
@@ -1250,7 +1258,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[1].gloc,rt->v[1]->gloc,rt->v[0]->gloc,a);
+            interp_v3_v3v3_db(rv[1].gloc, rt->v[1]->gloc, rt->v[0]->gloc, a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1311,7 +1319,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot2 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[0].gloc,rt->v[0]->gloc,rt->v[1]->gloc,a);
+            interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
@@ -1319,7 +1327,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot2 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[1].gloc,rt->v[0]->gloc,rt->v[2]->gloc,a);
+            interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1394,7 +1402,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[0].gloc,rt->v[1]->gloc,rt->v[2]->gloc,a);
+            interp_v3_v3v3_db(rv[0].gloc, rt->v[1]->gloc, rt->v[2]->gloc, a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[1]->gloc, cam_pos);
@@ -1402,7 +1410,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[1].gloc,rt->v[1]->gloc,rt->v[0]->gloc,a);
+            interp_v3_v3v3_db(rv[1].gloc, rt->v[1]->gloc, rt->v[0]->gloc, a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
@@ -1477,7 +1485,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[0].gloc,rt->v[2]->gloc,rt->v[0]->gloc,a);
+            interp_v3_v3v3_db(rv[0].gloc, rt->v[2]->gloc, rt->v[0]->gloc, a);
             tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
 
             tMatVectorMinus3d(vv1, rt->v[2]->gloc, cam_pos);
@@ -1485,7 +1493,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot1 = tmat_dot_3d(vv1, view_dir, 0);
             dot2 = tmat_dot_3d(vv2, view_dir, 0);
             a = dot1 / (dot1 + dot2);
-            interp_v3_v3v3_db(rv[1].gloc,rt->v[2]->gloc,rt->v[1]->gloc,a);
+            interp_v3_v3v3_db(rv[1].gloc, rt->v[2]->gloc, rt->v[1]->gloc, a);
             tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[1]);
@@ -1834,9 +1842,9 @@ int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
 }
 
 static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
-                                        Scene *s,
-                                        Object *c /*camera*/,
-                                        LANPR_RenderBuffer *rb)
+                                               Scene *s,
+                                               Object *c /*camera*/,
+                                               LANPR_RenderBuffer *rb)
 {
   Object *o;
   Collection *collection;
@@ -1920,12 +1928,18 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                  (num > is[order[1]] ? order[1] : (num > is[order[0]] ? order[0] : order[0]))); \
   }
 
-static void lanpr_get_interpolate_point2d(tnsVector2d l, tnsVector2d r, real Ratio, tnsVector2d Result)
+static void lanpr_get_interpolate_point2d(tnsVector2d l,
+                                          tnsVector2d r,
+                                          real Ratio,
+                                          tnsVector2d Result)
 {
   Result[0] = tnsLinearItp(l[0], r[0], Ratio);
   Result[1] = tnsLinearItp(l[1], r[1], Ratio);
 }
-static void lanpr_get_interpolate_point3d(tnsVector2d l, tnsVector2d r, real Ratio, tnsVector2d Result)
+static void lanpr_get_interpolate_point3d(tnsVector2d l,
+                                          tnsVector2d r,
+                                          real Ratio,
+                                          tnsVector2d Result)
 {
   Result[0] = tnsLinearItp(l[0], r[0], Ratio);
   Result[1] = tnsLinearItp(l[1], r[1], Ratio);
@@ -1957,7 +1971,7 @@ static int lanpr_get_z_inersect_point(
   r = fabsf(r);
   ratio = l / (l + r);
 
-  IntersectResult[2] = interpd(lzr,lzl,ratio);
+  IntersectResult[2] = interpd(lzr, lzl, ratio);
   lanpr_get_interpolate_point2d(LL, LR, ratio, IntersectResult);
 
   return rev;
@@ -1975,9 +1989,9 @@ static LANPR_RenderVert *lanpr_find_shaerd_vertex(LANPR_RenderLine *rl, LANPR_Re
   }
 }
 static void lanpr_find_edge_no_vertex(LANPR_RenderTriangle *rt,
-                               LANPR_RenderVert *rv,
-                               tnsVector3d l,
-                               tnsVector3d r)
+                                      LANPR_RenderVert *rv,
+                                      tnsVector3d l,
+                                      tnsVector3d r)
 {
   if (rt->v[0] == rv) {
     tMatVectorCopy3d(rt->v[1]->fbcoord, l);
@@ -2038,13 +2052,13 @@ static int lanpr_share_edge_direct(LANPR_RenderTriangle *rt, LANPR_RenderLine *r
 }
 
 static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
-                                                   LANPR_RenderTriangle *rt,
-                                                   LANPR_RenderLine *rl,
-                                                   Object *cam,
-                                                   tnsMatrix44d vp,
-                                                   real *CameraDir,
-                                                   double *From,
-                                                   double *To)
+                                                          LANPR_RenderTriangle *rt,
+                                                          LANPR_RenderLine *rl,
+                                                          Object *cam,
+                                                          tnsMatrix44d vp,
+                                                          real *CameraDir,
+                                                          double *From,
+                                                          double *To)
 {
   double dl, dr;
   double ratio;
@@ -2156,7 +2170,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
   }
 
   if (((Camera *)cam->data)->type == CAM_PERSP) {
-    interp_v3_v3v3_db( gloc,rl->l->gloc, rl->r->gloc, Cut);
+    interp_v3_v3v3_db(gloc, rl->l->gloc, rl->r->gloc, Cut);
     tmat_apply_transform_44d(Trans, vp, gloc);
     tMatVectorMultiSelf3d(Trans, (1 / Trans[3]) /**HeightMultiply/2*/);
     Camera *camera = cam->data;
@@ -2164,7 +2178,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
     Trans[1] -= camera->shifty * 2;
   }
   else {
-    interp_v3_v3v3_db( Trans,rl->l->fbcoord, rl->r->fbcoord, Cut);
+    interp_v3_v3v3_db(Trans, rl->l->fbcoord, rl->r->fbcoord, Cut);
     /*  tmat_apply_transform_44d(Trans, vp, gloc); */
   }
 
@@ -2296,7 +2310,8 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
   return 1;
 }
 
-static LANPR_RenderLine *lanpr_triangle_share_edge(LANPR_RenderTriangle *l, LANPR_RenderTriangle *r)
+static LANPR_RenderLine *lanpr_triangle_share_edge(LANPR_RenderTriangle *l,
+                                                   LANPR_RenderTriangle *r)
 {
   if (l->rl[0] == r->rl[0]) {
     return r->rl[0];
@@ -2327,7 +2342,8 @@ static LANPR_RenderLine *lanpr_triangle_share_edge(LANPR_RenderTriangle *l, LANP
   }
   return 0;
 }
-static LANPR_RenderVert *lanpr_triangle_share_point(LANPR_RenderTriangle *l, LANPR_RenderTriangle *r)
+static LANPR_RenderVert *lanpr_triangle_share_point(LANPR_RenderTriangle *l,
+                                                    LANPR_RenderTriangle *r)
 {
   if (l->v[0] == r->v[0]) {
     return r->v[0];
@@ -2360,10 +2376,10 @@ static LANPR_RenderVert *lanpr_triangle_share_point(LANPR_RenderTriangle *l, LAN
 }
 
 static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffer *rb,
-                                                        LANPR_RenderLine *rl,
-                                                        LANPR_RenderTriangle *rt,
-                                                        LANPR_RenderTriangle *testing,
-                                                        LANPR_RenderVert *Last)
+                                                               LANPR_RenderLine *rl,
+                                                               LANPR_RenderTriangle *rt,
+                                                               LANPR_RenderTriangle *testing,
+                                                               LANPR_RenderVert *Last)
 {
   tnsVector3d Lv;
   tnsVector3d Rv;
@@ -2394,7 +2410,7 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
   DotL = fabs(DotL);
   DotR = fabs(DotR);
 
-  interp_v3_v3v3_db( gloc,l->gloc, r->gloc, DotL / (DotL + DotR));
+  interp_v3_v3v3_db(gloc, l->gloc, r->gloc, DotL / (DotL + DotR));
 
   if (Last && TNS_DOUBLE_CLOSE_ENOUGH(Last->gloc[0], gloc[0]) &&
       TNS_DOUBLE_CLOSE_ENOUGH(Last->gloc[1], gloc[1]) &&
@@ -2432,9 +2448,8 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
 
   return Result;
 }
-static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(LANPR_RenderBuffer *rb,
-                                                                 LANPR_RenderTriangle *rt,
-                                                                 LANPR_RenderTriangle *testing)
+static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
+    LANPR_RenderBuffer *rb, LANPR_RenderTriangle *rt, LANPR_RenderTriangle *testing)
 {
   LANPR_RenderVert *l = 0, *r = 0;
   LANPR_RenderVert **Next = &l;
@@ -2582,8 +2597,8 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(LANPR_Re
   return Result;
 }
 static void lanpr_triangle_enable_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
-                                                          LANPR_RenderTriangle *rt,
-                                                          LANPR_BoundingArea *ba)
+                                                                 LANPR_RenderTriangle *rt,
+                                                                 LANPR_BoundingArea *ba)
 {
   tnsVector3d n, c = {0};
   tnsVector3d tl, tr;
@@ -2809,7 +2824,6 @@ static void lanpr_clear_render_state(LANPR_RenderBuffer *rb)
   rb->calculation_status = TNS_CALCULATION_IDLE;
 }
 
-
 /* Buffer operations */
 
 void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
@@ -2899,7 +2913,7 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
 {
   int max_occ = 0;
   int max;
-  Scene* s = DEG_get_evaluated_scene(depsgraph);
+  Scene *s = DEG_get_evaluated_scene(depsgraph);
 
   /* Objects */
   DEG_OBJECT_ITER_BEGIN (depsgraph,
@@ -2931,7 +2945,7 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
 
   return max_occ;
 }
-static int lanpr_get_max_occlusion_level(Depsgraph* dg)
+static int lanpr_get_max_occlusion_level(Depsgraph *dg)
 {
   Scene *s = DEG_get_evaluated_scene(dg);
   SceneLANPR *lanpr = &s->lanpr;
@@ -3120,7 +3134,6 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
 
 void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb);
 
-
 #define TNS_BOUND_AREA_CROSSES(b1, b2) \
   ((b1)[0] < (b2)[1] && (b1)[1] > (b2)[0] && (b1)[3] < (b2)[2] && (b1)[2] > (b2)[3])
 
@@ -3304,13 +3317,13 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
     ;
 }
 static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
-                                            LANPR_BoundingArea *RootBoundingArea,
-                                            LANPR_RenderTriangle *rt,
-                                            real *LRUB,
-                                            int Recursive);
+                                                   LANPR_BoundingArea *RootBoundingArea,
+                                                   LANPR_RenderTriangle *rt,
+                                                   real *LRUB,
+                                                   int Recursive);
 static void lanpr_triangle_enable_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
-                                                          LANPR_RenderTriangle *rt,
-                                                          LANPR_BoundingArea *ba);
+                                                                 LANPR_RenderTriangle *rt,
+                                                                 LANPR_BoundingArea *ba);
 
 static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea *Root)
 {
@@ -3374,9 +3387,9 @@ static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea
   rb->bounding_area_count += 3;
 }
 static int lanpr_line_crosses_bounding_area(LANPR_RenderBuffer *fb,
-                                     tnsVector2d l,
-                                     tnsVector2d r,
-                                     LANPR_BoundingArea *ba)
+                                            tnsVector2d l,
+                                            tnsVector2d r,
+                                            LANPR_BoundingArea *ba)
 {
   real vx, vy;
   tnsVector4d converted;
@@ -3422,8 +3435,8 @@ static int lanpr_line_crosses_bounding_area(LANPR_RenderBuffer *fb,
   return 0;
 }
 static int lanpr_triangle_covers_bounding_area(LANPR_RenderBuffer *fb,
-                                        LANPR_RenderTriangle *rt,
-                                        LANPR_BoundingArea *ba)
+                                               LANPR_RenderTriangle *rt,
+                                               LANPR_BoundingArea *ba)
 {
   tnsVector2d p1, p2, p3, p4;
   real *FBC1 = rt->v[0]->fbcoord, *FBC2 = rt->v[1]->fbcoord, *FBC3 = rt->v[2]->fbcoord;
@@ -3455,10 +3468,10 @@ static int lanpr_triangle_covers_bounding_area(LANPR_RenderBuffer *fb,
   return 0;
 }
 static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
-                                            LANPR_BoundingArea *RootBoundingArea,
-                                            LANPR_RenderTriangle *rt,
-                                            real *LRUB,
-                                            int Recursive)
+                                                   LANPR_BoundingArea *RootBoundingArea,
+                                                   LANPR_RenderTriangle *rt,
+                                                   real *LRUB,
+                                                   int Recursive)
 {
   if (!lanpr_triangle_covers_bounding_area(rb, rt, RootBoundingArea)) {
     return;
@@ -3500,8 +3513,8 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
   }
 }
 static void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
-                                        LANPR_BoundingArea *RootBoundingArea,
-                                        LANPR_RenderLine *rl)
+                                               LANPR_BoundingArea *RootBoundingArea,
+                                               LANPR_RenderLine *rl)
 {
   if (!RootBoundingArea->child) {
     list_append_pointer_static_pool(&rb->render_data_pool, &RootBoundingArea->linked_lines, rl);
@@ -3526,11 +3539,11 @@ static void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
   }
 }
 static int lanpr_get_triangle_bounding_areas(LANPR_RenderBuffer *rb,
-                                      LANPR_RenderTriangle *rt,
-                                      int *rowBegin,
-                                      int *rowEnd,
-                                      int *colBegin,
-                                      int *colEnd)
+                                             LANPR_RenderTriangle *rt,
+                                             int *rowBegin,
+                                             int *rowEnd,
+                                             int *colBegin,
+                                             int *colEnd)
 {
   real sp_w = rb->width_per_tile, sp_h = rb->height_per_tile;
   real b[4];
@@ -3569,11 +3582,11 @@ static int lanpr_get_triangle_bounding_areas(LANPR_RenderBuffer *rb,
   return 1;
 }
 static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
-                                  LANPR_RenderLine *rl,
-                                  int *rowBegin,
-                                  int *rowEnd,
-                                  int *colBegin,
-                                  int *colEnd)
+                                         LANPR_RenderLine *rl,
+                                         int *rowBegin,
+                                         int *rowEnd,
+                                         int *colBegin,
+                                         int *colEnd)
 {
   real sp_w = rb->width_per_tile, sp_h = rb->height_per_tile;
   real b[4];
@@ -3678,7 +3691,6 @@ LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb
   return NULL;
 }
 
-
 static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderElementLinkNode *reln;
@@ -3731,14 +3743,14 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
   /*  tnsset_PlusRenderIntersectionCount(rb, tnsglobal_TriangleIntersectionCount); */
 }
 static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This,
-                                                 LANPR_RenderLine *rl,
-                                                 real x,
-                                                 real y,
-                                                 real k,
-                                                 int PositiveX,
-                                                 int PositiveY,
-                                                 real *NextX,
-                                                 real *NextY)
+                                                        LANPR_RenderLine *rl,
+                                                        real x,
+                                                        real y,
+                                                        real k,
+                                                        int PositiveX,
+                                                        int PositiveY,
+                                                        real *NextX,
+                                                        real *NextY)
 {
   real rx, ry, ux, uy, lx, ly, bx, by;
   real r1, r2;
@@ -3972,7 +3984,7 @@ static LANPR_BoundingArea *lanpr_get_bounding_area(LANPR_RenderBuffer *rb, real 
   return iba;
 }
 static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBuffer *rb,
-                                                           LANPR_RenderLine *rl)
+                                                                  LANPR_RenderLine *rl)
 {
   LANPR_BoundingArea *iba;
   real data[2] = {rl->l->fbcoord[0], rl->l->fbcoord[1]};
@@ -4002,8 +4014,6 @@ static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBu
 
   return iba;
 }
-
-
 
 /* Calculations */
 
@@ -4125,7 +4135,6 @@ void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
   ot->exec = lanpr_compute_feature_lines_exec;
 }
 
-
 /* SVG bindings */
 
 static int lanpr_export_svg_exec(struct bContext *C, wmOperator *op)
@@ -4170,7 +4179,6 @@ void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
   /* properties */
   /* Should have: facing, layer, visibility, file split... */
 }
-
 
 /* Access */
 
@@ -4222,19 +4230,17 @@ void ED_lanpr_free_everything(Scene *s)
   }
 }
 
-
-
 /* GPencil bindings */
 
 static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
-                                       Object *ob,
-                                       bGPDlayer *gpl,
-                                       bGPDframe *gpf,
-                                       int qi_begin,
-                                       int qi_end,
-                                       int material_nr,
-                                       Collection *col,
-                                       int types)
+                                              Object *ob,
+                                              bGPDlayer *gpl,
+                                              bGPDframe *gpf,
+                                              int qi_begin,
+                                              int qi_end,
+                                              int material_nr,
+                                              Collection *col,
+                                              int types)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
@@ -4511,7 +4517,7 @@ static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *op
     ED_lanpr_compute_feature_lines_internal(dg, 0);
   }
 
-   ED_lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
+  ED_lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
 
   lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame, NULL, gpo);
 

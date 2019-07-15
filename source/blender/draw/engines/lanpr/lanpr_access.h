@@ -35,6 +35,4 @@ void ED_lanpr_free_everything(struct Scene *s);
 bool ED_lanpr_dpix_shader_error();
 bool ED_lanpr_disable_edge_splits(struct Scene *s);
 
-
-
 #endif

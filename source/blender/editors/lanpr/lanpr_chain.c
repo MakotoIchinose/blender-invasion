@@ -268,8 +268,8 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       if (new_rv == new_rl->l) {
         for (rls = new_rl->segments.last; rls; rls = rls->prev) {
           double gpos[3], lpos[3];
-          interp_v3_v3v3_db( lpos,new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
-          interp_v3_v3v3_db( gpos,new_rl->l->gloc, new_rl->r->gloc, rls->at);
+          interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
+          interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
           lanpr_push_render_line_chain_point(rb,
                                              rlc,
                                              lpos[0],
@@ -289,8 +289,8 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
         rls = rls->next;
         for (rls; rls; rls = rls->next) {
           double gpos[3], lpos[3];
-          interp_v3_v3v3_db( lpos,new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
-          interp_v3_v3v3_db( gpos,new_rl->l->gloc, new_rl->r->gloc, rls->at);
+          interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
+          interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
           lanpr_push_render_line_chain_point(rb,
                                              rlc,
                                              lpos[0],
@@ -322,8 +322,8 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
     for (rls = rls->next; rls; rls = rls->next) {
       double gpos[3], lpos[3];
-      interp_v3_v3v3_db( lpos,rl->l->fbcoord, rl->r->fbcoord, rls->at);
-      interp_v3_v3v3_db( gpos,rl->l->gloc, rl->r->gloc, rls->at);
+      interp_v3_v3v3_db(lpos, rl->l->fbcoord, rl->r->fbcoord, rls->at);
+      interp_v3_v3v3_db(gpos, rl->l->gloc, rl->r->gloc, rls->at);
       lanpr_append_render_line_chain_point(
           rb, rlc, lpos[0], lpos[1], gpos[0], gpos[1], gpos[2], N, rl->flags, rls->occlusion);
       last_occlusion = rls->occlusion;
@@ -358,8 +358,8 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
         rlci->occlusion = last_occlusion; /*  fix leading vertex occlusion */
         for (rls = new_rl->segments.last; rls; rls = rls->prev) {
           double gpos[3], lpos[3];
-          interp_v3_v3v3_db( lpos,new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
-          interp_v3_v3v3_db( gpos,new_rl->l->gloc, new_rl->r->gloc, rls->at);
+          interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
+          interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
           last_occlusion = rls->prev ? rls->prev->occlusion : last_occlusion;
           lanpr_append_render_line_chain_point(rb,
                                                rlc,
@@ -380,8 +380,8 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
         rls = rls->next;
         for (rls; rls; rls = rls->next) {
           double gpos[3], lpos[3];
-          interp_v3_v3v3_db( lpos,new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
-          interp_v3_v3v3_db( gpos,new_rl->l->gloc, new_rl->r->gloc, rls->at);
+          interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
+          interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
           lanpr_append_render_line_chain_point(rb,
                                                rlc,
                                                lpos[0],
@@ -755,7 +755,6 @@ int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc)
   }
   return Count;
 }
-
 
 void ED_lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
 {
