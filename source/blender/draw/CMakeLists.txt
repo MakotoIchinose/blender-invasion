@@ -131,7 +131,6 @@ set(SRC
 	engines/lanpr/lanpr_snake.c
 	engines/lanpr/lanpr_ops.c
   engines/lanpr/lanpr_chain_draw.c
-  engines/lanpr/lanpr_access.c
 
   DRW_engine.h
   intern/DRW_render.h
@@ -156,7 +155,6 @@ set(SRC
   engines/external/external_engine.h
   engines/workbench/workbench_engine.h
   engines/workbench/workbench_private.h
-	engines/lanpr/lanpr_util.h
 	engines/lanpr/lanpr_all.h
   engines/lanpr/lanpr_access.h
 )
