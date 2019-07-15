@@ -53,28 +53,6 @@
 
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
-struct Object;
-
-int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
-                                                   LANPR_RenderTriangle *rt,
-                                                   LANPR_RenderLine *rl,
-                                                   Object *cam,
-                                                   tnsMatrix44d vp,
-                                                   real *CameraDir,
-                                                   double *From,
-                                                   double *To);
-void lanpr_compute_view_Vector(LANPR_RenderBuffer *rb);
-
-/* ====================================== base structures
- * =========================================== */
-
-
-/* ======================================= geometry ============================================ */
-
-/* ====================================== render control ======================================= */
-
-/* ============================================ viewport display
- * ================================================= */
 
 void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb);
 
@@ -537,6 +515,5 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   }
 }
 
-/* ============================================ operators =========================================
- */
+
 
