@@ -1039,6 +1039,7 @@ int blueprint_update_step(bContext *C,
     if (is_zero_v3(bp_x)) {
       copy_v3_v3(bp_x, z_axis);
     }
+    normalize_v3(bp_x);
     copy_v3_v3(bp_z, cache->n);
     cross_v3_v3v3(bp_y, bp_z, bp_x);
     unit_m4(bp_mat);
