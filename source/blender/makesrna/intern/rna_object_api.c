@@ -717,12 +717,12 @@ static bool rna_Object_update_from_editmode(Object *ob, Main *bmain)
   return result;
 }
 
-bool rna_Object_convert_to_gpencil(Object *ob,
-                                   bContext *C,
-                                   ReportList *reports,
-                                   Object *ob_gpencil,
-                                   bool gpencil_lines,
-                                   bool use_collections)
+bool rna_Object_generate_gpencil_strokes(Object *ob,
+                                         bContext *C,
+                                         ReportList *reports,
+                                         Object *ob_gpencil,
+                                         bool gpencil_lines,
+                                         bool use_collections)
 {
   if (ob->type != OB_CURVE) {
     BKE_reportf(reports,
@@ -1185,14 +1185,14 @@ void RNA_api_object(StructRNA *srna)
                                   "Intended to be used by render engines only");
 
   /* Convert curve object to gpencil strokes. */
-  func = RNA_def_function(srna, "convert_to_gpencil", "rna_Object_convert_to_gpencil");
+  func = RNA_def_function(srna, "generate_gpencil_strokes", "rna_Object_generate_gpencil_strokes");
   RNA_def_function_ui_description(func, "Convert a curve object to grease pencil strokes.");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
 
   parm = RNA_def_pointer(
       func, "ob_gpencil", "Object", "", "Grease Pencil object used to create new strokes");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "gpencil_lines", 1, "", "Create Lines");
+  parm = RNA_def_boolean(func, "gpencil_lines", 0, "", "Create Lines");
   parm = RNA_def_boolean(func, "use_collections", 1, "", "Use Collections");
 
   parm = RNA_def_boolean(func, "result", 0, "", "Result");

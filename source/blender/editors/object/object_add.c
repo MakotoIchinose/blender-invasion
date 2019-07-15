@@ -2539,7 +2539,7 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                   "Keep Original",
                   "Keep original objects instead of replacing them");
   RNA_def_boolean(
-      ot->srna, "gpencil_lines", 1, "GPencil Lines", "Use lines for grease pencil conversion");
+      ot->srna, "gpencil_lines", 0, "GPencil Lines", "Use lines for grease pencil conversion");
   RNA_def_boolean(ot->srna,
                   "use_collections",
                   1,

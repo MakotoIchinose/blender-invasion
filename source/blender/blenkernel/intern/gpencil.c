@@ -2639,12 +2639,13 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
 }
 
 /* Helper function to create new stroke section */
-static void gpencil_add_new_points(bGPDstroke *gps, float *coord_array, int init, int totpoints)
+static void gpencil_add_new_points(
+    bGPDstroke *gps, float *coord_array, float pressure, int init, int totpoints)
 {
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt = &gps->points[i + init];
     copy_v3_v3(&pt->x, &coord_array[3 * i]);
-    pt->pressure = 1.0f;
+    pt->pressure = pressure;
     pt->strength = 1.0f;
   }
 }
@@ -2681,7 +2682,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                const bool gpencil_lines,
                                const bool use_collections)
 {
-  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL)) {
+  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
     return;
   }
 
@@ -2716,6 +2717,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
   gps->thickness = 1.0f;
   gps->gradient_f = 1.0f;
   ARRAY_SET_ITEMS(gps->gradient_s, 1.0f, 1.0f);
+  ARRAY_SET_ITEMS(gps->caps, GP_STROKE_CAP_ROUND, GP_STROKE_CAP_ROUND);
   gps->inittime = 0.0f;
 
   /* Enable recalculation flag by default. */
@@ -2734,7 +2736,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
     int resolu = nu->resolu + 1;
     if (nu->type == CU_BEZIER) {
       segments = nu->pntsu;
-      if ((nu->flagu & CU_NURB_CYCLIC) == 0) {
+      if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
         segments--;
         cyclic = false;
       }
@@ -2767,15 +2769,37 @@ void BKE_gpencil_convert_curve(Main *bmain,
     color[2] = 1.0f;
     fill = false;
   }
-  int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
-  if (r_idx < 0) {
-    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
-    /* If object has more than 1 material, use second material for stroke color */
-    if (ob_cu->totcol > 1) {
-      Material *ma_stroke = give_current_material(ob_cu, 2);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+
+  /* Special case: If the color was created by the SVG add-on and the name contains '_stroke' and
+   * there is only one color, the stroke must not be closed, fill to false and use for
+   * stroke the fill color.
+   */
+  bool only_stroke = false;
+  if (ob_cu->totcol == 1) {
+    Material *ma_stroke = give_current_material(ob_cu, 1);
+    if ((ma_stroke) && (strstr(ma_stroke->id.name, "_stroke") != NULL)) {
+      only_stroke = true;
     }
   }
+
+  int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
+  if (r_idx < 0) {
+    Material *ma_stroke = NULL;
+    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    /* If object has more than 1 material, use second material for stroke color. */
+    if (ob_cu->totcol > 1) {
+      ma_stroke = give_current_material(ob_cu, 2);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+    }
+    else if (only_stroke) {
+      /* Also use the first color if the fill is none for stroke color. */
+      ma_stroke = give_current_material(ob_cu, 1);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      /* set fill to off */
+      mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+    }
+  }
+
   gps->mat_nr = r_idx;
 
   /* Add stroke to frame.*/
@@ -2787,7 +2811,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
     int resolu = nu->resolu + 1;
     if (nu->type == CU_BEZIER) {
       segments = nu->pntsu;
-      if ((nu->flagu & CU_NURB_CYCLIC) == 0) {
+      if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
         segments--;
       }
       /* Get all interpolated curve points of Beziert */
@@ -2808,7 +2832,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                         3 * sizeof(float));
         }
         /* Add points to the stroke */
-        gpencil_add_new_points(gps, coord_array, init, resolu);
+        gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu);
         /* Free memory. */
         MEM_SAFE_FREE(coord_array);
 
@@ -2820,7 +2844,9 @@ void BKE_gpencil_convert_curve(Main *bmain,
     }
   }
   /* Cyclic curve, close stroke. */
-  if (cyclic) {
+  if ((cyclic) && (!only_stroke)) {
     BKE_gpencil_close_stroke(gps);
   }
+
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
