@@ -71,8 +71,6 @@ struct Object;
 
 /* External defines */
 
-void ED_lanpr_update_data_for_external(struct Depsgraph *depsgraph);
-
 int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
@@ -2825,9 +2823,6 @@ static void lanpr_clear_render_state(LANPR_RenderBuffer *rb)
 
 /* Buffer operations */
 
-
-extern LANPR_SharedResource lanpr_share;
-
 void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderElementLinkNode *reln;
@@ -4194,20 +4189,6 @@ void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
 
 
 /* Access */
-
-/* Probably remove this in the future. */
-void ED_lanpr_update_data_for_external(Depsgraph *depsgraph)
-{
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  SceneLANPR *lanpr = &scene->lanpr;
-  if (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE) {
-    return;
-  }
-  if (!lanpr_share.render_buffer_shared ||
-      lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra) {
-    ED_lanpr_compute_feature_lines_internal(depsgraph, 0);
-  }
-}
 
 bool ED_lanpr_dpix_shader_error()
 {

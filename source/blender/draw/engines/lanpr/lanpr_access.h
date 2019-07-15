@@ -10,7 +10,7 @@
 
 typedef struct LANPR_RenderLineChain LANPR_RenderLineChain;
 
-/* GPenicl (deprecated) */
+/* GPencil */
 void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                        struct Object *ob,
                                        bGPDlayer *gpl,
@@ -20,8 +20,6 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                        int material_nr,
                                        struct Collection *col,
                                        int types);
-
-void ED_lanpr_update_data_for_external(Depsgraph *depsgraph);
 
 int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
