@@ -814,6 +814,76 @@ static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
   }
 }
 
+static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
+{
+  BMEdge *e;
+  BMIter eiter;
+
+  BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
+    if (BM_edge_face_count(e) == 0) {
+      return e;
+    }
+  }
+
+  return NULL;
+}
+
+static void cloth_remeshing_fix_sewing_verts(BMesh *bm, BMVert *new_vert, BMEdge *edge)
+{
+  BMEdge *next_loose_edge = NULL;
+  BMVert *vert;
+  edge->v1 == new_vert ? vert = edge->v2 : vert = edge->v1;
+  next_loose_edge = cloth_remeshing_find_next_loose_edge(vert);
+  BLI_assert(next_loose_edge != NULL);
+
+  /* TODO(Ish): this works only if the loose edges are not subdivided,
+   * need to figure out how to add this to a loop so that the last vertex
+   * of the loose edge is found */
+  BMVert *other_loose_vert;
+  next_loose_edge->v1 == vert ? other_loose_vert = next_loose_edge->v2 :
+                                other_loose_vert = next_loose_edge->v1;
+
+  /* Now need to find an edge that can form a loop with 2 edges being
+   * loose edges
+   *
+   *   d   c
+   *   *---*
+   *       |
+   *     *-*
+   *     a b
+   *
+   * abcd forms the loop with loose edges
+   * a-> new_vert
+   * b-> vert
+   * c-> other_loose_vert
+   * d-> ?
+   **/
+
+  BMEdge *other_loose_edge;
+  BMVert *other_vert_e;
+  BMEdge *e;
+  BMIter eiter;
+  bool found = false;
+  BM_ITER_ELEM (e, &eiter, other_loose_vert, BM_EDGES_OF_VERT) {
+    if (e == next_loose_edge) {
+      continue;
+    }
+
+    e->v1 == other_loose_vert ? other_vert_e = e->v2 : other_vert_e = e->v1;
+
+    other_loose_edge = cloth_remeshing_find_next_loose_edge(other_vert_e);
+    if (!other_loose_edge) {
+      continue;
+    }
+  }
+
+  BLI_assert(found == true);
+  BMVert *a = new_vert;
+  BMVert *b = vert;
+  BMVert *c = other_loose_vert;
+  BMVert *d = other_vert_e;
+}
+
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSizing> &sizing)
 {
   BMesh *bm = clmd->clothObject->bm;
@@ -848,6 +918,12 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSiz
     BLI_assert(v2 != NULL);
     cloth->mvert_num += 1;
     cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(v1, v2);
+    if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
+      if (cloth_remeshing_find_next_loose_edge(old_edge.v1) != NULL &&
+          cloth_remeshing_find_next_loose_edge(old_edge.v2) != NULL) {
+        cloth_remeshing_fix_sewing_verts(bm, new_vert, &old_edge);
+      }
+    }
   }
   bad_edges.clear();
   return true;
