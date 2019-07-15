@@ -368,7 +368,12 @@ def brush_basic_sculpt_settings(layout, context, brush, *, compact=False):
     if not capabilities.has_direction:
         layout.row().prop(brush, "direction", expand=True, **({"text": ""} if compact else {}))
 
-    UnifiedPaintPanel.prop_unified_color(layout, context, brush, "color", text="Color")
+    row = layout.row(align=True)
+    UnifiedPaintPanel.prop_unified_color(row, context, brush, "color", text="")
+    UnifiedPaintPanel.prop_unified_color(row, context, brush, "secondary_color", text="")
+    row.separator()
+    row.operator("paint.brush_colors_flip", icon='FILE_REFRESH', text="", emboss=False)
+
 
 
 def brush_basic_gpencil_paint_settings(layout, _context, brush, *, compact=True):

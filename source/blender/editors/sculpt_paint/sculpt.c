@@ -2685,9 +2685,16 @@ static void apply_color(SculptSession *ss, PBVHVertexIter *vd, const Brush *brus
 {
   float factor = ss->cache ? fade * fabs(ss->cache->bstrength) : fade;
   CLAMP(factor, 0.0f, 1.0f);
-  unsigned char r = brush->rgb[0] * 255;
-  unsigned char g = brush->rgb[1] * 255;
-  unsigned char b = brush->rgb[2] * 255;
+  float b_rgb[3];
+  if (ss->cache) {
+    copy_v3_v3(b_rgb, ss->cache->paint_color);
+  }
+  else {
+    copy_v3_v3(b_rgb, brush->rgb);
+  }
+  unsigned char r = b_rgb[0] * 255;
+  unsigned char g = b_rgb[1] * 255;
+  unsigned char b = b_rgb[2] * 255;
   unsigned char a = factor * 255;
   unsigned char brushColor[4] = {r, g, b, a};
   unsigned char *col = (unsigned char *)vd->col;
@@ -5702,6 +5709,16 @@ static void sculpt_update_cache_invariants(
   if (brush->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY) {
     cache->active_vertex_mesh = ss->active_vertex_mesh;
     cache->active_vertex_mesh_index = ss->active_vertex_mesh_index;
+  }
+
+  /* SCULPT VERTEX COLORS */
+  if (ups->flag & UNIFIED_PAINT_COLOR) {
+    copy_v3_v3(cache->paint_color, ups->rgb);
+    copy_v3_v3(cache->paint_color_secondary, ups->secondary_rgb);
+  }
+  else {
+    copy_v3_v3(cache->paint_color, brush->rgb);
+    copy_v3_v3(cache->paint_color_secondary, brush->secondary_rgb);
   }
 
   cache->first_time = 1;

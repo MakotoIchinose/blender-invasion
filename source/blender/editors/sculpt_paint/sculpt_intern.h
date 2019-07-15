@@ -408,6 +408,9 @@ typedef struct StrokeCache {
   rcti previous_r; /* previous redraw rectangle */
   rcti current_r;  /* current redraw rectangle */
 
+  float paint_color[3];
+  float paint_color_secondary[3];
+
 } StrokeCache;
 
 void sculpt_cache_calc_brushdata_symm(StrokeCache *cache,
