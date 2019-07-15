@@ -415,7 +415,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
 
       LANPR_BatchItem* dpbi;
-      while (dpbi = BLI_pophead(&pd->dpix_batch_list)){
+      while (dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)){
         GPU_batch_discard(dpbi->dpix_preview_batch);
         GPU_batch_discard(dpbi->dpix_transform_batch);
       }
@@ -551,7 +551,7 @@ static void lanpr_cache_finish(void *vedata)
     }
 
     LANPR_BatchItem *bi;
-    for (bi = pd->dpix_batch_list.first; bi; bi = (void *)bi->item.next) {
+    for (bi = lanpr_share.dpix_batch_list.first; bi; bi = (void *)bi->item.next) {
       DRW_shgroup_call_ex(
           pd->dpix_transform_shgrp, 0, bi->ob->obmat, bi->dpix_transform_batch, 0, 0, true, NULL);
       DRW_shgroup_call(pd->dpix_preview_shgrp, bi->dpix_preview_batch, 0);
@@ -797,7 +797,7 @@ static void lanpr_view_update(void *vedata)
   /*  our update flag is in SceneLANPR. */
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr;
-  lanpr->reloaded = 1; /*  very bad solution, this will slow down animation. */
+  //lanpr->reloaded = 1; /*  very bad solution, this will slow down animation. */
 }
 
 /* This reserve for depsgraph auto updates. */

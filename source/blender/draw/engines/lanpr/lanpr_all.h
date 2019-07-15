@@ -189,8 +189,6 @@ typedef struct LANPR_PrivateData {
 
   GPUVertFormat snake_gwn_format;
   GPUBatch *snake_batch;
-
-  ListBase dpix_batch_list;
 } LANPR_PrivateData;
 
 typedef struct LANPR_StorageList {
