@@ -809,4 +809,34 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
                                            LANPR_LineLayer *ll,
                                            float componet_id);
 
+struct Depsgraph;
+struct SceneLANPR;
+
+int ED_lanpr_object_collection_usage_check(struct Collection *c, struct Object *o);
+
+void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
+void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
+void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
+void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
+int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
+void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
+
+int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
+
+void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
+void ED_lanpr_copy_data(struct Scene *from, struct Scene *to);
+void ED_lanpr_free_everything(struct Scene *s);
+
+bool ED_lanpr_dpix_shader_error();
+bool ED_lanpr_disable_edge_splits(struct Scene *s);
+
+int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
+LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
+LANPR_LineLayerComponent *ED_lanpr_new_line_component(struct SceneLANPR *lanpr);
+
+LANPR_BoundingArea* ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
+
+
+
 #endif /* __ED_LANPR_H__ */

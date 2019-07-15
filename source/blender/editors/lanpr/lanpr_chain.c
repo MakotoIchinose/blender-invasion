@@ -16,9 +16,6 @@
 
 #include <math.h>
 
-
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
-
 #define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
 
 LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
@@ -193,8 +190,6 @@ void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
     }
   }
 }
-
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
 
 void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 {
@@ -415,7 +410,6 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
   }
 }
 
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBuffer *rb,
                                                            LANPR_BoundingArea *root,
                                                            LANPR_RenderLineChainItem *rlci)

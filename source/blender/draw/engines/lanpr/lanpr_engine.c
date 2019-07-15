@@ -46,6 +46,10 @@ extern char datatoc_gpu_shader_2D_smooth_color_frag_glsl[];
 
 LANPR_SharedResource lanpr_share;
 
+void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
+int lanpr_dpix_texture_size(SceneLANPR *lanpr);
+void lanpr_rebuild_all_command(SceneLANPR *lanpr);
+
 static void lanpr_engine_init(void *ved)
 {
   lanpr_share.ved_viewport = ved;
@@ -155,6 +159,7 @@ static void lanpr_engine_init(void *ved)
 
   lanpr_share.init_complete = 1;
 }
+
 static void lanpr_engine_free(void)
 {
   void *ved = lanpr_share.ved_viewport;
@@ -181,11 +186,6 @@ static void lanpr_engine_free(void)
     lanpr_share.render_buffer_shared = NULL;
   }
 }
-
-void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
-int lanpr_dpix_texture_size(SceneLANPR *lanpr);
-
-void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr);
 
 static void lanpr_cache_init(void *vedata)
 {
@@ -437,11 +437,9 @@ static void lanpr_cache_init(void *vedata)
   }
 
   if (updated) {
-    ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
+    lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
   }
 }
-
-int ED_lanpr_object_collection_usage_check(Collection *c, Object *o);
 
 static void lanpr_cache_populate(void *vedata, Object *ob)
 {
@@ -786,6 +784,7 @@ static void lanpr_view_update(void *vedata)
   lanpr->reloaded = 1; /*  very bad solution, this will slow down animation. */
 }
 
+/* This reserve for depsgraph auto updates. */
 /*  static void lanpr_id_update(void *vedata, ID *id){ */
 /* 	const DRWContextState *draw_ctx = DRW_context_state_get(); */
 /*     SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr; */

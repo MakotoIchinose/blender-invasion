@@ -71,18 +71,7 @@ struct Object;
 
 /* External defines */
 
-int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
-void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
-
-int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
-void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
-
-void ED_lanpr_copy_data(struct Scene *from, struct Scene *to);
-void ED_lanpr_free_everything(struct Scene *s);
-void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr);
-
-bool ED_lanpr_dpix_shader_error();
-bool ED_lanpr_disable_edge_splits(struct Scene *s);
+void lanpr_rebuild_all_command(SceneLANPR *lanpr);
 
 /* Own functions */
 
@@ -286,7 +275,7 @@ static int lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
 
-  ED_lanpr_rebuild_all_command(lanpr);
+  lanpr_rebuild_all_command(lanpr);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
@@ -348,7 +337,7 @@ static int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperat
 
   lanpr_enable_all_line_types_exec(C, op);
 
-  ED_lanpr_rebuild_all_command(lanpr);
+  lanpr_rebuild_all_command(lanpr);
 
   return OPERATOR_FINISHED;
 }
@@ -4018,11 +4007,6 @@ static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBu
 
 /* Calculations */
 
-void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
-void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
-void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
-void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
-
 int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_only)
 {
   LANPR_RenderBuffer *rb;
@@ -4116,7 +4100,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C), intersections_only);
 
-  ED_lanpr_rebuild_all_command(lanpr);
+  lanpr_rebuild_all_command(lanpr);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
