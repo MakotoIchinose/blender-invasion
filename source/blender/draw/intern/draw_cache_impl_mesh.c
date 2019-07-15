@@ -359,6 +359,8 @@ typedef enum eMRDataType {
   MR_DATATYPE_LOOSE_VERT = 1 << 10,
   MR_DATATYPE_LOOSE_EDGE = 1 << 11,
   MR_DATATYPE_LOOP_NORMALS = 1 << 12,
+  /* New data types to replace all above */
+  MR_DATA_POLY_NOR = 1 << 13,
 } eMRDataType;
 
 #define MR_DATATYPE_VERT_LOOP_POLY (MR_DATATYPE_VERT | MR_DATATYPE_POLY | MR_DATATYPE_LOOP)
@@ -1260,7 +1262,8 @@ static MeshRenderData *mesh_render_data_create_ex(Mesh *me,
 
 static MeshRenderData *mesh_render_data_create_ex_new(Mesh *me,
                                                       const bool do_final,
-                                                      const int types,
+                                                      const eMRIterType types,
+                                                      const eMRDataType data_flag,
                                                       const DRW_MeshCDMask *UNUSED(cd_used),
                                                       const ToolSettings *ts)
 {
@@ -1329,6 +1332,18 @@ static MeshRenderData *mesh_render_data_create_ex_new(Mesh *me,
     mr->mloop = CustomData_get_layer(&mr->me->ldata, CD_MLOOP);
     mr->mpoly = CustomData_get_layer(&mr->me->pdata, CD_MPOLY);
 
+    if (data_flag & MR_DATA_POLY_NOR) {
+      mr->poly_normals = MEM_mallocN(sizeof(*mr->poly_normals) * mr->poly_len, __func__);
+      BKE_mesh_calc_normals_poly(mr->mvert,
+                                 NULL,
+                                 mr->vert_len,
+                                 mr->mloop,
+                                 mr->mpoly,
+                                 mr->loop_len,
+                                 mr->poly_len,
+                                 mr->poly_normals,
+                                 true);
+    }
     if (types & MR_ITER_LOOPTRI) {
       mr->mlooptri = MEM_mallocN(sizeof(*mr->mlooptri) * mr->tri_len, "MR_DATATYPE_LOOPTRI");
       BKE_mesh_recalc_looptri(mr->me->mloop,
@@ -1386,6 +1401,9 @@ static MeshRenderData *mesh_render_data_create_ex_new(Mesh *me,
     mr->poly_len = bm->totface;
     mr->tri_len = poly_to_tri_count(mr->poly_len, mr->loop_len);
 
+    if (data_flag & MR_DATA_POLY_NOR) {
+      /* Use bmface->no instead. */
+    }
     if (types & MR_ITER_LOOPTRI) {
       /* Edit mode ensures this is valid, no need to calculate. */
       BLI_assert((bm->totloop == 0) || (mr->edit_bmesh->looptris != NULL));
@@ -2221,8 +2239,10 @@ typedef struct MeshBufferCache {
     GPUVertBuf *stretch_area;
     GPUVertBuf *stretch_angle;
     GPUVertBuf *mesh_analysis;
-    GPUVertBuf *facedots_pos_nor_data;
+    GPUVertBuf *facedots_pos;
+    GPUVertBuf *facedots_nor;
     GPUVertBuf *facedots_uv;
+    GPUVertBuf *facedots_data; /* inside facedots_nor for now. */
     GPUVertBuf *facedots_data_edituv;
     /* Selection */
     GPUVertBuf *vert_idx; /* extend */
@@ -2473,7 +2493,7 @@ void DRW_mesh_batch_cache_dirty_tag(Mesh *me, int mode)
       FOREACH_MESH_BUFFER_CACHE(cache, mbufcache)
       {
         GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.data);
-        GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.facedots_pos_nor_data);
+        GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.facedots_nor);
       }
       GPU_BATCH_DISCARD_SAFE(cache->batch.edit_triangles);
       GPU_BATCH_DISCARD_SAFE(cache->batch.edit_vertices);
@@ -4693,7 +4713,7 @@ typedef struct MeshExtract {
   MeshExtractIterFn *iter, *iter_edit;
   MeshExtractFinishFn *finish;
   eMRIterType iter_flag;
-  int mesh_render_flag;
+  eMRDataType data_flag;
 } MeshExtract;
 
 /** \} */
@@ -4898,6 +4918,48 @@ MeshExtract extract_points = {mesh_vert_init,
 /** \} */
 
 /* ---------------------------------------------------------------------- */
+/** \name Extract Facedots Indices
+ * \{ */
+
+static void *mesh_facedot_init(const MeshRenderData *mr, void *UNUSED(buf))
+{
+  GPUIndexBufBuilder *elb = MEM_mallocN(sizeof(*elb), __func__);
+  GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr->vert_len, mr->loop_len + mr->loop_loose_len);
+  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
+  /* NOTE: This is not the best method as it leave holes in the index buffer.
+   * TODO: Better approach would be to remove the holes by moving all the indices block to
+   * have a continuous buffer. */
+  memset(elb->data, 0xFF, sizeof(uint) * mr->vert_len);
+  return elb;
+}
+static void mesh_facedot_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+{
+  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
+    GPU_indexbuf_set_point_vert(elb, iter->face_idx, iter->face_idx);
+  }
+}
+static void mesh_facedot_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+{
+  if (iter->efa && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN)) {
+    GPU_indexbuf_set_point_vert(elb, iter->face_idx, iter->face_idx);
+  }
+}
+static void mesh_facedot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
+{
+  GPU_indexbuf_build_in_place(elb, ibo);
+  MEM_freeN(elb);
+}
+
+MeshExtract extract_facedots = {mesh_facedot_init,
+                                mesh_facedot_iter,
+                                mesh_facedot_iter_edit,
+                                mesh_facedot_finish,
+                                MR_ITER_LOOP,
+                                0};
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
 /** \name Extract Position and Vertex Normal
  * \{ */
 
@@ -4956,47 +5018,217 @@ MeshExtract extract_pos_nor = {mesh_pos_nor_init,
 /** \} */
 
 /* ---------------------------------------------------------------------- */
+/** \name Extract Loop Normal
+ * \{ */
+
+static void *mesh_lnor_init(const MeshRenderData *mr, void *buf)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  }
+  GPUVertBuf *vbo = buf;
+  GPU_vertbuf_init_with_format(vbo, &format);
+  GPU_vertbuf_data_alloc(vbo, mr->loop_len);
+
+  float(*lnors)[3] = (float(*)[3])vbo->data;
+
+  const bool is_auto_smooth = (mr->me->flag & ME_AUTOSMOOTH) != 0;
+  const float split_angle = is_auto_smooth ? mr->me->smoothresh : (float)M_PI;
+
+  if (mr->iter == MR_EXTRACT_BMESH) {
+    int clnors_offset = CustomData_get_offset(&mr->bm->ldata, CD_CUSTOMLOOPNORMAL);
+    BM_loops_calc_normal_vcos(mr->bm,
+                              NULL,
+                              NULL,
+                              NULL,
+                              is_auto_smooth,
+                              split_angle,
+                              lnors,
+                              NULL,
+                              NULL,
+                              clnors_offset,
+                              false);
+  }
+  else {
+    short(*clnors)[2] = CustomData_get_layer(&mr->me->ldata, CD_CUSTOMLOOPNORMAL);
+    BKE_mesh_normals_loop_split(mr->mvert,
+                                mr->vert_len,
+                                mr->medge,
+                                mr->edge_len,
+                                mr->mloop,
+                                lnors,
+                                mr->loop_len,
+                                mr->mpoly,
+                                mr->poly_normals,
+                                mr->poly_len,
+                                is_auto_smooth,
+                                split_angle,
+                                NULL,
+                                clnors,
+                                NULL);
+  }
+
+#if 1
+  /* Compress normal data in place. We reinit the vbo with another format.
+   * HACK we steal the buffer ownership to avoid freeing memory. */
+  static GPUVertFormat format_compressed = {0};
+  if (format_compressed.attr_len == 0) {
+    GPU_vertformat_attr_add(
+        &format_compressed, "nor", GPU_COMP_I10, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
+  }
+  /* This is to pass the mapped buffer ownership */
+  uint32_t vbo_id = vbo->vbo_id;
+  uchar *data = vbo->data;
+  /* Avoid freeing memory. */
+  vbo->vbo_id = 0;
+  vbo->data = 0;
+  GPU_vertbuf_clear(vbo);
+  GPU_vertbuf_init_with_format(vbo, &format_compressed);
+  /* NOTE: We don't alloc and reuse previous memory block. */
+  vbo->vbo_id = vbo_id;
+  vbo->data = data;
+  vbo->dirty = true;
+  /* New data is 1/3 of the size. */
+  vbo->vertex_alloc = mr->loop_len * 3;
+  vbo->vertex_len = mr->loop_len;
+  /* Compress in place. */
+  GPUPackedNormal *lnors_packed = (GPUPackedNormal *)data;
+  for (int l = 0; l < mr->loop_len; l++) {
+    lnors_packed[l] = GPU_normal_convert_i10_v3(lnors[l]);
+  }
+#endif
+  return NULL;
+}
+
+MeshExtract extract_lnor = {mesh_lnor_init, NULL, NULL, NULL, 0, MR_DATA_POLY_NOR};
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
 /** \name Extract Position and Vertex Normal
  * \{ */
+
+typedef struct MeshExtract_EdgeFac_Data {
+  uchar *vbo_data;
+  bool use_edge_render;
+  /* Number of loop per edge. */
+  uint32_t edge_loop_count[0];
+} MeshExtract_EdgeFac_Data;
 
 static void *mesh_edge_fac_init(const MeshRenderData *mr, void *buf)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    if (!GPU_crappy_amd_driver()) {
-      /* Some AMD drivers strangely crash with a vbo with this format. */
-      GPU_vertformat_attr_add(&format, "wd", GPU_COMP_U8, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
-    }
-    else {
-      /* TODO */
-      // GPU_vertformat_attr_add(&format, "wd", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-      // data.f = 1.0f;
-      BLI_assert(0);
-    }
+    GPU_vertformat_attr_add(&format, "wd", GPU_COMP_U8, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
   }
   GPUVertBuf *vbo = buf;
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr->loop_len + mr->loop_loose_len);
-  memset(vbo->data, 0xFF, sizeof(char) * (mr->loop_len + mr->loop_loose_len));
-  return vbo->data;
+
+  MeshExtract_EdgeFac_Data *data;
+
+  if (mr->iter == MR_EXTRACT_MESH) {
+    size_t edge_loop_count_size = sizeof(uint32_t) * mr->edge_len;
+    data = MEM_callocN(sizeof(*data) + edge_loop_count_size, __func__);
+
+    /* HACK(fclem) Detecting the need for edge render.
+     * We could have a flag in the mesh instead or check the modifier stack. */
+    const MEdge *medge = mr->medge;
+    for (int e = 0; e < mr->edge_len; e++, medge++) {
+      if ((medge->flag & ME_EDGERENDER) == 0) {
+        data->use_edge_render = true;
+        break;
+      }
+    }
+  }
+  else {
+    data = MEM_callocN(sizeof(*data), __func__);
+    /* HACK to bypass non-manifold check in mesh_edge_fac_finish(). */
+    data->use_edge_render = true;
+  }
+
+  data->vbo_data = vbo->data;
+  return data;
 }
-static void mesh_edge_fac_iter(const MeshExtractIterData *UNUSED(iter),
-                               void *UNUSED(buf),
-                               void *UNUSED(data))
+static void mesh_edge_fac_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
+  MeshExtract_EdgeFac_Data *efac_data = (MeshExtract_EdgeFac_Data *)data;
+  if (efac_data->use_edge_render) {
+    efac_data->vbo_data[iter->loop_idx] = (iter->medge->flag & ME_EDGERENDER) ? 255 : 0;
+  }
+  else if (iter->mpoly) {
+    const MVert *mvert = iter->mr->mvert;
+    const MLoop *mloop = iter->mr->mloop;
+    const float *fnor = iter->mr->poly_normals[iter->face_idx];
+    const MVert *v1 = &mvert[mloop[iter->v1].v], *v2 = &mvert[mloop[iter->v2].v];
+    float vnor_f[3];
+    normal_short_to_float_v3(vnor_f, iter->mvert->no);
+    float ratio = mesh_loop_edge_factor_get(fnor, v1->co, vnor_f, v2->co);
+    efac_data->vbo_data[iter->loop_idx] = ratio * 253 + 1;
+    /* Count loop per edge to detect non-manifold. */
+    atomic_fetch_and_add_uint32(&efac_data->edge_loop_count[iter->edge_idx], 1u);
+  }
 }
-static void mesh_edge_fac_iter_edit(const MeshExtractIterData *UNUSED(iter),
-                                    void *UNUSED(buf),
-                                    void *UNUSED(data))
+static void mesh_edge_fac_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
+  MeshExtract_EdgeFac_Data *efac_data = (MeshExtract_EdgeFac_Data *)data;
+  if (iter->efa != NULL) {
+    float ratio = mesh_loop_edge_factor_get(
+        iter->efa->no, iter->eloop->v->co, iter->eloop->v->no, iter->eloop->next->v->co);
+    efac_data->vbo_data[iter->loop_idx] = ratio * 253 + 1;
+  }
+  else {
+    efac_data->vbo_data[iter->loop_idx] = 255;
+  }
+}
+static void mesh_edge_fac_finish(const MeshRenderData *mr, void *buf, void *data)
+{
+  MeshExtract_EdgeFac_Data *efac_data = (MeshExtract_EdgeFac_Data *)data;
+
+  if (!efac_data->use_edge_render) {
+    /* Set non-manifold edges to ratio 1. */
+    const MLoop *mloop = mr->mloop;
+    for (int l = 0; l < mr->loop_len; l++, mloop++) {
+      if (efac_data->edge_loop_count[mloop->e] != 2) {
+        efac_data->vbo_data[l] = 255;
+      }
+    }
+  }
+
+  if (GPU_crappy_amd_driver()) {
+    GPUVertBuf *vbo = (GPUVertBuf *)buf;
+    /* Some AMD drivers strangely crash with VBOs with a one byte format.
+     * To workaround we reinit the vbo with another format and convert
+     * all bytes to floats. */
+    static GPUVertFormat format = {0};
+    if (format.attr_len == 0) {
+      GPU_vertformat_attr_add(&format, "wd", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    }
+    /* We keep the data reference in efac_data->vbo_data. */
+    vbo->data = NULL;
+    GPU_vertbuf_clear(vbo);
+
+    int buf_len = mr->loop_len + mr->loop_loose_len;
+    GPU_vertbuf_init_with_format(vbo, &format);
+    GPU_vertbuf_data_alloc(vbo, buf_len);
+
+    float *fdata = (float *)vbo->data;
+    for (int l = 0; l < buf_len; l++, fdata++) {
+      *fdata = efac_data->vbo_data[l] / 255.0f;
+    }
+    /* Free old byte data. */
+    MEM_freeN(efac_data->vbo_data);
+  }
+  MEM_freeN(efac_data);
 }
 
 MeshExtract extract_edge_fac = {mesh_edge_fac_init,
                                 mesh_edge_fac_iter,
                                 mesh_edge_fac_iter_edit,
-                                NULL,
-                                MR_ITER_LOOP | MR_ITER_LEDGE | MR_ITER_LVERT,
-                                0};
+                                mesh_edge_fac_finish,
+                                MR_ITER_LOOP | MR_ITER_LEDGE,
+                                MR_DATA_POLY_NOR};
 
 /** \} */
 
@@ -5057,6 +5289,92 @@ MeshExtract extract_edit_data = {mesh_edit_data_init,
                                  MR_ITER_LOOP | MR_ITER_LEDGE | MR_ITER_LVERT,
                                  0};
 
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Extract Facedots positions
+ * \{ */
+
+static void *mesh_fdots_pos_init(const MeshRenderData *mr, void *buf)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  }
+  GPUVertBuf *vbo = buf;
+  GPU_vertbuf_init_with_format(vbo, &format);
+  GPU_vertbuf_data_alloc(vbo, mr->poly_len);
+  /* Clear so we can accumulate on it. */
+  memset(vbo->data, 0x0, mr->poly_len * vbo->format.stride);
+  return vbo->data;
+}
+static void mesh_fdots_pos_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
+{
+  float(*center)[3] = (float(*)[3])data;
+  float w = 1.0f / (float)iter->mpoly->totloop;
+  /* This is thread safe since we are spliting workload in faces (for loop iter) so one face is
+   * only touched by one thread. */
+  madd_v3_v3fl(center[iter->face_idx], iter->mvert->co, w);
+}
+static void mesh_fdots_pos_iter_edit(const MeshExtractIterData *iter,
+                                     void *UNUSED(buf),
+                                     void *data)
+{
+  if (iter->mpoly) {
+    mesh_fdots_pos_iter(iter, NULL, data);
+  }
+  else {
+    float(*center)[3] = (float(*)[3])data;
+    float w = 1.0f / (float)iter->efa->len;
+    /* This is thread safe since we are spliting workload in faces (for loop iter) so one face is
+     * only touched by one thread. */
+    madd_v3_v3fl(center[iter->face_idx], iter->eve->co, w);
+  }
+}
+
+MeshExtract extract_facedots_pos_vbo = {
+    mesh_fdots_pos_init, mesh_fdots_pos_iter, mesh_fdots_pos_iter_edit, NULL, MR_ITER_LOOP, 0};
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Extract Facedots Normal and edit flag
+ * \{ */
+
+static void *mesh_fdots_nor_init(const MeshRenderData *mr, void *buf)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "norAndFlag", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+  }
+  GPUVertBuf *vbo = buf;
+  GPU_vertbuf_init_with_format(vbo, &format);
+  GPU_vertbuf_data_alloc(vbo, mr->poly_len);
+  return vbo->data;
+}
+static void mesh_fdots_nor_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
+{
+  GPUPackedNormal *nor = (GPUPackedNormal *)data;
+  nor[iter->face_idx] = GPU_normal_convert_i10_v3(iter->mr->poly_normals[iter->face_idx]);
+}
+static void mesh_fdots_nor_iter_edit(const MeshExtractIterData *iter,
+                                     void *UNUSED(buf),
+                                     void *data)
+{
+  GPUPackedNormal *nor = (GPUPackedNormal *)data;
+  nor[iter->face_idx] = GPU_normal_convert_i10_v3(iter->efa->no);
+  /* Select / Active Flag. */
+  nor[iter->face_idx].w = BM_elem_flag_test(iter->efa, BM_ELEM_SELECT) ?
+                              ((iter->efa == iter->mr->efa_act) ? -1 : 1) :
+                              0;
+}
+
+MeshExtract extract_facedots_nor_vbo = {mesh_fdots_nor_init,
+                                        mesh_fdots_nor_iter,
+                                        mesh_fdots_nor_iter_edit,
+                                        NULL,
+                                        MR_ITER_LOOP,
+                                        MR_DATA_POLY_NOR};
 /** \} */
 
 /* ---------------------------------------------------------------------- */
@@ -5477,8 +5795,8 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
     MeshExtract *fn[0];
   } extract = {{{
                     .pos_nor = (void *)&extract_pos_nor,
-                    .lnor = (void *)&extract_dummy_vbo,    /* Can be copied */
-                    .edge_fac = (void *)&extract_edge_fac, /* TODO FINISH */
+                    .lnor = (void *)&extract_lnor, /* Can be copied */
+                    .edge_fac = (void *)&extract_edge_fac,
                     .weights = (void *)&extract_dummy_vbo,
                     .uv_tan = (void *)&extract_dummy_vbo, /* Can be copied */
                     .vcol = (void *)&extract_dummy_vbo,   /* Can be copied */
@@ -5489,8 +5807,10 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
                     .stretch_area = (void *)&extract_dummy_vbo,
                     .stretch_angle = (void *)&extract_dummy_vbo,
                     .mesh_analysis = (void *)&extract_dummy_vbo,
-                    .facedots_pos_nor_data = (void *)&extract_dummy_vbo,
+                    .facedots_pos = (void *)&extract_facedots_pos_vbo,
+                    .facedots_nor = (void *)&extract_facedots_nor_vbo,
                     .facedots_uv = (void *)&extract_dummy_vbo,
+                    .facedots_data = (void *)&extract_dummy_vbo, /* Not used for now. */
                     .facedots_data_edituv = (void *)&extract_dummy_vbo,
 
                     .vert_idx = (void *)&extract_vert_idx,
@@ -5502,7 +5822,7 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
                     .tris = (void *)&extract_tris,
                     .lines = (void *)&extract_lines,
                     .points = (void *)&extract_points,
-                    .facedots = (void *)&extract_dummy_ibo,
+                    .facedots = (void *)&extract_facedots,
 
                     .lines_paint_mask = (void *)&extract_dummy_ibo,
                     .lines_adjacency = (void *)&extract_dummy_ibo,
@@ -5514,6 +5834,7 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
                 }}};
 
   eMRIterType iter_flag = 0;
+  eMRDataType data_flag = 0;
   int cb_total_len = 0;
 
   int j = 0;
@@ -5521,6 +5842,7 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
     GPUVertBuf **vbo = (GPUVertBuf **)&mbc.vbo;
     if (DRW_TEST_ASSIGN_VBO(vbo[i])) {
       iter_flag |= extract.fn[j]->iter_flag;
+      data_flag |= extract.fn[j]->data_flag;
       cb_total_len++;
     }
   }
@@ -5528,13 +5850,15 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
     GPUIndexBuf **ibo = (GPUIndexBuf **)&mbc.ibo;
     if (DRW_TEST_ASSIGN_IBO(ibo[i])) {
       iter_flag |= extract.fn[j]->iter_flag;
+      data_flag |= extract.fn[j]->data_flag;
       cb_total_len++;
     }
   }
 
   MeshExtractFnRef *extract_refs = BLI_array_alloca(extract_refs, cb_total_len);
 
-  MeshRenderData *mr = mesh_render_data_create_ex_new(me, do_final, iter_flag, cd_layer_used, ts);
+  MeshRenderData *mr = mesh_render_data_create_ex_new(
+      me, do_final, iter_flag, data_flag, cd_layer_used, ts);
   mr->cache = cache; /* HACK */
   mr->use_hide = use_hide;
 
@@ -6479,7 +6803,9 @@ void DRW_mesh_batch_cache_create_requested(
   }
   if (DRW_batch_requested(cache->batch.edit_facedots, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache->batch.edit_facedots, &mbufcache->ibo.facedots);
-    DRW_vbo_request(cache->batch.edit_facedots, &mbufcache->vbo.facedots_pos_nor_data);
+    DRW_vbo_request(cache->batch.edit_facedots, &mbufcache->vbo.facedots_pos);
+    DRW_vbo_request(cache->batch.edit_facedots, &mbufcache->vbo.facedots_nor);
+    DRW_vbo_request(cache->batch.edit_facedots, &mbufcache->vbo.facedots_data);
   }
   if (DRW_batch_requested(cache->batch.edit_mesh_analysis, GPU_PRIM_TRIS)) {
     DRW_ibo_request(cache->batch.edit_mesh_analysis, &mbufcache->ibo.tris);
@@ -6504,7 +6830,7 @@ void DRW_mesh_batch_cache_create_requested(
     DRW_vbo_request(cache->batch.edit_selection_faces, &mbufcache->vbo.face_idx);
   }
   if (DRW_batch_requested(cache->batch.edit_selection_facedots, GPU_PRIM_POINTS)) {
-    DRW_vbo_request(cache->batch.edit_selection_facedots, &mbufcache->vbo.facedots_pos_nor_data);
+    DRW_vbo_request(cache->batch.edit_selection_facedots, &mbufcache->vbo.facedots_pos);
     DRW_vbo_request(cache->batch.edit_selection_facedots, &mbufcache->vbo.facedots_idx);
   }
 
