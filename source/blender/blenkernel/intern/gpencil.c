@@ -1421,7 +1421,9 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
 
   /* Remove the group */
   BLI_freelinkN(&ob->defbase, defgroup);
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  if (gpd) {
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
 }
 
 void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
@@ -2526,6 +2528,12 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   pt2 = &gps->points[0];
   float dist_close = len_v3v3(&pt1->x, &pt2->x);
 
+  /* if the distance to close is very small, don't need add points and just enable cyclic. */
+  if (dist_close <= dist_avg) {
+    gps->flag |= GP_STROKE_CYCLIC;
+    return true;
+  }
+
   /* Calc number of points required using the average distance. */
   int tot_newpoints = MAX2(dist_close / dist_avg, 1);
 
@@ -2542,9 +2550,11 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   pt2 = &gps->points[0];
   bGPDspoint *pt = &gps->points[old_tot];
   for (int i = 1; i < tot_newpoints + 1; i++, pt++) {
-    float step = ((float)i / (float)tot_newpoints);
+    float step = (tot_newpoints > 1) ? ((float)i / (float)tot_newpoints) : 0.99f;
     /* Clamp last point to be near, but not on top of first point. */
-    CLAMP(step, 0.0f, 0.99f);
+    if ((tot_newpoints > 1) && (i == tot_newpoints)) {
+      step *= 0.99f;
+    }
 
     /* Average point. */
     interp_v3_v3v3(&pt->x, &pt1->x, &pt2->x, step);
@@ -2639,18 +2649,34 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
 }
 
 /* Helper function to create new stroke section */
-static void gpencil_add_new_points(
-    bGPDstroke *gps, float *coord_array, float pressure, int init, int totpoints)
+static void gpencil_add_new_points(bGPDstroke *gps,
+                                   float *coord_array,
+                                   float pressure,
+                                   int init,
+                                   int totpoints,
+                                   float init_co[3],
+                                   bool last)
 {
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt = &gps->points[i + init];
     copy_v3_v3(&pt->x, &coord_array[3 * i]);
+    /* Be sure the last point is not on top of the first point of the curve or
+     * the close of the stroke will produce glitches. */
+    if ((last) && (i > 0) && (i == totpoints - 1)) {
+      float dist = len_v3v3(init_co, &pt->x);
+      if (dist < 0.1f) {
+        /* Interpolate between previous point and current to back slightly. */
+        bGPDspoint *pt_prev = &gps->points[i + init - 1];
+        interp_v3_v3v3(&pt->x, &pt_prev->x, &pt->x, 0.95f);
+      }
+    }
+
     pt->pressure = pressure;
     pt->strength = 1.0f;
   }
 }
 
-/* Helper function to get the first collection that includes the object */
+/* Helper function to get the first collection that includes the object. */
 static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
 {
   Collection *mycol = NULL;
@@ -2666,52 +2692,19 @@ static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
   return mycol;
 }
 
-/* Convert a curve object to grease pencil stroke.
- *
- * \param bmain: Main thread pointer
- * \param scene: Original scene.
- * \param ob_gp: Grease pencil object to add strokes.
- * \param ob_cu: Curve to convert.
- * \param gpencil_lines: Use lines for strokes.
- * \param use_collections: Create layers using collection names.
- */
-void BKE_gpencil_convert_curve(Main *bmain,
-                               Scene *scene,
-                               Object *ob_gp,
-                               Object *ob_cu,
-                               const bool gpencil_lines,
-                               const bool use_collections)
+/* Helper function to convert one spline to grease pencil stroke. */
+static void gpencil_convert_spline(Main *bmain,
+                                   Scene *scene,
+                                   Object *ob_gp,
+                                   Object *ob_cu,
+                                   const bool gpencil_lines,
+                                   const bool use_collections,
+                                   bGPDframe *gpf,
+                                   Nurb *nu)
 {
-  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
-    return;
-  }
-
-  bGPdata *gpd = (bGPdata *)ob_gp->data;
   Curve *cu = (Curve *)ob_cu->data;
-  Nurb *nu = NULL;
   bool cyclic = true;
-  bGPDlayer *gpl = NULL;
 
-  /* Check if there is an active layer. */
-  if (use_collections) {
-    Collection *collection = gpencil_get_parent_collection(scene, ob_cu);
-    if (collection != NULL) {
-      gpl = BLI_findstring(&gpd->layers, collection->id.name + 2, offsetof(bGPDlayer, info));
-      if (gpl == NULL) {
-        gpl = BKE_gpencil_layer_addnew(gpd, collection->id.name + 2, true);
-      }
-    }
-  }
-
-  if (gpl == NULL) {
-    gpl = BKE_gpencil_layer_getactive(gpd);
-    if (gpl == NULL) {
-      gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
-    }
-  }
-
-  /* Check if there is an active frame. */
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_COPY);
   /* Create Stroke. */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
   gps->thickness = 1.0f;
@@ -2732,20 +2725,16 @@ void BKE_gpencil_convert_curve(Main *bmain,
    */
   int totpoints = 0;
   int segments = 0;
-  for (nu = cu->nurb.first; nu; nu = nu->next) {
-    int resolu = nu->resolu + 1;
-    if (nu->type == CU_BEZIER) {
-      segments = nu->pntsu;
-      if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
-        segments--;
-        cyclic = false;
-      }
-      totpoints += resolu * segments;
-    }
+  int resolu = nu->resolu + 1;
+  segments = nu->pntsu;
+  if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
+    segments--;
+    cyclic = false;
   }
-  totpoints -= segments - 1;
-  gps->totpoints = totpoints;
+  totpoints = (resolu * segments) - (segments - 1);
+
   /* Allocate memory for storage points, but keep empty. */
+  gps->totpoints = totpoints;
   gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
   /* Initialize triangle memory to dummy data. */
   gps->tot_triangles = 0;
@@ -2795,11 +2784,11 @@ void BKE_gpencil_convert_curve(Main *bmain,
       /* Also use the first color if the fill is none for stroke color. */
       ma_stroke = give_current_material(ob_cu, 1);
       linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
-      /* set fill to off */
+      /* set fill to off. */
       mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
     }
   }
-
+  /* Assign material index to stroke. */
   gps->mat_nr = r_idx;
 
   /* Add stroke to frame.*/
@@ -2807,46 +2796,107 @@ void BKE_gpencil_convert_curve(Main *bmain,
 
   /* Read all segments of the curve. */
   int init = 0;
-  for (nu = cu->nurb.first; nu; nu = nu->next) {
-    int resolu = nu->resolu + 1;
-    if (nu->type == CU_BEZIER) {
-      segments = nu->pntsu;
-      if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
-        segments--;
-      }
-      /* Get all interpolated curve points of Beziert */
-      for (int s = 0; s < segments; s++) {
-        int inext = (s + 1) % nu->pntsu;
-        BezTriple *prevbezt = &nu->bezt[s];
-        BezTriple *bezt = &nu->bezt[inext];
+  resolu = nu->resolu + 1;
+  segments = nu->pntsu;
+  if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
+    segments--;
+  }
+  /* Get all interpolated curve points of Beziert */
+  float init_co[3];
+  for (int s = 0; s < segments; s++) {
+    int inext = (s + 1) % nu->pntsu;
+    BezTriple *prevbezt = &nu->bezt[s];
+    BezTriple *bezt = &nu->bezt[inext];
+    bool last = (bool)(s == segments - 1);
 
-        float *coord_array = MEM_callocN(3 * resolu * sizeof(float), __func__);
+    float *coord_array = MEM_callocN((size_t)3 * resolu * sizeof(float), __func__);
 
-        for (int j = 0; j < 3; j++) {
-          BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
-                                        prevbezt->vec[2][j],
-                                        bezt->vec[0][j],
-                                        bezt->vec[1][j],
-                                        coord_array + j,
-                                        resolu - 1,
-                                        3 * sizeof(float));
-        }
-        /* Add points to the stroke */
-        gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu);
-        /* Free memory. */
-        MEM_SAFE_FREE(coord_array);
-
-        /* As the last point of segment is the first point of next segment, back one array
-         * element to avoid duplicated points on the same location.
-         */
-        init += resolu - 1;
-      }
+    for (int j = 0; j < 3; j++) {
+      BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
+                                    prevbezt->vec[2][j],
+                                    bezt->vec[0][j],
+                                    bezt->vec[1][j],
+                                    coord_array + j,
+                                    resolu - 1,
+                                    3 * sizeof(float));
     }
+    /* Save first point coordinates. */
+    if (s == 0) {
+      copy_v3_v3(init_co, &coord_array[0]);
+    }
+    /* Add points to the stroke */
+    gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu, init_co, last);
+    /* Free memory. */
+    MEM_SAFE_FREE(coord_array);
+
+    /* As the last point of segment is the first point of next segment, back one array
+     * element to avoid duplicated points on the same location.
+     */
+    init += resolu - 1;
   }
   /* Cyclic curve, close stroke. */
   if ((cyclic) && (!only_stroke)) {
     BKE_gpencil_close_stroke(gps);
   }
+}
 
+/* Convert a curve object to grease pencil stroke.
+ *
+ * \param bmain: Main thread pointer
+ * \param scene: Original scene.
+ * \param ob_gp: Grease pencil object to add strokes.
+ * \param ob_cu: Curve to convert.
+ * \param gpencil_lines: Use lines for strokes.
+ * \param use_collections: Create layers using collection names.
+ */
+void BKE_gpencil_convert_curve(Main *bmain,
+                               Scene *scene,
+                               Object *ob_gp,
+                               Object *ob_cu,
+                               const bool gpencil_lines,
+                               const bool use_collections)
+{
+  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
+    return;
+  }
+
+  Curve *cu = (Curve *)ob_cu->data;
+  bGPdata *gpd = (bGPdata *)ob_gp->data;
+  bGPDlayer *gpl = NULL;
+
+  /* If the curve is empty, cancel. */
+  if (cu->nurb.first == NULL) {
+    return;
+  }
+
+  /* Check if there is an active layer. */
+  if (use_collections) {
+    Collection *collection = gpencil_get_parent_collection(scene, ob_cu);
+    if (collection != NULL) {
+      gpl = BLI_findstring(&gpd->layers, collection->id.name + 2, offsetof(bGPDlayer, info));
+      if (gpl == NULL) {
+        gpl = BKE_gpencil_layer_addnew(gpd, collection->id.name + 2, true);
+      }
+    }
+  }
+
+  if (gpl == NULL) {
+    gpl = BKE_gpencil_layer_getactive(gpd);
+    if (gpl == NULL) {
+      gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
+    }
+  }
+
+  /* Check if there is an active frame and add if needed. */
+  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_COPY);
+
+  /* Read all splines of the curve and create a stroke for each. */
+  for (Nurb *nu = cu->nurb.first; nu; nu = nu->next) {
+    if (nu->type == CU_BEZIER) {
+      gpencil_convert_spline(bmain, scene, ob_gp, ob_cu, gpencil_lines, use_collections, gpf, nu);
+    }
+  }
+
+  /* Tag for recalculation */
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
