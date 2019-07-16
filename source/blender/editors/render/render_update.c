@@ -59,6 +59,8 @@
 #include "ED_render.h"
 #include "ED_view3d.h"
 
+#include "ED_lanpr.h"
+
 #include "DEG_depsgraph.h"
 
 #include "WM_api.h"
@@ -94,6 +96,9 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, int update
   if (BLI_listbase_is_empty(&bmain->wm)) {
     return;
   }
+
+  /* Temporary solution for updating LANPR GPencil targets. */
+  ED_lanpr_post_frame_update_external(scene,update_ctx->depsgraph);
 
   recursive_check = true;
 
