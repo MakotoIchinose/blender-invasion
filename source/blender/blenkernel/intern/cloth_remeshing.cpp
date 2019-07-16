@@ -814,6 +814,26 @@ static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
   }
 }
 
+/* calling function must ensure cloth->verts has enough allocated
+ * space */
+static void cloth_remeshing_add_vertex_to_cloth(Cloth *cloth, BMVert *v1, BMVert *v2)
+{
+  BLI_assert(cloth->verts != NULL);
+  ClothVertex *cv1, *cv2;
+  cv1 = cloth_remeshing_find_cloth_vertex(v1, cloth->verts, cloth->mvert_num);
+  cv2 = cloth_remeshing_find_cloth_vertex(v2, cloth->verts, cloth->mvert_num);
+#if 0
+    printf("v1: %f %f %f\n", v1->co[0], v1->co[1], v1->co[2]);
+    cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
+    printf("v2: %f %f %f\n", v2->co[0], v2->co[1], v2->co[2]);
+    cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
+#endif
+  BLI_assert(cv1 != NULL);
+  BLI_assert(cv2 != NULL);
+  cloth->mvert_num += 1;
+  cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(cv1, cv2);
+}
+
 static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
 {
   BMEdge *e;
@@ -828,60 +848,65 @@ static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
   return NULL;
 }
 
-static void cloth_remeshing_fix_sewing_verts(BMesh *bm, BMVert *new_vert, BMEdge *edge)
+/*
+ * v5    v4
+ * *-----*
+ * |     |
+ * *--*--*
+ * v1 v2 v3
+ *
+ * v2 same as new_vert
+ **/
+
+static BMEdge *cloth_remeshing_fix_sewing_verts(
+    Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, vector<ClothSizing> &sizing)
 {
-  BMEdge *next_loose_edge = NULL;
-  BMVert *vert;
-  edge->v1 == new_vert ? vert = edge->v2 : vert = edge->v1;
-  next_loose_edge = cloth_remeshing_find_next_loose_edge(vert);
-  BLI_assert(next_loose_edge != NULL);
+  BMEdge *v3v4 = cloth_remeshing_find_next_loose_edge(v3);
+  BMVert *v4, *v5;
+  v3v4->v1 == v3 ? v4 = v3v4->v2 : v4 = v3v4->v1;
 
-  /* TODO(Ish): this works only if the loose edges are not subdivided,
-   * need to figure out how to add this to a loop so that the last vertex
-   * of the loose edge is found */
-  BMVert *other_loose_vert;
-  next_loose_edge->v1 == vert ? other_loose_vert = next_loose_edge->v2 :
-                                other_loose_vert = next_loose_edge->v1;
+  BMEdge *v4v5;
+  BMEdge *v5v1;
+  BMIter v4v5_iter;
+  BM_ITER_ELEM (v4v5, &v4v5_iter, v4, BM_EDGES_OF_VERT) {
+    v4v5->v1 == v4 ? v5 = v4v5->v2 : v5 = v4v5->v1;
 
-  /* Now need to find an edge that can form a loop with 2 edges being
-   * loose edges
-   *
-   *   d   c
-   *   *---*
-   *       |
-   *     *-*
-   *     a b
-   *
-   * abcd forms the loop with loose edges
-   * a-> new_vert
-   * b-> vert
-   * c-> other_loose_vert
-   * d-> ?
-   **/
-
-  BMEdge *other_loose_edge;
-  BMVert *other_vert_e;
-  BMEdge *e;
-  BMIter eiter;
-  bool found = false;
-  BM_ITER_ELEM (e, &eiter, other_loose_vert, BM_EDGES_OF_VERT) {
-    if (e == next_loose_edge) {
-      continue;
-    }
-
-    e->v1 == other_loose_vert ? other_vert_e = e->v2 : other_vert_e = e->v1;
-
-    other_loose_edge = cloth_remeshing_find_next_loose_edge(other_vert_e);
-    if (!other_loose_edge) {
-      continue;
+    v5v1 = cloth_remeshing_find_next_loose_edge(v5);
+    if (v5v1 != NULL) {
+      printf("found v4v5\n");
+      printf("v1: %f %f %f\n", v1->co[0], v1->co[1], v1->co[2]);
+      printf("v5v1->v1: %f %f %f\n", v5v1->v1->co[0], v5v1->v1->co[1], v5v1->v1->co[2]);
+      printf("v5v1->v2: %f %f %f\n", v5v1->v2->co[0], v5v1->v2->co[1], v5v1->v2->co[2]);
+      if (v5v1->v1 == v1 || v5v1->v2 == v1) {
+        break;
+      }
     }
   }
 
-  BLI_assert(found == true);
-  BMVert *a = new_vert;
-  BMVert *b = vert;
-  BMVert *c = other_loose_vert;
-  BMVert *d = other_vert_e;
+  float v4v5_size = cloth_remeshing_edge_size(bm, v4v5, sizing);
+  BMVert *v6 = NULL;
+  if (v4v5_size > 1.0f) {
+    BMEdge v4v5_old = *v4v5;
+    v6 = cloth_remeshing_split_edge_keep_triangles(bm, v4v5, v4, 0.5);
+    cloth->verts = (ClothVertex *)MEM_reallocN(cloth->verts,
+                                               (cloth->mvert_num + 1) * sizeof(ClothVertex));
+    cloth_remeshing_add_vertex_to_cloth(cloth, v4v5_old.v1, v4v5_old.v2);
+    return BM_edge_create(bm, new_vert, v6, v3v4, BM_CREATE_NO_DOUBLE);
+  }
+  else {
+    float v2v5[3];
+    copy_v3_v3(v2v5, new_vert->co);
+    sub_v3_v3(v2v5, v5->co);
+    float v2v4[3];
+    copy_v3_v3(v2v4, new_vert->co);
+    sub_v3_v3(v2v4, v4->co);
+    if (len_v3(v2v5) < len_v3(v2v4)) {
+      return BM_edge_create(bm, new_vert, v5, v3v4, BM_CREATE_NO_DOUBLE);
+    }
+    else {
+      return BM_edge_create(bm, new_vert, v4, v3v4, BM_CREATE_NO_DOUBLE);
+    }
+  }
 }
 
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSizing> &sizing)
@@ -903,25 +928,13 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, vector<ClothSiz
     e = bad_edges[i];
     BMEdge old_edge = *e;
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
-    BM_elem_flag_enable(new_vert, BM_ELEM_SELECT);
-    BLI_assert(cloth->verts != NULL);
-    ClothVertex *v1, *v2;
-    v1 = cloth_remeshing_find_cloth_vertex(old_edge.v1, cloth->verts, cloth->mvert_num);
-    v2 = cloth_remeshing_find_cloth_vertex(old_edge.v2, cloth->verts, cloth->mvert_num);
-#if 0
-    printf("v1: %f %f %f\n", old_edge.v1->co[0], old_edge.v1->co[1], old_edge.v1->co[2]);
-    cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
-    printf("v2: %f %f %f\n", old_edge.v2->co[0], old_edge.v2->co[1], old_edge.v2->co[2]);
-    cloth_remeshing_print_all_verts(cloth->verts, cloth->mvert_num);
-#endif
-    BLI_assert(v1 != NULL);
-    BLI_assert(v2 != NULL);
-    cloth->mvert_num += 1;
-    cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(v1, v2);
+
+    cloth_remeshing_add_vertex_to_cloth(cloth, old_edge.v1, old_edge.v2);
+
     if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
       if (cloth_remeshing_find_next_loose_edge(old_edge.v1) != NULL &&
           cloth_remeshing_find_next_loose_edge(old_edge.v2) != NULL) {
-        cloth_remeshing_fix_sewing_verts(bm, new_vert, &old_edge);
+        cloth_remeshing_fix_sewing_verts(cloth, bm, old_edge.v1, new_vert, old_edge.v2, sizing);
       }
     }
   }
@@ -1298,8 +1311,6 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
     BMEdge *e;
     BMIter eiter;
     BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
-      BMVert *v1 = e->v1, *v2 = e->v2;
-
       BMVert *temp_vert;
       temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, sizing);
       if (!temp_vert) {
