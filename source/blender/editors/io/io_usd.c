@@ -102,7 +102,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
   const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
-  const bool evaluation_mode = RNA_boolean_get(op->ptr, "evaluation_mode");
+  const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
   struct USDExportParams params = {
       export_animation,
