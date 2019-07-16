@@ -200,6 +200,7 @@ set(SRC
   shader/nodes/node_shader_tex_white_noise.c
   shader/nodes/node_shader_uvAlongStroke.c
   shader/nodes/node_shader_uvmap.c
+  shader/nodes/node_shader_vertex_color.c
   shader/nodes/node_shader_valToRgb.c
   shader/nodes/node_shader_value.c
   shader/nodes/node_shader_mapRange.c

@@ -2422,6 +2422,11 @@ void node_uvmap(vec3 attr_uv, out vec3 outvec)
   outvec = attr_uv;
 }
 
+void node_vertex_color(vec3 vertexColor, out vec4 outColor)
+{
+  outColor = vec4(vertexColor, 1.0);
+}
+
 void tangent_orco_x(vec3 orco_in, out vec3 orco_out)
 {
   orco_out = orco_in.xzy * vec3(0.0, -0.5, 0.5) + vec3(0.0, 0.25, -0.25);

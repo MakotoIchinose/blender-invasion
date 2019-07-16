@@ -95,6 +95,7 @@ DefNode(ShaderNode,     SH_NODE_LIGHT_PATH,         0,                      "LIG
 DefNode(ShaderNode,     SH_NODE_LIGHT_FALLOFF,      0,                      "LIGHT_FALLOFF",      LightFalloff,     "Light Falloff",     ""       )
 DefNode(ShaderNode,     SH_NODE_OBJECT_INFO,        0,                      "OBJECT_INFO",        ObjectInfo,       "Object Info",       ""       )
 DefNode(ShaderNode,     SH_NODE_VOLUME_INFO,        0,                      "VOLUME_INFO",        VolumeInfo,       "Volume Info",       ""       )
+DefNode(ShaderNode,     SH_NODE_VERTEX_COLOR,       def_sh_vertex_color,    "VERTEX_COLOR",       VertexColor,      "Vertex Color",      ""       )
 DefNode(ShaderNode,     SH_NODE_PARTICLE_INFO,      0,                      "PARTICLE_INFO",      ParticleInfo,     "Particle Info",     ""       )
 DefNode(ShaderNode,     SH_NODE_HAIR_INFO,          0,                      "HAIR_INFO",          HairInfo,         "Hair Info",         ""       )
 DefNode(ShaderNode,     SH_NODE_WIREFRAME,          def_sh_tex_wireframe,   "WIREFRAME",          Wireframe,        "Wireframe",         ""       )

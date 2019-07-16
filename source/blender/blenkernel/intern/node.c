@@ -3895,6 +3895,7 @@ static void registerShaderNodes(void)
   register_node_type_sh_particle_info();
   register_node_type_sh_bump();
   register_node_type_sh_volume_info();
+  register_node_type_sh_vertex_color();
 
   register_node_type_sh_background();
   register_node_type_sh_bsdf_anisotropic();

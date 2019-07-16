@@ -4316,6 +4316,50 @@ void VolumeInfoNode::compile(OSLCompiler &)
 {
 }
 
+NODE_DEFINE(VertexColorNode)
+{
+  NodeType *type = NodeType::add("vertex_color", create, NodeType::SHADER);
+
+  SOCKET_STRING(layer_name, "Layer Name", ustring());
+  SOCKET_OUT_COLOR(color, "Color");
+
+  return type;
+}
+
+VertexColorNode::VertexColorNode() : ShaderNode(node_type)
+{
+}
+
+/* The requested attributes are not updated after node expansion.
+ * So we explicitly request the required attributes.
+ */
+void VertexColorNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  if (!output("Color")->links.empty()) {
+    attributes->add_standard(layer_name);
+  }
+  ShaderNode::attributes(shader, attributes);
+}
+
+void VertexColorNode::expand(ShaderGraph *graph)
+{
+  ShaderOutput *color_out = output("Color");
+  if (!color_out->links.empty()) {
+    AttributeNode *attr = new AttributeNode();
+    attr->attribute = layer_name;
+    graph->add(attr);
+    graph->relink(color_out, attr->output("Color"));
+  }
+}
+
+void VertexColorNode::compile(SVMCompiler &)
+{
+}
+
+void VertexColorNode::compile(OSLCompiler &)
+{
+}
+
 /* Value */
 
 NODE_DEFINE(ValueNode)
