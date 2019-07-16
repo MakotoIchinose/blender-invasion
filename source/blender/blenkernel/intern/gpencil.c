@@ -2056,12 +2056,12 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
 }
 
 /* Helper function to check materials with same color */
-static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Material *r_mat)
+static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Material *r_mat)
 {
   Material *ma = NULL;
   float color_cu[4];
   linearrgb_to_srgb_v3_v3(color_cu, color);
-  color_cu[3] = 1.0f;
+  color_cu[3] = color[3];
   float hsv1[3];
   rgb_to_hsv_v(color_cu, hsv1);
 
@@ -2069,10 +2069,10 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Mate
     ma = give_current_material(ob_gp, i);
     MaterialGPencilStyle *gp_style = ma->gp_style;
     /* Check color with small tolerance (better in HSV). */
-    float hsv2[3];
+    float hsv2[4];
     rgb_to_hsv_v(gp_style->fill_rgba, hsv2);
-
-    if (compare_v3v3(hsv1, hsv2, 0.01f)) {
+    hsv2[3] = gp_style->fill_rgba[3];
+    if (compare_v4v4(hsv1, hsv2, 0.01f)) {
       r_mat = ma;
       return i - 1;
     }
@@ -2085,7 +2085,7 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[3], Mate
 /* Add gpencil material using curve material as base */
 static Material *gpencil_add_from_curve_material(Main *bmain,
                                                  Object *ob_gp,
-                                                 float cu_color[3],
+                                                 float cu_color[4],
                                                  const bool gpencil_lines,
                                                  const bool fill,
                                                  int *r_idx)
@@ -2099,15 +2099,11 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
     ARRAY_SET_ITEMS(gp_style->stroke_rgba, 0.0f, 0.0f, 0.0f, 1.0f);
   }
   else {
-    linearrgb_to_srgb_v3_v3(gp_style->stroke_rgba, cu_color);
-    /* TODO: review alpha*/
-    gp_style->stroke_rgba[3] = 1.0f;
+    linearrgb_to_srgb_v4(gp_style->stroke_rgba, cu_color);
   }
 
   /* Fill color. */
-  linearrgb_to_srgb_v3_v3(gp_style->fill_rgba, cu_color);
-  /* TODO: review alpha*/
-  gp_style->fill_rgba[3] = 1.0f;
+  linearrgb_to_srgb_v4(gp_style->fill_rgba, cu_color);
   /* Fill is false if the original curva hasn't material assigned. */
   if (fill) {
     gp_style->flag |= GP_STYLE_FILL_SHOW;
@@ -2214,16 +2210,17 @@ static void gpencil_convert_spline(Main *bmain,
   Material *mat_gp = NULL;
   bool fill = true;
   /* Check if grease pencil has a material with same color.*/
-  float color[3];
+  float color[4];
   if ((cu->mat) && (*cu->mat)) {
     Material *mat_cu = *cu->mat;
-    copy_v3_v3(color, &mat_cu->r);
+    copy_v4_v4(color, &mat_cu->r);
   }
   else {
     /* Pink (unassigned) */
-    zero_v3(color);
+    zero_v4(color);
     color[0] = 1.0f;
     color[2] = 1.0f;
+    color[3] = 1.0f;
     fill = false;
   }
 
@@ -2246,12 +2243,12 @@ static void gpencil_convert_spline(Main *bmain,
     /* If object has more than 1 material, use second material for stroke color. */
     if (ob_cu->totcol > 1) {
       ma_stroke = give_current_material(ob_cu, 2);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      linearrgb_to_srgb_v4(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
     }
     else if (only_stroke) {
       /* Also use the first color if the fill is none for stroke color. */
       ma_stroke = give_current_material(ob_cu, 1);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      linearrgb_to_srgb_v4(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
       /* set fill to off. */
       mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
     }
