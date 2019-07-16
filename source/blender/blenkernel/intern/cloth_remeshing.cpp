@@ -1300,11 +1300,10 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
   new_active_faces.clear();
 }
 
-int count;
-
 static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
                                            vector<ClothSizing> &sizing,
-                                           vector<BMFace *> &active_faces)
+                                           vector<BMFace *> &active_faces,
+                                           int &count)
 {
   for (int i = 0; i < active_faces.size(); i++) {
     BMFace *f = active_faces[i];
@@ -1398,8 +1397,8 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
     }
   }
   int prev_mvert_num = clmd->clothObject->mvert_num;
-  count = 0;
-  while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces)) {
+  int count = 0;
+  while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces, count)) {
     /* empty while */
   }
   printf("collapse edges count: %d\n", count);
