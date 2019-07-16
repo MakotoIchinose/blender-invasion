@@ -52,7 +52,8 @@ set(SRC
   io_obj.h
   io_stl.h
 
-  intern/obj.cpp
+  intern/obj_export.cpp
+  intern/obj_import.cpp
   intern/obj.h
   intern/stl.cpp
   intern/stl.h

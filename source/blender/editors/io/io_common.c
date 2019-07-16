@@ -112,25 +112,51 @@ void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_T
                 0.0001f,
                 1000.0f);
 }
-void io_common_default_declare_import(struct wmOperatorType *ot)
+void io_common_default_declare_import(struct wmOperatorType *ot, eFileSel_File_Types file_type)
 {
+  // Defines "filepath"
+  WM_operator_properties_filesel(ot,
+                                 FILE_TYPE_FOLDER | file_type,
+                                 FILE_BLENDER,
+                                 FILE_SAVE,
+                                 WM_FILESEL_FILEPATH,
+                                 FILE_DEFAULTDISPLAY,
+                                 FILE_SORT_ALPHA);
+
   RNA_def_enum(ot->srna,
                "axis_forward",
                axis_remap,
                AXIS_NEG_Z,  // From orientation helper, not sure why
                "Forward",
                "The axis to remap the forward axis to");
+
   RNA_def_enum(ot->srna,
                "axis_up",
                axis_remap,
                AXIS_Y,  // From orientation helper, not sure why
                "Up",
                "The axis to remap the up axis to");
+
+  RNA_def_float(ot->srna,
+                "global_scale",
+                1.0f,
+                0.0001f,
+                1000.0f,
+                "Scale",
+                "Value by which to enlarge or shrink the objects with"
+                "respect to the world's origin",
+                0.0001f,
+                1000.0f);
 }
 
 ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
                                                             struct wmOperator *op)
 {
+  if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
+    BKE_report(op->reports, RPT_ERROR, "No file given");
+    return NULL;
+  }
+
   ExportSettings *settings = MEM_mallocN(sizeof(ExportSettings), "ExportSettings");
 
   settings->scene = CTX_data_scene(C);
@@ -150,6 +176,29 @@ ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
   settings->triangulate = RNA_boolean_get(op->ptr, "triangulate");
   settings->quad_method = RNA_enum_get(op->ptr, "quad_method");
   settings->ngon_method = RNA_enum_get(op->ptr, "ngon_method");
+  settings->global_scale = RNA_float_get(op->ptr, "global_scale");
+
+  return settings;
+}
+
+ImportSettings *io_common_construct_default_import_settings(struct bContext *C,
+                                                            struct wmOperator *op)
+{
+  if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
+    BKE_report(op->reports, RPT_ERROR, "No file given");
+    return NULL;
+  }
+
+  ImportSettings *settings = MEM_mallocN(sizeof(ImportSettings), "ImportSettings");
+  settings->scene = CTX_data_scene(C);
+  settings->view_layer = CTX_data_view_layer(C);
+  settings->main = CTX_data_main(C);
+  settings->depsgraph = NULL;  // Defer building
+
+  RNA_string_get(op->ptr, "filepath", settings->filepath);
+
+  settings->axis_forward = RNA_enum_get(op->ptr, "axis_forward");
+  settings->axis_up = RNA_enum_get(op->ptr, "axis_up");
   settings->global_scale = RNA_float_get(op->ptr, "global_scale");
 
   return settings;
@@ -197,16 +246,18 @@ int io_common_export_invoke(bContext *C,
   return OPERATOR_RUNNING_MODAL;
 }
 
+int io_common_import_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+
+{
+  WM_event_add_fileselect(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
 int io_common_export_exec(struct bContext *C,
                           struct wmOperator *op,
                           ExportSettings *settings,
                           bool (*exporter)(struct bContext *C, ExportSettings *settings))
 {
-  if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
-    return OPERATOR_CANCELLED;
-  }
-
   Object *obedit = CTX_data_edit_object(C);
   if (obedit) {
     ED_object_mode_toggle(C, OB_MODE_EDIT);
@@ -215,6 +266,20 @@ int io_common_export_exec(struct bContext *C,
   float orig_frame = BKE_scene_frame_get(CTX_data_scene(C));
 
   bool ok = exporter(C, settings);
+
+  BKE_scene_frame_set(CTX_data_scene(C), orig_frame);
+
+  return ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
+
+int io_common_import_exec(struct bContext *C,
+                          struct wmOperator *op,
+                          ImportSettings *settings,
+                          bool (*importer)(struct bContext *C, ImportSettings *settings))
+{
+  float orig_frame = BKE_scene_frame_get(CTX_data_scene(C));
+
+  bool ok = importer(C, settings);
 
   BKE_scene_frame_set(CTX_data_scene(C), orig_frame);
 

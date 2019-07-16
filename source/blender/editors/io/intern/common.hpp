@@ -82,6 +82,9 @@ float get_unit_scale(const Scene *const scene);
 void export_start(bContext *C, ExportSettings *const settings);
 bool export_end(bContext *C, ExportSettings *const settings);
 
+void import_start(bContext *C, ImportSettings *const settings);
+bool import_end(bContext *C, ImportSettings *const settings);
+
 // Execute `start` and `end` and time it. Those functions should be
 // specific to each exportter, but have the same signature as the two above
 bool time_export(bContext *C,
@@ -104,6 +107,20 @@ template<typename T> std::string get_object_name(const Object *const ob, const T
   std::string data_name{data->id.name + 2};
   name_compat(name /* modifies */, data_name);
   return name;
+}
+
+template<typename Start, typename End, typename Settings>
+bool time(bContext *C, Settings *const settings, Start start, End end)
+{
+  auto f = std::chrono::steady_clock::now();
+  start(C, settings);
+  auto ret = end(C, settings);
+  std::cout << "Took "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now() - f)
+                   .count()
+            << "ms\n";
+  return ret;
 }
 
 // --- Deduplication ---

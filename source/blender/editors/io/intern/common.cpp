@@ -264,20 +264,21 @@ bool export_end(bContext *UNUSED(C), ExportSettings *const settings)
   return true;
 }
 
-bool time_export(bContext *C,
-                 ExportSettings *const settings,
-                 void (*start)(bContext *C, ExportSettings *const settings),
-                 bool (*end)(bContext *C, ExportSettings *const settings))
+void import_start(bContext *UNUSED(C), ImportSettings *const settings)
 {
-  auto f = std::chrono::steady_clock::now();
-  start(C, settings);
-  auto ret = end(C, settings);
-  std::cout << "Took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(
-                   std::chrono::steady_clock::now() - f)
-                   .count()
-            << "ms\n";
-  return ret;
+  G.is_rendering = true;
+  BKE_spacedata_draw_locks(true);
+}
+
+bool import_end(bContext *UNUSED(C), ImportSettings *const settings)
+{
+  G.is_rendering = false;
+  BKE_spacedata_draw_locks(false);
+  DEG_graph_free(settings->depsgraph);
+  if (settings->format_specific)
+    MEM_freeN(settings->format_specific);
+  MEM_freeN(settings);
+  return true;
 }
 
 const std::array<float, 3> calculate_normal(const Mesh *const mesh, const MPoly &mp)

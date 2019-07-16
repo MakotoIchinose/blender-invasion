@@ -148,6 +148,6 @@ bool STL_export_end(bContext *C, ExportSettings *const settings)
 extern "C" {
 bool STL_export(bContext *C, ExportSettings *const settings)
 {
-  return common::time_export(C, settings, &STL_export_start, &STL_export_end);
+  return common::time(C, settings, &STL_export_start, &STL_export_end);
 }
 }  // extern

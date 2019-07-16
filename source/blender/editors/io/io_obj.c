@@ -43,6 +43,10 @@ static int wm_obj_export_invoke(bContext *C, wmOperator *op, const wmEvent *even
 static int wm_obj_export_exec(bContext *C, wmOperator *op)
 {
   ExportSettings *settings = io_common_construct_default_export_settings(C, op);
+  if (!settings) {
+    return OPERATOR_CANCELLED;
+  }
+
   settings->export_normals = RNA_boolean_get(op->ptr, "export_normals");
   settings->export_uvs = RNA_boolean_get(op->ptr, "export_uvs");
   settings->export_edges = RNA_boolean_get(op->ptr, "export_edges");
@@ -230,16 +234,32 @@ static bool wm_obj_export_check(bContext *C, wmOperator *op)
   return io_common_export_check(C, op, ".obj");
 }
 
-static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  WM_event_add_fileselect(C, op);
-  return OPERATOR_RUNNING_MODAL;
+  return io_common_import_invoke(C, op, event);
 }
-static int wm_obj_import_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
+
+static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
-  return OPERATOR_CANCELLED;
-} /* TODO someone */
-static void wm_obj_import_draw(bContext *C, wmOperator *op)
+  ImportSettings *settings = io_common_construct_default_import_settings(C, op);
+  if (!settings) {
+    return OPERATOR_CANCELLED;
+  }
+
+  settings->format_specific = MEM_mallocN(sizeof(OBJImportSettings), "OBJImportSettings");
+  OBJImportSettings *format_specific = settings->format_specific;
+  format_specific->import_smooth_groups = RNA_boolean_get(op->ptr, "import_smooth_groups");
+  format_specific->import_edges = RNA_boolean_get(op->ptr, "import_edges");
+  format_specific->split_mode = RNA_enum_get(op->ptr, "split_mode");
+  format_specific->split_by_object = RNA_boolean_get(op->ptr, "split_by_object");
+  format_specific->split_by_groups = RNA_boolean_get(op->ptr, "split_by_groups");
+  format_specific->import_vertex_groups = RNA_boolean_get(op->ptr, "import_vertex_groups");
+  format_specific->use_image_search = RNA_boolean_get(op->ptr, "use_image_search");
+
+  return io_common_import_exec(C, op, settings, &OBJ_import /* import function */);
+}
+
+static void wm_obj_import_draw(bContext *UNUSED(C), wmOperator *op)
 {
   PointerRNA ptr;
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
@@ -269,8 +289,8 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
    * ICON_NONE); */
 
   row = uiLayoutRow(box, false);
-  const enum split_mode split_mode = RNA_enum_get(&ptr, "split_mode");
-  if (split_mode == SPLIT_ON) {
+  const enum split_mode split = RNA_enum_get(&ptr, "split_mode");
+  if (split == SPLIT_ON) {
     uiItemL(row, IFACE_("Split by:"), ICON_NONE);
     uiItemR(row, &ptr, "split_by_object", 0, NULL, ICON_NONE);
     uiItemR(row, &ptr, "split_by_groups", 0, NULL, ICON_NONE);
@@ -278,6 +298,9 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
   else {
     uiItemR(row, &ptr, "import_vertex_groups", 0, NULL, ICON_NONE);
   }
+
+  row = uiLayoutRow(op->layout, false);
+  uiItemR(row, &ptr, "global_scale", 0, NULL, ICON_NONE);
 }
 static bool wm_obj_import_check(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
@@ -416,7 +439,7 @@ void WM_OT_obj_import(struct wmOperatorType *ot)
   ot->ui = wm_obj_import_draw;
   ot->check = wm_obj_import_check;
 
-  io_common_default_declare_import(ot);
+  io_common_default_declare_import(ot, FILE_TYPE_OBJ);
 
   RNA_def_boolean(ot->srna,
                   "import_smooth_groups",

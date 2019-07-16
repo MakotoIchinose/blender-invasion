@@ -506,11 +506,13 @@ bool OBJ_export_end(bContext *C, ExportSettings *const settings)
 {
   return common::export_end(C, settings);
 }
+
 }  // namespace
 
 extern "C" {
 bool OBJ_export(bContext *C, ExportSettings *const settings)
 {
-  return common::time_export(C, settings, &OBJ_export_start, &OBJ_export_end);
+  return common::time(C, settings, &OBJ_export_start, &OBJ_export_end);
 }
+
 }  // extern

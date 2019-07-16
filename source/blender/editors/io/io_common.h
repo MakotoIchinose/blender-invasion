@@ -64,28 +64,45 @@ typedef struct ExportSettings {
 } ExportSettings;
 
 typedef struct ImportSettings {
+  struct ViewLayer *view_layer;
+  struct Scene *scene;
+  struct Main *main;
+  struct Depsgraph *depsgraph;
+
+  char filepath[FILE_MAX];
+
   enum axis_remap axis_forward;
   enum axis_remap axis_up;
-
+  float global_scale;
   void *format_specific;
 } ImportSettings;
 
 void io_common_default_declare_export(struct wmOperatorType *ot, eFileSel_File_Types file_type);
-
-void io_common_default_declare_import(struct wmOperatorType *ot);
 
 bool io_common_export_check(struct bContext *UNUSED(C), wmOperator *op, const char *ext);
 int io_common_export_invoke(struct bContext *C,
                             wmOperator *op,
                             const wmEvent *UNUSED(event),
                             const char *ext);
+
 int io_common_export_exec(struct bContext *C,
                           struct wmOperator *op,
                           ExportSettings *settings,
                           bool (*exporter)(struct bContext *C, ExportSettings *settings));
+
+void io_common_default_declare_import(struct wmOperatorType *ot, eFileSel_File_Types file_type);
+int io_common_import_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event));
+int io_common_import_exec(struct bContext *C,
+                          struct wmOperator *op,
+                          ImportSettings *settings,
+                          bool (*importer)(struct bContext *C, ImportSettings *settings));
+
 /* void io_common_export_draw(bContext *C, wmOperator *op); */
 
 ExportSettings *io_common_construct_default_export_settings(struct bContext *C,
+                                                            struct wmOperator *op);
+
+ImportSettings *io_common_construct_default_import_settings(struct bContext *C,
                                                             struct wmOperator *op);
 
 #endif /* __IO_COMMON_H__ */
