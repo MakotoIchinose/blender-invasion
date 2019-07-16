@@ -33,16 +33,16 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
  protected:
   virtual bool should_export_object(const Object *object) const override;
 
-  virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) override;
-  virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) override;
-  virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext &context) override;
+  virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) override;
+  virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) override;
+  virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext *context) override;
   virtual AbstractHierarchyWriter *create_particle_writer(
-      const HierarchyContext &context) override;
+      const HierarchyContext *context) override;
 
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) override;
 
  private:
-  USDExporterContext create_usd_export_context(const HierarchyContext &context);
+  USDExporterContext create_usd_export_context(const HierarchyContext *context);
 };
 
 #endif /* __USD__USD_HIERARCHY_ITERATOR_H__ */

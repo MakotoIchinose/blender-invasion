@@ -62,25 +62,25 @@ const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
   return export_time;
 }
 
-USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext &context)
+USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext *context)
 {
-  return USDExporterContext{depsgraph, stage, pxr::SdfPath(context.export_path), this, params};
+  return USDExporterContext{depsgraph, stage, pxr::SdfPath(context->export_path), this, params};
 }
 
-AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const HierarchyContext &context)
+AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const HierarchyContext *context)
 {
   // printf(
-  //     "\033[32;1mCREATE\033[0m %s at %s\n", context.object->id.name,
-  //     context.export_path.c_str());
+  //     "\033[32;1mCREATE\033[0m %s at %s\n", context->object->id.name,
+  //     context->export_path.c_str());
   return new USDTransformWriter(create_usd_export_context(context));
 }
 
-AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const HierarchyContext &context)
+AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const HierarchyContext *context)
 {
   USDExporterContext usd_export_context = create_usd_export_context(context);
   USDAbstractWriter *data_writer = nullptr;
 
-  switch (context.object->type) {
+  switch (context->object->type) {
     case OB_MESH:
       data_writer = new USDMeshWriter(usd_export_context);
       break;
@@ -100,18 +100,18 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_ARMATURE:
     case OB_GPENCIL:
       // printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
-      //        context.object->id.name,
-      //        context.object->type);
+      //        context->object->id.name,
+      //        context->object->type);
       return nullptr;
     case OB_TYPE_MAX:
       BLI_assert(!"OB_TYPE_MAX should not be used");
       return nullptr;
   }
 
-  if (!data_writer->is_supported(context.object)) {
+  if (!data_writer->is_supported(context->object)) {
     // printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
-    //        context.object->id.name,
-    //        context.object->type);
+    //        context->object->id.name,
+    //        context->object->type);
     delete data_writer;
     return nullptr;
   }
@@ -119,7 +119,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
   return data_writer;
 }
 
-AbstractHierarchyWriter *USDHierarchyIterator::create_hair_writer(const HierarchyContext &context)
+AbstractHierarchyWriter *USDHierarchyIterator::create_hair_writer(const HierarchyContext *context)
 {
   if (!params.export_hair) {
     return nullptr;
@@ -127,7 +127,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_hair_writer(const Hierarch
   return new USDHairWriter(create_usd_export_context(context));
 }
 
-AbstractHierarchyWriter *USDHierarchyIterator::create_particle_writer(const HierarchyContext &)
+AbstractHierarchyWriter *USDHierarchyIterator::create_particle_writer(const HierarchyContext *)
 {
   return nullptr;
 }

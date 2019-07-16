@@ -20,10 +20,9 @@ extern "C" {
 #include "DEG_depsgraph_query.h"
 }
 
-const HierarchyContext &HierarchyContext::root()
+const HierarchyContext *HierarchyContext::root()
 {
-  static const HierarchyContext root_hierarchy_context = {.object = nullptr};
-  return root_hierarchy_context;
+  return nullptr;
 }
 
 bool HierarchyContext::operator<(const HierarchyContext &other) const
@@ -63,13 +62,13 @@ void AbstractHierarchyIterator::release_writers()
 
 void AbstractHierarchyIterator::iterate()
 {
-  construct_export_graph();
-  prune_export_graph();
+  export_graph_construct();
+  export_graph_prune();
   make_writers(HierarchyContext::root(), nullptr);
-  export_graph.clear();
+  export_graph_clear();
 }
 
-void AbstractHierarchyIterator::construct_export_graph()
+void AbstractHierarchyIterator::export_graph_construct()
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
@@ -125,25 +124,25 @@ void AbstractHierarchyIterator::visit_object(Object *object,
                                              Object *export_parent,
                                              bool weak_export)
 {
-  HierarchyContext context;
-  context.object = object;
-  context.export_name = get_object_name(object);
-  context.export_parent = export_parent;
-  context.duplicator = nullptr;
-  context.weak_export = weak_export;
-  context.animation_check_include_parent = false;
-  context.export_path = "";
-  context.parent_writer = nullptr;
-  copy_m4_m4(context.matrix_world, object->obmat);
+  HierarchyContext *context = new HierarchyContext();
+  context->object = object;
+  context->export_name = get_object_name(object);
+  context->export_parent = export_parent;
+  context->duplicator = nullptr;
+  context->weak_export = weak_export;
+  context->animation_check_include_parent = false;
+  context->export_path = "";
+  context->parent_writer = nullptr;
+  copy_m4_m4(context->matrix_world, object->obmat);
 
   export_graph[std::make_pair(export_parent, nullptr)].insert(context);
 
   // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
   // printf("    OB %30s %p (export-parent=%s; world x = %f)\n",
-  //        context.export_name.c_str(),
-  //        context.object,
+  //        context->export_name.c_str(),
+  //        context->object,
   //        export_parent_name.c_str(),
-  //        context.matrix_world[3][0]);
+  //        context->matrix_world[3][0]);
 }
 
 void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
@@ -153,19 +152,19 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   ExportGraph::key_type graph_index;
   bool animation_check_include_parent = false;
 
-  HierarchyContext context;
-  context.object = dupli_object->ob;
-  context.duplicator = duplicator;
-  context.weak_export = false;
-  context.export_path = "";
-  context.parent_writer = nullptr;
+  HierarchyContext *context = new HierarchyContext();
+  context->object = dupli_object->ob;
+  context->duplicator = duplicator;
+  context->weak_export = false;
+  context->export_path = "";
+  context->parent_writer = nullptr;
 
   /* If the dupli-object's scene parent is also instanced by this object, use that as the
    * export parent. Otherwise use the dupli-parent as export parent. */
   Object *parent = dupli_object->ob->parent;
   if (parent != nullptr && dupli_set.find(parent) != dupli_set.end()) {
     // The parent object is part of the duplicated collection.
-    context.export_parent = parent;
+    context->export_parent = parent;
     graph_index = std::make_pair(parent, duplicator);
   }
   else {
@@ -173,15 +172,16 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
      * transform of this dupliobject can be influenced by objects that are not part of its
      * export graph. */
     animation_check_include_parent = true;
-    context.export_parent = duplicator;
+    context->export_parent = duplicator;
     graph_index = std::make_pair(duplicator, nullptr);
   }
 
-  context.animation_check_include_parent = animation_check_include_parent;
-  copy_m4_m4(context.matrix_world, dupli_object->mat);
+  context->animation_check_include_parent = animation_check_include_parent;
+  copy_m4_m4(context->matrix_world, dupli_object->mat);
 
-  std::string export_parent_name = context.export_parent ? get_object_name(context.export_parent) :
-                                                           "/";
+  std::string export_parent_name = context->export_parent ?
+                                       get_object_name(context->export_parent) :
+                                       "/";
 
   // Construct export name for the dupli-instance.
   std::stringstream suffix_stream;
@@ -189,34 +189,38 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   for (int i = 0; i < MAX_DUPLI_RECUR && dupli_object->persistent_id[i] != INT_MAX; i++) {
     suffix_stream << "-" << dupli_object->persistent_id[i];
   }
-  context.export_name = make_valid_name(get_object_name(context.object) + suffix_stream.str());
+  context->export_name = make_valid_name(get_object_name(context->object) + suffix_stream.str());
 
   export_graph[graph_index].insert(context);
 
   // printf("    DU %30s %p (export-parent=%s; duplicator = %s; world x = %f)\n",
-  //        context.export_name.c_str(),
-  //        context.object,
+  //        context->export_name.c_str(),
+  //        context->object,
   //        export_parent_name.c_str(),
   //        duplicator->id.name + 2,
-  //        context.matrix_world[3][0]);
+  //        context->matrix_world[3][0]);
 }
 
-static bool prune_the_weak(const HierarchyContext &context,
+static bool prune_the_weak(const HierarchyContext *context,
                            AbstractHierarchyIterator::ExportGraph &modify,
                            const AbstractHierarchyIterator::ExportGraph &iterate)
 {
-  bool all_is_weak = context.weak_export;
-  const auto map_index = std::make_pair(context.object, context.duplicator);
+  bool all_is_weak = context != nullptr && context->weak_export;
+  Object *object = context != nullptr ? context->object : nullptr;
+  Object *duplicator = context != nullptr ? context->duplicator : nullptr;
+
+  const auto map_index = std::make_pair(object, duplicator);
   AbstractHierarchyIterator::ExportGraph::const_iterator child_iterator = iterate.find(map_index);
 
   if (child_iterator != iterate.end()) {
-    for (const HierarchyContext &child_context : child_iterator->second) {
+    for (HierarchyContext *child_context : child_iterator->second) {
       bool child_tree_is_weak = prune_the_weak(child_context, modify, iterate);
       all_is_weak &= child_tree_is_weak;
 
       if (child_tree_is_weak) {
         // This subtree is all weak, so we can remove it from the current object's children.
         modify[map_index].erase(child_context);
+        delete child_context;
       }
     }
   }
@@ -229,41 +233,58 @@ static bool prune_the_weak(const HierarchyContext &context,
   return all_is_weak;
 }
 
-void AbstractHierarchyIterator::prune_export_graph()
+void AbstractHierarchyIterator::export_graph_prune()
 {
   // Take a copy of the map so that we can modify while recursing.
   ExportGraph unpruned_export_graph = export_graph;
   prune_the_weak(HierarchyContext::root(), export_graph, unpruned_export_graph);
 }
 
-void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_context,
+void AbstractHierarchyIterator::export_graph_clear()
+{
+  for (ExportGraph::iterator::value_type &it : export_graph) {
+    for (HierarchyContext *context : it.second) {
+      delete context;
+    }
+  }
+  export_graph.clear();
+}
+
+AbstractHierarchyIterator::ExportGraph::mapped_type &AbstractHierarchyIterator::graph_children(
+    const HierarchyContext *parent_context)
+{
+  Object *parent_object = parent_context ? parent_context->object : nullptr;
+  Object *parent_duplicator = parent_context ? parent_context->duplicator : nullptr;
+
+  return export_graph[std::make_pair(parent_object, parent_duplicator)];
+}
+
+void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_context,
                                              AbstractHierarchyWriter *parent_writer)
 {
   AbstractHierarchyWriter *xform_writer = nullptr;
   float parent_matrix_inv_world[4][4];
 
-  if (parent_context.object == nullptr) {
-    unit_m4(parent_matrix_inv_world);
+  if (parent_context) {
+    invert_m4_m4(parent_matrix_inv_world, parent_context->matrix_world);
   }
   else {
-    invert_m4_m4(parent_matrix_inv_world, parent_context.matrix_world);
+    unit_m4(parent_matrix_inv_world);
   }
 
-  ExportGraph::mapped_type &graph_children =
-      export_graph[std::make_pair(parent_context.object, parent_context.duplicator)];
-  for (HierarchyContext context : graph_children) {
-    BLI_assert(!context.export_name.empty());
+  const std::string &parent_export_path = parent_context ? parent_context->export_path : "";
 
-    std::string export_path = path_concatenate(parent_context.export_path, context.export_name);
-    context.parent_writer = parent_writer;
-    context.export_path = export_path;
-    copy_m4_m4(context.parent_matrix_inv_world, parent_matrix_inv_world);
+  for (HierarchyContext *context : graph_children(parent_context)) {
+    std::string export_path = path_concatenate(parent_export_path, context->export_name);
+    context->parent_writer = parent_writer;
+    context->export_path = export_path;
+    copy_m4_m4(context->parent_matrix_inv_world, parent_matrix_inv_world);
 
     // printf("'%s' + '%s' = '%s' (exporting object %s)\n",
-    //        parent_context.export_path.c_str(),
-    //        context.export_name.c_str(),
+    //        parent_export_path.c_str(),
+    //        context->export_name.c_str(),
     //        export_path.c_str(),
-    //        context.object->id.name + 2);
+    //        context->object->id.name + 2);
 
     // Get or create the transform writer.
     xform_writer = ensure_writer(context, &AbstractHierarchyIterator::create_xform_writer);
@@ -273,13 +294,13 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
       return;
     }
 
-    BLI_assert(DEG_is_evaluated_object(context.object));
+    BLI_assert(DEG_is_evaluated_object(context->object));
     /* XXX This can lead to too many XForms being written. For example, a camera writer can refuse
      * to write an orthographic camera. By the time that this is known, the XForm has already been
      * written. */
-    xform_writer->write(context);
+    xform_writer->write(*context);
 
-    if (!context.weak_export) {
+    if (!context->weak_export) {
       make_writers_particle_systems(context, xform_writer);
       make_writer_object_data(context, xform_writer);
     }
@@ -292,17 +313,17 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
 }
 
 void AbstractHierarchyIterator::make_writers_particle_systems(
-    const HierarchyContext &xform_context, AbstractHierarchyWriter *xform_writer)
+    const HierarchyContext *xform_context, AbstractHierarchyWriter *xform_writer)
 {
-  Object *object = xform_context.object;
+  Object *object = xform_context->object;
   ParticleSystem *psys = static_cast<ParticleSystem *>(object->particlesystem.first);
   for (; psys; psys = psys->next) {
     if (!psys_check_enabled(object, psys, true)) {
       continue;
     }
 
-    HierarchyContext hair_context = xform_context;
-    hair_context.export_path = path_concatenate(xform_context.export_path,
+    HierarchyContext hair_context = *xform_context;
+    hair_context.export_path = path_concatenate(xform_context->export_path,
                                                 get_id_name(&psys->part->id));
     hair_context.parent_writer = xform_writer;
     hair_context.particle_system = psys;
@@ -310,10 +331,10 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
     AbstractHierarchyWriter *writer = nullptr;
     switch (psys->part->type) {
       case PART_HAIR:
-        writer = ensure_writer(hair_context, &AbstractHierarchyIterator::create_hair_writer);
+        writer = ensure_writer(&hair_context, &AbstractHierarchyIterator::create_hair_writer);
         break;
       case PART_EMITTER:
-        writer = ensure_writer(hair_context, &AbstractHierarchyIterator::create_particle_writer);
+        writer = ensure_writer(&hair_context, &AbstractHierarchyIterator::create_particle_writer);
         break;
     }
 
@@ -323,23 +344,23 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
   }
 }
 
-void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext &context,
+void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext *context,
                                                         AbstractHierarchyWriter *xform_writer)
 {
-  if (context.object->data == nullptr) {
+  if (context->object->data == nullptr) {
     return;
   }
 
-  HierarchyContext data_context = context;
-  ID *object_data = static_cast<ID *>(context.object->data);
-  std::string data_path = path_concatenate(context.export_path, get_id_name(object_data));
+  HierarchyContext data_context = *context;
+  ID *object_data = static_cast<ID *>(context->object->data);
+  std::string data_path = path_concatenate(context->export_path, get_id_name(object_data));
 
   data_context.export_path = data_path;
   data_context.parent_writer = xform_writer;
 
   AbstractHierarchyWriter *data_writer;
 
-  data_writer = ensure_writer(data_context, &AbstractHierarchyIterator::create_data_writer);
+  data_writer = ensure_writer(&data_context, &AbstractHierarchyIterator::create_data_writer);
   if (data_writer == nullptr) {
     return;
   }
@@ -397,16 +418,16 @@ AbstractHierarchyWriter *AbstractHierarchyIterator::get_writer(const std::string
 }
 
 AbstractHierarchyWriter *AbstractHierarchyIterator::ensure_writer(
-    const HierarchyContext &context, AbstractHierarchyIterator::create_writer_func create_func)
+    HierarchyContext *context, AbstractHierarchyIterator::create_writer_func create_func)
 {
-  AbstractHierarchyWriter *writer = get_writer(context.export_path);
+  AbstractHierarchyWriter *writer = get_writer(context->export_path);
   if (writer != nullptr) {
     return writer;
   }
 
   writer = (this->*create_func)(context);
-  if (writer != nullptr) {
-    writers[context.export_path] = writer;
+  if (writer == nullptr) {
+    return nullptr;
   }
   return writer;
 }

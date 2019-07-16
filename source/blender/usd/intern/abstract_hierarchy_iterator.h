@@ -76,7 +76,7 @@ struct HierarchyContext {
   bool operator<(const HierarchyContext &other) const;
 
   /* Return a HierarchyContext representing the root of the export hierarchy. */
-  static const HierarchyContext &root();
+  static const HierarchyContext *root();
 };
 
 class AbstractHierarchyWriter {
@@ -90,7 +90,7 @@ class AbstractHierarchyIterator {
  public:
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
   // Mapping from <object, duplicator> to the object's export-children.
-  typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext>> ExportGraph;
+  typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext *>> ExportGraph;
 
  protected:
   ExportGraph export_graph;
@@ -109,18 +109,22 @@ class AbstractHierarchyIterator {
   virtual std::string make_valid_name(const std::string &name) const;
 
  private:
-  void construct_export_graph();
+  void export_graph_construct();
+  void export_graph_prune();
+  void export_graph_clear();
+
   void visit_object(Object *object, Object *export_parent, bool weak_export);
   void visit_dupli_object(DupliObject *dupli_object,
                           Object *duplicator,
                           const std::set<Object *> &dupli_set);
-  void prune_export_graph();
 
-  void make_writers(const HierarchyContext &parent_context,
+  ExportGraph::mapped_type &graph_children(const HierarchyContext *parent_context);
+
+  void make_writers(const HierarchyContext *parent_context,
                     AbstractHierarchyWriter *parent_writer);
-  void make_writer_object_data(const HierarchyContext &context,
+  void make_writer_object_data(const HierarchyContext *context,
                                AbstractHierarchyWriter *xform_writer);
-  void make_writers_particle_systems(const HierarchyContext &context,
+  void make_writers_particle_systems(const HierarchyContext *context,
                                      AbstractHierarchyWriter *xform_writer);
 
   std::string get_object_name(const Object *object) const;
@@ -128,18 +132,18 @@ class AbstractHierarchyIterator {
   AbstractHierarchyWriter *get_writer(const std::string &name);
 
   typedef AbstractHierarchyWriter *(AbstractHierarchyIterator::*create_writer_func)(
-      const HierarchyContext &);
-  AbstractHierarchyWriter *ensure_writer(const HierarchyContext &context,
+      const HierarchyContext *);
+  AbstractHierarchyWriter *ensure_writer(HierarchyContext *context,
                                          create_writer_func create_func);
 
  protected:
   virtual bool should_visit_duplilink(const DupliObject *link) const;
   virtual bool should_export_object(const Object *object) const;
 
-  virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext &context) = 0;
-  virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext &context) = 0;
-  virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext &context) = 0;
-  virtual AbstractHierarchyWriter *create_particle_writer(const HierarchyContext &context) = 0;
+  virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) = 0;
+  virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) = 0;
+  virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext *context) = 0;
+  virtual AbstractHierarchyWriter *create_particle_writer(const HierarchyContext *context) = 0;
 
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) = 0;
 
