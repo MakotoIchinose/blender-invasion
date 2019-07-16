@@ -2115,12 +2115,28 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
 }
 
 /* Helper function to create new stroke section */
-static void gpencil_add_new_points(
-    bGPDstroke *gps, float *coord_array, float pressure, int init, int totpoints)
+static void gpencil_add_new_points(bGPDstroke *gps,
+                                   float *coord_array,
+                                   float pressure,
+                                   int init,
+                                   int totpoints,
+                                   float init_co[3],
+                                   bool last)
 {
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt = &gps->points[i + init];
     copy_v3_v3(&pt->x, &coord_array[3 * i]);
+    /* Be sure the last point is not on top of the first point of the curve or
+     * the close of the stroke will produce glitches. */
+    if ((last) && (i > 0) && (i == totpoints - 1)) {
+      float dist = len_v3v3(init_co, &pt->x);
+      if (dist < 0.1f) {
+        /* Interpolate between previous point and current to back slightly. */
+        bGPDspoint *pt_prev = &gps->points[i + init - 1];
+        interp_v3_v3v3(&pt->x, &pt_prev->x, &pt->x, 0.95f);
+      }
+    }
+
     pt->pressure = pressure;
     pt->strength = 1.0f;
   }
@@ -2252,10 +2268,12 @@ static void gpencil_convert_spline(Main *bmain,
     segments--;
   }
   /* Get all interpolated curve points of Beziert */
+  float init_co[3];
   for (int s = 0; s < segments; s++) {
     int inext = (s + 1) % nu->pntsu;
     BezTriple *prevbezt = &nu->bezt[s];
     BezTriple *bezt = &nu->bezt[inext];
+    bool last = (bool)(s == segments - 1);
 
     float *coord_array = MEM_callocN(3 * resolu * sizeof(float), __func__);
 
@@ -2268,8 +2286,12 @@ static void gpencil_convert_spline(Main *bmain,
                                     resolu - 1,
                                     3 * sizeof(float));
     }
+    /* Save first point coordinates. */
+    if (s == 0) {
+      copy_v3_v3(init_co, &coord_array[0]);
+    }
     /* Add points to the stroke */
-    gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu);
+    gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu, init_co, last);
     /* Free memory. */
     MEM_SAFE_FREE(coord_array);
 
