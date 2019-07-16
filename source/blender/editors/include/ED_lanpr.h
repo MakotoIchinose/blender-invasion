@@ -316,6 +316,8 @@ typedef struct LANPR_SharedResource {
   int dpix_shader_error;
   int texture_size;
   ListBase dpix_batch_list;
+  int dpix_reloaded;
+  int dpix_reloaded_deg;
 
   /* Software */
   struct GPUShader *software_shader;

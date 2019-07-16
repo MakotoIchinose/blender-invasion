@@ -1671,16 +1671,11 @@ typedef struct SceneLANPR {
   float line_color[4];
   float background_color[4];
   int use_world_background; /* color only */
-  char _pad1[4];
 
   float depth_width_influence;
   float depth_width_curve;
   float depth_alpha_influence;
   float depth_alpha_curve;
-
-  /* states (needs optimization) */
-
-  int reloaded;
 
   /* edge split modifier will cause problems in LANPR. */
   int disable_edge_splits;

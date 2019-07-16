@@ -52,6 +52,7 @@
 #include "RNA_define.h"
 
 #include "BLI_math.h"
+#include "BLI_callbacks.h"
 
 #include "bmesh.h"
 #include "bmesh_class.h"
@@ -4613,3 +4614,41 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
   ot->poll = lanpr_active_is_source_object;
   ot->exec = lanpr_update_gp_source_exec;
 }
+
+/* Post-frame updater */
+
+
+static void lanpr_post_frame_updater(struct Main *UNUSED(_1),
+                                     struct ID *scene,
+                                     void *UNUSED(_3))
+{
+  Scene* s = scene;
+  if(s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE){
+    return;
+  }
+  if(strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)){
+    /* Not LANPR engine, do GPencil updates. */
+    /* LANPR engine will automatically update when drawing the viewport. */
+
+    /* No depsgraph reference here in the callback. Not working :? */
+    
+  }
+}
+
+static bCallbackFuncStore lanpr_post_frame_callback = {
+    NULL,
+    NULL,                            /* next, prev */
+    lanpr_post_frame_updater, /* func */
+    NULL,                            /* arg */
+    0,                               /* alloc */
+};
+
+static int lanpr_post_frame_regisetered = 0;
+
+void ED_register_lanpr_post_frame()
+{
+  if(!lanpr_post_frame_regisetered){
+    BLI_callback_add(&lanpr_post_frame_callback, BLI_CB_EVT_FRAME_CHANGE_POST);
+  }
+}
+

@@ -198,6 +198,9 @@ static void lanpr_cache_init(void *vedata)
 
   static float normal_object_direction[3] = {0, 0, 1};
 
+  /* Transfer reload state */
+  lanpr_share.dpix_reloaded = lanpr_share.dpix_reloaded_deg;
+
   if (!stl->g_data) {
     /* Alloc transient pointers */
     stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
@@ -407,7 +410,7 @@ static void lanpr_cache_init(void *vedata)
     pd->begin_index = 0;
     int fsize = sizeof(float) * 4 * texture_size * texture_size;
 
-    if (lanpr->reloaded) {
+    if (lanpr_share.dpix_reloaded) {
       pd->atlas_pl = MEM_callocN(fsize, "atlas_point_l");
       pd->atlas_pr = MEM_callocN(fsize, "atlas_point_r");
       pd->atlas_nl = MEM_callocN(fsize, "atlas_normal_l");
@@ -497,7 +500,7 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
     }
 
     int idx = pd->begin_index;
-    if (lanpr->reloaded) {
+    if (lanpr_share.dpix_reloaded) {
       pd->begin_index = lanpr_feed_atlas_data_obj(vedata,
                                                   pd->atlas_pl,
                                                   pd->atlas_pr,
@@ -524,7 +527,7 @@ static void lanpr_cache_finish(void *vedata)
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
       !lanpr_share.dpix_shader_error) {
-    if (lanpr->reloaded) {
+    if (lanpr_share.dpix_reloaded) {
       if (lanpr_share.render_buffer_shared) {
         lanpr_feed_atlas_data_intersection_cache(vedata,
                                                  pd->atlas_pl,
@@ -547,7 +550,7 @@ static void lanpr_cache_finish(void *vedata)
       MEM_freeN(pd->atlas_nr);
       MEM_freeN(pd->atlas_edge_mask);
       pd->atlas_pl = 0;
-      lanpr->reloaded = 0;
+      lanpr_share.dpix_reloaded = 0;
     }
 
     LANPR_BatchItem *bi;
@@ -748,7 +751,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
                                  GPU_ATTACHMENT_LEAVE});
 
   lanpr_engine_init(vedata);
-  lanpr->reloaded = 1; /*  force dpix batch to re-create */
+  lanpr_share.dpix_reloaded_deg = 1; /*  force dpix batch to re-create */
   lanpr_cache_init(vedata);
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, LANPR_render_cache);
   lanpr_cache_finish(vedata);
@@ -797,7 +800,7 @@ static void lanpr_view_update(void *vedata)
   /*  our update flag is in SceneLANPR. */
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr;
-  //lanpr->reloaded = 1; /*  very bad solution, this will slow down animation. */
+  lanpr_share.dpix_reloaded_deg = 1; /*  very bad solution, this will slow down animation. */
 }
 
 /* This reserve for depsgraph auto updates. */

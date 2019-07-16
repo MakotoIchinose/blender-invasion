@@ -81,7 +81,7 @@ void lanpr_init_atlas_inputs(void *ved)
     txl->dpix_out_length = NULL;
   }
 
-  if (lanpr->reloaded || !txl->dpix_in_pl) {
+  if (lanpr_share.dpix_reloaded || !txl->dpix_in_pl) {
     DRW_texture_ensure_2d(&txl->dpix_in_pl, texture_size, texture_size, GPU_RGBA32F, 0);
     DRW_texture_ensure_2d(&txl->dpix_in_pr, texture_size, texture_size, GPU_RGBA32F, 0);
     DRW_texture_ensure_2d(&txl->dpix_in_nl, texture_size, texture_size, GPU_RGBA32F, 0);

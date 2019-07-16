@@ -7146,11 +7146,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem DEBUG_rna_enum_lanpr_reload[] = {
-      {0, "IDLE", 0, "Idle", "Idle"},
-      {1, "RELOAD", 0, "RELOAD", "Force reload the scene"},
-      {0, NULL, 0, NULL, NULL}};
-
   static const EnumPropertyItem rna_enum_lanpr_master_mode[] = {
       {LANPR_MASTER_MODE_SOFTWARE, "SOFTWARE", 0, "CPU", "Software edge calculation"},
       {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "GPU", "DPIX GPU edge extraction"},
@@ -7216,13 +7211,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "GPencil Overwrite",
                            "Overwrite existing strokes in the current frame of target GP objects");
-
-  prop = RNA_def_property(srna, "reloaded", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, DEBUG_rna_enum_lanpr_reload);
-  RNA_def_property_enum_default(prop, 0);
-  RNA_def_property_ui_text(prop, "Reload", "Reload the scene");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "master_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_lanpr_master_mode);
