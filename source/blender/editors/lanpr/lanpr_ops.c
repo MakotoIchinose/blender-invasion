@@ -4067,6 +4067,14 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
     float t_geom = rb->scene->lanpr.chaining_geometry_threshold;
 
     ED_lanpr_NO_THREAD_chain_feature_lines(rb);
+
+    if(is_lanpr_engine){
+      /* Enough with it. We can provide an option after we have LANPR internal smoothing */
+      return;
+    }
+    
+    /* Below are simply for better GPencil experience. */
+
     ED_lanpr_split_chains_for_fixed_occlusion(rb);
 
     if (t_image < FLT_EPSILON && t_geom < FLT_EPSILON) {
