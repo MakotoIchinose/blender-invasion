@@ -1,0 +1,7 @@
+{
+   "file_format_version": "1.0.0",
+   "runtime": {
+      "library_path": "c:\\Program Files\\Oculus\\Support\\oculus-runtime\\LibOVRRT64_1.dll"
+   },
+   "api_layer": { }
+}

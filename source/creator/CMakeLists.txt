@@ -862,6 +862,8 @@ elseif(WIN32)
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu_glitchworkaround.cmd
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_log.cmd
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_factory_startup.cmd
+      ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_oculus.cmd
+      ${CMAKE_SOURCE_DIR}/release/windows/batch/oculus.json
     DESTINATION "."
   )
 
