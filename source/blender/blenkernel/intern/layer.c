@@ -515,7 +515,7 @@ static bool layer_collection_hidden(ViewLayer *view_layer, LayerCollection *lc)
     if (parent) {
       lc = BKE_layer_collection_first_from_scene_collection(view_layer, parent->collection);
 
-      return layer_collection_hidden(view_layer, lc);
+      return lc && layer_collection_hidden(view_layer, lc);
     }
     else {
       return false;
