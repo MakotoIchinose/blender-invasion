@@ -216,7 +216,7 @@ static void duplicateStroke(bGPDframe *gpf,
                      &t2_array[j * 3],
                      interpf(1 + offset, offset, offset_factor));
       if (fading) {
-        pt[j].pressure = gps->points[j].pressure * thickness_factor;
+        pt[j].pressure = gps->points[j].pressure * thickness_factor * 100;
         pt[j].strength = gps->points[j].strength * opacity_factor;
       }
     }

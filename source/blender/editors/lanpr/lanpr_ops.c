@@ -4072,7 +4072,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
       /* Enough with it. We can provide an option after we have LANPR internal smoothing */
       return;
     }
-    
+
     /* Below are simply for better GPencil experience. */
 
     ED_lanpr_split_chains_for_fixed_occlusion(rb);
@@ -4650,7 +4650,7 @@ static void lanpr_post_frame_updater(struct Main *UNUSED(_1),
                                      struct ID *scene,
                                      void *UNUSED(_3))
 {
-  Scene* s = scene;
+  Scene* s = (Scene*)scene;
   if(s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE){
     return;
   }
