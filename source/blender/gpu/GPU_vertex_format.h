@@ -88,6 +88,8 @@ typedef struct GPUVertFormat {
   uint packed : 1;
   /** Current offset in names[]. */
   uint name_offset : 8;
+  /** Store each attrib in one contiguous buffer region. */
+  uint deinterleaved : 1;
 
   GPUVertAttr attrs[GPU_VERT_ATTR_MAX_LEN];
   char names[GPU_VERT_ATTR_NAMES_BUF_LEN];
@@ -103,6 +105,8 @@ void GPU_vertformat_from_interface(GPUVertFormat *format,
 uint GPU_vertformat_attr_add(
     GPUVertFormat *, const char *name, GPUVertCompType, uint comp_len, GPUVertFetchMode);
 void GPU_vertformat_alias_add(GPUVertFormat *, const char *alias);
+
+void GPU_vertformat_deinterleave(GPUVertFormat *format);
 
 int GPU_vertformat_attr_id_get(const GPUVertFormat *, const char *name);
 

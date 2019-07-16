@@ -380,13 +380,23 @@ static void create_bindings(GPUVertBuf *verts,
   const GPUVertFormat *format = &verts->format;
 
   const uint attr_len = format->attr_len;
-  const uint stride = format->stride;
+  uint stride = format->stride;
+  uint offset = 0;
 
   GPU_vertbuf_use(verts);
 
   for (uint a_idx = 0; a_idx < attr_len; ++a_idx) {
     const GPUVertAttr *a = &format->attrs[a_idx];
-    const GLvoid *pointer = (const GLubyte *)0 + a->offset + v_first * stride;
+
+    if (format->deinterleaved) {
+      offset += ((a_idx == 0) ? 0 : format->attrs[a_idx - 1].sz) * verts->vertex_len;
+      stride = a->sz;
+    }
+    else {
+      offset = a->offset;
+    }
+
+    const GLvoid *pointer = (const GLubyte *)0 + offset + v_first * stride;
 
     for (uint n_idx = 0; n_idx < a->name_len; ++n_idx) {
       const char *name = GPU_vertformat_attr_name_get(format, a, n_idx);

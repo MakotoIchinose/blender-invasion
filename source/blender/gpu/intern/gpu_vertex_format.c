@@ -216,6 +216,29 @@ int GPU_vertformat_attr_id_get(const GPUVertFormat *format, const char *name)
   return -1;
 }
 
+/* Make attribute layout non-interleaved.
+ * Warning! This does not change data layout!
+ * Use direct buffer access to fill the data.
+ * This is for advanced usage.
+ *
+ * Deinterleaved data means all attrib data for each attrib
+ * is stored continuously like this :
+ * 000011112222
+ * instead of :
+ * 012012012012
+ *
+ * Note this is per attrib deinterleaving, NOT per component.
+ *  */
+void GPU_vertformat_deinterleave(GPUVertFormat *format)
+{
+  /* Ideally we should change the stride and offset here. This would allow
+   * us to use GPU_vertbuf_attr_set / GPU_vertbuf_attr_fill. But since
+   * we use only 11 bits for attr->offset this limits the size of the
+   * buffer considerably. So instead we do the conversion when creating
+   * bindings in create_bindings(). */
+  format->deinterleaved = true;
+}
+
 uint padding(uint offset, uint alignment)
 {
   const uint mod = offset % alignment;
