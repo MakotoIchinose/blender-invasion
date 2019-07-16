@@ -64,77 +64,8 @@ void AbstractHierarchyIterator::release_writers()
 void AbstractHierarchyIterator::iterate()
 {
   construct_export_graph();
-
-  // // For debug: print the export graph.
-  // printf("====== Export graph pre-prune:\n");
-  // for (auto it : export_graph) {
-  //   const std::pair<Object *, Object *> &parent_info = it.first;
-  //   Object *const export_parent = parent_info.first;
-  //   Object *const duplicator = parent_info.second;
-
-  //   if (duplicator != nullptr) {
-  //     printf("    DU %s (as dupped by %s):\n",
-  //            export_parent == nullptr ? "-null-" : (export_parent->id.name + 2),
-  //            duplicator->id.name + 2);
-  //   }
-  //   else {
-  //     printf("    OB %s:\n", export_parent == nullptr ? "-null-" : (export_parent->id.name +
-  //     2));
-  //   }
-
-  //   for (auto child_it : it.second) {
-  //     if (child_it.duplicator == nullptr) {
-  //       printf("       - %s%s\n",
-  //              child_it.object->id.name + 2,
-  //              child_it.weak_export ? " (weak)" : "");
-  //     }
-  //     else {
-  //       printf("       - %s (dup by %s%s)\n",
-  //              child_it.object->id.name + 2,
-  //              child_it.duplicator->id.name + 2,
-  //              child_it.weak_export ? ", weak" : "");
-  //     }
-  //   }
-  // }
-
   prune_export_graph();
-
-  // // For debug: print the export graph.
-  // printf("====== Export graph post-prune:\n");
-  // for (auto it : export_graph) {
-  //   const std::pair<Object *, Object *> &parent_info = it.first;
-  //   Object *const export_parent = parent_info.first;
-  //   Object *const duplicator = parent_info.second;
-
-  //   if (duplicator != nullptr) {
-  //     printf("    DU %s (as dupped by %s):\n",
-  //            export_parent == nullptr ? "-null-" : (export_parent->id.name + 2),
-  //            duplicator->id.name + 2);
-  //   }
-  //   else {
-  //     printf("    OB %s:\n", export_parent == nullptr ? "-null-" : (export_parent->id.name +
-  //     2));
-  //   }
-
-  //   for (auto child_it : it.second) {
-  //     if (child_it.duplicator == nullptr) {
-  //       printf("       - %s%s\n",
-  //              child_it.object->id.name + 2,
-  //              child_it.weak_export ? " (weak)" : "");
-  //     }
-  //     else {
-  //       printf("       - %s (dup by %s%s)\n",
-  //              child_it.object->id.name + 2,
-  //              child_it.duplicator->id.name + 2,
-  //              child_it.weak_export ? ", weak" : "");
-  //     }
-  //   }
-  // }
-
-  // For debug: print the export paths.
-  // printf("====== Export paths:\n");
   make_writers(HierarchyContext::root(), nullptr);
-
   export_graph.clear();
 }
 
