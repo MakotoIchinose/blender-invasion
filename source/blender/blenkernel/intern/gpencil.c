@@ -2061,9 +2061,9 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
   Material *ma = NULL;
   float color_cu[4];
   linearrgb_to_srgb_v3_v3(color_cu, color);
-  color_cu[3] = color[3];
-  float hsv1[3];
+  float hsv1[4];
   rgb_to_hsv_v(color_cu, hsv1);
+  hsv1[3] = color[3];
 
   for (int i = 1; i <= ob_gp->totcol; i++) {
     ma = give_current_material(ob_gp, i);
@@ -2243,12 +2243,14 @@ static void gpencil_convert_spline(Main *bmain,
     /* If object has more than 1 material, use second material for stroke color. */
     if (ob_cu->totcol > 1) {
       ma_stroke = give_current_material(ob_cu, 2);
-      linearrgb_to_srgb_v4(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      mat_gp->gp_style->stroke_rgba[3] = ma_stroke->a;
     }
     else if (only_stroke) {
       /* Also use the first color if the fill is none for stroke color. */
       ma_stroke = give_current_material(ob_cu, 1);
-      linearrgb_to_srgb_v4(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
+      mat_gp->gp_style->stroke_rgba[3] = ma_stroke->a;
       /* set fill to off. */
       mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
     }
