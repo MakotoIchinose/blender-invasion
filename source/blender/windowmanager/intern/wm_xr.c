@@ -99,10 +99,12 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
 
   {
     const GHOST_TXrGraphicsBinding gpu_bindings_candidates[] = {
-        GHOST_kXrGraphicsOpenGL,
+    /* TODO temporarily letting D3D take priority, OpenGL doesn't work yet */
+    // GHOST_kXrGraphicsOpenGL,
 #ifdef WIN32
         GHOST_kXrGraphicsD3D11,
 #endif
+        GHOST_kXrGraphicsOpenGL,
     };
     GHOST_XrContextCreateInfo create_info = {
         .gpu_binding_candidates = gpu_bindings_candidates,
