@@ -52,5 +52,11 @@ static bool check_is_transform_animated(Object *object, bool recurse_parent)
 
 bool USDTransformWriter::check_is_animated(const HierarchyContext &context) const
 {
+  if (context.duplicator != NULL) {
+    /* This object is being duplicated, so could be emitted by a particle system and thus
+     * influenced by forces. TODO(Sybren): Make this more strict. Probably better to get from the
+     * depsgraph whether this object instance has a time source. */
+    return true;
+  }
   return check_is_transform_animated(context.object, context.animation_check_include_parent);
 }

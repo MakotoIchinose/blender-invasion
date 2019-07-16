@@ -1,5 +1,8 @@
 #include "abstract_hierarchy_iterator.h"
 
+#include <iostream>
+#include <limits.h>
+#include <sstream>
 #include <string>
 
 extern "C" {
@@ -21,6 +24,19 @@ const HierarchyContext &HierarchyContext::root()
 {
   static const HierarchyContext root_hierarchy_context = {.object = nullptr};
   return root_hierarchy_context;
+}
+
+bool HierarchyContext::operator<(const HierarchyContext &other) const
+{
+  if (object != other.object) {
+    return object < other.object;
+  }
+  if (duplicator != NULL && duplicator == other.duplicator) {
+    // Only resort to string comparisons when both objects are created by the same duplicator.
+    return export_name < other.export_name;
+  }
+
+  return export_parent < other.export_parent;
 }
 
 AbstractHierarchyIterator::AbstractHierarchyIterator(Depsgraph *depsgraph)
@@ -180,6 +196,7 @@ void AbstractHierarchyIterator::visit_object(Object *object,
 {
   HierarchyContext context;
   context.object = object;
+  context.export_name = get_object_name(object);
   context.export_parent = export_parent;
   context.duplicator = nullptr;
   context.weak_export = weak_export;
@@ -192,7 +209,7 @@ void AbstractHierarchyIterator::visit_object(Object *object,
 
   // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
   // printf("    OB %30s %p (export-parent=%s; world x = %f)\n",
-  //        get_object_name(context.object).c_str(),
+  //        context.export_name.c_str(),
   //        context.object,
   //        export_parent_name.c_str(),
   //        context.matrix_world[3][0]);
@@ -232,11 +249,21 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   context.animation_check_include_parent = animation_check_include_parent;
   copy_m4_m4(context.matrix_world, dupli_object->mat);
 
+  std::string export_parent_name = context.export_parent ? get_object_name(context.export_parent) :
+                                                           "/";
+
+  // Construct export name for the dupli-instance.
+  std::stringstream suffix_stream;
+  suffix_stream << std::hex;
+  for (int i = 0; i < MAX_DUPLI_RECUR && dupli_object->persistent_id[i] != INT_MAX; i++) {
+    suffix_stream << "-" << dupli_object->persistent_id[i];
+  }
+  context.export_name = make_valid_name(get_object_name(context.object) + suffix_stream.str());
+
   export_graph[graph_index].insert(context);
 
-  // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
   // printf("    DU %30s %p (export-parent=%s; duplicator = %s; world x = %f)\n",
-  //        get_object_name(context.object).c_str(),
+  //        context.export_name.c_str(),
   //        context.object,
   //        export_parent_name.c_str(),
   //        duplicator->id.name + 2,
@@ -291,19 +318,21 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext &parent_cont
     invert_m4_m4(parent_matrix_inv_world, parent_context.matrix_world);
   }
 
-  for (HierarchyContext context :
-       export_graph[std::make_pair(parent_context.object, parent_context.duplicator)]) {
-    std::string export_path = path_concatenate(parent_context.export_path,
-                                               get_object_name(context.object));
+  ExportGraph::mapped_type &graph_children =
+      export_graph[std::make_pair(parent_context.object, parent_context.duplicator)];
+  for (HierarchyContext context : graph_children) {
+    BLI_assert(!context.export_name.empty());
+
+    std::string export_path = path_concatenate(parent_context.export_path, context.export_name);
     context.parent_writer = parent_writer;
     context.export_path = export_path;
     copy_m4_m4(context.parent_matrix_inv_world, parent_matrix_inv_world);
 
-    // const char *color = context.duplicator ? "32;1" : "30";
-    // printf("%s \033[%sm%s\033[0m\n",
+    // printf("'%s' + '%s' = '%s' (exporting object %s)\n",
+    //        parent_context.export_path.c_str(),
+    //        context.export_name.c_str(),
     //        export_path.c_str(),
-    //        color,
-    //        context.duplicator ? context.duplicator->id.name + 2 : "");
+    //        context.object->id.name + 2);
 
     // Get or create the transform writer.
     xform_writer = ensure_writer(context, &AbstractHierarchyIterator::create_xform_writer);
@@ -402,7 +431,12 @@ std::string AbstractHierarchyIterator::get_id_name(const ID *id) const
     return "";
   }
 
-  return std::string(id->name + 2);
+  return make_valid_name(std::string(id->name + 2));
+}
+
+std::string AbstractHierarchyIterator::make_valid_name(const std::string &name) const
+{
+  return name;
 }
 
 std::string AbstractHierarchyIterator::path_concatenate(const std::string &parent_path,

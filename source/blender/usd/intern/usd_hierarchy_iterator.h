@@ -28,7 +28,7 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   void set_export_frame(float frame_nr);
   const pxr::UsdTimeCode &get_export_time_code() const;
 
-  virtual std::string get_id_name(const ID *const id) const override;
+  virtual std::string make_valid_name(const std::string &name) const override;
 
  protected:
   virtual bool should_export_object(const Object *object) const override;

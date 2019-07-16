@@ -46,10 +46,8 @@ void USDHierarchyIterator::delete_object_writer(AbstractHierarchyWriter *writer)
   delete static_cast<USDAbstractWriter *>(writer);
 }
 
-std::string USDHierarchyIterator::get_id_name(const ID *const id) const
+std::string USDHierarchyIterator::make_valid_name(const std::string &name) const
 {
-  BLI_assert(id != nullptr);
-  std::string name(id->name + 2);
   return pxr::TfMakeValidIdentifier(name);
 }
 

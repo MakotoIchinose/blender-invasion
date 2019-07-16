@@ -56,6 +56,7 @@ struct HierarchyContext {
   Object *export_parent;
   Object *duplicator;
   float matrix_world[4][4];
+  std::string export_name;
 
   /* When true, the object will be exported only as transform, and only if is an ancestor of a
    * non-weak child: */
@@ -72,10 +73,7 @@ struct HierarchyContext {
   ParticleSystem *particle_system;         // Only set for particle/hair writers.
 
   // For making the struct insertable into a std::set<>.
-  bool operator<(const HierarchyContext &other) const
-  {
-    return object < other.object;
-  }
+  bool operator<(const HierarchyContext &other) const;
 
   /* Return a HierarchyContext representing the root of the export hierarchy. */
   static const HierarchyContext &root();
@@ -107,7 +105,8 @@ class AbstractHierarchyIterator {
   const WriterMap &writer_map() const;
   void release_writers();
 
-  virtual std::string get_id_name(const ID *id) const = 0;
+  virtual std::string get_id_name(const ID *id) const;
+  virtual std::string make_valid_name(const std::string &name) const;
 
  private:
   void construct_export_graph();
