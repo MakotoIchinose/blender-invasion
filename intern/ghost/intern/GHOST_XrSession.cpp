@@ -234,12 +234,12 @@ static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
   return images;
 }
 
-static XrSwapchain swapchain_create(const XrSession session,
-                                    GHOST_IXrGraphicsBinding *gpu_binding,
-                                    const XrViewConfigurationView *xr_view)
+static unique_oxr_ptr<XrSwapchain> swapchain_create(const XrSession session,
+                                                    GHOST_IXrGraphicsBinding *gpu_binding,
+                                                    const XrViewConfigurationView *xr_view)
 {
   XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-  XrSwapchain swapchain;
+  unique_oxr_ptr<XrSwapchain> swapchain(xrDestroySwapchain);
   uint32_t format_count = 0;
   int64_t chosen_format;
 
@@ -264,7 +264,7 @@ static XrSwapchain swapchain_create(const XrSession session,
   create_info.faceCount = 1;
   create_info.arraySize = 1;
   create_info.mipCount = 1;
-  CHECK_XR(xrCreateSwapchain(session, &create_info, &swapchain),
+  CHECK_XR(swapchain.construct(xrCreateSwapchain, session, &create_info),
            "Failed to create OpenXR swapchain.");
 
   return swapchain;
@@ -289,13 +289,16 @@ void GHOST_XrSession::prepareDrawing()
            "Failed to get count of view configurations.");
 
   for (const XrViewConfigurationView &view : view_configs) {
-    XrSwapchain swapchain = swapchain_create(m_oxr->session, m_gpu_binding.get(), &view);
-    auto images = swapchain_images_create(swapchain, m_gpu_binding.get());
+    unique_oxr_ptr<XrSwapchain> swapchain = swapchain_create(
+        m_oxr->session, m_gpu_binding.get(), &view);
+    auto images = swapchain_images_create(swapchain.get(), m_gpu_binding.get());
 
     m_oxr->swapchain_image_width = view.recommendedImageRectWidth;
     m_oxr->swapchain_image_height = view.recommendedImageRectHeight;
-    m_oxr->swapchains.push_back(swapchain);
-    m_oxr->swapchain_images.insert(std::make_pair(swapchain, std::move(images)));
+    m_oxr->swapchains.push_back(swapchain.get());
+    m_oxr->swapchain_images.insert(std::make_pair(swapchain.get(), std::move(images)));
+
+    swapchain.release();
   }
 
   m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
