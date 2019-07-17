@@ -848,6 +848,16 @@ static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
   return NULL;
 }
 
+static void cloth_remeshing_print_all_verts(BMesh *bm)
+{
+  BMVert *v;
+  BMIter iter;
+  int i = 0;
+  BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
+    printf("v%3d: %f %f %f\n", i, v->co[0], v->co[1], v->co[2]);
+  }
+}
+
 /*
  * v5    v4
  * *-----*
@@ -861,6 +871,7 @@ static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
 static BMEdge *cloth_remeshing_fix_sewing_verts(
     Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, vector<ClothSizing> &sizing)
 {
+  /* cloth_remeshing_print_all_verts(bm); */
   BMEdge *v3v4 = cloth_remeshing_find_next_loose_edge(v3);
   BMVert *v4, *v5;
   v3v4->v1 == v3 ? v4 = v3v4->v2 : v4 = v3v4->v1;
@@ -868,19 +879,27 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
   BMEdge *v4v5;
   BMEdge *v5v1;
   BMIter v4v5_iter;
+  bool found_v4v5 = false;
   BM_ITER_ELEM (v4v5, &v4v5_iter, v4, BM_EDGES_OF_VERT) {
     v4v5->v1 == v4 ? v5 = v4v5->v2 : v5 = v4v5->v1;
 
     v5v1 = cloth_remeshing_find_next_loose_edge(v5);
-    if (v5v1 != NULL) {
-      printf("found v4v5\n");
-      printf("v1: %f %f %f\n", v1->co[0], v1->co[1], v1->co[2]);
-      printf("v5v1->v1: %f %f %f\n", v5v1->v1->co[0], v5v1->v1->co[1], v5v1->v1->co[2]);
-      printf("v5v1->v2: %f %f %f\n", v5v1->v2->co[0], v5v1->v2->co[1], v5v1->v2->co[2]);
+    if (v5v1 != NULL && v5v1 != v3v4) {
+      /* printf("found v4v5\n"); */
+      /* printf("v1: %f %f %f\n", v1->co[0], v1->co[1], v1->co[2]); */
+      /* printf("v2: %f %f %f\n", new_vert->co[0], new_vert->co[1], new_vert->co[2]); */
+      /* printf("v3: %f %f %f\n", v3->co[0], v3->co[1], v3->co[2]); */
+      /* printf("v4: %f %f %f\n", v4->co[0], v4->co[1], v4->co[2]); */
+      /* printf("v5: %f %f %f\n", v5->co[0], v5->co[1], v5->co[2]); */
       if (v5v1->v1 == v1 || v5v1->v2 == v1) {
+        found_v4v5 = true;
         break;
       }
     }
+  }
+
+  if (!found_v4v5) {
+    return NULL;
   }
 
   float v4v5_size = cloth_remeshing_edge_size(bm, v4v5, sizing);
@@ -891,6 +910,7 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
     cloth->verts = (ClothVertex *)MEM_reallocN(cloth->verts,
                                                (cloth->mvert_num + 1) * sizeof(ClothVertex));
     cloth_remeshing_add_vertex_to_cloth(cloth, v4v5_old.v1, v4v5_old.v2);
+    printf("joining new_vert and v6\n");
     return BM_edge_create(bm, new_vert, v6, v3v4, BM_CREATE_NO_DOUBLE);
   }
   else {
@@ -901,9 +921,11 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
     copy_v3_v3(v2v4, new_vert->co);
     sub_v3_v3(v2v4, v4->co);
     if (len_v3(v2v5) < len_v3(v2v4)) {
+      printf("joining new_vert and v5\n");
       return BM_edge_create(bm, new_vert, v5, v3v4, BM_CREATE_NO_DOUBLE);
     }
     else {
+      printf("joining new_vert and v4\n");
       return BM_edge_create(bm, new_vert, v4, v3v4, BM_CREATE_NO_DOUBLE);
     }
   }
