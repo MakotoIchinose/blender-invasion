@@ -68,7 +68,7 @@ template<typename _OXR_HANDLE> class unique_oxr_ptr {
   {
   }
 
-  unique_oxr_ptr(unique_oxr_ptr &&other) : m_ptr(other.m_ptr), m_destroy_fn(other.m_destroy_fn)
+  unique_oxr_ptr(unique_oxr_ptr &&other) : m_ptr(other.release()), m_destroy_fn(other.m_destroy_fn)
   {
   }
 
