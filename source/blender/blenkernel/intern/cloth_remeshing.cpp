@@ -89,6 +89,7 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
 static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
                                                 BMesh *bm,
                                                 BMEdge *e);
+static ClothSizing cloth_remeshing_find_average_sizing(ClothSizing &size_01, ClothSizing &size_02);
 
 static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
@@ -352,9 +353,12 @@ static bool cloth_remeshing_should_flip(
   cloth_remeshing_uv_of_vert_in_face(bm, f2, v2, z);
   cloth_remeshing_uv_of_vert_in_face(bm, f1, v3, w);
 
-  /* TODO(Ish): fix sizing when properly implemented */
   float m[2][2];
-  copy_m2_m2(m, sizing[v1].m);
+  /* TODO(Ish): need to fix this when sizing is improved */
+  ClothSizing size_temp_01 = cloth_remeshing_find_average_sizing(sizing[v1], sizing[v2]);
+  ClothSizing size_temp_02 = cloth_remeshing_find_average_sizing(sizing[v3], sizing[v4]);
+  ClothSizing size_temp = cloth_remeshing_find_average_sizing(size_temp_01, size_temp_02);
+  copy_m2_m2(m, size_temp.m);
 
   float zy[2], xy[2], xw[2], mzw[2], mxy[2], zw[2];
   copy_v2_v2(zy, z);
@@ -490,6 +494,14 @@ static bool cloth_remeshing_fix_mesh(BMesh *bm,
   return true;
 }
 
+static ClothSizing cloth_remeshing_find_average_sizing(ClothSizing &size_01, ClothSizing &size_02)
+{
+  ClothSizing new_size;
+  add_m2_m2m2(new_size.m, size_01.m, size_02.m);
+  mul_m2_fl(new_size.m, 0.5f);
+  return new_size;
+}
+
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, ClothSizing> &sizing)
 {
   /* BMVert v1 = *edge->v1; */
@@ -542,11 +554,9 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, Cl
 
   float value = 0.0;
   float temp_v2[2];
-  /* int index = BM_elem_index_get(&v1); */
-  /* ClothSizing sizing_temp = sizing[index] */
-  ClothSizing sizing_temp = sizing[edge->v1];
-  /* TODO(Ish): sizing_temp needs to be average of the both vertices, for static it doesn't
-   * matter since all sizing are same */
+  /* TODO(Ish): need to fix this when sizing is improved */
+  ClothSizing sizing_temp = cloth_remeshing_find_average_sizing(sizing[edge->v1],
+                                                                sizing[edge->v2]);
   mul_v2_m2v2(temp_v2, sizing_temp.m, u12);
   value += dot_v2v2(u12, temp_v2);
 
@@ -811,7 +821,8 @@ static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
 
 /* calling function must ensure cloth->verts has enough allocated
  * space */
-static void cloth_remeshing_add_vertex_to_cloth(Cloth *cloth, BMVert *v1, BMVert *v2)
+static void cloth_remeshing_add_vertex_to_cloth(
+    Cloth *cloth, BMVert *v1, BMVert *v2, BMVert *new_vert, map<BMVert *, ClothSizing> &sizing)
 {
   BLI_assert(cloth->verts != NULL);
   ClothVertex *cv1, *cv2;
@@ -827,6 +838,8 @@ static void cloth_remeshing_add_vertex_to_cloth(Cloth *cloth, BMVert *v1, BMVert
   BLI_assert(cv2 != NULL);
   cloth->mvert_num += 1;
   cloth->verts[cloth->mvert_num - 1] = cloth_remeshing_mean_cloth_vert(cv1, cv2);
+
+  sizing[new_vert] = cloth_remeshing_find_average_sizing(sizing[v1], sizing[v2]);
 }
 
 static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
@@ -908,7 +921,7 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(Cloth *cloth,
     v6 = cloth_remeshing_split_edge_keep_triangles(bm, v4v5, v4, 0.5);
     cloth->verts = (ClothVertex *)MEM_reallocN(cloth->verts,
                                                (cloth->mvert_num + 1) * sizeof(ClothVertex));
-    cloth_remeshing_add_vertex_to_cloth(cloth, v4v5_old.v1, v4v5_old.v2);
+    cloth_remeshing_add_vertex_to_cloth(cloth, v4v5_old.v1, v4v5_old.v2, v6, sizing);
     printf("joining new_vert and v6\n");
     return BM_edge_create(bm, new_vert, v6, v3v4, BM_CREATE_NO_DOUBLE);
   }
@@ -951,7 +964,7 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
     BMEdge old_edge = *e;
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
 
-    cloth_remeshing_add_vertex_to_cloth(cloth, old_edge.v1, old_edge.v2);
+    cloth_remeshing_add_vertex_to_cloth(cloth, old_edge.v1, old_edge.v2, new_vert, sizing);
 
     if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
       if (cloth_remeshing_find_next_loose_edge(old_edge.v1) != NULL &&
@@ -1022,7 +1035,7 @@ static float cloth_remeshing_edge_size_with_vert(
   float u12[2];
   copy_v2_v2(u12, uv_01);
   sub_v2_v2(u12, uv_02);
-  ClothSizing sizing_temp = sizing[v1];
+  ClothSizing sizing_temp = cloth_remeshing_find_average_sizing(sizing[v1], sizing[v2]);
   mul_v2_m2v2(temp_v2, sizing_temp.m, u12);
   value += dot_v2v2(u12, temp_v2);
 
@@ -1141,7 +1154,9 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
   return true;
 }
 
-static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth, BMVert *v)
+static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth,
+                                                     BMVert *v,
+                                                     map<BMVert *, ClothSizing> &sizing)
 {
   int v_index = cloth_remeshing_find_cloth_vertex_index(v, cloth->verts, cloth->mvert_num);
   cloth->verts[v_index] = cloth->verts[cloth->mvert_num - 1];
@@ -1152,6 +1167,7 @@ static void cloth_remeshing_remove_vertex_from_cloth(Cloth *cloth, BMVert *v)
          cloth->verts[cloth->mvert_num - 1].x[2]);
 #endif
   cloth->mvert_num--;
+  sizing.erase(v);
 }
 
 static bool cloth_remeshing_boundary_test(BMEdge *e)
@@ -1209,12 +1225,15 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v)
   return false;
 }
 
-static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth, BMesh *bm, BMEdge *e)
+static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth,
+                                             BMesh *bm,
+                                             BMEdge *e,
+                                             map<BMVert *, ClothSizing> &sizing)
 {
   BMVert v1 = *e->v1;
   BMVert *v2 = BM_edge_collapse(bm, e, e->v1, true, true);
 
-  cloth_remeshing_remove_vertex_from_cloth(cloth, &v1);
+  cloth_remeshing_remove_vertex_from_cloth(cloth, &v1, sizing);
   return v2;
 }
 
@@ -1237,7 +1256,7 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
     return NULL;
   }
 
-  return cloth_remeshing_collapse_edge(cloth, bm, e);
+  return cloth_remeshing_collapse_edge(cloth, bm, e, sizing);
 }
 
 static void cloth_remeshing_remove_face(vector<BMFace *> &faces, int index)
