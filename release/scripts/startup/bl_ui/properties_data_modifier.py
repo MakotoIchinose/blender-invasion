@@ -1890,13 +1890,12 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col.prop(md, "normalize_thickness")
 
-        if not md.normalize_thickness:
-            split = layout.split()
-            col = split.column()
-            col.prop(md, "use_custom_curve")
+        split = layout.split()
+        col = split.column()
+        col.prop(md, "use_custom_curve")
 
-            if md.use_custom_curve:
-                col.template_curve_mapping(md, "curve")
+        if md.use_custom_curve:
+            col.template_curve_mapping(md, "curve")
 
         col = layout.column()
         col.separator()

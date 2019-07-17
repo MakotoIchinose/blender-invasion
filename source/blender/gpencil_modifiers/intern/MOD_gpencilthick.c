@@ -117,19 +117,22 @@ static void deformStroke(GpencilModifierData *md,
       continue;
     }
 
-    if (mmd->flag & GP_THICK_NORMALIZE) {
-      pt->pressure = 1.0f;
+    
+    if ((mmd->flag & GP_THICK_CUSTOM_CURVE) && (mmd->curve_thickness)) {
+      /* normalize value to evaluate curve */
+      float value = (float)i / (gps->totpoints - 1);
+      curvef = curvemapping_evaluateF(mmd->curve_thickness, 0, value);
     }
-    else {
-      if ((mmd->flag & GP_THICK_CUSTOM_CURVE) && (mmd->curve_thickness)) {
-        /* normalize value to evaluate curve */
-        float value = (float)i / (gps->totpoints - 1);
-        curvef = curvemapping_evaluateF(mmd->curve_thickness, 0, value);
-      }
 
-      pt->pressure += mmd->thickness * weight * curvef;
-      CLAMP_MIN(pt->pressure, 0.1f);
+    float new_pressure = weight * curvef;
+
+    if (mmd->flag & GP_THICK_NORMALIZE) {
+      pt->pressure = 1.0f * new_pressure;
+    }else{
+      pt->pressure += mmd->thickness * new_pressure;
     }
+
+    CLAMP_MIN(pt->pressure, 0.1f);
   }
 }
 
