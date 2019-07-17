@@ -4264,7 +4264,7 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
   int color_idx = 0;
   int tot_points = 0;
-  short thickness = 1;
+  short thickness = 100;
 
   float mat[4][4];
 
