@@ -4004,6 +4004,7 @@ NODE_DEFINE(ObjectInfoNode)
   NodeType *type = NodeType::add("object_info", create, NodeType::SHADER);
 
   SOCKET_OUT_VECTOR(location, "Location");
+  SOCKET_OUT_COLOR(color, "Color");
   SOCKET_OUT_FLOAT(object_index, "Object Index");
   SOCKET_OUT_FLOAT(material_index, "Material Index");
   SOCKET_OUT_FLOAT(random, "Random");
@@ -4020,6 +4021,11 @@ void ObjectInfoNode::compile(SVMCompiler &compiler)
   ShaderOutput *out = output("Location");
   if (!out->links.empty()) {
     compiler.add_node(NODE_OBJECT_INFO, NODE_INFO_OB_LOCATION, compiler.stack_assign(out));
+  }
+
+  out = output("Color");
+  if (!out->links.empty()) {
+    compiler.add_node(NODE_OBJECT_INFO, NODE_INFO_OB_COLOR, compiler.stack_assign(out));
   }
 
   out = output("Object Index");

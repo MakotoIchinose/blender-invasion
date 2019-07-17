@@ -1408,6 +1408,7 @@ typedef struct KernelObject {
   float surface_area;
   float pass_id;
   float random_number;
+  float color[3];
   int particle_index;
 
   float dupli_generated[3];
