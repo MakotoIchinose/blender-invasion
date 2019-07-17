@@ -65,7 +65,7 @@ static wmSurface *g_xr_surface = NULL;
 
 typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
-} XrSurfaceData;
+} wmXrSurfaceData;
 
 typedef struct {
   wmWindowManager *wm;
@@ -137,6 +137,14 @@ static void wm_xr_session_surface_draw(bContext *C)
 static void wm_xr_session_free_data(wmSurface *surface)
 {
   WM_opengl_context_dispose(surface->ghost_ctx);
+  if (surface->secondary_ghost_ctx) {
+#ifdef WIN32
+    wmXrSurfaceData *data = surface->customdata;
+    if (data->gpu_binding_type == GHOST_kXrGraphicsD3D11) {
+      WM_directx_context_dispose(surface->secondary_ghost_ctx);
+    }
+#endif
+  }
   GPU_context_active_set(surface->gpu_ctx);
   GPU_context_discard(surface->gpu_ctx);
   MEM_freeN(surface->customdata);
@@ -152,7 +160,7 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int
   }
 
   wmSurface *surface = MEM_callocN(sizeof(*surface), __func__);
-  XrSurfaceData *data = MEM_callocN(sizeof(*data), "XrSurfaceData");
+  wmXrSurfaceData *data = MEM_callocN(sizeof(*data), "XrSurfaceData");
   unsigned int default_fb;
 
 #ifndef WIN32
