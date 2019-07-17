@@ -311,7 +311,7 @@ static void foreachObjectLink(GpencilModifierData *md,
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
-    /* name */ "Multiply Stretch",
+    /* name */ "Multiple Strokes",
     /* structName */ "MultiplyGpencilModifierData",
     /* structSize */ sizeof(MultiplyGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,

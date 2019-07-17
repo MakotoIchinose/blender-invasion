@@ -85,7 +85,7 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
     {eGpencilModifierType_Multiply,
      "GP_MULTIPLY",
      ICON_GP_MULTIFRAME_EDITING,
-     "Multiply",
+     "MultiStroke",
      "Produce multiple strokes along one stroke"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
