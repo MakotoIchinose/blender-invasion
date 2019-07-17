@@ -55,4 +55,69 @@
   } \
   (void)0
 
+/**
+ * Helper for RAII usage of OpenXR handles (defined with XR_DEFINE_HANDLE). This is based on
+ * `std::unique_ptr`, to give similar behavior and usage (e.g. functions like #get() and #release()
+ * are supported).
+ */
+template<typename _OXR_HANDLE> class unique_oxr_ptr {
+ public:
+  using xr_destroy_func = XrResult (*)(_OXR_HANDLE);
+
+  unique_oxr_ptr(xr_destroy_func destroy_fn) : m_destroy_fn(destroy_fn)
+  {
+  }
+
+  unique_oxr_ptr(unique_oxr_ptr &&other) : m_ptr(other.m_ptr), m_destroy_fn(other.m_destroy_fn)
+  {
+  }
+
+  /**
+   * Construct the pointer from a xrCreate function passed as \a create_fn, with additional
+   * arguments forwarded from \a args.
+   * For example, this:
+   * \code
+   * some_unique_oxr_ptr.contruct(xrCreateFoo, some_arg, some_other_arg);
+   * \endcode
+   * effectively results in this call:
+   * \code
+   * xrCreateFoo(some_arg, some_other_arg, &some_unique_oxr_ptr.m_ptr);
+   * \endcode
+   */
+  template<typename _create_func, typename... _Args>
+  XrResult construct(_create_func create_fn, _Args &&... args)
+  {
+    assert(m_ptr == XR_NULL_HANDLE);
+    return create_fn(std::forward<_Args>(args)..., &m_ptr);
+  }
+
+  ~unique_oxr_ptr()
+  {
+    if (m_ptr != XR_NULL_HANDLE) {
+      m_destroy_fn(m_ptr);
+    }
+  }
+
+  _OXR_HANDLE get()
+  {
+    return m_ptr;
+  }
+
+  _OXR_HANDLE release()
+  {
+    _OXR_HANDLE ptr = get();
+    m_ptr = XR_NULL_HANDLE;
+    return ptr;
+  }
+
+  /* operator= defines not needed for now. */
+
+  unique_oxr_ptr(const unique_oxr_ptr &) = delete;
+  unique_oxr_ptr &operator=(const unique_oxr_ptr &) = delete;
+
+ private:
+  _OXR_HANDLE m_ptr{XR_NULL_HANDLE};
+  xr_destroy_func m_destroy_fn;
+};
+
 #endif /* __GHOST_XR_INTERN_H__ */
