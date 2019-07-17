@@ -46,16 +46,15 @@
 
 static void write_svg_head(Text *ta)
 {
-  BKE_text_write(ta, NULL, "<?xml version=\"1.0\" standalone=\"no\"?>\n");
+  BKE_text_write(ta, "<?xml version=\"1.0\" standalone=\"no\"?>\n");
   BKE_text_write(ta,
-                 NULL,
                  "<svg width=\"10\" height=\"10\" viewBox=\"-5 -5 10 10\" "
                  "xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n");
 }
 
 static void write_svg_end(Text *ta)
 {
-  BKE_text_write(ta, NULL, "</svg>");
+  BKE_text_write(ta, "</svg>");
 }
 
 typedef int(svg_get_path_callback)(void *iterator,
@@ -81,7 +80,7 @@ static void write_paths_from_callback(void *iterator,
   while (get_path(iterator, fill_color, stroke_color, &stroke_width)) {
 
     /* beginning of a path item */
-    BKE_text_write(ta, NULL, "<path d=\"");
+    BKE_text_write(ta, "<path d=\"");
 
     first_in = 1;
     while (get_node(iterator, &x, &y)) {
@@ -90,7 +89,7 @@ static void write_paths_from_callback(void *iterator,
               first_in ? 'M' : 'L',
               x,
               y); /* Should handle closed stroke as well. */
-      BKE_text_write(ta, NULL, buf);
+      BKE_text_write(ta, buf);
       first_in = 0;
     }
 
@@ -103,7 +102,7 @@ static void write_paths_from_callback(void *iterator,
             FAC_255_COLOR3(fill_color),
             FAC_255_COLOR3(stroke_color),
             stroke_width / 1000.0f);
-    BKE_text_write(ta, NULL, buf);
+    BKE_text_write(ta, buf);
   }
 }
 
