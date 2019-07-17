@@ -81,7 +81,6 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_SUBSURF,
      "Subdivide",
      "Subdivide stroke adding more control points"},
-    {eGpencilModifierType_Sample, "GP_SAMPLE", ICON_MOD_MULTIRES, "Sample", "Resamples strokes"},
     {eGpencilModifierType_Multiply,
      "GP_MULTIPLY",
      ICON_GP_MULTIFRAME_EDITING,
@@ -218,8 +217,6 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_OffsetGpencilModifier;
     case eGpencilModifierType_Armature:
       return &RNA_ArmatureGpencilModifier;
-    case eGpencilModifierType_Sample:
-      return &RNA_SampleGpencilModifier;
     case eGpencilModifierType_Length:
       return &RNA_LengthGpencilModifier;
     case eGpencilModifierType_Multiply:
@@ -630,6 +627,11 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
        ICON_IPO_EASE_IN_OUT,
        "Adaptive",
        "Use a RDP algorithm to simplify"},
+      {GP_SIMPLIFY_SAMPLE,
+       "SAMPLE",
+       ICON_IPO_EASE_IN_OUT,
+       "Sample",
+       "Sample a curve using a fixed length"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -687,6 +689,13 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "step");
   RNA_def_property_range(prop, 1, 50);
   RNA_def_property_ui_text(prop, "Iterations", "Number of times to apply simplify");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /* Sample */
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
@@ -1706,23 +1715,6 @@ static void rna_def_modifier_gpencilarmature(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 }
 
-static void rna_def_modifier_gpencilsample(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "SampleGpencilModifier", "GpencilModifier");
-  RNA_def_struct_ui_text(srna, "Sample Modifier", "Re-samples the stroke");
-  RNA_def_struct_sdna(srna, "SampleGpencilModifierData");
-  RNA_def_struct_ui_icon(srna, ICON_MOD_MULTIRES);
-
-  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "length");
-  RNA_def_property_range(prop, 0, 10);
-  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-}
-
 static void rna_def_modifier_gpencillength(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1866,7 +1858,6 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencilnoise(brna);
   rna_def_modifier_gpencilsmooth(brna);
   rna_def_modifier_gpencilsubdiv(brna);
-  rna_def_modifier_gpencilsample(brna);
   rna_def_modifier_gpencilsimplify(brna);
   rna_def_modifier_gpencilthick(brna);
   rna_def_modifier_gpenciloffset(brna);

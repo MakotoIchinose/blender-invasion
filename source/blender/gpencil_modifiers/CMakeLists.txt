@@ -57,7 +57,6 @@ set(SRC
   intern/MOD_gpencilopacity.c
   intern/MOD_gpencilsimplify.c
   intern/MOD_gpencilsmooth.c
-  intern/MOD_gpencilsample.c
   intern/MOD_gpencilsubdiv.c
   intern/MOD_gpencilthick.c
   intern/MOD_gpenciltime.c

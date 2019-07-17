@@ -1863,13 +1863,13 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         col.label(text="Settings:")
-        row = col.row(align=True)
-        row.enabled = md.mode == 'FIXED'
-        row.prop(md, "step")
 
-        row = col.row(align=True)
-        row.enabled = not md.mode == 'FIXED'
-        row.prop(md, "factor")
+        if md.mode == 'FIXED':
+            col.prop(md, "step")
+        elif md.mode == 'ADAPTIVE':
+            col.prop(md, "factor")
+        elif md.mode == 'SAMPLE':
+            col.prop(md, "length")
 
         col = layout.column()
         col.separator()
@@ -2342,10 +2342,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row(align=True)
         row.prop(md, "layer_pass", text="Pass")
         row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
-
-    def GP_SAMPLE(self, layout, ob, md):
-        col = layout.column()
-        col.prop(md, "length")
     
     def GP_LENGTH(self, layout, ob, md):
         sp = layout.split()
