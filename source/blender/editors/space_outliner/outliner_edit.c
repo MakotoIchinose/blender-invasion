@@ -1258,16 +1258,24 @@ void OUTLINER_OT_show_active(wmOperatorType *ot)
 static int outliner_scroll_page_exec(bContext *C, wmOperator *op)
 {
   ARegion *ar = CTX_wm_region(C);
-  int dy = BLI_rcti_size_y(&ar->v2d.mask);
-  int up = 0;
+  int size_y = BLI_rcti_size_y(&ar->v2d.mask) + 1;
 
+  bool up = false;
   if (RNA_boolean_get(op->ptr, "up")) {
-    up = 1;
+    up = true;
   }
 
-  if (up == 0) {
-    dy = -dy;
+  /* Keep view within outliner tree bounds */
+  int y_min = MIN2(ar->v2d.tot.ymin, ar->v2d.cur.ymin);
+  int dy;
+
+  if (up) {
+    dy = MIN2(size_y, -ar->v2d.cur.ymax);
   }
+  else {
+    dy = -MIN2(size_y, ar->v2d.cur.ymin - y_min);
+  }
+
   ar->v2d.cur.ymin += dy;
   ar->v2d.cur.ymax += dy;
 
