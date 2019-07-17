@@ -57,6 +57,10 @@
 //#  define USE_FORCE_WINDOWED_SESSION
 #endif
 
+#ifdef USE_FORCE_WINDOWED_SESSION
+static void xr_session_window_create(bContext *C);
+#endif
+
 static wmSurface *g_xr_surface = NULL;
 
 typedef struct {
@@ -370,6 +374,13 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 }
 
 #if defined(USE_FORCE_WINDOWED_SESSION)
+
+#  include "BLI_rect.h"
+#  include "DNA_workspace_types.h"
+#  include "BKE_workspace.h"
+#  include "ED_screen.h"
+#  include "BLI_string.h"
+
 static void xr_session_window_create(bContext *C)
 {
   Main *bmain = CTX_data_main(C);
