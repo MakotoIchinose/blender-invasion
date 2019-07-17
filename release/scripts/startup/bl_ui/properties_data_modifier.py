@@ -1701,8 +1701,14 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         if md.use_multiple_levels:
             row.prop(md,'level_end')
 
-        layout.label(text='Result GP:')
-        layout.prop(md,'target')
+        split = layout.split(factor=0.5)
+        col = split.column()
+        col.label(text="Object:")
+        col.prop(md, "target", text="")
+        col = split.column()
+        col.label(text="Vertex Group:")
+        col.label(text="Inoperative")
+
         if not md.target:
             layout.label(text="You have to specify a target GP Object")
         else:
