@@ -64,7 +64,7 @@ void AbstractHierarchyIterator::iterate()
 {
   export_graph_construct();
   export_graph_prune();
-  make_writers(HierarchyContext::root(), nullptr);
+  make_writers(HierarchyContext::root());
   export_graph_clear();
 }
 
@@ -132,7 +132,6 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context->weak_export = weak_export;
   context->animation_check_include_parent = false;
   context->export_path = "";
-  context->parent_writer = nullptr;
   copy_m4_m4(context->matrix_world, object->obmat);
 
   export_graph[std::make_pair(export_parent, nullptr)].insert(context);
@@ -157,7 +156,6 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   context->duplicator = duplicator;
   context->weak_export = false;
   context->export_path = "";
-  context->parent_writer = nullptr;
 
   /* If the dupli-object's scene parent is also instanced by this object, use that as the
    * export parent. Otherwise use the dupli-parent as export parent. */
@@ -259,8 +257,7 @@ AbstractHierarchyIterator::ExportGraph::mapped_type &AbstractHierarchyIterator::
   return export_graph[std::make_pair(parent_object, parent_duplicator)];
 }
 
-void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_context,
-                                             AbstractHierarchyWriter *parent_writer)
+void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_context)
 {
   AbstractHierarchyWriter *xform_writer = nullptr;
   float parent_matrix_inv_world[4][4];
@@ -276,7 +273,6 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_cont
 
   for (HierarchyContext *context : graph_children(parent_context)) {
     std::string export_path = path_concatenate(parent_export_path, context->export_name);
-    context->parent_writer = parent_writer;
     context->export_path = export_path;
     copy_m4_m4(context->parent_matrix_inv_world, parent_matrix_inv_world);
 
@@ -301,19 +297,19 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_cont
     xform_writer->write(*context);
 
     if (!context->weak_export) {
-      make_writers_particle_systems(context, xform_writer);
-      make_writer_object_data(context, xform_writer);
+      make_writers_particle_systems(context);
+      make_writer_object_data(context);
     }
 
     // Recurse into this object's children.
-    make_writers(context, xform_writer);
+    make_writers(context);
   }
 
   // TODO(Sybren): iterate over all unused writers and call unused_during_iteration() or something.
 }
 
 void AbstractHierarchyIterator::make_writers_particle_systems(
-    const HierarchyContext *xform_context, AbstractHierarchyWriter *xform_writer)
+    const HierarchyContext *xform_context)
 {
   Object *object = xform_context->object;
   ParticleSystem *psys = static_cast<ParticleSystem *>(object->particlesystem.first);
@@ -325,7 +321,6 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
     HierarchyContext hair_context = *xform_context;
     hair_context.export_path = path_concatenate(xform_context->export_path,
                                                 get_id_name(&psys->part->id));
-    hair_context.parent_writer = xform_writer;
     hair_context.particle_system = psys;
 
     AbstractHierarchyWriter *writer = nullptr;
@@ -344,8 +339,7 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
   }
 }
 
-void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext *context,
-                                                        AbstractHierarchyWriter *xform_writer)
+void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext *context)
 {
   if (context->object->data == nullptr) {
     return;
@@ -356,7 +350,6 @@ void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext *
   std::string data_path = path_concatenate(context->export_path, get_id_name(object_data));
 
   data_context.export_path = data_path;
-  data_context.parent_writer = xform_writer;
 
   AbstractHierarchyWriter *data_writer;
 

@@ -69,7 +69,6 @@ struct HierarchyContext {
   /* Determined during writer creation: */
   float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
   std::string export_path;  // Hierarchical path, such as "/grandparent/parent/objectname".
-  AbstractHierarchyWriter *parent_writer;  // The parent of this object during the export.
   ParticleSystem *particle_system;         // Only set for particle/hair writers.
 
   // For making the struct insertable into a std::set<>.
@@ -120,12 +119,9 @@ class AbstractHierarchyIterator {
 
   ExportGraph::mapped_type &graph_children(const HierarchyContext *parent_context);
 
-  void make_writers(const HierarchyContext *parent_context,
-                    AbstractHierarchyWriter *parent_writer);
-  void make_writer_object_data(const HierarchyContext *context,
-                               AbstractHierarchyWriter *xform_writer);
-  void make_writers_particle_systems(const HierarchyContext *context,
-                                     AbstractHierarchyWriter *xform_writer);
+  void make_writers(const HierarchyContext *parent_context);
+  void make_writer_object_data(const HierarchyContext *context);
+  void make_writers_particle_systems(const HierarchyContext *context);
 
   std::string get_object_name(const Object *object) const;
 
