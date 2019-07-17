@@ -108,6 +108,8 @@ class AbstractHierarchyIterator {
   virtual std::string make_valid_name(const std::string &name) const;
 
  private:
+  void debug_print_export_graph() const;
+
   void export_graph_construct();
   void export_graph_prune();
   void export_graph_clear();

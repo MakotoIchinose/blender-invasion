@@ -60,6 +60,41 @@ void AbstractHierarchyIterator::release_writers()
   writers.clear();
 }
 
+void AbstractHierarchyIterator::debug_print_export_graph() const
+{
+  size_t total_graph_size = 0;
+  for (const ExportGraph::value_type &map_iter : export_graph) {
+    const std::pair<Object *, Object *> &parent_info = map_iter.first;
+    Object *const export_parent = parent_info.first;
+    Object *const duplicator = parent_info.second;
+
+    if (duplicator != nullptr) {
+      printf("    DU %s (as dupped by %s):\n",
+             export_parent == nullptr ? "-null-" : (export_parent->id.name + 2),
+             duplicator->id.name + 2);
+    }
+    else {
+      printf("    OB %s:\n", export_parent == nullptr ? "-null-" : (export_parent->id.name + 2));
+    }
+
+    total_graph_size += map_iter.second.size();
+    for (HierarchyContext *child_ctx : map_iter.second) {
+      if (child_ctx->duplicator == nullptr) {
+        printf("       - %s%s\n",
+               child_ctx->object->id.name + 2,
+               child_ctx->weak_export ? " \033[97m(weak)\033[0m" : "");
+      }
+      else {
+        printf("       - %s (dup by %s%s)\n",
+               child_ctx->object->id.name + 2,
+               child_ctx->duplicator->id.name + 2,
+               child_ctx->weak_export ? ", \033[97mweak\033[0m" : "");
+      }
+    }
+  }
+  printf("    (Total graph size: %lu objects\n", total_graph_size);
+}
+
 void AbstractHierarchyIterator::iterate()
 {
   export_graph_construct();
