@@ -147,7 +147,7 @@ static void foreachObjectLink(GpencilModifierData *md,
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Length = {
-    /* name */ "Length Stretch",
+    /* name */ "Length",
     /* structName */ "LengthGpencilModifierData",
     /* structSize */ sizeof(LengthGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
