@@ -21,6 +21,7 @@
 
 static bNodeSocketTemplate sh_node_vertex_color_out[] = {
     {SOCK_RGBA, 0, N_("Color")},
+    {SOCK_FLOAT, 0, N_("Alpha")},
     {-1, 0, ""},
 };
 

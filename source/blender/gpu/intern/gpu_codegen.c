@@ -1075,11 +1075,11 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
 
   BLI_dynstr_append(ds,
                     "#define USE_ATTR\n"
-                    "vec3 srgb_to_linear_attr(vec3 c) {\n"
-                    "\tc = max(c, vec3(0.0));\n"
-                    "\tvec3 c1 = c * (1.0 / 12.92);\n"
-                    "\tvec3 c2 = pow((c + 0.055) * (1.0 / 1.055), vec3(2.4));\n"
-                    "\treturn mix(c1, c2, step(vec3(0.04045), c));\n"
+                    "vec4 srgb_to_linear_attr(vec4 c) {\n"
+                    "\tc = max(c, vec4(0.0));\n"
+                    "\tvec4 c1 = c * (1.0 / 12.92);\n"
+                    "\tvec4 c2 = pow((c + 0.055) * (1.0 / 1.055), vec4(2.4));\n"
+                    "\treturn mix(c1, c2, step(vec4(0.04045), c));\n"
                     "}\n\n");
 
   /* Prototype because defined later. */

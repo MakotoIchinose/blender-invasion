@@ -2410,11 +2410,11 @@ void node_volume_info(sampler3D densitySampler,
   outTemprature = (flame > 0.01) ? temperature.x + flame * (temperature.y - temperature.x) : 0.0;
 }
 
-void node_attribute(vec3 attr, out vec4 outcol, out vec3 outvec, out float outf)
+void node_attribute(vec4 attr, out vec4 outcol, out vec3 outvec, out float outfac)
 {
-  outcol = vec4(attr, 1.0);
-  outvec = attr;
-  outf = dot(vec3(1.0 / 3.0), attr);
+  outcol = attr;
+  outvec = attr.xyz;
+  outfac = dot(vec3(1.0 / 3.0), attr.xyz);
 }
 
 void node_uvmap(vec3 attr_uv, out vec3 outvec)
@@ -2422,9 +2422,10 @@ void node_uvmap(vec3 attr_uv, out vec3 outvec)
   outvec = attr_uv;
 }
 
-void node_vertex_color(vec3 vertexColor, out vec4 outColor)
+void node_vertex_color(vec4 vertexColor, out vec4 outColor, out float outAlpha)
 {
-  outColor = vec4(vertexColor, 1.0);
+  outColor = vertexColor;
+  outAlpha = vertexColor.a;
 }
 
 void tangent_orco_x(vec3 orco_in, out vec3 orco_out)

@@ -305,7 +305,7 @@ typedef struct MeshRenderData {
 
   float (*poly_normals)[3];
   float *vert_weight;
-  char (*vert_color)[3];
+  char (*vert_color)[4];
   GPUPackedNormal *poly_normals_pack;
   GPUPackedNormal *vert_normals_pack;
   bool *edge_select_bool;
@@ -1481,7 +1481,7 @@ static void mesh_render_data_ensure_vert_normals_pack(MeshRenderData *rdata)
 /** Ensure #MeshRenderData.vert_color */
 static void UNUSED_FUNCTION(mesh_render_data_ensure_vert_color)(MeshRenderData *rdata)
 {
-  char(*vcol)[3] = rdata->vert_color;
+  char(*vcol)[4] = rdata->vert_color;
   if (vcol == NULL) {
     if (rdata->edit_bmesh) {
       BMesh *bm = rdata->edit_bmesh->bm;
@@ -1504,6 +1504,7 @@ static void UNUSED_FUNCTION(mesh_render_data_ensure_vert_color)(MeshRenderData *
           vcol[i][0] = lcol->r;
           vcol[i][1] = lcol->g;
           vcol[i][2] = lcol->b;
+          vcol[i][3] = lcol->a;
           i += 1;
         } while ((l_iter = l_iter->next) != l_first);
       }
@@ -1520,6 +1521,7 @@ static void UNUSED_FUNCTION(mesh_render_data_ensure_vert_color)(MeshRenderData *
         vcol[i][0] = rdata->mloopcol[i].r;
         vcol[i][1] = rdata->mloopcol[i].g;
         vcol[i][2] = rdata->mloopcol[i].b;
+        vcol[i][3] = rdata->mloopcol[i].a;
       }
     }
   }
@@ -1532,6 +1534,7 @@ fallback:
     vcol[i][0] = 255;
     vcol[i][1] = 255;
     vcol[i][2] = 255;
+    vcol[i][3] = 255;
   }
 }
 
@@ -3407,7 +3410,7 @@ static void mesh_create_loop_vcol(MeshRenderData *rdata, GPUVertBuf *vbo)
   for (uint i = 0; i < vcol_len; i++) {
     const char *attr_name = mesh_render_data_vcol_layer_uuid_get(rdata, i);
     vcol_id[i] = GPU_vertformat_attr_add(
-        &format, attr_name, GPU_COMP_U8, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
+        &format, attr_name, GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
     /* Auto layer */
     if (rdata->cd.layers.auto_vcol[i]) {
       attr_name = mesh_render_data_vcol_auto_layer_uuid_get(rdata, i);
@@ -3439,7 +3442,7 @@ static void mesh_create_loop_vcol(MeshRenderData *rdata, GPUVertBuf *vbo)
         for (uint j = 0; j < vcol_len; j++) {
           const uint layer_offset = rdata->cd.offset.vcol[j];
           const uchar *elem = &((MLoopCol *)BM_ELEM_CD_GET_VOID_P(loop, layer_offset))->r;
-          copy_v3_v3_uchar(GPU_vertbuf_raw_step(&vcol_step[j]), elem);
+          copy_v4_v4_uchar(GPU_vertbuf_raw_step(&vcol_step[j]), elem);
         }
       }
     }
@@ -3449,7 +3452,7 @@ static void mesh_create_loop_vcol(MeshRenderData *rdata, GPUVertBuf *vbo)
       for (uint j = 0; j < vcol_len; j++) {
         const MLoopCol *layer_data = rdata->cd.layers.vcol[j];
         const uchar *elem = &layer_data[loop].r;
-        copy_v3_v3_uchar(GPU_vertbuf_raw_step(&vcol_step[j]), elem);
+        copy_v4_v4_uchar(GPU_vertbuf_raw_step(&vcol_step[j]), elem);
       }
     }
   }
