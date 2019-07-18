@@ -7204,7 +7204,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
-      prop, "Auto Update", "Automatically update LANPR cache when scene changes");
+      prop, "Auto Update", "Automatically update LANPR cache when frame changes");
 
   prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
