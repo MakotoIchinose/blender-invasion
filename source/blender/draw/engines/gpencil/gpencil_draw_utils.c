@@ -1057,10 +1057,6 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
     }
 
     if ((gpl->actframe->framenum == gpf->framenum) || (!is_multiedit) || (overlay_multiedit)) {
-      /* copy color to temp fields to apply temporal changes in the stroke */
-      copy_v4_v4(gps->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
-      copy_v4_v4(gps->runtime.tmp_fill_rgba, gp_style->fill_rgba);
-
       /* hide any blend layer */
       if ((!stl->storage->simplify_blend) || (gpl->blend_mode == eGplBlendMode_Regular)) {
         /* fill */
