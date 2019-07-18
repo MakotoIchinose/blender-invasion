@@ -1660,9 +1660,73 @@ static void cloth_remeshing_eigen_decomposition(float mat[2][2], float r_mat[2][
   }
 }
 
-static void cloth_remeshing_curvature(BMFace *f, float r_mat[2][2])
+#define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
+#define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
+
+static float cloth_remeshing_dihedral_angle(BMVert *v1, BMVert *v2)
 {
-  /* TODO(Ish) */
+  BMEdge *edge = BM_edge_exists(v1, v2);
+  if (edge == NULL) {
+    return 0.0f;
+  }
+
+  BMFace *f1, *f2;
+  BM_edge_face_pair(edge, &f1, &f2);
+  if (f1 == NULL || f2 == NULL) {
+    return 0.0f;
+  }
+
+  float e[3];
+  sub_v3_v3v3(e, v2->co, v1->co);
+  normalize_v3(e);
+
+  if (dot_v3v3(e, e) == 0.0f) {
+    return 0.0f;
+  }
+
+  if (dot_v3v3(f1->no, f1->no) == 0.0f || dot_v3v3(f2->no, f2->no) == 0.0f) {
+    return 0.0f;
+  }
+
+  float cosine = dot_v3v3(f1->no, f2->no);
+  float n_cross[3];
+  cross_v3_v3v3(n_cross, f1->no, f2->no);
+  float sine = -dot_v3v3(e, n_cross);
+
+  return atan2f(sine, cosine);
+}
+
+static void cloth_remeshing_curvature(BMesh *bm, BMFace *f, float r_mat[2][2])
+{
+  zero_m2(r_mat);
+  BMVert *v[3];
+  BM_face_as_array_vert_tri(f, v);
+  for (int i = 0; i < 3; i++) {
+    BMVert *v_01 = v[NEXT(i)], *v_02 = v[PREV(i)];
+    float uv_01[2], uv_02[2];
+    cloth_remeshing_uv_of_vert_in_face(bm, f, v_01, uv_01);
+    cloth_remeshing_uv_of_vert_in_face(bm, f, v_02, uv_02);
+
+    float e_mat[2];
+    sub_v2_v2v2(e_mat, uv_02, uv_01);
+    float t_mat[2];
+    float e_mat_norm[2];
+    normalize_v2_v2(e_mat_norm, e_mat);
+    t_mat[0] = -e_mat_norm[1];
+    t_mat[1] = e_mat_norm[0];
+
+    float thetha = cloth_remeshing_dihedral_angle(v_01, v_02);
+
+    float outer[2][2];
+    for (int i = 0; i < 2; i++) {
+      outer[i][0] = t_mat[0] * t_mat[i];
+      outer[i][1] = t_mat[1] * t_mat[i];
+    }
+
+    mul_m2_fl(outer, 1 / 2.0f * thetha * len_v2(e_mat));
+    sub_m2_m2m2(r_mat, r_mat, outer);
+  }
+  mul_m2_fl(r_mat, 1.0f / cloth_remeshing_calc_area(bm, f));
 }
 
 static void cloth_remeshing_derivative(
@@ -1710,6 +1774,7 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd, 
 {
   /* get the cloth verts for the respective verts of the face f */
   Cloth *cloth = clmd->clothObject;
+  BMesh *bm = cloth->bm;
   BMVert *v[3];
   BM_face_as_array_vert_tri(f, v);
   ClothVertex *cv[3];
@@ -1718,7 +1783,7 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd, 
   }
 
   float sizing_s[2][2];
-  cloth_remeshing_curvature(f, sizing_s);
+  cloth_remeshing_curvature(bm, f, sizing_s);
   float sizing_f[3][2];
   cloth_remeshing_derivative(cv[0]->x, cv[1]->x, cv[2]->x, f, sizing_f);
   float sizing_v[3][2];

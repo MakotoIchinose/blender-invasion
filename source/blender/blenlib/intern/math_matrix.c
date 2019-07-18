@@ -924,6 +924,17 @@ void madd_m4_m4m4fl(float m1[4][4], const float m2[4][4], const float m3[4][4], 
   }
 }
 
+void sub_m2_m2m2(float m1[2][2], const float m2[2][2], const float m3[2][2])
+{
+  int i, j;
+
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < 2; j++) {
+      m1[i][j] = m2[i][j] - m3[i][j];
+    }
+  }
+}
+
 void sub_m3_m3m3(float m1[3][3], const float m2[3][3], const float m3[3][3])
 {
   int i, j;
