@@ -86,7 +86,7 @@ static void stretchOrShrinkStroke(bGPDstroke *gps, float length)
   }
 }
 
-static void deformStroke(bGPDstroke *gps, float length, float percentage)
+static void applyLength(bGPDstroke *gps, float length, float percentage)
 {
 
   stretchOrShrinkStroke(gps, length);
@@ -113,7 +113,7 @@ static void bakeModifier(Main *UNUSED(bmain),
       LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        deformStroke(gps, lmd->length, lmd->percentage);
+        applyLength(gps, lmd->length, lmd->percentage);
       }
       return;
     }
@@ -123,14 +123,11 @@ static void bakeModifier(Main *UNUSED(bmain),
 /* -------------------------------- */
 
 /* Generic "generateStrokes" callback */
-static void generateStrokes(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+static void deformStroke(
+    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDstroke *gps)
 {
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
-  bGPDstroke *gps;
-  for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    deformStroke(gps, lmd->length, lmd->percentage);
-  }
+  applyLength(gps, lmd->length, lmd->percentage);
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
@@ -155,8 +152,8 @@ GpencilModifierTypeInfo modifierType_Gpencil_Length = {
 
     /* copyData */ copyData,
 
-    /* deformStroke */ NULL,
-    /* generateStrokes */ generateStrokes,
+    /* deformStroke */ deformStroke,
+    /* generateStrokes */ NULL,
     /* bakeModifier */ bakeModifier,
     /* remapTime */ NULL,
 
