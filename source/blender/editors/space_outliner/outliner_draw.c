@@ -2731,7 +2731,10 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
     GPU_blend(true); /* Roundbox disables. */
   }
 
-  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac, false);
+  if (tselem->flag & TSE_HIGHLIGHTED) {
+    alpha_fac += 0.5;
+  }
+  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac, true);
   te->xs = *offsx;
   te->ys = ys;
   te->xend = (short)*offsx + UI_UNIT_X;
@@ -2883,8 +2886,8 @@ static void outliner_set_coord_tree_element(TreeElement *te, int startx, int sta
   TreeElement *ten;
 
   /* closed items may be displayed in row of parent, don't change their coordinate! */
-  if ((te->flag & TE_ICONROW) == 0) {
-    /* store coord and continue, we need coordinates for elements outside view too */
+  if (!ELEM(te->flag, TE_ICONROW, TE_ICONROW_MULTI)) {
+    /* store coord and continue, we need coordinatesfor elements outside view too */
     te->xs = startx;
     te->ys = starty;
   }
