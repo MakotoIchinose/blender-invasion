@@ -417,23 +417,23 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_nr = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
 
-      LANPR_BatchItem* dpbi;
-      while (dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)){
+      LANPR_BatchItem *dpbi;
+      while (dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) {
         GPU_batch_discard(dpbi->dpix_preview_batch);
         GPU_batch_discard(dpbi->dpix_transform_batch);
       }
-      LANPR_RenderBuffer* rb=lanpr_share.render_buffer_shared;
-      if(rb){
-        if(rb->DPIXIntersectionBatch){
+      LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
+      if (rb) {
+        if (rb->DPIXIntersectionBatch) {
           GPU_batch_discard(rb->DPIXIntersectionBatch);
-          rb->DPIXIntersectionBatch=0;
+          rb->DPIXIntersectionBatch = 0;
         }
-        if(rb->DPIXIntersectionTransformBatch){
+        if (rb->DPIXIntersectionTransformBatch) {
           GPU_batch_discard(rb->DPIXIntersectionTransformBatch);
-          rb->DPIXIntersectionTransformBatch=0;
+          rb->DPIXIntersectionTransformBatch = 0;
         }
       }
-      
+
       BLI_mempool_clear(lanpr_share.mp_batch_list);
     }
   }

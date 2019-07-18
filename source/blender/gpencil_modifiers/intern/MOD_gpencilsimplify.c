@@ -79,10 +79,11 @@ static void deformStroke(GpencilModifierData *md,
       BKE_gpencil_simplify_fixed(gps);
     }
   }
-  else if(mmd->mode == GP_SIMPLIFY_ADAPTIVE) {
+  else if (mmd->mode == GP_SIMPLIFY_ADAPTIVE) {
     /* simplify stroke using Ramer-Douglas-Peucker algorithm */
     BKE_gpencil_simplify_stroke(gps, mmd->factor);
-  }else if(mmd->mode == GP_SIMPLIFY_SAMPLE) {
+  }
+  else if (mmd->mode == GP_SIMPLIFY_SAMPLE) {
     BKE_gpencil_sample_stroke(gps, mmd->length);
   }
 }

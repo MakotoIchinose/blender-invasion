@@ -4068,7 +4068,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
 
     ED_lanpr_NO_THREAD_chain_feature_lines(rb);
 
-    if(is_lanpr_engine){
+    if (is_lanpr_engine) {
       /* Enough with it. We can provide an option after we have LANPR internal smoothing */
       return;
     }
@@ -4462,7 +4462,8 @@ static void lanpr_update_gp_strokes_collection(
                                     col->lanpr.types);
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
-static void lanpr_update_gp_strokes_actual(Scene* scene, Depsgraph* dg){
+static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
+{
   SceneLANPR *lanpr = &scene->lanpr;
   int frame = scene->r.cfra;
 
@@ -4484,7 +4485,7 @@ static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *o
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph(C);
 
-  lanpr_update_gp_strokes_actual(scene,dg);
+  lanpr_update_gp_strokes_actual(scene, dg);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
@@ -4629,52 +4630,48 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
 /* Post-frame updater */
 
-void ED_lanpr_post_frame_update_external(Scene* s, Depsgraph* dg){
-  if(s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE || !s->lanpr.auto_update){
+void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
+{
+  if (s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE || !s->lanpr.auto_update) {
     return;
   }
-  if(strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)){
+  if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
     /* Not LANPR engine, do GPencil updates. */
     /* LANPR engine will automatically update when drawing the viewport. */
     if (!lanpr_share.render_buffer_shared ||
-      lanpr_share.render_buffer_shared->cached_for_frame != s->r.cfra) {
+        lanpr_share.render_buffer_shared->cached_for_frame != s->r.cfra) {
       ED_lanpr_compute_feature_lines_internal(dg, 0);
-      lanpr_update_gp_strokes_actual(s,dg);
+      lanpr_update_gp_strokes_actual(s, dg);
     }
   }
 }
 
-
 /* Inspect below */
-static void lanpr_post_frame_updater(struct Main *UNUSED(_1),
-                                     struct ID *scene,
-                                     void *UNUSED(_3))
+static void lanpr_post_frame_updater(struct Main *UNUSED(_1), struct ID *scene, void *UNUSED(_3))
 {
-  Scene* s = (Scene*)scene;
-  if(s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE){
+  Scene *s = (Scene *)scene;
+  if (s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE) {
     return;
   }
-  if(strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)){
+  if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
 
     /* No depsgraph reference here in the callback. Not working :? */
-    
   }
 }
 
 static bCallbackFuncStore lanpr_post_frame_callback = {
     NULL,
-    NULL,                            /* next, prev */
+    NULL,                     /* next, prev */
     lanpr_post_frame_updater, /* func */
-    NULL,                            /* arg */
-    0,                               /* alloc */
+    NULL,                     /* arg */
+    0,                        /* alloc */
 };
 
 static int lanpr_post_frame_regisetered = 0;
 
 void ED_register_lanpr_post_frame()
 {
-  if(!lanpr_post_frame_regisetered){
+  if (!lanpr_post_frame_regisetered) {
     BLI_callback_add(&lanpr_post_frame_callback, BLI_CB_EVT_FRAME_CHANGE_POST);
   }
 }
-

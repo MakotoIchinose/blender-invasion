@@ -117,7 +117,6 @@ static void deformStroke(GpencilModifierData *md,
       continue;
     }
 
-    
     if ((mmd->flag & GP_THICK_CUSTOM_CURVE) && (mmd->curve_thickness)) {
       /* normalize value to evaluate curve */
       float value = (float)i / (gps->totpoints - 1);
@@ -128,7 +127,8 @@ static void deformStroke(GpencilModifierData *md,
 
     if (mmd->flag & GP_THICK_NORMALIZE) {
       pt->pressure = 1.0f * new_pressure;
-    }else{
+    }
+    else {
       pt->pressure += mmd->thickness * new_pressure;
     }
 

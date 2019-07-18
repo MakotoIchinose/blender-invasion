@@ -1584,11 +1584,8 @@ static int stroke_march_next_point(bGPDstroke *gps,
   }
 }
 
-static int stroke_march_next_poin_no_interp(bGPDstroke *gps,
-                                            int next_point_index,
-                                            float *current,
-                                            float dist,
-                                            float* result)
+static int stroke_march_next_poin_no_interp(
+    bGPDstroke *gps, int next_point_index, float *current, float dist, float *result)
 {
   float remaining_till_next = 0.0f;
   float remaining_march = dist;
@@ -1646,11 +1643,8 @@ static int stroke_march_count(bGPDstroke *gps, float dist)
   copy_v3_v3(point, &pt->x);
   point_count++;
 
-  while ((next_point_index = stroke_march_next_poin_no_interp(gps,
-                                                              next_point_index,
-                                                              point,
-                                                              dist,
-                                                              point)) > -1) {
+  while ((next_point_index = stroke_march_next_poin_no_interp(
+              gps, next_point_index, point, dist, point)) > -1) {
     point_count++;
     if (next_point_index == 0) {
       break; /* last point finished */
@@ -1658,7 +1652,6 @@ static int stroke_march_count(bGPDstroke *gps, float dist)
   }
   return point_count;
 }
-
 
 /**
  * Resample a stroke
@@ -1699,7 +1692,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   float pressure, strength, ratio_result;
   int index_from, index_to;
   float last_coord[3];
-  
+
   /*  1st point is always at the start */
   pt1 = &gps->points[0];
   copy_v3_v3(last_coord, &pt1->x);

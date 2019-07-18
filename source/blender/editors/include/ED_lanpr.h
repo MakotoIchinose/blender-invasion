@@ -837,6 +837,6 @@ LANPR_LineLayerComponent *ED_lanpr_new_line_component(struct SceneLANPR *lanpr);
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
 
-void ED_lanpr_post_frame_update_external(struct Scene* s, struct Depsgraph* dg);
+void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
 #endif /* __ED_LANPR_H__ */
