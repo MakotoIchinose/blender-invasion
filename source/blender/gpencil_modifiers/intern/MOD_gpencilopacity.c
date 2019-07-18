@@ -146,6 +146,11 @@ static void deformStroke(GpencilModifierData *md,
       else {
         CLAMP(weight, 0.0f, 1.0f);
         weight = 1.0f - weight;
+        /* High factor values, change weight too. */
+        if ((mmd->factor > 1.0f) && (weight < 1.0f)) {
+          weight += mmd->factor - 1.0f;
+          CLAMP(weight, 0.0f, 1.0f);
+        }
         pt->strength += (mmd->factor * weight) - 1.0f;
       }
       CLAMP(pt->strength, 0.0f, 1.0f);
