@@ -1421,11 +1421,9 @@ typedef struct KernelObject {
   uint patch_map_offset;
   uint attribute_map_offset;
   uint motion_offset;
-  uint pad1;
 
   float cryptomatte_object;
   float cryptomatte_asset;
-  float pad2, pad3;
 } KernelObject;
 static_assert_align(KernelObject, 16);
 
