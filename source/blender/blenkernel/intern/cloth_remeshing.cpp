@@ -75,6 +75,41 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
+/**
+ *The definition of sizing used for remeshing
+ */
+class ClothSizing {
+ public:
+  /* TODO(Ish): Make "m" private */
+  float m[2][2];
+  ClothSizing()
+  {
+    zero_m2(m);
+  }
+  ClothSizing &operator+=(const ClothSizing &size);
+  ClothSizing &operator/=(float value);
+  ClothSizing operator*(float value);
+};
+
+ClothSizing &ClothSizing::operator+=(const ClothSizing &size)
+{
+  add_m2_m2m2(m, m, size.m);
+  return *this;
+}
+
+ClothSizing &ClothSizing::operator/=(float value)
+{
+  mul_m2_fl(m, 1.0f / value);
+  return *this;
+}
+
+ClothSizing ClothSizing::operator*(float value)
+{
+  ClothSizing temp = *this;
+  mul_m2_fl(temp.m, value);
+  return temp;
+}
+
 static bool cloth_remeshing_boundary_test(BMVert *v);
 static bool cloth_remeshing_boundary_test(BMEdge *e);
 static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e);
@@ -1397,8 +1432,8 @@ static void cloth_remeshing_reindex_cloth_vertices(Cloth *cloth, BMesh *bm)
 static void cloth_remeshing_static(ClothModifierData *clmd)
 {
   /**
-   * sizing indices match vertex indices
-   * while appending new verticies ensure sizing is added at same index
+   * mapping between the verts and its sizing
+   * pointer to vertex as key
    */
   map<BMVert *, ClothSizing> sizing;
 
@@ -1477,11 +1512,155 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
 #endif
 }
 
+static map<BMVert *, ClothSizing> cloth_remeshing_compute_vertex_sizing(ClothModifierData *clmd);
+
+static void cloth_remeshing_dynamic(ClothModifierData *clmd)
+{
+  /**
+   * mapping between the verts and its sizing
+   * pointer to vertex as key
+   */
+  map<BMVert *, ClothSizing> sizing;
+
+  /**
+   * Define sizing dynamicly
+   */
+  sizing = cloth_remeshing_compute_vertex_sizing(clmd);
+
+  /**
+   * Split edges
+   */
+  while (cloth_remeshing_split_edges(clmd, sizing)) {
+    /* empty while */
+  }
+
+  /**
+   * Collapse edges
+   */
+
+#if 1
+  vector<BMFace *> active_faces;
+  BMFace *f;
+  BMIter fiter;
+  BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
+    active_faces.push_back(f);
+  }
+  for (int i = 0; i < active_faces.size(); i++) {
+    BMFace *temp_f = active_faces[i];
+    if (!(temp_f->head.htype == BM_FACE)) {
+      printf("htype didn't match: %d\n", i);
+    }
+  }
+  int prev_mvert_num = clmd->clothObject->mvert_num;
+  int count = 0;
+  while (cloth_remeshing_collapse_edges(clmd, sizing, active_faces, count)) {
+    /* empty while */
+  }
+  printf("collapse edges count: %d\n", count);
+  /* delete excess vertices after collpase edges */
+  if (prev_mvert_num != clmd->clothObject->mvert_num) {
+    clmd->clothObject->verts = (ClothVertex *)MEM_reallocN(
+        clmd->clothObject->verts, sizeof(ClothVertex) * clmd->clothObject->mvert_num);
+  }
+
+#endif
+
+  /**
+   * Reindex clmd->clothObject->verts to match clmd->clothObject->bm
+   */
+
+#if 1
+  cloth_remeshing_reindex_cloth_vertices(clmd->clothObject, clmd->clothObject->bm);
+#endif
+
+  /**
+   * Delete sizing
+   */
+  sizing.clear();
+#if 1
+  active_faces.clear();
+#endif
+
+#if 1
+  static int file_no = 0;
+  file_no++;
+  char file_name[100];
+  sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
+  cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
+#endif
+}
+
+static float cloth_remeshing_calc_area(BMesh *bm, BMFace *f)
+{
+  /* TODO(Ish): Area calculation might be with respect to World Space, need
+   * to check this */
+  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+  return BM_face_calc_area_uv(f, cd_loop_uv_offset);
+}
+
+static float cloth_remeshing_calc_area(BMesh *bm, BMVert *v)
+{
+  BMFace *f;
+  BMIter fiter;
+  float area = 0.0f;
+  int i = 0;
+  BM_ITER_ELEM_INDEX (f, &fiter, v, BM_FACES_OF_VERT, i) {
+    area += cloth_remeshing_calc_area(bm, f);
+  }
+  return area / (float)i;
+}
+
+static ClothSizing cloth_remeshing_compute_face_sizing(BMFace *f)
+{
+  return ClothSizing();
+}
+
+static ClothSizing cloth_remeshing_compute_vertex_sizing(BMesh *bm,
+                                                         BMVert *v,
+                                                         map<BMFace *, ClothSizing> &face_sizing)
+{
+  ClothSizing sizing;
+  BMFace *f;
+  BMIter fiter;
+  BM_ITER_ELEM (f, &fiter, v, BM_FACES_OF_VERT) {
+    sizing += face_sizing.find(f)->second * (cloth_remeshing_calc_area(bm, f) / 3.0f);
+  }
+  sizing /= cloth_remeshing_calc_area(bm, v);
+  return sizing;
+}
+
+static map<BMVert *, ClothSizing> cloth_remeshing_compute_vertex_sizing(ClothModifierData *clmd)
+{
+  Cloth *cloth = clmd->clothObject;
+  BMesh *bm = cloth->bm;
+  map<BMFace *, ClothSizing> face_sizing;
+  map<BMVert *, ClothSizing> vert_sizing;
+
+  BMFace *f;
+  BMIter fiter;
+  BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
+    face_sizing[f] = cloth_remeshing_compute_face_sizing(f);
+  }
+
+  BMVert *v;
+  BMIter viter;
+  BM_ITER_MESH (v, &viter, bm, BM_VERTS_OF_MESH) {
+    vert_sizing[v] = cloth_remeshing_compute_vertex_sizing(bm, v, face_sizing);
+  }
+
+  return vert_sizing;
+}
+
 Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  cloth_remeshing_static(clmd);
+  if (true) {
+    cloth_remeshing_static(clmd);
+  }
+  else {
+    cloth_remeshing_dynamic(clmd);
+  }
 
   return cloth_remeshing_update_cloth_object_bmesh(ob, clmd);
 }
