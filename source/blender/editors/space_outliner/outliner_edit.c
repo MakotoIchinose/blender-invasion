@@ -1191,7 +1191,6 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
   View2D *v2d = &ar->v2d;
 
   TreeElement *te;
-  int ytop;
 
   Object *obact = OBACT(view_layer);
 
@@ -1225,14 +1224,20 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
       outliner_set_coordinates(ar, so);
     }
 
-    /* make te->ys center of view */
-    ytop = te->ys + BLI_rcti_size_y(&v2d->mask) / 2;
+    int size_y = BLI_rcti_size_y(&v2d->mask) + 1;
+    int y_min = MIN2(ar->v2d.tot.ymin, v2d->cur.ymin);
+    int ytop = te->ys + size_y / 2;
+
+    /* make te->ys center of view  keeping element within scroll limits */
     if (ytop > 0) {
       ytop = 0;
     }
+    else if ((ytop - size_y) < y_min) {
+      ytop += y_min - (ytop - size_y);
+    }
 
-    v2d->cur.ymax = (float)ytop;
-    v2d->cur.ymin = (float)(ytop - BLI_rcti_size_y(&v2d->mask));
+    v2d->cur.ymax = ytop;
+    v2d->cur.ymin = ytop - size_y;
   }
 
   ED_region_tag_redraw_no_rebuild(ar);
