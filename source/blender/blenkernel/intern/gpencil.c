@@ -1584,6 +1584,53 @@ static int stroke_march_next_point(bGPDstroke *gps,
   }
 }
 
+static int stroke_march_next_poin_no_interp(bGPDstroke *gps,
+                                            int next_point_index,
+                                            float *current,
+                                            float dist,
+                                            float* result)
+{
+  float remaining_till_next = 0.0f;
+  float remaining_march = dist;
+  float step_start[3];
+  float point[3];
+  bGPDspoint *pt = NULL;
+
+  if (!(next_point_index < gps->totpoints)) {
+    return -1;
+  }
+
+  copy_v3_v3(step_start, current);
+  pt = &gps->points[next_point_index];
+  copy_v3_v3(point, &pt->x);
+  remaining_till_next = len_v3v3(point, step_start);
+
+  while (remaining_till_next < remaining_march) {
+    remaining_march -= remaining_till_next;
+    pt = &gps->points[next_point_index];
+    copy_v3_v3(point, &pt->x);
+    copy_v3_v3(step_start, point);
+    next_point_index++;
+    if (!(next_point_index < gps->totpoints)) {
+      next_point_index = gps->totpoints - 1;
+      break;
+    }
+    pt = &gps->points[next_point_index];
+    copy_v3_v3(point, &pt->x);
+    remaining_till_next = len_v3v3(point, step_start);
+  }
+  if (remaining_till_next < remaining_march) {
+    pt = &gps->points[next_point_index];
+    copy_v3_v3(result, &pt->x);
+    return 0;
+  }
+  else {
+    float ratio = remaining_march / remaining_till_next;
+    interp_v3_v3v3(result, step_start, point, ratio);
+    return next_point_index;
+  }
+}
+
 /* This is still problematic... */
 static int stroke_march_count(bGPDstroke *gps, float dist)
 {
@@ -1592,37 +1639,24 @@ static int stroke_march_count(bGPDstroke *gps, float dist)
   int point_count = 0;
   float step_start[3];
   float point[3];
-  float current[3];
   int next_point_index = 1;
   bGPDspoint *pt = NULL;
 
   pt = &gps->points[0];
   copy_v3_v3(point, &pt->x);
-  remaining_till_next = len_v3v3(point, &gps->points[1].x);
+  point_count++;
 
-  while (next_point_index < gps->totpoints){
-    while (remaining_till_next < remaining_march) {
-      remaining_march -= remaining_till_next;
-      pt = &gps->points[next_point_index];
-      copy_v3_v3(point, &pt->x);
-      copy_v3_v3(step_start, point);
-      next_point_index++;
-      if (!(next_point_index < gps->totpoints)) {
-        break;
-      }
-      pt = &gps->points[next_point_index];
-      copy_v3_v3(point, &pt->x);
-      remaining_till_next = len_v3v3(point, step_start);
-    }
-    if (next_point_index < gps->totpoints) {
-      pt = &gps->points[next_point_index];
-      copy_v3_v3(point, &pt->x);
-      remaining_till_next = len_v3v3(point, step_start);
-      next_point_index++;
-    }
+  while ((next_point_index = stroke_march_next_poin_no_interp(gps,
+                                                              next_point_index,
+                                                              point,
+                                                              dist,
+                                                              point)) > -1) {
     point_count++;
+    if (next_point_index == 0) {
+      break; /* last point finished */
+    }
   }
-  return point_count+3;
+  return point_count;
 }
 
 
