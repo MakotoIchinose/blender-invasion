@@ -113,7 +113,10 @@ static void deformStroke(GpencilModifierData *md,
         /* verify vertex group */
         const float weight = get_modifier_point_weight(
             dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
-        if ((def_nr < 0) || (weight < 0.0f)) {
+        if (weight < 0.0f) {
+          continue;
+        }
+        if (def_nr < 0) {
           pt->strength += mmd->factor - 1.0f;
         }
         else {
@@ -132,7 +135,10 @@ static void deformStroke(GpencilModifierData *md,
       /* verify vertex group */
       float weight = get_modifier_point_weight(
           dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
-      if ((def_nr < 0) || (weight < 0.0f)) {
+      if (weight < 0.0f) {
+        continue;
+      }
+      if (def_nr < 0) {
         pt->strength += mmd->factor - 1.0f;
       }
       else {
