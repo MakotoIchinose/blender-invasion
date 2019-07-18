@@ -447,8 +447,11 @@ static void create_bindings(GPUVertBuf *verts,
 
 static void batch_update_program_bindings(GPUBatch *batch, uint v_first)
 {
-  for (int v = 0; v < GPU_BATCH_VBO_MAX_LEN && batch->verts[v] != NULL; ++v) {
-    create_bindings(batch->verts[v], batch->interface, (batch->inst) ? 0 : v_first, false);
+  /* Reverse order so first vbos have more prevalence (in term of attrib override). */
+  for (int v = GPU_BATCH_VBO_MAX_LEN - 1; v > -1; --v) {
+    if (batch->verts[v] != NULL) {
+      create_bindings(batch->verts[v], batch->interface, (batch->inst) ? 0 : v_first, false);
+    }
   }
   if (batch->inst) {
     create_bindings(batch->inst, batch->interface, v_first, true);
