@@ -139,6 +139,7 @@ enum {
   TE_DISABLED = (1 << 4),
   TE_DRAGGING = (1 << 5),
   TE_CHILD_NOT_IN_COLLECTION = (1 << 6),
+  TE_ICONROW_MULTI = (1 << 7),
 };
 
 /* button events */

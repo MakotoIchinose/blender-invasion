@@ -62,6 +62,34 @@ TreeElement *outliner_find_item_at_y(const SpaceOutliner *soops,
   return NULL;
 }
 
+static TreeElement *outliner_find_item_at_x_in_row_recursive(const TreeElement *parent_te,
+                                                             float view_co_x)
+{
+  TreeElement *child_te = parent_te->subtree.first;
+
+  bool over_element = false;
+
+  while (child_te && view_co_x >= child_te->xs) {
+    over_element = (view_co_x > child_te->xs) && (view_co_x < child_te->xend);
+    if ((child_te->flag & TE_ICONROW) && over_element) {
+      return child_te;
+    }
+    else if ((child_te->flag & TE_ICONROW_MULTI) && over_element) {
+      return child_te;
+    }
+
+    TreeElement *te = outliner_find_item_at_x_in_row_recursive(child_te, view_co_x);
+    if (te != child_te) {
+      return te;
+    }
+
+    child_te = child_te->next;
+  }
+
+  /* return parent if no child is hovered */
+  return (TreeElement *)parent_te;
+}
+
 /**
  * Collapsed items can show their children as click-able icons. This function tries to find
  * such an icon that represents the child item at x-coordinate \a view_co_x (view-space).
@@ -72,22 +100,11 @@ TreeElement *outliner_find_item_at_x_in_row(const SpaceOutliner *soops,
                                             const TreeElement *parent_te,
                                             float view_co_x)
 {
-  /* if parent_te is opened, it doesn't show childs in row */
+  /* if parent_te is opened, it doesn't show children in row */
   if (!TSELEM_OPEN(TREESTORE(parent_te), soops)) {
-    /* no recursion, items can only display their direct children in the row */
-    for (TreeElement *child_te = parent_te->subtree.first;
-         /* don't look further if co_x is smaller than child position*/
-         child_te && view_co_x >= child_te->xs;
-
-         child_te = child_te->next) {
-      if ((child_te->flag & TE_ICONROW) && (view_co_x > child_te->xs) &&
-          (view_co_x < child_te->xend)) {
-        return child_te;
-      }
-    }
+    return outliner_find_item_at_x_in_row_recursive(parent_te, view_co_x);
   }
 
-  /* return parent if no child is hovered */
   return (TreeElement *)parent_te;
 }
 
