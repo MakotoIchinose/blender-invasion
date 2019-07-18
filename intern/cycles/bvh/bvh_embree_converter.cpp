@@ -27,38 +27,28 @@
 
 CCL_NAMESPACE_BEGIN
 
-struct RangeInput {
-    RangeInput(int id, uint visibility, BoundBox bb)
-        : id(id),
-          visibility(visibility),
-          bb(bb) {}
+/* Utility functions */
 
-    int id;
-    uint visibility;
-    BoundBox bb;
-};
+void packPush(PackedBVH *pack, const size_t packIdx, const int object_id, const int prim_id, const int prim_type, const uint visibility, const uint tri_index) {
+    pack->prim_index.resize(packIdx + 1);
+    pack->prim_type.resize(packIdx + 1);
+    pack->prim_object.resize(packIdx + 1);
+    pack->prim_visibility.resize(packIdx + 1);
+    pack->prim_tri_index.resize(packIdx + 1);
 
-std::stack<LeafNode*> groupByRange(std::vector<RangeInput> &ids) {
-    std::sort(ids.begin(), ids.end(), [](const RangeInput &lhs, const RangeInput &rhs) -> bool {
-        return lhs.id < rhs.id;
-    });
-    std::stack<LeafNode*> groups;
+    pack->prim_index[packIdx] = prim_id;
+    pack->prim_type[packIdx] = prim_type;
+    pack->prim_object[packIdx] = object_id;
+    pack->prim_visibility[packIdx] = visibility;
+    pack->prim_tri_index[packIdx] = tri_index;
 
-    for(const RangeInput &r : ids) {
-        if(!groups.empty() && groups.top()->hi == r.id) {
-            LeafNode *ref = groups.top();
-
-            ref->hi = r.id + 1;
-            ref->visibility |= r.visibility;
-            ref->bounds.grow(r.bb);
-        } else {
-            groups.push(new LeafNode(r.bb, r.visibility, r.id, r.id + 1));
-        }
-    }
-
-    return groups;
 }
 
+void pushVec(PackedBVH *pack, const embree::Vec3f p0, const embree::Vec3f p1, const embree::Vec3f p2) {
+    pack->prim_tri_verts.push_back_slow(make_float4(p0.x, p0.y, p0.z, 1));
+    pack->prim_tri_verts.push_back_slow(make_float4(p1.x, p1.y, p1.z, 1));
+    pack->prim_tri_verts.push_back_slow(make_float4(p2.x, p2.y, p2.z, 1));
+}
 
 ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
     return ccl::BoundBox(
@@ -68,24 +58,49 @@ ccl::BoundBox RTCBoundBoxToCCL(const embree::BBox3fa &bound) {
 }
 
 BVHNode *bvh_shrink(BVHNode *root) {
-    if(root->is_leaf()) return root;
+    if(root->is_leaf()) {
+        if(root->num_triangles() == 0) // Remove empty leafs
+            return nullptr;
+        else
+            return root;
+    }
 
     InnerNode *node = dynamic_cast<InnerNode*>(root);
 
-    if(node->num_children() == 1) return bvh_shrink(root->get_child(0));
-    if(node->num_children() <= 2) {
-        node->children[0] = bvh_shrink(node->children[0]);
-        node->children[1] = bvh_shrink(node->children[1]);
+    int num_children = 0;
+    BVHNode* children[4];
+
+    for(int i = 0; i < node->num_children(); ++i) {
+        BVHNode *child = bvh_shrink(node->get_child(i));
+        if(child != nullptr)
+            children[num_children++] = child;
+    }
+
+    if(num_children == 0) {
+        delete root;
+        return nullptr;
+    }
+
+    if(num_children == 1) {
+        delete root;
+        return children[0];
+    }
+
+    // We have 2 node or more, we'll pack them into 2 nodes (to respect BVH2)
+    node->num_children_ = 2;
+
+    if(num_children == 2) {
+        node->children[0] = children[0];
+        node->children[1] = children[1];
         return node;
     }
 
-    node->children[0] = new InnerNode(merge(node->children[0]->bounds, node->children[1]->bounds), bvh_shrink(node->children[0]), bvh_shrink(node->children[1]));
-    if(root->num_children() == 3) {
-        node->children[1] = bvh_shrink(node->children[2]);
+    node->children[0] = new InnerNode(merge(children[0]->bounds, children[1]->bounds), children[0], children[1]);
+    if(num_children == 3) {
+        node->children[1] = node->children[2];
     } else {
-        node->children[1] = new InnerNode(merge(node->children[2]->bounds, node->children[3]->bounds), bvh_shrink(node->children[2]), bvh_shrink(node->children[3]));
+        node->children[1] = new InnerNode(merge(children[2]->bounds, children[3]->bounds), children[2], children[3]);
     }
-    node->num_children_ = 2;
     return node;
 }
 
@@ -96,70 +111,78 @@ BVHEmbreeConverter::BVHEmbreeConverter(RTCScene scene, std::vector<Object *> obj
 
 template<>
 std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4i>(const embree::BVH4::NodeRef &node, const BoundBox &bb) {
+    size_t from = this->packIdx,
+            size = 0;
+
     size_t nb;
     embree::Triangle4i *prims = reinterpret_cast<embree::Triangle4i *>(node.leaf(nb));
-    std::vector<RangeInput> ids; ids.reserve(nb * 4);
 
+    uint visibility = 0;
     for(size_t i = 0; i < nb; i++) {
         for(size_t j = 0; j < prims[i].size(); j++) {
+            size++;
             const auto geom_id = prims[i].geomID(j);
             const auto prim_id = prims[i].primID(j);
 
-            embree::Geometry *g = s->get(geom_id);
+            const int object_id = geom_id / 2;
+            Object *obj = this->objects.at(object_id);
 
-            size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
+            int prim_type = obj->mesh->has_motion_blur() ? PRIMITIVE_MOTION_TRIANGLE : PRIMITIVE_TRIANGLE;
 
-            Object *obj = this->objects.at(geom_id / 2);
-
-            /* TODO Compute local boundbox
-             * BoundBox bb = RTCBoundBoxToCCL(prims[i].linearBounds(s, embree::BBox1f(0, 1)).bounds());
-             */
-            ids.push_back(RangeInput(prim_offset + prim_id, obj->visibility, bb));
+            visibility |= obj->visibility;
+            packPush(this->pack, this->packIdx++, object_id, prim_id, prim_type, obj->visibility, this->pack->prim_tri_verts.size());
+            pushVec(this->pack,
+                    prims[i].getVertex(prims[i].v0, j, this->s),
+                    prims[i].getVertex(prims[i].v1, j, this->s),
+                    prims[i].getVertex(prims[i].v2, j, this->s));
         }
     }
 
-    std::stack<LeafNode *> leafs = groupByRange(ids);
-    std::deque<BVHNode *> nodes;
-
-    while(!leafs.empty()) {
-        nodes.push_back(leafs.top());
-        leafs.pop();
-    }
-
-    return nodes;
+    return {new LeafNode(bb, visibility, from, from + size)};
 }
 
 template<>
-std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4v>(const embree::BVH4::NodeRef &node, const BoundBox &) {
+std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4v>(const embree::BVH4::NodeRef &node, const BoundBox &bb) {
+    size_t from = this->packIdx,
+            size = 0;
+
     size_t nb;
     embree::Triangle4v *prims = reinterpret_cast<embree::Triangle4v *>(node.leaf(nb));
-    std::vector<RangeInput> ids; ids.reserve(nb * 4);
 
+    uint visibility = 0;
     for(size_t i = 0; i < nb; i++) {
         for(size_t j = 0; j < prims[i].size(); j++) {
+            size++;
             const auto geom_id = prims[i].geomID(j);
             const auto prim_id = prims[i].primID(j);
 
-            embree::Geometry *g = s->get(geom_id);
+            const int object_id = geom_id / 2;
+            Object *obj = this->objects.at(object_id);
 
-            size_t prim_offset = reinterpret_cast<size_t>(g->getUserData());
+            int prim_type = obj->mesh->has_motion_blur() ? PRIMITIVE_MOTION_TRIANGLE : PRIMITIVE_TRIANGLE;
 
-            Object *obj = this->objects.at(geom_id / 2);
+            visibility |= obj->visibility;
+            packPush(this->pack, this->packIdx++, object_id, prim_id, prim_type, obj->visibility, this->pack->prim_tri_verts.size());
 
-            BoundBox bb = RTCBoundBoxToCCL(prims[i].bounds());
-            ids.push_back(RangeInput(prim_offset + prim_id, obj->visibility, bb));
+            this->pack->prim_tri_verts.push_back_slow(make_float4(
+                                                          prims[i].v0.x[j],
+                                                          prims[i].v0.y[j],
+                                                          prims[i].v0.z[j],
+                                                          1));
+            this->pack->prim_tri_verts.push_back_slow(make_float4(
+                                                          prims[i].v1.x[j],
+                                                          prims[i].v1.y[j],
+                                                          prims[i].v1.z[j],
+                                                          1));
+            this->pack->prim_tri_verts.push_back_slow(make_float4(
+                                                          prims[i].v2.x[j],
+                                                          prims[i].v2.y[j],
+                                                          prims[i].v2.z[j],
+                                                          1));
         }
     }
 
-    std::stack<LeafNode *> leafs = groupByRange(ids);
-    std::deque<BVHNode *> nodes;
-
-    while(!leafs.empty()) {
-        nodes.push_back(leafs.top());
-        leafs.pop();
-    }
-
-    return nodes;
+    return {new LeafNode(bb, visibility, from, from + size)};
 }
 
 template<>
@@ -175,8 +198,10 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::InstancePrimitive>(c
         /* TODO Better solution, but crash
          * BoundBox bb = RTCBoundBoxToCCL(prims[i].instance->bounds(0));
          */
-        LeafNode *leafNode = new LeafNode(obj->bounds, obj->visibility, obj->pack_index, obj->pack_index + 1);
+        LeafNode *leafNode = new LeafNode(obj->bounds, obj->visibility, this->packIdx, this->packIdx + 1);
         leafs.push_back(leafNode);
+
+        packPush(this->pack, this->packIdx++, id, -1, PRIMITIVE_NONE, obj->visibility, -1);
     }
 
     return leafs;
@@ -351,6 +376,386 @@ BVHNode* BVHEmbreeConverter::getBVH2() {
     bvh_tighten(root);
     std::cout << "BVH² SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     return root;
+}
+
+#define BVH_NODE_SIZE (4+1)
+#define BVH_NODE_LEAF_SIZE 1
+#define BVH_UNALIGNED_NODE_SIZE 7
+
+
+
+void BVHEmbreeConverter::pack_instances(size_t nodes_size, size_t leaf_nodes_size, PackedBVH &pack)
+{
+  /* Adjust primitive index to point to the triangle in the global array, for
+   * meshes with transform applied and already in the top level BVH.
+   */
+  for (size_t i = 0; i < pack.prim_index.size(); i++)
+    if (pack.prim_index[i] != -1) {
+      if (pack.prim_type[i] & PRIMITIVE_ALL_CURVE)
+        pack.prim_index[i] += objects[pack.prim_object[i]]->mesh->curve_offset;
+      else
+        pack.prim_index[i] += objects[pack.prim_object[i]]->mesh->tri_offset;
+    }
+
+  /* track offsets of instanced BVH data in global array */
+  size_t prim_offset = pack.prim_index.size();
+  size_t nodes_offset = nodes_size;
+  size_t nodes_leaf_offset = leaf_nodes_size;
+
+  /* clear array that gives the node indexes for instanced objects */
+  pack.object_node.clear();
+
+  /* reserve */
+  size_t prim_index_size = pack.prim_index.size();
+  size_t prim_tri_verts_size = pack.prim_tri_verts.size();
+
+  size_t pack_prim_index_offset = prim_index_size;
+  size_t pack_prim_tri_verts_offset = prim_tri_verts_size;
+  size_t pack_nodes_offset = nodes_size;
+  size_t pack_leaf_nodes_offset = leaf_nodes_size;
+  size_t object_offset = 0;
+
+  map<Mesh *, int> mesh_map;
+
+  foreach (Object *ob, objects) {
+    Mesh *mesh = ob->mesh;
+    BVH *bvh = mesh->bvh;
+
+    if (mesh->need_build_bvh()) {
+      if (mesh_map.find(mesh) == mesh_map.end()) {
+        prim_index_size += bvh->pack.prim_index.size();
+        prim_tri_verts_size += bvh->pack.prim_tri_verts.size();
+        nodes_size += bvh->pack.nodes.size();
+        leaf_nodes_size += bvh->pack.leaf_nodes.size();
+
+        mesh_map[mesh] = 1;
+      }
+    }
+  }
+
+  mesh_map.clear();
+
+  pack.prim_index.resize(prim_index_size);
+  pack.prim_type.resize(prim_index_size);
+  pack.prim_object.resize(prim_index_size);
+  pack.prim_visibility.resize(prim_index_size);
+  pack.prim_tri_verts.resize(prim_tri_verts_size);
+  pack.prim_tri_index.resize(prim_index_size);
+  pack.nodes.resize(nodes_size);
+  pack.leaf_nodes.resize(leaf_nodes_size);
+  pack.object_node.resize(objects.size());
+
+  if (params.num_motion_curve_steps > 0 || params.num_motion_triangle_steps > 0) {
+    pack.prim_time.resize(prim_index_size);
+  }
+
+  int *pack_prim_index = (pack.prim_index.size()) ? &pack.prim_index[0] : nullptr;
+  int *pack_prim_type = (pack.prim_type.size()) ? &pack.prim_type[0] : nullptr;
+  int *pack_prim_object = (pack.prim_object.size()) ? &pack.prim_object[0] : nullptr;
+  uint *pack_prim_visibility = (pack.prim_visibility.size()) ? &pack.prim_visibility[0] : nullptr;
+  float4 *pack_prim_tri_verts = (pack.prim_tri_verts.size()) ? &pack.prim_tri_verts[0] : nullptr;
+  uint *pack_prim_tri_index = (pack.prim_tri_index.size()) ? &pack.prim_tri_index[0] : nullptr;
+  int4 *pack_nodes = (pack.nodes.size()) ? &pack.nodes[0] : nullptr;
+  int4 *pack_leaf_nodes = (pack.leaf_nodes.size()) ? &pack.leaf_nodes[0] : nullptr;
+  float2 *pack_prim_time = (pack.prim_time.size()) ? &pack.prim_time[0] : nullptr;
+
+  /* merge */
+  foreach (Object *ob, objects) {
+    Mesh *mesh = ob->mesh;
+
+    /* We assume that if mesh doesn't need own BVH it was already included
+     * into a top-level BVH and no packing here is needed.
+     */
+    if (!mesh->need_build_bvh()) {
+      pack.object_node[object_offset++] = 0;
+      continue;
+    }
+
+    /* if mesh already added once, don't add it again, but used set
+     * node offset for this object */
+    map<Mesh *, int>::iterator it = mesh_map.find(mesh);
+
+    if (mesh_map.find(mesh) != mesh_map.end()) {
+      int noffset = it->second;
+      pack.object_node[object_offset++] = noffset;
+      continue;
+    }
+
+    BVH *bvh = mesh->bvh;
+
+    int noffset = nodes_offset;
+    int noffset_leaf = nodes_leaf_offset;
+    int mesh_tri_offset = mesh->tri_offset;
+    int mesh_curve_offset = mesh->curve_offset;
+
+    /* fill in node indexes for instances */
+    if (bvh->pack.root_index == -1)
+      pack.object_node[object_offset++] = -noffset_leaf - 1;
+    else
+      pack.object_node[object_offset++] = noffset;
+
+    mesh_map[mesh] = pack.object_node[object_offset - 1];
+
+    /* merge primitive, object and triangle indexes */
+    if (bvh->pack.prim_index.size()) {
+      size_t bvh_prim_index_size = bvh->pack.prim_index.size();
+      int *bvh_prim_index = &bvh->pack.prim_index[0];
+      int *bvh_prim_type = &bvh->pack.prim_type[0];
+      uint *bvh_prim_visibility = &bvh->pack.prim_visibility[0];
+      uint *bvh_prim_tri_index = &bvh->pack.prim_tri_index[0];
+      float2 *bvh_prim_time = bvh->pack.prim_time.size() ? &bvh->pack.prim_time[0] : nullptr;
+
+      for (size_t i = 0; i < bvh_prim_index_size; i++) {
+        if (bvh->pack.prim_type[i] & PRIMITIVE_ALL_CURVE) {
+          pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_curve_offset;
+          pack_prim_tri_index[pack_prim_index_offset] = -1;
+        }
+        else {
+          pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_tri_offset;
+          pack_prim_tri_index[pack_prim_index_offset] = bvh_prim_tri_index[i] +
+                                                        pack_prim_tri_verts_offset;
+        }
+
+        pack_prim_type[pack_prim_index_offset] = bvh_prim_type[i];
+        pack_prim_visibility[pack_prim_index_offset] = bvh_prim_visibility[i];
+        pack_prim_object[pack_prim_index_offset] = 0;  // unused for instances
+        if (bvh_prim_time != nullptr) {
+          pack_prim_time[pack_prim_index_offset] = bvh_prim_time[i];
+        }
+        pack_prim_index_offset++;
+      }
+    }
+
+    /* Merge triangle vertices data. */
+    if (bvh->pack.prim_tri_verts.size()) {
+      const size_t prim_tri_size = bvh->pack.prim_tri_verts.size();
+      memcpy(pack_prim_tri_verts + pack_prim_tri_verts_offset,
+             &bvh->pack.prim_tri_verts[0],
+             prim_tri_size * sizeof(float4));
+      pack_prim_tri_verts_offset += prim_tri_size;
+    }
+
+    /* merge nodes */
+    if (bvh->pack.leaf_nodes.size()) {
+      int4 *leaf_nodes_offset = &bvh->pack.leaf_nodes[0];
+      size_t leaf_nodes_offset_size = bvh->pack.leaf_nodes.size();
+      for (size_t i = 0, j = 0; i < leaf_nodes_offset_size; i += BVH_NODE_LEAF_SIZE, j++) {
+        int4 data = leaf_nodes_offset[i];
+        data.x += prim_offset;
+        data.y += prim_offset;
+        pack_leaf_nodes[pack_leaf_nodes_offset] = data;
+        for (int j = 1; j < BVH_NODE_LEAF_SIZE; ++j) {
+          pack_leaf_nodes[pack_leaf_nodes_offset + j] = leaf_nodes_offset[i + j];
+        }
+        pack_leaf_nodes_offset += BVH_NODE_LEAF_SIZE;
+      }
+    }
+
+    if (bvh->pack.nodes.size()) {
+      int4 *bvh_nodes = &bvh->pack.nodes[0];
+      size_t bvh_nodes_size = bvh->pack.nodes.size();
+
+      for (size_t i = 0, j = 0; i < bvh_nodes_size; j++) {
+        size_t nsize = (bvh_nodes[i].x & PATH_RAY_NODE_UNALIGNED) ? BVH_UNALIGNED_NODE_SIZE : BVH_NODE_SIZE;
+
+        /* Modify offsets into arrays */
+        int4 data = bvh_nodes[i];
+        int4 data1 = bvh_nodes[i - 1];
+          data.z += (data.z < 0) ? -noffset_leaf : noffset;
+          data.w += (data.w < 0) ? -noffset_leaf : noffset;
+        pack_nodes[pack_nodes_offset] = data;
+
+        /* Usually this copies nothing, but we better
+         * be prepared for possible node size extension.
+         */
+        memcpy(&pack_nodes[pack_nodes_offset + 1],
+               &bvh_nodes[i + 1],
+               sizeof(int4) * (nsize - 1));
+
+        pack_nodes_offset += nsize;
+        i += nsize;
+      }
+    }
+
+    nodes_offset += bvh->pack.nodes.size();
+    nodes_leaf_offset += bvh->pack.leaf_nodes.size();
+    prim_offset += bvh->pack.prim_index.size();
+  }
+}
+
+void pack_leaf(const BVHStackEntry &e, const LeafNode *leaf, PackedBVH &pack) {
+    assert(e.idx + BVH_NODE_LEAF_SIZE <= pack.leaf_nodes.size());
+    float4 data[BVH_NODE_LEAF_SIZE];
+    memset(data, 0, sizeof(data));
+    if (leaf->num_triangles() == 1 && pack.prim_index[leaf->lo] == -1) {
+        /* object */
+        data[0].x = __int_as_float(~(leaf->lo));
+        data[0].y = __int_as_float(0);
+    }
+    else {
+        /* triangle */
+        data[0].x = __int_as_float(leaf->lo);
+        data[0].y = __int_as_float(leaf->hi);
+    }
+    data[0].z = __uint_as_float(leaf->visibility);
+    if (leaf->num_triangles() != 0) {
+        data[0].w = __uint_as_float(pack.prim_type[leaf->lo]);
+    } else {
+        printf("A leaf can be empty\n");
+    }
+
+    memcpy(&pack.leaf_nodes[e.idx], data, sizeof(float4) * BVH_NODE_LEAF_SIZE);
+}
+
+void pack_aligned_node(int idx,
+                       const BoundBox &b0,
+                       const BoundBox &b1,
+                       int c0,
+                       int c1,
+                       float2 time0,
+                       float2 time1,
+                       uint visibility0,
+                       uint visibility1,
+                       PackedBVH &pack)
+{
+  assert(idx + BVH_NODE_SIZE <= pack.nodes.size());
+  assert(c0 < 0 || c0 < pack.nodes.size());
+  assert(c1 < 0 || c1 < pack.nodes.size());
+
+  if(time0.x > 0 || time0.y < 1)
+      visibility0 |= PATH_RAY_NODE_4D;
+  else
+      visibility0 &= ~PATH_RAY_NODE_4D;
+
+  if(time1.x > 0 || time1.y < 1)
+      visibility1 |= PATH_RAY_NODE_4D;
+  else
+      visibility1 &= ~PATH_RAY_NODE_4D;
+
+  int4 data[BVH_NODE_SIZE] = {
+      make_int4(
+          visibility0 & ~PATH_RAY_NODE_UNALIGNED, visibility1 & ~PATH_RAY_NODE_UNALIGNED, c0, c1),
+      make_int4(__float_as_int(b0.min.x),
+                __float_as_int(b1.min.x),
+                __float_as_int(b0.max.x),
+                __float_as_int(b1.max.x)),
+      make_int4(__float_as_int(b0.min.y),
+                __float_as_int(b1.min.y),
+                __float_as_int(b0.max.y),
+                __float_as_int(b1.max.y)),
+      make_int4(__float_as_int(b0.min.z),
+                __float_as_int(b1.min.z),
+                __float_as_int(b0.max.z),
+                __float_as_int(b1.max.z)),
+      make_int4(__float_as_int(time0.x),
+                __float_as_int(time1.x),
+                __float_as_int(time0.y),
+                __float_as_int(time1.y)),
+  };
+
+  memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE);
+}
+
+
+void pack_inner(const BVHStackEntry &e, const BVHStackEntry &c0, const BVHStackEntry &c1, PackedBVH &pack) {
+    pack_aligned_node(e.idx,
+                      c0.node->bounds,
+                      c1.node->bounds,
+                      c0.encodeIdx(),
+                      c1.encodeIdx(),
+                      make_float2(c0.node->time_from, c0.node->time_to),
+                      make_float2(c1.node->time_from, c1.node->time_to),
+                      c0.node->visibility,
+                      c1.node->visibility,
+                      pack);
+}
+
+void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
+    pack.prim_visibility.clear();
+    pack.prim_object.clear();
+    pack.prim_type.clear();
+    pack.prim_index.clear();
+    pack.prim_tri_index.clear();
+    pack.prim_tri_verts.clear();
+
+    this->pack = &pack;
+    this->packIdx = 0;
+
+
+    BVHNode *root = this->getBVH2();
+    std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
+    const size_t num_nodes = root->getSubtreeSize(BVH_STAT_NODE_COUNT);
+    const size_t num_leaf_nodes = root->getSubtreeSize(BVH_STAT_LEAF_COUNT);
+    assert(num_leaf_nodes <= num_nodes);
+    const size_t num_inner_nodes = num_nodes - num_leaf_nodes;
+    size_t node_size;
+    if (params.use_unaligned_nodes) {
+        const size_t num_unaligned_nodes = root->getSubtreeSize(BVH_STAT_UNALIGNED_INNER_COUNT);
+        node_size = (num_unaligned_nodes * BVH_UNALIGNED_NODE_SIZE) +
+                (num_inner_nodes - num_unaligned_nodes) * BVH_NODE_SIZE;
+    }
+    else {
+        node_size = num_inner_nodes * BVH_NODE_SIZE;
+    }
+    /* Resize arrays */
+    pack.nodes.clear();
+    pack.leaf_nodes.clear();
+    /* For top level BVH, first merge existing BVH's so we know the offsets. */
+    if (params.top_level) {
+        pack_instances(node_size, num_leaf_nodes * BVH_NODE_LEAF_SIZE, pack);
+    }
+    else {
+        pack.nodes.resize(node_size);
+        pack.leaf_nodes.resize(num_leaf_nodes * BVH_NODE_LEAF_SIZE);
+    }
+
+    int nextNodeIdx = 0, nextLeafNodeIdx = 0;
+
+    vector<BVHStackEntry> stack;
+    stack.reserve(BVHParams::MAX_DEPTH * 2);
+    if (root->is_leaf()) {
+        stack.push_back(BVHStackEntry(root, nextLeafNodeIdx++));
+    }
+    else {
+        stack.push_back(BVHStackEntry(root, nextNodeIdx));
+        nextNodeIdx += root->has_unaligned() ? BVH_UNALIGNED_NODE_SIZE : BVH_NODE_SIZE;
+    }
+
+    while (stack.size()) {
+        BVHStackEntry e = stack.back();
+        stack.pop_back();
+
+        if (e.node->is_leaf()) {
+            /* leaf node */
+            const LeafNode *leaf = reinterpret_cast<const LeafNode *>(e.node);
+            pack_leaf(e, leaf, pack);
+        }
+        else {
+            assert(e.node->num_children() == 2);
+            /* inner node */
+            int idx[2];
+            for (int i = 0; i < 2; ++i) {
+                if (e.node->get_child(i)->is_leaf()) {
+                    idx[i] = nextLeafNodeIdx++;
+                }
+                else {
+                    idx[i] = nextNodeIdx;
+                    nextNodeIdx += e.node->get_child(i)->has_unaligned() ? BVH_UNALIGNED_NODE_SIZE :
+                                                                           BVH_NODE_SIZE;
+                }
+            }
+
+            stack.push_back(BVHStackEntry(e.node->get_child(0), idx[0]));
+            stack.push_back(BVHStackEntry(e.node->get_child(1), idx[1]));
+
+            pack_inner(e, stack[stack.size() - 2], stack[stack.size() - 1], pack);
+        }
+    }
+    assert(node_size == nextNodeIdx);
+    /* root index to start traversal at, to handle case of single leaf node */
+    pack.root_index = (root->is_leaf()) ? -1 : 0;
+
+    root->deleteSubtree();
 }
 
 CCL_NAMESPACE_END

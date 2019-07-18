@@ -37,6 +37,7 @@
 #include "embree/kernels/geometry/curveNi.h"
 #include "bvh_node.h"
 
+#include "bvh.h"
 CCL_NAMESPACE_BEGIN
 
 class BVHEmbreeConverter
@@ -45,6 +46,7 @@ public:
     BVHEmbreeConverter(RTCScene scene, std::vector<Object *> objects, const BVHParams &params);
     BVHNode *getBVH4();
     BVHNode *getBVH2();
+    void fillPack(PackedBVH &pack, vector<Object *> objects);
 private:
     embree::Scene *s;
     std::vector<Object *> objects;
@@ -58,6 +60,10 @@ private:
     BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb);
 
     BVHNode* print_bvhInfo(RTCScene scene);
+
+    void pack_instances(size_t nodes_size, size_t leaf_nodes_size, PackedBVH &pack);
+    PackedBVH *pack;
+    size_t packIdx;
 };
 
 CCL_NAMESPACE_END
