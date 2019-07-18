@@ -1682,17 +1682,6 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
     pt[i].flag &= ~GP_SPOINT_TAG_FEATURE; /*  feature point preservation not implemented yet */
   }
 
-  float length = 0.0f;
-  float last_coord[3], this_coord[3];
-  pt1 = &gps->points[0];
-  copy_v3_v3(last_coord, &pt1->x);
-  for (i = 1; i < gps->totpoints; i++) {
-    pt1 = &gps->points[i];
-    copy_v3_v3(this_coord, &pt1->x);
-    length += len_v3v3(last_coord, this_coord);
-    copy_v3_v3(last_coord, &pt1->x);
-  }
-
   int count = stroke_march_count(gps, dist);
 
   bGPDspoint *new_pt = MEM_callocN(sizeof(bGPDspoint) * count, "gp_stroke_points_sampled");
@@ -1709,7 +1698,8 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
   i = 0;
   float pressure, strength, ratio_result;
   int index_from, index_to;
-
+  float last_coord[3];
+  
   /*  1st point is always at the start */
   pt1 = &gps->points[0];
   copy_v3_v3(last_coord, &pt1->x);
