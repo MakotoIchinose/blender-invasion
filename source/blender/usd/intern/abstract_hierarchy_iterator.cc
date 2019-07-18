@@ -429,5 +429,8 @@ AbstractHierarchyWriter *AbstractHierarchyIterator::ensure_writer(
   if (writer == nullptr) {
     return nullptr;
   }
+
+  writers[context->export_path] = writer;
+
   return writer;
 }
