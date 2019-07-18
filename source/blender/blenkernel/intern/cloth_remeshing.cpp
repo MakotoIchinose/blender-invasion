@@ -68,6 +68,7 @@ extern "C" {
 #include <vector>
 #include <map>
 #include <utility>
+#include <algorithm>
 using namespace std;
 
 /******************************************************************************
@@ -1616,6 +1617,49 @@ static float cloth_remeshing_calc_area(BMesh *bm, BMVert *v)
   return area / (float)i;
 }
 
+static void cloth_remeshing_eigen_decomposition(float mat[2][2], float r_mat[2][2], float r_vec[2])
+{
+  float a = mat[0][0];
+  float b = mat[1][0];
+  float d = mat[1][1];
+
+  float amd = a - d;
+  float apd = a + d;
+  float b2 = b * b;
+  float det = sqrtf(4 * b + amd * amd);
+  float l1 = 0.5 * (apd + det);
+  float l2 = 0.5 * (apd - det);
+
+  r_vec[0] = l1;
+  r_vec[1] = l2;
+
+  float v0, v1, vn;
+  if (b) {
+    v0 = l1 - d;
+    v1 = b;
+    vn = sqrtf(v0 * v0 + b2);
+    r_mat[0][0] = v0 / vn;
+    r_mat[1][0] = v1 / vn;
+
+    v0 = l2 - d;
+    vn = sqrtf(v0 * v0 + b2);
+    r_mat[0][1] = v0 / vn;
+    r_mat[1][1] = v1 / vn;
+  }
+  else if (a >= d) {
+    r_mat[0][0] = 1;
+    r_mat[1][0] = 0;
+    r_mat[0][1] = 0;
+    r_mat[1][1] = 1;
+  }
+  else {
+    r_mat[0][0] = 0;
+    r_mat[1][0] = 1;
+    r_mat[0][1] = 1;
+    r_mat[1][1] = 0;
+  }
+}
+
 static void cloth_remeshing_curvature(BMFace *f, float r_mat[2][2])
 {
   /* TODO(Ish) */
@@ -1718,9 +1762,35 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd, 
   add_m2_m2m2(m, m, dvel_temp);
   add_m2_m2m2(m, m, obs);
 
-  /* TODO(Ish): eigen decomposition on m */
+  /* eigen decomposition on m */
+  float l[2];    /* Eigen values */
+  float q[2][2]; /* Eigen Matrix */
+  cloth_remeshing_eigen_decomposition(m, q, l);
+  for (int i = 0; i < 2; i++) {
+    l[i] = min(max(l[i], 1.0f / clmd->sim_parms->size_max), 1.0f / clmd->sim_parms->size_min);
+  }
+  float lmax = max(l[0], l[1]);
+  float lmin = lmax * clmd->sim_parms->aspect_min * clmd->sim_parms->aspect_min;
+  for (int i = 0; i < 2; i++) {
+    if (l[i] < lmin) {
+      l[i] = lmin;
+    }
+  }
+  float result[2][2];
+  float temp_result[2][2];
+  float diag_l[2][2];
+  zero_m2(diag_l);
+  for (int i = 0; i < 2; i++) {
+    diag_l[i][i] = l[i];
+  }
+  float q_t[2][2];
+  copy_m2_m2(q_t, q);
+  transpose_m2(q_t);
 
-  return ClothSizing(m);
+  mul_m2_m2m2(temp_result, q, diag_l);
+  mul_m2_m2m2(result, temp_result, q_t);
+
+  return ClothSizing(result);
 }
 
 static ClothSizing cloth_remeshing_compute_vertex_sizing(BMesh *bm,
