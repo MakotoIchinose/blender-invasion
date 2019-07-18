@@ -2739,6 +2739,8 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
   if (num_elements > 1) {
     outliner_draw_iconrow_number(fstyle, *offsx, ys, num_elements);
   }
+  te->flag |= TE_ICONROW;
+
   (*offsx) += UI_UNIT_X;
 }
 
