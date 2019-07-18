@@ -68,14 +68,23 @@ struct HierarchyContext {
 
   /* Determined during writer creation: */
   float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
-  std::string export_path;  // Hierarchical path, such as "/grandparent/parent/objectname".
-  ParticleSystem *particle_system;         // Only set for particle/hair writers.
+  std::string export_path;          // Hierarchical path, such as "/grandparent/parent/objectname".
+  ParticleSystem *particle_system;  // Only set for particle/hair writers.
+
+  /* Hierarchical path of the object this object is duplicating; only set when this object should
+   * be stored as a reference to its original. It can happen that the original is not part of the
+   * exported objects, in which case this string is empty even though 'duplicator' is set. */
+  std::string original_export_path;
 
   // For making the struct insertable into a std::set<>.
   bool operator<(const HierarchyContext &other) const;
 
   /* Return a HierarchyContext representing the root of the export hierarchy. */
   static const HierarchyContext *root();
+
+  bool is_instance() const;
+  void mark_as_instance_of(const std::string &reference_export_path);
+  void mark_as_not_instanced();
 };
 
 class AbstractHierarchyWriter {
@@ -90,9 +99,11 @@ class AbstractHierarchyIterator {
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
   // Mapping from <object, duplicator> to the object's export-children.
   typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext *>> ExportGraph;
+  typedef std::map<ID *, std::string> ExportPathMap;
 
  protected:
   ExportGraph export_graph;
+  ExportPathMap originals_export_paths;
   Depsgraph *depsgraph;
   WriterMap writers;
 
@@ -106,6 +117,7 @@ class AbstractHierarchyIterator {
 
   virtual std::string get_id_name(const ID *id) const;
   virtual std::string make_valid_name(const std::string &name) const;
+  virtual std::string get_object_data_path(const HierarchyContext *context) const;
 
  private:
   void debug_print_export_graph() const;
@@ -121,11 +133,16 @@ class AbstractHierarchyIterator {
 
   ExportGraph::mapped_type &graph_children(const HierarchyContext *parent_context);
 
+  void determine_export_paths(const HierarchyContext *parent_context);
+  void determine_duplication_references(const HierarchyContext *parent_context,
+                                        std::string indent);
+
   void make_writers(const HierarchyContext *parent_context);
   void make_writer_object_data(const HierarchyContext *context);
   void make_writers_particle_systems(const HierarchyContext *context);
 
   std::string get_object_name(const Object *object) const;
+  std::string get_object_data_name(const Object *object) const;
 
   AbstractHierarchyWriter *get_writer(const std::string &name);
 

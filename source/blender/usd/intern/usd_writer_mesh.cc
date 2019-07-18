@@ -123,10 +123,35 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   //        mesh);
 
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path_);
-
   USDMeshData usd_mesh_data;
   get_geometry_data(mesh, usd_mesh_data);
 
+  if (export_params.use_instancing && context.is_instance()) {
+    // This object data is instanced, just reference the original instead of writing a copy.
+    if (context.export_path == context.original_export_path) {
+      printf("USD ref error: export path is reference path: %s\n", context.export_path.c_str());
+      throw "JEEKL";
+    }
+    pxr::SdfPath ref_path(context.original_export_path);
+    if (usd_mesh.GetPrim().GetReferences().AddInternalReference(ref_path)) {
+      // printf("USD ref \033[92mOK\033[0m %s → %s\n",
+      //        context.export_path.c_str(),
+      //        context.original_export_path.c_str());
+      /* The material path will be of the form </_materials/{material name}>, which is outside the
+      subtree pointed to by ref_path. As a result, the referenced data is not allowed to point out
+      of its own subtree. It does work when we override the material with exactly the same path,
+      though.*/
+      assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+      return;
+    }
+    /* See
+    https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
+     * for a description fo why referencing may fail. */
+    printf("USD Export warning: unable to add reference from %s to %s, not instancing object\n",
+           context.export_path.c_str(),
+           context.original_export_path.c_str());
+    throw "JE MOEDER";
+  }
   usd_mesh.CreatePointsAttr().Set(usd_mesh_data.points, timecode);
   usd_mesh.CreateFaceVertexCountsAttr().Set(usd_mesh_data.face_vertex_counts, timecode);
   usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_mesh_data.face_indices, timecode);

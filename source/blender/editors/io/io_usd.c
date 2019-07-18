@@ -102,6 +102,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
   const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
+  const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
   struct USDExportParams params = {
@@ -109,6 +110,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_hair,
       selected_objects_only,
       visible_objects_only,
+      use_instancing,
       evaluation_mode,
   };
 
@@ -153,6 +155,13 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
 
   RNA_def_boolean(
       ot->srna, "export_hair", false, "Export Hair", "When true, hair is exported as USD curves");
+
+  RNA_def_boolean(ot->srna,
+                  "use_instancing",
+                  false,
+                  "Use Instancing (EXPERIMENTAL)",
+                  "When true, dupli-objects are written as instances of the original in USD. "
+                  "Experimental feature, not working perfectly");
 
   RNA_def_enum(ot->srna,
                "evaluation_mode",

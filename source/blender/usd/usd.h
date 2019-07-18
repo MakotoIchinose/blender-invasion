@@ -35,6 +35,7 @@ struct USDExportParams {
   bool export_hair;
   bool selected_objects_only;
   bool visible_objects_only;
+  bool use_instancing;
   enum eEvaluationMode evaluation_mode;
 };
 
