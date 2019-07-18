@@ -742,11 +742,11 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         layout.active = scene.render.engine=="BLENDER_LANPR" or lanpr.enabled
 
-        layout.prop(lanpr, "master_mode", expand=True) 
+        if scene.render.engine=="BLENDER_LANPR":
+            layout.prop(lanpr, "master_mode") 
 
         if scene.render.engine!="BLENDER_LANPR" and mode != "SOFTWARE":
-            layout.label(text="Not in LANPR engine, mode disabled.")
-            return;
+            mode = "SOFTWARE"
 
         if mode == "DPIX" and lanpr.shader_error:
             layout.label(text="DPIX transform shader compile error!")
@@ -780,7 +780,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
                     row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
                 layout.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
             
-            if lanpr.master_mode == "DPIX":
+            if mode == "DPIX":
                 layout.label(text="Cache Size:")
                 layout.prop(lanpr,"gpu_cache_size", expand=True)
                 layout.prop(lanpr,"enable_intersections", text = "Intersection Lines")
@@ -796,11 +796,11 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
                 row.prop(lanpr, "background_color",text="")
             layout.prop(lanpr, "crease_threshold")
 
-            if lanpr.master_mode == "DPIX" and len(lanpr.layers)==0:
+            if mode == "DPIX" and len(lanpr.layers)==0:
                 layout.label(text="You don't have a layer to display.")
                 layout.operator("scene.lanpr_add_line_layer");
 
-            if lanpr.master_mode == "SOFTWARE":
+            if mode == "SOFTWARE":
                 row = layout.row()
                 row.prop(lanpr,"enable_intersections", text = "Intersection Lines")
 
@@ -843,17 +843,22 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode != "SNAKE"
+        return scene.render.engine=="BLENDER_LANPR" and active_layer
 
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        if active_layer and lanpr.master_mode == "DPIX":
+
+        mode = lanpr.master_mode
+        if scene.render.engine!="BLENDER_LANPR" and mode != "SOFTWARE":
+            mode = "SOFTWARE"
+
+        if active_layer and mode == "DPIX":
             active_layer = lanpr.layers[0]
 
-        if lanpr.master_mode == "SOFTWARE":
+        if mode == "SOFTWARE":
             row = layout.row(align=True)
             row.prop(active_layer, "use_multiple_levels", icon='GP_MULTIFRAME_EDITING', icon_only=True)
             row.prop(active_layer, "qi_begin", text='Level')
@@ -903,7 +908,7 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             row.prop(active_layer, "intersection_color", text="")
             row.prop(active_layer, "thickness_intersection", text="", slider=True)
 
-            if lanpr.master_mode == "DPIX" and active_layer.enable_intersection:
+            if mode == "DPIX" and active_layer.enable_intersection:
                 row = col.row(align = True)
                 row.prop(lanpr,"enable_intersections", toggle = True, text = "Enable")
                 if lanpr.enable_intersections:
@@ -923,7 +928,7 @@ class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "SOFTWARE" and not lanpr.enable_chaining
+        return scene.render.engine=="BLENDER_LANPR" and active_layer and not lanpr.enable_chaining
 
     def draw(self, context):
         layout = self.layout
@@ -963,7 +968,7 @@ class RENDER_PT_lanpr_line_effects(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer and (lanpr.master_mode == "DPIX" or lanpr.master_mode == "SOFTWARE")
+        return scene.render.engine=="BLENDER_LANPR" and active_layer
 
     def draw(self, context):
         layout = self.layout
@@ -1084,7 +1089,7 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return lanpr.master_mode == "SOFTWARE" and lanpr.enable_chaining
+        return lanpr.enable_chaining and not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX')
 
     def draw(self, context):
         layout = self.layout

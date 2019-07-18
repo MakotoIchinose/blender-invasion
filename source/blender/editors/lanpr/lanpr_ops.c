@@ -4115,7 +4115,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  int intersections_only = (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
+  int intersections_only = (is_lanpr_engine && lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
 
   result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C), intersections_only);
 
@@ -4632,7 +4632,7 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
 void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
 {
-  if (s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE || !s->lanpr.auto_update) {
+  if (!s->lanpr.enabled || !s->lanpr.auto_update) {
     return;
   }
   if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
