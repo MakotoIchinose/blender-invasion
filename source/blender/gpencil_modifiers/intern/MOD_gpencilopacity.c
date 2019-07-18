@@ -85,26 +85,46 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
-    gps->runtime.tmp_stroke_rgba[3] *= mmd->factor;
-    /* if factor is > 1, then force opacity */
+  if (mmd->opacity_mode == GP_OPACITY_MODE_MATERIAL) {
+    if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
+      gps->runtime.tmp_stroke_rgba[3] *= mmd->factor;
+      /* if factor is > 1, then force opacity */
+      if (mmd->factor > 1.0f) {
+        gps->runtime.tmp_stroke_rgba[3] += mmd->factor - 1.0f;
+      }
+      CLAMP(gps->runtime.tmp_stroke_rgba[3], 0.0f, 1.0f);
+    }
+
+    if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
+      gps->runtime.tmp_fill_rgba[3] *= mmd->factor;
+      /* if factor is > 1, then force opacity */
+      if (mmd->factor > 1.0f && gps->runtime.tmp_fill_rgba[3] > 1e-5) {
+        gps->runtime.tmp_fill_rgba[3] += mmd->factor - 1.0f;
+      }
+      CLAMP(gps->runtime.tmp_fill_rgba[3], 0.0f, 1.0f);
+    }
+
+    /* if opacity > 1.0, affect the strength of the stroke */
     if (mmd->factor > 1.0f) {
-      gps->runtime.tmp_stroke_rgba[3] += mmd->factor - 1.0f;
-    }
-    CLAMP(gps->runtime.tmp_stroke_rgba[3], 0.0f, 1.0f);
-  }
+      for (int i = 0; i < gps->totpoints; i++) {
+        bGPDspoint *pt = &gps->points[i];
+        MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
 
-  if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
-    gps->runtime.tmp_fill_rgba[3] *= mmd->factor;
-    /* if factor is > 1, then force opacity */
-    if (mmd->factor > 1.0f && gps->runtime.tmp_fill_rgba[3] > 1e-5) {
-      gps->runtime.tmp_fill_rgba[3] += mmd->factor - 1.0f;
+        /* verify vertex group */
+        const float weight = get_modifier_point_weight(
+            dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
+        if (weight < 0.0f) {
+          pt->strength += mmd->factor - 1.0f;
+        }
+        else {
+          pt->strength += (mmd->factor - 1.0f) * weight;
+        }
+        CLAMP(pt->strength, 0.0f, 1.0f);
+      }
     }
-    CLAMP(gps->runtime.tmp_fill_rgba[3], 0.0f, 1.0f);
   }
-
-  /* if opacity > 1.0, affect the strength of the stroke */
-  if (mmd->factor > 1.0f) {
+  /* Apply opacity by strength */
+  else {
     for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
       MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
