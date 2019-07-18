@@ -223,6 +223,7 @@ void mul_m3_v3_db(const double M[3][3], double r[3]);
 
 /****************************** Linear Algebra *******************************/
 
+void transpose_m2(float mat[2][2]);
 void transpose_m3(float R[3][3]);
 void transpose_m3_m3(float R[3][3], const float A[3][3]);
 void transpose_m3_m4(float R[3][3], const float A[4][4]);

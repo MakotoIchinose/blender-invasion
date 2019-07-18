@@ -1129,6 +1129,15 @@ bool invert_m4_m4(float inverse[4][4], const float mat[4][4])
 
 /****************************** Linear Algebra *******************************/
 
+void transpose_m2(float mat[2][2])
+{
+  float t;
+
+  t = mat[0][1];
+  mat[0][1] = mat[1][0];
+  mat[1][0] = t;
+}
+
 void transpose_m3(float mat[3][3])
 {
   float t;

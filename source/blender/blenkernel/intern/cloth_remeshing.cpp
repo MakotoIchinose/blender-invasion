@@ -86,6 +86,10 @@ class ClothSizing {
   {
     zero_m2(m);
   }
+  ClothSizing(float a[2][2])
+  {
+    copy_m2_m2(m, a);
+  }
   ClothSizing &operator+=(const ClothSizing &size);
   ClothSizing &operator/=(float value);
   ClothSizing operator*(float value);
@@ -817,6 +821,7 @@ static void cloth_remeshing_export_obj(BMesh *bm, char *file_name)
 }
 
 #define EPSILON_CLOTH 0.01
+/* TODO(Ish): optimize this */
 static ClothVertex *cloth_remeshing_find_cloth_vertex(BMVert *v, ClothVertex *verts, int vert_num)
 {
   ClothVertex *cv = NULL;
@@ -834,6 +839,7 @@ static ClothVertex *cloth_remeshing_find_cloth_vertex(BMVert *v, ClothVertex *ve
   return cv;
 }
 
+/* TODO(Ish): optimize this */
 static int cloth_remeshing_find_cloth_vertex_index(BMVert *v, ClothVertex *verts, int vert_num)
 {
   for (int i = 0; i < vert_num; i++) {
@@ -1610,9 +1616,111 @@ static float cloth_remeshing_calc_area(BMesh *bm, BMVert *v)
   return area / (float)i;
 }
 
-static ClothSizing cloth_remeshing_compute_face_sizing(BMFace *f)
+static void cloth_remeshing_curvature(BMFace *f, float r_mat[2][2])
 {
-  return ClothSizing();
+  /* TODO(Ish) */
+}
+
+static void cloth_remeshing_derivative(
+    float m_01[3], float m_02[3], float m_03[3], BMFace *f, float r_mat[3][2])
+{
+  /* TODO(Ish) */
+}
+
+static void transpose_m32(float r_mat[2][3], float mat[3][2])
+{
+  r_mat[0][0] = mat[0][0];
+  r_mat[0][1] = mat[1][0];
+  r_mat[0][2] = mat[2][0];
+
+  r_mat[1][0] = mat[0][1];
+  r_mat[1][1] = mat[1][1];
+  r_mat[1][2] = mat[2][1];
+}
+
+static void mul_m2_m2m2(float r[2][2], float a[2][2], float b[2][2])
+{
+  zero_m2(r);
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 2; k++) {
+        r[i][j] += a[i][k] * b[k][j];
+      }
+    }
+  }
+}
+
+static void mul_m2_m23m32(float r[2][2], float a[2][3], float b[3][2])
+{
+  zero_m2(r);
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 3; k++) {
+        r[i][j] += a[i][k] * b[k][j];
+      }
+    }
+  }
+}
+
+static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd, BMFace *f)
+{
+  /* get the cloth verts for the respective verts of the face f */
+  Cloth *cloth = clmd->clothObject;
+  BMVert *v[3];
+  BM_face_as_array_vert_tri(f, v);
+  ClothVertex *cv[3];
+  for (int i = 0; i < 3; i++) {
+    cv[i] = cloth_remeshing_find_cloth_vertex(v[i], cloth->verts, cloth->mvert_num);
+  }
+
+  float sizing_s[2][2];
+  cloth_remeshing_curvature(f, sizing_s);
+  float sizing_f[3][2];
+  cloth_remeshing_derivative(cv[0]->x, cv[1]->x, cv[2]->x, f, sizing_f);
+  float sizing_v[3][2];
+  cloth_remeshing_derivative(cv[0]->v, cv[1]->v, cv[2]->v, f, sizing_v);
+
+  float sizing_s_t[2][2];
+  copy_m2_m2(sizing_s_t, sizing_s);
+  transpose_m2(sizing_s_t);
+  float sizing_v_t[2][3];
+  transpose_m32(sizing_v_t, sizing_v);
+
+  float curv[2][2];
+  mul_m2_m2m2(curv, sizing_s_t, sizing_s);
+
+  /* TODO(Ish): compression metric */
+  float comp[2][2];
+  zero_m2(comp);
+
+  float dvel[2][2];
+  mul_m2_m23m32(dvel, sizing_v_t, sizing_v);
+
+  /* TODO(Ish): obstacle metric needs to be done */
+  float obs[2][2];
+  zero_m2(obs);
+
+  float m[2][2];
+  float curv_temp[2][2];
+  float comp_temp[2][2];
+  float dvel_temp[2][2];
+  copy_m2_m2(curv_temp, curv);
+  mul_m2_fl(curv_temp, 1.0f / (clmd->sim_parms->refine_angle * clmd->sim_parms->refine_angle));
+  copy_m2_m2(comp_temp, comp);
+  mul_m2_fl(comp_temp,
+            1.0f / (clmd->sim_parms->refine_compression * clmd->sim_parms->refine_compression));
+  copy_m2_m2(dvel_temp, dvel);
+  mul_m2_fl(dvel_temp,
+            1.0f / (clmd->sim_parms->refine_velocity * clmd->sim_parms->refine_velocity));
+
+  /* Adding curv_temp, comp_temp, dvel_temp, obs */
+  add_m2_m2m2(m, curv_temp, comp_temp);
+  add_m2_m2m2(m, m, dvel_temp);
+  add_m2_m2m2(m, m, obs);
+
+  /* TODO(Ish): eigen decomposition on m */
+
+  return ClothSizing(m);
 }
 
 static ClothSizing cloth_remeshing_compute_vertex_sizing(BMesh *bm,
@@ -1639,7 +1747,7 @@ static map<BMVert *, ClothSizing> cloth_remeshing_compute_vertex_sizing(ClothMod
   BMFace *f;
   BMIter fiter;
   BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
-    face_sizing[f] = cloth_remeshing_compute_face_sizing(f);
+    face_sizing[f] = cloth_remeshing_compute_face_sizing(clmd, f);
   }
 
   BMVert *v;
