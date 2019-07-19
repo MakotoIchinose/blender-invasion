@@ -4,6 +4,7 @@
 #include "usd_writer_abstract.h"
 #include "usd_writer_camera.h"
 #include "usd_writer_hair.h"
+#include "usd_writer_light.h"
 #include "usd_writer_mesh.h"
 #include "usd_writer_transform.h"
 
@@ -87,13 +88,15 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_CAMERA:
       data_writer = new USDCameraWriter(usd_export_context);
       break;
+    case OB_LAMP:
+      data_writer = new USDLightWriter(usd_export_context);
+      break;
 
     case OB_EMPTY:
     case OB_CURVE:
     case OB_SURF:
     case OB_FONT:
     case OB_MBALL:
-    case OB_LAMP:
     case OB_SPEAKER:
     case OB_LIGHTPROBE:
     case OB_LATTICE:
