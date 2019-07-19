@@ -478,9 +478,6 @@ void OUTLINER_OT_scene_operation(wmOperatorType *ot)
 }
 /* ******************************************** */
 
-/** Merged icon search menu
- * Created on activation of a merged or aggregated iconrow icon.
- */
 static void merged_element_search_cb_recursive(const ListBase *tree,
                                                short type,
                                                const char *str,
@@ -506,6 +503,7 @@ static void merged_element_search_cb_recursive(const ListBase *tree,
   }
 }
 
+/* Get a list of elements that match the search string */
 static void merged_element_search_cb(const bContext *UNUSED(C),
                                      void *element,
                                      const char *str,
@@ -517,13 +515,17 @@ static void merged_element_search_cb(const bContext *UNUSED(C),
   merged_element_search_cb_recursive(&te->parent->subtree, type, str, items);
 }
 
-static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1), void *arg2)
+/* Activate an element from the merged element search menu */
+static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1), void *element)
 {
-  TreeElement *te = (TreeElement *)arg2;
+  TreeElement *te = (TreeElement *)element;
 
   outliner_item_do_activate_from_tree_element(C, te, te->store_elem, false, false);
 }
 
+/** Merged element search menu
+ * Created on activation of a merged or aggregated iconrow icon.
+ */
 uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *element)
 {
   static char search[64] = "";
@@ -533,28 +535,27 @@ uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *element)
   /* Clear search on each menu creation */
   *search = '\0';
 
-  short menuwidth = 10 * UI_UNIT_X;
-
   block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   TreeElement *te = (TreeElement *)element;
 
+  short menu_width = 10 * UI_UNIT_X;
   but = uiDefSearchBut(
-      block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, menuwidth, UI_UNIT_Y, 0, 0, "");
+      block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, menu_width, UI_UNIT_Y, 0, 0, "");
   UI_but_func_search_set(
       but, NULL, merged_element_search_cb, te, false, merged_element_search_call_cb, NULL);
   UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
-  /* fake button, it holds space for search items */
+  /* Fake button to hold space for search items */
   uiDefBut(block,
            UI_BTYPE_LABEL,
            0,
            "",
            10,
            10 - UI_searchbox_size_y(),
-           UI_searchbox_size_x(),
+           menu_width,
            UI_searchbox_size_y(),
            NULL,
            0,
@@ -563,8 +564,8 @@ uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *element)
            0,
            NULL);
 
-  /* Move it downwards, mouse over button. */
-  UI_block_bounds_set_popup(block, 6, (const int[2]){-(menuwidth / 2), -UI_UNIT_Y});
+  /* Center the menu on the cursor */
+  UI_block_bounds_set_popup(block, 6, (const int[2]){-(menu_width / 2), 0});
 
   return block;
 }
