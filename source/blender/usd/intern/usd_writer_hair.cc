@@ -18,6 +18,11 @@ USDHairWriter::USDHairWriter(const USDExporterContext &ctx) : USDAbstractWriter(
 void USDHairWriter::do_write(HierarchyContext &context)
 {
   ParticleSystem *psys = context.particle_system;
+  ParticleCacheKey **cache = psys->pathcache;
+  if (cache == nullptr) {
+    return;
+  }
+
   pxr::UsdTimeCode timecode = get_export_time_code();
 
   printf("\033[34;1mHAIR writer\033[0m writing %s %s\n",
@@ -35,7 +40,6 @@ void USDHairWriter::do_write(HierarchyContext &context)
   curve_point_counts.reserve(psys->totpart);
   colors.reserve(psys->totpart);
 
-  ParticleCacheKey **cache = psys->pathcache;
   ParticleCacheKey *strand;
   for (int strand_index = 0; strand_index < psys->totpart; ++strand_index) {
     strand = cache[strand_index];
