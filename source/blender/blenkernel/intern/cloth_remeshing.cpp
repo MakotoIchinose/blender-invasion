@@ -325,6 +325,10 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   }
   BKE_mesh_runtime_verttri_from_looptri(clmd->clothObject->tri, mloop, looptri, looptri_num);
 
+  /* // apply / set vertex groups */
+  /* // has to be happen before springs are build! */
+  /* cloth_apply_vgroup(clmd, mesh_result); */
+
   if (!cloth_build_springs(clmd, mesh_result)) {
     cloth_free_modifier(clmd);
     modifier_setError(&(clmd->modifier), "Cannot build springs");
@@ -1851,6 +1855,12 @@ static void mul_m2_m23m32(float r[2][2], float a[2][3], float b[3][2])
       }
     }
   }
+}
+
+static void cloth_remeshing_obstacle_metric(ClothModifierData *clmd, float r_mat[2][2])
+{
+  Cloth *cloth = clmd->clothObject;
+  BVHTree *tree = cloth->bvhtree;
 }
 
 static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd, BMFace *f)

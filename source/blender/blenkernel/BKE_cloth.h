@@ -313,5 +313,6 @@ void cloth_parallel_transport_hair_frame(float mat[3][3],
 void cloth_to_mesh(struct Object *ob, struct ClothModifierData *clmd, struct Mesh *r_mesh);
 int cloth_build_springs(struct ClothModifierData *clmd, struct Mesh *mesh);
 struct BVHTree *bvhtree_build_from_cloth(struct ClothModifierData *clmd, float epsilon);
+void cloth_apply_vgroup(struct ClothModifierData *clmd, struct Mesh *mesh);
 
 #endif

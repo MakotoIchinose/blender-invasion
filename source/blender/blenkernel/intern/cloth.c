@@ -70,7 +70,6 @@ static int cloth_from_object(
 static void cloth_update_springs(ClothModifierData *clmd);
 static void cloth_update_verts(Object *ob, ClothModifierData *clmd, Mesh *mesh);
 static void cloth_update_spring_lengths(ClothModifierData *clmd, Mesh *mesh);
-static void cloth_apply_vgroup(ClothModifierData *clmd, Mesh *mesh);
 
 typedef struct BendSpringRef {
   int index;
@@ -766,7 +765,7 @@ int cloth_uses_vgroup(ClothModifierData *clmd)
 /**
  * Applies a vertex group as specified by type.
  */
-static void cloth_apply_vgroup(ClothModifierData *clmd, Mesh *mesh)
+void cloth_apply_vgroup(ClothModifierData *clmd, Mesh *mesh)
 {
   /* Can be optimized to do all groups in one loop. */
   int i = 0;
