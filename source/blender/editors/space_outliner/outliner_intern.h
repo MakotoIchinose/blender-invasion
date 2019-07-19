@@ -451,7 +451,8 @@ TreeElement *outliner_find_item_at_y(const SpaceOutliner *soops,
                                      float view_co_y);
 TreeElement *outliner_find_item_at_x_in_row(const SpaceOutliner *soops,
                                             const TreeElement *parent_te,
-                                            float view_co_x);
+                                            float view_co_x,
+                                            bool *multiple_objects);
 TreeElement *outliner_find_tse(struct SpaceOutliner *soops, const TreeStoreElem *tse);
 TreeElement *outliner_find_tree_element(ListBase *lb, const TreeStoreElem *store_elem);
 TreeElement *outliner_find_parent_element(ListBase *lb,

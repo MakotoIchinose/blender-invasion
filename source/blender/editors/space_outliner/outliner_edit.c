@@ -108,7 +108,7 @@ static int outliner_highlight_update(bContext *C, wmOperator *UNUSED(op), const 
   TreeElement *hovered_te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
 
   if (hovered_te) {
-    hovered_te = outliner_find_item_at_x_in_row(soops, hovered_te, view_mval[0]);
+    hovered_te = outliner_find_item_at_x_in_row(soops, hovered_te, view_mval[0], NULL);
   }
   bool changed = false;
 
