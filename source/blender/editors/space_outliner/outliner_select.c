@@ -1375,22 +1375,6 @@ void outliner_item_do_activate_from_tree_element(
       C, scene, view_layer, soops, te, tselem, extend, recursive);
 }
 
-static int get_element_type(TreeElement *te)
-{
-  TreeStoreElem *tselem = TREESTORE(te);
-  const int id_index = tselem->type == 0 ? BKE_idcode_to_index(te->idcode) : INDEX_ID_GR;
-  if (id_index < INDEX_ID_OB) {
-    return id_index;
-  }
-  else if (id_index == INDEX_ID_OB) {
-    const Object *ob = (Object *)tselem->id;
-    return INDEX_ID_OB + ob->type;
-  }
-  else {
-    return 0;
-  }
-}
-
 static void merged_element_search_cb_recursive(const ListBase *tree,
                                                short type,
                                                const char *str,
@@ -1399,7 +1383,7 @@ static void merged_element_search_cb_recursive(const ListBase *tree,
   char name[64];
 
   for (TreeElement *te = tree->first; te; te = te->next) {
-    if (get_element_type(te) == type) {
+    if (tree_element_id_type_to_index(te) == type) {
       if (BLI_strcasestr(te->name, str)) {
         BLI_strncpy(name, te->name, 64);
 
@@ -1419,7 +1403,7 @@ static void merged_element_search_cb(const bContext *C,
                                      uiSearchItems *items)
 {
   TreeElement *te = (TreeElement *)element;
-  const short type = get_element_type(te);
+  const short type = tree_element_id_type_to_index(te);
 
   merged_element_search_cb_recursive(&te->parent->subtree, type, str, items);
 }
@@ -1428,7 +1412,6 @@ static void merged_element_search_call_cb(struct bContext *C, void *arg1, void *
 {
   char search = (char *)arg1;
   search = "";
-  puts("HI");
 
   TreeElement *te = (TreeElement *)arg2;
 

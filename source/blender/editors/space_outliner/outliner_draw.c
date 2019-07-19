@@ -2782,7 +2782,7 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
  * We use a continuum of indices until we get to the object data-blocks
  * and we then make room for the object types.
  */
-static int tree_element_id_type_to_index(TreeElement *te)
+int tree_element_id_type_to_index(TreeElement *te)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 

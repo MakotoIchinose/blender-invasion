@@ -232,6 +232,8 @@ void outliner_collection_isolate_flag(struct Scene *scene,
                                       const char *propname,
                                       const bool value);
 
+int tree_element_id_type_to_index(TreeElement *te);
+
 /* outliner_select.c -------------------------------------------- */
 eOLDrawState tree_element_type_active(struct bContext *C,
                                       struct Scene *scene,
