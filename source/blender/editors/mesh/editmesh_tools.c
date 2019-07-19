@@ -7422,7 +7422,7 @@ void MESH_OT_symmetry_snap(struct wmOperatorType *ot)
 /** \name Mark Edge (Freestyle) Operator
  * \{ */
 
-static int edbm_mark_freestyle_edge_exec(bContext *C, wmOperator *op)
+static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
 {
   BMEdge *eed;
   BMIter iter;
@@ -7476,17 +7476,17 @@ static int edbm_mark_freestyle_edge_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void MESH_OT_mark_freestyle_edge(wmOperatorType *ot)
+void MESH_OT_mark_lanpr_edge(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Mark Freestyle Edge";
-  ot->description = "(Un)mark selected edges as Freestyle feature edges";
-  ot->idname = "MESH_OT_mark_freestyle_edge";
+  ot->name = "Mark LANPR Edge";
+  ot->description = "(Un)mark selected edges as LANPR feature edges";
+  ot->idname = "MESH_OT_mark_lanpr_edge";
 
   /* api callbacks */
-  ot->exec = edbm_mark_freestyle_edge_exec;
+  ot->exec = edbm_mark_lanpr_edge_exec;
   ot->poll = ED_operator_editmesh;
 
   /* flags */
@@ -7502,7 +7502,7 @@ void MESH_OT_mark_freestyle_edge(wmOperatorType *ot)
 /** \name Mark Face (Freestyle) Operator
  * \{ */
 
-static int edbm_mark_freestyle_face_exec(bContext *C, wmOperator *op)
+static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
 {
   BMFace *efa;
   BMIter iter;
@@ -7554,17 +7554,17 @@ static int edbm_mark_freestyle_face_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void MESH_OT_mark_freestyle_face(wmOperatorType *ot)
+void MESH_OT_mark_lanpr_face(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Mark Freestyle Face";
-  ot->description = "(Un)mark selected faces for exclusion from Freestyle feature edge detection";
-  ot->idname = "MESH_OT_mark_freestyle_face";
+  ot->name = "Mark LANPR Face";
+  ot->description = "(Un)mark selected faces for exclusion from LANPR feature edge detection";
+  ot->idname = "MESH_OT_mark_lanpr_face";
 
   /* api callbacks */
-  ot->exec = edbm_mark_freestyle_face_exec;
+  ot->exec = edbm_mark_lanpr_face_exec;
   ot->poll = ED_operator_editmesh;
 
   /* flags */

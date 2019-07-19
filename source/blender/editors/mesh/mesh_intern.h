@@ -246,10 +246,8 @@ void MESH_OT_mod_weighted_strength(struct wmOperatorType *ot);
 
 struct wmKeyMap *point_normals_modal_keymap(wmKeyConfig *keyconf);
 
-//#ifdef WITH_FREESTYLE
-void MESH_OT_mark_freestyle_edge(struct wmOperatorType *ot);
-void MESH_OT_mark_freestyle_face(struct wmOperatorType *ot);
-//#endif
+void MESH_OT_mark_lanpr_edge(struct wmOperatorType *ot);
+void MESH_OT_mark_lanpr_face(struct wmOperatorType *ot);
 
 /* *** mesh_data.c *** */
 void MESH_OT_uv_texture_add(struct wmOperatorType *ot);
