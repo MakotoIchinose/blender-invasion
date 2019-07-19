@@ -271,10 +271,8 @@ typedef struct MeshRenderData {
       int bweight;
       int *uv;
       int *vcol;
-#ifdef WITH_FREESTYLE
       int freestyle_edge;
       int freestyle_face;
-#endif
     } offset;
 
     struct {
@@ -721,10 +719,9 @@ static MeshRenderData *mesh_render_data_create_ex(Mesh *me,
       rdata->cd.offset.crease = CustomData_get_offset(&bm->edata, CD_CREASE);
       rdata->cd.offset.bweight = CustomData_get_offset(&bm->edata, CD_BWEIGHT);
 
-#ifdef WITH_FREESTYLE
       rdata->cd.offset.freestyle_edge = CustomData_get_offset(&bm->edata, CD_FREESTYLE_EDGE);
       rdata->cd.offset.freestyle_face = CustomData_get_offset(&bm->pdata, CD_FREESTYLE_FACE);
-#endif
+
     }
     if (types & (MR_DATATYPE_DVERT)) {
       bm_ensure_types |= BM_VERT;
