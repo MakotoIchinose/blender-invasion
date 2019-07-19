@@ -394,6 +394,8 @@ void OUTLINER_OT_orphans_purge(struct wmOperatorType *ot);
 
 /* outliner_tools.c ---------------------------------------------- */
 
+struct uiBlock *merged_element_search_menu(struct bContext *C, struct ARegion *ar, void *element);
+
 void OUTLINER_OT_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_scene_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_object_operation(struct wmOperatorType *ot);

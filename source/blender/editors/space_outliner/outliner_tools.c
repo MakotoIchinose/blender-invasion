@@ -478,6 +478,97 @@ void OUTLINER_OT_scene_operation(wmOperatorType *ot)
 }
 /* ******************************************** */
 
+/** Merged icon search menu
+ * Created on activation of a merged or aggregated iconrow icon.
+ */
+static void merged_element_search_cb_recursive(const ListBase *tree,
+                                               short type,
+                                               const char *str,
+                                               uiSearchItems *items)
+{
+  char name[64];
+  int iconid;
+
+  for (TreeElement *te = tree->first; te; te = te->next) {
+    if (tree_element_id_type_to_index(te) == type) {
+      if (BLI_strcasestr(te->name, str)) {
+        BLI_strncpy(name, te->name, 64);
+
+        iconid = tree_element_get_icon(TREESTORE(te), te).icon;
+
+        if (!UI_search_item_add(items, name, te, iconid)) {
+          break;
+        }
+      }
+    }
+
+    merged_element_search_cb_recursive(&te->subtree, type, str, items);
+  }
+}
+
+static void merged_element_search_cb(const bContext *UNUSED(C),
+                                     void *element,
+                                     const char *str,
+                                     uiSearchItems *items)
+{
+  TreeElement *te = (TreeElement *)element;
+  const short type = tree_element_id_type_to_index(te);
+
+  merged_element_search_cb_recursive(&te->parent->subtree, type, str, items);
+}
+
+static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1), void *arg2)
+{
+  TreeElement *te = (TreeElement *)arg2;
+
+  outliner_item_do_activate_from_tree_element(C, te, te->store_elem, false, false);
+}
+
+uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *element)
+{
+  static char search[64] = "";
+  uiBlock *block;
+  uiBut *but;
+
+  /* Clear search on each menu creation */
+  *search = '\0';
+
+  short menuwidth = 10 * UI_UNIT_X;
+
+  block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
+  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+
+  TreeElement *te = (TreeElement *)element;
+
+  but = uiDefSearchBut(
+      block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, menuwidth, UI_UNIT_Y, 0, 0, "");
+  UI_but_func_search_set(
+      but, NULL, merged_element_search_cb, te, false, merged_element_search_call_cb, NULL);
+  UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
+
+  /* fake button, it holds space for search items */
+  uiDefBut(block,
+           UI_BTYPE_LABEL,
+           0,
+           "",
+           10,
+           10 - UI_searchbox_size_y(),
+           UI_searchbox_size_x(),
+           UI_searchbox_size_y(),
+           NULL,
+           0,
+           0,
+           0,
+           0,
+           NULL);
+
+  /* Move it downwards, mouse over button. */
+  UI_block_bounds_set_popup(block, 6, (const int[2]){-(menuwidth / 2), -UI_UNIT_Y});
+
+  return block;
+}
+
 static void object_select_cb(bContext *C,
                              ReportList *UNUSED(reports),
                              Scene *UNUSED(scene),
