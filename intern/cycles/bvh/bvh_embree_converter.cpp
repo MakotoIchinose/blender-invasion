@@ -671,11 +671,25 @@ void pack_inner(const BVHStackEntry &e, const BVHStackEntry &c0, const BVHStackE
 }
 
 void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
+    int num_prim = 0;
+
+    for (size_t i = 0; i < this->s->size(); i++) {
+	const auto tree = this->s->get(i);
+        if(tree != nullptr)
+            num_prim += 4 * tree->size();
+    }
+
     pack.prim_visibility.clear();
+    pack.prim_visibility.reserve(num_prim);
     pack.prim_object.clear();
+    pack.prim_object.reserve(num_prim);
     pack.prim_type.clear();
+    pack.prim_type.reserve(num_prim);
     pack.prim_index.clear();
+    pack.prim_index.reserve(num_prim);
     pack.prim_tri_index.clear();
+    pack.prim_tri_index.reserve(num_prim);
+
     pack.prim_tri_verts.clear();
 
     this->pack = &pack;
