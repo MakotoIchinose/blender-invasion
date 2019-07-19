@@ -2760,14 +2760,14 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
   if (tselem->flag & TSE_HIGHLIGHTED) {
     alpha_fac += 0.5;
   }
-  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac, true);
+  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac, false);
   te->xs = *offsx;
   te->ys = ys;
   te->xend = (short)*offsx + UI_UNIT_X;
 
   if (num_elements > 1) {
     outliner_draw_iconrow_number(fstyle, *offsx, ys, num_elements);
-    te->flag |= TE_ICONROW_MULTI;
+    te->flag |= TE_ICONROW_MERGED;
   }
   else {
     te->flag |= TE_ICONROW;
@@ -2912,7 +2912,7 @@ static void outliner_set_coord_tree_element(TreeElement *te, int startx, int sta
   TreeElement *ten;
 
   /* closed items may be displayed in row of parent, don't change their coordinate! */
-  if (!ELEM(te->flag, TE_ICONROW, TE_ICONROW_MULTI)) {
+  if (!ELEM(te->flag, TE_ICONROW, TE_ICONROW_MERGED)) {
     /* store coord and continue, we need coordinatesfor elements outside view too */
     te->xs = startx;
     te->ys = starty;

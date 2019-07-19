@@ -1344,7 +1344,7 @@ static void outliner_item_toggle_closed(TreeElement *te, const bool toggle_child
 
 static bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
 {
-  return ((te->flag & TE_ICONROW) == 0) && (view_co_x > te->xs) &&
+  return (!ELEM(te->flag, TE_ICONROW, TE_ICONROW_MERGED)) && (view_co_x > te->xs) &&
          (view_co_x < te->xs + UI_UNIT_X);
 }
 
