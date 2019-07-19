@@ -1415,16 +1415,18 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   }
   else {
     ViewLayer *view_layer = CTX_data_view_layer(C);
-    /* the row may also contain children, if one is hovered we want this instead of current te */
-    bool multiple_items = false;
+
+    /* The row may also contain children, if one is hovered we want this instead of current te */
+    bool merged_elements = false;
     TreeElement *activate_te = outliner_find_item_at_x_in_row(
-        soops, te, view_mval[0], &multiple_items);
+        soops, te, view_mval[0], &merged_elements);
 
-    if (multiple_items) {
+    /* If the selected icon was an aggregate of multiple elements, run the search popup */
+    if (merged_elements) {
       UI_popup_block_invoke(C, merged_element_search_menu, activate_te, NULL);
-
       return OPERATOR_CANCELLED;
     }
+
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
     if (use_range) {

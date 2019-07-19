@@ -64,7 +64,7 @@ TreeElement *outliner_find_item_at_y(const SpaceOutliner *soops,
 
 static TreeElement *outliner_find_item_at_x_in_row_recursive(const TreeElement *parent_te,
                                                              float view_co_x,
-                                                             bool *r_multiple_objects)
+                                                             bool *r_merged)
 {
   TreeElement *child_te = parent_te->subtree.first;
 
@@ -76,14 +76,13 @@ static TreeElement *outliner_find_item_at_x_in_row_recursive(const TreeElement *
       return child_te;
     }
     else if ((child_te->flag & TE_ICONROW_MERGED) && over_element) {
-      if (r_multiple_objects) {
-        *r_multiple_objects = true;
+      if (r_merged) {
+        *r_merged = true;
       }
       return child_te;
     }
 
-    TreeElement *te = outliner_find_item_at_x_in_row_recursive(
-        child_te, view_co_x, r_multiple_objects);
+    TreeElement *te = outliner_find_item_at_x_in_row_recursive(child_te, view_co_x, r_merged);
     if (te != child_te) {
       return te;
     }
@@ -104,11 +103,11 @@ static TreeElement *outliner_find_item_at_x_in_row_recursive(const TreeElement *
 TreeElement *outliner_find_item_at_x_in_row(const SpaceOutliner *soops,
                                             const TreeElement *parent_te,
                                             float view_co_x,
-                                            bool *r_multiple_objects)
+                                            bool *r_merged)
 {
   /* if parent_te is opened, it doesn't show children in row */
   if (!TSELEM_OPEN(TREESTORE(parent_te), soops)) {
-    return outliner_find_item_at_x_in_row_recursive(parent_te, view_co_x, r_multiple_objects);
+    return outliner_find_item_at_x_in_row_recursive(parent_te, view_co_x, r_merged);
   }
 
   return (TreeElement *)parent_te;
