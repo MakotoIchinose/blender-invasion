@@ -1381,13 +1381,16 @@ static void merged_element_search_cb_recursive(const ListBase *tree,
                                                uiSearchItems *items)
 {
   char name[64];
+  int iconid;
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     if (tree_element_id_type_to_index(te) == type) {
       if (BLI_strcasestr(te->name, str)) {
         BLI_strncpy(name, te->name, 64);
 
-        if (!UI_search_item_add(items, name, te, 0)) {
+        iconid = tree_element_get_icon(TREESTORE(te), te).icon;
+
+        if (!UI_search_item_add(items, name, te, iconid)) {
           break;
         }
       }
