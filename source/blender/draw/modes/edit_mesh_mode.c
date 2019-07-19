@@ -731,7 +731,7 @@ static void EDIT_MESH_cache_populate(void *vedata, Object *ob)
         DRW_shgroup_call_no_cull(g_data->vnormals_shgrp, geom, ob);
       }
       if (lnormals_do) {
-        geom = DRW_mesh_batch_cache_get_edit_triangles(ob->data);
+        geom = DRW_mesh_batch_cache_get_edit_lnors(ob->data);
         DRW_shgroup_call_no_cull(g_data->lnormals_shgrp, geom, ob);
       }
       if (fnormals_do) {

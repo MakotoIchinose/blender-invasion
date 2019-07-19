@@ -2235,26 +2235,27 @@ typedef enum DRWBatchFlag {
   MBC_EDIT_VERTICES = (1 << 3),
   MBC_EDIT_EDGES = (1 << 4),
   MBC_EDIT_VNOR = (1 << 5),
-  MBC_EDIT_FACEDOTS = (1 << 6),
-  MBC_EDIT_MESH_ANALYSIS = (1 << 7),
-  MBC_EDITUV_FACES_STRECH_AREA = (1 << 8),
-  MBC_EDITUV_FACES_STRECH_ANGLE = (1 << 9),
-  MBC_EDITUV_FACES = (1 << 10),
-  MBC_EDITUV_EDGES = (1 << 11),
-  MBC_EDITUV_VERTS = (1 << 12),
-  MBC_EDITUV_FACEDOTS = (1 << 13),
-  MBC_EDIT_SELECTION_VERTS = (1 << 14),
-  MBC_EDIT_SELECTION_EDGES = (1 << 15),
-  MBC_EDIT_SELECTION_FACES = (1 << 16),
-  MBC_EDIT_SELECTION_FACEDOTS = (1 << 17),
-  MBC_ALL_VERTS = (1 << 18),
-  MBC_ALL_EDGES = (1 << 19),
-  MBC_LOOSE_EDGES = (1 << 20),
-  MBC_EDGE_DETECTION = (1 << 21),
-  MBC_WIRE_EDGES = (1 << 22),
-  MBC_WIRE_LOOPS = (1 << 23),
-  MBC_WIRE_LOOPS_UVS = (1 << 24),
-  MBC_SURF_PER_MAT = (1 << 25),
+  MBC_EDIT_LNOR = (1 << 6),
+  MBC_EDIT_FACEDOTS = (1 << 7),
+  MBC_EDIT_MESH_ANALYSIS = (1 << 8),
+  MBC_EDITUV_FACES_STRECH_AREA = (1 << 9),
+  MBC_EDITUV_FACES_STRECH_ANGLE = (1 << 10),
+  MBC_EDITUV_FACES = (1 << 11),
+  MBC_EDITUV_EDGES = (1 << 12),
+  MBC_EDITUV_VERTS = (1 << 13),
+  MBC_EDITUV_FACEDOTS = (1 << 14),
+  MBC_EDIT_SELECTION_VERTS = (1 << 15),
+  MBC_EDIT_SELECTION_EDGES = (1 << 16),
+  MBC_EDIT_SELECTION_FACES = (1 << 17),
+  MBC_EDIT_SELECTION_FACEDOTS = (1 << 18),
+  MBC_ALL_VERTS = (1 << 19),
+  MBC_ALL_EDGES = (1 << 20),
+  MBC_LOOSE_EDGES = (1 << 21),
+  MBC_EDGE_DETECTION = (1 << 22),
+  MBC_WIRE_EDGES = (1 << 23),
+  MBC_WIRE_LOOPS = (1 << 24),
+  MBC_WIRE_LOOPS_UVS = (1 << 25),
+  MBC_SURF_PER_MAT = (1 << 26),
 } DRWBatchFlag;
 
 #define MBC_EDITUV \
@@ -2327,6 +2328,7 @@ typedef struct MeshBatchCache {
     GPUBatch *edit_vertices;
     GPUBatch *edit_edges;
     GPUBatch *edit_vnor;
+    GPUBatch *edit_lnor;
     GPUBatch *edit_facedots;
     GPUBatch *edit_mesh_analysis;
     /* Edit UVs */
@@ -5466,6 +5468,7 @@ static void *mesh_pos_nor_init(const MeshRenderData *mr, void *buf)
     /* WARNING Adjust PosNorLoop struct accordingly. */
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    GPU_vertformat_alias_add(&format, "vnor");
   }
   GPUVertBuf *vbo = buf;
   GPU_vertbuf_init_with_format(vbo, &format);
@@ -5517,6 +5520,7 @@ static void *mesh_lnor_init(const MeshRenderData *mr, void *buf)
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    GPU_vertformat_alias_add(&format, "lnor");
   }
   GPUVertBuf *vbo = buf;
   GPU_vertbuf_init_with_format(vbo, &format);
@@ -7514,6 +7518,13 @@ GPUBatch *DRW_mesh_batch_cache_get_edit_vnors(Mesh *me)
   return DRW_batch_request(&cache->batch.edit_vnor);
 }
 
+GPUBatch *DRW_mesh_batch_cache_get_edit_lnors(Mesh *me)
+{
+  MeshBatchCache *cache = mesh_batch_cache_get(me);
+  mesh_batch_cache_add_request(cache, MBC_EDIT_LNOR);
+  return DRW_batch_request(&cache->batch.edit_lnor);
+}
+
 GPUBatch *DRW_mesh_batch_cache_get_edit_facedots(Mesh *me)
 {
   MeshBatchCache *cache = mesh_batch_cache_get(me);
@@ -8247,6 +8258,11 @@ void DRW_mesh_batch_cache_create_requested(
   if (DRW_batch_requested(cache->batch.edit_vnor, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache->batch.edit_vnor, &mbufcache->ibo.points);
     DRW_vbo_request(cache->batch.edit_vnor, &mbufcache->vbo.pos_nor);
+  }
+  if (DRW_batch_requested(cache->batch.edit_lnor, GPU_PRIM_POINTS)) {
+    DRW_ibo_request(cache->batch.edit_lnor, &mbufcache->ibo.tris);
+    DRW_vbo_request(cache->batch.edit_lnor, &mbufcache->vbo.pos_nor);
+    DRW_vbo_request(cache->batch.edit_lnor, &mbufcache->vbo.lnor);
   }
   if (DRW_batch_requested(cache->batch.edit_facedots, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache->batch.edit_facedots, &mbufcache->ibo.facedots);
