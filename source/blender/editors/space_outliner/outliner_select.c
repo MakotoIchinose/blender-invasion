@@ -1549,7 +1549,7 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-/* Find if x coordinate of TreeElement is over an icon or name */
+/* Find if x coordinate is over an icon or name */
 static bool outliner_item_is_co_over_name_icons(TreeElement *te, float view_co_x)
 {
   /* Special case: count area left of Scene Collection as empty space */
