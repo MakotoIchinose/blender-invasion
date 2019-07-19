@@ -1743,6 +1743,14 @@ static float cloth_remeshing_dihedral_angle(BMVert *v1, BMVert *v2)
   return atan2f(sine, cosine);
 }
 
+static void cloth_remeshing_outer_m2_v2v2(float r_mat[2][2], float vec_01[2], float vec_02[2])
+{
+  for (int i = 0; i < 2; i++) {
+    r_mat[i][0] = vec_01[0] * vec_02[i];
+    r_mat[i][1] = vec_01[1] * vec_02[i];
+  }
+}
+
 static void cloth_remeshing_curvature(BMesh *bm, BMFace *f, float r_mat[2][2])
 {
   zero_m2(r_mat);
@@ -1765,10 +1773,7 @@ static void cloth_remeshing_curvature(BMesh *bm, BMFace *f, float r_mat[2][2])
     float thetha = cloth_remeshing_dihedral_angle(v_01, v_02);
 
     float outer[2][2];
-    for (int i = 0; i < 2; i++) {
-      outer[i][0] = t_mat[0] * t_mat[i];
-      outer[i][1] = t_mat[1] * t_mat[i];
-    }
+    cloth_remeshing_outer_m2_v2v2(outer, t_mat, t_mat);
 
     mul_m2_fl(outer, 1 / 2.0f * thetha * len_v2(e_mat));
     sub_m2_m2m2(r_mat, r_mat, outer);
@@ -1807,6 +1812,21 @@ static void mul_m32_m32m22(float r[3][2], float a[3][2], float b[2][2])
       }
     }
   }
+}
+
+static void cloth_remeshing_derivative(
+    BMesh *bm, float m_01, float m_02, float m_03, BMFace *f, float r_vec[2])
+{
+  float temp_vec[2];
+  temp_vec[0] = m_02 - m_01;
+  temp_vec[1] = m_03 - m_01;
+  float face_dm[2][2];
+  float face_dm_inv[2][2];
+  cloth_remeshing_face_data(bm, f, face_dm);
+  invert_m2_m2(face_dm_inv, face_dm);
+  transpose_m2(face_dm_inv);
+
+  mul_v2_m2v2(r_vec, face_dm_inv, temp_vec);
 }
 
 static void cloth_remeshing_derivative(
@@ -1879,10 +1899,12 @@ static map<BMVert *, ClothPlane> cloth_remeshing_find_nearest_planes(BMesh *bm, 
   return planes;
 }
 
-static void cloth_remeshing_obstacle_metric_calculation(BMFace *f,
+static void cloth_remeshing_obstacle_metric_calculation(BMesh *bm,
+                                                        BMFace *f,
                                                         map<BMVert *, ClothPlane> &planes,
                                                         float r_mat[2][2])
 {
+  zero_m2(r_mat);
   BMVert *v[3];
   BM_face_as_array_vert_tri(f, v);
 
@@ -1899,8 +1921,16 @@ static void cloth_remeshing_obstacle_metric_calculation(BMFace *f,
       sub_v3_v3v3(diff, v[j]->co, plane.co);
       h[j] = dot_v3v3(diff, plane.no);
     }
-    /* TODO(Ish) */
+
+    float dh[2];
+    cloth_remeshing_derivative(bm, h[0], h[1], h[2], f, dh);
+
+    float outer[2][2];
+    cloth_remeshing_outer_m2_v2v2(outer, dh, dh);
+    mul_m2_fl(outer, h[i] * h[i]);
+    add_m2_m2m2(r_mat, r_mat, outer);
   }
+  mul_m2_fl(r_mat, 1.0f / 3.0f);
 }
 
 static void cloth_remeshing_obstacle_metric(
@@ -1942,7 +1972,7 @@ static void cloth_remeshing_obstacle_metric(
         /*Now, actual obstacle metric calculation */
         map<BMVert *, ClothPlane> planes = cloth_remeshing_find_nearest_planes(bm,
                                                                                collmd->bvhtree);
-        cloth_remeshing_obstacle_metric_calculation(f, planes, r_mat);
+        cloth_remeshing_obstacle_metric_calculation(bm, f, planes, r_mat);
       }
     }
   }
