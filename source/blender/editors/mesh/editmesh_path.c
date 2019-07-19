@@ -303,7 +303,7 @@ static bool edgetag_test_cb(BMEdge *e, void *user_data_v)
     case EDGE_MODE_TAG_BEVEL:
       return BM_elem_float_data_get(&bm->edata, e, CD_BWEIGHT) ? true : false;
     case EDGE_MODE_TAG_FREESTYLE: {
-      FreestyleEdge *fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
+      FreestyleEdge *fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_LANPR_EDGE);
       return (!fed) ? false : (fed->flag & FREESTYLE_EDGE_MARK) ? true : false;
     }
   }
@@ -333,7 +333,7 @@ static void edgetag_set_cb(BMEdge *e, bool val, void *user_data_v)
       break;
     case EDGE_MODE_TAG_FREESTYLE: {
       FreestyleEdge *fed;
-      fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
+      fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_LANPR_EDGE);
       if (!val) {
         fed->flag &= ~FREESTYLE_EDGE_MARK;
       }
@@ -357,8 +357,8 @@ static void edgetag_ensure_cd_flag(Mesh *me, const char edge_mode)
       BM_mesh_cd_flag_ensure(bm, me, ME_CDFLAG_EDGE_BWEIGHT);
       break;
     case EDGE_MODE_TAG_FREESTYLE:
-      if (!CustomData_has_layer(&bm->edata, CD_FREESTYLE_EDGE)) {
-        BM_data_layer_add(bm, &bm->edata, CD_FREESTYLE_EDGE);
+      if (!CustomData_has_layer(&bm->edata, CD_LANPR_EDGE)) {
+        BM_data_layer_add(bm, &bm->edata, CD_LANPR_EDGE);
       }
       break;
     default:

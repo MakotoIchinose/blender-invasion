@@ -7447,14 +7447,14 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (!CustomData_has_layer(&em->bm->edata, CD_FREESTYLE_EDGE)) {
-      BM_data_layer_add(em->bm, &em->bm->edata, CD_FREESTYLE_EDGE);
+    if (!CustomData_has_layer(&em->bm->edata, CD_LANPR_EDGE)) {
+      BM_data_layer_add(em->bm, &em->bm->edata, CD_LANPR_EDGE);
     }
 
     if (clear) {
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE);
+          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_LANPR_EDGE);
           fed->flag &= ~FREESTYLE_EDGE_MARK;
         }
       }
@@ -7462,7 +7462,7 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
     else {
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE);
+          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_LANPR_EDGE);
           fed->flag |= FREESTYLE_EDGE_MARK;
         }
       }
@@ -7525,14 +7525,14 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (!CustomData_has_layer(&em->bm->pdata, CD_FREESTYLE_FACE)) {
-      BM_data_layer_add(em->bm, &em->bm->pdata, CD_FREESTYLE_FACE);
+    if (!CustomData_has_layer(&em->bm->pdata, CD_LANPR_FACE)) {
+      BM_data_layer_add(em->bm, &em->bm->pdata, CD_LANPR_FACE);
     }
 
     if (clear) {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE);
+          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_LANPR_FACE);
           ffa->flag &= ~FREESTYLE_FACE_MARK;
         }
       }
@@ -7540,7 +7540,7 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
     else {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE);
+          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_LANPR_FACE);
           ffa->flag |= FREESTYLE_FACE_MARK;
         }
       }
