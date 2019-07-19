@@ -1818,9 +1818,10 @@ static void cloth_remeshing_derivative(
   float mat_t[3][2];
   transpose_m32_m23(mat_t, mat);
 
+  float face_dm[2][2];
   float face_dm_inv[2][2];
-  cloth_remeshing_face_data(bm, f, face_dm_inv);
-  transpose_m2(face_dm_inv);
+  cloth_remeshing_face_data(bm, f, face_dm);
+  invert_m2_m2(face_dm_inv, face_dm);
   mul_m32_m32m22(r_mat, mat_t, face_dm_inv);
 }
 
@@ -2075,7 +2076,7 @@ Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (true) {
+  if (false) {
     cloth_remeshing_static(clmd);
   }
   else {

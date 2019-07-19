@@ -971,6 +971,21 @@ float determinant_m4_mat3_array(const float m[4][4])
           m[2][0] * (m[0][1] * m[1][2] - m[0][2] * m[1][1]));
 }
 
+bool invert_m2_m2(float r[2][2], float m[2][2])
+{
+  float det = determinant_m2(m[0][0], m[0][1], m[1][0], m[1][1]);
+  if (det == 0) {
+    return false;
+  }
+  r[0][0] = m[1][1];
+  r[0][1] = -m[0][1];
+
+  r[1][0] = -m[1][0];
+  r[1][1] = m[0][0];
+  mul_m2_fl(r, 1.0f / det);
+  return true;
+}
+
 bool invert_m3_ex(float m[3][3], const float epsilon)
 {
   float tmp[3][3];
