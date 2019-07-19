@@ -416,7 +416,7 @@ void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
   }
 
   if (rb->DPIXIntersectionBatch) {
-    GPU_batch_discard(rb->DPIXIntersectionBatch);
+    GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
   }
   rb->DPIXIntersectionBatch = 0;
 

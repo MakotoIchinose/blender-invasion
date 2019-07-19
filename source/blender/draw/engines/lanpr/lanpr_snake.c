@@ -579,7 +579,7 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
   GPU_framebuffer_bind(fbl->edge_intermediate);
 
   DRW_draw_pass(psl->snake_pass);
-  GPU_batch_discard(snake_batch);
+  GPU_BATCH_DISCARD_SAFE(snake_batch);
 
   BLI_mempool_clear(lanpr_share.mp_sample);
   BLI_mempool_clear(lanpr_share.mp_line_strip);

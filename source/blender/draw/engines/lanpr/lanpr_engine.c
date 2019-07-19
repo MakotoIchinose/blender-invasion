@@ -400,17 +400,17 @@ static void lanpr_cache_init(void *vedata)
 
       LANPR_BatchItem *dpbi;
       while (dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) {
-        GPU_batch_discard(dpbi->dpix_preview_batch);
-        GPU_batch_discard(dpbi->dpix_transform_batch);
+        GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
+        GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
       }
       LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
       if (rb) {
         if (rb->DPIXIntersectionBatch) {
-          GPU_batch_discard(rb->DPIXIntersectionBatch);
+          GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
           rb->DPIXIntersectionBatch = 0;
         }
         if (rb->DPIXIntersectionTransformBatch) {
-          GPU_batch_discard(rb->DPIXIntersectionTransformBatch);
+          GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionTransformBatch);
           rb->DPIXIntersectionTransformBatch = 0;
         }
       }
