@@ -219,6 +219,7 @@ typedef struct MeshRenderData {
 
   bool use_mapped;
   bool use_hide;
+  bool use_subsurf_fdots;
 
   /* HACK not supposed to be there but it's needed. */
   struct MeshBatchCache *cache;
@@ -4989,13 +4990,15 @@ static void *mesh_facedot_init(const MeshRenderData *mr, void *UNUSED(buf))
 }
 static void mesh_facedot_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
-  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
+  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE)) &&
+      (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     GPU_indexbuf_set_point_vert(elb, iter->face_idx, iter->face_idx);
   }
 }
 static void mesh_facedot_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
-  if (iter->efa && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN)) {
+  if (iter->efa && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN) &&
+      (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     GPU_indexbuf_set_point_vert(elb, iter->face_idx, iter->face_idx);
   }
 }
@@ -5414,7 +5417,8 @@ static void *mesh_edituv_fdot_init(const MeshRenderData *mr, void *UNUSED(ibo))
 }
 static void mesh_edituv_fdot_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
-  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
+  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE)) &&
+      (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     MeshExtract_EditUvFdot_Data *extract_data = (MeshExtract_EditUvFdot_Data *)data;
     GPU_indexbuf_set_point_vert(&extract_data->elb, iter->face_idx, iter->face_idx);
   }
@@ -5425,7 +5429,8 @@ static void mesh_edituv_fdot_iter_edit(const MeshExtractIterData *iter,
 {
   MeshExtract_EditUvFdot_Data *extract_data = (MeshExtract_EditUvFdot_Data *)data;
   if (iter->efa && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN) &&
-      (extract_data->sync_selection || BM_elem_flag_test(iter->efa, BM_ELEM_SELECT))) {
+      (extract_data->sync_selection || BM_elem_flag_test(iter->efa, BM_ELEM_SELECT)) &&
+      (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     GPU_indexbuf_set_point_vert(&extract_data->elb, iter->face_idx, iter->face_idx);
   }
 }
@@ -6565,10 +6570,17 @@ static void *mesh_fdots_pos_init(const MeshRenderData *mr, void *buf)
 static void mesh_fdots_pos_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
   float(*center)[3] = (float(*)[3])data;
-  float w = 1.0f / (float)iter->mpoly->totloop;
-  /* This is thread safe since we are spliting workload in faces (for loop iter) so one face is
-   * only touched by one thread. */
-  madd_v3_v3fl(center[iter->face_idx], iter->mvert->co, w);
+  if (iter->mr->use_subsurf_fdots) {
+    if (iter->mvert->flag & ME_VERT_FACEDOT) {
+      copy_v3_v3(center[iter->face_idx], iter->mvert->co);
+    }
+  }
+  else {
+    float w = 1.0f / (float)iter->mpoly->totloop;
+    /* This is thread safe since we are spliting workload in faces (for loop iter) so one face is
+     * only touched by one thread. */
+    madd_v3_v3fl(center[iter->face_idx], iter->mvert->co, w);
+  }
 }
 static void mesh_fdots_pos_iter_edit(const MeshExtractIterData *iter,
                                      void *UNUSED(buf),
@@ -6664,11 +6676,18 @@ static void *mesh_fdots_uv_init(const MeshRenderData *mr, void *buf)
 static void mesh_fdots_uv_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
   MeshExtract_FdotUV_Data *extract_data = (MeshExtract_FdotUV_Data *)data;
-  float w = 1.0f / (float)iter->mpoly->totloop;
-  /* This is thread safe since we are spliting workload in faces (for loop iter) so one face is
-   * only touched by one thread. */
-  madd_v2_v2fl(
-      extract_data->vbo_data[iter->face_idx], extract_data->uv_data[iter->loop_idx].uv, w);
+  if (iter->mr->use_subsurf_fdots) {
+    if (iter->mvert->flag & ME_VERT_FACEDOT) {
+      copy_v2_v2(extract_data->vbo_data[iter->face_idx], extract_data->uv_data[iter->loop_idx].uv);
+    }
+  }
+  else {
+    float w = 1.0f / (float)iter->mpoly->totloop;
+    /* This is thread safe since we are spliting workload in faces (for loop iter) so one face is
+     * only touched by one thread. */
+    madd_v2_v2fl(
+        extract_data->vbo_data[iter->face_idx], extract_data->uv_data[iter->loop_idx].uv, w);
+  }
 }
 static void mesh_fdots_uv_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
@@ -7194,6 +7213,7 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
                                                MeshBufferCache mbc,
                                                Mesh *me,
                                                const bool do_final,
+                                               const bool use_subsurf_fdots,
                                                const DRW_MeshCDMask *cd_layer_used,
                                                const ToolSettings *ts,
                                                const bool use_hide)
@@ -7270,6 +7290,7 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
       me, do_final, iter_flag, data_flag, cd_layer_used, ts);
   mr->cache = cache; /* HACK */
   mr->use_hide = use_hide;
+  mr->use_subsurf_fdots = use_subsurf_fdots;
 
   int ref_id = 0;
   for (int i = 0; i < sizeof(mbc) / sizeof(void *); i++) {
@@ -8007,8 +8028,9 @@ void DRW_mesh_batch_cache_free_old(Mesh *me, int ctime)
 
 /* Can be called for any surface type. Mesh *me is the final mesh. */
 void DRW_mesh_batch_cache_create_requested(
-    Object *ob, Mesh *me, const ToolSettings *ts, const bool is_paint_mode, const bool use_hide)
+    Object *ob, Mesh *me, const Scene *scene, const bool is_paint_mode, const bool use_hide)
 {
+  const ToolSettings *ts = scene->toolsettings;
   MeshBatchCache *cache = mesh_batch_cache_get(me);
 
   /* Early out */
@@ -8297,7 +8319,10 @@ void DRW_mesh_batch_cache_create_requested(
     DRW_vbo_request(cache->batch.edituv_facedots, &mbufcache->vbo.facedots_data_edituv);
   }
 
-  mesh_buffer_cache_create_requested(cache, cache->final, me, true, &cache->cd_used, ts, use_hide);
+  const bool use_subsurf_fdots = scene ? modifiers_usesSubsurfFacedots(scene, ob) : false;
+
+  mesh_buffer_cache_create_requested(
+      cache, cache->final, me, true, use_subsurf_fdots, &cache->cd_used, ts, use_hide);
 
   /* Init index buffer subranges. */
   if (cache->surface_per_mat[0] && (cache->surface_per_mat[0]->elem == cache->final.ibo.tris)) {
@@ -8321,7 +8346,8 @@ void DRW_mesh_batch_cache_create_requested(
   }
 
   if (do_cage) {
-    mesh_buffer_cache_create_requested(cache, cache->cage, me, false, &cache->cd_used, ts, true);
+    mesh_buffer_cache_create_requested(
+        cache, cache->cage, me, false, use_subsurf_fdots, &cache->cd_used, ts, true);
   }
 
 #ifdef DEBUG

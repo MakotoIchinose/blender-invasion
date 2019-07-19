@@ -2772,7 +2772,7 @@ void DRW_draw_select_id_object(Scene *scene,
         if (use_faceselect && draw_facedot) {
           geom_facedots = DRW_mesh_batch_cache_get_facedots_with_select_id(me);
         }
-        DRW_mesh_batch_cache_create_requested(ob, me, NULL, false, true);
+        DRW_mesh_batch_cache_create_requested(ob, me, scene, false, true);
 
         draw_mesh_face(geom_faces, initial_offset, use_faceselect, world_clip_planes);
 
@@ -2824,7 +2824,7 @@ void DRW_draw_select_id_object(Scene *scene,
             ((ob->mode & OB_MODE_WEIGHT_PAINT) || (ob->mode & OB_MODE_VERTEX_PAINT))) {
 
           GPUBatch *geom_verts = DRW_mesh_batch_cache_get_verts_with_select_id(me_eval);
-          DRW_mesh_batch_cache_create_requested(ob, me_eval, NULL, false, true);
+          DRW_mesh_batch_cache_create_requested(ob, me_eval, scene, false, true);
 
           /* Only draw faces to mask out verts, we don't want their selection ID's. */
           draw_mesh_face(geom_faces, 0, false, world_clip_planes);
@@ -2835,7 +2835,7 @@ void DRW_draw_select_id_object(Scene *scene,
         }
         else {
           const bool use_hide = (me_orig->editflag & ME_EDIT_PAINT_FACE_SEL);
-          DRW_mesh_batch_cache_create_requested(ob, me_eval, NULL, false, use_hide);
+          DRW_mesh_batch_cache_create_requested(ob, me_eval, scene, false, use_hide);
 
           draw_mesh_face(geom_faces, initial_offset, true, world_clip_planes);
 

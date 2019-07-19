@@ -119,7 +119,7 @@ struct GPUBatch *DRW_lattice_batch_cache_get_edit_verts(struct Lattice *lt);
 /* Mesh */
 void DRW_mesh_batch_cache_create_requested(struct Object *ob,
                                            struct Mesh *me,
-                                           const struct ToolSettings *ts,
+                                           const struct Scene *scene,
                                            const bool is_paint_mode,
                                            const bool use_hide);
 
