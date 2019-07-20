@@ -63,7 +63,7 @@
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 0
-#define DEBUG_CUSTOM_PROFILE_CUTOFF 1
+#define DEBUG_CUSTOM_PROFILE_CUTOFF 0
 
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
 extern void DRW_debug_sphere(const float center[3], const float radius, const float color[4]);
@@ -122,7 +122,7 @@ typedef struct EdgeHalf {
   char _pad[4];
 } EdgeHalf;
 
-/* Profile specification.
+/* Profile specification:
  * Many interesting profiles are in family of superellipses:
  *     (abs(x/a))^r + abs(y/b))^r = 1
  * r==2 => ellipse; r==1 => line; r < 1 => concave; r > 1 => bulging out.
@@ -131,19 +131,21 @@ typedef struct EdgeHalf {
  * projected onto a plane (plane_no is normal, plane_co is a point on it)
  * via lines in a given direction (proj_dir).
  * After the parameters are all set, the actual profile points are calculated
- * and point in prof_co. We also may need profile points for a higher resolution
- * number of segments, in order to make the vertex mesh pattern, and that goes
- * in prof_co_2.
+ * and pointed to by prof_co. We also may need profile points for a higher resolution
+ * number of segments for the subdivision while making the ADJ vertex mesh pattern,
+ * and that goes in prof_co_2.
  */
 typedef struct Profile {
   /** Superellipse r parameter */
   float super_r;
   /** Start control point for profile */
-  float coa[3];
+  /* HANS-QUESTION: How much would it be possible to change variable names? I think "coa" and "cob"
+   * would be much more intuitively named as "start" and "end," but notes would be out of date */
+  float start[3]; /* coa */
   /** Mid control point for profile */
-  float midco[3];
+  float middle[3]; /* midco */
   /** End control point for profile */
-  float cob[3];
+  float end[3]; /* cob */
   /** Normal of plane to project to */
   float plane_no[3];
   /** Coordinate on plane to project to */
@@ -161,7 +163,8 @@ typedef struct Profile {
 #define PRO_LINE_R 1.0f
 #define PRO_SQUARE_IN_R 0.0f
 
-/* Cache result of expensive calculation of u parameter values to
+/* The un-transformed 2D storage of profile vertex locations. Also for non-custom profiles
+ * this serves as a cache for the results of the expensive calculation of u parameter values to
  * get even spacing on superellipse for current BevelParams seg
  * and pro_super_r. */
 typedef struct ProfileSpacing {
@@ -203,8 +206,8 @@ typedef struct BoundVert {
   bool is_patch_start;
   /** Is this boundvert the side of the custom profile's start */
   bool is_profile_start;
-  /** Length of seam starting from current boundvert to next boundvert with ccw ordering */
   char _pad[3];
+  /** Length of seam starting from current boundvert to next boundvert with ccw ordering */
   int seam_len;
   /** Same as seam_len but defines length of sharp edges */
   int sharp_len;
@@ -1318,27 +1321,27 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
       negate_v3(pro->proj_dir);
     }
     normalize_v3(pro->proj_dir);
-    project_to_edge(e->e, co1, co2, pro->midco);
+    project_to_edge(e->e, co1, co2, pro->middle);
     if (DEBUG_OLD_PROJ_TO_PERP_PLANE) {
       /* put arc endpoints on plane with normal proj_dir, containing midco */
       add_v3_v3v3(co3, co1, pro->proj_dir);
-      if (!isect_line_plane_v3(pro->coa, co1, co3, pro->midco, pro->proj_dir)) {
+      if (!isect_line_plane_v3(pro->start, co1, co3, pro->middle, pro->proj_dir)) {
         /* shouldn't happen */
-        copy_v3_v3(pro->coa, co1);
+        copy_v3_v3(pro->start, co1);
       }
       add_v3_v3v3(co3, co2, pro->proj_dir);
-      if (!isect_line_plane_v3(pro->cob, co2, co3, pro->midco, pro->proj_dir)) {
+      if (!isect_line_plane_v3(pro->end, co2, co3, pro->middle, pro->proj_dir)) {
         /* shouldn't happen */
-        copy_v3_v3(pro->cob, co2);
+        copy_v3_v3(pro->end, co2);
       }
     }
     else {
-      copy_v3_v3(pro->coa, co1);
-      copy_v3_v3(pro->cob, co2);
+      copy_v3_v3(pro->start, co1);
+      copy_v3_v3(pro->end, co2);
     }
     /* default plane to project onto is the one with triangle co1 - midco - co2 in it */
-    sub_v3_v3v3(d1, pro->midco, co1);
-    sub_v3_v3v3(d2, pro->midco, co2);
+    sub_v3_v3v3(d1, pro->middle, co1);
+    sub_v3_v3v3(d2, pro->middle, co2);
     normalize_v3(d1);
     normalize_v3(d2);
     cross_v3_v3v3(pro->plane_no, d1, d2);
@@ -1358,14 +1361,14 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
       }
       else {
         if (DEBUG_OLD_PROJ_TO_PERP_PLANE) {
-          copy_v3_v3(pro->coa, co1);
-          copy_v3_v3(pro->cob, co2);
+          copy_v3_v3(pro->start, co1);
+          copy_v3_v3(pro->end, co2);
         }
         if (DEBUG_OLD_FLAT_MID) {
-          copy_v3_v3(pro->midco, bv->v->co);
+          copy_v3_v3(pro->middle, bv->v->co);
         }
         else {
-          copy_v3_v3(pro->midco, bv->v->co);
+          copy_v3_v3(pro->middle, bv->v->co);
           if (e->prev->is_bev && e->next->is_bev && bv->selcount >= 3) {
             /* want mid at the meet point of next and prev offset edges */
             float d3[3], d4[3], co4[3], meetco[3], isect2[3];
@@ -1377,7 +1380,7 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
             normalize_v3(d4);
             if (nearly_parallel(d3, d4)) {
               /* offset lines are collinear - want linear interpolation */
-              mid_v3_v3v3(pro->midco, co1, co2);
+              mid_v3_v3v3(pro->middle, co1, co2);
               do_linear_interp = true;
             }
             else {
@@ -1385,20 +1388,20 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
               add_v3_v3v3(co4, co2, d4);
               isect_kind = isect_line_line_v3(co1, co3, co2, co4, meetco, isect2);
               if (isect_kind != 0) {
-                copy_v3_v3(pro->midco, meetco);
+                copy_v3_v3(pro->middle, meetco);
               }
               else {
                 /* offset lines don't intersect - want linear interpolation */
-                mid_v3_v3v3(pro->midco, co1, co2);
+                mid_v3_v3v3(pro->middle, co1, co2);
                 do_linear_interp = true;
               }
             }
           }
         }
-        copy_v3_v3(pro->cob, co2);
-        sub_v3_v3v3(d1, pro->midco, co1);
+        copy_v3_v3(pro->end, co2);
+        sub_v3_v3v3(d1, pro->middle, co1);
         normalize_v3(d1);
-        sub_v3_v3v3(d2, pro->midco, co2);
+        sub_v3_v3v3(d2, pro->middle, co2);
         normalize_v3(d2);
         cross_v3_v3v3(pro->plane_no, d1, d2);
         normalize_v3(pro->plane_no);
@@ -1416,8 +1419,8 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
   }
   else if (bndv->is_arc_start) {
     /* assume pro->midco was alredy set */
-    copy_v3_v3(pro->coa, co1);
-    copy_v3_v3(pro->cob, co2);
+    copy_v3_v3(pro->start, co1);
+    copy_v3_v3(pro->end, co2);
     pro->super_r = PRO_CIRCLE_R;
     zero_v3(pro->plane_co);
     zero_v3(pro->plane_no);
@@ -1426,9 +1429,9 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
   }
   if (do_linear_interp) {
     pro->super_r = PRO_LINE_R;
-    copy_v3_v3(pro->coa, co1);
-    copy_v3_v3(pro->cob, co2);
-    mid_v3_v3v3(pro->midco, co1, co2);
+    copy_v3_v3(pro->start, co1);
+    copy_v3_v3(pro->end, co2);
+    mid_v3_v3v3(pro->middle, co1, co2);
     /* won't use projection for this line profile */
     zero_v3(pro->plane_co);
     zero_v3(pro->plane_no);
@@ -1450,9 +1453,9 @@ static void move_profile_plane(BoundVert *bndv, BMVert *bmv)
   if (is_zero_v3(pro->proj_dir)) {
     return;
   }
-  sub_v3_v3v3(d1, bmv->co, pro->coa);
+  sub_v3_v3v3(d1, bmv->co, pro->start);
   normalize_v3(d1);
-  sub_v3_v3v3(d2, bmv->co, pro->cob);
+  sub_v3_v3v3(d2, bmv->co, pro->end);
   normalize_v3(d2);
   cross_v3_v3v3(no, d1, d2);
   cross_v3_v3v3(no2, d1, pro->proj_dir);
@@ -1655,10 +1658,10 @@ static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n,
 
   if (bp->seg == 1) {
     if (i == 0) {
-      copy_v3_v3(r_co, pro->coa);
+      copy_v3_v3(r_co, pro->start);
     }
     else {
-      copy_v3_v3(r_co, pro->cob);
+      copy_v3_v3(r_co, pro->end);
     }
   }
 
@@ -1690,12 +1693,14 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
   float co[3], co2[3], p[3], m[4][4];
   float *prof_co, *prof_co_k;
   float r;
-  bool need_2, map_ok;
+  bool need_2, map_ok, use_normal_profile;
   Profile *pro = &bndv->profile;
 
   if (bp->seg == 1) {
     return;
   }
+
+  use_normal_profile = bndv->is_arc_start & bndv->is_patch_start;
 
   need_2 = bp->seg != bp->pro_spacing.seg_2;
   if (!pro->prof_co) {
@@ -1714,7 +1719,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
     map_ok = false;
   }
   else {
-    map_ok = make_unit_square_map(pro->coa, pro->midco, pro->cob, m);
+    map_ok = make_unit_square_map(pro->start, pro->middle, pro->end, m);
   }
   /* The first iteration is the nseg case, the second is the seg_2 case if it's needed */
   for (i = 0; i < 2; i++) {
@@ -1737,10 +1742,10 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
     /* Iterate over the vertices along the boundary arc */
     for (k = 0; k <= ns; k++) {
       if (k == 0) {
-        copy_v3_v3(co, pro->coa);
+        copy_v3_v3(co, pro->start);
       }
       else if (k == ns) {
-        copy_v3_v3(co, pro->cob);
+        copy_v3_v3(co, pro->end);
       }
       else {
         if (map_ok) {
@@ -1757,14 +1762,14 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed)
           mul_v3_m4v3(co, m, p);
         }
         else {
-          interp_v3_v3v3(co, pro->coa, pro->cob, (float)k / (float)ns);
+          interp_v3_v3v3(co, pro->start, pro->end, (float)k / (float)ns);
         }
       }
-      /* Project co onto final profile plane */
+      /* Project co onto final profile plane (First transformation wasn't enough) */
       prof_co_k = prof_co + 3 * k; /* Each coord takes up 3 spaces */
       if (!is_zero_v3(pro->proj_dir)) {
         add_v3_v3v3(co2, co, pro->proj_dir);
-        /* pro->plane_co and pro->plane_no are built in "set_profile_params" */
+        /* pro->plane_co and pro->plane_no are filled in "set_profile_params" */
         if (!isect_line_plane_v3(prof_co_k, co, co2, pro->plane_co, pro->plane_no)) {
           /* shouldn't happen */
           copy_v3_v3(prof_co_k, co);
@@ -2499,7 +2504,7 @@ static void adjust_miter_coords(BevelParams *bp, BevVert *bv, EdgeHalf *emiter)
   v3next = v3->next;
   copy_v3_v3(co2, v1->nv.co);
   if (v1->is_arc_start) {
-    copy_v3_v3(v1->profile.midco, co2);
+    copy_v3_v3(v1->profile.middle, co2);
   }
 
   /* co1 is intersection of line through co2 in dir of emiter->e
@@ -2722,7 +2727,7 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
         }
         else {
           v1->is_arc_start = true;
-          copy_v3_v3(v1->profile.midco, co);
+          copy_v3_v3(v1->profile.middle, co);
           if (e->next == e2) {
             v1->elast = v1->efirst;
           }
@@ -4229,12 +4234,12 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
     coc[(i + 1) % 3] = 1.0f;
     coc[(i + 2) % 3] = 0.0f;
     bndv->profile.super_r = r;
-    copy_v3_v3(bndv->profile.coa, bndv->nv.co);
-    copy_v3_v3(bndv->profile.cob, bndv->next->nv.co);
-    copy_v3_v3(bndv->profile.midco, coc);
-    copy_v3_v3(mesh_vert(vm0, i, 0, 0)->co, bndv->profile.coa);
-    copy_v3_v3(bndv->profile.plane_co, bndv->profile.coa);
-    cross_v3_v3v3(bndv->profile.plane_no, bndv->profile.coa, bndv->profile.cob);
+    copy_v3_v3(bndv->profile.start, bndv->nv.co);
+    copy_v3_v3(bndv->profile.end, bndv->next->nv.co);
+    copy_v3_v3(bndv->profile.middle, coc);
+    copy_v3_v3(mesh_vert(vm0, i, 0, 0)->co, bndv->profile.start);
+    copy_v3_v3(bndv->profile.plane_co, bndv->profile.start);
+    cross_v3_v3v3(bndv->profile.plane_no, bndv->profile.start, bndv->profile.end);
     copy_v3_v3(bndv->profile.proj_dir, bndv->profile.plane_no);
     calculate_profile(bp, bndv, !bndv->is_profile_start);
 
@@ -4475,8 +4480,8 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
   Profile *pro = &vpipe->profile;
   EdgeHalf *e = vpipe->ebev;
 
-  copy_v3_v3(va, pro->coa);
-  copy_v3_v3(vb, pro->cob);
+  copy_v3_v3(va, pro->start);
+  copy_v3_v3(vb, pro->end);
 
   /* Get a plane with the normal pointing along the beveled edge */
   sub_v3_v3v3(edir, e->e->v1->co, e->e->v2->co);
@@ -4484,7 +4489,7 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
 
   closest_to_plane_v3(va0, plane, va);
   closest_to_plane_v3(vb0, plane, vb);
-  closest_to_plane_v3(vmid0, plane, pro->midco);
+  closest_to_plane_v3(vmid0, plane, pro->middle);
   if (make_unit_square_map(va0, vmid0, vb0, m)) {
     /* Transform co and project it onto superellipse */
     if (!invert_m4_m4(minv, m)) {
@@ -4756,7 +4761,7 @@ static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
     else if (bndv->is_arc_start) {
       e1 = bndv->efirst;
       e2 = bndv->next->efirst;
-      copy_v3_v3(centerline + clstride * i, bndv->profile.midco);
+      copy_v3_v3(centerline + clstride * i, bndv->profile.middle);
       bndv = bndv->next;
       cset[i] = true;
       i++;
@@ -4964,7 +4969,7 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
     v = bv->vmesh->boundstart;
     do {
       Profile *pro = &v->profile;
-      copy_v3_v3(pro->midco, bv->v->co);
+      copy_v3_v3(pro->middle, bv->v->co);
       pro->super_r = bp->pro_super_r;
       calculate_profile(bp, v, !v->is_profile_start);
       v = v->next;
@@ -5126,7 +5131,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   int i, j;
   int n_bndv = bv->vmesh->count;
   BoundVert *bndv;
-  float down_direction[3], face_location[3], new_vert[3], closest_face_distance, face_distance;
+  float prev_profile_no[3], profile_no[3], down_direction[3], new_vert[3];
   bool build_center_face;
   BMFace *face, *repface;
   BMIter bm_iter;
@@ -5139,18 +5144,10 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   do {
     i = bndv->index;
 
-    /* Find the opposite of the normal of the face closest to the boundvert */
-    closest_face_distance = FLT_MAX;
-    BM_ITER_ELEM (face, &bm_iter, bv->v, BM_FACES_OF_VERT) {
-      BM_face_calc_center_median(face, face_location);
-      face_distance = len_squared_v3v3(bndv->nv.co, face_location);
-      if (face_distance < closest_face_distance) {
-        closest_face_distance = face_distance;
-        copy_v3_v3(down_direction, face->no);
-      }
-    }
+    /* Find the direction along the intersection of the two adjecent profile normals */
+    cross_v3_v3v3(down_direction, bndv->prev->profile.plane_no, bndv->profile.plane_no);
 
-    /* Move down that normal direction by the width of the bevel */
+    /* Move down that direction from the boundvert by the width of the bevel */
     /* HANS-TODO: Use the adjusted offset for this vertex */
     madd_v3_v3v3fl(new_vert, bndv->nv.co, down_direction, bp->offset);
 
@@ -5463,9 +5460,9 @@ static void bevel_vert_two_edges(BevelParams *bp, BMesh *bm, BevVert *bv)
     bndv = vm->boundstart;
     pro = &bndv->profile;
     pro->super_r = bp->pro_super_r;
-    copy_v3_v3(pro->coa, v1->co);
-    copy_v3_v3(pro->cob, v2->co);
-    copy_v3_v3(pro->midco, bv->v->co);
+    copy_v3_v3(pro->start, v1->co);
+    copy_v3_v3(pro->end, v2->co);
+    copy_v3_v3(pro->middle, bv->v->co);
     /* don't use projection */
     zero_v3(pro->plane_co);
     zero_v3(pro->plane_no);
@@ -6967,7 +6964,8 @@ static void find_even_superellipse_chords(int n, float r, double *xvals, double 
   find_even_superellipse_chords_general(n, r, xvals, yvals);
 }
 
-/* The superellipse used for multisegment profiles does not
+/* Fills the ProfileSpacing struct with the 2D coordinates for the profile's vertices.
+ * The superellipse used for multisegment profiles does not
  * have a closed-form way to generate evenly spaced points
  * along an arc. We use an expensive search procedure to find
  * the parameter values that lead to bp->seg even chords.
@@ -6979,6 +6977,8 @@ static void set_profile_spacing(BevelParams *bp)
 {
   int seg, seg_2;
   float *temp_locs = NULL;
+
+  bool use_separate_miter_profile = bp->use_custom_profile && bp->miter_outer != BEVEL_MITER_SHARP;
 
   /* Sample the input number of segments */
   seg = bp->seg;
@@ -7002,7 +7002,7 @@ static void set_profile_spacing(BevelParams *bp)
                                     bp->pro_spacing.yvals);
     }
 
-    /* Sample the segments used for interpolation after subdividing the vertex meshes */
+    /* Sample the segments used for subdividing the vertex meshes */
     if (seg_2 == 2) {
       seg_2 = 4;
     }
@@ -7017,15 +7017,12 @@ static void set_profile_spacing(BevelParams *bp)
       bp->pro_spacing.yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       if (bp->use_custom_profile) {
-        BLI_assert(temp_locs);
         profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1,
                                      bp->prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
         for (int i = 0; i < seg_2 + 1; i++) {
           bp->pro_spacing.xvals_2[i] = temp_locs[2 * i + 1];
           bp->pro_spacing.yvals_2[i] = temp_locs[2 * i];
         }
-        /* HANS-QUESTION: Is there a way to free part of a memory arena? This pointer won't be used
-         * again */
       }
       else {
         find_even_superellipse_chords(seg_2, bp->pro_super_r, bp->pro_spacing.xvals_2,
@@ -7046,7 +7043,7 @@ static void set_profile_spacing(BevelParams *bp)
  * Assume we have a situation like:
  *
  * a                 d
- * \               /
+ *  \               /
  * A \             / C
  *    \ th1    th2/
  *     b---------c
