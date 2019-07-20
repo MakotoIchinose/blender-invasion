@@ -74,6 +74,8 @@ static void write_paths_from_callback(void *iterator,
   int status;
   float fill_color[3], stroke_color[3], stroke_width;
   int fill_color_i[3], stroke_color_i[3];
+  UNUSED_VARS(status, stroke_color_i, fill_color_i);
+
   float x, y;
   char buf[128];
   int first_in;
@@ -146,6 +148,7 @@ static int svg_gpencil_get_path_callback(GPencilSVGIterator *iterator,
   zero_v3(stroke_color);
   return 1;
 }
+
 static int svg_gpencil_get_node_callback(GPencilSVGIterator *iterator, float *x, float *y)
 {
   GPencilSVGIterator *sr = (GPencilSVGIterator *)iterator;

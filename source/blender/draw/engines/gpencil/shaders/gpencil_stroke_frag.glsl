@@ -76,14 +76,11 @@ void main()
   }
 
   /* gradient */
-  /* keep this disabled while the line glitch bug exists
-  if (gradient_f < 1.0) {
-    float d = abs(mTexCoord.y - 0.5)  * (1.1 - gradient_f);
-    float alpha = 1.0 - clamp((fragColor.a - (d * 2.0)), 0.03, 1.0);
-    fragColor.a = smoothstep(fragColor.a, 0.0, alpha);
-
-  }
-  */
+   if (gradient_f < 1.0) {
+    float dist = abs(mTexCoord.y - 0.5) * 2.0;
+    float decay = dist * (1.0 - gradient_f) * fragColor.a;
+    fragColor.a = clamp(fragColor.a - decay, 0.0, 1.0);
+   }
 
   if (fragColor.a < 0.0035) {
     discard;

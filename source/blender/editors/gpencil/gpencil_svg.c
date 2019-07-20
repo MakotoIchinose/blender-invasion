@@ -78,6 +78,7 @@ static bool gpencil_found(bContext *C)
 void GPENCIL_OT_export_svg(wmOperatorType *ot)
 {
   PropertyRNA *prop;
+  UNUSED_VARS(prop);
 
   /* identifiers */
   ot->name = "Export to SVG";

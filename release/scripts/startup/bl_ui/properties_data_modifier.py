@@ -2031,8 +2031,12 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "factor")
 
         row = layout.row()
+        row.prop(md, "opacity_mode", text="Mode")
+
+        row = layout.row()
         row.prop(md, "create_materials")
-        row.prop(md, "modify_color")
+        if md.opacity_mode == 'COLOR':
+            row.prop(md, "modify_color", text="Change")
 
         col = layout.column()
         col.separator()

@@ -43,6 +43,7 @@
 #include "BKE_library_query.h"
 #include "BKE_gpencil.h"
 #include "BKE_lattice.h"
+#include "BKE_material.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_object.h"
 
@@ -343,7 +344,7 @@ bool BKE_gpencil_has_time_modifiers(Object *ob)
 void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
                                   Object *ob,
                                   bGPDlayer *gpl,
-                                  bGPDframe *UNUSED(gpf),
+                                  bGPDframe *gpf,
                                   bGPDstroke *gps,
                                   bool is_render)
 {
@@ -360,7 +361,7 @@ void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
       }
 
       if (mti && mti->deformStroke) {
-        mti->deformStroke(md, depsgraph, ob, gpl, gps);
+        mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
         /* subdivide allways requires update */
         if (md->type == eGpencilModifierType_Subdiv) {
           gps->flag |= GP_STROKE_RECALC_GEOMETRY;
@@ -446,14 +447,6 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
     gpl->actframe = BKE_gpencil_layer_getframe(gpl, ctime, GP_GETFRAME_USE_PREV);
   }
 
-  /* TODO: Move "derived_gpf" logic here from DRW_gpencil_populate_datablock()?
-   * This would be better than inventing our own logic for this stuff...
-   */
-
-  /* TODO: Move the following code to "BKE_gpencil_eval_done()" (marked as an exit node)
-   * later when there's more happening here. For now, let's just keep this in here to avoid
-   * needing to have one more node slowing down evaluation...
-   */
   if (DEG_is_active(depsgraph)) {
     bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
 
@@ -786,7 +779,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
 }
 
 /* Copy frame but do not assign new memory */
-static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
+static void gpencil_copy_frame(Object *ob, bGPDframe *gpf, bGPDframe *derived_gpf)
 {
   derived_gpf->prev = gpf->prev;
   derived_gpf->next = gpf->next;
@@ -801,6 +794,11 @@ static void gpencil_copy_frame(bGPDframe *gpf, bGPDframe *derived_gpf)
   for (bGPDstroke *gps_src = gpf->strokes.first; gps_src; gps_src = gps_src->next) {
     /* make copy of source stroke */
     bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
+
+    /* copy color to temp fields to apply temporal changes in the stroke */
+    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps_src->mat_nr + 1);
+    copy_v4_v4(gps_dst->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
+    copy_v4_v4(gps_dst->runtime.tmp_fill_rgba, gp_style->fill_rgba);
 
     /* Save original pointers for using in edit and select operators. */
     gps_dst->runtime.gps_orig = gps_src;
@@ -828,7 +826,7 @@ static void gpencil_ensure_derived_frame(
     BKE_gpencil_free_frame_runtime_data(*derived_gpf);
   }
   /* copy data (do not assign new memory)*/
-  gpencil_copy_frame(gpf, *derived_gpf);
+  gpencil_copy_frame(ob, gpf, *derived_gpf);
 }
 
 /* Calculate gpencil modifiers */
