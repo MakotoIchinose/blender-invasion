@@ -478,6 +478,11 @@ void OUTLINER_OT_scene_operation(wmOperatorType *ot)
 }
 /* ******************************************** */
 
+void merged_element_search_free_cb(void *arg)
+{
+  MEM_freeN(arg);
+}
+
 static void merged_element_search_cb_recursive(const ListBase *tree,
                                                short type,
                                                const char *str,
@@ -505,14 +510,15 @@ static void merged_element_search_cb_recursive(const ListBase *tree,
 
 /* Get a list of elements that match the search string */
 static void merged_element_search_cb(const bContext *UNUSED(C),
-                                     void *element,
+                                     void *data,
                                      const char *str,
                                      uiSearchItems *items)
 {
-  TreeElement *te = (TreeElement *)element;
-  const short type = tree_element_id_type_to_index(te);
+  MergedSearchData *search_data = (MergedSearchData *)data;
+  TreeElement *parent = search_data->parent_element;
+  int type = search_data->element_type;
 
-  merged_element_search_cb_recursive(&te->parent->subtree, type, str, items);
+  merged_element_search_cb_recursive(&parent->subtree, type, str, items);
 }
 
 /* Activate an element from the merged element search menu */
@@ -526,7 +532,7 @@ static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1)
 /** Merged element search menu
  * Created on activation of a merged or aggregated iconrow icon.
  */
-uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *element)
+uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *data)
 {
   static char search[64] = "";
   uiBlock *block;
@@ -539,13 +545,11 @@ uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *element)
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  TreeElement *te = (TreeElement *)element;
-
   short menu_width = 10 * UI_UNIT_X;
   but = uiDefSearchBut(
       block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, menu_width, UI_UNIT_Y, 0, 0, "");
   UI_but_func_search_set(
-      but, NULL, merged_element_search_cb, te, false, merged_element_search_call_cb, NULL);
+      but, NULL, merged_element_search_cb, data, false, merged_element_search_call_cb, NULL);
   UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
   /* Fake button to hold space for search items */
