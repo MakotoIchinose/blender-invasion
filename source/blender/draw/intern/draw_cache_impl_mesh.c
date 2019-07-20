@@ -2010,8 +2010,19 @@ static void mesh_render_data_loop_flag(MeshRenderData *rdata,
   if (uvedit_uv_select_test_ex(rdata->toolsettings, loop, cd_ofs)) {
     eattr->v_flag |= VFLAG_VERT_UV_SELECT;
   }
+}
+
+static void mesh_render_data_loop_edge_flag(MeshRenderData *rdata,
+                                            BMLoop *loop,
+                                            const int cd_ofs,
+                                            EdgeDrawAttr *eattr)
+{
+  if (cd_ofs == -1) {
+    return;
+  }
   if (uvedit_edge_select_test_ex(rdata->toolsettings, loop, cd_ofs)) {
     eattr->v_flag |= VFLAG_EDGE_UV_SELECT;
+    eattr->v_flag |= VFLAG_VERT_UV_SELECT;
   }
 }
 
@@ -4743,7 +4754,7 @@ typedef struct MeshExtractIterData {
   const MLoopTri *mlooptri;
   /* NULL if not in edit mode. */
   BMVert *eve;
-  BMEdge *eed;
+  BMEdge *eed, *eed_prev;
   BMFace *efa;
   BMLoop *eloop;
   BMLoop **elooptri;
@@ -6127,9 +6138,6 @@ static void mesh_edit_data_iter_edit(const MeshExtractIterData *iter,
   if (iter->efa) {
     mesh_render_data_face_flag(iter->mr, iter->efa, -1, eldata);
   }
-  if (iter->eloop) {
-    mesh_render_data_loop_flag(iter->mr, iter->eloop, -1, eldata);
-  }
   if (iter->eed) {
     mesh_render_data_edge_flag(iter->mr, iter->eed, eldata);
   }
@@ -6193,7 +6201,21 @@ static void mesh_edituv_data_iter_edit(const MeshExtractIterData *iter,
     mesh_render_data_face_flag(iter->mr, iter->efa, edituv_data->cd_ofs, eldata);
   }
   if (iter->eloop) {
+    /* Normal edit points. */
     mesh_render_data_loop_flag(iter->mr, iter->eloop, edituv_data->cd_ofs, eldata);
+    mesh_render_data_loop_edge_flag(iter->mr, iter->eloop, edituv_data->cd_ofs, eldata);
+  }
+  else if (iter->efa && iter->eed && iter->eve) {
+    /* Mapped points between 2 edit verts. */
+    BMLoop *loop = BM_face_edge_share_loop(iter->efa, iter->eed);
+    mesh_render_data_loop_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
+    mesh_render_data_loop_edge_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
+  }
+  else if (iter->efa && (iter->eed || iter->eed_prev)) {
+    /* Mapped points on an edge between two edit verts. */
+    BMEdge *eed = iter->eed ? iter->eed : iter->eed_prev;
+    BMLoop *loop = BM_face_edge_share_loop(iter->efa, eed);
+    mesh_render_data_loop_edge_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
   }
 }
 static void mesh_edituv_data_finish(const MeshRenderData *UNUSED(mr),
@@ -7057,6 +7079,7 @@ static void mesh_extract_iter_loop(MeshRenderData *mr,
       for (itr.face_idx = 0; itr.face_idx < mr->poly_len; itr.face_idx++, itr.mpoly++) {
         itr.efa = bm_original_face_get(mr->bm, mr->p_origindex[itr.face_idx]);
         int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
+        itr.eed_prev = bm_original_edge_get(mr->bm, mr->e_origindex[mr->mloop[loopend - 1].e]);
         for (itr.v2 = itr.v1 + 1; itr.v1 < loopend;
              itr.v1++, itr.v2++, itr.loop_idx++, itr.mloop++) {
           if (itr.v2 == loopend) {
@@ -7071,6 +7094,7 @@ static void mesh_extract_iter_loop(MeshRenderData *mr,
           for (int fn = 0; fn < itr_fn_len; fn++) {
             itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
           }
+          itr.eed_prev = itr.eed;
         }
       }
       break;
