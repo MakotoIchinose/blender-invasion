@@ -660,10 +660,10 @@ static void mesh_cd_extract_auto_layers_names_and_srgb(Mesh *me,
  * While not default, object materials should be supported.
  * Although this only impacts the data that's generated, not the materials that display.
  */
-static MeshRenderData *mesh_render_data_create_ex(Mesh *me,
-                                                  const int types,
-                                                  const DRW_MeshCDMask *cd_used,
-                                                  const ToolSettings *ts)
+static void UNUSED_FUNCTION(mesh_render_data_create_ex)(Mesh *me,
+                                                        const int types,
+                                                        const DRW_MeshCDMask *cd_used,
+                                                        const ToolSettings *ts)
 {
   MeshRenderData *rdata = MEM_callocN(sizeof(*rdata), __func__);
   rdata->types = types;
@@ -1260,7 +1260,7 @@ static MeshRenderData *mesh_render_data_create_ex(Mesh *me,
 #undef me
   }
 
-  return rdata;
+  // return rdata;
 }
 
 static MeshRenderData *mesh_render_data_create_ex_new(Mesh *me,
@@ -1903,141 +1903,6 @@ fallback:
 /** \name Internal Cache Generation
  * \{ */
 
-static void mesh_render_data_face_flag(MeshRenderData *rdata,
-                                       const BMFace *efa,
-                                       const int cd_ofs,
-                                       EdgeDrawAttr *eattr)
-{
-  if (efa == rdata->efa_act) {
-    eattr->v_flag |= VFLAG_FACE_ACTIVE;
-  }
-  if (BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
-    eattr->v_flag |= VFLAG_FACE_SELECTED;
-  }
-
-  if (efa == rdata->efa_act_uv) {
-    eattr->v_flag |= VFLAG_FACE_UV_ACTIVE;
-  }
-  if ((cd_ofs != -1) && uvedit_face_select_test_ex(rdata->toolsettings, (BMFace *)efa, cd_ofs)) {
-    eattr->v_flag |= VFLAG_FACE_UV_SELECT;
-  }
-
-#ifdef WITH_FREESTYLE
-  if (rdata->cd.offset.freestyle_face != -1) {
-    const FreestyleFace *ffa = BM_ELEM_CD_GET_VOID_P(efa, rdata->cd.offset.freestyle_face);
-    if (ffa->flag & FREESTYLE_FACE_MARK) {
-      eattr->v_flag |= VFLAG_FACE_FREESTYLE;
-    }
-  }
-#endif
-}
-
-static void mesh_render_data_edge_flag(const MeshRenderData *rdata,
-                                       const BMEdge *eed,
-                                       EdgeDrawAttr *eattr)
-{
-  const ToolSettings *ts = rdata->toolsettings;
-  const bool is_vertex_select_mode = (ts != NULL) && (ts->selectmode & SCE_SELECT_VERTEX) != 0;
-  const bool is_face_only_select_mode = (ts != NULL) && (ts->selectmode == SCE_SELECT_FACE);
-
-  if (eed == rdata->eed_act) {
-    eattr->e_flag |= VFLAG_EDGE_ACTIVE;
-  }
-  if (!is_vertex_select_mode && BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
-    eattr->e_flag |= VFLAG_EDGE_SELECTED;
-  }
-  if (is_vertex_select_mode && BM_elem_flag_test(eed->v1, BM_ELEM_SELECT) &&
-      BM_elem_flag_test(eed->v2, BM_ELEM_SELECT)) {
-    eattr->e_flag |= VFLAG_EDGE_SELECTED;
-    eattr->e_flag |= VFLAG_VERT_SELECTED;
-  }
-  if (BM_elem_flag_test(eed, BM_ELEM_SEAM)) {
-    eattr->e_flag |= VFLAG_EDGE_SEAM;
-  }
-  if (!BM_elem_flag_test(eed, BM_ELEM_SMOOTH)) {
-    eattr->e_flag |= VFLAG_EDGE_SHARP;
-  }
-
-  /* Use active edge color for active face edges because
-   * specular highlights make it hard to see T55456#510873.
-   *
-   * This isn't ideal since it can't be used when mixing edge/face modes
-   * but it's still better then not being able to see the active face. */
-  if (is_face_only_select_mode) {
-    if (rdata->efa_act != NULL) {
-      if (BM_edge_in_face(eed, rdata->efa_act)) {
-        eattr->e_flag |= VFLAG_EDGE_ACTIVE;
-      }
-    }
-  }
-
-  /* Use a byte for value range */
-  if (rdata->cd.offset.crease != -1) {
-    float crease = BM_ELEM_CD_GET_FLOAT(eed, rdata->cd.offset.crease);
-    if (crease > 0) {
-      eattr->crease = (uchar)(crease * 255.0f);
-    }
-  }
-  /* Use a byte for value range */
-  if (rdata->cd.offset.bweight != -1) {
-    float bweight = BM_ELEM_CD_GET_FLOAT(eed, rdata->cd.offset.bweight);
-    if (bweight > 0) {
-      eattr->bweight = (uchar)(bweight * 255.0f);
-    }
-  }
-#ifdef WITH_FREESTYLE
-  if (rdata->cd.offset.freestyle_edge != -1) {
-    const FreestyleEdge *fed = BM_ELEM_CD_GET_VOID_P(eed, rdata->cd.offset.freestyle_edge);
-    if (fed->flag & FREESTYLE_EDGE_MARK) {
-      eattr->e_flag |= VFLAG_EDGE_FREESTYLE;
-    }
-  }
-#endif
-}
-
-static void mesh_render_data_loop_flag(MeshRenderData *rdata,
-                                       BMLoop *loop,
-                                       const int cd_ofs,
-                                       EdgeDrawAttr *eattr)
-{
-  if (cd_ofs == -1) {
-    return;
-  }
-  MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(loop, cd_ofs);
-  if (luv != NULL && (luv->flag & MLOOPUV_PINNED)) {
-    eattr->v_flag |= VFLAG_VERT_UV_PINNED;
-  }
-  if (uvedit_uv_select_test_ex(rdata->toolsettings, loop, cd_ofs)) {
-    eattr->v_flag |= VFLAG_VERT_UV_SELECT;
-  }
-}
-
-static void mesh_render_data_loop_edge_flag(MeshRenderData *rdata,
-                                            BMLoop *loop,
-                                            const int cd_ofs,
-                                            EdgeDrawAttr *eattr)
-{
-  if (cd_ofs == -1) {
-    return;
-  }
-  if (uvedit_edge_select_test_ex(rdata->toolsettings, loop, cd_ofs)) {
-    eattr->v_flag |= VFLAG_EDGE_UV_SELECT;
-    eattr->v_flag |= VFLAG_VERT_UV_SELECT;
-  }
-}
-
-static void mesh_render_data_vert_flag(MeshRenderData *rdata,
-                                       const BMVert *eve,
-                                       EdgeDrawAttr *eattr)
-{
-  if (eve == rdata->eve_act) {
-    eattr->e_flag |= VFLAG_VERT_ACTIVE;
-  }
-  if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
-    eattr->e_flag |= VFLAG_VERT_SELECTED;
-  }
-}
-
 static bool add_edit_facedot(MeshRenderData *rdata,
                              GPUVertBuf *vbo,
                              const uint fdot_pos_id,
@@ -2660,7 +2525,7 @@ void DRW_mesh_batch_cache_free(Mesh *me)
 }
 
 /* GPUBatch cache usage. */
-
+#if 0
 static void UNUSED_FUNCTION(mesh_create_edit_vertex_loops)(MeshRenderData *rdata,
                                                            GPUVertBuf *vbo_pos_nor,
                                                            GPUVertBuf *vbo_lnor,
@@ -2670,10 +2535,10 @@ static void UNUSED_FUNCTION(mesh_create_edit_vertex_loops)(MeshRenderData *rdata
                                                            GPUVertBuf *vbo_edges,
                                                            GPUVertBuf *vbo_faces)
 {
-#if 0
+#  if 0
   const int vert_len = mesh_render_data_verts_len_get_maybe_mapped(rdata);
   const int edge_len = mesh_render_data_edges_len_get_maybe_mapped(rdata);
-#endif
+#  endif
   const int poly_len = mesh_render_data_polys_len_get_maybe_mapped(rdata);
   const int lvert_len = mesh_render_data_loose_verts_len_get_maybe_mapped(rdata);
   const int ledge_len = mesh_render_data_loose_edges_len_get_maybe_mapped(rdata);
@@ -3040,7 +2905,7 @@ static void UNUSED_FUNCTION(mesh_create_edit_vertex_loops)(MeshRenderData *rdata
     /* TODO(fclem): Until we find a way to detect
      * loose verts easily outside of edit mode, this
      * will remain disabled. */
-#if 0
+#  if 0
     /* Loose edges */
     for (int e = 0; e < edge_len; e++, medge++) {
       int eidx = e_origindex[e];
@@ -3074,11 +2939,11 @@ static void UNUSED_FUNCTION(mesh_create_edit_vertex_loops)(MeshRenderData *rdata
         }
       }
     }
-#endif
+#  endif
   }
   /* Don't resize */
 }
-
+#endif
 /* TODO: We could use gl_PrimitiveID as index instead of using another VBO. */
 static void UNUSED_FUNCTION(mesh_create_edit_facedots_select_id)(MeshRenderData *rdata,
                                                                  GPUVertBuf *vbo,
@@ -3216,7 +3081,7 @@ static void UNUSED_FUNCTION(mesh_create_pos_and_nor)(MeshRenderData *rdata, GPUV
 
 static void UNUSED_FUNCTION(mesh_create_weights)(MeshRenderData *rdata,
                                                  GPUVertBuf *vbo,
-                                                 DRW_MeshWeightState *wstate)
+                                                 DRW_MeshWeightState *UNUSED(wstate))
 {
   static GPUVertFormat format = {0};
   static struct {
@@ -6067,7 +5932,7 @@ static void *mesh_weight_init(const MeshRenderData *mr, void *buf)
 static void mesh_weight_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
   MeshExtract_Weight_Data *wdata = (MeshExtract_Weight_Data *)data;
-  MDeformVert *dvert = NULL;
+  const MDeformVert *dvert = NULL;
   if (wdata->dvert != NULL) {
     dvert = &wdata->dvert[iter->vert_idx];
   }
@@ -6076,7 +5941,7 @@ static void mesh_weight_iter(const MeshExtractIterData *iter, void *UNUSED(buf),
 static void mesh_weight_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
   MeshExtract_Weight_Data *wdata = (MeshExtract_Weight_Data *)data;
-  MDeformVert *dvert = NULL;
+  const MDeformVert *dvert = NULL;
   if (wdata->dvert != NULL) {
     dvert = &wdata->dvert[iter->vert_idx];
   }
@@ -6109,6 +5974,141 @@ typedef struct EditLoopData {
   uchar crease;
   uchar bweight;
 } EditLoopData;
+
+static void mesh_render_data_face_flag(MeshRenderData *rdata,
+                                       const BMFace *efa,
+                                       const int cd_ofs,
+                                       EditLoopData *eattr)
+{
+  if (efa == rdata->efa_act) {
+    eattr->v_flag |= VFLAG_FACE_ACTIVE;
+  }
+  if (BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
+    eattr->v_flag |= VFLAG_FACE_SELECTED;
+  }
+
+  if (efa == rdata->efa_act_uv) {
+    eattr->v_flag |= VFLAG_FACE_UV_ACTIVE;
+  }
+  if ((cd_ofs != -1) && uvedit_face_select_test_ex(rdata->toolsettings, (BMFace *)efa, cd_ofs)) {
+    eattr->v_flag |= VFLAG_FACE_UV_SELECT;
+  }
+
+#ifdef WITH_FREESTYLE
+  if (rdata->cd.offset.freestyle_face != -1) {
+    const FreestyleFace *ffa = BM_ELEM_CD_GET_VOID_P(efa, rdata->cd.offset.freestyle_face);
+    if (ffa->flag & FREESTYLE_FACE_MARK) {
+      eattr->v_flag |= VFLAG_FACE_FREESTYLE;
+    }
+  }
+#endif
+}
+
+static void mesh_render_data_edge_flag(const MeshRenderData *rdata,
+                                       const BMEdge *eed,
+                                       EditLoopData *eattr)
+{
+  const ToolSettings *ts = rdata->toolsettings;
+  const bool is_vertex_select_mode = (ts != NULL) && (ts->selectmode & SCE_SELECT_VERTEX) != 0;
+  const bool is_face_only_select_mode = (ts != NULL) && (ts->selectmode == SCE_SELECT_FACE);
+
+  if (eed == rdata->eed_act) {
+    eattr->e_flag |= VFLAG_EDGE_ACTIVE;
+  }
+  if (!is_vertex_select_mode && BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
+    eattr->e_flag |= VFLAG_EDGE_SELECTED;
+  }
+  if (is_vertex_select_mode && BM_elem_flag_test(eed->v1, BM_ELEM_SELECT) &&
+      BM_elem_flag_test(eed->v2, BM_ELEM_SELECT)) {
+    eattr->e_flag |= VFLAG_EDGE_SELECTED;
+    eattr->e_flag |= VFLAG_VERT_SELECTED;
+  }
+  if (BM_elem_flag_test(eed, BM_ELEM_SEAM)) {
+    eattr->e_flag |= VFLAG_EDGE_SEAM;
+  }
+  if (!BM_elem_flag_test(eed, BM_ELEM_SMOOTH)) {
+    eattr->e_flag |= VFLAG_EDGE_SHARP;
+  }
+
+  /* Use active edge color for active face edges because
+   * specular highlights make it hard to see T55456#510873.
+   *
+   * This isn't ideal since it can't be used when mixing edge/face modes
+   * but it's still better then not being able to see the active face. */
+  if (is_face_only_select_mode) {
+    if (rdata->efa_act != NULL) {
+      if (BM_edge_in_face(eed, rdata->efa_act)) {
+        eattr->e_flag |= VFLAG_EDGE_ACTIVE;
+      }
+    }
+  }
+
+  /* Use a byte for value range */
+  if (rdata->cd.offset.crease != -1) {
+    float crease = BM_ELEM_CD_GET_FLOAT(eed, rdata->cd.offset.crease);
+    if (crease > 0) {
+      eattr->crease = (uchar)(crease * 255.0f);
+    }
+  }
+  /* Use a byte for value range */
+  if (rdata->cd.offset.bweight != -1) {
+    float bweight = BM_ELEM_CD_GET_FLOAT(eed, rdata->cd.offset.bweight);
+    if (bweight > 0) {
+      eattr->bweight = (uchar)(bweight * 255.0f);
+    }
+  }
+#ifdef WITH_FREESTYLE
+  if (rdata->cd.offset.freestyle_edge != -1) {
+    const FreestyleEdge *fed = BM_ELEM_CD_GET_VOID_P(eed, rdata->cd.offset.freestyle_edge);
+    if (fed->flag & FREESTYLE_EDGE_MARK) {
+      eattr->e_flag |= VFLAG_EDGE_FREESTYLE;
+    }
+  }
+#endif
+}
+
+static void mesh_render_data_loop_flag(MeshRenderData *rdata,
+                                       BMLoop *loop,
+                                       const int cd_ofs,
+                                       EditLoopData *eattr)
+{
+  if (cd_ofs == -1) {
+    return;
+  }
+  MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(loop, cd_ofs);
+  if (luv != NULL && (luv->flag & MLOOPUV_PINNED)) {
+    eattr->v_flag |= VFLAG_VERT_UV_PINNED;
+  }
+  if (uvedit_uv_select_test_ex(rdata->toolsettings, loop, cd_ofs)) {
+    eattr->v_flag |= VFLAG_VERT_UV_SELECT;
+  }
+}
+
+static void mesh_render_data_loop_edge_flag(MeshRenderData *rdata,
+                                            BMLoop *loop,
+                                            const int cd_ofs,
+                                            EditLoopData *eattr)
+{
+  if (cd_ofs == -1) {
+    return;
+  }
+  if (uvedit_edge_select_test_ex(rdata->toolsettings, loop, cd_ofs)) {
+    eattr->v_flag |= VFLAG_EDGE_UV_SELECT;
+    eattr->v_flag |= VFLAG_VERT_UV_SELECT;
+  }
+}
+
+static void mesh_render_data_vert_flag(MeshRenderData *rdata,
+                                       const BMVert *eve,
+                                       EditLoopData *eattr)
+{
+  if (eve == rdata->eve_act) {
+    eattr->e_flag |= VFLAG_VERT_ACTIVE;
+  }
+  if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
+    eattr->e_flag |= VFLAG_VERT_SELECTED;
+  }
+}
 
 static void *mesh_edit_data_init(const MeshRenderData *mr, void *buf)
 {
@@ -6413,7 +6413,6 @@ static void *mesh_stretch_angle_init(const MeshRenderData *mr, void *buf)
   if (mr->iter == MR_EXTRACT_MAPPED) {
     const MLoopUV *uv_data = CustomData_get_layer(&mr->me->ldata, CD_MLOOPUV);
 
-    const MLoop *mloop = mr->mloop;
     const MPoly *mpoly = mr->mpoly;
     for (int p = 0; p < mr->poly_len; p++, mpoly++) {
       float auv[2][2], last_auv[2];
@@ -6520,7 +6519,9 @@ static void *mesh_mesh_analysis_init(const MeshRenderData *mr, void *buf)
 
   return vbo->data;
 }
-static void mesh_mesh_analysis_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
+static void mesh_mesh_analysis_iter(const MeshExtractIterData *UNUSED(iter),
+                                    void *UNUSED(buf),
+                                    void *UNUSED(data))
 {
 #if 0 /* Not used for now. */
   const MeshRenderData *mr = iter->mr;
@@ -7838,7 +7839,7 @@ static void uvedit_fill_buffer_data(MeshRenderData *rdata,
       }
       if (vbo_fdots_data && face_visible) {
 
-        EdgeDrawAttr eattr = {0};
+        EditLoopData eattr = {0};
         mesh_render_data_face_flag(rdata, efa, cd_loop_uv_offset, &eattr);
         uchar face_flag = eattr.v_flag;
         GPU_vertbuf_attr_set(vbo_fdots_data, uv_attr_id.fdots_flag, fdot_idx, &face_flag);
@@ -7865,7 +7866,7 @@ static void uvedit_fill_buffer_data(MeshRenderData *rdata,
       efa = (fidx_ori != ORIGINDEX_NONE) ? BM_face_at_index(bm, fidx_ori) : NULL;
       const bool face_visible = efa != NULL && BM_elem_flag_test(efa, BM_ELEM_TAG);
       if (efa && vbo_fdots_data) {
-        EdgeDrawAttr eattr = {0};
+        EditLoopData eattr = {0};
         mesh_render_data_face_flag(rdata, efa, cd_loop_uv_offset, &eattr);
         uchar face_flag = eattr.v_flag;
         GPU_vertbuf_attr_set(vbo_fdots_data, uv_attr_id.fdots_flag, fdot_idx, &face_flag);
@@ -8359,7 +8360,8 @@ void DRW_mesh_batch_cache_create_requested(
     DRW_vbo_request(cache->batch.edituv_facedots, &mbufcache->vbo.facedots_data_edituv);
   }
 
-  const bool use_subsurf_fdots = scene ? modifiers_usesSubsurfFacedots(scene, ob) : false;
+  /* Meh loose Scene const correctness here. */
+  const bool use_subsurf_fdots = scene ? modifiers_usesSubsurfFacedots((Scene *)scene, ob) : false;
 
   mesh_buffer_cache_create_requested(
       cache, cache->final, me, true, use_subsurf_fdots, &cache->cd_used, ts, use_hide);
