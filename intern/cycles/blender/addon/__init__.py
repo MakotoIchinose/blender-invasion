@@ -22,7 +22,7 @@ bl_info = {
     "blender": (2, 80, 0),
     "description": "Cycles renderer integration",
     "warning": "",
-    "wiki_url": "https://docs.blender.org/manual/en/dev/render/cycles/",
+    "wiki_url": "https://docs.blender.org/manual/en/latest/render/cycles/",
     "tracker_url": "",
     "support": 'OFFICIAL',
     "category": "Render"}
@@ -54,7 +54,7 @@ from . import (
 class CyclesRender(bpy.types.RenderEngine):
     bl_idname = 'CYCLES'
     bl_label = "Cycles"
-    bl_use_shading_nodes = True
+    bl_use_eevee_viewport = True
     bl_use_preview = True
     bl_use_exclude_layers = True
     bl_use_save_buffers = True
