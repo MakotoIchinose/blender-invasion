@@ -245,6 +245,10 @@ static void panels_collapse_all(ScrArea *sa, ARegion *ar, const Panel *from_pa)
   for (pa = ar->panels.first; pa; pa = pa->next) {
     PanelType *pt = pa->type;
 
+    if (pt->flag & PNL_HIDDEN) {
+      continue;
+    }
+
     /* close panels with headers in the same context */
     if (pt && from_pt && !(pt->flag & PNL_NO_HEADER)) {
       if (!pt->context[0] || !from_pt->context[0] || STREQ(pt->context, from_pt->context)) {
@@ -1976,6 +1980,9 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
   interp_v3_v3v3_uchar(theme_col_tab_highlight, theme_col_back, theme_col_text_hi, 0.2f);
   interp_v3_v3v3_uchar(
       theme_col_tab_highlight_inactive, theme_col_tab_inactive, theme_col_text_hi, 0.12f);
+
+  /* Should be handled on registration (don't register category if not supported in region). */
+  BLI_assert((ar->type->flag & RGN_TYPE_FLAG_NO_CATEGORIES) == 0);
 
   is_alpha = (ar->overlap && (theme_col_back[3] != 255));
 

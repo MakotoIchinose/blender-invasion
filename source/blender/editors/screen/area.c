@@ -2423,6 +2423,10 @@ void ED_region_panels_layout_ex(const bContext *C,
     PanelType *pt = pt_link->link;
     Panel *panel = UI_panel_find_by_type(&ar->panels, pt);
 
+    if (pt->flag & PNL_HIDDEN) {
+      continue;
+    }
+
     if (use_category_tabs && pt->category[0] && !STREQ(category, pt->category)) {
       if ((panel == NULL) || ((panel->flag & PNL_PIN) == 0)) {
         continue;

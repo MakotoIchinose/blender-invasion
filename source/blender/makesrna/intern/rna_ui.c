@@ -249,7 +249,20 @@ static StructRNA *rna_Panel_register(Main *bmain,
     return NULL;
   }
 
-  if ((1 << dummypt.region_type) & RGN_TYPE_HAS_CATEGORY_MASK) {
+  if (!(art = region_type_find(reports, dummypt.space_type, dummypt.region_type))) {
+    return NULL;
+  }
+
+  if (art->flag & RGN_TYPE_FLAG_NO_CATEGORIES) {
+    /* Skip category registration if region doesn't allow categories. */
+#  ifndef NDEBUG
+    if (dummypt.category[0] != '\0') {
+      printf("Category '%s' can't be registered, category tabs are disabled for this region.",
+             dummypt.category);
+    }
+#  endif
+  }
+  else if ((1 << dummypt.region_type) & RGN_TYPE_HAS_CATEGORY_MASK) {
     if (dummypt.category[0] == '\0') {
       /* Use a fallback, otherwise an empty value will draw the panel in every category. */
       strcpy(dummypt.category, PNL_CATEGORY_FALLBACK);
@@ -270,10 +283,6 @@ static StructRNA *rna_Panel_register(Main *bmain,
         return NULL;
       }
     }
-  }
-
-  if (!(art = region_type_find(reports, dummypt.space_type, dummypt.region_type))) {
-    return NULL;
   }
 
   /* check if we have registered this panel type before, and remove it */
@@ -1248,6 +1257,12 @@ static void rna_def_panel(BlenderRNA *brna)
        "Hide Header",
        "If set to False, the panel shows a header, which contains a clickable "
        "arrow to collapse the panel and the label (see bl_label)"},
+      {PNL_HIDDEN,
+       "HIDDEN",
+       0,
+       "Hidden",
+       "Do not show this panel, only register it for display at a non-default position (e.g. in a "
+       "popup)."},
       {0, NULL, 0, NULL, NULL},
   };
 

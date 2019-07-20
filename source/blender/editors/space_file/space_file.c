@@ -689,6 +689,7 @@ void ED_spacetype_file(void)
   /* regions: ui */
   art = MEM_callocN(sizeof(ARegionType), "spacetype file region");
   art->regionid = RGN_TYPE_UI;
+  art->flag = RGN_TYPE_FLAG_NO_CATEGORIES;
   art->keymapflag = ED_KEYMAP_UI;
   art->listener = file_ui_region_listener;
   art->init = file_ui_region_init;

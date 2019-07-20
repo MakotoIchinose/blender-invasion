@@ -49,35 +49,73 @@ class FILEBROWSER_HT_header(Header):
 
         layout.template_running_jobs()
 
-        if params:
-            layout.prop(params, "use_filter", text="", icon='FILTER')
 
-            row = layout.row(align=True)
-            row.active = params.use_filter
-            row.prop(params, "use_filter_folder", text="")
+class FILEBROWSER_PT_filter(Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'UI'
+    bl_label = "Filter"
+    bl_options = {'HIDDEN'}
 
-            if params.filter_glob:
-                # if st.active_operator and hasattr(st.active_operator, "filter_glob"):
-                #     row.prop(params, "filter_glob", text="")
-                row.label(text=params.filter_glob)
-            else:
-                row.prop(params, "use_filter_blender", text="")
-                row.prop(params, "use_filter_backup", text="")
-                row.prop(params, "use_filter_image", text="")
-                row.prop(params, "use_filter_movie", text="")
-                row.prop(params, "use_filter_script", text="")
-                row.prop(params, "use_filter_font", text="")
-                row.prop(params, "use_filter_sound", text="")
-                row.prop(params, "use_filter_text", text="")
+    def draw(self, context):
+        layout = self.layout
 
-            if is_lib_browser:
-                row.prop(params, "use_filter_blendid", text="")
-                if params.use_filter_blendid:
-                    row.separator()
-                    row.prop(params, "filter_id_category", text="")
+        space = context.space_data
+        params = space.params
+        is_lib_browser = params.use_library_browsing
 
-            row.separator()
-            row.prop(params, "filter_search", text="", icon='VIEWZOOM')
+        row = layout.row(align=True)
+        row.prop(params, "use_filter", text="", toggle=0)
+        row.label(text="Filter:")
+
+        col = layout.column()
+        col.active = params.use_filter
+
+        row = col.row()
+        row.label(icon='FILE_FOLDER')
+        row.prop(params, "use_filter_folder", text="Folders", toggle=0)
+
+        if params.filter_glob:
+            col.label(text=params.filter_glob)
+        else:
+            row = col.row()
+            row.label(icon='FILE_BLEND')
+            row.prop(params, "use_filter_blender", text=".blend Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_BACKUP')
+            row.prop(params, "use_filter_backup", text="Backup .blend Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_IMAGE')
+            row.prop(params, "use_filter_image", text="Image Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_MOVIE')
+            row.prop(params, "use_filter_movie", text="Movie Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_SCRIPT')
+            row.prop(params, "use_filter_script", text="Script Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_FONT')
+            row.prop(params, "use_filter_font", text="Font Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_SOUND')
+            row.prop(params, "use_filter_sound", text="Sound Files", toggle=0)
+            row = col.row()
+            row.label(icon='FILE_TEXT')
+            row.prop(params, "use_filter_text", text="Text Files", toggle=0)
+
+        col.separator()
+
+        if is_lib_browser:
+            row = col.row()
+            row.label(icon='BLANK1')  # Indentation
+            row.prop(params, "use_filter_blendid", text="Blender IDs", toggle=0)
+            if params.use_filter_blendid:
+                row = col.row()
+                row.label(icon='BLANK1')  # Indentation
+                row.prop(params, "filter_id_category", text="")
+
+                col.separator()
+
+        col.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
 
 class FILEBROWSER_UL_dir(UIList):
@@ -238,7 +276,6 @@ class FILEBROWSER_PT_directory_path(Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'UI'
     bl_label = "Directory Path"
-    bl_category = "Directory Path"
     bl_options = {'HIDE_HEADER'}
 
     def draw(self, context):
@@ -263,6 +300,13 @@ class FILEBROWSER_PT_directory_path(Panel):
 
         subrow = row.row(align=True)
         subrow.prop(params, "display_type", expand=True, text="")
+
+        # TODO down triangle only created for UI_LAYOUT_HEADER
+        row.popover(
+            panel="FILEBROWSER_PT_filter",
+            text="",
+            icon='FILTER',
+        )
 
         subrow = row.row(align=True)
         subrow.operator("file.directory_new", icon='NEWFOLDER', text="")
@@ -315,6 +359,7 @@ class FILEBROWSER_MT_view(Menu):
 
 classes = (
     FILEBROWSER_HT_header,
+    FILEBROWSER_PT_filter,
     FILEBROWSER_UL_dir,
     FILEBROWSER_PT_bookmarks_volumes,
     FILEBROWSER_PT_bookmarks_system,
