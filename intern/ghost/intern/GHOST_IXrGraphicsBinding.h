@@ -59,6 +59,7 @@ class GHOST_IXrGraphicsBinding {
       uint32_t image_count) = 0;
   virtual void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) = 0;
   virtual void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image,
+                           const GHOST_XrDrawViewInfo *draw_info,
                            class GHOST_Context *ogl_ctx) = 0;
 
  protected:

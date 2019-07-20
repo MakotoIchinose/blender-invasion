@@ -415,7 +415,7 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
 
   m_gpu_binding->drawViewBegin(swapchain_image);
   draw_ctx = m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
-  m_gpu_binding->drawViewEnd(swapchain_image, (GHOST_Context *)draw_ctx);
+  m_gpu_binding->drawViewEnd(swapchain_image, &draw_view_info, (GHOST_Context *)draw_ctx);
 
   CHECK_XR(xrReleaseSwapchainImage(swapchain, &release_info),
            "Failed to release swapchain image used to submit VR session frame.");

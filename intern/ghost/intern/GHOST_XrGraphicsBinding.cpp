@@ -55,6 +55,13 @@ static bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_bin
 
 class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
  public:
+  ~GHOST_XrGraphicsBindingOpenGL()
+  {
+    if (m_fbo != 0) {
+      glDeleteFramebuffers(1, &m_fbo);
+    }
+  }
+
   bool checkVersionRequirements(GHOST_Context *ghost_ctx,
                                 XrInstance instance,
                                 XrSystemId system_id,
@@ -106,6 +113,9 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     oxr_binding.wgl.hDC = ctx_wgl->m_hDC;
     oxr_binding.wgl.hGLRC = ctx_wgl->m_hGLRC;
 #endif
+
+    /* Generate a framebuffer to use for blitting into the texture */
+    glGenFramebuffers(1, &m_fbo);
   }
 
   bool chooseSwapchainFormat(const std::vector<int64_t> &runtime_formats,
@@ -135,18 +145,40 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 
   void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) override
   {
-    // TODO
-    (void)swapchain_image;
   }
-  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image, GHOST_Context *ogl_ctx) override
+  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image,
+                   const GHOST_XrDrawViewInfo *draw_info,
+                   GHOST_Context *ogl_ctx) override
   {
-    // TODO
-    (void)swapchain_image;
-    (void)ogl_ctx;
+    XrSwapchainImageOpenGLKHR *ogl_swapchain_image = reinterpret_cast<XrSwapchainImageOpenGLKHR *>(
+        swapchain_image);
+
+    ogl_ctx->activateDrawingContext();
+    ogl_ctx->setDefaultFramebufferSize(draw_info->width, draw_info->height);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+
+    glFramebufferTexture2D(
+        GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ogl_swapchain_image->image, 0);
+
+    glBlitFramebuffer(draw_info->ofsx,
+                      draw_info->ofsy,
+                      draw_info->ofsx + draw_info->width,
+                      draw_info->ofsy + draw_info->height,
+                      draw_info->ofsx,
+                      draw_info->ofsy,
+                      draw_info->ofsx + draw_info->width,
+                      draw_info->ofsy + draw_info->height,
+                      GL_COLOR_BUFFER_BIT,
+                      GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
  private:
   std::list<std::vector<XrSwapchainImageOpenGLKHR>> m_image_cache;
+  GLuint m_fbo{0};
 };
 
 #ifdef WIN32
@@ -211,7 +243,9 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
   void drawViewBegin(XrSwapchainImageBaseHeader * /*swapchain_image*/) override
   {
   }
-  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image, GHOST_Context *ogl_ctx) override
+  void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image,
+                   const GHOST_XrDrawViewInfo *draw_info,
+                   GHOST_Context *ogl_ctx) override
   {
     XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
         swapchain_image);
@@ -229,21 +263,15 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     ID3D11RenderTargetView *rtv;
     CD3D11_RENDER_TARGET_VIEW_DESC rtv_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
                                             DXGI_FORMAT_R8G8B8A8_UNORM);
-    D3D11_TEXTURE2D_DESC tex_desc;
-
-    d3d_swapchain_image->texture->GetDesc(&tex_desc);
 
     m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture, &rtv_desc, &rtv);
-    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, rtv, tex_desc.Width, tex_desc.Height);
+    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, rtv, draw_info->width, draw_info->height);
 #  else
     ID3D11Resource *res;
     ID3D11Texture2D *tex;
-    D3D11_TEXTURE2D_DESC tex_desc;
-
-    d3d_swapchain_image->texture->GetDesc(&tex_desc);
 
     ogl_ctx->activateDrawingContext();
-    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, tex_desc.Width, tex_desc.Height);
+    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, draw_info->width, draw_info->height);
 
     m_ghost_ctx->m_backbuffer_view->GetResource(&res);
     res->QueryInterface<ID3D11Texture2D>(&tex);
