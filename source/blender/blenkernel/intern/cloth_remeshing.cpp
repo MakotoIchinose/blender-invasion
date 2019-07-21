@@ -2057,6 +2057,7 @@ static void cloth_remeshing_obstacle_metric(
         /*Now, actual obstacle metric calculation */
         cloth_remeshing_find_nearest_planes(bm, collmd, 0.01f, planes);
       }
+      BKE_collision_objects_free(collobjs);
     }
   }
 
