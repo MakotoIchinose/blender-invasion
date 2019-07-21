@@ -281,16 +281,16 @@ bool import_end(bContext *UNUSED(C), ImportSettings *const settings)
   return true;
 }
 
-const std::array<float, 3> calculate_normal(const Mesh *const mesh, const MPoly &mp)
+const float3 calculate_normal(const Mesh *const mesh, const MPoly &mp)
 {
   float no[3];
   BKE_mesh_calc_poly_normal(&mp, mesh->mloop + mp.loopstart, mesh->mvert, no);
-  return std::array<float, 3>{no[0], no[1], no[2]};
+  return float3{no[0], no[1], no[2]};
 }
 
-std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh)
+std::vector<float3> get_normals(const Mesh *const mesh)
 {
-  std::vector<std::array<float, 3>> normals{};
+  std::vector<float3> normals{};
   normals.reserve(mesh->totvert);
   const float(*loop_no)[3] = static_cast<float(*)[3]>(
       CustomData_get_layer(&mesh->ldata, CD_NORMAL));
@@ -306,7 +306,7 @@ std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh)
       ml = mesh->mloop + mp->loopstart + (mp->totloop - 1);
       for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
         const float(&no)[3] = loop_no[ml->v];
-        normals.push_back(std::array<float, 3>{no[0], no[1], no[2]});
+        normals.push_back(float3{no[0], no[1], no[2]});
       }
     }
   }
@@ -318,7 +318,7 @@ std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh)
       /* Flat shaded, use common normal for all verts. */
       if ((mp->flag & ME_SMOOTH) == 0) {
         BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1), verts, no);
-        normals.push_back(std::array<float, 3>{no[0], no[1], no[2]});
+        normals.push_back(float3{no[0], no[1], no[2]});
         ml -= mp->totloop;
         loop_index += mp->totloop;
       }
@@ -326,7 +326,7 @@ std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh)
         /* Smooth shaded, use individual vert normals. */
         for (int j = 0; j < mp->totloop; --ml, ++j, ++loop_index) {
           normal_short_to_float_v3(no, verts[ml->v].no);
-          normals.push_back(std::array<float, 3>{no[0], no[1], no[2]});
+          normals.push_back(float3{no[0], no[1], no[2]});
         }
       }
     }
@@ -334,24 +334,24 @@ std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh)
   normals.shrink_to_fit();
   return normals;
 }
-std::vector<std::array<float, 2>> get_uv(const Mesh *const mesh)
+std::vector<float2> get_uv(const Mesh *const mesh)
 {
-  std::vector<std::array<float, 2>> uvs{};
+  std::vector<float2> uvs{};
   uvs.reserve(mesh->totloop);
   for (int i = 0, e = mesh->totloop; i < e; ++i) {
     const float(&uv)[2] = mesh->mloopuv[i].uv;
-    uvs.push_back(std::array<float, 2>{uv[0], uv[1]});
+    uvs.push_back(float2{uv[0], uv[1]});
   }
   return uvs;
 }
 
-std::vector<std::array<float, 3>> get_vertices(const Mesh *const mesh)
+std::vector<float3> get_vertices(const Mesh *const mesh)
 {
-  std::vector<std::array<float, 3>> vxs{};
+  std::vector<float3> vxs{};
   vxs.reserve(mesh->totvert);
   for (int i = 0, e = mesh->totvert; i < e; ++i) {
     const MVert &v = mesh->mvert[i];
-    vxs.push_back(std::array<float, 3>{v.co[0], v.co[1], v.co[2]});
+    vxs.push_back(float3{v.co[0], v.co[1], v.co[2]});
   }
   return vxs;
 }

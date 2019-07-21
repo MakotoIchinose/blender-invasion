@@ -56,6 +56,9 @@ extern "C" {
 
 namespace common {
 
+using float3 = std::array<float, 3>;
+using float2 = std::array<float, 2>;
+
 // --- PROTOTYPES ---
 
 bool object_is_smoke_sim(const Object *const ob);
@@ -92,11 +95,11 @@ bool time_export(bContext *C,
                  void (*start)(bContext *C, ExportSettings *const settings),
                  bool (*end)(bContext *C, ExportSettings *const settings));
 
-const std::array<float, 3> calculate_normal(const Mesh *const mesh, const MPoly &mp);
+const float3 calculate_normal(const Mesh *const mesh, const MPoly &mp);
 
-std::vector<std::array<float, 3>> get_normals(const Mesh *const mesh);
-std::vector<std::array<float, 2>> get_uv(const Mesh *const mesh);
-std::vector<std::array<float, 3>> get_vertices(const Mesh *const mesh);
+std::vector<float3> get_normals(const Mesh *const mesh);
+std::vector<float2> get_uv(const Mesh *const mesh);
+std::vector<float3> get_vertices(const Mesh *const mesh);
 
 // --- TEMPLATES ---
 
@@ -144,8 +147,8 @@ template<typename key_t> using set_mapping_t = std::vector<typename set_t<key_t>
 // A pair of the two above, to tie them together
 template<typename key_t> using dedup_pair_t = std::pair<set_t<key_t>, set_mapping_t<key_t>>;
 // The set key for UV and normal. size_t is the original index
-using uv_key_t = std::pair<std::array<float, 2>, size_t>;
-using no_key_t = std::pair<std::array<float, 3>, size_t>;
+using uv_key_t = std::pair<float2, size_t>;
+using no_key_t = std::pair<float3, size_t>;
 
 // Construct a new deduplicated set for either normals or UVs, with the given similarity threshold
 // C++14/17 would be useful here...
