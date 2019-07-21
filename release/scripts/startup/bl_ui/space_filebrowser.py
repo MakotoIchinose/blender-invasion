@@ -34,17 +34,6 @@ class FILEBROWSER_HT_header(Header):
 
         layout.menu("FILEBROWSER_MT_view")
 
-        layout.operator_context = 'EXEC_DEFAULT'
-
-        layout.operator_context = 'INVOKE_DEFAULT'
-
-        # can be None when save/reload with a file selector open
-        if params:
-            is_lib_browser = params.use_library_browsing
-
-            layout.prop(params, "sort_method", expand=True, text="")
-            layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
-
         layout.separator_spacer()
 
         layout.template_running_jobs()
@@ -61,7 +50,19 @@ class FILEBROWSER_PT_filter(Panel):
 
         space = context.space_data
         params = space.params
-        is_lib_browser = params.use_library_browsing
+
+        # can be None when save/reload with a file selector open
+        if params:
+            is_lib_browser = params.use_library_browsing
+
+            layout.label(text="Sort By:")
+            layout.prop(params, "sort_method", expand=True, text="")
+
+            layout.separator()
+
+            layout.prop(params, "show_hidden")
+
+            layout.separator()
 
         row = layout.row(align=True)
         row.prop(params, "use_filter", text="", toggle=0)
@@ -310,7 +311,6 @@ class FILEBROWSER_PT_directory_path(Panel):
 
         subrow = row.row(align=True)
         subrow.operator("file.directory_new", icon='NEWFOLDER', text="")
-
 
 
 class FILEBROWSER_PT_file_operation(Panel):
