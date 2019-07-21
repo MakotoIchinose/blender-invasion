@@ -36,7 +36,7 @@ struct Object;
 extern "C" {
 #endif
 
-Mesh *cloth_remeshing_step(Object *ob, ClothModifierData *clmd, Mesh *mesh);
+Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, Mesh *mesh);
 
 #ifdef __cplusplus
 }
