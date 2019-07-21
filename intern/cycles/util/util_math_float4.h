@@ -60,6 +60,7 @@ ccl_device_inline float4 normalize(const float4 &a);
 ccl_device_inline float4 safe_normalize(const float4 &a);
 ccl_device_inline float4 min(const float4 &a, const float4 &b);
 ccl_device_inline float4 max(const float4 &a, const float4 &b);
+ccl_device_inline float4 mix(const float4 &a, const float4 &b, float t);
 ccl_device_inline float4 clamp(const float4 &a, const float4 &mn, const float4 &mx);
 ccl_device_inline float4 fabs(const float4 &a);
 ccl_device_inline float4 floor(const float4 &a);
@@ -332,6 +333,11 @@ ccl_device_inline float4 max(const float4 &a, const float4 &b)
 #  else
   return make_float4(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w));
 #  endif
+}
+
+ccl_device_inline float4 mix(const float4 &a, const float4 &b, float t)
+{
+  return a + t * (b - a);
 }
 
 ccl_device_inline float4 clamp(const float4 &a, const float4 &mn, const float4 &mx)

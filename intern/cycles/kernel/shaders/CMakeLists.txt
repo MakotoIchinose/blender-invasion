@@ -92,6 +92,7 @@ set(SRC_OSL
   node_map_range.osl
   node_clamp.osl
   node_white_noise_texture.osl
+  node_vertex_color.osl
 )
 
 set(SRC_OSL_HEADERS

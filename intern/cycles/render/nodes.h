@@ -991,7 +991,6 @@ class VertexColorNode : public ShaderNode {
   {
     return true;
   }
-  void expand(ShaderGraph *graph);
 
   ustring layer_name;
 };

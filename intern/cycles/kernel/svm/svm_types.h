@@ -142,12 +142,16 @@ typedef enum ShaderNodeType {
   NODE_MAP_RANGE,
   NODE_CLAMP,
   NODE_TEX_WHITE_NOISE,
+  NODE_VERTEX_COLOR,
+  NODE_VERTEX_COLOR_BUMP_DX,
+  NODE_VERTEX_COLOR_BUMP_DY,
 } ShaderNodeType;
 
 typedef enum NodeAttributeType {
   NODE_ATTR_FLOAT = 0,
   NODE_ATTR_FLOAT2,
   NODE_ATTR_FLOAT3,
+  NODE_ATTR_RGBA,
   NODE_ATTR_MATRIX
 } NodeAttributeType;
 
