@@ -90,6 +90,7 @@ typedef struct TreeElementIcon {
 
 typedef struct MergedSearchData {
   TreeElement *parent_element;
+  TreeStoreElem *tselem;
   int element_type;
 } MergedSearchData;
 
@@ -400,7 +401,7 @@ void OUTLINER_OT_orphans_purge(struct wmOperatorType *ot);
 /* outliner_tools.c ---------------------------------------------- */
 
 struct uiBlock *merged_element_search_menu(struct bContext *C, struct ARegion *ar, void *element);
-void merged_element_search_free_cb();
+void merged_element_search_free_cb(void *arg);
 
 void OUTLINER_OT_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_scene_operation(struct wmOperatorType *ot);

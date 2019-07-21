@@ -483,16 +483,14 @@ void merged_element_search_free_cb(void *arg)
   MEM_freeN(arg);
 }
 
-static void merged_element_search_cb_recursive(const ListBase *tree,
-                                               short type,
-                                               const char *str,
-                                               uiSearchItems *items)
+static void merged_element_search_cb_recursive(
+    const ListBase *tree, short tselem_type, short type, const char *str, uiSearchItems *items)
 {
   char name[64];
   int iconid;
 
   for (TreeElement *te = tree->first; te; te = te->next) {
-    if (tree_element_id_type_to_index(te) == type) {
+    if (tree_element_id_type_to_index(te) == type && tselem_type == TREESTORE(te)->type) {
       if (BLI_strcasestr(te->name, str)) {
         BLI_strncpy(name, te->name, 64);
 
@@ -504,7 +502,7 @@ static void merged_element_search_cb_recursive(const ListBase *tree,
       }
     }
 
-    merged_element_search_cb_recursive(&te->subtree, type, str, items);
+    merged_element_search_cb_recursive(&te->subtree, tselem_type, type, str, items);
   }
 }
 
@@ -516,9 +514,10 @@ static void merged_element_search_cb(const bContext *UNUSED(C),
 {
   MergedSearchData *search_data = (MergedSearchData *)data;
   TreeElement *parent = search_data->parent_element;
+  short tselem_type = search_data->tselem->type;
   int type = search_data->element_type;
 
-  merged_element_search_cb_recursive(&parent->subtree, type, str, items);
+  merged_element_search_cb_recursive(&parent->subtree, tselem_type, type, str, items);
 }
 
 /* Activate an element from the merged element search menu */
