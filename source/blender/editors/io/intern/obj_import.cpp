@@ -69,19 +69,15 @@ extern "C" {
 #include "common.hpp"
 #include "iterators.hpp"
 
-// struct float3 {
-//   float x, y, z;
-// };
-// BOOST_FUSION_ADAPT_STRUCT(float3, (float, x)(float, y)(float, z))
-
 BOOST_FUSION_DEFINE_STRUCT((), obj_face, (int, vx)(int, uv)(int, no))
 BOOST_FUSION_DEFINE_STRUCT((), float3, (float, x)(float, y)(float, z))
 BOOST_FUSION_DEFINE_STRUCT((), float2, (float, u)(float, v))
 
 namespace {
 
-namespace qi = boost::spirit::qi;
 namespace ph = boost::phoenix;
+
+namespace qi = boost::spirit::qi;
 template<typename Result> using rule = qi::rule<const char *, Result>;
 
 template<typename Inner> using vec = std::vector<Inner>;
@@ -147,18 +143,21 @@ void OBJ_import_start(bContext *C, ImportSettings *const settings)
   OBJImport import{settings};
 
   boost::iostreams::mapped_file mmap(settings->filepath, boost::iostreams::mapped_file::readonly);
-  const char *const start = mmap.const_data();
-  const char *const last = start + mmap.size() - 1;
-  const char *first = start;
+  const char *const begin = mmap.const_data();
+  const char *const end = begin + mmap.size() - 1;
+  const char *curr = begin;
 
   /* clang-format off */
 
+  using ign = qi::unused_type;
+
   // Components
-  auto           token         = qi::lexeme[+(qi::graph)];
-  auto           rest          = qi::omit[*(qi::char_ - qi::eol)] >> qi::eol;
-  auto           comment       = qi::lit("#") >> rest;
-  rule<float3()> rule3f        = qi::float_ >> qi::float_ >> qi::float_;
-  rule<float2()> rule2f        = qi::float_ >> qi::float_;
+  rule<ign()>    rest          = *qi::omit[qi::char_ - qi::eol];
+  rule<ign()>    comment       = '#' >> rest;
+  rule<str()>    token         = qi::lexeme[+(qi::graph)];
+  rule<float()>  rulef         = qi::float_ | qi::as<float>()[qi::int_];
+  rule<float2()> rule2f        = rulef >> rulef;
+  rule<float3()> rule3f        = qi::float_ >> qi::float_ >> qi::float_; //rulef >> rulef >> rulef;
   rule<obj_face> rule_obj_face = qi::int_ >> -('/' >> -qi::int_) >> -('/' >> qi::int_);
   rule<int()>    on_off        = qi::lit("off")[qi::_val = 0] |
                                  qi::lit("on")[qi::_val = 1] |
@@ -193,8 +192,9 @@ void OBJ_import_start(bContext *C, ImportSettings *const settings)
 #undef BIND
   /* clang-format on */
 
-  if (!result || first != last) {
-    std::cerr << "Couldn't parse near: " << first;
+  if (!result || curr != end) {
+    std::cerr << "Couldn't parse near: " << curr;
+    return;
   }
 
   if (import.meshes.size() >= 2) {
