@@ -34,9 +34,47 @@ class FILEBROWSER_HT_header(Header):
 
         layout.menu("FILEBROWSER_MT_view")
 
+        # can be None when save/reload with a file selector open
+        if params:
+            is_lib_browser = params.use_library_browsing
+
+            layout.prop(params, "display_type", expand=True, text="")
+            layout.prop(params, "sort_method", expand=True, text="")
+            layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
+
         layout.separator_spacer()
 
         layout.template_running_jobs()
+
+        if params:
+            layout.prop(params, "use_filter", text="", icon='FILTER')
+
+            row = layout.row(align=True)
+            row.active = params.use_filter
+            row.prop(params, "use_filter_folder", text="")
+
+            if params.filter_glob:
+                # if st.active_operator and hasattr(st.active_operator, "filter_glob"):
+                #     row.prop(params, "filter_glob", text="")
+                row.label(text=params.filter_glob)
+            else:
+                row.prop(params, "use_filter_blender", text="")
+                row.prop(params, "use_filter_backup", text="")
+                row.prop(params, "use_filter_image", text="")
+                row.prop(params, "use_filter_movie", text="")
+                row.prop(params, "use_filter_script", text="")
+                row.prop(params, "use_filter_font", text="")
+                row.prop(params, "use_filter_sound", text="")
+                row.prop(params, "use_filter_text", text="")
+
+            if is_lib_browser:
+                row.prop(params, "use_filter_blendid", text="")
+                if params.use_filter_blendid:
+                    row.separator()
+                    row.prop(params, "filter_id_category", text="")
+
+            row.separator()
+            row.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
 
 class FILEBROWSER_PT_filter(Panel):
@@ -56,6 +94,9 @@ class FILEBROWSER_PT_filter(Panel):
         space = context.space_data
         params = space.params
         is_lib_browser = params.use_library_browsing
+
+        layout.label(text="Display Type:")
+        layout.prop(params, "display_type", expand=True, text="")
 
         layout.label(text="Sort By:")
         layout.prop(params, "sort_method", expand=True, text="")
@@ -288,6 +329,13 @@ class FILEBROWSER_PT_directory_path(Panel):
     bl_label = "Directory Path"
     bl_options = {'HIDE_HEADER'}
 
+    def is_header_visible(self, context):
+        for region in context.area.regions:
+            if region.type == 'HEADER' and region.height <= 1:
+                return False
+
+        return True
+
     def draw(self, context):
         layout = self.layout
         space = context.space_data
@@ -308,15 +356,13 @@ class FILEBROWSER_PT_directory_path(Panel):
         subrow = row.row()
         subrow.prop(params, "directory", text="")
 
-        subrow = row.row(align=True)
-        subrow.prop(params, "display_type", expand=True, text="")
-
         # TODO down triangle only created for UI_LAYOUT_HEADER
-        row.popover(
-            panel="FILEBROWSER_PT_filter",
-            text="",
-            icon='FILTER',
-        )
+        if self.is_header_visible(context) is False:
+            row.popover(
+                panel="FILEBROWSER_PT_filter",
+                text="",
+                icon='FILTER',
+            )
 
         subrow = row.row(align=True)
         subrow.operator("file.directory_new", icon='NEWFOLDER', text="")
