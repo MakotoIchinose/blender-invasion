@@ -2550,11 +2550,13 @@ static StitchState *stitch_select(bContext *C,
   UvNearestHit hit = UV_NEAREST_HIT_INIT;
   ARegion *ar = CTX_wm_region(C);
   Image *ima = CTX_data_edit_image(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
 
   UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &co[0], &co[1]);
 
   if (ssc->mode == STITCH_VERT) {
-    if (uv_find_nearest_vert_multi(scene, ima, ssc->objects, ssc->objects_len, co, 0.0f, &hit)) {
+    if (uv_find_nearest_vert_multi(
+            depsgraph, scene, ima, ssc->objects, ssc->objects_len, co, 0.0f, &hit)) {
       /* Add vertex to selection, deselect all common uv's of vert other than selected and
        * update the preview. This behavior was decided so that you can do stuff like deselect
        * the opposite stitchable vertex and the initial still gets deselected */
@@ -2575,7 +2577,8 @@ static StitchState *stitch_select(bContext *C,
       return state;
     }
   }
-  else if (uv_find_nearest_edge_multi(scene, ima, ssc->objects, ssc->objects_len, co, &hit)) {
+  else if (uv_find_nearest_edge_multi(
+               depsgraph, scene, ima, ssc->objects, ssc->objects_len, co, &hit)) {
     /* find StitchState from hit->ob */
     StitchState *state = NULL;
     for (uint ob_index = 0; ob_index < ssc->objects_len; ob_index++) {

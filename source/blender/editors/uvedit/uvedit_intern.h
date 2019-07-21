@@ -57,13 +57,15 @@ typedef struct UvNearestHit {
     .dist_sq = FLT_MAX, \
   }
 
-bool uv_find_nearest_vert(struct Scene *scene,
+bool uv_find_nearest_vert(struct Depsgraph *depsgraph,
+                          struct Scene *scene,
                           struct Image *ima,
                           struct Object *obedit,
                           const float co[2],
                           const float penalty_dist,
                           struct UvNearestHit *hit_final);
-bool uv_find_nearest_vert_multi(struct Scene *scene,
+bool uv_find_nearest_vert_multi(struct Depsgraph *depsgraph,
+                                struct Scene *scene,
                                 struct Image *ima,
                                 struct Object **objects,
                                 const uint objects_len,
@@ -71,24 +73,28 @@ bool uv_find_nearest_vert_multi(struct Scene *scene,
                                 const float penalty_dist,
                                 struct UvNearestHit *hit_final);
 
-bool uv_find_nearest_edge(struct Scene *scene,
+bool uv_find_nearest_edge(struct Depsgraph *depsgraph,
+                          struct Scene *scene,
                           struct Image *ima,
                           struct Object *obedit,
                           const float co[2],
                           struct UvNearestHit *hit_final);
-bool uv_find_nearest_edge_multi(struct Scene *scene,
+bool uv_find_nearest_edge_multi(struct Depsgraph *depsgraph,
+                                struct Scene *scene,
                                 struct Image *ima,
                                 struct Object **objects,
                                 const uint objects_len,
                                 const float co[2],
                                 struct UvNearestHit *hit_final);
 
-bool uv_find_nearest_face(struct Scene *scene,
+bool uv_find_nearest_face(struct Depsgraph *depsgraph,
+                          struct Scene *scene,
                           struct Image *ima,
                           struct Object *obedit,
                           const float co[2],
                           struct UvNearestHit *hit_final);
-bool uv_find_nearest_face_multi(struct Scene *scene,
+bool uv_find_nearest_face_multi(struct Depsgraph *depsgraph,
+                                struct Scene *scene,
                                 struct Image *ima,
                                 struct Object **objects,
                                 const uint objects_len,

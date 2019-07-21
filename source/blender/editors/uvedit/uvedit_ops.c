@@ -56,6 +56,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
+#include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -606,6 +607,18 @@ void uv_poly_center(BMFace *f, float r_cent[2], const int cd_loop_uv_offset)
   mul_v2_fl(r_cent, 1.0f / (float)f->len);
 }
 
+static void uv_mpoly_center(const MPoly *mpoly, const MLoopUV *mloopuv, float r_cent[2])
+{
+  zero_v2(r_cent);
+
+  for (int i = 0; i < mpoly->totloop; i++) {
+    const MLoopUV *luv = &mloopuv[mpoly->loopstart + i];
+    add_v2_v2(r_cent, luv->uv);
+  }
+
+  mul_v2_fl(r_cent, 1.0f / (float)mpoly->totloop);
+}
+
 void uv_poly_copy_aspect(float uv_orig[][2], float uv[][2], float aspx, float aspy, int len)
 {
   int i;
@@ -753,8 +766,12 @@ bool ED_uvedit_center(Scene *scene, Image *ima, Object *obedit, float cent[2], c
 /** \name Find Nearest Elements
  * \{ */
 
-bool uv_find_nearest_edge(
-    Scene *scene, Image *ima, Object *obedit, const float co[2], UvNearestHit *hit)
+bool uv_find_nearest_edge(Depsgraph *depsgraph,
+                          Scene *scene,
+                          Image *ima,
+                          Object *obedit,
+                          const float co[2],
+                          UvNearestHit *hit)
 {
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   BMFace *efa;
@@ -766,35 +783,85 @@ bool uv_find_nearest_edge(
 
   const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
-  BM_mesh_elem_index_ensure(em->bm, BM_VERT);
+  /* (fclem) Is it garanteed that obedit_eval will be updated? */
+  Object *obedit_eval = DEG_get_evaluated_object(depsgraph, obedit);
+  BMEditMesh *em_eval = BKE_editmesh_from_object(obedit_eval);
 
-  BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-    if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
-      continue;
+  if (!em_eval->mesh_eval_cage || em_eval->mesh_eval_cage->runtime.is_original) {
+    BM_mesh_elem_index_ensure(em->bm, BM_VERT);
+
+    BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+      if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+        continue;
+      }
+      BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
+        luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+        luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
+
+        const float dist_test_sq = dist_squared_to_line_segment_v2(co, luv->uv, luv_next->uv);
+
+        if (dist_test_sq < hit->dist_sq) {
+          hit->efa = efa;
+
+          hit->l = l;
+          hit->luv = luv;
+          hit->luv_next = luv_next;
+          hit->lindex = i;
+
+          hit->dist_sq = dist_test_sq;
+          found = true;
+        }
+      }
     }
-    BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
-      luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-      luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
+  }
+  else {
+    Mesh *me = em_eval->mesh_eval_cage;
 
-      const float dist_test_sq = dist_squared_to_line_segment_v2(co, luv->uv, luv_next->uv);
+    BM_mesh_elem_table_ensure(em->bm, BM_FACE | BM_EDGE);
 
-      if (dist_test_sq < hit->dist_sq) {
-        hit->efa = efa;
+    int *p_origindex = CustomData_get_layer(&me->pdata, CD_ORIGINDEX);
+    int *e_origindex = CustomData_get_layer(&me->edata, CD_ORIGINDEX);
 
-        hit->l = l;
-        hit->luv = luv;
-        hit->luv_next = luv_next;
-        hit->lindex = i;
+    MLoopUV *mluv = CustomData_get_layer(&me->ldata, CD_MLOOPUV);
 
-        hit->dist_sq = dist_test_sq;
-        found = true;
+    MPoly *mpoly = me->mpoly;
+    for (int p = 0; p < me->totpoly; p++, mpoly++) {
+      if (p_origindex[p] == ORIGINDEX_NONE) {
+        continue;
+      }
+      efa = BM_face_at_index(em->bm, p_origindex[p]);
+      if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+        continue;
+      }
+      for (i = 0; i < mpoly->totloop; i++) {
+        MLoop *mloop = &me->mloop[mpoly->loopstart + i];
+        if (e_origindex[mloop->e] == ORIGINDEX_NONE) {
+          continue;
+        }
+        luv = &mluv[mpoly->loopstart + i];
+        luv_next = &mluv[mpoly->loopstart + ((i + 1) % mpoly->totloop)];
+        const float dist_test_sq = dist_squared_to_line_segment_v2(co, luv->uv, luv_next->uv);
+
+        if (dist_test_sq < hit->dist_sq) {
+          BMEdge *eed = BM_edge_at_index(em->bm, e_origindex[mloop->e]);
+          hit->efa = efa;
+
+          hit->l = BM_face_edge_share_loop(efa, eed);
+          hit->luv = luv;
+          hit->luv_next = luv_next;
+          hit->lindex = i;
+
+          hit->dist_sq = dist_test_sq;
+          found = true;
+        }
       }
     }
   }
   return found;
 }
 
-bool uv_find_nearest_edge_multi(Scene *scene,
+bool uv_find_nearest_edge_multi(Depsgraph *depsgraph,
+                                Scene *scene,
                                 Image *ima,
                                 Object **objects,
                                 const uint objects_len,
@@ -804,7 +871,7 @@ bool uv_find_nearest_edge_multi(Scene *scene,
   bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    if (uv_find_nearest_edge(scene, ima, obedit, co, hit_final)) {
+    if (uv_find_nearest_edge(depsgraph, scene, ima, obedit, co, hit_final)) {
       hit_final->ob = obedit;
       found = true;
     }
@@ -812,8 +879,12 @@ bool uv_find_nearest_edge_multi(Scene *scene,
   return found;
 }
 
-bool uv_find_nearest_face(
-    Scene *scene, Image *ima, Object *obedit, const float co[2], UvNearestHit *hit_final)
+bool uv_find_nearest_face(Depsgraph *depsgraph,
+                          Scene *scene,
+                          Image *ima,
+                          Object *obedit,
+                          const float co[2],
+                          UvNearestHit *hit_final)
 {
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   bool found = false;
@@ -823,28 +894,94 @@ bool uv_find_nearest_face(
   /* this will fill in hit.vert1 and hit.vert2 */
   float dist_sq_init = hit_final->dist_sq;
   UvNearestHit hit = *hit_final;
-  if (uv_find_nearest_edge(scene, ima, obedit, co, &hit)) {
+  if (uv_find_nearest_edge(depsgraph, scene, ima, obedit, co, &hit)) {
     hit.dist_sq = dist_sq_init;
     hit.l = NULL;
     hit.luv = hit.luv_next = NULL;
 
-    BMIter iter;
+    /* (fclem) Is it garanteed that obedit_eval will be updated? */
+    Object *obedit_eval = DEG_get_evaluated_object(depsgraph, obedit);
+    BMEditMesh *em_eval = BKE_editmesh_from_object(obedit_eval);
     BMFace *efa;
 
-    BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-      if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
-        continue;
+    if (!em_eval->mesh_eval_cage || em_eval->mesh_eval_cage->runtime.is_original) {
+      BMIter iter;
+
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+          continue;
+        }
+
+        float cent[2];
+        uv_poly_center(efa, cent, cd_loop_uv_offset);
+
+        const float dist_test_sq = len_squared_v2v2(co, cent);
+
+        if (dist_test_sq < hit.dist_sq) {
+          hit.efa = efa;
+          hit.dist_sq = dist_test_sq;
+          found = true;
+        }
       }
+    }
+    else {
+      Mesh *me = em_eval->mesh_eval_cage;
 
-      float cent[2];
-      uv_poly_center(efa, cent, cd_loop_uv_offset);
+      BM_mesh_elem_table_ensure(em->bm, BM_FACE);
 
-      const float dist_test_sq = len_squared_v2v2(co, cent);
+      int *p_origindex = CustomData_get_layer(&me->pdata, CD_ORIGINDEX);
 
-      if (dist_test_sq < hit.dist_sq) {
-        hit.efa = efa;
-        hit.dist_sq = dist_test_sq;
-        found = true;
+      MLoopUV *mluv = CustomData_get_layer(&me->ldata, CD_MLOOPUV);
+
+      if (modifiers_usesSubsurfFacedots(scene, obedit)) {
+        const MPoly *mpoly = me->mpoly;
+        for (int p = 0; p < me->totpoly; p++, mpoly++) {
+          if (p_origindex[p] == ORIGINDEX_NONE) {
+            continue;
+          }
+          efa = BM_face_at_index(em->bm, p_origindex[p]);
+          if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+            continue;
+          }
+          for (int i = 0; i < mpoly->totloop; i++) {
+            MLoop *mloop = &me->mloop[mpoly->loopstart + i];
+            MVert *mvert = &me->mvert[mloop->v];
+            if ((mvert->flag & ME_VERT_FACEDOT) == 0) {
+              continue;
+            }
+
+            const float dist_test_sq = len_squared_v2v2(co, mluv[mpoly->loopstart + i].uv);
+
+            if (dist_test_sq < hit.dist_sq) {
+              hit.efa = efa;
+              hit.dist_sq = dist_test_sq;
+              found = true;
+            }
+          }
+        }
+      }
+      else {
+        const MPoly *mpoly = me->mpoly;
+        for (int p = 0; p < me->totpoly; p++, mpoly++) {
+          if (p_origindex[p] == ORIGINDEX_NONE) {
+            continue;
+          }
+          efa = BM_face_at_index(em->bm, p_origindex[p]);
+          if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+            continue;
+          }
+
+          float cent[2];
+          uv_mpoly_center(mpoly, mluv, cent);
+
+          const float dist_test_sq = len_squared_v2v2(co, cent);
+
+          if (dist_test_sq < hit.dist_sq) {
+            hit.efa = efa;
+            hit.dist_sq = dist_test_sq;
+            found = true;
+          }
+        }
       }
     }
   }
@@ -854,7 +991,8 @@ bool uv_find_nearest_face(
   return found;
 }
 
-bool uv_find_nearest_face_multi(Scene *scene,
+bool uv_find_nearest_face_multi(Depsgraph *depsgraph,
+                                Scene *scene,
                                 Image *ima,
                                 Object **objects,
                                 const uint objects_len,
@@ -864,7 +1002,7 @@ bool uv_find_nearest_face_multi(Scene *scene,
   bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    if (uv_find_nearest_face(scene, ima, obedit, co, hit_final)) {
+    if (uv_find_nearest_face(depsgraph, scene, ima, obedit, co, hit_final)) {
       hit_final->ob = obedit;
       found = true;
     }
@@ -882,7 +1020,8 @@ static bool uv_nearest_between(const BMLoop *l, const float co[2], const int cd_
           (line_point_side_v2(uv_next, uv_curr, co) <= 0.0f));
 }
 
-bool uv_find_nearest_vert(Scene *scene,
+bool uv_find_nearest_vert(Depsgraph *depsgraph,
+                          Scene *scene,
                           Image *ima,
                           Object *obedit,
                           float const co[2],
@@ -894,7 +1033,7 @@ bool uv_find_nearest_vert(Scene *scene,
   /* this will fill in hit.vert1 and hit.vert2 */
   float dist_sq_init = hit_final->dist_sq;
   UvNearestHit hit = *hit_final;
-  if (uv_find_nearest_edge(scene, ima, obedit, co, &hit)) {
+  if (uv_find_nearest_edge(depsgraph, scene, ima, obedit, co, &hit)) {
     hit.dist_sq = dist_sq_init;
 
     hit.l = NULL;
@@ -902,46 +1041,112 @@ bool uv_find_nearest_vert(Scene *scene,
 
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMFace *efa;
-    BMIter iter;
 
-    BM_mesh_elem_index_ensure(em->bm, BM_VERT);
+    /* (fclem) Is it garanteed that obedit_eval will be updated? */
+    Object *obedit_eval = DEG_get_evaluated_object(depsgraph, obedit);
+    BMEditMesh *em_eval = BKE_editmesh_from_object(obedit_eval);
 
     const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
-    BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-      if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
-        continue;
-      }
+    if (!em_eval->mesh_eval_cage || em_eval->mesh_eval_cage->runtime.is_original) {
+      BMIter iter;
 
-      BMIter liter;
-      BMLoop *l;
-      int i;
-      BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
-        float dist_test_sq;
-        MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-        if (penalty_dist != 0.0f && uvedit_uv_select_test(scene, l, cd_loop_uv_offset)) {
-          dist_test_sq = len_v2v2(co, luv->uv) + penalty_dist;
-          dist_test_sq = SQUARE(dist_test_sq);
-        }
-        else {
-          dist_test_sq = len_squared_v2v2(co, luv->uv);
+      BM_mesh_elem_index_ensure(em->bm, BM_VERT);
+
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+          continue;
         }
 
-        if (dist_test_sq <= hit.dist_sq) {
-          if (dist_test_sq == hit.dist_sq) {
-            if (!uv_nearest_between(l, co, cd_loop_uv_offset)) {
-              continue;
-            }
+        BMIter liter;
+        BMLoop *l;
+        int i;
+        BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
+          float dist_test_sq;
+          MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+          if (penalty_dist != 0.0f && uvedit_uv_select_test(scene, l, cd_loop_uv_offset)) {
+            dist_test_sq = len_v2v2(co, luv->uv) + penalty_dist;
+            dist_test_sq = SQUARE(dist_test_sq);
+          }
+          else {
+            dist_test_sq = len_squared_v2v2(co, luv->uv);
           }
 
-          hit.dist_sq = dist_test_sq;
+          if (dist_test_sq <= hit.dist_sq) {
+            if (dist_test_sq == hit.dist_sq) {
+              if (!uv_nearest_between(l, co, cd_loop_uv_offset)) {
+                continue;
+              }
+            }
 
-          hit.l = l;
-          hit.luv = luv;
-          hit.luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
-          hit.efa = efa;
-          hit.lindex = i;
-          found = true;
+            hit.dist_sq = dist_test_sq;
+
+            hit.l = l;
+            hit.luv = luv;
+            hit.luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
+            hit.efa = efa;
+            hit.lindex = i;
+            found = true;
+          }
+        }
+      }
+    }
+    else {
+      Mesh *me = em_eval->mesh_eval_cage;
+
+      BM_mesh_elem_table_ensure(em->bm, BM_FACE | BM_EDGE);
+
+      int *p_origindex = CustomData_get_layer(&me->pdata, CD_ORIGINDEX);
+      int *e_origindex = CustomData_get_layer(&me->edata, CD_ORIGINDEX);
+
+      MLoopUV *mluv = CustomData_get_layer(&me->ldata, CD_MLOOPUV);
+
+      MPoly *mpoly = me->mpoly;
+      for (int p = 0; p < me->totpoly; p++, mpoly++) {
+        if (p_origindex[p] == ORIGINDEX_NONE) {
+          continue;
+        }
+        efa = BM_face_at_index(em->bm, p_origindex[p]);
+        if (!uvedit_face_visible_test(scene, obedit, ima, efa)) {
+          continue;
+        }
+        for (int i = 0; i < mpoly->totloop; i++) {
+          MLoop *mloop = &me->mloop[mpoly->loopstart + i];
+          if (e_origindex[mloop->e] == ORIGINDEX_NONE) {
+            continue;
+          }
+          MLoopUV *luv = &mluv[mpoly->loopstart + i];
+          MLoopUV *luv_next = &mluv[mpoly->loopstart + ((i + 1) % mpoly->totloop)];
+
+          BMEdge *eed = BM_edge_at_index(em->bm, e_origindex[mloop->e]);
+          BMLoop *l = BM_face_edge_share_loop(efa, eed);
+
+          float dist_test_sq;
+          if (penalty_dist != 0.0f && uvedit_uv_select_test(scene, l, cd_loop_uv_offset)) {
+            dist_test_sq = len_v2v2(co, luv->uv) + penalty_dist;
+            dist_test_sq = SQUARE(dist_test_sq);
+          }
+          else {
+            dist_test_sq = len_squared_v2v2(co, luv->uv);
+          }
+
+          if (dist_test_sq <= hit.dist_sq) {
+            /* FIXME this is testing against original coord, not deformed cage. */
+            if (dist_test_sq == hit.dist_sq) {
+              if (!uv_nearest_between(l, co, cd_loop_uv_offset)) {
+                continue;
+              }
+            }
+
+            hit.dist_sq = dist_test_sq;
+
+            hit.l = l;
+            hit.luv = luv;
+            hit.luv_next = luv_next;
+            hit.efa = efa;
+            hit.lindex = i;
+            found = true;
+          }
         }
       }
     }
@@ -954,7 +1159,8 @@ bool uv_find_nearest_vert(Scene *scene,
   return found;
 }
 
-bool uv_find_nearest_vert_multi(Scene *scene,
+bool uv_find_nearest_vert_multi(Depsgraph *depsgraph,
+                                Scene *scene,
                                 Image *ima,
                                 Object **objects,
                                 const uint objects_len,
@@ -965,7 +1171,7 @@ bool uv_find_nearest_vert_multi(Scene *scene,
   bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    if (uv_find_nearest_vert(scene, ima, obedit, co, penalty_dist, hit_final)) {
+    if (uv_find_nearest_vert(depsgraph, scene, ima, obedit, co, penalty_dist, hit_final)) {
       hit_final->ob = obedit;
       found = true;
     }
@@ -1274,9 +1480,9 @@ static void uv_select_linked_multi(Scene *scene,
 
     BM_mesh_elem_table_ensure(em->bm, BM_FACE); /* we can use this too */
 
-    /* Note, we had 'use winding' so we don't consider overlapping islands as connected, see T44320
-     * this made *every* projection split the island into front/back islands.
-     * Keep 'use_winding' to false, see: T50970.
+    /* Note, we had 'use winding' so we don't consider overlapping islands as connected, see
+     * T44320 this made *every* projection split the island into front/back islands. Keep
+     * 'use_winding' to false, see: T50970.
      *
      * Better solve this by having a delimit option for select-linked operator,
      * keeping island-select working as is. */
@@ -2513,12 +2719,12 @@ static int uv_mouse_select_multi(bContext *C,
   /* find nearest element */
   if (loop) {
     /* find edge */
-    found_item = uv_find_nearest_edge_multi(scene, ima, objects, objects_len, co, &hit);
+    found_item = uv_find_nearest_edge_multi(depsgraph, scene, ima, objects, objects_len, co, &hit);
   }
   else if (selectmode == UV_SELECT_VERTEX) {
     /* find vertex */
     found_item = uv_find_nearest_vert_multi(
-        scene, ima, objects, objects_len, co, penalty_dist, &hit);
+        depsgraph, scene, ima, objects, objects_len, co, penalty_dist, &hit);
     found_item = found_item && (!deselect_all || hit.dist_sq < penalty_dist);
 
     if (found_item) {
@@ -2535,7 +2741,7 @@ static int uv_mouse_select_multi(bContext *C,
   }
   else if (selectmode == UV_SELECT_EDGE) {
     /* find edge */
-    found_item = uv_find_nearest_edge_multi(scene, ima, objects, objects_len, co, &hit);
+    found_item = uv_find_nearest_edge_multi(depsgraph, scene, ima, objects, objects_len, co, &hit);
     found_item = found_item && (!deselect_all || hit.dist_sq < penalty_dist);
 
     if (found_item) {
@@ -2554,7 +2760,7 @@ static int uv_mouse_select_multi(bContext *C,
   }
   else if (selectmode == UV_SELECT_FACE) {
     /* find face */
-    found_item = uv_find_nearest_face_multi(scene, ima, objects, objects_len, co, &hit);
+    found_item = uv_find_nearest_face_multi(depsgraph, scene, ima, objects, objects_len, co, &hit);
     found_item = found_item && (!deselect_all || hit.dist_sq < penalty_dist);
 
     if (found_item) {
@@ -2578,7 +2784,7 @@ static int uv_mouse_select_multi(bContext *C,
     }
   }
   else if (selectmode == UV_SELECT_ISLAND) {
-    found_item = uv_find_nearest_edge_multi(scene, ima, objects, objects_len, co, &hit);
+    found_item = uv_find_nearest_edge_multi(depsgraph, scene, ima, objects, objects_len, co, &hit);
     found_item = found_item && (!deselect_all || hit.dist_sq < penalty_dist);
   }
 
@@ -2892,6 +3098,7 @@ static void UV_OT_select_loop(wmOperatorType *ot)
 
 static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent *event, bool pick)
 {
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = scene->toolsettings;
@@ -2936,7 +3143,7 @@ static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent 
       RNA_float_get_array(op->ptr, "location", co);
     }
 
-    if (!uv_find_nearest_edge_multi(scene, ima, objects, objects_len, co, &hit)) {
+    if (!uv_find_nearest_edge_multi(depsgraph, scene, ima, objects, objects_len, co, &hit)) {
       MEM_freeN(objects);
       return OPERATOR_CANCELLED;
     }
