@@ -1176,27 +1176,28 @@ void DRW_mesh_batch_cache_free(Mesh *me)
  * \{ */
 
 typedef struct MeshExtractIterData {
-  /* NULL if in edit mode and not mapped. */
+  /** NULL if in edit mode and not mapped. */
   const MVert *mvert;
   const MEdge *medge;
   const MPoly *mpoly;
   const MLoop *mloop;
   const MLoopTri *mlooptri;
-  /* NULL if not in edit mode. */
+  /** NULL if not in edit mode. */
   BMVert *eve;
   BMEdge *eed;
   BMFace *efa;
   BMLoop *eloop;
-  BMLoop **elooptri;
-  /* Index of current element. Is not BMesh index if iteration is on mapped. */
+  /** Index of current element. Is not BMesh index if iteration is on mapped. */
   int vert_idx, edge_idx, face_idx, loop_idx, tri_idx;
-  /* Copy of the loop index if the iter element.
+  /** Copy of the loop index if the iter element.
    * NEVER use for vertex index, only for edge and looptri.
    * Use loop_idx for vertices */
   int v1, v2, v3;
 
   bool use_hide;
   MeshRenderData *mr;
+  /** iter function list */
+  void *itr_fn;
 } MeshExtractIterData;
 
 typedef void *(MeshExtractInitFn)(const MeshRenderData *mr, void *buffer);
@@ -1628,9 +1629,10 @@ static void mesh_lines_adjacency_iter(const MeshExtractIterData *iter,
                                       void *data)
 {
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
-    mesh_lines_adjacency_triangle(iter->mr->mloop[iter->mlooptri->tri[0]].v,
-                                  iter->mr->mloop[iter->mlooptri->tri[1]].v,
-                                  iter->mr->mloop[iter->mlooptri->tri[2]].v,
+    const MLoopTri *mlt = &iter->mr->mlooptri[iter->tri_idx];
+    mesh_lines_adjacency_triangle(iter->mr->mloop[mlt->tri[0]].v,
+                                  iter->mr->mloop[mlt->tri[1]].v,
+                                  iter->mr->mloop[mlt->tri[2]].v,
                                   iter->v1,
                                   iter->v2,
                                   iter->v3,
@@ -1642,9 +1644,10 @@ static void mesh_lines_adjacency_iter_edit(const MeshExtractIterData *iter,
                                            void *data)
 {
   if (BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN)) {
-    mesh_lines_adjacency_triangle(BM_elem_index_get(iter->elooptri[0]->v),
-                                  BM_elem_index_get(iter->elooptri[1]->v),
-                                  BM_elem_index_get(iter->elooptri[2]->v),
+    BMLoop **bmlt = &iter->mr->edit_bmesh->looptris[iter->tri_idx][0];
+    mesh_lines_adjacency_triangle(BM_elem_index_get(bmlt[0]->v),
+                                  BM_elem_index_get(bmlt[1]->v),
+                                  BM_elem_index_get(bmlt[2]->v),
                                   iter->v1,
                                   iter->v2,
                                   iter->v3,
@@ -3596,6 +3599,8 @@ static int iter_callback_gather(MeshExtractFnRef *extract_refs,
       iter_cb_idx++;
     }
   }
+  /* NULL terminated. */
+  r_iter_callback[iter_cb_idx].iter = NULL;
   return iter_cb_idx;
 }
 
@@ -3619,11 +3624,56 @@ static void mesh_extract_finish(MeshRenderData *mr,
   }
 }
 
+#define EXTRACT_FUNCTION_LOOP(itr) \
+  do { \
+    for (MeshExtractIterFnRef *fn = itr->itr_fn; fn->iter; fn++) { \
+      fn->iter(itr, fn->buffer, fn->user_data); \
+    } \
+  } while (0);
+
+BLI_INLINE void iter_looptri_bmesh(int t, MeshExtractIterData *itr)
+{
+  itr->tri_idx = t;
+  BMLoop **elooptri = &itr->mr->edit_bmesh->looptris[t][0];
+  itr->efa = elooptri[0]->f;
+  itr->v1 = BM_elem_index_get(elooptri[0]);
+  itr->v2 = BM_elem_index_get(elooptri[1]);
+  itr->v3 = BM_elem_index_get(elooptri[2]);
+  EXTRACT_FUNCTION_LOOP(itr);
+}
+
+BLI_INLINE void iter_looptri_mapped(int t, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  MLoopTri *mlt = &mr->mlooptri[t];
+  itr->tri_idx = t;
+  itr->v1 = mlt->tri[0];
+  itr->v2 = mlt->tri[1];
+  itr->v3 = mlt->tri[2];
+  itr->face_idx = mlt->poly;
+  itr->mpoly = &mr->mpoly[itr->face_idx];
+  itr->efa = bm_original_face_get(mr->bm, mr->p_origindex[itr->face_idx]);
+  EXTRACT_FUNCTION_LOOP(itr);
+}
+
+BLI_INLINE void iter_looptri_mesh(int t, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  MLoopTri *mlt = &mr->mlooptri[t];
+  itr->tri_idx = t;
+  itr->v1 = mlt->tri[0];
+  itr->v2 = mlt->tri[1];
+  itr->v3 = mlt->tri[2];
+  itr->face_idx = mlt->poly;
+  itr->mpoly = &mr->mpoly[itr->face_idx];
+  EXTRACT_FUNCTION_LOOP(itr);
+}
+
 static void mesh_extract_iter_looptri(MeshRenderData *mr,
                                       MeshExtractFnRef *extract_refs,
                                       int cb_total_len)
 {
-  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len);
+  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len + 1);
   int itr_fn_len = iter_callback_gather(extract_refs, itr_fn, cb_total_len, MR_ITER_LOOPTRI);
 
   if (itr_fn_len == 0) {
@@ -3633,47 +3683,79 @@ static void mesh_extract_iter_looptri(MeshRenderData *mr,
   MeshExtractIterData itr = {NULL};
   itr.mr = mr;
   itr.use_hide = mr->use_hide;
+  itr.itr_fn = itr_fn;
 
   switch (mr->extract_type) {
     case MR_EXTRACT_BMESH:
-      for (itr.tri_idx = 0; itr.tri_idx < mr->tri_len; itr.tri_idx++) {
-        itr.elooptri = &mr->edit_bmesh->looptris[itr.tri_idx][0];
-        itr.efa = itr.elooptri[0]->f;
-        itr.v1 = BM_elem_index_get(itr.elooptri[0]);
-        itr.v2 = BM_elem_index_get(itr.elooptri[1]);
-        itr.v3 = BM_elem_index_get(itr.elooptri[2]);
-        for (int fn = 0; fn < itr_fn_len; fn++) {
-          itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-        }
+      for (int t = 0; t < mr->tri_len; t++) {
+        iter_looptri_bmesh(t, &itr);
       }
       break;
     case MR_EXTRACT_MAPPED:
-      for (itr.tri_idx = 0; itr.tri_idx < mr->tri_len; itr.tri_idx++) {
-        itr.mlooptri = &mr->mlooptri[itr.tri_idx];
-        itr.face_idx = itr.mlooptri->poly;
-        itr.mpoly = &mr->mpoly[itr.face_idx];
-        itr.efa = bm_original_face_get(mr->bm, mr->p_origindex[itr.face_idx]);
-        itr.v1 = itr.mlooptri->tri[0];
-        itr.v2 = itr.mlooptri->tri[1];
-        itr.v3 = itr.mlooptri->tri[2];
-        for (int fn = 0; fn < itr_fn_len; fn++) {
-          itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-        }
+      for (int t = 0; t < mr->tri_len; t++) {
+        iter_looptri_mapped(t, &itr);
       }
       break;
     case MR_EXTRACT_MESH:
-      for (itr.tri_idx = 0; itr.tri_idx < mr->tri_len; itr.tri_idx++) {
-        itr.mlooptri = &mr->mlooptri[itr.tri_idx];
-        itr.face_idx = itr.mlooptri->poly;
-        itr.mpoly = &mr->mpoly[itr.face_idx];
-        itr.v1 = itr.mlooptri->tri[0];
-        itr.v2 = itr.mlooptri->tri[1];
-        itr.v3 = itr.mlooptri->tri[2];
-        for (int fn = 0; fn < itr_fn_len; fn++) {
-          itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-        }
+      for (int t = 0; t < mr->tri_len; t++) {
+        iter_looptri_mesh(t, &itr);
       }
       break;
+  }
+}
+
+BLI_INLINE void iter_loop_bmesh(int f, MeshExtractIterData *itr)
+{
+  itr->efa = BM_face_at_index(itr->mr->bm, f);
+  BMIter iter_loop;
+  BM_ITER_ELEM (itr->eloop, &iter_loop, itr->efa, BM_LOOPS_OF_FACE) {
+    itr->eed = itr->eloop->e;
+    itr->eve = itr->eloop->v;
+    itr->v1 = BM_elem_index_get(itr->eloop);
+    itr->v2 = BM_elem_index_get(itr->eloop->next);
+    itr->loop_idx = itr->v1;
+    itr->edge_idx = BM_elem_index_get(itr->eed);
+    itr->vert_idx = BM_elem_index_get(itr->eve);
+    EXTRACT_FUNCTION_LOOP(itr);
+  }
+}
+
+BLI_INLINE void iter_loop_mapped(int f, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->face_idx = f;
+  itr->mpoly = &mr->mpoly[f];
+  itr->efa = bm_original_face_get(mr->bm, mr->p_origindex[f]);
+  int loopstart = itr->mpoly->loopstart;
+  int loopend = itr->mpoly->loopstart + itr->mpoly->totloop;
+  for (itr->v1 = loopend - 1, itr->v2 = loopstart; itr->v2 < loopend; itr->v1 = itr->v2++) {
+    itr->loop_idx = itr->v1;
+    itr->mloop = &mr->mloop[itr->loop_idx];
+    itr->edge_idx = itr->mloop->e;
+    itr->vert_idx = itr->mloop->v;
+    itr->eed = bm_original_edge_get(mr->bm, mr->e_origindex[itr->edge_idx]);
+    itr->eve = bm_original_vert_get(mr->bm, mr->v_origindex[itr->vert_idx]);
+    itr->medge = &mr->medge[itr->edge_idx];
+    itr->mvert = &mr->mvert[itr->vert_idx];
+    EXTRACT_FUNCTION_LOOP(itr);
+  }
+}
+
+BLI_INLINE void iter_loop_mesh(int f, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->face_idx = f;
+  itr->mpoly = &mr->mpoly[f];
+  int loopstart = itr->mpoly->loopstart;
+  int loopend = itr->mpoly->loopstart + itr->mpoly->totloop;
+  for (itr->v1 = loopend - 1, itr->v2 = loopstart; itr->v2 < loopend; itr->v1 = itr->v2++) {
+    itr->loop_idx = itr->v1;
+    itr->mloop = &mr->mloop[itr->loop_idx];
+    itr->edge_idx = itr->mloop->e;
+    itr->vert_idx = itr->mloop->v;
+    itr->medge = &mr->medge[itr->edge_idx];
+    itr->mvert = &mr->mvert[itr->vert_idx];
+    EXTRACT_FUNCTION_LOOP(itr);
   }
 }
 
@@ -3681,83 +3763,78 @@ static void mesh_extract_iter_loop(MeshRenderData *mr,
                                    MeshExtractFnRef *extract_refs,
                                    int cb_total_len)
 {
-  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len);
+  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len + 1);
   int itr_fn_len = iter_callback_gather(extract_refs, itr_fn, cb_total_len, MR_ITER_LOOP);
 
   if (itr_fn_len == 0) {
     return;
   }
 
-  BMIter iter_efa, iter_loop;
   MeshExtractIterData itr = {NULL};
   itr.mr = mr;
   itr.use_hide = mr->use_hide;
+  itr.itr_fn = itr_fn;
 
   switch (mr->extract_type) {
     case MR_EXTRACT_BMESH:
-      itr.loop_idx = 0;
-      /* TODO try multithread opti but this is likely to be faster due to
-       * data access pattern & cache coherence against using BM_face_at_index(). */
-      BM_ITER_MESH_INDEX (itr.efa, &iter_efa, mr->bm, BM_FACES_OF_MESH, itr.face_idx) {
-        BM_ITER_ELEM (itr.eloop, &iter_loop, itr.efa, BM_LOOPS_OF_FACE) {
-          itr.eed = itr.eloop->e;
-          itr.eve = itr.eloop->v;
-          itr.v1 = BM_elem_index_get(itr.eloop);
-          itr.v2 = BM_elem_index_get(itr.eloop->next);
-          itr.edge_idx = BM_elem_index_get(itr.eed);
-          itr.vert_idx = BM_elem_index_get(itr.eve);
-          for (int fn = 0; fn < itr_fn_len; fn++) {
-            itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-          }
-          itr.loop_idx++;
-        }
+      for (int f = 0; f < mr->poly_len; f++) {
+        iter_loop_bmesh(f, &itr);
       }
       break;
     case MR_EXTRACT_MAPPED:
-      itr.loop_idx = 0;
-      itr.mloop = mr->mloop;
-      itr.mpoly = mr->mpoly;
-      for (itr.face_idx = 0; itr.face_idx < mr->poly_len; itr.face_idx++, itr.mpoly++) {
-        itr.efa = bm_original_face_get(mr->bm, mr->p_origindex[itr.face_idx]);
-        int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
-        for (itr.v2 = itr.v1 + 1; itr.v1 < loopend;
-             itr.v1++, itr.v2++, itr.loop_idx++, itr.mloop++) {
-          if (itr.v2 == loopend) {
-            itr.v2 = itr.mpoly->loopstart;
-          }
-          itr.edge_idx = itr.mloop->e;
-          itr.vert_idx = itr.mloop->v;
-          itr.eed = bm_original_edge_get(mr->bm, mr->e_origindex[itr.edge_idx]);
-          itr.eve = bm_original_vert_get(mr->bm, mr->v_origindex[itr.vert_idx]);
-          itr.medge = &mr->medge[itr.edge_idx];
-          itr.mvert = &mr->mvert[itr.vert_idx];
-          for (int fn = 0; fn < itr_fn_len; fn++) {
-            itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-          }
-        }
+      for (int f = 0; f < mr->poly_len; f++) {
+        iter_loop_mapped(f, &itr);
       }
       break;
     case MR_EXTRACT_MESH:
-      itr.loop_idx = itr.v1 = 0;
-      itr.mloop = mr->mloop;
-      itr.mpoly = mr->mpoly;
-      for (itr.face_idx = 0; itr.face_idx < mr->poly_len; itr.face_idx++, itr.mpoly++) {
-        int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
-        for (itr.v2 = itr.v1 + 1; itr.v1 < loopend;
-             itr.v1++, itr.v2++, itr.loop_idx++, itr.mloop++) {
-          if (itr.v2 == loopend) {
-            itr.v2 = itr.mpoly->loopstart;
-          }
-          itr.edge_idx = itr.mloop->e;
-          itr.vert_idx = itr.mloop->v;
-          itr.medge = &mr->medge[itr.edge_idx];
-          itr.mvert = &mr->mvert[itr.vert_idx];
-          for (int fn = 0; fn < itr_fn_len; fn++) {
-            itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-          }
-        }
+      for (int f = 0; f < mr->poly_len; f++) {
+        iter_loop_mesh(f, &itr);
       }
       break;
+  }
+}
+
+BLI_INLINE void iter_ledge_bmesh(int e, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->edge_idx = mr->ledges[e];
+  itr->eed = BM_edge_at_index(mr->bm, itr->edge_idx);
+  itr->v1 = itr->loop_idx;
+  itr->v2 = itr->loop_idx + 1;
+  for (int v = 0; v < 2; v++, itr->loop_idx++) {
+    itr->eve = (v == 0) ? itr->eed->v1 : itr->eed->v2;
+    itr->vert_idx = BM_elem_index_get(itr->eve);
+    EXTRACT_FUNCTION_LOOP(itr);
+  }
+}
+
+BLI_INLINE void iter_ledge_mapped(int e, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->edge_idx = mr->ledges[e];
+  itr->medge = &mr->medge[itr->edge_idx];
+  itr->eed = bm_original_edge_get(mr->bm, mr->e_origindex[itr->edge_idx]);
+  itr->v1 = itr->loop_idx;
+  itr->v2 = itr->loop_idx + 1;
+  for (int v = 0; v < 2; v++, itr->loop_idx++) {
+    itr->vert_idx = (v == 0) ? itr->medge->v1 : itr->medge->v2;
+    itr->mvert = &mr->mvert[itr->vert_idx];
+    itr->eve = bm_original_vert_get(mr->bm, mr->v_origindex[itr->vert_idx]);
+    EXTRACT_FUNCTION_LOOP(itr);
+  }
+}
+
+BLI_INLINE void iter_ledge_mesh(int e, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->edge_idx = mr->ledges[e];
+  itr->medge = &mr->medge[itr->edge_idx];
+  itr->v1 = itr->loop_idx;
+  itr->v2 = itr->loop_idx + 1;
+  for (int v = 0; v < 2; v++, itr->loop_idx++) {
+    itr->vert_idx = (v == 0) ? itr->medge->v1 : itr->medge->v2;
+    itr->mvert = &mr->mvert[itr->vert_idx];
+    EXTRACT_FUNCTION_LOOP(itr);
   }
 }
 
@@ -3765,10 +3842,10 @@ static void mesh_extract_iter_ledge(MeshRenderData *mr,
                                     MeshExtractFnRef *extract_refs,
                                     int cb_total_len)
 {
-  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len);
+  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len + 1);
   int itr_fn_len = iter_callback_gather(extract_refs, itr_fn, cb_total_len, MR_ITER_LEDGE);
 
-  if (itr_fn_len == 0) {
+  if (itr_fn_len == 0 || mr->edge_loose_len == 0) {
     return;
   }
 
@@ -3776,101 +3853,85 @@ static void mesh_extract_iter_ledge(MeshRenderData *mr,
   itr.mr = mr;
   itr.use_hide = mr->use_hide;
   itr.loop_idx = mr->loop_len;
+  itr.itr_fn = itr_fn;
 
   switch (mr->extract_type) {
     case MR_EXTRACT_BMESH:
       for (int e = 0; e < mr->edge_loose_len; e++) {
-        itr.edge_idx = mr->ledges[e];
-        itr.eed = BM_edge_at_index(mr->bm, itr.edge_idx);
-        itr.v1 = itr.loop_idx;
-        itr.v2 = itr.loop_idx + 1;
-        for (int v = 0; v < 2; v++, itr.loop_idx++) {
-          itr.eve = (v == 0) ? itr.eed->v1 : itr.eed->v2;
-          itr.vert_idx = BM_elem_index_get(itr.eve);
-          for (int fn = 0; fn < itr_fn_len; fn++) {
-            itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-          }
-        }
+        iter_ledge_bmesh(e, &itr);
       }
       break;
     case MR_EXTRACT_MAPPED:
       for (int e = 0; e < mr->edge_loose_len; e++) {
-        itr.edge_idx = mr->ledges[e];
-        itr.medge = &mr->medge[itr.edge_idx];
-        itr.eed = bm_original_edge_get(mr->bm, mr->e_origindex[itr.edge_idx]);
-        itr.v1 = itr.loop_idx;
-        itr.v2 = itr.loop_idx + 1;
-        for (int v = 0; v < 2; v++, itr.loop_idx++) {
-          itr.vert_idx = (v == 0) ? itr.medge->v1 : itr.medge->v2;
-          itr.mvert = &mr->mvert[itr.vert_idx];
-          itr.eve = bm_original_vert_get(mr->bm, mr->v_origindex[itr.vert_idx]);
-          for (int fn = 0; fn < itr_fn_len; fn++) {
-            itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-          }
-        }
+        iter_ledge_mapped(e, &itr);
       }
       break;
     case MR_EXTRACT_MESH:
       for (int e = 0; e < mr->edge_loose_len; e++) {
-        itr.edge_idx = mr->ledges[e];
-        itr.medge = &mr->medge[itr.edge_idx];
-        itr.v1 = itr.loop_idx;
-        itr.v2 = itr.loop_idx + 1;
-        for (int v = 0; v < 2; v++, itr.loop_idx++) {
-          itr.vert_idx = (v == 0) ? itr.medge->v1 : itr.medge->v2;
-          itr.mvert = &mr->mvert[itr.vert_idx];
-          for (int fn = 0; fn < itr_fn_len; fn++) {
-            itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-          }
-        }
+        iter_ledge_mesh(e, &itr);
       }
       break;
   }
+}
+
+BLI_INLINE void iter_lvert_bmesh(int v, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->vert_idx = mr->lverts[v];
+  itr->loop_idx = mr->loop_len + mr->edge_loose_len * 2 + v;
+  itr->eve = BM_vert_at_index(mr->bm, itr->vert_idx);
+  EXTRACT_FUNCTION_LOOP(itr);
+}
+
+BLI_INLINE void iter_lvert_mapped(int v, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->vert_idx = mr->lverts[v];
+  itr->loop_idx = mr->loop_len + mr->edge_loose_len * 2 + v;
+  itr->mvert = &mr->mvert[itr->vert_idx];
+  itr->eve = bm_original_vert_get(mr->bm, mr->v_origindex[itr->vert_idx]);
+  EXTRACT_FUNCTION_LOOP(itr);
+}
+
+BLI_INLINE void iter_lvert_mesh(int v, MeshExtractIterData *itr)
+{
+  MeshRenderData *mr = itr->mr;
+  itr->loop_idx = mr->loop_len + mr->edge_loose_len * 2 + v;
+  itr->vert_idx = mr->lverts[v];
+  itr->mvert = &mr->mvert[itr->vert_idx];
+  EXTRACT_FUNCTION_LOOP(itr);
 }
 
 static void mesh_extract_iter_lvert(MeshRenderData *mr,
                                     MeshExtractFnRef *extract_refs,
                                     int cb_total_len)
 {
-  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len);
+  MeshExtractIterFnRef *itr_fn = BLI_array_alloca(itr_fn, cb_total_len + 1);
   int itr_fn_len = iter_callback_gather(extract_refs, itr_fn, cb_total_len, MR_ITER_LVERT);
 
-  if (itr_fn_len == 0) {
+  if (itr_fn_len == 0 || mr->vert_loose_len == 0) {
     return;
   }
 
   MeshExtractIterData itr = {NULL};
   itr.mr = mr;
   itr.use_hide = mr->use_hide;
-  itr.loop_idx = mr->loop_len + mr->edge_loose_len * 2;
+  itr.itr_fn = itr_fn;
 
   switch (mr->extract_type) {
     case MR_EXTRACT_BMESH:
-      for (int v = 0; v < mr->vert_loose_len; v++, itr.loop_idx++) {
-        itr.vert_idx = mr->lverts[v];
-        itr.eve = BM_vert_at_index(mr->bm, itr.vert_idx);
-        for (int fn = 0; fn < itr_fn_len; fn++) {
-          itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-        }
+      for (int v = 0; v < mr->vert_loose_len; v++) {
+        iter_lvert_bmesh(v, &itr);
       }
       break;
     case MR_EXTRACT_MAPPED:
-      for (int v = 0; v < mr->vert_loose_len; v++, itr.loop_idx++) {
-        itr.vert_idx = mr->lverts[v];
-        itr.mvert = &mr->mvert[itr.vert_idx];
-        itr.eve = bm_original_vert_get(mr->bm, mr->v_origindex[itr.vert_idx]);
-        for (int fn = 0; fn < itr_fn_len; fn++) {
-          itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-        }
+      for (int v = 0; v < mr->vert_loose_len; v++) {
+        iter_lvert_mapped(v, &itr);
       }
       break;
     case MR_EXTRACT_MESH:
-      for (int v = 0; v < mr->vert_loose_len; ++v, itr.loop_idx++) {
-        itr.vert_idx = mr->lverts[v];
-        itr.mvert = &mr->mvert[itr.vert_idx];
-        for (int fn = 0; fn < itr_fn_len; fn++) {
-          itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
-        }
+      for (int v = 0; v < mr->vert_loose_len; ++v) {
+        iter_lvert_mesh(v, &itr);
       }
       break;
   }
