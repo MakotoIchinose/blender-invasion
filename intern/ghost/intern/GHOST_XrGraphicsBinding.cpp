@@ -143,7 +143,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     return base_images;
   }
 
-  void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) override
+  void drawViewBegin(XrSwapchainImageBaseHeader * /*swapchain_image*/) override
   {
   }
   void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image,
