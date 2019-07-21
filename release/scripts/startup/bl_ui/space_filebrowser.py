@@ -45,24 +45,26 @@ class FILEBROWSER_PT_filter(Panel):
     bl_label = "Filter"
     bl_options = {'HIDDEN'}
 
+    @classmethod
+    def poll(cls, context):
+        # can be None when save/reload with a file selector open
+        return space.params is not None
+
     def draw(self, context):
         layout = self.layout
 
         space = context.space_data
         params = space.params
+        is_lib_browser = params.use_library_browsing
 
-        # can be None when save/reload with a file selector open
-        if params:
-            is_lib_browser = params.use_library_browsing
+        layout.label(text="Sort By:")
+        layout.prop(params, "sort_method", expand=True, text="")
 
-            layout.label(text="Sort By:")
-            layout.prop(params, "sort_method", expand=True, text="")
+        layout.separator()
 
-            layout.separator()
+        layout.prop(params, "show_hidden")
 
-            layout.prop(params, "show_hidden")
-
-            layout.separator()
+        layout.separator()
 
         row = layout.row(align=True)
         row.prop(params, "use_filter", text="", toggle=0)
@@ -117,6 +119,13 @@ class FILEBROWSER_PT_filter(Panel):
                 col.separator()
 
         col.prop(params, "filter_search", text="", icon='VIEWZOOM')
+
+        layout.separator()
+
+        layout.label(text="Display Size:")
+        layout.prop(params, "display_size", text="")
+        layout.label(text="Recursion Level:")
+        layout.prop(params, "recursion_level", text="")
 
 
 class FILEBROWSER_UL_dir(UIList):
