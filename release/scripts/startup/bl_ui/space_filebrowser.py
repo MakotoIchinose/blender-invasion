@@ -48,7 +48,7 @@ class FILEBROWSER_PT_filter(Panel):
     @classmethod
     def poll(cls, context):
         # can be None when save/reload with a file selector open
-        return space.params is not None
+        return context.space_data.params is not None
 
     def draw(self, context):
         layout = self.layout
