@@ -1184,7 +1184,7 @@ typedef struct MeshExtractIterData {
   const MLoopTri *mlooptri;
   /* NULL if not in edit mode. */
   BMVert *eve;
-  BMEdge *eed, *eed_prev;
+  BMEdge *eed;
   BMFace *efa;
   BMLoop *eloop;
   BMLoop **elooptri;
@@ -2841,11 +2841,21 @@ static void mesh_edituv_data_iter_edit(const MeshExtractIterData *iter,
     mesh_render_data_loop_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
     mesh_render_data_loop_edge_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
   }
-  else if (iter->efa && (iter->eed || iter->eed_prev)) {
-    /* Mapped points on an edge between two edit verts. */
-    BMEdge *eed = iter->eed ? iter->eed : iter->eed_prev;
-    BMLoop *loop = BM_face_edge_share_loop(iter->efa, eed);
-    mesh_render_data_loop_edge_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
+  else if (iter->efa) {
+    BMEdge *eed = iter->eed;
+    if (eed == NULL) {
+      int loopend = iter->mpoly->loopstart + iter->mpoly->totloop;
+      int prev_l_idx = (iter->loop_idx == iter->mpoly->loopstart) ? (loopend - 1) :
+                                                                    (iter->loop_idx - 1);
+      int edge_orig_idx = iter->mr->e_origindex[iter->mr->mloop[prev_l_idx].e];
+      eed = ((edge_orig_idx != ORIGINDEX_NONE) ? BM_edge_at_index(iter->mr->bm, edge_orig_idx) :
+                                                 NULL);
+    }
+    if (eed) {
+      /* Mapped points on an edge between two edit verts. */
+      BMLoop *loop = BM_face_edge_share_loop(iter->efa, eed);
+      mesh_render_data_loop_edge_flag(iter->mr, loop, edituv_data->cd_ofs, eldata);
+    }
   }
 }
 static void mesh_edituv_data_finish(const MeshRenderData *UNUSED(mr),
@@ -3710,7 +3720,6 @@ static void mesh_extract_iter_loop(MeshRenderData *mr,
       for (itr.face_idx = 0; itr.face_idx < mr->poly_len; itr.face_idx++, itr.mpoly++) {
         itr.efa = bm_original_face_get(mr->bm, mr->p_origindex[itr.face_idx]);
         int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
-        itr.eed_prev = bm_original_edge_get(mr->bm, mr->e_origindex[mr->mloop[loopend - 1].e]);
         for (itr.v2 = itr.v1 + 1; itr.v1 < loopend;
              itr.v1++, itr.v2++, itr.loop_idx++, itr.mloop++) {
           if (itr.v2 == loopend) {
@@ -3725,7 +3734,6 @@ static void mesh_extract_iter_loop(MeshRenderData *mr,
           for (int fn = 0; fn < itr_fn_len; fn++) {
             itr_fn[fn].iter(&itr, itr_fn[fn].buffer, itr_fn[fn].user_data);
           }
-          itr.eed_prev = itr.eed;
         }
       }
       break;
