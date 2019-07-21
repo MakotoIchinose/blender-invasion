@@ -2344,10 +2344,17 @@ static int wm_handler_fileselect_do(bContext *C,
       if (WM_window_open_temp(
               C, win->eventstate->x, win->eventstate->y, sizex, sizey, WM_WINDOW_FILESEL) !=
           NULL) {
-        BLI_assert(CTX_wm_area(C)->spacetype == SPACE_FILE);
+        ScrArea *area = CTX_wm_area(C);
+        ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
+
+        BLI_assert(area->spacetype == SPACE_FILE);
+
+        region_header->flag |= RGN_FLAG_HIDDEN;
+        /* Header on bottom, AZone triangle to toggle header looks misplaced at the top */
+        region_header->alignment = RGN_ALIGN_BOTTOM;
 
         /* settings for filebrowser, sfile is not operator owner but sends events */
-        sfile = (SpaceFile *)CTX_wm_area(C)->spacedata.first;
+        sfile = (SpaceFile *)area->spacedata.first;
         sfile->op = handler->op;
 
         ED_fileselect_set_params(sfile);
