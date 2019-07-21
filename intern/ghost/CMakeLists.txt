@@ -378,6 +378,7 @@ if(WITH_OPENXR)
     endif()
 
     list(APPEND LIB ${OPENXR_LOADER_NAME})
+    list(APPEND INC ../../extern/openxr/include)
   endif()
 
   add_definitions(-DWITH_OPENXR)
