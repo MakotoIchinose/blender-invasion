@@ -1232,7 +1232,7 @@ static void *mesh_tri_init(const MeshRenderData *mr, void *UNUSED(ibo))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(data->elb.data, 0xFF, sizeof(uint) * mr->tri_len * 3);
+  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->tri_len * 3);
   /* Count how many triangle for each material. */
   if (mr->mat_len > 1) {
     if (mr->extract_type == MR_EXTRACT_BMESH) {
@@ -1294,6 +1294,15 @@ static void mesh_tri_finish(const MeshRenderData *mr, void *ibo, void *user_data
   /* HACK pass per mat triangle start and end outside the extract loop. */
   memcpy(mr->cache->tri_mat_end, data->mat_tri_idx, sizeof(uint32_t) * mr->mat_len);
 
+  for (int mat = 0; mat < mr->mat_len; mat++) {
+    if (mr->cache->tri_mat_end[mat] < mr->cache->tri_mat_start[mat]) {
+      /* Fill the rest of the buffer with restart index. */
+      for (int tri = mr->cache->tri_mat_end[mat]; tri < mr->cache->tri_mat_start[mat]; tri++) {
+        GPU_indexbuf_set_tri_restart(&data->elb, tri);
+      }
+    }
+  }
+
   MEM_freeN(user_data);
 }
 
@@ -1316,7 +1325,7 @@ static void *mesh_edge_init(const MeshRenderData *mr, void *UNUSED(buf))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(elb->data, 0xFF, sizeof(uint) * mr->edge_len * 2 * 2);
+  // memset(elb->data, 0xFF, sizeof(uint) * mr->edge_len * 2 * 2);
   return elb;
 }
 static void mesh_edge_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
@@ -1325,12 +1334,18 @@ static void mesh_edge_iter(const MeshExtractIterData *iter, void *UNUSED(buf), v
     /* XXX TODO Make it threadsafe */
     GPU_indexbuf_set_line_verts(elb, iter->edge_idx, iter->v1, iter->v2);
   }
+  else {
+    GPU_indexbuf_set_line_restart(elb, iter->edge_idx);
+  }
 }
 static void mesh_edge_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
   if (iter->eed && !BM_elem_flag_test(iter->eed, BM_ELEM_HIDDEN)) {
     /* XXX TODO Make it threadsafe */
     GPU_indexbuf_set_line_verts(elb, iter->edge_idx, iter->v1, iter->v2);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(elb, iter->edge_idx);
   }
 }
 static void mesh_edge_finish(const MeshRenderData *mr, void *ibo, void *elb)
@@ -1385,7 +1400,7 @@ static void *mesh_vert_init(const MeshRenderData *mr, void *UNUSED(buf))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(elb->data, 0xFF, sizeof(uint) * mr->vert_len);
+  // memset(elb->data, 0xFF, sizeof(uint) * mr->vert_len);
   return elb;
 }
 static void mesh_vert_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
@@ -1393,11 +1408,17 @@ static void mesh_vert_iter(const MeshExtractIterData *iter, void *UNUSED(buf), v
   if (!(iter->use_hide && (iter->mvert->flag & ME_HIDE))) {
     GPU_indexbuf_set_point_vert(elb, iter->vert_idx, iter->loop_idx);
   }
+  else {
+    GPU_indexbuf_set_point_restart(elb, iter->vert_idx);
+  }
 }
 static void mesh_vert_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
   if (iter->eve && !BM_elem_flag_test(iter->eve, BM_ELEM_HIDDEN)) {
     GPU_indexbuf_set_point_vert(elb, iter->vert_idx, iter->loop_idx);
+  }
+  else {
+    GPU_indexbuf_set_point_restart(elb, iter->vert_idx);
   }
 }
 static void mesh_vert_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
@@ -1428,7 +1449,7 @@ static void *mesh_facedot_init(const MeshRenderData *mr, void *UNUSED(buf))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(elb->data, 0xFF, sizeof(uint) * mr->poly_len);
+  // memset(elb->data, 0xFF, sizeof(uint) * mr->poly_len);
   return elb;
 }
 static void mesh_facedot_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
@@ -1437,12 +1458,18 @@ static void mesh_facedot_iter(const MeshExtractIterData *iter, void *UNUSED(buf)
       (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     GPU_indexbuf_set_point_vert(elb, iter->face_idx, iter->face_idx);
   }
+  else {
+    GPU_indexbuf_set_point_restart(elb, iter->face_idx);
+  }
 }
 static void mesh_facedot_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
   if (iter->efa && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN) &&
       (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     GPU_indexbuf_set_point_vert(elb, iter->face_idx, iter->face_idx);
+  }
+  else {
+    GPU_indexbuf_set_point_restart(elb, iter->face_idx);
   }
 }
 static void mesh_facedot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
@@ -1682,16 +1709,19 @@ static void *mesh_edituv_tri_init(const MeshRenderData *mr, void *UNUSED(ibo))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(data->elb.data, 0xFF, sizeof(uint) * mr->tri_len * 3);
+  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->tri_len * 3);
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
 }
 static void mesh_edituv_tri_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
+  MeshExtract_EditUvTri_Data *extract_data = (MeshExtract_EditUvTri_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
-    MeshExtract_EditUvTri_Data *extract_data = (MeshExtract_EditUvTri_Data *)data;
     GPU_indexbuf_set_tri_verts(&extract_data->elb, iter->tri_idx, iter->v1, iter->v2, iter->v3);
+  }
+  else {
+    GPU_indexbuf_set_tri_restart(&extract_data->elb, iter->tri_idx);
   }
 }
 static void mesh_edituv_tri_iter_edit(const MeshExtractIterData *iter,
@@ -1705,6 +1735,9 @@ static void mesh_edituv_tri_iter_edit(const MeshExtractIterData *iter,
   else if (!BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN) &&
            (extract_data->sync_selection || BM_elem_flag_test(iter->efa, BM_ELEM_SELECT))) {
     GPU_indexbuf_set_tri_verts(&extract_data->elb, iter->tri_idx, iter->v1, iter->v2, iter->v3);
+  }
+  else {
+    GPU_indexbuf_set_tri_restart(&extract_data->elb, iter->tri_idx);
   }
 }
 static void mesh_edituv_tri_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
@@ -1741,16 +1774,19 @@ static void *mesh_edituv_line_init(const MeshRenderData *mr, void *UNUSED(ibo))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(data->elb.data, 0xFF, sizeof(uint) * mr->loop_len * 2);
+  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->loop_len * 2);
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
 }
 static void mesh_edituv_line_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
+  MeshExtract_EditUvLine_Data *extract_data = (MeshExtract_EditUvLine_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
-    MeshExtract_EditUvLine_Data *extract_data = (MeshExtract_EditUvLine_Data *)data;
     GPU_indexbuf_set_line_verts(&extract_data->elb, iter->loop_idx, iter->v1, iter->v2);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(&extract_data->elb, iter->loop_idx);
   }
 }
 static void mesh_edituv_line_iter_edit(const MeshExtractIterData *iter,
@@ -1761,6 +1797,9 @@ static void mesh_edituv_line_iter_edit(const MeshExtractIterData *iter,
   if (iter->eed && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN) &&
       (extract_data->sync_selection || BM_elem_flag_test(iter->efa, BM_ELEM_SELECT))) {
     GPU_indexbuf_set_line_verts(&extract_data->elb, iter->loop_idx, iter->v1, iter->v2);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(&extract_data->elb, iter->loop_idx);
   }
 }
 static void mesh_edituv_line_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
@@ -1797,16 +1836,19 @@ static void *mesh_edituv_point_init(const MeshRenderData *mr, void *UNUSED(ibo))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(data->elb.data, 0xFF, sizeof(uint) * mr->loop_len);
+  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->loop_len);
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
 }
 static void mesh_edituv_point_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
+  MeshExtract_EditUvPoint_Data *extract_data = (MeshExtract_EditUvPoint_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
-    MeshExtract_EditUvPoint_Data *extract_data = (MeshExtract_EditUvPoint_Data *)data;
     GPU_indexbuf_set_point_vert(&extract_data->elb, iter->loop_idx, iter->loop_idx);
+  }
+  else {
+    GPU_indexbuf_set_point_restart(&extract_data->elb, iter->loop_idx);
   }
 }
 static void mesh_edituv_point_iter_edit(const MeshExtractIterData *iter,
@@ -1817,6 +1859,9 @@ static void mesh_edituv_point_iter_edit(const MeshExtractIterData *iter,
   if (iter->eve && !BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN) &&
       (extract_data->sync_selection || BM_elem_flag_test(iter->efa, BM_ELEM_SELECT))) {
     GPU_indexbuf_set_point_vert(&extract_data->elb, iter->loop_idx, iter->loop_idx);
+  }
+  else {
+    GPU_indexbuf_set_point_restart(&extract_data->elb, iter->loop_idx);
   }
 }
 static void mesh_edituv_point_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
@@ -1853,17 +1898,20 @@ static void *mesh_edituv_fdot_init(const MeshRenderData *mr, void *UNUSED(ibo))
    * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
    * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
    * for multithreading. */
-  memset(data->elb.data, 0xFF, sizeof(uint) * mr->poly_len);
+  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->poly_len);
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
 }
 static void mesh_edituv_fdot_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *data)
 {
+  MeshExtract_EditUvFdot_Data *extract_data = (MeshExtract_EditUvFdot_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE)) &&
       (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
-    MeshExtract_EditUvFdot_Data *extract_data = (MeshExtract_EditUvFdot_Data *)data;
     GPU_indexbuf_set_point_vert(&extract_data->elb, iter->face_idx, iter->face_idx);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(&extract_data->elb, iter->face_idx);
   }
 }
 static void mesh_edituv_fdot_iter_edit(const MeshExtractIterData *iter,
@@ -1875,6 +1923,9 @@ static void mesh_edituv_fdot_iter_edit(const MeshExtractIterData *iter,
       (extract_data->sync_selection || BM_elem_flag_test(iter->efa, BM_ELEM_SELECT)) &&
       (!iter->mr->use_subsurf_fdots || (iter->mvert->flag & ME_VERT_FACEDOT))) {
     GPU_indexbuf_set_point_vert(&extract_data->elb, iter->face_idx, iter->face_idx);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(&extract_data->elb, iter->face_idx);
   }
 }
 static void mesh_edituv_fdot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)

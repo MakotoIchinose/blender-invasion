@@ -80,6 +80,11 @@ void GPU_indexbuf_set_point_vert(GPUIndexBufBuilder *builder, uint elem, uint v1
 void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2);
 void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2, uint v3);
 
+/* Skip primitive rendering at the given index. */
+void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem);
+void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem);
+void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem);
+
 GPUIndexBuf *GPU_indexbuf_build(GPUIndexBufBuilder *);
 void GPU_indexbuf_build_in_place(GPUIndexBufBuilder *, GPUIndexBuf *);
 
