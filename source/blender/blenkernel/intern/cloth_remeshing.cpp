@@ -1014,6 +1014,14 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
 
     cloth_remeshing_add_vertex_to_cloth(cloth, old_edge.v1, old_edge.v2, new_vert, sizing);
 
+    vector<BMFace *> active_faces;
+    BMFace *af;
+    BMIter afiter;
+    BM_ITER_ELEM (af, &afiter, new_vert, BM_FACES_OF_VERT) {
+      active_faces.push_back(af);
+    }
+    cloth_remeshing_fix_mesh(bm, sizing, active_faces);
+
     if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
       if (cloth_remeshing_find_next_loose_edge(old_edge.v1) != NULL &&
           cloth_remeshing_find_next_loose_edge(old_edge.v2) != NULL) {
@@ -2047,7 +2055,7 @@ static void cloth_remeshing_obstacle_metric(
         collision_move_object(collmd, step + dt, step);
 
         /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, 10.0f, planes);
+        cloth_remeshing_find_nearest_planes(bm, collmd, 0.01f, planes);
       }
     }
   }
