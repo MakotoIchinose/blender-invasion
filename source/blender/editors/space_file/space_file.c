@@ -414,6 +414,11 @@ static void file_main_region_draw(const bContext *C, ARegion *ar)
     v2d->keepofs &= ~V2D_LOCKOFS_Y;
     v2d->keepofs |= V2D_LOCKOFS_X;
   }
+  else if (params->display == FILE_SHORTDISPLAY) {
+    v2d->scroll = V2D_SCROLL_RIGHT;
+    v2d->keepofs &= ~V2D_LOCKOFS_Y;
+    v2d->keepofs |= V2D_LOCKOFS_X;
+  }
   else {
     v2d->scroll = V2D_SCROLL_BOTTOM;
     v2d->keepofs &= ~V2D_LOCKOFS_X;

@@ -536,6 +536,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
   int maxlen = 0;
   int numfiles;
   int textheight;
+  int rowamount;
 
   if (sfile->layout == NULL) {
     sfile->layout = MEM_callocN(sizeof(struct FileLayout), "file_layout");
@@ -572,16 +573,39 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                      layout->tile_border_y * 2;
     layout->flag = FILE_LAYOUT_VER;
   }
-  else {
+  else if (params->display == FILE_SHORTDISPLAY) {
+
+    layout->prv_w = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_X;
+    layout->prv_h = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_Y;
+    layout->tile_border_x = 0.4f * UI_UNIT_X;
+    layout->tile_border_y = 0.1f * UI_UNIT_Y;
+    layout->tile_h = textheight * 3 / 2;
+    layout->width = (int)(BLI_rctf_size_x(&v2d->cur) - 2 * layout->tile_border_x);
+    layout->tile_w = v2d->winx;
+    layout->columns = 1;
+    column_widths(params, layout);
+    rowamount = (int)(BLI_rctf_size_y(&v2d->cur) - 2 * layout->tile_border_y) /
+                (layout->tile_h + 2 * layout->tile_border_y);
+    if ((int)rowamount / numfiles >= 1) {
+      layout->rows = rowamount;
+    }
+    else {
+      layout->rows = rowamount + (numfiles - rowamount);
+    }
+    layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) +
+                     layout->tile_border_y * 2;
+    layout->flag = FILE_LAYOUT_VER;
+  }
+  else if (params->display == FILE_LONGDISPLAY) {
     int column_space = 0.6f * UI_UNIT_X;
     int column_icon_space = 0.2f * UI_UNIT_X;
 
-    layout->prv_w = 0;
-    layout->prv_h = 0;
+    layout->prv_w = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_X;
+    layout->prv_h = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_Y;
     layout->tile_border_x = 0.4f * UI_UNIT_X;
     layout->tile_border_y = 0.1f * UI_UNIT_Y;
-    layout->prv_border_x = 0;
-    layout->prv_border_y = 0;
+    layout->tile_border_x = 0;
+    layout->tile_border_x = 0;
     layout->tile_h = textheight * 3 / 2;
     layout->height = (int)(BLI_rctf_size_y(&v2d->cur) - 2 * layout->tile_border_y);
     /* Padding by full scrollbar H is too much, can overlap tile border Y. */
@@ -589,19 +613,11 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                    (layout->tile_h + 2 * layout->tile_border_y);
 
     column_widths(params, layout);
-
-    if (params->display == FILE_SHORTDISPLAY) {
-      maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
-               (int)layout->column_widths[COLUMN_NAME] + column_space +
-               (int)layout->column_widths[COLUMN_SIZE] + column_space;
-    }
-    else {
-      maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
-               (int)layout->column_widths[COLUMN_NAME] + column_space +
-               (int)layout->column_widths[COLUMN_DATE] + column_space +
-               (int)layout->column_widths[COLUMN_TIME] + column_space +
-               (int)layout->column_widths[COLUMN_SIZE] + column_space;
-    }
+    maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
+             (int)layout->column_widths[COLUMN_NAME] + column_space +
+             (int)layout->column_widths[COLUMN_DATE] + column_space +
+             (int)layout->column_widths[COLUMN_TIME] + column_space +
+             (int)layout->column_widths[COLUMN_SIZE] + column_space;
     layout->tile_w = maxlen;
     if (layout->rows > 0) {
       layout->columns = numfiles / layout->rows + 1;  // XXX dirty, modulo is zero
