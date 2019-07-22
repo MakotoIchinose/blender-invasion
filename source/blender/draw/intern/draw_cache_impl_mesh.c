@@ -563,7 +563,7 @@ static MeshRenderData *mesh_render_data_create(Mesh *me,
 
       mr->lverts = MEM_mallocN(mr->vert_len * sizeof(*mr->lverts), __func__);
       for (int v = 0; v < mr->vert_len; v++) {
-        if (BLI_BITMAP_TEST(lvert_map, v)) {
+        if (!BLI_BITMAP_TEST(lvert_map, v)) {
           mr->lverts[mr->vert_loose_len++] = v;
         }
       }
