@@ -42,6 +42,11 @@ class FILEBROWSER_HT_header(Header):
             layout.prop(params, "sort_method", expand=True, text="")
             layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
 
+            row = layout.row(align=True)
+            row.prop(params, "show_details_size", text="Size")
+            row.prop(params, "show_details_date", text="Date")
+            row.prop(params, "show_details_time", text="Time")
+
         layout.separator_spacer()
 
         layout.template_running_jobs()
@@ -104,6 +109,14 @@ class FILEBROWSER_PT_filter(Panel):
         layout.separator()
 
         layout.prop(params, "show_hidden")
+
+        layout.separator()
+
+        layout.label(text="Show Details:")
+        row = layout.row(align=True)
+        row.prop(params, "show_details_size", text="Size")
+        row.prop(params, "show_details_date", text="Date")
+        row.prop(params, "show_details_time", text="Time")
 
         layout.separator()
 

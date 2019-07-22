@@ -70,6 +70,8 @@
 
 #include "file_intern.h"  // own include
 
+#define COLUMN_PADDING (0.6f * UI_UNIT_X)
+
 /* Dummy helper - we need dynamic tooltips here. */
 static char *file_draw_tooltip_func(bContext *UNUSED(C), void *argN, const char *UNUSED(tip))
 {
@@ -714,14 +716,19 @@ static bool filelist_column_matches_sort(const FileSelectParams *params, FileLis
 
 static bool filelist_column_enabled(const FileSelectParams *params, FileListColumns column)
 {
-  if (params->display == FILE_SHORTDISPLAY) {
-    return ELEM(column, COLUMN_NAME, COLUMN_SIZE);
+  switch (column) {
+    case COLUMN_NAME:
+      /* Always enabled */
+      return true;
+    case COLUMN_DATE:
+      return (params->details_flags & FILE_DETAILS_DATE) != 0;
+    case COLUMN_TIME:
+      return (params->details_flags & FILE_DETAILS_TIME) != 0;
+    case COLUMN_SIZE:
+      return (params->details_flags & FILE_DETAILS_SIZE) != 0;
+    default:
+      return false;
   }
-  else if (params->display == FILE_LONGDISPLAY) {
-    return true;
-  }
-
-  return false;
 }
 
 static void draw_columnheader_columns(const FileSelectParams *params,
@@ -730,43 +737,41 @@ static void draw_columnheader_columns(const FileSelectParams *params,
                                       const uchar text_col[4])
 {
   const float divider_pad = 0.2 * layout->columnheader_h;
-  const int column_space = 0.6f * UI_UNIT_X;
   FileListColumns last_col = COLUMN_NONE;
   int sx = 0, sy = 0;
   int ofs_x;
 
   /* To get x position matching item drawing. */
   ED_fileselect_layout_tilepos(layout, 0, &ofs_x, &sy);
-  //  sx += ofs_x;
   sy = v2d->cur.ymax;
 
-  for (int column_idx = MAX_FILE_COLUMN - 1; column_idx >= 0; column_idx--) {
-    if (!filelist_column_enabled(params, column_idx)) {
+  for (FileListColumns column = MAX_FILE_COLUMN - 1; column >= 0; column--) {
+    if (!filelist_column_enabled(params, column)) {
       continue;
     }
 
-    last_col = column_idx;
+    last_col = column;
     break;
   }
   BLI_assert(last_col != COLUMN_NONE);
 
-  for (int column_idx = 0; column_idx < MAX_FILE_COLUMN; column_idx++) {
-    if (!filelist_column_enabled(params, column_idx)) {
+  for (FileListColumns column = 0; column < MAX_FILE_COLUMN; column++) {
+    if (!filelist_column_enabled(params, column)) {
       continue;
     }
 
     file_draw_string(sx + ofs_x,
                      sy,
-                     layout->column_names[column_idx],
-                     layout->column_widths[column_idx],
+                     layout->column_names[column],
+                     layout->column_widths[column],
                      layout->columnheader_h,
                      UI_STYLE_TEXT_LEFT,
                      text_col);
 
-    sx += layout->column_widths[column_idx] + column_space;
+    sx += layout->column_widths[column] + COLUMN_PADDING;
 
     /* Active sort type triangle */
-    if (filelist_column_matches_sort(params, column_idx)) {
+    if (filelist_column_matches_sort(params, column)) {
       float tri_color[4];
 
       rgba_uchar_to_float(tri_color, text_col);
@@ -777,7 +782,7 @@ static void draw_columnheader_columns(const FileSelectParams *params,
     }
 
     /* Separator line */
-    if (column_idx != last_col) {
+    if (column != last_col) {
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
@@ -806,6 +811,68 @@ static void draw_columnheader_columns(const FileSelectParams *params,
   }
 }
 
+/**
+ * Updates the stat string stored in file->entry if necessary.
+ */
+static const char *get_details_column_string(FileListColumns column,
+                                             const FileDirEntry *file,
+                                             const bool small_size,
+                                             const bool update_stat_strings)
+{
+  switch (column) {
+    case COLUMN_DATE:
+    case COLUMN_TIME:
+      if (!(file->typeflag & FILE_TYPE_BLENDERLIB) && !FILENAME_IS_CURRPAR(file->relpath)) {
+        if ((file->entry->date_str[0] == '\0') || update_stat_strings) {
+          BLI_filelist_entry_datetime_to_string(
+              NULL, file->entry->time, small_size, file->entry->time_str, file->entry->date_str);
+        }
+        return (column == COLUMN_DATE) ? file->entry->date_str : file->entry->time_str;
+      }
+      break;
+    case COLUMN_SIZE:
+      if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
+          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB))) {
+        if ((file->entry->size_str[0] == '\0') || update_stat_strings) {
+          BLI_filelist_entry_size_to_string(
+              NULL, file->entry->size, small_size, file->entry->size_str);
+        }
+        return file->entry->size_str;
+      }
+      break;
+    default:
+      break;
+  }
+
+  return NULL;
+}
+
+static void draw_details_columns(const FileSelectParams *params,
+                                 const FileLayout *layout,
+                                 const FileDirEntry *file,
+                                 int sx,
+                                 int sy,
+                                 const eFontStyle_Align align,
+                                 const uchar text_col[4])
+{
+  const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
+  const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
+
+  for (FileListColumns column = 0; column < MAX_FILE_COLUMN; column++) {
+    /* Name column is not a detail column (should already be drawn), always skip here. */
+    if ((column == COLUMN_NAME) || !filelist_column_enabled(params, column)) {
+      continue;
+    }
+    const char *str = get_details_column_string(column, file, small_size, update_stat_strings);
+
+    if (str) {
+      file_draw_string(
+          sx, sy, str, layout->column_widths[column], layout->tile_h, align, text_col);
+    }
+    sx += (int)layout->column_widths[column] + COLUMN_PADDING;
+  }
+}
+
 void file_draw_list(const bContext *C, ARegion *ar)
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
@@ -826,10 +893,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
   bool is_icon;
   eFontStyle_Align align;
   bool do_drag;
-  int column_space = 0.6f * UI_UNIT_X;
   unsigned char text_col[4];
-  const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
-  const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
   const bool draw_columnheader = (params->display == FILE_SHORTDISPLAY);
   const float thumb_icon_aspect = sqrtf(64.0f / (float)(params->thumbnail_size));
 
@@ -971,7 +1035,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
         width = layout->tile_w - 2 * padx;
       }
       else if (params->display == FILE_LONGDISPLAY) {
-        width = layout->column_widths[COLUMN_NAME] + column_space - 2 * padx;
+        width = layout->column_widths[COLUMN_NAME] + COLUMN_PADDING - 2 * padx;
       }
       else {
         BLI_assert(params->display == FILE_IMGDISPLAY);
@@ -1008,68 +1072,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
           sx + 1 + icon_ofs, tpos, file->name, (float)textwidth, textheight, align, text_col);
     }
 
-    sx += (int)layout->column_widths[COLUMN_NAME] + column_space;
-    if (params->display == FILE_SHORTDISPLAY) {
-      if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
-          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB))) {
-        if ((file->entry->size_str[0] == '\0') || update_stat_strings) {
-          BLI_filelist_entry_size_to_string(
-              NULL, file->entry->size, small_size, file->entry->size_str);
-        }
-        file_draw_string(sx,
-                         sy,
-                         file->entry->size_str,
-                         layout->column_widths[COLUMN_SIZE],
-                         layout->tile_h,
-                         align,
-                         text_col);
-      }
-      sx += (int)layout->column_widths[COLUMN_SIZE] + column_space;
-    }
-    else if (params->display == FILE_LONGDISPLAY) {
-      if (!(file->typeflag & FILE_TYPE_BLENDERLIB) && !FILENAME_IS_CURRPAR(file->relpath)) {
-        if ((file->entry->date_str[0] == '\0') || update_stat_strings) {
-          BLI_filelist_entry_datetime_to_string(
-              NULL, file->entry->time, small_size, file->entry->time_str, file->entry->date_str);
-        }
-        file_draw_string(sx,
-                         sy,
-                         file->entry->date_str,
-                         layout->column_widths[COLUMN_DATE],
-                         layout->tile_h,
-                         align,
-                         text_col);
-        sx += (int)layout->column_widths[COLUMN_DATE] + column_space;
-        file_draw_string(sx,
-                         sy,
-                         file->entry->time_str,
-                         layout->column_widths[COLUMN_TIME],
-                         layout->tile_h,
-                         align,
-                         text_col);
-        sx += (int)layout->column_widths[COLUMN_TIME] + column_space;
-      }
-      else {
-        sx += (int)layout->column_widths[COLUMN_DATE] + column_space;
-        sx += (int)layout->column_widths[COLUMN_TIME] + column_space;
-      }
-
-      if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
-          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB))) {
-        if ((file->entry->size_str[0] == '\0') || update_stat_strings) {
-          BLI_filelist_entry_size_to_string(
-              NULL, file->entry->size, small_size, file->entry->size_str);
-        }
-        file_draw_string(sx,
-                         sy,
-                         file->entry->size_str,
-                         layout->column_widths[COLUMN_SIZE],
-                         layout->tile_h,
-                         align,
-                         text_col);
-      }
-      sx += (int)layout->column_widths[COLUMN_SIZE] + column_space;
-    }
+    sx += (int)layout->column_widths[COLUMN_NAME] + COLUMN_PADDING;
+    draw_details_columns(params, layout, file, sx, sy, align, text_col);
   }
 
   BLF_batch_draw_end();

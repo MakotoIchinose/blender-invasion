@@ -670,8 +670,10 @@ typedef struct FileSelectParams {
   /** Display mode flag. */
   short display;
   short display_previous;
+  /** Details toggles (file size, creation date, etc.) */
+  char details_flags;
   /** Filter when (flags & FILE_FILTER) is true. */
-  char _pad2[2];
+  char _pad2;
   int filter;
 
   /** Max number of levels in dirtree to show at once, 0 to disable recursion. */
@@ -741,6 +743,13 @@ enum eFileSortType {
   FILE_SORT_EXTENSION = 2,
   FILE_SORT_TIME = 3,
   FILE_SORT_SIZE = 4,
+};
+
+/* FileSelectParams.details_flags */
+enum eFileDetails {
+  FILE_DETAILS_SIZE = (1 << 0),
+  FILE_DETAILS_DATE = (1 << 1),
+  FILE_DETAILS_TIME = (1 << 2)
 };
 
 /* these values need to be hardcoded in structs, dna does not recognize defines */
