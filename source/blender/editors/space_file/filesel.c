@@ -99,6 +99,8 @@ short ED_fileselect_set_params(SpaceFile *sfile)
     sfile->params->filter_glob[0] = '\0';
     /* set the default thumbnails size */
     sfile->params->thumbnail_size = 128;
+    /* Show size column by default. */
+    sfile->params->details_flags = FILE_DETAILS_SIZE;
   }
 
   params = sfile->params;
