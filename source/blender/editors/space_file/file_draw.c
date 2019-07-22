@@ -618,9 +618,9 @@ static void draw_background(FileLayout *layout, View2D *v2d)
   immUniformThemeColorShade(TH_BACK, -7);
 
   /* alternating flat shade background */
-  for (i = 0; (i <= layout->rows); i += 2) {
-    sy = (int)v2d->cur.ymax - i * (layout->tile_h + 2 * layout->tile_border_y) -
-         layout->tile_border_y;
+  for (i = 2; (i <= layout->rows + 1); i += 2) {
+    sy = (int)v2d->cur.ymax - layout->offset_top -
+         i * (layout->tile_h + 2 * layout->tile_border_y) - layout->tile_border_y;
 
     immRectf(pos,
              v2d->cur.xmin,
@@ -685,6 +685,127 @@ static void draw_dividers(FileLayout *layout, View2D *v2d)
   }
 }
 
+static void draw_columnheader_background(const FileLayout *layout, const View2D *v2d)
+{
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+  immUniformThemeColorShade(TH_BACK, 7);
+
+  immRectf(
+      pos, v2d->cur.xmin, v2d->cur.ymax - layout->columnheader_h, v2d->cur.xmax, v2d->cur.ymax);
+
+  immUnbindProgram();
+}
+
+static bool filelist_column_matches_sort(const FileSelectParams *params, FileListColumns column)
+{
+  switch (params->sort) {
+    case FILE_SORT_ALPHA:
+      return column == COLUMN_NAME;
+    case FILE_SORT_SIZE:
+      return column == COLUMN_SIZE;
+    case FILE_SORT_TIME:
+      return column == COLUMN_DATE;
+  }
+
+  return false;
+}
+
+static bool filelist_column_enabled(const FileSelectParams *params, FileListColumns column)
+{
+  if (params->display == FILE_SHORTDISPLAY) {
+    return ELEM(column, COLUMN_NAME, COLUMN_SIZE);
+  }
+  else if (params->display == FILE_LONGDISPLAY) {
+    return true;
+  }
+
+  return false;
+}
+
+static void draw_columnheader_columns(const FileSelectParams *params,
+                                      FileLayout *layout,
+                                      const View2D *v2d,
+                                      const uchar text_col[4])
+{
+  const float divider_pad = 0.2 * layout->columnheader_h;
+  const int column_space = 0.6f * UI_UNIT_X;
+  FileListColumns last_col = COLUMN_NONE;
+  int sx = 0, sy = 0;
+  int ofs_x;
+
+  /* To get x position matching item drawing. */
+  ED_fileselect_layout_tilepos(layout, 0, &ofs_x, &sy);
+  //  sx += ofs_x;
+  sy = v2d->cur.ymax;
+
+  for (int column_idx = MAX_FILE_COLUMN - 1; column_idx >= 0; column_idx--) {
+    if (!filelist_column_enabled(params, column_idx)) {
+      continue;
+    }
+
+    last_col = column_idx;
+    break;
+  }
+  BLI_assert(last_col != COLUMN_NONE);
+
+  for (int column_idx = 0; column_idx < MAX_FILE_COLUMN; column_idx++) {
+    if (!filelist_column_enabled(params, column_idx)) {
+      continue;
+    }
+
+    file_draw_string(sx + ofs_x,
+                     sy,
+                     layout->column_names[column_idx],
+                     layout->column_widths[column_idx],
+                     layout->columnheader_h,
+                     UI_STYLE_TEXT_LEFT,
+                     text_col);
+
+    sx += layout->column_widths[column_idx] + column_space;
+
+    /* Active sort type triangle */
+    if (filelist_column_matches_sort(params, column_idx)) {
+      float tri_color[4];
+
+      rgba_uchar_to_float(tri_color, text_col);
+      UI_draw_icon_tri(sx - ofs_x - 0.15f * U.widget_unit,
+                       sy + (0.1f * U.widget_unit) - layout->columnheader_h / 2,
+                       'v',
+                       tri_color);
+    }
+
+    /* Separator line */
+    if (column_idx != last_col) {
+      uint pos = GPU_vertformat_attr_add(
+          immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+      immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+      immUniformThemeColorShade(TH_BACK, -10);
+      immBegin(GPU_PRIM_LINES, 2);
+      immVertex2f(pos, sx - 1, sy - divider_pad);
+      immVertex2f(pos, sx - 1, sy - layout->columnheader_h + divider_pad);
+      immEnd();
+      immUnbindProgram();
+    }
+  }
+
+  /* Vertical separator lines line */
+  {
+    uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+    immUniformThemeColorShade(TH_BACK, -10);
+    immBegin(GPU_PRIM_LINES, 4);
+    immVertex2f(pos, v2d->cur.xmin, sy);
+    immVertex2f(pos, v2d->cur.xmax, sy);
+    immVertex2f(pos, v2d->cur.xmin, sy - layout->columnheader_h);
+    immVertex2f(pos, v2d->cur.xmax, sy - layout->columnheader_h);
+    immEnd();
+    immUnbindProgram();
+  }
+}
+
 void file_draw_list(const bContext *C, ARegion *ar)
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
@@ -709,14 +830,13 @@ void file_draw_list(const bContext *C, ARegion *ar)
   unsigned char text_col[4];
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
+  const bool draw_columnheader = (params->display == FILE_SHORTDISPLAY);
   const float thumb_icon_aspect = sqrtf(64.0f / (float)(params->thumbnail_size));
 
   numfiles = filelist_files_ensure(files);
 
   if (params->display != FILE_IMGDISPLAY) {
-
     draw_background(layout, v2d);
-
     draw_dividers(layout, v2d);
   }
 
@@ -772,11 +892,16 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
   BLF_batch_draw_begin();
 
+  UI_GetThemeColor4ubv(TH_TEXT, text_col);
+
   for (i = offset; (i < numfiles) && (i < offset + numfiles_layout); i++) {
     unsigned int file_selflag;
     char path[FILE_MAX_LIBEXTRA];
+    int padx = 0.1f * UI_UNIT_X;
+    int icon_ofs = 0;
+
     ED_fileselect_layout_tilepos(layout, i, &sx, &sy);
-    sx += (int)(v2d->tot.xmin + 0.1f * UI_UNIT_X);
+    sx += (int)(v2d->tot.xmin + padx);
     sy = (int)(v2d->tot.ymax - sy);
 
     file = filelist_file(files, i);
@@ -790,15 +915,14 @@ void file_draw_list(const bContext *C, ARegion *ar)
         int colorid = (file_selflag & FILE_SEL_SELECTED) ? TH_HILITE : TH_BACK;
         int shade = (params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ? 35 :
                                                                                              0;
+        const short width = ELEM(params->display, FILE_SHORTDISPLAY, FILE_LONGDISPLAY) ?
+                                layout->tile_w - (2 * padx) :
+                                layout->tile_w;
 
         BLI_assert(i == 0 || !FILENAME_IS_CURRPAR(file->relpath));
 
-        draw_tile(sx,
-                  sy - 1,
-                  layout->tile_w + 4,
-                  sfile->layout->tile_h + layout->tile_border_y,
-                  colorid,
-                  shade);
+        draw_tile(
+            sx, sy - 1, width, sfile->layout->tile_h + layout->tile_border_y, colorid, shade);
       }
     }
     UI_draw_roundbox_corner_set(UI_CNR_NONE);
@@ -836,20 +960,18 @@ void file_draw_list(const bContext *C, ARegion *ar)
                      ICON_DEFAULT_WIDTH_SCALE,
                      ICON_DEFAULT_HEIGHT_SCALE,
                      do_drag);
-      sx += ICON_DEFAULT_WIDTH_SCALE + 0.2f * UI_UNIT_X;
+      icon_ofs += ICON_DEFAULT_WIDTH_SCALE + 0.2f * UI_UNIT_X;
     }
-
-    UI_GetThemeColor4ubv(TH_TEXT, text_col);
 
     if (file_selflag & FILE_SEL_EDITING) {
       uiBut *but;
       short width;
 
       if (params->display == FILE_SHORTDISPLAY) {
-        width = layout->tile_w - (ICON_DEFAULT_WIDTH_SCALE + 0.2f * UI_UNIT_X);
+        width = layout->tile_w - 2 * padx;
       }
       else if (params->display == FILE_LONGDISPLAY) {
-        width = layout->column_widths[COLUMN_NAME] + (column_space * 3.5f);
+        width = layout->column_widths[COLUMN_NAME] + column_space - 2 * padx;
       }
       else {
         BLI_assert(params->display == FILE_IMGDISPLAY);
@@ -860,9 +982,9 @@ void file_draw_list(const bContext *C, ARegion *ar)
                      UI_BTYPE_TEXT,
                      1,
                      "",
-                     sx,
+                     sx + icon_ofs,
                      sy - layout->tile_h - 0.15f * UI_UNIT_X,
-                     width,
+                     width - icon_ofs,
                      textheight,
                      sfile->params->renamefile,
                      1.0f,
@@ -882,7 +1004,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
     if (!(file_selflag & FILE_SEL_EDITING)) {
       int tpos = (FILE_IMGDISPLAY == params->display) ? sy - layout->tile_h + layout->textheight :
                                                         sy;
-      file_draw_string(sx + 1, tpos, file->name, (float)textwidth, textheight, align, text_col);
+      file_draw_string(
+          sx + 1 + icon_ofs, tpos, file->name, (float)textwidth, textheight, align, text_col);
     }
 
     sx += (int)layout->column_widths[COLUMN_NAME] + column_space;
@@ -953,6 +1076,12 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
   UI_block_end(C, block);
   UI_block_draw(C, block);
+
+  /* Draw last, on top of file list. */
+  if (draw_columnheader) {
+    draw_columnheader_background(layout, v2d);
+    draw_columnheader_columns(params, layout, v2d, text_col);
+  }
 
   layout->curr_size = params->thumbnail_size;
 }

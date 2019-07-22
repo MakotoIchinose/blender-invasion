@@ -452,7 +452,9 @@ static void file_main_region_draw(const bContext *C, ARegion *ar)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
+  rcti view_rect;
+  ED_fileselect_layout_maskrect(sfile->layout, v2d, &view_rect);
+  scrollers = UI_view2d_scrollers_calc(v2d, &view_rect);
   UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
 }
