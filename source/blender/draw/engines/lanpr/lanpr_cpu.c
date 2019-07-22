@@ -195,7 +195,7 @@ void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
     use_background_color[3] = 1;
   }
   else {
-    copy_v3_v3(use_background_color, lanpr->background_color);
+    copy_v4_v4(use_background_color, lanpr->background_color);
   }
 
   GPU_framebuffer_bind(fbl->dpix_transform);
@@ -289,7 +289,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     use_background_color[3] = 1;
   }
   else {
-    copy_v3_v3(use_background_color, lanpr->background_color);
+    copy_v4_v4(use_background_color, lanpr->background_color);
   }
 
   GPU_framebuffer_bind(fbl->software_ms);
