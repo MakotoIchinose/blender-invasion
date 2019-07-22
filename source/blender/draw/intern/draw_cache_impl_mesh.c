@@ -67,6 +67,12 @@
 
 #include "draw_cache_impl.h" /* own include */
 
+// #define DEBUG_TIME
+
+#ifdef DEBUG_TIME
+#  include "PIL_time_utildefines.h"
+#endif
+
 static void mesh_batch_cache_clear(Mesh *me);
 
 /* Vertex Group Selection and display options */
@@ -4014,11 +4020,19 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
 
   MeshExtractFnRef *extract_refs = BLI_array_alloca(extract_refs, cb_total_len);
 
+#ifdef DEBUG_TIME
+  double rdata_start = PIL_check_seconds_timer();
+#endif
+
   MeshRenderData *mr = mesh_render_data_create(
       me, do_final, iter_flag, data_flag, cd_layer_used, ts);
   mr->cache = cache; /* HACK */
   mr->use_hide = use_hide;
   mr->use_subsurf_fdots = use_subsurf_fdots;
+
+#ifdef DEBUG_TIME
+  double rdata_end = PIL_check_seconds_timer();
+#endif
 
   int ref_id = 0;
   for (int i = 0; i < sizeof(mbc) / sizeof(void *); i++) {
@@ -4039,7 +4053,16 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
     }
   }
 
+#ifdef DEBUG_TIME
+  double init_start = PIL_check_seconds_timer();
+#endif
+
   mesh_extract_init(mr, extract_refs, cb_total_len);
+
+#ifdef DEBUG_TIME
+  double init_end = PIL_check_seconds_timer();
+#endif
+
   mesh_extract_iter_looptri(mr, extract_refs, cb_total_len);
   mesh_extract_iter_loop(mr, extract_refs, cb_total_len);
   mesh_extract_iter_ledge(mr, extract_refs, cb_total_len);
@@ -4047,6 +4070,33 @@ static void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
   mesh_extract_finish(mr, extract_refs, cb_total_len);
 
   mesh_render_data_free(mr);
+
+#ifdef DEBUG_TIME
+  double end = PIL_check_seconds_timer();
+
+  static double avg = 0;
+  static double avg_fps = 0;
+  static double avg_rdata = 0;
+  static double avg_init = 0;
+  static double end_prev = 0;
+
+  if (end_prev == 0) {
+    end_prev = end;
+  }
+
+  avg = avg * 0.95 + (end - init_start) * 0.05;
+  avg_fps = avg_fps * 0.95 + (end - end_prev) * 0.05;
+  avg_rdata = avg_rdata * 0.95 + (rdata_end - rdata_start) * 0.05;
+  avg_init = avg_init * 0.95 + (init_end - init_start) * 0.05;
+
+  printf("rdata %.0fms init %.0fms iter %.0fms (frame %.0fms)\n",
+         avg_rdata * 1000,
+         avg_init * 1000,
+         avg * 1000,
+         avg_fps * 1000);
+
+  end_prev = end;
+#endif
 }
 
 /** \} */
