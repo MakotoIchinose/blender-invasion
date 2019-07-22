@@ -65,7 +65,7 @@ static int gpencil_export_svg_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool gpencil_found(bContext *C)
+static bool gpencil_export_svg_poll(bContext *C)
 {
   Object *o = CTX_data_active_object(C);
 
@@ -87,7 +87,7 @@ void GPENCIL_OT_export_svg(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = gpencil_export_svg_exec;
-  ot->poll = gpencil_found;
+  ot->poll = gpencil_export_svg_poll;
 
   /* flag */
   ot->flag = OPTYPE_USE_EVAL_DATA;
