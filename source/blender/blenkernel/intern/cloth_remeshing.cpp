@@ -1400,8 +1400,8 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
 /* Assumed that active_faces and fix_active have been updated before
  * using either of the other 2 update_active_faces function so that
  * there is no face that is not part of bm */
-static void cloth_remeshing_update_active_faces(vector<BMFace *> active_faces,
-                                                vector<BMFace *> fix_active)
+static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
+                                                vector<BMFace *> &fix_active)
 {
   for (int i = 0; i < fix_active.size(); i++) {
     bool already_exists = false;
@@ -1458,7 +1458,12 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       count++;
       return true;
     }
+    /* printf("Skipped previous part! size: %d i: %d ", (int)active_faces.size(), i); */
     cloth_remeshing_remove_face(active_faces, i--);
+    /* TODO(Ish): a double i-- is a hacky way to ensure there is no
+     * crash when removing a face */
+    i--;
+    /* printf("new size: %d new i: %d\n", (int)active_faces.size(), i); */
   }
   return false;
 }
@@ -1515,12 +1520,6 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   BMIter fiter;
   BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
     active_faces.push_back(f);
-  }
-  for (int i = 0; i < active_faces.size(); i++) {
-    BMFace *temp_f = active_faces[i];
-    if (!(temp_f->head.htype == BM_FACE)) {
-      printf("htype didn't match: %d\n", i);
-    }
   }
   int prev_mvert_num = clmd->clothObject->mvert_num;
   int count = 0;
@@ -1595,12 +1594,6 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph, Object *ob, ClothModif
   BMIter fiter;
   BM_ITER_MESH (f, &fiter, clmd->clothObject->bm, BM_FACES_OF_MESH) {
     active_faces.push_back(f);
-  }
-  for (int i = 0; i < active_faces.size(); i++) {
-    BMFace *temp_f = active_faces[i];
-    if (!(temp_f->head.htype == BM_FACE)) {
-      printf("htype didn't match: %d\n", i);
-    }
   }
   int prev_mvert_num = clmd->clothObject->mvert_num;
   int count = 0;
