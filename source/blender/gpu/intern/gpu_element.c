@@ -167,9 +167,6 @@ void GPU_indexbuf_set_point_vert(GPUIndexBufBuilder *builder, uint elem, uint v1
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = v1;
-  if (builder->index_len < elem) {
-    builder->index_len = elem;
-  }
 }
 
 void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2)
@@ -182,9 +179,6 @@ void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1
   uint idx = elem * 2;
   builder->data[idx++] = v1;
   builder->data[idx++] = v2;
-  if (builder->index_len < idx) {
-    builder->index_len = idx;
-  }
 }
 
 void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2, uint v3)
@@ -199,9 +193,6 @@ void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1,
   builder->data[idx++] = v1;
   builder->data[idx++] = v2;
   builder->data[idx++] = v3;
-  if (builder->index_len < idx) {
-    builder->index_len = idx;
-  }
 }
 
 void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
@@ -214,7 +205,6 @@ void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
 void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem)
 {
   BLI_assert(builder->prim_type == GPU_PRIM_LINES);
-  BLI_assert(v1 != v2);
   BLI_assert((elem + 1) * 2 <= builder->max_index_len);
   uint idx = elem * 2;
   builder->data[idx++] = RESTART_INDEX;
@@ -224,7 +214,6 @@ void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem)
 void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem)
 {
   BLI_assert(builder->prim_type == GPU_PRIM_TRIS);
-  BLI_assert(v1 != v2 && v2 != v3 && v3 != v1);
   BLI_assert((elem + 1) * 3 <= builder->max_index_len);
   uint idx = elem * 3;
   builder->data[idx++] = RESTART_INDEX;

@@ -233,6 +233,21 @@ BLI_INLINE void mesh_cd_layers_type_clear(DRW_MeshCDMask *a)
   *((uint32_t *)a) = 0;
 }
 
+BLI_INLINE BMFace *bm_original_face_get(BMesh *bm, int idx)
+{
+  return ((idx != ORIGINDEX_NONE) ? BM_face_at_index(bm, idx) : NULL);
+}
+
+BLI_INLINE BMEdge *bm_original_edge_get(BMesh *bm, int idx)
+{
+  return ((idx != ORIGINDEX_NONE) ? BM_edge_at_index(bm, idx) : NULL);
+}
+
+BLI_INLINE BMVert *bm_original_vert_get(BMesh *bm, int idx)
+{
+  return ((idx != ORIGINDEX_NONE) ? BM_vert_at_index(bm, idx) : NULL);
+}
+
 static void mesh_cd_calc_active_uv_layer(const Mesh *me, DRW_MeshCDMask *cd_used)
 {
   const CustomData *cd_ldata = (me->edit_mesh) ? &me->edit_mesh->bm->ldata : &me->ldata;
@@ -1201,7 +1216,7 @@ typedef struct MeshExtractIterData {
   int v1, v2, v3;
 
   bool use_hide;
-  MeshRenderData *mr;
+  const MeshRenderData *mr;
   /** iter function list */
   void *itr_fn;
 } MeshExtractIterData;
@@ -1224,93 +1239,132 @@ typedef struct MeshExtract {
 /** \name Extract Triangles Indices
  * \{ */
 
-typedef struct MeshExtract_Tri_Data {
-  GPUIndexBufBuilder elb;
-  uint32_t mat_tri_idx[0];
-} MeshExtract_Tri_Data;
-
 static void *mesh_tri_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
-  size_t mat_tri_idx_size = sizeof(uint32_t) * mr->mat_len;
-  MeshExtract_Tri_Data *data = MEM_callocN(sizeof(*data) + mat_tri_idx_size, __func__);
-  GPU_indexbuf_init(&data->elb, GPU_PRIM_TRIS, mr->tri_len, mr->loop_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->tri_len * 3);
-  /* Count how many triangle for each material. */
+  GPUIndexBufBuilder *elb = MEM_callocN(sizeof(*elb), __func__);
+  GPU_indexbuf_init(elb, GPU_PRIM_TRIS, mr->tri_len, mr->loop_len);
+
+  return elb;
+}
+static void mesh_tri_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+{
+  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
+    GPU_indexbuf_set_tri_verts(elb, iter->tri_idx, iter->v1, iter->v2, iter->v3);
+  }
+  else {
+    GPU_indexbuf_set_tri_restart(elb, iter->tri_idx);
+  }
+}
+static void mesh_tri_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+{
+  if (!iter->efa) {
+    mesh_tri_iter(iter, NULL, elb);
+  }
+  else if (!BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN)) {
+    GPU_indexbuf_set_tri_verts(elb, iter->tri_idx, iter->v1, iter->v2, iter->v3);
+  }
+  else {
+    GPU_indexbuf_set_tri_restart(elb, iter->tri_idx);
+  }
+}
+static void mesh_tri_finish(const MeshRenderData *mr, void *ibo, void *elb)
+{
+  MEM_SAFE_FREE(mr->cache->tri_mat_end);
+  MEM_SAFE_FREE(mr->cache->tri_mat_start);
+  /* HACK pass per mat triangle start and end outside the extract loop. */
+  size_t mat_tri_idx_size = sizeof(int) * mr->mat_len;
+  mr->cache->tri_mat_start = MEM_callocN(mat_tri_idx_size, __func__);
+  mr->cache->tri_mat_end = MEM_callocN(mat_tri_idx_size, __func__);
+
   if (mr->mat_len > 1) {
+    int *mat_tri_ofs = mr->cache->tri_mat_start;
+    int *mat_tri_len = mr->cache->tri_mat_end;
+    /* Count how many triangle for each material. */
     if (mr->extract_type == MR_EXTRACT_BMESH) {
       BMIter iter;
       BMFace *efa;
       BM_ITER_MESH (efa, &iter, mr->bm, BM_FACES_OF_MESH) {
-        BLI_assert(efa->len > 2);
-        data->mat_tri_idx[efa->mat_nr] += efa->len - 2;
+        int poly_tri_len = efa->len - 2;
+        mat_tri_ofs[efa->mat_nr] += poly_tri_len;
       }
     }
     else {
       const MPoly *mpoly = mr->mpoly;
       for (int p = 0; p < mr->poly_len; p++, mpoly++) {
-        BLI_assert(mpoly->totloop > 2);
-        data->mat_tri_idx[mpoly->mat_nr] += mpoly->totloop - 2;
+        int poly_tri_len = mpoly->totloop - 2;
+        mat_tri_ofs[mpoly->mat_nr] += poly_tri_len;
       }
     }
-  }
-  /* Accumulate tri len per mat to have correct offsets. */
-  int ofs = data->mat_tri_idx[0];
-  data->mat_tri_idx[0] = 0;
-  for (int i = 1; i < mr->mat_len; i++) {
-    int tmp = data->mat_tri_idx[i];
-    data->mat_tri_idx[i] = ofs;
-    ofs += tmp;
-  }
-  /* HACK pass per mat triangle start and end outside the extract loop. */
-  MEM_SAFE_FREE(mr->cache->tri_mat_end);
-  MEM_SAFE_FREE(mr->cache->tri_mat_start);
-  mr->cache->tri_mat_end = MEM_mallocN(mat_tri_idx_size, __func__);
-  mr->cache->tri_mat_start = MEM_mallocN(mat_tri_idx_size, __func__);
-  memcpy(mr->cache->tri_mat_start, data->mat_tri_idx, mat_tri_idx_size);
-
-  return data;
-}
-static void mesh_tri_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *user_data)
-{
-  if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
-    MeshExtract_Tri_Data *data = user_data;
-    uint32_t tri_idx = atomic_fetch_and_add_uint32(&data->mat_tri_idx[iter->mpoly->mat_nr], 1u);
-    GPU_indexbuf_set_tri_verts(&data->elb, tri_idx, iter->v1, iter->v2, iter->v3);
-  }
-}
-static void mesh_tri_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *user_data)
-{
-  if (!iter->efa) {
-    mesh_tri_iter(iter, NULL, user_data);
-  }
-  else if (!BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN)) {
-    MeshExtract_Tri_Data *data = user_data;
-    uint32_t tri_idx = atomic_fetch_and_add_uint32(&data->mat_tri_idx[iter->efa->mat_nr], 1u);
-    GPU_indexbuf_set_tri_verts(&data->elb, tri_idx, iter->v1, iter->v2, iter->v3);
-  }
-}
-static void mesh_tri_finish(const MeshRenderData *mr, void *ibo, void *user_data)
-{
-  MeshExtract_Tri_Data *data = user_data;
-  GPU_indexbuf_build_in_place(&data->elb, ibo);
-  /* HACK pass per mat triangle start and end outside the extract loop. */
-  memcpy(mr->cache->tri_mat_end, data->mat_tri_idx, sizeof(uint32_t) * mr->mat_len);
-
-  for (int mat = 0; mat < mr->mat_len; mat++) {
-    if (mr->cache->tri_mat_end[mat] < mr->cache->tri_mat_start[mat]) {
-      /* Fill the rest of the buffer with restart index. */
-      for (int tri = mr->cache->tri_mat_end[mat]; tri < mr->cache->tri_mat_start[mat]; tri++) {
-        GPU_indexbuf_set_tri_restart(&data->elb, tri);
+    // memcpy(mat_tri_len, mat_tri_ofs, sizeof(*mat_tri_len) * mr->mat_len);
+    /* Accumulate tri len per mat to have correct offsets. */
+    int ofs = mat_tri_ofs[0];
+    mat_tri_ofs[0] = 0;
+    for (int i = 1; i < mr->mat_len; i++) {
+      int tmp = mat_tri_ofs[i];
+      mat_tri_ofs[i] = ofs;
+      ofs += tmp;
+    }
+    /* Now sort triangles per materials. */
+    uint(*tri_sorted)[3] = MEM_mallocN(sizeof(*tri_sorted) * mr->tri_len, __func__);
+    uint(*tri_source)[3] = (uint(*)[3])((GPUIndexBufBuilder *)elb)->data;
+    if (mr->extract_type == MR_EXTRACT_BMESH) {
+      int tri_idx = 0;
+      BMIter iter;
+      BMFace *efa;
+      BM_ITER_MESH (efa, &iter, mr->bm, BM_FACES_OF_MESH) {
+        int poly_tri_len = efa->len - 2;
+        uint(*src)[3] = tri_source + tri_idx;
+        uint(*dst)[3] = tri_sorted + mat_tri_ofs[efa->mat_nr] + mat_tri_len[efa->mat_nr];
+        memcpy(dst, src, sizeof(*dst) * poly_tri_len);
+        mat_tri_len[efa->mat_nr] += poly_tri_len;
+        tri_idx += poly_tri_len;
       }
     }
-  }
+    else {
+      const MPoly *mpoly = mr->mpoly;
+      int mat_curr = mpoly->mat_nr;
+      int cpy_sta = 0, cpy_end = 0, cpy_len;
+      int tri_idx = 0;
+      for (int p = 0; p < mr->poly_len; p++, mpoly++) {
+        if ((mat_curr != mpoly->mat_nr) || (p == mr->poly_len - 1)) {
+          cpy_end = (p == mr->poly_len - 1) ? tri_idx + mpoly->totloop - 2 : tri_idx;
+          cpy_len = cpy_end - cpy_sta;
+          int dst_sta = mat_tri_ofs[mat_curr] + mat_tri_len[mat_curr];
+          uint(*src)[3] = tri_source + cpy_sta;
+          uint(*dst)[3] = tri_sorted + dst_sta;
+          printf("copy mat[%d] %d-%d to %d-%d\n",
+                 mat_curr,
+                 cpy_sta,
+                 cpy_sta + cpy_len,
+                 dst_sta,
+                 dst_sta + cpy_len);
+          memcpy(dst, src, sizeof(*dst) * cpy_len);
 
-  MEM_freeN(user_data);
+          mat_tri_len[mat_curr] += cpy_len;
+          cpy_sta = tri_idx;
+          mat_curr = mpoly->mat_nr;
+        }
+        tri_idx += mpoly->totloop - 2;
+      }
+    }
+
+    /* Replace old (unsorted) data and free it. */
+    ((GPUIndexBufBuilder *)elb)->data = (uint *)tri_sorted;
+    MEM_freeN(tri_source);
+    /* Set material indices end. */
+    for (int i = 1; i < mr->mat_len; i++) {
+      mr->cache->tri_mat_end[i] = mat_tri_ofs[i] + mat_tri_len[i];
+    }
+  }
+  else {
+    mr->cache->tri_mat_start[0] = 0;
+    mr->cache->tri_mat_end[0] = mr->tri_len;
+  }
+  /* XXX overriding here in case multithread hazard happened. */
+  ((GPUIndexBufBuilder *)elb)->index_len = mr->tri_len * 3;
+  GPU_indexbuf_build_in_place(elb, ibo);
+
+  MEM_freeN(elb);
 }
 
 MeshExtract extract_tris = {
@@ -1380,7 +1434,8 @@ static void mesh_edge_finish(const MeshRenderData *mr, void *ibo, void *elb)
     mr->cache->edge_loose_start = 0;
     mr->cache->edge_loose_end = 0;
   }
-
+  /* XXX overriding here in case multithread hazard happened. */
+  ((GPUIndexBufBuilder *)elb)->index_len = (mr->edge_len + mr->edge_loose_len) * 2;
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
 }
@@ -1428,8 +1483,10 @@ static void mesh_vert_iter_edit(const MeshExtractIterData *iter, void *UNUSED(bu
     GPU_indexbuf_set_point_restart(elb, iter->vert_idx);
   }
 }
-static void mesh_vert_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
+static void mesh_vert_finish(const MeshRenderData *mr, void *ibo, void *elb)
 {
+  /* XXX overriding here in case multithread hazard happened. */
+  ((GPUIndexBufBuilder *)elb)->index_len = mr->vert_len;
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
 }
@@ -1479,8 +1536,10 @@ static void mesh_facedot_iter_edit(const MeshExtractIterData *iter, void *UNUSED
     GPU_indexbuf_set_point_restart(elb, iter->face_idx);
   }
 }
-static void mesh_facedot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
+static void mesh_facedot_finish(const MeshRenderData *mr, void *ibo, void *elb)
 {
+  /* XXX overriding here in case multithread hazard happened. */
+  ((GPUIndexBufBuilder *)elb)->index_len = mr->poly_len;
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
 }
@@ -1543,9 +1602,10 @@ static void mesh_lines_paint_mask_iter_edit(const MeshExtractIterData *UNUSED(it
   /* painting does not use the edit_bmesh */
   BLI_assert(0);
 }
-static void mesh_lines_paint_mask_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
+static void mesh_lines_paint_mask_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
   MeshExtract_LinePaintMask_Data *extract_data = (MeshExtract_LinePaintMask_Data *)data;
+  extract_data->elb.index_len = mr->edge_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -1588,7 +1648,7 @@ static void *mesh_lines_adjacency_init(const MeshRenderData *mr, void *UNUSED(bu
   data->is_manifold = true;
   return data;
 }
-static void mesh_lines_adjacency_triangle(
+BLI_INLINE void mesh_lines_adjacency_triangle(
     uint v1, uint v2, uint v3, uint l1, uint l2, uint l3, MeshExtract_LineAdjacency_Data *data)
 {
   GPUIndexBufBuilder *elb = &data->elb;
@@ -1630,9 +1690,9 @@ static void mesh_lines_adjacency_triangle(
     }
   }
 }
-static void mesh_lines_adjacency_iter(const MeshExtractIterData *iter,
-                                      void *UNUSED(buf),
-                                      void *data)
+BLI_INLINE void mesh_lines_adjacency_iter(const MeshExtractIterData *iter,
+                                          void *UNUSED(buf),
+                                          void *data)
 {
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
     const MLoopTri *mlt = &iter->mr->mlooptri[iter->tri_idx];
@@ -1645,9 +1705,9 @@ static void mesh_lines_adjacency_iter(const MeshExtractIterData *iter,
                                   data);
   }
 }
-static void mesh_lines_adjacency_iter_edit(const MeshExtractIterData *iter,
-                                           void *UNUSED(buf),
-                                           void *data)
+BLI_INLINE void mesh_lines_adjacency_iter_edit(const MeshExtractIterData *iter,
+                                               void *UNUSED(buf),
+                                               void *data)
 {
   if (BM_elem_flag_test(iter->efa, BM_ELEM_HIDDEN)) {
     BMLoop **bmlt = &iter->mr->edit_bmesh->looptris[iter->tri_idx][0];
@@ -1662,6 +1722,51 @@ static void mesh_lines_adjacency_iter_edit(const MeshExtractIterData *iter,
 }
 static void mesh_lines_adjacency_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
+  /* HACK: unless we make the whole algorithm threadsafe
+   * we need to make another manual iteration. */
+  MeshExtractIterData itr = {0};
+  itr.mr = mr;
+  itr.use_hide = mr->use_hide;
+  switch (mr->extract_type) {
+    case MR_EXTRACT_BMESH:
+      for (int t = 0; t < mr->tri_len; t++) {
+        itr.tri_idx = t;
+        BMLoop **elooptri = &itr.mr->edit_bmesh->looptris[t][0];
+        itr.efa = elooptri[0]->f;
+        itr.face_idx = BM_elem_index_get(itr.efa);
+        itr.v1 = BM_elem_index_get(elooptri[0]);
+        itr.v2 = BM_elem_index_get(elooptri[1]);
+        itr.v3 = BM_elem_index_get(elooptri[2]);
+        mesh_lines_adjacency_iter_edit(&itr, NULL, data);
+      }
+      break;
+    case MR_EXTRACT_MAPPED:
+      for (int t = 0; t < mr->tri_len; t++) {
+        MLoopTri *mlt = &mr->mlooptri[t];
+        itr.tri_idx = t;
+        itr.v1 = mlt->tri[0];
+        itr.v2 = mlt->tri[1];
+        itr.v3 = mlt->tri[2];
+        itr.face_idx = mlt->poly;
+        itr.mpoly = &mr->mpoly[itr.face_idx];
+        itr.efa = bm_original_face_get(mr->bm, mr->p_origindex[itr.face_idx]);
+        mesh_lines_adjacency_iter_edit(&itr, NULL, data);
+      }
+      break;
+    case MR_EXTRACT_MESH:
+      for (int t = 0; t < mr->tri_len; t++) {
+        MLoopTri *mlt = &mr->mlooptri[t];
+        itr.tri_idx = t;
+        itr.v1 = mlt->tri[0];
+        itr.v2 = mlt->tri[1];
+        itr.v3 = mlt->tri[2];
+        itr.face_idx = mlt->poly;
+        itr.mpoly = &mr->mpoly[itr.face_idx];
+        mesh_lines_adjacency_iter(&itr, NULL, data);
+      }
+      break;
+  }
+
   MeshExtract_LineAdjacency_Data *extract_data = (MeshExtract_LineAdjacency_Data *)data;
   /* Create edges for remaining non manifold edges. */
   EdgeHashIterator *ehi = BLI_edgehashIterator_new(extract_data->eh);
@@ -1691,12 +1796,8 @@ static void mesh_lines_adjacency_finish(const MeshRenderData *mr, void *ibo, voi
 
 #undef NO_EDGE
 
-MeshExtract extract_lines_adjacency = {mesh_lines_adjacency_init,
-                                       mesh_lines_adjacency_iter,
-                                       mesh_lines_adjacency_iter_edit,
-                                       mesh_lines_adjacency_finish,
-                                       MR_ITER_LOOPTRI,
-                                       0};
+MeshExtract extract_lines_adjacency = {
+    mesh_lines_adjacency_init, NULL, NULL, mesh_lines_adjacency_finish, MR_ITER_LOOPTRI, 0};
 
 /** \} */
 
@@ -1749,9 +1850,11 @@ static void mesh_edituv_tri_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_tri_restart(&extract_data->elb, iter->tri_idx);
   }
 }
-static void mesh_edituv_tri_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
+static void mesh_edituv_tri_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
   MeshExtract_EditUvTri_Data *extract_data = (MeshExtract_EditUvTri_Data *)data;
+  /* XXX overriding here in case multithread hazard happened. */
+  extract_data->elb.index_len = mr->tri_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -1811,9 +1914,11 @@ static void mesh_edituv_line_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_line_restart(&extract_data->elb, iter->loop_idx);
   }
 }
-static void mesh_edituv_line_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
+static void mesh_edituv_line_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
   MeshExtract_EditUvLine_Data *extract_data = (MeshExtract_EditUvLine_Data *)data;
+  /* XXX overriding here in case multithread hazard happened. */
+  extract_data->elb.index_len = mr->loop_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -1873,9 +1978,11 @@ static void mesh_edituv_point_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_point_restart(&extract_data->elb, iter->loop_idx);
   }
 }
-static void mesh_edituv_point_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
+static void mesh_edituv_point_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
   MeshExtract_EditUvPoint_Data *extract_data = (MeshExtract_EditUvPoint_Data *)data;
+  /* XXX overriding here in case multithread hazard happened. */
+  extract_data->elb.index_len = mr->loop_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -1937,9 +2044,11 @@ static void mesh_edituv_fdot_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_line_restart(&extract_data->elb, iter->face_idx);
   }
 }
-static void mesh_edituv_fdot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
+static void mesh_edituv_fdot_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
   MeshExtract_EditUvFdot_Data *extract_data = (MeshExtract_EditUvFdot_Data *)data;
+  /* XXX overriding here in case multithread hazard happened. */
+  extract_data->elb.index_len = mr->poly_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -2616,7 +2725,7 @@ typedef struct EditLoopData {
   uchar bweight;
 } EditLoopData;
 
-static void mesh_render_data_face_flag(MeshRenderData *mr,
+static void mesh_render_data_face_flag(const MeshRenderData *mr,
                                        const BMFace *efa,
                                        const int cd_ofs,
                                        EditLoopData *eattr)
@@ -2708,7 +2817,7 @@ static void mesh_render_data_edge_flag(const MeshRenderData *mr,
 #endif
 }
 
-static void mesh_render_data_loop_flag(MeshRenderData *mr,
+static void mesh_render_data_loop_flag(const MeshRenderData *mr,
                                        BMLoop *loop,
                                        const int cd_ofs,
                                        EditLoopData *eattr)
@@ -2725,7 +2834,7 @@ static void mesh_render_data_loop_flag(MeshRenderData *mr,
   }
 }
 
-static void mesh_render_data_loop_edge_flag(MeshRenderData *mr,
+static void mesh_render_data_loop_edge_flag(const MeshRenderData *mr,
                                             BMLoop *loop,
                                             const int cd_ofs,
                                             EditLoopData *eattr)
@@ -2739,7 +2848,9 @@ static void mesh_render_data_loop_edge_flag(MeshRenderData *mr,
   }
 }
 
-static void mesh_render_data_vert_flag(MeshRenderData *mr, const BMVert *eve, EditLoopData *eattr)
+static void mesh_render_data_vert_flag(const MeshRenderData *mr,
+                                       const BMVert *eve,
+                                       EditLoopData *eattr)
 {
   if (eve == mr->eve_act) {
     eattr->e_flag |= VFLAG_VERT_ACTIVE;
@@ -3576,21 +3687,6 @@ typedef struct MeshExtractIterFnRef {
   void *user_data;
 } MeshExtractIterFnRef;
 
-BLI_INLINE BMFace *bm_original_face_get(BMesh *bm, int idx)
-{
-  return ((idx != ORIGINDEX_NONE) ? BM_face_at_index(bm, idx) : NULL);
-}
-
-BLI_INLINE BMEdge *bm_original_edge_get(BMesh *bm, int idx)
-{
-  return ((idx != ORIGINDEX_NONE) ? BM_edge_at_index(bm, idx) : NULL);
-}
-
-BLI_INLINE BMVert *bm_original_vert_get(BMesh *bm, int idx)
-{
-  return ((idx != ORIGINDEX_NONE) ? BM_vert_at_index(bm, idx) : NULL);
-}
-
 static int iter_callback_gather(MeshExtractFnRef *extract_refs,
                                 MeshExtractIterFnRef *r_iter_callback,
                                 int cb_total_len,
@@ -3642,6 +3738,7 @@ BLI_INLINE void iter_looptri_bmesh(int t, MeshExtractIterData *itr)
   itr->tri_idx = t;
   BMLoop **elooptri = &itr->mr->edit_bmesh->looptris[t][0];
   itr->efa = elooptri[0]->f;
+  itr->face_idx = BM_elem_index_get(itr->efa);
   itr->v1 = BM_elem_index_get(elooptri[0]);
   itr->v2 = BM_elem_index_get(elooptri[1]);
   itr->v3 = BM_elem_index_get(elooptri[2]);
@@ -3650,7 +3747,7 @@ BLI_INLINE void iter_looptri_bmesh(int t, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_looptri_mapped(int t, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   MLoopTri *mlt = &mr->mlooptri[t];
   itr->tri_idx = t;
   itr->v1 = mlt->tri[0];
@@ -3664,7 +3761,7 @@ BLI_INLINE void iter_looptri_mapped(int t, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_looptri_mesh(int t, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   MLoopTri *mlt = &mr->mlooptri[t];
   itr->tri_idx = t;
   itr->v1 = mlt->tri[0];
@@ -3728,7 +3825,7 @@ BLI_INLINE void iter_loop_bmesh(int f, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_loop_mapped(int f, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->face_idx = f;
   itr->mpoly = &mr->mpoly[f];
   itr->efa = bm_original_face_get(mr->bm, mr->p_origindex[f]);
@@ -3749,7 +3846,7 @@ BLI_INLINE void iter_loop_mapped(int f, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_loop_mesh(int f, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->face_idx = f;
   itr->mpoly = &mr->mpoly[f];
   int loopstart = itr->mpoly->loopstart;
@@ -3802,7 +3899,7 @@ static void mesh_extract_iter_loop(MeshRenderData *mr,
 
 BLI_INLINE void iter_ledge_bmesh(int e, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->edge_idx = mr->ledges[e];
   itr->eed = BM_edge_at_index(mr->bm, itr->edge_idx);
   itr->v1 = itr->loop_idx;
@@ -3816,7 +3913,7 @@ BLI_INLINE void iter_ledge_bmesh(int e, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_ledge_mapped(int e, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->edge_idx = mr->ledges[e];
   itr->medge = &mr->medge[itr->edge_idx];
   itr->eed = bm_original_edge_get(mr->bm, mr->e_origindex[itr->edge_idx]);
@@ -3832,7 +3929,7 @@ BLI_INLINE void iter_ledge_mapped(int e, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_ledge_mesh(int e, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->edge_idx = mr->ledges[e];
   itr->medge = &mr->medge[itr->edge_idx];
   itr->v1 = itr->loop_idx;
@@ -3882,7 +3979,7 @@ static void mesh_extract_iter_ledge(MeshRenderData *mr,
 
 BLI_INLINE void iter_lvert_bmesh(int v, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->vert_idx = mr->lverts[v];
   itr->loop_idx = mr->loop_len + mr->edge_loose_len * 2 + v;
   itr->eve = BM_vert_at_index(mr->bm, itr->vert_idx);
@@ -3891,7 +3988,7 @@ BLI_INLINE void iter_lvert_bmesh(int v, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_lvert_mapped(int v, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->vert_idx = mr->lverts[v];
   itr->loop_idx = mr->loop_len + mr->edge_loose_len * 2 + v;
   itr->mvert = &mr->mvert[itr->vert_idx];
@@ -3901,7 +3998,7 @@ BLI_INLINE void iter_lvert_mapped(int v, MeshExtractIterData *itr)
 
 BLI_INLINE void iter_lvert_mesh(int v, MeshExtractIterData *itr)
 {
-  MeshRenderData *mr = itr->mr;
+  const MeshRenderData *mr = itr->mr;
   itr->loop_idx = mr->loop_len + mr->edge_loose_len * 2 + v;
   itr->vert_idx = mr->lverts[v];
   itr->mvert = &mr->mvert[itr->vert_idx];
