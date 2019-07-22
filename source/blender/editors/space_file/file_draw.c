@@ -735,8 +735,13 @@ static void draw_columnheader_columns(const FileSelectParams *params,
     sx -= width;
     remaining_width -= width;
 
-    file_draw_string(
-        sx + ofs_x, sy, column->name, width, layout->columnheader_h, UI_STYLE_TEXT_LEFT, text_col);
+    file_draw_string(sx + ofs_x,
+                     sy - layout->tile_border_y,
+                     column->name,
+                     width,
+                     layout->columnheader_h - layout->tile_border_y,
+                     UI_STYLE_TEXT_LEFT,
+                     text_col);
 
     /* Separator line */
     if (column_type != COLUMN_NAME) {
@@ -829,8 +834,13 @@ static void draw_details_columns(const FileSelectParams *params,
 
     sx -= (int)column->width + DETAILS_COLUMN_PADDING;
     if (str) {
-      file_draw_string(
-          sx + DETAILS_COLUMN_PADDING, sy, str, column->width, layout->tile_h, align, text_col);
+      file_draw_string(sx + DETAILS_COLUMN_PADDING,
+                       sy - layout->tile_border_y,
+                       str,
+                       column->width,
+                       layout->tile_h,
+                       align,
+                       text_col);
     }
   }
 }
@@ -984,7 +994,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
       file_draw_icon(block,
                      path,
                      sx,
-                     sy - (UI_UNIT_Y / 6),
+                     sy - layout->tile_border_y,
                      filelist_geticon(files, i, true),
                      ICON_DEFAULT_WIDTH_SCALE,
                      ICON_DEFAULT_HEIGHT_SCALE,
@@ -1031,14 +1041,17 @@ void file_draw_list(const bContext *C, ARegion *ar)
     }
 
     if (!(file_selflag & FILE_SEL_EDITING)) {
-      int tpos = (FILE_IMGDISPLAY == params->display) ? sy - layout->tile_h + layout->textheight :
-                                                        sy;
+      const int tpos = (FILE_IMGDISPLAY == params->display) ?
+                           sy - layout->tile_h + layout->textheight :
+                           sy - layout->tile_border_y;
       file_draw_string(
           sx + 1 + icon_ofs, tpos, file->name, (float)textwidth, textheight, align, text_col);
     }
 
-    sx += (int)layout->details_columns[COLUMN_NAME].width + DETAILS_COLUMN_PADDING;
-    draw_details_columns(params, layout, file, xmin, sy, align, text_col);
+    if (params->display != FILE_IMGDISPLAY) {
+      sx += (int)layout->details_columns[COLUMN_NAME].width + DETAILS_COLUMN_PADDING;
+      draw_details_columns(params, layout, file, xmin, sy, align, text_col);
+    }
   }
 
   BLF_batch_draw_end();
