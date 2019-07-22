@@ -543,28 +543,27 @@ float file_font_pointsize(void)
 
 static void column_widths(FileSelectParams *params, struct FileLayout *layout)
 {
-  int i;
+  FileDetailsColumn *columns = layout->details_columns;
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const int pad = small_size ? 0 : DETAILS_COLUMN_PADDING;
 
-  for (i = 0; i < MAX_FILE_COLUMN; ++i) {
-    layout->column_widths[i] = 0;
+  for (int i = 0; i < COLUMN_MAX; ++i) {
+    columns[i].width = 0;
   }
 
-  layout->column_widths[COLUMN_NAME] = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
+  columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
   /* Biggest possible reasonable values... */
-  layout->column_widths[COLUMN_DATE] = file_string_width(small_size ? "23/08/89" : "23-Dec-89") +
-                                       pad;
-  layout->column_widths[COLUMN_TIME] = file_string_width("23:59") + pad;
-  layout->column_widths[COLUMN_SIZE] = file_string_width(small_size ? "98.7 M" : "98.7 MiB") + pad;
+  columns[COLUMN_DATE].width = file_string_width(small_size ? "23/08/89" : "23-Dec-89") + pad;
+  columns[COLUMN_TIME].width = file_string_width("23:59") + pad;
+  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "98.7 MiB") + pad;
 }
 
 static void column_names(FileLayout *layout)
 {
-  layout->column_names[COLUMN_NAME] = "Name";
-  layout->column_names[COLUMN_DATE] = "Date";
-  layout->column_names[COLUMN_TIME] = "Time";
-  layout->column_names[COLUMN_SIZE] = "Size";
+  layout->details_columns[COLUMN_NAME].name = "Name";
+  layout->details_columns[COLUMN_DATE].name = "Date";
+  layout->details_columns[COLUMN_TIME].name = "Time";
+  layout->details_columns[COLUMN_SIZE].name = "Size";
 }
 
 void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
@@ -658,10 +657,10 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
 
     column_widths(params, layout);
     maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
-             (int)layout->column_widths[COLUMN_NAME] + column_space +
-             (int)layout->column_widths[COLUMN_DATE] + column_space +
-             (int)layout->column_widths[COLUMN_TIME] + column_space +
-             (int)layout->column_widths[COLUMN_SIZE] + column_space;
+             (int)layout->details_columns[COLUMN_NAME].width + column_space +
+             (int)layout->details_columns[COLUMN_DATE].width + column_space +
+             (int)layout->details_columns[COLUMN_TIME].width + column_space +
+             (int)layout->details_columns[COLUMN_SIZE].width + column_space;
     layout->tile_w = maxlen;
     if (layout->rows > 0) {
       layout->columns = numfiles / layout->rows + 1;  // XXX dirty, modulo is zero

@@ -744,13 +744,13 @@ static void draw_columnheader_columns(const FileSelectParams *params,
   sx = ofs_x + layout->tile_w;
   sy = v2d->cur.ymax;
 
-  for (FileListColumns column = MAX_FILE_COLUMN - 1; column >= 0; column--) {
+  for (FileListColumns column = COLUMN_MAX - 1; column >= 0; column--) {
     if (!filelist_column_enabled(params, column)) {
       continue;
     }
     const int width = (column == COLUMN_NAME) ?
                           remaining_width :
-                          layout->column_widths[column] + DETAILS_COLUMN_PADDING;
+                          layout->details_columns[column].width + DETAILS_COLUMN_PADDING;
 
     /* Active sort type triangle */
     if (filelist_column_matches_sort(params, column)) {
@@ -768,7 +768,7 @@ static void draw_columnheader_columns(const FileSelectParams *params,
 
     file_draw_string(sx + ofs_x,
                      sy,
-                     layout->column_names[column],
+                     layout->details_columns[column].name,
                      width,
                      layout->columnheader_h,
                      UI_STYLE_TEXT_LEFT,
@@ -852,7 +852,7 @@ static void draw_details_columns(const FileSelectParams *params,
   const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
   int sx = pos_x + layout->tile_w, sy = pos_y;
 
-  for (FileListColumns column = MAX_FILE_COLUMN - 1; column >= 0; column--) {
+  for (FileListColumns column = COLUMN_MAX - 1; column >= 0; column--) {
     /* Name column is not a detail column (should already be drawn), always skip here. */
     if ((column == COLUMN_NAME) || !filelist_column_enabled(params, column)) {
       continue;
@@ -860,12 +860,12 @@ static void draw_details_columns(const FileSelectParams *params,
     const char *str = filelist_get_details_column_string(
         column, file, small_size, update_stat_strings);
 
-    sx -= (int)layout->column_widths[column] + DETAILS_COLUMN_PADDING;
+    sx -= (int)layout->details_columns[column].width + DETAILS_COLUMN_PADDING;
     if (str) {
       file_draw_string(sx + DETAILS_COLUMN_PADDING,
                        sy,
                        str,
-                       layout->column_widths[column],
+                       layout->details_columns[column].width,
                        layout->tile_h,
                        align,
                        text_col);
@@ -921,8 +921,9 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
   filelist_file_cache_slidingwindow_set(files, numfiles_layout);
 
-  textwidth = (FILE_IMGDISPLAY == params->display) ? layout->tile_w :
-                                                     (int)layout->column_widths[COLUMN_NAME];
+  textwidth = (FILE_IMGDISPLAY == params->display) ?
+                  layout->tile_w :
+                  (int)layout->details_columns[COLUMN_NAME].width;
   textheight = (int)(layout->textheight * 3.0 / 2.0 + 0.5);
 
   align = (FILE_IMGDISPLAY == params->display) ? UI_STYLE_TEXT_CENTER : UI_STYLE_TEXT_LEFT;
@@ -1037,7 +1038,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
         width = layout->tile_w - 2 * padx;
       }
       else if (params->display == FILE_LONGDISPLAY) {
-        width = layout->column_widths[COLUMN_NAME] + DETAILS_COLUMN_PADDING - 2 * padx;
+        width = layout->details_columns[COLUMN_NAME].width + DETAILS_COLUMN_PADDING - 2 * padx;
       }
       else {
         BLI_assert(params->display == FILE_IMGDISPLAY);
@@ -1074,7 +1075,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
           sx + 1 + icon_ofs, tpos, file->name, (float)textwidth, textheight, align, text_col);
     }
 
-    sx += (int)layout->column_widths[COLUMN_NAME] + DETAILS_COLUMN_PADDING;
+    sx += (int)layout->details_columns[COLUMN_NAME].width + DETAILS_COLUMN_PADDING;
     draw_details_columns(params, layout, file, xmin, sy, align, text_col);
   }
 

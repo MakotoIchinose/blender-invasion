@@ -34,15 +34,21 @@ struct wmWindowManager;
 #define FILE_LAYOUT_HOR 1
 #define FILE_LAYOUT_VER 2
 
-#define MAX_FILE_COLUMN 4
-
 typedef enum FileListColumns {
   COLUMN_NONE = -1,
   COLUMN_NAME = 0,
   COLUMN_DATE,
   COLUMN_TIME,
   COLUMN_SIZE,
+
+  COLUMN_MAX
 } FileListColumns;
+
+typedef struct FileDetailsColumn {
+  float width;
+  /** UI name for this column */
+  const char *name;
+} FileDetailsColumn;
 
 typedef struct FileLayout {
   /* view settings - XXX - move into own struct */
@@ -63,8 +69,7 @@ typedef struct FileLayout {
   int flag;
   int dirty;
   int textheight;
-  float column_widths[MAX_FILE_COLUMN];
-  const char *column_names[MAX_FILE_COLUMN];
+  FileDetailsColumn details_columns[COLUMN_MAX];
 
   /* When we change display size, we may have to update static strings like size of files... */
   short curr_size;
