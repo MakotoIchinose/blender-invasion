@@ -30,6 +30,7 @@ struct ARegion;
 struct ARegionType;
 struct FileSelectParams;
 struct SpaceFile;
+struct View2D;
 
 /* file_ops.c */
 struct ARegion *file_tools_region(struct ScrArea *sa);
@@ -69,6 +70,7 @@ typedef enum WalkSelectDirection {
 } WalkSelectDirections;
 
 void FILE_OT_highlight(struct wmOperatorType *ot);
+void FILE_OT_sort_column_ui_context(struct wmOperatorType *ot);
 void FILE_OT_select(struct wmOperatorType *ot);
 void FILE_OT_select_walk(struct wmOperatorType *ot);
 void FILE_OT_select_all(struct wmOperatorType *ot);
@@ -117,6 +119,15 @@ void file_operator_to_sfile(bContext *C, struct SpaceFile *sfile, struct wmOpera
 
 /* filesel.c */
 void fileselect_file_set(SpaceFile *sfile, const int index);
+bool file_column_type_enabled(const FileSelectParams *params, FileListColumns column);
+bool file_column_header_is_inside(const struct View2D *v2d,
+                                  const FileLayout *layout,
+                                  int x,
+                                  int y);
+FileListColumns file_column_type_find_isect(const View2D *v2d,
+                                            const FileSelectParams *params,
+                                            FileLayout *layout,
+                                            int x);
 float file_string_width(const char *str);
 
 float file_font_pointsize(void);

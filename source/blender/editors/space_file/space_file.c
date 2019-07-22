@@ -467,6 +467,7 @@ static void file_operatortypes(void)
   WM_operatortype_append(FILE_OT_select_box);
   WM_operatortype_append(FILE_OT_select_bookmark);
   WM_operatortype_append(FILE_OT_highlight);
+  WM_operatortype_append(FILE_OT_sort_column_ui_context);
   WM_operatortype_append(FILE_OT_execute);
   WM_operatortype_append(FILE_OT_cancel);
   WM_operatortype_append(FILE_OT_parent);

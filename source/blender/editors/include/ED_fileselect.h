@@ -45,9 +45,12 @@ typedef enum FileListColumns {
 } FileListColumns;
 
 typedef struct FileDetailsColumn {
-  float width;
   /** UI name for this column */
   const char *name;
+
+  float width;
+  /* The sort type to use when sorting by this column. */
+  int sort_type; /* eFileSortType */
 } FileDetailsColumn;
 
 typedef struct FileLayout {

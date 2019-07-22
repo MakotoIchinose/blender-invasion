@@ -698,37 +698,6 @@ static void draw_columnheader_background(const FileLayout *layout, const View2D 
   immUnbindProgram();
 }
 
-static bool filelist_column_matches_sort(const FileSelectParams *params, FileListColumns column)
-{
-  switch (params->sort) {
-    case FILE_SORT_ALPHA:
-      return column == COLUMN_NAME;
-    case FILE_SORT_SIZE:
-      return column == COLUMN_SIZE;
-    case FILE_SORT_TIME:
-      return column == COLUMN_DATE;
-  }
-
-  return false;
-}
-
-static bool filelist_column_enabled(const FileSelectParams *params, FileListColumns column)
-{
-  switch (column) {
-    case COLUMN_NAME:
-      /* Always enabled */
-      return true;
-    case COLUMN_DATE:
-      return (params->details_flags & FILE_DETAILS_DATE) != 0;
-    case COLUMN_TIME:
-      return (params->details_flags & FILE_DETAILS_TIME) != 0;
-    case COLUMN_SIZE:
-      return (params->details_flags & FILE_DETAILS_SIZE) != 0;
-    default:
-      return false;
-  }
-}
-
 static void draw_columnheader_columns(const FileSelectParams *params,
                                       FileLayout *layout,
                                       const View2D *v2d,
@@ -744,16 +713,16 @@ static void draw_columnheader_columns(const FileSelectParams *params,
   sx = ofs_x + layout->tile_w;
   sy = v2d->cur.ymax;
 
-  for (FileListColumns column = COLUMN_MAX - 1; column >= 0; column--) {
-    if (!filelist_column_enabled(params, column)) {
+  for (FileListColumns column_type = COLUMN_MAX - 1; column_type >= 0; column_type--) {
+    if (!file_column_type_enabled(params, column_type)) {
       continue;
     }
-    const int width = (column == COLUMN_NAME) ?
-                          remaining_width :
-                          layout->details_columns[column].width + DETAILS_COLUMN_PADDING;
+    const FileDetailsColumn *column = &layout->details_columns[column_type];
+    const int width = (column_type == COLUMN_NAME) ? remaining_width :
+                                                     column->width + DETAILS_COLUMN_PADDING;
 
     /* Active sort type triangle */
-    if (filelist_column_matches_sort(params, column)) {
+    if (params->sort == column->sort_type) {
       float tri_color[4];
 
       rgba_uchar_to_float(tri_color, text_col);
@@ -766,16 +735,11 @@ static void draw_columnheader_columns(const FileSelectParams *params,
     sx -= width;
     remaining_width -= width;
 
-    file_draw_string(sx + ofs_x,
-                     sy,
-                     layout->details_columns[column].name,
-                     width,
-                     layout->columnheader_h,
-                     UI_STYLE_TEXT_LEFT,
-                     text_col);
+    file_draw_string(
+        sx + ofs_x, sy, column->name, width, layout->columnheader_h, UI_STYLE_TEXT_LEFT, text_col);
 
     /* Separator line */
-    if (column != COLUMN_NAME) {
+    if (column_type != COLUMN_NAME) {
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
@@ -820,6 +784,7 @@ static const char *filelist_get_details_column_string(FileListColumns column,
           BLI_filelist_entry_datetime_to_string(
               NULL, file->entry->time, small_size, file->entry->time_str, file->entry->date_str);
         }
+
         return (column == COLUMN_DATE) ? file->entry->date_str : file->entry->time_str;
       }
       break;
@@ -830,6 +795,7 @@ static const char *filelist_get_details_column_string(FileListColumns column,
           BLI_filelist_entry_size_to_string(
               NULL, file->entry->size, small_size, file->entry->size_str);
         }
+
         return file->entry->size_str;
       }
       break;
@@ -852,23 +818,19 @@ static void draw_details_columns(const FileSelectParams *params,
   const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
   int sx = pos_x + layout->tile_w, sy = pos_y;
 
-  for (FileListColumns column = COLUMN_MAX - 1; column >= 0; column--) {
+  for (FileListColumns column_type = COLUMN_MAX - 1; column_type >= 0; column_type--) {
     /* Name column is not a detail column (should already be drawn), always skip here. */
-    if ((column == COLUMN_NAME) || !filelist_column_enabled(params, column)) {
+    if ((column_type == COLUMN_NAME) || !file_column_type_enabled(params, column_type)) {
       continue;
     }
     const char *str = filelist_get_details_column_string(
-        column, file, small_size, update_stat_strings);
+        column_type, file, small_size, update_stat_strings);
+    const FileDetailsColumn *column = &layout->details_columns[column_type];
 
-    sx -= (int)layout->details_columns[column].width + DETAILS_COLUMN_PADDING;
+    sx -= (int)column->width + DETAILS_COLUMN_PADDING;
     if (str) {
-      file_draw_string(sx + DETAILS_COLUMN_PADDING,
-                       sy,
-                       str,
-                       layout->details_columns[column].width,
-                       layout->tile_h,
-                       align,
-                       text_col);
+      file_draw_string(
+          sx + DETAILS_COLUMN_PADDING, sy, str, column->width, layout->tile_h, align, text_col);
     }
   }
 }

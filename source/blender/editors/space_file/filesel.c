@@ -506,6 +506,74 @@ void ED_fileselect_layout_tilepos(FileLayout *layout, int tile, int *x, int *y)
   }
 }
 
+/**
+ * Check if the region coordinate defined by \a x and \a y are inside the column header.
+ */
+bool file_column_header_is_inside(const View2D *v2d, const FileLayout *layout, int x, int y)
+{
+  rcti header_rect = v2d->mask;
+  header_rect.ymin = header_rect.ymax - layout->columnheader_h;
+  return BLI_rcti_isect_pt(&header_rect, x, y);
+}
+
+bool file_column_type_enabled(const FileSelectParams *params, FileListColumns column)
+{
+  switch (column) {
+    case COLUMN_NAME:
+      /* Always enabled */
+      return true;
+    case COLUMN_DATE:
+      return (params->details_flags & FILE_DETAILS_DATE) != 0;
+    case COLUMN_TIME:
+      return (params->details_flags & FILE_DETAILS_TIME) != 0;
+    case COLUMN_SIZE:
+      return (params->details_flags & FILE_DETAILS_SIZE) != 0;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Find the column type at region coordinate given by \a x (y doesn't matter for this).
+ */
+FileListColumns file_column_type_find_isect(const View2D *v2d,
+                                            const FileSelectParams *params,
+                                            FileLayout *layout,
+                                            int x)
+{
+  float mx, my;
+  int offset_tile;
+
+  UI_view2d_region_to_view(v2d, x, v2d->mask.ymax - layout->offset_top - 1, &mx, &my);
+  offset_tile = ED_fileselect_layout_offset(
+      layout, (int)(v2d->tot.xmin + mx), (int)(v2d->tot.ymax - my));
+  if (offset_tile > -1) {
+    int tile_x, tile_y;
+    int remaining_width = layout->tile_w;
+    int rel_x; /* x relative to the hovered tile */
+
+    ED_fileselect_layout_tilepos(layout, offset_tile, &tile_x, &tile_y);
+    rel_x = mx - tile_x;
+
+    for (FileListColumns column = COLUMN_MAX - 1; column >= 0; column--) {
+      if (!file_column_type_enabled(params, column)) {
+        continue;
+      }
+      const int width = (column == COLUMN_NAME) ?
+                            remaining_width :
+                            layout->details_columns[column].width + DETAILS_COLUMN_PADDING;
+
+      if ((rel_x > remaining_width - width) && (x < (remaining_width + layout->tile_border_x))) {
+        return column;
+      }
+
+      remaining_width -= width;
+    }
+  }
+
+  return COLUMN_NONE;
+}
+
 float file_string_width(const char *str)
 {
   uiStyle *style = UI_style_get();
@@ -541,14 +609,14 @@ float file_font_pointsize(void)
 #endif
 }
 
-static void column_widths(FileSelectParams *params, struct FileLayout *layout)
+static void details_columns_widths(const FileSelectParams *params, FileLayout *layout)
 {
   FileDetailsColumn *columns = layout->details_columns;
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const int pad = small_size ? 0 : DETAILS_COLUMN_PADDING;
 
   for (int i = 0; i < COLUMN_MAX; ++i) {
-    columns[i].width = 0;
+    layout->details_columns[i].width = 0;
   }
 
   columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
@@ -558,12 +626,18 @@ static void column_widths(FileSelectParams *params, struct FileLayout *layout)
   columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "98.7 MiB") + pad;
 }
 
-static void column_names(FileLayout *layout)
+static void details_columns_init(const FileSelectParams *params, FileLayout *layout)
 {
+  details_columns_widths(params, layout);
+
   layout->details_columns[COLUMN_NAME].name = "Name";
+  layout->details_columns[COLUMN_NAME].sort_type = FILE_SORT_ALPHA;
   layout->details_columns[COLUMN_DATE].name = "Date";
+  layout->details_columns[COLUMN_DATE].sort_type = FILE_SORT_TIME;
   layout->details_columns[COLUMN_TIME].name = "Time";
+  layout->details_columns[COLUMN_TIME].sort_type = FILE_SORT_NONE;
   layout->details_columns[COLUMN_SIZE].name = "Size";
+  layout->details_columns[COLUMN_SIZE].sort_type = FILE_SORT_SIZE;
 }
 
 void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
@@ -587,7 +661,9 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
   textheight = (int)file_font_pointsize();
   layout = sfile->layout;
   layout->textheight = textheight;
-  column_names(layout); /* Just set for all display types. */
+
+  /* Init for all display types (could skip for IMGDISPLAY). */
+  details_columns_init(params, layout);
 
   if (params->display == FILE_IMGDISPLAY) {
     layout->prv_w = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_X;
@@ -626,7 +702,6 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->columns = 1;
     layout->columnheader_h = layout->tile_h * 1.2f + 2 * layout->tile_border_y;
     layout->offset_top = layout->columnheader_h;
-    column_widths(params, layout);
     rowcount = (int)(BLI_rctf_size_y(&v2d->cur) - layout->offset_top - 2 * layout->tile_border_y) /
                (layout->tile_h + 2 * layout->tile_border_y);
     if ((int)rowcount / numfiles >= 1) {
@@ -655,7 +730,6 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->rows = (layout->height - V2D_SCROLL_HEIGHT + layout->tile_border_y) /
                    (layout->tile_h + 2 * layout->tile_border_y);
 
-    column_widths(params, layout);
     maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
              (int)layout->details_columns[COLUMN_NAME].width + column_space +
              (int)layout->details_columns[COLUMN_DATE].width + column_space +

@@ -1239,6 +1239,45 @@ void FILE_OT_highlight(struct wmOperatorType *ot)
   ot->poll = ED_operator_file_active;
 }
 
+static int file_column_sort_ui_context_invoke(bContext *C,
+                                              wmOperator *UNUSED(op),
+                                              const wmEvent *event)
+{
+  const ARegion *ar = CTX_wm_region(C);
+  SpaceFile *sfile = CTX_wm_space_file(C);
+
+  if (file_column_header_is_inside(&ar->v2d, sfile->layout, event->mval[0], event->mval[1])) {
+    const FileListColumns column_type = file_column_type_find_isect(
+        &ar->v2d, sfile->params, sfile->layout, event->mval[0]);
+
+    if (column_type != COLUMN_NONE) {
+      const FileDetailsColumn *column = &sfile->layout->details_columns[column_type];
+
+      if (column->sort_type != FILE_SORT_NONE) {
+        sfile->params->sort = sfile->layout->details_columns[column_type].sort_type;
+
+        WM_event_add_notifier(C, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
+      }
+    }
+  }
+
+  return OPERATOR_PASS_THROUGH;
+}
+
+void FILE_OT_sort_column_ui_context(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Sort from Column";
+  ot->description = "Change sorting to use column under cursor";
+  ot->idname = "FILE_OT_sort_column_ui_context";
+
+  /* api callbacks */
+  ot->invoke = file_column_sort_ui_context_invoke;
+  ot->poll = ED_operator_file_active;
+
+  ot->flag = OPTYPE_INTERNAL;
+}
+
 int file_cancel_exec(bContext *C, wmOperator *UNUSED(unused))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
