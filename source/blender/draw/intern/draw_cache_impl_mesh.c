@@ -1332,12 +1332,6 @@ static void mesh_tri_finish(const MeshRenderData *mr, void *ibo, void *elb)
           int dst_sta = mat_tri_ofs[mat_curr] + mat_tri_len[mat_curr];
           uint(*src)[3] = tri_source + cpy_sta;
           uint(*dst)[3] = tri_sorted + dst_sta;
-          printf("copy mat[%d] %d-%d to %d-%d\n",
-                 mat_curr,
-                 cpy_sta,
-                 cpy_sta + cpy_len,
-                 dst_sta,
-                 dst_sta + cpy_len);
           memcpy(dst, src, sizeof(*dst) * cpy_len);
 
           mat_tri_len[mat_curr] += cpy_len;
