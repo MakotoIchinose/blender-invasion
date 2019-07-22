@@ -1328,7 +1328,7 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
   BMFace *f, *f2;
   BMIter fiter;
   vector<BMFace *> new_active_faces;
-  /* add the newly created faces, all those that have that vertex v */
+  /* add the newly created faces, all those that have that edge e */
   BM_ITER_ELEM (f, &fiter, e, BM_FACES_OF_EDGE) {
     new_active_faces.push_back(f);
   }
@@ -1397,6 +1397,27 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
   new_active_faces.clear();
 }
 
+/* Assumed that active_faces and fix_active have been updated before
+ * using either of the other 2 update_active_faces function so that
+ * there is no face that is not part of bm */
+static void cloth_remeshing_update_active_faces(vector<BMFace *> active_faces,
+                                                vector<BMFace *> fix_active)
+{
+  for (int i = 0; i < fix_active.size(); i++) {
+    bool already_exists = false;
+    for (int j = 0; j < active_faces.size(); j++) {
+      if (active_faces[j] == fix_active[i]) {
+        already_exists = true;
+        break;
+      }
+    }
+    if (already_exists) {
+      break;
+    }
+    active_faces.push_back(fix_active[i]);
+  }
+}
+
 static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
                                            map<BMVert *, ClothSizing> &sizing,
                                            vector<BMFace *> &active_faces,
@@ -1423,9 +1444,16 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
 
       /* run cloth_remeshing_fix_mesh on newly created faces by
        * cloth_remeshing_try_edge_collapse */
-      cloth_remeshing_fix_mesh(clmd->clothObject->bm, sizing, active_faces);
+      vector<BMFace *> fix_active;
+      BMFace *new_f;
+      BMIter new_f_iter;
+      BM_ITER_ELEM (new_f, &new_f_iter, temp_vert, BM_FACES_OF_VERT) {
+        fix_active.push_back(new_f);
+      }
+      cloth_remeshing_fix_mesh(clmd->clothObject->bm, sizing, fix_active);
 
       /* update active_faces */
+      cloth_remeshing_update_active_faces(active_faces, fix_active);
 
       count++;
       return true;
@@ -2197,7 +2225,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (false) {
+  if (true) {
     cloth_remeshing_static(clmd);
   }
   else {
