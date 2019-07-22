@@ -126,7 +126,59 @@ typedef struct GPUPackedNormal {
   int w : 2; /* 0 by default, can manually set to { -2, -1, 0, 1 } */
 } GPUPackedNormal;
 
-GPUPackedNormal GPU_normal_convert_i10_v3(const float data[3]);
-GPUPackedNormal GPU_normal_convert_i10_s3(const short data[3]);
+/* OpenGL ES packs in a different order as desktop GL but component conversion is the same.
+ * Of the code here, only struct GPUPackedNormal needs to change. */
+
+#define SIGNED_INT_10_MAX 511
+#define SIGNED_INT_10_MIN -512
+
+BLI_INLINE int clampi(int x, int min_allowed, int max_allowed)
+{
+#if TRUST_NO_ONE
+  assert(min_allowed <= max_allowed);
+#endif
+  if (x < min_allowed) {
+    return min_allowed;
+  }
+  else if (x > max_allowed) {
+    return max_allowed;
+  }
+  else {
+    return x;
+  }
+}
+
+BLI_INLINE int quantize(float x)
+{
+  int qx = x * 511.0f;
+  return clampi(qx, SIGNED_INT_10_MIN, SIGNED_INT_10_MAX);
+}
+
+BLI_INLINE int convert_i16(short x)
+{
+  /* 16-bit signed --> 10-bit signed */
+  /* TODO: round? */
+  return x >> 6;
+}
+
+BLI_INLINE GPUPackedNormal GPU_normal_convert_i10_v3(const float data[3])
+{
+  GPUPackedNormal n = {
+      .x = quantize(data[0]),
+      .y = quantize(data[1]),
+      .z = quantize(data[2]),
+  };
+  return n;
+}
+
+BLI_INLINE GPUPackedNormal GPU_normal_convert_i10_s3(const short data[3])
+{
+  GPUPackedNormal n = {
+      .x = convert_i16(data[0]),
+      .y = convert_i16(data[1]),
+      .z = convert_i16(data[2]),
+  };
+  return n;
+}
 
 #endif /* __GPU_VERTEX_FORMAT_H__ */
