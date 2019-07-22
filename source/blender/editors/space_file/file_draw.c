@@ -737,38 +737,21 @@ static void draw_columnheader_columns(const FileSelectParams *params,
                                       const uchar text_col[4])
 {
   const float divider_pad = 0.2 * layout->columnheader_h;
-  FileListColumns last_col = COLUMN_NONE;
+  int remaining_width = layout->tile_w;
   int sx = 0, sy = 0;
   int ofs_x;
 
   /* To get x position matching item drawing. */
   ED_fileselect_layout_tilepos(layout, 0, &ofs_x, &sy);
+  sx = ofs_x + layout->tile_w;
   sy = v2d->cur.ymax;
 
   for (FileListColumns column = MAX_FILE_COLUMN - 1; column >= 0; column--) {
     if (!filelist_column_enabled(params, column)) {
       continue;
     }
-
-    last_col = column;
-    break;
-  }
-  BLI_assert(last_col != COLUMN_NONE);
-
-  for (FileListColumns column = 0; column < MAX_FILE_COLUMN; column++) {
-    if (!filelist_column_enabled(params, column)) {
-      continue;
-    }
-
-    file_draw_string(sx + ofs_x,
-                     sy,
-                     layout->column_names[column],
-                     layout->column_widths[column],
-                     layout->columnheader_h,
-                     UI_STYLE_TEXT_LEFT,
-                     text_col);
-
-    sx += layout->column_widths[column] + COLUMN_PADDING;
+    const int width = (column == COLUMN_NAME) ? remaining_width :
+                                                layout->column_widths[column] + COLUMN_PADDING;
 
     /* Active sort type triangle */
     if (filelist_column_matches_sort(params, column)) {
@@ -781,8 +764,19 @@ static void draw_columnheader_columns(const FileSelectParams *params,
                        tri_color);
     }
 
+    sx -= width;
+    remaining_width -= width;
+
+    file_draw_string(sx + ofs_x,
+                     sy,
+                     layout->column_names[column],
+                     width,
+                     layout->columnheader_h,
+                     UI_STYLE_TEXT_LEFT,
+                     text_col);
+
     /* Separator line */
-    if (column != last_col) {
+    if (column != COLUMN_NAME) {
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
@@ -814,10 +808,10 @@ static void draw_columnheader_columns(const FileSelectParams *params,
 /**
  * Updates the stat string stored in file->entry if necessary.
  */
-static const char *get_details_column_string(FileListColumns column,
-                                             const FileDirEntry *file,
-                                             const bool small_size,
-                                             const bool update_stat_strings)
+static const char *filelist_get_details_column_string(FileListColumns column,
+                                                      const FileDirEntry *file,
+                                                      const bool small_size,
+                                                      const bool update_stat_strings)
 {
   switch (column) {
     case COLUMN_DATE:
@@ -850,26 +844,28 @@ static const char *get_details_column_string(FileListColumns column,
 static void draw_details_columns(const FileSelectParams *params,
                                  const FileLayout *layout,
                                  const FileDirEntry *file,
-                                 int sx,
-                                 int sy,
+                                 const int pos_x,
+                                 const int pos_y,
                                  const eFontStyle_Align align,
                                  const uchar text_col[4])
 {
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
+  int sx = pos_x + layout->tile_w, sy = pos_y;
 
-  for (FileListColumns column = 0; column < MAX_FILE_COLUMN; column++) {
+  for (FileListColumns column = MAX_FILE_COLUMN - 1; column >= 0; column--) {
     /* Name column is not a detail column (should already be drawn), always skip here. */
     if ((column == COLUMN_NAME) || !filelist_column_enabled(params, column)) {
       continue;
     }
-    const char *str = get_details_column_string(column, file, small_size, update_stat_strings);
+    const char *str = filelist_get_details_column_string(
+        column, file, small_size, update_stat_strings);
 
+    sx -= (int)layout->column_widths[column] + COLUMN_PADDING;
     if (str) {
       file_draw_string(
           sx, sy, str, layout->column_widths[column], layout->tile_h, align, text_col);
     }
-    sx += (int)layout->column_widths[column] + COLUMN_PADDING;
   }
 }
 
@@ -963,8 +959,10 @@ void file_draw_list(const bContext *C, ARegion *ar)
     char path[FILE_MAX_LIBEXTRA];
     int padx = 0.1f * UI_UNIT_X;
     int icon_ofs = 0;
+    int xmin = 0;
 
     ED_fileselect_layout_tilepos(layout, i, &sx, &sy);
+    xmin = sx;
     sx += (int)(v2d->tot.xmin + padx);
     sy = (int)(v2d->tot.ymax - sy);
 
@@ -1073,7 +1071,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
     }
 
     sx += (int)layout->column_widths[COLUMN_NAME] + COLUMN_PADDING;
-    draw_details_columns(params, layout, file, sx, sy, align, text_col);
+    draw_details_columns(params, layout, file, xmin, sy, align, text_col);
   }
 
   BLF_batch_draw_end();
