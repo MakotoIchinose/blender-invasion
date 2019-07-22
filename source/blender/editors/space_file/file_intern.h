@@ -42,6 +42,8 @@ struct ARegion *file_tools_region(struct ScrArea *sa);
 #define IMASEL_BUTTONS_HEIGHT (UI_UNIT_Y * 2)
 #define IMASEL_BUTTONS_MARGIN (UI_UNIT_Y / 6)
 
+#define DETAILS_COLUMN_PADDING (0.6f * UI_UNIT_X)
+
 #define SMALL_SIZE_CHECK(_size) ((_size) < 64) /* Related to FileSelectParams.thumbnail_size. */
 
 #if 0

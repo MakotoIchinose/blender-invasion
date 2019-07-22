@@ -70,8 +70,6 @@
 
 #include "file_intern.h"  // own include
 
-#define COLUMN_PADDING (0.6f * UI_UNIT_X)
-
 /* Dummy helper - we need dynamic tooltips here. */
 static char *file_draw_tooltip_func(bContext *UNUSED(C), void *argN, const char *UNUSED(tip))
 {
@@ -750,8 +748,9 @@ static void draw_columnheader_columns(const FileSelectParams *params,
     if (!filelist_column_enabled(params, column)) {
       continue;
     }
-    const int width = (column == COLUMN_NAME) ? remaining_width :
-                                                layout->column_widths[column] + COLUMN_PADDING;
+    const int width = (column == COLUMN_NAME) ?
+                          remaining_width :
+                          layout->column_widths[column] + DETAILS_COLUMN_PADDING;
 
     /* Active sort type triangle */
     if (filelist_column_matches_sort(params, column)) {
@@ -861,10 +860,15 @@ static void draw_details_columns(const FileSelectParams *params,
     const char *str = filelist_get_details_column_string(
         column, file, small_size, update_stat_strings);
 
-    sx -= (int)layout->column_widths[column] + COLUMN_PADDING;
+    sx -= (int)layout->column_widths[column] + DETAILS_COLUMN_PADDING;
     if (str) {
-      file_draw_string(
-          sx, sy, str, layout->column_widths[column], layout->tile_h, align, text_col);
+      file_draw_string(sx + DETAILS_COLUMN_PADDING,
+                       sy,
+                       str,
+                       layout->column_widths[column],
+                       layout->tile_h,
+                       align,
+                       text_col);
     }
   }
 }
@@ -1033,7 +1037,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
         width = layout->tile_w - 2 * padx;
       }
       else if (params->display == FILE_LONGDISPLAY) {
-        width = layout->column_widths[COLUMN_NAME] + COLUMN_PADDING - 2 * padx;
+        width = layout->column_widths[COLUMN_NAME] + DETAILS_COLUMN_PADDING - 2 * padx;
       }
       else {
         BLI_assert(params->display == FILE_IMGDISPLAY);
@@ -1070,7 +1074,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
           sx + 1 + icon_ofs, tpos, file->name, (float)textwidth, textheight, align, text_col);
     }
 
-    sx += (int)layout->column_widths[COLUMN_NAME] + COLUMN_PADDING;
+    sx += (int)layout->column_widths[COLUMN_NAME] + DETAILS_COLUMN_PADDING;
     draw_details_columns(params, layout, file, xmin, sy, align, text_col);
   }
 

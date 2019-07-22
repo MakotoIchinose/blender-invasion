@@ -545,6 +545,7 @@ static void column_widths(FileSelectParams *params, struct FileLayout *layout)
 {
   int i;
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
+  const int pad = small_size ? 0 : DETAILS_COLUMN_PADDING;
 
   for (i = 0; i < MAX_FILE_COLUMN; ++i) {
     layout->column_widths[i] = 0;
@@ -552,9 +553,10 @@ static void column_widths(FileSelectParams *params, struct FileLayout *layout)
 
   layout->column_widths[COLUMN_NAME] = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
   /* Biggest possible reasonable values... */
-  layout->column_widths[COLUMN_DATE] = file_string_width(small_size ? "23/08/89" : "23-Dec-89");
-  layout->column_widths[COLUMN_TIME] = file_string_width("23:59");
-  layout->column_widths[COLUMN_SIZE] = file_string_width(small_size ? "98.7 M" : "98.7 MiB");
+  layout->column_widths[COLUMN_DATE] = file_string_width(small_size ? "23/08/89" : "23-Dec-89") +
+                                       pad;
+  layout->column_widths[COLUMN_TIME] = file_string_width("23:59") + pad;
+  layout->column_widths[COLUMN_SIZE] = file_string_width(small_size ? "98.7 M" : "98.7 MiB") + pad;
 }
 
 static void column_names(FileLayout *layout)
