@@ -514,10 +514,11 @@ static void merged_element_search_cb(const bContext *UNUSED(C),
 {
   MergedSearchData *search_data = (MergedSearchData *)data;
   TreeElement *parent = search_data->parent_element;
-  short tselem_type = search_data->tselem->type;
-  int type = search_data->element_type;
+  TreeElement *te = search_data->select_element;
 
-  merged_element_search_cb_recursive(&parent->subtree, tselem_type, type, str, items);
+  int type = tree_element_id_type_to_index(te);
+
+  merged_element_search_cb_recursive(&parent->subtree, TREESTORE(te)->type, type, str, items);
 }
 
 /* Activate an element from the merged element search menu */

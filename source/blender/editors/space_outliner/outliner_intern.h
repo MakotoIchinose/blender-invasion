@@ -90,8 +90,7 @@ typedef struct TreeElementIcon {
 
 typedef struct MergedSearchData {
   TreeElement *parent_element;
-  TreeStoreElem *tselem;
-  int element_type;
+  TreeElement *select_element;
 } MergedSearchData;
 
 #define TREESTORE_ID_TYPE(_id) \
