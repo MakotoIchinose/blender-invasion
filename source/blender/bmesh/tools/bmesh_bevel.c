@@ -61,11 +61,12 @@
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
+#define DEBUG_CUSTOM_PROFILE_PIPE 1
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 0
 #define DEBUG_CUSTOM_PROFILE_CUTOFF 0
 
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
+#if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW | DEBUG_CUSTOM_PROFILE_PIPE
 extern void DRW_debug_sphere(const float center[3], const float radius, const float color[4]);
 extern void DRW_debug_line_v3v3(const float v1[3], const float v2[3], const float color[4]);
 #endif
@@ -2302,8 +2303,9 @@ static void calculate_vm_profiles(BevelParams *bp, BevVert *bv, VMesh *vm)
   bndv = vm->boundstart;
   do {
     set_profile_params(bp, bv, bndv);
-    /* We probably don't know to orientation at this point, so don't reverse the profiles */
-    calculate_profile(bp, bndv, false, bp->use_custom_profile && (bndv->is_arc_start || bndv->is_patch_start));
+    bool miter_profile = bp->use_custom_profile && (bndv->is_arc_start || bndv->is_patch_start);
+    /* We probably don't know the orientation at this point, so don't reverse the profiles */
+    calculate_profile(bp, bndv, false, miter_profile);
   } while ((bndv = bndv->next) != vm->boundstart);
 }
 
@@ -4514,39 +4516,82 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
 
 /* See pipe_test for conditions that make 'pipe'; vpipe is the return value from that.
  * We want to make an ADJ mesh but then snap the vertices to the profile in a plane
- * perpendicular to the pipes.
- * A tricky case is for the 'square' profiles and an even nseg: we want certain vertices
- * to snap to the midline on the pipe, not just to one plane or the other. */
+ * perpendicular to the pipes. */
 static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
 {
-#if DEBUG_CUSTOM_PROFILE_ADJ
+#if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_PIPE
   printf("PIPE ADJ VMESH\n");
+  float color[4] = {0.0f, 1.0f, 0.0f, 1.0f};
+  float new_profile_normal_end[3];
 #endif
-  int i, j, k, n_bndv, ns, ns2, ipipe1, ipipe2;
+  int ipipe, i, j, k, n_bndv, ns, half_ns, ipipe1, ipipe2;
   VMesh *vm;
   bool even, midline;
+//  Profile *pipe_profile;
+  float new_profile_plane_co[3], new_profile_plane_no[3], new_profile_plane[4];
 
+  /* HANS-TODO: We shouldn't need to go through the subdivision process with a custom profile */
   vm = adj_vmesh(bp, bv);
 
   /* Now snap all interior coordinates to be on the epipe profile */
   n_bndv = bv->vmesh->count;
   ns = bv->vmesh->seg;
-  ns2 = ns / 2;
+  half_ns = ns / 2;
   even = (ns % 2) == 0;
   ipipe1 = vpipe->index;
   ipipe2 = vpipe->next->next->index;
-  for (i = 0; i < n_bndv; i++) {
-    for (j = 1; j <= ns2; j++) {
-      for (k = 0; k <= ns2; k++) {
-        if (!is_canon(vm, i, j, k)) {
-          continue;
+
+  if (bp->use_custom_profile) {
+    for (ipipe = 0; ipipe < 2; ipipe++) {
+      /* Adjust the side of the first pipe profile first, then the other profile's side second */
+      i = (ipipe == 0) ? ipipe1 : ipipe2;
+      for (j = 1; j <= half_ns; j++) {
+        for (k = 0; k <= ns; k++) {
+          /* Get a new profile plane by moving the original's position to this ring */
+          copy_v3_v3(new_profile_plane_co, mesh_vert(vm, i, j, 0)->co);
+          copy_v3_v3(new_profile_plane_no, vpipe->profile.plane_no);
+          plane_from_point_normal_v3(new_profile_plane, new_profile_plane_co,
+                                     new_profile_plane_no);
+
+
+          /* Get this point's location by snapping the first profile's location to the new plane */
+          closest_to_plane_v3(mesh_vert(vm, i, j, k)->co, new_profile_plane,
+                              mesh_vert(vm, ipipe1, 0, k)->co);
+#if DEBUG_CUSTOM_PROFILE_PIPE
+          printf("new_profile_plane_co: (%.3f, %.3f, %.3f)\n", new_profile_plane_co[0],
+                                                               new_profile_plane_co[1],
+                                                               new_profile_plane_co[2]);
+          printf("new_profile_plane_no: (%.3f, %.3f, %.3f)\n", new_profile_plane_no[0],
+                                                               new_profile_plane_no[1],
+                                                               new_profile_plane_no[2]);
+          printf("new vertex: (%.3f, %.3f, %.3f)\n", mesh_vert(vm, i, j, k)->co[0],
+                                                     mesh_vert(vm, i, j, k)->co[1],
+                                                     mesh_vert(vm, i, j, k)->co[2]);
+          DRW_debug_sphere(new_profile_plane_co, 0.03f, color);
+          madd_v3_v3v3fl(new_profile_normal_end, new_profile_plane_co, new_profile_plane_no,
+                         0.1f);
+          DRW_debug_line_v3v3(new_profile_plane_co, new_profile_normal_end, color);
+#endif
         }
-        midline = even && k == ns2 && ((i == 0 && j == ns2) || (i == ipipe1 || i == ipipe2));
-        snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
       }
     }
   }
-
+  else { /* non-custom profile */
+    for (i = 0; i < n_bndv; i++) {
+      for (j = 1; j <= half_ns; j++) {
+       for (k = 0; k <= half_ns; k++) {
+         if (!is_canon(vm, i, j, k)) {
+           continue;
+          }
+          /* A tricky case is for the 'square' profiles and an even nseg: we want certain vertices
+           * to snap to the midline on the pipe, not just to one plane or the other. */
+          midline = even && k == half_ns &&
+                    ((i == 0 && j == half_ns) || (i == ipipe1 || i == ipipe2));
+          snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
+          }
+        }
+      }
+  }
   return vm;
 }
 
@@ -7363,7 +7408,6 @@ void BM_mesh_bevel(BMesh *bm,
     /* Get separate non-custom locations for the miter profiles if they are needed */
     if (bp.use_custom_profile &&
         (bp.miter_inner != BEVEL_MITER_SHARP || bp.miter_outer != BEVEL_MITER_SHARP)) {
-      printf("Getting miter profile spacing too\n");
       set_profile_spacing(&bp, &bp.pro_spacing_miter, false);
     }
 
@@ -7521,5 +7565,7 @@ void BM_mesh_bevel(BMesh *bm,
 #undef DEBUG_CUSTOM_PROFILE_ORIGINAL
 #undef DEBUG_CUSTOM_PROFILE_WELD
 #undef DEBUG_CUSTOM_PROFILE_ADJ
+#undef DEBUG_CUSTOM_PROFILE_PIPE
 #undef DEBUG_CUSTOM_PROFILE_ORIENTATION
-
+#undef DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
+#undef DEBUG_CUSTOM_PROFILE_CUTOFF
