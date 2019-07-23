@@ -137,6 +137,10 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
                                                 BMEdge *e);
 static ClothSizing cloth_remeshing_find_average_sizing(ClothSizing &size_01, ClothSizing &size_02);
 static void mul_m2_m2m2(float r[2][2], float a[2][2], float b[2][2]);
+static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int which);
+static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i);
+static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side);
+static void cloth_remeshing_uv_of_vert(BMesh *bm, BMVert *v, float r_uv[2]);
 
 static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
@@ -393,6 +397,43 @@ static pair<BMVert *, BMVert *> cloth_remeshing_edge_side_verts(BMEdge *e)
 
 /* from Bossen and Heckbert 1996 */
 #define CLOTH_REMESHING_EDGE_FLIP_THRESHOLD 0.001f
+
+static bool cloth_remeshing_should_flip(BMesh *bm, BMEdge *e, map<BMVert *, ClothSizing> &sizing)
+{
+  BMVert *v1, *v2, *v3, *v4;
+  v1 = cloth_remeshing_edge_vert(e, 0, 0);
+  v2 = cloth_remeshing_edge_vert(e, 0, 1);
+  v3 = cloth_remeshing_edge_opposite_vert(e, 0);
+  v4 = cloth_remeshing_edge_opposite_vert(e, 1);
+
+  float x[2], y[2], z[2], w[2];
+  cloth_remeshing_uv_of_vert(bm, v1, x);
+  cloth_remeshing_uv_of_vert(bm, v2, z);
+  cloth_remeshing_uv_of_vert(bm, v3, w);
+  cloth_remeshing_uv_of_vert(bm, v4, y);
+
+  float m[2][2];
+  /* TODO(Ish): need to fix this when sizing is improved */
+  ClothSizing size_temp_01 = cloth_remeshing_find_average_sizing(sizing[v1], sizing[v2]);
+  ClothSizing size_temp_02 = cloth_remeshing_find_average_sizing(sizing[v3], sizing[v4]);
+  ClothSizing size_temp = cloth_remeshing_find_average_sizing(size_temp_01, size_temp_02);
+  copy_m2_m2(m, size_temp.m);
+
+  float zy[2], xy[2], xw[2], mzw[2], mxy[2], zw[2];
+  sub_v2_v2v2(zy, z, y);
+  sub_v2_v2v2(xy, x, y);
+  sub_v2_v2v2(xw, x, w);
+  sub_v2_v2v2(zw, z, w);
+
+  mul_v2_m2v2(mzw, m, zw);
+  mul_v2_m2v2(mxy, m, xy);
+
+  return cloth_remeshing_wedge(zy, xy) * dot_v2v2(xw, mzw) +
+             dot_v2v2(zy, mxy) * cloth_remeshing_wedge(xw, zw) <
+         -CLOTH_REMESHING_EDGE_FLIP_THRESHOLD *
+             (cloth_remeshing_wedge(zy, xy) + cloth_remeshing_wedge(xw, zw));
+}
+
 static bool cloth_remeshing_should_flip(
     BMesh *bm, BMVert *v1, BMVert *v2, BMVert *v3, BMVert *v4, map<BMVert *, ClothSizing> &sizing)
 {
@@ -430,6 +471,41 @@ static bool cloth_remeshing_should_flip(
              (cloth_remeshing_wedge(zy, xy) + cloth_remeshing_wedge(xw, zw));
 }
 
+static bool cloth_remeshing_edge_on_seam_or_boundary_test(BMEdge *e)
+{
+  BMFace *f1, *f2;
+  BM_edge_face_pair(e, &f1, &f2);
+
+  return !f1 || !f2 || cloth_remeshing_edge_vert(e, 0, 0) != cloth_remeshing_edge_vert(e, 1, 0);
+}
+
+#if 1
+static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
+                                                           map<BMVert *, ClothSizing> &sizing,
+                                                           vector<BMFace *> &active_faces)
+{
+  vector<BMEdge *> edges;
+  for (int i = 0; i < active_faces.size(); i++) {
+    BMEdge *e;
+    BMIter eiter;
+    BM_ITER_ELEM (e, &eiter, active_faces[i], BM_EDGES_OF_FACE) {
+      edges.push_back(e);
+    }
+  }
+  vector<BMEdge *> fedges;
+  for (int i = 0; i < edges.size(); i++) {
+    BMEdge *e = edges[i];
+    if (cloth_remeshing_edge_on_seam_or_boundary_test(e)) {
+      continue;
+    }
+    if (!cloth_remeshing_should_flip(bm, e, sizing)) {
+      continue;
+    }
+    fedges.push_back(e);
+  }
+  return fedges;
+}
+#else
 static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
                                                            map<BMVert *, ClothSizing> &sizing,
                                                            vector<BMFace *> &active_faces)
@@ -489,6 +565,7 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
   }
   return edges;
 }
+#endif
 
 static bool cloth_remeshing_independent_edge_test(BMEdge *e, vector<BMEdge *> edges)
 {
@@ -1246,6 +1323,29 @@ static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i)
   for (int j = 0; j < 3; j++) {
     if (vs[j] == cloth_remeshing_edge_vert(e, i)) {
       return vs[j];
+    }
+  }
+  return NULL;
+}
+
+static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side)
+{
+  BMFace *f;
+  BMIter fiter;
+  int fi = 0;
+  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, fi) {
+    if (fi == side) {
+      break;
+    }
+  }
+  if (!f) {
+    return NULL;
+  }
+  BMVert *vs[3];
+  BM_face_as_array_vert_tri(f, vs);
+  for (int j = 0; j < 3; j++) {
+    if (vs[j] == cloth_remeshing_edge_vert(e, side)) {
+      return vs[PREV(j)];
     }
   }
   return NULL;
@@ -2317,7 +2417,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (false) {
+  if (true) {
     cloth_remeshing_static(clmd);
   }
   else {
